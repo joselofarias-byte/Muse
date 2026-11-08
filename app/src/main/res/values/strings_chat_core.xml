@@ -2,7 +2,7 @@
 <resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation">
     <!-- ===== ChatScreen 对话页 ===== -->
     <!-- 顶部栏 -->
-    <string name="chat_session_cd">Sesión actual:%1$s, haga clic para cambiar de sesión</string>
+    <string name="chat_session_cd">Sesión actual:%1$s, toca para cambiar de sesión</string>
     <string name="chat_video_play_cd">reproducir vídeo</string>
     <string name="chat_generated_video_cd">vídeo generado</string>
     <string name="chat_msg_selected">seleccionado</string>
@@ -11,7 +11,7 @@
     <string name="moment_add_images_hint">Añadir imágenes (hasta %1$d imágenes)</string>
     <!-- ===== 日记 (MiniDiaryScreen) ===== -->
     <string name="diary_generate_failed">Error al generar el diario. Vuelve a intentarlo más tarde.</string>
-    <string name="diary_title">Musa diario</string>
+    <string name="diary_title">Muse diario</string>
     <string name="diary_date_title">%1$d año %2$d mes %3$s dia</string>
     <string name="diary_empty_today">No hay diario hoy</string>
     <string name="diary_empty_other_day">No hay un diario para este día.</string>
@@ -32,13 +32,13 @@
     </string-array>
     <!-- ===== 天气 (MiniWeatherScreen) ===== -->
     <string name="weather_title">clima</string>
-    <string name="weather_search_hint">Ingrese el nombre de la ciudad (como Chengdu)</string>
+    <string name="weather_search_hint">Entra el nombre de la ciudad (como Chengdu)</string>
     <string name="weather_search_action">Consulta</string>
     <string name="weather_service_unavailable">El servicio meteorológico no está disponible temporalmente</string>
     <string name="weather_city_not_found">Ciudad no encontrada "%1$s", intenta cambiar el nombre</string>
-    <string name="weather_location_failed">No se puede obtener el posicionamiento, ingrese el nombre de la ciudad para realizar la consulta</string>
-    <string name="weather_permission_denied">Posicionamiento no autorizado, ingrese el nombre de la ciudad para realizar la consulta</string>
-    <string name="weather_permission_guide">Configure permisos de posicionamiento o ingrese manualmente el nombre de la ciudad para consultar</string>
+    <string name="weather_location_failed">No se pudo obtener tu ubicación. Introduce el nombre de la ciudad para consultar el clima.</string>
+    <string name="weather_permission_denied">No hay permiso de ubicación. Introduce el nombre de la ciudad para consultar el clima.</string>
+    <string name="weather_permission_guide">Concede el permiso de ubicación o introduce el nombre de la ciudad manualmente.</string>
     <string name="weather_feels_like_wind">somatosensorial %1$d° · velocidad del viento %2$s km/h</string>
     <string name="weather_current_location">Ubicación actual</string>
     <string name="weather_condition_clear">claro</string>
@@ -73,7 +73,7 @@
     <string name="moment_comment_cd">Comentario</string>
     <string name="moment_favorite">Colección</string>
     <string name="moment_more_actions">Dinámica de momentos y más operaciones.</string>
-    <string name="moment_sender_muse">Musa</string>
+    <string name="moment_sender_muse">Muse</string>
     <string name="moment_sender_me">yo</string>
     <string name="moment_comment_hint">Deja un comentario:</string>
     <string name="moment_delete_title">Eliminar actualizaciones</string>
@@ -82,9 +82,9 @@
     <string name="moment_avatar_cd">Avatar</string>
     <string name="moment_cover_cd">Portada de momentos</string>
     <string name="moment_messages_cd">noticias</string>
-    <string name="moment_publish_cd">Publicar noticias (presione brevemente para imágenes y texto, presione prolongadamente para texto sin formato)</string>
+    <string name="moment_publish_cd">Publicar noticias (pulsa brevemente para imágenes y texto, pulsa prolongadamente para texto sin formato)</string>
     <string name="moment_empty_feed">Aún no hay actualizaciones</string>
-    <string name="moment_empty_hint">Haz clic en la esquina superior derecha + envía el primer mensaje a Momentos\nMusa y los asistentes también compartirán sus vidas</string>
+    <string name="moment_empty_hint">Toca + en la esquina superior derecha para publicar tu primer mensaje en Momentos.\nMuse y los asistentes también compartirán sus novedades.</string>
     <string name="moment_messages_empty">Nadie te ha dado me gusta ni ha comentado sobre ti todavía.</string>
     <string name="moment_notification_liked">%1$s Me gustó tu publicación</string>
     <string name="moment_notification_commented">%1$s comentó en tu publicación</string>
@@ -104,7 +104,7 @@
     <string name="chat_tool_card_open">ver tarjeta</string>
     <string name="chat_update_compress">Contexto de compresión</string>
     <string name="chat_scroll_to_bottom_cd">llegar al fondo</string>
-    <string name="chat_export_format_title">Seleccione el formato de exportación</string>
+    <string name="chat_export_format_title">Selecciona el formato de exportación</string>
     <string name="chat_export_format_confirm">Exportar</string>
     <string name="chat_export_format_markdown">Markdown(.md): Formato de texto sin formato, fácil de pegar en un software para tomar notas o editarlo nuevamente</string>
     <string name="chat_export_format_html">HTML(.html): Archivo único, estilos e imágenes en línea, se puede abrir y compartir directamente con el navegador</string>
@@ -148,7 +148,7 @@
 
     <!-- 错误与权限提示 -->
     <string name="chat_err_mic_permission">Se requiere permiso del micrófono para usar la entrada de voz</string>
-    <string name="chat_mic_permission_granted">Se ha concedido el permiso del micrófono. Mantenga presionado el micrófono nuevamente para comenzar a grabar.</string>
+    <string name="chat_mic_permission_granted">Se ha concedido el permiso del micrófono. Mantén presionado el micrófono nuevamente para comenzar a grabar.</string>
     <string name="chat_err_open_file_picker">No se puede abrir el selector de archivos: %1$s</string>
     <string name="chat_err_open_image_picker">No se puede abrir el selector de imágenes: %1$s</string>
     <string name="chat_error_cd">Error:%1$s, puedes volver a intentarlo o cerrar</string>
@@ -182,7 +182,7 @@
 
     <!-- 委托给助手 -->
     <string name="chat_delegate_title">delegar a asistente</string>
-    <string name="chat_delegate_empty">Aún no hay ningún asistente ni equipo disponible. Primero cree uno en la gestión de asistentes.</string>
+    <string name="chat_delegate_empty">Aún no hay asistentes ni equipos disponibles. Crea uno desde la gestión de asistentes.</string>
     <string name="chat_delegate_assistants">Asistentes disponibles</string>
     <string name="chat_delegate_unnamed_assistant">ayudante anónimo</string>
     <string name="chat_delegate_assistant_prompt_input">Por favor confíelo a %1$s Procesamiento:%2$s</string>
@@ -190,12 +190,12 @@
     <string name="chat_delegate_no_text">Este mensaje no tiene contenido de texto delegado.</string>
     <string name="chat_delegate_teams">equipo colaborativo</string>
     <string name="chat_delegate_unnamed_team">Equipo sin nombre</string>
-    <string name="chat_delegate_team_prompt_input">Por favor presione %1$s Colaboración en equipo para manejar:%2$s</string>
-    <string name="chat_delegate_team_prompt_message">Por favor presione %1$s Trabajar en equipo en lo anterior:</string>
+    <string name="chat_delegate_team_prompt_input">Por favor pulsa %1$s Colaboración en equipo para manejar:%2$s</string>
+    <string name="chat_delegate_team_prompt_message">Por favor pulsa %1$s Trabajar en equipo en lo anterior:</string>
 
     <!-- 空状态引导 -->
     <string name="chat_avatar_assistant_cd">avatar asistente</string>
-    <string name="chat_avatar_muse_cd">Musa icono</string>
+    <string name="chat_avatar_muse_cd">Muse icono</string>
     <string name="chat_empty_guide_title">¿De qué quieres hablar hoy?</string>
     <string name="chat_ignore_memory_option">Esta conversación no se refiere a la memoria.</string>
 
@@ -313,15 +313,15 @@
     <string name="chat_tool_knowledge_subtitle">@mention Documentación</string>
     <!-- v2.4.6: 消息下方译文可展开块 -->
     <string name="chat_translation_block_title">Traducción</string>
-    <string name="chat_tool_prompt_template_subtitle">Seleccione palabras de indicaciones de escena de la biblioteca de plantillas</string>
+    <string name="chat_tool_prompt_template_subtitle">Selecciona palabras de indicaciones de escena de la biblioteca de plantillas</string>
     <string name="chat_tool_skills">Habilidades</string>
     <string name="chat_tool_skills_subtitle">Administrar e invocar habilidades habilitadas</string>
     <string name="chat_tool_draw_mode">modo de dibujo</string>
-    <string name="chat_tool_draw_mode_subtitle_on">Ya encendido · Ingrese la descripción para generar la imagen.</string>
-    <string name="chat_tool_draw_mode_subtitle">Ingrese la descripción para generar la imagen.</string>
+    <string name="chat_tool_draw_mode_subtitle_on">Ya encendido · Entra la descripción para generar la imagen.</string>
+    <string name="chat_tool_draw_mode_subtitle">Entra la descripción para generar la imagen.</string>
     <string name="chat_tool_delegate_subtitle">Seleccionar sub-asistentes para colaborar en el mensaje actual</string>
     <string name="chat_tool_restart_context">reiniciar contexto</string>
-    <string name="chat_tool_restart_context_subtitle">Borre la conversación actual y deje que el Agente comience desde cero</string>
+    <string name="chat_tool_restart_context_subtitle">Borra la conversación actual y deja que el Agente comience desde cero</string>
 
     <!-- F-3: 长按加号展开/收起快捷工具栏 -->
     <string name="chat_quickbar_hint_on">La barra de herramientas de acceso directo se ha ampliado.</string>
@@ -351,7 +351,7 @@
     <string name="chat_expand_input_cd">Edición de pantalla completa</string>
     <string name="chat_expand_input_title">Editar mensaje</string>
     <!-- v1.0.47 P5-3: Token 计数菜单 -->
-    <string name="chat_token_menu_title">Token estimación</string>
+    <string name="chat_token_menu_title">Estimación de tokens</string>
     <string name="chat_token_input">Entrada actual</string>
     <string name="chat_token_history">noticias historicas</string>
     <string name="chat_token_context_window">ventana contextual</string>
@@ -369,7 +369,7 @@
     <string name="chat_input_action_fullscreen">Modo de entrada de pantalla completa</string>
     <string name="chat_stop_generation_cd">dejar de generar</string>
     <string name="chat_interject_cd">Interrumpir: interrumpir la generación actual y enviar</string>
-    <string name="command_palette_placeholder">Busque conversaciones y mensajes, o ingrese el comando /ver</string>
+    <string name="command_palette_placeholder">Busca conversaciones y mensajes o introduce el comando /ver</string>
     <string name="command_palette_commands">comando</string>
     <string name="command_palette_sessions">sesión</string>
     <string name="command_palette_messages">noticias</string>
@@ -379,15 +379,15 @@
     <string name="command_palette_no_results">No hay resultados coincidentes</string>
     <string name="command_palette_open_session">Sesión abierta</string>
     <string name="command_palette_clear">Borrar</string>
-    <string name="command_palette_empty_hint">Ingrese la búsqueda de palabras clave o ingrese el comando / ver</string>
-    <string name="chat_recording_start_failed">Error al iniciar la grabación, verifique los permisos o la configuración del modelo</string>
+    <string name="command_palette_empty_hint">Introduce una palabra clave o el comando / ver</string>
+    <string name="chat_recording_start_failed">Error al iniciar la grabación, comprueba los permisos o la configuración del modelo</string>
     <string name="chat_recognizing_cd">Reconociendo</string>
     <string name="chat_recording_cd">Grabación</string>
-    <string name="chat_hold_to_record_cd">Mantenga presionado para grabar</string>
+    <string name="chat_hold_to_record_cd">Mantén presionado para grabar</string>
     <string name="chat_cancelled">Cancelado</string>
     <!-- v1.95: 系统语音识别首次使用提示 -->
     <string name="chat_asr_tip_title">Avisos de reconocimiento de voz</string>
-    <string name="chat_asr_tip_message">El reconocimiento de voz del sistema mostrará un cuadro de diálogo del sistema cada vez. Si desea una experiencia de grabación en la aplicación, puede ir a Configuración→Configure DashScope o Step en el reconocimiento de voz.</string>
+    <string name="chat_asr_tip_message">El reconocimiento de voz del sistema abre un diálogo cada vez. Para grabar dentro de la aplicación, configura DashScope o Step desde los ajustes de reconocimiento de voz.</string>
     <string name="chat_asr_tip_confirm">continuar</string>
 
     <!-- 绘图参数面板 -->
@@ -424,7 +424,7 @@
 
     <!-- 空状态 -->
     <string name="chat_list_empty_archived">Aún no hay tareas archivadas</string>
-    <string name="chat_list_empty_archived_sub">Mantenga presionada la conversación para seleccionar archivar</string>
+    <string name="chat_list_empty_archived_sub">Mantén presionada la conversación para seleccionar archivar</string>
 
     <!-- 分组标题 -->
     <string name="chat_list_section_recent">Recientemente</string>
@@ -437,13 +437,13 @@
     <string name="chat_list_new_folder">Crear nueva carpeta</string>
 
     <!-- 任务首页 -->
-    <string name="chat_list_input_hint">Introduzca cualquier idea…</string>
+    <string name="chat_list_input_hint">Introduce cualquier idea…</string>
     <string name="chat_list_send">Enviar</string>
     <string name="chat_list_no_recent_title">Aún no hay sesión</string>
-    <string name="chat_list_no_recent_subtitle">Haga clic en el signo + a continuación para iniciar una nueva conversación.</string>
+    <string name="chat_list_no_recent_subtitle">Toca en el signo + a continuación para iniciar una nueva conversación.</string>
     <string name="chat_list_knowledge_title">base de conocimientos</string>
     <string name="chat_list_knowledge_count">%1$d documentos</string>
-    <string name="chat_list_knowledge_empty">Haga clic para agregar documento</string>
+    <string name="chat_list_knowledge_empty">Toca para agregar documento</string>
 
     <!-- 底部按钮与对话框 -->
     <string name="chat_list_new_task">nuevas tareas</string>
@@ -477,7 +477,7 @@
     <!-- ChatSettingsPage 表情包库分区 -->
     <string name="settings_chat_sticker_section">biblioteca de emoticonos</string>
     <string name="settings_sticker_enabled">Habilitar emoticones</string>
-    <string name="settings_sticker_enabled_subtitle">Permitir que el Asistente envíe emoticones al responder</string>
+    <string name="settings_sticker_enabled_subtitle">Permitir que el Asistente envía emoticones al responder</string>
     <string name="settings_sticker_frequency">frecuencia de envío</string>
     <string name="settings_sticker_frequency_subtitle">Naturalmente, el asistente mostrará emojis cuando el contexto sea apropiado.</string>
     <string name="settings_sticker_freq_occasional">De vez en cuando</string>
@@ -504,12 +504,12 @@
     <string name="settings_sticker_move_target_label">Mover a otro paquete (un nombre nuevo crea uno)</string>
     <string name="settings_sticker_move_up">Subir</string>
     <string name="settings_sticker_move_down">Bajar</string>
-    <string name="settings_sticker_upload_zip_subtitle">Seleccione archivos zip y clasifíquelos automáticamente por estructura de carpetas</string>
+    <string name="settings_sticker_upload_zip_subtitle">Selecciona archivos zip y clasifíquelos automáticamente por estructura de carpetas</string>
     <string name="settings_sticker_imported">Importado %1$d emoticones</string>
     <string name="settings_sticker_import_failed">Error de importación:%1$s</string>
     <string name="settings_sticker_export_location_failed">No se puede escribir en la ubicación seleccionada</string>
     <string name="settings_sticker_empty_title">Aún no hay emoticones</string>
-    <string name="settings_sticker_empty_subtitle">Haga clic arriba"Importar paquete comprimido"Agregar archivo zip</string>
+    <string name="settings_sticker_empty_subtitle">Toca arriba"Importar paquete comprimido"Agregar archivo zip</string>
     <string name="settings_sticker_delete_confirm">¿Eliminar este emoticón?</string>
     <string name="settings_sticker_category_all">Todos</string>
     <!-- 前端修复 (i18n-3.x): 表情包批量删除/清空 i18n -->
@@ -546,8 +546,8 @@
     <string name="msg_info_model">Modelo</string>
     <string name="msg_info_time">tiempo</string>
     <string name="msg_info_duration">Generar lleva mucho tiempo</string>
-    <string name="msg_info_tokens_title">Token Dosis</string>
-    <string name="msg_info_prompt">entrada (prompt)</string>
+    <string name="msg_info_tokens_title">Uso de tokens</string>
+    <string name="msg_info_prompt">Entrada</string>
     <string name="msg_info_completion">salida (completion)</string>
     <string name="msg_info_reasoning">razonamiento (reasoning)</string>
     <string name="msg_info_cached">lectura de caché</string>
@@ -582,7 +582,7 @@
     <string name="chat_pending_remove_cd">Eliminar este artículo</string>
     <string name="chat_pending_clear">Limpiar la cola</string>
     <string name="chat_pending_image_only">[fotos]</string>
-    <string name="chat_region_error">Esta área no se pudo cargar, haga clic para intentarlo nuevamente</string>
+    <string name="chat_region_error">Esta área no se pudo cargar, toca para intentarlo nuevamente</string>
     <string name="settings_chat_gradient_title">fondo degradado</string>
     <string name="settings_chat_gradient_subtitle">Degradado lineal de dos colores, efectivo cuando no se establece ninguna imagen de fondo</string>
     <string name="chat_reaction_title">respuesta de emoticono</string>
@@ -594,7 +594,7 @@
     <string name="chat_reaction_angry">enojado</string>
     <string name="chat_reaction_clear">respuesta clara</string>
     <string name="tool_running">ejecutando %1$s…</string>
-    <string name="chat_pending_queue_full">La cola para enviar está llena (hasta 8 elementos), borre o envíe primero</string>
+    <string name="chat_pending_queue_full">La cola para enviar está llena (hasta 8 elementos), borra o envía primero</string>
     <string name="chat_pending_send_busy">Se está generando una respuesta. Detenga la generación actual antes de enviar el mensaje en cola.</string>
     <string name="chat_draft_save_failed">El borrador no se pudo guardar y es posible que se pierda el contenido ingresado.</string>
 
@@ -617,8 +617,8 @@
     <!-- 上下文压缩分隔线（仅界面展示，不进模型上下文） -->
     <string name="chat_context_divider_title">El contexto está comprimido.</string>
     <string name="chat_context_divider_title_count">El contexto está comprimido. · %1$d artículos fusionados en resumen</string>
-    <string name="chat_context_divider_hint_collapsed">Haga clic para ampliar el texto original.</string>
-    <string name="chat_context_divider_hint_expanded">Haga clic para contraer el texto original.</string>
+    <string name="chat_context_divider_hint_collapsed">Toca para ampliar el texto original.</string>
+    <string name="chat_context_divider_hint_expanded">Toca para contraer el texto original.</string>
     <string name="moment_comment_reply">Responder</string>
     <string name="diary_export_action">Exportar</string>
     <string name="moment_visibility_title">¿Quién puede mirar?</string>

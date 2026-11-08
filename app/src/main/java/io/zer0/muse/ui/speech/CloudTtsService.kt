@@ -176,7 +176,7 @@ class CloudTtsService(
             VoiceInfo("longmiao", "龙淼", "zh-CN", "female"),
         )
         private val FISH_VOICES = listOf(
-            VoiceInfo("", "默认音色(空 reference_id)"),
+            VoiceInfo("", "Voz predeterminada (reference_id vacío)"),
         )
         private val GROQ_VOICES = listOf(
             VoiceInfo("Fritz-PlayAI", "Fritz", "en"),

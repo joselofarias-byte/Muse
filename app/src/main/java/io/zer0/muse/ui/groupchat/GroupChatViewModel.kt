@@ -622,8 +622,8 @@ class GroupChatViewModel(
         // v1.0.52: text 为空但有图片时,给 body 添加占位文本,
         // 让 LLM 知道用户发了图片(否则空 body 可能被 scheduler/LLM 忽略)
         val effectiveText = when {
-            text.isBlank() && images.isNotEmpty() -> "[图片]"
-            text.isBlank() && fileAttachments.isNotEmpty() -> "[文件]"
+            text.isBlank() && images.isNotEmpty() -> "[Imagen]"
+            text.isBlank() && fileAttachments.isNotEmpty() -> "[Archivo]"
             else -> text
         }
         // v1.0.21: 乐观 UI 更新 — 立即把用户消息追加到 currentMessages,
@@ -640,7 +640,7 @@ class GroupChatViewModel(
             chatId = chatId,
             senderType = "user",
             senderId = "local_user",
-            senderName = "我",
+            senderName = "Tú",
             body = effectiveText,
             imageBase64Json = imageJson,
             fileAttachmentsJson = if (fileAttachments.isNotEmpty()) {
