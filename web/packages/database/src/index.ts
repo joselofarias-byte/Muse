@@ -300,6 +300,15 @@ export const migrations: readonly Migration[] = [
       create index if not exists jobs_user_idx on jobs(user_id, created_at desc);
     `,
   },
+  {
+    version: 10,
+    name: "musa_spanish_defaults",
+    upSql: `
+      alter table sessions alter column title set default 'Nueva conversación';
+      update plans set name = 'BYOK gratuito' where id = 'free' and name = '免费 BYOK';
+      update plans set name = 'Musa Pro' where id = 'pro' and name = 'Muse Pro';
+    `,
+  },
 ];
 
 export function validateMigrationChain(items: readonly Migration[]): void {
