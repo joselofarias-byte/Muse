@@ -1,5 +1,7 @@
 name: Musa upstream integration verification
 on:
+  push:
+    branches: [hoplite/kos-04cbd875--upstream-full]
   workflow_dispatch:
   pull_request:
     branches: [main]
