@@ -1430,7 +1430,7 @@ fun ChatScreen(
                                             ?.trim(),
                                         stringResource(R.string.chat_new_session),
                                     )
-                                } ?: "muse"
+                                } ?: "Muse"
                             }
                         val assistantTitle =
                             state.currentAssistant?.name?.takeIf { it.isNotBlank() }

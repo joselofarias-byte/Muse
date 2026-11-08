@@ -204,12 +204,12 @@ android {
             ?.toIntOrNull()
             ?: System.getenv("VERSION_CODE")?.takeIf { it.isNotBlank() }?.toIntOrNull()
             // 默认值跟随当前发行线；正式构建仍显式注入并与 tag 核对。
-            ?: 1000001
+            ?: 1000002
         versionName = (project.findProperty("versionName") as? String)
             ?.takeIf { it.isNotBlank() }
             ?: System.getenv("VERSION_NAME")?.takeIf { it.isNotBlank() }
             // 名称与编号保持同一发行线，防止本地构建无意产生错配。
-            ?: "2.6.23-musa-es"
+            ?: "2.6.23-muse-es.2"
     }
 
     signingConfigs {

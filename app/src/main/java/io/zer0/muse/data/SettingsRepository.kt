@@ -44,6 +44,7 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -739,20 +740,10 @@ class SettingsRepository(
             prefs[KEY_LAST_UPDATE_CHECK_TIME] ?: 0L
         }
 
-    /**
-     * 最新版本信息 JSON 缓存(序列化的 UpdateChecker.ReleaseInfo)。
-     * null 表示当前无新版本(或未检查)。UI Banner 订阅此流来决定是否展示。
-     */
-    val latestReleaseInfoFlow: Flow<String?> =
-        store.data.mapDistinct { prefs ->
-            prefs[KEY_LATEST_RELEASE_INFO]
-        }
+    // Ignore legacy caches and enabled flags, including restored backups, before the first frame.
+    val latestReleaseInfoFlow: Flow<String?> = flowOf(null)
 
-    /** 是否启用自动更新检查(默认 true;用户在设置中可关闭)。 */
-    val updateCheckEnabledFlow: Flow<Boolean> =
-        store.data.mapDistinct { prefs ->
-            prefs[KEY_UPDATE_CHECK_ENABLED] ?: true
-        }
+    val updateCheckEnabledFlow: Flow<Boolean> = flowOf(false)
 
     /**
      * v1.0.72: 用户主动忽略的更新版本号(tagName,如 "v1.0.71")。
@@ -1456,9 +1447,10 @@ class SettingsRepository(
         }
     }
 
-    /** 保存"启用自动更新检查"开关。 */
+    /** Automatic checks are retired; legacy callers cannot enable them again. */
+    @Suppress("UNUSED_PARAMETER")
     suspend fun saveUpdateCheckEnabled(enabled: Boolean) {
-        store.edit { it[KEY_UPDATE_CHECK_ENABLED] = enabled }
+        store.edit { it[KEY_UPDATE_CHECK_ENABLED] = false }
     }
 
     // ── v1.0.20: 全局默认会话权限模式(工具批准开关) ───────────────────────────
