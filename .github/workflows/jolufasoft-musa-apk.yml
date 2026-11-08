@@ -17,8 +17,8 @@ concurrency:
   group: musa-release-${{ github.ref }}
   cancel-in-progress: false
 env:
-  VERSION_NAME: 2.6.23-musa-es
-  VERSION_CODE: '1000001'
+  VERSION_NAME: 2.6.23-muse-es.2
+  VERSION_CODE: '1000002'
   BUILD_TOOLS: 36.0.0
 jobs:
   apk:
