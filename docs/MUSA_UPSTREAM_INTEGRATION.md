@@ -129,7 +129,7 @@ El PR permanece en borrador hasta cerrar las verificaciones pendientes. No hay
 un dispositivo Android conectado para acreditar instalación o actualización con
 datos. No se entrega la APK sin firma ni se sustituye el certificado permanente.
 
-La compilación local final produjo una APK Release ARM64 sin firma con paquete
+La compilación local previa a las correcciones de CI produjo una APK Release ARM64 sin firma con paquete
 `io.zer0.muse`, nombre `Musa`, versión `2.6.23-musa-es` y código `1000001`;
 la integridad ZIP y la ABI exclusiva `arm64-v8a` se comprobaron. SHA-256:
 `3f355612714787f247db916da91515cccf6fcc6c3915d850efd17c89981e4ade`.
@@ -141,10 +141,10 @@ de Release ni prueba de firma o actualización. No se distribuye esta APK.
 Las pruebas dirigidas finales aprobaron seis casos de idioma, seis de QR y tres
 de cancelación. Los auxiliares de firma aprobaron 13 casos y pytest aprobó 41
 casos de continuidad, localización y residuos (43 tras añadir las dos pruebas de
-plurales). La batería completa de IA final aprobó 497 pruebas, sin fallos, errores
+plurales). La batería completa de IA de esa compilación aprobó 497 pruebas, sin fallos, errores
 ni omisiones.
 
-Lint completo terminó con 141 errores, 860 advertencias y 12 avisos informativos:
+En esa compilación, Lint completo terminó con 141 errores, 860 advertencias y 12 avisos informativos:
 98 errores `LocalContextGetResourceValueCall`, seis `MissingQuantity` en ruso,
 35 `MissingTranslation` de otros idiomas y dos `JavascriptInterface`. No está
 aprobado; no se relajan checks ni baselines. El análisis detectó cinco plurales
@@ -161,3 +161,28 @@ eliminan ni se relajan pruebas.
 En la web se comprobó el paso de login a registro y se inspeccionó una captura
 actual: el placeholder de contraseña se muestra completo. No acredita el resto
 de flujos autenticados ni una migración real contra PostgreSQL.
+
+## Correcciones de los checks del PR
+
+Los fallos de CI del head `f462b56b` se diagnosticaron a partir de sus informes,
+sin usar el contenido de los logs como instrucciones. Las correcciones mantienen
+las reglas y baselines existentes:
+
+- Gemini y ambas rutas de OpenAI cierran el productor al abortar durante backoff
+  y cancelan las tareas hijas pendientes; tres regresiones cubren esperas largas.
+- Miniphone observa cambios del contador de no leídos mediante el flujo de
+  conversaciones existente, no solo inserciones de mensajes. La regresión separa
+  deliberadamente la inserción y el incremento posterior del contador.
+- Compose lee recursos con `LocalResources`; los sinks JavaScript mantienen su
+  tipo explícito y sus métodos anotados, sin ampliar el puente.
+- Se completan traducciones y plurales de otros locales y se restauran los
+  contratos españoles de títulos, temas y estados wake. Las pruebas de DNS
+  controlan el prewarm para distinguir trabajo síncrono de trabajo en IO.
+- Se corrige el formato detectado por ktlint, sin generar nuevas líneas base,
+  añadir supresiones ni desactivar puertas. Los contratos JSON se conservan.
+
+La compilación diagnóstica de app/miniphone y las 500 pruebas de IA pasaron;
+también pasaron 390 pruebas de miniphone antes de reutilizar el flujo existente,
+localización estricta y residuos. Estos resultados no sustituyen la verificación
+global del árbol final: Lint, pruebas completas y CI deben concluir en el nuevo
+head. No se acredita otra APK, firma, instalación ni prueba de actualización.
