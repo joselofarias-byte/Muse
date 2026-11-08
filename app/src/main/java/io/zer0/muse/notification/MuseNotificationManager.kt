@@ -284,7 +284,7 @@ class MuseNotificationManager(private val context: Context) {
         // 用户可能没盯着会话(在看别的页面/别的 app),即时消息式通知不能被前台判断拦截。
         // 原 B-15 前台拦截导致:设置页"测试主动消息"时 App 必然前台,通知永远不发,
         // 用户无法验证(反馈:主动消息有了但通知栏没有)。主动消息有每日上限+评分引擎,不会高频打扰。
-        val assistantName = assistant.name.ifBlank { "muse" }
+        val assistantName = assistant.name.ifBlank { "Muse" }
         val avatar = loadAssistantAvatar(assistant)
         val builder = NotificationCompat.Builder(context, CHANNEL_PROACTIVE_MESSAGE)
             .setSmallIcon(R.mipmap.ic_launcher)
