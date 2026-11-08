@@ -1834,7 +1834,7 @@ class MemoryViewModel(
                 GroupChatMemoryUiItem(
                     id = m.id,
                     groupChatId = m.groupChatId,
-                    groupChatName = groupChatNameById[m.groupChatId] ?: "群聊",
+                    groupChatName = groupChatNameById[m.groupChatId] ?: "Conversación de grupo",
                     assistantName = assistantNameById[m.assistantId] ?: m.assistantId.take(8),
                     summary = m.summary,
                     createdAt = m.createdAt,
