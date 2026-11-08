@@ -150,7 +150,7 @@ try {
   assert(mod.apiErrorMessage({ code: "toString", message: "Detalle del servidor" }, "Error") === "Detalle del servidor", "Inherited object properties are not API translations");
   assert(mod.matchLocale("es-AR") === "es", "Spanish region tags are supported");
   assert(mod.resolveLocale("es", ["en-US"]) === "es", "Explicit Spanish overrides browser language");
-  assert(mod.translate("es", "error.noResponse") === "Musa no respondió; vuelve a intentarlo", "New timeout errors are Spanish and Musa-branded");
+  assert(mod.translate("es", "error.noResponse") === "Muse no respondió; vuelve a intentarlo", "New timeout errors are Spanish and Muse-branded");
   assert(mod.translate("es", "settings.dependencyHint", { title: "Prueba" }) === "Primero activa «Prueba»", "New settings hints preserve interpolation");
   assert(mod.formatRelativeTime(1_800_000_000_000, 1_800_000_000_000, "es") === "Ahora mismo", "Spanish relative time");
 

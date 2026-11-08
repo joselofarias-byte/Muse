@@ -2,7 +2,7 @@
 <resources>
     <!-- v1.97 gap8: 独立翻译页面(TranslateScreen)字符串 -->
     <string name="translate_page_title">Traducción</string>
-    <string name="translate_page_input_placeholder">Ingrese el texto para traducir...</string>
+    <string name="translate_page_input_placeholder">Entra el texto para traducir...</string>
     <string name="translate_page_translate">Traducción</string>
     <string name="translate_page_copy">Copiar resultados</string>
     <string name="translate_page_paste">Pegar</string>
@@ -31,7 +31,7 @@
     <!-- v2.4.6: 翻译历史长按复制 -->
     <string name="translate_history_copied">Traducción copiada</string>
     <string name="translate_history_copy_format">%1$s\n\n%2$s</string>
-    <string name="translate_page_history_loaded">Cargado en el cuadro de entrada</string>
+    <string name="translate_page_history_loaded">Cargado en el cuadro de introduceda</string>
     <string name="translate_page_history_cleared">Historial borrado</string>
     <string name="translate_page_history_source_short">Originales</string>
     <string name="translate_page_history_translated_short">traducir</string>
@@ -57,7 +57,7 @@
     <!-- v1.0.30 gap4.5: 自定义风格 -->
     <string name="translate_page_custom_style_add">agregar estilo</string>
     <string name="translate_page_custom_style_name">nombre de estilo</string>
-    <string name="translate_page_custom_style_prompt">Directivas de estilo (como\"Utilice la traducción al chino clásico antiguo\")</string>
+    <string name="translate_page_custom_style_prompt">Directivas de estilo (como\"Usa la traducción al chino clásico antiguo\")</string>
     <string name="translate_page_custom_style_save">Guardar</string>
     <string name="translate_page_custom_style_remove">Eliminar</string>
     <string name="translate_page_custom_style_added">Estilo personalizado agregado</string>
@@ -81,6 +81,6 @@
     <string name="translate_page_ocr_recognizing">Reconociendo…</string>
     <string name="translate_page_ocr_empty">Texto no reconocido</string>
     <string name="translate_page_ocr_failed">OCR El reconocimiento falló</string>
-    <string name="translate_page_ocr_applied">El texto reconocido se completa en el cuadro de entrada.</string>
+    <string name="translate_page_ocr_applied">El texto reconocido se completa en el cuadro de introduceda.</string>
     <string name="translate_source_auto">Detección automática</string>
 </resources>
