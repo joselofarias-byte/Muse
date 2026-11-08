@@ -204,7 +204,7 @@ try {
   const placeholderNoDesc = mod.renderToStaticMarkup(
     mod.createElement(mod.HostPlaceholder, { title: "PROTO-终端", onBack: () => undefined }),
   );
-  assert(placeholderNoDesc.includes("只能在手机上的 Musa 里使用"), "没有说明时给一句中性话，不是空白");
+  assert(placeholderNoDesc.includes("只能在手机上的 Muse 里使用"), "没有说明时给一句中性话，不是空白");
   const settingsSource = readFileSync(join(ROOT, "src", "host", "HostSettings.tsx"), "utf8");
   assert(
     settingsSource.includes("<HostPlaceholder") && !settingsSource.includes("这个页面还在迁移中"),
