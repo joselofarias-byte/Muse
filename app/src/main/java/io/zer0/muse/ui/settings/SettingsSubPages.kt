@@ -852,10 +852,8 @@ fun SettingsAboutPage(
     onOpenCrashReport: () -> Unit = {},
 ) {
     val context = LocalContext.current
-    val settings: SettingsRepository = koinInject()
     val updateNotifier: UpdateNotifier = koinInject()
     val scope = rememberCoroutineScope()
-    val updateCheckEnabled by settings.updateCheckEnabledFlow.collectAsStateWithLifecycle(initialValue = true)
     val versionName = remember {
         runCatching {
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
@@ -902,7 +900,7 @@ fun SettingsAboutPage(
                     modifier = Modifier.padding(MusePaddings.cardInner),
                 ) {
                     Text(
-                        text = "muse",
+                        text = "Muse",
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurface,
                     )
@@ -913,9 +911,9 @@ fun SettingsAboutPage(
                     )
                     Text(
                         // v1.66: 改为动态 BuildConfig 值,不再硬编码 "debug"
-                        text = "Build: ${if (BuildConfig.DEBUG) "debug" else "release"}",
+                        text = "Compilación: ${if (BuildConfig.DEBUG) "debug" else "release"}",
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.outline,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
@@ -990,14 +988,6 @@ fun SettingsAboutPage(
                         ChevronRight()
                     }
                 }
-                SettingsGroupDivider()
-                SettingsSwitchRow(
-                    icon = MuseIcons.refresh,
-                    title = stringResource(R.string.settings_about_auto_update),
-                    subtitle = stringResource(R.string.settings_about_auto_update_subtitle),
-                    checked = updateCheckEnabled,
-                    onCheckedChange = { v -> scope.launch { settings.saveUpdateCheckEnabled(v) } },
-                )
             }
         }
         item {

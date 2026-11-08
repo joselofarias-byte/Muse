@@ -214,10 +214,10 @@ private data class ToolTemplate(
 )
 
 private val TOOL_TEMPLATES = listOf(
-    ToolTemplate("clipboard_read", "读取剪贴板", "{}"),
-    ToolTemplate("get_current_time", "获取当前时间", "{\"timezone\":\"Asia/Shanghai\"}"),
-    ToolTemplate("calculator", "计算", "{\"expression\":\"1+2*3\"}"),
-    ToolTemplate("browser_navigate", "打开网页", "{\"url\":\"https://example.com\"}"),
+    ToolTemplate("clipboard_read", "Leer el portapapeles", "{}"),
+    ToolTemplate("get_current_time", "Obtener la hora actual", "{\"timezone\":\"Asia/Shanghai\"}"),
+    ToolTemplate("calculator", "Calcular", "{\"expression\":\"1+2*3\"}"),
+    ToolTemplate("browser_navigate", "Abrir una página web", "{\"url\":\"https://example.com\"}"),
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
