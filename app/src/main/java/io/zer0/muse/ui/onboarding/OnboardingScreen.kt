@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -125,7 +126,11 @@ fun OnboardingScreen(onComplete: () -> Unit, onOpenSection: (String) -> Unit = {
     val keyboardController = LocalSoftwareKeyboardController.current
 
     // ── 各步骤状态 ──
-    var selectedLanguage by rememberSaveable { mutableStateOf("zh") }
+    var selectedLanguage by rememberSaveable { mutableStateOf(
+            AppLocales.Language.entries.firstOrNull {
+                it.code.substringBefore('-') == resources.configuration.locales[0].language
+            }?.code ?: "es",
+        ) }
     var selectedThemeId by rememberSaveable { mutableStateOf("mono") }
     var userName by rememberSaveable { mutableStateOf("") }
     var agentName by rememberSaveable { mutableStateOf("Muse") }
@@ -176,7 +181,8 @@ fun OnboardingScreen(onComplete: () -> Unit, onOpenSection: (String) -> Unit = {
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
             .statusBarsPadding()
-            .navigationBarsPadding(),
+            .navigationBarsPadding()
+            .imePadding(),
     ) {
         // 顶部进度圆点
         ProgressDots(
@@ -1448,7 +1454,7 @@ private fun PrimaryPillButton(
         modifier = modifier.heightIn(min = 52.dp),
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = MusePaddings.contentGap, vertical = MusePaddings.tightGap),
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -1467,6 +1473,8 @@ private fun PrimaryPillButton(
             }
             Text(
                 text = text,
+                modifier = Modifier.weight(1f, fill = false),
+                textAlign = TextAlign.Center,
                 style = MaterialTheme.typography.labelLarge.copy(
                     fontWeight = FontWeight.SemiBold,
                 ),
@@ -1500,7 +1508,7 @@ private fun SecondaryPillButton(
         modifier = modifier.heightIn(min = 52.dp),
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = MusePaddings.contentGap, vertical = MusePaddings.tightGap),
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -1515,6 +1523,8 @@ private fun SecondaryPillButton(
             }
             Text(
                 text = text,
+                modifier = Modifier.weight(1f, fill = false),
+                textAlign = TextAlign.Center,
                 style = MaterialTheme.typography.labelLarge.copy(
                     fontWeight = FontWeight.SemiBold,
                 ),

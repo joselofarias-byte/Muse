@@ -3,7 +3,7 @@ export type Locale = "es" | "zh" | "en" | "ja" | "ko" | "ru";
 
 export const LOCALES: readonly Locale[] = ["es", "zh", "en", "ja", "ko", "ru"];
 
-/** Idioma de Musa cuando el navegador no coincide con un idioma disponible. */
+/** Idioma de Muse cuando el navegador no coincide con un idioma disponible. */
 export const FALLBACK_LOCALE: Locale = "es";
 
 /**
