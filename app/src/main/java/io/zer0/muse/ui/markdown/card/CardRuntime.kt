@@ -100,7 +100,7 @@ internal fun CardRuntime(spec: CardSpec, host: CardHost, modifier: Modifier = Mo
         scrollable = scrollable,
         onWebViewCreated = { webView ->
             // 高度接口无条件注册：与「能不能回传」无关。
-            webView.addJavascriptInterface(sink, CardScript.HEIGHT_SINK_NAME)
+            sink.registerWith(webView)
             bridge?.let { webView.addJavascriptInterface(it, CardScript.BRIDGE_NAME) }
             webViewRef = webView
         },

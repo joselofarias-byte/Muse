@@ -646,7 +646,7 @@ private fun ChartCard(json: String) {
         javaScriptEnabled = true,
         webViewClient = RichContentWebViewClient(),
         onWebViewCreated = { webView ->
-            webView.addJavascriptInterface(heightSink, CardHeightSink.NAME)
+            heightSink.registerWith(webView)
         },
         // 高度跟随内容，图表也一眼看全，不做卡内滚动。
         scrollable = false,

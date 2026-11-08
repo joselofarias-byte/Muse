@@ -3,6 +3,7 @@ package io.zer0.muse.ui.markdown
 import android.os.Handler
 import android.os.Looper
 import android.webkit.JavascriptInterface
+import android.webkit.WebView
 import io.zer0.common.Logger
 import org.json.JSONObject
 
@@ -418,6 +419,11 @@ internal class CardHeightSink {
     internal var onHeightChanged: ((Int) -> Unit)? = null
 
     private val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
+
+    // Keep registration on the concrete receiver: Lint resolves Compose remember values as T.
+    internal fun registerWith(webView: WebView) {
+        webView.addJavascriptInterface(this, NAME)
+    }
 
     @android.webkit.JavascriptInterface
     fun reportHeight(px: Int) {
