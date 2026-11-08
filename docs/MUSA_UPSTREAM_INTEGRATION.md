@@ -7,7 +7,24 @@
 - Se parte del árbol upstream completo y se reaplican por funcionalidad identidad,
   español, empaquetado reproducible y controles de publicación. No se restaura el
   árbol Kotlin antiguo ni sus líneas base: eso perdería correcciones nuevas.
-- No se fusiona `main`. El PR requiere revisión y pruebas antes de integrarse.
+- No se fusiona el PR en `main`. La base se incorpora únicamente al historial
+  de la rama de integración, preservando el árbol upstream reconstruido. El PR
+  requiere revisión y pruebas antes de integrarse.
+
+## Conciliación del historial con la base del PR
+
+La base `main@8a65ba669f7cacdf31d9d6a9298ce5963fb894b6` ya es antecesora del
+estado Musa preservado `703ded5a`. Esta integración reemplaza deliberadamente
+ese árbol antiguo por upstream completo más las funcionalidades Musa reaplicadas.
+Una combinación textual de ambas arquitecturas produce 412 mensajes de conflicto
+y puede reintroducir implementaciones, recursos y workflows obsoletos.
+
+Se concilian ambos historiales mediante un merge de estrategia `ours`: se conserva
+íntegro el árbol de integración `aea8d151` y se registra la base como segundo padre.
+La única modificación adicional es esta documentación. No se recuperan el workflow
+de APK de prueba, las firmas debug ni las versiones antiguas de descargas o del
+estado de credenciales. Esta decisión no acredita Lint, firma o instalación: los
+bloqueos de aceptación documentados más abajo siguen vigentes. `main` no se modifica.
 
 ## Versiones y compatibilidad comprobadas
 
