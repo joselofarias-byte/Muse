@@ -20,6 +20,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 
 /**
@@ -185,7 +187,9 @@ class MiniPhoneChatViewModel(
         markReadJob?.cancel()
         markReadJob = if (visible) {
             viewModelScope.launchGuarded(TAG_CHAT_VM, "标记已读并跟随未读计数") {
-                threadDao.observeUnreadCount(threadId)
+                threadDao.observeThreads()
+                    .map { threads -> threads.firstOrNull { it.id == threadId }?.unreadCount }
+                    .distinctUntilChanged()
                     .collect { unread ->
                         if (unread != null && unread > 0) threadDao.clearUnread(threadId)
                     }
