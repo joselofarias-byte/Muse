@@ -186,12 +186,12 @@ class FactStore(
     private val importantKeywords = listOf("喜欢", "不喜欢", "爱吃", "最", "讨厌", "害怕", "梦想", "目标", "习惯")
 
     /** v1.x: 增强去重 — 否定词正则(出现次数不同 = 语义可能相反,不合并)。 */
-    private val NEGATION_RE = Regex("不|没|未|别|无|非")
+    private val negationRe = Regex("不|没|未|别|无|非")
 
     /** v1.x: 增强去重 — 字符 bigram Jaccard 相似度阈值(≥ 视为重复)。
      * 实际重复多为小幅措辞差异(插入/删减/词序),Jaccard 一般在 0.5-0.8;
      * 0.5 阈值下"喜欢喝咖啡" vs "喜欢喝茶"(0.43)不会误合并。 */
-    private val SIMILARITY_THRESHOLD = 0.5
+    private val similarityThreshold = 0.5
 
     /**
      * v5: 智能判定重要度(0/1/2)。
@@ -225,7 +225,7 @@ class FactStore(
         if (long.startsWith(short)) return true
         // 增强:字符 bigram Jaccard 重叠率(近似语义重复)
         if (na.length >= 4 && nb.length >= 4) {
-            return bigramSimilarity(na, nb) >= SIMILARITY_THRESHOLD
+            return bigramSimilarity(na, nb) >= similarityThreshold
         }
         return false
     }
@@ -270,7 +270,7 @@ class FactStore(
         }
 
     /** 否定词数量(不/没/未/别/无/非)。 */
-    private fun negationCount(text: String): Int = NEGATION_RE.findAll(text).count()
+    private fun negationCount(text: String): Int = negationRe.findAll(text).count()
 
     /** 字符 bigram Jaccard 相似度。 */
     private fun bigramSimilarity(a: String, b: String): Double {
@@ -374,7 +374,8 @@ class FactStore(
      * IGNORE_CASE: normalizeDedupText 已 lowercase,大写占位符需不敏感匹配。 */
     private val piiPlaceholderRe =
         Regex(
-            "\\[REDACTED\\]|\\[(?:API_KEY|INLINE_SECRET|PRIVATE_KEY|ID_CARD|CREDIT_CARD|SSN|EMAIL|PHONE|IPV4|ADDRESS|NAME|ENGLISH_NAME)_\\d+\\]|\\{\\{name_\\d+\\}\\}",
+            "\\[REDACTED\\]|\\[(?:API_KEY|INLINE_SECRET|PRIVATE_KEY|ID_CARD|CREDIT_CARD|SSN|EMAIL|PHONE|IPV4|ADDRESS|NAME" +
+                "|ENGLISH_NAME)_\\d+\\]|\\{\\{name_\\d+\\}\\}",
             RegexOption.IGNORE_CASE,
         )
 

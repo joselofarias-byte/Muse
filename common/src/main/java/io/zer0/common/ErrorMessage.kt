@@ -8,9 +8,7 @@ package io.zer0.common
  * ============================================================================
  *
  * 背景(现状已核对，别照旧文案理解):
- *   这段 originally 写的是"v1.90 在 ai / memory / app 三层留下约 800 处 `// TODO i18n`"。
- *   实测那些标注**已经清到 0 处**（`Select-String 'TODO i18n'` 在 app/ai/memory 全为 0），
- *   留着旧数字会让后来的人以为还有一场大迁移要做。
+ *   早先记录的约 800 处 `// TODO i18n` 已清到 0（app/ai/memory 实测），不再需要文案迁移。
  *   仍在的是**结构性原因**：ai / memory 是独立 Gradle 模块，拿不到 app 的 `R.string`，
  *   所以错误在下游只产出代码 + 英文兜底，翻译发生在 app/ui 层。
  *
@@ -21,8 +19,7 @@ package io.zer0.common
  *
  * 三层架构:
  *   1. data / ai / memory 层:抛出或返回 [ErrorMessage],不构造用户文案
- *   2. app/ui 层:调用 [io.zer0.muse.ui.ErrorMessageMapper.toLocalizedString]
- *      将 [ErrorMessage] 翻译为当前 locale 的字符串(经 R.string)
+ *   2. app/ui 层:调用 [io.zer0.muse.ui.ErrorMessageMapper.toLocalizedString]，经 R.string 翻译为当前 locale。
  *   3. ViewModel:接住 [ErrorMessage] 后通过 `appContext.getString(R.string.xxx)`
  *      渲染给 UI,无需向上冒泡硬编码字符串
  *
@@ -40,8 +37,7 @@ package io.zer0.common
  *     `ErrorMessageMapper.toLocalizedString` 用穷尽 `when` 从 `R.string` 取，
  *     新增子类不补分支就编译失败 —— 所以这条英文不会漏到用户眼前。
  *   - 带可变参数的错误(如 RATE_LIMIT 的 retryAfter)用 data class 而非 object
- *   - 与 [io.zer0.common.ErrorCode] 旧枚举共存:新代码优先用 [ErrorMessage],
- *     旧枚举将在全部 TODO 清理完毕后废弃(详见 [ErrorCode] 顶部注释)
+ *   - 与 [io.zer0.common.ErrorCode] 旧枚举共存:新代码优先用 [ErrorMessage]，旧枚举废弃计划见 [ErrorCode] 顶部注释。
  * ============================================================================
  */
 sealed class ErrorMessage {
@@ -206,4 +202,3 @@ sealed class ErrorMessage {
         }
     }
 }
-
