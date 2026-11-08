@@ -110,7 +110,14 @@ fetch_deb() { # $1=paquete key $2=abi $3=archivo objeto
   rm -f "$out" "$out.part"
   if ! curl --fail --silent --show-error --location --retry 3 --connect-timeout 20 -o "$out.part" "$url"; then
     rm -f "$out.part"
-    return 1
+    # Termux is rolling-release; the archived ICU must match our original hash.
+    [ "$1" = libicu ] || return 1
+    url="https://archive.org/download/termux_pkgs_archive_libi/libicu/$filename"
+    echo "  Recuperar $filename del archivo (SHA-256 fijado) ..."
+    if ! curl --fail --silent --show-error --location --retry 3 --connect-timeout 20 --max-time 300 --proto '=https' --proto-redir '=https' -o "$out.part" "$url"; then
+      rm -f "$out.part"
+      return 1
+    fi
   fi
   if ! printf '%s  %s\n' "$expected" "$out.part" | sha256sum --check --status ||
      ! ar t "$out.part" | grep -q '^data\.tar\.'; then

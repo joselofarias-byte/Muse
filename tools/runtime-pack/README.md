@@ -75,3 +75,21 @@ TLS 网络 → npm 解压 → npm 执行 → symlink exec（P1 名字解析基�
 
 > 运行时二进制为 GPLv3 项目的一部分，来源为 Termux 官方预编译包（各组件保留其原始
 > 开源许可证），构建脚本与处理流程见本目录。
+
+## Recuperación de ICU retirado del repositorio
+
+Termux es rolling-release y no conserva versiones anteriores
+([política oficial](https://wiki.termux.com/wiki/Package_Management#Limitations)).
+El repositorio sustituyó ICU 78.3 por 79.1; actualizar solo esa biblioteca rompería
+los nombres ELF fijados por este pack. Si falla la descarga oficial de `libicu`,
+el script recupera el mismo nombre de paquete desde
+[el archivo histórico](https://archive.org/details/termux_pkgs_archive_libi).
+Este archivo es de terceros: solo proporciona transporte, no una nueva fuente de
+confianza. El paquete debe coincidir con el SHA-256 original de `SHA256SUMS` y
+contener `data.tar.*`; cualquier error HTTP o de integridad elimina el parcial y
+aborta. No se buscan versiones alternativas ni se recalculan hashes.
+
+La recuperación no cambia las versiones del runtime ni el marcador
+`MuseRuntime.RUNTIME_DATA_VERSION` (`npm-12.2.2`). No requiere reemplazar una APK
+ya construida con estos mismos paquetes; permite reconstruirla desde un checkout
+sin caché. Los binarios generados siguen fuera de Git.
