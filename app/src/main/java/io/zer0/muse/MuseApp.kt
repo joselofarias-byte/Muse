@@ -104,7 +104,6 @@ class MuseApp : Application(), ImageLoaderFactory {
     private val webSearchService: WebSearchService by inject()
 
     /** v1.133: GitHub Release 更新通知器(应用启动后异步检查)。 */
-    private val updateNotifier: io.zer0.muse.update.UpdateNotifier by inject()
 
     /** P2-4: 审计日志记录器(启动时清理过期日志)。 */
     private val auditLogger: io.zer0.muse.data.audit.AuditLogger by inject()
@@ -861,13 +860,6 @@ class MuseApp : Application(), ImageLoaderFactory {
                 settings.providersFlow.collect { providers ->
                     ttsManager.applyProviders(providers)
                 }
-            }
-            // v1.133: 应用启动后异步检查 GitHub Release 更新(24h 间隔,fire-and-forget)
-            // 复用 appScope(IO + SupervisorJob + GlobalCoroutineExceptionHandler),
-            // 任何异常都不会影响应用启动
-            appScope.launch {
-                resultOf { updateNotifier.checkAndNotify(this@MuseApp, forceCheck = false) }
-                    .onError { msg, t -> Logger.w("MuseApp", "UpdateNotifier 启动检查失败: ${t?.message ?: msg}", t) }
             }
             // P2-4: 启动时清理 30 天前的审计日志(fire-and-forget,失败不影响应用启动)
             appScope.launch {
