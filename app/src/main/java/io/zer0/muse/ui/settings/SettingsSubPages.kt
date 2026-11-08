@@ -902,7 +902,7 @@ fun SettingsAboutPage(
                     modifier = Modifier.padding(MusePaddings.cardInner),
                 ) {
                     Text(
-                        text = "muse",
+                        text = "Muse",
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurface,
                     )
@@ -913,9 +913,9 @@ fun SettingsAboutPage(
                     )
                     Text(
                         // v1.66: 改为动态 BuildConfig 值,不再硬编码 "debug"
-                        text = "Build: ${if (BuildConfig.DEBUG) "debug" else "release"}",
+                        text = "Compilación: ${if (BuildConfig.DEBUG) "debug" else "release"}",
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.outline,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
