@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -95,7 +96,7 @@ fun MuseDialog(
                 ).testTag(MUSE_DIALOG_SCRIM_TAG),
         ) {
             BoxWithConstraints(
-                modifier = Modifier.fillMaxSize().statusBarsPadding().imePadding()
+                modifier = Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().imePadding()
                     .padding(horizontal = MuseDialogSizes.edgePadding),
                 contentAlignment = BiasAlignment(0f, 0.1f),
             ) {
