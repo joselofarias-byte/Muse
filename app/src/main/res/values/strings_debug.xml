@@ -3,24 +3,24 @@
     <!-- ===== DebugScreen.kt ===== -->
     <!-- 清空确认弹窗 -->
     <string name="debug_clear_logs_title">Borrar registro de depuración</string>
-    <string name="debug_clear_logs_confirm">Confirmar para borrar todo %1$d ¿Un tronco? Esta acción no se puede deshacer.</string>
+    <string name="debug_clear_logs_confirm">¿Quieres borrar los %1$d registros? Esta acción no se puede deshacer.</string>
     <string name="debug_action_clear">Borrar</string>
     <string name="debug_cleared_toast">Borrado</string>
 
     <!-- 复制日志 -->
     <string name="debug_no_logs_to_copy">Actualmente no hay registros para copiar</string>
-    <string name="debug_logs_copied_toast">copiado %1$d iniciar sesión en el portapapeles</string>
+    <string name="debug_logs_copied_toast">Se copiaron %1$d registros al portapapeles</string>
 
     <!-- 导出日志 -->
     <string name="debug_export_failed_no_logs">Falló la exportación: no hay registros o el directorio no se inicializó</string>
-    <string name="debug_export_failed_no_uri">Error al exportar: no se puede obtener el archivo URI</string>
+    <string name="debug_export_failed_no_uri">Error al exportar: no se pudo obtener la URI del archivo</string>
     <string name="debug_share_log_chooser">Compartir registros de depuración</string>
 
     <!-- 顶部栏 / 标题 -->
-    <string name="debug_screen_title">registro de depuración</string>
-    <string name="debug_cd_resume_follow">continuar siguiendo</string>
-    <string name="debug_cd_pause_follow">Pausa para seguir</string>
-    <string name="debug_cd_crash_logs">registro de fallos</string>
+    <string name="debug_screen_title">Registro de depuración</string>
+    <string name="debug_cd_resume_follow">Reanudar seguimiento</string>
+    <string name="debug_cd_pause_follow">Pausar seguimiento</string>
+    <string name="debug_cd_crash_logs">Registro de fallos</string>
     <string name="debug_cd_analytics">Análisis de datos locales</string>
     <string name="debug_cd_db_integrity">Integridad de la base de datos</string>
     <string name="debug_cd_clear">Borrar</string>
@@ -28,72 +28,72 @@
     <string name="debug_cd_copy">Copiar</string>
 
     <!-- 日志计数 -->
-    <string name="debug_log_count">total %1$d Artículo</string>
-    <string name="debug_log_count_paused_suffix"> · Lo siguiente ha sido suspendido.</string>
+    <string name="debug_log_count">%1$d registros en total</string>
+    <string name="debug_log_count_paused_suffix">· Seguimiento en pausa</string>
 
     <!-- 过滤器行 -->
-    <string name="debug_level_label">nivel</string>
+    <string name="debug_level_label">Nivel</string>
     <string name="debug_keyword_label">Palabras clave</string>
 
     <!-- 空状态 -->
     <string name="debug_empty_title">Aún no hay registros</string>
-    <string name="debug_empty_subtitle">Logger El registro de llamadas se mostrará en tiempo real aquí</string>
+    <string name="debug_empty_subtitle">Los registros de la aplicación aparecerán aquí en tiempo real</string>
 
     <!-- 崩溃日志面板 CrashLogSheet -->
-    <string name="debug_crash_log_title">registro de fallos</string>
+    <string name="debug_crash_log_title">Registro de fallos</string>
     <string name="debug_export_zip_and_share">Exportar ZIP y compartir</string>
     <string name="debug_loading_crash_logs">Leyendo el registro de fallos…</string>
     <string name="debug_no_crash_logs">Aún no hay registro de fallos\n\nLa aplicación no ha fallado o los registros se han limpiado automáticamente (se conservan las 5 copias más recientes).</string>
-    <string name="debug_crash_log_count">total %1$d copias (en orden cronológico inverso, sólo se conservan las 5 copias más recientes)</string>
-    <string name="debug_cd_share_crash_log">Comparte esta publicación</string>
-    <string name="debug_loading">leyendo…</string>
-    <string name="debug_crash_preview_truncated">Mostrar solo antes %1$d Personajes, utilicen el botón compartir para exportar y ver el contenido completo.</string>
+    <string name="debug_crash_log_count">%1$d registros, del más reciente al más antiguo. Solo se conservan los 5 últimos.</string>
+    <string name="debug_cd_share_crash_log">Compartir este registro</string>
+    <string name="debug_loading">Cargando…</string>
+    <string name="debug_crash_preview_truncated">Se muestran los primeros %1$d caracteres. Usa el botón de compartir para exportar el contenido completo.</string>
 
     <!-- 崩溃日志分享(非 Composable 工具函数,使用 context.getString) -->
     <string name="debug_export_failed_no_crash_logs">Error al exportar: aún no hay registro de fallos</string>
     <string name="debug_share_crash_zip_chooser">Compartir registro de fallos ZIP</string>
-    <string name="debug_share_failed_no_uri">Error al compartir: no se puede obtener el archivo URI</string>
+    <string name="debug_share_failed_no_uri">Error al compartir: no se pudo obtener la URI del archivo</string>
     <string name="debug_share_crash_log_chooser">Compartir registro de fallos</string>
 
     <!-- 本地数据分析面板 AnalyticsSheet -->
     <string name="debug_analytics_title">Análisis de datos locales</string>
-    <string name="debug_loading_analytics">Leer datos de análisis…</string>
+    <string name="debug_loading_analytics">Cargando datos de análisis…</string>
     <string name="debug_analytics_load_failed">No se pueden leer los datos del análisis</string>
-    <string name="debug_metric_dau_today">DAU hoy</string>
-    <string name="debug_metric_mau_month">MAU este mes</string>
+    <string name="debug_metric_dau_today">Usuarios activos hoy</string>
+    <string name="debug_metric_mau_month">Usuarios activos este mes</string>
     <string name="debug_metric_total_sessions">Sesiones totales</string>
     <string name="debug_metric_total_messages">Número total de mensajes</string>
-    <string name="debug_metric_launch_count">Número de salidas</string>
-    <string name="debug_metric_crash_count">recuento de accidentes</string>
+    <string name="debug_metric_launch_count">Número de inicios</string>
+    <string name="debug_metric_crash_count">Número de fallos</string>
     <string name="debug_metric_crash_count_value">%1$d (%2$s)</string>
     <string name="debug_status_first_chat">Primera conversación completada</string>
     <string name="debug_status_memory_adopted">Usos del sistema de memoria</string>
-    <string name="debug_status_last_active">Última fecha activa</string>
-    <string name="debug_value_yes">si</string>
+    <string name="debug_status_last_active">Última actividad</string>
+    <string name="debug_value_yes">Sí</string>
     <string name="debug_value_no">No</string>
 
     <!-- 留存卡片 -->
-    <string name="debug_retention_title">Retenido (desde el primer lanzamiento)</string>
-    <string name="debug_retention_d1">día siguiente(D1)</string>
-    <string name="debug_retention_d7">7 dia(D7)</string>
-    <string name="debug_retention_d30">30 dia(D30)</string>
+    <string name="debug_retention_title">Retención desde el primer inicio</string>
+    <string name="debug_retention_d1">Día siguiente (D1)</string>
+    <string name="debug_retention_d7">Día 7 (D7)</string>
+    <string name="debug_retention_d30">Día 30 (D30)</string>
 
     <!-- 功能使用 -->
-    <string name="debug_feature_usage_top">Uso de funciones Top 10</string>
+    <string name="debug_feature_usage_top">Las 10 funciones más usadas</string>
     <string name="debug_no_feature_usage">Aún no hay registro de uso de funciones</string>
 
     <!-- 数据库完整性面板 DbIntegritySheet -->
     <string name="debug_db_integrity_title">Integridad de la base de datos</string>
-    <string name="debug_loading_db_integrity">Leer registros de cheques recientes…</string>
-    <string name="debug_db_status_ok">La base de datos es normal.</string>
-    <string name="debug_db_status_error">Excepción de base de datos</string>
-    <string name="debug_db_size_label">DB Tamaño:%1$s</string>
-    <string name="debug_db_check_time_label">Hora de consulta:%1$s</string>
+    <string name="debug_loading_db_integrity">Cargando comprobaciones recientes…</string>
+    <string name="debug_db_status_ok">La base de datos está en buen estado</string>
+    <string name="debug_db_status_error">Error en la base de datos</string>
+    <string name="debug_db_size_label">Tamaño de la BD: %1$s</string>
+    <string name="debug_db_check_time_label">Fecha y hora de la comprobación: %1$s</string>
     <string name="debug_no_details">(sin detalles)</string>
-    <string name="debug_db_error_advice">Sugerencia: vaya a Configuración → Copia de seguridad y restauración" para restaurar la copia de seguridad automática más reciente o exportar sesiones clave y reinstalar la aplicación.</string>
-    <string name="debug_integrity_check_passed">Se pasó el control de integridad</string>
-    <string name="debug_integrity_check_failed">Excepción de verificación de integridad, consulte los detalles</string>
-    <string name="debug_checking">comprobando…</string>
-    <string name="debug_check_now">Compruébalo ahora</string>
-    <string name="debug_no_check_record">Aún no hay registro de inspección\n\nHaga clic en el botón a continuación para realizar una verificación de integridad ahora.</string>
+    <string name="debug_db_error_advice">Ve a Ajustes → Copia de seguridad y restauración para recuperar la copia automática más reciente. También puedes exportar las conversaciones importantes antes de reinstalar la aplicación.</string>
+    <string name="debug_integrity_check_passed">Comprobación de integridad superada</string>
+    <string name="debug_integrity_check_failed">La comprobación de integridad detectó problemas. Consulta los detalles.</string>
+    <string name="debug_checking">Comprobando…</string>
+    <string name="debug_check_now">Comprobar ahora</string>
+    <string name="debug_no_check_record">Todavía no hay comprobaciones registradas.\n\nToca el botón de abajo para comprobar la integridad.</string>
 </resources>
