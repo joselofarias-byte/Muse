@@ -21,6 +21,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.unit.dp
 import io.zer0.muse.R
 import io.zer0.muse.ui.common.form.MuseCapsuleButton
@@ -57,7 +58,7 @@ fun VirtualDisplayHandoffPanel(
     var lastTap by remember(displayId) { mutableStateOf<String?>(null) }
     var actionResult by remember(displayId) { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
-    val context = androidx.compose.ui.platform.LocalContext.current
+    val resources = LocalResources.current
 
     LaunchedEffect(displayId) {
         while (true) {
@@ -139,7 +140,7 @@ fun VirtualDisplayHandoffPanel(
                 onClick = {
                     scope.launch {
                         val ok = runCatching { bringToMain() }.getOrDefault(false)
-                        actionResult = context.getString(
+                        actionResult = resources.getString(
                             if (ok) {
                                 R.string.automation_handoff_bring_main_ok
                             } else {

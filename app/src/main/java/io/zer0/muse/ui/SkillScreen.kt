@@ -29,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -83,6 +84,7 @@ fun SkillScreen(onBack: () -> Unit, skillRepository: SkillRepository = koinInjec
     val skills by skillRepository.observeAll.collectAsStateWithLifecycle(initialValue = null)
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val resources = LocalResources.current
     var detailTarget by remember { mutableStateOf<SkillEntity?>(null) }
     var deleteConfirmTarget by remember { mutableStateOf<SkillEntity?>(null) }
     var importMessage by remember { mutableStateOf<String?>(null) }
@@ -364,11 +366,11 @@ fun SkillScreen(onBack: () -> Unit, skillRepository: SkillRepository = koinInjec
                             resultOf { skillRepository.upsert(template) }
                                 .onSuccess {
                                     MuseToast.show(
-                                        context.getString(R.string.skill_restored, skill.name.ifBlank { skill.id }),
+                                        resources.getString(R.string.skill_restored, skill.name.ifBlank { skill.id }),
                                     )
                                 }
                                 .onError { msg, _ ->
-                                    MuseToast.show(context.getString(R.string.skill_operation_failed, msg))
+                                    MuseToast.show(resources.getString(R.string.skill_operation_failed, msg))
                                 }
                         }
                     }
@@ -396,7 +398,7 @@ fun SkillScreen(onBack: () -> Unit, skillRepository: SkillRepository = koinInjec
                 scope.launch {
                     resultOf { skillRepository.delete(skill.id) }
                         .onSuccess { scope.launch { packageImporter.deletePackageFor(skill) } }
-                        .onError { msg, _ -> MuseToast.show(context.getString(R.string.skill_delete_failed_ui, msg)) }
+                        .onError { msg, _ -> MuseToast.show(resources.getString(R.string.skill_delete_failed_ui, msg)) }
                 }
             },
             dismissText = stringResource(R.string.skill_close),
@@ -446,9 +448,9 @@ fun SkillScreen(onBack: () -> Unit, skillRepository: SkillRepository = koinInjec
                     val outcome = packageImporter.importUrl(url)
                     importMessage = when (outcome) {
                         is SkillPackageImporter.Outcome.Installed ->
-                            context.getString(R.string.skill_imported, outcome.skill.name)
+                            resources.getString(R.string.skill_imported, outcome.skill.name)
                         is SkillPackageImporter.Outcome.Failed ->
-                            context.getString(R.string.skill_import_error, outcome.reason)
+                            resources.getString(R.string.skill_import_error, outcome.reason)
                     }
                     importing = false
                     importDialogVisible = false

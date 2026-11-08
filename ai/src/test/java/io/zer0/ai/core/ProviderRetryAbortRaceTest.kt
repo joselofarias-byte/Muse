@@ -89,6 +89,23 @@ class ProviderRetryAbortRaceTest {
         )
     }
 
+    @Test
+    fun `Gemini abort cancels long retry backoff promptly`() = runBlocking {
+        assertNoReconnectAfterRetryableResponse(
+            ProviderConfig(
+                id = "gemini-race",
+                displayName = "Gemini Race",
+                type = ProviderType.GEMINI,
+                baseUrl = server.url("/v1beta").toString(),
+                apiKey = "test-key",
+                specific = ProviderSpecificConfig.Gemini(),
+            ),
+            provider = { config -> GeminiProvider(config) },
+            modelId = "gemini-race",
+            abortAtBackoff = true,
+        )
+    }
+
     private suspend fun assertNoReconnectAfterRetryableResponse(
         config: ProviderConfig,
         provider: (ProviderConfig) -> Provider,
@@ -123,7 +140,9 @@ class ProviderRetryAbortRaceTest {
         if (abortAtBackoff) {
             Logger.enabled = true
             Logger.sink = { _, tag, message, _ ->
-                if (tag == "AnthropicProvider" && message.startsWith("streamChat retryable failure(code=$statusCode")) {
+                if (tag == "${config.type.name.lowercase().replaceFirstChar { it.uppercase() }}Provider" &&
+                    message.startsWith("streamChat retryable failure(code=$statusCode")
+                ) {
                     // Abort synchronously inside the retry coroutine, after the failed SSE was cancelled.
                     signal.abort()
                     backoffStarted.countDown()

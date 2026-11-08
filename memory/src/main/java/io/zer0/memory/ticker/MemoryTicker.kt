@@ -268,7 +268,7 @@ class MemoryTicker(
     )
 
     private val _health = STEP_KEYS.associateWith { StepHealth() }.toMutableMap()
-    private val _healthLock = Any()
+    private val healthLock = Any()
 
     // v1.0.51: healthFlow 初始化为当前 _health 快照,而非空 map,
     // 订阅方首次读取即可看到全部步骤的初始健康状态(而非等首次 publishHealth)
@@ -290,8 +290,8 @@ class MemoryTicker(
         val done: Boolean,
     )
 
-    private val _backfillProgressFlow = MutableStateFlow<BackfillProgress?>(null)
-    val backfillProgressFlow: StateFlow<BackfillProgress?> = _backfillProgressFlow.asStateFlow()
+    private val mutableBackfillProgressFlow = MutableStateFlow<BackfillProgress?>(null)
+    val backfillProgressFlow: StateFlow<BackfillProgress?> = mutableBackfillProgressFlow.asStateFlow()
 
     /**
      * v1.0.51: per-step 错误去重签名 — 替代原全局单一 _lastErrorSig。
@@ -300,11 +300,11 @@ class MemoryTicker(
      * 导致 step A 下次失败不被去重(刷屏),且 step B 的恢复日志归属错误。
      * 改为 per-step map 后,各步骤的恢复/去重互不干扰。
      */
-    private val _errorSigs = ConcurrentHashMap<String, String>()
+    private val errorSigs = ConcurrentHashMap<String, String>()
 
     // ── D3-P1: 管线观测(每步耗时/触发/失败分类 → pipeline_log) ──────────────
     /** 单步运行起点(stepKey → 起点时间/触发来源)。 */
-    private val _stepRunMeta = ConcurrentHashMap<String, StepRunMeta>()
+    private val stepRunMeta = ConcurrentHashMap<String, StepRunMeta>()
 
     /** 步骤运行元数据(D3-P1)。 */
     private data class StepRunMeta(val startMs: Long, val trigger: String, val scope: String?)
@@ -324,12 +324,12 @@ class MemoryTicker(
      * 未标记的步骤在记录时会得 0 耗时 + "unknown" 来源,不影响正确性。
      */
     private fun markStepStart(stepKey: String, trigger: String, scope: String? = null) {
-        _stepRunMeta[stepKey] = StepRunMeta(System.currentTimeMillis(), trigger, scope)
+        stepRunMeta[stepKey] = StepRunMeta(System.currentTimeMillis(), trigger, scope)
     }
 
     /** D3-P1: 步骤结果上报观测层(计数 + pipeline_log);无论成败都消费本次 start 元数据。 */
     private fun recordStepOutcome(stepKey: String, error: Throwable?) {
-        val meta = _stepRunMeta.remove(stepKey)
+        val meta = stepRunMeta.remove(stepKey)
         val duration = meta?.let { System.currentTimeMillis() - it.startMs } ?: 0L
         val trigger = meta?.trigger ?: "unknown"
         val scope = meta?.scope
@@ -354,7 +354,7 @@ class MemoryTicker(
 
     private fun markSuccess(stepKey: String) {
         recordStepOutcome(stepKey, null)
-        synchronized(_healthLock) {
+        synchronized(healthLock) {
             val h = _health[stepKey] ?: return
             _health[stepKey] = h.copy(
                 lastSuccessAt = Instant.now().toString(),
@@ -368,7 +368,7 @@ class MemoryTicker(
 
     private fun markFailure(stepKey: String, err: Throwable) {
         recordStepOutcome(stepKey, err)
-        synchronized(_healthLock) {
+        synchronized(healthLock) {
             val h = _health[stepKey] ?: return
             _health[stepKey] = h.copy(
                 lastErrorAt = Instant.now().toString(),
@@ -387,21 +387,21 @@ class MemoryTicker(
         val msg = err.message ?: err.toString()
         val sig = "$label|$msg"
         // v1.0.51: per-step 去重 — 同一 step 的相同根因只打一次 warn
-        if (_errorSigs[label] == sig) {
+        if (errorSigs[label] == sig) {
             Logger.d(TAG, "$label (dup suppressed): $msg")
             return
         }
-        _errorSigs[label] = sig
+        errorSigs[label] = sig
         Logger.w(TAG, "$label 失败: $msg", err)
     }
 
     private fun markStepRecovered(label: String) {
-        val prev = _errorSigs.remove(label) ?: return
+        val prev = errorSigs.remove(label) ?: return
         Logger.i(TAG, "$label 恢复正常(之前: $prev)")
     }
 
     /** 返回每个步骤的健康快照(深拷贝,调用方安全持有)。 */
-    fun getHealthStatus(): Map<String, StepHealth> = synchronized(_healthLock) {
+    fun getHealthStatus(): Map<String, StepHealth> = synchronized(healthLock) {
         _health.mapValues { it.value.copy() }
     }
 
@@ -1268,12 +1268,12 @@ class MemoryTicker(
 
     /** v1.0.51: 报告 backfill 进度(供 UI 实时展示)。 */
     fun reportBackfillProgress(progress: BackfillProgress) {
-        _backfillProgressFlow.value = progress
+        mutableBackfillProgressFlow.value = progress
     }
 
     /** v1.0.51: 清除 backfill 进度(迁移完成后调用,UI 进度条自动隐藏)。 */
     fun clearBackfillProgress() {
-        _backfillProgressFlow.value = null
+        mutableBackfillProgressFlow.value = null
     }
 
     /**

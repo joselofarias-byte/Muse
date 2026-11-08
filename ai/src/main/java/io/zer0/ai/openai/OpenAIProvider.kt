@@ -37,6 +37,7 @@ import io.zer0.common.resultOf
 import io.zer0.common.toMessage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.delay
@@ -760,8 +761,9 @@ class OpenAIProvider(
             }
         }
         val abortListener = request.abortSignal.addAbortListener {
-            // Cancel the active SSE connection immediately; all callbacks observe aborted
-            // and therefore must not schedule fallback/reconnect work.
+            // A failed SSE may have no callback left to finish the producer during backoff.
+            scope.trySend(ChatStreamEvent.StreamInterrupted("用户已停止生成"))
+            scope.close()
             cancelCurrentEventSource()
         }
 
@@ -1201,6 +1203,7 @@ class OpenAIProvider(
                                 "streamChat onFailure, retry $attempt/$MAX_RETRIES after ${backoffMs}ms: ${t?.message ?: code}",
                             )
                             scope.launch {
+                                if (request.abortSignal.aborted || scope.isClosedForSend) return@launch
                                 delay(backoffMs)
                                 if (!request.abortSignal.aborted && !scope.isClosedForSend) {
                                     connect()
@@ -1237,6 +1240,7 @@ class OpenAIProvider(
         connect()
 
         awaitClose {
+            scope.coroutineContext.cancelChildren()
             abortListener.close()
             // 只释放 HTTP 资源,不要把正常收尾标记成用户主动取消。
             consumerClosed.set(true)
@@ -2428,8 +2432,9 @@ class OpenAIProvider(
             }
         }
         val abortListener = request.abortSignal.addAbortListener {
-            // Cancel the active SSE connection immediately; all callbacks observe aborted
-            // and therefore must not schedule fallback/reconnect work.
+            // A failed SSE may have no callback left to finish the producer during backoff.
+            scope.trySend(ChatStreamEvent.StreamInterrupted("用户已停止生成"))
+            scope.close()
             cancelCurrentEventSource()
         }
 
@@ -2763,6 +2768,7 @@ class OpenAIProvider(
                             )
                             connectionGeneration.incrementAndGet()
                             scope.launch {
+                                if (request.abortSignal.aborted || scope.isClosedForSend) return@launch
                                 delay(backoffMs)
                                 if (!request.abortSignal.aborted && !scope.isClosedForSend) {
                                     connect()
@@ -2796,6 +2802,7 @@ class OpenAIProvider(
         connect()
 
         awaitClose {
+            scope.coroutineContext.cancelChildren()
             abortListener.close()
             // 只释放 HTTP 资源,不要把正常收尾标记成用户主动取消。
             consumerClosed.set(true)

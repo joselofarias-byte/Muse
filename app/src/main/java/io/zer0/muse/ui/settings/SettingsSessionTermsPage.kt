@@ -14,7 +14,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import io.zer0.muse.R
@@ -48,7 +48,7 @@ import org.koin.compose.koinInject
  */
 @Composable
 fun SettingsSessionTermsPage(onBack: () -> Unit) {
-    val context = LocalContext.current
+    val resources = LocalResources.current
     val scope = rememberCoroutineScope()
     val store: SessionTermStore = koinInject()
     val settings: SettingsRepository = koinInject()
@@ -129,7 +129,7 @@ fun SettingsSessionTermsPage(onBack: () -> Unit) {
                 scope.launch {
                     runCatching { store.confirm(term.id) }
                     terms = runCatching { store.listByAssistantScope(assistantId) }.getOrDefault(terms)
-                    MuseToast.show(context.getString(R.string.settings_session_terms_toast_confirmed, term.term))
+                    MuseToast.show(resources.getString(R.string.settings_session_terms_toast_confirmed, term.term))
                 }
             },
             dismissText = stringResource(R.string.settings_session_terms_promote),
@@ -138,7 +138,7 @@ fun SettingsSessionTermsPage(onBack: () -> Unit) {
                 scope.launch {
                     runCatching { store.promoteToAssistant(term.id) }
                     terms = runCatching { store.listByAssistantScope(assistantId) }.getOrDefault(terms)
-                    MuseToast.show(context.getString(R.string.settings_session_terms_toast_promoted, term.term))
+                    MuseToast.show(resources.getString(R.string.settings_session_terms_toast_promoted, term.term))
                 }
             },
         )

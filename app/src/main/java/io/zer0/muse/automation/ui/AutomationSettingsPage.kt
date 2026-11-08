@@ -26,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -552,7 +553,7 @@ private fun AutonomousAccessibilityItem(
 ) {
     if (!loaded) return
     val scope = rememberCoroutineScope()
-    val context = LocalContext.current
+    val resources = LocalResources.current
 
     AutonomousAccessibilitySettingsCard(
         draft = draft,
@@ -566,7 +567,7 @@ private fun AutonomousAccessibilityItem(
             onDraftChange(next)
             scope.launch {
                 runCatching { store.saveAutonomousAccessibilityWindow(next.toWindow()) }
-                    .onSuccess { MuseToast.show(context.getString(R.string.automation_autonomous_saved)) }
+                    .onSuccess { MuseToast.show(resources.getString(R.string.automation_autonomous_saved)) }
                     .onFailure { Logger.w("AutomationSettings", "save autonomous plan failed: ${it.message}") }
             }
         },
@@ -574,7 +575,7 @@ private fun AutonomousAccessibilityItem(
             val preview = taskPreview
             val targetPackage = draft.allowedPackages.firstOrNull()
             if (preview == null || targetPackage == null) {
-                MuseToast.show(context.getString(R.string.automation_autonomous_confirm_required))
+                MuseToast.show(resources.getString(R.string.automation_autonomous_confirm_required))
             } else {
                 scope.launch {
                     val newGrant = buildAutonomousGrant(
@@ -584,11 +585,11 @@ private fun AutonomousAccessibilityItem(
                         nowMillis = System.currentTimeMillis(),
                     )
                     if (newGrant == null) {
-                        MuseToast.show(context.getString(R.string.automation_autonomous_confirm_required))
+                        MuseToast.show(resources.getString(R.string.automation_autonomous_confirm_required))
                     } else {
                         store.saveAutonomousAccessibilityGrant(newGrant)
                         onGrantChange(newGrant)
-                        MuseToast.show(context.getString(R.string.automation_autonomous_task_confirmed))
+                        MuseToast.show(resources.getString(R.string.automation_autonomous_task_confirmed))
                     }
                 }
             }
@@ -599,7 +600,7 @@ private fun AutonomousAccessibilityItem(
                 scope.launch {
                     store.clearAutonomousAccessibilityGrant(expected = current)
                     onGrantChange(null)
-                    MuseToast.show(context.getString(R.string.automation_autonomous_task_cleared))
+                    MuseToast.show(resources.getString(R.string.automation_autonomous_task_cleared))
                 }
             }
         },
