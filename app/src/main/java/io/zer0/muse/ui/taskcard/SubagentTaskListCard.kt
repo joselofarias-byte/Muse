@@ -204,7 +204,7 @@ internal fun SubagentTaskDetailSheet(threadId: String, assistantId: String, onDi
                         fontWeight = FontWeight.SemiBold,
                     )
                     Text(
-                        text = "thread: ${threadId.take(16)}",
+                        text = "Hilo: ${threadId.take(16)}",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -343,7 +343,7 @@ private fun SubagentTaskRow(
             }
             if (!threadId.isNullOrBlank()) {
                 Text(
-                    text = "thread: ${threadId.take(12)}",
+                    text = "Hilo: ${threadId.take(12)}",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.outline,
                     maxLines = 1,
@@ -498,7 +498,7 @@ private fun SubagentThreadRow(threadId: String, assistantId: String, onClick: ((
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                text = "thread: ${threadId.take(12)}",
+                text = "Hilo: ${threadId.take(12)}",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.outline,
                 maxLines = 1,
