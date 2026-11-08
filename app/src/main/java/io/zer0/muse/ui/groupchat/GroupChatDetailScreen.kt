@@ -259,7 +259,7 @@ fun GroupChatDetailScreen(
                         ?: context.contentResolver.openFileDescriptor(uri, "r")?.let { java.io.FileInputStream(it.fileDescriptor) }
                         ?: error("No se pudo leer el archivo")
                     val data = stream.use { it.readBytes() }
-                    Triple(data, context.contentResolver.getType(uri) ?: "application/octet-stream", uri.lastPathSegment ?: "文件")
+                    Triple(data, context.contentResolver.getType(uri) ?: "application/octet-stream", uri.lastPathSegment ?: "Archivo")
                 }
                 if (bytes.size > 10 * 1024 * 1024) {
                     // P2-10: 超限文件此前静默丢弃,用户无感知;改为明确提示

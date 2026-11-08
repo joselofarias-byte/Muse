@@ -5,7 +5,7 @@
     <string name="backup_cannot_read">No se puede leer el archivo: %1$s</string>
     <string name="backup_format_unrecognized">Formato de archivo de copia de seguridad no reconocido</string>
     <!-- F-28: 本地导出加密(配置备份密码后导出为 MENC 加密格式) -->
-    <string name="backup_encrypted_need_password">La copia de seguridad está cifrada. Configure la contraseña de respaldo en la configuración de respaldo en la nube antes de importarla.</string>
+    <string name="backup_encrypted_need_password">La copia de seguridad está cifrada. Configura la contraseña de respaldo en la configuración de respaldo en la nube antes de importarla.</string>
 
     <!-- ===== tools / skill (SkillExecutor) ===== -->
     <string name="skill_unknown_impl">Implementación de habilidades desconocidas: %1$s</string>
@@ -56,7 +56,7 @@
     <string name="plugin_author_invalid_tools">Las herramientas de parámetros deben ser una matriz JSON y los elementos deben contener name/description/parametersJson/requiredJson/functionName campo de cadena</string>
     <string name="plugin_author_invalid_capabilities">Las capacidades de los parámetros deben ser una matriz de cadenas (se puede omitir)</string>
     <string name="plugin_author_progress">Generando borrador de complemento...</string>
-    <string name="plugin_author_draft_created">Complemento borrador sin firmar creado:%1$s(id=%2$s, v%3$s, Herramientas=%4$s). El borrador está actualmente deshabilitado y no es ejecutable, y aún no se puede llamar al asistente; por favor pídale al usuario que → Después de revisar la lista de herramientas y el código en "Administración de complementos", haga clic en "Firmar y activar". Solo entrará en vigor después de haber sido firmado por la clave del autor local.</string>
+    <string name="plugin_author_draft_created">Complemento borrador sin firmar creado:%1$s(id=%2$s, v%3$s, Herramientas=%4$s). El borrador está actualmente deshabilitado y no es ejecutable, y aún no se puede llamar al asistente; por favor pídale al usuario que → Después de revisar la lista de herramientas y el código en "Administración de complementos", toca en "Firmar y activar". Solo entrará en vigor después de haber sido firmado por la clave del autor local.</string>
     <string name="skill_unknown_error">Error desconocido</string>
     <string name="chat_auto_route_prefix">ha sido delegado automáticamente a "%1$s"</string>
     <string name="skill_assistant_not_found">No encontrado con identificación %1$s subasistente, créelo en la gestión de asistentes</string>
@@ -121,15 +121,15 @@
     <string name="skill_uninstall_plugin_rejected">Negarse a desinstalar: %1$s(id=%2$s) es una habilidad de complemento, que se administra mediante la página de administración de complementos. El asistente no se puede desinstalar.</string>
     <string name="skill_disable_not_configured">disable_skill No configurado:SkillRepository No inyectado</string>
     <string name="skill_disabled_result">Discapacitado skill: %1$s(id=%2$s)</string>
-    <string name="skill_disable_plugin_rejected">No se puede desactivar individualmente: %1$s(id=%2$s) es una habilidad complementaria. Comienza y se detiene con el complemento. Vaya a la página de administración de complementos para operar.</string>
+    <string name="skill_disable_plugin_rejected">No se puede desactivar individualmente: %1$s(id=%2$s) es una habilidad complementaria. Comienza y se detiene con el complemento. Ve a la página de administración de complementos para operar.</string>
     <string name="skill_enable_not_configured">enable_skill No configurado:SkillRepository No inyectado</string>
     <string name="skill_enabled_result">Habilitado skill: %1$s(id=%2$s)</string>
-    <string name="skill_enable_plugin_rejected">No se puede habilitar individualmente: %1$s(id=%2$s) es una habilidad complementaria. Comienza y se detiene con el complemento. Vaya a la página de administración de complementos para operar.</string>
+    <string name="skill_enable_plugin_rejected">No se puede habilitar individualmente: %1$s(id=%2$s) es una habilidad complementaria. Comienza y se detiene con el complemento. Ve a la página de administración de complementos para operar.</string>
     <string name="skill_update_not_configured">update_skill No configurado:SkillRepository No inyectado</string>
     <string name="skill_update_reserved_rejected">Rechazar modificación: id \'%1$s\' Es una habilidad reservada incorporada y no se puede modificar.</string>
     <string name="skill_update_plugin_rejected">Rechazar modificación: %1$s(id=%2$s) es una habilidad de complemento, que es administrada por la página de administración de complementos y el asistente no puede modificarla.</string>
     <string name="skill_update_prompt_not_supported">Rechazar modificación: %1$s(id=%2$s) no es una habilidad de palabra de aviso y el parámetro de aviso no se puede usar para actualizar el texto del comando.</string>
-    <string name="skill_update_no_fields">No hay campos para actualizar: introduzca al menos name / description / parametersJson / prompt uno de</string>
+    <string name="skill_update_no_fields">No hay campos para actualizar: introduce al menos name / description / parametersJson / prompt uno de</string>
     <string name="skill_update_validate_failed">Error en la verificación de la actualización: %1$s</string>
     <string name="skill_update_db_failed">La actualización falló: %1$s</string>
     <string name="skill_updated">actualizado skill: %1$s(id=%2$s)</string>
@@ -143,7 +143,7 @@
     <string name="skill_progress_planning">Creando plan...</string>
     <string name="skill_unknown_agent">desconocido Agent</string>
     <string name="skill_progress_generating_image">Generando imágenes...</string>
-    <string name="skill_image_not_configured">generate_image No configurado: ImageService no se inyecta (configure el proveedor de dibujo compatible con OpenAI)</string>
+    <string name="skill_image_not_configured">generate_image No configurado: ImageService no se inyecta (configura el proveedor de dibujo compatible con OpenAI)</string>
     <string name="skill_missing_param_prompt">Parámetros faltantes: prompt(Descripción de la imagen)</string>
     <string name="skill_image_no_result">No hay resultados para la generación de imágenes: %1$s</string>
     <string name="skill_image_generated">Ya basado en "%1$s"Generar imagen:\n%2$s</string>
@@ -188,13 +188,13 @@
     <string name="tool_no_calendar_events">No hay eventos en el calendario durante este período.</string>
     <string name="tool_missing_param_title_event">Parámetros faltantes: title(título del evento)</string>
     <string name="tool_missing_param_start_time">Parámetros faltantes: start_time</string>
-    <string name="tool_start_time_format_error">Error de formato de hora de inicio, utilice aaaa-MM-dd HH:mm o ISO 8601</string>
+    <string name="tool_start_time_format_error">Error de formato de hora de inicio, usa aaaa-MM-dd HH:mm o ISO 8601</string>
     <string name="tool_no_calendar_account">No se puede encontrar la cuenta de calendario disponible</string>
     <string name="tool_calendar_added">Evento de calendario agregado: %1$s</string>
     <string name="tool_calendar_choose_required">Hay varios calendarios editables; indica uno con calendar_id: %1$s</string>
     <string name="tool_calendar_unknown_id">El calendario indicado no existe: id=%1$s</string>
     <string name="tool_calendar_added_with_id">Evento agregado &quot;%1$s&quot; (event_id=%2$s); usa este id para actualizarlo o borrarlo</string>
-    <string name="tool_calendar_add_failed_perm">No se pudo agregar el evento del calendario (verifique el permiso WRITE_CALENDAR)</string>
+    <string name="tool_calendar_add_failed_perm">No se pudo agregar el evento del calendario (comprueba el permiso WRITE_CALENDAR)</string>
     <string name="tool_calendar_invalid_scope">scope debe ser all o this: %1$s</string>
     <string name="tool_calendar_invalid_event_id">event_id no valido: %1$s</string>
     <string name="tool_calendar_nothing_to_update">Nada que actualizar; indica al menos title/start_time/end_time/description/location/all_day</string>
@@ -270,13 +270,13 @@
     <string name="tool_email_invalid">error: El formato de correo electrónico del destinatario no es válido: %1$s</string>
     <string name="tool_email_opened">Aplicación de correo abierta, destinatario: %1$s</string>
     <string name="tool_email_not_found">Aplicación de correo no encontrada: %1$s</string>
-    <string name="tool_error_invalid_action">Acción no válida, por favor utilice on/off/status</string>
+    <string name="tool_error_invalid_action">Acción no válida, por favor usa on/off/status</string>
     <string name="tool_error_missing_to">Parámetros faltantes: to(Correo electrónico del destinatario)</string>
     <string name="tool_battery_info">Energía de la batería: %1$d%%, %2$s</string>
     <string name="tool_battery_charging">Cargando</string>
     <string name="tool_battery_not_charging">No cargado</string>
     <string name="tool_no_notifications">Aún no hay registro de notificaciones</string>
-    <string name="tool_notification_not_connected">El oyente de notificaciones no está conectado, vaya a la configuración del sistema→Aviso de derechos de uso, autorización. Musa</string>
+    <string name="tool_notification_not_connected">El oyente de notificaciones no está conectado, ve a la configuración del sistema→Aviso de derechos de uso, autorización. Muse</string>
     <string name="tool_missing_param_location">Parámetros faltantes: location(nombre de la ciudad)</string>
     <string name="tool_weather_api_error">La solicitud de API meteorológica falló: HTTP %1$d</string>
     <string name="tool_weather_no_data">%1$s No hay datos meteorológicos disponibles actualmente</string>
@@ -309,7 +309,7 @@
     <string name="tool_write_verified"> (verificado)</string>
     <string name="tool_write_permission_denied">El sistema rechazo la escritura (probablemente falta un permiso como Modificar ajustes del sistema)</string>
     <string name="automation_handoff_title">Entrega de pantalla virtual</string>
-    <string name="assist_service_label">Asistente Musa</string>
+    <string name="assist_service_label">Asistente Muse</string>
     <string name="automation_handoff_desc">El asistente dejo %1$d pantalla(s); puedes previsualizar y operar</string>
     <string name="automation_handoff_bring_main">Llevar a la pantalla principal</string>
     <string name="automation_handoff_bring_main_hint">Solo se lleva la app a la pantalla principal; la pagina y el estado previos dependen de la app y pueden perderse.</string>
@@ -376,7 +376,7 @@
 
     <!-- v1.136: 定时提醒工具字符串 -->
     <string name="tool_reminder_scheduled">Se ha creado un recordatorio programado (id: %1$s)\nTiempo de activación: %2$s</string>
-    <string name="tool_reminder_schedule_failed">No se pudo crear el recordatorio: el sistema rechazó la alarma para este recordatorio y es posible que no suene. Vaya a la configuración del sistema para verificar el permiso "Despertador y recordatorio" de esta aplicación e inténtelo nuevamente.</string>
+    <string name="tool_reminder_schedule_failed">No se pudo crear el recordatorio: el sistema rechazó la alarma para este recordatorio y es posible que no suene. Ve a la configuración del sistema para verificar el permiso "Despertador y recordatorio" de esta aplicación e inténtalo nuevamente.</string>
     <string name="tool_reminder_cancelled">Recordatorio cancelado: %1$s</string>
     <string name="tool_reminder_not_found">Alerta no encontrada: %1$s</string>
     <string name="tool_reminder_list_header">Recordatorios programados actuales (total %1$d ):\n</string>
@@ -386,7 +386,7 @@
     <string name="tool_reminder_missing_message">Parámetros faltantes: message</string>
     <string name="tool_reminder_missing_time">Parámetros faltantes: time</string>
     <string name="tool_reminder_missing_id">Parámetros faltantes: id</string>
-    <string name="tool_reminder_invalid_time">No se puede analizar el tiempo: %1$s, utilice el formato aaaa-MM-dd HH:mm</string>
+    <string name="tool_reminder_invalid_time">No se puede analizar el tiempo: %1$s, usa el formato aaaa-MM-dd HH:mm</string>
     <string name="tool_reminder_past_time">La hora del recordatorio no puede estar en el pasado.</string>
     <string name="tool_reminder_scheduled_inexact">Se ha creado un recordatorio programado (id: %1$s)\nTiempo de activación: %2$s\nNota: Si no se concede el permiso "Alarmas y Recordatorios", este recordatorio solo podrá sonar a una hora aproximada (quizás unos minutos más tarde). Se recomienda habilitar este permiso para esta aplicación en la configuración del sistema.</string>
     <string name="tool_reminder_status_scheduled">Programado, sonará a tiempo</string>
@@ -395,8 +395,8 @@
     <string name="tool_reminder_status_lost">Si no se confirma el horario es posible que no suene.</string>
     <string name="tool_reminder_catchup_title">%1$s(suplemento)</string>
     <string name="reminder_exact_permission_hint">Si el permiso "Despertador y recordatorio" no está activado, el recordatorio solo sonará unos minutos más tarde y es posible que no llegue a tiempo.</string>
-    <string name="reminder_exact_permission_action">Vaya a habilitar el permiso "Despertador y recordatorios"</string>
-    <string name="reminder_exact_permission_toast">Si el permiso "Despertador y recordatorio" no está activado, es posible que el recordatorio suene unos minutos más tarde. La página de configuración se ha abierto para usted; actívela manualmente.</string>
+    <string name="reminder_exact_permission_action">Ve a habilitar el permiso "Despertador y recordatorios"</string>
+    <string name="reminder_exact_permission_toast">Si el permiso "Despertador y recordatorio" no está activado, es posible que el recordatorio suene unos minutos más tarde. La página de configuración se ha abierto para ti; actívela manualmente.</string>
 
     <!-- v1.136: 资源库工具字符串 -->
     <string name="tool_resource_added">Recurso guardado\nid: %1$s\nTítulo: %2$s</string>
@@ -420,9 +420,9 @@
     <string name="tool_public_ip_failed">No se pudo obtener la IP pública</string>
     <string name="tool_json_pretty_failed">JSON Error de formato</string>
     <string name="tool_password_result">Generado %1$d Contraseña:\n%2$s</string>
-    <string name="tool_password_empty_pool">Seleccione al menos un tipo de carácter</string>
+    <string name="tool_password_empty_pool">Selecciona al menos un tipo de carácter</string>
     <string name="tool_speak_text_success">Empezó a leer: %1$s</string>
-    <string name="tool_speak_text_failed">TTS Error de lectura, verifique los datos de voz del sistema</string>
+    <string name="tool_speak_text_failed">TTS Error de lectura, comprueba los datos de voz del sistema</string>
 
     <!-- v1.136: 快速记录工具字符串 -->
     <string name="tool_quick_note_added">Registro rápido guardado\nid: %1$s\nTítulo: %2$s</string>
@@ -457,9 +457,9 @@
     <string name="app_control_failed">%1$s %2$s Fracaso:%3$s</string>
     <string name="app_control_reason_invalid_name">El nombre de la aplicación o el nombre del paquete no es válido</string>
     <string name="app_control_reason_not_found">Si no se encuentra la aplicación, primero puede usar app_list para consultar el nombre y el nombre del paquete.</string>
-    <string name="app_control_reason_need_elevated">Esta operación requiere permisos Shizuku/adb o Root, que el dispositivo actual no tiene. Utilice otros métodos o autorícelo en la configuración.</string>
+    <string name="app_control_reason_need_elevated">Esta operación requiere permisos Shizuku/adb o Root, que el dispositivo actual no tiene. Usa otros métodos o autorícelo en la configuración.</string>
     <string name="app_control_reason_system_app">Las aplicaciones del sistema no pueden realizar esta operación</string>
-    <string name="app_control_reason_self">Esta operación no está permitida en Musa.</string>
+    <string name="app_control_reason_self">Esta operación no está permitida en Muse.</string>
     <string name="app_control_via_app">Permisos de aplicaciones</string>
     <string name="app_control_via_shell">Shizuku/adb</string>
     <string name="app_control_via_root">Root</string>
