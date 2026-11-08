@@ -474,9 +474,9 @@
     <!-- ===== QR code share/scan ===== -->
     <string name="qr_share_title">Поделиться QR-кодом провайдера</string>
     <string name="qr_share_cd">QR-код настройки провайдера</string>
-    <string name="qr_share_warning">Этот QR-код содержит API Key в открытом виде. Делитесь только с доверенными получателями</string>
-    <string name="qr_share_warning_no_key">Этот QR-код не содержит ключ API. Принимающей стороне нужно ввести его вручную.</string>
-    <string name="qr_share_include_key">Включать ключ API в QR-код</string>
+    <string name="qr_share_warning">Этот QR-код может содержать незашифрованные ключи API, секреты OAuth, закрытые ключи и учётные данные в заголовках, телах и шаблонах запросов. Делитесь им только с доверенными получателями.</string>
+    <string name="qr_share_warning_no_key">Этот QR-код не содержит ключей API, секретов OAuth, закрытых ключей, заголовков, тел и шаблонов запросов. URL и другие данные конфигурации остаются в коде. Получателю необходимо самостоятельно ввести нужные учётные данные.</string>
+    <string name="qr_share_include_key">Включить учётные данные: ключи API, секреты OAuth, закрытые ключи, заголовки, тела и шаблоны запросов</string>
     <string name="qr_share_btn">Поделиться QR-кодом</string>
     <string name="qr_scan_title">Сканировать QR-код</string>
     <string name="qr_scan_pick_image">Выбрать изображение QR-кода из галереи</string>

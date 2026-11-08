@@ -116,9 +116,9 @@
     <string name="assistant_detail_regex_invalid">Error de sintaxis de expresión regular</string>
     <string name="qr_share_title">Compartir código QR de proveedor</string>
     <string name="qr_share_cd">Código QR de configuración del proveedor</string>
-    <string name="qr_share_warning">Este código QR incluye la clave API en texto plano. Compártelo solo con personas de confianza.</string>
-    <string name="qr_share_warning_no_key">Este código QR no incluye la clave API. La persona que lo reciba deberá introducirla manualmente.</string>
-    <string name="qr_share_include_key">Incluir la clave API en el código QR</string>
+    <string name="qr_share_warning">Este código QR puede incluir claves API, secretos OAuth, claves privadas y credenciales en encabezados, cuerpos y plantillas de solicitud, sin cifrar. Compártelo solo con personas de confianza.</string>
+    <string name="qr_share_warning_no_key">Este código QR excluye las claves API, los secretos OAuth, las claves privadas y los encabezados, cuerpos y plantillas de solicitud. Las URL y otros datos de configuración siguen incluidos. La persona que lo reciba deberá completar las credenciales necesarias.</string>
+    <string name="qr_share_include_key">Incluir credenciales: claves API, secretos OAuth, claves privadas, encabezados, cuerpos y plantillas de solicitud</string>
     <string name="qr_scan_title">Escanea el código QR</string>
     <string name="qr_scan_pick_image">Seleccione una imagen con código QR del álbum</string>
     <string name="qr_scan_scanning">Reconociendo…</string>

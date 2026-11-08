@@ -726,6 +726,7 @@ internal fun InputBar(state: MuseInputState = MuseInputState(), callbacks: Input
                         val toolEntries = buildList {
                             add(
                                 ToolEntry(
+                                    id = R.string.chat_web_search_cd,
                                     // v2.x: 联网搜索图标修正为 globe(原 languages 是翻译语义)
                                     icon = MuseIcons.globe,
                                     title = stringResource(R.string.chat_web_search_cd),
@@ -739,6 +740,7 @@ internal fun InputBar(state: MuseInputState = MuseInputState(), callbacks: Input
                             )
                             add(
                                 ToolEntry(
+                                    id = R.string.chat_deep_thinking_cd,
                                     icon = MuseIcons.brain,
                                     title = deepThinkingTitle,
                                     isActive = isDeepThinkingEnabled,
@@ -756,6 +758,7 @@ internal fun InputBar(state: MuseInputState = MuseInputState(), callbacks: Input
                             )
                             add(
                                 ToolEntry(
+                                    id = R.string.chat_tool_attachment,
                                     icon = MuseIcons.paperclip,
                                     title = stringResource(R.string.chat_tool_attachment),
                                     onClick = {
@@ -767,6 +770,7 @@ internal fun InputBar(state: MuseInputState = MuseInputState(), callbacks: Input
                             )
                             add(
                                 ToolEntry(
+                                    id = R.string.chat_tool_knowledge,
                                     icon = MuseIcons.book,
                                     title = stringResource(R.string.chat_tool_knowledge),
                                     subtitle = stringResource(R.string.chat_tool_knowledge_subtitle),
@@ -779,6 +783,7 @@ internal fun InputBar(state: MuseInputState = MuseInputState(), callbacks: Input
                             )
                             add(
                                 ToolEntry(
+                                    id = R.string.chat_prompt_templates_title,
                                     icon = MuseIcons.book,
                                     title = stringResource(R.string.chat_prompt_templates_title),
                                     subtitle = stringResource(R.string.chat_tool_prompt_template_subtitle),
@@ -791,6 +796,7 @@ internal fun InputBar(state: MuseInputState = MuseInputState(), callbacks: Input
                             )
                             add(
                                 ToolEntry(
+                                    id = R.string.chat_tool_skills,
                                     icon = MuseIcons.wrench,
                                     title = stringResource(R.string.chat_tool_skills),
                                     subtitle = stringResource(R.string.chat_tool_skills_subtitle),
@@ -803,6 +809,7 @@ internal fun InputBar(state: MuseInputState = MuseInputState(), callbacks: Input
                             )
                             add(
                                 ToolEntry(
+                                    id = R.string.chat_tool_draw_mode,
                                     icon = MuseIcons.brush,
                                     title = stringResource(R.string.chat_tool_draw_mode),
                                     subtitle = if (isDrawMode) {
@@ -824,6 +831,7 @@ internal fun InputBar(state: MuseInputState = MuseInputState(), callbacks: Input
                             if (assistants.isNotEmpty()) {
                                 add(
                                     ToolEntry(
+                                        id = R.string.chat_delegate_action,
                                         // 委托是把活儿交给另一个助手,与"群组/成员"不是一回事;
                                         // 进程列表里 delegate/subagent/agent 早已画成 robot,这里同一口径。
                                         icon = MuseIcons.robot,
@@ -840,6 +848,7 @@ internal fun InputBar(state: MuseInputState = MuseInputState(), callbacks: Input
                             if (showRestartContext) {
                                 add(
                                     ToolEntry(
+                                        id = R.string.chat_tool_restart_context,
                                         icon = MuseIcons.refresh,
                                         title = stringResource(R.string.chat_tool_restart_context),
                                         subtitle = stringResource(R.string.chat_tool_restart_context_subtitle),
