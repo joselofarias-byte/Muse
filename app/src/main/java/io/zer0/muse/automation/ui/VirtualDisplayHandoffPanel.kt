@@ -101,7 +101,7 @@ fun VirtualDisplayHandoffPanel(
             val image = remember(current) { current.asImageBitmap() }
             Image(
                 bitmap = image,
-                contentDescription = "虚拟屏预览",
+                contentDescription = "Vista previa de la pantalla virtual",
                 contentScale = ContentScale.Fit,
                 modifier = Modifier
                     .fillMaxWidth()

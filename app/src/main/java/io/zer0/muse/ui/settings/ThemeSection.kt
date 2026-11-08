@@ -240,7 +240,7 @@ internal fun ThemeSection(themeMode: String, fontSizeScale: String, settings: Se
         val json = AppJson.encodeToString(CustomTheme.serializer(), theme)
         val sendIntent = Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"
-            putExtra(Intent.EXTRA_SUBJECT, "Muse Theme: ${theme.name}")
+            putExtra(Intent.EXTRA_SUBJECT, "Tema de Muse: ${theme.name}")
             putExtra(Intent.EXTRA_TEXT, json)
         }
         context.startActivity(
@@ -1607,14 +1607,14 @@ private data class PresetColorScheme(
 
 /** v1.97: 8 套精选配色(色盲友好,覆盖暖/冷/中性色调)。 */
 private val PRESET_COLOR_SCHEMES = listOf(
-    PresetColorScheme("月桂绿", 0xFF2E7D32.toInt(), 0xFF66BB6A.toInt(), 0xFFA5D6A7.toInt()),
-    PresetColorScheme("深海蓝", 0xFF1565C0.toInt(), 0xFF42A5F5.toInt(), 0xFF90CAF9.toInt()),
-    PresetColorScheme("暮色紫", 0xFF6A1B9A.toInt(), 0xFFAB47BC.toInt(), 0xFFCE93D8.toInt()),
-    PresetColorScheme("赤霞红", 0xFFC62828.toInt(), 0xFFEF5350.toInt(), 0xFFFFCDD2.toInt()),
-    PresetColorScheme("琥珀橙", 0xFFE65100.toInt(), 0xFFFF7043.toInt(), 0xFFFFCC80.toInt()),
-    PresetColorScheme("青瓷青", 0xFF00695C.toInt(), 0xFF26A69A.toInt(), 0xFF80CBC4.toInt()),
-    PresetColorScheme("墨纸灰", 0xFF424242.toInt(), 0xFF757575.toInt(), 0xFFBDBDBD.toInt()),
-    PresetColorScheme("樱花粉", 0xFFAD1457.toInt(), 0xFFEC407A.toInt(), 0xFFF8BBD0.toInt()),
+    PresetColorScheme("Verde laurel", 0xFF2E7D32.toInt(), 0xFF66BB6A.toInt(), 0xFFA5D6A7.toInt()),
+    PresetColorScheme("Azul marino", 0xFF1565C0.toInt(), 0xFF42A5F5.toInt(), 0xFF90CAF9.toInt()),
+    PresetColorScheme("Violeta crepuscular", 0xFF6A1B9A.toInt(), 0xFFAB47BC.toInt(), 0xFFCE93D8.toInt()),
+    PresetColorScheme("Rojo atardecer", 0xFFC62828.toInt(), 0xFFEF5350.toInt(), 0xFFFFCDD2.toInt()),
+    PresetColorScheme("Naranja ámbar", 0xFFE65100.toInt(), 0xFFFF7043.toInt(), 0xFFFFCC80.toInt()),
+    PresetColorScheme("Verde celadón", 0xFF00695C.toInt(), 0xFF26A69A.toInt(), 0xFF80CBC4.toInt()),
+    PresetColorScheme("Gris tinta", 0xFF424242.toInt(), 0xFF757575.toInt(), 0xFFBDBDBD.toInt()),
+    PresetColorScheme("Rosa cerezo", 0xFFAD1457.toInt(), 0xFFEC407A.toInt(), 0xFFF8BBD0.toInt()),
 )
 
 /**
