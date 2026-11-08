@@ -18,6 +18,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import io.zer0.memory.fact.MemoryAuditSource
@@ -46,6 +47,7 @@ import java.util.Locale
 @Composable
 fun SettingsDiagnosticsPage(onBack: () -> Unit) {
     val context = LocalContext.current
+    val resources = LocalResources.current
     val scope = rememberCoroutineScope()
     // M4: 审计源走装配,页面自己不开库、不猜 id;未装配时导出给 databasesChecked=0,
     // 读导出的人能分辨「没装配」与「账本干净」。
@@ -98,7 +100,7 @@ fun SettingsDiagnosticsPage(onBack: () -> Unit) {
                                     if (json.isEmpty()) return@MuseCapsuleButton
                                     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                                     clipboard.setPrimaryClip(ClipData.newPlainText("MuseDiagnostics", json))
-                                    MuseToast.show(context.getString(R.string.settings_diagnostics_copied))
+                                    MuseToast.show(resources.getString(R.string.settings_diagnostics_copied))
                                 },
                             )
                             MuseCapsuleButton(
@@ -109,9 +111,9 @@ fun SettingsDiagnosticsPage(onBack: () -> Unit) {
                                         val file = current.exportToCache(context)
                                         val ok = file.exists() && file.length() > 0L
                                         val msg = if (ok) {
-                                            context.getString(R.string.settings_diagnostics_exported)
+                                            resources.getString(R.string.settings_diagnostics_exported)
                                         } else {
-                                            context.getString(R.string.settings_diagnostics_export_failed)
+                                            resources.getString(R.string.settings_diagnostics_export_failed)
                                         }
                                         MuseToast.show(msg)
                                     }

@@ -50,6 +50,7 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
@@ -116,6 +117,7 @@ fun OnboardingScreen(onComplete: () -> Unit, onOpenSection: (String) -> Unit = {
     val presetProviders: PresetProviders = koinInject()
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val resources = LocalResources.current
     // 引导走到第几步存几步:中途按返回退出后再进来,不该从第 1 步重来。
     var lastPage by rememberSaveable { mutableStateOf(0) }
     val pagerState = rememberPagerState(initialPage = lastPage, pageCount = { 8 })
@@ -263,7 +265,7 @@ fun OnboardingScreen(onComplete: () -> Unit, onOpenSection: (String) -> Unit = {
                                 is ProviderModelFetcher.VerifyOutcome.NotReady -> {
                                     Logger.w("Onboarding", "测试连接失败: ${outcome.kind} ${outcome.reason}")
                                     testStatus = TestStatus.Error(
-                                        context.getString(
+                                        resources.getString(
                                             R.string.settings_provider_test_error_failed,
                                             friendlyConnectError(
                                                 raw = outcome.reason,

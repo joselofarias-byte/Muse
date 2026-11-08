@@ -60,8 +60,8 @@
     <string name="html_preview_download_cd">Descargar</string>
     <string name="html_preview_download_success">Guardado en el directorio de descargas: %1$s</string>
     <string name="html_preview_download_failed">Error en la descarga: %1$s</string>
-    <string name="theme_warm_paper">papel caliente</string>
-    <string name="theme_sakura">flores de cerezo</string>
+    <string name="theme_warm_paper">Papel cálido</string>
+    <string name="theme_sakura">Sakura</string>
     <string name="theme_ocean">océano</string>
     <string name="theme_spring">primavera</string>
     <string name="theme_autumn">otoño</string>
@@ -70,7 +70,7 @@
     <string name="theme_washi">papel japonés</string>
     <string name="theme_aizome">Aizen</string>
     <string name="theme_twilight_purple">Mu Ziyun</string>
-    <string name="theme_amber_gold">oro ámbar</string>
+    <string name="theme_amber_gold">Ámbar dorado</string>
     <string name="theme_dusk_rose">rosa crepuscular</string>
     <string name="settings_theme_schedule">Conmutación programada</string>
     <string name="settings_theme_schedule_auto">Conmutación automática</string>

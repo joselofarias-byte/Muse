@@ -30,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
@@ -90,6 +91,7 @@ fun WebAccessPage(onBack: () -> Unit) {
     val settings: SettingsRepository = koinInject()
     val webServer: WebServer = koinInject()
     val context = LocalContext.current
+    val resources = LocalResources.current
     val scope = rememberCoroutineScope()
     val config by settings.webServerConfigFlow.collectAsStateWithLifecycle(initialValue = WebServerConfig())
     val isRunning by webServer.isRunning.collectAsStateWithLifecycle(initialValue = false)
@@ -114,10 +116,10 @@ fun WebAccessPage(onBack: () -> Unit) {
             resultOf { applyWebAccessEnabled(host, config, enabled, isRunning) }
                 .onSuccess { runningNow ->
                     if (enabled && !runningNow) {
-                        MuseToast.show(context.getString(R.string.settings_web_status_failed, lastError.orEmpty()), 3500)
+                        MuseToast.show(resources.getString(R.string.settings_web_status_failed, lastError.orEmpty()), 3500)
                     }
                 }
-                .onError { _, t -> MuseToast.show(context.getString(R.string.settings_web_failed, t?.message)) }
+                .onError { _, t -> MuseToast.show(resources.getString(R.string.settings_web_failed, t?.message)) }
         }
     }
 
@@ -125,7 +127,7 @@ fun WebAccessPage(onBack: () -> Unit) {
         // 绑定地址和 CORS 都要跟着变，只能重启服务
         scope.launch {
             resultOf { webServer.saveAndApplyConfig(config.copy(allowLan = allowLan)) }
-                .onError { _, t -> MuseToast.show(context.getString(R.string.settings_web_failed, t?.message)) }
+                .onError { _, t -> MuseToast.show(resources.getString(R.string.settings_web_failed, t?.message)) }
         }
     }
 
@@ -134,9 +136,9 @@ fun WebAccessPage(onBack: () -> Unit) {
         scope.launch {
             resultOf { webServer.saveAndApplyConfig(config.copy(pin = newPin)) }
                 .onSuccess {
-                    MuseToast.show(context.getString(R.string.settings_web_access_pin_regenerated, newPin), 3500)
+                    MuseToast.show(resources.getString(R.string.settings_web_access_pin_regenerated, newPin), 3500)
                 }
-                .onError { _, t -> MuseToast.show(context.getString(R.string.settings_web_failed, t?.message)) }
+                .onError { _, t -> MuseToast.show(resources.getString(R.string.settings_web_failed, t?.message)) }
         }
     }
 
@@ -154,13 +156,13 @@ fun WebAccessPage(onBack: () -> Unit) {
                 onCopyAddress = {
                     snapshot.address.url?.let { url ->
                         copyToClipboard(context, "Muse WebServer", url)
-                        MuseToast.show(context.getString(R.string.settings_web_address_copied, url))
+                        MuseToast.show(resources.getString(R.string.settings_web_address_copied, url))
                     }
                 },
                 onCopyPin = {
                     if (snapshot.pin.isNotBlank()) {
                         copyToClipboard(context, "Muse WebServer PIN", snapshot.pin)
-                        MuseToast.show(context.getString(R.string.settings_web_pin_copied, snapshot.pin))
+                        MuseToast.show(resources.getString(R.string.settings_web_pin_copied, snapshot.pin))
                     }
                 },
             )

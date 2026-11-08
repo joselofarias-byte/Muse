@@ -2,4 +2,37 @@
 <resources>
     <string name="automation_tasker_title">Tasker / 外部自動化トリガー</string>
     <string name="automation_tasker_desc">他のアプリからテキスト補完リクエストを1回受け付けます。ツール権限は付与されませんが、モデルの使用量を消費する場合があります。</string>
+    <string name="automation_master_title">画面の自動操作を許可</string>
+    <string name="automation_master_desc">全体のスイッチです。オフにすると、再びオンにするまで、画面の読み取り、タップ、入力、複数ステップのすべてのツールが実行されません。</string>
+    <string name="automation_master_off_banner">現在無効です。上のスイッチを再びオンにするまで、画面の読み取り、タップ、入力、複数ステップのすべてのツールが実行されません。</string>
+    <string name="automation_a11y_off_banner">ユーザー補助サービスが接続されていません（システムによって停止された可能性があります）。画面の読み取りとタップは失敗します。</string>
+    <string name="automation_a11y_off_action">ユーザー補助を有効にする</string>
+    <string name="automation_autonomous_title">時間指定の自律的なユーザー補助</string>
+    <string name="automation_autonomous_desc">まずチャットでタスクを明示的に指定してください。許可された時間帯は、許可リスト内の画面の読み取り、タップ、スクロールのみ自動実行できます。入力、送信、公開、支払い、削除には引き続き承認が必要です。</string>
+    <string name="automation_autonomous_enabled">自律的なユーザー補助を有効にする</string>
+    <string name="automation_autonomous_enabled_desc">時間帯、アプリ、操作、1日の上限をすべて満たす場合にのみ自動操作が実行されます。</string>
+    <string name="automation_autonomous_window">許可する時間帯</string>
+    <string name="automation_autonomous_start">開始時刻</string>
+    <string name="automation_autonomous_end">終了時刻</string>
+    <string name="automation_autonomous_packages">許可するアプリのパッケージ</string>
+    <string name="automation_autonomous_packages_desc">1行に1つのパッケージを入力してください。Xiaohongshuの既定のパッケージはcom.xingin.xhsです。</string>
+    <string name="automation_autonomous_actions">許可する操作</string>
+    <string name="automation_autonomous_read">画面を読み取る</string>
+    <string name="automation_autonomous_click">タップ</string>
+    <string name="automation_autonomous_scroll">スクロール</string>
+    <string name="automation_autonomous_input_locked">テキスト入力には常に承認が必要です</string>
+    <string name="automation_autonomous_daily_limit">1日の最大実行回数</string>
+    <string name="automation_autonomous_daily_limit_desc">実行に成功した場合のみカウントします。上限に達すると、現在のタスクの許可が取り消されます。</string>
+    <string name="automation_autonomous_task">チャットのタスクの承認</string>
+    <string name="automation_autonomous_task_desc">時間帯だけではアクセスは許可されません。チャットでパッケージと操作を指定し、ここで確認してください。許可の範囲は、そのチャットの最新のユーザーメッセージに限定されます。</string>
+    <string name="automation_autonomous_confirm_task">現在のタスクを確認</string>
+    <string name="automation_autonomous_confirm_required">まず現在のチャットでタスクとパッケージを指定してください</string>
+    <string name="automation_autonomous_saved">自律的なユーザー補助の設定を保存しました</string>
+    <string name="automation_autonomous_task_confirmed">このチャットの現在のタスクを許可しました</string>
+    <string name="automation_autonomous_task_cleared">自律的なユーザー補助のタスクの許可を取り消しました</string>
+    <string name="automation_autonomous_task_missing_session">タスクを確認する前にチャットを開いてください</string>
+    <string name="automation_autonomous_task_text">現在のタスク: %1$s</string>
+    <string name="automation_autonomous_active_until">許可: 時間帯と最前面のアプリが一致する場合に有効</string>
+    <string name="automation_autonomous_no_grant">許可: なし</string>
+    <string name="automation_autonomous_save">設定を保存</string>
 </resources>

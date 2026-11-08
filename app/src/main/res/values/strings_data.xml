@@ -99,7 +99,7 @@
 
     <!-- ===== data/session ===== -->
     <!-- 会话默认标题 + 分叉标题(持久化到 Room) -->
-    <string name="session_repo_default_title">nueva sesión</string>
+    <string name="session_repo_default_title">Nueva conversación</string>
     <string name="session_repo_fork_title">bifurcado de %1$s</string>
 
     <!-- ===== data/assistant ===== -->

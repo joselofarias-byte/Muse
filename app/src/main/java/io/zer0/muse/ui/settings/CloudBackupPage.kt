@@ -23,6 +23,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -87,6 +88,7 @@ fun CloudBackupPage(onBack: () -> Unit) {
     val cloudBackupService: CloudBackupService = koinInject()
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val resources = LocalResources.current
 
     val cloudConfig by settings.cloudBackupConfigFlow.collectAsStateWithLifecycle(
         initialValue = CloudBackupConfig(),
@@ -728,7 +730,7 @@ fun CloudBackupPage(onBack: () -> Unit) {
                         failedRestoreFile = file
                     } else {
                         val (s, m) = result
-                        MuseToast.show(context.getString(R.string.cloud_backup_restore_success, s, m))
+                        MuseToast.show(resources.getString(R.string.cloud_backup_restore_success, s, m))
                     }
                 }
             },

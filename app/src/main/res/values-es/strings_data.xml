@@ -78,7 +78,7 @@
     <string name="prompt_injection_mode_roleplay">juego de rol</string>
     <string name="prompt_injection_mode_translation">Traducción</string>
     <string name="prompt_injection_mode_analysis">análisis</string>
-    <string name="session_repo_default_title">nueva sesión</string>
+    <string name="session_repo_default_title">Nueva conversación</string>
     <string name="session_repo_fork_title">bifurcado de %1$s</string>
     <string name="assistant_repo_default_name">Asistente predeterminado</string>
     <string name="folder_repo_default_name">nueva carpeta</string>

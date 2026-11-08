@@ -134,6 +134,7 @@
         <item quantity="one">Вместе %1$d день</item>
         <item quantity="few">Вместе %1$d дня</item>
         <item quantity="other">Вместе %1$d дней</item>
+        <item quantity="many">Вместе %1$d дней</item>
     </plurals>
 
     <string name="chat_thinking">Думая…</string>

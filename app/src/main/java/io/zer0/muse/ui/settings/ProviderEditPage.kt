@@ -33,6 +33,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
@@ -250,6 +251,7 @@ internal fun ProviderEditPage(
 
     // 从 Google Service Account JSON 文件导入 Vertex AI 凭证
     val context = LocalContext.current
+    val resources = LocalResources.current
     val ioScope = rememberCoroutineScope()
     val settingsRepo: SettingsRepository = koinInject()
     // v2.4: 先检查缓存(5分钟TTL,仅对当前配置有效),命中后按成功/失败分发到对应状态
@@ -891,7 +893,7 @@ internal fun ProviderEditPage(
                 MuseToast.show(
                 context.getString(
                     R.string.oauth_login_failed,
-                    context.getString(R.string.oauth_reason_no_activity),
+                    resources.getString(R.string.oauth_reason_no_activity),
                 ),
             )
                 return@lambda
@@ -1101,7 +1103,7 @@ internal fun ProviderEditPage(
                             runCatching {
                                 serviceAccountJsonLauncher.launch(arrayOf("application/json"))
                             }.onFailure {
-                                fetchError = context.getString(R.string.settings_provider_file_picker_failed, it.message ?: "")
+                                fetchError = resources.getString(R.string.settings_provider_file_picker_failed, it.message ?: "")
                             }
                         },
                     )
@@ -1247,7 +1249,7 @@ internal fun ProviderEditPage(
                                 context.startActivity(intent)
                             }.onFailure {
                                 io.zer0.muse.ui.common.feedback.MuseToast.show(
-                                    context.getString(R.string.oauth_device_open_failed),
+                                    resources.getString(R.string.oauth_device_open_failed),
                                 )
                             }
                         },
@@ -1288,9 +1290,9 @@ internal fun ProviderEditPage(
                     context.startActivity(openIntent)
                 }.onFailure {
                     MuseToast.show(
-                        context.getString(
+                        resources.getString(
                         R.string.oauth_login_failed,
-                        it.message ?: context.getString(R.string.oauth_reason_no_browser),
+                        it.message ?: resources.getString(R.string.oauth_reason_no_browser),
                     ),
                     )
                 }
@@ -1318,7 +1320,7 @@ internal fun ProviderEditPage(
                     // 清空 apiKey 输入框 + 同步本地状态
                     apiKey = ""
                     hasStoredOAuthToken = false
-                    MuseToast.show(context.getString(R.string.oauth_revoke_success))
+                    MuseToast.show(resources.getString(R.string.oauth_revoke_success))
                 }
             },
             dismissText = stringResource(R.string.settings_common_cancel),
