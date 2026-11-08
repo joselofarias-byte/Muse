@@ -14,7 +14,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -95,7 +95,7 @@ internal fun ProviderEditBottomBar(
             Box(
                 modifier = Modifier
                     .weight(1f)
-                    .height(MuseIconSizes.touchTarget) // 底部操作栏按钮统一 48dp 触摸目标
+                    .heightIn(min = MuseIconSizes.touchTarget)
                     .background(
                         color = if (canFetch) {
                             MaterialTheme.colorScheme.inverseSurface
@@ -107,7 +107,10 @@ internal fun ProviderEditBottomBar(
                     .clickable(enabled = canFetch) { onFetch(true) },
                 contentAlignment = Alignment.Center,
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     if (isFetching) {
                         MuseSpinner(
                             size = 16.dp,
@@ -134,7 +137,7 @@ internal fun ProviderEditBottomBar(
             Box(
                 modifier = Modifier
                     .weight(1f)
-                    .height(MuseIconSizes.touchTarget) // 底部操作栏按钮统一 48dp 触摸目标
+                    .heightIn(min = MuseIconSizes.touchTarget)
                     .background(
                         color = MaterialTheme.colorScheme.surface,
                         shape = MuseShapes.huge,
@@ -147,7 +150,10 @@ internal fun ProviderEditBottomBar(
                     .clickable(onClick = onAddModel),
                 contentAlignment = Alignment.Center,
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     Icon(
                         imageVector = MuseIcons.plus,
                         contentDescription = null,
