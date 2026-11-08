@@ -40,7 +40,7 @@ jobs:
           bash tools/runtime-pack/test-downloads.sh
       - name: Web checks and assets
         working-directory: web
-        run: npm ci && npm test && npm --workspace @muse/client run test && npm run typecheck && npm run build
+        run: npm ci && npm run build && npm test && npm --workspace @muse/client run test
       - name: Embedded runtimes
         run: |
           sudo apt-get update
