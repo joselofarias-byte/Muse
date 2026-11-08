@@ -55,7 +55,7 @@ jobs:
         run: |
           bash ./gradlew detekt ktlintCheck ktlintKotlinSourceCheck :app:lintRelease testDebugUnitTest :app:assembleRelease \
             --stacktrace --no-daemon --continue -PmusaUnsignedVerification=true -PreleaseSkipKeystoreCheck=true \
-            -PnoUniversal -PversionCode=1000001 -PversionName=2.6.23-musa-es
+            -PnoUniversal -PversionCode=1000002 -PversionName=2.6.23-muse-es.2
       - name: Verification reports only (never distribute unsigned APKs)
         if: always()
         uses: actions/upload-artifact@v4

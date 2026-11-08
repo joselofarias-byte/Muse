@@ -113,7 +113,7 @@
     <string name="model_switch_refresh">Actualizar</string>
     <string name="model_switch_fetching_upstream">Obteniendo modelos del proveedor…</string>
     <string name="model_switch_no_models">No hay modelos disponibles del proveedor actual.
-Haga clic en Actualizar para extraer la lista desde arriba</string>
+Toca en Actualizar para extraer la lista desde arriba</string>
     <!-- v1.0.4 (P2): 模型拉取失败重试按钮 -->
     <string name="model_switch_retry">Inténtalo de nuevo</string>
     <string name="model_switch_default">%1$s(Predeterminado)</string>
@@ -129,7 +129,7 @@ Haga clic en Actualizar para extraer la lista desde arriba</string>
     <string name="model_switch_group_count">%1$s (%2$d)</string>
     <!-- v1.0.18: 免费模型徽章/提示(对齐 FreeModelConfig) -->
     <string name="model_switch_free_badge">gratis</string>
-    <string name="model_switch_free_provider_hint">Disponible sin iniciar sesión, simplemente seleccione el modelo y úselo inmediatamente</string>
+    <string name="model_switch_free_provider_hint">Disponible sin iniciar sesión, simplemente selecciona el modelo y úselo inmediatamente</string>
     <string name="model_switch_context_limit">contexto %1$s</string>
     <string name="model_switch_output_limit">Límite superior de salida %1$s tokens</string>
     <string name="model_switch_metadata_unverified">Información de competencia no verificada</string>
@@ -146,7 +146,7 @@ Haga clic en Actualizar para extraer la lista desde arriba</string>
     <!-- ===== ui/FavoritesScreen 收藏夹 ===== -->
     <string name="favorites_title">Favoritos (%1$d)</string>
     <string name="favorites_empty_title">Aún no hay noticias favoritas</string>
-    <string name="favorites_empty_subtitle">Haga clic en la estrella en la fila de acción del mensaje en la página de chat para agregarlo a sus favoritos</string>
+    <string name="favorites_empty_subtitle">Toca en la estrella en la fila de acción del mensaje en la página de chat para agregarlo a sus favoritos</string>
     <string name="favorites_role_user">yo</string>
     <string name="favorites_role_system">sistema</string>
     <string name="favorites_role_tool">Herramientas</string>
@@ -198,7 +198,7 @@ Haga clic en Actualizar para extraer la lista desde arriba</string>
     <string name="browser_status_ready">Listo</string>
     <string name="browser_status_cd">Navegador: %1$s, pulsa para ver</string>
     <string name="browser_viewer_blank_title">El navegador está abierto</string>
-    <string name="browser_viewer_blank_message">Espere a que la IA abra la página web o utilice las herramientas del navegador para navegar.</string>
+    <string name="browser_viewer_blank_message">Espera a que la IA abra la página web o usa las herramientas del navegador para navegar.</string>
     <string name="browser_menu_clear_cookies">Borrar cookies</string>
     <string name="browser_menu_open_external">Abrir en el navegador del sistema</string>
     <string name="browser_menu_copy_link">Copiar enlace</string>

@@ -640,7 +640,7 @@ private fun McpServerAddDialog(onDismiss: () -> Unit, onAdd: suspend (McpServerC
                         visualTransformation = PasswordVisualTransformation(),
                     )
                     Text(
-                        text = "Musa obtiene y renueva tenant_access_token automáticamente; " +
+                        text = "Muse obtiene y renueva tenant_access_token automáticamente; " +
                             "no es necesario cambiar el TAT manualmente cada 2 horas.",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.primary,

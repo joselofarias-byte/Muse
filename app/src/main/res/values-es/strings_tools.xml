@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <string name="tools_screen_title">AI Herramientas</string>
+    <string name="tools_screen_title">Herramientas de IA</string>
     <string name="tools_intro_what">Las herramientas son capacidades a las que puede recurrir la IA, como leer notificaciones, cálculos, ejecutar código, etc.</string>
     <string name="tools_intro_manage">En la página de detalles del asistente → Expandir → Herramientas, que se pueden habilitar individualmente para cada asistente./Desactivar herramientas. Las herramientas de alto riesgo (como la ejecución de código) requieren la confirmación del usuario antes de ser llamadas.</string>
     <string name="tool_exec_empty_result">Herramientas %1$s La ejecución se completó, pero no se devolvió ningún contenido visualizable.</string>
@@ -31,14 +31,14 @@
     <string name="tools_settings_policy_always_allow">siempre permitido</string>
     <string name="tools_settings_policy_always_allow_desc">La herramienta se llama y se libera directamente sin que aparezca la tarjeta de aprobación.</string>
     <string name="tools_settings_policy_ask">pregunta cada vez</string>
-    <string name="tools_settings_policy_ask_desc">La tarjeta de aprobación aparece antes de llamar y depende de usted aprobarla o rechazarla.</string>
+    <string name="tools_settings_policy_ask_desc">La tarjeta de aprobación aparece antes de llamar y puedes aprobarla o rechazarla.</string>
     <string name="tools_settings_policy_always_deny">siempre rechace</string>
     <string name="tools_settings_policy_always_deny_desc">La herramienta está deshabilitada.,AI No puedo llamar</string>
     <string name="tools_settings_policy_always_allow_short">permitir</string>
     <string name="tools_settings_policy_ask_short">preguntar</string>
     <string name="tools_settings_policy_always_deny_short">rechazar</string>
     <string name="tools_empty_title">Aún no hay herramientas registradas</string>
-    <string name="tools_empty_subtitle">Verifique la configuración del complemento o MCP y luego vuelva a ingresar a esta página.</string>
+    <string name="tools_empty_subtitle">Comprueba la configuración del complemento o MCP y luego vuelva a ingresar a esta página.</string>
     <string name="tool_summary_add_calendar_event">Evento de calendario agregado</string>
     <string name="tool_summary_add_contact">Contacto añadido</string>
     <string name="tool_summary_calculator">calcular</string>
