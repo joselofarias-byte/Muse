@@ -223,15 +223,15 @@ fun GroupChatDetailScreen(
                     val bytes = readImageBytes(context, uri)
                     val boundsOptions = BitmapFactory.Options().apply { inJustDecodeBounds = true }
                     BitmapFactory.decodeByteArray(bytes, 0, bytes.size, boundsOptions)
-                    if (boundsOptions.outWidth <= 0 || boundsOptions.outHeight <= 0) {
-                        throw IllegalStateException("No se pudieron determinar las dimensiones de la imagen")
+                    check(boundsOptions.outWidth > 0 && boundsOptions.outHeight > 0) {
+                        "No se pudieron determinar las dimensiones de la imagen"
                     }
                     val maxDim = maxOf(boundsOptions.outWidth, boundsOptions.outHeight)
                     var sampleSize = 1
                     while (maxDim / sampleSize > 1024) sampleSize *= 2
                     val decodeOptions = BitmapFactory.Options().apply { inSampleSize = sampleSize }
                     val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, decodeOptions)
-                        ?: throw IllegalStateException("No se pudo decodificar la imagen")
+                        ?: error("No se pudo decodificar la imagen")
                     try {
                         encodeBitmapToBase64(bitmap)
                     } finally {
@@ -257,7 +257,7 @@ fun GroupChatDetailScreen(
                 val (bytes, mimeType, fileName) = withContext(Dispatchers.IO) {
                     val stream = context.contentResolver.openInputStream(uri)
                         ?: context.contentResolver.openFileDescriptor(uri, "r")?.let { java.io.FileInputStream(it.fileDescriptor) }
-                        ?: throw IllegalStateException("No se pudo leer el archivo")
+                        ?: error("No se pudo leer el archivo")
                     val data = stream.use { it.readBytes() }
                     Triple(data, context.contentResolver.getType(uri) ?: "application/octet-stream", uri.lastPathSegment ?: "文件")
                 }
@@ -314,15 +314,15 @@ fun GroupChatDetailScreen(
                     val bytes = readImageBytes(context, uri)
                     val boundsOptions = BitmapFactory.Options().apply { inJustDecodeBounds = true }
                     BitmapFactory.decodeByteArray(bytes, 0, bytes.size, boundsOptions)
-                    if (boundsOptions.outWidth <= 0 || boundsOptions.outHeight <= 0) {
-                        throw IllegalStateException("No se pudieron determinar las dimensiones de la imagen")
+                    check(boundsOptions.outWidth > 0 && boundsOptions.outHeight > 0) {
+                        "No se pudieron determinar las dimensiones de la imagen"
                     }
                     val maxDim = maxOf(boundsOptions.outWidth, boundsOptions.outHeight)
                     var sampleSize = 1
                     while (maxDim / sampleSize > 1024) sampleSize *= 2
                     val decodeOptions = BitmapFactory.Options().apply { inSampleSize = sampleSize }
                     val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, decodeOptions)
-                        ?: throw IllegalStateException("No se pudo decodificar la imagen")
+                        ?: error("No se pudo decodificar la imagen")
                     try {
                         encodeBitmapToBase64(bitmap)
                     } finally {
