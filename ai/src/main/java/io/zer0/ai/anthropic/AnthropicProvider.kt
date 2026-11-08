@@ -26,6 +26,7 @@ import io.zer0.common.Logger
 import io.zer0.common.resultOf
 import io.zer0.common.toMessage
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -519,6 +520,7 @@ class AnthropicProvider(
         connect()
 
         awaitClose {
+            producerScope.coroutineContext.cancelChildren()
             // M-ANT2: 不调 request.abortSignal.abort()(修改调用方对象),只 cancel HTTP 资源
             connectionGeneration.incrementAndGet()
             abortListener.close()
