@@ -112,18 +112,29 @@ El PR permanece en borrador hasta cerrar las verificaciones pendientes. No hay
 un dispositivo Android conectado para acreditar instalación o actualización con
 datos. No se entrega la APK sin firma ni se sustituye el certificado permanente.
 
-La compilación local inicial produjo una APK Release ARM64 sin firma con paquete
+La compilación local final produjo una APK Release ARM64 sin firma con paquete
 `io.zer0.muse`, nombre `Musa`, versión `2.6.23-musa-es` y código `1000001`;
-la integridad ZIP y la ABI exclusiva `arm64-v8a` se comprobaron. No se distribuye.
+la integridad ZIP y la ABI exclusiva `arm64-v8a` se comprobaron. SHA-256:
+`3f355612714787f247db916da91515cccf6fcc6c3915d850efd17c89981e4ade`.
+La tarea `assembleRelease` terminó correctamente en la ejecución conjunta con
+`lintRelease --continue`; el comando global falló por Lint, no por el empaquetado.
+Una compilación anterior aprobó también `lintVitalRelease`; en la ejecución
+conjunta el Lint vital se omite en favor del completo. No hay aprobación global
+de Release ni prueba de firma o actualización. No se distribuye esta APK.
 Las pruebas dirigidas finales aprobaron seis casos de idioma, seis de QR y tres
 de cancelación. Los auxiliares de firma aprobaron 13 casos y pytest aprobó 41
-casos de continuidad, localización y residuos. La batería de IA inicial ejecutó
-496 pruebas con un timeout Anthropic; las tres pruebas dirigidas no sustituyen
-la repetición completa. Lint completo sigue pendiente: el primer intento se
-interrumpió tras más de 40 minutos; un intento posterior de compilación encontró
-una excepción interna FIR al analizar `AnthropicProvider.kt`. La compilación final
-se repite sin modificar las fuentes durante el análisis; no se acredita aprobación
-de Lint ni una APK final mientras no termine.
+casos de continuidad, localización y residuos (43 tras añadir las dos pruebas de
+plurales). La batería completa de IA final aprobó 497 pruebas, sin fallos, errores
+ni omisiones.
+
+Lint completo terminó con 141 errores, 860 advertencias y 12 avisos informativos:
+98 errores `LocalContextGetResourceValueCall`, seis `MissingQuantity` en ruso,
+35 `MissingTranslation` de otros idiomas y dos `JavascriptInterface`. No está
+aprobado; no se relajan checks ni baselines. El análisis detectó cinco plurales
+malformados en español y en los recursos predeterminados: se restauraron sus
+elementos `item` y formas españolas. El verificador ahora exige las claves de
+plurales y rechaza definiciones sin `other` o con texto directo. La repetición
+eliminó los diez errores correspondientes y los avisos de formas españolas.
 
 La verificación web completa (build/typecheck, pruebas de paquetes y cliente)
 terminó con código cero. La CI construye el workspace antes de ejecutar pruebas

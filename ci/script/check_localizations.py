@@ -22,6 +22,7 @@ import argparse
 import os
 import re
 import sys
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 # Windows 中文控制台默认 GBK,而本脚本会打印 ✓/✗(不在 GBK 字符集内),
@@ -32,8 +33,8 @@ try:
 except Exception:  # noqa: BLE001 - 环境不支持时不应影响检查本身
     pass
 
-# 提取 <string name="key"> 的正则
-STRING_NAME_RE = re.compile(r'<string\s+name="([^"]+)"', re.IGNORECASE)
+# 提取 string / plurals 资源名称。
+STRING_NAME_RE = re.compile(r'<(?:string|plurals)\s+name="([^"]+)"', re.IGNORECASE)
 
 # 声明为 translatable="false" 的 key 是故意不翻译的(语言自称、专有名词),
 # 不该算进各 locale 的完整性缺口;开标签正则用于把属性和 name 一起认出来。
@@ -133,6 +134,23 @@ def check_locale(res_dir: Path, verbose: bool = False, strict_locales: set = Non
     strict_locale_codes = {
         normalize_locale_name(locale) for locale in (strict_locales or set())
     }
+
+    checked_dirs = [default_dir] + [
+        directory for directory in find_locale_dirs(res_dir)
+        if normalize_locale_name(directory.name) in strict_locale_codes
+    ]
+    for directory in checked_dirs:
+        for path in sorted(directory.glob(STRING_FILE_PATTERN)):
+            try:
+                root = ET.parse(path).getroot()
+            except ET.ParseError as error:
+                print(f"ERROR: {path}: {error}", file=sys.stderr)
+                return 1
+            for plural in root.findall("plurals"):
+                quantities = {item.get("quantity") for item in plural.findall("item")}
+                if "other" not in quantities or (plural.text or "").strip():
+                    print(f"ERROR: {path}: invalid plural {plural.get('name')}", file=sys.stderr)
+                    return 1
 
     if not baseline:
         print(f"ERROR: 基准目录 {default_dir} 无 strings_*.xml 文件", file=sys.stderr)

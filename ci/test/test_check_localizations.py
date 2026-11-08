@@ -62,8 +62,36 @@ def test_untranslatable_keys_are_not_required_in_other_locales():
             assert check_locale(res_dir, strict_locales={"en"}) == 0
 
 
+def test_malformed_plurals_fail_in_default_and_strict_locales():
+    for directory in ("values", "values-es"):
+        with tempfile.TemporaryDirectory() as tmp:
+            res_dir = Path(tmp)
+            for locale in ("values", "values-es"):
+                write_resource(res_dir / locale / "strings.xml", "key")
+            path = res_dir / directory / "strings.xml"
+            path.write_text('<resources><plurals name="count">%1$d items</plurals></resources>')
+            with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+                assert check_locale(res_dir, strict_locales={"es"}) == 1
+
+
+def test_plural_keys_are_required_in_strict_locales():
+    with tempfile.TemporaryDirectory() as tmp:
+        res_dir = Path(tmp)
+        write_resource(res_dir / "values" / "strings.xml", "key")
+        write_resource(res_dir / "values-es" / "strings.xml", "key")
+        path = res_dir / "values" / "strings.xml"
+        path.write_text('<resources><plurals name="count"><item quantity="other">%1$d items</item></plurals></resources>')
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            assert check_locale(res_dir, strict_locales={"es"}) == 1
+        (res_dir / "values-es" / "strings.xml").write_text(path.read_text())
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            assert check_locale(res_dir, strict_locales={"es"}) == 0
+
+
 if __name__ == "__main__":
     test_plain_locale_codes_match_android_resource_dirs()
     test_unselected_locale_remains_warning_only()
     test_untranslatable_keys_are_not_required_in_other_locales()
+    test_malformed_plurals_fail_in_default_and_strict_locales()
+    test_plural_keys_are_required_in_strict_locales()
     print("all localization tests passed")

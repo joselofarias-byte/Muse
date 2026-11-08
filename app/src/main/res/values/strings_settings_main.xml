@@ -270,6 +270,7 @@
     <plurals name="cloud_backup_interval_days">
         <item quantity="one">%1$d día</item>
         <item quantity="other">%1$d días</item>
+        <item quantity="many">%1$d días</item>
     </plurals>
     <string name="cloud_backup_save_config">Guardar configuración</string>
     <string name="cloud_backup_config_saved">Configuración guardada</string>

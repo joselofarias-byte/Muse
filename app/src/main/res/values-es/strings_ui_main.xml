@@ -477,7 +477,11 @@
     <string name="settings_screen_check_update_desc">Consulte GitHub para conocer nuevos lanzamientos</string>
     <string name="settings_search_hint">Configuración de búsqueda…</string>
     <string name="settings_search_no_results">partidos</string>
-    <plurals name="settings_search_result_count">encontró %1$d Resultados del artículo</plurals>
+    <plurals name="settings_search_result_count">
+        <item quantity="one">Se encontró %1$d resultado</item>
+        <item quantity="many">Se encontraron %1$d resultados</item>
+        <item quantity="other">Se encontraron %1$d resultados</item>
+    </plurals>
     <string name="settings_screen_translate">AI Traducción</string>
     <string name="settings_screen_translate_desc">Traducción en varios idiomas, compatible con la selección del idioma de origen/Intercambio/leer en voz alta</string>
     <string name="settings_screen_quick_notes">registro rápido</string>
@@ -518,10 +522,15 @@
     <string name="chat_list_edit_delete">Eliminar</string>
     <string name="chat_list_edit_archive">Archivo</string>
     <string name="chat_list_edit_exit">Salir</string>
-    <plurals name="chat_list_edit_done">Procesado %1$d artículo</plurals>
+    <plurals name="chat_list_edit_done">
+        <item quantity="one">Se procesó %1$d elemento</item>
+        <item quantity="many">Se procesaron %1$d elementos</item>
+        <item quantity="other">Se procesaron %1$d elementos</item>
+    </plurals>
     <plurals name="chat_list_edit_delete_confirm">
         <item quantity="one">Se eliminará %1$d conversación seleccionada y todos sus mensajes. Esta acción no se puede deshacer. ¿Confirmar?</item>
         <item quantity="other">Se eliminarán %1$d conversaciones seleccionadas y todos sus mensajes. Esta acción no se puede deshacer. ¿Confirmar?</item>
+        <item quantity="many">Se eliminarán %1$d conversaciones seleccionadas y todos sus mensajes. Esta acción no se puede deshacer. ¿Confirmar?</item>
     </plurals>
     <string name="chat_fork_success">Se ha creado una nueva conversación a partir de la conversación actual.</string>
     <string name="chat_video_generating">Se está generando vídeo; puede tardar decenas de segundos.…</string>

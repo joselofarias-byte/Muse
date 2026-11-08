@@ -737,7 +737,11 @@
     <string name="plugin_cap_ui_interactive">Mostrar un formulario y ejecutar su controlador (altera datos; desactivado)</string>
     <string name="plugin_cap_runtime_python">Ejecutar Python fuera del entorno aislado (alta confianza)</string>
     <string name="video_no_video_model_hint">El proveedor actual no tiene ningún modelo con salida de vídeo. Activa la capacidad de \"salida de vídeo\" en Ajustes › Modelos y proveedores.</string>
-    <plurals name="groupchat_selected_members">Seleccionado %1$d miembros</plurals>
+    <plurals name="groupchat_selected_members">
+        <item quantity="one">%1$d miembro seleccionado</item>
+        <item quantity="many">%1$d miembros seleccionados</item>
+        <item quantity="other">%1$d miembros seleccionados</item>
+    </plurals>
     <string name="workspace_go_root">Volver a la raíz del espacio de trabajo</string>
     <string name="artifact_center_empty_hint">Los artefactos son las imágenes, archivos y textos largos que el asistente genera en el chat; aquí puedes revisarlos y compartirlos</string>
     <string name="daily_summary_light_fallback">Hoy no hay mucho que repasar; aquí estoy cuando quieras hablar.</string>
