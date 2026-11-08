@@ -129,9 +129,11 @@ upstream; no se eleva ninguna línea base ni se elimina la puerta. El workflow u
 `--continue` para obtener también resultados de compilación y pruebas sin ocultar
 el fallo de los controles estáticos.
 
-El PR permanece en borrador hasta cerrar las verificaciones pendientes. No hay
-un dispositivo Android conectado para acreditar instalación o actualización con
-datos. No se entrega la APK sin firma ni se sustituye el certificado permanente.
+El PR permanece en borrador y sin fusionar. No hay dispositivo Android conectado
+para acreditar instalación, arranque o funcionamiento. El propietario confirmó
+que no tiene Muse instalada: no corresponde actualización con datos anteriores.
+La primera release firmada se construyó con la clave nueva autorizada expresamente;
+no se distribuye el resultado unsigned de CI.
 
 La compilación local previa a las correcciones de CI produjo una APK Release ARM64 sin firma con paquete
 `io.zer0.muse`, nombre `Musa`, versión `2.6.23-musa-es` y código `1000001`;
@@ -214,3 +216,16 @@ Build local: `./gradlew :app:assembleRelease --no-daemon -PnoUniversal
 No usar `musaUnsignedVerification` ni saltarse las comprobaciones de firma.
 Para nuevas versiones incrementar versionCode, reutilizar la clave y comparar
 con esta primera release; no volver a seleccionar `first_release=true`.
+
+### Resultado de la primera compilación firmada
+
+- Build `:app:assembleRelease` aprobado en 4m47s; R8 y reducción conservados.
+- APK ARM64 `2.6.23-musa-es`, versionCode `1000001`, paquete `io.zer0.muse`.
+- SHA-256 APK: `a7116693c2af12a5c80105a96900a579e8f51a7f248d8efa7ccb8a3d6ead5236`.
+- App y proveedor embebido: apksigner aprobado, certificado permanente coincidente.
+- Alineación de 16 KiB, integridad ZIP, no-debuggable y runtimes incluidos comprobados.
+- Respaldo 7z AES-256 con cabecera cifrada, fuera de Git; extracción y bytes validados.
+  Entregado por adjunto privado; el propietario debe descargarlo y custodiarlo.
+- GitHub Secrets aún no configurados: el propietario puede cargar los cuatro
+  archivos del respaldo en Repository secrets sin publicarlos.
+- Instalación, arranque y funcionamiento en teléfono no verificados.
