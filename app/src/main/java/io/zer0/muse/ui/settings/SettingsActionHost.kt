@@ -7,6 +7,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import io.zer0.muse.R
 import io.zer0.muse.diagnostic.DiagnosticExporter
 import io.zer0.muse.ui.common.feedback.MuseToast
@@ -30,6 +31,7 @@ data class SettingsActionHost(
 @Composable
 internal fun rememberSettingsActionHost(): SettingsActionHost {
     val context = LocalContext.current
+    val resources = LocalResources.current
     val updateNotifier: UpdateNotifier = koinInject()
     val scope = rememberCoroutineScope()
     var busyAction by remember { mutableStateOf<SettingsActionId?>(null) }
@@ -45,10 +47,10 @@ internal fun rememberSettingsActionHost(): SettingsActionHost {
                         busyAction = null
                     }
                     when (result) {
-                        is UpdateCheckResult.NewVersion -> MuseToast.show(context.getString(R.string.update_found_new))
-                        UpdateCheckResult.UpToDate -> MuseToast.show(context.getString(R.string.update_already_latest))
+                        is UpdateCheckResult.NewVersion -> MuseToast.show(resources.getString(R.string.update_found_new))
+                        UpdateCheckResult.UpToDate -> MuseToast.show(resources.getString(R.string.update_already_latest))
                         is UpdateCheckResult.Failed -> MuseToast.show(
-                            context.getString(R.string.settings_about_update_check_failed, result.message),
+                            resources.getString(R.string.settings_about_update_check_failed, result.message),
                         )
                         UpdateCheckResult.Skipped -> Unit
                     }

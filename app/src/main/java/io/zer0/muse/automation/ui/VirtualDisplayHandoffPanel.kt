@@ -1,5 +1,6 @@
 package io.zer0.muse.automation.ui
 
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -58,6 +59,7 @@ fun VirtualDisplayHandoffPanel(
     var actionResult by remember(displayId) { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     val context = androidx.compose.ui.platform.LocalContext.current
+    val resources = LocalResources.current
 
     LaunchedEffect(displayId) {
         while (true) {
@@ -139,7 +141,7 @@ fun VirtualDisplayHandoffPanel(
                 onClick = {
                     scope.launch {
                         val ok = runCatching { bringToMain() }.getOrDefault(false)
-                        actionResult = context.getString(
+                        actionResult = resources.getString(
                             if (ok) {
                                 R.string.automation_handoff_bring_main_ok
                             } else {

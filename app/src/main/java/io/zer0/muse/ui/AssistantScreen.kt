@@ -35,6 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -94,6 +95,7 @@ fun AssistantScreen(onBack: () -> Unit, onOpenDetail: (String) -> Unit, viewMode
     var actionSheetAssistantId by rememberSaveable { mutableStateOf<String?>(null) }
     var deleteTargetId by rememberSaveable { mutableStateOf<String?>(null) }
     val context = LocalContext.current
+    val resources = LocalResources.current
     var exportTargetId by rememberSaveable { mutableStateOf<String?>(null) }
     // v2.x: 待确认导入的角色卡(解析完成,用户确认后才写入)
     var pendingImportCard by remember { mutableStateOf<AssistantCardExporter.ParsedCard?>(null) }
@@ -733,14 +735,14 @@ fun AssistantScreen(onBack: () -> Unit, onOpenDetail: (String) -> Unit, viewMode
                     if (card.legacy) {
                         Spacer(Modifier.height(MusePaddings.auxGap))
                         Text(
-                            text = context.getString(R.string.assistant_diff_legacy_pack),
+                            text = resources.getString(R.string.assistant_diff_legacy_pack),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.error,
                         )
                     }
                     Spacer(Modifier.height(MusePaddings.auxGap))
                     Text(
-                        text = context.getString(R.string.assistant_diff_no_switch),
+                        text = resources.getString(R.string.assistant_diff_no_switch),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -756,7 +758,7 @@ fun AssistantScreen(onBack: () -> Unit, onOpenDetail: (String) -> Unit, viewMode
                     }
                     if (changes.size > 8) {
                         Text(
-                            text = context.getString(R.string.assistant_diff_more, changes.size - 8),
+                            text = resources.getString(R.string.assistant_diff_more, changes.size - 8),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.outline,
                         )
@@ -769,8 +771,8 @@ fun AssistantScreen(onBack: () -> Unit, onOpenDetail: (String) -> Unit, viewMode
                     pendingImportCard = null
                     scope.launch {
                         runCatching { AssistantCardExporter.commitParsed(context, repo, target) }
-                            .onSuccess { MuseToast.show(context.getString(R.string.assistant_toast_imported, it.name)) }
-                            .onFailure { MuseToast.show(context.getString(R.string.assistant_toast_import_failed, it.message ?: ""), 3500) }
+                            .onSuccess { MuseToast.show(resources.getString(R.string.assistant_toast_imported, it.name)) }
+                            .onFailure { MuseToast.show(resources.getString(R.string.assistant_toast_import_failed, it.message ?: ""), 3500) }
                     }
                 }
             },

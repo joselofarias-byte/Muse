@@ -39,6 +39,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -101,6 +102,7 @@ fun WorkspaceScreen(
     val workspaceManager: WorkspaceManager = koinInject()
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val resources = LocalResources.current
     val mainMountLabel = stringResource(R.string.workspace_title)
     val toolOutputsMountLabel = stringResource(R.string.workspace_tool_outputs)
     val widthClass = rememberWindowWidthClass()
@@ -613,7 +615,7 @@ fun WorkspaceScreen(
                 val name = newName.trim()
                 // 名称为空或包含非法字符(/ 或 ..)时弹提示且不关闭弹窗
                 if (name.isEmpty() || name.contains('/') || name.contains("..")) {
-                    MuseToast.show(context.getString(R.string.workspace_file_name))
+                    MuseToast.show(resources.getString(R.string.workspace_file_name))
                     return@MuseDialog
                 }
                 // 名称未变直接关闭弹窗,不执行 IO
@@ -697,7 +699,7 @@ fun WorkspaceScreen(
                                                     "移除挂载失败 id=${mount.id} label=${mount.label}（列表未变）",
                                                 )
                                                 MuseToast.show(
-                                                    context.getString(
+                                                    resources.getString(
                                                         R.string.workspace_mount_remove_failed,
                                                         mount.label,
                                                     ),
@@ -717,7 +719,7 @@ fun WorkspaceScreen(
                             runCatching { mountDirectoryLauncher.launch(null) }
                                 .onFailure {
                                     MuseToast.show(
-                                        context.getString(R.string.workspace_mount_failed, it.message),
+                                        resources.getString(R.string.workspace_mount_failed, it.message),
                                     )
                                 }
                         },
@@ -782,7 +784,7 @@ fun WorkspaceScreen(
             onConfirm = {
                 val name = newName.trim()
                 if (name.isEmpty() || name.contains('/') || name.contains("..")) {
-                    MuseToast.show(context.getString(R.string.workspace_file_name))
+                    MuseToast.show(resources.getString(R.string.workspace_file_name))
                     return@MuseDialog
                 }
                 val target = if (currentPath.isEmpty()) name else "$currentPath/$name"
