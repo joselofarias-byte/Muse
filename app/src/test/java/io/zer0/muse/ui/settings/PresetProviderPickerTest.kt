@@ -2,15 +2,16 @@ package io.zer0.muse.ui.settings
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.view.View
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.hasScrollToNodeAction
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
@@ -34,6 +35,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import java.io.File
+import kotlin.math.ceil
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], qualifiers = "es")
@@ -44,12 +46,14 @@ class PresetProviderPickerTest {
 
     private val context: Context = ApplicationProvider.getApplicationContext()
     private val presets = PresetProviders(context)
+    private lateinit var composeView: View
 
     @Test
     fun `last provider remains reachable and selectable on a narrow screen`() {
         val lastPreset = presets.all.last { preset -> presets.relay.any { it.id == preset.id } }
         var selected: ProviderConfig? = null
         composeTestRule.setContent {
+            composeView = LocalView.current
             MaterialTheme {
                 Box(Modifier.width(320.dp).height(480.dp).testTag("narrow-provider-picker")) {
                     PresetProviderPickerPage({}, { selected = it }, {}, presets)
@@ -68,9 +72,19 @@ class PresetProviderPickerTest {
 
     private fun saveNarrowPickerScreenshot(filename: String) {
         composeTestRule.waitForIdle()
-        val bitmap = composeTestRule.onNodeWithTag("narrow-provider-picker")
-            .captureToImage().asAndroidBitmap()
-        assertTrue("The rendered picker must have nonzero dimensions", bitmap.width > 0 && bitmap.height > 0)
+        val bounds = composeTestRule.onNodeWithTag("narrow-provider-picker").fetchSemanticsNode().boundsInRoot
+        assertTrue("The rendered picker must have nonzero dimensions", bounds.width > 0 && bounds.height > 0)
+        // Window capture waits for a frame-commit callback that Robolectric does not deliver.
+        val bitmap = composeTestRule.runOnIdle {
+            Bitmap.createBitmap(ceil(bounds.width).toInt(), ceil(bounds.height).toInt(), Bitmap.Config.ARGB_8888).also {
+                val canvas = Canvas(it)
+                canvas.translate(-bounds.left, -bounds.top)
+                composeView.draw(canvas)
+            }
+        }
+        val pixels = IntArray(bitmap.width * bitmap.height)
+        bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
+        assertTrue("The capture must contain rendered content, not a blank bitmap", pixels.any { it != pixels[0] })
         val output = File("build/reports/robolectric/provider-picker", filename)
         check(output.parentFile.mkdirs() || output.parentFile.isDirectory)
         output.outputStream().use { stream ->
