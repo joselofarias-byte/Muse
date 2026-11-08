@@ -37,6 +37,7 @@ import io.zer0.common.resultOf
 import io.zer0.common.toMessage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.delay
@@ -483,7 +484,8 @@ class OpenAIProvider(
             Logger.d(
                 "OpenAIProvider",
                 "stream-guard diagnose: emitDone called | finishReason=$finishReason | " +
-                    "contentChars=${contentCharsSent.get()} | reasoningChars=${reasoningCharsSent.get()} | anyDeltaSent=${anyDeltaSent.get()} | " +
+                    "contentChars=${contentCharsSent.get()} | reasoningChars=${reasoningCharsSent.get()} | " +
+                    "anyDeltaSent=${anyDeltaSent.get()} | " +
                     "aborted=${request.abortSignal.aborted} | useResponsesApi=$useResponsesApi | " +
                     "firstDeltaTs=${firstDeltaTimestamp.get()}",
             )
@@ -491,7 +493,9 @@ class OpenAIProvider(
             //   如果 finishReason=tool_calls 且存在空 name tool_call,说明模型流式模式下
             //   没有正确输出工具名,需触发非流式回退(非流式模式下 tool_calls 通常完整返回)。
             //   此时不能把 args 恢复为 ContentDelta(那是工具参数,不是正文),否则用户看到 JSON 幻觉。
-            val hasEmptyNameToolCall = toolCallAccMap.values.any { !it.recoveredAsContent && it.name.isNullOrBlank() && it.args.isNotEmpty() }
+            val hasEmptyNameToolCall = toolCallAccMap.values.any {
+                !it.recoveredAsContent && it.name.isNullOrBlank() && it.args.isNotEmpty()
+            }
 
             // v1.0.23: 商汤 deepseek-v4-flash 等流式过早结束 bug 检测
             //   商汤 API 流式实现有 bug:first delta 后立即 finish(只输出 0-4 个字符,
@@ -550,9 +554,8 @@ class OpenAIProvider(
                 pendingFallback.set(true)
                 Logger.w(
                     "OpenAIProvider",
-                    "stream-guard: 检测到流式过早结束 (chars=$totalChars, reasoning=$reasoningChars, duration=${deltaDuration}ms), 自动回退到非流式请求 | url=${sanitizeUrl(
-                        url,
-                    )}",
+                    "stream-guard: 检测到流式过早结束 (chars=$totalChars, reasoning=$reasoningChars, " +
+                        "duration=${deltaDuration}ms), 自动回退到非流式请求 | url=${sanitizeUrl(url)}",
                 )
                 var fallbackFailure: Throwable? = null
                 scope.launch {
@@ -699,7 +702,8 @@ class OpenAIProvider(
                             }
                             Logger.i(
                                 "OpenAIProvider",
-                                "stream-guard: 非流式回退成功 (text=${text.length} chars, reasoning=${reasoning.length} chars, toolCalls=${toolCalls.size})",
+                                "stream-guard: 非流式回退成功 (text=${text.length} chars, " +
+                                    "reasoning=${reasoning.length} chars, toolCalls=${toolCalls.size})",
                             )
                         } else {
                             Logger.w("OpenAIProvider", "stream-guard: 非流式回退最终失败: ${lastError?.message}")
@@ -760,8 +764,9 @@ class OpenAIProvider(
             }
         }
         val abortListener = request.abortSignal.addAbortListener {
-            // Cancel the active SSE connection immediately; all callbacks observe aborted
-            // and therefore must not schedule fallback/reconnect work.
+            // A failed SSE may have no callback left to finish the producer during backoff.
+            scope.trySend(ChatStreamEvent.StreamInterrupted("用户已停止生成"))
+            scope.close()
             cancelCurrentEventSource()
         }
 
@@ -1035,7 +1040,8 @@ class OpenAIProvider(
                                         }
                                         Logger.w(
                                             "OpenAIProvider",
-                                            "stream-guard: 空 name tool call 超过 $MAX_EMPTY_NAME_TOOL_CALLS 条,按正文增量恢复 (localIndex=$localIndex)",
+                                            "stream-guard: 空 name tool call 超过 $MAX_EMPTY_NAME_TOOL_CALLS 条," +
+                                                "按正文增量恢复 (localIndex=$localIndex)",
                                         )
                                         return@forEach
                                     }
@@ -1201,6 +1207,7 @@ class OpenAIProvider(
                                 "streamChat onFailure, retry $attempt/$MAX_RETRIES after ${backoffMs}ms: ${t?.message ?: code}",
                             )
                             scope.launch {
+                                if (request.abortSignal.aborted || scope.isClosedForSend) return@launch
                                 delay(backoffMs)
                                 if (!request.abortSignal.aborted && !scope.isClosedForSend) {
                                     connect()
@@ -1237,6 +1244,7 @@ class OpenAIProvider(
         connect()
 
         awaitClose {
+            scope.coroutineContext.cancelChildren()
             abortListener.close()
             // 只释放 HTTP 资源,不要把正常收尾标记成用户主动取消。
             consumerClosed.set(true)
@@ -2428,8 +2436,9 @@ class OpenAIProvider(
             }
         }
         val abortListener = request.abortSignal.addAbortListener {
-            // Cancel the active SSE connection immediately; all callbacks observe aborted
-            // and therefore must not schedule fallback/reconnect work.
+            // A failed SSE may have no callback left to finish the producer during backoff.
+            scope.trySend(ChatStreamEvent.StreamInterrupted("用户已停止生成"))
+            scope.close()
             cancelCurrentEventSource()
         }
 
@@ -2763,6 +2772,7 @@ class OpenAIProvider(
                             )
                             connectionGeneration.incrementAndGet()
                             scope.launch {
+                                if (request.abortSignal.aborted || scope.isClosedForSend) return@launch
                                 delay(backoffMs)
                                 if (!request.abortSignal.aborted && !scope.isClosedForSend) {
                                     connect()
@@ -2796,6 +2806,7 @@ class OpenAIProvider(
         connect()
 
         awaitClose {
+            scope.coroutineContext.cancelChildren()
             abortListener.close()
             // 只释放 HTTP 资源,不要把正常收尾标记成用户主动取消。
             consumerClosed.set(true)

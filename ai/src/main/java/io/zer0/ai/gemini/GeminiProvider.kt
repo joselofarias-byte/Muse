@@ -26,6 +26,7 @@ import io.zer0.common.resultOf
 import io.zer0.common.toMessage
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -53,11 +54,8 @@ import java.util.concurrent.atomic.AtomicReference
 import kotlin.random.Random
 
 /** A final usage-only Gemini frame is terminal only after visible content was emitted. */
-internal fun shouldCompleteUsageOnlyFrame(
-    hasEmittedContent: Boolean,
-    candidateCount: Int,
-    finished: Boolean,
-): Boolean = !finished && candidateCount == 0 && hasEmittedContent
+internal fun shouldCompleteUsageOnlyFrame(hasEmittedContent: Boolean, candidateCount: Int, finished: Boolean): Boolean =
+    !finished && candidateCount == 0 && hasEmittedContent
 
 /**
  * Google Gemini Provider(同时支持 generativelanguage API + Vertex AI)。
@@ -176,6 +174,9 @@ class GeminiProvider(
         val currentEventSource = AtomicReference<EventSource?>(null)
         val currentCall = AtomicReference<Call?>(null)
         val abortListener = request.abortSignal.addAbortListener {
+            // Backoff has no active SSE callback that can finish the producer.
+            scope.close()
+            generation.incrementAndGet()
             currentEventSource.get()?.cancel()
             currentCall.get()?.cancel()
         }
@@ -198,6 +199,10 @@ class GeminiProvider(
          * 最多 [MAX_RETRIES] 次。
          */
         fun startStream() {
+            if (request.abortSignal.aborted || scope.isClosedForSend) {
+                if (request.abortSignal.aborted) close()
+                return
+            }
             val myGen = generation.incrementAndGet()
             // v1.0.1 (P0): 每次重连重新构建 URL(多 key 切换后 ?key= 参数需更新)
             val currentUrl = try {
@@ -281,7 +286,10 @@ class GeminiProvider(
                             eventSource.cancel()
                             call.cancel()
                             scope.launch {
+                                Logger.w(TAG, "streamChat retryable failure(code=$code), backoff attempt=${attempt.get()}")
+                                if (request.abortSignal.aborted || scope.isClosedForSend) return@launch
                                 delay(backoffMs(attempt.get(), response.header("Retry-After")))
+                                if (request.abortSignal.aborted || scope.isClosedForSend) return@launch
                                 // M-GEM4: 重试时重新解析 token(Vertex AI 旧 token 可能已过期)
                                 token = try {
                                     resolveToken()
@@ -453,7 +461,10 @@ class GeminiProvider(
                         // H-GEM1: 推进 generation 使旧流的后续 onClosed 失效
                         generation.incrementAndGet()
                         scope.launch {
+                            Logger.w(TAG, "streamChat retryable failure(code=$code), backoff attempt=${attempt.get()}")
+                            if (request.abortSignal.aborted || scope.isClosedForSend) return@launch
                             delay(backoffMs(attempt.get(), response?.header("Retry-After")))
+                            if (request.abortSignal.aborted || scope.isClosedForSend) return@launch
                             // M-GEM4: 重试时重新解析 token
                             token = try {
                                 resolveToken()
@@ -495,11 +506,17 @@ class GeminiProvider(
 
             val eventSource = sseFactory.newEventSource(httpRequest, listener)
             currentEventSource.set(eventSource)
+            if (request.abortSignal.aborted || scope.isClosedForSend) {
+                currentEventSource.compareAndSet(eventSource, null)
+                eventSource.cancel()
+                call.cancel()
+            }
         }
 
         startStream()
 
         awaitClose {
+            scope.coroutineContext.cancelChildren()
             // L-GEM11: 不调 request.abortSignal.abort(),只 cancel eventSource + call
             abortListener.close()
             currentEventSource.get()?.cancel()
