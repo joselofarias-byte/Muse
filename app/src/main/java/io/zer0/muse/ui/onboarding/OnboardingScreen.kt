@@ -654,12 +654,7 @@ private fun LanguageCard(label: String, selected: Boolean, onClick: () -> Unit) 
 }
 
 @Composable
-private fun ThemeColorBlock(
-    theme: io.zer0.muse.ui.theme.PresetTheme,
-    selected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
+private fun ThemeColorBlock(theme: io.zer0.muse.ui.theme.PresetTheme, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val borderColor = if (selected) {
         MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
     } else {
@@ -854,20 +849,7 @@ private fun friendlyConnectError(raw: String): String {
 }
 
 @Composable
-private fun StepProviderConfig(
-    presetProviders: PresetProviders,
-    selectedPresetId: String,
-    onPresetSelected: (String) -> Unit,
-    apiKey: String,
-    onApiKeyChange: (String) -> Unit,
-    customBaseUrl: String,
-    onCustomBaseUrlChange: (String) -> Unit,
-    apiKeyVisible: Boolean,
-    onToggleApiKeyVisible: () -> Unit,
-    testStatus: TestStatus,
-    onTestConnection: () -> Unit,
-    onSkip: () -> Unit,
-) {
+private fun StepProviderConfig(presetProviders: PresetProviders, selectedPresetId: String, onPresetSelected: (String) -> Unit, apiKey: String, onApiKeyChange: (String) -> Unit, customBaseUrl: String, onCustomBaseUrlChange: (String) -> Unit, apiKeyVisible: Boolean, onToggleApiKeyVisible: () -> Unit, testStatus: TestStatus, onTestConnection: () -> Unit, onSkip: () -> Unit) {
     val isCustomSelected = selectedPresetId == "preset_custom_openai"
     val selectedPreset = presetProviders.all.firstOrNull { it.id == selectedPresetId }
     Column(
@@ -1066,14 +1048,7 @@ private fun StepProviderConfig(
 
 // ── Paso 4: Selecciona un modelo ──────────────────────────────────────────
 @Composable
-private fun StepSelectModel(
-    models: List<Model>,
-    selectedModelId: String,
-    onSelectModel: (String) -> Unit,
-    searchQuery: String,
-    onSearchQueryChange: (String) -> Unit,
-    providerSkipped: Boolean,
-) {
+private fun StepSelectModel(models: List<Model>, selectedModelId: String, onSelectModel: (String) -> Unit, searchQuery: String, onSearchQueryChange: (String) -> Unit, providerSkipped: Boolean) {
     if (providerSkipped || models.isEmpty()) {
         // Cuando se omite el paso 3 o no hay ningún modelo, solicite al usuario
         Column(
@@ -1319,13 +1294,7 @@ private fun TutorialCard(item: FeatureItem) {
 // ── botón de cápsula ──────────────────────────────────────────
 
 @Composable
-private fun PrimaryPillButton(
-    text: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    enabled: Boolean = true,
-    icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
-) {
+private fun PrimaryPillButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, icon: androidx.compose.ui.graphics.vector.ImageVector? = null) {
     Surface(
         onClick = onClick,
         enabled = enabled,
@@ -1371,12 +1340,7 @@ private fun PrimaryPillButton(
 }
 
 @Composable
-private fun SecondaryPillButton(
-    text: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
-) {
+private fun SecondaryPillButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, icon: androidx.compose.ui.graphics.vector.ImageVector? = null) {
     Surface(
         onClick = onClick,
         shape = MuseShapes.pill,
@@ -1490,18 +1454,7 @@ private fun BottomButtons(currentPage: Int, canGoNext: Boolean, onPrevious: () -
  *
  * Idioma(pasos 1)/interruptor de memoria(pasos 3)/Tema(pasos 6)Se guarda inmediatamente cuando el usuario opera y no se repetirá aquí.
  */
-private suspend fun saveStepData(
-    currentPage: Int,
-    settings: SettingsRepository,
-    assistantRepo: AssistantRepository,
-    userName: String,
-    agentName: String,
-    selectedPreset: ProviderConfig?,
-    apiKey: String,
-    fetchedModels: List<Model>,
-    selectedModelId: String,
-    providerSkipped: Boolean,
-) {
+private suspend fun saveStepData(currentPage: Int, settings: SettingsRepository, assistantRepo: AssistantRepository, userName: String, agentName: String, selectedPreset: ProviderConfig?, apiKey: String, fetchedModels: List<Model>, selectedModelId: String, providerSkipped: Boolean) {
     when (currentPage) {
         2 -> {
             // Guardar nombre de usuario
