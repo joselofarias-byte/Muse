@@ -498,7 +498,7 @@ internal fun MoodCapsule(mood: String, expanded: Boolean, onToggle: () -> Unit) 
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = "MOOD",
+                    text = "ESTADO DE ÁNIMO",
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
