@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -33,7 +34,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.zer0.ai.core.ProviderCategory
 import io.zer0.ai.core.ProviderConfig
@@ -85,9 +85,13 @@ fun PresetProviderPickerDialog(onDismiss: () -> Unit, onPickPreset: (ProviderCon
  * 顶部栏 + 搜索栏 + LazyColumn。
  */
 @Composable
-private fun PresetProviderPickerPage(onDismiss: () -> Unit, onPickPreset: (ProviderConfig) -> Unit, onPickCustom: () -> Unit) {
+internal fun PresetProviderPickerPage(
+    onDismiss: () -> Unit,
+    onPickPreset: (ProviderConfig) -> Unit,
+    onPickCustom: () -> Unit,
+    presetProviders: PresetProviders = koinInject(),
+) {
     var query by remember { mutableStateOf("") }
-    val presetProviders = koinInject<PresetProviders>()
 
     io.zer0.muse.ui.common.surface.MusePageScaffold(
         topBar = {
@@ -97,7 +101,8 @@ private fun PresetProviderPickerPage(onDismiss: () -> Unit, onPickPreset: (Provi
             )
         },
         modifier = Modifier
-            .fillMaxSize(),
+            .fillMaxSize()
+            .imePadding(),
         containerColor = MaterialTheme.colorScheme.background,
     ) { innerPadding ->
         LazyColumn(
@@ -192,7 +197,7 @@ private fun PresetProviderPickerPage(onDismiss: () -> Unit, onPickPreset: (Provi
                         Text(
                             text = stringResource(R.string.settings_preset_no_match),
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.outline,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }
@@ -307,44 +312,23 @@ private fun PresetItem(preset: ProviderConfig, onClick: () -> Unit) {
                     text = preset.displayName,
                     style = MaterialTheme.typography.bodyLargeEmphasis,
                     color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
                 )
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    Text(
-                        text = extractDomain(preset.baseUrl).ifBlank { needBaseUrlText },
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.outline,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f, fill = false),
-                    )
-                    // LAYOUT-01: 副标题行中间是纯装饰分隔符、末尾是模型数徽章 —— 两者都不取宽
-                    // (剩余宽度已归左侧域名文本的 weight(fill = false)),限 1 行防逐字换行。
-                    Text(
-                        text = "·",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.outline,
-                        maxLines = 1,
-                    )
-                    Text(
-                        text = stringResource(R.string.settings_preset_model_count, preset.models.size),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                    )
-                }
+                Text(
+                    text = extractDomain(preset.baseUrl).ifBlank { needBaseUrlText },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = stringResource(R.string.settings_preset_model_count, preset.models.size),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
                 // v2.6.0: OAuth 预设提示 —— 点击即跳转授权，无需填 Key
                 if (preset.oauthConfig != null) {
                     Text(
                         text = stringResource(R.string.settings_preset_oauth_quick_login),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.primary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
                     )
                 }
             }

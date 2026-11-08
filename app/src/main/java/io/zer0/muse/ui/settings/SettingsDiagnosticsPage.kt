@@ -23,8 +23,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import io.zer0.memory.fact.MemoryAuditSource
 import io.zer0.muse.R
+import io.zer0.muse.diagnostics.DiagnosticsDisplayFormat
 import io.zer0.muse.diagnostics.DiagnosticsSnapshot
 import io.zer0.muse.diagnostics.MainThreadJankTracker
+import io.zer0.muse.schedule.WakeState
+import io.zer0.muse.schedule.WakeWorkKind
 import io.zer0.muse.ui.common.feedback.MuseToast
 import io.zer0.muse.ui.common.form.MuseCapsuleButton
 import io.zer0.muse.ui.common.surface.CardGroup
@@ -33,9 +36,6 @@ import io.zer0.muse.ui.theme.MusePaddings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 /**
  * v2.6.23(S4): 运行诊断子页。
@@ -68,7 +68,7 @@ fun SettingsDiagnosticsPage(onBack: () -> Unit) {
                 Text(
                     text = stringResource(R.string.settings_diagnostics_loading),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.outline,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = MusePaddings.screen, vertical = MusePaddings.contentGap),
                 )
             }
@@ -137,8 +137,13 @@ private fun AppInfoCard(data: DiagnosticsSnapshot) {
     val rows = listOf(
         stringResource(R.string.settings_diagnostics_version) to "${data.app.versionName} (${data.app.versionCode})",
         stringResource(R.string.settings_diagnostics_db_versions) to
-            "muse ${data.app.museDbVersion} · facts ${data.app.factDbVersion} · memory ${data.app.memoryDbVersion}",
-        stringResource(R.string.settings_diagnostics_collected_at) to formatTime(data.collectedAt),
+            stringResource(
+                R.string.settings_diagnostics_schema_summary,
+                data.app.museDbVersion,
+                data.app.factDbVersion,
+                data.app.memoryDbVersion,
+            ),
+        stringResource(R.string.settings_diagnostics_collected_at) to DiagnosticsDisplayFormat.collectedAt(data.collectedAt),
     )
     CardGroup(title = { Text(title) }) {
         rows.forEach { (label, value) -> infoRow(label, value) }
@@ -150,11 +155,16 @@ private fun StorageCard(data: DiagnosticsSnapshot) {
     val title = stringResource(R.string.settings_diagnostics_storage)
     val unknownSuffix = stringResource(R.string.settings_diagnostics_unknown_db)
     val rows = buildList {
-        add(stringResource(R.string.settings_diagnostics_total_bytes) to formatBytes(data.storage.totalBytes))
-        add(stringResource(R.string.settings_diagnostics_log_bytes) to formatBytes(data.storage.logBytes))
+        add(stringResource(R.string.settings_diagnostics_total_bytes) to DiagnosticsDisplayFormat.bytes(data.storage.totalBytes))
+        add(stringResource(R.string.settings_diagnostics_log_bytes) to DiagnosticsDisplayFormat.bytes(data.storage.logBytes))
         data.storage.databases.forEach { db ->
             val suffix = if (db.known) "" else " · $unknownSuffix"
-            add(db.name to "${formatBytes(db.mainBytes)} + wal ${formatBytes(db.walBytes)}$suffix")
+            val sizes = stringResource(
+                R.string.settings_diagnostics_database_sizes,
+                DiagnosticsDisplayFormat.bytes(db.mainBytes),
+                DiagnosticsDisplayFormat.bytes(db.walBytes),
+            )
+            add(db.name to "$sizes$suffix")
         }
     }
     CardGroup(title = { Text(title) }) {
@@ -234,8 +244,8 @@ private fun BackgroundCard(data: DiagnosticsSnapshot) {
             add(stringResource(R.string.settings_diagnostics_bg_none) to "")
         }
         data.background.entries.forEach { entry ->
-            val next = entry.nextRunAtMillis?.let { formatEpochMillis(it) } ?: "—"
-            add(entry.kind.name.lowercase() to "${entry.state.name} · $next")
+            val next = entry.nextRunAtMillis?.let { DiagnosticsDisplayFormat.epochMillis(it) } ?: "—"
+            add(diagnosticsWorkKindLabel(entry.kind) to "${diagnosticsWorkStateLabel(entry.state)} · $next")
         }
     }
     CardGroup(title = { Text(title) }) {
@@ -251,7 +261,10 @@ private fun BackgroundCard(data: DiagnosticsSnapshot) {
 private fun CardGroupScope.infoRow(label: String, value: String) {
     item(
         headlineContent = {
-            Column(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
                 Text(
                     text = label,
                     style = MaterialTheme.typography.bodyMedium,
@@ -268,19 +281,28 @@ private fun CardGroupScope.infoRow(label: String, value: String) {
     )
 }
 
-private fun formatBytes(bytes: Long): String = when {
-    bytes >= 1_000_000_000L -> String.format(Locale.US, "%.2f GB", bytes / 1_000_000_000.0)
-    bytes >= 1_000_000L -> String.format(Locale.US, "%.1f MB", bytes / 1_000_000.0)
-    bytes >= 1_000L -> String.format(Locale.US, "%.1f KB", bytes / 1_000.0)
-    else -> "$bytes B"
-}
+@Composable
+private fun diagnosticsWorkKindLabel(kind: WakeWorkKind): String = stringResource(
+    when (kind) {
+        WakeWorkKind.SCHEDULED_TASK -> R.string.wake_kind_scheduled_task
+        WakeWorkKind.PROACTIVE -> R.string.wake_kind_proactive
+        WakeWorkKind.DAILY_SUMMARY -> R.string.wake_kind_daily_summary
+        WakeWorkKind.CLOUD_BACKUP -> R.string.wake_kind_cloud_backup
+        WakeWorkKind.AUTO_BACKUP -> R.string.wake_kind_auto_backup
+        WakeWorkKind.STATS_CACHE -> R.string.wake_kind_stats_cache
+    },
+)
 
-private val timeFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
-
-private fun formatTime(iso: String): String = runCatching {
-    timeFormat.format(Date.from(java.time.Instant.parse(iso)))
-}.getOrDefault(iso)
-
-private fun formatEpochMillis(millis: Long): String = runCatching {
-    timeFormat.format(Date(millis))
-}.getOrDefault("")
+@Composable
+private fun diagnosticsWorkStateLabel(state: WakeState): String = stringResource(
+    when (state) {
+        WakeState.ENQUEUED -> R.string.wake_state_enqueued
+        WakeState.RUNNING -> R.string.wake_state_running
+        WakeState.BLOCKED -> R.string.wake_state_blocked
+        WakeState.SUCCEEDED -> R.string.wake_state_succeeded
+        WakeState.FAILED -> R.string.wake_state_failed
+        WakeState.CANCELLED -> R.string.wake_state_cancelled
+        WakeState.NOT_REGISTERED -> R.string.wake_state_not_registered
+        WakeState.UNKNOWN -> R.string.wake_state_unknown
+    },
+)

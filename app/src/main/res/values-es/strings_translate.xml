@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools">
     <string name="translate_page_title">Traducción</string>
-    <string name="translate_page_input_placeholder">Ingrese el texto para traducir...</string>
+    <string name="translate_page_input_placeholder">Entra el texto para traducir...</string>
     <string name="translate_page_translate">Traducción</string>
     <string name="translate_page_copy">Copiar resultados</string>
     <string name="translate_page_paste">Pegar</string>
@@ -48,7 +48,7 @@
     <string name="translate_page_batch_results_title">Resultados de traducción por lotes (%1$d artículo)</string>
     <string name="translate_page_custom_style_add">agregar estilo</string>
     <string name="translate_page_custom_style_name">nombre de estilo</string>
-    <string name="translate_page_custom_style_prompt">Directivas de estilo (como\"Utilice la traducción al chino clásico antiguo\")</string>
+    <string name="translate_page_custom_style_prompt">Directivas de estilo (como\"Usa la traducción al chino clásico antiguo\")</string>
     <string name="translate_page_custom_style_save">Guardar</string>
     <string name="translate_page_custom_style_remove">Eliminar</string>
     <string name="translate_page_custom_style_added">Estilo personalizado agregado</string>
