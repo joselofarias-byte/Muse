@@ -37,6 +37,7 @@ import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -53,8 +54,8 @@ import io.zer0.muse.data.session.MigrationProgressBus
 import io.zer0.muse.intent.ShareIntentHandler
 import io.zer0.muse.ui.ChatViewModel
 import io.zer0.muse.ui.MuseRoutes
-import io.zer0.muse.ui.common.animation.MuseFluidSharedHost
 import io.zer0.muse.ui.SafeModeScreen
+import io.zer0.muse.ui.common.animation.MuseFluidSharedHost
 import io.zer0.muse.ui.common.feedback.MuseToastHost
 import io.zer0.muse.ui.common.media.DesktopShortcuts
 import io.zer0.muse.ui.common.media.rememberDesktopShortcutsEnabled
@@ -448,6 +449,7 @@ private fun MuseNavGraph(
     onSplashReady: () -> Unit = {},
 ) {
     val context = LocalContext.current
+    val resources = LocalResources.current
     val navController = rememberNavController()
     val sharedViewModel: ChatViewModel = koinInject()
     val quickNotesViewModel: QuickNotesViewModel = koinInject()
@@ -599,9 +601,9 @@ private fun MuseNavGraph(
                                 )
                                 val message = when (val outcome = importer.importUrl(result.url)) {
                                     is io.zer0.muse.data.skill.SkillPackageImporter.Outcome.Installed ->
-                                        context.getString(R.string.skill_imported, outcome.skill.name)
+                                        resources.getString(R.string.skill_imported, outcome.skill.name)
                                     is io.zer0.muse.data.skill.SkillPackageImporter.Outcome.Failed ->
-                                        context.getString(R.string.skill_import_error, outcome.reason)
+                                        resources.getString(R.string.skill_import_error, outcome.reason)
                                 }
                                 io.zer0.muse.ui.common.feedback.MuseToast.show(message)
                             }
@@ -726,37 +728,38 @@ private fun MuseNavGraph(
                     // 子页面由导航栈回退，根页面没有可回退栈时交给 Activity 默认行为退出。
                     // 页面级 BackHandler、Dialog 和 Popup 仍按 Compose 的内层优先级先消费。
 
-                    MuseFluidSharedHost { NavHost(
-                        navController = navController,
-                        startDestination = startDestination,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(MaterialTheme.colorScheme.background),
-                        // 默认过渡与各子 NavGraph 复用同一套 helper，避免根图和二级图的
-                        // 时长/位移/淡入淡出语义漂移。
-                        enterTransition = { MuseTransitions.horizontalPushEnter() },
-                        exitTransition = { MuseTransitions.horizontalPushExit() },
-                        popEnterTransition = { MuseTransitions.horizontalPopEnter() },
-                        popExitTransition = { MuseTransitions.horizontalPushPopExit() },
-                    ) {
-                        // P0-3: NavGraph 子图抽取 — 66 个 composable 拆分到 4 个域文件
-                        chatNavGraph(
+                    MuseFluidSharedHost {
+                        NavHost(
                             navController = navController,
-                            sharedViewModel = sharedViewModel,
-                        )
-                        assistantNavGraph(
-                            navController = navController,
-                            sharedViewModel = sharedViewModel,
-                        )
-                        settingsNavGraph(
-                            navController = navController,
-                            sharedViewModel = sharedViewModel,
-                        )
-                        toolsNavGraph(
-                            navController = navController,
-                            sharedViewModel = sharedViewModel,
-                        )
-                    }
+                            startDestination = startDestination,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(MaterialTheme.colorScheme.background),
+                            // 默认过渡与各子 NavGraph 复用同一套 helper，避免根图和二级图的
+                            // 时长/位移/淡入淡出语义漂移。
+                            enterTransition = { MuseTransitions.horizontalPushEnter() },
+                            exitTransition = { MuseTransitions.horizontalPushExit() },
+                            popEnterTransition = { MuseTransitions.horizontalPopEnter() },
+                            popExitTransition = { MuseTransitions.horizontalPushPopExit() },
+                        ) {
+                            // P0-3: NavGraph 子图抽取 — 66 个 composable 拆分到 4 个域文件
+                            chatNavGraph(
+                                navController = navController,
+                                sharedViewModel = sharedViewModel,
+                            )
+                            assistantNavGraph(
+                                navController = navController,
+                                sharedViewModel = sharedViewModel,
+                            )
+                            settingsNavGraph(
+                                navController = navController,
+                                sharedViewModel = sharedViewModel,
+                            )
+                            toolsNavGraph(
+                                navController = navController,
+                                sharedViewModel = sharedViewModel,
+                            )
+                        }
                     } // 关闭共享元素宿主（全应用唯一 SharedTransitionLayout）
                     // 引导页里点「从备份恢复数据」:覆盖层先退场,这一帧之后再进云端备份页。
                     LaunchedEffect(pendingOnboardingRoute) {

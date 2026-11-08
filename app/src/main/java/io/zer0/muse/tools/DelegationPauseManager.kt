@@ -99,13 +99,7 @@ class DelegationPauseManager {
      * @param userRejected 用户**真的**点了拒绝时各处原本的说法（本函数不改写它）
      * @param userCancelled 用户**真的**点了取消时各处原本的说法
      */
-    fun rejectionText(
-        response: PauseResponse,
-        policy: PausePolicy,
-        subject: String,
-        userRejected: String,
-        userCancelled: String,
-    ): String {
+    fun rejectionText(response: PauseResponse, policy: PausePolicy, subject: String, userRejected: String, userCancelled: String): String {
         val minutes = (policy.autoTimeoutSec.coerceAtLeast(0) + SECONDS_PER_MINUTE - 1) / SECONDS_PER_MINUTE
         // 不足一分钟就别写"0 分钟"：那句读起来像 bug，不如只说超时
         val waited = if (minutes >= 1) "确认等待超过 $minutes 分钟" else "确认等待超时"
@@ -120,11 +114,16 @@ class DelegationPauseManager {
     /** 暂停点配置策略。 */
     @Serializable
     data class PausePolicy(
-        val pauseBeforeTeam: Boolean = false, // 团队工作流执行前
-        val pauseBeforeEachMember: Boolean = false, // 团队每个成员执行前
-        val pauseOnIntermediateResult: Boolean = false, // 中间结果产出后
-        val pauseOnHighRisk: Boolean = true, // 高风险任务前(默认开启)
-        val autoTimeoutSec: Int = 300, // 暂停等待超时(秒),超时自动拒绝
+        // 团队工作流执行前
+        val pauseBeforeTeam: Boolean = false,
+        // 团队每个成员执行前
+        val pauseBeforeEachMember: Boolean = false,
+        // 中间结果产出后
+        val pauseOnIntermediateResult: Boolean = false,
+        // 高风险任务前(默认开启)
+        val pauseOnHighRisk: Boolean = true,
+        // 暂停等待超时(秒),超时自动拒绝
+        val autoTimeoutSec: Int = 300,
     )
 
     /** 当前活跃的暂停请求(requestId -> PauseRequest)。 */

@@ -28,6 +28,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -54,10 +55,10 @@ import io.zer0.muse.ui.theme.MuseShapes
 import io.zer0.muse.ui.theme.pill
 import io.zer0.muse.web.CompositeWebSearchService
 import io.zer0.muse.web.WebSearchConfig
-import io.zer0.muse.web.WebSearchProbeReason
-import io.zer0.muse.web.probeSearchProvider
 import io.zer0.muse.web.WebSearchCoordinator
 import io.zer0.muse.web.WebSearchMode
+import io.zer0.muse.web.WebSearchProbeReason
+import io.zer0.muse.web.probeSearchProvider
 import kotlinx.coroutines.launch
 import org.koin.core.context.GlobalContext
 
@@ -66,6 +67,7 @@ import org.koin.core.context.GlobalContext
 internal fun WebSearchSection(webSearchConfig: WebSearchConfig, settings: SettingsRepository) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val resources = LocalResources.current
     val savedText = stringResource(R.string.settings_saved)
     val coordinator: WebSearchCoordinator = org.koin.compose.koinInject()
     // 验证单个引擎要用搜索侧那个独立 OkHttpClient（Koin 里以 named("webSearch") 绑定，
@@ -321,7 +323,11 @@ internal fun WebSearchSection(webSearchConfig: WebSearchConfig, settings: Settin
                         ) {
                             Text(
                                 p,
-                                color = if (p == webSearchConfig.providerName) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                                color = if (p == webSearchConfig.providerName) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurface
+                                },
                                 fontWeight = if (p == webSearchConfig.providerName) FontWeight.SemiBold else FontWeight.Normal,
                             )
                         }
@@ -389,8 +395,11 @@ internal fun WebSearchSection(webSearchConfig: WebSearchConfig, settings: Settin
                         }
                         SavePill(
                             stringResource(
-                                if (verifying) R.string.settings_web_search_testing
-                                else R.string.settings_web_search_key_verify,
+                                if (verifying) {
+                                    R.string.settings_web_search_testing
+                                } else {
+                                    R.string.settings_web_search_key_verify
+                                },
                             ),
                         ) {
                             if (verifying) return@SavePill
@@ -403,8 +412,12 @@ internal fun WebSearchSection(webSearchConfig: WebSearchConfig, settings: Settin
                                     cfg = webSearchConfig,
                                     providerKey = provider,
                                     apiKeyDraft =
-                                        if (keyEdited) keyDraft
-                                        else savedKey, // 没编辑就用已存的那把 Key 去验，不误用空串
+                                    if (keyEdited) {
+                                        keyDraft
+                                    } else {
+                                        savedKey
+                                        // 没编辑就用已存的那把 Key 去验，不误用空串
+                                    },
                                 )
                                 verifyText = when {
                                     outcome.ok -> context.getString(
@@ -543,9 +556,9 @@ internal fun WebSearchSection(webSearchConfig: WebSearchConfig, settings: Settin
                                 testResult = formatTestResult(context, results)
                             } catch (e: Exception) {
                                 testResult =
-                                    context.getString(
+                                    resources.getString(
                                         R.string.settings_web_search_test_failed,
-                                        e.message ?: context.getString(R.string.settings_web_search_test_failed_unknown),
+                                        e.message ?: resources.getString(R.string.settings_web_search_test_failed_unknown),
                                     )
                             } finally {
                                 testing = false

@@ -359,7 +359,10 @@ class TranslateViewModel(
                 _state.update {
                     it.copy(
                         translating = false,
-                        errorMessage = appContext.getString(R.string.err_chat_translate_failed, t.message ?: appContext.getString(R.string.err_chat_unknown)),
+                        errorMessage = appContext.getString(
+                            R.string.err_chat_translate_failed,
+                            t.message ?: appContext.getString(R.string.err_chat_unknown),
+                        ),
                     )
                 }
             }

@@ -35,9 +35,9 @@ import io.zer0.muse.ui.theme.MuseActionColors
 import io.zer0.muse.ui.theme.MuseCapsuleButtonSizes
 import io.zer0.muse.ui.theme.MuseIconSizes
 import io.zer0.muse.ui.theme.MuseMotion
-import io.zer0.muse.ui.theme.MuseSpringTier
 import io.zer0.muse.ui.theme.MusePaddings
 import io.zer0.muse.ui.theme.MuseShapes
+import io.zer0.muse.ui.theme.MuseSpringTier
 import io.zer0.muse.ui.theme.huge
 
 /**
@@ -77,7 +77,7 @@ fun MuseCapsuleButton(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
-        targetValue = if (isPressed) MuseCapsuleButtonSizes.pressScale else 1f,
+        targetValue = if (isPressed) MuseCapsuleButtonSizes.PRESS_SCALE else 1f,
         animationSpec = MuseMotion.spring(MuseSpringTier.RESPONSIVE),
         label = "capsuleBtnScale",
     )

@@ -21,6 +21,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -67,6 +68,7 @@ import kotlin.math.roundToInt
 @Composable
 fun RagSettingsPage(onBack: () -> Unit, onManageKbs: () -> Unit = {}) {
     val context = LocalContext.current
+    val resources = LocalResources.current
     val settings: SettingsRepository = koinInject()
     val embeddingService: io.zer0.muse.rag.EmbeddingService = koinInject()
     val config by settings.ragConfigFlow.collectAsStateWithLifecycle(initialValue = RagConfig())
@@ -135,9 +137,9 @@ fun RagSettingsPage(onBack: () -> Unit, onManageKbs: () -> Unit = {}) {
             scope.launch {
                 runCatching {
                     settings.saveRagConfig(config.copy(cloudModel = cloudModelTemp))
-                    MuseToast.show(context.getString(R.string.rag_saved_success))
+                    MuseToast.show(resources.getString(R.string.rag_saved_success))
                 }.onFailure {
-                    MuseToast.show(context.getString(R.string.rag_save_failed))
+                    MuseToast.show(resources.getString(R.string.rag_save_failed))
                 }
             }
         }
@@ -427,9 +429,9 @@ fun RagSettingsPage(onBack: () -> Unit, onManageKbs: () -> Unit = {}) {
                                                 embeddingTestResult =
                                                     TestResult(
                                                         false,
-                                                        context.getString(
+                                                        resources.getString(
                                                             R.string.settings_rag_embedding_test_failed,
-                                                            context.getString(R.string.settings_rag_config_read_failed),
+                                                            resources.getString(R.string.settings_rag_config_read_failed),
                                                         ),
                                                     )
                                                 embeddingTestRunning = false
@@ -445,12 +447,12 @@ fun RagSettingsPage(onBack: () -> Unit, onManageKbs: () -> Unit = {}) {
                                             }
                                             embeddingTestResult = outcome.fold(
                                                 onSuccess = { (dim, ms) ->
-                                                    TestResult(true, context.getString(R.string.settings_rag_embedding_test_ok, dim, ms))
+                                                    TestResult(true, resources.getString(R.string.settings_rag_embedding_test_ok, dim, ms))
                                                 },
                                                 onFailure = { e ->
                                                     TestResult(
                                                         false,
-                                                        context.getString(
+                                                        resources.getString(
                                                             R.string.settings_rag_embedding_test_failed,
                                                             e.message?.take(160) ?: e::class.simpleName ?: "",
                                                         ),
@@ -819,10 +821,7 @@ fun RagSettingsPage(onBack: () -> Unit, onManageKbs: () -> Unit = {}) {
  * 因此这里可以无条件调用。
  */
 @Suppress("TooGenericExceptionCaught")
-private suspend fun resolveActiveBackendQuietly(
-    embeddingService: io.zer0.muse.rag.EmbeddingService,
-    config: RagConfig,
-) {
+private suspend fun resolveActiveBackendQuietly(embeddingService: io.zer0.muse.rag.EmbeddingService, config: RagConfig) {
     if (embeddingService.activeBackend.value != null) return
     try {
         embeddingService.getProvider(config)

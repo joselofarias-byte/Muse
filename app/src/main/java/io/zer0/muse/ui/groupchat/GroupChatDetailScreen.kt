@@ -101,6 +101,7 @@ import io.zer0.muse.ui.theme.MusePaddings
 import io.zer0.muse.ui.theme.MuseShapes
 import io.zer0.muse.ui.theme.assistantBubble
 import io.zer0.muse.ui.theme.semiLarge
+import io.zer0.muse.ui.theme.titleMediumStrong
 import io.zer0.muse.util.ShareIntentHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -109,7 +110,6 @@ import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.koin.androidx.compose.koinViewModel
-import io.zer0.muse.ui.theme.titleMediumStrong
 
 /**
  * 群聊详情页 — 消息流 + 输入栏 + Agent 轮转回复。
@@ -471,7 +471,8 @@ fun GroupChatDetailScreen(
             if (!chatBackground.isNullOrBlank()) {
                 io.zer0.muse.ui.SmartImage(
                     model = chatBackground,
-                    contentDescription = stringResource(R.string.groupchat_bg_cd), // 前端修复 (i18n-1)
+                    // 前端修复 (i18n-1)
+                    contentDescription = stringResource(R.string.groupchat_bg_cd),
                     contentScale = androidx.compose.ui.layout.ContentScale.Crop,
                     modifier = Modifier.fillMaxSize(),
                 )

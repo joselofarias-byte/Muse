@@ -618,7 +618,8 @@ class SkillSearchToolsImpl(
             }
         // v1.71: 使用 HTTPS,避免明文传输的中间人风险
         // v1.109 修复: 显式指定 sortBy=relevance,避免复合查询被日期序覆盖
-        val url = "https://export.arxiv.org/api/query?search_query=$searchQuery&max_results=$maxResults&sortBy=relevance&sortOrder=descending"
+        val url = "https://export.arxiv.org/api/query?search_query=$searchQuery&max_results=" +
+            "$maxResults&sortBy=relevance&sortOrder=descending"
         val req =
             Request.Builder().url(url).get()
                 .header("User-Agent", "muse/1.0 (Android LLM client)")

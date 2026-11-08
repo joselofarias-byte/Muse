@@ -327,8 +327,7 @@ class AutoWebSearchService(
         return emptyList()
     }
 
-    private fun buildProviderChain(cfg: WebSearchConfig): List<WebSearchService> =
-        buildSearchChain(client, cfg)
+    private fun buildProviderChain(cfg: WebSearchConfig): List<WebSearchService> = buildSearchChain(client, cfg)
 
     companion object {
         /** 已知低质量域名(日期计算器、单位换算等工具站)。 */
@@ -1215,7 +1214,6 @@ class PerplexitySearchProvider(
     }
 }
 
-
 /**
  * Auto 链的**内置顺序**（引擎名，按尝试先后）。
  *
@@ -1356,10 +1354,7 @@ internal val AUTO_CHAIN_PROVIDER_KEYS: List<String> = listOf(
  * 提成顶层函数是为了**可测**：类里的版本要走 Koin 与运行时配置，
  * 而"配了哪几家、按什么顺序试、关掉回退时取谁"这三条判据不该靠真机或联网验证。
  */
-internal fun buildSearchChain(
-    client: OkHttpClient,
-    cfg: WebSearchConfig,
-): List<WebSearchService> {
+internal fun buildSearchChain(client: OkHttpClient, cfg: WebSearchConfig): List<WebSearchService> {
     val chain = mutableListOf<Pair<String, WebSearchService>>()
 
     // v2.6.10: 用户自定义引擎排最前。
@@ -1451,10 +1446,7 @@ internal val AUTO_CHAIN_BUILDERS: Map<
  * 抽成纯函数是为了能被单独测：链的构造要拉 OkHttp 与真实 provider，
  * 而"顺序到底有没有被尊重"这条判据不该靠联网测试来证明。
  */
-internal fun orderWebSearchChain(
-    chain: List<Pair<String, WebSearchService>>,
-    order: List<String>,
-): List<Pair<String, WebSearchService>> {
+internal fun orderWebSearchChain(chain: List<Pair<String, WebSearchService>>, order: List<String>): List<Pair<String, WebSearchService>> {
     if (order.isEmpty() || chain.size <= 1) return chain
     val byKey = chain.toMap()
     val wanted = order.mapNotNull { key -> byKey.entries.firstOrNull { it.key == key }?.toPair() }

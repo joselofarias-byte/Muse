@@ -34,6 +34,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -163,11 +164,7 @@ internal fun ProcessCard(
  * 「等待审批…」在折叠态根本看不见 —— 而折叠态恰恰是用户最常停留的样子：
  * 卡片显示"正在跑 shell"，实际是**在等他按批准**，30 秒后还会静默变成拒绝。
  */
-internal fun pickRunningStepText(
-    title: String,
-    stepProgress: String?,
-    runningFallback: String,
-): String {
+internal fun pickRunningStepText(title: String, stepProgress: String?, runningFallback: String): String {
     val waiting = stepProgress?.takeIf { value -> value == APPROVAL_WAIT_LABEL }
     if (waiting != null) return waiting
     return title.ifBlank { stepProgress.orEmpty() }.ifBlank { runningFallback }
@@ -181,20 +178,19 @@ private fun resolveSummaryText(
     doneSteps: Int,
     totalSteps: Int,
     isActive: Boolean,
-): String =
-    when {
-        progressText != null -> progressText
-        runningStep != null -> pickRunningStepText(
-            title = runningStep.title,
-            stepProgress = runningStep.progressText,
-            runningFallback = context.getString(R.string.chat_process_running),
-        )
-        totalSteps > 0 && doneSteps == totalSteps ->
-            context.getString(R.string.chat_process_steps_completed, totalSteps)
-        totalSteps > 0 -> context.getString(R.string.chat_process_steps_progress, doneSteps, totalSteps)
-        isActive -> context.getString(R.string.chat_process_thinking_now)
-        else -> context.getString(R.string.chat_process_completed)
-    }
+): String = when {
+    progressText != null -> progressText
+    runningStep != null -> pickRunningStepText(
+        title = runningStep.title,
+        stepProgress = runningStep.progressText,
+        runningFallback = context.getString(R.string.chat_process_running),
+    )
+    totalSteps > 0 && doneSteps == totalSteps ->
+        context.getString(R.string.chat_process_steps_completed, totalSteps)
+    totalSteps > 0 -> context.getString(R.string.chat_process_steps_progress, doneSteps, totalSteps)
+    isActive -> context.getString(R.string.chat_process_thinking_now)
+    else -> context.getString(R.string.chat_process_completed)
+}
 
 /** 摘要行需要的全部信息，打成一个包，避免参数列表膨胀。 */
 private data class ProcessSummary(
@@ -321,7 +317,7 @@ private fun ProcessStepList(steps: List<TaskStep>) {
  */
 @Composable
 private fun ProcessStepRow(step: TaskStep, depth: Int) {
-    val context = LocalContext.current
+    val resources = LocalResources.current
     val scheme = MaterialTheme.colorScheme
     val statusColor =
         when (step.status) {
@@ -349,7 +345,7 @@ private fun ProcessStepRow(step: TaskStep, depth: Int) {
             )
             Text(
                 text = step.title.ifBlank {
-                    step.toolName.ifBlank { context.getString(R.string.chat_process_step_fallback) }
+                    step.toolName.ifBlank { resources.getString(R.string.chat_process_step_fallback) }
                 },
                 style = MaterialTheme.typography.labelMedium,
                 color = scheme.onSurface,

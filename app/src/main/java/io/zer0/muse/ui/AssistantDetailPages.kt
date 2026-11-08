@@ -391,7 +391,8 @@ fun AssistantDetailPage(
         }
         item {
             CardGroup(
-                modifier = museAnimateItem().padding(horizontal = 0.dp), // inset-guard: allow（外层列表已提供 screen 边距）
+                // inset-guard: allow（外层列表已提供 screen 边距）
+                modifier = museAnimateItem().padding(horizontal = 0.dp),
             ) {
                 item(
                     onClick = onOpenBasic,
@@ -1362,38 +1363,38 @@ fun AssistantExtensionsPage(assistantId: String, onBack: () -> Unit) {
         }
         item {
             CardGroup(modifier = museAnimateItem()) {
-                ExtensionRow(
+                extensionRow(
                     type = ExtensionType.QUICK_MESSAGE,
                     count = repo.parseQuickMessageIds(a).size,
                     onClick = { activeType = ExtensionType.QUICK_MESSAGE },
                 )
-                ExtensionRow(
+                extensionRow(
                     type = ExtensionType.LOREBOOK,
                     count = repo.parseLorebookIds(a).size,
                     onClick = { activeType = ExtensionType.LOREBOOK },
                 )
-                ExtensionRow(
+                extensionRow(
                     type = ExtensionType.MODE_INJECTION,
                     count = repo.parseModeInjectionIds(a).size,
                     onClick = { activeType = ExtensionType.MODE_INJECTION },
                 )
-                ExtensionRow(
+                extensionRow(
                     type = ExtensionType.SKILL,
                     count = repo.parseSkillIds(a).size,
                     onClick = { activeType = ExtensionType.SKILL },
                 )
-                ExtensionRow(
+                extensionRow(
                     type = ExtensionType.MCP_SERVER,
                     count = repo.parseMcpServerIds(a).size,
                     onClick = { activeType = ExtensionType.MCP_SERVER },
                 )
-                ExtensionRow(
+                extensionRow(
                     type = ExtensionType.TOOL,
                     count = repo.parseToolIds(a).size,
                     onClick = { activeType = ExtensionType.TOOL },
                 )
                 // v1.133/v2.4.6: 知识库/文件夹绑定(作用域条目数)
-                ExtensionRow(
+                extensionRow(
                     type = ExtensionType.KNOWLEDGE_BASE,
                     count = repo.parseKnowledgeFolderScopes(a).size
                         .takeIf { it > 0 }
@@ -1565,7 +1566,7 @@ fun AssistantExtensionsPage(assistantId: String, onBack: () -> Unit) {
     }
 }
 
-private fun CardGroupScope.ExtensionRow(type: ExtensionType, count: Int, onClick: () -> Unit) {
+private fun CardGroupScope.extensionRow(type: ExtensionType, count: Int, onClick: () -> Unit) {
     item(
         onClick = onClick,
         headlineContent = { Text(type.titleText()) },

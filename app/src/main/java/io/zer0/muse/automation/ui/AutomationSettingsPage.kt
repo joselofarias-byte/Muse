@@ -26,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -33,16 +34,16 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.zer0.common.Logger
 import io.zer0.muse.R
 import io.zer0.muse.automation.core.AutomationManager
-import io.zer0.muse.data.SettingsRepository
 import io.zer0.muse.data.AutomationSettingsStore
+import io.zer0.muse.data.SettingsRepository
+import io.zer0.muse.ui.ChatViewModel
+import io.zer0.muse.ui.common.feedback.MuseToast
 import io.zer0.muse.ui.common.form.MuseCapsuleButton
 import io.zer0.muse.ui.common.form.MuseSwitch
-import io.zer0.muse.ui.common.feedback.MuseToast
 import io.zer0.muse.ui.common.icons.MuseIcons
 import io.zer0.muse.ui.common.settings.ChevronRight
 import io.zer0.muse.ui.common.settings.SettingsGroup
 import io.zer0.muse.ui.common.settings.SettingsItemRow
-import io.zer0.muse.ui.ChatViewModel
 import io.zer0.muse.ui.settings.SettingsSubPageScaffold
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -140,76 +141,76 @@ fun AutomationSettingsPage(
         )
         when (bannerKind) {
             AutomationBannerKind.MASTER_OFF -> {
-            item(key = "master-off-banner") {
-                Surface(
-                    shape = RoundedCornerShape(20.dp),
-                    color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Row(
-                        modifier = Modifier.padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                item(key = "master-off-banner") {
+                    Surface(
+                        shape = RoundedCornerShape(20.dp),
+                        color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f),
+                        modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Icon(
-                            imageVector = MuseIcons.shield,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.error,
-                        )
-                        Text(
-                            text = stringResource(R.string.automation_master_off_banner),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onErrorContainer,
-                        )
-                    }
-                }
-            }
-        }
-
-        // R1: 总闸开着、但无障碍服务当前不可用（多半是被系统回收/用户关了开关）。
-        // 与上面的「总闸关闭」横幅互斥：那条说「为什么不能用」，这条说「去哪开回来」。
-            AutomationBannerKind.A11Y_OFF -> {
-            item(key = "a11y-off-banner") {
-                Surface(
-                    shape = RoundedCornerShape(20.dp),
-                    color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.6f),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Row(
-                        modifier = Modifier.padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
-                        Icon(
-                            imageVector = MuseIcons.shield,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onTertiaryContainer,
-                        )
-                        Column(Modifier.weight(1f)) {
-                            Text(
-                                text = stringResource(R.string.automation_a11y_off_banner),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onTertiaryContainer,
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            Icon(
+                                imageVector = MuseIcons.shield,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.error,
                             )
                             Text(
-                                text = stringResource(R.string.automation_a11y_off_action),
-                                style = MaterialTheme.typography.labelLarge,
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier
-                                    .padding(top = 6.dp)
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .clickable {
-                                        manager.openSystemSettings(
-                                            AutomationManager.SystemSettingsTarget.ACCESSIBILITY,
-                                        )
-                                    }
-                                    .padding(horizontal = 4.dp, vertical = 2.dp),
+                                text = stringResource(R.string.automation_master_off_banner),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onErrorContainer,
                             )
                         }
                     }
                 }
             }
-        }
+
+            // R1: 总闸开着、但无障碍服务当前不可用（多半是被系统回收/用户关了开关）。
+            // 与上面的「总闸关闭」横幅互斥：那条说「为什么不能用」，这条说「去哪开回来」。
+            AutomationBannerKind.A11Y_OFF -> {
+                item(key = "a11y-off-banner") {
+                    Surface(
+                        shape = RoundedCornerShape(20.dp),
+                        color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.6f),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            Icon(
+                                imageVector = MuseIcons.shield,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                            )
+                            Column(Modifier.weight(1f)) {
+                                Text(
+                                    text = stringResource(R.string.automation_a11y_off_banner),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                )
+                                Text(
+                                    text = stringResource(R.string.automation_a11y_off_action),
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier
+                                        .padding(top = 6.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .clickable {
+                                            manager.openSystemSettings(
+                                                AutomationManager.SystemSettingsTarget.ACCESSIBILITY,
+                                            )
+                                        }
+                                        .padding(horizontal = 4.dp, vertical = 2.dp),
+                                )
+                            }
+                        }
+                    }
+                }
+            }
 
             AutomationBannerKind.NONE -> Unit
         }
@@ -552,7 +553,7 @@ private fun AutonomousAccessibilityItem(
 ) {
     if (!loaded) return
     val scope = rememberCoroutineScope()
-    val context = LocalContext.current
+    val resources = LocalResources.current
 
     AutonomousAccessibilitySettingsCard(
         draft = draft,
@@ -566,7 +567,7 @@ private fun AutonomousAccessibilityItem(
             onDraftChange(next)
             scope.launch {
                 runCatching { store.saveAutonomousAccessibilityWindow(next.toWindow()) }
-                    .onSuccess { MuseToast.show(context.getString(R.string.automation_autonomous_saved)) }
+                    .onSuccess { MuseToast.show(resources.getString(R.string.automation_autonomous_saved)) }
                     .onFailure { Logger.w("AutomationSettings", "save autonomous plan failed: ${it.message}") }
             }
         },
@@ -574,7 +575,7 @@ private fun AutonomousAccessibilityItem(
             val preview = taskPreview
             val targetPackage = draft.allowedPackages.firstOrNull()
             if (preview == null || targetPackage == null) {
-                MuseToast.show(context.getString(R.string.automation_autonomous_confirm_required))
+                MuseToast.show(resources.getString(R.string.automation_autonomous_confirm_required))
             } else {
                 scope.launch {
                     val newGrant = buildAutonomousGrant(
@@ -584,11 +585,11 @@ private fun AutonomousAccessibilityItem(
                         nowMillis = System.currentTimeMillis(),
                     )
                     if (newGrant == null) {
-                        MuseToast.show(context.getString(R.string.automation_autonomous_confirm_required))
+                        MuseToast.show(resources.getString(R.string.automation_autonomous_confirm_required))
                     } else {
                         store.saveAutonomousAccessibilityGrant(newGrant)
                         onGrantChange(newGrant)
-                        MuseToast.show(context.getString(R.string.automation_autonomous_task_confirmed))
+                        MuseToast.show(resources.getString(R.string.automation_autonomous_task_confirmed))
                     }
                 }
             }
@@ -599,7 +600,7 @@ private fun AutonomousAccessibilityItem(
                 scope.launch {
                     store.clearAutonomousAccessibilityGrant(expected = current)
                     onGrantChange(null)
-                    MuseToast.show(context.getString(R.string.automation_autonomous_task_cleared))
+                    MuseToast.show(resources.getString(R.string.automation_autonomous_task_cleared))
                 }
             }
         },
@@ -615,10 +616,7 @@ internal enum class AutomationBannerKind { NONE, MASTER_OFF, A11Y_OFF }
  * 规则：总闸关着时只说「为什么现在不能用」—— 那时候去开无障碍是没意义的，
  * 两句同时冒出来只会互相矛盾。因此总闸优先，且三者互斥。
  */
-internal fun automationBannerKind(
-    automationEnabled: Boolean,
-    accessibilityEnabled: Boolean,
-): AutomationBannerKind = when {
+internal fun automationBannerKind(automationEnabled: Boolean, accessibilityEnabled: Boolean): AutomationBannerKind = when {
     !automationEnabled -> AutomationBannerKind.MASTER_OFF
     !accessibilityEnabled -> AutomationBannerKind.A11Y_OFF
     else -> AutomationBannerKind.NONE

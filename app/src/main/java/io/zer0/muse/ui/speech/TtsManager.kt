@@ -1,6 +1,5 @@
 package io.zer0.muse.ui.speech
 
-import io.zer0.muse.util.GlobalCoroutineExceptionHandler
 import android.content.Context
 import android.media.MediaPlayer
 import android.os.Build
@@ -16,6 +15,7 @@ import io.zer0.muse.data.ResolvedSpeechEndpoint
 import io.zer0.muse.data.SpeechProviderResolver
 import io.zer0.muse.transformer.MoodSkinParser
 import io.zer0.muse.ui.common.feedback.MuseToast
+import io.zer0.muse.util.GlobalCoroutineExceptionHandler
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -100,7 +100,7 @@ class TtsManager(
     }
 
     /** 合成到文件用的 utteranceId 前缀(区分 speakStream 的真实 id)。 */
-    private val SYNTH_PREFIX = "syn_"
+    private val synthPrefix = "syn_"
 
     private val appContext = context.applicationContext
     private val cacheDir: File = appContext.cacheDir
@@ -304,14 +304,14 @@ class TtsManager(
         tts.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
             override fun onStart(utteranceId: String?) {
                 // speakStream 路径才走 onStateChange;合成路径 synthesize 不触发 UI
-                if (utteranceId == null || utteranceId.startsWith(SYNTH_PREFIX)) return
+                if (utteranceId == null || utteranceId.startsWith(synthPrefix)) return
                 currentUtteranceId = utteranceId
                 onStateChange?.invoke(utteranceId, true)
             }
 
             override fun onDone(utteranceId: String?) {
                 val id = utteranceId ?: return
-                if (id.startsWith(SYNTH_PREFIX)) {
+                if (id.startsWith(synthPrefix)) {
                     // 合成完成,唤醒等待中的 synthesizeToFile
                     synthesizeDone?.complete(Unit)
                 } else {
@@ -335,7 +335,7 @@ class TtsManager(
     /** 统一处理合成/朗读错误回调。 */
     private fun handleSynthOrSpeakError(utteranceId: String?) {
         val id = utteranceId ?: return
-        if (id.startsWith(SYNTH_PREFIX)) {
+        if (id.startsWith(synthPrefix)) {
             synthesizeDone?.completeExceptionally(RuntimeException("TTS synthesize error"))
         } else {
             currentUtteranceId = null
@@ -479,9 +479,8 @@ class TtsManager(
      * 优先用解析层的 fallbackReason（跟随供应商配置失败的具体原因）；没有的话，
      * 空 API Key 是一眼能看出的常见硬伤，单独点出来；最后才是笼统的合成失败。
      */
-    private fun cloudFailureReason(resolved: ResolvedSpeechEndpoint): String =
-        resolved.fallbackReason
-            ?: if (resolved.apiKey.isBlank()) "tts_api_key_missing" else "tts_cloud_synthesis_failed"
+    private fun cloudFailureReason(resolved: ResolvedSpeechEndpoint): String = resolved.fallbackReason
+        ?: if (resolved.apiKey.isBlank()) "tts_api_key_missing" else "tts_cloud_synthesis_failed"
 
     /**
      * v1.104: 系统 TTS 合成(从 synthesizeToFile 抽出,供云端失败回退复用)。
@@ -499,7 +498,7 @@ class TtsManager(
         applyLanguage(globalLanguage())
         val deferred = CompletableDeferred<Unit>()
         synthesizeDone = deferred
-        val utteranceId = SYNTH_PREFIX + System.nanoTime()
+        val utteranceId = synthPrefix + System.nanoTime()
         // synthesizeToFile 重载:(CharSequence, Bundle, File, String) — 传 File 而非路径
         val result = tts.synthesizeToFile(text, Bundle(), file, utteranceId)
         if (result != TextToSpeech.SUCCESS) {

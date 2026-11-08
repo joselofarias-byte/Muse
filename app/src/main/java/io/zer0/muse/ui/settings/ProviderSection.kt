@@ -26,15 +26,16 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import io.zer0.ai.core.ProviderConfig
 import io.zer0.muse.R
-import io.zer0.muse.ui.common.feedback.MuseToast
 import io.zer0.muse.data.ProviderCollisionDetector
 import io.zer0.muse.data.catalog.ModelCatalogRepository
+import io.zer0.muse.ui.common.feedback.MuseToast
 import io.zer0.muse.ui.common.form.IosCapsuleButtonVariant
 import io.zer0.muse.ui.common.form.MuseCapsuleButton
 import io.zer0.muse.ui.common.form.MuseTactileButton
@@ -256,8 +257,6 @@ internal fun LazyListScope.providerListSection(
             }
         }
     }
-
-
 }
 
 /**
@@ -339,7 +338,7 @@ private fun ModelCatalogRow() {
     var status by remember { mutableStateOf(repository.status()) }
     var refreshing by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
-    val context = androidx.compose.ui.platform.LocalContext.current
+    val resources = LocalResources.current
 
     Row(
         modifier = Modifier
@@ -359,7 +358,7 @@ private fun ModelCatalogRow() {
                     append(formatCatalogTimestamp(status.publishedAt))
                     append(" · ")
                     append(
-                        context.getString(
+                        resources.getString(
                             R.string.settings_model_catalog_counts,
                             status.providerCount,
                             status.modelCount,

@@ -21,8 +21,8 @@ import io.zer0.muse.miniphone.api.MpProfile
 import io.zer0.muse.miniphone.api.MpReplyEvent
 import io.zer0.muse.miniphone.data.db.MpActorType
 import io.zer0.muse.transformer.stripThinkTags
-import io.zer0.muse.ui.speech.VoiceMessageArchiver
 import io.zer0.muse.ui.speech.TtsSynthResult
+import io.zer0.muse.ui.speech.VoiceMessageArchiver
 import io.zer0.muse.ui.speech.VoiceSynthesizer
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
@@ -161,10 +161,9 @@ internal class MiniPhoneTextComposer(
 ) {
 
     /** 读取角色；读不到（不存在 / 异常）都返回 null。 */
-    suspend fun findAssistant(characterId: String): AssistantEntity? =
-        resultOf { assistantRepository.getById(characterId) }
-            .onError { msg, t -> Logger.w(TAG, "读取角色失败: id=$characterId, ${t?.message ?: msg}") }
-            .getOrNull()
+    suspend fun findAssistant(characterId: String): AssistantEntity? = resultOf { assistantRepository.getById(characterId) }
+        .onError { msg, t -> Logger.w(TAG, "读取角色失败: id=$characterId, ${t?.message ?: msg}") }
+        .getOrNull()
 
     /** 动态素材：动态口吻，单条正文，不配图。 */
     suspend fun composeMoment(assistant: AssistantEntity, hint: String?): String? =
@@ -197,11 +196,10 @@ internal class MiniPhoneTextComposer(
     }
 
     /** 剥掉 think 标签、系统标记与包裹引号;剥完为空视为没有结果。 */
-    fun cleanOutput(raw: String): String? =
-        stripSystemMarks(stripThinkTags(raw)).trim()
-            .removeSurrounding("\"")
-            .trim()
-            .takeIf { it.isNotBlank() }
+    fun cleanOutput(raw: String): String? = stripSystemMarks(stripThinkTags(raw)).trim()
+        .removeSurrounding("\"")
+        .trim()
+        .takeIf { it.isNotBlank() }
 
     /**
      * 剥掉模型自作主张加的系统标记:MOOD 整行、`[mood]…[/mood]` / `<mood>…</mood>` 段、
@@ -335,21 +333,19 @@ class AppMiniPhoneHost(
     /** 用户录音的一次性转写:与流式识别共用同一份语音设置,不共用采集链路。 */
     private val voiceTranscriber = OneShotAsrTranscriber(settingsRepository)
 
-    override fun observeCharacters(): Flow<List<MpCharacter>> =
-        assistantRepository.observeAll
-            .map { assistants -> assistants.map { it.toMpCharacter() } }
-            .catch { t ->
-                Logger.w(TAG, "读取角色列表失败，按空通讯录处理: ${t.message}")
-                emit(emptyList())
-            }
+    override fun observeCharacters(): Flow<List<MpCharacter>> = assistantRepository.observeAll
+        .map { assistants -> assistants.map { it.toMpCharacter() } }
+        .catch { t ->
+            Logger.w(TAG, "读取角色列表失败，按空通讯录处理: ${t.message}")
+            emit(emptyList())
+        }
 
-    override fun observeProfile(): Flow<MpProfile> =
-        settingsRepository.userProfileFlow
-            .map { it.toMpProfile() }
-            .catch { t ->
-                Logger.w(TAG, "读取用户资料失败，按空资料处理: ${t.message}")
-                emit(MpProfile(nickname = ""))
-            }
+    override fun observeProfile(): Flow<MpProfile> = settingsRepository.userProfileFlow
+        .map { it.toMpProfile() }
+        .catch { t ->
+            Logger.w(TAG, "读取用户资料失败，按空资料处理: ${t.message}")
+            emit(MpProfile(nickname = ""))
+        }
 
     override fun respond(characterId: String, history: List<MpChatTurn>): Flow<MpReplyEvent> = flow {
         val assistant = textComposer.findAssistant(characterId)
@@ -403,8 +399,7 @@ class AppMiniPhoneHost(
      * 只在用户已经配好语音识别（手填或跟随供应商）时才有结果;读设置、解析供应商、
      * 发请求、解析响应全在 [OneShotAsrTranscriber] 里,这里只做转发,不让模块看见任何协议细节。
      */
-    override suspend fun transcribeVoice(wavBytes: ByteArray): String? =
-        voiceTranscriber.transcribe(wavBytes)
+    override suspend fun transcribeVoice(wavBytes: ByteArray): String? = voiceTranscriber.transcribe(wavBytes)
 
     /**
      * 录音输入能不能用:判据与转写器实际会不会发请求完全一致。

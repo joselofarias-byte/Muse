@@ -176,10 +176,7 @@ internal fun VoiceMessageBubble(
 
 /** 存档已失效：只留一条静态说明，不可点、不建播放器。 */
 @Composable
-private fun VoiceExpiredBubble(
-    isFromUser: Boolean,
-    modifier: Modifier = Modifier,
-) {
+private fun VoiceExpiredBubble(isFromUser: Boolean, modifier: Modifier = Modifier) {
     Row(
         modifier =
         modifier
@@ -210,13 +207,7 @@ private fun VoiceExpiredBubble(
  * 不会随重组跳动），已播部分换强调色。
  */
 @Composable
-private fun VoiceWaveform(
-    progress: Float,
-    seed: Int,
-    activeColor: Color,
-    inactiveColor: Color,
-    modifier: Modifier = Modifier,
-) {
+private fun VoiceWaveform(progress: Float, seed: Int, activeColor: Color, inactiveColor: Color, modifier: Modifier = Modifier) {
     val peaks = remember(seed) { wavePeaks(seed, VOICE_WAVE_BAR_COUNT) }
     Canvas(modifier = modifier.height(20.dp)) {
         val gap = 2.dp.toPx()
@@ -247,21 +238,19 @@ private fun wavePeaks(seed: Int, count: Int): List<Float> {
 }
 
 @Composable
-private fun capsuleColor(isFromUser: Boolean): Color =
-    if (isFromUser) {
-        MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
-    } else {
-        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
-    }
+private fun capsuleColor(isFromUser: Boolean): Color = if (isFromUser) {
+    MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+} else {
+    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
+}
 
 @Composable
 private fun accentColor(isFromUser: Boolean): Color =
     if (isFromUser) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
 
 @Composable
-private fun inactiveWaveColor(isFromUser: Boolean): Color =
-    if (isFromUser) {
-        MaterialTheme.colorScheme.primary.copy(alpha = 0.30f)
-    } else {
-        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.24f)
-    }
+private fun inactiveWaveColor(isFromUser: Boolean): Color = if (isFromUser) {
+    MaterialTheme.colorScheme.primary.copy(alpha = 0.30f)
+} else {
+    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.24f)
+}

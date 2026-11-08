@@ -99,7 +99,7 @@ data class MessageEntity(
     @ColumnInfo(defaultValue = "NULL") val videoFileUri: String? = null,
     /** v1.43: 消息关联的 Artifact id 列表(JSON 数组)。 */
     @ColumnInfo(defaultValue = "[]") val artifactIdsJson: String = "[]",
-    /**
+    /*
      * v1.103: MOOD 块(LLM 在正文前输出的内部腹稿)。
      *
      * 由 MoodTagTransformer 从 content 中剥离 `<mood>...</mood>` 后存入。

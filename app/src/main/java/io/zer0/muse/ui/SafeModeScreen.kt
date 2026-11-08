@@ -40,15 +40,16 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import io.zer0.common.Logger
 import io.zer0.muse.R
-import io.zer0.muse.ui.common.feedback.MuseToast
 import io.zer0.muse.crash.MuseCrashHandler
 import io.zer0.muse.ui.common.feedback.MuseDialog
+import io.zer0.muse.ui.common.feedback.MuseToast
 import io.zer0.muse.ui.common.icons.MuseIcons
 import io.zer0.muse.ui.common.surface.MuseCardPress
 import io.zer0.muse.ui.theme.MuseMonoFontFamily
@@ -77,6 +78,7 @@ import io.zer0.muse.util.ShareIntentHelper
 @Composable
 fun SafeModeScreen() {
     val context = LocalContext.current
+    val resources = LocalResources.current
 
     // v1.141 F2: 崩溃恢复引导 — 展示数据完好说明与云端备份恢复路径
     var showRecoveryGuide by remember { mutableStateOf(false) }
@@ -141,7 +143,7 @@ fun SafeModeScreen() {
                     val nowDisabled = io.zer0.muse.data.plugin.PluginKillSwitch
                         .setDisabled(context, !pluginsDisabled)
                     MuseToast.show(
-                        context.getString(
+                        resources.getString(
                             if (nowDisabled) R.string.plugin_kill_switch_title else R.string.plugin_kill_switch_restore,
                         ),
                     )

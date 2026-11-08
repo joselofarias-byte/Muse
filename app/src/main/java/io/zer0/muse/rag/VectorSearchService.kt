@@ -138,8 +138,7 @@ class VectorSearchService(
      * 再多就要按真实内存预算重新论证。
      */
     private val cacheEntries = object : LinkedHashMap<String, List<CachedVector>>(4, 0.75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, List<CachedVector>>): Boolean =
-            size > MAX_CACHE_ENTRIES
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, List<CachedVector>>): Boolean = size > MAX_CACHE_ENTRIES
     }
 
     private val mutex = Mutex()

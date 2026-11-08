@@ -26,6 +26,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -79,6 +80,7 @@ fun PermissionWizardScreen(onBack: () -> Unit) {
 
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val resources = LocalResources.current
     val lifecycleOwner = LocalLifecycleOwner.current
 
     // 主通道状态全部派生自协调层快照。
@@ -289,7 +291,7 @@ fun PermissionWizardScreen(onBack: () -> Unit) {
                             ShizukuAuthorizer.PermissionRequestResult.Timeout ->
                                 MuseToast.show(context.getString(R.string.permission_shizuku_timeout_toast))
                             ShizukuAuthorizer.PermissionRequestResult.Unavailable ->
-                                MuseToast.show(context.getString(R.string.permission_shizuku_unavailable_toast))
+                                MuseToast.show(resources.getString(R.string.permission_shizuku_unavailable_toast))
                         }
                         refresh()
                     }
@@ -297,7 +299,7 @@ fun PermissionWizardScreen(onBack: () -> Unit) {
                 onStartService = {
                     // 直开已安装的 Shizuku(启动服务要在它里面点),不再错误地跳下载页。
                     shizukuInstaller.openApp()
-                    MuseToast.show(context.getString(R.string.permission_shizuku_opened_toast), 5000)
+                    MuseToast.show(resources.getString(R.string.permission_shizuku_opened_toast), 5000)
                 },
                 onRefresh = { refreshAsync() },
             )
@@ -327,7 +329,7 @@ fun PermissionWizardScreen(onBack: () -> Unit) {
                                 val result = automationManager.requestRoot()
                                 rootRequesting = false
                                 if (result.granted) {
-                                    MuseToast.show(context.getString(R.string.automation_root_granted))
+                                    MuseToast.show(resources.getString(R.string.automation_root_granted))
                                 } else {
                                     val failure = result.failure ?: RootRequestFailure.ERROR
                                     val msgRes =
@@ -337,7 +339,7 @@ fun PermissionWizardScreen(onBack: () -> Unit) {
                                             RootRequestFailure.DENIED -> R.string.automation_root_denied
                                             RootRequestFailure.ERROR -> R.string.automation_root_failed
                                         }
-                                    MuseToast.show(context.getString(msgRes))
+                                    MuseToast.show(resources.getString(msgRes))
                                 }
                                 refresh()
                             }
@@ -420,10 +422,10 @@ fun PermissionWizardScreen(onBack: () -> Unit) {
                             tryStart(android.provider.Settings.ACTION_MANAGE_APPLICATIONS_SETTINGS, null)
 
                         if (!ok) {
-                            MuseToast.show(context.getString(R.string.permission_termux_grant_manual_hint), 3500)
+                            MuseToast.show(resources.getString(R.string.permission_termux_grant_manual_hint), 3500)
                         } else {
                             // 跳转成功也要给逐步指引 —— 应用信息首屏看不到这个开关。
-                            MuseToast.show(context.getString(R.string.permission_termux_grant_toast), 3500)
+                            MuseToast.show(resources.getString(R.string.permission_termux_grant_toast), 3500)
                         }
                     },
                     onOpenApp = {
@@ -863,4 +865,3 @@ private fun StatusLine(done: Boolean, text: String) {
 }
 
 private fun buildGlobalActionsHelp(context: Context): String = context.getString(R.string.permission_action_id_help)
-

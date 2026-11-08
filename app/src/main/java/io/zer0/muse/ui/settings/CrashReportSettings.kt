@@ -20,6 +20,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -39,11 +40,11 @@ import io.zer0.muse.ui.common.settings.SettingsGroupDivider
 import io.zer0.muse.ui.common.settings.SettingsSwitchRow
 import io.zer0.muse.ui.common.state.MuseSpinner
 import io.zer0.muse.ui.theme.MusePaddings
+import io.zer0.muse.ui.theme.titleSmallStrong
 import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 import org.koin.compose.koinInject
 import org.koin.core.qualifier.named
-import io.zer0.muse.ui.theme.titleSmallStrong
 
 /**
  * 崩溃上报页 — 一个按钮，没有需要用户填的东西。
@@ -68,6 +69,7 @@ import io.zer0.muse.ui.theme.titleSmallStrong
 @Composable
 fun CrashReportSettingsPage(onBack: () -> Unit) {
     val context = LocalContext.current
+    val resources = LocalResources.current
     val settings: SettingsRepository = koinInject()
     // 复用 named("chat") OkHttpClient（上报内部会覆盖超时）
     val chatClient: OkHttpClient = koinInject<OkHttpClient>(qualifier = named("chat"))
@@ -222,7 +224,7 @@ fun CrashReportSettingsPage(onBack: () -> Unit) {
                             is SubmitOutcome.MailFallback ->
                                 context.getString(R.string.settings_crash_done_mail)
                             SubmitOutcome.NothingToSend, SubmitOutcome.Failed ->
-                                context.getString(R.string.settings_crash_done_failed)
+                                resources.getString(R.string.settings_crash_done_failed)
                         },
                     )
                     Logger.i("CrashReportSettings", "上报结果: $outcome, 剩余 $pendingCount 条")

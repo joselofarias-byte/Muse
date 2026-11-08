@@ -57,7 +57,8 @@ internal fun thinkingInstruction(locale: String): String {
     } else {
         "Thinking language\n" +
             "- All internal reasoning, thinking process, and analysis must use $thinkingLang\n" +
-            "- When thinking is enabled and the model supports reasoning, emit reasoning before every response and before each tool call round\n" +
+            "- When thinking is enabled and the model supports reasoning, " +
+            "emit reasoning before every response and before each tool call round\n" +
             "- Never fabricate reasoning when the model does not support it or does not return it\n" +
             "- Keep the final answer in the user's language when it differs"
     }
@@ -103,6 +104,8 @@ class SystemPromptAssembler(
     private val memoryTicker: MemoryTicker,
     private val toolRegistry: ToolRegistry,
     private val skillRepository: SkillRepository,
+    // v2.7.x(E2): 会话术语表。默认 null 兼容旧调用方;缺省时不注入术语段。
+    private val sessionTermStore: io.zer0.muse.data.terms.SessionTermStore? = null,
     /**
      * v0.32 实验性接入:同步读取 [ExperimentsConfig] 的闭包。
      *
@@ -117,10 +120,6 @@ class SystemPromptAssembler(
      *  - [ExperimentsConfig.selfReflection]:追加 SELF_REFLECTION_SECTION,
      *    要求 LLM 在每轮回复末尾输出 `<reflection>...</reflection>` 块。
      */
-    // v2.7.x(E2): 会话术语表。默认 null —— 老调用方与测试仍能构造装配器;
-    // 缺省时术语段整节不注入,而不是注入一个空标签。
-    // (用行评论而不是 KDoc:参数列表上的 KDoc 会被 ktlint 判为放错位置的注释)
-    private val sessionTermStore: io.zer0.muse.data.terms.SessionTermStore? = null,
     private val getExperiments: () -> ExperimentsConfig = { ExperimentsConfig() },
     /**
      * v1.25: 同步读取 [MultiAgentConfig] 的闭包。

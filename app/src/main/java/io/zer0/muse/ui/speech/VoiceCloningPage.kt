@@ -39,6 +39,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -91,6 +92,7 @@ fun VoiceCloningPage(
     ttsManager: TtsManager = koinInject(),
 ) {
     val context = LocalContext.current
+    val resources = LocalResources.current
     val scope = rememberCoroutineScope()
 
     // ── 表单状态(rememberSaveable 保证旋转/配置变更后保留;Uri 用 remember 避免序列化兼容问题;
@@ -489,7 +491,7 @@ fun VoiceCloningPage(
                         // v2.6.7 fix (AUDIT F21): 直接调 TtsManager.speakWithClonedVoice
                         // —— 该方法早已实现但零调用。
                         onPreview = {
-                            val sample = context.getString(R.string.tts_preview_sample_text)
+                            val sample = resources.getString(R.string.tts_preview_sample_text)
                             runCatching {
                                 ttsManager.speakWithClonedVoice(
                                     text = sample,
@@ -500,7 +502,7 @@ fun VoiceCloningPage(
                             }.onFailure {
                                 scope.launch {
                                     MuseToast.show(
-                                        context.getString(R.string.tts_preview_failed, it.message),
+                                        resources.getString(R.string.tts_preview_failed, it.message),
                                         3000,
                                     )
                                 }

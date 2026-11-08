@@ -1,6 +1,5 @@
 package io.zer0.muse.asr
 
-import io.zer0.muse.util.GlobalCoroutineExceptionHandler
 import android.annotation.SuppressLint
 import android.content.Context
 import android.media.AudioRecord
@@ -8,6 +7,7 @@ import io.zer0.common.Logger
 import io.zer0.common.resultOf
 import io.zer0.muse.R
 import io.zer0.muse.asr.AudioAmplitude.appendAmplitude
+import io.zer0.muse.util.GlobalCoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -478,7 +478,8 @@ class DashScopeAsrController(
                     R.string.asr_reconnecting_message,
                     attemptNumber,
                     MAX_RECONNECT_ATTEMPTS,
-                ), // CONS-05: 硬编码中文迁移到字符串资源
+                    // CONS-05: 硬编码中文迁移到字符串资源
+                ),
             )
         }
         reconnectJob = scope.launch {

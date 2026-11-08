@@ -124,10 +124,10 @@ import io.zer0.muse.ui.theme.glassBorder
 import io.zer0.muse.ui.theme.glassEdgeHighlight
 import io.zer0.muse.ui.theme.glassFakeSurfaceColor
 import io.zer0.muse.ui.theme.tiny
+import io.zer0.muse.ui.theme.titleMediumStrong
 import io.zer0.muse.util.ShareIntentHelper
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import io.zer0.muse.ui.theme.titleMediumStrong
 
 internal fun messageCopyText(content: String, reasoning: String? = null): String {
     // v2.6.8: 复制走统一导出出口 —— 剥内部标记块 + 卡片状态尾巴 + 内联特效。
@@ -181,8 +181,7 @@ private fun shouldRenderStandaloneToolCard(
 // 渲染层统一剥离,避免把 UUID 明文展示给用户(真实产物由 artifactIds 卡片列表展示)。
 private val ARTIFACT_MARKER_RE = Regex("""\[artifact:[0-9a-fA-F-]{36}\]""")
 
-internal fun needsBubbleTextSanitization(text: String): Boolean =
-    "files/stickers/" in text || "[artifact:" in text
+internal fun needsBubbleTextSanitization(text: String): Boolean = "files/stickers/" in text || "[artifact:" in text
 
 internal enum class MessageBubbleRole {
     USER,
@@ -200,7 +199,6 @@ internal data class BubbleText(
     val titleText: String?,
     val bodyContent: String,
 )
-
 
 /**
  * 正文渲染所需的派生值。
@@ -240,12 +238,12 @@ internal fun deriveBubbleText(
         content = rawContent,
         titleText = if (heading) firstLine else null,
         bodyContent =
-            if (needsBubbleTextSanitization(content)) {
-                (if (heading) rawContent.substring(firstLineEnd + 1).trimStart() else rawContent)
-                    .replace(ARTIFACT_MARKER_RE, "")
-            } else {
-                if (heading) rawContent.substring(firstLineEnd + 1).trimStart() else rawContent
-            },
+        if (needsBubbleTextSanitization(content)) {
+            (if (heading) rawContent.substring(firstLineEnd + 1).trimStart() else rawContent)
+                .replace(ARTIFACT_MARKER_RE, "")
+        } else {
+            if (heading) rawContent.substring(firstLineEnd + 1).trimStart() else rawContent
+        },
     )
 }
 
@@ -1071,15 +1069,17 @@ internal fun MessageBubble(
                 val monoFlatGlass = userGlassActive && MuseBubbleStyles.isMonoBubbleTheme()
                 val userGlassModifier = when {
                     !userGlassActive -> Modifier
-                    monoFlatGlass -> Modifier
-                        .clip(userShape)
-                        .glassEdgeHighlight(userShape, glassConfig)
-                        .glassBorder(userShape, glassConfig)
-                    else -> Modifier
-                        .clip(userShape)
-                        .background(glassFakeSurfaceColor(MuseBubbleStyles.userSurfaceColor(), glassConfig))
-                        .glassEdgeHighlight(userShape, glassConfig)
-                        .glassBorder(userShape, glassConfig)
+                    monoFlatGlass ->
+                        Modifier
+                            .clip(userShape)
+                            .glassEdgeHighlight(userShape, glassConfig)
+                            .glassBorder(userShape, glassConfig)
+                    else ->
+                        Modifier
+                            .clip(userShape)
+                            .background(glassFakeSurfaceColor(MuseBubbleStyles.userSurfaceColor(), glassConfig))
+                            .glassEdgeHighlight(userShape, glassConfig)
+                            .glassBorder(userShape, glassConfig)
                 }
                 Surface(
                     color = if (userGlassActive && !monoFlatGlass) Color.Transparent else userSurfaceColor,
@@ -1471,13 +1471,13 @@ internal fun MessageBubble(
                             // 统一显示源:优先用 imageUrls,避免 Gemini 同时有 imageUrls(data URI) 和 imageBase64List 时重复渲染
                             // v1.95: 同时扫描 content 中的表情包绝对路径(filesDir/stickers/...),由 send_sticker 工具产生
                             val displayImageUris = remember(
-        rendersBody,
-        msg.imageUrls,
-        msg.imageBase64List,
-        msg.content,
-        isLastAssistant,
-        isStreaming,
-    ) {
+                                rendersBody,
+                                msg.imageUrls,
+                                msg.imageBase64List,
+                                msg.content,
+                                isLastAssistant,
+                                isStreaming,
+                            ) {
                                 val fromUrls = if (msg.imageUrls.isNotEmpty()) {
                                     msg.imageUrls
                                 } else {

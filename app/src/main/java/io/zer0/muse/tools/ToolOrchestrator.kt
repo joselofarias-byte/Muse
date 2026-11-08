@@ -1191,10 +1191,10 @@ class ToolOrchestrator(
                     val contextBudgetTokens = host.contextBudgetTokens()
                     val currentHistoryTokens =
                         if (contextBudgetTokens > 0) {
-                        TokenEstimator.estimate(conversationHistory, cache = loopTokenCache)
-                    } else {
-                        0
-                    }
+                            TokenEstimator.estimate(conversationHistory, cache = loopTokenCache)
+                        } else {
+                            0
+                        }
                     val inlineOutputBudgetTokens =
                         toolOutputInlineBudgetTokens(
                             contextBudgetTokens = contextBudgetTokens,
@@ -2246,7 +2246,6 @@ class ToolOrchestrator(
 
         val effectiveToolTimeoutMs = ToolExecutionTimeoutPolicy.forTool(tc.name, subagentSessionFix, toolTimeoutMs)
 
-
         // 执行工具:skill 走 SkillExecutor(挂起、可取消),本地工具走 ToolRegistry
         // P2-18: 阻塞型工具(内部 runBlocking 桥接 WebView/文件 IO)无法被协程取消,
         // 必须走专用线程池 + future.cancel(true),否则外层超时形同虚设(假超时)。
@@ -2761,12 +2760,7 @@ class ToolOrchestrator(
      * 预览方向按工具语义选：[keepsOutputTail] 为真的命令类工具留尾部（报错/失败用例/退出码都在最后），
      * 其余（文件读取、搜索结果等）仍然首尾兼顾——开头就是他们最常用的定位信息。
      */
-    private suspend fun prepareToolOutput(
-        toolCallId: String,
-        toolName: String,
-        output: String,
-        inlineBudgetTokens: Int?,
-    ): String {
+    private suspend fun prepareToolOutput(toolCallId: String, toolName: String, output: String, inlineBudgetTokens: Int?): String {
         if (output.length <= SMALL_TOOL_RESULT_INLINE_CHARS) return output
         val estimatedTokens = TokenEstimator.estimate(listOf(UIMessage(role = MessageRole.TOOL, content = output)))
         if (canInlineToolOutput(output.length, estimatedTokens, inlineBudgetTokens)) return output

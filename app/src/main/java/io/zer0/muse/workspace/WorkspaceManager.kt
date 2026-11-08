@@ -191,8 +191,7 @@ class WorkspaceManager(private val context: Context) {
     // ── 内部：路径锁 ──────────────────────────────────────────────────────────
 
     /** 在 [t] 这条路径的锁内执行 [block]。 */
-    private suspend fun <T> lockedBy(t: Target, block: suspend () -> T): T =
-        pathLocks.withLock(t.mount.id, t.relative, t.display, block)
+    private suspend fun <T> lockedBy(t: Target, block: suspend () -> T): T = pathLocks.withLock(t.mount.id, t.relative, t.display, block)
 
     /**
      * 同时在两条路径的锁内执行 [block]（移动、复制这类要改两头的操作）。
@@ -238,20 +237,19 @@ class WorkspaceManager(private val context: Context) {
     }
 
     /** 根视图里的其余挂载入口：一条挂载一行，回传路径写成 `挂载标识:/` 即落在该挂载。 */
-    private suspend fun otherMountEntries(scope: Set<String>?): List<WorkspaceEntry> =
-        mountStore.mounts()
-            .filter { it.id != WorkspaceMount.MAIN_ID }
-            .filter { scope == null || it.id in scope }
-            .filter { it.canList }
-            .map { mount ->
-                WorkspaceEntry(
-                    name = mount.id,
-                    relativePath = WorkspacePathParser.format(mount.id, ""),
-                    isDirectory = true,
-                    size = 0L,
-                    lastModified = mount.lastUsedAt,
-                )
-            }
+    private suspend fun otherMountEntries(scope: Set<String>?): List<WorkspaceEntry> = mountStore.mounts()
+        .filter { it.id != WorkspaceMount.MAIN_ID }
+        .filter { scope == null || it.id in scope }
+        .filter { it.canList }
+        .map { mount ->
+            WorkspaceEntry(
+                name = mount.id,
+                relativePath = WorkspacePathParser.format(mount.id, ""),
+                isDirectory = true,
+                size = 0L,
+                lastModified = mount.lastUsedAt,
+            )
+        }
 
     /**
      * 读文本文件（上限 [MAX_READ_BYTES]）。
@@ -345,27 +343,24 @@ class WorkspaceManager(private val context: Context) {
      * @param scope 本会话可用的挂载集合，null 表示不限制
      * @param decide 在完整原文上做判定；只做纯计算，不要再发起会加锁的调用
      */
-    suspend fun editFile(
-        relativePath: String,
-        scope: Set<String>? = null,
-        decide: (original: String) -> EditDecision,
-    ): EditResult = withContext(Dispatchers.IO) {
-        try {
-            val t = target(relativePath, MountCapability.READ, scope, allowRoot = false)
-            lockedBy(t) {
-                val size = t.fs.size(t.relative)
-                if (size > MAX_READ_BYTES) {
-                    return@lockedBy EditResult.Failed("文件过大($size 字节),读取上限为 $MAX_READ_BYTES 字节")
+    suspend fun editFile(relativePath: String, scope: Set<String>? = null, decide: (original: String) -> EditDecision): EditResult =
+        withContext(Dispatchers.IO) {
+            try {
+                val t = target(relativePath, MountCapability.READ, scope, allowRoot = false)
+                lockedBy(t) {
+                    val size = t.fs.size(t.relative)
+                    if (size > MAX_READ_BYTES) {
+                        return@lockedBy EditResult.Failed("文件过大($size 字节),读取上限为 $MAX_READ_BYTES 字节")
+                    }
+                    if (!t.fs.exists(t.relative) || t.fs.isDirectory(t.relative)) {
+                        return@lockedBy EditResult.Failed("文件不存在: ${t.display}")
+                    }
+                    commitEdit(relativePath, scope, t.fs.readText(t.relative), decide)
                 }
-                if (!t.fs.exists(t.relative) || t.fs.isDirectory(t.relative)) {
-                    return@lockedBy EditResult.Failed("文件不存在: ${t.display}")
-                }
-                commitEdit(relativePath, scope, t.fs.readText(t.relative), decide)
+            } catch (e: WorkspaceIoException) {
+                EditResult.Failed(e.message ?: "编辑失败")
             }
-        } catch (e: WorkspaceIoException) {
-            EditResult.Failed(e.message ?: "编辑失败")
         }
-    }
 
     /** [editFile] 持锁段的后半：判定 + 写回。调用方必须已经持有该路径的锁。 */
     private suspend fun commitEdit(
@@ -736,16 +731,16 @@ class WorkspaceManager(private val context: Context) {
     /** readFile 结果。 */
     sealed class ReadResult {
         /**
-     * @param offsetChars 本次读取的起始字符位
-     * @param totalChars 文件总字符数
-     * @param revision 版本指纹（大小 + 修改时间）；同内容同 revision
-     */
-    data class Success(
-        val content: String,
-        val offsetChars: Int = 0,
-        val totalChars: Int = content.length,
-        val revision: String = "",
-    ) : ReadResult()
+         * @param offsetChars 本次读取的起始字符位
+         * @param totalChars 文件总字符数
+         * @param revision 版本指纹（大小 + 修改时间）；同内容同 revision
+         */
+        data class Success(
+            val content: String,
+            val offsetChars: Int = 0,
+            val totalChars: Int = content.length,
+            val revision: String = "",
+        ) : ReadResult()
 
         data class Error(val message: String) : ReadResult()
     }

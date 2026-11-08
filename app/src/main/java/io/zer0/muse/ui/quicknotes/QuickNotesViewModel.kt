@@ -87,15 +87,15 @@ class QuickNotesViewModel(
     // （读侧通），但全仓没有任何地方能往里写，等于一个永远为空指示器。
     private val attachmentStore = io.zer0.muse.data.quicknote.NoteAttachmentStore(context)
 
-    private val _searchKeyword = MutableStateFlow("")
-    private val _selectedTag = MutableStateFlow<String?>(null)
-    private val _selectedFolder = MutableStateFlow<String?>(null)
-    private val _showTrash = MutableStateFlow(false)
+    private val searchKeywordState = MutableStateFlow("")
+    private val selectedTagState = MutableStateFlow<String?>(null)
+    private val selectedFolderState = MutableStateFlow<String?>(null)
+    private val showTrashState = MutableStateFlow(false)
 
     // ST-01: 列表加载失败信息 + 重试触发源。
-    // DAO Flow 收集失败时写入 _loadError,由 retryLoad() 清空并递增触发源
+    // DAO Flow 收集失败时写入 loadErrorState,由 retryLoad() 清空并递增触发源
     // 使 flatMapLatest 重新订阅 Room Flow,实现重试。
-    private val _loadError = MutableStateFlow<String?>(null)
+    private val loadErrorState = MutableStateFlow<String?>(null)
     private val retryTrigger = MutableStateFlow(0)
 
     /** v1.0.18: 分页 — 当前加载上限(到达底部时 loadMore 递增)。 */
@@ -107,7 +107,7 @@ class QuickNotesViewModel(
         dao.observeActive(limit = MAX_LIMIT).catch { e ->
             if (e is kotlinx.coroutines.CancellationException) throw e
             Logger.w(TAG, "加载快速记录失败: ${e.message}")
-            _loadError.value = e.message ?: context.getString(R.string.common_load_failed)
+            loadErrorState.value = e.message ?: context.getString(R.string.common_load_failed)
             emit(emptyList())
         }
     }
@@ -117,7 +117,7 @@ class QuickNotesViewModel(
         dao.observeTrash().catch { e ->
             if (e is kotlinx.coroutines.CancellationException) throw e
             Logger.w(TAG, "加载回收站失败: ${e.message}")
-            _loadError.value = e.message ?: context.getString(R.string.common_load_failed)
+            loadErrorState.value = e.message ?: context.getString(R.string.common_load_failed)
             emit(emptyList())
         }
     }
@@ -127,7 +127,7 @@ class QuickNotesViewModel(
         dao.observeFolders().catch { e ->
             if (e is kotlinx.coroutines.CancellationException) throw e
             Logger.w(TAG, "加载文件夹失败: ${e.message}")
-            _loadError.value = e.message ?: context.getString(R.string.common_load_failed)
+            loadErrorState.value = e.message ?: context.getString(R.string.common_load_failed)
             emit(emptyList())
         }
     }
@@ -146,12 +146,12 @@ class QuickNotesViewModel(
             activeNotesFlow,
             trashFlow,
             foldersFlow,
-            _searchKeyword,
-            _selectedTag,
-            _selectedFolder,
-            _showTrash,
+            searchKeywordState,
+            selectedTagState,
+            selectedFolderState,
+            showTrashState,
             currentLimit,
-            _loadError,
+            loadErrorState,
         ) { values ->
             @Suppress("UNCHECKED_CAST")
             val active = values[0] as List<QuickNoteEntity>
@@ -195,12 +195,12 @@ class QuickNotesViewModel(
 
     /** 更新搜索关键字。空串表示清除搜索。 */
     fun onSearchKeywordChange(keyword: String) {
-        _searchKeyword.value = keyword
+        searchKeywordState.value = keyword
     }
 
     /** 切换标签过滤。再次点击同一标签取消选中。 */
     fun onTagSelected(tag: String) {
-        _selectedTag.value = if (_selectedTag.value == tag) null else tag
+        selectedTagState.value = if (selectedTagState.value == tag) null else tag
     }
 
     /**
@@ -211,12 +211,12 @@ class QuickNotesViewModel(
      * 再次点击同一文件夹取消选中(回到全部)。
      */
     fun onFolderSelected(folder: String?) {
-        _selectedFolder.value = if (_selectedFolder.value == folder) null else folder
+        selectedFolderState.value = if (selectedFolderState.value == folder) null else folder
     }
 
     /** 切换回收站面板显示/隐藏。 */
     fun toggleTrash(show: Boolean) {
-        _showTrash.value = show
+        showTrashState.value = show
     }
 
     /**
@@ -233,7 +233,7 @@ class QuickNotesViewModel(
      * 清空错误信息并递增触发源,flatMapLatest 会重新订阅 Room Flow 重新加载。
      */
     fun retryLoad() {
-        _loadError.value = null
+        loadErrorState.value = null
         retryTrigger.value++
     }
 

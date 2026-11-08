@@ -29,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -42,7 +43,6 @@ import io.zer0.common.resultOf
 import io.zer0.muse.R
 import io.zer0.muse.data.skill.SkillEntity
 import io.zer0.muse.data.skill.SkillPackageImporter
-import io.zer0.muse.ui.common.form.MuseTextField
 import io.zer0.muse.data.skill.SkillRepository
 import io.zer0.muse.tools.SkillExecutor
 import io.zer0.muse.tools.SkillImporter
@@ -50,6 +50,7 @@ import io.zer0.muse.ui.common.feedback.MuseDialog
 import io.zer0.muse.ui.common.feedback.MuseToast
 import io.zer0.muse.ui.common.form.MuseSwitch
 import io.zer0.muse.ui.common.form.MuseTactileButton
+import io.zer0.muse.ui.common.form.MuseTextField
 import io.zer0.muse.ui.common.icons.MuseIcons
 import io.zer0.muse.ui.common.navigation.MuseTopBar
 import io.zer0.muse.ui.common.settings.SettingsGroup
@@ -83,6 +84,7 @@ fun SkillScreen(onBack: () -> Unit, skillRepository: SkillRepository = koinInjec
     val skills by skillRepository.observeAll.collectAsStateWithLifecycle(initialValue = null)
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val resources = LocalResources.current
     var detailTarget by remember { mutableStateOf<SkillEntity?>(null) }
     var deleteConfirmTarget by remember { mutableStateOf<SkillEntity?>(null) }
     var importMessage by remember { mutableStateOf<String?>(null) }
@@ -109,7 +111,7 @@ fun SkillScreen(onBack: () -> Unit, skillRepository: SkillRepository = koinInjec
                     // v1.73: 用 use{} 确保 InputStream/BufferedReader 关闭,避免 FD 泄漏
                     context.contentResolver.openInputStream(uri)?.use { input ->
                         // v1.114: 限制读取 10MB,防止超大文件 OOM
-                        val MAX_READ_BYTES = 10L * 1024 * 1024
+                        val maxReadBytes = 10L * 1024 * 1024
                         val sb = StringBuilder()
                         val buffer = CharArray(8192)
                         var total = 0L
@@ -118,8 +120,8 @@ fun SkillScreen(onBack: () -> Unit, skillRepository: SkillRepository = koinInjec
                                 val read = reader.read(buffer)
                                 if (read <= 0) break
                                 total += read
-                                if (total > MAX_READ_BYTES) {
-                                    error("El archivo supera el límite de ${MAX_READ_BYTES / 1024 / 1024} MB")
+                                if (total > maxReadBytes) {
+                                    error("El archivo supera el límite de ${maxReadBytes / 1024 / 1024} MB")
                                 }
                                 sb.append(buffer, 0, read)
                             }
@@ -364,11 +366,11 @@ fun SkillScreen(onBack: () -> Unit, skillRepository: SkillRepository = koinInjec
                             resultOf { skillRepository.upsert(template) }
                                 .onSuccess {
                                     MuseToast.show(
-                                        context.getString(R.string.skill_restored, skill.name.ifBlank { skill.id }),
+                                        resources.getString(R.string.skill_restored, skill.name.ifBlank { skill.id }),
                                     )
                                 }
                                 .onError { msg, _ ->
-                                    MuseToast.show(context.getString(R.string.skill_operation_failed, msg))
+                                    MuseToast.show(resources.getString(R.string.skill_operation_failed, msg))
                                 }
                         }
                     }
@@ -396,7 +398,7 @@ fun SkillScreen(onBack: () -> Unit, skillRepository: SkillRepository = koinInjec
                 scope.launch {
                     resultOf { skillRepository.delete(skill.id) }
                         .onSuccess { scope.launch { packageImporter.deletePackageFor(skill) } }
-                        .onError { msg, _ -> MuseToast.show(context.getString(R.string.skill_delete_failed_ui, msg)) }
+                        .onError { msg, _ -> MuseToast.show(resources.getString(R.string.skill_delete_failed_ui, msg)) }
                 }
             },
             dismissText = stringResource(R.string.skill_close),
@@ -446,9 +448,9 @@ fun SkillScreen(onBack: () -> Unit, skillRepository: SkillRepository = koinInjec
                     val outcome = packageImporter.importUrl(url)
                     importMessage = when (outcome) {
                         is SkillPackageImporter.Outcome.Installed ->
-                            context.getString(R.string.skill_imported, outcome.skill.name)
+                            resources.getString(R.string.skill_imported, outcome.skill.name)
                         is SkillPackageImporter.Outcome.Failed ->
-                            context.getString(R.string.skill_import_error, outcome.reason)
+                            resources.getString(R.string.skill_import_error, outcome.reason)
                     }
                     importing = false
                     importDialogVisible = false
@@ -801,9 +803,6 @@ private fun DetailLine(label: String, value: String) {
  *
  * 抽成纯函数是因为这段判据决定「一键」到底影响什么，值得单独测。
  */
-internal fun bulkToggleTargets(
-    skills: List<SkillEntity>,
-    builtInIds: Set<String>,
-): List<SkillEntity> = skills.filterNot { skill ->
+internal fun bulkToggleTargets(skills: List<SkillEntity>, builtInIds: Set<String>): List<SkillEntity> = skills.filterNot { skill ->
     skill.id in builtInIds || skill.implementationKotlin.startsWith("plugin:")
 }

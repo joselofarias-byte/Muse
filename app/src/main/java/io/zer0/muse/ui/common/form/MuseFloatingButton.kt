@@ -26,8 +26,8 @@ import io.zer0.muse.ui.theme.MuseActionColors
 import io.zer0.muse.ui.theme.MuseElevation
 import io.zer0.muse.ui.theme.MuseIconSizes
 import io.zer0.muse.ui.theme.MuseMotion
-import io.zer0.muse.ui.theme.MuseSpringTier
 import io.zer0.muse.ui.theme.MuseShapes
+import io.zer0.muse.ui.theme.MuseSpringTier
 import io.zer0.muse.ui.theme.huge
 
 /**
@@ -109,7 +109,8 @@ fun MuseFloatingButton(
         ) {
             Icon(
                 imageVector = icon,
-                contentDescription = null, // 已在 semantics 提供
+                // 已在 semantics 提供
+                contentDescription = null,
                 modifier = Modifier.size(iconSize),
             )
         }
