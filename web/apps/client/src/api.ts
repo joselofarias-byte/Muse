@@ -615,7 +615,7 @@ export class HostConnection {
 
   send(command: HostCommand): void {
     if (this.closed || this.socket.readyState !== WebSocket.OPEN) {
-      throw new Error("Reconectando con Musa en el teléfono");
+      throw new Error("Reconectando con Muse en el teléfono");
     }
     const enriched = command.type === "state.sync" && command.cursor === undefined
       ? { ...command, protocolVersion: CLIENT_PROTOCOL_VERSION, cursor: this.lastCursor }
@@ -668,7 +668,7 @@ export async function connectHost(): Promise<HostConnection> {
           if (!settled) {
             settled = true;
             candidate.close();
-            reject(new Error("No se puede establecer la conexión WebSocket con Musa en el teléfono"));
+            reject(new Error("No se puede establecer la conexión WebSocket con Muse en el teléfono"));
           }
         };
         candidate.addEventListener("open", () => {
@@ -686,7 +686,7 @@ export async function connectHost(): Promise<HostConnection> {
       await new Promise((resolve) => setTimeout(resolve, 500 * (attempt + 1)));
     }
   }
-  throw new Error("No se puede establecer la conexión WebSocket con Musa en el teléfono");
+  throw new Error("No se puede establecer la conexión WebSocket con Muse en el teléfono");
 }
 
 export interface StreamChatInput {

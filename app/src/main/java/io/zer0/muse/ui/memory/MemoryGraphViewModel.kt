@@ -102,7 +102,7 @@ class MemoryGraphViewModel(
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (e: Exception) {
-                _state.value = GraphState(isLoading = false, error = e.message ?: "load failed")
+                _state.value = GraphState(isLoading = false, error = e.message ?: "No se pudo cargar el grafo de memoria")
             }
         }
     }
