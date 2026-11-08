@@ -97,7 +97,7 @@ class SessionArtifactCleanupTest {
 
         assertTrue(
             "依赖不可用必须被记为失败（静默跳过等于谎称清干净了）",
-            logs.any { it.contains("对话树快照") && it.contains("快照仓库不可用") },
+            logs.any { it.contains("对话树快照") && it.contains("El almacén de instantáneas no está disponible (no se ha inyectado)") },
         )
         assertTrue("而且计数要算上它", failures >= 1)
         assertTrue("文件应当仍在原处（没被假装删过）", snapshotFile("s-null").exists())

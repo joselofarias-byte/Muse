@@ -57,7 +57,8 @@ class AgentDirectivesContentTest {
     @Test
     fun `没有约定时显示空态而不是空白`() {
         renderWith(listOf(AssistantEntity(id = AGENT, name = "阿绫")))
-        assertEquals("一行都不能没有，否则用户以为功能坏了", 1, countOf("还没有写过。比如：别叫我宝贝"))
+        // Both the forbidden and desired sections render their own empty-state row.
+        assertEquals("两个空分节都应显示空态", 2, countOf("还没有写过。比如：别叫我宝贝"))
     }
 
     @Test
