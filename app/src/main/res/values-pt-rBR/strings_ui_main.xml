@@ -715,6 +715,7 @@
     <plurals name="settings_search_result_count">
         <item quantity="one">%1$d resultado encontrado</item>
         <item quantity="other">%1$d resultados encontrados</item>
+        <item quantity="many">%1$d resultados encontrados</item>
     </plurals>
     <string name="settings_screen_miniphone_desc">Versão inicial de um recurso experimental</string>
     <string name="model_diff_clear_add">Limpar modelos novos</string>
@@ -734,10 +735,12 @@
     <plurals name="chat_list_edit_delete_confirm">
         <item quantity="one">Excluir %1$d conversa selecionada e todas as mensagens dela? Esta ação não pode ser desfeita.</item>
         <item quantity="other">Excluir %1$d conversas selecionadas e todas as mensagens delas? Esta ação não pode ser desfeita.</item>
+        <item quantity="many">Excluir %1$d conversas selecionadas e todas as mensagens delas? Esta ação não pode ser desfeita.</item>
     </plurals>
     <plurals name="chat_list_edit_done">
         <item quantity="one">%1$d item processado</item>
         <item quantity="other">%1$d itens processados</item>
+        <item quantity="many">%1$d itens processados</item>
     </plurals>
     <string name="chat_list_edit_exit">Sair</string>
     <string name="chat_list_edit_select_all">Selecionar tudo</string>

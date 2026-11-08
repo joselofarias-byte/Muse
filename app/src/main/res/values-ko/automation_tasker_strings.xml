@@ -2,4 +2,37 @@
 <resources>
     <string name="automation_tasker_title">Tasker / 외부 자동화 트리거</string>
     <string name="automation_tasker_desc">다른 앱이 한 번의 텍스트 완성 요청을 브로드캐스트하도록 허용합니다. 도구 권한은 부여하지 않지만 모델 할당량을 사용할 수 있습니다.</string>
+    <string name="automation_master_title">화면 자동화 허용</string>
+    <string name="automation_master_desc">전체 스위치입니다. 끄면 다시 켤 때까지 모든 화면 읽기, 탭, 입력 및 다단계 도구가 실행되지 않습니다.</string>
+    <string name="automation_master_off_banner">현재 꺼져 있습니다. 위의 스위치를 다시 켤 때까지 모든 화면 읽기, 탭, 입력 및 다단계 도구가 실행되지 않습니다.</string>
+    <string name="automation_a11y_off_banner">접근성 서비스가 연결되지 않았습니다(시스템이 중지했을 수 있습니다). 화면 읽기와 탭이 실패합니다.</string>
+    <string name="automation_a11y_off_action">접근성 켜기</string>
+    <string name="automation_autonomous_title">예약된 자율 접근성</string>
+    <string name="automation_autonomous_desc">먼저 채팅에서 작업을 명시적으로 지정하세요. 허용된 시간 동안 허용 목록에 있는 화면 읽기, 탭 및 스크롤만 자동 실행할 수 있습니다. 입력, 전송, 게시, 결제 및 삭제는 여전히 승인이 필요합니다.</string>
+    <string name="automation_autonomous_enabled">자율 접근성 활성화</string>
+    <string name="automation_autonomous_enabled_desc">시간대, 앱, 동작 및 일일 한도가 모두 충족될 때만 자동화가 실행됩니다.</string>
+    <string name="automation_autonomous_window">허용 시간대</string>
+    <string name="automation_autonomous_start">시작 시간</string>
+    <string name="automation_autonomous_end">종료 시간</string>
+    <string name="automation_autonomous_packages">허용된 앱 패키지</string>
+    <string name="automation_autonomous_packages_desc">한 줄에 패키지 하나를 입력하세요. 기본 Xiaohongshu 패키지는 com.xingin.xhs입니다.</string>
+    <string name="automation_autonomous_actions">허용된 동작</string>
+    <string name="automation_autonomous_read">화면 읽기</string>
+    <string name="automation_autonomous_click">탭</string>
+    <string name="automation_autonomous_scroll">스크롤</string>
+    <string name="automation_autonomous_input_locked">텍스트 입력은 항상 승인이 필요합니다</string>
+    <string name="automation_autonomous_daily_limit">하루 최대 실행 횟수</string>
+    <string name="automation_autonomous_daily_limit_desc">성공적으로 실행된 경우에만 집계합니다. 한도에 도달하면 현재 작업의 권한이 취소됩니다.</string>
+    <string name="automation_autonomous_task">채팅 작업 승인</string>
+    <string name="automation_autonomous_task_desc">시간 범위만으로는 접근 권한이 부여되지 않습니다. 채팅에서 패키지와 작업을 명시한 뒤 여기에서 확인하세요. 권한은 해당 채팅의 가장 최근 사용자 메시지로 제한됩니다.</string>
+    <string name="automation_autonomous_confirm_task">현재 작업 확인</string>
+    <string name="automation_autonomous_confirm_required">먼저 현재 채팅에서 작업과 패키지를 명시하세요</string>
+    <string name="automation_autonomous_saved">자율 접근성 설정을 저장했습니다</string>
+    <string name="automation_autonomous_task_confirmed">이 채팅의 현재 작업을 승인했습니다</string>
+    <string name="automation_autonomous_task_cleared">자율 접근성 작업 권한을 취소했습니다</string>
+    <string name="automation_autonomous_task_missing_session">작업을 확인하기 전에 채팅을 여세요</string>
+    <string name="automation_autonomous_task_text">현재 작업: %1$s</string>
+    <string name="automation_autonomous_active_until">권한: 시간대와 포그라운드 앱이 일치할 때 활성화</string>
+    <string name="automation_autonomous_no_grant">권한: 없음</string>
+    <string name="automation_autonomous_save">설정 저장</string>
 </resources>

@@ -2,4 +2,37 @@
 <resources>
     <string name="automation_tasker_title">Tasker / acionamento de automação externa</string>
     <string name="automation_tasker_desc">Permite que outros aplicativos enviem uma solicitação de conclusão de texto. Não concede acesso a ferramentas, mas pode consumir a cota do modelo.</string>
+    <string name="automation_master_title">Permitir automação da tela</string>
+    <string name="automation_master_desc">Interruptor principal. Quando desativado, nenhuma ferramenta de leitura da tela, toque, entrada de texto ou múltiplas etapas pode ser executada até que você o ative novamente.</string>
+    <string name="automation_master_off_banner">Desativado no momento: nenhuma ferramenta de leitura da tela, toque, entrada de texto ou múltiplas etapas pode ser executada até que você ative o interruptor acima.</string>
+    <string name="automation_a11y_off_banner">O serviço de acessibilidade não está conectado (o sistema pode tê-lo interrompido). A leitura da tela e os toques falharão.</string>
+    <string name="automation_a11y_off_action">Ativar acessibilidade</string>
+    <string name="automation_autonomous_title">Acessibilidade autônoma agendada</string>
+    <string name="automation_autonomous_desc">Primeiro, atribua explicitamente uma tarefa no chat. Durante o período permitido, apenas a leitura da tela, os toques e a rolagem na lista de permissões podem ser executados automaticamente. Ações de inserir texto, enviar, publicar, pagar e excluir ainda exigem aprovação.</string>
+    <string name="automation_autonomous_enabled">Ativar acessibilidade autônoma</string>
+    <string name="automation_autonomous_enabled_desc">A automação só é executada quando o período, o aplicativo, a ação e o limite diário permitem.</string>
+    <string name="automation_autonomous_window">Período permitido</string>
+    <string name="automation_autonomous_start">Horário de início</string>
+    <string name="automation_autonomous_end">Horário de término</string>
+    <string name="automation_autonomous_packages">Pacotes de aplicativos permitidos</string>
+    <string name="automation_autonomous_packages_desc">Um pacote por linha. O pacote padrão do Xiaohongshu é com.xingin.xhs.</string>
+    <string name="automation_autonomous_actions">Ações permitidas</string>
+    <string name="automation_autonomous_read">Ler tela</string>
+    <string name="automation_autonomous_click">Tocar</string>
+    <string name="automation_autonomous_scroll">Rolar</string>
+    <string name="automation_autonomous_input_locked">A entrada de texto sempre exige aprovação</string>
+    <string name="automation_autonomous_daily_limit">Máximo de execuções por dia</string>
+    <string name="automation_autonomous_daily_limit_desc">Contabilizadas apenas após a execução bem-sucedida. Ao atingir o limite, a autorização da tarefa atual é revogada.</string>
+    <string name="automation_autonomous_task">Autorização de tarefa do chat</string>
+    <string name="automation_autonomous_task_desc">Um intervalo de tempo por si só nunca concede acesso. Especifique o pacote e a operação no chat e confirme aqui. A autorização se limita à mensagem mais recente do usuário nesse chat.</string>
+    <string name="automation_autonomous_confirm_task">Confirmar tarefa atual</string>
+    <string name="automation_autonomous_confirm_required">Primeiro, especifique a tarefa e o pacote no chat atual</string>
+    <string name="automation_autonomous_saved">Configurações de acessibilidade autônoma salvas</string>
+    <string name="automation_autonomous_task_confirmed">A tarefa atual neste chat foi autorizada</string>
+    <string name="automation_autonomous_task_cleared">A autorização da tarefa de acessibilidade autônoma foi revogada</string>
+    <string name="automation_autonomous_task_missing_session">Abra um chat antes de confirmar uma tarefa</string>
+    <string name="automation_autonomous_task_text">Tarefa atual: %1$s</string>
+    <string name="automation_autonomous_active_until">Autorização: ativa quando o período e o aplicativo em primeiro plano correspondem</string>
+    <string name="automation_autonomous_no_grant">Autorização: nenhuma</string>
+    <string name="automation_autonomous_save">Salvar configurações</string>
 </resources>

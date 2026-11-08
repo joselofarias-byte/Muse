@@ -13,7 +13,7 @@ import java.nio.file.Path
  * 只会在那种语言下露出别的语言或空字符串,所以用测试钉住三件事:
  *  1. 键集合在各语言包里一致;
  *  2. 占位符类型(`%1$s` / `%1$d`)与默认包一致,避免运行时 `IllegalFormatConversionException`;
- *  3. 状态名不翻译 —— 用户和开发者搜索、反馈时用的就是 `WorkInfo.State` 的英文名。
+ *  3. 西语使用本地化状态名,其他语言保留 `WorkInfo.State` 的英文名。
  *
  * 键名与枚举的对应关系也被钉住:新增一个状态或任务类型时,如果不补文案,这里先失败。
  * 本测试做过变异自检:故意把某个键改名后`every locale carries the same wake keys`会准确报出语言包与键名。
@@ -73,13 +73,25 @@ class WakeDiagnosticsStringsTest {
     }
 
     @Test
-    fun `state names stay untranslated in every locale`() {
-        // 状态名与 adb 输出、系统日志里的写法一致,翻译后反而搜不到。
-        val expected = WakeState.values().associate { state -> "wake_state_${state.name.lowercase()}" to state.name }
+    fun `state labels match the locale and enum`() {
+        val spanishLabels = mapOf(
+            WakeState.ENQUEUED to "En cola",
+            WakeState.RUNNING to "En ejecución",
+            WakeState.BLOCKED to "Bloqueada",
+            WakeState.SUCCEEDED to "Completada",
+            WakeState.FAILED to "Fallida",
+            WakeState.CANCELLED to "Cancelada",
+            WakeState.NOT_REGISTERED to "No registrada",
+            WakeState.UNKNOWN to "Desconocida",
+        )
+        assertEquals(WakeState.values().toSet(), spanishLabels.keys)
         locales.forEach { locale ->
             val strings = wakeStrings(locale)
-            expected.forEach { (key, value) ->
-                assertEquals("$locale 的 $key 必须保持英文原文(WorkInfo.State 名)", value, strings.getValue(key))
+            WakeState.values().forEach { state ->
+                // The default bundle is Spanish, matching values-es.
+                val expected = if (locale == "values" || locale == "values-es") spanishLabels.getValue(state) else state.name
+                val key = "wake_state_${state.name.lowercase()}"
+                assertEquals("$locale 的 $key 状态文案不正确", expected, strings.getValue(key))
             }
         }
     }

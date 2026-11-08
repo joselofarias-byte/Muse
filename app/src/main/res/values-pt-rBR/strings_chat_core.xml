@@ -133,6 +133,7 @@
     <plurals name="chat_companion_days">
         <item quantity="one">Juntos por %1$d dia</item>
         <item quantity="other">Juntos por %1$d dias</item>
+        <item quantity="many">Juntos por %1$d dias</item>
     </plurals>
 
     <string name="chat_thinking">Pensamento…</string>
@@ -201,6 +202,7 @@
     <plurals name="chat_process_ops">
         <item quantity="one">%1$d ação</item>
         <item quantity="other">%1$d ações</item>
+        <item quantity="many">%1$d ações</item>
     </plurals>
     <string name="chat_reasoning_elapsed">%1$ds</string>
     <string name="chat_reasoning_collapse_cd">Recolher raciocínio</string>
