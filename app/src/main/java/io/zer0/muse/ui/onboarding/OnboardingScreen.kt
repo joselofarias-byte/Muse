@@ -44,7 +44,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
@@ -67,6 +66,7 @@ import io.zer0.muse.data.preset.PresetProviders
 import io.zer0.muse.data.provider.ProviderModelFetcher
 import io.zer0.muse.ui.common.form.IosCapsuleButtonVariant
 import io.zer0.muse.ui.common.form.MuseCapsuleButton
+import io.zer0.muse.ui.common.form.MuseDropdown
 import io.zer0.muse.ui.common.form.MuseSwitch
 import io.zer0.muse.ui.common.form.MuseTactileButton
 import io.zer0.muse.ui.common.form.MuseTextField
@@ -830,9 +830,6 @@ private fun StepMemory(memoryEnabled: Boolean, onMemoryEnabledChange: (Boolean) 
 }
 
 // ── Paso 4: Configurar el proveedor ──────────────────────────────────────────
-/** La altura visual máxima de la lista preestablecida de proveedores en la página de inicio (aproximadamente 5 líneas), después de lo cual la lista se desplaza internamente. */
-private val ONBOARDING_PRESET_LIST_MAX_HEIGHT = 320.dp
-
 /**
  * poner río arriba/Los errores internos se traducen en una frase procesable para el usuario.
  *
@@ -892,51 +889,14 @@ private fun StepProviderConfig(
         )
         Spacer(modifier = Modifier.height(MusePaddings.itemGap))
 
-        // Lista de selección de proveedores (seleccionados: en el extranjero)/Nacional/Transfiera cada uno aproximadamente 1/3 + personalizado)
-        Text(
-            text = stringResource(R.string.onboarding_provider_select_label),
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.onSurface,
+        MuseDropdown(
+            value = selectedPresetId,
+            onValueChange = onPresetSelected,
+            label = stringResource(R.string.onboarding_provider_select_label),
+            options = presetProviders.onboardingPresets.map { it.id to it.displayName },
+            modifier = Modifier.fillMaxWidth(),
         )
-        Spacer(modifier = Modifier.height(MusePaddings.contentGap))
-        // La lista predeterminada se desplaza de forma independiente y tiene un límite de altura: los más de 20 elementos anteriores están en mosaico y el cuadro de entrada clave a continuación está
-        // El botón "Probar conexión" desaparece de la pantalla y los usuarios no pueden encontrar una manera de continuar después de seleccionar un proveedor.
-        // El mensaje que desaparece en la parte inferior dice "todavía hay contenido para desplazar" para evitar que la última fila se corte cuidadosamente en la mitad de una tarjeta incompleta.
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(max = ONBOARDING_PRESET_LIST_MAX_HEIGHT),
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState()),
-            ) {
-                presetProviders.onboardingPresets.forEach { preset ->
-                    LanguageCard(
-                        label = preset.displayName,
-                        selected = selectedPresetId == preset.id,
-                        onClick = { onPresetSelected(preset.id) },
-                    )
-                    Spacer(modifier = Modifier.height(MusePaddings.contentGap))
-                }
-            }
-            // Máscara de desvanecimiento inferior: no intercepta toques, solo proporciona indicaciones visuales.
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .height(24.dp)
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(
-                                MaterialTheme.colorScheme.background.copy(alpha = 0f),
-                                MaterialTheme.colorScheme.background,
-                            ),
-                        ),
-                    ),
-            )
-        }
+        Spacer(modifier = Modifier.height(MusePaddings.itemGap))
 
         // Proveedor personalizado:baseUrl entrada
         androidx.compose.animation.AnimatedVisibility(
@@ -954,7 +914,7 @@ private fun StepProviderConfig(
                 MuseTextField(
                     value = customBaseUrl,
                     onValueChange = onCustomBaseUrlChange,
-                    label = { Text(stringResource(R.string.onboarding_provider_custom_baseurl_input)) },
+                    placeholder = { Text(stringResource(R.string.onboarding_provider_custom_baseurl_input)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -972,7 +932,7 @@ private fun StepProviderConfig(
         MuseTextField(
             value = apiKey,
             onValueChange = onApiKeyChange,
-            label = { Text(stringResource(R.string.onboarding_provider_apikey_input)) },
+            placeholder = { Text(stringResource(R.string.onboarding_provider_apikey_input)) },
             singleLine = true,
             visualTransformation = if (apiKeyVisible) {
                 VisualTransformation.None
