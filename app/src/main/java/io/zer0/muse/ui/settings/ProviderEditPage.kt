@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -286,7 +287,7 @@ internal fun ProviderEditPage(
                                 if (read <= 0) break
                                 total += read
                                 if (total > maxReadBytes) {
-                                    error("文件过大,超过 ${maxReadBytes / 1024 / 1024}MB 限制")
+                                    error("El archivo es demasiado grande: supera el límite de ${maxReadBytes / 1024 / 1024} MB.")
                                 }
                                 sb.append(buffer, 0, read)
                             }
@@ -940,7 +941,7 @@ internal fun ProviderEditPage(
         )
     }
     io.zer0.muse.ui.common.surface.MusePageScaffold(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize().imePadding(),
         topBar = {
             MuseTopBar(
                 title = displayName.ifBlank {
@@ -992,8 +993,6 @@ internal fun ProviderEditPage(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                // v1.125: 移除多余的 imePadding(),Scaffold 的 innerPadding 已包含 IME 偏移,
-                // 双重 imePadding 会把整个内容区推得过高,导致输入框被键盘遮挡。
                 .padding(innerPadding),
         ) {
             Column(modifier = Modifier.fillMaxSize()) {

@@ -834,4 +834,6 @@
     <string name="settings_session_terms_scope_assistant">Assistant level</string>
     <string name="settings_session_terms_scope_confirmed">Confirmed</string>
     <string name="settings_session_terms_scope_candidate">To confirm</string>
+    <string name="settings_diagnostics_schema_summary">Muse: %1$d · Facts: %2$d · Memory: %3$d</string>
+    <string name="settings_diagnostics_database_sizes">DB: %1$s · WAL log: %2$s</string>
 </resources>

@@ -80,7 +80,7 @@ fun detectKeepAliveGuide(): KeepAliveGuide {
             brandName = "Huawei",
             steps = listOf(
                 "Abre Ajustes del sistema → Aplicaciones → Inicio de aplicaciones",
-                "Busca Musa, desactiva la gestión automática y permite el inicio automático, " +
+                "Busca Muse, desactiva la gestión automática y permite el inicio automático, " +
                     "el inicio secundario y la actividad en segundo plano",
                 "En Ajustes → Batería → Más ajustes de batería, permite mantener la conexión de red durante la suspensión",
             ),
@@ -90,7 +90,7 @@ fun detectKeepAliveGuide(): KeepAliveGuide {
             KeepAliveGuide(
                 brandName = "Xiaomi",
                 steps = listOf(
-                    "Abre Ajustes → Ajustes de aplicaciones → Administrar aplicaciones → Musa",
+                    "Abre Ajustes → Ajustes de aplicaciones → Administrar aplicaciones → Muse",
                     "Activa el inicio automático y selecciona Sin restricciones en Ahorro de batería",
                     "También puedes abrir la gestión de inicio automático con el botón inferior",
                 ),
@@ -111,7 +111,7 @@ fun detectKeepAliveGuide(): KeepAliveGuide {
             KeepAliveGuide(
                 brandName = "OPPO",
                 steps = listOf(
-                    "Abre Ajustes → Aplicaciones → Administrar aplicaciones → Musa",
+                    "Abre Ajustes → Aplicaciones → Administrar aplicaciones → Muse",
                     "Activa el inicio automático y permite la actividad en segundo plano en Batería → Gestión del consumo",
                     "También puedes abrir la gestión de inicio automático con el botón inferior",
                 ),
@@ -139,7 +139,7 @@ fun detectKeepAliveGuide(): KeepAliveGuide {
         manufacturer.contains("vivo") || manufacturer.contains("iqoo") -> KeepAliveGuide(
             brandName = "vivo",
             steps = listOf(
-                "Abre Ajustes → Aplicaciones y permisos → Gestión de permisos → Musa",
+                "Abre Ajustes → Aplicaciones y permisos → Gestión de permisos → Muse",
                 "Activa el inicio automático y permite la actividad en segundo plano en Batería → Alto consumo en segundo plano",
                 "También puedes abrir la gestión de inicio automático con el botón inferior",
             ),
@@ -163,8 +163,8 @@ fun detectKeepAliveGuide(): KeepAliveGuide {
         else -> KeepAliveGuide(
             brandName = "General",
             steps = listOf(
-                "En los ajustes del sistema, permite el inicio automático y la actividad en segundo plano de Musa",
-                "Configura Musa sin restricciones en Optimización de batería (puedes acceder con el botón inferior)",
+                "En los ajustes del sistema, permite el inicio automático y la actividad en segundo plano de Muse",
+                "Configura Muse sin restricciones en Optimización de batería (puedes acceder con el botón inferior)",
                 "No uses Forzar detención; basta con deslizar la aplicación en la lista de aplicaciones recientes",
             ),
             openSystemSettings = { ctx ->
