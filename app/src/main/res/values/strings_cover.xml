@@ -10,10 +10,10 @@
     <string name="cover_generate">Generar cobertura</string>
     <string name="cover_generating">Generando cobertura…</string>
     <string name="cover_generate_failed">Falló la generación de portada: %1$s</string>
-    <string name="cover_generate_no_provider">El modelo de dibujo no está configurado, vaya a Configuración→Configúrelo en Modelos y Servicios e inténtelo nuevamente.</string>
+    <string name="cover_generate_no_provider">El modelo de dibujo no está configurado, ve a Configuración→Configúrelo en Modelos y Servicios e inténtalo nuevamente.</string>
     <string name="cover_applied">Se ha aplicado la cobertura</string>
     <string name="cover_library_title">biblioteca de portada</string>
     <string name="cover_count">%1$d cubrir</string>
     <string name="cover_empty_title">Aún no hay cobertura</string>
-    <string name="cover_empty_hint">Haga clic en el botón en la esquina inferior derecha para importar una imagen o deje que AI genere una portada.</string>
+    <string name="cover_empty_hint">Toca el botón de la esquina inferior derecha para importar una imagen o generar una portada con IA.</string>
 </resources>

@@ -6,7 +6,7 @@
     <string name="quick_msg_new_cd">Nuevo mensaje rápido</string>
     <string name="quick_msg_intro">Plantillas de mensajes preestablecidos. Variables admitidas: {{input}}(entrada actual) / {{clipboard}}(portapapeles) / {{date}}(fecha).</string>
     <string name="quick_msg_empty_title">Todavía no hay mensajes rápidos</string>
-    <string name="quick_msg_empty_subtitle">Haga clic en la esquina inferior derecha + Nuevo</string>
+    <string name="quick_msg_empty_subtitle">Toca en la esquina inferior derecha + Nuevo</string>
     <string name="quick_msg_delete_title">Eliminar mensaje rápido</string>
     <!-- 卡片 -->
     <string name="quick_msg_new_default_name">Nuevo mensaje rápido</string>
@@ -46,7 +46,7 @@
     <string name="lorebook_new_cd">Nueva entrada del libro del mundo</string>
     <string name="lorebook_intro">Inyección de contexto activada por palabras clave. Cuando el mensaje del usuario llega a una palabra clave, la configuración correspondiente se inyecta como contexto del SISTEMA.</string>
     <string name="lorebook_empty_title">Todavía no hay entradas en el libro del mundo</string>
-    <string name="lorebook_empty_subtitle">Haga clic en la esquina inferior derecha + Nuevo</string>
+    <string name="lorebook_empty_subtitle">Toca en la esquina inferior derecha + Nuevo</string>
     <string name="lorebook_delete_title">Eliminar entrada del libro del mundo</string>
     <!-- 卡片 -->
     <string name="lorebook_new_default_name">nueva entrada</string>
@@ -82,7 +82,7 @@
     <string name="lorebook_field_whole_word">coincidencia de palabras completas</string>
     <string name="lorebook_field_whole_word_desc">Las palabras clave deben estar completamente formadas antes de activarse (aplicable al inglés; las palabras clave chinas se degradarán automáticamente)</string>
     <string name="lorebook_field_enabled">habilitar</string>
-    <string name="lorebook_field_enabled_desc">Esta entrada ya no activa la inyección después del cierre.</string>
+    <string name="lorebook_field_enabled_desc">Esta entrada ya no activa la inyección después del cierra.</string>
 
     <!-- ===== PromptInjectionScreen 模式注入页 ===== -->
     <!-- 顶部栏 -->
@@ -90,7 +90,7 @@
     <string name="prompt_injection_new_cd">Nuevo PromptInjection</string>
     <string name="prompt_injection_intro">Inyección de contexto activada por modo. El usuario cambia de modo a mitad de sesión (creativo/Programación/juegos de rol, etc.), la inyección correspondiente surte efecto inmediatamente.</string>
     <string name="prompt_injection_empty_title">todavía no PromptInjection</string>
-    <string name="prompt_injection_empty_subtitle">Haga clic en la esquina inferior derecha + Nuevo</string>
+    <string name="prompt_injection_empty_subtitle">Toca en la esquina inferior derecha + Nuevo</string>
     <string name="prompt_injection_delete_title">Eliminar PromptInjection</string>
     <!-- 卡片 -->
     <string name="prompt_injection_new_default_name">Nueva inyección</string>
@@ -111,14 +111,14 @@
     <string name="prompt_injection_section_basic">Conceptos básicos</string>
     <string name="prompt_injection_field_name">Nombre</string>
     <string name="prompt_injection_field_mode">modo</string>
-    <string name="prompt_injection_field_display_name">nombre para mostrar (UI se muestra en , déjelo en blanco para usar el nombre predeterminado del esquema)</string>
+    <string name="prompt_injection_field_display_name">Nombre que se muestra en la interfaz (déjalo vacío para usar el nombre predeterminado del esquema)</string>
     <string name="prompt_injection_section_content">Inyectar contenido</string>
     <string name="prompt_injection_field_content">Contenido (inyectado como contexto del SISTEMA al cambiar a este modo)</string>
     <string name="prompt_injection_section_behavior">comportamiento</string>
     <string name="prompt_injection_field_priority">Prioridad (ordenada cuando se realizan múltiples inyecciones en el mismo modo, cuanto mayor sea el número, se inyectará primero)</string>
     <string name="prompt_injection_field_insertion_position">Ubicación de la inyección</string>
     <string name="prompt_injection_field_enabled">habilitar</string>
-    <string name="prompt_injection_field_enabled_desc">Esta entrada ya no activa la inyección después del cierre.</string>
+    <string name="prompt_injection_field_enabled_desc">Esta entrada ya no activa la inyección después del cierra.</string>
 
     <!-- ===== AssistantScreen 助手页 ===== -->
     <!-- 顶部栏 -->
@@ -129,7 +129,7 @@
     <string name="assistant_default_picker_title">Elige un asistente predeterminado</string>
     <string name="assistant_default_hint">Asistente utilizado por defecto para nuevas tareas</string>
     <string name="assistant_section_actions">Agregar o importar</string>
-    <string name="assistant_empty_create">El asistente aún no ha sido creado, haga clic en Nuevo</string>
+    <string name="assistant_empty_create">El asistente aún no ha sido creado, toca en Nuevo</string>
     <string name="assistant_unnamed">(sin nombre)</string>
     <string name="assistant_current">actual</string>
     <string name="assistant_more_cd">Más acciones</string>
@@ -174,12 +174,12 @@
     <string name="assistant_detail_export_json">Exportar como tarjeta de personaje JSON</string>
     <string name="assistant_detail_export_json_desc">SillyTavern V2 JSON</string>
     <!-- 助手详情页: Muse 角色卡分享(系统分享) -->
-    <string name="assistant_detail_share_muse_card">Compartir tarjeta de personaje de Musa</string>
+    <string name="assistant_detail_share_muse_card">Compartir tarjeta de personaje de Muse</string>
     <string name="assistant_detail_share_muse_card_desc">Genera tarjetas visuales y compártelas a través del sistema.</string>
-    <string name="assistant_detail_share_muse_json">Compartir Musa JSON</string>
-    <string name="assistant_detail_share_muse_json_desc">Comparte el formato Musa a través del sistema. JSON</string>
+    <string name="assistant_detail_share_muse_json">Compartir JSON de Muse</string>
+    <string name="assistant_detail_share_muse_json_desc">Comparte el archivo en formato JSON de Muse mediante el sistema.</string>
     <string name="assistant_detail_share_pack">enviar paquete de personajes</string>
-    <string name="assistant_detail_share_pack_desc">Envíe un paquete de personajes completo (incluido el avatar) a través de cualquier aplicación y la otra parte podrá importarlo directamente</string>
+    <string name="assistant_detail_share_pack_desc">Envía un paquete de personajes completo (incluido el avatar) a través de cualquier aplicación y la otra parte podrá importarlo directamente</string>
     <string name="assistant_import_preview_title">Importar cartas de personajes</string>
     <string name="assistant_import_preview_confirm">importar</string>
     <string name="assistant_detail_share_muse_failed">Error al compartir:%1$s</string>

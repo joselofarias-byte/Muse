@@ -2,7 +2,7 @@
 <resources>
     <!-- v1.97 gap8: 独立翻译页面(TranslateScreen)字符串 -->
     <string name="translate_page_title">Traducción</string>
-    <string name="translate_page_input_placeholder">Ingrese el texto para traducir...</string>
+    <string name="translate_page_input_placeholder">Entra el texto para traducir...</string>
     <string name="translate_page_translate">Traducción</string>
     <string name="translate_page_copy">Copiar resultados</string>
     <string name="translate_page_paste">Pegar</string>
@@ -57,7 +57,7 @@
     <!-- v1.0.30 gap4.5: 自定义风格 -->
     <string name="translate_page_custom_style_add">agregar estilo</string>
     <string name="translate_page_custom_style_name">nombre de estilo</string>
-    <string name="translate_page_custom_style_prompt">Directivas de estilo (como\"Utilice la traducción al chino clásico antiguo\")</string>
+    <string name="translate_page_custom_style_prompt">Directivas de estilo (como\"Usa la traducción al chino clásico antiguo\")</string>
     <string name="translate_page_custom_style_save">Guardar</string>
     <string name="translate_page_custom_style_remove">Eliminar</string>
     <string name="translate_page_custom_style_added">Estilo personalizado agregado</string>
