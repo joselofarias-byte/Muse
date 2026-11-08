@@ -44,6 +44,9 @@ interface MpThreadDao {
     @Query("SELECT unreadCount FROM mp_thread WHERE id = :threadId")
     suspend fun unreadCount(threadId: String): Int?
 
+    @Query("SELECT unreadCount FROM mp_thread WHERE id = :threadId")
+    fun observeUnreadCount(threadId: String): Flow<Int?>
+
     @Query("UPDATE mp_thread SET unreadCount = unreadCount + 1 WHERE id = :threadId")
     suspend fun increaseUnread(threadId: String)
 

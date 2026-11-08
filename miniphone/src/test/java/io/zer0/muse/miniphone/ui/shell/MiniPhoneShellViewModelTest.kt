@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -324,6 +325,9 @@ private class FakeThreadDao(
     }
 
     override suspend fun unreadCount(threadId: String): Int? = stored.firstOrNull { it.id == threadId }?.unreadCount
+
+    override fun observeUnreadCount(threadId: String): Flow<Int?> =
+        state.map { threads -> threads.firstOrNull { it.id == threadId }?.unreadCount }
 
     override suspend fun increaseUnread(threadId: String) = Unit
 

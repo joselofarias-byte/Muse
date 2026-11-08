@@ -20,8 +20,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 
 /**
@@ -180,22 +178,17 @@ class MiniPhoneChatViewModel(
     }
 
     /**
-     * 页面可见性。可见期间只要这个会话的消息条数变化(进页、来了新消息)就把未读清零:
-     * 后台主动私信落进正在看的会话时,会话列表不该留下一个未读角标。
-     *
-     * 跟踪的是库里那份消息流,而不是界面窗口:后台写入不经过本页的写入回调,
-     * 只有表本身变化才能看见它。用 Flow 收集而不是定时查询:没有新消息就零数据库写入。
-     * 离页即取消 —— 在别处也不断清未读的话,用户会永远看不到后台消息的提示。
+     * Clear unread updates only while visible. Observe the counter itself because background
+     * writers may increment it after the message insertion has already been observed.
      */
     fun setVisible(visible: Boolean) {
         markReadJob?.cancel()
         markReadJob = if (visible) {
-            viewModelScope.launchGuarded(TAG_CHAT_VM, "标记已读并跟随消息数") {
-                paging.markRead()
-                messageDao.observeMessages(threadId)
-                    .map { messages -> messages.size }
-                    .distinctUntilChanged()
-                    .collect { paging.markRead() }
+            viewModelScope.launchGuarded(TAG_CHAT_VM, "标记已读并跟随未读计数") {
+                threadDao.observeUnreadCount(threadId)
+                    .collect { unread ->
+                        if (unread != null && unread > 0) threadDao.clearUnread(threadId)
+                    }
             }
         } else {
             null
