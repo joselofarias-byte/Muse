@@ -450,15 +450,11 @@ internal fun ProviderRow(
                 } else {
                     MaterialTheme.colorScheme.onSurface
                 },
-                maxLines = 2,
-                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
             )
             Text(
                 text = providerDisplayTypeName(config.type),
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.outline,
-                maxLines = 1,
-                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             androidx.compose.foundation.layout.FlowRow(
                 modifier = Modifier.fillMaxWidth().padding(top = MusePaddings.tightGap),
