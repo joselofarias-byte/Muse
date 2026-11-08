@@ -18,13 +18,13 @@
     <string name="onboarding_names_agent_placeholder">Por ejemplo, Nova</string>
     <string name="onboarding_names_hint">Este nombre se usará para el asistente predeterminado. Puedes cambiarlo en cualquier momento.</string>
     <string name="onboarding_memory_title">Activa la memoria</string>
-    <string name="onboarding_memory_subtitle">Al activarla, Musa organiza automáticamente los recuerdos después de cada conversación. Actualizar la memoria con frecuencia puede reducir el aprovechamiento de la caché del modelo y aumentar el costo, pero permite mantener el contexto a largo plazo.</string>
+    <string name="onboarding_memory_subtitle">Al activarla, Muse organiza automáticamente los recuerdos después de cada conversación. Actualizar la memoria con frecuencia puede reducir el aprovechamiento de la caché del modelo y aumentar el costo, pero permite mantener el contexto a largo plazo.</string>
     <string name="onboarding_memory_switch_title">Habilitar sistema de memoria</string>
     <string name="onboarding_memory_switch_subtitle">Organiza los recuerdos al terminar cada conversación. Puedes desactivarla desde Ajustes.</string>
 
     <!-- 步骤 3:配置供应商 -->
     <string name="onboarding_provider_title">Conecta un proveedor de IA</string>
-    <string name="onboarding_provider_subtitle">Elige un proveedor, introduce tu clave API y prueba la conexión. Musa obtendrá los modelos disponibles y detectará sus capacidades.</string>
+    <string name="onboarding_provider_subtitle">Elige un proveedor, introduce tu clave API y prueba la conexión. Muse obtendrá los modelos disponibles y detectará sus capacidades.</string>
     <string name="onboarding_provider_err_auth">Error de autenticación: comprueba tu clave API.</string>
     <string name="onboarding_provider_err_empty">La conexión funciona, pero el proveedor no devolvió modelos. Comprueba la URL de la API.</string>
     <string name="onboarding_provider_err_other">Error de conexión: %1$s</string>
@@ -53,8 +53,8 @@
 
     <!-- 步骤 5:完成页 -->
     <string name="onboarding_complete_title">Todo listo</string>
-    <string name="onboarding_provider_next_hint">Elige un servicio, añade su clave y pasa la prueba para continuar; también puedes configurarlo más abajo.</string>
-    <string name="onboarding_welcome_greetings_caption">Un saludo, siete idiomas</string>
+    <string name="onboarding_provider_next_hint">Elige un proveedor, introduce tu clave API y prueba la conexión para continuar. También puedes configurarlo más tarde.</string>
+    <string name="onboarding_welcome_greetings_caption">Tu asistente, a tu manera</string>
     <string name="onboarding_complete_subtitle">Estas son algunas cosas que puedes hacer:</string>
     <string name="onboarding_restore_from_backup">Restaurar datos desde una copia de seguridad</string>
     <string name="onboarding_tutorial_chat_title">Conversaciones</string>

@@ -87,11 +87,13 @@ fun QrCodeShareDialog(content: String, onDismiss: () -> Unit, includesSecret: Bo
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
-                    Text(
-                        text = stringResource(R.string.qr_share_include_key),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
+                    Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
+                        Text(
+                            text = stringResource(R.string.qr_share_include_key),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                    }
                     MuseSwitch(
                         checked = includesSecret,
                         onCheckedChange = onIncludesSecretChange,

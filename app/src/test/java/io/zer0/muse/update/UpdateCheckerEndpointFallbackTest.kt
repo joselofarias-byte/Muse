@@ -88,7 +88,27 @@ class UpdateCheckerEndpointFallbackTest {
         server.enqueue(MockResponse().setResponseCode(200).setBody(""))
         val result = runBlocking { fetchFromOfficialEndpoint() }
         assertTrue("空响应必须是错误", result is Result.Error)
-        assertEquals("response is empty", (result as Result.Error).message)
+        assertEquals("El servidor devolvió una respuesta vacía", (result as Result.Error).message)
+    }
+
+    @Test
+    fun `missing version tag reports a Spanish error without renaming the JSON field`() {
+        server.enqueue(MockResponse().setResponseCode(200).setBody("{}"))
+
+        val result = runBlocking { fetchFromOfficialEndpoint() }
+
+        assertTrue(result is Result.Error)
+        assertEquals("No se pudo interpretar el campo tag_name", (result as Result.Error).message)
+    }
+
+    @Test
+    fun `invalid JSON reports the Spanish network fallback`() {
+        server.enqueue(MockResponse().setResponseCode(200).setBody("not JSON"))
+
+        val result = runBlocking { fetchFromOfficialEndpoint() }
+
+        assertTrue(result is Result.Error)
+        assertEquals("Error de red", (result as Result.Error).message)
     }
 
     @Test
