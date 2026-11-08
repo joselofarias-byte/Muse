@@ -207,6 +207,8 @@ class MiniPhoneChatViewModelTest {
                 createdAt = NOW_BASE + MINUTE_MS,
             ),
         )
+        // Let the message notification arrive before the background unread update.
+        delay(QUIET_CHECK_MS)
         db.threadDao().increaseUnread(THREAD_ID)
 
         // 消息数变了就再清一次:用户正看着这条会话,列表上不该留未读角标

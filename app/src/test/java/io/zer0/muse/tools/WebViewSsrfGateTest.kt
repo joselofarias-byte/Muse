@@ -3,6 +3,8 @@ package io.zer0.muse.tools
 import io.zer0.muse.ui.SsrfGuard
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -105,25 +107,28 @@ class WebViewSsrfGateTest {
         assertEquals("同一主机只解析一次(首次解析也被缓存覆盖)", 1, resolver.calls.get())
     }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     @Test
     fun `cold host on main thread fails closed without waiting and heals after prewarm`() = runBlocking {
         val resolver = SlowResolver(delayMs = 250, addresses = publicAddresses())
         SsrfGuard.setResolverForTest(resolver)
-        val gate = gate()
+        val prewarmDispatcher = StandardTestDispatcher()
+        val gate = gate(CoroutineScope(prewarmDispatcher))
         val url = "http://cold-ssrf-c.example/"
         val retried = AtomicBoolean(false)
 
         val blocked = gate.isBlockedNow(url) { retried.set(true) }
 
         assertTrue("冷主机必须 fail-closed", blocked)
-        // 判据换成"有没有等 DNS"本身：如果主线程路径真的去解析了，这里计数器已经是 1。
-        // 原来的墙钟断言（elapsedMs < 100）在负载高的机器上会无缘无故变红 ——
-        // 时间从来不是这条规则要表达的东西，"没触发解析"才是。
-        assertEquals("主线程路径不得等待 DNS（否则此处已完成一次解析）", 0, resolver.calls.get())
+        // Keep prewarm queued: a real IO worker may start before isBlockedNow returns.
+        assertEquals("The calling thread must not resolve DNS", 0, resolver.calls.get())
         assertFalse("预热未完成前不重试", retried.get())
 
         withTimeout(5_000) {
-            while (!retried.get()) delay(10)
+            while (!retried.get()) {
+                prewarmDispatcher.scheduler.runCurrent()
+                delay(10)
+            }
         }
         assertEquals(1, resolver.calls.get())
         // 预热完成 → 同一主机后续判定直接命中缓存,不再拦截

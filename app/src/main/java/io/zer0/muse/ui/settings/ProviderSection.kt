@@ -26,6 +26,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
@@ -339,7 +340,7 @@ private fun ModelCatalogRow() {
     var status by remember { mutableStateOf(repository.status()) }
     var refreshing by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
-    val context = androidx.compose.ui.platform.LocalContext.current
+    val resources = LocalResources.current
 
     Row(
         modifier = Modifier
@@ -359,7 +360,7 @@ private fun ModelCatalogRow() {
                     append(formatCatalogTimestamp(status.publishedAt))
                     append(" · ")
                     append(
-                        context.getString(
+                        resources.getString(
                             R.string.settings_model_catalog_counts,
                             status.providerCount,
                             status.modelCount,

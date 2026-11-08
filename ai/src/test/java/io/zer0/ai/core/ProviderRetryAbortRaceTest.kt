@@ -86,6 +86,7 @@ class ProviderRetryAbortRaceTest {
             ),
             provider = { config -> GeminiProvider(config) },
             modelId = "gemini-race",
+            abortAtBackoff = true,
         )
     }
 
@@ -123,7 +124,9 @@ class ProviderRetryAbortRaceTest {
         if (abortAtBackoff) {
             Logger.enabled = true
             Logger.sink = { _, tag, message, _ ->
-                if (tag == "AnthropicProvider" && message.startsWith("streamChat retryable failure(code=$statusCode")) {
+                if (tag == "${config.type.name.lowercase().replaceFirstChar { it.uppercase() }}Provider" &&
+                    message.startsWith("streamChat retryable failure(code=$statusCode")
+                ) {
                     // Abort synchronously inside the retry coroutine, after the failed SSE was cancelled.
                     signal.abort()
                     backoffStarted.countDown()
