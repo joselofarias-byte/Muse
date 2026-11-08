@@ -60,6 +60,7 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -233,6 +234,14 @@ class ChatViewModelSessionMismatchTest {
         testDispatcher.scheduler.advanceUntilIdle()
     }
 
+    // advanceUntilIdle does not await the outbox work on Dispatchers.IO.
+    private suspend fun awaitMismatchRollback() = withContext(Dispatchers.Default) {
+        withTimeout(5_000) {
+            viewModel.state.first { !it.isStreaming }
+            viewModel.messages.first { it.isEmpty() }
+        }
+    }
+
     // ── 测试用例 ────────────────────────────────────────────────────────
 
     @Test
@@ -255,6 +264,7 @@ class ChatViewModelSessionMismatchTest {
 
         // 让 channel 消费者处理请求(此时 currentSessionId=B ≠ req.sessionId=A)
         advanceUntilIdle()
+        awaitMismatchRollback()
 
         // 验证乐观消息已被移除
         val stateAfterRollback = viewModel.state.value
@@ -275,6 +285,7 @@ class ChatViewModelSessionMismatchTest {
         // 切换会话触发 mismatch
         viewModel.update { it.copy(currentSessionId = "session-B") }
         advanceUntilIdle()
+        awaitMismatchRollback()
 
         // 验证流式标志被重置
         assertFalse("mismatch 回滚后 isStreaming 应为 false", viewModel.state.value.isStreaming)
@@ -291,6 +302,7 @@ class ChatViewModelSessionMismatchTest {
         // 切换到会话 B,使 req.sessionId=A 与 currentSessionId=B 不匹配
         viewModel.update { it.copy(currentSessionId = "session-B") }
         advanceUntilIdle()
+        awaitMismatchRollback()
 
         // 验证 appendMessage 从未被调用(不向错误会话写入消息)
         coVerify(exactly = 0) { sessionRepository.appendMessage(any(), any()) }
@@ -305,6 +317,7 @@ class ChatViewModelSessionMismatchTest {
 
         viewModel.update { it.copy(currentSessionId = "session-B") }
         advanceUntilIdle()
+        awaitMismatchRollback()
 
         // launchGeneration 是 launchStream 的入口;mismatch 时不应调用
         // 注:launchGeneration 非 suspend,用 verify 而非 coVerify
@@ -389,6 +402,7 @@ class ChatViewModelSessionMismatchTest {
         // 切换 agentSessionId 模拟 Agent Tab 切换
         viewModel.update { it.copy(agentSessionId = "agent-session-B") }
         advanceUntilIdle()
+        awaitMismatchRollback()
 
         // 验证乐观消息被移除
         assertEquals(0, viewModel.messages.value.size)
