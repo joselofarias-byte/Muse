@@ -2,6 +2,7 @@
 
 package io.zer0.muse.ui.settings
 
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -340,6 +341,7 @@ private fun ModelCatalogRow() {
     var refreshing by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val context = androidx.compose.ui.platform.LocalContext.current
+    val resources = LocalResources.current
 
     Row(
         modifier = Modifier
@@ -359,7 +361,7 @@ private fun ModelCatalogRow() {
                     append(formatCatalogTimestamp(status.publishedAt))
                     append(" · ")
                     append(
-                        context.getString(
+                        resources.getString(
                             R.string.settings_model_catalog_counts,
                             status.providerCount,
                             status.modelCount,
