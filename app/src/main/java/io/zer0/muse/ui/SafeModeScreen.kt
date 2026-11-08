@@ -456,7 +456,7 @@ private fun shareCrashLog(context: Context) {
         val shareIntent = Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"
             putExtra(Intent.EXTRA_STREAM, uri)
-            putExtra(Intent.EXTRA_SUBJECT, "muse crash log — ${logFile.name}")
+            putExtra(Intent.EXTRA_SUBJECT, "Informe de fallos de Muse — ${logFile.name}")
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
         ShareIntentHelper.startChooserSafely(
@@ -513,15 +513,15 @@ private fun manualClearData(context: Context) {
 private fun copyCrashInfo(context: Context, crashTime: String?, crashTrace: String?) {
     val text = buildString {
         if (!crashTime.isNullOrBlank()) {
-            appendLine("崩溃时间: $crashTime")
+            appendLine("Fecha y hora del fallo: $crashTime")
             appendLine()
         }
         if (!crashTrace.isNullOrBlank()) {
-            appendLine("崩溃堆栈:")
+            appendLine("Traza del fallo:")
             append(crashTrace)
         }
         if (isEmpty()) {
-            append("(无崩溃信息)")
+            append("(No hay información del fallo)")
         }
     }
     val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
