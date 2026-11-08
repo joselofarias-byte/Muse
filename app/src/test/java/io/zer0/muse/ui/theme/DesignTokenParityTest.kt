@@ -389,7 +389,7 @@ class DesignTokenParityTest {
         // + 0.97（MuseCapsuleButtonSizes）；普通按钮 40（MuseDialogSizes.buttonVisualHeight）。
         assertNumber("component.button.capsuleMinHeight", MuseIconSizes.touchTarget.value.toDouble())
         assertNumber("component.button.capsuleRadius", MuseCornerRadius.SHEET.toDouble())
-        assertNumber("component.button.capsulePressScale", MuseCapsuleButtonSizes.pressScale.toDouble())
+        assertNumber("component.button.capsulePressScale", MuseCapsuleButtonSizes.PRESS_SCALE.toDouble())
         assertNumber("component.button.minHeight", MuseDialogSizes.buttonVisualHeight.value.toDouble())
 
         // 气泡：MuseBubbleStyles / MuseCornerRadius / MusePaddings.bubbleInner / messageGap。
@@ -486,8 +486,7 @@ class DesignTokenParityTest {
     }
 
     /** PaddingValues 的水平内边距（Compose 只暴露 calculate*Padding）。 */
-    private fun paddingX(values: PaddingValues): Double =
-        values.calculateLeftPadding(LayoutDirection.Ltr).value.toDouble()
+    private fun paddingX(values: PaddingValues): Double = values.calculateLeftPadding(LayoutDirection.Ltr).value.toDouble()
 
     /** PaddingValues 的垂直内边距。 */
     private fun paddingY(values: PaddingValues): Double = values.calculateTopPadding().value.toDouble()
