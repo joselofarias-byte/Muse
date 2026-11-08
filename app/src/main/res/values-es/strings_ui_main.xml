@@ -99,7 +99,7 @@
     <string name="assistant_detail_regex_title">Reglas de reemplazo regulares</string>
     <string name="assistant_detail_regex_desc">en usuario/Realice un reemplazo regular de los mensajes del asistente (reemplazo de nombres de funciones, filtrado de palabras confidenciales, estandarización de formatos, etc.)</string>
     <string name="assistant_detail_regex_add">Agregar reglas</string>
-    <string name="assistant_detail_regex_empty">Aún no hay reglas, haga clic en "Agregar regla" para crear una</string>
+    <string name="assistant_detail_regex_empty">Aún no hay reglas, toca en "Agregar regla" para crear una</string>
     <string name="assistant_detail_regex_edit_title">Editar reglas</string>
     <string name="assistant_detail_regex_name_label">Nombre de la regla</string>
     <string name="assistant_detail_regex_name_hint">Tales como: reemplazo de nombre de rol</string>
@@ -120,10 +120,10 @@
     <string name="qr_share_warning_no_key">Este código QR excluye las claves API, los secretos OAuth, las claves privadas y los encabezados, cuerpos y plantillas de solicitud. Las URL y otros datos de configuración siguen incluidos. La persona que lo reciba deberá completar las credenciales necesarias.</string>
     <string name="qr_share_include_key">Incluir credenciales: claves API, secretos OAuth, claves privadas, encabezados, cuerpos y plantillas de solicitud</string>
     <string name="qr_scan_title">Escanea el código QR</string>
-    <string name="qr_scan_pick_image">Seleccione una imagen con código QR del álbum</string>
+    <string name="qr_scan_pick_image">Selecciona una imagen con código QR del álbum</string>
     <string name="qr_scan_scanning">Reconociendo…</string>
     <string name="qr_scan_pick_button">Seleccionar imagen</string>
-    <string name="qr_scan_failed">No se pudo reconocer el código QR. Asegúrese de que la imagen sea clara e inténtelo de nuevo.</string>
+    <string name="qr_scan_failed">No se pudo reconocer el código QR. Asegúrate de que la imagen sea clara e inténtalo de nuevo.</string>
     <string name="qr_import_success">Proveedores importados: %1$s</string>
     <string name="qr_import_invalid">El formato del código QR es incorrecto y no está configurado por el proveedor.</string>
     <string name="qr_share_btn">Compartir código QR</string>
@@ -180,7 +180,7 @@
     <string name="permission_termux_probe_unchecked">Configuración aún no detectada</string>
     <string name="permission_termux_get_btn">Obtener Termux</string>
     <string name="permission_termux_open_btn">abierto Termux</string>
-    <string name="permission_termux_grant_denied_hint">No se ha concedido permiso de llamada a Termux. Haga clic en Reintentar y seleccione "Permitir" en la ventana emergente del sistema.</string>
+    <string name="permission_termux_grant_denied_hint">No se ha concedido permiso de llamada a Termux. Toca en Reintentar y selecciona "Permitir" en la ventana emergente del sistema.</string>
     <string name="permission_termux_grant_btn">para otorgar permisos</string>
     <string name="permission_termux_grant_toast">Si la ventana emergente no aparece, puede abrir Termux primero y luego volver e intentarlo nuevamente.</string>
     <string name="permission_termux_grant_manual_hint">Si la ventana emergente no aparece, puede abrir Termux primero y luego volver e intentarlo nuevamente.</string>
@@ -191,15 +191,15 @@
     <string name="shizuku_apk_not_installed">Shizuku APK No instalado</string>
     <string name="shizuku_service_running">Shizuku El servicio está funcionando</string>
     <string name="shizuku_service_not_running">Shizuku El servicio no se está ejecutando (debe iniciarse en la aplicación Shizuku)</string>
-    <string name="shizuku_status_unauthorized_long">Uso no autorizado por parte de Musa Shizuku</string>
+    <string name="shizuku_status_unauthorized_long">Muse no tiene autorización para usar Shizuku</string>
     <string name="permission_open_shizuku_service">Abre Shizuku para iniciar el servicio.</string>
     <string name="permission_action_id_help">1 = Regresar (BACK)\n2 = pagina de inicio (HOME)\n3 = tareas recientes (RECENTS)\n4 = barra de notificaciones (NOTIFICATIONS)\n5 = Configuraciones rápidas (QUICK_SETTINGS)\n6 = diálogo de poder (POWER_DIALOG)\n10 = Desactivar notificacionesshade (DISMISS_NOTIFICATION_SHADE)\n\nHerramientas rápidas: ui_back (action_id=1), ui_home (action_id=2)</string>
-    <string name="memory_screen_ai_understanding">AI comprensión de ti</string>
+    <string name="memory_screen_ai_understanding">Lo que la IA sabe de ti</string>
     <string name="memory_screen_no_summary_hint">Aún no hay resumen. Se generará automáticamente después de continuar la conversación.</string>
-    <string name="memory_screen_click_collapse">Haga clic para colapsar</string>
+    <string name="memory_screen_click_collapse">Toca para colapsar</string>
     <string name="memory_screen_experience_title">Biblioteca de experiencias</string>
-    <string name="memory_screen_experience_desc">Mejores prácticas y metodologías acumuladas,AI Lo consultaré cuando encuentre tareas similares.</string>
-    <string name="memory_screen_experience_empty">Actualmente no hay entrada de experiencia. Utilice "Agregar experiencia" a continuación para agregarla.</string>
+    <string name="memory_screen_experience_desc">Buenas prácticas y métodos que la IA puede consultar al resolver tareas similares.</string>
+    <string name="memory_screen_experience_empty">Actualmente no hay entrada de experiencia. Usa "Agregar experiencia" a continuación para agregarla.</string>
     <string name="memory_screen_experience_count">total %1$d Artículo</string>
     <string name="memory_screen_experience_add_dialog_title">Añadir experiencia</string>
     <string name="memory_screen_experience_edit_title">Experiencia de edición</string>
@@ -278,14 +278,14 @@
     <string name="settings_screen_data_import_desc">Migrar desde RikkaHub/Kelivo</string>
     <string name="settings_screen_web_access">Acceso a la versión web</string>
     <string name="settings_screen_web_access_desc">Dirección/PIN/código QR, simplemente escanéelo para conectarse</string>
-    <string name="settings_web_access_intro">Abra la siguiente dirección en un navegador de su iPhone o computadora e ingrese su PIN para usar la versión web.</string>
+    <string name="settings_web_access_intro">Abre la siguiente dirección en un navegador de su iPhone o computadora e entra su PIN para usar la versión web.</string>
     <string name="settings_web_access_enable">Habilitar versión web</string>
     <string name="settings_web_access_enable_subtitle">Después del apagado, otros dispositivos se desconectan inmediatamente y se libera el puerto.</string>
     <string name="settings_web_access_lan">Permitir acceso LAN</string>
     <string name="settings_web_access_lan_on">Se puede abrir en teléfonos celulares y computadoras bajo el mismo Wi-Fi</string>
     <string name="settings_web_access_lan_off">Accesible sólo para esta máquina</string>
     <string name="settings_web_access_local_only_hint">Solo esta máquina puede acceder a este código QR. Otros dispositivos no pueden escanear este código QR.</string>
-    <string name="settings_web_access_no_ip">No obtuve la IP de LAN: conéctese primero a Wi-Fi o verifique si el enrutador ha aislado el dispositivo</string>
+    <string name="settings_web_access_no_ip">No obtuve la IP de LAN: conéctese primero a Wi-Fi o comprueba si el enrutador ha aislado el dispositivo</string>
     <string name="settings_web_access_scan_hint">Escanéalo con la cámara de tu teléfono para abrirlo.</string>
     <string name="settings_web_access_first_login_hint">Al abrir por primera vez, debe ingresar los 6 dígitos anteriores PIN</string>
     <string name="settings_web_access_pin_regenerated">Nuevo PIN:%1$s;Otros dispositivos necesitan iniciar sesión nuevamente</string>
@@ -327,7 +327,7 @@
     <string name="message_annotate_title">Anotación de mensaje</string>
     <string name="message_annotate_hint">escribir comentarios…</string>
     <string name="connector_page_title">conector</string>
-    <string name="connector_intro">Conéctese a servicios externos (calendario/Notas/Alojamiento de código, etc.): Complete el punto final y las credenciales después de que el proveedor de servicios registre la aplicación, autorice el navegador del sistema y las credenciales se cifren y guarden.</string>
+    <string name="connector_intro">Conéctese a servicios externos (calendario/Notas/Alojamiento de código, etc.): Completa el punto final y las credenciales después de que el proveedor de servicios registre la aplicación, autorice el navegador del sistema y las credenciales se cifren y guarden.</string>
     <string name="connector_add">Agregar conector</string>
     <string name="connector_connect">conectar</string>
     <string name="connector_connect_success">Conectado %1$s</string>
@@ -335,18 +335,18 @@
     <string name="connector_empty">Aún no se ha agregado ningún conector.</string>
     <string name="connector_config_corrupt">La configuración está dañada, los datos se han conservado y se pueden volver a importar</string>
     <string name="connector_field_authorize">Punto final de autorización</string>
-    <string name="connector_field_token">Token punto final</string>
+    <string name="connector_field_token">Token del punto de conexión</string>
     <string name="connector_field_scope">Ámbito</string>
     <string name="connector_field_client_id">ID de cliente</string>
     <string name="connector_field_client_secret">Secreto de cliente</string>
     <string name="channel_inbox_title">recibido recientemente</string>
     <string name="channel_intro_title">Enviar mensajes a tu IM</string>
-    <string name="channel_intro">Después de la configuración, el asistente puede enviar mensajes a Feishu a través de la herramienta./QQ y otros canales. Las credenciales solo se almacenan cifradas localmente y no se cargarán.</string>
+    <string name="channel_intro">Configura un canal para que el asistente envía mensajes a Feishu, QQ y otros servicios. Las credenciales se guardan cifradas en tu dispositivo y no se suben a ningún servidor.</string>
     <string name="channel_add">Agregar canal</string>
     <string name="channel_edit_title">Editar canal</string>
     <string name="channel_edit">Editar</string>
     <string name="channel_delete_confirm">¿Eliminar este canal?</string>
-    <string name="channel_empty">El canal aún no se ha configurado, haga clic en el botón de arriba para agregarlo.</string>
+    <string name="channel_empty">El canal aún no se ha configurado, toca en el botón de arriba para agregarlo.</string>
     <string name="channel_save">Guardar</string>
     <string name="channel_field_platform">plataforma</string>
     <string name="channel_platform_feishu">Feishu</string>
@@ -382,10 +382,10 @@
     <string name="channel_webhook_receive">Habilitar devoluciones de llamada de la plataforma</string>
     <string name="channel_webhook_receive_desc">Desactivado de forma predeterminada; solo está habilitado si la plataforma ha configurado una URL de devolución de llamada externa.</string>
     <string name="channel_webhook_verification_token">Token de verificación</string>
-    <string name="channel_webhook_feishu_hint">Solo para devoluciones de llamadas de eventos Feishu configuradas manualmente; complete el mismo token de verificación en la plataforma. Actualmente sólo se admiten devoluciones de llamadas no cifradas,Encrypt Key Déjelo en blanco; esto no es necesario para una recepción de conexión prolongada.</string>
-    <string name="channel_webhook_qq_hint">Solo disponible para devoluciones de llamadas QQ configuradas manualmente. Establezca una clave aleatoria de alta seguridad y agréguela a la URL de devolución de llamada. ?token=...;La solicitud también debe llevar una firma Ed25519 nueva y una marca de tiempo, verificadas mediante el secreto de la aplicación anterior. Esto no es necesario para una recepción de conexión prolongada.</string>
+    <string name="channel_webhook_feishu_hint">Solo para devoluciones de llamadas de eventos Feishu configuradas manualmente; completa el mismo token de verificación en la plataforma. Actualmente sólo se admiten devoluciones de llamadas no cifradas,Encrypt Key Déjelo en blanco; esto no es necesario para una recepción de conexión prolongada.</string>
+    <string name="channel_webhook_qq_hint">Solo disponible para devoluciones de llamadas QQ configuradas manualmente. Establece una clave aleatoria de alta seguridad y agréguela a la URL de devolución de llamada. ?token=...;La solicitud también debe llevar una firma Ed25519 nueva y una marca de tiempo, verificadas mediante el secreto de la aplicación anterior. Esto no es necesario para una recepción de conexión prolongada.</string>
     <string name="channel_field_target">Enviar objetivo ID</string>
-    <string name="channel_field_qq_type">QQ tipo de objetivo</string>
+    <string name="channel_field_qq_type">Tipo de destinatario de QQ</string>
     <string name="channel_type_group">chat grupal</string>
     <string name="channel_type_c2c">Chat privado</string>
     <string name="channel_auto_reply">respuesta automática</string>
@@ -411,7 +411,7 @@
     <string name="channel_conversation_expand">iniciar una conversación</string>
     <string name="channel_conversation_collapse">Cerrar</string>
     <string name="channel_weclaw_bind_title">Vincular WeChat ClawBot</string>
-    <string name="channel_weclaw_bind_hint">Utilice WeChat para escanear el código QR y completar el enlace</string>
+    <string name="channel_weclaw_bind_hint">Usa WeChat para escanear el código QR y completar el enlace</string>
     <string name="channel_weclaw_bind_loading">Obteniendo código QR…</string>
     <string name="channel_weclaw_bind_failed">No se pudo obtener el código QR: </string>
     <string name="channel_weclaw_status_scaned">El código ha sido escaneado, por favor confírmalo en tu teléfono celular</string>
@@ -422,50 +422,50 @@
     <string name="channel_weclaw_rescan">Inicia sesión nuevamente</string>
     <string name="channel_weclaw_unbind">Desvincular</string>
     <string name="channel_weclaw_unbind_confirm">Al desvincular se borran el token y la conversación de destino. Para volver a vincular, tendrás que escanear de nuevo el código QR.</string>
-    <string name="channel_telegram_hint">Obtenga el token de bot de @BotFather; Complete chat_id como destino de envío (se puede dejar en blanco, la respuesta automática se enviará de regreso a la fuente).</string>
+    <string name="channel_telegram_hint">Obtenga el token de bot de @BotFather; Completa chat_id como destino de envío (se puede dejar en blanco, la respuesta automática se enviará de regreso a la fuente).</string>
     <string name="channel_dingtalk_hint">Corp ID y las credenciales de la aplicación se utilizan en la nueva interfaz del token;Client ID y Client Secret también se utilizan para establecer conexiones largas de Stream.Robot Code Se utiliza para enviar respuestas.API Base URL Predeterminado https://api.dingtalk.com/v1.0</string>
     <string name="channel_feishu_hint">Obtenido de la plataforma abierta Feishu; use una conexión larga para recibir eventos, no se requiere devolución de llamada local URL</string>
     <string name="channel_qq_hint">Desde la plataforma abierta del robot QQ (q.qq.com/qqbot) obtener</string>
-    <string name="channel_err_ai_timeout">AI tiempo de espera de llamada</string>
+    <string name="channel_err_ai_timeout">Se agotó el tiempo de espera de la IA</string>
     <string name="channel_err_no_assistant">No hay asistente disponible, no se puede generar una respuesta automática</string>
     <string-array name="channel_tutorial_weclaw_steps">
-        <item>Haga clic“Escanee el código QR para iniciar sesión”, escanee el código QR emergente usando WeChat.</item>
+        <item>Toca“Escanee el código QR para iniciar sesión”, escanee el código QR emergente usando WeChat.</item>
         <item>Confirme en su teléfono celular, se mostrará después del éxito.“Iniciado sesión”.</item>
     </string-array>
     <string-array name="channel_tutorial_telegram_steps">
-        <item>Busque @BotFather en Telegram y abra la conversación.</item>
-        <item>Envíe /newbot y siga las instrucciones para configurar el nombre y el nombre de usuario del Bot.</item>
+        <item>Busque @BotFather en Telegram y abre la conversación.</item>
+        <item>Envía /newbot y siga las instrucciones para configurar el nombre y el nombre de usuario del Bot.</item>
         <item>BotFather Una cadena de Bot Tokens (en el formato como 123456:ABC-DEF…).</item>
-        <item>Pegue el token en el cuadro de entrada de arriba, pruebe la conexión y guárdelo.</item>
+        <item>Pega el token en el cuadro de entrada de arriba, pruebe la conexión y guárdelo.</item>
         <item>Encuentra tu bot en Telegram e intenta enviar un mensaje.</item>
     </string-array>
     <string-array name="channel_tutorial_feishu_steps">
-        <item>Vaya a open.feishu.cn, inicie sesión e ingrese“back-end del desarrollador”.</item>
-        <item>Haga clic“Cree aplicaciones empresariales”, complete el nombre y la descripción de la aplicación.</item>
+        <item>Ve a open.feishu.cn, inicie sesión e entra“back-end del desarrollador”.</item>
+        <item>Toca“Cree aplicaciones empresariales”, completa el nombre y la descripción de la aplicación.</item>
         <item>en“Credenciales e información básica”Página para copiar el ID de la aplicación y el secreto de la aplicación.</item>
         <item>Encontrado en el menú de la izquierda.“Agregar capacidades de aplicación”, agregar“robot”Capacidad.</item>
         <item>entrar“Gestión de permisos”, busque y habilite el permiso im:message.</item>
-        <item>entrar“Eventos y devoluciones de llamada”, cambie el método de suscripción a“Utilice una conexión larga para recibir eventos”.</item>
-        <item>Agregue el evento im.message.receive_v1.</item>
+        <item>entrar“Eventos y devoluciones de llamada”, cambia el método de suscripción a“Usa una conexión larga para recibir eventos”.</item>
+        <item>Agrega el evento im.message.receive_v1.</item>
         <item>entrar“Gestión y lanzamiento de versiones.”, primero cree y publique una versión.</item>
-        <item>Pegue la ID de la aplicación y el secreto de la aplicación en el cuadro de entrada de arriba, pruebe la conexión y guárdela.</item>
+        <item>Pega la ID de la aplicación y el secreto de la aplicación en el cuadro de entrada de arriba, pruebe la conexión y guárdela.</item>
     </string-array>
     <string-array name="channel_tutorial_dingtalk_steps">
-        <item>Vaya a open.dingtalk.com e ingrese“back-end del desarrollador”.</item>
-        <item>Copie el Corp ID de la empresa de la información de la empresa.</item>
-        <item>crear“Aplicaciones internas”, copie el ID de cliente/AppKey y el Secreto de cliente/AppSecret.</item>
-        <item>agregar“robot de aplicación”Habilidad, copie el código del robot en los detalles del robot.</item>
-        <item>Confirme que la aplicación tenga los permisos necesarios para que el robot envíe y reciba mensajes, y publíquela en el ámbito disponible de la empresa.</item>
-        <item>API Base URL Mantenga el https://api.dingtalk.com/v1.0，。 predeterminado</item>
-        <item>Pegue varias credenciales en el cuadro de entrada de arriba y guárdelas después de pasar la prueba.</item>
+        <item>Ve a open.dingtalk.com e entra“back-end del desarrollador”.</item>
+        <item>Copia el Corp ID de la empresa de la información de la empresa.</item>
+        <item>crear“Aplicaciones internas”, copia el ID de cliente/AppKey y el Secreto de cliente/AppSecret.</item>
+        <item>agregar“robot de aplicación”Habilidad, copia el código del robot en los detalles del robot.</item>
+        <item>Confirme que la aplicación tenga los permisos necesarios para que el robot envía y reciba mensajes, y publíquela en el ámbito disponible de la empresa.</item>
+        <item>API Base URL Mantén el https://api.dingtalk.com/v1.0，。 predeterminado</item>
+        <item>Pega varias credenciales en el cuadro de entrada de arriba y guárdelas después de pasar la prueba.</item>
     </string-array>
     <string-array name="channel_tutorial_qq_steps">
-        <item>Vaya a la plataforma abierta QQ Robot (q.qq.com/qqbot), inicia sesión y crea un bot.</item>
-        <item>Copie el ID de la aplicación y el secreto de la aplicación en la página de configuración del robot.</item>
+        <item>Ve a la plataforma abierta QQ Robot (q.qq.com/qqbot), inicia sesión y crea un bot.</item>
+        <item>Copia el ID de la aplicación y el secreto de la aplicación en la página de configuración del robot.</item>
         <item>Pégalo en el cuadro de entrada de arriba, prueba la conexión y guárdalo.</item>
     </string-array>
     <string name="settings_screen_notification_listener_desc">Después de la autorización, la IA puede leer notificaciones de otras aplicaciones</string>
-    <string name="settings_screen_tools">AI Herramientas</string>
+    <string name="settings_screen_tools">Herramientas de IA</string>
     <string name="settings_screen_tools_desc">Ver las herramientas y permisos a los que la IA puede recurrir</string>
     <string name="settings_screen_about">Acerca de</string>
     <string name="settings_screen_tutorial">Tutoría</string>
@@ -474,7 +474,7 @@
     <string name="settings_screen_debug_log">registro de depuración</string>
     <string name="settings_screen_debug_log_desc">Ver registros y errores de la aplicación</string>
     <string name="settings_screen_check_update">Buscar actualizaciones</string>
-    <string name="settings_screen_check_update_desc">Consulte GitHub para conocer nuevos lanzamientos</string>
+    <string name="settings_screen_check_update_desc">Consulta GitHub para conocer nuevos lanzamientos</string>
     <string name="settings_search_hint">Configuración de búsqueda…</string>
     <string name="settings_search_no_results">partidos</string>
     <plurals name="settings_search_result_count">
@@ -482,7 +482,7 @@
         <item quantity="many">Se encontraron %1$d resultados</item>
         <item quantity="other">Se encontraron %1$d resultados</item>
     </plurals>
-    <string name="settings_screen_translate">AI Traducción</string>
+    <string name="settings_screen_translate">Traducción con IA</string>
     <string name="settings_screen_translate_desc">Traducción en varios idiomas, compatible con la selección del idioma de origen/Intercambio/leer en voz alta</string>
     <string name="settings_screen_quick_notes">registro rápido</string>
     <string name="settings_screen_quick_notes_desc">Anotar la clasificación de inspiración y apoyo./recordatorio/Cifrado</string>
@@ -490,9 +490,9 @@
     <string name="settings_vision_title">ayuda visual</string>
     <string name="settings_vision_description">Cuando se utiliza un modelo de texto que no admite la entrada de imágenes, se llama automáticamente al modelo visual para analizar el contenido de la imagen e inyectar una descripción en el diálogo.</string>
     <string name="settings_vision_enabled">Habilitar ayudas visuales</string>
-    <string name="settings_vision_enabled_subtitle">Envíe automáticamente imágenes a modelos de visión para su análisis.</string>
+    <string name="settings_vision_enabled_subtitle">Envía automáticamente imágenes a modelos de visión para su análisis.</string>
     <string name="settings_vision_model_section">modelo visual</string>
-    <string name="settings_vision_no_models">No se encontró ningún modelo que admita entrada visual; agregue un modelo visual en la configuración del proveedor.</string>
+    <string name="settings_vision_no_models">No se encontró ningún modelo que admita entrada visual; agrega un modelo visual en la configuración del proveedor.</string>
     <string name="settings_vision_show_all_models">Mostrar todos los modelos</string>
     <string name="settings_vision_show_all_models_subtitle">Modo avanzado de la estación de transferencia: muestra todos los modelos y puede seleccionar manualmente modelos visuales que no se reconocen automáticamente</string>
     <string name="settings_vision_manual_selected">selección manual</string>
@@ -502,13 +502,13 @@
     <string name="vision_assist_analyzing">visión de asistencia · analizando %1$d/%2$d</string>
     <string name="vision_assist_done">visión de asistencia · Analizado</string>
     <string name="settings_vision_probe_section">prueba de sonda</string>
-    <string name="settings_vision_probe_desc">Envíe una imagen de prueba integrada al modelo de visión seleccionado para verificar que realmente admita la entrada visual y sea utilizable.</string>
+    <string name="settings_vision_probe_desc">Envía una imagen de prueba integrada al modelo de visión seleccionado para verificar que realmente admita la entrada visual y sea utilizable.</string>
     <string name="settings_vision_probe_button">Pruebe el modelo de visión seleccionado</string>
     <string name="settings_vision_probe_running">Bajo prueba…</string>
     <string name="settings_vision_probe_success">Prueba exitosa: modelo visual devuelto %1$d Descripción del personaje.</string>
     <string name="settings_vision_probe_failed">Prueba fallida:%1$s</string>
-    <string name="settings_vision_probe_no_model">Primero seleccione un modelo visual.</string>
-    <string name="settings_vision_probe_disabled">Habilite las ayudas visuales y seleccione un modelo visual primero.</string>
+    <string name="settings_vision_probe_no_model">Primero selecciona un modelo visual.</string>
+    <string name="settings_vision_probe_disabled">Habilite las ayudas visuales y selecciona un modelo visual primero.</string>
     <string name="ocr_processing_hint">Reconocer texto de imagen…</string>
     <string name="tool_resume_starting">Reanudar llamadas de herramientas pendientes…</string>
     <string name="tool_resume_step">ejecutando %1$s (%2$d/%3$d)…</string>
@@ -540,11 +540,11 @@
     <string name="chat_compressing_banner">Comprimir el historial de sesiones…</string>
     <string name="chat_updating_memory_banner">Actualizando memoria…</string>
     <string name="search_searching">Buscando…</string>
-    <string name="tts_not_ready">TTS Inicializando, inténtelo de nuevo más tarde</string>
+    <string name="tts_not_ready">TTS Inicializando, inténtalo de nuevo más tarde</string>
     <string name="search_back_cd">Regresar</string>
     <string name="search_cancel">Cancelar</string>
     <string name="search_placeholder">Sesión de búsqueda/noticias/ajustes...</string>
-    <string name="search_empty_hint">Ingrese palabras clave para buscar conversaciones, mensajes u opciones de configuración</string>
+    <string name="search_empty_hint">Entra palabras clave para buscar conversaciones, mensajes u opciones de configuración</string>
     <string name="search_tab_sessions">sesión</string>
     <string name="search_tab_message_content">Contenido del mensaje</string>
     <string name="search_section_message_content">Contenido del mensaje</string>
@@ -562,7 +562,7 @@
     <string name="skill_import_cd">importar .skill.json</string>
     <string name="skill_intro">Las habilidades son herramientas que el modelo de lenguaje puede utilizar. Cuando están habilitadas, el asistente puede invocarlas durante la conversación según sea necesario; cuando están deshabilitadas, no se exponen al modelo. Pulsa el botón de importación de la esquina superior derecha para importar un archivo .skill.json.</string>
     <string name="skill_no_skill_title">todavía no Skill</string>
-    <string name="skill_no_skill_subtitle">Habla directamente con la IA"Ayúdame a crear una habilidad XX", o haga clic en + en la esquina inferior derecha para importar el archivo Skill</string>
+    <string name="skill_no_skill_subtitle">Habla directamente con la IA"Ayúdame a crear una habilidad XX", o toca en + en la esquina inferior derecha para importar el archivo Skill</string>
     <string name="skill_importing">Importando</string>
     <string name="skill_importing_detail">Leer y analizar el documento....</string>
     <string name="skill_open_picker_failed">No se puede abrir el selector de archivos: %1$s</string>
@@ -595,7 +595,7 @@
     <string name="skill_delete_confirm_title">Confirmar eliminación</string>
     <string name="skill_delete_confirm_message">¿Estás seguro de que deseas eliminar "?%1$s"?" Esta acción no se puede deshacer.</string>
     <string name="skill_delete_failed_ui">Error al eliminar:%1$s</string>
-    <string name="skill_row_cd">%1$s,%2$s, haga clic para ver detalles</string>
+    <string name="skill_row_cd">%1$s,%2$s, toca para ver detalles</string>
     <string name="skill_use_case_read_file">Cuando necesitas leer notas en la aplicación, archivos de configuración o caché,LLM será llamado automáticamente.</string>
     <string name="skill_use_case_write_file">Cuando necesite guardar notas, generar documentos o conservar datos,LLM será llamado automáticamente.</string>
     <string name="skill_use_case_http_get">Cuando necesitas solicitar externamente API((como comprobar el clima, el tipo de cambio),LLM será llamado automáticamente.</string>
@@ -654,7 +654,7 @@
     <string name="audit_log_result_count">mostrar %1$d Artículos / Totales %2$d Artículo</string>
     <string name="audit_log_export">Exportar JSON</string>
     <string name="audit_log_export_empty">Aún no se pueden exportar registros</string>
-    <string name="audit_log_export_subject">Registro de auditoría de Musa — %1$d entradas</string>
+    <string name="audit_log_export_subject">Registro de auditoría de Muse — %1$d entradas</string>
     <string name="audit_log_export_chooser">Compartir registros de auditoría</string>
     <string name="audit_log_export_failed">Error al exportar: no se puede obtener el archivo URI</string>
     <string name="settings_screen_web_search">búsqueda en internet</string>
@@ -687,13 +687,13 @@
     <string name="video_gen_no_provider">No hay proveedores disponibles. Agrega uno desde Proveedores e introduce su clave API.</string>
     <string name="preset_siliconflow">flujo a base de silicio</string>
     <string name="preset_siliconflow_free">SiliconFlow modelo libre</string>
-    <string name="free_model_service_unavailable">El servicio de cuota gratuito no está disponible, complete la clave API o espere a que se restablezca el servicio.</string>
+    <string name="free_model_service_unavailable">El servicio de cuota gratuito no está disponible, completa la clave API o espere a que se restablezca el servicio.</string>
     <string name="provider_plugins_title">Complemento de proveedor</string>
     <string name="muse_plugins_external">complemento externo</string>
     <string name="muse_plugins_manage">Gestión de complementos</string>
     <string name="muse_plugins_imported">Paquete de complemento instalado</string>
     <string name="provider_plugins_empty">Aún no hay complementos</string>
-    <string name="muse_plugins_empty_hint">Actualmente no hay ningún complemento externo, haga clic en la esquina inferior derecha para importar el paquete .muse-plugin o ZIP</string>
+    <string name="muse_plugins_empty_hint">Actualmente no hay ningún complemento externo, toca en la esquina inferior derecha para importar el paquete .muse-plugin o ZIP</string>
     <string name="provider_plugins_import">Complemento de importación</string>
     <string name="provider_plugins_delete">Eliminar complemento</string>
     <string name="provider_plugins_convert">Convertir en proveedor</string>
@@ -708,7 +708,7 @@
     <string name="muse_plugins_install_confirm_capabilities">Declarar la capacidad de utilizar:%1$s</string>
     <string name="muse_plugins_capabilities_disclaimer">Esta declaración solo describe para qué se utiliza el complemento y no limita lo que realmente puede hacer una vez instalado.</string>
     <string name="muse_plugins_global_switch_title">Interruptor maestro enchufable</string>
-    <string name="muse_plugins_global_switch_desc">Después del cierre, no se ejecutarán todos los complementos y se conservarán la instalación y configuración.</string>
+    <string name="muse_plugins_global_switch_desc">Si lo desactivas, ningún complemento se ejecutará. Se conservarán los complementos instalados y sus ajustes.</string>
     <string name="muse_plugins_runtime_label">Tiempo de ejecución:%1$s</string>
     <string name="muse_plugins_install_confirm_tools">Herramientas proporcionadas:%1$s</string>
     <string name="muse_plugins_install_confirm_code">entrada %1$d bytes · Archivos adjuntos %2$d un · Entrada SHA-256:%3$s</string>
@@ -722,7 +722,7 @@
     <string name="muse_plugins_publisher_fingerprint">Editor:%1$s · Huella digital de clave pública:%2$s</string>
     <string name="muse_plugins_developer_info">Información del desarrollador</string>
     <string name="muse_plugins_install_unsigned_warning">El código externo sin firmar solo se puede guardar como borrador deshabilitado y no se puede instalar ni ejecutar.</string>
-    <string name="muse_plugins_install_untrusted_warning">Firma verificada pero emisor desconocido (%1$s). Por favor verifique la huella digital de la clave pública %2$s; Se instalará y habilitará solo después de la confianza.</string>
+    <string name="muse_plugins_install_untrusted_warning">Firma verificada pero emisor desconocido (%1$s). Por favor comprueba la huella digital de la clave pública %2$s; Se instalará y habilitará solo después de la confianza.</string>
     <string name="muse_plugins_install_trusted_warning">La firma es válida y la máquina confía en el emisor.</string>
     <string name="muse_plugins_install_save_draft">Guardar solo borradores deshabilitados</string>
     <string name="muse_plugins_install_trust_publisher_action">Confía en el editor e instala</string>
@@ -735,7 +735,7 @@
     <string name="muse_plugins_sign_enable_action">Firmar y habilitar</string>
     <string name="muse_plugins_sign_enable_summary">Nombre del complemento:%1$s · id:%2$s · Versión:%3$s</string>
     <string name="muse_plugins_sign_enable_tools">Lista de herramientas:%1$s</string>
-    <string name="muse_plugins_sign_enable_warning">Este es un código firmado por la clave del autor nativo: una vez firmado y habilitado, el asistente puede llamar a estas herramientas. La primera firma agregará la clave pública del autor local a la raíz de confianza local, y los complementos posteriores firmados por la clave local serán confiables. Primero verifique la lista de herramientas y las fuentes de código anteriores.</string>
+    <string name="muse_plugins_sign_enable_warning">Este es un código firmado por la clave del autor nativo: una vez firmado y habilitado, el asistente puede llamar a estas herramientas. La primera firma agregará la clave pública del autor local a la raíz de confianza local, y los complementos posteriores firmados por la clave local serán confiables. Primero comprueba la lista de herramientas y las fuentes de código anteriores.</string>
     <string name="muse_plugins_sign_enable_success">El complemento está firmado y habilitado.</string>
     <string name="muse_plugins_sign_enable_failed">Error al firmar y habilitar:%1$s</string>
     <string name="muse_plugins_market_title">mercado de complementos</string>
@@ -745,14 +745,14 @@
     <string name="muse_plugins_market_configure">Configuración del directorio</string>
     <string name="muse_plugins_market_settings_title">Configuración del directorio de complementos</string>
     <string name="muse_plugins_market_settings_hint">El mercado de complementos utiliza el directorio oficial integrado en el paquete de instalación de forma predeterminada; solo necesita completar el directorio personalizado y confiar en la raíz durante las pruebas o situaciones de emergencia.</string>
-    <string name="muse_plugins_market_url_label">Dirección de directorio personalizada (deje en blanco para usar el directorio oficial)</string>
+    <string name="muse_plugins_market_url_label">Dirección de directorio personalizada (deja en blanco para usar el directorio oficial)</string>
     <string name="muse_plugins_market_key_id_label">Raíz de confianza personalizada keyId</string>
     <string name="muse_plugins_market_public_key_label">Clave pública raíz de confianza personalizada (Base64)</string>
     <string name="muse_plugins_market_settings_saved">Configuración del directorio de complementos guardada</string>
     <string name="muse_plugins_market_invalid_url">La dirección del directorio debe comenzar con https://</string>
     <string name="muse_plugins_market_refresh">actualizar directorio</string>
     <string name="muse_plugins_market_empty">Aún no hay complementos en el directorio.</string>
-    <string name="muse_plugins_market_error_hint">Error al cargar el directorio. Inténtelo de nuevo o verifique la configuración del directorio.</string>
+    <string name="muse_plugins_market_error_hint">Error al cargar el directorio. Inténtalo de nuevo o comprueba la configuración del directorio.</string>
     <string name="muse_plugins_market_entry_meta">versión %1$s · Emisor %2$s</string>
     <string name="muse_plugins_market_entry_capabilities">Habilidades:%1$s</string>
     <string name="muse_plugins_market_install_action">Instalación con un clic</string>
@@ -801,7 +801,7 @@
     <string name="workspace_delete_confirm">Confirmar eliminación \"%1$s\"? Esta acción es irreversible.</string>
     <string name="workspace_rename">Cambiar nombre</string>
     <string name="workspace_path_copied">Ruta copiada</string>
-    <string name="browser_address_bar">Ingrese la URL o busque</string>
+    <string name="browser_address_bar">Entra la URL o busque</string>
     <string name="browser_back">Atrás</string>
     <string name="browser_forward">avanzar</string>
     <string name="browser_refresh">Actualizar</string>
@@ -819,7 +819,7 @@
     <string name="voice_cloning_key_saved">Voz seleccionada y clave API guardada</string>
     <string name="voice_cloning_key_from_provider">Voz seleccionada. Se usará la clave API del proveedor.</string>
     <string name="voice_cloning_failed">La clonación falló:%1$s</string>
-    <string name="voice_cloning_audio_required">Seleccione primero el audio de muestra</string>
+    <string name="voice_cloning_audio_required">Selecciona primero el audio de muestra</string>
     <string name="desktop_context_copy">Copiar</string>
     <string name="desktop_context_regenerate">regenerar</string>
     <string name="desktop_context_delete">Eliminar</string>
@@ -877,7 +877,7 @@
     <string name="settings_preference_subtitle">Requisitos a largo plazo anotados por el asistente</string>
     <string name="settings_preference_desc">Le dices a tu asistente: "No…"No más…”, se recordará aquí como una dura restricción y se observará en cada conversación.</string>
     <string name="settings_preference_empty">Aún no se han observado preferencias</string>
-    <string name="settings_preference_empty_hint">Intente decirle a su asistente: "No utilice palabras vacías de aliento en futuras respuestas".</string>
+    <string name="settings_preference_empty_hint">Intenta decirle a su asistente: "No utilice palabras vacías de aliento en futuras respuestas".</string>
     <string name="settings_preference_disable">desactivar</string>
     <string name="settings_preference_enable">habilitar</string>
     <string name="settings_preference_delete">Eliminar</string>

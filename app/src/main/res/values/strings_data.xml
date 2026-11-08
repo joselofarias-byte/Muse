@@ -27,7 +27,7 @@
     <string name="prompt_template_content_write_email">Por favor ayúdenme a escribir un correo electrónico con el siguiente asunto:\n\n{Tema}\n\nRequisitos: El tono es formal, conciso y claro, incluyendo título, texto principal y final honorífico.</string>
     <string name="prompt_template_content_write_article">Escriba un artículo claramente estructurado sobre los siguientes temas:\n\n{Tema}\n\nRequisitos: Incluir introducción, texto principal (2-3 puntos clave), conclusión, alrededor de 800 palabras.</string>
     <string name="prompt_template_content_translate_zh_en">Traduzca el siguiente chino a un inglés natural y fluido, manteniendo el significado original y de acuerdo con los hábitos de expresión de los hablantes nativos de inglés:\n\n{contenido chino}</string>
-    <string name="prompt_template_content_translate_en_zh">Traduzca el siguiente inglés a un chino fluido y natural, mantenga el significado original y cumpla con los hábitos de expresión chinos:\n\n{contenido en ingles}</string>
+    <string name="prompt_template_content_translate_en_zh">Traduzca el siguiente inglés a un chino fluido y natural, mantén el significado original y cumpla con los hábitos de expresión chinos:\n\n{contenido en ingles}</string>
     <string name="prompt_template_content_summarize">Resuma lo siguiente en 3 a 5 viñetas, una oración por viñeta, conservando la información clave:\n\n{contenido}</string>
     <string name="prompt_template_content_summarize_meeting">Organice las siguientes actas de la reunión en actas estructuradas, que incluyan: tema de la reunión, puntos clave de discusión, asuntos de resolución, elementos de acción de seguimiento (incluida la persona a cargo):\n\n{actas de la reunión}</string>
     <string name="prompt_template_content_code_review">Revise el siguiente código y brinde sugerencias de mejoras en las cuatro dimensiones de legibilidad, rendimiento, seguridad y condiciones de contorno:\n\n```\n{código}\n```</string>
@@ -40,38 +40,38 @@
 
     <!-- ===== data/preset ===== -->
     <!-- 预置供应商 displayName(国产 + 中转站含中文部分) -->
-    <string name="preset_provider_deepseek">DeepSeek búsqueda profunda</string>
-    <string name="preset_provider_qwen">Tongyi Qianwen Qwen</string>
-    <string name="preset_provider_zhipu">espectro de sabiduría GLM</string>
-    <string name="preset_provider_moonshot">lado oscuro de la luna Kimi</string>
-    <string name="preset_provider_doubao">Puf de bytes Doubao</string>
-    <string name="preset_provider_baichuan">Baichuan Baichuan</string>
-    <string name="preset_provider_lingyi">cero una cosa Yi</string>
-    <string name="preset_provider_stepfun">paso StepFun</string>
-    <string name="preset_provider_api2d">API2D tránsito</string>
-    <string name="preset_provider_aihubmix">AiHubMix tránsito</string>
-    <string name="preset_provider_deepbricks">DeepBricks tránsito</string>
-    <string name="preset_provider_oneapi">OneAPI Tránsito autoconstruido</string>
-    <string name="preset_provider_newapi">NewAPI Tránsito autoconstruido</string>
+    <string name="preset_provider_deepseek">DeepSeek</string>
+    <string name="preset_provider_qwen">Qwen</string>
+    <string name="preset_provider_zhipu">GLM</string>
+    <string name="preset_provider_moonshot">Kimi</string>
+    <string name="preset_provider_doubao">Doubao</string>
+    <string name="preset_provider_baichuan">Baichuan</string>
+    <string name="preset_provider_lingyi">Yi</string>
+    <string name="preset_provider_stepfun">StepFun</string>
+    <string name="preset_provider_api2d">API2D</string>
+    <string name="preset_provider_aihubmix">AiHubMix</string>
+    <string name="preset_provider_deepbricks">DeepBricks</string>
+    <string name="preset_provider_oneapi">OneAPI</string>
+    <string name="preset_provider_newapi">NewAPI</string>
     <!-- v1.0.6: 新增供应商 -->
-    <string name="preset_provider_hunyuan">Tencent Hunyuan Hunyuan</string>
-    <string name="preset_provider_baidu_cloud">Nube inteligente de Baidu (Wenxin)</string>
-    <string name="preset_provider_modelscope">Magia ModelScope</string>
-    <string name="preset_provider_infini">Wuwen Xinqiong Infini</string>
+    <string name="preset_provider_hunyuan">Tencent Hunyuan</string>
+    <string name="preset_provider_baidu_cloud">Baidu AI Cloud (ERNIE)</string>
+    <string name="preset_provider_modelscope">ModelScope</string>
+    <string name="preset_provider_infini">Infini</string>
     <string name="preset_provider_mimo">Xiaomi MiMo</string>
-    <string name="preset_provider_dashscope_coding">Bailiano Coding Plan</string>
-    <string name="preset_provider_volcengine_coding">motor volcánico Coding Plan</string>
-    <string name="preset_provider_zhipu_coding">espectro de sabiduría GLM Coding Plan</string>
+    <string name="preset_provider_dashscope_coding">Bailian Coding Plan</string>
+    <string name="preset_provider_volcengine_coding">Volcengine Coding Plan</string>
+    <string name="preset_provider_zhipu_coding">GLM Coding Plan</string>
 
     <!-- ===== data/import ===== -->
     <!-- 第三方数据导入错误消息(通过 ImportResult.errors 传递给 UI) -->
     <string name="import_error_read_file_failed">No se puede leer el archivo</string>
     <string name="import_error_unzip_size_exceeded">El contenido descomprimido supera el límite de tamaño</string>
     <string name="import_error_unzip_failed">No se puede descomprimir el archivo: %1$s</string>
-    <string name="import_error_unknown_format">Formato de copia de seguridad no reconocido. Asegúrese de seleccionar el archivo ZIP de respaldo de RikkaHub o Kelivo.</string>
+    <string name="import_error_unknown_format">Formato de copia de seguridad no reconocido. Asegúrate de seleccionar el archivo ZIP de respaldo de RikkaHub o Kelivo.</string>
     <string name="import_error_parse_failed">JSON Error al analizar, es posible que el archivo esté dañado</string>
     <string name="import_error_chatgpt_parse_failed">ChatGPT Error en el análisis de exportación: %1$s</string>
-    <string name="import_error_file_too_large">El archivo es demasiado grande (%1$d MB). Primero descomprima el ZIP e importe el archivo conversations.json más pequeño por separado, o limpie los datos exportados e inténtelo nuevamente.</string>
+    <string name="import_error_file_too_large">El archivo es demasiado grande (%1$d MB). Primero descomprima el ZIP e importe el archivo conversations.json más pequeño por separado, o limpie los datos exportados e inténtalo nuevamente.</string>
     <string name="import_default_provider_name">Proveedores importados</string>
     <string name="import_default_assistant_name">Ayudante de importación</string>
     <string name="import_default_session_title">Sesiones importadas</string>
@@ -85,7 +85,7 @@
 
     <!-- ===== data/SettingsRepository ===== -->
     <!-- 账户默认用户名(持久化到 DataStore) -->
-    <string name="settings_repo_default_user_name">Musa Usuario</string>
+    <string name="settings_repo_default_user_name">Muse Usuario</string>
     <string name="settings_repo_guest_name">turistas</string>
 
     <!-- ===== data/promptinjection ===== -->
@@ -127,7 +127,7 @@
 
     <!-- ===== data/MemoryLlmClientImpl ===== -->
     <!-- 记忆编译异常消息(可能透传到 UI) -->
-    <string name="memory_llm_no_model_configured">El modelo no está configurado y la compilación de la memoria no se puede ejecutar (agregue el proveedor del modelo en la página de configuración)</string>
+    <string name="memory_llm_no_model_configured">El modelo no está configurado y la compilación de la memoria no se puede ejecutar (agrega el proveedor del modelo en la página de configuración)</string>
     <string name="memory_llm_call_text_failed">callText falló</string>
 
     <!-- ===== mcp/McpRegistry ===== -->

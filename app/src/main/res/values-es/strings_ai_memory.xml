@@ -37,8 +37,8 @@
     <string name="memory_graph_node_related">asociación %1$d Artículo</string>
     <string name="memory_graph_load_failed">Error al cargar</string>
     <string name="memory_graph_settings_title">Configuración de constelación</string>
-    <string name="memory_graph_ai_enhance_title">AI Profundizar conexiones</string>
-    <string name="memory_graph_ai_enhance_desc">Utilice modelos grandes para determinar la relación específica (causalidad) de asociaciones débiles/contradicciones, etcétera). Más preciso, pero una llamada por borde, mayor costo.</string>
+    <string name="memory_graph_ai_enhance_title">Profundizar conexiones con IA</string>
+    <string name="memory_graph_ai_enhance_desc">Usa modelos grandes para determinar la relación específica (causalidad) de asociaciones débiles/contradicciones, etcétera). Más preciso, pero una llamada por borde, mayor costo.</string>
     <string name="memory_graph_frequency_title">frecuencia complementaria</string>
     <string name="memory_graph_frequency_session_end">final de cada sesión</string>
     <string name="memory_graph_frequency_on_open">Al abrir la página del horóscopo</string>
@@ -47,7 +47,7 @@
     <string name="memory_graph_rebuild_hint">Vuelva a ejecutar el relleno de bordes para todas las memorias dentro del rango actual (se omitirán los bordes existentes).</string>
     <string name="memory_graph_rebuild_started">Restablecer asociación…</string>
     <string name="memory_graph_link_action">Conexión manual</string>
-    <string name="memory_graph_link_pick_target">Haga clic en otro nodo para completar la conexión.</string>
+    <string name="memory_graph_link_pick_target">Toca en otro nodo para completar la conexión.</string>
     <string name="memory_graph_link_type_title">Seleccionar tipo de relación</string>
     <string name="memory_graph_link_type_related">asociación</string>
     <string name="memory_graph_link_type_causes">causa y efecto</string>
@@ -67,7 +67,7 @@
     <string name="memory_compile_section_week">esta semana</string>
     <string name="memory_compile_section_longterm">largo plazo</string>
     <string name="memory_summary_title">sesión %1$s</string>
-    <string name="memory_error_trace_header">== Musa Memory Error ==</string>
+    <string name="memory_error_trace_header">== Muse Memory Error ==</string>
     <string name="memory_error_trace_time">Hora: </string>
     <string name="memory_error_trace_exception">Excepción: </string>
     <string name="memory_error_trace_message">Mensaje: </string>
@@ -101,14 +101,14 @@
     <string name="memory_organize_stage_no_duplicates">Organización completada, no se han encontrado recuerdos duplicados que puedan fusionarse.</string>
     <string name="memory_center_fact_count">hechos</string>
     <string name="memory_center_empty_title">Aún no se ha formado ningún recuerdo.</string>
-    <string name="memory_center_empty_subtitle">Sigue hablando con Musa y dímelo explícitamente.“recuerda esto”, los hechos aparecerán aquí.</string>
+    <string name="memory_center_empty_subtitle">Sigue hablando con Muse y dímelo explícitamente.“recuerda esto”, los hechos aparecerán aquí.</string>
     <string name="memory_center_open_facts">Ver base de datos</string>
     <string name="memory_center_tab_stream">flujo de memoria</string>
     <string name="memory_center_tab_constellation">constelación de memoria</string>
     <string name="memory_center_library_title">base de hechos</string>
     <string name="memory_center_constellation_hint">Los hechos importantes se priorizan más cerca del centro. Cuando las relaciones no se hayan ordenado, los nodos también se mostrarán individualmente.</string>
-    <string name="memory_center_constellation_empty">Actualmente no hay nodos de hechos para mostrar. Primero genere o agregue manualmente un hecho y vuelva a él más tarde.</string>
-    <string name="memory_center_filter_empty">No hay nodos de hechos en el ámbito o espacio actual. Intente cambiar las condiciones del filtro anteriores.</string>
+    <string name="memory_center_constellation_empty">Actualmente no hay nodos de hechos para mostrar. Primero genere o agrega manualmente un hecho y vuelva a él más tarde.</string>
+    <string name="memory_center_filter_empty">No hay nodos de hechos en el ámbito o espacio actual. Intenta cambiar las condiciones del filtro anteriores.</string>
     <string name="memory_center_scope_all">Todos</string>
     <string name="memory_center_space_default">Predeterminado</string>
     <string name="memory_center_scope_line">%1$s · %2$s</string>
@@ -127,7 +127,7 @@
     <string name="memory_menu_cd">Más acciones</string>
     <string name="memory_menu_pin">fijar hacia arriba</string>
     <string name="memory_menu_unpin">Desanclar</string>
-    <string name="memory_pin_failed">La operación del pin falló, inténtelo de nuevo</string>
+    <string name="memory_pin_failed">La operación del pin falló, inténtalo de nuevo</string>
     <string name="memory_unpin_failed">No se pudo desbloquear. Inténtalo de nuevo.</string>
     <string name="memory_menu_importance">Establecer importancia</string>
     <string name="memory_menu_edit">Editar</string>
@@ -183,7 +183,7 @@
     <string name="memory_status_merged_detail">Se ha fusionado con otra memoria y ya no participará en la recuperación automática; este texto todavía está disponible aquí para su revisión.</string>
     <string name="memory_status_suppressed_detail">Apareció: No se ha utilizado durante mucho tiempo y ha salido de la recuperación automática; la fila sigue ahí y volverá después de ser recuperada nuevamente o si aumenta la importancia.</string>
     <string name="memory_status_superseded_detail">ha sido reemplazada por una memoria actualizada y ya no se utiliza como hecho actual.</string>
-    <string name="memory_merge_error_min_items">Seleccione al menos dos recuerdos para fusionar</string>
+    <string name="memory_merge_error_min_items">Selecciona al menos dos recuerdos para fusionar</string>
     <string name="memory_merge_error_no_model">El modelo no está configurado y no se puede fusionar</string>
     <string name="memory_merge_error_mixed_scope">Sólo se pueden fusionar recuerdos en el mismo espacio.</string>
     <string name="memory_merge_error_generate_failed">No se pudieron fusionar estos recuerdos</string>

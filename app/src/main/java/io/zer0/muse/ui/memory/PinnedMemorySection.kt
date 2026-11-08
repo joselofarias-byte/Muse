@@ -72,7 +72,7 @@ fun PinnedMemorySection(pinnedEntries: List<PinnedMemoryStore.PinnedEntry>, onRe
                             MuseTactileButton(
                                 icon = MuseIcons.trash,
                                 onClick = { onRemove(entry.id) },
-                                contentDescription = "Remove",
+                                contentDescription = stringResource(R.string.action_delete),
                                 tint = MaterialTheme.colorScheme.error,
                             )
                         }
