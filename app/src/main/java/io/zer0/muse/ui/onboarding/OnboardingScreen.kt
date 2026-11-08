@@ -1,7 +1,6 @@
 package io.zer0.muse.ui.onboarding
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
@@ -17,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -125,7 +125,7 @@ fun OnboardingScreen(onComplete: () -> Unit, onOpenSection: (String) -> Unit = {
     val keyboardController = LocalSoftwareKeyboardController.current
 
     // ── 各步骤状态 ──
-    var selectedLanguage by rememberSaveable { mutableStateOf("zh") }
+    var selectedLanguage by rememberSaveable { mutableStateOf("es") }
     var selectedThemeId by rememberSaveable { mutableStateOf("mono") }
     var userName by rememberSaveable { mutableStateOf("") }
     var agentName by rememberSaveable { mutableStateOf("Muse") }
@@ -176,7 +176,8 @@ fun OnboardingScreen(onComplete: () -> Unit, onOpenSection: (String) -> Unit = {
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
             .statusBarsPadding()
-            .navigationBarsPadding(),
+            .navigationBarsPadding()
+            .imePadding(),
     ) {
         // 顶部进度圆点
         ProgressDots(
@@ -421,19 +422,7 @@ private fun ProgressDots(currentPage: Int, pageCount: Int, modifier: Modifier = 
 }
 
 // ── 步骤 0：欢迎页 ──────────────────────────────────────────────
-/**
- * 问候语轮播表 — 跟随支持的语言逐条切换(中文优先,其次英文,其余顺序轮转)。
- * 每条本身就是对应语言的原文,不走资源本地化。
- */
-private val WELCOME_GREETINGS = listOf(
-    "嗨，终于见面了。",
-    "Hi, nice to meet you.",
-    "はじめまして。",
-    "반가워요.",
-    "Hola, encantado.",
-    "Olá, prazer.",
-    "Привет, рады знакомству.",
-)
+private const val WELCOME_GREETING = "Hola, encantado."
 
 @Composable
 private fun StepWelcome() {
@@ -442,18 +431,13 @@ private fun StepWelcome() {
     var entered by remember { mutableStateOf(false) }
     var nameVisible by remember { mutableStateOf(false) }
     var greetingVisible by remember { mutableStateOf(false) }
-    var greetingIndex by remember { mutableStateOf(0) }
     LaunchedEffect(Unit) {
-        // 入场时序:logo → 名字 → 问候"展开";之后进入多语言轮播(2.6s/条)
+        // 入场时序:logo → 名字 → 问候"展开"
         entered = true
         delay(260)
         nameVisible = true
         delay(390)
         greetingVisible = true
-        while (true) {
-            delay(2600)
-            greetingIndex = (greetingIndex + 1) % WELCOME_GREETINGS.size
-        }
     }
 
     val logoAlpha by animateFloatAsState(
@@ -520,7 +504,7 @@ private fun StepWelcome() {
                 .offset(y = nameOffset),
         )
         Spacer(modifier = Modifier.height(MusePaddings.contentGap))
-        // 问候语:从 logo 方向"展开"出场(顶端为缩放原点),之后多语言轮播交叉淡入
+        // 问候语:从 logo 方向"展开"出场(顶端为缩放原点)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -533,24 +517,13 @@ private fun StepWelcome() {
                 },
             contentAlignment = Alignment.Center,
         ) {
-            Crossfade(
-                targetState = greetingIndex,
-                animationSpec = MuseMotion.tween(MuseAnimation.NORMAL_MS),
-                // 用 Crossfade 而不是 AnimatedContent：后者默认带 SizeTransform，
-                // 两条不同高度的问候语会同时参与布局并叠在同一位置，
-                // 视觉上是两句话压在一起。Crossfade 只在同一槽位内做淡入淡出。
-                label = "welcomeGreeting",
-            ) { index ->
-                Text(
-                    text = WELCOME_GREETINGS[index],
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    textAlign = TextAlign.Center,
-                )
-            }
+            Text(
+                text = WELCOME_GREETING,
+                style = MaterialTheme.typography.headlineSmall,
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.Center,
+            )
         }
-        // 轮播的是各语言的问候,不是"当前界面语言"的提示 —— 不加这句,
-        // 刚切过语言的用户会以为界面没换成功。
         Text(
             text = stringResource(R.string.onboarding_welcome_greetings_caption),
             style = MaterialTheme.typography.bodySmall,
@@ -574,7 +547,9 @@ private fun StepLanguage(selectedLanguage: String, onLanguageSelected: (String) 
     // 与 AppLocales.parse / values-* 一一对应的 7 种语言。原先列了 zh-TW 却没有繁体资源,
     // 选中它等于没选(映射返回 null,悄悄回落系统语言);而西/葡/俄已有全量文案却没进选项,
     // 用户在欢迎页问候轮播里看到自己的语言,到了设置语言这一步却选不到。
-    val languages = AppLocales.Language.entries.map { it.code to stringResource(it.labelRes) }
+    val languages = AppLocales.Language.entries
+        .sortedBy { if (it == AppLocales.Language.ES) 0 else 1 }
+        .map { it.code to stringResource(it.labelRes) }
 
     Column(
         modifier = Modifier
@@ -1448,7 +1423,7 @@ private fun PrimaryPillButton(
         modifier = modifier.heightIn(min = 52.dp),
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = MusePaddings.contentGap, vertical = MusePaddings.tightGap),
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -1467,6 +1442,8 @@ private fun PrimaryPillButton(
             }
             Text(
                 text = text,
+                modifier = Modifier.weight(1f, fill = false),
+                textAlign = TextAlign.Center,
                 style = MaterialTheme.typography.labelLarge.copy(
                     fontWeight = FontWeight.SemiBold,
                 ),
@@ -1500,7 +1477,7 @@ private fun SecondaryPillButton(
         modifier = modifier.heightIn(min = 52.dp),
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = MusePaddings.contentGap, vertical = MusePaddings.tightGap),
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -1515,6 +1492,8 @@ private fun SecondaryPillButton(
             }
             Text(
                 text = text,
+                modifier = Modifier.weight(1f, fill = false),
+                textAlign = TextAlign.Center,
                 style = MaterialTheme.typography.labelLarge.copy(
                     fontWeight = FontWeight.SemiBold,
                 ),

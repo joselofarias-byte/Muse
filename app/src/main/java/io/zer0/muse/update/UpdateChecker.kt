@@ -101,7 +101,7 @@ class UpdateChecker(
      */
     suspend fun checkLatestRelease(): Result<ReleaseInfo> = withContext(Dispatchers.IO) {
         val attempts = listOf("official" to officialApiUrl, "github" to githubApiUrl)
-        var lastError: Result.Error = Result.Error("network error")
+        var lastError: Result.Error = Result.Error("Error de red")
         for ((label, url) in attempts) {
             when (val outcome = fetchRelease(label, url)) {
                 is Result.Success -> return@withContext outcome
@@ -135,19 +135,19 @@ class UpdateChecker(
                 }
                 val bodyText = resp.body.string()
                 if (bodyText.isBlank()) {
-                    return@use Result.Error("response is empty")
+                    return@use Result.Error("El servidor devolvió una respuesta vacía")
                 }
                 parseReleaseInfo(bodyText)
             }
         }.onError { msg, t ->
             Logger.e(TAG, "检查更新失败($label): ${t?.message ?: msg}", t)
-        }.getOrNull() ?: Result.Error("network error")
+        }.getOrNull() ?: Result.Error("Error de red")
     }
 
     private fun parseReleaseInfo(bodyText: String): Result<ReleaseInfo> {
         val json = AppJson.parseToJsonElement(bodyText).jsonObject
         val tagName = json["tag_name"]?.jsonPrimitive?.contentOrNull
-            ?: return Result.Error("failed to parse tag_name")
+            ?: return Result.Error("No se pudo interpretar el campo tag_name")
         val assets = json["assets"]?.jsonArray
             ?.mapNotNull { it.jsonObject }
             ?.mapNotNull(::parseApkAsset)
