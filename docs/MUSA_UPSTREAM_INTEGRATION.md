@@ -82,6 +82,22 @@ previa, versión, SHA-256, integridad ZIP y alineación; instalar en dispositivo
 probar inicio y funciones, y probar actualización conservando datos. El workflow
 solo prepara un borrador y vuelve a descargarlo para comprobar sus bytes.
 
+## Seguridad e idioma
+
+- El primer inicio usa español; una selección explícita de Sistema se conserva.
+  La migración de caché y el guardado de idioma se serializan entre instancias.
+- El QR excluye por defecto claves API, secretos OAuth, claves privadas,
+  encabezados, cuerpos y plantillas personalizados. Compartirlos requiere
+  consentimiento explícito que se reinicia al reabrir el diálogo. Las URL y el
+  resto de la configuración siguen incluidos; no es una anonimización completa.
+- Los campos sensibles del editor no se guardan en `rememberSaveable`.
+- El panel de herramientas usa identificadores de recursos, no títulos chinos,
+  para agrupar búsqueda, razonamiento, adjuntos y conocimiento.
+- Se corrige el cierre del flujo Anthropic al abortar durante un reintento, con
+  una prueba sincronizada en el inicio real del backoff, sin ampliar su timeout.
+- La web conserva contratos y migraciones históricas; una nueva migración cambia
+  los textos predeterminados sin renombrar planes personalizados ni conversaciones.
+
 ## Estado de aceptación
 
 Los controles de recursos completos no prueban por sí solos que toda la interfaz
@@ -94,3 +110,16 @@ el fallo de los controles estáticos.
 El PR permanece en borrador hasta cerrar las verificaciones pendientes. No hay
 un dispositivo Android conectado para acreditar instalación o actualización con
 datos. No se entrega la APK sin firma ni se sustituye el certificado permanente.
+
+La compilación local inicial produjo una APK Release ARM64 sin firma con paquete
+`io.zer0.muse`, nombre `Musa`, versión `2.6.23-musa-es` y código `1000001`;
+la integridad ZIP y la ABI exclusiva `arm64-v8a` se comprobaron. No se distribuye.
+Lint se interrumpió tras más de 40 minutos analizando dependencias; no se acredita
+como aprobado. La batería de IA inicial ejecutó 496 pruebas con un timeout en
+cancelación Anthropic, investigado y corregido; requiere repetir las pruebas sobre
+el código final. La compilación final y las pruebas dirigidas tienen que confirmar
+los cambios posteriores a esa primera APK.
+
+En la web se comprobó el paso de login a registro y se inspeccionó una captura
+actual: el placeholder de contraseña se muestra completo. No acredita el resto
+de flujos autenticados ni una migración real contra PostgreSQL.

@@ -34,7 +34,7 @@ jobs:
           python3 -m unittest discover -s ci/script -p test_validate_release_signing.py
           python3 ci/test/test_release_preflight.py
           python3 -m pip install pytest==8.3.5
-          python3 -m pytest -q ci/test/test_verify_musa_upgrade.py
+          python3 -m pytest -q ci/test/test_verify_musa_upgrade.py ci/test/test_check_localizations.py ci/test/test_translation_residue.py
           bash tools/runtime-pack/test-downloads.sh
       - name: Web checks and assets
         working-directory: web
