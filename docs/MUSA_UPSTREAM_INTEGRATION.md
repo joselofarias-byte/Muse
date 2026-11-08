@@ -93,8 +93,9 @@ solo prepara un borrador y vuelve a descargarlo para comprobar sus bytes.
 - Los campos sensibles del editor no se guardan en `rememberSaveable`.
 - El panel de herramientas usa identificadores de recursos, no títulos chinos,
   para agrupar búsqueda, razonamiento, adjuntos y conocimiento.
-- Se corrige el cierre del flujo Anthropic al abortar durante un reintento, con
-  una prueba sincronizada en el inicio real del backoff, sin ampliar su timeout.
+- Se corrige el cierre del flujo Anthropic y se cancelan sus tareas hijas al
+  abortar durante un reintento. Se prueban respuestas 503 y 429 con
+  `Retry-After: 60`, exigiendo finalizar en menos de dos segundos tras abortar.
 - La web conserva contratos y migraciones históricas; una nueva migración cambia
   los textos predeterminados sin renombrar planes personalizados ni conversaciones.
 
@@ -114,11 +115,20 @@ datos. No se entrega la APK sin firma ni se sustituye el certificado permanente.
 La compilación local inicial produjo una APK Release ARM64 sin firma con paquete
 `io.zer0.muse`, nombre `Musa`, versión `2.6.23-musa-es` y código `1000001`;
 la integridad ZIP y la ABI exclusiva `arm64-v8a` se comprobaron. No se distribuye.
-Lint se interrumpió tras más de 40 minutos analizando dependencias; no se acredita
-como aprobado. La batería de IA inicial ejecutó 496 pruebas con un timeout en
-cancelación Anthropic, investigado y corregido; requiere repetir las pruebas sobre
-el código final. La compilación final y las pruebas dirigidas tienen que confirmar
-los cambios posteriores a esa primera APK.
+Las pruebas dirigidas finales aprobaron seis casos de idioma, seis de QR y tres
+de cancelación. Los auxiliares de firma aprobaron 13 casos y pytest aprobó 41
+casos de continuidad, localización y residuos. La batería de IA inicial ejecutó
+496 pruebas con un timeout Anthropic; las tres pruebas dirigidas no sustituyen
+la repetición completa. Lint completo sigue pendiente: el primer intento se
+interrumpió tras más de 40 minutos; un intento posterior de compilación encontró
+una excepción interna FIR al analizar `AnthropicProvider.kt`. La compilación final
+se repite sin modificar las fuentes durante el análisis; no se acredita aprobación
+de Lint ni una APK final mientras no termine.
+
+La verificación web completa (build/typecheck, pruebas de paquetes y cliente)
+terminó con código cero. La CI construye el workspace antes de ejecutar pruebas
+que importan `dist`; el orden anterior fallaba en un checkout limpio. No se
+eliminan ni se relajan pruebas.
 
 En la web se comprobó el paso de login a registro y se inspeccionó una captura
 actual: el placeholder de contraseña se muestra completo. No acredita el resto

@@ -57,6 +57,23 @@ class ProviderRetryAbortRaceTest {
     }
 
     @Test
+    fun `Anthropic abort cancels long rate limit backoff promptly`() = runBlocking {
+        assertNoReconnectAfterRetryableResponse(
+            ProviderConfig(
+                id = "anthropic-long-backoff",
+                displayName = "Anthropic Rate Limit",
+                type = ProviderType.ANTHROPIC,
+                baseUrl = server.url("/v1").toString(),
+                apiKey = "test-key",
+            ),
+            provider = { config -> AnthropicProvider(config) },
+            modelId = "claude-race",
+            abortAtBackoff = true,
+            statusCode = 429,
+        )
+    }
+
+    @Test
     fun `Gemini abort during retry backoff prevents reconnect`() = runBlocking {
         assertNoReconnectAfterRetryableResponse(
             ProviderConfig(
@@ -77,6 +94,7 @@ class ProviderRetryAbortRaceTest {
         provider: (ProviderConfig) -> Provider,
         modelId: String,
         abortAtBackoff: Boolean = false,
+        statusCode: Int = 503,
     ) = coroutineScope {
         val firstRequest = CountDownLatch(1)
         server.start()
@@ -84,8 +102,9 @@ class ProviderRetryAbortRaceTest {
             override fun dispatch(request: mockwebserver3.RecordedRequest): MockResponse {
                 firstRequest.countDown()
                 return MockResponse.Builder()
-                    .code(503)
+                    .code(statusCode)
                     .clearHeaders()
+                    .addHeader("Retry-After", "60")
                     .addHeader("Content-Type", "text/event-stream")
                     .body("""{"error":{"message":"temporary"}}""")
                     .build()
@@ -104,7 +123,7 @@ class ProviderRetryAbortRaceTest {
         if (abortAtBackoff) {
             Logger.enabled = true
             Logger.sink = { _, tag, message, _ ->
-                if (tag == "AnthropicProvider" && message.startsWith("streamChat retryable failure(code=503")) {
+                if (tag == "AnthropicProvider" && message.startsWith("streamChat retryable failure(code=$statusCode")) {
                     // Abort synchronously inside the retry coroutine, after the failed SSE was cancelled.
                     signal.abort()
                     backoffStarted.countDown()
@@ -122,7 +141,7 @@ class ProviderRetryAbortRaceTest {
             } else {
                 signal.abort()
             }
-            withTimeout(5_000) { collector.join() }
+            withTimeout(if (abortAtBackoff) 2_000 else 5_000) { collector.join() }
 
             // Allow the normal 1s retry backoff plus callback delivery time to elapse.
             delay(1_500)
