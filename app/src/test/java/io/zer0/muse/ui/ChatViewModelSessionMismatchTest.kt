@@ -338,7 +338,7 @@ class ChatViewModelSessionMismatchTest {
 
         // No cambiar de sesión,Deje que los consumidores lo manejen normalmente(sessionId partido)
         advanceUntilIdle()
-        withTimeout(5_000) { outboxPersisted.await() }
+        runBlocking { withTimeout(5_000) { outboxPersisted.await() } }
         // outboxReady Después de que se complete Dispatchers.IO,La continuación del consumidor devuelve el despachador de prueba.
         advanceUntilIdle()
 

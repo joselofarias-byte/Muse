@@ -40,28 +40,28 @@
 
     <!-- ===== data/preset ===== -->
     <!-- Proveedor local displayName(Nacional + estación de transferencia incluye parte china) -->
-    <string name="preset_provider_deepseek">DeepSeek búsqueda profunda</string>
-    <string name="preset_provider_qwen">Tongyi Qianwen Qwen</string>
-    <string name="preset_provider_zhipu">espectro de sabiduría GLM</string>
-    <string name="preset_provider_moonshot">lado oscuro de la luna Kimi</string>
-    <string name="preset_provider_doubao">Puf de bytes Doubao</string>
-    <string name="preset_provider_baichuan">Baichuan Baichuan</string>
-    <string name="preset_provider_lingyi">cero una cosa Yi</string>
-    <string name="preset_provider_stepfun">paso StepFun</string>
-    <string name="preset_provider_api2d">API2D tránsito</string>
-    <string name="preset_provider_aihubmix">AiHubMix tránsito</string>
-    <string name="preset_provider_deepbricks">DeepBricks tránsito</string>
-    <string name="preset_provider_oneapi">OneAPI Tránsito autoconstruido</string>
-    <string name="preset_provider_newapi">NewAPI Tránsito autoconstruido</string>
+    <string name="preset_provider_deepseek">DeepSeek</string>
+    <string name="preset_provider_qwen">Qwen</string>
+    <string name="preset_provider_zhipu">Zhipu GLM</string>
+    <string name="preset_provider_moonshot">Kimi</string>
+    <string name="preset_provider_doubao">Doubao</string>
+    <string name="preset_provider_baichuan">Baichuan</string>
+    <string name="preset_provider_lingyi">Yi</string>
+    <string name="preset_provider_stepfun">StepFun</string>
+    <string name="preset_provider_api2d">API2D</string>
+    <string name="preset_provider_aihubmix">AiHubMix</string>
+    <string name="preset_provider_deepbricks">DeepBricks</string>
+    <string name="preset_provider_oneapi">OneAPI (autoalojado)</string>
+    <string name="preset_provider_newapi">NewAPI (autoalojado)</string>
     <!-- v1.0.6: Agregar nuevo proveedor -->
-    <string name="preset_provider_hunyuan">Tencent Hunyuan Hunyuan</string>
-    <string name="preset_provider_baidu_cloud">Nube inteligente de Baidu (Wenxin)</string>
-    <string name="preset_provider_modelscope">Magia ModelScope</string>
-    <string name="preset_provider_infini">Wuwen Xinqiong Infini</string>
+    <string name="preset_provider_hunyuan">Tencent Hunyuan</string>
+    <string name="preset_provider_baidu_cloud">Baidu Cloud (ERNIE)</string>
+    <string name="preset_provider_modelscope">ModelScope</string>
+    <string name="preset_provider_infini">Infini</string>
     <string name="preset_provider_mimo">Xiaomi MiMo</string>
-    <string name="preset_provider_dashscope_coding">Bailiano Coding Plan</string>
-    <string name="preset_provider_volcengine_coding">motor volcánico Coding Plan</string>
-    <string name="preset_provider_zhipu_coding">espectro de sabiduría GLM Coding Plan</string>
+    <string name="preset_provider_dashscope_coding">DashScope Coding Plan</string>
+    <string name="preset_provider_volcengine_coding">Volcengine Coding Plan</string>
+    <string name="preset_provider_zhipu_coding">Zhipu GLM Coding Plan</string>
 
     <!-- ===== data/import ===== -->
     <!-- Mensajes de error de importación de datos de terceros(Pasado a ImportResult.errors UI) -->

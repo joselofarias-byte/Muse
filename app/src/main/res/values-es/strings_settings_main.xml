@@ -137,7 +137,7 @@
     <string name="settings_provider_prompt_cache_ttl">Duración de la caché de prompts (5 min o 1 h)</string>
     <string name="settings_provider_messages_path">Messages camino</string>
     <string name="settings_provider_models_path">Models camino</string>
-    <string name="settings_provider_refresh_models">Actualizar modelo ascendente</string>
+    <string name="settings_provider_refresh_models">Actualizar modelos del proveedor</string>
     <string name="settings_provider_edit_model_abilities">Editar capacidades del modelo</string>
     <!-- v1.97: ModelRegistry Botón de capacidad de detección automática con un solo clic -->
     <string name="settings_provider_ability_tools">llamada de herramienta</string>
@@ -149,13 +149,13 @@
     <string name="settings_provider_context_window">ventana de contexto (token, opcional)</string>
     <string name="settings_model_catalog_title">Catálogo de modelos</string>
 
-    <string name="settings_provider_max_output_tokens">salida máxima token(Opcional)</string>
+    <string name="settings_provider_max_output_tokens">Máximo de tokens de salida (opcional)</string>
     <string name="settings_provider_remove_model">Eliminar el modelo de la lista.</string>
     <string name="settings_provider_no_models">Aún no hay modelo</string>
-    <string name="settings_provider_no_models_hint">Haga clic en el botón a continuación para extraer el modelo ascendente</string>
+    <string name="settings_provider_no_models_hint">Tocá el botón para consultar los modelos disponibles en el proveedor.</string>
     <string name="settings_provider_select_models">Elegí los modelos que querés agregar</string>
     <string name="settings_provider_models_count">total %1$d modelos · Reconocimiento automático de contexto</string>
-    <string name="settings_provider_search_models">Modelo de búsqueda id</string>
+    <string name="settings_provider_search_models">Buscar por ID del modelo</string>
     <string name="settings_provider_clear">Borrar</string>
     <string name="settings_provider_select_all">Seleccionar todo</string>
     <string name="settings_provider_model_list">Lista de modelos</string>
@@ -223,9 +223,9 @@
     <string name="settings_backup_restoring_cloud">Recuperarse de la nube...</string>
     <string name="settings_backup_endpoint">dirección de interfaz</string>
     <string name="settings_backup_region">área</string>
-    <string name="settings_backup_bucket">Bucket</string>
+    <string name="settings_backup_bucket">Contenedor de almacenamiento</string>
     <string name="settings_backup_access_key">clave de acceso</string>
-    <string name="settings_backup_secret_key">Secret Key</string>
+    <string name="settings_backup_secret_key">Clave secreta</string>
     <string name="settings_backup_key_prefix">Key prefijo (directorio, como muse/)</string>
     <string name="settings_backup_webdav_url">WebDAV dirección</string>
     <string name="settings_backup_username">Nombre de usuario</string>
@@ -281,11 +281,11 @@
     <string name="settings_mcp_oauth_authorize">OAuth Autorizar</string>
     <string name="settings_mcp_oauth_cannot_start">No se puede iniciar el flujo de autorización de OAuth</string>
     <string name="settings_mcp_oauth_open_failed">No se puede abrir la página de autorización: %1$s</string>
-    <string name="settings_mcp_oauth_revoke">Cancelar OAuth</string>
+    <string name="settings_mcp_oauth_revoke">Revocar autorización OAuth</string>
     <string name="settings_mcp_oauth_revoked">Autorización de OAuth revocada</string>
     <string name="settings_mcp_oauth_revoke_failed">Error al deshacer: %1$s</string>
     <string name="settings_mcp_browse_resources">Navegar Resources</string>
-    <string name="settings_mcp_browse_prompts">Navegar Prompts</string>
+    <string name="settings_mcp_browse_prompts">Explorar instrucciones</string>
     <string name="settings_mcp_reconnect">Reconectar</string>
     <string name="settings_mcp_add_title">agregar MCP server</string>
     <string name="settings_mcp_display_name">nombre para mostrar</string>
@@ -313,16 +313,16 @@
     <string name="settings_mcp_resource_content">Contenido de recursos</string>
     <string name="settings_mcp_empty_content">(contenido vacío)</string>
     <string name="settings_mcp_no_text">(sin texto)</string>
-    <string name="settings_mcp_browse_prompts_title">Navegar Prompts</string>
+    <string name="settings_mcp_browse_prompts_title">Explorar instrucciones</string>
     <string name="settings_mcp_load_prompts_failed">No se pudieron cargar las indicaciones: %1$s</string>
-    <string name="settings_mcp_no_prompts">Ninguno disponible Prompts(Requiere que el servidor esté conectado y exponga las instrucciones.)</string>
+    <string name="settings_mcp_no_prompts">No hay instrucciones disponibles. El servidor debe estar conectado y ofrecerlas.</string>
     <string name="settings_mcp_prompt_args">Parámetros: %1$s</string>
-    <string name="settings_mcp_prompt_title">Prompt: %1$s</string>
+    <string name="settings_mcp_prompt_title">Instrucción: %1$s</string>
     <string name="settings_mcp_getting">Conseguir...</string>
     <string name="settings_mcp_prompt_no_args">El mensaje no requiere parámetros</string>
     <string name="settings_mcp_get">Obtener</string>
     <string name="settings_mcp_get_failed">No se pudo obtener: %1$s</string>
-    <string name="settings_mcp_prompt_result">Prompt resultado</string>
+    <string name="settings_mcp_prompt_result">Resultado de la instrucción</string>
     <string name="settings_mcp_no_messages">(sin noticias)</string>
 
     <!-- ==================== WebServer ajustes ==================== -->
@@ -412,13 +412,13 @@
     <string name="settings_chat_expand_button">Mostrar botón de edición en pantalla completa</string>
     <string name="settings_chat_expand_button_subtitle">Mostrar un botón de edición en pantalla completa a la derecha del campo de entrada</string>
     <string name="settings_chat_reasoning_expand">El proceso de pensamiento se desarrolla por defecto</string>
-    <string name="settings_chat_reasoning_expand_subtitle">Doblar por defecto después de cerrar</string>
+    <string name="settings_chat_reasoning_expand_subtitle">Al desactivarlo, el razonamiento se muestra contraído.</string>
     <string name="settings_chat_reflection_expand">Los bloques de reflexión se expanden de forma predeterminada.</string>
-    <string name="settings_chat_reflection_expand_subtitle">Doblar por defecto después de cerrar</string>
+    <string name="settings_chat_reflection_expand_subtitle">Al desactivarlo, la reflexión se muestra contraída.</string>
     <string name="settings_chat_interaction">comportamiento interactivo</string>
     <string name="settings_chat_context_section">gestión del contexto</string>
     <string name="settings_chat_streaming">Respuesta de transmisión</string>
-    <string name="settings_chat_streaming_subtitle">Imprime toda la sección después del cierre (larga espera)</string>
+    <string name="settings_chat_streaming_subtitle">Al desactivarlo, la respuesta se muestra completa cuando termina de generarse.</string>
     <string name="settings_chat_fast_reply">Modo de respuesta rápida</string>
     <string name="settings_chat_fast_reply_subtitle">Omita cada ronda de recuperación de memoria relevante (la medición real puede guardar más de 500 ms de retraso en la primera palabra); La memoria a largo plazo todavía se inyecta como de costumbre.</string>
     <string name="settings_chat_auto_scroll">Desplazarse automáticamente hacia abajo</string>

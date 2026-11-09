@@ -208,8 +208,8 @@ try {
   assert(countRows(appearance) === 2, `Apariencia página 2 líneas (modo tema + tamaño de fuente)`);
   assert(appearance.includes("PROTO-oscuro"), "El lado derecho de la columna de enumeración muestra la etiqueta emitida por el Host (valor actual)");
   assert(!appearance.includes(">dark<"), "La enumeración no trata el valor original como nombre para mostrar");
-  assert(/aria-label="[^"]*reducir"/.test(appearance), "La recta numérica tiene − botón (nombre accesible)");
-  assert(/aria-label="[^"]*aumentar"/.test(appearance), "La fila de números tiene un botón + (nombre accesible)");
+  assert(/aria-label="Reducir [^"]+"/.test(appearance), "La recta numérica tiene − botón (nombre accesible)");
+  assert(/aria-label="Aumentar [^"]+"/.test(appearance), "La fila de números tiene un botón + (nombre accesible)");
   assert(appearance.includes(">1<"), "La fila numérica muestra el valor actual");
 
   const chat = renderPage("chat");
@@ -354,7 +354,7 @@ try {
   assert(loading.includes('role="status"') && !loading.includes("muse-skeleton"), "values Dale un lugar a Quiet antes de que llegue (retraso del esqueleto 300 ms)");
 
   const failed = renderPage("appearance", { snapshot: undefined, loading: false, error: "PROTO-Error de lectura" });
-  assert(failed.includes("PROTO-Error de lectura") && failed.includes(">Inténtalo de nuevo<"), "Se muestra una barra de error reintentable si falla la lectura.");
+  assert(failed.includes("PROTO-Error de lectura") && failed.includes(">Reintentar<"), "Se muestra una barra de error reintentable si falla la lectura.");
 
   const emptyPage = renderPage("memory", { snapshot: { ...SNAPSHOT, values: [] } });
   assert(emptyPage.includes("Actualmente no hay ajustes en esta página."), "Si no hay ningún valor coincidente en esta página, indique el motivo y no deje espacios en blanco.");

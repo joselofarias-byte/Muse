@@ -18,16 +18,14 @@ import java.security.MessageDigest
 internal const val WECLAW_REPLY_CONTEXT_TOKEN_PREFIX = "muse.weclaw.context.v1:"
 private const val WECLAW_CURSOR_PREFIX = "muse.weclaw.cursor.v1:"
 
-internal suspend fun protectWeClawReplyContextToken(token: String): String =
-    if (token.isBlank()) "" else SecureKeyStore.encrypt(WECLAW_REPLY_CONTEXT_TOKEN_PREFIX + token)
+internal suspend fun protectWeClawReplyContextToken(token: String): String = if (token.isBlank()) "" else SecureKeyStore.encrypt(WECLAW_REPLY_CONTEXT_TOKEN_PREFIX + token)
 
 internal suspend fun restoreWeClawReplyContextToken(encryptedToken: String): String? = SecureKeyStore.decryptOrNull(encryptedToken)
     ?.takeIf { it.startsWith(WECLAW_REPLY_CONTEXT_TOKEN_PREFIX) }
     ?.removePrefix(WECLAW_REPLY_CONTEXT_TOKEN_PREFIX)
     ?.takeIf { it.isNotBlank() }
 
-internal suspend fun protectWeClawCursor(cursor: String): String =
-    if (cursor.isBlank()) "" else SecureKeyStore.encrypt(WECLAW_CURSOR_PREFIX + cursor)
+internal suspend fun protectWeClawCursor(cursor: String): String = if (cursor.isBlank()) "" else SecureKeyStore.encrypt(WECLAW_CURSOR_PREFIX + cursor)
 
 internal suspend fun restoreWeClawCursor(storedCursor: String): String {
     if (storedCursor.isBlank()) return ""
@@ -54,7 +52,14 @@ class WeClawReceiver(
     private val appScope: CoroutineScope,
 ) {
     private var job: Job? = null
-    private data class PollCursor(val channelId: String = "", val buffer: String = "")
+    private data class PollCursor(
+        val channelId: String = "",
+        val buffer: String = "",
+
+        val secretFingerprint: String = "",
+
+        val failures: Int = 0,
+    )
 
     /**
      * iniciar el portal:Primero determine de acuerdo con la configuración de persistencia.,Luego siga los cambios de canal posteriores para iniciar y detener.
@@ -133,49 +138,72 @@ class WeClawReceiver(
     }
 
     @Suppress("TooGenericExceptionCaught") // Transport, Keystore, and inbox failures all require retrying the same cursor.
-    private suspend fun pollOnce(config: ChannelConfig, previousCursor: PollCursor): PollCursor = try {
-        val cursor = if (previousCursor.channelId == config.id) {
+    private suspend fun pollOnce(config: ChannelConfig, previousCursor: PollCursor): PollCursor {
+        val fingerprint = weClawSecretFingerprint(config.appSecret)
+        val cursor = if (previousCursor.channelId == config.id && previousCursor.secretFingerprint == fingerprint) {
             previousCursor
         } else {
-            PollCursor(channelId = config.id, buffer = loadBuffer(config.id))
-        }
-        val updates = WeClawClient.getUpdates(config.appSecret, cursor.buffer).getOrThrow()
-        val nextBuffer = updates.buffer.ifBlank { cursor.buffer }
-        updates.messages.forEachIndexed { index, msg ->
-            WeClawContextCache.put(msg.fromUserId, msg.contextToken)
-            val eventId = weClawBatchEventId(cursor.buffer, nextBuffer, index, msg)
-            val source = ChannelInbox.Source(
-                platform = "WECLAW",
-                from = msg.fromUserId,
+            PollCursor(
                 channelId = config.id,
-                eventId = eventId,
-                encryptedReplyContextToken = protectWeClawReplyContextToken(msg.contextToken),
+                buffer = loadBuffer(config.id, fingerprint),
+                secretFingerprint = fingerprint,
             )
-            val media = msg.media
-            if (media == null) {
-                ChannelInbox.record(source, msg.text, "")
-            } else {
-                handleMediaMessage(msg, media, source)
-            }
         }
-        if (nextBuffer != cursor.buffer) saveBuffer(config.id, nextBuffer)
-        PollCursor(channelId = config.id, buffer = nextBuffer)
-    } catch (error: CancellationException) {
-        throw error
-    } catch (error: Exception) {
-        Logger.w(TAG, "WeClaw La actualización no pudo ponerse en cola de manera confiable,Mantener el cursor de sondeo: ${error.message}")
-        delay(RETRY_DELAY_MS)
-        previousCursor
+        return try {
+            val updates = WeClawClient.getUpdates(config.appSecret, cursor.buffer).getOrThrow()
+            val nextBuffer = updates.buffer.ifBlank { cursor.buffer }
+            updates.messages.forEachIndexed { index, msg ->
+                WeClawContextCache.put(msg.fromUserId, msg.contextToken)
+                val eventId = weClawBatchEventId(cursor.buffer, nextBuffer, index, msg)
+                val source = ChannelInbox.Source(
+                    platform = "WECLAW",
+                    from = msg.fromUserId,
+                    channelId = config.id,
+                    eventId = eventId,
+                    encryptedReplyContextToken = protectWeClawReplyContextToken(msg.contextToken),
+                )
+                val media = msg.media
+                if (media == null) {
+                    ChannelInbox.record(source, msg.text, "")
+                } else {
+                    handleMediaMessage(msg, media, source)
+                }
+            }
+            if (nextBuffer != cursor.buffer) saveBuffer(config.id, fingerprint, nextBuffer)
+            PollCursor(channelId = config.id, buffer = nextBuffer, secretFingerprint = fingerprint)
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            val failures = cursor.failures + 1
+            Logger.w(TAG, "WeClaw: no se pudo guardar la actualización (intento $failures): ${error.message}")
+            if (cursor.buffer.isNotBlank() && failures >= MAX_CONSECUTIVE_FAILURES) {
+                saveBuffer(config.id, fingerprint, "")
+                Logger.w(TAG, "WeClaw: $failures fallos consecutivos; cursor descartado para resincronizar")
+                delay(RETRY_DELAY_MS)
+                return PollCursor(channelId = config.id, secretFingerprint = fingerprint)
+            }
+            delay(RETRY_DELAY_MS)
+            cursor.copy(failures = failures)
+        }
     }
 
-    private suspend fun loadBuffer(channelId: String): String {
+    private suspend fun loadBuffer(channelId: String, secretFingerprint: String): String {
+        val marker = fingerprintFile(channelId)
+        val stored = if (marker.exists()) marker.readText().trim() else ""
+        if (stored != secretFingerprint) {
+            cursorFile(channelId).delete()
+            AtomicFileStore.writeText(marker, secretFingerprint)
+            Logger.i(TAG, "WeClaw: credenciales modificadas; cursor local restablecido")
+            return ""
+        }
         val cursorFile = cursorFile(channelId)
         if (!cursorFile.exists()) return ""
         return restoreWeClawCursor(cursorFile.readText())
     }
 
-    private suspend fun saveBuffer(channelId: String, buffer: String) {
+    private suspend fun saveBuffer(channelId: String, secretFingerprint: String, buffer: String) {
         AtomicFileStore.writeText(cursorFile(channelId), protectWeClawCursor(buffer))
+        AtomicFileStore.writeText(fingerprintFile(channelId), secretFingerprint)
     }
 
     private fun cursorFile(channelId: String): File {
@@ -183,11 +211,11 @@ class WeClawReceiver(
         return File(context.filesDir, "channel_weclaw_cursor_$digest.txt")
     }
 
-    /**
-     * v2.0.1: Procesamiento de mensajes multimedia — Descarga de imagen(CDN + AES Descifrar)Y comprimirlo en la base de datos.;
-     * Discurso mediante transcripción del lado del servidor(parseMessages Lleno);
-     * v2.x (B4): vídeo/Descargue el archivo a un directorio privado y registre la ruta local(El marcador de posición de texto se actualiza para incluir el nombre del archivo./camino).
-     */
+    private fun fingerprintFile(channelId: String): File {
+        val digest = channelDigest(channelId)
+        return File(context.filesDir, "channel_weclaw_cursor_$digest.fp")
+    }
+
     private suspend fun handleMediaMessage(msg: WeClawClient.InboundMsg, media: WeClawClient.MediaRef, source: ChannelInbox.Source) {
         val from = source.from
         when (media.kind) {
@@ -306,7 +334,8 @@ class WeClawReceiver(
         /** Error al volver a intentar retroceder(milisegundos). */
         private const val RETRY_DELAY_MS = 5_000L
 
-        /** v2.0.1: Tiempo de espera de descarga de medios(milisegundos). */
+        private const val MAX_CONSECUTIVE_FAILURES = 3
+
         private const val MEDIA_DOWNLOAD_TIMEOUT_MS = 60_000L
 
         /** v2.x (B4): vídeo/Directorio de ubicación de archivos(en archivos privadosDir). */
@@ -333,8 +362,7 @@ internal fun weClawPollAction(available: Boolean, running: Boolean): WeClawPollA
 internal enum class WeClawPollAction { START, STOP, NONE }
 
 /** ¿Puede esta configuración de canal admitir sondeos largos de WECLAW?(enabled + Coincidencia de plataforma + tiene clave). */
-private fun ChannelConfig.isUsableWeClaw(): Boolean =
-    enabled && platform == ChannelPlatform.WECLAW && appSecret.isNotBlank()
+private fun ChannelConfig.isUsableWeClaw(): Boolean = enabled && platform == ChannelPlatform.WECLAW && appSecret.isNotBlank()
 
 /**
  * ¿Existe alguna lista de canales que pueda ejecutar encuestas largas de WECLAW?
@@ -396,3 +424,5 @@ internal fun weClawBatchEventId(requestBuffer: String, responseBuffer: String, i
 private fun channelDigest(value: String): String = MessageDigest.getInstance("SHA-256")
     .digest(value.toByteArray(Charsets.UTF_8))
     .joinToString("") { byte -> (byte.toInt() and 0xff).toString(16).padStart(2, '0') }
+
+private fun weClawSecretFingerprint(secret: String): String = channelDigest(secret).take(16)

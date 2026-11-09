@@ -11,10 +11,14 @@ import io.zer0.muse.ui.taskcard.TaskStep
 import io.zer0.muse.ui.taskcard.TaskStepStatus
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withTimeout
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -61,8 +65,7 @@ class ChatTaskCardCoordinatorRetryTest {
         return accessor
     }
 
-    private fun stepOf(accessor: InMemoryChatStateAccessor, stepId: String): TaskStep? =
-        accessor.snapshot.taskCards[CARD_ID]?.steps?.firstOrNull { it.id == stepId }
+    private fun stepOf(accessor: InMemoryChatStateAccessor, stepId: String): TaskStep? = accessor.snapshot.taskCards[CARD_ID]?.steps?.firstOrNull { it.id == stepId }
 
     /** El paso de sondeo y espera entra en el estado final esperado.(Reintentar la ejecución en una rutina independiente). */
     private suspend fun awaitStatus(accessor: InMemoryChatStateAccessor, stepId: String, expected: TaskStepStatus) {
@@ -100,18 +103,27 @@ class ChatTaskCardCoordinatorRetryTest {
         assertTrue(accessor.snapshot.taskCards[CARD_ID]?.isExpanded == true)
     }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     @Test
-    fun `retry timeout writes TIMED_OUT terminal status`() = runBlocking {
+    fun `retry timeout writes TIMED_OUT terminal status`() = runTest {
         stubToolRegistered()
         coEvery { registry.executeFromJson("calculator", any()) } coAnswers {
             delay(5_000)
             "too late"
         }
-        val accessor = accessorWithCard(cardWith("s0" to TaskStepStatus.FAILED))
+        val accessor = accessorWithCard(cardWith("s0" to TaskStepStatus.FAILED), scope = backgroundScope)
         val coordinator = ChatTaskCardCoordinator(accessor, registry, retryTimeoutMs = 50L)
 
         coordinator.retryFailedStep(CARD_ID, "s0")
-        awaitStatus(accessor, "s0", TaskStepStatus.TIMED_OUT)
+        runCurrent()
+        advanceTimeBy(49)
+        runCurrent()
+        assertEquals(TaskStepStatus.RUNNING, stepOf(accessor, "s0")?.status)
+        assertEquals(TaskCardPhase.EXECUTING, accessor.snapshot.taskCards[CARD_ID]?.phase)
+
+        advanceTimeBy(1)
+        runCurrent()
+        assertEquals(TaskStepStatus.TIMED_OUT, stepOf(accessor, "s0")?.status)
 
         val step = stepOf(accessor, "s0")
         assertNotNull(step)

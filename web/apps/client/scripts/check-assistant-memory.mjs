@@ -122,7 +122,7 @@ try {
       onBack: () => undefined,
     }),
   );
-  assert(emptyList.includes("Aún no hay asistente en el teléfono"), "Dejar vacío cuando no haya ayudante.");
+  assert(emptyList.includes("Todavía no hay asistentes en el teléfono"), "Dejar vacío cuando no haya ayudante.");
 
   // ── 3. Detalles del asistente ─────────────────────────────────────────────
   const detailHtml = render(
@@ -138,11 +138,11 @@ try {
   assert(detailHtml.includes("PROTO-Introducción"), "Introducción a la visualización de detalles");
   assert(detailHtml.includes("PROTO-Resumen del personaje") && detailHtml.includes("host-persona"), "El resumen del personaje es plegable (6 truncamiento de línea)");
   assert(detailHtml.includes("Expandir"), "El resumen del personaje da la entrada a la expansión.");
-  assert(detailHtml.includes("temperatura") && detailHtml.includes("0.7"), "Pantalla de solo lectura de temperatura");
+  assert(detailHtml.includes("Temperatura") && detailHtml.includes("0.7"), "Pantalla de solo lectura de temperatura");
   assert(detailHtml.includes("4,096"), "Token máximo agrupado por Intl");
-  assert(detailHtml.includes("configurado 1,234 palabra"), "La palabra solicitada solo muestra la cantidad de palabras, no el texto.");
+  assert(detailHtml.includes("Configuradas: 1,234 caracteres"), "La palabra solicitada solo muestra la cantidad de palabras, no el texto.");
   assert(!detailHtml.includes("Texto de palabra de aviso del sistema"), "El texto de la palabra solicitada no aparece en la página.");
-  assert(detailHtml.includes("12 un"), "Visualización del número de herramienta");
+  assert(detailHtml.includes("12 herramientas"), "Visualización del número de herramienta");
   assert(/role="switch"/.test(detailHtml) && detailHtml.includes("disabled"), "El interruptor de habilitación es de solo lectura.");
   assert(!/<input/i.test(detailHtml), "No aparece ningún cuadro de entrada para parámetros de solo lectura");
   assert(detailHtml.includes("Iniciar una conversación con este asistente"), "La parte superior puede iniciar directamente una conversación.");
@@ -184,14 +184,14 @@ try {
   ];
   const listMemory = memoryPage({ items, hasMore: true });
   assert(listMemory.includes("PROTO-contenido de la memoria") && listMemory.includes("PROTO-Artículo 2"), "Listar todos los contenidos de la memoria");
-  assert(listMemory.includes("fijar hacia arriba"), "etiqueta de alfiler");
+  assert(listMemory.includes("Fijado"), "etiqueta de alfiler");
   assert(listMemory.includes("conversation"), "etiqueta fuente");
   assert(listMemory.includes("justo ahora") && listMemory.includes("hace 3 días"), "El tiempo va localizado en relación con el tiempo.");
-  assert(listMemory.includes("cargar más"), "Habrá más puntos de entrada para la carga.");
+  assert(listMemory.includes("Cargar más"), "Habrá más puntos de entrada para la carga.");
   const lastMemory = memoryPage({ items, hasMore: false });
-  assert(lastMemory.includes("no más") && !lastMemory.includes("cargar más"), "Al llegar al final muestra \"No más\"");
+  assert(lastMemory.includes("No hay más resultados") && !lastMemory.includes("Cargar más"), "Al llegar al final muestra \"No más\"");
   const emptyMemory = memoryPage({});
-  assert(emptyMemory.includes("Aún no hay memoria"), "Proporcionar orientación cuando no hay memoria.");
+  assert(emptyMemory.includes("Todavía no hay recuerdos"), "Proporcionar orientación cuando no hay memoria.");
   const noHit = memoryPage({ items: [], query: "PROTO-palabras clave" });
   assert(noHit.includes("PROTO-palabras clave") && noHit.includes("Borrar"), "Las palabras clave y \"Borrar\" se muestran cuando no se encuentran resultados en la búsqueda.");
   assert(memoryPage({ unsupported: true }).includes("La versión actual no admite la visualización de recuerdos en la página web."), "Preguntar si no es compatible");

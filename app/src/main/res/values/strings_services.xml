@@ -8,8 +8,8 @@
     <string name="backup_encrypted_need_password">La copia de seguridad está cifrada. Configure la contraseña de respaldo en la configuración de respaldo en la nube antes de importarla.</string>
 
     <!-- ===== tools / skill (SkillExecutor) ===== -->
-    <string name="skill_unknown_impl">Implementación de habilidades desconocidas: %1$s</string>
-    <string name="skill_exec_exception">Ejecución anormal de habilidades</string>
+    <string name="skill_unknown_impl">Implementación de habilidad desconocida: %1$s</string>
+    <string name="skill_exec_exception">Error al ejecutar la habilidad</string>
     <string name="skill_missing_param_path">Parámetros faltantes: path</string>
     <string name="skill_missing_param_content">Parámetros faltantes: content</string>
     <string name="skill_missing_param_url">Parámetros faltantes: url</string>
@@ -36,20 +36,20 @@
     <string name="skill_url_invalid_scheme_err">error: url Debe comenzar con http:// o https://</string>
     <string name="skill_path_violation_err">error: path Infracción de ruta (solo permitida en filesDir/cacheDir)</string>
     <string name="skill_web_search_not_configured">web_search No configurado:WebSearchService No inyectado</string>
-    <string name="skill_search_no_result">Buscar \"%1$s\" No hay resultados (tal vez el proveedor de búsqueda no esté configurado o la red falló)</string>
-    <string name="skill_search_result_header">Buscar \"%1$s\" el resultado de (%2$d artículo):\n</string>
+    <string name="skill_search_no_result">No se encontraron resultados para «%1$s». Revisá el proveedor de búsqueda y la conexión.</string>
+    <string name="skill_search_result_header">Resultados para «%1$s» (%2$d):\n</string>
     <string name="skill_knowledge_not_configured">knowledge_search No configurado:KnowledgeDocDao No inyectado</string>
     <string name="skill_query_blank">El término de consulta no puede estar vacío</string>
-    <string name="skill_knowledge_vector_header">Búsqueda semántica de la base de conocimientos. \"%1$s\" golpear %2$d segmentos (umbral %3$s, límite superior %4$d):\n</string>
-    <string name="skill_knowledge_no_match">No se encontró ninguna coincidencia en la base de conocimientos. \"%1$s\" de documentos (umbral %2$s)</string>
-    <string name="skill_knowledge_like_header">Búsqueda de base de conocimientos \"%1$s\" golpear %2$d artículos (umbral %3$s, límite superior %4$d):\n</string>
-    <string name="skill_arxiv_search_failed">arXiv La búsqueda falló: HTTP %1$d</string>
-    <string name="skill_arxiv_no_result">arXiv Buscar \"%1$s\" Sin resultados</string>
-    <string name="skill_arxiv_result_header">arXiv Buscar \"%1$s\" el resultado de (%2$d artículos):\n</string>
+    <string name="skill_knowledge_vector_header">Búsqueda semántica de «%1$s»: %2$d fragmentos encontrados (umbral %3$s, límite %4$d):\n</string>
+    <string name="skill_knowledge_no_match">No se encontraron documentos que coincidan con «%1$s» en la base de conocimientos (umbral %2$s)</string>
+    <string name="skill_knowledge_like_header">Búsqueda de «%1$s» en la base de conocimientos: %2$d resultados (umbral %3$s, límite %4$d):\n</string>
+    <string name="skill_arxiv_search_failed">Error al buscar en arXiv: HTTP %1$d</string>
+    <string name="skill_arxiv_no_result">No se encontraron resultados en arXiv para «%1$s»</string>
+    <string name="skill_arxiv_result_header">Resultados de arXiv para «%1$s» (%2$d artículos):\n</string>
     <string name="skill_install_not_configured">install_skill No configurado:SkillRepository No inyectado</string>
     <string name="skill_install_conflict">Instalación rechazada: id \'%1$s\' Entra en conflicto con las habilidades integradas y no se le permite anularlas</string>
     <string name="skill_install_db_failed">Error de almacenamiento: %1$s</string>
-    <string name="skill_installed">Habilidades instaladas: %1$s(id=%2$s, darse cuenta=%3$s). Los usuarios pueden configurar → Ver en habilidades/Iniciar y detener.</string>
+    <string name="skill_installed">Habilidad instalada: %1$s (id=%2$s, implementación=%3$s). Podés verla, activarla o desactivarla en Ajustes → Habilidades.</string>
     <string name="skill_install_validate_failed">skill Error en la verificación de la definición: %1$s</string>
     <!-- ===== author_plugin:Complemento autoescrito del asistente(El anfitrión sólo produce borradores sin firmar.,Entra en vigor sólo después de que el usuario lo firme.) ===== -->
     <string name="plugin_author_not_configured">author_plugin No configurado:PluginManager No inyectado</string>
@@ -59,19 +59,19 @@
     <string name="plugin_author_draft_created">Complemento borrador sin firmar creado:%1$s(id=%2$s, v%3$s, Herramientas=%4$s). El borrador está actualmente deshabilitado y no es ejecutable, y aún no se puede llamar al asistente; por favor pídale al usuario que → Después de revisar la lista de herramientas y el código en "Administración de complementos", haga clic en "Firmar y activar". Solo entrará en vigor después de haber sido firmado por la clave del autor local.</string>
     <string name="skill_unknown_error">Error desconocido</string>
     <string name="chat_auto_route_prefix">ha sido delegado automáticamente a "%1$s"</string>
-    <string name="skill_assistant_not_found">No encontrado con identificación %1$s subasistente, créelo en la gestión de asistentes</string>
-    <string name="skill_delegate_failed">sub-asistente %1$s La llamada falló: %2$s</string>
-    <string name="skill_delegate_timeout">sub-asistente %1$s tiempo de espera de llamada (%2$d s)</string>
-    <string name="skill_delegate_empty">sub-asistente %1$s Contenido vacío devuelto</string>
-    <string name="skill_delegate_done">「%1$s"Completa la tarea encargada:</string>
+    <string name="skill_assistant_not_found">No se encontró el subasistente con ID %1$s. Crealo en la administración de asistentes.</string>
+    <string name="skill_delegate_failed">Error al llamar al subasistente %1$s: %2$s</string>
+    <string name="skill_delegate_timeout">Se agotó el tiempo de espera del subasistente %1$s (%2$d s)</string>
+    <string name="skill_delegate_empty">El subasistente %1$s devolvió una respuesta vacía</string>
+    <string name="skill_delegate_done">«%1$s» completó la tarea delegada:</string>
     <string name="skill_delegate_max_depth">La profundidad de anidamiento de la delegación excede el límite superior (%1$d), negándose a continuar anidando</string>
     <string name="skill_task_blank">task no puede estar vacío</string>
     <string name="skill_title_blank">title no puede estar vacío</string>
     <string name="skill_steps_invalid">steps Error de formato, debe ser una matriz JSON, cada paso contiene un campo de título</string>
     <string name="skill_steps_empty">steps no puede estar vacío</string>
-    <string name="skill_plan_not_found">Plano no encontrado: %1$s</string>
-    <string name="skill_step_index_out_of_range">stepIndex Fuera de rango: %1$d(Total planificado %2$d paso)</string>
-    <string name="skill_unknown_status">desconocido status: %1$s(Soporte: done/failed/in_progress/skipped)</string>
+    <string name="skill_plan_not_found">No se encontró el plan: %1$s</string>
+    <string name="skill_step_index_out_of_range">stepIndex fuera de rango: %1$d (el plan tiene %2$d pasos)</string>
+    <string name="skill_unknown_status">Estado desconocido: %1$s (valores admitidos: done/failed/in_progress/skipped)</string>
     <string name="skill_channel_reply_not_configured">channel_reply No configurado:GroupChatRepository No inyectado</string>
     <string name="skill_body_blank">body no puede estar vacío</string>
     <string name="skill_message_sent">Mensaje enviado: %1$s</string>
@@ -84,9 +84,9 @@
     <string name="skill_message_blank">message no puede estar vacío</string>
     <string name="skill_agent_phone_not_configured">agent_phone No configurado:GroupChatScheduler No inyectado</string>
     <string name="skill_agent_phone_target_not_found">El agente objetivo no existe</string>
-    <string name="skill_whisper_sent">Ya enviado a %1$s Iniciar un chat privado</string>
+    <string name="skill_whisper_sent">Mensaje privado enviado a %1$s</string>
     <string name="skill_progress_whispering">Iniciando chat privado...</string>
-    <string name="skill_chat_messages_header">--- Noticias recientes en el chat grupal. ---\n</string>
+    <string name="skill_chat_messages_header">--- Mensajes recientes del chat grupal ---\n</string>
     <string name="skill_dir_not_exist">El directorio no existe: %1$s</string>
     <string name="skill_not_dir">No es un directorio: %1$s</string>
     <string name="skill_delete_path_violation">[falló] %1$s Infracción de ruta (solo permitida en filesDir/cacheDir)</string>
@@ -98,7 +98,7 @@
     <string name="skill_download_failed">Error en la descarga: %1$s</string>
     <string name="skill_download_timeout">Tiempo de espera de descarga (%1$d s)</string>
     <string name="skill_source_file_not_exist">error: El archivo fuente no existe: %1$s</string>
-    <string name="skill_missing_content_or_filepath">error: missing content o file_path(Elige uno)</string>
+    <string name="skill_missing_content_or_filepath">error: falta content o file_path (indicá uno de los dos)</string>
     <string name="skill_write_perm_needed">error: Android 9 y lo siguiente requiere permiso WRITE_EXTERNAL_STORAGE para escribir en el directorio de descarga. Autorícelo en la configuración del sistema.</string>
     <string name="skill_unsupported_encoding">Codificación no compatible: %1$s(Por favor use utf-8 / utf-16 / utf-16le / utf-16be)</string>
     <string name="skill_illegal_encoding">Nombre de codificación ilegal: %1$s</string>
@@ -111,49 +111,49 @@
     <string name="skill_query_failed_short">Consulta fallida</string>
     <string name="skill_dir_empty">El directorio está vacío.</string>
     <string name="skill_list_not_configured">list_skills No configurado:SkillRepository No inyectado</string>
-    <string name="skill_no_category_skill">No clasificado como %1$s habilidades</string>
+    <string name="skill_no_category_skill">No hay habilidades en la categoría %1$s</string>
     <string name="skill_no_skill_installed">Aún no hay habilidades instaladas</string>
     <string name="skill_uninstall_not_configured">uninstall_skill No configurado:SkillRepository No inyectado</string>
-    <string name="skill_skill_not_found_by_name">No se encontró ningún nombre %1$s habilidades</string>
-    <string name="skill_skill_not_found">no encontrado skill: %1$s</string>
-    <string name="skill_uninstalled">Desinstalado skill: %1$s(id=%2$s)</string>
+    <string name="skill_skill_not_found_by_name">No se encontró una habilidad llamada %1$s</string>
+    <string name="skill_skill_not_found">No se encontró la habilidad: %1$s</string>
+    <string name="skill_uninstalled">Habilidad desinstalada: %1$s (id=%2$s)</string>
     <string name="skill_uninstall_reserved_rejected">Negarse a desinstalar: id \'%1$s\' Es una habilidad reservada incorporada y no se permite desinstalarla.</string>
     <string name="skill_uninstall_plugin_rejected">Negarse a desinstalar: %1$s(id=%2$s) es una habilidad de complemento, que se administra mediante la página de administración de complementos. El asistente no se puede desinstalar.</string>
     <string name="skill_disable_not_configured">disable_skill No configurado:SkillRepository No inyectado</string>
-    <string name="skill_disabled_result">Discapacitado skill: %1$s(id=%2$s)</string>
+    <string name="skill_disabled_result">Habilidad desactivada: %1$s (id=%2$s)</string>
     <string name="skill_disable_plugin_rejected">No se puede desactivar individualmente: %1$s(id=%2$s) es una habilidad complementaria. Comienza y se detiene con el complemento. Vaya a la página de administración de complementos para operar.</string>
     <string name="skill_enable_not_configured">enable_skill No configurado:SkillRepository No inyectado</string>
-    <string name="skill_enabled_result">Habilitado skill: %1$s(id=%2$s)</string>
+    <string name="skill_enabled_result">Habilidad activada: %1$s (id=%2$s)</string>
     <string name="skill_enable_plugin_rejected">No se puede habilitar individualmente: %1$s(id=%2$s) es una habilidad complementaria. Comienza y se detiene con el complemento. Vaya a la página de administración de complementos para operar.</string>
     <string name="skill_update_not_configured">update_skill No configurado:SkillRepository No inyectado</string>
     <string name="skill_update_reserved_rejected">Rechazar modificación: id \'%1$s\' Es una habilidad reservada incorporada y no se puede modificar.</string>
     <string name="skill_update_plugin_rejected">Rechazar modificación: %1$s(id=%2$s) es una habilidad de complemento, que es administrada por la página de administración de complementos y el asistente no puede modificarla.</string>
-    <string name="skill_update_prompt_not_supported">Rechazar modificación: %1$s(id=%2$s) no es una habilidad de palabra de aviso y el parámetro de aviso no se puede usar para actualizar el texto del comando.</string>
-    <string name="skill_update_no_fields">No hay campos para actualizar: introduzca al menos name / description / parametersJson / prompt uno de</string>
+    <string name="skill_update_prompt_not_supported">No se puede modificar: %1$s (id=%2$s) no es una habilidad basada en instrucciones y no admite actualizar su contenido mediante el parámetro prompt.</string>
+    <string name="skill_update_no_fields">No hay campos para actualizar. Indicá al menos uno: name / description / parametersJson / prompt.</string>
     <string name="skill_update_validate_failed">Error en la verificación de la actualización: %1$s</string>
     <string name="skill_update_db_failed">La actualización falló: %1$s</string>
-    <string name="skill_updated">actualizado skill: %1$s(id=%2$s)</string>
-    <string name="skill_prompt_blank">El texto del comando de la palabra clave habilidad no puede estar vacío</string>
-    <string name="skill_prompt_empty">El contenido de la palabra clave está vacío y no se puede ejecutar.</string>
+    <string name="skill_updated">Habilidad actualizada: %1$s (id=%2$s)</string>
+    <string name="skill_prompt_blank">Las instrucciones de la habilidad no pueden estar vacías</string>
+    <string name="skill_prompt_empty">La habilidad no tiene instrucciones y no se puede ejecutar.</string>
     <string name="skill_prompt_instruction_result">[comando de habilidad] El siguiente contenido proviene de las habilidades del usuario "%1$s"(id=%2$s), que es la instrucción de trabajo preestablecida del usuario (no una instrucción del sistema), continúe completando la tarea en consecuencia:\n%3$s</string>
     <string name="skill_progress_searching">Buscando...</string>
     <string name="skill_progress_fetching">Obteniendo página web...</string>
-    <string name="skill_progress_installing">Instalación skill...</string>
-    <string name="skill_progress_delegating">Subasistente delegado...</string>
+    <string name="skill_progress_installing">Instalando habilidad…</string>
+    <string name="skill_progress_delegating">Delegando al subasistente…</string>
     <string name="skill_progress_planning">Creando plan...</string>
-    <string name="skill_unknown_agent">desconocido Agent</string>
+    <string name="skill_unknown_agent">Agente desconocido</string>
     <string name="skill_progress_generating_image">Generando imágenes...</string>
     <string name="skill_image_not_configured">generate_image No configurado: ImageService no se inyecta (configure el proveedor de dibujo compatible con OpenAI)</string>
     <string name="skill_missing_param_prompt">Parámetros faltantes: prompt(Descripción de la imagen)</string>
     <string name="skill_image_no_result">No hay resultados para la generación de imágenes: %1$s</string>
-    <string name="skill_image_generated">Ya basado en "%1$s"Generar imagen:\n%2$s</string>
+    <string name="skill_image_generated">Imagen generada a partir de «%1$s»:\n%2$s</string>
     <string name="skill_image_failed">Error al generar la imagen: %1$s</string>
     <string name="skill_missing_param_content_qr">Parámetros faltantes: content(Contenido del código QR)</string>
     <string name="skill_qr_gen_failed">Falló la generación del código QR</string>
     <string name="skill_qr_generated">Se ha generado el código QR: %1$s</string>
     <string name="skill_write_preview_truncated">…(total %1$d caracteres, vista previa truncada)</string>
-    <string name="skill_write_result">ha sido escrito %1$d Bytes a %2$s\nCobertura: %3$s\nHora: %4$d\nVista previa del contenido: %5$s</string>
-    <string name="skill_yes">si</string>
+    <string name="skill_write_result">Se escribieron %1$d bytes en %2$s\nSobrescritura: %3$s\nHora: %4$d\nVista previa: %5$s</string>
+    <string name="skill_yes">Sí</string>
     <string name="skill_no">No</string>
 
     <!-- ===== tools / tool (ToolRegistry) ===== -->
@@ -162,15 +162,15 @@
     <string name="tool_param_parse_failed">Falló el análisis de parámetros (original JSON: %1$s)</string>
     <string name="tool_unknown_timezone">Zona horaria desconocida id: %1$s(ID disponibles ver TimeZone.getAvailableIDs(), como Asia/Shanghai/UTC/America/New_York)</string>
     <string name="tool_current_time">hora actual (%1$s): %2$s %3$s</string>
-    <string name="tool_dst">(DST)</string>
-    <string name="tool_non_dst">(noDST)</string>
+    <string name="tool_dst">(horario de verano)</string>
+    <string name="tool_non_dst">(sin horario de verano)</string>
     <string name="tool_missing_param_expression">Parámetros faltantes: expression</string>
     <string name="tool_calc_error">Error de cálculo: %1$s</string>
     <string name="tool_expr_invalid">Expresión no válida: %1$s</string>
     <string name="tool_calc_error_divzero">Error de cálculo: división por cero u operación no válida (el resultado es %1$s)</string>
     <string name="tool_clipboard_empty">El portapapeles está vacío.</string>
     <string name="tool_clipboard_content">Contenido del portapapeles: %1$s</string>
-    <string name="tool_clipboard_written">Escrito en el portapapeles (%1$d personajes)</string>
+    <string name="tool_clipboard_written">Copiado al portapapeles (%1$d caracteres)</string>
     <string name="tool_missing_param_text">Parámetros faltantes: text</string>
     <string name="tool_screen_time_unavailable">No se puede obtener el uso de la pantalla (es posible que falte el permiso PACKAGE_USAGE_STATS; configúrelo)→Solicitud→Se conceden permisos especiales)</string>
     <string name="tool_screen_time_header">Tiempo frente a la pantalla hoy Top 10:\n</string>
@@ -224,7 +224,7 @@
     <string name="tool_device_brand">Marca: %1$s</string>
     <string name="tool_device_model">Modelo: %1$s</string>
     <string name="tool_device_screen">Pantalla: %1$dx%2$d</string>
-    <string name="tool_device_battery">Poder: %1$s</string>
+    <string name="tool_device_battery">Batería: %1$s</string>
     <string name="tool_contacts_no_permission">Se requieren permisos de contacto (READ_CONTACTS), por favor autorícelo en la configuración del sistema</string>
     <string name="tool_contacts_count">Número de contactos en la libreta de direcciones: %1$d</string>
     <string name="tool_contacts_count_filtered">partido \'%1$s\' Número de contactos: %2$d</string>
@@ -244,8 +244,8 @@
     <string name="tool_contact_form_open_failed">No se pudo abrir un nuevo formulario de contacto</string>
     <string name="tool_setting_opened">Configuración del sistema abierta: %1$s</string>
     <string name="tool_setting_open_failed">No se pudo abrir la configuración: %1$s</string>
-    <string name="tool_wifi_status_on">WiFi Actualmente en</string>
-    <string name="tool_wifi_status_off">WiFi Actualmente cerrado</string>
+    <string name="tool_wifi_status_on">Wi-Fi activado</string>
+    <string name="tool_wifi_status_off">Wi-Fi desactivado</string>
     <string name="tool_wifi_toggle_redirect">Android 10+ No se puede encender y apagar WiFi directamente, la página de configuración de WiFi ha sido redirigida; opere manualmente.</string>
     <string name="tool_bluetooth_status_on">Bluetooth está activado actualmente</string>
     <string name="tool_bluetooth_status_off">Bluetooth está actualmente desactivado</string>
@@ -260,14 +260,14 @@
     <string name="tool_error_missing_to">Parámetros faltantes: to(Correo electrónico del destinatario)</string>
     <string name="tool_battery_info">Energía de la batería: %1$d%%, %2$s</string>
     <string name="tool_battery_charging">Cargando</string>
-    <string name="tool_battery_not_charging">No cargado</string>
+    <string name="tool_battery_not_charging">Sin cargar</string>
     <string name="tool_no_notifications">Aún no hay registro de notificaciones</string>
-    <string name="tool_notification_not_connected">El oyente de notificaciones no está conectado, vaya a la configuración del sistema→Aviso de derechos de uso, autorización. Muse</string>
+    <string name="tool_notification_not_connected">El servicio de acceso a notificaciones no está conectado. Autorizá a Muse en Ajustes del sistema → Acceso a notificaciones.</string>
     <string name="tool_missing_param_location">Parámetros faltantes: location(nombre de la ciudad)</string>
     <string name="tool_weather_api_error">La solicitud de API meteorológica falló: HTTP %1$d</string>
     <string name="tool_weather_no_data">%1$s No hay datos meteorológicos disponibles actualmente</string>
-    <string name="tool_weather_result">%1$s Clima: %2$s, Temperatura: %3$s°C, Somatosensorial: %4$s°C, Humedad: %5$s%%, Velocidad del viento: %6$s km/h</string>
-    <string name="tool_weather_failed">Consulta %1$s el clima falló</string>
+    <string name="tool_weather_result">Clima en %1$s: %2$s, temperatura: %3$s°C, sensación térmica: %4$s°C, humedad: %5$s%%, viento: %6$s km/h</string>
+    <string name="tool_weather_failed">No se pudo consultar el clima de %1$s</string>
     <string name="tool_missing_param_url">Parámetros faltantes: url</string>
     <string name="tool_open_url_invalid_scheme">Solo admite http:// o https:// URL</string>
     <string name="tool_url_opened">Enlace abierto: %1$s</string>
@@ -275,9 +275,9 @@
     <string name="tool_installed_apps_header">Aplicaciones instaladas (total %1$d ):\n</string>
     <string name="tool_installed_apps_item">%1$s | %2$s</string>
     <string name="tool_installed_apps_empty">No se encontró ninguna aplicación que coincida</string>
-    <string name="tool_installed_apps_failed">No se pudieron instalar las aplicaciones</string>
+    <string name="tool_installed_apps_failed">No se pudo obtener la lista de aplicaciones instaladas</string>
     <string name="tool_network_info">Redes: %1$s\nTipo de red: %2$s\nFacturación de pago por uso: %3$s</string>
-    <string name="tool_yes">si</string>
+    <string name="tool_yes">Sí</string>
     <string name="tool_no">No</string>
 
     <!-- v1.136: Agregar nuevo sistema/Equipo/cadena de herramientas de codificación -->
@@ -290,7 +290,7 @@
     <string name="tool_sensors_empty">Sensor no encontrado</string>
     <string name="tool_brightness_info">Brillo actual: %1$d / 255\nModo: %2$s</string>
     <string name="tool_brightness_auto">Automático</string>
-    <string name="tool_brightness_manual">manuales</string>
+    <string name="tool_brightness_manual">Manual</string>
     <string name="tool_brightness_set">El brillo está configurado en %1$d</string>
     <string name="tool_brightness_auto_set">Brillo automático habilitado</string>
     <string name="tool_brightness_missing">Parámetros faltantes: value</string>
@@ -298,11 +298,11 @@
     <string name="tool_volume_info">%1$s Volumen: %2$d / %3$d</string>
     <string name="tool_volume_set">%1$s El volumen está configurado en %2$d / %3$d</string>
     <string name="tool_volume_missing">Parámetros faltantes: value</string>
-    <string name="tool_volume_stream_music">medios de comunicación</string>
+    <string name="tool_volume_stream_music">Multimedia</string>
     <string name="tool_volume_stream_ring">tono de llamada</string>
     <string name="tool_volume_stream_alarm">despertador</string>
     <string name="tool_volume_stream_notification">Notificación</string>
-    <string name="tool_volume_stream_call">llamar</string>
+    <string name="tool_volume_stream_call">Llamadas</string>
     <string name="tool_volume_stream_system">sistema</string>
     <string name="tool_flashlight_on">La linterna está encendida</string>
     <string name="tool_flashlight_off">La linterna está apagada</string>
@@ -312,7 +312,7 @@
     <string name="tool_flashlight_no_camera">No hay cámara disponible</string>
     <string name="tool_flashlight_invalid_action">action debe ser on/off/status</string>
     <string name="tool_vibrate">El dispositivo ha vibrado %1$d milisegundos</string>
-    <string name="tool_foreground_app">actual/Aplicaciones front-end recientes: %1$s</string>
+    <string name="tool_foreground_app">Aplicación actual o reciente en primer plano: %1$s</string>
     <string name="tool_foreground_app_unknown">No se puede obtener la aplicación en primer plano</string>
     <string name="tool_wifi_info">WiFi información\nSSID: %1$s\nBSSID: %2$s\nFuerza de la señal: %3$d/5\nIP: %4$s</string>
     <string name="tool_wifi_unavailable">No se puede obtener información de WiFi (es posible que se requiera permiso de ubicación)</string>
@@ -322,7 +322,7 @@
     <string name="tool_bluetooth_header">Dispositivos Bluetooth emparejados (total %1$d ):\n</string>
     <string name="tool_bluetooth_item">  - %1$s | %2$s</string>
     <string name="tool_bluetooth_empty">Ningún dispositivo Bluetooth emparejado</string>
-    <string name="tool_phone_call_opened">Se ha abierto la interfaz de acceso telefónico: %1$s</string>
+    <string name="tool_phone_call_opened">Se abrió el marcador telefónico: %1$s</string>
     <string name="tool_phone_call_missing">Parámetros faltantes: phone</string>
     <string name="tool_maps_opened">Mapa abierto: %1$s</string>
     <string name="tool_maps_missing">Parámetro faltante: consulta o lat/lng</string>
@@ -377,13 +377,13 @@
     <!-- v1.136: red/codificación/TTS cadena de herramientas -->
     <string name="tool_ping_host_result">Ping %1$s\nIP: %2$s\nAccesible: %3$s\nTiempo de espera: %4$s ms</string>
     <string name="tool_ping_host_failed">Ping %1$s falló</string>
-    <string name="tool_dns_lookup_result">nombre de dominio %1$s analizar a %2$d un IP:\n%3$s</string>
-    <string name="tool_dns_lookup_empty">nombre de dominio %1$s no resuelto a IP</string>
-    <string name="tool_dns_lookup_failed">DNS analizar %1$s falló</string>
-    <string name="tool_public_ip_result">Red pública IP: %1$s</string>
+    <string name="tool_dns_lookup_result">El dominio %1$s se resolvió en %2$d direcciones IP:\n%3$s</string>
+    <string name="tool_dns_lookup_empty">El dominio %1$s no se resolvió en ninguna dirección IP</string>
+    <string name="tool_dns_lookup_failed">Falló la consulta DNS de %1$s</string>
+    <string name="tool_public_ip_result">IP pública: %1$s</string>
     <string name="tool_public_ip_failed">No se pudo obtener la IP pública</string>
     <string name="tool_json_pretty_failed">JSON Error de formato</string>
-    <string name="tool_password_result">Generado %1$d Contraseña:\n%2$s</string>
+    <string name="tool_password_result">Contraseña generada de %1$d caracteres:\n%2$s</string>
     <string name="tool_password_empty_pool">Seleccione al menos un tipo de carácter</string>
     <string name="tool_speak_text_success">Empezó a leer: %1$s</string>
     <string name="tool_speak_text_failed">TTS Error de lectura, verifique los datos de voz del sistema</string>
@@ -403,22 +403,22 @@
 
     <!-- ===== web/WebServer ===== -->
     <string name="webserver_unknown_error">Error desconocido</string>
-    <string name="webserver_rate_limited_remaining">La solicitud es demasiado frecuente, por favor. %1$d Vuelve a intentarlo en segundos</string>
+    <string name="webserver_rate_limited_remaining">Demasiadas solicitudes. Volvé a intentarlo en %1$d segundos.</string>
     <string name="webserver_bad_request">Error de formato del cuerpo de la solicitud: %1$s</string>
     <string name="webserver_auth_failed">Contraseña incorrecta</string>
-    <string name="webserver_pin_error">PIN error</string>
-    <string name="webserver_missing_session_id">Sesión perdida id</string>
+    <string name="webserver_pin_error">PIN incorrecto</string>
+    <string name="webserver_missing_session_id">Falta el ID de la sesión</string>
 
     <!-- Control de aplicaciones (app_* herramientas)—— La herramienta devuelve los resultados al modelo y la redacción debe explicarse por sí misma: si no puede hacerlo, explique qué habilidad falta. -->
     <string name="app_control_need_app_arg">Proporcione un nombre de aplicación o un nombre de paquete.</string>
-    <string name="app_control_launch_action">empezar</string>
+    <string name="app_control_launch_action">abrir</string>
     <string name="app_control_settings_action">Abrir página de configuración</string>
-    <string name="app_control_force_stop_action">forzar la parada</string>
+    <string name="app_control_force_stop_action">forzar detención</string>
     <string name="app_control_clear_data_action">Borrar datos</string>
     <string name="app_control_uninstall_action">Desinstalar</string>
-    <string name="app_control_ok">Ya%1$s %2$s(Canal:%3$s)</string>
-    <string name="app_control_unavailable">incapaz%1$s %2$s:%3$s</string>
-    <string name="app_control_failed">%1$s %2$s Fracaso:%3$s</string>
+    <string name="app_control_ok">Operación completada: %1$s %2$s (canal: %3$s)</string>
+    <string name="app_control_unavailable">No se puede %1$s %2$s: %3$s</string>
+    <string name="app_control_failed">Falló la operación %1$s %2$s: %3$s</string>
     <string name="app_control_reason_invalid_name">El nombre de la aplicación o el nombre del paquete no es válido</string>
     <string name="app_control_reason_not_found">Si no se encuentra la aplicación, primero puede usar app_list para consultar el nombre y el nombre del paquete.</string>
     <string name="app_control_reason_need_elevated">Esta operación requiere permisos Shizuku/adb o Root, que el dispositivo actual no tiene. Utilice otros métodos o autorícelo en la configuración.</string>

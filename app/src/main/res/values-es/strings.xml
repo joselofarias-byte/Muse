@@ -48,7 +48,7 @@
     <string name="action_share">Compartir</string>
     <string name="action_retry">Inténtalo de nuevo</string>
     <string name="common_load_failed">Error al cargar</string>
-    <string name="action_undo">Cancelar</string>
+    <string name="action_undo">Deshacer</string>
     <string name="chat_unarchived">Sin archivar</string>
     <string name="action_expand">Expandir</string>
     <string name="action_collapse">Contraer</string>
@@ -64,7 +64,7 @@
     <string name="edit_message_content_label">contenido</string>
 
     <!-- Grabación/Estado de reconocimiento de voz -->
-    <string name="voice_release_to_recognize">Identificación de liberación · Desliza hacia arriba para cancelar</string>
+    <string name="voice_release_to_recognize">Soltá para transcribir · Deslizá hacia arriba para cancelar</string>
     <string name="voice_recognizing">Reconociendo…</string>
     <!-- v1.0.4 (P2): ASR Copia de estado de conexión(Connecting El escenario aún no ha comenzado a grabar.,No se puede mostrar la forma de onda) -->
     <string name="voice_connecting">Conexión al servicio de identificación…</string>
@@ -226,11 +226,11 @@
     <!-- Tarjeta de aprobación de herramienta -->
     <string name="tool_approval_title">llamada de herramienta</string>
     <string name="tool_approval_approve">aprobar</string>
-    <string name="tool_approval_write_summary">a punto de escribir %1$s(%2$d personajes)</string>
+    <string name="tool_approval_write_summary">Se escribirán %1$s (%2$d caracteres)</string>
     <string name="tool_approval_advanced_details">Detalles avanzados</string>
     <string name="tool_approval_show_full_args">Ver parámetros completos</string>
     <string name="tool_approval_hide_full_args">Ocultar parámetros completos</string>
-    <string name="tool_approval_args_hidden">también %1$d Personajes no mostrados</string>
+    <string name="tool_approval_args_hidden">Hay %1$d caracteres adicionales ocultos</string>
     <string name="tool_approval_deny">rechazar</string>
     <string name="tool_approval_confirm_deny">Confirmar rechazo</string>
     <string name="tool_approval_deny_reason">Motivo del rechazo (opcional)</string>
@@ -287,7 +287,7 @@
     <string name="settings_agent_night_patrol_subtitle">Fuera del horario permitido: escribe el diario en silencio/Notas nocturnas, sin notificaciones push</string>
 
     <string name="proxy_saved_needs_restart">El proxy se ha guardado y las nuevas solicitudes entrarán en vigor inmediatamente</string>
-    <string name="proxy_bypass">No vayas a la dirección del agente.</string>
+    <string name="proxy_bypass">Direcciones que no usan el proxy</string>
     <string name="proxy_bypass_placeholder">localhost,127.0.0.1,192.168.,*.local</string>
     <string name="proxy_bypass_hint">Separados por comas. Soporte .sufijo,*.comodín,IP prefijo. Se recomienda incluir modelos locales y servicios de intranet.</string>
     <string name="proxy_test_action">conexión de prueba</string>
@@ -295,8 +295,8 @@
     <string name="launcher_alias_muse">Muse</string>
     <string name="proxy_test_invalid_config">Primero complete la dirección de proxy válida y el puerto</string>
     <string name="proxy_test_connected">conectividad proxy,</string>
-    <string name="proxy_test_need_auth">El agente requiere autenticación, verifique el nombre de usuario y la contraseña.</string>
-    <string name="proxy_test_reachable_failed">Se puede acceder al agente pero la sonda falla:HTTP </string>
+    <string name="proxy_test_need_auth">El proxy requiere autenticación. Revisá el usuario y la contraseña.</string>
+    <string name="proxy_test_reachable_failed">El proxy es accesible, pero falló la comprobación: HTTP </string>
     <string name="proxy_test_timeout">Tiempo de espera de conexión: la dirección del proxy es inalcanzable o el puerto es incorrecto.</string>
     <string name="proxy_test_dns_failed">Error en la resolución del nombre de dominio: verifique el nombre de host del proxy</string>
     <string name="proxy_test_connect_failed">La conexión falló:</string>

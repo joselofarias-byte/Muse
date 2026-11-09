@@ -82,13 +82,14 @@ fun ChannelSettingsScreen(onBack: () -> Unit, onOpenConversations: (String) -> U
     val dingtalkReceiver: DingtalkReceiver = koinInject()
     val qqReceiver: QqReceiver = koinInject()
     val feishuReceiver: FeishuReceiver = koinInject()
-    // Reinicie todos los receptores después de los cambios de configuración(encuesta larga/Las conexiones largas se reconstruyen según la última configuración del canal.)
-    val restartAllReceivers = {
-        weClawReceiver.restart()
-        telegramReceiver.restart()
-        dingtalkReceiver.restart()
-        qqReceiver.restart()
-        feishuReceiver.restart()
+    val restartReceiverFor: (ChannelPlatform) -> Unit = { platform ->
+        when (platform) {
+            ChannelPlatform.WECLAW -> weClawReceiver.restart()
+            ChannelPlatform.TELEGRAM -> telegramReceiver.restart()
+            ChannelPlatform.DINGTALK -> dingtalkReceiver.restart()
+            ChannelPlatform.QQ -> qqReceiver.restart()
+            ChannelPlatform.FEISHU -> feishuReceiver.restart()
+        }
     }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -139,7 +140,7 @@ fun ChannelSettingsScreen(onBack: () -> Unit, onOpenConversations: (String) -> U
                             onToggle = { enabled ->
                                 scope.launch {
                                     manager.upsert(cfg.copy(enabled = enabled))
-                                    restartAllReceivers()
+                                    restartReceiverFor(cfg.platform)
                                 }
                             },
                             onEdit = { editTarget = cfg },
@@ -249,7 +250,7 @@ fun ChannelSettingsScreen(onBack: () -> Unit, onOpenConversations: (String) -> U
             onSave = { cfg ->
                 scope.launch {
                     manager.upsert(cfg)
-                    restartAllReceivers()
+                    restartReceiverFor(cfg.platform)
                     showAdd = false
                     editTarget = null
                 }
@@ -270,7 +271,7 @@ fun ChannelSettingsScreen(onBack: () -> Unit, onOpenConversations: (String) -> U
             onConfirm = {
                 scope.launch {
                     manager.remove(cfg.id)
-                    restartAllReceivers()
+                    restartReceiverFor(cfg.platform)
                 }
                 deleteTarget = null
             },
@@ -282,13 +283,7 @@ fun ChannelSettingsScreen(onBack: () -> Unit, onOpenConversations: (String) -> U
 
 /** Tarjeta monocanal:Nombre/Objetivo de plataforma + interruptor de inicio/parada(primera linea);Botones de operación en una fila separada,evitar nombres largos/Deformación de extrusión de ID larga. */
 @Composable
-private fun ChannelRow(
-    config: ChannelConfig,
-    onOpenChat: () -> Unit,
-    onToggle: (Boolean) -> Unit,
-    onEdit: () -> Unit,
-    onDelete: () -> Unit,
-) {
+private fun ChannelRow(config: ChannelConfig, onOpenChat: () -> Unit, onToggle: (Boolean) -> Unit, onEdit: () -> Unit, onDelete: () -> Unit) {
     val platformLabel = stringResource(channelPlatformNameRes(config.platform))
     Column(
         modifier =
@@ -996,14 +991,7 @@ private fun WeClawBindDialog(onDismiss: () -> Unit, onBound: (WeClawClient.QrSta
 
 /** Cuadro de entrada de clave: las claves existentes no se repetirán, solo se pueden ingresar nuevos valores para sobrescribirlas. */
 @Composable
-private fun SecretInputField(
-    value: String,
-    onValueChange: (String) -> Unit,
-    label: String,
-    storedSecret: String,
-    visible: Boolean,
-    onToggleVisible: () -> Unit,
-) {
+private fun SecretInputField(value: String, onValueChange: (String) -> Unit, label: String, storedSecret: String, visible: Boolean, onToggleVisible: () -> Unit) {
     MuseTextField(
         value = value,
         onValueChange = onValueChange,

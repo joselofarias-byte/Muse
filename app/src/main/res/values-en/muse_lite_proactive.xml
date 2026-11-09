@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_agent_allow_plain_chat">Messages in regular chats</string>
+    <string name="settings_agent_allow_plain_chat_hint">When agent sessions are disabled, reuse an existing chat. Does not create new regular chats.</string>
+</resources>

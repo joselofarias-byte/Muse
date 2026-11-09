@@ -120,11 +120,10 @@ class ProactiveCycleRunner(
         )
     }
 
-    private suspend fun run(trigger: String, force: Boolean, entry: ProactiveCycleGuard.Entry): Outcome =
-        when (val prepared = prepare(trigger, force, entry)) {
-            is Preparation.Blocked -> prepared.outcome
-            is Preparation.Ready -> runPrepared(trigger, prepared.value, force)
-        }
+    private suspend fun run(trigger: String, force: Boolean, entry: ProactiveCycleGuard.Entry): Outcome = when (val prepared = prepare(trigger, force, entry)) {
+        is Preparation.Blocked -> prepared.outcome
+        is Preparation.Ready -> runPrepared(trigger, prepared.value, force)
+    }
 
     /** Después de obtener los materiales preparados, decida si hablará o no. */
     private suspend fun runPrepared(trigger: String, ready: Prepared, force: Boolean): Outcome {
@@ -174,42 +173,41 @@ class ProactiveCycleRunner(
     }
 
     /** ¿Queda algo sin decir en el libro mayor? Solo afecta el intervalo de la próxima revisión y ya no es un requisito previo para poder decirlo. */
-    private suspend fun hasOpenThoughts(ready: Prepared): Boolean =
-        stores.thoughts.getOpen(ready.assistant.id).isNotEmpty()
+    private suspend fun hasOpenThoughts(ready: Prepared): Boolean = stores.thoughts.getOpen(ready.assistant.id).isNotEmpty()
 
-    private suspend fun publishResult(
-        trigger: String,
-        decision: ProactiveTimingEngine.Decision,
-        ready: Prepared,
-    ): Outcome = when (val produced = produce(ready)) {
-        is ProactiveReplyParser.Result.Failed -> {
-            Logger.w(TAG, "Error de compilación: ${produced.reason}")
-            Outcome(decision.verdict, false, hasOpenThoughts(ready), "Error de compilación:${produced.reason}")
+    private suspend fun publishResult(trigger: String, decision: ProactiveTimingEngine.Decision, ready: Prepared): Outcome {
+        return when (val produced = produce(ready)) {
+            is ProactiveReplyParser.Result.Failed -> {
+                Logger.w(TAG, "Error de compilación: ${produced.reason}")
+                Outcome(decision.verdict, false, hasOpenThoughts(ready), "Error de compilación:${produced.reason}")
+            }
+            is ProactiveReplyParser.Result.Skip -> skippedResult(decision, ready, produced)
+            is ProactiveReplyParser.Result.Message -> publishMessageResult(trigger, decision, ready, produced)
         }
-        is ProactiveReplyParser.Result.Skip -> {
-            // Este es el criterio del propio modelo. Ve la conversación y no puede ver si se ha leído el mensaje anterior.
-            // Al registrar los hechos externos juntos, puedes distinguir entre "nada que decir" y "nadie responderá a lo que dices".
-            Logger.i(TAG, "Saltar juicio | reason=${produced.reason} | ${skipContext(ready)}")
-            Outcome(
-                decision.verdict,
-                false,
-                hasOpenThoughts(ready),
-                "Parece que no hay nada que recoger en este momento (${produced.reason})",
-            )
-        }
-        is ProactiveReplyParser.Result.Message -> {
-            Logger.i(
-                TAG,
-                "Generación de candidatos de mensajes activos | assistantId=${ready.assistant.id} | len=${produced.content.length} | trigger=$trigger",
-            )
-            val ok = publish(trigger, ready, produced)
-            Outcome(
-                decision.verdict,
-                ok,
-                hasOpenThoughts(ready),
-                if (ok) "Enviado" else "No se pudo iniciar sesión, inténtalo de nuevo la próxima vez.",
-            )
-        }
+    }
+
+    private suspend fun skippedResult(decision: ProactiveTimingEngine.Decision, ready: Prepared, produced: ProactiveReplyParser.Result.Skip): Outcome {
+        Logger.i(TAG, "Saltar juicio | reason=${produced.reason} | ${skipContext(ready)}")
+        return Outcome(
+            decision.verdict,
+            false,
+            hasOpenThoughts(ready),
+            "Parece que no hay nada que recoger en este momento (${produced.reason})",
+        )
+    }
+
+    private suspend fun publishMessageResult(trigger: String, decision: ProactiveTimingEngine.Decision, ready: Prepared, produced: ProactiveReplyParser.Result.Message): Outcome {
+        Logger.i(
+            TAG,
+            "Generación de candidatos de mensajes activos | assistantId=${ready.assistant.id} | len=${produced.content.length} | trigger=$trigger",
+        )
+        val ok = publish(trigger, ready, produced)
+        return Outcome(
+            decision.verdict,
+            ok,
+            hasOpenThoughts(ready),
+            if (ok) "Enviado" else "No se pudo iniciar sesión, inténtalo de nuevo la próxima vez.",
+        )
     }
 
     // ══════════════════════════════════════════════════════════════
@@ -221,11 +219,7 @@ class ProactiveCycleRunner(
         data class Blocked(val outcome: Outcome) : Preparation
     }
 
-    private suspend fun prepare(
-        trigger: String,
-        force: Boolean,
-        entry: ProactiveCycleGuard.Entry,
-    ): Preparation {
+    private suspend fun prepare(trigger: String, force: Boolean, entry: ProactiveCycleGuard.Entry): Preparation {
         val gate = gateBlock(force)
         return gate ?: assemble(trigger, entry)
     }
@@ -264,7 +258,12 @@ class ProactiveCycleRunner(
         loader.deriveThoughts(assistant.id, now)
 
         val relation = stores.relations.getOrCreate(assistant.id, now)
-        val sessionId = loader.resolveSession(assistant)
+        val picker = ProactiveSessionPicker(runtime)
+        val sessionId = if (trigger == ProactiveScheduler.TRIGGER_MANUAL) {
+            picker.resolveManualTestRoute(assistant)?.sessionId
+        } else {
+            picker.resolveSessionPick(assistant)?.sessionId
+        }
         val context = sessionId?.let { loader.loadSessionContext(it, assistant.id) }
         val decision = context?.let {
             ProactiveTimingEngine.evaluate(
@@ -287,18 +286,21 @@ class ProactiveCycleRunner(
                         randomOffsetMinutes = config.randomOffsetMinutes,
                         assistantId = assistant.id,
                     ),
+                    dailyGuaranteeMs = config.dailyGuaranteeHours.coerceIn(0, 72) * 3_600_000L,
                 ),
             ).also { d ->
                 Logger.d(
                     TAG,
                     "juicio[$trigger]: ${d.verdict} interval=${d.effectiveIntervalMinutes}min " +
-                        "budget=${d.remainingBudget}",
+                        "guarantee=${d.dailyGuarantee} budget=${d.remainingBudget}",
                 )
             }
         }
 
         return when {
-            // Ya no se bloquea cuando el libro mayor está vacío: el material es la conversación más reciente y aún puedes responder la llamada si no tienes preocupaciones.
+            sessionId == null && trigger == ProactiveScheduler.TRIGGER_MANUAL &&
+                !config.agentSessionEnabled && !config.allowPlainChatSession ->
+                blocked("No hay destino disponible: las sesiones de agente y las conversaciones normales están deshabilitadas")
             sessionId == null || context == null || decision == null -> blocked("No hay sesiones disponibles")
             else -> Preparation.Ready(
                 Prepared(
@@ -313,11 +315,7 @@ class ProactiveCycleRunner(
         }
     }
 
-    private fun blocked(
-        detail: String,
-        verdict: ProactiveTimingEngine.Verdict? = null,
-        ledgerNotEmpty: Boolean = false,
-    ): Preparation = Preparation.Blocked(Outcome(verdict, false, ledgerNotEmpty, detail))
+    private fun blocked(detail: String, verdict: ProactiveTimingEngine.Verdict? = null, ledgerNotEmpty: Boolean = false): Preparation = Preparation.Blocked(Outcome(verdict, false, ledgerNotEmpty, detail))
 
     // ══════════════════════════════════════════════════════════════
     // generar
@@ -342,7 +340,7 @@ class ProactiveCycleRunner(
 
         // Modo silencioso: no hables sin un motivo específico. Incluso el modelo no está ajustado.
         // Esto no sólo ahorra una llamada, sino que también evita que envíe un saludo bajo la restricción de "sólo hablar de cosas".
-        if (intensity.onlyWhenNeeded && candidates.isEmpty()) {
+        if (intensity.onlyWhenNeeded && candidates.isEmpty() && !ready.decision.dailyGuarantee) {
             return ProactiveReplyParser.Result.Skip("Archivo silencioso: no hay cosas específicas en el libro mayor")
         }
 
@@ -381,11 +379,7 @@ class ProactiveCycleRunner(
      * Cuando falla la deserción, no pasa nada. Esta ronda se trata como si no hubiera sucedido. Inténtalo de nuevo la próxima vez. ——
      * Preferiría volver a intentarlo antes que perder el mensaje, y prefiero que me deduzcan el crédito pero no enviarlo.
      */
-    private suspend fun publish(
-        trigger: String,
-        ready: Prepared,
-        message: ProactiveReplyParser.Result.Message,
-    ): Boolean {
+    private suspend fun publish(trigger: String, ready: Prepared, message: ProactiveReplyParser.Result.Message): Boolean {
         val now = System.currentTimeMillis()
         val written = runCatching {
             runtime.sessions.appendMessage(
@@ -441,13 +435,7 @@ class ProactiveCycleRunner(
      * La excepción se traga internamente, por lo que "el mensaje se descarta pero no hay nada en la barra de notificaciones" y no hay rastro en el registro.
      * Dos cosas para agregar aquí: si la llamada en sí se lanza y si el nivel del sistema bloqueará esto (permisos/el canal está cerrado).
      */
-    private suspend fun notifyProactive(
-        trigger: String,
-        ready: Prepared,
-        message: ProactiveReplyParser.Result.Message,
-        currentSessionId: String?,
-        outcomeId: String,
-    ) {
+    private suspend fun notifyProactive(trigger: String, ready: Prepared, message: ProactiveReplyParser.Result.Message, currentSessionId: String?, outcomeId: String) {
         val blocker: String? = runCatching { runtime.notifier.proactiveNotificationBlocker() }.getOrNull()
         val failure = runCatching {
             runtime.notifier.notifyProactiveMessage(

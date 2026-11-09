@@ -104,19 +104,19 @@ try {
   // ── 1. Distribución de almacenamiento ─────────────────────────────────────────────
   const html = dataPage();
   assert(html.includes("PROTO-Datos y privacidad"), "El título de la página proviene de la entrada del anfitrión.");
-  assert(html.includes("Versión celular") && html.includes("2.6.10"), "La versión celular se encuentra en la parte superior.");
+  assert(html.includes("Dispositivo") && html.includes("2.6.10"), "La versión celular se encuentra en la parte superior.");
   assert(/3\s*h/.test(html) && html.includes("72%"), "El tiempo de funcionamiento y la energía de la batería pasan por el formato internacional");
-  assert(html.includes("Uso de almacenamiento") && html.includes("base de datos") && html.includes("medios de comunicación") && html.includes("espacio de trabajo"), "Las categorías de almacenamiento están todas en");
+  assert(html.includes("Uso de almacenamiento") && html.includes("Base de datos") && html.includes("Multimedia") && html.includes("Espacio de trabajo"), "Las categorías de almacenamiento están todas en");
   assert((html.match(/host-storage-segment/g) ?? []).length === 5, "La barra de apilamiento está dividida en cinco segmentos.");
   assert(html.includes("4 MB") && html.includes("20 MB"), "Los valores van a formatBytes(MB)");
-  assert(html.includes("total"), "Hay una fila total");
+  assert(html.includes("Total"), "Hay una fila total");
   assert(/host-storage-bar/.test(html), "Distribución del espectáculo con barras apiladas horizontales.");
 
   // ── 2. Respaldo de tres estados ─────────────────────────────────────────────
-  assert(html.includes("copia de seguridad reciente") && html.includes("hace 2 h"), "Mostrar el tiempo relativo cuando hay un registro de respaldo");
+  assert(html.includes("Última copia de seguridad") && html.includes("hace 2 h"), "Mostrar el tiempo relativo cuando hay un registro de respaldo");
   assert(html.includes("8 MB"), "Tamaño de la copia de seguridad");
-  assert(html.includes("Copia de seguridad automática") && html.includes("Ya encendido") && html.includes("Copia de seguridad en la nube") && html.includes("Cerrado"), "automático/Eco de solo lectura del conmutador de copia de seguridad en la nube");
-  assert(html.includes("Modificar en teléfono celular"), "Los elementos de solo lectura están marcados como \"Editar en dispositivos celulares\".");
+  assert(html.includes("Copia de seguridad automática") && html.includes("Activado") && html.includes("Copia de seguridad en la nube") && html.includes("Desactivado"), "automático/Eco de solo lectura del conmutador de copia de seguridad en la nube");
+  assert(html.includes("Modificar desde el teléfono"), "Los elementos de solo lectura están marcados como \"Editar en dispositivos celulares\".");
 
   const noBackup = dataPage({
     system: { status: { ...STATUS, backup: { autoBackupEnabled: false, cloudBackupEnabled: false } }, loading: false, error: undefined, unsupported: false },
@@ -129,15 +129,15 @@ try {
   assert(!unsupported.includes("Uso de almacenamiento"), "Si falta el bit de capacidad, no se dibujará el área de almacenamiento.");
 
   const failed = dataPage({ system: { status: undefined, loading: false, error: "PROTO-error", unsupported: false } });
-  assert(failed.includes("PROTO-error") && failed.includes(">Inténtalo de nuevo<"), "Si la lectura falla, puedes volver a intentarlo.");
+  assert(failed.includes("PROTO-error") && failed.includes(">Reintentar<"), "Si la lectura falla, puedes volver a intentarlo.");
 
   // ── 3. Capacidad de escritura del interruptor de privacidad ───────────────────────────────────────
   assert(/role="switch"/.test(html) && !html.includes('disabled=""'), "El interruptor se puede utilizar cuando se puede escribir.");
   const readOnlyPii = dataPage({ pii: { checked: true, writable: false } });
   assert(/role="switch"/.test(readOnlyPii) && readOnlyPii.includes("disabled"), "El interruptor está desactivado cuando no se puede escribir.");
   const missingPii = dataPage({ pii: undefined });
-  assert(missingPii.includes("El teléfono celular no muestra el estado de encendido/apagado de protección de PII."), "Host Explique el motivo por el cual no se proporciona ninguna entrada.");
-  assert(html.includes("PII proteger") && html.includes("información confidencial"), "Descripción de una línea de protección de PII");
+  assert(missingPii.includes("El teléfono no informa el estado de la protección de datos personales."), "Host Explique el motivo por el cual no se proporciona ninguna entrada.");
+  assert(html.includes("Protección de datos personales") && html.includes("información confidencial"), "Descripción de una línea de protección de PII");
   assert(HOST_SETTINGS.includes("onToggle(PII_GUARD_KEY, enabled)") && HOST_SETTINGS.includes('PII_GUARD_KEY = "piiGuardEnabled"'), "PII Cambiar para ir a configuración. Actualizar clave de lista blanca");
 
   // ── 4. Mapeo del estado de la página de la plataforma ───────────────────────────────────────
@@ -162,11 +162,11 @@ try {
 
   const available = platformPage("available");
   assert(available.includes("PROTO-Descripción de la función") && available.includes("PROTO-Accesibilidad"), "Descripción de la función de visualización de la página de la plataforma");
-  assert(available.includes("Disponible") && !available.includes("Abrir en el teléfono celular"), "No solicite habilitarlo cuando esté disponible");
+  assert(available.includes("Disponible") && !available.includes("Activar en el teléfono"), "No solicite habilitarlo cuando esté disponible");
   const notEnabled = platformPage("notEnabled");
-  assert(notEnabled.includes("No encendido") && notEnabled.includes("Abrir en el teléfono celular"), "Solicite que lo encienda en su teléfono si no está encendido");
+  assert(notEnabled.includes("Desactivado") && notEnabled.includes("Activar en el teléfono"), "Solicite que lo encienda en su teléfono si no está encendido");
   const unavailable = platformPage("unavailable");
-  assert(unavailable.includes("No disponible") && unavailable.includes("teléfono celular"), "Simplemente explique la situación si no está disponible.");
+  assert(unavailable.includes("No disponible") && unavailable.includes("teléfono"), "Simplemente explique la situación si no está disponible.");
   assert(!/Ir a configuración|Abrir configuración/.test(unavailable), "Sin botón falso cuando no está disponible");
 
   // ── 5. Entradas y cableado ─────────────────────────────────────────

@@ -355,8 +355,18 @@ abstract class MuseDb : RoomDatabase() {
             }
         }
 
-        /** R-DB-05: Detectar si el SQLite actual es compatible FTS5(temp sonda de mesa). */
-        private fun fts5Available(db: SupportSQLiteDatabase): Boolean {
+        /** Evita crear tablas si SQLite informa sus opciones; los Android antiguos conservan el sondeo original. */
+        internal fun fts5Available(db: SupportSQLiteDatabase): Boolean {
+            val options = runCatching {
+                db.query("PRAGMA compile_options").use { cursor ->
+                    buildList {
+                        while (cursor.moveToNext()) add(cursor.getString(0))
+                    }
+                }
+            }.getOrNull().orEmpty()
+            if (options.isNotEmpty()) {
+                return options.any { it.contains("ENABLE_FTS5", ignoreCase = true) }
+            }
             val ok = runCatching {
                 db.execSQL("DROP TABLE IF EXISTS temp.muse_fts5_probe")
                 db.execSQL("CREATE VIRTUAL TABLE temp.muse_fts5_probe USING fts5(x)")
@@ -3613,7 +3623,7 @@ private fun ensureMessageColumns(db: androidx.sqlite.db.SupportSQLiteDatabase) {
         "cachedTokens INTEGER DEFAULT NULL",
         // H11: El mensaje fuente del mensaje de traducción. id(Comparación y plegado de texto original.)
         "translationSourceId TEXT DEFAULT NULL",
-                        // v2.6.15: Tokens de escritura en caché (separados de cachedTokens; comportamiento anterior NULL = desconocido)
+        // v2.6.15: Tokens de escritura en caché (separados de cachedTokens; comportamiento anterior NULL = desconocido)
         "cacheWriteTokens INTEGER DEFAULT NULL",
         // v2.6.16: Cita de audio del mensaje de voz + duración (línea antigua NULL / 0 = mensajes no de voz)
         "voiceUri TEXT DEFAULT NULL",
