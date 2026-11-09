@@ -3,6 +3,7 @@ package io.zer0.muse.data.settings
 import android.content.Context
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.test.core.app.ApplicationProvider
 import io.mockk.mockk
 import io.zer0.muse.data.SettingsRepository
@@ -11,7 +12,9 @@ import io.zer0.muse.data.museSettingsDataStore
 import io.zer0.muse.rag.RagConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -119,13 +122,17 @@ class RagEmbeddingSourceMigrationTest {
 
         repo.migrateRagEmbeddingSourceIfNeeded()
         val afterFirst = repo.getRagConfig()
-        val prefsAfterFirst = context.museSettingsDataStore.data.first().asMap()
+        // Otras migraciones de inicio escriben claves ajenas a RAG en segundo plano.
+        val ragKeys = setOf(stringPreferencesKey("rag_config_json"), migratedKey)
+        val ragPreferences = context.museSettingsDataStore.data
+            .map { prefs -> prefs.asMap().filterKeys { it in ragKeys } }
+            .distinctUntilChanged()
+        val prefsAfterFirst = ragPreferences.first()
 
-        // Supervise directamente el número de lanzamientos de DataStore:Cuando se establece la bandera, la segunda llamada no debe edit(Cada edición desencadenará una emisión.).
-        // No es necesario descargar el archivo juicio mtime,Porque el singleton de DataStore en Robolectric puede estar vinculado al directorio de archivos de la primera prueba.
+        // La segunda llamada no debe cambiar las preferencias RAG ni emitir nuevos valores.
         val emissions = java.util.concurrent.atomic.AtomicInteger(0)
         val job = launch(Dispatchers.Default) {
-            context.museSettingsDataStore.data.collect { emissions.incrementAndGet() }
+            ragPreferences.collect { emissions.incrementAndGet() }
         }
         withTimeout(5_000) { while (emissions.get() == 0) delay(10) }
         val baseline = emissions.get()
@@ -139,8 +146,8 @@ class RagEmbeddingSourceMigrationTest {
         assertEquals(
             "La configuración no se puede cambiar durante la segunda llamada.",
             prefsAfterFirst,
-            context.museSettingsDataStore.data.first().asMap(),
+            ragPreferences.first(),
         )
-        assertEquals("No vuelvas a escribir en la segunda llamada. DataStore(No se deben generar nuevas emisiones)", baseline, afterSecond)
+        assertEquals("La segunda llamada no debe emitir cambios en las preferencias RAG", baseline, afterSecond)
     }
 }
