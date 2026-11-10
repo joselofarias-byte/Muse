@@ -1,5 +1,6 @@
 package io.zer0.muse.schedule
 
+import android.content.res.Resources
 import io.zer0.ai.ChatService
 import io.zer0.ai.core.MessageRole
 import io.zer0.ai.core.UIMessage
@@ -37,10 +38,10 @@ class GreetingHintGenerator(
     /**
      * 生成问候语后缀。无近期事项返回 null;LLM 失败回退规则版。
      */
-    suspend fun generate(facts: List<FactEntity>): String? {
+    suspend fun generate(facts: List<FactEntity>, resources: Resources): String? {
         val events = GreetingHelper.recentEvents(facts)
         if (events.isEmpty()) return null
-        val fallback = GreetingHelper.getMemoryHint(facts)
+        val fallback = GreetingHelper.getMemoryHint(facts, res = resources)
         if (fallback == null) return null
 
         val llmHint = resultOf {
