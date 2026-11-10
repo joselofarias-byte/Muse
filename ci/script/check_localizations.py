@@ -2,7 +2,7 @@
 """
 check_localizations.py — Android 字符串资源完整性校验。
 
-对比 values/(基准)与各 values-<locale>/ 目录下 strings_*.xml 的 key 差异,
+对比 values/(基准)与各 values-<locale>/ 目录下 XML 字符串资源的 key 差异,
 报告每个 locale 缺失的 key。CI 中用于强制保证翻译完整性。
 
 用法:
@@ -42,7 +42,7 @@ NAME_ATTR_RE = re.compile(r'name="([^"]+)"')
 NOT_TRANSLATABLE_RE = re.compile(r'translatable\s*=\s*"false"', re.IGNORECASE)
 
 # 需要扫描的文件模式
-STRING_FILE_PATTERN = "strings*.xml"
+STRING_FILE_PATTERN = "*.xml"
 # 默认 values 目录名(基准)
 DEFAULT_VALUES_DIR = "values"
 # 支持的 locale 目录前缀
@@ -50,7 +50,7 @@ LOCALE_DIR_PREFIX = "values-"
 
 
 def extract_keys_from_file(file_path: Path) -> set:
-    """从单个 strings_*.xml 文件中提取所有 string key。"""
+    """从单个 XML 字符串资源文件中提取所有 string key。"""
     if not file_path.exists():
         return set()
     try:
@@ -81,7 +81,7 @@ def extract_untranslatable_keys_from_file(file_path: Path) -> set:
 
 def extract_all_keys(values_dir: Path) -> dict:
     """
-    从 values 目录中提取所有 strings_*.xml 的 key。
+    从 values 目录中提取所有 XML 文件的字符串 key。
 
     返回: {filename: set(keys)} 如 {"strings_ui_main.xml": {"key1", "key2"}}
     """
@@ -135,7 +135,7 @@ def check_locale(res_dir: Path, verbose: bool = False, strict_locales: set = Non
     }
 
     if not baseline:
-        print(f"ERROR: 基准目录 {default_dir} 无 strings_*.xml 文件", file=sys.stderr)
+        print(f"ERROR: 基准目录 {default_dir} 无 XML 字符串资源文件", file=sys.stderr)
         return 1
 
     total_baseline_keys = sum(len(keys) for keys in baseline.values())
