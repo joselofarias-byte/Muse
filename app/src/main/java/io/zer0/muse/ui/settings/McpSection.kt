@@ -506,7 +506,7 @@ private fun McpServerAddDialog(onDismiss: () -> Unit, onAdd: suspend (McpServerC
                     InlineError(message = err, onDismiss = { addError = null })
                 }
                 Text(
-                    text = "配置模板",
+                    text = stringResource(R.string.code_gap_mcp_config_template),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -628,19 +628,19 @@ private fun McpServerAddDialog(onDismiss: () -> Unit, onAdd: suspend (McpServerC
                 )
                 if (feishuAutoRefresh) {
                     SettingField(
-                        label = "飞书 App ID",
+                        label = stringResource(R.string.code_gap_feishu_app_id),
                         value = feishuAppId,
                         onValueChange = { feishuAppId = it },
                         placeholder = "cli_xxxxx",
                     )
                     SettingField(
-                        label = "飞书 App Secret",
+                        label = stringResource(R.string.code_gap_feishu_app_secret),
                         value = feishuAppSecret,
                         onValueChange = { feishuAppSecret = it },
                         visualTransformation = PasswordVisualTransformation(),
                     )
                     Text(
-                        text = "Muse 会自动获取并续期 tenant_access_token，不需要每 2 小时手动更换 TAT。",
+                        text = stringResource(R.string.code_gap_feishu_token_refresh_hint),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.primary,
                     )
