@@ -39,6 +39,27 @@ class MistranslationGuardTest {
     private val locales = listOf("zh", "en", "es", "ja", "ko", "pt-rBR", "ru")
 
     @Test
+    fun `Spanish channel tutorials resolve as arrays without Chinese fallback`() {
+        val config = Configuration(base.resources.configuration).apply { setLocale(Locale.forLanguageTag("es")) }
+        val resources = base.createConfigurationContext(config).resources
+        val tutorials = mapOf(
+            R.array.channel_tutorial_weclaw_steps to 2,
+            R.array.channel_tutorial_telegram_steps to 5,
+            R.array.channel_tutorial_feishu_steps to 9,
+            R.array.channel_tutorial_dingtalk_steps to 7,
+            R.array.channel_tutorial_qq_steps to 3,
+        )
+        tutorials.forEach { (id, count) ->
+            val steps = resources.getStringArray(id)
+            assertEquals(count, steps.size)
+            steps.forEach { step ->
+                assertTrue(step.isNotBlank())
+                assertTrue("Chinese fallback in $step", step.none { it in '\u4e00'..'\u9fff' })
+            }
+        }
+    }
+
+    @Test
     fun `主题 mono 在任何语言里都不是疾病名`() {
         val banned = listOf("mononucleosis", "mononukleoz", "単核", "단핵", "мононуклеоз")
         locales.forEach { tag ->
