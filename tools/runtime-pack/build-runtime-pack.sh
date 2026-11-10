@@ -110,9 +110,12 @@ fetch_deb() { # $1=paquete key $2=abi $3=archivo objeto
   rm -f "$out" "$out.part"
   if ! curl --fail --silent --show-error --location --retry 3 --connect-timeout 20 -o "$out.part" "$url"; then
     rm -f "$out.part"
-    # Termux is rolling-release; the archived ICU must match our original hash.
-    [ "$1" = libicu ] || return 1
-    url="https://archive.org/download/termux_pkgs_archive_libi/libicu/$filename"
+    # Recovery transports must still match the original pinned hash.
+    case "$1" in
+      libicu) url="https://archive.org/download/termux_pkgs_archive_libi/libicu/$filename" ;;
+      nodejs) url="https://github.com/joselofarias-byte/Muse/releases/download/runtime-pack-nodejs-26.13.0/$filename" ;;
+      *) return 1 ;;
+    esac
     echo "  Recuperar $filename del archivo (SHA-256 fijado) ..."
     if ! curl --fail --silent --show-error --location --retry 3 --connect-timeout 20 --max-time 300 --proto '=https' --proto-redir '=https' -o "$out.part" "$url"; then
       rm -f "$out.part"

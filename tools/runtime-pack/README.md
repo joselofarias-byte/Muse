@@ -93,3 +93,15 @@ La recuperación no cambia las versiones del runtime ni el marcador
 `MuseRuntime.RUNTIME_DATA_VERSION` (`npm-12.2.2`). No requiere reemplazar una APK
 ya construida con estos mismos paquetes; permite reconstruirla desde un checkout
 sin caché. Los binarios generados siguen fuera de Git.
+
+
+## Recuperación de Node.js 26.13.0
+
+Termux retiró `nodejs_26.13.0_{aarch64,x86_64}.deb` al publicar la revisión
+`26.13.0-1`. Si falla la descarga oficial, el script usa las copias originales
+sin modificar en la [instantánea del repositorio](https://github.com/joselofarias-byte/Muse/releases/tag/runtime-pack-nodejs-26.13.0).
+Se recuperaron de la caché de la compilación anterior y coinciden con los hashes
+ya fijados en `SHA256SUMS`. La instantánea solo proporciona transporte: no cambia
+la autoridad de los hashes, la versión de Node.js, sus dependencias ni la APK
+publicada. Una descarga fallida o un hash/paquete inválido aborta y elimina el
+parcial; no se acepta automáticamente la revisión nueva de Termux.

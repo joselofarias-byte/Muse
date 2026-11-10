@@ -17,6 +17,9 @@ tar czf "$TEST_DIR/fixture.tar.gz" -C "$TEST_DIR" prefix
 {
   printf '%s  zlib_%s_aarch64.deb\n' "$(sha256sum "$TEST_DIR/fixture.deb" | cut -d ' ' -f1)" "$ZLIB_VER"
   printf '%s  libicu_%s_aarch64.deb\n' "$(sha256sum "$TEST_DIR/fixture.deb" | cut -d ' ' -f1)" "$ICU_VER"
+  for abi in aarch64 x86_64; do
+    printf '%s  nodejs_%s_%s.deb\n' "$(sha256sum "$TEST_DIR/fixture.deb" | cut -d ' ' -f1)" "$NODE_VER" "$abi"
+  done
   printf '%s  python-%s-aarch64-linux-android.tar.gz\n' "$(sha256sum "$TEST_DIR/fixture.tar.gz" | cut -d ' ' -f1)" "$PY_VER"
 } > "$TEST_DIR/SHA256SUMS"
 
@@ -37,11 +40,11 @@ curl() {
     invalid) printf '<html>not a package</html>' > "$out" ;;
     valid) cp "$FIXTURE" "$out" ;;
     archive-*)
-      if [[ "$url" != https://archive.org/* ]]; then
+      if [[ "$url" == "$TERMUX_BASE/"* ]]; then
         printf '<html>404</html>' > "$out"
         return 22
       fi
-      [ "$url" = "https://archive.org/download/termux_pkgs_archive_libi/libicu/libicu_${ICU_VER}_aarch64.deb" ] || return 1
+      [ "$url" = "$EXPECTED_ARCHIVE_URL" ] || { echo "Unexpected recovery URL: $url" >&2; return 1; }
       case "$MODE" in
         archive-valid) cp "$FIXTURE" "$out" ;;
         archive-invalid) printf '<html>not a package</html>' > "$out" ;;
@@ -77,16 +80,30 @@ for kind in deb python; do
 done
 
 FIXTURE="$TEST_DIR/fixture.deb"
-for MODE in archive-error archive-invalid; do
-  rm -f "$TEST_DIR/download" "$TEST_DIR/download.part"
-  if fetch_deb libicu arm64 "$TEST_DIR/download"; then
-    echo "FAIL: ICU accepted $MODE" >&2; exit 1
+for package_abi in 'libicu arm64' 'nodejs arm64' 'nodejs x86_64'; do
+  read -r package abi <<< "$package_abi"
+  if [ "$package" = libicu ]; then
+    EXPECTED_ARCHIVE_URL="https://archive.org/download/termux_pkgs_archive_libi/libicu/libicu_${ICU_VER}_aarch64.deb"
+  else
+    arch="$abi"
+    [ "$abi" != arm64 ] || arch=aarch64
+    EXPECTED_ARCHIVE_URL="https://github.com/joselofarias-byte/Muse/releases/download/runtime-pack-nodejs-26.13.0/nodejs_${NODE_VER}_${arch}.deb"
   fi
-  [ ! -e "$TEST_DIR/download" ] && [ ! -e "$TEST_DIR/download.part" ]
+  for MODE in archive-error archive-invalid; do
+    rm -f "$TEST_DIR/download" "$TEST_DIR/download.part"
+    if fetch_deb "$package" "$abi" "$TEST_DIR/download"; then
+      echo "FAIL: $package ($abi) accepted $MODE" >&2; exit 1
+    fi
+    [ ! -e "$TEST_DIR/download" ] && [ ! -e "$TEST_DIR/download.part" ]
+  done
+  MODE=archive-valid
+  before=$(wc -l < "$TEST_DIR/calls")
+  fetch_deb "$package" "$abi" "$TEST_DIR/download"
+  [ "$(wc -l < "$TEST_DIR/calls")" -eq "$((before + 2))" ]
+  cmp "$FIXTURE" "$TEST_DIR/download"
+  MODE=cache-only
+  before=$(wc -l < "$TEST_DIR/calls")
+  fetch_deb "$package" "$abi" "$TEST_DIR/download"
+  [ "$(wc -l < "$TEST_DIR/calls")" -eq "$before" ]
+  echo "PASS: retired $package ($abi) uses the exact recovery URL, rejects HTTP/hash failures and reuses verified cache"
 done
-MODE=archive-valid
-before=$(wc -l < "$TEST_DIR/calls")
-fetch_deb libicu arm64 "$TEST_DIR/download"
-[ "$(wc -l < "$TEST_DIR/calls")" -eq "$((before + 2))" ]
-cmp "$FIXTURE" "$TEST_DIR/download"
-echo "PASS: retired ICU falls back to its exact archive filename and still rejects HTTP/hash failures"
