@@ -43,6 +43,18 @@ def test_unselected_locale_remains_warning_only():
             assert check_locale(res_dir, strict_locales={"en"}) == 0
 
 
+def test_strings_outside_strings_named_files_are_checked():
+    with tempfile.TemporaryDirectory() as tmp:
+        res_dir = Path(tmp)
+        write_resource(res_dir / "values" / "automation_tasker_strings.xml", "tasker_title")
+        write_resource(res_dir / "values-es" / "strings.xml", None)
+
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            assert check_locale(res_dir, strict_locales={"es"}) == 1
+            write_resource(res_dir / "values-es" / "automation_tasker_strings.xml", "tasker_title")
+            assert check_locale(res_dir, strict_locales={"es"}) == 0
+
+
 def test_untranslatable_keys_are_not_required_in_other_locales():
     """语言自称、专有名词这类 translatable="false" 的 key 只写在 values/，不该逼每个 locale 复制一遍。"""
     with tempfile.TemporaryDirectory() as tmp:
@@ -65,5 +77,6 @@ def test_untranslatable_keys_are_not_required_in_other_locales():
 if __name__ == "__main__":
     test_plain_locale_codes_match_android_resource_dirs()
     test_unselected_locale_remains_warning_only()
+    test_strings_outside_strings_named_files_are_checked()
     test_untranslatable_keys_are_not_required_in_other_locales()
     print("all localization tests passed")
