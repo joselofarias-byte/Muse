@@ -2745,9 +2745,9 @@ class ChatViewModel(
                         val prefix = task.label?.let { "[$it] " } ?: ""
                         val content =
                             if (task.status == io.zer0.muse.tools.DeferredResultStore.TaskStatus.RESOLVED) {
-                                "${prefix}子 agent 已完成任务:\n${task.result}"
+                                prefix + appContext.getString(R.string.code_more_subagent_completed, task.result)
                             } else {
-                                "${prefix}子 agent 任务失败: ${task.error}"
+                                prefix + appContext.getString(R.string.code_more_subagent_failed, task.error)
                             }
                         UIMessage(role = MessageRole.ASSISTANT, content = content)
                     }
@@ -2777,9 +2777,9 @@ class ChatViewModel(
                             val prefix = task.label?.let { "[$it] " } ?: ""
                             val content =
                                 if (task.status == io.zer0.muse.tools.DeferredResultStore.TaskStatus.RESOLVED) {
-                                    "${prefix}子 agent 已完成任务:\n${task.result}"
+                                    prefix + appContext.getString(R.string.code_more_subagent_completed, task.result)
                                 } else {
-                                    "${prefix}子 agent 任务失败: ${task.error}"
+                                    prefix + appContext.getString(R.string.code_more_subagent_failed, task.error)
                                 }
                             UIMessage(role = MessageRole.ASSISTANT, content = content)
                         }
@@ -3094,10 +3094,10 @@ class ChatViewModel(
         if (memberIds.size < 2 || topic.isBlank()) return
         val taskId = "committee-" + java.util.UUID.randomUUID().toString()
         val chatName =
-            "委员会 · " +
+            appContext.getString(R.string.code_more_committee) + " · " +
                 java.text.SimpleDateFormat("MM-dd HH:mm", java.util.Locale.getDefault())
                     .format(java.util.Date())
-        deferredResultStore.defer(taskId, sessionId, null, "委员会", topic.take(60))
+        deferredResultStore.defer(taskId, sessionId, null, appContext.getString(R.string.code_more_committee), topic.take(60))
         viewModelScope.launch {
             try {
                 val committeeChatId = repository.createChat(chatName, memberIds)
@@ -3119,15 +3119,15 @@ class ChatViewModel(
                 val recent = repository.getRecentMessages(committeeChatId, 10)
                 val summary = recent.lastOrNull { it.messageType == "summary" }?.body
                 if (summary != null) {
-                    deferredResultStore.resolve(taskId, "【委员会结论 · $chatName】\n$summary")
+                    deferredResultStore.resolve(taskId, appContext.getString(R.string.code_more_committee_conclusion, chatName, summary))
                 } else {
-                    deferredResultStore.resolve(taskId, "【委员会】讨论已完成(群聊「$chatName」),未生成总结。议题:$topic")
+                    deferredResultStore.resolve(taskId, appContext.getString(R.string.code_more_committee_no_summary, chatName, topic))
                 }
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (e: Exception) {
                 Logger.e("ChatVM", "委员会执行失败", e)
-                deferredResultStore.fail(taskId, e.message ?: "执行失败")
+                deferredResultStore.fail(taskId, e.message ?: appContext.getString(R.string.skill_unknown_error))
             }
         }
     }
@@ -4148,7 +4148,7 @@ class ChatViewModel(
         val routeTargetName = route.targetName ?: route.targetId
         val pendingText =
             appContext.getString(R.string.chat_auto_route_prefix, routeTargetName) +
-                "\n\n正在委派给 $routeTargetName ..."
+                "\n\n" + appContext.getString(R.string.chat_process_delegating, routeTargetName)
         updateAssistant(assistantMessageId, pendingText, "", null, null, null, true)
 
         val result = skillExecutor.delegateAgent(request)
@@ -5415,7 +5415,7 @@ class ChatViewModel(
             assistantRepository.upsert(
                 AssistantEntity(
                     id = id,
-                    name = name.ifBlank { "新助手" },
+                    name = name.ifBlank { appContext.getString(R.string.assistant_new_default_name) },
                     avatarEmoji = "",
                     // v1.0.51: 新建助手预填默认 prompt(从 assets 加载,带 locale 回落)
                     systemPrompt = assistantRepository.loadDefaultPrompt(),

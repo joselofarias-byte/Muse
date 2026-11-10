@@ -67,7 +67,7 @@ object GreetingHelper {
     // 寿星公式: D = floor(Y*0.2422 + C) - floor(Y/4)
     //   Y = 年份后两位,[] = 向下取整,C = 各节气世纪常数(21 世纪适用,误差 < 1 天;
     //   20 世纪需 C-1)
-    fun getSolarTerm(date: LocalDate = LocalDate.now()): String? {
+    fun getSolarTerm(date: LocalDate = LocalDate.now(), res: Resources? = null): String? {
         // 24 节气世纪常数(顺序: 1月小寒/大寒 ... 12月大雪/冬至)
         val cValues = doubleArrayOf(
             5.4055, 20.12, // 1月
@@ -84,10 +84,30 @@ object GreetingHelper {
             7.18, 21.94, // 12月
         )
         val termNames = listOf(
-            "小寒", "大寒", "立春", "雨水", "惊蛰", "春分",
-            "清明", "谷雨", "立夏", "小满", "芒种", "夏至",
-            "小暑", "大暑", "立秋", "处暑", "白露", "秋分",
-            "寒露", "霜降", "立冬", "小雪", "大雪", "冬至",
+            zh(res, R.string.code_more_term_0, "小寒"),
+            zh(res, R.string.code_more_term_1, "大寒"),
+            zh(res, R.string.code_more_term_2, "立春"),
+            zh(res, R.string.code_more_term_3, "雨水"),
+            zh(res, R.string.code_more_term_4, "惊蛰"),
+            zh(res, R.string.code_more_term_5, "春分"),
+            zh(res, R.string.code_more_term_6, "清明"),
+            zh(res, R.string.code_more_term_7, "谷雨"),
+            zh(res, R.string.code_more_term_8, "立夏"),
+            zh(res, R.string.code_more_term_9, "小满"),
+            zh(res, R.string.code_more_term_10, "芒种"),
+            zh(res, R.string.code_more_term_11, "夏至"),
+            zh(res, R.string.code_more_term_12, "小暑"),
+            zh(res, R.string.code_more_term_13, "大暑"),
+            zh(res, R.string.code_more_term_14, "立秋"),
+            zh(res, R.string.code_more_term_15, "处暑"),
+            zh(res, R.string.code_more_term_16, "白露"),
+            zh(res, R.string.code_more_term_17, "秋分"),
+            zh(res, R.string.code_more_term_18, "寒露"),
+            zh(res, R.string.code_more_term_19, "霜降"),
+            zh(res, R.string.code_more_term_20, "立冬"),
+            zh(res, R.string.code_more_term_21, "小雪"),
+            zh(res, R.string.code_more_term_22, "大雪"),
+            zh(res, R.string.code_more_term_23, "冬至"),
         )
 
         /** 寿星公式: 某年某节气(索引 0-23)落在几号。 */
@@ -107,26 +127,31 @@ object GreetingHelper {
         }
 
         // 检查今天或明天是否是节气（提前告知）
-        termFor(date)?.let { return "今天是$it" }
-        termFor(date.plusDays(1))?.let { return "明天是$it" }
+        termFor(date)?.let { return zh(res, R.string.code_more_today_event, "今天是%1\$s", it) }
+        termFor(date.plusDays(1))?.let { return zh(res, R.string.code_more_tomorrow_event, "明天是%1\$s", it) }
         return null
     }
 
     // 获取节日
-    fun getFestival(date: LocalDate = LocalDate.now()): String? {
+    fun getFestival(date: LocalDate = LocalDate.now(), res: Resources? = null): String? {
         val festivals = listOf(
-            Triple(1, 1, "元旦"), Triple(2, 14, "情人节"),
-            Triple(3, 8, "妇女节"), Triple(5, 1, "劳动节"),
-            Triple(5, 4, "青年节"), Triple(6, 1, "儿童节"),
-            Triple(7, 1, "建党节"), Triple(8, 1, "建军节"),
-            Triple(9, 10, "教师节"), Triple(10, 1, "国庆节"),
-            Triple(12, 25, "圣诞节"),
+            Triple(1, 1, zh(res, R.string.code_more_festival_0, "元旦")),
+            Triple(2, 14, zh(res, R.string.code_more_festival_1, "情人节")),
+            Triple(3, 8, zh(res, R.string.code_more_festival_2, "妇女节")),
+            Triple(5, 1, zh(res, R.string.code_more_festival_3, "劳动节")),
+            Triple(5, 4, zh(res, R.string.code_more_festival_4, "青年节")),
+            Triple(6, 1, zh(res, R.string.code_more_festival_5, "儿童节")),
+            Triple(7, 1, zh(res, R.string.code_more_festival_6, "建党节")),
+            Triple(8, 1, zh(res, R.string.code_more_festival_7, "建军节")),
+            Triple(9, 10, zh(res, R.string.code_more_festival_8, "教师节")),
+            Triple(10, 1, zh(res, R.string.code_more_festival_9, "国庆节")),
+            Triple(12, 25, zh(res, R.string.code_more_festival_10, "圣诞节")),
         )
         val today = festivals.firstOrNull { it.first == date.monthValue && it.second == date.dayOfMonth }
-        if (today != null) return "今天是${today.third}"
+        if (today != null) return zh(res, R.string.code_more_today_event, "今天是%1\$s", today.third)
         val tomorrow = date.plusDays(1)
         val tmr = festivals.firstOrNull { it.first == tomorrow.monthValue && it.second == tomorrow.dayOfMonth }
-        if (tmr != null) return "明天是${tmr.third}"
+        if (tmr != null) return zh(res, R.string.code_more_tomorrow_event, "明天是%1\$s", tmr.third)
         return null
     }
 
@@ -141,6 +166,46 @@ object GreetingHelper {
         "体检", "复诊", "复查", "手术", "取药",
         "还款", "交租", "缴费", "deadline", "DDL",
         "生日", "纪念日", "约会", "聚会", "婚礼",
+    )
+
+    private val eventLabelIds = mapOf(
+        "考试" to R.string.code_more_event_0,
+        "考研" to R.string.code_more_event_1,
+        "高考" to R.string.code_more_event_2,
+        "期末" to R.string.code_more_event_3,
+        "答辩" to R.string.code_more_event_4,
+        "面试" to R.string.code_more_event_5,
+        "航班" to R.string.code_more_event_6,
+        "火车" to R.string.code_more_event_7,
+        "高铁" to R.string.code_more_event_8,
+        "飞机" to R.string.code_more_event_9,
+        "机票" to R.string.code_more_event_10,
+        "出发" to R.string.code_more_event_11,
+        "回程" to R.string.code_more_event_12,
+        "出差" to R.string.code_more_event_13,
+        "旅行" to R.string.code_more_event_14,
+        "旅游" to R.string.code_more_event_15,
+        "会议" to R.string.code_more_event_16,
+        "开会" to R.string.code_more_event_17,
+        "报告" to R.string.code_more_event_18,
+        "截止" to R.string.code_more_event_19,
+        "报名" to R.string.code_more_event_20,
+        "提交" to R.string.code_more_event_21,
+        "体检" to R.string.code_more_event_22,
+        "复诊" to R.string.code_more_event_23,
+        "复查" to R.string.code_more_event_24,
+        "手术" to R.string.code_more_event_25,
+        "取药" to R.string.code_more_event_26,
+        "还款" to R.string.code_more_event_27,
+        "交租" to R.string.code_more_event_28,
+        "缴费" to R.string.code_more_event_29,
+        "deadline" to R.string.code_more_event_30,
+        "DDL" to R.string.code_more_event_31,
+        "生日" to R.string.code_more_event_32,
+        "纪念日" to R.string.code_more_event_33,
+        "约会" to R.string.code_more_event_34,
+        "聚会" to R.string.code_more_event_35,
+        "婚礼" to R.string.code_more_event_36,
     )
 
     /**
@@ -211,7 +276,8 @@ object GreetingHelper {
                     .getOrNull() ?: continue
                 val diff = java.time.temporal.ChronoUnit.DAYS.between(today, eventDate)
                 if (diff !in 1..3) continue
-                val keyword = EVENT_KEYWORDS.firstOrNull { text.contains(it) } ?: "事"
+                val rawKeyword = EVENT_KEYWORDS.firstOrNull { text.contains(it) } ?: "事"
+                val keyword = eventLabelIds[rawKeyword]?.let { zh(res, it, rawKeyword) } ?: rawKeyword
                 val hint = when (diff) {
                     1L -> zh(res, R.string.greeting_tomorrow_event, "明天有%1\$s：%2\$s", keyword, text.take(16))
                     else -> zh(res, R.string.greeting_days_event, "%1\$d天内有%2\$s：%3\$s", diff, keyword, text.take(14))
@@ -359,20 +425,21 @@ object GreetingHelper {
         date: LocalDate = LocalDate.now(),
         dailySummary: String? = null,
         dailySummaryDate: String? = null,
+        res: Resources? = null,
     ): String {
-        val prefix = getTimeGreeting(hour)
+        val prefix = getTimeGreeting(hour, res)
         // 1. 每日总结优先,让晚间生成的事项能在下一次打开首页时接上问候语
         getDailySummaryHint(dailySummary, dailySummaryDate, date)?.let { hint ->
-            return "$prefix，$hint"
+            return zh(res, R.string.code_more_greeting_join, "%1\$s，%2\$s", prefix, hint)
         }
         // 2. 记忆提示优先（个性化）
-        getMemoryHint(facts, date)?.let { hint ->
-            return "$prefix，$hint"
+        getMemoryHint(facts, date, res)?.let { hint ->
+            return zh(res, R.string.code_more_greeting_join, "%1\$s，%2\$s", prefix, hint)
         }
         // 3. 无个性化提示：节气/节日随机选一（通用信息随机替换）
-        val extras = listOfNotNull(getSolarTerm(date), getFestival(date))
+        val extras = listOfNotNull(getSolarTerm(date, res), getFestival(date, res))
         if (extras.isNotEmpty()) {
-            return "$prefix，${extras.random()}"
+            return zh(res, R.string.code_more_greeting_join, "%1\$s，%2\$s", prefix, extras.random())
         }
         return prefix
     }
