@@ -5,6 +5,8 @@ package io.zer0.muse.ui.taskcard
 import io.zer0.ai.core.ToolCallInfo
 import io.zer0.ai.core.UIMessage
 import io.zer0.common.AppJson
+import io.zer0.muse.R
+import io.zer0.muse.ui.chat.auditStateString
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -61,7 +63,7 @@ private fun parseHistoricalPlan(message: UIMessage, toolInfo: ToolCallInfo, sess
     val title = historicalJsonText(arguments["title"])
         ?.trim()
         ?.takeIf { it.isNotBlank() }
-        ?: "任务计划"
+        ?: auditStateString(R.string.audit_plan_default_title, "任务计划")
 
     return AgentPlan(
         id = planId,
@@ -137,7 +139,7 @@ private fun parseHistoricalPlanSteps(value: JsonElement?): List<AgentPlanStep> {
             title = historicalJsonText(obj["title"])
                 ?.trim()
                 ?.takeIf { it.isNotBlank() }
-                ?: "步骤 ${index + 1}",
+                ?: auditStateString(R.string.audit_plan_default_step, "步骤 %1$d", index + 1),
             description = historicalJsonText(obj["description"])
                 ?.trim()
                 .orEmpty(),
