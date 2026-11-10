@@ -262,7 +262,7 @@ fun ChatListScreen(
                     )
                     greetingHint = resolvedGreetingHint
                 } else {
-                    greetingHintGenerator.generate(facts)?.let { hint ->
+                    greetingHintGenerator.generate(facts, context.resources)?.let { hint ->
                         resolvedGreetingHint = hint
                         greetingHint = hint
                         settings.saveGreetingHintCache("$today|$hint")
