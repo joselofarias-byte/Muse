@@ -1624,7 +1624,7 @@ class MemoryViewModel(
                     .getOrNull() ?: false
             }
             if (!ok) {
-                _state.update { it.copy(errorTrace = "矛盾裁决未生效(记录可能已被整理或删除)") }
+                _state.update { it.copy(errorTrace = getApplication<Application>().getString(R.string.audit_memory_conflict_not_applied)) }
             }
             loadAll(silent = true)
         }
@@ -1832,7 +1832,7 @@ class MemoryViewModel(
                 GroupChatMemoryUiItem(
                     id = m.id,
                     groupChatId = m.groupChatId,
-                    groupChatName = groupChatNameById[m.groupChatId] ?: "群聊",
+                    groupChatName = groupChatNameById[m.groupChatId] ?: getApplication<Application>().getString(R.string.groupchat_default_name),
                     assistantName = assistantNameById[m.assistantId] ?: m.assistantId.take(8),
                     summary = m.summary,
                     createdAt = m.createdAt,

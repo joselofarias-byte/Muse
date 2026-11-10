@@ -1,6 +1,7 @@
 package io.zer0.muse.ui.chat
 
 import io.zer0.common.resultOf
+import io.zer0.muse.R
 import io.zer0.muse.tools.ToolRegistry
 import io.zer0.muse.ui.taskcard.TaskCardPhase
 import io.zer0.muse.ui.taskcard.TaskStep
@@ -261,7 +262,7 @@ class ChatTaskCardCoordinator(
                         taskCardId = taskCardId,
                         stepId = step.id,
                         status = TaskStepStatus.FAILED,
-                        result = "[需手动] 高危工具 ${step.title} 不自动重试，请重新发起以再次确认",
+                        result = auditStateString(R.string.audit_retry_manual_required, step.title),
                         startedAt = startedAt,
                         finishedAt = System.currentTimeMillis(),
                         autoExpand = true,
@@ -279,7 +280,7 @@ class ChatTaskCardCoordinator(
                             }
                         ) {
                             is io.zer0.common.Result.Success -> r.data
-                            is io.zer0.common.Result.Error -> "重试执行异常: ${r.message}"
+                            is io.zer0.common.Result.Error -> auditStateString(R.string.audit_retry_execution_error, r.message)
                         }
                     }
                 } catch (ce: CancellationException) {
@@ -289,7 +290,7 @@ class ChatTaskCardCoordinator(
                             taskCardId = taskCardId,
                             stepId = step.id,
                             status = TaskStepStatus.CANCELLED,
-                            result = "[取消] 重试 ${step.title} 已取消",
+                            result = auditStateString(R.string.audit_retry_cancelled, step.title),
                             startedAt = startedAt,
                             finishedAt = System.currentTimeMillis(),
                             autoExpand = false,
@@ -301,7 +302,7 @@ class ChatTaskCardCoordinator(
 
                 val timedOut = retryResult == null
                 val toolResult = retryResult
-                    ?: "[超时] 重试 ${step.title} 超过 ${retryTimeoutMs / 1000} 秒未响应,已终止"
+                    ?: auditStateString(R.string.audit_retry_timeout, step.title, retryTimeoutMs / 1000)
                 val isSuccess = !timedOut && isToolResultSuccess(toolResult)
                 writeRetriedStep(
                     taskCardId = taskCardId,
