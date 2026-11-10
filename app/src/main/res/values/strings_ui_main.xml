@@ -695,7 +695,7 @@
     <!-- ===== P1-4: 平板适配(响应式布局) ===== -->
 
     <!-- ===== P2-2: 上游模型差异 Sheet(ModelDiffSheet) ===== -->
-    <string name="model_diff_title">Diferencias del modelo ascendente</string>
+    <string name="model_diff_title">Cambios en los modelos del proveedor</string>
     <string name="model_diff_new">Agregados por el proveedor (%1$d)</string>
     <string name="model_diff_removed">Eliminado (%1$d)</string>
     <string name="model_diff_unchanged">Sea consistente (%1$d)</string>

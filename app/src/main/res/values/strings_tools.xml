@@ -60,7 +60,7 @@
     <string name="tools_settings_policy_ask">pregunta cada vez</string>
     <string name="tools_settings_policy_ask_desc">La tarjeta de aprobación aparece antes de llamar y puedes aprobarla o rechazarla.</string>
     <string name="tools_settings_policy_always_deny">siempre rechace</string>
-    <string name="tools_settings_policy_always_deny_desc">La herramienta está deshabilitada.,AI No puedo llamar</string>
+    <string name="tools_settings_policy_always_deny_desc">La herramienta está desactivada y la IA no puede utilizarla.</string>
 
     <!-- 分段控件短文案(单工具行内三档选择器) -->
     <string name="tools_settings_policy_always_allow_short">permitir</string>

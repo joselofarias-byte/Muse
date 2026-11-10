@@ -190,7 +190,7 @@
     <string name="assistant_toast_sillytavern_export_failed">SillyTavern Error al exportar la tarjeta de personaje: %1$s</string>
     <string name="assistant_diff_name">Nombre</string>
     <string name="assistant_diff_summary">Resumen</string>
-    <string name="assistant_diff_system_prompt">Prompt del sistema</string>
+    <string name="assistant_diff_system_prompt">Instrucciones del sistema</string>
     <string name="assistant_diff_persona_definition">Persona</string>
     <string name="assistant_diff_thinking_chain">Cadena de razonamiento</string>
     <string name="assistant_diff_message_template">Plantilla de mensaje</string>

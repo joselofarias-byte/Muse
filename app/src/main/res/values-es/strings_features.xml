@@ -532,7 +532,7 @@
     <string name="artifact_center_empty">Aún no hay producto</string>
     <string name="artifact_share_chooser">Compartir productos</string>
     <string name="artifact_save_text">guardar como texto</string>
-    <string name="artifact_saved">salvado</string>
+    <string name="artifact_saved">Guardado</string>
     <string name="artifact_save_failed">Error al guardar</string>
     <string name="data_card_default_title">tarjeta de datos</string>
     <string name="data_card_download">Descargar gráfico</string>

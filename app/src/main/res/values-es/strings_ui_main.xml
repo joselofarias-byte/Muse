@@ -626,7 +626,7 @@
     <string name="oauth_token_refreshed">La autorización se ha actualizado automáticamente</string>
     <string name="oauth_stored">Autorización almacenada</string>
     <string name="oauth_codex_account_bound">Codex La cuenta ha sido vinculada (ID Los 8 mejores: %1$s)</string>
-    <string name="model_diff_title">Diferencias del modelo ascendente</string>
+    <string name="model_diff_title">Cambios en los modelos del proveedor</string>
     <string name="model_diff_new">Agregados por el proveedor (%1$d)</string>
     <string name="model_diff_removed">Eliminado (%1$d)</string>
     <string name="model_diff_unchanged">Sea consistente (%1$d)</string>

@@ -352,7 +352,7 @@
 
     <!-- 知识库检索 RAG -->
     <string name="settings_rag_page_title">Búsqueda de base de conocimientos</string>
-    <string name="rag_saved_success">salvado</string>
+    <string name="rag_saved_success">Guardado</string>
     <string name="rag_save_failed">Error al guardar</string>
     <string name="settings_rag_injection_section">Recuperar inyección</string>
     <string name="settings_rag_attachment_section">Recuperación de archivos adjuntos</string>
@@ -389,7 +389,7 @@
     <string name="settings_rag_hybrid">Búsqueda híbrida</string>
     <string name="settings_rag_hybrid_subtitle">BM25 Palabras clave + similitud vectorial fusión RRF</string>
     <string name="settings_rag_hybrid_bm25_weight">BM25 peso</string>
-    <string name="settings_rag_hybrid_bm25_weight_subtitle">RRF Peso del camino BM25 en fusión.</string>
+    <string name="settings_rag_hybrid_bm25_weight_subtitle">Peso de la búsqueda BM25 en la fusión RRF.</string>
     <string name="settings_rag_hybrid_vector_weight">peso vectorial</string>
     <string name="settings_rag_hybrid_vector_weight_subtitle">RRF Peso de similitud de vectores en fusión.</string>
     <string name="settings_rag_rerank">Rerank Reordenar</string>
@@ -480,7 +480,7 @@
 
     <!-- 图片生成 -->
     <string name="settings_image_gen_section">Generación de imágenes</string>
-    <string name="settings_image_gen_select_provider">Por favor selecciona un proveedor de pintura</string>
+    <string name="settings_image_gen_select_provider">Selecciona un proveedor de generación de imágenes</string>
     <string name="settings_image_gen_select_model">Seleccionar modelo de dibujo</string>
     <string name="settings_image_gen_select_default">Toca para seleccionar el proveedor de dibujo que se utilizará de forma predeterminada.</string>
     <string name="settings_image_gen_no_provider">No hay proveedores de dibujos disponibles</string>
@@ -540,7 +540,7 @@
     <string name="settings_media_tts_save_connection">Guardar conexión</string>
     <string name="settings_media_tts_show">Mostrar</string>
     <string name="settings_media_tts_hide">Ocultar</string>
-    <string name="settings_media_tts_saved">salvado</string>
+    <string name="settings_media_tts_saved">Guardado</string>
     <!-- v1.99: 云端 TTS 音色动态拉取 + 高级参数 -->
     <string name="settings_media_tts_voice_fetch_failed">No se pudieron obtener las voces. Comprueba la clave API.</string>
     <string name="settings_media_tts_voice_pick">Seleccionar tono</string>
@@ -705,7 +705,7 @@
     <string name="settings_asr_save_connection">Guardar configuración de conexión</string>
     <string name="settings_asr_save_recognition">Guardar configuración de reconocimiento</string>
     <string name="settings_asr_save_transcription">Guardar configuración de transcripción</string>
-    <string name="settings_asr_saved">salvado</string>
+    <string name="settings_asr_saved">Guardado</string>
     <string name="settings_asr_group_connection">conectar</string>
     <string name="settings_asr_group_recognition">identificar</string>
     <string name="settings_asr_group_transcription">Transcripción de documentos</string>

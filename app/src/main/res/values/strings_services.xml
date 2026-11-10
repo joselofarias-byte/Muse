@@ -129,7 +129,7 @@
     <string name="skill_update_reserved_rejected">Rechazar modificación: id \'%1$s\' Es una habilidad reservada incorporada y no se puede modificar.</string>
     <string name="skill_update_plugin_rejected">Rechazar modificación: %1$s(id=%2$s) es una habilidad de complemento, que es administrada por la página de administración de complementos y el asistente no puede modificarla.</string>
     <string name="skill_update_prompt_not_supported">Rechazar modificación: %1$s(id=%2$s) no es una habilidad de palabra de aviso y el parámetro de aviso no se puede usar para actualizar el texto del comando.</string>
-    <string name="skill_update_no_fields">No hay campos para actualizar: introduce al menos name / description / parametersJson / prompt uno de</string>
+    <string name="skill_update_no_fields">No hay campos para actualizar. Introduce al menos uno: name, description, parametersJson o prompt.</string>
     <string name="skill_update_validate_failed">Error en la verificación de la actualización: %1$s</string>
     <string name="skill_update_db_failed">La actualización falló: %1$s</string>
     <string name="skill_updated">actualizado skill: %1$s(id=%2$s)</string>
@@ -144,7 +144,7 @@
     <string name="skill_unknown_agent">desconocido Agent</string>
     <string name="skill_progress_generating_image">Generando imágenes...</string>
     <string name="skill_image_not_configured">generate_image No configurado: ImageService no se inyecta (configura el proveedor de dibujo compatible con OpenAI)</string>
-    <string name="skill_missing_param_prompt">Parámetros faltantes: prompt(Descripción de la imagen)</string>
+    <string name="skill_missing_param_prompt">Falta el parámetro prompt (descripción de la imagen)</string>
     <string name="skill_image_no_result">No hay resultados para la generación de imágenes: %1$s</string>
     <string name="skill_image_generated">Ya basado en "%1$s"Generar imagen:\n%2$s</string>
     <string name="skill_image_failed">Error al generar la imagen: %1$s</string>
