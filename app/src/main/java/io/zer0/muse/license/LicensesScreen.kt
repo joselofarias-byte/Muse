@@ -339,7 +339,7 @@ private fun DependencyRow(entry: LicenseEntry, onClickUrl: (String) -> Unit) {
         if (entry.hasUrl) {
             Icon(
                 imageVector = MuseIcons.externalLink,
-                contentDescription = "查看源码",
+                contentDescription = stringResource(R.string.license_view_source),
                 tint = MaterialTheme.colorScheme.outline,
                 modifier = Modifier.size(16.dp),
             )
