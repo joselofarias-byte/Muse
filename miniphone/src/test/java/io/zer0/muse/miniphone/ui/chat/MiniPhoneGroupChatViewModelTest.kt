@@ -286,10 +286,14 @@ class MiniPhoneGroupChatViewModelTest {
 
         viewModel.groupAdmin.removeMember("c2")
 
-        val state = awaitState(viewModel) { current -> current.members.size == 2 }
+        // Room's member flow can emit before the controller publishes the title.
+        val state = awaitState(viewModel) { current ->
+            current.members.size == 2 && current.groupTitle == "阿远、阿吾"
+        }
         assertEquals(listOf("c1", "c3"), state.members.map { it.characterId })
         assertEquals("他说过的话还在", 1, db.messageDao().countInThread(GROUP_THREAD_ID))
         assertEquals("默认名跟着剩下的人重算", "阿远、阿吾", state.groupTitle)
+        assertEquals("阿远、阿吾", db.threadDao().getThread(GROUP_THREAD_ID)?.title)
     }
 
     @Test
