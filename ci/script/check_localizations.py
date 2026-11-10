@@ -42,7 +42,7 @@ NAME_ATTR_RE = re.compile(r'name="([^"]+)"')
 NOT_TRANSLATABLE_RE = re.compile(r'translatable\s*=\s*"false"', re.IGNORECASE)
 
 # 需要扫描的文件模式
-STRING_FILE_PATTERN = "strings*.xml"
+STRING_FILE_PATTERN = "*.xml"
 # 默认 values 目录名(基准)
 DEFAULT_VALUES_DIR = "values"
 # 支持的 locale 目录前缀
