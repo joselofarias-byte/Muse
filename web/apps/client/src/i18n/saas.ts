@@ -13,7 +13,7 @@ export const SAAS_ES = {
   "Space ID": "ID del espacio",
   "Assistant": "Asistente",
   "Provider": "Proveedor",
-  "API Key": "Clave de API",
+  "API Key": "Clave API",
 
   "账号已创建，请登录": "Cuenta creada. Inicia sesión",
   "请求失败": "La solicitud ha fallado",
