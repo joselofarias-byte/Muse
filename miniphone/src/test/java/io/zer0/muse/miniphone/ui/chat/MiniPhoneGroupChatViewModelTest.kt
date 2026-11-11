@@ -262,9 +262,12 @@ class MiniPhoneGroupChatViewModelTest {
 
         viewModel.groupAdmin.addMembers(listOf("c2", "c3"))
 
-        val state = awaitState(viewModel) { current -> current.members.size == 3 }
+        val state = awaitState(viewModel) { current ->
+            current.members.size == 3 && current.groupTitle == "阿远、小满、阿吾"
+        }
         assertEquals("重复与已在群里的不算新人", listOf("c1", "c2", "c3"), state.members.map { it.characterId })
         assertEquals("默认名跟着重算", "阿远、小满、阿吾", state.groupTitle)
+        assertEquals("阿远、小满、阿吾", db.threadDao().getThread(GROUP_THREAD_ID)?.title)
     }
 
     @Test
