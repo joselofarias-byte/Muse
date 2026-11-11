@@ -18,16 +18,19 @@ tar czf "$TEST_DIR/fixture.tar.gz" -C "$TEST_DIR" prefix
   printf '%s  zlib_%s_aarch64.deb\n' "$(sha256sum "$TEST_DIR/fixture.deb" | cut -d ' ' -f1)" "$ZLIB_VER"
   printf '%s  libicu_%s_aarch64.deb\n' "$(sha256sum "$TEST_DIR/fixture.deb" | cut -d ' ' -f1)" "$ICU_VER"
   for abi in aarch64 x86_64; do
+    printf '%s  libicu_%s_%s.deb\n' "$(sha256sum "$TEST_DIR/fixture.deb" | cut -d ' ' -f1)" "$ICU_VER" "$abi"
     printf '%s  nodejs_%s_%s.deb\n' "$(sha256sum "$TEST_DIR/fixture.deb" | cut -d ' ' -f1)" "$NODE_VER" "$abi"
   done
   printf '%s  python-%s-aarch64-linux-android.tar.gz\n' "$(sha256sum "$TEST_DIR/fixture.tar.gz" | cut -d ' ' -f1)" "$PY_VER"
 } > "$TEST_DIR/SHA256SUMS"
 
 curl() {
-  local out="" fail_flag=0 url=""
+  local out="" fail_flag=0 retry_all_errors=0 retries=0 url=""
   while [ "$#" -gt 0 ]; do
     case "$1" in
       --fail) fail_flag=1 ;;
+      --retry-all-errors) retry_all_errors=1 ;;
+      --retry) retries="$2"; shift ;;
       -o) out="$2"; shift ;;
       https://*) url="$1" ;;
     esac
@@ -45,6 +48,10 @@ curl() {
         return 22
       fi
       [ "$url" = "$EXPECTED_ARCHIVE_URL" ] || { echo "Unexpected recovery URL: $url" >&2; return 1; }
+      [ "$retry_all_errors" = 1 ] && [ "$retries" = 3 ] || {
+        echo 'Recovery downloads must retry transport errors, including HTTP/2 failures' >&2
+        return 1
+      }
       case "$MODE" in
         archive-valid) cp "$FIXTURE" "$out" ;;
         archive-invalid) printf '<html>not a package</html>' > "$out" ;;
@@ -80,13 +87,13 @@ for kind in deb python; do
 done
 
 FIXTURE="$TEST_DIR/fixture.deb"
-for package_abi in 'libicu arm64' 'nodejs arm64' 'nodejs x86_64'; do
+for package_abi in 'libicu arm64' 'libicu x86_64' 'nodejs arm64' 'nodejs x86_64'; do
   read -r package abi <<< "$package_abi"
+  arch="$abi"
+  [ "$abi" != arm64 ] || arch=aarch64
   if [ "$package" = libicu ]; then
-    EXPECTED_ARCHIVE_URL="https://archive.org/download/termux_pkgs_archive_libi/libicu/libicu_${ICU_VER}_aarch64.deb"
+    EXPECTED_ARCHIVE_URL="https://archive.org/download/termux_pkgs_archive_libi/libicu/libicu_${ICU_VER}_${arch}.deb"
   else
-    arch="$abi"
-    [ "$abi" != arm64 ] || arch=aarch64
     EXPECTED_ARCHIVE_URL="https://github.com/joselofarias-byte/Muse/releases/download/runtime-pack-nodejs-26.13.0/nodejs_${NODE_VER}_${arch}.deb"
   fi
   for MODE in archive-error archive-invalid; do

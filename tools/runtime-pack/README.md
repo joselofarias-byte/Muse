@@ -88,6 +88,8 @@ Este archivo es de terceros: solo proporciona transporte, no una nueva fuente de
 confianza. El paquete debe coincidir con el SHA-256 original de `SHA256SUMS` y
 contener `data.tar.*`; cualquier error HTTP o de integridad elimina el parcial y
 aborta. No se buscan versiones alternativas ni se recalculan hashes.
+Las descargas de recuperación reintentan hasta tres veces los errores de transporte,
+incluidas las interrupciones de HTTP/2; cada intento conserva el límite de 300 segundos.
 
 La recuperación no cambia las versiones del runtime ni el marcador
 `MuseRuntime.RUNTIME_DATA_VERSION` (`npm-12.2.2`). No requiere reemplazar una APK

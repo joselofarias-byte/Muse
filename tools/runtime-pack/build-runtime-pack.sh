@@ -117,7 +117,7 @@ fetch_deb() { # $1=paquete key $2=abi $3=archivo objeto
       *) return 1 ;;
     esac
     echo "  Recuperar $filename del archivo (SHA-256 fijado) ..."
-    if ! curl --fail --silent --show-error --location --retry 3 --connect-timeout 20 --max-time 300 --proto '=https' --proto-redir '=https' -o "$out.part" "$url"; then
+    if ! curl --fail --silent --show-error --location --retry 3 --retry-all-errors --connect-timeout 20 --max-time 300 --proto '=https' --proto-redir '=https' -o "$out.part" "$url"; then
       rm -f "$out.part"
       return 1
     fi
