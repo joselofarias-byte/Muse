@@ -8,6 +8,7 @@ import io.zer0.muse.data.knowledge.KnowledgeV2Dao
 import io.zer0.muse.data.knowledge.KnowledgeV2DocEntity
 import io.zer0.muse.data.knowledge.KnowledgeV2FolderEntity
 import io.zer0.muse.data.knowledge.KnowledgeV2RevisionEntity
+import io.zer0.muse.knowledge.domain.knowledgeOperation
 import io.zer0.muse.knowledge.index.GenerationPublisher
 import io.zer0.muse.knowledge.ingest.StructuredChunker
 import io.zer0.muse.knowledge.storage.KnowledgeContentStore
@@ -227,14 +228,14 @@ class KnowledgePortableBackupService(
             missingContent = mutableListOf(),
         )
 
-        try {
+        knowledgeOperation {
             // 4. 依赖顺序:folders → docs → revisions。
             writeFoldersAndDocs(backup, state)
             // 5. 词法重建:完整正文重建 generation;ChunkOnly/空正文保持 StoredOnly。
             rebuildLexical(backup, state)
             // 6. 绑定恢复(目标不存在只记警告,不静默扩成全库)。
             restoreBindings(backup, state)
-        } catch (e: Exception) {
+        }.getOrElse { e ->
             Logger.w("KnowledgePortableBackupService", "恢复失败: ${e.message}", e)
             // 失败:本方法内已写入的行由调用方以恢复点回滚;报告如实失败。
             return failed("恢复中断: ${e.message}", newEpochNo, state.warnings)
@@ -436,11 +437,9 @@ class KnowledgePortableBackupService(
         }
 
         /** 便携备份 → UTF-8 JSON 文本(后续文件/流式导出复用同一格式)。 */
-        fun encode(backup: KnowledgePortableBackup): String =
-            json.encodeToString(KnowledgePortableBackup.serializer(), backup)
+        fun encode(backup: KnowledgePortableBackup): String = json.encodeToString(KnowledgePortableBackup.serializer(), backup)
 
         /** JSON 文本 → 便携备份;格式错误抛出,调用方必须按失败处理(不静默恢复空数据)。 */
-        fun decode(text: String): KnowledgePortableBackup =
-            json.decodeFromString(KnowledgePortableBackup.serializer(), text)
+        fun decode(text: String): KnowledgePortableBackup = json.decodeFromString(KnowledgePortableBackup.serializer(), text)
     }
 }

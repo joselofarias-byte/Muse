@@ -162,7 +162,7 @@ class TtsManager(
     }
 
     /** 合成到文件用的 utteranceId 前缀(区分 speakStream 的真实 id)。 */
-    private val SYNTH_PREFIX = "syn_"
+    private const val SYNTH_PREFIX = "syn_"
 
     private val appContext = context.applicationContext
     private val cacheDir: File = appContext.cacheDir

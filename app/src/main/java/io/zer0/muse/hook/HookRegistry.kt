@@ -33,7 +33,7 @@ import kotlin.reflect.KClass
  */
 class HookRegistry {
 
-    private val TAG = "HookRegistry"
+    private const val TAG = "HookRegistry"
 
     /** 按 Hook 接口分桶存储,同一类型下按 id 去重。 */
     private val buckets = ConcurrentHashMap<KClass<out SkillHook>, MutableMap<String, SkillHook>>()
