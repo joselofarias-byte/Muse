@@ -52,24 +52,18 @@ class KnowledgeContentStore(
             val published = File(publishedDir, pendingHash)
 
             // 1-2. staging + hash(hash 已算)
-            if (FailurePoint.STAGING_WRITE in injectedFailures) {
-                throw java.io.IOException("injected staging failure")
-            }
+            checkFailure(FailurePoint.STAGING_WRITE, "injected staging failure")
         val staging = File(stagingDir, "$pendingHash.staging")
         staging.writeBytes(bytes)
 
         // 3. 关闭校验
-        if (FailurePoint.CLOSE_VERIFY in injectedFailures) {
-            throw java.io.IOException("injected close-verify failure")
-        }
+        checkFailure(FailurePoint.CLOSE_VERIFY, "injected close-verify failure")
         if (staging.length() != bytes.size.toLong()) {
             throw java.io.IOException("staging size mismatch: ${staging.length()} != ${bytes.size}")
         }
 
         // 4. 原子发布(同 hash 已存在 = 同内容,幂等复用)
-        if (FailurePoint.PUBLISH_RENAME in injectedFailures) {
-            throw java.io.IOException("injected publish failure")
-        }
+        checkFailure(FailurePoint.PUBLISH_RENAME, "injected publish failure")
         if (!published.exists()) {
             if (!staging.renameTo(published)) {
                 throw java.io.IOException("publish rename failed: ${staging.name}")
@@ -99,6 +93,10 @@ class KnowledgeContentStore(
             Logger.w("KnowledgeContentStore", "put 失败(scheme=$scheme): ${e.message}", e)
             null
         }
+    }
+
+    private fun checkFailure(point: FailurePoint, message: String) {
+        if (point in injectedFailures) throw java.io.IOException(message)
     }
 
     /** 发布文件是否存在。 */

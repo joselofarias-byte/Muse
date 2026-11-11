@@ -68,12 +68,8 @@ class KnowledgeLifecycleService(
     suspend fun createFolder(kbId: String, parentId: String, name: String): FolderResult {
         val trimmed = name.trim()
         val validation = validateFolderName(trimmed)
+            ?: if (kbId.isBlank()) FolderResult.Invalid("kbId 为空") else validateParent(kbId, parentId)
         if (validation != null) return validation
-        if (kbId.isBlank()) return FolderResult.Invalid("kbId 为空")
-        if (parentId.isNotBlank()) {
-            val parent = folderDao.getFolder(parentId) ?: return FolderResult.NotFound
-            if (parent.kbId != kbId) return FolderResult.CrossKbDenied
-        }
         if (folderDao.getByNameInParent(kbId, parentId, trimmed) != null) {
             return FolderResult.NameConflict(trimmed)
         }
@@ -111,6 +107,12 @@ class KnowledgeLifecycleService(
         return FolderResult.Ok(folder.copy(parentId = newParentId))
     }
 
+    private suspend fun validateParent(kbId: String, parentId: String): FolderResult? {
+        if (parentId.isBlank()) return null
+        val parent = folderDao.getFolder(parentId) ?: return FolderResult.NotFound
+        return if (parent.kbId != kbId) FolderResult.CrossKbDenied else null
+    }
+
     /** 目录名合法性(空 / 含分隔符)。 */
     private fun validateFolderName(trimmed: String): FolderResult? = when {
         trimmed.isBlank() -> FolderResult.Invalid("目录名为空")
@@ -124,15 +126,15 @@ class KnowledgeLifecycleService(
         newParentId: String,
     ): FolderResult? {
         val parent = folderDao.getFolder(newParentId) ?: return FolderResult.NotFound
-        if (parent.kbId != folder.kbId) return FolderResult.CrossKbDenied
-        if (isDescendantOf(candidateAncestorId = folder.folderId, nodeId = newParentId)) {
-            return FolderResult.Cycle
+        return when {
+            parent.kbId != folder.kbId -> FolderResult.CrossKbDenied
+            isDescendantOf(candidateAncestorId = folder.folderId, nodeId = newParentId) -> FolderResult.Cycle
+            else -> {
+                val conflict = folderDao.getByNameInParent(folder.kbId, newParentId, folder.name)
+                if (conflict != null && conflict.folderId != folder.folderId) FolderResult.NameConflict(folder.name)
+                else null
+            }
         }
-        val conflict = folderDao.getByNameInParent(folder.kbId, newParentId, folder.name)
-        if (conflict != null && conflict.folderId != folder.folderId) {
-            return FolderResult.NameConflict(folder.name)
-        }
-        return null
     }
 
     /** 路径投影:从根到该目录的 "a/b/c";根返回空串。**不是身份**。 */

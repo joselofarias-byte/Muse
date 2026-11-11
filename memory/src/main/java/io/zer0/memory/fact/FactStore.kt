@@ -374,7 +374,8 @@ class FactStore(
      * IGNORE_CASE: normalizeDedupText 已 lowercase,大写占位符需不敏感匹配。 */
     private val piiPlaceholderRe =
         Regex(
-            "\\[REDACTED\\]|\\[(?:API_KEY|INLINE_SECRET|PRIVATE_KEY|ID_CARD|CREDIT_CARD|SSN|EMAIL|PHONE|IPV4|ADDRESS|NAME|ENGLISH_NAME)_\\d+\\]|\\{\\{name_\\d+\\}\\}",
+            "\\[REDACTED\\]|\\[(?:API_KEY|INLINE_SECRET|PRIVATE_KEY|ID_CARD|CREDIT_CARD|SSN|EMAIL|" +
+                "PHONE|IPV4|ADDRESS|NAME|ENGLISH_NAME)_\\d+\\]|\\{\\{name_\\d+\\}\\}",
             RegexOption.IGNORE_CASE,
         )
 

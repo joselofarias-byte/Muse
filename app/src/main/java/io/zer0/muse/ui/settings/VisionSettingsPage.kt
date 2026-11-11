@@ -60,6 +60,7 @@ fun VisionSettingsPage(onBack: () -> Unit) {
     val settings: SettingsRepository = koinInject()
     val visionBridge: VisionBridge = koinInject()
     val context = LocalContext.current
+    val contextResources = androidx.compose.ui.platform.LocalResources.current
     val enabled by settings.visionEnabledFlow.collectAsStateWithLifecycle(initialValue = false)
     val visionModelId by settings.visionModelIdFlow.collectAsStateWithLifecycle(initialValue = null)
     val visionProviderId by settings.visionProviderIdFlow.collectAsStateWithLifecycle(initialValue = null)
@@ -239,7 +240,7 @@ fun VisionSettingsPage(onBack: () -> Unit) {
                                             )
                                             else -> ProbeState.Failed(
                                                 result.getOrNull()?.text
-                                                    ?: context.getString(R.string.code_gap_vision_probe_empty),
+                                                    ?: contextResources.getString(R.string.code_gap_vision_probe_empty),
                                             )
                                         }
                                     }

@@ -106,6 +106,7 @@ fun AgentSettingsPage(
     )
     val scope = rememberCoroutineScope()
     val context = androidx.compose.ui.platform.LocalContext.current
+    val contextResources = androidx.compose.ui.platform.LocalResources.current
     // v1.0.72: 主动消息测试发送(避免重复触发)
     var testSending by remember { mutableStateOf(false) }
     // 测试按钮被「上一轮还在生成」拦下时的提示。在组合期取好，
@@ -602,7 +603,7 @@ fun AgentSettingsPage(
                             if (it.toInt() <= 0) {
                                 context.getString(R.string.settings_agent_moment_count_off)
                             } else {
-                                context.getString(R.string.settings_agent_moment_count_per_day, it.toInt())
+                                contextResources.getString(R.string.settings_agent_moment_count_per_day, it.toInt())
                             }
                         },
                     )
@@ -1081,7 +1082,7 @@ fun AgentSettingsPage(
                                         if (e is kotlin.coroutines.cancellation.CancellationException) throw e
                                         Logger.w("AgentSettingsPage", "测试主动消息失败: ${e.message}")
                                         MuseToast.show(
-                                            context.getString(R.string.settings_agent_test_failed, e.message),
+                                            contextResources.getString(R.string.settings_agent_test_failed, e.message),
                                         )
                                     } finally {
                                         testSending = false
