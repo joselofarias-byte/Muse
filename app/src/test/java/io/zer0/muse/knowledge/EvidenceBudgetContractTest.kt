@@ -18,17 +18,15 @@ class EvidenceBudgetContractTest {
 
     private val assembler = EvidenceAssembler()
 
-    private fun candidate(id: String, text: String, locator: String = "p1s1", docId: String = "doc-1") =
-        EvidenceCandidate(
-            chunkId = id,
-            docId = docId,
-            generationId = "gen-1",
-            text = text,
-            locator = locator,
-        )
+    private fun candidate(id: String, text: String, locator: String = "p1s1", docId: String = "doc-1") = EvidenceCandidate(
+        chunkId = id,
+        docId = docId,
+        generationId = "gen-1",
+        text = text,
+        locator = locator,
+    )
 
-    private fun found(vararg candidates: EvidenceCandidate): RetrievalOutcome.Found =
-        RetrievalOutcome.Found(candidates.toList(), trace())
+    private fun found(vararg candidates: EvidenceCandidate): RetrievalOutcome.Found = RetrievalOutcome.Found(candidates.toList(), trace())
 
     private fun trace() = RetrievalTrace(
         requestId = "req-1",

@@ -340,5 +340,7 @@
     <string name="settings_web_search_status_connected">已连接</string>
     <string name="settings_web_search_status_failed">连接失败</string>
     <string name="settings_web_search_status_untested">未测试</string>
+    <string name="settings_web_search_multi_key_title">多搜索引擎 API 密钥</string>
+    <string name="settings_web_search_multi_key_subtitle">为每个搜索引擎配置密钥。自动模式会在某个引擎失败时依次尝试其他引擎。</string>
 </resources>
 

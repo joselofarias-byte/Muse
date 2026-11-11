@@ -13,7 +13,7 @@ import java.security.MessageDigest
  * v1.0.5 视觉辅助重写:图片预处理器。
  *
  * 职责:
- *  - 对 base64 图片做尺寸压缩(最长边 ≤ [POLICY.maxDimension])和 JPEG 质量压缩
+ *  - 对 base64 图片做尺寸压缩(最长边 ≤ [POLICY.MAX_DIMENSION])和 JPEG 质量压缩
  *  - 通过 magic bytes 嗅探真实 MIME 类型(不信任声明)
  *  - 按图片数量分摊单图预算,超出 [POLICY.totalBase64BudgetBytes] 总预算抛错
  *  - 对非 JPEG/PNG/WebP/GIF 的图片统一转 JPEG
@@ -31,14 +31,14 @@ object VisionImagePreprocessor {
      * 图片输入策略。
      *
      * 数值含义:
-     *  - [maxDimension] 2000:最长边 2000px。足够清晰,又控制 base64 体积。
-     *  - [maxImageBase64Bytes] 4.5MB:单张 base64 上限。超过则继续压缩到该体积内。
+     *  - [MAX_DIMENSION] 2000:最长边 2000px。足够清晰,又控制 base64 体积。
+     *  - [MAX_IMAGE_BASE64_BYTES] 4.5MB:单张 base64 上限。超过则继续压缩到该体积内。
      *  - [totalBase64BudgetBytes] 24MB:整个请求 base64 总预算(provider 端 32MB cap 的安全余量)。
      *  - [jpegQuality] 80:质量与体积的平衡点。
      */
     object POLICY {
-        const val maxDimension = 2000
-        const val maxImageBase64Bytes = 4_500_000 // 4.5MB
+        const val MAX_DIMENSION = 2000
+        const val MAX_IMAGE_BASE64_BYTES = 4_500_000 // 4.5MB
         const val totalBase64BudgetBytes = 24_000_000 // 24MB
         const val jpegQuality = 80
     }
@@ -69,7 +69,7 @@ object VisionImagePreprocessor {
      *  1. 嗅探 MIME(magic bytes)
      *  2. Base64 解码为字节数组
      *  3. 解码为 Bitmap,读取原始尺寸
-     *  4. 按 [perImageMaxBytes] 计算缩放比例,resize 到 ≤ [POLICY.maxDimension]
+     *  4. 按 [perImageMaxBytes] 计算缩放比例,resize 到 ≤ [POLICY.MAX_DIMENSION]
      *  5. JPEG 压缩,若体积仍超预算则递减质量直到达标
      *  6. 重新 base64 编码
      *
@@ -95,8 +95,8 @@ object VisionImagePreprocessor {
         val origW = boundsOpts.outWidth.takeIf { it > 0 } ?: 0
         val origH = boundsOpts.outHeight.takeIf { it > 0 } ?: 0
 
-        // 3. 计算缩放:目标 ≤ maxDimension,同时按 sampleSize 2^n 缩放(避免 OOM)
-        val targetMaxDim = POLICY.maxDimension
+        // 3. 计算缩放:目标 ≤ MAX_DIMENSION,同时按 sampleSize 2^n 缩放(避免 OOM)
+        val targetMaxDim = POLICY.MAX_DIMENSION
         var sample = 1
         while (origW / sample > targetMaxDim || origH / sample > targetMaxDim) sample *= 2
 
@@ -104,7 +104,7 @@ object VisionImagePreprocessor {
         val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, decodeOpts)
             ?: return@withContext null
 
-        // 4. 进一步精确缩放(如果 sample 缩放后仍超过 maxDimension)
+        // 4. 进一步精确缩放(如果 sample 缩放后仍超过 MAX_DIMENSION)
         val resized = if (bitmap.width > targetMaxDim || bitmap.height > targetMaxDim) {
             val scale = minOf(
                 targetMaxDim.toFloat() / bitmap.width,
@@ -127,7 +127,8 @@ object VisionImagePreprocessor {
         val resultBase64 = Base64.encodeToString(compressed, Base64.NO_WRAP)
         PreparedImage(
             base64 = resultBase64,
-            mimeType = "image/jpeg", // 统一转 JPEG
+            // 统一转 JPEG
+            mimeType = "image/jpeg",
             originalWidth = origW,
             originalHeight = origH,
             resizedWidth = if (origW > 0) minOf(origW, targetMaxDim) else 0,
@@ -167,7 +168,7 @@ object VisionImagePreprocessor {
     private fun computePerImageBudget(imageCount: Int): Int {
         val safeCount = imageCount.coerceAtLeast(1)
         return minOf(
-            POLICY.maxImageBase64Bytes,
+            POLICY.MAX_IMAGE_BASE64_BYTES,
             POLICY.totalBase64BudgetBytes / safeCount,
         )
     }

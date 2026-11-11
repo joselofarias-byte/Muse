@@ -250,6 +250,7 @@ internal fun ProviderEditPage(
 
     // 从 Google Service Account JSON 文件导入 Vertex AI 凭证
     val context = LocalContext.current
+    val contextResources = androidx.compose.ui.platform.LocalResources.current
     val ioScope = rememberCoroutineScope()
     val settingsRepo: SettingsRepository = koinInject()
     // v2.4: 先检查缓存(5分钟TTL,仅对当前配置有效),命中后按成功/失败分发到对应状态
@@ -274,7 +275,7 @@ internal fun ProviderEditPage(
                 withContext(Dispatchers.IO) {
                     context.contentResolver.openInputStream(uri)?.use { stream ->
                         // v1.114: 限制读取 10MB,防止超大文件 OOM
-                        val MAX_READ_BYTES = 10L * 1024 * 1024
+                        val maxReadBytes = 10L * 1024 * 1024
                         val sb = StringBuilder()
                         val buffer = CharArray(8192)
                         var total = 0L
@@ -283,8 +284,8 @@ internal fun ProviderEditPage(
                                 val read = reader.read(buffer)
                                 if (read <= 0) break
                                 total += read
-                                if (total > MAX_READ_BYTES) {
-                                    error("文件过大,超过 ${MAX_READ_BYTES / 1024 / 1024}MB 限制")
+                                if (total > maxReadBytes) {
+                                    error("文件过大,超过 ${maxReadBytes / 1024 / 1024}MB 限制")
                                 }
                                 sb.append(buffer, 0, read)
                             }
@@ -422,7 +423,8 @@ internal fun ProviderEditPage(
                         context.getString(R.string.settings_provider_test_error_html)
                     msg.contains("404") -> context.getString(R.string.settings_provider_404_error)
                     msg.contains("401") || msg.contains("403") -> context.getString(R.string.settings_provider_auth_error)
-                    msg.contains("Unable to resolve") || msg.contains("UnknownHost") -> context.getString(R.string.settings_provider_unable_to_resolve)
+                    msg.contains("Unable to resolve") || msg.contains("UnknownHost") ->
+                        context.getString(R.string.settings_provider_unable_to_resolve)
                     msg.contains("timeout", ignoreCase = true) -> context.getString(R.string.settings_provider_connection_timeout)
                     else -> context.getString(R.string.settings_provider_fetch_failed, msg.take(200))
                 }
@@ -550,7 +552,7 @@ internal fun ProviderEditPage(
                     // 没有已知模型名：只能测 /models（新供应商没拉过列表的情形）。
                     val listResult = resultOf { provider.listModels(tempConfig) }
                     if (listResult.isSuccess) {
-                        context.getString(
+                        contextResources.getString(
                             R.string.settings_provider_test_success_count,
                             listResult.getOrThrow().size,
                         ) to true
@@ -893,7 +895,7 @@ internal fun ProviderEditPage(
                 MuseToast.show(
                     context.getString(
                         R.string.oauth_login_failed,
-                        context.getString(R.string.oauth_reason_no_activity),
+                        contextResources.getString(R.string.oauth_reason_no_activity),
                     ),
                 )
                 return@lambda
@@ -1104,7 +1106,7 @@ internal fun ProviderEditPage(
                             runCatching {
                                 serviceAccountJsonLauncher.launch(arrayOf("application/json"))
                             }.onFailure {
-                                fetchError = context.getString(R.string.settings_provider_file_picker_failed, it.message ?: "")
+                                fetchError = contextResources.getString(R.string.settings_provider_file_picker_failed, it.message ?: "")
                             }
                         },
                     )
@@ -1248,7 +1250,7 @@ internal fun ProviderEditPage(
                                 context.startActivity(intent)
                             }.onFailure {
                                 io.zer0.muse.ui.common.feedback.MuseToast.show(
-                                    context.getString(R.string.oauth_device_open_failed),
+                                    contextResources.getString(R.string.oauth_device_open_failed),
                                 )
                             }
                         },
@@ -1291,7 +1293,7 @@ internal fun ProviderEditPage(
                     MuseToast.show(
                         context.getString(
                             R.string.oauth_login_failed,
-                            it.message ?: context.getString(R.string.oauth_reason_no_browser),
+                            it.message ?: contextResources.getString(R.string.oauth_reason_no_browser),
                         ),
                     )
                 }
@@ -1319,7 +1321,7 @@ internal fun ProviderEditPage(
                     // 清空 apiKey 输入框 + 同步本地状态
                     apiKey = ""
                     hasStoredOAuthToken = false
-                    MuseToast.show(context.getString(R.string.oauth_revoke_success))
+                    MuseToast.show(contextResources.getString(R.string.oauth_revoke_success))
                 }
             },
             dismissText = stringResource(R.string.settings_common_cancel),
