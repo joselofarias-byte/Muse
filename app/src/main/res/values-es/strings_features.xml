@@ -204,7 +204,7 @@
     <!-- v1.0.17: Quick notes trash -->
     <string name="quick_notes_trash">Basura</string>
     <string name="quick_notes_trash_title">Basura</string>
-    <string name="quick_notes_trash_empty">la papelera esta vacia</string>
+    <string name="quick_notes_trash_empty">La papelera está vacía</string>
     <string name="quick_notes_restore">Restaurar</string>
     <string name="quick_notes_delete_permanent">Eliminar permanentemente</string>
     <string name="quick_notes_export_tags">Etiquetas: %1$s</string>
@@ -627,8 +627,8 @@
     <string name="permission_shizuku_denied_toast">Permiso de Shizuku denegado</string>
     <string name="permission_shizuku_timeout_toast">Se agotó el tiempo de espera de la autorización de Shizuku; reintenta</string>
     <string name="permission_shizuku_unavailable_toast">El servicio de Shizuku no está en ejecución; inícialo primero en la app Shizuku</string>
-    <string name="permission_root_manager_missing">Se detectó un método de root, pero no su gestor (Magisk, KernelSU o APatch). Instala y abre el gestor correspondiente antes de solicitar autorización.</string>
-    <string name="permission_termux_outdated">La versión instalada de Termux no permite devolver los resultados de los comandos. Instala una versión compatible y vuelve a probar.</string>
+    <string name="permission_root_manager_missing">Se detectó un método de root, pero no su gestor (Magisk, KernelSU o APatch). Sin él, las solicitudes de su se rechazan sin aviso. Instala y abre el gestor correspondiente antes de solicitar autorización.</string>
+    <string name="permission_termux_outdated">La versión instalada de Termux es demasiado antigua y no permite devolver los resultados de los comandos. Actualiza a la versión 0.118 o posterior desde F-Droid o GitHub.</string>
     <string name="permission_shizuku_version_old">Shizuku es demasiado antiguo (se requiere v11+, se recomienda v13+). Actualiza y reintenta.</string>
     <string name="shizuku_install_btn">Descargar Shizuku</string>
     <string name="shizuku_section_title">Shizuku</string>
@@ -804,7 +804,7 @@
     <string name="wake_stop_launch_time">Cambió el tiempo estimado de inicio</string>
     <string name="plugin_permission_section_title">Capacidades y permisos</string>
     <string name="plugin_permission_hint">Las capacidades no declaradas o desactivadas se rechazan de inmediato; los cambios surten efecto al instante.</string>
-    <string name="plugin_permission_pending_title">Este complemento declaró nuevas capacidades tras una actualización</string>
+    <string name="plugin_permission_pending_title">Este complemento añadió capacidades aún no aprobadas tras una actualización</string>
     <string name="plugin_permission_approve">Aprobar nuevas</string>
     <string name="plugin_permission_none">Este complemento no declara capacidades; solo puede realizar cálculos.</string>
     <string name="plugin_permission_denied_title">Llamadas bloqueadas</string>
@@ -821,7 +821,7 @@
     <string name="plugin_row_python_locked">Runtime Python · requiere confianza alta</string>
     <string name="plugin_row_circuit_cooling">Aislado: quedan %1$d s</string>
     <string name="plugin_row_circuit_probing">Prueba semiabierta en curso</string>
-    <string name="plugin_permission_node_note">Node se ejecuta en un subproceso integrado. Las capacidades se comprueban individualmente y las ejecuciones que superan el tiempo límite se interrumpen sin bloquear otros complementos.</string>
+    <string name="plugin_permission_node_note">Los complementos de Node se ejecutan en un subproceso del entorno integrado y requieren autorización para cada capacidad. Las ejecuciones que superan el tiempo límite se interrumpen sin afectar a otros complementos.</string>
     <string name="plugin_cap_resource_read">Leer archivos (solo dentro de la carpeta propia del complemento)</string>
     <string name="plugin_cap_resource_write">Escribir archivos (solo en la carpeta propia del complemento)</string>
     <string name="plugin_cap_network">Acceder a la red (se bloquean direcciones locales y privadas)</string>
@@ -831,7 +831,7 @@
     <string name="plugin_cap_hook_system_prompt">Anadir al mensaje de sistema (cambia el comportamiento)</string>
     <string name="plugin_cap_schedule">Ejecutar periodicamente (con la app activa)</string>
     <string name="plugin_cap_network_local">Acceder a la red local y a localhost (servicios en casa)</string>
-    <string name="plugin_cap_app_navigate">Abrir una pagina concreta de la app (inicio, ajustes, una sesion...)</string>
+    <string name="plugin_cap_app_navigate">Abrir una página concreta de la app (inicio, ajustes, una sesión...)</string>
     <string name="plugin_cap_app_messages">Escribir mensajes en un chat (pareceran del asistente)</string>
     <string name="plugin_cap_app_theme">Cambiar entre apariencia clara y oscura</string>
     <string name="plugin_slot_provided_by">Proporcionado por el plugin "%1$s"</string>
