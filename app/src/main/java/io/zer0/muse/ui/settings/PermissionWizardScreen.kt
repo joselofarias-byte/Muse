@@ -81,6 +81,7 @@ fun PermissionWizardScreen(onBack: () -> Unit) {
 
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val contextResources = androidx.compose.ui.platform.LocalResources.current
     val lifecycleOwner = LocalLifecycleOwner.current
 
     // 主通道状态全部派生自协调层快照。
@@ -291,7 +292,7 @@ fun PermissionWizardScreen(onBack: () -> Unit) {
                             ShizukuAuthorizer.PermissionRequestResult.PermanentlyDenied -> {
                                 // 系统弹窗已被「不再询问」封死：直开 Shizuku 应用内授权页手动允许。
                                 shizukuInstaller.openApp()
-                                MuseToast.show(context.getString(R.string.permission_shizuku_manual_grant_hint), 5000)
+                                MuseToast.show(contextResources.getString(R.string.permission_shizuku_manual_grant_hint), 5000)
                             }
                             ShizukuAuthorizer.PermissionRequestResult.Denied ->
                                 MuseToast.show(context.getString(R.string.permission_shizuku_denied_toast))
@@ -302,7 +303,7 @@ fun PermissionWizardScreen(onBack: () -> Unit) {
                                 MuseToast.show(context.getString(R.string.permission_shizuku_manual_grant_hint), 5000)
                             }
                             ShizukuAuthorizer.PermissionRequestResult.Unavailable ->
-                                MuseToast.show(context.getString(R.string.permission_shizuku_unavailable_toast))
+                                MuseToast.show(contextResources.getString(R.string.permission_shizuku_unavailable_toast))
                         }
                         // 授权状态刚变化过：清掉旧退避，让这次刷新真正尝试绑定 Shell 服务。
                         shizukuAuthorizer.resetBindBackoff()
@@ -312,7 +313,7 @@ fun PermissionWizardScreen(onBack: () -> Unit) {
                 onStartService = {
                     // 直开已安装的 Shizuku(启动服务要在它里面点),不再错误地跳下载页。
                     shizukuInstaller.openApp()
-                    MuseToast.show(context.getString(R.string.permission_shizuku_opened_toast), 5000)
+                    MuseToast.show(contextResources.getString(R.string.permission_shizuku_opened_toast), 5000)
                 },
                 onRefresh = { refreshAsync() },
             )
@@ -341,14 +342,14 @@ fun PermissionWizardScreen(onBack: () -> Unit) {
                             scope.launch {
                                 val manager = automationManager
                                 if (manager == null) {
-                                    MuseToast.show(context.getString(R.string.automation_root_failed))
+                                    MuseToast.show(contextResources.getString(R.string.automation_root_failed))
                                     return@launch
                                 }
                                 rootRequesting = true
                                 val result = manager.requestRoot()
                                 rootRequesting = false
                                 if (result.granted) {
-                                    MuseToast.show(context.getString(R.string.automation_root_granted))
+                                    MuseToast.show(contextResources.getString(R.string.automation_root_granted))
                                 } else {
                                     val failure = result.failure ?: RootRequestFailure.ERROR
                                     val msgRes =
@@ -358,7 +359,7 @@ fun PermissionWizardScreen(onBack: () -> Unit) {
                                             RootRequestFailure.DENIED -> R.string.automation_root_denied
                                             RootRequestFailure.ERROR -> R.string.automation_root_failed
                                         }
-                                    MuseToast.show(context.getString(msgRes))
+                                    MuseToast.show(contextResources.getString(msgRes))
                                 }
                                 refresh()
                             }
@@ -442,10 +443,10 @@ fun PermissionWizardScreen(onBack: () -> Unit) {
                             tryStart(android.provider.Settings.ACTION_MANAGE_APPLICATIONS_SETTINGS, null)
 
                         if (!ok) {
-                            MuseToast.show(context.getString(R.string.permission_termux_grant_manual_hint), 3500)
+                            MuseToast.show(contextResources.getString(R.string.permission_termux_grant_manual_hint), 3500)
                         } else {
                             // 跳转成功也要给逐步指引 —— 应用信息首屏看不到这个开关。
-                            MuseToast.show(context.getString(R.string.permission_termux_grant_toast), 3500)
+                            MuseToast.show(contextResources.getString(R.string.permission_termux_grant_toast), 3500)
                         }
                     },
                     onOpenApp = {

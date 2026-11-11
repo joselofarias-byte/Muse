@@ -1,5 +1,6 @@
 package io.zer0.muse.knowledge.retrieval
 
+import io.zer0.muse.knowledge.domain.knowledgeOperation
 import io.zer0.muse.data.knowledge.KnowledgeJobDao
 import io.zer0.muse.data.knowledge.KnowledgeVectorRow
 import kotlin.math.sqrt
@@ -38,9 +39,9 @@ class V2DenseRetriever(
         }
 
         val candidateBudget = (limit * oversample).coerceAtLeast(limit)
-        val rows = try {
+        val rows = knowledgeOperation {
             dao.getVectorRows(activeGenerationIds, candidateBudget)
-        } catch (e: Exception) {
+        }.getOrElse { e ->
             return DenseRecall(hits = emptyList(), degradedReason = "向量索引不可用: ${e.message}")
         }
         if (rows.isEmpty()) {

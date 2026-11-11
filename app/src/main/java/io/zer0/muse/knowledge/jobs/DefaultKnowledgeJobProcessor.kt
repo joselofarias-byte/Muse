@@ -1,5 +1,6 @@
 package io.zer0.muse.knowledge.jobs
 
+import io.zer0.muse.knowledge.domain.knowledgeOperation
 import io.zer0.common.Logger
 import io.zer0.muse.data.knowledge.KnowledgeJobItemEntity
 import io.zer0.muse.data.knowledge.KnowledgeV2Dao
@@ -80,9 +81,9 @@ class DefaultKnowledgeJobProcessor(
         }
 
         execution.advance(KnowledgeJobStage.LEXICAL, "chunks=${chunks.size}")
-        val generationId = try {
+        val generationId = knowledgeOperation {
             publisher.stageGeneration(doc.docId, revision.revisionId, chunks)
-        } catch (e: Exception) {
+        }.getOrElse { e ->
             Logger.w("DefaultKnowledgeJobProcessor", "staging 失败(doc=${doc.docId}): ${e.message}", e)
             return JobStepResult.Failed(
                 jobItemId = jobItem.jobItemId,

@@ -307,7 +307,10 @@ class SkillSearchToolsImpl(
                 Logger.w("SkillExecutor", "web_search 失败: $msg")
             }.getOrNull() ?: emptyList()
         val outcome = io.zer0.muse.web.WebSearchResultPostProcessor.process(
-            raw, plan, plan.effectiveDateRange, System.currentTimeMillis(),
+            raw,
+            plan,
+            plan.effectiveDateRange,
+            System.currentTimeMillis(),
         )
         if (!outcome.recallOk && raw.isNotEmpty()) {
             return "搜索“${plan.outboundQuery}”没有返回与问题相关的结果。" +
@@ -337,32 +340,7 @@ class SkillSearchToolsImpl(
 
     private fun formatCoordinatedSearchResponse(response: io.zer0.muse.web.WebSearchResponse, maxResults: Int): String {
         if (response.status != io.zer0.muse.web.WebSearchStatus.RESULTS || response.results.isEmpty()) {
-            return when (response.status) {
-                io.zer0.muse.web.WebSearchStatus.BUDGET_EXCEEDED -> "搜索预算已用尽：本轮最多搜索 ${WebSearchPolicy().maxSearchesPerTurn} 次，请基于已有结果回答。"
-                io.zer0.muse.web.WebSearchStatus.DUPLICATE_QUERY -> "这个搜索词本轮已经搜过了，请不要重复搜索。"
-                io.zer0.muse.web.WebSearchStatus.RATE_LIMITED -> "搜索服务被限速了，请稍后再试。"
-                io.zer0.muse.web.WebSearchStatus.FAILED -> "搜索服务失败：${response.attempts.lastOrNull()?.message ?: "网络异常"}"
-                io.zer0.muse.web.WebSearchStatus.RECALL_IRRELEVANT ->
-                    "搜索“${response.normalizedQuery}”没有返回与问题相关的结果。" +
-                        (response.debug?.reason?.let { "原因：$it。" } ?: "") +
-                        "请如实告诉用户没搜到可靠资料，不要凭记忆编造；可以建议换更具体的关键词再试。"
-                // 空结果时把「查了哪些源、各自什么结局」一并交出去：
-                // 只说「没有找到结果」会让模型以为信息不存在，进而凭记忆作答；
-                // 说清是限速/超时/源返回空，它才能如实告诉用户「是搜索没通，不是我查不到」。
-                else -> buildString {
-                    appendLine("搜索“${response.normalizedQuery}”没有返回可用结果。")
-                    val attempts = response.attempts
-                    if (attempts.isEmpty()) {
-                        appendLine("原因：没有任何搜索源被调用（可能未配置引擎或全部不可用）。")
-                    } else {
-                        appendLine("各搜索源的结局：")
-                        attempts.forEach { attempt ->
-                            appendLine("- ${attempt.provider}：${attemptStatusLabel(attempt.status)}（${attempt.elapsedMs}ms）")
-                        }
-                        appendLine("请如实告诉用户搜索没有返回结果，不要凭记忆编造；可以建议换个更具体的说法再试。")
-                    }
-                }
-            }
+            return formatEmptySearchResponse(response)
         }
         val sb = StringBuilder(context.getString(R.string.skill_search_result_header, response.normalizedQuery, response.results.size))
         response.results.take(maxResults).forEachIndexed { idx, r ->
@@ -383,6 +361,35 @@ class SkillSearchToolsImpl(
             sb.appendLine("结果数：召回 ${d.recalledCount} → 过滤 ${d.afterFilterCount} → 去重 ${d.afterDedupCount} → 最终 ${d.finalCount}")
         }
         return sb.toString().trimEnd()
+    }
+
+    private fun formatEmptySearchResponse(response: io.zer0.muse.web.WebSearchResponse): String {
+        return when (response.status) {
+            io.zer0.muse.web.WebSearchStatus.BUDGET_EXCEEDED -> "搜索预算已用尽：本轮最多搜索 ${WebSearchPolicy().maxSearchesPerTurn} 次，请基于已有结果回答。"
+            io.zer0.muse.web.WebSearchStatus.DUPLICATE_QUERY -> "这个搜索词本轮已经搜过了，请不要重复搜索。"
+            io.zer0.muse.web.WebSearchStatus.RATE_LIMITED -> "搜索服务被限速了，请稍后再试。"
+            io.zer0.muse.web.WebSearchStatus.FAILED -> "搜索服务失败：${response.attempts.lastOrNull()?.message ?: "网络异常"}"
+            io.zer0.muse.web.WebSearchStatus.RECALL_IRRELEVANT ->
+                "搜索“${response.normalizedQuery}”没有返回与问题相关的结果。" +
+                    (response.debug?.reason?.let { "原因：$it。" } ?: "") +
+                    "请如实告诉用户没搜到可靠资料，不要凭记忆编造；可以建议换更具体的关键词再试。"
+            // 空结果时把「查了哪些源、各自什么结局」一并交出去：
+            // 只说「没有找到结果」会让模型以为信息不存在，进而凭记忆作答；
+            // 说清是限速/超时/源返回空，它才能如实告诉用户「是搜索没通，不是我查不到」。
+            else -> buildString {
+                appendLine("搜索“${response.normalizedQuery}”没有返回可用结果。")
+                val attempts = response.attempts
+                if (attempts.isEmpty()) {
+                    appendLine("原因：没有任何搜索源被调用（可能未配置引擎或全部不可用）。")
+                } else {
+                    appendLine("各搜索源的结局：")
+                    attempts.forEach { attempt ->
+                        appendLine("- ${attempt.provider}：${attemptStatusLabel(attempt.status)}（${attempt.elapsedMs}ms）")
+                    }
+                    appendLine("请如实告诉用户搜索没有返回结果，不要凭记忆编造；可以建议换个更具体的说法再试。")
+                }
+            }
+        }
     }
 
     /**

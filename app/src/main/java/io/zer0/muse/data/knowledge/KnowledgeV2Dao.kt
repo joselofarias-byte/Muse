@@ -117,7 +117,9 @@ data class KnowledgeV2RetentionLeaseEntity(
  * R2 写入切换关闭:DAO 已可用(合成库/测试),生产入口接线归 R4+。
  */
 @Dao
-interface KnowledgeV2Dao {
+interface KnowledgeV2Dao : KnowledgeV2DaoOperations, KnowledgeRevisionLifecycleDao
+
+interface KnowledgeV2DaoOperations {
 
     // ---------- docs(持久 owner 合同) ----------
 
@@ -167,6 +169,10 @@ interface KnowledgeV2Dao {
     /** R8 删除文档。 */
     @Query("DELETE FROM knowledge_v2_docs WHERE docId = :docId")
     suspend fun deleteDoc(docId: String): Int
+
+}
+
+interface KnowledgeRevisionLifecycleDao {
 
     // ---------- revisions(不可变版本链) ----------
 
