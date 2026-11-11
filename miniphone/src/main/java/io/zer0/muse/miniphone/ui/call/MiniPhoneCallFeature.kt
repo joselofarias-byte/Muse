@@ -7,6 +7,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -66,7 +67,8 @@ internal fun MiniPhoneCallFeature(threadId: String, characterId: String, request
     }
 
     // 接通后跑一轮；对方回完一句就停下等用户说话，不自己跟自己聊。
-    val phase = controller.state.value?.phase
+    val callState by controller.state.collectAsState()
+    val phase = callState?.phase
     LaunchedEffect(phase) {
         if (phase != MpCallPhase.CONNECTED) return@LaunchedEffect
         controller.runRound(historyOf(db, threadId, controller.state.value))
@@ -74,7 +76,7 @@ internal fun MiniPhoneCallFeature(threadId: String, characterId: String, request
 
     // 振铃时放该种类的铃声；一个都没配就不响 —— 没配是配置事实，不假装响了。
     val ringingUri = remember { mutableStateOf<String?>(null) }
-    LaunchedEffect(controller.state.value?.phase) {
+    LaunchedEffect(phase) {
         if (controller.state.value?.phase != MpCallPhase.RINGING) return@LaunchedEffect
         val ringtone = ringtones.observeFor(characterId, requestedKind.wire).first().firstOrNull()
             ?: ringtones.observeFor("", requestedKind.wire).first().firstOrNull()

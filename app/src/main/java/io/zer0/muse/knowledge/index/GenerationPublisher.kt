@@ -8,6 +8,7 @@ import io.zer0.muse.data.knowledge.KnowledgeGenLexicalEntity
 import io.zer0.muse.data.knowledge.KnowledgeGenerationEntity
 import io.zer0.muse.data.knowledge.KnowledgeJobDao
 import io.zer0.muse.knowledge.domain.PublishResult
+import io.zer0.muse.knowledge.domain.knowledgeOperation
 import io.zer0.muse.knowledge.ingest.LocatedChunk
 
 /**
@@ -124,10 +125,7 @@ class GenerationPublisher(private val jobDao: KnowledgeJobDao) {
      * doc 当前 revision 变化引发的语义冲突由调用方在 expectedRevisionId 上体现,本方法
      * 再次比对 generation.revisionId 与 expectedRevisionId 防越权。
      */
-    suspend fun publish(
-        generationId: String,
-        expectedRevisionId: String,
-    ): PublishResult {
+    suspend fun publish(generationId: String, expectedRevisionId: String): PublishResult {
         val gen = jobDao.getGeneration(generationId)
             ?: return PublishResult.ValidationFailed("generation 不存在: $generationId")
         if (gen.state != IndexGenerationState.STAGING.name) {
@@ -138,7 +136,7 @@ class GenerationPublisher(private val jobDao: KnowledgeJobDao) {
                 "generation revision(${gen.revisionId}) 与期望($expectedRevisionId) 不符,活动代不变",
             )
         }
-        return try {
+        return knowledgeOperation {
             // 事务由调用方(in-transaction)提供;这里执行代状态置 ACTIVE + 活动指针 upsert。
             jobDao.updateGenerationState(generationId, IndexGenerationState.ACTIVE.name)
             jobDao.upsertActiveGeneration(
@@ -149,7 +147,7 @@ class GenerationPublisher(private val jobDao: KnowledgeJobDao) {
                 ),
             )
             PublishResult.Published(generationId = generationId, docId = gen.docId)
-        } catch (e: Exception) {
+        }.getOrElse { e ->
             // 半失败:回滚代状态并清理本代 staging 行;旧活动代未受影响。
             Logger.w(
                 "GenerationPublisher",
@@ -173,12 +171,7 @@ class GenerationPublisher(private val jobDao: KnowledgeJobDao) {
      *
      * @return null = 全部写入且标记 vectorReady;非空 = 失败原因。
      */
-    suspend fun stageVectors(
-        generationId: String,
-        vectors: List<FloatArray>,
-        expectedDimension: Int,
-        embeddingSpaceId: String,
-    ): String? {
+    suspend fun stageVectors(generationId: String, vectors: List<FloatArray>, expectedDimension: Int, embeddingSpaceId: String): String? {
         val gen = jobDao.getGeneration(generationId) ?: return "generation 不存在: $generationId"
         val error = when {
             gen.state != IndexGenerationState.STAGING.name -> "generation 非 STAGING: ${gen.state}"
@@ -199,11 +192,7 @@ class GenerationPublisher(private val jobDao: KnowledgeJobDao) {
     }
 
     /** 向量批次前置校验:空间 id、向量数与 chunk 数一致。 */
-    private suspend fun validateVectorPreconditions(
-        generationId: String,
-        vectors: List<FloatArray>,
-        embeddingSpaceId: String,
-    ): String? {
+    private suspend fun validateVectorPreconditions(generationId: String, vectors: List<FloatArray>, embeddingSpaceId: String): String? {
         if (embeddingSpaceId.isBlank()) return "embeddingSpaceId 为空"
         val chunkCount = jobDao.countGenChunks(generationId)
         return if (vectors.size != chunkCount) {
@@ -224,11 +213,7 @@ class GenerationPublisher(private val jobDao: KnowledgeJobDao) {
      * R5 HybridReady 原子发布:要求词法已完整可查 + 向量批已验证就绪,才切活动代。
      * vectorReady=false 时返回 ValidationFailed,**绝不冒充 HybridReady**。
      */
-    suspend fun publishHybrid(
-        generationId: String,
-        expectedRevisionId: String,
-        embeddingSpaceId: String,
-    ): PublishResult {
+    suspend fun publishHybrid(generationId: String, expectedRevisionId: String, embeddingSpaceId: String): PublishResult {
         val gen = jobDao.getGeneration(generationId)
             ?: return PublishResult.ValidationFailed("generation 不存在: $generationId")
         val rejection: PublishResult? = when {
@@ -258,8 +243,7 @@ class GenerationPublisher(private val jobDao: KnowledgeJobDao) {
 
     companion object {
         /** 词法规范化:小写 + 空白折叠。与 R6 真实 FTS4 规范化的版本化契约(此处为 R4 判定面)。 */
-        fun normalizeLexical(text: String): String =
-            text.lowercase().replace(Regex("\\s+"), " ").trim()
+        fun normalizeLexical(text: String): String = text.lowercase().replace(Regex("\\s+"), " ").trim()
 
         /** 粗估 token(按字符数/4,与既有 TextChunker 口径一致;真实计数归 R5/R6)。 */
         fun estimateTokens(text: String): Int = (text.length + 3) / 4

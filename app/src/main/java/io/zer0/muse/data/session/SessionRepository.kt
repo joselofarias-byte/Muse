@@ -558,24 +558,24 @@ class SessionRepository(
             cleanSessionMemory(listOf(id))
             // v1.135-A: 清理该会话的视觉辅助缓存 sidecar,避免孤儿文件
             // i18n 示范改造点 1:原硬编码中文 "清理视觉缓存失败: $id" 改为
-            // ErrorMessage.StorageError.IO_ERROR + sessionId 作为日志 metadata。
+            // ErrorMessage.StorageError.IoError + sessionId 作为日志 metadata。
             // Locale 无关,toLogString() 输出 "[ERR:storage_io_error] Local storage read/write failed"
             resultOf { visionCache?.clearSession(id) }
                 .onError { _, t ->
                     Logger.w(
                         TAG,
-                        "${ErrorMessage.StorageError.IO_ERROR.toLogString()} [sessionId=$id]",
+                        "${ErrorMessage.StorageError.IoError.toLogString()} [sessionId=$id]",
                         t,
                     )
                 }
             // P3: 清理该会话的权限模式设置
             // i18n 示范改造点 2:原硬编码中文 "清理会话权限模式失败: $id" 改为
-            // ErrorMessage.StorageError.IO_ERROR,与上条同 code 不同 metadata 区分场景。
+            // ErrorMessage.StorageError.IoError,与上条同 code 不同 metadata 区分场景。
             resultOf { sessionPermissionStore?.clearMode(id) }
                 .onError { _, t ->
                     Logger.w(
                         TAG,
-                        "${ErrorMessage.StorageError.IO_ERROR.toLogString()} [sessionId=$id, scope=permission]",
+                        "${ErrorMessage.StorageError.IoError.toLogString()} [sessionId=$id, scope=permission]",
                         t,
                     )
                 }
@@ -754,13 +754,13 @@ class SessionRepository(
             }
             // v1.134 P1-2: 清理被删消息的图片文件,避免孤儿文件占用存储
             // i18n 示范改造点 3:原硬编码英文 "deleteMessage images cleanup failed: ${...}"
-            // 改为 ErrorMessage.StorageError.IO_ERROR.toLogString(),消除裸字符串。
+            // 改为 ErrorMessage.StorageError.IoError.toLogString(),消除裸字符串。
             toDelete.forEach { id ->
                 resultOf { messageImageStore.deleteByMessageId(id) }
                     .onError { _, t ->
                         Logger.w(
                             TAG,
-                            "${ErrorMessage.StorageError.IO_ERROR.toLogString()} [messageId=$id, scope=images]",
+                            "${ErrorMessage.StorageError.IoError.toLogString()} [messageId=$id, scope=images]",
                             t,
                         )
                     }
@@ -1127,7 +1127,7 @@ class SessionRepository(
         }.onError { _, t ->
             Logger.w(
                 TAG,
-                "${ErrorMessage.StorageError.IO_ERROR.toLogString()} [messageId=${entity.id}, scope=fts_insert]",
+                "${ErrorMessage.StorageError.IoError.toLogString()} [messageId=${entity.id}, scope=fts_insert]",
                 t,
             )
         }
@@ -1659,7 +1659,7 @@ class SessionRepository(
                         is io.zer0.common.Result.Error -> {
                             Logger.w(
                                 TAG,
-                                "${ErrorMessage.StorageError.IO_ERROR.toLogString()} " +
+                                "${ErrorMessage.StorageError.IoError.toLogString()} " +
                                     "[scope=session_fts_search, fallback=LIKE, raw=${result.message}]",
                             )
                             searchLikeAndJoinInSession(sessionId, trimmed, boundedLimit)
@@ -1697,14 +1697,14 @@ class SessionRepository(
         } else {
             // H-SESS1: FTS 查询异常时回退 LIKE;用 resultOf 正确重抛 CancellationException
             // i18n 示范改造点 5:原硬编码英文 "FTS search failed, fallback to LIKE: ..."
-            // 改为 ErrorMessage.StorageError.IO_ERROR + raw message 作为补充 debug 信息。
+            // 改为 ErrorMessage.StorageError.IoError + raw message 作为补充 debug 信息。
             // FTS 失败已有 LIKE 兜底,不上抛 ErrorMessage,仅标准化日志 code 便于监控告警聚合。
             when (val r = resultOf { searchFtsByMode(ftsMatchQuery(trimmed)) }) {
                 is io.zer0.common.Result.Success -> r.data
                 is io.zer0.common.Result.Error -> {
                     Logger.w(
                         TAG,
-                        "${ErrorMessage.StorageError.IO_ERROR.toLogString()} [scope=fts_search, fallback=LIKE, raw=${r.message}]",
+                        "${ErrorMessage.StorageError.IoError.toLogString()} [scope=fts_search, fallback=LIKE, raw=${r.message}]",
                     )
                     searchLikeAndJoin(trimmed)
                 }

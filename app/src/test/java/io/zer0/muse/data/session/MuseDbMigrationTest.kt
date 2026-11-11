@@ -502,7 +502,7 @@ class MuseDbMigrationTest {
                 MuseDb::class.java,
                 dbFile.absolutePath,
             )
-                .addMigrations(*migrationsFrom(75, imageDir).toTypedArray())
+                .addMigrations(*migrationsFrom(75).toTypedArray())
                 .allowMainThreadQueries()
                 .build()
 
@@ -1241,7 +1241,7 @@ class MuseDbMigrationTest {
     }
 
     /** 用反射收集 MuseDb 已注册迁移,按 fromVersion 排序得到完整升级链。 */
-    private fun migrationsFrom(fromVersion: Int, imageDir: File = imageStorageDir): List<androidx.room.migration.Migration> {
+    private fun migrationsFrom(fromVersion: Int): List<androidx.room.migration.Migration> {
         // 迁移真源是 MuseDb.migrations(context):它已包含 MIGRATION_* 与
         // migrate75To76/migrate76To77 两个工厂函数(后者无 getter,反射枚举会漏)。
         // 这里按 fromVersion 过滤,避免用反射重建链条时遗漏工厂函数段。

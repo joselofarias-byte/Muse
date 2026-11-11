@@ -43,7 +43,7 @@ class PluginRuntimeHealthTest {
     @Test
     fun `冷却到期转半开放行一条探测`() {
         failThreeTimes("p")
-        now += PluginRuntimeHealth.baseCooldownMs + 1
+        now += PluginRuntimeHealth.BASE_COOLDOWN_MS + 1
 
         assertNull("到期应放行探测", health.blockReason("p"))
         assertTrue("进入半开", health.stateOf("p")?.probing == true)
@@ -52,7 +52,7 @@ class PluginRuntimeHealthTest {
     @Test
     fun `探测失败退避翻倍`() {
         failThreeTimes("p")
-        now += PluginRuntimeHealth.baseCooldownMs + 1
+        now += PluginRuntimeHealth.BASE_COOLDOWN_MS + 1
         health.blockReason("p") // 转半开
 
         health.recordFailure("p")
@@ -64,7 +64,7 @@ class PluginRuntimeHealthTest {
     @Test
     fun `成功关闭熔断`() {
         failThreeTimes("p")
-        now += PluginRuntimeHealth.baseCooldownMs + 1
+        now += PluginRuntimeHealth.BASE_COOLDOWN_MS + 1
         health.blockReason("p")
 
         health.recordSuccess("p")
@@ -99,7 +99,7 @@ class PluginRuntimeHealthTest {
     @Test
     fun `剩余不足一秒显示一秒而不是零`() {
         failThreeTimes("p")
-        now += PluginRuntimeHealth.baseCooldownMs - 1
+        now += PluginRuntimeHealth.BASE_COOLDOWN_MS - 1
         val view = health.circuitView("p")
         assertEquals(PluginRuntimeHealth.CircuitStatus.CoolingDown, view.status)
         assertEquals("还剩 1ms 不许显示「剩余 0 秒」——那读起来像已经解冻了", 1, view.remainingSeconds)
@@ -108,7 +108,7 @@ class PluginRuntimeHealthTest {
     @Test
     fun `到期转半开时视图给探测中且剩余归零`() {
         failThreeTimes("p")
-        now += PluginRuntimeHealth.baseCooldownMs + 1
+        now += PluginRuntimeHealth.BASE_COOLDOWN_MS + 1
         val view = health.circuitView("p")
         assertEquals(PluginRuntimeHealth.CircuitStatus.Probing, view.status)
         assertEquals(0, view.remainingSeconds)
@@ -117,7 +117,7 @@ class PluginRuntimeHealthTest {
     @Test
     fun `读视图不许消耗掉半开探测的机会`() {
         failThreeTimes("p")
-        now += PluginRuntimeHealth.baseCooldownMs + 1
+        now += PluginRuntimeHealth.BASE_COOLDOWN_MS + 1
         repeat(3) { health.circuitView("p") }
         // blockReason 在到期时会把状态翻成 probing(那是放行的记账),UI 只是看一眼,不能触发它
         assertEquals(
@@ -140,7 +140,7 @@ class PluginRuntimeHealthTest {
     @Test
     fun `解冻后视图回到 None`() {
         failThreeTimes("p")
-        now += PluginRuntimeHealth.baseCooldownMs + 1
+        now += PluginRuntimeHealth.BASE_COOLDOWN_MS + 1
         assertEquals(PluginRuntimeHealth.CircuitStatus.Probing, health.circuitView("p").status)
         health.recordSuccess("p")
         assertEquals(PluginRuntimeHealth.CircuitStatus.None, health.circuitView("p").status)

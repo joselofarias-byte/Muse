@@ -236,5 +236,6 @@ internal data class AnthropicModelInfo(
 internal fun AnthropicUsage.toUsageTokens(): io.zer0.ai.core.UsageTokens = io.zer0.ai.core.UsageTokens(
     promptTokens = input_tokens,
     completionTokens = output_tokens,
-    reasoningTokens = 0, // Anthropic 不单独计 reasoning tokens
+    // Anthropic 不单独计 reasoning tokens
+    reasoningTokens = 0,
 )

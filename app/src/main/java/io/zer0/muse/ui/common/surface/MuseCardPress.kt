@@ -94,7 +94,8 @@ fun MuseCardPress(
     val animatedColor by animateColorAsState(
         targetValue = if (isPressed) pressedColor else containerColor,
         animationSpec = MuseMotion.tween(
-            durationMillis = MuseAnimation.TACTILE_MS + 20, // 220ms, 比图标按钮稍慢
+            // 220ms, 比图标按钮稍慢
+            durationMillis = MuseAnimation.TACTILE_MS + 20,
             easing = MuseAnimation.EaseOutCubic,
         ),
         label = "card_press_color",
@@ -114,7 +115,8 @@ fun MuseCardPress(
     val pressModifier = if (onLongClick != null) {
         Modifier.combinedClickable(
             interactionSource = interactionSource,
-            indication = null, // 无涟漪
+            // 无涟漪
+            indication = null,
             // v1.0.74 fix (前端审计 3.4): 补 role=Button,与 clickable 分支对齐
             // (原 combinedClickable 分支漏传 role,TalkBack 读不出按钮语义)
             role = Role.Button,
@@ -129,7 +131,8 @@ fun MuseCardPress(
     } else {
         Modifier.clickable(
             interactionSource = interactionSource,
-            indication = null, // 无涟漪
+            // 无涟漪
+            indication = null,
             role = Role.Button,
             onClick = {
                 if (enableHaptic) {

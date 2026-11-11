@@ -398,15 +398,18 @@ private fun GroupChatCard(
     if (showClearMemoryConfirm) {
         MuseDialog(
             onDismissRequest = { showClearMemoryConfirm = false },
-            title = stringResource(R.string.groupchat_clear_memory), // 前端修复 (i18n-2)
+            // 前端修复 (i18n-2)
+            title = stringResource(R.string.groupchat_clear_memory),
             content = {
                 Text(
-                    text = stringResource(R.string.groupchat_clear_memory_confirm), // 前端修复 (i18n-2)
+                    // 前端修复 (i18n-2)
+                    text = stringResource(R.string.groupchat_clear_memory_confirm),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             },
-            confirmText = stringResource(R.string.groupchat_clear_memory_btn), // 前端修复 (i18n-2)
+            // 前端修复 (i18n-2)
+            confirmText = stringResource(R.string.groupchat_clear_memory_btn),
             onConfirm = {
                 showClearMemoryConfirm = false
                 onClearMemory()

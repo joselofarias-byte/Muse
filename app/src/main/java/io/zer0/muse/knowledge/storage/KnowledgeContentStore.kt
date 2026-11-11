@@ -52,40 +52,34 @@ class KnowledgeContentStore(
             val published = File(publishedDir, pendingHash)
 
             // 1-2. staging + hash(hash 已算)
-            if (FailurePoint.STAGING_WRITE in injectedFailures) {
-                throw java.io.IOException("injected staging failure")
+            checkFailure(FailurePoint.STAGING_WRITE, "injected staging failure")
+            val staging = File(stagingDir, "$pendingHash.staging")
+            staging.writeBytes(bytes)
+
+            // 3. 关闭校验
+            checkFailure(FailurePoint.CLOSE_VERIFY, "injected close-verify failure")
+            if (staging.length() != bytes.size.toLong()) {
+                throw java.io.IOException("staging size mismatch: ${staging.length()} != ${bytes.size}")
             }
-        val staging = File(stagingDir, "$pendingHash.staging")
-        staging.writeBytes(bytes)
 
-        // 3. 关闭校验
-        if (FailurePoint.CLOSE_VERIFY in injectedFailures) {
-            throw java.io.IOException("injected close-verify failure")
-        }
-        if (staging.length() != bytes.size.toLong()) {
-            throw java.io.IOException("staging size mismatch: ${staging.length()} != ${bytes.size}")
-        }
-
-        // 4. 原子发布(同 hash 已存在 = 同内容,幂等复用)
-        if (FailurePoint.PUBLISH_RENAME in injectedFailures) {
-            throw java.io.IOException("injected publish failure")
-        }
-        if (!published.exists()) {
-            if (!staging.renameTo(published)) {
-                throw java.io.IOException("publish rename failed: ${staging.name}")
+            // 4. 原子发布(同 hash 已存在 = 同内容,幂等复用)
+            checkFailure(FailurePoint.PUBLISH_RENAME, "injected publish failure")
+            if (!published.exists()) {
+                if (!staging.renameTo(published)) {
+                    throw java.io.IOException("publish rename failed: ${staging.name}")
+                }
+            } else {
+                staging.delete()
             }
-        } else {
-            staging.delete()
-        }
 
-        // 5. DB 引用(本类不直接依赖 DAO;仓储层登记失败时调用方调用 markUnreferenced。
-        //    注入 DB_REFERENCE 失败模拟「登记链路失败」:文件已发布但视作未引用。)
-        if (FailurePoint.DB_REFERENCE in injectedFailures) {
-            unreferenced.add(pendingHash)
-            return null
-        }
+            // 5. DB 引用(本类不直接依赖 DAO;仓储层登记失败时调用方调用 markUnreferenced。
+            //    注入 DB_REFERENCE 失败模拟「登记链路失败」:文件已发布但视作未引用。)
+            if (FailurePoint.DB_REFERENCE in injectedFailures) {
+                unreferenced.add(pendingHash)
+                return null
+            }
 
-        pendingHash
+            pendingHash
         } catch (e: java.io.IOException) {
             // 失败清理:只删除本次写入的 staging 文件(名字即本次 hash),绝不批量删除
             // 其他 staging(可能属于并发中的其他写入,由 cleanupOrphans 按龄回收),
@@ -99,6 +93,10 @@ class KnowledgeContentStore(
             Logger.w("KnowledgeContentStore", "put 失败(scheme=$scheme): ${e.message}", e)
             null
         }
+    }
+
+    private fun checkFailure(point: FailurePoint, message: String) {
+        if (point in injectedFailures) throw java.io.IOException(message)
     }
 
     /** 发布文件是否存在。 */
@@ -143,7 +141,6 @@ class KnowledgeContentStore(
     }
 
     companion object {
-        fun hashOf(bytes: ByteArray): String =
-            MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
+        fun hashOf(bytes: ByteArray): String = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
     }
 }
