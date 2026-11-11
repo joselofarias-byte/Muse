@@ -639,7 +639,7 @@ private fun ChartCard(json: String) {
     // 图表实际需要多高它都只给 260dp 起、多出来的内容在 WebView 里被裁。
     // 现在与其他卡片一致：卡片侧定格脚本上报真实高度，这里只管接。
     var chartHeightPx by remember(html) { mutableStateOf(0) }
-    val heightSink = remember { CardHeightSink() }
+    val heightSink: CardHeightSink = remember { CardHeightSink() }
     androidx.compose.runtime.LaunchedEffect(heightSink) {
         heightSink.onHeightChanged = { px -> if (px > 0) chartHeightPx = px }
     }
