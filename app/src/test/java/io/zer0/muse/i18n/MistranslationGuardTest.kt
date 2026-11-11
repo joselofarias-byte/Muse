@@ -61,6 +61,32 @@ class MistranslationGuardTest {
         }
     }
 
+    @Test
+    fun `Spanish Termux instructions retain executable command and update requirements`() {
+        val hint = text("es", R.string.permission_termux_config_hint)
+        assertTrue(hint.contains("echo 'allow-external-apps = true' >> ~/.termux/termux.properties && termux-reload-settings"))
+        val outdated = text("es", R.string.permission_termux_outdated)
+        listOf("0.118", "F-Droid", "GitHub").forEach { detail ->
+            assertTrue("Missing Termux update detail $detail", outdated.contains(detail))
+        }
+    }
+
+    @Test
+    fun `Spanish input guide retains additional actions and reasoning levels`() {
+        val guide = text("es", R.string.settings_tutorial_ch1_s6_content)
+        listOf("generación de imágenes", "delega", "restablece", "bajo, medio, alto y muy alto").forEach { detail ->
+            assertTrue("Missing input guide detail $detail", guide.contains(detail))
+        }
+    }
+
+    @Test
+    fun `Spanish app labels retain accents and pending permission meaning`() {
+        assertEquals("La papelera está vacía", text("es", R.string.quick_notes_trash_empty))
+        assertEquals("…y %1\$d más", text("es", R.string.assistant_diff_more))
+        assertTrue(text("es", R.string.plugin_permission_pending_title).contains("aún no aprobadas"))
+        assertTrue(text("es", R.string.plugin_permission_node_note).contains("autorización para cada capacidad"))
+    }
+
     private val locales = listOf("zh", "en", "es", "ja", "ko", "pt-rBR", "ru")
 
     @Test

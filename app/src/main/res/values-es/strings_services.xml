@@ -172,7 +172,7 @@
     <string name="tool_calendar_this_update_unsupported">Aun no se puede editar una sola ocurrencia: usa scope=all para la serie o elimina con scope=this para cancelar una</string>
     <string name="tool_calendar_updated">Evento actualizado (id=%1$s)</string>
     <string name="tool_calendar_deleted">Evento eliminado (id=%1$s)</string>
-    <string name="tool_calendar_canceled_this">Se cancelo esta ocurrencia de la serie (id=%1$s)</string>
+    <string name="tool_calendar_canceled_this">Se canceló esta instancia de la serie (id=%1$s)</string>
     <string name="tool_calendar_event_not_found">No se encontro el evento (id=%1$s); puede haber sido eliminado o el id es incorrecto</string>
     <string name="tool_calendar_update_failed">Fallo al actualizar: %1$s</string>
     <string name="tool_calendar_delete_failed">Fallo al eliminar: %1$s</string>
@@ -282,9 +282,9 @@
     <string name="assist_service_label">Asistente Muse</string>
     <string name="automation_handoff_desc">El asistente dejo %1$d pantalla(s); puedes previsualizar y operar</string>
     <string name="automation_handoff_bring_main">Llevar a la pantalla principal</string>
-    <string name="automation_handoff_bring_main_hint">Solo se lleva la app a la pantalla principal; la pagina y el estado previos dependen de la app y pueden perderse.</string>
+    <string name="automation_handoff_bring_main_hint">Solo se garantiza que la app aparezca en la pantalla principal; la página y el estado de entrada anteriores dependen de la app y pueden perderse.</string>
     <string name="automation_handoff_bring_main_ok">Llevado a la pantalla principal (la conservacion del estado depende de la app)</string>
-    <string name="automation_handoff_bring_main_failed">Fallo: el servicio de pantalla no esta disponible o la app no pudo iniciarse</string>
+    <string name="automation_handoff_bring_main_failed">No se pudo devolver el control: el servicio de pantalla virtual no está disponible o la app no pudo iniciarse</string>
     <string name="automation_handoff_close_destroy">Cerrar y destruir esta pantalla</string>
     <string name="tool_volume_failed">No se pudo ajustar el volumen: %1$s</string>
     <string name="tool_write_verified_transition"> (verificado: %1$d a %2$d)</string>
@@ -447,9 +447,9 @@
     <string name="app_control_failed">Fallo al %1$s %2$s: %3$s</string>
     <string name="app_control_reason_invalid_name">nombre de aplicacion o de paquete no valido</string>
     <string name="app_control_reason_not_found">aplicacion no encontrada; usa app_list para consultar su nombre y su paquete</string>
-    <string name="app_control_reason_need_elevated">esta accion requiere acceso Shizuku/adb o Root, que no esta disponible en este dispositivo; usa otra via o concedelo en los ajustes</string>
-    <string name="app_control_reason_system_app">esta accion no esta permitida en aplicaciones del sistema</string>
-    <string name="app_control_reason_self">esta accion no esta permitida sobre Muse</string>
+    <string name="app_control_reason_need_elevated">Esta acción requiere permisos de Shizuku/adb o root, que no están disponibles en este dispositivo; usa otra vía o concédelos en los ajustes</string>
+    <string name="app_control_reason_system_app">Esta acción no está permitida en aplicaciones del sistema</string>
+    <string name="app_control_reason_self">Esta acción no está permitida sobre Muse</string>
     <string name="app_control_via_app">permiso de la app</string>
     <string name="app_control_via_shell">Shizuku/adb</string>
     <string name="app_control_via_root">Root</string>
