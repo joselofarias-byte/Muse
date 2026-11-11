@@ -1,5 +1,6 @@
 package io.zer0.muse.knowledge.retrieval
 
+import io.zer0.muse.knowledge.domain.knowledgeOperation
 import io.zer0.muse.knowledge.domain.KnowledgeScope
 import io.zer0.muse.knowledge.domain.ScopeDoc
 
@@ -56,9 +57,9 @@ class DefaultKnowledgeScopeResolver(
 
         // 绑定引用的目标全部无法命中 → Invalid(失效绑定):调用方必须提示修复,
         // 不得静默回退成 None(=空结果)或全库。区分依据:输入绑定非空但展开为零。
-        val docs = try {
+        val docs = knowledgeOperation {
             docsByKbIds((scopes.map { it.first } + kbIds).distinct())
-        } catch (t: Throwable) {
+        }.getOrElse { t ->
             return KnowledgeScope.Failed(t.message ?: "scope resolution failed")
         }
         if (docs.isEmpty()) return KnowledgeScope.Invalid

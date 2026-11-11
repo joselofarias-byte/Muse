@@ -71,8 +71,14 @@ class EvidenceBoundaryAndSourceTest {
     @Test
     fun `available revision allows opening document`() {
         val resolution = EvidenceSourceResolver.resolve(
-            docId = "doc-1", docTitle = "合同模板", revisionId = "rev-1", locator = "p1s1",
-            snapshotText = "片段", docExists = true, revisionExists = true, hasRevisionInfo = true,
+            docId = "doc-1",
+            docTitle = "合同模板",
+            revisionId = "rev-1",
+            locator = "p1s1",
+            snapshotText = "片段",
+            docExists = true,
+            revisionExists = true,
+            hasRevisionInfo = true,
         )
         assertEquals(EvidenceSourceState.AVAILABLE, resolution.state)
         assertTrue(resolution.canOpenDocument)
@@ -82,8 +88,14 @@ class EvidenceBoundaryAndSourceTest {
     @Test
     fun `deleted document shows snapshot and forbids opening latest text`() {
         val resolution = EvidenceSourceResolver.resolve(
-            docId = "doc-1", docTitle = "合同模板", revisionId = "rev-1", locator = "p1s1",
-            snapshotText = "历史片段", docExists = false, revisionExists = false, hasRevisionInfo = true,
+            docId = "doc-1",
+            docTitle = "合同模板",
+            revisionId = "rev-1",
+            locator = "p1s1",
+            snapshotText = "历史片段",
+            docExists = false,
+            revisionExists = false,
+            hasRevisionInfo = true,
         )
         assertEquals(EvidenceSourceState.DOC_DELETED, resolution.state)
         assertFalse("删除后不得跳到最新文本冒充旧证据", resolution.canOpenDocument)
@@ -93,8 +105,14 @@ class EvidenceBoundaryAndSourceTest {
     @Test
     fun `missing revision shows snapshot only`() {
         val resolution = EvidenceSourceResolver.resolve(
-            docId = "doc-1", docTitle = "合同模板", revisionId = "rev-1", locator = "p1s1",
-            snapshotText = "片段", docExists = true, revisionExists = false, hasRevisionInfo = true,
+            docId = "doc-1",
+            docTitle = "合同模板",
+            revisionId = "rev-1",
+            locator = "p1s1",
+            snapshotText = "片段",
+            docExists = true,
+            revisionExists = false,
+            hasRevisionInfo = true,
         )
         assertEquals(EvidenceSourceState.SNAPSHOT_ONLY, resolution.state)
         assertFalse(resolution.canOpenDocument)
@@ -104,8 +122,14 @@ class EvidenceBoundaryAndSourceTest {
     @Test
     fun `legacy citation without revision info is labeled`() {
         val resolution = EvidenceSourceResolver.resolve(
-            docId = "doc-1", docTitle = "旧文档", revisionId = null, locator = null,
-            snapshotText = "旧片段", docExists = true, revisionExists = true, hasRevisionInfo = false,
+            docId = "doc-1",
+            docTitle = "旧文档",
+            revisionId = null,
+            locator = null,
+            snapshotText = "旧片段",
+            docExists = true,
+            revisionExists = true,
+            hasRevisionInfo = false,
         )
         assertEquals(EvidenceSourceState.LEGACY_CITATION, resolution.state)
         assertTrue("必须标注旧版来源", resolution.message.contains("旧版来源片段"))

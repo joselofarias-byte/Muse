@@ -31,19 +31,7 @@ class WebSearchCoordinator(
             return WebSearchResponse(request.query, normalized, status = WebSearchStatus.EMPTY)
         }
         val state = mutex.withLock { turns.getOrPut(turnKey) { TurnState() } }
-        val normalizedKey = normalized.lowercase()
-        val gate = mutex.withLock {
-            when {
-                state.used >= policy.maxSearchesPerTurn -> WebSearchStatus.BUDGET_EXCEEDED
-                normalizedKey in state.queries -> WebSearchStatus.DUPLICATE_QUERY
-                state.empty >= policy.stopAfterEmpty -> WebSearchStatus.EMPTY
-                else -> {
-                    state.used++
-                    state.queries += normalizedKey
-                    null
-                }
-            }
-        }
+        val gate = reserveSearch(state, normalized, policy)
         if (gate != null) {
             Logger.w("WebSearch", "search blocked: turn=$turnKey status=$gate query=$normalized")
             return WebSearchResponse(request.query, normalized, status = gate).also { _lastResponse.value = it }
@@ -135,6 +123,22 @@ class WebSearchCoordinator(
                         "query=${normalized.take(80)}, error=${e.message?.take(160)}",
                 )
                 _lastResponse.value = it
+            }
+        }
+    }
+
+    private suspend fun reserveSearch(state: TurnState, normalized: String, policy: WebSearchPolicy): WebSearchStatus? {
+        val normalizedKey = normalized.lowercase()
+        return mutex.withLock {
+            when {
+                state.used >= policy.maxSearchesPerTurn -> WebSearchStatus.BUDGET_EXCEEDED
+                normalizedKey in state.queries -> WebSearchStatus.DUPLICATE_QUERY
+                state.empty >= policy.stopAfterEmpty -> WebSearchStatus.EMPTY
+                else -> {
+                    state.used++
+                    state.queries += normalizedKey
+                    null
+                }
             }
         }
     }
