@@ -3,8 +3,8 @@ package io.zer0.muse.ui.markdown
 import android.os.Handler
 import android.os.Looper
 import android.webkit.JavascriptInterface
-import org.json.JSONObject
 import io.zer0.common.Logger
+import org.json.JSONObject
 
 /**
  * v1.0.92: 卡片回传动作 — 富内容卡片(HTML/SVG)与宿主之间的最小契约。
@@ -207,6 +207,7 @@ internal class MuseCardBridge(
         /** 单次回传文本上限(字符),防止脚本滥用注入超长消息。 */
         private const val TAG = "MuseCardBridge"
         private const val MAX_ACTION_TEXT_LENGTH = 4000
+
         // 上报文本的上限：桥的方法可以被卡片脚本任意次调用，
         // 不限长度就等于让一张写坏的卡把日志刷满。
         private const val MAX_REPORT_LENGTH = 500
@@ -417,6 +418,10 @@ internal class CardHeightSink {
     internal var onHeightChanged: ((Int) -> Unit)? = null
 
     private val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
+
+    fun registerOn(webView: android.webkit.WebView, name: String = NAME) {
+        webView.addJavascriptInterface(this, name)
+    }
 
     @android.webkit.JavascriptInterface
     fun reportHeight(px: Int) {

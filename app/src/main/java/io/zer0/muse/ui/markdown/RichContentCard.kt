@@ -32,13 +32,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
-import io.zer0.muse.ui.markdown.card.CardHost
-import io.zer0.muse.ui.markdown.card.CardLanguage
-import io.zer0.muse.ui.markdown.card.CardPushToken
-import io.zer0.muse.ui.markdown.card.CardRuntime
-import io.zer0.muse.ui.markdown.card.CardSpec
-import io.zer0.muse.ui.markdown.card.parseCardSize
-import org.koin.compose.koinInject
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -50,6 +43,12 @@ import io.zer0.muse.ui.common.form.MuseTactileButton
 import io.zer0.muse.ui.common.icons.MuseIcons
 import io.zer0.muse.ui.common.media.LifecycleAwareWebViewContainer
 import io.zer0.muse.ui.common.surface.MuseDialogWindowEffect
+import io.zer0.muse.ui.markdown.card.CardHost
+import io.zer0.muse.ui.markdown.card.CardLanguage
+import io.zer0.muse.ui.markdown.card.CardPushToken
+import io.zer0.muse.ui.markdown.card.CardRuntime
+import io.zer0.muse.ui.markdown.card.CardSpec
+import io.zer0.muse.ui.markdown.card.parseCardSize
 import io.zer0.muse.ui.theme.MuseIconSizes
 import io.zer0.muse.ui.theme.MusePaddings
 import io.zer0.muse.ui.theme.MuseShapes
@@ -57,6 +56,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.encodeToString
+import org.koin.compose.koinInject
 import java.io.ByteArrayInputStream
 
 /**
@@ -441,8 +441,7 @@ internal object SanitizedHtmlCache {
     private const val MAX_CONTENT_LENGTH = 64_000
 
     private val entries = object : LinkedHashMap<String, String>(16, 0.75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, String>): Boolean =
-            size > MAX_ENTRIES
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, String>): Boolean = size > MAX_ENTRIES
     }
 
     /** 取清洗结果；同一份内容第二次进来直接命中原对象。 */
@@ -558,10 +557,7 @@ internal class RichContentWebViewClient : WebViewClient() {
  * 返回 null，卡片侧据此退回 800ms 轮询。
  */
 @Composable
-private fun rememberCardPushToken(
-    store: io.zer0.muse.data.card.CardDataStore?,
-    cardId: String?,
-): CardPushToken? {
+private fun rememberCardPushToken(store: io.zer0.muse.data.card.CardDataStore?, cardId: String?): CardPushToken? {
     if (store == null || cardId.isNullOrBlank()) return null
     val value by remember(store, cardId) {
         store.data.map { it[cardId] }.distinctUntilChanged()
@@ -639,7 +635,7 @@ private fun ChartCard(json: String) {
     // 图表实际需要多高它都只给 260dp 起、多出来的内容在 WebView 里被裁。
     // 现在与其他卡片一致：卡片侧定格脚本上报真实高度，这里只管接。
     var chartHeightPx by remember(html) { mutableStateOf(0) }
-    val heightSink = remember { CardHeightSink() }
+    val heightSink: CardHeightSink = remember { CardHeightSink() }
     androidx.compose.runtime.LaunchedEffect(heightSink) {
         heightSink.onHeightChanged = { px -> if (px > 0) chartHeightPx = px }
     }
@@ -652,7 +648,7 @@ private fun ChartCard(json: String) {
         javaScriptEnabled = true,
         webViewClient = RichContentWebViewClient(),
         onWebViewCreated = { webView ->
-            webView.addJavascriptInterface(heightSink, CardHeightSink.NAME)
+            heightSink.registerOn(webView)
         },
         // 高度跟随内容，图表也一眼看全，不做卡内滚动。
         scrollable = false,

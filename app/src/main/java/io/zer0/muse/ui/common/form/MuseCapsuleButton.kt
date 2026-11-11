@@ -88,8 +88,9 @@ fun MuseCapsuleButton(
     // 进行中不是禁用：仍然显示为可用的高饱和外观，只是不接受点击。
     // v1.0.92: 禁用态拆分背景/内容透明度 — 旧实现两者同乘低 alpha,
     // 浅色主题下按钮显示为一个纯灰块、文字几乎不可见(用户反馈:翻译按钮禁用态像黑块)。
-    val containerAlpha = if (clickable || loading) 1f else MuseActionColors.disabledAlpha
-    val contentAlpha = if (clickable || loading) 1f else 0.75f
+    val visuallyEnabled = clickable || loading
+    val containerAlpha = if (visuallyEnabled) 1f else MuseActionColors.disabledAlpha
+    val contentAlpha = if (visuallyEnabled) 1f else 0.75f
 
     val boxModifier = if (fillWidth) {
         modifier.fillMaxWidth()

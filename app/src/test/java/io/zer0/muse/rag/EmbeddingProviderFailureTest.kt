@@ -2,6 +2,7 @@ package io.zer0.muse.rag
 
 import io.zer0.ai.core.ProviderConfig
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -14,6 +15,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Before
 import org.junit.Test
+import java.io.IOException
 import java.util.concurrent.TimeUnit
 
 /**
@@ -77,7 +79,7 @@ class EmbeddingProviderFailureTest {
                 withTimeout(3_000L) { provider.embed(listOf("slow")) }
                 fail("超时必须失败")
             } catch (e: Exception) {
-                // 预期:OkHttp callTimeout 或协程超时
+                assertTrue("Expected network or coroutine timeout: $e", e is IOException || e is TimeoutCancellationException)
             }
         }
         assertTrue("必须快速失败而不是等到响应体完成: ${elapsed}ms", elapsed < 3_000L)

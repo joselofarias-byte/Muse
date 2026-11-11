@@ -450,6 +450,7 @@ private fun MuseNavGraph(
     onSplashReady: () -> Unit = {},
 ) {
     val context = LocalContext.current
+    val contextResources = androidx.compose.ui.platform.LocalResources.current
     val navController = rememberNavController()
     val sharedViewModel: ChatViewModel = koinInject()
     val quickNotesViewModel: QuickNotesViewModel = koinInject()
@@ -601,9 +602,9 @@ private fun MuseNavGraph(
                                 )
                                 val message = when (val outcome = importer.importUrl(result.url)) {
                                     is io.zer0.muse.data.skill.SkillPackageImporter.Outcome.Installed ->
-                                        context.getString(R.string.skill_imported, outcome.skill.name)
+                                        contextResources.getString(R.string.skill_imported, outcome.skill.name)
                                     is io.zer0.muse.data.skill.SkillPackageImporter.Outcome.Failed ->
-                                        context.getString(R.string.skill_import_error, outcome.reason)
+                                        contextResources.getString(R.string.skill_import_error, outcome.reason)
                                 }
                                 io.zer0.muse.ui.common.feedback.MuseToast.show(message)
                             }

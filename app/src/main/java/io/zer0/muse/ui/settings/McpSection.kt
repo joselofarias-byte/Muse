@@ -475,6 +475,7 @@ private fun McpServerAddDialog(onDismiss: () -> Unit, onAdd: suspend (McpServerC
     var addError by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val contextResources = androidx.compose.ui.platform.LocalResources.current
 
     // 高级字段(按 ProviderSection 的 showAdvanced 折叠模式)
     var showAdvanced by remember { mutableStateOf(false) }
@@ -512,7 +513,7 @@ private fun McpServerAddDialog(onDismiss: () -> Unit, onAdd: suspend (McpServerC
                 )
                 Box {
                     MuseCapsuleButton(
-                        text = (selectedTemplate.displayNameResId?.let { context.getString(it) } ?: selectedTemplate.displayName),
+                        text = (selectedTemplate.displayNameResId?.let { contextResources.getString(it) } ?: selectedTemplate.displayName),
                         onClick = { templateMenuExpanded = true },
                         variant = IosCapsuleButtonVariant.Text,
                         fillWidth = false,
@@ -588,7 +589,8 @@ private fun McpServerAddDialog(onDismiss: () -> Unit, onAdd: suspend (McpServerC
                         label = "URL",
                         value = url,
                         onValueChange = { url = it },
-                        placeholder = (selectedTemplate.urlPlaceholderResId?.let { context.getString(it) } ?: selectedTemplate.urlPlaceholder),
+                        placeholder = selectedTemplate.urlPlaceholderResId?.let { context.getString(it) }
+                            ?: selectedTemplate.urlPlaceholder,
                     )
                 }
                 Text(stringResource(R.string.settings_mcp_transport_type), style = MaterialTheme.typography.labelMedium)
@@ -743,13 +745,21 @@ private fun McpServerAddDialog(onDismiss: () -> Unit, onAdd: suspend (McpServerC
             if (transportType == McpTransportType.STDIO && command.isBlank()) {
                 addError = context.getString(R.string.settings_mcp_stdio_command_required)
             } else if (transportType != McpTransportType.STDIO && url.isBlank()) {
-                addError = context.getString(R.string.settings_mcp_failed, context.getString(R.string.audit_mcp_empty_url))
+                addError = contextResources.getString(
+                    R.string.settings_mcp_failed,
+                    contextResources.getString(R.string.audit_mcp_empty_url),
+                )
             } else if (feishuAutoRefresh && (feishuAppId.isBlank() || feishuAppSecret.isBlank())) {
-                addError = context.getString(R.string.settings_mcp_failed, context.getString(R.string.audit_mcp_feishu_credentials))
+                addError = contextResources.getString(
+                    R.string.settings_mcp_failed,
+                    contextResources.getString(R.string.audit_mcp_feishu_credentials),
+                )
             } else {
                 val config = McpServerConfig(
                     id = "mcp-" + System.currentTimeMillis(),
-                    name = name.ifBlank { (selectedTemplate.displayNameResId?.let { context.getString(it) } ?: selectedTemplate.displayName) },
+                    name = name.ifBlank {
+                        selectedTemplate.displayNameResId?.let { contextResources.getString(it) } ?: selectedTemplate.displayName
+                    },
                     transportType = transportType,
                     url = url.trim(),
                     command = command.trim(),
@@ -773,7 +783,7 @@ private fun McpServerAddDialog(onDismiss: () -> Unit, onAdd: suspend (McpServerC
                 scope.launch {
                     runCatching { onAdd(config) }
                         .onSuccess { onDismiss() }
-                        .onFailure { addError = context.getString(R.string.settings_mcp_failed, it.message) }
+                        .onFailure { addError = contextResources.getString(R.string.settings_mcp_failed, it.message) }
                 }
             }
         },
@@ -792,6 +802,7 @@ private fun McpServerAddDialog(onDismiss: () -> Unit, onAdd: suspend (McpServerC
 @Composable
 private fun ResourcesBrowserDialog(serverId: String, mcpRegistry: McpRegistry, onDismiss: () -> Unit) {
     val context = LocalContext.current
+    val contextResources = androidx.compose.ui.platform.LocalResources.current
     val scope = rememberCoroutineScope()
     var loading by remember { mutableStateOf(true) }
     var resources by remember { mutableStateOf<List<McpResource>>(emptyList()) }
@@ -807,7 +818,7 @@ private fun ResourcesBrowserDialog(serverId: String, mcpRegistry: McpRegistry, o
             all[serverId] ?: emptyList()
         }.onSuccess { resources = it }
             .onError { _, t ->
-                loadError = context.getString(R.string.settings_mcp_load_resources_failed, t?.message)
+                loadError = contextResources.getString(R.string.settings_mcp_load_resources_failed, t?.message)
             }
         loading = false
     }
@@ -866,7 +877,7 @@ private fun ResourcesBrowserDialog(serverId: String, mcpRegistry: McpRegistry, o
                                             val contents = runCatching {
                                                 mcpRegistry.readResource(serverId, res.uri)
                                             }.onFailure {
-                                                readError = context.getString(R.string.settings_mcp_read_failed, it.message)
+                                                readError = contextResources.getString(R.string.settings_mcp_read_failed, it.message)
                                             }.getOrDefault(emptyList())
                                             viewingContent = contents
                                         }
@@ -937,6 +948,7 @@ private fun ResourcesBrowserDialog(serverId: String, mcpRegistry: McpRegistry, o
 @Composable
 private fun PromptsBrowserDialog(serverId: String, mcpRegistry: McpRegistry, onDismiss: () -> Unit) {
     val context = LocalContext.current
+    val contextResources = androidx.compose.ui.platform.LocalResources.current
     val scope = rememberCoroutineScope()
     var loading by remember { mutableStateOf(true) }
     var prompts by remember { mutableStateOf<List<McpPrompt>>(emptyList()) }
@@ -955,7 +967,7 @@ private fun PromptsBrowserDialog(serverId: String, mcpRegistry: McpRegistry, onD
             all[serverId] ?: emptyList()
         }.onSuccess { prompts = it }
             .onError { _, t ->
-                loadError = context.getString(R.string.settings_mcp_load_prompts_failed, t?.message)
+                loadError = contextResources.getString(R.string.settings_mcp_load_prompts_failed, t?.message)
             }
         loading = false
     }
@@ -1098,7 +1110,7 @@ private fun PromptsBrowserDialog(serverId: String, mcpRegistry: McpRegistry, onD
                         val result = resultOf {
                             mcpRegistry.getPrompt(serverId, prompt.name, argValues.toMap())
                         }.onError { _, t ->
-                            promptError = context.getString(R.string.settings_mcp_get_failed, t?.message)
+                            promptError = contextResources.getString(R.string.settings_mcp_get_failed, t?.message)
                         }.getOrNull()
                         loadingResult = false
                         if (result != null) {

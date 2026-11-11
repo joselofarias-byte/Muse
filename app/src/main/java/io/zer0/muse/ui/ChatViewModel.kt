@@ -1797,7 +1797,7 @@ class ChatViewModel(
             configuration.setLocale(locale)
             appContext.createConfigurationContext(configuration)
         }
-        return context.getString(resourceId, *args)
+        return context.getString(resourceId).format(locale = context.resources.configuration.locales[0], args = args)
     }
 
     private val exportCoordinator =

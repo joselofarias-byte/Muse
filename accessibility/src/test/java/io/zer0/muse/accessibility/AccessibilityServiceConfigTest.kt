@@ -22,8 +22,10 @@ class AccessibilityServiceConfigTest {
 
     private fun configText(): String {
         val candidates = listOf(
-            File(relative), // 工作目录 = :accessibility 模块根
-            File("accessibility/$relative"), // 工作目录 = 仓库根
+            // 工作目录 = :accessibility 模块根
+            File(relative),
+            // 工作目录 = 仓库根
+            File("accessibility/$relative"),
             File("../accessibility/$relative"),
         )
         val file = candidates.firstOrNull { it.exists() }
