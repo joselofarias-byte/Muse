@@ -62,6 +62,7 @@ try {
       assert.equal(mod.translateSaas(key, undefined, [language]), value);
     }
   }
+  assert.equal(mod.translateSaas("API Key", undefined, ["es"]), "Clave API", "Terminología coherente para las claves API");
   assert.equal(mod.translateSaas("发送", undefined, []), "发送");
   assert.equal(mod.translateSaas("发送", undefined, ["en-US", "es-ES"]), "发送");
   assert.equal(mod.translateSaas("发送", undefined, ["fr-FR", "es-MX"]), "Enviar");
