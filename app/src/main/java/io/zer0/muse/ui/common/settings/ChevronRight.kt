@@ -6,15 +6,15 @@ import androidx.compose.runtime.Composable
 import io.zer0.muse.ui.common.icons.MuseIcons
 
 /**
- * flecha derecha — A la derecha del elemento de configuración ">" indicador.
+ * 右箭头 — 设置项右侧的 ">" 指示符。
  *
- * utilizado en [SettingsItemRow] La ubicación final,Indica que se puede hacer clic en esta fila para pasar al siguiente nivel.
+ * 用在 [SettingsItemRow] 的 trailing 位置,提示该行可点击进入下一级。
  */
 @Composable
 fun ChevronRight() {
     Icon(
         imageVector = MuseIcons.chevronRight,
         contentDescription = null,
-        tint = MaterialTheme.colorScheme.outline,
+        tint = MaterialTheme.colorScheme.onSurfaceVariant,
     )
 }

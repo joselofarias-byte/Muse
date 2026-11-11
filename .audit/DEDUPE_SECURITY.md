@@ -1,21 +1,21 @@
-# Enlace 2: Seguridad y Permisos — Línea base de deduplicación
+# 链路 2：安全与权限 — 去重基线
 
-## Solución confirmada/Decisión de diseño (no más presentación)
-- webhook Cerrado por defecto; Falta el token de verificación de Feishu: falla cerrada;QQ Falta la firma y no se cierra; El webhook de cifrado Feishu indica claramente que no es compatible (no es una vulnerabilidad, sino una limitación conocida).
-- TRUSTED modo diez ui_* La herramienta requiere aprobación; los volcados sin barreras filtran el texto del nodo de contraseña; las copias de seguridad cifradas en la nube no degradan silenciosamente el texto sin formato (las copias de seguridad de texto sin formato más antiguas se pueden importar si se conoce la compatibilidad).
-- OAuth Cada registro de proceso está desensibilizado (solo se registran el estado HTTP y los campos de error desensibilizados).
-- La verdadera fuente de riesgo en las herramientas de canal/lista blanca cerrada por error (P1 #17 ha sido revisado).
-- Se lanzó la zona de pruebas del complemento (fetch/XHR/WebSocket La conexión de red directa, el permiso completo de las acciones del puente y el formato de verificación del nombre de la capacidad) son decisiones del producto v2.5.8.——Dejar ir en sí mismo no es un descubrimiento; la navegación por la página sigue prohibida,file:// Las lecturas de content:// todavía están aisladas. dejar ir**En implementación**ultra vires/Simplemente evítelo.
-- manifest Una lista blanca explícita de campos de firma (los campos nuevos no participarán en las firmas de forma predeterminada) es una decisión de producto; pero la lista blanca**darse cuenta**Si se puede manipular, los resultados de la verificación de firma se calculan y descubren.
-- La exportación de diagnóstico no registra el cuerpo del mensaje ni la clave API,sessionId Desensibilización al hachís——Está bien verificar si la implementación cumple con los estándares, pero los registros faltantes no cuentan.
-- STRICT La penetración del modo ALWAYS_ALLOW es una compensación de diseño declarada (política de usuario explícita > modo sesión).
-- Token de transferencia de carpeta de pantalla virtual,render_data rechazo de grandes datos/truncar,Root Lista de paquetes/Truncamiento de detalles de falla, truncamiento de cadena de herramientas de proveedor desconocido 30——Todos han sido reparados.
+## 已确认修复/设计决策（不得再报）
+- webhook 默认关闭；飞书 Verification Token 缺失 fail-closed；QQ 签名缺失 fail-closed；飞书加密 webhook 明确返回不支持（不是漏洞，是已知限制）。
+- TRUSTED 模式下十个 ui_* 工具要求审批；无障碍转储过滤密码节点文本；加密云备份不静默降级明文（老版明文备份可导入属兼容性已知）。
+- OAuth 各流程日志脱敏（只记 HTTP 状态与脱敏 error 字段）。
+- 渠道工具风险真源/白名单 fail-closed（P1 #17 已修）。
+- 插件沙盒放开（fetch/XHR/WebSocket 网络直连、桥接动作全放行、能力名只校验格式）是 v2.5.8 产品决策——放开本身不算发现；页面导航仍禁、file:// 与 content:// 读取仍隔离。放开**实现里**的越权/绕过才算。
+- manifest 签名字段显式白名单（新增字段默认不参与签名）是产品决策；但白名单**实现**若可被操纵签名校验结果算发现。
+- 诊断导出不记录消息正文与 API key、sessionId 哈希脱敏——验证实现是否达标可以，缺日志不算。
+- STRICT 模式 ALWAYS_ALLOW 穿透是声明过的设计取舍（显式用户策略 > 会话模式）。
+- 虚拟屏 Binder handoff token、render_data 大数据拒绝/截断、Root 包列表/失败详情截断、未知 Provider 工具链 30 条截断——均已修。
 
-## La dirección de exploración clave de este enlace.
-1. **v2.5.8 Nueva superficie de ataque**:A2A HTTP punto final (/.well-known/agent-card.json,/a2a JSON-RPC)——Certificación/¿Autenticación?SendMessage ¿Se pueden desencadenar llamadas de modelo pagas (abuso de costos)?GetTask/CancelTask ¿Puedo sobrepasar mi autoridad y leer las tareas de otras personas? Puertos con modo host (servidor web integrado)/Relación vinculante.
-2. Tasker Entrada de retransmisiones: ¿Cualquier aplicación puede enviar retransmisiones?extra prompt longitud/¿Verificación de contenido? ¿Se puede utilizar para inyectar palabras de aviso para exceder la autoridad (induciendo al Agente a filtrar datos en notificaciones de resultados de tareas)?
-3. Plug-in Hook onPromptFinalize: ¿Qué hay en el objeto de evento? ¿Pueden los complementos maliciosos utilizar esto para robar información del usuario?/Memoria saliente (se ha liberado la red de complementos)——hook si convertirse"Canal de filtración legal")? Después de que se publiquen todas las acciones de puente, el complemento puede acceder a qué acciones de puente (leer el portapapeles/Notificación/¿Archivo? ).
-4. Después de que la verificación de la firma del mercado de complementos esté incluida en la lista blanca: ¿se ha introducido la lógica de compatibilidad de los paquetes existentes?"Se inyectan nuevos campos y se confía en ellos."de la boca.
-5. MCP stdio server configurar (node/npm/npx restricción) todavía se mantiene;mcp_mgmt_configure ¿Se puede abusar indirectamente de él mediante bucles de herramientas?
-6. Verifique el contenido del paquete de exportación de diagnóstico: ¿Qué archivos están realmente empaquetados? Confirmar sin texto/llave;sessionId Si el hachís está salado.
-7. update Enlace:UpdateNotifier/latest.json Analice la tolerancia a fallas para el último.json malicioso (el sitio web oficial ha sido manipulado).
+## 本链路重点探查方向
+1. **v2.5.8 新攻击面**：A2A HTTP 端点（/.well-known/agent-card.json、/a2a JSON-RPC）——认证/鉴权？SendMessage 是否可触发付费模型调用（成本滥用）？GetTask/CancelTask 能否越权读他人任务？与主机模式（嵌入式 Web 服务器）的端口/绑定关系。
+2. Tasker 广播入口：任何应用都可发广播吗？extra prompt 长度/内容校验？能否被用来注入提示词越权（诱导 Agent 泄漏数据到任务结果通知）？
+3. 插件 Hook onPromptFinalize：事件对象里有什么？恶意插件能否借此把用户消息/记忆外发（插件网络已放开——hook 是否成为"合法外泄通道"）？桥接动作全放行后，插件可触达哪些桥接动作（读剪贴板/通知/文件？）。
+4. 插件市场签名校验白名单化后：存量包兼容逻辑有没有引入"新字段注入且参与信任"的口子。
+5. MCP stdio server 配置（node/npm/npx 限制）是否仍成立；mcp_mgmt_configure 是否可被工具循环间接滥用。
+6. 诊断导出包内容核对：实际打包了哪些文件？确认无正文/密钥；sessionId 哈希是否用了盐。
+7. update 链路：UpdateNotifier/latest.json 解析对恶意 latest.json 的容错（官网被篡改场景）。

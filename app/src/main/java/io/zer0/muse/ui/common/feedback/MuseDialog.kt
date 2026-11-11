@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.widthIn
@@ -38,7 +39,6 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -46,23 +46,24 @@ import io.zer0.muse.R
 import io.zer0.muse.ui.common.surface.MuseDialogWindowEffect
 import io.zer0.muse.ui.common.surface.museModalScrim
 import io.zer0.muse.ui.theme.MuseActionColors
-import io.zer0.muse.ui.theme.MuseAnimation
 import io.zer0.muse.ui.theme.MuseDialogSizes
 import io.zer0.muse.ui.theme.MuseElevation
 import io.zer0.muse.ui.theme.MuseIconSizes
 import io.zer0.muse.ui.theme.MuseMotion
 import io.zer0.muse.ui.theme.MusePaddings
 import io.zer0.muse.ui.theme.MuseShapes
+import io.zer0.muse.ui.theme.MuseSpringTier
 import io.zer0.muse.ui.theme.huge
+import io.zer0.muse.ui.theme.labelLargeStrong
 
 internal const val MUSE_DIALOG_SCRIM_TAG = "muse-dialog-scrim"
 internal const val MUSE_DIALOG_CARD_TAG = "muse-dialog-card"
 
 /**
- * confirmación compacta/Ventana emergente de formato corto. La barra del sistema y el teclado pertenecen al shell y no están incluidos en la altura de la tarjeta.
+ * 紧凑确认/短表单弹窗。系统栏与键盘避让属于外壳，不计入卡片高度。
  *
- * Las tarjetas están ligeramente más bajas que el centro y las operaciones cortas están dispuestas una al lado de la otra; aumente el tamaño de la fuente y vuelva a la disposición vertical. Botón visual 40dp, área táctil al menos 48dp.
- * Para formularios largos o listas de exploración, vaya a MuseBottomSheet / MuseSelectionSheet.
+ * 卡片略低于中心，短操作并排；放大字号回退纵排。按钮视觉 40dp、触摸区域至少 48dp。
+ * 长表单或浏览列表走 MuseBottomSheet / MuseSelectionSheet。
  */
 @Composable
 fun MuseDialog(
@@ -95,12 +96,12 @@ fun MuseDialog(
                 ).testTag(MUSE_DIALOG_SCRIM_TAG),
         ) {
             BoxWithConstraints(
-                modifier = Modifier.fillMaxSize().statusBarsPadding().imePadding()
+                modifier = Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().imePadding()
                     .padding(horizontal = MuseDialogSizes.edgePadding),
                 contentAlignment = BiasAlignment(0f, 0.1f),
             ) {
-                // La altura del área de contenido se basa en el 78% de la altura visual y el límite superior fijo, el que sea menor: ventanas emergentes con muchos campos
-                // Darle solo la mitad de la pantalla hará que la mitad inferior de los campos sea completamente invisible (no solo se desplazará hasta el final).
+                // 内容区高度按可视高度的 78% 与固定上限取小：字段较多的弹窗
+                // 只给半屏会让下半部分字段完全不可见（不是滚动到底就完事）。
                 val contentHeight = minOf(MuseDialogSizes.contentMaxHeight, maxHeight * 0.78f)
                 Surface(
                     shape = MuseShapes.huge,
@@ -122,14 +123,14 @@ fun MuseDialog(
                         if (title != null) {
                             Text(
                                 text = title,
-                                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
+                                style = MaterialTheme.typography.titleLarge,
                                 color = MaterialTheme.colorScheme.onSurface,
                                 textAlign = TextAlign.Center,
                             )
                             Spacer(Modifier.height(MusePaddings.auxGap))
                         }
                         Box(
-                            // El título fijo y las operaciones se miden primero, el texto solo ocupa el espacio restante, evitando el teclado./Presione el botón para sacarlo de la tarjeta cuando la pantalla esté horizontal.
+                            // 固定标题和操作先测量，正文仅占剩余空间，避免键盘/横屏时把按钮挤出卡片。
                             modifier = Modifier.fillMaxWidth().weight(1f, fill = false)
                                 .heightIn(max = contentHeight).verticalScroll(rememberScrollState()),
                             contentAlignment = Alignment.Center,
@@ -176,7 +177,7 @@ fun MuseDialog(
     }
 }
 
-/** Las dimensiones visuales y táctiles de la cápsula están separadas y el texto largo se puede aumentar en altura sin abreviar ni recortar. */
+/** 胶囊视觉与触摸尺寸分离，长文字可以增高，不做缩字或裁切。 */
 @Composable
 private fun MuseDialogButton(
     text: String,
@@ -190,7 +191,7 @@ private fun MuseDialogButton(
     val isPressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.97f else 1f,
-        animationSpec = MuseMotion.tween(MuseAnimation.FAST_MS),
+        animationSpec = MuseMotion.spring(MuseSpringTier.RESPONSIVE),
         label = "dialogBtnScale",
     )
     Box(
@@ -214,7 +215,7 @@ private fun MuseDialogButton(
         ) {
             Text(
                 text = text,
-                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
+                style = MaterialTheme.typography.labelLargeStrong,
                 color = contentColor,
                 textAlign = TextAlign.Center,
             )
@@ -222,7 +223,7 @@ private fun MuseDialogButton(
     }
 }
 
-/** Sólo el título, mensaje y una ventana emergente para confirmar la acción. */
+/** 仅标题、消息和一个确认操作的提示弹窗。 */
 @Composable
 fun MuseAlertDialog(
     onDismissRequest: () -> Unit,

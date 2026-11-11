@@ -1,37 +1,37 @@
 /**
- * Muse Complemento: Caja de herramientas de conversión de unidades
+ * Muse 插件：单位换算工具箱
  *
- * Ejecute el contrato (alojado por WebViewSkillEngine):
- *  - Cada función de utilidad recibe un objeto de parámetro, como function unitConvert(args),args.value / args.from / args.to;
- *  - El valor de retorno es un objeto normal y el host lo serializará JSON automáticamente y se lo entregará al modelo;
- *  - Devolución en caso de error { error: "Razón" }, el anfitrión marcará dichos resultados como fracasos.
+ * 运行契约（宿主 WebViewSkillEngine）：
+ *  - 每个工具函数接收一个参数对象，如 function unitConvert(args)，args.value / args.from / args.to；
+ *  - 返回值是普通对象，宿主会自动 JSON 序列化后交给模型；
+ *  - 出错时返回 { error: "原因" }，宿主会把这类结果标记为失败。
  *
- * Computación local pura: sin acceso a Internet, sin lectura ni escritura de archivos. Convertir todo a "unidades" → Unidad base de categoría → unidad objetivo",
- * La temperatura es una transformación afín (°C/°F/K), por lo que se procesa por separado sin factores de escala.
+ * 纯本地计算：不联网、不读写文件。换算全部走「单位 → 类别基准单位 → 目标单位」，
+ * 温度是仿射变换（°C/°F/K），因此单独处理，不走比例因子。
  */
 
-/** El resultado conserva 12 dígitos significativos y elimina el ruido de punto flotante (como la Sección 1 → 1.8519999999999999 km/h). */
+/** 结果保留 12 位有效数字，抹掉浮点噪声（如 1 节 → 1.8519999999999999 km/h）。 */
 var UNIT_SIGNIFICANT_DIGITS = 12;
 
-/** Símbolos de visualización de unidades: las unidades que no figuran en la lista utilizan directamente sus claves de especificación. */
+/** 单位显示符号：未列出的单位直接用其规范键。 */
 var UNIT_SYMBOLS = {
     m2: "m²", km2: "km²", cm2: "cm²", mm2: "mm²", mi2: "mi²", yd2: "yd²", ft2: "ft²", in2: "in²",
     m3: "m³", cm3: "cm³",
     c: "°C", f: "°F", k: "K",
     l: "L", ml: "mL",
     um: "µm", us: "µs",
-    jin: "malicioso", liang: "dos", qian: "dinero", li: "adentro", chi: "gobernante", cun: "pulgada", mu: "acres",
+    jin: "斤", liang: "两", qian: "钱", li: "里", chi: "尺", cun: "寸", mu: "亩",
     nmi: "nmi"
 };
 
 /**
- * Tabla de categorías.units El factor numérico de es "1 unidad = factor unidad base":
- *  - length punto de referencia m,mass punto de referencia g,area punto de referencia m²,volume punto de referencia L,speed Línea base m/s,
- *    data Punto de referencia B (avanzado en 1024),time puntos de referencia,temperature es una transformación afín (ver unitToBase/unitFromBase).
+ * 类别表。units 的数值因子是「1 个该单位 = factor 个基准单位」：
+ *  - length 基准 m，mass 基准 g，area 基准 m²，volume 基准 L，speed 基准 m/s，
+ *    data 基准 B（按 1024 进），time 基准 s，temperature 为仿射变换（见 unitToBase/unitFromBase）。
  */
 var UNIT_CATEGORIES = {
     length: {
-        label: "longitud",
+        label: "长度",
         base: "m",
         units: {
             m: 1, km: 1000, dm: 0.1, cm: 0.01, mm: 0.001, um: 0.000001, nm: 0.000000001,
@@ -39,52 +39,52 @@ var UNIT_CATEGORIES = {
             li: 500, chi: 1 / 3, cun: 1 / 30
         },
         aliases: {
-            "metros": "m", meter: "m", metre: "m", meters: "m", metres: "m",
-            "kilómetros": "km", "kilómetros": "km", kilometer: "km", kilometre: "km", kilometers: "km",
-            "decímetro": "dm", decimeter: "dm", decimetre: "dm",
-            "centímetros": "cm", "centímetros": "cm", centimeter: "cm", centimetre: "cm", centimeters: "cm",
-            "milímetros": "mm", millimeter: "mm", millimetre: "mm", millimeters: "mm",
-            "micra": "um", micrometer: "um", micrometre: "um",
-            "nano": "nm", nanometer: "nm", nanometre: "nm",
-            "millas": "mi", mile: "mi", miles: "mi",
-            "código": "yd", yard: "yd", yards: "yd",
-            "pies": "ft", foot: "ft", feet: "ft",
-            "pulgadas": "in", inch: "in", inches: "in",
-            "milla náutica": "nmi", nauticalmile: "nmi", nauticalmiles: "nmi",
-            "adentro": "li", "ciudad": "li",
-            "gobernante": "chi", "gobernante de la ciudad": "chi",
-            "pulgada": "cun", "tamaño del mercado": "cun"
+            "米": "m", meter: "m", metre: "m", meters: "m", metres: "m",
+            "千米": "km", "公里": "km", kilometer: "km", kilometre: "km", kilometers: "km",
+            "分米": "dm", decimeter: "dm", decimetre: "dm",
+            "厘米": "cm", "公分": "cm", centimeter: "cm", centimetre: "cm", centimeters: "cm",
+            "毫米": "mm", millimeter: "mm", millimetre: "mm", millimeters: "mm",
+            "微米": "um", micrometer: "um", micrometre: "um",
+            "纳米": "nm", nanometer: "nm", nanometre: "nm",
+            "英里": "mi", mile: "mi", miles: "mi",
+            "码": "yd", yard: "yd", yards: "yd",
+            "英尺": "ft", foot: "ft", feet: "ft",
+            "英寸": "in", inch: "in", inches: "in",
+            "海里": "nmi", "浬": "nmi", nauticalmile: "nmi", nauticalmiles: "nmi",
+            "里": "li", "市里": "li",
+            "尺": "chi", "市尺": "chi",
+            "寸": "cun", "市寸": "cun"
         }
     },
     mass: {
-        label: "calidad",
+        label: "质量",
         base: "g",
         units: { g: 1, mg: 0.001, ug: 0.000001, kg: 1000, t: 1000000, lb: 453.59237, oz: 28.349523125, jin: 500, liang: 50, qian: 5 },
         aliases: {
-            "gramos": "g", gram: "g", grams: "g",
-            "miligramos": "mg", milligram: "mg", milligrams: "mg",
-            "microgramo": "ug", microgram: "ug", micrograms: "ug",
-            "kilogramo": "kg", "kilogramo": "kg", kilogram: "kg", kilograms: "kg", kilogramme: "kg",
-            "toneladas": "t", "toneladas métricas": "t", ton: "t", tons: "t", tonne: "t", tonnes: "t",
-            "libras": "lb", pound: "lb", pounds: "lb", lbs: "lb",
-            "onzas": "oz", ounce: "oz", ounces: "oz",
-            "malicioso": "jin", "Shijin": "jin",
-            "dos": "liang", "ciudad dos": "liang",
-            "dinero": "qian", "dinero de mercado": "qian"
+            "克": "g", gram: "g", grams: "g",
+            "毫克": "mg", milligram: "mg", milligrams: "mg",
+            "微克": "ug", microgram: "ug", micrograms: "ug",
+            "千克": "kg", "公斤": "kg", kilogram: "kg", kilograms: "kg", kilogramme: "kg",
+            "吨": "t", "公吨": "t", ton: "t", tons: "t", tonne: "t", tonnes: "t",
+            "磅": "lb", pound: "lb", pounds: "lb", lbs: "lb",
+            "盎司": "oz", ounce: "oz", ounces: "oz",
+            "斤": "jin", "市斤": "jin",
+            "两": "liang", "市两": "liang",
+            "钱": "qian", "市钱": "qian"
         }
     },
     temperature: {
-        label: "temperatura",
+        label: "温度",
         base: "c",
         units: { c: 1, f: 1, k: 1 },
         aliases: {
-            "Celsius": "c", "grados centígrados": "c", celsius: "c", centigrade: "c",
-            "Fahrenheit": "f", "Fahrenheit": "f", fahrenheit: "f",
-            "abierto": "k", "kélvin": "k", "temperatura absoluta": "k", kelvin: "k"
+            "摄氏": "c", "摄氏度": "c", celsius: "c", centigrade: "c",
+            "华氏": "f", "华氏度": "f", fahrenheit: "f",
+            "开": "k", "开尔文": "k", "绝对温度": "k", kelvin: "k"
         }
     },
     area: {
-        label: "área",
+        label: "面积",
         base: "m2",
         units: {
             m2: 1, km2: 1000000, cm2: 0.0001, mm2: 0.000001,
@@ -92,21 +92,21 @@ var UNIT_CATEGORIES = {
             mi2: 2589988.110336, yd2: 0.83612736, ft2: 0.09290304, in2: 0.00064516
         },
         aliases: {
-            "metros cuadrados": "m2", "metros cuadrados": "m2", squaremeter: "m2", sqm: "m2",
-            "kilómetros cuadrados": "km2", "kilómetros cuadrados": "km2", squarekilometer: "km2",
-            "centímetros cuadrados": "cm2", squarecentimeter: "cm2",
-            "Milímetros cuadrados": "mm2", squaremillimeter: "mm2",
-            "hectárea": "ha", hectare: "ha", hectares: "ha",
-            "acres": "mu", "acres de la ciudad": "mu",
-            "acres": "acre", acre: "acre", acres: "acre",
-            "millas cuadradas": "mi2", squaremile: "mi2",
-            "yardas cuadradas": "yd2", squareyard: "yd2",
-            "pies cuadrados": "ft2", squarefoot: "ft2", sqft: "ft2",
-            "pulgadas cuadradas": "in2", squareinch: "in2", sqin: "in2"
+            "平方米": "m2", "平米": "m2", squaremeter: "m2", sqm: "m2",
+            "平方公里": "km2", "平方千米": "km2", squarekilometer: "km2",
+            "平方厘米": "cm2", squarecentimeter: "cm2",
+            "平方毫米": "mm2", squaremillimeter: "mm2",
+            "公顷": "ha", hectare: "ha", hectares: "ha",
+            "亩": "mu", "市亩": "mu",
+            "英亩": "acre", acre: "acre", acres: "acre",
+            "平方英里": "mi2", squaremile: "mi2",
+            "平方码": "yd2", squareyard: "yd2",
+            "平方英尺": "ft2", squarefoot: "ft2", sqft: "ft2",
+            "平方英寸": "in2", squareinch: "in2", sqin: "in2"
         }
     },
     volume: {
-        label: "Volumen",
+        label: "体积",
         base: "l",
         units: {
             l: 1, ml: 0.001, m3: 1000, cm3: 0.001,
@@ -115,93 +115,93 @@ var UNIT_CATEGORIES = {
             floz: 0.0295735295625, tbsp: 0.01478676478125, tsp: 0.00492892159375
         },
         aliases: {
-            "yo": "l", liter: "l", litre: "l", liters: "l", litres: "l",
-            "ml": "ml", milliliter: "ml", millilitre: "ml",
-            "metros cúbicos": "m3", cubicmeter: "m3", cubicmetre: "m3",
-            "centímetros cúbicos": "cm3", cubiccentimeter: "cm3", cc: "cm3",
-            "galón": "gal", "galón estadounidense": "gal", gallon: "gal", gallons: "gal", usgallon: "gal",
-            "galón imperial": "ukgal", imperialgallon: "ukgal",
-            "cuarto": "qt", quart: "qt", quarts: "qt",
-            "pinta": "pt", pint: "pt", pints: "pt",
-            "taza": "cup", cup: "cup", cups: "cup",
-            "onzas líquidas": "floz", fluidounce: "floz", floz: "floz",
-            "cuchara": "tbsp", tablespoon: "tbsp",
-            "cucharadita": "tsp", teaspoon: "tsp"
+            "升": "l", liter: "l", litre: "l", liters: "l", litres: "l",
+            "毫升": "ml", milliliter: "ml", millilitre: "ml",
+            "立方米": "m3", cubicmeter: "m3", cubicmetre: "m3",
+            "立方厘米": "cm3", cubiccentimeter: "cm3", cc: "cm3",
+            "加仑": "gal", "美制加仑": "gal", gallon: "gal", gallons: "gal", usgallon: "gal",
+            "英制加仑": "ukgal", imperialgallon: "ukgal",
+            "夸脱": "qt", quart: "qt", quarts: "qt",
+            "品脱": "pt", pint: "pt", pints: "pt",
+            "杯": "cup", cup: "cup", cups: "cup",
+            "液盎司": "floz", fluidounce: "floz", floz: "floz",
+            "汤匙": "tbsp", tablespoon: "tbsp",
+            "茶匙": "tsp", teaspoon: "tsp"
         }
     },
     speed: {
-        label: "velocidad",
+        label: "速度",
         base: "mps",
         units: { mps: 1, kmh: 1 / 3.6, mph: 0.44704, knot: 1852 / 3600, fps: 0.3048 },
         aliases: {
-            "metros por segundo": "mps", "metros/segundos": "mps", "m/s": "mps", meterpersecond: "mps", mps: "mps",
-            "kilómetros por hora": "kmh", "kilómetros por hora": "kmh", "kilómetros/tiempo": "kmh", "kilómetros/horas": "kmh", "km/h": "kmh", "kph": "kmh",
+            "米每秒": "mps", "米/秒": "mps", "m/s": "mps", meterpersecond: "mps", mps: "mps",
+            "千米每小时": "kmh", "公里每小时": "kmh", "千米/时": "kmh", "千米/小时": "kmh", "km/h": "kmh", "kph": "kmh",
             kilometerperhour: "kmh", kmh: "kmh",
-            "millas por hora": "mph", "millas/tiempo": "mph", "millas/horas": "mph", "mi/h": "mph", milesperhour: "mph", mph: "mph",
-            "fiesta": "knot", "fiesta": "knot", knot: "knot", knots: "knot", kn: "knot",
-            "pies por segundo": "fps", "ft/s": "fps", footpersecond: "fps", fps: "fps"
+            "英里每小时": "mph", "英里/时": "mph", "英里/小时": "mph", "mi/h": "mph", milesperhour: "mph", mph: "mph",
+            "节": "knot", "節": "knot", knot: "knot", knots: "knot", kn: "knot",
+            "英尺每秒": "fps", "ft/s": "fps", footpersecond: "fps", fps: "fps"
         }
     },
     data: {
-        label: "Volumen de datos",
+        label: "数据量",
         base: "b",
         units: {
             b: 1, kb: 1024, mb: 1048576, gb: 1073741824, tb: 1099511627776, pb: 1125899906842624,
             bit: 0.125, kbit: 128, mbit: 131072, gbit: 134217728
         },
         aliases: {
-            "bytes": "b", byte: "b", bytes: "b",
-            "Kilobytes": "kb", kilobyte: "kb", kilobytes: "kb",
-            "megabytes": "mb", megabyte: "mb", megabytes: "mb",
-            "gigabytes": "gb", "gigabytes": "gb", gigabyte: "gb", gigabytes: "gb",
-            "terabytes": "tb", terabyte: "tb", terabytes: "tb",
-            "Petabytes": "pb", petabyte: "pb", petabytes: "pb",
+            "字节": "b", byte: "b", bytes: "b",
+            "千字节": "kb", kilobyte: "kb", kilobytes: "kb",
+            "兆字节": "mb", megabyte: "mb", megabytes: "mb",
+            "吉字节": "gb", "千兆字节": "gb", gigabyte: "gb", gigabytes: "gb",
+            "太字节": "tb", terabyte: "tb", terabytes: "tb",
+            "拍字节": "pb", petabyte: "pb", petabytes: "pb",
             kib: "kb", kibibyte: "kb", mib: "mb", mebibyte: "mb",
             gib: "gb", gibibyte: "gb", tib: "tb", tebibyte: "tb", pib: "pb", pebibyte: "pb",
-            "bits": "bit", "poco": "bit", bit: "bit", bits: "bit",
-            "Kilobits": "kbit", kbit: "kbit", "megabits": "mbit", mbit: "mbit",
-            "gigabits": "gbit", gbit: "gbit"
+            "比特": "bit", "位": "bit", bit: "bit", bits: "bit",
+            "千比特": "kbit", kbit: "kbit", "兆比特": "mbit", mbit: "mbit",
+            "吉比特": "gbit", gbit: "gbit"
         }
     },
     time: {
-        label: "tiempo",
+        label: "时间",
         base: "s",
         units: { s: 1, ms: 0.001, us: 0.000001, ns: 0.000000001, min: 60, h: 3600, day: 86400, week: 604800 },
         aliases: {
-            "segundos": "s", second: "s", seconds: "s", sec: "s",
-            "milisegundos": "ms", millisecond: "ms", milliseconds: "ms",
-            "microsegundos": "us", microsecond: "us", microseconds: "us",
-            "nanosegundo": "ns", nanosecond: "ns", nanoseconds: "ns",
-            "minutos": "min", minute: "min", minutes: "min",
-            "horas": "h", "tiempo": "h", hour: "h", hours: "h", hr: "h",
-            "dia": "day", "dia": "day", day: "day", days: "day",
-            "semana": "week", "semana": "week", week: "week", weeks: "week", wk: "week"
+            "秒": "s", second: "s", seconds: "s", sec: "s",
+            "毫秒": "ms", millisecond: "ms", milliseconds: "ms",
+            "微秒": "us", microsecond: "us", microseconds: "us",
+            "纳秒": "ns", nanosecond: "ns", nanoseconds: "ns",
+            "分钟": "min", minute: "min", minutes: "min",
+            "小时": "h", "时": "h", hour: "h", hours: "h", hr: "h",
+            "天": "day", "日": "day", day: "day", days: "day",
+            "周": "week", "星期": "week", week: "week", weeks: "week", wk: "week"
         }
     }
 };
 
-/** Los alias de categoría (incluido el chino) y las claves también se escriben en forma normalizada. */
+/** 类别别名（含中文），键同样是归一化后的写法。 */
 var UNIT_CATEGORY_ALIASES = {
-    length: "length", "longitud": "length", "distancia": "length", distance: "length",
-    mass: "mass", "calidad": "mass", "peso": "mass", weight: "mass",
-    temperature: "temperature", "temperatura": "temperature", temp: "temperature",
-    area: "area", "área": "area",
-    volume: "volume", "Volumen": "volume", "Volumen": "volume", "Capacidad": "volume", capacity: "volume",
-    speed: "speed", "velocidad": "speed", velocity: "speed",
-    data: "data", "datos": "data", "Volumen de datos": "data", "almacenamiento": "data", datasize: "data", storage: "data",
-    time: "time", "tiempo": "time", duration: "time"
+    length: "length", "长度": "length", "距离": "length", distance: "length",
+    mass: "mass", "质量": "mass", "重量": "mass", weight: "mass",
+    temperature: "temperature", "温度": "temperature", temp: "temperature",
+    area: "area", "面积": "area",
+    volume: "volume", "体积": "volume", "容积": "volume", "容量": "volume", capacity: "volume",
+    speed: "speed", "速度": "speed", velocity: "speed",
+    data: "data", "数据": "data", "数据量": "data", "存储": "data", datasize: "data", storage: "data",
+    time: "time", "时间": "time", duration: "time"
 };
 
-/* ────────────────────────────── herramientas generales ────────────────────────────── */
+/* ────────────────────────────── 通用工具 ────────────────────────────── */
 
-/** unidad/Unifique los nombres de las categorías: minúsculas, elimine espacios y subrayados, convierta el ancho completo a medio ancho, superíndice y㎡/㎥ Expandir. */
+/** 单位/类别名归一：小写、去空格与下划线、全角转半角、上标与㎡/㎥ 展开。 */
 function unitNormalizeKey(raw) {
     var text = String(raw).trim().toLowerCase();
     var out = "";
     for (var i = 0; i < text.length; i++) {
         var ch = text.charAt(i);
         if (ch === " " || ch === "_" || ch === "\t") continue;
-        if (ch >= "0" && ch <= "9") out += String.fromCharCode(ch.charCodeAt(0) - 0xfee0);
+        if (ch >= "０" && ch <= "９") out += String.fromCharCode(ch.charCodeAt(0) - 0xfee0);
         else if (ch === "²") out += "2";
         else if (ch === "³") out += "3";
         else if (ch === "㎡") out += "m2";
@@ -222,7 +222,7 @@ function unitSymbol(categoryKey, unit) {
     return unit;
 }
 
-/** El nombre chino de la unidad (tome el primer alias chino en la tabla de alias), utilizado para avisos de error y visualización amigable. */
+/** 单位的中文名（取别名表里第一个中文别名），用于错误提示与友好显示。 */
 function unitChineseName(categoryKey, unit) {
     var aliases = UNIT_CATEGORIES[categoryKey].aliases;
     for (var alias in aliases) {
@@ -232,7 +232,7 @@ function unitChineseName(categoryKey, unit) {
     return "";
 }
 
-/** \"unidad\" legible por humanos(nombre chino)”, devuelta como mensaje cuando se desconoce la unidad. */
+/** 人类可读的「单位(中文名)」列表，未知单位时作为提示返回。 */
 function unitListOf(categoryKey) {
     var category = UNIT_CATEGORIES[categoryKey];
     var items = [];
@@ -244,7 +244,7 @@ function unitListOf(categoryKey) {
     return items;
 }
 
-/** Encuentra unidades en todas las categorías y devuelve todos los resultados { category, unit }. */
+/** 跨类别查找单位，返回所有命中的 { category, unit }。 */
 function unitFindMatches(rawUnit) {
     var key = unitNormalizeKey(rawUnit);
     var matches = [];
@@ -277,29 +277,29 @@ function unitAllCategoryNames() {
 
 function unitParseNumber(raw, label) {
     if (typeof raw === "number") {
-        if (isNaN(raw) || !isFinite(raw)) return { error: label + " debe ser un numero finito" };
+        if (isNaN(raw) || !isFinite(raw)) return { error: label + " 必须是有限数字" };
         return { value: raw };
     }
     if (typeof raw === "string") {
         var text = raw.trim();
-        if (text.length === 0) return { error: label + " no puede estar vacío" };
+        if (text.length === 0) return { error: label + " 不能为空" };
         if (!/^[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?$/.test(text)) {
-            return { error: label + " No es un número legal: " + raw };
+            return { error: label + " 不是合法数字: " + raw };
         }
         var parsed = parseFloat(text);
-        if (isNaN(parsed) || !isFinite(parsed)) return { error: label + " Más allá del rango analizable" };
+        if (isNaN(parsed) || !isFinite(parsed)) return { error: label + " 超出可解析范围" };
         return { value: parsed };
     }
-    return { error: label + " debe ser un numero" };
+    return { error: label + " 必须是数字" };
 }
 
-/** Ruido suave de punto flotante: conserva 12 dígitos significativos. */
+/** 抹掉浮点噪声：保留 12 位有效数字。 */
 function unitRound(value) {
     if (value === 0) return 0;
     return parseFloat(value.toPrecision(UNIT_SIGNIFICANT_DIGITS));
 }
 
-/** Cadena numérica compacta (para campos formateados). */
+/** 紧凑数字字符串（用于 formatted 字段）。 */
 function unitFormatNumber(value) {
     if (value === 0) return "0";
     var abs = Math.abs(value);
@@ -308,23 +308,23 @@ function unitFormatNumber(value) {
     return String(parseFloat(text));
 }
 
-/* ────────────────────────────── Temperatura (afín) ────────────────────────────── */
+/* ────────────────────────────── 温度（仿射） ────────────────────────────── */
 
-/** Cualquier unidad de temperatura → grados centígrados. */
+/** 任意温度单位 → 摄氏度。 */
 function unitTemperatureToCelsius(unit, value) {
     if (unit === "c") return value;
     if (unit === "f") return (value - 32) * 5 / 9;
     return value - 273.15;
 }
 
-/** grados centígrados → Cualquier unidad de temperatura. */
+/** 摄氏度 → 任意温度单位。 */
 function unitTemperatureFromCelsius(unit, celsius) {
     if (unit === "c") return celsius;
     if (unit === "f") return celsius * 9 / 5 + 32;
     return celsius + 273.15;
 }
 
-/* ────────────────────────────── Conversión ────────────────────────────── */
+/* ────────────────────────────── 换算 ────────────────────────────── */
 
 function unitToBase(categoryKey, unit, value) {
     if (categoryKey === "temperature") return unitTemperatureToCelsius(unit, value);
@@ -337,16 +337,16 @@ function unitFromBase(categoryKey, unit, value) {
 }
 
 function unitConvert(args) {
-    if (!args || typeof args !== "object") return { error: "El parámetro debe ser un objeto." };
+    if (!args || typeof args !== "object") return { error: "参数必须是对象" };
     var parsedValue = unitParseNumber(args.value, "value");
     if (parsedValue.error) return { error: parsedValue.error };
-    if (typeof args.from !== "string" || args.from.trim().length === 0) return { error: "from Debe ser una cadena unitaria, como por ejemplo“m”o“kilómetros”" };
-    if (typeof args.to !== "string" || args.to.trim().length === 0) return { error: "to Debe ser una cadena unitaria, como por ejemplo“km”" };
+    if (typeof args.from !== "string" || args.from.trim().length === 0) return { error: "from 必须是单位字符串，如“m”或“千米”" };
+    if (typeof args.to !== "string" || args.to.trim().length === 0) return { error: "to 必须是单位字符串，如“km”" };
 
     var explicitCategory = unitResolveCategoryKey(args.category);
     if (explicitCategory === undefined) {
         return {
-            error: "Categoría desconocida: " + args.category + ". Categorías disponibles: " + unitAllCategoryNames().join(","),
+            error: "未知类别: " + args.category + "。可用类别: " + unitAllCategoryNames().join("、"),
             availableCategories: unitAllCategoryNames()
         };
     }
@@ -357,7 +357,7 @@ function unitConvert(args) {
         var fromMatches = unitFindMatches(args.from).filter(function (item) { return item.category === explicitCategory; });
         if (fromMatches.length === 0) {
             return {
-                error: "categoría " + explicitCategory + " No hay unidades en '" + args.from + "'. Unidades disponibles: " + unitListOf(explicitCategory).join(","),
+                error: "类别 " + explicitCategory + " 中没有单位 '" + args.from + "'。可用单位: " + unitListOf(explicitCategory).join("、"),
                 availableUnits: unitListOf(explicitCategory)
             };
         }
@@ -365,7 +365,7 @@ function unitConvert(args) {
         var toMatches = unitFindMatches(args.to).filter(function (item) { return item.category === explicitCategory; });
         if (toMatches.length === 0) {
             return {
-                error: "categoría " + explicitCategory + " No hay unidades en '" + args.to + "'. Unidades disponibles: " + unitListOf(explicitCategory).join(","),
+                error: "类别 " + explicitCategory + " 中没有单位 '" + args.to + "'。可用单位: " + unitListOf(explicitCategory).join("、"),
                 availableUnits: unitListOf(explicitCategory)
             };
         }
@@ -374,31 +374,31 @@ function unitConvert(args) {
         var fromAll = unitFindMatches(args.from);
         if (fromAll.length === 0) {
             return {
-                error: "unidad desconocida: " + args.from + ". Ejemplos de unidades conocidas: " + unitListOf("length").join(",") + " etc. También puede utilizar categoría para especificar la categoría.",
+                error: "未知单位: " + args.from + "。已知单位示例: " + unitListOf("length").join("、") + " 等；也可用 category 指定类别。",
                 availableUnits: unitListOf("length"),
                 availableCategories: unitAllCategoryNames()
             };
         }
         if (fromAll.length > 1) {
-            return { error: "unidad '" + args.from + "' Aparece en varias categorías; utilice categoría para especificar la categoría (" + unitAllCategoryNames().join(",") + ")" };
+            return { error: "单位 '" + args.from + "' 在多个类别中出现，请用 category 指定类别（" + unitAllCategoryNames().join("、") + "）" };
         }
         fromMatch = fromAll[0];
         var toAll = unitFindMatches(args.to);
         if (toAll.length === 0) {
             return {
-                error: "unidad desconocida: " + args.to + "." + fromMatch.category + " Unidades disponibles: " + unitListOf(fromMatch.category).join(","),
+                error: "未知单位: " + args.to + "。" + fromMatch.category + " 可用单位: " + unitListOf(fromMatch.category).join("、"),
                 availableUnits: unitListOf(fromMatch.category)
             };
         }
         if (toAll.length > 1) {
-            return { error: "unidad '" + args.to + "' Aparece en varias categorías; utilice categoría para especificar la categoría (" + unitAllCategoryNames().join(",") + ")" };
+            return { error: "单位 '" + args.to + "' 在多个类别中出现，请用 category 指定类别（" + unitAllCategoryNames().join("、") + "）" };
         }
         toMatch = toAll[0];
         if (toMatch.category !== fromMatch.category) {
             return {
-                error: "from No en la misma categoría que: " + args.from + " pertenecer a " + fromMatch.category +
-                    "(" + UNIT_CATEGORIES[fromMatch.category].label + ")," + args.to + " pertenecer a " + toMatch.category +
-                    "(" + UNIT_CATEGORIES[toMatch.category].label + ")",
+                error: "from 与 to 不在同一类别: " + args.from + " 属于 " + fromMatch.category +
+                    "（" + UNIT_CATEGORIES[fromMatch.category].label + "），" + args.to + " 属于 " + toMatch.category +
+                    "（" + UNIT_CATEGORIES[toMatch.category].label + "）",
                 availableUnits: unitListOf(fromMatch.category)
             };
         }
@@ -407,17 +407,17 @@ function unitConvert(args) {
     var categoryKey = fromMatch.category;
     var baseValue = unitToBase(categoryKey, fromMatch.unit, parsedValue.value);
     if (categoryKey === "temperature" && baseValue < -273.15) {
-        return { error: "Temperatura bajo el cero absoluto (-273.15 °C), por favor verifique la entrada" };
+        return { error: "温度低于绝对零度（-273.15 °C），请检查输入" };
     }
     var resultValue = unitRound(unitFromBase(categoryKey, toMatch.unit, baseValue));
 
     var note = categoryKey === "temperature"
-        ? "La temperatura es una transformación afín (°C/°F/K), calibrado al cero absoluto."
+        ? "温度是仿射变换（°C/°F/K），已按绝对零度校正。"
         : "";
-    if (categoryKey === "data") note = "La cantidad de datos se ingresa en 1024 (1 KB = 1024 B), consistente con la herramienta data_size.";
-    if (categoryKey === "length" && (fromMatch.unit === "in" || toMatch.unit === "in")) note = "in en pulgadas (inch).";
-    if (categoryKey === "volume" && (fromMatch.unit === "gal" || toMatch.unit === "gal")) note = "gal a galones estadounidenses (3.785411784 L), utilice ukgal para el sistema imperial.";
-    if (categoryKey === "area" && (fromMatch.unit === "mu" || toMatch.unit === "mu")) note = "Mu es la ciudad mu (1 acres = 666.6667 m²).";
+    if (categoryKey === "data") note = "数据量按 1024 进（1 KB = 1024 B），与 data_size 工具一致。";
+    if (categoryKey === "length" && (fromMatch.unit === "in" || toMatch.unit === "in")) note = "in 为英寸（inch）。";
+    if (categoryKey === "volume" && (fromMatch.unit === "gal" || toMatch.unit === "gal")) note = "gal 为美制加仑（3.785411784 L），英制请用 ukgal。";
+    if (categoryKey === "area" && (fromMatch.unit === "mu" || toMatch.unit === "mu")) note = "亩为市亩（1 亩 = 666.6667 m²）。";
 
     return {
         result: resultValue,
@@ -430,7 +430,7 @@ function unitConvert(args) {
     };
 }
 
-/* ────────────────────────────── Formato de volumen de datos ────────────────────────────── */
+/* ────────────────────────────── 数据量格式化 ────────────────────────────── */
 
 var DATA_UNITS = ["B", "KB", "MB", "GB", "TB", "PB"];
 var DATA_BASE = 1024;
@@ -448,15 +448,15 @@ function dataFormat(bytes, decimals) {
 }
 
 function dataSize(args) {
-    if (!args || typeof args !== "object") return { error: "El parámetro debe ser un objeto." };
+    if (!args || typeof args !== "object") return { error: "参数必须是对象" };
     var mode = typeof args.mode === "string" ? args.mode.trim().toLowerCase() : "";
-    if (mode !== "format" && mode !== "parse") return { error: "mode Debe tener formato (número de bytes→texto legible) o parse (texto legible→número de bytes)" };
+    if (mode !== "format" && mode !== "parse") return { error: "mode 必须是 format（字节数→可读文本）或 parse（可读文本→字节数）" };
 
     var decimals = 2;
     if (args.decimals !== undefined && args.decimals !== null) {
         var parsedDecimals = typeof args.decimals === "string" ? parseInt(args.decimals, 10) : args.decimals;
         if (typeof parsedDecimals !== "number" || isNaN(parsedDecimals) || parsedDecimals % 1 !== 0 || parsedDecimals < 0 || parsedDecimals > 6) {
-            return { error: "decimals Debe ser un número entero de 0..6" };
+            return { error: "decimals 必须是 0..6 的整数" };
         }
         decimals = parsedDecimals;
     }
@@ -464,45 +464,45 @@ function dataSize(args) {
     if (mode === "format") {
         var parsedBytes = unitParseNumber(args.bytes, "bytes");
         if (parsedBytes.error) return { error: parsedBytes.error };
-        if (parsedBytes.value < 0) return { error: "bytes no puede ser negativo" };
-        if (parsedBytes.value > 9007199254740991) return { error: "bytes Más allá del rango de enteros seguro (límite superior 2^53-1)" };
+        if (parsedBytes.value < 0) return { error: "bytes 不能为负数" };
+        if (parsedBytes.value > 9007199254740991) return { error: "bytes 超出安全整数范围（上限 2^53-1）" };
         var formatted = dataFormat(parsedBytes.value, decimals);
         return {
             result: formatted.text,
             bytes: parsedBytes.value,
             unit: formatted.unit,
             value: parseFloat(formatted.value.toFixed(decimals)),
-            note: "Llevar por 1024 (1 KB = 1024 B)."
+            note: "按 1024 进位（1 KB = 1024 B）。"
         };
     }
 
-    if (typeof args.text !== "string" || args.text.trim().length === 0) return { error: "parse El patrón requiere texto, como“1.5GB”" };
+    if (typeof args.text !== "string" || args.text.trim().length === 0) return { error: "parse 模式需要 text，如“1.5GB”" };
     var text = args.text.trim();
     var matched = /^([+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?)\s*([A-Za-z\u4e00-\u9fff]*)$/.exec(text);
-    if (!matched) return { error: "No se puede analizar el texto del volumen de datos: " + args.text + "(Ejemplo: 1.5GB / 1024 / 512 MB)" };
+    if (!matched) return { error: "无法解析数据量文本: " + args.text + "（示例: 1.5GB / 1024 / 512 MB）" };
     var amount = parseFloat(matched[1]);
-    if (isNaN(amount) || !isFinite(amount)) return { error: "El valor del volumen de datos no es válido: " + matched[1] };
-    if (amount < 0) return { error: "La cantidad de datos no puede ser negativa." };
+    if (isNaN(amount) || !isFinite(amount)) return { error: "数据量数值无效: " + matched[1] };
+    if (amount < 0) return { error: "数据量不能为负数" };
 
     var unitKey = matched[2].length === 0 ? "b" : unitNormalizeKey(matched[2]);
     var factors = {
-        b: 1, "bytes": 1, byte: 1, bytes: 1,
-        kb: DATA_BASE, "Kilobytes": DATA_BASE, kilobyte: DATA_BASE, kib: DATA_BASE,
-        mb: DATA_BASE * DATA_BASE, "megabytes": DATA_BASE * DATA_BASE, megabyte: DATA_BASE * DATA_BASE, mib: DATA_BASE * DATA_BASE,
-        gb: Math.pow(DATA_BASE, 3), "gigabytes": Math.pow(DATA_BASE, 3), gigabyte: Math.pow(DATA_BASE, 3), gib: Math.pow(DATA_BASE, 3),
-        tb: Math.pow(DATA_BASE, 4), "terabytes": Math.pow(DATA_BASE, 4), terabyte: Math.pow(DATA_BASE, 4), tib: Math.pow(DATA_BASE, 4),
-        pb: Math.pow(DATA_BASE, 5), "Petabytes": Math.pow(DATA_BASE, 5), petabyte: Math.pow(DATA_BASE, 5), pib: Math.pow(DATA_BASE, 5),
-        bit: 0.125, "bits": 0.125, bits: 0.125,
+        b: 1, "字节": 1, byte: 1, bytes: 1,
+        kb: DATA_BASE, "千字节": DATA_BASE, kilobyte: DATA_BASE, kib: DATA_BASE,
+        mb: DATA_BASE * DATA_BASE, "兆字节": DATA_BASE * DATA_BASE, megabyte: DATA_BASE * DATA_BASE, mib: DATA_BASE * DATA_BASE,
+        gb: Math.pow(DATA_BASE, 3), "吉字节": Math.pow(DATA_BASE, 3), gigabyte: Math.pow(DATA_BASE, 3), gib: Math.pow(DATA_BASE, 3),
+        tb: Math.pow(DATA_BASE, 4), "太字节": Math.pow(DATA_BASE, 4), terabyte: Math.pow(DATA_BASE, 4), tib: Math.pow(DATA_BASE, 4),
+        pb: Math.pow(DATA_BASE, 5), "拍字节": Math.pow(DATA_BASE, 5), petabyte: Math.pow(DATA_BASE, 5), pib: Math.pow(DATA_BASE, 5),
+        bit: 0.125, "比特": 0.125, bits: 0.125,
         kbit: 128, mbit: 131072, gbit: 134217728
     };
     if (!unitHas(factors, unitKey)) {
         return {
-            error: "Unidad de volumen de datos desconocida: " + matched[2] + ". Unidades disponibles: " + DATA_UNITS.join(",") + ",bit(trozos,1 bit = 1/8 B)",
+            error: "未知数据量单位: " + matched[2] + "。可用单位: " + DATA_UNITS.join("、") + "、bit（比特，1 bit = 1/8 B）",
             availableUnits: DATA_UNITS.concat(["bit"])
         };
     }
     var bytes = amount * factors[unitKey];
-    if (!isFinite(bytes) || bytes > 9007199254740991) return { error: "El resultado de la conversión excede el rango de números enteros seguros" };
+    if (!isFinite(bytes) || bytes > 9007199254740991) return { error: "换算结果超出安全整数范围" };
     var rounded = unitRound(bytes);
     return {
         result: rounded,
@@ -510,18 +510,18 @@ function dataSize(args) {
         text: args.text,
         unit: unitKey,
         human: dataFormat(rounded, 2).text,
-        note: "Llevar a 1024;b/B Todo en bytes,bit Significa poco."
+        note: "按 1024 进位；b/B 均按字节，bit 才表示比特。"
     };
 }
 
-/* ────────────────────────────── Legibilidad digital ────────────────────────────── */
+/* ────────────────────────────── 数字可读化 ────────────────────────────── */
 
-var RMB_DIGITS = ["cero", "uno", "dos", "tres", "cuatro", "Wu", "tierra", "siete", "ocho", "jiu"];
-var RMB_UNITS = ["", "recoger", "cien", "mil"];
-var RMB_GROUPS = ["", "millones", "mil millones", "billones"];
+var RMB_DIGITS = ["零", "壹", "贰", "叁", "肆", "伍", "陆", "柒", "捌", "玖"];
+var RMB_UNITS = ["", "拾", "佰", "仟"];
+var RMB_GROUPS = ["", "万", "亿", "万亿"];
 var RMB_MAX_AMOUNT = 999999999999.99;
 
-/** Convierta un número entero de cuatro dígitos a mayúsculas chinas (el 0 en el grupo se suma a \"cero\"). */
+/** 四位一组的整数转中文大写（组内 0 折叠为「零」）。 */
 function numberRmbGroup(group) {
     var text = "";
     var pendingZero = false;
@@ -533,7 +533,7 @@ function numberRmbGroup(group) {
             continue;
         }
         if (pendingZero) {
-            text += "cero";
+            text += "零";
             pendingZero = false;
         }
         text += RMB_DIGITS[digit] + unit;
@@ -541,7 +541,7 @@ function numberRmbGroup(group) {
     return text;
 }
 
-/** numeros → Cantidad en letras mayúsculas chinas (como 1234.56 → Mil doscientos treinta y cuatro Yuan Wujiao Lufen). */
+/** 数字 → 中文大写金额（如 1234.56 → 壹仟贰佰叁拾肆元伍角陆分）。 */
 function numberRmbUpper(value) {
     var negative = value < 0;
     var cents = Math.round(Math.abs(value) * 100);
@@ -568,22 +568,22 @@ function numberRmbUpper(value) {
             continue;
         }
         if (pendingZero) {
-            yuanText += "cero";
+            yuanText += "零";
             pendingZero = false;
         }
         yuanText += groupText + groupUnit;
     }
-    if (yuanText.length === 0) yuanText = "cero";
+    if (yuanText.length === 0) yuanText = "零";
 
-    var text = yuanText + "yuanes";
-    if (jiao === 0 && fen === 0) text += "entero";
-    else if (jiao === 0) text += "cero" + RMB_DIGITS[fen] + "puntos";
-    else if (fen === 0) text += RMB_DIGITS[jiao] + "ángulo";
-    else text += RMB_DIGITS[jiao] + "ángulo" + RMB_DIGITS[fen] + "puntos";
-    return (negative ? "Negativo" : "") + text;
+    var text = yuanText + "元";
+    if (jiao === 0 && fen === 0) text += "整";
+    else if (jiao === 0) text += "零" + RMB_DIGITS[fen] + "分";
+    else if (fen === 0) text += RMB_DIGITS[jiao] + "角";
+    else text += RMB_DIGITS[jiao] + "角" + RMB_DIGITS[fen] + "分";
+    return (negative ? "负" : "") + text;
 }
 
-/** Miles: inserte comas por lugar decimal original o lugar decimal especificado. */
+/** 千分位：按原始小数位或指定小数位插入逗号。 */
 function numberThousands(value, decimals, hasDecimals) {
     var text = hasDecimals ? value.toFixed(decimals) : String(value);
     if (text.indexOf("e") >= 0 || text.indexOf("E") >= 0) return text;
@@ -601,9 +601,9 @@ function numberThousands(value, decimals, hasDecimals) {
 }
 
 function numberFormat(args) {
-    if (!args || typeof args !== "object") return { error: "El parámetro debe ser un objeto." };
+    if (!args || typeof args !== "object") return { error: "参数必须是对象" };
     var mode = typeof args.mode === "string" ? args.mode.trim().toLowerCase() : "";
-    if (mode.length === 0) return { error: "mode No puede estar vacío, debe ser uno de miles/fijo/científico/porcentaje/rmb" };
+    if (mode.length === 0) return { error: "mode 不能为空，必须是 thousands/fixed/scientific/percent/rmb 之一" };
     var parsedValue = unitParseNumber(args.value, "value");
     if (parsedValue.error) return { error: parsedValue.error };
     var value = parsedValue.value;
@@ -612,20 +612,20 @@ function numberFormat(args) {
     if (args.decimals !== undefined && args.decimals !== null) {
         var parsedDecimals = typeof args.decimals === "string" ? parseInt(args.decimals, 10) : args.decimals;
         if (typeof parsedDecimals !== "number" || isNaN(parsedDecimals) || parsedDecimals % 1 !== 0 || parsedDecimals < 0 || parsedDecimals > 20) {
-            return { error: "decimals Debe ser un número entero de 0 a 20." };
+            return { error: "decimals 必须是 0..20 的整数" };
         }
         decimals = parsedDecimals;
     }
 
     if (mode === "thousands" || mode === "thousand" || mode === "group") {
-        if (Math.abs(value) >= 1e21) return { error: "No se admiten milésimas ≥ 1e21 para números, use el modo científico en su lugar" };
+        if (Math.abs(value) >= 1e21) return { error: "千分位不支持 ≥ 1e21 的数字，请改用 scientific 模式" };
         var hasDecimals = decimals !== null;
         var text = numberThousands(value, hasDecimals ? decimals : 0, hasDecimals);
         return {
             result: text,
             mode: "thousands",
             decimals: hasDecimals ? decimals : null,
-            note: "decimals Cuando se omite, se conservan los decimales del propio número."
+            note: "decimals 省略时保留数字本身的小数位。"
         };
     }
 
@@ -643,7 +643,7 @@ function numberFormat(args) {
             mode: "scientific",
             mantissa: matched ? parseFloat(matched[1] + matched[2] + (matched[3] ? "." + matched[3] : "")) : value,
             exponent: matched ? parseInt(matched[4], 10) : 0,
-            note: "decimals Controla el número de decimales en la mantisa (predeterminado 5)."
+            note: "decimals 控制尾数小数位（默认 5）。"
         };
     }
 
@@ -658,13 +658,13 @@ function numberFormat(args) {
             mode: "percent",
             number: parseFloat(percentValue.toFixed(percentDecimals)),
             ratio: alreadyPercent ? percentValue / 100 : value,
-            note: alreadyPercent ? "presionado alreadyPercent=true Formatee directamente." : "El valor predeterminado es tratar el valor como una escala y multiplicarlo por 100 (0.256 → 25.6%)."
+            note: alreadyPercent ? "已按 alreadyPercent=true 直接格式化。" : "默认把 value 视为比例并乘以 100（0.256 → 25.6%）。"
         };
     }
 
     if (mode === "rmb" || mode === "chinese" || mode === "capital") {
         if (Math.abs(value) > RMB_MAX_AMOUNT) {
-            return { error: "La cantidad excede el rango admitido (el límite superior " + RMB_MAX_AMOUNT + ")" };
+            return { error: "金额超出支持范围（上限 " + RMB_MAX_AMOUNT + "）" };
         }
         var roundedCents = Math.round(Math.abs(value) * 100) / 100;
         var signedCents = value < 0 ? -roundedCents : roundedCents;
@@ -672,9 +672,9 @@ function numberFormat(args) {
             result: numberRmbUpper(value),
             mode: "rmb",
             amount: signedCents,
-            note: "Redondeado a centavos; La producción es una cantidad financiera capitalizada."
+            note: "四舍五入到分；输出为财务大写金额。"
         };
     }
 
-    return { error: "No compatible mode: " + args.mode + "(disponible en miles/fijo/científico/porcentaje/rmb)" };
+    return { error: "不支持的 mode: " + args.mode + "（可用 thousands/fixed/scientific/percent/rmb）" };
 }

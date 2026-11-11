@@ -7,18 +7,18 @@ import io.zer0.common.Logger
 import java.io.File
 
 /**
- * P3-3: Instalador de servicios de accesibilidad(arranque habilitado).
+ * P3-3: 无障碍服务安装器(引导启用)。
  *
- * Situación actual(v2.2.1):
- *  - Los servicios dentro de la aplicación se han compilado en la página principal. APK,La esencia de la "instalación" es guiar al usuario a la configuración del sistema para habilitar;
- *  - También accesible e independiente. Provider APK(io.zer0.muse.a11y),Después de la instalación, sus elementos de autorización son independientes del ciclo de vida de la aplicación principal.
+ * 现状(v2.2.1):
+ *  - 应用内服务已编译进主 APK,「安装」实质是引导用户到系统设置启用;
+ *  - 另有无障碍独立 Provider APK(io.zer0.muse.a11y),安装后其授权项独立于主应用生命周期。
  *
- * Responsabilidades:
- *  1. [isInstalled]: Servicio en la aplicación listo(library módulo,hengwei true)
- *  2. [isProviderInstalled]: ¿Está instalado el APK del proveedor independiente?(Los servicios dentro de la aplicación todavía están disponibles cuando no están instalados)
- *  3. [isEnabled]: Si el servicio se ha habilitado en la configuración del sistema(confiar [AccessibilityClient.isEnabled],Cubre dos registros de autorización.)
- *  4. [openSettings]: Ir a la página de configuración de accesibilidad del sistema
- *  5. [ensureEnabled]: Comprobar y habilitar el arranque,Devuelve el estado actual para la visualización de la interfaz de usuario
+ * 职责:
+ *  1. [isInstalled]: 应用内服务就绪(library 模块,恒为 true)
+ *  2. [isProviderInstalled]: 独立 Provider APK 是否已安装(未装时仍可用应用内服务)
+ *  3. [isEnabled]: 服务是否已在系统设置启用(委托 [AccessibilityClient.isEnabled],涵盖两份授权记录)
+ *  4. [openSettings]: 跳转系统无障碍设置页
+ *  5. [ensureEnabled]: 检查并引导启用,返回当前状态供 UI 展示
  */
 class AccessibilityProviderInstaller(private val context: Context) {
     private val client = AccessibilityClient(context)
@@ -26,27 +26,27 @@ class AccessibilityProviderInstaller(private val context: Context) {
     companion object {
         private const val TAG = "A11yInstaller"
 
-        /** La ruta del APK del proveedor integrado en los activos(app Copiado por syncA11yProviderApk al compilar). */
+        /** 内置 Provider APK 在 assets 中的路径(app 构建时由 syncA11yProviderApk 拷贝)。 */
         private const val PROVIDER_ASSET_PATH = "a11y/accessibility-provider.apk"
     }
 
-    /** El módulo de servicio está compilado en APK,No se requiere instalación por separado. */
+    /** 服务模块已编译进 APK,无需单独安装。 */
     fun isInstalled(): Boolean = true
 
-    /** v2.2.1: Si está instalado el APK del proveedor independiente. */
+    /** v2.2.1: 独立 Provider APK 是否已安装。 */
     fun isProviderInstalled(): Boolean = client.isProviderInstalled()
 
-    /** v2.2.1: ¿El APK del proveedor independiente viene con el paquete?(assets existir en). */
+    /** v2.2.1: 独立 Provider APK 是否随包附带(assets 中存在)。 */
     fun isProviderApkBundled(): Boolean = runCatching {
         context.assets.open(PROVIDER_ASSET_PATH).close()
         true
     }.getOrDefault(false)
 
     /**
-     * v2.2.1: Extraiga el APK del proveedor integrado y abra el instalador del sistema.
+     * v2.2.1: 解出内置 Provider APK 并拉起系统安装器。
      *
-     * El instalador es presentado por el sistema.,Instalación completa después de la confirmación del usuario.(Requiere declaración manifiesta REQUEST_INSTALL_PACKAGES).
-     * @return true Indica que el instalador se ha iniciado correctamente;false Indica que el APK falta o es rechazado por el sistema
+     * 安装器由系统呈现,用户确认后完成安装(需 manifest 声明 REQUEST_INSTALL_PACKAGES)。
+     * @return true 表示已成功拉起安装器;false 表示 APK 缺失或系统拒绝
      */
     fun installProvider(): Boolean {
         return try {
@@ -63,33 +63,33 @@ class AccessibilityProviderInstaller(private val context: Context) {
             context.startActivity(intent)
             true
         } catch (e: Exception) {
-            // Tolerancia a fallos necesaria:assets desaparecido/FileProvider No configurado/El sistema se niega a detenerse.,Se requiere retroalimentación para UI
-            Logger.e(TAG, "No se pudo abrir el instalador del proveedor: ${e.message}", e)
+            // 必要容错:assets 缺失/FileProvider 未配置/系统拒绝拉起,均需反馈给 UI
+            Logger.e(TAG, "拉起 Provider 安装器失败: ${e.message}", e)
             false
         }
     }
 
-    /** Si los servicios de accesibilidad están habilitados. */
+    /** 无障碍服务是否已启用。 */
     fun isEnabled(): Boolean = client.isEnabled()
 
     /**
-     * Guiar a los usuarios para habilitar los servicios de accesibilidad.(Abra la página de configuración del sistema).
-     * @return true Indica que ha sido redirigido;false Indica que la página de configuración de accesibilidad no está disponible
+     * 引导用户启用无障碍服务(打开系统设置页)。
+     * @return true 表示已跳转;false 表示无障碍设置页不可用
      */
     fun openSettings(): Boolean {
         return try {
             client.openAccessibilitySettings()
             true
         } catch (e: Exception) {
-            // Tolerancia a fallos necesaria:Es posible que algunas ROM personalizadas no tengan una página de configuración de accesibilidad estándar
-            Logger.e(TAG, "No se puede abrir la configuración de accesibilidad: ${e.message}", e)
+            // 必要容错:部分定制 ROM 可能没有标准无障碍设置页
+            Logger.e(TAG, "无法打开无障碍设置: ${e.message}", e)
             false
         }
     }
 
     /**
-     * Asegúrese de que los servicios de accesibilidad estén habilitados;Regrese al indicador de inicio cuando no esté habilitado.
-     * @return [EnsureResult] Contiene información de estado y avisos.
+     * 确保无障碍服务已启用;未启用时返回引导提示。
+     * @return [EnsureResult] 包含状态与提示信息
      */
     fun ensureEnabled(): EnsureResult {
         return if (isEnabled()) {
@@ -100,10 +100,10 @@ class AccessibilityProviderInstaller(private val context: Context) {
     }
 
     sealed class EnsureResult {
-        /** El servicio está habilitado,Se puede utilizar directamente. */
+        /** 服务已启用,可直接使用。 */
         object Enabled : EnsureResult()
 
-        /** Servicio no habilitado,Los usuarios deben ser dirigidos a la configuración del sistema. */
+        /** 服务未启用,需引导用户前往系统设置。 */
         object NeedsEnable : EnsureResult()
     }
 }

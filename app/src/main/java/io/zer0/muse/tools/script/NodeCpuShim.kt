@@ -3,24 +3,24 @@ package io.zer0.muse.tools.script
 import io.zer0.muse.runtime.MuseRuntime
 
 /**
- * Script de divulgación de información de CPU de nodo incorporado.
+ * 内置 Node 的 CPU 信息兜底脚本。
  *
- * algunos equipos/libuv no puede leer la lista de CPU en el sandbox:`os.cpus()` Devuelve una matriz vacía,`os.availableParallelism()`
- * Devuelve 0, dependiendo del número de núcleos del grupo de subprocesos./El paquete de paralelismo npm se degradará silenciosamente a un solo núcleo o se calculará directamente como 0, lo que provocará un bloqueo.
+ * 部分设备/沙盒里 libuv 读不到 CPU 列表：`os.cpus()` 返回空数组、`os.availableParallelism()`
+ * 返回 0，依赖核数做线程池/并行度的 npm 包会静默退化成单核，或直接按 0 计算导致崩。
  *
- * Los datos finales provienen de [MuseRuntime] Variables de entorno inyectadas ([MuseRuntime.ENV_CPU_COUNT]), solo tiene efecto cuando no se puede obtener la fuente nativa:
- *  - `os.cpus()` Sintetizar entradas de igual longitud al devolver una matriz vacía (`model`/`speed`/`times` Lo suficientemente completo para que las partes confiantes lo lean);
- *  - `os.availableParallelism()` Devuelve 0 o devuelve el número de núcleos sintéticos en caso de error.
+ * 兜底数据来自 [MuseRuntime] 注入的环境变量（[MuseRuntime.ENV_CPU_COUNT]），只在原生取不到时生效：
+ *  - `os.cpus()` 返回空数组时合成等长条目（`model`/`speed`/`times` 齐全，够依赖方读取）；
+ *  - `os.availableParallelism()` 返回 0 或抛错时返回合成核数。
  *
- * Cuando la función original regrese normalmente, se mantendrá tal como está sin cambiar el valor real. El script está incluido en una función autoejecutable y no está incluido en el alcance del script.
- * Pierde cualquier variable y no cambia el valor de retorno del contenedor.
+ * 原生能正常返回时原样保留，不改真实值。脚本被包在自执行函数里，不向脚本作用域
+ * 泄漏任何变量，也不改变包装体的返回值。
  */
 internal object NodeCpuShim {
 
-    /** nombre de la variable de entorno (con [MuseRuntime.ENV_CPU_COUNT] Misma fuente, aquí solo se utilizan referencias constantes). */
+    /** 环境变量名（与 [MuseRuntime.ENV_CPU_COUNT] 同源，此处只做常量引用）。 */
     val ENV_KEY: String = MuseRuntime.ENV_CPU_COUNT
 
-    /** Devuelve código que se puede colocar directamente al principio del script (función pura, sin efectos secundarios). */
+    /** 返回可直接置于脚本最前面的兜底代码（纯函数，无副作用）。 */
     fun script(): String = """
         ;(function () {
           var os = require('node:os');
@@ -58,6 +58,6 @@ internal object NodeCpuShim {
         })();
     """.trimIndent()
 
-    /** Arma el código secreto [body] Antes (se ejecuta la primera frase del script, antes de cualquier código de usuario). */
+    /** 把兜底代码拼到 [body] 前面（脚本第一句执行，早于任何用户代码）。 */
     fun wrap(body: String): String = script() + "\n" + body
 }

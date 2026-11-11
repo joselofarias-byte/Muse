@@ -7,8 +7,8 @@ export interface SectionLabelProps {
 }
 
 /**
- * Subtítulos grupales. Correspondiente a componer SectionLabel —— labelLarge semigrueso,onSurface @80%,
- * Trae el tuyo bottom = tightGap(4dp) El espaciado inferior (el espaciado superior lo proporciona el espaciado del grupo del usuario).
+ * 分组小标题。对应 Compose 的 SectionLabel —— labelLarge 半粗、onSurface @80%，
+ * 自带 bottom = tightGap(4dp) 的下间距（上方间距由使用方的分组间距提供）。
  */
 export function SectionLabel({ children, className }: SectionLabelProps) {
   const classes = ["muse-section-label"];

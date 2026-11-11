@@ -1,31 +1,31 @@
 package io.zer0.muse.tools
 
 /**
- * v2.x: Requisitos de permisos del entorno de ejecución de herramientas.
+ * v2.x: 工具运行环境权限需求。
  *
- * con [ToolRiskLevel](Riesgo de aprobación)ortogonal:Respuesta del nivel de riesgo"¿Quieres preguntarle al usuario?",
- * Esta enumeración responde"Si el entorno operativo cumple con las condiciones de ejecución."(Shizuku/Root acceso, sin barreras,Termux),
- * Se utiliza para la visualización de la lista de herramientas y la inspección previa a la ejecución.
+ * 与 [ToolRiskLevel](审批风险)正交:风险等级回答"要不要问用户",
+ * 本枚举回答"运行环境是否具备执行条件"(Shizuku/Root 通道、无障碍、Termux),
+ * 供工具清单展示与执行前预检使用。
  */
 enum class ToolPermission {
-    /** Servicios de accesibilidad(Canal de proveedores independientes). */
+    /** 无障碍服务(独立 Provider 通道)。 */
     ACCESSIBILITY,
 
-    /** Canal de comando del dispositivo:Shizuku O Root, cualquiera de los dos está disponible(execTiered Ejecución jerárquica). */
+    /** 设备命令通道:Shizuku 或 Root 任一到手即可(execTiered 分层执行)。 */
     SHELL_TIER,
 
-    /** Termux canal de comando externo(El usuario instala Termux y completa la autorización.). */
+    /** Termux 外部命令通道(用户安装 Termux 并完成授权)。 */
     TERMUX,
 }
 
-/** etiqueta corta china(Avisos de error y registros). */
+/** 中文短标签(错误提示与日志)。 */
 fun ToolPermission.shortLabel(): String = when (this) {
-    ToolPermission.ACCESSIBILITY -> "Accesibilidad"
+    ToolPermission.ACCESSIBILITY -> "无障碍"
     ToolPermission.SHELL_TIER -> "Shizuku/Root"
     ToolPermission.TERMUX -> "Termux"
 }
 
-/** etiqueta corta en ingles(find_tools Espere la salida legible del modelo). */
+/** 英文短标签(find_tools 等模型可读输出)。 */
 fun ToolPermission.enLabel(): String = when (this) {
     ToolPermission.ACCESSIBILITY -> "Accessibility"
     ToolPermission.SHELL_TIER -> "Shizuku/Root"
@@ -33,9 +33,9 @@ fun ToolPermission.enLabel(): String = when (this) {
 }
 
 /**
- * v2.x: Instantánea del estado de autorización del entorno operativo.
+ * v2.x: 运行环境授权状态快照。
  *
- * Inyectado por bota de arranque [ToolRegistry.permissionStatusProvider],fuente de datos:
+ * 由启动引导注入 [ToolRegistry.permissionStatusProvider],数据来源:
  *  - [accessibility]/[shellTier]:AutomationManager.permissionState
  *  - [termux]:TermuxChannel.availability
  */
@@ -44,7 +44,7 @@ data class ToolPermissionStatus(
     val shellTier: Boolean,
     val termux: Boolean,
 ) {
-    /** El conjunto de requisitos está vacío → No se requiere autorización;De lo contrario"ya sea listo"considerado ejecutable(Como por ejemplo screen_* Accesible o equipo accesible). */
+    /** 需求集合为空 → 无需授权;否则"任一就绪"即视为可执行(如 screen_* 可走无障碍或设备通道)。 */
     fun satisfiedAny(required: Set<ToolPermission>): Boolean {
         if (required.isEmpty()) return true
         return required.any { permission ->
@@ -56,9 +56,9 @@ data class ToolPermissionStatus(
         }
     }
 
-    /** Descripción china de los requisitos establecidos.(Como por ejemplo"Accesible o Shizuku/Root"). */
-    fun describe(required: Set<ToolPermission>): String = required.joinToString(" o ") { it.shortLabel() }
+    /** 需求集合的中文描述(如"无障碍 或 Shizuku/Root")。 */
+    fun describe(required: Set<ToolPermission>): String = required.joinToString(" 或 ") { it.shortLabel() }
 
-    /** descripción en inglés(find_tools salida). */
+    /** 英文描述(find_tools 输出)。 */
     fun describeEn(required: Set<ToolPermission>): String = required.joinToString(" or ") { it.enLabel() }
 }

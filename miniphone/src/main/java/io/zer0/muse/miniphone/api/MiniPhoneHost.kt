@@ -4,9 +4,9 @@ import io.zer0.muse.miniphone.data.db.MpActorType
 import kotlinx.coroutines.flow.Flow
 
 /**
- * Cómo aparece el personaje en un pequeño teléfono celular.
+ * 角色在小手机里的表现形态。
  *
- * Con solo los cuatro campos requeridos para la interfaz;Los datos completos del personaje permanecen en el lado anfitrión.,Este módulo no se sostiene.
+ * 只带界面需要的四个字段;角色的完整数据留在宿主侧,本模块不持有。
  */
 data class MpCharacter(
     val id: String,
@@ -16,9 +16,9 @@ data class MpCharacter(
 )
 
 /**
- * La información del usuario local en el pequeño teléfono celular.
+ * 本机用户在小手机里的资料。
  *
- * Permitir valores predeterminados excepto apodos(Sin conjunto de avatar/firma/La interfaz se cuida sola al empapelar).
+ * 除昵称外都允许缺省(未设置头像/签名/壁纸时界面自行兜底)。
  */
 data class MpProfile(
     val nickname: String,
@@ -29,126 +29,126 @@ data class MpProfile(
 )
 
 /**
- * Qué está haciendo el personaje.
+ * 角色「正在做什么」。
  *
- * El host solo entrega esta enumeración al ejecutar la herramienta.:El nombre de la herramienta, los parámetros y los valores de retorno no salen del host.,
- * El módulo muestra una frase de copia antropomórfica en consecuencia.,No sé ni me importa lo que sucede detrás de escena.
+ * 宿主执行工具时只交出这一枚枚举:工具名、参数、返回值都不出宿主,
+ * 模块据此显示一句拟人化文案,不知道也不关心背后调了什么。
  */
 enum class MpActivityKind {
-    /** buscando algo afuera(Buscar y explorar información). */
+    /** 在外部找东西(搜索、翻资料)。 */
     SEARCHING,
 
-    /** Recordar cosas relacionadas con los usuarios. */
+    /** 在回忆与用户有关的事。 */
     REMEMBERING,
 
-    /** Consultando horarios y recordatorios. */
+    /** 在看日程、提醒。 */
     CALENDAR,
 
-    /** Mirando el clima. */
+    /** 在看天气。 */
     WEATHER,
 
-    /** Revisando notas. */
+    /** 在翻笔记。 */
     NOTES,
 
-    /** El resto es indescriptible. */
+    /** 其余说不清的动作。 */
     OTHER,
 }
 
-/** Eventos enviados a módulos durante un ciclo de construcción. */
+/** 一轮生成里发给模块的事件。 */
 sealed interface MpReplyEvent {
-    /** El personaje está haciendo algo en este momento.;La interfaz muestra la redacción antropomórfica correspondiente.,Se retraerá automáticamente después de que el texto toque el suelo. */
+    /** 角色此刻在做某件事;界面显示对应的拟人化文案,等文本落地后自动收起。 */
     data class Activity(val kind: MpActivityKind) : MpReplyEvent
 
-    /** El texto final pronunciado por el personaje. */
+    /** 角色说出的最终文本。 */
     data class Text(val content: String) : MpReplyEvent
 
     /**
-     * Un mensaje de voz enviado por el personaje.
+     * 角色发来的一段语音。
      *
-     * @param uri Referencia del archivo de voz en el lado del host(archivo de audio local),La interfaz se reproduce en consecuencia.
-     * @param durationMs duración(milisegundos);0 Indica que el host no puede detectar,La interfaz se muestra como desconocida.
+     * @param uri 宿主侧的语音存档引用(本地音频文件),界面据此播放
+     * @param durationMs 时长(毫秒);0 表示宿主探测不出,界面显示为未知
      */
     data class Voice(val uri: String, val durationMs: Long) : MpReplyEvent
 
-    /** No hubo resultado en esta ronda. */
+    /** 这一轮没有结果。 */
     data object Failed : MpReplyEvent
 }
 
-/** Una ronda de palabras que ya se han dicho en la conversación.;[sender] Solo distingue quien lo dice,El contenido es el texto tal como se colocó en la biblioteca. */
+/** 会话里已经说过的一轮话;[sender] 只区分谁说,内容就是落库时的正文。 */
 data class MpChatTurn(
     val sender: MpActorType,
     val content: String,
 )
 
 /**
- * La única entrada y salida entre el pequeño teléfono celular y el anfitrión.
+ * 小手机与宿主之间的唯一出入口。
  *
- * Este módulo no depende de la aplicación host.,Utilice siempre esta interfaz cuando necesite roles, capacidades de generación y capacidades de voz.,Implementado e inyectado por el host.
+ * 本模块不依赖宿主应用,需要角色、生成能力、语音能力时一律走这个接口,由宿主实现并注入。
  *
- * Acuerdo:Los métodos que fallan no generan excepciones a este módulo. Error al generar el método de clase [MpReplyEvent.Failed] Termina normalmente después,
- * Otros métodos fallan y regresan. `null`,La persona que llama puede simplemente procesarlo como "Sin resultado".
+ * 约定:可失败的方法不向本模块抛异常。生成类方法失败发 [MpReplyEvent.Failed] 后正常结束,
+ * 其余方法失败返回 `null`,调用方按「没有结果」处理即可。
  */
 interface MiniPhoneHost {
-    /** Lista de caracteres en la libreta de direcciones. Cuando no hay datos en el lado del host, se devuelve una lista vacía en lugar de fallar. */
+    /** 通讯录里的角色列表。宿主侧无数据时返回空列表而不是失败。 */
     fun observeCharacters(): Flow<List<MpCharacter>>
 
-    /** Información del usuario local. Si el lado del host no se ha configurado, se devuelven datos vacíos.(El apodo es una cadena vacía.). */
+    /** 本机用户资料。宿主侧尚未设置时返回一份空资料(昵称为空串)。 */
     fun observeProfile(): Flow<MpProfile>
 
     /**
-     * deja que un personaje [history] Luego pasa a la siguiente ronda.
+     * 让某个角色就 [history] 接着往下说一轮。
      *
-     * flujo frío:Cada colección ejecuta una ronda completa de generación. ¿Cuáles son las variedades normales? [MpReplyEvent.Activity]
-     * seguido de uno o más [MpReplyEvent.Text] / [MpReplyEvent.Voice];Cuando no hay resultado, solo hay uno. [MpReplyEvent.Failed].
-     * no importa cuál sea la situación,La transmisión terminará normalmente.,No se lanza ninguna excepción.
+     * 冷流:每收集一次跑一轮完整生成。正常的流形是若干 [MpReplyEvent.Activity]
+     * 之后跟一条或多条 [MpReplyEvent.Text] / [MpReplyEvent.Voice];没有结果时只有一条 [MpReplyEvent.Failed]。
+     * 无论哪种情况,流都会正常结束,不抛异常。
      *
-     * Se permite enviar una ronda de respuesta en varios párrafos.:El anfitrión exporta el modelo a `[Voz]……[/Voz]` Los párrafos de la marca se sintetizan en sonidos fonéticos en el orden de aparición.
-     * [MpReplyEvent.Voice],Enviar los párrafos restantes [MpReplyEvent.Text];La etiqueta en sí no contiene ningún texto.,Sin párrafos chinos
-     * No sintetizado, enviado como texto. La secuencia de eventos es consistente con el resultado del modelo.,Se pueden reproducir un máximo de 5 voces en una sola ronda.
+     * 一轮回复允许分多段发:宿主把模型输出里 `[语音]……[/语音]` 标记内的段落按出现顺序合成语音发
+     * [MpReplyEvent.Voice],其余段落发 [MpReplyEvent.Text];标记本身不进任何文本,没有中文的段落
+     * 不合成、按文本发。事件顺序与模型输出的先后一致,单轮最多 5 段语音。
      */
     fun respond(characterId: String, history: List<MpChatTurn>): Flow<MpReplyEvent>
 
-    /** Pídele a un personaje que publique una actualización.;Devuelve nulo en caso de error. */
+    /** 让某个角色发一条动态;失败返回 null。 */
     suspend fun composeMoment(characterId: String, hint: String?): String?
 
     /**
-     * Generar un mensaje privado iniciado por el personaje.;Devuelve nulo si no se puede generar.
+     * 生成一条角色主动发起的私信内容;无法生成时返回 null。
      *
-     * con [composeMoment] La diferencia radica en la semántica más que en los enlaces.:Las actualizaciones son "actualizaciones recientes enviadas a todos para que las vean".,
-     * Un mensaje privado es "una frase dicha directamente al usuario".—— Este último requiere la primera persona, una o dos frases, sin narración ni explicación.
+     * 与 [composeMoment] 的区别在语义而不在链路:动态是「发给所有人看的近况」,
+     * 私信是「直接对用户开口的一句话」—— 后者要求第一人称、一两句、不带旁白与解释。
      */
     suspend fun composeProactiveMessage(characterId: String, hint: String?): String?
 
     /**
-     * Sintetizar texto en voz.
+     * 把文本合成语音。
      *
-     * @return `first` para archivos de audio uri,`second` por duración(milisegundos);Devuelve nulo en caso de error.
+     * @return `first` 为音频文件 uri,`second` 为时长(毫秒);失败返回 null。
      */
     suspend fun synthesizeVoice(text: String, emotion: String?): Pair<String, Long>?
 
     /**
-     * Convierte un WAV grabado por el usuario en texto.
+     * 把用户录的一段 WAV 转成文字。
      *
-     * Los formatos de grabación, codificación y carga los determina el anfitrión. —— El módulo sólo transfiere bytes.,No sé qué servicio se utiliza para la identificación.
-     * No implementarlo significa no admitir la entrada de voz.:El anfitrión debe dar explícitamente la conclusión.,No deje ningún valor predeterminado.
+     * 录音、编码、上传格式都由宿主决定 —— 模块只把字节交出去,不知道识别走的是哪个服务。
+     * 不实现就等于不支挂语音输入:宿主必须显式给出结论,不留默认值。
      *
-     * @return Eliminar el texto en blanco inicial y final;Se devuelve si no se reconoce, no se configura o la solicitud falla. null
+     * @return 去掉首尾空白的文本;识别不出来、未配置或请求失败都返回 null
      */
     suspend fun transcribeVoice(wavBytes: ByteArray): String?
 
     /**
-     * El nombre de la versión de la aplicación host.(para exhibición,por ejemplo `2.6.12`).
+     * 宿主应用的版本名(展示用,例如 `2.6.12`)。
      *
-     * Solo se utiliza para información de versión de la página "Yo". Cadena vacía predeterminada:Host sin versión reportada(Incluye sustituto para pruebas.)No mostrar esta sección,
-     * La interfaz no completará un número de versión falso.
+     * 只用于「我」页的版本信息。默认空串:没报版本的宿主(含测试里的替身)不显示这一段,
+     * 界面不会因此填一个假版本号。
      */
     fun appVersionName(): String = ""
 
     /**
-     * ¿La configuración ASR actual admite la conversión de todo el segmento de audio en texto?(La entrada de grabación depende de ello).
+     * 当前 ASR 配置是否支持把整段音频转文字(录音输入依赖它)。
      *
-     * La conclusión debe ser consistente con [transcribeVoice] ¿Será realmente consistente?:Devuelve verdadero después de que el usuario presiona el micrófono,
-     * Una vez grabado, debería ser una solicitud real.,en lugar de un llamado que está condenado al fracaso. La interfaz atenuará el micrófono en consecuencia.
+     * 结论必须与 [transcribeVoice] 实际会不会走通一致:返回 true 之后用户按下麦克风、
+     * 录完就应当是一次真实的请求,而不是一个注定失败的调用。界面据此把麦克风置灰。
      */
     suspend fun supportsVoiceTranscription(): Boolean
 }

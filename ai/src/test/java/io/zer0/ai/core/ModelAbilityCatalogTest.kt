@@ -7,9 +7,9 @@ import org.junit.Test
 import io.zer0.ai.registry.ModelRegistry as RuntimeModelRegistry
 
 /**
- * [ModelCatalogLoader] con [ProviderApiRegistry] prueba única.
+ * [ModelCatalogLoader] 与 [ProviderApiRegistry] 的单测。
  *
- * Portada:Análisis normal, los campos están predeterminados, se devuelve nulo si no se encuentra, el JSON incorrecto se degrada a una biblioteca vacía(no tirar), Transferencia de acuerdo.
+ * 覆盖:正常解析、字段缺省兜底、查不到返回 null、坏 JSON 降级为空库(不抛)、协议互转。
  */
 class ModelAbilityCatalogTest {
 

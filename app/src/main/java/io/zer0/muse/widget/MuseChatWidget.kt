@@ -42,12 +42,12 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * Widget de conversación de escritorio(Versión mejorada).
+ * 桌面对话小部件(增强版)。
  *
- * El color del tema sigue el color principal de la aplicación. Admite múltiples tamaños de escritorio.
+ * 主题色跟随 App 主色调。支持多种桌面尺寸。
  *
- * El contenido mostrado sigue "el asistente seleccionado por el usuario en la página de configuración":Cada instancia de widget almacena su propio ayudante. id,
- * Obtenga el mensaje de asistente más reciente del asistente. Anteriormente, solo tome el último global.,Elegir un asistente significa no elegir nada.
+ * 显示内容跟随「用户在配置页选中的助手」:每个小组件实例各存各的助手 id,
+ * 取该助手最近一条 assistant 消息。此前直接取全局最近一条,选助手等于没选。
  */
 class MuseChatWidget : GlanceAppWidget() {
 
@@ -88,7 +88,7 @@ class MuseChatWidget : GlanceAppWidget() {
                 fallback
             }
         }.onError { errMsg, _ ->
-            Logger.w("MuseChatWidget", "queryLatestReply falló: $errMsg")
+            Logger.w("MuseChatWidget", "queryLatestReply 失败: $errMsg")
         }.getOrNull() ?: fallback
     }
 
@@ -99,7 +99,7 @@ class MuseChatWidget : GlanceAppWidget() {
                 WidgetSessionIdKey to sessionId,
             )
         } else {
-            // Crear una nueva conversación cuando no haya mensajes históricos,Pero todavía tengo que traer a mi asistente conmigo. —— De lo contrario, haga clic en él para volver al asistente predeterminado global.
+            // 没有历史消息时新建会话,但仍要带上是哪个助手 —— 否则点开就退回全局默认助手。
             actionParametersOf(
                 WidgetActionKey to ShareIntentHandler.WIDGET_ACTION_NEW_SESSION,
                 WidgetAssistantIdKey to assistantId,
@@ -130,7 +130,7 @@ private fun MuseChatWidgetContent(data: ChatWidgetData, params: ActionParameters
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = "muse",
+                    text = "Muse",
                     style = TextStyle(
                         fontWeight = FontWeight.Bold,
                         color = ColorProvider(Color(0xFF8B5CF6), Color(0xFFA78BFA)),
@@ -138,7 +138,7 @@ private fun MuseChatWidgetContent(data: ChatWidgetData, params: ActionParameters
                     ),
                 )
                 Text(
-                    text = " dialogo",
+                    text = " · Conversaciones",
                     style = TextStyle(
                         color = ColorProvider(Color(0xFF333333), Color(0xFFE5E5E5)),
                         fontSize = 16.sp,

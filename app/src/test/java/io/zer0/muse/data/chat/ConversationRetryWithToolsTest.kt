@@ -10,11 +10,11 @@ import org.junit.Test
 import kotlin.uuid.Uuid
 
 /**
- * v1.0.92: Reintentar el comportamiento del árbol cuando estén involucradas llamadas a herramientas (Pruebas de regresión).
+ * v1.0.92: 工具调用参与时的重试树行为 (回归测试)。
  *
- * fondo: Mensaje en pantalla de herramienta ([UIMessage.toolCallInfo] != null) es un nodo independiente en el árbol,
- * versión antigua `retryLastAssistant` Tómalo directamente `assistantNodes.last()`,Cuando se llama a una herramienta,
- * Nueva variante enchufada"conjunto de herramientas"(Las tarjetas de herramientas se convierten en herramientas/Responder 1/2 variante de);Solo reconocido después de la reparación."nodo de respuesta".
+ * 背景: 工具展示消息 ([UIMessage.toolCallInfo] != null) 在树里是独立节点,
+ * 旧版 `retryLastAssistant` 直接取 `assistantNodes.last()`,有工具调用时会把
+ * 新变体挂进"工具组"(工具卡变成 工具/回复 的 1/2 变体);修复后只认"回复节点"。
  */
 class ConversationRetryWithToolsTest {
 
@@ -42,38 +42,38 @@ class ConversationRetryWithToolsTest {
         variantIndex = index,
         variantCount = count,
         parentGroupId = parent,
-        toolCallInfo = toolName?.let { ToolCallInfo(it, "{}", "resultado", true) },
+        toolCallInfo = toolName?.let { ToolCallInfo(it, "{}", "结果", true) },
     )
 
     @Test
     fun retry_withTrailingToolNodes_targetsReplyNode_notToolNode() {
         val t0 = 1_700_000_000_000L
-        val u = user("Consulta la hora y el clima para mí.", t0)
+        val u = user("帮我查下时间和天气", t0)
         val a0 = assistant("", t0 + 1)
         val t1 = assistant("", t0 + 100, toolName = "get_current_time")
         val t2 = assistant("", t0 + 200, toolName = "get_weather")
-        val a0final = a0.copy(content = "ahora12punto,esta soleado hoy")
+        val a0final = a0.copy(content = "现在12点,今天晴")
 
         val tree = ConversationTree.build(listOf(u, a0final, t1, t2))
         val update = tree.retryLastAssistant()
 
-        // Las nuevas variantes deben estar dentro"grupo de respuesta"(= a0 grupo),en lugar de un conjunto de herramientas.
+        // 新变体必须落在"回复组"(= a0 的组),而不是工具组。
         assertEquals(a0.id.toString(), update.newMessage?.variantGroupId)
         val variant = update.tree.userNodes.first().currentVariant!!
-        // Número de variantes del nodo de respuesta 2,El número de variantes de nodos de herramientas sigue siendo 1.
+        // 回复节点变体数 2,工具节点变体数保持 1。
         val replyNode = variant.assistantNodes.first { it.groupId == a0.id.toString() }
         assertEquals(2, replyNode.variants.size)
         val toolNodes = variant.assistantNodes.filter { it.groupId != a0.id.toString() }
         assertEquals(2, toolNodes.size)
-        assertTrue("Los nodos de herramientas no se deben agregar a las variantes.", toolNodes.all { it.variants.size == 1 })
-        // La nueva variante se recorta según la selección.
+        assertTrue("工具节点不得被追加变体", toolNodes.all { it.variants.size == 1 })
+        // 新变体裁剪到选中。
         assertEquals(1, replyNode.selectIndex)
     }
 
     @Test
     fun retry_onlyToolNodes_createsFreshReplyGroupAtEnd() {
         val t0 = 1_700_000_000_000L
-        val u = user("compruébalo por mí", t0)
+        val u = user("帮我查下", t0)
         val t1 = assistant("", t0 + 100, toolName = "get_current_time")
         val t2 = assistant("", t0 + 200, toolName = "get_weather")
 
@@ -84,7 +84,7 @@ class ConversationRetryWithToolsTest {
         assertNotEquals(t1.variantGroupId ?: t1.id.toString(), newGroup)
         assertNotEquals(t2.id.toString(), newGroup)
         val variant = update.tree.userNodes.first().currentVariant!!
-        // Al final se añaden nuevos grupos de respuesta.
+        // 新回复组追加在末尾。
         assertEquals(newGroup, variant.assistantNodes.last().groupId)
         assertEquals(1, variant.assistantNodes.last().variants.size)
         assertEquals("", variant.assistantNodes.last().currentVariant?.content)

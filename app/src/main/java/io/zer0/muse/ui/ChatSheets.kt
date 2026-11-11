@@ -69,16 +69,16 @@ import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-/** v1.25: Dos modos de activación delegados a la hoja auxiliar. */
+/** v1.25: 委托给助手 Sheet 的两种触发模式。 */
 internal sealed class DelegateSheetMode {
-    /** Anteponer el mensaje al cuadro de entrada actual,Luego envíalo automáticamente. */
+    /** 把提示前置到当前输入框,然后自动发送。 */
     data object Input : DelegateSheetMode()
 
-    /** citar un mensaje,Crea un nuevo mensaje de delegación y envíalo automáticamente. */
+    /** 引用某条消息,新建一条委托消息并自动发送。 */
     data class Message(val msg: UIMessage) : DelegateSheetMode()
 }
 
-/** B2-03: ChatScreen El estado de la hoja/ventana emergente se gestiona de forma centralizada. */
+/** B2-03: ChatScreen 的 sheet/弹窗状态集中管理。 */
 internal class ChatSheetState {
     var showModelSheet by androidx.compose.runtime.mutableStateOf(false)
     var showKnowledgeSheet by androidx.compose.runtime.mutableStateOf(false)
@@ -94,8 +94,8 @@ internal class ChatSheetState {
 }
 
 /**
- * B2-03: ChatScreen El host de la hoja/ventana emergente. El estado consiste en [ChatSheetState] mantener,
- * ChatScreen Único responsable de desencadenar,Toda la lógica de visualización se hunde aquí.
+ * B2-03: ChatScreen 的 sheet/弹窗宿主。状态由 [ChatSheetState] 持有,
+ * ChatScreen 只负责触发,展示逻辑全部下沉到这里。
  */
 @androidx.compose.runtime.Composable
 internal fun ChatSheetHost(
@@ -110,7 +110,7 @@ internal fun ChatSheetHost(
     val messages by viewModel.messages.collectAsStateWithLifecycle()
     val context = androidx.compose.ui.platform.LocalContext.current
 
-    // Etapa 5: Panel inferior del interruptor de modelo
+    // 阶段 5: 模型切换底部面板
     if (sheetState.showModelSheet) {
         ModelSwitchSheet(
             providers = uiState.providers,
@@ -124,7 +124,7 @@ internal fun ChatSheetHost(
             onDismiss = { sheetState.showModelSheet = false },
         )
     }
-    // v1.58: Prompt Selección de biblioteca de plantillas
+    // v1.58: Prompt 模板库选择
     if (sheetState.showPromptTemplateSheet) {
         MuseBottomSheet(
             onDismissRequest = { sheetState.showPromptTemplateSheet = false },
@@ -199,8 +199,8 @@ internal fun ChatSheetHost(
             )
         }
     }
-    // v1.94: Historial de llamadas de herramientas sheet(InputBar Cápsula dinámica haga clic para expandir)
-    // v1.97: Visualización combinada de tareas pendientes + historial de llamadas de herramientas,Desliza para ver
+    // v1.94: 工具调用历史 sheet(InputBar 动态胶囊点击展开)
+    // v1.97: 合并展示任务待办 + 工具调用历史,可滑动查看
     if (sheetState.showToolCallSheet) {
         val latestPlan = uiState.agentPlans.values.maxByOrNull { it.createdAt }
         val effectiveSessionId = if (uiState.isAgentMode) uiState.agentSessionId else uiState.currentSessionId
@@ -217,7 +217,7 @@ internal fun ChatSheetHost(
             )
         }
     }
-    // v1.95: Consejos para utilizar el reconocimiento de voz del sistema por primera vez(Después de que el usuario confirma, se inicia el sistema. Intent)
+    // v1.95: 系统语音识别首次使用提示(用户确认后调起系统 Intent)
     if (sheetState.asrTipDialogShown) {
         MuseDialog(
             onDismissRequest = { sheetState.asrTipDialogShown = false },
@@ -235,14 +235,14 @@ internal fun ChatSheetHost(
                 resultOf {
                     speechLauncher.launch(SpeechInput.createIntent(context.getString(R.string.speech_speak_prompt)))
                 }.onError { msg, _ ->
-                    // v1.98: Eliminar mensajes emergentes,Procesamiento silencioso
-                    Logger.w("ChatScreen", "No se pudo iniciar el reconocimiento de voz: $msg")
+                    // v1.98: 移除弹窗提示,静默处理
+                    Logger.w("ChatScreen", "启动语音识别失败: $msg")
                 }
             },
             onDismiss = { sheetState.asrTipDialogShown = false },
         )
     }
-    // v0.29 P1-6: Selección de documentos de la base de conocimientos.(MuseDialog sustituto original ModalBottomSheet,Evite los atascos de malla en máquinas reales)
+    // v0.29 P1-6: 知识库文档选择(MuseDialog 替代原 ModalBottomSheet,避免真机 scrim 卡死)
     if (sheetState.showKnowledgeSheet) {
         MuseDialog(
             onDismissRequest = { sheetState.showKnowledgeSheet = false },
@@ -251,8 +251,8 @@ internal fun ChatSheetHost(
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    // Mostrar solo documentos visibles para el usuario(isInternal=true Documentación desarrollada internamente para la adopción de LLM
-                    // knowledge_search Consulta,No expuesto a los usuarios en el selector "Base de conocimientos de referencia")
+                    // 仅展示用户可见文档(isInternal=true 的内部开发文档供 LLM 通过
+                    // knowledge_search 查询,不在「引用知识库」选择器中暴露给用户)
                     val visibleDocs = knowledgeDocs.filterNot { it.isInternal }
                     if (visibleDocs.isEmpty()) {
                         Text(
@@ -273,7 +273,7 @@ internal fun ChatSheetHost(
                                     )
                                 },
                                 modifier = Modifier.clickable {
-                                    // v0.29 P1-6: Después de seleccionar, inserte la etiqueta de nombre @document en el cuadro de entrada
+                                    // v0.29 P1-6: 选中后在输入框插入 @文档名 标记
                                     val mention = "@${doc.title} "
                                     val current = viewModel.state.value.input
                                     viewModel.updateInput(if (current.isBlank()) mention else "$current\n$mention")
@@ -289,7 +289,7 @@ internal fun ChatSheetHost(
             onDismiss = { sheetState.showKnowledgeSheet = false },
         )
     }
-    // v0.29 P3-17: Cambio rápido de sesión(MuseDialog sustituto original ModalBottomSheet,Evite los atascos de malla en máquinas reales)
+    // v0.29 P3-17: 会话快速切换(MuseDialog 替代原 ModalBottomSheet,避免真机 scrim 卡死)
     if (sheetState.showSessionSheet) {
         MuseDialog(
             onDismissRequest = { sheetState.showSessionSheet = false },
@@ -311,7 +311,10 @@ internal fun ChatSheetHost(
                             MuseListItem(
                                 headlineContent = {
                                     Text(
-                                        text = session.title.ifBlank { stringResource(R.string.chat_new_session) },
+                                        text = io.zer0.muse.data.session.displaySessionTitle(
+                                            session.title,
+                                            stringResource(R.string.chat_new_session),
+                                        ),
                                         style = MaterialTheme.typography.bodyLarge,
                                         color = if (isCurrent) {
                                             MaterialTheme.colorScheme.primary
@@ -346,7 +349,7 @@ internal fun ChatSheetHost(
             onDismiss = { sheetState.showSessionSheet = false },
         )
     }
-    // v1.136 T1: Cambiar asistente en conversación(Disparador de pulsación larga del título)
+    // v1.136 T1: 对话内更换助手(标题长按触发)
     if (sheetState.showAssistantSwitchSheet) {
         val currentAssistantId = uiState.currentAssistant?.id
         MuseDialog(
@@ -354,7 +357,7 @@ internal fun ChatSheetHost(
             title = stringResource(R.string.chat_switch_assistant_title),
             content = {
                 Column(modifier = Modifier.fillMaxWidth()) {
-                    // P2-6: Los asistentes desactivados no aparecen en la lista de candidatos para cambiar
+                    // P2-6: 停用的助手不出现在切换候选列表
                     val switchCandidates = uiState.assistants.filter { it.enabled }
                     if (switchCandidates.isEmpty()) {
                         Text(
@@ -387,9 +390,10 @@ internal fun ChatSheetHost(
                                     )
                                 },
                                 supportingContent = {
-                                    // v1.136 T5: Mostrar prioridad summary(Introducción al asistente),De lo contrario, recurra al truncamiento del sistema.
-                                    val desc = assistant.summary.takeIf { it.isNotBlank() }
-                                        ?: assistant.systemPrompt.take(60)
+                                    // 同上：简介为空就说"没有简介"，不把提示词当介绍
+                                    val desc = assistant.summary.ifBlank {
+                                        stringResource(R.string.assistant_summary_empty)
+                                    }
                                     if (desc.isNotBlank()) {
                                         Text(
                                             text = desc,
@@ -414,8 +418,8 @@ internal fun ChatSheetHost(
                                 },
                                 modifier = Modifier.clickable {
                                     if (!isCurrent) {
-                                        // v1.0.54: Cambiar envío de ayuda — Agent Tab Cortar la sala de conversación(El asistente de recuperación de la historia./Nuevo),
-                                        //   La pestaña Tareas solo reemplaza a las personas(noticias/La historia nunca se moverá)
+                                        // v1.0.54: 切换助手分派 — Agent Tab 切对话房间(该助手历史恢复/新建),
+                                        //   任务 Tab 只换人(消息/历史绝不动)
                                         if (uiState.isAgentMode) {
                                             viewModel.switchAgentAssistant(assistant.id)
                                         } else {
@@ -423,7 +427,7 @@ internal fun ChatSheetHost(
                                         }
                                         val name = assistant.name.takeIf { it.isNotBlank() } ?: unnamedAssistant
                                         MuseToast.show(
-                                            // v1.xxx U-12: El modelo y la memoria del asistente se utilizarán después de cambiar el mensaje.,Gestionar las expectativas
+                                            // v1.xxx U-12: 提示切换后将使用该助手的模型与记忆,管理预期
                                             context.getString(R.string.chat_switch_assistant_applied_hint, name),
                                         )
                                     }
@@ -439,10 +443,10 @@ internal fun ChatSheetHost(
             onDismiss = { sheetState.showAssistantSwitchSheet = false },
         )
     }
-    // v1.25: delegar a asistente/Selección de equipo(MuseDialog sustituto original ModalBottomSheet,Evite los atascos de malla en máquinas reales)
+    // v1.25: 委托给助手/团队选择(MuseDialog 替代原 ModalBottomSheet,避免真机 scrim 卡死)
     val delegateMode = sheetState.showDelegateSheet
     if (delegateMode != null) {
-        // P2-6: Los asistentes desactivados no aparecen en la lista de candidatos a delegados
+        // P2-6: 停用的助手不出现在委托候选列表
         val assistants = uiState.assistants.filter { it.enabled }
         val teams = uiState.multiAgentConfig.teams
         MuseDialog(
@@ -498,15 +502,15 @@ internal fun ChatSheetHost(
                                                     name,
                                                     current,
                                                 )
-                                                // H-S2: Primero verifique que el contenido no esté vacío y luego updateInput + send,Evite condiciones de carrera al leer entradas vacías antiguas
+                                                // 委托不再"点击即发送":拼装好的 prompt 先落进输入框停留,
+                                                // 用户看得见将要发什么,可改可删再由自己按下发送。
                                                 if (prompt.isNotBlank()) {
                                                     viewModel.updateInput(prompt)
                                                     sheetState.showDelegateSheet = null
-                                                    viewModel.send()
                                                 }
                                             }
                                             is DelegateSheetMode.Message -> {
-                                                // M-S9: Delegar verificación de contenido vacío (v2.6.8: A juzgar por el calibre de la pantalla, la cola del estado de la tarjeta no cuenta como texto principal)
+                                                // M-S9: 委托空内容校验（v2.6.8: 按展示口径判断，卡片状态尾巴不算正文）
                                                 val delegateBody =
                                                     io.zer0.muse.transformer.InternalMarkupSanitizer.displayContent(
                                                         delegateMode.msg.content,
@@ -518,11 +522,9 @@ internal fun ChatSheetHost(
                                                 val summary = delegateBody.take(200)
                                                 val prompt = context.getString(R.string.chat_delegate_assistant_prompt_message, name)
                                                 val content = buildQuotedContent(summary, prompt)
-                                                // H-S2: Primero verifique que el contenido no esté vacío y luego updateInput + send
                                                 if (content.isNotBlank()) {
                                                     viewModel.updateInput(content)
                                                     sheetState.showDelegateSheet = null
-                                                    viewModel.send()
                                                 }
                                             }
                                         }
@@ -564,15 +566,15 @@ internal fun ChatSheetHost(
                                             is DelegateSheetMode.Input -> {
                                                 val current = viewModel.state.value.input
                                                 val prompt = context.getString(R.string.chat_delegate_team_prompt_input, name, current)
-                                                // H-S2: Primero verifique que el contenido no esté vacío y luego updateInput + send,Evite condiciones de carrera al leer entradas vacías antiguas
+                                                // 委托不再"点击即发送":拼装好的 prompt 先落进输入框停留,
+                                                // 用户看得见将要发什么,可改可删再由自己按下发送。
                                                 if (prompt.isNotBlank()) {
                                                     viewModel.updateInput(prompt)
                                                     sheetState.showDelegateSheet = null
-                                                    viewModel.send()
                                                 }
                                             }
                                             is DelegateSheetMode.Message -> {
-                                                // M-S9: Delegar verificación de contenido vacío (v2.6.8: A juzgar por el calibre de la pantalla, la cola del estado de la tarjeta no cuenta como texto principal)
+                                                // M-S9: 委托空内容校验（v2.6.8: 按展示口径判断，卡片状态尾巴不算正文）
                                                 val delegateBody =
                                                     io.zer0.muse.transformer.InternalMarkupSanitizer.displayContent(
                                                         delegateMode.msg.content,
@@ -584,11 +586,9 @@ internal fun ChatSheetHost(
                                                 val summary = delegateBody.take(200)
                                                 val prompt = context.getString(R.string.chat_delegate_team_prompt_message, name)
                                                 val content = buildQuotedContent(summary, prompt)
-                                                // H-S2: Primero verifique que el contenido no esté vacío y luego updateInput + send
                                                 if (content.isNotBlank()) {
                                                     viewModel.updateInput(content)
                                                     sheetState.showDelegateSheet = null
-                                                    viewModel.send()
                                                 }
                                             }
                                         }
@@ -604,7 +604,7 @@ internal fun ChatSheetHost(
             onDismiss = { sheetState.showDelegateSheet = null },
         )
     }
-    // Función4: Selección de formato de exportación(Markdown / HTML / PDF Elige uno de tres,selector de segmento)
+    // 功能4: 导出格式选择(Markdown / HTML / PDF 三选一,分段选择器)
     if (sheetState.showExportSheet) {
         io.zer0.muse.ui.chat.ExportFormatPickerDialog(
             onDismiss = { sheetState.showExportSheet = false },
@@ -613,14 +613,14 @@ internal fun ChatSheetHost(
                 ioScope.launch {
                     when (format) {
                         io.zer0.muse.data.export.ExportFormat.MARKDOWN -> {
-                            // Markdown:Mantener la lógica original,Compartir texto sin formato mediante ACTION_SEND
+                            // Markdown:沿用原有逻辑,通过 ACTION_SEND 分享纯文本
                             val (mime, content) = viewModel.exportSession(
                                 io.zer0.muse.ui.chat.ExportFormat.MARKDOWN,
                             )
                             shareText(context, mime, content)
                         }
                         io.zer0.muse.data.export.ExportFormat.HTML -> {
-                            // HTML:Exportar como un solo archivo,Compartir a través de FileProvider después de escribir en cacheDir
+                            // HTML:导出为单文件,写入 cacheDir 后通过 FileProvider 分享
                             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                                 val html = viewModel.exportSessionAsHtml()
                                 val file = writeExportFile(context, "muse-export", "html", html.toByteArray())
@@ -628,7 +628,7 @@ internal fun ChatSheetHost(
                             }
                         }
                         io.zer0.muse.data.export.ExportFormat.PDF -> {
-                            // PDF:Representar documentos paginados con PdfDocument,Compartir a través de FileProvider
+                            // PDF:用 PdfDocument 渲染分页文档,通过 FileProvider 分享
                             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                                 val file = viewModel.exportSessionAsPdf(context)
                                 shareFile(context, file, "application/pdf")
@@ -639,11 +639,11 @@ internal fun ChatSheetHost(
             },
         )
     }
-    // Editar mensajes de usuario: edición de ventana emergente independiente, no ocupa el campo de entrada principal
+    // 编辑用户消息：独立弹窗编辑，不占用主输入栏
     sheetState.editingUserMessage?.let { msg ->
-        // Correcciones en la interfaz (persistencia-8): Editar borrador rememberSaveable,key mantener msg.id
-        // v2.6.8: Tamaño de visualización del borrador —— La cola del estado de la tarjeta es un campo de máquina y no se puede ingresar en el cuadro de edición (de lo contrario, el usuario
-        // Convierta JSON invisible en texto visible tan pronto como lo guarde, o vuelva a juntar toda la cola).
+        // 前端修复 (持久化-8): 编辑草稿改 rememberSaveable,key 保持 msg.id
+        // v2.6.8: 草稿用展示口径 —— 卡片状态尾巴是机器字段，不能进编辑框（否则用户
+        // 一保存就把不可见的 JSON 变成可见文本，或把整段尾巴再拼回去）。
         var draft by rememberSaveable(msg.id) {
             mutableStateOf(io.zer0.muse.transformer.InternalMarkupSanitizer.displayContent(msg.content))
         }
@@ -672,10 +672,10 @@ internal fun ChatSheetHost(
             onDismiss = { sheetState.editingUserMessage = null },
         )
     }
-    // Editar mensaje del asistente(MuseDialog sustituto original ModalBottomSheet,Evite los atascos de malla en máquinas reales)
+    // 编辑助手消息(MuseDialog 替代原 ModalBottomSheet,避免真机 scrim 卡死)
     sheetState.editingMessage?.let { msg ->
-        // Correcciones en la interfaz (persistencia-8): Editar borrador rememberSaveable,key mantener msg.id
-        // v2.6.8: Igual que arriba, todos los borradores pasarán por la salida de pantalla.
+        // 前端修复 (持久化-8): 编辑草稿改 rememberSaveable,key 保持 msg.id
+        // v2.6.8: 同上，草稿一律走展示出口。
         var draft by rememberSaveable(msg.id) {
             mutableStateOf(io.zer0.muse.transformer.InternalMarkupSanitizer.displayContent(msg.content))
         }
@@ -705,7 +705,7 @@ internal fun ChatSheetHost(
         )
     }
 
-    // v1.201: Ventana emergente de confirmación de suspensión de delegación(unirse a uiState.activePauseRequest)
+    // v1.201: 委派暂停确认弹窗(绑定到 uiState.activePauseRequest)
     io.zer0.muse.ui.taskcard.DelegationConfirmDialog(
         pauseRequest = uiState.activePauseRequest,
         onSubmit = { response ->
@@ -715,10 +715,10 @@ internal fun ChatSheetHost(
         },
     )
 
-    // v1.49: Vosk Se eliminó la ventana emergente de descarga del modelo.(Se eliminan las capacidades de reconocimiento sin conexión)
+    // v1.49: Vosk 模型下载弹窗已移除(离线识别能力随之移除)
 
-    // v1.43: Ventana emergente de vista de tarjeta de producto
-    // v2.0.1: La lógica de desvío se dirige a ArtifactOpenHost (compartida entre la página de chat y el centro de productos)
+    // v1.43: 产物卡片查看弹窗
+    // v2.0.1: 分流逻辑抽到 ArtifactOpenHost（聊天页与产物中心共用）
     io.zer0.muse.ui.artifact.ArtifactOpenHost(
         artifact = uiState.selectedArtifact,
         onDismiss = { viewModel.dismissArtifactViewer() },
@@ -728,17 +728,17 @@ internal fun ChatSheetHost(
 private const val MAX_VISIBLE_TOOL_TRACE_RECORDS = 50
 
 /**
- * v1.94: Panel de historial de llamadas de herramientas(Contenido de la hoja inferior).
+ * v1.94: 工具调用历史面板(底部 sheet 内容)。
  *
- * Mostrar todos los registros de llamadas de herramientas durante la sesión actual(Nombre de la herramienta/parámetros/resultados/éxito o fracaso),
- * Activado por el clic de la cápsula dinámica de InputBar. El panel de historial usa LazyColumn y los detalles son solo
- * Combine registros limitados recientes para evitar tareas complejas y expanda toda la interfaz de usuario en una columna gigante a la vez.
+ * 展示当前会话期间所有工具调用记录(工具名 / 参数 / 结果 / 成功与否),
+ * 由 InputBar 动态胶囊点击触发。历史面板本身使用 LazyColumn，展开详情也只
+ * 组合最近的有限记录，避免复杂任务把整个 UI 一次性撑成巨型 Column。
  */
 @Composable
 private fun ToolCallHistorySheet(records: List<ToolCallRecord>, agentPlan: AgentPlan? = null, modifier: Modifier = Modifier) {
     val plan = agentPlan
     val summaries = summarizeToolTrace(records)
-    // v2.0.1: Pedigrí de tareas — Por ronda (turnId) cadena de pasos para la agregación (composable Precalculado en contexto)
+    // v2.0.1: 任务谱系 — 按轮次（turnId）聚合的步骤链（composable 上下文里预计算）
     val runs = remember(records) { groupToolRecordsIntoRuns(records) }
     val hasPlan = plan != null && plan.steps.isNotEmpty()
 
@@ -775,7 +775,7 @@ private fun ToolCallHistorySheet(records: List<ToolCallRecord>, agentPlan: Agent
                         AgentPlanStepStatus.IN_PROGRESS -> MaterialTheme.colorScheme.primary
                         AgentPlanStepStatus.SKIPPED -> MaterialTheme.colorScheme.outline
                         AgentPlanStepStatus.PENDING -> MaterialTheme.colorScheme.outline
-                        // Phase 3: Agregar estado final — El tiempo de espera se mostrará en color de falla,Cancelar el color debilitado.
+                        // Phase 3: 新增终态 — 超时按失败色显示,取消用弱化色
                         AgentPlanStepStatus.TIMED_OUT -> MaterialTheme.colorScheme.error
                         AgentPlanStepStatus.CANCELLED -> MaterialTheme.colorScheme.outline
                     }
@@ -828,7 +828,7 @@ private fun ToolCallHistorySheet(records: List<ToolCallRecord>, agentPlan: Agent
             }
         }
 
-        // v2.0.1: Pedigrí de tareas — Vista agregada por herramienta antes
+        // v2.0.1: 任务谱系 — 先于按工具的聚合视图
         if (runs.isNotEmpty()) {
             item(key = "tool_runs_title") {
                 Text(
@@ -872,7 +872,7 @@ private fun ToolCallHistorySheet(records: List<ToolCallRecord>, agentPlan: Agent
 
         if (!hasPlan && records.isEmpty()) {
             item(key = "tool_history_empty") {
-                // Phase 2: El estado vacío se mueve uniformemente MuseEmptyState(Icono + Copiar),Reemplazar desnudo original Text
+                // Phase 2: 空态统一走 MuseEmptyState(图标 + 文案),替代原裸 Text
                 MuseEmptyState(
                     title = stringResource(R.string.chat_tool_calls_empty),
                     modifier = Modifier.fillMaxWidth(),
@@ -883,7 +883,7 @@ private fun ToolCallHistorySheet(records: List<ToolCallRecord>, agentPlan: Agent
 }
 
 /**
- * v2.0.1: Agrupación de linaje de tareas — La herramienta agregada solicita la misma ronda por turnId (turnId Reducido a una ventana de 10 minutos cuando falta).
+ * v2.0.1: 任务谱系分组 — 按 turnId 聚合同一轮的工具调用（turnId 缺失时退化为 10 分钟时间窗）。
  */
 private fun groupToolRecordsIntoRuns(records: List<ToolCallRecord>): List<List<ToolCallRecord>> {
     if (records.isEmpty()) return emptyList()
@@ -908,7 +908,7 @@ private fun groupToolRecordsIntoRuns(records: List<ToolCallRecord>): List<List<T
 }
 
 /**
- * v2.0.1: Entrada de linaje de tareas — Cadena de pasos para una ronda de tareas (contraer vista previa + expandir detalles paso a paso).
+ * v2.0.1: 任务谱系条目 — 一轮任务的步骤链（折叠预览 + 展开逐条详情）。
  */
 @Composable
 private fun ToolRunTraceItem(index: Int, records: List<ToolCallRecord>) {
@@ -990,7 +990,7 @@ private fun ToolRunTraceItem(index: Int, records: List<ToolCallRecord>) {
 }
 
 /**
- * Muestra un resumen a nivel de tarea por nombre de herramienta; Todos los registros originales del grupo aún se reproducen después de la expansión.
+ * 按工具名展示任务级摘要；展开后仍渲染该组的全部原始记录。
  */
 @Composable
 private fun ToolTraceSummaryItem(summary: ToolTraceSummary) {
@@ -1123,7 +1123,7 @@ private fun ToolTraceSummaryItem(summary: ToolTraceSummary) {
 }
 
 /**
- * v1.94: Visualización de un único registro de llamada de herramienta.
+ * v1.94: 单条工具调用记录展示。
  */
 @Composable
 private fun ToolCallRecordItem(index: Int, record: ToolCallRecord) {
@@ -1184,11 +1184,11 @@ private fun ToolCallRecordItem(index: Int, record: ToolCallRecord) {
 }
 
 /**
- * Compartir texto sin formato mediante ACTION_SEND(Markdown / JSON / Exportación de texto sin formato para su reutilización).
+ * 通过 ACTION_SEND 分享纯文本(Markdown / JSON / 纯文本导出复用)。
  *
  * @param context Android Context
- * @param mime MIME Tipo(Como por ejemplo "text/markdown")
- * @param content Contenido de texto para compartir
+ * @param mime MIME 类型(如 "text/markdown")
+ * @param content 要分享的文本内容
  */
 private fun shareText(context: android.content.Context, mime: String, content: String) {
     val shareIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
@@ -1204,15 +1204,15 @@ private fun shareText(context: android.content.Context, mime: String, content: S
 }
 
 /**
- * Escriba el contenido de exportación en un archivo en cacheDir/export/(para exportación HTML).
+ * 把导出内容写入 cacheDir/export/ 下的文件(用于 HTML 导出)。
  *
- * cacheDir Expuesto a través de la ruta de caché en file_paths.xml FileProvider,Se puede compartir directamente.
+ * cacheDir 已在 file_paths.xml 中通过 cache-path 暴露给 FileProvider,可直接分享。
  *
  * @param context Android Context
- * @param prefix prefijo de nombre de archivo(Como por ejemplo "muse-export")
- * @param extension extensión de archivo(Como por ejemplo "html")
- * @param bytes Matriz de bytes del contenido del archivo
- * @return Archivo escrito
+ * @param prefix 文件名前缀(如 "muse-export")
+ * @param extension 文件扩展名(如 "html")
+ * @param bytes 文件内容字节数组
+ * @return 已写入的文件
  */
 private fun writeExportFile(context: android.content.Context, prefix: String, extension: String, bytes: ByteArray): java.io.File {
     val exportDir = java.io.File(context.cacheDir, "export").apply { mkdirs() }
@@ -1226,13 +1226,13 @@ private fun writeExportFile(context: android.content.Context, prefix: String, ex
 }
 
 /**
- * Compartir archivos a través de ACTION_SEND + FileProvider(para exportación HTML/PDF).
+ * 通过 ACTION_SEND + FileProvider 分享文件(用于 HTML / PDF 导出)。
  *
- * El archivo debe estar ubicado en la ruta declarada por file_paths.xml(cacheDir / filesDir / external-files espera).
+ * 文件须位于 file_paths.xml 已声明的路径下(cacheDir / filesDir / external-files 等)。
  *
  * @param context Android Context
- * @param file archivos para compartir
- * @param mime MIME Tipo(Como por ejemplo "application/pdf")
+ * @param file 要分享的文件
+ * @param mime MIME 类型(如 "application/pdf")
  */
 private fun shareFile(context: android.content.Context, file: java.io.File, mime: String) {
     runCatching {

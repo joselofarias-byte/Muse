@@ -10,12 +10,12 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * v2.6.9: Modelo de prueba vinculante de decisión de tres estados.
+ * v2.6.9: 模型绑定三态判定测试。
  *
- * Invariantes centrales fijadas:**lista vacía ≠ no contiene**.
- * Implementación original `provider.models.none { it.id == modelId }` Siempre en una lista vacía true,
- * La "lista de modelos aún no se ha extraído/no se pudo extraer" se juzga erróneamente como "el modelo no existe" y se degrada a un modelo de portada.
- * (La máquina real reduce así la conversación a GLM-4-9B,La herramienta modelo llama a la malformación.,La generación de la tarjeta falla directamente).
+ * 钉住的核心不变式:**空列表 ≠ 不含**。
+ * 原实现 `provider.models.none { it.id == modelId }` 在空列表上恒为 true,
+ * 把「模型列表还没拉过 / 拉取失败」误判成「模型不存在」并降级到兜底模型
+ * (真机由此把会话降到 GLM-4-9B,该模型工具调用畸形,卡片生成直接失败)。
  */
 class RequestedModelBindingTest {
 
@@ -25,22 +25,22 @@ class RequestedModelBindingTest {
         models = modelIds.map { Model(id = it, name = it, providerId = id) },
     )
 
-    // ── 1. La lista está vacía → No juzgado como desaparecido(El núcleo de esta restauración) ──────────────────────────────
+    // ── 1. 列表为空 → 不判缺失(本次修复的核心) ──────────────────────────────
 
     @Test
     fun `empty model list is not treated as missing`() {
         val binding = resolveRequestedModelBinding(
-            // models esta vacio:Nunca jalé/no pude jalar
+            // models 为空:从未拉取 / 拉取失败
             providers = listOf(provider("agnes")),
             providerId = "agnes",
             modelId = "claude-sonnet-4-5",
         )
 
-        assertFalse("Una lista vacía no se considerará modelo faltante.", binding.modelMissing)
-        assertFalse("Una lista vacía no debe desencadenar una degradación", binding.missing)
-        assertTrue("Las listas vacías deben marcarse como Lista no lista", binding.listNotReady)
-        // Preservar el enlace de la solicitud:Construir marcador de posición por ID de solicitud Model,Déjelo en aguas arriba para su juicio.,En lugar de cambiar a otro modelo.
-        assertNotNull("Las vinculaciones de modelos solicitadas aún deben conservarse cuando la lista no esté lista", binding.model)
+        assertFalse("空列表不得判为模型缺失", binding.modelMissing)
+        assertFalse("空列表不得触发降级", binding.missing)
+        assertTrue("空列表应标记为列表未就绪", binding.listNotReady)
+        // 保留请求绑定:按请求 id 构造占位 Model,交给上游判定,而不是换成别的模型。
+        assertNotNull("列表未就绪时仍应保留请求的模型绑定", binding.model)
         assertEquals("claude-sonnet-4-5", binding.model?.id)
         assertEquals("agnes", binding.model?.providerId)
     }
@@ -58,7 +58,7 @@ class RequestedModelBindingTest {
         assertNull(binding.model)
     }
 
-    // ── 2. La lista no está vacía y no contiene → Realmente desaparecido,Debe revisar todos los detalles. ────────────────────────────────
+    // ── 2. 列表非空且不含 → 真缺失,必须走兜底 ────────────────────────────────
 
     @Test
     fun `non-empty list without the id is a real miss and falls back`() {
@@ -68,13 +68,13 @@ class RequestedModelBindingTest {
             modelId = "claude-sonnet-4-5",
         )
 
-        assertTrue("Si la lista no está vacía y no contiene el id, se debe considerar que falta.", binding.modelMissing)
-        assertTrue("Si realmente estás desaparecido, debes activar el encubrimiento.", binding.missing)
+        assertTrue("列表非空且不含该 id 必须判缺失", binding.modelMissing)
+        assertTrue("真缺失必须触发兜底", binding.missing)
         assertFalse(binding.listNotReady)
-        assertNull("El enlace de solicitud no se debe conservar cuando falta verdadero,Debería dejar que los bolsillos se tomen de la mano", binding.model)
+        assertNull("真缺失时不得保留请求绑定,应让兜底链接手", binding.model)
     }
 
-    // ── 3. La lista no está vacía y contiene → golpe preciso ───────────────────────────────────────────
+    // ── 3. 列表非空且含 → 精确命中 ───────────────────────────────────────────
 
     @Test
     fun `non-empty list containing the id is not missing`() {
@@ -90,7 +90,7 @@ class RequestedModelBindingTest {
         assertEquals("claude-sonnet-4-5", binding.model?.id)
     }
 
-    // ── 4. frontera:persona que llama no especificada provider/model ─────────────────────────────────
+    // ── 4. 边界:调用方未指定 provider/model ─────────────────────────────────
 
     @Test
     fun `unspecified provider or model does not report missing`() {
@@ -105,7 +105,7 @@ class RequestedModelBindingTest {
 
     @Test
     fun `provider missing wins over unspecified model`() {
-        // Provider Si la configuración desaparece, desaparece.,Informar incluso si la persona que llama no trae el modelId(Consistente con el comportamiento original.).
+        // Provider 配置没了就是没了,即使调用方没带 modelId 也要报告(与原有行为一致)。
         val binding = resolveRequestedModelBinding(listOf(provider("agnes", "m")), "ghost", null)
         assertTrue(binding.providerMissing)
         assertTrue(binding.missing)

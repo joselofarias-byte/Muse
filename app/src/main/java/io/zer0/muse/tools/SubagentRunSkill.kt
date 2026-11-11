@@ -1,43 +1,43 @@
 package io.zer0.muse.tools
 
 /**
- * v1.0.52 P2-1: subagent_run Entrada de herramientas.
+ * v1.0.52 P2-1: subagent_run 工具入口。
  *
- * El agente principal delega subtareas a [SubagentRunner](Pasivos independientes del contexto agent).
+ * 主 agent 通过此工具委托子任务给 [SubagentRunner](独立上下文的被动子 agent)。
  *
- * con [SubagentTool] relación:
- *  - [SubagentTool](subagent_task) = Modo asincrónico sin bloqueo,Adecuado para tareas largas,Regresar inmediatamente taskId,
- *    El agente principal puede continuar la conversación.,Una vez completada la subtarea, se enviará a través de DeferredResultStore.
- *  - **[SubagentRunSkill]**(subagent_run) = modo de bloqueo sincrónico,Adecuado para tareas de investigación cortas.,El agente principal espera,
- *    El agente secundario devuelve resultados XML estructurados después de ejecutar el ciclo completo de la herramienta.
+ * 与 [SubagentTool] 的关系:
+ *  - [SubagentTool](subagent_task) = 非阻塞异步模式,适合长任务,立即返回 taskId,
+ *    主 agent 可继续对话,子任务完成后通过 DeferredResultStore 回灌
+ *  - **[SubagentRunSkill]**(subagent_run) = 同步阻塞模式,适合短调研任务,主 agent 等待,
+ *    子 agent 跑完整工具循环后返回结构化 XML 结果
  *
- * Guía de selección de agentes maestros(Indíquelo en la descripción de la herramienta LLM):
- *  - Las tareas requieren múltiples llamadas a herramientas y no quieren contaminar el contexto principal. → subagent_run
- *  - La tarea es una operación que requiere mucho tiempo y el agente principal debe seguir respondiendo. → subagent_task
+ * 主 agent 选择指南(在工具描述中告知 LLM):
+ *  - 任务需要多步工具调用且不希望污染主上下文 → subagent_run
+ *  - 任务是长耗时操作且主 agent 需要继续响应 → subagent_task
  *
- * parámetros:
- *  - task: Requerido,Descripción de la tarea del delegado
- *  - context_text: Opcional,Restricciones/Criterios de aceptación
- *  - target_paths: Opcional,Ruta del archivo prioritario(separados por comas)
- *  - max_tool_calls: Opcional,Cuota de llamadas de herramientas(Predeterminado 8,límite superior 20)
- *  - timeout_ms: Opcional,Tiempo de espera de ejecución general(Predeterminado 240s,alcance 30s~900s)——Recomendado para misiones profundas.
- *  - thread_id: Opcional(v1.0.53+),Continuar hilo id;Pase el thread_id devuelto por el subagent_run anterior para continuar con la misma sesión del subagente.
- *  - close_thread: Opcional(v1.0.53+),"true" Cerrar el hilo después de completar la ejecución.(Escenario de delegación única)
+ * 参数:
+ *  - task: 必填,委托任务描述
+ *  - context_text: 可选,限制条件/验收标准
+ *  - target_paths: 可选,优先文件路径(逗号分隔)
+ *  - max_tool_calls: 可选,工具调用配额(默认 8,上限 20)
+ *  - timeout_ms: 可选,整体执行超时(默认 240s,范围 30s~900s)——深度任务建议拉满
+ *  - thread_id: 可选(v1.0.53+),续接线程 id;传上一次 subagent_run 返回的 thread_id 继续同一子 agent 会话
+ *  - close_thread: 可选(v1.0.53+),"true" 时执行完毕后关闭线程(一次性委派场景)
  *
- * Regresar:Cadena de protocolo XML trifásico
+ * 返回:三阶段 XML 协议字符串
  *  <subagent_start .../>
- *  <subagent_progress .../> (0~N Artículo)
+ *  <subagent_progress .../> (0~N 条)
  *  <subagent_result ... thread_id="...">...</subagent_result>
  */
 object SubagentRunSkill {
 
     fun toolDef() = ToolRegistry.ToolDef(
         name = "subagent_run",
-        description = "Delegue una subtarea autónoma a un subagente con un contexto independiente." +
-            "El subagente ejecutará el ciclo completo de la herramienta.(Hasta max_tool_calls veces),Devuelve resultados XML estructurados." +
-            "Adecuado para subtareas de investigación, búsqueda y análisis que requieren múltiples llamadas a herramientas." +
-            "Pase el thread_id devuelto para continuar con la misma sesión de subagente." +
-            "Para tareas asincrónicas de larga duración, utilice subagent_task en su lugar.",
+        description = "把一个自包含的子任务委派给拥有独立上下文的子代理。" +
+            "子代理会跑完整的工具循环(最多 max_tool_calls 次),返回结构化的 XML 结果。" +
+            "适合需要多次工具调用的调研、查找、分析类子任务。" +
+            "把返回的 thread_id 传回来即可续接同一个子代理会话。" +
+            "长时间运行的异步任务请改用 subagent_task。",
         parameters = mapOf(
             "task" to "Required. The sub-task description to delegate.",
             "context_text" to "Optional. Constraints / acceptance criteria for the sub-task.",
@@ -56,21 +56,21 @@ object SubagentRunSkill {
             "token_budget" to "integer",
             "timeout_ms" to "integer",
         ),
-        // HIGH riesgo:El subagente puede llamar a múltiples herramientas,Posibles efectos secundarios,Requiere confirmación del usuario
+        // HIGH 风险:子 agent 可调用多个工具,潜在副作用较大,需用户确认
         riskLevel = ToolRiskLevel.HIGH,
     )
 
     /**
-     * Ejecute la herramienta subagent_run.
+     * 执行 subagent_run 工具。
      *
-     * @param args Parámetros de la herramienta(task / context_text / target_paths / max_tool_calls)
-     * @param subagentRunner corredor agente infantil
-     * @return Cadena de protocolo XML trifásico
+     * @param args 工具参数(task / context_text / target_paths / max_tool_calls)
+     * @param subagentRunner 子 agent 运行器
+     * @return 三阶段 XML 协议字符串
      */
     suspend fun execute(args: Map<String, String>, subagentRunner: SubagentRunner): String {
         val task = args["task"]?.trim()
-            ?: return errorXml("Falta el parámetro requerido task")
-        if (task.isBlank()) return errorXml("task El parámetro está vacío.")
+            ?: return errorXml("缺少必填参数 task")
+        if (task.isBlank()) return errorXml("task 参数为空")
 
         val contextText = args["context_text"]?.trim()?.takeIf { it.isNotBlank() }
         val targetPaths = args["target_paths"]?.trim()?.takeIf { it.isNotBlank() }
@@ -81,18 +81,22 @@ object SubagentRunSkill {
             ?.coerceIn(1, SubagentRunner.MAX_TOOL_CALLS_HARD_CAP)
             ?: SubagentRunner.DEFAULT_MAX_TOOL_CALLS
 
-        // v2.x(Proyecto Deuda Técnica E): Transmisión transparente después del tiempo de espera——Tareas profundas (múltiples rondas de llamadas a herramientas/Búsqueda de contexto grande)
-        // 120s El valor predeterminado no es suficiente, el agente principal puede darle explícitamente 600. alcance 30s~900s.
+        // v2.x（技术债项目 E）: 超时可透传——深度任务（多轮工具调用/大上下文检索）
+        // 120s 默认值不够，主 Agent 可显式给到 600s。范围 30s~900s。
         val timeoutMs = args["timeout_ms"]?.toLongOrNull()
             ?.coerceIn(30_000L, 900_000L)
             ?: SubagentRunner.DEFAULT_TIMEOUT_MS
 
-        // v1.0.53: Parámetros de continuación
+        // v1.0.53: 续接参数
         val threadId = args["thread_id"]?.trim()?.takeIf { it.isNotBlank() }
         val closeAfterRun = args["close_thread"]?.trim()?.equals("true", ignoreCase = true) ?: false
-        // v1.0.53 Phase 3: token presupuesto(Opcional,null=sin limite)
+        // v1.0.53 Phase 3: token 预算(可选,null=不限制)
         val tokenBudget = args["token_budget"]?.toIntOrNull()?.takeIf { it > 0 }
 
+        // 访问级别与角色：此前这条路径**完全忽略**了调用方传的值（永远走默认档）。
+        // 未知 access 由 SubagentAccess.parse 降级为只读（fail-closed）。
+        val access = SubagentAccess.parse(args["access"]).wire
+        val profile = args["profile"]?.trim()?.takeIf { it.isNotBlank() }
         val params = SubagentRunner.Params(
             task = task,
             contextText = contextText,
@@ -102,15 +106,17 @@ object SubagentRunSkill {
             threadId = threadId,
             closeAfterRun = closeAfterRun,
             tokenBudget = tokenBudget,
+            access = access,
+            profile = profile,
         )
 
-        // Fase de inicio de renderizado
+        // 渲染启动阶段
         val startXml = SubagentXmlRenderer.renderStart(task, maxToolCalls)
 
-        // corredor agent
+        // 运行子 agent
         val result = subagentRunner.run(params)
 
-        // Etapa de progreso de renderizado
+        // 渲染进度阶段
         val progressXml = result.progressEntries.joinToString("\n") { entry ->
             SubagentXmlRenderer.renderProgress(
                 round = entry.round,
@@ -122,14 +128,14 @@ object SubagentRunSkill {
             )
         }
 
-        // Etapa de resultado de renderizado(v1.0.53: Transmita de forma transparente el threadId para permitir que el agente principal continúe la conexión.)
-        // v1.0.53 Phase 3: Aviso de agotamiento de cuota(maxToolCalls Marcado por separado con presupuesto simbólico)
+        // 渲染结果阶段(v1.0.53: 透传 threadId 让主 agent 续接)
+        // v1.0.53 Phase 3: 配额耗尽提示(maxToolCalls 与 token 预算分别标记)
         val summaryWithNote = buildString {
             if (result.budgetExhausted) {
                 appendLine(SubagentXmlRenderer.renderBudgetExhausted(maxToolCalls))
             }
             if (result.tokenBudgetExhausted) {
-                appendLine("[Consejos] El subagente rescindió anticipadamente debido al agotamiento del presupuesto simbólico.,El resumen se genera en función del contexto existente.")
+                appendLine("[提示] 子 agent 因 token 预算耗尽提前结束,总结基于已有上下文生成。")
             }
             append(result.summary)
         }.trimEnd()
@@ -142,7 +148,7 @@ object SubagentRunSkill {
             threadId = result.threadId,
         )
 
-        // Tres etapas de empalme.
+        // 拼接三阶段
         return buildString {
             appendLine(startXml)
             if (progressXml.isNotEmpty()) {
@@ -152,7 +158,7 @@ object SubagentRunSkill {
         }
     }
 
-    /** Cuando los parámetros de renderizado son incorrectos XML(Sin promotor agent,Devolver error directamente). */
+    /** 渲染参数错误时的 XML(不启动子 agent,直接返回错误)。 */
     private fun errorXml(message: String): String {
         return SubagentXmlRenderer.renderResult(
             success = false,

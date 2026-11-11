@@ -19,6 +19,8 @@
     <string name="settings_provider_empty_title">No providers yet</string>
     <string name="settings_provider_empty_subtitle">Add a provider first so the assistant can start working</string>
     <string name="settings_provider_empty_action">Add Provider</string>
+    <string name="settings_provider_free_ready_title">Built-in free models are ready</string>
+    <string name="settings_provider_free_ready_subtitle">Chat works right now. Adding your own provider is optional and unlocks more quota and capabilities.</string>
     <string name="settings_provider_category_official">Official</string>
     <string name="settings_provider_category_relay">Relay</string>
     <string name="settings_provider_category_custom">Custom</string>
@@ -44,9 +46,9 @@
     <string name="settings_provider_unable_to_resolve_server">Cannot resolve server address</string>
     <string name="settings_provider_query_timeout">Query timed out</string>
     <string name="settings_provider_query_failed">Query failed: %1$s</string>
-    <string name="settings_provider_discard_changes_title">Discard changes?</string>
-    <string name="settings_provider_discard_changes_content">You have unsaved changes that will be lost. Discard them?</string>
-    <string name="settings_provider_discard">Discard</string>
+    <string name="settings_unsaved_changes_title">Discard changes?</string>
+    <string name="settings_unsaved_changes_content">You have unsaved changes that will be lost. Discard them?</string>
+    <string name="settings_unsaved_discard">Discard</string>
     <string name="settings_provider_new">New Provider</string>
     <!-- v2.4: standalone connection test result messages (short, distinct from fetchModels error grading) -->
     <string name="settings_provider_test_success_count">Connection OK · %1$d models</string>
@@ -69,6 +71,7 @@
     <string name="settings_provider_tab_models">Models</string>
     <string name="settings_provider_file_picker_failed">Cannot open file picker: %1$s</string>
     <string name="settings_provider_delete_title">Delete Provider</string>
+    <string name="settings_provider_delete_consequence">Its API key and its configured model list are deleted too.</string>
     <string name="settings_provider_delete_content">Are you sure you want to delete %1$s? This action cannot be undone.</string>
     <string name="settings_provider_action_activate">Set as current</string>
     <string name="settings_model_catalog_refresh">Check for updates</string>
@@ -308,6 +311,8 @@
     <string name="settings_chat_show_timestamp">Show Timestamp</string>
     <string name="settings_chat_show_timestamp_subtitle">Show send time for each message</string>
     <string name="settings_chat_generation_style">Generation Style</string>
+    <string name="settings_chat_reply_language">Reply in the user\'s language</string>
+    <string name="settings_chat_reply_language_subtitle">Answers follow the language of your message, falling back to the interface language. Turn off to let prompts decide</string>
     <string name="settings_chat_randomness">Response Randomness</string>
     <string name="settings_chat_temp_hint_certain">Deterministic, stable and predictable</string>
     <string name="settings_chat_temp_hint_balanced_low">Leaning balanced, stable yet diverse</string>
@@ -383,12 +388,18 @@
     <string name="cloud_backup_backup_now">Back up now</string>
     <string name="cloud_backup_backup_success">Uploaded to cloud</string>
     <string name="cloud_backup_config_saved">Configuration saved</string>
+    <string name="cloud_backup_config_save_failed">Failed to save</string>
     <string name="cloud_backup_delete_failed">Delete failed</string>
+    <string name="cloud_backup_delete_consequence">This cloud version is removed permanently. If it is your only copy, you lose the cloud fallback.</string>
     <string name="cloud_backup_delete_success">Deleted</string>
     <string name="cloud_backup_delete_this">Delete</string>
     <string name="cloud_backup_enable">Enable cloud backup</string>
     <string name="cloud_backup_hide_secret">Hide</string>
     <string name="cloud_backup_interval_hint">Shorter intervals mean more frequent uploads, using more data and battery; for large knowledge bases, ≥ 3 days is recommended</string>
+    <plurals name="cloud_backup_interval_days">
+        <item quantity="one">%1$d day</item>
+        <item quantity="other">%1$d days</item>
+    </plurals>
     <string name="cloud_backup_interval_label">Backup interval (days)</string>
     <string name="cloud_backup_list_empty">No remote backups yet</string>
     <string name="cloud_backup_list_load_failed">Failed to load; check configuration and retry</string>
@@ -415,7 +426,7 @@
     <string name="settings_chat_expand_button">Show full-screen edit button</string>
     <string name="settings_chat_expand_button_subtitle">Show full-screen edit button on the right of the input bar</string>
 
-    <!-- Correcciones en la interfaz (i18n-3.x): Floor-based context limit i18n -->
+    <!-- 前端修复 (i18n-3.x): Floor-based context limit i18n -->
     <string name="settings_chat_floor_limiter">Floor-based context limit</string>
     <string name="settings_chat_floor_limiter_subtitle">Treats user messages as floors and keeps the most recent N complete floors, avoiding truncation mid-conversation</string>
     <string name="settings_chat_tool_rounds">Tool round limit</string>
@@ -425,7 +436,7 @@
     <string name="settings_chat_floor_keep">Floors to keep</string>
     <string name="settings_chat_floor_keep_subtitle">Older messages beyond this floor count are truncated</string>
 
-    <!-- Correcciones en la interfaz (i18n-3.x): Shared clear-all texts (stickers / group chat memory) -->
+    <!-- 前端修复 (i18n-3.x): Shared clear-all texts (stickers / group chat memory) -->
     <string name="settings_common_clear_all">Clear all</string>
     <string name="settings_common_clear">Clear</string>
 
@@ -464,7 +475,7 @@
     <string name="settings_provider_test_connection_endpoint_sub">Sends a real message to verify the model works</string>
     <string name="settings_provider_test_success_chat_ok">Connected · %1$s answered</string>
 
-    <!-- completo strict=en brecha de acceso -->
+    <!-- 补齐 strict=en 门禁缺口 -->
     <string name="settings_backup_export_session">Export a single conversation</string>
     <string name="settings_backup_export_session_count">%1$d messages</string>
     <string name="settings_backup_export_session_empty">No conversation to export yet</string>

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 联网设置页「搜索顺序」区块的文案（与引擎顺序表配套）。
+     单独成文件而不是塞进 strings_settings_sub.xml，是为了让新增条目
+     不必去动那份正被并行修改的文件。 -->
+<resources>
+    <string name="settings_web_search_order_title">Search order</string>
+    <string name="settings_web_search_order_subtitle">Search services are tried in this order; unconfigured ones are skipped.</string>
+    <string name="settings_web_search_order_move_up">Move up</string>
+    <string name="settings_web_search_order_move_down">Move down</string>
+    <string name="settings_web_search_order_reset">Reset to default order</string>
+    <string name="settings_web_search_key_verify">Verify</string>
+    <string name="settings_web_search_key_verify_ok">Working: returned %1$d results</string>
+    <string name="settings_web_search_key_verify_failed">Verification failed: %1$s</string>
+    <string name="settings_web_search_key_verify_no_key">This engine has no usable key yet</string>
+    <string name="settings_web_search_key_verify_empty">Reached the service, but it returned no results</string>
+</resources>

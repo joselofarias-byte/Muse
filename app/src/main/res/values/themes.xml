@@ -1,22 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- v1.7: Aplicar tema principal — Ninguno ActionBar,Dibuja la barra de estado tú mismo con Compose/barra de navegación -->
-    <!-- v1.99: Agregue bordes cortos para extender el contenido a la pantalla curva/cutout Distrito,La evitación se maneja mediante inserciones de Redactar -->
+    <!-- v1.7: 应用主主题 — 无 ActionBar,由 Compose 自行绘制状态栏/导航栏 -->
+    <!-- v1.99: 加 shortEdges 让内容延伸到曲面屏/cutout 区,由 Compose insets 负责避让 -->
     <style name="Theme.Muse" parent="@android:style/Theme.Material.Light.NoActionBar">
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <!-- API 27+ -->
         <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
     </style>
-    <!-- v1.7: tema de la pantalla de bienvenida — uso androidx.core:core-splashscreen -->
+    <!-- v1.7: 启动屏主题 — 使用 androidx.core:core-splashscreen -->
     <style name="Theme.Muse.Starting" parent="Theme.SplashScreen">
-        <!-- warm-paper color de fondo -->
+        <!-- warm-paper 背景色 -->
         <item name="windowSplashScreenBackground">@color/splash_background</item>
-        <!-- icono central: muse logo -->
+        <!-- 中心图标: muse logo -->
         <item name="windowSplashScreenAnimatedIcon">@drawable/ic_muse_logo</item>
-        <!-- El fondo del icono es consistente con el fondo de la ventana.,Evite los accidentes cerebrovasculares -->
+        <!-- 图标背景与窗口背景一致,避免描边感 -->
         <item name="windowSplashScreenIconBackgroundColor">@color/splash_background</item>
-        <!-- Splash Después de terminar, regrese al tema principal. -->
+        <!-- Splash 结束后切回主主题 -->
         <item name="postSplashScreenTheme">@style/Theme.Muse</item>
     </style>
 </resources>

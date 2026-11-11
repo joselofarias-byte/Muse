@@ -17,10 +17,10 @@ import io.zer0.muse.ui.theme.MuseAnimation
 import io.zer0.muse.ui.theme.MuseMotion
 
 /**
- * B6-02: pelle-d-umore Superposición de piel de emoción en pantalla completa.
+ * B6-02: pelle-d-umore 全屏情绪皮肤 overlay。
  *
- * Representado detrás de la lista de mensajes, cambie el color del estado de ánimo de acuerdo con el estado de ánimo del último mensaje del asistente.
- * rage/rage2/desire/vuoto/moonlight Cada uno tiene un gradiente independiente y un ligero halo de respiración.
+ * 渲染在消息列表背后，按当前最后一条助手消息的 moodSkin 切换氛围色。
+ * rage/rage2/desire/vuoto/moonlight 各有独立渐变，并带轻微呼吸光晕。
  */
 @Composable
 fun MoodSkinOverlay(skin: String?) {

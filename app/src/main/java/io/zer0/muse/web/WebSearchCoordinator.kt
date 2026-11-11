@@ -8,8 +8,8 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 /**
- * La única entrada de orquestación para la búsqueda en línea: presupuestos limitados, consultas repetidas y resultados vacíos consecutivos para la misma rueda de herramientas.
- * provider Usted sólo es responsable de las solicitudes; aquí usted es responsable de las estrategias de búsqueda perceptibles por el usuario.
+ * 联网搜索唯一编排入口：限制同一工具轮的预算、重复 query 和连续空结果。
+ * provider 自己只负责请求；这里负责用户可感知的搜索策略。
  */
 class WebSearchCoordinator(
     private val service: WebSearchService,

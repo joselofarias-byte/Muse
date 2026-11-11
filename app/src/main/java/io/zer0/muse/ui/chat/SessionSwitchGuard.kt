@@ -3,35 +3,35 @@ package io.zer0.muse.ui.chat
 import java.util.concurrent.atomic.AtomicInteger
 
 /**
- * v2.x: sesión/Protección del número de serie para cambio de modo.
+ * v2.x: 会话/模式切换的序号守卫。
  *
- * fondo(2026-09-28 Comentarios de los usuarios:Agent pagina de dialogo esporádico — El contenido de otra sesión parpadea y se restaura después de cerrar y reabrir.):
+ * 背景(2026-09-28 用户反馈:Agent 页偶发串对话 — 另一个会话的内容闪现、关掉再打开才恢复):
  * [io.zer0.muse.ui.chat.ChatSessionController.setAgentMode] /
  * [io.zer0.muse.ui.chat.ChatSessionController.switchSession] /
- * ChatViewModel.switchAgentAssistant Carga asincrónica de(Chaku → Enviar mensajes + estado de la interfaz de usuario)No antes
- * cheque de vencimiento:Cuando se realiza una conmutación rápida, la carga iniciada primero puede completarse más tarde.,Sobrescriba los mensajes y el estado de la "conversación anterior" en la interfaz actual.
+ * ChatViewModel.switchAgentAssistant 的异步加载(查库 → 提交 messages + UI 状态)此前没有
+ * 过期校验:快速切换时先发起的加载可能后完成,把「旧会话」的消息与状态硬盖到当前界面。
  *
- * Uso:Cambiar llamada síncrona de entrada [begin] Obtenga este número de serie;Se están enviando tareas asincrónicas(escribir messages/state)llamado antes
- * [isStale],Si es cierto, descarta este resultado.(Si es necesario, libere primero la referencia de sesión de esta adquisición.).
- * invariante:El último cambio iniciado siempre se puede enviar,Las tareas caducadas nunca lo sobrescriben.
+ * 用法:切换入口同步调用 [begin] 取得本次序号;异步任务在提交(写 messages/state)前调用
+ * [isStale],为 true 则丢弃本次结果(必要时先释放本次 acquire 的会话引用)。
+ * 不变量:最后一次发起的切换永远能提交,过期任务永不覆盖它。
  *
- * El número de serie es el estado de la instancia.,Cada instancia de interfaz contiene una copia.:Lo que hay que ordenar son "cambios iniciados continuamente en la misma interfaz".,
- * Ordenar entre instancias no tiene sentido. Previamente escrito como un singleton a nivel de proceso,Una tarea que hace que una instancia se retrase provocará el retraso de otra instancia.
- * El cambio se considera caducado(En la prueba se descartó la recuperación del foco.).
+ * 序号是实例状态,每个界面实例各持一份:需要排序的是「同一个界面上连续发起的切换」,
+ * 跨实例排序没有意义。早先写成进程级单例,导致一个实例的迟到任务会把另一个实例的
+ * 切换判成过期(测试里表现为焦点恢复被丢弃)。
  */
 internal class SessionSwitchGuard {
     private val seq = AtomicInteger(0)
 
-    /** Iniciar un cambio,Devuelve el número de secuencia de este conmutador. */
+    /** 发起一次切换,返回本次切换的序号。 */
     fun begin(): Int = seq.incrementAndGet()
 
-    /** Si el número de secuencia ha sido reemplazado por un interruptor más nuevo. */
+    /** 该序号是否已被更新的切换取代。 */
     fun isStale(token: Int): Boolean = token != seq.get()
 
     /**
-     * Sólo para pruebas: restablezca el número de serie a cero.
+     * 仅供测试：把序号归零。
      *
-     * El estado de la instancia se destruye junto con la instancia. Este método está reservado para casos de uso que necesitan reutilizar la misma instancia para restablecerla explícitamente.
+     * 实例状态本就随实例销毁，这个方法留给需要复用同一实例的用例显式复位。
      */
     @androidx.annotation.VisibleForTesting
     fun resetForTest() {

@@ -7,6 +7,7 @@ import io.zer0.common.Logger
 import io.zer0.common.resultOf
 import io.zer0.muse.R
 import io.zer0.muse.asr.AudioAmplitude.appendAmplitude
+import io.zer0.muse.util.GlobalCoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -35,60 +36,60 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
- * OpenAI Realtime transmisión ASR Controller(Basado en el protocolo oficial en tiempo real de OpenAI,con este proyecto
- * [DashScopeAsrController] Arquitectura consistente).
+ * OpenAI Realtime 流式 ASR Controller(基于 OpenAI 官方 Realtime 协议,与本项目
+ * [DashScopeAsrController] 架构一致)。
  *
- * ir wss://api.openai.com/v1/realtime?intent=transcription,Transmisión verdadera + confirmación manual del cliente.
+ * 走 wss://api.openai.com/v1/realtime?intent=transcription,真流式 + 客户端手动 commit。
  *
- * Acuerdo(Presione el modo de transcripción de la versión GA de OpenAI Realtime API):
- *  1. crear WebSocket(wss://api.openai.com/v1/realtime?intent=transcription)
+ * 协议(按 OpenAI Realtime API GA 版 transcription 模式):
+ *  1. 建立 WebSocket(wss://api.openai.com/v1/realtime?intent=transcription)
  *     - Header: Authorization: Bearer {apiKey}
- *     - no enviar OpenAI-Beta: realtime=v1 —— Beta El canal estuvo desconectado el 2026-05-12,
- *       Se rechazará estrechar la mano de esta cabeza.;GA la versión no requiere ningún encabezado de etiqueta de versión Beta
- *  2. Enviar evento session.update,Configuración(GA Recopile todas las configuraciones del lado de entrada en la capa session.audio.input):
- *     - session.type: transcription(GA Requerido,Diferenciarse de la forma de diálogo de voz en tiempo real)
+ *     - 不发送 OpenAI-Beta: realtime=v1 —— Beta 通道已于 2026-05-12 下线,
+ *       带该头握手会被拒;GA 版不需要任何 Beta 版本标记头
+ *  2. 发送 session.update 事件,配置(GA 把输入侧配置全部收进 session.audio.input 一层):
+ *     - session.type: transcription(GA 必填,与 realtime 语音对话形态区分)
  *     - session.audio.input.format: { type: "audio/pcm", rate: 16000 }
- *       rate tomar [AsrAudioCapture] La tasa de muestreo de la colección.([AsrConfig.sampleRate] Predeterminado 16000),
- *       Si el valor declarado no coincide con la colección real, el servidor lo analizará según la longitud del marco incorrecto. PCM
- *     - session.audio.input.transcription.model: gpt-realtime-whisper(modelo de transcripción en tiempo real)
- *     - session.audio.input.transcription.prompt: palabras calientes(Opcional,Mejorar la tasa de reconocimiento de nombres propios)
- *     - session.audio.input.transcription.language: Idioma(Opcional)
- *     - session.audio.input.turn_detection: null(No es un VAD del lado del servidor, se abre manualmente mediante la confirmación del cliente);
- *       La clave debe escribirse explícitamente como nula, lo que tiene una semántica diferente a la de omitir la clave.
- *     - session.audio.input.noise_reduction: null(La supresión de ruido no está habilitada.)
- *     Uso de transliteración pura,No configure elementos relacionados con session.audio.output y diálogo de voz
- *  3. empezar AudioRecord(VOICE_COMMUNICATION fuente,PCM 16-bit mono)Colección de bucles
- *  4. por cuadro:Calcular la amplitud RMS → actualizar state.amplitudes;Base64 codificación → Enviar evento input_audio_buffer.append
- *  5. recibir conversation.item.input_audio_transcription.delta empalme incremental
- *  6. recibir conversation.item.input_audio_transcription.completed entrar completedTranscripts
- *     (delta y completado son solo texto acumulado y no envían ninguna señal de envío a la capa superior)
- *  7. stop(): input_audio_buffer.commit() se envía solo cuando el usuario termina activamenteturn_detection cuando es nulo
- *     Este es el único punto de desconexión), espere a que el servidor regrese completo (o se agote el tiempo de espera para forzar la inactividad)
- *  8. dispose():Cancelar corrutina,cerrar WebSocket,liberar AudioRecord
+ *       rate 取 [AsrAudioCapture] 的采集采样率([AsrConfig.sampleRate] 默认 16000),
+ *       声明值与真实采集不一致会让服务端按错误帧长解析 PCM
+ *     - session.audio.input.transcription.model: gpt-realtime-whisper(实时转写模型)
+ *     - session.audio.input.transcription.prompt: 热词(可选,提升专有名词识别率)
+ *     - session.audio.input.transcription.language: 语种(可选)
+ *     - session.audio.input.turn_detection: null（不为服务端 VAD，改由客户端 commit 手动开点）；
+ *       该键必须显式写 null，与省略该键语义不同
+ *     - session.audio.input.noise_reduction: null(未启用噪声抑制)
+ *     纯转写用途,不配置 session.audio.output 与语音对话相关项
+ *  3. 启动 AudioRecord(VOICE_COMMUNICATION 源,PCM 16-bit mono)循环采集
+ *  4. 每帧:计算 RMS 振幅 → 更新 state.amplitudes;Base64 编码 → 发 input_audio_buffer.append 事件
+ *  5. 接收 conversation.item.input_audio_transcription.delta 增量拼接
+ *  6. 接收 conversation.item.input_audio_transcription.completed 入 completedTranscripts
+ *     （delta 与 completed 都只是累积文本，不向上层发任何提交信号）
+ *  7. stop()：用户主动结束时才发 input_audio_buffer.commit（turn_detection 为 null 时
+ *     这是唯一的断开点），等服务端回 completed 收尾（或超时强制切 Idle）
+ *  8. dispose():取消协程,关 WebSocket,释放 AudioRecord
  *
- * Flujo de estado:Idle → Connecting → Listening → Stopping → Idle(o Error)
+ * 状态流转:Idle → Connecting → Listening → Stopping → Idle(或 Error)
  *
- * Desconectar y volver a conectar(Tarea 1):
- *  - monitorear WebSocket onClosed/onFailure → Ingrese al estado de reconexión
- *  - retroceso exponencial:1s, 2s, 4s, 8s, 16s, máximo 30s
- *  - Continuar grabando durante la reconexión,Almacenar en búfer tramas PCM para [audioBuffer](cola de memoria,Máximo 5 MB evitar OOM)
- *  - Retransmitir tramas de audio almacenadas en búfer después de una reconexión exitosa,Restablecer el recuento de retrocesos
- *  - Cambie al estado de error después de que el error de reconexión supere 5 veces,Notificación UI"Anormalidad de la red,Por favor verifique la red y vuelva a intentarlo."
+ * 断网重连(任务 1):
+ *  - 监听 WebSocket onClosed/onFailure → 进入 Reconnecting 状态
+ *  - 指数退避:1s, 2s, 4s, 8s, 16s, 最大 30s
+ *  - 重连期间继续录音,把 PCM 帧缓冲到 [audioBuffer](内存队列,上限 5MB 避免 OOM)
+ *  - 重连成功后补发缓冲的音频帧,重置退避计数
+ *  - 重连失败超过 5 次后切 Error 状态,通知 UI"网络异常,请检查网络后重试"
  *
- * Nota:Después de cerrar el VAD del lado del servidor,El punto final de un segmento de entrada lo determina completamente la persona que llama stop() decidir——Esta es exactamente la semántica.:
- * ASR No terminará solo por una pausa entre oraciones.,El servidor no enviará media frase por adelantado para el usuario.
- * El VAD local tampoco está habilitado de forma predeterminada([AsrConfig.vadEnabled] Predeterminado false).
+ * 注:服务端 VAD 关闭后,一段输入的结束点完全由调用方 stop() 决定——这正是要的语义:
+ * ASR 不会因为句间停顿就自行收尾,服务端也不会替用户提前提交半句话。
+ * 本地 VAD 默认也不启用([AsrConfig.vadEnabled] 默认 false)。
  *
- * @param config ASR Configuración(debe tener apiKey)
- * @param sharedClient Compartir inyectables OkHttpClient
+ * @param config ASR 配置(必须有 apiKey)
+ * @param sharedClient 可注入共享 OkHttpClient
  */
 class OpenAiRealtimeAsrController(
     private val config: AsrConfig,
     sharedClient: OkHttpClient? = null,
-    // v2.7: Alineado con el controlador de transmisión DashScope——La copia de error de cara al usuario debe pasar por los recursos.
-    // El mismo campo errorMessage de antes:DashScope usar appContext.getString(...),
-    // Esta clase y Step/OpenAiWhisper escriben en chino, lo que equivale a una función y cuatro métodos.
-    // Parámetros obligatorios (puede dejarlos vacíos si no lo hace): devolver una cadena vacía tragará el mensaje de error directamente, lo cual es peor que codificar.
+    // v2.7: 跟 DashScope 流式 Controller 对齐——面向用户的错误文案必须走资源。
+    // 此前同一个 errorMessage 字段：DashScope 用 appContext.getString(...)，
+    // 本类与 Step / OpenAiWhisper 写死中文，等于一个功能四种做法。
+    // 必需参数（不做可空兜底）：退回空串会把错误信息直接吞掉，比硬编码更糟。
     private val appContext: Context,
 ) : ASRController {
 
@@ -100,7 +101,7 @@ class OpenAiRealtimeAsrController(
         .pingInterval(30, TimeUnit.SECONDS)
         .build()
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate + GlobalCoroutineExceptionHandler)
     private val _state = MutableStateFlow(ASRState(isAvailable = config.apiKey.isNotBlank()))
     override val state: StateFlow<ASRState> = _state.asStateFlow()
 
@@ -110,56 +111,56 @@ class OpenAiRealtimeAsrController(
     private var recordJob: Job? = null
     private var onTranscriptChange: ((String) -> Unit)? = null
 
-    // resultado final acumulado(completed texto del evento)+ resultado intermedio actual(delta texto)
+    // 累积的最终结果(completed 事件的文本)+ 当前中间结果(delta 文本)
     private val completedTranscripts = StringBuilder()
 
     @Volatile private var currentDeltaText: String = ""
 
-    // Local opcional VAD(El usuario lo habilita explícitamente en la configuración.)
+    // 可选本地 VAD(用户在 config 中显式启用)
     private var vadDetector: VadDetector? = null
 
-    // ── Tarea 1: Campos relevantes para la desconexión y reconexión ──────────────────────────────────────
-    /** Número de reconexiones activadas(Borrado después del éxito). */
+    // ── 任务 1:断网重连相关字段 ──────────────────────────────────────
+    /** 已触发的重连次数(成功后清零)。 */
     private var reconnectAttempt = 0
 
-    /** Tramas de audio PCM almacenadas en búfer durante la reconexión(Reedición por orden de incorporación al equipo.). */
+    /** 重连期间缓冲的 PCM 音频帧(按入队顺序补发)。 */
     private val audioBuffer = ArrayDeque<ByteArray>()
 
-    /** [audioBuffer] cerrar,El hilo de grabación addLast y la reedición de reconexión removeFirst son mutuamente excluyentes. */
+    /** [audioBuffer] 锁,录音线程 addLast 与重连补发 removeFirst 互斥。 */
     private val audioBufferLock = Any()
 
-    /** [audioBuffer] Número acumulado actual de bytes,usado para [MAX_AUDIO_BUFFER_BYTES] Juicio de límite superior. */
+    /** [audioBuffer] 当前累计字节数,用于 [MAX_AUDIO_BUFFER_BYTES] 上限判断。 */
     @Volatile private var audioBufferBytes = 0
 
-    /** La rutina de reconexión de retroceso actualmente programada,dispose/stop/start Se requiere cancelación. */
+    /** 当前调度的退避重连协程,dispose/stop/start 时需取消。 */
     private var reconnectJob: Job? = null
 
-    /** dispose logotipo,Evite la reconexión después de desecharlo. */
+    /** dispose 标志,防止 dispose 后还在重连。 */
     private val isDisposed = AtomicBoolean(false)
 
-    /** v2.7: Analizar el texto de error localizado (isomorfo a DashScopeAsrController). */
+    /** v2.7: 解析本地化错误文案（与 DashScopeAsrController 同构）。 */
     private fun asrError(res: Int, vararg args: Any): String =
         if (args.isEmpty()) appContext.getString(res) else appContext.getString(res, *args)
 
     override fun start(onTranscriptChange: ((String) -> Unit)?) {
-        // dispose Se debe mantener el estado final; de lo contrario, el alcance se canceló pero el inicio aún cambiará el estado a Conectando, lo que provocará que la interfaz de usuario se conecte de forma permanente y falsa.
+        // dispose 后必须保持终态；否则 scope 已取消但 start 仍会把 state 改成 Connecting，造成 UI 永久假连接。
         if (isDisposed.get()) return
         if (_state.value.status == ASRStatus.Listening) {
-            Logger.w(TAG, "Ya grabando,ignorar duplicados start")
+            Logger.w(TAG, "已在录音,忽略重复 start")
             return
         }
         if (config.apiKey.isBlank()) {
-            Logger.w(TAG, "OpenAI Realtime ASR No configurado apiKey")
+            Logger.w(TAG, "OpenAI Realtime ASR 未配置 apiKey")
             _state.update { it.copy(status = ASRStatus.Error, errorMessage = asrError(R.string.asr_error_no_apikey)) }
             return
         }
-        // si en Reconnecting,Primero cancele la reconexión y limpie los recursos de grabación.,El inicio posterior de Grabación interna se reconstruirá
+        // 若处于 Reconnecting,先取消重连并清理录音资源,后续 startRecordingInternal 会重建
         if (_state.value.status == ASRStatus.Reconnecting) {
             cancelReconnect()
             recordJob?.cancel()
             try {
                 audioRecord?.stop()
-            } catch (_: Throwable) { /* Detenido o no inicializado */ }
+            } catch (_: Throwable) { /* 已停止或未初始化 */ }
             audioRecord?.release()
             audioRecord = null
         }
@@ -182,36 +183,36 @@ class OpenAiRealtimeAsrController(
         scope.launch { connectAndRecord() }
     }
 
-    /** Establezca WebSocket, envíe session.update e inicie el hilo de grabación(primera ruta de conexión). */
+    /** 建立 WebSocket、发 session.update、启动录音线程(首次连接路径)。 */
     private suspend fun connectAndRecord() {
         val success = establishConnection(isInitial = true)
         if (success) {
             startRecordingInternal()
         } else if (_state.value.status == ASRStatus.Connecting) {
-            // establishConnection Ya cleanupConnection,state todavía Connecting,Transferir aquí Error
+            // establishConnection 已 cleanupConnection,state 仍为 Connecting,这里转 Error
             _state.update { it.copy(status = ASRStatus.Error, errorMessage = asrError(R.string.asr_error_connect_failed)) }
         }
     }
 
     /**
-     * Establezca una conexión WebSocket y envíe session.update.
+     * 建立 WebSocket 连接并发送 session.update。
      *
-     * @param isInitial true=Conexión por primera vez(Transferencia fallida Error,Sin reconexión);false=Reconectar(no ir [scheduleReconnect] continuar retirándose)
-     * @return true=Conexión exitosa(session.update Enviado,session.created Ya esperando)
+     * @param isInitial true=首次连接(失败转 Error,不重连);false=重连(失败走 [scheduleReconnect] 继续退避)
+     * @return true=连接成功(session.update 已发送,session.created 已等待)
      */
     private suspend fun establishConnection(isInitial: Boolean): Boolean {
         val streamSession = RealtimeSession(json) { event ->
-            // onMessage Activado en el hilo OkHttp,El envío al ámbito principal garantiza que handleEvent se ejecute en el hilo principal
+            // onMessage 在 OkHttp 线程触发,派发到 Main scope 保证 handleEvent 在主线程执行
             scope.launch { handleEvent(event) }
         }
         streamSession.onDisconnected = { code, reason ->
-            // Distribuido a Main scope,Serie con actualizaciones de estado.
+            // 派发到 Main scope,与状态更新串行
             scope.launch { onWebSocketDisconnected(code, reason) }
         }
         session = streamSession
 
-        // endpoint tener prioridad config.baseUrl,Utilice el valor predeterminado incorporado cuando esté vacío
-        // baseUrl Puede ser https:// o wss://,Necesita convertir a wss:// y agregar intent=transcription
+        // endpoint 优先取 config.baseUrl,空时用内置默认值
+        // baseUrl 可能是 https:// 或 wss://,需要转换为 wss:// 并加 intent=transcription
         val endpoint = buildRealtimeEndpoint(config.baseUrl)
         val request = buildRealtimeRequest(endpoint, config.apiKey)
 
@@ -219,11 +220,11 @@ class OpenAiRealtimeAsrController(
         webSocket = ws
 
         return try {
-            // Enviar configuración de sesión.actualizar(Sin respuesta,Realtime API No devuelva eventos que no sean session.created,
-            // session.updated posible retraso,Simplemente ve a Escuchar directamente)
+            // 发送 session.update 配置(不等响应,Realtime API 不返回 session.created 之外的事件,
+            // session.updated 可能延迟,直接进入 Listening 即可)
             val sessionUpdate = buildSessionUpdateMessage()
             if (!ws.send(sessionUpdate)) {
-                Logger.w(TAG, "No se pudo enviar la sesión.actualización")
+                Logger.w(TAG, "发送 session.update 失败")
                 cleanupConnection()
                 if (isInitial) {
                     _state.update {
@@ -236,30 +237,30 @@ class OpenAiRealtimeAsrController(
                 return false
             }
 
-            // corta espera session.created(Opcional,5s Sin bloqueo en el tiempo de espera)
+            // 短暂等待 session.created(可选,5s 超时不阻塞)
             streamSession.waitForEvent("session.created", TIMEOUT_EVENT_MS)
-            // P2-13: Durante el apretón de manos, el usuario puede tener stop/dispose — Dejar de iniciar la grabación cuando el estado ya no sea Conectando
+            // P2-13: 握手期间用户可能已 stop/dispose — 状态不再处于 Connecting 时放弃启动录音
             if (isInitial) {
                 if (_state.value.status != ASRStatus.Connecting) {
-                    Logger.d(TAG, "Apretón de manos completado pero el estado cambió(${_state.value.status}),Dejar de iniciar la grabación")
+                    Logger.d(TAG, "握手完成但状态已变化(${_state.value.status}),放弃启动录音")
                     cleanupConnection()
                     return false
                 }
-                // Ingrese incluso si no se recibe session.created Listening(Algunas estaciones de transferencia no responden a este evento.)
+                // 即使没收到 session.created 也进入 Listening(部分中转站不回此事件)
                 _state.update { it.copy(status = ASRStatus.Listening, errorMessage = null) }
             } else {
                 if (_state.value.status != ASRStatus.Connecting) {
-                    Logger.d(TAG, "Reconexión completada pero el estado ha cambiado(${_state.value.status}),renunciar a la recuperación")
+                    Logger.d(TAG, "重连完成但状态已变化(${_state.value.status}),放弃恢复")
                     return false
                 }
-                // Reconexión exitosa:Restablecer el recuento de retrocesos,Reemitir cuadros de audio almacenados en buffer
+                // 重连成功:重置退避计数,补发缓冲的音频帧
                 onReconnected()
             }
             true
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {
-            Logger.w(TAG, "establishConnection anormal: ${e.message}")
+            Logger.w(TAG, "establishConnection 异常: ${e.message}")
             cleanupConnection()
             if (isInitial) {
                 _state.update {
@@ -274,53 +275,53 @@ class OpenAiRealtimeAsrController(
     }
 
     /**
-     * Tarea 1: devolución de llamada de desconexión de WebSocket(por [RealtimeSession.onClosed]/[onFailure] distribuir).
+     * 任务 1:WebSocket 断线回调(由 [RealtimeSession.onClosed]/[onFailure] 派发)。
      *
-     * toma de decisiones:
-     *  - dispose Medio / Ya el estado final(Idle/Error):ignorar
-     *  - Stopping(El usuario se está deteniendo activamente.):Sin reconexión,dejar stop() La lógica del tiempo de espera termina
-     *  - Connecting(Conectando por primera vez)/ Listening(Conectado)/ Reconnecting(Reconectando):gatillo [scheduleReconnect]
+     * 决策:
+     *  - dispose 中 / 已是终态(Idle/Error):忽略
+     *  - Stopping(用户主动停止中):不重连,让 stop() 的超时逻辑收尾
+     *  - Connecting(首次连接中)/ Listening(已连接)/ Reconnecting(重连中):触发 [scheduleReconnect]
      *
-     * @param code código de cierre,[RealtimeSession.FAILURE_CODE] expresar onFailure(-1)
-     * @param reason Motivo del cierre(Mensaje o servidor de excepción reason)
+     * @param code 关闭码,[RealtimeSession.FAILURE_CODE] 表示 onFailure(-1)
+     * @param reason 关闭原因(异常 message 或服务端 reason)
      */
     private fun onWebSocketDisconnected(code: Int, reason: String) {
         if (isDisposed.get()) return
         val status = _state.value.status
         if (status == ASRStatus.Idle || status == ASRStatus.Error) {
-            // Ya el estado final,ignorar(Puede ser activado por eliminar close)
+            // 已是终态,忽略(可能是 dispose 触发的 close)
             return
         }
         if (status == ASRStatus.Stopping) {
-            // El usuario se está deteniendo activamente.,WebSocket El cierre es un final normal.,Sin reconexión
-            Logger.d(TAG, "Stopping Cierre de WebSocket mediano,Sin reconexión: code=$code reason=$reason")
+            // 用户主动停止中,WebSocket 关闭属正常收尾,不重连
+            Logger.d(TAG, "Stopping 中 WebSocket 关闭,不重连: code=$code reason=$reason")
             return
         }
         if (status == ASRStatus.Connecting) {
-            // establishConnection Activado por conexión de limpieza interna close,
-            // El error es manejado por el propio establishmentConnection/attemptReconnect,Evite duplicar el número de reconexiones
-            Logger.d(TAG, "Connecting Cierre de WebSocket mediano,Manejado por establecer Conexión: code=$code reason=$reason")
+            // establishConnection 内部 cleanupConnection 触发的 close,
+            // 由 establishConnection/attemptReconnect 自己处理失败,避免重连次数双倍递增
+            Logger.d(TAG, "Connecting 中 WebSocket 关闭,由 establishConnection 处理: code=$code reason=$reason")
             return
         }
-        Logger.w(TAG, "WebSocket Desconectar,Activar reconexión: code=$code reason=$reason (attempt=$reconnectAttempt)")
+        Logger.w(TAG, "WebSocket 断开,触发重连: code=$code reason=$reason (attempt=$reconnectAttempt)")
         scheduleReconnect()
     }
 
     /**
-     * Tarea 1: programar la próxima reconexión de retroceso exponencial.
+     * 任务 1:调度下一次指数退避重连。
      *
-     * secuencia de retroceso:1s, 2s, 4s, 8s, 16s, Máximo 30s.
-     * exceder [MAX_RECONNECT_ATTEMPTS] Después de esto, cambie al estado de Error y notifique a la interfaz de usuario.
+     * 退避序列:1s, 2s, 4s, 8s, 16s, 最大 30s。
+     * 超过 [MAX_RECONNECT_ATTEMPTS] 次后切 Error 状态并通知 UI。
      */
     private fun scheduleReconnect() {
         if (isDisposed.get()) return
         if (reconnectAttempt >= MAX_RECONNECT_ATTEMPTS) {
-            Logger.w(TAG, "La reconexión excede $MAX_RECONNECT_ATTEMPTS veces,rendirse,Estado de error del interruptor")
+            Logger.w(TAG, "重连超过 $MAX_RECONNECT_ATTEMPTS 次,放弃,切 Error 状态")
             failAsr(asrError(R.string.asr_reconnect_exhausted))
             return
         }
         val delayMs = minOf(MAX_RECONNECT_DELAY_MS, 1000L * (1L shl reconnectAttempt))
-        Logger.w(TAG, "Programación No. ${reconnectAttempt + 1} reconexión,${delayMs}ms Después de la ejecución")
+        Logger.w(TAG, "调度第 ${reconnectAttempt + 1} 次重连,${delayMs}ms 后执行")
         _state.update {
             it.copy(
                 status = ASRStatus.Reconnecting,
@@ -335,72 +336,72 @@ class OpenAiRealtimeAsrController(
         reconnectAttempt++
     }
 
-    /** Tarea 1: realizar un intento de reconexión(Se ejecuta solo cuando el estado aún es Reconectando). */
+    /** 任务 1:执行一次重连尝试(状态仍为 Reconnecting 时才执行)。 */
     private suspend fun attemptReconnect() {
         if (isDisposed.get()) return
-        // Durante el período de espera, el usuario puede detener o cancelar manualmente dispose,Estado de verificación
+        // 退避期间用户可能手动 stop 或 dispose,校验状态
         val status = _state.value.status
         if (status != ASRStatus.Reconnecting) {
-            Logger.d(TAG, "Cambios de estado durante el retiro($status),Cancelar la reconexión")
+            Logger.d(TAG, "退避期间状态变化($status),取消重连")
             return
         }
-        // Cambiar temporalmente a Conectando indica que se está estableciendo una conexión.(Retroceso completado)
+        // 临时切 Connecting 表示正在建立连接(退避已完成)
         _state.update { it.copy(status = ASRStatus.Connecting) }
         val success = establishConnection(isInitial = false)
         if (!success) {
-            // Error de reconexión:continuar retirándose(El estado volverá a cambiar mediante ScheduleReconnect Reconnecting)
-            Logger.w(TAG, "Error de reconexión (attempt=$reconnectAttempt),Continuar programando")
+            // 重连失败:继续退避(状态会被 scheduleReconnect 切回 Reconnecting)
+            Logger.w(TAG, "重连失败 (attempt=$reconnectAttempt),继续调度")
             scheduleReconnect()
         }
     }
 
-    /** Tarea 1: Devolución de llamada tras una reconexión exitosa — Restablecer el recuento de retrocesos,Reemitir fotogramas de audio almacenados en búfer. */
+    /** 任务 1:重连成功回调 — 重置退避计数,补发缓冲的音频帧。 */
     private fun onReconnected() {
-        Logger.i(TAG, "Reconexión exitosa,Reemitir cuadros de audio almacenados en buffer(${audioBuffer.size} marco,$audioBufferBytes bytes)")
+        Logger.i(TAG, "重连成功,补发缓冲音频帧(${audioBuffer.size} 帧,$audioBufferBytes 字节)")
         reconnectAttempt = 0
         _state.update { it.copy(status = ASRStatus.Listening, errorMessage = null) }
         flushAudioBuffer()
     }
 
     /**
-     * Tarea 1: después de una reconexión exitosa, solo se volverá a emitir el búfer más reciente. PCM,y borre el búfer antiguo.
+     * 任务 1:重连成功后只补发最近一小段缓冲 PCM,并清空旧缓冲。
      *
-     * B-28: La implementación anterior ocupaba todo el búfer.(límite superior 5MB≈decenas de segundos)Reenvío completo a una nueva sesión VAD del servidor,
-     *  Todo el segmento de audio antes de la desconexión se tratará como nueva entrada de voz.,Contaminar los resultados de identificación de la sesión. Reparación:
-     *  - Mantenga solo el más reciente [MAX_REPLAY_BYTES](≈1-2 segundos)cuadro de audio,Los fotogramas anteriores se descartan directamente.
-     *  - Borre el búfer antiguo antes de volver a emitirlo.,Evite que los marcos residuales se vuelvan a emitir en la siguiente descarga
-     *  - webSocket Descartar en su totalidad cuando no esté disponible(consistente con la vieja lógica)
+     * B-28: 旧实现把整个缓冲(上限 5MB≈数十秒)整体重发给全新服务端 VAD 会话,
+     *  断线前的整段音频会被当作新语音输入,污染会话识别结果。修复:
+     *  - 仅保留最近 [MAX_REPLAY_BYTES](≈1-2 秒)的音频帧,更早的帧直接丢弃
+     *  - 补发前先清空旧缓冲,避免残留帧被下次 flush 重复补发
+     *  - webSocket 不可用时整体丢弃(与旧逻辑一致)
      */
     private fun flushAudioBuffer() {
         val ws = webSocket ?: run {
-            Logger.w(TAG, "flushAudioBuffer: webSocket esta vacio,descartar buffer")
+            Logger.w(TAG, "flushAudioBuffer: webSocket 为空,丢弃缓冲")
             clearAudioBuffer()
             return
         }
         synchronized(audioBufferLock) {
-            // descartar todos los fotogramas,Mantenga solo los MAX_REPLAY_BYTES bytes más recientes al final(datos de audio recientes)
+            // 丢弃全部帧,只保留尾部最近 MAX_REPLAY_BYTES 字节(最近的音频数据)
             while (audioBufferBytes > MAX_REPLAY_BYTES && audioBuffer.isNotEmpty()) {
                 val dropped = audioBuffer.removeFirst()
                 audioBufferBytes -= dropped.size
             }
-            // Reemitir el último período restante
+            // 补发剩余最近一小段
             while (audioBuffer.isNotEmpty()) {
                 val chunk = audioBuffer.removeFirst()
                 audioBufferBytes -= chunk.size
                 val audioBase64 = android.util.Base64.encodeToString(chunk, android.util.Base64.NO_WRAP)
                 val appendMsg = buildInputAudioBufferAppendMessage(audioBase64)
                 if (!ws.send(appendMsg)) {
-                    Logger.w(TAG, "No se pudo reenviar el cuadro de audio,restante ${audioBuffer.size} cuadro caído")
+                    Logger.w(TAG, "补发音频帧失败,剩余 ${audioBuffer.size} 帧丢弃")
                     break
                 }
             }
-            // claro unificado,Evite que las tramas residuales después de la interrupción de la transmisión se retransmitan la próxima vez
+            // 统一清空,避免发送中断后的残留帧被下次补发
             audioBuffer.clear()
             audioBufferBytes = 0
         }
     }
 
-    /** Tarea 1: borrar el búfer de audio(dispose/stop/start Llamado al reiniciar). */
+    /** 任务 1:清空音频缓冲(dispose/stop/start 重置时调用)。 */
     private fun clearAudioBuffer() {
         synchronized(audioBufferLock) {
             audioBuffer.clear()
@@ -408,13 +409,13 @@ class OpenAiRealtimeAsrController(
         }
     }
 
-    /** Tarea 1: cancelar la rutina de reconexión que se está programando(No modificar estado). */
+    /** 任务 1:取消正在调度的重连协程(不修改状态)。 */
     private fun cancelReconnect() {
         reconnectJob?.cancel()
         reconnectJob = null
     }
 
-    /** Iniciar el hilo de grabación AudioRecord(Colección de bucles + carga base64). */
+    /** 启动 AudioRecord 录音线程(循环采集 + base64 上传)。 */
     @SuppressLint("MissingPermission")
     private fun startRecordingInternal() {
         val capture = AsrAudioCapture.create(config.sampleRate, TAG)
@@ -427,38 +428,38 @@ class OpenAiRealtimeAsrController(
         try {
             record.startRecording()
         } catch (e: IllegalStateException) {
-            Logger.w(TAG, "AudioRecord El inicio falló: ${e.message}", e)
+            Logger.w(TAG, "AudioRecord 启动失败: ${e.message}", e)
             record.release()
             audioRecord = null
             _state.update { it.copy(status = ASRStatus.Error, errorMessage = asrError(R.string.asr_error_recording_start_failed)) }
             return
         }
 
-        // hilo de grabación:Lectura en bucle PCM → Calcular amplitud → base64 codificación → enviar input_audio_buffer.append
-        // Tarea 1: continuar el bucle en el estado Reconexión(sigue grabando),Pero pon el framebuffer en [audioBuffer] en lugar de enviar
+        // 录音线程:循环读 PCM → 计算振幅 → base64 编码 → 发 input_audio_buffer.append
+        // 任务 1:Reconnecting 状态下继续循环(保持录音),但把帧缓冲到 [audioBuffer] 而不是发送
         recordJob = scope.launch(Dispatchers.IO) {
             val chunk = ByteArray(AUDIO_CHUNK_BYTES)
             try {
                 while (isActive) {
                     val currentStatus = _state.value.status
-                    // Listening/Reconnecting Salga del bucle en un estado distinto al(Idle/Error/Stopping/Connecting estado de transición)
+                    // Listening/Reconnecting 之外的状态退出循环(Idle/Error/Stopping/Connecting 过渡态)
                     if (currentStatus != ASRStatus.Listening && currentStatus != ASRStatus.Reconnecting) {
                         break
                     }
                     val read = record.read(chunk, 0, chunk.size)
                     if (read > 0) {
-                        // 1. Calcular la amplitud RMS → actualizar state.amplitudes
+                        // 1. 计算 RMS 振幅 → 更新 state.amplitudes
                         val amp = AudioAmplitude.calculateRmsAmplitude(chunk, read)
                         _state.update { it.copy(amplitudes = it.amplitudes.appendAmplitude(amp)) }
 
-                        // 2. locales VAD(Si está habilitado):Gatillo activo silencioso de ultraumbral stop
+                        // 2. 本地 VAD(若启用):静音超阈值主动触发 stop
                         if (vadDetector?.processFrame(chunk, read, amp) == true) {
-                            Logger.d(TAG, "Activador VAD local,Detenerse activamente")
+                            Logger.d(TAG, "本地 VAD 触发,主动停止")
                             scope.launch { stop() }
                             break
                         }
 
-                        // 3. Tarea 1: almacenar en búfer cuadros de audio durante la reconexión,Listening Enviar normalmente durante el período.
+                        // 3. 任务 1:Reconnecting 期间缓冲音频帧,Listening 期间正常发送
                         if (currentStatus == ASRStatus.Reconnecting) {
                             bufferAudioFrame(chunk, read)
                         } else {
@@ -467,7 +468,7 @@ class OpenAiRealtimeAsrController(
                     } else if (read == 0) {
                         delay(10L)
                     } else if (read < 0) {
-                        Logger.w(TAG, "AudioRecord.read error: $read")
+                        Logger.w(TAG, "AudioRecord.read 错误: $read")
                         if (shouldReportAsrCaptureFailure(_state.value.status, coroutineContext[Job]?.isActive == true)) {
                             failAsr(asrError(R.string.asr_error_recording_read_failed, read))
                         }
@@ -478,32 +479,32 @@ class OpenAiRealtimeAsrController(
                 throw cancelled
             } catch (error: Exception) {
                 if (shouldReportAsrCaptureFailure(_state.value.status, coroutineContext[Job]?.isActive == true)) {
-                    Logger.w(TAG, "Anomalía en el bucle de grabación: ${error.message}", error)
+                    Logger.w(TAG, "录音循环异常: ${error.message}", error)
                     failAsr(error.message ?: "AudioRecord read failed")
                 }
             }
         }
     }
 
-    /** Tarea 1: enviar una trama en estado de escucha PCM(Pérdida de marco debido a una contrapresión excesiva). */
+    /** 任务 1:Listening 状态下发送一帧 PCM(背压超限丢帧)。 */
     private fun sendAudioFrame(chunk: ByteArray, read: Int) {
         val ws = webSocket
         if (ws != null && ws.queueSize() < MAX_WEBSOCKET_QUEUE_BYTES) {
-            // Base64 codificación PCM(Realtime API pedido base64)
+            // Base64 编码 PCM(Realtime API 要求 base64)
             val audioBase64 = android.util.Base64.encodeToString(
                 chunk.copyOf(read),
                 android.util.Base64.NO_WRAP,
             )
             val appendMsg = buildInputAudioBufferAppendMessage(audioBase64)
             if (!ws.send(appendMsg)) {
-                Logger.w(TAG, "No se pudo enviar el fragmento de audio")
+                Logger.w(TAG, "发送音频块失败")
             }
         } else {
-            Logger.d(TAG, "La contrapresión excede el límite,marcos caídos queueSize=${ws?.queueSize()}")
+            Logger.d(TAG, "背压超限,丢帧 queueSize=${ws?.queueSize()}")
         }
     }
 
-    /** Tarea 1: colocar una trama de PCM en el búfer de cola en estado de Reconexión(Prevención de pérdida de fotogramas que supera el límite superior de 5 MB OOM). */
+    /** 任务 1:Reconnecting 状态下把一帧 PCM 入队缓冲(超 5MB 上限丢帧避免 OOM)。 */
     private fun bufferAudioFrame(chunk: ByteArray, read: Int) {
         val frame = chunk.copyOf(read)
         synchronized(audioBufferLock) {
@@ -511,18 +512,18 @@ class OpenAiRealtimeAsrController(
                 audioBuffer.addLast(frame)
                 audioBufferBytes += frame.size
             } else {
-                Logger.w(TAG, "El buffer de audio está lleno durante la reconexión($audioBufferBytes bytes),marcos caídos")
+                Logger.w(TAG, "重连期间音频缓冲已满($audioBufferBytes 字节),丢帧")
             }
         }
     }
 
-    /** Manejo de eventos WebSocket(Ejecutado en el hilo principal). */
+    /** 处理 WebSocket 事件(在 Main 线程执行)。 */
     private fun handleEvent(event: JsonObject) {
         if (isDisposed.get() || (_state.value.status == ASRStatus.Error || _state.value.status == ASRStatus.Idle)) return
         val eventType = event.optString("type")
         when (eventType) {
             "conversation.item.input_audio_transcription.delta" -> {
-                // texto delta:acumular hasta currentDeltaText
+                // 增量文本:累加到 currentDeltaText
                 val delta = event.optString("delta")
                 if (delta.isNotEmpty()) {
                     currentDeltaText += delta
@@ -532,7 +533,7 @@ class OpenAiRealtimeAsrController(
                 }
             }
             "conversation.item.input_audio_transcription.completed" -> {
-                // completar oraciones:poner el acumulado delta(o evento completado text)entrar completedTranscripts,Borrar delta
+                // 句子完成:把累积的 delta(或 completed 事件的 text)入 completedTranscripts,清空 delta
                 val text = event.optString("text").ifBlank { currentDeltaText }
                 if (text.isNotEmpty()) {
                     completedTranscripts.append(text).append(" ")
@@ -541,8 +542,8 @@ class OpenAiRealtimeAsrController(
                 val full = buildTranscript()
                 _state.update { it.copy(transcript = full) }
                 onTranscriptChange?.invoke(full)
-                // En el modo de confirmación manual, completado es el final de la entrada en este párrafo.:commit luego inmediatamente retrocedió Idle,
-                // No pierdas más el tiempo esperando stop() Las garantías de tiempo de espera de los 5(delta / completed No envía una señal de confirmación a la capa superior.)
+                // 手动 commit 模式下 completed 就是本段输入的收尾:commit 后立刻回落 Idle,
+                // 不再耗着等 stop() 的 5s 超时兜底(delta / completed 本身不向上层发提交信号)
                 if (_state.value.status == ASRStatus.Stopping) {
                     _state.update { it.copy(status = ASRStatus.Idle) }
                     cleanupConnection()
@@ -551,17 +552,17 @@ class OpenAiRealtimeAsrController(
             "error" -> {
                 val errObj = event.optObject("error")
                 val msg = errObj?.optString("message") ?: event.toString()
-                Logger.w(TAG, "Realtime ASR error: $msg")
+                Logger.w(TAG, "Realtime ASR 错误: $msg")
                 failAsr(msg)
             }
             "session.created", "session.updated" -> {
-                // Ha sido procesado en establishmentConnection o no necesita ser procesado,ignorar
+                // 已在 establishConnection 处理或不需处理,忽略
             }
-            else -> { /* Ignorar eventos desconocidos(input_audio_buffer.speech_started / speech_stopped / committed espera) */ }
+            else -> { /* 忽略未知事件(input_audio_buffer.speech_started / speech_stopped / committed 等) */ }
         }
     }
 
-    /** empalme completedTranscripts + currentDeltaText,separados por espacios. */
+    /** 拼接 completedTranscripts + currentDeltaText,空格分隔。 */
     private fun buildTranscript(): String {
         val parts = mutableListOf<String>()
         if (completedTranscripts.isNotEmpty()) {
@@ -574,29 +575,29 @@ class OpenAiRealtimeAsrController(
 
     override fun stop() {
         if (!_state.value.isRecording) return
-        // Tarea 1: cancelar la reconexión que se está programando(El usuario se detiene activamente,No más reconexión)
+        // 任务 1:取消正在调度的重连(用户主动停止,不再重连)
         cancelReconnect()
         _state.update { it.copy(status = ASRStatus.Stopping) }
-        // Detente primero AudioRecord(Desbloquear lectura),Cancelar la rutina de grabación nuevamente.,lanzamiento final
+        // 先停 AudioRecord(解除 read 阻塞),再取消录音协程,最后释放
         try {
             audioRecord?.stop()
-        } catch (_: Throwable) { /* Detenido o no inicializado */ }
+        } catch (_: Throwable) { /* 已停止或未初始化 */ }
         recordJob?.cancel()
         val recorder = audioRecord
         audioRecord = null
         runCatching { recorder?.release() }
 
-        // enviar input_audio_buffer.commit — Modo de confirmación manual(turn_detection=null)La única señal de cierre
+        // 发 input_audio_buffer.commit — 手动 commit 模式(turn_detection=null)下唯一的收尾信号
         val ws = webSocket
         if (ws != null) {
             ws.send(buildRealtimeCommitMessage())
         }
 
-        // Protección de tiempo de espera:5 El final no ha sido recibido en segundos.,corte forzado Idle
+        // 超时保护:5 秒未收到收尾,强制切 Idle
         scope.launch {
             delay(STOP_TIMEOUT_MS)
             if (_state.value.status == ASRStatus.Stopping) {
-                Logger.w(TAG, "stop() Timeout esperando cierre,corte forzado Idle")
+                Logger.w(TAG, "stop() 等待收尾超时,强制切 Idle")
                 val full = buildTranscript()
                 _state.update { it.copy(status = ASRStatus.Idle, transcript = full) }
                 cleanupConnection()
@@ -611,7 +612,7 @@ class OpenAiRealtimeAsrController(
         recordJob?.cancel()
         try {
             audioRecord?.stop()
-        } catch (_: Throwable) { /* Detenido o no inicializado */ }
+        } catch (_: Throwable) { /* 已停止或未初始化 */ }
         audioRecord?.release()
         audioRecord = null
         webSocket?.close(1000, "disposed")
@@ -634,7 +635,7 @@ class OpenAiRealtimeAsrController(
         releaseAudioRecord()
     }
 
-    /** Cierre WebSocket y limpie la referencia de la sesión. */
+    /** 关闭 WebSocket 并清理会话引用。 */
     private fun cleanupConnection() {
         webSocket?.close(1000, "session ended")
         webSocket = null
@@ -642,25 +643,25 @@ class OpenAiRealtimeAsrController(
     }
 
     /**
-     * Liberar recursos de hardware de AudioRecord(Cancelar la grabación de rutina + stop + release).
+     * 释放 AudioRecord 硬件资源(取消录音协程 + stop + release)。
      *
-     * Cortar error/llamar antes de reiniciar,Evite fugas de ocupación del hardware del micrófono.
+     * 切 Error / 重新 start 前调用,避免麦克风硬件占用泄漏。
      */
     private fun releaseAudioRecord() {
         recordJob?.cancel()
         recordJob = null
         try {
             audioRecord?.stop()
-        } catch (_: Throwable) { /* Detenido o no inicializado */ }
+        } catch (_: Throwable) { /* 已停止或未初始化 */ }
         audioRecord?.release()
         audioRecord = null
     }
 
     /**
-     * Construye un punto final WebSocket en tiempo real.
-     * - La entrada está vacía:Usar incorporado wss://api.openai.com/v1/realtime?intent=transcription
-     * - Ingrese wss://...: deletrear directamente intent=transcription
-     * - Ingrese https://...: wss:// y deletree intent=transcription
+     * 构造 Realtime WebSocket endpoint。
+     * - 输入为空:用内置 wss://api.openai.com/v1/realtime?intent=transcription
+     * - 输入 wss://...:直接拼 intent=transcription
+     * - 输入 https://...:替换为 wss:// 并拼 intent=transcription
      */
     private fun buildRealtimeEndpoint(baseUrl: String?): String {
         val raw = baseUrl?.takeIf { it.isNotBlank() } ?: DEFAULT_REALTIME_ENDPOINT
@@ -670,8 +671,8 @@ class OpenAiRealtimeAsrController(
             raw.startsWith("http://") -> "ws://" + raw.removePrefix("http://")
             else -> "wss://$raw"
         }
-        // baseUrl A menudo se completa como Finalizaciones de chat de OpenAI https://host/v1;
-        // Realtime Debe agregarse bajo el mismo host /realtime,No puede conectar directamente la consulta después de /v1.
+        // baseUrl 常被填写成 OpenAI Chat Completions 的 https://host/v1;
+        // Realtime 需要在同一 host 下补上 /realtime,不能直接把 query 接在 /v1 后面。
         val realtimePath = if (withScheme.substringBefore('?').trimEnd('/').endsWith("/realtime")) {
             withScheme
         } else {
@@ -680,9 +681,9 @@ class OpenAiRealtimeAsrController(
             val path = "$baseWithoutQuery/realtime"
             if (query == null) path else "$path?$query"
         }
-        // empalme intent=transcription(Si ya hay una consulta, úsala. &,De lo contrario utilizar ?),Evite duplicar parámetros.
-        // GA El formulario de sesión ha sido asumido por session.type en session.update,intent Los parámetros ya no son necesarios;
-        // Guárdalo porque es sólo una pista morfológica redundante.,No afecta la autenticación y el comportamiento.,Pero es compatible con estaciones de transferencia que aún no siguen GA.
+        // 拼接 intent=transcription(若已有 query 用 &,否则用 ?),避免重复参数。
+        // GA 的会话形态已由 session.update 里的 session.type 承担,intent 参数不再必需;
+        // 保留它是因为它只是冗余的形态提示,不影响鉴权与行为,却能兼容尚未跟进 GA 的中转站。
         return if (realtimePath.contains("intent=transcription")) {
             realtimePath
         } else if (realtimePath.contains("?")) {
@@ -692,19 +693,19 @@ class OpenAiRealtimeAsrController(
         }
     }
 
-    /** Construir evento session.update JSON(tipo de sesión/Formato de entrada/modelo/VAD/palabras calientes). */
+    /** 构造 session.update 事件 JSON(会话类型/输入格式/模型/VAD/热词)。 */
     private fun buildSessionUpdateMessage(): String {
         val payload = buildRealtimeSessionUpdatePayload(
             model = config.model.ifBlank { config.defaultModel() },
             hotwords = config.hotwords,
             language = config.language,
-            // con [AsrAudioCapture.create] Se utiliza la misma frecuencia de muestreo.,No podemos escribir a cada uno hasta la muerte.
+            // 与 [AsrAudioCapture.create] 用的是同一个采样率,不能各自写死
             sampleRate = config.sampleRate,
         )
         return json.encodeToString(JsonObject.serializer(), payload)
     }
 
-    /** Construir evento input_audio_buffer.append JSON(Audio codificado y enviado en base64.). */
+    /** 构造 input_audio_buffer.append 事件 JSON(音频 base64 编码后发送)。 */
     private fun buildInputAudioBufferAppendMessage(audioBase64: String): String {
         val msg = buildJsonObject {
             put("type", "input_audio_buffer.append")
@@ -713,7 +714,7 @@ class OpenAiRealtimeAsrController(
         return json.encodeToString(JsonObject.serializer(), msg)
     }
 
-    /** JsonObject Herramientas de extensión(Valor de tolerancia a fallos). */
+    /** JsonObject 扩展工具(容错取值)。 */
     private fun JsonObject.optString(key: String): String = (this[key] as? JsonPrimitive)?.content ?: ""
 
     private fun JsonObject.optObject(key: String): JsonObject? = this[key] as? JsonObject
@@ -723,58 +724,57 @@ class OpenAiRealtimeAsrController(
         private const val DEFAULT_REALTIME_ENDPOINT = "wss://api.openai.com/v1/realtime"
         private const val TIMEOUT_EVENT_MS = 5_000L
 
-        /** Tamaño del fragmento de audio:100ms @ 16kHz 16-bit mono = 16000 * 2 * 0.1 = 3200 bytes. */
+        /** 音频分块大小:100ms @ 16kHz 16-bit mono = 16000 * 2 * 0.1 = 3200 bytes。 */
         private const val AUDIO_CHUNK_BYTES = 3200
 
-        /** WebSocket Límite superior de contrapresión de cola de envío(bytes),Suelte fotogramas más allá del límite para evitar la acumulación de memoria. */
+        /** WebSocket 发送队列背压上限(字节),超限丢帧避免内存堆积。 */
         private const val MAX_WEBSOCKET_QUEUE_BYTES = 100_000L
 
-        /** stop() Tiempo de espera a la espera de finalización,Obligado a cambiar a inactivo después del tiempo de espera. */
+        /** stop() 等待收尾的超时,超时强制切 Idle。 */
         private const val STOP_TIMEOUT_MS = 5_000L
 
-        // ── Tarea 1: Parámetros de desconexión y reconexión ──
-        /** Límite de almacenamiento en búfer de audio durante la reconexión(bytes),5MB Evite OOM. */
+        // ── 任务 1:断网重连参数 ──
+        /** 重连期间音频缓冲上限(字节),5MB 避免 OOM。 */
         private const val MAX_AUDIO_BUFFER_BYTES = 5 * 1024 * 1024
 
-        // B-28: La duración máxima de audio para la retransmisión después de una reconexión exitosa.2 segundos @ 16kHz 16-bit mono = 2 * 16000 * 2 bytes ≈ 64KB.
-        //     Sólo se reeditará el párrafo más reciente.(en lugar de todo el búfer de 5 MB),Evite que el audio antiguo contamine las nuevas sesiones VAD del lado del servidor.
+        // B-28: 重连成功后补发的最大音频长度。2 秒 @ 16kHz 16-bit mono = 2 * 16000 * 2 bytes ≈ 64KB。
+        //     只补发最近这一段(而非整个 5MB 缓冲),避免旧音频污染全新服务端 VAD 会话。
         private const val MAX_REPLAY_BYTES = 2 * 16_000 * 2
 
-        /** Número máximo de intentos de reconexión(Cambie a notificación de estado de error después de exceder este número de veces UI). */
+        /** 最大重连尝试次数(超过此次数后切 Error 状态通知 UI)。 */
         private const val MAX_RECONNECT_ATTEMPTS = 5
 
-        /** Retraso máximo de retroceso para una sola reconexión(milisegundos),30s tapado. */
+        /** 单次重连最大退避延迟(毫秒),30s 封顶。 */
         private const val MAX_RECONNECT_DELAY_MS = 30_000L
     }
 }
 
 /**
- * Realtime Ingrese la frecuencia de muestreo predeterminada para PCM:con [AsrConfig.sampleRate] valor predeterminado,[AsrAudioCapture] Los parámetros de la colección son consistentes.
- * El valor enviado real está sujeto a la frecuencia de muestreo de recopilación pasada por la persona que llama.,Esto solo se utiliza como valor predeterminado de una función pura.
+ * Realtime 输入 PCM 的默认采样率:与 [AsrConfig.sampleRate] 默认值、[AsrAudioCapture] 的采集参数一致。
+ * 实际发送值以调用方传入的采集采样率为准,这里只作为纯函数默认值。
  */
 private const val DEFAULT_INPUT_SAMPLE_RATE = 16_000
 
 /**
- * Construye una solicitud de protocolo de enlace WebSocket en tiempo real.
+ * 构造 Realtime WebSocket 握手请求。
  *
- * GA la versión no requiere ningún encabezado de etiqueta de versión:Beta canal(`OpenAI-Beta: realtime=v1`)Desconectado el 2026-05-12,
- * Continuar enviando hará que se rechace el protocolo de enlace. Sólo autenticación `Authorization`.
+ * GA 版不需要任何版本标记头:Beta 通道(`OpenAI-Beta: realtime=v1`)已于 2026-05-12 下线,
+ * 继续发送会导致握手被拒。鉴权只用 `Authorization`。
  *
- * Separe en funciones para que las pruebas unitarias puedan afirmar directamente el encabezado del protocolo de enlace,No es necesario iniciar un WebSocket real.
+ * 独立成函数以便单元测试直接断言握手头,无需起真实 WebSocket。
  */
-internal fun buildRealtimeRequest(endpoint: String, apiKey: String): Request =
-    Request.Builder()
-        .url(endpoint)
-        .header("Authorization", "Bearer $apiKey")
-        .build()
+internal fun buildRealtimeRequest(endpoint: String, apiKey: String): Request = Request.Builder()
+    .url(endpoint)
+    .header("Authorization", "Bearer $apiKey")
+    .build()
 
 /**
- * Construir versión GA `session.update` de payload(función pura,Conveniente para que las pruebas unitarias afirmen directamente).
+ * 构造 GA 版 `session.update` 的 payload(纯函数,便于单元测试直接断言)。
  *
- * GA usar `session.type` Distinguir entre formas conversacionales.:`"transcription"` para transcripción pura,`"realtime"` para conversaciones de voz.
- * Este cliente solo transcribe,Fijo `transcription`;La falta de este campo será rechazada por el servidor.
+ * GA 用 `session.type` 区分会话形态:`"transcription"` 为纯转写,`"realtime"` 为语音对话。
+ * 本客户端只做转写,固定 `transcription`;该字段缺失会被服务端拒绝。
  *
- * La configuración del lado de entrada está en GA y toda anidada en `session.audio.input` abajo:
+ * 输入侧配置在 GA 全部嵌套在 `session.audio.input` 下:
  * ```
  * {
  *   "type": "session.update",
@@ -791,14 +791,14 @@ internal fun buildRealtimeRequest(endpoint: String, apiKey: String): Request =
  *   }
  * }
  * ```
- * escritura plana(`session.input_audio_format` / `session.input_audio_transcription` /
- * `session.turn_detection`)Reemplazado por GA,ya no se reconoce.
+ * 扁平写法(`session.input_audio_format` / `session.input_audio_transcription` /
+ * `session.turn_detection`)已被 GA 取代,不再被识别。
  *
- * @param model Traducir el nombre del modelo(Si está vacío, la persona que llama asumirá el valor predeterminado.)
- * @param hotwords palabras calientes,escrito en `prompt` entrante;Si está vacío, el campo no se enviará.
- * @param language Consejos de idioma;Si es nulo/en blanco, el campo no se enviará.
- * @param sampleRate [AsrAudioCapture] tasa de muestreo real,escribe en `format.rate`.
- *   Predeterminado 16000 vs. [AsrConfig.sampleRate] El valor predeterminado es el mismo.,No es un valor de ejemplo de documentación.
+ * @param model 转写模型名(空则由调用方兜底默认值)
+ * @param hotwords 热词,拼成 `prompt` 传入;为空则不发该字段
+ * @param language 语种提示;为 null/空白则不发该字段
+ * @param sampleRate [AsrAudioCapture] 实际采集的采样率,写进 `format.rate`。
+ *   默认 16000 与 [AsrConfig.sampleRate] 默认值一致,不是文档示例值。
  */
 internal fun buildRealtimeSessionUpdatePayload(
     model: String,
@@ -807,7 +807,7 @@ internal fun buildRealtimeSessionUpdatePayload(
     sampleRate: Int = DEFAULT_INPUT_SAMPLE_RATE,
 ): JsonObject {
     val input = buildJsonObject {
-        // GA declaración de formato de entrada:Tipo de contenedor + frecuencia de muestreo,Tarifa faltante. El servidor no puede cortar marcos correctamente.
+        // GA 的输入格式声明:容器类型 + 采样率,缺 rate 服务端无法正确切帧
         put(
             "format",
             buildJsonObject {
@@ -819,7 +819,7 @@ internal fun buildRealtimeSessionUpdatePayload(
             "transcription",
             buildJsonObject {
                 put("model", model)
-                // Las palabras candentes se transmiten mediante un mensaje(Realtime API apoyo)
+                // 热词通过 prompt 传入(Realtime API 支持)
                 if (hotwords.isNotEmpty()) {
                     val prompt = hotwords.joinToString(", ")
                     if (prompt.isNotBlank()) put("prompt", prompt)
@@ -827,10 +827,10 @@ internal fun buildRealtimeSessionUpdatePayload(
                 language?.takeIf { it.isNotBlank() }?.let { put("language", it) }
             },
         )
-        // El VAD del lado del servidor está cerrado(turn_detection=null):Solo se puede abrir mediante la confirmación del cliente.,
-        // De esta forma, todo el texto terminará de una vez cuando el usuario crea que está terminado.
+        // 服务端 VAD 关闭(turn_detection=null):只能由客户端 commit 开点,
+        // 这样整段文本才会在用户认为说完之后一次性收尾。
         put("turn_detection", JsonNull)
-        // La supresión de ruido no está habilitada.:Nulo explícito significa desactivado
+        // 未启用噪声抑制:显式 null 表示关闭
         put("noise_reduction", JsonNull)
     }
     val session = buildJsonObject {
@@ -849,22 +849,22 @@ internal fun buildRealtimeSessionUpdatePayload(
 }
 
 /**
- * estructura `input_audio_buffer.commit` evento(función pura,Conveniente para que las pruebas unitarias afirmen directamente).
+ * 构造 `input_audio_buffer.commit` 事件(纯函数,便于单元测试直接断言)。
  *
- * session de `turn_detection` Cuando es nulo, el servidor no lo hace. VAD,Este evento es la única señal que puede abrir una sección de entrada.:
- * El usuario hace clic en "Finalizar"→ Detener colección → commit → Devoluciones del servidor `transcription.completed` Refinamiento.
+ * session 的 `turn_detection` 为 null 时服务端不做 VAD,本事件是唯一能开点一段输入的信号:
+ * 用户点「结束」→ 停采集 → commit → 服务端回 `transcription.completed` 收尾。
  */
 internal fun buildRealtimeCommitMessage(): String = buildJsonObject {
     put("type", "input_audio_buffer.commit")
 }.toString()
 
 /**
- * OpenAI Realtime WebSocket sesión,Utilice Channel para unir devoluciones de llamadas a corrutinas(Modo de escucha continua).
- * - onMessage(text) → analizar JSON → entrar events Channel(Para esperar a que llegue Evento session.created)
- * - Al mismo tiempo, todos los eventos se envían continuamente a través de la devolución de llamada onEvent.(para que el Controlador procese transcription.delta / completed / error)
- * - waitForEvent(type) Obtener el tipo de evento especificado del canal
+ * OpenAI Realtime WebSocket 会话,用 Channel 桥接回调到协程(持续监听模式)。
+ * - onMessage(text) → 解析 JSON → 入 events Channel(供 waitForEvent 取 session.created)
+ * - 同时通过 onEvent 回调持续派发所有事件(供 Controller 处理 transcription.delta / completed / error)
+ * - waitForEvent(type) 从 Channel 取指定类型事件
  *
- * Tarea 1: Agregar nuevo [onDisconnected] devolución de llamada,WebSocket cerrar/En caso de falla, se notifica al Controlador para activar la reconexión.
+ * 任务 1:新增 [onDisconnected] 回调,WebSocket 关闭/失败时通知 Controller 触发重连。
  */
 private class RealtimeSession(
     private val json: Json,
@@ -874,31 +874,31 @@ private class RealtimeSession(
     private val events = kotlinx.coroutines.channels.Channel<JsonObject>(kotlinx.coroutines.channels.Channel.UNLIMITED)
 
     /**
-     * Tarea 1: devolución de llamada de desconexión de WebSocket(onClosed/onFailure activará).
-     * - code:código de apagado normal;[FAILURE_CODE] expresar onFailure
-     * - reason:Motivo del cierre(Mensaje o servidor de excepción reason)
-     * Establecido por el controlador,Activar la reconexión de retroceso exponencial.
+     * 任务 1:WebSocket 断线回调(onClosed/onFailure 都会触发)。
+     * - code:正常关闭码;[FAILURE_CODE] 表示 onFailure
+     * - reason:关闭原因(异常 message 或服务端 reason)
+     * 由 Controller 设置,触发指数退避重连。
      */
     var onDisconnected: ((code: Int, reason: String) -> Unit)? = null
 
     override fun onOpen(webSocket: WebSocket, response: Response) {
-        Logger.d(TAG, "WebSocket Conexión establecida")
+        Logger.d(TAG, "WebSocket 连接已建立")
     }
 
     override fun onMessage(webSocket: WebSocket, text: String) {
         resultOf {
             val obj = json.parseToJsonElement(text) as JsonObject
-            // Ingrese el canal para que se realice waitForEvent(Principalmente a session.created)
+            // 入 channel 供 waitForEvent 取(主要给 session.created)
             events.trySend(obj)
-            // Envío continuo al Controlador para su procesamiento(transcription.delta / completed / error)
+            // 持续派发给 Controller 处理(transcription.delta / completed / error)
             onEvent(obj)
         }.onError { message, throwable ->
-            Logger.w(TAG, "No se pudo analizar el mensaje del servidor: ${throwable?.message ?: message}")
+            Logger.w(TAG, "解析服务端消息失败: ${throwable?.message ?: message}")
         }
     }
 
     override fun onMessage(webSocket: WebSocket, bytes: okio.ByteString) {
-        // Realtime transcription El patrón no devuelve mensajes binarios,ignorar
+        // Realtime transcription 模式不返回二进制消息,忽略
     }
 
     override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
@@ -906,18 +906,18 @@ private class RealtimeSession(
     }
 
     override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
-        Logger.w(TAG, "WebSocket cerrar: code=$code reason=$reason")
+        Logger.w(TAG, "WebSocket 关闭: code=$code reason=$reason")
         onDisconnected?.invoke(code, reason)
         closeChannel()
     }
 
     override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-        Logger.w(TAG, "WebSocket falló: ${t.message}")
-        onDisconnected?.invoke(FAILURE_CODE, t.message ?: "WebSocket La conexión falló")
+        Logger.w(TAG, "WebSocket 失败: ${t.message}")
+        onDisconnected?.invoke(FAILURE_CODE, t.message ?: "WebSocket 连接失败")
         closeChannel()
     }
 
-    /** Suspender la espera del tipo de evento especificado,timeoutMs Devuelve nulo cuando se agota el tiempo de espera. */
+    /** 挂起等待指定事件类型,timeoutMs 超时返回 null。 */
     suspend fun waitForEvent(type: String?, timeoutMs: Long): JsonObject? {
         val deadline = System.currentTimeMillis() + timeoutMs
         while (System.currentTimeMillis() < deadline) {
@@ -926,15 +926,15 @@ private class RealtimeSession(
             if (type == null) return event
             val eventType = event["type"]?.let { (it as? JsonPrimitive)?.content }
             if (eventType == type) return event
-            // error Manejo especial de eventos.
+            // error 事件特殊处理
             if (eventType == "error") {
                 val errMsg = (event["error"] as? JsonObject)?.let {
                     (it["message"] as? JsonPrimitive)?.content
                 } ?: event.toString()
-                Logger.w(TAG, "espera $type recibido cuando error: $errMsg")
+                Logger.w(TAG, "等待 $type 时收到 error: $errMsg")
                 return null
             }
-            Logger.d(TAG, "espera $type Descartar eventos no objetivo: $eventType")
+            Logger.d(TAG, "等待 $type 时丢弃非目标事件: $eventType")
         }
         return null
     }
@@ -946,7 +946,7 @@ private class RealtimeSession(
     companion object {
         private const val TAG = "RealtimeSession"
 
-        /** Tarea 1: valor centinela de código utilizado cuando onFailure(Diferente a los códigos de cierre normales 1000/1001, etc.). */
+        /** 任务 1:onFailure 时使用的 code 哨兵值(区分于正常关闭码 1000/1001 等)。 */
         const val FAILURE_CODE = -1
     }
 }

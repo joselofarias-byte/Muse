@@ -15,25 +15,25 @@ import java.io.File
 import java.security.MessageDigest
 
 /**
- * v1.54: Embedding Entrada unificada a servicios.
+ * v1.54: Embedding 服务统一入口。
  *
- * Según [RagConfig.embeddingSource] elegir [EmbeddingProvider]:
- *  - CLOUD: crear [OpenAIEmbeddingProvider],Utilice el proveedor especificado o active Provider
- *  - LOCAL: v1.134 Dar prioridad a intentar [OnnxEmbeddingProvider](Basado en [RagConfig.localModelPath]),
- *           Bajar a cuando el archivo del modelo no esté disponible [LocalKeywordEmbeddingProvider]
- *  - LOCAL_KEYWORD: directo [LocalKeywordEmbeddingProvider](Hashing de palabras clave sin conexión,Ninguno ONNX)
+ * 根据 [RagConfig.embeddingSource] 选择 [EmbeddingProvider]:
+ *  - CLOUD: 创建 [OpenAIEmbeddingProvider],用指定 Provider 或激活 Provider
+ *  - LOCAL: v1.134 起优先尝试 [OnnxEmbeddingProvider](基于 [RagConfig.localModelPath]),
+ *           模型文件不可用时降级到 [LocalKeywordEmbeddingProvider]
+ *  - LOCAL_KEYWORD: 直接 [LocalKeywordEmbeddingProvider](离线关键词哈希,无 ONNX)
  *
- * Provider Caché de instancia:La clave de caché es "huella digital de configuración"——[RagConfig.hashCode] Agregue los campos que realmente participan en la creación del Proveedor
- * (Provider id, URL base real,apiKey Resumen SHA-256, nombre del modelo,ONNX ¿Está el archivo del modelo en su lugar?).
- * Cualquier cambio es una reconstrucción.,Evite continuar usando la instantánea anterior después de cambiar la clave/punto final. La capa de datos también pasará después de escribir la configuración del Proveedor.
- * [ProviderConfigChangeBus] gatillo [invalidate] Llega al fondo de esto.
+ * Provider 实例缓存:缓存键是「配置指纹」——[RagConfig.hashCode] 加上真正参与建 Provider 的字段
+ * (Provider id、实际 baseUrl、apiKey 的 SHA-256 摘要、模型名、ONNX 模型文件是否就位)。
+ * 任一项变化即重建,避免改完 key/端点后继续用旧快照。数据层写入 Provider 配置后也会通过
+ * [ProviderConfigChangeBus] 触发 [invalidate] 兜底。
  *
- * La degradación ya no es silenciosa:retroceder [LocalKeywordEmbeddingProvider] Registro de advertencias de Shiji,y escribe las razones
- * [activeBackend],Para que la capa superior muestre "qué backend de incrustación se está utilizando actualmente".
+ * 降级不再静默:回落 [LocalKeywordEmbeddingProvider] 时记 warn 日志,并把原因写进
+ * [activeBackend],供上层展示「当前实际在用哪个 embedding 后端」。
  *
- * @param configStore Provider Configurar almacén(SettingsRepository darse cuenta)
- * @param client Reutilizar Koin inyectado OkHttpClient(named("chat"))
- * @param filesDir Solicitud filesDir,Modelo ONNX para resolver rutas relativas(v1.134 Nuevo)
+ * @param configStore Provider 配置仓库(SettingsRepository 实现)
+ * @param client 复用 Koin 注入的 OkHttpClient(named("chat"))
+ * @param filesDir 应用 filesDir,用于解析相对路径的 ONNX 模型(v1.134 新增)
  */
 class EmbeddingService(
     private val configStore: ProviderConfigStore,
@@ -41,10 +41,10 @@ class EmbeddingService(
     private val filesDir: File? = null,
 ) {
     /**
-     * La instantánea de backend incorporada actualmente efectiva.
+     * 当前实际生效的 embedding 后端快照。
      *
-     * @param degraded true Indica que este no es el backend seleccionado por el usuario.(Por ejemplo, la configuración en la nube no está disponible,Palabras clave locales alternativas)
-     * @param reason Razón de la degradación([degraded]=true el tiempo no está vacío),Se puede utilizar directamente en redacción publicitaria inmediata.
+     * @param degraded true 表示本次并非用户所选后端(例如云端配置不可用,回落本地关键词)
+     * @param reason 降级原因([degraded]=true 时非空),可直接用于提示文案
      */
     data class BackendState(
         val backendId: String,
@@ -54,14 +54,14 @@ class EmbeddingService(
         val reason: String? = null,
     )
 
-    /** Elemento de caché:Huella digital + instancia + instantánea de backend correspondiente a la instancia. */
+    /** 缓存项:指纹 + 实例 + 该实例对应的后端快照。 */
     private data class CacheEntry(
         val fingerprint: String,
         val provider: EmbeddingProvider,
         val state: BackendState,
     )
 
-    /** Resultados del análisis de la integración en la nube.;[provider] nulo significa no disponible,[reason] Explique por qué. */
+    /** 云端 embedding 的解析结果;[provider] 为 null 表示不可用,[reason] 说明原因。 */
     private data class CloudTarget(
         val provider: ProviderConfig?,
         val reason: String? = null,
@@ -73,7 +73,7 @@ class EmbeddingService(
 
     private val _activeBackend = MutableStateFlow<BackendState?>(null)
 
-    /** El backend de inserción actualmente efectivo(null = Aún no analizado). */
+    /** 当前实际生效的 embedding 后端(null = 尚未解析过)。 */
     val activeBackend: StateFlow<BackendState?> = _activeBackend.asStateFlow()
 
     private val changeListener: () -> Unit = { invalidate() }
@@ -82,16 +82,16 @@ class EmbeddingService(
         ProviderConfigChangeBus.register(changeListener)
     }
 
-    /** Obtenga el EmbeddingProvider correspondiente al RagConfig actual. */
+    /** 获取当前 RagConfig 对应的 EmbeddingProvider。 */
     suspend fun getProvider(ragConfig: RagConfig): EmbeddingProvider = entryFor(ragConfig).provider
 
-    /** Analizar (o reutilizar)Provider Elementos de caché;[embedWithCache] Al mismo tiempo es necesario obtener las huellas dactilares. */
+    /** 解析（或复用）Provider 缓存项；[embedWithCache] 需要同时拿到指纹。 */
     private suspend fun entryFor(ragConfig: RagConfig): CacheEntry {
         val target = resolveCloudTarget(ragConfig)
         val fingerprint = fingerprintOf(ragConfig, target)
         cached?.let { if (it.fingerprint == fingerprint) return it }
         return mutex.withLock {
-            // doble verificación,Evite la creación de duplicados durante la concurrencia Provider
+            // 双重检查,避免并发时重复创建 Provider
             cached?.let { if (it.fingerprint == fingerprint) return@withLock it }
             val entry = buildEntry(ragConfig, target, fingerprint)
             cached = entry
@@ -100,28 +100,28 @@ class EmbeddingService(
         }
     }
 
-    /** caché no válido(config Se llama cuando se producen cambios o cambia la lista de proveedores.). */
+    /** 失效缓存(config 变更或 Provider 列表变更时调用)。 */
     fun invalidate() {
         cached = null
         _activeBackend.value = null
     }
 
-    // ── caché vectorial ────────────────────────────────────────────────
+    // ── 向量缓存 ────────────────────────────────────────────────
 
     private val vectorStore = EmbeddingVectorStore()
 
-    /** Recuento de diagnóstico: aciertos de caché/Miss (registro y prueba de uso). */
+    /** 诊断计数：缓存命中/未命中（日志与测试使用）。 */
     internal val vectorCacheHits: Int get() = vectorStore.hits
 
     internal val vectorCacheMisses: Int get() = vectorStore.misses
 
     /**
-     * Obtención de vectores por lotes con caché. El texto que no llega al caché no se solicitará y el texto que no llega al caché se completará en lotes.
+     * 带缓存的批量取向量。命中缓存的文本不会进请求，未命中的一次批量补齐。
      *
-     * El reordenamiento de la correlación de la memoria requiere "query + Todos los hechos candidatos se codifican una vez; Los hechos candidatos se codifican entre rondas.
-     * Está casi sin cambios. Después del almacenamiento en caché, normalmente solo se envía una solicitud a la consulta; incluso la consulta se realiza cuando se vuelve a intentar la misma oración.
+     * 记忆相关性重排每轮都要把「query + 全部候选事实」编码一次；候选事实在轮次之间
+     * 几乎不变，缓存后典型情况只对 query 发一次请求；同一句话重试时连 query 也命中。
      *
-     * @return con [texts] Una lista de vectores de igual longitud; si algún paso falla, se devuelve nulo (la persona que llama retrocede en consecuencia)
+     * @return 与 [texts] 等长的向量列表；任一步失败返回 null（调用方据此回退）
      */
     suspend fun embedWithCache(ragConfig: RagConfig, texts: List<String>): List<FloatArray>? {
         if (texts.isEmpty()) return emptyList()
@@ -130,28 +130,27 @@ class EmbeddingService(
     }
 
     /**
-     * Verifique solo el caché de vectores: no se activa ninguna codificación y no se ingresa ninguna ventana de tiempo de espera de la red.
+     * 只查向量缓存：不触发编码、不走进网络超时窗口。
      *
-     * Para personas que llaman y "no logran fusionarse" (RAG incrustación de consultas)—— Por allá**anormal**Disparar fusible de 5 minutos,
-     * y [embedWithCache] Las excepciones del proveedor se considerarán nulas. Los hits se devuelven directamente; los errores son devueltos por la persona que llama
-     * yo mismo `withTimeout { provider.embed(...) }`, ajustar de nuevo [rememberVector] Contestar.
+     * 给「失败要熔断」的调用方用（RAG 的 query embedding）—— 那边靠**异常**触发 5 分钟熔断，
+     * 而 [embedWithCache] 会把 Provider 异常吞成 null。命中直接返回；未命中由调用方
+     * 自己 `withTimeout { provider.embed(...) }`，再调 [rememberVector] 写回。
      */
-    suspend fun cachedVector(ragConfig: RagConfig, text: String): FloatArray? =
-        vectorStore.peek(entryFor(ragConfig).fingerprint, text)
+    suspend fun cachedVector(ragConfig: RagConfig, text: String): FloatArray? = vectorStore.peek(entryFor(ragConfig).fingerprint, text)
 
-    /** Escriba el vector que se ha recuperado en el caché (junto con [cachedVector] uso). */
+    /** 把已经取到的向量写回缓存（配合 [cachedVector] 使用）。 */
     suspend fun rememberVector(ragConfig: RagConfig, text: String, vector: FloatArray) {
         vectorStore.store(entryFor(ragConfig).fingerprint, text, vector)
     }
 
-    // ── huella digital de caché ────────────────────────────────────────────────
+    // ── 缓存指纹 ────────────────────────────────────────────────
 
     /**
-     * Decisión de cálculoProvider Huella digital del comportamiento de la instancia".
+     * 计算决定「Provider 实例行为」的指纹。
      *
-     * Poner sólo los campos que realmente participan en la creación del Proveedor:[RagConfig.hashCode] Superficie de configuración de la cubierta,
-     * Más la identidad del Proveedor resuelta(baseUrl/apiKey/Nombre del modelo)—— Cuando se cambian pero RagConfig permanece sin cambios,
-     * No se nota con solo configurar el hash.
+     * 只放真正参与建 Provider 的字段:[RagConfig.hashCode] 覆盖配置面,
+     * 再加上解析后的 Provider 身份(baseUrl/apiKey/模型名)—— 这些改了但 RagConfig 没变时,
+     * 光靠配置 hash 是察觉不到的。
      */
     private fun fingerprintOf(ragConfig: RagConfig, target: CloudTarget): String = buildString {
         append(ragConfig.hashCode()).append('|')
@@ -176,14 +175,14 @@ class EmbeddingService(
         }
     }
 
-    /** apiKey Participar en la toma de huellas dactilares sólo como resumen.,El texto sin formato no cae en ninguna cadena. */
+    /** apiKey 只以摘要参与指纹,明文不落到任何字符串里。 */
     private fun apiKeyDigest(apiKey: String): String {
         if (apiKey.isEmpty()) return "none"
         val digest = MessageDigest.getInstance("SHA-256").digest(apiKey.toByteArray(Charsets.UTF_8))
         return digest.take(DIGEST_BYTES).joinToString("") { byte -> "%02x".format(byte) }
     }
 
-    // ── Provider construir ──────────────────────────────────────────
+    // ── Provider 构建 ──────────────────────────────────────────
 
     private fun buildEntry(ragConfig: RagConfig, target: CloudTarget, fingerprint: String): CacheEntry {
         val (provider, state) = when (ragConfig.embeddingSource) {
@@ -195,18 +194,18 @@ class EmbeddingService(
     }
 
     private fun createLocalProvider(ragConfig: RagConfig): Pair<EmbeddingProvider, BackendState> {
-        // v1.134: LOCAL modo primer intento OnnxEmbeddingProvider,Bajar a hash de palabras clave cuando no esté disponible
+        // v1.134: LOCAL 模式优先尝试 OnnxEmbeddingProvider,不可用时降级到关键词哈希
         val onnxProvider = tryCreateOnnxProvider(ragConfig.localModelPath)
-            ?: return keywordProvider(degraded = true, reason = "La incrustación local de ONNX no está disponible(Modelo no configurado o falta archivo)")
-        Logger.i("EmbeddingService", "Usar local ONNX embedding(${onnxProvider.modelName}, ${onnxProvider.dimension}d)")
+            ?: return keywordProvider(degraded = true, reason = "本地 ONNX embedding 不可用(未配置模型或文件缺失)")
+        Logger.i("EmbeddingService", "使用本地 ONNX embedding(${onnxProvider.modelName}, ${onnxProvider.dimension}d)")
         return onnxProvider to stateOf(onnxProvider, degraded = false)
     }
 
     private fun createCloudProvider(ragConfig: RagConfig, target: CloudTarget): Pair<EmbeddingProvider, BackendState> {
         val providerConfig = target.provider
-            ?: return keywordProvider(degraded = true, reason = target.reason ?: "El proveedor de la nube no está disponible")
-        // v1.103: Anthropic/Gemini No disponible para compatibilidad con OpenAI embedding API,Cuando no se especifica cloudModel
-        // OpenAIEmbeddingProvider El constructor lanzará IllegalStateException,Por lo tanto, deténgalo antes de crear la instancia.
+            ?: return keywordProvider(degraded = true, reason = target.reason ?: "云端 Provider 不可用")
+        // v1.103: Anthropic/Gemini 不提供 OpenAI 兼容的 embedding API,未指定 cloudModel 时
+        // OpenAIEmbeddingProvider 构造会抛 IllegalStateException,因此在建实例前就拦下来。
         val provider = OpenAIEmbeddingProvider(
             config = providerConfig,
             model = ragConfig.cloudModel,
@@ -214,27 +213,23 @@ class EmbeddingService(
         )
         Logger.i(
             "EmbeddingService",
-            "Usa la nube embedding(provider=${providerConfig.id}, model=${provider.modelName})",
+            "使用云端 embedding(provider=${providerConfig.id}, model=${provider.modelName})",
         )
         return provider to stateOf(provider, degraded = false)
     }
 
-    /** Implementación alternativa de palabras clave locales:recuerda warn(Escribe las razones claramente.)Y márquelo con marca degradada. */
+    /** 回落本地关键词实现:记 warn(原因写清楚)并打上 degraded 标记。 */
     private fun keywordProvider(degraded: Boolean, reason: String?): Pair<EmbeddingProvider, BackendState> {
         if (degraded) {
-            Logger.w("EmbeddingService", "${reason ?: "La integración en la nube no está disponible"},Cambiar a palabras clave locales embedding,Disminución de la capacidad de recuperación semántica.")
+            Logger.w("EmbeddingService", "${reason ?: "云端 embedding 不可用"},降级到本地关键词 embedding,语义检索能力下降")
         } else {
-            Logger.i("EmbeddingService", "Utilice palabras clave locales embedding(Modo sin conexión)")
+            Logger.i("EmbeddingService", "使用本地关键词 embedding(离线模式)")
         }
         val provider = LocalKeywordEmbeddingProvider()
         return provider to stateOf(provider, degraded = degraded, reason = reason)
     }
 
-    private fun stateOf(
-        provider: EmbeddingProvider,
-        degraded: Boolean,
-        reason: String? = null,
-    ): BackendState = BackendState(
+    private fun stateOf(provider: EmbeddingProvider, degraded: Boolean, reason: String? = null): BackendState = BackendState(
         backendId = provider.id,
         displayName = provider.displayName,
         modelName = provider.modelName,
@@ -242,13 +237,13 @@ class EmbeddingService(
         reason = reason,
     )
 
-    // ── Análisis de proveedores de nube ────────────────────────────────────
+    // ── 云端 Provider 解析 ────────────────────────────────────
 
     /**
-     * Analice los proveedores realmente disponibles para la integración en la nube.
+     * 解析云端 embedding 实际可用的 Provider。
      *
-     * Tres situaciones de indisponibilidad(Proveedor no encontrado / Proveedor deshabilitado / Capacidades o claves no cumplidas)Todos se devuelven con razones.
-     * [CloudTarget],por [createCloudProvider] Degradación y registro unificados,Evite que los usuarios piensen que se está utilizando la búsqueda vectorial.
+     * 三种不可用情形(找不到 Provider / Provider 已停用 / 能力或密钥不满足)都返回带原因的
+     * [CloudTarget],由 [createCloudProvider] 统一降级并记日志,避免用户以为在用向量检索。
      */
     private suspend fun resolveCloudTarget(ragConfig: RagConfig): CloudTarget {
         if (ragConfig.embeddingSource != RagConfig.EmbeddingSource.CLOUD) return CloudTarget(provider = null)
@@ -257,32 +252,32 @@ class EmbeddingService(
             providerConfig == null -> CloudTarget(
                 provider = null,
                 reason = if (ragConfig.cloudProviderId.isNotBlank()) {
-                    "RAG Configuración especificada Provider(${ragConfig.cloudProviderId}) no existe"
+                    "RAG 配置指定的 Provider(${ragConfig.cloudProviderId}) 不存在"
                 } else {
-                    "No se encontró ninguna nube disponible Provider"
+                    "未找到可用的云端 Provider"
                 },
             )
             !providerConfig.enabled ->
-                CloudTarget(provider = null, reason = "Provider ${providerConfig.displayName} Desactivado")
+                CloudTarget(provider = null, reason = "Provider ${providerConfig.displayName} 已停用")
             providerConfig.apiKey.isBlank() ->
-                CloudTarget(provider = null, reason = "Provider ${providerConfig.displayName} La clave API está vacía")
+                CloudTarget(provider = null, reason = "Provider ${providerConfig.displayName} 的 API Key 为空")
             ragConfig.cloudModel.isBlank() && providerConfig.type !in OPENAI_EMBEDDING_TYPES -> CloudTarget(
                 provider = null,
-                reason = "Provider ${providerConfig.displayName}(${providerConfig.type}) No es compatible con la API de incrustación de OpenAI y no se especifica ningún modelo",
+                reason = "Provider ${providerConfig.displayName}(${providerConfig.type}) 不兼容 OpenAI embedding API 且未指定模型",
             )
             else -> CloudTarget(provider = providerConfig)
         }
     }
 
     /**
-     * v1.134: Intente crear un OnnxEmbeddingProvider.
+     * v1.134: 尝试创建 OnnxEmbeddingProvider。
      *
-     * resolución de ruta:
-     *  - [localModelPath] es un camino absoluto(Empezar con /)→ Usar directamente
-     *  - De lo contrario, se trata como ruta relativa a filesDir
-     *  - cadena vacía → Predeterminado filesDir/muse_onnx/embedding.onnx
+     * 路径解析:
+     *  - [localModelPath] 为绝对路径(以 / 开头)→ 直接使用
+     *  - 否则视为 filesDir 相对路径
+     *  - 空串 → 默认 filesDir/muse_onnx/embedding.onnx
      *
-     * @return disponible OnnxEmbeddingProvider;Si el archivo del modelo no existe, devuelva null
+     * @return 可用的 OnnxEmbeddingProvider;若模型文件不存在则返回 null
      */
     private fun tryCreateOnnxProvider(localModelPath: String): OnnxEmbeddingProvider? {
         val resolvedPath = resolveModelPath(localModelPath, DEFAULT_ONNX_MODEL) ?: return null
@@ -290,7 +285,7 @@ class EmbeddingService(
         return if (provider.isAvailable()) provider else null
     }
 
-    /** Analizar la ruta del modelo:Utilice la ruta absoluta directamente,Empalme de ruta relativa filesDir,Utilice defaultRelative para cadenas vacías. */
+    /** 解析模型路径:绝对路径直接用,相对路径拼接 filesDir,空串用 defaultRelative。 */
     private fun resolveModelPath(configuredPath: String, defaultRelative: String): String? {
         val path = configuredPath.trim()
         if (path.startsWith("/")) {
@@ -305,24 +300,24 @@ class EmbeddingService(
         return if (candidate.exists()) candidate.absolutePath else null
     }
 
-    /** Utilice ProviderConfig para la integración en la nube. */
+    /** 获取云端 embedding 用的 ProviderConfig。 */
     private suspend fun getCloudProviderConfig(ragConfig: RagConfig): ProviderConfig? {
-        // Se da prioridad al especificado por RagConfig.cloudProviderId Provider
+        // 优先用 RagConfig.cloudProviderId 指定的 Provider
         if (ragConfig.cloudProviderId.isNotBlank()) {
             return configStore.getAllProviders().firstOrNull { it.id == ragConfig.cloudProviderId }
         }
-        // De lo contrario use activado chat Provider(ProviderConfigStore.get() Se omitió la desactivación del proveedor)
+        // 否则用激活的 chat Provider(ProviderConfigStore.get() 已跳过停用供应商)
         return configStore.get()
     }
 
     private companion object {
-        /** Ruta relativa al modelo ONNX predeterminado en filesDir. */
+        /** 默认 ONNX 模型在 filesDir 下的相对路径。 */
         const val DEFAULT_ONNX_MODEL = "muse_onnx/embedding.onnx"
 
-        /** apiKey Número de bytes reservados para resumen(16 caracteres hexadecimales,La probabilidad de colisión es lo suficientemente baja para la detección de cambios.). */
+        /** apiKey 摘要保留的字节数(16 个十六进制字符,碰撞概率对变更检测足够低)。 */
         const val DIGEST_BYTES = 8
 
-        /** Tipo de proveedor que admite una interfaz de inserción compatible con OpenAI. */
+        /** 支持 OpenAI 兼容 embedding 接口的 Provider 类型。 */
         val OPENAI_EMBEDDING_TYPES = setOf(ProviderType.OPENAI, ProviderType.OPENAI_RESPONSES)
     }
 }

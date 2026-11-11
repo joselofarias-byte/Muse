@@ -1,26 +1,26 @@
-# Enlace 8: Construcción/Puerta CI/Proyecto de lanzamiento — Línea base de deduplicación
+# 链路 8：构建 / CI 门禁 / 发布工程 — 去重基线
 
-## Solución confirmada/Decisión (no más informes)
-- cinco carriles (ci-scripts/lanes/static/unit/debug) Registros verdes completos locales (sujetos al último lote).
-- Se ha solucionado el error UnicodeEncodeError de la consola china (PYTHONIOENCODING=utf-8 + Reconfiguración de la salida estándar del script).
-- vdserver lintVitalRelease del ensamblado de nivel raíz se ha corregido (el nivel del módulo exime dos reglas).
-- La activación automática de CI remota está desactivada (workflow_dispatch only) es una decisión.
-- 11 Control de acceso al script del artículo 2026-09-29 Todo borrado (reparación real); falta control de acceso/cerrado por error (B1/C2 ha sido revisado).
-- detekt 1.23.8 Se ha registrado la solución alternativa para el error de compensación de firma (borre el campo primero).→detektBaseline→Borre el tipo nuevamente).
-- Kotlin Error falso de compilación incremental retryFailedStep (volver a ejecutar la recuperación,CI Limpiar primero si ocurre recurrencia)——Problemas conocidos de la cadena de herramientas.
-- lint baseline 1 Registro antiguo perdido (stock conocido);lint 0 error 22 warning dentro de la línea de base.
-- strict locale El control de acceso bloquea nuevos espacios normalmente (se usa para bloquear valores; faltan 10 claves).
-- Distribución:GitHub Releases Cadena recta (v2.4.2 (de ), sin CDN;dl.museai.ltd La desactivación no requiere renovación.
+## 已确认修复/决策（不得再报）
+- 五条 lane（ci-scripts/lanes/static/unit/debug）本地全绿记录在案（以最近批次为准）。
+- 中文控制台 UnicodeEncodeError 已修（PYTHONIOENCODING=utf-8 + 脚本 stdout 重配置）。
+- 根级 assembleRelease 的 vdserver lintVitalRelease 已修（模块级豁免两条规则）。
+- 远端 CI 自动触发已关（workflow_dispatch only）是决策。
+- 11 项脚本门禁 2026-09-29 全部清零（真实修复）；门禁缺失/无效基线时 fail-closed（B1/C2 已修）。
+- detekt 1.23.8 签名偏移崩溃的绕法已记录（先删字段→detektBaseline→再删类型）。
+- Kotlin 增量编译假报错 retryFailedStep（重跑恢复，CI 复发先 clean）——已知工具链问题。
+- lint baseline 1 条未命中旧记录（已知存量）；lint 0 error 22 warning 在基线内。
+- strict locale 门禁正常拦截新缺口（曾拦下 values-en 缺 10 键）。
+- 分发：GitHub Releases 直链（v2.4.2 起），无 CDN；dl.museai.ltd 停用不需续期。
 
-## Se sabe que no está resuelto (se pueden agregar nuevas pruebas citando el número)
-- C3: Los dos escáneres de UI tienen capacidades de detección insuficientes y revelarán una gran cantidad de inventario después de la corrección.——La línea de base no se puede eliminar y se requiere una revisión manual (punto de estancamiento conocido).
-- P1 #40-42/46/47 Automatización de versiones y recuperación ante desastres (keystore Copia de seguridad dual fuera de línea, sondeo de caducidad de certificados, liberación de un comando)——Verificar lo que se ha hecho.
-- P1 #43-45,#47-48 Piezas pendientes de reparación.
+## 已知未解决（可引用编号补充新证据）
+- C3：两个 UI 扫描器探测能力不足，修正后会显露大量存量——不能抬基线，需人工复核（已知卡点）。
+- P1 #40-42/46/47 发布自动化与灾备（keystore 双离线备份、证书到期探针、一条命令发布）——核实哪些已做。
+- P1 #43-45、#47-48 部分待修。
 
-## La dirección de exploración clave de este enlace.
-1. **ci/script/*.py Desviarse de la base del código actual**:archivo de referencia (ktlint/detekt/lint/component_convergence/row_text_width) todavía coincide con el código fuente real; la ruta codificada en el script/nombre del módulo/Si el umbral deja de ser válido con la evolución v2.5.x (como la nueva accessibility-provider/virtual-display-* incluido en el alcance de la inspección).
-2. check_migration_coverage si FactDb v15 / MemoryDb v5 La corrección del análisis de (se había debido a"version = CONST Método de escritura"falso positivo——Verifique que las tres bases de datos se puedan analizar).
-3. Publicar cadena de script (validate_release_apks/generate_release_manifest/publish_release) para material v2.5.8 (manifest Cambios de firma en lista blanca) adaptación.
-4. CI El script se prueba a sí mismo (ci-scripts lane test/) qué scripts están cubiertos y qué scripts nuevos faltan.
-5. Gradle Deriva de configuración:build.gradle.kts Si el historial de versiones en los comentarios omite la versión 2.5.x; La verificación de inyección del número de versión prueba la ruta de la variable de entorno VERSION_CODE.
-6. .gitattributes/.editorconfig Coherencia de la política de fin de línea con el estado real del archivo del repositorio (históricamente, el ruido CRLF se ha producido repetidamente——Compruebe si .gitattributes realmente bloquea LF y si falta algún tipo de archivo).
+## 本链路重点探查方向
+1. **ci/script/*.py 与当前代码库的漂移**：基线文件（ktlint/detekt/lint/component_convergence/row_text_width）与实际源码是否还匹配；脚本里硬编码的路径/模块名/阈值是否随 v2.5.x 演进失效（如新增 accessibility-provider/virtual-display-* 是否纳入检查范围）。
+2. check_migration_coverage 对 FactDb v15 / MemoryDb v5 的解析正确性（曾因"version = CONST 写法"误报——核实三种 DB 都能解析）。
+3. 发布脚本链（validate_release_apks/generate_release_manifest/publish_release）对 v2.5.8 材料（manifest 白名单签名变化）的适配。
+4. CI 脚本自身测试（ci-scripts lane 的 test/）覆盖了哪些脚本、漏了哪些新增脚本。
+5. Gradle 配置漂移：build.gradle.kts 注释里的版本史是否漏记 v2.5.x；版本号注入校验对 VERSION_CODE 环境变量路径的测试。
+6. .gitattributes/.editorconfig 行尾策略与仓库实际文件状态的一致性（历史上 CRLF 噪音反复出现——查 .gitattributes 是否真的锁定 LF、有没有漏掉的文件类型）。

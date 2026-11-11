@@ -1,32 +1,32 @@
 package io.zer0.muse.ui.markdown
 
 /**
- * MOOD Análisis segmentado de fragmentos.
+ * MOOD 块的分段解析。
  *
- * MOOD El contenido está naturalmente segmentado, de forma típica:
+ * MOOD 内容天然是分段的，典型形态：
  *
  * ```
- * Vibe: Sentimientos en una frase
+ * Vibe: 一句话感受
  * Sparks:
- *   - Tres asociaciones
+ *   - 三条联想
  * Reflections:
- *   - Tres reflexiones
+ *   - 三条反思
  * Will:
- *   - dos testamentos
+ *   - 两条意志
  * ```
  *
- * Anteriormente, todo el párrafo se presentaba como texto sin formato.`-` La sangría y los saltos de línea colapsan en una sola pieza y se lee como un desastre.
- * Esto se divide en "secciones + elementos".UI Se puede escribir según la estructura.
+ * 之前整段当纯文本渲染，`-` 缩进和换行全塌成一片，读起来像一坨。
+ * 这里拆成「小节 + 条目」，UI 就能按结构排版。
  *
- * Compensaciones de diseño:
- *  - Sólo reconoce el comienzo de la línea. `etiqueta:` Forma, no adivines otras formas de escribir;
- *  - Cuando no hay etiqueta, el párrafo completo se devuelve como una sola sección sin perder el contenido;
- *  - El texto de la etiqueta se conserva tal cual (el vocabulario propio del modelo, no traducido).
+ * 设计取舍：
+ *  - 只认行首的 `标签:` 形式，不猜其他写法；
+ *  - 没有标签时整段作为单节返回，不丢内容；
+ *  - 标签文本原样保留（模型自己的词汇，不做翻译）。
  */
 internal object MoodSectionParser {
-    /** Título de la sección: Se permiten etiquetas en chino e inglés y dos puntos en chino e inglés. */
+    /** 小节标题：允许中英文标签与中英冒号。 */
     private val HEADER = Regex(
-        "^(Vibe|Sparks|Reflections|Will|estado de ánimo|inspiración|Reflexión|voluntad)\\s*[::]\\s*(.*)$",
+        "^(Vibe|Sparks|Reflections|Will|mood|inspiration|reflection|intent)\\s*[:：]\\s*(.*)$",
         RegexOption.IGNORE_CASE,
     )
 
@@ -37,7 +37,7 @@ internal object MoodSectionParser {
         val lines: List<String>,
     )
 
-    /** Entradas: distinguir entre párrafos ordinarios y elementos de lista,UI Decide si quieres sacar puntos en función de esto. */
+    /** 条目：区分普通段落与列表项，UI 据此决定是否画点。 */
     internal data class Line(val text: String, val bullet: Boolean)
 
     fun parse(raw: String): List<Section> {
@@ -68,13 +68,13 @@ internal object MoodSectionParser {
         }
         flush()
 
-        // Elimine las líneas en blanco al principio y al final de cada sección para evitar espacios en blanco excesivos en la parte superior e inferior cuando se expande el estado plegado.
+        // 去掉每节首尾空行，避免折叠态展开时上下留白过大。
         return sections.map { section ->
             section.copy(lines = section.lines.dropWhile { it.isBlank() }.dropLastWhile { it.isBlank() })
         }
     }
 
-    /** Determine si una línea es un elemento de lista o un párrafo. */
+    /** 把一行判定为列表项还是段落。 */
     fun toLine(text: String): Line {
         val trimmed = text.trimStart()
         val bullet = BULLET_PREFIXES.any { trimmed.startsWith(it) }

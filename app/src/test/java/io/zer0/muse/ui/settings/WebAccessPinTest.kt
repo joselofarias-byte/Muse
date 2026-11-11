@@ -8,11 +8,11 @@ import org.junit.Test
 import java.util.Random
 
 /**
- * La forma y el comportamiento de "regeneración" de los PIN basados ​​en la web.
+ * 网页版 PIN 的形态与「重新生成」行为。
  *
- * PIN Es la credencial para el primer acceso al lado Web. La página de configuración lo muestra al usuario en texto plano, por lo que debe fijarse en 6 números puros;
- * "Regenerar" realmente cambia el valor en el sentido de que el antiguo PIN deja de ser válido inmediatamente. —— Aquí se utiliza una semilla fija para inyectar la fuente aleatoria,
- * Evite colisiones de probabilidad extremadamente baja que se basan en una verdadera aleatoriedad.
+ * PIN 是 Web 端首次访问的凭据，设置页把它明文显示给用户，所以必须固定 6 位纯数字；
+ * 「重新生成」要在旧 PIN 立刻失效的意义上真的换一个值 —— 这里用固定种子注入随机源，
+ * 避免依赖真实随机的极低概率碰撞。
  */
 class WebAccessPinTest {
 
@@ -24,7 +24,7 @@ class WebAccessPinTest {
         repeat(50) {
             val pin = WebServerConfig.generateRandomPin(random)
             assertEquals(WebServerConfig.PIN_LENGTH, pin.length)
-            assertTrue("PIN La forma no coincide: $pin", pinRegex.matches(pin))
+            assertTrue("PIN 形态不符: $pin", pinRegex.matches(pin))
         }
     }
 
@@ -33,14 +33,14 @@ class WebAccessPinTest {
         val random = Random(42L)
         val first = WebServerConfig.generateRandomPin(random)
         val second = WebServerConfig.generateRandomPin(random)
-        assertNotEquals("Dos compilaciones consecutivas con una semilla fija no deberían ser iguales", first, second)
+        assertNotEquals("固定种子下连续两次生成不应相同", first, second)
         assertTrue(second, pinRegex.matches(second))
     }
 
-    /** De forma predeterminada, SecureRandom se llama sin parámetros y su forma es consistente con la versión de inyección de semillas. */
+    /** 默认无参调用走 SecureRandom，形态与种子注入版一致。 */
     @Test
     fun `default source also produces six digits`() {
         val pin = WebServerConfig.generateRandomPin()
-        assertTrue("PIN La forma no coincide: $pin", pinRegex.matches(pin))
+        assertTrue("PIN 形态不符: $pin", pinRegex.matches(pin))
     }
 }

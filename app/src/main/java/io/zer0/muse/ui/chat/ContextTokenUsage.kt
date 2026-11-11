@@ -6,36 +6,36 @@ import io.zer0.muse.util.MessageTokenCache
 import io.zer0.muse.util.TokenEstimator
 
 /**
- * El calibre combinado de ocupación del contexto:provider Se da prioridad al uso medido real y la cola que no está cubierta por la medición real se completa con estimaciones locales.
+ * 上下文占用量的合并口径：provider 实测用量优先，实测覆盖不到的尾部用本地估算补齐。
  *
- * Por qué fusionarse: cada ronda de solicitud del proveedor devolverá el uso,`promptTokens` si**Lo que realmente vio esta ronda de modelos
- * entrada**(system prompt, historial, definiciones de herramientas e imágenes), que es mucho más preciso que la estimación de BPE local. Y la tasa de ocupación es
- * Comprime automáticamente las entradas para activar y enviar alertas previas. Usar sólo estimaciones durante mucho tiempo será sistemáticamente bajo. —— Un nivel bajo se manifiesta directamente como"Presione contra la pared".
+ * 为什么要合并：每轮请求 provider 都会回 usage，`promptTokens` 是**这一轮模型真实看到的
+ * 输入**（system prompt、历史、工具定义、图片都在里面），比本地 BPE 估算准得多。而占用率是
+ * 自动压缩触发和发送前预警的输入，长期只用估算值会系统性偏低 —— 偏低直接表现为"撞墙才压"。
  *
- * Método de fusión: tomar la última tira `promptTokens` El mensaje del asistente es como"nivel del agua", él y sus partes anteriores se expresan en
- * El valor medido real, los mensajes posteriores (mensajes de usuario recién ingresados, resultados de herramientas de esta ronda, etc.) aún se estiman localmente y los dos se suman.
+ * 合并方式：取最后一条带 `promptTokens` 的 assistant 消息作为"水位线"，它及其之前的部分用
+ * 实测值，它之后的消息（新输入的用户消息、本轮工具结果等）仍用本地估算，两者相加。
  *
- * Ruta degenerada: cuando no hay ningún mensaje con uso en la sesión, el resultado es el mismo que la estimación local pura byte a byte. —— No se agregan nuevos modos de falla,
- * Datos de sesión antiguos (usage El campo es NULL) también sigue esta ruta.
+ * 退化路径：会话里一条带 usage 的消息都没有时，结果与纯本地估算逐字节相同 —— 不新增失败模式，
+ * 老会话数据（usage 字段为 NULL）也走这条路。
  */
 internal object ContextTokenUsage {
 
     /**
-     * El límite inferior de la relación creíble entre el valor combinado medido y la estimación general: valor combinado × Este número es aún menor que la estimación y se considera que la medición real no es confiable.
+     * 实测合并值与整体估算的可信比例下限：合并值 × 本数 仍小于估算，判定实测不可信。
      *
-     * El motivo para elegir 2 (es decir, descartar si es menos de la mitad de la estimación): la diferencia legal no puede ser tan grande. Los valores medidos significativamente más bajos suelen deberse a dos tipos de situaciones:
-     * —— tránsito/La capa de compatibilidad devuelve un uso recortado o de solo salida;prompt Después del precio del segmento de caché `promptTokens` solo
-     * La sección corta que se perdió (Anthropic Enumere cache_read/cache_creation por separado en `cachedTokens`,
-     * Este campo, por definición, no está incluido en el total). Este tipo de número hará que la tasa de ocupación sea baja, y el costo de una tasa de ocupación baja es perder la ventana de compresión.
-     * Realizar una intercepción fuerte antes de enviar; el costo de informar alto es solo un poco más de historia. Entonces la estimación es el límite inferior aquí.
+     * 取 2（即低于估算一半就弃用）的理由：合法差异不会这么大。实测值明显偏低通常来自两类情况
+     * —— 中转/兼容层返回被裁剪或只报输出的 usage；prompt 缓存分段计价后 `promptTokens` 只剩
+     * 未命中的那一小段（Anthropic 把 cache_read/cache_creation 单列在 `cachedTokens`，
+     * 而该字段按定义不计入 total）。这类数字会让占用率报低，而占用率报低的代价是漏掉压缩窗口、
+     * 撞上发送前的硬拦截；报高的代价只是多压一点历史。所以这里以估算为下限。
      */
     private const val MIN_TRUST_RATIO = 2
 
     /**
-     * Subíndice de línea de nivel de agua: medición real de la última franja `promptTokens`(>0) mensaje del asistente; de ​​lo contrario, se devuelve -1.
+     * 水位线下标：最后一条带实测 `promptTokens`(>0) 的 assistant 消息，没有则返回 -1。
      *
-     * Sólo reconocer assistant —— provider El uso sólo está vinculado a los metadatos de generación del mensaje del asistente; se está generando en forma de transmisión y aún no se ha completado.
-     * usage El mensaje del marcador de posición se omitirá y su contenido se dejará en el segmento final según lo estimado.
+     * 只认 assistant —— provider 的 usage 只挂在助手消息的生成元数据上；正在流式生成、还没回填
+     * usage 的占位消息会被跳过，其内容留在尾段按估算计。
      */
     fun lastMeasuredIndex(messages: List<UIMessage>): Int {
         for (index in messages.indices.reversed()) {
@@ -47,20 +47,20 @@ internal object ContextTokenUsage {
     }
 
     /**
-     * Ocupación de medición real de un solo mensaje = prompt + completion, con [io.zer0.ai.core.UsageTokens.total] Mismo calibre.
+     * 单条消息的实测占用 = prompt + completion，与 [io.zer0.ai.core.UsageTokens.total] 同口径。
      *
-     * Sin superposición `cachedTokens`:OpenAI lado en caché es `promptTokens` Un subconjunto de , superposición se repite contando;
-     * La definición del campo también lo establece."Solo para visualización de información, no incluido en total".Anthropic Por lo tanto, el lado será más bajo, debido a
-     * [blend] El límite inferior de la estimación está al alcance.
+     * 不叠加 `cachedTokens`：OpenAI 侧 cached 是 `promptTokens` 的子集，叠加就是重复计数；
+     * 字段定义也写明它"仅用于信息展示，不计入 total"。Anthropic 侧因此会偏低，由
+     * [blend] 的估算下限兜住。
      */
     fun measuredTokens(message: UIMessage): Int = (message.promptTokens ?: 0) + (message.completionTokens ?: 0)
 
     /**
-     * Combine la medición real y la estimación en la ocupación final (aritmética pura para facilitar una medición única para bloquear el calibre).
+     * 把实测与估算合成最终占用量（纯算术，便于单测锁定口径）。
      *
-     * @param measured Nivel de agua y ocupación real anterior
-     * @param tailEstimate Estimación local de mensajes después de la marca de agua (excluyendo el aviso del sistema, que ya está en [measured] Li)
-     * @param fullEstimate Todo el contexto (system prompt + estimación local de todos los mensajes), utilizado como referencia de credibilidad y límite inferior
+     * @param measured 水位线及之前的真实占用
+     * @param tailEstimate 水位线之后消息的本地估算（不含 system prompt，它已在 [measured] 里）
+     * @param fullEstimate 整份上下文（system prompt + 全部消息）的本地估算，用作可信度参照与下限
      */
     fun blend(measured: Int, tailEstimate: Int, fullEstimate: Int): Int {
         if (measured <= 0) return fullEstimate
@@ -69,23 +69,23 @@ internal object ContextTokenUsage {
     }
 
     /**
-     * Calcule la ocupación del contexto en un solo paso.
+     * 一步算出上下文占用量。
      *
-     * CPU Denso (la codificación BPE se usa internamente), la persona que llama debe colocar [kotlinx.coroutines.Dispatchers.Default] ejecutar en.
-     * Cuando hay una medición real, debes pagar una estimación adicional por el segmento de la cola. El segmento final generalmente solo contiene unos pocos mensajes y el costo es mucho menor que recalcular todo el historial.
+     * CPU 密集（内部走 BPE 编码），调用方需放在 [kotlinx.coroutines.Dispatchers.Default] 上执行。
+     * 有实测时多付一次尾段估算，尾段通常只有几条消息，成本远低于对整份历史重算。
      */
     /**
-     * Reutilizar una caché de recuentos por instancia de mensaje (2026-11-01 Mejoras de rendimiento P25).
+     * 复用一份按消息实例的计数缓存（2026-11-01 性能整改 P25）。
      *
-     * Medición real:200 historial + una reevaluación de ocupación solicitada por el sistema **10.29 ms**(JVM), y esta ruta durante la transmisión
-     * Se activa una vez cada 400 caracteres y nuevamente en cada ronda de ensamblaje de palabras clave. Durante la transmisión, sólo cambia realmente el último mensaje.
-     * Los 199 restantes vuelven a ejecutar BPE cada vez.
+     * 实测：200 条历史 + 系统提示的一次占用率重估 **10.29 ms**（JVM），而这条路径在流式期间
+     * 每涨 400 字符就触发一次、每轮组装提示词时还要再来一次。流式期间真正变的只有最后一条消息，
+     * 其余 199 条每次都在重跑 BPE。
      *
-     * La caché está codificada por la identidad de la instancia y está limitada (se borra por completo cuando se excede el límite superior), de modo que los mensajes reemplazados no permanecerán indefinidamente.
+     * 缓存按实例身份键控、有界（超上限整体清空），不会让被替换的消息无限滞留。
      */
     private val tokenCache: MessageTokenCache = MessageTokenCache()
 
-    /** El último aviso del sistema calculado y su número de token (reutilizado directamente en la misma instancia). */
+    /** 上一次算过的系统提示与其 token 数（同一实例直接复用）。 */
     @Volatile
     private var cachedPrompt: String? = null
 
@@ -102,14 +102,14 @@ internal object ContextTokenUsage {
     }
 
     fun estimate(messages: List<UIMessage>, systemPrompt: String = ""): Int {
-        // Las indicaciones del sistema son las mismas en todas las rondas, pero el BPE debe realizarse nuevamente cada vez (la medición real representa la mayor parte de los gastos generales restantes).
-        // Un solo caché es suficiente: es la misma instancia de cadena y la comparación se realiza con === En lugar de iguales, acertar tiene coste cero.
+        // 系统提示每轮都一样，却每次都要重新 BPE 一遍（实测占剩余开销的大头）。
+        // 单条缓存即可：它是同一个字符串实例，比较用 === 而不是 equals，命中时零成本。
         val fullEstimate = promptTokens(systemPrompt) + TokenEstimator.estimate(messages, cache = tokenCache)
         val measuredIndex = lastMeasuredIndex(messages)
         if (measuredIndex < 0) return fullEstimate
         val measured = measuredTokens(messages[measuredIndex])
         if (measured <= 0) return fullEstimate
-        // system prompt Ya incluido en los tokens de aviso medidos reales, si la sección de cola se incluye nuevamente, el conteo se repetirá.
+        // system prompt 已经包含在实测的 promptTokens 里，尾段再带一遍会重复计数。
         val tailEstimate = TokenEstimator.estimate(
             messages.subList(measuredIndex + 1, messages.size),
             cache = tokenCache,

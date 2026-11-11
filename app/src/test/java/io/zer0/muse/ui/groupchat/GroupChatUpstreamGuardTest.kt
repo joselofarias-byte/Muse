@@ -35,15 +35,15 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * El flujo de estado de la interfaz de usuario del ViewModel del chat grupal converge y regresa de manera anormal.
+ * 群聊 ViewModel 的 UI 状态流异常收敛回归。
  *
- * Antecedentes:init adentro `viewModelScope.launch { flow.collect { } }` Antes no había habido líneas de defensa inusuales.
- * aguas arriba (Room/DataStore) arroja un error, o el propio bloque de recopilación arroja un error, se convertirá en una excepción de rutina no detectada:
- * La máquina real puede bloquear el proceso; se filtrará al siguiente caso de uso en la prueba `UncaughtExceptionsBeforeTest`
- * (WorkspaceBoundaryTest Por lo tanto escamoso).
+ * 背景：init 里的 `viewModelScope.launch { flow.collect { } }` 此前没有任何异常防线。
+ * 上游（Room/DataStore）抛错、或 collect 块自身抛错，都会变成未捕获协程异常：
+ * 真机可能崩进程；测试里会泄漏成下一个用例的 `UncaughtExceptionsBeforeTest`
+ * （WorkspaceBoundaryTest 因此 flaky）。
  *
- * Aquí, StandardTestDispatcher se utiliza para ejecutar el viewModelScope real: si la excepción no converge,
- * El programador de pruebas lo generará como una excepción no detectada y el caso de uso se mostrará en rojo directamente.
+ * 这里用 StandardTestDispatcher 跑真实的 viewModelScope：如果异常没被收敛，
+ * 测试调度器会把它当成未捕获异常抛出来，用例直接红。
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
@@ -71,7 +71,7 @@ class GroupChatUpstreamGuardTest {
         chatId = chatId,
         senderType = "assistant",
         senderId = "assistant-a",
-        senderName = "asistenteA",
+        senderName = "助手A",
         body = body,
         timestamp = ts,
     )
@@ -91,12 +91,12 @@ class GroupChatUpstreamGuardTest {
         every { settings.chatPreferencesFlow } returns MutableStateFlow(ChatPreferences())
         activityHub = GroupChatActivityHub()
 
-        // De forma predeterminada, todos los flujos son normales y los casos de uso específicos se pueden anular en flujos que generarán errores.
+        // 默认全部流正常，具体用例再覆盖成会抛错的流。
         every { repository.observeChats() } returns MutableStateFlow(emptyList())
         every { assistantRepository.observeAll } returns MutableStateFlow(emptyList())
         every { repository.observeChat(any()) } returns MutableStateFlow<GroupChatEntity?>(null)
         every { repository.getPagedMessages(any(), any()) } returns MutableStateFlow(emptyList())
-        // relaxed mock El valor de StateFlow arrojará KotlinNothingValueException, aquí está el verdadero StateFlow.
+        // relaxed mock 的 StateFlow 取值会抛 KotlinNothingValueException，这里给真 StateFlow。
         every { scheduler.activeGroupGeneration } returns MutableStateFlow(null)
     }
 
@@ -120,37 +120,37 @@ class GroupChatUpstreamGuardTest {
         return vm
     }
 
-    /** El flujo ascendente arroja un error directamente: todo el flujo de recolección converge y el proceso/Ninguna prueba debería recibir excepciones no detectadas. */
+    /** 上游直接抛错：整条收集流被收敛，进程/测试都不该收到未捕获异常。 */
     @Test
     fun `throwing upstream flow does not leak an uncaught exception`() {
         every { repository.observeChats() } returns flow { throw IllegalStateException("room exploded") }
 
         val vm = buildViewModel()
 
-        // El coleccionista ha terminado,state Mantenga el valor predeterminado en lugar de fallar.
+        // 收集器已结束，state 保持默认值而不是崩掉。
         assertTrue(vm.state.value.chats.isEmpty())
     }
 
-    /** Si una secuencia falla, otras secuencias no se verán afectadas: la lista de asistentes aún puede volver al estado normal. */
+    /** 一条流挂掉不能连累其他流：助手列表仍能正常刷进 state。 */
     @Test
     fun `one failing collector does not stop the others`() {
         every { repository.observeChats() } returns flow { throw IllegalStateException("room exploded") }
         every { assistantRepository.observeAll } returns MutableStateFlow(
-            listOf(AssistantEntity(id = "assistant-a", name = "asistenteA")),
+            listOf(AssistantEntity(id = "assistant-a", name = "助手A")),
         )
 
         val vm = buildViewModel()
 
-        assertEquals("La falla del flujo de la lista de chat grupal no afecta el flujo de la lista del asistente", 1, vm.state.value.assistants.size)
-        // La lista se bloquea y la marca de carga de la primera pantalla solo puede permanecer en su valor original (ya nada puede desactivarla).
-        assertTrue("isChatsLoading conserva su valor original cuando falla el flujo de la lista", vm.state.value.isChatsLoading)
+        assertEquals("群聊列表流失败不影响助手列表流", 1, vm.state.value.assistants.size)
+        // 列表流挂了，首屏 loading 标记就只能停在原值（不再有任何东西把它关掉）。
+        assertTrue("列表流失败时 isChatsLoading 保持原值", vm.state.value.isChatsLoading)
     }
 
-    /** Después de que la secuencia de la ventana de mensajes se genera incorrectamente, el chat grupal aún puede recibir el mensaje a través de loadInitialPage, una ruta conectada directamente a la base de datos. */
+    /** 消息窗口流抛错后，切群聊仍能靠 loadInitialPage 这条直连 DB 的路径拿到消息。 */
     @Test
     fun `failing message window flow still allows initial page load`() {
         val chatId = "chat1"
-        every { repository.observeChats() } returns MutableStateFlow(listOf(chat(chatId, "grupo uno")))
+        every { repository.observeChats() } returns MutableStateFlow(listOf(chat(chatId, "群一")))
         every { repository.getPagedMessages(chatId, any()) } returns flow {
             throw IllegalStateException("paged query failed")
         }
@@ -166,11 +166,11 @@ class GroupChatUpstreamGuardTest {
     }
 
     /**
-     * El bloque de recopilación posterior arroja un error (la verdadera forma de escama histórica: al tomar el campo de activeGroupGeneration
-     * lanza KotlinNothingValueException) también debe converger.
+     * 下游 collect 块自身抛错（历史 flake 的真实形态：取 activeGroupGeneration 的字段时
+     * 抛 KotlinNothingValueException）也必须被收敛。
      *
-     * Tenga en cuenta que el punto de lanzamiento debe estar en el cuerpo de recogida: si en `scheduler.activeGroupGeneration` Esta propiedad se lanza cuando se lee,
-     * Esta es una excepción normal en el bloque de inicio, que no pasa por la protección de flujo (es un error de la persona que llama y no está dentro del alcance de esta solución).
+     * 注意抛点必须在 collect 体内：如果在 `scheduler.activeGroupGeneration` 这个属性读取处抛，
+     * 那就是 launch 块里的普通异常，不经过 Flow 守卫（那属于调用方 bug，不在本修复范围）。
      */
     @Test
     fun `throwing collect body does not leak an uncaught exception`() {
@@ -178,12 +178,12 @@ class GroupChatUpstreamGuardTest {
         every { brokenGeneration.currentSpeakerId } throws IllegalStateException("speaker unavailable")
         every { scheduler.activeGroupGeneration } returns MutableStateFlow(brokenGeneration)
         every { assistantRepository.observeAll } returns MutableStateFlow(
-            listOf(AssistantEntity(id = "assistant-a", name = "asistenteA")),
+            listOf(AssistantEntity(id = "assistant-a", name = "助手A")),
         )
 
         val vm = buildViewModel()
 
-        // El flujo de la lista de ayuda se interrumpe dentro del cuerpo de recopilación, pero la máquina virtual no falla y otros flujos no se ven afectados.
+        // 助手列表流在 collect 体内中断，但 VM 没崩，其他流也不受影响。
         assertEquals(0, vm.state.value.assistants.size)
         assertEquals(false, vm.state.value.isAgentResponding)
     }

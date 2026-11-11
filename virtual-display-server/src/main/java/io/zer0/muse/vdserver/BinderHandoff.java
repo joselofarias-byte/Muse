@@ -7,12 +7,12 @@ import io.zer0.muse.vdproto.VdContract;
 import java.lang.reflect.Method;
 
 /**
- * v2.2.1 pantalla virtual:Binder Mano a mano.
+ * v2.2.1 虚拟屏:Binder 手递手。
  *
- * Servidor(shell uid)No se puede registrar el servicio del sistema,Cambiar IVirtualDisplayService binder
- * Enviado al host mediante transmisión dirigida por paquete(aplicación principal)de exported receiver:
- * tono reflectante IActivityManager.broadcastIntent / broadcastIntentWithFeature,
- * Pulsación de parámetros"nombre + cantidad + tipo"Dos conjuntos de diseños de firma conocidos están llenos de valores predeterminados.
+ * 服务端(shell uid)无法注册系统服务,改为把 IVirtualDisplayService 的 binder
+ * 经 package 定向广播发给宿主(主应用)的 exported receiver:
+ * 反射调 IActivityManager.broadcastIntent / broadcastIntentWithFeature,
+ * 参数按"名字 + 数量 + 类型"两套已知签名布局填默认值。
  */
 public final class BinderHandoff {
 
@@ -52,7 +52,7 @@ public final class BinderHandoff {
                 continue;
             }
             int count = method.getParameterTypes().length;
-            // Antigua firma 13 parámetros;Android 13+ 16 parámetros con función
+            // 旧签名 13 参;Android 13+ 带 feature 的 16 参
             if (count == 13 || count == 16) {
                 target = method;
                 if (count == 16) {
@@ -75,14 +75,14 @@ public final class BinderHandoff {
             } else if (type == boolean.class) {
                 args[i] = false;
             } else {
-                // IApplicationThread / String / IIntentReceiver / Bundle / String[] uniformemente null
+                // IApplicationThread / String / IIntentReceiver / Bundle / String[] 一律 null
                 args[i] = null;
             }
         }
         target.invoke(service, args);
     }
 
-    /** appOp / userId La ubicación se toma según el diseño de la firma. -1(AppOpsManager.OP_NONE / UserHandle.USER_ALL). */
+    /** appOp / userId 位置按签名布局取 -1(AppOpsManager.OP_NONE / UserHandle.USER_ALL)。 */
     private static boolean isMinusOneInt(int count, int index) {
         if (count == 13) {
             return index == 8 || index == 12;

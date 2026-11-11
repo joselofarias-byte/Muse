@@ -1,47 +1,47 @@
 package io.zer0.memory.ai
 
 /**
- * v1.0.52 P2-3: Generador de palabras de solicitud de extracción de IA de memoria.
+ * v1.0.52 P2-3: 记忆 AI 提取提示词构建器。
  *
- * usado para [MemoryAutoSaveScheduler.extractEntities] —— Extraiga la memoria estructurada del historial de conversaciones:
- *  - entidad(hechos atómicos)+ relación entre entidades(Borde del gráfico de conocimiento)
- *  - Actualización de hechos existentes + fusión de memoria similar
- *  - Actualización de Markdown del retrato del usuario
+ * 用于 [MemoryAutoSaveScheduler.extractEntities] —— 从对话历史中提取结构化记忆:
+ *  - 实体(原子事实)+ 实体间关系(知识图谱边)
+ *  - 对已有事实的更新 + 相似记忆合并
+ *  - 用户画像 Markdown 更新
  *
- * Generar un objeto JSON estricto(conformarse a [ParsedAnalysis] estructura),Sin vallas de rebajas.
+ * 输出严格 JSON 对象(符合 [ParsedAnalysis] 结构),无 markdown 围栏。
  *
- * con [io.zer0.memory.prompt.FactExtractionPrompt] la diferencia:
- *  - FactExtractionPrompt: Extraiga datos atómicos del resumen de diferencias(No importa/fusionar/retrato)
- *  - MemoryExtractPrompt: Extraiga recuerdos estructurados de conversaciones completas(Contiene relación/fusionar/retrato),Más funciones
- * Ambos pueden coexistir:FactExtraction usado para daily deep pipeline,MemoryExtract en tiempo real autoSave
+ * 与 [io.zer0.memory.prompt.FactExtractionPrompt] 的区别:
+ *  - FactExtractionPrompt: 从摘要 diff 提取原子事实(无关系/合并/画像)
+ *  - MemoryExtractPrompt: 从完整对话提取结构化记忆(含关系/合并/画像),功能更全
+ * 两者可共存:FactExtraction 用于 daily deep pipeline,MemoryExtract 用于实时 autoSave
  */
 object MemoryExtractPrompt {
 
-    // D3: Suplemento de directrices de énfasis y límites(claro"Que vale la pena recordar"criterio) → v3
+    // D3: 强调与边界准则补充(明确"什么值得记"的判据) → v3
     const val TEMPLATE_VERSION = "memory-extract.v3"
     const val CACHE_GROUP = "memory.extract_analysis"
 
     /**
-     * Indicador del sistema de compilación.
+     * 构建 system prompt。
      *
-     * @param locale Idioma(zh-CN / en-US ...)
-     * @param existingFactsPreview Vista previa de hechos ya disponible(Opcional,Se utiliza para eliminar duplicados./fusionar/Referencia de actualización)
-     *        Formato: "- {title}: {content}" uno por línea,Hasta 20 artículos
+     * @param locale 语言(zh-CN / en-US ...)
+     * @param existingFactsPreview 已有事实预览(可选,用于去重/合并/更新参考)
+     *        格式: "- {title}: {content}" 每行一条,最多 20 条
      */
-    fun buildSystemPrompt(locale: String = "es", existingFactsPreview: String? = null): String {
-        val isZh = locale.let { it.startsWith("es") || it.startsWith("zh") }
+    fun buildSystemPrompt(locale: String = "zh-CN", existingFactsPreview: String? = null): String {
+        val isZh = locale.startsWith("zh")
 
         val existingSection = if (!existingFactsPreview.isNullOrBlank()) {
             if (isZh) {
                 """
-## ya tengo memoria(Se utiliza para eliminar duplicados./fusionar/Referencia de actualización)
+## 已有记忆(用于去重/合并/更新参考)
 
 $existingFactsPreview
 
-Al recuperar, verifique si hay duplicaciones con memorias existentes./conflicto:
- - Si la nueva entidad duplica semánticamente una memoria existente,Poner fusionadasEntidades fusionadas
- - Si la nueva entidad corrige/Memoria existente actualizada,poner en updatedEntities
- - Si no hay duplicación con la memoria existente,poner en extractedEntities
+提取时请检查与已有记忆的重复/冲突:
+ - 如果新实体与已有记忆语义重复,放入 mergedEntities 合并
+ - 如果新实体纠正/更新了已有记忆,放入 updatedEntities
+ - 如果与已有记忆无重复,放入 extractedEntities
                 """.trimIndent()
             } else {
                 """
@@ -61,68 +61,68 @@ Check for duplicates/conflicts with existing memories when extracting:
 
         if (isZh) {
             return """
-Eres un analista de la memoria. Analizar conversaciones de usuarios con asistentes,Recuperación de la memoria estructurada.
+你是一个记忆分析师。分析用户与助手的对话,提取结构化记忆。
 
 $existingSection
 
-## Reglas de extracción
+## 提取规则
 
-1. mainProblem: Resume la pregunta principal de esta conversación en una oración.(¿Qué quieren resolver los usuarios?),Opcional.
+1. mainProblem: 用一句话总结本次对话的主问题(用户想解决什么),可选。
 
-2. extractedEntities: Datos atómicos recién extraídos(Recuerda solo una cosa por entrada.).
-   - title: título corto(≤20palabra,para mostrar y combinar)
-   - content: texto fáctico(Mantener la expresión original.,sin sujeto)
-   - speaker: orador de hecho,solo puede ser USER / ASSISTANT / OTHER;Los datos del usuario deben estar marcados. USER
-   - credibility: 0.0~1.0,El usuario declara explícitamente que 1.0,inferir 0.5~0.8
-   - importance: 0.0~1.0,<0.4 ordinario,0.4~0.7 importante,>0.7 clave(medico/Finanzas/seguro);
-      Los usuarios enfatizan, establecen o expresan límites claramente./tabú("no lo hagas…""no me gusta ser…")El contenido de al menos 0.4
-   - folderPath: Clasificación(preference/identity/event/relationship/goal/medical/other)
-   - tags: 2~5 Palabras clave distintivas
-   - entityKey: Clave de normalización de la entidad. Cuando el sujeto del hecho es el nombre de una persona específica/título(Como por ejemplo"Sr. Zhang")tiempo,
-     Complete el nombre más estandarizado de la entidad.(Como por ejemplo"Zhang San");La misma entidad debe usarse en diferentes entradas con exactamente el mismo entityKey;
-     Complete null en otros casos.
+2. extractedEntities: 新提取的原子事实(每条只记一件事)。
+   - title: 简短标题(≤20字,用于展示和匹配)
+   - content: 事实正文(保留原始表述,不加主语)
+   - speaker: 事实说话者,只能是 USER / ASSISTANT / OTHER;用户事实必须标记 USER
+   - credibility: 0.0~1.0,用户明确陈述取 1.0,推断取 0.5~0.8
+   - importance: 0.0~1.0,<0.4 普通,0.4~0.7 重要,>0.7 关键(医疗/财务/安全);
+      用户明确强调、郑重说明或表达边界/禁忌("不要…""不喜欢被…")的内容至少 0.4
+   - folderPath: 分类(preference/identity/event/relationship/goal/medical/other)
+   - tags: 2~5 个有辨识度的关键词
+   - entityKey: 实体归一化键。当事实主语是具体人名/称呼(如"张先生")时,
+     填该实体最规范的名字(如"张三");同一实体在不同条目中必须用完全相同的 entityKey;
+     其余情况填 null。
 
-3. links: relación entre entidades(Borde del gráfico de conocimiento).
-   - sourceTitle / targetTitle Debe ser consistente con el título de una entidad.
-   - linkType: causes(causa y efecto)/ explains(explicar)/ part_of(contiene)/ related_to(asociación)/ contradicts(contradicción)
-   - weight: 0.0~1.0 fuerza de la relación
+3. links: 实体间关系(知识图谱边)。
+   - sourceTitle / targetTitle 必须与某个 entity 的 title 一致
+   - linkType: causes(因果)/ explains(解释)/ part_of(包含)/ related_to(关联)/ contradicts(矛盾)
+   - weight: 0.0~1.0 关系强度
 
-4. updatedEntities: Actualizaciones de recuerdos existentes.(Partido difuso por título de partido).
-   - matchTitle: ya recordado title(Puede coincidir parcialmente)
-   - newContent: Texto reemplazado
-   - newImportance / newFolderPath / newTags: Actualizaciones opcionales(no actualizar null)
+4. updatedEntities: 对已有记忆的更新(按 matchTitle 模糊匹配)。
+   - matchTitle: 已有记忆的 title(可部分匹配)
+   - newContent: 替换后的正文
+   - newImportance / newFolderPath / newTags: 可选更新(不更新填 null)
 
-5. mergedEntities: Fusión de memoria similar(Eliminar duplicados).
-   - sourceTitles: Ya hay elementos para fusionar/Nueva lista de títulos de memoria
-   - mergedTitle / mergedContent: Nuevo título y texto del cuerpo fusionados
+5. mergedEntities: 相似记忆合并(去重)。
+   - sourceTitles: 要合并的已有/新记忆 title 列表
+   - mergedTitle / mergedContent: 合并后的新标题和正文
 
-6. profileMarkdown: Actualización de Markdown del retrato del usuario(Opcional,Cubierto).
-   Contiene identidad/Personalidad/Interés/objetivos a largo plazo, etc.,El formato es como:
-   ## identidad
-   - nombre: Zhang San
-   ## Interés
-   - sistema de memoria,AI Agent
+6. profileMarkdown: 用户画像 Markdown 更新(可选,覆盖式)。
+   包含身份/人格/兴趣/长期目标等,格式如:
+   ## 身份
+   - 姓名: 张三
+   ## 兴趣
+   - 记忆系统、AI Agent
 
-7. Extracción prohibida:
-   - No escriba la autodescripción, los compromisos, las preferencias y los planes temporales del asistente en los datos del usuario.;Este tipo de orador de contenidos debe ser ASSISTANT,La base de datos del usuario no se escribe posteriormente en
-   - Preferencias de flujo de trabajo, preferencias de herramientas, reglas de ingeniería, detalles de implementación
-   - Actividades internas del asistente e información de depuración temporal
-   - Detalles de la misión única(Como por ejemplo"Línea modificada y del archivo xxx")
-   - Contenido de demostración en el siguiente ejemplo.(El ejemplo solo demuestra el formato JSON.,La copia está estrictamente prohibida.;Todas las entradas deben ser de esta conversación.)
+7. 禁止提取:
+   - 不要把助手的自述、承诺、偏好、临时计划写入用户事实;这类内容 speaker 必须为 ASSISTANT,随后不会写入用户事实库
+   - 工作流程偏好、工具偏好、工程规则、执行细节
+   - 助手的内心活动、临时调试信息
+   - 一次性任务细节(如"修改了 xxx 文件第 y 行")
+   - 下方示例中的演示内容(示例仅演示 JSON 格式,严禁照抄;所有条目必须来自本次对话)
 
-8. Si la conversación no vale la pena recordar,Devolver estructura vacía(Todas las matrices están vacías.,mainProblem para null).
+8. 如果对话无值得记忆的内容,返回空结构(所有数组为空,mainProblem 为 null)。
 
-## Formato de salida
+## 输出格式
 
-Objeto JSON estricto,Sin bloques de código de rebajas:
+严格 JSON 对象,不要 markdown 代码块:
 {
   "mainProblem": {"title": "...", "content": "...", "credibility": 0.8, "importance": 0.5, "folderPath": "event", "tags": ["..."]},
   "extractedEntities": [
-    {"title": "alérgico a la penicilina", "content": "alérgico a la penicilina", "speaker": "USER", "credibility": 1.0, "importance": 0.9, "folderPath": "medical", "tags": ["medico","Alergia"], "entityKey": null},
-    {"title": "Al Sr. Zhang le gusta el café americano.", "content": "Al Sr. Zhang le gusta el café americano.", "credibility": 1.0, "importance": 0.5, "folderPath": "preference", "tags": ["cafe"], "entityKey": "Zhang San"}
+    {"title": "对青霉素过敏", "content": "对青霉素过敏", "speaker": "USER", "credibility": 1.0, "importance": 0.9, "folderPath": "medical", "tags": ["医疗","过敏"], "entityKey": null},
+    {"title": "张先生喜欢美式咖啡", "content": "张先生喜欢美式咖啡", "credibility": 1.0, "importance": 0.5, "folderPath": "preference", "tags": ["咖啡"], "entityKey": "张三"}
   ],
   "links": [
-    {"sourceTitle": "alérgico a la penicilina", "targetTitle": "Tratar con amoxicilina", "linkType": "contradicts", "weight": 0.9}
+    {"sourceTitle": "对青霉素过敏", "targetTitle": "用阿莫西林治疗", "linkType": "contradicts", "weight": 0.9}
   ],
   "updatedEntities": [],
   "mergedEntities": [],
@@ -203,39 +203,39 @@ Strict JSON object, no markdown code fences:
     }
 
     /**
-     * construir autoCategorize(Clasificación automática de recuerdos no clasificados.)aviso del sistema.
+     * 构建 autoCategorize(自动分类未分类记忆)的 system prompt。
      *
-     * usado para [MemoryAutoSaveScheduler.autoCategorizeMemories] —— La ruta de la carpeta del lote está vacía
-     * Clasificación de asignación de memoria.
+     * 用于 [MemoryAutoSaveScheduler.autoCategorizeMemories] —— 批量为 folderPath 为空的
+     * 记忆分配分类。
      *
-     * @param locale Idioma
+     * @param locale 语言
      */
-    fun buildCategorizeSystemPrompt(locale: String = "es"): String {
-        val isZh = locale.let { it.startsWith("es") || it.startsWith("zh") }
+    fun buildCategorizeSystemPrompt(locale: String = "zh-CN"): String {
+        val isZh = locale.startsWith("zh")
         if (isZh) {
             return """
-Eres un clasificador de memoria. Asignar cada memoria sin categorizar folderPath(Categorías).
+你是一个记忆分类器。为每条未分类记忆分配 folderPath(分类目录)。
 
-## Reglas de clasificación
+## 分类规则
 
-folderPath valor:
- - preference: Preferencia/odio(Como por ejemplo"como el cafe americano""Odio el cilantro")
- - identity: identidad/Personalidad(Como por ejemplo"Nombre Zhang San""introversión")
- - event: evento/planear(Como por ejemplo"Informe entregado el miércoles""Mudarse la próxima semana")
- - relationship: relación(Como por ejemplo"El nombre de mi esposa es Li Si.""Colega Wang Wu")
- - goal: objetivo/soñar(Como por ejemplo"¿Quieres aprender japonés?""Planea correr para perder peso.")
- - medical: medico/salud(Como por ejemplo"alergia a la penicilina""hipertensión")
- - other: Otros(No se puede clasificar en las categorías anteriores.)
+folderPath 取值:
+ - preference: 偏好/讨厌(如"喜欢美式咖啡""讨厌香菜")
+ - identity: 身份/人格(如"姓名张三""性格内向")
+ - event: 事件/计划(如"周三交报告""下周搬家")
+ - relationship: 关系(如"妻子叫李四""同事王五")
+ - goal: 目标/梦想(如"想学日语""计划跑步减肥")
+ - medical: 医疗/健康(如"青霉素过敏""高血压")
+ - other: 其他(无法归入以上类别)
 
-## Formato de salida
+## 输出格式
 
-Matriz JSON estricta,Cada entrada contiene el título original y el nombre asignado. folderPath:
+严格 JSON 数组,每条包含原 title 和分配的 folderPath:
 [
   {"title": "...", "folderPath": "preference"},
   {"title": "...", "folderPath": "medical"}
 ]
 
-Sin bloques de código de rebajas. Si no se puede clasificar,asignar "other".
+不要 markdown 代码块。如果无法分类,分配 "other"。
             """.trimIndent()
         }
         return """

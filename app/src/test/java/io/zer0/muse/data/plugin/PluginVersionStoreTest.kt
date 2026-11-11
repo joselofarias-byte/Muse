@@ -10,7 +10,7 @@ import org.junit.Test
 import java.io.File
 import java.nio.file.Files
 
-/** Pruebas de retención y poda de versiones históricas (capa de datos con capacidades de reversión). */
+/** 历史版本保留与剪枝测试（回滚能力的数据层）。 */
 class PluginVersionStoreTest {
 
     private val tempDirs = mutableListOf<File>()
@@ -51,7 +51,7 @@ class PluginVersionStoreTest {
         assertEquals(1, retained.size)
         assertEquals("1.0.0", retained.first().version)
         assertEquals("museai", retained.first().record.publisherId)
-        // Los archivos del paquete se copian por completo y el resumen del contenido solo se puede volver a calcular al revertir.
+        // 包内文件被完整复制，回滚时才能重算内容摘要。
         assertEquals("function a(){}", File(retained.first().directory, "main.js").readText())
         assertEquals("{}", File(retained.first().directory, "manifest.json").readText())
     }
@@ -127,7 +127,7 @@ class PluginVersionStoreTest {
         assertFalse(store.retain("../escape", "1.0.0", source, record("1.0.0")).isSuccess)
         assertFalse(store.retain("math-toolkit", "not-a-version", source, record("not-a-version")).isSuccess)
         assertFalse(store.retain("math-toolkit", "1.0.0", File(tempDir(), "missing"), record("1.0.0")).isSuccess)
-        // La versión de los metadatos debe ser coherente con la versión retenida; de lo contrario, la reversión obtendrá el destino incorrecto.
+        // 元数据里的版本必须与保留的版本一致，否则回滚会取到错误的目标。
         assertFalse(store.retain("math-toolkit", "1.0.0", source, record("2.0.0")).isSuccess)
     }
 

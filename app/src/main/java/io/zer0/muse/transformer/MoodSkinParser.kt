@@ -1,12 +1,12 @@
 package io.zer0.muse.transformer
 
 /**
- * B6-02: pelle-d-umore Protocolo de piel emocional explicado.
+ * B6-02: pelle-d-umore 情绪皮肤协议解析。
  *
- * Viene con aplicación `<mood>...</mood>` El manuscrito abdominal está completamente aislado:
- * - `<moodfx>rage</moodfx>` Es una máscara de pantalla completa para toda la respuesta.
- * - `[glow]...[/glow]` Espere a que aparezcan efectos de texto en línea
- * - Copiar/leer en voz alta/Utilice siempre exportar [cleanForExport] Borrar etiqueta de protocolo
+ * 与应用自带 `<mood>...</mood>` 腹稿完全隔离：
+ * - `<moodfx>rage</moodfx>` 是整条回复的全屏皮肤
+ * - `[glow]...[/glow]` 等是内联文字特效
+ * - 复制/朗读/导出一律使用 [cleanForExport] 清除协议标签
  */
 object MoodSkinParser {
 
@@ -26,19 +26,19 @@ object MoodSkinParser {
     )
 
     /**
-     * Ocho efectos especiales en línea que coinciden con fórmulas, presione [INLINE_EFFECTS] El pedido está precompilado.
+     * 八个内联特效的匹配式，按 [INLINE_EFFECTS] 的顺序预先编译。
      *
-     * [Regex] Es inmutable y puede usarse repetidamente después de compilarlo una vez; antes de cada convocatoria se recopilaron ocho ítems.
-     * Estas dos funciones están en el camino por el que pasará la burbuja en cada cuadro.
+     * [Regex] 不可变，编译一次可以反复用；此前每次调用都现编八条，
+     * 而这两个函数处在气泡每帧都会经过的路径上。
      */
     private val INLINE_EFFECT_REGEXES: Map<String, Regex> = INLINE_EFFECTS.associateWith { effect ->
         Regex("""\[$effect\]([\s\S]*?)\[/$effect\]""", RegexOption.IGNORE_CASE)
     }
 
     /**
-     * de [content] Extracto `<moodfx>` y retire la etiqueta.
+     * 从 [content] 提取 `<moodfx>` 并剥离标签。
      *
-     * @return (piel id, Texto despojado)
+     * @return (皮肤 id, 剥离后的正文)
      */
     fun extract(content: String, existing: String? = null): Pair<String?, String> {
         if (existing != null) return existing to content
@@ -49,10 +49,10 @@ object MoodSkinParser {
         return skin to cleaned
     }
 
-    /** Determinar si el texto contiene etiquetas de efectos en línea(Se utiliza para seleccionar la ruta de representación de texto enriquecido.). */
+    /** 判断文本是否包含任何内联特效标签(用于选择富文本渲染路径)。 */
     fun containsInlineEffect(text: String): Boolean = INLINE_EFFECT_REGEXES.values.any { it.containsMatchIn(text) }
 
-    /** Borrar todas las etiquetas de efectos en línea,Conserve el texto ajustado. */
+    /** 清除所有内联特效标签,保留被包裹的文字。 */
     fun stripInlineEffects(text: String): String {
         var result = text
         for (regex in INLINE_EFFECT_REGEXES.values) {
@@ -61,6 +61,6 @@ object MoodSkinParser {
         return result
     }
 
-    /** Exportar/Copiar/Limpiar antes de leer en voz alta:Pelar primero moodfx,Borre los efectos en línea nuevamente. */
+    /** 导出/复制/朗读前统一清理:先剥 moodfx,再清内联特效。 */
     fun cleanForExport(text: String): String = stripInlineEffects(extract(text).second)
 }

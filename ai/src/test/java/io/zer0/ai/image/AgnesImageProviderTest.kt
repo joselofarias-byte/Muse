@@ -7,7 +7,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * R-TEST-20: Agnes Pruebas de mapeo de tamaño y análisis de respuesta del proveedor de imágenes.
+ * R-TEST-20: Agnes 图片 Provider 响应解析与尺寸映射测试。
  */
 class AgnesImageProviderTest {
 

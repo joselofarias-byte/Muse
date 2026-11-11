@@ -11,7 +11,7 @@ import java.security.Signature
 import java.security.spec.ECGenParameterSpec
 import java.util.Base64
 
-/** Prueba de puerta protectora de instalación externa enchufable de lógica pura. */
+/** 纯逻辑外部插件安装安全门测试。 */
 class PluginSecurityGateTest {
 
     @Test
@@ -30,7 +30,7 @@ class PluginSecurityGateTest {
 
     @Test
     fun review_acceptsAnyCapabilityAfterSandboxOpening() {
-        // v2.x(Versión Sandbox): las habilidades ya no se rechazan según una lista fija y se puede pasar cualquier nombre legal.
+        // v2.x（沙盒放开）：能力不再按固定名单拒绝，声明任意合法名均可通过。
         val decision = PluginSecurityGate.review(
             packageOf(capabilities = listOf("system.exec")),
         )
@@ -40,13 +40,13 @@ class PluginSecurityGateTest {
 
     @Test
     fun review_rejectsInvalidCapabilityNameFormat() {
-        // Después del lanzamiento, aún se verificará el formato del nombre de la habilidad (validez del personaje).
+        // 放开后仍校验能力名格式（字符合法性）。
         val decision = PluginSecurityGate.review(
             packageOf(capabilities = listOf("Invalid Name!")),
         )
 
         assertFalse(decision.allowed)
-        assertTrue(decision.reason?.contains("formato del nombre de la capacidad") == true)
+        assertTrue(decision.reason?.contains("格式非法") == true)
     }
 
     @Test
@@ -62,7 +62,7 @@ class PluginSecurityGateTest {
         )
         val decision = PluginSecurityGate.review(packageOf(capabilities = bridgeCaps))
 
-        assertTrue("Deben aceptarse capacidades puente: ${decision.reason}", decision.allowed)
+        assertTrue("桥接能力应被接受: ${decision.reason}", decision.allowed)
         assertEquals(bridgeCaps, decision.preview.capabilities)
     }
 
@@ -81,7 +81,7 @@ class PluginSecurityGateTest {
         )
 
         assertFalse(decision.allowed)
-        assertTrue(decision.reason?.contains("nombre de la función es ilegal") == true)
+        assertTrue(decision.reason?.contains("名称或函数名非法") == true)
     }
 
     @Test
@@ -181,7 +181,7 @@ class PluginSecurityGateTest {
 
         assertTrue(decision.allowed)
         assertTrue(decision.requiresConfirmation)
-        // Los paquetes de aspectos sin firmar también están disponibles solo como borradores de cuarentena.,no se puede ejecutar directamente
+        // 无签名皮肤包同样只能作为隔离草稿,不能直接执行
         assertFalse(decision.isInstallable)
         assertTrue(decision.preview.tools.isEmpty())
         assertEquals(listOf("ui.skin"), decision.preview.capabilities)
@@ -211,7 +211,7 @@ class PluginSecurityGateTest {
         )
 
         assertFalse(decision.allowed)
-        assertTrue(decision.reason?.contains("herramientas ejecutables") == true)
+        assertTrue(decision.reason?.contains("可执行工具") == true)
     }
 
     @Test
@@ -219,19 +219,19 @@ class PluginSecurityGateTest {
         val decision = PluginSecurityGate.review(packageOf(tools = emptyList()))
 
         assertFalse(decision.allowed)
-        assertTrue(decision.reason?.contains("ninguna herramienta") == true)
+        assertTrue(decision.reason?.contains("未声明任何工具") == true)
     }
 
     @Test
     fun emptyOptionalManifestFieldsDoNotParticipateInSerialization() {
-        // Bloqueo de retorno(v2.0.0 Accidente de mercado): una vez que los campos predeterminados opcionales ingresen el JSON de verificación, todos los paquetes de mercado publicados
-        // periódico“La firma del editor no coincide con el contenido del complemento”.toolCards usar @EncodeDefault(NEVER) mantener el valor predeterminado
-        // No serializado;contributes / uiPanel depender de explicitNulls=false(null no salida).
+        // 回归锁（v2.0.0 市场事故）：可选默认字段一旦进入验签 JSON，已发布市场包会全部
+        // 报“发行者签名与插件内容不匹配”。toolCards 用 @EncodeDefault(NEVER) 保持默认值
+        // 不序列化；contributes / uiPanel 依赖 explicitNulls=false（null 不输出）。
         val manifest = packageOf().manifest
         val json = io.zer0.common.AppJson.encodeToString(PluginManifest.serializer(), manifest)
-        assertFalse("Las tarjetas de herramientas vacías no deben ingresar a la serialización", json.contains("toolCards"))
-        assertFalse("null contributes No se permite ingresar a la serialización", json.contains("contributes"))
-        assertFalse("null uiPanel No se permite ingresar a la serialización", json.contains("uiPanel"))
+        assertFalse("空 toolCards 不得进入序列化", json.contains("toolCards"))
+        assertFalse("null contributes 不得进入序列化", json.contains("contributes"))
+        assertFalse("null uiPanel 不得进入序列化", json.contains("uiPanel"))
     }
 
     @Test
@@ -241,14 +241,14 @@ class PluginSecurityGateTest {
             PluginManifest.serializer(),
             signed.package_.manifest,
         )
-        assertTrue("Las tarjetas de herramientas no vacías deben participar en la serialización.", json.contains("\"toolCards\""))
+        assertTrue("非空 toolCards 必须参与序列化", json.contains("\"toolCards\""))
         val envelope = checkNotNull(signed.package_.manifest.signature)
         val trusted = PluginSecurityGate.review(
             signed.package_,
             trustedPublisherKeys = mapOf(envelope.publisherId to envelope.publicKey),
         )
-        assertTrue("Los paquetes que contienen toolCards deben poder instalarse: ${trusted.reason}", trusted.isInstallable)
-        // La manipulación de las ToolCards debe invalidar la firma (los campos realmente participan en la firma).
+        assertTrue("含 toolCards 的包应可安装: ${trusted.reason}", trusted.isInstallable)
+        // 篡改 toolCards 必须让签名失效（字段确实参与签名）。
         val tampered = signed.package_.copy(
             manifest = signed.package_.manifest.copy(
                 toolCards = mapOf("hello" to "cards/evil.html"),
@@ -310,7 +310,7 @@ class PluginSecurityGateTest {
         extraFiles = mapOf("README.md" to "safe"),
     )
 
-    /** Phase 4 Paquete de aspectos declarativo:Sin herramientas, sin entrada JS,Solo existe el recurso skin.json. */
+    /** Phase 4 声明式皮肤包:无 tools、无 JS 入口,只有 skin.json 资源。 */
     private fun uiSkinPackageOf(
         capabilities: List<String> = listOf("ui.skin"),
         tools: List<ToolDeclaration> = emptyList(),

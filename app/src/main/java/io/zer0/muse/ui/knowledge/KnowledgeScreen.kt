@@ -47,6 +47,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -82,6 +83,8 @@ import io.zer0.muse.ui.theme.MuseMonoFontFamily
 import io.zer0.muse.ui.theme.MuseMotion
 import io.zer0.muse.ui.theme.MusePaddings
 import io.zer0.muse.ui.theme.MuseShapes
+import io.zer0.muse.ui.theme.bodyLargeStrong
+import io.zer0.muse.ui.theme.bodyMediumStrong
 import io.zer0.muse.ui.theme.semiLarge
 import io.zer0.muse.ui.theme.statusColors
 import kotlinx.coroutines.Dispatchers
@@ -94,11 +97,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.koin.compose.koinInject
 import java.security.MessageDigest
-import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-// L-KUI1: Límite de truncamiento de contenido,Evite que los documentos de gran tamaño causen OOM
+// L-KUI1: 内容截断上限,防止超大文档导致 OOM
 private const val MAX_CONTENT_LENGTH = 500_000
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -110,37 +112,37 @@ fun KnowledgeScreen(
     documentParser: io.zer0.muse.doc.DocumentParser = koinInject(),
     ocrManager: io.zer0.muse.doc.OcrManager = koinInject(),
     settings: io.zer0.muse.data.SettingsRepository = koinInject(),
-    // F-31: base de conocimientos DAO,para listar"base de conocimientos objetivo"para la selección de importación
+    // F-31: 知识库 DAO,用于列出"目标知识库"供导入选择
     kbDao: io.zer0.muse.data.knowledge.KnowledgeBaseDao = koinInject(),
-    // v2.4.6: carpeta DAO — Permitir que las carpetas vacías existan de forma independiente,y servir como unidad de aislamiento de recuperación
+    // v2.4.6: 文件夹 DAO — 让空文件夹可独立存在,并作为检索隔离单位
     folderDao: io.zer0.muse.data.knowledge.KnowledgeFolderDao = koinInject(),
-    // v1.0.53: Devolución de llamada de enrutamiento de biblioteca de portada(Detalles del documento → Página de gestión de portadas)
+    // v1.0.53: 封面库路由回调(文档详情 → 封面管理页)
     onOpenCoverManager: () -> Unit = {},
 ) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
-    val localizedResources = androidx.compose.ui.platform.LocalResources.current
+    val resources = LocalResources.current
     var searchQuery by rememberSaveable { mutableStateOf("") }
-    // v1.0.74 fix (Auditoría inicial 6.5): Buscar 300 ms anti-vibración — Originales remember(searchQuery) Cada carácter escrito
-    // Reiniciar consulta de flujo de sala,Ingrese el retraso. Utilice snapshotFlow+debounce para controlar los términos de consulta reales.
+    // v1.0.74 fix (前端审计 6.5): 搜索 300ms 防抖 — 原 remember(searchQuery) 每敲一个字符
+    // 都重启 Room Flow 查询,输入卡顿。用 snapshotFlow+debounce 驱动实际查询词。
     var debouncedQuery by remember { mutableStateOf("") }
     LaunchedEffect(searchQuery) {
         snapshotFlow { searchQuery }
             .debounce(300)
             .collect { debouncedQuery = it }
     }
-    // v1.66: Cambio de clasificación de la base de conocimientos(Originalmente solo se hizo clic updated_at DESC,Ahora admite 4 tipos de clasificación)
+    // v1.66: 知识库排序切换(原仅按 updated_at DESC,现支持 4 种排序)
     var sortMode by remember { mutableStateOf(KnowledgeSortMode.UPDATED) }
-    // v1.0.62: Botón de actualización desplegable,El incremento automático reconstruirá el flujo DAO y activará una nueva consulta.
+    // v1.0.62: 下拉刷新键,自增会重建 DAO flow 触发重新查询
     var refreshKey by remember { mutableStateOf(0) }
     var isRefreshing by remember { mutableStateOf(false) }
     var showSortMenu by remember { mutableStateOf(false) }
-    // v1.48: h13 Al cargar por primera vez, utilice nulo para mostrar el estado de carga.;Retención de escena de búsqueda emptyList,Evite el estado de carga flash cada vez
-    // M-KB1: Escape de los caracteres comodín LIKE al realizar una búsqueda(% _ \),Compatible con DAO ESCAPE '\' cláusula
-    // usar observeAllUser() Excluir a nivel de base de datos is_internal=true documentación de desarrollo interno,Evite la exposición de los usuarios.
-    // v1.0.74 fix (Auditoría inicial 6.5): Utilice la consulta debouncedQuery para impulsar la consulta.
-    // ST-01: DAO Flow Agregar captura de error + reintento.loadError independiente de produceState,
-    // producer Reinicie solo cuando cambie retryKey,Evite escribir loadError en el productor para desencadenar un bucle infinito de reorganización.
+    // v1.48: h13 首次加载用 null 显示加载态;搜索场景保留 emptyList,避免每次输入闪加载态
+    // M-KB1: 搜索时转义 LIKE 通配符(% _ \),配合 DAO 的 ESCAPE '\' 子句
+    // 用 observeAllUser() 在 DB 层排除 is_internal=true 的内部开发文档,避免向用户暴露
+    // v1.0.74 fix (前端审计 6.5): 用防抖后的 debouncedQuery 驱动查询
+    // ST-01: DAO Flow 加错误捕获 + 重试。loadError 独立于 produceState,
+    // producer 仅在 retryKey 变化时重启,避免在 producer 内写 loadError 触发重组死循环。
     var docsRetryKey by remember { mutableStateOf(0) }
     var docsLoadError by remember { mutableStateOf<String?>(null) }
     val docs by produceState<List<KnowledgeDocEntity>?>(
@@ -164,7 +166,7 @@ fun KnowledgeScreen(
             docsLoadError = e.message ?: context.getString(R.string.common_load_failed)
         }
     }
-    // v1.0.62: Muestra el indicador brevemente al tirar hacia abajo para actualizar,Proporcionar comentarios perceptibles para volver a consultar
+    // v1.0.62: 下拉刷新时短暂显示指示器,让重新查询有可感知反馈
     LaunchedEffect(refreshKey) {
         if (refreshKey > 0) {
             isRefreshing = true
@@ -173,25 +175,25 @@ fun KnowledgeScreen(
         }
     }
     var detailTarget by remember { mutableStateOf<KnowledgeDocEntity?>(null) }
-    // F-32: Destino de cambio de nombre/edición de texto del documento
+    // F-32: 文档重命名 / 正文编辑目标
     var renameTarget by remember { mutableStateOf<KnowledgeDocEntity?>(null) }
     var editContentTarget by remember { mutableStateOf<KnowledgeDocEntity?>(null) }
     var importing by remember { mutableStateOf(false) }
     var importProgress by remember { mutableStateOf("") }
-    // v1.67-B: La importación se puede cancelar — Guardar referencia de trabajo,Limpiar documentos de trabajo en curso tras la cancelación
+    // v1.67-B: 导入可取消 — 保存 Job 引用,取消时清理半成品文档
     var importJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
-    // v1.67-A: Estado de reindexación
+    // v1.67-A: 重新索引状态
     var reindexing by remember { mutableStateOf(false) }
     var reindexDialogVisible by remember { mutableStateOf(false) }
     var reindexProgress by remember { mutableStateOf("") }
     var reindexTarget by remember { mutableStateOf<KnowledgeDocEntity?>(null) }
-    // v1.0.53: AI Estado de generación de portada
+    // v1.0.53: AI 封面生成状态
     var generatingCover by remember { mutableStateOf(false) }
     val coverGenerator: io.zer0.muse.tools.CoverGenerator = koinInject()
-    // v1.0.47 P7-3: Consejos amigables para archivos que son demasiado grandes
+    // v1.0.47 P7-3: 文件过大友好提示
     var fileSizeWarning by remember { mutableStateOf<Pair<String, String>?>(null) }
 
-    // F-31: Importar base de conocimientos de destino(cadena vacía = Base de conocimientos predeterminada). Elige el objetivo primero KB,Seleccione el archivo nuevamente.
+    // F-31: 导入目标知识库(空串 = 默认知识库)。先选目标 KB,再选文件。
     var importTargetKbId by rememberSaveable { mutableStateOf("") }
     var importTargetFolderPath by rememberSaveable { mutableStateOf("") }
     var browsingKbId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -199,7 +201,7 @@ fun KnowledgeScreen(
     var moveFolderTarget by remember { mutableStateOf<KnowledgeDocEntity?>(null) }
     var showImportTargetDialog by rememberSaveable { mutableStateOf(false) }
     val kbs by kbDao.observeAll().collectAsStateWithLifecycle(initialValue = emptyList())
-    // v2.4.6: carpeta explícita(Contiene carpetas vacías). Registros de carpeta en la KB explorada actualmente.
+    // v2.4.6: 显式文件夹(含空文件夹)。当前浏览的 KB 下的文件夹记录。
     val explicitFolders by produceState<List<io.zer0.muse.data.knowledge.KnowledgeFolderEntity>>(
         emptyList(),
         browsingKbId,
@@ -212,32 +214,32 @@ fun KnowledgeScreen(
         }
     }
 
-    // v2.4.6: Ciclo de vida de la base de conocimientos.(KB Nuevo/Cambiar nombre/Eliminar/Reindexar) — Fusionado desde la página de administración
+    // v2.4.6: 知识库生命周期(KB 新建/重命名/删除/重索引) — 从管理页合并进来
     var creatingKb by remember { mutableStateOf(false) }
     var editingKb by remember { mutableStateOf<io.zer0.muse.data.knowledge.KnowledgeBaseEntity?>(null) }
     var deletingKb by remember { mutableStateOf<io.zer0.muse.data.knowledge.KnowledgeBaseEntity?>(null) }
     var reindexConfirmKb by remember { mutableStateOf<io.zer0.muse.data.knowledge.KnowledgeBaseEntity?>(null) }
     var kbReindexDialogVisible by remember { mutableStateOf(false) }
     var kbReindexProgressPair by remember { mutableStateOf(0 to 0) }
-    // v2.4.6: Ciclo de vida de la carpeta(Nuevo/Cambiar nombre/Eliminar)
+    // v2.4.6: 文件夹生命周期(新建/重命名/删除)
     var creatingFolder by remember { mutableStateOf(false) }
     var renamingFolder by remember { mutableStateOf<String?>(null) }
     var deletingFolder by remember { mutableStateOf<String?>(null) }
 
-    // F-33: embedding Detección de cambio de modelo — La clave de configuración actual es la misma que"El índice más reciente utilizado key"Solicitar volver a indexar cuando sea inconsistente
+    // F-33: embedding 模型切换检测 — 当前配置 key 与"最近一次索引所用 key"不一致时提示重新索引
     val currentRagConfig by settings.ragConfigFlow.collectAsStateWithLifecycle(initialValue = io.zer0.muse.rag.RagConfig())
     val lastEmbedKey by settings.lastEmbeddingModelKeyFlow.collectAsStateWithLifecycle(initialValue = null)
     val embeddingMigrated = remember(lastEmbedKey, currentRagConfig) {
         lastEmbedKey != null && lastEmbedKey != io.zer0.muse.rag.RagConfig.embeddingModelKey(currentRagConfig)
     }
 
-    // v1.54: Soporte para importar txt/md/pdf/docx/epub/images(OCR),Dividido automáticamente en trozos después de la importación+Generar índice de vector de incrustación
-    // Importación de un solo archivo extraído como función de suspensión local:Regresar true = El archivo fue importado exitosamente,false = Salir temprano(no lideró).
-    // Estado global de la interfaz de usuario(importing / importProgress / importJob)El final lo gestiona de manera uniforme la persona que llama.
+    // v1.54: 支持导入 txt/md/pdf/docx/epub/图片(OCR),导入后自动分块+生成 embedding 向量索引
+    // 单文件导入提取为局部 suspend 函数:返回 true = 该文件导入成功,false = 提前退出(没导成)。
+    // 全局 UI 状态(importing / importProgress / importJob)的收尾统一由调用方管理。
     //
-    // ReturnCount Razones de la supresión:Aquí hay varias rutas fallidas importadas archivo por archivo (el archivo excede el límite, el análisis falla, el contenido está vacío,
-    // El número de bloques es 0 y no se pueden encontrar después de colocarlos en la biblioteca.……), correspondiendo cada uno de ellos a un motivo real que debe ser informado al usuario.
-    // Dividirlo en una docena de funciones pequeñas cortará el proceso de "importación única" en partes ilegibles y hará que sea más fácil pasar por alto la limpieza de productos semiacabados.
+    // ReturnCount 抑制的理由:这里是逐文件导入的多条失败路径（文件超限、解析失败、内容为空、
+    // 分块数为 0、落库后查不到……），每一条都对应一种要告知用户的真实原因。
+    // 拆成十几个小函数会把「一次导入」的流程切碎到无法阅读，反而更容易漏掉半成品清理。
     @Suppress("ReturnCount")
     suspend fun importOneDocument(uri: Uri, targetKbId: String, targetFolderPath: String?): Boolean {
         val folderPath = targetFolderPath.orEmpty()
@@ -245,7 +247,7 @@ fun KnowledgeScreen(
         val now = System.currentTimeMillis()
         var createdDocId: String? = null
         return try {
-            // L-KUI2: Consíguelo con ContentResolver DISPLAY_NAME,Más confiable que lastPathSegment
+            // L-KUI2: 用 ContentResolver 获取 DISPLAY_NAME,比 lastPathSegment 更可靠
             val fileName = withContext(Dispatchers.IO) {
                 context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
                     val idx = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
@@ -271,7 +273,7 @@ fun KnowledgeScreen(
                 )
                 return true
             }
-            // v1.0.47 P7-3: documento analizado/Las imágenes todavía están limitadas a 50 MB; El texto sin formato está sujeto a indexación de transmisión.
+            // v1.0.47 P7-3: 解析型文档/图片仍限制 50MB；纯文本走流式索引。
             val maxFileSizeBytes = 50L * 1024 * 1024
             val fileSize = withContext(Dispatchers.IO) {
                 context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
@@ -298,7 +300,7 @@ fun KnowledgeScreen(
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (e: java.io.IOException) {
-                Logger.w("KnowledgeScreen", "No se pudo leer la configuración de RAG: ${e.message}")
+                Logger.w("KnowledgeScreen", "读取 RAG 配置失败: ${e.message}")
                 io.zer0.muse.rag.RagConfig()
             }
             if (isTextCandidate && !unsupportedTextCandidate) {
@@ -325,7 +327,7 @@ fun KnowledgeScreen(
                                 if (count == 0) continue
                                 totalChars += count
                                 if (totalChars > maxFileSizeBytes) {
-                                    error("Archivo demasiado grande,exceder ${maxFileSizeBytes / 1024 / 1024}MB Límite")
+                                    error("El archivo supera el límite de ${maxFileSizeBytes / 1024 / 1024} MB")
                                 }
                                 if (preview.length < MAX_CONTENT_LENGTH) {
                                     preview.append(
@@ -385,7 +387,7 @@ fun KnowledgeScreen(
                 MuseToast.show(context.getString(R.string.knowledge_imported_indexed, fileName, chunkCount))
                 return true
             }
-            // Seleccione el método de análisis según la extensión.
+            // 根据扩展名选择解析方式
             val content = when {
                 isParsedDoc -> {
                     importProgress = context.getString(R.string.knowledge_parsing_doc)
@@ -415,9 +417,9 @@ fun KnowledgeScreen(
                     ocrManager.recognize(uri, context)
                 }
                 else -> {
-                    // El resto no debe leerse como texto: paquete comprimido/El binario ha sido rechazado arriba.
-                    // v2.3.1: paquete comprimido/guardia binaria — con página de administración(F-31)Calibre unificado. Antes no había ningún guardia en la página principal.,
-                    // El binario se leerá como texto. → Escriba caracteres confusos en la biblioteca y cree índices vectoriales(Recuperación silenciosa de la contaminación,2026-09 retroalimentación)
+                    // 其余不应再走文本读取：压缩包/二进制已经在上方被拒绝。
+                    // v2.3.1: 压缩包/二进制守卫 — 与管理页(F-31)统一口径。此前主页面无守卫,
+                    // 二进制会被当文本读入 → 乱码写库并建立向量索引(静默污染检索,2026-09 反馈)
                     MuseToast.show(context.getString(R.string.knowledge_import_unsupported))
                     return false
                 }
@@ -439,9 +441,9 @@ fun KnowledgeScreen(
             }
             val docId = "doc-$now"
             createdDocId = docId
-            // L-KUI1: Extraer constantes,Avisos de registro cuando se trunca
+            // L-KUI1: 提取常量,截断时记录日志提示
             val truncatedContent = if (content.length > MAX_CONTENT_LENGTH) {
-                Logger.w("KnowledgeScreen", "El contenido excede $MAX_CONTENT_LENGTH personaje,truncado(Originales ${content.length} palabra)")
+                Logger.w("KnowledgeScreen", "内容超过 $MAX_CONTENT_LENGTH 字符,已截断(原 ${content.length} 字)")
                 content.take(MAX_CONTENT_LENGTH)
             } else {
                 content
@@ -455,15 +457,15 @@ fun KnowledgeScreen(
                     fileType = fileType,
                     createdAt = now,
                     updatedAt = now,
-                    // F-31: Escribir en la base de conocimientos de destino seleccionada al importar(cadena vacía → Base de conocimientos predeterminada)
+                    // F-31: 写入导入时选定的目标知识库(空串 → 默认知识库)
                     kbId = targetKbId,
                 ).let { KnowledgeFolderBrowser.withFolderPath(it, folderPath) },
             )
-            // v1.54: Fragmentación automática + generación de índice de vectores de incrustación
+            // v1.54: 自动分块 + 生成 embedding 向量索引
             importProgress = context.getString(R.string.knowledge_chunking)
             val ragConfig = parserConfig
-            // v1.103: No más excepciones para tragar silenciosamente.runCatching Pon las razones cuando fallas toast,
-            // Informar a los usuarios por qué no se creó el índice(red/Nombre del modelo/Provider Incompatibles etc),en lugar de simplemente ver"Importado pero no indexado".
+            // v1.103: 不再静默吞异常。runCatching 失败时把原因拼进 toast,
+            // 让用户知道为什么没建索引(网络/模型名/Provider 不兼容等),而不是只看到"已导入但未索引"。
             var indexError: Throwable? = null
             var indexErrorMsg: String? = null
             val indexResult = resultOf {
@@ -480,7 +482,7 @@ fun KnowledgeScreen(
             }
             val chunkCount = indexResult.getOrNull()
             if (chunkCount != null && chunkCount > 0) {
-                // Actualizar el número de fragmentos y el modelo de incrustación del documento.
+                // 更新文档的分块数和 embedding 模型
                 val modelName = ragConfig.cloudModel.ifBlank { "cloud-default" }
                 dao.upsert(
                     (dao.getById(docId) ?: return false).copy(
@@ -492,13 +494,13 @@ fun KnowledgeScreen(
                         updatedAt = System.currentTimeMillis(),
                     ),
                 )
-                // F-33: Registre la configuración de incrustación utilizada en este índice.,para detección de traspaso
+                // F-33: 记录本次索引用到的 embedding 配置,供切换检测
                 scope.launch { settings.saveLastEmbeddingModelKey(io.zer0.muse.rag.RagConfig.embeddingModelKey(ragConfig)) }
                 browsingKbId = targetKbId
                 currentFolderPath = folderPath
                 MuseToast.show(context.getString(R.string.knowledge_imported_indexed, fileName, chunkCount))
             } else {
-                // v1.103: Mostrar motivos específicos cuando falla la indexación,Dirija al usuario a la configuración de RAG para verificar la configuración
+                // v1.103: 索引失败时显示具体原因,引导用户去 RAG 设置检查配置
                 val reason = indexErrorMsg?.take(100)
                 val msg = if (reason.isNullOrBlank()) {
                     context.getString(R.string.knowledge_imported_no_index, fileName)
@@ -509,10 +511,10 @@ fun KnowledgeScreen(
                 MuseToast.show(msg)
                 Logger.w("KnowledgeScreen", "indexDocument failed for $fileName", indexError)
             }
-            // documento analizado/Ruta de la imagen: vaya aquí para indicar que el archivo se ha colocado en la biblioteca.(La indexación o no está informada por el brindis anterior)
+            // 解析型文档/图片路径：走到这里说明该文件已落库(索引与否由上面的 toast 告知)
             true
         } catch (e: kotlinx.coroutines.CancellationException) {
-            // v1.67-B: El usuario cancela la importación,Limpiar documentos semiacabados + fragmentos generados
+            // v1.67-B: 用户取消导入,清理半成品文档 + 已生成的分块
             createdDocId?.let { id ->
                 resultOf { ragService.deleteDocument(id) }
             }
@@ -527,12 +529,12 @@ fun KnowledgeScreen(
         }
     }
 
-    // v2.6.x: La importación admite múltiples lotes de selección. base de conocimientos objetivo/Las carpetas se calculan antes del inicio.,Evite recálculos archivo por archivo.
+    // v2.6.x: 导入支持多选批量。目标知识库/文件夹在启动前算好,避免逐文件重算。
     val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
         if (uris.isEmpty()) return@rememberLauncherForActivityResult
         val targetKbId = importTargetKbId.ifBlank { "default" }
         val targetFolderPath = importTargetFolderPath
-        // v1.67-B: Guardar referencia de trabajo para cancelación(La cancelación interrumpirá todo el ciclo del lote.)
+        // v1.67-B: 保存 Job 引用以便取消(取消会中断整个批量循环)
         importJob = scope.launch {
             importing = true
             var succeeded = 0
@@ -549,7 +551,7 @@ fun KnowledgeScreen(
                 importJob = null
                 importTargetFolderPath = ""
             }
-            // Mantener la experiencia original cuando solo se selecciona un archivo,Resumen de no jugar
+            // 只选了一个文件时保持原体验,不弹汇总
             if (uris.size > 1) {
                 MuseToast.show(context.getString(R.string.knowledge_import_batch_done, succeeded, failed))
             }
@@ -557,10 +559,10 @@ fun KnowledgeScreen(
     }
 
     /**
-     * Restaure el contenido original para la reindexación de un solo documento.
+     * 为单文档重索引恢复原始内容。
      *
-     * documento grande [KnowledgeDocEntity.content] Sólo una vista previa;content:// / file:// La fuente aún está disponible.
-     * La relectura, las entradas internas del paquete comprimido y otras fuentes irrecuperables permitirán a RagService dar una razón clara del error.
+     * 大文档的 [KnowledgeDocEntity.content] 只是预览；content:// / file:// 来源仍可
+     * 重新读取，压缩包内部条目等不可恢复来源则让 RagService 给出明确失败原因。
      */
     suspend fun originalDocumentContent(doc: KnowledgeDocEntity, ragConfig: io.zer0.muse.rag.RagConfig): Flow<String>? {
         val path = doc.filePath
@@ -604,7 +606,7 @@ fun KnowledgeScreen(
         }
     }
 
-    // v1.67-A: Reindexar documentos existentes(Disponible después de reemplazar el modelo de incrustación o cuando falla la indexación)
+    // v1.67-A: 重新索引已有文档(更换 embedding 模型后或索引失败时可用)
     fun reindexDoc(doc: KnowledgeDocEntity) {
         reindexTarget = doc
         reindexing = true
@@ -612,13 +614,13 @@ fun KnowledgeScreen(
         reindexProgress = context.getString(R.string.knowledge_reindex_progress)
         scope.launch {
             try {
-                // M-KUI1: Quitar runCatching,Cambiar a try-catch y volver a lanzar CancellationException
+                // M-KUI1: 移除 runCatching,改为 try-catch 并重抛 CancellationException
                 val ragConfig = try {
                     settings.getRagConfig()
                 } catch (e: kotlinx.coroutines.CancellationException) {
                     throw e
                 } catch (e: java.io.IOException) {
-                    Logger.w("KnowledgeScreen", "No se pudo leer la configuración de RAG: ${e.message}")
+                    Logger.w("KnowledgeScreen", "读取 RAG 配置失败: ${e.message}")
                     io.zer0.muse.rag.RagConfig()
                 }
                 val chunkCount = ragService.reindexDocument(
@@ -629,7 +631,7 @@ fun KnowledgeScreen(
                     },
                 )
                 if (chunkCount > 0) {
-                    // F-33: Actualizar después de reindexar"La configuración de incrustación utilizada en el índice más reciente."
+                    // F-33: 重索引后更新"最近一次索引用到的 embedding 配置"
                     scope.launch { settings.saveLastEmbeddingModelKey(io.zer0.muse.rag.RagConfig.embeddingModelKey(ragConfig)) }
                     MuseToast.show(context.getString(R.string.knowledge_reindexed, doc.title, chunkCount))
                 } else {
@@ -648,7 +650,7 @@ fun KnowledgeScreen(
         }
     }
 
-    // R-UI-01: Reparación/Reconstruir el índice FTS(Limpiar la reconstrucción de la tabla de sombras + volver a indexar completamente el documento actual)
+    // R-UI-01: 修复/重建 FTS 索引(清影子表重建 + 全量重索引当前文档)
     fun repairKnowledgeFts() {
         reindexTarget = null
         reindexing = true
@@ -661,26 +663,26 @@ fun KnowledgeScreen(
                 } catch (e: kotlinx.coroutines.CancellationException) {
                     throw e
                 } catch (e: java.io.IOException) {
-                    Logger.w("KnowledgeScreen", "No se pudo leer la configuración de RAG: ${e.message}")
+                    Logger.w("KnowledgeScreen", "读取 RAG 配置失败: ${e.message}")
                     io.zer0.muse.rag.RagConfig()
                 }
                 val failures = ragService.repairKnowledgeFtsIndex(ragConfig) { current, total ->
                     reindexProgress = context.getString(R.string.knowledge_generating_vector, current, total)
                 }
-                // F-33: Actualización después de completar la reindexación completa"La configuración de incrustación utilizada en el índice más reciente.",eliminar"Se recomienda volver a indexar"advertencia temprana
+                // F-33: 全量重索引完成后更新"最近一次索引用到的 embedding 配置",消除"建议重索引"预警
                 scope.launch { settings.saveLastEmbeddingModelKey(io.zer0.muse.rag.RagConfig.embeddingModelKey(ragConfig)) }
                 if (failures.isEmpty()) {
                     MuseToast.show(context.getString(R.string.knowledge_fts_repaired))
                 } else {
-                    // P2-11 Reparación (informe de auditoría): La implementación anterior solo solicitaba "N "El artículo falló" sin decir el motivo.
-                    // Los errores reales (como HTTP 402 Saldo insuficiente) solo van a logcat y el usuario no tiene forma de actuar.
-                    // Los dos primeros motivos se muestran después de la agregación y la deduplicación.
+                    // P2-11 修复（审计报告）: 旧实现只提示「N 篇失败」，不告诉原因，
+                    // 真正的错误（如 HTTP 402 余额不足）只进 logcat，用户无从行动。
+                    // 聚合去重后展示前两条原因。
                     val reasons = failures.values
                         .map { it.trim() }
                         .filter { it.isNotBlank() }
                         .distinct()
                         .take(2)
-                        .joinToString(";")
+                        .joinToString("；")
                         .take(160)
                     val msg = if (reasons.isBlank()) {
                         context.getString(R.string.knowledge_fts_repaired_partial, failures.size)
@@ -688,7 +690,7 @@ fun KnowledgeScreen(
                         context.getString(R.string.knowledge_fts_repaired_partial_with_reason, failures.size, reasons)
                     }
                     MuseToast.show(msg)
-                    Logger.w("KnowledgeScreen", "La reindexación falló ${failures.size} Capítulo, razón: $reasons")
+                    Logger.w("KnowledgeScreen", "重索引失败 ${failures.size} 篇，原因: $reasons")
                 }
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
@@ -704,10 +706,10 @@ fun KnowledgeScreen(
     }
 
     /**
-     * v1.0.53: AI Genere una portada y escriba la portada del documento.
+     * v1.0.53: AI 生成封面并写回文档 frontmatter。
      *
-     * proceso: CoverGenerator Imágenes sin procesar almacenadas en la base de datos. → FrontmatterParser.withCover escribir de nuevo →
-     * dao.upsert persistencia → Actualiza la lista. No se pudo generar el mensaje Toast,Sin estatus residual.
+     * 流程: CoverGenerator 生图入库 → FrontmatterParser.withCover 写回 →
+     * dao.upsert 持久化 → 刷新列表。生成失败 Toast 提示,不残留状态。
      */
     fun generateCoverFor(doc: KnowledgeDocEntity) {
         if (generatingCover) return
@@ -722,7 +724,7 @@ fun KnowledgeScreen(
                 if (item == null) {
                     MuseToast.show(
                         context.getString(
-                            if (failureMsg?.contains("Modelo de dibujo no configurado") == true) {
+                            if (failureMsg?.contains("未配置绘图模型") == true) {
                                 R.string.cover_generate_no_provider
                             } else {
                                 R.string.cover_generate_failed
@@ -732,7 +734,7 @@ fun KnowledgeScreen(
                     )
                     return@launch
                 }
-                // escribir de nuevo frontmatter(covers/ ruta relativa)
+                // 写回 frontmatter(covers/ 相对路径)
                 val newContent = io.zer0.muse.common.markdown.FrontmatterParser.withCover(
                     doc.content,
                     "covers/${item.fileName}",
@@ -762,8 +764,8 @@ fun KnowledgeScreen(
         }
     }
 
-    // v2.5.0 fix: El gesto de retorno del sistema y la tecla de retorno de la barra superior salen al mismo nivel. —— Buscar > Carpeta un nivel arriba > KB lista > Salga de la base de conocimientos.
-    // carpeta anterior/KB No hay ningún BackHandler conectado a la vista y el gesto del sistema sale directamente de toda la página de la base de conocimientos.
+    // v2.5.0 fix: 系统返回手势与顶栏返回键同层退出 —— 搜索 > 文件夹上一级 > KB 列表 > 退出知识库。
+    // 此前文件夹/KB 视图内没有接 BackHandler，系统手势直接退出整个知识库页面。
     BackHandler(enabled = true) {
         when {
             searchQuery.isNotBlank() -> searchQuery = ""
@@ -787,7 +789,7 @@ fun KnowledgeScreen(
                 },
                 largeTitle = true,
                 actions = {
-                    // v2.4.6: Crear una nueva base de conocimientos(Disponible en vista superior)
+                    // v2.4.6: 新建知识库(顶层视图时可用)
                     if (browsingKbId == null) {
                         MuseTactileButton(
                             icon = MuseIcons.plus,
@@ -795,7 +797,7 @@ fun KnowledgeScreen(
                             contentDescription = stringResource(R.string.kb_manage_create),
                         )
                     }
-                    // v1.66: Entrada del interruptor de clasificación(ventana emergente de acción)
+                    // v1.66: 排序切换入口(动作弹窗)
                     MuseTactileButton(
                         icon = MuseIcons.sort,
                         onClick = { showSortMenu = true },
@@ -818,7 +820,7 @@ fun KnowledgeScreen(
         floatingActionButton = {
             MuseFloatingButton(
                 icon = MuseIcons.plus,
-                // F-31: Seleccione primero la base de conocimientos de destino,Seleccionar archivo nuevamente(Agregar documentación a esta base de conocimientos)
+                // F-31: 先选目标知识库,再选文件(向本知识库添加文档)
                 onClick = {
                     if (!importing) {
                         importTargetKbId = browsingKbId ?: "default"
@@ -843,7 +845,7 @@ fun KnowledgeScreen(
                 .padding(innerPadding)
                 .padding(horizontal = MusePaddings.screen),
         ) {
-            // Barra de búsqueda ranurada(surfaceVariant Fondo + Entrada sin marco + Esquinas redondeadas + Búsqueda/Icono de borrar)
+            // 凹槽式搜索栏(surfaceVariant 背景 + 无框输入 + 圆角 + 搜索/清空图标)
             Surface(
                 shape = MuseShapes.semiLarge,
                 color = MaterialTheme.colorScheme.surfaceVariant,
@@ -897,7 +899,7 @@ fun KnowledgeScreen(
             }
             Spacer(Modifier.height(MusePaddings.itemGap))
 
-            // F-33: embedding Modelo cambiado → Barra de sugerencias + reindexación con un clic(Reutilice RepairKnowledgeFts y recupérelo completo)
+            // F-33: embedding 模型已切换 → 提示条 + 一键重新索引(复用 repairKnowledgeFts 全量重索)
             if (embeddingMigrated && !reindexing) {
                 androidx.compose.material3.Surface(
                     shape = MuseShapes.semiLarge,
@@ -942,7 +944,7 @@ fun KnowledgeScreen(
                     .weight(1f),
             ) {
                 val docsList = docs
-                // v2.x: Finalización del efecto de movimiento — Cargar/error/vacío/La conmutación de lista de cuatro estados requiere que el token aparezca y desaparezca
+                // v2.x: 动效补齐 — 加载/错误/空/列表四态切换走令牌淡入淡出
                 val knowledgeContentState = when {
                     docsLoadError != null && docsList.isNullOrEmpty() -> 0
                     docsList == null -> 1
@@ -970,7 +972,7 @@ fun KnowledgeScreen(
                             }
                         }
                         1 -> {
-                            // v1.0.62: Mostrar indicador circular en la primera carga
+                            // v1.0.62: 首次加载中显示转圈指示器
                             Column(
                                 modifier = Modifier.fillMaxSize(),
                                 verticalArrangement = Arrangement.Center,
@@ -980,10 +982,10 @@ fun KnowledgeScreen(
                             }
                         }
                         else -> {
-                            // v0.43: Ocultar documentación de desarrollo(isInternal=true Los documentos internos solo están disponibles para LLM para consultar a través de Knowledge_search,No se muestra a los usuarios)
-                            // v1.133: Utilice el juicio de campo isInternal en su lugar(sustituto original fileType="devdoc" codificado,Coherente con la etiqueta MIGRATION_38_39)
-                            // v1.66: Ordenar por modo de clasificación(DAO solo updated_at DESC,Las dimensiones restantes se ordenan en la interfaz de usuario.)
-                            // M-Kn1: Utilice recordar almacenar en caché el filtro+ordenar resultados,Evite recálculos para cada reorganización
+                            // v0.43: 隐藏开发文档(isInternal=true 的内部文档只供 LLM 通过 knowledge_search 查询,不向用户展示)
+                            // v1.133: 改用 isInternal 字段判断(替代原 fileType="devdoc" 硬编码,与 MIGRATION_38_39 标记一致)
+                            // v1.66: 按 sortMode 排序(DAO 仅 updated_at DESC,其余维度在 UI 排序)
+                            // M-Kn1: 用 remember 缓存 filter+sort 结果,避免每次重组都重算
                             val visibleDocs = remember(docsList, sortMode) {
                                 docsList.orEmpty()
                                     .filterNot { it.isInternal }
@@ -998,8 +1000,8 @@ fun KnowledgeScreen(
                                 if (selectedKb == null || searching) {
                                     emptyList()
                                 } else {
-                                    // v2.4.6: fusionar"Subcarpetas deducidas de documentos."con"Carpetas vacías en la tabla de carpetas explícitas",
-                                    // Permite mostrar carpetas sin documentos.
+                                    // v2.4.6: 合并"从文档推导的子文件夹"与"显式文件夹表里的空文件夹",
+                                    // 使没有文档的文件夹也能显示。
                                     val fromDocs = KnowledgeFolderBrowser.childFolders(kbDocs, currentFolderPath)
                                     val parentPrefix =
                                         if (currentFolderPath.isEmpty()) "" else "$currentFolderPath/"
@@ -1044,7 +1046,7 @@ fun KnowledgeScreen(
                                             verticalArrangement = Arrangement.spacedBy(MusePaddings.contentGap),
                                             contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 80.dp),
                                         ) {
-                                            // v2.4.6: nivel superior = Lista de la base de conocimientos(La base de conocimientos es la raíz y las carpetas son subdirectorios.)
+                                            // v2.4.6: 顶层 = 知识库列表(知识库即根、文件夹为子目录)
                                             items(kbs, key = { it.id }) { kb ->
                                                 Box(museAnimateItem()) {
                                                     KbRow(
@@ -1106,13 +1108,13 @@ fun KnowledgeScreen(
                                                         title = folder.name,
                                                         detail = stringResource(R.string.knowledge_folder_item_files, folder.documentCount),
                                                         onClick = { currentFolderPath = folder.path },
-                                                        // v2.4.6: Cambiar nombre = Cambiar el final del camino;Eliminar = Eliminar recursivamente subrutas
+                                                        // v2.4.6: 重命名 = 改路径末段;删除 = 含子路径递归删
                                                         onRename = { renamingFolder = folder.path },
                                                         onDelete = { deletingFolder = folder.path },
                                                     )
                                                 }
                                             }
-                                            // v2.4.6: Crear nueva entrada de carpeta(Colóquelo después de la subcarpeta.)
+                                            // v2.4.6: 新建文件夹入口(放在子文件夹之后)
                                             item(key = "new-folder") {
                                                 NewFolderRow(onClick = { creatingFolder = true })
                                             }
@@ -1150,7 +1152,7 @@ fun KnowledgeScreen(
             onOpenCoverManager = onOpenCoverManager,
             onGenerateCover = { generateCoverFor(doc) },
             generatingCover = generatingCover,
-            // F-32: Cambiar nombre/editar entrada de texto
+            // F-32: 重命名 / 编辑正文入口
             onRename = { renameTarget = doc },
             onEditContent = { editContentTarget = doc },
             onMoveToFolder = {
@@ -1202,7 +1204,7 @@ fun KnowledgeScreen(
                             MuseToast.show(context.getString(R.string.knowledge_move_success))
                         }.onError { message, error ->
                             moveInProgress = false
-                            Logger.w("KnowledgeScreen", "No se pudo mover el documento a la carpeta: $message", error)
+                            Logger.w("KnowledgeScreen", "移动文档到文件夹失败: $message", error)
                             MuseToast.show(
                                 context.getString(
                                     R.string.knowledge_move_failed,
@@ -1218,7 +1220,7 @@ fun KnowledgeScreen(
         )
     }
 
-    // F-32: Cambiar nombre del cuadro de diálogo(Guardar en documento title)
+    // F-32: 重命名对话框(保存到文档 title)
     renameTarget?.let { doc ->
         var newTitle by remember(doc.id) { mutableStateOf(doc.title.trim()) }
         MuseDialog(
@@ -1249,7 +1251,7 @@ fun KnowledgeScreen(
         )
     }
 
-    // F-32: Cuadro de diálogo de edición de texto(documento de texto)— Actualizar contenido y aviso"La reindexación entra en vigor después de guardar"
+    // F-32: 正文编辑对话框(文本型文档)— 更新 content 并提示"保存后重新索引生效"
     editContentTarget?.let { doc ->
         var draft by remember(doc.id) { mutableStateOf(doc.content) }
         var saving by remember(doc.id) { mutableStateOf(false) }
@@ -1310,7 +1312,7 @@ fun KnowledgeScreen(
                                 ),
                             )
                         }
-                        // F-33: Registre esta configuración de incrustación después de cambiar el texto y volver a recuperarlo.
+                        // F-33: 正文变更重索后记录本次 embedding 配置
                         scope.launch { settings.saveLastEmbeddingModelKey(io.zer0.muse.rag.RagConfig.embeddingModelKey(ragConfig)) }
                         MuseToast.show(context.getString(R.string.knowledge_content_edited))
                     } catch (e: kotlinx.coroutines.CancellationException) {
@@ -1330,7 +1332,7 @@ fun KnowledgeScreen(
 
     if (importing) {
         MuseDialog(
-            // v1.67-B: La importación se puede cancelar
+            // v1.67-B: 导入可取消
             onDismissRequest = { importJob?.cancel() },
             title = stringResource(R.string.knowledge_importing),
             content = {
@@ -1351,7 +1353,7 @@ fun KnowledgeScreen(
         )
     }
 
-    // v1.0.47 P7-3: Ventana emergente amigable que indica que el archivo es demasiado grande
+    // v1.0.47 P7-3: 文件过大友好提示弹窗
     fileSizeWarning?.let { (actual, limit) ->
         MuseDialog(
             onDismissRequest = { fileSizeWarning = null },
@@ -1368,10 +1370,10 @@ fun KnowledgeScreen(
         )
     }
 
-    // v1.67-A: Reindexar ventana emergente de progreso
+    // v1.67-A: 重新索引进度弹窗
     if (reindexDialogVisible) {
         MuseDialog(
-            // Lo que se cierra es solo la visualización del progreso y la tarea de reconstrucción continúa ejecutándose para evitar que la clave de retorno sea tragada por una devolución de llamada vacía.
+            // 关闭的只是进度展示，重建任务继续运行，避免返回键被空回调吞掉。
             onDismissRequest = { reindexDialogVisible = false },
             title = stringResource(R.string.knowledge_reindexing),
             content = {
@@ -1386,13 +1388,13 @@ fun KnowledgeScreen(
                     )
                 }
             },
-            // ininterrumpible,Sin botón(onConfirm=null Ocultar botón principal,dismissText=null Ocultar botón secundario)
+            // 不可中断,无按钮(onConfirm=null 隐藏主按钮,dismissText=null 隐藏次按钮)
             onConfirm = null,
             dismissText = null,
         )
     }
 
-    // F-31: Importar cuadro de diálogo de selección de base de conocimientos de destino — Después de seleccionar la KB de destino, inicie el selector de archivos
+    // F-31: 导入目标知识库选择对话框 — 选完目标 KB 后调起文件选择器
     if (showImportTargetDialog) {
         MuseDialog(
             onDismissRequest = { showImportTargetDialog = false },
@@ -1431,7 +1433,7 @@ fun KnowledgeScreen(
                                 text = stringResource(R.string.knowledge_import_target_default),
                                 style = MaterialTheme.typography.bodyMedium,
                                 modifier = Modifier.weight(1f),
-                                // LAYOUT-01: Row Ancho del texto interno + límite de línea, evita el ajuste de línea palabra por palabra al ampliar el tamaño de fuente
+                                // LAYOUT-01: Row 内文本取宽 + 限行，防放大字号下逐字换行
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )
@@ -1469,7 +1471,7 @@ fun KnowledgeScreen(
                                     text = kb.name,
                                     style = MaterialTheme.typography.bodyMedium,
                                     modifier = Modifier.weight(1f),
-                                    // LAYOUT-01: Igual que arriba, el nombre de la base de conocimientos está limitado a 1 línea
+                                    // LAYOUT-01: 同上，知识库名限 1 行
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
                                 )
@@ -1497,7 +1499,7 @@ fun KnowledgeScreen(
         )
     }
 
-    // Ordenar ventana emergente de selección
+    // 排序选择弹窗
     if (showSortMenu) {
         MuseDialog(
             onDismissRequest = { showSortMenu = false },
@@ -1572,9 +1574,9 @@ fun KnowledgeScreen(
         )
     }
 
-    // ── v2.4.6: Ciclo de vida de la base de conocimientos.(Fusionar desde la página de administración) ──
+    // ── v2.4.6: 知识库生命周期(从管理页并入) ──
 
-    // Crear una nueva base de conocimientos
+    // 新建知识库
     if (creatingKb) {
         KbEditDialog(
             title = stringResource(R.string.kb_manage_create),
@@ -1603,7 +1605,7 @@ fun KnowledgeScreen(
         )
     }
 
-    // Cambiar nombre/editar base de conocimientos
+    // 重命名 / 编辑知识库
     editingKb?.let { kb ->
         KbEditDialog(
             title = stringResource(R.string.kb_manage_edit),
@@ -1624,7 +1626,7 @@ fun KnowledgeScreen(
         )
     }
 
-    // Eliminar base de conocimientos
+    // 删除知识库
     deletingKb?.let { kb ->
         if (kb.id == "default") {
             MuseToast.show(context.getString(R.string.kb_manage_default_no_delete))
@@ -1653,7 +1655,7 @@ fun KnowledgeScreen(
         }
     }
 
-    // Reindexar base de datos única(Segunda confirmación)
+    // 重索引单库(二次确认)
     reindexConfirmKb?.let { kb ->
         MuseDialog(
             onDismissRequest = { reindexConfirmKb = null },
@@ -1706,7 +1708,7 @@ fun KnowledgeScreen(
         )
     }
 
-    // Reindexar cuadro de diálogo de progreso(KB nivel)
+    // 重索引进度对话框(KB 级)
     if (kbReindexDialogVisible) {
         val (done, total) = kbReindexProgressPair
         MuseDialog(
@@ -1727,9 +1729,9 @@ fun KnowledgeScreen(
         )
     }
 
-    // ── v2.4.6: Ciclo de vida de la carpeta ──
+    // ── v2.4.6: 文件夹生命周期 ──
 
-    // Crear nueva carpeta
+    // 新建文件夹
     if (creatingFolder) {
         val kbNow = browsingKbId
         KbEditDialog(
@@ -1764,7 +1766,7 @@ fun KnowledgeScreen(
         )
     }
 
-    // Cambiar nombre de carpeta(Cambiar el final del camino)
+    // 重命名文件夹(改路径末段)
     renamingFolder?.let { oldPath ->
         val kbNow = browsingKbId
         val oldName = oldPath.substringAfterLast('/')
@@ -1777,7 +1779,7 @@ fun KnowledgeScreen(
             ),
             onConfirm = { newName, _ ->
                 if (kbNow == null || newName.isBlank()) {
-                    if (newName.isBlank()) MuseToast.show(localizedResources.getString(R.string.knowledge_folder_name_empty))
+                    if (newName.isBlank()) MuseToast.show(resources.getString(R.string.knowledge_folder_name_empty))
                 } else {
                     scope.launch {
                         val parent = KnowledgeFolderBrowser.parent(oldPath)
@@ -1785,7 +1787,7 @@ fun KnowledgeScreen(
                             if (parent.isEmpty()) newName else "$parent/$newName",
                         )
                         withContext(Dispatchers.IO) {
-                            // Registro explícito de carpetas:Cambiar el prefijo de todo el subárbol
+                            // 显式文件夹记录:整棵子树换前缀
                             folderDao.getByPathRecursive(kbNow, oldPath).forEach { f ->
                                 val suffix = f.path.removePrefix(oldPath)
                                 val nPath = newPath + suffix
@@ -1799,7 +1801,7 @@ fun KnowledgeScreen(
                                     ),
                                 )
                             }
-                            // Documentación:Cámbielo junto con la ruta de la carpeta del prefijo.
+                            // 文档:同前缀的 folderPath 一起改
                             dao.getByKbIds(listOf(kbNow)).forEach { doc ->
                                 val p = KnowledgeFolderBrowser.folderPath(doc)
                                 if (p == oldPath || p.startsWith("$oldPath/")) {
@@ -1815,7 +1817,7 @@ fun KnowledgeScreen(
                         if (currentFolderPath == oldPath || currentFolderPath.startsWith("$oldPath/")) {
                             currentFolderPath = newPath + currentFolderPath.removePrefix(oldPath)
                         }
-                        MuseToast.show(localizedResources.getString(R.string.knowledge_folder_renamed, newName))
+                        MuseToast.show(resources.getString(R.string.knowledge_folder_renamed, newName))
                     }
                 }
                 renamingFolder = null
@@ -1824,7 +1826,7 @@ fun KnowledgeScreen(
         )
     }
 
-    // eliminar carpeta(Contiene subdirectorios;Los documentos no se eliminan,Volver a la raíz después de borrar la información del directorio)
+    // 删除文件夹(含子目录;文档不删,目录信息清除后回到根)
     deletingFolder?.let { path ->
         val kbNow = browsingKbId
         ConfirmDeleteDialog(
@@ -1839,7 +1841,7 @@ fun KnowledgeScreen(
                         if (currentFolderPath == path || currentFolderPath.startsWith("$path/")) {
                             currentFolderPath = KnowledgeFolderBrowser.parent(path)
                         }
-                        MuseToast.show(localizedResources.getString(R.string.knowledge_folder_deleted))
+                        MuseToast.show(resources.getString(R.string.knowledge_folder_deleted))
                     }
                 }
                 deletingFolder = null
@@ -1854,7 +1856,7 @@ private fun KnowledgeFolderCard(
     title: String,
     detail: String,
     onClick: () -> Unit,
-    // v2.4.6: cambiar el nombre de la carpeta/Eliminar(Sólo acciones explícitas para colgar nodos en el árbol de carpetas;KB Tarjeta no pasada)
+    // v2.4.6: 文件夹重命名/删除(仅显式文件夹树里的节点挂动作;KB 卡片不传)
     onRename: (() -> Unit)? = null,
     onDelete: (() -> Unit)? = null,
 ) {
@@ -1879,7 +1881,7 @@ private fun KnowledgeFolderCard(
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
                     text = title,
-                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
+                    style = MaterialTheme.typography.bodyLargeStrong,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -1917,7 +1919,7 @@ private fun KnowledgeFolderCard(
     }
 }
 
-/** v2.4.6: Línea \"Nueva carpeta\" — Entrada de línea punteada(Utilice el color de fondo de SurfaceVariant para distinguir). */
+/** v2.4.6: 「新建文件夹」行 — 虚线感入口(用 surfaceVariant 底色区分)。 */
 @Composable
 private fun NewFolderRow(onClick: () -> Unit) {
     Surface(
@@ -1953,7 +1955,7 @@ private data class FileTypeStyle(
 
 @Composable
 private fun fileTypeStyle(fileType: String): FileTypeStyle {
-    // v1.0.52: Tipo de documento color acceso semántica estado color,El modo oscuro cambia automáticamente al modo brillante para garantizar que los iconos sean legibles
+    // v1.0.52: 文档类型色接入语义状态色,深色模式自动切亮档保证图标可读
     val statusColors = MaterialTheme.statusColors
     return when (fileType.lowercase(Locale.getDefault())) {
         "pdf" -> FileTypeStyle(
@@ -2011,13 +2013,13 @@ private fun DocCard(doc: KnowledgeDocEntity, highlight: String?, onClick: () -> 
             Column(Modifier.weight(1f)) {
                 Text(
                     doc.title,
-                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                    style = MaterialTheme.typography.bodyMediumStrong,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                // P0-3(informe de auditoría): Si el reemplazo del índice falla a mitad de camino, los bloques antiguos se eliminarán y los bloques nuevos estarán incompletos.
-                // El documento todavía está en la lista pero nunca podrá recuperarse. Antes no había ningún aviso, los usuarios solo pensarían“Esta biblioteca no funciona”.
-                // El valor centinela se escribió en embedding_model durante la limpieza, y aquí se identifican y brindan consejos prácticos.
+                // P0-3（审计报告）: 索引替换中途失败会把旧块删掉、新块不完整，
+                // 文档仍在列表里但检索永远召不到。此前零提示，用户只会觉得“这个库不灵了”。
+                // 清理时已在 embedding_model 写入哨兵值，这里识别并给出可操作提示。
                 if (doc.embeddingModel == io.zer0.muse.data.knowledge.KnowledgeDocDao.INDEX_BROKEN_SENTINEL) {
                     Text(
                         text = stringResource(R.string.knowledge_doc_index_broken),
@@ -2026,8 +2028,8 @@ private fun DocCard(doc: KnowledgeDocEntity, highlight: String?, onClick: () -> 
                         maxLines = 2,
                     )
                 }
-                // v1.71: Almacenamiento en caché con recordar SimpleDateFormat,Evite crear nuevos objetos al reorganizar elementos de la lista
-                val dateFmt = remember { SimpleDateFormat(MuseDateFormats.DATE_TIME_SHORT, Locale.getDefault()) }
+                // v1.71: 用 remember 缓存 SimpleDateFormat,避免列表项重组都新建对象
+                val dateFmt = remember { MuseDateFormats.dateTimeShort() }
                 Text(
                     stringResource(
                         R.string.knowledge_doc_meta_with_date,
@@ -2069,20 +2071,20 @@ private fun DocDetailDialog(
     doc: KnowledgeDocEntity,
     onDismiss: () -> Unit,
     onReindex: () -> Unit,
-    // v1.0.53: Capacidad de cobertura(Abrir biblioteca de portadas/generar portada/generar estado)
+    // v1.0.53: 封面能力(打开封面库 / 生成封面 / 生成中状态)
     onOpenCoverManager: () -> Unit = {},
     onGenerateCover: () -> Unit = {},
     generatingCover: Boolean = false,
-    // F-32: Entrada para cambiar el nombre del documento/edición de texto(Sólo los documentos de tipo texto permiten edición de texto.)
+    // F-32: 文档重命名 / 正文编辑入口(仅文本型文档提供正文编辑)
     onRename: () -> Unit = {},
     onEditContent: () -> Unit = {},
     onMoveToFolder: () -> Unit = {},
 ) {
-    // v1.0.53: Necesidades de análisis del área de cobertura. context(filesDir/covers)
+    // v1.0.53: 封面区解析需要 context(filesDir/covers)
     val context = LocalContext.current
-    // v1.0.4 P2-2:Separe el bloque de metadatos PDF/bloque de tabla de contenido/texto de doc.content,
-    // Permitir a los usuarios ver tarjetas de información de documentos estructurados en la ventana emergente de detalles(En lugar de mezclarlo con texto del mismo ancho).
-    // DocumentParser Formato de salida:[Información del documento]\ncampo: valor\n...\n\n[Directorio]\n• entrada\n...\n\n<Texto>
+    // v1.0.4 P2-2:从 doc.content 中分离 PDF 元数据块 / 目录块 / 正文,
+    // 让用户在详情弹窗里看到结构化的文档信息卡片(而不是混在等宽正文中)。
+    // DocumentParser 输出格式:[文档信息]\n字段: 值\n...\n\n[目录]\n• 条目\n...\n\n<正文>
     val parsed by remember(doc.id, doc.content) {
         mutableStateOf(parsePdfStructuredContent(doc.content, doc.fileType))
     }
@@ -2094,7 +2096,7 @@ private fun DocDetailDialog(
             Column(
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                // v1.0.53: área de cobertura(frontmatter cover campo → filesDir/covers/)
+                // v1.0.53: 封面区(frontmatter cover 字段 → filesDir/covers/)
                 val coverPath = io.zer0.muse.common.markdown.FrontmatterParser.parse(doc.content)?.cover
                 val coverFile = coverPath?.let { path ->
                     if (path.startsWith("covers/")) {
@@ -2120,7 +2122,7 @@ private fun DocDetailDialog(
                     Spacer(Modifier.height(10.dp))
                 }
 
-                // v1.0.53: línea de operación de cubierta(Biblioteca de portadas + generar portada)
+                // v1.0.53: 封面操作行(封面库 + 生成封面)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -2141,7 +2143,7 @@ private fun DocDetailDialog(
                 }
                 Spacer(Modifier.height(10.dp))
 
-                // F-32: linea de operacion(Cambiar nombre/editar texto)— Los documentos de texto proporcionan edición de texto.,El resto simplemente ha cambiado de nombre.
+                // F-32: 操作行(重命名 / 编辑正文)— 文本型文档提供正文编辑,其余仅重命名
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -2171,7 +2173,7 @@ private fun DocDetailDialog(
                 Spacer(Modifier.height(10.dp))
 
                 Text(
-                    // v1.67-A: Mostrar el número de mosaicos y el modelo de incrustación.,Permitir a los usuarios determinar si es necesario volver a indexar
+                    // v1.67-A: 显示分块数和 embedding 模型,让用户判断是否需要重新索引
                     text = buildString {
                         append(stringResource(R.string.knowledge_doc_chars, doc.fileType, doc.content.length))
                         append(
@@ -2191,18 +2193,18 @@ private fun DocDetailDialog(
                 )
                 Spacer(Modifier.height(8.dp))
 
-                // v1.0.4 P2-2:PDF tarjeta de metadatos(Mostrar solo si los metadatos están disponibles)
+                // v1.0.4 P2-2:PDF 元数据卡片(仅在有元数据时展示)
                 if (parsed.metadata.isNotEmpty()) {
                     PdfMetadataCard(metadata = parsed.metadata)
                     Spacer(Modifier.height(8.dp))
                 }
-                // v1.0.4 P2-2:PDF tarjeta de catalogo(plegable,Sólo se muestra cuando hay un directorio)
+                // v1.0.4 P2-2:PDF 目录卡片(可折叠,仅在有目录时展示)
                 if (parsed.outline.isNotEmpty()) {
                     PdfOutlineCard(outline = parsed.outline)
                     Spacer(Modifier.height(8.dp))
                 }
 
-                // Texto(Sin metadatos/Reducido a la visualización del contenido original al catalogar.,mantente compatible)
+                // 正文(无元数据/目录时退化为原始 content 展示,保持兼容)
                 val bodyText = parsed.body
                 Text(
                     bodyText,
@@ -2213,7 +2215,7 @@ private fun DocDetailDialog(
         },
         confirmText = stringResource(R.string.knowledge_close),
         onConfirm = onDismiss,
-        // v1.67-A: Entrada de reindexación(Disponible después de reemplazar el modelo de incrustación o cuando falla el primer índice)
+        // v1.67-A: 重新索引入口(更换 embedding 模型后或首次索引失败时可用)
         dismissText = stringResource(R.string.knowledge_reindex),
         onDismiss = {
             onReindex()
@@ -2223,29 +2225,29 @@ private fun DocDetailDialog(
 }
 
 /**
- * v1.0.4 P2-2:Separe los metadatos/tabla de contenido/texto del PDF de la salida de texto concatenado de DocumentParser.
+ * v1.0.4 P2-2:从 DocumentParser 输出的拼接文本中分离 PDF 元数据 / 目录 / 正文。
  *
- * DocumentParser.readPdf El formato de salida de(ver doc/DocumentParser.kt:242-258):
+ * DocumentParser.readPdf 的输出格式(见 doc/DocumentParser.kt:242-258):
  * ```
- * [Información del documento]
- * Título: xxx
- * Autor: xxx
+ * [文档信息]
+ * 标题: xxx
+ * 作者: xxx
  *
- * [Directorio]
- * • Capítulo 1
- *   • 1.1 fiesta
+ * [目录]
+ * • 第一章
+ *   • 1.1 节
  *
- * <Texto>
+ * <正文>
  * ```
- * Esta función separa las tres piezas.,Proporciona una interfaz de usuario con representación estructurada respectivamente. Documento no PDF(fileType != "pdf")
- * Devolver directamente todo el contenido como cuerpo,Mantenga el comportamiento de visualización original.
+ * 本函数把三块拆开,供 UI 分别结构化渲染。非 PDF 文档(fileType != "pdf")
+ * 直接把整个 content 当作 body 返回,保持原有展示行为。
  */
 private fun parsePdfStructuredContent(content: String, fileType: String): ParsedPdfContent {
     if (fileType.lowercase(Locale.getDefault()) != "pdf" || content.isBlank()) {
         return ParsedPdfContent(body = content)
     }
-    // Sólo si el contenido comienza con [Información del documento] o [Directorio] Solo analizado al principio.(Evite tragar texto normal)
-    if (!content.startsWith("[Información del documento]") && !content.startsWith("[Directorio]")) {
+    // 仅在 content 以 [文档信息] 或 [目录] 开头时才解析(避免误吞普通正文)
+    if (!content.startsWith("[文档信息]") && !content.startsWith("[目录]")) {
         return ParsedPdfContent(body = content)
     }
 
@@ -2256,11 +2258,11 @@ private fun parsePdfStructuredContent(content: String, fileType: String): Parsed
     var section = "meta" // meta / outline / body
     content.lineSequence().forEach { line ->
         when {
-            line == "[Información del documento]" -> section = "meta"
-            line == "[Directorio]" -> section = "outline"
-            // Las líneas vacías sirven como separadores implícitos para cambios de sección.(DocumentParser Se generan líneas en blanco entre bloques.)
+            line == "[文档信息]" -> section = "meta"
+            line == "[目录]" -> section = "outline"
+            // 空行作为 section 切换的隐式分隔(DocumentParser 在块之间会输出空行)
             line.isBlank() && section != "body" -> {
-                // No cambiar inmediatamente:Espere hasta que encuentre algo mal [xxx] Y se decidirá cuando no sea una línea en blanco.
+                // 不立即切换:等遇到非 [xxx] 且非空行时再决定
             }
             section == "meta" && line.contains(": ") -> {
                 val idx = line.indexOf(": ")
@@ -2275,7 +2277,7 @@ private fun parsePdfStructuredContent(content: String, fileType: String): Parsed
                 outline.add("  " + line.trimStart(' ', '•').trim())
             }
             else -> {
-                // No se encontraron metadatos/entrada que no es de directorio,Cambiar al modo cuerpo
+                // 遇到非元数据/非目录条目,切换到 body 模式
                 if (section != "body") section = "body"
                 bodyBuilder.appendLine(line)
             }
@@ -2289,7 +2291,7 @@ private fun parsePdfStructuredContent(content: String, fileType: String): Parsed
     )
 }
 
-/** [parsePdfStructuredContent] resultados del análisis. */
+/** [parsePdfStructuredContent] 的解析结果。 */
 private data class ParsedPdfContent(
     val metadata: Map<String, String> = emptyMap(),
     val outline: List<String> = emptyList(),
@@ -2297,7 +2299,7 @@ private data class ParsedPdfContent(
 )
 
 /**
- * PDF tarjeta de metadatos — El nombre del campo + el valor se muestran en pares,limit 8 Evite líneas demasiado largas.
+ * PDF 元数据卡片 — 字段名 + 值成对展示,limit 8 行避免过长。
  */
 @Composable
 private fun PdfMetadataCard(metadata: Map<String, String>) {
@@ -2335,7 +2337,7 @@ private fun PdfMetadataCard(metadata: Map<String, String>) {
 }
 
 /**
- * PDF tarjeta de catalogo — Plegado predeterminado(Evite ocupar demasiado espacio emergente),Haga clic en el título para cambiar y expandir/Doblar.
+ * PDF 目录卡片 — 默认折叠(避免占用过多弹窗空间),点击标题切换展开/折叠。
  */
 @Composable
 private fun PdfOutlineCard(outline: List<String>) {
@@ -2346,7 +2348,7 @@ private fun PdfOutlineCard(outline: List<String>) {
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
-            // Fila de título en la que se puede hacer clic,Alternar para expandir/doblar
+            // 标题行可点击,切换展开/折叠
             Row(
                 modifier = Modifier.fillMaxWidth().clickable { expanded = !expanded },
                 verticalAlignment = Alignment.CenterVertically,
@@ -2394,8 +2396,8 @@ private fun PdfOutlineCard(outline: List<String>) {
 }
 
 /**
- * v1.66: Patrón de clasificación de la base de conocimientos.
- * DAO Sólo admite updated_at DESC,Las dimensiones restantes se ordenan mediante comparadores en la capa de la interfaz de usuario.
+ * v1.66: 知识库排序模式。
+ * DAO 仅支持 updated_at DESC,其余维度在 UI 层用 comparator 排序。
  */
 enum class KnowledgeSortMode(
     val labelRes: Int,
@@ -2409,14 +2411,14 @@ enum class KnowledgeSortMode(
 }
 
 /**
- * v1.0.47 P7-3: Formatee el tamaño del archivo como una cadena legible por humanos.
+ * v1.0.47 P7-3: 格式化文件大小为人类可读字符串。
  */
 private fun formatFileSize(bytes: Long): String = FileSizeFormatter.format(bytes)
 
 /**
- * F-32: Determinar si el documento es un tipo de texto con texto editable(md/markdown/txt/csv/json).
- * PDF/docx/epub/ocr etc. El texto concatenado generado por el analizador no pertenece a"tipo de texto",No se proporciona ninguna función de modificación directa de texto.,
- * Evite dañar la información estructurada causada por la modificación errónea de los productos de análisis.
+ * F-32: 判断文档是否为可编辑正文的文本型(md/markdown/txt/csv/json)。
+ * PDF/docx/epub/ocr 等由解析器生成的拼接文本不属于"文本型",不提供正文直改功能,
+ * 避免误改解析产物导致结构化信息损坏。
  */
 private fun isTextDoc(fileType: String): Boolean = when (fileType.lowercase(Locale.getDefault())) {
     "md", "markdown", "txt", "csv", "json" -> true

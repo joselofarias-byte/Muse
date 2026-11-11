@@ -3,10 +3,10 @@ package io.zer0.muse.ui.chat
 import io.zer0.muse.R
 
 /**
- * v1.97: Registro de comandos de barra diagonal.
+ * v1.97: 斜杠命令注册表。
  *
- * Al ingresar un comando que comienza con / en el cuadro de entrada,Analizado y ejecutado por ChatViewModel.executeSlashCommand.
- * La orden no pasa LLM,Procesado directamente del lado del cliente.
+ * 在输入框输入 / 开头的命令时,由 ChatViewModel.executeSlashCommand 解析执行。
+ * 命令不经过 LLM,直接在客户端处理。
  */
 enum class SlashCommand(
     val command: String,
@@ -20,7 +20,7 @@ enum class SlashCommand(
     ;
 
     companion object {
-        /** Analizar comandos del texto de entrada. Devuelve nulo para indicar que no es un comando de barra diagonal. */
+        /** 从输入文本解析命令。返回 null 表示不是斜杠命令。 */
         fun parse(text: String): SlashCommand? {
             val trimmed = text.trim()
             if (!trimmed.startsWith("/")) return null
@@ -28,10 +28,10 @@ enum class SlashCommand(
             return entries.firstOrNull { it.command == name }
         }
 
-        /** Determinar si el texto es un comando de barra diagonal(Se utiliza para interceptar antes de enviar.). */
+        /** 判断文本是否是斜杠命令(用于发送前拦截)。 */
         fun isSlashCommand(text: String): Boolean = parse(text) != null
 
-        /** Obtenga una lista de nombres de todos los comandos(para autocompletar UI). */
+        /** 获取所有命令的名称列表(用于自动补全 UI)。 */
         fun allCommandNames(): List<String> = entries.map { "/${it.command}" }
     }
 }

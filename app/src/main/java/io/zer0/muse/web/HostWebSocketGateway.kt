@@ -47,28 +47,43 @@ internal class HostWebSocketGateway(
     private val sessionRepo: SessionRepository,
     private val assistantRepo: AssistantRepository,
     private val settingsRepo: SettingsRepository,
-    /** Configurar el análisis de redacción publicitaria:Nombre del recurso → Texto localizado(Con el idioma de aplicación actual). */
+    /** 设置文案解析:资源名 → 已本地化文本(随当前应用语言)。 */
     private val settingsStrings: HostSettingsStrings,
-    /** citas de los medios → `/api/media/<token>` conversión,Comparte la misma cuenta que la ruta de lectura. */
+    /** 媒体引用 → `/api/media/<token>` 的转换,与读取路由共用同一本账。 */
     private val mediaLinks: HostMediaLinks,
-    /** Una colección de fuentes de datos para comandos de solo lectura (memoria/base de conocimientos/tareas programadas). */
+    /** 只读命令（记忆 / 知识库 / 定时任务）的数据源集合。 */
     private val readSources: HostReadSources = HostReadSources.Empty,
 ) {
 
-    /** F-39: Token de aislamiento de enfoque/serie multicliente. */
+    /** F-39: 多客户端串行 / 焦点隔离令牌。 */
     private val focus = HostFocusTokenHolder()
 
-    /** settings.snapshot / settings.update realización(Incluye lista blanca, verificación de tipos y análisis de redacción.). */
+    /**
+     * 已完成命令的 requestId 集合。**刻意是网关级而不是连接级**。
+     *
+     * 原来它挂在 `ConnectionContext` 上，随连接一起消失：浏览器标签页恢复、以后若加离线重试队列，
+     * 或用户在结果未知时按同一个 requestId 再发一次，服务端会把它当**新命令再执行一遍**——
+     * 而对写操作来说"再执行一遍"可能就是多删一条、多发一条。
+     *
+     * 共享是安全的：requestId 由客户端用 `crypto.randomUUID()` 生成，
+     * 跨连接撞车的概率可以忽略，因此这张表只会挡住重复，不会挡住正常请求。
+     * 参照同一层的 [focus]：那本来也是跨连接状态。
+     *
+     * 另有更强的一层在存储里：`ConversationDraft.deterministicEventId()` 刻意排除 createdAt，
+     * 使重发的逻辑事件在会话事件表里天然去重；这条管的是**非会话类写命令**的重复执行。
+     */
+    private val completedRequestIds = LinkedHashSet<String>()
+
+    /** settings.snapshot / settings.update 的实现(白名单、类型校验与文案解析在里面)。 */
     private val settingsCommands = HostSettingsCommands(RepositorySettingsAccess(settingsRepo), settingsStrings)
 
-    /** session.rename / archive / delete realización(La verificación del enfoque está dentro.). */
+    /** session.rename / archive / delete 的实现(焦点校验在里面)。 */
     private val sessionCommands = HostSessionCommands(
         focus = focus,
         mutations = object : HostSessionMutations {
             override fun rename(sessionId: String, title: String) = chatViewModel.renameSession(sessionId, title)
 
-            override fun archive(sessionId: String, archived: Boolean) =
-                chatViewModel.setSessionArchived(sessionId, archived)
+            override fun archive(sessionId: String, archived: Boolean) = chatViewModel.setSessionArchived(sessionId, archived)
 
             override fun delete(sessionId: String) = chatViewModel.deleteSession(sessionId)
         },
@@ -78,7 +93,6 @@ internal class HostWebSocketGateway(
         val id: String = UUID.randomUUID().toString(),
         var eventSeq: Long = 0L,
         val history: ArrayDeque<HostEvent> = ArrayDeque(),
-        val completedRequestIds: LinkedHashSet<String> = linkedSetOf(),
     )
 
     private companion object {
@@ -86,37 +100,37 @@ internal class HostWebSocketGateway(
         const val MAX_COMPLETED_REQUESTS = 256
 
         /**
-         * `chat.send` Cuánto tiempo esperar para que aparezcan los mensajes de usuario adjuntos con optimismo.
+         * `chat.send` 等待乐观追加的 user 消息露面多久。
          *
-         * Enviar el comando solo significa "entregarlo a ChatViewModel",La identificación del mensaje se genera durante el paso de unirse a la cola.;Espera aquí un rato
-         * consíguelo,es dejar `command.accepted` Se puede devolver a la página web para utilizarlo en el estado de representación y se puede utilizar más adelante. `chat.retry` de ese mensaje.
-         * Si no puedes esperar, no es un fracaso.:El mensaje ha sido entregado.,solo `messageId` está vacío.
+         * 发送命令只表示「已交给 ChatViewModel」,消息 id 在入队那一步才生成;这里等一小会儿
+         * 把它拿到,是为了让 `command.accepted` 能带回网页端要用来渲染状态、后续还能 `chat.retry` 的那条消息。
+         * 等不到不算失败:消息已经交出去了,只是 `messageId` 为空。
          */
         const val SEND_ACK_TIMEOUT_MS = 2_000L
 
-        /** Límite superior de vista previa del parámetro de herramienta(Alrededor de 500 caracteres). */
+        /** 工具参数预览上限(约 500 字符)。 */
         const val TOOL_ARGUMENTS_PREVIEW_LIMIT = 500
 
         /**
-         * El límite máximo de eco para el texto citado (aproximadamente 2000 caracteres).
+         * 引用正文的回显上限（约 2000 字符）。
          *
-         * El bloque de referencia en sí es el texto completo del mensaje al que se hace referencia y la instantánea se reenvía con cada incremento de transmisión;2000 palabras suficientes para cubrir citas normales,
-         * No enviará un artículo extenso y completo a través de WebSocket repetidamente.`message.quote` Comparte el mismo límite superior que este campo de instantánea.
+         * 引用块本身就是被引消息的全文，而快照随每个流式增量重发一次；2000 字足够覆盖正常引用，
+         * 又不至于把一整篇长文反复推过 WebSocket。`message.quote` 与本快照字段共用同一上限。
          */
         const val QUOTE_PREVIEW_LIMIT = 2_000
 
         /**
-         * Límite de vista previa del resultado de la herramienta(Alrededor de 1000 caracteres).
+         * 工具结果预览上限(约 1000 字符)。
          *
-         * leer un archivo/Los resultados de búsqueda en Internet suelen arrojar decenas de resultados. KB,La instantánea se reenvía cada vez que recibe un incremento de transmisión.;
-         * 1000 Los caracteres son suficientes para que la página web muestre los dos párrafos antes y después del estado expandido.,Sin enviar el resultado completo a través de WebSocket repetidamente.
+         * 一条读文件/联网搜索结果动辄几十 KB,而快照每收到一个流式增量就重发一次;
+         * 1000 字够网页端渲染展开态的前后两段,又不会把整份结果反复推过 WebSocket。
          */
         const val TOOL_RESULT_PREVIEW_LIMIT = 1_000
 
-        /** B-31: chat.send Comparte la determinación de texto unificada de la SSRF con otros portales de la red. */
+        /** B-31: chat.send 与其他网络入口共用统一 SSRF 文本判定。 */
         fun containsBlockedUrl(text: String): Boolean = SsrfGuard.hasBlockedUrlInText(text)
 
-        /** Vista previa de la herramienta Truncar:Mantenga la cabeza y la cola,La cantidad omitida se da en el medio.(Mismo calibre que la compresión de contexto). */
+        /** 截断工具预览:保头保尾,中间给出省略量(与上下文压缩同一口径)。 */
         fun preview(text: String, limit: Int): String = TextTruncation.headTailText(text, limit)
     }
 
@@ -134,7 +148,7 @@ internal class HostWebSocketGateway(
                 sendEvent(connection, event, context, sendMutex)
             }
         }
-        // F-39: Cuando se establece una nueva conexión, capta la atención.(El titular de los comandos de escritura posteriores.).
+        // F-39: 新连接建立即抢占焦点(后续写命令的持有者)。
         focus.acquire(context.id, chatViewModel.state.value.currentSessionId)
         try {
             sendEvent(connection, currentSnapshot(), context, sendMutex)
@@ -145,7 +159,7 @@ internal class HostWebSocketGateway(
                     if (command.protocolVersion != CURRENT_PROTOCOL_VERSION) {
                         throw HostProtocolException("unsupported host protocol version: ${command.protocolVersion}")
                     }
-                    if (command.requestId != null && command.requestId in context.completedRequestIds) {
+                    if (command.requestId != null && isCompletedRequest(command.requestId)) {
                         sendEvent(
                             connection,
                             HostEvent(type = "command.duplicate", requestId = command.requestId),
@@ -154,10 +168,10 @@ internal class HostWebSocketGateway(
                         )
                     } else {
                         handle(command, connection, context, sendMutex)
-                        command.requestId?.let { rememberCompletedRequest(context, it) }
+                        command.requestId?.let { rememberCompletedRequest(it) }
                     }
                 } catch (error: HostProtocolException) {
-                    Logger.w("HostWebSocket", "El comando de protocolo falló: ${error.message}", error)
+                    Logger.w("HostWebSocket", "协议命令失败: ${error.message}", error)
                     sendEvent(
                         connection,
                         HostEvent(type = "error", error = error.message),
@@ -168,7 +182,7 @@ internal class HostWebSocketGateway(
             }
         } finally {
             snapshotJob.cancel()
-            // F-39: Limpieza del ciclo de vida de la conexión — Liberar el foco cuando esté desconectado,Permita que otros clientes se aprovechen.
+            // F-39: 连接生命周期清理 — 断开时释放焦点,允许其他客户端抢占。
             focus.release(context.id)
         }
     }
@@ -190,12 +204,12 @@ internal class HostWebSocketGateway(
             )
             "state.sync" -> syncFromCursor(command, connection, context, sendMutex)
             "session.new" -> {
-                // B-30: Cree una nueva sesión escribiendo el comando,Sólo el cliente enfocado puede ejecutar.
+                // B-30: 新建会话是写命令,仅持焦点客户端可执行。
                 if (!focus.holds(context.id, command.sessionId)) {
                     sendEvent(connection, HostEvent(type = "error", requestId = requestId, error = "focus_not_held"), context, sendMutex)
                     return
                 }
-                // Existe a priori al especificar un asistente:Crear una sesión que cuelgue de un asistente que no existe hará que la gente piense que se ha seleccionado el asistente equivocado.
+                // 指定助手时先验存在:建一个挂在不存在助手上的会话，会讓人以为选错了助手。
                 val requestedAssistantId = command.assistantId?.trim()?.takeIf { it.isNotEmpty() }
                 if (requestedAssistantId != null && assistantRepo.getById(requestedAssistantId) == null) {
                     sendEvent(
@@ -210,7 +224,7 @@ internal class HostWebSocketGateway(
                 sendEvent(connection, HostEvent(type = "command.accepted", requestId = requestId), context, sendMutex)
             }
             "session.select" -> {
-                // F-39: Cambiar de sesión es escribir el comando,Sólo el cliente enfocado puede ejecutar.
+                // F-39: 切换会话是写命令,仅持焦点客户端可执行。
                 if (!focus.holds(context.id, command.sessionId)) {
                     sendEvent(connection, HostEvent(type = "error", requestId = requestId, error = "focus_not_held"), context, sendMutex)
                     return
@@ -226,17 +240,17 @@ internal class HostWebSocketGateway(
                 )
             }
             "chat.send" -> {
-                // F-39: Enviar es un comando de escritura,Sólo el cliente enfocado puede ejecutar.
+                // F-39: 发送是写命令,仅持焦点客户端可执行。
                 if (!focus.holds(context.id, command.sessionId)) {
                     sendEvent(connection, HostEvent(type = "error", requestId = requestId, error = "focus_not_held"), context, sendMutex)
                     return
                 }
                 val text = command.text?.trim().orEmpty()
                 if (text.isEmpty()) throw HostProtocolException("chat.send requires non-empty text")
-                // B-31: SSRF protección — Deje que SsrfGuard extraiga del texto http(s) URL Y determine la red privada una por una./bucle invertido/enlace local/
-                // IPv6/IP literal,Cualquier acierto es rechazado. Reemplazar el enlace original faltante local/IPv6/Reglas regulares caseras para IP entera,Reutilizar la lógica de juicio unificada.
+                // B-31: SSRF 防护 — 交由 SsrfGuard 从文本提取 http(s) URL 并逐个判定私网/回环/链路本地/
+                // IPv6/IP 字面量,任一命中即拒绝。替代原先漏链本地/IPv6/整数 IP 的自造正则,复用统一判断逻辑。
                 if (containsBlockedUrl(text)) {
-                    Logger.w("HostWebSocket", "chat.send SSRF interceptar: El texto contiene intranet. URL")
+                    Logger.w("HostWebSocket", "chat.send SSRF 拦截: 文本含内网 URL")
                     throw HostProtocolException("message contains internal URLs (SSRF blocked)")
                 }
                 command.sessionId?.let { sessionId ->
@@ -245,16 +259,16 @@ internal class HostWebSocketGateway(
                         awaitSession(sessionId)
                     }
                 }
-                // El objetivo de referencia debe estar dentro de la sesión actual, de lo contrario no se enviará (no se puede traer el texto de otra sesión).
+                // 引用目标必须在当前会话内，否则不发送（不能把另一个会话的正文带过来）。
                 val quoted = resolveQuotedMessage(command.quotedMessageId)
                 if (quoted is QuotedMessage.Rejected) {
                     sendEvent(connection, HostEvent(type = "error", requestId = requestId, error = quoted.reason), context, sendMutex)
                     return
                 }
-                // Tome una instantánea antes de enviar,El mensaje de usuario agregado después del envío es el ID de mensaje de este momento.
+                // 发送前拍个快照,发送后新增的那条 user 消息就是本次的 messageId。
                 val previousIds = chatViewModel.messages.value.mapTo(HashSet()) { it.id.toString() }
-                // Cita el mecanismo propio de la aplicación: configura responder a antes de enviar, el texto será `> …` El formato se coloca en la biblioteca,
-                // Se envía la misma ruta que la referencia del teléfono celular.
+                // 引用走 App 自己的机制：设上 replyingTo 再发送，正文会按 `> …` 格式落库，
+                // 与手机端引用发送同一条路。
                 (quoted as? QuotedMessage.Resolved)?.message?.let(chatViewModel::setReplyingTo)
                 chatViewModel.updateInput(text)
                 chatViewModel.send()
@@ -271,7 +285,7 @@ internal class HostWebSocketGateway(
                 )
             }
             "chat.retry" -> {
-                // Reenviar es un comando de escritura,Mismas reglas que chat.send:Responder sin foco focus_not_held,Y no toques ninguna novedad.
+                // 重发是写命令,与 chat.send 同规则:未持焦点的回 focus_not_held,且不碰任何消息。
                 if (!focus.holds(context.id, command.sessionId)) {
                     sendEvent(connection, HostEvent(type = "error", requestId = requestId, error = "focus_not_held"), context, sendMutex)
                     return
@@ -279,7 +293,7 @@ internal class HostWebSocketGateway(
                 sendEvent(connection, retryEvent(command), context, sendMutex)
             }
             "tool.approval.resolve" -> {
-                // B-12: La aprobación y la liberación son comandos escritos.,Primero debe pasar el aislamiento del foco.,De lo contrario, varios navegadores podrían emitir llamadas a herramientas entre sí simultáneamente.
+                // B-12: 审批放行属于写命令,必须先过焦点隔离,否则多浏览器可并发放行彼此的工具调用。
                 if (!focus.holds(context.id, command.sessionId)) {
                     sendEvent(connection, HostEvent(type = "error", requestId = requestId, error = "focus_not_held"), context, sendMutex)
                     return
@@ -288,9 +302,9 @@ internal class HostWebSocketGateway(
                     ?: throw HostProtocolException("tool.approval.resolve requires toolCallId in generationId")
                 val decision = command.text?.trim().orEmpty()
                 when {
-                    // B-12: answered apretar — Esta capa no puede obtener la lista de parámetros declarada por la herramienta para crear una lista blanca de claves.,Para eludir el navegador
-                    // El cliente utiliza argOverrides para inyectar claves confidenciales como shell/ruta/comando para sobrescribir los parámetros originales de LLM y omitir la verificación de versión.,
-                    // Esta versión deshabilita las anulaciones de parámetros en su totalidad.:answered Equivalente a aprobado,Solo se publican los parámetros sin procesar de LLM(argOverrides fusionar caminos void).
+                    // B-12: answered 收紧 — 此层拿不到该工具声明的参数列表做键白名单,为规避浏览器
+                    // 客户端用 argOverrides 注入 shell/path/command 等敏感键覆盖 LLM 原始参数以绕过放行检查,
+                    // 本版本整体禁用参数覆盖:answered 与 approved 等价,仅放行 LLM 原始参数(argOverrides 合并路径 void)。
                     decision == "answered" -> chatViewModel.approveToolCall(toolCallId)
                     decision == "approved" -> chatViewModel.approveToolCall(toolCallId)
                     decision == "denied" -> chatViewModel.denyToolCall(toolCallId, "web_denied")
@@ -303,7 +317,7 @@ internal class HostWebSocketGateway(
                     sendMutex,
                 )
             }
-            // B-30: Cambiar nombre/Archivar/Eliminar son comandos de escritura — Concéntrese en eventos de verificación y error en HostSessionCommands.
+            // B-30: 改名 / 归档 / 删除是写命令 — 焦点校验与错误事件在 HostSessionCommands 里。
             "session.rename", "session.archive", "session.delete" -> sendEvent(
                 connection,
                 sessionCommands.handle(command, context.id),
@@ -311,7 +325,7 @@ internal class HostWebSocketGateway(
                 sendMutex,
             )
             "chat.regenerate" -> {
-                // B-30: Regenerar es un comando de escritura,Sólo el cliente enfocado puede ejecutar.
+                // B-30: 重新生成是写命令,仅持焦点客户端可执行。
                 if (!focus.holds(context.id, command.sessionId)) {
                     sendEvent(connection, HostEvent(type = "error", requestId = requestId, error = "focus_not_held"), context, sendMutex)
                     return
@@ -320,7 +334,7 @@ internal class HostWebSocketGateway(
                 sendEvent(connection, HostEvent(type = "command.accepted", requestId = requestId), context, sendMutex)
             }
             "chat.continue" -> {
-                // B-30: Para continuar generando, escriba el comando,Sólo el cliente enfocado puede ejecutar.
+                // B-30: 继续生成是写命令,仅持焦点客户端可执行。
                 if (!focus.holds(context.id, command.sessionId)) {
                     sendEvent(connection, HostEvent(type = "error", requestId = requestId, error = "focus_not_held"), context, sendMutex)
                     return
@@ -329,7 +343,7 @@ internal class HostWebSocketGateway(
                 sendEvent(connection, HostEvent(type = "command.accepted", requestId = requestId), context, sendMutex)
             }
             "chat.stop" -> {
-                // F-39: Detener es un comando de escritura,Sólo el cliente enfocado puede ejecutar.
+                // F-39: 停止是写命令,仅持焦点客户端可执行。
                 if (!focus.holds(context.id, command.sessionId)) {
                     sendEvent(connection, HostEvent(type = "error", requestId = requestId, error = "focus_not_held"), context, sendMutex)
                     return
@@ -346,12 +360,12 @@ internal class HostWebSocketGateway(
                     sendMutex,
                 )
             }
-            // F-38: Comandos de nivel de mensaje — Copiar/Texto de cotización de regreso al portapapeles del cliente;Los comandos de lectura no requieren verificación de enfoque.
-            // Citando requisitos adicionales de que el objetivo pertenece a la sesión actual.:es“Lleve esta oración al cuadro de entrada”,Cita cruzada de otra sesión
-            // No hay ningún lugar donde colocarlo en la interfaz. La copia conserva la semántica original.(Obtener solo texto sin formato)sin alterar.
+            // F-38: 消息级命令 — 复制/引用文本回客户端剪贴板;读命令无需焦点校验。
+            // 引用额外要求目标属于当前会话:它是“把这句引到输入框”,跨会话引一句别的会话的话
+            // 在界面上无处安放。复制保持原语义(只取纯文本)不变。
             //
-            // con `chat.send.quotedMessageId` división del trabajo:Este comando es“Lea primero el texto citado.”(Vista previa/volver a leer),
-            // ese campo es“Enviar con referencia”. El contenido devuelto por ambos es consistente con el diámetro de truncamiento.,Se puede mezclar.
+            // 与 `chat.send.quotedMessageId` 的分工:本命令是“先看被引用正文”(预览/回读),
+            // 那个字段是“发送时携带引用”。两者返回的内容与截断口径一致,可以混用。
             "message.copy", "message.quote" -> {
                 val messageId = command.messageId?.takeIf { it.isNotBlank() }
                     ?: throw HostProtocolException("${command.type} requires messageId")
@@ -379,7 +393,7 @@ internal class HostWebSocketGateway(
                     sendMutex,
                 )
             }
-            // Comando de escritura a nivel de mensaje:Tanto la eliminación como la recopilación solo cambiarán los mensajes visibles de la conversación actual.,Misma regla de enfoque que chat.send.
+            // 消息级写命令:删除与收藏都只改当前会话的可见消息,与 chat.send 同一条焦点规则。
             "message.delete" -> {
                 if (!focus.holds(context.id, command.sessionId)) {
                     sendEvent(connection, HostEvent(type = "error", requestId = requestId, error = "focus_not_held"), context, sendMutex)
@@ -398,7 +412,7 @@ internal class HostWebSocketGateway(
                 val sessionId = requireSessionId(command)
                 val limit = (command.limit ?: 50).coerceIn(1, 200)
                 val offset = (command.offset ?: 0).coerceAtLeast(0)
-                // Reutilizar entradas recientes de límite+compensación en SessionRepository,Entonces recorta esta página en la memoria.(orden ascendente).
+                // 复用 SessionRepository 最近的 limit+offset 条,再在内存里裁出本页(升序)。
                 val page = sessionRepo.getRecentMessages(sessionId, offset + limit).drop(offset).take(limit)
                 sendEvent(
                     connection,
@@ -436,7 +450,7 @@ internal class HostWebSocketGateway(
                     sendMutex,
                 )
             }
-            // Establecer una página de inicio:La agrupación y el ingreso los da la App,solo lectura,No se requiere concentración.
+            // 设置主页:分组与入口由 App 端给出,只读,不需焦点。
             "settings.snapshot" -> sendEvent(
                 connection,
                 HostEvent(
@@ -447,15 +461,15 @@ internal class HostWebSocketGateway(
                 context,
                 sendMutex,
             )
-            // Escritura de configuración:Lista blanca + verificación de tipo,Las claves fuera de la lista blanca devuelven un evento de error en lugar de ignorarse silenciosamente.
+            // 设置写入:白名单 + 类型校验,白名单外的键回错误事件而不是静默忽略。
             //
-            // aquí**No comprobar el foco de la sesión**:Hay una razón por la cual las escrituras de sesiones deben serializarse(Evitar que dos clientes introduzcan mensajes en la misma sesión al mismo tiempo),
-            // La configuración global no tiene este problema——Mientras charla por teléfono,No se debe rechazar cambiar un interruptor en una página web;
-            // Simplemente cambie la misma clave en ambos extremos al mismo tiempo y luego escriba sobre ella.
+            // 这里**不查会话焦点**:会话写要串行是有理由的(避免两个客户端同时往同一会话里塞消息),
+            // 全局设置没有这个问题——手机正在聊天的时候,网页改一个开关不应该被拒;
+            // 两端同时改同一个键按后写覆盖即可。
             //
-            // Solo responde si la escritura es exitosa `command.accepted`:Sigue el nuevo valor**La próxima vez** `settings.snapshot` Problema,
-            // No recomiendo una porción extra aquí. Lo que envía el cliente es el valor que quiere mostrar localmente.,Extraiga una instantánea para alinear los resultados normalizados
-            // (Por ejemplo, eliminar puntos decimales de los números y enumerar mayúsculas y minúsculas),Evite presionar un árbol de configuración completo para cada interruptor.
+            // 写入成功只回 `command.accepted`:新值随**下一次** `settings.snapshot` 下发,
+            // 不在这里额外推一份。客户端提交的就是它本地要显示的值,拉一次快照即可对齐规范化后的结果
+            // （比如数字去小数点、枚举大小写）,避免每次开关都多推一整份设置树。
             "settings.update" -> {
                 when (val result = settingsCommands.update(command.key, command.value)) {
                     is HostSettingsUpdateResult.Applied -> sendEvent(
@@ -472,7 +486,7 @@ internal class HostWebSocketGateway(
                     )
                 }
             }
-            // Vista de solo lectura:Ayudante/proveedor/metainformación de sesión.
+            // 只读一览:助手 / 供应商 / 会话元信息。
             "assistants.list" -> sendEvent(
                 connection,
                 HostReadCommands.assistantsEvent(
@@ -497,7 +511,7 @@ internal class HostWebSocketGateway(
             "sessions.detail" -> {
                 val sessionId = requireSessionId(command)
                 val session = sessionRepo.getSessionById(sessionId)
-                // No consultar la tabla de mensajes cuando la sesión no existe,Regrese directamente a session_not_found.
+                // 会话不存在时不查消息表,直接回 session_not_found。
                 val messageCount = if (session == null) 0 else sessionRepo.getMessageCount(sessionId)
                 sendEvent(
                     connection,
@@ -520,7 +534,7 @@ internal class HostWebSocketGateway(
                     sendMutex,
                 )
             }
-            // memoria solo lectura:sesión/Lista de entradas y recuperación de palabras clave en el nivel del grupo de memoria principal(Consulte las instrucciones de anulación para HostMemoryReads).
+            // 记忆只读:会话/主记忆池那一层的条目列表与关键词检索(见 HostMemoryReads 的覆盖说明)。
             "memory.list" -> sendEvent(
                 connection,
                 HostMemoryReads.listEvent(
@@ -547,7 +561,7 @@ internal class HostWebSocketGateway(
                     sendMutex,
                 )
             }
-            // Página de categoría de conocimiento y automatización:Todo solo lectura,No participa en el bloqueo de enfoque.(Hermano con asistentes.lista).
+            // 知识与自动化分类页:全部只读,不参与焦点锁(与 assistants.list 同级)。
             "knowledge.list" -> sendEvent(
                 connection,
                 HostKnowledgeReads.listEvent(readSources.knowledge.bases(), requestId),
@@ -578,11 +592,31 @@ internal class HostWebSocketGateway(
                 context,
                 sendMutex,
             )
-            // Estado del sistema:Instantánea de solo lectura de la página de datos y privacidad/página específica de la plataforma,No participa en el bloqueo del enfoque.
-            // Las estadísticas de volumen pasan por el programador de IO dentro de la fuente de datos.,No bloquee esta rutina de conexión.
+            // 系统状态:数据与隐私页 / 平台专有页的只读快照,不参与焦点锁。
+            // 体积统计在数据源内部走 IO 调度器,不阻塞这条连接协程。
             "system.status" -> sendEvent(
                 connection,
                 HostSystemStatusReads.event(readSources.system.status(), requestId),
+                context,
+                sendMutex,
+            )
+            // 「运行」页三条只读命令:日志尾部 / 诊断快照 / 窗口统计。与 system.status 同级,
+            // 全部不参与焦点锁 —— 它们不改变设备状态,读的人不该因为别人正在操作而被挡。
+            HostRuntimeReads.LOGS_TYPE -> sendEvent(
+                connection,
+                HostRuntimeReads.logsEvent(readSources.runtime.logs(HostRuntimeReads.logLimit(command.limit)), requestId),
+                context,
+                sendMutex,
+            )
+            HostRuntimeReads.DIAGNOSTICS_TYPE -> sendEvent(
+                connection,
+                HostRuntimeReads.diagnosticsEvent(readSources.runtime.diagnosticsJson(), requestId),
+                context,
+                sendMutex,
+            )
+            HostRuntimeReads.STATS_TYPE -> sendEvent(
+                connection,
+                HostRuntimeReads.statsEvent(readSources.runtime.stats(), requestId),
                 context,
                 sendMutex,
             )
@@ -613,7 +647,7 @@ internal class HostWebSocketGateway(
         }
     }
 
-    /** Espere a que aparezcan mensajes de nuevos usuarios agregados con optimismo;Regreso del tiempo de espera null,No afecta a la aceptación del pedido en sí. */
+    /** 等乐观追加的新 user 消息露面;超时返回 null,不影响命令本身被受理。 */
     private suspend fun awaitSentUserMessage(previousIds: Set<String>): String? {
         val message = withTimeoutOrNull(SEND_ACK_TIMEOUT_MS) {
             chatViewModel.messages
@@ -624,10 +658,10 @@ internal class HostWebSocketGateway(
     }
 
     /**
-     * `chat.retry` adjudicación y ejecución(El foco ha sido verificado en la rama de comando.).
+     * `chat.retry` 的裁决与执行(焦点已在命令分支里校验过)。
      *
-     * No regreses cuando el objetivo no sea el correcto. `command.accepted`,En su lugar, se proporciona un motivo de error legible.,Evite la página web
-     * Se inició la retransmisión del pensamiento.
+     * 目标对不上时不回 `command.accepted`,而是给出可读的失败原因,免得网页端
+     * 以为重发已启动。
      */
     @Suppress("ThrowsCount")
     private fun retryEvent(command: HostCommand): HostEvent {
@@ -654,12 +688,12 @@ internal class HostWebSocketGateway(
     }
 
     /**
-     * `chat.retry` ¿Puede caer en este mensaje?
+     * `chat.retry` 能不能落在本条消息上。
      *
-     * App Solo hay una entrada de reedición en:"Reintentar" en el banner de error,Regenera la última respuesta de ayuda para la rama actual.
-     * Así que aquí sólo hay dos tipos de objetivos.:Último mensaje del asistente(La propia burbuja del fracaso)con el último mensaje de usuario
-     * (La entrega no se entregó y es necesario volver a ejecutar la ronda.). Todos los demás mensajes serán rechazados. —— El objetivo está equivocado pero renace silenciosamente en otro.,
-     * Mucho más peligroso que el rechazo.
+     * App 里的重发入口只有一个:失败横幅上的「重试」,它重新生成当前分支的最后一条助手回复。
+     * 所以这里只接两种目标:最后一条助手消息(失败气泡本身)与最后一条用户消息
+     * (发送未递达、需要重跑这一轮)。其他消息一律拒掉 —— 目标不对却默默重生成另一条,
+     * 比拒绝危得多。
      */
     private fun retryTarget(messageId: String): RetryTarget {
         val messages = chatViewModel.messages.value
@@ -675,15 +709,15 @@ internal class HostWebSocketGateway(
 
     private enum class RetryTarget { RETRYABLE, NOT_FOUND, NOT_SUPPORTED }
 
-    /** Si el mensaje de destino pertenece a la sesión actual;Si no se puede encontrar la conversación o no se puede encontrar el mensaje, no pertenece. */
+    /** 目标消息是否属于当前会话;找不到会话或查不到消息都算不属于。 */
     private suspend fun belongsToCurrentSession(messageId: String): Boolean {
         val currentSessionId = chatViewModel.state.value.currentSessionId ?: return false
         return sessionRepo.getMessageById(messageId)?.sessionId == currentSessionId
     }
 
-    /** `chat.send.quotedMessageId` resultados del análisis. */
+    /** `chat.send.quotedMessageId` 的解析结果。 */
     private sealed interface QuotedMessage {
-        /** Si no hay ningún objetivo de referencia, se enviará con normalidad. */
+        /** 没带引用目标，按普通发送处理。 */
         data object None : QuotedMessage
 
         data class Resolved(val message: UIMessage) : QuotedMessage
@@ -692,11 +726,11 @@ internal class HostWebSocketGateway(
     }
 
     /**
-     * Resolver objetivos de referencia.
+     * 解析引用目标。
      *
-     * Reconocer solo mensajes dentro de la sesión actual: enviar con el id de la sesión anterior equivale a enviar el texto entre sesiones, y directamente rechaza y no envía;
-     * Si no se puede encontrar el mensaje en la sesión actual (se acaba de eliminar), se dará un error claro y no se degradará silenciosamente al envío normal. ——
-     * La desaparición repentina de la barra de referencia que ven los usuarios es más difícil de entender que informar un error.
+     * 只认当前会话内的消息：带着期会话的 id 发送等于跨会话带正文，直接拒掉不发送；
+     * 当前会话内查不到消息（刚被删掉）也给明确错误，不静默降级成普通发送 ——
+     * 用户看到的引用条突然消失比报一个错更难理解。
      */
     private suspend fun resolveQuotedMessage(quotedMessageId: String?): QuotedMessage {
         val id = quotedMessageId?.trim()?.takeIf { it.isNotEmpty() } ?: return QuotedMessage.None
@@ -706,12 +740,12 @@ internal class HostWebSocketGateway(
     }
 
     /**
-     * `message.delete` adjudicación y ejecución.
+     * `message.delete` 的裁决与执行。
      *
-     * Elimina solo los mensajes que realmente existen en la sesión actual: si no existen, ingresa el ID de otra sesión. `skippedMessageIds` en lugar de informar un error
-     * (Eliminar un mensaje que haya sido eliminado por otro terminal, y“Eliminado exitosamente”Tampoco debería hacer que la interfaz se ponga roja).
-     * Todo el comando es atómico: siempre que un objetivo sea el último mensaje de ayuda que se genera, se rechaza todo el lote.
-     * no aparece“Se eliminó la mitad”estado intermedio.
+     * 只删当前会话里真实存在的消息：不存在的、别会话的 id 进 `skippedMessageIds` 而不是报错
+     * （删一条已被别的端删掉的消息，与“删成功”一样都不该让界面报红）。
+     * 整条命令是原子的：只要有一个目标是正在生成的那条末条助手消息，就把整批拒掉，
+     * 不出现“删了一半”的中间态。
      */
     @Suppress("ThrowsCount")
     private fun deleteMessagesEvent(command: HostCommand): HostEvent {
@@ -734,7 +768,7 @@ internal class HostWebSocketGateway(
         )
     }
 
-    /** ¿Hay alguno en el objetivo?“Se genera la respuesta del asistente.”: Streaming y el último mensaje del asistente de la sesión. */
+    /** 目标里有没有“正在生成的那条助手回复”：流式中且是该会话末条助手消息。 */
     private fun isStreamingReply(targets: List<String>): Boolean {
         if (!chatViewModel.state.value.isStreaming) return false
         val lastAssistantId = chatViewModel.messages.value
@@ -745,10 +779,10 @@ internal class HostWebSocketGateway(
     }
 
     /**
-     * `message.favorite` adjudicación y ejecución.
+     * `message.favorite` 的裁决与执行。
      *
-     * El estado objetivo lo proporciona la persona que llama (no se ve afectado por el valor actual), por lo que repetir el mismo estado es idempotente:
-     * No cambiará cuando ya sea el valor objetivo y no se informará ningún error.
+     * 目标状态由调用方给定（不受当前值影响），所以重复点同一个状态是幂等的：
+     * 已是目标值时不会翻转，也不会报错。
      */
     @Suppress("ThrowsCount")
     private suspend fun setFavoriteEvent(command: HostCommand): HostEvent {
@@ -776,7 +810,7 @@ internal class HostWebSocketGateway(
         context: ConnectionContext,
         sendMutex: Mutex,
     ) {
-        // El número de secuencia del evento es un número.,Los campos del cursor se recopilan como texto.,Devuelve el valor aquí.
+        // 事件序号是数字,游标字段统一按文本收,这里转回数值。
         val requestedCursor = command.cursor?.toLongOrNull()
         val history = context.history.toList()
         val canReplay = requestedCursor != null &&
@@ -802,10 +836,17 @@ internal class HostWebSocketGateway(
         )
     }
 
-    private fun rememberCompletedRequest(context: ConnectionContext, requestId: String) {
-        context.completedRequestIds += requestId
-        while (context.completedRequestIds.size > MAX_COMPLETED_REQUESTS) {
-            context.completedRequestIds.remove(context.completedRequestIds.first())
+    /** 只增不查的单键判重；锁住是因为多个连接会在不同协程里同时进来。 */
+    private fun isCompletedRequest(requestId: String): Boolean = synchronized(this) {
+        completedRequestIds.contains(requestId)
+    }
+
+    private fun rememberCompletedRequest(requestId: String) {
+        synchronized(this) {
+            completedRequestIds += requestId
+            while (completedRequestIds.size > MAX_COMPLETED_REQUESTS) {
+                completedRequestIds.remove(completedRequestIds.first())
+            }
         }
     }
 
@@ -821,9 +862,19 @@ internal class HostWebSocketGateway(
     ): HostEvent {
         val sequenced = event.copy(
             connectionId = context.id,
-            eventSeq = context.eventSeq++,
+            eventSeq = context.eventSeq,
+            /*
+             * `cursor` 的语义是"这条我已经给你了"，所以它**必须等于本条自己的序号**。
+             *
+             * 以前写的是 `eventSeq = context.eventSeq++` 之后再 `cursor = context.eventSeq`，
+             * 于是 cursor 恒等于 seq+1：客户端照实回传"我到这里"，服务端按 `eventSeq > cursor`
+             * 过滤 —— 正好**稳定漏掉紧随其后的那一条**（补拉一可达就少一条）。
+             * 今天多数时候走的是全量快照分支，所以这个洞被掩盖着；一旦跨连接续传做实，
+             * 它就是"消息看着齐、其实中间缺一块"。
+             */
             cursor = context.eventSeq,
         )
+        context.eventSeq += 1
         context.history.addLast(sequenced)
         while (context.history.size > MAX_EVENT_HISTORY) context.history.removeFirst()
         sendMutex.withLock { connection.send(Frame.Text(AppJson.encodeToString(sequenced))) }
@@ -851,16 +902,16 @@ internal class HostWebSocketGateway(
             turnId = active?.turnId,
             generationId = active?.generationId,
             isStreaming = state.isStreaming,
-            // Las sesiones archivadas se entregan como de costumbre (se distinguen por la etiqueta de archivado y la página web se filtra según su propio parámetro);
-            // Sólo aquellos que realmente están eliminados (deletedAt no vacío).
+            // 归档会话照常下发（用 archived 标记区分，网页端按自己的开关过滤）；
+            // 只排除真删掉的（deletedAt 非空）。
             sessions = state.sessions.filterNot { it.deletedAt != null }.map { it.toHostSession() },
             messages = messages.map { it.toHostMessage(statusContext) },
             pendingApprovals = chatViewModel.state.value.pendingToolApprovals.map {
                 HostApproval(it.toolCallId, it.toolName, it.argumentsPreview)
             },
-            // F-36: capabilityFlags Declare únicamente la capacidad de implementar los comandos de protocolo correspondientes.
-            // memory Este lote es sólo de lectura. memory.list / memory.search(sesión/Capa de grupo de memoria principal),
-            // No existen comandos correspondientes para escritura en memoria y RAG.,No se indica aquí.
+            // F-36: capabilityFlags 只声明有对应协议命令的实现能力。
+            // memory 这一批只落地只读的 memory.list / memory.search(会话/主记忆池那一层),
+            // 记忆写入与 RAG 还没有对应命令,不在这里声明。
             capabilityFlags = listOf(
                 "chat",
                 "streaming",
@@ -886,20 +937,23 @@ internal class HostWebSocketGateway(
                 "knowledge",
                 "tasks",
                 "system_status",
+                "runtime_logs",
+                "runtime_diagnostics",
+                "runtime_stats",
             ),
         )
     }
 
     /**
-     * Contexto fuera de la instantánea:en la misma lista de mensajes,¿Cuál es la "ronda en curso"?
+     * 快照之外的上下文:同一份消息列表里,哪一条是「正在进行的那一轮」。
      *
-     * App No persiste el estado a nivel de mensaje(Solo banners de error/transmisión a nivel de sesión),Pon esas señales aquí.
-     * Proyectar en un solo mensaje,La semántica es consistente con los comentarios vistos en la aplicación.:
-     *  - Último mensaje del asistente + Streaming = streaming;
-     *  - El último mensaje del asistente + la ronda terminó con FAILED y el error no se desactivó = failed(La entrada de reintento para el mensaje de error está ahí.);
-     *  - El último mensaje es un mensaje de usuario y el primer token aún no ha sido respondido. = sending(La adición optimista ahora está en la pantalla,Aún no entregado al modelo.).
+     * App 本身不持久化消息级状态(只有会话级的 isStreaming / 错误横幅),这里把那些信号
+     * 投影到单条消息上,语义与 App 里看到的反馈一致:
+     *  - 最后一条助手消息 + 正在流式 = streaming;
+     *  - 最后一条助手消息 + 本轮以 FAILED 收场且错误没被关掉 = failed(错误横幅的重试入口就在它身上);
+     *  - 最后一条消息是用户消息且首个 token 还没回 = sending(乐观追加已上屏,还没交给模型)。
      *
-     * paginación de historia(history.page)Los mensajes aquí son todos mensajes anteriores que se han incluido en la base de datos.,usar [Idle]:Siempre enviado.
+     * 历史分页(history.page)里的消息都是已落库的过去消息,用 [Idle]:一律 sent。
      */
     private data class MessageStatusContext(
         val lastMessageId: String?,
@@ -924,7 +978,7 @@ internal class HostWebSocketGateway(
                 lastAssistantId = messages.lastOrNull { it.role == MessageRole.ASSISTANT }?.id?.toString(),
                 streaming = state.isStreaming,
                 waitingFirstToken = state.isWaitingFirstToken,
-                // Este mensaje se considera un error solo si la fase de generación se detiene en FAILED y el error aún se muestra.;Al cerrar el banner de error, los usuarios aceptan el status quo.
+                // 生成阶段停在 FAILED 且错误还在展示才算这条消息失败;用户关掉错误横幅就是接受了现状。
                 failed = !state.isStreaming &&
                     state.streamState.phase == ChatStreamPhase.FAILED &&
                     state.errors.isNotEmpty(),
@@ -965,17 +1019,17 @@ internal class HostWebSocketGateway(
     }
 
     /**
-     * Cite el texto citado en la respuesta.
+     * 引用回复里的被引用正文。
      *
-     * La misma regla que las burbujas de mensajes de la aplicación: los campos primero (editar/estado borrador), de lo contrario el mensaje del usuario será analizado `> ` bloque de cotización al principio
-     * —— Al enviar, el texto se almacena en este formato, por lo que la instantánea puede restaurar la tarjeta de referencia tal como está.
+     * 与 App 消息气泡同一规则：字段优先（编辑/草稿态），否则对用户消息解析 `> ` 开头的引用块
+     * —— 发送时正文就是按这个格式落库的，所以快照能原样把引用卡还原出来。
      */
     private fun UIMessage.quotedContentOf(): String? {
         val raw = quotedContent ?: if (role == MessageRole.USER) parseQuotedContent(content).first else null
         return raw?.takeIf { it.isNotBlank() }?.let(::quotePreview)
     }
 
-    /** Corte de cotización:`message.quote` con la instantánea `quotedContent` comparte esta función. */
+    /** 引用正文的截断口径：`message.quote` 与快照里的 `quotedContent` 共用这一个函数。 */
     private fun quotePreview(text: String): String = TextTruncation.headTailText(text, QUOTE_PREVIEW_LIMIT)
 
     private fun UIMessage.statusOf(context: MessageStatusContext): String {
@@ -995,11 +1049,11 @@ internal class HostWebSocketGateway(
     }
 
     /**
-     * Llamada de herramienta para este mensaje.
+     * 本条消息的工具调用。
      *
-     * Dos fuentes se combinan en una matriz.:[io.zer0.ai.core.UIMessage.toolCalls] Es una solicitud de llamada realizada por el asistente una vez
-     * (Sólo nombres y parámetros.,El resultado no está en este mensaje.),[io.zer0.ai.core.UIMessage.toolCallInfo] Es una tarjeta de herramientas con resultados.
-     * Las solicitudes pendientes con el mismo nombre de herramienta se fusionarán en la tarjeta de herramientas.,No habrá duplicación de dos artículos.
+     * 两个来源拼成一份数组:[io.zer0.ai.core.UIMessage.toolCalls] 是助手一次提出的调用请求
+     * (只有名字与参数,结果不在这条消息上),[io.zer0.ai.core.UIMessage.toolCallInfo] 是带结果的工具卡片。
+     * 同一工具名的待结果请求会被工具卡片合并,不会重复占两项。
      */
     private fun UIMessage.hostToolCalls(): List<HostToolCall> {
         val calls = toolCalls?.map { request ->
@@ -1015,7 +1069,7 @@ internal class HostWebSocketGateway(
             callId = if (pending >= 0) calls[pending].callId else toolCallId ?: "$id:tool",
             name = info.toolName,
             argumentsPreview = preview(info.arguments, TOOL_ARGUMENTS_PREVIEW_LIMIT),
-            // El resultado es nulo en lugar de una cadena vacía.:La página web diferencia entre "no se devolvieron resultados" y "se devolvieron resultados vacíos" basándose en esto.
+            // 结果为空给 null 而不是空串:网页端据此区分「未回结果」与「回了空结果」。
             resultPreview = info.result.takeIf { it.isNotBlank() }?.let { preview(it, TOOL_RESULT_PREVIEW_LIMIT) },
             success = info.isSuccess,
             durationMs = info.durationMs,

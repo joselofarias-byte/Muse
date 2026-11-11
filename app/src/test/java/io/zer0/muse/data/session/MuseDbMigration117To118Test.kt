@@ -10,19 +10,19 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * v2.6.8: 117 → 118 Validación comportamental de migraciones (tabla de entidades de tarjetas).
+ * v2.6.8: 117 → 118 迁移的行为验证（卡片实体表）。
  *
- * con [MuseDbMigration116To117Test] El mismo modo: use SQLite nativo para ejecutar y ejecutar directamente
- * [MuseDb.MIGRATION_117_118] Exactamente el mismo DDL, afirmando:
- *  - `card_entities` La tabla existe y las doce columnas están completas;
- *  - El valor predeterminado de la columna es el mismo que [io.zer0.muse.data.card.CardEntity] La declaración es consistente artículo por artículo (de lo contrario, la máquina real Room
- *    schema La suma de control será arrojada "Migration didn't properly handle: card_entities");
- *  - `dockSlot` Los índices únicos permiten NULL para cualquier número de filas (solo flujo de mensajes), pero rechazan espacios duplicados que no sean NULL;
- *  - `originMessageId` Existe un índice ordinario;
- *  - Los datos y las tablas vecinas existentes no se verán afectados (la migración pura de tablas nuevas no debería mover otras tablas).
+ * 与 [MuseDbMigration116To117Test] 同一模式：用原生 SQLite 直接执行与
+ * [MuseDb.MIGRATION_117_118] 完全相同的 DDL，断言：
+ *  - `card_entities` 表存在，十二列齐全；
+ *  - 列默认值与 [io.zer0.muse.data.card.CardEntity] 声明逐项一致（否则真机 Room
+ *    schema 校验会抛 "Migration didn't properly handle: card_entities"）；
+ *  - `dockSlot` 唯一索引允许任意多行 NULL（仅消息流），但拒绝重复的非 NULL 槽位；
+ *  - `originMessageId` 普通索引存在；
+ *  - 既有邻居表与数据不受影响（纯新增表迁移不该动别的表）。
  *
- * MigrationTestHelper que no depende de pruebas de sala;Room Active la verificación de rutas de un extremo a otro. Ver
- * [MuseDbMigrationTest.migrateV113To117Starts_validateThroughRoom].
+ * 不依赖 room-testing 的 MigrationTestHelper；Room 打开路径的端到端校验见
+ * [MuseDbMigrationTest.migrateV113To117Starts_validateThroughRoom]。
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -30,7 +30,7 @@ class MuseDbMigration117To118Test {
 
     private val context = ApplicationProvider.getApplicationContext<android.content.Context>()
 
-    /** Creación de tablas + índice DDL que es textualmente consistente con MIGRATION_117_118. */
+    /** 与 MIGRATION_117_118 逐字一致的建表 + 索引 DDL。 */
     private fun applyMigrationDdl(db: android.database.sqlite.SQLiteDatabase) {
         db.execSQL(
             "CREATE TABLE IF NOT EXISTS `card_entities` (" +
@@ -84,7 +84,7 @@ class MuseDbMigration117To118Test {
     fun migration117To118_createsCardEntitiesTableWithExpectedColumns() {
         val db = openFresh("migration_117_118_test.db")
         try {
-            // 1. Restaure las tablas vecinas en v117 que serán "tocadas" por esta migración para confirmar que la migración no causará daños accidentales.
+            // 1. 还原 v117 里会被本次迁移「碰到」的邻居表，确认迁移不会误伤
             db.execSQL(
                 """
                 CREATE TABLE session_todos (
@@ -100,18 +100,18 @@ class MuseDbMigration117To118Test {
             db.execSQL("INSERT INTO session_todos (id, sessionId) VALUES ('t1', 's1')")
             db.version = 117
 
-            // 2. Ejecutar exactamente igual que MIGRATION_117_118 DDL
+            // 2. 执行与 MIGRATION_117_118 完全相同的 DDL
             applyMigrationDdl(db)
 
-            // 3. Colección de columnas/tipo/capacidad de nulidad/valor predeterminado
+            // 3. 列集合 / 类型 / 可空性 / 默认值
             assertCardEntityColumns(db)
 
-            // 4. Existen dos índices y dockSlot es el único índice.
+            // 4. 两个索引存在，且 dockSlot 那个是唯一索引
             assertCardEntityIndexes(db)
 
-            // 5. Las tablas y los datos vecinos no se ven afectados
+            // 5. 邻居表与数据不受影响
             db.rawQuery("SELECT sessionId FROM session_todos WHERE id = 't1'", null).use { c ->
-                assertTrue("Se deben conservar las filas existentes", c.moveToFirst())
+                assertTrue("既有行必须保留", c.moveToFirst())
                 assertEquals("s1", c.getString(0))
             }
         } finally {
@@ -119,11 +119,11 @@ class MuseDbMigration117To118Test {
         }
     }
 
-    /** Colecciones de columnas, tipos y valores predeterminados elemento por especificación de elemento §3.1. */
+    /** 列集合、类型与默认值逐项对照规格 §3.1。 */
     private fun assertCardEntityColumns(db: android.database.sqlite.SQLiteDatabase) {
         val cols = columnsOf(db, "card_entities")
         assertEquals(
-            "El conjunto de columnas debe ser exactamente el mismo que CardEntity",
+            "列集合必须与 CardEntity 完全一致",
             listOf(
                 "id",
                 "legacyCardId",
@@ -155,21 +155,21 @@ class MuseDbMigration117To118Test {
             "updatedAt" to "INTEGER|notnull=1",
         )
         expectedTypes.forEach { (column, prefix) ->
-            assertTrue("$column Tipo/La nulidad debe ser $prefix, real ${cols.getValue(column)}", cols.getValue(column).startsWith(prefix))
+            assertTrue("$column 类型/可空性应为 $prefix，实际 ${cols.getValue(column)}", cols.getValue(column).startsWith(prefix))
         }
-        assertTrue("title Cadena vacía predeterminada", cols.getValue("title").contains("default=''"))
-        assertTrue("code Cadena vacía predeterminada", cols.getValue("code").contains("default=''"))
-        assertTrue("isSvg Predeterminado 0", cols.getValue("isSvg").contains("default=0"))
-        assertTrue("createdAt Predeterminado 0", cols.getValue("createdAt").contains("default=0"))
-        assertTrue("updatedAt Predeterminado 0", cols.getValue("updatedAt").contains("default=0"))
+        assertTrue("title 默认空串", cols.getValue("title").contains("default=''"))
+        assertTrue("code 默认空串", cols.getValue("code").contains("default=''"))
+        assertTrue("isSvg 默认 0", cols.getValue("isSvg").contains("default=0"))
+        assertTrue("createdAt 默认 0", cols.getValue("createdAt").contains("default=0"))
+        assertTrue("updatedAt 默认 0", cols.getValue("updatedAt").contains("default=0"))
         listOf("legacyCardId", "originSessionId", "originMessageId", "dataJson", "dockSlot", "dockedAt")
             .forEach { column ->
-                // El DEFAULT NULL explícito aparece como una cadena en PRAGMA "NULL"(no NULL), coherente con el valor predeterminado de la instantánea de la habitación.
-                assertEquals("$column El valor predeterminado debe ser NULL", "NULL", columnDefault(db, column))
+                // 显式 DEFAULT NULL 在 PRAGMA 里表现为字符串 "NULL"（不是 NULL），与 Room 快照的默认值写法一致。
+                assertEquals("$column 默认值应为 NULL", "NULL", columnDefault(db, column))
             }
     }
 
-    /** Ambos índices existen y tienen unicidad correcta (dockSlot solo,originMessageId Ordinario). */
+    /** 两个索引存在且唯一性正确（dockSlot 唯一，originMessageId 普通）。 */
     private fun assertCardEntityIndexes(db: android.database.sqlite.SQLiteDatabase) {
         val indexes = mutableMapOf<String, Boolean>()
         db.rawQuery("PRAGMA index_list(`card_entities`)", null).use { c ->
@@ -180,12 +180,12 @@ class MuseDbMigration117To118Test {
             }
         }
         assertEquals(
-            "La colección de índices debe ser coherente con la declaración de la entidad @Index.",
+            "索引集合必须与实体 @Index 声明一致",
             setOf("index_card_entities_dockSlot", "index_card_entities_originMessageId"),
             indexes.keys,
         )
-        assertEquals("dockSlot El índice debe ser único.", true, indexes["index_card_entities_dockSlot"])
-        assertEquals("originMessageId El índice no es único (un mensaje puede contener varias tarjetas)", false, indexes["index_card_entities_originMessageId"])
+        assertEquals("dockSlot 索引必须唯一", true, indexes["index_card_entities_dockSlot"])
+        assertEquals("originMessageId 索引非唯一（一条消息可承载多张卡）", false, indexes["index_card_entities_originMessageId"])
     }
 
     private fun columnDefault(db: android.database.sqlite.SQLiteDatabase, column: String): String? {
@@ -206,27 +206,27 @@ class MuseDbMigration117To118Test {
         try {
             applyMigrationDdl(db)
 
-            // Tarjeta de desacoplamiento (dockSlot = NULL) puedes tener tantas imágenes como quieras —— Los índices únicos no participan en comparaciones NULL
+            // 未停靠的卡（dockSlot = NULL）可以有任意多张 —— 唯一索引不参与 NULL 比较
             repeat(5) { index ->
-                db.execSQL("INSERT INTO card_entities (id, title) VALUES ('inline-$index', 'tarjeta $index')")
+                db.execSQL("INSERT INTO card_entities (id, title) VALUES ('inline-$index', '卡 $index')")
             }
             db.rawQuery("SELECT COUNT(*) FROM card_entities WHERE dockSlot IS NULL", null).use { c ->
                 assertTrue(c.moveToFirst())
-                assertEquals("Deben poder coexistir varias tarjetas exclusivas de mensajería", 5, c.getInt(0))
+                assertEquals("多张仅消息流的卡必须能共存", 5, c.getInt(0))
             }
 
-            // Las plazas idénticas deben rechazarse
+            // 相同槽位必须被拒
             db.execSQL("UPDATE card_entities SET dockSlot = 0 WHERE id = 'inline-0'")
             val threw = try {
                 db.execSQL("UPDATE card_entities SET dockSlot = 0 WHERE id = 'inline-1'")
                 false
             } catch (e: android.database.sqlite.SQLiteConstraintException) {
-                e.message?.let { assertTrue("Conflicto de restricción único esperado", it.contains("UNIQUE", ignoreCase = true)) }
+                e.message?.let { assertTrue("应为唯一约束冲突", it.contains("UNIQUE", ignoreCase = true)) }
                 true
             }
-            assertTrue("No se permiten dos tarjetas en el mismo dockSlot (de lo contrario la secuencia de acoplamiento será doble)", threw)
+            assertTrue("同一 dockSlot 不允许两张卡（否则停靠顺序会出双）", threw)
 
-            // Normalmente se escriben diferentes espacios y el orden de lectura en orden ascendente de los espacios es estable.
+            // 不同槽位正常写入，且按槽位升序读出的顺序稳定
             db.execSQL("UPDATE card_entities SET dockSlot = 2 WHERE id = 'inline-2'")
             db.execSQL("UPDATE card_entities SET dockSlot = 1 WHERE id = 'inline-3'")
             val order = mutableListOf<String>()
@@ -236,12 +236,12 @@ class MuseDbMigration117To118Test {
             ).use { c ->
                 while (c.moveToNext()) order += c.getString(0)
             }
-            assertEquals("Las tarjetas Dock deben ordenarse en orden ascendente por ranura.", listOf("inline-0", "inline-3", "inline-2"), order)
+            assertEquals("停靠卡应按槽位升序", listOf("inline-0", "inline-3", "inline-2"), order)
 
-            // Después de borrar la ranura, regrese a "Solo flujo de mensajes" y la fila seguirá
+            // 清槽位后回到「仅消息流」，行仍在
             db.execSQL("UPDATE card_entities SET dockSlot = NULL WHERE id = 'inline-0'")
             db.rawQuery("SELECT title FROM card_entities WHERE id = 'inline-0'", null).use { c ->
-                assertTrue("Arrastrar hacia atrás solo borra la ranura y no elimina la fila.", c.moveToFirst())
+                assertTrue("拖回只清槽位，不删行", c.moveToFirst())
                 assertNotNull(c.getString(0))
             }
         } finally {

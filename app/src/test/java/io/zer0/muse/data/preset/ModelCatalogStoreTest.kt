@@ -103,7 +103,7 @@ class ModelCatalogStoreTest {
         store.removeModel("openai", "gpt-4o")
 
         assertNull(store.find("openai", "gpt-4o"))
-        // Los datos integrados todavía están ahí, simplemente ocultos por la marca de eliminación del usuario.
+        // 内置数据仍在，只是被用户删除标记隐藏
         assertTrue(store.builtinEntries().any { it.modelId == "gpt-4o" })
     }
 
@@ -152,7 +152,7 @@ class ModelCatalogStoreTest {
         val json = store.exportJson()
 
         val store2 = ModelCatalogStore(context)
-        // Borre el caché de la primera tienda y simule una nueva instancia
+        // 清掉第一个 store 的缓存，模拟新实例
         assertTrue(store2.importJson(json))
         val merged = store2.find("anthropic", "claude-sonnet-4-5-20250514")
         assertNotNull(merged)

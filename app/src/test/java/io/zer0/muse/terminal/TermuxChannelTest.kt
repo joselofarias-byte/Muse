@@ -6,12 +6,12 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * v2.2.1 Termux canal:Análisis de resultados y prueba única defensiva de redacción orientativa.(puro JVM).
+ * v2.2.1 Termux 通道:结果解析与引导文案的防御性单测(纯 JVM)。
  */
 class TermuxChannelTest {
 
     @Test
-    fun `Análisis de paquetes de resultados estándar`() {
+    fun `标准结果包解析`() {
         val result = TermuxChannel.parseResultEntries(
             mapOf("stdout" to "hello", "stderr" to "", "exitCode" to 0, "err" to 0),
         )
@@ -22,7 +22,7 @@ class TermuxChannelTest {
     }
 
     @Test
-    fun `Campos faltantes seguros y protegidos`() {
+    fun `缺失字段安全兜底`() {
         val result = TermuxChannel.parseResultEntries(emptyMap())
         assertEquals(-1, result.exitCode)
         assertEquals("", result.stdout)
@@ -30,7 +30,7 @@ class TermuxChannelTest {
     }
 
     @Test
-    fun `errmsg Priorizar como error`() {
+    fun `errmsg 优先作为错误`() {
         val result = TermuxChannel.parseResultEntries(
             mapOf("stdout" to "", "stderr" to "", "exitCode" to 1, "err" to 5, "errmsg" to "allow-external-apps not configured"),
         )
@@ -39,9 +39,9 @@ class TermuxChannelTest {
     }
 
     @Test
-    fun `Termux El código de éxito -1 no es un error`() {
-        // Termux Errno.ERRNO_SUCCESS es -1, la implementación anterior lo trataba como un error,
-        // Como resultado, el comando informó "Termux Código de error de servicio -1".
+    fun `Termux 成功码 -1 不算错误`() {
+        // Termux 的 Errno.ERRNO_SUCCESS 就是 -1，旧实现把它当失败，
+        // 导致命令明明跑完了却报「Termux 服务错误码 -1」。
         val result = TermuxChannel.parseResultEntries(
             mapOf("stdout" to "hello", "stderr" to "", "exitCode" to 0, "err" to -1, "errmsg" to null),
         )
@@ -51,13 +51,13 @@ class TermuxChannelTest {
     }
 
     @Test
-    fun `errCode Código de error de informe distinto de cero y sin error`() {
+    fun `errCode 非零而无 errmsg 时报错误码`() {
         val result = TermuxChannel.parseResultEntries(mapOf("err" to 7))
         assertTrue(result.error!!.contains("7"))
     }
 
     @Test
-    fun `Compatible con valores de cadena`() {
+    fun `字符串数值兼容`() {
         val result = TermuxChannel.parseResultEntries(
             mapOf("exit_code" to "9", "errCode" to "0", "stdout" to "ok"),
         )
@@ -67,22 +67,78 @@ class TermuxChannelTest {
     }
 
     @Test
-    fun `Elementos esenciales de arranque no instalados`() {
+    fun `未安装引导要点`() {
         val text = TermuxChannel.describe(TermuxChannel.Availability.NotInstalled)
         assertTrue(text.contains("Termux"))
-        assertTrue(text.contains("no está instalado"))
+        assertTrue(text.contains("安装"))
     }
 
     @Test
-    fun `Puntos clave de la guía de permisos`() {
+    fun `权限引导要点`() {
         val text = TermuxChannel.describe(TermuxChannel.Availability.PermissionMissing)
-        assertTrue(text.contains("Permisos adicionales"))
+        assertTrue(text.contains("附加权限"))
     }
 
     @Test
-    fun `No se incluye configuración de arranque allow-external-apps`() {
+    fun `未配置引导含 allow-external-apps`() {
         val text = TermuxChannel.describe(TermuxChannel.Availability.NotConfigured("boom"))
         assertTrue(text.contains("allow-external-apps"))
         assertTrue(text.contains("boom"))
+    }
+
+    // ── 权限体系重设计: 版本检测 ──────────────────────────────────────────
+
+    @Test
+    fun `0_118 及以上版本支持结果回传`() {
+        assertTrue(TermuxChannel.isVersionSupported("0.118.3"))
+        assertTrue(TermuxChannel.isVersionSupported("0.118.3.64"))
+        assertTrue(TermuxChannel.isVersionSupported("0.119.0"))
+        assertTrue(TermuxChannel.isVersionSupported("1.0.0"))
+    }
+
+    @Test
+    fun `Play 商店旧版 0_101 判为不支持`() {
+        assertEquals(false, TermuxChannel.isVersionSupported("0.101"))
+        assertEquals(false, TermuxChannel.isVersionSupported("0.109"))
+        assertEquals(false, TermuxChannel.isVersionSupported("0.117.9"))
+    }
+
+    @Test
+    fun `解析不了的版本号不误报`() {
+        assertTrue(TermuxChannel.isVersionSupported(null))
+        assertTrue(TermuxChannel.isVersionSupported(""))
+        assertTrue(TermuxChannel.isVersionSupported("custom-build"))
+    }
+
+    @Test
+    fun `旧版本引导指向 F-Droid 与 0_118`() {
+        val text = TermuxChannel.describe(TermuxChannel.Availability.OutdatedVersion("0.101"))
+        assertTrue(text.contains("0.118"))
+        assertTrue(text.contains("F-Droid"))
+        assertTrue(text.contains("0.101"))
+    }
+
+    // ── 权限体系重设计: 输出截断检测 ──────────────────────────────────────
+
+    @Test
+    fun `原始长度大于实收长度判为截断`() {
+        val result = TermuxChannel.parseResultEntries(
+            mapOf("stdout" to "abc", "exitCode" to 0, "stdout_original_length" to 100_000),
+        )
+        assertTrue(result.truncated)
+    }
+
+    @Test
+    fun `无原始长度字段不判截断`() {
+        val result = TermuxChannel.parseResultEntries(mapOf("stdout" to "abc", "exitCode" to 0))
+        assertEquals(false, result.truncated)
+    }
+
+    @Test
+    fun `原始长度等于实收长度不判截断`() {
+        val result = TermuxChannel.parseResultEntries(
+            mapOf("stdout" to "abc", "exitCode" to 0, "stdout_original_length" to 3),
+        )
+        assertEquals(false, result.truncated)
     }
 }

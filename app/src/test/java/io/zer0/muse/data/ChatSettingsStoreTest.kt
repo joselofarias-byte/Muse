@@ -77,7 +77,7 @@ class ChatSettingsStoreTest {
     fun updateChatPreferences_appliesAtomicallyWithoutClobberingOtherFields() = runBlocking {
         val store = ChatSettingsStore(context)
         store.updateChatPreferences { it.copy(showTokenEstimate = false, streamResponse = false) }
-        // La segunda vez que solo cambie otro campo, no debe revertir los dos cambios del paso anterior.
+        // 第二次只改另一个字段，不应把上一步的两项改动回退
         store.updateChatPreferences { it.copy(enterToSend = true) }
 
         val loaded = store.getChatPreferences()
@@ -98,7 +98,7 @@ class ChatSettingsStoreTest {
         }
 
         val loaded = store.getChatPreferences()
-        // Las tres escrituras simultáneas deberían sobrevivir y ninguna escritura posterior sobrescribirá las anteriores.
+        // 三处并发写都应存活，不出现后写覆盖前写
         assertEquals(false, loaded.showReasoning)
         assertEquals(false, loaded.showModelName)
         assertEquals(true, loaded.showTimestamp)
@@ -107,11 +107,11 @@ class ChatSettingsStoreTest {
     @Test
     fun corruptPreferencesJson_isBackedUpAndReset() = runBlocking {
         val store = ChatSettingsStore(context)
-        // Escribir directamente en DataStore JSON
+        // 直接往 DataStore 写坏 JSON
         context.museSettingsDataStore.edit { prefs ->
             prefs[androidx.datastore.preferences.core.stringPreferencesKey("chat_preferences_json")] = "{not-json"
         }
-        // Activar una actualización, se debe realizar una copia de seguridad de los valores incorrectos y se deben escribir los nuevos valores normalmente
+        // 触发一次更新，应备份坏值并正常写入新值
         store.updateChatPreferences { it.copy(showTokenEstimate = false) }
 
         val backup =

@@ -35,7 +35,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
@@ -44,6 +46,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import io.zer0.muse.miniphone.R
 import io.zer0.muse.miniphone.api.MpActivityKind
 import io.zer0.muse.miniphone.data.db.MpMessageStatus
 import io.zer0.muse.miniphone.ui.shell.MiniPhoneTimeFormat
@@ -51,20 +54,20 @@ import io.zer0.muse.miniphone.ui.theme.MiniPhoneTheme
 import kotlin.math.abs
 
 /**
- * Una línea completa de un mensaje.
+ * 一条消息的整行。
  *
- * Mantente a la derecha, mantente a la izquierda.,Con avatares en ambos extremos.(Consistente con los hábitos de chat único:Puedes saber quién lo dijo de un vistazo.);
- * El sistema solicita no participar en la división de columnas izquierda y derecha,Utilice únicamente un carácter pequeño y centrado. El texto principal sólo se dibuja en el mensaje de texto.:Imágenes y voces
- * Cada uno se reemplaza con su propio nodo. El ancho de línea se calcula a partir de la lista y luego se pasa.,Las propias burbujas no saben qué tan ancha es la pantalla.
+ * 自己靠右、对方靠左,两头都带头像(与单聊习惯一致:一眼分得清是谁说的);
+ * 系统提示不参与左右分栏,单独走一枚居中小字。正文只在文本消息里画:图片和语音
+ * 各自换成自己的节点。行宽由列表算好后传进来,气泡自己不知道屏幕多宽。
  *
- * Menú de burbujas de pulsación larga(Copiar/eliminar/reenviar),La eliminación requiere confirmación;Los mensajes que envíes también se mostrarán junto a las burbujas.
- * Enviar estado —— Se envía una simple línea de texto.,Una bandera en la que se puede hacer clic para indicar un error.
+ * 长按气泡弹菜单(复制 / 删除 / 重发),删除要过一道确认;自己发的消息还会在气泡旁显示
+ * 发送状态 —— 发送中一行浅字,失败一个可点的标记。
  *
- * @param self Tu propio nombre y avatar(Dibuja las iniciales del avatar de la derecha.)
- * @param peer El nombre y avatar de la otra parte.
- * @param senderLabel ¿Quién dijo esta noticia en el grupo?;mensaje privado null,No escribas nombres junto a las burbujas.
- * @param onOpenImage Haga clic en la imagen
- * @param messageActions Reenviar y eliminar;Hacerlo o no depende del menú.
+ * @param self 自己那侧的名字与头像(画右侧头像的首字)
+ * @param peer 对方那侧的名字与头像
+ * @param senderLabel 群里这条消息是谁说的;私信传 null,不在气泡旁写名字
+ * @param onOpenImage 点开图片
+ * @param messageActions 重发与删除;具体做不做由菜单决定
  */
 @Composable
 internal fun ChatMessageRow(
@@ -164,17 +167,18 @@ internal fun ChatMessageRow(
 }
 
 /**
- * Enviar estado junto a la burbuja:Se envía una simple línea de texto.,La falla da como resultado un marcador rojo ladrillo en el que se puede hacer clic.
+ * 气泡旁的发送状态:发送中一行浅字,失败一枚可点的砖红标记。
  *
- * Ninguno de los dos bloquea el texto principal. —— También deberías poder leer la frase que acabas de escribir mientras la envías.
+ * 两者都不拦正文 —— 发送中也要能看清自己刚写的那句话。
  */
 @Composable
 private fun ChatDeliveryState(message: ChatMessageUi, onRetry: () -> Unit) {
+    val context = LocalContext.current
     val colors = MiniPhoneTheme.colors
     val typography = MiniPhoneTheme.typography
     if (message.isSending) {
         Text(
-            text = SENDING_TEXT,
+            text = stringResource(SENDING_TEXT_RES),
             style = typography.timestamp.copy(color = colors.textSecondary),
             modifier = Modifier.testTag(MiniPhoneChatTags.status(message.id)),
         )
@@ -185,35 +189,35 @@ private fun ChatDeliveryState(message: ChatMessageUi, onRetry: () -> Unit) {
             .testTag(MiniPhoneChatTags.status(message.id))
             .clip(RoundedCornerShape(SendFailRadius))
             .clickable(onClick = onRetry)
-            .semantics { contentDescription = SEND_FAILED_TEXT }
+            .semantics { contentDescription = context.getString(SEND_FAILED_TEXT_RES) }
             .padding(horizontal = 4.dp, vertical = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(text = SEND_FAILED_MARK, style = typography.caption.copy(color = colors.unreadDot))
         Spacer(Modifier.width(2.dp))
-        Text(text = SEND_FAILED_TEXT, style = typography.timestamp.copy(color = colors.unreadDot))
+        Text(text = stringResource(SEND_FAILED_TEXT_RES), style = typography.timestamp.copy(color = colors.unreadDot))
     }
 }
 
 /**
- * cuerpo de burbuja:Hay una rama para imágenes, otra para voz y otra para texto.
+ * 气泡本体:图片、语音、文本各一条分支。
  *
- * Se selecciona por separado porque el grupo necesita una línea adicional con el nombre del orador encima. —— Ambos diseños comparten la misma burbuja.,
- * De lo contrario, "con nombre" y "sin nombre" tendrán cada uno un código de representación.
+ * 单独抽出来是因为群里要在它上面多一行发言人名字 —— 两种布局共用同一份气泡,
+ * 否则「有名字」和「没名字」会各有一份渲染代码。
  */
 @Composable
 private fun MessageBubbleContent(message: ChatMessageUi, maxBubbleWidth: Dp, onOpenImage: (String) -> Unit, onLongPress: () -> Unit) {
     if (message.isImage) {
         ChatImageBubble(message = message, maxWidth = maxBubbleWidth, onOpen = onOpenImage, onLongPress = onLongPress)
     } else if (message.isVoice) {
-        // El ancho de la barra de voz lo puedes configurar tú mismo(Ordenar por duración),No mires el ancho disponible de burbujas.;El lado del usuario aún no envía voz.,Mantenga la rama de renderizado primero
+        // 语音条自己定宽(按时长分档),不看气泡可用宽度;用户侧还不会发语音,渲染分支先留好
         ChatVoiceBubble(message = message, onLongPress = onLongPress)
     } else {
         ChatBubble(message = message, maxWidth = maxBubbleWidth, onLongPress = onLongPress)
     }
 }
 
-/** cuerpo de burbuja:Esquinas redondeadas uniformes 10dp,El otro lado tiene un borde adicional de 1 dp para separar el fondo blanco del color del papel. */
+/** 气泡本体:圆角统一 10dp,对方多一圈 1dp 边框把白底从纸色里分出来。 */
 @Composable
 private fun ChatBubble(message: ChatMessageUi, maxWidth: Dp, onLongPress: () -> Unit) {
     val colors = MiniPhoneTheme.colors
@@ -235,7 +239,7 @@ private fun ChatBubble(message: ChatMessageUi, maxWidth: Dp, onLongPress: () -> 
             .clip(shape)
             .background(if (mine) colors.bubbleSelf else colors.bubbleOther)
             .then(if (mine) Modifier else Modifier.border(dimens.hairline, colors.bubbleOtherBorder, shape))
-            // Haga clic para ampliar/cerrar(Sólo tiene sentido para textos largos y plegados.),Menú emergente de pulsación larga
+            // 单击展开/收起(只对折叠过的长文本有意义),长按弹菜单
             .combinedClickable(
                 onClick = { if (collapsible) expanded = !expanded },
                 onLongClick = onLongPress,
@@ -248,7 +252,7 @@ private fun ChatBubble(message: ChatMessageUi, maxWidth: Dp, onLongPress: () -> 
         )
         if (collapsible) {
             Text(
-                text = if (expanded) COLLAPSE_ACTION else EXPAND_ACTION,
+                text = stringResource(if (expanded) COLLAPSE_ACTION_RES else EXPAND_ACTION_RES),
                 style = typography.caption.copy(
                     color = if (mine) colors.bubbleSelfText.copy(alpha = 0.85f) else colors.accent,
                     fontWeight = FontWeight.Medium,
@@ -264,7 +268,7 @@ private fun ChatBubble(message: ChatMessageUi, maxWidth: Dp, onLongPress: () -> 
     }
 }
 
-/** Aviso del sistema:Fuentes pequeñas centradas,El negativo en papel separa el texto del mismo. */
+/** 系统提示:居中小字,纸色底片把正文和它分开。 */
 @Composable
 private fun SystemNoticeRow(message: ChatMessageUi) {
     val colors = MiniPhoneTheme.colors
@@ -277,7 +281,7 @@ private fun SystemNoticeRow(message: ChatMessageUi) {
         contentAlignment = Alignment.Center,
     ) {
         Text(
-            text = message.content,
+            text = sentinelText(message.content),
             style = typography.timestamp.copy(color = colors.textSecondary),
             textAlign = TextAlign.Center,
             modifier = Modifier
@@ -288,7 +292,7 @@ private fun SystemNoticeRow(message: ChatMessageUi) {
     }
 }
 
-/** separación de tiempo:Una línea de texto de tiempo centrado. */
+/** 时间分隔:一行居中的时间文本。 */
 @Composable
 internal fun ChatTimeDividerRow(at: Long) {
     val colors = MiniPhoneTheme.colors
@@ -301,15 +305,16 @@ internal fun ChatTimeDividerRow(at: Long) {
         contentAlignment = Alignment.Center,
     ) {
         Text(
-            text = MiniPhoneTimeFormat.separator(at),
+            text = MiniPhoneTimeFormat.separator(LocalContext.current, at),
             style = typography.timestamp.copy(color = colors.textSecondary),
         )
     }
 }
 
-/** \"La otra parte está escribiendo…\":Hay tres puntos saltadores en la burbuja del lado del oponente. */
+/** 「对方正在输入…」:对方一侧的气泡里三个跳动的点。 */
 @Composable
 internal fun ChatTypingRow(peerName: String, peerAvatarUri: String?, showName: Boolean = false) {
+    val context = LocalContext.current
     val colors = MiniPhoneTheme.colors
     val dimens = MiniPhoneTheme.dimens
     val typography = MiniPhoneTheme.typography
@@ -318,14 +323,14 @@ internal fun ChatTypingRow(peerName: String, peerAvatarUri: String?, showName: B
         modifier = Modifier
             .fillMaxWidth()
             .testTag(MiniPhoneChatTags.TYPING)
-            .semantics { contentDescription = TYPING_TEXT }
+            .semantics { contentDescription = context.getString(TYPING_TEXT_RES) }
             .padding(horizontal = dimens.pageMargin, vertical = 4.dp),
         verticalAlignment = Alignment.Top,
     ) {
         MiniPhoneChatAvatar(name = peerName, avatarUri = peerAvatarUri, size = dimens.avatarBubble)
         Spacer(Modifier.width(BubbleAvatarGap))
         Column(horizontalAlignment = Alignment.Start) {
-            // Escribe tu nombre en el grupo.:Cuando otra persona escribe en la misma ronda,Cambie esta línea en consecuencia,Ambas sentencias no serán atribuidas a la misma persona.
+            // 群里写名字:同一轮里换一个人打字时,这一行跟着换,不会两句话都归到同一个人头上
             if (showName && peerName.isNotBlank()) {
                 Text(
                     text = peerName,
@@ -350,9 +355,9 @@ internal fun ChatTypingRow(peerName: String, peerAvatarUri: String?, showName: B
 }
 
 /**
- * "La otra parte está hurgando…":Genera una línea que aparece encima de la burbuja.
+ * 「对方正在翻找…」:生成中显示在气泡上方的一行。
  *
- * Solo escribe una oración,Sin marcas de herramientas;Después de que el texto caiga o falle, la lista lo completará en toda la línea.
+ * 只写一句人话,不带任何工具痕迹;文本落地或失败后由列表把它整行收起。
  */
 @Composable
 internal fun ChatActivityRow(kind: MpActivityKind) {
@@ -367,13 +372,13 @@ internal fun ChatActivityRow(kind: MpActivityKind) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            text = MiniPhoneActivityText.of(kind),
+            text = stringResource(MiniPhoneActivityText.resOf(kind)),
             style = typography.timestamp.copy(color = colors.textSecondary),
         )
     }
 }
 
-/** Los tres puntos se iluminan y flotan en secuencia.,Complétalo en un ciclo. */
+/** 三个点依次亮起并上浮,一个周期内走完一遍。 */
 @Composable
 private fun TypingDots() {
     val ink = MiniPhoneTheme.colors.textSecondary
@@ -405,10 +410,10 @@ private fun TypingDots() {
     }
 }
 
-/** Se corrigió el espacio entre avatar y burbuja. */
+/** 头像与气泡之间的固定间距。 */
 private val BubbleAvatarGap = 8.dp
 
-/** La distancia entre el nombre del hablante del grupo y la burbuja. */
+/** 群里发言人名字与气泡之间的间距。 */
 private val SenderNameGap = 2.dp
 private val StatusGap = 6.dp
 private val SendFailRadius = 4.dp
@@ -417,16 +422,16 @@ private val BubbleHorizontalPadding = 12.dp
 private val BubbleVerticalPadding = 8.dp
 private val SystemNoticeRadius = 6.dp
 
-/** Doblar más que este número de palabras,Déle una \"expansión\" después de doblar. */
+/** 超过这个字数折叠,折叠后给一个「展开」。 */
 private const val COLLAPSE_THRESHOLD: Int = 300
 
-private const val EXPAND_ACTION: String = "Expandir"
-private const val COLLAPSE_ACTION: String = "cerrar"
+private val EXPAND_ACTION_RES: Int = R.string.mp_chat_expand
+private val COLLAPSE_ACTION_RES: Int = R.string.mp_chat_collapse
 private const val ELLIPSIS: String = "…"
-private const val SENDING_TEXT: String = "Enviando"
+private val SENDING_TEXT_RES: Int = R.string.mp_chat_sending
 private const val SEND_FAILED_MARK: String = "!"
-private const val SEND_FAILED_TEXT: String = "No emitido,Inténtalo de nuevo"
-private const val TYPING_TEXT: String = "La otra parte está escribiendo…"
+private val SEND_FAILED_TEXT_RES: Int = R.string.mp_chat_send_failed
+private val TYPING_TEXT_RES: Int = R.string.mp_chat_typing
 private const val TYPING_LABEL: String = "mp-typing"
 private const val TYPING_PHASE_LABEL: String = "mp-typing-phase"
 

@@ -17,8 +17,8 @@ class MessageBubbleLayoutTest {
     fun user_content_keeps_its_bubble_surface() {
         val layout = messageBubbleLayout(MessageBubbleRole.USER)
 
-        // v2.6.6: El ancho de la burbuja del usuario se redujo de 0,78 a 0,85.
-        // Los mensajes largos pueden tener más palabras por línea para que ya no parezcan abarrotados.
+        // v2.6.6: 用户气泡宽度从 0.78 放宽到 0.85，
+        // 长消息每行能多排一些字，不再显得拥挤。
         assertEquals(0.85f, layout.widthFraction)
         assertEquals(true, layout.hasOpaqueOuterSurface)
     }

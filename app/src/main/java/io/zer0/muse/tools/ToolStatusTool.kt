@@ -4,34 +4,34 @@ import io.zer0.muse.automation.core.AutomationManager
 import io.zer0.muse.tools.ToolRequirements.Channel
 
 /**
- * v2.6.7: tool_status —— Dígale al modelo una vez "lo que realmente se puede utilizar ahora".
+ * v2.6.7: tool_status —— 一次告诉模型「现在真正能用什么」。
  *
- * ## por qué es necesario
+ * ## 为什么需要它
  *
- * Las palabras originales de autoexamen del asistente: "206 herramienta y sin mapa. Al principio no tenía idea de lo que tenía;
- * Es a través de la consulta vacía find_tools que obtenemos la tabla completa. engranajes y'puedo usar'No importa. "
+ * 助手自审原话：「206 个工具，而且没有地图。我一开始根本不知道自己有什么，
+ * 是靠 find_tools 空查询才拿到全表。档位和'我能不能用'没关系。」
  *
- * El problema de la situación actual no es que haya pocas herramientas;**límites poco claros**:schema Hay más de 200 nombres en él,
- * pero que depende de la accesibilidad/Shizuku/Root El lote debe fallar cuando el canal no esté listo.
- * El modelo sólo puede saber cuándo choca contra una pared al llamarlo. Esto producirá la frase "Haré clic en él por ti" y luego fallará en el acto. ——
- * Daña más la experiencia que no ofrecerla en absoluto.
+ * 现状的问题不是工具少，是**边界不清**：schema 里有 200+ 个名字，
+ * 但其中依赖无障碍/Shizuku/Root 的那批在通道未就绪时必然失败。
+ * 模型只能在调用时撞墙才知道，这会产出一句「我帮你点一下」然后当场失败 ——
+ * 比根本不提供更伤体验。
  *
- * Esta herramienta separa "registrados" y "ya disponibles" e informa:
- *  - usable: Se puede convocar esta ronda (incluidas las herramientas en la aplicación y los canales están listos)
- *  - blocked: Si te has registrado pero el canal no está listo, ¿qué falta y cómo abrirlo?
+ * 本工具把「已注册」和「现在能用」拆开报：
+ *  - usable：本轮真能调用的（含应用内工具 + 通道已就绪的）
+ *  - blocked：已注册但通道未就绪的，附缺什么、怎么开
  *
- * De esta forma, el modelo puede saber hasta qué punto tiene las manos y los pies atados antes de actuar, en lugar de prometer primero y luego fracasar.
+ * 这样模型在动手前就能知道自己手脚被绑到什么程度，而不是先许诺再失败。
  */
 object ToolStatusTool {
 
-    /** Cada línea de la lista de bloqueados puede enumerar como máximo algunos nombres de herramientas para evitar que una línea sea demasiado larga. */
+    /** 受阻清单每行最多列几个工具名，避免一行过长。 */
     private const val BLOCKED_PREVIEW_LIMIT = 14
 
     fun toolDef(): ToolRegistry.ToolDef = ToolRegistry.ToolDef(
         name = "tool_status",
-        description = "Informar las herramientas que realmente se pueden llamar en este momento.,Hay dos categorías: \"disponible\" y \"bloqueado por permisos\"." +
-            "Cualquier operación a nivel de dispositivo confirmada(Haga clic, deslice, lea la pantalla,shell)ajustarlo antes," +
-            "Evite reclamar algo que no puede hacer. Devolver el estado listo de cada canal,Y qué herramientas hay que abrir y que están bloqueadas.",
+        description = "报告此刻真正可调用的工具,分「可用」与「被权限挡住」两类。" +
+            "在承诺任何设备级操作(点击、滑动、读屏、shell)之前先调它," +
+            "避免声称自己做不到的事。返回各通道就绪状态,以及被挡住的工具需要开启什么。",
         parameters = mapOf(
             "detail" to "Optional. 'summary' (default) = counts plus blocked list; 'full' = also list every usable tool name.",
         ),
@@ -41,12 +41,12 @@ object ToolStatusTool {
     )
 
     /**
-     * Ejecutar.
+     * 执行。
      *
-     * @param args Parámetros (detail)
-     * @param registry Registro de herramientas (utilizado para enumerar herramientas registradas)
-     * @param automation Administrador de automatización (para leer el estado del canal)
-     * @param runtimePermissionChecks Sonda de permisos de tiempo de ejecución único (contacts/sms/notification etc)
+     * @param args 参数（detail）
+     * @param registry 工具注册表（用于枚举已注册工具）
+     * @param automation 自动化管理器（用于读通道状态）
+     * @param runtimePermissionChecks 单项运行时权限探针（contacts/sms/notification 等）
      */
     suspend fun execute(
         args: Map<String, String>,
@@ -61,27 +61,27 @@ object ToolStatusTool {
         val (usable, blocked) = registered.partition { ToolRequirements.isUsable(it, channels) }
 
         return buildString {
-            appendLine("## Disponibilidad de herramientas (tiempo real)")
+            appendLine("## 工具可用性（实时）")
             appendLine()
             appendChannelSection(state, runtimePermissionChecks)
             appendLine()
-            appendLine("Herramienta registrada ${registered.size} :Disponible ${usable.size}, debido a que los permisos están bloqueados ${blocked.size}.")
+            appendLine("已注册工具 ${registered.size} 个：可用 ${usable.size}，因权限受阻 ${blocked.size}。")
             if (blocked.isNotEmpty()) {
                 appendLine()
-                appendLine("### Actualmente no se puede invocar (no esté de acuerdo todavía y no lo intente)")
+                appendLine("### 当前不可调用（先别答应，也不要试）")
                 appendBlockedSection(blocked, channels)
                 appendLine()
-                append("Abra cualquier canal y vuelva a llamar a la herramienta para ver las actualizaciones.")
+                append("开启任一通道后重新调用本工具即可看到更新。")
             }
             if (detail == "full" && usable.isNotEmpty()) {
                 appendLine()
-                appendLine("### Actualmente disponible")
+                appendLine("### 当前可用")
                 append(usable.joinToString(", "))
             }
         }
     }
 
-    /** Combine tres capas de automatización + permisos de tiempo de ejecución individuales en un conjunto de canales disponibles. */
+    /** 把三层自动化 + 单项运行时权限合成可用通道集合。 */
     private fun buildChannels(state: AutomationManager.PermissionState, runtimePermissionChecks: Map<Channel, Boolean>): Set<Channel> =
         buildSet {
             if (state.accessibilityEnabled) add(Channel.ACCESSIBILITY)
@@ -90,45 +90,45 @@ object ToolStatusTool {
             runtimePermissionChecks.forEach { (ch, granted) -> if (granted) add(ch) }
         }
 
-    /** Segmento de estado de canal listo. */
+    /** 通道就绪状态段。 */
     private fun StringBuilder.appendChannelSection(
         state: AutomationManager.PermissionState,
         runtimePermissionChecks: Map<Channel, Boolean>,
     ) {
-        appendLine("Estado del canal:")
-        appendLine("- Accesibilidad: ${if (state.accessibilityEnabled) "Disponible" else "No encendido"}")
+        appendLine("通道状态:")
+        appendLine("- 无障碍: ${if (state.accessibilityEnabled) "可用" else "未开启"}")
         appendLine(
             "- Shell(Shizuku/adb): " +
                 if (state.shellEnabled) {
-                    "Disponible"
+                    "可用"
                 } else {
-                    "No disponible (${state.shizukuMessage})"
+                    "不可用（${state.shizukuMessage}）"
                 },
         )
-        appendLine("- Root: ${if (state.rootEnabled) "Disponible" else "No obtenido"}")
+        appendLine("- Root: ${if (state.rootEnabled) "可用" else "未获取"}")
         val granted = runtimePermissionChecks.filterValues { it }.keys
         val missing = runtimePermissionChecks.filterValues { !it }.keys
-        if (granted.isNotEmpty()) appendLine("- Se ha concedido el permiso único.: ${granted.joinToString(",") { it.label() }}")
-        if (missing.isNotEmpty()) appendLine("- Falta el permiso único: ${missing.joinToString(",") { it.label() }}")
-        appendLine("- Nivel más alto disponible: ${state.highestLevelName()}")
+        if (granted.isNotEmpty()) appendLine("- 单项权限已授予: ${granted.joinToString("、") { it.label() }}")
+        if (missing.isNotEmpty()) appendLine("- 单项权限缺失: ${missing.joinToString("、") { it.label() }}")
+        appendLine("- 最高可用层级: ${state.highestLevelName()}")
     }
 
-    /** Botón de herramienta bloqueado"lo que falta"Agrúpelos para que sea más fácil saber qué elemento puede desbloquear cuánto a la vez. */
+    /** 受阻工具按"缺什么"分组，便于一次说清开哪一项能解锁多少。 */
     private fun StringBuilder.appendBlockedSection(blocked: List<String>, channels: Set<Channel>) {
         blocked.groupBy { missingChannelsOf(it, channels) }
             .entries
             .sortedByDescending { it.value.size }
             .forEach { (missing, tools) ->
-                val label = if (missing.isEmpty()) "Otros" else missing.joinToString(" o ") { it.label() }
+                val label = if (missing.isEmpty()) "其他" else missing.joinToString(" 或 ") { it.label() }
                 val tail = if (tools.size > BLOCKED_PREVIEW_LIMIT) " …" else ""
                 appendLine(
-                    "- necesitar $label (${tools.size} ): " +
+                    "- 需要 $label （${tools.size} 个）: " +
                         tools.take(BLOCKED_PREVIEW_LIMIT).joinToString(", ") + tail,
                 )
             }
     }
 
-    /** Calcule qué canales faltan en una herramienta (para visualización grupal). Expresión única, evite devoluciones múltiples. */
+    /** 计算某工具缺哪些通道（用于分组展示）。单表达式，避免多点 return。 */
     private fun missingChannelsOf(toolName: String, available: Set<Channel>): Set<Channel> {
         val req = ToolRequirements.of(toolName)
         val missingAll = req.allOf.filterNot { it in available }.toSet()
@@ -141,16 +141,16 @@ object ToolStatusTool {
     }
 
     private fun Channel.label(): String = when (this) {
-        Channel.ACCESSIBILITY -> "Accesibilidad"
+        Channel.ACCESSIBILITY -> "无障碍"
         Channel.SHELL -> "Shizuku/ADB"
         Channel.ROOT -> "Root"
-        Channel.USAGE_STATS -> "acceso de uso"
-        Channel.NOTIFICATION_LISTENER -> "Aviso de derechos de uso"
-        Channel.CONTACTS -> "Persona de contacto"
-        Channel.SMS -> "SMS"
-        Channel.PHONE_CALL -> "telefono"
-        Channel.CALENDAR -> "Calendario"
-        Channel.LOCATION -> "Posicionamiento"
-        Channel.RUNTIME -> "permisos de tiempo de ejecución"
+        Channel.USAGE_STATS -> "使用情况访问"
+        Channel.NOTIFICATION_LISTENER -> "通知使用权"
+        Channel.CONTACTS -> "联系人"
+        Channel.SMS -> "短信"
+        Channel.PHONE_CALL -> "电话"
+        Channel.CALENDAR -> "日历"
+        Channel.LOCATION -> "定位"
+        Channel.RUNTIME -> "运行时权限"
     }
 }

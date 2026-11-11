@@ -138,10 +138,10 @@ internal fun StylePickerDialog(
     )
 }
 
-// ── Cuadro de diálogo de traducción por lotes ──
+// ── 批量翻译对话框 ──
 
 /**
- * Cuadro de diálogo de traducción por lotes — Ingrese varios párrafos de texto(un párrafo por línea),Traduce y muestra los resultados de una sola vez.
+ * 批量翻译对话框 — 输入多段文本(每行一段),一次性翻译并展示结果。
  */
 @Composable
 internal fun BatchTranslateDialog(
@@ -247,10 +247,10 @@ internal fun BatchTranslateDialog(
     )
 }
 
-// ── Cuadro de diálogo de gestión de estilos personalizados ──
+// ── 自定义风格管理对话框 ──
 
 /**
- * Cuadro de diálogo de gestión de estilos personalizados — agregar/Eliminar estilos personalizados.
+ * 自定义风格管理对话框 — 添加/删除自定义风格。
  */
 @Composable
 internal fun CustomStyleDialog(
@@ -355,10 +355,10 @@ internal fun CustomStyleDialog(
     )
 }
 
-// ── Diálogo de gestión del glosario ──
+// ── 术语表管理对话框 ──
 
 /**
- * Diálogo de gestión del glosario — agregar/Eliminar texto original→Mapeo de traducción.
+ * 术语表管理对话框 — 添加/删除原文→译文映射。
  */
 @Composable
 internal fun GlossaryDialog(

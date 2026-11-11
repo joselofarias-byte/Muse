@@ -6,15 +6,15 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Criterios para el alcance de "inicio y parada con un solo botón".
+ * 「一键启停」作用范围的判据。
  *
- * Esta función determina lo que sucede cuando el usuario hace clic en "Desactivar todo". Las consecuencias de hacer un juicio equivocado son graves:
- * Desactivar las habilidades integradas equivale a quitar todas las herramientas del modelo, pero la interfaz simplemente dice "deshabilitar todo".
+ * 这个函数决定用户点下「全部停用」时到底会发生什么。判错了后果很重：
+ * 把内置技能一起关掉，等于把模型的所有工具收走，界面上却只是一句「全部停用」。
  */
 class SkillBulkToggleTargetsTest {
 
     @Test
-    fun `Las habilidades integradas no participan en el inicio y la parada con un solo clic`() {
+    fun `内置技能不参与一键启停`() {
         val skills = listOf(
             skill(id = "read_file", impl = "read_file"),
             skill(id = "mine", impl = "read_file"),
@@ -26,8 +26,8 @@ class SkillBulkToggleTargetsTest {
     }
 
     @Test
-    fun `Las habilidades de complemento no participan en el inicio y la parada con un solo clic`() {
-        // Las habilidades del complemento comienzan y finalizan con el complemento, y los cambios independientes entrarán en conflicto con el estado del complemento.
+    fun `插件技能不参与一键启停`() {
+        // 插件技能随插件启停，单独改会和插件状态打架。
         val skills = listOf(
             skill(id = "plugin_skill", impl = "plugin:my-plugin:hello"),
             skill(id = "mine", impl = "read_file"),
@@ -39,7 +39,7 @@ class SkillBulkToggleTargetsTest {
     }
 
     @Test
-    fun `Solo las habilidades del usuario se cambiarán en lotes`() {
+    fun `只有用户自己的技能会被批量切换`() {
         val skills = listOf(
             skill(id = "read_file", impl = "read_file"),
             skill(id = "plugin_skill", impl = "plugin:p:fn"),
@@ -53,7 +53,7 @@ class SkillBulkToggleTargetsTest {
     }
 
     @Test
-    fun `Devuelve una lista vacía cuando no hay objetos intercambiables`() {
+    fun `没有可切换对象时返回空列表`() {
         val targets = bulkToggleTargets(
             listOf(skill(id = "read_file", impl = "read_file")),
             builtInIds = setOf("read_file"),

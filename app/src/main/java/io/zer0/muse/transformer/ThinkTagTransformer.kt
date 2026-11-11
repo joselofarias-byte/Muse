@@ -5,30 +5,30 @@ import io.zer0.ai.core.UIMessage
 import io.zer0.muse.util.MusePatterns
 
 /**
- * v1.131: <think>...</think> La etiqueta regex se ha migrado a io.zer0.muse.util.MusePatterns.THINK_TAG_REGEX.
- * este documento [stripThinkTags] / [ThinkTagTransformer] MusePatterns compartidos.THINK_TAG_REGEX.
+ * v1.131: <think>...</think> 标签正则已迁移到 io.zer0.muse.util.MusePatterns.THINK_TAG_REGEX。
+ * 本文件 [stripThinkTags] / [ThinkTagTransformer] 共用 MusePatterns.THINK_TAG_REGEX。
  */
 
 /**
- * v1.99: Quitar todo del texto `<think>...</think>` etiqueta,Devuelve texto puro.
+ * v1.99: 从文本中剥离所有 `<think>...</think>` 标签,返回纯净正文。
  *
- * para la ruta de traducción([TranslateViewModel] / [ChatViewModel.translateMessage]):
- * Algunos modelos de razonamiento incorporan cadenas de pensamiento en el texto.(En lugar de pasar por el canal de contenido de razonamiento),
- * Los resultados de la traducción serán traídos. `<think>...</think>` etiqueta,Mostrarlo directamente al usuario tiene una mala experiencia.
- * Esta función se utiliza para [ThinkTagTransformer] Misma regularidad,Devuelve el texto restante después de eliminar todos los bloques de pensamiento.
+ * 用于翻译路径([TranslateViewModel] / [ChatViewModel.translateMessage]):
+ * 某些推理模型把思考链内嵌在 text 中(而非走 reasoningContent 通道),
+ * 翻译结果会带上 `<think>...</think>` 标签,直接显示给用户体验很差。
+ * 本函数用与 [ThinkTagTransformer] 相同的正则,剥离所有 think 块后返回剩余文本。
  *
- * - `<think>pensar</think>Responder` → "Responder"
- * - `<think>pensar</think>` (Sin texto) → ""
- * - No pensar en etiqueta → Texto original
+ * - `<think>思考</think>回复` → "回复"
+ * - `<think>思考</think>` (无正文) → ""
+ * - 无 think 标签 → 原文
  */
 fun stripThinkTags(text: String): String {
     if (text.isBlank()) return ""
     if (!text.contains("<think", ignoreCase = true)) return text
     val matches = MusePatterns.THINK_TAG_REGEX.findAll(text).toList()
     if (matches.isEmpty()) {
-        // v1.0.74: No hay bloque cerrado pero existe <think> comienzo — no cerrado/truncar escena
-        // (Algunos modelos solo emiten <think> El contenido de la inferencia se trunca.). En este momento, se trunca desde la etiqueta hasta el final.,
-        // Evite que el contenido inferencial quede como texto principal(Título/diario/El contenido visible para el usuario, como las actualizaciones, está contaminado.).
+        // v1.0.74: 没有闭合块但存在 <think> 开头 — 未闭合/截断场景
+        // (部分模型只输出 <think> 推理内容就被截断)。此时从标签处截断到末尾,
+        // 避免推理内容残留为正文(标题/日记/动态等用户可见内容被污染)。
         val idx = text.indexOf("<think", ignoreCase = true)
         return if (idx >= 0) text.substring(0, idx).trim() else text
     }
@@ -40,7 +40,7 @@ fun stripThinkTags(text: String): String {
     }
     sb.append(text, lastEnd, text.length)
     var result = sb.toString()
-    // v1.0.74: Es posible que aún queden residuos sin cerrar después de retirar el bloque cerrado.(Como por ejemplo <think>A</think>Texto<think>B)
+    // v1.0.74: 剥完闭合块后仍可能有未闭合残留(如 <think>A</think>正文<think>B)
     val leftover = result.indexOf("<think", ignoreCase = true)
     if (leftover >= 0) {
         result = result.substring(0, leftover)
@@ -49,13 +49,13 @@ fun stripThinkTags(text: String): String {
 }
 
 /**
- * Extracción de un solo viaje [content] todos los partidos en [regex] de bloques.
+ * 单趟抽取 [content] 中所有匹配 [regex] 的块。
  *
- * - Un único findAll recopila todas las coincidencias,Concatenar cadenas en una sola pasada(Evite el bucle removeRange O(n*k) copiar)
- * - Elimina el caparazón de la etiqueta del contenido independientemente de si el grupo de captura está vacío(Las etiquetas vacías también se eliminan)
- * - Varias piezas de contenido están conectadas con saltos de línea.,Filtrado de bloques vacíos
+ * - 单次 findAll 收集全部匹配,再单趟拼接字符串(避免循环 removeRange 的 O(n*k) 拷贝)
+ * - 无论捕获组是否为空都从 content 移除标签外壳(空标签也剥离)
+ * - 多块内容用换行连接,空块过滤
  *
- * @return Pair(Extraer contenido, texto despojado);Cuando el contenido extraído está vacío, la primera mitad se null
+ * @return Pair(抽取内容, 剥离后的文本);抽取内容为空时前半段为 null
  */
 private fun extractTagBlocks(content: String, regex: Regex): Pair<String?, String> {
     val matches = regex.findAll(content).toList()
@@ -77,30 +77,30 @@ private fun extractTagBlocks(content: String, regex: Regex): Pair<String?, Strin
 }
 
 /**
- * B10: Una función pura y liviana para eliminar en tiempo real la transmisión de ThinkTag.
+ * B10: 流式 ThinkTag 实时剥离的轻量纯函数。
  *
- * lógico Y [ThinkTagTransformer.visualTransform] completamente consistente,Extracto como función pura sin efectos secundarios.,
- * Para que la ruta de actualización de la interfaz de usuario de limitación de transmisión de ChatViewModel se llame directamente(Ya no use la tubería completa de TransformerPipeline):
- *  - cerrado `<think>...</think>` Extraer todo como reasoning
- *  - no cerrado en flujo `<think>foo`(todavía no `</think>`)Trata a foo como reasoning,
- *    Permita que los usuarios vean el proceso de pensamiento en tiempo real
+ * 逻辑与 [ThinkTagTransformer.visualTransform] 完全一致,抽为无副作用纯函数,
+ * 供 ChatViewModel 的流式节流 UI 更新路径直接调用(不再走 transformerPipeline 全管道):
+ *  - 已闭合 `<think>...</think>` 全部抽出为 reasoning
+ *  - 流式中未闭合的 `<think>foo`(尚无 `</think>`)把 foo 也作为 reasoning,
+ *    让用户实时看到思考过程
  *
- * idempotente: [existingReasoning] Si no está vacío, devuélvelo como está.(Contenido del canal de inferencia existente,Sin extracción repetida).
- * Ninguno `<think>` Devolver como está cuando está marcado(camino rápido,Cero cambios de comportamiento).
+ * 幂等: [existingReasoning] 非空时原样返回(已有推理通道内容,不重复抽取)。
+ * 无 `<think>` 标记时原样返回(快速路径,零行为变化)。
  *
- * Nota: guardamonte(`<think>`)con [ThinkTagTransformer.visualTransform] ser consistente;
- * `<thinking>` Variantes como estas se manejan mediante la ruta de limpieza completa de updateAssistant,Esta función no asume el control.
+ * 注意: 触发守卫(`<think>`)与 [ThinkTagTransformer.visualTransform] 保持一致;
+ * `<thinking>` 等变体由 updateAssistant 的完整清洗路径处理,本函数不接管。
  *
- * @return Pair(reasoning, content);reasoning Cuando no hay contenido, es null
+ * @return Pair(reasoning, content);reasoning 无内容时为 null
  */
 fun splitThinkTagsForStreaming(content: String, existingReasoning: String? = null): Pair<String?, String> {
     if (existingReasoning != null) return existingReasoning to content
     if (!content.contains("<think>", ignoreCase = true)) return null to content
 
-    // 1. Saque primero los cerrados. <think>...</think> bloquear
+    // 1. 先抽出已闭合的 <think>...</think> 块
     val (extractedClosed, remainingAfterClosed) = extractTagBlocks(content, MusePatterns.THINK_TAG_REGEX)
 
-    // 2. Manejo especial de streaming: Detectar abierto <think>foo(Ninguno </think>),Mostrar foo también como razonamiento
+    // 2. 流式特殊处理: 检测未闭合的 <think>foo(无 </think>),把 foo 也作为 reasoning 显示
     val unclosedIdx = remainingAfterClosed.indexOf("<think>", ignoreCase = true)
     val extractedUnclosed: String?
     val finalContent: String
@@ -126,45 +126,45 @@ fun splitThinkTagsForStreaming(content: String, existingReasoning: String? = nul
 }
 
 /**
- * Think etiqueta Transformer(Phase 8.1 H1).
+ * Think 标签 Transformer(Phase 8.1 H1)。
  *
- * Coloque el contenido del mensaje ASISTENTE en `<think>...</think>` Etiqueta extraída a [UIMessage.reasoning] campo,
- * Haga que la interfaz de usuario sea plegable para mostrar la cadena de pensamiento,content Sólo se muestran las respuestas finales.
+ * 把 ASSISTANT 消息 content 里的 `<think>...</think>` 标签抽出到 [UIMessage.reasoning] 字段,
+ * 让 UI 可以折叠展示思考链,content 只显示最终回复。
  *
- * tiempo de procesamiento: Mensajes históricos del ASISTENTE(persistió)Preprocesamiento antes de enviar a LLM.
- * El proveedor envía directamente el procesamiento mental de la respuesta de transmisión. ReasoningDelta,No camines con este Transformer.
+ * 处理时机: 历史 ASSISTANT 消息(已持久化的)发往 LLM 前的预处理。
+ * 流式响应的 thinking 处理由 Provider 直接发 ReasoningDelta,不走此 Transformer。
  *
- * compatibles:
- *  - `<think>pensar</think>Responder` → reasoning="pensar", content="Responder"
- *  - `<think>pensar</think>` (Sin texto) → reasoning="pensar", content=""
- *  - `<think></think>` (etiqueta vacía) → reasoning=null, content=texto restante(Las etiquetas vacías también se eliminarán)
- *  - Etiquetas de pensamiento inigualables(Sin cierre) → Déjalo como está
- *  - Ya tengo campo de razonamiento. → → saltar(Sin extracción repetida)
+ * 兼容:
+ *  - `<think>思考</think>回复` → reasoning="思考", content="回复"
+ *  - `<think>思考</think>` (无正文) → reasoning="思考", content=""
+ *  - `<think></think>` (空标签) → reasoning=null, content=剩余正文(空标签也会被剥离)
+ *  - 不匹配的 think 标签(无闭合) → 原样保留
+ *  - 已有 reasoning 字段的 → → 跳过(不重复抽取)
  *
- * Nota: Este Transformer no admite etiquetas de pensamiento anidadas,La expresión regular no codiciosa solo coincidirá con la etiqueta de cierre más interna.
- * Muse Los productos no se anidarán,Por lo tanto, no se realiza ningún procesamiento de máquina de estados.
+ * 注意: 本 Transformer 不支持嵌套 think 标签,非贪婪正则只会匹配最内层闭合标签。
+ * Muse 产物不会出现嵌套,故不做状态机处理。
  *
- * Consejos de seguridad: reasoning como texto original,El contenido no está desinfectado.,UI La capa de renderizado debe escaparse por sí sola.(protegerse contra XSS).
+ * 安全提示: reasoning 为原始文本,内容未净化,UI 渲染层需自行转义(防 XSS)。
  *
- * Escrito de forma independiente(Operaciones regulares + cadenas). Desacoplar la lógica de extracción de MoodTagTransformer,Cada uno implementa el mismo extractTag.
+ * 独立编写(正则 + 字符串操作)。抽取逻辑与 MoodTagTransformer 解耦,各自实现相同 extractTag。
  */
 class ThinkTagTransformer : Transformer {
 
     override val name: String = "ThinkTag"
 
     /**
-     * Partido normal `<think>...</think>` etiqueta(no codicioso,a través de líneas,ignorar caso).
-     * Usar el modo de una sola línea(dotAll)Dejar . coincidir con nuevas líneas.
+     * 正则匹配 `<think>...</think>` 标签(非贪婪,跨行,忽略大小写)。
+     * 用 single-line 模式(dotAll)让 . 匹配换行。
      */
     private val thinkRegex = MusePatterns.THINK_TAG_REGEX
 
     /**
-     * Extracción de etiquetas universales:de [content] Descúbrelo en [regex] Todos los bloques que coinciden.
-     *  - [existing] Saltar directamente si no está vacío.(Volver al original content),Mantener los valores de campo existentes
-     *  - De lo contrario, findAll recopila todas las coincidencias de una sola vez.:Eliminar etiquetas del contenido independientemente de si el grupo está vacío(Las etiquetas vacías también se eliminan),
-     *    Varias piezas de contenido están conectadas con saltos de línea.,Evite el bucle removeRange O(n*k) copiar
+     * 通用标签抽取:从 [content] 中找出 [regex] 匹配的所有块。
+     *  - [existing] 非空时直接跳过(返回原 content),保留已有字段值
+     *  - 否则一次性 findAll 收集所有匹配:无论 group 是否为空都从 content 移除标签(空标签也剥离),
+     *    多块内容用换行连接,避免循环 removeRange 的 O(n*k) 拷贝
      *
-     * @return Pair(extracted valor, nuevo después del desmontaje content)
+     * @return Pair(extracted 值, 剥离后的新 content)
      */
     private fun extractTag(content: String, regex: Regex, existing: String?): Pair<String?, String> {
         if (existing != null) return existing to content
@@ -173,12 +173,12 @@ class ThinkTagTransformer : Transformer {
 
     override suspend fun transform(messages: List<UIMessage>, context: TransformContext): List<UIMessage> = messages.map { msg ->
         if (msg.role != MessageRole.ASSISTANT) return@map msg
-        if (msg.reasoning != null) return@map msg // Ya reasoning,saltar
-        if (!msg.content.contains("<think>", ignoreCase = true)) return@map msg // camino rápido
+        if (msg.reasoning != null) return@map msg // 已有 reasoning,跳过
+        if (!msg.content.contains("<think>", ignoreCase = true)) return@map msg // 快速路径
 
         val (extracted, remaining) = extractTag(msg.content, thinkRegex, null)
         if (extracted == null && remaining == msg.content) {
-            msg // Ninguna etiqueta de pensamiento completa coincide,Volver como está
+            msg // 没匹配到完整 think 标签,原样返回
         } else {
             msg.copy(
                 reasoning = extracted,
@@ -188,24 +188,24 @@ class ThinkTagTransformer : Transformer {
     }
 
     /**
-     * Transformación visual en streaming:Retire la etiqueta de pensamiento en el mensaje ASISTENTE al campo de razonamiento en tiempo real,
-     * Permitir que la interfaz de usuario colapse y muestre la cadena de pensamiento durante el proceso de transmisión(content Mostrar solo texto).
+     * 流式视觉转换:把 ASSISTANT 消息中的 think 标签实时剥离到 reasoning 字段,
+     * 让 UI 在流式过程中即可折叠展示思考链(content 只显示正文)。
      *
-     * con [transform] diferencia:
-     *  - [transform] Sólo proceso cerrado `<think>...</think>`(Preprocesamiento antes de enviar a LLM)
-     *  - [visualTransform] Manejo adicional de flujos no cerrados `<think>foo`(Ninguno `</think>`),
-     *    Mostrar foo también como razonamiento,Permitir a los usuarios ver el proceso de pensamiento de LLM en tiempo real
+     * 与 [transform] 的差异:
+     *  - [transform] 只处理已闭合的 `<think>...</think>`(发往 LLM 前的预处理)
+     *  - [visualTransform] 额外处理流式中未闭合的 `<think>foo`(无 `</think>`),
+     *    把 foo 也作为 reasoning 显示,让用户实时看到 LLM 的思考过程
      *
-     * Nota: Este método devuelve una nueva lista.(Para renderizado de interfaz de usuario),El mensaje real en poder de la persona que llama no se modifica.
-     * Se omiten los mensajes que ya tienen campos de razonamiento.(Evite sobrescribir contenido ya extraído).
+     * 注意: 本方法返回的是新列表(供 UI 渲染),不修改调用方持有的实际消息。
+     * 已有 reasoning 字段的消息跳过(避免覆盖已抽取的内容)。
      */
     override suspend fun visualTransform(messages: List<UIMessage>, context: TransformContext): List<UIMessage> = messages.map { msg ->
         if (msg.role != MessageRole.ASSISTANT) return@map msg
-        if (msg.reasoning != null) return@map msg // Ya reasoning,saltar
-        // Función pura extraída por el delegado B10,Comparte la misma lógica de eliminación con la ruta de transmisión de ChatViewModel
+        if (msg.reasoning != null) return@map msg // 已有 reasoning,跳过
+        // 委托 B10 抽出的纯函数,与 ChatViewModel 流式路径共用同一份剥离逻辑
         val (reasoning, content) = splitThinkTagsForStreaming(msg.content, msg.reasoning)
         if (reasoning == msg.reasoning && content == msg.content) {
-            msg // Nada que extraer,Volver como está
+            msg // 没有任何可抽取内容,原样返回
         } else {
             msg.copy(reasoning = reasoning, content = content)
         }

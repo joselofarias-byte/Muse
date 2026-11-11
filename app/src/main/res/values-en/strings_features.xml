@@ -72,11 +72,10 @@
     <string name="groupchat_member_required">Please select at least one member</string>
     <string name="groupchat_team_optional">Link team (optional)</string>
     <string name="groupchat_no_team">Not linked</string>
-    <string name="groupchat_selected_members">%1$d members selected</string>
     <string name="groupchat_create_btn">Create</string>
 
     <!-- ===== ui/account ===== -->
-    <string name="account_default_user">Muse User</string>
+    <string name="account_default_user">Musa User</string>
     <string name="account_loading">Please wait…</string>
     <!-- v2.x: Edit profile page (no login/register UI, local avatar + name only) -->
     <string name="account_edit_profile">Edit Profile</string>
@@ -132,6 +131,13 @@
     <string name="schedule_cancel">Cancel</string>
     <string name="schedule_msg_cancel">Cancel scheduled message</string>
     <string name="schedule_err_name_required">Please enter a task name</string>
+    <string name="schedule_time_daily">Daily time</string>
+    <string name="schedule_time_weekly">Weekly time</string>
+    <string name="schedule_time_once">Run at</string>
+    <string name="schedule_time_unset">Tap to pick a time</string>
+    <string name="schedule_err_once_time_required">Pick when this one-off task should run</string>
+    <string name="schedule_status_running">Running</string>
+    <string name="schedule_status_completed">Completed</string>
     <string name="schedule_err_content_required">Please enter run content</string>
     <string name="schedule_err_cron_invalid">Invalid cron expression. Please check or use a preset</string>
     <string name="schedule_assistant">Assistant</string>
@@ -145,7 +151,7 @@
     <string name="schedule_show_advanced">Show advanced automation</string>
     <string name="schedule_hide_advanced">Hide advanced automation</string>
 
-    <!-- Correcciones en la interfaz (i18n-5): describeCron human-readable schedule descriptions -->
+    <!-- 前端修复 (i18n-5): describeCron human-readable schedule descriptions -->
     <string name="schedule_cron_daily">Every day at %1$s</string>
     <string name="schedule_cron_hourly">Every hour at minute %1$s</string>
     <string name="schedule_cron_every_minute">Every minute</string>
@@ -187,7 +193,7 @@
     <string name="schedule_action_tool_id">Tool ID</string>
     <string name="schedule_action_tool_id_placeholder">e.g. quick_note_add</string>
     <string name="schedule_action_tool_params">Tool params (JSON)</string>
-    <string name="schedule_action_tool_params_placeholder">e.g. {「title":「daily report"}</string>
+    <string name="schedule_action_tool_params_placeholder">e.g. {「title」:「daily report」}</string>
     <string name="schedule_action_notify_title">Notification title</string>
     <string name="schedule_action_notify_message">Notification message</string>
     <string name="schedule_chain_title">Chain tasks (trigger after success)</string>
@@ -232,7 +238,7 @@
     <string name="quick_notes_export_folder">Folder: %1$s</string>
     <string name="quick_notes_export_updated_at">Updated: %1$s</string>
     <string name="quick_notes_delete_permanent_title">Delete permanently</string>
-    <string name="quick_notes_delete_permanent_confirm">This cannot be undone. Permanently delete 「%1$s"?</string>
+    <string name="quick_notes_delete_permanent_confirm">This cannot be undone. Permanently delete 「%1$s」?</string>
     <string name="quick_notes_clear_trash">Clear trash</string>
     <string name="quick_notes_clear_trash_confirm">This will permanently delete all %1$d notes in trash. This cannot be undone.</string>
     <string name="quick_notes_trash_count">Trash: %1$d</string>
@@ -279,6 +285,8 @@
     <string name="knowledge_zip_progress">Extracting and importing… (%1$d imported)</string>
     <string name="knowledge_zip_done">Created knowledge base %1$s: %2$d documents imported, %3$d skipped</string>
     <string name="knowledge_zip_empty">No importable documents found in the archive</string>
+    <!-- 回滚没清干净时说这句：否则列表里留着一个打不开的条目，而提示只说「没有可导入的文档」，用户两句对不上 -->
+    <string name="knowledge_zip_empty_leftover">No importable documents in the archive, and the temporary entry was not removed: delete “%1$s” from the list manually</string>
     <string name="knowledge_import_empty">Import failed: file content is empty</string>
     <!-- v1.0.47 P7-3: File size friendly prompt -->
     <string name="knowledge_file_too_large_title">File Too Large</string>
@@ -303,7 +311,7 @@
     <string name="knowledge_doc_chunks"> · %1$d chunks</string>
     <string name="knowledge_doc_not_indexed"> · Not indexed</string>
 
-    <!-- Correcciones en la interfaz (i18n-7): PDF metadata card -->
+    <!-- 前端修复 (i18n-7): PDF metadata card -->
     <string name="knowledge_doc_info">Document info</string>
     <string name="knowledge_doc_outline">Outline (%1$d items)</string>
     <string name="knowledge_sort_updated">By updated time</string>
@@ -336,7 +344,7 @@
     <string name="stats_dashboard_subtitle">%1$d sessions · %2$d active days</string>
     <string name="stats_export_cd">Export stats summary</string>
     <string name="stats_export_chooser">Share stats summary</string>
-    <string name="stats_export_subject">Muse stats summary</string>
+    <string name="stats_export_subject">Musa stats summary</string>
     <string name="stats_empty_title">Stats will appear here after you start chatting</string>
     <string name="stats_empty_action">Start a conversation</string>
     <string name="stats_view_all">View all</string>
@@ -356,7 +364,7 @@
     <string name="stats_hourly_chart_cd">24-hour message distribution bar chart</string>
     <string name="stats_other">Other</string>
     <string name="stats_model_donut_cd">Model usage donut chart</string>
-    <string name="stats_summary_header">===== Muse stats summary =====</string>
+    <string name="stats_summary_header">===== Musa stats summary =====</string>
     <string name="stats_summary_total_sessions">Total sessions: %1$d</string>
     <string name="stats_summary_total_messages">Total messages: %1$d</string>
     <string name="stats_summary_ai_replies">AI replies: %1$d</string>
@@ -409,6 +417,7 @@
     <string name="subagent_task_completed">Completed</string>
     <string name="subagent_task_failed">Failed</string>
     <string name="subagent_task_cancel">Cancel</string>
+    <string name="subagent_task_close_cd">Close subagent task</string>
 
     <!-- ===== ui/artifact ===== -->
     <string name="artifact_untitled">Untitled</string>
@@ -503,13 +512,13 @@
     <string name="groupchat_tool_context">Group context</string>
     <string name="groupchat_tool_mention">@Mention</string>
 
-    <!-- Correcciones en la interfaz (i18n-1/2): group chat detail background desc, clear memory -->
+    <!-- 前端修复 (i18n-1/2): group chat detail background desc, clear memory -->
     <string name="groupchat_bg_cd">Chat background</string>
     <string name="groupchat_clear_memory">Clear group memory</string>
     <string name="groupchat_clear_memory_confirm">Clear this group\'s memory? Assistants will no longer reference past discussion summaries (including tone and style).</string>
     <string name="groupchat_clear_memory_btn">Clear</string>
-    <!-- v2.x: Cree rápidamente una entrada para escribir un chat grupal -->
-    <!-- v2.x: Archivo de chat grupal -->
+    <!-- v2.x: 写作群聊快速创建入口 -->
+    <!-- v2.x: 群聊归档 -->
     <string name="groupchat_archive">Archive</string>
     <string name="groupchat_unarchive">Unarchive</string>
 
@@ -577,11 +586,11 @@
     <string name="groupchat_streaming_title">Typing...</string>
     <string name="quick_notes_settings_title">Quick Capture Settings</string>
     <string name="quick_capture_swipe_title">Show swipe quick capture</string>
-    <string name="quick_capture_swipe_desc">Show the quick capture handle at the right edge inside Muse</string>
+    <string name="quick_capture_swipe_desc">Show the quick capture handle at the right edge inside Musa</string>
     <string name="quick_capture_overlay_title">Enable system overlay</string>
-    <string name="quick_capture_overlay_desc">Keep the floating capsule available after leaving Muse for quick capture</string>
+    <string name="quick_capture_overlay_desc">Keep the floating capsule available after leaving Musa for quick capture</string>
     <string name="quick_capture_overlay_permission_error">Unable to open overlay permission settings</string>
-    <string name="quick_capture_overlay_hint">The overlay is off by default. When enabled, the system must allow Muse to display over other apps.</string>
+    <string name="quick_capture_overlay_hint">The overlay is off by default. When enabled, the system must allow Musa to display over other apps.</string>
     <string name="chat_background_cd">Chat background</string>
     <string name="chat_analyzing_image">Analyzing image %1$d/%2$d…</string>
     <string name="msg_compressed">Compressed</string>
@@ -673,11 +682,11 @@
     <!-- Background wake diagnostics: whether the system actually has wakeups queued for Muse (read-only). -->
     <string name="wake_diagnostics_open">Background wake status</string>
     <string name="wake_diagnostics_title">Background wake status</string>
-    <string name="wake_diagnostics_subtitle">Reads the real schedule in the system queue. Read-only, nothing is rescheduled.</string>
+    <string name="wake_diagnostics_subtitle">These are the app\'s background jobs as the system actually scheduled them, including built-in backup and summary work - they are not the tasks you created. Read-only; nothing is rescheduled.</string>
     <string name="wake_diagnostics_refresh">Reload</string>
     <string name="wake_diagnostics_copy">Copy snapshot</string>
     <string name="wake_diagnostics_copied">Snapshot copied</string>
-    <string name="wake_diagnostics_hint">For “ran but failed”, check failed/skipped/missed in the task history. “Never ran at all” is usually not registered, blocked by the system, or the master switch is off — as shown here.</string>
+    <string name="wake_diagnostics_hint">For “ran but failed”, check failed／skipped／missed in the task history. “Never ran at all” is usually not registered, blocked by the system, or the master switch is off — as shown here.</string>
     <string name="wake_diagnostics_total_control">Background work: %1$s</string>
     <string name="wake_diagnostics_total_control_on">on</string>
     <string name="wake_diagnostics_total_control_off">off (wakeups still happen, executors return early)</string>
@@ -726,4 +735,71 @@
     <string name="wake_stop_user">User action</string>
     <string name="wake_stop_system_processing">System processing</string>
     <string name="wake_stop_launch_time">Estimated launch time changed</string>
+    <string name="plugin_permission_section_title">Capabilities and permissions</string>
+    <string name="plugin_permission_hint">Undeclared or disabled capabilities are rejected outright; toggles take effect immediately.</string>
+    <string name="plugin_permission_pending_title">This plugin declared new capabilities after an update</string>
+    <string name="plugin_permission_approve">Approve new</string>
+    <string name="plugin_permission_none">This plugin declares no capabilities and can only run pure computation.</string>
+    <string name="plugin_permission_denied_title">Blocked calls</string>
+    <string name="plugin_permission_denied_row">%1$s needs capability %2$s</string>
+    <string name="plugin_permission_allow_session">Allow for this session</string>
+    <string name="plugin_permission_recent_title">Recent calls</string>
+    <string name="plugin_permission_recent_empty">No calls recorded yet</string>
+    <string name="plugin_permission_recent_row">%1$s · %2$s %3$s</string>
+    <string name="plugin_permission_expand">Show</string>
+    <string name="plugin_permission_collapse">Hide</string>
+    <string name="plugin_permission_python_title">Python runtime (high trust)</string>
+    <string name="plugin_permission_python_warning">Python plugins run in a subprocess sharing this app\'s UID and can read or write app data directly, bypassing the capability switches and file sandbox above. Enable only for sources you trust.</string>
+    <string name="plugin_row_python_trusted">Python runtime · allowed</string>
+    <string name="plugin_row_python_locked">Python runtime · needs high trust</string>
+    <string name="plugin_row_circuit_cooling">Isolated — %1$d s left</string>
+    <string name="plugin_row_circuit_probing">Half-open probe in flight</string>
+    <string name="plugin_permission_node_note">Node runtime: runs in a built-in Node subprocess; capabilities are checked per action; timeouts are actually interrupted and never block other plugins.</string>
+    <string name="plugin_cap_resource_read">Read files (only inside the plugin own sandbox folder)</string>
+    <string name="plugin_cap_resource_write">Write files (only inside the plugin own sandbox folder)</string>
+    <string name="plugin_cap_network">Reach the network (local and private addresses are blocked)</string>
+    <string name="plugin_cap_event_on_message">On every message</string>
+    <string name="plugin_cap_event_on_tool_call">On every tool call</string>
+    <string name="plugin_cap_hook_tool_before">Block tool calls (a plugin may stop a call)</string>
+    <string name="plugin_cap_hook_system_prompt">Append to the system prompt (changes assistant behavior)</string>
+    <string name="plugin_cap_schedule">Run on a schedule (while the app is alive)</string>
+    <string name="plugin_cap_network_local">Access LAN and localhost (home services, local ports)</string>
+    <string name="plugin_cap_app_navigate">Open a specific page in the app (home, settings, a session...)</string>
+    <string name="plugin_cap_app_messages">Write messages into a chat (they look like the assistant said them)</string>
+    <string name="plugin_cap_app_theme">Switch between light and dark appearance</string>
+    <string name="plugin_slot_provided_by">Provided by plugin "%1$s"</string>
+    <string name="plugin_cap_ui_slot">Show plugin-provided UI at the top of the chat</string>
+    <string name="plugin_cap_runtime_long">Long-running tasks (up to 10 minutes per call)</string>
+    <string name="plugin_cap_schedule_background">Run scheduled tasks in the background (even when the app is not open)</string>
+    <string name="plugin_service_channel_name">Plugin services</string>
+    <string name="plugin_service_channel_desc">Shown while plugins run in a foreground service</string>
+    <string name="plugin_service_notification_title">Plugin services running</string>
+    <string name="plugin_service_notification_text">Plugins are running in the background; tap to manage</string>
+    <string name="plugin_service_notification_stop">Stop</string>
+    <string name="plugin_cap_runtime_service">Keep running in the background (foreground service)</string>
+    <string name="plugin_cap_app_settings">Change app settings (font size, dynamic color, high contrast, default home)</string>
+    <string name="plugin_debug_title">Plugin debug</string>
+    <string name="plugin_cap_clipboard_read">Read the clipboard</string>
+    <string name="plugin_cap_clipboard_write">Write to the clipboard</string>
+    <string name="plugin_cap_clipboard">Read and write the clipboard</string>
+    <string name="plugin_cap_notify">Post notifications</string>
+    <string name="plugin_cap_device_info">Read device info (model, OS version)</string>
+    <string name="plugin_cap_storage">Use this plugin own storage (8MB cap)</string>
+    <string name="plugin_cap_config_write">Change this plugin own settings (secret items are never allowed)</string>
+    <string name="plugin_cap_tool_invoke">Ask to run other tools (each one still needs your approval)</string>
+    <string name="plugin_cap_chat_read">Read recent messages of the current chat (private, off by default)</string>
+    <string name="plugin_cap_model_call">Generate text with your configured model (counts against your usage)</string>
+    <string name="plugin_cap_ui_skin">Change the visual skin</string>
+    <string name="plugin_cap_ui_interactive">Show a submit form and run the plugin handler (changes data, off by default)</string>
+    <string name="plugin_cap_runtime_python">Run Python code outside the sandbox (high trust, confirm separately)</string>
+    <string name="video_no_video_model_hint">The current provider has no model with video output. Enable the \"video output\" capability for a model in Settings › Models and Providers.</string>
+    <plurals name="groupchat_selected_members">
+        <item quantity="one">%1$d member selected</item>
+        <item quantity="other">%1$d members selected</item>
+    </plurals>
+    <string name="workspace_go_root">Back to workspace root</string>
+    <string name="artifact_center_empty_hint">Artifacts are the images, files and long texts the assistant produces in chat - keep them here to review and share</string>
+    <string name="daily_summary_light_fallback">Nothing to catch up on today - I\'m here whenever something comes up.</string>
+    <string name="daily_summary_rest_fallback">Long day - get some rest.</string>
+    <string name="daily_summary_none_fallback">No new conversation today.</string>
 </resources>

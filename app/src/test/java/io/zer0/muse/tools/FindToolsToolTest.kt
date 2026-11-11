@@ -11,42 +11,42 @@ class FindToolsToolTest {
         description = desc,
         parameters = mapOf("x" to "param"),
         required = setOf("x"),
-        // El nivel de riesgo del accesorio no es un foco de esta prueba (recuperar/No lo mires en grupos), pero no puedes simplemente escribir SEGURO:
-        // Todos los nombres son nombres de herramientas reales o nombres de herramientas de terceros, y se utiliza el mismo conjunto de inferencias en el lado de producción para dar valores honestos.
+        // 夹具风险等级不是本测试的关注点（检索/分组不看它），但也不能随手写 SAFE：
+        // 名字都是真实工具名或第三方工具名，用生产侧同一套推断给出诚实值。
         riskLevel = ToolPermissionResolver.riskLevelFor(name),
     )
 
     private val tools = listOf(
-        def("browser_navigate", "Abra el navegador y visite la página web. open a URL in browser"),
-        def("browser_click", "Haga clic en el elemento web click an element on the page"),
-        def("workspace_write", "Escribir en el archivo del espacio de trabajo write a file into the workspace"),
-        def("set_alarm", "Establecer alarma set an alarm"),
+        def("browser_navigate", "打开浏览器访问网页 open a URL in browser"),
+        def("browser_click", "点击网页元素 click an element on the page"),
+        def("workspace_write", "写入工作区文件 write a file into the workspace"),
+        def("set_alarm", "设置闹钟 set an alarm"),
         def("find_tools", "search the tool library"),
     )
 
     @Test
     fun `search matches by name and description`() {
         val byName = FindToolsTool.search("browser", tools).map { it.name }.toSet()
-        assertTrue("El nombre visitado debe contener browser_navigate", "browser_navigate" in byName)
-        assertTrue("El nombre visitado debe contener browser_click", "browser_click" in byName)
-        assertTrue("Las herramientas no relacionadas no deberían afectar", "set_alarm" !in byName)
+        assertTrue("名称命中应包含 browser_navigate", "browser_navigate" in byName)
+        assertTrue("名称命中应包含 browser_click", "browser_click" in byName)
+        assertTrue("不相关工具不应命中", "set_alarm" !in byName)
 
-        val byDesc = FindToolsTool.search("espacio de trabajo", tools).map { it.name }
+        val byDesc = FindToolsTool.search("工作区", tools).map { it.name }
         assertEquals(listOf("workspace_write"), byDesc)
     }
 
     @Test
     fun `search excludes the meta tool itself`() {
         val hits = FindToolsTool.search("tool library", tools).map { it.name }
-        assertTrue("find_tools no debería aparecer en los resultados", "find_tools" !in hits)
+        assertTrue("find_tools 不应出现在结果里", "find_tools" !in hits)
     }
 
     @Test
     fun `search caps result count`() {
         val many = (1..20).map { def("tool_$it", "demo tool number $it") }
         val hits = FindToolsTool.search("demo", many)
-        assertTrue("El resultado no debe estar vacío.", hits.isNotEmpty())
-        assertTrue("El número de resultados debe estar sujeto a un límite superior.", hits.size <= 8)
+        assertTrue("结果应非空", hits.isNotEmpty())
+        assertTrue("结果数应受上限约束", hits.size <= 8)
     }
 
     @Test
@@ -62,7 +62,7 @@ class FindToolsToolTest {
             setOf("browser_navigate", "set_alarm"),
             SessionToolLoadRegistry.loadedFor("s1"),
         )
-        assertTrue("Otras sesiones no se ven afectadas.", SessionToolLoadRegistry.loadedFor("s2").isEmpty())
+        assertTrue("其他会话不受影响", SessionToolLoadRegistry.loadedFor("s2").isEmpty())
         SessionToolLoadRegistry.clear("s1")
         assertTrue(SessionToolLoadRegistry.loadedFor("s1").isEmpty())
     }
@@ -70,18 +70,18 @@ class FindToolsToolTest {
     @Test
     fun `empty query renders full capability list grouped by category`() {
         val tools = listOf(
-            def("calculator", "calculadora sencilla"),
-            def("web_search", "búsqueda en internet"),
-            def("generate_image", "Generar imágenes"),
-            def("workspace_write", "Escribir en el espacio de trabajo"),
-            def("mcp_x__do", "herramientas externas"),
+            def("calculator", "简单计算器"),
+            def("web_search", "联网搜索"),
+            def("generate_image", "生成图片"),
+            def("workspace_write", "写入工作区"),
+            def("mcp_x__do", "外部工具"),
             def("find_tools", "search the tool library"),
         )
         val list = FindToolsTool.fullList(tools)
-        assertTrue("Se debe incluir una descripción del total.", list.contains("5 tools total"))
-        assertTrue("Las herramientas principales deberían aparecer.", "calculator" in list)
-        assertTrue("Deberían aparecer herramientas opcionales.", "generate_image" in list)
-        assertTrue("La agrupación extendida debería aparecer.", "extension" in list)
-        assertTrue("en sí mismo no debería aparecer en la lista", "find_tools:" !in list)
+        assertTrue("应包含总数说明", list.contains("5 tools total"))
+        assertTrue("核心工具应出现", "calculator" in list)
+        assertTrue("可选工具应出现", "generate_image" in list)
+        assertTrue("扩展分组应出现", "extension" in list)
+        assertTrue("自身不应出现在清单里", "find_tools:" !in list)
     }
 }

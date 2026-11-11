@@ -3,34 +3,34 @@ package io.zer0.muse.tools.script
 import io.zer0.muse.tools.JsSandbox
 
 /**
- * Skill capa de abstracción del motor (P3-1).
+ * Skill 引擎抽象层 (P3-1)。
  *
- * Defina un contrato unificado para la ejecución del script JS para habilitar la capa superior (SkillExecutor / Herramienta JS complementaria)
- * No depende directamente de la implementación de un motor específico (actualmente WebView V8, que puede ser reemplazado por QuickJS en el futuro).
+ * 定义 JS 脚本执行的统一契约，使上层（SkillExecutor / 插件 JS 工具）
+ * 不直接依赖具体引擎实现（当前为 WebView V8，未来可替换为 QuickJS）。
  *
- * Puntos de diseño:
- *  - Las instancias del motor no son reentrantes: solo se puede ejecutar un script al mismo tiempo (WebView evaluateJavascript serie)
- *  - El mecanismo de tiempo de espera está garantizado por la capa de implementación ([JsSandbox.execute] 10 por defecto)
- *  - Las restricciones de seguridad están garantizadas por la capa de implementación (los saltos de página y el acceso a archivos locales están prohibidos, y la red está disponible; consulte [JsSandbox.INIT_JS])
+ * 设计要点：
+ *  - 引擎实例不可重入：同一时刻只能执行一个脚本（WebView evaluateJavascript 串行）
+ *  - 超时机制由实现层保证（[JsSandbox.execute] 默认 10s）
+ *  - 安全限制由实现层保证（禁页面跳转与本地文件访问，网络可用；见 [JsSandbox.INIT_JS]）
  *
- * Descripción: Contrato de interfaz para el diseño backend WebView V8 de Muse.
+ * 说明: 接口契约面向 Muse 的 WebView V8 后端设计。
  *
- * **estado de producción**: Esta interfaz es el contrato de ejecución de habilidades JS y el enlace de producción pasa [WebViewSkillEngine]
- * (.muse-plugin / Ejecución de la herramienta incorporada ejecutar_javascript);`__bridge__` puenteado por
- * [SkillBridge] Procesado en el resultado de la ejecución del script.
+ * **生产状态**：本接口为 JS 技能执行契约，生产链路通过 [WebViewSkillEngine]
+ * （.muse-plugin / 内置 execute_javascript 工具）执行；`__bridge__` 桥接由
+ * [SkillBridge] 在脚本执行结果处处理。
  */
 interface SkillEngine {
 
     /**
-     * Ejecutar expresión JS/Bloque de declaración, devuelve el resultado serializado JSON.
+     * 执行 JS 表达式/语句块，返回 JSON 序列化结果。
      *
-     * @param script JS Código (expresión, bloque de declaraciones o llamada de función)
-     * @param timeoutMs Tiempo de espera en milisegundos, por defecto 10 segundos
-     * @param scopeKey C-30: Ejecute el complemento de su propiedad id(Transferencia de herramientas complementarias pluginId),Para aislamiento de sandbox JS mediante complemento
-     *   estado del fusible;Incorporado/Las herramientas que no son complementos no utilizan el valor global predeterminado scope
-     * @param pluginConfigJson B7-01: Cadena JSON de configuración del complemento,para inyección host.getConfig() puente.null Se omite la inyección.
-     * @return Resultado de la ejecución: exitoso [SkillEngineResult.Success] Contiene valores JSON y registros de consola;
-     *         en el fracaso [SkillEngineResult.Error] Contiene mensajes de error
+     * @param script JS 代码（表达式、语句块或函数调用）
+     * @param timeoutMs 超时毫秒数，默认 10 秒
+     * @param scopeKey C-30: 执行归属的插件 id(插件工具传 pluginId),用于 JS 沙盒按插件隔离
+     *   熔断状态;内置/非插件工具不传使用默认全局 scope
+     * @param pluginConfigJson B7-01: 插件配置 JSON 字符串,用于注入 host.getConfig() 桥接。null 时跳过注入。
+     * @return 执行结果：成功时 [SkillEngineResult.Success] 包含 JSON 值和 console 日志；
+     *         失败时 [SkillEngineResult.Error] 包含错误信息
      */
     suspend fun eval(
         script: String,
@@ -40,16 +40,16 @@ interface SkillEngine {
     ): SkillEngineResult
 
     /**
-     * Llame a una función definida en un script cargado.
+     * 调用已加载脚本中定义的函数。
      *
-     * primero [eval] Cargue la definición de función y luego llame al nombre de función especificado.
+     * 先 [eval] 加载函数定义，再调用指定函数名。
      *
-     * @param functionDef Código JS de definición de función (como `function foo(a,b){return a+b}`)
-     * @param functionName nombre de la función a llamar
-     * @param argsJson Cadena JSON de matriz de parámetros (como `[1,2]`)
-     * @param timeoutMs Tiempo de espera en milisegundos
-     * @param scopeKey C-30: Ejecute el complemento de su propiedad id(Transferencia de herramientas complementarias pluginId),pasar por [eval]
-     * @return Resultado de la ejecución
+     * @param functionDef 函数定义 JS 代码（如 `function foo(a,b){return a+b}`）
+     * @param functionName 要调用的函数名
+     * @param argsJson 参数数组 JSON 字符串（如 `[1,2]`）
+     * @param timeoutMs 超时毫秒数
+     * @param scopeKey C-30: 执行归属的插件 id(插件工具传 pluginId),透传给 [eval]
+     * @return 执行结果
      */
     suspend fun callFunction(
         functionDef: String,
@@ -59,7 +59,7 @@ interface SkillEngine {
         scopeKey: String? = null,
         pluginConfigJson: String? = null,
     ): SkillEngineResult {
-        // Implementación predeterminada: empalmar llamadas IIFE
+        // 默认实现：拼接 IIFE 调用
         val combined = buildString {
             append(functionDef)
             append("\n;")
@@ -73,28 +73,28 @@ interface SkillEngine {
     }
 
     /**
-     * interrumpir la ejecución actual (mejor esfuerzo,WebView V8 Realmente no puedo romper JS).
-     * La implementación debería permitir que el lado de Kotlin devuelva un error después de un tiempo de espera.
+     * 中断当前执行（尽力而为，WebView V8 无法真正中断 JS）。
+     * 实现层应在超时后让 Kotlin 侧返回错误。
      */
     fun interrupt()
 
     companion object {
-        /** El tiempo de espera predeterminado es de 10 segundos. */
+        /** 默认超时 10 秒。 */
         const val DEFAULT_TIMEOUT_MS = 10_000L
     }
 }
 
 /**
- * Skill Clase de sello de resultado de ejecución del motor.
+ * Skill 引擎执行结果密封类。
  *
- * Utilice clase sellada en lugar de cualquier tipo de unión (conforme a AGENTS.md §5 especificación de seguridad de tipo).
+ * 使用 sealed class 而非 Any 联合类型（符合 AGENTS.md §5 类型安全规范）。
  */
 sealed class SkillEngineResult {
     /**
-     * Ejecución exitosa.
+     * 执行成功。
      *
-     * @param valueJson Devuelve una cadena JSON de valores (posiblemente "null" / "42" / '"text"' / '[1,2]' etc)
-     * @param consoleLogs console.log/warn/error Registros recopilados
+     * @param valueJson 返回值的 JSON 字符串（可能为 "null" / "42" / '"text"' / '[1,2]' 等）
+     * @param consoleLogs console.log/warn/error 收集的日志
      */
     data class Success(
         val valueJson: String,
@@ -102,10 +102,10 @@ sealed class SkillEngineResult {
     ) : SkillEngineResult()
 
     /**
-     * Error de ejecución (tiempo de espera/excepción JS/motor no disponible).
+     * 执行失败（超时 / JS 异常 / 引擎不可用）。
      *
-     * @param message mensaje de error
-     * @param consoleLogs Registros recopilados antes del error (pueden ser útiles para solucionar problemas)
+     * @param message 错误信息
+     * @param consoleLogs 失败前收集的日志（可能有助于排查）
      */
     data class Error(
         val message: String,

@@ -7,10 +7,10 @@ import org.junit.Test
 import kotlin.uuid.Uuid
 
 /**
- * Prueba de cálculo numérico "Este nuevo resumen de fusión" (B3 Ensayos complementarios de compresión y disposición).
+ * 「本次新并入摘要」条数计算测试（B3 压缩编排补测）。
  *
- * Puntos propensos a errores indicados en los comentarios de la función: la identificación del mensaje es un UUID aleatorio sin orden, cualquier inferencia se basa en el orden de identificación
- * Todos los cálculos serán incorrectos con datos reales.——Se debe utilizar una lista de mensajes ordenados.
+ * 函数注释里写明的易错点：消息 id 是随机 UUID 无序，任何基于 id 排序的推断
+ * 都会在真实数据上算错——必须用有序消息列表数。
  */
 class NewlyCoveredCountTest {
 
@@ -41,7 +41,7 @@ class NewlyCoveredCountTest {
         val m2 = msg("b")
         val m3 = msg("c")
         val messages = listOf(m1, m2, m3)
-        // El límite es m2 → solo cuenta m3
+        // 边界是 m2 → 只数 m3
         assertEquals(1, ChatViewModel.newlyCoveredCountStatic(messages, setOf(m2.id.toString(), m3.id.toString()), m2.id.toString()))
     }
 
@@ -59,7 +59,7 @@ class NewlyCoveredCountTest {
         val m2 = msg("b")
         val m3 = msg("c")
         val messages = listOf(m1, m2, m3)
-        // El conjunto de cobertura contiene sólo m1/m3 (m2 no comprimido)
+        // 覆盖集合只含 m1/m3（m2 未被压缩）
         assertEquals(2, ChatViewModel.newlyCoveredCountStatic(messages, setOf(m1.id.toString(), m3.id.toString()), null))
     }
 }

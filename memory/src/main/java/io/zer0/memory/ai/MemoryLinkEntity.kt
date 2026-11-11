@@ -7,22 +7,22 @@ import androidx.room.PrimaryKey
 import kotlinx.serialization.Serializable
 
 /**
- * v1.0.52 P2-3: Memorización de entidades de borde del gráfico de conocimiento.
+ * v1.0.52 P2-3: 记忆知识图谱边实体。
  *
- * expresar la relación entre dos hechos(como causa y efecto/contiene/contradicción),Gráfico de conocimiento para desarrollar la memoria del usuario.
- * con [io.zer0.memory.fact.FactEntity] Asociación a través de source_fact_id / target_fact_id.
+ * 表示两条事实之间的关系(如因果/包含/矛盾),用于构建用户记忆的知识图谱。
+ * 与 [io.zer0.memory.fact.FactEntity] 通过 source_fact_id / target_fact_id 关联。
  *
- * v10 schema: Se agregó la tabla de enlaces de memoria.
+ * v10 schema: 新增 memory_links 表。
  *
- * diseño:
- *  - source_fact_id / target_fact_id: señalar a facts.id(clave externa,Pero sin restricciones de CLAVE EXTRANJERA,
- *    Evite la pérdida de rendimiento de las eliminaciones en cascada entre tablas;por capa de aplicación [MemoryLinkDao.deleteByFactId] Limpiar al eliminar hechos)
- *  - link_type: Tipo de relación(causes/explains/part_of/related_to/contradicts)
- *  - weight: fuerza de la relación 0.0~1.0
- *  - space_id / scope: Alinear con la tabla de hechos,Admite aislamiento multiespacio + multiagente
+ * 设计:
+ *  - source_fact_id / target_fact_id: 指向 facts.id(外键,但不加 FOREIGN KEY 约束,
+ *    避免跨表级联删除性能损耗;由应用层 [MemoryLinkDao.deleteByFactId] 在事实删除时清理)
+ *  - link_type: 关系类型(causes/explains/part_of/related_to/contradicts)
+ *  - weight: 关系强度 0.0~1.0
+ *  - space_id / scope: 与 facts 表对齐,支持多 Space + 多 Agent 隔离
  *
- * source_title / target_title es un campo redundante,Se utiliza para seguir mostrando la semántica relacional después de eliminar los hechos.
- * (Evite que las relaciones se conviertan en números sin sentido después del fracaso de JOIN id).
+ * source_title / target_title 为冗余字段,用于事实被删除后仍能展示关系语义
+ * (避免 JOIN 失败后关系变成无意义数字 id)。
  */
 @Serializable
 @Entity(
@@ -38,39 +38,39 @@ data class MemoryLinkEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
 
-    /** hechos fuente id(señalar a facts.id). */
+    /** 源事实 id(指向 facts.id)。 */
     @ColumnInfo(name = "source_fact_id")
     val sourceFactId: Long,
 
-    /** hecho objetivo id(señalar a facts.id). */
+    /** 目标事实 id(指向 facts.id)。 */
     @ColumnInfo(name = "target_fact_id")
     val targetFactId: Long,
 
-    /** título del hecho fuente(Redundancia,La semántica relacional aún se puede mostrar después de eliminar hechos). */
+    /** 源事实标题(冗余,事实删除后仍可展示关系语义)。 */
     @ColumnInfo(name = "source_title")
     val sourceTitle: String,
 
-    /** título del hecho objetivo(Redundancia). */
+    /** 目标事实标题(冗余)。 */
     @ColumnInfo(name = "target_title")
     val targetTitle: String,
 
-    /** Tipo de relación:causes / explains / part_of / related_to / contradicts. */
+    /** 关系类型:causes / explains / part_of / related_to / contradicts。 */
     @ColumnInfo(name = "link_type", defaultValue = "related_to")
     val linkType: String = "related_to",
 
-    /** fuerza de la relación 0.0~1.0(Predeterminado 0.5). */
+    /** 关系强度 0.0~1.0(默认 0.5)。 */
     @ColumnInfo(name = "weight", defaultValue = "0.5")
     val weight: Float = 0.5f,
 
-    /** espacio de memoria id(Alinear con hechos.space_id,Aislamiento de múltiples espacios). */
+    /** 记忆空间 id(与 facts.space_id 对齐,多 Space 隔离)。 */
     @ColumnInfo(name = "space_id", defaultValue = "default")
     val spaceId: String = "default",
 
-    /** alcance de la memoria(Alinear con hechos.alcance,Aislamiento de múltiples agentes). */
+    /** 记忆作用域(与 facts.scope 对齐,多 Agent 隔离)。 */
     @ColumnInfo(name = "scope", defaultValue = "main")
     val scope: String = "main",
 
-    /** Creado ISO 8601. */
+    /** 创建时间 ISO 8601。 */
     @ColumnInfo(name = "created_at")
     val createdAt: String,
 )

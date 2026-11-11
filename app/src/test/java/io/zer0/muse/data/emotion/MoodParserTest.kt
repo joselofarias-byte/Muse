@@ -5,10 +5,10 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 /**
- * [MoodParser] con [EmotionStats] Prueba única de lógica pura.
+ * [MoodParser] 与 [EmotionStats] 的纯逻辑单测。
  *
- * MoodParser Es el analizador subyacente para el reconocimiento activo de emociones de mensajes.(Utilizado por ProactiveMessageRunner / MessageDao),
- * género"Cobertura nula pero uso de alta frecuencia"La clave pura función.
+ * MoodParser 是主动消息情绪识别的底层解析器(被 ProactiveMessageRunner / MessageDao 使用),
+ * 属"零覆盖但高频在用"的关键纯函数。
  */
 class MoodParserTest {
 

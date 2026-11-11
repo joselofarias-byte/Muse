@@ -16,22 +16,22 @@ import io.zer0.muse.ui.theme.MuseIconSizes
 import io.zer0.muse.ui.theme.MusePaddings
 
 /**
- * Componentes de estado de carga unificados(v1.0.20 Nuevo).
+ * 统一加载状态组件(v1.0.20 新建)。
  *
- * Sustituir artículo completo 44 desnudez dispersa [CircularProgressIndicator],Parámetros unificados:
- *  - size: [MuseIconSizes.iconLarge](32dp),Equilibrar la presencia visual y la no intrusión
- *  - strokeWidth: 2.dp,textura delgada(estilo de línea delgada)
- *  - Copia de mensaje opcional,Centrado debajo del indicador
+ * 替代全项目 44 处散落的裸 [CircularProgressIndicator],统一参数:
+ *  - size: [MuseIconSizes.iconLarge](32dp),平衡视觉存在感与不突兀
+ *  - strokeWidth: 2.dp,纤细质感(细线风格)
+ *  - 可选 message 文案,居中显示在指示器下方
  *
- * Uso:
+ * 用法:
  * ```
  * if (isLoading) {
- *     MuseLoadingState(message = "Cargando sesión...")
+ *     MuseLoadingState(message = "正在加载会话...")
  * }
  * ```
  *
- * @param message Cargar copia(Opcional,Se muestra debajo del indicador cuando se proporciona)
- * @param modifier modificador
+ * @param message 加载文案(可选,提供后显示在指示器下方)
+ * @param modifier 修饰符
  */
 @Composable
 fun MuseLoadingState(message: String? = null, modifier: Modifier = Modifier) {

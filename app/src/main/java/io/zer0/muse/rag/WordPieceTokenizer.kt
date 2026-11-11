@@ -1,20 +1,20 @@
 package io.zer0.muse.rag
 
 /**
- * v1.134: BERT WordPiece tokenizador(Implementación pura de Kotlin,Sin dependencias externas).
+ * v1.134: BERT WordPiece 分词器(纯 Kotlin 实现,无外部依赖)。
  *
- * usado para [OnnxEmbeddingProvider] / [OnnxRerankProvider] Convierta texto en una secuencia de tokens estilo BERT.
+ * 用于 [OnnxEmbeddingProvider] / [OnnxRerankProvider] 将文本转换为 BERT 风格的 token 序列。
  *
- * Algoritmo según funcionario de BERT tokenizer:
- *  1. participio básico:Minúsculas, separación de espacios en blanco, separación de puntuación,CJK segmentación de palabras
- *  2. WordPiece:Codicioso subpalabra coincidente más larga,prefijo "##" Indica continuación de subpalabra
- *  3. El token desconocido está asignado a [UNK]
+ * 算法按 BERT 官方 tokenizer:
+ *  1. 基础分词:小写化、空白分割、标点分割、CJK 单字分割
+ *  2. WordPiece:贪婪最长匹配子词,前缀 "##" 表示子词延续
+ *  3. 未知 token 映射为 [UNK]
  *
- * @see <a href="https://github.com/google-research/bert">BERT Implementación oficial</a>
+ * @see <a href="https://github.com/google-research/bert">BERT 官方实现</a>
  */
 object WordPieceTokenizer {
 
-    /** participio completo:Segmentación básica de palabras + división de subpalabras de Wordpiece. */
+    /** 完整分词:基础分词 + WordPiece 子词拆分。 */
     fun tokenize(text: String, vocab: Map<String, Int>, maxInputCharsPerWord: Int = 100): List<String> {
         val basicTokens = basicTokenize(text)
         val result = mutableListOf<String>()
@@ -25,8 +25,8 @@ object WordPieceTokenizer {
     }
 
     /**
-     * participio básico:Minúsculas, en blanco/puntuación/CJK Dividir.
-     * El token de salida todavía está"palabra"nivel,No contiene etiquetas de subpalabras de WordPieza.
+     * 基础分词:小写化、空白/标点/CJK 分割。
+     * 输出 token 仍是"词"级别,不含 WordPiece 子词标记。
      */
     private fun basicTokenize(text: String): List<String> {
         val cleaned = cleanText(text)
@@ -41,7 +41,7 @@ object WordPieceTokenizer {
                     tokens.add(ch.toString())
                 }
                 isCjkChar(ch) -> {
-                    // CJK Los personajes por sí solos se convierten token(BERT acción oficial)
+                    // CJK 字符单独成 token(BERT 官方行为)
                     flush(current, tokens)
                     tokens.add(ch.toString())
                 }
@@ -59,7 +59,7 @@ object WordPieceTokenizer {
         }
     }
 
-    /** Caracteres de control limpios y caracteres de ancho cero.,Especificación en blanco. */
+    /** 清理控制字符和零宽字符,规范空白。 */
     private fun cleanText(text: String): String {
         val sb = StringBuilder()
         for (ch in text) {
@@ -75,8 +75,8 @@ object WordPieceTokenizer {
     }
 
     /**
-     * WordPiece codicioso partido más largo:de [token] ventaja,Acorta progresivamente la subcadena hasta que aparezca en el vocabulario.
-     * Adición de subpalabras no iniciales "##" prefijo. Si no se acierta la palabra completa, regrese [UNK].
+     * WordPiece 贪婪最长匹配:从 [token] 头部开始,逐步缩短子串直到在 vocab 中命中。
+     * 非首字子词加 "##" 前缀。整词未命中则返回 [UNK]。
      */
     private fun wordPiece(token: String, vocab: Map<String, Int>, maxChars: Int): List<String> {
         if (token.isEmpty()) return emptyList()
@@ -131,12 +131,12 @@ object WordPieceTokenizer {
 
     private fun isCjkChar(ch: Char): Boolean {
         val c = ch.code
-        return (c in 0x4E00..0x9FFF) || // CJK Unificar caracteres chinos
+        return (c in 0x4E00..0x9FFF) || // CJK 统一汉字
             (c in 0x3400..0x4DBF) || // CJK Extension A
             (c in 0x20000..0x2A6DF) || // CJK Extension B
             (c in 0x2A700..0x2B73F) || // CJK Extension C
             (c in 0x2B740..0x2B81F) || // CJK Extension D
-            (c in 0x3000..0x303F) || // CJK símbolos y puntuación
-            (c in 0xFF00..0xFFEF) // medio tamaño/caracteres de ancho completo
+            (c in 0x3000..0x303F) || // CJK 符号和标点
+            (c in 0xFF00..0xFFEF) // 半角/全角字符
     }
 }

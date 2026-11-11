@@ -34,7 +34,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow // v1.48 (h21): Nombre/Vista previa de elipses
+import androidx.compose.ui.text.style.TextOverflow // v1.48 (h21): 名称/预览省略号
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.zer0.muse.R
@@ -63,22 +63,22 @@ import io.zer0.muse.ui.theme.MuseShapes
 import org.koin.androidx.compose.koinViewModel
 
 /**
- * Phase 8.5: Lorebook(libro mundial)Página de gestión.
+ * Phase 8.5: Lorebook(世界书)管理页。
  *
- * nivel superior: Lista de todas las entradas del Lorebook(Se puede agregar/Editar/Eliminar/habilitar alternar).
- * Estado de edición: Formulario de libro de historia único(name/keywords/content/priority/caseSensitive/insertionPosition/enabled).
+ * 顶层: 全部 Lorebook 条目列表(可新增/编辑/删除/启用切换)。
+ * 编辑态: 单条 Lorebook 表单(name/keywords/content/priority/caseSensitive/insertionPosition/enabled)。
  *
- * Escritura e implementación independientes.,UI Sigue el estilo musa del papel cálido.
+ * 独立编写实现,UI 沿用 muse warm-paper 风格。
  */
 @Composable
 fun LorebookScreen(onBack: () -> Unit, viewModel: ChatViewModel = koinViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    // v1.97 (P1-1): Carga diferida de la lista de Lorebook al ingresar a la página de administración(Reemplaza el recopilador de flujo residente inicial original)
+    // v1.97 (P1-1): 进入管理页时懒加载 Lorebook 列表(替代原 init 常驻 Flow 收集器)
     LaunchedEffect(Unit) { viewModel.refreshLorebooks() }
     var editing by remember { mutableStateOf<LorebookEntity?>(null) }
     var isNew by remember { mutableStateOf(false) }
     var deleteTarget by remember { mutableStateOf<LorebookEntity?>(null) }
-    // i18n: Precargar recursos de cadena,Evite llamar dentro de lambdas que no son componibles, como onClick stringResource
+    // i18n: 预提取字符串资源,避免在 onClick 等非 Composable lambda 内调用 stringResource
     val newDefaultName = stringResource(R.string.lorebook_new_default_name)
 
     editing?.let { entity ->
@@ -123,7 +123,7 @@ fun LorebookScreen(onBack: () -> Unit, viewModel: ChatViewModel = koinViewModel(
         },
     ) { innerPadding ->
         if (state.lorebooksError != null) {
-            // ST-01: Estado de error fallido al cargar la lista mundial de libros + inténtelo de nuevo
+            // ST-01: 世界书列表加载失败错误态 + 重试
             Box(
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
                 contentAlignment = Alignment.Center,
@@ -190,7 +190,7 @@ fun LorebookScreen(onBack: () -> Unit, viewModel: ChatViewModel = koinViewModel(
 
 @Composable
 private fun LorebookCard(entry: LorebookEntity, onEdit: () -> Unit, onDelete: () -> Unit, onToggleEnabled: () -> Unit) {
-    // i18n: Precargar recursos de cadena,Evite llamar dentro de lambdas que no son componibles, como ifBlank/semantics stringResource
+    // i18n: 预提取字符串资源,避免在 ifBlank/semantics 等非 Composable lambda 内调用 stringResource
     val unnamedText = stringResource(R.string.lorebook_unnamed)
     val disabledText = stringResource(R.string.lorebook_disabled)
     val enabledStateText = stringResource(R.string.lorebook_enabled_cd)
@@ -198,7 +198,7 @@ private fun LorebookCard(entry: LorebookEntity, onEdit: () -> Unit, onDelete: ()
     val editCd = stringResource(R.string.lorebook_edit_cd)
     val deleteCd = stringResource(R.string.lorebook_delete_cd)
     val stateDesc = if (entry.enabled) enabledStateText else disabledStateText
-    // v2.x unificación: Las acciones en línea convergen en el menú "Más"(Evite que las columnas de texto de la pantalla estrechas sean comprimidas por varios botones)
+    // v2.x 统一化: 行内动作收敛为「更多」菜单(防止窄屏文本列被多个按钮挤压)
     val moreCd = stringResource(R.string.settings_mcp_more)
     var menuExpanded by remember { mutableStateOf(false) }
 
@@ -233,7 +233,7 @@ private fun LorebookCard(entry: LorebookEntity, onEdit: () -> Unit, onDelete: ()
                         } else {
                             MaterialTheme.colorScheme.outline
                         },
-                        // v1.48 (h21): Nombre de una sola línea + elipses,Evite que los nombres largos rompan el diseño
+                        // v1.48 (h21): 名称单行 + 省略号,防止长名撑破布局
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -246,7 +246,7 @@ private fun LorebookCard(entry: LorebookEntity, onEdit: () -> Unit, onDelete: ()
                         )
                     }
                 }
-                // M-LORE1: Análisis unificado de palabras clave LorebookRepository.parseKeywords,Evite la división/eliminación manual de los alrededores de los personajes de escape dañinos
+                // M-LORE1: 关键词解析统一走 LorebookRepository.parseKeywords,避免手动 split/removeSurrounding 损坏转义字符
                 val kw = LorebookRepository.parseKeywords(entry.keywordsJson).joinToString(", ")
                 if (kw.isNotBlank()) {
                     Text(
@@ -261,7 +261,7 @@ private fun LorebookCard(entry: LorebookEntity, onEdit: () -> Unit, onDelete: ()
                         text = entry.content.take(40).replace("\n", " "),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        // v1.48 (h21): Suplemento de vista previa ellipsis(Originalmente solo maxLines=1,Sin elipses, se producirá un truncamiento brusco.)
+                        // v1.48 (h21): 预览补 ellipsis(原仅 maxLines=1,无省略号会硬截断)
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -321,18 +321,18 @@ private fun LorebookCard(entry: LorebookEntity, onEdit: () -> Unit, onDelete: ()
 @Composable
 private fun LorebookEditPage(initial: LorebookEntity, isNew: Boolean, onBack: () -> Unit, onSave: (LorebookEntity) -> Unit) {
     var name by rememberSaveable { mutableStateOf(initial.name) }
-    // M-LORE1: Editar e inicializar de manera uniforme LorebookRepository.parseKeywords,Evite la división/eliminación manual de los alrededores de los personajes de escape dañinos
+    // M-LORE1: 编辑初始化统一走 LorebookRepository.parseKeywords,避免手动 split/removeSurrounding 损坏转义字符
     val initialKeywordsText = remember { LorebookRepository.parseKeywords(initial.keywordsJson).joinToString(", ") }
     var keywordsText by rememberSaveable { mutableStateOf(initialKeywordsText) }
     var content by rememberSaveable { mutableStateOf(initial.content) }
     var priority by rememberSaveable { mutableStateOf(initial.priority.toString()) }
     var caseSensitive by rememberSaveable { mutableStateOf(initial.caseSensitive) }
-    // v2.x: Cambio de coincidencia de palabras completas
+    // v2.x: 全词匹配开关
     var wholeWord by rememberSaveable { mutableStateOf(initial.wholeWord) }
     var insertionPosition by rememberSaveable { mutableStateOf(initial.insertionPosition) }
     var enabled by rememberSaveable { mutableStateOf(initial.enabled) }
 
-    // i18n: Precargar recursos de cadena,Evite llamar dentro de lambdas que no son componibles, como onClick stringResource
+    // i18n: 预提取字符串资源,避免在 onClick 等非 Composable lambda 内调用 stringResource
     val unnamedText = stringResource(R.string.lorebook_unnamed)
     val saveText = stringResource(R.string.lorebook_save)
     val newTitleText = stringResource(R.string.lorebook_new_title)
@@ -341,9 +341,9 @@ private fun LorebookEditPage(initial: LorebookEntity, isNew: Boolean, onBack: ()
     val unsavedContent = stringResource(R.string.lorebook_unsaved_content)
     val discardText = stringResource(R.string.lorebook_discard)
 
-    // v1.48: Intercepción de clave de retorno,Evite perder ediciones por error
+    // v1.48: 返回键拦截,避免误退丢失编辑
     var showDiscardConfirm by rememberSaveable { mutableStateOf(false) }
-    // M-LORE2: keywordsText Agregue claves para recordar y compare,De lo contrario, después de modificar la palabra clave, el sistema devolverá sin avisar que no se ha guardado.
+    // M-LORE2: keywordsText 加入 remember keys 并参与比较,否则修改关键词后返回不提示未保存
     val hasUnsavedChanges = remember(name, keywordsText, content, priority, caseSensitive, wholeWord, insertionPosition, enabled) {
         name != initial.name || keywordsText != initialKeywordsText || content != initial.content ||
             priority != initial.priority.toString() ||
@@ -380,8 +380,8 @@ private fun LorebookEditPage(initial: LorebookEntity, isNew: Boolean, onBack: ()
                     MuseCapsuleButton(
                         text = saveText,
                         onClick = {
-                            // L-LORE4: Reutilizar palabras clave de codificación LorebookRepository.encodeKeywords,
-                            // y lado de análisis(M-LORE1)Utilice la misma configuración Json,Evite la inconsistencia entre la codificación manual de AppJson y la configuración de análisis del repositorio
+                            // L-LORE4: 复用 LorebookRepository.encodeKeywords 编码关键词,
+                            // 与解析端(M-LORE1)使用同一 Json 配置,避免手动 AppJson 编码与 Repository 解析配置不一致
                             val keywordsList = if (keywordsText.isBlank()) {
                                 emptyList()
                             } else {
@@ -397,7 +397,7 @@ private fun LorebookEditPage(initial: LorebookEntity, isNew: Boolean, onBack: ()
                                 wholeWord = wholeWord,
                                 insertionPosition = insertionPosition,
                                 enabled = enabled,
-                                // L-PID8: updatedAt Establecido uniformemente por ChatViewModel.saveLorebook,Evite la doble configuración
+                                // L-PID8: updatedAt 由 ChatViewModel.saveLorebook 统一设置,避免双重设置
                             )
                             onSave(saved)
                         },
@@ -458,7 +458,7 @@ private fun LorebookEditPage(initial: LorebookEntity, isNew: Boolean, onBack: ()
                 value = insertionPosition,
                 onValueChange = { insertionPosition = it },
                 label = stringResource(R.string.lorebook_field_insertion_position),
-                // ST-04: Opción para mostrar una copia legible por el usuario,No exponer valores de enumeración internos.(before_system espera)
+                // ST-04: 选项展示用户可读文案,不暴露内部枚举值(before_system 等)
                 options = listOf(
                     "before_system" to stringResource(R.string.lorebook_insertion_before_system),
                     "after_system" to stringResource(R.string.lorebook_insertion_after_system),
@@ -472,7 +472,7 @@ private fun LorebookEditPage(initial: LorebookEntity, isNew: Boolean, onBack: ()
                 onCheckedChange = { caseSensitive = it },
                 contentPadding = PaddingValues(0.dp),
             )
-            // v2.x: Cambio de coincidencia de palabras completas(frontera inglesa;CJK Las palabras clave se degradan automáticamente)
+            // v2.x: 全词匹配开关(英文边界;CJK 关键词自动退化)
             SettingsSwitchRow(
                 title = stringResource(R.string.lorebook_field_whole_word),
                 subtitle = stringResource(R.string.lorebook_field_whole_word_desc),

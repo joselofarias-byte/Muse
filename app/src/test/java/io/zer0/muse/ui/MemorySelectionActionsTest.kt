@@ -20,10 +20,10 @@ import org.robolectric.annotation.Config
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
- * Restricciones de disponibilidad para barras de acciones de selección múltiple.
+ * 多选态动作栏的可用性约束。
  *
- * Las líneas de origen se eliminan durante la fusión. Cuando no se encuentra la fuente cuando se elimina la base de datos, solo se informará "fallo de fusión", pero el usuario no ha cambiado nada.——
- * Por lo tanto, las eliminaciones deben bloquearse durante este período, no solo cambiar la entrada de combinación al control giratorio.
+ * 合并期间删掉源行，落库时找不到源只能报「合并失败」，用户却什么都没改过——
+ * 所以这段时间必须把删除一起挡住，而不仅是把合并入口换成 spinner。
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -37,8 +37,8 @@ class MemorySelectionActionsTest {
     private fun setActions(selectedCount: Int, mergeRunning: Boolean, onMerge: () -> Unit = {}, onDelete: () -> Unit = {}) {
         composeTestRule.setContent {
             MaterialTheme {
-                // En producción, estos tres botones están dispuestos en la fila de MuseTopBar; en las pruebas, también se requieren contenedores en fila.
-                // De lo contrario, el diseño raíz los apila en el origen y haga clic en el botón para llevarlos todos a la parte superior.
+                // 生产里这三个按钮排在 MuseTopBar 的 Row 里；测试也要给行容器，
+                // 否则根布局把它们叠在原点，点击全落到最上面那个按钮。
                 Row {
                     MemorySelectionActions(
                         selectedCount = selectedCount,

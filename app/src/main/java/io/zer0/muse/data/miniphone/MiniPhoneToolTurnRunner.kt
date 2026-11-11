@@ -16,18 +16,18 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withTimeoutOrNull
 
 /**
- * Una ronda de generación de herramientas en mensajes privados en pequeños teléfonos celulares.
+ * 小手机私信里的一轮工具生成。
  *
- * No hay ningún enlace de aprobación de sesión aquí.,Nadie mira la pantalla.:La superficie de la herramienta consta de [MiniPhoneToolPolicy] estrecho,
- * Ejecute únicamente herramientas que estén en la lista blanca y cuyo nivel de riesgo no sea ALTO. El resultado de la ejecución se completa en el mensaje HERRAMIENTA y luego continúa con la siguiente ronda.,
- * Se cierra con un texto cuando termina el turno o el modelo ya no necesita la herramienta.
+ * 这里没有会话审批链路,也没有人正看着屏幕:工具面由 [MiniPhoneToolPolicy] 收窄,
+ * 只跑白名单内、且风险等级不是 HIGH 的工具。执行结果回填成 TOOL 消息后继续要下一轮,
+ * 轮次用完或模型不再要工具时收口成一条文本。
  *
- * Sólo emitido a terceros [MpReplyEvent]:El módulo no puede obtener el nombre de la herramienta, los parámetros y el valor de retorno.,Sólo puedes ver "lo que estás haciendo".
+ * 对外只发 [MpReplyEvent]:模块拿不到工具名、参数与返回值,只能看到「在做什么」。
  *
- * @param chatService Generar entrada;esta vacio(Modelo no configurado)Esta ronda falló directamente
- * @param toolRegistry Fuente de herramienta;Cuando está vacío, no se le dan herramientas al modelo.,Degenerar en respuesta de texto plano
- * @param timeoutMs ronda completa(Todas las ruedas de herramientas incluidas.)tiempo de espera difícil
- * @param now fuente de tiempo,Pruebe usarlo para concretar el mensaje de relleno `createdAt`
+ * @param chatService 生成入口;为空(模型未配置)时这一轮直接失败
+ * @param toolRegistry 工具来源;为空时不给模型任何工具,退化成纯文本回复
+ * @param timeoutMs 整轮(含所有工具轮)的硬超时
+ * @param now 时间源,测试用它钉死回填消息的 `createdAt`
  */
 class MiniPhoneToolTurnRunner(
     private val chatService: ChatService?,
@@ -37,16 +37,12 @@ class MiniPhoneToolTurnRunner(
 ) {
 
     /**
-     * flujo frío:Cada colección ejecuta una ronda completa de generación.
+     * 冷流:每收集一次跑一轮完整生成。
      *
-     * secuencia de eventos:varios [MpReplyEvent.Activity](Cada herramienta llama a la anterior.) → una pieza
-     * [MpReplyEvent.Text];Solo uno cuando se agota el tiempo, no hay texto o la entrada de generación no está disponible [MpReplyEvent.Failed].
+     * 事件顺序:若干 [MpReplyEvent.Activity](每条工具调用前一条) → 一条
+     * [MpReplyEvent.Text];超时、没有任何文本或生成入口不可用时只有一条 [MpReplyEvent.Failed]。
      */
-    fun reply(
-        messages: List<UIMessage>,
-        temperature: Float?,
-        maxTokens: Int?,
-    ): Flow<MpReplyEvent> = flow {
+    fun reply(messages: List<UIMessage>, temperature: Float?, maxTokens: Int?): Flow<MpReplyEvent> = flow {
         val service = chatService
         if (service == null) {
             emit(MpReplyEvent.Failed)
@@ -64,9 +60,9 @@ class MiniPhoneToolTurnRunner(
     }
 
     /**
-     * Corre hasta que obtengas una oración que no requiera herramientas.
+     * 跑到拿到一句不需要工具的话为止。
      *
-     * Más de varias rondas con solicitud de herramienta.;Cuando todavía necesitas herramientas al final de la ronda, o no hay herramientas disponibles desde el principio,Esta ronda termina sin herramientas.
+     * 上面几轮带工具请求;轮次用完仍要工具、或一开始就没有工具可用时,这一轮不带工具收尾。
      */
     private suspend fun converge(
         service: ChatService,
@@ -91,7 +87,7 @@ class MiniPhoneToolTurnRunner(
         }
     }
 
-    /** Una solicitud sin transmisión. La ronda final se realiza explícitamente sin herramientas.,toolChoice ya no está especificado. */
+    /** 一次非流式请求。收尾那一轮显式不带工具,也不再指定 toolChoice。 */
     private suspend fun request(
         service: ChatService,
         conversation: List<UIMessage>,
@@ -106,7 +102,7 @@ class MiniPhoneToolTurnRunner(
         toolChoice = TOOL_CHOICE.takeIf { tools != null },
     )
 
-    /** Ejecutar una llamada de herramienta,Envuelva el resultado en un mensaje de HERRAMIENTA para completarlo. */
+    /** 执行一条工具调用,把结果包成回填用的 TOOL 消息。 */
     private suspend fun executeTool(call: ToolCall): UIMessage = UIMessage(
         role = MessageRole.TOOL,
         content = toolOutput(call),
@@ -115,24 +111,24 @@ class MiniPhoneToolTurnRunner(
     )
 
     /**
-     * Valor de retorno de la herramienta(O una descripción de degradación).
+     * 工具返回值(或一句降级说明)。
      *
-     * Verifique la lista blanca nuevamente antes de la ejecución.:El modelo puede mostrar nombres de herramientas que no están incluidos en la solicitud.,No se puede implementar basándose en una sola palabra.
+     * 执行前再核一次白名单:模型可能吐出请求里没有的工具名,不能凭它一句话就去执行。
      */
     private suspend fun toolOutput(call: ToolCall): String {
         val registry = toolRegistry ?: return TOOLS_UNAVAILABLE
         if (!MiniPhoneToolPolicy.isAllowed(call.name)) return TOOL_NOT_ALLOWED
         return resultOf { registry.executeFromJson(call.name, call.arguments) }
-            .onError { msg, t -> Logger.w(TAG, "Excepción de ejecución de herramienta celular pequeña: ${t?.message ?: msg}") }
+            .onError { msg, t -> Logger.w(TAG, "小手机工具执行异常: ${t?.message ?: msg}") }
             .getOrNull()
             ?: TOOL_FAILED
     }
 
-    /** Herramientas disponibles actualmente;Si el montaje falla, se manejará como \"No hay herramientas para esta ronda\".,No afecta las respuestas de texto. */
+    /** 当前可用工具;装配失败按「这一轮没有工具」处理,不影响文本回复。 */
     private fun resolveTools(): List<ToolDefinition> {
         val registry = toolRegistry ?: return emptyList()
         return resultOf { MiniPhoneToolPolicy.filter(registry.listToolsAsToolDefinitions(null)) }
-            .onError { msg, t -> Logger.w(TAG, "No se pudieron ensamblar pequeñas herramientas para teléfonos celulares. No se proporcionan herramientas para esta ronda.: ${t?.message ?: msg}") }
+            .onError { msg, t -> Logger.w(TAG, "装配小手机工具失败，本轮不提供工具: ${t?.message ?: msg}") }
             .getOrNull()
             .orEmpty()
     }
@@ -147,16 +143,16 @@ class MiniPhoneToolTurnRunner(
     private companion object {
         private const val TAG = "MiniPhoneToolTurnRunner"
 
-        /** Mismo calibre que las tareas programadas:Una herramienta de tres ruedas es suficiente para comprobar una vez y responder otra vez.,Un poco más y el modelo girará en círculos. */
+        /** 与定时任务同口径:三轮工具足够查一次再答一次,再多就是模型在原地打转。 */
         private const val MAX_TOOL_ROUNDS = 3
 
-        /** Los mensajes privados están esperando sincrónicamente:Después de más de un minuto, el usuario se fue temprano.,Es mejor decir \"la otra parte no respondió\". */
+        /** 私信是同步等待的:超过一分钟用户早走了,不如落一句「对方没有回应」。 */
         private const val REPLY_TIMEOUT_MS = 60_000L
 
         private const val TOOL_CHOICE = "auto"
 
-        private const val TOOLS_UNAVAILABLE = "[La herramienta no está disponible] Actualmente no existe ninguna herramienta ejecutable."
-        private const val TOOL_NOT_ALLOWED = "[No autorizado] Esta herramienta no se puede utilizar en teléfonos celulares pequeños."
-        private const val TOOL_FAILED = "[falló] Error de ejecución de herramienta"
+        private const val TOOLS_UNAVAILABLE = "[工具不可用] 当前没有可执行的工具"
+        private const val TOOL_NOT_ALLOWED = "[未授权] 小手机里不能调用该工具"
+        private const val TOOL_FAILED = "[失败] 工具执行出错"
     }
 }

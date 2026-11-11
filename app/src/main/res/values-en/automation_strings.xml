@@ -2,11 +2,11 @@
 <resources>
     <string name="automation_settings_title">UI Automation</string>
     <string name="automation_settings_subtitle">Screen reading and operation permissions</string>
-    <string name="accessibility_service_description">Allows Muse to read the screen content of any app (including sensitive information shown by other apps, such as verification codes or chat messages) and simulate taps, swipes and other gestures to automate tasks across apps. Only enable if you trust this; Muse will not perform high-risk actions without your confirmation.</string>
-    <string name="automation_permission_a11y">Muse UI Automation</string>
+    <string name="accessibility_service_description">Allows Musa to read the screen content of any app (including sensitive information shown by other apps, such as verification codes or chat messages) and simulate taps, swipes and other gestures to automate tasks across apps. Only enable if you trust this; Musa will not perform high-risk actions without your confirmation.</string>
+    <string name="automation_permission_a11y">Musa UI Automation</string>
     <string name="automation_settings_unavailable">Unable to open system settings. Open system settings to enable the permission.</string>
     <!-- UI automation permission page (v1.x): tier cards, Root request and self-test strings -->
-    <string name="automation_settings_intro">Let Muse see your screen and operate the device for you, automating tasks across apps</string>
+    <string name="automation_settings_intro">Let Musa see your screen and operate the device for you, automating tasks across apps</string>
     <string name="automation_tier_level">Level %1$d</string>
     <string name="automation_tier_accessibility">Accessibility service</string>
     <string name="automation_tier_accessibility_desc">Reads screen content and simulates taps and swipes. Lowest barrier; recommended.</string>
@@ -33,6 +33,6 @@
     <string name="automation_test_source">✓ Source: %1$s</string>
     <string name="automation_test_unknown">Unknown</string>
     <string name="automation_test_failed">Test failed: %1$s</string>
-    <!-- ST-04: La pantalla lee la información de diagnóstico del desarrollador para el título contraído de la autoprueba -->
+    <!-- ST-04: 屏幕读取自测的开发者诊断信息折叠标题 -->
     <string name="automation_developer_info">Developer info</string>
 </resources>

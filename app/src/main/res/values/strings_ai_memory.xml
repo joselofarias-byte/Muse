@@ -1,16 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    ai / memory / transformer Conclusión de la revisión del i18n de tres módulos:
-    - ai módulo(Módulo Gradle independiente): Los mensajes de error visibles para el usuario se pasan a través de Result.Error/Exception a UI,
-      Pero no puedes hacer referencia directamente a la cadena R. de la aplicación. Ya marcado en cada archivo fuente // TODO i18n a extraer,
-      Se extraerá después de introducir el esquema de enumeración de códigos de error.
-    - memory módulo(Módulo Gradle independiente): Error de validación(MemoryConfig.validate)con marca de tiempo isZh
-      (hechos importantes/¿Qué pasó, etcétera?)Visible para los usuarios,Sin embargo, los módulos cruzados y algunas etiquetas participan en el contrato de análisis de salida de LLM.
-      Cada archivo fuente ha sido marcado // TODO i18n para ser extraído.
-    - transformer módulo(app dentro): Después de la revisión documento por documento,Todas las cadenas chinas son contenidos de palabras del mensaje LLM
-      (Mensaje del SISTEMA a LLM),Logger Registros, comentarios de código o mensajes de excepción internos,
-      Sin cadenas de interfaz de usuario directas orientadas al usuario,prensa"LLM Las palabras rápidas no se extraen"Las reglas siguen siendo originales.
-    Por lo tanto, este archivo actualmente no tiene entradas de cadena.,Como marcador de posición y registro de revisión para su posterior extracción.
+    ai / memory / transformer 三模块 i18n 审查结论:
+    - ai 模块(独立 Gradle 模块): 用户可见错误消息通过 Result.Error/异常传递到 UI,
+      但无法直接引用 app 的 R.string。已在各源文件标注 // TODO i18n 待提取,
+      待引入错误代码枚举方案后提取。
+    - memory 模块(独立 Gradle 模块): 验证错误(MemoryConfig.validate)与 isZh 时间标签
+      (重要事实/事情经过等)用户可见,但跨模块且部分标签参与 LLM 输出解析契约。
+      已在各源文件标注 // TODO i18n 待提取。
+    - transformer 模块(app 内): 经逐文件审查,所有中文字符串均为 LLM 提示词内容
+      (发给 LLM 的 SYSTEM 消息)、Logger 日志、代码注释或内部异常消息,
+      无直接面向用户的 UI 字符串,按"LLM 提示词不提取"规则保留原文。
+    因此本文件当前无字符串条目,作为后续提取的占位与审查记录。
 -->
 <resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation">
     <string name="memory_meta_hit_count">golpear %1$d veces</string>
@@ -21,7 +21,7 @@
     <string name="memory_revision_reverted">Regresado a esta versión</string>
     <string name="memory_revision_revert_failed">La reversión falló</string>
     <string name="memory_meta_last_hit">éxitos recientes %1$d hace dias</string>
-    <!-- v4: importancia de la memoria -->
+    <!-- v4: 记忆重要程度相关 -->
     <string name="memory_importance_normal">ordinario</string>
     <string name="memory_importance_important">importante</string>
     <string name="memory_importance_critical">clave</string>
@@ -48,15 +48,15 @@
     <string name="memory_add_experience_failed">No se pudo agregar experiencia: %1$s</string>
     <string name="memory_edit_experience_failed">La experiencia de edición falló: %1$s</string>
     <string name="memory_delete_experience_failed">La experiencia de eliminación falló: %1$s</string>
-    <!-- v1.0.72: Memoria de chat grupal(centro de memoria"chat grupal"Tab) -->
+    <!-- v1.0.72: 群聊记忆(记忆中心"群聊"Tab) -->
     <string name="memory_graph_empty_title">Aún no hay datos de relación de memoria</string>
     <string name="memory_graph_empty_subtitle">Una vez que los recuerdos se acumulan en la conversación, aquí se muestra la relación entre los recuerdos.</string>
     <string name="memory_graph_node_related">asociación %1$d Artículo</string>
     <string name="memory_graph_load_failed">Error al cargar</string>
-    <!-- v2.6.2(comentarios de los usuarios): Configuración de constelación + conexión manual -->
+    <!-- v2.6.2（用户反馈）: 星座设置 + 手动连线 -->
     <string name="memory_graph_settings_title">Configuración de constelación</string>
-    <string name="memory_graph_ai_enhance_title">AI Profundizar conexiones</string>
-    <string name="memory_graph_ai_enhance_desc">Utilice modelos grandes para determinar la relación específica (causalidad) de asociaciones débiles/contradicciones, etcétera). Más preciso, pero una llamada por borde, mayor costo.</string>
+    <string name="memory_graph_ai_enhance_title">Profundizar conexiones con IA</string>
+    <string name="memory_graph_ai_enhance_desc">Usa modelos grandes para determinar la relación específica (causalidad) de asociaciones débiles/contradicciones, etcétera). Más preciso, pero una llamada por borde, mayor costo.</string>
     <string name="memory_graph_frequency_title">frecuencia complementaria</string>
     <string name="memory_graph_frequency_session_end">final de cada sesión</string>
     <string name="memory_graph_frequency_on_open">Al abrir la página del horóscopo</string>
@@ -65,7 +65,7 @@
     <string name="memory_graph_rebuild_hint">Vuelva a ejecutar el relleno de bordes para todas las memorias dentro del rango actual (se omitirán los bordes existentes).</string>
     <string name="memory_graph_rebuild_started">Restablecer asociación…</string>
     <string name="memory_graph_link_action">Conexión manual</string>
-    <string name="memory_graph_link_pick_target">Haga clic en otro nodo para completar la conexión.</string>
+    <string name="memory_graph_link_pick_target">Toca en otro nodo para completar la conexión.</string>
     <string name="memory_graph_link_type_title">Seleccionar tipo de relación</string>
     <string name="memory_graph_link_type_related">asociación</string>
     <string name="memory_graph_link_type_causes">causa y efecto</string>
@@ -96,15 +96,15 @@
     <string name="memory_error_trace_exception">Excepción: </string>
     <string name="memory_error_trace_message">Mensaje: </string>
     <string name="memory_error_trace_device">Equipo: </string>
-    <string name="memory_error_trace_stack_header">== Stack Trace ==</string>
+    <string name="memory_error_trace_stack_header">== Traza de la pila ==</string>
 
-    <!-- v8: alcance de la memoria(scope)Relacionado -->
+    <!-- v8: 记忆作用域(scope)相关 -->
     <string name="memory_scope_all">Todos</string>
     <string name="memory_scope_main">asistente principal</string>
     <string name="memory_scope_assistant">asistente de memoria</string>
     <string name="memory_scope_label">alcance de la memoria</string>
 
-    <!-- v1.0.52 P2-2: espacio de memoria(Space)Relacionado -->
+    <!-- v1.0.52 P2-2: 记忆空间(Space)相关 -->
     <string name="memory_space_manage_title">gestión del espacio de memoria</string>
     <string name="memory_space_create">crear espacio</string>
     <string name="memory_space_create_title">Crear nuevo espacio de memoria</string>
@@ -115,7 +115,7 @@
     <string name="memory_space_fact_count">%1$d hechos</string>
     <string name="memory_space_entry">espacio de memoria</string>
 
-    <!-- MemoryScreen.kt: Ver modo de cambio/exportación/tarjeta de estadísticas -->
+    <!-- MemoryScreen.kt: 视图模式切换 / 导出 / 统计卡片 -->
     <string name="memory_stats_section_title">estadísticas de memoria</string>
     <string name="memory_stats_total">total</string>
     <string name="memory_stats_importance_distribution">distribución de importancia</string>
@@ -123,7 +123,7 @@
     <string name="memory_stats_session_count">%1$d Artículo</string>
     <string name="memory_stats_session_live">sesión %1$d</string>
     <string name="memory_stats_trend_30_days">Tendencias de los últimos 30 días</string>
-    <!-- v1.x: Deduplicación de memoria -->
+    <!-- v1.x: 记忆去重 -->
     <string name="memory_organize_action">organizar la memoria</string>
     <string name="memory_organize_stage_prepare">Prepárate para organizar</string>
     <string name="memory_organize_stage_compile">Resumen de compilación</string>
@@ -138,8 +138,8 @@
     <string name="memory_center_tab_constellation">constelación de memoria</string>
     <string name="memory_center_library_title">base de hechos</string>
     <string name="memory_center_constellation_hint">Los hechos importantes se priorizan más cerca del centro. Cuando las relaciones no se hayan ordenado, los nodos también se mostrarán individualmente.</string>
-    <string name="memory_center_constellation_empty">Actualmente no hay nodos de hechos para mostrar. Primero genere o agregue manualmente un hecho y vuelva a él más tarde.</string>
-    <string name="memory_center_filter_empty">No hay nodos de hechos en el ámbito o espacio actual. Intente cambiar las condiciones del filtro anteriores.</string>
+    <string name="memory_center_constellation_empty">Actualmente no hay nodos de hechos para mostrar. Primero genere o agrega manualmente un hecho y vuelva a él más tarde.</string>
+    <string name="memory_center_filter_empty">No hay nodos de hechos en el ámbito o espacio actual. Intenta cambiar las condiciones del filtro anteriores.</string>
     <string name="memory_center_scope_all">Todos</string>
     <string name="memory_center_space_default">Predeterminado</string>
     <string name="memory_center_scope_line">%1$s · %2$s</string>
@@ -147,7 +147,7 @@
     <string name="memory_center_filter_scope">Alcance</string>
     <string name="memory_center_filter_advanced">Filtrado avanzado</string>
     <string name="memory_center_filter_space">espacio de memoria</string>
-    <!-- F-7: Revisión de integridad funcional — importancia/Filtro de rango de tiempo -->
+    <!-- F-7: 功能完善度审查 — 重要程度/时间范围筛选 -->
     <string name="memory_center_filter_importance">importancia</string>
     <string name="memory_center_filter_importance_all">Todos</string>
     <string name="memory_center_filter_time">rango de tiempo</string>
@@ -156,25 +156,28 @@
     <string name="memory_center_filter_time_30">últimos 30 días</string>
     <string name="memory_center_filter_time_90">últimos 90 días</string>
     <string name="memory_organize_stage_failed">La organización falló, por favor inténtalo de nuevo.</string>
-    <!-- v1.x: tarjeta de memoria ⋮ menú -->
+    <!-- v1.x: 记忆卡片 ⋮ 菜单 -->
     <string name="memory_menu_cd">Más acciones</string>
     <string name="memory_menu_pin">fijar hacia arriba</string>
     <string name="memory_menu_unpin">Desanclar</string>
-    <string name="memory_pin_failed">La operación del pin falló, inténtelo de nuevo</string>
+    <string name="memory_pin_failed">La operación del pin falló, inténtalo de nuevo</string>
     <string name="memory_unpin_failed">No se pudo desbloquear. Inténtalo de nuevo.</string>
     <string name="memory_menu_importance">Establecer importancia</string>
     <string name="memory_menu_edit">Editar</string>
     <string name="memory_menu_delete">Eliminar</string>
     <string name="memory_delete_confirm_title">Eliminar recuerdo</string>
-    <!-- Mantenga presionada la tarjeta de línea de tiempo:Panel de acción + confirmación secundaria de eliminación por lotes -->
+    <!-- 时间轴卡片长按:动作面板 + 批量删除的二次确认 -->
     <string name="memory_menu_multi_select">opción múltiple</string>
     <string name="memory_bulk_delete_confirm_title">Eliminar la memoria seleccionada</string>
     <string name="memory_bulk_delete_item_name">%1$d memoria</string>
     <string name="memory_bulk_delete_consequence">será eliminado %1$d La memoria no se puede recuperar después de la eliminación.</string>
 
-    <!-- Correcciones en la interfaz (i18n-3.x): Pestaña de memoria de chat grupal + filtro de línea de tiempo i18n -->
+    <!-- 前端修复 (i18n-3.x): 群聊记忆 Tab + 时间轴筛选 i18n -->
     <string name="memory_contradictions_title">Recuerdos contradictorios por confirmar</string>
     <string name="memory_contradictions_dismiss_cd">Confirmar y borrar</string>
+    <string name="memory_contradictions_keep_a">Conservar la primera</string>
+    <string name="memory_contradictions_keep_b">Conservar la segunda</string>
+    <string name="memory_evidence_line">Base: %1$s</string>
     <string name="memory_timeline_filter_all">Todos</string>
     <string name="memory_timeline_filter_fact">metahechos</string>
     <string name="memory_timeline_filter_summary">Resumen</string>
@@ -184,7 +187,7 @@
     <string name="memory_stream_mode_list">lista</string>
     <string name="memory_stream_mode_timeline">línea de tiempo</string>
     <string name="memory_graph_reset_view">restablecer vista</string>
-    <!-- v2.2.1: archivo de memoria/Consejos de recuperación -->
+    <!-- v2.2.1: 记忆库归档/恢复提示 -->
     <string name="memory_archive_rebuilt_hint">Se detectó que la base de datos de la memoria había sido archivada y reconstruida debido a cambios de versión y la memoria histórica no se retuvo por completo.</string>
     <string name="memory_archive_recovered">Restaurado desde el archivo de cambio de versión %1$d memoria</string>
     <string name="memory_archive_recovery_title">Archivo de memoria recuperable</string>
@@ -206,7 +209,7 @@
     <string name="memory_group_chat_clear_item_name">Todos los recuerdos del chat grupal</string>
     <string name="memory_group_chat_clear_consequence">Todos los resúmenes de las discusiones del chat grupal se eliminarán y no se podrán deshacer.</string>
 
-    <!-- Fusión de selección múltiple: después de verificar varios hechos, el modelo producirá un borrador, que se confirmará manualmente antes de agregarlo a la base de datos. -->
+    <!-- 多选合并：勾选多条事实后由模型出草稿，人工确认再落库 -->
     <string name="memory_center_merge_action">fusionar</string>
     <string name="memory_center_merge_title">fusionar memoria</string>
     <string name="memory_center_merge_sources_title">memoria original (%1$d artículo)</string>
@@ -214,7 +217,7 @@
     <string name="memory_center_merge_confirm">Confirmar fusión</string>
     <string name="memory_center_merge_running">Fusionando…</string>
 
-    <!-- Insignia de estado de memoria: la lista y los detalles comparten el mismo conjunto de juicios (los tres estados son independientes entre sí y se pueden acceder al mismo tiempo) -->
+    <!-- 记忆状态徽章：列表与详情共用同一套判定（三种状态互相独立，可同时命中） -->
     <string name="memory_status_merged">Fusionado</string>
     <string name="memory_status_suppressed">Apareció</string>
     <string name="memory_status_superseded">reemplazado</string>
@@ -222,11 +225,12 @@
     <string name="memory_status_suppressed_detail">Apareció: No se ha utilizado durante mucho tiempo y ha salido de la recuperación automática; la fila sigue ahí y volverá después de ser recuperada nuevamente o si aumenta la importancia.</string>
     <string name="memory_status_superseded_detail">ha sido reemplazada por una memoria actualizada y ya no se utiliza como hecho actual.</string>
 
-    <!-- Mensaje de error de fusión -->
-    <string name="memory_merge_error_min_items">Seleccione al menos dos recuerdos para fusionar</string>
+    <!-- 合并失败提示 -->
+    <string name="memory_merge_error_min_items">Selecciona al menos dos recuerdos para fusionar</string>
     <string name="memory_merge_error_no_model">El modelo no está configurado y no se puede fusionar</string>
     <string name="memory_merge_error_mixed_scope">Sólo se pueden fusionar recuerdos en el mismo espacio.</string>
     <string name="memory_merge_error_generate_failed">No se pudieron fusionar estos recuerdos</string>
     <string name="memory_merge_error_empty_result">El resultado combinado no puede estar vacío</string>
     <string name="memory_merge_error_commit_failed">Error al fusionar, la memoria no ha cambiado</string>
+    <string name="memory_space_default_name">Predeterminado</string>
 </resources>

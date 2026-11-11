@@ -7,9 +7,9 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
 
 /**
- * Estado de sesión que será reemplazado por completo en una restauración limpia.
+ * 清理恢复时会被完整替换的会话状态。
  *
- * La persona que llama debe ejecutar dentro de una transacción de MuseDb;checkpoint La limpieza explícita no depende de la configuración en cascada de claves externas.
+ * 调用方必须在 MuseDb 事务中执行；checkpoint 显式清理不依赖外键级联配置。
  */
 internal suspend fun clearConversationStateForRestore(db: MuseDb) {
     db.generationCheckpointDao().deleteAll()
@@ -41,6 +41,6 @@ internal suspend fun pruneMessageImageSnapshot(
             imageStore.deleteSnapshotFilesNotReferenced(snapshot, referenced)
         }
     } catch (error: Exception) {
-        Logger.w("BackupRestore", "La limpieza de la imagen no se completa después de la recuperación: ${error.message}", error)
+        Logger.w("BackupRestore", "恢复后图片清理未完成: ${error.message}", error)
     }
 }

@@ -26,10 +26,10 @@ import java.io.File
 import java.nio.file.Files
 
 /**
- * Se agregó el envío de comandos de solo lectura en la puerta de enlace.:assistants.detail / memory.list / memory.search.
+ * 新增只读命令在网关里的分派:assistants.detail / memory.list / memory.search。
  *
- * Las reglas de proyección son anuladas por HostReadCommandsTest/HostMemoryReadsTest,Sólo prueba aquí"¿Es correcto el nombre del comando?
- * ¿Cómo caen los parámetros en el recibo? ¿Se tragarán silenciosamente los parámetros faltantes?".
+ * 投影规则由 HostReadCommandsTest / HostMemoryReadsTest 覆盖,这里只验"命令名对不对、
+ * 参数怎么落到回执上、缺参数会不会被静默吞掉"。
  */
 class HostWebSocketGatewayMemoryTest {
 
@@ -124,19 +124,19 @@ class HostWebSocketGatewayMemoryTest {
         val job = launch { harness.gateway.serve(browser.session) }
         advanceUntilIdle()
 
-        browser.send("""{"protocolVersion":1,"type":"memory.search","requestId":"req-search","query":"librería"}""")
+        browser.send("""{"protocolVersion":1,"type":"memory.search","requestId":"req-search","query":"书店"}""")
         advanceUntilIdle()
 
         val hit = browser.events.single { it.type == HostMemoryReads.TYPE_SEARCH }
         assertEquals("req-search", hit.requestId)
-        assertTrue(hit.memoryHits.isNotEmpty())
-        assertTrue(hit.memoryHits.single().snippet.contains("librería"))
+        assertTrue(hit.memory.isNotEmpty())
+        assertTrue(hit.memory.single().snippet?.contains("书店") == true)
 
         browser.send("""{"protocolVersion":1,"type":"memory.search","requestId":"req-blank","query":"   "}""")
         advanceUntilIdle()
 
         val error = browser.events.last { it.type == "error" }
-        assertTrue("Una consulta vacía debería informar un error de protocolo: ${error.error}", error.error!!.contains("memory.search requires query"))
+        assertTrue("空查询应报协议错误: ${error.error}", error.error!!.contains("memory.search requires query"))
 
         browser.incoming.close()
         advanceUntilIdle()
@@ -164,25 +164,25 @@ class HostWebSocketGatewayMemoryTest {
     }
 
     private companion object {
-        /** id Cuanto más grande, más nuevo:3 El último número,2 cinturón de cuerno"librería",1 No. es una entrada normal. */
+        /** id 越大越新:3 号最新,2 号带"书店",1 号是普通条目。 */
         fun defaultRecords(): List<HostMemoryRecord> = listOf(
             HostMemoryRecord(
                 id = "1",
-                content = "La cafetería a la que suelen acudir los usuarios está abajo.",
+                content = "用户常去的咖啡店在楼下。",
                 createdAt = "2026-10-30T10:00:00Z",
                 source = HostMemorySourceKind.AUTO,
                 pinned = false,
             ),
             HostMemoryRecord(
                 id = "2",
-                content = "A los usuarios les gusta la librería usada en Chengxi.",
+                content = "用户喜欢城西的旧书店。",
                 createdAt = "2026-10-31T10:00:00Z",
                 source = HostMemorySourceKind.CONVERSATION,
                 pinned = true,
             ),
             HostMemoryRecord(
                 id = "3",
-                content = "El usuario tiene un gato.",
+                content = "用户养了一只猫。",
                 createdAt = "2026-10-31T11:00:00Z",
                 source = HostMemorySourceKind.MANUAL,
                 pinned = false,

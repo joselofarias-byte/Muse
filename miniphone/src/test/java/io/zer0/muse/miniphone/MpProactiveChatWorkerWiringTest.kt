@@ -8,14 +8,14 @@ import java.nio.file.Files
 import java.nio.file.Path
 
 /**
- * Enviar activamente un mensaje privado al contrato de cableado del Trabajador:Período, retraso inicial, ruta de falla.
+ * 主动私信 Worker 的接线契约:周期、初始延迟、失败路径。
  *
- * ¿Por qué leer el código fuente en lugar de la programación real?:WorkManager Las tareas periódicas solo se registran en el dispositivo,No se puede clasificar en la prueba unitaria.,
- * Tampoco puede detectar incidentes como "el ciclo vuelve a ser de 15 minutos" o "la ruta de error se escribe como reintento". —— Y esto es contra lo que debemos protegernos.:
- * Los primeros se convertirán en ocho acosos diarios,Este último volverá a llamar dentro de los 30 segundos posteriores a un fallo de red.
+ * 为什么读源码而不是真排期:WorkManager 的周期任务只在设备上落库,单元测试里既排不上,
+ * 也验不出「周期改回 15 分钟」或「失败路径写成了 retry」这类事故 —— 而这正是要防的:
+ * 前者会变成一天八条骚扰,后者会在一次网络失败后 30 秒内再打一次。
  *
- * Para leer el código fuente `Files.newBufferedReader`(El almacén ya sabe cómo escribir pruebas de cableado.).
- * Múltiples rutas candidatas porque el directorio de trabajo de prueba puede ser el directorio del módulo,También podría ser la raíz del repositorio.
+ * 读源码用 `Files.newBufferedReader`(仓库既有 wiring 测试的写法)。
+ * 多个候选路径是因为测试工作目录可能是模块目录,也可能是仓库根。
  */
 class MpProactiveChatWorkerWiringTest {
 
@@ -23,11 +23,11 @@ class MpProactiveChatWorkerWiringTest {
     fun `worker never retries and always reports success`() {
         val source = read(WORKER)
 
-        assertTrue("Clase MpProactiveChatWorker no encontrada", source.contains("class MpProactiveChatWorker("))
-        assertTrue("Debe regresar cuando no se pueda obtener el corredor. success", source.contains("if (runner == null) return Result.success()"))
-        assertTrue("Debes regresar después de correr normalmente. success", source.contains("return Result.success()"))
-        assertFalse("Los mensajes privados no solicitados no deben devolverse retry", source.contains("Result.retry"))
-        // dos caminos(koin faltante / agotado)todos deben regresar success
+        assertTrue("找不到 MpProactiveChatWorker 类", source.contains("class MpProactiveChatWorker("))
+        assertTrue("取不到 runner 时必须返回 success", source.contains("if (runner == null) return Result.success()"))
+        assertTrue("正常跑完也必须返回 success", source.contains("return Result.success()"))
+        assertFalse("主动私信不该返回 retry", source.contains("Result.retry"))
+        // 两条路径(koin 缺失 / 跑完)都要返回 success
         assertEquals(2, source.split("Result.success()").size - 1)
     }
 
@@ -35,25 +35,25 @@ class MpProactiveChatWorkerWiringTest {
     fun `periodic work repeats every three hours after a ninety minute delay`() {
         val source = read(SCHEDULER)
 
-        assertTrue("La constante del período debe ser de 3 horas.", source.contains("REPEAT_INTERVAL_HOURS: Long = 3L"))
-        assertTrue("La constante de retraso inicial debe ser de 90 minutos.", source.contains("INITIAL_DELAY_MINUTES: Long = 90L"))
+        assertTrue("周期常量必须是 3 小时", source.contains("REPEAT_INTERVAL_HOURS: Long = 3L"))
+        assertTrue("初始延迟常量必须是 90 分钟", source.contains("INITIAL_DELAY_MINUTES: Long = 90L"))
         assertTrue(
-            "Las tareas periódicas deben programarse durante 3 horas.",
+            "周期任务必须按 3 小时排期",
             source.contains("PeriodicWorkRequestBuilder<MpProactiveChatWorker>(REPEAT_INTERVAL_HOURS, TimeUnit.HOURS)"),
         )
         assertTrue(
-            "El primer horario debe retrasarse 90 minutos.,Escalona tareas con el círculo de amigos",
+            "首次排期必须往后挪 90 分钟,与朋友圈任务错开",
             source.contains("setInitialDelay(INITIAL_DELAY_MINUTES, TimeUnit.MINUTES)"),
         )
-        assertTrue("Debe existir un nombre de tarea único,De lo contrario, se descartarán un montón de instancias duplicadas.", source.contains("UNIQUE_WORK_NAME"))
+        assertTrue("唯一任务名必须存在,否则会排出一堆重复实例", source.contains("UNIQUE_WORK_NAME"))
     }
 
     @Test
     fun `module scheduler entry registers proactive chat work`() {
         val source = read(MOMENT_SCHEDULER)
 
-        assertTrue("El puerto de registro en segundo plano del módulo debe programar mensajes privados activos juntos.", source.contains("MiniPhoneProactiveChatScheduler.start(context)"))
-        assertTrue("La cancelación de la entrada debe cancelarse al mismo tiempo.", source.contains("MiniPhoneProactiveChatScheduler.stop(context)"))
+        assertTrue("模块后台注册口必须把主动私信一并排期", source.contains("MiniPhoneProactiveChatScheduler.start(context)"))
+        assertTrue("取消入口必须一并取消", source.contains("MiniPhoneProactiveChatScheduler.stop(context)"))
     }
 
     private fun read(candidates: List<Path>): String {

@@ -6,12 +6,12 @@ import androidx.room.PrimaryKey
 import kotlinx.serialization.Serializable
 
 /**
- * Progreso diario de la compilación.
+ * 每日编译进度。
  *
- * para recuperación de accidentes: Realice el pedido inmediatamente después de cada paso exitoso,La próxima vez que falle y reinicie, no podrá volver a ejecutarlo.
- * context key = logicalDate + resetAt + factsMode,Cualquier cambio restablece el progreso.
+ * 用于崩溃恢复: 每步成功后立即落盘,下次崩溃重启不会重跑。
+ * context key = logicalDate + resetAt + factsMode,任一变化都重置进度。
  *
- * Phase 7: @Serializable para exportación de respaldo/Importar.
+ * Phase 7: @Serializable 用于备份导出/导入。
  */
 @Serializable
 @Entity(tableName = "daily_state")
@@ -23,23 +23,23 @@ data class DailyStateEntity(
     @ColumnInfo(name = "schema_version")
     val schemaVersion: Int = 2,
 
-    /** fecha lógica(YYYY-MM-DD). */
+    /** 逻辑日期(YYYY-MM-DD)。 */
     @ColumnInfo(name = "logical_date")
     val logicalDate: String,
 
-    /** Marca de agua de restablecimiento de memoria(ISO),null Indica no restablecer. */
+    /** 记忆重置水印(ISO),null 表示未重置。 */
     @ColumnInfo(name = "reset_at")
     val resetAt: String? = null,
 
-    /** facts modo: legacy(usar facts.md) / editable(usar editable-facts.md). */
+    /** facts 模式: legacy(用 facts.md) / editable(用 editable-facts.md)。 */
     @ColumnInfo(name = "facts_mode")
     val factsMode: String = "legacy",
 
-    /** Pasos completados JSON: {"compileDaily":"ISO","compileToday":"ISO",...}. */
+    /** 已完成的步骤 JSON: {"compileDaily":"ISO","compileToday":"ISO",...}。 */
     @ColumnInfo(name = "completed_steps")
     val completedSteps: String = "{}",
 
-    /** El momento en que todo está hecho(ISO),null Significa que no he terminado de correr en todo ese día. */
+    /** 全部完成的时刻(ISO),null 表示当天还没全跑完。 */
     @ColumnInfo(name = "daily_completed_at")
     val dailyCompletedAt: String? = null,
 

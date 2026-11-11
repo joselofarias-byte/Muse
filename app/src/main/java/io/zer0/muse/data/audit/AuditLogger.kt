@@ -2,6 +2,7 @@ package io.zer0.muse.data.audit
 
 import io.zer0.common.AppJson
 import io.zer0.common.Logger
+import io.zer0.muse.util.GlobalCoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -15,39 +16,39 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
 /**
- * P2-4 Registrador de auditoría.
+ * P2-4 审计日志记录器。
  *
- * Puntos de diseño:
- *  - [log] Es una interfaz de disparo y olvido sin suspensión.,Independiente para uso interno [scope] Escritura asincrónica,
- *    No bloquea a la persona que llama(La persona que llama es principalmente la ruta del hilo principal de UI/ViewModel).
- *  - buffer de anillo:Verifique de forma asincrónica después de cada inserción [count],exceder [MAX_LOG_COUNT] tiempo
- *    Eliminar los más antiguos de una vez [TRIM_BATCH] Artículo(Evite la sobrecarga de transacción de la eliminación artículo por artículo).
- *  - detail Map usar [AppJson] Serializar a cadena JSON,apoyo String / Number / Boolean /
- *    Tipos comunes como mapa/lista anidados,Reserva de tipo desconocido a toString().
- *  - [cleanupOldLogs] Llamado una vez cuando se inicia la aplicación.,limpiar [RETENTION_DAYS] Registro de hace días.
+ * 设计要点:
+ *  - [log] 是非 suspend 的 fire-and-forget 接口,内部用独立 [scope] 异步写入,
+ *    不会阻塞调用方(调用方多为 UI / ViewModel 主线程路径)。
+ *  - 环形缓冲:每次 insert 后异步检查 [count],超过 [MAX_LOG_COUNT] 时
+ *    一次性删除最旧的 [TRIM_BATCH] 条(避免逐条删除的事务开销)。
+ *  - detail Map 用 [AppJson] 序列化为 JSON 字符串,支持 String / Number / Boolean /
+ *    嵌套 Map / List 等常见类型,未知类型 fallback 到 toString()。
+ *  - [cleanupOldLogs] 在应用启动时调用一次,清理 [RETENTION_DAYS] 天前的日志。
  *
- * @param dao Registro de auditoría DAO
+ * @param dao 审计日志 DAO
  */
 class AuditLogger(private val dao: AuditLogDao) {
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO + GlobalCoroutineExceptionHandler)
 
-    /** Límite superior del búfer circular:Superar este valor activa la limpieza por lotes. */
+    /** 环形缓冲上限:超过此值触发批量清理。 */
     private val maxLogCount = MAX_LOG_COUNT
 
-    /** El número más antiguo de elementos eliminados a la vez cuando se activa la limpieza(Evite la sobrecarga de transacción de la eliminación artículo por artículo). */
+    /** 触发清理时一次性删除的最旧条数(避免逐条删除的事务开销)。 */
     private val trimBatch = TRIM_BATCH
 
     /**
-     * Registre un registro de auditoría.
+     * 记录一条审计日志。
      *
-     * sin bloqueo:Escritura asincrónica de lanzamiento interno,La persona que llama no necesita esperar.
+     * 非阻塞:内部 launch 异步写入,调用方无需 await。
      *
-     * @param category Clasificación:"api_call" / "user_action" / "auth" / "system"
-     * @param action Nombre de la acción,Como por ejemplo "send_message" / "delete_provider" / "login"
-     * @param target Objetivo de operación(chatId / providerId espera,Disponible)
-     * @param detail campos extra(model / tokens / latency_ms espera),será serializado como JSON
-     * @param success ¿La operación es exitosa?
+     * @param category 分类:"api_call" / "user_action" / "auth" / "system"
+     * @param action 动作名,如 "send_message" / "delete_provider" / "login"
+     * @param target 操作目标(chatId / providerId 等,可空)
+     * @param detail 额外字段(model / tokens / latency_ms 等),会被序列化为 JSON
+     * @param success 操作是否成功
      */
     fun log(category: String, action: String, target: String = "", detail: Map<String, Any> = emptyMap(), success: Boolean = true) {
         val now = System.currentTimeMillis()
@@ -65,55 +66,55 @@ class AuditLogger(private val dao: AuditLogDao) {
                     trimBatch = trimBatch,
                 )
             } catch (t: Throwable) {
-                // La falla del registro de auditoría no debería afectar el negocio de la persona que llama,Sólo ha iniciado sesión en Logger
-                Logger.w("AuditLogger", "No se pudo escribir el registro de auditoría: $category/$action", t)
+                // 审计日志失败不应影响调用方业务,仅记录到 Logger
+                Logger.w("AuditLogger", "写入审计日志失败: $category/$action", t)
             }
         }
     }
 
     /**
-     * Registro de consultas de paginación(en orden cronológico inverso).
+     * 分页查询日志(按时间倒序)。
      *
-     * @param limit Número de artículos por página(Predeterminado 100)
-     * @param offset compensar
+     * @param limit 每页条数(默认 100)
+     * @param offset 偏移量
      */
     suspend fun query(limit: Int = 100, offset: Int = 0): List<AuditLogEntity> {
         return try {
             dao.query(limit, offset)
         } catch (t: Throwable) {
-            Logger.w("AuditLogger", "No se pudo consultar el registro de auditoría", t)
+            Logger.w("AuditLogger", "查询审计日志失败", t)
             emptyList()
         }
     }
 
     /**
-     * limpiar [RETENTION_DAYS] Registro de hace días. Llamado una vez cuando se inicia la aplicación.
+     * 清理 [RETENTION_DAYS] 天前的日志。应用启动时调用一次。
      */
     suspend fun cleanupOldLogs() {
         try {
             val cutoff = System.currentTimeMillis() - RETENTION_DAYS * 24L * 60L * 60L * 1000L
             dao.deleteOlderThan(cutoff)
         } catch (t: Throwable) {
-            Logger.w("AuditLogger", "Error al limpiar los registros de auditoría antiguos", t)
+            Logger.w("AuditLogger", "清理旧审计日志失败", t)
         }
     }
 
     /**
-     * Borrar todos los registros de auditoría(El usuario hace clic en la página de registro de auditoría."Borrar"llamado cuando).
+     * 清空全部审计日志(用户在审计日志页点击"清空"时调用)。
      */
     suspend fun clearAll() {
         try {
             dao.deleteAll()
         } catch (t: Throwable) {
-            Logger.w("AuditLogger", "No se pudieron borrar los registros de auditoría", t)
+            Logger.w("AuditLogger", "清空审计日志失败", t)
         }
     }
 
     /**
-     * Serializar detalle Mapa a cadena JSON.
+     * 把 detail Map 序列化为 JSON 字符串。
      *
-     * apoyo String / Boolean / Number / Enum / anidado Map / List;
-     * Reserva de tipo desconocido a [Any.toString].
+     * 支持 String / Boolean / Number / Enum / 嵌套 Map / List;
+     * 未知类型 fallback 到 [Any.toString]。
      */
     private fun encodeDetail(detail: Map<String, Any>): String {
         if (detail.isEmpty()) return "{}"
@@ -123,7 +124,7 @@ class AuditLogger(private val dao: AuditLogDao) {
         return AppJson.encodeToString(JsonObject.serializer(), jsonObject)
     }
 
-    /** Convertir cualquier valor a [JsonElement],Admite la conversión recursiva entre tipos básicos y tipos de contenedores. */
+    /** 把任意值转换为 [JsonElement],支持基本类型与容器类型递归转换。 */
     private fun toJsonElement(v: Any): JsonElement = when (v) {
         is String -> JsonPrimitive(v)
         is Boolean -> JsonPrimitive(v)
@@ -144,13 +145,13 @@ class AuditLogger(private val dao: AuditLogDao) {
     }
 
     companion object {
-        /** El límite superior del número de entradas del búfer circular. */
+        /** 环形缓冲上限条数。 */
         private const val MAX_LOG_COUNT = 10_000
 
-        /** El número más antiguo de elementos eliminados a la vez cuando se activa la limpieza. */
+        /** 触发清理时一次性删除的最旧条数。 */
         private const val TRIM_BATCH = 1_000
 
-        /** Período de retención de registros(dia),Si excede, se limpiará al inicio. */
+        /** 日志保留期(天),超过则启动时清理。 */
         private const val RETENTION_DAYS = 30
     }
 }

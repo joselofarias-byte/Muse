@@ -1,19 +1,19 @@
 # Muse v2.1.0
 
-Una versión grande del sistema de canales. Se implementa el acceso a cinco terminales WeChat / QQ / Feishu / Telegram / DingTalk, la información del canal y los asistentes se conectan sin problemas; la experiencia de entrega del producto se actualiza,Agent Se han solucionado problemas clave con los enlaces de herramientas. Se recomienda a todos los usuarios actualizar.
+渠道体系大版本。微信 / QQ / 飞书 / Telegram / 钉钉五端接入落地，渠道消息与助手无缝打通；产物交付体验升级，Agent 工具链路的关键问题一并修复。建议所有用户升级。
 
-## Lo más destacado
+## 亮点
 
-- **Acceso a cinco canales terminales**: WeChat,QQ, Feishu,Telegram, DingTalk completa el acoplamiento. La configuración del canal se reconstruye de acuerdo con el modelo exclusivo de cada plataforma (campos exclusivos, máquina de estado de inicio de sesión del código de escaneo de WeChat, prueba de conexión, tutorial de configuración);QQ Utilice la recepción de conexión larga de WebSocket y la respuesta pasiva, Feishu utiliza un canal de eventos de conexión larga.
-- **Los canales son conversaciones.**: Cada conversación de canal tiene un contexto de múltiples rondas independiente, que admite la compresión automática y el reinicio manual de resúmenes continuos; Los textos, imágenes y mensajes de voz recientes se archivan de forma unificada y se pueden revisar en cualquier momento.
-- **flujo de noticias de los medios**: Las imágenes de WeChat se descargan, descifran, comprimen y almacenan automáticamente en la base de datos; el servidor reconoce la voz y la convierte en texto. Responder admite la visión nativa del modelo y el puente visual se degrada a descripción cuando es necesario.
-- **sistema de entrega de productos**: Los códigos/páginas web/documentos generados por el asistente se actualizan a tarjetas grandes de ancho completo (se muestran hasta tres en el mensaje; haga clic para expandir todo); Se agrega gestión unificada en el nuevo centro de productos.PDF Admite vista previa en la aplicación con documentos.
-- **Agent Correcciones de enlaces de herramientas**: Se solucionó un problema por el cual las llamadas a herramientas en algunos modelos fallaban silenciosamente debido a los campos del directorio de capacidades predeterminados.——Las definiciones de herramientas ya no se descartan por error y las llamadas a herramientas son estables y están disponibles.
-- **mercado de complementos**: La puerta de enlace de la herramienta, la raíz de confianza y los enlaces de verificación de firma son perfectos, lo que hace que la instalación e invocación de herramientas del mercado sea más segura.
+- **五端渠道接入**：微信、QQ、飞书、Telegram、钉钉完成对接。渠道配置按各平台专属模型重建（专属字段、微信扫码登录状态机、连接测试、配置教程）；QQ 走 WebSocket 长连接收与被动回复，飞书走长连接事件通道。
+- **渠道即对话**：每条渠道会话拥有独立的多轮上下文，支持滚动摘要自动压缩与手动重启；最近的文本、图片与语音消息统一归档，随时回看。
+- **媒体消息流转**：微信图片自动下载、解密、压缩入库；语音走服务端识别转文字。回复支持模型原生视觉，必要时视觉桥降级为描述兜底。
+- **产物交付体系**：助手产出的代码 / 网页 / 文档升级为全宽大卡（消息内最多展示三张，点击展开全部）；新增产物中心统一管理，PDF 与文档支持应用内预览。
+- **Agent 工具链路修复**：修复部分模型因能力目录字段缺省导致工具调用静默失效的问题——工具定义不再被错误丢弃，工具调用稳定可用。
+- **插件市场**：工具网关、信任根与签名校验链路完善，市场工具的安装与调用更安全。
 
-## Experiencia y pulido.
+## 体验与打磨
 
-- Configure la búsqueda para que se actualice a una tarjeta flotante: alinee la interacción del panel de comandos de la página de inicio, conserve la lista original antes de escribir y la búsqueda ya no interrumpirá la navegación.
-- El nombre de la plataforma del canal está completamente localizado; Se pulen los detalles de la configuración, el libro mundial y otras páginas, y se completan las traducciones a varios idiomas.
-- Reparar "Programar tareas" → El cuadro de diálogo "Ver todo el historial" falla debido al desplazamiento anidado y se corrige el comportamiento de desplazamiento de la lista de tareas programadas.
-- CI Optimización del enlace de lanzamiento: el margen de tiempo de espera de la tarea de compilación aumenta y el proceso de lanzamiento es más estable.
+- 设置搜索升级为浮层卡：对齐主页命令面板的交互，输入前保留原列表，搜索不再打断浏览。
+- 渠道平台名称完整本地化；设置、世界书等页面细节打磨，多语言翻译补齐。
+- 修复「定时任务 → 查看全部历史」对话框嵌套滚动导致的崩溃，定时任务列表滚动行为修正。
+- CI 发布链路优化：构建任务超时余量提升，发布流程更稳。

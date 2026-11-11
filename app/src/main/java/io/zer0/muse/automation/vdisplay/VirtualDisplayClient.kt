@@ -9,10 +9,10 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 
 /**
- * v2.2.1 pantalla virtual:orientado a la persona que llama(Herramientas/Agent)Cliente conveniente.
+ * v2.2.1 虚拟屏:面向调用方(工具/Agent)的便捷客户端。
  *
- * responsable:ensure Servidor+Pantalla virtual, captura de pantalla de un solo cuadro, abrir aplicación en pantalla virtual, destruir.
- * La inyección de entrada no está en esta clase.(usar `input -d <displayId>` Reemplazar el ejecutor de shell existente).
+ * 负责:ensure 服务端+虚拟屏、单帧截图、在虚拟屏里打开应用、销毁。
+ * 输入注入不在本类(用 `input -d <displayId>` 走既有 shell 执行器)。
  */
 class VirtualDisplayClient(
     private val context: Context,
@@ -29,7 +29,15 @@ class VirtualDisplayClient(
     @Volatile
     private var compatibilityDpi: Int = DEFAULT_DPI
 
-    /** Asegúrese de que el servidor + pantalla virtual esté listo(Reutilizar el mismo tamaño);El fracaso conlleva una razón legible. */
+    /**
+     * 虚拟屏通道是否可用（"ready(Shizuku)" / "ready(Root)" / 不可用原因）。
+     *
+     * 给「权限状态」类工具用：模型在选 virtual_* 之前就能知道能不能用，
+     * 而不是先试一次、失败再换方案（每次失败都烧一轮）。
+     */
+    suspend fun availability(): String = manager.channelState()
+
+    /** 确保服务端 + 虚拟屏就绪(同尺寸复用);失败携带可读原因。 */
     suspend fun ensureDisplay(width: Int = DEFAULT_WIDTH, height: Int = DEFAULT_HEIGHT, dpi: Int = DEFAULT_DPI): Result<DisplayHandle> =
         withContext(Dispatchers.IO) {
             val started =
@@ -49,7 +57,7 @@ class VirtualDisplayClient(
                 }
             if (id < 0) {
                 return@withContext Result.failure(
-                    IllegalStateException("Falló la creación de la pantalla virtual(Ver detalles /data/local/tmp/muse-vd-server.log)"),
+                    IllegalStateException("虚拟屏创建失败(详见 /data/local/tmp/muse-vd-server.log)"),
                 )
             }
             compatibilityWidth = width
@@ -63,7 +71,7 @@ class VirtualDisplayClient(
     suspend fun ensureCompatibilityDisplay(): Result<DisplayHandle> =
         ensureDisplay(compatibilityWidth, compatibilityHeight, compatibilityDpi)
 
-    /** Cree una pantalla virtual que sea exclusiva de esta convocatoria y no será reutilizada. `ensureDisplay` pantalla compatible; la persona que llama es responsable de destruir finalmente. */
+    /** 创建本次调用独占的虚拟屏，不复用 `ensureDisplay` 的兼容屏；调用方负责 finally 销毁。 */
     suspend fun createDisplay(width: Int = DEFAULT_WIDTH, height: Int = DEFAULT_HEIGHT, dpi: Int = DEFAULT_DPI): Result<DisplayHandle> =
         withContext(Dispatchers.IO) {
             val proxy = manager.ensureStarted().getOrElse { return@withContext Result.failure(it) }
@@ -77,7 +85,7 @@ class VirtualDisplayClient(
             }
             if (id < 0) {
                 return@withContext Result.failure(
-                    IllegalStateException("Error al crear la pantalla virtual independiente(La capacidad del servidor está llena o consulte para más detalles. /data/local/tmp/muse-vd-server.log)"),
+                    IllegalStateException("独立虚拟屏创建失败(服务端容量已满或详见 /data/local/tmp/muse-vd-server.log)"),
                 )
             }
             try {
@@ -89,7 +97,7 @@ class VirtualDisplayClient(
             Result.success(DisplayHandle(id, width, height, dpi))
         }
 
-    /** agarrar un marco(JPEG bytes);Actualiza automáticamente la pantalla cuando falla la pantalla virtual compatible. */
+    /** 抓取一帧(JPEG 字节);兼容虚拟屏失效时自动刷新一次 display。 */
     suspend fun screenshot(displayId: Int = manager.lastDisplayId): ByteArray? = withContext(Dispatchers.IO) {
         // The compatibility display is the only display this client can safely recreate.
         // Dedicated GUI-Agent displays are owned by the caller and must not be replaced here.
@@ -120,7 +128,7 @@ class VirtualDisplayClient(
         }
     }
 
-    /** Abre la aplicación en la pantalla virtual.:Actualiza automáticamente la pantalla cuando falla la pantalla compatible. */
+    /** 在虚拟屏里打开应用:兼容屏失效时自动刷新一次 display。 */
     suspend fun openApp(packageName: String, displayId: Int = manager.lastDisplayId): Boolean = withContext(Dispatchers.IO) {
         if (!PACKAGE_REGEX.matches(packageName) || displayId < 0) return@withContext false
         val compatibilityRequest = displayId == manager.lastDisplayId
@@ -168,12 +176,12 @@ class VirtualDisplayClient(
                 .map { it.trim() }
                 .lastOrNull { it.contains('/') }
                 ?: return false
-        // Antiinyección:Los metacaracteres del shell que aparecen en los nombres de los componentes se rechazan directamente.(El nombre del paquete está en la lista blanca.,Este es un doble seguro.)
+        // 防注入:组件名出现 shell 元字符直接拒绝(包名已白名单,这里是双保险)
         if (component.any { it in INJECTION_CHARS }) return false
         return manager.exec("am start --display $displayId -n $component").exitCode == 0
     }
 
-    /** Destruir la pantalla virtual(Devuelve cuando el servidor no existe false,No es un error). */
+    /** 销毁虚拟屏(服务端不存在时返回 false,不算错误)。 */
     suspend fun destroy(displayId: Int = manager.lastDisplayId): Boolean = withContext(Dispatchers.IO) {
         val proxy = manager.existingLiveProxy() ?: run {
             if (displayId == manager.lastDisplayId) manager.lastDisplayId = -1
@@ -199,7 +207,7 @@ class VirtualDisplayClient(
 
         private val PACKAGE_REGEX = Regex("^[a-zA-Z][a-zA-Z0-9_.]*$")
 
-        /** shell conjunto de metacaracteres(Rechazar cuando aparece el nombre del componente,Doble seguro antiinyección). */
+        /** shell 元字符集合(组件名出现即拒绝,防注入双保险)。 */
         private val INJECTION_CHARS = setOf(' ', ';', '&', '|', '<', '>', '\$', '`', '\'', '"', '\\')
     }
 }

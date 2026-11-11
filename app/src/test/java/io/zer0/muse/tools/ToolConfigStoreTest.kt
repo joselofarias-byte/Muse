@@ -5,19 +5,20 @@ import androidx.test.core.app.ApplicationProvider
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * Prueba de almacenamiento de políticas de aprobación de herramientas.
+ * 工具审批策略存储测试。
  *
- * Contratos clave:**No configurado ≠ El usuario permite explícitamente**. La capa de datos debe poder distinguir entre estos dos estados,
- * De lo contrario, la ruta de aprobación principal considerará "no configurado" como "el usuario ha sido liberado".ASK/STRICT modo
- * Las aprobaciones debidas según el nivel de riesgo se omitirán por completo (defecto histórico).
+ * 关键契约：**未配置 ≠ 用户显式允许**。数据层必须能区分这两种状态，
+ * 否则审批主路径会把「没配置过」当成「用户已放行」，ASK/STRICT 模式下
+ * 按风险等级应有的审批会被整段跳过（历史缺陷）。
  *
- * DataStore Compartido dentro del mismo proceso de prueba, por lo que cada caso de uso utiliza un nombre de herramienta diferente para garantizar el aislamiento.
+ * DataStore 在同一测试进程内共享，因此每个用例使用不同的工具名保证隔离。
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -29,7 +30,7 @@ class ToolConfigStoreTest {
     @Test
     fun unconfiguredToolHasNoExplicitPolicy() = runBlocking {
         assertNull(store.getConfiguredPolicy("probe_unconfigured"))
-        // Los descriptores de acceso compatibles aún devuelven la semántica de "versión predeterminada", pero la ruta principal de aprobación no debería usarla para tomar decisiones.
+        // 兼容访问器仍返回「默认放行」语义，但审批主路径不应使用它做判定。
         assertEquals(ToolApprovalPolicy.ALWAYS_ALLOW, store.getPolicy("probe_unconfigured"))
         assertEquals(ToolApprovalState.Auto, store.resolveApprovalState("probe_unconfigured"))
     }
@@ -49,16 +50,23 @@ class ToolConfigStoreTest {
 
         assertEquals(ToolApprovalPolicy.ALWAYS_DENY, store.getConfiguredPolicy("probe_deny"))
         assertEquals(ToolApprovalPolicy.ASK_EVERY_TIME, store.getConfiguredPolicy("probe_ask"))
+        // 断字段而不是 toString()：toString 把数据类的形状当契约，加一个字段就红一片，
+        // 而这里真正要钉的是"原因文本"和"这是谁决定的"。
+        val denied = store.resolveApprovalState("probe_deny")
+        assertTrue("ALWAYS_DENY 必须给终态", denied is ToolApprovalState.Denied)
+        denied as ToolApprovalState.Denied
+        assertEquals("Tool disabled by user", denied.reason)
         assertEquals(
-            ToolApprovalState.Denied("Tool disabled by user").toString(),
-            store.resolveApprovalState("probe_deny").toString(),
+            "工具早先被禁用不是本轮用户的动作，来源必须是 POLICY（否则会被算成用户拒绝）",
+            DenySource.POLICY,
+            denied.source,
         )
         assertEquals(ToolApprovalState.Pending, store.resolveApprovalState("probe_ask"))
     }
 
     @Test
     fun unconfiguredToolStillRequiresApprovalUnderAskMode() = runBlocking {
-        // Contrato de cableado para ruta de producción: no configurado → null → Determinador por modo+Determinado por el nivel de riesgo.
+        // 生产路径的接线契约：未配置 → null → 判定器按模式+风险等级决定。
         val policy = store.getConfiguredPolicy("probe_ask_high")
         assertEquals(
             ToolApprovalState.Pending,
@@ -82,7 +90,7 @@ class ToolConfigStoreTest {
 
     @Test
     fun explicitAllowStillBypassesApprovalInAskMode() = runBlocking {
-        // Los usuarios deben continuar sin molestar después de hacer clic en "Permitir siempre". Esta semántica no puede ser destruida por la solución anterior.
+        // 用户点过「始终允许」之后必须继续免打扰，这条语义不能被上面的修复破坏。
         store.setPolicy("probe_allow_bypass", ToolApprovalPolicy.ALWAYS_ALLOW)
         val policy = store.getConfiguredPolicy("probe_allow_bypass")
 

@@ -5,32 +5,32 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 /**
- * v1.0.53: Limitador de concurrencia global de subagente.
+ * v1.0.53: 子 agent 全局并发限流器。
  *
- * - Semántica del semáforo:maxConcurrent ejecutar simultáneamente,fuera de linea(espera de encuesta)
- * - backstop:Si la distribución total acumulada excede maxTotal, se rechazará directamente.(Prevenir la pérdida de control)
- * - Singleton global(Inyectado a través de Koin),Todos los portales de delegación comparten la misma cuota
- *   - TeamWorkflowExecutor.executeParallel(Nodo paralelo del equipo)
- *   - SkillExecutor.delegateAgent nonBlocking camino(Delegación asincrónica del subayudante)
- *   - SubagentRunner.run(El agente pasivo bloquea múltiples ciclos de herramientas)
+ * - 信号量语义:maxConcurrent 同时执行,超出排队(轮询等待)
+ * - backstop:累计派发总数超过 maxTotal 直接拒绝(防失控)
+ * - 全局单例(经 Koin 注入),所有委派入口共享同一配额
+ *   - TeamWorkflowExecutor.executeParallel(团队并行节点)
+ *   - SkillExecutor.delegateAgent nonBlocking 路径(子助手异步委派)
+ *   - SubagentRunner.run(被动子 agent 阻塞多轮工具循环)
  *
- * Instrucciones de implementación:
- *  - Proteja los recuentos activos/totales generados con Mutex,evitar lost update
- *  - Esperando encuestas(100ms),La versión celular es suficiente.;Si necesita una latencia más baja, puede cambiarla. Channel<Unit> transmisión de tragamonedas
- *  - release() Debe estar bloqueado y disminuido. — La disminución simple perderá las actualizaciones durante el lanzamiento simultáneo,Provoca un error de conteo activo
+ * 实现说明:
+ *  - 用 Mutex 保护 active / totalSpawned 计数,避免 lost update
+ *  - 等待采用轮询(100ms),手机端足够;若需更低延迟可改 Channel<Unit> 槽位广播
+ *  - release() 必须加锁递减 — 并发 release 时裸递减会丢失更新,导致 active 计数错误
  */
 class AgentConcurrencyLimiter(
     private val maxConcurrent: Int = DEFAULT_MAX_CONCURRENT,
     private val maxTotal: Int = DEFAULT_MAX_TOTAL,
 ) {
     companion object {
-        /** límite superior 256;Guárdalo en el teléfono celular 8(La simultaneidad del modelo local es limitada.). */
+        /** 上限 256;手机端保守取 8(本地模型并发能力有限)。 */
         const val DEFAULT_MAX_CONCURRENT = 8
 
-        /** El límite de distribución acumulativo dentro del ciclo de vida de una sola aplicación.,Prevenir la pérdida de control. */
+        /** 单次应用生命周期内累计派发上限,防失控。 */
         const val DEFAULT_MAX_TOTAL = 200
 
-        /** El intervalo de sondeo mientras se espera un espacio. */
+        /** 等待槽位时的轮询间隔。 */
         private const val POLL_INTERVAL_MS = 100L
     }
 
@@ -38,20 +38,20 @@ class AgentConcurrencyLimiter(
     private val active = java.util.concurrent.atomic.AtomicInteger(0)
     private var totalSpawned = 0
 
-    /** Recuento activo actual(lectura atómica,para diagnóstico). */
+    /** 当前活跃数(原子读,诊断用)。 */
     val activeCount: Int get() = active.get()
 
     /**
-     * ejecutar [block],Si la concurrencia está llena, espere.
+     * 执行 [block],若并发已满则挂起等待。
      *
-     * @throws IllegalStateException Cuando se excede el respaldo maxTotal
+     * @throws IllegalStateException 超出 maxTotal backstop 时
      */
     suspend fun <T> run(block: suspend () -> T): T {
         mutex.withLock {
             totalSpawned++
             if (totalSpawned > maxTotal) {
                 throw IllegalStateException(
-                    "La distribución acumulada del subagente supera el límite superior. $maxTotal(Prevenir la pérdida de control backstop)",
+                    "子 agent 累计派发超过上限 $maxTotal(防失控 backstop)",
                 )
             }
         }
@@ -64,14 +64,14 @@ class AgentConcurrencyLimiter(
     }
 
     private suspend fun acquire() {
-        // camino rápido:Hay un espacio vacío por primera vez.
+        // 快速路径:首次即有空槽
         mutex.withLock {
             if (active.get() < maxConcurrent) {
                 active.incrementAndGet()
                 return
             }
         }
-        // camino lento:espera de encuesta
+        // 慢速路径:轮询等待
         while (true) {
             delay(POLL_INTERVAL_MS)
             mutex.withLock {
@@ -84,11 +84,11 @@ class AgentConcurrencyLimiter(
     }
 
     /**
-     * Debe estar bloqueado y disminuido.
+     * 必须加锁递减。
      *
-     * Decremento desnudo durante el lanzamiento simultáneo(active--)Las actualizaciones se perderán,Provoca un error de conteo activo
-     * (puede volverse negativo o quedar permanentemente estancado en maxConcurrent,Desactivar el semáforo).
-     * operación compuesta(comprobar+aumentar o disminuir)Utilice Mutex para excluirse entre sí,Lea usando AtomicInteger para garantizar la visibilidad.
+     * 并发 release 时裸递减(active--)会丢失更新,导致 active 计数错误
+     * (可能变为负数或永远卡在 maxConcurrent,使信号量失效)。
+     * 复合操作(检查+增减)用 Mutex 互斥,读取用 AtomicInteger 保证可见性。
      */
     private suspend fun release() {
         mutex.withLock {

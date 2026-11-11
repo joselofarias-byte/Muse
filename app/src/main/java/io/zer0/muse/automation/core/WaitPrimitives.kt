@@ -47,8 +47,8 @@ object WaitPrimitives {
     ): Boolean = try {
         val deadline = System.currentTimeMillis() + timeoutMs
         var lastSnapshot: ScreenSnapshot? = null
-        // v2.0.1: El valor inicial se cambia a la hora actual. —— Regresa correctamente después de la ventana de estabilidad cuando la pantalla ya está estacionaria true,
-        // La implementación anterior de lastChangeTime siempre siendo 0 dará como resultado"Nunca esperes la quietud"hasta el tiempo de espera.
+        // v2.0.1: 初值改为当前时间 —— 屏幕本已静止时也能在稳定性窗口后正确返回 true,
+        // 旧实现 lastChangeTime 恒为 0 会导致"永远等不到静止"直到超时。
         var lastChangeTime = System.currentTimeMillis()
         while (System.currentTimeMillis() < deadline) {
             val current = snapshotProvider()

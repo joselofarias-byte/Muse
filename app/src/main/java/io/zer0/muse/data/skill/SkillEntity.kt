@@ -7,30 +7,30 @@ import androidx.room.PrimaryKey
 import kotlinx.serialization.Serializable
 
 /**
- * Phase 8.8: Skill entidad(Kotlin Realización directa,No hay necesidad QuickJS).
+ * Phase 8.8: Skill 实体(Kotlin 直实现,不用 QuickJS)。
  *
- * Skill es una función de utilidad de Kotlin predefinida,Encapsular operaciones comunes(Leer y escribir archivos/solicitudes HTTP, etc.).
- * Cada habilidad está expuesta al exterior como una herramienta invocable de LLM.(Parámetro JSON Schema + función de ejecución).
+ * Skill 是预定义的 Kotlin 工具函数,封装常用操作(读写文件 / HTTP 请求等)。
+ * 每个 Skill 对外暴露为一个 LLM 可调用的工具(参数 JSON Schema + 执行函数)。
  *
- * Diferencias con planes similares.:Soluciones similares utilizan QuickJS para ejecutar scripts definidos por el usuario(S2 Ya skip),
- * Este proyecto se cambia a una plantilla de habilidades de Kotlin predefinida + ejecución parametrizada,Mantener puntos de extensión(Se pueden agregar más más tarde skill).
+ * 与同类方案的差异:同类方案用 QuickJS 执行用户自定义脚本(S2 已 skip),
+ * 本项目改为预定义 Kotlin skill 模板 + 参数化执行,保留扩展点(后续可加更多 skill)。
  *
- * @param id clave primaria(Usualmente usado slug,Como por ejemplo "read_file")
- * @param name nombre para mostrar
- * @param description Descripción de la herramienta(LLM Decide si llamar basándose en esto)
- * @param parametersJson parámetros JSON Schema(OpenAI Formatos compatibles)
- * @param requiredJson Matriz de nombres de parámetros requeridos(JSON cuerda)
- * @param implementationKotlin darse cuenta key(para enrutamiento SkillExecutor,Como por ejemplo "read_file")
- * @param enabled Ya sea para habilitar
- * @param category Clasificación:file / http / system / custom
- * @param createdAt Crear marca de tiempo
- * @param updatedAt Actualizar marca de tiempo
+ * @param id 主键(通常用 slug,如 "read_file")
+ * @param name 显示名
+ * @param description 工具描述(LLM 据此决定是否调用)
+ * @param parametersJson 参数 JSON Schema(OpenAI 兼容格式)
+ * @param requiredJson 必填参数名数组(JSON 字符串)
+ * @param implementationKotlin 实现 key(用于 SkillExecutor 路由,如 "read_file")
+ * @param enabled 是否启用
+ * @param category 分类:file / http / system / custom
+ * @param createdAt 创建时间戳
+ * @param updatedAt 更新时间戳
  */
 @Serializable
 @Entity(
     tableName = "skills",
-    // M-SD1: Índice habilitado/categoría,promover SkillRepository.listEnabled
-    // y rendimiento de consultas filtrado por categoría. El agente maestro maneja de manera uniforme la indexación y la migración en MuseDb.
+    // M-SD1: 为 enabled / category 加索引,提升 SkillRepository.listEnabled
+    // 和按 category 筛选的查询性能。索引与迁移由主代理统一在 MuseDb 中处理。
     indices = [Index(value = ["enabled"]), Index(value = ["category"])],
 )
 data class SkillEntity(
@@ -39,7 +39,7 @@ data class SkillEntity(
     val description: String,
     @ColumnInfo(defaultValue = "{}") val parametersJson: String = "{}",
     @ColumnInfo(defaultValue = "[]") val requiredJson: String = "[]",
-    // L-SET1: Usar valor predeterminado "unknown" Marcador de posición,Facilita la identificación de casos donde la implementación no está configurada al enrutar SkillExecutor
+    // L-SET1: 默认值用 "unknown" 占位,便于在 SkillExecutor 路由时识别未设置实现的情况
     @ColumnInfo(name = "implementationKotlin", defaultValue = "") val implementationKotlin: String = "unknown",
     @ColumnInfo(defaultValue = "1") val enabled: Boolean = true,
     @ColumnInfo(defaultValue = "custom") val category: String = "custom",

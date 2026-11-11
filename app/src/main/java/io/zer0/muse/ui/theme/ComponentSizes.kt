@@ -3,62 +3,62 @@ package io.zer0.muse.ui.theme
 import androidx.compose.ui.unit.dp
 
 /**
- * Muse ficha de diseño — Dimensiones específicas del componente(CMP-08).
+ * Muse 设计令牌 — 组件专属尺寸(CMP-08)。
  *
- * con [MusePaddings] / [MuseCornerRadius] / [MuseIconSizes] complementario:Espaciado universal/esquinas redondeadas/iconos
- * Toma esos tres juegos de fichas.,y algunos**Sólo pertenece a un determinado componente.**, El tamaño con el mismo valor no se puede encontrar globalmente.(Ancho de ventana emergente, cambiar geometría de pista)
- * Definido centralmente por propiedad del componente aquí,Los números mágicos ya no aparecen dentro de los componentes.,Sólo es necesario realizar el ajuste aquí.
+ * 与 [MusePaddings] / [MuseCornerRadius] / [MuseIconSizes] 互补:通用间距 / 圆角 / 图标
+ * 走那三套令牌,而少数**只属于某个组件**、全局找不到同值的尺寸(弹窗宽度、开关轨道几何)
+ * 在此按组件归属集中定义,组件内不再出现魔法数字,调整只需改这一处。
  *
- * Al agregar un nuevo equipo, debe indicar "dónde se utilizará".;Puede caer en la ficha universal.(Espaciado, esquinas redondeadas, tamaño de icono)Utilice siempre tokens universales.
+ * 新增档位必须写明「用在哪」;能落进通用令牌的(间距、圆角、图标尺寸)一律落通用令牌。
  */
 object MuseDialogSizes {
-    /** Acolchado ajustado de la ventana emergente; El área segura del sistema está a cargo del caparazón y no se cuenta en la tarjeta. */
+    /** 紧凑弹窗内边距；系统安全区由外壳负责，不计入卡片。 */
     val contentPadding = 20.dp
 
-    /** Las pantallas pequeñas también conservan espacios en blanco a los lados y las pantallas grandes no se estiran. */
+    /** 小屏也保留侧边留白，大屏不拉伸。 */
     val maxWidth = 320.dp
     val edgePadding = 24.dp
 
-    /** Una vez que el contenido se desplaza internamente, el título y las acciones permanecen visibles. */
+    /** 内容超出后内部滚动，标题和操作保持可见。 */
     val contentMaxHeight = 520.dp
     val buttonVisualHeight = 40.dp
 }
 
 object MuseSwitchSizes {
-    /** Cambiar ancho de vía(Cambiar las especificaciones estándar). */
+    /** 开关轨道宽度(开关标准规格)。 */
     val trackWidth = 51.dp
 
-    /** Cambiar la altura de la pista(Cambiar las especificaciones estándar). */
+    /** 开关轨道高度(开关标准规格)。 */
     val trackHeight = 31.dp
 
-    /** Cambiar el diámetro del pulgar(altura orbital − 2×inset). */
+    /** 开关拇指直径(轨道高度 − 2×inset)。 */
     val thumbSize = 27.dp
 
-    /** Inducción del pulgar y la órbita.(Reutilizar tokens de espaciado compactos comunes,No se introducen nuevos valores.). */
+    /** 拇指与轨道的内缩(复用通用紧凑间距令牌,不引入新值)。 */
     val trackPadding = MusePaddings.tinyGap
 }
 
 /**
- * enumerar geometría de fila([io.zer0.muse.ui.common.surface.MuseListItem]).
+ * 列表行几何([io.zer0.muse.ui.common.surface.MuseListItem])。
  *
- * Originalmente, los dos valores se escribieron como literales en los parámetros predeterminados de MuseListItem.,No se puede comparar con el token web;
- * Después de mencionar esto `tokens.json` de `component.listRow.*` Utilice la misma fuente que el componente.
+ * 原先两个值以字面量写在 MuseListItem 的默认参数里,无法被 Web 令牌比对;
+ * 提到这里后 `tokens.json` 的 `component.listRow.*` 与组件用同一个源。
  */
 object MuseListItemSizes {
-    /** Altura mínima de fila de lista normal(Alinear Material3 ListItem predeterminado,Asegúrate de tocar el objetivo.). */
-    val minHeight = 60.dp
+    /** 常规列表行最小高度(双平面翻新由 60 上调到 64dp,行更舒展;双行由内容自然撑开)。 */
+    val minHeight = 64.dp
 
-    /** lista compacta(Menú/panel de selección)La altura mínima de la fila. */
+    /** 紧凑列表(菜单 / 选择面板)的行最小高度。 */
     val compactMinHeight = 48.dp
 }
 
 /**
- * geometría del botón de la cápsula([io.zer0.muse.ui.common.form.MuseCapsuleButton]).
+ * 胶囊按钮几何([io.zer0.muse.ui.common.form.MuseCapsuleButton])。
  *
- * Los comentarios de prensa se escribieron originalmente en el valor objetivo de animateFloatAsState,Cosecha actual constante,con
- * `tokens.json` de `component.button.capsulePressScale` Mismo origen.
+ * 按压反馈原来写在 animateFloatAsState 的目标值里,现收成常量,与
+ * `tokens.json` 的 `component.button.capsulePressScale` 同源。
  */
 object MuseCapsuleButtonSizes {
-    /** Zoom cuando se presiona(1f al tamaño original). */
-    const val pressScale = 0.97f
+    /** 按压时的缩放比例(1f 为原尺寸)。 */
+    const val PRESS_SCALE = 0.97f
 }

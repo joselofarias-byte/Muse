@@ -31,13 +31,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
+import io.zer0.muse.miniphone.R
 import io.zer0.muse.miniphone.ui.chat.ChatMenuPositionProvider
 import io.zer0.muse.miniphone.ui.chat.MiniPhoneChatAvatar
 import io.zer0.muse.miniphone.ui.icons.MiniPhoneIcons
@@ -45,12 +48,12 @@ import io.zer0.muse.miniphone.ui.shell.relativeTimeOf
 import io.zer0.muse.miniphone.ui.theme.MiniPhoneTheme
 
 /**
- * una tarjeta dinámica:Autor, texto, imágenes, me gusta, comentarios, entrada de comentarios.
+ * 一条动态的卡片:作者、正文、图片、点赞、评论、评论输入。
  *
- * Solo el nombre del comentario al que se respondió vive en la tarjeta.([replyTarget]),El resto del estado proviene de [moment];
- * Los comentarios publicados pasan por devoluciones de llamada,Después de que se eliminó ViewModel, trajo nuevos [MomentUi] Vuelve y vuelve a dibujar,
- * La tarjeta en sí no mantiene una "lista de revisión local"—— De esa manera no estará bien una vez que pases la página.
- * @param onDeleteComment Eliminar un comentario que escribiste;Su respuesta se eliminará junto con ella.,Almacenamiento desde arriba
+ * 只有被回复的那条评论名活在卡片里([replyTarget]),其余状态全部来自 [moment];
+ * 发出去的评论走回调,由 ViewModel 落库后带着新的 [MomentUi] 回来重画,
+ * 卡片自己不维护一份「本地评论列表」—— 那样一翻页就对不上了。
+ * @param onDeleteComment 删自己写的一条评论;它的回复会跟着一起删,由上层落库
  */
 @Composable
 internal fun MomentCardView(
@@ -65,7 +68,7 @@ internal fun MomentCardView(
     val colors = MiniPhoneTheme.colors
     val dimens = MiniPhoneTheme.dimens
     var replyTarget by remember(moment.id) { mutableStateOf<CommentTarget?>(null) }
-    // Mantenga presionado el comentario para que aparezca "Eliminar" y su cuadro de confirmación.:dos cosas separadas,El menú está cerrado y el cuadro de confirmación sigue abierto.
+    // 长按评论弹出的「删除」与它的确认框:两件事分开,菜单关掉、确认框还开着
     var commentMenuId by remember(moment.id) { mutableStateOf<String?>(null) }
     var pendingCommentDelete by remember(moment.id) { mutableStateOf<String?>(null) }
     val cardShape = RoundedCornerShape(dimens.cardRadius)
@@ -137,7 +140,7 @@ internal fun MomentCardView(
     }
 }
 
-/** Nombre del autor y hora:El tiempo se calcula como \"justo ahora / Hace N minutos / HH:mm\",El mismo calibre que la lista de sesiones. */
+/** 作者名与时间:时间按「刚刚 / N 分钟前 / HH:mm」算,和会话列表同一套口径。 */
 @Composable
 private fun MomentHeader(moment: MomentUi) {
     val colors = MiniPhoneTheme.colors
@@ -149,14 +152,14 @@ private fun MomentHeader(moment: MomentUi) {
             modifier = Modifier.weight(1f),
         )
         Text(
-            text = relativeTimeOf(moment.createdAt),
+            text = relativeTimeOf(LocalContext.current, moment.createdAt),
             style = typography.timestamp.copy(color = colors.textSecondary),
             modifier = Modifier.testTag(MiniPhoneMomentsTags.time(moment.id)),
         )
     }
 }
 
-/** Texto. */
+/** 正文。 */
 @Composable
 private fun MomentBody(moment: MomentUi) {
     val colors = MiniPhoneTheme.colors
@@ -168,7 +171,7 @@ private fun MomentBody(moment: MomentUi) {
     )
 }
 
-/** Me gusta y eliminar:La eliminación solo aparece en las publicaciones publicadas por usted. */
+/** 点赞与删除:删除只出现在自己发的动态上。 */
 @Composable
 private fun MomentActionRow(moment: MomentUi, onToggleLike: () -> Unit, onDelete: () -> Unit) {
     val colors = MiniPhoneTheme.colors
@@ -184,7 +187,7 @@ private fun MomentActionRow(moment: MomentUi, onToggleLike: () -> Unit, onDelete
         ) {
             Icon(
                 imageVector = MiniPhoneIcons.Heart,
-                contentDescription = "Me gusta",
+                contentDescription = stringResource(R.string.mp_moment_like_cd),
                 tint = if (moment.likedByMe) colors.unreadDot else colors.textSecondary,
                 modifier = Modifier.size(ActionIconSize),
             )
@@ -198,7 +201,8 @@ private fun MomentActionRow(moment: MomentUi, onToggleLike: () -> Unit, onDelete
         if (moment.isMine) {
             Spacer(Modifier.width(ActionGap))
             Text(
-                text = DELETE_LABEL,
+                text = stringResource(DELETE_LABEL_RES),
+
                 style = typography.timestamp.copy(color = colors.textSecondary),
                 modifier = Modifier
                     .clip(RoundedCornerShape(ActionCorner))
@@ -207,11 +211,12 @@ private fun MomentActionRow(moment: MomentUi, onToggleLike: () -> Unit, onDelete
                     .padding(horizontal = ActionPaddingH, vertical = ActionPaddingV),
             )
         }
-        // El rango visible solo se escribe pero no se lee.,Pero el autor debe poder ver que se ha elegido "sólo a sí mismo".
+        // 可见范围只写了不读,但得让作者看得见自己选了「仅自己」
         if (moment.isMine && moment.visibleToJson.isNotBlank()) {
             Spacer(Modifier.width(ActionGap))
             Text(
-                text = ONLY_SELF_LABEL,
+                text = stringResource(ONLY_SELF_LABEL_RES),
+
                 style = typography.timestamp.copy(color = colors.textSecondary),
                 modifier = Modifier.testTag(MiniPhoneMomentsTags.visibleSelf(moment.id)),
             )
@@ -220,16 +225,16 @@ private fun MomentActionRow(moment: MomentUi, onToggleLike: () -> Unit, onDelete
 }
 
 /**
- * Como una fila de personas:Encadenarlos según el tiempo de los me gusta.,Terminado en una línea,Sin desplazamiento.
+ * 点赞人一行:按点赞时间先后串起来,一行写完,不滚动。
  *
- * Cuando haya demasiada gente, deja de hablar y di "❤️ A,B,…, esperando a 12 personas",No en una gran pila en la tarjeta.
+ * 人多了就收口成「❤️ A，B，…，等 12 人」,不在卡片里堆成一大块。
  */
 @Composable
 private fun MomentLikers(moment: MomentUi) {
     val colors = MiniPhoneTheme.colors
     val typography = MiniPhoneTheme.typography
     Text(
-        text = likersLineOf(moment.likes),
+        text = likersLineOf(LocalContext.current, moment.likes),
         style = typography.timestamp.copy(color = colors.textSecondary),
         softWrap = true,
         modifier = Modifier
@@ -239,11 +244,11 @@ private fun MomentLikers(moment: MomentUi) {
 }
 
 /**
- * Área de comentarios:línea de comentario de nivel superior,Su respuesta está un espacio más abajo.
+ * 评论区:顶层评论一行,它的回复缩一格接在下面。
  *
- * Haga clic en cualquier línea para cambiar el cuadro de entrada a "Responder a TA";Los comentarios escritos por usted mismo también se pueden mantener presionados para que aparezca "eliminar",
- * Los comentarios de otras personas no darán esta entrada. —— Entonces la lista de acciones en ese momento está vacía.
- * Las respuestas solo se presionan en una capa.,El prefijo indica quién está en el siguiente nivel.
+ * 点任意一行把输入框切成「回复 TA」;自己写的评论还能长按弹出「删除」,
+ * 别人的评论不给这个入口 —— 所以那一刻的动作列表是空的。
+ * 回复的回复也只压一层,前缀里点明上一层是谁。
  */
 @Composable
 private fun MomentComments(
@@ -271,7 +276,7 @@ private fun MomentComments(
                 CommentLine(
                     line = CommentLineModel(
                         id = comment.id,
-                        text = "${comment.senderName}:${comment.content}",
+                        text = "${comment.senderName}：${comment.content}",
                         createdAt = comment.createdAt,
                         indent = 0.dp,
                         canDelete = comment.isMine,
@@ -308,10 +313,10 @@ private fun MomentComments(
 }
 
 /**
- * Comentario o respuesta de una línea:El texto ocupa una línea.,Hay un tiempo relativo en la oración.
+ * 一行评论或回复:正文占满一行,句中带一句相对时间。
  *
- * Solo las líneas que puedes eliminar se pueden mantener presionadas:Los comentarios de otros no están ligados a una pulsación larga.,No pasa nada si mantienes presionado ——
- * La entrada no existe, lo cual es más directo que abrir un menú emergente que solo se puede cancelar.
+ * 只有自己能删的那几行能长按:别人的评论不绑长按,按住什么也不会发生 ——
+ * 入口不存在比弹一个只能取消的菜单更直接。
  */
 @Composable
 private fun CommentLine(line: CommentLineModel, onReply: () -> Unit, onAskDelete: () -> Unit) {
@@ -334,7 +339,7 @@ private fun CommentLine(line: CommentLineModel, onReply: () -> Unit, onAskDelete
             modifier = Modifier.weight(1f),
         )
         Text(
-            text = relativeTimeOf(line.createdAt),
+            text = relativeTimeOf(LocalContext.current, line.createdAt),
             style = typography.timestamp.copy(color = colors.textSecondary),
             modifier = Modifier
                 .padding(start = CommentTimeGap)
@@ -343,7 +348,7 @@ private fun CommentLine(line: CommentLineModel, onReply: () -> Unit, onAskDelete
     }
 }
 
-/** Comentario de una línea sobre qué dibujar.:Texto, hora, sangría, si se puede eliminar y si es una respuesta. */
+/** 一行评论要画的东西:正文、时间、缩进、能不能删、是不是回复。 */
 @Immutable
 private data class CommentLineModel(
     val id: String,
@@ -358,7 +363,7 @@ private data class CommentLineModel(
     fun timeTag(): String = if (isReply) MiniPhoneMomentsTags.replyTime(id) else MiniPhoneMomentsTags.commentTime(id)
 }
 
-/** Mantenga presionado su propio comentario para que aparezca la superposición de acción.:Sólo hay una opción \"Eliminar\". */
+/** 长按自己的评论弹出的动作浮层:只有一项「删除」。 */
 @Composable
 private fun CommentDeleteMenu(onDismiss: () -> Unit, onDelete: () -> Unit) {
     val colors = MiniPhoneTheme.colors
@@ -377,7 +382,8 @@ private fun CommentDeleteMenu(onDismiss: () -> Unit, onDelete: () -> Unit) {
         properties = PopupProperties(focusable = true),
     ) {
         Text(
-            text = DELETE_COMMENT_LABEL,
+            text = stringResource(DELETE_COMMENT_LABEL_RES),
+
             style = typography.body.copy(color = colors.unreadDot),
             modifier = Modifier
                 .testTag(MiniPhoneMomentsTags.COMMENT_MENU_ACTION)
@@ -393,7 +399,7 @@ private fun CommentDeleteMenu(onDismiss: () -> Unit, onDelete: () -> Unit) {
     }
 }
 
-/** Confirmar antes de eliminar un comentario:Escribe una frase y la respuesta seguirá. */
+/** 删评论前的确认:一句话写明回复会跟着走。 */
 @Composable
 private fun CommentDeleteConfirmDialog(onDismiss: () -> Unit, onConfirm: () -> Unit) {
     val colors = MiniPhoneTheme.colors
@@ -410,13 +416,20 @@ private fun CommentDeleteConfirmDialog(onDismiss: () -> Unit, onConfirm: () -> U
                 .border(dimens.hairline, colors.divider, shape)
                 .padding(horizontal = 20.dp, vertical = 18.dp),
         ) {
-            Text(text = COMMENT_DELETE_TITLE, style = typography.title.copy(color = colors.textPrimary))
+            Text(
+                text = stringResource(COMMENT_DELETE_TITLE_RES),
+                style = typography.title.copy(color = colors.textPrimary),
+            )
             Spacer(Modifier.height(8.dp))
-            Text(text = COMMENT_DELETE_HINT, style = typography.caption.copy(color = colors.textSecondary))
+            Text(
+                text = stringResource(COMMENT_DELETE_HINT_RES),
+                style = typography.caption.copy(color = colors.textSecondary),
+            )
             Spacer(Modifier.height(18.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 Text(
-                    text = COMMENT_DELETE_CANCEL_LABEL,
+                    text = stringResource(COMMENT_DELETE_CANCEL_LABEL_RES),
+
                     style = typography.body.copy(color = colors.textSecondary),
                     modifier = Modifier
                         .testTag(MiniPhoneMomentsTags.COMMENT_DELETE_CANCEL)
@@ -427,7 +440,8 @@ private fun CommentDeleteConfirmDialog(onDismiss: () -> Unit, onConfirm: () -> U
                 )
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    text = DELETE_COMMENT_LABEL,
+                    text = stringResource(DELETE_COMMENT_LABEL_RES),
+
                     style = typography.body.copy(color = colors.unreadDot),
                     modifier = Modifier
                         .testTag(MiniPhoneMomentsTags.COMMENT_DELETE_CONFIRM)
@@ -441,17 +455,17 @@ private fun CommentDeleteConfirmDialog(onDismiss: () -> Unit, onConfirm: () -> U
     }
 }
 
-/** Texto de respuesta;Al responder a otra respuesta,Añade el prefijo \"a quién responder\". */
+/** 回复的正文;回复的是另一条回复时,前缀补一句「回复谁」。 */
 internal fun replyText(reply: MomentReplyUi): String {
     val to = reply.replyToName
     return if (to == null) {
-        "${reply.senderName}:${reply.content}"
+        "${reply.senderName}：${reply.content}"
     } else {
-        "${reply.senderName} Responder $to:${reply.content}"
+        "${reply.senderName} 回复 $to：${reply.content}"
     }
 }
 
-/** Entrada de comentarios:Una línea de cuadros de entrada más un botón de enviar,No se publicará contenido en blanco. */
+/** 评论输入:一行输入框加一个发送键,空白内容不发。 */
 @Composable
 private fun MomentCommentInput(momentId: String, replyTargetName: String?, onSend: (String) -> Unit) {
     val colors = MiniPhoneTheme.colors
@@ -469,7 +483,8 @@ private fun MomentCommentInput(momentId: String, replyTargetName: String?, onSen
         ) {
             if (draft.isEmpty()) {
                 Text(
-                    text = replyTargetName?.let { "Responder $it" } ?: COMMENT_PLACEHOLDER,
+                    text = replyTargetName?.let { stringResource(R.string.mp_moment_reply_prefix, it) }
+                        ?: stringResource(COMMENT_PLACEHOLDER_RES),
                     style = typography.timestamp.copy(color = colors.textSecondary),
                 )
             }
@@ -497,7 +512,7 @@ private fun MomentCommentInput(momentId: String, replyTargetName: String?, onSen
         ) {
             Icon(
                 imageVector = MiniPhoneIcons.Send,
-                contentDescription = "Enviar un comentario",
+                contentDescription = stringResource(R.string.mp_moment_comment_cd),
                 tint = if (draft.isNotBlank()) colors.accent else colors.textSecondary,
                 modifier = Modifier.size(CommentSendIcon),
             )
@@ -529,11 +544,11 @@ private val CommentDialogWidth = 280.dp
 private val CancelCorner = 8.dp
 private val DialogActionHeight = 36.dp
 
-private const val DELETE_COMMENT_LABEL: String = "Eliminar"
-private const val COMMENT_DELETE_TITLE: String = "Eliminar este comentario?"
-private const val COMMENT_DELETE_HINT: String = "Este comentario y las respuestas a continuación serán eliminados."
-private const val COMMENT_DELETE_CANCEL_LABEL: String = "Cancelar"
+private val DELETE_COMMENT_LABEL_RES: Int = R.string.mp_delete
+private val COMMENT_DELETE_TITLE_RES: Int = R.string.mp_moment_delete_comment_title
+private val COMMENT_DELETE_HINT_RES: Int = R.string.mp_moment_delete_comment_hint
+private val COMMENT_DELETE_CANCEL_LABEL_RES: Int = R.string.mp_cancel
 
-private const val DELETE_LABEL: String = "Eliminar"
-private const val ONLY_SELF_LABEL: String = "Visible solo para ti"
-private const val COMMENT_PLACEHOLDER: String = "di algo"
+private val DELETE_LABEL_RES: Int = R.string.mp_delete
+private val ONLY_SELF_LABEL_RES: Int = R.string.mp_moment_only_self
+private val COMMENT_PLACEHOLDER_RES: Int = R.string.mp_moment_comment_placeholder

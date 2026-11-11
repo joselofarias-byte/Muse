@@ -81,7 +81,7 @@
     <string name="settings_theme_font_preview_note">Nota pequena · Para dicas auxiliares</string>
     <!-- Phase 4: seleção e prévia da pele de balões -->
     <string name="settings_bubble_skin_section">Pele de balões</string>
-    <string name="settings_bubble_skin_builtin">Balão padrão do Muse</string>
+    <string name="settings_bubble_skin_builtin">Balão padrão do Musa</string>
     <string name="settings_bubble_skin_builtin_desc">Pele integrada, igual ao padrão</string>
     <string name="settings_bubble_skin_custom_desc">Pele de balão personalizada</string>
     <string name="settings_bubble_skin_import">Importar pele</string>
@@ -101,17 +101,11 @@
     <string name="settings_theme_preview_hello">Olá</string>
     <string name="settings_theme_preview_reply">Oi!</string>
     <string name="settings_theme_language">Linguagem</string>
-    <string name="settings_theme_language_zh">chinês</string>
-    <string name="settings_theme_language_en">Inglês</string>
-    <string name="settings_theme_language_ja">japonês</string>
-    <string name="settings_theme_language_ko">coreano</string>
-    <string name="settings_theme_language_ru">russo</string>
     <string name="settings_theme_current_language">Idioma atual</string>
     <string name="settings_default_home_page_title">Página inicial padrão</string>
     <string name="settings_default_home_page_desc">Escolha a página mostrada na inicialização do aplicativo</string>
 
     <!-- Settings Sub-pages / About -->
-    <string name="settings_sub_model_services">Modelos &amp; Serviços</string>
     <string name="settings_task_routing_title">Modelos auxiliares</string>
     <!-- v2.x: utility models section -->
     <string name="settings_task_routing_aux_section">Modelos auxiliares</string>
@@ -119,6 +113,12 @@
     <string name="settings_task_routing_aux_models_label">Modelos auxiliares</string>
     <string name="settings_task_routing_main_models_label">Modelo de chat principal</string>
     <string name="settings_task_routing_utility_small_desc">Tarefas simples como títulos e classificação leve</string>
+    <string name="settings_task_routing_utility_failed_title">Falha ao chamar o modelo auxiliar</string>
+    <string name="settings_task_routing_utility_failed_desc">A última chamada a %1$s retornou: %2$s. Afeta tarefas em segundo plano, como extração de memória e resumos; o chat não é afetado. Escolha um modelo que funcione ou deixe vazio para usar o modelo principal.</string>
+    <string name="settings_agent_daily_guarantee">Garantia diária</string>
+    <string name="settings_agent_daily_guarantee_hint">Se nenhuma mensagem proativa foi enviada por este período, uma é forçada. Horário silencioso, resfriamento, atividade recente e limite diário continuam valendo.</string>
+    <string name="settings_agent_daily_guarantee_hours">%1$d h</string>
+    <string name="settings_agent_daily_guarantee_off">Desativado</string>
     <string name="settings_task_routing_utility_large_desc">Compressão, extração de memória, divisão de tarefas</string>
     <string name="settings_crash_anr_title">Detecção de ANR</string>
     <string name="settings_crash_anr_subtitle">Detecta que o app não responde e registra nos logs de falha/auditoria</string>
@@ -204,7 +204,7 @@
     <string name="settings_memory_keep_awake">Mantenha-se acordado</string>
     <string name="settings_memory_keep_awake_subtitle">Manter apenas durante geração ativa; pular com bateria baixa e sem carregar</string>
     <string name="settings_memory_auto_launch">Inicialização automática na inicialização</string>
-    <string name="settings_memory_auto_launch_subtitle">Inicie o Muse automaticamente quando o dispositivo inicializar</string>
+    <string name="settings_memory_auto_launch_subtitle">Inicie o Musa automaticamente quando o dispositivo inicializar</string>
     <string name="settings_memory_notification_section">Notificações</string>
     <string name="settings_memory_reply_notification_cd">Notificação de conclusão de resposta</string>
     <string name="settings_memory_reply_notification">Notificação de conclusão de resposta</string>
@@ -457,6 +457,7 @@
     <string name="settings_media_tts_save_voice">Salvar voz</string>
     <string name="settings_media_tts_save_model">Salvar modelo</string>
     <string name="settings_media_tts_save_endpoint">Salvar ponto final</string>
+    <string name="settings_media_tts_save_connection">Salvar conexão</string>
     <string name="settings_media_tts_show">Mostrar</string>
     <string name="settings_media_tts_hide">Esconder</string>
     <string name="settings_media_tts_saved">Salvo</string>
@@ -503,7 +504,7 @@
     <string name="settings_theme_custom_color_h">Matiz</string>
     <string name="settings_theme_custom_color_s">Saturação</string>
     <string name="settings_theme_custom_color_l">Leveza</string>
-    <!-- Correcciones en la interfaz (i18n-3.x): Área de configuración de mensajes activos i18n(Copiar temporalmente chino,Traducción posterior) -->
+    <!-- 前端修复 (i18n-3.x): 主动消息配置区 i18n(临时复制中文,后续补译) -->
     <string name="settings_agent_dm_subtitle">Ver mensagens diretas entre Agents</string>
     <string name="settings_agent_agent_only">Apenas chats do Agent</string>
     <string name="settings_agent_agent_only_subtitle">Quando ativado, apenas os assistentes Agent enviam mensagens proativas; sessões de tarefa não</string>
@@ -529,7 +530,7 @@
     <string name="settings_import_chatgpt_step1">1. Abra o ChatGPT → Configurações → Perfil → Controles de dados</string>
     <string name="settings_import_chatgpt_step2">2. Toque em "Exportar dados"; a OpenAI envia o zip por e-mail</string>
     <string name="settings_import_chatgpt_step3">3. Baixe o zip para o celular ou extraia e escolha conversations.json</string>
-    <string name="settings_import_chatgpt_step4">4. Selecione o arquivo no Muse e as conversas serão importadas automaticamente</string>
+    <string name="settings_import_chatgpt_step4">4. Selecione o arquivo no Musa e as conversas serão importadas automaticamente</string>
     <string name="settings_provider_media_gen_section">Modelos de geração de mídia</string>
     <string name="settings_asr_entry_title">Mecanismo de reconhecimento de fala</string>
     <string name="settings_asr_entry_subtitle">Selecione um mecanismo de fala para texto (ex.: Paraformer / Whisper)</string>
@@ -661,14 +662,14 @@
     <string name="settings_asr_group_transcription">Transcrição de arquivos</string>
     <string name="settings_chat_typography_section">Tipografia</string>
     <string name="settings_chat_message_font_size">Tamanho do texto</string>
-    <string name="settings_chat_message_font_size_subtitle">Ajusta o tamanho do texto, padrão 100%%</string>
+    <string name="settings_chat_message_font_size_subtitle">Ajusta o tamanho do texto, padrão 100%</string>
     <string name="settings_chat_letter_spacing">Espaçamento entre letras</string>
     <string name="settings_chat_letter_spacing_subtitle">Ajusta o espaço entre caracteres</string>
     <string name="assistant_kb_scope_whole"> (tudo)</string>
     <string name="settings_preview_user_bubble">Pré-visualização da sua mensagem</string>
     <string name="settings_preview_assistant_bubble">Pré-visualização de uma resposta de IA; fonte, espaçamento e raio mudam ao vivo.</string>
     <string name="settings_preview_timestamp">14:30</string>
-    <string name="settings_preview_model_name">Muse · Modelo de exemplo</string>
+    <string name="settings_preview_model_name">Musa · Modelo de exemplo</string>
     <string name="settings_theme_liquid_glass">Efeito de vidro líquido</string>
     <string name="settings_theme_liquid_glass_desc">Visual de vidro para a barra superior, de entrada e balões de mensagem.</string>
     <string name="settings_glass_off">Desligado</string>
@@ -693,11 +694,11 @@
     <string name="settings_backup_include_secrets_subtitle">Chaves de API e credenciais serão salvas em texto plano no arquivo. Guarde com segurança.</string>
     <string name="oauth_device_open_page">Abrir página de autorização</string>
     <string name="oauth_device_open_failed">Não é possível abrir o navegador</string>
-    <string name="keep_alive_notification_title">Muse está em execução em segundo plano</string>
+    <string name="keep_alive_notification_title">Musa está em execução em segundo plano</string>
     <string name="keep_alive_notification_text">Mantendo tarefas agendadas e mensagens proativas online</string>
     <string name="settings_keep_alive_title">Manter em segundo plano</string>
     <string name="settings_keep_alive_subtitle">Mantém o processo em primeiro plano com uma notificação permanente</string>
-    <string name="settings_keep_alive_hint">O Muse mostrará uma notificação permanente. O Android exige isso para serviços em primeiro plano e não é possível ocultá-la. Em algumas ROMs chinesas também é preciso permitir a inicialização automática.</string>
+    <string name="settings_keep_alive_hint">O Musa mostrará uma notificação permanente. O Android exige isso para serviços em primeiro plano e não é possível ocultá-la. Em algumas ROMs chinesas também é preciso permitir a inicialização automática.</string>
     <string name="settings_keep_alive_wakelock_title">Manter conexão com a tela desligada</string>
     <string name="settings_keep_alive_wakelock_subtitle">Recebe mensagens proativas mais cedo, gastando mais bateria</string>
     <string name="settings_keep_alive_battery_title">Desativar otimização de bateria</string>
@@ -715,7 +716,7 @@
     <string name="settings_keep_alive_notification_custom_title">Texto da notificação</string>
     <string name="settings_keep_alive_notification_custom_subtitle">Personalize o título e o corpo da notificação permanente</string>
     <string name="settings_keep_alive_notification_custom_hint">Deixe em branco para usar o texto padrão.</string>
-    <string name="settings_keep_alive_notification_title_placeholder">Padrão: Muse está em execução em segundo plano</string>
+    <string name="settings_keep_alive_notification_title_placeholder">Padrão: Musa está em execução em segundo plano</string>
     <string name="settings_keep_alive_notification_text_placeholder">Padrão: Mantendo tarefas agendadas e mensagens proativas online</string>
     <string name="settings_relationship_proactive_enabled">Permitir mensagens proativas</string>
     <string name="settings_relationship_proactive_enabled_subtitle">Desativado, este personagem não falará primeiro; você ainda pode iniciar a conversa</string>
@@ -742,4 +743,70 @@
     <string name="settings_chat_carry_over_subtitle">Lê os últimos turnos da conversa anterior. Mais continuidade, mas consome mais tokens de entrada.</string>
     <string name="settings_chat_carry_over_count">Trazer %1$d mensagens</string>
     <string name="settings_chat_carry_over_count_hint">Cerca de %1$d turnos</string>
+    <string name="connection_skills_title">Habilidades e pacotes de habilidades</string>
+    <string name="connection_skills_subtitle">%1$d habilidades personalizadas, %2$d de pacotes SKILL.md</string>
+    <string name="settings_user_profile_auto_section">Perfil aprendido das conversas</string>
+    <string name="settings_user_profile_auto_switch">Atualizar o perfil automaticamente</string>
+    <string name="settings_user_profile_auto_desc">Destilado das conversas periodicamente e injetado como referência; os campos preenchidos por você sempre têm prioridade.</string>
+    <string name="settings_user_profile_auto_empty">Nada aprendido ainda — aparece após mais conversas.</string>
+    <string name="settings_user_profile_auto_override">Substituir este grupo</string>
+    <string name="settings_user_profile_auto_revert">Restaurar automático</string>
+    <string name="profile_section_identity">Identidade e tratamento</string>
+    <string name="profile_section_relationship">Relacionamento</string>
+    <string name="profile_section_stable">Fatos estáveis</string>
+    <string name="profile_section_interaction">Preferências de interação</string>
+    <string name="profile_section_recent">Interações recentes</string>
+    <string name="profile_section_uncertain">Notas incertas</string>
+    <string name="settings_agent_timing_scoring_title">Momento inteligente</string>
+    <string name="settings_agent_timing_scoring_subtitle">Antes de falar, pondera reações recentes: última mensagem sem resposta, backlog não lido ou madrugada reduzem a probabilidade; um assunto pendente a recupera. Intervalos, limite e silêncio não mudam.</string>
+    <string name="settings_screen_diagnostics">Diagnóstico</string>
+    <string name="settings_screen_diagnostics_desc">Armazenamento, thread principal, latência do Host Web e tarefas em segundo plano, com exportação JSON sem dados sensíveis</string>
+    <string name="settings_diagnostics_loading">Coletando…</string>
+    <string name="settings_diagnostics_actions">Exportar</string>
+    <string name="settings_diagnostics_export_hint">A exportação contém apenas tamanhos, contagens e estados — sem mensagens, caminhos ou credenciais</string>
+    <string name="settings_diagnostics_copy_json">Copiar JSON de diagnóstico</string>
+    <string name="settings_diagnostics_copied">Copiado à área de transferência</string>
+    <string name="settings_diagnostics_export_file">Salvar no cache</string>
+    <string name="settings_diagnostics_exported">Gravado em diagnostics.json do cache</string>
+    <string name="settings_diagnostics_export_failed">Falha ao exportar</string>
+    <string name="settings_diagnostics_refresh">Recalcular</string>
+    <string name="settings_diagnostics_app">Aplicativo e bancos de dados</string>
+    <string name="settings_diagnostics_version">Versão</string>
+    <string name="settings_diagnostics_db_versions">Versões do schema</string>
+    <string name="settings_diagnostics_collected_at">Coletado em</string>
+    <string name="settings_diagnostics_storage">Armazenamento</string>
+    <string name="settings_diagnostics_total_bytes">Total do banco de dados</string>
+    <string name="settings_diagnostics_log_bytes">Arquivo de log</string>
+    <string name="settings_diagnostics_unknown_db">bd não registrada</string>
+    <string name="settings_diagnostics_main_thread">Thread principal (recente)</string>
+    <string name="settings_diagnostics_window">Janela</string>
+    <string name="settings_diagnostics_jank_counts">jank / lento / bloqueado</string>
+    <string name="settings_diagnostics_worst">Mais lento</string>
+    <string name="settings_diagnostics_thresholds">Limiares</string>
+    <string name="settings_diagnostics_webhost">Requisições do Host Web</string>
+    <string name="settings_diagnostics_samples">Amostras</string>
+    <string name="settings_diagnostics_no_requests">Sem requisições</string>
+    <string name="settings_diagnostics_few_samples">poucas amostras</string>
+    <string name="settings_diagnostics_p95">p95 de latência</string>
+    <string name="settings_diagnostics_background">Tarefas em segundo plano</string>
+    <string name="settings_diagnostics_bg_error">Falha na coleta</string>
+    <string name="settings_diagnostics_bg_none">Sem tarefas registradas (o agendamento em segundo plano talvez nunca tenha sido ativado)</string>
+    <string name="settings_screen_session_terms">Termos do assistente</string>
+    <string name="settings_screen_session_terms_desc">Palavras novas e jargão das suas conversas; só os confirmados viram uso estabelecido</string>
+    <string name="settings_session_terms_loading">Carregando termos…</string>
+    <string name="settings_session_terms_empty">Nenhum termo ainda. Palavras que você explicar na conversa aparecem aqui sozinhas.</string>
+    <string name="settings_session_terms_awaiting">%1$d aguardando confirmação</string>
+    <string name="settings_session_terms_awaiting_hint">São candidatos extraídos das conversas. Só os confirmados entram como uso estabelecido; os demais são injetados marcados como incertos.</string>
+    <string name="settings_session_terms_no_meaning">Sem definição</string>
+    <string name="settings_session_terms_occurrences">Apareceu %1$d vezes</string>
+    <string name="settings_session_terms_manage">Gerenciar</string>
+    <string name="settings_session_terms_action_title">Gerenciar “%1$s”</string>
+    <string name="settings_session_terms_action_body">Este termo apareceu %1$d vezes neste assistente. Leitura atual: %2$s. Vira uso estabelecido só depois de confirmado.</string>
+    <string name="settings_session_terms_confirm">Confirmar</string>
+    <string name="settings_session_terms_promote">Promover ao assistente</string>
+    <string name="settings_session_terms_toast_confirmed">“%1$s” confirmado</string>
+    <string name="settings_session_terms_toast_promoted">“%1$s” promovido ao assistente</string>
+    <string name="settings_session_terms_scope_assistant">Nível assistente</string>
+    <string name="settings_session_terms_scope_confirmed">Confirmado</string>
+    <string name="settings_session_terms_scope_candidate">A confirmar</string>
 </resources>

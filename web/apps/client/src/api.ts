@@ -1,5 +1,9 @@
+import { apiErrorMessage } from "./i18n/apiErrors.js";
 import type { ChatMessage, ChatStreamEvent, ProviderConfig } from "@muse/contracts";
 import { FetchProviderTransport } from "@muse/provider";
+// S6：发命令时声明的协议版本与「资源 ↔ App 是否匹配」的判断共用同一个常量，
+// 两处各写一个 1 的话，升到协议 2 时必然只改到一边。
+import { CLIENT_PROTOCOL_VERSION } from "./host/hostBuildGuard.js";
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? "http://localhost:8080";
 
@@ -60,7 +64,7 @@ export async function apiJson<T>(path: string, init: RequestInit = {}, session?:
   const response = await fetch(`${API_BASE}${path}`, { ...init, headers });
   const body: unknown = await response.json();
   if (!response.ok) {
-    const message = body && typeof body === "object" && "message" in body && typeof body.message === "string" ? body.message : `request failed (${response.status})`;
+    const message = apiErrorMessage(body, `Solicitud fallida (${response.status})`);
     throw new Error(message);
   }
   return body as T;
@@ -152,7 +156,7 @@ export async function completeFile(session: ClientSession, input: { fileId: stri
 
 export async function registerPushSubscription(session: ClientSession, subscription: PushSubscription): Promise<void> {
   const jsonSubscription = subscription.toJSON();
-  if (!jsonSubscription.endpoint || !jsonSubscription.keys?.p256dh || !jsonSubscription.keys.auth) throw new Error("browser push subscription is incomplete");
+  if (!jsonSubscription.endpoint || !jsonSubscription.keys?.p256dh || !jsonSubscription.keys.auth) throw new Error("La suscripción a notificaciones del navegador está incompleta");
   await apiJson("/api/v1/push/subscriptions", { method: "POST", body: JSON.stringify({ endpoint: jsonSubscription.endpoint, p256dh: jsonSubscription.keys.p256dh, auth: jsonSubscription.keys.auth, userAgent: navigator.userAgent }) }, session);
 }
 
@@ -168,49 +172,49 @@ export async function appendMessage(session: ClientSession, sessionId: string, m
 
 export interface HostCommand {
   readonly protocolVersion?: number;
-  readonly type: "hello" | "state.sync" | "session.select" | "session.new" | "session.rename" | "session.archive" | "session.delete" | "chat.send" | "chat.stop" | "chat.retry" | "chat.regenerate" | "chat.continue" | "tool.approval.resolve" | "history.page" | "history.search" | "message.copy" | "message.quote" | "message.delete" | "message.favorite" | "settings.snapshot" | "settings.update" | "assistants.list" | "assistants.detail" | "memory.list" | "memory.search" | "knowledge.list" | "knowledge.documents" | "tasks.list" | "system.status" | "providers.list" | "sessions.detail";
+  readonly type: "hello" | "state.sync" | "session.select" | "session.new" | "session.rename" | "session.archive" | "session.delete" | "chat.send" | "chat.stop" | "chat.retry" | "chat.regenerate" | "chat.continue" | "tool.approval.resolve" | "history.page" | "history.search" | "message.copy" | "message.quote" | "message.delete" | "message.favorite" | "settings.snapshot" | "settings.update" | "assistants.list" | "assistants.detail" | "memory.list" | "memory.search" | "knowledge.list" | "knowledge.documents" | "tasks.list" | "system.status" | "runtime.logs" | "runtime.diagnostics" | "runtime.stats" | "providers.list" | "sessions.detail";
   readonly requestId?: string;
   readonly sessionId?: string;
-  /** session.new La identificación del asistente de destino; si no se aprueba, el anfitrión utiliza el asistente predeterminado. */
+  /** session.new 的目标助手 id；不传则 Host 用默认助手。 */
   readonly assistantId?: string;
-  /** knowledge.documents base de conocimientos objetivo. */
+  /** knowledge.documents 的目标知识库。 */
   readonly kbId?: string;
-  /** chat.send Referencia: la identificación del mensaje al que se hace referencia (Host Sólo se acepta dentro de la misma sesión). */
+  /** chat.send 的引用：被引用消息的 id（Host 只在同一会话内接受）。 */
   readonly quotedMessageId?: string;
   readonly text?: string;
   readonly generationId?: string;
   readonly title?: string;
   readonly archived?: boolean;
   readonly messageId?: string;
-  /** `cursor`:state.sync cursor de evento(número);memory.list El cursor de paginación es la última identificación (cadena) de la página anterior. */
-  /** message.delete El objetivo del lote (Host Elimine los elementos uno por uno e informe el recuento eliminado en el recibo). */
+  /** `cursor`：state.sync 的事件游标（数字）；memory.list 的分页游标是上一页最后一条 id（字符串）。 */
+  /** message.delete 的批量目标（Host 逐条删并在回执里报 deletedCount）。 */
   readonly messageIds?: readonly string[];
-  /** message.favorite estado objetivo:true = colección,false = Cancelar favoritos. */
+  /** message.favorite 的目标状态：true = 收藏，false = 取消收藏。 */
   readonly favored?: boolean;
-  /** state.sync El cursor del evento es un número;memory.list El cursor de paginación es la última identificación (cadena) de la página anterior. */
+  /** state.sync 的事件游标是数字；memory.list 的分页游标是上一页最后一条 id（字符串）。 */
   readonly cursor?: string | number;
-  /** history.page Paginación:offset ¿Cuántos elementos recientes omitir?limit Número de artículos por página. */
+  /** history.page 分页：offset 跳过最近多少条，limit 每页条数。 */
   readonly offset?: number;
   readonly limit?: number;
-  /** history.search Palabras clave. */
+  /** history.search 关键词。 */
   readonly query?: string;
-  /** settings.update La clave de destino debe estar en la lista blanca del servidor. */
+  /** settings.update 目标键，必须命中服务端白名单。 */
   readonly key?: string;
   /**
-   * settings.update El valor objetivo, verificado por el tipo declarado por la clave.
-   * booleano sigue siendo `"true"` / `"false"` Se emiten cadenas (de acuerdo con el análisis existente del Host) y los números y enumeraciones se asignan directamente a los tipos originales.
+   * settings.update 目标值，按该键声明的类型校验。
+   * 布尔仍以 `"true"` / `"false"` 字符串下发（与 Host 现有解析一致），数字与枚举直接给原类型。
    */
   readonly value?: string | number | boolean;
 }
 
 export interface HostSettingsEntry {
   readonly id: string;
-  /** Nombre del recurso de cadena para el título: stable_id (navegación/Se utiliza para afirmaciones) y no se muestra directamente. */
+  /** 标题的字符串资源名：稳定标识（导航/断言用），不直接显示。 */
   readonly titleKey: string;
   readonly descKey?: string;
-  /** Host Título analizado según el idioma actual de la aplicación. */
+  /** Host 按当前应用语言解析好的标题。 */
   readonly title: string;
-  /** Host Descripción analizada; las entradas sin descripción están vacías. */
+  /** Host 解析好的说明；没有说明的条目为空。 */
   readonly desc?: string;
   readonly groupKey: string;
   readonly iconKey: string;
@@ -221,33 +225,43 @@ export interface HostSettingsEntry {
 }
 
 export interface HostSettingsGroup {
-  /** El nombre del recurso de cadena del título del grupo. */
+  /** 分组标题的字符串资源名。 */
   readonly key: string;
-  /** Host Títulos de grupo analizados según el idioma actual de la aplicación. */
+  /** Host 按当前应用语言解析好的分组标题。 */
   readonly groupTitle: string;
   readonly entries: readonly HostSettingsEntry[];
 }
 
 export type HostSettingValueType = "boolean" | "number" | "enum" | "text";
 
-/** Elementos de enumeración:`label` El host lo analiza según el idioma actual y luego lo emite.Web No cree su propia tabla de copia. */
+/** 枚举项：`label` 由 Host 按当前语言解析后下发，Web 端不自建文案表。 */
 export interface HostSettingOption {
   readonly value: string;
   readonly label: string;
 }
 
 /**
- * settings.snapshot un elemento ajustable en .
+ * settings.snapshot 里的一个可调项。
  *
- * `type` Determine el control (cambiar/agregar/restar/radio expandible/fila de solo lectura),`value` el tipo de `type` Alineación:
- * boolean → boolean,number → number,enum → string(golpear `options[].value`),text → string.
+ * `type` 决定控件（开关 / 加减 / 可展开单选 / 只读行），`value` 的类型跟 `type` 对齐：
+ * boolean → boolean，number → number，enum → string（命中 `options[].value`），text → string。
  */
 export interface HostSettingValue {
   readonly key: string;
   readonly type: HostSettingValueType;
   readonly value: unknown;
-  /** solo type=enum: Opcional, el orden es el orden de visualización. */
+  /** 仅 type=enum：可选项，顺序即展示顺序。 */
   readonly options?: readonly HostSettingOption[];
+  /** S1：number 的范围与步进（老 Host 不下发）。 */
+  readonly min?: number | undefined;
+  readonly max?: number | undefined;
+  readonly step?: number | undefined;
+  /** S1：高级项，子页里默认折叠。 */
+  readonly advanced?: boolean | undefined;
+  /** S1：控件名（switch / select / slider / number / text）。 */
+  readonly widget?: string | undefined;
+  /** S1：依赖的另一项；那一项取值不在 values 里时，本项当前无意义。 */
+  readonly dependsOn?: { readonly key: string; readonly values?: readonly string[] } | undefined;
 }
 
 export interface HostSettingsSnapshot {
@@ -255,7 +269,7 @@ export interface HostSettingsSnapshot {
   readonly toggles: readonly { readonly key: string; readonly enabled: boolean }[];
   readonly display: { readonly language: string; readonly themeMode: string; readonly fontSizeScale: string; readonly themeId: string };
   readonly writableKeys: readonly string[];
-  /** Elementos ajustables de subpáginas; El antiguo anfitrión no entregará (undefined no es igual a la matriz vacía). */
+  /** 子页的可调项；老 Host 不下发（undefined 不等于空数组）。 */
   readonly values?: readonly HostSettingValue[];
 }
 
@@ -266,7 +280,7 @@ export interface HostAssistantSummary {
   readonly isDefault?: boolean;
 }
 
-/** assistants.detail Carga: parámetros de solo lectura + resumen de caracteres + estadísticas. */
+/** assistants.detail 的载荷：只读参数 + 人设摘要 + 统计。 */
 export interface HostAssistantDetail {
   readonly id: string;
   readonly name: string;
@@ -285,7 +299,7 @@ export interface HostAssistantDetail {
   readonly enabled?: boolean | undefined;
 }
 
-/** system.status El almacenamiento ocupado (bytes). */
+/** system.status 里的存储占用（字节）。 */
 export interface HostSystemStorage {
   readonly databaseBytes: number;
   readonly mediaBytes: number;
@@ -302,7 +316,7 @@ export interface HostSystemBackup {
   readonly cloudBackupEnabled: boolean;
 }
 
-/** Capacidades específicas de la plataforma:true=disponible,false=no abierto,undefined=No disponible. */
+/** 平台专有能力：true=可用、false=未开启、undefined=不可用。 */
 export interface HostSystemCapabilities {
   readonly accessibility?: boolean | undefined;
   readonly shell?: boolean | undefined;
@@ -312,7 +326,7 @@ export interface HostSystemCapabilities {
   readonly notificationListener?: boolean | undefined;
 }
 
-/** system.status carga. */
+/** system.status 的载荷。 */
 export interface HostSystemStatus {
   readonly appVersion: string;
   readonly appVersionCode: number;
@@ -323,7 +337,24 @@ export interface HostSystemStatus {
   readonly battery: { readonly level?: number | undefined; readonly charging?: boolean | undefined };
 }
 
-/** Una base de conocimientos. */
+/**
+ * runtime.stats 的载荷：Web Host 请求延迟与主线程卡顿的当前窗口。
+ *
+ * 都是**窗口内**计数（卡顿计数器每 5 分钟翻转、延迟样本是最近 512 条），
+ * `webP95Reliable` 由 Host 判定，网页端不再自己复制阈值。
+ */
+export interface HostRuntimeStats {
+  readonly webSamples: number;
+  readonly webP95Ms?: number | undefined;
+  readonly webP95Reliable: boolean;
+  readonly jankCount: number;
+  readonly slowCount: number;
+  readonly blockCount: number;
+  readonly worstMs: number;
+  readonly windowSeconds: number;
+}
+
+/** 一个知识库。 */
 export interface HostKnowledgeBase {
   readonly id: string;
   readonly name: string;
@@ -331,22 +362,22 @@ export interface HostKnowledgeBase {
   readonly chunkCount: number;
   readonly createdAt: number;
   readonly updatedAt: number;
-  /** El backend de incrustación utilizado actualmente. */
+  /** 当前用的 embedding 后端。 */
   readonly embeddingBackend?: string | undefined;
 }
 
-/** Un documento en la base de conocimientos. */
+/** 知识库里的一个文档。 */
 export interface HostKnowledgeDocument {
   readonly id: string;
   readonly title: string;
   readonly chunkCount: number;
   readonly sizeBytes: number;
   readonly createdAt: number;
-  /** Host El estado del índice dado (se muestra tal cual). */
+  /** Host 给的索引状态（原样展示）。 */
   readonly status?: string | undefined;
 }
 
-/** Una tarea programada. */
+/** 一个定时任务。 */
 export interface HostScheduledTask {
   readonly id: string;
   readonly name: string;
@@ -357,18 +388,18 @@ export interface HostScheduledTask {
   readonly lastResult?: string | undefined;
 }
 
-/** Un recuerdo. */
+/** 一条记忆。 */
 export interface HostMemoryItem {
   readonly id: string;
   readonly content: string;
   readonly createdAt: number;
   readonly source?: string | undefined;
   readonly pinned?: boolean | undefined;
-  /** memory.search Fragmento de golpe. */
+  /** memory.search 命中时的片段。 */
   readonly snippet?: string | undefined;
 }
 
-/** memory.list / memory.search resultados paginados. */
+/** memory.list / memory.search 的分页结果。 */
 export interface HostMemoryPage {
   readonly items: readonly HostMemoryItem[];
   readonly hasMore: boolean;
@@ -410,31 +441,31 @@ export interface HostMessage {
   readonly modelId?: string;
   readonly createdAt: number;
   /**
-   * Dirección de acceso directo: el nuevo host proporciona la ruta relativa al origen `/api/media/<token>`(Cookie cinturón automático),
-   * Es posible que los datos antiguos aún estén `data:` URI / http URL / desnudo base64 / `file://` Camino absoluto.
+   * 可直接访问的地址：新 Host 给同源相对路径 `/api/media/<token>`（Cookie 自动带），
+   * 旧数据可能仍是 `data:` URI / http URL / 裸 base64 / `file://` 绝对路径。
    */
   readonly imageUrls?: readonly string[];
   readonly toolCallId?: string;
   readonly toolName?: string;
   readonly citationUrls?: readonly string[];
-  /** La dirección del mensaje de voz enviado por el asistente también es una ruta accesible. */
+  /** 助手发出的语音消息地址，同样是可访问路径。 */
   readonly voiceUrl?: string | undefined;
-  /** Duración de la voz, milisegundos. */
+  /** 语音时长，毫秒。 */
   readonly voiceDurationMs?: number | undefined;
-  /** Los detalles de la llamada a la herramienta (posiblemente varios) en este mensaje; la antigua Hostia no los entregará. */
+  /** 这条消息上的工具调用明细（可能多个）；老 Host 不下发。 */
   readonly toolCalls?: readonly HostToolCall[] | undefined;
-  /** Estado de envío a nivel de mensaje; El antiguo anfitrión no realiza entregas. */
+  /** 消息级发送状态；老 Host 不下发。 */
   readonly status?: HostMessageStatus | undefined;
-  /** solo status=failed A veces valioso. */
+  /** 仅 status=failed 时有值。 */
   readonly errorText?: string | undefined;
-  /** Si ha sido recogido; si la antigua Hostia no la entrega, se tendrá por no recogida. */
+  /** 是否已收藏；老 Host 不下发时按未收藏处理。 */
   readonly favorite?: boolean | undefined;
-  /** Cite el texto de la respuesta;Host El bloque de referencia no se mostrará cuando no se emita. */
+  /** 引用回复的被引用正文；Host 不下发时不显示引用块。 */
   readonly quotedContent?: string | undefined;
 }
 
 export interface HostEvent {
-  readonly type: "state.snapshot" | "command.accepted" | "command.duplicate" | "error" | "history.page" | "history.search" | "message.copy" | "message.quote" | "settings.snapshot" | "assistants.list" | "assistants.detail" | "memory.list" | "memory.search" | "knowledge.list" | "knowledge.documents" | "tasks.list" | "system.status" | "providers.list" | "sessions.detail";
+  readonly type: "state.snapshot" | "command.accepted" | "command.duplicate" | "error" | "history.page" | "history.search" | "message.copy" | "message.quote" | "settings.snapshot" | "assistants.list" | "assistants.detail" | "memory.list" | "memory.search" | "knowledge.list" | "knowledge.documents" | "tasks.list" | "system.status" | "runtime.logs" | "runtime.diagnostics" | "runtime.stats" | "providers.list" | "sessions.detail";
   readonly protocolVersion?: number;
   readonly requestId?: string;
   readonly connectionId?: string;
@@ -445,15 +476,15 @@ export interface HostEvent {
   readonly sessionId?: string;
   readonly isStreaming?: boolean;
   readonly error?: string;
-  /** command.accepted El mensaje de destino devuelto en el mensaje (como chat.send/chat.retry). */
+  /** command.accepted 里回带的目标消息（如 chat.send / chat.retry）。 */
   readonly messageId?: string;
-  /** message.delete Recibos de respuesta: algunos fueron eliminados. */
+  /** message.delete 的回执：实际删掉了几条。 */
   readonly deletedCount?: number;
-  /** message.delete Recibo: la identificación omitida (por ejemplo, la que se genera y no se permite eliminar). */
+  /** message.delete 的回执：被跳过的 id（例如正在生成、不让删的那条）。 */
   readonly skippedMessageIds?: readonly string[];
-  /** message.copy / message.quote El texto de la devolución de llamada. */
+  /** message.copy / message.quote 回带的正文。 */
   readonly content?: string;
-  /** Host Bits de capacidad declarados:media / tool_call_details / message_status Esperar. La antigua Hostia está vacía. */
+  /** Host 声明的能力位：media / tool_call_details / message_status 等。老 Host 为空。 */
   readonly capabilityFlags?: readonly string[];
   readonly sessions?: readonly { id: string; title: string; assistantId: string; updatedAt: number; archived: boolean; pinned: boolean }[];
   readonly messages?: readonly HostMessage[];
@@ -463,19 +494,25 @@ export interface HostEvent {
   readonly providers?: readonly HostProviderSummary[];
   readonly selectedModelId?: string;
   readonly sessionDetail?: HostSessionDetail;
-  /** assistants.detail La carga; si no existe, está vacío y lleva error=assistant_not_found. */
+  /** assistants.detail 的载荷；不存在时为空并带 error=assistant_not_found。 */
   readonly assistantDetail?: HostAssistantDetail;
-  /** memory.list / memory.search carga (predeterminado 30, límite superior 100). */
+  /** memory.list / memory.search 的载荷（默认 30 条、上限 100）。 */
   readonly items?: readonly HostMemoryItem[];
   readonly hasMore?: boolean;
-  /** knowledge.list carga. */
+  /** knowledge.list 的载荷。 */
   readonly bases?: readonly HostKnowledgeBase[];
-  /** knowledge.documents La carga (la paginación y los elementos comparten un hasMore). */
+  /** knowledge.documents 的载荷（分页与 items 共用一个 hasMore）。 */
   readonly documents?: readonly HostKnowledgeDocument[];
-  /** tasks.list carga. */
+  /** tasks.list 的载荷。 */
   readonly tasks?: readonly HostScheduledTask[];
-  /** system.status carga. */
+  /** system.status 的载荷。 */
   readonly system?: HostSystemStatus;
+  /** runtime.logs 的载荷：日志尾部若干行，单行已由 Host 截断。 */
+  readonly logs?: readonly string[];
+  /** runtime.diagnostics 的载荷：诊断快照的脱敏 JSON；采不出快照时为空（不是空串）。 */
+  readonly diagnostics?: string | undefined;
+  /** runtime.stats 的载荷。 */
+  readonly stats?: HostRuntimeStats;
 }
 
 function hostBase(): string {
@@ -491,7 +528,7 @@ export async function hostPinLogin(pin: string): Promise<void> {
   });
   const body: unknown = await response.json();
   if (!response.ok) {
-    const message = body && typeof body === "object" && "message" in body && typeof body.message === "string" ? body.message : "Host PIN Error al iniciar sesión";
+    const message = body && typeof body === "object" && "message" in body && typeof body.message === "string" ? body.message : "No se pudo iniciar sesión con el PIN del teléfono";
     throw new Error(message);
   }
 }
@@ -572,17 +609,17 @@ export class HostConnection {
 
   private notifyStatus(status: HostConnectionStatus): void {
     this.status = status;
-    // Al mismo tiempo, se proporciona el "número de reconexiones": la interfaz debe distinguir entre "Reconexión (enésima vez)" y "Reconexión abandonada" en consecuencia.
+    // 同时给出「第几次重连」：界面要据此区分「正在重连（第 N 次）」与「放弃重连」。
     for (const listener of this.statusListeners) listener(status, this.reconnectAttempt);
   }
 
   send(command: HostCommand): void {
     if (this.closed || this.socket.readyState !== WebSocket.OPEN) {
-      throw new Error("Muse Host Reconectando");
+      throw new Error("Reconectando con Muse en el teléfono");
     }
     const enriched = command.type === "state.sync" && command.cursor === undefined
-      ? { ...command, protocolVersion: 1, cursor: this.lastCursor }
-      : { ...command, protocolVersion: 1 };
+      ? { ...command, protocolVersion: CLIENT_PROTOCOL_VERSION, cursor: this.lastCursor }
+      : { ...command, protocolVersion: CLIENT_PROTOCOL_VERSION };
     this.socket.send(JSON.stringify(enriched));
   }
 
@@ -604,7 +641,7 @@ export class HostConnection {
 
   getCursor(): number { return this.lastCursor; }
   getStatus(): HostConnectionStatus { return this.status; }
-  /** El número de reconexiones iniciadas (se restablece a cero después de una conexión exitosa). */
+  /** 已发起的重连次数（连接成功后归零）。 */
   getReconnectAttempt(): number { return this.reconnectAttempt; }
 
   close(): void {
@@ -631,7 +668,7 @@ export async function connectHost(): Promise<HostConnection> {
           if (!settled) {
             settled = true;
             candidate.close();
-            reject(new Error("No se puede conectar Muse Host WebSocket"));
+            reject(new Error("No se puede establecer la conexión WebSocket con Muse en el teléfono"));
           }
         };
         candidate.addEventListener("open", () => {
@@ -649,7 +686,7 @@ export async function connectHost(): Promise<HostConnection> {
       await new Promise((resolve) => setTimeout(resolve, 500 * (attempt + 1)));
     }
   }
-  throw new Error("No se puede conectar Muse Host WebSocket");
+  throw new Error("No se puede establecer la conexión WebSocket con Muse en el teléfono");
 }
 
 export interface StreamChatInput {
@@ -679,7 +716,7 @@ export async function* streamChat(input: StreamChatInput): AsyncGenerator<ChatSt
     body: JSON.stringify({ sessionId: input.sessionId, messages: input.messages, provider: input.provider, providerId: input.providerId, model: input.model, mode: input.mode ?? "byok" }),
     ...(input.signal === undefined ? {} : { signal: input.signal }),
   });
-  if (!response.ok || !response.body) throw new Error(`chat request failed (${response.status})`);
+  if (!response.ok || !response.body) throw new Error(`Error en la solicitud de chat (${response.status})`);
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";

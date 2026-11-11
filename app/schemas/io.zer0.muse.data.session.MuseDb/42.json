@@ -1715,7 +1715,7 @@
       },
       {
         "tableName": "experiences",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `title` TEXT NOT NULL, `content` TEXT NOT NULL, `category` TEXT NOT NULL DEFAULT 'Universales', `tagsJson` TEXT NOT NULL DEFAULT '[]', `source` TEXT NOT NULL DEFAULT 'manual', `sessionId` TEXT, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `title` TEXT NOT NULL, `content` TEXT NOT NULL, `category` TEXT NOT NULL DEFAULT '通用', `tagsJson` TEXT NOT NULL DEFAULT '[]', `source` TEXT NOT NULL DEFAULT 'manual', `sessionId` TEXT, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`))",
         "fields": [
           {
             "fieldPath": "id",
@@ -1740,7 +1740,7 @@
             "columnName": "category",
             "affinity": "TEXT",
             "notNull": true,
-            "defaultValue": "'Universales'"
+            "defaultValue": "'通用'"
           },
           {
             "fieldPath": "tagsJson",

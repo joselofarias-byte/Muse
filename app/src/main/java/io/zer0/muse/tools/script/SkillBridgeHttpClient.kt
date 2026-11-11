@@ -53,19 +53,19 @@ internal class SkillBridgeHttpClient(
             val request = try {
                 Request.Builder().url(current).get().build()
             } catch (e: IllegalArgumentException) {
-                throw IOException("URL No se puede analizar: $current", e)
+                throw IOException("URL 无法解析: $current", e)
             }
             executePinned(request).use { response ->
                 if (response.code in 300..399) {
                     val location = response.header("Location")?.trim()?.takeIf { it.isNotBlank() }
-                        ?: throw IOException("Redirigir(${response.code})Falta el encabezado de ubicación")
+                        ?: throw IOException("重定向(${response.code})缺少 Location 头")
                     val resolved = try {
                         URI(current).resolve(location).toString()
                     } catch (e: Exception) {
-                        throw IOException("La ubicación de redireccionamiento no se puede resolver: $location", e)
+                        throw IOException("重定向 Location 无法解析: $location", e)
                     }
                     if (!resolved.startsWith("http://") && !resolved.startsWith("https://")) {
-                        throw IOException("El protocolo de destino de redirección es ilegal: $resolved")
+                        throw IOException("重定向目标协议非法: $resolved")
                     }
                     current = resolved
                 } else {
@@ -76,7 +76,7 @@ internal class SkillBridgeHttpClient(
                 }
             }
         }
-        throw IOException("Redirecciones sobre $maxRedirects saltar límite superior")
+        throw IOException("重定向超过 $maxRedirects 跳上限")
     }
 
     /** Execute a GET and preserve large UTF-8 response bodies in a paginated app file. */
@@ -86,19 +86,19 @@ internal class SkillBridgeHttpClient(
             val request = try {
                 Request.Builder().url(current).get().build()
             } catch (e: IllegalArgumentException) {
-                throw IOException("URL No se puede analizar: $current", e)
+                throw IOException("URL 无法解析: $current", e)
             }
             executePinned(request).use { response ->
                 if (response.code in 300..399) {
                     val location = response.header("Location")?.trim()?.takeIf { it.isNotBlank() }
-                        ?: throw IOException("Redirigir(${response.code})Falta el encabezado de ubicación")
+                        ?: throw IOException("重定向(${response.code})缺少 Location 头")
                     val resolved = try {
                         URI(current).resolve(location).toString()
                     } catch (e: Exception) {
-                        throw IOException("La ubicación de redireccionamiento no se puede resolver: $location", e)
+                        throw IOException("重定向 Location 无法解析: $location", e)
                     }
                     if (!resolved.startsWith("http://") && !resolved.startsWith("https://")) {
-                        throw IOException("El protocolo de destino de redirección es ilegal: $resolved")
+                        throw IOException("重定向目标协议非法: $resolved")
                     }
                     current = resolved
                 } else {
@@ -109,7 +109,7 @@ internal class SkillBridgeHttpClient(
                 }
             }
         }
-        throw IOException("Redirecciones sobre $maxRedirects saltar límite superior")
+        throw IOException("重定向超过 $maxRedirects 跳上限")
     }
 
     /**
@@ -124,19 +124,19 @@ internal class SkillBridgeHttpClient(
             val request = try {
                 Request.Builder().url(current).get().build()
             } catch (e: IllegalArgumentException) {
-                throw IOException("URL No se puede analizar: $current", e)
+                throw IOException("URL 无法解析: $current", e)
             }
             executePinned(request).use { response ->
                 if (response.code in 300..399) {
                     val location = response.header("Location")?.trim()?.takeIf { it.isNotBlank() }
-                        ?: throw IOException("Redirigir(${response.code})Falta el encabezado de ubicación")
+                        ?: throw IOException("重定向(${response.code})缺少 Location 头")
                     val resolved = try {
                         URI(current).resolve(location).toString()
                     } catch (e: Exception) {
-                        throw IOException("La ubicación de redireccionamiento no se puede resolver: $location", e)
+                        throw IOException("重定向 Location 无法解析: $location", e)
                     }
                     if (!resolved.startsWith("http://") && !resolved.startsWith("https://")) {
-                        throw IOException("El protocolo de destino de redirección es ilegal: $resolved")
+                        throw IOException("重定向目标协议非法: $resolved")
                     }
                     current = resolved
                 } else {
@@ -147,7 +147,7 @@ internal class SkillBridgeHttpClient(
                 }
             }
         }
-        throw IOException("Redirecciones sobre $maxRedirects saltar límite superior")
+        throw IOException("重定向超过 $maxRedirects 跳上限")
     }
 
     /**
@@ -163,13 +163,13 @@ internal class SkillBridgeHttpClient(
                 .post(body.toByteArray(Charsets.UTF_8).toRequestBody(contentType.toMediaType()))
                 .build()
         } catch (e: IllegalArgumentException) {
-            throw IOException("URL No se puede analizar: $startUrl", e)
+            throw IOException("URL 无法解析: $startUrl", e)
         }
         executePinned(request).use { response ->
             if (response.code in 300..399) {
                 val location = response.header("Location")?.trim().orEmpty()
                 val hint = if (location.isNotEmpty()) ", Location: $location" else ""
-                throw IOException("http_post No se admiten redireccionamientos(${response.code}$hint);Utilice la dirección final directamente")
+                throw IOException("http_post 不支持重定向(${response.code}$hint);请直接使用最终地址")
             }
             return Result(status = response.code, body = readLimitedBody(response, maxSize))
         }
@@ -183,13 +183,13 @@ internal class SkillBridgeHttpClient(
                 .post(body.toByteArray(Charsets.UTF_8).toRequestBody(contentType.toMediaType()))
                 .build()
         } catch (e: IllegalArgumentException) {
-            throw IOException("URL No se puede analizar: $startUrl", e)
+            throw IOException("URL 无法解析: $startUrl", e)
         }
         executePinned(request).use { response ->
             if (response.code in 300..399) {
                 val location = response.header("Location")?.trim().orEmpty()
                 val hint = if (location.isNotEmpty()) ", Location: $location" else ""
-                throw IOException("http_post No se admiten redireccionamientos(${response.code}$hint);Utilice la dirección final directamente")
+                throw IOException("http_post 不支持重定向(${response.code}$hint);请直接使用最终地址")
             }
             val captured = response.body.byteStream().bufferedReader(Charsets.UTF_8).use { reader ->
                 captureTextStream(reader, outputDirectory, "skill_bridge_http_post", previewLimitChars = 0)
@@ -211,7 +211,7 @@ internal class SkillBridgeHttpClient(
         val addresses = resolveAndValidate(host, url)
         val pinnedDns = Dns { requestedHost ->
             if (!requestedHost.equals(host, ignoreCase = true)) {
-                throw UnknownHostException("DNS El host no coincide con el host verificado: $requestedHost")
+                throw UnknownHostException("DNS 主机与已校验主机不一致: $requestedHost")
             }
             // Return the exact pre-validated result; never invoke system DNS again.
             addresses
@@ -235,21 +235,21 @@ internal class SkillBridgeHttpClient(
     private fun rejectConfiguredProxy(url: String) {
         val configuredProxy = baseClient.proxy
         if (configuredProxy != null && configuredProxy.type() != Proxy.Type.DIRECT) {
-            throw PinnedAddressException(url, "Denegar conexiones proxy no autenticadas: ${configuredProxy.type()}")
+            throw PinnedAddressException(url, "拒绝未验证的代理连接: ${configuredProxy.type()}")
         }
     }
 
     private fun resolveAndValidate(host: String, url: String): List<InetAddress> {
         if (host == "localhost") {
-            throw PinnedAddressException(url, "localhost No se permite el acceso a través de SkillBridge")
+            throw PinnedAddressException(url, "localhost 不允许通过 SkillBridge 访问")
         }
         val addresses = try {
             dns.lookup(host)
         } catch (e: Exception) {
-            throw PinnedAddressException(url, "DNS El análisis falló: $host", e)
+            throw PinnedAddressException(url, "DNS 解析失败: $host", e)
         }
         if (addresses.isEmpty() || addresses.any { !addressAllowed(it) }) {
-            throw PinnedAddressException(url, "DNS Dirección de verificación SSRF fallida: $host")
+            throw PinnedAddressException(url, "DNS 地址未通过 SSRF 校验: $host")
         }
         return addresses.distinctBy { it.address.contentHashCode() }
     }
@@ -270,17 +270,17 @@ internal class SkillBridgeHttpClient(
 
     private fun connectedAddressOrThrow(chain: Interceptor.Chain, host: String, addresses: List<InetAddress>): InetAddress {
         val connection = chain.connection()
-            ?: throw PinnedAddressException(chain.request().url.toString(), "No se puede obtener información de conexión una vez establecida la conexión")
+            ?: throw PinnedAddressException(chain.request().url.toString(), "连接建立后无法取得连接信息")
         val route = connection.route()
         if (route.proxy.type() != Proxy.Type.DIRECT) {
-            throw PinnedAddressException(chain.request().url.toString(), "Denegar conexiones proxy no autenticadas: $host")
+            throw PinnedAddressException(chain.request().url.toString(), "拒绝未验证的代理连接: $host")
         }
         val connected = route.socketAddress.address
-            ?: throw PinnedAddressException(chain.request().url.toString(), "La dirección de conexión no se resuelve.: $host")
+            ?: throw PinnedAddressException(chain.request().url.toString(), "连接地址未解析: $host")
         if (!addresses.any { sameAddress(it, connected) } || !addressAllowed(connected)) {
             throw PinnedAddressException(
                 chain.request().url.toString(),
-                "La dirección de conexión real falla en la verificación DNS: $host -> ${connected.hostAddress}",
+                "实际连接地址未通过 DNS 校验: $host -> ${connected.hostAddress}",
             )
         }
         return connected

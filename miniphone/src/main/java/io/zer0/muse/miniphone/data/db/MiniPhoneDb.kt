@@ -27,20 +27,20 @@ import io.zer0.muse.miniphone.data.db.entity.MpThreadEntity
 import io.zer0.muse.miniphone.data.db.entity.MpThreadMemberEntity
 
 /**
- * Versión pequeña de base de datos celular. Este módulo viene con su propia biblioteca.,Independiente de la base de datos del host,El número de versión se incrementa de forma independiente.
+ * 小手机数据库版本。本模块自带库,与宿主数据库互不相干,版本号独立递增。
  *
- * 2:mp_message Agregar columna de estado de envío(status).
- * 3:mp_thread El valor predeterminado de la capa SQL del parche anclado(0),Y hacer converger el valor de las acciones a 0/1.
- * 4:mp_thread Agregar etiqueta de chat grupal(isGroup)con nombre de grupo(title),Agregar una nueva lista de miembros del grupo(mp_thread_member).
- * 5:mp_thread aumentar titleCustomized,Distinga entre "nombre de grupo cambiado por el usuario" y "nombre de grupo escrito automáticamente".
+ * 2:mp_message 增加发送状态列(status)。
+ * 3:mp_thread 的 pinned 补上 SQL 层默认值(0),并把存量取值收敛到 0/1。
+ * 4:mp_thread 增加群聊标记(isGroup)与群名(title),新增群成员表(mp_thread_member)。
+ * 5:mp_thread 增加 titleCustomized,区分「用户改过的群名」与「自动拼的群名」。
  */
 internal const val MINI_PHONE_DB_VERSION: Int = 5
 
 /**
- * 1 → 2:Agregue el estado de envío a la tabla de mensajes privados.
+ * 1 → 2:给私信表补发送状态。
  *
- * La fila del historial no tiene estado de envío,En ese momento no existía el "Envío"/"fracaso",Entonces el valor predeterminado es 0(Enviado),
- * Después de la actualización, la apariencia de la sesión anterior es la misma que antes de la actualización. Ya hay datos en la tabla y la tabla no se puede reconstruir.,Solo puedes agregar columnas en el momento.
+ * 历史行没有发送状态,那时候也还没有「发送中/失败」这回事,所以默认值取 0(已发出),
+ * 升级完老会话的观感与升级前一致。表里已有数据不能重建表,只能就地加列。
  */
 internal val MINI_PHONE_MIGRATION_1_2: Migration = object : Migration(1, 2) {
     override fun migrate(db: SupportSQLiteDatabase) {
@@ -49,12 +49,12 @@ internal val MINI_PHONE_MIGRATION_1_2: Migration = object : Migration(1, 2) {
 }
 
 /**
- * 2 → 3:Escriba el valor predeterminado de la etiqueta adhesiva en SQL.
+ * 2 → 3:把置顶标记的默认值写进 SQL。
  *
- * La columna superior ha estado en la tabla desde la versión 1.(La entidad siempre toma `pinned`),Entonces no se puede hacer aquí. ADD COLUMN —— Sumar y restar columnas de la base de datos anterior
- * golpeará `duplicate column name`. Lo único que falta es "enumerar los valores predeterminados":Sin PREDETERMINADO,cualquiera
- * No escribir fijado INSERT(SQL manual, rutas de código heredadas)Golpeará NOT NULL.SQLite No se puede cambiar el valor predeterminado vigente,
- * Entonces reconstruya esta tabla con solo unas pocas columnas.:Al copiar, los valores antiguos que no son 0 convergen a 1,Asegúrese de que solo aparezca 0/1 en la columna.
+ * 置顶列从 v1 起就在表里(实体一直带 `pinned`),所以这里不能 ADD COLUMN —— 老库上再加减列
+ * 会撞 `duplicate column name`。缺的只是「列有默认值」这件事:没有 DEFAULT 时,任何一条
+ * 不写 pinned 的 INSERT(手工 SQL、旧代码路径)都会撞 NOT NULL。SQLite 不能就地改列默认值,
+ * 因此重建一次这张只有几列的表:拷贝时把非 0 的旧值收敛成 1,保证列里只出现 0/1。
  */
 internal val MINI_PHONE_MIGRATION_2_3: Migration = object : Migration(2, 3) {
     override fun migrate(db: SupportSQLiteDatabase) {
@@ -78,14 +78,14 @@ internal val MINI_PHONE_MIGRATION_2_3: Migration = object : Migration(2, 3) {
 }
 
 /**
- * 3 → 4:La mesa de conversación está separada en "Chat grupal".,Se crea una tabla separada para las relaciones de membresía.
+ * 3 → 4:会话表分家出「群聊」,成员关系另起一张表。
  *
- * Ambas columnas tienen valores predeterminados.,Una vez que se actualice el banco existente, naturalmente caerá en "Mensaje privado":isGroup=0,title=''. Solo agregue columnas aquí,No reconstruir la tabla ——
- * Los dos índices antiguos y los identificadores de fila se dejan intactos.
+ * 两列都带默认值,存量行升级后自然落在「私信」:isGroup=0、title=''。这里只加列,不重建表 ——
+ * 两张旧索引与行 id 都原样留着。
  *
- * La membresía no se puede agrupar en una columna de la fila de la sesión.(No hay límite superior en el número de personas en el grupo.,Dividirlo en columnas equivale a establecer un límite superior en el número de personas.),Así que empieza uno nuevo
- * mp_thread_member,clave primaria(sesión, papel)Asegúrese de que la misma persona ingrese al mismo grupo en una sola fila. Solo hay roles en la mesa.,
- * El usuario local no está en la tabla.
+ * 成员关系不能挤进会话行的某一列(群人数没有上限,拆成列就等于给人数设上限),所以另起
+ * mp_thread_member,主键(会话, 角色)保证同一个人进同一个群只有一行。表里只存角色,
+ * 本机用户不在表内。
  */
 internal val MINI_PHONE_MIGRATION_3_4: Migration = object : Migration(3, 4) {
     override fun migrate(db: SupportSQLiteDatabase) {
@@ -100,11 +100,11 @@ internal val MINI_PHONE_MIGRATION_3_4: Migration = object : Migration(3, 4) {
 }
 
 /**
- * 4 → 5:Recuerde si el nombre del grupo está "escrito automáticamente" o "modificado por el usuario".
+ * 4 → 5:记住群名是「自动拼的」还是「用户改过的」。
  *
- * De hecho, esta es una nueva columna.,ALTER in situ para agregar columnas,Todas las líneas de acciones caen en 0(No cambiado).
- * No existe tal información en el grupo anterior.,Sólo puedo fingir que no he cambiado nada. —— Esos nombres de grupos se deletrearon automáticamente cuando se creó el grupo.,
- * consistente con la situación real;Se establece en 1 cada vez que el usuario cambia su nombre.
+ * 这确实是新列,就地 ALTER 加列即可,存量行全都落在 0(没改过)。
+ * 旧群里没有这个信息,只能当没改过 —— 那些群名本来就是建群时自动拼的,
+ * 与真实情况一致;用户此后一旦改名就置 1。
  */
 internal val MINI_PHONE_MIGRATION_4_5: Migration = object : Migration(4, 5) {
     override fun migrate(db: SupportSQLiteDatabase) {
@@ -112,15 +112,15 @@ internal val MINI_PHONE_MIGRATION_4_5: Migration = object : Migration(4, 5) {
     }
 }
 
-/** Nombre de archivo de biblioteca independiente. */
+/** 独立库文件名。 */
 internal const val MINI_PHONE_DB_NAME: String = "miniphone.db"
 
 /**
- * La propia base de datos de la habitación del teléfono pequeño.
+ * 小手机自己的 Room 数据库。
  *
- * cuerpo del personaje,AI habilidad,TTS Ninguno de ellos está aquí. —— los pasados por el anfitrión [io.zer0.muse.miniphone.api.MiniPhoneHost]
- * inyectar;Aquí sólo se almacena el estado de persistencia de la "vida del personaje" en este módulo.:
- * información, conversación(Mensajes privados y chats grupales.), miembros del grupo, mensajes, actualizaciones e interacciones, diarios, álbumes de fotos.
+ * 角色本体、AI 能力、TTS 都不在这里 —— 那些由宿主通过 [io.zer0.muse.miniphone.api.MiniPhoneHost]
+ * 注入;这里只存「角色的生活面」在本模块内的持久化状态:
+ * 资料、会话(私信与群聊)、群成员、消息、动态与互动、日记、相册。
  */
 @Database(
     entities = [
@@ -158,7 +158,7 @@ abstract class MiniPhoneDb : RoomDatabase() {
     abstract fun albumDao(): MpAlbumDao
 
     companion object {
-        /** abierto(o crear por primera vez)miniphone.db. */
+        /** 打开(或首次创建)miniphone.db。 */
         fun create(context: Context): MiniPhoneDb = Room.databaseBuilder(context, MiniPhoneDb::class.java, MINI_PHONE_DB_NAME)
             .addMigrations(MINI_PHONE_MIGRATION_1_2, MINI_PHONE_MIGRATION_2_3, MINI_PHONE_MIGRATION_3_4, MINI_PHONE_MIGRATION_4_5)
             .build()

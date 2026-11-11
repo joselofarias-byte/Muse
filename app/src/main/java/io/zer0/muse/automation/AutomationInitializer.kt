@@ -12,14 +12,14 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 /**
- * UI Entrada de inicialización del módulo de automatización.
+ * UI 自动化模块初始化入口。
  *
- * La aplicación principal está en [android.app.Application.onCreate] llamar [initialize] Completo:
- * 1. crear [AutomationManager] singleton
- * 2. Registrarse [AutomationTools] llegar [ToolRegistry],Hacer que la IA sea invocable
- * 3. Actualizar asincrónicamente el estado de los permisos de tres capas
+ * 主 App 在 [android.app.Application.onCreate] 中调用 [initialize] 完成:
+ * 1. 创建 [AutomationManager] 单例
+ * 2. 注册 [AutomationTools] 到 [ToolRegistry],让 AI 可以调用
+ * 3. 异步刷新三层权限状态
  *
- * Uso:
+ * 使用方式:
  * ```
  * class MuseApp : Application() {
  *     override fun onCreate() {
@@ -33,51 +33,64 @@ object AutomationInitializer {
     private const val TAG = "AutomationInit"
 
     /**
-     * P3-2: Alcance a nivel de módulo (reemplaza a GlobalScope).
+     * P3-2: 模块级作用域（替代 GlobalScope）。
      *
-     * SupervisorJob Asegurar que el fracaso de una sola subtarea no afecte a otras;
-     * Sigue vivo con el proceso, pero es cancelable, comprobable y ya no utiliza GlobalScope sin restricciones.
+     * SupervisorJob 保证单个子任务失败不影响其他；
+     * 仍随进程存活，但可取消、可测试，不再使用无约束的 GlobalScope。
      */
     private val appScope = kotlinx.coroutines.CoroutineScope(
-        kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO,
+        // 必须带处理器：没有它，子任务里的异常会走线程默认处理器，
+        // 在测试环境里会被下一个 runTest 判成"测试开始前就有未捕获异常"（那族 flake 的形态）。
+        kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO +
+            io.zer0.muse.util.GlobalCoroutineExceptionHandler,
     )
 
     @Volatile
     private var _manager: AutomationManager? = null
 
-    /** Singleton global de AutomationManager. Lanza una excepción cuando no se inicializa. */
+    /** 全局 AutomationManager 单例。未初始化时抛异常。 */
     val manager: AutomationManager
         get() = _manager ?: error("AutomationInitializer not initialized. Call initialize() first.")
 
-    /** Si se ha inicializado. */
+    /** 是否已初始化。 */
     val isInitialized: Boolean get() = _manager != null
 
     /**
-     * Inicialice el módulo de automatización.
+     * 初始化自动化模块。
      * @param context Application context
-     * @param toolRegistry Registrador de herramientas global(AI Entrada de llamada de herramienta)
+     * @param toolRegistry 全局工具注册器(AI 工具调用入口)
      */
     fun initialize(context: Context, toolRegistry: ToolRegistry) {
         if (_manager != null) return
         synchronized(this) {
             if (_manager != null) return
             val appContext = context.applicationContext
-            // Comparta el mismo ShizukuAuthorizer con la ruta principal de Shell para evitar“verificación de estado”y“ejecución real”Cada uno adopta su propio enfoque.
+            // 与主 Shell 路由共用同一 ShizukuAuthorizer，避免“状态检查”和“实际执行”各走一套。
             val authorizer =
                 runCatching {
                     org.koin.java.KoinJavaComponent.get<ShizukuAuthorizer>(ShizukuAuthorizer::class.java)
                 }.getOrElse { ShizukuAuthorizer(appContext) }
+            // 权限体系重设计: 统一协调层（单一事实源 + 事件驱动）。Koin 缺失时退回管理器自探测。
+            val coordinator =
+                runCatching {
+                    org.koin.java.KoinJavaComponent.get<io.zer0.muse.permission.PermissionCoordinator>(
+                        io.zer0.muse.permission.PermissionCoordinator::class.java,
+                    )
+                }.getOrNull()
             val mgr =
                 AutomationManager(
                     context = appContext,
                     shizukuAuthorizer = authorizer,
+                    coordinator = coordinator,
                 )
             _manager = mgr
+            // 接线 Shizuku binder + 无障碍连接事件 → 同源刷新（协调层与管理工作器缓存一起更新）。
+            coordinator?.start { mgr.refreshPermissions() }
 
-            // v2.x: Jerarquía de permisos de herramientas — Inyectar el proveedor de estado de autorización del entorno de ejecución(find_tools Visualización de estado + verificación previa antes de la ejecución.)
+            // v2.x: 工具权限分层 — 注入运行环境授权状态提供器(find_tools 状态展示 + 执行前预检)
             toolRegistry.permissionStatusProvider = {
-                // v2.7: Utilice instantáneas en tiempo real (vuelva a detectar la accesibilidad con cada verificación previa)—— Servicio de accesibilidad conexión asíncrona,
-                // La instantánea de la caché se detendrá en falso al inicio, lo que provocará que la herramienta juzgue mal“No autorizado”.
+                // v2.7: 用实时快照（每次预检重新探测无障碍）—— 无障碍服务异步连接，
+                // 缓存快照会停在启动时的 false，导致工具误判“未授权”。
                 val state = mgr.liveSnapshot()
                 ToolPermissionStatus(
                     accessibility = state.accessibilityEnabled,
@@ -86,7 +99,7 @@ object AutomationInitializer {
                 )
             }
 
-            // Regístrese para el conjunto de herramientas de automatización de la interfaz de usuario
+            // 注册 UI 自动化工具集
             val workflowJournal = runCatching {
                 org.koin.java.KoinJavaComponent.get<io.zer0.muse.tools.WorkflowJournal>(
                     io.zer0.muse.tools.WorkflowJournal::class.java,
@@ -99,20 +112,59 @@ object AutomationInitializer {
             val virtualDisplayClient = virtualDisplayManager?.let { manager ->
                 io.zer0.muse.automation.vdisplay.VirtualDisplayClient(appContext, manager)
             }
+            // 把"截图 / 注入点击 / 销毁"三个动作暴露给界面（预览与触摸接管用）。
+            // 只暴露动作、不暴露整条构造链：界面不需要知道虚拟屏服务是怎么起来的。
+            if (virtualDisplayClient != null && virtualDisplayManager != null) {
+                io.zer0.muse.automation.AutomationRuntime.install(
+                    screenshot = { displayId -> virtualDisplayClient.screenshot(displayId) },
+                    tap = { displayId, x, y ->
+                        val command = io.zer0.muse.automation.vdisplay.VirtualDisplayInputCommand.build(
+                            displayId,
+                            "tap",
+                            mapOf("x" to x.toString(), "y" to y.toString()),
+                        ) ?: return@install false
+                        // 注入命令同样过白名单校验：界面触发的输入不因为"是用户点的"就少一道闸。
+                        val check = io.zer0.muse.automation.core.DeviceCommandPolicy.validate(command.shellCommand)
+                        if (check is io.zer0.muse.automation.core.DeviceCommandPolicy.Check.Invalid) {
+                            false
+                        } else {
+                            virtualDisplayManager.exec(command.shellCommand).exitCode == 0
+                        }
+                    },
+                    destroy = { displayId -> virtualDisplayClient.destroy(displayId) },
+                    // "交回主屏"：launchApp 本来就作用在默认显示屏上
+                    launchOnMain = { packageName -> mgr.launchApp(packageName) },
+                )
+            }
             val nodeScriptExecutor: suspend (String, Long) -> io.zer0.muse.tools.script.SkillEngineResult = { code, timeoutMs ->
                 io.zer0.muse.tools.NodeScriptTool.evaluate(appContext, code, timeoutMs)
             }
-            val tools = AutomationTools(mgr, workflowJournal, virtualDisplayClient, virtualDisplayManager, nodeScriptExecutor)
+            // 自动化总闸：从设置里读，工具执行前判断（设置缺失时按开处理）。
+            val settingsRepository = runCatching {
+                org.koin.java.KoinJavaComponent.get<io.zer0.muse.data.SettingsRepository>(
+                    io.zer0.muse.data.SettingsRepository::class.java,
+                )
+            }.getOrNull()
+            val tools = AutomationTools(
+                mgr,
+                workflowJournal,
+                virtualDisplayClient,
+                virtualDisplayManager,
+                nodeScriptExecutor,
+                automationEnabled = {
+                    settingsRepository?.automationEnabled() ?: true
+                },
+            )
             tools.register(toolRegistry)
 
-            // Registrar herramienta de nivel raíz(Ejecución jerárquica:Shizuku prioridad,Root Ten todo en cuenta,El registro en sí no tiene efectos secundarios.)
+            // 注册 Root 级别工具(分层执行:Shizuku 优先、Root 兜底,注册本身无副作用)
             try {
                 io.zer0.muse.tools.RootToolsRegistrar(toolRegistry, mgr, appContext)
             } catch (e: Exception) {
                 Logger.w(TAG, "RootToolsRegistrar failed: ${e.message}")
             }
 
-            // v2.2.1: GUI Agent herramienta de anillo(Operaciones de varios pasos impulsadas por la visión;VisionBridge Proporcionado por Koin,Si falta, se omitirá el registro.)
+            // v2.2.1: GUI Agent 环工具(视觉驱动多步操作;VisionBridge 由 Koin 提供,缺失则跳过注册)
             try {
                 val visionBridge =
                     org.koin.java.KoinJavaComponent.get<io.zer0.muse.vision.VisionBridge>(
@@ -125,7 +177,7 @@ object AutomationInitializer {
                 Logger.w(TAG, "UiAgent tool registration failed: ${e.message}")
             }
 
-            // v2.2.1: herramienta de pantalla virtual(Fondo de pantalla oculta;Shizuku o canal raíz,El registro en sí no tiene efectos secundarios.)
+            // v2.2.1: 虚拟屏工具(后台隐藏屏;Shizuku 或 Root 通道,注册本身无副作用)
             if (virtualDisplayManager != null && virtualDisplayClient != null) {
                 try {
                     io.zer0.muse.automation.vdisplay.VirtualDisplayTool(
@@ -139,9 +191,9 @@ object AutomationInitializer {
                 }
             }
 
-            // v2.x Agent ización: Conjunto de herramientas de control de aplicaciones(app_list/launch/settings/force_stop/clear_data/uninstall).
-            // "lista/empezar/Abrir página de configuración"Solo usa tus propios permisos(Se puede utilizar sin autorización automática.),Las acciones destructivas se llevan a cabo de manera uniforme.
-            // execTiered(Shizuku prioridad,Root Ten todo en cuenta);¿Qué capacidad se necesita para informar con veracidad cuando hay falta de acceso?
+            // v2.x Agent 化: 应用控制工具集(app_list/launch/settings/force_stop/clear_data/uninstall)。
+            // "列出/启动/打开设置页"只需应用自身权限(无自动化授权也能用),破坏性动作统一走
+            // execTiered(Shizuku 优先、Root 兜底);缺通道时如实回报需要哪一项能力。
             try {
                 io.zer0.muse.automation.appcontrol.AppControlTools(
                     context = appContext,
@@ -151,24 +203,28 @@ object AutomationInitializer {
                 Logger.w(TAG, "AppControl tools registration failed: ${e.message}")
             }
 
-            // Actualizar asincrónicamente el estado del permiso(No bloquea el inicio de la aplicación)
-            // P3-2(informe de auditoría): Utilice el alcance a nivel de aplicación en lugar de GlobalScope.
-            // GlobalScope No está sujeto a restricciones del ciclo de vida, no se puede cancelar, es difícil de probar y es fácil de salir cuando finaliza el proceso.
-            // Con tareas inacabadas intercaladas entre ellos.SupervisorJob Asegúrese de que un solo fallo no afecte a otras subtareas.
+            // 异步刷新权限状态(不阻塞 App 启动)
+            // P3-2（审计报告）: 改用应用级作用域，不再用 GlobalScope。
+            // GlobalScope 不受生命周期约束，无法取消、难以测试，且容易在进程退出时
+            // 夹着未完成的任务。SupervisorJob 保证单个失败不连带其他子任务。
             appScope.launch {
                 runCatching {
                     tools.initialize()
                 }.onFailure { Logger.w(TAG, "permission refresh failed: ${it.message}") }
             }
 
-            // v2.7: Conexión del servicio de accesibilidad/Actualice proactivamente las instantáneas de permisos cuando esté desconectado.
-            // La accesibilidad está conectada de forma asincrónica: el servicio está en ServiceConnected solo después de que el usuario enciende el interruptor;
-            // Si no se actualiza, el caché detectado al inicio siempre se detendrá en falso.
-            // Conducir a un error de cálculo previo a la verificación de herramientas“No autorizado”(El asistente lee la configuración del sistema pero muestra correctamente que está habilitado).
-            io.zer0.muse.accessibility.MuseAccessibilityService.addConnectionListener { connected ->
-                appScope.launch {
-                    runCatching { mgr.refreshPermissions() }
-                        .onFailure { Logger.w(TAG, "a11y conectar($connected)Error al actualizar los permisos después: ${it.message}") }
+            // v2.7: 无障碍服务连接/断开时主动刷新权限快照。
+            // 无障碍是异步连接的：用户开启开关后服务才 onServiceConnected；
+            // 若不刷新，启动时探测的缓存会一直停在 false，
+            // 导致工具预检误判“未授权”（向导读系统设置却能正确显示已开启）。
+            // 权限体系重设计: 有协调层时由 coordinator.start 统一接线（含 Shizuku binder 事件），
+            // 这里仅在退回管理器自探测时兜底注册，避免重复刷新。
+            if (coordinator == null) {
+                io.zer0.muse.accessibility.MuseAccessibilityService.addConnectionListener { connected ->
+                    appScope.launch {
+                        runCatching { mgr.refreshPermissions() }
+                            .onFailure { Logger.w(TAG, "a11y 连接($connected)后刷新权限失败: ${it.message}") }
+                    }
                 }
             }
 

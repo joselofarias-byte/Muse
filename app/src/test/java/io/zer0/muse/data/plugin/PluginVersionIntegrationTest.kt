@@ -26,10 +26,10 @@ import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
 /**
- * Pruebas de integración de estrategia de versión y rollback (siguiendo la ruta de instalación real, sin sustitutos).
+ * 版本策略与回滚的集成测试（走真实安装路径，不替身）。
  *
- * Hay cuatro cosas bloqueadas: la versión anterior se puede revertir después de la actualización, se rechaza la instalación de versión anterior pero se permite la reversión, se rechaza el reemplazo del editor,
- * Los borradores sin firmar no pueden anular las instalaciones firmadas; y la reversión debe fallar después de modificar las copias históricas.
+ * 锁定四件事：升级后旧版本可回滚、降级安装被拒但回滚放行、发行者换人被拒、
+ * 未签名草稿不能顶掉已签名的安装；以及历史副本被改动后回滚必须失败。
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -46,7 +46,7 @@ class PluginVersionIntegrationTest {
         initialize(ECGenParameterSpec("secp256r1"))
     }.generateKeyPair()
 
-    /** Construir un [keyPair] Archivo de paquete de complemento realmente firmado. */
+    /** 构造一个用 [keyPair] 真实签名的插件包文件。 */
     private fun signedPackage(
         id: String,
         version: String,
@@ -157,10 +157,10 @@ class PluginVersionIntegrationTest {
         assertEquals("1.1.0", manager.findPlugin("rollback-plugin")?.version)
 
         val retained = manager.listRetainedVersions("rollback-plugin").map { it.version }
-        assertTrue("Las versiones antiguas deben conservarse después de la actualización.: $retained", retained.contains("1.0.0"))
+        assertTrue("升级后应保留旧版本: $retained", retained.contains("1.0.0"))
         assertTrue(retained.contains("1.1.0"))
 
-        // Regresando a 1.0.0: nueva verificación + reemplazo atómico después de la comparación del resumen de contenido.
+        // 回滚到 1.0.0：重新验签 + 内容摘要比对后原子替换。
         val rolledBack = manager.rollbackTo("rollback-plugin", "1.0.0")
         assertTrue("rollback failed: ${rolledBack.exceptionOrNull()}", rolledBack.isSuccess)
         assertEquals("1.0.0", manager.findPlugin("rollback-plugin")?.version)
@@ -178,9 +178,9 @@ class PluginVersionIntegrationTest {
         assertTrue(install(manager, signedPackage("downgrade-plugin", "2.0.0", publisher)).isSuccess)
         val downgraded = install(manager, signedPackage("downgrade-plugin", "1.0.0", publisher))
 
-        assertTrue("Las instalaciones degradadas deben rechazarse", downgraded.isFailure)
+        assertTrue("降级安装必须被拒绝", downgraded.isFailure)
         assertTrue(
-            downgraded.exceptionOrNull()?.message.orEmpty().contains("degradación"),
+            downgraded.exceptionOrNull()?.message.orEmpty().contains("降级"),
         )
         assertEquals("2.0.0", manager.findPlugin("downgrade-plugin")?.version)
         trustFile.delete()
@@ -195,8 +195,8 @@ class PluginVersionIntegrationTest {
         assertTrue(install(manager, signedPackage("lineage-plugin", "1.0.0", newKeyPair())).isSuccess)
         val hijack = install(manager, signedPackage("lineage-plugin", "1.1.0", newKeyPair()))
 
-        assertTrue("Los complementos con el mismo nombre que cambian las claves públicas deben rechazarse", hijack.isFailure)
-        assertTrue(hijack.exceptionOrNull()?.message.orEmpty().contains("emisor"))
+        assertTrue("换公钥的同名插件必须被拒绝", hijack.isFailure)
+        assertTrue(hijack.exceptionOrNull()?.message.orEmpty().contains("发行者"))
         assertEquals("1.0.0", manager.findPlugin("lineage-plugin")?.version)
         trustFile.delete()
         Unit
@@ -213,7 +213,7 @@ class PluginVersionIntegrationTest {
         )
 
         assertTrue(tooNew.isFailure)
-        assertTrue(tooNew.exceptionOrNull()?.message.orEmpty().contains("versión de la aplicación"))
+        assertTrue(tooNew.exceptionOrNull()?.message.orEmpty().contains("App 版本"))
         assertNull(manager.findPlugin("future-plugin"))
         trustFile.delete()
         Unit
@@ -229,8 +229,8 @@ class PluginVersionIntegrationTest {
         val draftPreview = manager.reviewFromFile(draftFile).getOrThrow().preview
         val draft = manager.installDraftFromFile(draftFile, draftPreview)
 
-        assertTrue("Los borradores sin firmar no pueden sobrescribir las instalaciones firmadas", draft.isFailure)
-        assertTrue(draft.exceptionOrNull()?.message.orEmpty().contains("sin firmar"))
+        assertTrue("未签名草稿不能覆盖已签名安装", draft.isFailure)
+        assertTrue(draft.exceptionOrNull()?.message.orEmpty().contains("未签名"))
         assertEquals(PluginSecurityGate.SignatureStatus.VALID_TRUSTED, manager.findPlugin("draft-guard")?.signatureStatus)
         trustFile.delete()
         Unit
@@ -246,11 +246,11 @@ class PluginVersionIntegrationTest {
 
         val retained = manager.listRetainedVersions("tamper-plugin").first { it.version == "1.0.0" }
         val entry = File(retained.directory, "main.js")
-        assertTrue("La copia retenida debe contener el archivo de entrada.", entry.isFile)
+        assertTrue("保留副本应包含入口文件", entry.isFile)
         entry.writeText("function hello() { return 'tampered'; }")
 
         val rollback = manager.rollbackTo("tamper-plugin", "1.0.0")
-        assertTrue("Las copias históricas que hayan sido modificadas deben negarse a ser revertidas.", rollback.isFailure)
+        assertTrue("被改动的历史副本必须拒绝回滚", rollback.isFailure)
         assertEquals("1.1.0", manager.findPlugin("tamper-plugin")?.version)
         trustFile.delete()
         Unit

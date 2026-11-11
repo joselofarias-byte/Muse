@@ -6,36 +6,36 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Pico del lote 2.2:find_tools Después de cargar, ¿puede el**La siguiente ronda de la ronda del mismo usuario.**Tener un efecto.
+ * 批次 2.2 spike：find_tools 装载后能否在**同一用户回合的下一轮**生效。
  *
- * ## fondo
+ * ## 背景
  *
- * Elemento 1 de autoevaluación del asistente: "Si la herramienta no está en el esquema de esta ronda, primero debe buscar_herramientas y luego esperar a la siguiente ronda. —— Múltiples rondas de saltos,
- * Una vez que el usuario publica otra frase en el medio, el contexto acumulado previamente se rompe fácilmente. Lo ideal es "recuperación y carga, disponibles en la misma rueda". "
+ * 助手自审第 1 条：「工具不在本轮 schema 里就得先 find_tools 再等下一轮 —— 一多轮跳转，
+ * 中间一旦用户又发一句，前面积累的上下文容易断。理想是『检索即装载，同轮可用』。」
  *
- * ## spike Dos preguntas para responder
+ * ## spike 要回答的两个问题
  *
- * 1. `markLoaded` Después de escribir, al mismo tiempo. `runLoop` ¿Se volverá a leer en la próxima ronda?
- * 2. Después de volver a leer,`filterToolsForRequest` ¿Será realmente lanzado?
+ * 1. `markLoaded` 写入后，同一次 `runLoop` 的下一轮会不会重新读取？
+ * 2. 重新读取后，`filterToolsForRequest` 会不会真的放行？
  *
- * ## Conclusión (esta prueba es la evidencia)
+ * ## 结论（本测试即证据）
  *
- * Pregunta 1:**voluntad**.`ChatToolLoopRunner.requestRoundFlow` Antes de cada ronda de solicitudes, llame
- * `SessionToolLoadRegistry.loadedFor(sessionId)`, que se llama una vez por ronda dentro del bucle de herramientas.
- * Entonces "próxima ronda"= La siguiente solicitud de modelo dentro del mismo turno de usuario no es "el usuario envía otra frase".
+ * 问题 1：**会**。`ChatToolLoopRunner.requestRoundFlow` 在每一轮请求前都调
+ * `SessionToolLoadRegistry.loadedFor(sessionId)`，而它在工具循环内每轮被调用一次。
+ * 所以「下一轮」= 同一个用户回合内的下一次模型请求，不是「用户再发一句」。
  *
- * Pregunta 2:**voluntad**.`dynamicAllowed` contiene `loadedToolNames`,OPTIONAL/GLOBAL Herramientas
- * Mientras esté cargado, se libera.
+ * 问题 2：**会**。`dynamicAllowed` 包含 `loadedToolNames`，OPTIONAL/GLOBAL 工具
+ * 只要被装载就放行。
  *
- * Por lo tanto, "la misma rueda está disponible" bajo la arquitectura actual.**Ya establecido**(misma rueda = ruedas de herramientas posteriores para la misma entrada del usuario).
- * La verdadera limitación es: el modelo es**mismo tiempo**No puede ajustar tanto find_tools como la herramienta recién recuperada en la salida del modelo. ——
- * Eso está determinado por el protocolo del proveedor (tool_calls Se determina cuando se devuelve la respuesta) y Muse no puede cambiarlo.
+ * 因此「同轮可用」在当前架构下**已经成立**（同轮 = 同一次用户输入的后续工具轮）。
+ * 真正的限制是：模型在**同一次**模型输出里不能既调 find_tools 又调刚检索到的工具 ——
+ * 那是 provider 协议决定的（tool_calls 在响应返回时已定），不是 Muse 能改的。
  *
- * Esta prueba concreta la conclusión anterior y evita que la refactorización posterior cambie la premisa de "releer cada ronda".
+ * 这个测试钉住上述结论，防止后续重构把「每轮重读」这个前提改掉。
  *
- * Nota: Debe usar**verdaderamente pertenecer OPTIONAL** nombre de la herramienta. El uso de herramientas STANDARD/CORE hará que las pruebas sean imposibles
- * Poder de verificación —— Siempre están disponibles y son visibles antes de cargar. Afirmar "no visible antes de cargar" hará que la herramienta no esté en el conjunto de prueba.
- * Y pases en falso.
+ * 注意：必须用**真正属于 OPTIONAL** 的工具名。用 STANDARD/CORE 的工具会让测试失去
+ * 验证力 —— 它们本来就恒发，装载前也可见，断言「装载前不可见」会因为工具不在测试集里
+ * 而假通过。
  */
 class FindToolsSameTurnSpikeTest {
 
@@ -45,7 +45,7 @@ class FindToolsSameTurnSpikeTest {
         parametersJsonSchema = """{"type":"object","properties":{}}""",
     )
 
-    /** Dos verdaderas herramientas OPCIONALES (visibles después de estrecharlas), además de un acolchado para empujar la superficie de la herramienta por encima del umbral. */
+    /** 两个真正的 OPTIONAL 工具（收窄后才可见），外加填充项把工具面撑过阈值。 */
     private val optionalA = "set_alarm"
     private val optionalB = "toggle_flashlight"
 
@@ -53,20 +53,20 @@ class FindToolsSameTurnSpikeTest {
         listOf(tool(optionalA), tool(optionalB))
 
     init {
-        // Afirmación previa: elegir la categoría incorrecta hará que todo el conjunto de pruebas carezca de sentido, así que bloquéelo durante la inicialización de la clase.
-        require(optionalA in ToolCategories.OPTIONAL) { "$optionalA debe pertenecer a OPTIONAL" }
-        require(optionalB in ToolCategories.OPTIONAL) { "$optionalB debe pertenecer a OPTIONAL" }
+        // 前置断言：选错分类会让整组测试失去意义，所以在类初始化时就挡住。
+        require(optionalA in ToolCategories.OPTIONAL) { "$optionalA 必须属于 OPTIONAL" }
+        require(optionalB in ToolCategories.OPTIONAL) { "$optionalB 必须属于 OPTIONAL" }
     }
 
     @Test
     fun `loaded tool is visible on the next round even though the user said nothing new`() {
         val tools = largeToolSet()
-        // El mensaje original del usuario no contiene despertador./palabras clave de la linterna → Después de limitar, estas dos herramientas OPCIONALES no deberían aparecer.
-        val userText = "ayudame con esto"
+        // 用户原话不含闹钟/手电筒关键词 → 收窄后这两个 OPTIONAL 工具本不该出现
+        val userText = "帮我处理一下这个"
 
         val beforeLoad = ToolExposurePolicy.filterToolsForRequest(userText = userText, tools = tools)
         assertFalse(
-            "No debe ser visible antes de la carga (de lo contrario, esta prueba no tiene poder de verificación)",
+            "装载前不该可见（否则这个测试没有验证力）",
             beforeLoad.any { it.name == optionalA },
         )
 
@@ -77,7 +77,7 @@ class FindToolsSameTurnSpikeTest {
                 loadedToolNames = setOf(optionalA),
             )
         assertTrue(
-            "Después de la carga, la misma frase de la entrada del usuario debe ser visible en la siguiente ronda. —— Esto está \"disponible en la misma rueda\".",
+            "装载后同一句用户输入下，下一轮必须能看到它 —— 这就是「同轮可用」",
             afterLoad.any { it.name == optionalA },
         )
     }
@@ -88,13 +88,13 @@ class FindToolsSameTurnSpikeTest {
 
         val afterLoad =
             ToolExposurePolicy.filterToolsForRequest(
-                userText = "ayudame con esto",
+                userText = "帮我处理一下这个",
                 tools = tools,
                 loadedToolNames = setOf(optionalA),
             )
 
         assertFalse(
-            "Sólo se debe soltar la que está cargada, y otras herramientas OPCIONALES no se deben soltar de manera incidental.",
+            "只该放行被装载的那个，不能顺带把别的 OPTIONAL 工具也放出来",
             afterLoad.any { it.name == optionalB },
         )
     }
@@ -108,7 +108,7 @@ class FindToolsSameTurnSpikeTest {
         SessionToolLoadRegistry.markLoaded(sessionId, listOf(optionalA))
         val round2 =
             ToolExposurePolicy.filterToolsForRequest(
-                "ayudame con esto",
+                "帮我处理一下这个",
                 tools,
                 loadedToolNames = SessionToolLoadRegistry.loadedFor(sessionId),
             )
@@ -117,11 +117,11 @@ class FindToolsSameTurnSpikeTest {
         SessionToolLoadRegistry.markLoaded(sessionId, listOf(optionalB))
         val round3 =
             ToolExposurePolicy.filterToolsForRequest(
-                "ayudame con esto",
+                "帮我处理一下这个",
                 tools,
                 loadedToolNames = SessionToolLoadRegistry.loadedFor(sessionId),
             )
-        assertTrue("Los elementos cargados anteriormente no se pueden sobrescribir con otros posteriores.", round3.any { it.name == optionalA })
+        assertTrue("先前装载的不能被后来的覆盖", round3.any { it.name == optionalA })
         assertTrue(round3.any { it.name == optionalB })
 
         SessionToolLoadRegistry.clear(sessionId)
@@ -131,24 +131,24 @@ class FindToolsSameTurnSpikeTest {
     fun `small tool surface is never narrowed so loading is irrelevant`() {
         val small = listOf(tool("a"), tool("b"))
 
-        val result = ToolExposurePolicy.filterToolsForRequest("solo di algo", small)
+        val result = ToolExposurePolicy.filterToolsForRequest("随便说点什么", small)
 
-        assertTrue("La pequeña superficie de la herramienta se emite directamente, ya sea que esté cargada o no, no afecta", result.size == small.size)
+        assertTrue("小工具面直接全发，装载与否不影响", result.size == small.size)
     }
 
     @Test
     fun `global tool is not visible until loaded`() {
-        // GLOBAL Las clases solo se publican en DynamicAllowed, y la diferencia antes y después de la carga es más obvia.
+        // GLOBAL 类只在 dynamicAllowed 里放行，装载前后差异最明显
         val globalTool = "app_uninstall"
-        require(globalTool in ToolCategories.GLOBAL) { "$globalTool debe pertenecer a GLOBAL" }
+        require(globalTool in ToolCategories.GLOBAL) { "$globalTool 必须属于 GLOBAL" }
         val tools = (1..30).map { tool("filler_$it") } + tool(globalTool)
 
-        val before = ToolExposurePolicy.filterToolsForRequest("ayudame con esto", tools)
+        val before = ToolExposurePolicy.filterToolsForRequest("帮我处理一下这个", tools)
         assertFalse(before.any { it.name == globalTool })
 
         val after =
             ToolExposurePolicy.filterToolsForRequest(
-                "ayudame con esto",
+                "帮我处理一下这个",
                 tools,
                 loadedToolNames = setOf(globalTool),
             )

@@ -16,6 +16,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -25,13 +26,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.zer0.common.Logger
 import io.zer0.muse.R
 import io.zer0.muse.automation.core.AutomationManager
+import io.zer0.muse.data.AutomationSettingsStore
 import io.zer0.muse.data.SettingsRepository
+import io.zer0.muse.ui.ChatViewModel
+import io.zer0.muse.ui.common.feedback.MuseToast
 import io.zer0.muse.ui.common.form.MuseCapsuleButton
 import io.zer0.muse.ui.common.form.MuseSwitch
 import io.zer0.muse.ui.common.icons.MuseIcons
@@ -39,38 +45,65 @@ import io.zer0.muse.ui.common.settings.ChevronRight
 import io.zer0.muse.ui.common.settings.SettingsGroup
 import io.zer0.muse.ui.common.settings.SettingsItemRow
 import io.zer0.muse.ui.settings.SettingsSubPageScaffold
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import org.koin.compose.koinInject
 
 /**
- * UI Página de configuración de automatización.
+ * UI 自动化设置页。
  *
- * v2.x: La configuración de permisos de tres canales ha convergido en la página "Asistente de configuración de permisos"(Elimine la duplicación capa por capa entre dos páginas);
- * Esta pagina esta reservada:Descripción de funciones, entrada del asistente, disposición de acciones, prueba de lectura de pantalla y diagnóstico del desarrollador.
+ * v2.x: 三通道权限配置已收敛到「权限配置向导」页(消除两页逐层重复);
+ * 本页保留:功能说明、向导入口、动作编排、屏幕读取测试与开发者诊断。
  */
 @Suppress("LongMethod", "FunctionNaming")
 @Composable
 fun AutomationSettingsPage(
     manager: AutomationManager,
     onBack: () -> Unit = {},
-    /** v1.xxx: F-24 Entrada de arreglo — Vaya a la página de tareas programadas para programar acciones automatizadas. */
+    /** v1.xxx: F-24 编排入口 — 跳到定时任务页编排自动化动作。 */
     onOpenScheduledTasks: () -> Unit = {},
-    /** v2.x: Entrada al asistente de configuración de permisos. */
+    /** v2.x: 权限配置向导入口。 */
     onOpenPermissionWizard: () -> Unit = {},
-    /** Tasker/Interruptor de automatización externo; Opcional para mantener las pruebas de la página Robolectric sin Koin. */
+    /** Tasker/外部自动化开关；可选以保持 Robolectric 页面测试不依赖 Koin。 */
     settings: SettingsRepository? = null,
 ) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val taskerEnabled by settings?.taskerTriggerEnabledFlow?.collectAsStateWithLifecycle(initialValue = false)
         ?: remember { mutableStateOf(false) }
+    val automationEnabled by settings?.automationEnabledFlow?.collectAsStateWithLifecycle(initialValue = true)
+        ?: remember { mutableStateOf(true) }
+    // P1-02：助手留下的虚拟屏（可预览、可自己操作）。展开的是 displayId。
+    var handoffExpanded by remember { mutableStateOf<Int?>(null) }
+    // R1: 无障碍被系统回收时，页面要主动提示 —— 否则用户只会看到「开关都开着」，
+    // 却不知道为什么读屏/点击全都失败。实时读 permissionState（不是一次性探测）。
+    val permissionState by manager.permissionState.collectAsStateWithLifecycle()
     var testing by remember { mutableStateOf(false) }
     var testResult by remember { mutableStateOf<ScreenTestResult?>(null) }
+    val automationSettingsStore = remember { AutomationSettingsStore(context.applicationContext) }
+    var autonomousDraft by remember { mutableStateOf(AutonomousAccessibilityDraftState()) }
+    var packageEditor by remember { mutableStateOf(AutonomousAccessibilityDraftState().allowedPackages.joinToString("\n")) }
+    var autonomousLoaded by remember { mutableStateOf(false) }
+    var taskPreview by remember { mutableStateOf<ChatViewModel.AutonomousAccessibilityTaskPreview?>(null) }
+    var taskGrant by remember { mutableStateOf<io.zer0.muse.automation.core.AutonomousAccessibilityGrant?>(null) }
+    val chatViewModel: ChatViewModel? = koinInject()
+
+    LaunchedEffect(automationSettingsStore, chatViewModel) {
+        autonomousDraft =
+            AutonomousAccessibilityDraftState.fromWindow(
+                automationSettingsStore.autonomousAccessibilityWindowFlow.first(),
+            )
+        packageEditor = autonomousDraft.allowedPackages.joinToString("\n")
+        taskPreview = runCatching { chatViewModel?.autonomousAccessibilityTaskPreview() }.getOrNull()
+        taskGrant = automationSettingsStore.autonomousAccessibilityGrantFlow.first()
+        autonomousLoaded = true
+    }
 
     SettingsSubPageScaffold(
         title = stringResource(R.string.automation_settings_title),
         onBack = onBack,
     ) {
-        // Tarjeta de instrucciones superior
+        // 顶部说明卡
         item(key = "intro") {
             Surface(
                 shape = RoundedCornerShape(20.dp),
@@ -96,7 +129,93 @@ fun AutomationSettingsPage(
             }
         }
 
-        // v2.x: La configuración de permisos de tres canales ha convergido en el "Asistente de configuración de permisos"(Elimine la duplicación capa por capa entre dos páginas)
+        // 总闸关闭时，页面顶部先给一条醒目提示：否则用户只会看到「开关是关的」，
+        // 却不知道这意味着所有屏幕自动化工具此刻都在拒绝执行。
+        // 两条横幅**必须互斥**：一条说「为什么现在不能用」，一条说「去哪儿开回来」；
+        // 同时出现只会让用户读到两句互相矛盾的话。
+        // 以前这个互斥只靠两句手写条件（`!enabled` 与 `enabled && !a11y`）维持，
+        // 谁改一句就可能同时点亮 —— 所以把判定抽出来，见文件末尾的 [automationBannerKind]。
+        val bannerKind = automationBannerKind(
+            automationEnabled = automationEnabled,
+            accessibilityEnabled = permissionState.accessibilityEnabled,
+        )
+        when (bannerKind) {
+            AutomationBannerKind.MASTER_OFF -> {
+                item(key = "master-off-banner") {
+                    Surface(
+                        shape = RoundedCornerShape(20.dp),
+                        color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            Icon(
+                                imageVector = MuseIcons.shield,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.error,
+                            )
+                            Text(
+                                text = stringResource(R.string.automation_master_off_banner),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                            )
+                        }
+                    }
+                }
+            }
+
+            // R1: 总闸开着、但无障碍服务当前不可用（多半是被系统回收/用户关了开关）。
+            // 与上面的「总闸关闭」横幅互斥：那条说「为什么不能用」，这条说「去哪开回来」。
+            AutomationBannerKind.A11Y_OFF -> {
+                item(key = "a11y-off-banner") {
+                    Surface(
+                        shape = RoundedCornerShape(20.dp),
+                        color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.6f),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            Icon(
+                                imageVector = MuseIcons.shield,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                            )
+                            Column(Modifier.weight(1f)) {
+                                Text(
+                                    text = stringResource(R.string.automation_a11y_off_banner),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                )
+                                Text(
+                                    text = stringResource(R.string.automation_a11y_off_action),
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier
+                                        .padding(top = 6.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .clickable {
+                                            manager.openSystemSettings(
+                                                AutomationManager.SystemSettingsTarget.ACCESSIBILITY,
+                                            )
+                                        }
+                                        .padding(horizontal = 4.dp, vertical = 2.dp),
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            AutomationBannerKind.NONE -> Unit
+        }
+
+        // v2.x: 三通道权限配置已收敛到「权限配置向导」(消除两页逐层重复)
         item(key = "permissions-entry") {
             SettingsGroup {
                 SettingsItemRow(
@@ -106,6 +225,45 @@ fun AutomationSettingsPage(
                     onClick = onOpenPermissionWizard,
                 ) {
                     ChevronRight()
+                }
+            }
+        }
+
+        // 虚拟屏交接（P1-02）：任务跑完把屏留下来时，用户在这里看得到、也能自己点。
+        val handoffs = io.zer0.muse.automation.vdisplay.VirtualDisplayHandoffRegistry
+            .list(System.currentTimeMillis())
+        if (handoffs.isNotEmpty()) {
+            item(key = "vdisplay-handoff") {
+                VirtualDisplayHandoffSection(
+                    handoffs = handoffs,
+                    expandedId = handoffExpanded,
+                    onExpand = { id -> handoffExpanded = id },
+                    onClose = { id ->
+                        // 关闭 = 放弃交接 + 销毁：留着它就是一块用户看不见、还占资源的屏
+                        io.zer0.muse.automation.vdisplay.VirtualDisplayHandoffRegistry.release(id)
+                        handoffExpanded = null
+                        scope.launch { io.zer0.muse.automation.AutomationRuntime.destroy(id) }
+                    },
+                )
+            }
+        }
+
+        // 总闸：一次停掉所有屏幕自动化（screen_* / ui_agent / automation_workflow）。
+        item(key = "automation-master") {
+            SettingsGroup {
+                SettingsItemRow(
+                    icon = MuseIcons.switch,
+                    title = stringResource(R.string.automation_master_title),
+                    subtitle = stringResource(R.string.automation_master_desc),
+                    onClick = null,
+                ) {
+                    MuseSwitch(
+                        checked = automationEnabled,
+                        onCheckedChange = settings?.let { repository ->
+                            { enabled -> scope.launch { repository.saveAutomationEnabled(enabled) } }
+                        },
+                        contentDescription = stringResource(R.string.automation_master_title),
+                    )
                 }
             }
         }
@@ -130,7 +288,21 @@ fun AutomationSettingsPage(
             }
         }
 
-        // v1.xxx: F-24 Cómo orquestar acciones automatizadas — Descripción + Ir a la página de tareas programadas con un clic
+        item(key = "autonomous-accessibility") {
+            AutonomousAccessibilityItem(
+                loaded = autonomousLoaded,
+                draft = autonomousDraft,
+                packageEditor = packageEditor,
+                taskPreview = taskPreview,
+                grant = taskGrant,
+                store = automationSettingsStore,
+                onDraftChange = { autonomousDraft = it },
+                onPackageEditorChange = { packageEditor = it },
+                onGrantChange = { taskGrant = it },
+            )
+        }
+
+        // v1.xxx: F-24 自动化动作如何编排 — 说明 + 一键跳转到定时任务页
         item(key = "orchestration") {
             Surface(
                 shape = RoundedCornerShape(20.dp),
@@ -168,7 +340,7 @@ fun AutomationSettingsPage(
             }
         }
 
-        // botón de prueba
+        // 测试按钮
         item(key = "test") {
             MuseCapsuleButton(
                 text = if (testing) {
@@ -191,7 +363,7 @@ fun AutomationSettingsPage(
                                 )
                             } else {
                                 val unknown = context.getString(R.string.automation_test_unknown)
-                                // ST-04: Los nombres de los paquetes y las fuentes de datos son información de diagnóstico del desarrollador.,Doblar en el área de plegado devInfo
+                                // ST-04: 包名与数据来源属开发者诊断信息,收进 devInfo 折叠区
                                 ScreenTestResult(
                                     message = buildString {
                                         appendLine(
@@ -245,7 +417,7 @@ fun AutomationSettingsPage(
             )
         }
 
-        // Resultados de la prueba
+        // 测试结果
         testResult?.let { result ->
             item(key = "test-result") {
                 Surface(
@@ -262,7 +434,7 @@ fun AutomationSettingsPage(
                             text = result.message,
                             style = MaterialTheme.typography.bodySmall,
                         )
-                        // ST-04: La información de diagnóstico del desarrollador está colapsada de forma predeterminada,Expandir para mostrar el nombre del paquete y la fuente de datos
+                        // ST-04: 开发者诊断信息默认折叠,展开显示包名与数据来源
                         result.devInfo?.let { devInfo ->
                             var showDevInfo by remember { mutableStateOf(false) }
                             Spacer(Modifier.height(6.dp))
@@ -308,11 +480,144 @@ fun AutomationSettingsPage(
 }
 
 /**
- * Lectura de pantalla única de los resultados de la autoprueba:Copia visible del usuario + éxito(Decidir el color de la tarjeta de referencia).
- * devInfo Información de diagnóstico para desarrolladores(nombre del paquete/fuente de datos),ST-04 La visualización se contrajo de forma predeterminada.
+ * 一次屏幕读取自测的结果:用户可见文案 + 是否成功(决定提示卡配色)。
+ * devInfo 为开发者诊断信息(包名/数据来源),ST-04 起默认折叠展示。
  */
 private data class ScreenTestResult(
     val message: String,
     val success: Boolean,
     val devInfo: String? = null,
 )
+
+/**
+ * 虚拟屏交接区：一行入口 + 展开后的预览/触摸面板。
+ *
+ * 抽成独立 composable 的原因：设置页的分支复杂度已经顶到 detekt 上限，
+ * 而这块本身是"看 + 操作一块外部屏幕"的完整单元，独立更好读。
+ */
+@Composable
+private fun VirtualDisplayHandoffSection(
+    handoffs: List<io.zer0.muse.automation.vdisplay.VirtualDisplayHandoffRegistry.Handoff>,
+    expandedId: Int?,
+    onExpand: (Int?) -> Unit,
+    onClose: (Int) -> Unit,
+) {
+    if (!io.zer0.muse.automation.AutomationRuntime.isReady) return
+    val first = handoffs.firstOrNull() ?: return
+    val expanded = expandedId == first.displayId
+    SettingsGroup {
+        SettingsItemRow(
+            icon = MuseIcons.bolt,
+            title = stringResource(R.string.automation_handoff_title),
+            subtitle = stringResource(R.string.automation_handoff_desc, handoffs.size),
+            onClick = { onExpand(if (expanded) null else first.displayId) },
+        ) {
+            ChevronRight()
+        }
+    }
+    if (expanded) {
+        VirtualDisplayHandoffPanel(
+            displayId = first.displayId,
+            packageName = first.packageName,
+            screenshot = { io.zer0.muse.automation.AutomationRuntime.screenshot(first.displayId) },
+            tap = { x, y -> io.zer0.muse.automation.AutomationRuntime.tap(first.displayId, x, y) },
+            bringToMain = {
+                io.zer0.muse.automation.AutomationRuntime.launchOnMain(first.packageName)
+            },
+            onClose = { onClose(first.displayId) },
+        )
+    }
+}
+
+/**
+ * 自主无障碍那一整块（从 [AutomationSettingsPage] 外提）。
+ *
+ * 为什么要外提：那一块里有"没加载完不显示 / 预览或目标包缺失 / 授权建不出来 / 已有授权"
+ * 四个判定，全留在页面函数里会让它复杂到没人敢改。外提后页面只负责**决定放不放这一块**，
+ * 判定留在自己的函数里，各自的复杂度都能被读得下。
+ *
+ * `scope`/`context` 在这里自取而不是当参数传：两者本来就是组合作用域内的东西
+ * （`rememberCoroutineScope()` / `LocalContext.current`），传参反而多两个可传错的入口。
+ */
+@Composable
+private fun AutonomousAccessibilityItem(
+    loaded: Boolean,
+    draft: AutonomousAccessibilityDraftState,
+    packageEditor: String,
+    taskPreview: ChatViewModel.AutonomousAccessibilityTaskPreview?,
+    grant: io.zer0.muse.automation.core.AutonomousAccessibilityGrant?,
+    store: AutomationSettingsStore,
+    onDraftChange: (AutonomousAccessibilityDraftState) -> Unit,
+    onPackageEditorChange: (String) -> Unit,
+    onGrantChange: (io.zer0.muse.automation.core.AutonomousAccessibilityGrant?) -> Unit,
+) {
+    if (!loaded) return
+    val scope = rememberCoroutineScope()
+    val resources = LocalResources.current
+
+    AutonomousAccessibilitySettingsCard(
+        draft = draft,
+        packageEditor = packageEditor,
+        taskPreview = taskPreview,
+        grant = grant,
+        onDraftChange = onDraftChange,
+        onPackageEditorChange = onPackageEditorChange,
+        onSave = {
+            val next = draft.copy(allowedPackages = parseAutonomousPackages(packageEditor))
+            onDraftChange(next)
+            scope.launch {
+                runCatching { store.saveAutonomousAccessibilityWindow(next.toWindow()) }
+                    .onSuccess { MuseToast.show(resources.getString(R.string.automation_autonomous_saved)) }
+                    .onFailure { Logger.w("AutomationSettings", "save autonomous plan failed: ${it.message}") }
+            }
+        },
+        onConfirmTask = {
+            val preview = taskPreview
+            val targetPackage = draft.allowedPackages.firstOrNull()
+            if (preview == null || targetPackage == null) {
+                MuseToast.show(resources.getString(R.string.automation_autonomous_confirm_required))
+            } else {
+                scope.launch {
+                    val newGrant = buildAutonomousGrant(
+                        sessionId = preview.sessionId,
+                        latestUserMessage = preview.message,
+                        packageName = targetPackage,
+                        nowMillis = System.currentTimeMillis(),
+                    )
+                    if (newGrant == null) {
+                        MuseToast.show(resources.getString(R.string.automation_autonomous_confirm_required))
+                    } else {
+                        store.saveAutonomousAccessibilityGrant(newGrant)
+                        onGrantChange(newGrant)
+                        MuseToast.show(resources.getString(R.string.automation_autonomous_task_confirmed))
+                    }
+                }
+            }
+        },
+        onClearTask = {
+            val current = grant
+            if (current != null) {
+                scope.launch {
+                    store.clearAutonomousAccessibilityGrant(expected = current)
+                    onGrantChange(null)
+                    MuseToast.show(resources.getString(R.string.automation_autonomous_task_cleared))
+                }
+            }
+        },
+    )
+}
+
+/** 页面顶部该显示哪一条拦截说明。 */
+internal enum class AutomationBannerKind { NONE, MASTER_OFF, A11Y_OFF }
+
+/**
+ * 总闸与无障碍权限两条横幅的**互斥判定**（纯函数，所以能被测）。
+ *
+ * 规则：总闸关着时只说「为什么现在不能用」—— 那时候去开无障碍是没意义的，
+ * 两句同时冒出来只会互相矛盾。因此总闸优先，且三者互斥。
+ */
+internal fun automationBannerKind(automationEnabled: Boolean, accessibilityEnabled: Boolean): AutomationBannerKind = when {
+    !automationEnabled -> AutomationBannerKind.MASTER_OFF
+    !accessibilityEnabled -> AutomationBannerKind.A11Y_OFF
+    else -> AutomationBannerKind.NONE
+}

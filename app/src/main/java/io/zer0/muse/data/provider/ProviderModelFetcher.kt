@@ -11,29 +11,29 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
- * v2.x: Canalización de extracción de manifiesto del modelo de proveedor(Calibre común para página de guía/página de edición de proveedor).
+ * v2.x: 供应商模型清单拉取管线(引导页 / 供应商编辑页共用口径)。
  *
- * proceso: caché primero(5 minutos TTL) → URL Finalización de estrategias múltiples(El usuario no completó el llenado/Escenarios comunes de sobrellenado /v1) →
- * tirar → [ModelRegistry.enrich] Enriquecimiento de capacidades(abilities / modalities / contextWindow) →
- * Vuelva a escribir en el caché. Ya sean proveedores locales o puntos finales personalizados compatibles con OpenAI,Todos siguen la misma cadena.
+ * 流程: 缓存优先(5 分钟 TTL) → URL 多策略补全(用户漏填/多填 /v1 的常见场景) →
+ * 拉取 → [ModelRegistry.enrich] 能力富化(abilities / modalities / contextWindow) →
+ * 写回缓存。无论预置供应商还是自定义 OpenAI 兼容端点,都走同一条链。
  *
- * 401/403 Fallo inmediato sin respaldo de URL(Hay un problema de credenciales y cambiar la ruta es inútil.).
+ * 401/403 立即失败不做 URL 回退(凭证问题换路径也没用)。
  */
 object ProviderModelFetcher {
 
     sealed class Outcome {
-        /** éxito: Lista de modelos enriquecida(No vacío) + configuración de golpe real(incluyendo corregido baseUrl). */
+        /** 成功: 已富化的模型清单(非空) + 实际命中的配置(含修正后的 baseUrl)。 */
         data class Success(val models: List<Model>, val usedConfig: ProviderConfig) : Outcome()
 
-        /** falló;[kind] Mapeo de copia localizada para personas que llaman,[message] es la información de diagnóstico original. */
+        /** 失败;[kind] 供调用方映射本地化文案,[message] 为原始诊断信息。 */
         data class Failure(val kind: FailureKind, val message: String) : Outcome()
     }
 
     enum class FailureKind { AUTH, EMPTY, NETWORK, OTHER }
 
-    /** Extraiga y enriquezca la lista de modelos. Devuelto cuando todas las estrategias fallan [Outcome.Failure]. */
+    /** 拉取并富化模型清单。全策略失败时返回 [Outcome.Failure]。 */
     suspend fun fetch(config: ProviderConfig, forceFresh: Boolean = false): Outcome = withContext(Dispatchers.IO) {
-        // 1) caché primero(5 minutos TTL)— Compartir caché con la página de edición del proveedor,Evite golpear río arriba repetidamente
+        // 1) 缓存优先(5 分钟 TTL)— 与供应商编辑页共用缓存,避免重复打上游
         if (!forceFresh) {
             val cached = ModelListCache.get(config, forceFresh = false)
             if (cached != null) {
@@ -45,7 +45,7 @@ object ProviderModelFetcher {
             }
         }
 
-        // 2) URL Finalización de estrategias múltiples — Cubrir la información faltante del usuario/Escenario de completar más /v1
+        // 2) URL 多策略补全 — 覆盖用户漏填/多填 /v1 的场景
         val base = config.baseUrl.trimEnd('/')
         val urlsToTry = mutableListOf<String>()
         if (base.isNotBlank()) {
@@ -70,8 +70,8 @@ object ProviderModelFetcher {
                     sawEmpty = true
                     continue
                 }
-                // 3) Enriquecimiento uno por uno — derivación automática abilities / modalities / contextWindow,
-                //    Asegurar la visión/El juicio de inferencia de tres estados ha entrado en vigor en la etapa de orientación.
+                // 3) 逐个富化 — 自动推导 abilities / modalities / contextWindow,
+                //    保证视觉/推理三态判定在引导阶段就已生效
                 val enriched = models.map { ModelRegistry.enrich(it) }
                 ModelListCache.put(cfg, models)
                 return@withContext Outcome.Success(enriched, cfg)
@@ -84,7 +84,7 @@ object ProviderModelFetcher {
             lastError = failMsg
         }
 
-        // Todas las estrategias fallaron: Lista vacía vs red/Otros
+        // 全策略失败: 空清单 vs 网络/其他
         if (sawEmpty) {
             Outcome.Failure(FailureKind.EMPTY, "upstream returned no models")
         } else {
@@ -93,24 +93,24 @@ object ProviderModelFetcher {
     }
 
     /**
-     * Verificar que la configuración realmente funciona —— Basado en una conversación real.
+     * 验证配置是否真的能用 —— 以一次真实对话为准。
      *
-     * con [fetch] División del trabajo:
-     *  - [fetch] solo responde“¿Qué modelos se pueden conseguir?”, basándose en modelos/implementación ascendentes.
-     *    Y /models resulta ser el punto final menos confiable en la interfaz compatible. —— No implementado, devuelve una estructura no estándar,
-     *    Es muy común imponer restricciones de autenticación solo, por lo que un proveedor que pueda chatear normalmente será condenado a muerte aquí.
-     *  - Este método responde“¿Realmente puedes enviar un mensaje?”. Primero intenta /models obtener un nombre de modelo,
-     *    Úsalo si no puedes conseguirlo. [fallbackModelId](Completado por la persona que llama) y luego envíe un mensaje mínimo.
+     * 与 [fetch] 的分工：
+     *  - [fetch] 只回答“能拉到哪些模型”，依赖上游实现 /models。
+     *    而 /models 恰好是兼容接口里最不可靠的一个端点 —— 不实现、返回非标准结构、
+     *    单独做鉴权限制都很常见，于是一个能正常聊天的供应商也会在这里被判死。
+     *  - 本方法回答“能不能真的发消息”。它先试 /models 拿一个模型名，
+     *    拿不到就用 [fallbackModelId]（调用方自己填的），然后发一条最小消息。
      *
-     * Semántica de resultados:
-     *  - El chat es exitoso. → [VerifyOutcome.Ready], con el nombre del modelo y (posible) número de modelo;
-     *  - no puedo chatear → [VerifyOutcome.NotReady], con controles de salud traducidos en motivos procesables.
+     * 结果语义：
+     *  - 聊天通了 → [VerifyOutcome.Ready]，带模型名与（可能的）模型数；
+     *  - 聊天不通 → [VerifyOutcome.NotReady]，带健康检查翻译过的可操作原因。
      *
-     * @param config Configuración a verificar (puede contener valores editados no guardados)
-     * @param fallbackModelId El ID del modelo a probar cuando el upstream no puede obtener la lista (generalmente el primero configurado por el usuario)
+     * @param config 待验证配置（可含未保存的编辑值）
+     * @param fallbackModelId 上游拿不到列表时要试的模型 id（通常取用户已配置的第一个）
      */
     suspend fun verify(config: ProviderConfig, fallbackModelId: String? = null): VerifyOutcome = withContext(Dispatchers.IO) {
-        // Obtenga primero la lista de modelos: si puede conseguirla, traiga la cantidad. Si no puede conseguirlo, la detección del chat no se bloqueará.
+        // 先拿模型清单：能拿到就顺便带回数量，拿不到也不阻断聊天探测。
         val listed = fetch(config)
         val listedModels = (listed as? Outcome.Success)?.models.orEmpty()
         val usedConfig = (listed as? Outcome.Success)?.usedConfig ?: config
@@ -118,9 +118,9 @@ object ProviderModelFetcher {
             listedModels.firstOrNull { it.id.isNotBlank() }?.id
                 ?: fallbackModelId?.takeIf { it.isNotBlank() }
                 ?: return@withContext VerifyOutcome.NotReady(
-                    // Redacción publicitaria orientada al usuario: anteriormente, solo usaba inglés sin modelo para probar.
-                    // Aparece una jerga de desarrollador en la interfaz china y los usuarios no pueden actuar en consecuencia.
-                    reason = "No se encontró ningún modelo comprobable. Haga clic en \"Obtener\" para obtener la lista de modelos primero.",
+                    // 面向用户的文案：此前直接抛英文 no model to test，
+                    // 中文界面里出现一句开发者术语，用户无法据此行动。
+                    reason = "没有找到可测试的模型，请先点击「获取」拉取模型列表",
                     kind = (listed as? Outcome.Failure)?.kind ?: FailureKind.OTHER,
                 )
 
@@ -137,7 +137,7 @@ object ProviderModelFetcher {
                 models = listedModels,
             )
         } else {
-            // healthCheck La excepción se ha traducido en palabras prácticas; Si no puede obtenerlo, deje el error original.
+            // healthCheck 已经把异常翻译成可操作的话；拿不到就走原始错误。
             val reason = result?.message
                 ?: (health as? Result.Error)?.throwable?.message
                 ?: "connection failed"
@@ -145,9 +145,9 @@ object ProviderModelFetcher {
         }
     }
 
-    /** [verify] resultado. */
+    /** [verify] 的结果。 */
     sealed class VerifyOutcome {
-        /** Enlace de chat disponible.[modelCount] Un valor de 0 significa que el canal ascendente no ha proporcionado una lista, lo que no significa que no esté disponible. */
+        /** 聊天链路可用。[modelCount] 为 0 表示上游没给列表，不代表不可用。 */
         data class Ready(
             val modelId: String,
             val modelCount: Int,
@@ -155,7 +155,7 @@ object ProviderModelFetcher {
             val models: List<Model>,
         ) : VerifyOutcome()
 
-        /** El enlace del chat no está disponible.[reason] Ya es una frase visible. */
+        /** 聊天链路不可用。[reason] 已是可展示的句子。 */
         data class NotReady(val reason: String, val kind: FailureKind) : VerifyOutcome()
     }
 }

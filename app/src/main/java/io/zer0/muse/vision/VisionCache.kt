@@ -14,32 +14,32 @@ import java.io.File
 import java.security.MessageDigest
 
 /**
- * v1.0.5 Reescritura de ayuda visual:Caché LRU global + compartido entre sesiones.
+ * v1.0.5 视觉辅助重写:全局 LRU 缓存 + 跨 session 共享。
  *
- * Doble caché:Persistencia de archivos LRU + sidecar en proceso.
+ * 双层缓存:进程内 LRU + sidecar 文件持久化。
  *
- * # Diferencias con versiones anteriores de VisionCache(v1.0.5 reescribir)
+ * # 与旧版 VisionCache 的差异(v1.0.5 重写)
  *
- *  1. **Compartir entre sesiones**:Ya no dividir archivos por ID de sesión,Cambie a caché global + archivo sidecar para registrar todas las entradas de la sesión.
- *     La misma imagen y el mismo problema afectan al caché en todas las sesiones.
- *  2. **Las claves de caché están claramente separadas**:Ya no reutilice el complemento de campo visionModelId suffix,Cambiar a [CacheKey] clase de datos,
- *     contiene imageHash / modelId / userRequestHash / promptVersion Cuatro campos independientes.
- *  3. **LRU eliminar**:La memoria caché tiene un límite superior([MAX_MEMORY_ENTRIES] = 256),Exceder lastUsedAt elimina el más largo sin usar.
- *     La versión anterior no será eliminada.,La memoria operativa a largo plazo crece indefinidamente.
- *  4. **Disco de escritura incremental**:put sólo se añade al archivo sidecar cuando,No más reescrituras completas cada vez. cada [FLUSH_INTERVAL] Escriba una vez y vacíe el disco una vez.
- *  5. **Los nombres de los campos son consistentes con el contenido.**:CacheEntry Los nombres de los campos reflejan la verdadera semántica de,Sin hackear.
+ *  1. **跨 session 共享**:不再按 sessionId 分文件,改为全局缓存 + sidecar 文件记录所有 session 的条目。
+ *     同一张图同一问题跨 session 命中缓存。
+ *  2. **缓存 key 明确分离**:不再复用 visionModelId 字段塞 suffix,改为 [CacheKey] 数据类,
+ *     包含 imageHash / modelId / userRequestHash / promptVersion 四个独立字段。
+ *  3. **LRU 淘汰**:内存缓存有上限([MAX_MEMORY_ENTRIES] = 256),超过按 lastUsedAt 淘汰最久未用的。
+ *     旧版无淘汰,长期运行内存无限增长。
+ *  4. **增量写盘**:put 时只追加到 sidecar 文件,不再每次全量重写。每 [FLUSH_INTERVAL] 次写入刷一次盘。
+ *  5. **字段名与内容一致**:CacheEntry 的字段名反映真实语义,无 HACK。
  *
- * # Diseño de clave de caché
+ * # 缓存 key 设计
  *
  * key = SHA-256(imageBase64) + modelId + SHA-256(userRequest) + promptVersion
  *
- * cuatro dimensiones:
- *  - imageHash:Misma imagen, diferentes modelos./Compartir problemas
- *  - modelId:Las diferentes descripciones de los modelos visuales pueden ser diferentes.
- *  - userRequestHash:No compartas la misma imagen sino diferentes preguntas.(Respuestas específicas)
- *  - promptVersion:Después de cambiar la palabra del mensaje, incremente el número de versión para invalidar el caché anterior.
+ * 四个维度:
+ *  - imageHash:同一张图不同模型/问题共享
+ *  - modelId:不同视觉模型描述可能不同
+ *  - userRequestHash:同一张图不同问题不共享(针对性回答)
+ *  - promptVersion:改提示词后递增版本号使旧缓存失效
  *
- * @param context Solicitud Context,solía conseguir filesDir
+ * @param context 应用 Context,用于获取 filesDir
  */
 class VisionCache(context: Context) {
 
@@ -48,32 +48,32 @@ class VisionCache(context: Context) {
     private val mutex = Mutex()
 
     /**
-     * caché de memoria:intercambio global,LRU eliminado.
+     * 内存缓存:全局共享,LRU 淘汰。
      *
-     * key = [CacheKey.toString()],value = Descripción visual + marca de tiempo lastUsedAt
+     * key = [CacheKey.toString()],value = 视觉描述 + lastUsedAt 时间戳
      */
     private val memoryCache = mutableMapOf<String, CacheEntry>()
 
-    /** Entradas incrementales que se vaciarán(put Agregar cuando,FLUSH_INTERVAL Escribir discos en lotes). */
+    /** 待刷盘的增量条目(put 时追加,FLUSH_INTERVAL 次后批量写盘)。 */
     private val pendingFlush = mutableMapOf<String, CacheEntry>()
 
-    /** El número de transferencias desde la última descarga del disco.,alcanzar [FLUSH_INTERVAL] Desencadene el enrojecimiento. */
+    /** 自上次刷盘后的 put 次数,达到 [FLUSH_INTERVAL] 触发刷盘。 */
     private var putSinceFlush = 0
 
     @Volatile
     private var loaded = false
 
     /**
-     * entrada de caché.
+     * 缓存条目。
      *
-     * @param imageHash Contenido de la imagen SHA-256
-     * @param modelId modelo visual id(no contiene suffix,puro modelId)
-     * @param userRequestHash Solicitud de usuario SHA-256 corta hash
-     * @param promptVersion Número de versión de palabra rápida
-     * @param description descripción visual(no contiene <vision-context> etiqueta)
-     * @param createdAt Crear marca de tiempo(milisegundos)
-     * @param lastUsedAt Última marca de tiempo utilizada(milisegundos),para la eliminación de LRU
-     * @param sessionIds El conjunto de identificadores de sesión que han utilizado esta entrada.(Fácil de limpiar por sesión)
+     * @param imageHash 图片内容 SHA-256
+     * @param modelId 视觉模型 id(不含 suffix,纯 modelId)
+     * @param userRequestHash 用户请求 SHA-256 短 hash
+     * @param promptVersion 提示词版本号
+     * @param description 视觉描述(不含 <vision-context> 标签)
+     * @param createdAt 创建时间戳(毫秒)
+     * @param lastUsedAt 最后使用时间戳(毫秒),用于 LRU 淘汰
+     * @param sessionIds 使用过该条目的 session id 集合(便于按 session 清理)
      */
     @Serializable
     data class CacheEntry(
@@ -88,9 +88,9 @@ class VisionCache(context: Context) {
     )
 
     /**
-     * Cuatro dimensiones independientes de la clave de caché.
+     * 缓存 key 的四个独立维度。
      *
-     * Reemplazar versión anterior"Reutilizar el complemento de campo visionModelId suffix"Práctica de HACK.
+     * 替代旧版"复用 visionModelId 字段塞 suffix"的 HACK 做法。
      */
     data class CacheKey(
         val imageHash: String,
@@ -102,9 +102,9 @@ class VisionCache(context: Context) {
     }
 
     /**
-     * Carga diferida de archivos sidecar en la memoria caché.
+     * 懒加载 sidecar 文件到内存缓存。
      *
-     * Cargado en la primera llamada,Posteriormente se lee la memoria directamente.
+     * 首次调用时加载,后续直接读内存。
      */
     private suspend fun ensureLoaded() {
         if (loaded) return
@@ -116,19 +116,19 @@ class VisionCache(context: Context) {
                 val key = CacheKey(entry.imageHash, entry.modelId, entry.userRequestHash, entry.promptVersion)
                 memoryCache[key.toString()] = entry
             }
-            Logger.d(TAG, "Caché visual cargado sidecar,total ${entries.size} Artículo")
-            // LRU Eliminado al límite superior
+            Logger.d(TAG, "视觉缓存已加载 sidecar,共 ${entries.size} 条")
+            // LRU 淘汰到上限内
             evictIfNeeded()
         }
     }
 
     /**
-     * Obtenga una descripción visual del caché.
+     * 获取缓存的视觉描述。
      *
-     * @param sessionId sesión actual id(Usado para grabar usado session,Fácil de limpiar por sesión)
-     * @param imageBase64 fotos base64
-     * @param key caché key(cuatro dimensiones)
-     * @return Texto de descripción de caché;Regresar en caso de error null
+     * @param sessionId 当前会话 id(用于记录使用过的 session,便于按 session 清理)
+     * @param imageBase64 图片 base64
+     * @param key 缓存 key(四维度)
+     * @return 缓存的描述文本;未命中返回 null
      */
     suspend fun get(sessionId: String, imageBase64: String, key: CacheKey): String? {
         ensureLoaded()
@@ -138,7 +138,7 @@ class VisionCache(context: Context) {
             val entry = memoryCache[fullKey.toString()]
             if (entry != null) {
                 entry.lastUsedAt = System.currentTimeMillis()
-                Logger.d(TAG, "golpe de caché visual: model=${key.modelId}, promptVer=${key.promptVersion}")
+                Logger.d(TAG, "视觉缓存命中: model=${key.modelId}, promptVer=${key.promptVersion}")
                 entry.description
             } else {
                 null
@@ -147,12 +147,12 @@ class VisionCache(context: Context) {
     }
 
     /**
-     * Escriba una descripción visual en el caché.
+     * 写入视觉描述到缓存。
      *
-     * @param sessionId sesión actual id
-     * @param imageBase64 fotos base64
-     * @param key caché key
-     * @param description descripción visual(no contiene <vision-context> etiqueta)
+     * @param sessionId 当前会话 id
+     * @param imageBase64 图片 base64
+     * @param key 缓存 key
+     * @param description 视觉描述(不含 <vision-context> 标签)
      */
     suspend fun put(sessionId: String, imageBase64: String, key: CacheKey, description: String) {
         ensureLoaded()
@@ -170,7 +170,7 @@ class VisionCache(context: Context) {
             sessionIds = listOf(sessionId),
         )
         mutex.withLock {
-            // Fusionar sessionIds: si la entrada ya existe,Fusionar colecciones de sesiones
+            // 合并 sessionIds:若条目已存在,合并 session 集合
             val existing = memoryCache[fullKey.toString()]
             val mergedSessions = if (existing != null) {
                 (existing.sessionIds + sessionId).distinct()
@@ -189,10 +189,10 @@ class VisionCache(context: Context) {
     }
 
     /**
-     * Borre las entradas de caché relacionadas con la sesión especificada.
+     * 清空指定会话相关的缓存条目。
      *
-     * Se utiliza para limpiar cuando se elimina una sesión. Dado que el caché se comparte entre sesiones,Solo limpiar entradas que solo hayan sido utilizadas por esta sesión,
-     * Se conservan las entradas que también se utilizan en otras sesiones.
+     * 用于会话删除时清理。由于缓存跨 session 共享,只清理仅被该 session 使用过的条目,
+     * 其他 session 也在用的条目保留。
      */
     suspend fun clearSession(sessionId: String) {
         ensureLoaded()
@@ -202,15 +202,15 @@ class VisionCache(context: Context) {
             }.map { it.key }
             toRemove.forEach { memoryCache.remove(it) }
             if (toRemove.isNotEmpty()) {
-                // reescritura completa sidecar(Menos operaciones de eliminación,Se acepta escribir completo)
+                // 全量重写 sidecar(删除操作较少,全量写可接受)
                 flushToDiskLocked(full = true)
-                Logger.d(TAG, "limpiar session $sessionId caché visual,Eliminar ${toRemove.size} Artículo")
+                Logger.d(TAG, "清理 session $sessionId 的视觉缓存,删除 ${toRemove.size} 条")
             }
         }
     }
 
     /**
-     * Borrar todo el caché(memoria + sidecar).
+     * 清空所有缓存(内存 + sidecar)。
      */
     suspend fun clearAll() {
         mutex.withLock {
@@ -218,12 +218,12 @@ class VisionCache(context: Context) {
             pendingFlush.clear()
             putSinceFlush = 0
             sidecarFile.delete()
-            Logger.d(TAG, "Todos los cachés visuales borrados")
+            Logger.d(TAG, "已清空所有视觉缓存")
         }
     }
 
     /**
-     * LRU eliminar:Si la memoria caché excede [MAX_MEMORY_ENTRIES],Presione lastUsedAt para eliminar el más antiguo no utilizado.
+     * LRU 淘汰:若内存缓存超过 [MAX_MEMORY_ENTRIES],按 lastUsedAt 删除最久未用的。
      */
     private fun evictIfNeeded() {
         if (memoryCache.size <= MAX_MEMORY_ENTRIES) return
@@ -232,14 +232,14 @@ class VisionCache(context: Context) {
         repeat(toEvict) { idx ->
             val key = sorted[idx].key
             memoryCache.remove(key)
-            Logger.d(TAG, "LRU Eliminar entradas de caché visual: $key")
+            Logger.d(TAG, "LRU 淘汰视觉缓存条目: $key")
         }
     }
 
     /**
-     * Cepilla el disco:Fusione las entradas incrementales de pendienteFlush en el archivo sidecar.
+     * 刷盘:把 pendingFlush 的增量条目合并到 sidecar 文件。
      *
-     * @param full true=reescritura completa(Después de usar clearSession);false=Fusión incremental(Predeterminado)
+     * @param full true=全量重写(用于 clearSession 后);false=增量合并(默认)
      */
     private suspend fun flushToDiskLocked(full: Boolean = false) = withContext(Dispatchers.IO) {
         resultOf {
@@ -247,7 +247,7 @@ class VisionCache(context: Context) {
             val allEntries = if (full) {
                 memoryCache.values.toList()
             } else {
-                // incremento:Cargar existente sidecar,fusionarse de nuevo pendingFlush
+                // 增量:先加载现有 sidecar,再合并 pendingFlush
                 val existing = loadSidecar().associateBy { keyOf(it) }
                 val merged = existing.toMutableMap()
                 pendingFlush.forEach { (k, v) -> merged[k] = v }
@@ -263,7 +263,7 @@ class VisionCache(context: Context) {
             pendingFlush.clear()
             putSinceFlush = 0
         }.onError { msg, t ->
-            Logger.w(TAG, "Falló el caché visual intermitente: $msg", t)
+            Logger.w(TAG, "刷盘视觉缓存失败: $msg", t)
         }
     }
 
@@ -279,7 +279,7 @@ class VisionCache(context: Context) {
                 AppJson.decodeFromString(ListSerializer(CacheEntry.serializer()), text)
             }
         }.onError { msg, t ->
-            Logger.w(TAG, "No se pudo cargar el sidecar de caché visual: $msg", t)
+            Logger.w(TAG, "加载视觉缓存 sidecar 失败: $msg", t)
         }.getOrNull() ?: emptyList()
     }
 
@@ -291,10 +291,10 @@ class VisionCache(context: Context) {
     companion object {
         private const val TAG = "VisionCache"
 
-        /** Límite de memoria caché(LRU eliminar). */
+        /** 内存缓存上限(LRU 淘汰)。 */
         private const val MAX_MEMORY_ENTRIES = 256
 
-        /** Cada número de opciones de venta desencadena un color. */
+        /** 每多少次 put 触发一次刷盘。 */
         private const val FLUSH_INTERVAL = 5
     }
 }

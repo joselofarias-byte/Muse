@@ -9,9 +9,9 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * PromptInjectionTransformer Pruebas unitarias.
+ * PromptInjectionTransformer 单元测试。
  *
- * Leer entradas de inyección de context.extra,Pruebas de función pura.
+ * 从 context.extra 读取注入条目,纯函数测试。
  */
 class PromptInjectionTransformerTest {
 
@@ -19,7 +19,7 @@ class PromptInjectionTransformerTest {
 
     private fun makeInjection(
         name: String = "test-mode",
-        content: String = "Eres un asistente de prueba.",
+        content: String = "你是一个测试助手",
         priority: Int = 0,
         insertionPosition: String = "after_system",
         enabled: Boolean = true,
@@ -37,8 +37,8 @@ class PromptInjectionTransformerTest {
     @Test
     fun `injection inserted after system message`() = runTest {
         val messages = listOf(
-            UIMessage(role = MessageRole.SYSTEM, content = "eres un asistente"),
-            UIMessage(role = MessageRole.USER, content = "Hola"),
+            UIMessage(role = MessageRole.SYSTEM, content = "你是一个助手"),
+            UIMessage(role = MessageRole.USER, content = "你好"),
         )
         val context = TransformContext(
             extras = mapOf("prompt_injections" to listOf(makeInjection())),
@@ -46,17 +46,17 @@ class PromptInjectionTransformerTest {
         val result = transformer.transform(messages, context)
 
         assertEquals(3, result.size)
-        assertEquals("eres un asistente", result[0].content)
+        assertEquals("你是一个助手", result[0].content)
         assertTrue(result[1].content.contains("[ModeInjection: test-mode]"))
-        assertTrue(result[1].content.contains("Eres un asistente de prueba."))
-        assertEquals("Hola", result[2].content)
+        assertTrue(result[1].content.contains("你是一个测试助手"))
+        assertEquals("你好", result[2].content)
     }
 
     @Test
     fun `injection inserted before system message`() = runTest {
         val messages = listOf(
-            UIMessage(role = MessageRole.SYSTEM, content = "eres un asistente"),
-            UIMessage(role = MessageRole.USER, content = "Hola"),
+            UIMessage(role = MessageRole.SYSTEM, content = "你是一个助手"),
+            UIMessage(role = MessageRole.USER, content = "你好"),
         )
         val context = TransformContext(
             extras = mapOf(
@@ -69,14 +69,14 @@ class PromptInjectionTransformerTest {
 
         assertEquals(3, result.size)
         assertTrue(result[0].content.contains("[ModeInjection:"))
-        assertEquals("eres un asistente", result[1].content)
-        assertEquals("Hola", result[2].content)
+        assertEquals("你是一个助手", result[1].content)
+        assertEquals("你好", result[2].content)
     }
 
     @Test
     fun `no injection when prompt_injections is null`() = runTest {
         val messages = listOf(
-            UIMessage(role = MessageRole.SYSTEM, content = "eres un asistente"),
+            UIMessage(role = MessageRole.SYSTEM, content = "你是一个助手"),
         )
         val context = TransformContext(extras = emptyMap())
         val result = transformer.transform(messages, context)
@@ -87,7 +87,7 @@ class PromptInjectionTransformerTest {
     @Test
     fun `disabled injection is skipped`() = runTest {
         val messages = listOf(
-            UIMessage(role = MessageRole.SYSTEM, content = "eres un asistente"),
+            UIMessage(role = MessageRole.SYSTEM, content = "你是一个助手"),
         )
         val context = TransformContext(
             extras = mapOf("prompt_injections" to listOf(makeInjection(enabled = false))),
@@ -100,29 +100,29 @@ class PromptInjectionTransformerTest {
     @Test
     fun `multiple injections ordered by priority`() = runTest {
         val messages = listOf(
-            UIMessage(role = MessageRole.SYSTEM, content = "asistente"),
-            UIMessage(role = MessageRole.USER, content = "Hola"),
+            UIMessage(role = MessageRole.SYSTEM, content = "助手"),
+            UIMessage(role = MessageRole.USER, content = "你好"),
         )
         val context = TransformContext(
             extras = mapOf(
                 "prompt_injections" to listOf(
-                    makeInjection(name = "low", priority = 1, content = "baja prioridad"),
-                    makeInjection(name = "high", priority = 10, content = "alta prioridad"),
+                    makeInjection(name = "low", priority = 1, content = "低优先级"),
+                    makeInjection(name = "high", priority = 10, content = "高优先级"),
                 ),
             ),
         )
         val result = transformer.transform(messages, context)
 
         assertEquals(4, result.size)
-        // Alta prioridad primero
-        assertTrue(result[1].content.contains("alta prioridad"))
-        assertTrue(result[2].content.contains("baja prioridad"))
+        // 高优先级在前
+        assertTrue(result[1].content.contains("高优先级"))
+        assertTrue(result[2].content.contains("低优先级"))
     }
 
     @Test
     fun `no system messages inserts at head`() = runTest {
         val messages = listOf(
-            UIMessage(role = MessageRole.USER, content = "Sólo mensajes de usuario"),
+            UIMessage(role = MessageRole.USER, content = "只有用户消息"),
         )
         val context = TransformContext(
             extras = mapOf("prompt_injections" to listOf(makeInjection())),
@@ -131,6 +131,6 @@ class PromptInjectionTransformerTest {
 
         assertEquals(2, result.size)
         assertTrue(result[0].content.contains("[ModeInjection:"))
-        assertEquals("Sólo mensajes de usuario", result[1].content)
+        assertEquals("只有用户消息", result[1].content)
     }
 }

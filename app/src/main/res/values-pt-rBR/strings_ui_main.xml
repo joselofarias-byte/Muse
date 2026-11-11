@@ -28,6 +28,7 @@
     <string name="assistant_detail_exclusive_model">Modelo Exclusivo</string>
     <string name="assistant_detail_temperature">Temperatura: %1$s</string>
     <string name="assistant_detail_default">Padrão</string>
+    <string name="assistant_detail_default_value">Padrão (%1$s)</string>
     <string name="assistant_detail_use_default">Usar padrão</string>
     <string name="assistant_detail_top_p_label">P superior (deixe em branco por padrão, 0-1)</string>
     <string name="assistant_detail_max_tokens_label">Max Tokens (deixe em branco por padrão)</string>
@@ -156,7 +157,7 @@
     <string name="shizuku_apk_not_installed">APK do Shizuku não instalado</string>
     <string name="shizuku_service_running">Serviço do Shizuku em execução</string>
     <string name="shizuku_service_not_running">Serviço do Shizuku não está em execução (inicie-o no aplicativo Shizuku)</string>
-    <string name="shizuku_status_unauthorized_long">O Muse não está autorizado a usar o Shizuku</string>
+    <string name="shizuku_status_unauthorized_long">O Musa não está autorizado a usar o Shizuku</string>
     <string name="permission_open_shizuku_service">Abrir o Shizuku para iniciar o serviço</string>
     <string name="permission_action_id_help">1 = Voltar (BACK)\n2 = Início (HOME)\n3 = Tarefas recentes (RECENTS)\n4 = Painel de notificações (NOTIFICATIONS)\n5 = Configurações rápidas (QUICK_SETTINGS)\n6 = Diálogo de energia (POWER_DIALOG)\n10 = Fechar painel de notificações (DISMISS_NOTIFICATION_SHADE)\n\nFerramentas rápidas: ui_back (action_id=1), ui_home (action_id=2)</string>
     <string name="memory_screen_ai_understanding">A compreensão da IA ​​sobre você</string>
@@ -284,7 +285,15 @@
     <!-- v1.0.4: Notification listener -->
     <string name="settings_screen_notification_listener">Ouvinte de notificação</string>
     <string name="connection_center_title">Central de conexões</string>
-    <string name="connection_center_desc">Canais, MCP, plugins e aprovação de ferramentas</string>
+    <string name="connection_tools_subtitle">Aprovações, permissões e políticas de segurança</string>
+    <string name="connection_tools_title">Permissões de ferramentas</string>
+    <string name="connection_plugins_subtitle">%1$d complementos instalados; abra para revisar as capacidades de cada um</string>
+    <string name="connection_plugins_title">Complementos</string>
+    <string name="connection_mcp_subtitle">%1$d servidores configurados</string>
+    <string name="connection_mcp_title">Servidores MCP</string>
+    <string name="connection_channels_subtitle">%1$d canais configurados</string>
+    <string name="connection_channels_title">Canais de mensagens</string>
+    <string name="connection_center_desc">Canais, MCP, complementos e aprovações de ferramentas</string>
     <string name="channel_page_title">Canais de mensagens</string>
     <string name="message_action_annotate">Anotar</string>
     <string name="message_annotate_title">Notas da mensagem</string>
@@ -326,6 +335,13 @@
     <string name="channel_type_c2c">Direto</string>
     <string name="channel_auto_reply">Resposta automática</string>
     <string name="channel_auto_reply_desc">Executa o assistente automaticamente ao receber mensagens e responde (cada rodada consome cota do modelo)</string>
+    <string name="channel_policy_label">Política de destinos</string>
+    <string name="channel_policy_open">Todos (sem restrição)</string>
+    <string name="channel_policy_allowlist">Apenas a lista</string>
+    <string name="channel_policy_denylist">Bloquear a lista</string>
+    <string name="channel_policy_hint">Vale para autorrespostas e envios (incl. ferramentas de canal); destinos bloqueados são recusados por política, sem gastar cota do modelo</string>
+    <string name="channel_policy_targets_label">Lista de destinos (chat_id / openid)</string>
+    <string name="channel_policy_targets_hint">Separados por vírgula ou linha; chat_id de grupo, openid do contato no privado</string>
     <string name="channel_err_ai_timeout">Tempo esgotado na chamada de IA</string>
     <string name="channel_err_no_assistant">Nenhum assistente disponível para gerar resposta automática</string>
     <string name="channel_weclaw_bind_title">Vincular WeChat ClawBot</string>
@@ -388,7 +404,6 @@
     <string name="search_try_other">Experimente outras palavras-chave</string>
     <string name="search_section_sessions">Sessões</string>
     <string name="search_section_messages">Mensagens</string>
-    <string name="search_new_session">Nova sessão</string>
     <string name="search_time_today">Hoje %1$s</string>
     <string name="search_time_yesterday">Ontem %1$s</string>
 
@@ -459,7 +474,9 @@
     <!-- ===== QR code share/scan ===== -->
     <string name="qr_share_title">Compartilhar código QR do provedor</string>
     <string name="qr_share_cd">Código QR de configuração do provedor</string>
-    <string name="qr_share_warning">Este código QR contém a chave API em texto simples.</string>
+    <string name="qr_share_warning">Este código QR pode incluir chaves de API, segredos OAuth, chaves privadas e credenciais em cabeçalhos, corpos e modelos de requisição, sem criptografia. Compartilhe apenas com pessoas de confiança.</string>
+    <string name="qr_share_warning_no_key">Este código QR exclui chaves de API, segredos OAuth, chaves privadas e cabeçalhos, corpos e modelos de requisição. URLs e outros dados de configuração continuam incluídos. Quem receber deverá preencher as credenciais necessárias.</string>
+    <string name="qr_share_include_key">Incluir credenciais: chaves de API, segredos OAuth, chaves privadas, cabeçalhos, corpos e modelos de requisição</string>
     <string name="qr_share_btn">Compartilhar código QR</string>
     <string name="qr_scan_title">Digitalize o código QR</string>
     <string name="qr_scan_pick_image">Escolha uma imagem de código QR da galeria</string>
@@ -497,6 +514,10 @@
     <string name="oauth_login">Login OAuth</string>
     <string name="oauth_login_success">Login OAuth bem-sucedido</string>
     <string name="oauth_login_failed">Falha no login do OAuth: %1$s</string>
+    <string name="oauth_reason_no_browser">Não é possível abrir o navegador</string>
+    <string name="oauth_reason_no_activity">Não foi possível obter o contexto da tela; tente de novo</string>
+    <string name="oauth_reason_not_configured">O OAuth não está configurado</string>
+    <string name="provider_test_no_api_key">Nenhuma chave de API informada</string>
     <string name="oauth_activity_context_unavailable">Não foi possível obter o contexto da Activity</string>
     <string name="oauth_device_code_prompt">Visite %1$s e insira o código: %2$s</string>
     <string name="oauth_polling">Aguardando autorização...</string>
@@ -538,7 +559,7 @@
     <string name="audit_log_category_user">Ação do usuário</string>
     <string name="audit_log_category_auth">Autenticação</string>
     <string name="audit_log_category_system">Sistema</string>
-    <string name="audit_log_search_hint">Ação de pesquisa/alvo/detalhe</string>
+    <string name="audit_log_search_hint">Buscar ação / alvo / detalhe</string>
     <string name="audit_log_clear_search">Limpar pesquisa</string>
     <string name="audit_log_no_match">Nenhum registro correspondente</string>
     <string name="audit_log_result_count">Exibindo %1$d de %2$d</string>
@@ -583,7 +604,7 @@
 
     <!-- ===== P2-5: SiliconFlow free model fallback (PresetProviders / ProviderEditPage) ===== -->
     <string name="preset_siliconflow">SiliconFlow</string>
-    <string name="preset_siliconflow_free">Modelos gratuitos SiliconFlow</string>
+    <string name="preset_siliconflow_free">Modelo gratuito integrado</string>
     <string name="free_model_service_unavailable">O serviço de cota gratuita está indisponível. Adicione uma API Key ou tente novamente mais tarde.</string>
 
     <!-- ===== P2-10: Provider plugin management (ProviderPluginPage) ===== -->
@@ -604,6 +625,7 @@
 
     <!-- ===== P2-7: Workspace (WorkspaceScreen + tool descriptions) ===== -->
     <string name="workspace_title">Espaço de trabalho</string>
+    <string name="workspace_tool_outputs">Saídas das ferramentas</string>
     <string name="workspace_desc">Gerenciamento de arquivos locais e armazenamento temporário</string>
     <string name="workspace_empty">O espaço de trabalho está vazio</string>
     <string name="workspace_new_file">Novo arquivo</string>
@@ -670,7 +692,7 @@
     <string name="tool_resume_step">Executando %1$s (%2$d/%3$d)…</string>
     <string name="tts_not_ready">TTS está inicializando, tente novamente mais tarde</string>
     <string name="chat_list_reorder">Arraste para reordenar</string>
-    <!-- Correcciones en la interfaz (i18n-3.x): Configurar el índice de búsqueda de páginas SettingsEntry title i18n(Copiar temporalmente chino,Traducción posterior) -->
+    <!-- 前端修复 (i18n-3.x): 设置页搜索索引 SettingsEntry title i18n(临时复制中文,后续补译) -->
     <string name="settings_screen_entry_tts_playback">Reprodução de voz TTS</string>
     <string name="settings_screen_entry_api_key">API Key</string>
     <string name="settings_screen_entry_archived">Conversas arquivadas</string>
@@ -690,7 +712,11 @@
     <string name="settings_screen_archived_desc">Ver e restaurar conversas arquivadas</string>
     <string name="settings_screen_share">Compartilhar</string>
     <string name="settings_share_page_title">Compartilhar</string>
-    <string name="settings_search_result_count">%1$d resultados encontrados</string>
+    <plurals name="settings_search_result_count">
+        <item quantity="one">%1$d resultado encontrado</item>
+        <item quantity="other">%1$d resultados encontrados</item>
+        <item quantity="many">%1$d resultados encontrados</item>
+    </plurals>
     <string name="settings_screen_miniphone_desc">Versão inicial de um recurso experimental</string>
     <string name="model_diff_clear_add">Limpar modelos novos</string>
     <string name="model_diff_clear_remove">Limpar modelos removidos</string>
@@ -706,7 +732,16 @@
     <string name="chat_list_edit">Editar</string>
     <string name="chat_list_edit_archive">Arquivar</string>
     <string name="chat_list_edit_delete">Excluir</string>
-    <string name="chat_list_edit_done">%1$d itens processados</string>
+    <plurals name="chat_list_edit_delete_confirm">
+        <item quantity="one">Excluir %1$d conversa selecionada e todas as mensagens dela? Esta ação não pode ser desfeita.</item>
+        <item quantity="other">Excluir %1$d conversas selecionadas e todas as mensagens delas? Esta ação não pode ser desfeita.</item>
+        <item quantity="many">Excluir %1$d conversas selecionadas e todas as mensagens delas? Esta ação não pode ser desfeita.</item>
+    </plurals>
+    <plurals name="chat_list_edit_done">
+        <item quantity="one">%1$d item processado</item>
+        <item quantity="other">%1$d itens processados</item>
+        <item quantity="many">%1$d itens processados</item>
+    </plurals>
     <string name="chat_list_edit_exit">Sair</string>
     <string name="chat_list_edit_select_all">Selecionar tudo</string>
     <string name="chat_list_restored_toast">Restaurada</string>
@@ -731,7 +766,7 @@
     <string name="muse_plugins_draft_saved">Salvo como rascunho desativado</string>
     <string name="muse_plugins_install_confirm_action">Confirmar instalação e ativar</string>
     <string name="muse_plugins_install_confirm_capabilities">Capacidades que declara usar: %1$s</string>
-    <string name="muse_plugins_capabilities_disclaimer">Esta declaração apenas descreve o que o plugin pretende usar; não limita o que ele pode fazer depois de instalado.</string>
+    <string name="muse_plugins_capabilities_disclaimer">Esta lista e o limite de capacidades do complemento: acoes nao declaradas sao recusadas na hora. Voce ainda pode ajustar cada capacidade em Capacidades e permissoes.</string>
     <string name="muse_plugins_global_switch_title">Chave geral de plugins</string>
     <string name="muse_plugins_global_switch_desc">Quando desligada, nenhum plugin é executado. Instalações e configurações são mantidas.</string>
     <string name="muse_plugins_runtime_label">Ambiente de execução: %1$s</string>
@@ -797,6 +832,11 @@
         <!-- B7-01: Plugin configuration contribution -->
     <string name="muse_plugins_config">Configuração do plugin</string>
     <string name="muse_plugins_open_panel">Abrir painel</string>
+    <string name="muse_plugins_view_broken">A interface nao renderizou (toque para ver o motivo)</string>
+    <string name="muse_plugins_view_image_missing">(imagem ausente)</string>
+    <string name="plugin_ui_busy">O envio anterior ainda esta em execucao; aguarde</string>
+    <string name="plugin_ui_render_failed">Nao foi possivel interpretar a interface retornada pelo plugin</string>
+    <string name="plugin_ui_needs_interactive">Esta tela pode enviar formulario, mas precisa da permissao de interface interativa (altera dados do proprio plugin)</string>
     <string name="muse_plugins_trust_catalog_title">Raiz de confiança do catálogo</string>
     <string name="muse_plugins_trust_publisher_fingerprint">Impressão digital %1$s</string>
     <string name="muse_plugins_trust_publishers_empty">Você ainda não confia em nenhum editor. Ao instalar um plugin de um editor desconhecido, você será orientado a confirmar a confiança.</string>
@@ -847,6 +887,21 @@
     <string name="workspace_mount_read_only">Somente leitura</string>
     <string name="workspace_mount_remove">Remover</string>
     <string name="workspace_mount_added">%1$s montado</string>
+    <!-- 按下「移除」却什么都没变时必须有话说：以前 removeMount 的返回值被直接丢掉 -->
+    <string name="workspace_mount_remove_failed">Não foi possível remover “%1$s” — ainda está na lista</string>
     <string name="workspace_mount_failed">Falha ao montar: %1$s</string>
     <string name="workspace_read_only_hint">Montagem somente leitura, não é possível alterar</string>
+    <string name="muse_plugins_market_advice_downgrade">A versao do catalogo e mais antiga que a instalada; isso seria rebaixar</string>
+    <string name="muse_plugins_market_advice_unknown_version">A versao nao e reconhecida; nao instale ainda</string>
+    <string name="muse_plugins_market_advice_needs_newer_app">Este plugin exige uma versao mais nova do app</string>
+    <string name="muse_plugins_market_advice_compat_unconfirmed">A compatibilidade e conferida no manifest apos o download; ainda nao da para afirmar</string>
+    <string name="muse_plugins_market_advice_retained">Ha copias locais destas versoes: %1$s (troca pela lista instalada)</string>
+    <string name="audit_log_field_action">Ação</string>
+    <string name="audit_log_field_target">Alvo</string>
+    <string name="audit_log_field_detail">Detalhe</string>
+    <string name="audit_log_field_result">Resultado</string>
+    <string name="audit_log_result_ok">Sucesso</string>
+    <string name="audit_log_result_fail">Falhou</string>
+    <string name="permission_advanced_channels">Canais avançados (Root / Termux)</string>
+    <string name="channel_weclaw_summary">Conecta uma conta pessoal pelo protocolo iLink do WeChat. A mesma conta do WeChat só pode ter um canal: ao vincular outro, o anterior é desativado. Avisos proativos dependem da janela de resposta aberta por uma mensagem recente; se não chegarem, envie um WeChat a este canal para reabri-la.</string>
 </resources>

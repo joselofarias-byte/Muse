@@ -21,12 +21,12 @@ import io.zer0.muse.ui.theme.MuseAnimation
 import io.zer0.muse.ui.theme.MuseMotion
 
 /**
- * Punto indicador de estado — Se utiliza para el estado de conexión del servidor/proveedor MCP.
+ * 状态指示小圆点 — 用于 MCP server / Provider 连接状态。
  *
- * @param color color de estado(CONNECTED VERDE / CONECTANDO AMARILLO / ERROR ROJO / DESCONECTADO GRIS)
- * @param size Tamaño de punto(Predeterminado 8dp)
- * @param pulse Si se debe habilitar la animación de pulso(CONNECTING Para el estado)
- * @param contentDescription Descripción de accesibilidad(Como por ejemplo"Conectado"),Sin semántica de registro cuando es nulo
+ * @param color 状态颜色(CONNECTED 绿 / CONNECTING 黄 / ERROR 红 / DISCONNECTED 灰)
+ * @param size 圆点尺寸(默认 8dp)
+ * @param pulse 是否启用脉冲动画(CONNECTING 状态用)
+ * @param contentDescription 无障碍描述(如"已连接"),为 null 时不注册语义
  */
 @Composable
 fun StatusDot(color: Color, size: Dp = 8.dp, pulse: Boolean = false, contentDescription: String? = null) {
@@ -53,7 +53,7 @@ fun StatusDot(color: Color, size: Dp = 8.dp, pulse: Boolean = false, contentDesc
             .size(size)
             .clip(CircleShape)
             .background(color.copy(alpha = alpha))
-            // L-SC6: Registrar contenidoDescripción semántica, TalkBack Estado de conexión legible(Como por ejemplo"Conectado").
+            // L-SC6: 注册 contentDescription 语义, TalkBack 可朗读连接状态(如"已连接")。
             .semantics(mergeDescendants = false) {
                 if (contentDescription != null) {
                     this.contentDescription = contentDescription

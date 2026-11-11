@@ -12,18 +12,20 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.zer0.memory.pin.PinnedMemoryStore
+import io.zer0.muse.R
 import io.zer0.muse.ui.common.form.MuseTactileButton
 import io.zer0.muse.ui.common.icons.MuseIcons
 import io.zer0.muse.ui.common.surface.MuseSurface
 import io.zer0.muse.ui.theme.MuseMotion
 
 /**
- * Área de gestión de memoria anclada.
+ * 置顶记忆管理区。
  *
- * Muestra todos los recuerdos anclados y el botón de eliminar.
+ * 显示所有置顶记忆及移除按钮。
  */
 @Composable
 fun PinnedMemorySection(pinnedEntries: List<PinnedMemoryStore.PinnedEntry>, onRemove: (String) -> Unit, modifier: Modifier = Modifier) {
@@ -41,15 +43,15 @@ fun PinnedMemorySection(pinnedEntries: List<PinnedMemoryStore.PinnedEntry>, onRe
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(MuseIcons.pin, contentDescription = null, tint = MaterialTheme.colorScheme.secondary)
                     Text(
-                        text = "Pinned Memories (${pinnedEntries.size})",
+                        text = "Recuerdos fijados (${pinnedEntries.size})",
                         style = MaterialTheme.typography.titleSmall,
                         modifier = Modifier.padding(start = 8.dp),
                         color = MaterialTheme.colorScheme.onSecondaryContainer,
                     )
                 }
-                // v1.0.90 fix: LazyColumn se usó originalmente aquí, pero este componente se incluyó en MemoryScreen
-                // LazyColumn item adentro —— Cuando una lista está anidada dentro de una lista, la capa interna será ilimitada"altura máxima",
-                // Lanza IllegalStateException directamente y falla. Cámbielo a una expansión normal dentro de una pantalla (la forma existente de escribir preguntas similares en el proyecto).
+                // v1.0.90 fix: 这里原来用 LazyColumn，但本组件是被塞进 MemoryScreen 的
+                // LazyColumn item 里的 —— 列表套列表时内层会拿到无限的"最大高度",
+                // 直接抛 IllegalStateException 崩溃。改成一屏内的普通展开（项目里同类问题的既有写法）。
                 Column(
                     modifier = Modifier.padding(top = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -64,15 +66,15 @@ fun PinnedMemorySection(pinnedEntries: List<PinnedMemoryStore.PinnedEntry>, onRe
                                 style = MaterialTheme.typography.bodySmall,
                                 modifier = Modifier.weight(1f),
                                 color = MaterialTheme.colorScheme.onSecondaryContainer,
-                                // LAYOUT-01: Row Ancho del texto interno + límite de línea, evita el ajuste de línea palabra por palabra al ampliar el tamaño de fuente
-                                // (A la derecha hay un botón de eliminación de ancho fijo que deja 2 líneas de contenido legible en el texto de la memoria.)
+                                // LAYOUT-01: Row 内文本取宽 + 限行，防放大字号下逐字换行
+                                // (右侧是定宽删除按钮，记忆正文留 2 行可读内容)
                                 maxLines = 2,
                                 overflow = TextOverflow.Ellipsis,
                             )
                             MuseTactileButton(
                                 icon = MuseIcons.trash,
                                 onClick = { onRemove(entry.id) },
-                                contentDescription = "Remove",
+                                contentDescription = stringResource(R.string.action_delete),
                                 tint = MaterialTheme.colorScheme.error,
                             )
                         }

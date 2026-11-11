@@ -1,24 +1,24 @@
 package io.zer0.muse.data.chat.rewrite
 
-/** Cambie entre enlaces de diálogo antiguos y nuevos. compromiso actual/evento/parts La ruta principal está habilitada de forma predeterminada.projection/UI El interruptor de retroceso aún se conserva de forma independiente. */
+/** 新旧对话链路开关。当前提交/事件/parts 主路径默认开启，projection/UI 仍独立保留回滚开关。 */
 data class ConversationRebuildFlags(
-    /** Cambio oficial: la nueva cadena de eventos se convierte en la ruta de registro de hechos predeterminada. */
+    /** 正式切换：新事件链成为默认事实记录路径。 */
     val shadowEventsEnabled: Boolean = true,
-    /** Cambio formal: realice la transacción idempotente MessageCommit cuando se complete la ronda. */
+    /** 正式切换：回合完成时走幂等 MessageCommit 事务。 */
     val useCommitSeq: Boolean = true,
-    /** Cambio oficial: las nuevas confirmaciones también escriben message_parts estructurados. */
+    /** 正式切换：新提交同时写入结构化 message_parts。 */
     val useMessageParts: Boolean = true,
-    /** La nueva ruta de lectura de proyección está habilitada de forma predeterminada; Los mensajes antiguos sin partes se derivan automáticamente del legado. */
+    /** 新 projection 读路径默认开启；无 parts 的旧消息自动 legacy 派生。 */
     val useMessageProjection: Boolean = true,
-    /** Cambio oficial: nuevo ConversationService/MessageCommit como ruta de confirmación principal. */
+    /** 正式切换：新 ConversationService/MessageCommit 作为主提交路径。 */
     val useNewConversationService: Boolean = true,
-    /** Se ha accedido directamente al diseño de la constelación del centro de memoria en la rama actual. */
+    /** 记忆中心星座布局已在当前分支直接接入。 */
     val useMemoryConstellationUi: Boolean = true,
-    /** Las páginas preliminares de la sala todavía están conectadas una por una y no se abrirán globalmente por el momento. */
+    /** 毛坯房页面仍按页面逐个接线，暂不全局打开。 */
     val useRenovatedPageUi: Boolean = false,
 )
 
-/** Cambio de escala de grises en proceso; no persistente, no cambia el comportamiento predeterminado de los usuarios normales. */
+/** 进程内灰度开关；不持久化，不改变普通用户默认行为。 */
 object ConversationRebuildFlagStore {
     @Volatile
     var current: ConversationRebuildFlags = ConversationRebuildFlags()

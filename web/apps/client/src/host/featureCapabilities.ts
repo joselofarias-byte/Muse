@@ -1,9 +1,9 @@
 /**
- * Negociación de capacidad para nuevos comandos.
+ * 新命令的能力协商。
  *
- * Host El nombre de los bits de habilidad aún no se ha finalizado y aquí se aceptan múltiples métodos de escritura para la misma habilidad (`assistants_detail` /
- * `assistant_detail`);**Los hosts antiguos que no hayan emitido indicadores de capacidad siempre serán devueltos. true**——Intente emitir el comando primero.
- * Si realmente no es compatible, el anfitrión responderá `error`, la página cambia al mensaje "La versión actual aún no es compatible".
+ * Host 的能力位命名还没定稿，这里对同一能力接受多个写法（`assistants_detail` /
+ * `assistant_detail`）；**没下发 capabilityFlags 的老 Host 一律返回 true**——先发命令试一次，
+ * 真不支持时 Host 会回 `error`，页面再切到「当前版本暂不支持」的提示。
  */
 import type { HostSystemCapabilities } from "../api.js";
 
@@ -12,6 +12,13 @@ export const MEMORY_FLAGS: readonly string[] = ["memory", "memory_list"];
 export const KNOWLEDGE_FLAGS: readonly string[] = ["knowledge", "knowledge_base"];
 export const TASK_FLAGS: readonly string[] = ["tasks", "scheduled_tasks"];
 export const SYSTEM_STATUS_FLAGS: readonly string[] = ["system_status"];
+/**
+ * 「运行」页三条命令的能力位。
+ *
+ * 用「任一即可」而不是要求三条齐全：日志与统计是两条独立的数据源，
+ * 哪天其中一条没能装配，页面剩下的 Tab 照样有用，不该整页判死。
+ */
+export const RUNTIME_FLAGS: readonly string[] = ["runtime_logs", "runtime_diagnostics", "runtime_stats"];
 export const ASSISTANT_WRITE_FLAGS: readonly string[] = ["assistant_write", "assistants_write"];
 
 export function supportsFlag(flags: readonly string[] | undefined, tokens: readonly string[]): boolean {
@@ -19,19 +26,19 @@ export function supportsFlag(flags: readonly string[] | undefined, tokens: reado
   return tokens.some((token) => flags.includes(token));
 }
 
-/** Host Texto de error al rechazar un comando que no implementa. Aquí hay algunas formas comunes de escribirlo. */
+/** Host 拒绝一个它没实现的命令时的错误文本，认几种常见写法。 */
 export function isUnsupportedCommandError(message: string | undefined): boolean {
   if (message === undefined) return false;
   return /unsupported|unknown command|not implemented|not supported/i.test(message);
 }
 
-/** Tres estados de capacidades específicas de la plataforma. */
+/** 平台专有能力的三种状态。 */
 export type PlatformAvailability = "available" | "notEnabled" | "unavailable";
 
 /**
- * Envíe el estado de capacidad de la plataforma desde system.status.capabilities:
- * true → Disponible;false → No habilitado (el dispositivo lo admite pero no está habilitado); falta el campo → No disponible.
- * Las capacidades de múltiples campos (como la automatización de la interfaz de usuario) están disponibles tan pronto como estén disponibles.
+ * 从 system.status.capabilities 推平台能力状态：
+ * true → 可用；false → 未开启（设备支持但没开）；字段缺了 → 不可用。
+ * 多字段的能力（如 UI 自动化）任一可用即算可用。
  */
 export function platformAvailability(
   capabilities: HostSystemCapabilities | undefined,
@@ -45,10 +52,10 @@ export function platformAvailability(
 }
 
 /**
- * entrada de directorio → Capacidades de plataforma dependiente.
+ * 目录条目 → 依赖的平台能力。
  *
- * Host La identificación de la entrada lateral aún no se ha finalizado por completo y aquí se toleran guiones bajos, guiones y varios sinónimos;
- * Si no hay ninguna coincidencia, no ingresará a la página de la plataforma (continúe a la página de marcador de posición general).
+ * Host 侧条目 id 还没完全定稿，这里同时容忍下划线与连字符、以及几个近义写法；
+ * 匹配不上就不进平台页（继续走通用占位页）。
  */
 const PLATFORM_ENTRY_KEYS: Readonly<Record<string, readonly (keyof HostSystemCapabilities)[]>> = {
   accessibility: ["accessibility"],

@@ -11,21 +11,21 @@ import androidx.room.Query
 import kotlinx.serialization.Serializable
 
 /**
- * v2.x: Aislamiento de memoria de chat grupal — Room entidad.
+ * v2.x: 群聊记忆隔离 — Room 实体。
  *
- * fondo:Los mensajes de chat grupal contienen discursos de múltiples agentes,Escribir directamente en la memoria principal del asistente contaminará el contexto principal de la conversación.
- * El resumen de mensajes de chat grupal se escribe de forma independiente fact store,No ingresa a la memoria principal.
- * Esta mesa es"Exclusivo para chat grupal fact store",con [io.zer0.memory] El sistema de memoria principal del módulo está completamente aislado.
+ * 背景:群聊消息含多个 Agent 的发言,若直接写入助手主记忆会污染主对话上下文。
+ * 群聊消息摘要写入独立的 fact store,不进入主记忆。
+ * 本表即"群聊专属 fact store",与 [io.zer0.memory] 模块的主记忆系统完全隔离。
  *
- * Ruta de inyección:[SystemPromptAssembler] Cuando el asistente principal genera un mensaje del sistema,Asociar el asistente actual con
- * Para resumen de memoria de chat grupal `<group_chat_memory>` inyección de etiquetas,con `<long_term_memory>` Distinguir.
+ * 注入路径:[SystemPromptAssembler] 在主助手构建 system prompt 时,把当前助手关联的
+ * 群聊记忆摘要用 `<group_chat_memory>` 标签注入,与 `<long_term_memory>` 区分。
  *
- * @param id clave primaria(UUID)
- * @param groupChatId chat grupal id(asociación [GroupChatEntity].id)
- * @param assistantId asistente id(asociación [io.zer0.muse.data.assistant.AssistantEntity].id)
- * @param summary Resumen de mensajes de chat grupal(LLM Generar o simplemente interceptar)
- * @param createdAt Crear marca de tiempo
- * @param expiresAt Marca de tiempo de vencimiento opcional,null significa que nunca caduca
+ * @param id 主键(UUID)
+ * @param groupChatId 群聊 id(关联 [GroupChatEntity].id)
+ * @param assistantId 助手 id(关联 [io.zer0.muse.data.assistant.AssistantEntity].id)
+ * @param summary 群聊消息摘要(LLM 生成或简单截取)
+ * @param createdAt 创建时间戳
+ * @param expiresAt 可选过期时间戳,null 表示永不过期
  */
 @Serializable
 @Entity(
@@ -52,37 +52,37 @@ data class GroupChatMemoryEntity(
 )
 
 /**
- * Memoria de chat grupal DAO.
+ * 群聊记忆 DAO。
  *
- * semántica de consulta:
- *  - [getByAssistant]:Consulte los últimos recuerdos de chat grupal N por ID de asistente(Sólo por compatibilidad;A-09 Después de la reparación, ya no se utiliza para inyección rápida.)
- *  - [getByAssistantAndChat]:Presione ID de asistente + ID de chat grupal para verificar N recuerdos recientes de chat grupal(Para inyección por SystemPromptAssembler)
- *  - [getByGroupChat]:Consulta todos los recuerdos por ID de chat grupal(Para mostrar la página de detalles del chat grupal)
- *  - [insert]:Escribe un nuevo recuerdo
- *  - [deleteOlderThan]:La limpieza expiró/viejos recuerdos
+ * 查询语义:
+ *  - [getByAssistant]:按助手 id 查最近 N 条群聊记忆(仅供兼容；A-09 修复后不再用于 prompt 注入)
+ *  - [getByAssistantAndChat]:按助手 id + 群聊 id 查最近 N 条群聊记忆(供 SystemPromptAssembler 注入)
+ *  - [getByGroupChat]:按群聊 id 查全部记忆(供群聊详情页展示)
+ *  - [insert]:写入一条新记忆
+ *  - [deleteOlderThan]:清理过期/陈旧记忆
  */
 @Dao
 interface GroupChatMemoryDao {
     /**
-     * Consulte los últimos recuerdos de chat grupal N por ID de asistente(Orden descendente por creado en).
+     * 按助手 id 查最近 N 条群聊记忆(按 createdAt 降序)。
      *
-     * **A-09 Reparado solo por compatibilidad**(Como se muestra en el centro de memoria.),no se volverá a utilizar [SystemPromptAssembler] inyectar:
-     * Esta consulta no se limita a chats grupales.,pondrá al asistente en**todos**Resumen del chat grupal mezclado,
-     * si"entre grupos/Cadena de memoria entre sesiones"una de las causas fundamentales.prompt Inyectate por favor ve [getByAssistantAndChat].
+     * **A-09 修复后仅供兼容**(如记忆中心展示),不得再用于 [SystemPromptAssembler] 注入:
+     * 该查询不限定群聊,会把该助手在**所有**群聊的摘要混在一起,
+     * 是"跨群/跨会话记忆串台"的根因之一。prompt 注入请走 [getByAssistantAndChat]。
      */
     @Query("SELECT * FROM group_chat_memories WHERE assistantId = :assistantId ORDER BY createdAt DESC LIMIT :limit")
     suspend fun getByAssistant(assistantId: String, limit: Int = 10): List<GroupChatMemoryEntity>
 
     /**
-     * Presione ID de asistente + ID de chat grupal para verificar N recuerdos recientes de chat grupal(Orden descendente por creado en).
+     * 按助手 id + 群聊 id 查最近 N 条群聊记忆(按 createdAt 降序)。
      *
-     * **A-09 Reparación**:Lectura de inyección con aislamiento de chat grupal. Devuelve sólo el ayudante en**Chat grupal actual**resúmenes pasados dentro,
-     * Evite que el contenido del chat grupal A se filtre al chat grupal B o al contexto del chat individual.
+     * **A-09 修复**:带群聊隔离的注入读取。仅返回该助手在**当前群聊**内的过往摘要,
+     * 杜绝群聊 A 的内容泄漏进群聊 B 或单聊上下文。
      *
-     * @param assistantId asistente actual id
-     * @param groupChatId Chat grupal actual id(El recuerdo debe pertenecer al chat grupal.,No se permite cruzar grupos.)
-     * @param limit Devuelve el límite superior del número de artículos.
-     * @return Resumen de la memoria del asistente actual en el chat grupal actual(Orden descendente por creado en,la mayoría [limit] Artículo)
+     * @param assistantId 当前助手 id
+     * @param groupChatId 当前群聊 id(内存须归属该群聊,不得跨群)
+     * @param limit 返回条数上限
+     * @return 当前助手在当前群聊内的记忆摘要(按 createdAt 降序,最多 [limit] 条)
      */
     @Query(
         "SELECT * FROM group_chat_memories " +
@@ -91,44 +91,44 @@ interface GroupChatMemoryDao {
     )
     suspend fun getByAssistantAndChat(assistantId: String, groupChatId: String, limit: Int = 10): List<GroupChatMemoryEntity>
 
-    /** Consulta todos los recuerdos por ID de chat grupal(Para mostrar la página de detalles del chat grupal). */
+    /** 按群聊 id 查全部记忆(供群聊详情页展示)。 */
     @Query("SELECT * FROM group_chat_memories WHERE groupChatId = :groupChatId ORDER BY createdAt DESC")
     suspend fun getByGroupChat(groupChatId: String): List<GroupChatMemoryEntity>
 
-    /** Escribe un nuevo recuerdo(Reemplazar con identificación). */
+    /** 写入一条新记忆(同 id 替换)。 */
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(memory: GroupChatMemoryEntity)
 
-    /** Limpieza creada en antes [before] memoria(Llamado para tareas de limpieza periódicas.). */
+    /** 清理 createdAt 早于 [before] 的记忆(供定期清理任务调用)。 */
     @Query("DELETE FROM group_chat_memories WHERE createdAt < :before")
     suspend fun deleteOlderThan(before: Long)
 
-    /** Eliminar todos los recuerdos del chat grupal especificado(Llamada en cascada cuando se elimina el chat grupal). */
+    /** 删除指定群聊的全部记忆(群聊删除时级联调用)。 */
     @Query("DELETE FROM group_chat_memories WHERE groupChatId = :groupChatId")
     suspend fun deleteByGroupChat(groupChatId: String)
 
-    /** v1.0.72: Eliminar una única memoria de chat grupal(Para eliminación única en el centro de memoria.). */
+    /** v1.0.72: 删除单条群聊记忆(记忆中心单条删除用)。 */
     @Query("DELETE FROM group_chat_memories WHERE id = :id")
     suspend fun deleteById(id: String)
 
-    /** v1.0.72: Consultar todos los recuerdos del chat grupal(pantalla del centro de memoria,Orden descendente por tiempo). */
+    /** v1.0.72: 查询全部群聊记忆(记忆中心展示,按时间降序)。 */
     @Query("SELECT * FROM group_chat_memories ORDER BY createdAt DESC")
     suspend fun getAll(): List<GroupChatMemoryEntity>
 
-    /** v1.0.72: Borrar todos los recuerdos del chat grupal(Limpia el centro de memoria con un clic). */
+    /** v1.0.72: 清空全部群聊记忆(记忆中心一键清空)。 */
     @Query("DELETE FROM group_chat_memories")
     suspend fun deleteAll()
 
-    /** Eliminar la memoria del asistente especificado en el chat grupal especificado(Se llama cuando el robot asistente sale del chat grupal.). */
+    /** 删除指定助手在指定群聊的记忆(助手机器人退出群聊时调用)。 */
     @Query("DELETE FROM group_chat_memories WHERE groupChatId = :groupChatId AND assistantId = :assistantId")
     suspend fun deleteByGroupChatAndAssistant(groupChatId: String, assistantId: String)
 
     /**
-     * Cuando se elimina un asistente, se borrará su memoria en todos los chats grupales.
+     * 助手被删除时清掉它在所有群聊里的记忆。
      *
-     * La memoria del chat grupal es independiente. fact store,Enlace de limpieza sin quitar el módulo de memoria.,Debe eliminarse por separado.
+     * 群聊记忆是独立的 fact store,不走记忆模块的清理链路,需要单独删。
      *
-     * @return número real de filas eliminadas
+     * @return 实际删除的行数
      */
     @Query("DELETE FROM group_chat_memories WHERE assistantId = :assistantId")
     suspend fun deleteByAssistant(assistantId: String): Int

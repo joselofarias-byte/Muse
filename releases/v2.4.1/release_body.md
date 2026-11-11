@@ -1,15 +1,15 @@
 # Muse v2.4.1
 
-## Mejoras importantes
+## 重要改进
 
-- **La memoria está más cerca de la conversación misma.**: La organización de la memoria distinguirá los hechos del usuario de las declaraciones, compromisos y tareas pendientes del asistente en la conversación, y los asignará al asistente y al espacio de la memoria para reducir el contenido duplicado y la mezcla entre asistentes.
-- **La importación de paquetes comprimidos de la base de conocimientos es más completa**: Admite ZIP,7Z y RAR, después de importar, los documentos se organizan según el nivel de carpeta dentro del paquete comprimido; El texto grande también se puede importar e indexar en secciones.
+- **记忆更贴近对话本身**：记忆整理会区分用户事实与助手在对话中的自述、承诺和待办，并按助手与记忆空间归属，减少重复内容和跨助手混用。
+- **知识库压缩包导入更完整**：支持 ZIP、7Z 和 RAR，导入后按压缩包内的文件夹层级整理文档；大文本也能分段导入和建立索引。
 
-## Mejoras en la experiencia
+## 体验改进
 
-- **Progreso más claro del contexto**: La etapa actual se mostrará al organizar recuerdos manualmente y comprimir conversaciones, lo que mejora la sincronización del estado durante el cambio de sesión.
-- **La recuperación después de la interrupción es más estable**: Mejore la continuación de las operaciones del teléfono celular, el procesamiento de mensajes, las conexiones externas y la recuperación de copias de seguridad después de una interrupción anormal, y reduzca el procesamiento repetido y la confusión sobre el estado de la sesión.
-- **El reconocimiento de escaneo y las tareas en segundo plano son más confiables**: Mejore la estabilidad del reconocimiento de documentos escaneados, la copia de seguridad automática y el inicio y recuperación de tareas programadas.
+- **上下文整理进度更清楚**：手动整理记忆和压缩对话时会显示当前阶段，改进会话切换期间的状态同步。
+- **中断后的恢复更稳**：改进手机操作、消息处理、外部连接和备份恢复在异常中断后的续接，降低重复处理和会话状态错乱。
+- **扫描识别和后台任务更可靠**：提升扫描文档识别、自动备份与定时任务的启动和恢复稳定性。
 
 ---
 

@@ -40,31 +40,31 @@ import io.zer0.muse.ui.common.surface.MuseListItem
 import io.zer0.muse.ui.theme.MusePaddings
 
 /**
- * modelo de habla (TTS / ASR) candidatos y reglas de redacción.
+ * 语音模型（TTS / ASR）的候选与写入规则。
  *
- * Los modelos solo se mantienen en el proveedor, y la página de configuración solo es responsable de "seleccionar uno": una lista de modelos candidatos del proveedor,
- * Los campos escritos dependen de si seguir al proveedor o no. —— Sigue y escribe `modelId`, escribir manualmente `model`.
- * La lógica se extrae en funciones puras, la página solo se representa y Compose no es necesario para pruebas individuales.
+ * 模型只在供应商里维护，设置页只负责「选一个」：候选来自供应商的模型列表，
+ * 写入的字段跟着是否跟随供应商走 —— 跟随写 `modelId`，手动写 `model`。
+ * 逻辑抽成纯函数，页面只做渲染，单测不必起 Compose。
  */
 internal object SpeechModelPicker {
 
     /**
-     * Proveedor candidato: Tiene prioridad el especificado en la configuración. Si no se especifica (o se ha eliminado), se utilizará el primero activado.
+     * 候选供应商：配置里指定的那个优先，没指定（或已被删）时取第一个启用中的。
      *
-     * El proveedor desactivado aún se devuelve: el usuario puede estar a punto de volver a cambiar su modelo y ocultarlo directamente dará la impresión de que la configuración se ha perdido.
+     * 被停用的供应商仍然返回：用户可能正要改回它的模型，直接藏起来会让人以为配置丢了。
      */
     fun candidateProvider(providers: List<ProviderConfig>, providerId: String): ProviderConfig? =
         providers.firstOrNull { it.id == providerId } ?: providers.firstOrNull { it.enabled }
 
-    /** Modelos candidatos: Lista de los modelos del proveedor, el orden permanece sin cambios. */
+    /** 候选模型：供应商的模型列表，顺序保持不变。 */
     fun options(provider: ProviderConfig?): List<SpeechModelOption> =
         provider?.models.orEmpty().map { SpeechModelOption(id = it.id, name = it.name) }
 
     /**
-     * Seleccionado actualmente.
+     * 当前选中态。
      *
-     * Contabilizado cuando queda un valor manual en la configuración, pero no está en la lista de candidatos (configuración antigua o el proveedor no ha sincronizado este modelo)
-     * [SpeechModelSelection.Custom]:UI Mostrar "Personalizar:x”, el valor se conserva tal como está y nunca se borrará.
+     * 配置里留着手填值、但候选列表里没有它（旧配置或供应商没同步过这个模型）时算
+     * [SpeechModelSelection.Custom]：UI 显示「自定义：x」，值原样保留，绝不清空。
      */
     fun selection(currentId: String, options: List<SpeechModelOption>): SpeechModelSelection {
         val current = currentId.trim()
@@ -73,49 +73,46 @@ internal object SpeechModelPicker {
         return if (hit != null) SpeechModelSelection.FromProvider(hit) else SpeechModelSelection.Custom(current)
     }
 
-    /** Configuración que se colocará en la biblioteca después de seleccionar el modelo TTS: siga las instrucciones del proveedor [MediaConfig.ttsModelId], en caso contrario escribe [MediaConfig.ttsModel]. */
-    fun applyToTts(config: MediaConfig, modelId: String): MediaConfig =
-        if (config.ttsFollowProvider) {
-            config.copy(ttsModelId = modelId)
-        } else {
-            config.copy(ttsModel = modelId)
-        }
+    /** 选中 TTS 模型后要落库的配置：跟随供应商写 [MediaConfig.ttsModelId]，否则写 [MediaConfig.ttsModel]。 */
+    fun applyToTts(config: MediaConfig, modelId: String): MediaConfig = if (config.ttsFollowProvider) {
+        config.copy(ttsModelId = modelId)
+    } else {
+        config.copy(ttsModel = modelId)
+    }
 
     /**
-     * ASR Si realmente se está utilizando la configuración del proveedor.
+     * ASR 是否真的在用供应商配置。
      *
-     * DashScope El punto final integrado y la dirección del proveedor no participan en la identificación en tiempo real, por lo que incluso si el interruptor se enciende en este motor, aún se procesará manualmente.
-     * (con [io.zer0.muse.data.SpeechProviderResolver.resolveAsr] el juicio sigue siendo consistente).
+     * DashScope 实时识别走内置端点、供应商地址不参与，因此该引擎下即便开关开着也按手动处理
+     * （与 [io.zer0.muse.data.SpeechProviderResolver.resolveAsr] 的判定保持一致）。
      */
-    fun asrFollowActive(config: AsrConfig): Boolean =
-        config.followProvider && config.provider != AsrProviderType.DASHSCOPE
+    fun asrFollowActive(config: AsrConfig): Boolean = config.followProvider && config.provider != AsrProviderType.DASHSCOPE
 
-    /** Configuración que se colocará en la biblioteca después de seleccionar el modelo ASR: siga las instrucciones del proveedor [AsrConfig.modelId], en caso contrario escribe [AsrConfig.model]. */
-    fun applyToAsr(config: AsrConfig, modelId: String): AsrConfig =
-        if (asrFollowActive(config)) {
-            config.copy(modelId = modelId)
-        } else {
-            config.copy(model = modelId)
-        }
+    /** 选中 ASR 模型后要落库的配置：跟随供应商写 [AsrConfig.modelId]，否则写 [AsrConfig.model]。 */
+    fun applyToAsr(config: AsrConfig, modelId: String): AsrConfig = if (asrFollowActive(config)) {
+        config.copy(modelId = modelId)
+    } else {
+        config.copy(model = modelId)
+    }
 }
 
-/** Modelo candidato (conserve solo los dos campos utilizados por el panel de selección para evitar que todo el objeto del modelo entre en estado de interfaz de usuario). */
+/** 候选模型（只保留选择面板要用的两个字段，避免把整个模型对象带进 UI 状态）。 */
 internal data class SpeechModelOption(val id: String, val name: String)
 
-/** Tres estados de visualización de líneas de selección de modelo. */
+/** 模型选择行的三种显示态。 */
 internal sealed interface SpeechModelSelection {
 
-    /** El modelo seleccionado es el que está en la lista de candidatos. */
+    /** 选中的是候选列表里的模型。 */
     data class FromProvider(val model: SpeechModelOption) : SpeechModelSelection
 
-    /** El valor en la configuración no está entre los candidatos (la configuración/proveedor anterior no está sincronizado) y se muestra como \"personalizado\" tal como está. */
+    /** 配置里的值不在候选里（旧配置 / 供应商没同步），原样显示为「自定义」。 */
     data class Custom(val value: String) : SpeechModelSelection
 
-    /** Si no se selecciona ningún modelo, se utiliza el motor predeterminado. */
+    /** 没有选模型，用引擎默认。 */
     data object Empty : SpeechModelSelection
 }
 
-/** Copia para mostrar el nombre del modelo: tome el nombre del candidato, no marque \"personalizado\" en el candidato y utilice el marcador de posición proporcionado por la persona que llama para los valores vacíos. */
+/** 模型名显示文案：候选里取名字，不在候选里标「自定义」，空值用调用方给的占位。 */
 @Composable
 internal fun speechModelLabel(selection: SpeechModelSelection, emptyLabel: String): String = when (selection) {
     is SpeechModelSelection.FromProvider -> selection.model.name
@@ -124,15 +121,15 @@ internal fun speechModelLabel(selection: SpeechModelSelection, emptyLabel: Strin
 }
 
 /**
- * Bloque de configuración del modelo: fila del modelo + descripción + (bajo demanda) área de entrada personalizada + panel de selección.
+ * 模型设置块：模型行 + 说明 + （按需）自定义输入区 + 选择面板。
  *
- * TTS La única diferencia con ASR es "dónde escribir después de la selección", por [onPick] Decidió no repetir este conjunto de controles en la página.
+ * TTS 与 ASR 的唯一差别是「选中后写到哪」，由 [onPick] 决定，页面不重复搭这套控。
  *
- * @param currentModelId La identificación del modelo actualmente vigente en la configuración (modelId cuando se sigue al proveedor, modelo en modo manual)
- * @param provider Proveedores candidatos (lista de candidatos decisivos)
- * @param emptyLabel Subtítulo cuando no se selecciona ningún modelo
- * @param onPick La devolución de llamada después de seleccionar (o guardar la personalización) es responsable de eliminar la biblioteca.
- * @param onOpenProviders Salir cuando el candidato esté vacío;null Indica que no se proporciona entrada
+ * @param currentModelId 配置里当前生效的模型 id（跟随供应商时是 modelId，手动模式是 model）
+ * @param provider 候选供应商（决定候选列表）
+ * @param emptyLabel 未选模型时的副标题
+ * @param onPick 选中（或保存自定义）后的回调，负责落库
+ * @param onOpenProviders 候选为空时的出口；null 表示不提供入口
  */
 @Composable
 internal fun SpeechModelSection(
@@ -188,19 +185,14 @@ internal fun SpeechModelSection(
 }
 
 /**
- * Fila de modelo: Haga clic en el panel de selección, y debajo encontrará una descripción de "El modelo lo gestiona el proveedor".
+ * 模型行：点开选择面板，下面跟一句「模型由供应商统一管理」的说明。
  *
- * @param title encabezado de fila (TTS y la respectiva redacción “modelo” de ASR)
- * @param selection Seleccionado actualmente
- * @param emptyLabel Subtítulo cuando no se selecciona ningún modelo
+ * @param title 行标题（TTS 与 ASR 各自的「模型」文案）
+ * @param selection 当前选中态
+ * @param emptyLabel 未选模型时的副标题
  */
 @Composable
-internal fun SpeechModelRow(
-    title: String,
-    selection: SpeechModelSelection,
-    emptyLabel: String,
-    onOpenPicker: () -> Unit,
-) {
+internal fun SpeechModelRow(title: String, selection: SpeechModelSelection, emptyLabel: String, onOpenPicker: () -> Unit) {
     Column(modifier = Modifier.fillMaxWidth()) {
         SettingsItemRow(
             icon = MuseIcons.robot,
@@ -225,10 +217,10 @@ internal fun SpeechModelRow(
 }
 
 /**
- * Panel de selección de modelo.
+ * 模型选择面板。
  *
- * Los candidatos provienen de proveedores; cuando la lista está vacía, se muestran una copia de la guía y la entrada "Ir a la configuración del proveedor".
- * Deje "Cambiar a Personalizado" al final…”, todavía hay una salida para los valores completados manualmente que no han sido sincronizados por el proveedor.
+ * 候选来自供应商；列表为空时给引导文案与「前往供应商设置」入口，
+ * 末尾固定留「改为自定义…」，让供应商没同步到的手填值仍有出路。
  */
 @Composable
 internal fun SpeechModelSheet(
@@ -309,9 +301,9 @@ internal fun SpeechModelSheet(
 }
 
 /**
- * Personalice el área de entrada del nombre del modelo (solo si hace clic en "Cambiar a personalizado" en el panel…”antes de desplegar).
+ * 自定义模型名输入区（只有从面板里点了「改为自定义…」才展开）。
  *
- * Ocupa el cuadro de texto que se colocaba directamente en la página en la versión anterior: la habilidad no se elimina, simplemente se oculta detrás de una entrada clara.
+ * 旧版直接摆在页面上的文本框由它接手：能力不删，只是藏到一个明确的入口后面。
  */
 @Composable
 internal fun SpeechModelCustomField(

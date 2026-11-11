@@ -8,15 +8,14 @@
     <string name="onboarding_language_subtitle">画面の表示に使われます。いつでも変更できます。</string>
     <string name="onboarding_theme_title">好きな見た目に。</string>
     <string name="onboarding_theme_subtitle">テーマは設定からいつでも変更できます。</string>
-    <string name="onboarding_lang_en">英語</string>
-    <string name="onboarding_lang_ja">日本語</string>
-    <string name="onboarding_lang_ko">한국어</string>
 
     <!-- Step 2: Your Name -->
     <string name="onboarding_names_title">はじめまして。</string>
     <string name="onboarding_names_subtitle">呼び名と名前は、あとからでも変えられます。</string>
     <string name="onboarding_names_user_label">なんて呼べばいい？</string>
     <string name="onboarding_names_agent_label">名前をつけてあげて</string>
+    <string name="onboarding_names_user_placeholder">例：太郎</string>
+    <string name="onboarding_names_agent_placeholder">例：ノヴァ</string>
     <string name="onboarding_names_hint">名前はデフォルトのアシスタントに使われます。あとから変更できます。</string>
     <string name="onboarding_memory_title">あなたを覚えさせて。</string>
     <string name="onboarding_memory_subtitle">オンにすると、会話の終わりに長期記憶として整理されます。記憶の更新が多いとモデルのキャッシュ効率が下がります（オフのほうが安いことも）が、長く寄り添うほど良くなります。</string>
@@ -32,11 +31,13 @@
     <string name="onboarding_provider_caps">能力を照合済み：視覚 %1$d · 推論 %2$d · ツール %3$d</string>
     <string name="onboarding_provider_select_label">プロバイダーの選択</string>
     <string name="onboarding_provider_apikey_label">APIキー</string>
-    <string name="onboarding_provider_apikey_input">APIキーを入力してください</string>
+    <string name="onboarding_provider_apikey_input">プロバイダーのコンソールで生成。通常 sk- で始まります</string>
     <string name="onboarding_provider_apikey_show">キーを表示</string>
     <string name="onboarding_provider_apikey_hide">キーを隠す</string>
     <string name="onboarding_provider_test_button">テスト接続</string>
-    <string name="onboarding_provider_test_success">接続に成功しました。利用可能なモデル数: %1$d。</string>
+    <plurals name="onboarding_provider_test_success">
+        <item quantity="other">接続に成功しました。利用可能なモデル数: %1$d。</item>
+    </plurals>
     <string name="onboarding_provider_skip">後で設定で構成する</string>
     <string name="onboarding_provider_custom">カスタム（OpenAI互換）</string>
     <string name="onboarding_provider_custom_baseurl_label">カスタムベースURL</string>
@@ -50,7 +51,10 @@
 
     <!-- Step 5: Complete -->
     <string name="onboarding_complete_title">準備完了。</string>
+    <string name="onboarding_provider_next_hint">プロバイダーを選び、キーを入れて接続テストに合格すると続けられます。後で設定も可能です。</string>
+    <string name="onboarding_welcome_greetings_caption">ひとつの歓迎を、7つの言語で</string>
     <string name="onboarding_complete_subtitle">さっそく試してみましょう</string>
+    <string name="onboarding_restore_from_backup">バックアップからデータを復元</string>
     <string name="onboarding_tutorial_chat_title">デイリーチャット</string>
     <string name="onboarding_tutorial_chat_desc">文字も写真もファイルも送れて、返事は自然</string>
     <string name="onboarding_tutorial_assistant_title">アシスタント&amp; メモリ</string>
@@ -66,7 +70,4 @@
     <string name="onboarding_button_next">次</string>
     <string name="onboarding_button_finish">話してみましょう</string>
     <string name="onboarding_step_progress">%1$d / %2$d ステップ</string>
-    <string name="onboarding_lang_es">スペイン語</string>
-    <string name="onboarding_lang_pt">ポルトガル語</string>
-    <string name="onboarding_lang_ru">ロシア語</string>
 </resources>

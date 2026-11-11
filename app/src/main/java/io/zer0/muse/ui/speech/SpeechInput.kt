@@ -7,29 +7,29 @@ import android.speech.RecognizerIntent
 import java.util.Locale
 
 /**
- * Phase 5-D: Entrada de voz helper(system Intent fallback).
+ * Phase 5-D: 语音输入 helper(system Intent fallback)。
  *
- * v1.49: Vosk Se ha eliminado el reconocimiento sin conexión.(Reducir el tamaño del APK),Cuando este archivo se actualiza sin clave API
- * El principal camino alternativo.ChatScreen En el modo SISTEMA, mantenga presionado el micrófono y luego suéltelo.
- * [createIntent] + [parseResult] Iniciar el reconocimiento de voz del sistema.
+ * v1.49: Vosk 离线识别已移除(减小 APK 体积),本文件升级为无 API Key 时的
+ * 主 fallback 路径。ChatScreen 在 SYSTEM 模式下长按麦克风松手后调用
+ * [createIntent] + [parseResult] 启动系统语音识别。
  *
- * opciones de diseño: Llame al reconocedor de voz del sistema con la intención ACTION_RECOGNIZE_SPEECH,
- * No se requiere ningún tercero SDK,No es necesario gestionar usted mismo el ciclo de vida de la devolución de llamada de SpeechRecognizer.,
- * Compose Simplemente use recuerdaLauncherForActivityResult para iniciarlo.
+ * 设计选择: 用 ACTION_RECOGNIZE_SPEECH Intent 调用系统语音识别器,
+ * 无需第三方 SDK,无需自己管 SpeechRecognizer 回调生命周期,
+ * Compose 侧用 rememberLauncherForActivityResult 启动即可。
  *
- * limitaciones:
- *  - Depende del sistema/Google Servicios de reconocimiento de voz aplicados.(Es posible que falte la ROM nacional)
- *  - Identificación en línea(dependencia de la red)
- *  - Identificar un párrafo a la vez(No apto para dictado continuo)
+ * 局限:
+ *  - 依赖系统/Google 应用的语音识别服务(国产 ROM 可能缺失)
+ *  - 在线识别(网络依赖)
+ *  - 一次识别一段(不适合连续听写)
  *
- * valor de retorno: texto reconocido(Toma el primer candidato.),null Indica ningún resultado o cancelado.
+ * 返回值: 识别到的文本(取第一条候选),null 表示无结果或被取消。
  */
 object SpeechInput {
 
-    /** Construya una intención de reconocimiento de voz.prompt Cuadro de diálogo Solicitar copia para reconocimiento,La persona que llama pasa la cadena localizada. */
+    /** 构造语音识别 Intent。prompt 为识别对话框提示文案,由调用方传入本地化字符串。 */
     fun createIntent(prompt: String = ""): Intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
         putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-        // L-SP4 Reparación: Originalmente codificado "zh-CN",Ahora sigue el idioma del sistema.(Locale.getDefault().toLanguageTag Devuelve etiquetas BCP-47 como zh-CN/en-US)
+        // L-SP4 修复: 原先硬编码 "zh-CN",现跟随系统语言(Locale.getDefault().toLanguageTag 返回 BCP-47 标签如 zh-CN/en-US)
         putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault().toLanguageTag())
         if (prompt.isNotEmpty()) {
             putExtra(RecognizerIntent.EXTRA_PROMPT, prompt)
@@ -37,15 +37,15 @@ object SpeechInput {
     }
 
     /**
-     * Comprueba si el dispositivo tiene una actividad que pueda manejar la intención de reconocimiento de voz.
+     * 检查设备是否有 Activity 能处理语音识别 Intent。
      *
-     * Es posible que las ROM domésticas o los dispositivos sin aplicaciones de Google no tengan un reconocedor de voz disponible,
-     * El inicio directo generará ActivityNotFoundException. Este método debe llamarse para determinar antes de comenzar.,
-     * Proporcionar al usuario un mensaje Toast cuando no esté disponible,Evite accidentes.
+     * 国产 ROM 或未安装 Google 应用的设备可能没有可用的语音识别器,
+     * 直接 launch 会抛 ActivityNotFoundException。启动前应调用本方法判断,
+     * 不可用时给用户 Toast 提示,避免崩溃。
      */
     fun isAvailable(context: Context): Boolean = createIntent().resolveActivity(context.packageManager) != null
 
-    /** Obtenga el texto reconocido del resultado de la actividad. */
+    /** 从 Activity result 取出识别文本。 */
     fun parseResult(resultCode: Int, data: Bundle?): String? {
         if (resultCode != android.app.Activity.RESULT_OK) return null
         val list = data?.getStringArrayList(RecognizerIntent.EXTRA_RESULTS) ?: return null

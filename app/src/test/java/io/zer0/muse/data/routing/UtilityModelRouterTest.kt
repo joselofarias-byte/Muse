@@ -16,9 +16,9 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * Pruebas en cascada de enrutamiento de modelos auxiliares — Alinear la tercera marcha de Hana:Deje las herramientas grandes en blanco para reutilizar herramientas pequeñas.,Deje el widget en blanco para volver al modelo principal.
+ * 辅助模型路由级联测试 — 三档留空规则:大工具留空复用小工具,小工具留空回退主模型。
  *
- * Nota:Robolectric Pruebas similares comparten el entorno DataStore,Todos los ID de proveedor tienen un sufijo de nanosegundos para garantizar el aislamiento.
+ * 注意:Robolectric 同类测试共享 DataStore 环境,所有 Provider id 带纳秒后缀保证隔离。
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -28,7 +28,7 @@ class UtilityModelRouterTest {
 
     private fun newRepository(): SettingsRepository = SettingsRepository(context, mockk(relaxed = true))
 
-    /** generar único Provider id,Evite la interferencia residual en DataStore entre pruebas. */
+    /** 生成唯一 Provider id,避免测试间 DataStore 残留串扰。 */
     private fun uniqueId(prefix: String): String = "$prefix-${System.nanoTime()}"
 
     private fun provider(id: String, vararg modelIds: String) = ProviderConfig(

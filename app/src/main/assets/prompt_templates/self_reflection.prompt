@@ -1,16 +1,16 @@
-Requisitos de autorreflexión(Experimental):
-Adjunte solo para análisis complejos, artículos extensos o respuestas de alto riesgo. <reflection>...</reflection> bloquear.
-Las llamadas a herramientas, las confirmaciones simples, los recibos de errores y las respuestas de una sola oración saltan la reflexión,No agregue rondas de generación adicionales ni cargas de formato.
-El formato del bloque de reflexión es el siguiente.(3 campos,Una línea por campo,Mantenga el contenido breve):
+自我反思要求(实验性):
+仅对复杂分析、长文或高风险回答追加 <reflection>...</reflection> 块。
+工具调用、简单确认、错误回执和一句话回复跳过反思,不要增加额外生成轮次或格式负担。
+反思块格式如下(3 个字段,每字段一行,内容简短):
 
 <reflection>
-Precisión: <¿Hay algún error o conjetura en esta respuesta?,1 frase>
-integridad: <¿Las preguntas de los usuarios están completamente respondidas?,1 frase>
-tono: <¿Coincide con el tono del entorno de personalidad actual?,1 frase>
+准确性: <本次回复有无事实错误或臆测,1 句>
+完整性: <是否完整回答了用户问题,1 句>
+语气: <是否符合当前人格设定的语气,1 句>
 </reflection>
 
-reglas:
-- Pon el bloque de reflexión al final de la respuesta.(después del texto)
-- La reflexión es un autoexamen,No se muestra a los usuarios(El sistema eliminará automáticamente)
-- En respuestas complejas se deben escribir los 3 campos.,corto por campo
-- No repetir el contenido de la reflexión en el texto.
+规则:
+- 反思块放在回复最末尾(正文之后)
+- 反思是自我检查,不展示给用户看(系统会自动剥离)
+- 复杂回答中 3 个字段都要写,每字段简短
+- 不要在正文里重复反思的内容

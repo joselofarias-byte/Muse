@@ -5,16 +5,16 @@ import android.net.Uri
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-// v2.3.1: Protección previa para la importación de un solo archivo —— Página principal de la base de conocimientos(KnowledgeScreen)con página de gestión de base de conocimientos
-// (KnowledgeBaseManagePage)compartir el mismo juicio,Evite la deriva de dos reglas de ruta de importación.
+// v2.3.1: 单文件导入的前置守卫 —— 主知识库页(KnowledgeScreen)与知识库管理页
+// (KnowledgeBaseManagePage)共用同一份判定,避免两条导入路径规则漂移。
 //
-// fondo(2026-09 retroalimentación):Anteriormente, los guardias solo se agregaban a la página de administración.,La página principal todavía lee binario como texto. →
-// Escriba caracteres confusos en la biblioteca y cree índices vectoriales,Lo que ve el usuario es "Importación exitosa". Regla de nombre puro(Extensión del paquete comprimido)
-// ver KnowledgeArchivePolicy.isArchiveFile;Este archivo solo contiene sniffs que requieren ContentResolver.
+// 背景(2026-09 反馈):守卫此前只加在管理页,主页面仍把二进制当文本读入 →
+// 乱码写库并建立向量索引,用户看到的是「导入成功」。纯名称规则(压缩包扩展名)
+// 见 KnowledgeArchivePolicy.isArchiveFile;本文件只放需要 ContentResolver 的嗅探。
 
 /**
- * Olfatear encabezados de archivos para bytes NUL(características binarias),Prevenir paquetes comprimidos/Los archivos ejecutables se tratan como índices de texto.
- * Cuando la lectura falla, se tratará como "no binaria".,No bloquea la importación normal.
+ * 嗅探文件头部是否含 NUL 字节(二进制特征),防止压缩包/可执行文件被当文本索引。
+ * 读取失败时按「非二进制」处理,不阻断正常导入。
  */
 internal suspend fun looksBinary(uri: Uri, context: Context): Boolean = withContext(Dispatchers.IO) {
     runCatching {

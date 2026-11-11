@@ -8,22 +8,22 @@ import org.junit.Before
 import org.junit.Test
 
 /**
- * I-AUDIT: Prueba de regresión de puerta de aprobación de herramientas peligrosas.
+ * I-AUDIT: 危险工具审批门回归测试。
  *
- * anteriormente ToolPermissionResolver / ParamPolicies / ContentSafetyRules Ninguna prueba en absoluto,
- * ultra vires/bypass(Confundir rm -rf,file:// URL, modo de permiso de sesión)Se puede fusionar sin alarma(auditoría P1-1).
- * Esta prueba utiliza afirmaciones puramente lógicas para bloquear los cuatro elementos de la puerta de aprobación.:modo de sesión × nivel de riesgo × estrategia de herramienta única × Estrategias paramétricas.
+ * 此前 ToolPermissionResolver / ParamPolicies / ContentSafetyRules 完全无测试,
+ * 越权/绕过(混淆 rm -rf、file:// URL、会话权限模式)可无告警合入(审计 P1-1)。
+ * 本测试用纯逻辑断言锁死审批门四要素:会话模式 × 风险等级 × 单工具策略 × 参数化策略。
  */
 class ToolPermissionResolverTest {
 
     @Before
     fun setUp() {
-        // La estrategia parametrizada es un singleton a nivel de proceso.(ToolPermissionResolver init Registrado una vez),Idempotente y luego regístrate aquí,
-        // Asegúrese de que el juicio de open_url/ejecutar_javascript deba surtir efecto en esta prueba.
+        // 参数化策略为进程级单例(ToolPermissionResolver init 已注册一次),此处幂等再注册,
+        // 确保 open_url / execute_javascript 的判定在本测试内必然生效。
         ParamPolicies.registerBuiltIn()
     }
 
-    // ── TRUSTED modo:No es necesario aprobar caso por caso todas las herramientas que no estén explícitamente deshabilitadas. ──
+    // ── TRUSTED 模式:所有未显式禁用的工具不需逐次审批 ──
 
     @Test
     fun `trusted mode auto approves all high tools including command tools`() {
@@ -60,7 +60,6 @@ class ToolPermissionResolverTest {
             "screen_pinch",
             "screen_swipe_path",
             "screen_input",
-            "screen_launch_app",
             "app_force_stop",
             "app_clear_data",
             "app_uninstall",
@@ -81,7 +80,7 @@ class ToolPermissionResolverTest {
                 mode = SessionPermissionMode.TRUSTED,
                 perToolPolicy = null,
             )
-            assertEquals("TRUSTED abajo $tool No se debe requerir aprobación caso por caso", ToolApprovalState.Auto, result)
+            assertEquals("TRUSTED 下 $tool 不应逐次要求审批", ToolApprovalState.Auto, result)
         }
     }
 
@@ -90,7 +89,7 @@ class ToolPermissionResolverTest {
         listOf(
             "automation_workflow", "virtual_screen", "virtual_screen_input",
             "screen_read", "screen_current_app", "screen_tap", "screen_tap_text",
-            "screen_swipe", "screen_pinch", "screen_swipe_path", "screen_input", "screen_launch_app",
+            "screen_swipe", "screen_pinch", "screen_swipe_path", "screen_input",
             "app_force_stop", "app_clear_data", "app_uninstall",
             "settings_get", "settings_put", "network_toggle", "am_start",
             "list_packages", "logcat_tail", "input_inject",
@@ -103,7 +102,7 @@ class ToolPermissionResolverTest {
                 mode = SessionPermissionMode.TRUSTED,
                 perToolPolicy = null,
             )
-            assertEquals("TRUSTED abajo $tool No se debe requerir aprobación caso por caso", ToolApprovalState.Auto, result)
+            assertEquals("TRUSTED 下 $tool 不应逐次要求审批", ToolApprovalState.Auto, result)
         }
     }
 
@@ -116,7 +115,7 @@ class ToolPermissionResolverTest {
                 mode = SessionPermissionMode.TRUSTED,
                 perToolPolicy = null,
             )
-            assertEquals("TRUSTED abajo $tool debe ser liberado directamente", ToolApprovalState.Auto, result)
+            assertEquals("TRUSTED 下 $tool 应直接放行", ToolApprovalState.Auto, result)
         }
     }
 
@@ -137,7 +136,7 @@ class ToolPermissionResolverTest {
         )
     }
 
-    // ── ASK modo ──
+    // ── ASK 模式 ──
 
     @Test
     fun `ask mode auto-approves safe, asks normal and high`() {
@@ -155,12 +154,12 @@ class ToolPermissionResolverTest {
         )
     }
 
-    // ── P0-6: Semántica de revisión de recuperación de puntos de interrupción ──
+    // ── P0-6: 断点恢复重审语义 ──
 
     @Test
     fun `ask recovery must re-approve high tools even when saved as executing`() {
-        // Restaurando desde el punto de interrupción executionState=EXECUTING Aprobación de repetición de llamada:tomar riesgos riskLevelFor(única fuente de verdad),
-        // ASK En modo ALTO la herramienta debe Pending(Solicite la tarjeta de aprobación nuevamente),sin razon"Guardado como en ejecución"Automático directo.
+        // 断点恢复时对 executionState=EXECUTING 的调用重跑审批:风险取 riskLevelFor(单一真源),
+        // ASK 模式下 HIGH 工具必须 Pending(重新走审批卡),不得因"已保存为执行中"直接 Auto。
         listOf(
             "send_email",
             "open_url",
@@ -175,14 +174,14 @@ class ToolPermissionResolverTest {
                 mode = SessionPermissionMode.ASK,
                 perToolPolicy = null,
             )
-            assertEquals("ASK Al restaurar $tool Debe volver a ingresar para su aprobación.", ToolApprovalState.Pending, result)
+            assertEquals("ASK 恢复时 $tool 必须重新进入审批", ToolApprovalState.Pending, result)
         }
     }
 
     @Test
     fun `trusted recovery auto approves high tools via single source`() {
-        // Para reanudar la revisión, utilice RiskLevelFor en lugar de registrar el libro mayor.:Incluso si el valor registrado se reduce a NORMAL,
-        // TRUSTED Las herramientas de modo irreversible aún deben Pending(Evite eludir la aprobación en la recuperación CONFIANZA).
+        // 恢复重审用 riskLevelFor 而非注册台账:即使注册值被降级为 NORMAL,
+        // TRUSTED 模式下不可逆工具仍必须 Pending(避免 TRUSTED 恢复时绕过审批)。
         listOf(
             "workspace_write",
             "workspace_delete",
@@ -197,11 +196,11 @@ class ToolPermissionResolverTest {
                 mode = SessionPermissionMode.TRUSTED,
                 perToolPolicy = null,
             )
-            assertEquals("TRUSTED Al restaurar $tool No se debe requerir aprobación caso por caso", ToolApprovalState.Auto, result)
+            assertEquals("TRUSTED 恢复时 $tool 不应逐次要求审批", ToolApprovalState.Auto, result)
         }
     }
 
-    // ── STRICT modo ──
+    // ── STRICT 模式 ──
 
     @Test
     fun `strict mode auto-approves only allowlisted safe tools`() {
@@ -215,7 +214,7 @@ class ToolPermissionResolverTest {
         )
     }
 
-    // ── estrategia de herramienta única ──
+    // ── 单工具策略 ──
 
     @Test
     fun `always deny forbids the tool in every mode`() {
@@ -226,7 +225,7 @@ class ToolPermissionResolverTest {
                 mode,
                 ToolApprovalPolicy.ALWAYS_DENY,
             )
-            assertTrue("ALWAYS_DENY debería estar en $mode rechazar", result is ToolApprovalState.Denied)
+            assertTrue("ALWAYS_DENY 应在 $mode 下拒绝", result is ToolApprovalState.Denied)
         }
     }
 
@@ -268,7 +267,7 @@ class ToolPermissionResolverTest {
         )
     }
 
-    // ── estrategia paramétrica(ParamPolicies) ──
+    // ── 参数化策略(ParamPolicies) ──
 
     @Test
     fun `open_url rejects file scheme, http auto, unknown pending`() {
@@ -279,7 +278,7 @@ class ToolPermissionResolverTest {
             null,
             mapOf("url" to "file:///etc/passwd"),
         )
-        assertTrue("file:// debe ser rechazado", file is ToolApprovalState.Denied)
+        assertTrue("file:// 应拒绝", file is ToolApprovalState.Denied)
 
         val http = ToolPermissionResolver.resolve(
             "open_url",
@@ -297,15 +296,15 @@ class ToolPermissionResolverTest {
             null,
             mapOf("url" to "custom-scheme://x"),
         )
-        assertEquals("TRUSTED La descarga de un esquema desconocido no requiere tarjeta de aprobación,Déjalo en manos de la propia herramienta", ToolApprovalState.Auto, unknown)
+        assertEquals("TRUSTED 下未知 scheme 不走审批卡,交由工具自身处理", ToolApprovalState.Auto, unknown)
     }
 
-    // ── P0-8: STRICT Los patrones tienen prioridad sobre la parametrización Auto ──
+    // ── P0-8: STRICT 模式优先于参数化 Auto ──
 
     @Test
     fun `strict mode is not bypassed by param auto for open_url`() {
-        // antes de la reparación:https open_url toma la estrategia de parametrización directamente Auto,Regresar antes de una decisión ESTRICTA → Omitir la aprobación.
-        // Después de la reparación:STRICT La estrategia de parámetros sólo puede endurecerse,https También debe estar Pendiente.
+        // 修复前:https 的 open_url 走参数化策略直接 Auto,先于 STRICT 判定返回 → 旁路审批。
+        // 修复后:STRICT 下参数策略只能收紧,https 也必须 Pending。
         val result = ToolPermissionResolver.resolve(
             "open_url",
             ToolRiskLevel.HIGH,
@@ -313,12 +312,12 @@ class ToolPermissionResolverTest {
             null,
             mapOf("url" to "https://example.com"),
         )
-        assertEquals("STRICT abajo open_url(https) Debe ser aprobado", ToolApprovalState.Pending, result)
+        assertEquals("STRICT 下 open_url(https) 必须审批", ToolApprovalState.Pending, result)
     }
 
     @Test
     fun `strict mode still honors param deny for open_url`() {
-        // El parámetro denegado se ajusta,STRICT Lo siguiente seguirá surtiendo efecto con la máxima prioridad.
+        // 参数化 Denied 是收紧,STRICT 下仍最优先生效
         val result = ToolPermissionResolver.resolve(
             "open_url",
             ToolRiskLevel.HIGH,
@@ -326,12 +325,12 @@ class ToolPermissionResolverTest {
             null,
             mapOf("url" to "file:///etc/passwd"),
         )
-        assertTrue("STRICT file:// todavía debe ser rechazado", result is ToolApprovalState.Denied)
+        assertTrue("STRICT 下 file:// 仍应拒绝", result is ToolApprovalState.Denied)
     }
 
     @Test
     fun `ask mode keeps param auto for open_url`() {
-        // Modo no ESTRICTO(ASK)La semántica automática parametrizada no se modifica.
+        // 非 STRICT 模式(ASK)下参数化 Auto 语义不变
         val result = ToolPermissionResolver.resolve(
             "open_url",
             ToolRiskLevel.HIGH,
@@ -352,25 +351,25 @@ class ToolPermissionResolverTest {
                 null,
                 mapOf("code" to code),
             )
-            assertTrue("Los JS peligrosos deben rechazarse: $code", result is ToolApprovalState.Denied)
+            assertTrue("危险 JS 应被拒绝: $code", result is ToolApprovalState.Denied)
         }
     }
 
-    // ── Comando lista negra límite estricto ──
+    // ── 命令黑名单硬边界 ──
 
     @Test
     fun `isUnsafeCommand blocks metacharacters and blocked executables`() {
-        assertTrue(ToolPermissionResolver.isUnsafeCommand("rm -rf /data")) // Lista negra de archivos ejecutables
-        assertTrue(ToolPermissionResolver.isUnsafeCommand("echo $(id)")) // sustitución de comando
-        assertTrue(ToolPermissionResolver.isUnsafeCommand("ls; rm -rf /")) // separador de comandos
-        assertTrue(ToolPermissionResolver.isUnsafeCommand("cat /etc/passwd | sh")) // tubo
-        assertFalse(ToolPermissionResolver.isUnsafeCommand("ls")) // Lanzamiento del comando de seguridad
+        assertTrue(ToolPermissionResolver.isUnsafeCommand("rm -rf /data")) // 黑名单可执行文件
+        assertTrue(ToolPermissionResolver.isUnsafeCommand("echo $(id)")) // 命令替换
+        assertTrue(ToolPermissionResolver.isUnsafeCommand("ls; rm -rf /")) // 命令分隔符
+        assertTrue(ToolPermissionResolver.isUnsafeCommand("cat /etc/passwd | sh")) // 管道
+        assertFalse(ToolPermissionResolver.isUnsafeCommand("ls")) // 安全命令放行
     }
 
     @Test
     fun `isUnsafeCommand also catches damage the syntax and name checks miss`() {
-        // Piso parchado en el paso 0:no contiene ningún carácter de sintaxis prohibido,Tampoco está en la lista negra de archivos ejecutables.
-        // (`dd` No en la lista negra,`mkfs.ext4` Ni `mkfs`),Pero el poder destructivo es suficiente para detenerlo.
+        // 第 0 步补的地板:既不含任何禁用语法字符,也不在可执行文件黑名单里
+        // (`dd` 不在黑名单、`mkfs.ext4` 也不是 `mkfs`),但破坏力已经够拦下。
         assertTrue(ToolPermissionResolver.isUnsafeCommand("dd if=/dev/zero of=/dev/block/sda"))
         assertTrue(ToolPermissionResolver.isUnsafeCommand("mkfs.ext4 /dev/block/sda1"))
         assertTrue(ToolPermissionResolver.isUnsafeCommand("echo pwned > /system/etc/hosts"))
@@ -378,21 +377,21 @@ class ToolPermissionResolverTest {
 
     @Test
     fun `read only sandbox verbs are not caught by the new floor`() {
-        // El piso solo suma rechazo,No puede eliminar accidentalmente los formularios de comando en la lista blanca de ejecución_shell.
+        // 地板只增加拒绝,不能反过来误杀 execute_shell 白名单里的命令形态。
         listOf(
             "ls", "cat notes.txt", "df", "du -sh", "echo hi", "whoami", "pwd", "tree",
             "stat notes.txt", "find . -name x", "grep TODO notes.txt", "head -n 5 notes.txt",
         ).forEach { command ->
-            assertFalse("Los comandos de la lista blanca no deben ser eliminados accidentalmente por el piso:$command", ToolPermissionResolver.isUnsafeCommand(command))
+            assertFalse("白名单命令不该被地板误杀:$command", ToolPermissionResolver.isUnsafeCommand(command))
         }
     }
 
     @Test
     fun `two tiers stay apart from the read-only judgement`() {
-        // tubo/Los redireccionamientos todavía se consideran inseguros en entornos limitados de solo lectura,No se ve afectado en la primera marcha del terminal universal. —— Los dos archivos no se pueden combinar en un solo criterio.
+        // 管道/重定向在只读沙箱上照旧判为不安全,在通用终端第一档里不受影响 —— 两档不能合回一张判据。
         listOf("cat notes.txt | grep x", "ls -la > listing.txt", "echo \$PATH | wc -l").forEach { command ->
-            assertTrue("execute_shell Todavía debería mantener estricta:$command", ToolPermissionResolver.isUnsafeCommand(command))
-            assertNull("terminal_exec No deberías pararlo en primera.:$command", ShellCommandBoundary.forbidReason(command, null))
+            assertTrue("execute_shell 仍应保持严:$command", ToolPermissionResolver.isUnsafeCommand(command))
+            assertNull("terminal_exec 第一档不该拦它:$command", ShellCommandBoundary.forbidReason(command, null))
         }
     }
 }

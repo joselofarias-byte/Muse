@@ -8,16 +8,16 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Prueba de construcción de parámetros de condición de tarea cronometrada.
+ * 定时任务条件参数构造的测试。
  *
- * Comentarios de los usuarios "condition_type De hecho, sólo siempre es confiable." Después de la verificación, la causa raíz no es que el motor de condiciones no esté implementado.
- * (`ScheduledTaskRunner.evaluateCondition` Hay 8 especies), pero**Ruta de creación de herramientas solo escritura
- * `{"type":"x"}`, no escriba parámetros**:
- *  - time_range desaparecido startHour/endHour → Degenerado 0..23, constante verdadera
- *  - contains desaparecido keyword → vacaciones permanentes
- * Por lo tanto, el modelo pensó que las condiciones estaban dadas, pero en realidad no lo estaban. Fije aquí "Rechazar la creación si los parámetros están incompletos".
+ * 用户反馈「condition_type 实际只有 always 可靠」。核实后根因不是条件引擎没实现
+ * （`ScheduledTaskRunner.evaluateCondition` 有 8 种），而是**工具创建路径只写
+ * `{"type":"x"}`、不写参数**：
+ *  - time_range 缺 startHour/endHour → 退化 0..23，恒真
+ *  - contains 缺 keyword → 恒假
+ * 所以模型以为设了条件，实际没设。这里钉住「参数不全就拒绝创建」。
  *
- * Pruebas puras de JVM: solo prueba construcciones JSON, no se requiere tiempo de ejecución de Android.
+ * 纯 JVM 测试：只测 JSON 构造，不需要 Android 运行时。
  */
 class ScheduledTaskConditionTest {
 
@@ -47,7 +47,7 @@ class ScheduledTaskConditionTest {
     fun `time range keeps both hours so it does not degrade to always true`() {
         val json = build(AutomationConfig.Condition.TIME_RANGE, params(startHour = "9", endHour = "18"))
 
-        assertNotNull("time_range Debe poder construir con todos los parámetros.", json)
+        assertNotNull("time_range 带齐参数时必须能构造", json)
         val condition = decode(json!!)
         assertEquals(AutomationConfig.Condition.TIME_RANGE, condition.type)
         assertEquals("9", condition.config["startHour"].toString().trim('"'))
@@ -69,10 +69,10 @@ class ScheduledTaskConditionTest {
 
     @Test
     fun `contains keeps the keyword so it does not become always false`() {
-        val json = build(AutomationConfig.Condition.CONTAINS, params(keyword = "reunión"))
+        val json = build(AutomationConfig.Condition.CONTAINS, params(keyword = "会议"))
 
         assertNotNull(json)
-        assertEquals("reunión", decode(json!!).config["keyword"].toString().trim('"'))
+        assertEquals("会议", decode(json!!).config["keyword"].toString().trim('"'))
     }
 
     @Test
@@ -83,9 +83,9 @@ class ScheduledTaskConditionTest {
 
     @Test
     fun `quick note exists accepts keyword or tag but not neither`() {
-        assertNotNull(build(AutomationConfig.Condition.QUICK_NOTE_EXISTS, params(keyword = "compras")))
-        assertNotNull(build(AutomationConfig.Condition.QUICK_NOTE_EXISTS, params(tag = "trabajo")))
-        assertNull("Ambos son vacíos e iguales a la verdad constante.,debe negarse", build(AutomationConfig.Condition.QUICK_NOTE_EXISTS))
+        assertNotNull(build(AutomationConfig.Condition.QUICK_NOTE_EXISTS, params(keyword = "购物")))
+        assertNotNull(build(AutomationConfig.Condition.QUICK_NOTE_EXISTS, params(tag = "工作")))
+        assertNull("两个都空等于恒真,必须拒绝", build(AutomationConfig.Condition.QUICK_NOTE_EXISTS))
     }
 
     @Test
@@ -114,7 +114,7 @@ class ScheduledTaskConditionTest {
     fun `condition json round trips through the runner parser`() {
         val json = build(AutomationConfig.Condition.TIME_RANGE, params(startHour = "8", endHour = "22"))!!
 
-        // Runner Así se analiza el lateral(conditionJson.toCondition())
+        // Runner 侧就是这样解析的(conditionJson.toCondition())
         val parsed = with(AutomationConfig) { json.toCondition() }
 
         assertEquals(AutomationConfig.Condition.TIME_RANGE, parsed.type)

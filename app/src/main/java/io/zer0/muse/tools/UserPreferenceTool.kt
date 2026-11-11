@@ -3,20 +3,20 @@ package io.zer0.muse.tools
 import io.zer0.muse.data.PreferenceStore
 
 /**
- * Herramienta de preferencias de usuario —— Pon "no lo hagas en el futuro"…”se convierte en una dura limitación.
+ * 用户偏好工具 —— 把「以后别…」变成硬约束。
  *
- * ## por qué es necesario
+ * ## 为什么需要它
  *
- * Ítem 20 de autoevaluación del asistente: "Aprendizaje de preferencias del usuario: por ejemplo, si está acostumbrado, no utilice estímulos vacíos ni haga un resumen de tres puntos.
- * Estos pueden resolverse mediante restricciones estrictas en lugar de depender de mi juicio sobre el terreno. "
+ * 助手自审第 20 条：「用户偏好学习：比如你习惯我别用空泛鼓励、别列三点总结，
+ * 这些能沉淀成硬约束而不是靠我临场判断。」
  *
- * Situación actual: El usuario dice "No uses palabras de aliento en el futuro". La modelo lo recuerda esta vez y lo olvida la próxima vez. ——
- * Porque esta frase no se ha conservado en ninguna parte. Esta herramienta completa este paso.
+ * 现状：用户说「以后别用鼓励的话」，模型这一轮记住了，下一轮就忘 ——
+ * 因为没有任何地方把这句话存下来。这个工具补的就是这一步。
  *
- * ## Cuándo llamar (escribe la descripción y deja que el modelo decida por sí solo)
+ * ## 何时调用（写进 description，让模型自己判断）
  *
- * solo en usuario**Expresar claramente los requisitos a largo plazo.**Al llamar: "A partir de ahora…"No más…"No me gusta…”.
- * Las solicitudes únicas ("sea breve esta vez") no deben almacenarse —— Guardarlo contaminará todas las conversaciones posteriores.
+ * 只在用户**明确表达长期要求**时调用：「以后都…」「别再…」「我不喜欢…」。
+ * 一次性的要求（「这次简短点」）不该存 —— 存了会污染后续所有对话。
  */
 object UserPreferenceTool {
 
@@ -32,7 +32,7 @@ object UserPreferenceTool {
         parameters =
         mapOf(
             "rule" to "Required. The preference as an imperative sentence in the user's own language, " +
-                "e.g. \"No respondas con estímulos vacíos.\".",
+                "e.g. \"回答不要用空泛的鼓励\".",
             "source" to "Optional. The user's original wording, for traceability.",
         ),
         required = setOf("rule"),
@@ -54,6 +54,6 @@ object UserPreferenceTool {
         }
     }
 
-    /** Longitud máxima de preferencia única —— Una \"preferencia\" demasiado larga probablemente sea una descripción de requisitos, no una restricción. */
+    /** 单条偏好长度上限 —— 太长的「偏好」多半是需求描述，不是约束。 */
     private const val MAX_RULE_LENGTH = 200
 }

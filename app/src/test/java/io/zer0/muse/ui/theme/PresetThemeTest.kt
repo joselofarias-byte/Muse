@@ -8,8 +8,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * B1-09: Verifique el color de la luz de cada conjunto de temas preestablecidos/Todas las muestras oscuras anulan explícitamente los campos de superficie clave,
- * Evite que un conjunto de temas vuelva al color púrpura predeterminado del material después de dividirlo, lo que dará como resultado bloques de color blanco oscuro.
+ * B1-09: 校验每套预设主题的浅色/深色色板都显式覆盖了关键 surface 字段，
+ * 防止拆分后某套主题回落 Material 默认紫色导致暗色白块。
  */
 class PresetThemeTest {
 

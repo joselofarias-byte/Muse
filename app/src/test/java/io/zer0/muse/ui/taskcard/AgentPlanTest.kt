@@ -6,14 +6,14 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * v1.56: AgentPlan Pruebas unitarias de clase de datos.
+ * v1.56: AgentPlan 数据类单元测试。
  *
- * Validar propiedades calculadas:completedSteps / failedSteps / progress / isAllDone.
+ * 验证计算属性:completedSteps / failedSteps / progress / isAllDone。
  */
 class AgentPlanTest {
 
     @Test
-    fun `El progreso del paso vacío es 0 y isAllDone es false`() {
+    fun `空步骤 progress 为 0 且 isAllDone 为 false`() {
         val plan = AgentPlan(id = "p1", title = "test", steps = emptyList())
         assertEquals(0, plan.totalSteps)
         assertEquals(0, plan.completedSteps)
@@ -22,14 +22,14 @@ class AgentPlanTest {
     }
 
     @Test
-    fun `Todo el progreso PENDIENTE es 0`() {
+    fun `全部 PENDING progress 为 0`() {
         val plan = AgentPlan(
             id = "p1",
             title = "test",
             steps = listOf(
-                AgentPlanStep(id = "s0", title = "pasos1", status = AgentPlanStepStatus.PENDING),
-                AgentPlanStep(id = "s1", title = "pasos2", status = AgentPlanStepStatus.PENDING),
-                AgentPlanStep(id = "s2", title = "pasos3", status = AgentPlanStepStatus.PENDING),
+                AgentPlanStep(id = "s0", title = "步骤1", status = AgentPlanStepStatus.PENDING),
+                AgentPlanStep(id = "s1", title = "步骤2", status = AgentPlanStepStatus.PENDING),
+                AgentPlanStep(id = "s2", title = "步骤3", status = AgentPlanStepStatus.PENDING),
             ),
         )
         assertEquals(3, plan.totalSteps)
@@ -39,14 +39,14 @@ class AgentPlanTest {
     }
 
     @Test
-    fun `Progreso parcialmente completo correcto`() {
+    fun `部分完成 progress 正确`() {
         val plan = AgentPlan(
             id = "p1",
             title = "test",
             steps = listOf(
-                AgentPlanStep(id = "s0", title = "pasos1", status = AgentPlanStepStatus.DONE),
-                AgentPlanStep(id = "s1", title = "pasos2", status = AgentPlanStepStatus.IN_PROGRESS),
-                AgentPlanStep(id = "s2", title = "pasos3", status = AgentPlanStepStatus.PENDING),
+                AgentPlanStep(id = "s0", title = "步骤1", status = AgentPlanStepStatus.DONE),
+                AgentPlanStep(id = "s1", title = "步骤2", status = AgentPlanStepStatus.IN_PROGRESS),
+                AgentPlanStep(id = "s2", title = "步骤3", status = AgentPlanStepStatus.PENDING),
             ),
         )
         assertEquals(1, plan.completedSteps)
@@ -56,13 +56,13 @@ class AgentPlanTest {
     }
 
     @Test
-    fun `Todo hecho está Todo hecho está true`() {
+    fun `全部完成 isAllDone 为 true`() {
         val plan = AgentPlan(
             id = "p1",
             title = "test",
             steps = listOf(
-                AgentPlanStep(id = "s0", title = "pasos1", status = AgentPlanStepStatus.DONE),
-                AgentPlanStep(id = "s1", title = "pasos2", status = AgentPlanStepStatus.DONE),
+                AgentPlanStep(id = "s0", title = "步骤1", status = AgentPlanStepStatus.DONE),
+                AgentPlanStep(id = "s1", title = "步骤2", status = AgentPlanStepStatus.DONE),
             ),
         )
         assertEquals(2, plan.completedSteps)
@@ -72,13 +72,13 @@ class AgentPlanTest {
     }
 
     @Test
-    fun `Hay pasos fallidos y isAllDone todavía está true`() {
+    fun `有失败步骤 isAllDone 仍为 true`() {
         val plan = AgentPlan(
             id = "p1",
             title = "test",
             steps = listOf(
-                AgentPlanStep(id = "s0", title = "pasos1", status = AgentPlanStepStatus.DONE),
-                AgentPlanStep(id = "s1", title = "pasos2", status = AgentPlanStepStatus.FAILED),
+                AgentPlanStep(id = "s0", title = "步骤1", status = AgentPlanStepStatus.DONE),
+                AgentPlanStep(id = "s1", title = "步骤2", status = AgentPlanStepStatus.FAILED),
             ),
         )
         assertTrue(plan.isAllDone)
@@ -88,31 +88,31 @@ class AgentPlanTest {
     }
 
     @Test
-    fun `SKIPPED No se considera una culminación, ni tampoco un fracaso`() {
+    fun `SKIPPED 不算完成也不算失败`() {
         val plan = AgentPlan(
             id = "p1",
             title = "test",
             steps = listOf(
-                AgentPlanStep(id = "s0", title = "pasos1", status = AgentPlanStepStatus.DONE),
-                AgentPlanStep(id = "s1", title = "pasos2", status = AgentPlanStepStatus.SKIPPED),
+                AgentPlanStep(id = "s0", title = "步骤1", status = AgentPlanStepStatus.DONE),
+                AgentPlanStep(id = "s1", title = "步骤2", status = AgentPlanStepStatus.SKIPPED),
             ),
         )
         assertEquals(1, plan.completedSteps)
         assertEquals(0, plan.failedSteps)
-        // SKIPPED Sin contar el ÉXITO, sin contar FAILED,Así debería ser AllDone true(DONE o FAILED)
+        // SKIPPED 不算 SUCCESS 也不算 FAILED,所以 isAllDone 应为 true(DONE 或 FAILED)
         assertTrue(plan.isAllDone)
     }
 
-    // ===== Phase 3: Agregar estado final CANCELLED / TIMED_OUT =====
+    // ===== Phase 3: 新增终态 CANCELLED / TIMED_OUT =====
 
     @Test
-    fun `CANCELLED y TIMED_OUT también son estados finales,Los planes no duran para siempre`() {
+    fun `CANCELLED 与 TIMED_OUT 也是终态,计划不会永远转圈`() {
         val plan = AgentPlan(
             id = "p1",
             title = "test",
             steps = listOf(
-                AgentPlanStep(id = "s0", title = "pasos1", status = AgentPlanStepStatus.CANCELLED),
-                AgentPlanStep(id = "s1", title = "pasos2", status = AgentPlanStepStatus.TIMED_OUT),
+                AgentPlanStep(id = "s0", title = "步骤1", status = AgentPlanStepStatus.CANCELLED),
+                AgentPlanStep(id = "s1", title = "步骤2", status = AgentPlanStepStatus.TIMED_OUT),
             ),
         )
         assertTrue(plan.isAllDone)
@@ -121,15 +121,15 @@ class AgentPlanTest {
     }
 
     @Test
-    fun `TIMED_OUT Incluido en el resumen de fallas,CANCELLED No contado`() {
+    fun `TIMED_OUT 计入失败摘要,CANCELLED 不计入`() {
         val plan = AgentPlan(
             id = "p1",
             title = "test",
             steps = listOf(
-                AgentPlanStep(id = "s0", title = "pasos1", status = AgentPlanStepStatus.FAILED),
-                AgentPlanStep(id = "s1", title = "pasos2", status = AgentPlanStepStatus.TIMED_OUT),
-                AgentPlanStep(id = "s2", title = "pasos3", status = AgentPlanStepStatus.CANCELLED),
-                AgentPlanStep(id = "s3", title = "pasos4", status = AgentPlanStepStatus.DONE),
+                AgentPlanStep(id = "s0", title = "步骤1", status = AgentPlanStepStatus.FAILED),
+                AgentPlanStep(id = "s1", title = "步骤2", status = AgentPlanStepStatus.TIMED_OUT),
+                AgentPlanStep(id = "s2", title = "步骤3", status = AgentPlanStepStatus.CANCELLED),
+                AgentPlanStep(id = "s3", title = "步骤4", status = AgentPlanStepStatus.DONE),
             ),
         )
         assertEquals(2, plan.failedSteps)
@@ -137,7 +137,7 @@ class AgentPlanTest {
     }
 
     @Test
-    fun `Cada estado tiene recursos de redacción independientes y distintos de cero`() {
+    fun `每个状态都有独立且非零的文案资源`() {
         val labelResIds = AgentPlanStepStatus.values().map { it.labelRes }
         assertEquals(labelResIds.size, labelResIds.distinct().size)
         assertTrue(labelResIds.all { it != 0 })

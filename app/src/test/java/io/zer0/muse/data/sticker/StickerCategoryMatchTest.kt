@@ -5,58 +5,58 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 /**
- * v2.x: Prueba única de coincidencia tolerante a errores de nombres de categorías de paquetes de emoticones — preciso/normalización/editar distancia/solo contiene/Se abandonó la ambigüedad.
+ * v2.x: 表情包分类名容错匹配单测 — 精确/归一化/编辑距离/唯一包含/歧义放弃。
  */
 class StickerCategoryMatchTest {
-    private val cats = listOf("feliz", "Sin palabras", "comodidad", "gato gato", "infeliz")
+    private val cats = listOf("开心", "无语", "安慰", "猫猫", "不开心")
 
     @Test
     fun `exact match`() {
-        assertEquals("feliz", matchStickerCategory(cats, "feliz"))
+        assertEquals("开心", matchStickerCategory(cats, "开心"))
     }
 
     @Test
     fun `normalized match ignores case and whitespace`() {
-        assertEquals("feliz", matchStickerCategory(cats, " feliz "))
+        assertEquals("开心", matchStickerCategory(cats, " 开心 "))
         assertEquals("Happy", matchStickerCategory(listOf("Happy", "Sad"), "happy"))
-        assertEquals("gato gato", matchStickerCategory(cats, "gato gato"))
+        assertEquals("猫猫", matchStickerCategory(cats, "猫 猫"))
     }
 
     @Test
     fun `edit distance one with same length`() {
-        // Sustitución de un carácter:feliz → felis
-        assertEquals("feliz", matchStickerCategory(cats, "felis"))
+        // 单字替换:开兴 → 开心
+        assertEquals("开心", matchStickerCategory(cats, "开兴"))
     }
 
     @Test
     fun `containing shorter category does not match`() {
-        // "feliz" con "infeliz" Solo una palabra de diferencia pero significados opuestos.:El reverso incluye discapacitados,rechazar coincidencia
-        assertNull(matchStickerCategory(listOf("infeliz"), "feliz"))
+        // "开心" 与 "不开心" 仅一字之差但语义相反:反向包含禁用,拒绝匹配
+        assertNull(matchStickerCategory(listOf("不开心"), "开心"))
     }
 
     @Test
     fun `suffix-typed name matches shorter category`() {
-        // El modelo debería alargar el nombre de la categoría.(dirección:name contiene candidate) → partido
-        assertEquals("feliz", matchStickerCategory(listOf("feliz"), "tan feliz"))
+        // 模型把分类名写长一点(方向:name 包含 candidate) → 匹配
+        assertEquals("开心", matchStickerCategory(listOf("开心"), "开心呀"))
     }
 
     @Test
     fun `ambiguous containment returns null`() {
-        // Contiene múltiples categorías al mismo tiempo. → Ambigüedad,rendirse
-        assertNull(matchStickerCategory(listOf("feliz", "pistachos"), "fruta de pistacho"))
+        // 同时包含多个分类 → 歧义,放弃
+        assertNull(matchStickerCategory(listOf("开心", "开心果"), "开心果果"))
     }
 
     @Test
     fun `no match returns null`() {
-        assertNull(matchStickerCategory(cats, "enojado"))
-        assertNull(matchStickerCategory(emptyList(), "feliz"))
+        assertNull(matchStickerCategory(cats, "愤怒"))
+        assertNull(matchStickerCategory(emptyList(), "开心"))
         assertNull(matchStickerCategory(cats, "   "))
     }
 
     @Test
     fun `levenshtein sanity`() {
-        assertEquals(0, levenshteinDistance("feliz", "feliz"))
-        assertEquals(1, levenshteinDistance("feliz", "felis"))
+        assertEquals(0, levenshteinDistance("开心", "开心"))
+        assertEquals(1, levenshteinDistance("开心", "开兴"))
         assertEquals(1, levenshteinDistance("happy", "happi"))
         assertEquals(3, levenshteinDistance("kitten", "sitting"))
         assertEquals(2, levenshteinDistance("", "ab"))

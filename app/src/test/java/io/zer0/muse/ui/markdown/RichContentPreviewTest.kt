@@ -5,39 +5,39 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Phase 2: RichContentCard Vista previa en pantalla completa de la prueba de cobertura del idioma.
+ * Phase 2: RichContentCard 全屏预览语言覆盖测试。
  *
- * Bloquear dos cosas:
- *  - html/svg Conservar las capacidades de vista previa de navegación originales;
- *  - chart/mermaid También debe haber una ruta de vista previa en pantalla completa.(Depender del script de activos locales,Ir a pantalla completa dentro de la tarjeta WebView).
+ * 锁定两件事:
+ *  - html/svg 保留原有导航预览能力;
+ *  - chart/mermaid 也必须有全屏预览路径(依赖本地 assets 脚本,走卡片内全屏 WebView)。
  */
 class RichContentPreviewTest {
 
     @Test
-    fun `html Admite vista previa en pantalla completa con svg`() {
+    fun `html 与 svg 支持全屏预览`() {
         assertTrue(richContentSupportsPreview("html"))
         assertTrue(richContentSupportsPreview("svg"))
     }
 
     @Test
-    fun `chart Admite vista previa en pantalla completa con sirena`() {
+    fun `chart 与 mermaid 支持全屏预览`() {
         assertTrue(richContentSupportsPreview("chart"))
         assertTrue(richContentSupportsPreview("mermaid"))
     }
 
     @Test
-    fun `Tolerancia entre mayúsculas y minúsculas y espacios en blanco`() {
+    fun `语言大小写与空白容错`() {
         assertTrue(richContentSupportsPreview(" Mermaid "))
     }
 
     @Test
-    fun `El lenguaje de código normal no admite vista previa`() {
+    fun `普通代码语言不支持预览`() {
         assertFalse(richContentSupportsPreview("kotlin"))
         assertFalse(richContentSupportsPreview(""))
     }
 
     @Test
-    fun `chart Con sirena, acceda a la vista previa local en la tarjeta en lugar de la vista previa de navegación`() {
+    fun `chart 与 mermaid 走卡片内本地预览而非导航预览`() {
         assertTrue(RICH_LOCAL_PREVIEW_LANGUAGES.contains("chart"))
         assertTrue(RICH_LOCAL_PREVIEW_LANGUAGES.contains("mermaid"))
         assertFalse(RICH_LOCAL_PREVIEW_LANGUAGES.contains("html"))

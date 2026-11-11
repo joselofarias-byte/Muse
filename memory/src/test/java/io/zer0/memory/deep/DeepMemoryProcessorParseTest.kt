@@ -15,19 +15,19 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * Phase 2.3: [DeepMemoryProcessor.parseFactExtractionResult] Pruebas unitarias.
+ * Phase 2.3: [DeepMemoryProcessor.parseFactExtractionResult] 单元测试。
  *
- * Verificar la lógica de análisis tolerante a fallas de la salida LLM:
- *  - Matriz JSON pura → Analizar correctamente
- *  - traer ```json valla → Pelado automático
- *  - con bloque de pensamiento → Pelado automático
- *  - JSON Insertar texto → Extracción de máquina de estado profundo con soportes
- *  - cadena vacía/Ninguno JSON → Devolver lista vacía(No lanzar excepción)
- *  - Falta campo → Usar valor predeterminado
- *  - importance cruzar la linea → coerceIn(0, 2)
+ * 验证 LLM 输出容错解析逻辑:
+ *  - 纯 JSON 数组 → 正确解析
+ *  - 带 ```json 围栏 → 自动剥离
+ *  - 带 thinking 块 → 自动剥离
+ *  - JSON 嵌入文本 → 用括号深度状态机提取
+ *  - 空字符串/无 JSON → 返回空列表(不抛异常)
+ *  - 字段缺失 → 用默认值
+ *  - importance 越界 → coerceIn(0, 2)
  *
- * Nota: Esta prueba sólo verifica [parseFactExtractionResult] Limpieza de cadenas + lógica de análisis JSON,LLM no se llama.
- * Proporcionar un contexto con Robolectric para construir FactDbProvider(Esta prueba no llama a ningún método de FactDb).
+ * 注意: 此测试只验证 [parseFactExtractionResult] 的字符串清洗 + JSON 解析逻辑,不调用 LLM。
+ * 用 Robolectric 提供 Context 以构造 FactDbProvider(本测试不调用 FactDb 任何方法)。
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -39,7 +39,7 @@ class DeepMemoryProcessorParseTest {
     fun setup() {
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
         val factDbProvider = FactDbProvider(context)
-        // Phase 2.3: Corrección fake —— MemoryLlmClient Solo la interfaz callText, no existe complete/streamChat
+        // Phase 2.3: 修正 fake —— MemoryLlmClient 接口只有 callText, 不存在 complete/streamChat
         val fakeLlmClient = object : MemoryLlmClient {
             override suspend fun callText(
                 systemPrompt: String,
@@ -48,7 +48,7 @@ class DeepMemoryProcessorParseTest {
                 temperature: Float,
                 maxTokens: Int,
                 timeoutMs: Long,
-            ): String = error("Esta prueba no debe llamar LLM")
+            ): String = error("本测试不应调用 LLM")
         }
         processor = DeepMemoryProcessor(factDbProvider, fakeLlmClient)
     }
@@ -65,11 +65,11 @@ class DeepMemoryProcessorParseTest {
 
     @Test
     fun `pure json array is parsed`() {
-        val raw = """[{"fact":"A los usuarios les encanta el modo oscuro","tags":["preference"],"importance":1,"category":"preference"}]"""
+        val raw = """[{"fact":"用户喜欢深色模式","tags":["preference"],"importance":1,"category":"preference"}]"""
         val result = processor.parseFactExtractionResult(raw, sampleSummary(), "zh-CN")!!
 
         assertEquals(1, result.size)
-        assertEquals("A los usuarios les encanta el modo oscuro", result[0].fact)
+        assertEquals("用户喜欢深色模式", result[0].fact)
         assertEquals(listOf("preference"), result[0].tags)
         assertEquals(1, result[0].importance)
         assertEquals("preference", result[0].category)
@@ -80,13 +80,13 @@ class DeepMemoryProcessorParseTest {
         val raw = """
             Here is the extracted facts:
             ```json
-            [{"fact":"cumpleaños: 1990-05-20","tags":["identity"],"importance":2}]
+            [{"fact":"生日: 1990-05-20","tags":["identity"],"importance":2}]
             ```
         """.trimIndent()
         val result = processor.parseFactExtractionResult(raw, sampleSummary(), "zh-CN")!!
 
         assertEquals(1, result.size)
-        assertEquals("cumpleaños: 1990-05-20", result[0].fact)
+        assertEquals("生日: 1990-05-20", result[0].fact)
         assertEquals(2, result[0].importance)
     }
 
@@ -96,25 +96,25 @@ class DeepMemoryProcessorParseTest {
             <thinking>
             Let me analyze the conversation...
             </thinking>
-            [{"fact":"Preferencias mencionadas por el usuario","tags":[],"importance":0}]
+            [{"fact":"用户提及偏好","tags":[],"importance":0}]
         """.trimIndent()
         val result = processor.parseFactExtractionResult(raw, sampleSummary(), "zh-CN")!!
 
         assertEquals(1, result.size)
-        assertEquals("Preferencias mencionadas por el usuario", result[0].fact)
+        assertEquals("用户提及偏好", result[0].fact)
     }
 
     @Test
     fun `json embedded in text is extracted via bracket depth state machine`() {
         val raw = """
-            Análisis completado,Extraiga los siguientes hechos:
-            Result: [{"fact":"a los usuarios les gusta Kotlin","tags":["preference"],"importance":1}]
+            分析完成,提取到以下事实:
+            Result: [{"fact":"用户喜欢 Kotlin","tags":["preference"],"importance":1}]
             Done.
         """.trimIndent()
         val result = processor.parseFactExtractionResult(raw, sampleSummary(), "zh-CN")!!
 
         assertEquals(1, result.size)
-        assertEquals("a los usuarios les gusta Kotlin", result[0].fact)
+        assertEquals("用户喜欢 Kotlin", result[0].fact)
     }
 
     @Test
@@ -124,17 +124,17 @@ class DeepMemoryProcessorParseTest {
             ```"""
         val result = processor.parseFactExtractionResult(raw, sampleSummary(), "zh-CN")
 
-        assertNull("JSON El error de análisis debería regresar null(Reintento del disparador)en lugar de una lista vacía", result)
+        assertNull("JSON 解析失败应返回 null(触发重试)而非空列表", result)
     }
 
     @Test
     fun `missing fields use defaults`() {
-        val raw = """[{"fact":"Minimizar campo"}]"""
+        val raw = """[{"fact":"最小化字段"}]"""
         val result = processor.parseFactExtractionResult(raw, sampleSummary(), "zh-CN")!!
 
         assertEquals(1, result.size)
         val fact = result[0]
-        assertEquals("Minimizar campo", fact.fact)
+        assertEquals("最小化字段", fact.fact)
         assertEquals(emptyList<String>(), fact.tags)
         assertEquals(0, fact.importance)
         assertEquals("general", fact.category)
@@ -144,7 +144,7 @@ class DeepMemoryProcessorParseTest {
 
     @Test
     fun `user_explicit source gets higher default confidence`() {
-        val raw = """[{"fact":"Los usuarios están claramente informados.","source":"user_explicit"}]"""
+        val raw = """[{"fact":"用户明确告知","source":"user_explicit"}]"""
         val result = processor.parseFactExtractionResult(raw, sampleSummary(), "zh-CN")!!
 
         assertEquals(1, result.size)
@@ -154,98 +154,98 @@ class DeepMemoryProcessorParseTest {
     @Test
     fun `importance is clamped to 0-2 range`() {
         val raw = """[
-            {"fact":"demasiado bajo importance","importance":-5},
-            {"fact":"demasiado alto importance","importance":99}
+            {"fact":"过低 importance","importance":-5},
+            {"fact":"过高 importance","importance":99}
         ]"""
         val result = processor.parseFactExtractionResult(raw, sampleSummary(), "zh-CN")!!
 
         assertEquals(2, result.size)
-        assertEquals("Los valores negativos deberían obligarnos a 0", 0, result[0].importance)
-        assertEquals("Más de 2 deben obligar a 2", 2, result[1].importance)
+        assertEquals("负值应 coerce 到 0", 0, result[0].importance)
+        assertEquals("超过 2 应 coerce 到 2", 2, result[1].importance)
     }
 
     @Test
     fun `sessionId is propagated from summary`() {
-        val raw = """[{"fact":"ID de sesión de prueba aprobado"}]"""
+        val raw = """[{"fact":"测试 sessionId 传递"}]"""
         val summary = sampleSummary(sessionId = "session-xyz-123")
         val result = processor.parseFactExtractionResult(raw, summary, "zh-CN")!!
 
         assertEquals(1, result.size)
-        assertEquals("sessionId Debe pasarse transparentemente del resumen al Fact", "session-xyz-123", result[0].sessionId)
+        assertEquals("sessionId 应从 summary 透传到 Fact", "session-xyz-123", result[0].sessionId)
     }
 
     @Test
     fun `multiple facts are parsed in order`() {
         val raw = """[
-            {"fact":"hechos A","importance":0},
-            {"fact":"hechos B","importance":1},
-            {"fact":"hechos C","importance":2,"category":"identity"}
+            {"fact":"事实 A","importance":0},
+            {"fact":"事实 B","importance":1},
+            {"fact":"事实 C","importance":2,"category":"identity"}
         ]"""
         val result = processor.parseFactExtractionResult(raw, sampleSummary(), "zh-CN")!!
 
         assertEquals(3, result.size)
-        assertEquals("hechos A", result[0].fact)
-        assertEquals("hechos B", result[1].fact)
-        assertEquals("hechos C", result[2].fact)
+        assertEquals("事实 A", result[0].fact)
+        assertEquals("事实 B", result[1].fact)
+        assertEquals("事实 C", result[2].fact)
         assertEquals("general", result[0].category)
         assertEquals("identity", result[2].category)
     }
 
-    // ── Phase 2.3.7 suplemento:límites más finos case ─────────────────────────────
+    // ── Phase 2.3.7 补充:更细粒度的边界 case ─────────────────────────────
 
     @Test
     fun `confidence is clamped to 0-1 range when explicitly provided`() {
-        // confidence Cuando se proporciona explícitamente pero fuera de los límites,debería ser coerceIn(0f, 1f) Truncar
+        // confidence 显式提供但越界时,应被 coerceIn(0f, 1f) 截断
         val raw = """[
-            {"fact":"demasiado alto confidence","confidence":1.5},
-            {"fact":"demasiado bajo confidence","confidence":-0.3},
-            {"fact":"normales confidence","confidence":0.85}
+            {"fact":"过高 confidence","confidence":1.5},
+            {"fact":"过低 confidence","confidence":-0.3},
+            {"fact":"正常 confidence","confidence":0.85}
         ]"""
         val result = processor.parseFactExtractionResult(raw, sampleSummary(), "zh-CN")!!
 
         assertEquals(3, result.size)
-        assertEquals("1.5 debe ser cortado 1.0", 1.0f, result[0].confidence, 0.001f)
-        assertEquals("-0.3 debe ser cortado 0.0", 0.0f, result[1].confidence, 0.001f)
-        assertEquals("0.85 Se debe conservar el valor original.", 0.85f, result[2].confidence, 0.001f)
+        assertEquals("1.5 应截到 1.0", 1.0f, result[0].confidence, 0.001f)
+        assertEquals("-0.3 应截到 0.0", 0.0f, result[1].confidence, 0.001f)
+        assertEquals("0.85 应保留原值", 0.85f, result[2].confidence, 0.001f)
     }
 
     @Test
     fun `blank category falls back to general`() {
-        // category Al proporcionar explícitamente una cadena vacía,Debería volver al valor predeterminado "general"
-        val raw = """[{"fact":"vacío category","category":""}]"""
+        // category 显式提供空字符串时,应回退到默认 "general"
+        val raw = """[{"fact":"空 category","category":""}]"""
         val result = processor.parseFactExtractionResult(raw, sampleSummary(), "zh-CN")!!
 
         assertEquals(1, result.size)
-        assertEquals("La categoría de cadena vacía debería volver a ser general", "general", result[0].category)
+        assertEquals("空字符串 category 应回退到 general", "general", result[0].category)
     }
 
     @Test
     fun `blank source falls back to inferred`() {
-        // source Al proporcionar explícitamente una cadena vacía,Debería volver al valor predeterminado "inferred"
-        val raw = """[{"fact":"vacío source","source":""}]"""
+        // source 显式提供空字符串时,应回退到默认 "inferred"
+        val raw = """[{"fact":"空 source","source":""}]"""
         val result = processor.parseFactExtractionResult(raw, sampleSummary(), "zh-CN")!!
 
         assertEquals(1, result.size)
-        assertEquals("Una fuente de cadena vacía debería recurrir a inferred", "inferred", result[0].source)
-        // La fuente vacía no debería activar user_explicit 1.0 confidence,más bien 0.7
-        assertEquals("Una fuente vacía debería recurrir al valor predeterminado inferido confidence", 0.7f, result[0].confidence, 0.001f)
+        assertEquals("空字符串 source 应回退到 inferred", "inferred", result[0].source)
+        // 空 source 不应触发 user_explicit 的 1.0 confidence,而是 0.7
+        assertEquals("空 source 应回退到 inferred 默认 confidence", 0.7f, result[0].confidence, 0.001f)
     }
 
     @Test
     fun `tags default to empty list when not provided`() {
-        // tags Lista vacía esperada si falta el campo(DTO Valor predeterminado)
-        val raw = """[{"fact":"Sin campo de etiquetas"}]"""
+        // tags 字段缺失时应为空列表(DTO 默认值)
+        val raw = """[{"fact":"无 tags 字段"}]"""
         val result = processor.parseFactExtractionResult(raw, sampleSummary(), "zh-CN")!!
 
         assertEquals(1, result.size)
-        assertEquals("El campo de etiquetas que faltan debe ser una lista vacía", emptyList<String>(), result[0].tags)
+        assertEquals("缺失 tags 字段应为空列表", emptyList<String>(), result[0].tags)
     }
 
     @Test
     fun `expiresAt and lastConfirmedAt are propagated when provided`() {
-        // Estos dos campos que aceptan valores NULL deben pasarse tal como están cuando se proporcionan.
+        // 这两个可空字段提供时应原样透传
         val raw = """[{
-            "fact":"hechos urgentes",
+            "fact":"时间敏感事实",
             "expiresAt":"2027-12-31T23:59:59Z",
             "lastConfirmedAt":"2026-07-28T10:00:00Z"
         }]"""
@@ -258,59 +258,59 @@ class DeepMemoryProcessorParseTest {
 
     @Test
     fun `text with no opening bracket returns null`() {
-        // Ninguno [ carácter findJsonArrayCandidate devuelve null → parseFactExtractionResult Regresar null
-        val raw = """Este es un texto sin ninguna matriz JSON.,Sólo texto plano."""
+        // 无 [ 字符时 findJsonArrayCandidate 返回 null → parseFactExtractionResult 返回 null
+        val raw = """这是一段完全没有 JSON 数组的文本,只有普通文字。"""
         val result = processor.parseFactExtractionResult(raw, sampleSummary(), "zh-CN")
 
-        assertNull("Ninguno [ Se debe devolver el texto del personaje. null(El análisis falló)", result)
+        assertNull("无 [ 字符的文本应返回 null(解析失败)", result)
     }
 
     @Test
     fun `unterminated json array returns null`() {
-        // La máquina de estado de profundidad del soporte aún no se cierra después de escanear hasta el final. → Regresar null
-        val raw = """Analizar resultados:[{"fact":"abierto JSON","tags":["test"]"""
+        // 括号深度状态机扫描到结尾仍未闭合 → 返回 null
+        val raw = """分析结果:[{"fact":"未闭合的 JSON","tags":["test"]"""
         val result = processor.parseFactExtractionResult(raw, sampleSummary(), "zh-CN")
 
-        assertNull("Se debe devolver una matriz JSON abierta null(El análisis falló)", result)
+        assertNull("未闭合的 JSON 数组应返回 null(解析失败)", result)
     }
 
     @Test
     fun `brackets inside json strings do not affect depth tracking`() {
-        // JSON dentro de la cuerda [ ] No debería afectar la máquina de estado de profundidad del soporte.
-        val raw = """resultado:[{"fact":"contiene [ y ] cadena de caracteres","tags":["a[b]c"]}] Completo"""
+        // JSON 字符串内的 [ ] 不应影响括号深度状态机
+        val raw = """结果:[{"fact":"包含 [ 和 ] 字符的字符串","tags":["a[b]c"]}] 完成"""
         val result = processor.parseFactExtractionResult(raw, sampleSummary(), "zh-CN")!!
 
         assertEquals(1, result.size)
-        assertEquals("contiene [ y ] cadena de caracteres", result[0].fact)
+        assertEquals("包含 [ 和 ] 字符的字符串", result[0].fact)
         assertEquals(listOf("a[b]c"), result[0].tags)
     }
 
     @Test
     fun `escaped quotes inside json strings are handled`() {
-        // JSON La cadena contiene comillas dobles escapadas \" tiempo,findJsonArrayCandidate máquina de estados
-        // Las fugas deben manejarse correctamente,no por \" Alternar incorrectamente el estado inString da como resultado un cálculo incorrecto de la profundidad del corchete
-        // Nota:raw no con [ comienzo,Forzar la ruta para encontrar JsonArrayCandidate
-        val raw = """Extraer resultados:[{"fact":"Los usuarios dicen\"Hola\"","tags":[]}] fin"""
+        // JSON 字符串内含转义双引号 \" 时,findJsonArrayCandidate 状态机
+        // 应正确处理转义,不因 \" 错误地切换 inString 状态导致括号深度计算错误
+        // 注:raw 不以 [ 开头,强制走 findJsonArrayCandidate 路径
+        val raw = """提取结果:[{"fact":"用户说\"你好\"","tags":[]}] 结束"""
         val result = processor.parseFactExtractionResult(raw, sampleSummary(), "zh-CN")!!
 
         assertEquals(1, result.size)
-        assertEquals("Los usuarios dicen\"Hola\"", result[0].fact)
+        assertEquals("用户说\"你好\"", result[0].fact)
     }
 
     @Test
     fun `thinking tag without closing tag is stripped gracefully`() {
-        // <thinking> Cuando no está cerrado,La regularidad no coincide,Pero el proceso no debería fallar.
-        val raw = """<thinking>No hay etiqueta de cierre para esta reflexión.
-[{"fact":"Hechos que aún se pueden extraer","importance":0}]"""
+        // <thinking> 未闭合时,正则不匹配,但流程不应崩溃
+        val raw = """<thinking>这段思考没有闭合标签
+[{"fact":"仍然能提取的事实","importance":0}]"""
         val result = processor.parseFactExtractionResult(raw, sampleSummary(), "zh-CN")!!
 
-        // abierto <thinking> No coincide con expresiones regulares,Pero el findJsonArrayCandidate posterior aún se puede extraer JSON
+        // 未闭合的 <thinking> 不被正则匹配,但后续 findJsonArrayCandidate 仍能提取 JSON
         assertEquals(
-            "Cuando la etiqueta del pensamiento no está cerrada,JSON La matriz aún debe recuperarse a través de la máquina de estados.",
+            "未闭合 thinking 标签时,JSON 数组仍应通过状态机提取",
             1,
             result.size,
         )
-        assertEquals("Hechos que aún se pueden extraer", result[0].fact)
+        assertEquals("仍然能提取的事实", result[0].fact)
     }
 
     private fun sampleSummary(sessionId: String = "test-session"): SessionSummaryManager.SummaryData {
@@ -318,7 +318,7 @@ class DeepMemoryProcessorParseTest {
             sessionId = sessionId,
             createdAt = "2026-07-28T10:00:00Z",
             updatedAt = "2026-07-28T11:00:00Z",
-            summary = "Los usuarios discutieron sus preferencias.",
+            summary = "用户讨论了偏好设置",
             messageCount = 10,
             sourceTimeRange = null,
         )

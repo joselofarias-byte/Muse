@@ -44,7 +44,7 @@ class ProviderCompatModelPrefixTest {
 
     @Test
     fun `sensenova declares an exclusive temperature upper bound`() {
-        // Regresar:La temperatura de SenseNova es un rango abierto [0.0, 2.0),2.0 será rechazado con 400.
+        // 回归:商汤 SenseNova 的 temperature 为开区间 [0.0, 2.0),2.0 会被 400 拒绝。
         val compat = ProviderCompatRules.resolve(
             ProviderType.OPENAI,
             "https://token.sensenova.cn/v1",

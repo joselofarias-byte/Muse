@@ -11,29 +11,29 @@ import io.zer0.common.resultOf
 import java.util.concurrent.TimeUnit
 
 /**
- * El puerto de registro de tareas periódicas para los mensajes privados activos del rol.
+ * 角色主动私信的周期任务注册口。
  *
- * Por el puerto de registro en segundo plano del módulo([MiniPhoneMomentScheduler.start])Agendar juntos,El anfitrión no necesita reconocer una entrada adicional.
+ * 由模块的后台注册口([MiniPhoneMomentScheduler.start])一并排期,宿主不需要多认一个入口。
  *
- * Puntos de registro:
- * - **Ciclo 3 horas**:Al mismo ritmo que el círculo de amigos.,pero**Retraso inicial 90 minutos**:Los dos están escalonados por medio día.,
- *   No se despertarán en el mismo momento para acceder a Internet y CPU
- * - **restricción**:Necesidad de conectarse a Internet(La generación debe conectarse), la batería no está baja(Cuando la batería esté baja, no levante el teléfono del usuario para generar datos.)
- * - **única tarea + KEEP**:Solo hay una instancia al mismo tiempo.;Ya registrado, conserva el anterior.,Sin ciclo de reinicio
- *   (De lo contrario, el temporizador se borrará cada vez que se produzca un arranque en frío.,Nunca llega al punto)
+ * 注册要点:
+ * - **周期 3 小时**:与朋友圈同一个节拍,但**初始延迟 90 分钟**:两者错开半天,
+ *   不会在同一个时刻一起醒来抢网络与 CPU
+ * - **约束**:要联网(生成必须走网络)、电量不低(低电量时别把用户手机拉起来做生成)
+ * - **唯一任务 + KEEP**:同一时刻只有一个实例;已注册就保留旧的,不重置周期
+ *   (否则每次冷启动都会把计时器清零,永远不会到点)
  */
 object MiniPhoneProactiveChatScheduler {
 
-    /** Nombre de tarea único. Cambiarlo dejará una tarea periódica huérfana,Sólo puedo confiar en [stop] Cancelar explícitamente. */
+    /** 唯一任务名。改它会留下一份孤儿周期任务,只能靠 [stop] 显式取消。 */
     const val UNIQUE_WORK_NAME: String = "miniphone_proactive_chat"
 
-    /** ciclo:3 horas. */
+    /** 周期:3 小时。 */
     const val REPEAT_INTERVAL_HOURS: Long = 3L
 
-    /** El primer horario se retrasa 90 minutos.:Escalona tareas con el círculo de amigos,Evite apoderarse de recursos al mismo tiempo. */
+    /** 首次排期往后挪 90 分钟:与朋友圈任务错开,避免同一时刻抢资源。 */
     const val INITIAL_DELAY_MINUTES: Long = 90L
 
-    /** Registrar tareas periódicas. Es seguro llamar repetidamente(KEEP). */
+    /** 注册周期任务。重复调用是安全的(KEEP)。 */
     fun start(context: Context) {
         resultOf {
             val request = PeriodicWorkRequestBuilder<MpProactiveChatWorker>(REPEAT_INTERVAL_HOURS, TimeUnit.HOURS)
@@ -50,13 +50,13 @@ object MiniPhoneProactiveChatScheduler {
                 ExistingPeriodicWorkPolicy.KEEP,
                 request,
             )
-        }.onError { msg, t -> Logger.w(TAG, "Error en el registro de mensajes privados activos | reason=${t?.message ?: msg}", t) }
+        }.onError { msg, t -> Logger.w(TAG, "主动私信注册失败 | reason=${t?.message ?: msg}", t) }
     }
 
-    /** Cancelar tareas periódicas(la próxima vez [start] Será reprogramado). */
+    /** 取消周期任务(下次 [start] 会重新排期)。 */
     fun stop(context: Context) {
         resultOf { WorkManager.getInstance(context.applicationContext).cancelUniqueWork(UNIQUE_WORK_NAME) }
-            .onError { msg, t -> Logger.w(TAG, "Falló la cancelación de mensaje privado no solicitado | reason=${t?.message ?: msg}", t) }
+            .onError { msg, t -> Logger.w(TAG, "主动私信取消失败 | reason=${t?.message ?: msg}", t) }
     }
 
     private const val TAG: String = "MiniPhoneChat"

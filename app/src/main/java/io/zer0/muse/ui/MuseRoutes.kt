@@ -1,264 +1,264 @@
 package io.zer0.muse.ui
 
 /**
- * v0.22: Constantes de enrutamiento de nivel superior.
+ * v0.22: 顶层路由常量。
  *
- * Inicio Pantalla de inicio usando Top Dual Tab(Tarea/Agent),
- * Las siguientes rutas se utilizan en NavHost"desde la configuración/DeepLink externo ingresa a la subpágina"escena.
+ * 首页 HomeScreen 使用顶部双 Tab(任务/Agent),
+ * 下列路由用于 NavHost 中"从设置/外部 DeepLink 进入子页面"场景。
  */
 object MuseRoutes {
-    /** v0.22: pagina de inicio — Navegación por pestaña superior. */
+    /** v0.22: 首页 — 顶部 Tab 导航。 */
     const val HOME = "home"
 
-    /** v0.45: Página de búsqueda global independiente(Ingrese desde el botón de búsqueda en la esquina superior derecha de la página de inicio). */
+    /** v0.45: 独立全局搜索页(从首页右上角搜索按钮进入)。 */
     const val SEARCH = "search"
 
-    /** Página de edición de retratos de usuario(edad/ciudad/MBTI espera,para la personalización de la IA). */
+    /** 用户画像编辑页(年龄/城市/MBTI 等,用于 AI 个性化)。 */
     const val USER_PROFILE_EDIT = "user_profile_edit"
 
-    /** Página de detalles del chat(Entrar desde la lista de conversaciones,Ninguno BottomBar). */
+    /** 聊天详情页(从对话列表进入,无 BottomBar)。 */
     const val CHAT_DETAIL = "chat_detail"
 
-    /** Pestaña Asistente. */
+    /** 助手 Tab。 */
     const val ASSISTANTS = "assistants"
 
-    /** v0.37: Página de agregación de detalles del asistente(Encabezado + 5 entradas de subpágina). */
+    /** v0.37: 助手详情聚合页(头部 + 5 个子页入口)。 */
     const val ASSISTANT_DETAIL = "assistant_detail"
 
-    /** v0.37: Subpágina Conceptos básicos del Asistente(Nombre / avatar / modelo / parámetros de muestreo). */
+    /** v0.37: 助手基础子页(名称 / 头像 / 模型 / 采样参数)。 */
     const val ASSISTANT_BASIC = "assistant_basic"
 
-    /** v0.37: Subpágina de palabras de aviso del asistente(systemPrompt / Plantilla/mensaje preestablecido). */
+    /** v0.37: 助手提示词子页(systemPrompt / 模板 / 预设消息)。 */
     const val ASSISTANT_PROMPT = "assistant_prompt"
 
-    /** v0.37: Subpágina de extensión auxiliar(Número de recursos asociados). */
+    /** v0.37: 助手扩展子页(关联资源数量)。 */
     const val ASSISTANT_EXTENSIONS = "assistant_extensions"
 
-    /** v0.37: Subpágina de memoria del asistente(4 interruptor de memoria). */
+    /** v0.37: 助手记忆子页(4 个记忆开关)。 */
     const val ASSISTANT_MEMORY = "assistant_memory"
 
-    /** v0.37: Subpágina avanzada del asistente(Antecedentes / Solicitud personalizada / Etiquetas). */
+    /** v0.37: 助手高级子页(背景 / 自定义请求 / 标签)。 */
     const val ASSISTANT_ADVANCED = "assistant_advanced"
 
-    /** memoria Tab(Implementación de la etapa 6,Toma asiento primero). */
+    /** 记忆 Tab(阶段 6 实现,先占位)。 */
     const val MEMORY = "memory"
 
-    /** Establecer pestaña. */
+    /** 设置 Tab。 */
     const val SETTINGS = "settings"
 
-    /** Favoritos(subpágina,Desde la entrada de configuración). */
+    /** 收藏夹(子页面,从设置入口)。 */
     const val FAVORITES = "favorites"
 
-    /** Lorebook(subpágina,Desde la entrada de configuración). */
+    /** Lorebook(子页面,从设置入口)。 */
     const val LOREBOOKS = "lorebooks"
 
-    /** P1-2: Worldbook Libro del mundo dinámico(subpágina,Desde la entrada de configuración). */
+    /** P1-2: Worldbook 动态世界书(子页面,从设置入口)。 */
     const val WORLDBOOK = "worldbook"
 
-    /** mensaje rapido(subpágina,Desde la entrada de configuración). */
+    /** 快捷消息(子页面,从设置入口)。 */
     const val QUICK_MESSAGES = "quick_messages"
 
-    /** Prompt inyectar(subpágina,Desde la entrada de configuración). */
+    /** Prompt 注入(子页面,从设置入口)。 */
     const val PROMPT_INJECTIONS = "prompt_injections"
 
-    /** Skill gestión(subpágina,Desde la entrada de configuración). */
+    /** Skill 管理(子页面,从设置入口)。 */
     const val SKILLS = "skills"
 
-    /** Phase 13: Licencia de código abierto(subpágina,desde la configuración → Acerca de entrar). */
+    /** Phase 13: 开源许可(子页面,从设置 → 关于 进入)。 */
     const val LICENSES = "licenses"
 
-    /** Phase 15: cuenta(desde la configuración → Haga clic para ingresar a la tarjeta de cuenta). */
+    /** Phase 15: 账户(从设置 → 账户卡点击进入)。 */
     const val ACCOUNT = "account"
 
-    /** Phase 17: Tareas programadas. */
+    /** Phase 17: 定时任务。 */
     const val SCHEDULED_TASKS = "scheduled_tasks"
 
-    /** Phase 17: base de conocimientos. */
+    /** Phase 17: 知识库。 */
     const val KNOWLEDGE = "knowledge"
 
-    /** v1.136: Nota rápida. */
+    /** v1.136: 快速记录。 */
     const val QUICK_NOTES = "quick_notes"
 
-    /** v0.46: Página de estadísticas(Mapa de calor + estadísticas de uso,desde la configuración → Preferencias generales → Estadísticas Entrar). */
+    /** v0.46: 统计页(热力图 + 使用统计,从设置 → 通用偏好 → 统计 进入)。 */
     const val STATS = "stats"
 
-    /** v0.26: Configurar página secundaria — Modelos y Servicios. */
+    /** v0.26: 设置二级页 — 模型与服务。 */
     const val SETTINGS_MODEL = "settings_model"
 
-    /** B0-04: Configurar página secundaria — Enrutamiento del modelo de tareas. */
+    /** B0-04: 设置二级页 — 任务模型路由。 */
     const val SETTINGS_TASK_ROUTING = "settings_task_routing"
 
-    /** B0-07: Página de administración de plantillas de Word rápida. */
+    /** B0-07: 提示词模板管理页。 */
     const val PROMPT_TEMPLATE_MANAGER = "prompt_template_manager"
 
-    /** v0.26: Configurar página secundaria — Datos y respaldo. */
+    /** v0.26: 设置二级页 — 数据与备份。 */
     const val SETTINGS_DATA = "settings_data"
 
-    /** v0.26: Configurar página secundaria — Apariencia. */
+    /** v0.26: 设置二级页 — 外观。 */
     const val SETTINGS_APPEARANCE = "settings_appearance"
 
-    /** v0.26: Configurar página secundaria — Acerca de. */
+    /** v0.26: 设置二级页 — 关于。 */
     const val SETTINGS_ABOUT = "settings_about"
 
-    /** v0.31: Configurar página secundaria — comportamiento de chat. */
+    /** v0.31: 设置二级页 — 聊天行为。 */
     const val SETTINGS_CHAT = "settings_chat"
 
-    /** v1.0.51: centro de memoria(4 Tab Ver+Editar). */
+    /** v1.0.51: 记忆中心(4 Tab 查看+编辑)。 */
     const val SETTINGS_MEMORY = "settings_memory"
 
-    /** v1.0.51: Página de configuración de parámetros de memoria(Originales"Memorias y Notificaciones",Ingrese desde la entrada del equipo del centro de memoria.). */
+    /** v1.0.51: 记忆参数配置页(原"记忆与通知",从记忆中心齿轮入口进入)。 */
     const val SETTINGS_MEMORY_CONFIG = "settings_memory_config"
 
-    /** v1.0.52 P2-2: Página de gestión del espacio de memoria(Space CRUD). */
+    /** v1.0.52 P2-2: 记忆空间管理页(Space CRUD)。 */
     const val SETTINGS_MEMORY_SPACE = "settings_memory_space"
 
-    /** v0.32: Configurar página secundaria — medios de comunicación. */
+    /** v0.32: 设置二级页 — 媒体。 */
     const val SETTINGS_MEDIA = "settings_media"
 
-    /** v0.32: Configurar página secundaria — Características experimentales. */
+    /** v0.32: 设置二级页 — 实验性功能。 */
     const val SETTINGS_EXPERIMENTS = "settings_experiments"
 
-    /** v0.32: Configurar página secundaria — Seguridad y compartir. */
+    /** v0.32: 设置二级页 — 安全与分享。 */
     const val SETTINGS_SECURITY = "settings_security"
 
-    /** v0.32: Configurar página secundaria — Proxy web. */
+    /** v0.32: 设置二级页 — 网络代理。 */
     const val SETTINGS_PROXY = "settings_proxy"
 
-    /** v1.25: Configurar página secundaria — Colaboración entre múltiples agentes. */
+    /** v1.25: 设置二级页 — 多 Agent 协作。 */
     const val SETTINGS_MULTI_AGENT = "settings_multi_agent"
 
-    /** Multi-Agent Página de disposición visual del flujo de trabajo(traer {teamId} parámetros). */
+    /** Multi-Agent 工作流可视化编排页(带 {teamId} 参数)。 */
 
-    /** v1.27: Configurar página secundaria — Agent Configuración(Agent Selección de asistente/colaboración/mensajes no solicitados). */
+    /** v1.27: 设置二级页 — Agent 配置(Agent 助手选择/协作/主动消息)。 */
     const val SETTINGS_AGENT = "settings_agent"
 
-    /** Página de configuración de mensajería proactiva independiente. */
+    /** 独立主动消息设置页。 */
     const val SETTINGS_PROACTIVE = "settings_proactive"
 
-    /** v1.56: Configurar página secundaria — RAG Configuración de búsqueda en la base de conocimiento. */
+    /** v1.56: 设置二级页 — RAG 知识库检索配置。 */
     const val SETTINGS_RAG = "settings_rag"
 
-    /** v1.133: Página de nivel 3 — Gestión de múltiples bases de conocimientos.(Ingrese desde la página de configuración de RAG). */
+    /** v1.133: 三级页 — 多知识库管理(从 RAG 设置页进入)。 */
     const val KB_MANAGE = "kb_manage"
 
-    /** v1.25: Configurar página secundaria — ayuda visual(Pasar un modelo de texto plano a través de un modelo visual"ver"fotos). */
+    /** v1.25: 设置二级页 — 视觉辅助(让纯文本模型通过视觉模型"看到"图片)。 */
     const val SETTINGS_VISION = "settings_vision"
 
-    /** v1.61: Configurar página secundaria — Importación de datos. */
+    /** v1.61: 设置二级页 — 数据导入。 */
     const val SETTINGS_DATA_IMPORT = "settings_data_import"
 
-    /** v1.132: Configurar página secundaria — Copia de seguridad en la nube(pagina independiente,Administrar la configuración de S3/WebDAV y la lista de copias de seguridad remotas). */
+    /** v1.132: 设置二级页 — 云备份(独立页,管理 S3/WebDAV 配置与远端备份列表)。 */
     const val SETTINGS_CLOUD_BACKUP = "settings_cloud_backup"
 
-    /** v1.61: Configurar página secundaria — Tutorial de uso. */
+    /** v1.61: 设置二级页 — 使用教程。 */
     const val SETTINGS_TUTORIAL = "settings_tutorial"
 
-    /** v1.30: Página de detalles del chat grupal(Ingrese desde la lista de chat grupal,Con parámetro chatId). */
+    /** v1.30: 群聊详情页(从群聊列表进入,带 chatId 参数)。 */
     const val GROUP_CHAT_DETAIL = "group_chat_detail"
 
-    /** v1.97 gap8: Página de traducción independiente(desde la configuración → Herramientas Entrar). */
+    /** v1.97 gap8: 独立翻译页(从设置 → 工具 进入)。 */
     const val TRANSLATE = "translate"
 
-    /** v2.0: Página de gestión de datos(desde la configuración → Datos y Backup Ingresar). */
+    /** v2.0: 数据管理页(从设置 → 数据与备份 进入)。 */
     const val DATA_MANAGEMENT = "data_management"
 
-    /** v1.0.53: Portada de la página de gestión de la biblioteca(Detalles del documento de la base de conocimientos → cubrir). */
+    /** v1.0.53: 封面库管理页(知识库文档详情 → 封面)。 */
     const val COVER_MANAGER = "cover_manager"
 
-    /** v2.0: Páginas eliminadas recientemente. */
+    /** v2.0: 最近删除页。 */
     const val RECENTLY_DELETED = "recently_deleted"
 
-    /** v1.126: Agent Bandeja de entrada de mensajes privados. */
+    /** v1.126: Agent 私信收件箱。 */
     const val AGENT_DM = "agent_dm"
 
-    /** v1.127: Página de gestión de hitos. */
+    /** v1.127: 里程碑管理页。 */
     const val MILESTONES = "milestones"
 
-    /** HTML Página de vista previa en pantalla completa(Ingrese desde la entrada del bloque de código HTML/SVG en la burbuja del mensaje). */
+    /** HTML 全屏预览页(从消息气泡内 HTML/SVG 代码块入口进入)。 */
     const val HTML_PREVIEW = "html_preview"
 
-    /** Página de registro de depuración(desde la configuración → Acerca de → Entrada al registro de depuración,Mostrar llamadas recientes del registrador). */
+    /** 调试日志页(从设置 → 关于 → 调试日志 进入,展示最近 Logger 调用)。 */
     const val DEBUG = "debug"
 
-    /** v2.x: Configuración de informes de fallos(Anteriormente no se podía acceder a la página.,Ahora desde \"Acerca de → Comentarios\" y entrada de índice de búsqueda). */
+    /** v2.x: 崩溃上报设置(页面此前不可达,现从「关于 → 反馈」与搜索索引进入)。 */
     const val SETTINGS_CRASH_REPORT = "settings_crash_report"
 
-    /** Galería de componentes(desde la configuración → Acerca de → Galería de componentes Ingresar,Aceptación morfológica de todos los componentes en la biblioteca de componentes.). */
+    /** 组件画廊(从设置 → 关于 → 组件画廊 进入,组件库全部组件的形态验收)。 */
     const val COMPONENT_GALLERY = "component_gallery"
 
-    /** P2-4: Página de registro de auditoría(desde la configuración → Datos y privacidad → Registro de auditoría Ingresar). */
+    /** P2-4: 审计日志页(从设置 → 数据与隐私 → 审计日志 进入)。 */
     const val AUDIT_LOG = "audit_log"
 
-    /** P2-7: página del espacio de trabajo(desde la configuración → Datos y privacidad → Espacio de trabajo Entrar,administrador de archivos). */
+    /** P2-7: 工作区页(从设置 → 数据与隐私 → 工作区 进入,文件管理器)。 */
     const val WORKSPACE = "workspace"
 
-    /** P2-8: Página de generación de vídeo(desde la configuración → Herramientas Entrar). */
+    /** P2-8: 视频生成页(从设置 → 工具 进入)。 */
     const val VIDEO_GENERATION = "video_generation"
 
-    /** P2-9: Página de clonación de voz(desde la configuración → medios de comunicación → Clonar voz Ingresar,ElevenLabs espera Provider). */
+    /** P2-9: 语音克隆页(从设置 → 媒体 → 语音克隆 进入,ElevenLabs 等 Provider)。 */
     const val VOICE_CLONING = "voice_cloning"
 
-    /** P2-10: Provider Página de gestión de complementos(desde la configuración → Modelos y Servicios → Gestión de complementos entrar). */
+    /** P2-10: Provider 插件管理页(从设置 → 模型与服务 → 插件管理 进入)。 */
     const val PROVIDER_PLUGINS = "provider_plugins"
     const val MUSE_PLUGINS = "muse_plugins"
 
-    /** v1.133: Configurar página secundaria — búsqueda en internet(Separarse de ConfiguraciónModelPage). */
+    /** v1.133: 设置二级页 — 联网搜索(从 SettingsModelPage 拆出)。 */
     const val SETTINGS_WEB_SEARCH = "settings_web_search"
 
-    /** v1.133: Configurar página secundaria — reconocimiento de voz ASR(Separarse de ConfiguraciónModelPage). */
+    /** v1.133: 设置二级页 — 语音识别 ASR(从 SettingsModelPage 拆出)。 */
     const val SETTINGS_ASR = "settings_asr"
 
-    /** v1.133: Configurar página secundaria — MCP servidor(Separarse de ConfiguraciónModelPage). */
+    /** v1.133: 设置二级页 — MCP 服务器(从 SettingsModelPage 拆出)。 */
     const val SETTINGS_MCP = "settings_mcp"
 
-    /** v1.133: Configurar página secundaria — Recursos asistentes(Separarse de ConfiguraciónModelPage:Favoritos/libro mundial/mensaje rapido/inyección de patrón/Skills/interruptor de memoria). */
+    /** v1.133: 设置二级页 — 助手资源(从 SettingsModelPage 拆出:收藏夹/世界书/快捷消息/模式注入/Skills/记忆开关)。 */
     const val SETTINGS_ASSISTANT_RESOURCES = "settings_assistant_resources"
 
-    /** P3-3: Página de guía de permisos — tres canales(Accesibilidad/Shizuku/Root)Asistente de configuración de permisos. */
+    /** P3-3: 权限引导页 — 三通道(无障碍/Shizuku/Root)权限配置向导。 */
     const val SETTINGS_PERMISSION_WIZARD = "settings_permission_wizard"
 
-    /** v1.0.4: Página de escucha de notificaciones(desde la configuración → Entrada de asistente y agente,Guíe a los usuarios para que autoricen los derechos de uso de notificaciones + vea las notificaciones recientes). */
+    /** v1.0.4: 通知监听页(从设置 → 助手与 Agent 进入,引导用户授权通知使用权 + 查看最近通知)。 */
     const val NOTIFICATION_LISTENER = "notification_listener"
 
-    /** v1.0.92: Página del canal de mensajes(Configuración del puente IM externo). */
+    /** v1.0.92: 消息渠道页(外部 IM 桥接配置)。 */
     const val CHANNELS = "channels"
 
-    /** v1.0.92: OAuth Página del conector(Acceso universal OAuth2). */
+    /** v1.0.92: OAuth 连接器页(通用 OAuth2 接入)。 */
     const val CONNECTORS = "connectors"
 
-    /** v1.0.4: AI Página de gestión de herramientas(desde la configuración → Entrada de asistente y agente,Mostrar todas las herramientas en ToolRegistry). */
+    /** v1.0.4: AI 工具管理页(从设置 → 助手与 Agent 进入,展示 ToolRegistry 中全部工具)。 */
     const val TOOLS = "tools"
 
     /**
-     * v1.0.20: Página de gestión de aprobación de herramientas — Enumere todas las herramientas agrupadas por nivel de riesgo,
-     * Se pueden establecer tres estrategias para cada herramienta.(ALWAYS_ALLOW / ALWAYS_DENY / ASK_EVERY_TIME).
+     * v1.0.20: 工具批准管理页 — 按风险等级分组列出所有工具,
+     * 每个工具可设置三档策略(ALWAYS_ALLOW / ALWAYS_DENY / ASK_EVERY_TIME)。
      *
-     * de"ajustes → charlar → Aprobación de llamada de herramienta"o"ajustes → asistente con Agent → AI Herramientas"Ingrese por la entrada secundaria.
+     * 从"设置 → 聊天 → 工具调用批准"或"设置 → 助手与 Agent → AI 工具"二级入口进入。
      */
     const val TOOLS_SETTINGS = "tools_settings"
 
-    /** v1.0.80: UI Configuración de permisos automatizados(gradiente de tres capas: Accesibilidad/Shell/Root). */
+    /** v1.0.80: UI 自动化权限设置(三层梯度: 无障碍/Shell/Root)。 */
     const val SETTINGS_AUTOMATION = "settings_automation"
 
-    /** v2.x fase terminal uno:Página de terminal de la zona de pruebas de la aplicación(ajustes → Herramientas → Entrada terminal). */
+    /** v2.x 终端一期:应用沙盒终端页(设置 → 工具 → 终端进入)。 */
     const val TERMINAL = "terminal"
 
     /**
-     * v1.30: Construir enrutamiento de la página de detalles del chat grupal(Con parámetro chatId).
+     * v1.30: 构造群聊详情页路由(带 chatId 参数)。
      *
-     * @param chatId chat grupal id
-     * @return en forma de "group_chat_detail/{chatId}" cadena de enrutamiento
+     * @param chatId 群聊 id
+     * @return 形如 "group_chat_detail/{chatId}" 的路由字符串
      */
     fun groupChatDetailRoute(chatId: String) = "$GROUP_CHAT_DETAIL/$chatId"
 
     /**
-     * Construir enrutamiento de página de vista previa HTML(Parámetros HTML con codificación URL).
+     * 构造 HTML 预览页路由(带 URL 编码的 html 参数)。
      *
-     * La persona que llama debe usar primero [java.net.URLEncoder.encode] Codificación del código fuente HTML,
-     * evitar caracteres especiales(&,?,#,/, espacio)Rompe la coincidencia de rutas de NavHost.
+     * 调用方需先用 [java.net.URLEncoder.encode] 编码 HTML 源码,
+     * 避免特殊字符(&、?、#、/、空格)破坏 NavHost 路由匹配。
      *
-     * @param encodedHtml Código fuente HTML codificado por URLEncoder.encode
-     * @return en forma de "html_preview/{encodedHtml}" cadena de enrutamiento
+     * @param encodedHtml 已经过 URLEncoder.encode 编码的 HTML 源码
+     * @return 形如 "html_preview/{encodedHtml}" 的路由字符串
      */
     fun htmlPreviewRoute(encodedHtml: String) = "$HTML_PREVIEW/$encodedHtml"
 }

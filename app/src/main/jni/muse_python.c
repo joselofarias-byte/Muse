@@ -1,30 +1,30 @@
 /*
- * muse_python.c — Muse Punto de entrada ejecutable para el tiempo de ejecución de Python integrado (stub).
+ * muse_python.c — Muse 内置 Python 运行时的可执行入口（stub）。
  *
- * ## ¿Por qué necesitas esto? stub
+ * ## 为什么需要这个 stub
  *
- * python.org El paquete integrable de Android solo proporciona libpython3.14.so,**No bin/python3
- * archivo ejecutable**(Android no hay"Instalación a nivel del sistema Python"concepto, la documentación oficial establece claramente que solo se puede utilizar en modo integrado).
- * Muse Adopte un "modelo de subproceso" que sea isomorfo al tiempo de ejecución integrado de Node: se requiere una entrada ejecutable.
- * Por lo tanto, escriba aquí un iniciador con docenas de líneas, que carga libpython y llama a Py_BytesMain.
+ * python.org 的 Android embeddable package 只提供 libpython3.14.so，**没有 bin/python3
+ * 可执行文件**（Android 上没有"系统级安装 Python"的概念，官方文档明确说只能以嵌入模式使用）。
+ * Muse 采用与内置 Node 运行时同构的「子进程模型」：需要一个可 exec 的入口，
+ * 因此这里写一个几十行的启动器，由它加载 libpython 并调用 Py_BytesMain。
  *
- * ## ¿Por qué utilizar dlopen en lugar de enlace directo? libpython
+ * ## 为什么用 dlopen 而不是直接链接 libpython
  *
- * Si vincula directamente libpython3.14.so en CMake, entonces**Cada compilación de Gradle requiere que jniLibs ya exista
- * la biblioteca**——El paquete Python se descarga y genera mediante tools/python-pack antes de compilarlo (el binario no está incluido en la biblioteca, a diferencia de Node
- * misma convención en tiempo de ejecución). Después de usar dlopen: la construcción ordinaria no depende de la existencia de paquetes de Python y se analiza en tiempo de ejecución;
- * Cuando no está listo para ejecutarse, sólo las capacidades de Python no estarán disponibles y no provocarán que todo el proyecto falle.
+ * 若在 CMake 里直接链接 libpython3.14.so，则**每次 Gradle 构建都要求 jniLibs 里已存在
+ * 该库**——而 Python 包是构建前由 tools/python-pack 下载生成的（二进制不入库，与 Node
+ * 运行时同一约定）。用 dlopen 后：普通构建不依赖 Python 包存在，运行时才解析；
+ * 未准备运行时只是 Python 能力不可用，不会让整个工程构建失败。
  *
- * ## Estrategia de ubicación de la biblioteca
+ * ## 库定位策略
  *
- * Busque el directorio donde se encuentra a través de /proc/self/exe (es decir, NativeLibraryDir después de la instalación del APK).
- * Luego cargue libpython3.14.so desde el mismo directorio. No hay dependencias de LD_LIBRARY_PATH o cwd,
- * Tampoco se ve afectado por las diferencias en la ruta de búsqueda del espacio de nombres del vinculador de Android.
+ * 通过 /proc/self/exe 找到自身所在目录（即 APK 安装后的 nativeLibraryDir），
+ * 再从同目录加载 libpython3.14.so。不依赖 LD_LIBRARY_PATH 或 cwd，
+ * 也不受 Android 链接器命名空间搜索路径差异影响。
  *
- * ## construir
+ * ## 构建
  *
- * Compilado desde app/src/main/jni/CMakeLists.txt en libmuse_python.so (jniLibs Requisitos de especificación
- * El archivo ejecutable comienza con lib*.so denominación). Requiere alineación de página de 16 KB (Android 15+ requisitos).
+ * 由 app/src/main/jni/CMakeLists.txt 编译为 libmuse_python.so（jniLibs 规范要求
+ * 可执行文件以 lib*.so 命名）。需 16KB 页对齐（Android 15+ 要求）。
  */
 
 #include <dlfcn.h>
@@ -34,15 +34,15 @@
 #include <string.h>
 #include <unistd.h>
 
-/* libpython3.14.so La firma de entrada principal en (consulte Programas CPython/python.c). */
+/* libpython3.14.so 中的主入口签名（见 CPython Programs/python.c）。 */
 typedef int (*py_bytes_main_fn)(int argc, char **argv);
 
 /**
- * Analiza el directorio donde se encuentra (nativeLibraryDir), explica la ruta absoluta a libpython.
+ * 解析自身所在目录（nativeLibraryDir），拼出 libpython 的绝对路径。
  *
- * @param out  buffer de salida
- * @param size tamaño del buffer
- * @return 0 éxito,-1 falló
+ * @param out  输出缓冲
+ * @param size 缓冲大小
+ * @return 0 成功，-1 失败
  */
 static int resolve_libpython_path(char *out, size_t size) {
     char exe_path[PATH_MAX];
@@ -52,7 +52,7 @@ static int resolve_libpython_path(char *out, size_t size) {
     }
     exe_path[n] = '\0';
 
-    /* Trunca el nombre del archivo y conserva el directorio (incluido el final '/'). */
+    /* 截掉文件名，保留目录（含结尾 '/'）。 */
     char *slash = strrchr(exe_path, '/');
     if (slash == NULL) {
         return -1;
@@ -70,25 +70,25 @@ int main(int argc, char **argv) {
     char lib_path[PATH_MAX];
 
     if (resolve_libpython_path(lib_path, sizeof(lib_path)) != 0) {
-        fprintf(stderr, "muse_python: No se puede localizar el directorio propio (/proc/self/exe)\n");
+        fprintf(stderr, "muse_python: 无法定位自身目录（/proc/self/exe）\n");
         return 127;
     }
 
-    /* RTLD_NOW: Analice todos los símbolos inmediatamente y exponga las dependencias faltantes lo antes posible;
-     * RTLD_GLOBAL: Hacer que los símbolos de libpython sean globalmente visibles para su posterior apertura
-     *   lib-dynload/*.so C Reutilización de la extensión (cuyo DT_NEEDED apunta a libpython3.14.so). */
+    /* RTLD_NOW: 立刻解析全部符号，尽早暴露缺失依赖；
+     * RTLD_GLOBAL: 让 libpython 的符号全局可见，供后续 dlopen 的
+     *   lib-dynload/*.so C 扩展（其 DT_NEEDED 指向 libpython3.14.so）复用。 */
     void *handle = dlopen(lib_path, RTLD_NOW | RTLD_GLOBAL);
     if (handle == NULL) {
-        fprintf(stderr, "muse_python: Error al cargar %s: %s\n", lib_path, dlerror());
+        fprintf(stderr, "muse_python: 加载 %s 失败: %s\n", lib_path, dlerror());
         return 127;
     }
 
     py_bytes_main_fn py_main = (py_bytes_main_fn)dlsym(handle, "Py_BytesMain");
     if (py_main == NULL) {
-        fprintf(stderr, "muse_python: no encontrado Py_BytesMain: %s\n", dlerror());
+        fprintf(stderr, "muse_python: 未找到 Py_BytesMain: %s\n", dlerror());
         return 127;
     }
 
-    /* Entregar a CPython: manejará argv(-c / Ruta del script/-m/REPL) y código de salida. */
+    /* 交棒给 CPython：它会处理 argv（-c / 脚本路径 / -m / REPL）与退出码。 */
     return py_main(argc, argv);
 }

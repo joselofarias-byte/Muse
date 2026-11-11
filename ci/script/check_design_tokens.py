@@ -1,25 +1,25 @@
 #!/usr/bin/env python3
 """
-check_design_tokens.py — Verificación de CI del token de diseño.
+check_design_tokens.py — 设计令牌 CI 检查。
 
-Escanee el código Jetpack Compose en el directorio ui/,Bloquear codificación rígida que pasa por alto el sistema de token de diseño:
-  - Color(0x...) desnudo literal (error)
-  - Color(255, 0, 0) RGB color desnudo (error)
-  - Estadísticas .dp / .sp codificadas (info,Informar solo la cantidad sin interceptación.)
+扫描 ui/ 目录下的 Jetpack Compose 代码,拦截绕过设计令牌体系的硬编码:
+  - Color(0x...) 裸色字面量 (error)
+  - Color(255, 0, 0) RGB 裸色 (error)
+  - 硬编码 .dp / .sp 统计 (info,只报告数量不拦截)
 
-Catálogo de exenciones:
-  - ui/theme/ — Color.kt / PresetTheme.kt / CustomTheme.kt / DesignTokens.kt espera,
-    Este es el único lugar legal para las definiciones de colores.
+豁免目录:
+  - ui/theme/ — Color.kt / PresetTheme.kt / CustomTheme.kt / DesignTokens.kt 等,
+    这里是颜色定义的唯一合法位置。
 
-Baseline mecanismo (Deja ir las acciones,Agregar intercepción,Solo cayendo pero no subiendo):
-  - CI modo (--baseline ci/baseline/design_tokens_baseline.txt):
-    Compare el número de infracciones archivo por archivo,Si hay más archivos que los de referencia o aparecen nuevos archivos infractores, fallará.;Menos pases que la línea de fondo.
-  - actualizar baseline (--update-baseline):Regenerar después de limpiar el inventario.
+Baseline 机制 (存量放过,新增拦截,只降不升):
+  - CI 模式 (--baseline ci/baseline/design_tokens_baseline.txt):
+    逐文件对比违规数,多于 baseline 或出现新违规文件则失败;少于 baseline 通过。
+  - 更新 baseline (--update-baseline):清理存量后重新生成。
 
-Uso:
-  py -3 ci/script/check_design_tokens.py                      # Escanee e imprima todas las infracciones
-  py -3 ci/script/check_design_tokens.py --baseline <path>    # CI modo de contraste
-  py -3 ci/script/check_design_tokens.py --update-baseline    # regenerar baseline
+用法:
+  py -3 ci/script/check_design_tokens.py                      # 全量扫描并打印违规
+  py -3 ci/script/check_design_tokens.py --baseline <path>    # CI 对比模式
+  py -3 ci/script/check_design_tokens.py --update-baseline    # 重新生成 baseline
 """
 
 from __future__ import annotations
@@ -36,33 +36,33 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 UI_DIR = PROJECT_ROOT / "app" / "src" / "main" / "java" / "io" / "zer0" / "muse" / "ui"
 
-# exención:directorio de definición de temas,La única posición legal para los literales de color
+# 豁免:主题定义目录,颜色字面量的唯一合法位置
 EXEMPT_DIRS = {"theme"}
 
-# exención:producto —— ui/common/icons/ Bajo el oleoducto de los iconos de las musas(to-compose.py)archivo de salida,
-# Contiene el valor del color de la ruta del icono(La codificación dura es generar el resultado.,Los cambios manuales serán sobrescritos por la próxima generación.),no debería ser"ficha de diseño"Intercepción de reglas.
+# 豁免:生成物 —— ui/common/icons/ 下由 muse-icons 管线(to-compose.py)产出的文件,
+# 内含图标路径色值(硬编码是生成结果,手改会被下次生成覆盖),不该被"设计令牌"规则拦截。
 GENERATED_ICON_DIR = ("common", "icons")
-GENERATED_MARK = "Generado automáticamente"
+GENERATED_MARK = "自动生成"
 
 BASELINE_PATH = PROJECT_ROOT / "ci" / "baseline" / "design_tokens_baseline.txt"
 
-# Definición de regla
+# 规则定义
 RULES = {
     "hardcoded_hex_color": {
         "pattern": re.compile(r"\bColor\(\s*0[xX][0-9a-fA-F]{6,8}"),
         "severity": "error",
-        "message": "Color nude codificado de forma rígida Color(0x...),Utilice MaterialTheme.colorScheme o el token definido en tema/",
+        "message": "硬编码裸色 Color(0x...),请使用 MaterialTheme.colorScheme 或 theme/ 中定义的令牌",
     },
     "hardcoded_rgb_color": {
-        # Color(255, 0, 0) / Color(red = 255, ...) forma
+        # Color(255, 0, 0) / Color(red = 255, ...) 形式
         "pattern": re.compile(r"\bColor\(\s*(?:red\s*=\s*)?\d{1,3}\s*,"),
         "severity": "error",
-        "message": "Color desnudo RGB codificado Color(r, g, b),Utilice MaterialTheme.colorScheme o el token definido en tema/",
+        "message": "硬编码 RGB 裸色 Color(r, g, b),请使用 MaterialTheme.colorScheme 或 theme/ 中定义的令牌",
     },
-    # copy(alpha=...) El Color.XXX.copy no está codificado,no interceptar
+    # copy(alpha=...) 的 Color.XXX.copy 不属于硬编码,不拦截
 }
 
-# Reglas de estadísticas de información.(contar solo,No afecta el paso/falló)
+# 信息统计规则(只计数,不影响通过/失败)
 INFO_RULES = {
     "hardcoded_dp": re.compile(r"\b\d+(?:\.\d+)?\.dp\b"),
     "hardcoded_sp": re.compile(r"\b\d+(?:\.\d+)?\.sp\b"),
@@ -79,7 +79,7 @@ class Violation:
 
 
 def is_exempt(path: Path) -> bool:
-    """theme/ Directorio(área de definición de color)Genere controles de inmunidad con íconos de musa."""
+    """theme/ 目录(颜色定义区)与 muse-icons 生成物豁免检查。"""
     try:
         rel = path.relative_to(UI_DIR)
     except ValueError:
@@ -94,7 +94,7 @@ def is_exempt(path: Path) -> bool:
 
 
 def strip_comments(code: str, in_block: bool) -> tuple[str, bool]:
-    """bloque de sacrificio/Comentarios de línea,y omitir literales de cadena(No "text/*" adentro /* Cuando bloquear comentarios,Evite tragar el código posterior)."""
+    """剔除块/行注释,并跳过字符串字面量(不把 "text/*" 里的 /* 当块注释,避免吞掉其后代码)。"""
     out: list[str] = []
     i = 0
     n = len(code)
@@ -108,7 +108,7 @@ def strip_comments(code: str, in_block: bool) -> tuple[str, bool]:
             i += 1
             continue
         if ch in "\"'":
-            # literal de cadena:tal cual emit,saltarse el /* con //(Contiene escape)
+            # 字符串字面量:原样 emit,跳过其中的 /* 与 //(含转义)
             quote = ch
             out.append(ch)
             i += 1
@@ -129,7 +129,7 @@ def strip_comments(code: str, in_block: bool) -> tuple[str, bool]:
             i += 2
             continue
         if ch == "/" and i + 1 < n and code[i + 1] == "/":
-            break  # Comentarios de línea,Descartar el resto
+            break  # 行注释,丢弃剩余
         out.append(ch)
         i += 1
     return "".join(out), in_block
@@ -140,7 +140,7 @@ def scan_file(path: Path) -> list[Violation]:
     try:
         lines = path.read_text(encoding="utf-8").splitlines()
     except (OSError, UnicodeDecodeError) as e:
-        print(f"WARN: No puedo leer {path}: {e}", file=sys.stderr)
+        print(f"WARN: 无法读取 {path}: {e}", file=sys.stderr)
         return violations
     in_block_comment = False
     for lineno, line in enumerate(lines, 1):
@@ -152,12 +152,12 @@ def scan_file(path: Path) -> list[Violation]:
                 violations.append(
                     Violation(path, lineno, rule_name, rule["message"], line.strip())
                 )
-                break  # Recuerda cada línea solo una vez.,Evite el doble conteo de reglas dobles
+                break  # 一行只记一次,避免双规则重复计数
     return violations
 
 
 def scan_all() -> dict[str, list[Violation]]:
-    """Regresar {ruta relativa: [Lista de violaciones]},Sólo se incluyen archivos con infracciones."""
+    """返回 {相对路径: [违规列表]},只包含有违规的文件。"""
     result: dict[str, list[Violation]] = {}
     for kt in sorted(UI_DIR.rglob("*.kt")):
         if is_exempt(kt):
@@ -169,7 +169,7 @@ def scan_all() -> dict[str, list[Violation]]:
 
 
 def count_info_stats() -> tuple[int, int]:
-    """Cuente el número de .dp/.sp codificados en todo el directorio ui/(Contiene theme/,Sólo como referencia)."""
+    """统计全 ui/ 目录的硬编码 .dp / .sp 数量(含 theme/,仅供参考)。"""
     dp = sp = 0
     for kt in UI_DIR.rglob("*.kt"):
         try:
@@ -182,7 +182,7 @@ def count_info_stats() -> tuple[int, int]:
 
 
 def load_baseline(path: Path) -> dict[str, int]:
-    """baseline Formato: por línea 'file/path.kt: <count>'."""
+    """baseline 格式: 每行 'file/path.kt: <count>'。"""
     baseline: dict[str, int] = {}
     if not path.exists():
         return baseline
@@ -203,11 +203,11 @@ def load_baseline(path: Path) -> dict[str, int]:
 def write_baseline(path: Path, violations: dict[str, list[Violation]]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     lines = [
-        "# design_tokens baseline — Lista de exenciones de colores nude codificadas en stock",
-        "# Formato: <file>: <Número de violaciones>;CI Solo permita que disminuya el número de infracciones.,Agregar o aumentar fallará",
-        "# Ejecutar después de limpiar el inventario.: py -3 ci/script/check_design_tokens.py --update-baseline",
+        "# design_tokens baseline — 存量硬编码裸色豁免清单",
+        "# 格式: <file>: <违规数>;CI 只允许违规数下降,新增或上升都会失败",
+        "# 清理存量后运行: py -3 ci/script/check_design_tokens.py --update-baseline",
         "#",
-        f"# total actual {sum(len(v) for v in violations.values())} en,Distribución {len(violations)} archivos",
+        f"# 当前共 {sum(len(v) for v in violations.values())} 处,分布 {len(violations)} 个文件",
     ]
     for file, vs in sorted(violations.items()):
         lines.append(f"{file}: {len(vs)}")
@@ -215,10 +215,10 @@ def write_baseline(path: Path, violations: dict[str, list[Violation]]) -> None:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Verificación codificada del token de diseño")
-    parser.add_argument("--baseline", type=Path, default=BASELINE_PATH, help="baseline ruta del archivo")
-    parser.add_argument("--update-baseline", action="store_true", help="Sobrescribir con los resultados del análisis actual baseline")
-    parser.add_argument("--verbose", action="store_true", help="Imprimir detalles de cada infracción")
+    parser = argparse.ArgumentParser(description="设计令牌硬编码检查")
+    parser.add_argument("--baseline", type=Path, default=BASELINE_PATH, help="baseline 文件路径")
+    parser.add_argument("--update-baseline", action="store_true", help="用当前扫描结果重写 baseline")
+    parser.add_argument("--verbose", action="store_true", help="打印每一处违规明细")
     args = parser.parse_args()
 
     violations = scan_all()
@@ -227,12 +227,12 @@ def main() -> int:
 
     if args.update_baseline:
         write_baseline(args.baseline, violations)
-        print(f"baseline actualizado: {args.baseline}")
-        print(f"  total {total} color desnudo,Distribución {len(violations)} archivos")
+        print(f"baseline 已更新: {args.baseline}")
+        print(f"  共 {total} 处裸色,分布 {len(violations)} 个文件")
         return 0
 
-    print(f"[design-tokens] Escanee el directorio ui/: {total} Color nude codificado,Distribución {len(violations)} archivos")
-    print(f"[design-tokens] Estadísticas de referencia: {dp_count} en .dp / {sp_count} en .sp codificado")
+    print(f"[design-tokens] 扫描 ui/ 目录: {total} 处硬编码裸色,分布 {len(violations)} 个文件")
+    print(f"[design-tokens] 参考统计: {dp_count} 处 .dp / {sp_count} 处 .sp 硬编码")
 
     if args.verbose:
         for file, vs in sorted(violations.items()):
@@ -242,10 +242,10 @@ def main() -> int:
 
     if not require_baseline(args.baseline, "design-tokens"):
         return 2
-    # baseline El archivo es efectivo cuando existe.(lista vacía = tolerancia cero,Cualquier nueva incorporación falló.)
+    # baseline 文件存在即为生效状态(空清单 = 零容忍,任何新增都失败)
     baseline = load_baseline(args.baseline)
 
-    # modo de contraste:Solo cayendo pero no subiendo
+    # 对比模式:只降不升
     failures: list[str] = []
     improved: list[str] = []
     for file, vs in sorted(violations.items()):
@@ -253,26 +253,26 @@ def main() -> int:
         allowed = baseline.get(file, 0)
         if current > allowed:
             delta = current - allowed
-            failures.append(f"  {file}: {current} en (baseline {allowed},Nuevo {delta})")
+            failures.append(f"  {file}: {current} 处 (baseline {allowed},新增 {delta})")
         elif current < allowed:
-            improved.append(f"  {file}: {allowed} → {current} (limpiado {allowed - current} en)")
+            improved.append(f"  {file}: {allowed} → {current} (清理了 {allowed - current} 处)")
     cleaned_files = [f for f in baseline if f not in violations]
     for f in cleaned_files:
-        improved.append(f"  {f}: Borrado")
+        improved.append(f"  {f}: 已清零")
 
     if improved:
-        print(f"[design-tokens] hay mejora,Se recomienda ejecutar --update-baseline para ajustar:")
+        print(f"[design-tokens] 有改善,建议运行 --update-baseline 收紧:")
         for line in improved:
             print(line)
 
     if failures:
-        print(f"[design-tokens] FAILED — Se agregó color nude codificado (AGENTS.md Especificación del token de diseño):")
+        print(f"[design-tokens] FAILED — 新增硬编码裸色 (AGENTS.md 设计令牌规范):")
         for line in failures:
             print(line)
-        print("como solucionarlo: Utilice MaterialTheme.colorScheme/theme/ token;Si está en stock, límpielo. --update-baseline")
+        print("修复方式: 使用 MaterialTheme.colorScheme / theme/ 令牌;若为存量请清理后 --update-baseline")
         return 1
 
-    print(f"[design-tokens] PASS — No hay nuevos colores nude (Valores {total} en,Exento por línea de base)")
+    print(f"[design-tokens] PASS — 无新增裸色 (存量 {total} 处,按 baseline 豁免)")
     return 0
 
 

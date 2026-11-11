@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -33,7 +34,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.zer0.ai.core.ProviderCategory
 import io.zer0.ai.core.ProviderConfig
@@ -45,32 +45,33 @@ import io.zer0.muse.ui.common.icons.MuseIcons
 import io.zer0.muse.ui.common.navigation.MuseTopBar
 import io.zer0.muse.ui.common.surface.museBottomBarInsets
 import io.zer0.muse.ui.theme.MuseShapes
+import io.zer0.muse.ui.theme.bodyLargeEmphasis
 import org.koin.compose.koinInject
 
 /**
- * v1.38: Selector de proveedores preestablecidos — página de pantalla completa(sustituto original ModalBottomSheet,Cura atascada después del cierre bug).
+ * v1.38: 预置供应商选择器 — 全屏页面(替代原 ModalBottomSheet,根治关闭后卡死 bug)。
  *
- * diseño:
- *  - v1.0.6: 43 proveedores preestablecidos(Funcionario extranjero 15 + funcionario nacional 22 + estación de transferencia 6),
- *    8 de ellos son exclusivos de 1muse(deepinfra / lingyi /
- *    github-copilot / 6 plantilla de estación de transferencia). Cubre los principales fabricantes de modelos.
- *  - Navegación de tres secciones en la parte superior.(Retorno a la izquierda + título del medio + espacio a la derecha),con [SettingsSubPageScaffold] ser consistente
- *  - Filtrado en tiempo real de la barra de búsqueda displayName / baseUrl / id
- *  - tarjeta:surface fondo + contorno de 1dp. Borde fino variante + esquinas redondeadas grandes de 20dp.(Ninguno elevation)
- *  - avatar:colorScheme.primary/secondary/tertiary gradiente de baja saturación derivado
- *  - Título del grupo:small label + divisor horizontal(restringir,Sin logotipo de cantidad)
- *  - Fijado al final"proveedor personalizado"entrada
+ * 设计:
+ *  - v1.0.6: 43 个预置供应商(海外官方 15 + 国产官方 22 + 中转站 6),
+ *    其中 1muse 特有 8 个(deepinfra / lingyi /
+ *    github-copilot / 6 个中转站模板)。覆盖主流模型厂商。
+ *  - 顶部三段式导航(左返回 + 中标题 + 右空),与 [SettingsSubPageScaffold] 保持一致
+ *  - 搜索栏实时过滤 displayName / baseUrl / id
+ *  - 卡片:surface 背景 + 1dp outlineVariant 细边框 + 20dp 大圆角(无 elevation)
+ *  - 头像:colorScheme.primary/secondary/tertiary 派生的低饱和渐变
+ *  - 分组标题:small label + 横向分隔线(克制,无数量徽标)
+ *  - 末尾固定"自定义供应商"入口
  *
- * llamador: [SettingsModelPage](punto"agregar Provider"Ingrese a la página de pantalla completa cuando,Volver a la página de edición después de la selección).
+ * 调用方: [SettingsModelPage](点"添加 Provider"时进入全屏页面,选择后返回编辑页)。
  *
- * historia alternativa:
- *  - v1.4 ~ v1.36:uso ModalBottomSheet,Las máscaras de malla no se pueden quitar correctamente en algunos dispositivos reales,Página atascada después de cerrar
- *  - v1.37:Cortar temporalmente esta función,Vaya directamente a la página de edición en blanco
- *  - v1.38:Utilice pantalla completa en su lugar Scaffold,Inserción del sistema pasada directamente desde la ventana Actividad,Estable y confiable
+ * 替代历史:
+ *  - v1.4 ~ v1.36:使用 ModalBottomSheet,在部分真机上 scrim 遮罩无法正确移除,关闭后页面卡死
+ *  - v1.37:临时砍掉该功能,直接进入空白编辑页
+ *  - v1.38:改用全屏 Scaffold,系统 inset 从 Activity 窗口直接传递,稳定可靠
  */
 @Composable
 fun PresetProviderPickerDialog(onDismiss: () -> Unit, onPickPreset: (ProviderConfig) -> Unit, onPickCustom: () -> Unit) {
-    // Nota:Mantenga el nombre de función original PresetProviderPickerDialog para que sea compatible con los llamantes existentes,Sólo la implementación interna se cambia a pantalla completa.
+    // 注意:保留原函数名 PresetProviderPickerDialog 以兼容现有调用方,仅内部实现改为全屏
     PresetProviderPickerPage(
         onDismiss = onDismiss,
         onPickPreset = onPickPreset,
@@ -79,14 +80,18 @@ fun PresetProviderPickerDialog(onDismiss: () -> Unit, onPickPreset: (ProviderCon
 }
 
 /**
- * Página de pantalla completa de selección de proveedor preestablecida — Implementación real.
+ * 预置供应商选择全屏页面 — 实际实现。
  *
- * Barra superior + Barra de búsqueda + LazyColumn.
+ * 顶部栏 + 搜索栏 + LazyColumn。
  */
 @Composable
-private fun PresetProviderPickerPage(onDismiss: () -> Unit, onPickPreset: (ProviderConfig) -> Unit, onPickCustom: () -> Unit) {
+internal fun PresetProviderPickerPage(
+    onDismiss: () -> Unit,
+    onPickPreset: (ProviderConfig) -> Unit,
+    onPickCustom: () -> Unit,
+    presetProviders: PresetProviders = koinInject(),
+) {
     var query by remember { mutableStateOf("") }
-    val presetProviders = koinInject<PresetProviders>()
 
     io.zer0.muse.ui.common.surface.MusePageScaffold(
         topBar = {
@@ -96,7 +101,8 @@ private fun PresetProviderPickerPage(onDismiss: () -> Unit, onPickPreset: (Provi
             )
         },
         modifier = Modifier
-            .fillMaxSize(),
+            .fillMaxSize()
+            .imePadding(),
         containerColor = MaterialTheme.colorScheme.background,
     ) { innerPadding ->
         LazyColumn(
@@ -110,7 +116,7 @@ private fun PresetProviderPickerPage(onDismiss: () -> Unit, onPickPreset: (Provi
             ),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            // subtítulo(Texto de descripción)
+            // 副标题(说明文字)
             item {
                 Text(
                     text = stringResource(R.string.settings_preset_subtitle),
@@ -120,7 +126,7 @@ private fun PresetProviderPickerPage(onDismiss: () -> Unit, onPickPreset: (Provi
                 )
             }
 
-            // barra de búsqueda(Fijar al principio de la lista,como desplazamiento)
+            // 搜索栏(固定在列表顶部,随滚动)
             item {
                 SearchBar(
                     query = query,
@@ -128,12 +134,12 @@ private fun PresetProviderPickerPage(onDismiss: () -> Unit, onPickPreset: (Provi
                 )
             }
 
-            // proveedor personalizado — fijar hacia arriba,Al alcance
+            // 自定义供应商 — 置顶,触手可及
             item(key = "custom_top") {
                 CustomItem(onClick = onPickCustom, highlighted = true)
             }
 
-            // Lista preestablecida(Filtrar por categoría)
+            // 预设列表(按分类过滤)
             val allPresets = presetProviders.all
             val filtered = if (query.isBlank()) {
                 allPresets
@@ -146,7 +152,7 @@ private fun PresetProviderPickerPage(onDismiss: () -> Unit, onPickPreset: (Provi
                 }
             }
 
-            // Grupo oficial en el extranjero
+            // 海外官方分组
             val overseas = filtered.filter {
                 it.category == ProviderCategory.OFFICIAL &&
                     presetProviders.overseas.any { o -> o.id == it.id }
@@ -158,7 +164,7 @@ private fun PresetProviderPickerPage(onDismiss: () -> Unit, onPickPreset: (Provi
                 }
             }
 
-            // Grupo oficial nacional
+            // 国产官方分组
             val domestic = filtered.filter {
                 it.category == ProviderCategory.OFFICIAL &&
                     presetProviders.domestic.any { d -> d.id == it.id }
@@ -170,7 +176,7 @@ private fun PresetProviderPickerPage(onDismiss: () -> Unit, onPickPreset: (Provi
                 }
             }
 
-            // Agrupación de estaciones de transferencia
+            // 中转站分组
             val relay = filtered.filter { it.category == ProviderCategory.RELAY }
             if (relay.isNotEmpty()) {
                 item(key = "label_relay") { GroupLabel(stringResource(R.string.settings_preset_group_relay)) }
@@ -179,7 +185,7 @@ private fun PresetProviderPickerPage(onDismiss: () -> Unit, onPickPreset: (Provi
                 }
             }
 
-            // No se encontraron resultados
+            // 搜索无结果
             if (filtered.isEmpty()) {
                 item(key = "empty") {
                     Box(
@@ -191,7 +197,7 @@ private fun PresetProviderPickerPage(onDismiss: () -> Unit, onPickPreset: (Provi
                         Text(
                             text = stringResource(R.string.settings_preset_no_match),
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.outline,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }
@@ -201,7 +207,7 @@ private fun PresetProviderPickerPage(onDismiss: () -> Unit, onPickPreset: (Provi
 }
 
 /**
- * barra de búsqueda:24dp Esquinas redondeadas de la cápsula + superficieFondo variante + sin bordes + botón transparente.
+ * 搜索栏:24dp 胶囊圆角 + surfaceVariant 背景 + 无边框 + 清除按钮。
  */
 @Composable
 private fun SearchBar(query: String, onQueryChange: (String) -> Unit) {
@@ -237,12 +243,12 @@ private fun SearchBar(query: String, onQueryChange: (String) -> Unit) {
         },
         singleLine = true,
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-        keyboardActions = KeyboardActions(onSearch = { /* Comportamiento predeterminado */ }),
+        keyboardActions = KeyboardActions(onSearch = { /* 默认行为 */ }),
     )
 }
 
 /**
- * Etiquetas de grupo:small label + divisor horizontal(estilo sobrio,Sin logotipo de cantidad).
+ * 分组标签:small label + 横向分隔线(克制风格,无数量徽标)。
  */
 @Composable
 private fun GroupLabel(text: String) {
@@ -259,7 +265,7 @@ private fun GroupLabel(text: String) {
             fontWeight = FontWeight.Medium,
         )
         Spacer(Modifier.width(8.dp))
-        // divisor horizontal — outlineVariant linea delgada
+        // 横向分隔线 — outlineVariant 细线
         Box(
             modifier = Modifier
                 .weight(1f)
@@ -270,9 +276,9 @@ private fun GroupLabel(text: String) {
 }
 
 /**
- * Elementos de la lista de proveedores predeterminados:Ladrillo con el logotipo de la marca a la izquierda + información a la derecha(Nombre de dominio, número de modelo, flecha trasera).
+ * 预设供应商列表项:左侧品牌 logo 砖 + 右侧信息(域名、模型数、尾部箭头)。
  *
- * tarjeta:surface fondo + contorno de 1dp. Borde variante + esquinas redondeadas de 20dp.(Ninguno elevation).
+ * 卡片:surface 背景 + 1dp outlineVariant 边框 + 20dp 圆角(无 elevation)。
  */
 @Composable
 private fun PresetItem(preset: ProviderConfig, onClick: () -> Unit) {
@@ -290,60 +296,39 @@ private fun PresetItem(preset: ProviderConfig, onClick: () -> Unit) {
                 .padding(horizontal = 12.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            // lado izquierdo:ladrillo del logotipo de la marca
+            // 左侧:品牌 logo 砖
             ProviderLogo(
                 type = preset.type,
                 name = preset.displayName,
                 size = 40.dp,
             )
             Spacer(Modifier.width(12.dp))
-            // medio:información
+            // 中间:信息
             Column(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
                 Text(
                     text = preset.displayName,
-                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
+                    style = MaterialTheme.typography.bodyLargeEmphasis,
                     color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
                 )
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    Text(
-                        text = extractDomain(preset.baseUrl).ifBlank { needBaseUrlText },
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.outline,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f, fill = false),
-                    )
-                    // LAYOUT-01: La línea de subtítulos tiene un separador puramente decorativo en el medio y una placa con el número de modelo al final. —— No elija ninguno de ellos ampliamente
-                    // (El ancho restante se ha asignado al texto del nombre de dominio a la izquierda. weight(fill = false)),Límite a 1 línea para evitar el ajuste palabra por palabra.
-                    Text(
-                        text = "·",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.outline,
-                        maxLines = 1,
-                    )
-                    Text(
-                        text = stringResource(R.string.settings_preset_model_count, preset.models.size),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                    )
-                }
-                // v2.6.0: OAuth Mensaje predeterminado —— Haga clic para saltar a la autorización, no es necesario completarla Key
+                Text(
+                    text = extractDomain(preset.baseUrl).ifBlank { needBaseUrlText },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = stringResource(R.string.settings_preset_model_count, preset.models.size),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                // v2.6.0: OAuth 预设提示 —— 点击即跳转授权，无需填 Key
                 if (preset.oauthConfig != null) {
                     Text(
                         text = stringResource(R.string.settings_preset_oauth_quick_login),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.primary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
                     )
                 }
             }
@@ -358,7 +343,7 @@ private fun PresetItem(preset: ProviderConfig, onClick: () -> Unit) {
 }
 
 /**
- * Entrada personalizada:Tarjeta grande independiente;highlighted Utilice el color principal del tema para resaltar la base clara.(entrada superior).
+ * 自定义入口:独立大卡片;highlighted 时用主题主色浅底突出(置顶入口)。
  */
 @Composable
 private fun CustomItem(onClick: () -> Unit, highlighted: Boolean = false) {
@@ -386,7 +371,7 @@ private fun CustomItem(onClick: () -> Unit, highlighted: Boolean = false) {
                 .padding(horizontal = 12.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            // + No. ronda
+            // + 号圆形
             Box(
                 modifier = Modifier
                     .size(40.dp)
@@ -405,7 +390,7 @@ private fun CustomItem(onClick: () -> Unit, highlighted: Boolean = false) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = stringResource(R.string.settings_preset_custom),
-                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
+                    style = MaterialTheme.typography.bodyLargeEmphasis,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
                 Spacer(Modifier.height(2.dp))
@@ -419,7 +404,7 @@ private fun CustomItem(onClick: () -> Unit, highlighted: Boolean = false) {
     }
 }
 
-/** Extraer el nombre de dominio de baseUrl(Se utiliza para preestablecer la visualización de la tarjeta.);Vacío devuelve una cadena vacía. */
+/** 从 baseUrl 提取域名(用于预设卡片显示);空返回空字符串。 */
 private fun extractDomain(baseUrl: String): String {
     if (baseUrl.isBlank()) return ""
     return runCatching {

@@ -4,11 +4,11 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * AUD-CHANNEL-F10: Tasker Las notificaciones de resultados no deben estar codificadas policy="always".
+ * AUD-CHANNEL-F10: Tasker 结果通知不得硬编码 policy="always"。
  *
- * enlace principal(ChatGenerationController)Establecer el usuario never/when_unfocused/always
- * entrante notifyChatCompletedWithPolicy,La ruta de Tasker estaba previamente codificada always,
- * haciendo que el usuario elija“nunca notificar”La notificación sigue apareciendo cada vez que se activa Tasker.
+ * 主链路(ChatGenerationController)把用户设置的 never/when_unfocused/always
+ * 传入 notifyChatCompletedWithPolicy,而 Tasker 路径此前硬编码 always,
+ * 导致用户选“从不通知”时每次 Tasker 触发仍弹通知。
  */
 class TaskerNotificationPolicyTest {
 
@@ -18,14 +18,14 @@ class TaskerNotificationPolicyTest {
     fun `tasker notification reads user policy`() {
         val src = source()
         val start = src.indexOf("AUD-CHANNEL-F10")
-        assertTrue("AUD-CHANNEL-F10 bloque de protección no encontrado", start >= 0)
-        val body = src.substring(start, (start + 900).coerceAtMost(src.length))
+        assertTrue("未找到 AUD-CHANNEL-F10 防护块", start >= 0)
+        val body = src.substring(start, (start + 600).coerceAtMost(src.length))
         assertTrue(
-            "Debe leer la política de notificación al usuario",
+            "必须读取用户通知策略",
             body.contains("settings?.notificationPolicyFlow?.first()"),
         )
         assertTrue(
-            "La política de lectura debe pasarse a la notificación. API",
+            "必须把读到的策略传给通知 API",
             body.contains("policy = policy"),
         )
     }
@@ -37,7 +37,7 @@ class TaskerNotificationPolicyTest {
             .filterNot { it.trimStart().startsWith("//") || it.trimStart().startsWith("*") }
             .joinToString("\n")
         assertTrue(
-            "Todavía codificado policy = \"always\"(excepto comentarios)",
+            "仍存在硬编码 policy = \"always\"（注释除外）",
             !code.contains("policy = \"always\""),
         )
     }

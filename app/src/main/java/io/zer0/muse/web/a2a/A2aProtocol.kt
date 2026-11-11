@@ -4,16 +4,16 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
- * A2A (Agent-to-Agent) 1.0 Modelo de datos de protocolo.
+ * A2A (Agent-to-Agent) 1.0 协议数据模型。
  *
- * Consulte la especificación A2A:Agent Card(`/.well-known/agent-card.json`)+ JSON-RPC 2.0 punto final (`/a2a`).
- * Este documento sólo define la estructura del protocolo cableado; ver la lógica de ejecución en [A2aHandler].
+ * 参考 A2A 规范：Agent Card（`/.well-known/agent-card.json`）+ JSON-RPC 2.0 端点（`/a2a`）。
+ * 本文件只定义线协议结构；执行逻辑见 [A2aHandler]。
  *
- * Diseño: Existente con Muse `HostWebSocketGateway` Los protocolos privados coexisten —— Este último es un evento de conexión larga.
- * A2A es una solicitud-JSON-RPC reactivo para que agentes/plataformas externas llamen según estándares.
+ * 设计：与 Muse 现有 `HostWebSocketGateway` 私有协议并存 —— 后者是长连接事件推送，
+ * A2A 是请求-响应式 JSON-RPC，供外部 agent/平台按标准调用。
  */
 
-/** Agent Card: declarar la identidad y las capacidades del agente (`/.well-known/agent-card.json`). */
+/** Agent Card：声明 agent 身份与能力（`/.well-known/agent-card.json`）。 */
 @Serializable
 data class AgentCard(
     @SerialName("protocolVersion") val protocolVersion: String = A2A_PROTOCOL_VERSION,
@@ -41,7 +41,7 @@ data class AgentSkill(
     val tags: List<String> = emptyList(),
 )
 
-// ── JSON-RPC 2.0 sobre ──────────────────────────────────────────────
+// ── JSON-RPC 2.0 信封 ──────────────────────────────────────────────
 
 @Serializable
 data class JsonRpcRequest(
@@ -58,7 +58,7 @@ data class JsonRpcError(
     val data: String? = null,
 )
 
-// ── A2A Mensaje/Tarea ────────────────────────────────────────────────
+// ── A2A 消息 / 任务 ────────────────────────────────────────────────
 
 @Serializable
 data class MessageSendParams(
@@ -80,7 +80,7 @@ data class A2aMessage(
 
 @Serializable
 data class A2aPart(
-    /** Actualmente soportado "text". */
+    /** 目前支持 "text"。 */
     val kind: String = "text",
     val text: String? = null,
 )
@@ -104,13 +104,13 @@ data class A2aArtifact(
 
 internal const val A2A_PROTOCOL_VERSION = "1.0"
 
-/** Agent Card camino público (`/.well-known/agent-card.json`). */
+/** Agent Card 公开路径（`/.well-known/agent-card.json`）。 */
 const val AGENT_CARD_PATH = "/.well-known/agent-card.json"
 
-/** JSON-RPC ruta del punto final (`/a2a`). */
+/** JSON-RPC 端点路径（`/a2a`）。 */
 const val A2A_PATH = "/a2a"
 
-/** A2A Estado de la tarea constante. */
+/** A2A 任务状态常量。 */
 internal object A2aTaskState {
     const val SUBMITTED = "submitted"
     const val WORKING = "working"
@@ -119,7 +119,7 @@ internal object A2aTaskState {
     const val CANCELED = "canceled"
 }
 
-/** JSON-RPC Código de error (A2A Seguir código estándar JSON-RPC + personalización). */
+/** JSON-RPC 错误码（A2A 沿用 JSON-RPC 标准码 + 自定义）。 */
 internal object A2aErrors {
     const val PARSE_ERROR = -32700
     const val INVALID_REQUEST = -32600

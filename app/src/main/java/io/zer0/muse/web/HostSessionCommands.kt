@@ -1,6 +1,6 @@
 package io.zer0.muse.web
 
-/** Implementación del comando de escritura de sesión.,por [HostWebSocketGateway] Implementado usando ChatViewModel. */
+/** 会话写命令的落地动作,由 [HostWebSocketGateway] 用 ChatViewModel 实现。 */
 internal interface HostSessionMutations {
     fun rename(sessionId: String, title: String)
 
@@ -10,11 +10,11 @@ internal interface HostSessionMutations {
 }
 
 /**
- * session.rename / session.archive / session.delete realización.
+ * session.rename / session.archive / session.delete 的实现。
  *
- * Los tres comandos y session.select son comandos de escritura.:Pase primero el bloqueo de enfoque,Se recupera una conexión que no mantiene el foco
- * `focus_not_held` evento de error,Y no se tocarán datos de la sesión. El cliente es responsable de la confirmación secundaria de la eliminación.,
- * Solo se ejecuta el lado del servidor.
+ * 三条命令与 session.select 同属写命令:先过焦点锁,未持焦点的连接拿到
+ * `focus_not_held` 错误事件,且不会触碰任何会话数据。删除的二次确认由客户端负责,
+ * 服务端只执行。
  */
 internal class HostSessionCommands(
     private val focus: HostFocusTokenHolder,

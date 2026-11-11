@@ -8,7 +8,7 @@ import type { HostKnowledgeDocumentsState, HostKnowledgeState } from "./useHostC
 interface KnowledgePageProps {
   readonly knowledge: HostKnowledgeState;
   readonly documents: HostKnowledgeDocumentsState;
-  /** Juicio de bit de capacidad/tiempo de ejecución \"no compatible\". */
+  /** 能力位 / 运行时「不支持」判断。 */
   readonly supported: boolean;
   readonly onRequestBases: () => void;
   readonly onRequestDocuments: (options: { readonly kbId: string; readonly cursor?: string | undefined; readonly reset?: boolean | undefined }) => void;
@@ -16,10 +16,10 @@ interface KnowledgePageProps {
 }
 
 /**
- * Página de la base de conocimientos: lista de la base de conocimientos → Listado de documentación de una biblioteca (solo lectura).
+ * 知识库页：知识库列表 → 某个库的文档列表（只读）。
  *
- * No se realizará ninguna importación en este lote./Eliminar, escriba claramente "Importar y administrar en teléfono celular" en la parte inferior de la página.
- * La paginación del documento es la misma que la página de memoria: el cursor es la última identificación de la página anterior, y continuará automáticamente cuando se desplace hasta el final, y se mostrará "no más" al final.
+ * 本批不做导入/删除，页面底部明确写「在手机上导入与管理」。
+ * 文档分页与记忆页同一套：游标是上一页最后一条 id，滚到底自动续，到底显示「没有更多了」。
  */
 export function KnowledgePage(props: KnowledgePageProps) {
   const { t } = useI18n();
@@ -96,7 +96,7 @@ export function KnowledgePage(props: KnowledgePageProps) {
   );
 }
 
-/** Lista de documentos para una base de conocimientos (exportados por separado: las afirmaciones se pueden representar directamente sin interacción). */
+/** 某个知识库的文档列表（单独导出：没有交互也能直接渲染断言）。 */
 export function KnowledgeDocumentsView({
   base,
   documents,
@@ -114,7 +114,7 @@ export function KnowledgeDocumentsView({
   const sentinel = useRef<HTMLDivElement | null>(null);
   const lastId = documents.items.length > 0 ? documents.items[documents.items.length - 1]?.id : undefined;
   const canLoadMore = documents.hasMore && !documents.loading;
-  // Continúa automáticamente la página cuando te desplazas hasta el final; cuando no haya ningún IntersectionObserver en el entorno, haga clic en el botón "Cargar más" a continuación.
+  // 滚到底自动续页；环境没有 IntersectionObserver 时走下面的「加载更多」按钮。
   useEffect(() => {
     if (!canLoadMore || lastId === undefined) return;
     const element = sentinel.current;

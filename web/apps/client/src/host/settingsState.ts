@@ -1,13 +1,13 @@
 import type { HostSettingsSnapshot } from "../api.js";
 
 /**
- * Configure la derivación local de instantáneas con actualizaciones optimistas.
+ * 设置快照的本地派生与乐观更新。
  *
- * El propósito de formar un módulo separado es permitir una verificación separada sin WebSocket: proyección de campo (escriba una copia, tres lugares surten efecto al mismo tiempo) y
- * La reversión (escribir el valor anterior sin cambios) son todas funciones puras.Host "Restaurar el status quo" cuando se rechaza un escrito es llamar a aplicar nuevamente.
+ * 单独成模块是为了能脱离 WebSocket 单独验证：字段投影（写一份、三处同时生效）与
+ * 回滚（把旧值原样写回）都是纯函数，Host 拒绝写入时的「恢复原状」就是再调一次 apply。
  */
 
-/** El valor actual del interruptor: ya sea la lista marcada o la lista de alternancia en la entrada (dos proyecciones de los mismos datos). */
+/** 开关的当前值：条目上的 checked 与 toggles 列表任取其一（同一份数据两种投影）。 */
 export function toggleValue(snapshot: HostSettingsSnapshot, key: string): boolean | undefined {
   for (const group of snapshot.groups) {
     for (const entry of group.entries) {
@@ -17,7 +17,7 @@ export function toggleValue(snapshot: HostSettingsSnapshot, key: string): boolea
   return snapshot.toggles.find((item) => item.key === key)?.enabled;
 }
 
-/** El valor actual de una clave: tiene prioridad `values[]`; de lo contrario, recurra a la antigua proyección booleana de dos lugares. */
+/** 一个键的当前值：优先 `values[]`，否则回退到旧的两处布尔投影。 */
 export function settingValueOf(snapshot: HostSettingsSnapshot, key: string): unknown {
   const fromValues = snapshot.values?.find((item) => item.key === key);
   if (fromValues !== undefined) return fromValues.value;
@@ -25,9 +25,9 @@ export function settingValueOf(snapshot: HostSettingsSnapshot, key: string): unk
 }
 
 /**
- * Actualización optimista:**al mismo tiempo**Cambiar tres proyecciones (values / toggles / entrada marcada),
- * Debido a que la antigua página de inicio solo mira los dos últimos lugares y la nueva subpágina solo mira `values`.Host No hay instantáneas de retroceso, esta es la única retroalimentación inmediata;
- * Cuando se rechaza la escritura, use la misma función para volver a escribir el valor anterior y se completa la reversión.
+ * 乐观更新：**同时**改三处投影（values / toggles / 条目 checked），
+ * 因为老主页只看后两处、新子页只看 `values`。Host 不回推快照，这是唯一的即时反馈；
+ * 写入被拒时拿同一函数把旧值写回去，就完成了回滚。
  */
 export function applySettingValue(snapshot: HostSettingsSnapshot, key: string, value: unknown): HostSettingsSnapshot {
   const values = snapshot.values;

@@ -1,47 +1,48 @@
 package io.zer0.muse.transformer
 
+import io.zer0.muse.data.session.MessageMarkers
 import io.zer0.muse.perf.BoundedLruCache
 
 /**
- * Limpiador de marcas internas invisible para el usuario.
+ * 用户不可见的内部标记清洗器。
  *
- * Modelos a veces mood / mod / think / reflection Escriba directamente en el contenido, especialmente
- * Cuando se trunca un modelo de ensayo o una salida de streaming. Los campos internos son los encargados de llevar este contenido, cuerpo, vista previa de la sesión y
- * La generación de títulos solo puede usar texto después de este limpiador.
+ * 模型有时会把 mood / mod / think / reflection 直接写进 content，尤其是
+ * 中转模型或流式输出被截断时。内部字段负责承载这些内容，正文、会话预览和
+ * 标题生成只能使用本清洗器后的文本。
  *
- * ## v2.6.8: exportación unificada
+ * ## v2.6.8: 统一出口
  *
- * aquí al mismo tiempo `card_state` Autoridad de limpieza de colas. Anteriormente, card_state solo tenía "un punto de escritura y un punto de extracción".
- * (Bubble Rendering)", y más de otros diez lectores de texto originales (copiados/Compartir/adelante/Editar borrador/Cotización/mapa de mensajes/Colección/Exportar/
- * Vista previa de la sesión/FTS Index) todos leen el contenido directamente, por lo que JSON se filtra al usuario y también puede accederse a la búsqueda de texto completo.
- * Ahora sólo hay tres salidas al mundo exterior con una semántica clara. La persona que llama puede elegir uno según el propósito y ya no realiza la separación por separado:
+ * 这里同时是 `card_state` 尾巴的清洗权威。此前 card_state 只有「一个写入点、一个剥离点
+ * （气泡渲染）」，其余十余处原文读者（复制/分享/转发/编辑草稿/引用/消息地图/收藏/导出/
+ * 会话预览/FTS 索引）都直接读 content，于是 JSON 漏到用户眼前、也能被全文搜索命中。
+ * 现在对外只提供三个语义明确的出口，调用方按用途选一个，不再各自实现剥离：
  *
- *  - [displayContent]     Revelar: retire el bloque de marcador interno + la cola del estado de la tarjeta, converja el espacio en blanco.
- *  - [exportContent]      Copiar/Compartir/Exportar/Lea en voz alta: retire la etiqueta de efectos especiales en línea en la apertura de la pantalla.
- *  - [searchableContent]  Recuperación: retire solo la parte posterior del estado de la tarjeta y conserve el texto del índice existente, como estado de ánimo/pensamiento.
+ *  - [displayContent]     展示：剥内部标记块 + 卡片状态尾巴，收敛空白。
+ *  - [exportContent]      复制/分享/导出/朗读：在展示口径上再剥内联特效标签。
+ *  - [searchableContent]  检索：只剥卡片状态尾巴，保留 mood/think 等既有索引文本。
  *
- * [stripForDisplay] Es la implementación subyacente del calibre de visualización (la cola del estado de la tarjeta se procesa al mismo nivel que el estado de ánimo/pensamiento),
- * Puede continuar usándolo para puntos de llamada históricos como bibliotecas de transmisión, canales de inferencia, generación de títulos, etc., y no se perderá card_state.
+ * [stripForDisplay] 是展示口径的底层实现（卡片状态尾巴与 mood/think 同级处理），
+ * 流式落库、推理通道、标题生成等历史调用点继续用它即可，同样不会漏 card_state。
  */
 object InternalMarkupSanitizer {
     /**
-     * v2.6.8: Las marcas de inicio y fin del segmento de estado de la tarjeta (la única definición autorizada).
+     * v2.6.8: 卡片状态段的起止标记（唯一权威定义）。
      *
-     * Envuélvalo con U+2063 SEPARADOR INVISIBLE para reducir la probabilidad de colisión con el texto normal; escribir vista lateral
-     * `CardAction.appendCardStateToMessage`, el formato permanece sin cambios para que sea compatible con los mensajes históricos que se han incluido en la base de datos.
+     * 用 U+2063 INVISIBLE SEPARATOR 包裹，降低与正常文本碰撞的概率；写入侧见
+     * `CardAction.appendCardStateToMessage`，格式保持不变以兼容已落库的历史消息。
      */
     const val CARD_STATE_OPEN: String = "\u2063[card_state]\u2063"
     const val CARD_STATE_CLOSE: String = "\u2063[/card_state]\u2063"
 
     /**
-     * Sondeo económico del estado de la tarjeta.
+     * 卡片状态的廉价探针。
      *
-     * Intencionalmente no contiene caracteres invisibles:contains Es un escaneo único, por lo que solo es necesario cortocircuitar con anticipación los escaneos regulares.
-     * Cualquier juicio sobre "si hay un estado de tarjeta en este texto" pasará este nivel primero.
+     * 刻意不含不可见字符：contains 是单趟扫描，正则才需要提前短路。
+     * 任何「这段文本里有没有卡片状态」的判断都先过这一关。
      */
     private const val CARD_STATE_PROBE: String = "[card_state]"
 
-    /** v2.6.7 Rendimiento: La expresión regular de convergencia en blanco se extrae como constantes a nivel de archivo, lo que evita la necesidad de crear una nueva expresión regular cada vez que se llama. */
+    /** v2.6.7 性能: 空白收敛正则提取为文件级常量，避免每次调用都 new 一个 Regex。 */
     private val whitespaceRun = Regex("\\n{3,}")
 
     private val closedInternalBlock = Regex(
@@ -57,45 +58,45 @@ object InternalMarkupSanitizer {
     )
 
     /**
-     * v1.0.90: Detección de etiquetas de nombre de etiqueta (incluidas medias etiquetas y etiquetas cerradas aisladas).
+     * v1.0.90: 标签名标记检测（含半个标签与孤立闭标签）。
      *
-     * Resulta que la persona que llama sólo detecta `<mood>` Con este tipo de apertura completa de la etiqueta, el modelo escupe media etiqueta (`<mood`) o simplemente cerrar la etiqueta
-     * (`</mood>`) se mostrará directamente en la pantalla como texto normal y el usuario verá el texto original de la etiqueta de estado de ánimo.
-     * Cualquier contenido que alcance esta marca debe pasar por el proceso de limpieza completo.
+     * 原来调用方只检测 `<mood>` 这种完整开标签，模型吐半个标签（`<mood`）或只吐闭标签
+     * （`</mood>`）时会被当成普通正文直接上屏，用户就看到 mood 标签原文。
+     * 凡是命中这个标记的内容，都必须走完整清洗路径。
      */
     val TAG_MARKER_REGEX =
         Regex("(?i)[<\\[]/?\\s*(?:mood|mod|think|thinking|reflection|moodfx)")
 
-    /** Solo se retira la cubierta interior de la etiqueta, dejando el contenido del pensamiento en el interior para que lo utilice el panel de razonamiento. */
+    /** 只移除内部标签外壳，保留其中的思考内容，供 reasoning 面板使用。 */
     fun stripContainerTags(text: String): String = text
         .replace(Regex("(?i)</?(?:mood|mod|think|thinking|reflection|moodfx)>"), "")
         .replace(Regex("(?i)\\[/?(?:mood|mod|think|thinking|reflection|moodfx)\\]"), "")
         .trim()
 
-    /** Eliminar el bloque completo de estado de ánimo/mod del pase de inferencia,Pero mantén el resto del contenido pensado en el interior. */
+    /** 从推理通道移除完整 mood/mod 块,但保留其中其他 think 内容。 */
     fun stripMoodBlocks(text: String): String = moodBlock.replace(text, "").trim()
 
-    /** v2.6.8: Si hay una cola de estado de la tarjeta en el texto (contiene barato, sin regularidad). */
+    /** v2.6.8: 文本里是否带卡片状态尾巴（廉价 contains，无正则）。 */
     fun containsCardState(text: String): Boolean = text.contains(CARD_STATE_PROBE)
 
     /**
-     * v2.6.8: Retire la cola del estado de la tarjeta.
+     * v2.6.8: 剥掉卡片状态尾巴。
      *
-     * Cuando no hay marca**Devuelve la misma instancia sin cambios**(sin recortes, sin reconstrucción), por lo que se puede colocar de forma segura en el camino caliente.
-     * Si está marcado, retire toda la sección y elimine el espacio en blanco final. —— La cola se añade después del texto principal. `\n[card_state]…`,
-     * Dejar el salto de línea en su lugar le dará a la burbuja una línea adicional de espacio en blanco. Cuando no está cerrado (sólo medio escrito), se trunca de la marca.
-     * De acuerdo con las implementaciones históricas, es mejor perder el estado que filtrar JSON a los usuarios.
+     * 无标记时**原样返回同一实例**（不 trim、不重建），所以可以安全地放在热路径上。
+     * 有标记时剥掉整段并去掉尾部空白 —— 尾巴是追加在正文后的 `\n[card_state]…`，
+     * 留着换行会让气泡多出一行空白。未闭合（只写了一半）时从标记处截断，
+     * 与历史实现一致，宁可丢状态也不把 JSON 漏给用户。
      */
     fun stripCardState(text: String): String {
         if (!containsCardState(text)) return text
         var result = text
         var stripped = false
-        // Pase cada pieza de la cola (en teoría, solo hay una pieza, pero las cartas se apilarán cuando se pasen de regreso continuamente).
+        // 循环剔除每一段尾巴（理论上只有一段，但卡片连续回传时会叠）。
         var start = result.indexOf(CARD_STATE_OPEN)
         while (start >= 0) {
             val end = result.indexOf(CARD_STATE_CLOSE, start)
             if (end < 0) {
-                // La cola está medio escrita (colapso/Truncar): truncar desde la marca, en lugar de perder el estado sin filtrar JSON.
+                // 尾巴写了一半（崩溃/截断）：从标记处截断，宁丢状态不漏 JSON。
                 result = result.substring(0, start)
                 stripped = true
                 start = -1
@@ -105,48 +106,53 @@ object InternalMarkupSanitizer {
                 start = result.indexOf(CARD_STATE_OPEN)
             }
         }
-        // La cola se añade después del texto principal. `\n[card_state]…`, quedará un salto de línea final después de despegarlo; solo terminará cuando se despegue.
+        // 尾巴是追加在正文后的 `\n[card_state]…`，剥掉后会留一个尾换行；只在真剥过时收尾。
         return if (stripped) result.trimEnd() else result
     }
 
     /**
-     * v2.6.8 Salida 1: El texto se puede mostrar directamente al usuario.
+     * v2.6.8 出口一：可以直接展示给用户的正文。
      *
-     * equivalente a [stripForDisplay](Las colas del estado de la tarjeta ya se manejan al mismo nivel que el estado de ánimo/pensamiento allí).
-     * Dejar un nombre aparte es para que cuando se lea el pulsador se vea que "este es el calibre para los usuarios".
-     * También hace que sea más fácil evitar tener que cambiar docenas de llamadas cuando las dos diverjan en el futuro.
+     * 等价于 [stripForDisplay]（卡片状态尾巴已在其中与 mood/think 同级处理）。
+     * 单独留一个名字，是为了让调用点读起来能看出「这是给用户看的口径」，
+     * 也方便以后两者分岔时不用改几十处调用。
      *
-     * Los resultados se almacenan en caché por el propio texto (ver [DisplayContentCache]): filtrado y recuento de listas de mensajes,
-     * El juicio de agrupación solicitará el mismo mensaje en la misma actualización 3–4 veces, tomarlo una vez es suficiente.
-     * salida con [stripForDisplay] Consistente byte a byte, el caché solo guarda cálculos repetidos y no cambia el calibre.
+     * 结果按正文本身缓存（见 [DisplayContentCache]）：消息列表的过滤、计数、
+     * 分组判定在同一次刷新里会把同一条消息问 3–4 次，取一次就够。
+     * 输出与 [stripForDisplay] 逐字节一致，缓存只省重复计算，不改口径。
      */
     fun displayContent(text: String): String = displayContentCache.getOrCompute(text, ::stripForDisplay)
 
     /**
-     * v2.6.8 Salida 2: Copiar/compartir/exportar/leer el texto en voz alta.
+     * v2.6.8 出口二：复制 / 分享 / 导出 / 朗读用的正文。
      *
-     * en [displayContent] Básicamente límpialo `[glow]…[/glow]` Este tipo de etiqueta de efectos en línea (conserva el texto ajustado).
-     * La única diferencia con el calibre de pantalla es este caparazón de efectos especiales. No debe haber marcas de protocolo en el texto que reciben los usuarios.
+     * 在 [displayContent] 基础上再清掉 `[glow]…[/glow]` 这类内联特效标签（保留被包裹的文字）。
+     * 与展示口径的唯一差别就是这层特效壳，用户拿到的文本里不该有协议标记。
+     *
+     * 中断/截断记号也在这里去掉：那是"这条停在哪儿"的状态，不是用户写下的内容，
+     * 复制出去不该带上它（显示层会按当前语言把这句话单独画出来）。
      */
-    fun exportContent(text: String): String = MoodSkinParser.stripInlineEffects(displayContent(text)).trim()
+    fun exportContent(text: String): String = MessageMarkers.stripTruncated(
+        MessageMarkers.stripInterrupted(MoodSkinParser.stripInlineEffects(displayContent(text))),
+    ).trim()
 
     /**
-     * v2.6.8 Salida 3: Buscar índice/recuperar texto para comparar.
+     * v2.6.8 出口三：搜索索引 / 检索比对用的正文。
      *
-     * Retire solo la cola del estado de la tarjeta,**sin moverse** mood/think etc. dentro de bloques, ni converger a espacios en blanco:
-     *  - El estado de la tarjeta es un campo de máquina (cardId,JSON valor clave), los usuarios no deben buscarlo ni aparecer en el fragmento de resultado;
-     *  - La semántica que los usuarios pueden buscar ya está en el resumen de texto (la oración cuando se devuelve la tarjeta), y el estado no se perderá sin perder la recuperación;
-     *  - mood/think Indexar o no es otra decisión. Esta vez no lo cambiaremos para evitar una deriva silenciosa del comportamiento de búsqueda.
+     * 只剥卡片状态尾巴，**不动** mood/think 等内部块，也不收敛空白：
+     *  - 卡片状态是机器字段（cardId、JSON 键值），既不该被用户搜到，也不该出现在结果片段里；
+     *  - 用户能搜的语义已经在正文摘要里（卡片回传时的那句话），剥掉状态不丢召回；
+     *  - mood/think 是否入索引是另一个决策，本次不顺手改，避免搜索行为静默漂移。
      */
     fun searchableContent(text: String): String = stripCardState(text)
 
-    /** Devuelve el texto del cuerpo (bloque de marcado interno + cola de estado de la tarjeta) que se puede mostrar directamente al usuario. */
+    /** 返回可以直接展示给用户的正文（内部标记块 + 卡片状态尾巴）。 */
     fun stripForDisplay(text: String): String {
-        // v2.6.7 Rendimiento: Camino rápido. Todas las etiquetas internas comienzan con '<' o '[' al principio,
-        // Cuando ninguno de ellos está incluido, la marca regular definitivamente no dará en el blanco y sólo se requiere la convergencia en blanco.
-        // Este método se llama N veces por cuadro en el filtrado de la lista de mensajes (N = número de mensajes), es el verdadero punto caliente del hilo principal.
-        // v2.6.8: card_state etiquetado con '[' Al principio, el texto que lo contiene debe tomar el camino lento. ——
-        // Por lo tanto, no se necesitan sondas adicionales en el camino rápido, la extracción se coloca en el camino lento y el costo del camino caliente permanece sin cambios.
+        // v2.6.7 性能: 快速路径。所有内部标记都以 '<' 或 '[' 开头，
+        // 两者都不含时标记正则必然无法命中，只需做空白收敛。
+        // 本方法在消息列表过滤里每帧被调用 N 次（N = 消息数），是主线程真实热点。
+        // v2.6.8: card_state 标记以 '[' 开头，含它的文本必然走慢路径 ——
+        // 所以快速路径不需要额外探针，剥离放在慢路径里，热路径成本不变。
         val hasMarkup = text.contains('<') || text.contains('[')
         val result = if (text.isBlank() || !hasMarkup) {
             text
@@ -156,18 +162,18 @@ object InternalMarkupSanitizer {
         return whitespaceRun.replace(result, "\n\n").trim()
     }
 
-    /** Ruta lenta: ejecute un lavado de marca completa. Sólo si el texto contiene '<' o '[' cuando lo llaman. */
+    /** 慢路径：跑完整标记清洗。仅在文本含 '<' 或 '[' 时调用。 */
     private fun stripMarkupBlocks(text: String): String {
         var result = closedInternalBlock.replace(text, "")
-        // Los bloques internos no cerrados se cortan de la etiqueta para evitar que el contenido del reflejo se muestre como texto.
+        // 未闭合的内部块从标签处截断，避免把思考内容当正文展示。
         result = unclosedInternalStart.replace(result, "")
-        // v1.0.90: Los dos elementos anteriores sólo tratan del caso de etiquetas abiertas. Sólo escupe media etiqueta (`<mood`) o una etiqueta de cierre aislada
-        // (`</mood>`,`</think>`) se filtrará al texto principal tal como está. Aquí, escanee la cubierta de la etiqueta nuevamente.
+        // v1.0.90: 上面两条只处理带开标签的情况。只吐半个标签（`<mood`）或孤立的闭标签
+        // （`</mood>`、`</think>`）时会原样漏到正文，这里最后再扫一遍标签外壳。
         result = stripContainerTags(result)
         return result
     }
 
-    /** Extraiga únicamente contenido de estado de ánimo/mod, compatible con mensajes históricos y hábitos de etiquetado de diferentes modelos. */
+    /** 仅提取 mood/mod 内容，兼容历史消息和不同模型的标签习惯。 */
     fun extractMood(text: String): String? = moodBlock.findAll(text)
         .map { it.groupValues[1].trim() }
         .filter { it.isNotBlank() }
@@ -176,36 +182,36 @@ object InternalMarkupSanitizer {
         .ifBlank { null }
 }
 
-/** [DisplayContentCache] El límite superior del número de mensajes: aproximadamente igual a \"dos pantallas de mensajes + un párrafo antes y después\". */
+/** [DisplayContentCache] 的条数上限：约等于「两屏消息 + 前后各留一段」。 */
 internal const val DISPLAY_CONTENT_CACHE_MAX_ENTRIES: Int = 512
 
 /**
- * El texto que supere este número de caracteres simplemente no se guarda.
+ * 超过这个字符数的正文只算不存。
  *
- * El tamaño de un único resultado aumenta linealmente con el texto. Unos pocos mensajes de 10.000 palabras pueden exprimir la LRU y, de hecho, reducir la tasa de aciertos;
- * Hay muy pocos mensajes tan largos en la lista y el costo de volver a calcularlos es aceptable.
+ * 单条结果的大小随正文线性增长，几条万字消息就能把 LRU 挤空、反而降低命中率；
+ * 这类超长消息在列表里都很少，重算代价可以接受。
  */
 internal const val DISPLAY_CONTENT_CACHE_MAX_CHARS: Int = 8_000
 
 /**
- * `displayContent` Caché acotado de resultados.
+ * `displayContent` 结果的有界缓存。
  *
- * key Utilice el texto mismo directamente en lugar de "ID de mensaje + hash de contenido": el resultado de la limpieza solo está determinado por el texto.
- * Utilice el texto como clave para que "la misma entrada debe obtener la misma salida" no dependa del hash y no colisione. —— La comparación de visitas primero mira la referencia,
- * Volviendo a mirar el contenido, se transmite el mismo mensaje en el mismo cuadro. [String] Por ejemplo, la comparación comienza en tiempo constante.
+ * key 直接用正文本身，而不是「消息 id + 内容哈希」：清洗结果只由正文决定，
+ * 用正文做 key 让「同输入必得同输出」不依赖哈希不碰撞 —— 命中比较先看引用、
+ * 再看内容，同一帧里传进来的都是同一个 [String] 实例，比较是常数时间起步。
  *
- * Eliminación: la capa inferior es LRU de orden de acceso ([BoundedLruCache]), más allá [maxEntries]
- * El extremo que lleva más tiempo sin utilizarse se elimina cada cierto tiempo. La capacidad es constante y no aumentará con el número total de mensajes.
+ * 淘汰：底层是 access-order 的 LRU（[BoundedLruCache]），超出 [maxEntries]
+ * 时从最久未使用的一端淘汰，容量恒定，不会随消息总数增长。
  *
- * Seguridad de subprocesos: los contenedores se bloquean operación por operación. Las llamadas de renderizado están en el hilo principal, pero se exportan/No se garantiza que el lado del índice sea de un solo subproceso,
- * Por lo tanto, aquí no se supone que haya una sola persona que llama.
+ * 线程安全：容器逐操作加锁。渲染调用在主线程，但导出/索引侧不保证单线程，
+ * 所以这里不假设只有一个调用方。
  */
 internal class DisplayContentCache(
     maxEntries: Int = DISPLAY_CONTENT_CACHE_MAX_ENTRIES,
 ) {
     private val entries = BoundedLruCache<String, String>(maxEntries) { 1 }
 
-    /** Si el acierto tiene éxito, se devolverá directamente el último resultado. Si el resultado no es acertado, se llamará. [compute] y escribe los resultados. */
+    /** 命中直接返回上次结果，未命中才调用 [compute] 并把结果写回。 */
     fun getOrCompute(text: String, compute: (String) -> String): String {
         entries.get(text)?.let { return it }
         val computed = compute(text)
@@ -220,5 +226,5 @@ internal class DisplayContentCache(
     fun clear() = entries.clear()
 }
 
-/** Ejemplos a nivel de proceso: el valor del caché radica en la reorganización cruzada y la reutilización entre marcos.per-call Construir uno no significa nada. */
+/** 进程级实例：缓存的价值就在跨重组、跨帧复用，per-call 建一份等于没有。 */
 private val displayContentCache = DisplayContentCache()

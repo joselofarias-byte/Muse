@@ -7,8 +7,8 @@ import io.zer0.muse.R
 import kotlinx.coroutines.suspendCancellableCoroutine
 
 /**
- * P1-3b Deslocalización:TTS Implementación de herramientas.
- * Registrado en ToolRegistry por TtsToolsRegistrar.
+ * P1-3b 拆域：TTS 工具实现。
+ * 由 TtsToolsRegistrar 注册到 ToolRegistry。
  */
 class TtsToolsImpl(private val context: Context) {
 
@@ -24,15 +24,15 @@ class TtsToolsImpl(private val context: Context) {
             } else {
                 context.getString(R.string.tool_speak_text_failed)
             }
-        }.onError { msg, _ -> Logger.w("TtsTools", "TTS falló: $msg") }
+        }.onError { msg, _ -> Logger.w("TtsTools", "TTS 失败: $msg") }
             .getOrNull() ?: context.getString(R.string.tool_speak_text_failed)
     }
 
     private suspend fun speakWithTts(text: String, language: String?, rate: Float): Boolean {
         return suspendCancellableCoroutine { cont ->
             var tts: android.speech.tts.TextToSpeech? = null
-            // P2-16: Entrada de lanzamiento unificada — Cada instancia se utiliza después(Leer en voz alta completado/falló/Cancelar)debe ser shutdown,
-            // De lo contrario, cada llamada de herramienta pierde uno TextToSpeech(Vincular procesos y recursos del motor).
+            // P2-16: 统一释放入口 — 每个实例在使用完(朗读完成/失败/取消)后必须 shutdown,
+            // 否则每次工具调用泄漏一个 TextToSpeech(绑定引擎进程与资源)。
             val release: () -> Unit = {
                 val engine = tts
                 tts = null
@@ -82,13 +82,13 @@ class TtsToolsImpl(private val context: Context) {
                     } else {
                         @Suppress("DEPRECATION")
                         tts?.speak(text, android.speech.tts.TextToSpeech.QUEUE_FLUSH, null)
-                        // pre-L No se puede completar mediante el reconocimiento de devolución de llamada de expresión,Cubierta de lanzamiento retrasado
+                        // pre-L 无法通过 utterance 回调感知完成,延迟释放兜底
                         android.os.Handler(android.os.Looper.getMainLooper())
                             .postDelayed(release, 3_000L)
                     }
                     cont.resume(true) { _, _, _ -> }
                 } catch (e: Exception) {
-                    Logger.w("TtsTools", "TTS excepción de lectura: ${e.message}")
+                    Logger.w("TtsTools", "TTS 朗读异常: ${e.message}")
                     release()
                     if (cont.isActive) cont.resume(false) { _, _, _ -> }
                 }

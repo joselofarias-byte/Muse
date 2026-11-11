@@ -1,24 +1,24 @@
 package io.zer0.ai.core
 
 /**
- * Modelo de estrategia de análisis del presupuesto de resultados.
+ * 模型输出预算解析策略。
  *
- * en metadatos del modelo [Model.maxOutputTokens] es el límite superior de la capacidad del modelo,
- * Los maxTokens pasados ​​por la persona que llama son solo el presupuesto para esta solicitud. El presupuesto final no puede exceder ningún límite superior conocido.
+ * 模型元数据中的 [Model.maxOutputTokens] 是模型能力上限，
+ * 调用方传入的 maxTokens 只是本次请求预算。最终预算不能超过任一已知上限。
  *
- * Reglas:
- *  - Cuando la persona que llama pasa un número positivo, utilice min(presupuesto de la persona que llama, Límite superior del modelo);
- *  - Cuando la persona que llama no aprueba un presupuesto, si el directorio modelo tiene un límite superior, se utilizará el límite superior para evitar depender del valor predeterminado implícito del proveedor que es demasiado pequeño;
- *  - Si la persona que llama pasa 0 o un número negativo, se considera que no está configurado;
- *  - Cuando se desconoce el límite superior del modelo, se retiene el número positivo de la persona que llama. Si la persona que llama no lo configura, el proveedor continúa usando su propio valor predeterminado.
+ * 规则：
+ *  - 调用方传入正数时，使用 min(调用方预算, 模型上限)；
+ *  - 调用方未传预算时，若模型目录有上限则使用该上限，避免依赖供应商过小的隐式默认值；
+ *  - 调用方传入 0 或负数视为未设置；
+ *  - 模型上限未知时保留调用方正数，调用方未设置时继续让 Provider 使用自身默认值。
  */
 object ModelOutputPolicy {
 
     /**
-     * Calcule la cantidad de tokens de entrada que se enviarán al proveedor.
+     * 估算将要发送给 Provider 的输入 token 数。
      *
-     * Esta es una estimación conservadora para fines de protección del presupuesto.,No es un estándar de facturación:Chino por caracter,ASCII Presione unos 4 caracteres/token,
-     * Reserva aprox. para cada imagen 1000 token,e incorporar el razonamiento/Llamadas a herramientas y esquema de herramientas.
+     * 这是预算保护用的保守估算,不是计费口径:中文按字符计,ASCII 按约 4 字符/token,
+     * 每张图片预留约 1000 token,并纳入推理/工具调用与工具 schema。
      */
     fun estimateInputTokens(messages: List<UIMessage>, tools: List<ToolDefinition>? = null): Int {
         var total = 0L
@@ -41,14 +41,14 @@ object ModelOutputPolicy {
     }
 
     /**
-     * Reserve espacio para la salida según la cantidad de tokens de entrada; no se hacen conjeturas cuando se desconoce la ventana de contexto.
+     * 根据输入 token 数给输出预留空间；未知上下文窗口时不做猜测。
      *
-     * Este es el segundo límite del presupuesto de solicitud: el modelo maxOutputTokens es el límite superior de capacidad.
-     * contextWindow - inputTokens - reserveTokens ¿Está disponible el límite superior para esta solicitud?
+     * 这是请求预算的第二道边界：模型 maxOutputTokens 是能力上限，
+     * contextWindow - inputTokens - reserveTokens 是本次请求的可用上限。
      *
-     * NOTA: La ventana de contexto es la entrada+El resultado se comparte y todo el contexto restante no puede considerarse como el presupuesto de resultado actual.
-     * Cuando el modelo no declara maxOutputTokens y la persona que llama no proporciona un presupuesto, se devuelve nulo (devuelve el valor predeterminado del Proveedor).
-     * Evite ampliar max_tokens cerca de la ventana de contexto y ser rechazado con un 400 por parte de upstream.
+     * 注意：上下文窗口是输入+输出共享的，不能把整段剩余上下文都当成本次输出预算。
+     * 模型未声明 maxOutputTokens 且调用方也未给预算时返回 null（交回 Provider 默认值），
+     * 避免把 max_tokens 放大到接近上下文窗口而被上游以 400 拒绝。
      */
     fun resolveForContext(requestedMaxTokens: Int?, model: Model, inputTokens: Int, reserveTokens: Int = 1_024): Int? {
         require(inputTokens >= 0) { "inputTokens must not be negative" }
@@ -58,11 +58,11 @@ object ModelOutputPolicy {
         val available = (contextWindow - inputTokens - reserveTokens).coerceAtLeast(1)
         val modelBound = model.maxOutputTokens?.takeIf { it > 0 }
         val requested = requestedMaxTokens?.takeIf { it > 0 }
-        // Cuando el modelo no declara un límite superior de producción, disponible (todo el contexto restante) no se puede utilizar directamente como presupuesto de producción actual:
-        //  - A la ventana de contexto se accede mediante+Compartir resultados, todos los resultados no son válidos;
-        //  - Los proveedores generalmente establecen otro límite superior para una única salida (por ejemplo, 65536), que inevitablemente será rechazada por los 400 ascendentes después de la amplificación.
-        // Por lo tanto: no hay límite de modelo ni presupuesto proporcionado por la persona que llama → Devuelve nulo y devuelve el valor predeterminado del propio proveedor;
-        //      La persona que llamó dio un presupuesto. → Sólo ajustarse al contexto restante, no expandirse hacia afuera.
+        // 模型未声明输出上限时，不能把 available（整段剩余上下文）直接当成本次输出预算：
+        //  - 上下文窗口由输入+输出共享，全给输出本就不成立；
+        //  - 供应商普遍对单次输出另设上限（例如 65536），放大后必然被上游 400 拒绝。
+        // 因此：无模型上限且调用方未给预算 → 返回 null，交回 Provider 自身默认值；
+        //      调用方给了预算 → 仅按剩余上下文收紧，不外扩。
         val contextBound = if (modelBound == null && requested == null) {
             null
         } else {
@@ -72,15 +72,15 @@ object ModelOutputPolicy {
     }
 
     /**
-     * Analice el límite superior del token de salida finalmente enviado al proveedor para esta solicitud.
+     * 解析本次请求最终发送给 Provider 的输出 token 上限。
      *
-     * No amplíe el número positivo establecido explícitamente por la persona que llama sin autorización; solo si la persona que llama no lo configura, se utilizará el límite superior de la capacidad declarada en el directorio del modelo.
+     * 不擅自扩大调用方显式设置的正数；只有调用方未设置时，才采用模型目录声明的能力上限。
      */
     fun resolve(requestedMaxTokens: Int?, model: Model): Int? {
         val requested = requestedMaxTokens?.takeIf { it > 0 }
         val declaredModelLimit = model.maxOutputTokens?.takeIf { it > 0 }
-        // Los límites de salida no pueden exceder la ventana de contexto del modelo; Los valores del catálogo se conservan tal cual y se representan mediante ModelRegistry
-        // Para marcar valores sospechosos e imposibles, aquí se bloquean solo en el nivel del presupuesto de solicitud real.
+        // 输出上限不可能超过模型上下文窗口；目录值仍原样保留并由 ModelRegistry
+        // 标记可疑，这里只在实际请求预算层阻止不可能的值。
         val contextLimit = model.contextWindow?.takeIf { it > 0 }
         val modelLimit = if (declaredModelLimit != null && contextLimit != null) {
             minOf(declaredModelLimit, contextLimit)
@@ -95,7 +95,7 @@ object ModelOutputPolicy {
         }
     }
 
-    /** Devuelve verdadero cuando el presupuesto explícito se ajusta al límite superior del modelo, para su uso en registros de diagnóstico y UI. */
+    /** 显式预算被模型能力上限收紧时返回 true，供诊断日志和 UI 使用。 */
     fun wasClamped(requestedMaxTokens: Int?, model: Model): Boolean {
         val requested = requestedMaxTokens?.takeIf { it > 0 }
         val declaredModelLimit = model.maxOutputTokens?.takeIf { it > 0 }

@@ -16,18 +16,18 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * OpenAI Realtime ASR Prueba de contrato de protocolo GA del lado del cliente.
+ * OpenAI Realtime ASR 客户端的 GA 协议约定测试。
  *
- * Portada:
- *  - Las solicitudes de protocolo de enlace ya no se envían `OpenAI-Beta: realtime=v1`(Beta El canal esta desconectado,Usar este encabezado resultará en rechazo.);
- *  - `session.update` de `session.type` fijo a `transcription`(GA Requerido);
- *  - La configuración del lado de entrada toma la ruta anidada de GA `session.audio.input.*`,Beta Ya no aparecen las teclas planas;
- *  - `format.rate` igual a la tasa de muestreo de adquisición(16000),No es un valor de ejemplo de documentación;
- *  - modelo/palabras calientes/El idioma se conserva en la ruta anidada tal como está;turn_detection Escribe explícitamente nulo (apaga el VAD del servidor,
- *    Cambiar al compromiso manual del cliente),commit El mensaje sólo lleva tipo;
- *  - OPENAI_REALTIME El modelo predeterminado se actualizó a un modelo de transcripción en vivo.
+ * 覆盖:
+ *  - 握手请求不再发送 `OpenAI-Beta: realtime=v1`(Beta 通道已下线,带该头会被拒);
+ *  - `session.update` 的 `session.type` 固定为 `transcription`(GA 必填);
+ *  - 输入侧配置走 GA 的嵌套路径 `session.audio.input.*`,Beta 的扁平键不再出现;
+ *  - `format.rate` 等于采集采样率(16000),不是文档示例值;
+ *  - 模型/热词/语种原样保留在嵌套路径下；turn_detection 显式写 null（关闭服务端 VAD，
+ *    改为客户端手动 commit），commit 消息只带 type；
+ *  - OPENAI_REALTIME 的默认模型已换代到实时转写模型。
  *
- * correr: ./gradlew :app:testDebugUnitTest --tests "*OpenAiRealtimeAsrProtocolTest*"
+ * 运行: ./gradlew :app:testDebugUnitTest --tests "*OpenAiRealtimeAsrProtocolTest*"
  */
 class OpenAiRealtimeAsrProtocolTest {
 
@@ -35,7 +35,7 @@ class OpenAiRealtimeAsrProtocolTest {
 
     private val endpoint = "wss://api.openai.com/v1/realtime?intent=transcription"
 
-    /** Beta Teclas planas de la época,GA No reconocido,payload No debe quedar nadie en él. */
+    /** Beta 时代的扁平键,GA 已不识别,payload 里必须一个都不剩。 */
     private val betaFlatSessionKeys = listOf(
         "input_audio_format",
         "input_audio_transcription",
@@ -43,7 +43,7 @@ class OpenAiRealtimeAsrProtocolTest {
         "input_audio_noise_reduction_types",
     )
 
-    /** `turn_detection` Solo en el nivel superior de la sesión está el método de escritura Beta.;Vaya a audio.input para encontrar la ubicación de GA. */
+    /** `turn_detection` 只在 session 顶层是 Beta 写法;搬到 audio.input 下才是 GA 位置。 */
     private val betaSessionLevelOnlyKeys = betaFlatSessionKeys + "turn_detection"
 
     private fun session(
@@ -58,7 +58,7 @@ class OpenAiRealtimeAsrProtocolTest {
         sampleRate = sampleRate,
     )["session"]!!.jsonObject
 
-    /** Obtenga objetos anidados capa por capa según la ruta,Volver si falta alguna capa null(Afirmar el error en lugar de lanzar NPE para que sea más fácil de leer). */
+    /** 按路径逐层取嵌套对象,任一层缺失返回 null(断言失败而非抛 NPE 才好读)。 */
     private fun JsonObject.at(vararg path: String): JsonObject? {
         var cur: JsonObject = this
         for (key in path) {
@@ -73,15 +73,15 @@ class OpenAiRealtimeAsrProtocolTest {
         return parent[path.last()]
     }
 
-    // ── estrechar la mano ──────────────────────────────────────────────────────────
+    // ── 握手头 ──────────────────────────────────────────────────────────
 
     @Test
     fun `handshake request sends no OpenAI-Beta header`() {
         val request = buildRealtimeRequest(endpoint, "sk-test-key")
 
-        assertNull("GA No se requiere encabezado de etiqueta Beta", request.header("OpenAI-Beta"))
+        assertNull("GA 不需要 Beta 版本标记头", request.header("OpenAI-Beta"))
         assertFalse(
-            "Los encabezados de las etiquetas beta no deberían aparecer en ningún caso",
+            "任何大小写的 beta 标记头都不应出现",
             request.headers.names().any { it.contains("beta", ignoreCase = true) },
         )
         assertEquals("Bearer sk-test-key", request.header("Authorization"))
@@ -92,22 +92,22 @@ class OpenAiRealtimeAsrProtocolTest {
         val request = buildRealtimeRequest(endpoint, "sk-test-key")
         val url = request.url
 
-        // OkHttp HttpUrl regularizará el wss en https,Por lo tanto, se afirma párrafo por párrafo
+        // OkHttp 的 HttpUrl 会把 wss 规整成 https,故逐段断言
         assertEquals("api.openai.com", url.host)
         assertEquals("/v1/realtime", url.encodedPath)
         assertEquals("transcription", url.queryParameter("intent"))
-        // GA Punto final sin número de versión de fecha y parámetro de consulta de versión de API
+        // GA 端点不带日期版本号与 api-version 查询参数
         assertFalse(url.toString().contains("api-version"))
         assertFalse(url.encodedPath.contains("20"))
     }
 
-    // ── session.update:forma general ─────────────────────────────────────────
+    // ── session.update:整体形状 ─────────────────────────────────────────
 
     @Test
     fun `session update matches the GA nested shape exactly`() {
         val payload = buildRealtimeSessionUpdatePayload(
             model = "gpt-realtime-whisper",
-            hotwords = listOf("Muse", "Ziqi"),
+            hotwords = listOf("Muse", "子奇"),
             language = "zh",
             sampleRate = 16_000,
         )
@@ -115,12 +115,12 @@ class OpenAiRealtimeAsrProtocolTest {
             """
             {"type":"session.update","session":{"type":"transcription","audio":{"input":{
               "format":{"type":"audio/pcm","rate":16000},
-              "transcription":{"model":"gpt-realtime-whisper","prompt":"Muse, Ziqi","language":"zh"},
+              "transcription":{"model":"gpt-realtime-whisper","prompt":"Muse, 子奇","language":"zh"},
               "turn_detection":null,
               "noise_reduction":null}}}}
             """.trimIndent(),
         )
-        assertEquals("payload Debe caer completamente en el camino anidado de GA.(y turn_detection explícito null)", expected, payload)
+        assertEquals("payload 必须整体落在 GA 的嵌套路径上(且 turn_detection 显式 null)", expected, payload)
     }
 
     @Test
@@ -133,19 +133,19 @@ class OpenAiRealtimeAsrProtocolTest {
 
         assertEquals("session.update", payload["type"]!!.jsonPrimitive.content)
         assertEquals(
-            "GA Utilice session.type para distinguir los formularios de sesión,Si falta, será rechazado.",
+            "GA 用 session.type 区分会话形态,缺了会被拒",
             "transcription",
             payload["session"]!!.jsonObject["type"]!!.jsonPrimitive.content,
         )
     }
 
-    // ── session.update:Caminos anidados ─────────────────────────────────────────
+    // ── session.update:嵌套路径 ─────────────────────────────────────────
 
     @Test
     fun `transcription model lives under session audio input transcription`() {
         val transcription = session(model = "gpt-realtime-whisper").at("audio", "input", "transcription")
 
-        assertNotNull("La configuración de transcripción debe estar en session.audio.input.transcription", transcription)
+        assertNotNull("转写配置必须在 session.audio.input.transcription", transcription)
         assertEquals(
             "gpt-realtime-whisper",
             transcription!!["model"]!!.jsonPrimitive.content,
@@ -156,10 +156,10 @@ class OpenAiRealtimeAsrProtocolTest {
     fun `input format declares pcm with the capture sample rate`() {
         val format = session().at("audio", "input", "format")
 
-        assertNotNull("El formato de entrada debe estar en session.audio.input.format", format)
+        assertNotNull("输入格式必须在 session.audio.input.format", format)
         assertEquals("audio/pcm", format!!["type"]!!.jsonPrimitive.content)
         assertEquals(
-            "16000 Captura de parámetros desde AsrAudioCapture,No es un ejemplo de documento 24000",
+            "16000 来自 AsrAudioCapture 的采集参数,不是文档示例的 24000",
             16_000,
             format["rate"]!!.jsonPrimitive.int,
         )
@@ -170,7 +170,7 @@ class OpenAiRealtimeAsrProtocolTest {
         val format = session(sampleRate = 48_000).at("audio", "input", "format")
 
         assertEquals(
-            "La tasa de muestreo declarada debe seguir la recolección real.,De lo contrario, el servidor lo interpreta según la longitud del marco de error. PCM",
+            "声明采样率必须跟着实际采集走,否则服务端按错误帧长解 PCM",
             48_000,
             format!!["rate"]!!.jsonPrimitive.int,
         )
@@ -180,12 +180,12 @@ class OpenAiRealtimeAsrProtocolTest {
     fun `session update keeps model hotwords and language`() {
         val transcription = session(
             model = "gpt-realtime-whisper",
-            hotwords = listOf("Muse", "Ziqi"),
+            hotwords = listOf("Muse", "子奇"),
             language = "zh",
         ).at("audio", "input", "transcription")
 
         assertEquals("gpt-realtime-whisper", transcription!!["model"]!!.jsonPrimitive.content)
-        assertEquals("Muse, Ziqi", transcription["prompt"]!!.jsonPrimitive.content)
+        assertEquals("Muse, 子奇", transcription["prompt"]!!.jsonPrimitive.content)
         assertEquals("zh", transcription["language"]!!.jsonPrimitive.content)
     }
 
@@ -202,13 +202,13 @@ class OpenAiRealtimeAsrProtocolTest {
     fun `turn detection is explicitly disabled for manual commit`() {
         val input = session().at("audio", "input")
 
-        assertNotNull("turn_detection la clave debe existir(Nulo explícito significa manual commit)", input!!["turn_detection"])
+        assertNotNull("turn_detection 键必须存在(显式 null 表示手动 commit)", input!!["turn_detection"])
         assertEquals(
-            "El VAD del lado del servidor debe estar apagado:El punto final de un período de entrada lo determina el usuario que hace clic en \"Finalizar\",No se puede reemplazar por la duración del silencio",
+            "服务端 VAD 必须关闭:一段输入的结束点由用户点「结束」决定,不能由静音时长代俓",
             JsonNull,
             input["turn_detection"],
         )
-        assertNull("Los parámetros VAD no deben quedarse atrás", input["turn_detection"] as? JsonObject)
+        assertNull("不得残留 VAD 参数", input["turn_detection"] as? JsonObject)
     }
 
     @Test
@@ -216,42 +216,42 @@ class OpenAiRealtimeAsrProtocolTest {
         val commit = json.parseToJsonElement(buildRealtimeCommitMessage()).jsonObject
 
         assertEquals(
-            "turn_detection=null tiempo,input_audio_buffer.commit Es la única señal que puede abrir una sección de entrada.",
+            "turn_detection=null 时,input_audio_buffer.commit 是唯一能开点一段输入的信号",
             "input_audio_buffer.commit",
             commit["type"]!!.jsonPrimitive.content,
         )
-        assertEquals("commit Los eventos solo toman type", 1, commit.size)
+        assertEquals("commit 事件只带 type", 1, commit.size)
     }
 
     @Test
     fun `noise reduction is declared as explicit json null`() {
         val input = session().at("audio", "input")
 
-        assertNotNull("noise_reduction la clave debe existir(Nulo explícito significa desactivado)", input!!["noise_reduction"])
+        assertNotNull("noise_reduction 键必须存在(显式 null 表示关闭)", input!!["noise_reduction"])
         assertEquals(
-            "Cuando la supresión de ruido no está habilitada, se debe escribir nulo explícitamente en lugar de omitirlo.",
+            "未启用噪声抑制时应显式写 null 而不是省略",
             JsonNull,
             input["noise_reduction"],
         )
     }
 
-    // ── session.update:No quedan claves planas Beta ─────────────────────────────
+    // ── session.update:不得残留 Beta 扁平键 ─────────────────────────────
 
     @Test
     fun `session update has no beta flat keys`() {
         val session = session(model = "gpt-realtime-whisper", hotwords = listOf("Muse"), language = "zh")
 
         for (key in betaSessionLevelOnlyKeys) {
-            assertNull("Beta llave plana $key No reconocido en GA,Debe ser eliminado del nivel superior de la sesión.", session[key])
+            assertNull("Beta 扁平键 $key 在 GA 已不识别,应从 session 顶层移除", session[key])
         }
         for (key in betaFlatSessionKeys) {
             assertNull(
-                "llave plana $key No debe estar oculto en session.audio.input",
+                "扁平键 $key 不应藏在 session.audio.input 里",
                 session.at("audio", "input")?.get(key),
             )
         }
-        // El cliente de transcripción pura no envía la configuración del diálogo
-        assertNull("No se debe configurar la transliteración pura session.audio.output", session.at("audio")?.get("output"))
+        // 纯转写客户端不发对话态配置
+        assertNull("纯转写不应配置 session.audio.output", session.at("audio")?.get("output"))
         assertNull(session["instructions"])
         assertNull(session["voice"])
     }
@@ -274,12 +274,12 @@ class OpenAiRealtimeAsrProtocolTest {
             (session.atValue("audio", "input", "format", "rate") as JsonPrimitive).content,
         )
         assertTrue(
-            "Las claves planas beta no deben aparecer después de la codificación",
+            "编码后仍不得出现 Beta 扁平键",
             betaSessionLevelOnlyKeys.none { session[it] != null },
         )
     }
 
-    // ── Modelo predeterminado ────────────────────────────────────────────────────────
+    // ── 默认模型 ────────────────────────────────────────────────────────
 
     @Test
     fun `openai realtime default model is gpt-realtime-whisper`() {

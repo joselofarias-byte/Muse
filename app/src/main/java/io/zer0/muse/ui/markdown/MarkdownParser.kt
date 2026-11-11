@@ -1,58 +1,58 @@
 package io.zer0.muse.ui.markdown
 
 /**
- * Markdown elementos a nivel de bloque AST(Autoimplementación ligera,No se introducen bibliotecas de terceros.).
+ * Markdown 块级元素 AST(轻量自实现,不引入第三方库)。
  *
- * Tipos de nivel de bloque admitidos:
- *  - [MarkdownBlock.Paragraph]: párrafo(Contiene formato en línea:Negrita/cursiva/código en línea/enlace)
- *  - [MarkdownBlock.Heading]: Título # ## ###
- *  - [MarkdownBlock.CodeBlock]: bloque de código de cerca ```...```
- *  - [MarkdownBlock.ListItem]: elemento de la lista(Ordenado 1. / Sin ordenar - o *)
- *  - [MarkdownBlock.Quote]: Cotización >
- *  - [MarkdownBlock.Divider]: linea horizontal ---
- *  - [MarkdownBlock.Blank]: linea en blanco(para el espaciado de párrafos)
- *  - [MarkdownBlock.Formula]: Phase 8.6 LaTeX bloque de fórmulas $$...$$
- *  - [MarkdownBlock.Table]: v1.97 Markdown mesa | a | b |
+ * 支持的块级类型:
+ *  - [MarkdownBlock.Paragraph]: 段落(含行内格式:粗体/斜体/行内代码/链接)
+ *  - [MarkdownBlock.Heading]: 标题 # ## ###
+ *  - [MarkdownBlock.CodeBlock]: 围栏代码块 ```...```
+ *  - [MarkdownBlock.ListItem]: 列表项(有序 1. / 无序 - 或 *)
+ *  - [MarkdownBlock.Quote]: 引用 >
+ *  - [MarkdownBlock.Divider]: 水平线 ---
+ *  - [MarkdownBlock.Blank]: 空行(用于段落间距)
+ *  - [MarkdownBlock.Formula]: Phase 8.6 LaTeX 公式块 $$...$$
+ *  - [MarkdownBlock.Table]: v1.97 Markdown 表格 | a | b |
  */
 sealed class MarkdownBlock {
-    /** párrafo(Una o varias líneas de texto,El formato en línea consiste en [parseInline] Proceso). */
+    /** 段落(单行或多行文本,行内格式由 [parseInline] 处理)。 */
     data class Paragraph(val text: String) : MarkdownBlock()
 
-    /** título.level 1-6 Corresponde a # a ######. */
+    /** 标题。level 1-6 对应 # 到 ######。 */
     data class Heading(val level: Int, val text: String) : MarkdownBlock()
 
-    /** Bloques de código de valla.language Disponible(Sin anotaciones de idioma). */
+    /** 围栏代码块。language 可空(无语言标注)。 */
     data class CodeBlock(val language: String?, val code: String) : MarkdownBlock()
 
-    /** Listar elementos.ordered=true ordenado,index es el numero de serie;false trastorno. */
+    /** 列表项。ordered=true 有序,index 为序号;false 无序。 */
     data class ListItem(val ordered: Boolean, val index: Int, val text: String) : MarkdownBlock()
 
-    /** Bloque de cotización.text Eliminado > prefijo. */
+    /** 引用块。text 已去掉 > 前缀。 */
     data class Quote(val text: String) : MarkdownBlock()
 
-    /** Phase 8.6: LaTeX Bloque de fórmulas.latex si $$ ... $$ contenido entre(sin delimitador). */
+    /** Phase 8.6: LaTeX 公式块。latex 是 $$ ... $$ 之间的内容(不含定界符)。 */
     data class Formula(val latex: String) : MarkdownBlock()
 
-    /** v1.97: Markdown mesa.headers para la fila del encabezado,rows es la fila de datos. */
+    /** v1.97: Markdown 表格。headers 为表头行,rows 为数据行。 */
     data class Table(val headers: List<String>, val rows: List<List<String>>) : MarkdownBlock()
 
-    /** Divisores horizontales. */
+    /** 水平分隔线。 */
     object Divider : MarkdownBlock()
 
-    /** linea en blanco(espaciado de párrafo). */
+    /** 空行(段落间距)。 */
     object Blank : MarkdownBlock()
 }
 
-// H-MD2 Reparación: Todas las expresiones regulares se promueven al nivel de archivo. private val,Evite la compilación repetida de parseMarkdown para cada línea
+// H-MD2 修复: 所有正则提升为文件级 private val,避免 parseMarkdown 每行重复编译
 private val FENCE_REGEX = Regex("^```(.*)$")
 private val HEADING_REGEX = Regex("^(#{1,6})\\s+(.+)$")
 private val ORDERED_LIST_REGEX = Regex("^(\\d+)\\.\\s+(.+)$")
 private val UNORDERED_LIST_REGEX = Regex("^[-*]\\s+(.+)$")
 
-// v1.97: Reglas gramaticales de imágenes — ![](url) y ![alt](url),La imagen se ha renderizado a través de displayImageUris.,saltar en el texto
+// v1.97: 图片语法正则 — ![](url) 和 ![alt](url),图片已通过 displayImageUris 渲染,文本中跳过
 private val IMAGE_SYNTAX_REGEX = Regex("!\\[[^\\]]*\\]\\([^)]+\\)")
 
-/** v1.97: Analizar filas de la tabla,Devuelve el contenido de cada celda.;Devuelve nulo para filas que no son de tabla. */
+/** v1.97: 解析表格行,返回各单元格内容;非表格行返回 null。 */
 private fun parseTableRow(line: String): List<String>? {
     val trimmed = line.trim()
     if (!trimmed.contains("|")) return null
@@ -61,7 +61,7 @@ private fun parseTableRow(line: String): List<String>? {
     return content.split("|").map { it.trim() }
 }
 
-/** v1.97: Determinar si es una línea separadora de tabla(|---|---| o |:---:|---:|). */
+/** v1.97: 判断是否为表格分隔线行(|---|---| 或 |:---:|---:|)。 */
 private fun isTableSeparator(line: String): Boolean {
     val trimmed = line.trim()
     if (!trimmed.contains("|")) return false
@@ -74,31 +74,31 @@ private fun isTableSeparator(line: String): Boolean {
 }
 
 /**
- * Analiza el texto de Markdown en una lista de elementos a nivel de bloque.
+ * 解析 Markdown 文本为块级元素列表。
  *
- * Estrategia: escaneo progresivo,Identificar bloques de código de cerca(```...```)máxima prioridad,
- *        El resto determina el tipo según el primer símbolo de la línea.,Las líneas en blanco están reservadas para espacios en blanco para separar párrafos.
+ * 策略: 逐行扫描,识别围栏代码块(```...```)优先级最高,
+ *        其余按行首符号判定类型,空行保留为 Blank 做段落分隔。
  *
- * Phase 8.6: apoyo $$...$$ bloque de fórmulas(Líneas únicas o múltiples,a $$ es el delimitador de apertura y cierre).
+ * Phase 8.6: 支持 $$...$$ 公式块(单行或多行,以 $$ 为开闭定界符)。
  *
- * Sintaxis no compatible(mesa/Nota al pie/fotos)Imprima el párrafo tal como está.
+ * 不支持的语法(表格/脚注/图片)按段落原样输出。
  */
 fun parseMarkdown(text: String): List<MarkdownBlock> {
     val lines = text.split(MARKDOWN_LINE_SPLIT)
     return parseMarkdownPass(lines, 0).blocks
 }
 
-/** L10 Reparación: división de nueva línea(compatibles Windows \r\n con el viejo Mac \r),cantidad total/El uso compartido incremental garantiza números de línea consistentes. */
+/** L10 修复: 换行分割(兼容 Windows \r\n 与旧 Mac \r),全量/增量共用保证行号一致。 */
 internal val MARKDOWN_LINE_SPLIT = Regex("\\r?\\n")
 
 /**
- * Resultados intermedios de un solo paso de análisis.
+ * 单遍解析的中间结果。
  *
- * @param blocks de [startLine] Comience con los trozos analizados.
- * @param blockStartLines con [blocks] Número de línea inicial correspondiente uno a uno de cada bloque(texto relativamente completo,Truncamiento incremental).
- * @param openStartLine El texto termina estando aún en"abierto"bloquear la línea de inicio para el estado;Ningún bloque abierto es -1.
- *        bloque abierto = Bloques de código de valla/fórmulas/tablas de varias líneas —— Estos bloqueos pueden continuar durante las transmisiones adjuntas.,
- *        El análisis incremental debe volver a escanearse desde esta línea(ver [IncrementalMarkdownParser]).
+ * @param blocks 从 [startLine] 起解析出的块。
+ * @param blockStartLines 与 [blocks] 一一对应的每块起始行号(相对全文,增量截断用)。
+ * @param openStartLine 文本结束时仍处于"开放"状态的块起始行;无开放块为 -1。
+ *        开放块 = 围栏代码块 / 多行公式 / 表格 —— 流式追加时这些块后续可能继续,
+ *        增量解析必须从该行重新扫描(见 [IncrementalMarkdownParser])。
  */
 internal data class ParsePassResult(
     val blocks: List<MarkdownBlock>,
@@ -107,11 +107,11 @@ internal data class ParsePassResult(
 )
 
 /**
- * de [startLine] Análisis de un solo paso [lines],Devuelve la lista de bloques, la línea de inicio bloque por bloque y el inicio del bloque abierto.
+ * 从 [startLine] 起单遍解析 [lines],返回块列表、逐块起始行与开放块起点。
  *
- * A3: Suministro corporal de circulación central. [parseMarkdown](cantidad total)con [IncrementalMarkdownParser](incremento)compartir,
- * Asegúrese de que la semántica de los dos sea coherente. bloque abierto(valla/fórmula de varias líneas/mesa)Registrar la línea de inicio mientras el final del texto aún no está cerrado,
- * Analiza incrementalmente el siguiente fotograma y vuelve a escanear desde esta línea;bloques restantes de una sola línea(párrafo/Título/lista/Cotizaciones, etc.)Naturalmente estable,Se puede reutilizar.
+ * A3: 核心循环体供 [parseMarkdown](全量)与 [IncrementalMarkdownParser](增量)共用,
+ * 保证两者语义一致。开放块(围栏/多行公式/表格)在文本末尾仍未闭合时记录起始行,
+ * 增量解析下一帧从该行重扫;其余单行块(段落/标题/列表/引用等)天然稳定,可复用。
  */
 internal fun parseMarkdownPass(lines: List<String>, startLine: Int): ParsePassResult {
     val blocks = mutableListOf<MarkdownBlock>()
@@ -124,7 +124,7 @@ internal fun parseMarkdownPass(lines: List<String>, startLine: Int): ParsePassRe
         val line = lines[i]
         val trimmed = line.trim()
 
-        // ── bloque de código de cerca ────────────────────────────────────────────────
+        // ── 围栏代码块 ────────────────────────────────────────────────
         val fenceMatch = FENCE_REGEX.matchEntire(trimmed)
         if (fenceMatch != null) {
             val fenceStart = i
@@ -135,31 +135,31 @@ internal fun parseMarkdownPass(lines: List<String>, startLine: Int): ParsePassRe
                 codeLines.add(lines[i])
                 i++
             }
-            // foundCloser: while debido al cierre ``` y salir(i todavía dentro de los límites);Si se agota y sale, no se cierra.
-            // Tenga en cuenta que no se puede utilizar i >= lines.size Determinado no cerrado——También pasaré del final cuando la línea de cierre sea exactamente la última línea.
+            // foundCloser: while 因遇到闭合 ``` 而退出(i 仍在界内);耗尽退出则未闭合。
+            // 注意不能用 i >= lines.size 判定未闭合——闭合行恰为最后一行时 i 也会越过末尾。
             val foundCloser = i < lines.size
-            // i Punto para cerrar ```(si existe),saltar
+            // i 指向闭合 ```(若存在),跳过
             if (foundCloser) i++
             blocks.add(MarkdownBlock.CodeBlock(language, codeLines.joinToString("\n")))
             blockStartLines.add(fenceStart)
-            // No se encontró ningún cierre ``` marca de tiempo abierta,La transmisión de datos adjuntos requiere volver a escanearse desde vallaStart
+            // 未找到闭合 ``` 时标记开放,流式追加需从 fenceStart 重扫
             if (!foundCloser) openStartLine = fenceStart
             orderedIndex = 0
             continue
         }
 
-        // ── Phase 8.6: bloque de fórmulas $$...$$ ─────────────────────────────────
-        // fórmula de una sola línea: $$ E = mc^2 $$ en la misma linea
-        // fórmula de varias líneas: $$ empezar,líneas siguientes hasta $$ fin
-        // M2 Reparación: Los bloques de fórmulas empiezan a juzgarse de forma más estricta,evitar $$ texto plano para prefijo(Como por ejemplo "$$ precio","$100")Identificado erróneamente como una fórmula.
-        // lógica de decisión: Sólo si toda la línea resulta ser "$$",o cierre de pares(a $$ comenzando con $$ final y longitud>4,Como por ejemplo "$$ E=mc^2 $$")
-        // Solo entonces ingresa al bloque de fórmulas.;simplemente $$ El texto normal al principio se procesa como párrafos.,No más tragar los párrafos siguientes.
+        // ── Phase 8.6: 公式块 $$...$$ ─────────────────────────────────
+        // 单行公式: $$ E = mc^2 $$ 在同一行
+        // 多行公式: $$ 开始,后续行直到 $$ 结束
+        // M2 修复: 公式块开始判定更严格,避免 $$ 前缀的普通文本(如 "$$ 价格"、"$100")被误识别为公式。
+        // 判定逻辑: 仅当整行恰好为 "$$",或同行闭合(以 $$ 开头且以 $$ 结尾且长度>4,如 "$$ E=mc^2 $$")
+        // 时才进入公式块;单纯以 $$ 开头的普通文本按段落处理,不再吞掉后续段落。
         val isFormulaBlock = trimmed == "$$" ||
             (trimmed.startsWith("$$") && trimmed.endsWith("$$") && trimmed.length > 4)
         if (isFormulaBlock) {
             val formulaStart = i
             val afterOpen = trimmed.removePrefix("$$")
-            // cierre de pares: $$ E = mc^2 $$
+            // 同行闭合: $$ E = mc^2 $$
             if (afterOpen.contains("$$")) {
                 val latex = afterOpen.substringBefore("$$").trim()
                 if (latex.isNotEmpty()) {
@@ -170,9 +170,9 @@ internal fun parseMarkdownPass(lines: List<String>, startLine: Int): ParsePassRe
                     continue
                 }
             }
-            // múltiples líneas: $$ empezar,hasta el proximo $$ de filas
+            // 多行: $$ 开始,直到下一个含 $$ 的行
             val formulaLines = mutableListOf<String>()
-            // Dentro de la industria $$ El contenido después del(Si no está vacío)
+            // 行内 $$ 后的内容作为第一行(若非空)
             val firstLine = afterOpen.trim()
             if (firstLine.isNotEmpty()) formulaLines.add(firstLine)
             i++
@@ -193,19 +193,19 @@ internal fun parseMarkdownPass(lines: List<String>, startLine: Int): ParsePassRe
                 blocks.add(MarkdownBlock.Formula(formulaLines.joinToString("\n").trim()))
                 blockStartLines.add(formulaStart)
             }
-            if (!closed && i < lines.size) i++ // tolerancia a fallas:no cerrado $$ también salta
-            // No se encontró ningún cierre $$ marca de tiempo abierta,La transmisión adjunta requiere volver a escanear desde formulaStart
+            if (!closed && i < lines.size) i++ // 容错:未闭合 $$ 也跳出
+            // 未找到闭合 $$ 时标记开放,流式追加需从 formulaStart 重扫
             if (!closed) openStartLine = formulaStart
             orderedIndex = 0
             continue
         }
 
-        // H-MD2 Reparación: La expresión regular ha sido promovida al nivel de archivo. private val,Cotización directa aquí
+        // H-MD2 修复: 正则已提升为文件级 private val,此处直接引用
         val headingMatch = HEADING_REGEX.matchEntire(trimmed)
         val orderedListMatch = ORDERED_LIST_REGEX.matchEntire(trimmed)
         val unorderedListMatch = UNORDERED_LIST_REGEX.matchEntire(trimmed)
 
-        // v1.97: Reconocimiento de mesa — La línea actual contiene | y la siguiente línea es la línea separadora
+        // v1.97: 表格识别 — 当前行含 | 且下一行是分隔线行
         val tableHeaders = parseTableRow(line)
         if (tableHeaders != null && i + 1 < lines.size && isTableSeparator(lines[i + 1])) {
             val tableStart = i
@@ -222,26 +222,26 @@ internal fun parseMarkdownPass(lines: List<String>, startLine: Int): ParsePassRe
             }
             blocks.add(MarkdownBlock.Table(tableHeaders, rows))
             blockStartLines.add(tableStart)
-            // El texto termina todavía en la fila de datos de la tabla.(Puede seguir añadiendo)marca de tiempo abierta
+            // 文本结束仍处于表格数据行(可能继续追加)时标记开放
             if (i >= lines.size) openStartLine = tableStart
             orderedIndex = 0
             continue
         }
 
         when {
-            // ── linea en blanco ──────────────────────────────────────────────────
+            // ── 空行 ──────────────────────────────────────────────────
             trimmed.isEmpty() -> {
                 blocks.add(MarkdownBlock.Blank)
                 blockStartLines.add(i)
                 orderedIndex = 0
             }
-            // ── linea horizontal ────────────────────────────────────────────────
+            // ── 水平线 ────────────────────────────────────────────────
             trimmed == "---" || trimmed == "***" || trimmed == "___" -> {
                 blocks.add(MarkdownBlock.Divider)
                 blockStartLines.add(i)
                 orderedIndex = 0
             }
-            // ── Título # a ###### ─────────────────────────────────────
+            // ── 标题 # 到 ###### ─────────────────────────────────────
             headingMatch != null -> {
                 val level = headingMatch.groupValues[1].length
                 val content = headingMatch.groupValues[2].trim()
@@ -249,16 +249,16 @@ internal fun parseMarkdownPass(lines: List<String>, startLine: Int): ParsePassRe
                 blockStartLines.add(i)
                 orderedIndex = 0
             }
-            // ── Cotización > ────────────────────────────────────────────────
-            // L-MD13 Reparación: usar trimStart { it == '>' } Manejar referencias anidadas(>> >>> espera),
-            // Originalmente removePrefix(">") solo ve a uno >,Las referencias anidadas permanecen > prefijo
+            // ── 引用 > ────────────────────────────────────────────────
+            // L-MD13 修复: 用 trimStart { it == '>' } 处理嵌套引用(>> >>> 等),
+            // 原先 removePrefix(">") 只去一个 >,嵌套引用会残留 > 前缀
             trimmed.startsWith(">") -> {
                 val content = trimmed.trimStart { it == '>' }.trim()
                 blocks.add(MarkdownBlock.Quote(content))
                 blockStartLines.add(i)
                 orderedIndex = 0
             }
-            // ── lista ordenada 1. 2. ────────────────────────────────────────
+            // ── 有序列表 1. 2. ────────────────────────────────────────
             orderedListMatch != null -> {
                 val idx = orderedListMatch.groupValues[1].toIntOrNull() ?: (++orderedIndex)
                 if (idx == 1) orderedIndex = 1 else orderedIndex = idx
@@ -266,16 +266,16 @@ internal fun parseMarkdownPass(lines: List<String>, startLine: Int): ParsePassRe
                 blocks.add(MarkdownBlock.ListItem(ordered = true, index = idx, text = content))
                 blockStartLines.add(i)
             }
-            // ── lista desordenada - o * ───────────────────────────────────────
+            // ── 无序列表 - 或 * ───────────────────────────────────────
             unorderedListMatch != null -> {
                 val content = unorderedListMatch.groupValues[1].trim()
                 blocks.add(MarkdownBlock.ListItem(ordered = false, index = 0, text = content))
                 blockStartLines.add(i)
                 orderedIndex = 0
             }
-            // ── párrafo(Predeterminado) ──────────────────────────────────────────
+            // ── 段落(默认) ──────────────────────────────────────────
             else -> {
-                // v1.97: Saltar la sintaxis de la imagen de rebajas ![](url),La imagen se ha renderizado a través de displayImageUris.
+                // v1.97: 跳过 markdown 图片语法 ![](url),图片已通过 displayImageUris 渲染
                 val cleaned = IMAGE_SYNTAX_REGEX.replace(trimmed, "").trim()
                 if (cleaned.isNotEmpty()) {
                     blocks.add(MarkdownBlock.Paragraph(cleaned))

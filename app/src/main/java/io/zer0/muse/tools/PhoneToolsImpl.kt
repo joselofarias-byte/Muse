@@ -6,13 +6,13 @@ import io.zer0.common.resultOf
 import io.zer0.muse.R
 
 /**
- * P1-3b Deslocalización: implementación de herramientas celulares (migrada desde ToolRegistry.kt, encapsulación de objetos para mantener el contexto).
- * Registrado en ToolRegistry por PhoneToolsRegistrar.
+ * P1-3b 拆域：手机端工具实现（从 ToolRegistry.kt 迁移，对象封装以持有 context）。
+ * 由 PhoneToolsRegistrar 注册到 ToolRegistry。
  */
 class PhoneToolsImpl(private val context: Context) {
-// ── Implementación de herramienta celular(7 un)──────────────────────────────────────────────
+// ── 手机端工具实现(7 个)──────────────────────────────────────────────
 
-    /** Configurar la alarma del sistema:Inicie la aplicación del reloj del sistema a través de AlarmClock.ACTION_SET_ALARM. No se requieren permisos de tiempo de ejecución. */
+    /** 设置系统闹钟:通过 AlarmClock.ACTION_SET_ALARM 拉起系统时钟应用。无需运行时权限。 */
     suspend fun execSetAlarm(args: Map<String, String>): String {
         val hour =
             args["hour"]?.toIntOrNull()
@@ -30,8 +30,8 @@ class PhoneToolsImpl(private val context: Context) {
                 putExtra(android.provider.AlarmClock.EXTRA_MESSAGE, label)
                 addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
             }
-        // days_of_week:Repetir cada semana,Como por ejemplo "MON,TUE,WED,THU,FRI"
-        // v1.47: weekdays Parámetros de acceso directo — true=jornada laboral(MON-FRI), weekends=true=fin de semana(SAT,SUN)
+        // days_of_week:每周重复,如 "MON,TUE,WED,THU,FRI"
+        // v1.47: weekdays 快捷参数 — true=工作日(MON-FRI), weekends=true=周末(SAT,SUN)
         val weekdays = args["weekdays"]?.toBoolean() ?: false
         val weekends = args["weekends"]?.toBoolean() ?: false
         val daysStr =
@@ -56,19 +56,19 @@ class PhoneToolsImpl(private val context: Context) {
                 intent.putExtra(android.provider.AlarmClock.EXTRA_DAYS, ArrayList(days))
             }
         }
-        // M-TR1: Usar en su lugar resultOf{}(Lanzamiento correcto CancellationException)
+        // M-TR1: 改用 resultOf{}(正确重抛 CancellationException)
         val alarmResult =
             resultOf {
                 context.startActivity(intent)
                 val repeat = daysStr?.let { context.getString(R.string.tool_alarm_repeat, it) } ?: ""
                 context.getString(R.string.tool_alarm_set, "%02d".format(hour), "%02d".format(minute), label, repeat)
-            }.onError { msg, _ -> Logger.w("ToolRegistry", "No se pudo configurar la alarma: $msg") }
-        // v2.x: Añadir fracaso [falló] marca de decisión — redacción desnuda"No se pudo configurar la alarma"Sin marca,Anteriormente ToolResultJudge lo juzgó erróneamente como exitoso
+            }.onError { msg, _ -> Logger.w("ToolRegistry", "设置闹钟失败: $msg") }
+        // v2.x: 失败时加 [失败] 判定标记 — 裸文案"设置闹钟失败"不含标记,此前被 ToolResultJudge 误判为成功
         return alarmResult.getOrNull()
-            ?: "[falló] ${context.getString(R.string.tool_alarm_set_failed)},Puedes usar add_calendar_event en su lugar o recordarle al usuario que lo configure manualmente"
+            ?: "[失败] ${context.getString(R.string.tool_alarm_set_failed)},可改用 add_calendar_event 或提醒用户手动设置"
     }
 
-    /** Configurar la cuenta regresiva del sistema:Inicie la aplicación del reloj del sistema a través de AlarmClock.ACTION_SET_TIMER. No se requieren permisos de tiempo de ejecución. */
+    /** 设置系统倒计时:通过 AlarmClock.ACTION_SET_TIMER 拉起系统时钟应用。无需运行时权限。 */
     suspend fun execSetTimer(args: Map<String, String>): String {
         val seconds =
             args["seconds"]?.toIntOrNull()
@@ -81,27 +81,27 @@ class PhoneToolsImpl(private val context: Context) {
                 putExtra(android.provider.AlarmClock.EXTRA_MESSAGE, label)
                 addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
             }
-        // M-TR1: Usar en su lugar resultOf{}(Lanzamiento correcto CancellationException)
+        // M-TR1: 改用 resultOf{}(正确重抛 CancellationException)
         val timerResult =
             resultOf {
                 context.startActivity(intent)
                 context.getString(R.string.tool_timer_set, seconds, label)
-            }.onError { msg, _ -> Logger.w("ToolRegistry", "No se pudo configurar la cuenta regresiva: $msg") }
-        // v2.x: Añadir fracaso [falló] marca de decisión(Lo mismo set_alarm)
+            }.onError { msg, _ -> Logger.w("ToolRegistry", "设置倒计时失败: $msg") }
+        // v2.x: 失败时加 [失败] 判定标记(同 set_alarm)
         return timerResult.getOrNull()
-            ?: "[falló] ${context.getString(R.string.tool_timer_set_failed)}"
+            ?: "[失败] ${context.getString(R.string.tool_timer_set_failed)}"
     }
 
-    /** Abrir aplicación:apoyo Deep Link(data_uri), personalizado action,O inicie la interfaz principal a través del nombre del paquete. */
+    /** 打开应用:支持 Deep Link(data_uri)、自定义 action,或通过包名启动主界面。 */
     suspend fun execOpenApp(args: Map<String, String>): String {
         val dataUri = args["data_uri"]?.takeIf { it.isNotBlank() }
         val action = args["action"]?.takeIf { it.isNotBlank() }
         val packageName = args["packageName"]?.takeIf { it.isNotBlank() }
-        // Elija una de las tres prioridades:data_uri > action > packageName
-        // M-TR1: Usar en su lugar resultOf{}(Lanzamiento correcto CancellationException)
+        // 三选一优先级:data_uri > action > packageName
+        // M-TR1: 改用 resultOf{}(正确重抛 CancellationException)
         return resultOf {
             if (dataUri != null) {
-                // Deep Link saltar
+                // Deep Link 跳转
                 val intent =
                     android.content.Intent(
                         android.content.Intent.ACTION_VIEW,
@@ -112,7 +112,7 @@ class PhoneToolsImpl(private val context: Context) {
                 context.startActivity(intent)
                 context.getString(R.string.tool_deep_link_opened, dataUri)
             } else if (action != null) {
-                // Inicio de acción personalizada
+                // 自定义 action 启动
                 val intent =
                     android.content.Intent(action).apply {
                         addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -120,7 +120,7 @@ class PhoneToolsImpl(private val context: Context) {
                 context.startActivity(intent)
                 context.getString(R.string.tool_action_started, action)
             } else {
-                // El nombre del paquete inicia la interfaz principal.
+                // 包名启动主界面
                 if (packageName == null) return context.getString(R.string.tool_missing_param_package_or_action)
                 val launchIntent =
                     context.packageManager.getLaunchIntentForPackage(packageName)
@@ -129,11 +129,11 @@ class PhoneToolsImpl(private val context: Context) {
                 context.startActivity(launchIntent)
                 context.getString(R.string.tool_app_opened, packageName)
             }
-        }.onError { msg, _ -> Logger.w("ToolRegistry", "No se pudo abrir la aplicación: $msg") }
+        }.onError { msg, _ -> Logger.w("ToolRegistry", "打开应用失败: $msg") }
             .getOrNull() ?: context.getString(R.string.tool_open_app_failed)
     }
 
-    /** compartir texto:Abra el panel para compartir el sistema a través de ACTION_SEND + createChooser. */
+    /** 分享文本:通过 ACTION_SEND + createChooser 弹出系统分享面板。 */
     suspend fun execShareText(args: Map<String, String>): String {
         val text =
             args["text"]?.trim()
@@ -151,18 +151,18 @@ class PhoneToolsImpl(private val context: Context) {
             android.content.Intent.createChooser(sendIntent, title).apply {
                 addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
             }
-        // M-TR1: Usar en su lugar resultOf{}(Lanzamiento correcto CancellationException)
+        // M-TR1: 改用 resultOf{}(正确重抛 CancellationException)
         return resultOf {
             context.startActivity(chooser)
             context.getString(R.string.tool_text_shared, text.take(50) + if (text.length > 50) "..." else "")
-        }.onError { msg, _ -> Logger.w("ToolRegistry", "Error al compartir: $msg") }
+        }.onError { msg, _ -> Logger.w("ToolRegistry", "分享失败: $msg") }
             .getOrNull() ?: context.getString(R.string.tool_share_failed)
     }
 
     /**
-     * Obtener una ubicación aproximada:Leer la última posición conocida del sistema.(No solicitar permisos activamente,no abierto GPS).
-     * Requiere permiso de tiempo de ejecución ACCESS_COARSE_LOCATION;Aviso de devolución cuando no esté autorizado,No chocar.
-     * provider Parámetro opcional network/gps(Recorrer todo por defecto provider);timeout Reserva de parámetros(Este problema se basa en la última ubicación conocida.,Sin espera de bloqueo).
+     * 获取粗略位置:读取系统最后已知位置(不主动申请权限,不开启 GPS)。
+     * 需 ACCESS_COARSE_LOCATION 运行时权限;未授权时返回提示,不崩溃。
+     * provider 参数可选 network/gps(默认遍历所有 provider);timeout 参数预留(本期基于最后已知位置,不阻塞等待)。
      */
     suspend fun execGetLocation(args: Map<String, String>): String {
         val hasPermission =
@@ -175,14 +175,14 @@ class PhoneToolsImpl(private val context: Context) {
         val lm =
             context.getSystemService(android.content.Context.LOCATION_SERVICE)
                 as android.location.LocationManager
-        // provider parámetros:Priorizar lo especificado(network/gps),De lo contrario, recorra todos los proveedores y obtenga la última versión.
+        // provider 参数:优先用指定的(network/gps),否则遍历所有 provider 取最新
         val providerParam = args["provider"]?.trim()?.lowercase()
-        // timeout Lectura de parámetros(Interfaz reservada,Este problema se basa en la última posición conocida y no bloquea la espera.)
+        // timeout 参数读取(预留接口,本期基于最后已知位置不阻塞等待)
         val location =
             if (providerParam != null &&
                 lm.allProviders.any { it.equals(providerParam, ignoreCase = true) }
             ) {
-                // M-TR1: Usar en su lugar resultOf{}(Lanzamiento correcto CancellationException)
+                // M-TR1: 改用 resultOf{}(正确重抛 CancellationException)
                 resultOf { lm.getLastKnownLocation(providerParam) }.getOrNull()
                     ?: lm.allProviders.mapNotNull { p ->
                         resultOf { lm.getLastKnownLocation(p) }.getOrNull()
@@ -200,9 +200,9 @@ class PhoneToolsImpl(private val context: Context) {
         )
     }
 
-    /** Obtener información del dispositivo:marca/modelo/Android versión/resolución de pantalla/fuerza. */
+    /** 获取设备信息:品牌/型号/Android 版本/屏幕分辨率/电量。 */
     suspend fun execGetDeviceInfo(_args: Map<String, String>): String {
-        // M-TR1: Usar en su lugar resultOf{}(Lanzamiento correcto CancellationException)
+        // M-TR1: 改用 resultOf{}(正确重抛 CancellationException)
         val batteryLevel =
             resultOf {
                 val bm =
@@ -221,8 +221,8 @@ class PhoneToolsImpl(private val context: Context) {
     }
 
     /**
-     * v1.0.53: get_device_info Versión estructurada — Adjunte los detalles de marca/modelo/androidVersion/sdkInt.
-     * marca/modelo/Las versiones son constantes de compilación.,Cero IO extra.
+     * v1.0.53: get_device_info 结构化版 — 附加 brand/model/androidVersion/sdkInt details。
+     * 品牌/型号/版本均为 Build 常量,零额外 IO。
      */
     suspend fun execGetDeviceInfoOutcome(_args: Map<String, String>): ToolOutcome {
         val text = execGetDeviceInfo(_args)
@@ -238,7 +238,7 @@ class PhoneToolsImpl(private val context: Context) {
         )
     }
 
-    /** Obtener el número de contactos en la libreta de direcciones:Requiere permiso de ejecución READ_CONTACTS. Admite el recuento después de filtrar por filtro de nombre. */
+    /** 获取通讯录联系人数量:需 READ_CONTACTS 运行时权限。支持按名称 filter 过滤后计数。 */
     suspend fun execGetContactsCount(args: Map<String, String>): String {
         val hasPermission =
             androidx.core.content.ContextCompat.checkSelfPermission(
@@ -248,7 +248,7 @@ class PhoneToolsImpl(private val context: Context) {
             return context.getString(R.string.tool_contacts_no_permission)
         }
         val filter = args["filter"]?.takeIf { it.isNotBlank() }
-        // M-TR3: Escapar del carácter comodín LIKE(% _ \),agregar ESCAPE '\' cláusula,Evitar coincidencias falsas cuando el filtro contiene %_
+        // M-TR3: 转义 LIKE 通配符(% _ \),加 ESCAPE '\' 子句,防止 filter 含 % _ 时误匹配
         val selection =
             if (filter != null) {
                 "${android.provider.ContactsContract.Contacts.DISPLAY_NAME} LIKE ? ESCAPE '\\'"
@@ -262,7 +262,7 @@ class PhoneToolsImpl(private val context: Context) {
             } else {
                 null
             }
-        // M-TR1: Usar en su lugar resultOf{}(Lanzamiento correcto CancellationException)
+        // M-TR1: 改用 resultOf{}(正确重抛 CancellationException)
         return resultOf {
             val cursor =
                 context.contentResolver.query(
@@ -275,13 +275,13 @@ class PhoneToolsImpl(private val context: Context) {
             } else {
                 context.getString(R.string.tool_contacts_count, count)
             }
-        }.onError { msg, _ -> Logger.w("ToolRegistry", "No se pudieron leer los contactos: $msg") }
+        }.onError { msg, _ -> Logger.w("ToolRegistry", "读取联系人失败: $msg") }
             .getOrNull() ?: context.getString(R.string.tool_contacts_read_failed)
     }
 
     /**
-     * Obtener lista de contactos(Versión mejorada):retorno por fila "name | phone".
-     * Requiere permiso de ejecución READ_CONTACTS;Admite filtrado por filtro de nombre,limit Limite el número de devoluciones.
+     * 获取联系人列表(增强版):每行返回 "name | phone"。
+     * 需 READ_CONTACTS 运行时权限;支持按名称 filter 过滤、limit 限制返回数量。
      */
     suspend fun execGetContactsList(args: Map<String, String>): String {
         val hasPermission =
@@ -293,7 +293,7 @@ class PhoneToolsImpl(private val context: Context) {
         }
         val filter = args["filter"]?.takeIf { it.isNotBlank() }
         val limit = args["limit"]?.toIntOrNull()?.takeIf { it > 0 } ?: 20
-        // M-TR1: Usar en su lugar resultOf{}(Lanzamiento correcto CancellationException)
+        // M-TR1: 改用 resultOf{}(正确重抛 CancellationException)
         return resultOf {
             val projection =
                 arrayOf(
@@ -301,7 +301,7 @@ class PhoneToolsImpl(private val context: Context) {
                     android.provider.ContactsContract.Contacts.DISPLAY_NAME,
                     android.provider.ContactsContract.Contacts.HAS_PHONE_NUMBER,
                 )
-            // M-TR3: Escapar del carácter comodín LIKE(% _ \),agregar ESCAPE '\' cláusula
+            // M-TR3: 转义 LIKE 通配符(% _ \),加 ESCAPE '\' 子句
             val selection =
                 if (filter != null) {
                     "${android.provider.ContactsContract.Contacts.DISPLAY_NAME} LIKE ? ESCAPE '\\'"
@@ -330,8 +330,8 @@ class PhoneToolsImpl(private val context: Context) {
                     val name = cursor.getString(nameIdx) ?: context.getString(R.string.tool_no_name)
                     val phone =
                         if (cursor.getInt(hasPhoneIdx) > 0) {
-                            // Consultar el número de teléfono del contacto.(toma el primero)
-                            // M-TR1: Usar en su lugar resultOf{}(Lanzamiento correcto CancellationException)
+                            // 查询该联系人的电话号码(取第一个)
+                            // M-TR1: 改用 resultOf{}(正确重抛 CancellationException)
                             resultOf {
                                 context.contentResolver.query(
                                     android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
@@ -353,28 +353,28 @@ class PhoneToolsImpl(private val context: Context) {
             } else {
                 sb.toString().trimEnd()
             }
-        }.onError { msg, _ -> Logger.w("ToolRegistry", "No se pudo leer la lista de contactos: $msg") }
+        }.onError { msg, _ -> Logger.w("ToolRegistry", "读取联系人列表失败: $msg") }
             .getOrNull() ?: context.getString(R.string.tool_contacts_list_read_failed)
     }
 
     /**
-     * Enviar SMS:Envíe directamente cuando tenga permiso SEND_SMS y el mensaje no esté vacío,De lo contrario, abra la aplicación de SMS del sistema para precompletar.
-     * slot Los parámetros están reservados para tarjetas duales.(La programación de SubscriptionManager no está implementada en este problema).
+     * 发送短信:有 SEND_SMS 权限且 message 非空时直接发送,否则打开系统短信应用预填。
+     * slot 参数为双卡预留(本期不实现 SubscriptionManager 调度)。
      */
     suspend fun execSendSms(args: Map<String, String>): String {
         val phone =
             args["phone"]?.takeIf { it.isNotBlank() }
                 ?: return context.getString(R.string.tool_missing_param_phone)
-        // El nombre del parámetro debe ser coherente con el esquema de PhoneToolsRegistrar.("message"):Leer anteriormente "body",
-        // El texto siempre está vacío. → “Enviar directamente”La sucursal nunca se establece,Siempre degradado para abrir la aplicación de SMS.
+        // 参数名必须与 PhoneToolsRegistrar 的 schema 一致("message"):此前读 "body",
+        // 正文恒为空 → “直接发送”分支永不成立,总降级为打开短信 App。
         val body = args["message"] ?: ""
-        // slot Lectura de parámetros(reservado,La selección de tarjeta dual no está disponible en esta edición)
+        // slot 参数读取(预留,本期不实现双卡选择)
         val hasPermission =
             androidx.core.content.ContextCompat.checkSelfPermission(
                 context, android.Manifest.permission.SEND_SMS,
             ) == android.content.pm.PackageManager.PERMISSION_GRANTED
         if (hasPermission && body.isNotEmpty()) {
-            // M-TR1: Usar en su lugar resultOf{}(Lanzamiento correcto CancellationException)
+            // M-TR1: 改用 resultOf{}(正确重抛 CancellationException)
             return resultOf {
                 val sentIntent =
                     android.app.PendingIntent.getBroadcast(
@@ -382,17 +382,17 @@ class PhoneToolsImpl(private val context: Context) {
                         android.content.Intent("SMS_SENT"),
                         android.app.PendingIntent.FLAG_IMMUTABLE,
                     )
-                // M-TR2: SmsManager.getDefault() En desuso en API 31+,Usar en su lugar Context.getSystemService
+                // M-TR2: SmsManager.getDefault() 在 API 31+ 已废弃,改用 Context.getSystemService
                 val smsManager =
                     context.getSystemService(android.telephony.SmsManager::class.java)
                         ?: return@resultOf context.getString(R.string.tool_sms_send_failed_no_manager)
                 smsManager.sendTextMessage(phone, null, body, sentIntent, null)
                 context.getString(R.string.tool_sms_sent, phone)
-            }.onError { msg, _ -> Logger.w("ToolRegistry", "No se pudo enviar SMS: $msg") }
+            }.onError { msg, _ -> Logger.w("ToolRegistry", "发送短信失败: $msg") }
                 .getOrNull() ?: context.getString(R.string.tool_sms_send_failed)
         }
-        // Sin permiso o sin cuerpo: precarga de solicitud de SMS de sistema abierto
-        // M-TR1: Usar en su lugar resultOf{}(Lanzamiento correcto CancellationException)
+        // 无权限或无 body:打开系统短信应用预填
+        // M-TR1: 改用 resultOf{}(正确重抛 CancellationException)
         return resultOf {
             val intent =
                 android.content.Intent(android.content.Intent.ACTION_SENDTO).apply {
@@ -402,19 +402,19 @@ class PhoneToolsImpl(private val context: Context) {
                 }
             context.startActivity(intent)
             context.getString(R.string.tool_sms_app_opened, phone)
-        }.onError { msg, _ -> Logger.w("ToolRegistry", "No se pudo abrir la aplicación de SMS: $msg") }
+        }.onError { msg, _ -> Logger.w("ToolRegistry", "打开短信应用失败: $msg") }
             .getOrNull() ?: context.getString(R.string.tool_sms_app_open_failed)
     }
 
     /**
-     * Crear nuevo contacto:Abra el nuevo formulario de contacto del sistema a través de Intent.ACTION_INSERT,
-     * Nombre de precarga/telefono/Correo electrónico. No se requieren permisos de tiempo de ejecución(Realizado por la aplicación de libreta de direcciones del sistema.).
+     * 新建联系人:通过 Intent.ACTION_INSERT 打开系统新建联系人表单,
+     * 预填姓名/电话/邮箱。无需运行时权限(由系统通讯录应用承接)。
      */
     suspend fun execAddContact(args: Map<String, String>): String {
         val name =
             args["name"]?.takeIf { it.isNotBlank() }
                 ?: return context.getString(R.string.tool_missing_param_name)
-        // M-TR1: Usar en su lugar resultOf{}(Lanzamiento correcto CancellationException)
+        // M-TR1: 改用 resultOf{}(正确重抛 CancellationException)
         return resultOf {
             val intent =
                 android.content.Intent(android.content.Intent.ACTION_INSERT).apply {
@@ -430,11 +430,11 @@ class PhoneToolsImpl(private val context: Context) {
                 }
             context.startActivity(intent)
             context.getString(R.string.tool_contact_form_opened, name)
-        }.onError { msg, _ -> Logger.w("ToolRegistry", "No se pudo abrir un nuevo formulario de contacto: $msg") }
+        }.onError { msg, _ -> Logger.w("ToolRegistry", "打开新建联系人表单失败: $msg") }
             .getOrNull() ?: context.getString(R.string.tool_contact_form_open_failed)
     }
 
-/** Abra la interfaz de marcación del sistema y complete previamente el número de teléfono celular. */
+/** 打开系统拨号界面并预填手机号。 */
     suspend fun execMakePhoneCall(args: Map<String, String>): String {
         val phone =
             args["phone"]?.takeIf { it.isNotBlank() }
@@ -446,11 +446,11 @@ class PhoneToolsImpl(private val context: Context) {
         return resultOf {
             context.startActivity(intent)
             context.getString(R.string.tool_phone_call_opened, phone)
-        }.onError { msg, _ -> Logger.w("ToolRegistry", "No se pudo abrir el acceso telefónico: $msg") }
+        }.onError { msg, _ -> Logger.w("ToolRegistry", "打开拨号失败: $msg") }
             .getOrNull() ?: context.getString(R.string.tool_open_url_failed, phone)
     }
 
-/** Abre la aplicación Mapas. */
+/** 打开地图应用。 */
     suspend fun execOpenMaps(args: Map<String, String>): String {
         val query = args["query"]
         val lat = args["lat"]
@@ -471,7 +471,7 @@ class PhoneToolsImpl(private val context: Context) {
         return resultOf {
             context.startActivity(intent)
             context.getString(R.string.tool_maps_opened, uri)
-        }.onError { msg, _ -> Logger.w("ToolRegistry", "No se pudo abrir el mapa: $msg") }
+        }.onError { msg, _ -> Logger.w("ToolRegistry", "打开地图失败: $msg") }
             .getOrNull() ?: context.getString(R.string.tool_open_url_failed, uri)
     }
 }

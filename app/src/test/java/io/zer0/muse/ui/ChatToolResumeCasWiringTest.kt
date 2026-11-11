@@ -4,12 +4,12 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * AUD-UI-F2: La herramienta de recuperación del punto de interrupción llama al mensaje anexado y debe ir CAS accessor,no puede estar en lo cierto
- * `messages.value` asignación global —— De lo contrario, escriba con limitación de transmisión(updateAssistant)Cuando está intercalado
- * se sobrescribirá con la instantánea anterior,El problema es que los mensajes de HERRAMIENTA desaparecen ocasionalmente después de la recuperación.
+ * AUD-UI-F2: 断点恢复工具调用追加消息必须走 CAS accessor,不能对
+ * `messages.value` 整体赋值 —— 否则与流式节流写(updateAssistant)交错时
+ * 会用旧快照覆盖,表现为恢复后的 TOOL 消息偶发消失。
  *
- * Isomórfico a las pruebas de cableado existentes en el proyecto.:Afirmar el método de cableado en el código fuente.(La competición no se puede reproducir de forma estable aquí.,
- * Pero una vez devuelto el cableado, se asigna directamente.,Esta prueba falla).
+ * 与项目现有 wiring 测试同构:断言源码中的接线方式(这里无法稳定复现竞态,
+ * 但接线一旦退回直接赋值,本测试即失败)。
  */
 class ChatToolResumeCasWiringTest {
 
@@ -19,7 +19,7 @@ class ChatToolResumeCasWiringTest {
     fun `resume appends tool result message through CAS accessor`() {
         val src = source()
         assertTrue(
-            "TOOL Los mensajes resultantes se deben adjuntar a través de stateAccessor.updateMessages",
+            "TOOL 结果消息必须通过 stateAccessor.updateMessages 追加",
             src.contains("host.stateAccessor.updateMessages { messages -> messages + toolMsg }"),
         )
     }
@@ -28,7 +28,7 @@ class ChatToolResumeCasWiringTest {
     fun `resume appends assistant placeholder through CAS accessor`() {
         val src = source()
         assertTrue(
-            "ASSISTANT Los mensajes de marcador de posición se deben agregar a través de stateAccessor.updateMessages",
+            "ASSISTANT 占位消息必须通过 stateAccessor.updateMessages 追加",
             src.contains("host.stateAccessor.updateMessages { messages -> messages + assistantMsg }"),
         )
     }
@@ -37,7 +37,7 @@ class ChatToolResumeCasWiringTest {
     fun `resume path no longer overwrites messages state directly`() {
         val src = source()
         assertTrue(
-            "La ruta de recuperación ya no debería aparecer messages.value = cobertura general",
+            "恢复路径不应再出现 messages.value = 整体覆盖",
             !src.contains("host.stateStore.messages.value = host.stateStore.messages.value + toolMsg") &&
                 !src.contains("host.stateStore.messages.value = host.stateStore.messages.value + assistantMsg"),
         )

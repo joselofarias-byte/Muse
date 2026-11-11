@@ -12,29 +12,29 @@ import java.io.File
 import java.util.UUID
 
 /**
- * v2.7 Tiempo de ejecución extendido (Python): basado en el tiempo de ejecución integrado de Python [SkillEngine] Darse cuenta.
+ * v2.7 扩展运行时（Python）：基于内置 Python 运行时的 [SkillEngine] 实现。
  *
- * con [ProcessSkillEngine](Node) Isomorfismo: envuelve el guión en una capa → ejecución de proceso hijo → analizar salida estándar
- * Resultados estructurados. El protocolo de salida sigue siendo coherente (JSON de una sola línea:`{ ok, value, logs, error }`),
- * Por lo tanto, las herramientas de la capa superior, la ubicación de discos de salida grandes, el procesamiento de tiempo de espera y otros mecanismos se pueden reutilizar directamente.
+ * 与 [ProcessSkillEngine]（Node）同构：把脚本包一层 → 子进程执行 → 解析 stdout 的
+ * 结构化结果。输出协议保持一致（单行 JSON：`{ ok, value, logs, error }`），
+ * 因此上层工具、大输出落盘、超时处理等机制可以直接复用。
  *
- * ## Diferencias con la versión de Node
+ * ## 与 Node 版的差异
  *
- *  - El script contenedor es Python, no JS (captura salida estándar, inyecta protocolo de resultado);
- *  - usar [PythonRuntime.execPython] ejecutar;
- *  - `host.getConfig` Los puentes se inyectan como funciones de Python (alineadas con la semántica de la versión de Node).
+ *  - 包装脚本是 Python 而非 JS（捕获 stdout、注入结果协议）；
+ *  - 用 [PythonRuntime.execPython] 执行；
+ *  - `host.getConfig` 桥接以 Python 函数形式注入（对齐 Node 版语义）。
  *
- * ## Protocolo de salida
+ * ## 输出协议
  *
- * El contenedor imprime una sola línea de JSON al final del script:
+ * 包装器在脚本末尾打印单行 JSON：
  * ```
- * {"ok": true, "value": <Cualquier objeto JSONizable>, "logs": ["..."]}
+ * {"ok": true, "value": <任意可 JSON 化对象>, "logs": ["..."]}
  * ```
- * Cuando el guión es anormal, es `{"ok": false, "error": "...", "logs": [...]}`.
+ * 脚本异常时为 `{"ok": false, "error": "...", "logs": [...]}`。
  */
 class PythonSkillEngine(private val context: Context) : SkillEngine {
 
-    @Suppress("TooGenericExceptionCaught") // Python Explicación unificada del fallo del proceso hijo (tiempo de espera/empezar/IO)
+    @Suppress("TooGenericExceptionCaught") // Python 子进程失败的统一兜底（超时/启动/IO）
     override suspend fun eval(
         script: String,
         timeoutMs: Long,
@@ -54,34 +54,33 @@ class PythonSkillEngine(private val context: Context) : SkillEngine {
             )
             interpret(r)
         } catch (e: Exception) {
-            Logger.w(TAG, "Python La ejecución del script falló: ${e.message}", e)
-            SkillEngineResult.Error(message = e.message ?: "excepción de ejecución")
+            Logger.w(TAG, "Python 脚本执行失败: ${e.message}", e)
+            SkillEngineResult.Error(message = e.message ?: "执行异常")
         } finally {
             runCatching { tmp.delete() }
         }
     }
 
     /**
-     * Directorio de zona de pruebas del complemento (`filesDir/workspace/plugins/<pluginId>`).
+     * 插件沙盒目录（`filesDir/workspace/plugins/<pluginId>`）。
      *
-     * con complemento JS `fsRoot` Apuntando al mismo directorio: dos tiempos de ejecución sobre "¿dónde deben colocarse los archivos del complemento?"
-     * Dada la misma respuesta, el autor del complemento no necesita cambiar la convención de ruta al cambiar de idioma.
+     * 与 JS 插件的 `fsRoot` 指向同一个目录：两种运行时对「插件的文件应该放哪」
+     * 给出同一个答案，插件作者换语言不用换路径约定。
      *
-     * Devuelve nulo cuando no hay una clave de alcance (script integrado, llamada sin complemento) y se utiliza el directorio de trabajo predeterminado del tiempo de ejecución.
+     * 没有 scopeKey（内置脚本、非插件调用）时返回 null，沿用运行时的默认工作目录。
      */
-    private fun sandboxDir(scopeKey: String?): File? =
-        scopeKey?.takeIf { it.isNotBlank() }?.let { key ->
-            File(context.filesDir, "workspace/plugins/$key").apply { mkdirs() }
-        }
+    private fun sandboxDir(scopeKey: String?): File? = scopeKey?.takeIf { it.isNotBlank() }?.let { key ->
+        File(context.filesDir, "workspace/plugins/$key").apply { mkdirs() }
+    }
 
     /**
-     * Variables de entorno Sandbox: apunte HOME / TMPDIR también al directorio del complemento.
+     * 沙盒环境变量：把 HOME / TMPDIR 也指到插件目录。
      *
-     * Simplemente configurar cwd no es suficiente —— Python archivos temporales,`~` expandir,pip El caché analiza estas dos variables.
-     * Si no se cambian juntos, los elementos escritos por el complemento se dispersarán en el directorio público en tiempo de ejecución y se contaminarán entre sí.
+     * 只设 cwd 不够 —— Python 的临时文件、`~` 展开、pip 缓存都看这两个变量，
+     * 不一起改的话，插件写出来的东西会散在运行时公共目录里，互相污染。
      *
-     * NOTA: Esto no impide que los complementos escriban rutas absolutas (sin aislamiento real del sistema de archivos bajo el mismo UID).
-     * Lo que garantiza es que "el comportamiento predeterminado se encuentra en su propio directorio".
+     * 注意：这不能阻止插件写绝对路径（同一 UID 下做不到真正的文件系统隔离），
+     * 它保证的是「默认行为落在自己目录里」。
      */
     private fun sandboxEnv(scopeKey: String?): Map<String, String> {
         val dir = sandboxDir(scopeKey) ?: return emptyMap()
@@ -92,39 +91,39 @@ class PythonSkillEngine(private val context: Context) : SkillEngine {
         )
     }
 
-    /** Interpretar los resultados de la ejecución del proceso secundario como resultados del motor (divididos para controlar la cantidad de declaraciones devueltas). */
+    /** 把子进程执行结果解释为引擎结果（拆出以控制返回语句数量）。 */
     private fun interpret(r: PythonRuntime.ExecResult): SkillEngineResult {
         val savedOutput = listOf(r.stdout, r.stderr).filter { it.isNotBlank() }.joinToString("\n")
         return when {
             r.captureError != null ->
                 SkillEngineResult.Error(
-                    message = "Python No se pudo guardar la salida completa: ${r.captureError}" +
+                    message = "Python 完整输出保存失败: ${r.captureError}" +
                         if (savedOutput.isNotBlank()) "\n$savedOutput" else "",
                 )
-            r.timedOut -> SkillEngineResult.Error(message = "Tiempo de espera de ejecución" + savedOutput)
+            r.timedOut -> SkillEngineResult.Error(message = "执行超时" + savedOutput)
             r.stdoutFile != null -> parseLargePayload(r.stdoutFile, r.stdout)
             else -> parseResult(r.stdout, r.stderr, r.exitCode, r.timedOut)
         }
     }
 
     override fun interrupt() {
-        // Mejor esfuerzo: el proceso hijo finaliza mediante el control de tiempo de espera del lado de la ejecución; aquí no se mantiene ninguna referencia de proceso.
-        Logger.d(TAG, "interrupt() Llamado (esperando que finalice el tiempo de espera del lado de ejecución)")
+        // 尽力而为：子进程由执行侧超时控制负责终止；此处不持有进程引用。
+        Logger.d(TAG, "interrupt() 被调用（等待执行侧超时终止）")
     }
 
     /**
-     * v2.7 Complemento: llame a la función definida en el módulo de entrada del complemento de Python.
+     * v2.7 插件：调用 Python 插件入口模块中定义的函数。
      *
-     * con [SkillEngine.callFunction](JS Semántica) correspondiente: cargue el código de entrada en un espacio de nombres independiente,
-     * Saque la función con el mismo nombre y llámela con el parámetro dict. El parámetro JSON (objeto único) de la herramienta complementaria se utiliza como primer parámetro de la función.
+     * 与 [SkillEngine.callFunction]（JS 语义）对应：加载入口代码到独立命名空间，
+     * 取出同名函数并以参数 dict 调用。插件工具的参数 JSON（单对象）作为函数首参。
      *
-     * @param entryCode Entrada de complemento Código fuente de Python
-     * @param functionName El nombre de la función definida en la entrada (acepta un parámetro dict)
-     * @param argsJson Llame a la matriz de parámetros JSON (formada como `[{"x":1}]`;Tomar el primer elemento como parámetro de función)
-     * @param scopeKey ID de enchufe (fusible de aislamiento/espacio de nombres)
-     * @param pluginConfigJson Configuración del complemento JSON (host.getConfig uso)
+     * @param entryCode 插件入口 Python 源码
+     * @param functionName 入口内定义的函数名（接受一个 dict 参数）
+     * @param argsJson 调用参数数组 JSON（形如 `[{"x":1}]`；取首元素作为函数参数）
+     * @param scopeKey 插件 id（隔离熔断/命名空间）
+     * @param pluginConfigJson 插件配置 JSON（host.getConfig 用）
      */
-    @Suppress("LongParameterList") // Mismo tipo que SkillEngine.callFunction: entrada/nombre de la función/parámetros/tiempo de espera/Alcance/Configuración, semántica de interfaz arreglada.
+    @Suppress("LongParameterList") // 与 SkillEngine.callFunction 同型：入口/函数名/参数/超时/作用域/配置，接口语义固定
     suspend fun callPluginFunction(
         entryCode: String,
         functionName: String,
@@ -138,9 +137,9 @@ class PythonSkillEngine(private val context: Context) : SkillEngine {
     }
 
     /**
-     * Generar contenedor de llamada de función de complemento: cargando entrada → Obtener función → Llamar con el primer parámetro → Protocolo de resultados de salida.
+     * 生成插件函数调用包装：加载入口 → 取函数 → 以首参调用 → 输出结果协议。
      *
-     * El código de entrada puede definir múltiples funciones; Se da un error legible cuando la función no existe (en lugar de fallar silenciosamente).
+     * 入口代码可能定义多个函数；函数不存在时给出可读错误（而不是静默失败）。
      */
     private fun buildPluginCallWrapper(entryCode: String, functionName: String, argsJson: String, pluginConfigJson: String?): String {
         val entryJson = JsonPrimitive(entryCode).toString()
@@ -158,7 +157,7 @@ class PythonSkillEngine(private val context: Context) : SkillEngine {
             |exec(compile(__muse_entry, "<muse-plugin>", "exec"), __muse_ns)
             |__muse_fn = __muse_ns.get(__muse_fn_name)
             |if __muse_fn is None:
-            |    raise AttributeError("Función indefinida de entrada de complemento %s" % __muse_fn_name)
+            |    raise AttributeError("插件入口未定义函数 %s" % __muse_fn_name)
             |__muse_args = __json.loads(__muse_args_raw)
             |__muse_arg = __muse_args[0] if __muse_args else {}
             |result = __muse_fn(__muse_arg)
@@ -167,18 +166,18 @@ class PythonSkillEngine(private val context: Context) : SkillEngine {
     }
 
     /**
-     * Generar contenedor de ejecución:
-     *  - Inyectar el puente host.getConfig (alineado con la semántica del sandbox de Node)
-     *  - Capturando la salida stdout/stderr como logs
-     *  - Ejecutar script de usuario (código de nivel superior/resultado de expresión)
-     *  - Protocolo de resultados JSON de salida de una sola línea
+     * 生成执行包装：
+     *  - 注入 host.getConfig 桥接（对齐 Node 沙盒语义）
+     *  - 捕获 stdout/stderr 输出为 logs
+     *  - 执行用户脚本（顶层代码 / 表达式结果）
+     *  - 输出单行 JSON 结果协议
      *
-     * Estrategia de empaquetado: coloque el script de usuario en un espacio de nombres independiente para su ejecución y tome su valor de retorno (si corresponde) o
-     * Variables a nivel de módulo `result`. Si el script imprime líneas de protocolo JSON, eso tendrá prioridad.
+     * 包装策略：把用户脚本放进一个独立命名空间执行，取其返回值（若有）或
+     * 模块级变量 `result`。脚本若自身打印 JSON 协议行，则优先采用。
      */
     private fun buildWrapper(script: String, pluginConfigJson: String?): String {
         val scriptJson = JsonPrimitive(script).toString()
-        // Configuración del complemento:JS El nulo en Python es Ninguno. Al pasar nulo, páselo directamente a Ninguno.
+        // 插件配置：JS 的 null 在 Python 里是 None。传 null 时直接给 None。
         val configPy = pluginConfigJson ?: "None"
         return """
             |# muse-python-skill-wrapper (auto-generated)
@@ -232,12 +231,12 @@ class PythonSkillEngine(private val context: Context) : SkillEngine {
 
     private fun parseResult(stdout: String, stderr: String, exitCode: Int, timedOut: Boolean): SkillEngineResult {
         if (timedOut) {
-            return SkillEngineResult.Error(message = "Tiempo de espera de ejecución")
+            return SkillEngineResult.Error(message = "执行超时")
         }
         val line = stdout.lines().lastOrNull { it.trim().startsWith("{") }?.trim()
         return if (line == null) {
             SkillEngineResult.Error(
-                message = "Sin salida válida(exit=$exitCode)" +
+                message = "无有效输出(exit=$exitCode)" +
                     if (stderr.isNotBlank()) ": ${stderr.take(300)}" else "",
             )
         } else {
@@ -245,11 +244,11 @@ class PythonSkillEngine(private val context: Context) : SkillEngine {
         }
     }
 
-    /** Analice la línea de salida del protocolo contenedor ({ ok, value, logs, error }). */
+    /** 解析包装协议输出行（{ ok, value, logs, error }）。 */
     private fun parseLine(line: String): SkillEngineResult = runCatching {
         val obj = AppJson.parseToJsonElement(line) as? JsonObject
         if (obj == null) {
-            SkillEngineResult.Error(message = "Error al analizar la salida: ${line.take(200)}")
+            SkillEngineResult.Error(message = "输出解析失败: ${line.take(200)}")
         } else {
             val logs = (obj["logs"] as? JsonArray)
                 ?.mapNotNull { (it as? JsonPrimitive)?.contentOrNull } ?: emptyList()
@@ -261,13 +260,13 @@ class PythonSkillEngine(private val context: Context) : SkillEngine {
                 )
             } else {
                 SkillEngineResult.Error(
-                    message = (obj["error"] as? JsonPrimitive)?.contentOrNull ?: "error desconocido",
+                    message = (obj["error"] as? JsonPrimitive)?.contentOrNull ?: "未知错误",
                     consoleLogs = logs,
                 )
             }
         }
     }.getOrElse { e ->
-        SkillEngineResult.Error(message = "Excepción de análisis de resultados: ${e.message}")
+        SkillEngineResult.Error(message = "结果解析异常: ${e.message}")
     }
 
     companion object {
@@ -276,8 +275,8 @@ class PythonSkillEngine(private val context: Context) : SkillEngine {
 }
 
 /**
- * Escenario de gran producción:Python Las líneas de protocolo resultantes se han incluido en el archivo de salida y solo se leen aquí `ok` estado,
- * Evite cargar valores grandes en la memoria por completo.
+ * 大输出场景：Python 结果协议行已落到输出文件，此处只读取 `ok` 状态，
+ * 避免把超大 value 全量载入内存。
  */
 internal fun parseLargePayload(file: File, outputReference: String): SkillEngineResult {
     val succeeded =
@@ -285,11 +284,11 @@ internal fun parseLargePayload(file: File, outputReference: String): SkillEngine
             var success: Boolean? = null
             file.bufferedReader(Charsets.UTF_8).useLines { lines ->
                 val protocolLine = lines.lastOrNull { it.trim().startsWith("{") }
-                    ?: error("Python A la salida le faltan líneas de protocolo")
+                    ?: error("Python 输出缺少协议行")
                 val obj = AppJson.parseToJsonElement(protocolLine.trim()) as? JsonObject
                 success = (obj?.get("ok") as? JsonPrimitive)?.content?.toBoolean()
             }
-            success ?: error("Python A la salida le falta el estado correcto")
+            success ?: error("Python 输出缺少 ok 状态")
         }.getOrNull()
 
     return when (succeeded) {
@@ -300,11 +299,11 @@ internal fun parseLargePayload(file: File, outputReference: String): SkillEngine
             )
         false ->
             SkillEngineResult.Error(
-                message = "Python La ejecución del script falló; La salida completa se puede leer en partes a través de read_file.:\n$outputReference",
+                message = "Python 脚本执行失败；完整输出可通过 read_file 分段读取:\n$outputReference",
             )
         null ->
             SkillEngineResult.Error(
-                message = "Python Error al analizar la salida; la salida original permanece intacta:\n$outputReference",
+                message = "Python 输出解析失败；原始输出仍已完整保存:\n$outputReference",
             )
     }
 }

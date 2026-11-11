@@ -23,35 +23,37 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
+import io.zer0.muse.miniphone.R
 import io.zer0.muse.miniphone.ui.chat.ChatMenuPositionProvider
 import io.zer0.muse.miniphone.ui.theme.MiniPhoneColors
 import io.zer0.muse.miniphone.ui.theme.MiniPhoneTheme
 
 /**
- * Qué puedes hacer manteniendo presionada una conversación.
+ * 长按一条会话能做的事。
  *
- * El valor sólo describe la "operación",[label] Es esa línea en el menú.;Que un determinado elemento deba aparecer o no depende de [threadMenuActionsFor] decidir,
- * La interfaz solo dibuja en orden los artículos devueltos.
+ * 取值只描述「操作」,[label] 是菜单里那一行字;某一项该不该出现由 [threadMenuActionsFor] 决定,
+ * 界面只管把返回的项按顺序画出来。
  */
 internal enum class ThreadMenuAction(
-    val label: String,
+    val labelRes: Int,
 ) {
-    PIN("fijar hacia arriba"),
-    UNPIN("Desanclar"),
-    MARK_READ("Marcar como leído"),
-    DELETE("Eliminar sesión"),
+    PIN(R.string.mp_thread_pin),
+    UNPIN(R.string.mp_thread_unpin),
+    MARK_READ(R.string.mp_thread_mark_read),
+    DELETE(R.string.mp_thread_delete),
 }
 
 /**
- * Mantenga presionado el elemento del menú para una conversación.,El orden es el orden de presentación.
+ * 某条会话的长按菜单项,顺序即展示顺序。
  *
- * - Anclar/desanclar:Dos direcciones para lo mismo,Sólo aparece el ejecutable actualmente
- * - Marcar como leído:Cuando el valor no leído es 0, no hay nada que borrar.,No es necesario colocar un solo punto y no habrá respuesta.
- * - Eliminar sesión:siempre hay
+ * - 置顶 / 取消置顶:同一件事的两个方向,只出现当前可执行的那一个
+ * - 标记已读:未读数为 0 时没有可清的东西,就不摆一个点了没反应的行
+ * - 删除会话:总是有
  */
 internal fun threadMenuActionsFor(thread: MiniPhoneThreadUi): List<ThreadMenuAction> = buildList {
     add(if (thread.pinned) ThreadMenuAction.UNPIN else ThreadMenuAction.PIN)
@@ -59,7 +61,7 @@ internal fun threadMenuActionsFor(thread: MiniPhoneThreadUi): List<ThreadMenuAct
     add(ThreadMenuAction.DELETE)
 }
 
-/** Devolución de llamada de acción en la línea de sesión. Los tres solo traen sesiones id,La interfaz no necesita saber en qué tabla escribir. */
+/** 会话行上的动作回调。三个都只带会话 id,界面不需要知道具体写哪张表。 */
 @Immutable
 internal class ThreadMenuActions(
     val onTogglePin: (threadId: String, pinned: Boolean) -> Unit = { _, _ -> },
@@ -68,11 +70,11 @@ internal class ThreadMenuActions(
 )
 
 /**
- * Menú de sesión de pulsación larga.
+ * 会话长按菜单。
  *
- * El mismo conjunto de capas flotantes autodibujadas que el menú de mensajes en la página de chat:El color de fondo, las esquinas redondeadas y el tamaño de fuente se toman de este módulo. token,
- * Deshabilite la ventana emergente predeterminada de Material. La posición es el diseño principal donde lo colocó la persona que llama.(línea de sesión)Sujeto a:
- * Priorizar pegar encima de la línea,Si no cabe en la parte superior, gíralo hacia abajo.,Los lados izquierdo y derecho están intercalados dentro de los márgenes de la página.
+ * 与聊天页的消息菜单同一套自绘浮层:底色、圆角、字号都取本模块的 token,
+ * 不引 Material 的默认弹窗。位置以调用方放它的那个父布局(会话行)为准:
+ * 优先贴在行上方,上方放不下就翻到下方,左右夹在页边距内。
  */
 @Composable
 internal fun ThreadRowMenu(
@@ -115,7 +117,7 @@ internal fun ThreadRowMenu(
                     )
                 }
                 Text(
-                    text = action.label,
+                    text = stringResource(action.labelRes),
                     style = typography.body.copy(color = action.colorIn(colors)),
                     modifier = Modifier
                         .fillMaxWidth()
@@ -131,7 +133,7 @@ internal fun ThreadRowMenu(
     }
 }
 
-/** Confirme antes de eliminar la sesión. Si lo eliminas, desaparecerá.:La conversación desaparece junto con los mensajes que contiene. */
+/** 删会话前的确认。删了就没了:会话和里面的消息一起消失。 */
 @Composable
 internal fun ThreadDeleteConfirmDialog(onDismiss: () -> Unit, onConfirm: () -> Unit) {
     val colors = MiniPhoneTheme.colors
@@ -149,12 +151,12 @@ internal fun ThreadDeleteConfirmDialog(onDismiss: () -> Unit, onConfirm: () -> U
                 .padding(horizontal = 20.dp, vertical = 18.dp),
         ) {
             Text(
-                text = DELETE_TITLE,
+                text = stringResource(DELETE_TITLE_RES),
                 style = typography.title.copy(color = colors.textPrimary),
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                text = DELETE_HINT,
+                text = stringResource(DELETE_HINT_RES),
                 style = typography.caption.copy(color = colors.textSecondary),
             )
             Spacer(Modifier.height(18.dp))
@@ -163,14 +165,14 @@ internal fun ThreadDeleteConfirmDialog(onDismiss: () -> Unit, onConfirm: () -> U
                 horizontalArrangement = Arrangement.End,
             ) {
                 DialogAction(
-                    label = "Cancelar",
+                    label = stringResource(R.string.mp_cancel),
                     color = colors.textSecondary,
                     tag = MiniPhoneTags.THREAD_DELETE_CANCEL,
                     onClick = onDismiss,
                 )
                 Spacer(Modifier.width(8.dp))
                 DialogAction(
-                    label = "Eliminar",
+                    label = stringResource(R.string.mp_delete),
                     color = colors.unreadDot,
                     tag = MiniPhoneTags.THREAD_DELETE_CONFIRM,
                     onClick = onConfirm,
@@ -180,7 +182,7 @@ internal fun ThreadDeleteConfirmDialog(onDismiss: () -> Unit, onConfirm: () -> U
     }
 }
 
-/** Un botón de texto en el cuadro de confirmación.:Sin fondo, dejando suficiente área de presión. */
+/** 确认框里的一个文字按钮:无底、留足按压面积。 */
 @Composable
 private fun DialogAction(label: String, color: Color, tag: String, onClick: () -> Unit) {
     Text(
@@ -195,7 +197,7 @@ private fun DialogAction(label: String, color: Color, tag: String, onClick: () -
     )
 }
 
-/** acción peligrosa(Eliminar)Usa rojo ladrillo,Usa el color principal para el resto. */
+/** 危险动作(删除)用砖红,其余用主字色。 */
 private fun ThreadMenuAction.colorIn(colors: MiniPhoneColors): Color =
     if (this == ThreadMenuAction.DELETE) colors.unreadDot else colors.textPrimary
 
@@ -205,5 +207,5 @@ private val DialogWidth = 280.dp
 
 private val DialogActionHeight = 36.dp
 
-private const val DELETE_TITLE: String = "Eliminar esta conversación?"
-private const val DELETE_HINT: String = "La conversación y todos los mensajes que contenga se eliminarán de este teléfono.,No se puede recuperar."
+private val DELETE_TITLE_RES: Int = R.string.mp_thread_delete_title
+private val DELETE_HINT_RES: Int = R.string.mp_thread_delete_hint

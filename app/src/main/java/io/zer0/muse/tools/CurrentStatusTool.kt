@@ -8,18 +8,18 @@ import java.util.Locale
 import java.util.TimeZone
 
 /**
- * current_status Herramientas.
+ * current_status 工具。
  *
- * Conciencia ambiental ligera:Hora, información del dispositivo, batería, pantalla.
- * action=list Devolver llaves disponibles;action=get Devuelve el valor de una clave.
+ * 轻量级环境感知:时间、设备信息、电池、显示。
+ * action=list 返回可用键;action=get 返回某个键的值。
  */
 object CurrentStatusTool {
 
     private const val DAY_BOUNDARY_HOUR = 4
 
     /**
-     * v1.131: SimpleDateFormat Cambiar a caché ThreadLocal,Evite crear uno nuevo cada vez que se llame a la herramienta current_status.
-     * time provider El fmt interno necesita ser modificado. timeZone,tan solo ThreadLocal(Aislar estado mutable).
+     * v1.131: SimpleDateFormat 改为 ThreadLocal 缓存,避免每次 current_status 工具调用都新建。
+     * time provider 内的 fmt 需要修改 timeZone,故单独一个 ThreadLocal(隔离可变状态)。
      */
     private val FMT_FULL_TZ = ThreadLocal.withInitial { SimpleDateFormat("yyyy-MM-dd HH:mm:ss z", Locale.getDefault()) }
     private val FMT_DATE = ThreadLocal.withInitial { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()) }
@@ -33,8 +33,8 @@ object CurrentStatusTool {
     private fun getProviders(): List<StatusProvider> = listOf(
         StatusProvider("time", "Current time with timezone.") { ctx ->
             val tz = TimeZone.getDefault()
-            // v1.131: Reutilizar caché ThreadLocal formatter(Este fmt sólo se establece dentro del proveedor de tiempo de este hilo. timeZone,
-            // No interactuará con otros proveedores.,Seguro de reutilizar).
+            // v1.131: 复用 ThreadLocal 缓存的 formatter(此 fmt 仅在本线程的 time provider 内被设置 timeZone,
+            // 不会与其他 provider 交叉,可安全复用)。
             val fmt = FMT_FULL_TZ.get() ?: SimpleDateFormat("yyyy-MM-dd HH:mm:ss z", Locale.getDefault())
             fmt.timeZone = tz
             "time: ${fmt.format(Date())} | timezone: ${tz.id} | utcOffset: ${tz.getOffset(System.currentTimeMillis()) / 3600000}"
@@ -64,8 +64,8 @@ object CurrentStatusTool {
 
     fun toolDef() = ToolRegistry.ToolDef(
         name = "current_status",
-        description = "Estado del entorno ligero(Hora, dispositivo, batería, pantalla.)." +
-            "Usar primero action=list Ver claves disponibles,otra vez action=get Tome un valor específico.",
+        description = "轻量环境状态(时间、设备、电量、显示)。" +
+            "先用 action=list 查看可用的键,再 action=get 取具体值。",
         parameters = mapOf(
             "action" to "Required. 'list' returns available keys; 'get' returns one key's value.",
             "key" to "Required when action=get. The status key to query (time/logical_date/device/battery/display).",

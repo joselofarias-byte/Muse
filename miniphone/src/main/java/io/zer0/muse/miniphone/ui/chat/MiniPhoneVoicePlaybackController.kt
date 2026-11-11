@@ -5,6 +5,7 @@ import android.media.MediaPlayer
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import io.zer0.muse.miniphone.util.logOnlyExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -15,10 +16,10 @@ import kotlinx.coroutines.launch
 import java.io.File
 
 /**
- * El estado de reproducción de la barra de voz.
+ * 语音条的播放状态。
  *
- * [uri] Es la voz que actualmente tiene derecho a sonar.,Vacío significa inactivo;[positionMs] solo jugando/significativo durante la pausa,
- * Borrado después del reinicio.
+ * [uri] 是当前占着播放权的那条语音,空表示空闲;[positionMs] 只在播放/暂停期间有意义,
+ * 复位后清零。
  */
 data class MpVoicePlaybackState(
     val uri: String? = null,
@@ -27,35 +28,35 @@ data class MpVoicePlaybackState(
 )
 
 /**
- * Puerto del motor de reproducción.
+ * 播放引擎端口。
  *
- * La barra de voz no toca directamente [MediaPlayer]:maquina real [MediaPlayerMpVoiceAudioPlayer],La prueba se puede afirmar dando una implementación falsa.
- * "¿Cuántas veces se ha cargado, se ha pausado, se ha liberado después de jugar?",No es necesario tocar la pila de audio del sistema.
+ * 语音条不直接碰 [MediaPlayer]:真机走 [MediaPlayerMpVoiceAudioPlayer],测试给假实现就能断言
+ * 「装载了几次、暂停没有、播完有没有释放」,不必碰系统音频栈。
  */
 interface MpVoiceAudioPlayer {
     /**
-     * Cargue y comience a jugar.
+     * 装载并起播。
      *
-     * @param onCompletion Juega hasta el final de forma natural.(Toma la iniciativa [release] Paradas causadas por)
-     * @param onError cargar/Falló la decodificación
-     * @return ¿La carga es exitosa?;false La persona que llama se restablece al estado inactivo cuando
+     * @param onCompletion 自然播到结尾(主动 [release] 引起的停止不算)
+     * @param onError 装载/解码失败
+     * @return 装载是否成功;false 时调用方复位到空闲
      */
     fun load(file: File, onCompletion: () -> Unit, onError: (Throwable) -> Unit): Boolean
 
-    /** Continúe desde donde hizo la pausa. */
+    /** 从暂停位置继续。 */
     fun start()
 
-    /** pausa,Reserva tu plaza para continuar. */
+    /** 暂停,保留位置以便继续。 */
     fun pause()
 
-    /** Posición de juego actual(milisegundos). */
+    /** 当前播放位置(毫秒)。 */
     fun positionMs(): Long
 
-    /** Liberar recursos subyacentes. */
+    /** 释放底层资源。 */
     fun release()
 }
 
-/** basado en el sistema [MediaPlayer] realización:Los teléfonos celulares pequeños no utilizan reproductores de terceros. */
+/** 基于系统 [MediaPlayer] 的实现:小手机不引第三方播放器。 */
 class MediaPlayerMpVoiceAudioPlayer : MpVoiceAudioPlayer {
 
     private var player: MediaPlayer? = null
@@ -117,14 +118,14 @@ class MediaPlayerMpVoiceAudioPlayer : MpVoiceAudioPlayer {
 }
 
 /**
- * El único controlador de reproducción de voz en el módulo.(Koin singleton).
+ * 模块内唯一的语音播放控制器(Koin 单例)。
  *
- * La barra de voz en sí no sujeta al reproductor.,Haga clic aquí sólo para solicitar los derechos de reproducción. —— "Sólo uno está emitiendo a la vez", por lo que es una garantía estructural,
- * No confíes en que cada burbuja se coordine entre sí.:Al cambiar uno, primero se detendrá y se liberará el anterior.
+ * 语音条本身不持有播放器,点按只是向这里要播放权 —— 「同一时刻只有一条在播」因此是结构保证,
+ * 不靠各气泡互相协调:换一条会先把上一条停掉并释放。
  *
- * El estado se transmite utilizando el estado de composición de instantáneas.,Lea sus burbujas para reorganizarse automáticamente;El progreso depende del muestreo de tiempo interno,Las burbujas solo leen resultados.
+ * 状态用 Compose 快照状态承载,读取它的气泡自动重组;进度靠内部定时采样,气泡只读结果。
  *
- * @param playerFactory fábrica de jugadores;Inyección de prueba de implementación falsa,Sin tocar la pila de audio real
+ * @param playerFactory 播放器工厂;测试注入假实现,不碰真实音频栈
  */
 class MiniPhoneVoicePlaybackController(
     private val playerFactory: () -> MpVoiceAudioPlayer = { MediaPlayerMpVoiceAudioPlayer() },
@@ -135,12 +136,15 @@ class MiniPhoneVoicePlaybackController(
 
     private var player: MpVoiceAudioPlayer? = null
 
-    /** creación perezosa:Proceso que nunca juega(Contiene la mayoría de las pruebas individuales.)El programador principal no será tocado. */
-    private val scope by lazy { CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate) }
+    /** 惰性创建:从不播放的进程(含多数单测)不会触碰 Main 调度器。 */
+    // 播放推进是后台长活：意料外的异常不该把应用带掉，也不该让整个播放器失联后无声无息。
+    private val scope by lazy {
+        CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate + logOnlyExceptionHandler(TAG))
+    }
 
     private var ticker: Job? = null
 
-    /** Haga clic:Simplemente juega el mismo elemento./pausa,Para cambiar uno, detenga el anterior y luego inícielo nuevamente. */
+    /** 点按:同一条就切播放/暂停,换一条先停掉上一条再起播。 */
     fun toggle(uri: String, file: File) {
         val current = state
         if (current.uri == uri) {
@@ -151,7 +155,7 @@ class MiniPhoneVoicePlaybackController(
         play(uri, file)
     }
 
-    /** Detenga la voz actual y suelte el reproductor.(Se llama al salir de la página, cambiar de sesión o cambiar de barra.,Se puede llamar repetidamente). */
+    /** 停掉当前语音并释放播放器(离开页面、切会话、换条时调用,可重复调用)。 */
     fun stop() {
         ticker?.cancel()
         ticker = null
@@ -161,7 +165,7 @@ class MiniPhoneVoicePlaybackController(
         if (state != MpVoicePlaybackState()) state = MpVoicePlaybackState()
     }
 
-    /** solo [uri] Detente en el actual:Se utiliza cuando la página vuelve al fondo.,No detengas a otros por error. */
+    /** 只有 [uri] 正是当前那条时才停:页面退到后台时用,不误停别人。 */
     fun stopIfActive(uri: String) {
         if (state.uri == uri) stop()
     }
@@ -195,7 +199,7 @@ class MiniPhoneVoicePlaybackController(
     private fun resume(uri: String, file: File) {
         val engine = player
         if (engine == null) {
-            // El jugador ha sido liberado.(Fue arrebatado por otras voces a mitad de camino):Procesar como nuevo comienzo
+            // 播放器已被释放(中途被别的语音抢走):按新起播处理
             play(uri, file)
             return
         }
@@ -223,7 +227,10 @@ class MiniPhoneVoicePlaybackController(
     }
 
     private companion object {
-        /** Intervalo de muestreo de progreso:No es necesario que las barras de voz sean cuadro por cuadro,10 fps Lo suficientemente suave,También ahorra electricidad. */
+        /** 进度采样间隔:语音条不需要逐帧,10 fps 足够顺,也省电。 */
+        // 日志里认出是哪条后台任务/动作失败了。
+        private const val TAG = "MiniPhoneVoicePlayback"
+
         private const val PROGRESS_INTERVAL_MS = 100L
     }
 }

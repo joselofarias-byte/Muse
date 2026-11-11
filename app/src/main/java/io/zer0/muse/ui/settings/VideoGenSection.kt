@@ -30,6 +30,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -43,9 +44,11 @@ import io.zer0.muse.data.VideoGenConfig
 import io.zer0.muse.ui.common.form.MuseChip
 import io.zer0.muse.ui.common.form.MuseSelectionSheet
 import io.zer0.muse.ui.common.icons.MuseIcons
+import io.zer0.muse.ui.common.settings.ChevronRight
 import io.zer0.muse.ui.common.settings.SectionLabel
 import io.zer0.muse.ui.common.settings.SettingsGroup
 import io.zer0.muse.ui.common.state.MuseSpinner
+import io.zer0.muse.ui.theme.MuseIconSizes
 import io.zer0.muse.ui.theme.MuseShapes
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -53,10 +56,10 @@ import org.koin.compose.koinInject
 import androidx.compose.foundation.lazy.items as lazyItems
 
 /**
- * Configuración de parámetros predeterminados para la generación de video.
+ * 视频生成默认参数设置。
  *
- * Aquí el usuario puede configurar el proveedor de video, el modelo, la duración y la resolución predeterminados.
- * ChatViewModel.execGenerateVideo Esta configuración tiene prioridad cuando LLM no se especifica explícitamente.
+ * 用户可在此设置默认视频供应商、模型、时长和分辨率。
+ * ChatViewModel.execGenerateVideo 在 LLM 未显式指定时优先使用此配置。
  */
 @Composable
 fun VideoGenSection(settings: SettingsRepository = koinInject(), scope: CoroutineScope) {
@@ -65,7 +68,7 @@ fun VideoGenSection(settings: SettingsRepository = koinInject(), scope: Coroutin
     var showModelSelector by remember { mutableStateOf(false) }
     val providers by settings.providersFlow.collectAsStateWithLifecycle(initialValue = null)
 
-    // Mostrar solo proveedores con modelos de salida de vídeo
+    // 只显示有视频输出模型的供应商
     val videoProviders = remember(providers) {
         providers?.filter { it.enabled && it.apiKey.isNotBlank() && it.models.any { m -> m.supportsVideoOutput() } }
             ?: emptyList()
@@ -91,7 +94,7 @@ fun VideoGenSection(settings: SettingsRepository = koinInject(), scope: Coroutin
                     .padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                // Tarjeta de selección de modelo
+                // 模型选择卡片
                 if (providers == null) {
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
@@ -133,9 +136,9 @@ private fun VideoModelSelectorCard(provider: ProviderConfig?, model: Model?, onC
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        // 外层 SettingsGroup 已经是一张卡，这里再套一层就是卡中卡；压平只留点击区域。
+        color = Color.Transparent,
         shape = MuseShapes.medium,
-        tonalElevation = 1.dp,
     ) {
         Row(
             modifier = Modifier
@@ -153,12 +156,24 @@ private fun VideoModelSelectorCard(provider: ProviderConfig?, model: Model?, onC
                     ),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(
-                    text = provider?.displayName?.firstOrNull()?.toString() ?: "?",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold,
-                )
+                // 原来这里用圆圈问号兜底：问号是"帮助"语义，读屏也会念成"问号"，
+                // 而这个位置说的是"这一行能生成什么"。
+                val initial = provider?.displayName?.firstOrNull()?.toString()
+                if (initial == null) {
+                    Icon(
+                        imageVector = MuseIcons.movie,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(MuseIconSizes.iconMedium),
+                    )
+                } else {
+                    Text(
+                        text = initial,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
             }
             Column(modifier = Modifier.weight(1f)) {
                 val selectProviderText = stringResource(R.string.settings_video_gen_select_provider)
@@ -176,14 +191,11 @@ private fun VideoModelSelectorCard(provider: ProviderConfig?, model: Model?, onC
                 Text(
                     text = provider?.displayName ?: selectDefaultText,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.outline,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            Text(
-                text = ">",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.outline,
-            )
+            // 全站导航箭头统一走 chevron 图标:ASCII ">" 既不成字形、读屏也读不出语义。
+            ChevronRight()
         }
     }
 }
@@ -302,7 +314,7 @@ private fun VideoModelGridCard(model: Model, selected: Boolean, onClick: () -> U
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Medium,
                 modifier = Modifier.weight(1f),
-                // LAYOUT-01: Row Anchura el texto interior + limita la línea para evitar que el icono seleccionado a la derecha la comprima en una columna cuando se amplía el tamaño de fuente
+                // LAYOUT-01: Row 内文本取宽 + 限行，防放大字号下被右侧选中图标挤成一列
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )

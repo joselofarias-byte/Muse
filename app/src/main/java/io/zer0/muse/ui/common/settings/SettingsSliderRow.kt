@@ -31,15 +31,15 @@ import io.zer0.muse.ui.theme.MuseIconSizes
 import io.zer0.muse.ui.theme.MusePaddings
 
 /**
- * Configuración de fila con control deslizante — Icono a la izquierda + título + subtítulo + valor a la derecha,Control deslizante de ancho completo a continuación.
+ * 带滑块的设置项行 — 左侧图标 + 标题 + 副标题 + 右侧数值,下方全宽滑块。
  *
- * CMP-10: Solo se implementó la fila completa de configuración del control deslizante del proyecto. Originales MemorySettingsPage / RagSettingsPage /
- * MediaSettingsPage cada privado `SliderRow` Eliminado y movido todo aquí.,Las diferencias morfológicas se expresan únicamente mediante parámetros.
+ * CMP-10: 全项目滑块设置行唯一实现。原 MemorySettingsPage / RagSettingsPage /
+ * MediaSettingsPage 各自私有的 `SliderRow` 已删除并全部迁到此处,形态差异只由参数表达。
  *
- * Visión:icono(20dp,[MuseIconSizes.iconMedium],No lo pases)Alinear con la fila del título,Control deslizante en la barra inferior,
- * Valor numérico adjunto al final de la línea(primary + SemiBold,Consistente con el valor de énfasis de otras filas de configuración).
+ * 视觉:图标(20dp,[MuseIconSizes.iconMedium],可不传)与标题行对齐,滑块在下方通栏,
+ * 数值贴行尾(primary + SemiBold,与其它设置行的强调数值一致)。
  *
- * Uso:
+ * 用法:
  * ```
  * SettingsSliderRow(
  *     icon = MuseIcons.sliders,
@@ -54,17 +54,17 @@ import io.zer0.muse.ui.theme.MusePaddings
  * )
  * ```
  *
- * @param icon icono izquierdo(null no se mostrará,para fila deslizante sin icono)
- * @param title título principal
- * @param value valor actual
- * @param valueRange Rango de valores
- * @param steps Número de engranaje discreto(Material Semántica:start/end El número de paradas intermedias entre)
- * @param valueText Copia numérica a la derecha(El formato lo determina la persona que llama.,Mantener la precisión de cada elemento de configuración)
- * @param onValueChange Devolución de llamada de cambio de valor durante el arrastre
- * @param modifier modificador
- * @param subtitle subtítulo(null no se mostrará)
- * @param iconContentDescription Descripción de accesibilidad del icono(null Representa iconos decorativos.)
- * @param onValueChangeFinished dejar ir la devolución de llamada(Se utiliza cuando es necesario escribir valores en la capa de persistencia.,Evite procesos de arrastre frecuentes IO)
+ * @param icon 左侧图标(null 则不显示,用于无图标的滑块行)
+ * @param title 主标题
+ * @param value 当前值
+ * @param valueRange 取值范围
+ * @param steps 离散档位数(Material 语义:start/end 之间的中间停点个数)
+ * @param valueText 右侧数值文案(格式由调用方决定,保持各设置项既有精度)
+ * @param onValueChange 拖动中的值变更回调
+ * @param modifier 修饰符
+ * @param subtitle 副标题(null 则不显示)
+ * @param iconContentDescription 图标无障碍描述(null 表示装饰性图标)
+ * @param onValueChangeFinished 松手回调(需要把值写入持久层时使用,避免拖动过程频繁 IO)
  */
 @Composable
 fun SettingsSliderRow(
@@ -80,19 +80,19 @@ fun SettingsSliderRow(
     iconContentDescription: String? = null,
     onValueChangeFinished: () -> Unit = {},
     /**
-     * P2-1(informe de auditoría): Permite la entrada manual de valores precisos haciendo clic en el campo de valor.
+     * P2-1（审计报告）: 允许点击数值区手动输入精确值。
      *
-     * La implementación anterior solo podía arrastrar el control deslizante, y el control deslizante estaba limitado por pasos: el paso del tamaño del mosaico era 100 (380 no se puede configurar),
-     * top-K El límite superior es solo 10,token El límite superior del presupuesto es 8.000, etc. No hay ninguna solución cuando las necesidades del usuario se encuentran entre las cuadrículas.
+     * 旧实现只能拖滑块，而滑块受 steps 限制：分块大小步长 100（380 设不了）、
+     * top-K 上限只有 10、token 预算上限 8000 等，用户需求落在格子之间时完全无解。
      *
-     * Pasar este parámetro habilitará la entrada manual; si no se aprueba, se mantendrá el comportamiento original (algunas filas no son aplicables).
+     * 传入本参数即开启手动输入；不传则保持原行为（部分行位不适用）。
      */
     onValueInput: ((Float) -> Unit)? = null,
-    /** Formato numérico utilizado al ingresar manualmente/Analizador (por ejemplo, número entero, un decimal). */
+    /** 手动输入时使用的数值格式化/解析器（如整数、一位小数）。 */
     valueInputFormatter: ((Float) -> String)? = null,
     valueInputParser: ((String) -> Float?)? = null,
 ) {
-    // P2-1: Diálogo de entrada manual
+    // P2-1: 手动输入对话框
     var showInput by remember { mutableStateOf(false) }
     if (showInput && onValueInput != null) {
         val fmt = valueInputFormatter ?: { v: Float -> v.toString() }
@@ -114,7 +114,7 @@ fun SettingsSliderRow(
             onConfirm = {
                 val parsed = parse(text)
                 if (parsed != null) {
-                    // Sujétese dentro del rango legal para evitar cruzar el límite con la entrada manual.
+                    // 夹到合法区间，避免手输越界
                     onValueInput(parsed.coerceIn(valueRange.start, valueRange.endInclusive))
                     onValueChangeFinished()
                 }
@@ -147,7 +147,7 @@ fun SettingsSliderRow(
                     text = title,
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurface,
-                    // LAYOUT-01: Restricciones de viaje(Ver la misma descripción de SettingsSwitchRow)
+                    // LAYOUT-01: 限行兜底(见 SettingsSwitchRow 同处说明)
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -170,7 +170,7 @@ fun SettingsSliderRow(
                 modifier = Modifier
                     .padding(start = MusePaddings.contentGap)
                     .then(
-                        // P2-1: Cuando la capacidad de entrada manual está disponible, se puede hacer clic en el área de valores
+                        // P2-1: 有手动输入能力时，数值区可点击
                         if (onValueInput != null) {
                             Modifier.clickable { showInput = true }
                         } else {

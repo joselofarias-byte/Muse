@@ -1,78 +1,78 @@
 # Muse v2.6.3
 
-> Solucione la inevitable regresión por falla en v2.6.2 y concéntrese en GitHub #3 ~ #7 comentario.
+> 修掉 v2.6.2 的必崩回归，并集中处理 GitHub 上 #3 ~ #7 的反馈。
 
 ---
 
-## chino
+## 中文
 
-### Solución de emergencia: configuración → El chat colapsará
+### 紧急修复：设置 → 聊天 必崩
 
-v2.6.2 Abra "Configuración" → "Chat" se bloqueará (se activa al desplazarse hacia abajo hasta el área de emoticones):
+v2.6.2 打开「设置 → 聊天」会崩溃（往下滚动到表情包区域时触发）：
 
 ```
 java.lang.IllegalFormatConversionException: d != java.lang.String
 ```
 
-La razón es que la copia del recordatorio utilizó parámetros durante el período de combinación. `stringResource(id, "%1$d")`,
-será ejecutado inmediatamente `String.format`, inserte la cadena en la ranura de números enteros. Se ha cambiado a ningún parámetro. `stringResource`.
-Por cierto, se ha solucionado el problema del mismo origen donde el mensaje "reenvío exitoso" siempre muestra marcadores de posición.
+原因是那句提示文案在组合期用了带参的 `stringResource(id, "%1$d")`，
+它会立即执行 `String.format`，把字符串塞进整数槽位。已改为无参 `stringResource`。
+顺带修了「转发成功」提示永远显示占位符的同源问题。
 
-v2.6.1 y las versiones anteriores no tienen este problema.
+v2.6.1 及更早版本没有此问题。
 
-### WebServer No se puede iniciar (#4)
+### WebServer 无法启动（#4）
 
-`WebServer El inicio falló: Array has more than one element` ¿Ktor 3.0.x está ofuscado en R8?
-release Defectos conocidos en la construcción (KTOR-7298), y solo se reproduce en el paquete de lanzamiento,debug No se puede medir.
+`WebServer 启动失败: Array has more than one element` 是 Ktor 3.0.x 在 R8 混淆后的
+release 构建里的已知缺陷（KTOR-7298），且只在 release 包复现，debug 测不出来。
 
-- Ktor 3.0.3 → 3.1.3(solución oficial)
-- Se agregó R8 para mantener las reglas de ServiceLoader/fábrica de motores como doble seguro.
+- Ktor 3.0.3 → 3.1.3（官方修复）
+- 补了 ServiceLoader / engine factory 的 R8 keep 规则作为双保险
 
-### Las llamadas a herramientas fallan silenciosamente (#6)
+### 工具调用静默失败（#6）
 
-**#6**: En el chat grupal `channel_reply` Cuando la verificación falla (por ejemplo, el contenido está vacío), el valor de retorno se descarta directamente.
-El proceso va hasta el final. `implicit pass`, lo que el usuario ve es "no hay respuesta ni se ha informado de ningún error en toda la ronda". Ahora:
+**#6**：群聊里 `channel_reply` 校验失败（如 content 为空）时，返回值被直接丢弃，
+流程一路走到 `implicit pass`，用户看到的是「整轮无回复、也没报错」。现在：
 
-- Si la herramienta no se ejecuta, el error se rellenará en el modelo, permitiéndole corregirlo y volver a intentarlo (hay un número máximo de veces).
-- La respuesta vacía ya no equivale a "omitir el modelo activamente" y se volverá a intentar antes de bajar de categoría.
-- explícito `[PASS]` Completamente separados de las respuestas vacías, los registros pueden distinguir
+- 工具执行失败会把错误回填给模型，让它修正后重试（有次数上限）
+- 空响应不再等同于「模型主动跳过」，会先重试一次才降级
+- 显式 `[PASS]` 与空响应彻底分开，日志能区分
 
-> **#5 Descripción**:DeepSeek Flash Esperando el modelo "afirma ajustar la herramienta pero no devuelve un valor válido `tool_call`"Cuando
-> reasoning El contenido seguirá mostrándose como texto. Esta es una decisión de producto existente ("vomitar está bien, pero vaciarlo no está bien"),
-> Existe un conflicto semántico con "No trate los pensamientos como texto" y debe evaluarse por separado antes de cambiar. Esta edición**Sin modificar**Este punto,
-> Evite introducir cambios de comportamiento indecisos en las liberaciones de emergencia.
+> **#5 说明**：DeepSeek Flash 等模型「声称调工具但没返回有效 `tool_call`」时，
+> reasoning 内容仍会被兜底成正文显示。这是既有产品决定（「吐可以，空不行」），
+> 与「不要把思考当正文」存在语义冲突，需要单独评估后再改。本版**未改动**这一点，
+> 避免在紧急版本里带入未定论的行为变更。
 
-### El modelo multimodal de la estación de transferencia fue juzgado mal (#3.1)
+### 中转站多模态模型被误判（#3.1）
 
-La tabla de capacidades del modelo incorporada anulará incondicionalmente la declaración ascendente, lo que hará que la estación de transferencia admita el modelo con el mismo nombre para el reconocimiento de imágenes.
-(como `deepseek-v4.1-flash`) se considera texto sin formato y el reconocimiento de imágenes no está disponible en absoluto.
-Ahora bien, si el upstream afirma claramente que apoya `image`, ya no están cubiertos por etiquetas integradas.
+内置模型能力表会无条件覆盖上游声明，导致中转站上确实支持识图的同名模型
+（如 `deepseek-v4.1-flash`）被判为纯文本，识图完全不可用。
+现在若上游明确声明支持 `image`，不再被内置标签覆盖。
 
-También puedes ir a "Proveedores" → modelo → Corríjalo manualmente en "Editar capacidades del modelo". Después de la modificación, prevalecerá su configuración.
+也可以在「供应商 → 模型 → 编辑模型能力」里手动修正，改过之后以你的设置为准。
 
-### Botón "Prueba" del proveedor falso positivo (#3.2)
+### 供应商「测试」按钮误报（#3.2）
 
-La mayoría de las pruebas de puntos del modelo fallaron, pero el chat real fue normal. Se han solucionado los tres motivos:
+多数模型点测试都提示失败，但实际聊天正常。三个原因都修了：
 
-- `maxTokens` Mencionado desde 16 256 —— El valor original no es suficiente para el modelo de cadena de pensamiento y toda la cuota se la come el razonamiento.
-- Si hay una llamada a una herramienta o solo una salida de la cadena de pensamiento, ahora se considera un pase de enlace.
-- Da una razón procesable en caso de falla (Key No válido/el modelo no existe/límite actual/tiempo de espera/formato ascendente anormal), ya no se pierde solo una oración del texto original ascendente
+- `maxTokens` 从 16 提到 256 —— 原值对思维链模型不够，额度全被 reasoning 吃掉
+- 有工具调用或只有思考链输出，现在都算链路通
+- 失败时给出可操作原因（Key 无效 / 模型不存在 / 限流 / 超时 / 上游格式异常），不再只丢一句上游原文
 
-### El mensaje de error está truncado y no se puede copiar (#3.3)
+### 报错信息截断且无法复制（#3.3）
 
-Los detalles del error ya no se truncan a 80 caracteres, lo que deja intacto el texto completo.
+错误详情不再被截断到 80 字，保留完整原文。
 
-### Termux Autorización sin comentarios (#3.4)
+### Termux 授权无反馈（#3.4）
 
-- "Ir a otorgar permisos" todavía brinda orientación paso a paso después del salto (el interruptor no es visible en la primera pantalla de información de la aplicación)
-- El mensaje de configuración cambió a un comando completo de dos pasos: Escribir configuración **+** `termux-reload-settings`(Es posible que simplemente reiniciar Termux no surta efecto)
-- Se agregó un botón "Copiar comando" para evitar errores de escritura manual.
+- 「去授予权限」跳转后仍给出逐步指引（应用信息首屏看不到该开关）
+- 配置提示改为完整两步命令：写入配置 **+** `termux-reload-settings`（只重启 Termux 可能不生效）
+- 新增「复制命令」按钮，避免手敲出错
 
-### Velocidad de respuesta (#3.5)
+### 回复速度（#3.5）
 
-Se agregó el interruptor "Modo de respuesta rápida" (Configuración → charlar → comportamiento interactivo).
-Cuando esté habilitado, omita la recuperación de memoria relevante en cada ronda.——Esta sección de la consulta FTS puede representar un retraso de más de 500 ms en la primera palabra cuando se mide en una máquina real.
-La memoria a largo plazo todavía se inyecta como de costumbre, pero el recuerdo no se realiza en función de la relevancia de la pregunta.
+新增「快速回复模式」开关（设置 → 聊天 → 交互行为）。
+开启后跳过每轮的相关记忆检索——这一段的 FTS 查询在真机实测可占 500ms+ 首字延迟。
+长期记忆仍照常注入，只是不做按问题的相关性召回。
 
 ---
 
@@ -143,13 +143,13 @@ time-to-first-token on device. Long-term memory is still injected.
 
 ---
 
-## Instalación
+## 安装
 
-- Simplemente sobrescriba e instale.**No es necesario desinstalar**, retención de datos
-- La versión de la base de datos aún está **111**, consistente con v2.6.2,**Sin riesgo de migración**
-- La firma es la misma que v2.6.1 / v2.6.2
+- 覆盖安装即可，**无需卸载**，数据保留
+- 数据库版本仍是 **111**，与 v2.6.2 一致，**无迁移风险**
+- 签名与 v2.6.1 / v2.6.2 相同
 
-## cosas conocidas
+## 已知事项
 
-- Si actualiza directamente desde v2.6.1 a esta versión, igualmente la revisará una vez v110 → v111 Migración (nueva personalidad asistente/La cadena de pensamiento (dos columnas) es normal
-- El "modo de respuesta rápida" está desactivado de forma predeterminada; actívalo cuando necesites empezar a escribir más rápido
+- 若你从 v2.6.1 直接升级到本版，仍会走一次 v110 → v111 迁移（新增助手人格/思考链两列），属正常
+- 「快速回复模式」默认关闭，需要更快首字时再打开

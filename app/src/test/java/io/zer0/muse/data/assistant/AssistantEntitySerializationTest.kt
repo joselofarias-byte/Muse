@@ -7,7 +7,7 @@ import org.junit.Assert.assertThrows
 import org.junit.Test
 
 /**
- * R-TEST-16: Asistente de serialización de campo completo de ida y vuelta con muestras JSON incorrectas.
+ * R-TEST-16: 助手全字段序列化往返与坏 JSON 样本。
  */
 class AssistantEntitySerializationTest {
 
@@ -28,7 +28,7 @@ class AssistantEntitySerializationTest {
 
     @Test
     fun `missing required id fails parsing`() {
-        val json = """{"name":"ayudante de identificación faltante"}"""
+        val json = """{"name":"缺 id 助手"}"""
         assertThrows(SerializationException::class.java) {
             AppJson.decodeFromString(AssistantEntity.serializer(), json)
         }
@@ -36,15 +36,15 @@ class AssistantEntitySerializationTest {
 
     @Test
     fun `extra unknown fields are ignored`() {
-        val json = """{"id":"a1","name":"asistente","futureField":123}"""
+        val json = """{"id":"a1","name":"助手","futureField":123}"""
         val decoded = AppJson.decodeFromString(AssistantEntity.serializer(), json)
         assertEquals("a1", decoded.id)
-        assertEquals("asistente", decoded.name)
+        assertEquals("助手", decoded.name)
     }
 
     private fun fullAssistant() = AssistantEntity(
         id = "orig-id",
-        name = "Asistente de campo completo",
+        name = "全字段助手",
         sortIndex = 3,
         createdAt = 111L,
         updatedAt = 222L,
@@ -55,7 +55,7 @@ class AssistantEntitySerializationTest {
         maxTokens = 2048,
         contextMessageSize = 32,
         reasoningLevel = "HIGH",
-        systemPrompt = "Eres un asistente de prueba.",
+        systemPrompt = "你是测试助手",
         messageTemplate = "{{content}}",
         presetMessagesJson = """[{"role":"system","content":"hello"}]""",
         toolIdsJson = """["web_search","calculator"]""",
@@ -67,7 +67,7 @@ class AssistantEntitySerializationTest {
         enableTimeReminder = false,
         avatarEmoji = "🤖",
         avatarImageUrl = "",
-        tagsJson = """["prueba","chino"]""",
+        tagsJson = """["测试","中文"]""",
         capabilitiesJson = """["code","write"]""",
         quickMessageIdsJson = """["q1"]""",
         lorebookIdsJson = """["lb1"]""",
@@ -81,7 +81,7 @@ class AssistantEntitySerializationTest {
         ragConfigOverride = """{"topK":5}""",
         messageCount = 12,
         lastUsedAt = 333L,
-        summary = "Introducción de una frase",
+        summary = "一句话简介",
         useAssistantName = true,
         allowGroupChat = false,
     )

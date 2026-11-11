@@ -10,10 +10,10 @@ import kotlinx.serialization.Serializable
 import java.io.File
 
 /**
- * P0 Instantánea de selección del árbol de diálogo.
+ * P0 对话树选择快照。
  *
- * guardar solo“grupo de usuarios/Grupo asistente + índice de variantes seleccionadas”, no guarde el contenido del mensaje;
- * Después de reiniciar por [ConversationTree.build(messages, previous)] Restaura la última selección de rama.
+ * 只保存“用户组/助手组 + 选中变体索引”，不保存消息内容；
+ * 重启后由 [ConversationTree.build(messages, previous)] 恢复上次分支选择。
  */
 class ConversationTreeSnapshotStore(private val context: Context) {
 
@@ -76,7 +76,7 @@ class ConversationTreeSnapshotStore(private val context: Context) {
                 AppJson.encodeToString(TreeSnapshot.serializer(), snapshot),
             )
         }.onFailure { e ->
-            Logger.w("TreeSnapshotStore", "No se pudo guardar la instantánea de selección del árbol de diálogo: ${e.message}", e)
+            Logger.w("TreeSnapshotStore", "保存对话树选择快照失败: ${e.message}", e)
         }
     }
 
@@ -87,13 +87,36 @@ class ConversationTreeSnapshotStore(private val context: Context) {
             val snapshot = AppJson.decodeFromString(TreeSnapshot.serializer(), file.readText())
             snapshot.toTree()
         }.onFailure { e ->
-            Logger.w("TreeSnapshotStore", "No se pudo leer la instantánea de selección del árbol de diálogo: ${e.message}", e)
+            Logger.w("TreeSnapshotStore", "读取对话树选择快照失败: ${e.message}", e)
             AtomicFileStore.quarantine(file, "snapshot_parse")
         }.getOrNull()
     }
 
-    suspend fun delete(sessionId: String) = withContext(Dispatchers.IO) {
-        File(dir, fileName(sessionId)).delete()
+    /**
+     * 删除某个会话的对话树快照。
+     *
+     * 这条以前是 `File(...).delete()` 一句话：返回值没人接、失败也没痕迹。
+     * 而它是**状态转换**（会话删了，快照就该跟着没）—— 删不掉的后果是
+     * 同名会话重建时 `load` 会读回**上一个会话**的分支选择：用户看到的
+     * "新会话怎么自带了一堆选中状态"完全无从解释。
+     *
+     * @return 快照现在确实不存在了（本来就没有也算，幂等）
+     */
+    suspend fun delete(sessionId: String): Boolean = withContext(Dispatchers.IO) {
+        val file = File(dir, fileName(sessionId))
+        if (!file.exists()) return@withContext true
+        runCatching { file.delete() }
+            .onFailure { e ->
+                Logger.w("TreeSnapshotStore", "删除对话树快照异常 sessionId=$sessionId: ${e.message}", e)
+            }
+        val gone = !file.exists()
+        if (!gone) {
+            Logger.w(
+                "TreeSnapshotStore",
+                "对话树快照没被删掉 sessionId=$sessionId path=${file.absolutePath}（同名会话重建会读回旧选择）",
+            )
+        }
+        gone
     }
 
     private fun TreeSnapshot.toTree(): ConversationTree {

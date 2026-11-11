@@ -17,15 +17,15 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
- * v2.x Refactorización S2: orquestación comprimida contextual extraída de ChatViewModel.
+ * v2.x 重构 S2: 从 ChatViewModel 提取的上下文压缩编排。
  *
- * Ubicación original:ChatViewModel cadena de compresión automática(triggerAutoCompress /
+ * 原位置:ChatViewModel 的自动压缩链(triggerAutoCompress /
  * finishCompressionWithCheckpoint / persistLocalCheckpointFallback /
- * persistContextCheckpoint)con cadena de compresión manual(manualCompress /
- * manualCompressContext / announceManualCompressDone / runManualCompress).
+ * persistContextCheckpoint)与手动压缩链(manualCompress /
+ * manualCompressContext / announceManualCompressDone / runManualCompress)。
  *
- * Propiedades de migración:**extracción pura**——Mueve el código tal como está.,No hay cambios en ninguna lógica./orden/Semántica de excepción.
- * ChatViewModel Mantenga la llamada del delegado en su posición original.
+ * 迁移性质:**纯抽取**——代码原样搬入,不改动任何逻辑/顺序/异常语义。
+ * ChatViewModel 原位置保留委托调用。
  */
 @Suppress(
     "LongParameterList", "LongMethod", "ComplexMethod", "TooGenericExceptionCaught",
@@ -41,12 +41,12 @@ internal class ChatCompressionCoordinator(
         if (maxTokens <= 0 || currentTokens <= 0 || !host.shouldAutoCompress(currentTokens, maxTokens)) return
         val currentMessages = host.stateStore.messages.value
         if (currentMessages.size < 2) return
-        // v2.x(Artículo de exportación de diagnóstico A): La compresión se activa en el rastro (observador puro)
+        // v2.x（诊断导出项目 A）: 压缩触发入 trace（纯观察者）
         runCatching { io.zer0.muse.diagnostic.GenerationTrace.noteCompression() }
 
         host.coroutineScope.launch(AppDispatchers.io) {
             val keepRecent = minOf(COMPRESSION_SAFETY_TAIL_MESSAGES, currentMessages.size - 1).coerceAtLeast(1)
-            // v2.x: Toma el límite del último punto de control. —— tanto para"Sólo se contarán los mensajes recién combinados.",También se utiliza para sobrescribir
+            // v2.x: 取上一次检查点的边界 —— 既用于"只统计本次新增并入的消息",也用于滚动改写
             val existingCheckpoint =
                 try {
                     host.checkpointReader.get(sessionId)
@@ -64,27 +64,27 @@ internal class ChatCompressionCoordinator(
                     extras =
                     mapOf(
                         "compress_enabled" to true,
-                        // X-5: Los umbrales de activación forzada manual se unifican a través de CompressionPolicy (semántica: no existe un umbral para la compresión manual).
+                        // X-5: 手动强制触发阈值统一走 CompressionPolicy（语义：手动压缩不设条数门槛）。
                         "compress_threshold" to
                             io.zer0.muse.transformer.CompressionPolicy.FORCE_TRIGGER_THRESHOLD,
                         "compress_keep_recent" to keepRecent,
                     ),
                 )
-            // H-01 Reparación: transform es una función de suspensión,Utilice resultOf en su lugar para evitar engullir CancellationException
+            // H-01 修复: transform 是 suspend 函数,改用 resultOf 避免吞没 CancellationException
             val compressed =
                 resultOf {
                     host.contextCompressTransformer.transform(currentMessages, compressContext)
                 }.onError { msg, t ->
                     Logger.w("ChatVM", "Auto-compress transform failed: $msg")
                 }.getOrNull() ?: currentMessages
-            // La noticia realmente se incorporó al resumen esta vez.(Registro de nivel de agua en proceso);Vacío significa que no se presionó correctamente.,Sin escritura de puntos de control
+            // 本次实际并入摘要的消息(进程内水位线记录);为空说明没压成,不写检查点
             val compressedEntry = io.zer0.muse.transformer.CompressionSummaryStore.entry(sessionId)
             val coveredIds: Set<String> = compressedEntry?.coveredIds.orEmpty()
             val maxCoveredId: String? = coveredIds.maxOrNull()
             if (compressed.size < currentMessages.size) {
-                // v2.3.2: guardia de sesión — La compresión es una llamada de LLM que requiere mucho tiempo,Es posible que el usuario haya abandonado la sesión durante este período.;
-                // Los resultados caducados nunca deben escribirse en la sesión actual.(De lo contrario, el resumen de la sesión A se superpondrá en la lista de mensajes de la sesión B.,
-                // Aparece la interfaz"contenido de otra conversación",Continuar enviando también enviará el contexto de A al modelo.).
+                // v2.3.2: 会话守卫 — 压缩是耗时 LLM 调用,期间用户可能已切走会话;
+                // 过期结果绝不能写进当前会话(否则 A 会话的摘要会盖到 B 会话的消息列表上,
+                // 界面出现"另一个会话的内容",继续发送还会把 A 的上下文送给模型)。
                 if (host.displayedSessionId() != sessionId) {
                     Logger.i("ChatVM", io.zer0.muse.transformer.CompressionDiagnostics.staleAutoCompressResult(sessionId))
                     return@launch
@@ -111,8 +111,8 @@ internal class ChatCompressionCoordinator(
                     ),
                 )
             } else if (host.displayedSessionId() == sessionId) {
-                // v2.x El último nivel de la escalera de degradación: sin resultados de resumen (red deficiente/error de modelo de resumen/tiempo de espera/sin beneficio neto).
-                // En este momento**No vuelvas con las manos vacías** —— Realice una reconstrucción local con extractos de texto deterministas sin solicitud y aún así escriba un punto de control.
+                // v2.x 降级阶梯最后一级：摘要没产出（网络差 / 摘要模型报错 / 超时 / 无净收益）。
+                // 此时**不空手而归** —— 用零请求的确定性文本摘录做本地重建，仍然写出一条检查点。
                 persistLocalCheckpointFallback(
                     sessionId = sessionId,
                     messages = currentMessages,
@@ -126,17 +126,17 @@ internal class ChatCompressionCoordinator(
     }
 
     /**
-     * v2.x: una vez**éxito**El fin de la compresión —— Punto de control y actualización"Cubierto/Tasa de ocupación"calibre.
+     * v2.x: 一次**成功**压缩的收尾 —— 落检查点并刷新"已覆盖/占用率"口径。
      *
-     * La compresión automática y manual se comparten: las dos rutas son"¿Qué ve el modelo y cómo calcular la tasa de ocupación?"debe ser completamente consistente,
-     * En caso contrario, el usuario toma la iniciativa."Compresión"Obtendrá resultados diferentes a los de la compresión automática (así fue como se bifurcó el comportamiento).
+     * 自动与手动压缩共用：两条路径在"模型看到什么、占用率怎么算"上必须完全一致，
+     * 否则用户主动点"压缩"会得到与自动压缩不同的结果（曾经就是这样的行为分叉）。
      *
-     * Elimine el punto de control en lugar de reescribir la lista de mensajes de memoria: la interfaz continúa mostrando el historial completo (los mensajes antiguos están ocultos de forma predeterminada),
-     * Sólo el historial enviado al modelo se filtra por límite; reiniciar la aplicación/Volver a la sesión seguirá surtiendo efecto.
+     * 落检查点而不是改写内存消息列表：界面继续显示完整历史（老消息默认收起），
+     * 只有发给模型的历史按边界过滤；重开应用/切回会话依然生效。
      *
-     * @param previousBoundaryId Los límites del último punto de control (`newlyCoveredCount` punto de partida)
-     * @param previousTotalCovered El número acumulado de elementos desde el último punto de control (para visualización de interfaz, acumulación de desplazamiento)
-     * @param maxCoveredId El valor inferior de la identificación del límite cubierto esta vez (normalmente debería ser [ContextCompressTransformer.lastCoveredBoundaryId])
+     * @param previousBoundaryId 上一次检查点的边界（`newlyCoveredCount` 的起点）
+     * @param previousTotalCovered 上一次检查点的累计条数（界面展示用，滚动累加）
+     * @param maxCoveredId 本次覆盖的边界 id 兜底值（正常应取 [ContextCompressTransformer.lastCoveredBoundaryId]）
      */
     private suspend fun finishCompressionWithCheckpoint(
         sessionId: String,
@@ -162,8 +162,8 @@ internal class ChatCompressionCoordinator(
             tokensBefore = tokensBefore,
             tokensAfter = TokenEstimator.estimate(compressed),
             reason = reason,
-            // Los límites y el número de barras se toman de"colección comprimida ordenada", inferencia sin clasificación de ID de mensaje:
-            // La identificación del mensaje es un UUID aleatorio y la colección está desordenada. La clasificación seleccionará el límite incorrecto y descartará los mensajes descubiertos.
+            // 边界与条数都取自"有序的压缩集合"，不用消息 id 排序推断：
+            // 消息 id 是随机 UUID，集合无序，靠排序会选错边界并丢掉未覆盖的消息。
             boundaryMessageId = host.contextCompressTransformer.lastCoveredBoundaryId,
             newlyCoveredCount = newlyCoveredCount(
                 messages = currentMessages,
@@ -171,37 +171,37 @@ internal class ChatCompressionCoordinator(
                 previousBoundaryId = previousBoundaryId,
             ),
         )
-        // Primero se actualiza la colección de cobertura y luego se calcula la ocupación. —— Después de la actualización, host.checkpointCoveredIds es el resultado de esta compresión.
-        // v2.6.0 (AUD-UI-F5): Ejecuciones de compresión en la corrutina IO,Es posible que el usuario haya cambiado a otra sesión cuando finalizó.
-        // La implementación original estableció incondicionalmente la marca de agua global en la sesión A y la calculó en consecuencia. token,B La conversación luego dice
-        // A nivel del agua → La ocupación del contexto se calcula mediante una sesión incorrecta(conversación en cadena).
-        // solo aqui“El objetivo de compresión sigue siendo la sesión de visualización actual.”Sólo cuando caiga por debajo del nivel global del agua.;De lo contrario omitir,
-        // Deje que sureCheckpointCoveredIds se cargue solo la próxima vez que se muestre la sesión de destino.
+        // 覆盖集合先刷新再算占用率 —— 刷新后 host.checkpointCoveredIds 才是本次压缩的结果。
+        // v2.6.0 (AUD-UI-F5): 压缩跑在 IO 协程,完成时用户可能已切到别的会话。
+        // 原实现无条件把全局水位线设成 A 会话的并据此算 token,B 会话随后读到
+        // A 的水位线 → 上下文占用率按错会话计算(串会话)。
+        // 这里只在“压缩目标仍是当前显示会话”时才落全局水位线;否则跳过,
+        // 让目标会话下次显示时由 ensureCheckpointCoveredIds 自行装载。
         if (host.displayedSessionId() == sessionId) {
             host.checkpointCoveredSessionId = sessionId
             host.refreshCheckpointCoveredIds(sessionId)
             host.updateContextTokenCount()
         }
-        // keepRecent Actualmente no participa en el drop de la biblioteca, pero se mantiene en la firma para evitar que quien llama piense que"La política de retención está determinada únicamente por el compresor."
+        // keepRecent 目前不参与落库，但保留在签名里以免调用方以为"保留策略只由压缩器决定"
         Logger.d("ChatVM", "checkpoint finished (keepRecent=$keepRecent)")
     }
 
     /**
-     * v2.x: contar"Resumen de esta nueva fusión"el número de mensajes.
+     * v2.x: 数出"本次新并入摘要"的消息条数。
      *
-     * usar**Lista de mensajes ordenados**Para contar (en lugar de ordenar el conjunto de ID de anulación): la ID del mensaje es un UUID aleatorio,
-     * La colección en sí está desordenada y cualquier inferencia basada en comparaciones de identificación se calculará mal con los datos reales.
-     * Sólo se consideran los mensajes posteriores al último límite y que se encuentren dentro del conjunto de cobertura."Recién agregado esta vez".
+     * 用**有序的消息列表**来数（而不是对覆盖 id 集合排序）：消息 id 是随机 UUID，
+     * 集合本身无序，任何基于 id 比较的推断都会在真实数据上算错。
+     * 上次边界之后、且落在覆盖集合内的消息才算"本次新增"。
      */
     internal fun newlyCoveredCount(messages: List<UIMessage>, coveredIds: Set<String>, previousBoundaryId: String?): Int =
         host.newlyCoveredCount(messages, coveredIds, previousBoundaryId)
 
     /**
-     * v2.x: Cuando el resumen no está disponible**reconstrucción local**Puntos de control (cero solicitudes de modelo).
+     * v2.x: 摘要不可用时的**本地重建**检查点（零模型请求）。
      *
-     * La cobertura es consistente con la compresión normal: manténgala actualizada [keepRecent] Artículo y el resto son extractos de texto deterministas.
-     * El extracto solo intercepta los fragmentos en lenguaje natural de cada artículo sin refinarlos. —— su valor no es"Que bueno el resumen",
-     * Pero se encuentra en**Los límites entran en vigor inmediatamente**: El mensaje sobrescrito ya no ingresa al modelo y este estado es persistente.
+     * 覆盖范围与正常压缩一致：保留最近 [keepRecent] 条，其余做确定性文本摘录。
+     * 摘录只截取每条的自然语言片段，不做提炼 —— 它的价值不在于"摘要得多好"，
+     * 而在于**边界立刻生效**：被覆盖的消息不再进模型，且这一状态是持久的。
      */
     private suspend fun persistLocalCheckpointFallback(
         sessionId: String,
@@ -230,7 +230,7 @@ internal class ChatCompressionCoordinator(
                     previousBoundaryId = previousBoundaryId,
                     coveredSeq = coveredSeq,
                     tokensBefore = tokensBefore,
-                    // La devolución del extracto local es"No más texto original", se puede estimar en función de la longitud del extracto (no es preciso, pero está en la dirección correcta)
+                    // 本地摘录的收益是"不再带原文"，按摘录正文长度估算即可（不精确，但方向正确）
                     tokensAfter = TokenEstimator.estimate(covered.last().content) + covered.size * 20,
                     reason = io.zer0.memory.summary.ContextCheckpointEntity.REASON_AUTO,
                 ),
@@ -253,13 +253,13 @@ internal class ChatCompressionCoordinator(
     }
 
     /**
-     * v2.x: Escribe el resultado de una compresión como punto de control de la sesión.
+     * v2.x: 把一次压缩的结果写成会话检查点。
      *
-     * La diferencia entre el límite y el tiempo anterior es"Resumen de esta fusión"colección de mensajes —— Los puntos de control están traspasados,
-     * El nuevo punto de control ya contiene el contenido del antiguo punto de control. Si también se incluye el antiguo límite, hará `coveredCount`/`tokensBefore`
-     * Aumento virtual sucesivo (que se muestra como"Ganancias comprimidas"Cuanto más pagas, más grande obtienes, pero en realidad no ahorras tanto).
+     * 边界与前一次的差值才是"本次并入摘要"的消息集合 —— 检查点是滚动覆盖的，
+     * 新检查点已经包含旧检查点的内容，若把旧边界之前也计入，会让 `coveredCount`/`tokensBefore`
+     * 逐次虚增（表现为"压缩收益"越报越大，实际并没有省那么多）。
      *
-     * Solo se registrará el registro si falla: si el punto de control no se puede escribir, como máximo habrá que resumirlo nuevamente la próxima vez, lo que no debe afectar la ronda de diálogo actual.
+     * 失败只记录日志：检查点写不进去最多是下一次还要重新摘要，绝不能影响本轮对话。
      */
     private suspend fun persistContextCheckpoint(
         sessionId: String,
@@ -269,13 +269,13 @@ internal class ChatCompressionCoordinator(
         tokensBefore: Int,
         tokensAfter: Int,
         reason: String,
-        /** esta vez"Fusionado en resumen"La identificación del mensaje de límite (el último en orden cronológico, proporcionado por transformación). */
+        /** 本次"已并入摘要"的边界消息 id（按时间顺序的最后一条，由 transform 给出）。 */
         boundaryMessageId: String? = null,
-        /** El número de resúmenes recién combinados esta vez (calculado como una lista ordenada, inferida sin ordenar por ID de mensaje). */
+        /** 本次新并入摘要的条数（按有序列表求出，不用消息 id 排序推断）。 */
         newlyCoveredCount: Int = 0,
     ) {
         try {
-            // La secuencia real del mensaje de límite en la tabla de mensajes (pase 0 si no se encuentra: el lado del ensamblaje se basará en la identificación del mensaje.seq Sólo límite superior)
+            // 边界消息在消息表里的真实 seq（查不到就传 0：组装侧以消息 id 为准，seq 只作上界）
             val boundaryForSeq = boundaryMessageId ?: generatedBoundaryId
             val coveredSeq =
                 runCatching { host.sessionRepository.getMessageById(boundaryForSeq)?.seq ?: 0L }
@@ -303,23 +303,23 @@ internal class ChatCompressionCoordinator(
     }
 
     /**
-     * v0.45: Activar manualmente la compresión de contexto(Normalización de la compresión de la memoria.).
+     * v0.45: 手动触发上下文压缩(记忆压缩常态化)。
      *
-     * @param updateMemoryFirst true = Ajustar primero [MemoryTicker.forceCompileNow] Actualizar memoria(fact/Resumen),
-     *                          Recomprimir el historial;false = Sólo comprimir el historial(compresión pura)
+     * @param updateMemoryFirst true = 先调 [MemoryTicker.forceCompileNow] 更新记忆(fact/摘要),
+     *                          再压缩历史;false = 只压缩历史(纯压缩)
      *
-     * UI La entrada es la compresión en segundo plano con un solo clic: el sistema selecciona automáticamente la cola segura y no expone al usuario la cantidad de elementos retenidos ni las instrucciones de compresión.
-     * El modo de compresión pura todavía se utiliza internamente mediante el comando de barra diagonal.
+     * UI 入口是一键后台压缩：系统自动选择安全尾部，不向用户暴露保留条数或压缩指令。
+     * 纯压缩模式仍供斜杠命令内部使用。
      *
-     * El resultado de la compresión solo reemplaza el contenido en memoria. messages(host.stateStore.messages.value),no persistió en DB
-     * (DB Mantener el historial completo de búsquedas/Exportar,Versión en memoria para contexto LLM).
-     * Recargar desde la base de datos después de cambiar de sesión,El compresor automático lo procesará nuevamente la próxima vez que lo envíe.
+     * 压缩结果只替换内存中的 messages(host.stateStore.messages.value),不持久化到 DB
+     * (DB 保留完整历史用于搜索/导出,内存版本用于 LLM 上下文)。
+     * 切换会话后从 DB 重新加载,下次发送时自动压缩器会再次处理。
      */
     fun manualCompress(updateMemoryFirst: Boolean = true) {
         val sessionId = host.displayedSessionId()
         val currentMessages = host.stateStore.messages.value
-        // La verificación previa converge uniformemente en una única salida:Sin sesión/Muy pocas noticias/Transmisión/Regresa directamente durante la compresión.
-        // Mantener la semántica original:solo"Muy pocas noticias"usuario rápido,El resto de las condiciones previas se omiten silenciosamente.
+        // 前置校验统一收敛为单出口:无会话/消息过少/流式中/压缩中均直接返回。
+        // 保持原语义:仅"消息过少"提示用户,其余前置状态静默跳过。
         if (sessionId == null || currentMessages.size < 2 ||
             host.stateStore.state.value.isStreaming || host.stateStore.state.value.isCompressing
         ) {
@@ -351,10 +351,10 @@ internal class ChatCompressionCoordinator(
     }
 
     /**
-     * Transforme el contexto para la compresión manual.
+     * 手动压缩用的 transform 上下文。
      *
-     * La única diferencia con la compresión automática es que"Gatillo forzado + encubrimiento forzado": Si el usuario hace clic activamente en la compresión, no debería ser porque
-     * El beneficio no es obvio y no se hace nada; el presupuesto de caracteres todavía se deriva en función de la ventana actual para evitar cortar grandes trozos más allá de la ventana.
+     * 与自动压缩的区别只在"强制触发 + 强制兜底"：用户主动点了压缩，就不该因为
+     * 收益不明显而什么都不做；字符预算仍按当前窗口推导，避免切出超窗的巨块。
      */
     internal fun manualCompressContext(sessionId: String, keepRecent: Int): TransformContext = TransformContext(
         sessionId = sessionId,
@@ -362,13 +362,13 @@ internal class ChatCompressionCoordinator(
         extras =
         mapOf(
             "compress_enabled" to true,
-            // Activador forzado: el usuario hace clic activamente en la compresión y no debe hacer nada porque los beneficios no son obvios.
+            // 强制触发：用户主动点了压缩，不该因为收益不明显而什么都不做
             "compress_threshold" to io.zer0.muse.transformer.CompressionPolicy.FORCE_TRIGGER_THRESHOLD,
             "compress_keep_recent" to keepRecent,
             "compress_force_fallback" to true,
             "compress_char_budget" to
-                // La compresión manual no puede obtener el límite superior de salida del modelo (aquí solo está la identificación del asistente, no el modelo analizado).
-                // Dejemos que la fórmula presupuestaria se encargue de la reserva de producción mínima, que está aún más cerca de la realidad que el antiguo método proporcional.
+                // 手动压缩拿不到模型的输出上限（这里只有助手 id，没有解析后的 Model），
+                // 交给预算公式按最小输出预留处理，仍比旧的比例法更贴近实际。
                 WarmupHistory.compressTokenBudgetFor(
                     contextMaxTokens = host.stateStore.state.value.contextMaxTokens,
                 ),
@@ -376,13 +376,13 @@ internal class ChatCompressionCoordinator(
     )
 
     /**
-     * Comentarios externos después de una compresión manual exitosa.
+     * 手动压缩成功后的对外反馈。
      *
-     * v2.x: No más informes"comprimido: N → M Artículo" —— El cambio en la cantidad de elementos no tiene sentido para el usuario y también hará que la gente piense que la sesión se ha cortado.
-     * La expresión de compresión en la interfaz es la línea divisoria residente en el flujo de diálogo (ver actualizarContextInfo), y aquí solo se proporciona una oración de estado.
+     * v2.x: 不再报"已压缩: N → M 条" —— 条数变化对用户没有意义，还会让人以为会话被砍掉了。
+     * 压缩在界面上的表达是对话流里的常驻分隔线（见 refreshContextInfo），这里只给一句状态。
      */
     internal fun announceManualCompressDone(beforeCount: Int, afterCount: Int, keepRecent: Int) {
-        // Los registros son diagnósticos internos.,No utilices literales chinos.(Evite errores de juicio sobre el control de acceso CJK)
+        // 日志为内部诊断,不使用中文字面量(避免 CJK 门禁误判)
         Logger.i(
             "ChatVM",
             "manualCompress: $beforeCount -> $afterCount msgs (keepRecent=$keepRecent)",
@@ -390,12 +390,12 @@ internal class ChatCompressionCoordinator(
         MuseToast.show(host.appContext.getString(R.string.err_chat_compress_done))
     }
 
-    /** Ejecutable real comprimido manualmente (de [manualCompress] extraído para una fácil lectura y prueba). */
+    /** 手动压缩的实际执行体（从 [manualCompress] 抽出，便于阅读与测试）。 */
     internal suspend fun runManualCompress(sessionId: String, currentMessages: List<UIMessage>, updateMemoryFirst: Boolean) {
         try {
             val effectiveKeepRecent =
                 minOf(COMPRESSION_SAFETY_TAIL_MESSAGES, currentMessages.size - 1).coerceAtLeast(1)
-            // v2.x: La compresión manual también requiere puntos de control, así que primero tome un punto de control existente (límite + número acumulado de elementos)
+            // v2.x: 手动压缩也走检查点，因此先取一次现有检查点（边界 + 累计条数）
             val manualExisting =
                 runCatching { host.checkpointReader.get(sessionId) }.getOrNull()
             val manualPreviousBoundaryId = manualExisting?.lastCoveredMessageId
@@ -413,7 +413,7 @@ internal class ChatCompressionCoordinator(
                     }
                 },
                 updateMemory = {
-                    // Refinación forzada fact + deep memory + Actualizar today;El fallo no bloquea la compresión posterior.
+                    // 强制提炼 fact + deep memory + 刷新 today;失败不阻断后续压缩。
                     val model = resultOf { host.settings.getSelectedModel() }.getOrNull()
                     resultOf {
                         host.memoryTicker.forceCompileNow(model = model)
@@ -423,7 +423,7 @@ internal class ChatCompressionCoordinator(
                     }
                 },
                 compress = {
-                    // H-01 Reparación: transform es una función de suspensión,Utilice resultOf en su lugar para evitar engullir CancellationException
+                    // H-01 修复: transform 是 suspend 函数,改用 resultOf 避免吞没 CancellationException
                     resultOf {
                         host.contextCompressTransformer.transform(currentMessages, context)
                     }.onError { msg, _ ->
@@ -431,21 +431,21 @@ internal class ChatCompressionCoordinator(
                     }.getOrNull() ?: currentMessages
                 },
             )
-            // 3. Reemplazar en la memoria messages(No persistente,DB Mantener el historial completo)
+            // 3. 替换内存中的 messages(不持久化,DB 保留完整历史)
             if (compressed.size < currentMessages.size) {
-                // v2.3.2: guardia de sesión — Lo mismo triggerAutoCompress,Si la sesión se cambia durante la compresión, los resultados caducados se descartarán.
-                // (isCompressing finalmente reiniciado por la capa exterior,Puedes regresar directamente aquí)
+                // v2.3.2: 会话守卫 — 同 triggerAutoCompress,压缩期间切走会话则丢弃过期结果
+                // (isCompressing 由外层 finally 复位,这里直接返回即可)
                 if (host.displayedSessionId() != sessionId) {
-                    Logger.i("ChatVM", "manualCompress Los resultados han caducado(Sesión cambiada),descartar: $sessionId")
+                    Logger.i("ChatVM", "manualCompress 结果已过期(会话已切换),丢弃: $sessionId")
                     return
                 }
-                // v1.117: Corregir condición de carrera de pérdida de mensajes — La compresión es una llamada suspendida de LLM,toma varios segundos,
-                // Los usuarios podrán seguir enviando nuevos mensajes durante este periodo.(ha sido añadido a host.stateStore.messages.value).
-                // Sobrescribir directamente la versión comprimida de la instantánea anterior descartará estos mensajes nuevos.
-                // v2.x: Unificar con compresión automática —— Resultado de compresión completado**punto de control de sesión**, ya no reescribe la lista de mensajes de memoria.
-                // Dos significados:① La interfaz conserva el historial completo (los mensajes antiguos están ocultos de forma predeterminada, consulte la línea separadora en ChatScreen),
-                // Sólo el historial enviado al modelo se filtra por límite;② Las rutas manuales y automáticas se comportan exactamente igual y no se verán afectadas por
-                // Iniciativa del usuario"Compresión"Y volvamos al viejo comportamiento. La lógica de cierre comparte el mismo asistente que la ruta automática.
+                // v1.117: 修复消息丢失竞态 — 压缩是 suspend LLM 调用,耗时数秒,
+                // 期间用户可能继续发送新消息(已 append 到 host.stateStore.messages.value)。
+                // 直接用旧快照的 compressed 覆盖会丢弃这些新消息。
+                // v2.x: 与自动压缩统一 —— 压缩结果落成**会话检查点**，不再改写内存消息列表。
+                // 两层含义：① 界面保留完整历史（老消息默认收起，见 ChatScreen 的分隔线），
+                // 只有发给模型的历史按边界过滤；② 手动与自动路径的行为完全一致，不会因为
+                // 用户主动点"压缩"而回到旧行为。收尾逻辑与自动路径共用同一个 helper。
                 val manualCoveredIds =
                     io.zer0.muse.transformer.CompressionSummaryStore.entry(sessionId)?.coveredIds.orEmpty()
                 finishCompressionWithCheckpoint(
@@ -462,10 +462,10 @@ internal class ChatCompressionCoordinator(
                 )
                 announceManualCompressDone(currentMessages.size, compressed.size, effectiveKeepRecent)
             } else if (updateMemoryFirst) {
-                // La compresión no tiene efecto(Es posible que haya muy pocos mensajes o que LLM devuelva un resumen vacío),Pero la memoria ha sido actualizada.
+                // 压缩未生效(可能消息太少或 LLM 返回空摘要),但记忆已更新
                 MuseToast.show(host.appContext.getString(R.string.err_chat_compress_no_need))
             }
-            // 4. Actualizar el recuento de tokens(Mensaje de reconstrucción del sistema ya que es posible que se haya actualizado la memoria)
+            // 4. 刷新 token 计数(重建 system prompt 因为记忆可能已更新)
             host.refreshContextInfo()
         } catch (e: Exception) {
             Logger.w("ChatVM", "manualCompress failed: ${e.message}")
@@ -482,7 +482,7 @@ internal class ChatCompressionCoordinator(
         }
     }
 
-    /** Constantes migradas desde ChatViewModel.companion(Referencia directa al enlace de compresión original.). */
+    /** 从 ChatViewModel.companion 随迁的常量(原压缩链直接引用)。 */
     private companion object {
         const val COMPRESSION_SAFETY_TAIL_MESSAGES = 10
     }

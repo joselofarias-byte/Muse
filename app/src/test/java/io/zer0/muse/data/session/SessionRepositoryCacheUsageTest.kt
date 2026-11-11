@@ -19,12 +19,12 @@ import java.io.File
 import java.util.UUID
 
 /**
- * lectura de caché/Escribe persistencia en columnas de ida y vuelta.
+ * 缓存读/写分列的持久化往返。
  *
- * Cubre dos cosas:
- *  - Nuevo récord:`cachedTokens`(leer) con `cacheWriteTokens`(escribir) Cada uno entra en su propia columna, y cuando la lee no la pierde;
- *  - Registros antiguos: filas antes de dividir solamente `cachedTokens`(Se instala con un valor combinado de lectura + escritura), la lectura no falla, presione "leer" para explicar,
- *    `cacheWriteTokens` Mantenga NULL (desconocido), sin reposición, sin recálculo.
+ * 覆盖两件事：
+ *  - 新记录：`cachedTokens`(读) 与 `cacheWriteTokens`(写) 各进各列，读回来都不丢；
+ *  - 旧记录：拆分前的行只有 `cachedTokens`（装的是读 + 写合并值），读取不崩、按「读」解释，
+ *    `cacheWriteTokens` 保持 NULL（未知），不回填、不重算。
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -58,7 +58,7 @@ class SessionRepositoryCacheUsageTest {
         val message =
             UIMessage(
                 role = MessageRole.ASSISTANT,
-                content = "responder",
+                content = "回答",
                 createdAt = System.currentTimeMillis(),
                 promptTokens = 1_000,
                 completionTokens = 200,
@@ -72,9 +72,9 @@ class SessionRepositoryCacheUsageTest {
         val entity = database.messageDao().getByMessageId(id)
 
         assertNotNull(entity)
-        assertEquals("Caída de lectura de caché cachedTokens", 5_000, entity!!.cachedTokens)
-        assertEquals("Caída de escritura en caché cacheWriteTokens", 2_000, entity.cacheWriteTokens)
-        // El calibre existente no se mueve.
+        assertEquals("缓存读取落 cachedTokens", 5_000, entity!!.cachedTokens)
+        assertEquals("缓存写入落 cacheWriteTokens", 2_000, entity.cacheWriteTokens)
+        // 既有口径不动
         assertEquals(1_000, entity.promptTokens)
         assertEquals(200, entity.completionTokens)
 
@@ -87,12 +87,12 @@ class SessionRepositoryCacheUsageTest {
     @Test
     fun `legacy row with only cached tokens reads as cache read without crashing`() = runTest {
         val sessionId = newSession("legacy")
-        // Filas antes de dividir: solo valores fusionados,cacheWriteTokens listado como NULL
+        // 拆分前的行：只有合并值，cacheWriteTokens 列为 NULL
         val legacy = MessageEntity(
             id = "legacy-${UUID.randomUUID()}",
             sessionId = sessionId,
             role = MessageRole.ASSISTANT.name,
-            content = "Antigua respuesta",
+            content = "旧回复",
             createdAt = System.currentTimeMillis(),
             promptTokens = 300,
             completionTokens = 50,
@@ -103,8 +103,8 @@ class SessionRepositoryCacheUsageTest {
 
         val entity = database.messageDao().getByMessageId(legacy.id)
         assertNotNull(entity)
-        assertEquals("Los valores combinados de las filas antiguas se conservan tal como están sin relleno.", 700, entity!!.cachedTokens)
-        assertNull("La fila anterior no tiene ningún registro de volumen de escritura y debería ser NULL en su lugar. 0", entity.cacheWriteTokens)
+        assertEquals("旧行的合并值原样保留，不回填", 700, entity!!.cachedTokens)
+        assertNull("旧行没有写入量记录，应为 NULL 而不是 0", entity.cacheWriteTokens)
 
         val restored = repository.getMessageAsUiMessage(legacy.id)
         assertNotNull(restored)
@@ -118,7 +118,7 @@ class SessionRepositoryCacheUsageTest {
         val message =
             UIMessage(
                 role = MessageRole.ASSISTANT,
-                content = "responder",
+                content = "回答",
                 createdAt = System.currentTimeMillis(),
                 promptTokens = 1_000,
                 completionTokens = 100,
@@ -131,7 +131,7 @@ class SessionRepositoryCacheUsageTest {
         val entity = database.messageDao().getByMessageId(id)
 
         assertEquals(800, entity!!.cachedTokens)
-        // OpenAI Sin escrituras en caché: 0 explícito, distinguido de NULL (desconocido) para filas antiguas
+        // OpenAI 没有缓存写入：显式 0，与旧行的 NULL（未知）区分开
         assertEquals(0, entity.cacheWriteTokens)
     }
 

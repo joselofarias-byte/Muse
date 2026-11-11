@@ -78,6 +78,7 @@ import io.zer0.ai.core.UIMessage
 import io.zer0.common.resultOf
 import io.zer0.muse.R
 import io.zer0.muse.data.artifact.ArtifactEntity
+import io.zer0.muse.data.session.MessageMarkers
 import io.zer0.muse.transformer.InternalMarkupSanitizer
 import io.zer0.muse.transformer.MoodSkinParser
 import io.zer0.muse.ui.artifact.ArtifactCardList
@@ -123,35 +124,36 @@ import io.zer0.muse.ui.theme.glassBorder
 import io.zer0.muse.ui.theme.glassEdgeHighlight
 import io.zer0.muse.ui.theme.glassFakeSurfaceColor
 import io.zer0.muse.ui.theme.tiny
+import io.zer0.muse.ui.theme.titleMediumStrong
 import io.zer0.muse.util.ShareIntentHelper
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 internal fun messageCopyText(content: String, reasoning: String? = null): String {
-    // v2.6.8: Copie y exporte la exportación unificada. —— Pelar bloques de marcadores internos + colas de estado de tarjeta + efectos en línea.
+    // v2.6.8: 复制走统一导出出口 —— 剥内部标记块 + 卡片状态尾巴 + 内联特效。
     //
-    // Copie únicamente el texto principal. Anteriormente, pondría mi proceso de pensamiento al final del texto (con un [proceso de pensamiento] marca),
-    // Prueba de usuario real "Lo que obtienes cuando haces clic en copiar es pensar"—— Si quieres pensar, hay un botón dedicado a "Copiar pensamiento".
-    // Copiar el texto debe ser solo el texto. El texto está vacío (solo pensamientos/fue interrumpido) antes de volver a pensar,
-    // Evite que el botón se vuelva no operativo.
+    // 只复制正文。此前会把思考过程拼在正文后面（还带一个 [思考过程] 标记），
+    // 用户实测「点复制拿到的是思考」—— 想要思考有专门的「复制思考」按钮，
+    // 复制正文就该只有正文。正文为空（只有思考/被中断）时才回退到思考，
+    // 免得按钮变成空操作。
     val body = InternalMarkupSanitizer.exportContent(content)
     if (body.isNotBlank()) return body
     return InternalMarkupSanitizer.exportContent(reasoning.orEmpty())
 }
 
 /**
- * v2.6.0: Si se debe mostrar la tarjeta de herramientas.
+ * v2.6.0: 工具卡是否应展示。
  *
- * Las tarjetas de herramientas ordinarias se controlan mediante el interruptor "Mostrar detalles de llamada de herramienta";show_card es una tarjeta de contenido(información que no es de depuración),
- * El renderizado continúa como de costumbre cuando el interruptor está apagado.
+ * 普通工具卡受「显示工具调用详情」开关控制;show_card 是内容卡片(非调试信息),
+ * 开关关闭时仍照常渲染。
  */
 private fun toolPayloadShowing(toolName: String, showToolCallDetails: Boolean): Boolean = showToolCallDetails || toolName == "show_card"
 
 /**
- * Si este mensaje debe representarse como una tarjeta de herramienta separada.
+ * 这条消息是否要渲染独立的工具卡。
  *
- * Las tres condiciones de veto son independientes entre sí.:herramienta silenciosa(Emoticones/Lista de emoticones), apagar(show_card excepto),
- * y el producto ha sido dibujado por la tarjeta de tarea del mensaje principal(De lo contrario, la misma tarjeta aparecerá dos veces en la pantalla.).
+ * 三个否决条件各自独立:静默工具(表情包/列表情包)、开关关闭(show_card 除外)、
+ * 以及产物已由父消息的任务卡画过(否则同一张卡在屏幕上出现两遍)。
  */
 private fun shouldRenderStandaloneToolCard(
     toolInfo: io.zer0.ai.core.ToolCallInfo?,
@@ -164,20 +166,22 @@ private fun shouldRenderStandaloneToolCard(
 }
 
 /**
- * unidad de mensaje.
+ * 消息单元。
  *
- * - USER: iMessage burbuja gris,Alinear a la derecha,Filete asimétrico(abajo a la derecha 6dp,Otros 20dp),ancho máximo 280dp
- * - ASSISTANT: Sin burbujas de aire,texto de ancho completo,alineado a la izquierda,Extender directamente sobre el color base.
- * - proceso de razonamiento: Doblar la tarjeta sobre el texto(Phase 8.3,Plegado predeterminado,Haga clic para ampliar/cerrar)
- * - Representación de imágenes: Phase 5-G,Si imageUrls no está vacío,Se muestra con Coil AsyncImage
- * - cursor de transmisión(escenario 4):Se agrega un cursor vertical parpadeante al final del texto del mensaje de transmisión de IA.
- * - Menú de pulsación larga(escenario 4):Mantenga presionado el mensaje completo para que aparezca el menú de operación(Editar/regenerar/Traducción/leer en voz alta/Colección)
- * - Botón de acceso directo de IA al final(escenario 4):Se muestra después de que finaliza la transmisión"regenerar"botón icono
+ * - USER: iMessage 灰泡,右对齐,非对称圆角(右下 6dp,其他 20dp),最大宽 280dp
+ * - ASSISTANT: 无气泡,全宽文本,左对齐,直接铺在底色上
+ * - 推理过程: 正文上方折叠卡片(Phase 8.3,默认折叠,点击展开/收起)
+ * - 图片渲染: Phase 5-G,若 imageUrls 非空,用 Coil AsyncImage 展示
+ * - 流式光标(阶段 4):末尾 AI 流式消息文本后追加闪烁竖线光标
+ * - 长按菜单(阶段 4):整条消息长按弹出操作菜单(编辑/重新生成/翻译/朗读/收藏)
+ * - 末尾 AI 快捷按钮(阶段 4):流式结束后显示"重新生成"图标按钮
  */
 
-// v1.x: etiqueta de marcador de posición del producto(El modelo puede generar directamente [artifact:uuid] Cotización,Pero no hay contenido de etiqueta emparejado.);
-// Las capas de renderizado se eliminan uniformemente,Evite mostrar el texto claro del UUID al usuario(Los artefactos reales se muestran en la lista de tarjetas de artefactos.).
+// v1.x: 产物占位符标记(模型可能直接输出 [artifact:uuid] 引用,但无成对标签内容);
+// 渲染层统一剥离,避免把 UUID 明文展示给用户(真实产物由 artifactIds 卡片列表展示)。
 private val ARTIFACT_MARKER_RE = Regex("""\[artifact:[0-9a-fA-F-]{36}\]""")
+
+internal fun needsBubbleTextSanitization(text: String): Boolean = "files/stickers/" in text || "[artifact:" in text
 
 internal enum class MessageBubbleRole {
     USER,
@@ -189,19 +193,18 @@ internal data class MessageBubbleLayout(
     val hasOpaqueOuterSurface: Boolean,
 )
 
-/** Valores derivados necesarios para la representación de texto (ver [MessageBubble] bubbleText recuerda). */
+/** 正文渲染所需的派生值（见 [MessageBubble] 里的 bubbleText remember）。 */
 internal data class BubbleText(
     val content: String,
     val titleText: String?,
     val bodyContent: String,
 )
 
-
 /**
- * Valor derivado requerido para la representación de texto.
+ * 正文渲染所需的派生值。
  *
- * La función pura se extrae para que pueda cubrirse directamente mediante una única prueba: esta lógica (eliminación de ruta de etiqueta, eliminación de marcas de compresión, segmentación de línea de título,
- * artifact Limpieza de marcas) se escribió previamente en el ensamblaje y solo se pudo confirmar leyendo el código. Un solo cambio puede cambiar silenciosamente el resultado del renderizado.
+ * 抽成纯函数是为了能被单测直接覆盖：这段逻辑（贴纸路径剔除、压缩标记剥离、标题行切分、
+ * artifact 标记清理）以前写在组合体里，只能靠读代码确认，改动一次就可能悄悄改变渲染结果。
  */
 internal fun deriveBubbleText(
     content: String,
@@ -212,7 +215,12 @@ internal fun deriveBubbleText(
     isCompressed: Boolean,
 ): BubbleText {
     val hasImages = imageUrls.isNotEmpty() || imageBase64List.isNotEmpty()
-    val hasStickerPaths = if (hasImages) false else extractStickerPaths(content).isNotEmpty()
+    val hasStickerPaths =
+        if (hasImages || "files/stickers/" !in content) {
+            false
+        } else {
+            extractStickerPaths(content).isNotEmpty()
+        }
     val bodyWithoutStickerPaths = if (hasStickerPaths) {
         STICKER_PATH_PATTERN.replace(body, "").trim()
     } else {
@@ -229,8 +237,13 @@ internal fun deriveBubbleText(
     return BubbleText(
         content = rawContent,
         titleText = if (heading) firstLine else null,
-        bodyContent = (if (heading) rawContent.substring(firstLineEnd + 1).trimStart() else rawContent)
-            .replace(ARTIFACT_MARKER_RE, ""),
+        bodyContent =
+        if (needsBubbleTextSanitization(content)) {
+            (if (heading) rawContent.substring(firstLineEnd + 1).trimStart() else rawContent)
+                .replace(ARTIFACT_MARKER_RE, "")
+        } else {
+            if (heading) rawContent.substring(firstLineEnd + 1).trimStart() else rawContent
+        },
     )
 }
 
@@ -239,9 +252,31 @@ internal fun messageBubbleLayout(role: MessageBubbleRole): MessageBubbleLayout =
     MessageBubbleRole.ASSISTANT -> MessageBubbleLayout(widthFraction = 1f, hasOpaqueOuterSurface = false)
 }
 
+internal fun isBodylessMessageShell(
+    message: UIMessage,
+    body: String,
+    rendersBody: Boolean,
+    taskCard: io.zer0.muse.ui.taskcard.TaskCardData?,
+): Boolean {
+    if (!rendersBody) return true
+    return body.isBlank() &&
+        message.imageUrls.isEmpty() &&
+        message.imageBase64List.isEmpty() &&
+        message.artifactIds.isEmpty() &&
+        message.videoFileUri.isNullOrBlank() &&
+        (
+            message.toolCallInfo != null ||
+                taskCard != null ||
+                !message.toolCalls.isNullOrEmpty() ||
+                message.reasoning?.isNotBlank() == true
+            )
+}
+
+internal fun messageBubbleNeedsBodyInteraction(rendersBody: Boolean): Boolean = rendersBody
+
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
-// Las burbujas de mensajes son puntos de reunión a nivel de pantalla.:60+ parámetros,1697 Tanto la complejidad de filas como la ciclomática son“Carga útil completa de un solo mensaje”la forma inherente de,
-// Otras funciones importantes del proyecto.(Como por ejemplo ChatScreenComponents / MemoryDialogsDashboard)El mismo calibre está exento por punto.
+// 消息气泡是屏幕级组装点:60+ 参数、1697 行、高圈复杂度均为“单条消息全量载荷”的固有形态,
+// 与项目其他大函数(如 ChatScreenComponents / MemoryDialogsDashboard)同口径按点豁免。
 @Suppress("LongParameterList", "LongMethod", "CyclomaticComplexMethod")
 @Composable
 internal fun MessageBubble(
@@ -250,25 +285,25 @@ internal fun MessageBubble(
     isLastAssistant: Boolean,
     isTranslating: Boolean,
     /**
-     * H11: La traducción conserva el texto original. — El texto del mensaje de origen del mensaje de traducción.(La persona que llama analiza el mensaje entrante desde la fuente.).
-     * Cuando no es nulo, el texto de traducción se muestra debajo de la burbuja."Ver texto original"doblar,Ampliar para ver el texto original.
+     * H11: 翻译保留原文 — 译文消息的源消息文本(调用方从源消息解析传入)。
+     * 非 null 时译文气泡下方显示"查看原文"折叠,展开可对照原文。
      */
     translationSourceContent: String? = null,
     /**
-     * v2.4.6: Mapeo de traducción para este mensaje(Nombre del idioma → traducción). Si no está vacío, se mostrará como un bloque expandible debajo del mensaje.,
-     * Estilo consistente con MOOD/Think Blocks. Representación de valor de cadena vacía"Traduciendo".
+     * v2.4.6: 该消息的译文映射(语言名 → 译文)。非空时在消息下方以可展开块展示,
+     * 样式与 MOOD/思考块一致。空串值表示"翻译中"。
      */
     translations: Map<String, String> = emptyMap(),
-    /** v2.4.6: Estado expandido del bloque de traducción(Controlado externamente,Corta páginas sin perderlas). */
+    /** v2.4.6: 译文块展开状态(外部受控,切页不丢)。 */
     isTranslationExpanded: Boolean? = null,
-    /** v2.4.6: Alternar la expansión del bloque de traducción. */
+    /** v2.4.6: 切换译文块展开。 */
     onToggleTranslationExpanded: () -> Unit = {},
     /**
-     * Si se debe hacer la última pregunta del usuario.AI No se pudo generar el informe de errores/Después de un mensaje de asistente vacío, el último mensaje puede ser asistente,
-     * Pero este usuario sigue siendo la última pregunta, el énfasis está enrollEl botón debe seguir apareciendo, los usuarios no necesitan eliminarlo y volver a publicarlo.
+     * 是否为最后一条用户提问。AI 报错生成失败/空 assistant 消息后，最后一条消息可能是 assistant，
+     * 但这条 user 仍是最后提问，重roll按钮必须继续显示，用户不用删掉重发。
      */
     isLastUserMessage: Boolean = false,
-    // v1.0.53: Índice de sucursales y número total de mensajes actuales(Cambio de múltiples versiones de mensajes del asistente)
+    // v1.0.53: 当前消息的分支索引与总数(助手消息多版本切换)
     branchIndex: Int = 0,
     branchCount: Int = 1,
     onBranchPrevious: () -> Unit = {},
@@ -276,93 +311,93 @@ internal fun MessageBubble(
     onEdit: () -> Unit,
     onQuote: () -> Unit,
     onRegenerate: () -> Unit,
-    /** B7-04: Una vez interrumpido el flujo, se continúa generando la entrada. */
+    /** B7-04: 流式打断后继续生成入口。 */
     onContinue: (() -> Unit)? = null,
-    /** B7-01: Modo de selección múltiple. */
+    /** B7-01: 多选模式。 */
     selectionMode: Boolean = false,
     selected: Boolean = false,
     onToggleSelection: (() -> Unit)? = null,
     onEnterMultiSelect: (() -> Unit)? = null,
     onTranslate: (String) -> Unit,
     onToggleFavorite: () -> Unit = {},
-    // Etapa J: copiar el contenido del mensaje al portapapeles
+    // 阶段 J: 复制消息内容到剪贴板
     onCopyMessage: (String) -> Unit = {},
-    // Phase 8.7: TTS leer en voz alta(Solo mensajes de IA)
+    // Phase 8.7: TTS 朗读(仅 AI 消息)
     isSpeaking: Boolean = false,
     onToggleTts: () -> Unit = {},
-    // Phase 8.8: tarjeta de tarea(Solo mensajes de IA,Se muestra cuando se llama a una herramienta)
+    // Phase 8.8: 任务卡(仅 AI 消息,有工具调用时显示)
     taskCard: io.zer0.muse.ui.taskcard.TaskCardData? = null,
-    // Phase 10.1: Devolución de llamada de interacción de tarjeta de tarea
+    // Phase 10.1: 任务卡交互回调
     onToggleTaskCardExpand: () -> Unit = {},
     onRetryTaskCardStep: (String) -> Unit = {},
     onCancelTask: () -> Unit = {},
     onToggleTaskCardPause: () -> Unit = {},
     onToggleTaskStepPause: (String) -> Unit = {},
-    // v1.25: Mantenga presionado el menú para activar "Delegar al Asistente"
+    // v1.25: 长按菜单触发「委托给助手」
     onDelegate: () -> Unit = {},
-    // v0.29 P0-3: Compartir toda la conversación(Exportar a Markdown a través del sistema share sheet)
+    // v0.29 P0-3: 分享整段对话(导出为 Markdown 通过系统 share sheet)
     onShareSession: () -> Unit = {},
-    // F-2: Reenvío entre sesiones — Reenviar este mensaje de texto a otras conversaciones
+    // F-2: 跨会话转发 — 将本条消息文本转发到其他会话
     onForward: () -> Unit = {},
-    // v1.58: Bifurca la conversación de este mensaje(Copiar historial a una nueva sesión)
+    // v1.58: 从此消息分叉对话(复制历史到新会话)
     onFork: () -> Unit = {},
-    // v1.48: Mantenga presionado el menú para eliminar el mensaje.(Los mensajes enviados por error se pueden eliminar desde el menú)
+    // v1.48: 长按菜单删除消息(误发消息可从菜单删除)
     onDeleteMessage: () -> Unit = {},
-    /** U-16: Eliminar este mensaje y todos los mensajes posteriores.(Documentación §4\"Junto con la eliminación posterior\"). */
+    /** U-16: 删除此消息及其后全部消息(文档 §4「连同后续删除」)。 */
     onDeleteWithFollowing: () -> Unit = {},
-    // v0.29 P0-4: AI La parte inferior del mensaje muestra el nombre del modelo + estimación del token.
+    // v0.29 P0-4: AI 消息底部显示模型名 + token 估算。
     modelName: String? = null,
-    // v0.31: Preferencias de comportamiento en el chat(Controlar el estado de ánimo/proceso de pensamiento./token/Nombre del modelo/visualización de marca de tiempo)
+    // v0.31: 聊天行为偏好(控制 MOOD/思考过程/token/模型名/时间戳显示)
     chatPrefs: io.zer0.muse.data.ChatPreferences = io.zer0.muse.data.ChatPreferences(),
-    // v0.48: agrupación de mensajes — Continuamente el mismo rol con intervalo de tiempo. < 5 Avatar de compresión de mensajes de minutos + marca de tiempo
+    // v0.48: 消息分组 — 连续同角色且时间间隔 < 5 分钟的消息压缩头像 + 时间戳
     showAvatar: Boolean = true,
     showTimestamp: Boolean = true,
-    // v0.48: AI fuente de avatar(Tomado de currentAssistant,null Volver al texto del logotipo de muse)
+    // v0.48: AI 头像来源(从 currentAssistant 取,null 时回退到 muse logo 文字)
     assistant: io.zer0.muse.data.assistant.AssistantEntity? = null,
-    // v1.43: Lista de tarjetas de productos asociadas al mensaje
+    // v1.43: 消息关联的产物卡片列表
     artifacts: List<ArtifactEntity> = emptyList(),
-    // v1.43: Devolución de llamada con clic en la tarjeta del producto
+    // v1.43: 产物卡片点击回调
     onArtifactClick: (io.zer0.muse.data.artifact.ArtifactEntity) -> Unit = {},
-    // Función1: Buscar texto resaltado dentro de una sesión
+    // 功能1: 会话内搜索高亮文本
     highlightText: String? = null,
-    // v2.3: debug Resumen de rendimiento del modo(Solo se muestra el último mensaje del asistente en la parte inferior)
+    // v2.3: debug 模式性能摘要(仅最后一条 assistant 消息底部显示)
     debugInfo: String? = null,
-    /** P1 UI: Token barra de estadísticas(Pasado por ChatScreen,Aparece debajo del grupo de botones de acceso directo a mensajes del Asistente). */
+    /** P1 UI: Token 统计条(由 ChatScreen 传入,显示在助手消息快捷按钮组下方)。 */
     tokenStats: (@Composable () -> Unit)? = null,
-    // v1.55: Agent Tarjeta de planificación del flujo de trabajo(Mostrar los últimos planes activos,Desplázate con las novedades)
+    // v1.55: Agent 工作流计划卡(显示最新的活跃计划,随消息一起滚动)
     agentPlan: AgentPlan? = null,
-    // v1.201: Nodo raíz de enlace delegado(Solo mensajes de IA,Se muestra cuando se delega)
+    // v1.201: 委派链路根节点(仅 AI 消息,有委派时显示)
     delegationChain: List<io.zer0.muse.tools.DelegationChainTracker.ChainNode>? = null,
-    // v2.0.1: Resumen de palabras del mensaje de trabajo de imagen del artículo (análisis de mensajes cruzados: ChatScreen espera con ansias la llamada generate_image más cercana)
+    // v2.0.1: 图片作品条提示词摘要（跨消息解析：由 ChatScreen 向前找最近的 generate_image 调用）
     imageGenPrompt: String? = null,
-    // v1.45: mood/reasoning El estado plegado se controla externamente.,No se pierde después de cortar páginas
+    // v1.45: mood/reasoning 折叠状态由外部控制,切页后不丢失
     isMoodExpanded: Boolean? = null,
     isReasoningExpanded: Boolean? = null,
     isReflectionExpanded: Boolean? = null,
     onToggleMoodExpanded: () -> Unit = {},
     onToggleReasoningExpanded: () -> Unit = {},
     onToggleReflectionExpanded: () -> Unit = {},
-    // HTML/SVG Devolución de llamada de vista previa de pantalla completa de bloque de código(El parámetro es el código fuente HTML completo.,SVG empacado)
+    // HTML/SVG 代码块全屏预览回调(参数为完整 HTML 源码,SVG 已包装)
     onHtmlPreview: (String) -> Unit = {},
-    /** v1.0.92: Devolución de llamada de devolución de tarjeta(mensaje de guión/Guardar artefacto).
+    /** v1.0.92: 卡片回传回调(脚本消息/保存工件)。
      *
-     * v2.6.8: null Simplemente significa "sin canal de retorno", la tarjeta seguirá renderizando y ejecutando su propio canal. JS
-     * (JS Desacoplado del puente, consulte RichContentCard).
+     * v2.6.8: null 只意味着「没有回传通道」，卡片仍会渲染并运行自己的 JS
+     * （JS 与桥已解耦，见 RichContentCard）。
      */
     onCardAction: ((CardAction) -> Unit)? = null,
     /**
-     * v2.6.8: Controlador de devolución de tarjeta para tarjeta de tarea, tarjeta de producto de paso (messageId, action).
+     * v2.6.8: 任务卡步骤产物卡的卡片回传处理器 (messageId, action)。
      *
-     * Es posible que haya tarjetas de productos distintas de show_card en el paso de la tarjeta de tareas (render_data etc),
-     * La identidad de su tarjeta es "la identificación del mensaje de la tarjeta de tarea", por lo que se necesita la dimensión messageId.
-     * Regresar a cuando no se pasa [onCardAction](La identidad de la tarjeta utiliza esta identificación de mensaje, que es coherente con una única tarjeta en línea).
+     * 任务卡的步骤里可能有 show_card 之外的产物卡（render_data 等），
+     * 它们的卡片身份是「挂任务卡的那条消息 id」，所以需要 messageId 这一维。
+     * 不传时回落到 [onCardAction]（卡片身份用本消息 id，与单条内联卡一致）。
      */
     onTaskCardCardAction: ((String, CardAction) -> Unit)? = null,
-    // Adjunto de vídeo(Solo mensajes de USUARIO):Miniatura del vídeo + duración + icono de reproducción,Haga clic para iniciar el reproductor del sistema con ACTION_VIEW
+    // 视频附件(仅 USER 消息):视频缩略图 + 时长 + 播放图标,点击用 ACTION_VIEW 调起系统播放器
     videoAttachment: VideoAttachment? = null,
-    // v1.138: ayuda visual UI — Análisis en progreso(null=No analizando)
+    // v1.138: 视觉辅助 UI — 分析中进度(null=未在分析)
     visionAssistProgress: io.zer0.muse.vision.VisionProgress? = null,
-    // v1.138: ayuda visual UI — ¿El mensaje ha sido ayudado visualmente?(mostrar"visión de asistencia"etiqueta)
+    // v1.138: 视觉辅助 UI — 是否已对该消息做过视觉辅助(显示"辅助视觉"标签)
     visionAssisted: Boolean = false,
     /**
      * Host-owned bubble skin. Null keeps the built-in appearance byte-for-byte; a
@@ -374,39 +409,46 @@ internal fun MessageBubble(
     showUserAvatar: Boolean = false,
     userAvatarText: String = "U",
     /**
-     * v2.4.5 fix: Ya sea para mostrar el proceso de llamada de la herramienta(ajustes → charlar → Mostrar proceso de llamada de herramienta).
+     * v2.4.5 fix: 是否展示工具调用过程(设置 → 聊天 → 显示工具调用过程)。
      *
-     * Anteriormente, este interruptor solo controlaba la lista ToolRunCard / TaskCard / subagente en el lado ChatScreen.,
-     * MessageBubble ToolCallCard huérfana interna no está controlada:Cuando el interruptor está apagado, ChatScreen se enciende taskCard
-     * conjunto null,En cambio, la representación recae en `toolInfo != null` rama,La tarjeta todavía aparece. La activación ahora está unificada por este parámetro.
+     * 此前只有 ChatScreen 侧的 ToolRunCard / TaskCard / 子代理列表受该开关控制,
+     * MessageBubble 内部的孤立 ToolCallCard 未受控:开关关闭时 ChatScreen 把 taskCard
+     * 置 null,反而使渲染落到 `toolInfo != null` 分支,卡片照旧弹出。现在由此参数统一门控。
      */
     showToolCallDetails: Boolean = true,
     /**
-     * Si los artefactos de este mensaje han sido representados por la tarjeta de tarea en el mensaje de ayuda asociado.
+     * 该消息的产物是否已由所属助手消息上的任务卡渲染。
      *
-     * Cada paso de la tarjeta de tareas dibujará directamente el producto.(show_card tarjetas, imágenes generadas…).
-     * El mensaje de visualización de la herramienta es un mensaje independiente.,si vuelve a dibujar,La misma tarjeta aparece dos veces en la pantalla.
-     * (Comentarios de los usuarios"Muestre dos tarjetas dentro de una tarjeta y en ese lugar").true Saltar renderizado de producto,
-     * Mantenga sólo una identificación de proceso minimalista.
+     * 任务卡的每个步骤都会直接画出产物(show_card 的卡片、生成的图片…)。
+     * 工具展示消息是独立的一条消息,若它再画一次,同一张卡就在屏幕上出现两遍
+     * (用户反馈"一个卡里面和那个地方展示两个卡片")。true 时跳过产物渲染,
+     * 只保留极简的过程标识。
      */
     cardRenderedByTaskCard: Boolean = false,
-    /** v2.6: vidrio liquido — true Cuando la burbuja de mensajes del usuario está habilitada(El gas siempre es vidrio falso.). */
+    /** v2.6: 液态玻璃 — true 时用户消息气泡启用玻璃(气体一律假玻璃)。 */
     glassActive: Boolean = false,
-    /** v2.5.0: Estilo de vidrio y configuración de cubículo. */
+    /** v2.5.0: 玻璃风格与档位配置。 */
     glassConfig: io.zer0.muse.ui.theme.LiquidGlassConfig = io.zer0.muse.ui.theme.LiquidGlassConfig(),
     /**
-     * v2.x(comentarios de los usuarios): Si la sesión actual tiene una imagen de fondo.
+     * Long-message projection renders the body in separate lazy rows. The shell
+     * keeps actions, metadata and the complete [msg] source without measuring it.
+     */
+    rendersBody: Boolean = true,
+    /** Long-message Footer already renders identity in Header, so it skips this block. */
+    rendersHeader: Boolean = true,
+    /**
+     * v2.x（用户反馈）: 当前会话是否设了背景图。
      *
-     * Texto largo cuando hay una imagen de fondo."Sin tarjeta de crédito"Hará que el texto presione directamente sobre la imagen (texto negro debajo del fondo de pantalla oscuro/Contraste de texto blanco
-     * Perdido, prueba real del usuario"Si no hay burbujas, no se puede leer con claridad."). Entonces cuando hay una imagen de fondo**Mantenga siempre la base de burbujas**,
-     * Sacrificar un poco el ritmo de lectura de artículos largos por la legibilidad; color sólido/Los fondos degradados todavía se procesan como si no se incluyeran artículos largos.
+     * 有背景图时，长文"不进卡"会让正文直接压在图片上（深色壁纸下黑字/白字对比度
+     * 丢失，用户实测"没气泡就看不清字"）。因此有背景图时**始终保留气泡底**，
+     * 牺牲一点长文阅读节奏换取可读性；纯色/渐变背景仍按长文不进卡处理。
      */
     hasBackgroundImage: Boolean = false,
     /**
-     * v2.x(comentarios de los usuarios): Si el fondo de la sesión es oscuro.
+     * v2.x（用户反馈）: 会话背景是否偏暗。
      *
-     * usado para"El texto se presiona directamente sobre el fondo."(sin fondo de burbuja/Invierte automáticamente el color cuando el texto largo no ingresa a la tarjeta) —— Utilice caracteres claros sobre un fondo oscuro,
-     * Utilice caracteres oscuros sobre fondos brillantes para evitar"No se puede ver nada en texto negro debajo de un fondo de pantalla oscuro.". No tiene efecto cuando hay un fondo de burbujas (las burbujas tienen su propio color de fondo).
+     * 用于"正文直接压在背景上"（无气泡底/长文不进卡）时自动反色 —— 暗背景用浅字，
+     * 亮背景用深字，避免"深色壁纸下黑字什么都看不见"。有气泡底时不生效（气泡自带底色）。
      */
     backgroundIsDark: Boolean = false,
 ) {
@@ -414,73 +456,81 @@ internal fun MessageBubble(
     val outerLayout = messageBubbleLayout(
         if (isUser) MessageBubbleRole.USER else MessageBubbleRole.ASSISTANT,
     )
-    // Resolve once per role/theme; null skincortocircuito es null,Mantenga la apariencia predeterminada completamente sin cambios.
+    // Resolve once per role/theme; null skin短路为 null,保证默认外观完全不变。
     val resolvedSkin = bubbleSkin?.let { skin ->
         val role = if (isUser) BubbleRole.USER else BubbleRole.ASSISTANT
         BubbleSkinResolver.resolve(skin, role, darkTheme = isSystemInDarkTheme())
     }
-    // Etapa 4: Estado del menú de pulsación larga(Menú principal + Submenú Traducir idioma)
-    // B-AUDIT: Menú de pulsación larga/Eliminar confirmación/información/Respuestas de expresión, etc."estado de interacción instantánea"Cambiar de nuevo remember —
-    // rememberSaveable Se guardará por elemento mediante SaveableStateHolder de LazyColumn./recuperar,
-    // Hace que se desplace fuera de la pantalla y luego retroceda después de ser destruido.,Menú cerrado/cuadro de diálogo"resurrección"Re-pop.
-    // Este tipo de visibilidad instantánea no debería ocurrir entre rotaciones./detrás del escenario/Recuperación rodante.
+    // 阶段 4: 长按菜单状态(主菜单 + 翻译语言子菜单)
+    // B-AUDIT: 长按菜单/删除确认/信息/表情回应等"瞬时交互状态"改回 remember —
+    // rememberSaveable 会被 LazyColumn 的 SaveableStateHolder 按 item 保存/复原,
+    // 导致滚离屏幕销毁后再滚回时,已关闭的菜单/对话框"复活"重新弹出。
+    // 这类瞬时显隐不应跨旋转/后台/滚动恢复。
     var actionSurface by remember { mutableStateOf(MessageActionSurface.Hidden) }
     val showActionMenu = actionSurface != MessageActionSurface.Hidden
     val showLanguageSubmenu = actionSurface == MessageActionSurface.TranslationLanguages
-    // v1.0.74 fix: Registre la posición de la burbuja en la ventana.,Mantenga presionado el menú para anclar esto(No hay punto de anclaje antes,Siempre aparece en la esquina superior derecha de la ventana.)
+    // v1.0.74 fix: 记录气泡在窗口中的位置,长按菜单以此锚定(此前无锚点,永远弹在窗口右上角)
     var actionMenuBounds by remember { mutableStateOf(androidx.compose.ui.geometry.Rect.Zero) }
-    // El menú de pulsación larga requiere la posición real de presión del dedo,en lugar de un límite fijo para toda la burbuja.
+    // 长按菜单需要使用手指实际按下的位置,而不是整条气泡的固定边界。
     var actionMenuPressPointLocal by remember { mutableStateOf<Offset?>(null) }
     var actionMenuPointInWindow by remember { mutableStateOf<Offset?>(null) }
-    // v1.0.72: Menú de pulsación larga — false=Panel compacto(Cotización/Compartir/Copiar/Seleccionar texto/Más),
-    // true=Expandir menú completo(confiar/rama/Traducción/Colección/Editar/Eliminar etc)
-    // El submenú de idioma pertenece a la capa de menú completa; de lo contrario, la traducción rápida caerá primero en el menú de clic simplificado.
+    // v1.0.72: 长按菜单 — false=精简面板(引用/分享/复制/选择文本/更多),
+    // true=展开完整菜单(委托/分支/翻译/收藏/编辑/删除等)
+    // 语言子菜单属于完整菜单层；否则快捷翻译会先落到精简点按菜单。
     val showExtendedMenu = actionSurface == MessageActionSurface.Extended ||
         actionSurface == MessageActionSurface.TranslationLanguages
-    // v1.0.72: Modo de selección de texto — Mantenga presionado el elemento del menú"Seleccionar texto"Después de entrar,Admite selección y copia.;
-    // Haga clic en la burbuja o mantenga presionada nuevamente para salir
+    // v1.0.72: 文本选择模式 — 长按菜单点"选择文本"后进入,支持划选复制;
+    // 点击气泡或再次长按退出
     var textSelectMode by remember { mutableStateOf(false) }
-    // P2-13: Menú contextual del botón derecho del escritorio(Solo se muestra la escena de ventana expandida + teclado físico)
+    // P2-13: 桌面端右键上下文菜单(仅 Expanded 窗口 + 物理键盘场景显示)
     var showDesktopContextMenu by remember { mutableStateOf(false) }
-    // v1.60-B: Estado del visor de medios en pantalla completa — Lista de imágenes + índice inicial
-    // mediaPreview es de tipo par,Custom Saver es demasiado complejo,mantener remember
+    // v1.60-B: 全屏媒体查看器状态 — 图片列表 + 初始索引
+    // mediaPreview 为 Pair 类型,自定义 Saver 过于复杂,保持 remember
     var mediaPreview by remember { mutableStateOf<Pair<List<String>, Int>?>(null) }
-    // v2.6.13: Vista previa del archivo adjunto. Después de hacer clic en el chip adjunto, deberá obtener el original, así que guarde la referencia completa en lugar de la ruta.
+    // v2.6.13: 附件预览。附件芯片点开后要拿到原件，所以存整条引用而不是路径。
     var attachmentPreview by remember { mutableStateOf<io.zer0.ai.core.AttachmentRef?>(null) }
-    // v1.48: Eliminar cuadro de diálogo de confirmación de mensaje
+    // v1.48: 删除消息确认对话框
     var showDeleteConfirm by remember { mutableStateOf(false) }
-    // v1.0.92: Cuadro de diálogo de comentario de mensaje(escribir/Ver/Eliminar)
+    // v1.0.92: 消息批注对话框(写入/查看/删除)
     var showAnnotateDialog by remember { mutableStateOf(false) }
-    // A5: Capa emergente de información del mensaje(Mantenga presionado para expandir el menú/Activador de "Información del mensaje" del menú contextual del escritorio)
+    // A5: 消息信息弹层(长按扩展菜单/桌面右键菜单「消息信息」触发)
     var showInfoSheet by remember { mutableStateOf(false) }
-    // Visualización del cursor al final de la transmisión de IA
+    // 末尾 AI 流式时光标显示
     val showStreamingCursor = !isUser && isLastAssistant && isStreaming
-    // v1.42: El último mensaje de IA en la transmisión desactiva la animación,Evite el retraso causado por cada medida del marco.
-    val isAnimating = !(isLastAssistant && isStreaming)
-    // Mango de respuesta táctil(Se activa al presionar prolongadamente el interruptor menú/copiar/favorito/regenerar/TTS)
+    // 只有正在增长的流式尾巴需要尺寸动画。历史气泡常开动画会在列表滚动、
+    // LazyColumn 复用时持续参与布局，是主对话滚动卡顿的高频来源。
+    val isAnimating = isLastAssistant && isStreaming
+    // 触觉反馈句柄(长按菜单 / 复制 / 收藏 / 重新生成 / TTS 切换时触发)
     val hapticFeedback = LocalHapticFeedback.current
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    // Cotización Responder:Analizar contenido que comienza con `> ` bloquear,quotedContent Prioridad(para editar/Estado del borrador)
-    // v1.42: USER Los mensajes deben analizarse en busca de referencias.,Assistant La omisión de mensajes parseQuotedContent reduce el cálculo.
+    // 引用回复:解析 content 开头的 `> ` 块,quotedContent 优先(用于编辑/草稿态)
+    // v1.42: USER 消息才需要解析引用,Assistant 消息跳过 parseQuotedContent 减少计算。
     val quoteAndBody = remember(msg.content, isUser) {
         if (isUser) parseQuotedContent(msg.content) else null to msg.content
     }
     val parsedQuote = quoteAndBody.first
     val parsedBody = quoteAndBody.second
-    // v1.79 (M-B8): La persona que llama garantiza que el contenido no contiene prefijos de referencia.,Aquí no se realizará más deduplicación.
+    // v1.79 (M-B8): 调用方保证 content 不含引用前缀,此处不再做去重处理
     val quote = msg.quotedContent ?: parsedQuote
-    // La última línea de defensa en la capa de visualización: los mensajes históricos o los modelos de transferencia anormales aún pueden dejar etiquetas internas en el contenido.
-    // Las burbujas de texto no deben mostrar pensamiento/mod/estado de ánimo como Markdown normal.
-    // v2.6.7 Rendimiento: El resultado del análisis del texto se cambia para recordarlo y las 4 copias del estado del medio se elevan a la capa exterior y se leen primero.
-    // La antigua forma de escribir requiere volver a ejecutarse cada vez que se reorganiza. lines() Escaneo de tabla completa + stripCardStateFromMessage regular,
-    // Y cada vez se crea un nuevo conjunto (lo que hace imposible utilizar el conjunto como clave de recuerdo).
+    // 最后一道显示层防线：历史消息或异常中转模型可能仍把内部标签留在 content，
+    // 正文气泡绝不能把 think/mod/mood 当普通 Markdown 展示。
+    // v2.6.7 性能: 正文解析结果改为 remember，并把 4 条媒体状态文案提到外层先读。
+    // 旧写法每次重组都要重跑 lines() 全表扫描 + stripCardStateFromMessage 正则，
+    // 且每次都新建一个 Set（导致无法用 Set 作为 remember key）。
     val mediaImgGenerating = stringResource(R.string.err_chat_img_generating)
     val mediaImgGenerated = stringResource(R.string.err_chat_img_generated)
     val mediaVidGenerating = stringResource(R.string.err_chat_video_generating)
     val mediaVidGenerated = stringResource(R.string.err_chat_video_generated)
+    // 中断/截断记号在清洗层就摘掉了；这里按当前界面语言把那句话补回原来的位置，
+    // 切语言时这两行跟着变，不用回头改库里的正文（走查 §十五 三-N4）。
+    val interruptedNote = stringResource(R.string.msg_interrupted_note)
+    val truncatedNote = stringResource(R.string.err_reply_truncated)
+    val wasInterrupted = !isUser && MessageMarkers.isInterrupted(msg.content)
+    val wasTruncated = !isUser && MessageMarkers.isTruncated(msg.content, truncatedNote)
     val body =
         remember(
+            rendersBody,
             msg.content,
             msg.quotedContent,
             isUser,
@@ -489,9 +539,14 @@ internal fun MessageBubble(
             mediaImgGenerated,
             mediaVidGenerating,
             mediaVidGenerated,
+            interruptedNote,
+            wasInterrupted,
+            truncatedNote,
+            wasTruncated,
         ) {
+            if (!rendersBody) return@remember ""
             val raw = if (isUser) {
-                // Los mensajes de los usuarios no se limpian internamente (los usuarios pueden haber publicado etiquetas que contienen <think> código), pero se debe quitar la cola del estado de la tarjeta.
+                // 用户消息不做内部标签清洗（用户可能贴了含 <think> 的代码），但卡片状态尾巴必须剥。
                 InternalMarkupSanitizer.stripCardState(if (msg.quotedContent != null) msg.content else parsedBody)
             } else {
                 InternalMarkupSanitizer.displayContent(if (msg.quotedContent != null) msg.content else parsedBody)
@@ -499,26 +554,36 @@ internal fun MessageBubble(
             val mediaStatusTexts = setOf(mediaImgGenerating, mediaImgGenerated, mediaVidGenerating, mediaVidGenerated)
                 .map { it.trim() }
                 .toSet()
-            if (!isUser && raw.isNotBlank() &&
+            val collapsed = if (!isUser && raw.isNotBlank() &&
                 raw.lines().all { it.isBlank() || it.trim() in mediaStatusTexts }
             ) {
                 ""
             } else {
                 raw
             }
+            // 记号在这里换成本地那句话。清洗层刻意不删它：删完正文会变空串，
+            // 下游一串「正文为空就不渲染」的判据会把整条气泡吞掉（走查 §十六 实测：
+            // 助手气泡只剩操作图标、正文一片空白）。替换而不是追加，正文原本为空时
+            // 也能得到一句完整的话，不会出现「中文原样 + 本地提示」两行并存。
+            MessageMarkers.localize(collapsed, interruptedNote, truncatedNote).trim()
         }
-    // falló/El asistente vacío restaurado no se puede representar como una barra blanca larga sin contenido.
-    // La transmisión de comentarios en espera es manejada por ThinkingBubble independiente de ChatScreen.
-    // v2.4.5 fix: toolCallInfo no puede actuar incondicionalmente“Carga visible”——Cuando "Mostrar proceso de llamada de herramienta" está desactivado
-    //   Esta carga útil no representa,Sólo el texto en blanco se convertirá en uno.“barra de mensajes vacía”. En este momento sólo está el texto principal./Figura/vídeo/producto/
-    //   pensar/estado de ánimo/Reflexión/Cotización/Se requieren tarjetas de tareas para que los mensajes se puedan representar.
+    // 失败/恢复后的空 assistant 不能渲染成没有内容的白色长条。
+    // 流式等待反馈由 ChatScreen 的独立 ThinkingBubble 负责。
+    // v2.4.5 fix: toolCallInfo 不能无条件充当“可见载重”——关闭「显示工具调用过程」时
+    //   该载荷不渲染,只剩空白正文会变成一条“空消息栏”。此时只有正文/图/视频/产物/
+    //   思考/心情/反思/引用/任务卡 才能让消息可渲染。
     val toolPayloadVisible = showToolCallDetails && msg.toolCallInfo != null
-    // v2.6.0: show_card es una tarjeta de contenido(información que no es de depuración),No controlado por el interruptor "Mostrar detalles de llamada de herramienta".
+    // v2.6.0: show_card 是内容卡片(非调试信息),不受「显示工具调用详情」开关控制。
     val isShowCardMessage = msg.toolCallInfo?.toolName == SHOW_CARD_TOOL_NAME
-    // v2.6.16: mensaje de voz — Utilice barras de voz para reemplazar las burbujas de texto cuando haya citas de voz.
-    //   Sólo cambiar la representación,content Sin mover una palabra:El modelo se basa en el texto para comprender el contexto.,La interfaz no puede borrarlo fácilmente.
+    // v2.6.16: 语音消息 — 有语音引用时用语音条替换正文气泡。
+    //   只换渲染,content 一字不动:模型靠文本理解上下文,界面不能顺手把它清空。
     val voiceUri = msg.voiceUri?.takeIf { it.isNotBlank() }
     val hasAssistantPayload = body.isNotBlank() ||
+        (!rendersBody && msg.content.isNotBlank()) ||
+        // 中断/截断记号在正文里被摘掉后 body 是空的，但界面会把那句话画出来；
+        // 不把它们算进"有载重"，整条气泡会被下面的早返回直接吞掉（走查 §十六）。
+        wasInterrupted ||
+        wasTruncated ||
         msg.imageUrls.isNotEmpty() ||
         msg.imageBase64List.isNotEmpty() ||
         msg.videoFileUri != null ||
@@ -534,11 +599,11 @@ internal fun MessageBubble(
         artifacts.isNotEmpty()
     if (!isUser && !hasAssistantPayload) return
 
-    // Los mensajes históricos solo pueden tener contenido pero ningún campo de estado de ánimo, y la capa de visualización aún restaura el estado de ánimo/mod incrustado en un bloque plegable.
-    // Durante el período de transmisión, cuando el estado de ánimo aún no se ha almacenado en la biblioteca, se debe realizar la búsqueda de texto completo para cada cuadro del texto y las reflexiones;
-    // El resultado está determinado únicamente por estas tres entradas y se almacena en caché en consecuencia.
-    val visibleMood = remember(msg.id, msg.mood, msg.content, msg.reasoning) {
-        if (isUser) {
+    // 历史消息可能只有 content 没有 mood 字段，显示层仍把内嵌 mood/mod 恢复成可折叠块。
+    // 流式期间 mood 还没落库时，这里每帧都要对正文与思考各做一次全文 findAll；
+    // 结果只由这三个输入决定，按它们缓存。
+    val visibleMood = remember(rendersBody, msg.id, msg.mood, msg.content, msg.reasoning) {
+        if (!rendersBody || isUser) {
             null
         } else {
             msg.mood?.takeIf { it.isNotBlank() }
@@ -546,73 +611,78 @@ internal fun MessageBubble(
                 ?: InternalMarkupSanitizer.extractMood(msg.reasoning.orEmpty())
         }
     }
-    // P2-13: Interruptor de tecla de acceso directo del escritorio(Expanded Ventana + teclado físico)— Controlar si el menú contextual está habilitado
+    // P2-13: 桌面快捷键总开关(Expanded 窗口 + 物理键盘)— 控制右键菜单是否启用
     val desktopShortcutsEnabled = rememberDesktopShortcutsEnabled()
-    // M-UI1: Menú de pulsación larga/Cierre unificado de gestos del menú del escritorio.,Posteriormente adjunto al usuario respectivamente./asistente de burbuja,
-    // Evite que toda la fila de la columna quede cubierta al hacer clic en resaltado.
+    // M-UI1: 长按菜单/桌面菜单手势统一收口,后续分别附加到用户/助手气泡上,
+    // 避免整行 Column 都被点击高亮覆盖。
     val bubbleInteractionSource = remember { MutableInteractionSource() }
-    val bubbleClickModifier = Modifier
-        // Punto de prensa de observación de bypass,Ningún evento de consumo,Mantener pares de enlaces combinados en los que se puede hacer clic/Comportamiento existente para seleccionar texto.
-        .pointerInput(msg.id) {
-            awaitEachGesture {
-                val down = awaitFirstDown(requireUnconsumed = false)
-                actionMenuPressPointLocal = down.position
-                waitForUpOrCancellation()
-            }
-        }
-        .combinedClickable(
-            interactionSource = bubbleInteractionSource,
-            indication = null,
-            // v1.0.72: Pulsación larga en cualquier parte del mensaje(Contiene área de texto,Se ha eliminado la interceptación de SelectionContainer.)menú de operación emergente;
-            // Haga clic:Cambiar al modo de selección múltiple/salir del modo de selección de texto
-            onClick = {
-                if (selectionMode) {
-                    onToggleSelection?.invoke()
-                } else if (textSelectMode) textSelectMode = false
-            },
-            onLongClick = {
-                MuseHaptics.medium(hapticFeedback)
-                if (textSelectMode) {
-                    // v1.0.72: En el modo de selección de texto, manténgalo presionado y entréguelo a SelectionContainer para activar el controlador de selección del sistema.,
-                    // No abrir el menú de operación(De lo contrario, se eliminará la pulsación larga.,Nunca puedo seleccionar texto)
-                    return@combinedClickable
+    val bubbleClickModifier =
+        if (messageBubbleNeedsBodyInteraction(rendersBody)) {
+            Modifier
+                // 旁路观察按下点,不消费事件,保留 combinedClickable 对链接/选择文本的既有行为。
+                .pointerInput(msg.id) {
+                    awaitEachGesture {
+                        val down = awaitFirstDown(requireUnconsumed = false)
+                        actionMenuPressPointLocal = down.position
+                        waitForUpOrCancellation()
+                    }
                 }
-                if (selectionMode) {
-                    onToggleSelection?.invoke()
-                } else if (desktopShortcutsEnabled) {
-                    showDesktopContextMenu = true
-                } else {
-                    // v1.0.90: El menú se ha cambiado a un panel inferior y ya no se requieren las coordenadas del punto de prensa.
-                    actionSurface = MessageActionSurface.Compact
+                .combinedClickable(
+                    interactionSource = bubbleInteractionSource,
+                    indication = null,
+                    // v1.0.72: 长按消息任意位置(含文字区域,已去掉 SelectionContainer 拦截)都弹操作菜单;
+                    // 点击:多选模式切换选中 / 文本选择模式退出
+                    onClick = {
+                        if (selectionMode) {
+                            onToggleSelection?.invoke()
+                        } else if (textSelectMode) textSelectMode = false
+                    },
+                    onLongClick = {
+                        MuseHaptics.medium(hapticFeedback)
+                        if (textSelectMode) {
+                            // v1.0.72: 文本选择模式下长按交给 SelectionContainer 激活系统选择手柄,
+                            // 不弹操作菜单(否则长按被抢走,永远选不了文字)
+                            return@combinedClickable
+                        }
+                        if (selectionMode) {
+                            onToggleSelection?.invoke()
+                        } else if (desktopShortcutsEnabled) {
+                            showDesktopContextMenu = true
+                        } else {
+                            // v1.0.90: 菜单改为底部面板，不再需要按压点坐标。
+                            actionSurface = MessageActionSurface.Compact
+                        }
+                    },
+                )
+                .onGloballyPositioned { coordinates ->
+                    if (showActionMenu) {
+                        val bounds = coordinates.boundsInWindow()
+                        val pointInWindow = actionMenuPressPointLocal?.let(coordinates::localToWindow)
+                        if (actionMenuBounds != bounds) actionMenuBounds = bounds
+                        if (actionMenuPointInWindow != pointInWindow) {
+                            actionMenuPointInWindow = pointInWindow
+                        }
+                    }
                 }
-            },
-        )
-        .onGloballyPositioned { coordinates ->
-            if (showActionMenu) {
-                val bounds = coordinates.boundsInWindow()
-                val pointInWindow = actionMenuPressPointLocal?.let(coordinates::localToWindow)
-                if (actionMenuBounds != bounds) actionMenuBounds = bounds
-                if (actionMenuPointInWindow != pointInWindow) {
-                    actionMenuPointInWindow = pointInWindow
-                }
-            }
+        } else {
+            Modifier
         }
 
-    // Calcular la alineación absoluta según la dirección del diseño actual,Evite los usuarios de RTL/Las burbujas del asistente están invertidas de izquierda a derecha.
+    // 按当前布局方向计算绝对对齐,避免 RTL 下用户/助手气泡左右颠倒
     val layoutDirection = LocalLayoutDirection.current
     val isLtr = layoutDirection == LayoutDirection.Ltr
     val horizontalAlignment = if (isUser == isLtr) Alignment.End else Alignment.Start
 
-    // v1.0.74 fix (Auditoría inicial 2.5): Solo registra la ubicación cuando se muestra el menú de pulsación larga.
-    // La implementación original escribe onGloballyPositioned durante cada cuadro durante el desplazamiento. MutableState,Burbujas(Contiene MarkdownText)Reorganizar repetidamente durante el desplazamiento.
-    // v1.0.90: Después de cambiar el menú al panel inferior, aquí no se necesitan coordenadas de anclaje.
+    // v1.0.74 fix (前端审计 2.5): 仅长按菜单显示时记录位置。
+    // 原实现滚动期间每帧 onGloballyPositioned 写 MutableState,气泡(含 MarkdownText)滚动中反复重组。
+    // v1.0.90: 菜单改为底部面板后，这里不再需要任何锚点坐标。
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .then(
                 if (isAnimating) {
                     Modifier.animateContentSize(
-                        // v2.6.7: Para cambios dimensionales, utilice GrowEase (inicio rápido, acabado estable) y ya no utilice curvas de desplazamiento.
+                        // v2.6.7: 尺寸变化用 GrowEase（起步快、收尾稳），不再用位移曲线。
                         animationSpec = MuseMotion.tween(MuseAnimation.NORMAL_MS, easing = MuseAnimation.GrowEase),
                     )
                 } else {
@@ -624,7 +694,7 @@ internal fun MessageBubble(
             modifier = Modifier.fillMaxWidth(),
             horizontalAlignment = horizontalAlignment,
         ) {
-            // B7-01: Indicación de modo de selección múltiple
+            // B7-01: 多选模式指示
             if (selectionMode) {
                 Row(
                     modifier = Modifier
@@ -640,7 +710,7 @@ internal fun MessageBubble(
                     ) {
                         Icon(
                             imageVector = if (selected) MuseIcons.check else MuseIcons.circle,
-                            // C-21: Semántica específica del indicador de selección múltiple(previamente reutilizado skill_enabled/skill_disabled,TalkBack error semántico)
+                            // C-21: 多选指示器专用语义(此前复用 skill_enabled/skill_disabled,TalkBack 语义错误)
                             contentDescription = stringResource(
                                 if (selected) R.string.chat_msg_selected else R.string.chat_msg_not_selected,
                             ),
@@ -650,17 +720,17 @@ internal fun MessageBubble(
                     }
                 }
             }
-            // v2.7: MOOD reescritura de bloque —— Segmentos estructurados + líneas de resumen localizadas + títulos empaquetados en tarjetas.
-            // Originalmente un tono primario Superficie + codificado "MOOD" + cuerpo de texto plano,
-            // Los cuatro párrafos de contenido están agrupados en una pila y la lista está completamente sangrada; el título todavía flota fuera de la tarjeta, lo que es inconsistente con la forma de la tarjeta pensante.
+            // v2.7: MOOD 块重写 —— 结构化分段 + 本地化摘要行 + 标题收进卡内。
+            // 原先是一个 primary 色调的 Surface + 硬编码 "MOOD" + 纯文本正文，
+            // 四段内容挤成一坨、列表缩进全塌；标题还浮在卡片外面，和思考卡形态不一致。
             if (chatPrefs.showMoodBlock) {
                 visibleMood?.let { mood ->
-                    // v1.45: Prefieren estados controlados externos;Utilice el valor predeterminado cuando no esté controlado
+                    // v1.45: 优先使用外部受控状态;未控制时用默认值
                     val moodExpanded = isMoodExpanded ?: chatPrefs.moodExpandedByDefault
-                    // La etapa de transmisión no se expande:El texto de la etiqueta todavía se está analizando pieza por pieza.,La expansión forzada hará que todo el manuscrito aparezca en un marco determinado.
+                    // 流式阶段不展开:标签文本还在逐段解析,强制展开会让整段腹稿在某一帧集中闪出。
                     val showMoodExpanded = if (isLastAssistant && isStreaming) false else moodExpanded
                     val moodSections = remember(mood) { MoodSectionParser.parse(mood) }
-                    // v2.6.10: Sigue el color del tema. —— La variante de superficie (gris-blanco) se corrigió originalmente, pero no estaba sincronizada al cambiar el tema.
+                    // v2.6.10: 跟随主题色 —— 原先固定 surfaceVariant（灰白），换主题不同步。
                     val moodContainerColor =
                         MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f)
                     val moodBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
@@ -687,8 +757,8 @@ internal fun MessageBubble(
                                     text = if (showMoodExpanded) {
                                         stringResource(R.string.chat_mood_label)
                                     } else {
-                                        // Plegar con resumen de primera línea: mostrar solo "MOOD"El título equivale a ocultar completamente el contenido.
-                                        // Los usuarios no pueden discernir el tono emocional del mensaje.
+                                        // 折叠时带上首行摘要：只显示「MOOD」标题等于把内容完全藏起来，
+                                        // 用户看不出这条消息的情绪基调。
                                         val summary = moodSections
                                             .firstOrNull { !it.title.isNullOrBlank() || it.lines.isNotEmpty() }
                                             ?.let { section ->
@@ -740,7 +810,7 @@ internal fun MessageBubble(
                                     section.lines.forEach { rawLine ->
                                         if (rawLine.isBlank()) return@forEach
                                         val line = MoodSectionParser.toLine(rawLine)
-                                        // v2.7: Haga clic para deletrear directamente en el texto. —— Al dibujar puntos de texto independientes, la línea base y el texto principal no estarán alineados y flotarán sobre el comienzo de la línea.
+                                        // v2.7: 点直接拼进文本 —— 独立 Text 画点时基线和正文对不齐，会浮在行首上方。
                                         Text(
                                             text = if (line.bullet) "·  ${line.text}" else line.text,
                                             style = MaterialTheme.typography.bodySmall,
@@ -755,18 +825,18 @@ internal fun MessageBubble(
                 }
             }
 
-// Phase 8.3: Tarjetas plegables de proceso de razonamiento(área de pliegue de razonamiento)
-            // v0.31: Controlado por el interruptor chatPrefs.showReasoning,El estado de expansión predeterminado está determinado por chatPrefs.reasoningExpandedByDefault
-            // v1.45: Cambiar a controlado externamente,Cortar páginas/Permanecer doblado después del fondo
-            // v1.118: Cuando está plegado, el título muestra un resumen del contenido del pensamiento.(en lugar de estático"proceso de pensamiento"cuatro palabras),Permita que los usuarios comprendan rápidamente en qué están pensando
-            // v2.x: La rueda de herramientas también retiene el bloque de pensamiento; Los usuarios deben poder ver y copiar el razonamiento antes de que se llame a la herramienta después de activar el pensamiento.
+// Phase 8.3: 推理过程折叠卡片(推理折叠区)
+            // v0.31: 受 chatPrefs.showReasoning 开关控制,默认展开状态由 chatPrefs.reasoningExpandedByDefault 决定
+            // v1.45: 改为外部受控,切页/后台后保持折叠状态
+            // v1.118: 折叠时标题显示思考内容摘要(而非静态"思考过程"四字),让用户快速了解思考了什么
+            // v2.x: 工具轮也保留思考块；用户开启思考后需要能查看和复制工具调用前的推理。
             if (chatPrefs.showReasoning) {
                 msg.reasoning?.takeIf { it.isNotBlank() }?.let { reasoning ->
                     val reasoningExpanded = isReasoningExpanded ?: chatPrefs.reasoningExpandedByDefault
 
-                    // v2.7: Operandos en el resumen del procedimiento. Las tarjetas de tareas se cuentan como pasos y las llamadas a herramientas aisladas se cuentan como 1;
+                    // v2.7: 过程摘要里的操作数。任务卡按步骤计，孤立工具调用计 1；
 
-                    // Las herramientas silenciosas tipo pegatina no muestran tarjetas y no se incluyen aquí.
+                    // 贴纸类静默工具不展示卡片，这里也不计入。
 
                     val processOps = run {
                         val silentTool = msg.toolCallInfo?.toolName == "send_sticker" ||
@@ -781,11 +851,11 @@ internal fun MessageBubble(
                             else -> 0
                         }
                     }
-                    // v1.0.92: Quitar"Expansión forzada del último elemento de flujo."(Comentarios de los usuarios:La expansión predeterminada no está habilitada, pero Thinking aún se expande automáticamente.);
-                    // Piense en bloquear, simplemente presione el valor predeterminado/Cambiar manualmente para expandir,El progreso de la transmisión ahora está representado por un temporizador en tiempo real a la derecha de la fila del título.
+                    // v1.0.92: 移除"流式最后一条强制展开"(用户反馈:没开默认展开但思考仍自动展开);
+                    // 思考块只按默认值/手动切换展开,流式进度改由标题行右侧的实时计时器呈现。
                     val showExpanded = reasoningExpanded
-                    // v1.0.92: pensar en el temporizador — Actualiza cada segundo durante la transmisión;La duración acumulada de este ciclo de vida de la pantalla se conservará una vez finalizado.
-                    // (reciclar/Reiniciar después del corte de página,Sin persistencia;La fuente de datos es el reloj local.,Almacenamiento de mensajes sin contacto).
+                    // v1.0.92: 思考计时器 — 流式期间每秒刷新;结束后保留本次展示生命周期的累计时长
+                    // (回收/切页后重新计时,不做持久化;数据源为本地时钟,不触碰消息存储)。
                     var reasoningElapsedSec by remember(msg.id) { mutableStateOf(0) }
                     LaunchedEffect(isLastAssistant, isStreaming) {
                         if (isLastAssistant && isStreaming) {
@@ -813,8 +883,8 @@ internal fun MessageBubble(
                                     .padding(vertical = MusePaddings.tinyGap),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                // v1.118: Cuando está plegado, el título muestra un resumen del contenido del pensamiento.,Mostrar cuando esté expandido"proceso de pensamiento"Título
-                                // El resumen ocupa unos 40 caracteres antes del razonamiento.(Fusionar saltos de línea),prefijo"pensar · "Fuente de identificación
+                                // v1.118: 折叠时标题显示思考内容摘要,展开时显示"思考过程"标题
+                                // 摘要取 reasoning 前约 40 字符(合并换行),前缀"思考 · "标识来源
                                 val titleText = when {
                                     showExpanded -> stringResource(R.string.chat_reasoning_title)
 
@@ -842,7 +912,7 @@ internal fun MessageBubble(
                                     overflow = TextOverflow.Ellipsis,
                                     modifier = Modifier.weight(1f),
                                 )
-                                // v1.0.92: Tiempo de pensamiento a la derecha de la línea del título.(Transmitir en tiempo real/congelar fotograma una vez finalizado)
+                                // v1.0.92: 标题行右侧的思考计时(流式实时 / 结束后定格)
                                 if (reasoningElapsedSec > 0) {
                                     Text(
                                         text = stringResource(R.string.chat_reasoning_elapsed, reasoningElapsedSec),
@@ -853,7 +923,7 @@ internal fun MessageBubble(
                                 }
                                 Icon(
                                     imageVector = if (showExpanded) MuseIcons.chevronUp else MuseIcons.chevronDown,
-                                    // L-MB1: contentDescription más explícito
+                                    // L-MB1: contentDescription 更明确
                                     contentDescription = if (showExpanded) {
                                         stringResource(
                                             R.string.chat_reasoning_collapse_cd,
@@ -880,8 +950,8 @@ internal fun MessageBubble(
                 }
             }
 
-            // v1.64: bloque de reflexión(reflection — AI Precisión de las propias respuestas./integridad/Autoevaluación del tono.,plegable)
-            // Isomórfico al estado de ánimo/bloqueo de razonamiento:Controlado por el interruptor chatPrefs.showReflectionBlock + estado de expansión predeterminado
+            // v1.64: 反思块(reflection — AI 对自身回答的准确性/完整性/语气自评,可折叠)
+            // 与 mood/reasoning 块同构:受 chatPrefs.showReflectionBlock 开关 + 默认展开状态控制
             if (chatPrefs.showReflectionBlock) {
                 msg.reflection?.takeIf { it.isNotBlank() }?.let { reflection ->
                     val reflectionExpanded = isReflectionExpanded ?: chatPrefs.reflectionExpandedByDefault
@@ -904,7 +974,7 @@ internal fun MessageBubble(
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                // LAYOUT-01: El título del bloque contraído toma el ancho restante (solo un ícono de flecha de ancho fijo a la derecha)
+                                // LAYOUT-01: 折叠块标题取剩余宽度（右侧仅一个固定宽箭头图标）
                                 Text(
                                     text = stringResource(R.string.chat_reflection_title),
                                     style = MaterialTheme.typography.labelSmall,
@@ -915,7 +985,7 @@ internal fun MessageBubble(
                                 )
                                 Icon(
                                     imageVector = if (showReflectionExpanded) MuseIcons.chevronUp else MuseIcons.chevronDown,
-                                    // L-MB1: contentDescription más explícito
+                                    // L-MB1: contentDescription 更明确
                                     contentDescription = if (showReflectionExpanded) {
                                         stringResource(
                                             R.string.chat_reflection_collapse_cd,
@@ -964,14 +1034,14 @@ internal fun MessageBubble(
                         }
                     }
                 }
-                // Mensajes de usuario: Burbuja redondeada de color claro + cola pequeña en la parte inferior derecha.(toma de decisiones D1,Igual que el chat grupal)
-                // F-41: El redondeo está controlado por chatPrefs.bubbleRadius(0=cuadrado/8=esquinas redondeadas/20=Grandes esquinas redondeadas/28=cápsula)
+                // 用户消息: 浅色圆角气泡 + 右下小尾巴(决策 D1,与群聊一致)
+                // F-41: 圆角由 chatPrefs.bubbleRadius 控制(0=方形/8=圆角/20=大圆角/28=胶囊)
                 val bubbleRadius = chatPrefs.bubbleRadius.coerceIn(0, 28).toFloat()
                 val hasImages = msg.imageBase64List.isNotEmpty()
-                // La piel sólo cubre el caparazón.(color/esquinas redondeadas/relleno/ancho máximo);null La piel conserva su estilo original.
+                // 皮肤只覆盖外壳(颜色/圆角/内边距/最大宽度);null 皮肤保持原有样式。
                 val userSurfaceColor = resolvedSkin?.let { Color(it.style.surfaceArgb) }
                     ?: MuseBubbleStyles.userSurfaceColor()
-                // v2.0: Agregue un trazo de color principal a la burbuja del usuario cuando no haya máscara,Evite las burbujas en fondos claros"no puedo ver"
+                // v2.0: 无皮肤时给用户气泡加主色描边,避免气泡在浅色背景上"看不见"
                 val userBorder = if (resolvedSkin == null) {
                     androidx.compose.foundation.BorderStroke(1.dp, MuseBubbleStyles.userBorderColor())
                 } else {
@@ -981,8 +1051,8 @@ internal fun MessageBubble(
                     ?: MuseBubbleStyles.userBubbleShape(bubbleRadius)
                 val userContentColor = resolvedSkin?.let { Color(it.style.contentArgb) }
                     ?: MuseBubbleStyles.userContentColor()
-                // v2.0: Los mensajes de usuario mantienen burbujas compactas a la derecha —— El cambio de banner solo funciona en artículos largos del asistente.,
-                // Las oraciones cortas del usuario ya no ocupan toda la línea en el lado izquierdo de la publicación.;Adaptar el ancho al contenido,El tamaño máximo no supera el 78% de la pantalla.
+                // v2.0: 用户消息保持右侧紧凑气泡 —— 通栏开关只作用于助手长文,
+                // 用户短句不再被拉满整行贴左侧;按内容自适应宽度,最大不超过屏幕 78%。
                 val userWidthFraction = resolvedSkin?.style?.maxWidthFraction ?: outerLayout.widthFraction
                 val userMaxWidthDp = with(androidx.compose.ui.platform.LocalConfiguration.current) {
                     (screenWidthDp * userWidthFraction).dp
@@ -990,36 +1060,44 @@ internal fun MessageBubble(
                 val userPadding = resolvedSkin?.style?.let {
                     PaddingValues(horizontal = it.paddingHorizontalDp.dp, vertical = it.paddingVerticalDp.dp)
                 } ?: MusePaddings.bubbleInner
-                // v2.5.2: burbujas de vidrio liquido —— Utilice "vidrio falso" en su lugar(sin desenfoque):
-                // Si hay docenas de burbujas en una pantalla, cada una estará muy borrosa y arrastrará el desplazamiento hacia abajo.(Agujero negro de rendimiento),
-                // Cambiar a fondo degradado + resaltado superior + trazo,Visualmente similar pero de bajo costo.
+                // v2.5.2: 液态玻璃气泡 —— 改用「假玻璃」(无模糊):
+                // 一屏几十个气泡如果每个都跑真模糊会拖垮滚动(性能黑洞),
+                // 改为渐变底 + 顶部高光边 + 描边,视觉近似但成本低。
                 val userGlassActive = glassActive && resolvedSkin == null && glassConfig.enabled
-                val userGlassModifier = if (userGlassActive) {
-                    Modifier
-                        .clip(userShape)
-                        .background(glassFakeSurfaceColor(MuseBubbleStyles.userSurfaceColor(), glassConfig))
-                        .glassEdgeHighlight(userShape, glassConfig)
-                        .glassBorder(userShape, glassConfig)
-                } else {
-                    Modifier
+                // 黑白主题：玻璃只保留「顶部高光 + 描边」，底色走实色灰阶 —— 不做任何渐变。
+                // 其余主题维持原来的「假玻璃」渐变（一屏几十个气泡没法跑真模糊）。
+                val monoFlatGlass = userGlassActive && MuseBubbleStyles.isMonoBubbleTheme()
+                val userGlassModifier = when {
+                    !userGlassActive -> Modifier
+                    monoFlatGlass ->
+                        Modifier
+                            .clip(userShape)
+                            .glassEdgeHighlight(userShape, glassConfig)
+                            .glassBorder(userShape, glassConfig)
+                    else ->
+                        Modifier
+                            .clip(userShape)
+                            .background(glassFakeSurfaceColor(MuseBubbleStyles.userSurfaceColor(), glassConfig))
+                            .glassEdgeHighlight(userShape, glassConfig)
+                            .glassBorder(userShape, glassConfig)
                 }
                 Surface(
-                    color = if (userGlassActive) Color.Transparent else userSurfaceColor,
+                    color = if (userGlassActive && !monoFlatGlass) Color.Transparent else userSurfaceColor,
                     shape = userShape,
                     border = userBorder,
-                    // v1.0.29: Quitar sombra,Evite las burbujas de colores claros en colores oscuros./Aparecen extraños bordes de sombras sobre fondos claros.
+                    // v1.0.29: 移除阴影,避免浅色气泡在深色/浅色背景下出现奇怪阴影边缘。
                     modifier = userGlassModifier
                         .then(bubbleClickModifier)
                         .padding(horizontal = MusePaddings.tinyGap, vertical = 3.dp),
                 ) {
                     Column(
                         modifier = Modifier
-                            // v2.0: Adaptar el ancho al contenido(Hasta 78% del ancho de pantalla),Los mensajes cortos ya no se extienden en pancartas largas.
+                            // v2.0: 按内容自适应宽度(最多 78% 屏宽),短消息不再被拉成通栏长条
                             .widthIn(max = userMaxWidthDp)
                             .padding(userPadding),
                         verticalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
-                        // Cotización Responder:Mostrar bloque de cotización en la parte superior de los mensajes de los usuarios
+                        // 引用回复:用户消息顶部显示引用块
                         quote?.let {
                             Surface(
                                 modifier = Modifier.fillMaxWidth(),
@@ -1036,8 +1114,8 @@ internal fun MessageBubble(
                                 )
                             }
                         }
-                        // Adjunto de vídeo:Miniatura + duración + icono de reproducción,Haga clic para iniciar el reproductor del sistema con ACTION_VIEW
-                        // Degradado a marcador de posición oscuro + ícono de video cuando falta la miniatura,Mantenga una alta coherencia para evitar fluctuaciones en el diseño
+                        // 视频附件:缩略图 + 时长 + 播放图标,点击用 ACTION_VIEW 调起系统播放器
+                        // 缩略图缺失时降级为深色占位 + 视频图标,保持高度一致避免布局抖动
                         videoAttachment?.let { va ->
                             Box(
                                 modifier = Modifier
@@ -1045,7 +1123,7 @@ internal fun MessageBubble(
                                     .heightIn(max = 220.dp)
                                     .clip(MuseShapes.medium)
                                     .clickable {
-                                        // Llame al reproductor del sistema para reproducir video.;Aviso de brindis cuando no se puede procesar ninguna solicitud
+                                        // 调用系统播放器播放视频;无应用可处理时 Toast 提示
                                         runCatching {
                                             val intent = Intent(Intent.ACTION_VIEW).apply {
                                                 setDataAndType(va.uri, "video/*")
@@ -1084,7 +1162,7 @@ internal fun MessageBubble(
                                         )
                                     }
                                 }
-                                // icono de reproducción central(scrim El fondo semitransparente mejora el contraste.)
+                                // 中央播放图标(scrim 半透明背景提升对比度)
                                 Box(
                                     modifier = Modifier
                                         .align(Alignment.Center)
@@ -1100,7 +1178,7 @@ internal fun MessageBubble(
                                         modifier = Modifier.size(MuseIconSizes.iconLarge),
                                     )
                                 }
-                                // Etiqueta de duración en la esquina inferior derecha(Texto blanco sobre fondo negro,Consistente con el estilo del álbum del sistema.)
+                                // 右下角时长标签(黑底白字,与系统相册风格一致)
                                 Surface(
                                     color = MaterialTheme.colorScheme.scrim.copy(alpha = 0.7f),
                                     shape = MuseShapes.tiny,
@@ -1121,7 +1199,7 @@ internal fun MessageBubble(
                             }
                         }
                         if (hasImages) {
-                            // v1.60-B: También se puede hacer clic en las imágenes del usuario para ampliarlas e ingresar al visor de medios en pantalla completa.
+                            // v1.60-B: 用户图片也可点击放大进入全屏媒体查看器
                             val userImageUris = msg.imageBase64List.map { "data:image/jpeg;base64,$it" }
                             userImageUris.forEachIndexed { index, uri ->
                                 SmartImage(
@@ -1134,9 +1212,9 @@ internal fun MessageBubble(
                                         .clickable { mediaPreview = userImageUris to index },
                                 )
                             }
-                            // v1.138: Etiquetas de ayuda visual — Mostrar la imagen de abajo"visión de asistencia"Estado
-                            // analizando:mostrar progreso"visión de asistencia · analizando x/y"
-                            // Completado:mostrar"visión de asistencia · Analizado"(éxito)o"visión de asistencia · falló"
+                            // v1.138: 视觉辅助标签 — 在图片下方显示"辅助视觉"状态
+                            // 分析中:显示进度"辅助视觉 · 分析中 x/y"
+                            // 已完成:显示"辅助视觉 · 已分析"(成功)或"辅助视觉 · 失败"
                             val showVisionLabel = visionAssistProgress?.isActive == true || visionAssisted
                             if (showVisionLabel) {
                                 val (labelText, labelColor, labelIcon) = when {
@@ -1156,7 +1234,7 @@ internal fun MessageBubble(
                                     )
                                     else -> Triple(
                                         stringResource(R.string.vision_assist_label),
-                                        MaterialTheme.colorScheme.outline,
+                                        MaterialTheme.colorScheme.onSurfaceVariant,
                                         MuseIcons.eye,
                                     )
                                 }
@@ -1194,8 +1272,8 @@ internal fun MessageBubble(
                             }
                         }
                         val userText = body.ifEmpty { if (hasImages || videoAttachment != null || voiceUri != null) "" else " " }
-                        // v2.6.13: El chip adjunto se coloca encima del texto. La línea "guardada en el espacio de trabajo" del texto es una referencia para el modelo.
-                        // Al usuario sólo le indica que hay un archivo, pero no cuál es, qué tamaño tiene o si se puede abrir.
+                        // v2.6.13: 附件芯片放在正文上方。正文里那行「已存入工作区」是给模型看的引用，
+                        // 对用户来说它只说明有文件、不说明是哪个、多大、能不能打开。
                         if (msg.attachments.isNotEmpty()) {
                             MessageAttachmentChips(
                                 attachments = msg.attachments,
@@ -1203,7 +1281,7 @@ internal fun MessageBubble(
                             )
                         }
                         if (voiceUri != null) {
-                            // v2.6.16: mensaje de voz — La barra de voz reemplaza la burbuja de texto(El contenido permanece en msg.content)
+                            // v2.6.16: 语音消息 — 语音条替换正文气泡(内容仍保留在 msg.content 里)
                             VoiceMessageBubble(
                                 voiceUri = voiceUri,
                                 durationMs = msg.voiceDurationMs,
@@ -1218,20 +1296,20 @@ internal fun MessageBubble(
                         }
                     }
                 }
-                // v0.48: USER La marca de tiempo se muestra alineada a la derecha debajo de la burbuja del mensaje.(recibir showTimestamp && chatPrefs.showTimestamp controlar)
+                // v0.48: USER 消息气泡下方右对齐显示时间戳(受 showTimestamp && chatPrefs.showTimestamp 控制)
                 if (showTimestamp && chatPrefs.showTimestamp) {
                     Text(
                         text = formatMessageTime(msg.createdAt, use24Hour = chatPrefs.use24Hour),
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.outline,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 2.dp, end = MusePaddings.tinyGap),
                     )
                 }
             } else {
-                // v1.0.54: Mensaje de asistente vacío(content Vacío + sin imagen/tarjeta/pensar/Reflexión/emociones)no renderizar —
-                //   Actualización del mensaje de ocupación de la rueda de herramientas. El asistente no está actualizado toolCalls(hengwei null),No puedo juzgar por la rueda de herramientas;
-                //   Reservado durante la transmisión(ThinkingIndicator Es normal generar retroalimentación),despues del final/Los mensajes de tiempo y espacio se ocultan durante la carga.
-                // C-22: Tarjeta de producto incluida(artifactIds)/tarjeta de tarea(por taskCardInfo)El mensaje no se oculta aunque el texto esté vacío.
+                // v1.0.54: 空 assistant 消息(content 空 + 无图片/卡片/思考/反思/情绪)不渲染 —
+                //   工具轮占位消息 updateAssistant 不更新 toolCalls(恒为 null),无法按工具轮判断;
+                //   流式期间保留(ThinkingIndicator 是正常生成反馈),结束后/加载时空消息隐藏。
+                // C-22: 含产物卡(artifactIds)/任务卡(经 taskCardInfo)的消息即使正文为空也不隐藏
                 val isToolRoundPlaceholder = !isStreaming &&
                     body.isBlank() &&
                     msg.imageUrls.isEmpty() && msg.imageBase64List.isEmpty() &&
@@ -1241,22 +1319,22 @@ internal fun MessageBubble(
                     msg.reasoning.isNullOrBlank() &&
                     msg.mood.isNullOrBlank() &&
                     msg.reflection.isNullOrBlank()
-                // v1.0.80: Novedades puras sobre herramientas(content vacío + herramienta/tarjeta de tarea)No incluye fondo de burbujas.
-                // Comentarios de los usuarios:Durante la citometría de flujo, se expone un círculo de fondo de burbuja profundo debajo de la tarjeta de herramientas.,Como una interfaz de usuario vacía que primero ocupa espacio.
-                // Tarjeta de herramientas(ToolCallCard/TaskCard)Viene con superficie + borde.,No es necesario agregar otra capa de burbujas.
-                // v2.0: Complementa dos categorías principales de mensajes sin texto. — ①si toolCalls(Ninguno toolCallInfo/taskCard)rueda de herramientas;
-                // ②solo razonamiento“pensar”mensaje. Originalmente no alcanzaron esta condición.,Los bloqueos del pensamiento vienen con su propia casi invisibilidad
-                // surfaceVariant abajo,El fondo de la burbuja solo expone una franja gris de 48 píxeles de ancho en el lado izquierdo.(medido“escombros grises”);
-                // Igual que la rueda de herramientas,El contenido con su propio bloque de fondo no necesita tener burbujas.
-                val isPureToolBubble = body.isBlank() &&
-                    msg.imageUrls.isEmpty() && msg.imageBase64List.isEmpty() &&
-                    msg.artifactIds.isEmpty() && msg.videoFileUri.isNullOrBlank() &&
-                    (
-                        msg.toolCallInfo != null || taskCard != null ||
-                            !msg.toolCalls.isNullOrEmpty() || msg.reasoning?.isNotBlank() == true
-                        )
-                // v0.48: AI avatar — Compresión continua de avatares para mensajes con el mismo rol al agrupar mensajes(showAvatar=false salto de tiempo)
-                if (showAvatar && !isToolRoundPlaceholder) {
+                // v1.0.80: 纯工具消息(content 空 + 有工具/任务卡片)不包气泡底。
+                // 用户反馈:流式时工具卡片下方露出一圈偏深的气泡底,像先占位的空 UI。
+                // 工具卡片(ToolCallCard/TaskCard)自带 surface + 边框,无需再套一层气泡。
+                // v2.0: 补上两大类无正文消息 — ①有 toolCalls(无 toolCallInfo/taskCard)的工具轮;
+                // ②只有 reasoning 的“思考”消息。它们原先不命中此条件,思考块又自带近隐形的
+                // surfaceVariant 底,气泡底只在左侧露出 48px 宽灰条(实测的“灰色残块”);
+                // 与工具轮同理,自带背景块的内容不需要再套气泡。
+                val isPureToolBubble =
+                    isBodylessMessageShell(
+                        message = msg,
+                        body = body,
+                        rendersBody = rendersBody,
+                        taskCard = taskCard,
+                    )
+                // v0.48: AI 头像 — 消息分组时连续同角色消息压缩头像(showAvatar=false 时跳过)
+                if (rendersHeader && showAvatar && !isToolRoundPlaceholder) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth(outerLayout.widthFraction)
@@ -1275,9 +1353,9 @@ internal fun MessageBubble(
                             ),
                             avatarSize = MuseAvatarSize.inline,
                         )
-                        // v2.6.10: Los nombres están desacoplados de las marcas de tiempo.
-                        // El nombre es el ancla de identidad (las escenas de múltiples asistentes pueden distinguir quién está hablando), controlada por showAssistantName, activada de forma predeterminada;
-                        // La marca de tiempo es metainformación y está controlada únicamente por showTimestamp.
+                        // v2.6.10: 名字与时间戳解耦。
+                        // 名字是身份锚点（多助手场景能分清谁在说话），由 showAssistantName 控制，默认开；
+                        // 时间戳是元信息，单独受 showTimestamp 控制。
                         val showName = chatPrefs.showAssistantName
                         val showTime = showTimestamp && chatPrefs.showTimestamp
                         if (showName || showTime) {
@@ -1293,18 +1371,18 @@ internal fun MessageBubble(
                                     else -> timeText
                                 },
                                 style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.outline,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
                     }
                 }
-                // D1: Mensaje del asistente = tarjeta de luz(Calibre de chat grupal,cola inferior izquierda);El mensaje de herramienta pura viene con tarjeta sin fondo de burbuja.(v1.0.80).
+                // D1: 助手消息 = 浅色卡片(群聊口径,左下小尾巴);纯工具消息自带卡片不包气泡底(v1.0.80)。
                 if (!isToolRoundPlaceholder) {
                     Column(
-                        // Mensaje del asistente:capa de contenido;Funda para mensajes de herramientas no puras con base de tarjeta de color claro.
+                        // 助手消息:内容层;非纯工具消息套浅色卡片底。
                         modifier = Modifier
                             .fillMaxWidth(if (chatPrefs.bubbleFullWidth) 1f else outerLayout.widthFraction)
-                            // v2.0.1: Respira a izquierda y derecha — Los bloques de fondo, como las tarjetas de asistente y los bloques de pensamiento, ya no llenan la pantalla (comentarios de los usuarios)."demasiado lleno, lleno de gente").
+                            // v2.0.1: 左右呼吸边 — 助手卡与思考块等底色块不再顶满屏幕（用户反馈"太满、挤"）。
                             .padding(horizontal = MusePaddings.screen)
                             .then(bubbleClickModifier),
                     ) {
@@ -1312,15 +1390,15 @@ internal fun MessageBubble(
                             ?: MuseBubbleStyles.assistantSurfaceColor()
                         val assistantShape = resolvedSkin?.style?.radiusDp?.dp?.let { RoundedCornerShape(it) }
                             ?: MuseBubbleStyles.assistantBubbleShape()
-                        // v2.x: Calibración de texto largo — tipo estructural/respuesta muy larga"Sin tarjeta de crédito":contenedor de concha cancelar(color de fondo/Accidente cerebrovascular/esquinas redondeadas/70% Eliminar todos los límites de ancho),
-                        // El contenido cae directamente en el borde de respiración, diseño de ancho completo(Ritmo de lectura de contenidos largos). En el modo piel, prevalecerá la piel.
-                        // v2.x(comentarios de los usuarios): Si hay una imagen de fondo, no escribas artículos largos y no se incluirán en la tarjeta. —— De lo contrario, el texto se presionará directamente sobre la imagen.
-                        // El contraste se pierde bajo fondos de pantalla oscuros ("Sin burbujas, no puedes ver las palabras."). Solo colores sólidos/Se aplica el fondo degradado.
+                        // v2.x: 长文校准 — 结构型/超长回复"不进卡":外壳容器取消(底色/描边/圆角/70% 宽度上限全去),
+                        // 内容直接落在呼吸边上全宽排版(长内容阅读节奏)。皮肤模式下以皮肤为准。
+                        // v2.x（用户反馈）: 有背景图时不做长文不进卡 —— 否则正文直接压在图片上，
+                        // 深色壁纸下对比度丢失（"没气泡就看不见字"）。仅纯色/渐变背景适用。
                         val isLongFormBubble = !isPureToolBubble && resolvedSkin == null &&
                             !hasBackgroundImage && isLongFormContent(body)
-                        // v2.x(comentarios de los usuarios): Cuando el texto principal se presiona directamente sobre el fondo (el texto largo no se bloqueará) = Sin fondo de burbujas)
-                        // Invertir colores automáticamente —— Utilice caracteres claros sobre fondos oscuros y caracteres oscuros sobre fondos claros para evitar"El texto negro no se puede ver debajo del fondo de pantalla oscuro".
-                        // No tendrá efecto cuando haya una base de burbujas (el color de fondo lo determina el tema para garantizar el contraste).
+                        // v2.x（用户反馈）: 正文直接压在背景上时（长文不进卡 = 无气泡底色）
+                        // 自动反色 —— 暗背景用浅字、亮背景用深字，避免"深色壁纸下黑字看不见"。
+                        // 有气泡底时不生效（底色由主题保证对比度）。
                         val bodyTextColor = if (isLongFormBubble && backgroundIsDark) {
                             androidx.compose.ui.graphics.Color.White.copy(alpha = 0.92f)
                         } else {
@@ -1330,12 +1408,12 @@ internal fun MessageBubble(
                             modifier = if (isPureToolBubble) {
                                 Modifier.padding(PaddingValues(0.dp))
                             } else if (isLongFormBubble) {
-                                // v2.x: Artículo largo“Sin tarjeta de crédito” — Sin color de fondo/Sin derrame cerebral/Sin esquinas redondeadas/Sin ancho máximo,Fila recta de ancho completo.
+                                // v2.x: 长文“不进卡” — 无底色/无描边/无圆角/无宽度上限,全宽直排。
                                 //
-                                // Comentarios de los usuarios (el artículo largo se desborda desde el borde derecho)/La frontera desaparece):
-                                // valor antiguo horizontal = 0.dp —— El texto queda realmente pegado al borde de la pantalla.
-                                // En una sesión con una imagen de fondo parece“Sin burbujas, el texto sale volando de la pantalla.”.
-                                // En su lugar, mantenga un margen mínimo de lectura (no igual al margen interior de la tarjeta, pero no permita que las palabras se peguen al borde de la pantalla).
+                                // 用户反馈（长文右缘溢出/边框消失）:
+                                // 旧值 horizontal = 0.dp —— 正文真的贴到屏幕边缘，
+                                // 在带背景图的会话里看起来就像“没有气泡、文字飞出屏幕”。
+                                // 改为保留一个最小的阅读呼吸边（不等于卡片内边距，只是不让字贴着屏边）。
                                 Modifier.padding(
                                     PaddingValues(
                                         horizontal = MusePaddings.tightGap,
@@ -1348,7 +1426,7 @@ internal fun MessageBubble(
                                     .background(assistantSurfaceColor)
                                     .then(
                                         if (resolvedSkin == null) {
-                                            // v2.0: Agregue un trazo a la tarjeta del asistente cuando no haya máscara,Evite que las tarjetas de colores claros se vuelvan casi invisibles sobre fondos de colores claros.
+                                            // v2.0: 无皮肤时给助手卡片加描边,避免浅色卡片在浅色背景上几乎隐形
                                             Modifier.border(1.dp, MuseBubbleStyles.assistantBorderColor(), assistantShape)
                                         } else {
                                             Modifier
@@ -1356,7 +1434,7 @@ internal fun MessageBubble(
                                     )
                                     .then(
                                         if (chatPrefs.bubbleFullWidth) {
-                                            // Modo banner: elimina el límite superior del ancho máximo de burbujas
+                                            // 通栏模式：去掉气泡最大宽度上限
                                             Modifier
                                         } else {
                                             Modifier.widthIn(max = MuseBubbleStyles.maxBubbleWidth())
@@ -1365,8 +1443,8 @@ internal fun MessageBubble(
                                     .padding(
                                         if (chatPrefs.bubbleFullWidth) {
                                             PaddingValues(
-                                                // v1.0.92: La barandilla también conserva el borde respirable. — antigua implementación horizontal=0 Se adjuntará directamente a la pantalla.
-                                                // (Comentarios de los usuarios"No hay ningún espacio a la izquierda y a la derecha.");Alineado a 8 dp del banner del lado del usuario.
+                                                // v1.0.92: 通栏也保留呼吸边 — 旧实现 horizontal=0 会直接贴屏
+                                                // (用户反馈"左右一点空隙都没有");与用户侧通栏的 8dp 对齐。
                                                 horizontal = MusePaddings.contentGap,
                                                 vertical = MusePaddings.cardInner.calculateTopPadding(),
                                             )
@@ -1377,11 +1455,11 @@ internal fun MessageBubble(
                             },
                             verticalArrangement = Arrangement.spacedBy(6.dp),
                         ) {
-                            // transmisión/estado de pensamiento:AI Se muestra la parte superior del mensaje."pensando…"Con puntos verdes pulsantes
+                            // 流式/思考状态:AI 消息顶部显示"正在思考…"带绿色脉动圆点
                             if (isLastAssistant && isStreaming && !isPureToolBubble) {
                                 ThinkingIndicator()
                             }
-                            // v2.6.16: tira de mensajes de voz — con fotos/Transmisión de vídeo en la misma capa,No participa en la representación de texto.
+                            // v2.6.16: 语音消息条 — 与图片/视频同层分流,不参与正文渲染
                             voiceUri?.let { uri ->
                                 VoiceMessageBubble(
                                     voiceUri = uri,
@@ -1389,29 +1467,36 @@ internal fun MessageBubble(
                                     isFromUser = false,
                                 )
                             }
-                            // Phase 5-G / Phase 8.6: Renderizar la imagen generada(URL o base64 data URI)
-                            // fuente de visualización unificada:prioridad imageUrls,Evite Géminis mientras tenga imageUrls(data URI) Representación repetida al usar imageBase64List
-                            // v1.95: Escanee también la ruta absoluta del paquete de emoticonos en el contenido(filesDir/stickers/...),Generado por la herramienta send_sticker
-                            val displayImageUris = remember(msg.imageUrls, msg.imageBase64List, msg.content, isLastAssistant, isStreaming) {
+                            // Phase 5-G / Phase 8.6: 渲染生成的图片(URL 或 base64 data URI)
+                            // 统一显示源:优先用 imageUrls,避免 Gemini 同时有 imageUrls(data URI) 和 imageBase64List 时重复渲染
+                            // v1.95: 同时扫描 content 中的表情包绝对路径(filesDir/stickers/...),由 send_sticker 工具产生
+                            val displayImageUris = remember(
+                                rendersBody,
+                                msg.imageUrls,
+                                msg.imageBase64List,
+                                msg.content,
+                                isLastAssistant,
+                                isStreaming,
+                            ) {
                                 val fromUrls = if (msg.imageUrls.isNotEmpty()) {
                                     msg.imageUrls
                                 } else {
                                     msg.imageBase64List.map { "data:image/png;base64,$it" }
                                 }
-                                // v1.100: Saltar el escaneo de rutas de emoticones durante la transmisión(Los gastos generales de regularización aumentan con el contenido),
-                                // Después de la transmisión(no isStreaming)Solo escanea,Alineado con la estrategia alternativa de MarkdownText
-                                if (isLastAssistant && isStreaming) {
+                                // v1.100: 流式期间跳过表情包路径扫描(正则开销随 content 增长),
+                                // 流式结束后(非 isStreaming)才扫描,与 MarkdownText 降级策略对齐
+                                if (!rendersBody || (isLastAssistant && isStreaming)) {
                                     fromUrls
                                 } else {
-                                    // Markdown Imagen: El analizador ![alt](url) Bórralo del texto,
-                                    // Si no lo sacas aquí, toda la línea desaparecerá. Lo mismo ocurre con la ruta del paquete de emoticones.
+                                    // Markdown 图片：解析器会把 ![alt](url) 从正文里抹掉，
+                                    // 不在这里取出来就整行消失。表情包路径同理。
                                     val markdownImages = extractMarkdownImageUrls(msg.content)
                                     val stickerUris = extractStickerPaths(msg.content).map { "file://$it" }
                                     fromUrls + markdownImages + stickerUris
                                 }
                             }
                             if (displayImageUris.size > 1) {
-                                // v2.0.1: Cuadrícula de múltiples gráficos — Organizadas en dos columnas (las imágenes individuales todavía se muestran en la imagen grande a continuación y varias imágenes ya no se apilan verticalmente).
+                                // v2.0.1: 多图网格 — 两列排布（单图仍走下方大图展示，多图不再纵向堆叠）。
                                 Column(
                                     modifier = Modifier.fillMaxWidth(),
                                     verticalArrangement = Arrangement.spacedBy(6.dp),
@@ -1450,7 +1535,7 @@ internal fun MessageBubble(
                                     }
                                 }
                             } else {
-                                // v2.0.1: tarjeta de trabajo — Resumen de palabras rápidas + guardar/compartir (solo se compartirán recursos locales)
+                                // v2.0.1: 作品卡 — 提示词摘要 + 保存 / 分享（本地资源才给分享）
                                 val genPromptSummary = remember(msg.toolCalls, msg.toolCallInfo) {
                                     val genArgs = msg.toolCalls?.firstOrNull { it.name == "generate_image" }?.arguments
                                         ?: msg.toolCallInfo?.takeIf { it.toolName == "generate_image" }?.arguments
@@ -1470,7 +1555,7 @@ internal fun MessageBubble(
                                                 resultOf {
                                                     saveImageToGallery(context, imageUri)
                                                 }.onSuccess { path ->
-                                                    // M-MB2: Utilice MuseToast en lugar de nativo Toast,Mantenga el tema consistente
+                                                    // M-MB2: 改用 MuseToast 替代原生 Toast,保持主题一致
                                                     MuseToast.show(context.getString(R.string.chat_image_saved_toast, path))
                                                 }.onError { msg, t ->
                                                     MuseToast.show(context.getString(R.string.chat_image_save_failed_toast, msg))
@@ -1499,29 +1584,29 @@ internal fun MessageBubble(
                                     )
                                 }
                             }
-                            // Reparación de auditoría (S-02): Tarjeta de resultados de generación de video(generate_video escrito videoFileUri)
-                            // Anteriormente, UIMessage solo existía en la memoria y no se representaba.,Reiniciar/El vídeo se pierde permanentemente después de cambiar de página.;
-                            // Ahora acércate con las novedades.(v88 Migrar)y renderizar aquí,Haga clic para abrir el reproductor del sistema.
+                            // 审计修复 (S-02): 视频生成结果卡片(generate_video 写入的 videoFileUri)
+                            // 此前只存在于内存 UIMessage 且无渲染,重启/切页后视频永久丢失;
+                            // 现在随消息落库(v88 迁移)并在此渲染,点击调起系统播放器。
                             val generatedVideoUri = msg.videoFileUri
                             if (!generatedVideoUri.isNullOrBlank()) {
                                 AssistantVideoCard(videoUri = generatedVideoUri)
                             }
-                            // v1.112 (C1): Diseño dividido de la cápsula de llamadas de herramientas y lista de tareas
-                            // estado expandido:TaskCard Apilado verticalmente en todo su ancho(La lista de pasos necesita espacio),ToolCallCard abajo
+                            // v1.112 (C1): 任务清单与工具调用胶囊拆分布局
+                            // 展开态:TaskCard 占满宽度垂直堆叠(步骤列表需要空间),ToolCallCard 在下方
                             val toolInfo = msg.toolCallInfo
-                            // v1.0.53: herramienta silenciosa(send_sticker)— Los emoticonos son interacciones divertidas,No mostrar tarjeta de llamada de herramienta,
-                            //   evitar"herramienta de llamada"Consejos para arruinar la experiencia de las pegatinas. La imagen de la pegatina se muestra como de costumbre.
-                            // v1.0.54: list_stickers Mismo silencio(Listar memes es un trabajo interno).
+                            // v1.0.53: 静默工具(send_sticker)— 表情包是趣味交互,不展示工具调用卡片,
+                            //   避免"调用工具"的提示破坏贴纸体验。贴纸图片本身照常渲染。
+                            // v1.0.54: list_stickers 同样静默(列表情包是内部工作)。
                             val isSilentTool = toolInfo?.toolName == "send_sticker" ||
                                 toolInfo?.toolName == "list_stickers"
                             if (taskCard != null) {
-                                // perder peso:La tarjeta de tareas ha tratado cada llamada de herramienta como“pasos”mostrar;
-                                // Anteriormente, cuando los dos coexistían, TaskCard + ToolCallCard se representaban al mismo tiempo.,La misma operación se muestra dos veces.,
-                                // Varias rondas de operaciones se unen en largas cadenas de cartas. Ahora solo conserve las tarjetas de tareas.;Las llamadas a herramientas aisladas se bloquean por separado.
-                                // v2.6.8: La tarjeta de producto en el paso de la tarjeta de tarea debe pasarse al puente.
-                                // Las tarjetas sin onClick solo se pueden ver:No hay respuesta al hacer clic y una pulsación prolongada degrada la selección de palabras del sistema.
-                                // Cuando la persona que llama no proporciona un controlador para la dimensión messageId,Volver a la dimensión de este mensaje
-                                // Procesador(La identidad de la tarjeta todavía usa mensaje id,Mismo espacio que una sola tarjeta en línea).
+                                // 消重:任务卡已把每次工具调用作为“步骤”展示;
+                                // 此前二者并存时 TaskCard + ToolCallCard 会同时渲染,同一操作显示两遍,
+                                // 多轮操作串成长串卡片。现在只保留任务卡;孤立工具调用才单独成卡。
+                                // v2.6.8: 任务卡步骤里的产物卡要传桥。
+                                // 没传 onClick 的卡片只能看:点击无响应、长按退化为系统选字。
+                                // 调用方没给 messageId 维度的处理器时,回落到本条消息维度的
+                                // 处理器(卡片身份仍然用消息 id,与单条内联卡同一空间)。
                                 val taskCardCardAction = remember(onTaskCardCardAction, onCardAction) {
                                     onTaskCardCardAction ?: onCardAction?.let { handler ->
                                         { _: String, action: CardAction -> handler(action) }
@@ -1546,21 +1631,21 @@ internal fun MessageBubble(
                                     cardRenderedByTaskCard,
                                 )
                             ) {
-                                // Llamadas a herramientas huérfanas(No en ninguna tarea)——Mantenga la visualización de una sola tarjeta
-                                // v2.6.0: show_card Las tarjetas se procesan incluso si "Mostrar detalles de llamada de herramienta" está desactivado(es contenido).
+                                // 孤立工具调用(不在任何任务里)——保持单卡展示
+                                // v2.6.0: show_card 卡片即使关闭「显示工具调用详情」也渲染(它是内容)。
                                 ToolCallCard(
                                     toolName = toolInfo.toolName,
                                     arguments = toolInfo.arguments,
                                     result = toolInfo.result,
                                     isSuccess = toolInfo.isSuccess,
                                     onCardAction = onCardAction,
-                                    // v2.6.7: Utilice la identificación del mensaje como identidad de la tarjeta —— Naturalmente vincula la ubicación de la conversación,
-                                    // Estable durante los reinicios y más adecuado como referencia que el c_xxx único generado cuando se ejecuta show_card.
+                                    // v2.6.7: 用消息 id 做卡片身份 —— 它天然绑定对话位置、
+                                    // 跨重启稳定，比 show_card 执行时生成的一次性 c_xxx 更适合引用。
                                     cardId = msg.id.toString(),
                                     modifier = Modifier.widthIn(max = 360.dp),
                                 )
                             } else {
-                                // v5: etiqueta comprimida — SYSTEM El mensaje y el contenido se basan en [COMPRESSED] Mostrado al principio
+                                // v5: 已压缩标记 — SYSTEM 消息且内容以 [COMPRESSED] 开头时显示
                                 val isCompressed = msg.role == io.zer0.ai.core.MessageRole.SYSTEM && msg.content.startsWith("[COMPRESSED]")
                                 if (isCompressed) {
                                     Row(
@@ -1571,23 +1656,24 @@ internal fun MessageBubble(
                                         Icon(
                                             imageVector = MuseIcons.gitMerge,
                                             contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.outline,
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                             modifier = Modifier.size(14.dp),
                                         )
                                         Text(
                                             text = stringResource(R.string.msg_compressed),
                                             style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.outline,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         )
                                     }
                                 }
-                                // contenido del texto(Markdown renderizado);Los mensajes de imagen pueden contener contenido y sintaxis de imagen de rebajas,Doble renderizado para evitar la cavitación.
-                                // v1.0.54: send_sticker El contenido solo tiene una ruta absoluta de etiqueta.(Se utiliza para renderizar imágenes.),Eliminación al renderizar texto,
-                                //   evitar"camino desconcertante"Se muestra como texto.
-                                // Esta sección solía volver a ejecutarse cada vez que se reorganizaba: la ruta del paquete de emoticones findAll, dos reemplazos regulares de sección completa (ruta de pegatinas,artifact marca),
-                                // División de la línea de título. Durante la transmisión, cada fragmento desencadenará una reorganización y el costo de los mensajes largos (especialmente aquellos con el código fuente de la tarjeta) aumenta linealmente.
-                                // Los resultados solo constan de la lista msg.content/image / isStreaming / body / isCompressed Determinar, caché por ellos.
+                                // 文本内容(Markdown 渲染);图片消息可能 content 也含 markdown 图片语法,双渲染避免空泡
+                                // v1.0.54: send_sticker 的 content 只有贴纸绝对路径(用于渲染图片),渲染文本时剔除,
+                                //   避免"莫名其妙的路径"显示成文本。
+                                // 这一段曾经每次重组都重跑：表情包路径 findAll、两条整段正则替换（贴纸路径、artifact 标记）、
+                                // 标题行切分。流式期间每个 chunk 都会触发重组，长消息（尤其是带卡片源码的）代价随之线性增长。
+                                // 结果只由消息正文、图片列表、流式状态和压缩标记决定，按它们缓存。
                                 val bubbleText = remember(
+                                    rendersBody,
                                     msg.content,
                                     msg.imageUrls,
                                     msg.imageBase64List,
@@ -1595,6 +1681,7 @@ internal fun MessageBubble(
                                     body,
                                     isCompressed,
                                 ) {
+                                    if (!rendersBody) return@remember BubbleText("", null, "")
                                     deriveBubbleText(
                                         content = msg.content,
                                         body = body,
@@ -1607,12 +1694,12 @@ internal fun MessageBubble(
                                 val content = bubbleText.content
                                 val titleText = bubbleText.titleText
                                 val bodyContent = bubbleText.bodyContent
-                                if (voiceUri == null && content.isNotBlank()) {
-                                    // Markdown línea de título
+                                if (rendersBody && voiceUri == null && content.isNotBlank()) {
+                                    // Markdown 标题行
                                     titleText?.let {
                                         Text(
                                             text = it,
-                                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                            style = MaterialTheme.typography.titleMediumStrong,
                                             color = MaterialTheme.colorScheme.onSurface,
                                             modifier = Modifier.fillMaxWidth(),
                                         )
@@ -1620,7 +1707,7 @@ internal fun MessageBubble(
                                             Spacer(Modifier.height(MusePaddings.tinyGap))
                                         }
                                     }
-                                    // Cotización Responder:AI Bloque de cotización mostrado en la parte superior del mensaje(Compatible con contenido etiquetado con citas)
+                                    // 引用回复:AI 消息顶部显示引用块(兼容含引用标记的内容)
                                     quote?.let {
                                         Surface(
                                             modifier = Modifier.fillMaxWidth(),
@@ -1651,13 +1738,13 @@ internal fun MessageBubble(
                                         }
                                         Spacer(Modifier.height(6.dp))
                                     }
-                                    // v1.24: El texto ya no está doblado en su totalidad.,Solo bloques de código Markdown/El bloque de composición es plegable por dentro.
-                                    // v1.42: Deshabilitar la detección de clics en enlaces para LinkableText en streaming,Evite que pointerInput se reconstruya repetidamente a medida que cambia el contenido.
-                                    // v1.52: Envuelto con SelectionContainer,Admite una pulsación prolongada para seleccionar parte del texto y copiarlo(Cuando no está transmitiendo).
-                                    //        La selección no está habilitada en streaming,evitar con el cursor/Conflicto de actualización de contenido;
-                                    //        SelectionContainer Se consumirá el gesto de pulsación larga sobre el texto.(para la selección),
-                                    //        El Clickable combinado de la columna principal activa el menú de acciones solo en áreas que no son de texto.
-                                    // v1.0.53: tarjeta de datos(```card JSON)renderizar primero,el resto se va markdown
+                                    // v1.24: 正文不再整体折叠,仅 Markdown 代码块/作文块内部可折叠
+                                    // v1.42: 流式中禁用 LinkableText 的链接点击检测,避免 pointerInput 随内容变化反复重建。
+                                    // v1.52: 用 SelectionContainer 包裹,支持长按选取部分文本复制(非流式时)。
+                                    //        流式中不启用选择,避免与光标/内容更新冲突;
+                                    //        SelectionContainer 会消费文本上的长按手势(用于选择),
+                                    //        父 Column 的 combinedClickable 仅在非文本区域触发操作菜单。
+                                    // v1.0.53: 数据卡片(```card JSON)优先渲染,其余走 markdown
                                     val dataCard = remember(bodyContent) {
                                         if (io.zer0.muse.ui.markdown.DataCardParser.containsCardBlock(bodyContent)) {
                                             io.zer0.muse.ui.markdown.DataCardParser.parse(bodyContent)
@@ -1665,7 +1752,7 @@ internal fun MessageBubble(
                                             null
                                         }
                                     }
-                                    // v2.0: Diseño de texto — La escala del tamaño de fuente y el espaciado entre caracteres siguen las preferencias del usuario(El valor predeterminado es consistente con la versión anterior.)
+                                    // v2.0: 正文排版 — 字号缩放与字间距走用户偏好(默认值下与旧版一致)
                                     val bodyBase = MaterialTheme.typography.bodyMedium
                                     val bodyScale = chatPrefs.messageFontScale.coerceIn(0.85f, 1.3f)
                                     val bodyStyle = bodyBase.copy(
@@ -1674,15 +1761,15 @@ internal fun MessageBubble(
                                         letterSpacing = chatPrefs.messageLetterSpacingEm.coerceIn(-0.02f, 0.1f).em,
                                     )
                                     val markdownContent = @Composable {
-                                        // La determinación y eliminación de efectos especiales en línea se ejecutan aquí en cada fotograma; los dos resultados solo están determinados por bodyContent y se almacenan en caché de acuerdo con él.
+                                        // 内联特效判定与剥离都在这里每帧跑；两个结果只由 bodyContent 决定，按它缓存。
                                         val hasInlineEffect = remember(bodyContent) {
                                             MoodSkinParser.containsInlineEffect(bodyContent)
                                         }
                                         val bodyWithoutInlineEffect = remember(bodyContent, hasInlineEffect) {
                                             if (hasInlineEffect) bodyContent else MoodSkinParser.stripInlineEffects(bodyContent)
                                         }
-                                        // v1.79 (H-B3): manejo defensivo citationUrls,MarkdownText Interno debe garantizar [N] No cruces la línea
-                                        val safeCitationUrls = msg.citationUrls ?: emptyList()
+                                        // v1.79 (H-B3): 防御性处理 citationUrls,MarkdownText 内部应保证 [N] 不越界
+                                        val safeCitationUrls = msg.citationUrls
                                         if (highlightText != null && bodyContent.contains(highlightText, ignoreCase = true)) {
                                             androidx.compose.material3.Text(
                                                 text = buildHighlightedText(bodyContent, highlightText),
@@ -1698,7 +1785,7 @@ internal fun MessageBubble(
                                                 modifier = Modifier.fillMaxWidth(),
                                             )
                                         } else {
-                                            // v2.x: Etiquetas de memes [[sticker:Clasificación]] → Tarjeta con imagen pura;Paso directo sin gastos generales cuando no está marcado MarkdownText
+                                            // v2.x: 表情包标记 [[sticker:分类]] → 纯图片卡片;无标记时零开销直通原 MarkdownText
                                             StickerAwareMarkdownBody(
                                                 text = bodyWithoutInlineEffect,
                                                 stickerSeed = msg.id.hashCode().toLong(),
@@ -1707,16 +1794,16 @@ internal fun MessageBubble(
                                                 modifier = Modifier.fillMaxWidth(),
                                                 citationUrls = safeCitationUrls,
                                                 isStreaming = isLastAssistant && isStreaming,
-                                                // v1.0.72: La detección de enlaces está deshabilitada en el modo de selección o en el modo de selección de texto.:
-                                                // El modo de selección de texto debe estar deshabilitado.,De lo contrario, el pointerInput de LinkableText intercepta una pulsación larga,
-                                                // El controlador de selección de texto del sistema nunca se activa(Comentarios de los usuarios"La selección de texto falla por completo")
+                                                // v1.0.72: 选择模式或文本选择模式都禁用链接检测:
+                                                // 文本选择模式必须禁用,否则 LinkableText 的 pointerInput 拦截长按,
+                                                // 系统文本选择手柄永远无法激活(用户反馈"选择文本完全失效")
                                                 disableLinks = selectionMode || textSelectMode,
                                                 onHtmlPreview = onHtmlPreview,
                                                 onCardAction = onCardAction,
-                                                // v2.6.13: Se debe pasar la tarjeta de identidad —— en el texto ```html / ```svg
-                                                // La tarjeta depende de él para leer sus propios datos vinculantes y devolver la fuente con la fuente.
+                                                // v2.6.13: 卡片身份必须直通 —— 正文里的 ```html / ```svg
+                                                // 卡片靠它读自己的绑定数据、回传时带来源。
                                                 cardId = msg.id.toString(),
-                                                // v1.0.72: Pulsación larga en el área sin enlace → Menú de pulsación larga de burbuja pop(Solucionar el problema de no respuesta al presionar prolongadamente el mensaje)
+                                                // v1.0.72: 长按非链接区域 → 弹气泡长按菜单(修复长按消息无反应)
                                                 onLongPressOutside = {
                                                     textSelectMode = false
                                                     actionSurface = MessageActionSurface.Compact
@@ -1727,15 +1814,15 @@ internal fun MessageBubble(
                                     if (dataCard != null) {
                                         io.zer0.muse.ui.markdown.DataCardRenderer(card = dataCard)
                                     } else if (textSelectMode) {
-                                        // v1.0.72: solo"Seleccionar texto"Utilice SelectionContainer en modo para admitir la selección y la copia;
-                                        // No es necesario en otros casos(De lo contrario, SelectionContainer interceptará una pulsación larga,El menú de operación no puede aparecer)
+                                        // v1.0.72: 仅"选择文本"模式下用 SelectionContainer 支持划选复制;
+                                        // 其余情况不用(否则 SelectionContainer 会拦截长按,弹不出操作菜单)
                                         SelectionContainer { markdownContent() }
                                     } else {
                                         markdownContent()
                                     }
                                 }
-                                // Función3: Tarjeta de vista previa de enlace(Sólo cuando no está transmitiendo,Evite volver a rastrear causado por incrementos de transmisión)
-                                if (!isStreaming) {
+                                // 功能3: 链接预览卡片(仅非流式时,避免流式增量导致重抓)
+                                if (rendersBody && !isStreaming) {
                                     val linkPreviews = rememberLinkPreviews(bodyContent)
                                     if (linkPreviews.isNotEmpty()) {
                                         linkPreviews.forEach { preview ->
@@ -1743,20 +1830,20 @@ internal fun MessageBubble(
                                         }
                                     }
                                 }
-                                // Etapa 4: Cursor de transmisión(Al final de la transmisión de IA,Mostrar una línea vertical parpadeante alineada a la izquierda debajo del texto)
+                                // 阶段 4: 流式光标(末尾 AI 流式时,在文本下方左对齐显示闪烁竖线)
                                 if (showStreamingCursor) {
                                     StreamingCursor(
                                         color = MaterialTheme.colorScheme.primary,
                                         modifier = Modifier.padding(top = 2.dp),
                                     )
                                 }
-                                // Función2: TTS Reproductor de mensajes de voz(Solo mensajes de IA que no se transmiten,Y se muestra cuando está hablando)
+                                // 功能2: TTS 语音消息播放器(仅非流式 AI 消息,且当 isSpeaking 时显示)
                                 if (!isUser && !isStreaming && isSpeaking) {
                                     TtsAudioPlayer(
                                         modifier = Modifier.padding(top = MusePaddings.contentGap),
                                     )
                                 }
-                                // v2.3: debug Resumen de rendimiento del modo(Opcional)
+                                // v2.3: debug 模式性能摘要(可选)
                                 if (!isStreaming && debugInfo != null) {
                                     Text(
                                         text = debugInfo,
@@ -1765,7 +1852,7 @@ internal fun MessageBubble(
                                         modifier = Modifier.padding(top = 2.dp),
                                     )
                                 }
-                                // v1.43: Lista de tarjetas de productos(código/Documentación/HTML/SVG/Imágenes, etc.)
+                                // v1.43: 产物卡片列表(代码/文档/HTML/SVG/图片等)
                                 if (artifacts.isNotEmpty()) {
                                     ArtifactCardList(
                                         artifacts = artifacts,
@@ -1773,7 +1860,7 @@ internal fun MessageBubble(
                                         modifier = Modifier.padding(top = MusePaddings.contentGap),
                                     )
                                 }
-                                // v1.133: RAG Lista de chips de referencia(Haga clic para ampliar snippet)
+                                // v1.133: RAG 引用 chip 列表(点击展开 snippet)
                                 if (!isUser && !isStreaming && msg.ragCitations.isNotEmpty()) {
                                     RagCitationChips(
                                         citations = msg.ragCitations,
@@ -1781,7 +1868,7 @@ internal fun MessageBubble(
                                     )
                                 }
                             } // closes inner else (no taskCard/toolInfo)
-                            // v1.55: Agent Las tarjetas de planificación del flujo de trabajo se desplazan con mensajes,en lugar de estar fijado al final de la lista de mensajes
+                            // v1.55: Agent 工作流计划卡随消息一起滚动,而不是固定在消息列表底部
                             if (
                                 agentPlan != null &&
                                 taskCard == null &&
@@ -1795,11 +1882,11 @@ internal fun MessageBubble(
                 } // closes AI bubble Surface
             }
 
-            // v1.0.53: Botón de acceso directo en la parte inferior del mensaje de usuario — Copiar + reintentar(solo el ultimo)
+            // v1.0.53: 用户消息底部快捷按钮 — 复制 + 重试(仅最后一条)
             if (isUser && msg.content.isNotEmpty() && !isStreaming && !isTranslating) {
                 Row(
                     modifier = Modifier.padding(top = 2.dp, end = MusePaddings.tinyGap),
-                    // v2.x(comentarios de los usuarios): Apretar el espacio
+                    // v2.x（用户反馈）: 间距收紧
                     horizontalArrangement = Arrangement.spacedBy(2.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -1810,7 +1897,7 @@ internal fun MessageBubble(
                             onCopyMessage(messageCopyText(msg.content, msg.reasoning))
                         },
                         contentDescription = stringResource(R.string.action_copy),
-                        tint = MaterialTheme.colorScheme.outline,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         size = MuseIconSizes.touchTarget,
                         iconSize = MuseIconSizes.iconSmall,
                     )
@@ -1822,12 +1909,12 @@ internal fun MessageBubble(
                                 onRegenerate()
                             },
                             contentDescription = stringResource(R.string.action_retry),
-                            tint = MaterialTheme.colorScheme.outline,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             size = MuseIconSizes.touchTarget,
                             iconSize = MuseIconSizes.iconSmall,
                         )
                     }
-                    // v2.4.6: Editar botón de acceso directo — Puede editar directamente este mensaje de usuario sin ingresar al menú de pulsación larga.
+                    // v2.4.6: 编辑快捷按钮 — 不进入长按菜单即可直接编辑本条用户消息
                     MuseTactileButton(
                         icon = MuseIcons.edit,
                         onClick = {
@@ -1835,14 +1922,14 @@ internal fun MessageBubble(
                             onEdit()
                         },
                         contentDescription = stringResource(R.string.action_edit),
-                        tint = MaterialTheme.colorScheme.outline,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         size = MuseIconSizes.touchTarget,
                         iconSize = MuseIconSizes.iconSmall,
                     )
-                    // v2.6.x(Comentarios de los usuarios): boton borrar — Anteriormente los mensajes de los usuarios solo se podían copiar/Inténtalo de nuevo/Editar,
-                    // Eliminar solo se puede encontrar en el menú de pulsación larga,Los usuarios pensaron que "no puedes borrar lo que publicaste".
-                    // La capa de datos deleteMessage ya admite la eliminación en cascada de las respuestas de su asistente.,Reutilizar directamente aquí
-                    // Ventana emergente de confirmación igual que el mensaje del asistente(Sólo este artículo / junto con el siguiente).
+                    // v2.6.x(用户反馈): 删除按钮 — 此前用户消息只有复制/重试/编辑,
+                    // 删除只能到长按菜单里找,用户以为「删不了自己发的东西」。
+                    // 数据层 deleteMessage 已支持级联删除其 assistant 回复,此处直接复用
+                    // 与助手消息相同的确认弹窗(仅此条 / 连同后续)。
                     MuseTactileButton(
                         icon = MuseIcons.trash,
                         onClick = {
@@ -1850,34 +1937,34 @@ internal fun MessageBubble(
                             showDeleteConfirm = true
                         },
                         contentDescription = stringResource(R.string.action_delete),
-                        tint = MaterialTheme.colorScheme.outline,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         size = MuseIconSizes.touchTarget,
                         iconSize = MuseIconSizes.iconSmall,
                     )
                 }
             }
 
-            // v1.138 / v1.0.53: Botón de acceso directo en la parte inferior del mensaje del Asistente — Copiar/Traducción/Compartir/Reconstrucción + conmutador de sucursales
-            // El botón de traducción reutiliza el submenú de idioma del menú de pulsación larga(showActionMenu + showLanguageSubmenu)
-            // El botón de compartir utiliza la hoja de compartir del sistema para compartir el contenido de un solo mensaje.
-            // v2.x(comentarios de los usuarios): Primero calcule si esta fila mostrará al menos un botón ——
-            // De lo contrario, cuando el usuario pone todos quickAction* Todos los interruptores están apagados y no hay“continuar generando”cuando,
-            // La condición externa sigue siendo cierta porque isLastAssistant dejará un marcador de posición de Fila vacío.
+            // v1.138 / v1.0.53: 助手消息底部快捷按钮 — 复制/翻译/分享/重新生成 + 分支切换器
+            // 翻译按钮复用长按菜单的语言子菜单(showActionMenu + showLanguageSubmenu)
+            // 分享按钮用系统 share sheet 分享单条消息内容
+            // v2.x（用户反馈）: 先算出本行是否至少会渲染一个按钮 ——
+            // 否则当用户把所有 quickAction* 开关都关、且无“继续生成”时，
+            // 外层条件仍因 isLastAssistant 成立，会留下一个空 Row 占位。
             val truncatedMarker = stringResource(R.string.err_reply_truncated)
             val willContinueShow = isLastAssistant && onContinue != null &&
                 (
-                    msg.content.contains("[interrumpido]") ||
-                        (truncatedMarker.isNotBlank() && msg.content.contains(truncatedMarker))
+                    MessageMarkers.isInterrupted(msg.content) ||
+                        MessageMarkers.isTruncated(msg.content, truncatedMarker)
                     )
             val hasContent = msg.content.isNotEmpty()
             val hasReasoning = !msg.reasoning.isNullOrBlank()
-            // v2.6.0: Quick Action Order está impulsado por QuickActionOrder (lista de activación ordenada);
-            // lista vacía = No configurado, recurre a la antigua lógica de seis interruptores (compatible con la configuración original, escrita en orden una vez editada en la página de configuración).
+            // v2.6.0: 快捷排由 quickActionOrder（有序启用列表）驱动；
+            // 空列表 = 未配置，回退旧六开关逻辑（兼容存量设置，一旦在设置页编辑过就写入 order）。
             val configuredActions: List<QuickAction> =
                 if (chatPrefs.quickActionOrder.isNotEmpty()) {
                     chatPrefs.quickActionOrder.mapNotNull { QuickAction.fromId(it) }
                 } else {
-                    // viejo interruptor → Lista de acciones (mantener el antiguo comportamiento predeterminado: pensar en mostrar fuerza cuando no hay cuerpo)
+                    // 旧开关 → 动作列表（保持旧默认行为：思考在无正文时强制显示）
                     buildList {
                         if (chatPrefs.quickActionCopy) add(QuickAction.COPY)
                         if (chatPrefs.quickActionTranslate) add(QuickAction.TRANSLATE)
@@ -1888,7 +1975,7 @@ internal fun MessageBubble(
                     }
                 }
 
-            // Las condiciones de visualización para cada acción en este mensaje (consistentes con las condiciones originales del menú de seis interruptores + pulsación larga):
+            // 各动作在本条消息上的可显示条件（与原六开关 + 长按菜单条件一致）：
             fun QuickAction.visibleNow(): Boolean = when (this) {
                 QuickAction.COPY -> hasContent
                 QuickAction.REASONING -> hasReasoning && (chatPrefs.quickActionReasoning || !hasContent)
@@ -1908,12 +1995,12 @@ internal fun MessageBubble(
             }
             val rowActions = configuredActions.filter { it.visibleNow() }
             val hasAnyAssistantQuickAction = rowActions.isNotEmpty() || willContinueShow
-            // Visibilidad de fila: no es mensaje de usuario, al menos un botón, no transmite, no traduce.
-            // v2.6.1(comentarios de los usuarios): tarjeta de tarea/tarjeta de ejecución/Los mensajes de "tarjeta pura", como las tarjetas de planificación, ya no se pueden organizar rápidamente con mensajes.
-            // Estas acciones (cita/Comentario/confiar/rama/opción múltiple/información/adelante…) solo para mensajes de usuario con contenido sustancial
-            // Los mensajes del asistente tienen sentido. Anteriormente, se determinaba que sólo se excluían los mensajes de los usuarios. El texto estaba vacío pero el mensaje del asistente con la tarjeta representada aún estaría
-            // Ven aquí; los seis modificadores predeterminados no son visibles porque se especifica hasContent y la mayoría de las acciones agregadas por los usuarios son incondicionales
-            // mostrar (visibleNow -> true), por lo que todos aparecen debajo de la tarjeta.
+            // 行可见性：非用户消息、至少一个按钮、非流式、非翻译中。
+            // v2.6.1（用户反馈）: 任务卡/执行卡/计划卡这类「纯卡片」消息不得再带消息快捷排。
+            // 这些动作（引用/批注/委托/分支/多选/信息/转发…）只对用户消息与有实质内容的
+            // 助手消息有意义。此前判定只排除用户消息，正文为空但渲染了卡片的助手消息仍会
+            // 走到这里；默认六开关因为写明了 hasContent 而不显形，用户新增的动作多为无条件
+            // 显示（visibleNow -> true），于是统统冒到卡片下方。
             val hasCardPayload =
                 taskCard != null || msg.toolCallInfo != null ||
                     !msg.toolCalls.isNullOrEmpty() || agentPlan != null
@@ -1925,7 +2012,7 @@ internal fun MessageBubble(
             ) {
                 Row(
                     modifier = Modifier.padding(top = 2.dp),
-                    // v2.x(comentarios de los usuarios): El espacio entre botones se reduce de apretadoGap a 2dp —— El espacio original es demasiado amplio y parece disperso.
+                    // v2.x（用户反馈）: 按钮间距从 tightGap 收紧到 2dp —— 原间距过宽显得散。
                     horizontalArrangement = Arrangement.spacedBy(2.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -1956,7 +2043,7 @@ internal fun MessageBubble(
                             onForward = onForward,
                             onTranslate = {
                                 MuseHaptics.light(hapticFeedback)
-                                // v1.0.88 (R-1): Vaya directamente al submenú de idioma (omitiendo el panel compacto).
+                                // v1.0.88 (R-1): 直达语言子菜单（跳过精简面板）。
                                 actionSurface = MessageActionSurface.Extended
                                 actionSurface = MessageActionSurface.TranslationLanguages
                             },
@@ -1965,7 +2052,7 @@ internal fun MessageBubble(
                                 scope.launch {
                                     val sendIntent = Intent(Intent.ACTION_SEND).apply {
                                         type = "text/plain"
-                                        // v2.6.8: El uso compartido también se exporta y el JSON del estado de la tarjeta no se puede enviar a otras personas.
+                                        // v2.6.8: 分享同样走导出出口，不能把卡片状态 JSON 发给别人。
                                         putExtra(Intent.EXTRA_TEXT, InternalMarkupSanitizer.exportContent(msg.content))
                                     }
                                     ShareIntentHelper.startChooserSafely(context, sendIntent)
@@ -1973,7 +2060,7 @@ internal fun MessageBubble(
                             },
                         )
                     }
-                    // B7-04: continuar generando(Solo el último mensaje de ayuda que se interrumpió, no en el grupo configurable——La entrada de recuperación no puede bloquearse con un interruptor.)
+                    // B7-04: 继续生成(仅中断的最后一条助手消息，不在可配置池内——恢复入口不能被开关挡死)
                     if (willContinueShow) {
                         MuseTactileButton(
                             icon = MuseIcons.play,
@@ -1987,8 +2074,8 @@ internal fun MessageBubble(
                             iconSize = MuseIconSizes.iconSmall,
                         )
                     }
-                    // v2.6.0: "Más" al final de la línea—— Entrada fija, ingresa al panel completo de pulsación larga (incluidas todas las acciones antes de ingresar a la piscina).
-                    // Cuando se eliminan todas las acciones, los usuarios aún pueden acceder a todas las operaciones desde aquí.
+                    // v2.6.0: 行尾「更多」—— 固定入口，进完整长按面板（含未入池的全部动作）。
+                    // 全部动作被移除时用户仍能从这里触达所有操作。
                     MuseTactileButton(
                         icon = MuseIcons.moreVertical,
                         onClick = {
@@ -1996,7 +2083,7 @@ internal fun MessageBubble(
                             actionSurface = MessageActionSurface.Extended
                         },
                         contentDescription = stringResource(R.string.action_more),
-                        tint = MaterialTheme.colorScheme.outline,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         size = MuseIconSizes.touchTarget,
                         iconSize = MuseIconSizes.iconSmall,
                     )
@@ -2005,16 +2092,16 @@ internal fun MessageBubble(
                     Text(
                         text = modelName,
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.outline,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.End,
                         modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
                     )
                 }
-                // P1 UI: Token Fila de estadísticas independientes(Debajo del botón de acceso directo,No más filas de botones abarrotadas)
+                // P1 UI: Token 统计独立一行(快捷按钮下方,不再挤占按钮行)
                 if (!isUser && tokenStats != null) {
                     tokenStats()
                 }
-                // El conmutador de rama está en una línea separada,Evite que las pantallas estrechas se salgan de la pantalla
+                // 分支切换器独立一行,避免窄屏被顶出屏幕
                 if (branchCount > 1) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -2031,7 +2118,7 @@ internal fun MessageBubble(
                 }
             }
 
-            // Cambiador de versión de mensajes de usuario: Editar/La versión de la pregunta del usuario generada al reintentar.
+            // 用户消息版本切换器：编辑/重试产生的用户提问版本
             if (isUser && branchCount > 1) {
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
@@ -2047,7 +2134,7 @@ internal fun MessageBubble(
                 }
             }
 
-            // v1.0.92: Cuadro de diálogo de comentario de mensaje(escribir/Ver/Eliminar)
+            // v1.0.92: 消息批注对话框(写入/查看/删除)
             if (showAnnotateDialog) {
                 io.zer0.muse.annotation.AnnotationStore.attach(context)
                 var annotateInput by remember { mutableStateOf("") }
@@ -2067,13 +2154,13 @@ internal fun MessageBubble(
                                     Text(
                                         text = an.text,
                                         style = MaterialTheme.typography.bodySmall,
-                                        // LAYOUT-01: Se ha ampliado el texto de la anotación y se ha añadido el límite superior de 2 líneas:
-                                        // Los comentarios largos ya no mantienen las líneas del cuadro de diálogo verticalmente y conservan el contenido legible.
+                                        // LAYOUT-01: 批注正文已取宽，补 2 行上限：
+                                        // 长批注不再把对话框行撑成竖排，同时保留可读内容
                                         maxLines = 2,
                                         overflow = TextOverflow.Ellipsis,
                                         modifier = Modifier.weight(1f),
                                     )
-                                    // LAYOUT-01: La etiqueta de acción de fin de línea solo se limita a líneas y no toma el ancho (el texto de la anotación ya está weight(1f))
+                                    // LAYOUT-01: 行尾动作标签只限行、不取宽（批注正文已是 weight(1f)）
                                     Text(
                                         text = stringResource(R.string.skill_delete),
                                         style = MaterialTheme.typography.labelSmall,
@@ -2104,17 +2191,17 @@ internal fun MessageBubble(
                 )
             }
 
-            // Etapa 4: menú de pulsación larga
-            // v1.0.72: tipo de capa flotante Popup — Posición cerca del mensaje(Haga clic donde aparecer,Deslizamiento no inferior),
-            // Las tarjetas contienen citas/Copiar/Seleccionar texto/Compartir/Editar(Solo mensajes de usuario)/Más;
-            // "Más"Expandir menú completo(confiar/rama/Traducción/Colección/Eliminar etc,Se mantiene la lógica original).
+            // 阶段 4: 长按菜单
+            // v1.0.72: 浮层式 Popup — 定位在消息附近(哪里按哪里弹出,非底部滑入),
+            // 卡片含 引用/复制/选择文本/分享/编辑(仅用户消息)/更多;
+            // "更多"展开完整菜单(委托/分支/翻译/收藏/删除等,原逻辑保留)。
             if (showActionMenu) {
                 if (!showExtendedMenu) {
-                    // ── Operación de mensaje Tarjeta emergente(burbuja de mensaje de anclaje) ──
-                    // v1.0.74 fix: Antes no había ningún ancla para padres,El menú siempre aparece en la esquina superior derecha de la ventana.(Lejos del dedo).
-                    // Cambiar al posicionamiento según la posición de la ventana de burbuja:Pega el borde derecho de la burbuja en el borde derecho del menú.,El borde superior está 8 dp por encima de la burbuja.
-                    // E4 (H8): La lógica de posicionamiento converge hacia lo universal. MusePopover(Ancho 220dp, espaciado 8dp);
-                    // Punto de anclaje aún no medido(Zero)Cuando el componente degenera en la esquina superior izquierda de la pantalla,,Consistente con el comportamiento de degradación original.
+                    // ── 消息操作 Popup 卡片(锚定消息气泡) ──
+                    // v1.0.74 fix: 此前无 parent 锚点,菜单永远弹在窗口右上角(离手指很远)。
+                    // 改为按气泡窗口位置定位:菜单右缘贴气泡右缘,上缘在气泡上方 8dp。
+                    // E4 (H8): 定位逻辑收敛到通用 MusePopover(宽度 220dp、间距 8dp);
+                    // 锚点未测量完成(Zero)时组件退化为屏幕左上角偏移,与原退化行为一致。
                     MusePopover(
                         anchorBounds = actionMenuBounds,
                         gapDp = 8,
@@ -2138,7 +2225,7 @@ internal fun MessageBubble(
                                 onCopyMessage(messageCopyText(msg.content, msg.reasoning))
                             },
                             onSelectText = {
-                                // v1.0.72: "Seleccionar texto"= Ingrese al modo de selección de texto(Mantenga presionado el texto para activar el controlador de selección del sistema)
+                                // v1.0.72: "选择文本"= 进入文本选择模式(长按文字激活系统选择手柄)
                                 actionSurface = MessageActionSurface.Hidden
                                 actionSurface = MessageActionSurface.Hidden
                                 textSelectMode = true
@@ -2175,12 +2262,14 @@ internal fun MessageBubble(
                         content = {
                             Column(modifier = Modifier.fillMaxWidth()) {
                                 if (showLanguageSubmenu) {
-                                    // Traducir submenú de idioma(Desde el menú principal"Traducción"disparador de elemento)
+                                    // 翻译语言子菜单(从主菜单"翻译"项触发)
                                     ActionMenuItem(
-                                        icon = MuseIcons.arrowDown,
+                                        icon = MuseIcons.arrowLeft,
                                         text = stringResource(R.string.action_back),
                                         contentDescription = stringResource(R.string.action_back),
-                                        onClick = { actionSurface = MessageActionSurface.Hidden },
+                                        // 返回是"回到主扩展菜单",不是关掉整个菜单 —— 关闭会让用户
+                                        // 只能重新长按两轮才能找回刚才的位置。
+                                        onClick = { actionSurface = MessageActionSurface.Extended },
                                     )
                                     TranslationLanguages.forEach { lang ->
                                         ActionMenuItem(
@@ -2195,8 +2284,8 @@ internal fun MessageBubble(
                                         )
                                     }
                                 } else {
-                                    // M-UI2: El menú de pulsación larga del mensaje del asistente está estrictamente optimizado para cotizar/confiar/rama,
-                                    // Los mensajes de usuario conservan el menú completo original.(Editar/Traducción/Colección/Copiar/Compartir/Eliminar etc).
+                                    // M-UI2: 助手消息长按菜单严格精简为 引用/委托/分支,
+                                    // 用户消息保留原有完整菜单(编辑/翻译/收藏/复制/分享/删除等)。
                                     ActionMenuItem(
                                         icon = MuseIcons.reply,
                                         text = stringResource(R.string.message_action_quote),
@@ -2206,7 +2295,7 @@ internal fun MessageBubble(
                                             onQuote()
                                         },
                                     )
-                                    // v1.0.92: Comentario — escribe a este mensaje/Ver anotaciones locales(Con comentarios existentes)
+                                    // v1.0.92: 批注 — 对这条消息写/看本地批注(带已有批注数)
                                     val annotCount = io.zer0.muse.annotation.AnnotationStore
                                         .ofMessage(msg.id.toString()).size
                                     ActionMenuItem(
@@ -2223,7 +2312,8 @@ internal fun MessageBubble(
                                         },
                                     )
                                     ActionMenuItem(
-                                        icon = MuseIcons.users,
+                                        // 委托统一用 robot(与加号菜单、进程列表同一口径),users 留给真正的群组/成员。
+                                        icon = MuseIcons.robot,
                                         text = stringResource(R.string.chat_delegate_action),
                                         contentDescription = stringResource(R.string.chat_delegate_action),
                                         onClick = {
@@ -2249,7 +2339,7 @@ internal fun MessageBubble(
                                             onEnterMultiSelect?.invoke()
                                         },
                                     )
-                                    // A5: Capa emergente de información del mensaje(modelo/Consume mucho tiempo/Token Dosis)
+                                    // A5: 消息信息弹层(模型/耗时/Token 用量)
                                     ActionMenuItem(
                                         icon = MuseIcons.info,
                                         text = stringResource(R.string.msg_info_title),
@@ -2274,9 +2364,9 @@ internal fun MessageBubble(
                                     }
                                     if (msg.content.isNotBlank() || msg.reasoning?.isNotBlank() == true) {
                                         ActionMenuItem(
-                                            // §11-8: El ícono tiene solo una estrella sólida (MuseIcons No hay un contorno de estrella en
-                                            // Este proyecto no agrega un ícono para este estado), seleccione/Los no seleccionados se distinguen por el tinte:
-                                            // Recogido = Color de acento del tema, no recogido. = Colores neutros.
+                                            // §11-8: 图标只有一枚实心 star（MuseIcons 里没有 starOutline，
+                                            // 本项目不为这个状态新增图标），选中/未选中靠 tint 区分：
+                                            // 已收藏 = 主题强调色，未收藏 = 中性色。
                                             icon = MuseIcons.star,
                                             tint = favoriteStarTint(msg.favorite),
                                             text = if (msg.favorite) {
@@ -2300,7 +2390,7 @@ internal fun MessageBubble(
                                             },
                                         )
                                     }
-                                    // U-2: AI Mensaje suplemento menú pulsación larga"leer en voz alta/deja de leer"(Reutilizar la devolución de llamada del conmutador TTS;Solo mensajes de IA)
+                                    // U-2: AI 消息长按菜单补"朗读/停止朗读"(复用 TTS 开关回调;仅 AI 消息)
                                     if (!isUser && msg.content.isNotBlank()) {
                                         val ttsLabel = if (isSpeaking) {
                                             stringResource(R.string.chat_tts_stop)
@@ -2318,8 +2408,8 @@ internal fun MessageBubble(
                                         )
                                     }
                                     if (isUser) {
-                                        // C-14: Los mensajes de usuario solo agregan elementos específicos del usuario(Editar/Traducción/Compartir);
-                                        // Seleccionar mensaje/Colección/Copiado en menú público.(arriba)prestar.
+                                        // C-14: 用户消息只补用户专属项(编辑/翻译/分享);
+                                        // 选择消息/收藏/复制已在公共菜单(上方)渲染。
                                         ActionMenuItem(
                                             icon = MuseIcons.edit,
                                             text = stringResource(R.string.action_edit),
@@ -2346,7 +2436,7 @@ internal fun MessageBubble(
                                                 onShareSession()
                                             },
                                         )
-                                        // F-2: Reenvío entre sesiones — con"Compartir"yuxtaponer
+                                        // F-2: 跨会话转发 — 与"分享"并列
                                         ActionMenuItem(
                                             icon = MuseIcons.swapHorizontal,
                                             text = stringResource(R.string.chat_forward_action),
@@ -2357,8 +2447,8 @@ internal fun MessageBubble(
                                             },
                                         )
                                     } else if (msg.content.isNotBlank() || msg.reasoning?.isNotBlank() == true) {
-                                        // Los mensajes del asistente también admiten pulsación larga“Más”Ingrese a la edición; el backend ya existe
-                                        // editAssistantMessage, para evitar generar contenido, solo podrás eliminarlo y empezar de nuevo.
+                                        // 助手消息也支持从长按“更多”进入编辑；后端已有
+                                        // editAssistantMessage，避免生成内容只能删掉重来。
                                         ActionMenuItem(
                                             icon = MuseIcons.edit,
                                             text = stringResource(R.string.action_edit),
@@ -2369,8 +2459,8 @@ internal fun MessageBubble(
                                             },
                                         )
                                     }
-                                    // v2.x(comentarios de los usuarios): La eliminación de mensajes se ha movido a la fila de botones de acceso directo debajo del mensaje (configurable).
-                                    // El menú de pulsación larga ya no se mostrará repetidamente para evitar dos entradas.
+                                    // v2.x（用户反馈）: 删除消息已移至消息下方快捷按钮排（可配置），
+                                    // 长按菜单不再重复提供，避免两处入口。
                                 }
                             }
                         },
@@ -2378,8 +2468,8 @@ internal fun MessageBubble(
                 }
             }
 
-            // v2.4.6: Bloque expandible de traducción — Mismo estilo que MOOD/pensamiento,Cuelga debajo del mensaje.
-            // Nombre del idioma → traducción;Un valor de cadena vacío indica que el idioma se está traduciendo.
+            // v2.4.6: 译文可展开块 — 与 MOOD/思考同款样式,挂在消息下方。
+            // 语言名 → 译文;空串值表示该语言正在翻译中。
             if (translations.isNotEmpty()) {
                 val expanded = isTranslationExpanded ?: true
                 Surface(
@@ -2432,7 +2522,7 @@ internal fun MessageBubble(
                                         Text(
                                             stringResource(R.string.chat_translate_in_progress),
                                             style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.outline,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         )
                                     }
                                 } else {
@@ -2451,7 +2541,7 @@ internal fun MessageBubble(
                 }
             }
 
-            // P5-F: Instrucciones en traducción(Ruta de compatibilidad para traducciones no alcanzadas;La nueva lógica se representa dentro del bloque de traducción.)
+            // P5-F: 翻译中指示(未命中 translations 的兼容路径;新逻辑在译文块内表现)
             if (isTranslating && translations.isEmpty()) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -2465,12 +2555,12 @@ internal fun MessageBubble(
                     Text(
                         stringResource(R.string.chat_translate_in_progress),
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.outline,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
 
-            // H11: La traducción conserva el texto original. — Colapsar debajo de la burbuja de traducción"Ver texto original",Expandir para mostrar el contenido del mensaje fuente para comparar
+            // H11: 翻译保留原文 — 译文气泡下方折叠"查看原文",展开显示源消息内容可对照
             val sourceContent = translationSourceContent
             if (sourceContent != null && sourceContent.isNotBlank()) {
                 var showSource by remember { mutableStateOf(false) }
@@ -2503,15 +2593,15 @@ internal fun MessageBubble(
                 }
             }
 
-            // v1.79 (H-B2): Verificación de lista vacía movida a LaunchedEffect,Evite el estado de escritura durante la composición.
-            // L-MB2: mediaPreview omitir si es nulo,Evite desencadenantes redundantes
+            // v1.79 (H-B2): 空列表检查移到 LaunchedEffect,避免 composition 期间写状态
+            // L-MB2: mediaPreview 为 null 时跳过,避免多余触发
             LaunchedEffect(mediaPreview) {
                 if (mediaPreview != null && mediaPreview?.first.isNullOrEmpty()) {
                     mediaPreview = null
                 }
             }
-            // v2.6.13: Vista previa del archivo adjunto. Bytes leídos usando el espacio de trabajo —— El espacio de trabajo puede ser una montura SAF,
-            // No se puede obtener la ruta del archivo compartible, por lo que no se puede utilizar FileProvider.
+            // v2.6.13: 附件预览。字节用工作区读取 —— 工作区可能是 SAF 挂载，
+            // 拿不到可共享的 File 路径，所以不能走 FileProvider。
             attachmentPreview?.let { attachment ->
                 val workspace: io.zer0.muse.workspace.WorkspaceManager? =
                     org.koin.compose.koinInject()
@@ -2521,7 +2611,7 @@ internal fun MessageBubble(
                     onDismiss = { attachmentPreview = null },
                 )
             }
-            // v1.0.15: Visor multimedia de pantalla completa extraído como componente compartido(Implementación en línea original v1.60-B),Para reutilizar el chat grupal
+            // v1.0.15: 全屏媒体查看器抽取为共享组件(原 v1.60-B 内联实现),供群聊复用
             mediaPreview?.let { (images, initialIndex) ->
                 FullScreenMediaViewer(
                     images = images,
@@ -2545,7 +2635,7 @@ internal fun MessageBubble(
                 )
             }
             if (showDeleteConfirm) {
-                // U-16: Eliminar selección de rango — solo este mensaje(incluyendo su respuesta) / junto con todos los mensajes posteriores
+                // U-16: 删除范围选择 — 仅此消息(含其回复) / 连同后续全部消息
                 var deleteWithFollowing by remember { mutableStateOf(false) }
                 MuseDialog(
                     onDismissRequest = { showDeleteConfirm = false },
@@ -2554,7 +2644,7 @@ internal fun MessageBubble(
                         Column {
                             Text(stringResource(R.string.chat_delete_message_confirm))
                             Spacer(Modifier.height(8.dp))
-                            // U-16: Eliminar selección de rango(Sólo este artículo / junto con el siguiente),Haga clic en la fila para cambiar,Resaltar elemento seleccionado
+                            // U-16: 删除范围选择(仅此条 / 连同后续),点击行切换,高亮选中项
                             Text(
                                 text = (if (!deleteWithFollowing) "● " else "○ ") + stringResource(R.string.chat_delete_scope_only),
                                 modifier = Modifier
@@ -2588,23 +2678,23 @@ internal fun MessageBubble(
                     destructive = true,
                 )
             }
-            // A5: Capa emergente de información del mensaje(modelo/tiempo/Consume mucho tiempo/Token Dosis)
+            // A5: 消息信息弹层(模型/时间/耗时/Token 用量)
             if (showInfoSheet) {
                 MessageInfoSheet(
                     msg = msg,
                     onDismiss = { showInfoSheet = false },
                 )
             }
-            // P2-13: Menú contextual del botón derecho del escritorio(Solo aparece debajo del teclado físico + Ventana expandida)
-            // artículo:copiar/regenerar(Sólo el último mensaje de IA)/ Eliminar/Compartir
-            // Menú de pulsación larga con terminal celular(showActionMenu)Alineación funcional,Pero usar el paradigma de interacción del menú contextual del escritorio
+            // P2-13: 桌面端右键上下文菜单(仅物理键盘 + Expanded 窗口下弹出)
+            // 项:复制 / 重新生成(仅末尾 AI 消息)/ 删除 / 分享
+            // 与移动端长按菜单(showActionMenu)功能对齐,但采用桌面右键菜单交互范式
             if (showDesktopContextMenu) {
-                // Precargar cadenas localizadas en el contexto @Composable,remember No se puede llamar dentro de un bloque stringResource
+                // 在 @Composable 上下文预提取本地化字符串,remember 块内不能调用 stringResource
                 val copyLabel = stringResource(R.string.desktop_context_copy)
                 val regenerateLabel = stringResource(R.string.desktop_context_regenerate)
                 val shareLabel = stringResource(R.string.desktop_context_share)
                 val deleteLabel = stringResource(R.string.desktop_context_delete)
-                // A5: Entrada de la capa de viñetas de información del mensaje(Menú contextual del escritorio)
+                // A5: 消息信息弹层入口(桌面右键菜单)
                 val infoLabel = stringResource(R.string.msg_info_title)
                 val contextMenuItems = remember(
                     msg.id,
@@ -2626,7 +2716,7 @@ internal fun MessageBubble(
                                 ),
                             )
                         }
-                        // Solo disponible al final del mensaje AI"regenerar"
+                        // 仅末尾 AI 消息提供"重新生成"
                         if (!isUser && isLastAssistant && msg.content.isNotEmpty()) {
                             add(
                                 ContextMenuItem(
@@ -2646,7 +2736,7 @@ internal fun MessageBubble(
                                 onClick = onShareSession,
                             ),
                         )
-                        // A5: Capa emergente de información del mensaje(modelo/Consume mucho tiempo/Token Dosis)
+                        // A5: 消息信息弹层(模型/耗时/Token 用量)
                         add(
                             ContextMenuItem(
                                 label = infoLabel,
@@ -2672,10 +2762,10 @@ internal fun MessageBubble(
                     onDismiss = { showDesktopContextMenu = false },
                 )
             }
-        } // cerrado Column
+        } // 闭合 Column
 
-        // v1.0.72: Máscara de tamaño completo en modo de selección múltiple — Haga clic en cualquier parte del mensaje en modo de selección.(Contiene texto/fotos/bloque de código/bloque de cotización,
-        // Estos subcomponentes consumirán eventos de clic.)Todos están alternados seleccionados. Reparación"Después de ingresar al modo de selección, no puedo seleccionar ningún mensaje.".
+        // v1.0.72: 多选模式全尺寸遮罩 — 选择模式下点击消息任意位置(含文字/图片/代码块/引用块,
+        // 这些子组件会消费点击事件)都切换选中。修复"进入选择模式后根本选不了消息"。
         if (selectionMode) {
             Box(
                 modifier = Modifier
@@ -2683,22 +2773,22 @@ internal fun MessageBubble(
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
-                        // A11Y-04: Parche de contenedor en el que se puede hacer clic sin nombre role=Button Semántica
+                        // A11Y-04: 无名可点击容器补 role=Button 语义
                         role = Role.Button,
                     ) { onToggleSelection?.invoke() },
             )
         }
-    } // cerrado Box
+    } // 闭合 Box
 }
 
 /**
- * v1.0.72: Tarjeta de operación de prensa larga(Popup Posicionamiento,Haga clic donde aparecer).
+ * v1.0.72: 长按操作卡片(Popup 定位,哪里按哪里弹出)。
  *
- * v1.0.72 iterar:
- *  - Compacto en general:Reduzca el bloque inferior del icono/altura de línea/esquinas redondeadas/espaciado.
- *  - scale+fade Animación de entrada.
- *  - D4 (CHAT-05): La combinación de colores sigue el tema.(colorScheme color semántico),No más blanco y negro.
- * contenido:Citar/Copiar/Seleccionar texto/Compartir/Reenviar/Editar(Solo mensajes de usuario) / Más.
+ * v1.0.72 迭代:
+ *  - 整体紧凑:缩小图标底块 / 行高 / 圆角 / 间距。
+ *  - scale+fade 进场动画。
+ *  - D4 (CHAT-05): 配色跟随主题(colorScheme 语义色),不再写死黑白。
+ * 内容:引用 / 复制 / 选择文本 / 分享 / 转发 / 编辑(仅用户消息) / 更多。
  */
 @Composable
 private fun TelegramActionCard(
@@ -2709,17 +2799,17 @@ private fun TelegramActionCard(
     onShare: () -> Unit,
     onEdit: () -> Unit,
     onMore: () -> Unit,
-    // F-2: Reenvío entre sesiones
+    // F-2: 跨会话转发
     onForward: () -> Unit = {},
 ) {
-    // D4 (CHAT-05): Mantenga presionado el menú para seguir el tema. — Opte por la combinación de colores en blanco y negro,Utilice colores semánticos colorScheme en su lugar,
-    // Tema personalizado/No más dramatismo en colores oscuros.
+    // D4 (CHAT-05): 长按菜单跟随主题 — 去写死黑白配色,改用 colorScheme 语义色,
+    // 自定义主题/深色下不再出戏。
     val bg = MaterialTheme.colorScheme.surfaceContainerHigh
     val textColor = MaterialTheme.colorScheme.onSurface
     val iconBlock = MaterialTheme.colorScheme.surfaceVariant
     val divider = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
 
-    // Animación de entrada:scale 0.92 → 1 + fade
+    // 进场动画:scale 0.92 → 1 + fade
     val scale by androidx.compose.animation.core.animateFloatAsState(
         targetValue = 1f,
         animationSpec = MuseMotion.tween(MuseAnimation.FAST_NORMAL_MS, easing = FastOutSlowInEasing),
@@ -2750,12 +2840,12 @@ private fun TelegramActionCard(
             FixedColorActionRow(MuseIcons.copy, stringResource(R.string.action_copy), textColor, iconBlock, onCopy)
             FixedColorActionRow(MuseIcons.square, stringResource(R.string.action_select_text), textColor, iconBlock, onSelectText)
             FixedColorActionRow(MuseIcons.share, stringResource(R.string.chat_share_action), textColor, iconBlock, onShare)
-            // F-2: Reenvío entre sesiones(yuxtaponer con compartir)
+            // F-2: 跨会话转发(与分享并列)
             FixedColorActionRow(MuseIcons.swapHorizontal, stringResource(R.string.chat_forward_action), textColor, iconBlock, onForward)
             if (isUser) {
                 FixedColorActionRow(MuseIcons.edit, stringResource(R.string.action_edit), textColor, iconBlock, onEdit)
             }
-            // Línea divisoria delgada de color fijo.
+            // 固定色细分割线
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -2768,7 +2858,7 @@ private fun TelegramActionCard(
     }
 }
 
-/** v1.0.72: Fila de menú de color fijo(Compacto:Bloque inferior de ícono pequeño + altura de línea pequeña + presionar scale). */
+/** v1.0.72: 固定配色菜单行(紧凑:小图标底块 + 小行高 + 按压 scale)。 */
 @Composable
 private fun FixedColorActionRow(icon: ImageVector, text: String, textColor: Color, iconBlockColor: Color, onClick: () -> Unit) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -2796,7 +2886,7 @@ private fun FixedColorActionRow(icon: ImageVector, text: String, textColor: Colo
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        // Bloque inferior de icono pequeño
+        // 小图标底块
         Surface(
             shape = RoundedCornerShape(9.dp),
             color = iconBlockColor,

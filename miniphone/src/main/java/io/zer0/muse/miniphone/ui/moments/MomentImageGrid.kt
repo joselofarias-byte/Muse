@@ -21,13 +21,13 @@ import io.zer0.muse.miniphone.data.moment.MOMENT_MAX_IMAGES
 import io.zer0.muse.miniphone.ui.theme.MiniPhoneTheme
 
 /**
- * Un área de imagen dinámica.
+ * 一条动态的图片区。
  *
- * El número de columnas está dado por [momentGridColumns] determinado:Una tarjeta es exclusiva, dos y cuatro están en dos columnas y las tres restantes están en tres columnas.
- * Corta cada cuadrícula en cuadrados.(Corte proporcional),Cuando una fila no está llena, las posiciones restantes quedan vacías. —— La imagen no se estirará solo porque haya pocas imágenes.
+ * 列数由 [momentGridColumns] 定:一张独占、两张与四张两列、其余三列。
+ * 每格切成正方形(等比裁切),一行没排满时剩下的位置留空 —— 图不会因为张数少就被拉宽。
  *
- * @param maxWidth ancho disponible,por la persona que llama desde `BoxWithConstraints` medir
- * @param onOpen Devolución de llamada cuando se hace clic en una imagen,El parámetro es su índice en el grupo.(base cero) —— El visor de la galería comienza con este.
+ * @param maxWidth 可用宽度,由调用方从 `BoxWithConstraints` 里量出来
+ * @param onOpen 点某张图时的回调,参数是它在组里的下标(零基) —— 图集查看器从这一张开始
  */
 @Composable
 internal fun MomentImageGrid(momentId: String, images: List<String>, maxWidth: Dp, onOpen: (Int) -> Unit, modifier: Modifier = Modifier) {
@@ -63,10 +63,10 @@ internal fun MomentImageGrid(momentId: String, images: List<String>, maxWidth: D
 }
 
 /**
- * Número de cuadrícula de nueve palacios.
+ * 九宫格列数。
  *
- * Dar una imagen grande uno por uno,Dos y cuatro cartas están dispuestas en dos columnas.(Cuatro son perfectos 2×2),Las tres columnas restantes ——
- * Tres cartas seguidas, de cinco a nueve cartas que llenan la cuadrícula de nueve cuadrados.,La relación entre el número de hojas y el espacio en blanco es la más intuitiva.
+ * 一张给一张大图,两张和四张按两列摆(四张正好 2×2),其余三列 ——
+ * 三张排一行、五到九张填满九宫格,张数与留白的关系最直观。
  */
 internal fun momentGridColumns(count: Int): Int = when {
     count <= SINGLE_COLUMN_MAX -> 1
@@ -74,7 +74,7 @@ internal fun momentGridColumns(count: Int): Int = when {
     else -> 3
 }
 
-/** foto de un marco:cuadrado fijo,Durante la carga, presione primero un color de fondo,No permita que la altura de la fila se aleje de 0. */
+/** 一格图:固定正方形,加载中先压一块底色,不让行高从 0 跳开。 */
 @Composable
 private fun MomentImageCell(path: String, size: Dp, tag: String, onOpen: () -> Unit, modifier: Modifier = Modifier) {
     val colors = MiniPhoneTheme.colors
@@ -95,10 +95,10 @@ private fun MomentImageCell(path: String, size: Dp, tag: String, onOpen: () -> U
     }
 }
 
-/** El límite superior de la longitud lateral de una imagen.:No importa qué tan grande sea, el texto desaparecerá de la pantalla. */
+/** 一张图时的边长上限:再大就把正文挤到屏幕外了。 */
 private val SingleImageMaxEdge = 220.dp
 
-/** El límite superior de la longitud lateral de una cuadrícula cuando hay varias imágenes. */
+/** 多图时一格的边长上限。 */
 private val CellMaxEdge = 96.dp
 
 private val CellGap = 4.dp

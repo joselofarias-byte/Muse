@@ -24,12 +24,12 @@ import io.zer0.muse.ui.theme.MuseShapes
 import io.zer0.muse.util.TokenEstimator
 
 /**
- * P1 UI: Barra de estadísticas de Compact Token debajo del botón de acceso directo al mensaje del Asistente.
+ * P1 UI: 助手消息快捷按钮下方的紧凑 Token 统计条。
  *
- * v2.0: de"Estimación de un solo mensaje"En su lugar, diferenciar la entrada/salida:
- *  - entrada:Priorizar la verdad reportada por el proveedor promptTokens;Devolver estimación de contexto cuando no esté disponible(prefijo ~ representa una estimación)
- *  - salida:Dar prioridad a la verdad completionTokens;Cuando no esté disponible, utilice la estimación de BPE del texto de este mensaje
- * Diseño de una sola fila:entrada · salida · Porcentaje de contexto ocupado + barra de progreso fina.
+ * v2.0: 从"只有一条消息估算"改为区分输入/输出:
+ *  - 输入:优先用 provider 上报的真实 promptTokens;拿不到时退回上下文估算值(前缀 ~ 表示估算)
+ *  - 输出:优先用真实 completionTokens;拿不到时用本消息正文的 BPE 估算
+ * 单行布局:输入 · 输出 · 上下文占用百分比 + 细进度条。
  */
 @Composable
 fun TokenStatsBar(
@@ -39,11 +39,11 @@ fun TokenStatsBar(
     promptTokens: Int? = null,
     completionTokens: Int? = null,
     /**
-     * Si este mensaje todavía se está transmitiendo.
+     * 这条消息是否仍在流式生成。
      *
-     * No se realiza ninguna estimación local durante la transmisión: el último mensaje de ayuda se reorganizará en cada fragmento y el BPE aumenta linealmente según la longitud del texto.
-     * (5KB Texto ≈ 1–2ms), todos caen en el hilo principal —— No es un precio que valga la pena pagar por una cifra que sigue cambiando.
-     * Cuanto más largos sean el texto y el código fuente de la tarjeta, más obvio será.
+     * 流式期间不做本地估算：最后一条助手消息每个 chunk 都会重组，而 BPE 是按正文长度线性涨的
+     * （5KB 正文 ≈ 1–2ms），全部落在主线程 —— 为了一个还在变的数字付这个代价不划算。
+     * 正文与卡源码越长，这条越明显。
      */
     streaming: Boolean = false,
     modifier: Modifier = Modifier,
@@ -52,13 +52,13 @@ fun TokenStatsBar(
         if (streaming) 0 else (TokenEstimator.estimate(listOf(message)) - 4).coerceAtLeast(0)
     }
     val outputTokens = completionTokens ?: estimatedOutput
-    // contextTokenCount Lista completa de mensajes presionada al cerrar(Contiene la respuesta de este asistente.)Revalorización;
-    // Las estimaciones de producción se deducen cuando no hay uso del proveedor.,Obtener una aproximación del contexto de entrada,Evite contar dos veces las salidas y las entradas.
+    // contextTokenCount 在收尾时已按完整消息列表(含本条助手回复)重估;
+    // 无 provider usage 时扣掉输出估算,得到输入上下文的近似值,避免把输出重复算进输入。
     val inputTokens = promptTokens ?: (historyTokens - estimatedOutput).coerceAtLeast(0)
     val inputEstimated = promptTokens == null
     val outputEstimated = completionTokens == null
 
-    // Agregar dos elementos medidos;El estado estimado se cuenta directamente utilizando el contexto completo.(que ya contiene la salida),Evite la doble suma.
+    // 实测两项相加;估算态直接用完整上下文计数(其中已经包含输出),避免重复加总。
     val used = if (promptTokens != null && completionTokens != null) {
         (inputTokens + outputTokens).coerceAtLeast(0)
     } else {
@@ -87,7 +87,7 @@ fun TokenStatsBar(
                 append(stringResource(R.string.chat_token_output))
                 append(" ")
                 if (streaming && completionTokens == null) {
-                    // Aún generando: este número cambia en cada cuadro, lo que indica directamente"Por determinar"Más honesto que dar un número falso.
+                    // 还在生成：这个数字每帧都在变，直接表明"待定"比给个假数字诚实。
                     append("…")
                 } else {
                     if (outputEstimated) append("~")
@@ -125,7 +125,7 @@ fun TokenStatsBar(
     }
 }
 
-/** Número de token compacto:1 Utilizado por más de 10.000 12.3k,Evite números largos que ocupen espacio en una sola línea. */
+/** 紧凑 token 数字:1 万以上用 12.3k,避免长数字挤占单行空间。 */
 internal fun formatTokenCount(value: Int): String = when {
     value >= 1_000_000 -> "%.1fM".format(value / 1_000_000.0)
     value >= 10_000 -> "%.1fk".format(value / 1000.0)

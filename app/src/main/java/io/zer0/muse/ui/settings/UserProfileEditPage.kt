@@ -30,6 +30,7 @@ import io.zer0.muse.ui.common.form.MuseTextField
 import io.zer0.muse.ui.common.icons.MuseIcons
 import io.zer0.muse.ui.common.surface.CardGroup
 import io.zer0.muse.ui.theme.MusePaddings
+import io.zer0.muse.util.GlobalCoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -40,32 +41,32 @@ import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
 /**
- * v1.133: Reescribir la página de edición de retratos de usuario — Todos los campos están inyectados. system prompt,modelo real"saber"Usuario.
+ * v1.133: 重写用户画像编辑页 — 所有字段都注入 system prompt,模型真正"知道"用户。
  *
- * objetivos de diseño:
- *  - 5 grupos:Título / Información básica / Antecedentes y experiencia / Preferencias de comunicación / Límites y tabúes
- *  - Agregar texto de descripción para cada campo,Permita que los usuarios comprendan qué completar y el impacto en la IA
- *  - Agregar explicación de InfoCard en la parte superior"La información completada se inyectará en la IA. system prompt,Deja que la IA te conozca mejor"
- *  - B7-09 Guardado antivibración:Actualización sincrónica del estado local.,Vuelva a escribir después de una pausa de 500 ms DataStore,Guardar al salir de la página
+ * 设计目标:
+ *  - 5 个分组:称呼 / 基本信息 / 背景与专长 / 沟通偏好 / 边界与忌讳
+ *  - 每个字段加说明文字,让用户明白填什么、对 AI 的影响
+ *  - 顶部加 InfoCard 解释"填写的信息会注入到 AI 的 system prompt,让 AI 更了解你"
+ *  - B7-09 防抖保存:本地 state 同步更新,停顿 500ms 后写回 DataStore,离开页面时兜底保存
  *
- * Mapeo de campo(SystemPromptAssembler.buildUserProfileSection):
- *  - grupo de saludo:userNickName / assistantName
- *  - Información básica:bio / age / city / timezone
- *  - Antecedentes y experiencia:occupation / educationBackground / professionField / skills / interests
- *  - preferencias de comunicación:communicationStyle / responseLength / preferredTone / preferredLanguage
- *  - Límites y tabúes:avoidTopics
+ * 字段映射(SystemPromptAssembler.buildUserProfileSection):
+ *  - 称呼组:userNickName / assistantName
+ *  - 基本信息:bio / age / city / timezone
+ *  - 背景与专长:occupation / educationBackground / professionField / skills / interests
+ *  - 沟通偏好:communicationStyle / responseLength / preferredTone / preferredLanguage
+ *  - 边界与忌讳:avoidTopics
  */
 
 /**
- * B7-09: Unidad de disco antivibración para la página de perfil de usuario.
+ * B7-09: 用户资料页的防抖落盘器。
  *
- * UI Todavía impulsado sincrónicamente por mutableStateOf local dentro de la página,Evite que se interrumpa la composición de IME;
- * Este solo es responsable de escribir el perfil más reciente después de una pausa de 500 ms. DataStore,Y guárdelo cuando la página se destruya.
+ * UI 仍由页面内的本地 mutableStateOf 同步驱动,避免 IME composing 被打断;
+ * 这里只负责把最新 profile 在停顿 500ms 后写入 DataStore,并在页面销毁时兜底保存。
  */
 private class UserProfileSaveSink(
     private val settings: SettingsRepository,
 ) {
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate + GlobalCoroutineExceptionHandler)
     private var saveJob: Job? = null
     private var latest: UserProfile = UserProfile()
 
@@ -82,8 +83,8 @@ private class UserProfileSaveSink(
         saveJob?.cancel()
         val value = latest
         if (value != UserProfile()) {
-            // La página ha salido,No se puede utilizar el nivel de página scope;Utilice un alcance de IO independiente para realizar la escritura final
-            CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+            // 页面已离开,不能用页面级 scope;用独立 IO scope 做最后一次兜底写入
+            CoroutineScope(SupervisorJob() + Dispatchers.IO + GlobalCoroutineExceptionHandler).launch {
                 settings.saveUserProfile(value)
             }
         }
@@ -97,15 +98,15 @@ fun UserProfileEditPage(onBack: () -> Unit) {
     val settings: SettingsRepository = koinInject()
     val saveSink = remember { UserProfileSaveSink(settings) }
 
-    // v1.0.27 Solucionar error de IME: sincronizar la retención con mutableStateOf local profile,evitar produceState + scope.launch
-    // Destrucción asincrónica de ida y vuelta IME composing text (Comentarios de los usuarios"Al escribir una coma, el cursor salta al frente de la coma").
-    // antigua implementación:profile Recopilado asincrónicamente de userProfileFlow → update Iniciar lectura de rutina DB → transform → escribir DB →
-    //        flow emit → produceState actualizar → TextField value cambiar → IME composing Confusión.
-    // nueva implementación:Actualización sincrónica del estado local. → Escritura asincrónica DB;Sincronizar con local cuando cambia el flujo externo(Si el contenido es realmente diferente).
+    // v1.0.27 修复 IME bug: 用本地 mutableStateOf 同步持有 profile,避免 produceState + scope.launch
+    // 的异步往返破坏 IME composing text (用户反馈"打逗号时光标跳到逗号前面")。
+    // 旧实现:profile 从 userProfileFlow 异步收集 → update 启动协程读 DB → transform → 写 DB →
+    //        flow emit → produceState 更新 → TextField value 变化 → IME composing 错乱。
+    // 新实现:本地 state 同步更新 → 异步写 DB;外部 flow 变化时同步到本地(若内容确实不同)。
     var profile by remember { mutableStateOf(UserProfile()) }
     LaunchedEffect(Unit) {
         settings.userProfileFlow.collect { incoming ->
-            // Sincronizar sólo si el valor de la base de datos no es coherente con el local(Evite la interrupción de la reorganización causada por el eco después de escribir IME)
+            // 仅当 DB 值与本地不一致时同步(避免写回后 echo 导致重组打断 IME)
             if (incoming != profile) profile = incoming
         }
     }
@@ -114,15 +115,15 @@ fun UserProfileEditPage(onBack: () -> Unit) {
         onDispose { saveSink.dispose() }
     }
 
-    // Actualizar sincrónicamente el estado local + reescritura anti-vibración DataStore
+    // 同步更新本地 state + 防抖写回 DataStore
     fun update(transform: (UserProfile) -> UserProfile) {
         val next = transform(profile)
-        profile = next // Actualizaciones sincrónicas,IME Ver nuevo ahora value
+        profile = next // 同步更新,IME 立即看到新 value
         saveSink.schedule(next)
     }
 
     SettingsSubPageScaffold(title = stringResource(R.string.settings_user_profile_title), onBack = onBack) {
-        // Arriba InfoCard: Descripción de la información que se inyectará en la IA system prompt
+        // 顶部 InfoCard:说明这些信息会注入到 AI 的 system prompt
         item {
             Row(
                 modifier = Modifier
@@ -145,7 +146,7 @@ fun UserProfileEditPage(onBack: () -> Unit) {
             }
         }
 
-        // ── Grupo 1: Configuración del saludo(máxima prioridad,Impacto en cómo la IA se llama a sí misma y se dirige a los usuarios)──
+        // ── 分组 1: 称呼设置(最高优先级,影响 AI 自称与对用户的称呼)──
         item {
             CardGroup(title = { Text(stringResource(R.string.settings_user_profile_appellation)) }) {
                 item(
@@ -177,10 +178,10 @@ fun UserProfileEditPage(onBack: () -> Unit) {
             }
         }
 
-        // ── Grupo 2: Información básica(Permitir que la IA tenga una comprensión general de los usuarios)──
+        // ── 分组 2: 基本信息(让 AI 对用户有整体认知)──
         item {
             CardGroup(title = { Text(stringResource(R.string.settings_user_profile_basic_info)) }) {
-                // v1.133: Perfil(texto largo,Un párrafo de introducción gratuita.)
+                // v1.133: 个人简介(长文本,一段话自由介绍)
                 item(
                     headlineContent = {
                         MuseTextField(
@@ -217,7 +218,7 @@ fun UserProfileEditPage(onBack: () -> Unit) {
                         )
                     },
                 )
-                // v1.133: zona horaria
+                // v1.133: 时区
                 item(
                     headlineContent = {
                         MuseTextField(
@@ -233,7 +234,7 @@ fun UserProfileEditPage(onBack: () -> Unit) {
             }
         }
 
-        // ── Grupo 3: Antecedentes y experiencia ──
+        // ── 分组 3: 背景与专长 ──
         item {
             CardGroup(title = { Text(stringResource(R.string.settings_user_profile_background)) }) {
                 item(
@@ -247,7 +248,7 @@ fun UserProfileEditPage(onBack: () -> Unit) {
                         )
                     },
                 )
-                // v1.133: Antecedentes educativos
+                // v1.133: 教育背景
                 item(
                     headlineContent = {
                         MuseTextField(
@@ -272,7 +273,7 @@ fun UserProfileEditPage(onBack: () -> Unit) {
                         )
                     },
                 )
-                // v1.133: Experiencia en habilidades
+                // v1.133: 技能专长
                 item(
                     headlineContent = {
                         MuseTextField(
@@ -299,10 +300,10 @@ fun UserProfileEditPage(onBack: () -> Unit) {
             }
         }
 
-        // ── Grupo 4: Preferencias de comunicación(Influir en el estilo de respuesta de la IA)──
+        // ── 分组 4: 沟通偏好(影响 AI 回复风格)──
         item {
             CardGroup(title = { Text(stringResource(R.string.settings_user_profile_communication)) }) {
-                // v1.133: estilo de comunicación
+                // v1.133: 沟通风格
                 item(
                     headlineContent = {
                         MuseTextField(
@@ -315,7 +316,7 @@ fun UserProfileEditPage(onBack: () -> Unit) {
                         )
                     },
                 )
-                // v1.133: Preferencia de longitud de respuesta
+                // v1.133: 回复长度偏好
                 item(
                     headlineContent = {
                         MuseTextField(
@@ -328,7 +329,7 @@ fun UserProfileEditPage(onBack: () -> Unit) {
                         )
                     },
                 )
-                // v1.133: tono preferido
+                // v1.133: 偏好语气
                 item(
                     headlineContent = {
                         MuseTextField(
@@ -341,7 +342,7 @@ fun UserProfileEditPage(onBack: () -> Unit) {
                         )
                     },
                 )
-                // v1.133: Idioma de respuesta preferido
+                // v1.133: 偏好回复语言
                 item(
                     headlineContent = {
                         MuseTextField(
@@ -357,10 +358,10 @@ fun UserProfileEditPage(onBack: () -> Unit) {
             }
         }
 
-        // ── Grupo 5: Límites y Tabúes ──
+        // ── 分组 5: 边界与忌讳 ──
         item {
             CardGroup(title = { Text(stringResource(R.string.settings_user_profile_boundaries)) }) {
-                // v1.133: Temas tabú
+                // v1.133: 忌讳话题
                 item(
                     headlineContent = {
                         MuseTextField(
@@ -377,7 +378,10 @@ fun UserProfileEditPage(onBack: () -> Unit) {
             }
         }
 
-        // Deja la parte inferior en blanco
+        // ── v2.6.23(M3): 系统提炼的画像(自动快照 + 开关 + 逐段覆盖) ──
+        item { ProfileSnapshotSection() }
+
+        // 底部留白
         item { Spacer(Modifier.height(MusePaddings.screen)) }
     }
 }

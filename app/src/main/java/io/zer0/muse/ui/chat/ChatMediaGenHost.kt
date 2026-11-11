@@ -11,41 +11,41 @@ import io.zer0.muse.tools.MediaGenSlot
 import kotlin.uuid.Uuid
 
 /**
- * P2-23: herramientas de generación de medios(Imágenes / Vídeos / Códigos QR)El anfitrión de entrega en la página de chat.
+ * P2-23: 媒体生成工具(图片 / 视频 / 二维码)在聊天页的投递宿主。
  *
- * La implementación de la herramienta en sí.([io.zer0.muse.tools.MediaGenToolsImpl])Nada que ver con ViewModel,por
- * `MediaGenToolsRegistrar` Regístrese al iniciar la aplicación;Esta clase solo es responsable de escribir los resultados generados."Actualmente
- * Mensaje de ayuda generado",era el original exec* La parte del método que está acoplada a la UI.:
- *  - Comienza la construcción:Copia de marcador de posición + logotipo de isGeneratingImage / isGeneratingVideo;
- *  - progreso del vídeo:Actualizar cada 5 segundos"Esperó N segundos";
- *  - Fin de generación:Si tiene éxito, agregue los medios al mensaje y guárdelo.(Al cambiar de sesión, inicie sesión directamente en la base de datos de acuerdo con la sesión original.),
- *    falló/Escribir copia correspondiente al cancelar,Y limpie las banderas de marcador de posición.
+ * 工具实现本身([io.zer0.muse.tools.MediaGenToolsImpl])与 ViewModel 无关,由
+ * `MediaGenToolsRegistrar` 在 App 启动时注册;本类只负责把生成结果写回"当前正在
+ * 生成的助手消息",是原先 exec* 方法里与 UI 耦合的那部分:
+ *  - 生成开始:占位文案 + isGeneratingImage / isGeneratingVideo 标志;
+ *  - 视频进度:每 5 秒刷新一次"已等待 N 秒";
+ *  - 生成结束:成功时把媒体追加到消息并落库(切会话时直接按原会话落库),
+ *    失败/取消时写入对应文案,并清理占位标志。
  *
- * Solo proceso de diálogo UI(ChatViewModel)Este host será instalado;Tareas programadas/chats grupales/subagentes, etc. Ninguno UI
- * el enlace no puede conseguirlo,Las herramientas multimedia recurren a rutas de archivos de retorno / URL,No depende de la interfaz de usuario para registrarse para la ejecución.
+ * 只有 UI 对话进程(ChatViewModel)会安装本宿主;定时任务 / 群聊 / 子代理等无 UI
+ * 链路拿不到它,媒体工具退化为返回文件路径 / URL,不依赖 UI 才能注册执行。
  */
 class ChatMediaGenHost(
     private val accessor: ChatStateAccessor,
     private val sessionRepository: SessionRepository,
     private val streamCoordinator: ChatStreamCoordinator,
     private val appContext: Context,
-    /** Mensaje del asistente correspondiente a la ronda de herramientas actual id(Ancla antes de que comience la generación). */
+    /** 当前工具轮次对应的助手消息 id(生成开始前锚定)。 */
     private val toolAssistantIdProvider: () -> Uuid?,
-    /** La identificación de la sesión correspondiente a la ronda de herramientas actual. */
+    /** 当前工具轮次对应的会话 id。 */
     private val toolSessionIdProvider: () -> String?,
-    /** Generar token generacional:El usuario envía un nuevo mensaje/cambia después de cambiar de sesión,El resultado de llegar tarde no será válido en consecuencia. */
+    /** 生成代际令牌:用户发新消息 / 切会话后变化,晚到结果据此作废。 */
     private val generationTokenProvider: () -> Long,
-    /** Escribir copia del mensaje del asistente(Mantener el marcador de posición isStreaming);Corresponde al contenedor ChatViewModel.updateAssistant. */
+    /** 写入助手消息文案(保持 isStreaming 占位);对应 ChatViewModel.updateAssistant 包装。 */
     private val updateAssistant: suspend (Uuid, String) -> Unit,
-    /** Las noticias que contengan medios se colocarán de inmediato.(La propia implementación lo omite cuando se elimina la sesión.). */
+    /** 含媒体的消息立即落盘(会话已删除时由实现自行跳过)。 */
     private val persistMediaMessage: suspend (String?, Uuid) -> Unit,
-    /** Regístrese para recibir noticias actuales de los medios,Para que las herramientas circulen y terminen, el fondo del bolsillo se coloca sobre la bandeja. */
+    /** 登记本代媒体消息,供工具循环收尾兜底落盘。 */
     private val registerMediaMessage: (Uuid) -> Unit,
 ) : MediaGenHost {
 
     override suspend fun begin(kind: MediaGenKind): MediaGenSlot? {
         val assistantId = toolAssistantIdProvider() ?: return null
-        // C-02: Establecer el indicador de marcador de posición de generación(ChatScreen Según esto, se muestra la tarjeta que se está generando.)
+        // C-02: 置位生成中占位标志(ChatScreen 据此显示生成中卡片)
         when (kind) {
             MediaGenKind.IMAGE -> {
                 updateAssistant(assistantId, appContext.getString(R.string.err_chat_img_generating))
@@ -55,9 +55,9 @@ class ChatMediaGenHost(
                 updateAssistant(assistantId, appContext.getString(R.string.err_chat_video_generating))
                 accessor.update { it.copy(isGeneratingVideo = true) }
             }
-            // El código QR se genera localmente,No se requieren tarjetas de marcador de posición
+            // 二维码是本地生成,无需占位卡片
             MediaGenKind.QR_CODE -> Unit
-            // La síntesis de voz solo toma uno o dos segundos,Tampoco ocupa tarjetas de marcador de posición(falló/La copia exitosa está escrita por informe)
+            // 语音合成只用一两秒,也不占占位卡片(失败/成功文案由 report 写入)
             MediaGenKind.VOICE -> Unit
         }
         return Slot(kind, assistantId, toolSessionIdProvider(), generationTokenProvider())
@@ -97,19 +97,19 @@ class ChatMediaGenHost(
             }
         }
 
-        /** éxito:De acuerdo con el enfoque de visualización actual, decida si fusionar la interfaz de usuario o eliminar directamente la base de datos de acuerdo con la sesión original.(El cambio de sesión no cancela la generación.). */
+        /** 成功:按当前显示焦点决定走 UI 合并还是直接按原会话落库(切会话不取消生成)。 */
         private suspend fun deliverMedia(result: MediaGenResult.Success) {
             if (kind == MediaGenKind.VOICE) {
                 deliverVoice(result)
                 return
             }
             val content = appContext.getString(generatedRes)
-            // Revisión de corrección (2.0 B-04): El URI de datos base64 largo se coloca a través de MessageImageStore como file://
-            // camino(Nombre de archivo con hash de contenido,Las escrituras paralelas no se cubren entre sí.),DB No más almacenamiento MB base64.
+            // 审查修复 (2.0 B-04): 长 base64 data URI 经 MessageImageStore 落盘为 file://
+            // 路径(文件名带内容哈希,并行写入互不覆盖),DB 不再存 MB 级 base64。
             val imageUrls = result.imageUrls.takeIf { it.isNotEmpty() }
                 ?.let { sessionRepository.toPersistableImageUrls(assistantId.toString(), it) }
             if (isSessionDisplayed()) {
-                // A-03: Fusión atómica,Dibujos paralelos en la misma ronda.(awaitAll)Cada uno se adjunta según la última instantánea.,No cubrirse el uno al otro
+                // A-03: 原子合并,同轮并行生图(awaitAll)各自基于最新快照追加,互不覆盖
                 streamCoordinator.appendMediaToAssistant(
                     id = assistantId,
                     content = content,
@@ -118,13 +118,13 @@ class ChatMediaGenHost(
                     voiceUri = result.voiceUri,
                     voiceDurationMs = result.voiceDurationMs,
                 )
-                // Reparación de auditoría (S-01): Las noticias que contengan medios se colocarán de inmediato.,De lo contrario reiniciar/Los medios desaparecen después del corte de página
+                // 审计修复 (S-01): 含媒体的消息立即落盘,否则重启/切页后媒体消失
                 persistMediaMessage(sessionId, assistantId)
-                // C-17: Regístrese para recibir noticias actuales de los medios,Ubicación inferior del bolsillo de cierre
+                // C-17: 登记本代媒体消息,收尾兜底落盘
                 registerMediaMessage(assistantId)
             } else {
-                // Revisión de corrección (2.0 A-04): El cambio de sesión no se cancela. — Los medios se registran directamente en la biblioteca de acuerdo con la sesión original.,
-                // Restaurar la visualización desde la base de datos al volver a la sesión original(UI La ruta de combinación no tiene mensajes para escribir en sesiones que no se muestran)
+                // 审查修复 (2.0 A-04): 切会话不取消 — 媒体按原会话直接落库,
+                // 切回原会话时从 DB 恢复展示(UI 合并路径对非显示会话无消息可写)
                 sessionRepository.attachMediaToMessage(
                     sessionId = sessionId,
                     messageId = assistantId,
@@ -138,11 +138,11 @@ class ChatMediaGenHost(
         }
 
         /**
-         * Entrega de voz:Se pueden realizar varios disparos en una ronda.,Pero sólo hay un lugar para los mensajes de voz.
+         * 语音投递:一回合可以连发多条,但消息上的语音只有一个位置。
          *
-         * Si no hay voz en esta ronda de mensajes del asistente, se utilizará la ruta de entrega original.(Espera);Anótalo cuando ya haya un mensaje de voz.
-         * sobrescribirá el anterior,Por tanto, a partir del segundo, cada mensaje de voz será transmitido por un asistente de mensajes independiente. —— nuevas noticias
-         * Agregar después del mensaje ancla,Los que entregan primero van primero.
+         * 本轮助手消息还没有语音时沿用原有投递路径(挂到它上面);已经有语音时再写上去
+         * 会把前一条覆盖掉,所以从第二条起每条语音各起一条独立助手消息承载 —— 新消息
+         * 追加在锚定消息之后,先投递的排在前面。
          */
         private suspend fun deliverVoice(result: MediaGenResult.Success) {
             val voiceUri = result.voiceUri ?: return
@@ -157,8 +157,8 @@ class ChatMediaGenHost(
         }
 
         /**
-         * El estado actual del mensaje de ayuda del ancla.:Leer la lista de mensajes de memoria en la pantalla de sesión(Lo último),De lo contrario, busque en la biblioteca por id.
-         * (La lista de memoria de una sesión no visualizada pertenece a otra sesión.,No puedo recibir este mensaje).
+         * 锚定助手消息的当前状态:会话显示中读内存消息列表(最新),否则按 id 查库
+         * (非显示会话的内存列表属于别的会话,拿不到这条消息)。
          */
         private suspend fun anchorMessage(displayed: Boolean): UIMessage? {
             if (displayed) {
@@ -167,14 +167,8 @@ class ChatMediaGenHost(
             return sessionRepository.getMessageAsUiMessage(assistantId.toString())
         }
 
-        /** Escribe una voz al mensaje especificado.(Mostrar combinación de UI + realizar pedidos inmediatamente,De lo contrario, la sesión original se registrará en la base de datos.). */
-        private suspend fun deliverVoiceTo(
-            messageId: Uuid,
-            content: String,
-            voiceUri: String,
-            durationMs: Long,
-            displayed: Boolean,
-        ) {
+        /** 把一条语音写到指定消息上(显示中走 UI 合并 + 立即落盘,否则按原会话落库)。 */
+        private suspend fun deliverVoiceTo(messageId: Uuid, content: String, voiceUri: String, durationMs: Long, displayed: Boolean) {
             if (displayed) {
                 streamCoordinator.appendMediaToAssistant(
                     id = messageId,
@@ -195,7 +189,7 @@ class ChatMediaGenHost(
             }
         }
 
-        /** Crea un nuevo mensaje de asistente para transmitir esta voz.:El contenido sigue la misma frase que la copia del marcador de posición.,Cuelga debajo de la pregunta dónde está el mensaje ancla. */
+        /** 新建一条助手消息承载这条语音:内容沿用同一句占位文案,挂在锚定消息所在的提问下。 */
         private suspend fun deliverVoiceAsOwnMessage(
             anchor: UIMessage,
             content: String,
@@ -211,7 +205,7 @@ class ChatMediaGenHost(
                 parentGroupId = anchor.parentGroupId,
             )
             if (displayed) {
-                // Agregar al final del flujo de mensajes = Manténgase al día con los mensajes ancla(La siguiente ronda de ocupación de streaming se agregará después de esta ronda de ejecución de la herramienta.)
+                // 追加到消息流尾部 = 紧跟锚定消息(下一轮的流式占位在这一轮工具执行之后才追加)
                 val carried = voiceMessage.copy(voiceUri = voiceUri, voiceDurationMs = durationMs)
                 accessor.updateMessages { list -> list + carried }
                 persistMediaMessage(sessionId, carried.id)
@@ -219,12 +213,12 @@ class ChatMediaGenHost(
                 return
             }
             val targetSession = sessionId ?: return
-            // sesión sin visualización:Inserta un mensaje primero,Presione id nuevamente para colgar la voz.(El mismo conjunto de capacidades directas que la ruta de la sesión de corte de gráficos sin procesar)
+            // 非显示会话:先插一条消息,再按 id 把语音挂上去(与生图切会话路径同一套落库能力)
             sessionRepository.appendMessage(targetSession, voiceMessage)
             deliverVoiceTo(voiceMessage.id, content, voiceUri, durationMs, displayed = false)
         }
 
-        /** A-04: Si la sesión que se muestra actualmente sigue siendo la sesión de destino generada esta vez. */
+        /** A-04: 当前显示会话是否仍是本次生成的目标会话。 */
         private fun isSessionDisplayed(): Boolean {
             val active = sessionId ?: return false
             val snapshot = accessor.snapshot
@@ -236,7 +230,7 @@ class ChatMediaGenHost(
             MediaGenKind.IMAGE -> appContext.getString(R.string.err_chat_img_gen_failed, message)
             MediaGenKind.VIDEO -> appContext.getString(R.string.err_chat_video_gen_failed, message)
             MediaGenKind.VOICE -> appContext.getString(R.string.err_chat_voice_gen_failed, message)
-            // Si el código QR falla, no se escribirá el mensaje del asistente.(Consistente con la implementación anterior):Los resultados de la herramienta incluyen razones.
+            // 二维码失败不写助手消息(与旧实现一致):工具结果已含原因
             MediaGenKind.QR_CODE -> return ""
         }
 
@@ -255,14 +249,14 @@ class ChatMediaGenHost(
         }
     }
 
-    /** El último mensaje de voz nuevo de esta generación createdAt(punto de partida monótonamente creciente). */
+    /** 本次生成里最后一条新语音消息的 createdAt(单调递增的起点)。 */
     private var lastVoiceCreatedAt = 0L
 
     /**
-     * Los nuevos mensajes de voz se crean estrictamente después de los mensajes existentes.
+     * 新语音消息的创建时间严格晚于已有消息。
      *
-     * La clasificación de memoria utiliza createAt para descubrir cuándo falta la secuencia.,Se devolverán dos apuestas consecutivas dentro del mismo milisegundo. Ordenar por identificación.,
-     * No coincide con el pedido de entrega;Aquí se garantiza un aumento monótono.
+     * 内存排序在缺少 seq 时用 createdAt 兜底,同一毫秒内连投两条会退回按 id 排序,
+     * 与投递顺序不符;这里保证单调递增。
      */
     @Synchronized
     private fun nextVoiceCreatedAt(displayed: Boolean, anchorCreatedAt: Long): Long {

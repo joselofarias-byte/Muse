@@ -97,18 +97,19 @@ import io.zer0.muse.ui.theme.MuseElevation
 import io.zer0.muse.ui.theme.MuseIconSizes
 import io.zer0.muse.ui.theme.MusePaddings
 import io.zer0.muse.ui.theme.MuseShapes
+import io.zer0.muse.ui.theme.pill
 import io.zer0.muse.ui.theme.semiLarge
 
 /**
- * Galería de componentes — Página de aceptación de la biblioteca de componentes.
+ * 组件画廊 — 组件库的验收页。
  *
- * Propósito: poner `ui/common` Todas las formas de cada componente se representan una al lado de la otra, para que puedas ver si están unificadas de un vistazo.
- * El autor de la nueva página la copiará desde aquí; Después de cambiar los componentes, también lo revisará aquí.
+ * 目的：把 `ui/common` 里每个组件的全部形态并排渲染出来，一眼看清是否统一。
+ * 新页面作者从这里抄；改组件后也在这里复核。
  *
- * Descripción:
- * - Nombre de la variante (Primary / Secondary / Text / Tonal / Solid …) utiliza el vocabulario del código sin traducción.
- * - Para archivos de tamaño de fuente [LocalDensity] Anule fontScale para comprobar si hay truncamiento y aplastamiento en tamaños de fuente ampliados.
- * - Superposición (ventana emergente/panel/Menú) en realidad se activa con botones, y lo que ves es la representación real.
+ * 说明：
+ * - 变体名（Primary / Secondary / Text / Tonal / Solid …）沿用代码里的词汇，不翻译。
+ * - 字号档用 [LocalDensity] 覆盖 fontScale，用于检查放大字号下的截断和挤压。
+ * - 覆盖层（弹窗/面板/菜单）用按钮真实触发，看到的就是实际渲染。
  */
 @Composable
 fun ComponentGalleryScreen(onBack: () -> Unit) {
@@ -173,15 +174,15 @@ fun ComponentGalleryScreen(onBack: () -> Unit) {
         GalleryOverlay.Dialog -> MuseDialog(
             onDismissRequest = { overlay = null },
             title = "MuseDialog",
-            content = { GalleryDemoBody("Two capsule buttons; confirm uses the theme primary.") },
+            content = { GalleryDemoBody("Dos botones de cápsula; la confirmación usa el color principal del tema.") },
             onConfirm = { overlay = null },
         )
 
         GalleryOverlay.DangerDialog -> MuseDialog(
             onDismissRequest = { overlay = null },
-            title = "MuseDialog · destructive",
-            content = { GalleryDemoBody("Destructive confirm uses the theme error color.") },
-            confirmText = "Delete",
+            title = "MuseDialog · acción destructiva",
+            content = { GalleryDemoBody("La confirmación destructiva usa el color de error del tema.") },
+            confirmText = "Eliminar",
             onConfirm = { overlay = null },
             destructive = true,
         )
@@ -189,20 +190,20 @@ fun ComponentGalleryScreen(onBack: () -> Unit) {
         GalleryOverlay.AlertDialog -> MuseAlertDialog(
             onDismissRequest = { overlay = null },
             title = "MuseAlertDialog",
-            message = "Single-button alert dialog.",
+            message = "Diálogo de aviso con un solo botón.",
         )
 
         GalleryOverlay.FormDialog -> MuseFormDialog(
             onDismissRequest = { overlay = null },
             title = "MuseFormDialog",
-            subtitle = "Short form, 1-4 fields",
+            subtitle = "Formulario breve, de 1 a 4 campos",
             onConfirm = { overlay = null },
         ) {
             var value by remember { mutableStateOf("") }
             MuseTextField(
                 value = value,
                 onValueChange = { value = it },
-                placeholder = { Text("Field") },
+                placeholder = { Text("Campo") },
                 singleLine = true,
             )
         }
@@ -215,15 +216,15 @@ fun ComponentGalleryScreen(onBack: () -> Unit) {
                 style = MaterialTheme.typography.titleMedium,
             )
             Spacer(Modifier.height(MusePaddings.itemGap))
-            MuseCapsuleButton(text = "Close", onClick = { overlay = null })
+            MuseCapsuleButton(text = "Cerrar", onClick = { overlay = null })
         }
 
         GalleryOverlay.SelectionSheet -> MuseSelectionSheet(
             title = "MuseSelectionSheet",
-            subtitle = "Browsing selection list",
+            subtitle = "Lista de selección",
             onDismissRequest = { overlay = null },
         ) {
-            listOf("Option A", "Option B", "Option C").forEach { label ->
+            listOf("Opción A", "Opción B", "Opción C").forEach { label ->
                 SettingsItemRow(
                     title = label,
                     onClick = { overlay = null },
@@ -240,7 +241,7 @@ fun ComponentGalleryScreen(onBack: () -> Unit) {
             Column(modifier = Modifier.padding(MusePaddings.itemGap)) {
                 Text(text = "MusePopover", style = MaterialTheme.typography.labelLarge)
                 Text(
-                    text = "Long-press menu anchored at the press point",
+                    text = "Menú anclado al punto de la pulsación larga",
                     style = MaterialTheme.typography.bodySmall,
                     color = MuseActionColors.mutedContent,
                 )
@@ -252,20 +253,20 @@ fun ComponentGalleryScreen(onBack: () -> Unit) {
                 MuseFloatingActionItem(
                     key = "copy",
                     icon = MuseIcons.share,
-                    label = "Share",
+                    label = "Compartir",
                     onClick = { overlay = null },
                 ),
                 MuseFloatingActionItem(
                     key = "checked",
                     icon = MuseIcons.check,
-                    label = "Checked item",
+                    label = "Elemento seleccionado",
                     checked = true,
                     onClick = { overlay = null },
                 ),
                 MuseFloatingActionItem(
                     key = "disabled",
                     icon = MuseIcons.trash,
-                    label = "Disabled item",
+                    label = "Elemento desactivado",
                     enabled = false,
                     onClick = { overlay = null },
                 ),
@@ -279,8 +280,8 @@ fun ComponentGalleryScreen(onBack: () -> Unit) {
     if (confirmDelete) {
         ConfirmDeleteDialog(
             title = "ConfirmDeleteDialog",
-            itemName = "Sample item",
-            consequence = "This cannot be undone.",
+            itemName = "Elemento de ejemplo",
+            consequence = "Esta acción no se puede deshacer.",
             onConfirm = { confirmDelete = false },
             onDismiss = { confirmDelete = false },
         )
@@ -307,7 +308,7 @@ private fun GalleryDemoBody(text: String) {
     )
 }
 
-/** Agrupación: Título de sección + contenedor de tarjeta. */
+/** 分组：小节标题 + 一张卡片容器。 */
 @Composable
 private fun GallerySection(title: String, content: @Composable ColumnScope.() -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(MusePaddings.contentGap)) {
@@ -363,7 +364,7 @@ private fun ButtonsSection() {
             onClick = {},
         )
         MuseCapsuleButton(
-            text = "Primary + icon",
+            text = "Principal con icono",
             leadingIcon = MuseIcons.check,
             onClick = {},
         )
@@ -378,28 +379,28 @@ private fun ButtonsSection() {
             onClick = {},
         )
         MuseCapsuleButton(
-            text = "Destructive",
+            text = "Destructivo",
             leadingIcon = MuseIcons.trash,
             destructive = true,
             onClick = {},
         )
         Row(horizontalArrangement = Arrangement.spacedBy(MusePaddings.itemGap)) {
             MuseCapsuleButton(
-                text = "Secondary",
+                text = "Secundario",
                 variant = IosCapsuleButtonVariant.Secondary,
                 fillWidth = false,
                 onClick = {},
                 modifier = Modifier.weight(1f),
             )
             MuseCapsuleButton(
-                text = "Text",
+                text = "Texto",
                 variant = IosCapsuleButtonVariant.Text,
                 fillWidth = false,
                 onClick = {},
                 modifier = Modifier.weight(1f),
             )
         }
-        GalleryLabel("MuseCapsuleButton: Primary / Secondary / Text / Destructive / Loading / Disabled")
+        GalleryLabel("MuseCapsuleButton: principal / secundario / texto / destructivo / cargando / desactivado")
     }
 }
 
@@ -413,30 +414,30 @@ private fun IconButtonsSection() {
             MuseTactileButton(
                 icon = MuseIcons.sliders,
                 onClick = {},
-                contentDescription = "plain",
+                contentDescription = "Sin fondo",
             )
             MuseTactileButton(
                 icon = MuseIcons.star,
                 onClick = {},
-                contentDescription = "tonal",
+                contentDescription = "Tonal",
                 container = MuseIconContainer.Tonal,
             )
             MuseTactileButton(
                 icon = MuseIcons.plus,
                 onClick = {},
-                contentDescription = "solid",
+                contentDescription = "Sólido",
                 container = MuseIconContainer.Solid,
             )
             MuseTactileButton(
                 icon = MuseIcons.refresh,
                 onClick = {},
-                contentDescription = "neutral",
+                contentDescription = "Neutro",
                 container = MuseIconContainer.Neutral,
             )
             MuseTactileButton(
                 icon = MuseIcons.trash,
                 onClick = {},
-                contentDescription = "disabled",
+                contentDescription = "Desactivado",
                 container = MuseIconContainer.Tonal,
                 enabled = false,
             )
@@ -448,7 +449,7 @@ private fun IconButtonsSection() {
             MuseTactileButton(
                 icon = MuseIcons.user,
                 onClick = {},
-                contentDescription = "large",
+                contentDescription = "Grande",
                 size = MuseIconSizes.touchTarget,
                 iconSize = MuseIconSizes.iconLarge,
                 container = MuseIconContainer.Solid,
@@ -457,10 +458,10 @@ private fun IconButtonsSection() {
             MuseFloatingButton(
                 icon = MuseIcons.plus,
                 onClick = {},
-                contentDescription = "fab",
+                contentDescription = "Botón flotante",
             )
         }
-        GalleryLabel("MuseTactileButton: None / Tonal / Solid / Neutral / Disabled, touch target 48dp")
+        GalleryLabel("MuseTactileButton: sin fondo / tonal / sólido / neutro / desactivado; área táctil de 48 dp")
     }
 }
 
@@ -491,7 +492,7 @@ private fun InputsSection() {
             singleLine = true,
         )
         MuseTextField(
-            value = "disabled",
+            value = "Desactivado",
             onValueChange = {},
             enabled = false,
             singleLine = true,
@@ -503,26 +504,26 @@ private fun InputsSection() {
             MuseSwitch(checked = switchA, onCheckedChange = { switchA = it })
             MuseSwitch(checked = switchB, onCheckedChange = { switchB = it })
             MuseSwitch(checked = true, onCheckedChange = null)
-            GalleryLabel("MuseSwitch: on / off / disabled")
+            GalleryLabel("MuseSwitch: activado / desactivado / no disponible")
         }
         MuseSlider(value = slider, onValueChange = { slider = it })
         MuseDropdown(
             value = dropdown,
             onValueChange = { dropdown = it },
             label = "MuseDropdown",
-            options = listOf("a" to "Option A", "b" to "Option B"),
+            options = listOf("a" to "Opción A", "b" to "Opción B"),
         )
         Row(horizontalArrangement = Arrangement.spacedBy(MusePaddings.contentGap)) {
-            MuseChip(selected = chipA, onClick = { chipA = !chipA }, label = "Chip on")
-            MuseChip(selected = chipB, onClick = { chipB = !chipB }, label = "Chip off")
+            MuseChip(selected = chipA, onClick = { chipA = !chipA }, label = "Etiqueta activada")
+            MuseChip(selected = chipB, onClick = { chipB = !chipB }, label = "Etiqueta desactivada")
         }
         MuseCapsuleTab(
-            tabs = listOf("Tab A", "Tab B", "Tab C"),
+            tabs = listOf("Pestaña A", "Pestaña B", "Pestaña C"),
             selectedIndex = tab,
             onSelect = { tab = it },
             modifier = Modifier.fillMaxWidth(),
         )
-        GalleryLabel("MuseCapsuleTab: segmented switcher")
+        GalleryLabel("MuseCapsuleTab: selector segmentado")
     }
 }
 
@@ -538,22 +539,22 @@ private fun SettingsRowsSection() {
             SettingsItemRow(
                 icon = MuseIcons.sliders,
                 title = "SettingsItemRow",
-                subtitle = "icon + subtitle + chevron",
+                subtitle = "Icono, subtítulo y flecha",
                 onClick = {},
                 trailing = { ChevronRight() },
             )
             SettingsGroupDivider()
             SettingsItemRow(
                 icon = MuseIcons.bell,
-                title = "SettingsItemRow · trailing",
-                subtitle = "status dot in the trailing slot",
+                title = "SettingsItemRow · elemento final",
+                subtitle = "Indicador de estado al final",
                 trailing = { StatusDot(color = MaterialTheme.colorScheme.primary, pulse = true) },
             )
             SettingsGroupDivider()
             SettingsSwitchRow(
                 icon = MuseIcons.check,
                 title = "SettingsSwitchRow",
-                subtitle = "row with built-in padding",
+                subtitle = "Fila con espaciado interno",
                 checked = switchOn,
                 onCheckedChange = { switchOn = it },
             )
@@ -561,7 +562,7 @@ private fun SettingsRowsSection() {
             SettingsSliderRow(
                 icon = MuseIcons.star,
                 title = "SettingsSliderRow",
-                subtitle = "slider row",
+                subtitle = "Fila con control deslizante",
                 value = slider,
                 valueRange = 0f..1f,
                 steps = 0,
@@ -571,7 +572,7 @@ private fun SettingsRowsSection() {
             SettingsGroupDivider()
             SettingsItemRow(
                 icon = MuseIcons.user,
-                title = "SettingsItemRow · disabled",
+                title = "SettingsItemRow · desactivado",
                 subtitle = stringResource(R.string.gallery_state_disabled),
                 enabled = false,
                 onClick = {},
@@ -581,7 +582,7 @@ private fun SettingsRowsSection() {
             SettingsSegmentedRow(
                 icon = MuseIcons.info,
                 title = "SettingsSegmentedRow",
-                subtitle = "segmented row",
+                subtitle = "Fila con selector segmentado",
                 options = listOf("A", "B", "C"),
                 selectedIndex = segmented,
                 onSelectedChange = { segmented = it },
@@ -595,13 +596,13 @@ private fun SettingsRowsSection() {
                 StatusDot(color = MaterialTheme.colorScheme.primary)
                 StatusDot(color = MaterialTheme.colorScheme.error)
                 StatusDot(color = MaterialTheme.colorScheme.tertiary, pulse = true)
-                GalleryLabel("StatusDot: normal / error / pulse")
+                GalleryLabel("StatusDot: normal / error / pulsación")
             }
         }
     }
 }
 
-/** Contenedor de fila de configuración: la misma forma que el grupo de configuración (Surface + Column), pero utilice MuseSurface, que ya no está en desuso. */
+/** 设置行容器：与 SettingsGroup 同形（Surface + Column），但用未废弃的 MuseSurface。 */
 @Composable
 private fun GalleryCard(content: @Composable ColumnScope.() -> Unit) {
     MuseSurface(
@@ -640,7 +641,7 @@ private fun SurfacesSection() {
             elevation = MuseElevation.card,
         ) {
             Column(modifier = Modifier.padding(MusePaddings.cardInner)) {
-                Text(text = "MuseSurface · extraLarge + card elevation", style = MaterialTheme.typography.bodyMedium)
+                Text(text = "MuseSurface · tamaño extragrande y elevación de tarjeta", style = MaterialTheme.typography.bodyMedium)
             }
         }
         MuseSurface(
@@ -650,7 +651,7 @@ private fun SurfacesSection() {
             color = MuseActionColors.neutralContainer,
         ) {
             Column(modifier = Modifier.padding(MusePaddings.cardInner)) {
-                Text(text = "MuseSurface · clickable + neutral container", style = MaterialTheme.typography.bodyMedium)
+                Text(text = "MuseSurface · interactiva con fondo neutro", style = MaterialTheme.typography.bodyMedium)
             }
         }
         MuseIsland(modifier = Modifier.fillMaxWidth()) {
@@ -668,17 +669,30 @@ private fun SurfacesSection() {
                 Text(text = "MuseCardPress", style = MaterialTheme.typography.bodyMedium)
             }
         }
+        // F3.1 流体化对照：轮廓形状不同 → 凝光描边贴合各自的边（点按/长按观察）。
+        io.zer0.muse.ui.theme.MuseGlowShapeProvider(shape = MuseShapes.pill) {
+            MuseSurface(
+                onClick = {},
+                modifier = Modifier.fillMaxWidth(),
+                shape = MuseShapes.pill,
+                color = MuseActionColors.neutralContainer,
+            ) {
+                Column(modifier = Modifier.padding(MusePaddings.cardInner)) {
+                    Text(text = "Brillo en el borde · variante con contorno de cápsula", style = MaterialTheme.typography.bodyMedium)
+                }
+            }
+        }
         Column {
             MuseListItem(
                 onClick = {},
                 leadingContent = { IconTile(icon = MuseIcons.edit) },
-                supportingContent = { Text("headline / supporting / leading / trailing") },
+                supportingContent = { Text("Título / texto de apoyo / inicio / final") },
                 trailingContent = { ChevronRight() },
                 headlineContent = { Text("MuseListItem") },
             )
             MuseDivider(startIndent = 0.dp)
             MuseListItem(
-                headlineContent = { Text("MuseListItem · not clickable") },
+                headlineContent = { Text("MuseListItem · no interactivo") },
                 supportingContent = { Text("onClick = null") },
             )
         }
@@ -698,12 +712,12 @@ private fun StatesSection() {
             MuseSpinner(size = MuseIconSizes.iconLarge)
             Spacer(Modifier.width(MusePaddings.contentGap))
             MuseCapsuleButton(
-                text = "Toast",
+                text = "Aviso breve",
                 fillWidth = false,
                 onClick = { MuseToast.show("MuseToast") },
             )
         }
-        GalleryLabel("MuseSpinner: 14 / 24 / 32dp, tinted by LocalContentColor")
+        GalleryLabel("MuseSpinner: 14 / 24 / 32 dp; color según LocalContentColor")
         MuseProgressBar(progress = 0.35f)
         MuseIndeterminateProgressBar()
         GalleryLabel("MuseProgressBar (0.35) / MuseIndeterminateProgressBar")
@@ -711,8 +725,8 @@ private fun StatesSection() {
         MuseEmptyState(
             icon = MuseIcons.info,
             title = "MuseEmptyState",
-            subtitle = "icon + title + subtitle + optional action",
-            actionText = "Action",
+            subtitle = "Icono, título, subtítulo y acción opcional",
+            actionText = "Acción",
             onAction = {},
         )
         MuseErrorStateBox(
@@ -730,7 +744,7 @@ private fun OverlaysSection(onOpen: (GalleryOverlay) -> Unit, onPopoverAnchor: (
     GallerySection(stringResource(R.string.gallery_group_overlays)) {
         MuseCapsuleButton(text = "MuseDialog", onClick = { onOpen(GalleryOverlay.Dialog) })
         MuseCapsuleButton(
-            text = "MuseDialog · destructive",
+            text = "MuseDialog · acción destructiva",
             destructive = true,
             onClick = { onOpen(GalleryOverlay.DangerDialog) },
         )
@@ -801,7 +815,7 @@ private fun MediaSection() {
             GalleryLabel("AssistantAvatar")
         }
         SuggestionBubbles(
-            suggestions = listOf("SuggestionBubbles", "Tap me", "Third one"),
+            suggestions = listOf("SuggestionBubbles", "Tócame", "Tercera sugerencia"),
             onSuggestionClick = {},
         )
         VoiceMessageBar(

@@ -1,46 +1,46 @@
-Muse v2.5.8 Versión oficial.
+Muse v2.5.8 正式版。
 
-Esta versión tiene una gran extensión (acumulada desde la v2.5.6), y tiene cuatro líneas principales:**Acceder a protocolos externos y automatización.**,**Liberar espacios aislados y puntos de extensión de complementos**,**Convertir "los problemas se pueden localizar" en capacidades del producto**, y**Limpieza de arquitectura de enlaces generados.**.
+本版跨度较大（自 v2.5.6 起累积），主线有四条：**接入外部协议与自动化**、**放开插件沙盒与扩展点**、**把「出问题能定位」做成产品能力**、以及**生成链路的架构清理**。
 
-## Acceso al protocolo externo
+## 外部协议接入
 
-- **A2A 1.0 Acuerdo**: Punto final de descubrimiento de tarjeta de agente agregado (`/.well-known/agent-card.json`) con el punto final JSON-RPC (`/a2a`), apoyo SendMessage / GetTask / CancelTask.A2A Las llamadas y el chat en el dispositivo real reutilizan el mismo enlace de generación (análisis de modelo, herramientas, aprobación, memoria) y no existe un segundo conjunto de lógica de generación.
-- **Tasker vinculación**: Entrada de transmisión agregada `io.zer0.muse.action.TASKER_TRIGGER`(extra `prompt`), las plataformas de automatización como Tasker / MacroDroid pueden activar una ronda de diálogo, los resultados se registrarán y se enviarán notificaciones. Ejecución de una sola ronda en segundo plano sin autorización de herramientas.
+- **A2A 1.0 协议**：新增 Agent Card 发现端点（`/.well-known/agent-card.json`）与 JSON-RPC 端点（`/a2a`），支持 SendMessage / GetTask / CancelTask。A2A 调用与真机聊天复用同一条生成链路（模型解析、工具、审批、记忆），不存在第二套生成逻辑。
+- **Tasker 联动**：新增广播入口 `io.zer0.muse.action.TASKER_TRIGGER`（extra `prompt`），可由 Tasker / MacroDroid 等自动化平台触发一轮对话，结果落库并通知回传。后台单轮执行，不授权工具。
 
-## Lanzar capacidades de complemento
+## 插件能力放开
 
-- **Sistema de gancho enchufable**: Los complementos se pueden declarar en el manifiesto `hooks`y exportarlo en el script de entrada `onPromptFinalize(event)`, reescribiendo el historial antes de que finalice la palabra indicada. Conservar el historial original cuando falla o regresa ilegalmente (fail-open), no bloquea la generación.
-- **Lanzamiento de la zona de pruebas del complemento**: dejar ir fetch / XHR / WebSocket Se permiten acciones de acceso a la red y puenteo, y solo se verifica el formato del nombre de la capacidad. Se mantienen dos puntos fundamentales: la navegación por la página sigue prohibida;`file://` con `content://` Las lecturas permanecen aisladas.
-- **firma compatible**:manifest Los campos que participan en la firma se cambian a una lista blanca explícita. Los campos recién agregados no participan en la firma de forma predeterminada. Los paquetes de complementos firmados existentes no se ven afectados.
+- **插件 Hook 体系**：插件可在 manifest 声明 `hooks`，并在入口脚本导出 `onPromptFinalize(event)`，于提示词定稿前改写历史。失败或返回不合法时保留原历史（fail-open），不阻断生成。
+- **插件沙盒放开**：放开 fetch / XHR / WebSocket 网络访问，桥接动作全放行，能力名只校验格式。保留两类底线：页面导航仍禁止，`file://` 与 `content://` 读取仍隔离。
+- **签名兼容**：manifest 参与签名的字段改为显式白名单，新增字段默认不参与签名，存量已签名的插件包不受影响。
 
-## Capacidad de resolución de problemas
+## 排障能力
 
-- **Exportación de registros de diagnóstico**: Se agregó un registrador de seguimiento de enlaces de nueva generación para registrar el estado final, el consumo de tiempo, el retraso del primer token, las estadísticas de personajes y la clasificación del final del flujo de cada ronda.finish_reason con marcadores de activación de compresión. La entrada está en "Ajustes" → Acerca de → Exportar información de diagnóstico".
-  Línea roja: el cuerpo del mensaje y la clave API no se registran y el hash de ID de sesión no está sensible.
-- **Tiempo de espera del subagente**: El tiempo de espera predeterminado aumenta de 120 a 240 segundos, nuevo `timeout_ms` Parámetros (30s~900s); el error de tiempo de espera va acompañado de información de progreso (rondas ejecutadas, número de llamadas a herramientas, si hay un resumen parcial), lo que facilita la continuación en lugar de empezar de nuevo.
+- **诊断日志导出**：新增生成链路轨迹记录仪，记录每轮的终态、耗时、首 token 延迟、字符统计、流收尾分类、finish_reason 与压缩触发标记。入口在「设置 → 关于 → 导出诊断信息」。
+  红线：不记录消息正文与 API key，会话标识哈希脱敏。
+- **子代理超时**：默认超时由 120s 提高到 240s，新增 `timeout_ms` 参数（30s~900s）；超时错误附带进展信息（已执行轮次、工具调用次数、是否有部分总结），便于续接而非整体重来。
 
-## Generar limpieza de arquitectura de enlaces
+## 生成链路架构清理
 
-- Los cuatro bloques lógicos del cuerpo del bucle de llamada de herramienta (incluido el procesamiento de secuencia única), la compresión y orquestación del contexto, la aprobación de la herramienta y la llamada de la herramienta a restaurar se extraen como componentes independientes del modelo de vista principal, y el archivo principal se reduce de 7483 líneas a 5141 líneas.**Migrar a extracción pura, el comportamiento permanece sin cambios**y pruebas unitarias completadas para el recuento de compresiones y la clasificación de errores.
-- Se corrigió la bifurcación de comportamiento causada por múltiples determinaciones del umbral de compresión y convergió en una única fuente de verdad;system prompt Aumente el monto total, las sesiones largas ya no desplazarán el presupuesto debido a la expansión de las palabras clave.
+- 工具调用循环体（含流式单轮处理）、上下文压缩编排、工具审批、待恢复工具调用四块逻辑从主视图模型中整体提取为独立组件，主文件由 7483 行降至 5141 行。**迁移为纯抽取，行为不变**，并补齐了压缩计数与错误分类的单元测试。
+- 修复压缩阈值多处判定导致的行为分叉，收敛为单一真源；system prompt 增加总量闸门，长会话不再因提示词膨胀挤爆预算。
 
-## Cambios heredados de v2.5.7
+## 继承自 v2.5.7 的改动
 
-- Se corrigió la falsa alarma de desbordamiento del contexto: cuando el modelo no proporciona un tamaño de ventana, la ventana predeterminada aumenta de 32K a 128K.
-- Ajuste estricto del umbral de interceptación para permitir un margen de error entre las estimaciones del cliente y el recuento del servidor.
+- 修复上下文超限误报：模型未提供窗口大小时，兜底窗口由 32K 上调至 128K。
+- 硬拦截阈值调整，为客户端估算与服务端计数的误差留出余量。
 
-## Interfaz y otros
+## 界面与其它
 
-- La barra de navegación lateral se reescribe para que se asigne linealmente según la altura del contenido, y la posición del control deslizante corresponde al volumen del contenido desplazado; Se corrige el salto de arrastre causado por mensajes largos y se agrega adsorción en ambos extremos.
-- Se ha añadido una nueva interfaz generativa (renderizado progresivo + adaptación celular + refuerzo de seguridad); Se ha agregado una nueva capacidad de captura de pantalla del navegador, que permite al modelo ver los resultados de la representación de la página.
-- Se solucionaron problemas como falla del interruptor multimodal después de guardar, saltar a la posición atascada del botón inferior, nivel de resistencia del vidrio, etc.
-- La versión 110 de la base de datos, sin cambios desde la versión 2.5.4, se puede actualizar directamente sin perder datos.
+- 侧边导航条重写为按内容高度线性映射，滑块位置对应已滚动内容量；修复长消息导致的拖动跳位，两端加入吸附。
+- 新增生成式界面（渐进渲染 + 移动端适配 + 安全加固）；新增浏览器截图能力，让模型能看到页面渲染结果。
+- 修复多模态开关保存后失效、跳到底部按钮卡位、玻璃强度档位等问题。
+- 数据库版本 110，自 v2.5.4 起未变，直接升级不丢失数据。
 
-## Instalación
+## 安装
 
-- Paquete universal:Muse_v2.5.8_universal.apk(cualquier dispositivo)
-- 64 poco:Muse_v2.5.8_arm64-v8a.apk(la mayoría de los teléfonos celulares modernos)
-- 32 poco:Muse_v2.5.8_armeabi-v7a.apk(Equipo más antiguo)
+- 通用包：Muse_v2.5.8_universal.apk（任意设备）
+- 64 位：Muse_v2.5.8_arm64-v8a.apk（绝大多数现代手机）
+- 32 位：Muse_v2.5.8_armeabi-v7a.apk（较老设备）
 
 ---
 

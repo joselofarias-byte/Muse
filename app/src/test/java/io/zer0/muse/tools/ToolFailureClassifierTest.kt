@@ -7,11 +7,11 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Ensayos para clasificación de fallos de herramientas.
+ * 工具失败分类的测试。
  *
- * Autoexamen del asistente: "La restricción de que solo se permite una corrección en caso de falla es correcta, pero cuando el mensaje de error es vago, solo puedo adivinar, y una vez que lo adivino, se descartará".
- * La clasificación y la capacidad de reintento se concretan aquí: las clases de permisos no deben ser reintentables (el reintento es inútil), las clases de parámetros deben ser reintentables,
- * Si no se puede tomar la decisión, sea conservador y no vuelva a intentarlo.
+ * 助手自审：「失败只允许修正一次这条约束是对的，但错误信息含糊时我只能猜，一猜就废」。
+ * 这里钉住分类与可重试性：权限类必须不可重试（重试无用），参数类可重试，
+ * 判断不了时保守判不可重试。
  */
 class ToolFailureClassifierTest {
 
@@ -19,44 +19,44 @@ class ToolFailureClassifierTest {
 
     @Test
     fun `timeout is retryable`() {
-        val v = classify("[tiempo de espera] La herramienta web_fetch no responde durante 120 segundos,terminado")
+        val v = classify("[超时] 工具 web_fetch 120 秒未响应,已终止")
 
         assertEquals(FailureKind.TIMEOUT, v.kind)
-        assertTrue("Los tiempos de espera suelen ser seguros para volver a intentarlo.", v.retryable)
+        assertTrue("超时通常可安全重试一次", v.retryable)
     }
 
     @Test
     fun `timeout flag wins even when text looks like something else`() {
-        val v = classify("La conexión de red falló", timedOut = true)
+        val v = classify("网络连接失败", timedOut = true)
 
         assertEquals(FailureKind.TIMEOUT, v.kind)
     }
 
     @Test
     fun `cancellation is not a failure and must not be retried`() {
-        val v = classify("[Cancelar] El usuario deja de generar")
+        val v = classify("[取消] 用户停止生成")
 
         assertEquals(FailureKind.CANCELLED, v.kind)
-        assertFalse("La cancelación no es un error.,Reintentar anularía la intención del usuario", v.retryable)
+        assertFalse("取消不是错误,重试会违背用户意图", v.retryable)
     }
 
     @Test
     fun `permission failure is not retryable`() {
-        val v = classify("[error] Falta la licencia de Shizuku,No se puede ejecutar el comando de shell")
+        val v = classify("[错误] 缺少 Shizuku 授权,无法执行 shell 命令")
 
         assertEquals(FailureKind.PERMISSION, v.kind)
-        assertFalse("Volver a intentarlo no hará que los permisos aparezcan de la nada", v.retryable)
-        assertTrue("Las sugerencias deben dirigirse a tool_status", v.hint.contains("tool_status"))
+        assertFalse("重试不会让权限凭空出现", v.retryable)
+        assertTrue("建议应指向 tool_status", v.hint.contains("tool_status"))
     }
 
     @Test
     fun `accessibility channel failure is classified as permission`() {
-        assertEquals(FailureKind.PERMISSION, classify("[error] Los servicios de accesibilidad no están habilitados").kind)
+        assertEquals(FailureKind.PERMISSION, classify("[错误] 无障碍服务未启用").kind)
     }
 
     @Test
     fun `not found is not retryable with the same value`() {
-        val v = classify("[error] El archivo no existe o no es un archivo común y corriente: notes/todo.md")
+        val v = classify("[错误] 文件不存在或不是普通文件: notes/todo.md")
 
         assertEquals(FailureKind.NOT_FOUND, v.kind)
         assertFalse(v.retryable)
@@ -64,8 +64,8 @@ class ToolFailureClassifierTest {
 
     @Test
     fun `network hiccup is retryable`() {
-        // Utilice "Error de conexión" en lugar de "timeout":Este último será afectado primero por la rama TIMEOUT anterior.,Ese es el comportamiento correcto.
-        val v = classify("[error] La conexión de red falló: restablecer la conexión")
+        // 用「连接失败」而非「timeout」:后者会被更靠前的 TIMEOUT 分支优先命中,那是正确行为。
+        val v = classify("[错误] 网络连接失败: 连接被重置")
 
         assertEquals(FailureKind.TRANSIENT, v.kind)
         assertTrue(v.retryable)
@@ -73,20 +73,20 @@ class ToolFailureClassifierTest {
 
     @Test
     fun `rate limit is retryable`() {
-        assertEquals(FailureKind.TRANSIENT, classify("[error] 429 Too Many Requests").kind)
+        assertEquals(FailureKind.TRANSIENT, classify("[错误] 429 Too Many Requests").kind)
     }
 
     @Test
     fun `blocked by approval is not retryable`() {
-        val v = classify("[error] Operación bloqueada por política de seguridad")
+        val v = classify("[错误] 操作被安全策略拦截")
 
         assertEquals(FailureKind.BLOCKED, v.kind)
-        assertFalse("No pases por alto la aprobación", v.retryable)
+        assertFalse("不要绕过审批", v.retryable)
     }
 
     @Test
     fun `invalid argument is retryable after fixing`() {
-        val v = classify("[error] Falta el parámetro requerido: path")
+        val v = classify("[错误] 缺少必填参数: path")
 
         assertEquals(FailureKind.INVALID_ARGUMENT, v.kind)
         assertTrue(v.retryable)
@@ -94,19 +94,19 @@ class ToolFailureClassifierTest {
 
     @Test
     fun `unrecognised failure defaults to not retryable`() {
-        val v = classify("[error] estado interno desconocido xyz")
+        val v = classify("[错误] 未知的内部状态 xyz")
 
         assertEquals(FailureKind.UNKNOWN, v.kind)
-        assertFalse("Si no puedes juzgar, no te animes a intentarlo de nuevo.", v.retryable)
+        assertFalse("判断不了就不要鼓励重试", v.retryable)
     }
 
     @Test
     fun `receipt line is machine readable`() {
-        val line = ToolFailureClassifier.receiptLine(classify("[error] Permisos insuficientes"))
+        val line = ToolFailureClassifier.receiptLine(classify("[错误] 权限不足"))
 
         assertTrue(line.contains("kind=permission"))
         assertTrue(line.contains("retryable=false"))
-        assertTrue("deberia traer hint", line.contains("hint="))
+        assertTrue("应带 hint", line.contains("hint="))
     }
 
     @Test
@@ -116,8 +116,8 @@ class ToolFailureClassifierTest {
 
     @Test
     fun `cancellation wins over permission wording`() {
-        // Los mensajes de cancelación suelen contener palabras distintas a "permiso",No puede ser arrebatado por otras ramas.
-        val v = classify("[Cancelar] Usuario interrumpido mientras esperaba autorización")
+        // 取消消息里常带「权限」以外的词,不能被别的分支抢走
+        val v = classify("[取消] 等待授权时用户中断")
 
         assertEquals(FailureKind.CANCELLED, v.kind)
     }

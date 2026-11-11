@@ -45,7 +45,6 @@
     <string name="groupchat_member_required">Selecione pelo menos um membro</string>
     <string name="groupchat_team_optional">Equipe de link (opcional)</string>
     <string name="groupchat_no_team">Não vinculado</string>
-    <string name="groupchat_selected_members">%1$d membros selecionados</string>
     <string name="groupchat_create_btn">Criar</string>
 
     <!-- ===== ui/account ===== -->
@@ -105,6 +104,13 @@
     <string name="schedule_cancel">Cancelar</string>
     <string name="schedule_msg_cancel">Cancelar mensagem agendada</string>
     <string name="schedule_err_name_required">Por favor insira um nome de tarefa</string>
+    <string name="schedule_time_daily">Horário diário</string>
+    <string name="schedule_time_weekly">Horário semanal</string>
+    <string name="schedule_time_once">Executar às</string>
+    <string name="schedule_time_unset">Toque para escolher o horário</string>
+    <string name="schedule_err_once_time_required">Escolha quando esta tarefa única deve rodar</string>
+    <string name="schedule_status_running">Em execução</string>
+    <string name="schedule_status_completed">Concluída</string>
     <string name="schedule_err_content_required">Por favor insira o conteúdo da execução</string>
     <string name="schedule_err_cron_invalid">Expressão cron inválida.</string>
     <string name="schedule_assistant">Assistente</string>
@@ -118,7 +124,7 @@
     <string name="schedule_show_advanced">Mostrar automação avançada</string>
     <string name="schedule_hide_advanced">Ocultar automação avançada</string>
 
-    <!-- Correcciones en la interfaz (i18n-5): describeCron human-readable schedule descriptions -->
+    <!-- 前端修复 (i18n-5): describeCron human-readable schedule descriptions -->
     <string name="schedule_cron_daily">Every day at %1$s</string>
     <string name="schedule_cron_hourly">Every hour at minute %1$s</string>
     <string name="schedule_cron_every_minute">Every minute</string>
@@ -252,6 +258,8 @@
     <string name="knowledge_zip_progress">Extraindo e importando… (%1$d importados)</string>
     <string name="knowledge_zip_done">Base de conhecimento %1$s criada: %2$d documentos importados, %3$d ignorados</string>
     <string name="knowledge_zip_empty">Nenhum documento importável encontrado no arquivo</string>
+    <!-- 回滚没清干净时说这句：否则列表里留着一个打不开的条目，而提示只说「没有可导入的文档」，用户两句对不上 -->
+    <string name="knowledge_zip_empty_leftover">Nenhum documento importável no arquivo e a entrada temporária não foi removida: exclua “%1$s” da lista manualmente</string>
     <string name="knowledge_import_empty">Falha na importação: o conteúdo do arquivo está vazio</string>
     <!-- v1.0.47 P7-3: File size friendly prompt -->
     <string name="knowledge_file_too_large_title">Arquivo muito grande</string>
@@ -276,7 +284,7 @@
     <string name="knowledge_doc_chunks">· %1$d pedaços</string>
     <string name="knowledge_doc_not_indexed">· Não indexado</string>
 
-    <!-- Correcciones en la interfaz (i18n-7): PDF metadata card -->
+    <!-- 前端修复 (i18n-7): PDF metadata card -->
     <string name="knowledge_doc_info">Document info</string>
     <string name="knowledge_doc_outline">Outline (%1$d items)</string>
     <string name="knowledge_sort_updated">Por horário atualizado</string>
@@ -309,7 +317,7 @@
     <string name="stats_dashboard_subtitle">%1$d sessões · %2$d dias ativos</string>
     <string name="stats_export_cd">Exportar resumo de estatísticas</string>
     <string name="stats_export_chooser">Compartilhar resumo de estatísticas</string>
-    <string name="stats_export_subject">Resumo das estatísticas do Muse</string>
+    <string name="stats_export_subject">Resumo das estatísticas do Musa</string>
     <string name="stats_empty_title">As estatísticas aparecerão aqui depois que você começar a conversar</string>
     <string name="stats_empty_action">Inicie uma conversa</string>
     <string name="stats_view_all">Ver tudo</string>
@@ -329,7 +337,7 @@
     <string name="stats_hourly_chart_cd">Gráfico de barras de distribuição de mensagens 24 horas</string>
     <string name="stats_other">Outros</string>
     <string name="stats_model_donut_cd">Gráfico de rosca de uso de modelos</string>
-    <string name="stats_summary_header">===== Resumo das estatísticas do Muse =====</string>
+    <string name="stats_summary_header">===== Resumo das estatísticas do Musa =====</string>
     <string name="stats_summary_total_sessions">Total de sessões: %1$d</string>
     <string name="stats_summary_total_messages">Total de mensagens: %1$d</string>
     <string name="stats_summary_ai_replies">Respostas de IA: %1$d</string>
@@ -382,6 +390,7 @@
     <string name="subagent_task_completed">Concluído</string>
     <string name="subagent_task_failed">Fracassado</string>
     <string name="subagent_task_cancel">Cancelar</string>
+    <string name="subagent_task_close_cd">Fechar tarefa do subagente</string>
 
     <!-- ===== ui/artifact ===== -->
     <string name="artifact_untitled">Sem título</string>
@@ -476,13 +485,13 @@
     <string name="groupchat_tool_context">Contexto do grupo</string>
     <string name="groupchat_tool_mention">@Menção</string>
 
-    <!-- Correcciones en la interfaz (i18n-1/2): group chat detail background desc, clear memory -->
+    <!-- 前端修复 (i18n-1/2): group chat detail background desc, clear memory -->
     <string name="groupchat_bg_cd">Chat background</string>
     <string name="groupchat_clear_memory">Clear group memory</string>
     <string name="groupchat_clear_memory_confirm">Clear this group\'s memory? Assistants will no longer reference past discussion summaries (including tone and style).</string>
     <string name="groupchat_clear_memory_btn">Clear</string>
-    <!-- v2.x: Cree rápidamente una entrada para escribir un chat grupal -->
-    <!-- v2.x: Archivo de chat grupal -->
+    <!-- v2.x: 写作群聊快速创建入口 -->
+    <!-- v2.x: 群聊归档 -->
     <string name="groupchat_archive">Arquivar</string>
     <string name="groupchat_unarchive">Desarquivar</string>
 
@@ -552,11 +561,11 @@
     <string name="cover_empty_hint">Toque no botão inferior direito para importar uma imagem, ou deixe a IA gerar uma capa</string>
     <string name="quick_notes_settings_title">Configurações de captura rápida</string>
     <string name="quick_capture_swipe_title">Mostrar captura rápida por deslize</string>
-    <string name="quick_capture_swipe_desc">Mostrar a alça de captura rápida na borda direita dentro do Muse</string>
+    <string name="quick_capture_swipe_desc">Mostrar a alça de captura rápida na borda direita dentro do Musa</string>
     <string name="quick_capture_overlay_title">Ativar sobreposição do sistema</string>
-    <string name="quick_capture_overlay_desc">Manter a cápsula flutuante disponível ao sair do Muse para captura rápida</string>
+    <string name="quick_capture_overlay_desc">Manter a cápsula flutuante disponível ao sair do Musa para captura rápida</string>
     <string name="quick_capture_overlay_permission_error">Não foi possível abrir as configurações de permissão de sobreposição</string>
-    <string name="quick_capture_overlay_hint">A sobreposição fica desativada por padrão. Ao ativá-la, o sistema deve permitir que o Muse seja exibido sobre outros apps.</string>
+    <string name="quick_capture_overlay_hint">A sobreposição fica desativada por padrão. Ao ativá-la, o sistema deve permitir que o Musa seja exibido sobre outros apps.</string>
     <string name="chat_background_cd">Fundo do chat</string>
     <string name="chat_analyzing_image">Analisando imagem %1$d/%2$d…</string>
     <string name="msg_compressed">Comprimido</string>
@@ -565,7 +574,7 @@
     <string name="plugin_models_summary">%1$d modelos · %2$s</string>
     <string name="accessibility_enable_btn">Abrir configurações do sistema</string>
     <string name="accessibility_section_title">Serviço de acessibilidade</string>
-    <string name="accessibility_status_disabled">Não habilitado. Autorize «Automação de UI do Muse» nas configurações do sistema.</string>
+    <string name="accessibility_status_disabled">Não habilitado. Autorize «Automação de UI do Musa» nas configurações do sistema.</string>
     <string name="accessibility_status_enabled">Serviço de acessibilidade habilitado. Ações de UI disponíveis (clicar/deslizar/entrada/captura/ler árvore de UI).</string>
     <string name="action_retry">Tentar novamente</string>
     <string name="common_load_failed">Falha ao carregar</string>
@@ -594,7 +603,7 @@
     <string name="permission_level_none">Nenhum (automação de UI indisponível)</string>
     <string name="permission_level_root">Root autorizado (todas as capacidades disponíveis)</string>
     <string name="permission_level_shizuku">Shizuku autorizado (UI + comandos de shell disponíveis)</string>
-    <string name="permission_wizard_desc">A automação de UI do Muse usa um modelo de permissão de três canais. Habilite cada um abaixo; níveis mais altos liberam mais operações. Ações de UI exigem apenas Acessibilidade; comandos de shell exigem Shizuku ou Root.</string>
+    <string name="permission_wizard_desc">A automação de UI do Musa usa um modelo de permissão de três canais. Habilite cada um abaixo; níveis mais altos liberam mais operações. Ações de UI exigem apenas Acessibilidade; comandos de shell exigem Shizuku ou Root.</string>
     <string name="permission_wizard_title">Assistente de permissões</string>
     <string name="root_section_title">Permissão de root</string>
     <string name="root_status_available">Root autorizado (canal de fallback, pode executar comandos su diretamente)</string>
@@ -605,10 +614,19 @@
     <string name="settings_about_join_qq_group">Entrar no grupo QQ</string>
     <string name="settings_about_join_qq_group_subtitle">Grupo QQ: 905451314</string>
     <string name="settings_about_qq_not_installed">QQ não encontrado; o número do grupo 905451314 foi copiado para a área de transferência</string>
-    <string name="shizuku_authorize_btn">Autorizar Muse</string>
+    <string name="shizuku_authorize_btn">Autorizar Musa</string>
+    <string name="permission_shizuku_opened_toast">Shizuku aberto. Inicie o serviço nele e volte para atualizar</string>
+    <string name="permission_shizuku_activation_hint">O serviço não está em execução. No Android 11+, ative as Opções do desenvolvedor e pareie/inicie pela «Depuração sem fio» dentro do Shizuku; dispositivos com root podem iniciar diretamente. Após reiniciar o celular é preciso ativar novamente.</string>
+    <string name="permission_shizuku_manual_grant_hint">O diálogo de permissão foi negado permanentemente («Não perguntar novamente»). O Shizuku está aberto — permita o Musa manualmente dentro dele</string>
+    <string name="permission_shizuku_denied_toast">Permissão do Shizuku negada</string>
+    <string name="permission_shizuku_timeout_toast">Tempo esgotado aguardando a autorização do Shizuku; tente novamente</string>
+    <string name="permission_shizuku_unavailable_toast">O serviço do Shizuku não está em execução; inicie-o primeiro no app Shizuku</string>
+    <string name="permission_root_manager_missing">Uma solução root foi detectada, mas nenhum gerenciador (Magisk / KernelSU / APatch) está instalado. As solicitações de su serão negadas silenciosamente — instale e abra o gerenciador correspondente e toque em «Solicitar autorização» acima.</string>
+    <string name="permission_termux_outdated">Esta versão do Termux é antiga demais para retornar resultados. Atualize para 0.118+ pelo F-Droid ou GitHub (a versão da Play Store não é mais atualizada).</string>
+    <string name="permission_shizuku_version_old">O Shizuku está desatualizado (v11+ obrigatório, v13+ recomendado). Atualize e tente novamente.</string>
     <string name="shizuku_install_btn">Baixar Shizuku</string>
-    <string name="shizuku_section_title">Shizuku (recomendado)</string>
-    <string name="shizuku_status_authorized">Muse autorizado a usar Shizuku</string>
+    <string name="shizuku_section_title">Shizuku</string>
+    <string name="shizuku_status_authorized">Musa autorizado a usar Shizuku</string>
     <string name="skill_agent_phone_not_configured">agent_phone não configurado: GroupChatScheduler não injetado</string>
     <string name="skill_agent_phone_target_not_found">O agente de destino não existe</string>
     <string name="skill_message_blank">a mensagem não pode estar vazia</string>
@@ -721,11 +739,11 @@
     <!-- Diagnóstico de ativação em segundo plano: se o sistema realmente tem ativações na fila para o Muse (somente leitura) -->
     <string name="wake_diagnostics_open">Estado de ativação em segundo plano</string>
     <string name="wake_diagnostics_title">Estado de ativação em segundo plano</string>
-    <string name="wake_diagnostics_subtitle">Lê o agendamento real na fila do sistema. Somente leitura, nada é reagendado.</string>
+    <string name="wake_diagnostics_subtitle">Aqui estão os trabalhos em segundo plano como o sistema os agendou, incluindo backup e resumo internos - não são as tarefas que você criou. Somente leitura; nada é reagendado.</string>
     <string name="wake_diagnostics_refresh">Ler novamente</string>
     <string name="wake_diagnostics_copy">Copiar instantâneo</string>
     <string name="wake_diagnostics_copied">Instantâneo copiado</string>
-    <string name="wake_diagnostics_hint">Para “executou mas falhou”, veja failed/skipped/missed no histórico. “Nunca executou” geralmente é não registrado, bloqueado pelo sistema ou o interruptor geral desligado, como mostrado aqui.</string>
+    <string name="wake_diagnostics_hint">Para “executou mas falhou”, veja failed／skipped／missed no histórico. “Nunca executou” geralmente é não registrado, bloqueado pelo sistema ou o interruptor geral desligado, como mostrado aqui.</string>
     <string name="wake_diagnostics_total_control">Tarefas em segundo plano: %1$s</string>
     <string name="wake_diagnostics_total_control_on">ligadas</string>
     <string name="wake_diagnostics_total_control_off">desligadas (as ativações continuam, mas os executores retornam na hora)</string>
@@ -774,4 +792,76 @@
     <string name="wake_stop_user">Ação do usuário</string>
     <string name="wake_stop_system_processing">Processando pelo sistema</string>
     <string name="wake_stop_launch_time">Tempo estimado de início mudou</string>
+    <string name="plugin_permission_section_title">Capacidades e permissoes</string>
+    <string name="plugin_permission_hint">Capacidades nao declaradas ou desativadas sao recusadas na hora; as alteracoes valem imediatamente.</string>
+    <string name="plugin_permission_pending_title">Este complemento declarou novas capacidades apos uma atualizacao</string>
+    <string name="plugin_permission_approve">Aprovar novas</string>
+    <string name="plugin_permission_none">Este complemento nao declara capacidades; so pode executar calculos puros.</string>
+    <string name="plugin_permission_denied_title">Chamadas bloqueadas</string>
+    <string name="plugin_permission_denied_row">%1$s precisa da capacidade %2$s</string>
+    <string name="plugin_permission_allow_session">Permitir nesta sessao</string>
+    <string name="plugin_permission_recent_title">Chamadas recentes</string>
+    <string name="plugin_permission_recent_empty">Nenhuma chamada registrada</string>
+    <string name="plugin_permission_recent_row">%1$s · %2$s %3$s</string>
+    <string name="plugin_permission_expand">Mostrar</string>
+    <string name="plugin_permission_collapse">Ocultar</string>
+    <string name="plugin_permission_python_title">Runtime Python (alta confianca)</string>
+    <string name="plugin_permission_python_warning">Complementos de Python rodam em um subprocesso com o mesmo UID do aplicativo e podem ler e escrever os dados diretamente, fora dos interruptores e da sandbox de arquivos acima. Ative apenas para fontes confiaveis.</string>
+    <string name="plugin_row_python_trusted">Runtime Python · permitido</string>
+    <string name="plugin_row_python_locked">Runtime Python · requer alta confianca</string>
+    <string name="plugin_row_circuit_cooling">Isolado: restam %1$d s</string>
+    <string name="plugin_row_circuit_probing">Teste semiaberto em andamento</string>
+    <string name="plugin_permission_node_note">Runtime Node: roda em um subprocesso do Node embutido; as capacidades sao verificadas uma a uma; os tempos limite sao realmente interrompidos e nao bloqueiam outros complementos.</string>
+    <string name="plugin_cap_resource_read">Ler arquivos (somente na pasta isolada do proprio complemento)</string>
+    <string name="plugin_cap_resource_write">Gravar arquivos (somente na pasta isolada do proprio complemento)</string>
+    <string name="plugin_cap_network">Acessar a internet (enderecos locais e privados sao bloqueados)</string>
+    <string name="plugin_cap_event_on_message">A cada mensagem</string>
+    <string name="plugin_cap_event_on_tool_call">A cada chamada de ferramenta</string>
+    <string name="plugin_cap_hook_tool_before">Bloquear chamadas de ferramentas</string>
+    <string name="plugin_cap_hook_system_prompt">Acrescentar ao prompt de sistema (muda o comportamento)</string>
+    <string name="plugin_cap_schedule">Executar periodicamente (com o app ativo)</string>
+    <string name="plugin_cap_network_local">Acessar rede local e localhost (servicos em casa)</string>
+    <string name="plugin_cap_app_navigate">Abrir uma pagina especifica do app (inicio, ajustes, uma sessao...)</string>
+    <string name="plugin_cap_app_messages">Escrever mensagens na conversa (parecem ditas pelo assistente)</string>
+    <string name="plugin_cap_app_theme">Alternar entre aparencia clara e escura</string>
+    <string name="plugin_slot_provided_by">Fornecido pelo plugin "%1$s"</string>
+    <string name="plugin_cap_ui_slot">Mostrar interface do plugin no topo do chat</string>
+    <string name="plugin_cap_runtime_long">Tarefas longas (ate 10 minutos por chamada)</string>
+    <string name="plugin_cap_schedule_background">Executar tarefas agendadas em segundo plano (mesmo com o app fechado)</string>
+    <string name="plugin_service_channel_name">Servicos de plugins</string>
+    <string name="plugin_service_channel_desc">Exibido enquanto plugins rodam em primeiro plano</string>
+    <string name="plugin_service_notification_title">Servicos de plugins ativos</string>
+    <string name="plugin_service_notification_text">Ha plugins rodando em segundo plano</string>
+    <string name="plugin_service_notification_stop">Parar</string>
+    <string name="plugin_cap_runtime_service">Manter em segundo plano (servico em primeiro plano)</string>
+    <string name="plugin_cap_app_settings">Alterar ajustes (tamanho da fonte, cor dinamica, alto contraste, inicio)</string>
+    <string name="plugin_debug_title">Depuracao de plugins</string>
+    <string name="plugin_cap_clipboard_read">Ler a area de transferencia</string>
+    <string name="plugin_cap_clipboard_write">Escrever na area de transferencia</string>
+    <string name="plugin_cap_clipboard">Ler e escrever na area de transferencia</string>
+    <string name="plugin_cap_notify">Exibir notificacoes</string>
+    <string name="plugin_cap_device_info">Ler informacoes do aparelho (modelo, versao do sistema)</string>
+    <string name="plugin_cap_storage">Usar o armazenamento proprio do complemento (limite de 8MB)</string>
+    <string name="plugin_cap_config_write">Mudar os ajustes do proprio complemento (nunca os itens secretos)</string>
+    <string name="plugin_cap_tool_invoke">Pedir para rodar outras ferramentas (cada uso ainda exige sua aprovacao)</string>
+    <string name="plugin_cap_chat_read">Ler as mensagens recentes da conversa atual (privado, desligado)</string>
+    <string name="plugin_cap_model_call">Gerar texto com o modelo configurado (conta no seu uso)</string>
+    <string name="plugin_cap_ui_skin">Mudar a aparencia visual</string>
+    <string name="plugin_cap_ui_interactive">Mostrar formulario e executar o handler do plugin (altera dados; desligado)</string>
+    <string name="plugin_cap_runtime_python">Rodar Python fora do ambiente isolado (confianca alta)</string>
+    <string name="video_no_video_model_hint">O provedor atual não tem modelo com saída de vídeo. Ative a capacidade de \"saída de vídeo\" em Ajustes › Modelos e provedores.</string>
+    <string name="permission_next_step">Próximo passo recomendado: %1$s</string>
+    <string name="permission_optional_channels">O básico já está pronto; os demais canais são opcionais</string>
+    <string name="permission_privacy_notice_title">Essas permissões valem só neste dispositivo</string>
+    <string name="permission_privacy_notice_body">A leitura de tela e os comandos acontecem neste celular; nada é enviado. Root, Shizuku e Termux são canais opcionais de alto privilégio que permitem ao app agir no dispositivo — revogue quando quiser nas Ajustes ou no app correspondente.</string>
+    <plurals name="groupchat_selected_members">
+        <item quantity="one">%1$d membro selecionado</item>
+        <item quantity="other">%1$d membros selecionados</item>
+        <item quantity="many">%1$d membros selecionados</item>
+    </plurals>
+    <string name="workspace_go_root">Voltar à raiz do espaço de trabalho</string>
+    <string name="artifact_center_empty_hint">Artefatos são as imagens, arquivos e textos longos que o assistente gera na conversa; revise e compartilhe aqui</string>
+    <string name="daily_summary_light_fallback">Hoje ainda não há muito para revisar; estou aqui quando quiser conversar.</string>
+    <string name="daily_summary_rest_fallback">Foi um dia longo; descanse.</string>
+    <string name="daily_summary_none_fallback">Ainda não há conversas novas hoje.</string>
 </resources>

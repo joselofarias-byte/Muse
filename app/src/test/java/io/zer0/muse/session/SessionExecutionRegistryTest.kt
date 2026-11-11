@@ -6,7 +6,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.concurrent.atomic.AtomicInteger
 
-/** SessionExecutionRegistry Segregación intergeneracional y pruebas de eliminación gradual. */
+/** SessionExecutionRegistry 的代际隔离和取消阶段测试。 */
 class SessionExecutionRegistryTest {
 
     private fun identity(generationId: String) = GenerationIdentity(

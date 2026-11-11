@@ -7,10 +7,10 @@ import androidx.room.Query
 import kotlinx.coroutines.flow.Flow
 
 /**
- * v1.0.52 P2-2: Objeto de acceso a datos del espacio de memoria.
+ * v1.0.52 P2-2: 记忆空间数据访问对象。
  *
- * Consulta de lista CRUD + que proporciona espacio de memoria(Estadísticas con hechos).
- * con [io.zer0.memory.fact.FactDao] cooperar,Implemente el aislamiento de la tabla de hechos mediante space_id.
+ * 提供记忆空间的 CRUD + 列表查询(带事实数量统计)。
+ * 与 [io.zer0.memory.fact.FactDao] 配合,实现 facts 表按 space_id 隔离。
  */
 @Dao
 interface MemorySpaceDao {
@@ -19,21 +19,21 @@ interface MemorySpaceDao {
     suspend fun upsert(space: MemorySpaceEntity): Long
 
     /**
-     * enumerar todo Space,Ordenar por índice de clasificación ascendente.
-     * No incluye cantidad real(consulta ligera,para el menú desplegable del conmutador).
+     * 列出所有 Space,按 sortIndex 升序。
+     * 不含事实数量(轻量查询,用于切换器下拉)。
      */
     @Query("SELECT * FROM memory_spaces ORDER BY sort_index ASC, created_at ASC")
     suspend fun listAll(): List<MemorySpaceEntity>
 
     /**
-     * Observar la lista de espacios(Flow forma,UI Actualización en tiempo real).
+     * 观察 Space 列表(Flow 形式,UI 实时刷新)。
      */
     @Query("SELECT * FROM memory_spaces ORDER BY sort_index ASC, created_at ASC")
     fun observeAll(): Flow<List<MemorySpaceEntity>>
 
     /**
-     * Listar todos los espacios + número de hechos asociados(LEFT JOIN COUNT).
-     * Se utiliza para mostrar las estadísticas objetivas de cada Espacio en la página de administración.
+     * 列出所有 Space + 关联事实数量(LEFT JOIN COUNT)。
+     * 用于管理页展示每个 Space 的事实统计。
      */
     @Query(
         """
@@ -49,7 +49,7 @@ interface MemorySpaceDao {
     suspend fun listAllWithCount(): List<MemorySpaceWithCount>
 
     /**
-     * Lista de espacios de observación + número de hechos(Flow forma).
+     * 观察 Space 列表 + 事实数量(Flow 形式)。
      */
     @Query(
         """
@@ -74,27 +74,27 @@ interface MemorySpaceDao {
     suspend fun count(): Int
 
     /**
-     * Cambiar nombre Space(solo cambio name,Mantener otros campos).
+     * 重命名 Space(仅改 name,保留其他字段)。
      */
     @Query("UPDATE memory_spaces SET name = :name WHERE id = :id")
     suspend fun rename(id: String, name: String): Int
 
     /**
-     * Actualizar número de clasificación de espacio(Para secuencia de ajuste de lotes).
+     * 更新 Space 排序序号(批量调整顺序用)。
      */
     @Query("UPDATE memory_spaces SET sort_index = :sortIndex WHERE id = :id")
     suspend fun updateSortIndex(id: String, sortIndex: Int): Int
 
     /**
-     * Cuente el número de hechos en el espacio especificado.
-     * Mensaje de confirmación antes de eliminar el espacio.
+     * 统计指定 Space 下的事实数量。
+     * 用于删除 Space 前的确认提示。
      */
     @Query("SELECT COUNT(*) FROM facts WHERE space_id = :spaceId")
     suspend fun countFactsInSpace(spaceId: String): Int
 
     /**
-     * Migra todos los datos del Espacio especificado a otro Espacio.
-     * Se utiliza para eliminar la migración de hechos antes de Space.
+     * 把指定 Space 下的所有事实迁移到另一个 Space。
+     * 用于删除 Space 前的事实迁移。
      */
     @Query("UPDATE facts SET space_id = :targetSpaceId WHERE space_id = :sourceSpaceId")
     suspend fun migrateFacts(sourceSpaceId: String, targetSpaceId: String): Int

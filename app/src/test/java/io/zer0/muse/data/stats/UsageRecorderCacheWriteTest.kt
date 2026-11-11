@@ -7,10 +7,10 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * lectura de caché/Las divisiones de escritura se colocan en la base de datos: el volumen de escritura no se puede descartar como antes de la división.
+ * 缓存读/写分列落库：写入量不能像拆分前那样被丢掉。
  *
- * Antes de la división, el volumen de negocios estadístico era sólo `cached_tokens` Una columna contiene los valores combinados de "lectura + escritura".
- * Escritura de caché (Anthropic Se cobra a 1,25 veces el precio del insumo), por lo que nunca se incluirá en las estadísticas.
+ * 拆分前统计流水只有 `cached_tokens` 一列，装的是「读 + 写」合并值，
+ * 缓存写入（Anthropic 按输入价 1.25 倍计费）因此永远进不了统计。
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -57,9 +57,9 @@ class UsageRecorderCacheWriteTest {
 
         assertEquals(1, dao.inserted.size)
         val row = dao.inserted.single()
-        assertEquals("El caché lee una sola columna", 5_000, row.cachedTokens)
-        assertEquals("La caché se escribe en una sola columna y no se puede leer simultáneamente.", 2_000, row.cacheWriteTokens)
-        // El calibre existente no se mueve.
+        assertEquals("缓存读取单独一列", 5_000, row.cachedTokens)
+        assertEquals("缓存写入单独一列，不能并进读取", 2_000, row.cacheWriteTokens)
+        // 既有口径不动
         assertEquals(1_000, row.promptTokens)
         assertEquals(200, row.completionTokens)
     }
@@ -78,6 +78,6 @@ class UsageRecorderCacheWriteTest {
 
         val row = dao.inserted.single()
         assertEquals(800, row.cachedTokens)
-        assertEquals("OpenAI No hay elementos de facturación de escritura en caché", 0, row.cacheWriteTokens)
+        assertEquals("OpenAI 没有缓存写入计费项", 0, row.cacheWriteTokens)
     }
 }

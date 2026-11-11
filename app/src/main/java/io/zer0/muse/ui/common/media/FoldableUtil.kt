@@ -14,18 +14,18 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 
 /**
- * v2.x (C9): Detección de pantalla plegable — Basado en publico Android API([Sensor.TYPE_HINGE_ANGLE],API 30+).
+ * v2.x (C9): 折叠屏检测 — 基于公开 Android API([Sensor.TYPE_HINGE_ANGLE],API 30+)。
  *
- * fondo:El SDK público de la plataforma no expone la posición de la línea de plegado(Display.getFeatures / DisplayFeature Todas son interfaces del sistema.,
- * No disponible para aplicaciones normales);La forma oficial disponible es**sensor de ángulo de bisagra**——juzgable"¿Es un dispositivo plegable?"con
- * "Ángulo de expansión actual",suficiente para apoyar tabletop(Medio doblado y colocado verticalmente.)Determinación de la escena.
+ * 背景:平台公开 SDK 不暴露折叠线位置(Display.getFeatures / DisplayFeature 均为系统接口,
+ * 普通应用不可用);官方可用途径是**铰链角度传感器**——可判断"是否为折叠设备"与
+ * "当前展开角度",足以支撑 tabletop(半折竖直摆放)场景判定。
  *
- * limitaciones:No puedo obtener la posición de la línea de plegado en la pantalla./frontera;Si se requiere un diseño de partición preciso más adelante,
- * Necesidad de evaluar la introducción. androidx.window(WindowInfoTracker + FoldingFeature)Dependencia.
+ * 局限:拿不到折叠线在屏幕上的位置/边界;若后续需要精确分区布局,
+ * 需评估引入 androidx.window(WindowInfoTracker + FoldingFeature)依赖。
  */
 object MuseFoldable {
 
-    /** Ya sea equipado con sensor de ángulo de bisagra(Dispositivo plegable);API < 30 Siempre falso. */
+    /** 是否配备铰链角度传感器(折叠设备);API < 30 恒为 false。 */
     fun hasHingeSensor(context: Context): Boolean {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return false
         val sm = context.getSystemService(Context.SENSOR_SERVICE) as? SensorManager ?: return false
@@ -34,10 +34,10 @@ object MuseFoldable {
 }
 
 /**
- * Suscribir ángulo de bisagra(0 = cerrar,180 = completamente expandido);dispositivo no plegable / API < 30 / Permanece nulo si no hay eventos del sensor.
+ * 订阅铰链角度(0 = 合拢,180 = 完全展开);非折叠设备 / API < 30 / 无传感器事件时保持 null。
  *
- * Registrar el monitoreo del sensor cuando la combinación ingresa.,Cierra sesión automáticamente cuando te vayas.
- * Uso(Ramas de diseño futuro):
+ * 组合进入时注册传感器监听,离开时自动注销。
+ * 用法(未来布局分支):
  * ```
  * val angle by rememberHingeAngle()
  * val isTabletop = angle?.let { it in 60f..120f } == true

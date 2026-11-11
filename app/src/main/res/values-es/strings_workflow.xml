@@ -1,18 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- ===== Workflow Redactor WorkflowEditorScreen ===== -->
+    <!-- ===== Workflow Editor (WorkflowEditorScreen) ===== -->
 
-    <!-- Confirmación de lienzo claro -->
+    <!-- Clear canvas confirmation -->
 
-    <!-- Exportar JSON -->
+    <!-- Export JSON -->
 
-    <!-- estrategia de agregación -->
+    <!-- Aggregation strategy -->
 
     <!-- contentDescription -->
 
-    <!-- Panel de edición de nodos WorkflowNodeEditor -->
+    <!-- Node editor panel (WorkflowNodeEditor) -->
 
-    <!-- modo de ejecución -->
+    <!-- Execution modes -->
 
-    <!-- lienzo WorkflowCanvas -->
+    <!-- Canvas (WorkflowCanvas) -->
 </resources>

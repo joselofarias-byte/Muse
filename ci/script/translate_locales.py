@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 """
-translate_locales.py — Traduce línea por línea usando la API gratuita de Google Translate strings_*.xml archivo.
+translate_locales.py — 使用 Google Translate 免费 API 逐条翻译 strings_*.xml 文件。
 
-Versión reparada: Traducir elemento por elemento(No en lotes) + Simultaneidad multiproceso, Evite la desalineación de los resultados de la traducción por lotes.
-Protección de marcador de posición: Utilice etiquetas de comentarios HTML, Restauración de regularización post-traducción.
+修复版: 逐条翻译(不批量) + 多线程并发, 避免批量翻译结果错位问题。
+占位符保护: 使用 HTML 注释标记, 翻译后正则还原。
 
-Flujo de trabajo:
-  1. Leer todo en valores-es/ strings_*.xml como referente inglés
-  2. para cada objetivo locale (es/ja/ko/ru/pt-rBR):
-     a. Lea que esta configuración regional ha sido traducida.(Mantener cadenas traducidas por humanos)
-     b. a no traducido(Sigue siendo un marcador de posición en inglés o chino)La cadena se llama una por una. Google Translate
-     c. Vuelva a escribir el archivo traducido
-  3. Preservar estructura XML, comentarios y marcadores de posición de formato(%1$s espera)
+工作流程:
+  1. 读取 values-en/ 下所有 strings_*.xml 作为英文基准
+  2. 对每个目标 locale (es/ja/ko/ru/pt-rBR):
+     a. 读取该 locale 已有翻译(保留人工翻译过的字符串)
+     b. 对未翻译(仍是英文或中文占位符)的字符串逐条调用 Google Translate
+     c. 写回翻译后的文件
+  3. 保留 XML 结构、注释、格式占位符(%1$s 等)
 """
 
 from __future__ import annotations
@@ -25,12 +25,12 @@ import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
-# Directorio raíz del proyecto
+# 项目根目录
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 RES_DIR = PROJECT_ROOT / "app" / "src" / "main" / "res"
 EN_DIR = RES_DIR / "values-en"
 
-# mapeo del idioma de destino: Android locale → Google Translate language code
+# 目标语言映射: Android locale → Google Translate language code
 TARGET_LOCALES = {
     "values-es": "es",
     "values-ja": "ja",
@@ -39,36 +39,36 @@ TARGET_LOCALES = {
     "values-pt-rBR": "pt",
 }
 
-# Número de hilos simultáneos
+# 并发线程数
 MAX_WORKERS = 15
-# Intervalo de solicitud(segundos),Cada hilo se controla de forma independiente.
+# 请求间隔(秒),每个线程独立控制
 REQUEST_DELAY = 0.2
-# Número de reintentos
+# 重试次数
 MAX_RETRIES = 3
 
-# Reglas regulares de detección de caracteres chinos
+# 中文字符检测正则
 CJK_PATTERN = re.compile(r"[\u4e00-\u9fff]")
-# Etiqueta de cadena normal(partido <string name="...">...</string>)
+# 字符串标签正则(匹配 <string name="...">...</string>)
 STRING_TAG_PATTERN = re.compile(r'<string\s+name="([^"]+)"\s*(?:[^>]*?)>(.*?)</string>', re.DOTALL)
-# Formato de marcador de posición normal(%1$s, %1$d, \n, \", XML entidad, etc.)
-# Proteger mediante etiquetas de comentarios HTML,Evite averías en el motor de traducción
+# 格式占位符正则(%1$s, %1$d, \n, \", XML 实体等)
+# 使用 HTML 注释标记保护,避免翻译引擎破坏
 PLACEHOLDER_PATTERN = re.compile(r"%\d+\$[sd]|\\n|&amp;|&lt;|&gt;|&quot;|&apos;")
 
 
 def log(msg: str):
-    """Salida de registro con descarga"""
+    """带 flush 的日志输出"""
     print(msg, flush=True)
 
 
 def has_chinese(text: str) -> bool:
-    """Detectar si una cadena contiene caracteres chinos"""
+    """检测字符串是否包含中文字符"""
     return bool(CJK_PATTERN.search(text))
 
 
 def google_translate_single(text: str, target_lang: str, source_lang: str = "en") -> str | None:
     """
-    Llame a la API gratuita de Google Translate para traducir un solo texto.
-    Traducir elemento por elemento,Evite problemas de segmentación y desalineación en la traducción por lotes.
+    调用 Google Translate 免费 API 翻译单条文本。
+    逐条翻译,避免批量翻译的分割错位问题。
     """
     url = (
         "https://translate.googleapis.com/translate_a/single"
@@ -80,8 +80,8 @@ def google_translate_single(text: str, target_lang: str, source_lang: str = "en"
             req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
             with urllib.request.urlopen(req, timeout=15) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
-            # data[0] es una serie de resultados de traducción,cada elemento [translated_text, original_text, ...]
-            # Al traducir artículo por artículo data[0] solo un elemento
+            # data[0] 是翻译结果数组,每个元素 [translated_text, original_text, ...]
+            # 逐条翻译时 data[0] 只有一个元素
             if data and data[0] and data[0][0] and data[0][0][0]:
                 return data[0][0][0]
             return None
@@ -96,8 +96,8 @@ def google_translate_single(text: str, target_lang: str, source_lang: str = "en"
 
 def protect_placeholders(text: str) -> tuple[str, list[tuple[str, str]]]:
     """
-    marcador de posición de formato protegido(%1$s espera),Reemplazado con etiquetas de comentarios HTML,Restaurar después de la traducción.
-    HTML Los comentarios no serán modificados por el motor de traducción.
+    保护格式占位符(%1$s 等),替换为 HTML 注释标记,翻译后还原。
+    HTML 注释不会被翻译引擎修改。
     """
     placeholders: list[tuple[str, str]] = []
     counter = [0]
@@ -113,11 +113,11 @@ def protect_placeholders(text: str) -> tuple[str, list[tuple[str, str]]]:
 
 
 def restore_placeholders(text: str, placeholders: list[tuple[str, str]]) -> str:
-    """Restaurar marcadores de posición protegidos"""
+    """还原被保护的占位符"""
     for token, original in placeholders:
         text = text.replace(token, original)
-        # Ten todo en cuenta: El motor de traducción puede romper el formato de los comentarios(Como agregar espacios y minúsculas.)
-        # Extraer número del token,Utilice variantes coincidentes habituales
+        # 兜底: 翻译引擎可能破坏注释格式(如添加空格、小写)
+        # 从 token 提取编号,用正则匹配变体
         m = re.search(r"PH(\d{4})", token)
         if m:
             num = m.group(1)
@@ -131,8 +131,8 @@ def restore_placeholders(text: str, placeholders: list[tuple[str, str]]) -> str:
 
 def extract_strings(xml_content: str) -> list[tuple[str, str, str]]:
     """
-    Extraer todo <string> etiqueta.
-    Regresar [(name, value, full_match), ...]
+    从 XML 内容中提取所有 <string> 标签。
+    返回 [(name, value, full_match), ...]
     """
     results = []
     for match in STRING_TAG_PATTERN.finditer(xml_content):
@@ -144,24 +144,24 @@ def extract_strings(xml_content: str) -> list[tuple[str, str, str]]:
 
 def translate_one(name: str, en_value: str, target_lang: str) -> tuple[str, str]:
     """
-    Traduce una sola cadena. Regresar (name, translated_value).
-    Retorno del fracaso (name, en_value) Mantén el inglés.
+    翻译单条字符串。返回 (name, translated_value)。
+    失败时返回 (name, en_value) 保留英文。
     """
-    # Proteger marcador de posición
+    # 保护占位符
     protected, placeholders = protect_placeholders(en_value)
 
-    # Traducción
+    # 翻译
     translated = google_translate_single(protected, target_lang)
     if translated is None:
         return (name, en_value)
 
-    # Restaurar marcador de posición
+    # 还原占位符
     restored = restore_placeholders(translated, placeholders)
 
-    # limpiar: Eliminar espacios en blanco iniciales y finales
+    # 清理: 去除首尾空白
     restored = restored.strip()
 
-    # Si el resultado de la traducción está vacío,mantener el ingles
+    # 如果翻译结果为空,保留英文
     if not restored:
         return (name, en_value)
 
@@ -175,19 +175,19 @@ def translate_xml_file(
     file_name: str,
 ) -> str | None:
     """
-    Traducir un solo strings_*.xml archivo.
+    翻译单个 strings_*.xml 文件。
     """
     en_strings = extract_strings(en_content)
     if not en_strings:
         return None
 
-    # Analizar traducciones existentes
+    # 解析已有翻译
     existing_map: dict[str, str] = {}
     if existing_content:
         for name, value, _ in extract_strings(existing_content):
             existing_map[name] = value
 
-    # Clasificación: Necesita traducción versus reservada
+    # 分类: 需要翻译 vs 保留
     to_translate: list[tuple[str, str]] = []  # (name, english_value)
     final_values: dict[str, str] = {}
 
@@ -196,16 +196,16 @@ def translate_xml_file(
 
         if existing is not None:
             if existing == en_value:
-                # El valor es el mismo que en inglés. → Necesita traducción
+                # 值与英文相同 → 需要翻译
                 to_translate.append((name, en_value))
             elif has_chinese(existing):
-                # marcador de posición chino → Necesita traducción
+                # 中文占位符 → 需要翻译
                 to_translate.append((name, en_value))
             else:
-                # Ya tengo traducción real. → Reservar
+                # 已有真实翻译 → 保留
                 final_values[name] = existing
         else:
-            # No hay traducción existente → Necesita traducción
+            # 没有已有翻译 → 需要翻译
             to_translate.append((name, en_value))
 
     if not to_translate:
@@ -214,7 +214,7 @@ def translate_xml_file(
 
     log(f"  [{file_name}] translating {len(to_translate)} strings to {target_lang}...")
 
-    # Traducción concurrente multiproceso
+    # 多线程并发翻译
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
         futures = {
             executor.submit(translate_one, name, en_val, target_lang): name
@@ -228,16 +228,16 @@ def translate_xml_file(
             if done_count % 50 == 0:
                 log(f"    [{file_name}] {done_count}/{len(to_translate)} done")
 
-    # Reconstrucción de XML: uso de la línea base en inglés como plantilla,valor de reposición
+    # 重建 XML: 以英文基准为模板,替换值
     result_content = en_content
     for name, en_value, full_match in en_strings:
         translated = final_values.get(name, en_value)
-        # XML escapar(Reservar & < > escapando)
-        # Nota: Es posible que los resultados de la traducción ya contengan entidades XML(Como por ejemplo &amp;),Necesidad de evitar el doble escape.
-        # Estrategia: Primera desescapada de las entidades en el benchmark inglés,Luego vuelva a escapar de acuerdo con los resultados de la traducción.
-        # Pero aquí está simplificado.: Si el resultado de la traducción contiene & Entidad al principio,No más escapar
+        # XML 转义(保留 & < > 的转义)
+        # 注意: 翻译结果可能已经包含 XML 实体(如 &amp;),需要避免双重转义
+        # 策略: 先反转义英文基准中的实体,再根据翻译结果重新转义
+        # 但这里简化处理: 如果翻译结果包含 & 开头的实体,不再转义
         if "&" in translated and not translated.startswith("&amp;"):
-            # Compruebe si la entidad XML ya existe
+            # 检查是否已有 XML 实体
             has_entity = bool(re.search(r"&\w+;", translated))
             if not has_entity:
                 translated = translated.replace("&", "&amp;")
@@ -249,7 +249,7 @@ def translate_xml_file(
 
 
 def main():
-    # Habilitar el almacenamiento en búfer de línea
+    # 启用行缓冲
     try:
         sys.stdout.reconfigure(line_buffering=True)
         sys.stderr.reconfigure(line_buffering=True)
@@ -264,7 +264,7 @@ def main():
         log(f"ERROR: English baseline directory not found: {EN_DIR}")
         return 1
 
-    # recoger todo strings_*.xml Archivo
+    # 收集所有 strings_*.xml 文件
     en_files = sorted(EN_DIR.glob("strings_*.xml"))
     main_strings = EN_DIR / "strings.xml"
     if main_strings.exists():

@@ -9,19 +9,19 @@ class MemoryLlmClientImplTest {
     @Test
     fun `visible text always wins over reasoning`() {
         val raw = resolveMemoryLlmRawText(
-            systemPrompt = "Generar la lista fusionada",
-            text = "El nombre del usuario es Ziqi.",
-            reasoningContent = "necesitamos answer in Chinese",
+            systemPrompt = "输出合并后的列表",
+            text = "用户的名字是子奇",
+            reasoningContent = "我们需要 answer in Chinese",
         )
-        assertEquals("El nombre del usuario es Ziqi.", raw)
+        assertEquals("用户的名字是子奇", raw)
     }
 
     @Test
     fun `reasoning only rejected when prompt does not require JSON`() {
         val raw = resolveMemoryLlmRawText(
-            systemPrompt = "Generar la lista fusionada,No utilice encabezados de Markdown",
+            systemPrompt = "输出合并后的列表,不要使用 Markdown 标题",
             text = "",
-            reasoningContent = "necesitamos answer in Chinese. Need merge facts.",
+            reasoningContent = "我们需要 answer in Chinese. Need merge facts.",
         )
         assertNull(raw)
     }
@@ -29,9 +29,9 @@ class MemoryLlmClientImplTest {
     @Test
     fun `reasoning only rejected when JSON prompt has no JSON payload`() {
         val raw = resolveMemoryLlmRawText(
-            systemPrompt = "Solo genera una matriz JSON",
+            systemPrompt = "只输出 JSON 数组",
             text = "",
-            reasoningContent = "necesitamos answer in Chinese. Need merge facts.",
+            reasoningContent = "我们需要 answer in Chinese. Need merge facts.",
         )
         assertNull(raw)
     }
@@ -39,10 +39,10 @@ class MemoryLlmClientImplTest {
     @Test
     fun `reasoning accepted when JSON prompt contains JSON payload`() {
         val reasoning = """[
-          {"fact": "El nombre del usuario es Ziqi.", "tags": ["Ziqi"], "importance": 2}
+          {"fact": "用户的名字是子奇", "tags": ["子奇"], "importance": 2}
         ]"""
         val raw = resolveMemoryLlmRawText(
-            systemPrompt = "Solo genera una matriz JSON",
+            systemPrompt = "只输出 JSON 数组",
             text = "",
             reasoningContent = reasoning,
         )
@@ -52,7 +52,7 @@ class MemoryLlmClientImplTest {
     @Test
     fun `both text and reasoning blank rejected`() {
         val raw = resolveMemoryLlmRawText(
-            systemPrompt = "Solo genera una matriz JSON",
+            systemPrompt = "只输出 JSON 数组",
             text = "",
             reasoningContent = null,
         )

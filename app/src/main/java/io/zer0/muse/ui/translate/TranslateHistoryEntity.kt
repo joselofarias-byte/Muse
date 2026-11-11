@@ -6,7 +6,7 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 
 /**
- * v1.0.17: Persistencia del historial de traducción.
+ * v1.0.17: 翻译历史持久化。
  */
 @kotlinx.serialization.Serializable
 @Entity(
@@ -23,8 +23,8 @@ data class TranslateHistoryEntity(
     @ColumnInfo(name = "translated_text") val translatedText: String,
     @ColumnInfo(name = "source_language") val sourceLanguage: String,
     @ColumnInfo(name = "target_language") val targetLanguage: String,
-    @ColumnInfo(name = "style") val style: String = "Universales",
+    @ColumnInfo(name = "style") val style: String = "通用",
     @ColumnInfo(name = "created_at") val createdAt: Long = System.currentTimeMillis(),
-    // v1.0.30 gap4.3: Favoritos de traducción,1=Recogido,0=No favorito
+    // v1.0.30 gap4.3: 翻译收藏夹,1=已收藏,0=未收藏
     @ColumnInfo(name = "favorite") val favorite: Boolean = false,
 )

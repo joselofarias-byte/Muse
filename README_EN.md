@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <a href="README.md">Español</a> · <b>English</b> · <a href="README_JA.md">日本語</a> · <a href="README_KO.md">한국어</a> · <a href="README_ES.md">Español</a> · <a href="README_PT.md">Português</a> · <a href="README_RU.md">Русский</a>
+  <a href="README.md">中文</a> · <b>English</b> · <a href="README_JA.md">日本語</a> · <a href="README_KO.md">한국어</a> · <a href="README_ES.md">Español</a> · <a href="README_PT.md">Português</a> · <a href="README_RU.md">Русский</a>
 </p>
 
 <p align="center">
@@ -15,8 +15,8 @@
   <img src="https://img.shields.io/badge/Kotlin-2.4-purple?style=flat-square" alt="Kotlin">
 </p>
 <p align="center">
-  <a href="https://qm.qq.com/q/905451314"><img src="https://img.shields.io/badge/QQgrupo-905451314-0366CC?style=for-the-badge&logo=qq&logoColor=white" alt="QQ Group"></a>
-  <a href="https://museai.ltd"><img src="https://img.shields.io/badge/Sitio web oficial-museai.ltd-blueviolet?style=for-the-badge" alt="Website"></a>
+  <a href="https://qm.qq.com/q/905451314"><img src="https://img.shields.io/badge/QQ群-905451314-0366CC?style=for-the-badge&logo=qq&logoColor=white" alt="QQ Group"></a>
+  <a href="https://museai.ltd"><img src="https://img.shields.io/badge/官网-museai.ltd-blueviolet?style=for-the-badge" alt="Website"></a>
   <a href="https://museai.ltd/download/"><img src="https://img.shields.io/badge/Download-APK-brightgreen?style=for-the-badge&logo=android" alt="Download"></a>
 </p>
 
@@ -102,7 +102,7 @@ Download the latest APK from the official download page [museai.ltd/download](ht
 2. **Start chatting** — go back to the home screen and send your first message. Memory starts accumulating from that moment; switch models or sessions and it still remembers you.
 3. **Unlock system-level abilities (optional)** — to let it act on your phone, open **Settings → Permission Wizard** and enable the Accessibility / Shizuku / Root / Termux channels you need. Every step has built-in detection and test entry points.
 
-> A complete usage guide (including all the gestures and hidden operations) is available in the [user manual (Chinese)](manual-de-usuario.md) and in-app under **Settings → Tutorial**.
+> A complete usage guide (including all the gestures and hidden operations) is available in the [user manual (Chinese)](用户手册.md) and in-app under **Settings → Tutorial**.
 
 ## Why Muse
 
@@ -247,7 +247,7 @@ It does not wait to be spoken to.
 
 - **Themes**: 12 complete themes (each with light / dark variants) + 8 color-blind-friendly palettes; dynamic color (Android 12+), day/night scheduled switching, and custom themes.
 - **Bubbles & appearance**: adjustable bubble corner radius; a bubble skin system including plugin-provided skins (e.g. high-contrast, soft-glow).
-- **Hand-drawn icons**: 176 custom icons (24dp grid, 1.7dp rounded strokes, light/dark adaptive), open-sourced at [muse-icons](https://github.com/Zer0Qing/muse-icons) (MIT).
+- **Hand-drawn icons**: 179 custom icons (24dp grid, 1.7dp rounded strokes, light/dark adaptive), open-sourced at [muse-icons](https://github.com/Zer0Qing/muse-icons) (MIT).
 - **Typography & languages**: font, size and letter spacing, predictive back, accessibility support; the interface ships in Chinese / English / Japanese / Korean / Spanish / Portuguese / Russian.
 - **Backup & restore**: one-tap local export (JSON / chunked NDJSON, optionally encrypted); daily automatic backups (bundling muse.db / memory.db / facts.db snapshots); S3 / WebDAV cloud sync; the proactive ledgers (pending thoughts, outcomes and relationship intimacy) are included; a protective copy is kept before every restore, with automatic rollback on failure.
 - **Data import**: one-click migration from CherryStudio / Chatbox / ChatGPT / RikkaHub / Kelivo; multi-format conversation import.
@@ -320,7 +320,7 @@ python ci/script/validate_release_apks.py --apk "app/build/outputs/apk/release/*
 
 Contributions are welcome:
 
-- [Contributing guide](CONTRIBUTING.md) · [Security policy](SECURITY.md) · [UI component guidelines](guia-biblioteca-ui.md)
+- [Contributing guide](CONTRIBUTING.md) · [Security policy](SECURITY.md) · [UI component guidelines](UI组件库维护规范.md)
 - Please pass the local gate scripts and unit tests before opening a PR; new strings must be synced across all language packs
 - Gate and release pipeline scripts live in `ci/script/`; the in-app tutorial (Settings → Tutorial) is maintained alongside
 

@@ -24,16 +24,16 @@ import java.io.File
 import java.nio.file.Files
 
 /**
- * settings.update Estrategia de enfoque: entornos globales**No**Sujeto al enfoque de la sesión.
+ * settings.update 的焦点策略：全局设置**不**受会话焦点约束。
  *
- * Antecedentes: escritura conversacional (chat.send / session.select / …) debe serializarse para evitar que dos clientes entren en la misma sesión al mismo tiempo.
- * Mensajes de relleno; la configuración global no tiene este problema——Al chatear por teléfono, no se debe rechazar el cambio de un interruptor en la página web.
- * Si hay un conflicto, simplemente presione y escriba para sobrescribirlo. Esta prueba es una versión ejecutable de esa política:
- * Otro enlace mantiene el foco, este enlace aún se puede cambiar y los cambios en realidad se escriben en el repositorio de configuración.
+ * 背景：会话写（chat.send / session.select / …）必须串行，避免两个客户端同时往同一会话里
+ * 塞消息；全局设置没有这个问题——手机正在聊天的时候，网页改一个开关不该被拒，
+ * 冲突按后写覆盖即可。这个测试就是那条策略的可执行版本：
+ * 另一个连接正持焦点，本连接照样能改，而且改动真的写进了 SettingsRepository。
  */
 class HostWebSocketGatewaySettingsTest {
 
-    /** Se abre una conexión falsa a la puerta de enlace: comando de [incoming] enviado, evento de [events] leer. */
+    /** 一条被打通到网关的假连接：命令从 [incoming] 送入，事件从 [events] 读出。 */
     private class FakeConnection {
         val incoming = Channel<Frame>(Channel.UNLIMITED)
         val events = mutableListOf<HostEvent>()
@@ -89,7 +89,7 @@ class HostWebSocketGatewaySettingsTest {
         val phone = FakeConnection()
         val browser = FakeConnection()
 
-        // La primera conexión (teléfono celular) está en serve() El enlace capta la atención; Por lo tanto, el segundo enlace (página web) no puede captar la atención.
+        // 第一个连接（手机）在 serve() 里抢占焦点；第二个连接（网页）因此拿不到焦点。
         val phoneJob = launch { harness.gateway.serve(phone.session) }
         advanceUntilIdle()
         val browserJob = launch { harness.gateway.serve(browser.session) }
@@ -103,21 +103,21 @@ class HostWebSocketGatewaySettingsTest {
         advanceUntilIdle()
 
         assertTrue(
-            "Se deben aceptar escrituras establecidas para eventos reales.: ${browser.events}",
+            "设置写入应被接受，实际事件: ${browser.events}",
             browser.events.any { it.type == "command.accepted" && it.requestId == "req-settings" },
         )
         assertTrue(
-            "La escritura de configuraciones no debe ser bloqueada por el foco: ${browser.events}",
+            "设置写入不该被焦点拦下: ${browser.events}",
             browser.events.none { it.error == "focus_not_held" },
         )
         coVerify(exactly = 1) { harness.settingsRepo.savePiiGuardEnabled(true) }
 
-        // Verificación de requisitos previos: la escritura de sesión en la misma conexión que no mantiene el foco aún se rechaza. —— foco par aislado session.* Sigue siendo válido.
+        // 前提核对：同一个未持焦点的连接发会话写仍然被拒 —— 焦点隔离对 session.* 依然有效。
         browser.incoming.send(Frame.Text("""{"protocolVersion":1,"type":"session.new","requestId":"req-new"}"""))
         advanceUntilIdle()
 
         assertTrue(
-            "La escritura conversacional debe seguir manteniendo el foco: ${browser.events}",
+            "会话写必须继续守着焦点: ${browser.events}",
             browser.events.any { it.type == "error" && it.requestId == "req-new" && it.error == "focus_not_held" },
         )
 

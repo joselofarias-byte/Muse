@@ -15,7 +15,7 @@
     <issue
         id="MissingPermission"
         message="Call requires permission which may be rejected by user: code should explicitly check to see if permission is available (with `checkPermission`) or explicitly handle a potential `SecurityException`"
-        errorLine1="                    sb.appendLine(context.getString(R.string.tool_bluetooth_item, it.name ?: &quot;desconocido&quot;, it.address))"
+        errorLine1="                    sb.appendLine(context.getString(R.string.tool_bluetooth_item, it.name ?: &quot;未知&quot;, it.address))"
         errorLine2="                                                                                  ~~~~~~~">
         <location
             file="src/main/java/io/zer0/muse/tools/SystemToolsImpl.kt"
@@ -3590,7 +3590,7 @@
     <issue
         id="LocalContextGetResourceValueCall"
         message="Querying resource values using LocalContext.current"
-        errorLine1="                addError = context.getString(R.string.settings_mcp_failed, &quot;URL no puede estar vacío&quot;)"
+        errorLine1="                addError = context.getString(R.string.settings_mcp_failed, &quot;URL 不能为空&quot;)"
         errorLine2="                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/java/io/zer0/muse/ui/settings/McpSection.kt"
@@ -3601,7 +3601,7 @@
     <issue
         id="LocalContextGetResourceValueCall"
         message="Querying resource values using LocalContext.current"
-        errorLine1="                addError = context.getString(R.string.settings_mcp_failed, &quot;La plantilla Feishu requiere completar el ID de la aplicación y App Secret&quot;)"
+        errorLine1="                addError = context.getString(R.string.settings_mcp_failed, &quot;飞书模板需要填写 App ID 和 App Secret&quot;)"
         errorLine2="                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/java/io/zer0/muse/ui/settings/McpSection.kt"
@@ -4833,7 +4833,7 @@
     <issue
         id="LocalContextGetResourceValueCall"
         message="Querying resource values using LocalContext.current"
-        errorLine1="            MuseToast.show(context.getString(R.string.oauth_login_failed, &quot;OAuth No configurado&quot;))"
+        errorLine1="            MuseToast.show(context.getString(R.string.oauth_login_failed, &quot;OAuth 未配置&quot;))"
         errorLine2="                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/java/io/zer0/muse/ui/settings/ProviderEditPage.kt"
@@ -4844,7 +4844,7 @@
     <issue
         id="LocalContextGetResourceValueCall"
         message="Querying resource values using LocalContext.current"
-        errorLine1="                MuseToast.show(context.getString(R.string.oauth_login_failed, &quot;No se puede obtener el contexto de la actividad&quot;))"
+        errorLine1="                MuseToast.show(context.getString(R.string.oauth_login_failed, &quot;无法获取 Activity 上下文&quot;))"
         errorLine2="                               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/java/io/zer0/muse/ui/settings/ProviderEditPage.kt"
@@ -4877,7 +4877,7 @@
     <issue
         id="LocalContextGetResourceValueCall"
         message="Querying resource values using LocalContext.current"
-        errorLine1="                        context.getString(R.string.oauth_login_failed, it.message ?: &quot;No puedo abrir el navegador&quot;),"
+        errorLine1="                        context.getString(R.string.oauth_login_failed, it.message ?: &quot;无法打开浏览器&quot;),"
         errorLine2="                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/java/io/zer0/muse/ui/settings/ProviderEditPage.kt"
@@ -5108,7 +5108,7 @@
     <issue
         id="LocalContextGetResourceValueCall"
         message="Querying resource values using LocalContext.current"
-        errorLine1="                                MuseToast.show(context.getString(R.string.schedule_chain_cycle_error)) // Correcciones en la interfaz (i18n-5)"
+        errorLine1="                                MuseToast.show(context.getString(R.string.schedule_chain_cycle_error)) // 前端修复 (i18n-5)"
         errorLine2="                                               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/java/io/zer0/muse/ui/schedule/ScheduledTasksScreen.kt"
@@ -6362,7 +6362,7 @@
     <issue
         id="LocalContextResourcesRead"
         message="Reading Resources using LocalContext.current.resources"
-        errorLine1="                        val desc = remember(cronExpr) { describeCron(cronExpr.trim(), context.resources) } // Correcciones en la interfaz (i18n-5)"
+        errorLine1="                        val desc = remember(cronExpr) { describeCron(cronExpr.trim(), context.resources) } // 前端修复 (i18n-5)"
         errorLine2="                                                                                      ~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/java/io/zer0/muse/ui/schedule/ScheduledTasksScreen.kt"
@@ -8617,7 +8617,7 @@
     <issue
         id="PluralsCandidate"
         message="Formatting %d followed by words (&quot;bytes&quot;): This should probably be a plural rather than a string"
-        errorLine1="    &lt;string name=&quot;skill_download_success&quot;>Descarga exitosa: %1$s (%2$d bytes)&lt;/string>"
+        errorLine1="    &lt;string name=&quot;skill_download_success&quot;>下载成功: %1$s (%2$d bytes)&lt;/string>"
         errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/res/values/strings_services.xml"
@@ -8727,7 +8727,7 @@
     <issue
         id="PluralsCandidate"
         message="Formatting %d followed by words (&quot;dpi&quot;): This should probably be a plural rather than a string"
-        errorLine1="    &lt;string name=&quot;tool_display_info&quot;>información de la pantalla\nresolución: %1$dx%2$d\ndensidad de pantalla: %3$ddpi (Ampliar %4$.2fx)\nfrecuencia de actualización: %5$.1fHz&lt;/string>"
+        errorLine1="    &lt;string name=&quot;tool_display_info&quot;>屏幕信息\n分辨率: %1$dx%2$d\n屏幕密度: %3$ddpi (缩放 %4$.2fx)\n刷新率: %5$.1fHz&lt;/string>"
         errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/res/values/strings_services.xml"
@@ -10581,7 +10581,7 @@
     <issue
         id="TypographyDashes"
         message="Replace &quot;-&quot; with an &quot;en dash&quot; character (–, &amp;#8211;) ?"
-        errorLine1="    &lt;string name=&quot;prompt_template_content_write_article&quot;>Escriba un artículo claramente estructurado sobre los siguientes temas.:\n\n{Tema}\n\npedido:Contiene introducción y texto principal.(2-3 puntos), conclusión,Aproximadamente 800 palabras.&lt;/string>"
+        errorLine1="    &lt;string name=&quot;prompt_template_content_write_article&quot;>请围绕以下主题撰写一篇结构清晰的文章:\n\n{主题}\n\n要求:包含引言、正文(2-3 个要点)、结论,字数约 800 字。&lt;/string>"
         errorLine2="                                                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/res/values/strings_data.xml"
@@ -10658,7 +10658,7 @@
     <issue
         id="TypographyDashes"
         message="Replace &quot;-&quot; with an &quot;en dash&quot; character (–, &amp;#8211;) ?"
-        errorLine1="    &lt;string name=&quot;prompt_template_content_summarize&quot;>Resuma lo siguiente en 3-5 puntos clave,Una frase para cada,Mantener información clave:\n\n{contenido}&lt;/string>"
+        errorLine1="    &lt;string name=&quot;prompt_template_content_summarize&quot;>请将以下内容总结为 3-5 个要点,每个要点一句话,保留关键信息:\n\n{内容}&lt;/string>"
         errorLine2="                                                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/res/values/strings_data.xml"
@@ -10680,7 +10680,7 @@
     <issue
         id="TypographyDashes"
         message="Replace &quot;-&quot; with an &quot;en dash&quot; character (–, &amp;#8211;) ?"
-        errorLine1="    &lt;string name=&quot;schedule_cron_placeholder&quot;>Como por ejemplo:0 8 * * 1-5 Indica días laborables8punto&lt;/string>"
+        errorLine1="    &lt;string name=&quot;schedule_cron_placeholder&quot;>如:0 8 * * 1-5 表示工作日8点&lt;/string>"
         errorLine2="                                             ~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/res/values/strings_features.xml"
@@ -10911,7 +10911,7 @@
     <issue
         id="TypographyDashes"
         message="Replace &quot;-&quot; with an &quot;en dash&quot; character (–, &amp;#8211;) ?"
-        errorLine1="    &lt;string name=&quot;tool_missing_param_hour&quot;>Parámetro faltante: hour(0-23)&lt;/string>"
+        errorLine1="    &lt;string name=&quot;tool_missing_param_hour&quot;>缺少参数: hour(0-23)&lt;/string>"
         errorLine2="                                           ~~~~~~~~~~~~~~~~">
         <location
             file="src/main/res/values/strings_services.xml"
@@ -10922,7 +10922,7 @@
     <issue
         id="TypographyDashes"
         message="Replace &quot;-&quot; with an &quot;en dash&quot; character (–, &amp;#8211;) ?"
-        errorLine1="    &lt;string name=&quot;tool_hour_range&quot;>hour Rango de valores 0-23&lt;/string>"
+        errorLine1="    &lt;string name=&quot;tool_hour_range&quot;>hour 取值范围 0-23&lt;/string>"
         errorLine2="                                   ~~~~~~~~~~~~~~">
         <location
             file="src/main/res/values/strings_services.xml"
@@ -10933,7 +10933,7 @@
     <issue
         id="TypographyDashes"
         message="Replace &quot;-&quot; with an &quot;en dash&quot; character (–, &amp;#8211;) ?"
-        errorLine1="    &lt;string name=&quot;tool_missing_param_minute&quot;>Parámetro faltante: minute(0-59)&lt;/string>"
+        errorLine1="    &lt;string name=&quot;tool_missing_param_minute&quot;>缺少参数: minute(0-59)&lt;/string>"
         errorLine2="                                             ~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/res/values/strings_services.xml"
@@ -10944,7 +10944,7 @@
     <issue
         id="TypographyDashes"
         message="Replace &quot;-&quot; with an &quot;en dash&quot; character (–, &amp;#8211;) ?"
-        errorLine1="    &lt;string name=&quot;tool_minute_range&quot;>minute Rango de valores 0-59&lt;/string>"
+        errorLine1="    &lt;string name=&quot;tool_minute_range&quot;>minute 取值范围 0-59&lt;/string>"
         errorLine2="                                     ~~~~~~~~~~~~~~~~">
         <location
             file="src/main/res/values/strings_services.xml"
@@ -11087,7 +11087,7 @@
     <issue
         id="TypographyDashes"
         message="Replace &quot;-&quot; with an &quot;en dash&quot; character (–, &amp;#8211;) ?"
-        errorLine1="    &lt;string name=&quot;settings_web_port_number&quot;>número de puerto(1024-65535)&lt;/string>"
+        errorLine1="    &lt;string name=&quot;settings_web_port_number&quot;>端口号(1024-65535)&lt;/string>"
         errorLine2="                                            ~~~~~~~~~~~~~~~">
         <location
             file="src/main/res/values/strings_settings_main.xml"
@@ -11098,7 +11098,7 @@
     <issue
         id="TypographyDashes"
         message="Replace &quot;-&quot; with an &quot;en dash&quot; character (–, &amp;#8211;) ?"
-        errorLine1="    &lt;string name=&quot;settings_web_port_invalid&quot;>Puerto no válido(1024-65535)&lt;/string>"
+        errorLine1="    &lt;string name=&quot;settings_web_port_invalid&quot;>端口无效(1024-65535)&lt;/string>"
         errorLine2="                                             ~~~~~~~~~~~~~~~~">
         <location
             file="src/main/res/values/strings_settings_main.xml"
@@ -11120,7 +11120,7 @@
     <issue
         id="TypographyDashes"
         message="Replace &quot;-&quot; with an &quot;en dash&quot; character (–, &amp;#8211;) ?"
-        errorLine1="    &lt;string name=&quot;settings_tutorial_ch4_s8_content&quot;>La colaboración entre múltiples agentes permite que varios personajes de IA realicen sus respectivas tareas y cooperen entre sí en la misma conversación.,Incluso puedes unirte a chats grupales.\n\n• Construye un equipo:ajustes → Colaboración entre múltiples agentes,Crear un nuevo equipo,Seleccionar varios asistentes como miembros(por ejemplo“redacción”,“Planificación del arte”,“revisión”).\n• chat grupal:Habilitar equipos en conversación,El asistente principal dividirá las tareas y las delegará a los miembros correspondientes.,Resuma las respuestas de cada miembro.,Es como ver a todos discutir en grupo.\n• Escenarios aplicables:División de tareas complejas(Escritura de guiones + sugerencias de bandas sonoras.), lluvia de ideas desde múltiples perspectivas, juegos de rol, tramas multijugador, etc.\n• Consejos:Cuantos más miembros haya, mayor será el consumo de Tokens.,Se recomienda tener de 2 a 4 miembros.&lt;/string>"
+        errorLine1="    &lt;string name=&quot;settings_tutorial_ch4_s8_content&quot;>多 Agent 协作可以让多个 AI 角色在同一个对话里各司其职、互相配合,甚至您也能加入群聊。\n\n• 建团队:设置 → 多 Agent 协作,新建一个团队,选几个助手作为成员(比如“文案”、“美工策划”、“审核”)。\n• 群聊:在对话里启用团队,主助手会把任务拆分委托给合适的成员,成员各自回答后汇总,您像在群里看大家讨论一样。\n• 适用场景:复杂任务分工(写剧本 + 配乐建议)、多视角头脑风暴、角色扮演多人剧情等。\n• 提示:成员越多 Token 消耗越大,建议 2-4 个成员为宜。&lt;/string>"
         errorLine2="                                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/res/values/strings_settings_misc.xml"
@@ -11186,7 +11186,7 @@
     <issue
         id="TypographyDashes"
         message="Replace &quot;-&quot; with an &quot;en dash&quot; character (–, &amp;#8211;) ?"
-        errorLine1="    &lt;string name=&quot;settings_asr_vad_threshold&quot;>VAD umbral(0-1,Predeterminado 0.05 ≈ -46dB)&lt;/string>"
+        errorLine1="    &lt;string name=&quot;settings_asr_vad_threshold&quot;>VAD 阈值(0-1,默认 0.05 ≈ -46dB)&lt;/string>"
         errorLine2="                                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/res/values/strings_settings_sub.xml"
@@ -11208,7 +11208,7 @@
     <issue
         id="TypographyDashes"
         message="Replace &quot;-&quot; with an &quot;en dash&quot; character (–, &amp;#8211;) ?"
-        errorLine1="    &lt;string name=&quot;settings_agent_daily_summary_slots_group_early&quot;>mañana (0-5 tiempo)&lt;/string>"
+        errorLine1="    &lt;string name=&quot;settings_agent_daily_summary_slots_group_early&quot;>早朝 (0-5 時)&lt;/string>"
         errorLine2="                                                                  ~~~~~~~~~~">
         <location
             file="src/main/res/values-ja/strings_settings_sub.xml"
@@ -11263,7 +11263,7 @@
     <issue
         id="TypographyDashes"
         message="Replace &quot;-&quot; with an &quot;en dash&quot; character (–, &amp;#8211;) ?"
-        errorLine1="    &lt;string name=&quot;settings_agent_daily_summary_slots_group_evening&quot;>noche (18-23 tiempo)&lt;/string>"
+        errorLine1="    &lt;string name=&quot;settings_agent_daily_summary_slots_group_evening&quot;>夜 (18-23 時)&lt;/string>"
         errorLine2="                                                                    ~~~~~~~~~~~">
         <location
             file="src/main/res/values-ja/strings_settings_sub.xml"
@@ -11318,7 +11318,7 @@
     <issue
         id="TypographyDashes"
         message="Replace &quot;-&quot; with an &quot;en dash&quot; character (–, &amp;#8211;) ?"
-        errorLine1="    &lt;string name=&quot;settings_agent_daily_summary_slots_group_morning&quot;>hacia (6-11 tiempo)&lt;/string>"
+        errorLine1="    &lt;string name=&quot;settings_agent_daily_summary_slots_group_morning&quot;>朝 (6-11 時)&lt;/string>"
         errorLine2="                                                                    ~~~~~~~~~~">
         <location
             file="src/main/res/values-ja/strings_settings_sub.xml"
@@ -11373,7 +11373,7 @@
     <issue
         id="TypographyDashes"
         message="Replace &quot;-&quot; with an &quot;en dash&quot; character (–, &amp;#8211;) ?"
-        errorLine1="    &lt;string name=&quot;settings_agent_daily_summary_slots_group_noon&quot;>pases de diaぎ (12-17 tiempo)&lt;/string>"
+        errorLine1="    &lt;string name=&quot;settings_agent_daily_summary_slots_group_noon&quot;>昼過ぎ (12-17 時)&lt;/string>"
         errorLine2="                                                                 ~~~~~~~~~~~~~">
         <location
             file="src/main/res/values-ja/strings_settings_sub.xml"
@@ -11417,7 +11417,7 @@
     <issue
         id="TypographyDashes"
         message="Replace &quot;-&quot; with an &quot;en dash&quot; character (–, &amp;#8211;) ?"
-        errorLine1="    &lt;string name=&quot;settings_agent_daily_summary_slots_group_early&quot;>madrugada (0-5 tiempo)&lt;/string>"
+        errorLine1="    &lt;string name=&quot;settings_agent_daily_summary_slots_group_early&quot;>凌晨 (0-5 时)&lt;/string>"
         errorLine2="                                                                  ~~~~~~~~~~">
         <location
             file="src/main/res/values/strings_settings_sub.xml"
@@ -11428,7 +11428,7 @@
     <issue
         id="TypographyDashes"
         message="Replace &quot;-&quot; with an &quot;en dash&quot; character (–, &amp;#8211;) ?"
-        errorLine1="    &lt;string name=&quot;settings_agent_daily_summary_slots_group_morning&quot;>mañana (6-11 tiempo)&lt;/string>"
+        errorLine1="    &lt;string name=&quot;settings_agent_daily_summary_slots_group_morning&quot;>早晨 (6-11 时)&lt;/string>"
         errorLine2="                                                                    ~~~~~~~~~~~">
         <location
             file="src/main/res/values/strings_settings_sub.xml"
@@ -11439,7 +11439,7 @@
     <issue
         id="TypographyDashes"
         message="Replace &quot;-&quot; with an &quot;en dash&quot; character (–, &amp;#8211;) ?"
-        errorLine1="    &lt;string name=&quot;settings_agent_daily_summary_slots_group_noon&quot;>tarde (12-17 tiempo)&lt;/string>"
+        errorLine1="    &lt;string name=&quot;settings_agent_daily_summary_slots_group_noon&quot;>午后 (12-17 时)&lt;/string>"
         errorLine2="                                                                 ~~~~~~~~~~~~">
         <location
             file="src/main/res/values/strings_settings_sub.xml"
@@ -11450,7 +11450,7 @@
     <issue
         id="TypographyDashes"
         message="Replace &quot;-&quot; with an &quot;en dash&quot; character (–, &amp;#8211;) ?"
-        errorLine1="    &lt;string name=&quot;settings_agent_daily_summary_slots_group_evening&quot;>noche (18-23 tiempo)&lt;/string>"
+        errorLine1="    &lt;string name=&quot;settings_agent_daily_summary_slots_group_evening&quot;>夜间 (18-23 时)&lt;/string>"
         errorLine2="                                                                    ~~~~~~~~~~~~">
         <location
             file="src/main/res/values/strings_settings_sub.xml"
@@ -11571,7 +11571,7 @@
     <issue
         id="TypographyDashes"
         message="Replace &quot;--&quot; with an &quot;em dash&quot; character (—, &amp;#8212;) ?"
-        errorLine1="    &lt;string name=&quot;settings_tutorial_ch8_s6_content&quot;>El webhook del canal de mensajería requiere que el servidor de la plataforma acceda activamente a su teléfono celular,Pero los teléfonos celulares normalmente no tienen direcciones públicas.\n\n- Prácticas recomendadas(computadora como&quot;tránsito&quot;):Teléfono celular y computadora juntos WiFi;Instale herramientas de tunelización como cloudflared en su computadora,Ejecutar túnel en la nube —url http://IP:puerto,Obtenga la dirección de la red pública con el formato https://xxx.trycloudflare.com.\n\n- Cableado:Agregue el sufijo /webhook/feishu o /webhook/qq a la dirección pública,Complete la dirección de devolución de llamada correspondiente a la plataforma abierta;Después de pasar la verificación de la plataforma,Los mensajes fluirán a tu bandeja de entrada de Muse,y se puede combinar con canales&quot;respuesta automática&quot;Configurar el procesamiento automático.\n\n- Nota:La dirección del túnel temporal cambiará después de reiniciar,Después del cambio, la configuración de la plataforma debe actualizarse simultáneamente.;El teléfono celular y la computadora deben estar en la misma red y la computadora no debe dormir;La seguridad está garantizada por la verificación de la plataforma.——QQ Ir a verificación de firma Ed25519,Verificación del desafío de devolución de llamada de Feishuzou.&lt;/string>"
+        errorLine1="    &lt;string name=&quot;settings_tutorial_ch8_s6_content&quot;>消息渠道的 webhook 需要平台服务器主动访问你的手机,但手机通常没有公网地址。\n\n- 推荐做法(电脑当&quot;中转&quot;):手机与电脑连同一个 WiFi;在电脑上安装 cloudflared 等隧道工具,运行 cloudflared tunnel --url http://你的手机IP:端口,得到形如 https://xxx.trycloudflare.com 的公网地址。\n\n- 接线:把公网地址加上 /webhook/feishu 或 /webhook/qq 后缀,填入对应开放平台的回调地址;平台验证通过后,消息就会流入 Muse 收件箱,并可结合渠道的&quot;自动回复&quot;设置自动处理。\n\n- 注意:临时隧道地址重启后会变化,变更后需同步更新平台配置;手机与电脑需保持同一网络且电脑不休眠;安全性由平台验签保障——QQ 走 Ed25519 签名校验,飞书走回调挑战验证。&lt;/string>"
         errorLine2="                                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/res/values/strings_tutorial.xml"
@@ -11637,7 +11637,7 @@
     <issue
         id="TypographyDashes"
         message="Replace &quot;-&quot; with an &quot;en dash&quot; character (–, &amp;#8211;) ?"
-        errorLine1="    &lt;string name=&quot;assistant_detail_avatar_emoji_label&quot;>avatar Emoji(1-2 personaje,Disponible)&lt;/string>"
+        errorLine1="    &lt;string name=&quot;assistant_detail_avatar_emoji_label&quot;>头像 Emoji(1-2 字符,可空)&lt;/string>"
         errorLine2="                                                       ~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/res/values/strings_ui_main.xml"
@@ -11703,7 +11703,7 @@
     <issue
         id="TypographyDashes"
         message="Replace &quot;-&quot; with an &quot;en dash&quot; character (–, &amp;#8211;) ?"
-        errorLine1="    &lt;string name=&quot;assistant_detail_top_p_label&quot;>Top P(Déjelo en blanco para usar el valor predeterminado,0-1)&lt;/string>"
+        errorLine1="    &lt;string name=&quot;assistant_detail_top_p_label&quot;>Top P(留空用默认,0-1)&lt;/string>"
         errorLine2="                                                ~~~~~~~~~~~~~~~~">
         <location
             file="src/main/res/values/strings_ui_main.xml"
@@ -11813,7 +11813,7 @@
     <issue
         id="TypographyEllipsis"
         message="Replace &quot;...&quot; with ellipsis character (…, &amp;#8230;) ?"
-        errorLine1="    &lt;string name=&quot;moment_publish_placeholder&quot;>pensamientos en este momento...&lt;/string>"
+        errorLine1="    &lt;string name=&quot;moment_publish_placeholder&quot;>这一刻的想法...&lt;/string>"
         errorLine2="                                              ~~~~~~~~~">
         <location
             file="src/main/res/values/strings_chat_core.xml"
@@ -12110,7 +12110,7 @@
     <issue
         id="TypographyEllipsis"
         message="Replace &quot;...&quot; with ellipsis character (…, &amp;#8230;) ?"
-        errorLine1="    &lt;string name=&quot;groupchat_streaming_title&quot;>Entrando a la fuerza...&lt;/string>"
+        errorLine1="    &lt;string name=&quot;groupchat_streaming_title&quot;>入力中...&lt;/string>"
         errorLine2="                                             ~~~~~~">
         <location
             file="src/main/res/values-ja/strings_features.xml"
@@ -12363,7 +12363,7 @@
     <issue
         id="TypographyEllipsis"
         message="Replace &quot;...&quot; with ellipsis character (…, &amp;#8230;) ?"
-        errorLine1="    &lt;string name=&quot;voice_conversation_thinking&quot;>tomar el examenえen...&lt;/string>"
+        errorLine1="    &lt;string name=&quot;voice_conversation_thinking&quot;>考え中...&lt;/string>"
         errorLine2="                                               ~~~~~~">
         <location
             file="src/main/res/values-ja/strings_features.xml"
@@ -12462,7 +12462,7 @@
     <issue
         id="TypographyEllipsis"
         message="Replace &quot;...&quot; with ellipsis character (…, &amp;#8230;) ?"
-        errorLine1="    &lt;string name=&quot;plugin_author_progress&quot;>Generando borrador de complemento...&lt;/string>"
+        errorLine1="    &lt;string name=&quot;plugin_author_progress&quot;>正在生成插件草稿...&lt;/string>"
         errorLine2="                                          ~~~~~~~~~~~">
         <location
             file="src/main/res/values/strings_services.xml"
@@ -12484,7 +12484,7 @@
     <issue
         id="TypographyEllipsis"
         message="Replace &quot;...&quot; with ellipsis character (…, &amp;#8230;) ?"
-        errorLine1="    &lt;string name=&quot;skill_progress_whispering&quot;>Iniciando chat privado...&lt;/string>"
+        errorLine1="    &lt;string name=&quot;skill_progress_whispering&quot;>正在发起私聊...&lt;/string>"
         errorLine2="                                             ~~~~~~~~~">
         <location
             file="src/main/res/values/strings_services.xml"
@@ -12506,7 +12506,7 @@
     <issue
         id="TypographyEllipsis"
         message="Replace &quot;...&quot; with ellipsis character (…, &amp;#8230;) ?"
-        errorLine1="    &lt;string name=&quot;skill_progress_searching&quot;>soozhong...&lt;/string>"
+        errorLine1="    &lt;string name=&quot;skill_progress_searching&quot;>検索中...&lt;/string>"
         errorLine2="                                            ~~~~~~">
         <location
             file="src/main/res/values-ja/strings_services.xml"
@@ -12781,7 +12781,7 @@
     <issue
         id="TypographyEllipsis"
         message="Replace &quot;...&quot; with ellipsis character (…, &amp;#8230;) ?"
-        errorLine1="    &lt;string name=&quot;skill_progress_generating_image&quot;>retratoをgenerando...&lt;/string>"
+        errorLine1="    &lt;string name=&quot;skill_progress_generating_image&quot;>画像を生成中...&lt;/string>"
         errorLine2="                                                   ~~~~~~~~~">
         <location
             file="src/main/res/values-ja/strings_services.xml"
@@ -12891,7 +12891,7 @@
     <issue
         id="TypographyEllipsis"
         message="Replace &quot;...&quot; with ellipsis character (…, &amp;#8230;) ?"
-        errorLine1="    &lt;string name=&quot;skill_progress_searching&quot;>Buscando...&lt;/string>"
+        errorLine1="    &lt;string name=&quot;skill_progress_searching&quot;>正在搜索...&lt;/string>"
         errorLine2="                                            ~~~~~~~">
         <location
             file="src/main/res/values/strings_services.xml"
@@ -12902,7 +12902,7 @@
     <issue
         id="TypographyEllipsis"
         message="Replace &quot;...&quot; with ellipsis character (…, &amp;#8230;) ?"
-        errorLine1="    &lt;string name=&quot;skill_progress_fetching&quot;>Obteniendo página web...&lt;/string>"
+        errorLine1="    &lt;string name=&quot;skill_progress_fetching&quot;>正在抓取网页...&lt;/string>"
         errorLine2="                                           ~~~~~~~~~">
         <location
             file="src/main/res/values/strings_services.xml"
@@ -12913,7 +12913,7 @@
     <issue
         id="TypographyEllipsis"
         message="Replace &quot;...&quot; with ellipsis character (…, &amp;#8230;) ?"
-        errorLine1="    &lt;string name=&quot;skill_progress_installing&quot;>Instalación skill...&lt;/string>"
+        errorLine1="    &lt;string name=&quot;skill_progress_installing&quot;>正在安装 skill...&lt;/string>"
         errorLine2="                                             ~~~~~~~~~~~~~">
         <location
             file="src/main/res/values/strings_services.xml"
@@ -12924,7 +12924,7 @@
     <issue
         id="TypographyEllipsis"
         message="Replace &quot;...&quot; with ellipsis character (…, &amp;#8230;) ?"
-        errorLine1="    &lt;string name=&quot;skill_progress_delegating&quot;>Subasistente delegado...&lt;/string>"
+        errorLine1="    &lt;string name=&quot;skill_progress_delegating&quot;>正在委托子助手...&lt;/string>"
         errorLine2="                                             ~~~~~~~~~~">
         <location
             file="src/main/res/values/strings_services.xml"
@@ -12935,7 +12935,7 @@
     <issue
         id="TypographyEllipsis"
         message="Replace &quot;...&quot; with ellipsis character (…, &amp;#8230;) ?"
-        errorLine1="    &lt;string name=&quot;skill_progress_planning&quot;>Creando plan...&lt;/string>"
+        errorLine1="    &lt;string name=&quot;skill_progress_planning&quot;>正在创建计划...&lt;/string>"
         errorLine2="                                           ~~~~~~~~~">
         <location
             file="src/main/res/values/strings_services.xml"
@@ -12946,7 +12946,7 @@
     <issue
         id="TypographyEllipsis"
         message="Replace &quot;...&quot; with ellipsis character (…, &amp;#8230;) ?"
-        errorLine1="    &lt;string name=&quot;skill_progress_generating_image&quot;>Generando imágenes...&lt;/string>"
+        errorLine1="    &lt;string name=&quot;skill_progress_generating_image&quot;>正在生成图片...&lt;/string>"
         errorLine2="                                                   ~~~~~~~~~">
         <location
             file="src/main/res/values/strings_services.xml"
@@ -13342,7 +13342,7 @@
     <issue
         id="TypographyEllipsis"
         message="Replace &quot;...&quot; with ellipsis character (…, &amp;#8230;) ?"
-        errorLine1="    &lt;string name=&quot;settings_backup_status_checking&quot;>Bajo inspección...&lt;/string>"
+        errorLine1="    &lt;string name=&quot;settings_backup_status_checking&quot;>检查中...&lt;/string>"
         errorLine2="                                                   ~~~~~~">
         <location
             file="src/main/res/values/strings_settings_main.xml"
@@ -13353,7 +13353,7 @@
     <issue
         id="TypographyEllipsis"
         message="Replace &quot;...&quot; with ellipsis character (…, &amp;#8230;) ?"
-        errorLine1="    &lt;string name=&quot;settings_backup_exporting_data&quot;>Exportar datos...&lt;/string>"
+        errorLine1="    &lt;string name=&quot;settings_backup_exporting_data&quot;>正在导出数据...&lt;/string>"
         errorLine2="                                                  ~~~~~~~~~">
         <location
             file="src/main/res/values/strings_settings_main.xml"
@@ -13364,7 +13364,7 @@
     <issue
         id="TypographyEllipsis"
         message="Replace &quot;...&quot; with ellipsis character (…, &amp;#8230;) ?"
-        errorLine1="    &lt;string name=&quot;settings_backup_importing_data&quot;>Importando datos...&lt;/string>"
+        errorLine1="    &lt;string name=&quot;settings_backup_importing_data&quot;>正在导入数据...&lt;/string>"
         errorLine2="                                                  ~~~~~~~~~">
         <location
             file="src/main/res/values/strings_settings_main.xml"
@@ -13375,7 +13375,7 @@
     <issue
         id="TypographyEllipsis"
         message="Replace &quot;...&quot; with ellipsis character (…, &amp;#8230;) ?"
-        errorLine1="    &lt;string name=&quot;settings_backup_uploading_cloud&quot;>Subiendo a la nube...&lt;/string>"
+        errorLine1="    &lt;string name=&quot;settings_backup_uploading_cloud&quot;>正在上传到云端...&lt;/string>"
         errorLine2="                                                   ~~~~~~~~~~">
         <location
             file="src/main/res/values/strings_settings_main.xml"
@@ -13386,7 +13386,7 @@
     <issue
         id="TypographyEllipsis"
         message="Replace &quot;...&quot; with ellipsis character (…, &amp;#8230;) ?"
-        errorLine1="    &lt;string name=&quot;settings_backup_restoring_cloud&quot;>Recuperarse de la nube...&lt;/string>"
+        errorLine1="    &lt;string name=&quot;settings_backup_restoring_cloud&quot;>正在从云端恢复...&lt;/string>"
         errorLine2="                                                   ~~~~~~~~~~">
         <location
             file="src/main/res/values/strings_settings_main.xml"
@@ -13463,7 +13463,7 @@
     <issue
         id="TypographyEllipsis"
         message="Replace &quot;...&quot; with ellipsis character (…, &amp;#8230;) ?"
-        errorLine1="    &lt;string name=&quot;cloud_backup_list_loading&quot;>Cargando...&lt;/string>"
+        errorLine1="    &lt;string name=&quot;cloud_backup_list_loading&quot;>正在加载...&lt;/string>"
         errorLine2="                                             ~~~~~~~">
         <location
             file="src/main/res/values/strings_settings_main.xml"
@@ -13485,7 +13485,7 @@
     <issue
         id="TypographyEllipsis"
         message="Replace &quot;...&quot; with ellipsis character (…, &amp;#8230;) ?"
-        errorLine1="    &lt;string name=&quot;settings_mcp_getting&quot;>empezar...&lt;/string>"
+        errorLine1="    &lt;string name=&quot;settings_mcp_getting&quot;>入手中...&lt;/string>"
         errorLine2="                                        ~~~~~~">
         <location
             file="src/main/res/values-ja/strings_settings_main.xml"
@@ -13540,7 +13540,7 @@
     <issue
         id="TypographyEllipsis"
         message="Replace &quot;...&quot; with ellipsis character (…, &amp;#8230;) ?"
-        errorLine1="    &lt;string name=&quot;settings_mcp_loading&quot;>Cargando...&lt;/string>"
+        errorLine1="    &lt;string name=&quot;settings_mcp_loading&quot;>加载中...&lt;/string>"
         errorLine2="                                        ~~~~~~">
         <location
             file="src/main/res/values/strings_settings_main.xml"
@@ -13551,7 +13551,7 @@
     <issue
         id="TypographyEllipsis"
         message="Replace &quot;...&quot; with ellipsis character (…, &amp;#8230;) ?"
-        errorLine1="    &lt;string name=&quot;settings_mcp_getting&quot;>Conseguir...&lt;/string>"
+        errorLine1="    &lt;string name=&quot;settings_mcp_getting&quot;>获取中...&lt;/string>"
         errorLine2="                                        ~~~~~~">
         <location
             file="src/main/res/values/strings_settings_main.xml"
@@ -13639,7 +13639,7 @@
     <issue
         id="TypographyEllipsis"
         message="Replace &quot;...&quot; with ellipsis character (…, &amp;#8230;) ?"
-        errorLine1="    &lt;string name=&quot;settings_tutorial_ch1_s3_content&quot;>1. Abrir aplicación,ver página de chat\n2. Haga clic en el cuadro de entrada en la parte inferior de la pantalla.(mostrar“enviar mensaje...”lugar)\n3. Ingresa la pregunta que deseas hacer,por ejemplo“Hola”o“Ayúdame a escribir un poema sobre la primavera.”\n4. Haga clic en el botón enviar a la derecha(Icono de avión de papel)\n5. Espere la respuesta de la IA,Las palabras aparecerán una por una.,esto se llama“Salida de transmisión”\n6. Quieres seguir chateando,Simplemente escriba en el cuadro de entrada y envíelo.,AI Responderá según el contexto.\n\nPuedes intentar hacerle algunas preguntas sencillas por primera vez.,Por ejemplo, presentarse o explicar un concepto.,Familiarízate con su estilo de respuesta.&lt;/string>"
+        errorLine1="    &lt;string name=&quot;settings_tutorial_ch1_s3_content&quot;>1. 打开应用,看到聊天页面\n2. 点击屏幕下方的输入框(显示“发送消息...”的地方)\n3. 输入您想问的问题,比如“你好”或“帮我写一首关于春天的诗”\n4. 点击右侧的发送按钮(纸飞机图标)\n5. 等待 AI 回复,文字会一个一个冒出来,这叫“流式输出”\n6. 想继续聊,就直接在输入框接着打字发送,AI 会根据上下文接着回答\n\n第一次可以试着问它一些简单的问题,比如自我介绍、解释某个概念,熟悉一下它的回答风格。&lt;/string>"
         errorLine2="                                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/res/values/strings_settings_misc.xml"
@@ -13716,7 +13716,7 @@
     <issue
         id="TypographyEllipsis"
         message="Replace &quot;...&quot; with ellipsis character (…, &amp;#8230;) ?"
-        errorLine1="    &lt;string name=&quot;settings_agent_loading&quot;>Cargando...&lt;/string>"
+        errorLine1="    &lt;string name=&quot;settings_agent_loading&quot;>加载中...&lt;/string>"
         errorLine2="                                          ~~~~~~">
         <location
             file="src/main/res/values/strings_settings_sub.xml"
@@ -13793,7 +13793,7 @@
     <issue
         id="TypographyEllipsis"
         message="Replace &quot;...&quot; with ellipsis character (…, &amp;#8230;) ?"
-        errorLine1="    &lt;string name=&quot;settings_importing&quot;>Importando,por favor espera...&lt;/string>"
+        errorLine1="    &lt;string name=&quot;settings_importing&quot;>正在导入,请稍候...&lt;/string>"
         errorLine2="                                      ~~~~~~~~~~~">
         <location
             file="src/main/res/values/strings_settings_sub.xml"
@@ -13870,7 +13870,7 @@
     <issue
         id="TypographyEllipsis"
         message="Replace &quot;...&quot; with ellipsis character (…, &amp;#8230;) ?"
-        errorLine1="    &lt;string name=&quot;translate_page_input_placeholder&quot;>Ingrese el texto para traducir...&lt;/string>"
+        errorLine1="    &lt;string name=&quot;translate_page_input_placeholder&quot;>输入要翻译的文本...&lt;/string>"
         errorLine2="                                                    ~~~~~~~~~~~">
         <location
             file="src/main/res/values/strings_translate.xml"
@@ -13958,7 +13958,7 @@
     <issue
         id="TypographyEllipsis"
         message="Replace &quot;...&quot; with ellipsis character (…, &amp;#8230;) ?"
-        errorLine1="    &lt;string name=&quot;settings_tutorial_search_placeholder&quot;>Buscar contenido del tutorial...&lt;/string>"
+        errorLine1="    &lt;string name=&quot;settings_tutorial_search_placeholder&quot;>搜索教程内容...&lt;/string>"
         errorLine2="                                                        ~~~~~~~~~">
         <location
             file="src/main/res/values/strings_tutorial.xml"
@@ -14090,7 +14090,7 @@
     <issue
         id="TypographyEllipsis"
         message="Replace &quot;...&quot; with ellipsis character (…, &amp;#8230;) ?"
-        errorLine1="    &lt;string name=&quot;assistant_detail_loading&quot;>Cargando...&lt;/string>"
+        errorLine1="    &lt;string name=&quot;assistant_detail_loading&quot;>加载中...&lt;/string>"
         errorLine2="                                            ~~~~~~">
         <location
             file="src/main/res/values/strings_ui_main.xml"
@@ -14167,7 +14167,7 @@
     <issue
         id="TypographyEllipsis"
         message="Replace &quot;...&quot; with ellipsis character (…, &amp;#8230;) ?"
-        errorLine1="    &lt;string name=&quot;assistant_detail_preset_messages_label&quot;>Mensaje predeterminado JSON(Avanzado,Como por ejemplo [{\&quot;role\&quot;:\&quot;system\&quot;,\&quot;content\&quot;:\&quot;...\&quot;}])&lt;/string>"
+        errorLine1="    &lt;string name=&quot;assistant_detail_preset_messages_label&quot;>预设消息 JSON(高级,如 [{\&quot;role\&quot;:\&quot;system\&quot;,\&quot;content\&quot;:\&quot;...\&quot;}])&lt;/string>"
         errorLine2="                                                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/res/values/strings_ui_main.xml"
@@ -14365,7 +14365,7 @@
     <issue
         id="TypographyEllipsis"
         message="Replace &quot;...&quot; with ellipsis character (…, &amp;#8230;) ?"
-        errorLine1="    &lt;string name=&quot;channel_webhook_qq_hint&quot;>Solo disponible para devoluciones de llamadas QQ configuradas manualmente. Establezca una clave aleatoria de alta seguridad y agréguela a la URL de devolución de llamada. ?token=...;La solicitud también debe llevar una firma Ed25519 nueva y una marca de tiempo, verificadas mediante el secreto de la aplicación anterior. Esto no es necesario para una recepción de conexión prolongada.&lt;/string>"
+        errorLine1="    &lt;string name=&quot;channel_webhook_qq_hint&quot;>仅供手动配置的 QQ 回调使用。请设置高强度随机密钥，并在回调 URL 追加 ?token=...；请求还必须带新鲜的 Ed25519 签名和时间戳，由上方 App Secret 校验。长连接接收不需要此项。&lt;/string>"
         errorLine2="                                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/res/values/strings_ui_main.xml"
@@ -14464,7 +14464,7 @@
     <issue
         id="TypographyEllipsis"
         message="Replace &quot;...&quot; with ellipsis character (…, &amp;#8230;) ?"
-        errorLine1="    &lt;string name=&quot;video_gen_processing&quot;>generando...&lt;/string>"
+        errorLine1="    &lt;string name=&quot;video_gen_processing&quot;>生成中...&lt;/string>"
         errorLine2="                                        ~~~~~~">
         <location
             file="src/main/res/values-ja/strings_ui_main.xml"
@@ -14508,7 +14508,7 @@
     <issue
         id="TypographyEllipsis"
         message="Replace &quot;...&quot; with ellipsis character (…, &amp;#8230;) ?"
-        errorLine1="    &lt;string name=&quot;search_placeholder&quot;>Sesión de búsqueda/noticias/ajustes...&lt;/string>"
+        errorLine1="    &lt;string name=&quot;search_placeholder&quot;>搜索会话/消息/设置...&lt;/string>"
         errorLine2="                                      ~~~~~~~~~~~~~">
         <location
             file="src/main/res/values/strings_ui_main.xml"
@@ -14519,7 +14519,7 @@
     <issue
         id="TypographyEllipsis"
         message="Replace &quot;...&quot; with ellipsis character (…, &amp;#8230;) ?"
-        errorLine1="    &lt;string name=&quot;skill_importing_detail&quot;>Leer y analizar el documento....&lt;/string>"
+        errorLine1="    &lt;string name=&quot;skill_importing_detail&quot;>正在读取并解析文档...&lt;/string>"
         errorLine2="                                          ~~~~~~~~~~~~">
         <location
             file="src/main/res/values/strings_ui_main.xml"
@@ -14541,7 +14541,7 @@
     <issue
         id="TypographyEllipsis"
         message="Replace &quot;...&quot; with ellipsis character (…, &amp;#8230;) ?"
-        errorLine1="    &lt;string name=&quot;oauth_polling&quot;>Espere a que se complete la autorización...&lt;/string>"
+        errorLine1="    &lt;string name=&quot;oauth_polling&quot;>等待授权完成...&lt;/string>"
         errorLine2="                                 ~~~~~~~~~">
         <location
             file="src/main/res/values/strings_ui_main.xml"
@@ -14563,7 +14563,7 @@
     <issue
         id="TypographyEllipsis"
         message="Replace &quot;...&quot; with ellipsis character (…, &amp;#8230;) ?"
-        errorLine1="    &lt;string name=&quot;video_gen_processing&quot;>generando...&lt;/string>"
+        errorLine1="    &lt;string name=&quot;video_gen_processing&quot;>生成中...&lt;/string>"
         errorLine2="                                        ~~~~~~">
         <location
             file="src/main/res/values/strings_ui_main.xml"
@@ -14596,7 +14596,7 @@
     <issue
         id="TypographyEllipsis"
         message="Replace &quot;...&quot; with ellipsis character (…, &amp;#8230;) ?"
-        errorLine1="    &lt;string name=&quot;model_switch_fetching_upstream&quot;>Tirando del modelo desde aguas arriba...&lt;/string>"
+        errorLine1="    &lt;string name=&quot;model_switch_fetching_upstream&quot;>正在从上游拉取模型...&lt;/string>"
         errorLine2="                                                  ~~~~~~~~~~~~">
         <location
             file="src/main/res/values/strings_ui_misc.xml"

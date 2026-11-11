@@ -1,65 +1,90 @@
 #!/usr/bin/env python3
 """
-check_localizations.py — Android Comprobación de integridad de recursos de cadena.
+check_localizations.py — Android 字符串资源完整性校验。
 
-Contraste values/(punto de referencia)con cada uno values-<locale>/ bajo directorio strings_*.xml diferencia clave,
-Informar claves faltantes para cada ubicación.CI se utiliza para hacer cumplir la integridad de la traducción.
+对比 values/(基准)与各 values-<locale>/ 目录下 strings_*.xml 的 key 差异,
+报告每个 locale 缺失的 key。CI 中用于强制保证翻译完整性。
 
-Uso:
+用法:
     python ci/script/check_localizations.py [--res-dir app/src/main/res] [--strict-locales en]
 
-código de salida:
-    0 — strict locales(Predeterminado en)No falta nada key
-    1 — hay algo que falta key(CI falló)
+退出码:
+    0 — strict locales(默认 en)无缺失 key
+    1 — 存在缺失 key(CI 失败)
 
-Descripción:
-    v1.0.56: Nuevo --strict-locales — Sólo fallarán las configuraciones regionales enumeradas a las que les faltan claves.;
-    otros idiomas(es/ja/ko/pt/ru espera)solo falta imprimir WARN,No bloquea CI.
-    La traducción multilingüe es un trabajo incremental,La liberación de la función principal no debe bloquearse;idioma primario obligatorio(en)La integridad es suficiente.
+说明:
+    v1.0.56: 新增 --strict-locales — 只有列出的 locale 缺失 key 才算失败;
+    其他语言(es/ja/ko/pt/ru 等)缺失仅打印 WARN,不阻塞 CI。
+    多语言翻译是增量工作,不应阻塞主功能发布;强制主语言(en)完整性即可。
 """
 
 import argparse
 import os
 import re
 import sys
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
-# Windows Predeterminado de la consola china GBK,Y este script se imprimirá ✓/✗(No en el juego de caracteres GBK),
-# La salida directa arrojará UnicodeEncodeError y hará que los carriles fallen. Cortado uniformemente a UTF-8.
+# Windows 中文控制台默认 GBK,而本脚本会打印 ✓/✗(不在 GBK 字符集内),
+# 直接输出会抛 UnicodeEncodeError 并让 lanes lane 失败。统一切到 UTF-8。
 try:
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     sys.stderr.reconfigure(encoding="utf-8", errors="replace")
-except Exception:  # noqa: BLE001 - El cheque en sí no debería verse afectado si el entorno no lo soporta.
+except Exception:  # noqa: BLE001 - 环境不支持时不应影响检查本身
     pass
 
-# Extracto <string name="key"> regularidad
-STRING_NAME_RE = re.compile(r'<string\s+name="([^"]+)"', re.IGNORECASE)
+# 提取 string / plurals 资源名称。
+STRING_NAME_RE = re.compile(r'<(?:string|plurals)\s+name="([^"]+)"', re.IGNORECASE)
 
-# Modo de archivo a escanear
+# 声明为 translatable="false" 的 key 是故意不翻译的(语言自称、专有名词),
+# 不该算进各 locale 的完整性缺口;开标签正则用于把属性和 name 一起认出来。
+STRING_TAG_OPEN_RE = re.compile(r"<string\s[^>]*>", re.IGNORECASE)
+NAME_ATTR_RE = re.compile(r'name="([^"]+)"')
+NOT_TRANSLATABLE_RE = re.compile(r'translatable\s*=\s*"false"', re.IGNORECASE)
+
+# 需要扫描的文件模式
 STRING_FILE_PATTERN = "strings*.xml"
-# Nombre del directorio de valores predeterminados(punto de referencia)
+# 默认 values 目录名(基准)
 DEFAULT_VALUES_DIR = "values"
-# Prefijos de directorios locales admitidos
+# 支持的 locale 目录前缀
 LOCALE_DIR_PREFIX = "values-"
 
 
 def extract_keys_from_file(file_path: Path) -> set:
-    """de un solo strings_*.xml Extraiga todas las claves de cadena del archivo."""
+    """从单个 strings_*.xml 文件中提取所有 string key。"""
     if not file_path.exists():
         return set()
     try:
         content = file_path.read_text(encoding="utf-8")
     except Exception as e:
-        print(f"  WARNING: leer {file_path} falló: {e}", file=sys.stderr)
+        print(f"  WARNING: 读取 {file_path} 失败: {e}", file=sys.stderr)
         return set()
     return set(STRING_NAME_RE.findall(content))
 
 
+def extract_untranslatable_keys_from_file(file_path: Path) -> set:
+    """本文件里 translatable="false" 的 string key 集合。"""
+    if not file_path.exists():
+        return set()
+    try:
+        content = file_path.read_text(encoding="utf-8")
+    except Exception as e:
+        print(f"  WARNING: 读取 {file_path} 失败: {e}", file=sys.stderr)
+        return set()
+    keys = set()
+    for tag in STRING_TAG_OPEN_RE.findall(content):
+        if NOT_TRANSLATABLE_RE.search(tag):
+            name = NAME_ATTR_RE.search(tag)
+            if name:
+                keys.add(name.group(1))
+    return keys
+
+
 def extract_all_keys(values_dir: Path) -> dict:
     """
-    Extraer todo del directorio de valores. strings_*.xml llave.
+    从 values 目录中提取所有 strings_*.xml 的 key。
 
-    Regresar: {filename: set(keys)} Como por ejemplo {"strings_ui_main.xml": {"key1", "key2"}}
+    返回: {filename: set(keys)} 如 {"strings_ui_main.xml": {"key1", "key2"}}
     """
     result = {}
     if not values_dir.exists():
@@ -71,7 +96,7 @@ def extract_all_keys(values_dir: Path) -> dict:
 
 
 def find_locale_dirs(res_dir: Path) -> list:
-    """encontrar todo values-* Directorio(Excluir directorios que no sean de idiomas, como valores-noche)."""
+    """找到所有 values-* 目录(排除 values-night 等非语言目录)。"""
     locales = []
     if not res_dir.exists():
         return locales
@@ -81,7 +106,7 @@ def find_locale_dirs(res_dir: Path) -> list:
         name = d.name
         if not name.startswith(LOCALE_DIR_PREFIX):
             continue
-        # Excluir directorios que no sean de idiomas(values-night, values-v31 espera)
+        # 排除非语言目录(values-night, values-v31 等)
         suffix = name[len(LOCALE_DIR_PREFIX):]
         if suffix.startswith("v") or suffix in ("night", "land", "port", "desk", "car", "television", "appliance", "watch", "small", "normal", "large", "xlarge", "hdpiv", "wdpiv"):
             continue
@@ -96,28 +121,49 @@ def normalize_locale_name(name: str) -> str:
 
 def check_locale(res_dir: Path, verbose: bool = False, strict_locales: set = None) -> int:
     """
-    Verifique la integridad de todas las claves locales.
+    校验所有 locale 的 key 完整性。
 
-    Regresar: Número total de claves faltantes(0 significa todo completo)
+    返回: 缺失 key 的总数(0 表示全部完整)
     """
     default_dir = res_dir / DEFAULT_VALUES_DIR
     baseline = extract_all_keys(default_dir)
+    # 自称/专有名词类 key 只存在于 values/,各 locale 不复制它们,所以不参与缺失比对。
+    baseline_untranslatable = set()
+    for xml_file in sorted(default_dir.glob(STRING_FILE_PATTERN)):
+        baseline_untranslatable |= extract_untranslatable_keys_from_file(xml_file)
     strict_locale_codes = {
         normalize_locale_name(locale) for locale in (strict_locales or set())
     }
 
+    checked_dirs = [default_dir] + [
+        directory for directory in find_locale_dirs(res_dir)
+        if normalize_locale_name(directory.name) in strict_locale_codes
+    ]
+    for directory in checked_dirs:
+        for path in sorted(directory.glob(STRING_FILE_PATTERN)):
+            try:
+                root = ET.parse(path).getroot()
+            except ET.ParseError as error:
+                print(f"ERROR: {path}: {error}", file=sys.stderr)
+                return 1
+            for plural in root.findall("plurals"):
+                quantities = {item.get("quantity") for item in plural.findall("item")}
+                if "other" not in quantities or (plural.text or "").strip():
+                    print(f"ERROR: {path}: invalid plural {plural.get('name')}", file=sys.stderr)
+                    return 1
+
     if not baseline:
-        print(f"ERROR: Directorio de referencia {default_dir} Ninguno strings_*.xml Archivo", file=sys.stderr)
+        print(f"ERROR: 基准目录 {default_dir} 无 strings_*.xml 文件", file=sys.stderr)
         return 1
 
     total_baseline_keys = sum(len(keys) for keys in baseline.values())
-    print(f"Directorio de referencia: {default_dir}")
-    print(f"Número de archivos de referencia: {len(baseline)}, Número total de claves de referencia: {total_baseline_keys}")
+    print(f"基准目录: {default_dir}")
+    print(f"基准文件数: {len(baseline)}, 基准 key 总数: {total_baseline_keys}")
     print()
 
     locale_dirs = find_locale_dirs(res_dir)
     if not locale_dirs:
-        print("WARNING: no encontré ninguno values-* locale Directorio", file=sys.stderr)
+        print("WARNING: 未找到任何 values-* locale 目录", file=sys.stderr)
         return 0
 
     total_missing = 0
@@ -127,16 +173,16 @@ def check_locale(res_dir: Path, verbose: bool = False, strict_locales: set = Non
         locale_keys = extract_all_keys(locale_dir)
 
         locale_total = sum(len(keys) for keys in locale_keys.values())
-        # v1.0.56: Cambiar a comparación de conjuntos de claves entre archivos — key distribuidos en diferentes strings_*.xml es legal
-        #   (Como por ejemplo onboarding_* Chino en strings_features.xml, inglés en strings.xml),
-        #   La fusión de recursos solo analiza la unicidad clave;La comparación por archivo informará falsamente de información faltante y confundirá la traducción.
+        # v1.0.56: 改为跨文件 key 集合比对 — key 分布在不同 strings_*.xml 是合法的
+        #   (如 onboarding_* 中文在 strings_features.xml、英文在 strings.xml),
+        #   资源合并只看 key 唯一性;按文件比对会误报缺失并误导补翻译。
         baseline_all = set().union(*baseline.values())
         locale_all = set().union(*locale_keys.values())
-        missing_keys = baseline_all - locale_all
+        missing_keys = (baseline_all - baseline_untranslatable) - locale_all
         extra_keys = locale_all - baseline_all if verbose else set()
 
         missing_count = len(missing_keys)
-        # v1.0.56: strict locale Fallo acumulado solo si falta;A otros idiomas les falta solo advertencia
+        # v1.0.56: strict locale 缺失才累计失败;其他语言缺失仅警告
         is_strict = normalize_locale_name(locale_name) in strict_locale_codes
         if is_strict:
             total_missing += missing_count
@@ -157,29 +203,29 @@ def check_locale(res_dir: Path, verbose: bool = False, strict_locales: set = Non
 
     print()
     if total_missing == 0:
-        print(f"✓ strict locales({', '.join(sorted(strict_locales))}) Traducción completa(0 desaparecido)")
+        print(f"✓ strict locales({', '.join(sorted(strict_locales))}) 翻译完整(0 缺失)")
         return 0
     else:
-        print(f"✗ Traducción incompleta: {total_missing} faltan llaves(strict locales: {', '.join(sorted(strict_locales))})", file=sys.stderr)
+        print(f"✗ 翻译不完整: {total_missing} 个 key 缺失(strict locales: {', '.join(sorted(strict_locales))})", file=sys.stderr)
         return 1
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Android Verificación de integridad de recursos de cadena")
+    parser = argparse.ArgumentParser(description="Android 字符串资源完整性校验")
     parser.add_argument(
         "--res-dir",
         default="app/src/main/res",
-        help="Android res ruta del directorio(Predeterminado: app/src/main/res)",
+        help="Android res 目录路径(默认: app/src/main/res)",
     )
     parser.add_argument(
         "--verbose",
         action="store_true",
-        help="Mostrar información adicional(Incluir configuración regional redundante key)",
+        help="显示额外信息(包括 locale 中多余的 key)",
     )
     parser.add_argument(
         "--strict-locales",
         default="en",
-        help="La clave faltante causará fallas locale(separados por comas,Predeterminado: en);A otros idiomas les falta solo advertencia",
+        help="缺失 key 会导致失败的 locale(逗号分隔,默认: en);其他语言缺失仅警告",
     )
     args = parser.parse_args()
     strict_locales = {
@@ -190,7 +236,7 @@ def main():
 
     res_dir = Path(args.res_dir).resolve()
     if not res_dir.exists():
-        print(f"ERROR: res El directorio no existe: {res_dir}", file=sys.stderr)
+        print(f"ERROR: res 目录不存在: {res_dir}", file=sys.stderr)
         sys.exit(2)
 
     exit_code = check_locale(res_dir, verbose=args.verbose, strict_locales=strict_locales)

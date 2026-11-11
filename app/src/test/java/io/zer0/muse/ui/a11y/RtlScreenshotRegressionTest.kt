@@ -23,19 +23,19 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 /**
- * A11Y-07: RTL regresar (`supportsRtl="true"` Pero no ha habido ninguna verificación antes).
+ * A11Y-07: RTL 回归（`supportsRtl="true"` 但此前无任何验证）。
  *
- * **Cobertura (declaración honesta,A11Y-07 revisión)**: Este archivo es una prueba Robolectric/JVM,
- * **Solo haga afirmaciones de dirección de diseño, no regresión de captura de pantalla a nivel de píxel**(Sin muestreo de mapa de bits, sin comparación de puntos de referencia).
- * en el nombre de la clase "Screenshot" Es un nombramiento histórico y sus capacidades reales son las siguientes:
- * 1. `ar-rSA` locale La dirección de diseño de la raíz inferior es [LayoutDirection.Rtl](Aserción a nivel de atributo);
- * 2. RTL El texto a continuación en realidad se encuentra en el lado derecho del contenedor principal según las coordenadas de píxeles y tiene el tamaño de representación real.
- *    (Esto demuestra que la dirección no solo es correcta en los atributos, sino que también afecta la composición tipográfica).
+ * **覆盖范围（诚实说明，A11Y-07 复核）**：本文件是 Robolectric/JVM 测试，
+ * **只做布局方向断言，不做像素级截图回归**（无 Bitmap 采样、无基准图比对）。
+ * 类名中的 "Screenshot" 是历史命名，实际能力如下：
+ * 1. `ar-rSA` locale 下根布局方向为 [LayoutDirection.Rtl]（属性层断言）；
+ * 2. RTL 下文本按像素坐标真实落位于父容器右侧，且具备实际渲染尺寸
+ *    （证明方向不只属性正确，还真实作用于排版）。
  *
- * **no cubierto**: dispositivo real/Comparación de capturas de pantalla a nivel de píxeles en el simulador (fuente, espaciado, icono de espejo,
- * Saltos de línea aleatorios bidireccionales, etc.). Referenciado por comentarios anteriores. `RtlScreenshotInstrumentedTest`
- * en `app/src/androidTest/` no existe en; si desea agregarlo más tarde, debe agregarlo. instrumented
- * Tome capturas de pantalla para probar y ejecutar en AVD/dispositivo real; esta sección debe actualizarse simultáneamente.
+ * **未覆盖**：真实设备/模拟器上的像素级截图对比（字体、间距、镜像图标、
+ * 双向混排断行等）。此前注释引用的 `RtlScreenshotInstrumentedTest`
+ * 在 `app/src/androidTest/` 中并不存在；若后续要补，需新增 instrumented
+ * 截图测试并在 AVD/真机上运行，届时本节应同步更新。
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33], qualifiers = "ar-rSA")
@@ -45,8 +45,8 @@ class RtlScreenshotRegressionTest {
     @get:Rule
     val composeTestRule = createComposeRule()
 
-    /** Redacción de muestra:Árabe mixto/China y Japón/latín,Evite que el texto latino sin formato enmascare errores de orientación RTL. */
-    private val rtlSample = "مرحبا Muse · ajustes · Settings"
+    /** 采样文案:混排阿拉伯语/中日/拉丁,防止纯拉丁文本掩盖 RTL 方向错误。 */
+    private val rtlSample = "مرحبا Muse · 設置 · Settings"
 
     @Test
     fun `ar locale root layout direction is RTL`() {
@@ -81,8 +81,8 @@ class RtlScreenshotRegressionTest {
             }
         }
         composeTestRule.waitForIdle()
-        assertTrue("RTL El siguiente texto debe colocarse en el lado derecho del contenedor principal en lugar del borde izquierdo.(textX=$textX)", textX > 0f)
-        assertTrue("RTL El texto debe tener el ancho de representación real.(width=$widthPx)", widthPx > 0f)
-        assertTrue("RTL El texto debe tener una altura real renderizada(height=$heightPx)", heightPx > 0f)
+        assertTrue("RTL 下文本应落位于父容器右侧而非左缘(textX=$textX)", textX > 0f)
+        assertTrue("RTL 文本应具备实际渲染宽度(width=$widthPx)", widthPx > 0f)
+        assertTrue("RTL 文本应具备实际渲染高度(height=$heightPx)", heightPx > 0f)
     }
 }

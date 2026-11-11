@@ -5,17 +5,17 @@ import io.zer0.ai.core.ModelAbility
 import io.zer0.ai.core.VisionCapabilities
 
 /**
- * Registro de capacidades del modelo DSL.
+ * 模型能力注册表 DSL。
  *
- * Describir familias de modelos con reglas declarativas: cada definición contiene un conjunto de condiciones coincidentes y metainformación de capacidad.
- * Soporte:
- *  - Coincidencia de secuencia de token ordenada:tokens("gpt", "4", "o")
- *  - Coincidencia inversa:notTokens("mini")
- *  - Coincidencia exacta de identificación:exact("gpt-4o-2024-05-13")
- *  - Ficha normal:tokenRegex("^o$")
- *  - Alternativas:tokens("gpt|chatgpt")
+ * 以声明式规则描述模型族：每个定义包含一组匹配条件与能力元信息。
+ * 支持：
+ *  - 有序 token 序列匹配：tokens("gpt", "4", "o")
+ *  - 反向匹配：notTokens("mini")
+ *  - 精确 ID 匹配：exact("gpt-4o-2024-05-13")
+ *  - 正则 token：tokenRegex("^o$")
+ *  - 备选项：tokens("gpt|chatgpt")
  *
- * Uso:
+ * 用法：
  * ```kotlin
  * val GPT4O = defineModel {
  *     tokens("gpt", "4", "o")
@@ -25,7 +25,7 @@ import io.zer0.ai.core.VisionCapabilities
  * ```
  */
 
-// --- publico API ---
+// --- 公共 API ---
 
 interface ModelSelector {
     fun match(modelId: String): Boolean
@@ -37,7 +37,7 @@ class ModelDefinition(
     val outputModalities: Set<String>,
     val abilities: Set<ModelAbility>,
     val builtInTools: Set<BuiltInTool>,
-    /** v1.0.4: Declaración visual de capacidad de conexión a tierra(null significa no declarado,No sobrescribir los valores del modelo existente). */
+    /** v1.0.4: 视觉 grounding 能力声明(null 表示未声明,不覆盖 Model 已有值)。 */
     val visionCapabilities: VisionCapabilities? = null,
 ) : ModelSelector {
     override fun match(modelId: String): Boolean {
@@ -65,7 +65,7 @@ fun defineGroup(block: ModelGroupBuilder.() -> Unit): ModelGroup = ModelGroupBui
 
 fun tokenRegex(pattern: String): TokenSpec = RegexTokenSpec(pattern.toRegex(RegexOption.IGNORE_CASE))
 
-// --- constructor ---
+// --- 构建器 ---
 
 class ModelDefinitionBuilder {
     private val rules = mutableListOf<ModelRule>()
@@ -74,7 +74,7 @@ class ModelDefinitionBuilder {
     private val abilities = mutableSetOf<ModelAbility>()
     private val builtInTools = mutableSetOf<BuiltInTool>()
 
-    /** v1.0.4: Capacidad visual de puesta a tierra. */
+    /** v1.0.4: 视觉 grounding 能力。 */
     private var visionCapabilities: VisionCapabilities? = null
 
     fun tokens(vararg specs: String) {
@@ -131,9 +131,9 @@ class ModelDefinitionBuilder {
     }
 
     /**
-     * v1.0.4: Declarar modelo para soportar visual grounding(Posicionamiento coordinado).
+     * v1.0.4: 声明模型支持视觉 grounding(坐标定位)。
      *
-     * @param outputFormat Formato de salida de coordenadas:"gemini"(yxyx)/"qwen"(bbox_2d)/"anchor"(visual_anchors)/"muse-box"(xyxy Predeterminado)
+     * @param outputFormat 坐标输出格式:"gemini"(yxyx)/"qwen"(bbox_2d)/"anchor"(visual_anchors)/"muse-box"(xyxy 默认)
      */
     fun visionGrounding(outputFormat: String = "muse-box") {
         visionCapabilities = VisionCapabilities(grounding = true, outputFormat = outputFormat)
@@ -164,7 +164,7 @@ class ModelGroupBuilder {
     fun build(): ModelGroup = ModelGroup(members.toList())
 }
 
-// --- Token normativo ---
+// --- Token 规范 ---
 
 sealed interface TokenSpec {
     fun matches(token: String): Boolean
@@ -178,7 +178,7 @@ private data class RegexTokenSpec(val regex: Regex) : TokenSpec {
     override fun matches(token: String): Boolean = regex.matches(token)
 }
 
-// --- Reglas coincidentes ---
+// --- 匹配规则 ---
 
 interface ModelRule {
     fun evaluate(modelId: String, tokens: List<String>): Int?
@@ -223,7 +223,7 @@ private class AbsentTokenRule(private val specs: List<TokenSpec>) : ModelRule {
     override fun evaluate(modelId: String, tokens: List<String>): Int? = if (inner.evaluate(modelId, tokens) == null) 0 else null
 }
 
-// --- Función auxiliar ---
+// --- 辅助函数 ---
 
 private fun parseTokenSpec(spec: String): TokenSpec {
     val options = spec.split('|')
@@ -236,8 +236,8 @@ private fun parseTokenSpec(spec: String): TokenSpec {
 private const val EXACT_ID_BONUS = 1000
 
 /**
- * Dividir el ID del modelo en letras/numeros/Fragmento de símbolo.
- * por ejemplo "gpt-4o-mini" → ["gpt", "4", "o", "-", "mini"]
+ * 将模型 ID 切分为字母/数字/符号片段。
+ * 例如 "gpt-4o-mini" → ["gpt", "4", "o", "-", "mini"]
  */
 internal fun tokenize(modelId: String): List<String> {
     val tokens = mutableListOf<String>()

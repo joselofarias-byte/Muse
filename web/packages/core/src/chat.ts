@@ -36,7 +36,7 @@ export class InMemorySessionRepository implements SessionRepository {
 
   async create(accountId: string, assistantId = "default"): Promise<SessionRecord> {
     const now = new Date().toISOString();
-    const session: SessionRecord = { id: crypto.randomUUID(), accountId, assistantId, title: "nueva conversación", archived: false, createdAt: now, updatedAt: now };
+    const session: SessionRecord = { id: crypto.randomUUID(), accountId, assistantId, title: "Nueva conversación", archived: false, createdAt: now, updatedAt: now };
     this.sessions.set(session.id, session);
     this.messages.set(session.id, []);
     return { ...session };

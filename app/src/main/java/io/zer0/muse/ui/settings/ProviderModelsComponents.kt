@@ -38,9 +38,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import compose.icons.tablericons.Search
 import io.zer0.ai.core.Model
 import io.zer0.ai.core.ModelAbility
 import io.zer0.ai.core.ModelContextWindowRegistry
@@ -75,7 +73,7 @@ internal fun ModelsTab(
     isFetching: Boolean,
     onFetch: (Boolean) -> Unit,
     onAddModel: () -> Unit,
-    // v1.0.8 (7.6): Devolución de llamada de verificación de estado del modelo + transmisión transparente de estado(Pasado desde ProviderEditPage)
+    // v1.0.8 (7.6): 模型健康检查回调 + 状态透传(从 ProviderEditPage 传入)
     onTestModel: (Model) -> Unit = {},
     modelTestStatuses: Map<String, ModelTestStatus> = emptyMap(),
 ) {
@@ -83,8 +81,8 @@ internal fun ModelsTab(
 
     Column(modifier = Modifier.fillMaxSize()) {
         if (modelsState.isEmpty()) {
-            // P2-5: usar weight(1f) Deje que el estado vacío llene el espacio restante debajo del botón
-            //  (Column En fillMaxSize, obtendrás la altura completa del padre.,en lugar de altura restante,causar desbordamiento)
+            // P2-5: 用 weight(1f) 让空状态占满按钮下方剩余空间
+            //  (Column 中 fillMaxSize 会拿到父级完整高度,而非剩余高度,导致溢出)
             EmptyModelsState(
                 isFetching = isFetching,
                 onFetch = onFetch,
@@ -128,7 +126,7 @@ internal fun ModelsTab(
                         providerName = config.displayName,
                         isAdded = true,
                         onAction = { editingModel = model },
-                        // v1.0.8 (7.6): Pasar la devolución de llamada de verificación de estado + estado actual(Consulta por modelo.id)
+                        // v1.0.8 (7.6): 传入健康检查回调 + 当前状态(按 model.id 查询)
                         onTest = { onTestModel(model) },
                         testStatus = modelTestStatuses[model.id] ?: ModelTestStatus.Idle,
                     )
@@ -180,17 +178,14 @@ internal fun ModelAbilityEditorDialog(model: Model, onDismiss: () -> Unit, onSav
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(
-                        text = model.id,
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.primary,
-                        // LAYOUT-01: La identificación del modelo toma el ancho restante + límite de línea(id puede ser muy largo),
-                        // Evite que el botón "Detección con un clic" a la derecha lo apriete en una fila.
-                        modifier = Modifier.weight(1f),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    // v1.97: Capacidad de detección automática con un solo clic(Coincidencia basada en el token ModelRegistry)
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = model.id,
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                    // v1.97: 一键自动检测能力(基于 ModelRegistry token 匹配)
                     MuseTactileButton(
                         icon = MuseIcons.wand,
                         onClick = {
@@ -201,7 +196,7 @@ internal fun ModelAbilityEditorDialog(model: Model, onDismiss: () -> Unit, onSav
                             supportsReasoning = ModelAbility.REASONING in abilities
                             supportsVision = "image" in inputMods
                             supportsImageOutput = "image" in outputMods
-                            // Cuando contextWindow no está configurado explícitamente,Por cierto, completa el formulario de registro para obtener el valor más bajo.
+                            // 未显式设置 contextWindow 时,顺带回填注册表兜底值
                             if (contextWindow.isBlank()) {
                                 ModelContextWindowRegistry.lookup(model.id)?.let {
                                     contextWindow = it.toString()
@@ -272,7 +267,7 @@ internal fun ModelAbilityEditorDialog(model: Model, onDismiss: () -> Unit, onSav
                     inputModalities = newInput,
                     contextWindow = contextWindow.toIntOrNull(),
                     maxOutputTokens = maxOutputTokens.toIntOrNull(),
-                    // v2.6.1: Marcar usuario para edición explícita —— Impide que EnhanceModel anule estas configuraciones con el registro.
+                    // v2.6.1: 标记用户显式编辑 —— 阻止 enhanceModel 用注册表覆盖这些设置。
                     userEdited = true,
                 ),
             )
@@ -291,16 +286,13 @@ internal fun AbilitySwitchRow(label: String, checked: Boolean, onCheckedChange: 
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // LAYOUT-01: El nombre de la habilidad toma el ancho restante + límite de línea.,Evite que el MuseSwitch correcto lo apriete
-        // (Formulario de incidencias online con el mismo origen que SettingsSwitchRow).
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.weight(1f),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+        }
         MuseSwitch(
             checked = checked,
             onCheckedChange = onCheckedChange,
@@ -313,7 +305,7 @@ internal fun EmptyModelsState(
     isFetching: Boolean,
     onFetch: (Boolean) -> Unit,
     onAddModel: () -> Unit,
-    // P2-5: entrante externo modifier,Permite que la persona que llama use weight(1f) Deja que ocupe el espacio restante.
+    // P2-5: 外部传入 modifier,允许调用方在 Column 中用 weight(1f) 让其占满剩余空间
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -356,12 +348,12 @@ internal fun EmptyModelsState(
 }
 
 /**
- * La hoja inferior que aparece después de extraer con éxito el modelo ascendente.
+ * 拉取上游模型成功后弹出的底部 Sheet。
  *
- * Puntos de mejora:
- *  - No más contexto de escritura manual(K),Para uso unificado [ModelContextWindowRegistry] inferencia automática
- *  - La casilla de verificación cambió a clic en la fila + marca de verificación derecha
- *  - La barra de búsqueda, los títulos de los grupos y los botones inferiores utilizan colores cálidos.
+ * 改进点:
+ *  - 不再手动输入上下文(K),统一用 [ModelContextWindowRegistry] 自动推断
+ *  - 复选框改为行点击 + 右侧对勾
+ *  - 搜索栏、分组标题、底部按钮均使用暖色风格
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -381,12 +373,12 @@ internal fun FetchedModelsPickerSheet(
         if (query.isBlank()) models else models.filter { it.id.contains(query, ignoreCase = true) }
     }
 
-    // La cantidad seleccionada se almacena en caché utilizando deriveStateOf,Evite que confirmText se reestructure cada vez count
+    // 选中数量用 derivedStateOf 缓存,避免 confirmText 每次重组都重新 count
     val selectedCount by remember {
         derivedStateOf { filtered.count { selected[it.id] == true } }
     }
 
-    // MuseDialog sustituto original ModalBottomSheet,Evite los atascos de malla en máquinas reales
+    // MuseDialog 替代原 ModalBottomSheet,避免真机 scrim 卡死
     MuseDialog(
         onDismissRequest = onDismiss,
         title = stringResource(R.string.settings_provider_select_models),
@@ -400,7 +392,7 @@ internal fun FetchedModelsPickerSheet(
 
                 Spacer(Modifier.size(MusePaddings.itemGap))
 
-                // Barra de búsqueda ranurada
+                // 凹槽式搜索栏
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -419,8 +411,8 @@ internal fun FetchedModelsPickerSheet(
                         modifier = Modifier.size(MuseIconSizes.iconMedium),
                     )
                     Box(modifier = Modifier.weight(1f)) {
-                        // v2.0: placeholder Cambia tu ruta decorationBox(Uso estándar)y declarar la acción de búsqueda de IME,
-                        // Alinee los comportamientos de lectura de pantalla y métodos de entrada con el cuadro de búsqueda del sistema.
+                        // v2.0: placeholder 改走 decorationBox(标准用法)并声明 IME 搜索动作,
+                        // 读屏与输入法行为对齐系统搜索框。
                         androidx.compose.foundation.text.BasicTextField(
                             value = query,
                             onValueChange = { query = it },
@@ -457,7 +449,7 @@ internal fun FetchedModelsPickerSheet(
                     }
                 }
 
-                // Seleccionar todo/Borrar
+                // 全选/清空
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(vertical = MusePaddings.contentGap),
                     horizontalArrangement = Arrangement.End,
@@ -477,7 +469,7 @@ internal fun FetchedModelsPickerSheet(
                     )
                 }
 
-                // Título del grupo(plegable)
+                // 分组标题(可折叠)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -512,7 +504,7 @@ internal fun FetchedModelsPickerSheet(
                 }
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
 
-                // Lista de modelos(Cambiar a Column,MuseDialog El área de contenido viene con desplazamiento)
+                // 模型列表(改为 Column,MuseDialog 内容区自带滚动)
                 if (groupExpanded) {
                     filtered.forEach { m ->
                         val isSelected = selected[m.id] ?: false
@@ -527,7 +519,7 @@ internal fun FetchedModelsPickerSheet(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(MusePaddings.itemGap),
                         ) {
-                            // Estado seleccionado a la izquierda:círculo de marca de verificación
+                            // 左侧选中态:对勾圆圈
                             Box(
                                 modifier = Modifier
                                     .size(22.dp)
@@ -577,7 +569,7 @@ internal fun FetchedModelsPickerSheet(
                                 ModelAbilityChips(model = m)
                             }
 
-                            // Etiqueta de ventana contextual
+                            // 上下文窗口标签
                             Surface(
                                 color = MaterialTheme.colorScheme.surfaceVariant,
                                 shape = MuseShapes.small,
@@ -610,7 +602,7 @@ internal fun FetchedModelsPickerSheet(
     )
 }
 
-/** Formatee el número de token como K/M para mostrarlo(Como por ejemplo 128000 -> "128K", 1000000 -> "1M").null Regresar [unknownLabel]. */
+/** 将 token 数格式化为 K/M 显示(如 128000 -> "128K", 1000000 -> "1M")。null 返回 [unknownLabel]。 */
 internal fun formatContextWindow(tokens: Int?, unknownLabel: String): String {
     if (tokens == null) return unknownLabel
     return when {
@@ -621,14 +613,14 @@ internal fun formatContextWindow(tokens: Int?, unknownLabel: String): String {
 }
 
 /**
- * Analice el contenido del archivo JSON de la cuenta de servicio de Google.
+ * 解析 Google Service Account JSON 文件内容。
  *
- * Google Service Account JSON Campos estándar(Lleva solo los tres artículos que necesitas.):
- *  - `private_key`: PEM PKCS#8 cuerda
- *  - `client_email`: Correo electrónico de la cuenta de servicio
- *  - `project_id`: GCP Proyecto ID
+ * Google Service Account JSON 标准字段(仅取所需三项):
+ *  - `private_key`: PEM PKCS#8 字符串
+ *  - `client_email`: 服务账号邮箱
+ *  - `project_id`: GCP 项目 ID
  *
- * @return Triple(email, privateKey, projectId);Devolver si falta algún campo clave null
+ * @return Triple(email, privateKey, projectId);任一关键字段缺失返回 null
  */
 internal fun parseServiceAccountJson(jsonText: String): Triple<String, String, String>? {
     return runCatching {
@@ -641,10 +633,10 @@ internal fun parseServiceAccountJson(jsonText: String): Triple<String, String, S
 }
 
 /**
- * Extraiga valores de una cadena JSON mediante una ruta JSON con puntos simples.
+ * 按简单的点分 JSON Path 从 JSON 字符串中提取值。
  *
- * Admite campos de objetos y subíndices de matrices(Como por ejemplo $.data.total_usage o $.data.items.0.value).
- * Devuelve nulo si falla el análisis o la ruta no existe.
+ * 支持对象字段与数组下标(如 $.data.total_usage 或 $.data.items.0.value)。
+ * 解析失败或路径不存在返回 null。
  */
 internal fun extractJsonPath(json: String, path: String): String? {
     val keys = path.trim()
@@ -672,12 +664,12 @@ internal fun extractJsonPath(json: String, path: String): String? {
     }
 }
 
-/** Dar formato al mapa en cada fila "Key: Value" de texto de varias líneas. */
+/** 把 Map 格式化为每行 "Key: Value" 的多行文本。 */
 internal fun formatCustomHeaders(map: Map<String, String>): String {
     return map.entries.joinToString("\n") { "${it.key}: ${it.value}" }
 }
 
-/** poner cada linea "Key: Value" analizado como Map,Se ignoran las líneas con formatos ilegales. */
+/** 把每行 "Key: Value" 解析为 Map,格式不合法的行被忽略。 */
 internal fun parseCustomHeaders(text: String): Map<String, String> {
     return text.lineSequence()
         .map { it.trim() }
@@ -693,7 +685,7 @@ internal fun parseCustomHeaders(text: String): Map<String, String> {
         .toMap()
 }
 
-/** Formatear el mapa en una cadena JSON,Devuelve una cadena vacía en caso de error. */
+/** 把 Map 格式化为 JSON 字符串,失败返回空字符串。 */
 internal fun formatCustomBody(map: Map<String, JsonElement>): String {
     if (map.isEmpty()) return ""
     return runCatching {
@@ -701,7 +693,7 @@ internal fun formatCustomBody(map: Map<String, JsonElement>): String {
     }.getOrDefault("")
 }
 
-/** Analiza la cadena JSON en Map,Devuelve un mapa vacío en caso de error. */
+/** 把 JSON 字符串解析为 Map,失败返回空 Map。 */
 internal fun parseCustomBody(text: String): Map<String, JsonElement> {
     val trimmed = text.trim()
     if (trimmed.isBlank()) return emptyMap()

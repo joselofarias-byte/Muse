@@ -10,6 +10,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -18,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.zer0.muse.R
@@ -26,6 +28,7 @@ import io.zer0.muse.data.SettingsRepository
 import io.zer0.muse.ui.common.feedback.MuseToast
 import io.zer0.muse.ui.common.form.MuseCapsuleButton
 import io.zer0.muse.ui.common.form.MuseChip
+import io.zer0.muse.ui.common.form.MuseTactileButton
 import io.zer0.muse.ui.common.form.MuseTextField
 import io.zer0.muse.ui.common.icons.MuseIcons
 import io.zer0.muse.ui.common.settings.SectionLabel
@@ -36,10 +39,10 @@ import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
 /**
- * Página de configuración del proxy de red global.
+ * 全局网络代理设置页。
  *
- * Admite proxy HTTP/SOCKS5,Host, puerto, nombre de usuario y contraseña configurables.
- * La aplicación debe reiniciarse después de la modificación para que surta efecto.(OkHttpClient Lea la configuración una vez cuando se inicializa Koin).
+ * 支持 HTTP / SOCKS5 代理,可配置主机、端口、用户名与密码。
+ * 修改后需重启应用生效(OkHttpClient 在 Koin 初始化时读取一次配置)。
  */
 @Composable
 fun ProxySettingsPage(onBack: () -> Unit) {
@@ -47,22 +50,24 @@ fun ProxySettingsPage(onBack: () -> Unit) {
     val proxyConfig by settings.proxyConfigFlow.collectAsStateWithLifecycle(initialValue = ProxyConfig())
     val scope = rememberCoroutineScope()
 
-    // borrador local,Haga clic en Guardar antes de escribir DataStore
-    // Correcciones en la interfaz (persistencia-9): Revisión del borrador del formulario rememberSaveable,rotar/La reconstrucción del proceso no pierde el contenido completo.;
-    // key Heredar el valor original de cada campo.(son todos escalares salvables,Y ProxyConfig no tiene campo de identificación,Por lo tanto, no es necesario utilizar la instancia de configuración para key)
+    // 本地草稿,点击保存后才写入 DataStore
+    // 前端修复 (持久化-9): 表单草稿改 rememberSaveable,旋转/进程重建不丢已填内容;
+    // key 沿用各字段原值(均为可 saveable 标量,且 ProxyConfig 无 id 字段,故不用 config 实例作 key)
     var enabled by rememberSaveable(proxyConfig.enabled) { mutableStateOf(proxyConfig.enabled) }
     var type by rememberSaveable(proxyConfig.type) { mutableStateOf(proxyConfig.type) }
     var host by rememberSaveable(proxyConfig.host) { mutableStateOf(proxyConfig.host) }
     var portText by rememberSaveable(proxyConfig.port) { mutableStateOf(proxyConfig.port.toString()) }
     var username by rememberSaveable(proxyConfig.username) { mutableStateOf(proxyConfig.username) }
-    var password by rememberSaveable(proxyConfig.password) { mutableStateOf(proxyConfig.password) }
-    // v2.6.9: Nombres de dominio que no utilizan proxies (separados por comas)
+    // 口令不进 saved state(部分 ROM 会落盘);其余字段仍走 rememberSaveable 保草稿。
+    var password by remember(proxyConfig.password) { mutableStateOf(proxyConfig.password) }
+    var passwordVisible by remember { mutableStateOf(false) }
+    // v2.6.9: 不走代理的域名（逗号分隔）
     var bypass by rememberSaveable(proxyConfig.bypassHosts) { mutableStateOf(proxyConfig.bypassHosts) }
     var saving by rememberSaveable { mutableStateOf(false) }
 
     val proxyTypes = listOf("HTTP" to stringResource(R.string.proxy_type_http), "SOCKS5" to stringResource(R.string.proxy_type_socks5))
-    // v2.6.9(comentarios de los usuarios): Una vez que el proxy se cambia a un ProxySelector dinámico, las nuevas conexiones entran en vigor inmediatamente.
-    // viejos consejos“Entrará en vigor después de reiniciar la aplicación.”Hará que los usuarios piensen que necesitan reiniciar, pero en realidad no es así; el idioma se ha modificado simultáneamente.
+    // v2.6.9（用户反馈）: 代理改为动态 ProxySelector 后，新连接立即生效。
+    // 旧提示“重启应用后生效”会让用户以为必须重启，实际不必；措辞已同步修正。
     val proxySavedNeedsRestartText = stringResource(R.string.proxy_saved_needs_restart)
 
     SettingsSubPageScaffold(title = stringResource(R.string.proxy_title), onBack = onBack) {
@@ -135,16 +140,31 @@ fun ProxySettingsPage(onBack: () -> Unit) {
                     value = password,
                     onValueChange = { password = it },
                     label = { Text(stringResource(R.string.proxy_password)) },
-                    visualTransformation = PasswordVisualTransformation(),
+                    // 口令默认打码但要能核对:填错无从发现的问题,和 TTS/克隆密钥页一样用一只眼睛解决。
+                    visualTransformation = if (passwordVisible) {
+                        VisualTransformation.None
+                    } else {
+                        PasswordVisualTransformation()
+                    },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    trailingIcon = {
+                        MuseTactileButton(
+                            icon = if (passwordVisible) MuseIcons.eyeOff else MuseIcons.eye,
+                            onClick = { passwordVisible = !passwordVisible },
+                            contentDescription = stringResource(
+                                if (passwordVisible) R.string.settings_common_hide else R.string.settings_common_show,
+                            ),
+                        )
+                    },
                     singleLine = true,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 8.dp),
                 )
                 SettingsGroupDivider()
-                // v2.6.9: No utilice nombres de dominio proxy (bypass).
-                // Puntos débiles reales: los usuarios nacionales suelen utilizar agentes globales, pero modelos locales (localhost:11434 etc)
-                // Si también utiliza un proxy para servicios de intranet, fallará directamente. Esta columna es la apertura para ellos.
+                // v2.6.9: 不走代理的域名（bypass）。
+                // 实际痛点：国内用户经常全局代理，但本地模型（localhost:11434 等）
+                // 与内网服务如果也走代理会直接失败。这一栏就是给它们开的口子。
                 MuseTextField(
                     value = bypass,
                     onValueChange = { bypass = it },
@@ -165,8 +185,8 @@ fun ProxySettingsPage(onBack: () -> Unit) {
                 modifier = Modifier.padding(horizontal = 4.dp),
             )
         }
-        // v2.6.9: Prueba de conexión —— No recibí ningún comentario después de que me asignaron un agente anteriormente.
-        // Los usuarios sólo pueden entrar en la conversación.“A ver si puedes enviarlo”, el fallo tampoco es necesariamente un problema del agente.
+        // v2.6.9: 连接测试 —— 以前配完代理完全没有反馈，
+        // 用户只能到对话里去“试一下能不能发出去”，失败也不一定是代理的问题。
         item {
             ProxyTestRow(
                 proxyConfig = ProxyConfig(

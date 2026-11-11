@@ -1,8 +1,8 @@
 {
   "id": "skin-soft-bubble",
-  "name": "Burbuja de luz suave",
+  "name": "柔光气泡",
   "version": "1.0.0",
-  "description": "Burbuja de luz suave: grandes esquinas redondeadas, combinación de colores de baja saturación, lo que facilita la lectura durante mucho tiempo; Admite dos conjuntos de colores claros y oscuros.",
+  "description": "柔光气泡：大圆角、低饱和配色，长时间阅读更轻松；支持浅色与深色两套配色。",
   "author": "Zer0",
   "entry": "main.js",
   "kind": "ui-skin",

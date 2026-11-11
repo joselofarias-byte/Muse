@@ -3,23 +3,23 @@ package io.zer0.ai.plugin
 import kotlinx.serialization.Serializable
 
 /**
- * P2-10: Provider Declaración del modelo de complemento.
+ * P2-10: Provider 插件模型声明。
  *
- * Cada complemento describe un proveedor de protocolo compatible con OpenAI a través de un archivo JSON,
- * Los usuarios pueden acceder a servicios de modelos de tránsito personalizados/autohospedados sin escribir código.
+ * 每个插件通过 JSON 文件描述一个 OpenAI 兼容协议的供应商,
+ * 用户无需写代码即可接入自定义中转 / 自托管模型服务。
  *
- * @param id Identificador único del complemento(Al mismo tiempo, sirve como prefijo de identificación para generar ProviderConfig.)
- * @param displayName nombre para mostrar
- * @param description Introducción
- * @param baseUrl Conceptos básicos de API ascendentes URL(Como por ejemplo https://relay.example.com/v1)
- * @param apiKeyPattern API Key Regularidad de verificación(Dejar en blanco para indicar que no hay verificación)
- * @param apiKeyHint API Key Copia del mensaje del cuadro de entrada
- * @param models Lista de modelos declarados por este complemento
- * @param headers Encabezado de solicitud personalizado(Inyectar en solicitudes HTTP ascendentes)
- * @param requestTemplate Plantilla JSON del cuerpo de la solicitud,marcador de posición {{prompt}} {{model}} Espere a ser reemplazado por la persona que llama;
- *   Déjelo en blanco para usar la plantilla predeterminada de Finalizaciones de chat de OpenAI.
- * @param responsePath Ruta de extracción JSON de respuesta sin transmisión(Predeterminado $.choices[0].message.content)
- * @param streamResponsePath Ruta de extracción JSON de respuesta de transmisión(Predeterminado $.choices[0].delta.content)
+ * @param id 插件唯一标识(同时作为生成 ProviderConfig 的 id 前缀)
+ * @param displayName 展示名称
+ * @param description 简介
+ * @param baseUrl 上游 API 基础 URL(如 https://relay.example.com/v1)
+ * @param apiKeyPattern API Key 校验正则(留空表示不校验)
+ * @param apiKeyHint API Key 输入框提示文案
+ * @param models 该插件声明的模型清单
+ * @param headers 自定义请求头(注入到上游 HTTP 请求)
+ * @param requestTemplate 请求体 JSON 模板,占位符 {{prompt}} {{model}} 等由调用方替换;
+ *   留空时走默认 OpenAI Chat Completions 模板
+ * @param responsePath 非流式响应 JSON 提取路径(默认 $.choices[0].message.content)
+ * @param streamResponsePath 流式响应 JSON 提取路径(默认 $.choices[0].delta.content)
  */
 @Serializable
 data class ProviderPlugin(
@@ -37,16 +37,16 @@ data class ProviderPlugin(
 )
 
 /**
- * P2-10: Declaración del modelo de complemento.
+ * P2-10: 插件模型声明。
  *
- * Alineación del significado del campo [io.zer0.ai.core.Model](Tome solo el subconjunto que le interesa a la interfaz de usuario),
- * por [ProviderPluginRegistry.toProviderConfig] convertir a completo [io.zer0.ai.core.Model].
+ * 字段含义对齐 [io.zer0.ai.core.Model](只取 UI 关心的子集),
+ * 由 [ProviderPluginRegistry.toProviderConfig] 转换为完整 [io.zer0.ai.core.Model]。
  *
- * @param id modelo id(campos del modelo pasados a la API ascendente)
- * @param displayName nombre para mostrar(El valor predeterminado es el mismo que id)
- * @param contextWindow tamaño de la ventana de contexto(token numero,Predeterminado 4096)
- * @param supportsVision Ya sea para admitir información visual
- * @param supportsTools Ya sea para admitir llamadas a herramientas(function calling)
+ * @param id 模型 id(传给上游 API 的 model 字段)
+ * @param displayName 展示名称(默认同 id)
+ * @param contextWindow 上下文窗口大小(token 数,默认 4096)
+ * @param supportsVision 是否支持视觉输入
+ * @param supportsTools 是否支持工具调用(function calling)
  */
 @Serializable
 data class PluginModel(

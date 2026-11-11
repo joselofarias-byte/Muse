@@ -8,13 +8,13 @@ import androidx.room.PrimaryKey
 import kotlinx.serialization.Serializable
 
 /**
- * entidad de mensaje(persistente [io.zer0.ai.core.UIMessage]).
+ * 消息实体(持久化的 [io.zer0.ai.core.UIMessage])。
  *
- * Phase 5-I: Agregue @Serializable para exportar copias de seguridad/Importar.
- * Phase 8.3: agregar [favorite] El campo admite la recopilación de mensajes.
- * Phase 8.4: agregar [citationUrlsJson] Los campos admiten la representación de referencias de UrlCitation.
- * Phase 8.5 Reparación: @ColumnInfo(defaultValue=...) Alineado con MIGRATION_2_3/3_4 SQL.
- * Phase 8.6: agregar [imageBase64Json] El campo admite la entrada de imágenes multimodal(USER)Trazar la salida con Gemini(ASSISTANT).
+ * Phase 5-I: 加 @Serializable 用于备份导出/导入。
+ * Phase 8.3: 加 [favorite] 字段支持消息收藏。
+ * Phase 8.4: 加 [citationUrlsJson] 字段支持 UrlCitation 引用渲染。
+ * Phase 8.5 修复: @ColumnInfo(defaultValue=...) 与 MIGRATION_2_3/3_4 SQL 对齐。
+ * Phase 8.6: 加 [imageBase64Json] 字段支持多模态图片输入(USER)与 Gemini 绘图输出(ASSISTANT)。
  */
 @Serializable
 @Entity(
@@ -29,15 +29,15 @@ import kotlinx.serialization.Serializable
     ],
     indices = [
         Index("sessionId"),
-        // M-SESS5: role Índice de una sola columna,acelerar WHERE role='ASSISTANT'/'USER' Espere consultas sin prefijo sessionId
+        // M-SESS5: role 单列索引,加速 WHERE role='ASSISTANT'/'USER' 等无 sessionId 前缀的查询
         Index("role"),
         Index(value = ["sessionId", "createdAt"]),
         Index(value = ["sessionId", "createdAt", "role"]),
-        // v92: seq índice de secuencia monótona — Clave principal de clasificación de mensajes dentro de la sesión,Anulaciones que se pueden actualizar createdAt
-        // Nota: name Debe coincidir exactamente con CREATE INDEX de MIGRATION_91_92(idx_messages_sessionId_seq),
-        // De lo contrario, la verificación del esquema de la sala de máquinas real falla.(Migration didn't properly handle: messages).
+        // v92: seq 单调序列索引 — 会话内消息排序主键,替代可被刷新的 createdAt
+        // 注意: name 必须与 MIGRATION_91_92 的 CREATE INDEX 完全一致(idx_messages_sessionId_seq),
+        // 否则真机 Room schema 校验失败(Migration didn't properly handle: messages)。
         Index(value = ["sessionId", "seq"], name = "idx_messages_sessionId_seq"),
-        // v94: Nueva orden de confirmación; secuencia antigua reservada para compatibilidad con rutas de lectura antiguas.
+        // v94: 新提交序；旧 seq 保留用于兼容旧读取路径。
         Index(value = ["sessionId", "commitSeq"], name = "idx_messages_sessionId_commitSeq"),
         Index(value = ["parentMessageId"], name = "idx_messages_parentMessageId"),
         Index(value = ["parentGroupId"], name = "idx_messages_parentGroupId"),
@@ -49,111 +49,111 @@ data class MessageEntity(
     val role: String,
     val content: String,
     val reasoning: String? = null,
-    /** B5-03: Firma de múltiples rondas de pensamiento.(Anthropic signature / OpenAI reasoning item id). */
+    /** B5-03: 多轮 thinking 签名(Anthropic signature / OpenAI reasoning item id)。 */
     @ColumnInfo(defaultValue = "NULL") val thinkingSignature: String? = null,
-    /** B5-03: OpenAI Responses reasoning item contenido_cifrado. */
+    /** B5-03: OpenAI Responses reasoning item 的 encrypted_content。 */
     @ColumnInfo(defaultValue = "NULL") val thinkingEncryptedContent: String? = null,
     val modelId: String? = null,
     val createdAt: Long,
     /**
-     * v92: Secuencia monótonamente creciente dentro de la sesión — Clave principal estable para ordenar mensajes.
+     * v92: 会话内单调递增序列 — 消息排序的稳定主键。
      *
-     * fondo: Dependencias previamente ordenadas [createdAt],Pero createAt se actualiza en streaming./Interrumpir la recuperación/Al retransmitir
-     * puede ser renovado(REPLACE Cubrir toda la fila),Conduciendo al trastorno de sincronización de mensajes(La primera respuesta es la última y se superpone.).
-     * seq Asignado en la primera inserción(dentro de la sesión max+1),Mantenga el valor anterior al actualizar con la misma identificación,
-     * No cambia con REPLACE,es una clave de clasificación estable. Rellene por ID de fila al migrar datos antiguos.
+     * 背景: 此前排序依赖 [createdAt],但 createdAt 在流式更新/中断恢复/重发时
+     * 可能被刷新(REPLACE 覆盖整行),导致消息时序错乱(第一句回复跑最后、重叠)。
+     * seq 在首次插入时分配(会话内 max+1),同 id 更新时保留旧值,
+     * 不随 REPLACE 变化,是稳定的排序键。旧数据迁移时按 rowid 回填。
      */
     @ColumnInfo(defaultValue = "0") val seq: Long = 0,
-    /** v94: Nuevo orden de confirmación del enlace de conversación; Los mensajes antiguos permanecen con 0 o valor de reposición de auditoría de migración. */
+    /** v94: 新对话链路提交序；旧消息保持 0 或迁移审计回填值。 */
     @ColumnInfo(defaultValue = "0") val commitSeq: Long = 0,
-    /** v94: Referencia explícita del mensaje principal; El antiguo parentGroupId permanece. */
+    /** v94: 显式父消息引用；旧 parentGroupId 仍保留。 */
     @ColumnInfo(defaultValue = "NULL") val parentMessageId: String? = null,
     @ColumnInfo(defaultValue = "[]") val imageUrlsJson: String = "[]",
     /**
-     * Referencia de audio del mensaje de voz ([io.zer0.muse.ui.speech.VoiceMessageStore] dentro `file://` camino).
+     * 语音消息音频引用（[io.zer0.muse.ui.speech.VoiceMessageStore] 内的 `file://` 路径）。
      *
-     * NULL = Mensajes no vocales.Provider Ignore esta columna al enviar solicitudes, la voz es solo una representación del mensaje.
+     * NULL = 非语音消息。Provider 发送请求时忽略此列，语音只是消息的呈现形式。
      */
     @ColumnInfo(defaultValue = "NULL") val voiceUri: String? = null,
-    /** Duración de la voz (milisegundos);0 = Desconocido (falló la detección de datos antiguos o de duración). */
+    /** 语音时长（毫秒）；0 = 未知（旧数据或时长探测失败）。 */
     @ColumnInfo(defaultValue = "0") val voiceDurationMs: Long = 0,
     @ColumnInfo(defaultValue = "0") val favorite: Boolean = false,
     /**
-     * v1.104 U7: Etiquetas de grupos favoritos(Definido por el usuario,Como por ejemplo"inspiración"/"fragmento de código").
+     * v1.104 U7: 收藏分组标签(用户自定义,如"灵感"/"代码片段")。
      *
-     * solo en [favorite]=true significativo;NULL Indica no agrupado.
-     * Por pantalla de favoritos Mantenga presionada la tarjeta para que aparezca"Configurar grupos"Escritura de diálogo,DAO usar [MessageDao.setMessageFavoriteTag].
+     * 仅在 [favorite]=true 时有意义;NULL 表示未分组。
+     * 由 FavoritesScreen 长按卡片弹"设置分组"对话框写入,DAO 用 [MessageDao.setMessageFavoriteTag]。
      */
     @ColumnInfo(defaultValue = "NULL") val favoriteTag: String? = null,
     @ColumnInfo(defaultValue = "[]") val citationUrlsJson: String = "[]",
-    /** v1.133: Lista de referencias de la base de conocimientos(JSON serialización [io.zer0.ai.core.RagCitation]). */
+    /** v1.133: 知识库引用列表(JSON 序列化 [io.zer0.ai.core.RagCitation])。 */
     @ColumnInfo(defaultValue = "[]") val ragCitationsJson: String = "[]",
-    /** Phase 8.6: Lista de imágenes locales base64(JSON matriz,Ninguno dato: prefijo). */
+    /** Phase 8.6: 本地图片 base64 列表(JSON 数组,无 data: 前缀)。 */
     @ColumnInfo(defaultValue = "[]") val imageBase64Json: String = "[]",
     /**
-     * Reparación de auditoría (S-02): Resultados de generación de vídeo URL(ASSISTANT noticias,generate_video escribir).
+     * 审计修复 (S-02): 视频生成结果 URL(ASSISTANT 消息,generate_video 写入)。
      *
-     * Anteriormente videoFileUri sólo existía en la memoria UIMessage,MessageEntity Sin columna correspondiente,
-     * Reiniciar/El vídeo se pierde permanentemente después de cortar la página.v88 Migrar columnas complementarias,toUIMessage/toEntity Ida y vuelta.
+     * 此前 videoFileUri 只存在于内存 UIMessage,MessageEntity 无对应列,
+     * 重启/切页后视频永久丢失。v88 迁移补列,toUIMessage/toEntity 往返。
      */
     @ColumnInfo(defaultValue = "NULL") val videoFileUri: String? = null,
-    /** v1.43: Lista de identificadores de artefactos asociados con el mensaje(JSON matriz). */
+    /** v1.43: 消息关联的 Artifact id 列表(JSON 数组)。 */
     @ColumnInfo(defaultValue = "[]") val artifactIdsJson: String = "[]",
-    /**
-     * v1.103: MOOD bloquear(LLM Salida manuscrita interna antes del texto principal.).
+    /*
+     * v1.103: MOOD 块(LLM 在正文前输出的内部腹稿)。
      *
-     * Eliminado del contenido por MoodTagTransformer `<mood>...</mood>` Depositar más tarde.
-     * Este campo faltaba en MessageEntity antes,sesión de tarea/Agent charlar(Usar tabla de mensajes)Al realizar el pedido
-     * mood descartado silenciosamente,Cortar páginas/Las tarjetas MOOD desaparecen después de recargarlas. mesa de chat grupal(group_chat_messages)
-     * Ya hay una columna de humor.,Esta vez se completa la tabla de mensajes.
+     * 由 MoodTagTransformer 从 content 中剥离 `<mood>...</mood>` 后存入。
+     * 之前 MessageEntity 缺此字段,任务会话/Agent 聊天(用 messages 表)落盘时
+     * mood 被静默丢弃,切页/重载后 MOOD 卡片消失。群聊表(group_chat_messages)
+     * 已有 mood 列,本次补齐 messages 表。
      */
 
-    /** B6-03/B6-02: Logotipo de piel emocional(con <moodfx> Correspondencia de etiquetas,Predeterminado null). */
+    /** B6-03/B6-02: 情绪皮肤标识(与 <moodfx> 标签对应,默认 null)。 */
     @ColumnInfo(defaultValue = "NULL") val moodSkin: String? = null,
     @ColumnInfo(defaultValue = "NULL") val mood: String? = null,
-    /** v1.103: bloque de autorreflexión(`<reflection>...</reflection>`),Completado al mismo tiempo que el estado de ánimo. */
+    /** v1.103: 自我反思块(`<reflection>...</reflection>`),与 mood 同期补齐。 */
     @ColumnInfo(defaultValue = "NULL") val reflection: String? = null,
-    /** v1.107 Redundancia: content longitud(base de control de integridad,Detectar truncamiento de almacenamiento/dañado). */
+    /** v1.107 冗余: content 长度(完整性校验基准,检测存储截断/损坏)。 */
     @ColumnInfo(defaultValue = "0") val contentLength: Int = 0,
-    /** v2.0: Marca de tiempo de eliminación temporal(null = no eliminado). */
+    /** v2.0: 软删除时间戳(null = 未删除)。 */
     @ColumnInfo(defaultValue = "NULL") val deletedAt: Long? = null,
-    /** Función1: Mensaje de respuesta de emoticono(ThumbUp/Favorite/SentimentSatisfied/SentimentDissatisfied/MoodBad/Bolt,null=Ninguno). */
+    /** 功能1: 消息表情回应(ThumbUp/Favorite/SentimentSatisfied/SentimentDissatisfied/MoodBad/Bolt,null=无)。 */
     @ColumnInfo(defaultValue = "NULL") val reaction: String? = null,
-    /** v1.0.30: ID de grupo variante (compartido por varias respuestas de asistente en la misma ubicación).null = Mensaje no variante. */
+    /** v1.0.30: 变体组 ID（同一位置多个 assistant 回复共享）。null = 非变体消息。 */
     @ColumnInfo(defaultValue = "NULL") val variantGroupId: String? = null,
-    /** v1.0.30: Número de variante (0-based, posición en el grupo actual). */
+    /** v1.0.30: 变体序号（0-based，在当前组中的位置）。 */
     @ColumnInfo(defaultValue = "0") val variantIndex: Int = 0,
-    /** v1.0.30: Número total de variantes (número de mensajes dentro del grupo, todas las variantes registran el mismo valor). */
+    /** v1.0.30: 变体总数（组内消息数，所有变体记录相同值）。 */
     @ColumnInfo(defaultValue = "1") val variantCount: Int = 1,
     /**
-     * P0 árbol de diálogo: El grupo de variantes de preguntas del usuario al que pertenece la variante del asistente. ID(parentGroupId).
-     * ConversationTreeBuilder infiere cronológicamente los nodos principales cuando los datos antiguos son NULL.
+     * P0 对话树: 助手变体所属的用户提问变体组 ID(parentGroupId)。
+     * 旧数据为 NULL 时由 ConversationTreeBuilder 按时间顺序推断父节点。
      */
     @ColumnInfo(defaultValue = "NULL") val parentGroupId: String? = null,
-    /** v1.0.47: Lista de archivos adjuntos de mensajes(JSON serialización [io.zer0.ai.core.AttachmentRef]). */
+    /** v1.0.47: 消息附件列表(JSON 序列化 [io.zer0.ai.core.AttachmentRef])。 */
     @ColumnInfo(defaultValue = "[]") val attachmentsJson: String = "[]",
     /**
-     * v1.0.72: Información de la tarjeta de llamada de herramientas(JSON serialización [io.zer0.ai.core.ToolCallInfo]).
+     * v1.0.72: 工具调用卡片信息(JSON 序列化 [io.zer0.ai.core.ToolCallInfo])。
      *
-     * Reparación:Anteriormente, toolCallInfo no persistía,El historial de llamadas de herramientas se pierde después de reiniciar,
-     * Se muestra como"interrumpido"en vez de"llamar". Ahora acércate con las novedades.,ToolCallCard se muestra normalmente después de reiniciar.
+     * 修复:此前 toolCallInfo 不持久化,重启后工具调用历史丢失,
+     * 表现为"已中断"而非"调用"。现在随消息落库,重启后 ToolCallCard 正常显示。
      */
     @ColumnInfo(defaultValue = "NULL") val toolCallInfoJson: String? = null,
     /**
-     * A5: Metadatos de generación de mensajes(Para visualización de información,provider Se prefiere la medición real,Estimación local de UI cuando falta).
-     * Rellenado cuando lo genera ChatViewModel;datos antiguos/No rellenado es NULL.
-     * - [durationMs] Tiempo total necesario para generar(milisegundos,Con ciclo de herramienta)
-     * - [promptTokens]/[completionTokens]/[reasoningTokens] provider Dosis medida real
-     * - [cachedTokens] caché**leer** token. El calibre cambia con el tiempo:v120 Simplemente finge estar "leyendo".
-     *   La fila anterior antes de la división contiene el valor combinado de "lectura + escritura" (la fila anterior se interpreta como "lectura", sin relleno ni recálculo)
-     * - [cacheWriteTokens] caché**escribir** token(Solo antrópico);viejo comportamiento NULL=desconocido
+     * A5: 消息生成元数据(信息展示用,provider 实测优先,缺失时 UI 本地估算)。
+     * 由 ChatViewModel 生成结束时回填;旧数据/未回填为 NULL。
+     * - [durationMs] 生成总耗时(毫秒,含工具循环)
+     * - [promptTokens]/[completionTokens]/[reasoningTokens] provider 实测用量
+     * - [cachedTokens] 缓存**读取** token。口径随时间变化：v120 起只装「读」，
+     *   拆分前的旧行装的是「读 + 写」合并值（旧行按「读」解释，不回填、不重算）
+     * - [cacheWriteTokens] 缓存**写入** token（仅 Anthropic）;旧行为 NULL=未知
      *
-     * Para análisis histórico [cachedTokens] deben separarse primero, de lo contrario los dos calibres se considerarán uno solo:
-     *  - `cacheWriteTokens IS NULL` = v120 Calibre antiguo anterior ([cachedTokens] incluida la escritura),
-     *    v120 Después de eso, mientras se utilice, la columna no será NULL (OpenAI/Gemini es 0,Anthropic es la medida real),
-     *    Por tanto, esta condición es más precisa que cortar por tiempo; se utiliza cuando se necesitan límites de tiempo. `createdAt` Delimite el momento de la actualización a v120.
-     *  - Para obtener el total de "lectura + escritura" (comparable al calibre anterior), utilice
-     *    `cachedTokens + COALESCE(cacheWriteTokens, 0)`, no lo utilices directamente `cachedTokens`.
+     * 历史分析用 [cachedTokens] 时必先分界，否则两种口径会被当成一种：
+     *  - `cacheWriteTokens IS NULL` = v120 之前的旧口径（[cachedTokens] 含写入），
+     *    v120 之后只要采到了 usage，该列就非 NULL（OpenAI/Gemini 为 0，Anthropic 为实测量），
+     *    所以这一条件比按时间切更准；需要时间界时用 `createdAt` 对 v120 升级时点分界。
+     *  - 想拿「读 + 写」合计（与旧口径可比），用
+     *    `cachedTokens + COALESCE(cacheWriteTokens, 0)`，不要直接用 `cachedTokens`。
      */
     @ColumnInfo(defaultValue = "NULL") val durationMs: Long? = null,
     @ColumnInfo(defaultValue = "NULL") val promptTokens: Int? = null,
@@ -162,11 +162,11 @@ data class MessageEntity(
     @ColumnInfo(defaultValue = "NULL") val cachedTokens: Int? = null,
     @ColumnInfo(defaultValue = "NULL") val cacheWriteTokens: Int? = null,
     /**
-     * H11: La traducción conserva el texto original. — El mensaje de traducción apunta al mensaje fuente traducido. id(forma de cadena),UI Proporciona plegado de comparación de texto original.
+     * H11: 翻译保留原文 — 译文消息指向被翻译的源消息 id(字符串形式),UI 提供原文对照折叠。
      */
     @ColumnInfo(defaultValue = "NULL") val translationSourceId: String? = null,
     /**
-     * v2.4.6: Mapeo de traducción para este mensaje(JSON: Nombre del idioma → traducción). Bloque expandible colgado en el propio mensaje.,No abras otro mensaje del asistente.
+     * v2.4.6: 该消息的译文映射(JSON: 语言名 → 译文)。挂在消息本身的可展开块,不另开助手消息。
      */
     @ColumnInfo(defaultValue = "{}") val translationsJson: String = "{}",
 )

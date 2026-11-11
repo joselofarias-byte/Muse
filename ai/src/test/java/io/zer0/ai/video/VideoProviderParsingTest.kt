@@ -9,7 +9,7 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 /**
- * R-TEST-20: Agnes / Kling Prueba de análisis de respuesta y mapeo de estado del proveedor de video.
+ * R-TEST-20: Agnes / Kling 视频 Provider 状态映射与响应解析测试。
  */
 class VideoProviderParsingTest {
 

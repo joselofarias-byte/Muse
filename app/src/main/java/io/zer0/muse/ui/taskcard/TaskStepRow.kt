@@ -39,24 +39,24 @@ import io.zer0.muse.ui.common.formatToolDuration
 import io.zer0.muse.ui.common.icons.MuseIcons
 
 /**
- * Filas de pasos individuales para tarjetas de tareas.
+ * 任务卡的单个步骤行。
  *
- * v2.6.8 de [TaskCard.kt] sacar —— Una razón es que la cantidad de funciones @Composable en el archivo excede
- * detekt TooManyFunctions; La razón más práctica es que esta sección y la "carcasa de la tarjeta de misión" son dos cosas diferentes:
- * etapa responsable del caparazón/Progreso/Ampliar, la línea de pasos es responsable de "lo que se hizo en este paso y lo que se produjo".
+ * v2.6.8 从 [TaskCard.kt] 拆出 —— 一处原因是文件里 @Composable 函数数超了
+ * detekt TooManyFunctions；更实际的原因是这段与「任务卡外壳」是两件不同的东西：
+ * 外壳负责阶段/进度/展开，步骤行负责「这一步干了什么、产出了什么」。
  *
- * Los resultados del paso se dividen en dos caminos: "proceso" y "entregable" (ver [TaskStepResult]).
+ * 步骤结果分成「过程」与「交付物」两条路（见 [TaskStepResult]）。
  */
 
-/** un solo paso(Contiene ícono de estado + título + detalles + resultados + tiempo empleado + botón de reintento). */
+/** 单步步骤行(含状态图标 + 标题 + 详情 + 结果 + 耗时 + 重试按钮)。 */
 @Composable
 internal fun TaskStepRow(
     step: TaskStep,
     onRetry: () -> Unit,
     onTogglePause: () -> Unit = {},
-    /** v2.6.8: La tarjeta de identidad de la tarjeta de producto. —— difundir la noticia id(Igual que la tarjeta única en línea). */
+    /** v2.6.8: 产物卡的卡片身份 —— 传消息 id(与单条内联卡一致)。 */
     cardId: String? = null,
-    /** v2.6.8: El puente de devolución de la tarjeta del producto;null La tarjeta sólo se representa sin interacción. */
+    /** v2.6.8: 产物卡的回传桥；null 时卡片只渲染不交互。 */
     onCardAction: ((String, io.zer0.muse.ui.markdown.CardAction) -> Unit)? = null,
 ) {
     Row(
@@ -65,11 +65,11 @@ internal fun TaskStepRow(
         modifier = Modifier.fillMaxWidth(),
     ) {
         StepStatusIcon(status = step.status)
-        // Contenido del paso
+        // 步骤内容
         Column(modifier = Modifier.weight(1f)) {
             StepTitleRow(step = step)
             StepDetailAndProgress(step = step)
-            // v1.200: resultado(Ampliable/cerrar) + Profundizar en subpasos
+            // v1.200: 结果(可展开/收起) + 子步骤下钻
             if (step.result.isNotBlank() && step.status != TaskStepStatus.PENDING) {
                 Spacer(Modifier.height(2.dp))
                 TaskStepResult(
@@ -78,14 +78,14 @@ internal fun TaskStepRow(
                     onCardAction = onCardAction,
                 )
             }
-            // v1.200: carril secundario
+            // v1.200: 子步骤泳道
             if (step.subSteps.isNotEmpty()) {
                 Spacer(Modifier.height(4.dp))
                 SubStepLane(subSteps = step.subSteps)
             }
             StepFooter(step = step, onRetry = onRetry)
         }
-        // Permite pausar sólo herramientas que aún no se han iniciado;Los efectos secundarios durante la operación no son mortales.
+        // 仅允许暂停尚未开始的工具;运行中的副作用不强杀。
         if (step.status == TaskStepStatus.PENDING) {
             MuseTactileButton(
                 icon = if (step.pauseRequested) MuseIcons.play else MuseIcons.pause,
@@ -105,13 +105,13 @@ internal fun TaskStepRow(
     }
 }
 
-/** La longitud de la vista previa ampliada del resultado del paso (estado contraído). */
+/** 步骤结果的展开预览长度（折叠态）。 */
 private const val RESULT_PREVIEW_LENGTH = 120
 
-/** v2.6.8: Título del paso + insignia de fuente (de [TaskStepRow] extraído). */
+/** v2.6.8: 步骤标题 + 来源徽章（从 [TaskStepRow] 抽出）。 */
 @Composable
 private fun StepTitleRow(step: TaskStep) {
-    // v1.200: Título + Insignia de fuente
+    // v1.200: 标题 + 来源徽章
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -138,7 +138,7 @@ private fun StepTitleRow(step: TaskStep) {
     }
 }
 
-/** v2.6.8: Detalles del paso + texto del progreso de la ejecución (de [TaskStepRow] extraído). */
+/** v2.6.8: 步骤详情 + 执行进度文本（从 [TaskStepRow] 抽出）。 */
 @Composable
 private fun StepDetailAndProgress(step: TaskStep) {
     if (step.detail.isNotBlank()) {
@@ -149,7 +149,7 @@ private fun StepDetailAndProgress(step: TaskStep) {
             maxLines = 2,
         )
     }
-    // v0.49: Texto de progreso de ejecución de herramienta(RUNNING Estado actualizado por devolución de llamada SkillExecutor.onProgress)
+    // v0.49: 工具执行进度文本(RUNNING 状态下由 SkillExecutor.onProgress 回调更新)
     if (step.status == TaskStepStatus.RUNNING && !step.progressText.isNullOrBlank()) {
         Text(
             text = step.progressText,
@@ -160,10 +160,10 @@ private fun StepDetailAndProgress(step: TaskStep) {
     }
 }
 
-/** v2.6.8: Tiempo de paso realizado + botón de reintento (desde [TaskStepRow] extraído). */
+/** v2.6.8: 步骤耗时 + 重试按钮（从 [TaskStepRow] 抽出）。 */
 @Composable
 private fun StepFooter(step: TaskStep, onRetry: () -> Unit) {
-    // Consume mucho tiempo(Mostrar después de finalizar)
+    // 耗时(完成后显示)
     step.durationMs?.let { dur ->
         if (dur > 0) {
             Text(
@@ -173,7 +173,7 @@ private fun StepFooter(step: TaskStep, onRetry: () -> Unit) {
             )
         }
     }
-    // botón de reintento(FAILED / TIMED_OUT pasos)
+    // 重试按钮(FAILED / TIMED_OUT 步骤)
     if (step.status.isRetryable) {
         MuseTactileButton(
             icon = MuseIcons.refresh,
@@ -185,7 +185,7 @@ private fun StepFooter(step: TaskStep, onRetry: () -> Unit) {
     }
 }
 
-/** v2.6.8: Columna de icono de estado de un solo paso (desde [TaskStepRow] Retire, baje las ramas anidadas de la fila principal). */
+/** v2.6.8: 单步状态图标列（从 [TaskStepRow] 抽出，降低主行嵌套分支）。 */
 @Composable
 private fun StepStatusIcon(status: TaskStepStatus) {
     Box(
@@ -202,8 +202,8 @@ private fun StepStatusIcon(status: TaskStepStatus) {
                     .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)),
             )
             TaskStepStatus.RUNNING ->
-                // v2.6.12: Utilice una forma de tinta unificada (hoja) en todas las aplicaciones durante la operación.→estrella→anillo),
-                // No más giros: la misma señal "Calculando" tiene la misma forma en la burbuja de espera y en la barra de herramientas.
+                // v2.6.12: 运行中用全应用统一的墨形（叶→星→环），
+                // 不再用转圈：同一个「正在算」信号在等待气泡与工具行上是同一个形状。
                 io.zer0.muse.ui.common.animation.MuseInkGlyph(
                     modifier = Modifier.size(16.dp),
                 )
@@ -235,7 +235,7 @@ private fun StepStatusIcon(status: TaskStepStatus) {
     }
 }
 
-/** v2.6.8: carril secundario (desde [TaskStepRow] Extraer, reducir la profundidad de anidación de la fila principal). */
+/** v2.6.8: 子步骤泳道（从 [TaskStepRow] 抽出，降低主行嵌套深度）。 */
 @Composable
 private fun SubStepLane(subSteps: List<TaskStep>) {
     Row(
@@ -260,32 +260,32 @@ private fun SubStepLane(subSteps: List<TaskStep>) {
 }
 
 /**
- * Área de resultados del paso —— Aquí es donde radica la línea divisoria entre “proceso” y “entregables”.
+ * 步骤结果区 —— 「过程」与「交付物」的分界就在这里。
  *
- * Se representan tres tipos de resultados por separado:
- *  - Entregables (show_card): No lo dibujes aquí, solo deja una línea de referencia. —— El cuerpo de la tarjeta se utiliza en el flujo de mensajes como
- *    Representación de tarjetas en línea de primera clase, los usuarios pueden ver y operar sin expandir el plan de ejecución;
- *  - Otros productos (fotos/Archivo/render_data): renderiza el producto directamente sin cortarlo en texto;
- *  - Resultados de texto normal: truncar vista previa + expandir/Guardar.
+ * 三类结果分开渲染：
+ *  - 交付物（show_card）：不在这里画，只留一行引用 —— 卡片本体在消息流中作为
+ *    一等内联卡渲染，用户不用展开执行计划就能看到并操作；
+ *  - 其它产物（图片/文件/render_data）：直接渲染产物，不截成文本；
+ *  - 普通文本结果：截断预览 + 展开/收起。
  *
- * v2.6.8 de [TaskStepRow] Extracción: Primero, rectificación LongMethod/CyclomaticComplexMethod,
- * En segundo lugar, este párrafo tiene originalmente un significado semántico independiente (“¿Qué produce este paso?”), no tiene nada que ver con los iconos de estado y los botones de reintento.
+ * v2.6.8 从 [TaskStepRow] 抽出：一是 LongMethod/CyclomaticComplexMethod 整改，
+ * 二是这段本来就是一个独立语义（“这一步产出了什么”），和状态图标、重试按钮无关。
  */
 @Composable
 private fun TaskStepResult(step: TaskStep, cardId: String?, onCardAction: ((String, io.zer0.muse.ui.markdown.CardAction) -> Unit)?) {
-    // v2.6.7: El resultado del paso es el producto.(tarjeta/fotos/Archivo)Al renderizar el producto directamente,
-    // No más ser cortado en 120 palabras de texto plano y enterrado dentro —— Si el usuario no puede verlo significa que no se ha generado.
+    // v2.6.7: 步骤结果是产物(卡片/图片/文件)时直接渲染产物，
+    // 不再被截成 120 字纯文本埋在里面 —— 用户看不到就等于没生成。
     val stepOutput = remember(step.toolName, step.result, step.rawArgs) {
         io.zer0.muse.ui.resolveDirectOutput(step.toolName, step.rawArgs, step.result)
     }
     when {
         stepOutput == null -> StepResultText(step = step)
-        // v2.6.8: Entregables(show_card)No pintado aquí.
+        // v2.6.8: 交付物(show_card)不在这里画。
         //
-        // La tarjeta es lo que el usuario quiere en sí, no el proceso de "ajustar una herramienta"; presiónelo en el plegable
-        // En este paso, el usuario primero debe expandir el plan de ejecución para ver la tarjeta que acaba de generar. —— Y esta en el mismo
-        // en el flujo de noticias. Por lo tanto, la tarjeta en sí se representa como una tarjeta en línea de primera clase en el flujo de mensajes (consulte ChatScreen /
-        // MessageBubble ruta), dejando sólo una línea de referencia en la tarjeta de tarea.
+        // 卡片是用户要的东西本身，不是「调了个工具」的过程；把它压在可折叠的
+        // 步骤里，用户得先展开执行计划才能看见自己刚生成的卡 —— 而它就在同一条
+        // 消息流里。所以卡片本体在消息流中作为一等内联卡渲染（见 ChatScreen /
+        // MessageBubble 路径），任务卡里只留一行引用。
         io.zer0.muse.ui.isInlineDeliverableTool(step.toolName) -> GeneratedCardReference()
         else -> StepOutputCard(
             output = stepOutput,
@@ -295,7 +295,7 @@ private fun TaskStepResult(step: TaskStep, cardId: String?, onCardAction: ((Stri
     }
 }
 
-/** v2.6.8: La línea de referencia \"Tarjeta generada\" en la tarjeta de tarea —— La tarjeta en sí está en el flujo de mensajes. */
+/** v2.6.8: 任务卡里的「已生成卡片」引用行 —— 卡片本体在消息流里。 */
 @Composable
 private fun GeneratedCardReference() {
     Row(
@@ -317,21 +317,21 @@ private fun GeneratedCardReference() {
     }
 }
 
-/** v2.6.8: Tarjeta de producto paso (imagen/Archivo/tarjeta no entregable). */
+/** v2.6.8: 步骤产物卡（图片/文件/非交付物卡片）。 */
 @Composable
 private fun StepOutputCard(
     output: io.zer0.muse.ui.DirectOutput,
     cardId: String?,
     onCardAction: ((String, io.zer0.muse.ui.markdown.CardAction) -> Unit)?,
 ) {
-    // El producto es el cuerpo principal que los usuarios pueden ver.,No debe tener sangría en la columna del icono de estado de la fila de pasos.
-    // Utilice el diseño para expandir el ancho de la columna del icono hacia la izquierda,Alinee la tarjeta horizontalmente con el borde izquierdo de la tarjeta de tarea exterior.;
-    // No puedo usar negativo padding —— Compose Se lanzará una excepción directamente.
+    // 产物是给用户看的主体,不该被步骤行的状态图标列缩进挤窄。
+    // 用 layout 向左扩展出图标列宽度,让卡片横向对齐到外层任务卡的左边缘;
+    // 不能用负 padding —— Compose 会直接抛异常。
     io.zer0.muse.ui.DirectToolOutputInline(
         output = output,
-        // v2.6.8: Mensaje de identidad de la tarjeta id(La identificación de la tarjeta de tarea es el mensaje del asistente para montarla. id),
-        // ya no se usa toolCallId —— Las identidades de las dos rutas de tarjetas deben estar en el mismo espacio, de lo contrario
-        // La tarjeta no puede leer sus propios datos y aparecen mensajes de error al guardar artefactos.
+        // v2.6.8: 卡片身份用消息 id(任务卡的 id 即挂载它的助手消息 id)，
+        // 不再用 toolCallId —— 两条卡片路径的身份必须同一个空间，否则
+        // 卡片读自己的数据读不到、保存工件也挂错消息。
         cardId = cardId,
         onCardAction = onCardAction?.let { handler ->
             { action -> handler(cardId.orEmpty(), action) }
@@ -354,7 +354,7 @@ private fun StepOutputCard(
     )
 }
 
-/** v2.6.8: Resultados de texto normal (vista previa truncada + expandido/retraer). */
+/** v2.6.8: 普通文本结果（截断预览 + 展开/收起）。 */
 @Composable
 private fun StepResultText(step: TaskStep) {
     var isResultExpanded by remember { mutableStateOf(false) }
@@ -375,8 +375,8 @@ private fun StepResultText(step: TaskStep) {
                 MaterialTheme.colorScheme.onSurfaceVariant
             },
             modifier = Modifier.weight(1f),
-            // LAYOUT-01: Row El texto interior se amplía + líneas limitadas para evitar el ajuste de línea palabra por palabra cuando se amplía el tamaño de fuente;
-            // La versión plegada es una vista previa.(Límite de 2 líneas), el estado expandido conserva el resultado completo sin truncamiento
+            // LAYOUT-01: Row 内文本取宽 + 限行，防放大字号下逐字换行；
+            // 折叠态本就是预览(限 2 行)，展开态保留完整结果不截断
             maxLines = if (isResultExpanded) Int.MAX_VALUE else 2,
             overflow = TextOverflow.Ellipsis,
         )

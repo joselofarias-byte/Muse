@@ -13,21 +13,21 @@ import io.zer0.muse.miniphone.data.db.entity.MpMomentLikeEntity
 import io.zer0.muse.miniphone.data.media.MpImageStore
 import java.util.UUID
 
-/** Un mensaje dinámico puede contener hasta nueve imágenes.:No importa cuántas pantallas haya, no puedo verlo.,Jiugongge es el límite superior. */
+/** 一条动态最多九张图:再多一屏也看不过来,九宫格是上限。 */
 internal const val MOMENT_MAX_IMAGES: Int = 9
 
-/** La identificación unificada de los usuarios locales en todas partes: los autores dinámicos, los que me gustan y los comentaristas la comparten. */
+/** 本机用户在各处的统一 id:动态作者、点赞人、评论人共用它。 */
 const val MP_LOCAL_ACTOR_ID: String = "local"
 
 /**
- * Leer y escribir en el círculo de amigos.
+ * 朋友圈的读写口。
  *
- * Los detalles sobre cómo publicar, dar me gusta, comentar y eliminar están todos aquí.,La capa superior sólo describe "quién hizo qué y qué actividad".
- * No hay restricciones de clave externa entre las tres tablas.(Room No abierto foreignKeys),Por tanto, esta clase es responsable de eliminar información dinámica.
- * Sus me gusta y comentarios se borrarán juntos. —— Dejar una fila huérfana aumentará la cantidad de Me gusta de la nada cuando una nueva dinámica reutilice la identificación.
+ * 发布、点赞、评论、删除四件事的落库细节都在这里,上层只描述「谁对哪条动态做了什么」。
+ * 三张表之间没有外键约束(Room 未开 foreignKeys),所以删动态时由本类负责把
+ * 它的点赞与评论一起清掉 —— 留孤儿行会让点赞数在新动态复用 id 时凭空多出来。
  *
- * @param now fuente de tiempo,Reloj del sistema predeterminado;prueba clavada con eso `createdAt`
- * @param newId generador de clave primaria,Predeterminado UUID;Pruebe usarlo para hacer dinámico./Se espera la identificación del comentario.
+ * @param now 时间源,默认系统时钟;测试用它钉死 `createdAt`
+ * @param newId 主键生成器,默认 UUID;测试用它让动态/评论 id 可预期
  */
 class MpMomentsRepository(
     private val momentDao: MpMomentDao,
@@ -39,47 +39,47 @@ class MpMomentsRepository(
 ) {
 
     /**
-     * Tomar una página en orden inverso(nuevo → viejo).
+     * 倒序取一页(新 → 旧)。
      *
-     * El rango visible no se filtra en la consulta.:Este es mi propio círculo de amigos.,Dinámica "visible sólo para ti" de tu lado
-     * La lista aparece como de costumbre. En el futuro, realmente necesitaremos adaptarlo a los lectores.,Agregue condiciones aquí.
+     * 可见范围不在查询里过滤:这是本机自己的朋友圈,「仅自己可见」的动态在自己这一侧的
+     * 列表里照常显示。以后真的要按读者裁剪,在这里加条件。
      */
     suspend fun page(limit: Int, offset: Int): List<MpMomentEntity> = momentDao.pageTimeline(limit, offset)
 
     /**
-     * Una página de "Mis Momentos":Siempre que las actualizaciones publicadas por los usuarios locales,nuevo → viejo.
+     * 「我的朋友圈」的一页:只要本机用户发的动态,新 → 旧。
      *
-     * La condición de autor es parte de la consulta.,No se trata de tomar toda la página y volver a examinarla. —— Después del filtrado, la cantidad de entradas válidas por página se reducirá.,
-     * Cursor de página(Número de artículos cargados)También seguido de desalineación.
+     * 作者条件是查询的一部分,不是拿整页回来再筛 —— 筛掉之后每页的有效条数会缩水,
+     * 翻页游标(已加载条数)也跟着错位。
      */
     suspend fun pageMine(limit: Int, offset: Int): List<MpMomentEntity> = momentDao.pageTimelineByAuthor(MP_LOCAL_ACTOR_ID, limit, offset)
 
-    /** Me gusta una determinada publicación,Ordenar por tiempo de me gusta. */
+    /** 某条动态的点赞人,按点赞时间先后排。 */
     suspend fun likesOf(momentId: String): List<MpMomentLikeEntity> = likeDao.likesOf(momentId)
 
-    /** Comentarios sobre una determinada actividad.,en orden cronológico;El nivel se presiona desde el nivel superior. `parentId` Armar. */
+    /** 某条动态的评论,按时间正序;层级由上层按 `parentId` 组装。 */
     suspend fun commentsOf(momentId: String): List<MpMomentCommentEntity> = commentDao.commentsOf(momentId)
 
-    /** Una página de me gusta dinámicos:Después de una consulta, presione `momentId` grupo,Las publicaciones a las que no les haya gustado no aparecerán en los resultados. */
+    /** 一页动态的点赞:一次查询后按 `momentId` 归组,没被赞的动态不出现在结果里。 */
     suspend fun likesByMomentIds(momentIds: List<String>): Map<String, List<MpMomentLikeEntity>> {
         if (momentIds.isEmpty()) return emptyMap()
         return likeDao.likesOfMomentIds(momentIds).groupBy { like -> like.momentId }
     }
 
-    /** Una página de comentarios dinámicos.:Después de una consulta, presione `momentId` Grupo. */
+    /** 一页动态的评论:一次查询后按 `momentId` 归组。 */
     suspend fun commentsByMomentIds(momentIds: List<String>): Map<String, List<MpMomentCommentEntity>> {
         if (momentIds.isEmpty()) return emptyMap()
         return commentDao.commentsOfMomentIds(momentIds).groupBy { comment -> comment.momentId }
     }
 
     /**
-     * Envía un mensaje propio.
+     * 发一条自己的动态。
      *
-     * La imagen seleccionada se copia primero en el directorio privado del módulo.,Sólo las rutas locales se almacenan en la biblioteca.;Si no puedes leer uno determinado, omite este.,
-     * No dejes que una mala imagen te quite toda la historia. El texto y las imágenes están todos en la biblioteca.,Devuelve nulo.
+     * 选中的图先复制进模块私有目录,库里只存本地路径;某张读不到就跳过这一张,
+     * 不让一张坏图带走整条动态。文字与图片都空时不落库,返回 null。
      *
-     * [visibleTo] Déjalo en blanco para que sea visible para todos.;Escribe el nombre del usuario local cuando sólo quieras verlo por ti mismo id(Varios pueden separarse por comas. id,
-     * En esta etapa, solo habrá uno de ustedes.). En esta etapa sólo se requiere escribir, no leer.,La línea de tiempo enumera esto como de costumbre.
+     * [visibleTo] 留空即所有人可见;只给自己看时写本机用户的 id(逗号分隔可放多个 id,
+     * 本阶段只会有自己一个)。本阶段只写不读,时间线照常把这条列出来。
      */
     suspend fun publish(content: String, imageUris: List<Uri>, authorName: String, visibleTo: String = ""): MpMomentEntity? {
         val text = content.trim()
@@ -100,9 +100,9 @@ class MpMomentsRepository(
     }
 
     /**
-     * Actualizaciones del personaje de Luo Yitiao.(Se llama después de que el host se genere exitosamente.).
+     * 落一条角色发的动态(宿主生成成功后调用)。
      *
-     * Los resultados generados con texto vacío no se guardarán en la base de datos.:Una actualización que no dice nada no merece una cronología.
+     * 正文为空的生成结果不落库:一条什么也没说的动态不值得占时间线的一格。
      */
     suspend fun insertFromCharacter(character: MpCharacter, content: String): MpMomentEntity? {
         val text = content.trim()
@@ -122,10 +122,10 @@ class MpMomentsRepository(
     }
 
     /**
-     * Me gusta/Cancelar me gusta,Después de regresar a la operación, "¿Le ha gustado a esta persona?"
+     * 点赞/取消点赞,返回操作之后「这个人是否赞了」。
      *
-     * Clave primaria compuesta `(momentId, likerType, likerId)` Asegúrese de que la misma persona tenga solo una línea para la misma actualización,
-     * Entonces el estado solo depende de si existe o no.:Eliminar si está presente, insertar si está ausente,Al hacer clic dos veces definitivamente volverá a ser no deseado.
+     * 复合主键 `(momentId, likerType, likerId)` 保证同一个人对同一条动态只有一行,
+     * 所以状态只看存在与否:在就删、不在就插,连点两次必然回到未赞。
      */
     suspend fun toggleLike(momentId: String, likerType: MpActorType, likerId: String, likerName: String): Boolean {
         if (likeDao.isLiked(momentId, likerType, likerId)) {
@@ -145,9 +145,9 @@ class MpMomentsRepository(
     }
 
     /**
-     * Comentar una publicación,O responde a uno de los comentarios.
+     * 评论一条动态,或回复其中一条评论。
      *
-     * [parentId] Vacío significa comentar directamente la noticia.;No vacío significa responder a ese comentario. El contenido en blanco no se incluirá en la biblioteca.
+     * [parentId] 为空表示直接评论动态;不为空表示回复那条评论。空白内容不落库。
      */
     suspend fun addComment(
         momentId: String,
@@ -173,7 +173,7 @@ class MpMomentsRepository(
         return comment
     }
 
-    /** Eliminar una actualización,Incluso sus me gusta y comentarios se eliminarán. */
+    /** 删一条动态,连它的点赞与评论一起清掉。 */
     suspend fun deleteMoment(momentId: String) {
         likeDao.deleteAllOf(momentId)
         commentDao.deleteAllOf(momentId)
@@ -181,10 +181,10 @@ class MpMomentsRepository(
     }
 
     /**
-     * Eliminar un comentario que escribiste,Las respuestas a continuación también se eliminarán.
+     * 删一条自己写的评论,它下面的回复一起删。
      *
-     * Los comentarios de otras personas también serán bloqueados aquí.:La interfaz no proporciona entrada.,Escribe la capa y guárdala de nuevo. —— La persona que llamó pasó el mensaje equivocado. id,
-     * No deberías poder borrar lo que dicen los demás.
+     * 别人的评论在这里也会被拦下:界面不给入口,写入层再守一次 —— 调用方传错一个 id,
+     * 不该能把别人说的话抹掉。
      */
     suspend fun deleteComment(momentId: String, commentId: String) {
         val comments = commentDao.commentsOf(momentId)
@@ -199,16 +199,16 @@ class MpMomentsRepository(
     }
 
     private companion object {
-        const val DEFAULT_SELF_NAME: String = "yo"
-        const val DEFAULT_CHARACTER_NAME: String = "papel"
+        const val DEFAULT_SELF_NAME: String = "我"
+        const val DEFAULT_CHARACTER_NAME: String = "角色"
     }
 }
 
 /**
- * Un comentario y todas las respuestas debajo. id(incluirte a ti mismo),En orden de padre a hijo.
+ * 一条评论及它下面所有回复的 id(含自己),按从父到子的顺序。
  *
- * El número de niveles de comentarios no es fijo.([parentId] Siempre puedes apuntar al nivel anterior.),Así que utilice colas para recopilarlas capa por capa.;
- * Hay bucles en los datos.(padre señalando al niño)El tiempo depende de [visited] Detener,Aquí no damos vueltas y vueltas.
+ * 评论层数不固定([parentId] 可以一直指向上一层),所以用队列一层层往下收;
+ * 数据里真出现环(父亲指向孩子)时靠 [visited] 收手,不会在这里转圈。
  */
 internal fun commentSubtreeIds(commentId: String, comments: List<MpMomentCommentEntity>): List<String> {
     val childrenByParent = comments.filter { it.parentId != null }.groupBy { it.parentId.orEmpty() }

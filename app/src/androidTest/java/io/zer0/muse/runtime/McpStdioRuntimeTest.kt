@@ -20,13 +20,13 @@ import java.io.BufferedReader
 import java.io.File
 
 /**
- * P0 Acabado:MCP stdio server Validación de extremo a extremo (prueba conectada al simulador).
+ * P0 收尾：MCP stdio server 端到端验证（模拟器 connected 测试）。
  *
- * Enlace:npm install @modelcontextprotocol/server-filesystem → Comience con el nodo incorporado
- * server(stdio)→ JSON-RPC initialize apretón de manos → tools/list.
+ * 链路：npm install @modelcontextprotocol/server-filesystem → 用内置 node 启动
+ * server（stdio）→ JSON-RPC initialize 握手 → tools/list。
  *
- * Objetivo de verificación: el servidor MCP basado en npm disponible en el mercado puede ejecutarse completamente en el entorno limitado de Muse
- * (P1 stdio Preaceptación de la implementación de la transmisión).
+ * 验证目标：市面上的 npm 系 MCP server 能在 Muse 沙盒里完整运行
+ * （P1 stdio 传输实现的前置验收）。
  */
 @RunWith(AndroidJUnit4::class)
 class McpStdioRuntimeTest {
@@ -44,7 +44,7 @@ class McpStdioRuntimeTest {
             }
             File(work, "package.json").writeText("""{"name":"muse-mcp-e2e","private":true}""")
 
-            // 1) npm install(Descarga en línea, espere suficiente tiempo de espera)
+            // 1) npm install（网络下载，给足超时）
             val install = MuseRuntime.execNode(
                 ctx = ctx,
                 args = listOf(
@@ -58,17 +58,17 @@ class McpStdioRuntimeTest {
                 timeoutMs = 300_000,
                 workdir = work,
             )
-            val failMsg = "npm install falló(stderr): ${install.stderr.take(800)}"
+            val failMsg = "npm install 失败(stderr): ${install.stderr.take(800)}"
             assertEquals(failMsg, 0, install.exitCode)
 
-            // 2) Localizar la entrada del servidor
+            // 2) 定位 server 入口
             val pkgDir = File(work, "node_modules/@modelcontextprotocol/server-filesystem")
             val entry = listOf("dist/index.js", "build/index.js", "index.js")
                 .map { File(pkgDir, it) }
                 .firstOrNull { it.isFile }
-            assertTrue("server Entrada no encontrada (pkgDir=$pkgDir)", entry != null)
+            assertTrue("server 入口未找到（pkgDir=$pkgDir）", entry != null)
 
-            // 3) Inicie el servidor y complete el protocolo de enlace MCP
+            // 3) 启动 server 并完成 MCP 握手
             val serverErr = StringBuilder()
             val proc = ProcessBuilder(
                 MuseRuntime.nodeBinary(ctx).absolutePath,
@@ -102,15 +102,15 @@ class McpStdioRuntimeTest {
                 out.write((initReq + "\n").toByteArray())
                 out.flush()
                 val initResp = readUntil(reader, "\"id\":1", 60_000)
-                assertTrue("initialize Sin respuesta/tiempo de espera (stderr=${serverErr.take(400)})", initResp != null)
-                assertTrue("initialize respuesta anormal: ${initResp!!.take(300)}", initResp.contains("\"result\""))
+                assertTrue("initialize 无响应/超时（stderr=${serverErr.take(400)}）", initResp != null)
+                assertTrue("initialize 响应异常: ${initResp!!.take(300)}", initResp.contains("\"result\""))
 
                 out.write("""{"jsonrpc":"2.0","method":"notifications/initialized"}""".plus("\n").toByteArray())
                 out.write("""{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}""".plus("\n").toByteArray())
                 out.flush()
                 val toolsResp = readUntil(reader, "\"id\":2", 30_000)
-                assertTrue("tools/list Sin respuesta/tiempo de espera (stderr=${serverErr.take(400)})", toolsResp != null)
-                assertTrue("tools/list respuesta anormal: ${toolsResp!!.take(300)}", toolsResp.contains("\"tools\""))
+                assertTrue("tools/list 无响应/超时（stderr=${serverErr.take(400)}）", toolsResp != null)
+                assertTrue("tools/list 响应异常: ${toolsResp!!.take(300)}", toolsResp.contains("\"tools\""))
             } finally {
                 proc.destroyForcibly()
             }
@@ -120,7 +120,7 @@ class McpStdioRuntimeTest {
     @Test
     fun mcpClientStdioEndToEnd() {
         runBlocking {
-            // P1-A De punta a punta:McpClient(STDIO) → empezar npx server → initialize → listTools
+            // P1-A 端到端：McpClient(STDIO) → 启动 npx server → initialize → listTools
             MuseRuntime.ensureData(ctx).getOrThrow()
 
             val config = McpServerConfig(
@@ -139,16 +139,16 @@ class McpStdioRuntimeTest {
                         it == McpConnectionState.CONNECTED || it == McpConnectionState.FAILED
                     }
                 }
-                assertEquals("Estado de conexión anormal", McpConnectionState.CONNECTED, state)
+                assertEquals("连接状态异常", McpConnectionState.CONNECTED, state)
                 val tools = client.listToolsOrNull()
-                assertTrue("Espera una lista de herramientas que no esté vacía,real: ${tools?.size}", tools != null && tools.isNotEmpty())
+                assertTrue("期望非空工具列表,实际: ${tools?.size}", tools != null && tools.isNotEmpty())
             } finally {
                 client.close()
             }
         }
     }
 
-    /** Lea stdout línea por línea hasta que aparezca algo que contenga [needle] fila; el tiempo de espera/EOF devuelve nulo. */
+    /** 逐行读取 stdout，直到出现包含 [needle] 的行；超时 / EOF 返回 null。 */
     private suspend fun readUntil(reader: BufferedReader, needle: String, timeoutMs: Long): String? = withContext(Dispatchers.IO) {
         try {
             withTimeout(timeoutMs) {

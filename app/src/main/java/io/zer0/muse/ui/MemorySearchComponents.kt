@@ -71,7 +71,7 @@ import java.time.ZoneId
 import java.time.temporal.TemporalAdjusters
 
 /**
- * Barra de búsqueda ranurada — Surface + BasicTextField,surfaceVariant fondo,Esquinas redondeadas.
+ * 凹槽式搜索栏 — Surface + BasicTextField,surfaceVariant 背景,圆角。
  */
 @Composable
 internal fun MemorySearchBar(query: String, onQueryChange: (String) -> Unit, enabled: Boolean, modifier: Modifier = Modifier) {
@@ -121,7 +121,7 @@ internal fun MemorySearchBar(query: String, onQueryChange: (String) -> Unit, ena
 }
 
 /**
- * v9: Filtrar elementos de la memoria por categoría(null=Todos).
+ * v9: 根据分类筛选记忆条目(null=全部)。
  */
 internal fun filterMemoryItemsByCategory(items: List<MemoryItem>, category: String?): List<MemoryItem> {
     return if (category == null) {
@@ -171,9 +171,9 @@ internal fun isThisMonth(createdAt: String?): Boolean {
 }
 
 /**
- * v9: Clasificar y filtrar cápsulas — Todo/Datos fundamentales/Preferencias/Experiencias/Relaciones/Objetivos/Médico.
+ * v9: 分类筛选胶囊 — 全部 / 核心事实 / 偏好 / 经历 / 关系 / 目标 / 医疗。
  *
- * Estilo de dibujo de referencia:Desplazamiento horizontal,Utilice la pastilla oscura inverseSurface para artículos seleccionados,Los colores no seleccionados son gris claro.
+ * 参考图风格:横向滚动,选中项用 inverseSurface 深色药丸,未选中用浅灰。
  */
 @Composable
 internal fun CategoryFilterChipRow(selectedCategory: String?, onSelect: (String?) -> Unit) {
@@ -233,7 +233,7 @@ internal fun CategoryChip(label: String, selected: Boolean, onClick: () -> Unit)
 }
 
 /**
- * v8: Línea de filtro de alcance — Desplace MuseChip hacia los lados.
+ * v8: 作用域筛选行 — 横向滚动 MuseChip。
  */
 @Composable
 internal fun ScopeFilterChipRow(options: List<ScopeOption>, selectedScope: String?, onSelect: (String?) -> Unit) {
@@ -267,7 +267,7 @@ internal fun ScopeFilterChipRow(options: List<ScopeOption>, selectedScope: Strin
 }
 
 /**
- * v8: La insignia de alcance de un único elemento de hecho.
+ * v8: 单条 Fact 项的 scope 徽章。
  */
 @Composable
 internal fun ScopeBadge(scope: String?) {
@@ -287,7 +287,7 @@ internal fun ScopeBadge(scope: String?) {
 }
 
 /**
- * Lista de resultados de búsqueda — CardGroup recipiente.
+ * 搜索结果列表 — CardGroup 容器。
  */
 @Composable
 internal fun SearchResultsList(
@@ -316,7 +316,7 @@ internal fun SearchResultsList(
                 .padding(MusePaddings.emptyStateGap),
             contentAlignment = Alignment.Center,
         ) {
-            // ST-03: unidad del estado vacío MuseEmptyState
+            // ST-03: 空态统一 MuseEmptyState
             MuseEmptyState(title = stringResource(R.string.memory_screen_no_match))
         }
         return
@@ -337,9 +337,9 @@ internal fun SearchResultsList(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        // Correcciones en la interfaz (Rendimiento-2): Los resultados de la búsqueda cambiaron de la representación de columna completa de CardGroup a
-        // LazyColumn nivel superior items(key=id) Azulejo,Representación de carga diferida;Cada fila de tarjetas independientes con esquinas redondeadas
-        // (El diseño alinea la estructura de título/soporte/final del elemento CardGroup original.).
+        // 前端修复 (性能-2): 搜索结果由 CardGroup 全量 Column 渲染改为
+        // LazyColumn 顶层 items(key=id) 平铺,懒加载渲染;每行独立圆角卡片
+        // (布局对齐原 CardGroup 项的 headline/supporting/trailing 结构)。
         itemsIndexed(results, key = { _, item -> item.id }) { _, item ->
             MuseSurface(
                 modifier = Modifier.fillMaxWidth(),
@@ -373,10 +373,10 @@ internal fun SearchResultsList(
 }
 
 /**
- * v9: Mostrar elementos de la memoria agrupados por categoría(Estilo de dibujo de referencia).
+ * v9: 按分类分组展示记忆条目(参考图风格)。
  *
- * Cuando no se selecciona ninguna categoría específica,Agrupar por categoría,Cada grupo tiene un subtítulo + mazo de cartas independiente.
- * Cuando se selecciona una categoría,Las entradas de esta categoría se muestran directamente,Los títulos de grupo ya no se repiten.
+ * 当未选择具体分类时,按 category 分组,每个分组一个小标题 + 独立卡片组。
+ * 当选中某个分类时,该分类下条目直接展示,不再重复分组标题。
  */
 internal fun LazyListScope.categoryGroupedMemoryListItems(
     items: List<MemoryItem>,
@@ -393,12 +393,12 @@ internal fun LazyListScope.categoryGroupedMemoryListItems(
         return
     }
 
-    // Orden de clasificación(Según la imagen de referencia.):identity / preference / event / relationship / goal / medical / other
+    // 分类顺序(按参考图):identity / preference / event / relationship / goal / medical / other
     val categoryOrder = listOf("identity", "preference", "event", "relationship", "goal", "medical", "other")
 
-    // Cuando se alcanza la categoría seleccionada,Colocar la lista en mosaico directamente
+    // 命中 selectedCategory 时,直接平铺列表
     if (selectedCategory != null) {
-        // Correcciones en la interfaz (Rendimiento-2): por item { MemoryCardGroup } La representación completa cambió a mosaicos de nivel superior
+        // 前端修复 (性能-2): 由 item { MemoryCardGroup } 全量渲染改为顶层平铺
         memoryCardGroupItems(
             items = items,
             onDelete = onDelete,
@@ -409,7 +409,7 @@ internal fun LazyListScope.categoryGroupedMemoryListItems(
         return
     }
 
-    // Ninguna categoría seleccionada:Agrupar por categoría
+    // 未选中分类:按 category 分组
     val grouped = items.groupBy {
         it.category?.lowercase()?.takeIf { c -> categoryOrder.contains(c) } ?: "other"
     }
@@ -424,7 +424,7 @@ internal fun LazyListScope.categoryGroupedMemoryListItems(
                 count = groupItems.size,
             )
         }
-        // Correcciones en la interfaz (Rendimiento-2): dentro del grupo por item { MemoryCardGroup } La representación completa cambió a mosaicos de nivel superior
+        // 前端修复 (性能-2): 组内由 item { MemoryCardGroup } 全量渲染改为顶层平铺
         memoryCardGroupItems(
             items = groupItems,
             onDelete = onDelete,
@@ -449,7 +449,7 @@ internal fun categoryDisplayName(category: String): String {
 }
 
 /**
- * Título del grupo de clasificación — centro/Texto pequeño justificado a la izquierda.
+ * 分类分组标题 — 居中/左对齐小字。
  */
 @Composable
 internal fun CategorySectionHeader(title: String, count: Int) {
@@ -460,7 +460,7 @@ internal fun CategorySectionHeader(title: String, count: Int) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        // LAYOUT-01: El título del grupo toma el ancho restante (el recuento aún está fijo a la derecha) y ya no se ajusta palabra por palabra cuando se amplía el tamaño de fuente.
+        // LAYOUT-01: 分组标题取剩余宽度（计数仍固定靠右），放大字号下不再逐字换行
         Text(
             text = title,
             style = MaterialTheme.typography.labelMedium,
@@ -470,7 +470,7 @@ internal fun CategorySectionHeader(title: String, count: Int) {
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
         )
-        // LAYOUT-01: El recuento es un número cuantitativo al final de la línea. Solo se limita a la línea y no toma el ancho (el ancho lo empujará desde el borde derecho hasta el centro de la línea)
+        // LAYOUT-01: 计数是行尾定量，只限行、不取宽（取宽会把它从右缘推到行中间）
         Text(
             text = count.toString(),
             style = MaterialTheme.typography.labelSmall,
@@ -481,9 +481,9 @@ internal fun CategorySectionHeader(title: String, count: Int) {
 }
 
 /**
- * Correcciones en la interfaz (Rendimiento-2): Agrupación de filas de memoria — Se cambió de la representación completa de @Composable Column a
- * LazyListScope items(key=id) Azulejo superior,Representación de carga diferida.
- * Cada fila de tarjetas independientes con esquinas redondeadas(Reemplaza el juego completo original de tarjetas con esquinas redondeadas + interior. divider).
+ * 前端修复 (性能-2): 记忆行分组 — 由 @Composable Column 全量渲染改为
+ * LazyListScope items(key=id) 顶层平铺,懒加载渲染。
+ * 每行独立圆角卡片(替代原整组圆角卡 + 内部 divider)。
  */
 internal fun LazyListScope.memoryCardGroupItems(
     items: List<MemoryItem>,
@@ -513,8 +513,8 @@ internal fun LazyListScope.memoryCardGroupItems(
 }
 
 /**
- * v1.x: sola línea de memoria — Ancho de texto completo(Se puede mostrar completamente con saltos de línea.) + meta OK + ⋮ Menú de operación.
- * Operación(fijar hacia arriba/importancia/Editar/Eliminar)En el menú,No más desplazamiento del texto principal.
+ * v1.x: 单条记忆行 — 正文全宽(可换行完整显示) + meta 行 + ⋮ 操作菜单。
+ * 操作(置顶/重要度/编辑/删除)收进菜单,不再挤占正文。
  */
 @Composable
 private fun MemoryFactRow(
@@ -608,7 +608,7 @@ private fun MemoryFactRow(
 }
 
 /**
- * Contenido principal de la tarjeta de memoria — Consistente con la imagen de referencia.:Texto + fecha/Alcance meta + etiqueta de importancia.
+ * 记忆卡片主体内容 — 与参考图一致:正文 + 日期/作用域 meta + 重要性标签。
  */
 @Composable
 internal fun MemoryCardContent(item: MemoryItem) {
@@ -646,7 +646,7 @@ internal fun buildMetaText(item: MemoryItem): String {
     } else {
         ""
     }
-    // rastreable:completar una línea“éxitos recientes”,Permitir que el usuario vea si la memoria todavía está viva o no.
+    // 可追溯:补一行“最近命中”,让用户看得出这条记忆还活着没有
     val hitText = daysSinceIso(item.lastHitAt)?.let { days ->
         stringResource(R.string.memory_meta_last_hit, days)
     } ?: ""
@@ -660,8 +660,8 @@ internal fun buildMetaText(item: MemoryItem): String {
 }
 
 /**
- * Asistencia de trazabilidad:ISO tiempo → Número de días desde hoy(No se puede analizar la devolución null).
- * Sólo para visualización,No involucrado en ningún juicio.
+ * 可追溯辅助:ISO 时间 → 距今天数(无法解析返回 null)。
+ * 只用于展示,不参与任何判定。
  */
 internal fun daysSinceIso(iso: String?): Long? {
     if (iso.isNullOrBlank()) return null
@@ -672,7 +672,7 @@ internal fun daysSinceIso(iso: String?): Long? {
 }
 
 /**
- * etiqueta de importancia(Verde a la derecha/pastilla roja).
+ * 重要性小标签(右侧绿色/红色药丸)。
  */
 @Composable
 internal fun ImportanceTag(importance: Int) {
@@ -702,7 +702,7 @@ internal fun ImportanceTag(importance: Int) {
 }
 
 /**
- * Área de operación de la tarjeta de memoria — Editar/eliminar/establecer importancia.
+ * 记忆卡片操作区 — 编辑 / 删除 / 设置重要程度。
  */
 @Composable
 internal fun MemoryCardTrailing(
@@ -759,7 +759,7 @@ internal fun MemoryCardTrailing(
 }
 
 /**
- * Área de título de la línea de memoria — Insignia de importancia + título.
+ * 记忆行标题区 — 重要性徽章 + 标题。
  */
 @Composable
 internal fun MemoryRowHeadline(item: MemoryItem) {
@@ -783,7 +783,7 @@ internal fun MemoryRowHeadline(item: MemoryItem) {
 }
 
 /**
- * Área de contenido de la línea de memoria — markdown contenido + etiquetas/tiempo/Meta alcance.
+ * 记忆行内容区 — markdown 内容 + 标签/时间/作用域 meta。
  */
 @Composable
 internal fun MemoryRowSupporting(item: MemoryItem) {
@@ -849,7 +849,7 @@ internal fun MemoryRowSupporting(item: MemoryItem) {
 }
 
 /**
- * Área de operación de la línea de memoria — Establecer importancia/editar/eliminar.
+ * 记忆行操作区 — 设置重要程度 / 编辑 / 删除。
  */
 @Composable
 internal fun MemoryRowTrailing(
@@ -858,7 +858,7 @@ internal fun MemoryRowTrailing(
     onEdit: ((MemoryItem) -> Unit)?,
     onSetImportance: ((MemoryItem) -> Unit)?,
 ) {
-    // v2.x unificación: ≥2 Convergir al menú "Más" al realizar acciones dentro de una fila(Evite que las columnas de texto de la pantalla estrechas sean comprimidas por varios botones)
+    // v2.x 统一化: ≥2 个行内动作时收敛为「更多」菜单(防止窄屏文本列被多个按钮挤压)
     val moreCd = stringResource(R.string.settings_mcp_more)
     var menuExpanded by remember { mutableStateOf(false) }
     val hasMultipleActions = listOfNotNull(onSetImportance, onEdit, onDelete).size >= 2
@@ -959,7 +959,7 @@ internal fun MemoryRowTrailing(
 }
 
 /**
- * v4: Insignia de importancia.
+ * v4: 重要程度徽章。
  */
 @Composable
 internal fun ImportanceBadge(importance: Int) {
@@ -995,7 +995,7 @@ internal fun ImportanceBadge(importance: Int) {
 }
 
 /**
- * v4: Calcule la copia en tiempo relativo según creadoAt.
+ * v4: 根据 createdAt 计算相对时间文案。
  */
 @Composable
 internal fun formatCreatedAtText(createdAt: String?): String? {
@@ -1013,7 +1013,7 @@ internal fun formatCreatedAtText(createdAt: String?): String? {
 }
 
 /**
- * Cuadro de visualización de la pila de errores.
+ * 错误堆栈展示框。
  */
 @Composable
 internal fun ErrorTraceBox(trace: String, onRetry: () -> Unit) {
@@ -1030,7 +1030,7 @@ internal fun ErrorTraceBox(trace: String, onRetry: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            // LAYOUT-01: El título del error ocupa el ancho restante (solo un botón de copia de ancho fijo a la derecha)
+            // LAYOUT-01: 错误标题取剩余宽度（右侧仅一个固定宽复制按钮）
             Text(
                 text = stringResource(R.string.memory_screen_load_failed),
                 style = MaterialTheme.typography.titleMedium,
@@ -1084,7 +1084,7 @@ internal fun ErrorTraceBox(trace: String, onRetry: () -> Unit) {
 }
 
 /**
- * Mensaje de estado vacío.
+ * 空状态提示。
  */
 @Composable
 internal fun EmptyHint(text: String) {

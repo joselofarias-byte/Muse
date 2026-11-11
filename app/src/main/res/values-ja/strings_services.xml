@@ -161,7 +161,21 @@
     <string name="tool_start_time_format_error">開始時刻の形式が無効です。</string>
     <string name="tool_no_calendar_account">使用可能なカレンダー アカウントが見つかりません</string>
     <string name="tool_calendar_added">追加されたカレンダー イベント: %1$s</string>
+    <string name="tool_calendar_choose_required">書き込み可能なカレンダーが複数あります。calendar_id で指定してください：%1$s</string>
+    <string name="tool_calendar_unknown_id">指定されたカレンダーが存在しません：id=%1$s</string>
+    <string name="tool_calendar_added_with_id">予定「%1$s」を追加しました（event_id=%2$s）。この id で更新・削除できます</string>
     <string name="tool_calendar_add_failed_perm">カレンダーイベントの追加に失敗しました (WRITE_CALENDAR 権限を確認してください)</string>
+    <string name="tool_calendar_invalid_scope">scope は all か this のみです：%1$s</string>
+    <string name="tool_calendar_invalid_event_id">event_id が無効です：%1$s</string>
+    <string name="tool_calendar_nothing_to_update">変更する項目がありません（title/start_time/end_time/description/location/all_day のいずれか）</string>
+    <string name="tool_calendar_this_needs_occurrence">scope=this には occurrence_time（その回の開始時刻）が必要です</string>
+    <string name="tool_calendar_this_update_unsupported">単発の回だけの変更は未対応です：scope=all でシリーズ全体を変更するか、削除の scope=this でその回をキャンセルしてください</string>
+    <string name="tool_calendar_updated">予定を更新しました（id=%1$s）</string>
+    <string name="tool_calendar_deleted">予定を削除しました（id=%1$s）</string>
+    <string name="tool_calendar_canceled_this">このシリーズのこの回をキャンセルしました（id=%1$s）</string>
+    <string name="tool_calendar_event_not_found">予定が見つかりません（id=%1$s）。削除済みか id が誤っている可能性があります</string>
+    <string name="tool_calendar_update_failed">更新に失敗しました：%1$s</string>
+    <string name="tool_calendar_delete_failed">削除に失敗しました：%1$s</string>
     <string name="tool_calendar_add_failed">カレンダーイベントの追加に失敗しました</string>
     <string name="tool_missing_param_hour">パラメータがありません: 時間 (0-23)</string>
     <string name="tool_hour_range">時間は 0 ～ 23 である必要があります</string>
@@ -262,7 +276,29 @@
     <string name="tool_brightness_auto">自動</string>
     <string name="tool_brightness_manual">マニュアル</string>
     <string name="tool_brightness_set">明るさを%1$dに設定</string>
+    <string name="tool_write_verified">（反映を確認済み）</string>
+    <string name="tool_write_permission_denied">システムが書き込みを拒否しました（「システム設定の変更」などの権限が必要です）</string>
+    <string name="automation_handoff_title">仮想ディスプレイの引き継ぎ</string>
+    <string name="assist_service_label">Musa アシスタント</string>
+    <string name="automation_handoff_desc">アシスタントが残した仮想ディスプレイが %1$d 件。プレビューして操作できます</string>
+    <string name="automation_handoff_bring_main">メイン画面に戻す</string>
+    <string name="automation_handoff_bring_main_hint">アプリをメイン画面に出すだけで、以前のページや入力状態はアプリ次第で失われる可能性があります。</string>
+    <string name="automation_handoff_bring_main_ok">メイン画面に戻しました（状態の保持はアプリ次第です）</string>
+    <string name="automation_handoff_bring_main_failed">失敗：画面サービスが利用できないか、アプリを起動できません</string>
+    <string name="automation_handoff_close_destroy">閉じてこの画面を破棄</string>
+    <string name="tool_volume_failed">音量の設定に失敗しました： %1$s</string>
+    <string name="tool_write_verified_transition">（反映を確認済み：%1$d → %2$d）</string>
+    <string name="tool_write_unverified">（送信済み・未確認）</string>
+    <string name="tool_write_not_applied">設定が反映されていません：期待 %1$d、実際 %2$d</string>
     <string name="tool_brightness_auto_set">自動輝度を有効にしました</string>
+    <string name="read_aloud_channel_name">読み上げ再生</string>
+    <string name="notif_task_stage_title">タスクを実行中</string>
+    <string name="notif_task_stage_stop">停止</string>
+    <string name="skill_url_dialog_title">GitHub からスキルをインストール</string>
+    <string name="skill_url_hint">https://github.com/作者/リポジトリ</string>
+    <string name="skill_url_help">GitHub のリポジトリのみ対応。アーカイブを取得し SKILL.md を読みます。</string>
+    <string name="read_aloud_notification_text">読み上げ中…</string>
+    <string name="read_aloud_notification_stop">停止</string>
     <string name="tool_brightness_missing">パラメータがありません: 値</string>
     <string name="tool_brightness_failed">明るさを設定できませんでした: %1$s</string>
     <string name="tool_volume_info">%1$s ボリューム: %2$d / %3$d</string>
@@ -277,7 +313,7 @@
     <string name="tool_flashlight_on">懐中電灯が点灯しました</string>
     <string name="tool_flashlight_off">懐中電灯がオフになりました</string>
     <string name="tool_flashlight_state">懐中電灯の状態: %1$s</string>
-    <string name="tool_flashlight_state_unknown">懐中電灯の状態: 不明(このセッションでは未操作)</string>
+    <string name="tool_flashlight_state_unknown">ライトの状態： 不明（システムから時間内に応答がありません）</string>
     <string name="tool_flashlight_unavailable">デバイスは懐中電灯をサポートしていません</string>
     <string name="tool_flashlight_no_camera">使用可能なカメラがありません</string>
     <string name="tool_flashlight_invalid_action">アクションはオン/オフ/ステータスである必要があります</string>
@@ -413,7 +449,7 @@
     <string name="app_control_reason_not_found">アプリが見つかりません。app_list で名前とパッケージ名を確認してください</string>
     <string name="app_control_reason_need_elevated">この操作には Shizuku/adb または Root 権限が必要ですが、この端末では利用できません。別の方法を使うか設定で許可してください</string>
     <string name="app_control_reason_system_app">システムアプリではこの操作は許可されていません</string>
-    <string name="app_control_reason_self">Muse 自身にはこの操作は許可されていません</string>
+    <string name="app_control_reason_self">Musa 自身にはこの操作は許可されていません</string>
     <string name="app_control_via_app">アプリ権限</string>
     <string name="app_control_via_shell">Shizuku/adb</string>
     <string name="app_control_via_root">Root</string>

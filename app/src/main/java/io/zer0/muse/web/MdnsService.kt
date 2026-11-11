@@ -7,20 +7,20 @@ import io.zer0.common.Logger
 import io.zer0.common.resultOf
 
 /**
- * Phase 8.11: mDNS descubrimiento de servicios(NSD — Network Service Discovery).
+ * Phase 8.11: mDNS 服务发现(NSD — Network Service Discovery)。
  *
- * Regístrate dentro de LAN `_http._tcp` servicio,Permitir el paso de dispositivos bajo el mismo Wi-Fi
- * Bonjour/Avahi/NSD El navegador descubrió el servidor web muse.
+ * 在局域网内注册 `_http._tcp` 服务,让同一 Wi-Fi 下的设备能通过
+ * Bonjour/Avahi/NSD 浏览器发现 muse Web 服务器。
  *
- * darse cuenta:
- *  - [NsdManager.registerService] Servicio de registro(API 16+,No se requieren permisos adicionales)
- *  - Nombre del servicio "muse-web",Tipo "_http._tcp",El puerto es consistente con WebServer.
- *  - [unregister] Cerrar sesión cuando el servidor web se detenga
+ * 实现:
+ *  - [NsdManager.registerService] 注册服务(API 16+,无需额外权限)
+ *  - 服务名 "muse-web",类型 "_http._tcp",端口与 WebServer 一致
+ *  - [unregister] 在 WebServer 停止时注销服务
  *
- * Límite:
- *  - NSD Puede estar restringido por la política de ahorro de energía en algunas ROM nacionales(No detectable en segundo plano)
- *  - Solo detectable dentro de la misma subred(No visible a través de VLAN/VPN)
- *  - El registro del servicio es asíncrono.,[register] Regresar no significa que estés en línea
+ * 限制:
+ *  - NSD 在某些国产 ROM 上可能被省电策略限制(后台不可发现)
+ *  - 仅同一子网内可发现(跨 VLAN/VPN 不可见)
+ *  - 服务注册是异步的,[register] 返回后不代表已上线
  */
 class MdnsService(private val context: Context) {
 
@@ -29,16 +29,16 @@ class MdnsService(private val context: Context) {
 
     private var registrationListener: NsdManager.RegistrationListener? = null
 
-    /** Nombre del servicio(El nombre mostrado en la LAN). */
+    /** 服务名(局域网内显示的名称)。 */
     private var registeredName: String? = null
 
     /**
-     * Registre el servicio mDNS.
-     * @param port WebServer puerto de escucha
-     * @param serviceName Nombre del servicio(Predeterminado "muse-web")
+     * 注册 mDNS 服务。
+     * @param port WebServer 监听端口
+     * @param serviceName 服务名(默认 "muse-web")
      */
     fun register(port: Int, serviceName: String = DEFAULT_SERVICE_NAME) {
-        // Primero anule el registro del anterior(Evite registros repetidos que provoquen que NsdManager informe errores)
+        // 先注销旧的(避免重复注册导致 NsdManager 报错)
         unregister()
 
         val serviceInfo = NsdServiceInfo().apply {
@@ -50,21 +50,21 @@ class MdnsService(private val context: Context) {
         val listener = object : NsdManager.RegistrationListener {
             override fun onServiceRegistered(info: NsdServiceInfo) {
                 registeredName = info.serviceName
-                Logger.i(TAG, "mDNS El servicio esta registrado: ${info.serviceName} :${info.port}")
+                Logger.i(TAG, "mDNS 服务已注册: ${info.serviceName} :${info.port}")
             }
 
             override fun onRegistrationFailed(info: NsdServiceInfo, errorCode: Int) {
-                Logger.e(TAG, "mDNS Registro fallido: errorCode=$errorCode, service=${info.serviceName}")
+                Logger.e(TAG, "mDNS 注册失败: errorCode=$errorCode, service=${info.serviceName}")
                 registrationListener = null
             }
 
             override fun onServiceUnregistered(info: NsdServiceInfo) {
-                Logger.i(TAG, "mDNS El servicio ha sido cerrado: ${info.serviceName}")
+                Logger.i(TAG, "mDNS 服务已注销: ${info.serviceName}")
                 registeredName = null
             }
 
             override fun onUnregistrationFailed(info: NsdServiceInfo, errorCode: Int) {
-                Logger.w(TAG, "mDNS Error al cerrar sesión: errorCode=$errorCode")
+                Logger.w(TAG, "mDNS 注销失败: errorCode=$errorCode")
             }
         }
 
@@ -72,12 +72,12 @@ class MdnsService(private val context: Context) {
         resultOf {
             nsdManager.registerService(serviceInfo, NsdManager.PROTOCOL_DNS_SD, listener)
         }.onError { msg, _ ->
-            Logger.e(TAG, "registerService anormal: $msg")
+            Logger.e(TAG, "registerService 异常: $msg")
             registrationListener = null
         }
     }
 
-    /** Cerrar sesión en el servicio mDNS(idempotente,Ninguna operación cuando no está registrado). */
+    /** 注销 mDNS 服务(幂等,未注册时无操作)。 */
     fun unregister() {
         registrationListener?.let { listener ->
             resultOf { nsdManager.unregisterService(listener) }
@@ -90,7 +90,7 @@ class MdnsService(private val context: Context) {
         private const val TAG = "MdnsService"
         private const val DEFAULT_SERVICE_NAME = "muse-web"
 
-        /** NSD Tipo de servicio(HTTP over TCP). */
+        /** NSD 服务类型(HTTP over TCP)。 */
         private const val SERVICE_TYPE = "_http._tcp."
     }
 }

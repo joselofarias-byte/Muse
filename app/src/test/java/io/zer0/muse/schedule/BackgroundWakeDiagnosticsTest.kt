@@ -8,10 +8,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Prueba puramente lógica para el diagnóstico de activación en segundo plano:Mapeo de enumeración de estados, ensamblaje de entradas y ensamblaje de instantáneas.
+ * 后台唤醒诊断的纯逻辑测试:状态枚举映射、条目组装、快照拼装。
  *
- * Ninguna de estas funciones toca la instancia de WorkManager.,Entonces puede ejecutarse en JVM pura.(no depende de Robolectric).
- * `WorkInfo.State` En sí misma es sólo una enumeración.,Simplemente tome su nombre y fije la "tabla de mapeo" a la enumeración real.
+ * 这些函数都不碰 WorkManager 实例,所以能在纯 JVM 里跑(不依赖 Robolectric)。
+ * `WorkInfo.State` 本身只是枚举,直接取它的名字即可把「映射表」钉在真实枚举上。
  */
 class BackgroundWakeDiagnosticsTest {
 
@@ -40,11 +40,11 @@ class BackgroundWakeDiagnosticsTest {
             WorkInfo.State.FAILED to WakeState.FAILED,
             WorkInfo.State.CANCELLED to WakeState.CANCELLED,
         )
-        // WorkInfo.State Cada valor de debe tener un mapeo.,Al agregar un nuevo estado del sistema, esto fallará primero.
+        // WorkInfo.State 的每个值都必须有映射,新增系统状态时这条会先失败
         assertEquals(WorkInfo.State.values().toSet(), expected.keys)
         expected.forEach { (systemState, wakeState) ->
             assertEquals(
-                "Estado del sistema ${systemState.name} mapeo",
+                "系统状态 ${systemState.name} 的映射",
                 wakeState,
                 BackgroundWakeDiagnostics.mapWakeState(systemState.name),
             )
@@ -53,11 +53,11 @@ class BackgroundWakeDiagnosticsTest {
 
     @Test
     fun `unknown and missing state names fall back instead of throwing`() {
-        // null = Esta tarea no se puede encontrar en el sistema.(No registrado),Distinguirlo de "encontrarlo pero no reconocerlo"
+        // null = 这条任务在系统里查不到(未注册),与「查到了但不认识」区分开
         assertEquals(WakeState.NOT_REGISTERED, BackgroundWakeDiagnostics.mapWakeState(null))
         assertEquals(WakeState.UNKNOWN, BackgroundWakeDiagnostics.mapWakeState("SOMETHING_NEW"))
         assertEquals(WakeState.UNKNOWN, BackgroundWakeDiagnostics.mapWakeState("  "))
-        // No distingue entre mayúsculas y minúsculas:Cuando la forma de serialización cambia en el lado del sistema, la pieza completa no caerá UNKNOWN
+        // 大小写不敏感:系统侧序列化形态变化时不至于整片掉到 UNKNOWN
         assertEquals(WakeState.ENQUEUED, BackgroundWakeDiagnostics.mapWakeState("enqueued"))
     }
 
@@ -101,13 +101,13 @@ class BackgroundWakeDiagnosticsTest {
         ).single()
         assertEquals(WakeState.ENQUEUED, entry.state)
         assertEquals(1_700_000_000_000L, entry.nextRunAtMillis)
-        // Se conserva el número de entradas históricas.,El usuario sólo sabe cuántas veces ha sido reconstruida esta obra única
+        // 历史条数保留下来,用户才知道这个 unique work 被重建过几次
         assertEquals(2, entry.historyCount)
     }
 
     @Test
     fun `finished-only chain reports the last finished state`() {
-        // WorkManager Presione Enqueue para regresar a la cadena histórica de la misma obra única.,El ultimo es el actual.
+        // WorkManager 按入队先后返回同一条 unique work 的历史链,最后一条才是当前这条
         val snapshots = listOf(
             snapshot(WorkInfo.State.SUCCEEDED),
             snapshot(WorkInfo.State.FAILED, runAttemptCount = 3, stopReason = WakeStopReason.TIMEOUT),
@@ -119,7 +119,7 @@ class BackgroundWakeDiagnosticsTest {
         assertEquals(WakeState.FAILED, entry.state)
         assertEquals(3, entry.runAttemptCount)
         assertEquals(WakeStopReason.TIMEOUT, entry.stopReason)
-        // El estado final no incluye el siguiente tiempo de ejecución.,Evite mostrar valores centinela como Long.MAX_VALUE como marcas de tiempo
+        // 终态不携带下次运行时间,避免把 Long.MAX_VALUE 之类的哨兵值当成时间戳显示
         assertNull(entry.nextRunAtMillis)
     }
 
@@ -139,9 +139,9 @@ class BackgroundWakeDiagnosticsTest {
     @Test
     fun `candidate names are non-empty for every kind`() {
         WakeWorkKind.values().forEach { kind ->
-            assertTrue("$kind Ningún nombre de trabajo único del candidato", BackgroundWakeDiagnostics.candidateWorkNames(kind).isNotEmpty())
+            assertTrue("$kind 没有候选 unique work 名", BackgroundWakeDiagnostics.candidateWorkNames(kind).isNotEmpty())
         }
-        // El período de resumen diario se puede configurar a cualquier hora.,Los candidatos deben tener 24 años.
+        // 每日总结的时段可配置到任意整点,候选必须是 24 个
         assertEquals(24, BackgroundWakeDiagnostics.candidateWorkNames(WakeWorkKind.DAILY_SUMMARY).size)
     }
 
@@ -178,8 +178,8 @@ class BackgroundWakeDiagnosticsTest {
 
     @Test
     fun `snapshot marks a missing next run as none instead of a sentinel`() {
-        // estado final/Las tareas no registradas no tienen tiempo de ejecución siguiente. Las instantáneas no deben contener 0 o Long.MAX_VALUE:
-        // Las personas que lean las instantáneas las interpretarán como marcas de tiempo reales.
+        // 终态/未注册的任务没有下次运行时间。快照里绝不能出现 0 或 Long.MAX_VALUE:
+        // 阅读快照的人会把它们当成真的时间戳。
         val report = WakeDiagnostics(
             entries = listOf(
                 WakeWorkEntry(
@@ -201,9 +201,9 @@ class BackgroundWakeDiagnosticsTest {
             device = "Google Pixel 7",
         )
         val text = BackgroundWakeDiagnostics.formatSnapshot(report)
-        assertTrue("Los valores faltantes deben escribirse como next_run=none", text.contains("next_run=none"))
-        assertFalse("Long.MAX_VALUE no se puede generar como marca de tiempo", text.contains(Long.MAX_VALUE.toString()))
-        assertFalse("0 no se puede generar como marca de tiempo", text.contains("next_run=0\n"))
+        assertTrue("缺值必须写成 next_run=none", text.contains("next_run=none"))
+        assertFalse("不能把 Long.MAX_VALUE 当成时间戳输出", text.contains(Long.MAX_VALUE.toString()))
+        assertFalse("不能把 0 当成时间戳输出", text.contains("next_run=0\n"))
     }
 
     @Test

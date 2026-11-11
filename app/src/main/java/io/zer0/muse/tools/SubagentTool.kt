@@ -1,7 +1,7 @@
 package io.zer0.muse.tools
 
 import io.zer0.common.Logger
-// v1.0.53: Versión persistente SubagentThreadStore(Reemplaza las herramientas antiguas. Versión de memoria SubagentThreadStore)
+// v1.0.53: 持久化版 SubagentThreadStore(替代旧 tools.SubagentThreadStore 内存版)
 import io.zer0.muse.data.subagent.SubagentThreadStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
@@ -14,48 +14,50 @@ import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * subagent_task Herramientas.
+ * subagent_task 工具。
  *
- * Ejecución de tareas de subagente en segundo plano sin bloqueo,Admite la continuación y el cierre de subprocesos.
+ * 非阻塞后台子 agent 任务执行,支持线程续接与关闭。
  *
- * Operación de tres piezas:
- *  - launch:Iniciar una nueva tarea de subagente,Regresar taskId + threadId
- *  - reply :Continuación del mismo niño. agent(prensa threadId),entrante nuevo task
- *  - close :Cerrar el hilo del agente secundario,Liberar recursos
+ * 三件套操作:
+ *  - launch:启动新子 agent 任务,返回 taskId + threadId
+ *  - reply :续接同一子 agent(按 threadId),传入新 task
+ *  - close :关闭子 agent 线程,释放资源
  *
- * Operaciones auxiliares:
- *  - status :Consultar el progreso de la tarea
- *  - cancel :Abortar tarea
- *  - list  :enumerar todas las tareas
+ * 辅助操作:
+ *  - status :查询任务进度
+ *  - cancel :中止任务
+ *  - list  :列出所有任务
  *
- * Herencia de archivos de permisos(Transformación 3):
- *  - access parámetros(read/write,Valores predeterminados cuando se omiten read,Heredar sesión principal)
- *  - Los valores ilegales se rechazan directamente.,No bajes de categoría en silencio
- *  - Pase [DelegationContract.DelegationRequest.access] pasar a [SkillExecutor.delegateAgent],
- *    Es verificado por delegadoDepth y access(Solución simplificada:Esta herramienta solo realiza análisis de parámetros.)
+ * 权限档(改造 3，**已更正**):
+ *  - `access` 参数仍然解析与校验，但它对这条路径**没有实际作用**：
+ *    本工具委派给"另一个助手"，子代理只拿到一个 `delegate_agent` 工具，
+ *    既不能读写文件也不能操作设备，因此不存在"可写/只读"之分。
+ *  - 需要带工具执行的委派请用 `subagent_run`（走 [SubagentRunner]，access 三档真正生效）。
+ *  - 旧注释称"access 传给 delegateAgent 由其校验"与代码不符，已删除 —— 留着会让人以为设了有效。
  *
- * Comentarios de resultados asincrónicos(Transformación 4):
- *  - launch/reply Regresar inmediatamente taskId,No bloquea la conversación principal.
- *  - Aprobado después de completar la subtarea [DeferredResultStore] Resultados de recarga
- *  - ChatViewModel Disponible para suscripción [DeferredResultStore.completedTasks] Obtenga tareas completadas e inyecte en el diálogo principal
- *  - [cleanupCompletedTasks] Limpiar periódicamente las tareas completadas,Sincronizar con DeferredResultStore
+ * 异步结果回灌(改造 4):
+ *  - launch/reply 立即返回 taskId,不阻塞主对话
+ *  - 子任务完成后通过 [DeferredResultStore] 回灌结果
+ *  - ChatViewModel 可订阅 [DeferredResultStore.completedTasks] 获取已完成任务并注入主对话
+ *  - [cleanupCompletedTasks] 定时清理已完成任务,与 DeferredResultStore 同步
  */
 object SubagentTool {
 
-    /** ¿Cuánto tiempo mantener las tareas completadas?:30 Limpiar después de minutos. */
+    /** 已完成任务保留时长:30 分钟后清理。 */
     private const val COMPLETED_TASK_TTL_MS = 30L * 60 * 1000
 
     data class TaskState(
         val taskId: String,
         val agentId: String,
         val description: String,
-        val status: String, // pending / running / completed / failed / cancelled
+        // pending / running / completed / failed / cancelled
+        val status: String,
         val progress: String = "",
         val result: String? = null,
         val createdAt: Long = System.currentTimeMillis(),
-        /** v1.202: Tiempo de finalización de la tarea(para limpieza),null Indica incompleto. */
+        /** v1.202: 任务完成时间(用于清理),null 表示未完成。 */
         val completedAt: Long? = null,
-        /** v1.202: Hilos de agentes secundarios asociados ID(Se utiliza para responder/cerrar continuación). */
+        /** v1.202: 关联的子 agent 线程 ID(用于 reply/close 续接)。 */
         val threadId: String? = null,
     )
 
@@ -66,35 +68,36 @@ object SubagentTool {
 
     fun toolDef() = ToolRegistry.ToolDef(
         name = "subagent_task",
-        description = "Iniciar/continuar/detener una tarea de subagente sin bloqueo." +
-            "action valor:launch(Crear nueva tarea,Devolver taskId con threadId),reply(Continuar por threadId)," +
-            "close(soltar hilo),status(Ver progreso),cancel(Abortar tarea),list(Listar todas las tareas).",
+        description = "启动 / 续接 / 关闭一个非阻塞的子代理任务。" +
+            "action 取值:launch(新建任务,返回 taskId 与 threadId)、reply(按 threadId 续接)、" +
+            "close(释放线程)、status(查看进度)、cancel(中止任务)、list(列出全部任务)。",
         parameters = mapOf(
             "action" to "Required. One of: launch / reply / close / status / cancel / list.",
             "agent_id" to "Required for launch. The assistant id to run the task.",
             "task" to "Required for launch/reply. Task description / prompt.",
             "task_id" to "Required for status/cancel. Task id returned by launch.",
             "thread_id" to "Required for reply/close. Thread id returned by launch.",
-            // A-10: parent_session_id Requerido —— De forma predeterminada, los resultados asincrónicos no se pueden atribuir a la sesión que inicia y se pierden silenciosamente.
+            // A-10: parent_session_id 必填 —— 缺省时异步结果无法归属到发起会话而静默丢失。
             "parent_session_id" to "REQUIRED for launch/reply. Parent session id for context isolation and " +
                 "result delivery. If omitted, the async result is silently lost.",
-            "access" to "Optional. Permission tier: read / write (default read, inherits parent session).",
+            "access" to "Optional, accepted for compatibility but has NO effect on this tool: the delegate runs with a single " +
+                "delegate_agent tool and never touches files or the device. Use subagent_run when the task needs tools.",
             "label" to "Optional. Display label for the task.",
         ),
         required = setOf("action"),
         category = "built-in",
-        // con ToolPermissionResolver.EXPLICIT_RISK_OVERRIDES ser consistente:subagent_task volver HIGH
+        // 与 ToolPermissionResolver.EXPLICIT_RISK_OVERRIDES 保持一致:subagent_task 归 HIGH
         riskLevel = ToolRiskLevel.HIGH,
     )
 
     /**
-     * Ejecute la herramienta subagent_task.
+     * 执行 subagent_task 工具。
      *
-     * @param args Parámetros de la herramienta
-     * @param skillExecutor Skill actuador(Utilizado para el asistente de ejecución de delegadoAgent LLM)
-     * @param subagentThreadStore Administrador de hilos de subagente(Continuación del hilo/cerrar/serialización)
-     * @param deferredResultStore Almacenamiento asincrónico de comentarios de resultados(Los resultados sin bloqueo se devuelven al cuadro de diálogo principal.)
-     * @param appScope nivel de aplicación CoroutineScope(Realizar tareas sin bloqueo en segundo plano,Cortar páginas/Sin interrupciones en segundo plano)
+     * @param args 工具参数
+     * @param skillExecutor Skill 执行器(用于 delegateAgent 跑子助手 LLM)
+     * @param subagentThreadStore 子 agent 线程管理器(线程续接/关闭/串行化)
+     * @param deferredResultStore 异步结果回灌存储(非阻塞结果回灌主对话)
+     * @param appScope 应用级 CoroutineScope(后台执行非阻塞任务,切页/后台不中断)
      */
     suspend fun execute(
         args: Map<String, String>,
@@ -105,7 +108,7 @@ object SubagentTool {
     ): String {
         val action = args["action"]?.trim() ?: return "Error: action parameter is required."
 
-        // list/status Limpiar tareas completadas,Evite pérdidas de memoria
+        // list/status 时顺便清理已完成任务,避免内存泄漏
         if (action == "list" || action == "status") {
             cleanupCompletedTasks(deferredResultStore)
         }
@@ -162,15 +165,15 @@ object SubagentTool {
     }
 
     /**
-     * Iniciar una nueva tarea de subagente(Transformación 2:launch).
+     * 启动新子 agent 任务(改造 2:launch)。
      *
-     * proceso:
-     *  1. Parámetros de análisis(agent_id / task / access / label / parent_session_id)
-     *  2. generar threadId + taskId
-     *  3. Registrar hilo para [SubagentThreadStore]
-     *  4. Llegan los resultados del retraso en el registro [DeferredResultStore]
-     *  5. appScope Ejecución asincrónica en segundo plano delegateAgent,Resultado después de la finalización
-     *  6. Regresar inmediatamente taskId + threadId
+     * 流程:
+     *  1. 解析参数(agent_id / task / access / label / parent_session_id)
+     *  2. 生成 threadId + taskId
+     *  3. 注册线程到 [SubagentThreadStore]
+     *  4. 注册延迟结果到 [DeferredResultStore]
+     *  5. appScope 后台异步执行 delegateAgent,完成后回灌结果
+     *  6. 立即返回 taskId + threadId
      */
     private suspend fun doLaunch(
         args: Map<String, String>,
@@ -185,18 +188,18 @@ object SubagentTool {
             ?: return "Error: task is required for launch."
         val parentSessionId = args["parent_session_id"]?.trim()?.takeIf { it.isNotBlank() }
         val label = args["label"]?.trim()?.takeIf { it.isNotBlank() }
-        // Transformación 3: análisis de archivos de permisos,Los valores ilegales se rechazan directamente.
+        // 改造 3:权限档解析,非法值直接拒绝
         val access = parseAccess(args["access"])
             ?: return "Error: access must be 'read' or 'write' (got: ${args["access"]})."
 
         val threadId = "thread-" + UUID.randomUUID().toString().take(12)
         val taskId = UUID.randomUUID().toString().take(12)
 
-        // Registrar hilo(Para respuesta posterior/cierre continuación)
+        // 注册线程(供后续 reply/close 续接)
         subagentThreadStore.beginRun(threadId, agentId, parentSessionId)
-        // Registrar una tarea retrasada(Para que ChatViewModel retroalimente la conversación principal)
+        // 注册延迟任务(供 ChatViewModel 回灌主对话)
         deferredResultStore.defer(taskId, parentSessionId ?: "", threadId, label, task)
-        // Registrarse localmente TaskState(Para consulta de estado/lista)
+        // 注册本地 TaskState(供 status/list 查询)
         tasks[taskId] = TaskState(
             taskId = taskId,
             agentId = agentId,
@@ -225,7 +228,7 @@ object SubagentTool {
             )
         }
         jobs[taskId] = job
-        // A-15: Regístrate en la tienda de resultados — abort Capaz de cancelar tareas en segundo plano.,Los resultados anti-fantasmas continúan ejecutándose
+        // A-15: 登记到结果存储 — abort 时能取消后台任务,防幽灵结果继续跑
         deferredResultStore.attachJob(taskId, job)
         job.invokeOnCompletion { jobs.remove(taskId, job) }
         job.start()
@@ -237,13 +240,13 @@ object SubagentTool {
     }
 
     /**
-     * Continuación del mismo niño. agent(Transformación 2:reply).
+     * 续接同一子 agent(改造 2:reply)。
      *
-     * proceso:
-     *  1. analizar thread_id / task / access / label
-     *  2. Verifique que el hilo exista y ACTIVE
-     *  3. Registrar nuevo taskId(Reutilizar lo mismo threadId)
-     *  4. appScope Ejecución asincrónica en segundo plano,Serialización mediante runSerialized(Tareas en cola con el mismo threadId)
+     * 流程:
+     *  1. 解析 thread_id / task / access / label
+     *  2. 验证线程存在且 ACTIVE
+     *  3. 注册新 taskId(复用同一 threadId)
+     *  4. appScope 后台异步执行,通过 runSerialized 串行化(同一 threadId 任务排队)
      */
     private suspend fun doReply(
         args: Map<String, String>,
@@ -295,7 +298,7 @@ object SubagentTool {
             )
         }
         jobs[taskId] = job
-        // A-15: Regístrate en la tienda de resultados — abort Capaz de cancelar tareas en segundo plano.
+        // A-15: 登记到结果存储 — abort 时能取消后台任务
         deferredResultStore.attachJob(taskId, job)
         job.invokeOnCompletion { jobs.remove(taskId, job) }
         job.start()
@@ -305,9 +308,9 @@ object SubagentTool {
     }
 
     /**
-     * Cerrar el hilo del agente secundario(Transformación 2:close).
+     * 关闭子 agent 线程(改造 2:close)。
      *
-     * Después del cierre, el threadId ya no se puede reply;La tarea que se está ejecutando se completará.,Pero las respuestas posteriores fracasarán.
+     * 关闭后该 threadId 不可再 reply;正在执行的任务会跑完,但后续 reply 会失败。
      */
     private suspend fun doClose(args: Map<String, String>, subagentThreadStore: SubagentThreadStore): String {
         val threadId = args["thread_id"]?.trim()
@@ -322,10 +325,10 @@ object SubagentTool {
     }
 
     /**
-     * Ejecutar tareas de subagente en segundo plano(Operación serializada).
+     * 后台执行子 agent 任务(串行化运行)。
      *
-     * Pase [SubagentThreadStore.runSerialized] Asegúrese de que varias tareas con el mismo threadId se ejecuten en serie,
-     * Evite las carreras concurrentes. Pasar después de completar [DeferredResultStore] Resultados de recarga(Resolución exitosa/fracaso fail).
+     * 通过 [SubagentThreadStore.runSerialized] 保证同一 threadId 的多个任务串行执行,
+     * 避免并发竞争。完成后通过 [DeferredResultStore] 回灌结果(成功 resolve / 失败 fail)。
      */
     private suspend fun runSubagent(
         taskId: String,
@@ -339,7 +342,7 @@ object SubagentTool {
         subagentThreadStore: SubagentThreadStore,
         deferredResultStore: DeferredResultStore,
     ) {
-        // marca running
+        // 标记 running
         tasks[taskId]?.let { current ->
             tasks[taskId] = current.copy(status = "running", progress = "Running...")
         }
@@ -392,10 +395,10 @@ object SubagentTool {
                 }
             }
         } catch (e: kotlin.coroutines.cancellation.CancellationException) {
-            // Reparación de auditoría (3.5): La señal de cancelación de rutina debe propagarse hacia arriba.,no puede ser catch(Exception) tragar
+            // 审计修复 (3.5): 协程取消信号必须向上传播,不能被 catch(Exception) 吞掉
             throw e
         } catch (e: Exception) {
-            Logger.w("SubagentTool", "Error en la ejecución de la tarea del subagente: taskId=$taskId, threadId=$threadId", e)
+            Logger.w("SubagentTool", "子 agent 任务执行失败: taskId=$taskId, threadId=$threadId", e)
             val err = e.message ?: e.javaClass.simpleName
             deferredResultStore.fail(taskId, err)
             if (deferredResultStore.getTask(taskId)?.status == DeferredResultStore.TaskStatus.FAILED) {
@@ -412,17 +415,24 @@ object SubagentTool {
     }
 
     /**
-     * Analizar parámetros de acceso(Modificación 3: herencia de archivos de permisos).
+     * 解析 access 参数(改造 3:权限档继承)。
      *
-     * - Omitir/en blanco → "read"(Heredar el archivo predeterminado de la sesión principal)
-     * - "read" / "write"(No distingue entre mayúsculas y minúsculas)→ Valor correspondiente
-     * - Otros → null(Representa un valor ilegal.,Error devuelto por la persona que llama,No bajes de categoría en silencio)
+     * - 省略/空白 → "read"(继承父会话默认档)
+     * - "read" / "write"(大小写不敏感)→ 对应值
+     * - 其他 → null(表示非法值,由调用方返回错误,不静默降级)
      */
-    private fun parseAccess(raw: String?): String? {
-        if (raw.isNullOrBlank()) return "read"
+    /**
+     * 解析 access 参数。
+     *
+     * 缺省返回 `write` —— 与 [SubagentRunner.Params.access] 的默认值保持一致：
+     * 两处默认值不同，工具路径就会比直接调用路径更窄，而这种差异没人会注意到。
+     */
+    internal fun parseAccess(raw: String?): String? {
+        if (raw.isNullOrBlank()) return "write"
         return when (raw.trim().lowercase()) {
             "read" -> "read"
-            "write" -> "write"
+            "write", "coder" -> "write"
+            "full", "all" -> "full"
             else -> null
         }
     }
@@ -434,14 +444,14 @@ object SubagentTool {
     fun getTask(taskId: String): TaskState? = tasks[taskId]
 
     /**
-     * Limpieza completada [COMPLETED_TASK_TTL_MS] tarea(Transformación 4: mecanismo de limpieza de tareas).
+     * 清理已完成超过 [COMPLETED_TASK_TTL_MS] 的任务(改造 4:tasks 清理机制)。
      *
-     * - Eliminar local [tasks] / [jobs] Completado en(pending afuera)y entradas agotadas
-     * - llamada sincrónica [DeferredResultStore.cleanupCompleted] Mantenga ambos lados consistentes
+     * - 移除本地 [tasks] / [jobs] 中已完成(pending 之外)且超时的条目
+     * - 同步调用 [DeferredResultStore.cleanupCompleted] 保持两边状态一致
      *
-     * tiempo de llamada:
-     *  - list / status Llamado durante la operación(Esta herramienta se activa internamente)
-     *  - temporizador externo(Como el temporizador de ChatViewModel)llamada explícita
+     * 调用时机:
+     *  - list / status 操作时顺便调用(本工具内部触发)
+     *  - 外部定时器(如 ChatViewModel 的定时器)显式调用
      */
     fun cleanupCompletedTasks(deferredResultStore: DeferredResultStore? = null) {
         val now = System.currentTimeMillis()
@@ -455,7 +465,7 @@ object SubagentTool {
             }
             updateFlow()
         }
-        // Limpieza sincrónica DeferredResultStore,Mantenga ambos lados consistentes
+        // 同步清理 DeferredResultStore,保持两边状态一致
         deferredResultStore?.cleanupCompleted(COMPLETED_TASK_TTL_MS)
     }
 }

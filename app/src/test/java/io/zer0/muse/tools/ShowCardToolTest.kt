@@ -6,50 +6,57 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Prueba única de identidad de tarjeta y vinculación de datos.
+ * 卡片身份与数据绑定的单测。
  *
- * La identidad de una tarjeta es la identificación del mensaje que la lleva, y esta identificación no es visible para el modelo. Si algún enlace de este enlace está roto,
- * El rendimiento es simplemente "los datos de la tarjeta se han actualizado pero la tarjeta no ha cambiado", no se informa ningún error ni se registra ningún registro. —— Así que fíjate con las pruebas.
+ * 卡片的身份是承载它的消息 id，而模型看不到这个 id。这条链路上任何一环断了，
+ * 表现都只是「卡片数据更新了但卡片没变」，不报错、不打日志 —— 所以用测试钉住。
  */
 class ShowCardToolTest {
 
     @Test
-    fun `Apunta al mensaje actual cuando se omite card_id`() {
+    fun `省略 card_id 时指向当前消息`() {
         assertEquals("msg-1", ShowCardTool.resolveCardTarget(null, "msg-1"))
         assertEquals("msg-1", ShowCardTool.resolveCardTarget("", "msg-1"))
         assertEquals("msg-1", ShowCardTool.resolveCardTarget("   ", "msg-1"))
     }
 
     @Test
-    fun `Card_id dado explícitamente tiene prioridad sobre el mensaje actual`() {
+    fun `显式给的 card_id 优先于当前消息`() {
         assertEquals("msg-old", ShowCardTool.resolveCardTarget("msg-old", "msg-now"))
         assertEquals("msg-old", ShowCardTool.resolveCardTarget("  msg-old  ", "msg-now"))
     }
 
     @Test
-    fun `Resolver como vacío cuando no hay una identificación de mensaje de contexto`() {
+    fun `没有上下文消息 id 时解析为空`() {
         assertEquals("", ShowCardTool.resolveCardTarget(null, null))
         assertEquals("", ShowCardTool.resolveCardTarget("", null))
     }
 
     @Test
-    fun `El recibo contiene el mensaje vinculado a la tarjeta id`() {
+    fun `回执里带上卡片绑定的消息 id`() {
         val result = ShowCardTool.execute(
             args = mapOf("title" to "demo", "code" to "<div>hi</div>"),
             messageId = "msg-42",
         )
 
-        assertTrue("El modelo necesita saber a qué mensaje está vinculada esta tarjeta.", result.contains("msg-42"))
+        assertTrue("模型需要知道这张卡绑在哪条消息上", result.contains("msg-42"))
     }
 
     @Test
-    fun `Los recibos no son locuaces cuando no hay una identificación del mensaje`() {
+    fun `没有消息 id 时回执不多嘴`() {
         val result = ShowCardTool.execute(
             args = mapOf("title" to "demo", "code" to "<div>hi</div>"),
             messageId = null,
         )
 
         assertFalse(result.contains("Card bound to message"))
-        assertTrue(result.contains("rendered"))
+        assertTrue("卡片仍然要给出渲染回执", result.contains("rendered"))
+        // 这里补的是历史事故的形状：工具曾自己造过一次性 id（`c_<时间戳>_<序号>`）
+        // 并拿它当数据绑定的 key，于是渲染层按消息 id 查、工具按 c_xxx 写，
+        // **读到的永远是 null 而且不报错**。身份只能有一个来源 —— 工具不该产 id。
+        assertFalse(
+            "回执里出现了工具自造的一次性 id，正是当年那个双身份 bug 的形状：$result",
+            Regex("""\bc_\d+_\d+\b""").containsMatchIn(result),
+        )
     }
 }

@@ -8,13 +8,13 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
 /**
- * v12: LLM determinante de deduplicación de hechos — capa de algoritmo(Similitud de personajes/Clave de entidad)Pares de candidatos difusos indeterminados,
- * Deje que el modelo grande determine si se trata del mismo hecho.
+ * v12: LLM 事实去重判定器 — 算法层(字符相似度/实体键)无法确定的模糊候选对,
+ * 交给大模型判断是否为同一事实。
  *
- * diseño:
- *  - Sólo en FactStore"Hay candidatos para la misma clave de entidad pero falla la determinación del texto"Las escenas de baja frecuencia se llaman,1 convocatoria de LLM por;
- *  - LLM salida estricta JSON,El análisis falló/tiempo de espera/Las excepciones siempre se degradan a"No es lo mismo"(Preferiría no fusionarse,Sin bloqueo de escrituras);
- *  - La caché de decisiones la mantiene el lado de FactStore(Preguntar sólo una vez sobre los mismos hechos.).
+ * 设计:
+ *  - 只在 FactStore 的"同实体键有候选但文本判定失败"低频场景被调用,每次 1 次 LLM 调用;
+ *  - LLM 输出严格 JSON,解析失败/超时/异常一律降级为"不同一"(宁可不合并,不阻塞写入);
+ *  - 判定缓存由 FactStore 侧维护(同事实对只问一次)。
  */
 class LlmFactDedupJudge(
     private val llmClient: MemoryLlmClient,
@@ -35,33 +35,33 @@ class LlmFactDedupJudge(
             )
             parse(raw)
         } catch (e: kotlinx.coroutines.CancellationException) {
-            // v2.6.2(auditoría de memoria): Relanzamiento explícito —— De lo contrario, la corrutina se cancela (cierra la sesión)./Detener el fondo) será
-            // Tratado como una excepción normal y tragado, el guardado automático cancelado puede continuar esperando LLM y escribir en la biblioteca.
+            // v2.6.2（记忆审计）: 显式重抛 —— 否则协程取消（关闭会话/停止后台）会被
+            // 当成普通异常吞掉，取消中的自动保存可能继续等 LLM 并写库。
             throw e
         } catch (e: Exception) {
-            // tiempo de espera/red/El análisis falló: degradación conservadora,No bloquea el proceso principal de escritura en memoria.
-            Logger.w(TAG, "LLM La sentencia de deduplicación falló,Bajar de categoría a otro: ${e.message}")
+            // 超时/网络/解析失败: 保守降级,不阻塞记忆写入主流程
+            Logger.w(TAG, "LLM 去重判定失败,降级为不同一: ${e.message}")
             DedupVerdict.NOT_SAME
         }
     }
 
     private fun buildSystemPrompt(): String = """
-        Eres el juez de deduplicación del sistema de memoria. Dados dos hechos de memoria,Determinar si describen el mismo hecho.(lo mismo).
-        - Las expresiones están redactadas de forma diferente pero tienen el mismo significado.(Como por ejemplo"El usuario tiene un corgi."con"el tiene un corgi")→ same=true
-        - Diferentes hechos bajo una misma entidad(Como por ejemplo"como el cafe"con"Odio el cilantro")→ same=false
-        - entre ellos [REDACTED] Representa información confidencial que ha sido insensibilizada.(nombre/telefono/Dirección, etc),Tratados como diferentes formas de escribir la misma entidad.
-        - incierto same=false(Preferiría no fusionarse,No fusionar por error)
-        Solo salida estricta JSON,No vallas la rebaja,sin texto extra:
-        {"same": true/false, "confidence": 0.0~1.0, "reason": "breve razón"}
+        你是记忆系统的去重判定器。给定两条记忆事实,判断它们是否描述同一个事实(同一件事)。
+        - 表述措辞不同但语义相同(如"用户养了一只柯基"与"他养了只柯基犬")→ same=true
+        - 同一实体下的不同事实(如"喜欢咖啡"与"讨厌香菜")→ same=false
+        - 其中 [REDACTED] 代表已被脱敏的敏感信息(人名/电话/地址等),视为同一实体的不同写法
+        - 不确定时 same=false(宁可不合并,不可误合并)
+        只输出严格 JSON,不要 markdown 围栏,不要额外文字:
+        {"same": true/false, "confidence": 0.0~1.0, "reason": "简短理由"}
     """.trimIndent()
 
     private fun buildUserContent(a: String, b: String, entityKeyA: String?, entityKeyB: String?): String = buildString {
-        append("hechos A: ").append(a).append('\n')
-        append("hechos B: ").append(b).append('\n')
+        append("事实 A: ").append(a).append('\n')
+        append("事实 B: ").append(b).append('\n')
         if (!entityKeyA.isNullOrBlank() || !entityKeyB.isNullOrBlank()) {
-            append("Clave de entidad A: ").append(entityKeyA ?: "null").append('\n')
-            append("Clave de entidad B: ").append(entityKeyB ?: "null").append('\n')
-            append("(La misma clave de entidad normalmente indica la misma entidad,Pero el contenido fáctico aún puede ser diferente.,Consulte la semántica.)")
+            append("实体键 A: ").append(entityKeyA ?: "null").append('\n')
+            append("实体键 B: ").append(entityKeyB ?: "null").append('\n')
+            append("(实体键相同通常表示同一实体,但事实内容仍可能不同,请以语义为准)")
         }
     }
 

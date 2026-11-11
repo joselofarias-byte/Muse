@@ -5,7 +5,7 @@ import androidx.room.Index
 import io.zer0.muse.miniphone.data.db.MpActorType
 
 /**
- * Me gusta dinámicos. Una misma persona sólo puede hacer clic en la misma publicación una vez,Por lo tanto, se utiliza una clave primaria compuesta de tres columnas.
+ * 动态点赞。同一个人对同一条动态只能点一次,故用三列复合主键。
  */
 @Entity(
     tableName = "mp_moment_like",

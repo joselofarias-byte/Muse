@@ -9,14 +9,14 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * P3-1 / P2-2: v111 → v112 Verificación conductual de la migración.
+ * P3-1 / P2-2: v111 → v112 迁移的行为验证。
  *
- * Esta migración es para `knowledge_bases` Se agregaron 5 nuevas columnas de cobertura por KB. Utilice nativo aquí SQLite
- * Ejecutar directamente con [MuseDb.MIGRATION_111_112] Exactamente el mismo DDL, afirmando:
- *  - 5 Todas las columnas existen
- *  - Las filas existentes no se pierden y el campo de cobertura está vacío (= Hereda la configuración global, el comportamiento permanece sin cambios)
+ * 本次迁移给 `knowledge_bases` 新增 5 个 per-KB 覆盖列。这里用原生 SQLite
+ * 直接执行与 [MuseDb.MIGRATION_111_112] 完全相同的 DDL，断言：
+ *  - 5 个列都存在
+ *  - 存量行不丢，且覆盖字段为空（= 继承全局配置，行为不变）
  *
- * No depende de las pruebas de sala (no incluidas en las dependencias) para evitar expandir la superficie de construcción para una prueba.
+ * 不依赖 room-testing（未在依赖里），避免为一个测试扩大构建面。
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -34,7 +34,7 @@ class MuseDbMigration111To112Test {
             null,
         )
         try {
-            // 1. Restaurar la estructura de bases de conocimiento v111 e insertar filas de stock
+            // 1. 还原 v111 的 knowledge_bases 结构并插入存量行
             db.execSQL(
                 """
                 CREATE TABLE knowledge_bases (
@@ -53,7 +53,7 @@ class MuseDbMigration111To112Test {
             )
             db.version = 111
 
-            // 2. Ejecutar exactamente igual que MIGRATION_111_112 DDL
+            // 2. 执行与 MIGRATION_111_112 完全相同的 DDL
             db.execSQL("ALTER TABLE knowledge_bases ADD COLUMN chunk_size_override INTEGER DEFAULT NULL")
             db.execSQL("ALTER TABLE knowledge_bases ADD COLUMN chunk_overlap_override INTEGER DEFAULT NULL")
             db.execSQL("ALTER TABLE knowledge_bases ADD COLUMN top_k_override INTEGER DEFAULT NULL")
@@ -63,7 +63,7 @@ class MuseDbMigration111To112Test {
             )
             db.version = 112
 
-            // 3. Afirmar:5 Todas las columnas existen
+            // 3. 断言：5 个列都存在
             val columns = mutableMapOf<String, String>()
             val infoCursor: android.database.Cursor = db.rawQuery("PRAGMA table_info(knowledge_bases)", null)
             infoCursor.use { c ->
@@ -79,21 +79,21 @@ class MuseDbMigration111To112Test {
                 "embedding_model_override" to "TEXT",
             )
             for ((name, type) in expected) {
-                assertEquals("columna $name debe existir y ser de tipo $type", type, columns[name])
+                assertEquals("列 $name 应存在且类型为 $type", type, columns[name])
             }
 
-            // 4. Aserción: las filas existentes se conservan y los campos sobrescritos están vacíos (heredados del global)
+            // 4. 断言：存量行保留，覆盖字段为空（继承全局）
             val rowCursor: android.database.Cursor = db.rawQuery(
                 "SELECT name, chunk_size_override, top_k_override, embedding_model_override " +
                     "FROM knowledge_bases WHERE id = 'kb-legacy'",
                 null,
             )
             rowCursor.use { c ->
-                assertTrue("Se deben conservar las filas de KB de stock", c.moveToFirst())
-                assertEquals("Los nombres de KB en stock no deben perderse", "Legacy KB", c.getString(0))
-                assertTrue("chunk_size_override Debe ser NULL (heredar global)", c.isNull(1))
-                assertTrue("top_k_override Debe ser NULL (heredar global)", c.isNull(2))
-                assertEquals("embedding_model_override Debería ser una cadena vacía", "", c.getString(3))
+                assertTrue("存量 KB 行应保留", c.moveToFirst())
+                assertEquals("存量 KB 名称不应丢失", "Legacy KB", c.getString(0))
+                assertTrue("chunk_size_override 应为 NULL（继承全局）", c.isNull(1))
+                assertTrue("top_k_override 应为 NULL（继承全局）", c.isNull(2))
+                assertEquals("embedding_model_override 应为空串", "", c.getString(3))
             }
         } finally {
             db.close()

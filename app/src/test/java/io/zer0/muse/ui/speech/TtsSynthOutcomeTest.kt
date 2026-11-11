@@ -6,20 +6,20 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Tres salidas después de que falla la síntesis de la nube.
+ * 云端合成失败后的三种出口。
  *
- * Si el motor TTS del sistema realmente se inicia una vez, no puede obtener estas ramas (devolución de llamada asíncrona + diferencia de dispositivo), por lo que la lógica de juicio cobrará una comisión.
- * [resolveCloudSynthOutcome], haga clic en "Éxito en la nube/Retroceso disponible/No hay ningún lugar donde caer" para fijarlos uno por uno.
+ * 真起一次系统 TTS 引擎拿不到这些分支（异步回调 + 设备差异），所以判定逻辑抽成
+ * [resolveCloudSynthOutcome]，这里按「云成功 / 回落可用 / 无处可落」逐一钉住。
  */
 class TtsSynthOutcomeTest {
 
     @Test
-    fun `Cuando la nube tiene éxito, la nube se encuentra en un estado exitoso sin ajustar el sistema TTS`() = runBlocking {
+    fun `云成功时是云成功态且不调系统 TTS`() = runBlocking {
         var systemCalls = 0
 
         val result = resolveCloudSynthOutcome(
             cloudOk = true,
-            failureReason = "Razones por las que no se debe utilizar",
+            failureReason = "不该用到的原因",
             systemTtsReady = true,
         ) {
             systemCalls++
@@ -27,50 +27,50 @@ class TtsSynthOutcomeTest {
         }
 
         assertEquals(TtsSynthResult.Success, result)
-        assertEquals("El éxito de la nube no debería costar otra síntesis del sistema", 0, systemCalls)
+        assertEquals("云成功不该再花一次系统合成", 0, systemCalls)
     }
 
     @Test
-    fun `Retroceder con los motivos cuando la nube falla pero el sistema está disponible`() = runBlocking {
+    fun `云失败但系统可用时回落并带上原因`() = runBlocking {
         val result = resolveCloudSynthOutcome(
             cloudOk = false,
-            failureReason = "API Key esta vacio",
+            failureReason = "API Key 为空",
             systemTtsReady = true,
         ) { true }
 
-        assertTrue("Si la nube falla y el sistema está disponible, debe estar en estado de reserva. De hecho,: $result", result is TtsSynthResult.SystemFallback)
-        assertEquals("API Key esta vacio", (result as TtsSynthResult.SystemFallback).reason)
+        assertTrue("云端失败、系统可用必须是回落态，实际: $result", result is TtsSynthResult.SystemFallback)
+        assertEquals("API Key 为空", (result as TtsSynthResult.SystemFallback).reason)
     }
 
     @Test
-    fun `Cuando el sistema no está disponible, es un fracaso total y la síntesis del sistema no se ajusta`() = runBlocking {
+    fun `系统不可用时是彻底失败且不调系统合成`() = runBlocking {
         var systemCalls = 0
 
         val result = resolveCloudSynthOutcome(
             cloudOk = false,
-            failureReason = "API Key esta vacio",
+            failureReason = "API Key 为空",
             systemTtsReady = false,
         ) {
             systemCalls++
             true
         }
 
-        assertTrue("Si el TTS del sistema no está listo, solo puede estar en un estado fallido. De hecho,: $result", result is TtsSynthResult.Failure)
+        assertTrue("系统 TTS 都没就绪只能是失败态，实际: $result", result is TtsSynthResult.Failure)
         assertTrue(
-            "La razón debe ser que tanto la nube como el sistema no están disponibles.: $result",
-            (result as TtsSynthResult.Failure).reason.contains("API Key esta vacio"),
+            "原因里要能看出云端与系统都不可用: $result",
+            (result as TtsSynthResult.Failure).reason.contains("API Key 为空"),
         )
         assertEquals(0, systemCalls)
     }
 
     @Test
-    fun `Cuando la síntesis del sistema también falla, es un completo fracaso`() = runBlocking {
+    fun `系统合成也失败时是彻底失败`() = runBlocking {
         val result = resolveCloudSynthOutcome(
             cloudOk = false,
-            failureReason = "Error en la síntesis de TTS en la nube",
+            failureReason = "云端 TTS 合成失败",
             systemTtsReady = true,
         ) { false }
 
-        assertTrue("El fracaso de la síntesis del sistema también es un completo fracaso. De hecho,: $result", result is TtsSynthResult.Failure)
+        assertTrue("系统合成失败也是彻底失败，实际: $result", result is TtsSynthResult.Failure)
     }
 }

@@ -1,15 +1,15 @@
 package io.zer0.muse.ui.theme
 
 /**
- * v2.x (C9): Muse token de punto de interrupción — Umbral de nivelación del ancho de la ventana(Alinear valores de especificación Material 3 WindowSizeClass).
+ * v2.x (C9): Muse 断点令牌 — 窗口宽度分级阈值(对齐 Material 3 WindowSizeClass 规范值)。
  *
- * por [io.zer0.muse.ui.common.media.rememberWindowWidthClass] y posteriores biombos plegables/Referencia del adaptador de tableta,
- * Elimina 600/840 números mágicos dispersos.
+ * 由 [io.zer0.muse.ui.common.media.rememberWindowWidthClass] 与后续折叠屏/平板适配引用,
+ * 消除散落的 600 / 840 魔法数。
  */
 object MuseBreakpoints {
-    /** Medium empezar:Pantalla vertical de tableta/pantalla horizontal de teléfono celular(≥600dp). */
+    /** Medium 起始:平板竖屏 / 手机横屏(≥600dp)。 */
     const val MEDIUM_DP = 600
 
-    /** Expanded empezar:Tableta horizontal/escritorio(≥840dp). */
+    /** Expanded 起始:平板横屏 / 桌面(≥840dp)。 */
     const val EXPANDED_DP = 840
 }

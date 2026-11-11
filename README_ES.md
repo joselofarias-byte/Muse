@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <b>Español</b> · <a href="README_EN.md">English</a> · <a href="README_JA.md">日本語</a> · <a href="README_KO.md">한국어</a> · <a href="README_PT.md">Português</a> · <a href="README_RU.md">Русский</a>
+  <a href="README.md">中文</a> · <a href="README_EN.md">English</a> · <a href="README_JA.md">日本語</a> · <a href="README_KO.md">한국어</a> · <b>Español</b> · <a href="README_PT.md">Português</a> · <a href="README_RU.md">Русский</a>
 </p>
 
 <p align="center">
@@ -15,8 +15,8 @@
   <img src="https://img.shields.io/badge/Kotlin-2.4-purple?style=flat-square" alt="Kotlin">
 </p>
 <p align="center">
-  <a href="https://qm.qq.com/q/905451314"><img src="https://img.shields.io/badge/QQgrupo-905451314-0366CC?style=for-the-badge&logo=qq&logoColor=white" alt="Grupo de QQ"></a>
-  <a href="https://museai.ltd"><img src="https://img.shields.io/badge/Sitio web oficial-museai.ltd-blueviolet?style=for-the-badge" alt="Sitio web"></a>
+  <a href="https://qm.qq.com/q/905451314"><img src="https://img.shields.io/badge/QQ群-905451314-0366CC?style=for-the-badge&logo=qq&logoColor=white" alt="Grupo de QQ"></a>
+  <a href="https://museai.ltd"><img src="https://img.shields.io/badge/官网-museai.ltd-blueviolet?style=for-the-badge" alt="Sitio web"></a>
   <a href="https://museai.ltd/download/"><img src="https://img.shields.io/badge/Download-APK-brightgreen?style=for-the-badge&logo=android" alt="Descargar"></a>
 </p>
 
@@ -26,7 +26,7 @@
   <a href="#descarga">Descarga</a> ·
   <a href="#primeros-pasos">Primeros pasos</a> ·
   <a href="#funciones">Funciones</a> ·
-  <a href="manual-de-usuario.md">Manual de usuario</a> ·
+  <a href="用户手册.md">manual de usuario (chino)</a> ·
   <a href="#código-abierto">Código abierto</a>
 </p>
 
@@ -103,7 +103,7 @@ Descarga el APK más reciente desde la página oficial [museai.ltd/download](htt
 2. **Empieza a conversar**: vuelve al inicio y envía tu primer mensaje. La memoria empieza a acumularse desde ese momento; cambia de modelo o de sesión y te seguirá recordando.
 3. **Desbloquea capacidades del sistema (opcional)**: si quieres que "actúe", abre **Ajustes → Asistente de permisos** y activa los canales que necesites entre Accesibilidad / Shizuku / Root / Termux; cada paso incluye detección y pruebas integradas.
 
-> La guía de uso completa (con todos los gestos y las operaciones menos visibles) está en el [manual de usuario](manual-de-usuario.md) o dentro de la app en **Ajustes → Tutorial**.
+> La guía de uso completa (con todos los gestos y las operaciones menos visibles) está en el [manual de usuario (chino)](用户手册.md) o dentro de la app en **Ajustes → Tutorial**.
 
 ## Por qué Muse
 
@@ -249,7 +249,7 @@ No espera a que le hables.
 - **Sistema de temas**: 12 temas completos (cada uno con modo claro y oscuro) + 8 paletas accesibles para daltonismo; color dinámico (Android 12+), cambio programado día / noche y temas personalizados.
 - **Burbujas y apariencia**: radio de las esquinas de las burbujas ajustable; sistema de skins de burbujas, con skins extendidas que aportan los plugins (por ejemplo alto contraste o brillo suave).
 - **Iconos dibujados a mano**: 176 iconos propios (rejilla de 24dp, trazo redondeado de 1.7dp, adaptación a claro y oscuro), con código abierto en [muse-icons](https://github.com/Zer0Qing/muse-icons) (MIT).
-- **Tipografía e idiomas**: fuente / tamaño / espaciado entre letras, botón atrás predictivo, adaptación de accesibilidad; la interfaz está en español de forma predeterminada, y también en inglés, japonés, coreano, portugués y ruso.
+- **Tipografía e idiomas**: fuente / tamaño / espaciado entre letras, botón atrás predictivo, adaptación de accesibilidad; la interfaz está disponible en chino / inglés / japonés / coreano / español / portugués / ruso.
 - **Copia de seguridad y restauración**: exportación local con un toque (JSON / NDJSON por bloques, con cifrado opcional); copia automática diaria (paquete con instantáneas de muse.db / memory.db / facts.db); sincronización en la nube con S3 / WebDAV; el libro de lo que te quiere decir de los mensajes proactivos, el libro de resultados y la intimidad de la relación se incluyen en la copia; antes de restaurar se guarda una copia de protección y, si falla, se revierte automáticamente.
 - **Importación de datos**: migración con un toque desde CherryStudio / Chatbox / ChatGPT / RikkaHub / Kelivo; importación de historiales de conversación en varios formatos.
 - **Biblioteca de stickers**: importación de archivos zip con estructura de carpetas y categorización automática; tres niveles de frecuencia de envío (ocasional / normal / frecuente); borrado por lotes y vaciado.
@@ -321,7 +321,7 @@ python ci/script/validate_release_apks.py --apk "app/build/outputs/apk/release/*
 
 Las contribuciones son bienvenidas:
 
-- [Guía de contribución](CONTRIBUTING.md) · [Política de seguridad](SECURITY.md) · [Normas de mantenimiento de la biblioteca de componentes de UI](guia-biblioteca-ui.md)
+- [Guía de contribución](CONTRIBUTING.md) · [Política de seguridad](SECURITY.md) · [Normas de mantenimiento de la biblioteca de componentes de UI](UI组件库维护规范.md)
 - Antes de abrir un PR, pasa los scripts de verificación locales y los tests unitarios; cada cadena nueva debe sincronizarse en todos los paquetes de idioma
 - Los scripts de verificación y del pipeline de publicación están en `ci/script/`; el tutorial integrado en la app (Ajustes → Tutorial) se mantiene en paralelo
 

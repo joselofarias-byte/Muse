@@ -6,49 +6,49 @@ import io.zer0.common.Result
 import kotlinx.coroutines.withContext
 
 /**
- * P2-9: Resumen de clonación de voz — Interfaz unificada de múltiples proveedores.
+ * P2-9: 语音克隆抽象 — 多 Provider 统一接口。
  *
- * con existente [CloudTtsService] desacoplamiento:CloudTtsService responsable"texto→Audio"síntesis,
- * Esta interfaz es responsable de"audio de muestra→Reutilizable voiceId"Gestión de clones(aumentar/columna/eliminar).
+ * 与既有 [CloudTtsService] 解耦:CloudTtsService 负责"文本→音频"合成,
+ * 本接口负责"样本音频→可复用 voiceId"的克隆管理(增/列/删)。
  *
- * Organizado por abstracción del proveedor,Distribuido por proveedor dentro de un único archivo;
- * Implementación actual [ElevenLabsVoiceCloningProvider],OpenVoice / Fish Audio, etc. se pueden ampliar en el futuro.
+ * 按 Provider 抽象组织,单文件内按 provider 分发;
+ * 当前实现 [ElevenLabsVoiceCloningProvider],后续可扩展 OpenVoice / Fish Audio 等。
  *
- * Uso:
+ * 用法:
  * ```
  * val service: VoiceCloningService = koinInject()
  * service.cloneVoice("elevenlabs", "my-voice", sampleBase64)
- *     .onSuccess { voiceId -> /* guardar en MediaConfig.ttsVoice */ }
+ *     .onSuccess { voiceId -> /* 保存到 MediaConfig.ttsVoice */ }
  *     .onError { msg, _ -> MuseToast.show(msg) }
  * ```
  */
 interface VoiceCloningProvider {
-    /** Provider identificador único(Como por ejemplo "elevenlabs"),con [VoiceCloningService] Corresponde a la clave de registro. */
+    /** Provider 唯一标识(如 "elevenlabs"),与 [VoiceCloningService] 注册键对应。 */
     val providerId: String
 
     /**
-     * Subir audio de muestra,Crear una voz clonada,Devolver ID de voz.
+     * 上传样本音频,创建克隆语音,返回 voiceId。
      *
-     * @param name Nombre fonético legible por el usuario
-     * @param sampleAudioBase64 codificación base64 de audio de muestra(Compatible con mp3/wav/m4a, etc.)
-     * @return Regresar exitosamente a nuevo voiceId,Retorno del fracaso [Result.Error]
+     * @param name 用户可读的语音名称
+     * @param sampleAudioBase64 样本音频的 base64 编码(支持 mp3/wav/m4a 等)
+     * @return 成功返回新建 voiceId,失败返回 [Result.Error]
      */
     suspend fun cloneVoice(name: String, sampleAudioBase64: String): Result<String>
 
-    /** Lista de voces clonadas. */
+    /** 列出已克隆的语音。 */
     suspend fun listClonedVoices(): Result<List<ClonedVoice>>
 
-    /** Elimina la voz clonada. */
+    /** 删除克隆语音。 */
     suspend fun deleteVoice(voiceId: String): Result<Unit>
 }
 
 /**
- * Clona el modelo de datos de voz.
+ * 克隆语音数据模型。
  *
- * @param voiceId Provider regresó voice id(Utilizado como referencia de composición TTS.)
- * @param name nombre legible por el usuario
- * @param createdAt Crear marca de tiempo(milisegundos),Devuelto por el proveedor(Sin reglas 0)
- * @param category Provider Etiquetas de clasificación(Predeterminado "cloned",Fácil de distinguir de la voz predeterminada)
+ * @param voiceId Provider 返回的 voice id(用于 TTS 合成时引用)
+ * @param name 用户可读名称
+ * @param createdAt 创建时间戳(毫秒),由 Provider 返回(无则 0)
+ * @param category Provider 分类标签(默认 "cloned",便于与预设 voice 区分)
  */
 data class ClonedVoice(
     val voiceId: String,
@@ -58,10 +58,10 @@ data class ClonedVoice(
 )
 
 /**
- * Servicio de clonación de voz — Distribuido a específicos [VoiceCloningProvider].
+ * 语音克隆服务 — 按 providerId 分发到具体 [VoiceCloningProvider]。
  *
- * Inyección durante la construcción providerId → Provider mapeo(Montado por Koin),
- * Todos los métodos están en [AppDispatchers.io] ejecutar en,Asegúrese de que el hilo de la interfaz de usuario no esté bloqueado.
+ * 构造时注入 providerId → Provider 映射(由 Koin 装配),
+ * 所有方法都在 [AppDispatchers.io] 上执行,保证 UI 线程不阻塞。
  */
 class VoiceCloningService(
     private val providers: Map<String, VoiceCloningProvider>,
@@ -70,40 +70,40 @@ class VoiceCloningService(
         private const val TAG = "VoiceCloningService"
     }
 
-    /** Obtenga la lista de Proveedores registrados(Para el selector de proveedor de renderizado de UI). */
+    /** 获取已注册的 Provider 列表(供 UI 渲染服务商选择器)。 */
     fun availableProviders(): List<String> = providers.keys.toList()
 
     /**
-     * Clona nuevas voces.
+     * 克隆新语音。
      *
-     * @param providerId Identificación del proveedor de servicios(Debe estar registrado)
-     * @param name Nombre de voz
-     * @param sampleAudioBase64 audio de muestra base64
+     * @param providerId 服务商标识(必须已注册)
+     * @param name 语音名称
+     * @param sampleAudioBase64 样本音频 base64
      */
     suspend fun cloneVoice(providerId: String, name: String, sampleAudioBase64: String): Result<String> = withContext(AppDispatchers.io) {
         val provider = providers[providerId]
         if (provider == null) {
-            Logger.w(TAG, "desconocido voice cloning provider: $providerId")
+            Logger.w(TAG, "未知 voice cloning provider: $providerId")
             return@withContext Result.Error("Unknown provider: $providerId")
         }
         provider.cloneVoice(name, sampleAudioBase64)
     }
 
-    /** Muestra voces clonadas para el proveedor especificado. */
+    /** 列出指定 Provider 的已克隆语音。 */
     suspend fun listClonedVoices(providerId: String): Result<List<ClonedVoice>> = withContext(AppDispatchers.io) {
         val provider = providers[providerId]
         if (provider == null) {
-            Logger.w(TAG, "desconocido voice cloning provider: $providerId")
+            Logger.w(TAG, "未知 voice cloning provider: $providerId")
             return@withContext Result.Error("Unknown provider: $providerId")
         }
         provider.listClonedVoices()
     }
 
-    /** Elimina la voz clonada del proveedor especificado. */
+    /** 删除指定 Provider 的克隆语音。 */
     suspend fun deleteVoice(providerId: String, voiceId: String): Result<Unit> = withContext(AppDispatchers.io) {
         val provider = providers[providerId]
         if (provider == null) {
-            Logger.w(TAG, "desconocido voice cloning provider: $providerId")
+            Logger.w(TAG, "未知 voice cloning provider: $providerId")
             return@withContext Result.Error("Unknown provider: $providerId")
         }
         provider.deleteVoice(voiceId)

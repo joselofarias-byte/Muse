@@ -23,6 +23,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -47,6 +48,7 @@ import io.zer0.muse.ui.common.form.MuseSlider
 import io.zer0.muse.ui.common.form.MuseTactileButton
 import io.zer0.muse.ui.common.form.MuseTextField
 import io.zer0.muse.ui.common.icons.MuseIcons
+import io.zer0.muse.ui.common.settings.ConfirmDeleteDialog
 import io.zer0.muse.ui.common.settings.SectionLabel
 import io.zer0.muse.ui.common.settings.SettingsGroup
 import io.zer0.muse.ui.common.settings.SettingsGroupDivider
@@ -65,19 +67,19 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * v1.132: Página de configuración independiente de la copia de seguridad en la nube.
+ * v1.132: 云备份独立设置页。
  *
- * Estructura de la página:
- *  1. Agrupación de configuración de almacenamiento en la nube — Selección de tipo + Formulario de campo S3/WebDAV + Contraseña de cifrado + Botón Guardar + Conexión de prueba
- *  2. Agrupación de operaciones — Realizar copia de seguridad ahora/restaurar desde la última copia de seguridad
- *  3. Lista de respaldo remoto — Actualizar + Restaurar por versión + Eliminar
- *  4. Grupo de respaldo automático — cambio + días de intervalo slider
+ * 页面结构:
+ *  1. 云存储配置分组 — 类型选择 + S3/WebDAV 字段表单 + 加密密码 + 保存按钮 + 测试连接
+ *  2. 操作分组 — 立即备份 / 从最新备份恢复
+ *  3. 远端备份列表 — 刷新 + 按版本恢复 + 删除
+ *  4. 自动备份分组 — 开关 + 间隔天数 slider
  *
- * diseño:
- *  - Reutilizar [SettingsSubPageScaffold] Barra superior + contenedor de desplazamiento
- *  - Configurar formulario con borrador local,Haga clic en "Guardar configuración" antes de escribir DataStore(Consistente con ProxySettingsPage)
- *  - Las operaciones de red van al cuadro de diálogo de progreso de Dispatchers.IO +,Evitar clics repetidos
- *  - Contraseña/Máscara predeterminada del cuadro de entrada de clave,Haga clic en "Mostrar" para alternar
+ * 设计:
+ *  - 复用 [SettingsSubPageScaffold] 顶部栏 + 滚动容器
+ *  - 配置表单用本地草稿,点击「保存配置」后才写入 DataStore(与 ProxySettingsPage 一致)
+ *  - 网络操作走 Dispatchers.IO + 进度对话框,防重复点击
+ *  - 密码/密钥输入框默认遮罩,点击「显示」切换
  */
 @Composable
 fun CloudBackupPage(onBack: () -> Unit) {
@@ -86,44 +88,46 @@ fun CloudBackupPage(onBack: () -> Unit) {
     val cloudBackupService: CloudBackupService = koinInject()
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val resources = LocalResources.current
 
     val cloudConfig by settings.cloudBackupConfigFlow.collectAsStateWithLifecycle(
         initialValue = CloudBackupConfig(),
     )
 
-    // borrador local(inicializado a actual config,Guardar y sincronizar)
+    // 本地草稿(初始化为当前 config,保存后同步)
     var draft by remember(cloudConfig) { mutableStateOf(cloudConfig) }
-    // P0-1: Si el usuario ha editado activamente el campo de contraseña de respaldo — distinguir"Borrar contraseña explícitamente"(Limpiar y guardar → restablecer
-    // backupPasswordSet)con"campo intacto"(Keystore La lectura fallida está vacía → bandera reservada,No pierdas la guardia)
+    // P0-1: 用户是否主动编辑过备份密码字段 — 区分"显式清除密码"(清空后保存 → 复位
+    // backupPasswordSet)与"未触碰字段"(Keystore 失效读回为空 → 保留标志,守卫不丢)
     var passwordEdited by remember { mutableStateOf(false) }
     var secretVisible by remember { mutableStateOf(false) }
 
-    // Estado de progreso de la operación
+    // 操作进度状态
     var testing by remember { mutableStateOf(false) }
     var backingUp by remember { mutableStateOf(false) }
     var restoring by remember { mutableStateOf(false) }
     var cloudBackupDialogVisible by remember { mutableStateOf(false) }
     var deleting by remember { mutableStateOf<String?>(null) }
 
-    // U-4: Interruptor de confirmación de cobertura de recuperación en la nube(Restaurar la última/por versión,RESTORE Juega para confirmar antes,Ejecutar después de la confirmación)
+    // U-4: 云端恢复覆盖确认开关(恢复最新 / 按版本,RESTORE 前先弹确认,确认后才执行)
     var confirmRestoreLatest by remember { mutableStateOf(false) }
     var confirmRestoreFile by remember { mutableStateOf<String?>(null) }
+    var confirmDeleteFile by remember { mutableStateOf<String?>(null) }
 
-    // v1.141 F1: Fallo de recuperación especial UX — Registrar el tipo de operación fallida y el archivo de destino,Aparece un cuadro de diálogo de error reintentable
+    // v1.141 F1: 恢复失败专项 UX — 记录失败的操作类型与目标文件,弹出可重试的失败对话框
     var restoreFailKind by remember { mutableStateOf<RestoreFailKind?>(null) }
     var failedRestoreFile by remember { mutableStateOf<String?>(null) }
 
-    // Lista de respaldo remoto
+    // 远端备份列表
     var remoteBackups by remember { mutableStateOf<List<RemoteBackup>>(emptyList()) }
     var listLoading by remember { mutableStateOf(false) }
     var listLoadFailed by remember { mutableStateOf(false) }
 
-    // Intervalo de copia de seguridad automática(borrador local,Actualizaciones instantáneas al deslizar el dedo draft,Suelte el disco al guardar la configuración.)
+    // 自动备份间隔(本地草稿,滑动时即时更新 draft,保存配置时落盘)
     var intervalDaysDraft by remember(cloudConfig.autoSyncIntervalHours) {
         mutableStateOf(cloudConfig.autoSyncIntervalHours / 24f)
     }
 
-    // Después de cambiar o guardar la configuración,Actualizar automáticamente la lista de copias de seguridad remotas
+    // 配置变化或保存后,自动刷新远端备份列表
     LaunchedEffect(cloudConfig.type, cloudConfig.isConfigured) {
         if (cloudConfig.isConfigured) {
             listLoading = true
@@ -139,7 +143,7 @@ fun CloudBackupPage(onBack: () -> Unit) {
     }
 
     SettingsSubPageScaffold(title = stringResource(R.string.cloud_backup_page_title), onBack = onBack) {
-        // ── descripción superior ──
+        // ── 顶部说明 ──
         item {
             Text(
                 text = stringResource(R.string.cloud_backup_page_desc),
@@ -149,11 +153,11 @@ fun CloudBackupPage(onBack: () -> Unit) {
             )
         }
 
-        // ── 1. Configuración de almacenamiento en la nube ──
+        // ── 1. 云存储配置 ──
         item { SectionLabel(stringResource(R.string.cloud_backup_section_config)) }
         item {
             SettingsGroup {
-                // interruptor de habilitación(Cambiar tipo entre ninguno/tipo anterior)
+                // 启用开关(切换 type 在 none / 之前类型之间)
                 SettingsSwitchRow(
                     icon = MuseIcons.cloud,
                     title = stringResource(R.string.cloud_backup_enable),
@@ -168,7 +172,7 @@ fun CloudBackupPage(onBack: () -> Unit) {
                     },
                     checked = draft.type != "none",
                     onCheckedChange = { enabled ->
-                        // Volver al tipo utilizado anteriormente cuando está habilitado(Predeterminado webdav);Cuando esté deshabilitado, configúrelo en ninguno pero conserve el campo
+                        // 启用时回退到之前用过的类型(默认 webdav);禁用时置 none 但保留字段
                         draft = draft.copy(
                             type = if (enabled) {
                                 if (draft.s3Endpoint.isNotBlank() || draft.s3Bucket.isNotBlank()) "s3" else "webdav"
@@ -179,7 +183,7 @@ fun CloudBackupPage(onBack: () -> Unit) {
                     },
                 )
                 SettingsGroupDivider()
-                // Selección de tipo(Sólo se muestra cuando está habilitado)
+                // 类型选择(只在启用时显示)
                 if (draft.type != "none") {
                     Box(
                         modifier = Modifier
@@ -198,7 +202,7 @@ fun CloudBackupPage(onBack: () -> Unit) {
                         )
                     }
                     SettingsGroupDivider()
-                    // Mostrar campos por tipo
+                    // 按类型显示字段表单
                     if (draft.type == "webdav") {
                         WebDavFields(
                             draft = draft,
@@ -215,7 +219,7 @@ fun CloudBackupPage(onBack: () -> Unit) {
                         )
                     }
                     SettingsGroupDivider()
-                    // Contraseña cifrada(Universales)
+                    // 加密密码(通用)
                     EncryptionPasswordField(
                         password = draft.backupPassword,
                         onPasswordChange = {
@@ -228,7 +232,7 @@ fun CloudBackupPage(onBack: () -> Unit) {
                 }
             }
         }
-        // Guardar configuración + probar conexión
+        // 保存配置 + 测试连接
         item {
             Row(
                 modifier = Modifier
@@ -236,7 +240,7 @@ fun CloudBackupPage(onBack: () -> Unit) {
                     .padding(horizontal = MusePaddings.tightGap),
                 horizontalArrangement = Arrangement.spacedBy(MusePaddings.contentGap),
             ) {
-                // conexión de prueba
+                // 测试连接
                 MuseCapsuleButton(
                     text = stringResource(R.string.cloud_backup_test_connection),
                     onClick = {
@@ -262,14 +266,14 @@ fun CloudBackupPage(onBack: () -> Unit) {
                     fillWidth = false,
                     modifier = Modifier.weight(1f),
                 )
-                // Guardar configuración
+                // 保存配置
                 MuseTactileButton(
                     icon = MuseIcons.database,
                     onClick = {
                         scope.launch {
-                            // P0-1: Determinar en función del comportamiento del usuario antes de guardar backupPasswordSet —
-                            // La contraseña no está vacía. → conjunto true;Borrar explícitamente → conjunto false(Permitir revocación);
-                            // Campo de contraseña no tocado → Mantener el logotipo existente(Keystore La guardia no se perderá cuando la lectura fallida esté vacía.)
+                            // P0-1: 保存前按用户行为确定 backupPasswordSet —
+                            // 密码非空 → 置 true;显式清空 → 置 false(允许撤销);
+                            // 未触碰密码字段 → 保留既有标志(Keystore 失效读回为空时守卫不丢)
                             val finalDraft = when {
                                 draft.backupPassword.isNotEmpty() -> draft.copy(backupPasswordSet = true)
                                 passwordEdited -> draft.copy(backupPasswordSet = false)
@@ -280,7 +284,11 @@ fun CloudBackupPage(onBack: () -> Unit) {
                                     MuseToast.show(context.getString(R.string.cloud_backup_config_saved))
                                 }
                                 .onError { _, t ->
-                                    MuseToast.show(t?.message ?: "Save failed", 2500)
+                                    // 兜底文案不能是英文裸串:中文环境里"Save failed"既读不出原因也不合语境。
+                                    MuseToast.show(
+                                        t?.message ?: context.getString(R.string.cloud_backup_config_save_failed),
+                                        2500,
+                                    )
                                 }
                         }
                     },
@@ -290,11 +298,11 @@ fun CloudBackupPage(onBack: () -> Unit) {
             }
         }
 
-        // ── 2. Agrupación de operaciones ──
+        // ── 2. 操作分组 ──
         item { SectionLabel(stringResource(R.string.cloud_backup_section_actions)) }
         item {
             SettingsGroup {
-                // v2.6.0: La copia de seguridad en la nube contiene la clave del proveedor (la misma semántica que la copia de seguridad local, desactivada de forma predeterminada)
+                // v2.6.0: 云备份包含供应商密钥（与本地备份同语义，默认关）
                 var cloudIncludeSecrets by remember { mutableStateOf(false) }
                 SettingsSwitchRow(
                     icon = MuseIcons.key,
@@ -334,7 +342,7 @@ fun CloudBackupPage(onBack: () -> Unit) {
                                     },
                                 ),
                             )
-                            // Actualizar la lista remota después de una carga exitosa
+                            // 上传成功后刷新远端列表
                             if (ok) {
                                 val list = resultOf { cloudBackupService.listBackups(cloudConfig) }.getOrNull() ?: emptyList()
                                 remoteBackups = list
@@ -357,18 +365,18 @@ fun CloudBackupPage(onBack: () -> Unit) {
                             return@SettingsItemRow
                         }
                         if (backingUp || restoring) return@SettingsItemRow
-                        // U-4: Recuperación de sobrescritura,Primero abre el cuadro de confirmación.,Después de la confirmación, realice la recuperación real en onConfirm
+                        // U-4: 覆盖式恢复,先弹确认框,确认后再在 onConfirm 里执行实际恢复
                         confirmRestoreLatest = true
                     },
                 )
             }
         }
 
-        // ── 3. Lista de respaldo remoto ──
+        // ── 3. 远端备份列表 ──
         item { SectionLabel(stringResource(R.string.cloud_backup_section_remote)) }
         item {
             SettingsGroup {
-                // botón de actualización(fila independiente en la parte superior)
+                // 刷新按钮(顶部独立行)
                 SettingsItemRow(
                     icon = MuseIcons.refresh,
                     title = stringResource(R.string.cloud_backup_refresh_list),
@@ -448,29 +456,13 @@ fun CloudBackupPage(onBack: () -> Unit) {
                                 backup = backup,
                                 onDelete = {
                                     if (deleting != null || restoring || backingUp) return@RemoteBackupRow
-                                    deleting = backup.fileName
-                                    scope.launch {
-                                        val ok = cloudBackupService.deleteBackup(cloudConfig, backup.fileName)
-                                        deleting = null
-                                        MuseToast.show(
-                                            context.getString(
-                                                if (ok) {
-                                                    R.string.cloud_backup_delete_success
-                                                } else {
-                                                    R.string.cloud_backup_delete_failed
-                                                },
-                                            ),
-                                        )
-                                        if (ok) {
-                                            remoteBackups = resultOf {
-                                                cloudBackupService.listBackups(cloudConfig)
-                                            }.getOrNull() ?: emptyList()
-                                        }
-                                    }
+                                    // 远端归档是不可逆数据,若删的恰好是唯一一份,用户会在无意间
+                                    // 失去全部云端退路 —— 与本页"恢复""覆盖导入"同等对待,先点名确认。
+                                    confirmDeleteFile = backup.fileName
                                 },
                                 onRestore = {
                                     if (deleting != null || restoring || backingUp) return@RemoteBackupRow
-                                    // U-4: Recuperación de superposición por versión,Primero abre el cuadro de confirmación.,Después de la confirmación, realice la recuperación real en onConfirm
+                                    // U-4: 覆盖式按版本恢复,先弹确认框,确认后再在 onConfirm 里执行实际恢复
                                     confirmRestoreFile = backup.fileName
                                 },
                                 isDeleting = deleting == backup.fileName,
@@ -481,7 +473,7 @@ fun CloudBackupPage(onBack: () -> Unit) {
             }
         }
 
-        // ── 4. Copia de seguridad automática ──
+        // ── 4. 自动备份 ──
         item { SectionLabel(stringResource(R.string.cloud_backup_section_auto)) }
         item {
             SettingsGroup {
@@ -498,7 +490,7 @@ fun CloudBackupPage(onBack: () -> Unit) {
                 )
                 if (cloudConfig.autoSync) {
                     SettingsGroupDivider()
-                    // Días de intervalo slider(1-30 dia)
+                    // 间隔天数 slider(1-30 天)
                     val intervalDays = cloudConfig.autoSyncIntervalHours / 24f
                     val sliderValue = intervalDays.coerceIn(1f, 30f)
                     Column(
@@ -514,30 +506,35 @@ fun CloudBackupPage(onBack: () -> Unit) {
                                 text = stringResource(R.string.cloud_backup_interval_label),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurface,
-                                // LAYOUT-01: La etiqueta toma el ancho restante + límite de línea.(Cuando solo se toma el ancho, el ancho restante aún puede ser extremadamente pequeño).
+                                // LAYOUT-01: 标签取剩余宽度 + 限行(仅取宽时剩余宽度仍可能极小)。
                                 modifier = Modifier.weight(1f),
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )
                             Text(
-                                text = "${sliderValue.toInt()} dia",
+                                text = "${sliderValue.toInt()} días",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.primary,
-                                // LAYOUT-01: La columna de número de días está limitada a 1 fila,Sin aglomeración inversa de etiquetas.
+                                // LAYOUT-01: 天数数值列限 1 行,不反向挤占标签。
                                 maxLines = 1,
                             )
                         }
                         Spacer(Modifier.height(MusePaddings.contentGap))
+                        // 单位走资源:硬编码"天"会让英文界面出现"3 天"这种半中半英的读数。
+                        val intervalDaysPlural = R.plurals.cloud_backup_interval_days
                         MuseSlider(
                             value = sliderValue,
                             onValueChange = { intervalDaysDraft = it },
                             valueRange = 1f..30f,
-                            // 1..30 Total 30 valores,steps = 30-2 = 28
+                            // 1..30 共 30 个取值,steps = 30-2 = 28
                             steps = 28,
-                            valueFormatter = { "${it.toInt()} dia" },
+                            valueFormatter = { v ->
+                                val days = v.toInt()
+                                context.resources.getQuantityString(intervalDaysPlural, days, days)
+                            },
                         )
                         Spacer(Modifier.height(MusePaddings.contentGap))
-                        // v1.134 P2-3: advertencia de intervalo corto — intervalo ≤ 2 Mostrar tráfico por día/Recordatorio de batería
+                        // v1.134 P2-3: 短间隔警示 — 间隔 ≤ 2 天时显示流量/电量提示
                         if (sliderValue.toInt() <= 2) {
                             Text(
                                 text = stringResource(R.string.cloud_backup_interval_hint),
@@ -547,7 +544,7 @@ fun CloudBackupPage(onBack: () -> Unit) {
                             )
                             Spacer(Modifier.height(MusePaddings.contentGap))
                         }
-                        // Arrastra para guardar(Simplificar:Guardar explícitamente con TextButton)
+                        // 拖动结束保存(简化:用 TextButton 显式保存)
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.End,
@@ -571,10 +568,10 @@ fun CloudBackupPage(onBack: () -> Unit) {
         }
     }
 
-    // Cuadro de diálogo de progreso de la operación(Conexión de prueba sin ventana emergente,Mostrar solo dentro del botón spinner)
+    // 操作进度对话框(测试连接不弹窗,只显示按钮内 spinner)
     if (cloudBackupDialogVisible) {
         MuseDialog(
-            // Regrese solo para cerrar la pantalla de progreso y la copia de seguridad en la nube./La tarea de recuperación continúa ejecutándose.
+            // 返回只关闭进度展示，云端备份/恢复任务继续运行。
             onDismissRequest = { cloudBackupDialogVisible = false },
             title = if (backingUp) {
                 stringResource(
@@ -605,7 +602,41 @@ fun CloudBackupPage(onBack: () -> Unit) {
         )
     }
 
-    // U-4: Confirmación de cobertura de recuperación en la nube — Restaurar la última/por versión,Iniciar la recuperación después de la confirmación(Generar automáticamente copias de protección antes de la recuperación.)
+    val pendingDeleteFile = confirmDeleteFile
+    if (pendingDeleteFile != null) {
+        ConfirmDeleteDialog(
+            title = stringResource(R.string.cloud_backup_delete_this),
+            itemName = pendingDeleteFile,
+            consequence = stringResource(R.string.cloud_backup_delete_consequence),
+            onConfirm = {
+                confirmDeleteFile = null
+                if (deleting == null && !restoring && !backingUp) {
+                    deleting = pendingDeleteFile
+                    scope.launch {
+                        val ok = cloudBackupService.deleteBackup(cloudConfig, pendingDeleteFile)
+                        deleting = null
+                        MuseToast.show(
+                            context.getString(
+                                if (ok) {
+                                    R.string.cloud_backup_delete_success
+                                } else {
+                                    R.string.cloud_backup_delete_failed
+                                },
+                            ),
+                        )
+                        if (ok) {
+                            remoteBackups = resultOf {
+                                cloudBackupService.listBackups(cloudConfig)
+                            }.getOrNull() ?: emptyList()
+                        }
+                    }
+                }
+            },
+            onDismiss = { confirmDeleteFile = null },
+        )
+    }
+
+    // U-4: 云端恢复覆盖确认 — 恢复最新 / 按版本,确认后才发起恢复(恢复前自动生成保护副本)
     val restoreFilePending = confirmRestoreFile
     if (restoreFilePending != null) {
         MuseDialog(
@@ -623,7 +654,7 @@ fun CloudBackupPage(onBack: () -> Unit) {
                     restoring = false
                     cloudBackupDialogVisible = false
                     if (result == null) {
-                        // v1.141 F1: El fracaso ya no es sólo Toast,Cuadro de diálogo emergente especial(Se puede volver a intentar)
+                        // v1.141 F1: 失败不再仅 Toast,弹专项对话框(可重试)
                         restoreFailKind = RestoreFailKind.FILE
                         failedRestoreFile = file
                     } else {
@@ -650,7 +681,7 @@ fun CloudBackupPage(onBack: () -> Unit) {
                     restoring = false
                     cloudBackupDialogVisible = false
                     if (result == null) {
-                        // v1.141 F1: El fracaso ya no es sólo Toast,Cuadro de diálogo emergente especial(Se puede volver a intentar)
+                        // v1.141 F1: 失败不再仅 Toast,弹专项对话框(可重试)
                         restoreFailKind = RestoreFailKind.LATEST
                     } else {
                         val (s, m) = result
@@ -663,7 +694,7 @@ fun CloudBackupPage(onBack: () -> Unit) {
         )
     }
 
-    // v1.141 F1: Fallo de recuperación especial UX — Diálogo de error + reintento de entrada(Si lo intentas de nuevo y fallas, volverá a aparecer.)
+    // v1.141 F1: 恢复失败专项 UX — 错误对话框 + 重试入口(重试再失败会再次弹出)
     val failKind = restoreFailKind
     if (failKind != null) {
         MuseDialog(
@@ -688,7 +719,7 @@ fun CloudBackupPage(onBack: () -> Unit) {
                     val result: Pair<Int, Int>? = when (kind) {
                         RestoreFailKind.LATEST -> backupService.importFromCloud()
                         RestoreFailKind.FILE -> {
-                            // El nombre del archivo no debe estar vacío.(Error al iniciar sesión);Si el valor defensivo está vacío, se considerará un fracaso y volverá a aparecer.
+                            // 文件名不应为空(失败时已记录);防御性为空视为失败重新弹出
                             if (file == null) null else backupService.importFromCloudFile(file)
                         }
                     }
@@ -699,7 +730,7 @@ fun CloudBackupPage(onBack: () -> Unit) {
                         failedRestoreFile = file
                     } else {
                         val (s, m) = result
-                        MuseToast.show(context.getString(R.string.cloud_backup_restore_success, s, m))
+                        MuseToast.show(resources.getString(R.string.cloud_backup_restore_success, s, m))
                     }
                 }
             },
@@ -710,12 +741,12 @@ fun CloudBackupPage(onBack: () -> Unit) {
 }
 
 /**
- * Tipo de error de recuperación en la nube — distinguir"Restaurar la última copia de seguridad"con"Restaurar por versión",Proporciona un cuadro de diálogo fallido para volver a intentar la operación original.
+ * 云端恢复失败类型 — 区分"恢复最新备份"与"按版本恢复",供失败对话框按原操作重试。
  */
 private enum class RestoreFailKind { LATEST, FILE }
 
 /**
- * WebDAV Formulario de campo(URL / Nombre de usuario/Contraseña/Directorio remoto).
+ * WebDAV 字段表单(URL / 用户名 / 密码 / 远程目录)。
  */
 @Composable
 private fun WebDavFields(
@@ -775,7 +806,7 @@ private fun WebDavFields(
 }
 
 /**
- * S3 Formulario de campo(Endpoint / Region / Bucket / AccessKey / SecretKey / KeyPrefix).
+ * S3 字段表单(Endpoint / Region / Bucket / AccessKey / SecretKey / KeyPrefix)。
  */
 @Composable
 private fun S3Fields(
@@ -850,7 +881,7 @@ private fun S3Fields(
 }
 
 /**
- * Cifrar campo de contraseña(Universales,S3/WebDAV Usado igualmente).
+ * 加密密码字段(通用,S3/WebDAV 均用)。
  */
 @Composable
 private fun EncryptionPasswordField(
@@ -894,7 +925,7 @@ private fun EncryptionPasswordField(
 }
 
 /**
- * Línea de respaldo remota única — Nombre del archivo + hora + tamaño + botón restaurar/eliminar.
+ * 单条远端备份行 — 文件名 + 时间 + 大小 + 恢复 / 删除按钮。
  */
 @Composable
 private fun RemoteBackupRow(backup: RemoteBackup, onRestore: () -> Unit, onDelete: () -> Unit, isDeleting: Boolean) {
@@ -947,5 +978,5 @@ private fun RemoteBackupRow(backup: RemoteBackup, onRestore: () -> Unit, onDelet
     }
 }
 
-/** Formatee el número de bytes como KB/MB/GB. */
+/** 把字节数格式化为 KB/MB/GB。 */
 private fun formatSize(bytes: Long): String = FileSizeFormatter.format(bytes)

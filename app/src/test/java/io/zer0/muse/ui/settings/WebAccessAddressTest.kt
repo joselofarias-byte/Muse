@@ -6,10 +6,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Reglas de montaje para direcciones de acceso web.
+ * 网页版访问地址的组装规则。
  *
- * La línea de "dirección" y el código QR de la página solo consumen [resolveWebAccessAddress] el resultado de
- * Entonces, cada afirmación aquí corresponde a una copia que los usuarios pueden ver: ya sea una dirección completa o un mensaje de "IP no obtenida".
+ * 页面上「地址」一行和二维码都只消费 [resolveWebAccessAddress] 的结果，
+ * 所以这里的每条断言都对应一块用户能看见的文案：要么是完整地址，要么是「没拿到 IP」的提示。
  */
 class WebAccessAddressTest {
 
@@ -29,7 +29,7 @@ class WebAccessAddressTest {
         assertNull(buildWebAccessUrl("   ", 8080))
     }
 
-    /** El acceso LAN está cerrado: la dirección se retrocede y se marca como \"Sólo esta máquina\" y, en consecuencia, la página muestra \"Sólo esta máquina puede acceder\". */
+    /** 局域网访问关闭：地址固定回环，并标记仅本机，页面据此显示「仅本机可访问」。 */
     @Test
     fun `lan off resolves to loopback and marks local only`() {
         val address = resolveWebAccessAddress(allowLan = false, lanIp = "192.168.1.23", port = 8765)
@@ -37,7 +37,7 @@ class WebAccessAddressTest {
         assertTrue(address.localOnly)
     }
 
-    /** El acceso LAN está habilitado pero no se obtiene la IP: la dirección es nula (tome la rama del indicador) y ya no afirma ser solo la máquina local. */
+    /** 局域网访问开启但没拿到 IP：地址为 null（走提示分支），且不再宣称仅本机。 */
     @Test
     fun `lan on without ip yields no url`() {
         val address = resolveWebAccessAddress(allowLan = true, lanIp = null, port = 8765)
@@ -52,14 +52,10 @@ class WebAccessAddressTest {
         assertEquals(false, address.localOnly)
     }
 
-    private fun candidate(
-        name: String,
-        address: String,
-        siteLocal: Boolean = true,
-        loopback: Boolean = false,
-    ) = LanIpCandidate(interfaceName = name, address = address, siteLocal = siteLocal, loopback = loopback)
+    private fun candidate(name: String, address: String, siteLocal: Boolean = true, loopback: Boolean = false) =
+        LanIpCandidate(interfaceName = name, address = address, siteLocal = siteLocal, loopback = loopback)
 
-    /** Cuando hay varias tarjetas de red, se le da prioridad a la conexión inalámbrica: incluso si wlan está más adelante en el orden de enumeración. */
+    /** 多张网卡时优先无线：即便 wlan 在枚举顺序里靠后。 */
     @Test
     fun `wlan is preferred over later interfaces`() {
         val picked = pickLanIpAddress(
@@ -72,7 +68,7 @@ class WebAccessAddressTest {
         assertEquals("192.168.1.23", picked)
     }
 
-    /** Dirección de bucle invertido y segmento de red no privada (como red pública/enlace local) no participa en la selección. */
+    /** 回环地址与非私有网段（如公网/链路本地）不参与选择。 */
     @Test
     fun `loopback and non site local addresses are skipped`() {
         val picked = pickLanIpAddress(
@@ -85,7 +81,7 @@ class WebAccessAddressTest {
         assertEquals("192.168.1.23", picked)
     }
 
-    /** Si todas las direcciones no están disponibles, se devolverá nulo y aparecerá el mensaje \"IP de LAN no obtenida\" en la página. */
+    /** 全是不可用地址时返回 null，交给页面的「没拿到局域网 IP」提示。 */
     @Test
     fun `no usable candidate yields null`() {
         assertNull(pickLanIpAddress(emptyList()))

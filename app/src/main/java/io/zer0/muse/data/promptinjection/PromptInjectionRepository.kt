@@ -6,16 +6,16 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 
 /**
- * PromptInjection almacén — Phase 8.5.
+ * PromptInjection 仓库 — Phase 8.5。
  *
- * inyección de patrón: El usuario cambia a mitad de sesión"modo"(creative/coding/roleplay/...)tiempo,
- * Las entradas de inyección correspondientes al modo surten efecto inmediatamente,No se requiere activador de palabra clave.
+ * 模式注入: 用户在会话中切换"模式"(creative/coding/roleplay/...)时,
+ * 对应 mode 的注入条目立即生效,无需关键词触发。
  */
 class PromptInjectionRepository(
     private val dao: PromptInjectionDao,
     private val context: Context,
 ) {
-    // L-PID5: agregar distinctUntilChanged,Evite emisiones repetidas sin sentido desde aguas arriba que activen el rediseño de la interfaz de usuario.
+    // L-PID5: 加 distinctUntilChanged,避免上游无意义重复发射触发 UI 重绘。
     fun observeAll(): Flow<List<PromptInjectionEntity>> = dao.observeAll().distinctUntilChanged()
 
     suspend fun getEnabledByMode(mode: String): List<PromptInjectionEntity> = dao.getEnabledByMode(mode)
@@ -26,8 +26,8 @@ class PromptInjectionRepository(
     suspend fun getById(id: String): PromptInjectionEntity? = dao.getById(id)
 
     /**
-     * Nuevo o actualizado.L-PID7: Posición de inserción correcta a un valor legal,Los valores ilegales vuelven a los valores predeterminados after_system
-     * (PromptInjectionTransformer Sólo admite before_system/after_system,No compatible before_last).
+     * 新增或更新。L-PID7: 校正 insertionPosition 为合法值,非法值回落到默认 after_system
+     * (PromptInjectionTransformer 仅支持 before_system/after_system,不支持 before_last)。
      */
     suspend fun upsert(entity: PromptInjectionEntity) {
         val normalized = if (entity.insertionPosition in PromptInjectionEntity.VALID_INSERTION_POSITIONS) {
@@ -40,7 +40,7 @@ class PromptInjectionRepository(
 
     suspend fun delete(id: String) = dao.deleteById(id)
 
-    /** Lista de modos preestablecidos(localización),Para uso de selectores de UI.mode Permitir personalización,Sin verificación sólida. */
+    /** 预置模式列表(本地化),供 UI 选择器使用。mode 允许自定义,不强校验。 */
     val presetModes: List<Pair<String, String>> = listOf(
         "default" to context.getString(R.string.prompt_injection_mode_default),
         "creative" to context.getString(R.string.prompt_injection_mode_creative),

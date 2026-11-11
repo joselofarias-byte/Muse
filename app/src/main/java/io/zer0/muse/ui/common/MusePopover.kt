@@ -23,10 +23,10 @@ import io.zer0.muse.ui.theme.MuseAnimation
 import io.zer0.muse.ui.theme.MuseMotion
 import kotlin.math.roundToInt
 
-// E4 (Especialización front-end H8): Capa elástica de punto de anclaje universal(Popover) — Los límites del componente de anclaje dentro de la ventana.
-// (boundsInWindow)Contenido emergente base,El borde derecho está unido al borde derecho del punto de anclaje y el borde superior está gapDp por encima del punto de anclaje.
-// Haga clic fuera de la capa elástica para activar automáticamente onDismiss(Popup comportamiento incorporado).
-// Propósito:Tarjeta de capa flotante anclada(Menú de operación de mensajes, etc.);Compatible con dispositivos celulares y de escritorio.
+// E4 (前端专项 H8): 通用锚点弹层(Popover) — 以锚点组件在窗口中的边界
+// (boundsInWindow)为基准定位弹出内容,右缘贴锚点右缘、上缘在锚点上方 gapDp。
+// 点击弹层外部自动触发 onDismiss(Popup 内建行为)。
+// 用途:锚定操作的浮层卡片(消息操作菜单等);移动端与桌面通用。
 @Composable
 internal fun MusePopover(
     anchorBounds: Rect,
@@ -48,8 +48,8 @@ internal fun MusePopover(
         onDismissRequest = onDismiss,
         popupPositionProvider = positionProvider,
     ) {
-        // v2.x: Animación de entrada — fade + ligero zoom(Repare todas las personas que llaman Popover en un solo lugar);
-        // Renuncia y no hagas nada.(La capa elástica se elimina directamente.,Nadie puede ver la animación de salida.,No vale la pena obsesionarse dismiss).
+        // v2.x: 入场动画 — fade + 轻微缩放(一处修复所有 Popover 调用方);
+        // 退场不做(弹层被直接移除,退出动画无人看见,不值得为此挂起 dismiss)。
         val visibleState = remember { MutableTransitionState(false).apply { targetState = true } }
         AnimatedVisibility(
             visibleState = visibleState,
@@ -66,10 +66,10 @@ internal fun MusePopover(
 }
 
 /**
- * Colocar capas elásticas según los puntos de presión.
+ * 根据按压点放置弹层。
  *
- * Cuando existe un punto de presión,La capa elástica está centrada horizontalmente en el dedo.,Se muestra primero encima del dedo.;Colóquelo debajo cuando no haya suficiente espacio arriba.
- * Mantenga la antigua burbuja en la posición superior derecha cuando no haya ningún punto de presión.,para rotación/Escenarios sin contexto de gestos como recuperación de procesos.
+ * 按压点存在时,弹层水平居中于手指,优先显示在手指上方;上方空间不足时才放到下方。
+ * 没有按压点时保留旧的气泡右上方定位,用于旋转/进程恢复等没有手势上下文的场景。
  */
 internal class MusePopoverPositionProvider(
     private val fallbackAnchorBounds: Rect,
@@ -111,8 +111,8 @@ internal class MusePopoverPositionProvider(
             fallbackAnchorBounds.left
         }
         val fallbackY = fallbackAnchorBounds.top - popupContentSize.height - safeGap
-        // v1.0.90: Punto de anclaje aún no medido(bounds para 0)Cuando la vieja lógica calcula un número negativo y luego lo fuerza a la esquina superior izquierda,
-        // El menú aparecerá inexplicablemente en la parte superior izquierda de la pantalla, cubriendo el texto. Es mejor colocarlo en la esquina inferior derecha que fuera del área de lectura.
+        // v1.0.90: 锚点未测量完成(bounds 为 0)时，旧逻辑算出负数再被 coerce 到左上角，
+        // 菜单会莫名其妙出现在屏幕左上、盖住正文。宁可按右下角放置，也不要落在阅读区外。
         if (fallbackAnchorBounds.width <= 0f && fallbackAnchorBounds.height <= 0f) {
             return IntOffset(maxX, maxY)
         }

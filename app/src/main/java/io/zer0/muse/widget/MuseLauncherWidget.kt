@@ -15,10 +15,10 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * F-25: Widget de inicio de escritorio(Versión mínima disponible).
+ * F-25: 桌面启动小部件(最小可用版)。
  *
- * mostrar "abierto Muse" Botón + etiqueta de hora actual del sistema;Al hacer clic en toda la tarjeta o el botón, se accederá al enlace profundo. muse://chat
- * levantarse [MainActivity] Vaya directamente a la página de conversación. Utilice el diseño mínimo compatible con RemoteViews,No se introducen dependencias adicionales.
+ * 显示 "打开 Muse" 按钮 + 当前系统时间标签;点击整卡或按钮均通过深链 muse://chat
+ * 拉起 [MainActivity] 直达对话页。使用 RemoteViews 支持的最小布局,不引入额外依赖。
  */
 class MuseLauncherWidget : AppWidgetProvider() {
 

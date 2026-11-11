@@ -1,13 +1,13 @@
 package io.zer0.muse.data.chat.rewrite
 
-/** Una parte estructurada de un mensaje en streaming. */
+/** 流式消息的结构化 part。 */
 data class StreamingPart(
     val kind: String,
     val text: String,
     val metadataJson: String = "{}",
 )
 
-/** Instantáneas de borrador de transmisión inmutable. */
+/** 不可变的流式草稿快照。 */
 data class MessageDraft(
     val turnId: String,
     val assistantId: String,
@@ -28,10 +28,10 @@ enum class FallbackDecision {
 }
 
 /**
- * Acumulador de flujo único.
+ * 单一流式累积器。
  *
- * Evento por turnId,streamId y secuenciaInStream para eliminar duplicados; rechazar deltas posteriores después de la finalización,
- * Esto evita transmisiones antiguas o finalizaciones repetidas que contaminen las nuevas respuestas.
+ * 事件按 turnId、streamId 和 sequenceInStream 去重；完成后拒绝后续 delta，
+ * 从而避免旧 stream 或重复 finalize 污染新回复。
  */
 class StreamingTurnBuffer(
     val turnId: String,
@@ -43,22 +43,22 @@ class StreamingTurnBuffer(
     private var nextSequence = 0L
     private var finished = false
 
-    /** Agrega el texto delta; devuelve falso para indicar que el evento fue rechazado o repetido. */
+    /** 追加文本 delta；返回 false 表示事件被拒绝或重复。 */
     fun appendText(sequenceInStream: Long, delta: String): Boolean = append(sequenceInStream, "text", delta)
 
-    /** Compatible con proveedores antiguos sin secuencia, utilizando números de secuencia incrementales locales. */
+    /** 兼容没有 sequence 的旧 provider，使用本地递增序号。 */
     fun appendText(delta: String): Boolean = appendText(nextSequence, delta)
 
-    /** Añadir delta de razonamiento. */
+    /** 追加 reasoning delta。 */
     fun appendReasoning(sequenceInStream: Long, delta: String): Boolean = append(sequenceInStream, "reasoning", delta)
 
-    /** Agregar pieza de herramienta. */
+    /** 追加工具 part。 */
     fun appendTool(sequenceInStream: Long, toolName: String, metadataJson: String): Boolean =
         append(sequenceInStream, "tool", toolName, metadataJson)
 
     /**
-     * Aplicar respaldo sin transmisión.
-     * Nunca empalmes la finalización completa como un delta ordinario cuando ya haya texto visible.
+     * 应用非流式 fallback。
+     * 已有可见正文时绝不能把完整 completion 当普通 delta 拼接。
      */
     fun applyFallback(fullText: String): FallbackDecision {
         if (finished) return FallbackDecision.IgnoredBecauseFinished

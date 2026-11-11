@@ -151,7 +151,7 @@ class BubbleSkinTest {
 
     @Test
     fun `default skins satisfy the contrast requirement`() {
-        // El valor predeterminado integrado siempre debe pasar la validación.,De lo contrario, el recurso de resolución no tendrá sentido.
+        // 内置 default 必须永远通过校验,否则 resolver 回退会失去意义。
         assertTrue(BubbleSkinValidator.isValid(BubbleSkinResolver.defaultSkin(darkTheme = false)))
         assertTrue(BubbleSkinValidator.isValid(BubbleSkinResolver.defaultSkin(darkTheme = true)))
     }

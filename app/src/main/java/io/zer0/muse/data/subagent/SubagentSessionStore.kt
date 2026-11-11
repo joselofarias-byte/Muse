@@ -13,18 +13,18 @@ import kotlinx.coroutines.withContext
 import java.io.File
 
 /**
- * v1.0.53: Persistencia JSONL del historial de sesiones del agente secundario.
+ * v1.0.53: 子 agent 会话历史 JSONL 持久化。
  *
- * camino: filesDir/subagent_sessions/<threadId>.jsonl
- * Un JSON por línea: serialización de UIMessage
+ * 路径: filesDir/subagent_sessions/<threadId>.jsonl
+ * 每行一个 JSON: UIMessage 序列化
  *
- * estrategia de cultivo(Estimado por token):
- *  - usar [TokenEstimator] Estimación acumulada token,Recortar desde el encabezado cuando se excede maxContextTokens
- *  - Mantener mensajes del SISTEMA(Las palabras de aviso del sistema de subagentes nunca se cortarán)
+ * 裁剪策略(按 token 估算):
+ *  - 用 [TokenEstimator] 估算累计 token,超过 maxContextTokens 时从首部裁剪
+ *  - 保留 SYSTEM 消息(子 agent 系统提示词永不裁剪)
  *
- * tolerancia a fallas:
- *  - Línea ilegal encontrada mientras leía(dañado)Saltar y log warn,No lanzar excepción
- *  - Devuelve una lista vacía si el archivo no existe(Tratar como un hilo nuevo)
+ * 容错:
+ *  - 读取时遇到非法行(损坏)跳过并 log warn,不抛异常
+ *  - 文件不存在时返回空列表(视为全新线程)
  */
 class SubagentSessionStore(
     private val sessionsDir: File,
@@ -41,8 +41,8 @@ class SubagentSessionStore(
     }
 
     /**
-     * Agregar un lote de mensajes al archivo de sesión del hilo(escritura incremental).
-     * Crea automáticamente el archivo si no existe.
+     * 追加一批消息到 thread 的会话文件(增量写)。
+     * 文件不存在时自动创建。
      */
     suspend fun append(threadId: String, messages: List<UIMessage>): io.zer0.common.Result<Unit> = withContext(Dispatchers.IO) {
         resultOf {
@@ -60,10 +60,10 @@ class SubagentSessionStore(
     }
 
     /**
-     * Cargar historial de sesión para hilo,Corta el encabezado de acuerdo con el presupuesto del token.
+     * 加载 thread 的会话历史,按 token 预算裁剪首部。
      *
-     * @param maxContextTokens límite superior de recorte(Predeterminado 6000,Aproximadamente de la ventana de contexto del subasistente 50%)
-     * @return Lista de mensajes recortada(SYSTEM Retención de mensajes + últimos N mensajes que no son del SISTEMA)
+     * @param maxContextTokens 裁剪上限(默认 6000,约为子助手上下文窗口的 50%)
+     * @return 裁剪后的消息列表(SYSTEM 消息保留 + 最近 N 条非 SYSTEM 消息)
      */
     suspend fun load(threadId: String, maxContextTokens: Int = 6000): List<UIMessage> = withContext(Dispatchers.IO) {
         val file = pathOf(threadId)
@@ -81,32 +81,32 @@ class SubagentSessionStore(
                 if (parsed != null) {
                     all.add(parsed)
                 } else {
-                    Logger.w(TAG, "Saltar líneas JSONL corruptas: ${line.take(80)}")
+                    Logger.w(TAG, "跳过损坏的 JSONL 行: ${line.take(80)}")
                 }
             }
         }
 
         if (all.isEmpty()) return@withContext emptyList()
 
-        // Separe los mensajes del SISTEMA y los que no son del SISTEMA
+        // 分离 SYSTEM 和非 SYSTEM 消息
         val systemMsgs = all.filter { it.role == MessageRole.SYSTEM }
         val nonSystem = all.filter { it.role != MessageRole.SYSTEM }
 
-        // Acumular desde el final hacia adelante token,Detener cuando se excede el límite
+        // 从末尾向前累加 token,超限时停止
         val kept = mutableListOf<UIMessage>()
         var spent = 0
         for (msg in nonSystem.asReversed()) {
             val cost = tokenEstimator.estimate(msg.content) + 4
             if (spent + cost > maxContextTokens && kept.isNotEmpty()) break
             spent += cost
-            kept.add(0, msg) // Mantener el orden original
+            kept.add(0, msg) // 保持原顺序
         }
 
-        // SYSTEM antes + no después de recortar SYSTEM
+        // SYSTEM 在前 + 裁剪后的非 SYSTEM
         return@withContext systemMsgs + kept
     }
 
-    /** Eliminar el archivo de sesión del hilo(close llamada opcional). */
+    /** 删除 thread 的会话文件(close 时可选调用)。 */
     suspend fun delete(threadId: String): io.zer0.common.Result<Unit> = withContext(Dispatchers.IO) {
         resultOf {
             val file = pathOf(threadId)
@@ -114,7 +114,7 @@ class SubagentSessionStore(
         }
     }
 
-    /** Diagnóstico:Obtener la ruta del archivo de sesión del hilo(puede que no exista). */
+    /** 诊断:获取 thread 的会话文件路径(可能不存在)。 */
     fun pathOf(threadId: String): File {
         require(threadId.matches(SAFE_THREAD_ID)) {
             "subagent thread id must be a safe filename token"

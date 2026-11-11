@@ -5,10 +5,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * [AnrDetector] Prueba única de lógica de decisión.
+ * [AnrDetector] 判定逻辑单测。
  *
- * Cobertura clave 2026-09-27~29 cinco porciones anr_*.txt causas de los falsos positivos:
- * El proceso sale del fondo y el sistema lo congela. → Regrese a la recepción para descongelar,La primera ronda de inspección trata toda la duración del backend como"El hilo principal no responde".
+ * 重点覆盖 2026-09-27~29 五份 anr_*.txt 的误报成因:
+ * 进程退后台被系统冻结 → 回前台解冻,首轮检查把整个后台时长当成"主线程无响应"。
  */
 class AnrDetectorTest {
     private fun detector() = AnrDetector(
@@ -17,11 +17,11 @@ class AnrDetectorTest {
         suspendToleranceMs = 3_000L,
     )
 
-    /** Simular una ronda"Despierta a tiempo, el hilo principal también se ejecuta. ping"Detección normal. */
+    /** 模拟一轮"按时醒来、主线程也执行了 ping"的正常检测。 */
     private fun AnrDetector.tick(nowMs: Long, pongCount: Long) = onCheck(nowMs = nowMs, postedAtMs = nowMs - 2_000L, pongCount = pongCount)
 
     @Test
-    fun `No se emite ningún juicio cuando el latido del corazón es normal ANR`() {
+    fun `心跳正常时不判定 ANR`() {
         val d = detector()
         var pong = 0L
         var t = 10_000L
@@ -33,76 +33,76 @@ class AnrDetectorTest {
     }
 
     @Test
-    fun `El hilo principal continuamente no responde y excede el umbral para determinar ANR y solo informa una vez`() {
+    fun `主线程连续无响应超过阈值判定 ANR 且只报一次`() {
         val d = detector()
         var t = 10_000L
-        // Las dos primeras rondas de latidos del corazón fueron normales.
+        // 前两轮心跳正常
         assertEquals(AnrDetector.Decision.Healthy, d.tick(t, 1L))
         t += 2_000L
         assertEquals(AnrDetector.Decision.Healthy, d.tick(t, 2L))
 
-        // Hilo principal atascado:ping El conteo ya no avanza
+        // 主线程卡住:ping 计数不再前进
         t += 2_000L
-        assertEquals(AnrDetector.Decision.Healthy, d.tick(t, 2L)) // Bloqueando aprox. 2s,umbral no alcanzado
+        assertEquals(AnrDetector.Decision.Healthy, d.tick(t, 2L)) // 阻塞约 2s,未达阈值
         t += 2_000L
-        assertEquals(AnrDetector.Decision.Healthy, d.tick(t, 2L)) // aprox. 4s
+        assertEquals(AnrDetector.Decision.Healthy, d.tick(t, 2L)) // 约 4s
         t += 2_000L
-        val blocked = d.tick(t, 2L) // aprox. 6s → juicio
-        assertTrue("debe ser juzgado ANR,real $blocked", blocked is AnrDetector.Decision.Blocked)
-        assertTrue("La duración del bloqueo debe ser >= 5s,real ${(blocked as AnrDetector.Decision.Blocked).silenceMs}", blocked.silenceMs >= 5_000L)
+        val blocked = d.tick(t, 2L) // 约 6s → 判定
+        assertTrue("应判定 ANR,实际 $blocked", blocked is AnrDetector.Decision.Blocked)
+        assertTrue("阻塞时长应 >= 5s,实际 ${(blocked as AnrDetector.Decision.Blocked).silenceMs}", blocked.silenceMs >= 5_000L)
 
-        // Todavía estancado:Sin informes duplicados
+        // 仍卡住:不重复报告
         t += 2_000L
         assertEquals(AnrDetector.Decision.Suppressed, d.tick(t, 2L))
 
-        // restaurar el latido del corazón:rearmarse
+        // 恢复心跳:重新武装
         t += 2_000L
         assertEquals(AnrDetector.Decision.Healthy, d.tick(t, 3L))
     }
 
     @Test
-    fun `Una vez congelado el proceso, regrese a la recepción y no se permitirán falsas alarmas ANR`() {
+    fun `进程被冻结后回前台不得误报 ANR`() {
         val d = detector()
-        // antes de congelar:latidos normales del corazón
+        // 冻结前:心跳正常
         assertEquals(AnrDetector.Decision.Healthy, d.tick(10_000L, 7L))
 
-        // El proceso se congela durante 93 segundos.:El propio perro guardián durmió 93 segundos esta ronda.
-        // (escena real:App El backend está suspendido por el congelador de aplicaciones en caché,Descongelar después de regresar a la recepción)
+        // 进程被冻结 93 秒:看门狗自己这一轮也睡了 93 秒
+        // (真实场景:App 退后台被 cached-app freezer 挂起,回前台才解冻)
         val decision = d.onCheck(nowMs = 103_000L, postedAtMs = 10_000L, pongCount = 7L)
         assertEquals(AnrDetector.Decision.Suspended, decision)
 
-        // Después de la descongelación, el hilo principal ejecuta inmediatamente el trabajo pendiente. ping → normales
+        // 解冻后主线程立刻执行积压的 ping → 正常
         assertEquals(AnrDetector.Decision.Healthy, d.tick(105_000L, 9L))
     }
 
     @Test
-    fun `Dentro de la tolerancia de congelación, la acumulación se seguirá contando como bloqueada`() {
+    fun `冻结容差以内仍按阻塞累计`() {
         val d = detector()
         var t = 10_000L
         d.tick(t, 1L)
-        // Solo gasta más en cada ronda 1s(Tolerancia de 3 s no excedida)→ pertenecer a"El perro guardián es normal pero el hilo principal no responde."
+        // 每轮只多花 1s(未超 3s 容差)→ 属于"看门狗正常但主线程没响应"
         t += 2_000L
         d.onCheck(nowMs = t + 1_000L, postedAtMs = t, pongCount = 1L)
         t += 3_000L
         d.onCheck(nowMs = t, postedAtMs = t - 2_000L, pongCount = 1L)
         t += 2_000L
         val decision = d.onCheck(nowMs = t, postedAtMs = t - 2_000L, pongCount = 1L)
-        assertTrue("debe ser juzgado ANR,real $decision", decision is AnrDetector.Decision.Blocked)
+        assertTrue("应判定 ANR,实际 $decision", decision is AnrDetector.Decision.Blocked)
     }
 
     @Test
-    fun `Los perros guardianes suspendidos durante la congelación no mostrarán el estado de bloqueo vencido`() {
+    fun `冻结期间被挂起的看门狗不会带出过期阻塞状态`() {
         val d = detector()
-        // Ingrese al bloqueo primero
+        // 先进入阻塞
         var t = 10_000L
         d.tick(t, 1L)
         repeat(3) {
             t += 2_000L
             d.onCheck(nowMs = t, postedAtMs = t - 2_000L, pongCount = 1L)
         }
-        // El proceso se congela durante el bloqueo.(Por ejemplo, el usuario se desconecta en este momento. App)
+        // 阻塞期间进程被冻结(例如用户此时切走 App)
         assertEquals(AnrDetector.Decision.Suspended, d.onCheck(nowMs = t + 60_000L, postedAtMs = t, pongCount = 1L))
-        // Descongelar y reanudar el hilo principal:no por"El período antes de la congelación."Informar nuevamente
+        // 解冻且主线程恢复:不得因为"冻结前那一段"再报一次
         assertEquals(AnrDetector.Decision.Healthy, d.tick(t + 62_000L, 2L))
     }
 }

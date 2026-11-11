@@ -23,9 +23,9 @@ import io.zer0.muse.ui.common.surface.MuseSurface
 import kotlinx.serialization.Serializable
 
 /**
- * Panel de actividades.
+ * 活动面板。
  *
- * Mostrar tareas programadas/latido del corazón/Historial y estado de ejecución de la compilación.
+ * 展示定时任务/心跳/编译的执行历史及状态。
  */
 @Composable
 fun ActivityPanel(activities: List<ActivityEntry>, modifier: Modifier = Modifier) {
@@ -46,8 +46,8 @@ fun ActivityPanel(activities: List<ActivityEntry>, modifier: Modifier = Modifier
                 )
             }
         }
-        // v1.131: items agregar key — Preservar el estado del componente secundario al reordenar/insertar/eliminar la lista(animación/posición de desplazamiento),
-        // Y evite reorganizaciones innecesarias.fallback Vaya a marca de tiempo + índice para garantizar la unicidad de la clave(evitar O(n²) indexOf).
+        // v1.131: items 加 key — 列表 reorder/insert/delete 时保留子组件状态(动画/滚动位置),
+        // 且避免不必要的重组。fallback 到 timestamp + index 保证 key 唯一性(避免 O(n²) indexOf)。
         itemsIndexed(items = activities, key = { idx, entry -> entry.id.ifEmpty { "${entry.timestamp}-$idx" } }) { _, entry ->
             ActivityCard(entry)
         }

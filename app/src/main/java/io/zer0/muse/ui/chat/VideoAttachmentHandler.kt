@@ -12,13 +12,13 @@ import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
 
 /**
- * Enumeración del tipo de archivo adjunto — Definición centralizada para reemplazar cadenas esparcidas por todas partes/MIME juez.
+ * 附件类型枚举 — 集中定义，替代散落各处的字符串/MIME 判断。
  *
- * Estado actual de la implementación anterior (sin enumeración unificada):
- *  - IMAGE:  ChatState.pendingImages / UIMessage.imageBase64List(base64 lista)
- *  - AUDIO:  ASR El proceso de grabación no se cuelga en el cuerpo del mensaje.
- *  - FILE:   DocumentPicker Después de la selección, DocumentParser lo analiza en texto.
- *  - VIDEO:  Este archivo se agrega recientemente y se envía directamente a un proveedor que admite video (como Gemini) o se degrada a una imagen de fotograma clave.
+ * 旧实现现状（无统一枚举）：
+ *  - IMAGE:  ChatState.pendingImages / UIMessage.imageBase64List（base64 列表）
+ *  - AUDIO:  ASR 录音流程，不挂在消息体上
+ *  - FILE:   DocumentPicker 选取后经 DocumentParser 解析为文本
+ *  - VIDEO:  本文件新增，直接发给支持视频的 Provider（如 Gemini），或降级为关键帧图片
  */
 enum class AttachmentType {
     IMAGE,
@@ -28,13 +28,13 @@ enum class AttachmentType {
 }
 
 /**
- * Metadatos del archivo adjunto de vídeo.
+ * 视频附件元数据。
  *
- * - [uri] uri de contenido de vídeo (SAF El uri de autorización temporal solo es válido durante el ciclo de vida del proceso actual)
- * - [durationMs] Duración (milisegundos)
- * - [width] Ancho del vídeo (píxeles)
- * - [height] Altura del vídeo (píxeles)
- * - [thumbnail] Miniatura del primer fotograma base64 (sin datos: prefijo), utilizada para la vista previa en las burbujas de mensajes
+ * - [uri] 视频 content uri（SAF 临时授权 uri 仅在当前进程生命周期内有效）
+ * - [durationMs] 时长（毫秒）
+ * - [width] 视频宽（像素）
+ * - [height] 视频高（像素）
+ * - [thumbnail] 首帧缩略图 base64（无 data: 前缀），用于消息气泡内预览
  */
 data class VideoAttachment(
     val uri: Uri,
@@ -45,55 +45,55 @@ data class VideoAttachment(
 )
 
 /**
- * Procesador de archivos adjuntos de vídeo.
+ * 视频附件处理器。
  *
- * Responsabilidades:
- *  - Verificar el tamaño del video (>50MB Error de devolución, lo que solicita al usuario que comprima o rechace)
- *  - usar [MediaMetadataRetriever] Extraer metadatos (duración/resolución)
- *  - Extraiga la miniatura del primer fotograma para obtener una vista previa de la interfaz de usuario
- *  - Extraer fotogramas clave (primer fotograma + fotograma medio + último fotograma)base64 lista,
- *    Para proveedores que no admiten video, cambie al envío de imágenes
+ * 职责：
+ *  - 校验视频大小（>50MB 返回失败，提示用户压缩或拒绝）
+ *  - 用 [MediaMetadataRetriever] 提取元数据（时长/分辨率）
+ *  - 提取首帧缩略图，用于 UI 预览
+ *  - 提取关键帧（首帧 + 中间帧 + 末帧）base64 列表，
+ *    供不支持视频的 Provider 降级为图片发送
  *
- * Restricciones:
- *  - Sin nuevas dependencias: use solo Android nativo [MediaMetadataRetriever]
- *  - Todas las E/S y la decodificación se cambian a [Dispatchers.IO], para evitar bloquear el hilo principal
- *  - MediaMetadataRetriever Debe liberarse después de su uso; de lo contrario, se producirá una fuga en el MediaPlayer subyacente.
+ * 约束：
+ *  - 不新增依赖：仅使用 Android 原生 [MediaMetadataRetriever]
+ *  - 所有 IO 与解码均切到 [Dispatchers.IO]，避免阻塞主线程
+ *  - MediaMetadataRetriever 用完必须 release，否则会导致底层 MediaPlayer 泄漏
  */
 class VideoAttachmentHandler {
 
     companion object {
         private const val TAG = "VideoAttachmentHandler"
 
-        /** Tamaño máximo de vídeo:50MB(Evitar el desbordamiento de memoria + alinear con los límites de carga del proveedor). */
+        /** 视频大小上限：50MB（避免内存溢出 + 与 Provider 上传限制对齐）。 */
         const val MAX_VIDEO_SIZE_BYTES = 50L * 1024 * 1024
 
-        /** Calidad de compresión JPEG de miniaturas (0-100). */
+        /** 缩略图 JPEG 压缩质量（0-100）。 */
         private const val THUMBNAIL_JPEG_QUALITY = 80
 
-        /** Los píxeles del lado más largo de la miniatura (la vista previa visual no requiere resolución original, controla el volumen base64). */
+        /** 缩略图最长边像素（视觉预览不需要原分辨率，控制 base64 体积）。 */
         private const val THUMBNAIL_MAX_EDGE = 720
     }
 
     /**
-     * Procese archivos adjuntos de video: verifique el tamaño + extraiga metadatos + genere la miniatura del primer fotograma.
+     * 处理视频附件：校验大小 + 提取元数据 + 生成首帧缩略图。
      *
-     * Proceso:
-     *  1. Pase [ContentResolver] Tamaño del archivo de consulta,>50MB Fallo de devolución directa
-     *  2. usar [MediaMetadataRetriever] Duración de la extracción/resolución
-     *  3. getFrameAtTime(0) Obtenga el primer fotograma y codifíquelo como una miniatura JPEG base64
+     * 流程：
+     *  1. 通过 [ContentResolver] 查询文件大小，>50MB 直接返回失败
+     *  2. 用 [MediaMetadataRetriever] 提取时长/分辨率
+     *  3. getFrameAtTime(0) 取首帧，编码为 base64 JPEG 缩略图
      *
-     * @return Regresar exitosamente [VideoAttachment];Error (el archivo es demasiado grande/no se puede leer/no hay metadatos) devuelve Result.failure
+     * @return 成功返回 [VideoAttachment]；失败（文件过大 / 无法读取 / 无元数据）返回 Result.failure
      */
     suspend fun handleVideoAttachment(uri: Uri, context: Context): Result<VideoAttachment> {
         val r = resultOf {
             withContext(Dispatchers.IO) {
-                // 1. Verificar el tamaño del archivo (>50MB rechazar)
+                // 1. 校验文件大小（>50MB 拒绝）
                 val size = queryFileSize(uri, context)
                 require(size in 1..MAX_VIDEO_SIZE_BYTES) {
-                    "El vídeo es demasiado grande (${formatBytes(size)}), comprímelo a menos de 50 MB y vuelve a intentarlo."
+                    "El vídeo es demasiado grande (${formatBytes(size)}). Redúcelo a 50 MB o menos e inténtalo de nuevo."
                 }
 
-                // 2. Extraer metadatos
+                // 2. 提取元数据
                 val retriever = MediaMetadataRetriever()
                 try {
                     retriever.setDataSource(context, uri)
@@ -107,12 +107,12 @@ class VideoAttachmentHandler {
                         MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT,
                     )?.toIntOrNull() ?: 0
 
-                    // 3. Extraiga la miniatura del primer fotograma (el error no es fatal, se reduce a nulo)
+                    // 3. 提取首帧缩略图（失败不致命，降级为 null）
                     val thumbnail = runCatching {
                         retriever.getFrameAtTime(0, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
                             ?.let { bmp -> encodeBitmapToBase64(bmp) }
                     }.onFailure { e ->
-                        Logger.w(TAG, "No se pudo extraer la miniatura del primer fotograma", e)
+                        Logger.w(TAG, "提取首帧缩略图失败", e)
                     }.getOrNull()
 
                     VideoAttachment(
@@ -135,12 +135,12 @@ class VideoAttachmentHandler {
     }
 
     /**
-     * Extraiga la lista base64 de fotogramas clave (primer fotograma + fotograma medio + último fotograma).
+     * 提取关键帧 base64 列表（首帧 + 中间帧 + 末帧）。
      *
-     * Para proveedores que no admiten la carga de videos: degrade el video a varias imágenes y envíelas al modelo visual.
+     * 用于不支持视频上传的 Provider：把视频降级为多张图片发送给视觉模型。
      *
-     * @param frameCount Número deseado de fotogramas clave (predeterminado 3: primero/en/final), el número real de cuadros puede ser menor que este valor
-     * @return base64 Lista de cadenas (sin datos: prefijo) o lista vacía en caso de error
+     * @param frameCount 期望的关键帧数量（默认 3：首/中/末），实际帧数可能少于该值
+     * @return base64 字符串列表（无 data: 前缀），失败时返回空列表
      */
     suspend fun extractKeyFrames(uri: Uri, context: Context, frameCount: Int = 3): List<String> = withContext(Dispatchers.IO) {
         val retriever = MediaMetadataRetriever()
@@ -151,8 +151,8 @@ class VideoAttachmentHandler {
             )?.toLongOrNull() ?: 0L
             if (durationMs <= 0L) return@withContext emptyList()
 
-            // La unidad de marca de tiempo es microsegundos (us),durationMs es milisegundos y requiere *1000
-            // Deje un margen de 50 ms en el último fotograma para evitar cruzar el límite (el fotograma final de algunos codificadores es inalcanzable)
+            // 时间戳单位为微秒（us），durationMs 为毫秒，需 *1000
+            // 末帧留 50ms 余量避免越界（部分编码器尾部帧不可达）
             val timestamps = buildList {
                 add(0L)
                 if (frameCount >= 2) add(durationMs * 1000L / 2)
@@ -164,7 +164,7 @@ class VideoAttachmentHandler {
                     retriever.getFrameAtTime(tsUs, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
                         ?.let { bmp -> encodeBitmapToBase64(bmp) }
                 }.onFailure { e ->
-                    Logger.w(TAG, "No se pudieron extraer fotogramas clave ts=$tsUs", e)
+                    Logger.w(TAG, "提取关键帧失败 ts=$tsUs", e)
                 }.getOrNull()
             }
         } catch (e: Exception) {
@@ -176,9 +176,9 @@ class VideoAttachmentHandler {
     }
 
     /**
-     * Obtenga la miniatura base64 del primer fotograma (sin datos: prefijo).
+     * 获取首帧 base64 缩略图（无 data: 前缀）。
      *
-     * Devuelve nulo en caso de error (la persona que llama debe dar explicaciones, como mostrar una imagen de marcador de posición).
+     * 失败时返回 null（调用方应做兜底，例如显示占位图）。
      */
     suspend fun getVideoThumbnail(uri: Uri, context: Context): String? {
         return withContext(Dispatchers.IO) {
@@ -197,10 +197,10 @@ class VideoAttachmentHandler {
     }
 
     /**
-     * Consulta la cantidad de bytes del archivo de video a través de ContentResolver.
+     * 通过 ContentResolver 查询视频文件字节数。
      *
-     * Utilice openAssetFileDescriptor para obtener longitud, compatible con content:// y file:// uri.
-     * Devuelve -1 en caso de error (la persona que llama omite la verificación de tamaño o la rechaza en consecuencia).
+     * 用 openAssetFileDescriptor 拿 length，兼容 content:// 与 file:// uri。
+     * 失败返回 -1（调用方据此跳过大小校验或拒绝）。
      */
     private fun queryFileSize(uri: Uri, context: Context): Long {
         return runCatching {
@@ -210,7 +210,7 @@ class VideoAttachmentHandler {
         }.getOrDefault(-1L)
     }
 
-    /** Codificar mapa de bits en base64 (JPEG, sin datos: prefijo), presione [THUMBNAIL_MAX_EDGE] Escala proporcionalmente. */
+    /** 把 Bitmap 编码为 base64（JPEG，无 data: 前缀），按 [THUMBNAIL_MAX_EDGE] 等比缩放。 */
     private fun encodeBitmapToBase64(bmp: android.graphics.Bitmap): String {
         val scaled = scaleIfNeeded(bmp)
         val baos = ByteArrayOutputStream()
@@ -219,7 +219,7 @@ class VideoAttachmentHandler {
         return Base64.encodeToString(baos.toByteArray(), Base64.NO_WRAP)
     }
 
-    /** Escale proporcionalmente al lado más largo no más de [THUMBNAIL_MAX_EDGE], para evitar la explosión de volumen de base64 causada por miniaturas demasiado grandes. */
+    /** 等比缩放至最长边不超过 [THUMBNAIL_MAX_EDGE]，避免缩略图过大导致 base64 体积爆炸。 */
     private fun scaleIfNeeded(bmp: android.graphics.Bitmap): android.graphics.Bitmap {
         val w = bmp.width
         val h = bmp.height
@@ -231,6 +231,6 @@ class VideoAttachmentHandler {
         return android.graphics.Bitmap.createScaledBitmap(bmp, newW, newH, true)
     }
 
-    /** Formatee el número de bytes en una cadena legible. */
+    /** 格式化字节数为可读字符串。 */
     private fun formatBytes(bytes: Long): String = FileSizeFormatter.format(bytes)
 }

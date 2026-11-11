@@ -36,15 +36,15 @@ import io.zer0.muse.ui.theme.MuseMotion
 import io.zer0.muse.ui.theme.MusePaddings
 
 /**
- * v1.40: control deslizante — Anular el valor predeterminado del material [androidx.compose.material3.Slider].
+ * v1.40: 滑块 — 替代 Material 默认 [androidx.compose.material3.Slider]。
  *
- * diferencias visuales(Contraste Material Slider):
- *  - La pista es más delgada.(4dp vs Material 16dp),Más acorde con el estilo de configuración del sistema
- *  - Pulgar más pequeño(20dp vs Material 24dp)+ trazo blanco
- *  - Para la parte llena primary,Para vacantes surfaceVariant
- *  - Animación suave con zoom del pulgar al arrastrar
+ * 视觉差异(对比 Material Slider):
+ *  - 轨道更细(4dp vs Material 16dp),更符合系统设置风格
+ *  - 拇指更小(20dp vs Material 24dp)+ 白色描边
+ *  - 已填充部分用 primary,未填充用 surfaceVariant
+ *  - 拖动时拇指带平滑缩放动画
  *
- * Uso totalmente compatible con Material Slider:
+ * 用法与 Material Slider 完全兼容:
  * ```
  * MuseSlider(
  *     value = temperature,
@@ -53,15 +53,15 @@ import io.zer0.muse.ui.theme.MusePaddings
  * )
  * ```
  *
- * @param value valor actual
- * @param onValueChange devolución de llamada de cambio de valor(Activación continua durante el arrastre)
- * @param valueRange Rango de valores(Predeterminado 0f..1f)
+ * @param value 当前值
+ * @param onValueChange 值变化回调(拖动中持续触发)
+ * @param valueRange 取值范围(默认 0f..1f)
  * @param modifier Modifier
- * @param steps pasos discretos(0 = continuo,>0 = N pasos discretos,Consistente con el control deslizante de material)
- * @param showValueLabel Si se muestra el texto del valor actual a la derecha(Predeterminado true)
- * @param valueFormatter Función de formato de valor(Por defecto a 2 decimales)
- * @param onValueChangeFinished Arrastrar y finalizar la devolución de llamada(Se activa al soltar o cancelar,Vacío predeterminado,compatible con versiones anteriores).
- *   P0-2: Se utiliza para admitir RagSettingsPage, etc."Escribe cuando te sueltes DataStore"Escenarios de optimización de persistencia.
+ * @param steps 离散步数(0 = 连续,>0 = 离散 N 步,与 Material Slider 一致)
+ * @param showValueLabel 是否在右侧显示当前值文本(默认 true)
+ * @param valueFormatter 值格式化函数(默认保留 2 位小数)
+ * @param onValueChangeFinished 拖动结束回调(松手或取消时触发,默认空,向后兼容)。
+ *   P0-2: 用于支持 RagSettingsPage 等"松手时写 DataStore"的持久化优化场景。
  */
 @Composable
 fun MuseSlider(
@@ -78,13 +78,13 @@ fun MuseSlider(
     val end = valueRange.endInclusive
     val range = end - start
     val rawFraction = if (range > 0) ((value - start) / range).coerceIn(0f, 1f) else 0f
-    // H-SL1: Alinear la semántica de los pasos del control deslizante Material3 — steps=N Indica que hay N puntos de parada intermedios entre inicio/fin,
-    // Valores totales N+2,graduación discreta = N+1(en lugar del viejo N),La implementación anterior tiene un valor menos.
+    // H-SL1: 对齐 Material3 Slider steps 语义 — steps=N 表示 start/end 之间有 N 个中间停点,
+    // 共 N+2 个取值,离散分度 = N+1(而非旧的 N),旧实现少一个取值。
     val fraction = snapFraction(rawFraction, steps)
     val thumbSizePx = with(LocalDensity.current) { SliderThumbSize.toPx() }
     val trackHeightPx = with(LocalDensity.current) { SliderTrackHeight.toPx() }
 
-    // Animación de zoom con el pulgar mientras arrastra.L-SL4: isDragging Utilice semántica booleana(La implementación anterior hizo un mal uso de Float 0f/1f cuando era booleano).
+    // 拖动时拇指放大动画。L-SL4: isDragging 用 Boolean 语义(旧实现误用 Float 0f/1f 当布尔)。
     var isDragging by remember { mutableStateOf(false) }
     val thumbScale by animateFloatAsState(
         targetValue = if (isDragging) 1.1f else 1f,
@@ -93,9 +93,9 @@ fun MuseSlider(
     )
     val trackColorVal = trackColor()
     val filledColorVal = filledColor()
-    // v1.48 (h20): thumb sobre fondo de color primario,Usar onPrimary en lugar de desnudo Color.White
+    // v1.48 (h20): thumb 在 primary 色背景上,用 onPrimary 替代裸 Color.White
     val thumbColorVal = thumbColor()
-    // stringResource Debe extraerse en la ubicación de llamada directa de @Composable,no puedo estar ahí semantics{} Para uso interno.
+    // stringResource 需在 @Composable 直接调用位置提取,不能在 semantics{} 内使用。
     val sliderCd = stringResource(R.string.common_slider_cd, valueFormatter(value))
 
     Row(
@@ -143,8 +143,8 @@ fun MuseSlider(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(40.dp)
-                    // M-SL2: progressSemantics Registrar acciones semánticas ajustables + automáticas. stateDescription,
-                    // TalkBack Utilice las teclas de volumen para ajustar el valor del control deslizante paso a paso(accessibility custom action).
+                    // M-SL2: progressSemantics 注册可调节语义动作 + 自动 stateDescription,
+                    // TalkBack 可用音量键逐步调节滑块值(accessibility custom action)。
                     .progressSemantics(value, valueRange, steps)
                     .semantics {
                         contentDescription = sliderCd
@@ -158,14 +158,14 @@ fun MuseSlider(
                 val trackWidth = (trackEnd - trackStart).coerceAtLeast(0f)
                 val thumbCenter = trackStart + fraction * trackWidth
 
-                // pista sin llenar(gris)
+                // 未填充轨道(灰色)
                 drawRoundRect(
                     color = trackColorVal,
                     topLeft = Offset(trackStart, centerY - trackHeightPx / 2),
                     size = Size(trackWidth, trackHeightPx),
                     cornerRadius = androidx.compose.ui.geometry.CornerRadius(trackHeightPx / 2, trackHeightPx / 2),
                 )
-                // Pista llena(primary)
+                // 已填充轨道(primary)
                 val filledWidth = (thumbCenter - trackStart).coerceAtLeast(0f)
                 if (filledWidth > 0) {
                     drawRoundRect(
@@ -175,10 +175,10 @@ fun MuseSlider(
                         cornerRadius = androidx.compose.ui.geometry.CornerRadius(trackHeightPx / 2, trackHeightPx / 2),
                     )
                 }
-                // pulgar(blanco + sombra)
+                // 拇指(白色 + 阴影)
                 val thumbRadius = (thumbSizePx / 2) * thumbScale
                 drawCircle(
-                    color = thumbColorVal, // v1.48 (h20): onPrimary alternativa desnuda Color.White
+                    color = thumbColorVal, // v1.48 (h20): onPrimary 替代裸 Color.White
                     radius = thumbRadius,
                     center = Offset(thumbCenter, centerY),
                 )
@@ -202,17 +202,17 @@ fun MuseSlider(
     }
 }
 
-// L-SL3: Las dimensiones específicas del control deslizante se dibujan como tokens locales,Evite la dispersión desnuda de 22.dp / 6.dp.
-/** Tamaño visual del pulgar deslizante. */
+// L-SL3: 滑块专属尺寸抽为局部令牌,避免裸 22.dp / 6.dp 散落。
+/** 滑块拇指视觉尺寸。 */
 private val SliderThumbSize = 22.dp
 
-/** Altura del carril deslizante. */
+/** 滑块轨道高度。 */
 private val SliderTrackHeight = 6.dp
 
 /**
- * H-SL1: Discretiza semánticamente fracciones continuas mediante los pasos del control deslizante Material3.
- * steps=N Indica que hay N puntos de parada intermedios entre inicio/fin(Valores totales N+2),
- * graduación discreta = N+1,Devuelve la fracción de adsorción entre 0..1.
+ * H-SL1: 将连续 fraction 按 Material3 Slider steps 语义离散化。
+ * steps=N 表示 start/end 之间有 N 个中间停点(共 N+2 个取值),
+ * 离散分度 = N+1,返回 0..1 之间的吸附 fraction。
  */
 private fun snapFraction(fraction: Float, steps: Int): Float {
     if (steps <= 0) return fraction.coerceIn(0f, 1f)
@@ -226,6 +226,6 @@ private fun trackColor(): Color = MaterialTheme.colorScheme.surfaceVariant
 @Composable
 private fun filledColor(): Color = MaterialTheme.colorScheme.primary
 
-// v1.48 (h20): color del pulgar — thumb Dibujar en la pista de relleno del color primario,Utilice onPrimary para garantizar el contraste.
+// v1.48 (h20): 拇指颜色 — thumb 绘制在 primary 色填充轨道上,用 onPrimary 保证对比度
 @Composable
 private fun thumbColor(): Color = MaterialTheme.colorScheme.onPrimary

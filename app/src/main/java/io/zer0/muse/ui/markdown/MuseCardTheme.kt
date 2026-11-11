@@ -1,24 +1,24 @@
 package io.zer0.muse.ui.markdown
 
 /**
- * v2.6.6: Tokens de tema y estilos de fragmentos de componentes para tarjetas generadas (inyectados en todas las tarjetas WebView).
+ * v2.6.6: 生成式卡片的主题令牌与组件片段样式（注入所有 WebView 卡片）。
  *
- * Objetivo: hacer que las tarjetas HTML escritas a mano del modelo "parezcan como si las hubiéramos dibujado de forma nativa"——color unificado/esquinas redondeadas/espaciado/fuente,
- * Y se adapta automáticamente a colores claros y oscuros. El modelo solo necesita usar el siguiente conjunto de variables y clases CSS, y no es necesario que cree estilos usted mismo.
+ * 目标：让模型手写的 HTML 卡片「看起来像是我们原生画的」——统一颜色/圆角/间距/字体，
+ * 并自动适配深浅色。模型只需使用下面这套 CSS 变量与 class，无需自己造样式。
  *
- * Uso (lado del modelo): usado directamente en la tarjeta HTML `var(--muse-fg)` variables o conjuntos iguales `.muse-card`
- * `.muse-metric` `.muse-btn` Espera clase.
+ * 用法（模型侧）：卡片 HTML 里直接用 `var(--muse-fg)` 等变量，或套 `.muse-card`
+ * `.muse-metric` `.muse-btn` 等 class。
  *
- * Lugar de inyección:RichContentCard La plantilla contenedora html/svg dentro del encabezado ([styleBlock]).
+ * 注入位置：RichContentCard 的 html/svg 包装模板 head 内（[styleBlock]）。
  */
 internal object MuseCardTheme {
 
     /**
-     * inyectado en cada tarjeta <style>.
+     * 注入到每张卡片的 <style>。
      *
-     * - La variable sigue el esquema de color preferido para cambiar entre colores oscuros y claros;
-     * - Elementos básicos (body/mesa/botón/Entrada) se ha diseñado y el modelo es decente sin escribir CSS;
-     * - Clase de componente para la selección del modelo (metric tarjeta indicadora,steps barra de paso,progress bucle de progreso,row Aceptar, etc.).
+     * - 变量跟随 prefers-color-scheme 切换深浅色；
+     * - 基础元素（body/表格/按钮/输入）已带样式，模型不写 CSS 也体面；
+     * - 组件 class 供模型选用（metric 指标卡、steps 步骤条、progress 进度环、row 行等）。
      */
     val styleBlock: String = """
         :root {
@@ -59,7 +59,7 @@ internal object MuseCardTheme {
         p { margin: 0 0 8px; }
         small, .muse-muted { color: var(--muse-muted); font-size: 12px; }
         a { color: var(--muse-accent); text-decoration: none; }
-        /* Estuche para tarjetas */
+        /* 卡片外壳 */
         .muse-card {
             background: var(--muse-surface);
             border: 1px solid var(--muse-border);
@@ -68,16 +68,16 @@ internal object MuseCardTheme {
             margin: 0 0 var(--muse-gap);
         }
         .muse-card:last-child { margin-bottom: 0; }
-        /* tarjeta indicadora */
+        /* 指标卡 */
         .muse-metric { display: inline-flex; flex-direction: column; gap: 2px; padding: 10px 14px;
             background: var(--muse-surface-2); border-radius: var(--muse-radius-sm); min-width: 84px; }
         .muse-metric .v { font-size: 20px; font-weight: 700; }
         .muse-metric .k { color: var(--muse-muted); font-size: 12px; }
-        /* fila/lista */
+        /* 行 / 列表 */
         .muse-row { display: flex; align-items: center; gap: 10px; padding: 8px 0;
             border-bottom: 1px solid var(--muse-border); }
         .muse-row:last-child { border-bottom: none; }
-        /* botón */
+        /* 按钮 */
         .muse-btn {
             display: inline-flex; align-items: center; justify-content: center; gap: 6px;
             min-height: 44px; padding: 0 16px; border: none; cursor: pointer;
@@ -86,37 +86,37 @@ internal object MuseCardTheme {
         }
         .muse-btn.ghost { background: var(--muse-surface-2); color: var(--muse-fg); }
         .muse-btn:active { filter: brightness(0.94); }
-        /* Entrada/control deslizante */
+        /* 输入 / 滑块 */
         input, select, textarea {
             min-height: 44px; padding: 8px 10px; color: var(--muse-fg);
             background: var(--muse-surface-2); border: 1px solid var(--muse-border);
             border-radius: var(--muse-radius-sm); font-size: 14px; font-family: inherit;
         }
         input[type="range"] { min-height: 0; padding: 0; width: 100%; accent-color: var(--muse-accent); }
-        /* mesa */
+        /* 表格 */
         table { width: 100%; border-collapse: collapse; font-size: 13px; }
         th, td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--muse-border); }
         th { color: var(--muse-muted); font-weight: 600; }
-        /* barra de progreso */
+        /* 进度条 */
         .muse-progress { height: 8px; background: var(--muse-surface-2); border-radius: 999px; overflow: hidden; }
         .muse-progress > i { display: block; height: 100%; background: var(--muse-accent); border-radius: 999px; }
     """.trimIndent()
 
-    /** completo <style> Etiqueta (con la etiqueta, es fácil deletrearla directamente en la cabeza). */
+    /** 完整 <style> 标签（连标签一起，便于直接拼进 head）。 */
     val styleTag: String = "<style>$styleBlock</style>"
 
-    /** Meta ventana gráfica unificada (requerida para adaptación de pantalla estrecha). */
+    /** 统一的 viewport meta（窄屏适配必需）。 */
     const val VIEWPORT_META: String = "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">"
 
     /**
-     * v2.6.6: Política de seguridad de contenido (CSP)meta.
+     * v2.6.6: 内容安全策略（CSP）meta。
      *
-     * - `default-src 'none'` Bloquear todos los recursos no declarados explícitamente;
-     * - estilo/Los scripts sólo permiten inline(Se requiere tarjeta)con data:;
-     * - Las imágenes sólo permiten datos: con blob:(Deshabilitar solicitudes de imágenes externas);
-     * - prohibido frame/object/media/connect(No permitir ninguna red).
+     * - `default-src 'none'` 锁死一切未显式声明的资源;
+     * - 样式/脚本仅允许 inline(卡片需要)与 data:;
+     * - 图片仅允许 data: 与 blob:(禁外部图片请求);
+     * - 禁 frame/object/media/connect(不充许 any 网络)。
      *
-     * Forma una doble capa de protección con el bloqueo shouldInterceptRequest de la capa WebView.
+     * 与 WebView 层的 shouldInterceptRequest 阻断形成双层防护。
      */
     const val CSP_META: String =
         "<meta http-equiv=\"Content-Security-Policy\" content=\"" +

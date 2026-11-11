@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PDF Vista previa</title>
+<title>PDF 预览</title>
 <style>
   html, body { margin: 0; padding: 0; background: #1b1b1f; }
   #pages { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 12px 0; }
@@ -12,12 +12,12 @@
 </style>
 </head>
 <body>
-<div id="hint">Esperando datos del documento…</div>
+<div id="hint">正在等待文档数据…</div>
 <div id="pages"></div>
 <script src="pdf.min.js"></script>
 <script>
-  // v2.0.1: MUSE Muelle de vista previa de documentos — Se llama después de que el host WebView inyecta datos base64. window.renderPdf(base64).
-  // pdf.js legacy (UMD) 3.11.174, distribuido sin conexión con el paquete.
+  // v2.0.1: MUSE 文档预览底座 — 由宿主 WebView 注入 base64 数据后调用 window.renderPdf(base64)。
+  // pdf.js legacy (UMD) 3.11.174，离线随包分发。
   if (window.pdfjsLib) {
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'pdf.worker.min.js';
   }
@@ -31,7 +31,7 @@
       const pdf = await pdfjsLib.getDocument({ data: bytes }).promise;
       const pagesEl = document.getElementById('pages');
       pagesEl.innerHTML = '';
-      const limit = Math.min(pdf.numPages, 20); // Esqueleto: renderice primero las primeras 20 páginas
+      const limit = Math.min(pdf.numPages, 20); // 骨架：先渲染前 20 页
       for (let n = 1; n <= limit; n++) {
         const page = await pdf.getPage(n);
         const viewport = page.getViewport({ scale: 1.8 });
@@ -43,7 +43,7 @@
       }
       hint.style.display = 'none';
     } catch (e) {
-      document.getElementById('hint').textContent = 'Falló la representación del documento:' + (e && e.message ? e.message : e);
+      document.getElementById('hint').textContent = '文档渲染失败：' + (e && e.message ? e.message : e);
     }
   };
 </script>

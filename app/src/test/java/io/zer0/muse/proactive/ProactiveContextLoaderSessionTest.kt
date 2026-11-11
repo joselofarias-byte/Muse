@@ -35,11 +35,11 @@ import java.io.File
 import java.util.UUID
 
 /**
- * Elección de ubicación para mensajes activos: envíalos donde termines la conversación.
+ * 主动消息落点选择：在哪儿聊完，就由哪儿发。
  *
- * Utilice SessionRepository real + sala de memoria, debido a las condiciones de exclusión (eliminado/archivado/teléfono pequeño). /
- * Ningún usuario habla) están escritos en SQL —— Usar un almacén falso para reproducir los resultados significa que no se prueba nada.
- * `source` Se requiere una afirmación en cada nivel: determina si "a qué sala se envió el mensaje" se puede revisar desde el registro.
+ * 用真实 SessionRepository + 内存 Room，因为排除条件（已删 / 已归档 / 小手机 /
+ * 无用户发言）都写在 SQL 里 —— 用假仓库回放结果等于什么都没验。
+ * `source` 每一级都要断言：它决定了「消息发去了哪个房间」能不能从日志里复盘。
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -96,6 +96,9 @@ class ProactiveContextLoaderSessionTest {
             assistants = mockk(relaxed = true),
             notifier = mockk<MuseNotificationManager>(relaxed = true),
             generations = mockk<ChatGenerationManager>(relaxed = true),
+            proactiveSessionPreferences = ProactiveSessionPreferenceRepository(
+                database.sessionProactivePreferenceDao(),
+            ),
         ),
         sources = ProactiveSources(factStore = mockk(relaxed = true), milestoneDao = mockk(relaxed = true)),
     )
@@ -122,7 +125,7 @@ class ProactiveContextLoaderSessionTest {
         )
     }
 
-    private suspend fun seedUserMessage(sessionId: String, at: Long, content: String = "¿Está ahí?") {
+    private suspend fun seedUserMessage(sessionId: String, at: Long, content: String = "在吗") {
         database.messageDao().upsert(
             MessageEntity(
                 id = UUID.randomUUID().toString(),
@@ -140,39 +143,38 @@ class ProactiveContextLoaderSessionTest {
                 id = UUID.randomUUID().toString(),
                 sessionId = sessionId,
                 role = "ASSISTANT",
-                content = "en",
+                content = "在",
                 createdAt = at,
             ),
         )
     }
 
     @Test
-    fun `recent active plain session wins over older agent session`() = runTest {
+    fun `plain session can be selected when explicitly allowed`() = runTest {
+        every { settings.proactiveMessageConfigFlow } returns
+            flowOf(ProactiveMessageConfig(agentSessionEnabled = false, allowPlainChatSession = true))
         seedSession("plain", updatedAt = now - 5 * MINUTE)
         seedUserMessage("plain", at = now - 6 * MINUTE)
-        seedSession("agent", updatedAt = now - 600 * MINUTE, isAgentSession = true)
-        seedUserMessage("agent", at = now - 601 * MINUTE)
 
         val pick = loader().resolveSessionPick(assistant)
 
-        assertEquals("Debe escribirse en una conversación conversacional ordinaria.", "plain", pick?.sessionId)
+        assertEquals("应写到普通对话会话", "plain", pick?.sessionId)
         assertEquals(ProactiveContextLoader.SessionSource.RECENT_ACTIVE, pick?.source)
-        // resolveSession Es una entrada externa y la semántica de la firma permanece sin cambios: sigue siendo la misma. id
+        // resolveSession 是对外入口，签名语义不变：仍是同一个 id
         assertEquals("plain", loader().resolveSession(assistant))
     }
 
     @Test
-    fun `plain session wins even when agent session is newer`() = runTest {
-        // Comentarios de los usuarios "Los mensajes activos siempre se envían en la página del Agente":Agent Tab La actualización es incluso posterior, por lo que no debería ocupar el lugar.
-        seedSession("plain", updatedAt = now - 600 * MINUTE)
-        seedUserMessage("plain", at = now - 601 * MINUTE)
+    fun `agent session remains default even when plain session is more recent`() = runTest {
+        seedSession("plain", updatedAt = now - 5 * MINUTE)
+        seedUserMessage("plain", at = now - 6 * MINUTE)
         seedSession("agent", updatedAt = now - 5 * MINUTE, isAgentSession = true)
         seedUserMessage("agent", at = now - 6 * MINUTE)
 
         val pick = loader().resolveSessionPick(assistant)
 
-        assertEquals("Agent Tab No importa lo nuevo que sea, nunca tomes la iniciativa de publicar noticias.", "plain", pick?.sessionId)
-        assertEquals(ProactiveContextLoader.SessionSource.RECENT_ACTIVE, pick?.source)
+        assertEquals("主动消息默认落到 Agent 会话", "agent", pick?.sessionId)
+        assertEquals(ProactiveContextLoader.SessionSource.EXISTING_AGENT, pick?.source)
     }
 
     @Test
@@ -182,27 +184,27 @@ class ProactiveContextLoaderSessionTest {
 
         val pick = loader().resolveSessionPick(assistant)
 
-        assertEquals("Si solo conversaste en el Agente, escríbelo en esa sesión del Agente", "agent", pick?.sessionId)
-        assertEquals(ProactiveContextLoader.SessionSource.RECENT_ANY, pick?.source)
+        assertEquals("只在 Agent 里聊过就写回那个 Agent 会话", "agent", pick?.sessionId)
+        assertEquals(ProactiveContextLoader.SessionSource.EXISTING_AGENT, pick?.source)
     }
 
     @Test
     fun `agent session is skipped when the switch is off`() = runTest {
-        // Apagar "Agent Después de "Sesión": Cuando solo está disponible la sesión del Agente, es mejor no enviarla que caer en la pestaña Agente.
+        // 设置里关掉「Agent 会话」后：只有 Agent 会话可用时，宁可不发，也不落进 Agent Tab。
         every { settings.proactiveMessageConfigFlow } returns
-            flowOf(ProactiveMessageConfig(agentSessionEnabled = false))
+            flowOf(ProactiveMessageConfig(agentSessionEnabled = false, allowPlainChatSession = true))
         seedSession("agent", updatedAt = now - 5 * MINUTE, isAgentSession = true)
         seedUserMessage("agent", at = now - 6 * MINUTE)
 
         val pick = loader().resolveSessionPick(assistant)
 
-        assertEquals("No ingrese a la sesión del Agente después del cierre", null, pick)
+        assertEquals("关闭后不许落进 Agent 会话", null, pick)
     }
 
     @Test
     fun `plain session still wins when the switch is off`() = runTest {
         every { settings.proactiveMessageConfigFlow } returns
-            flowOf(ProactiveMessageConfig(agentSessionEnabled = false))
+            flowOf(ProactiveMessageConfig(agentSessionEnabled = false, allowPlainChatSession = true))
         seedSession("plain", updatedAt = now - 600 * MINUTE)
         seedUserMessage("plain", at = now - 601 * MINUTE)
         seedSession("agent", updatedAt = now - 5 * MINUTE, isAgentSession = true)
@@ -210,23 +212,25 @@ class ProactiveContextLoaderSessionTest {
 
         val pick = loader().resolveSessionPick(assistant)
 
-        assertEquals("Las conversaciones ordinarias se pueden escribir como de costumbre.", "plain", pick?.sessionId)
+        assertEquals("普通会话照常可写", "plain", pick?.sessionId)
     }
 
     @Test
     fun `existing agent session is reused instead of creating a new one`() = runTest {
-        // Crear uno nuevo cada vez hará que la página del Agente acumule más sesiones vacías; el existente debe reutilizarse.
+        // 兜底每次都新建会让 Agent 页越堆越多空会话；应复用已有的那个。
         seedSession("agent-old", updatedAt = now - 900 * MINUTE, isAgentSession = true)
         seedAssistantMessage("agent-old", at = now - 900 * MINUTE)
 
         val pick = loader().resolveSessionPick(assistant)
 
-        assertEquals("Las sesiones de agentes existentes deben reutilizarse", "agent-old", pick?.sessionId)
+        assertEquals("应复用已有 Agent 会话", "agent-old", pick?.sessionId)
         assertEquals(ProactiveContextLoader.SessionSource.EXISTING_AGENT, pick?.source)
     }
 
     @Test
     fun `deleted session is skipped`() = runTest {
+        every { settings.proactiveMessageConfigFlow } returns
+            flowOf(ProactiveMessageConfig(agentSessionEnabled = false, allowPlainChatSession = true))
         seedSession("deleted", updatedAt = now - 1 * MINUTE, deletedAt = now - 1 * MINUTE)
         seedUserMessage("deleted", at = now - 2 * MINUTE)
         seedSession("plain", updatedAt = now - 300 * MINUTE)
@@ -234,12 +238,14 @@ class ProactiveContextLoaderSessionTest {
 
         val pick = loader().resolveSessionPick(assistant)
 
-        assertEquals("No se permite escribir sesiones eliminadas temporalmente", "plain", pick?.sessionId)
+        assertEquals("已软删除的会话不许写", "plain", pick?.sessionId)
         assertEquals(ProactiveContextLoader.SessionSource.RECENT_ACTIVE, pick?.source)
     }
 
     @Test
     fun `archived session is skipped`() = runTest {
+        every { settings.proactiveMessageConfigFlow } returns
+            flowOf(ProactiveMessageConfig(agentSessionEnabled = false, allowPlainChatSession = true))
         seedSession("archived", updatedAt = now - 1 * MINUTE, archived = true)
         seedUserMessage("archived", at = now - 2 * MINUTE)
         seedSession("plain", updatedAt = now - 300 * MINUTE)
@@ -247,22 +253,24 @@ class ProactiveContextLoaderSessionTest {
 
         val pick = loader().resolveSessionPick(assistant)
 
-        assertEquals("No se permite escribir conversaciones archivadas", "plain", pick?.sessionId)
+        assertEquals("已归档的会话不许写", "plain", pick?.sessionId)
         assertEquals(ProactiveContextLoader.SessionSource.RECENT_ACTIVE, pick?.source)
     }
 
     @Test
     fun `viewed session is picked when no session has user messages`() = runTest {
-        // El asistente solo tiene una habitación antigua a su nombre que no habla (solo se eliminan los mensajes activos) y no se puede obtener en el nivel 1.
+        every { settings.proactiveMessageConfigFlow } returns
+            flowOf(ProactiveMessageConfig(agentSessionEnabled = false, allowPlainChatSession = true))
+        // 该助手名下只有不说话的老房间（只有主动消息落过），第 1 级取不到
         seedSession("agent-old", updatedAt = now - 900 * MINUTE, isAgentSession = true)
         seedAssistantMessage("agent-old", at = now - 900 * MINUTE)
-        // El usuario acaba de abrir una nueva sesión que aún no ha hablado y actualmente está siendo vista.
+        // 用户刚打开一个还没发言的新会话，它是当前正在看的
         seedSession("viewed", updatedAt = now - 1 * MINUTE)
         coEvery { settings.getViewedSessionId() } returns "viewed"
 
         val pick = loader().resolveSessionPick(assistant)
 
-        assertEquals("Debe escribirse en la sesión que el usuario está viendo.", "viewed", pick?.sessionId)
+        assertEquals("应写进用户正在看的会话", "viewed", pick?.sessionId)
         assertEquals(ProactiveContextLoader.SessionSource.VIEWED, pick?.source)
     }
 
@@ -273,15 +281,14 @@ class ProactiveContextLoaderSessionTest {
 
         val pick = loader().resolveSessionPick(assistant)
 
-        assertNotNull("Deberías crear una nueva sesión.", pick)
-        assertNotEquals("No escribas en las sesiones de otros asistentes.", "other-assistant", pick?.sessionId)
+        assertNotNull("兜底应新建会话", pick)
+        assertNotEquals("不许写进别的助手的会话", "other-assistant", pick?.sessionId)
         assertEquals(ProactiveContextLoader.SessionSource.NEW_AGENT, pick?.source)
         val created = database.sessionDao().getById(pick!!.sessionId)
         assertNotNull(created)
-        assertTrue("La recién creada es la sesión del Agente.", created!!.isAgentSession)
+        assertTrue("兜底新建的是 Agent 会话", created!!.isAgentSession)
         assertEquals(ASSISTANT_ID, created.assistantId)
     }
-
 
     @Test
     fun `no session at all falls back to a new agent session`() = runTest {
@@ -292,13 +299,13 @@ class ProactiveContextLoaderSessionTest {
         val created = database.sessionDao().getById(pick!!.sessionId)
         assertNotNull(created)
         assertTrue(created!!.isAgentSession)
-        assertEquals("Las nuevas sesiones deben estar vinculadas al asistente.", ASSISTANT_ID, created.assistantId)
+        assertEquals("新建会话要绑在该助手上", ASSISTANT_ID, created.assistantId)
     }
 
     @Test
-    fun `Cuando la cantidad total de materiales supere el presupuesto, se descartarán los elementos más antiguos`() = runTest {
-        // 40 Artículo × 600 Palabras: un solo artículo no es largo, pero cuando se apila, contiene más de 20.000 palabras.
-        // La función del presupuesto es limitar el monto total, debiendo perderse el segmento más antiguo.
+    fun `素材总量超预算时丢弃最旧的若干条`() = runTest {
+        // 40 条 × 600 字：单条都不算长，叠起来却有两万多字。
+        // 预算的作用就是把这个总量封顶，且丢的必须是最旧的那一段。
         val total = ProactiveContextLoader.RECENT_MESSAGE_COUNT
         seedSession("busy", updatedAt = now)
         repeat(total) { index ->
@@ -313,19 +320,19 @@ class ProactiveContextLoaderSessionTest {
 
         val chars = context.recentMessages.sumOf { it.content.length }
         assertTrue(
-            "La longitud total del material debe estar dentro del presupuesto:$chars > ${ProactiveContextLoader.CONTEXT_CHAR_BUDGET}",
+            "素材总长应落进预算：$chars > ${ProactiveContextLoader.CONTEXT_CHAR_BUDGET}",
             chars <= ProactiveContextLoader.CONTEXT_CHAR_BUDGET,
         )
-        // Presupuesto 6000/cada uno 600 = últimos 10
-        assertEquals("Sólo se deben conservar los últimos diez elementos.", 10, context.recentMessages.size)
+        // 预算 6000 / 每条 600 = 最近 10 条
+        assertEquals("应只保留最新的十条", 10, context.recentMessages.size)
         assertTrue(
-            "El intervalo de retención debe comenzar en el elemento 31 (los 30 elementos más antiguos se descartan)",
+            "保留区间应从第 31 条开始（丢弃最旧的 30 条）",
             context.recentMessages.first().content.startsWith("m30"),
         )
         assertTrue(
-            "El último debe ser el último.",
+            "最后一条必须是最新那条",
             context.recentMessages.last().content.startsWith("m39"),
         )
-        assertEquals("El último tiempo de intervención debe ser el último del intervalo reservado.", now - MINUTE, context.lastUserMessageAt)
+        assertEquals("最后发言时间应是保留区间里最新那条", now - MINUTE, context.lastUserMessageAt)
     }
 }

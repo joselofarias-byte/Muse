@@ -55,7 +55,7 @@
     <string name="skill_delegate_failed">Не удалось вызвать помощника %1$s: %2$s</string>
     <string name="skill_delegate_timeout">Тайм-аут вызова помощника %1$s истек (%2$d с)</string>
     <string name="skill_delegate_empty">Вспомогательный помощник %1$s вернул пустое содержимое.</string>
-    <string name="skill_delegate_done">「%1$s"выполнил делегированную задачу:</string>
+    <string name="skill_delegate_done">「%1$s」выполнил делегированную задачу:</string>
     <string name="skill_delegate_max_depth">Глубина вложенности делегата превысила предел (%1$d), дальнейшее вложение запрещено.</string>
     <string name="skill_task_blank">задача не может быть пустой</string>
     <string name="skill_title_blank">заголовок не может быть пустым</string>
@@ -161,7 +161,21 @@
     <string name="tool_start_time_format_error">Неверный формат времени начала;</string>
     <string name="tool_no_calendar_account">Доступная учетная запись календаря не найдена</string>
     <string name="tool_calendar_added">Добавлено событие календаря: %1$s</string>
+    <string name="tool_calendar_choose_required">Доступно несколько календарей для записи; укажите один через calendar_id: %1$s</string>
+    <string name="tool_calendar_unknown_id">Указанный календарь не существует: id=%1$s</string>
+    <string name="tool_calendar_added_with_id">Событие «%1$s» добавлено (event_id=%2$s); по этому id его можно изменить или удалить</string>
     <string name="tool_calendar_add_failed_perm">Не удалось добавить событие календаря (проверьте разрешение WRITE_CALENDAR).</string>
+    <string name="tool_calendar_invalid_scope">scope должен быть all или this: %1$s</string>
+    <string name="tool_calendar_invalid_event_id">Некорректный event_id: %1$s</string>
+    <string name="tool_calendar_nothing_to_update">Нечего изменять: укажите хотя бы одно из title/start_time/end_time/description/location/all_day</string>
+    <string name="tool_calendar_this_needs_occurrence">scope=this требует occurrence_time (время начала этого повторения)</string>
+    <string name="tool_calendar_this_update_unsupported">Изменение только одного повторения пока не поддерживается: используйте scope=all для всей серии или удаление с scope=this, чтобы отменить одно</string>
+    <string name="tool_calendar_updated">Событие обновлено (id=%1$s)</string>
+    <string name="tool_calendar_deleted">Событие удалено (id=%1$s)</string>
+    <string name="tool_calendar_canceled_this">Это повторение серии отменено (id=%1$s)</string>
+    <string name="tool_calendar_event_not_found">Событие не найдено (id=%1$s): возможно, оно удалено или id неверен</string>
+    <string name="tool_calendar_update_failed">Не удалось обновить: %1$s</string>
+    <string name="tool_calendar_delete_failed">Не удалось удалить: %1$s</string>
     <string name="tool_calendar_add_failed">Не удалось добавить событие календаря.</string>
     <string name="tool_missing_param_hour">Отсутствует параметр: час (0–23).</string>
     <string name="tool_hour_range">час должен быть 0-23</string>
@@ -262,7 +276,29 @@
     <string name="tool_brightness_auto">Авто</string>
     <string name="tool_brightness_manual">Руководство</string>
     <string name="tool_brightness_set">Яркость установлена ​​на %1$d</string>
+    <string name="tool_write_verified"> (подтверждено)</string>
+    <string name="tool_write_permission_denied">Система отклонила запись (вероятно, нет разрешения «Изменение системных настроек»)</string>
+    <string name="automation_handoff_title">Передача виртуального экрана</string>
+    <string name="assist_service_label">Ассистент Musa</string>
+    <string name="automation_handoff_desc">Ассистент оставил экранов: %1$d; можно посмотреть и управлять</string>
+    <string name="automation_handoff_bring_main">Вернуть на главный экран</string>
+    <string name="automation_handoff_bring_main_hint">Приложение просто появится на главном экране; прежняя страница и состояние ввода зависят от приложения и могут быть потеряны.</string>
+    <string name="automation_handoff_bring_main_ok">Возвращено на главный экран (сохранение состояния зависит от приложения)</string>
+    <string name="automation_handoff_bring_main_failed">Не удалось: служба экрана недоступна или приложение не запустилось</string>
+    <string name="automation_handoff_close_destroy">Закрыть и уничтожить этот экран</string>
+    <string name="tool_volume_failed">Не удалось изменить громкость: %1$s</string>
+    <string name="tool_write_verified_transition"> (подтверждено: %1$d → %2$d)</string>
+    <string name="tool_write_unverified"> (отправлено, без подтверждения)</string>
+    <string name="tool_write_not_applied">Не применено: ожидалось %1$d, получено %2$d</string>
     <string name="tool_brightness_auto_set">Автоматическая яркость включена</string>
+    <string name="read_aloud_channel_name">Воспроизведение чтения</string>
+    <string name="notif_task_stage_title">Выполняется задача</string>
+    <string name="notif_task_stage_stop">Остановить</string>
+    <string name="skill_url_dialog_title">Установить навык с GitHub</string>
+    <string name="skill_url_hint">https://github.com/автор/репозиторий</string>
+    <string name="skill_url_help">Только репозитории GitHub: архив скачивается, из него читается SKILL.md.</string>
+    <string name="read_aloud_notification_text">Чтение вслух…</string>
+    <string name="read_aloud_notification_stop">Стоп</string>
     <string name="tool_brightness_missing">Отсутствует параметр: значение</string>
     <string name="tool_brightness_failed">Не удалось установить яркость: %1$s</string>
     <string name="tool_volume_info">%1$s громкость: %2$d / %3$d</string>
@@ -277,7 +313,7 @@
     <string name="tool_flashlight_on">Фонарик включен</string>
     <string name="tool_flashlight_off">Фонарик выключен</string>
     <string name="tool_flashlight_state">Состояние фонарика: %1$s</string>
-    <string name="tool_flashlight_state_unknown">Состояние фонарика: неизвестно (в этой сессии не использовался)</string>
+    <string name="tool_flashlight_state_unknown">Состояние фонаря: неизвестно (система не ответила вовремя)</string>
     <string name="tool_flashlight_unavailable">Устройство не поддерживает фонарик</string>
     <string name="tool_flashlight_no_camera">Нет доступной камеры</string>
     <string name="tool_flashlight_invalid_action">действие должно быть включено/выключено/статус</string>
@@ -399,7 +435,7 @@
     <string name="skill_update_validate_failed">Не удалось пройти проверку обновления: %1$s</string>
     <string name="skill_updated">Скилл обновлён: %1$s(id=%2$s)</string>
 
-    <!-- Control de aplicaciones (app_* Herramienta): Los resultados se devuelven al modelo y la redacción debe explicarse por sí misma. -->
+    <!-- 应用控制（app_* 工具）：结果回给模型，措辞需自解释 -->
     <string name="app_control_need_app_arg">Укажите название приложения или имя пакета.</string>
     <string name="app_control_launch_action">запустить</string>
     <string name="app_control_settings_action">открыть настройки</string>
@@ -413,7 +449,7 @@
     <string name="app_control_reason_not_found">приложение не найдено; используйте app_list, чтобы узнать имя и пакет</string>
     <string name="app_control_reason_need_elevated">для этого действия нужен доступ Shizuku/adb или Root, которого нет на устройстве; используйте другой способ или выдайте доступ в настройках</string>
     <string name="app_control_reason_system_app">это действие запрещено для системных приложений</string>
-    <string name="app_control_reason_self">это действие запрещено для самого Muse</string>
+    <string name="app_control_reason_self">это действие запрещено для самого Musa</string>
     <string name="app_control_via_app">разрешение приложения</string>
     <string name="app_control_via_shell">Shizuku/adb</string>
     <string name="app_control_via_root">Root</string>

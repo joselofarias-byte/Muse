@@ -6,14 +6,14 @@ import org.junit.Test
 import java.io.File
 
 /**
- * Contrato de devolución del cronograma resumido diario.
+ * 每日总结调度回归契约。
  *
- * Estos dos contratos cubren la interfaz entre la tarea única persistente de WorkManager y la autorrenovación del Trabajador:
- *  - Después de modificar el período, las antiguas tareas por horas no pueden permanecer en el WorkManager para siempre;
- *  - Worker Después de descubrir que el usuario eliminó su hora, no podrá reprogramar las tareas anteriores para el día siguiente.
+ * 这两条契约覆盖 WorkManager 持久唯一任务与 Worker 自续期的交界：
+ *  - 修改时段后，旧的按小时任务不能永远留在 WorkManager 中；
+ *  - Worker 发现自己的小时已经被用户移除后，不能把旧任务重新排到下一天。
  *
- * Aquí primero utilizamos el contrato de código fuente para fijar los límites de comportamiento y evitar que las pruebas unitarias tengan que iniciar Android WorkManager;
- * Persistencia del WorkManager real/La reconstrucción del proceso aún requiere la aceptación posterior de la instrumentación.
+ * 这里先用源码契约固定行为边界，避免单元测试必须启动 Android WorkManager；
+ * 真实 WorkManager 的持久化/进程重建仍需后续 instrumentation 验收。
  */
 class DailySummaryRescheduleContractTest {
 
@@ -35,7 +35,7 @@ class DailySummaryRescheduleContractTest {
     @Test
     fun `worker does not renew a slot that is no longer configured`() {
         val start = source.indexOf("if (!shouldContinueForConfiguredSlot(slotHour, configuredSlots))")
-        val end = source.indexOf("// Worker Comparte el mismo servicio con la compensación frontal de la página de inicio", start)
+        val end = source.indexOf("// Worker 与首页前台补偿共用同一个服务", start)
         check(start >= 0 && end > start) { "DailySummaryWorker stale-slot branch moved unexpectedly" }
         val staleBranch = source.substring(start, end)
         assertFalse(

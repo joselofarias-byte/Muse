@@ -27,11 +27,11 @@ import io.zer0.muse.ui.common.form.MuseTactileButton
 import io.zer0.muse.ui.common.icons.MuseIcons
 import io.zer0.muse.ui.theme.MusePaddings
 
-// A1: Barra de búsqueda durante la sesión — Barra flotante superior de la página de chat:Cuadro de consulta + recuento de visitas + elemento anterior/Siguiente + Cerrar.
-// El posicionamiento de desplazamiento y el resaltado de texto se completan cuando la persona que llama reutiliza la canalización setTargetMessage.(highlightedMessageId +
-// searchHighlightQuery + targetMessageId),Este componente sólo es responsable de los botones de entrada, conteo y salto.
-// 8 parámetros:Estado de consulta + recuento + tres devoluciones de llamada de salto + modifier;La agregación en clases de datos dividirá el punto de llamada,
-// Exenta LongParameterList por precedente ChatSelectionBar.
+// A1: 会话内查找条 — 聊天页顶层悬浮条:查询框 + 命中计数 + 上一条/下一条 + 关闭。
+// 滚动定位与文本高亮由调用方复用 setTargetMessage 管线完成(highlightedMessageId +
+// searchHighlightQuery + targetMessageId),本组件只负责输入、计数与跳转按钮。
+// 8 个参数:查询状态 + 计数 + 三个跳转回调 + modifier;聚合进 data class 会割裂调用点,
+// 按 ChatSelectionBar 先例豁免 LongParameterList。
 @Suppress("LongParameterList")
 @Composable
 internal fun InChatFindBar(
@@ -88,7 +88,7 @@ internal fun InChatFindBar(
             )
             Spacer(Modifier.width(MusePaddings.tightGap))
             FindStatusLabel(query = query, matchCount = matchCount, currentIndex = currentIndex)
-            // E4 (H8): Botón de navegación de ícono puro más mensaje de desplazamiento(Escritorio);No se muestra ningún evento de desplazamiento en el terminal celular
+            // E4 (H8): 纯图标导航按钮加 hover 提示(桌面);移动端无 hover 事件不显示
             MuseTooltip(text = stringResource(R.string.chat_find_prev)) {
                 FindNavIconButton(
                     icon = MuseIcons.chevronUp,
@@ -117,7 +117,7 @@ internal fun InChatFindBar(
     }
 }
 
-// A1: Buscar etiquetas de estado — No se muestran visitas"No hay coincidencia"(rojo),Pulsar pantalla"Artículo x/y"
+// A1: 查找状态标签 — 无命中显示"无匹配"(红色),有命中显示"第 x / y 条"
 @Composable
 private fun FindStatusLabel(query: String, matchCount: Int, currentIndex: Int) {
     val hasMatches = matchCount > 0
@@ -139,7 +139,7 @@ private fun FindStatusLabel(query: String, matchCount: Int, currentIndex: Int) {
     }
 }
 
-// A1: Botón de navegación de la barra de búsqueda — Artículo anterior/Artículo siguiente/Desactivar estilos compartidos;disabled es semitransparente y se puede hacer clic no es válido
+// A1: 查找条导航按钮 — 上一条/下一条/关闭共用样式;disabled 时半透明且点击无效
 @Composable
 private fun FindNavIconButton(icon: ImageVector, description: String, enabled: Boolean, onClick: () -> Unit) {
     MuseTactileButton(

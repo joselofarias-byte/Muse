@@ -8,11 +8,11 @@ import org.junit.Test
 import java.io.File
 
 /**
- * v2.4.6: ChatGPT Nueva versión de la prueba de combinación de fragmentos de exportación jerárquica.
+ * v2.4.6: ChatGPT 新版分层导出的分片合并测试。
  *
- * La nueva versión de exportación divide la sesión en conversations-000.json / conversations-001.json ...
- * (El nivel superior es cada matriz JSON). El reconocimiento anterior solo reconocía conversaciones.json, lo que resultaba en 0 elementos importados en todo el paquete.
- * Esta prueba protege la lógica de fusión de fragmentos: el resultado de la fusión debe ser una única matriz legal de nivel superior y los elementos deben estar en completo orden.
+ * 新版导出把会话拆成 conversations-000.json / conversations-001.json ...
+ * （顶层各为 JSON 数组），旧识别只认 conversations.json，导致整包导入 0 条。
+ * 本测试守护分片合并逻辑：合并结果必须是单个合法顶层数组，且元素完整保序。
  */
 class ChatGptShardMergeTest {
 
@@ -52,7 +52,7 @@ class ChatGptShardMergeTest {
         val merged = ThirdPartyImporter.mergeConversationShards(listOf(a, b))
 
         assertEquals("""[{"id":"a"},{"id":"b"}]""", merged)
-        // Debe ser una única matriz legal de alto nivel.
+        // 必须是单个合法顶层数组
         assertTrue(merged.startsWith("["))
         assertTrue(merged.endsWith("]"))
     }

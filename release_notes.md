@@ -1,189 +1,290 @@
+# Muse 发布台账
 
-## v2.5.8 - Acceso a protocolo externo y capacidades de resolución de problemas
+> 本文件只做**索引**，不再手写摘要：每版完整说明在该版目录下的正文文件，下表字段取自同目录 `manifest.json`（发布产物）。
+>
+> 为什么改成索引：手写摘要停在 v2.5.8，此后的 16 个版本目录一个都没跟上新版说明，而**每版的正文其实一直都在各自目录里** —— 在别处再抄一份必然漂移，所以这里只留链接。
 
-Esta versión complementa las capacidades externas en tres aspectos: acceso al protocolo de red, enlace automatizado y puntos de extensión de complementos.,y poner"Los problemas se pueden localizar"Realizar funciones del producto.
+## 候选线（v2.6.21 之后，未发布）
 
-- **A2A 1.0 Acuerdo**:Punto final de descubrimiento de tarjeta de agente agregado(`/.well-known/agent-card.json`)con punto final JSON-RPC(`/a2a`),apoyo SendMessage / GetTask / CancelTask.A2A Llame y reutilice el mismo enlace generado para chatear en dispositivos reales(Análisis de modelos/Herramientas/Aprobación/memoria),No existe un segundo conjunto de lógica generativa.
-- **Tasker vinculación**:Se agregó una nueva entrada de transmisión. `io.zer0.muse.action.TASKER_TRIGGER`(extra `prompt`),Una conversación puede ser iniciada por plataformas de automatización como Tasker/MacroDroid,Los resultados se registran en la base de datos y se envían notificaciones. Ejecución de una sola ronda en segundo plano.,Las herramientas no están autorizadas.
-- **Sistema de gancho enchufable**:Los complementos se pueden declarar en el manifiesto. `hooks`,Y exportarlo en main.js `onPromptFinalize(event)` Vuelva a escribir el historial antes de que finalice el mensaje. Conservar el historial original cuando el fracaso o la devolución sea ilegal.(fail-open),No bloquea la generación.
-- **Lanzamiento de la zona de pruebas del complemento**:dejar ir fetch / XHR / WebSocket acceso a la red,La acción del puente está completamente liberada.,Sólo se verifica el formato del nombre de la capacidad. Mantenga dos tipos de resultados finales:La navegación de la página todavía está deshabilitada,file:// Las lecturas de content:// todavía están aisladas.
-- **Exportación de registros de diagnóstico(Solución de problemas)**:Se agregó un registrador de seguimiento de enlaces de nueva generación.,Registre el resultado/consumo de tiempo/retraso del primer token/estadísticas de personajes/clasificación de finalización de flujo/razón_final/marca de activación de compresión de cada ronda;ajustes → Acerca de →La "exportación de información de diagnóstico" se puede empaquetar y compartir. linea roja:No registre el cuerpo del mensaje y API key,sessionId Desensibilización al hachís.
-- **Tiempo de espera del subagente**:Tiempo de espera predeterminado 120s → 240s,Nuevo `timeout_ms` parámetros(30s~900s);Error de tiempo de espera con información de progreso(Rondas ejecutadas, número de llamadas a herramientas y si hay un resumen parcial),Facilita la continuación en lugar de empezar de nuevo.
-- **firma compatible**:manifest Los campos que participan en la firma se cambian a una lista blanca explícita.,Los campos nuevos no participarán en la firma de forma predeterminada,Los paquetes de acciones no se ven afectados.
+- **表情包系统重做**：直接吃市面素材形态（PDF / Word / PPT / 图片 / 链接清单）；导入前逐张勾选预览，
+  可按原图链接批量下载原图；整包导出 zip（含配文）并可原样导回；包内改名、挪图、排序、加配文。
+- **小手机与协作细化**：一批"错了不会报错、用户直接看见"的规则被测试钉住 ——
+  消息落库与界面同步、分页游标不重不漏、群管理四个写入口、输入框门控、语音条显示、发布页门控。
+- **协作语义收口**：暂停点超时不再写成「用户拒绝」；工具拒绝区分用户 / 超时 / 策略 / 系统四种来源；
+  子 agent 超时把时长说成人能读的话；「修改后继续」预填要改的那段原文；
+  折叠任务卡与系统通知都能看出「在等你批准」。
+- **群聊选人**：「最近发言的人更容易接话」改为按库判定，刚进会话就发第一句也能选对人。
+- **工程门禁**：detekt 历史违规 41 条降到 18 条；根治小手机测试跨类共享 `Dispatchers.Main`
+  导致的随机飘红（每个测试类回收自己的 ViewModel）。
+- 版本号未动（仍 2.6.21 / 284）；发布时机由你定。
 
-## v2.5.7 - Contexto y estabilidad generativa
+## 已发布版本索引
 
-- El umbral de compresión converge a una única fuente verdadera,Eliminar la bifurcación del comportamiento causada por múltiples decisiones separadas.
-- system prompt aumentar la puerta total,Las sesiones largas ya no desplazan los presupuestos debido a palabras infladas
-- Limitación de incorporación de memoria relacionada,Reduzca la sobrecarga innecesaria de sesiones largas
-- Se encontraron múltiples daños en la codificación de anotaciones y limpieza de anotaciones caducadas durante la revisión del enlace completo
+| 版本 | versionCode | DB | 发布日 | APK | 正文 | 校验记录 |
+|---|---|---|---|---|---|---|
+| v2.6.21 | 284 | 124 | 2026-11-03 | 3 | [release_body.md](releases/v2.6.21/release_body.md) | 有 |
+| v2.6.20 | 283 | — | 2026-11-03 | 4 | [release_body.md](releases/v2.6.20/release_body.md) | 有 |
+| v2.6.19 | 282 | — | 2026-11-01 | 4 | [release_body.md](releases/v2.6.19/release_body.md) | 有 |
+| v2.6.18 | 281 | — | 2026-11-01 | 4 | [release_body.md](releases/v2.6.18/release_body.md) | 有 |
+| v2.6.10 | 270 | 119 | 2026-10-27 | 3 | [release_body.md](releases/v2.6.10/release_body.md) | 有 |
+| v2.6.9 | — | — | — | 2 | **缺** | — |
+| v2.6.8 | — | — | — | 2 | **缺** | — |
+| v2.6.7 | — | — | — | 2 | **缺** | — |
+| v2.6.6 | 266 | 118 | 2026-10-24 | 4 | [release_body.md](releases/v2.6.6/release_body.md) | 有 |
+| v2.6.5 | 265 | 112 | 2026-10-20 | 3 | [release_body.md](releases/v2.6.5/release_body.md) | 有 |
+| v2.6.4 | 264 | 111 | 2026-10-20 | 3 | [release_body.md](releases/v2.6.4/release_body.md) | 有 |
+| v2.6.3 | 263 | 111 | 2026-10-19 | 3 | [release_body.md](releases/v2.6.3/release_body.md) | 有 |
+| v2.6.2 | 262 | 111 | 2026-10-18 | 3 | [release_body.md](releases/v2.6.2/release_body.md) | 有 |
+| v2.6.1 | 261 | 110 | 2026-10-14 | 3 | [release_body.md](releases/v2.6.1/release_body.md) | 有 |
+| v2.6.0 | 260 | 110 | 2026-10-12 | 3 | [release_body.md](releases/v2.6.0/release_body.md) | 有 |
+| v2.5.9 | 259 | 110 | 2026-10-11 | 4 | [release_body.md](releases/v2.5.9/release_body.md) | 有 |
+| v2.5.8 | 258 | 110 | 2026-10-10 | 3 | [release_body.md](releases/v2.5.8/release_body.md) | 有 |
+| v2.5.7 | 257 | 110 | 2026-10-09 | 3 | **缺** | 有 |
+| v2.5.6 | 256 | 110 | 2026-10-09 | 3 | [release_body.md](releases/v2.5.6/release_body.md) | 有 |
+| v2.5.5 | 255 | 110 | 2026-10-09 | 3 | [release_body.md](releases/v2.5.5/release_body.md) | 有 |
+| v2.5.4 | 254 | 110 | 2026-10-08 | 3 | [release_body.md](releases/v2.5.4/release_body.md) | 有 |
+| v2.5.2 | 252 | 109 | 2026-10-07 | 3 | [release_body.md](releases/v2.5.2/release_body.md) | 有 |
+| v2.5.1 | 251 | 109 | 2026-10-07 | 3 | [release_body.md](releases/v2.5.1/release_body.md) | 有 |
+| v2.5.0 | 250 | 109 | 2026-10-07 | 3 | [release_body.md](releases/v2.5.0/release_body.md) | 有 |
+| v2.4.6 | 246 | 107 | 2026-10-06 | 3 | [release_body.md](releases/v2.4.6/release_body.md) | 有 |
+| v2.4.1 | — | — | — | — | [release_body.md](releases/v2.4.1/release_body.md) | — |
+| v2.4.0 | — | — | — | — | [release_body.md](releases/v2.4.0/release_body.md) | — |
+| v2.3.1 | — | — | — | — | [release_body.md](releases/v2.3.1/release_body.md) | — |
+| v2.3.0 | — | — | — | 4 | [release_body.md](releases/v2.3.0/release_body.md) | 有 |
+| v2.2.1 | — | — | — | 4 | [RELEASE_NOTES.md](releases/v2.2.1/RELEASE_NOTES.md) | — |
+| v2.2.0 | — | — | — | 3 | [release_body.md](releases/v2.2.0/release_body.md) | — |
+| v2.1.0 | — | — | — | — | [release_body.md](releases/v2.1.0/release_body.md) | — |
+| v2.0.0 | — | — | — | — | [release_body.md](releases/v2.0.0/release_body.md) | — |
+| v1.0.91 | — | — | — | — | [release_body.md](releases/v1.0.91/release_body.md) | — |
+| v1.0.90 | — | — | — | — | [release_body.md](releases/v1.0.90/release_body.md) | — |
 
-## v2.5.6 - versión de mantenimiento
+> 两处口径不齐（不是本文件的问题，是发布产物的缺口，留在这里当作待办）：
+>
+> - **缺 `manifest.json`**：要分开看。早期版本（≤ v2.4.1，10 个）当时还没有这份约定，不算缺陷；但 **`v2.6.9`、`v2.6.8`、`v2.6.7` 三个是在约定已经确立之后仍然漏了** —— 目录里只剩 APK，没有校验值与来源提交，事后无法核对装出去的到底是哪个构建。
+> - **缺用户可见正文**：`v2.6.9`、`v2.6.8`、`v2.6.7`—— 这三个是连发版说明都没写；`v2.5.7` 有 manifest 与校验记录、唯独没有正文。另外 `v2.2.1` 的正文当时叫 `RELEASE_NOTES.md`（大写），索引已按实际文件名收录。
+> - manifest 的字段名在 `v2.6.18~20` 之后换过一套（`generatedAt/apkArtifacts` → `archivedAt/buildTime/artifacts`），读产物的人要注意两种都要认。
 
-- Mantenimiento de estabilidad y cierre de problemas existentes.(Consulte las notas de la versión correspondientes para obtener más detalles.)
+## 历史手写摘要（原文保留，按版本降序）
 
-## v1.0.89 - Ejecución de herramientas y revisiones de seguridad.
-
-- Las herramientas refuerzan la seguridad de los enlaces:La aprobación utiliza tarjetas de aprobación y enrutamiento unificado,tiempo de espera/rechazar/Cierre del estado de interrupción
-- La determinación del resultado de la herramienta se unifica en un determinante compartido(tarjeta de tarea/subagente/Misma implementación de tareas programadas.)
-- Unifique las herramientas del navegador en una instancia compartida global,Eliminar la bifurcación de estado entre el nivel de sesión y el singleton global
-- Herramienta de solo lectura en escala de grises paralela habilitada;subagente/La herramienta de tareas programadas filtra por lista blanca de riesgos
-- Tiempo de espera difícil de la herramienta de bloqueo(Grupo de subprocesos dedicado + interrupciones),Los tiempos de espera externos ya no existen solo de nombre
-- chat grupal/Momentos/Avisos visibles y cierres de estado para fallas de respaldo y otras rutas
-
-## v1.0.88 - Multilenguaje y diseño perfecto.
-
-- Recursos completos de traducción en inglés/multilingüe y redacción de textos publicitarios para candidatos
-- Títulos de widgets y otras nuevas sincronizaciones de redacción en varios idiomas
-
-## v1.0.87 - El modo de host y el diseño son estables
-
-- Servidor web integrado(modo anfitrión)Capacidad en línea,Acceso API LAN
-- Estabilidad del diseño y cierre de verificación de lanzamiento.
-
-## v1.0.86 - Estabilidad de generación y memoria.
-
-- Correcciones de estabilidad del sistema de memoria y enlace de generación(Ubicación de transmisión/biblioteca sucursal/Sección de compilación)
-
-## v1.0.85 - Correcciones integrales para la estabilidad y las capacidades.
-
-- Correcciones integrales para la estabilidad y las capacidades.(Ver CHANGELOG lote correspondiente)
-
-## v1.0.84 - Resumen diario, exposición de herramientas y estabilidad de la interfaz de usuario
-
-- resumen diario/Alineación de políticas de exposición de herramientas y correcciones de estabilidad de la interfaz de usuario
-
-## v1.0.83 - Correcciones de estabilidad
-
-- Se solucionó el problema de que las respuestas de transmisión se sobrescribieran con instantáneas antiguas del árbol de sesiones y cambiaran al fondo./Responder al problema que desaparece después de regresar a la recepción.
-- Se solucionó el problema de la proyección vacía cuando la parte del mensaje estructurado carece de texto en el cuerpo.
-- Se corrigió el fallo del contexto sin actividad al compartir registros de depuración, registros de fallos, modo seguro y registros de auditoría.
-- Se corrige la barra de navegación de tres teclas que bloquea la operación final del panel inferior y se unifica la barra de entrada del Chat y el panel inferior. Insets
-- Se agregó un nuevo interruptor de retorno predictivo, que está habilitado de forma predeterminada. El retorno normal se ejecutará inmediatamente después de ser deshabilitado.
-- Úselo en su lugar cuando la transmisión esté apagada `completeText()`y limitar los reintentos compatibles con think/tool_choice a uno
-- Gran colección de herramientas para filtrar por intención del usuario, corregir tarjetas de error duplicadas y tormentas de solicitudes de mensajería proactiva en segundo plano.
-- Completa Qwen3.5,DeepSeek OCR,GLM4.6 Reconocimiento de capacidades del modelo y retención de resultados de solo razonamiento de modelos visuales.
-
-
-## v1.0.68 - Correcciones de estabilidad + herramientas/Recuperación de enlaces de conversación
-
-**Conversaciones y respuestas**
-- Se solucionó el problema de que el modelo solo genera la primera palabra y el proceso de pensamiento no se actualiza.
-- Se solucionó el problema por el cual el historial de múltiples rondas de conversaciones se comprimía en la ronda más reciente y los mensajes de la segunda ronda se aparecían por error.“Reintentar mensaje del asistente”pregunta
-- Se solucionó el problema de no ingresar a una nueva ronda después de enviar una respuesta de cotización.
-- Se solucionó el problema de que la respuesta a la cita no incluía el contenido citado. La cotización original ahora se enviará junto con el mensaje. AI
-- Se solucionó el problema por el cual la tarea anti-vibración reescribía el borrador anterior después del envío y el texto enviado ya no se restauraba después de salir y volver a ingresar.
-- Se solucionó el problema por el cual el conmutador de rama 1/N desaparecía después de la regeneración y el asistente podía continuar cambiando después de restaurar la versión.
-- Mantenga una rama de respuesta independiente para cada pregunta y cambie entre grupos de preguntas sin interferir entre sí.
-
-**Herramientas y chat grupal**
-- Restaure el registro completo del conjunto de herramientas y ya no habrá solo unas pocas herramientas, como búsqueda en línea, navegador, dibujo, tareas programadas, etc.
-- Solucionar el problema de que las herramientas del navegador no están disponibles
-- Optimice el problema de la respuesta lenta del asistente de chat grupal e inicialice correctamente todos los registros de la herramienta al inicio
-
-**memoria**
-- Reparación de memoria, análisis y escritura de resultados de extracción de hechos, la memoria de chat diaria se puede extraer normalmente
-- Solucionar el problema de la contaminación del texto de inferencia en el proceso de memoria.
-
-**Modelos y migración**
-- Se corrigió el fallo de la migración de la tabla de mensajes de chat grupal al actualizar a 1.0.62, y la actualización ya no informará “Migration didn't properly handle”
-- Reescritura gratuita del modelo alternativo, modelo gratuito disponible después de eliminar la clave API
-- El módulo de coordenadas visuales hanako sigue siendo compatible después de pasar a llamarse muse-box
-
-**experiencia**
-- El nombre establecido en el primer arranque ahora se muestra correctamente en el perfil
-- “Acerca de”Pagina nueva“UnirseQQgrupo”, haz clic para saltar rápidamente (QQ Número de grupo 905451314)
-- Se corrigió el color negro que aparece en interacciones como presionar prolongadamente y deslizar/Máscara de color, presionar y deslizar ya no mostrará bloques de color
-- Se solucionó un problema sistémico por el cual parte del contenido de la interfaz de usuario desaparecía aleatoriamente después de plegarlo y desplazarse
-
-**Ingeniería**
-- Limpiar una gran cantidad de referencias externas y organizar estructuras internas.
-- Complemente la migración de bases de datos, el árbol de diálogo, la memoria y otras pruebas de regresión.
+## v2.5.8 - 外部协议接入与排障能力
 
 
-## v1.0.67 - Ramas de diálogo completas + experiencia de edición mejorada
 
-- Actualizaciones importantes desde la última versión oficial v1.0.62
+本版在网络协议接入、自动化联动、插件扩展点三方面补齐外部能力,并把"出问题能定位"做成产品功能。
 
-**Experiencia de chat**
-- Los mensajes de usuario admiten la edición emergente y ya no ocupan el campo de entrada principal; Se genera automáticamente una nueva versión de la pregunta después de editarla.
-- La misma pregunta admite el cambio de versión 1/N. Cada versión guarda de forma independiente la respuesta del asistente sin interferir entre sí.
-- El asistente responde al botón de cambio 1/N después de volver a intentarlo, lo que puede cambiar entre diferentes respuestas bajo la misma pregunta.
-- Se solucionó el problema de que no había un segundo grupo después de editar y el botón de rama no se mostraba después de volver a intentarlo.
-- La ocupación del contexto se cambia a una pequeña fila independiente debajo del botón de acceso directo, que ocupa un espacio más pequeño y el campo de entrada está más limpio.
-- La entrada de selección de mensajes se ha movido al menú de pulsación larga y la línea de acceso directo es más concisa.
-- Quitar“Saltar a los más antiguos no leídos”Consejos
-- Los recuentos históricos de sucursales se reparan automáticamente y los índices de sucursales anormales ya no son confusos.
+- **A2A 1.0 协议**:新增 Agent Card 发现端点(`/.well-known/agent-card.json`)与 JSON-RPC 端点(`/a2a`),支持 SendMessage / GetTask / CancelTask。A2A 调用与真机聊天复用同一条生成链路(模型解析/工具/审批/记忆),不存在第二套生成逻辑。
+- **Tasker 联动**:新增广播入口 `io.zer0.muse.action.TASKER_TRIGGER`(extra `prompt`),可由 Tasker / MacroDroid 等自动化平台触发一轮对话,结果落库并通知回传。后台单轮执行,不授权工具。
+- **插件 Hook 体系**:插件可在 manifest 声明 `hooks`,并在 main.js 导出 `onPromptFinalize(event)` 于提示词定稿前改写历史。失败或返回不合法时保留原历史(fail-open),不阻断生成。
+- **插件沙盒放开**:放开 fetch / XHR / WebSocket 网络访问,桥接动作全放行,能力名只校验格式。保留两类底线:页面导航仍禁,file:// 与 content:// 读取仍隔离。
+- **诊断日志导出(排障)**:新增生成链路轨迹记录仪,记录每轮的 outcome / 耗时 / 首 token 延迟 / 字符统计 / 流收尾分类 / finish_reason / 压缩触发标记;设置 → 关于 →「导出诊断信息」可打包分享。红线:不记录消息正文与 API key,sessionId 哈希脱敏。
+- **子代理超时**:默认超时 120s → 240s,新增 `timeout_ms` 参数(30s~900s);超时错误附进展信息(已执行轮次、工具调用次数、是否有部分总结),便于续接而非整体重来。
+- **签名兼容**:manifest 参与签名的字段改为显式白名单,新增字段默认不参与签名,存量包不受影响。
 
-**Archivos y tareas**
-- Restaurar la entrada del chat de archivos: puede ver conversaciones de archivos históricos, abrir conversaciones y cancelar archivos
-- La tarjeta de tareas del subagente en segundo plano y la página de detalles muestran el avatar del asistente correspondiente y el ícono del robot ya no se usa de manera uniforme.
-- Configuración del asistente agregada“Asistente predeterminado”, utiliza automáticamente el asistente seleccionado cada vez que inicias una nueva tarea
+## v2.5.7 - 上下文与生成稳定性
 
-**Modelos y canales**
-- La información sobre el contexto y la capacidad del modelo se mantiene en directorios locales, dando prioridad a la sobrescritura manual por parte de los usuarios, lo que hace que la información del modelo sea más precisa.
 
-**Complementos y extensiones**
-- El complemento se cambia a instalación externa y ya no a paquete integrado. Los usuarios pueden optar por instalarlo y activarlo ellos mismos.
-- Se agregó una nueva guía de creación de complementos para admitir la creación de complementos asistida por modelos y Skill
 
-**Estable y confiable**
-- Se corrigió un error que ocurría al editar un mensaje.“El borrador ha sido restaurado.”pregunta
-- Se solucionó el problema de la cadena de mensajes a otras sesiones al cambiar de sesión o de agente.
-- Se solucionó el problema de que los avatares personalizados desaparecieran ocasionalmente y regresaran al color del tema.
-- Reparar parámetros faltantes de la herramienta de búsqueda de Internet/Informar errores y hacer que las llamadas a herramientas sean más confiables
-- Verificación del esquema de parámetros de llamada de herramienta para reducir las llamadas no válidas
+- 压缩阈值收敛为单一真源,消除多处各自判定导致的行为分叉
+- system prompt 增加总量闸门,长会话不再因提示词膨胀挤爆预算
+- 相关记忆 embedding 节流,减少长会话无谓开销
+- 全链路审查中发现的多处注释编码损坏与过期注释清理
 
-**Otras mejoras**
-- Elimine el ícono de candado en la esquina superior derecha de la página de diálogo de tareas
-- Se siguen mejorando los detalles de accesibilidad.
-- La compilación formal agrega verificación obligatoria de firma y número de versión
-- Mucha organización interna: entornos, herramientas,Skill, Módulo de navegación dividido
+## v2.5.6 - 维护版
 
-## v1.0.18 - Se corrigieron varios fallos.,La interfaz es más limpia.
 
-- Se solucionó el problema por el cual el botón de la herramienta fallaba al hacer clic y el modo seguro se iniciaba normalmente pero causaba un bucle sin fin.
-- El botón flotante en la página de tareas se reduce.,La búsqueda admite pinyin,Eliminar mis informes inútiles
 
-## v1.0.19 - Disponible sin iniciar sesión + optimización de pequeña experiencia
+- 稳定性维护与既有问题收口(详见对应发布说明)
 
-- Modelos gratuitos incorporados key,Simplemente instálalo y podrás chatear.(No es necesario registrarse)
-- Reconexión de voz automática después de la desconexión de la red sin perder palabras,Esta vez se puede recordar la aprobación de la herramienta,Resultados de búsqueda con vista previa resaltada
+## v1.0.89 - 工具执行与安全热修复
 
-## v1.0.20 - Colaboración en línea con múltiples asistentes
 
-- Varios asistentes de IA pueden delegar tareas entre sí,Trabajar juntos como equipo para completar tareas.
-- Puedes ver un diagrama de árbol del flujo de tareas en la conversación.,Las tareas en segundo plano tienen una lista,El campo de entrada se puede enviar activamente
 
-## v1.0.21 - Las conversaciones fluyen más fluidamente(Versión clave)
+- 工具执行链路安全加固:审批走统一路由与审批卡,超时/拒绝/中断状态收口
+- 工具结果判定统一到共享判定器(任务卡/子代理/定时任务同一实现)
+- 浏览器工具统一到全局共享实例,消除会话级与全局单例的状态分叉
+- 只读工具并行灰度开启;子代理/定时任务工具按风险白名单过滤
+- 阻塞型工具硬超时(专用线程池 + 中断),外层超时不再形同虚设
+- 群聊/朋友圈/备份等路径失败的可见提示与状态收口
 
-- Se solucionaron problemas con palabras faltantes y retrasos en medio de la respuesta.,Las respuestas largas se desplazan más suavemente
-- Comprimir automáticamente el contexto si es demasiado largo,La transmisión se puede reanudar incluso si la red está desconectada.
-- Escriba archivos automáticamente y haga referencia a mensajes históricos cuando sean demasiado largos,No retrases la conversación
+## v1.0.88 - 多语言与布局完善
 
-## v1.0.30 - Funcionalidad completa de chat grupal + pulida con muchos detalles interactivos
 
-- El tema predeterminado cambia a blanco y negro durante el primer inicio y se ajusta el orden de la lista de temas.
-- Las etiquetas del cuadro de entrada se mueven uniformemente encima del cuadro de entrada para evitar la oclusión
-- Las burbujas de mensajes eliminan las sombras y lucen más limpias
-- El botón "Volver al fondo" se cambia a un estilo pequeño, redondo y transparente, que solo se muestra cuando se desliza hacia arriba.
-- La búsqueda en Internet y el pensamiento profundo se mueven al menú más y se muestra una pequeña marca de verificación cuando se activa.
-- La posición del menú del signo más se mueve hacia abajo y los espacios izquierdo y derecho se dejan en blanco para reducir el tamaño.
-- Mantenga presionado el menú de diálogo en la página de inicio para aumentar el espacio inferior y evitar que sea compacto
-- Se solucionó el problema de restaurar accidentalmente borradores enviados después de salir y volver a ingresar a la sesión.
-- La selección del modelo de la interfaz del cuadro de diálogo se cambia a un icono circular para guardar espacio en la parte superior.
-- Se corrigieron problemas visuales como máscaras negras y dirección incorrecta de la cola de la burbuja al presionar prolongadamente un mensaje.
-- El asistente de chat grupal admite el uso de modelos configurados individualmente
-- Se agregó una entrada de selección de modelo a la página de detalles del asistente.
-- Se corrigieron problemas de compatibilidad con algunos servicios de modelos de terceros.
-- Se solucionaron problemas como que el estado de ánimo no se analizaba correctamente y el asistente no respondía en los chats grupales.
-- Optimice la lógica de visualización de notificaciones y no le moleste cuando esté en primer plano
-- Se corrigieron problemas detallados como el desbordamiento de texto en la página de tareas programadas y los íconos invisibles en la página de traducción.
 
-## v1.0.22 - Función de chat grupal muy mejorada
+- 补齐 English/多语言翻译与候选文案资源
+- 小部件标题等新增文案同步多语言
 
-- Los chats grupales finalmente pueden utilizar la orquestación del flujo de trabajo
-- Cada IA ​​piensa de forma independiente y no mezcla roles.
-- Ingrese @ para que aparezca automáticamente la lista de miembros
-- En el chat grupal, puedes ver en tiempo real quién mira, quién responde y quién salta
-- La memoria del chat grupal se almacena de forma independiente y no contamina la memoria principal del asistente.
+## v1.0.87 - 主机模式与布局稳定
+
+
+
+- 嵌入式 Web 服务器(主机模式)能力上线,局域网 API 访问
+- 布局稳定性与发布验证收尾
+
+## v1.0.86 - 生成与记忆稳定性
+
+
+
+- 生成链路与记忆系统稳定性修复(流式落盘/分库/编译段)
+
+## v1.0.85 - 稳定性与能力全面修复
+
+
+
+- 稳定性与能力全面修复(见 CHANGELOG 对应批次)
+
+## v1.0.84 - 每日摘要、工具暴露与 UI 稳定
+
+
+
+- 每日摘要/工具暴露策略对齐与 UI 稳定性修复
+
+## v1.0.83 - 稳定性修复
+
+
+
+- 修复流式回复被旧会话树快照覆盖、切后台/回前台后回复消失的问题
+- 修复结构化消息 part 缺少正文时投影为空的问题
+- 修复调试日志、崩溃日志、安全模式和审计日志分享时的非 Activity Context 崩溃
+- 修复三键导航栏遮挡底部面板末尾操作，统一 Chat 输入栏与底部面板 Insets
+- 新增预测性返回开关，默认开启，关闭后立即执行普通返回
+- 关闭流式时改用 `completeText()`，并限制 thinking/tool_choice 兼容重试为一次
+- 大型工具集合按用户意图筛选，修复重复错误卡片和后台主动消息请求风暴
+- 补齐 Qwen3.5、DeepSeek OCR、GLM4.6 模型能力识别，并保留视觉模型的 reasoning-only 输出
+
+## v1.0.68 - 稳定性修复 + 工具/对话链路恢复
+
+
+
+**对话与回复**
+- 修复模型只输出首字、思考过程不更新的问题
+- 修复多轮对话历史被压缩成最近一轮，第二轮消息被误当成“重试助手消息”的问题
+- 修复引用回复发送后不进入新轮次的问题
+- 修复引用回复未携带被引用内容的问题，引用原文现在会随消息一起发给 AI
+- 修复发送后旧草稿被防抖任务重新写回，退出重进不再恢复已发送文本
+- 修复重新生成后 1/N 分支切换器消失，助手回复版本可继续切换
+- 保留每个提问的独立回复分支，提问组之间切换互不干扰
+
+**工具与群聊**
+- 恢复完整工具集注册，联网搜索、浏览器、绘图、定时任务等工具不再只剩少量
+- 修复浏览器类工具不可用的问题
+- 优化群聊助手回复慢的问题，启动时正确初始化全部工具注册器
+
+**记忆**
+- 修复记忆事实抽取结果解析与写入，日常聊天记忆可正常提取
+- 修复记忆流程中推理文本污染的问题
+
+**模型与迁移**
+- 修复 1.0.62 升级时群聊消息表迁移崩溃，升级不再报 “Migration didn't properly handle”
+- 免费模型 fallback 重写，删除 API key 后可用免费模型
+- 视觉坐标模块 hanako 更名 muse-box 后保持兼容
+
+**体验**
+- 首次引导设置的名字现在会正确显示在个人资料
+- “关于”页新增“加入QQ群”，点击可快速跳转（QQ 群号 905451314）
+- 修复长按、滑动等交互出现的黑色/彩色遮罩，按压与滑动不再显示色块
+- 修复折叠、滚动后部分 UI 内容随机消失的系统性问题
+
+**工程**
+- 大量外部引用清理与内部结构整理
+- 补充数据库迁移、对话树、记忆等回归测试
+
+## v1.0.67 - 对话分支完整化 + 编辑体验升级
+
+
+
+- 自上一正式版 v1.0.62 以来的主要更新
+
+**聊天体验**
+- 用户消息支持弹窗编辑，不再占用主输入栏；编辑后自动生成新的提问版本
+- 同一提问支持 1/N 版本切换，每个版本独立保存自己的助手回复，互不干扰
+- 助手回复重试后恢复 1/N 切换按钮，可在同一提问下切换不同回答
+- 修复编辑后没有第二组、重试后分支按钮不显示的问题
+- 上下文占用改为快捷按钮下方的独立小行，占位更小，输入栏更清爽
+- 消息选择入口移入长按菜单，快捷行更简洁
+- 移除“跳至最早未读”提示
+- 历史分支计数自动修复，异常分支索引不再错乱
+
+**归档与任务**
+- 恢复归档聊天入口：可查看历史归档会话、打开会话、取消归档
+- 后台子 Agent 任务卡片与详情页显示对应助手头像，不再统一使用机器人图标
+- 助手设置新增“默认助手”，每次开启新任务自动使用所选助手
+
+**模型与渠道**
+- 模型上下文与能力信息改为本地目录维护，用户手动覆盖优先，模型信息更准确
+
+**插件与扩展**
+- 插件改为外部安装，不再内置打包，用户可自行选择安装和启用
+- 新增插件创作指南，支持模型辅助创建插件与 Skill
+
+**稳定与可靠**
+- 修复编辑消息时误弹“草稿已恢复”的问题
+- 修复切换会话或 Agent 时消息串到其他会话的问题
+- 修复自定义头像偶尔消失、退回主题色的问题
+- 修复联网搜索工具参数缺失/报错，工具调用更可靠
+- 工具调用参数 schema 校验，减少无效调用
+
+**其他改进**
+- 移除任务对话页右上角锁图标
+- 无障碍细节继续完善
+- 正式构建增加签名与版本号强制校验
+- 大量内部结构整理：设置、工具、Skill、导航模块拆分
+
+## v1.0.30 - 群聊完整功能 + 大量交互细节打磨
+
+
+
+- 首次引导默认主题改为黑白，主题列表调整顺序
+- 输入框标签统一移至输入框上方，避免遮挡
+- 消息气泡去除阴影，视觉更干净
+- 「回到底部」按钮改为小圆形透明样式，仅上滑时显示
+- 联网搜索、深度思考移入加号菜单，激活时显示小勾
+- 加号菜单位置下移、左右留空减小
+- 首页长按对话菜单增加底部留白，避免紧凑
+- 修复退出再进入会话后误恢复已发送草稿的问题
+- 对话界面模型选择改为圆形图标，节省顶部空间
+- 修复长按消息出现黑色遮罩、气泡尾巴方向错误等视觉问题
+- 群聊助手支持使用各自配置的模型
+- 助手详情页增加模型选择入口
+- 修复部分第三方模型服务的兼容性问题
+- 修复群聊中 mood 未被正确解析、助手不应答等问题
+- 优化通知显示逻辑，前台时不打扰
+- 修复定时任务页面文字溢出、翻译页图标不可见等细节问题
+
+## v1.0.22 - 群聊功能大升级
+
+
+
+- 群聊终于能用上工作流编排
+- 每个 AI 独立思考，不会串角色
+- 输入 @ 自动弹出成员列表
+- 群聊里实时看到谁在看、谁在回、谁跳过
+- 群聊记忆独立存储，不污染助手主记忆
+
+## v1.0.21 - 对话更流畅(重点版本)
+
+
+
+- 修复回复中途丢字、卡顿,长回复滚动更顺滑
+- 上下文太长自动压缩,网络断了能续传
+- 历史消息超长时自动写文件并引用,不撑爆对话
+
+## v1.0.20 - 多助手协作上线
+
+
+
+- 多个 AI 助手能互相分工委派,像团队一样协作完成任务
+- 对话里能看到任务流转的树状图,后台任务有列表,输入栏可主动派活
+
+## v1.0.19 - 免登录可用 + 体验小优化
+
+
+
+- 内置免费模型 key,装上就能聊(无需注册)
+- 语音断网自动重连不漏字,工具批准可本次记住,搜索结果带高亮预览
+
+## v1.0.18 - 修了几处崩溃,界面更清爽
+
+
+
+- 修好工具按钮一点就崩、安全模式点正常启动反而死循环的问题
+- 任务页悬浮按钮缩小,搜索支持拼音,删掉没用的我的报告

@@ -6,19 +6,19 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**
- * E3 escenario 5 · Calibración del diseño del contenido del chat largo:Markdown Función pura de ritmo vertical de respuesta larga [markdownBlockGap] Prueba única.
+ * E3 阶段 5 · 聊天长内容排版校准:Markdown 长回复垂直节奏纯函数 [markdownBlockGap] 单测。
  *
- * Verificar solo"¿Cuánto espacio se debe dejar entre bloques?"semántica(Párrafo/Título/Lista/Bloque de estructura),No hay renderizado involucrado.
+ * 只验证"块与块之间该留多少"的语义(段落 / 标题 / 列表 / 结构块),不涉及渲染。
  */
 class MarkdownRhythmTest {
 
-    private val paragraph = MarkdownBlock.Paragraph("Texto")
-    private val heading = MarkdownBlock.Heading(2, "Subtítulo")
+    private val paragraph = MarkdownBlock.Paragraph("正文")
+    private val heading = MarkdownBlock.Heading(2, "小标题")
     private val code = MarkdownBlock.CodeBlock("kotlin", "val x = 1")
     private val table = MarkdownBlock.Table(listOf("a", "b"), listOf(listOf("1", "2")))
-    private val quote = MarkdownBlock.Quote("Cotización")
-    private val listA = MarkdownBlock.ListItem(ordered = false, index = 0, text = "uno")
-    private val listB = MarkdownBlock.ListItem(ordered = false, index = 0, text = "dos")
+    private val quote = MarkdownBlock.Quote("引用")
+    private val listA = MarkdownBlock.ListItem(ordered = false, index = 0, text = "一")
+    private val listB = MarkdownBlock.ListItem(ordered = false, index = 0, text = "二")
 
     @Test
     fun first_block_has_no_leading_gap() {
@@ -48,7 +48,7 @@ class MarkdownRhythmTest {
             MuseMarkdownRhythm.headingSpaceBelow,
             markdownBlockGap(heading, paragraph, blankBetween = false),
         )
-        // Toma títulos adyacentes"título anterior"archivo,No colapsar en un pequeño espacio en blanco debajo del título.
+        // 相邻标题取"标题上方"档,不塌成标题下方的小留白
         assertEquals(
             MuseMarkdownRhythm.headingSpaceAbove,
             markdownBlockGap(heading, heading, blankBetween = false),
@@ -73,9 +73,9 @@ class MarkdownRhythmTest {
 
     @Test
     fun block_gap_wins_over_paragraph_gap() {
-        // Los bloques estructurales deben dejarse en blanco de acuerdo con el espacio entre bloques, incluso si están cerca del texto principal.(No cubierto por el párrafoGap)
+        // 结构块即使紧贴正文也按块间距留白(不被 paragraphGap 覆盖)
         assertEquals(MuseMarkdownRhythm.blockGap, markdownBlockGap(paragraph, quote, blankBetween = true))
-        // Cuando no hay ningún bloque de estructura,Cae al nivel de párrafo. paragraphGap
+        // 无结构块时,段落级才落到 paragraphGap
         assertEquals(MuseMarkdownRhythm.paragraphGap, markdownBlockGap(paragraph, listA, blankBetween = true))
     }
 }

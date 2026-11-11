@@ -4,7 +4,7 @@ import io.zer0.muse.data.session.GenerationCheckpointEntity
 import io.zer0.muse.data.session.MessageEntity
 import io.zer0.muse.data.session.MessageOutboxEntity
 
-/** Resultados del diagnóstico de integridad de la sesión de solo lectura; no se reparará, eliminará ni renumerará ningún dato. */
+/** 只读会话完整性诊断结果，不会修复、删除或重编号任何数据。 */
 data class ConversationIntegrityReport(
     val sessionId: String,
     val messageCount: Int,

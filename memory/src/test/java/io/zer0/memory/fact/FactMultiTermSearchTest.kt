@@ -13,10 +13,10 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * Búsqueda de texto completo de varias palabras: dos etapas (prioridad precisa + cualquier resultado)+ LIKE Divide las palabras y di la verdad.
+ * 多词全文检索：两段式（精确优先 + 任一命中兜底）+ LIKE 拆词兜底。
  *
- * Cobertura: las palabras clave dispersas en varias líneas de datos se pueden recuperar juntas y las rondas se relajarán cuando se realicen suficientes aciertos precisos.
- * Si no se acierta toda la cadena de LIKE, se acertará por palabra.OR De hecho, la semántica puede recuperar las filas perdidas por AND y la cadena de consulta no contiene tokens de una sola palabra.
+ * 覆盖：分散在多行事实里的关键词能一起被找回、精确命中足够时不走放宽轮次、
+ * 整串 LIKE 不命中时按词命中、OR 语义确实能捞回 AND 漏掉的行、查询串不含单字 token。
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -46,34 +46,34 @@ class FactMultiTermSearchTest {
 
     @Test
     fun `scattered keywords are all found in one two stage search`() = runTest {
-        val zhiqi = addFact("A Ziqi le gusta hacer senderismo en las montañas los fines de semana.")
-        val developer = addFact("Los desarrolladores tratan este proyecto como un pasatiempo a largo plazo.")
-        val assistant = addFact("El asistente tiene la costumbre de responder mensajes a altas horas de la noche")
+        val zhiqi = addFact("子奇喜欢在周末进山徒步")
+        val developer = addFact("开发者把这个项目当成长期爱好")
+        val assistant = addFact("助手习惯在深夜回复消息")
 
-        val hits = store.searchFullTextScopedTwoStage("Asistente de desarrollo de Ziqi", "main", "default", limit = 10)
+        val hits = store.searchFullTextScopedTwoStage("子奇 开发者 助手", "main", "default", limit = 10)
 
-        assertEquals("Tres palabras repartidas en tres líneas.,debe ser recuperado: ${hits.map { it.fact }}", 3, hits.size)
+        assertEquals("三个词分散在三行,都应被找回: ${hits.map { it.fact }}", 3, hits.size)
         assertEquals(setOf(zhiqi, developer, assistant), hits.map { it.id }.toSet())
     }
 
     @Test
     fun `whole string like misses while per word like hits`() = runTest {
-        addFact("A Ziqi le gusta hacer senderismo en las montañas los fines de semana.")
-        addFact("Los desarrolladores tratan este proyecto como un pasatiempo a largo plazo.")
+        addFact("子奇喜欢在周末进山徒步")
+        addFact("开发者把这个项目当成长期爱好")
 
-        // EXACT Duan va primero FTS(AND) Repasa toda la serie nuevamente. LIKE,Cuando ambos fallan, ve palabra por palabra LIKE
-        val hits = store.searchFullTextScoped("Desarrollador Ziqi", "main", "default", limit = 10)
+        // EXACT 段先走 FTS(AND) 再走整串 LIKE,两者都落空时按词逐个 LIKE
+        val hits = store.searchFullTextScoped("子奇 开发者", "main", "default", limit = 10)
 
-        assertEquals("Un montón de errores,Después de dividir las palabras, debes presionar una de ellas.: ${hits.map { it.fact }}", 2, hits.size)
+        assertEquals("整串不命中,拆词后应各命中一条: ${hits.map { it.fact }}", 2, hits.size)
     }
 
     @Test
     fun `single word query returns the same hits as before`() = runTest {
-        val target = addFact("A Ziqi le gusta hacer senderismo en las montañas los fines de semana.")
-        addFact("Los desarrolladores tratan este proyecto como un pasatiempo a largo plazo.")
+        val target = addFact("子奇喜欢在周末进山徒步")
+        addFact("开发者把这个项目当成长期爱好")
 
-        val exact = store.searchFullTextScoped("Ziqi", "main", "default", limit = 10)
-        val twoStage = store.searchFullTextScopedTwoStage("Ziqi", "main", "default", limit = 10)
+        val exact = store.searchFullTextScoped("子奇", "main", "default", limit = 10)
+        val twoStage = store.searchFullTextScopedTwoStage("子奇", "main", "default", limit = 10)
 
         assertEquals(listOf(target), exact.map { it.id })
         assertEquals(exact.map { it.id }, twoStage.map { it.id })
@@ -81,58 +81,58 @@ class FactMultiTermSearchTest {
 
     @Test
     fun `or semantics recalls rows that and semantics drops`() = runTest {
-        addFact("A Ziqi le gusta hacer senderismo en las montañas los fines de semana.")
-        addFact("Los desarrolladores tratan este proyecto como un pasatiempo a largo plazo.")
+        addFact("子奇喜欢在周末进山徒步")
+        addFact("开发者把这个项目当成长期爱好")
 
-        val andHits = dao.searchFtsBySpace(FactFtsManager.toMatchQuery("desarrolladores Ziqi"), 10, "main", "default")
+        val andHits = dao.searchFtsBySpace(FactFtsManager.toMatchQuery("子奇 开发者"), 10, "main", "default")
         val orHits = dao.searchFtsBySpace(
-            FactFtsManager.toMatchQuery("desarrolladores Ziqi", orSemantics = true),
+            FactFtsManager.toMatchQuery("子奇 开发者", orSemantics = true),
             10,
             "main",
             "default",
         )
 
-        assertEquals("Y no debe tener ningún resultado cuando no hay dos palabras en la misma línea.", 0, andHits.size)
-        assertEquals("OR Ambas líneas deben ser pescadas.", 2, orHits.size)
+        assertEquals("同一行里没有两个词时 AND 应零命中", 0, andHits.size)
+        assertEquals("OR 应把两行都捞回来", 2, orHits.size)
     }
 
     @Test
     fun `exact hits stop the search before the broad stage`() = runTest {
-        val allInOne = addFact("Ziqi, asistente de desarrollo, los tres comieron juntos.")
-        val onlyOne = addFact("La asistente seguía respondiendo mensajes a las tres de la madrugada.", importance = 2)
+        val allInOne = addFact("子奇 开发者 助手 三人一起吃了顿饭")
+        val onlyOne = addFact("助手凌晨三点还在回消息", importance = 2)
 
-        val limited = store.searchFullTextScopedTwoStage("Asistente de desarrollo de Ziqi", "main", "default", limit = 1)
+        val limited = store.searchFullTextScopedTwoStage("子奇 开发者 助手", "main", "default", limit = 1)
 
-        // Rondas de relajación si se ejecutan.,importance=2 El que ocupará el primer lugar,El resultado no es allInOne
-        assertEquals("Se han recopilado aciertos precisos. limit,No deberías volver a tomar la ronda de relajación.", listOf(allInOne), limited.map { it.id })
+        // 放宽轮次若被执行,importance=2 的那条会排在前面,结果就不是 allInOne
+        assertEquals("精确命中已凑满 limit,不该再走放宽轮次", listOf(allInOne), limited.map { it.id })
 
-        val widened = store.searchFullTextScopedTwoStage("Asistente de desarrollo de Ziqi", "main", "default", limit = 3)
-        assertEquals("Golpe preciso primero,Los resultados de la relajación se agregarán más adelante.", allInOne, widened.first().id)
-        assertTrue("ambos deben ser devueltos: ${widened.map { it.id }}", widened.map { it.id }.contains(onlyOne))
+        val widened = store.searchFullTextScopedTwoStage("子奇 开发者 助手", "main", "default", limit = 3)
+        assertEquals("精确命中在前,放宽结果补在后面", allInOne, widened.first().id)
+        assertTrue("两条都应被返回: ${widened.map { it.id }}", widened.map { it.id }.contains(onlyOne))
     }
 
     @Test
     fun `match query drops the trailing single character token`() {
-        val query = FactFtsManager.toMatchQuery("Asistente de desarrollo de Ziqi")
+        val query = FactFtsManager.toMatchQuery("子奇 开发者 助手")
         val tokens = query.split(' ').map { it.trim('"') }.filter { it.isNotEmpty() }
 
-        assertTrue("No debe haber palabras individuales en la cadena de consulta. token: $query", tokens.all { it.length >= 2 })
-        assertTrue("El valor predeterminado de varias palabras sigue siendo Y conexión: $query", !query.contains(" OR "))
+        assertTrue("查询串里不该有单字 token: $query", tokens.all { it.length >= 2 })
+        assertTrue("多词默认仍是 AND 连接: $query", !query.contains(" OR "))
 
-        val broad = FactFtsManager.toMatchQuery("Asistente de desarrollo de Ziqi", orSemantics = true)
-        assertTrue("La semántica relajada debería generar combinaciones OR: $broad", broad.contains(" OR "))
+        val broad = FactFtsManager.toMatchQuery("子奇 开发者 助手", orSemantics = true)
+        assertTrue("放宽语义应输出 OR 连接: $broad", broad.contains(" OR "))
     }
 
     @Test
     fun `index ngram still carries the trailing single character`() {
-        // El comportamiento del lado del índice no ha cambiado:La última palabra todavía está ahí.,De lo contrario, no se encontrarán los caracteres al final de los fragmentos con longitudes impares.
+        // 索引侧行为不变:末位单字仍在,否则奇数长度的片段末尾字符会搜不到
         assertEquals("你好 好世 世界 界", FactFtsManager.toNgram("你好世界"))
         assertEquals("你好 好世 世界", FactFtsManager.toNgram("你好世界", includeTrailingTailChar = false))
     }
 
     @Test
     fun `query terms split on whitespace and punctuation`() {
-        assertEquals(listOf("Ziqi", "desarrollador", "asistente"), FactFtsManager.toQueryTerms("Ziqi, desarrollador;asistente"))
+        assertEquals(listOf("子奇", "开发者", "助手"), FactFtsManager.toQueryTerms("子奇，开发者;助手"))
         assertEquals(listOf("GPT", "4"), FactFtsManager.toQueryTerms("GPT-4"))
     }
 }

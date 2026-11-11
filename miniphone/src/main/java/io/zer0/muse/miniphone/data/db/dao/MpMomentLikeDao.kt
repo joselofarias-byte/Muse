@@ -8,13 +8,13 @@ import io.zer0.muse.miniphone.data.db.MpActorType
 import io.zer0.muse.miniphone.data.db.entity.MpMomentLikeEntity
 import kotlinx.coroutines.flow.Flow
 
-/** Lectura y escritura de gustos dinámicos. */
+/** 动态点赞的读写。 */
 @Dao
 interface MpMomentLikeDao {
     @Query("SELECT * FROM mp_moment_like WHERE momentId = :momentId ORDER BY createdAt ASC")
     suspend fun likesOf(momentId: String): List<MpMomentLikeEntity>
 
-    /** Un lote de me gusta dinámicos:Solo puedes consultar este tiempo en una página de la línea de tiempo.,Luego, agrúpelos dinámicamente en la memoria. */
+    /** 一批动态的点赞:时间线一页只查这一次,再在内存里按动态归组。 */
     @Query("SELECT * FROM mp_moment_like WHERE momentId IN (:momentIds) ORDER BY createdAt ASC")
     suspend fun likesOfMomentIds(momentIds: List<String>): List<MpMomentLikeEntity>
 

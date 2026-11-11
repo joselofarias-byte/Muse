@@ -55,7 +55,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -75,6 +74,7 @@ import io.zer0.muse.ui.theme.MuseIconSizes
 import io.zer0.muse.ui.theme.MuseMotion
 import io.zer0.muse.ui.theme.MusePaddings
 import io.zer0.muse.ui.theme.MuseShapes
+import io.zer0.muse.ui.theme.labelSmallStrong
 import io.zer0.muse.ui.theme.largeCard
 import io.zer0.muse.ui.theme.semiLarge
 import io.zer0.muse.ui.theme.tiny
@@ -82,38 +82,38 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 
-/** data-URI Prefijo de imagen:Sólo este tipo de imagen debe ser decodificada antes de poder conocer las proporciones. */
+/** data-URI 图片前缀:只有这种图必须先解码才知道比例。 */
 private const val DATA_URI_IMAGE_PREFIX = "data:image/"
 
 /**
- * marco de tarjeta de trabajo(4:3).
+ * 作品卡画幅(4:3)。
  *
- * data-URI Primero debes decodificarlo para conocer las verdaderas proporciones.,Y el diseño no puede esperar a ser decodificado.:La altura después del marco fijo ocupado es desde el primer marco.
- * altura final,No se realizarán cambios una vez completada la decodificación.,Utilice ContentScale.Fit para dejar el contenido en blanco.
+ * data-URI 要先解码才知道真实比例,而布局不能等解码:固定预占画幅后高度从第一帧就是
+ * 最终高度,解码完成后不再改,内容用 ContentScale.Fit 自己留白。
  */
 private const val GENERATED_IMAGE_ASPECT = 4f / 3f
 
 /**
- * Si la tarjeta de trabajo ocupa previamente el marco:data-URI Regresar 4:3,Otros(URL / ruta del archivo)Devuelve nulo para indicar que no hay preferencia.
+ * 作品卡是否预占画幅:data-URI 返回 4:3,其它(URL / 文件路径)返回 null 表示不预占。
  *
- * URL / La proporción de rutas de archivos que nadie conoce de antemano(Coil También es necesario cargarlo antes de que el tamaño esté disponible.),Bloquear a 4:3 hará que la imagen sea horizontal./
- * Hay una gran cantidad de espacio en blanco para imágenes verticales largas.,Peor que antes, el cambio "crece hasta el límite superior de 420 dp en proporción a sí mismo";sigue asi con este tipo de imagenes
- * Intervalo de altura original de 120..420 dp,Ampliar al tamaño real. Por el contrario, el URI de datos no puede utilizar rangos.——su decodificacion
- * Se completa de forma asincrónica en el hilo IO.,El intervalo hará que la altura salte una vez antes y después de la decodificación.
+ * URL / 文件路径的比例没人能提前知道(Coil 也要加载完才有尺寸),锁成 4:3 会让横向/
+ * 竖向长图都留白一大片,比改动前「按自身比例长到 420dp 上限」更差;这类图继续走
+ * 原来的 120..420dp 高度区间,按真实尺寸撑开。反过来 data-URI 不能用区间——它的解码
+ * 是在 IO 线程异步完成的,区间会让高度在解码前后跳一次。
  */
 internal fun generatedImageAspectOf(imageUri: String): Float? =
     if (imageUri.startsWith(DATA_URI_IMAGE_PREFIX)) GENERATED_IMAGE_ASPECT else null
 
 /**
- * Tarjeta con imagen generada — Esquinas redondeadas + clic para obtener una vista previa.
+ * 生成的图片卡片 — 圆角 + 点击预览。
  *
  * v1.0.80:
- *  - Ampliar pantalla:ContentScale.Fit Mostrar completo,No más truncamiento de cultivos de parcelas 1:1,El límite superior de altura se relaja para 420dp
- *  - Quitar el botón de descarga externa:La entrada de descarga está incluida en la página de vista previa de la imagen grande.(esquina inferior derecha),Evitar que los botones de la tarjeta bloqueen la pantalla
+ *  - 放大展示面:ContentScale.Fit 完整显示,不再 Crop 截断 1:1 图,高度上限放宽到 420dp
+ *  - 移除外侧下载按钮:下载入口收进大图预览页(右下角),避免卡片上按钮遮挡画面
  */
 /**
- * v2.0.1: tarjeta de trabajo — Imagen de trabajo grande con esquinas redondeadas + barra de trabajo (resumen de palabras rápidas/guardar/compartir).
- * Haga clic en la imagen para ver una imagen más grande; la entrada de operaciones está justo debajo de la imagen y ya no está oculta en la página de vista previa.
+ * v2.0.1: 作品卡 — 大圆角作品图 + 作品条（提示词摘要 / 保存 / 分享）。
+ * 点图看大图；操作入口就在图下，不再埋进预览页。
  */
 @Composable
 internal fun GeneratedImageCard(
@@ -121,19 +121,19 @@ internal fun GeneratedImageCard(
     onPreview: () -> Unit,
     onSave: () -> Unit,
     modifier: Modifier = Modifier,
-    /** v2.0.1: Resumen de palabras rápidas (lado izquierdo de la barra de trabajo;null solo funciona en el lado derecho) */
+    /** v2.0.1: 提示词摘要（作品条左侧；null 时右侧仅操作） */
     promptSummary: String? = null,
-    /** v2.0.1: compartir devolución de llamada (null No muestre el botón de compartir cuando utilice recursos no locales; pasar nulo cuando se utilizan recursos no locales) */
+    /** v2.0.1: 分享回调（null 时不显示分享按钮；非本地资源时传 null） */
     onShare: (() -> Unit)? = null,
-    /** Las cuadrículas de varias imágenes se recortan 1:1; Los URI de datos de una sola imagen están enmarcados con 4:3 y el resto tiene sus propias proporciones (120..420dp). */
+    /** 多图网格用 1:1 裁切；单图 data-URI 用 4:3 定框，其余按自身比例（120..420dp）。 */
     compact: Boolean = false,
 ) {
-    // estrategia de marco:data-URI preferencia 4:3(Altamente consistente antes y después de la decodificación.);URL / Mantenga la ruta del archivo como está
-    // heightIn(120..420). Originalmente ambos tomaban intervalos,data-URI Sólo 120 dp antes de decodificar, salte a
-    // Proporción real,El animateContentSize de MessageBubble superpuesto durante el desplazamiento es una serie de retransmisiones.
+    // 画幅策略:data-URI 预占 4:3(解码前后高度一致);URL / 文件路径保持原来的
+    // heightIn(120..420)。原先两者都走区间,data-URI 在解码前只有 120dp、解码后跳到
+    // 实际比例,滚动时叠加 MessageBubble 的 animateContentSize 就是一串 relayout。
     val preAllocatedAspect = generatedImageAspectOf(imageUri)
     Column(modifier = modifier.fillMaxWidth()) {
-        // Trabajo: Imagen grande de esquina redonda (haga clic para ampliar la imagen)
+        // 作品：大圆角图（点按看大图）
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -157,7 +157,7 @@ internal fun GeneratedImageCard(
                     .clip(MuseShapes.largeCard),
             )
         }
-        // Barra de trabajo: resumen de palabras rápidas + guardar/compartir (simplemente opere, sin cubrir la pantalla)
+        // 作品条：提示词摘要 + 保存 / 分享（操作即达，不遮画面）
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -169,7 +169,7 @@ internal fun GeneratedImageCard(
                 Text(
                     text = promptSummary,
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.outline,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f),
@@ -200,7 +200,7 @@ internal fun GeneratedImageCard(
 }
 
 /**
- * Elemento de la fila del panel de acción inferior — ancho completo Row(icono + texto),Haga clic para activar la devolución de llamada.
+ * 底部动作面板行项 — 全宽 Row(图标 + 文字),点击触发回调。
  */
 @Composable
 internal fun ActionMenuItem(
@@ -208,7 +208,7 @@ internal fun ActionMenuItem(
     text: String,
     contentDescription: String,
     onClick: () -> Unit,
-    // v1.48: Opcional tint,usado para"Eliminar mensaje"Espere a que las operaciones peligrosas se marquen en rojo
+    // v1.48: 可选 tint,用于"删除消息"等危险操作标红
     tint: androidx.compose.ui.graphics.Color = androidx.compose.ui.graphics.Color.Unspecified,
 ) {
     val iconTint = if (tint == androidx.compose.ui.graphics.Color.Unspecified) MaterialTheme.colorScheme.onSurface else tint
@@ -230,7 +230,7 @@ internal fun ActionMenuItem(
                 imageVector = icon,
                 contentDescription = contentDescription,
                 tint = iconTint,
-                // M-MB3: Los tamaños de los iconos se reemplazan con codificación mediante el token MuseIconSizes.iconMedium 22dp
+                // M-MB3: 图标尺寸用 MuseIconSizes.iconMedium 令牌替代硬编码 22dp
                 modifier = Modifier.size(MuseIconSizes.iconMedium),
             )
             Text(
@@ -244,8 +244,8 @@ internal fun ActionMenuItem(
 }
 
 /**
- * Tarea 2A: pantalla de esqueleto brillante + animación de carga del punto de pulso.
- * Los tres puntos escalan en secuencia./Aparece y desaparece,El texto de estado aparece a continuación.
+ * 任务 2A: shimmer 骨架屏 + 脉冲点加载动画。
+ * 三个圆点依次缩放/淡入淡出,下方显示状态文字。
  */
 @Composable
 internal fun LoadingDots(text: String = stringResource(R.string.chat_loading_thinking)) {
@@ -258,8 +258,8 @@ internal fun LoadingDots(text: String = stringResource(R.string.chat_loading_thi
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            // v1.79 (L-B15): Tres puntos comparten uno InfiniteTransition,Reducir la sobrecarga de animación.
-            // reduced-motion La animación infinita no comienza.,Evite un bucle infinito de 0 ms que ocupe el hilo principal.
+            // v1.79 (L-B15): 三个圆点共享一个 InfiniteTransition,减少动画开销。
+            // reduced-motion 下不启动无限动画,避免 0ms 无限循环占用主线程。
             val infiniteTransition = if (reducedMotion) null else rememberInfiniteTransition(label = "dots")
             repeat(3) { index ->
                 val scale by if (infiniteTransition == null) {
@@ -316,13 +316,13 @@ internal fun LoadingDots(text: String = stringResource(R.string.chat_loading_thi
 }
 
 /**
- * v0.48: shimmer Marcador de posición de pantalla esqueleto — Barra de marcador de posición de representación de burbujas de mensajes de asistente de flujo vacío,
- * Reemplaza los antiguos LoadingDots"Pensando"texto,crear"AI escribiendo"La sensación de respirar.
+ * v0.48: shimmer 骨架屏占位 — 空流式 assistant 消息气泡渲染占位条,
+ * 替代旧 LoadingDots 的"思考中"文字,营造"AI 正在写"的呼吸感。
  *
- * darse cuenta:uno fillMaxWidth(0.6f) / height 14dp rectángulo redondeado,
- * usar [Brush.linearGradient] cooperar [animateFloat] + [infiniteRepeatable]
- * Haz una animación de barrido de izquierda a derecha.(1800ms un ciclo,LinearEasing).
- * color:surfaceVariant(0.4) → primary(0.2) → surfaceVariant(0.4).
+ * 实现:一个 fillMaxWidth(0.6f) / height 14dp 圆角矩形,
+ * 用 [Brush.linearGradient] 配合 [animateFloat] + [infiniteRepeatable]
+ * 做从左到右的扫光动画(1800ms 一个周期,LinearEasing)。
+ * 颜色:surfaceVariant(0.4) → primary(0.2) → surfaceVariant(0.4)。
  */
 @Composable
 internal fun ShimmerPlaceholder(modifier: Modifier = Modifier) {
@@ -365,9 +365,9 @@ internal fun ShimmerPlaceholder(modifier: Modifier = Modifier) {
 }
 
 /**
- * v1.33: Renderizador de imágenes inteligente
- * Omitir la resolución de URI de datos de Coil(DataUriFetcher falla silenciosamente en algunos dispositivos)
- * data URI → Decodificar directamente usando BitmapFactory;ordinario URL/Uri → Todavía caminando Coil AsyncImage
+ * v1.33: 智能图片渲染器
+ * 绕过 Coil 的 data URI 解析(部分设备上 DataUriFetcher 静默失败)
+ * data URI → 直接用 BitmapFactory 解码;普通 URL/Uri → 仍走 Coil AsyncImage
  */
 @Composable
 fun SmartImage(
@@ -377,14 +377,14 @@ fun SmartImage(
     contentScale: ContentScale = ContentScale.Fit,
 ) {
     if (model is String && model.startsWith(DATA_URI_IMAGE_PREFIX)) {
-        // data URI:Extraer parte base64,IO Decodificación de hilos
+        // data URI:提取 base64 部分,IO 线程解码
         val base64Part = remember(model) {
             val commaIndex = model.indexOf(',')
             if (commaIndex > 0) model.substring(commaIndex + 1) else null
         }
         if (base64Part != null) {
-            // Caché a nivel de proceso:Cuando se golpea, el primer cuadro es un mapa de bits.(No aparecen más bloques grises en un cuadro),No es necesario volver a solucionarlo.
-            // La caché sobrevive en todas las composiciones. —— Deslizarse fuera de la pantalla y volver a entrar no la desbloqueará nuevamente.
+            // 进程级缓存:命中时首帧就是位图(不再出现一帧灰块),也未必要再解一次。
+            // 缓存跨 composition 存活 —— 滑出屏幕再滑回来不会重解。
             val cacheKey = remember(model) { DataUriImageCache.keyOf(model) }
             val cachedBitmap = remember(cacheKey) { DataUriImageCache.get(cacheKey) }
             val bitmapState by produceState<android.graphics.Bitmap?>(initialValue = cachedBitmap, base64Part) {
@@ -393,9 +393,9 @@ fun SmartImage(
                         DataUriImageCache.decodeOrGet(cacheKey) { decodeDataUriBitmap(base64Part) }
                     }
                 }
-                // No más aquí awaitDispose { value?.recycle() }:El mapa de bits ahora está representado por [DataUriImageCache]
-                // Mantener y reutilizar,Reciclar después de deslizarse fuera de la pantalla hará que el siguiente golpe haga que el mapa de bits reciclado falle directamente.
-                // El reciclaje llega al límite de bytes LRU + GC.
+                // 这里不再 awaitDispose { value?.recycle() }:位图现在由 [DataUriImageCache]
+                // 持有并复用,滑出屏幕就回收会让下一次命中拿到已回收的位图直接崩。
+                // 回收交给 LRU 字节上限 + GC。
             }
             val current = bitmapState
             if (current != null) {
@@ -406,15 +406,15 @@ fun SmartImage(
                     contentScale = contentScale,
                 )
             } else {
-                // Decodificación/falló:Marcador de posición gris
+                // 解码中/失败:灰色占位
                 Box(modifier = modifier.background(MaterialTheme.colorScheme.surfaceVariant))
             }
         } else {
             Box(modifier = modifier.background(MaterialTheme.colorScheme.surfaceVariant))
         }
     } else {
-        // URL/Uri normal: Ir Coil AsyncImage
-        // v1.0.74 fix: Si la carga falla y no hay ningún marcador de posición, todo el bloque estará en blanco.,Rellenar marcador de posición/bloque gris de error
+        // 普通 URL/Uri:走 Coil AsyncImage
+        // v1.0.74 fix: 加载失败无占位会整块空白,补 placeholder/error 灰块
         val imageModel = remember(model) {
             if (model is String && model.startsWith("/")) File(model) else model
         }
@@ -434,17 +434,17 @@ fun SmartImage(
 }
 
 /**
- * data-URI El segmento base64 → Bitmap.
+ * data-URI 的 base64 段 → Bitmap。
  *
- * de [SmartImage] Sácalo:La decodificación en sí no tiene nada que ver con el ciclo de vida de la composición.(Se ingresa el resultado[DataUriImageCache]),
- * Ponerlo afuera también deja a SmartImage solo con la rama de renderizado.
+ * 从 [SmartImage] 里抽出来:解码本身与组合生命周期无关(结果进[DataUriImageCache]),
+ * 放在外面也让 SmartImage 只留渲染分支。
  */
 private fun decodeDataUriBitmap(base64Part: String): android.graphics.Bitmap? = runCatching {
-    // B-02: Parte de la salida ascendente está envuelta en 76 caracteres. base64,NO_WRAP La decodificación falla directamente cuando encuentra una nueva línea
-    // (Mostrar bloques grises);Elimina las nuevas líneas antes de decodificar,Compatible con ambos formatos.
+    // B-02: 部分上游按 76 字符换行输出 base64,NO_WRAP 解码遇到换行直接失败
+    // (显示灰块);解码前剥离换行符,兼容两种格式。
     val normalized = base64Part.replace("\n", "").replace("\r", "")
     val bytes = android.util.Base64.decode(normalized, android.util.Base64.NO_WRAP)
-    // v1.79 (H-B1): Detectar el tamaño primero y luego reducir la muestra,Evite decodificar imágenes grandes OOM
+    // v1.79 (H-B1): 先探测尺寸再降采样,避免大图解码 OOM
     val options = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
     android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
     val targetSize = 1024
@@ -457,13 +457,13 @@ private fun decodeDataUriBitmap(base64Part: String): android.graphics.Bitmap? = 
 }.onFailure { Logger.w("MessageBubble", "base64 image decode failed: ${it.message}", it) }.getOrNull()
 
 /**
- * Reparación de auditoría (S-02): El vídeo del mensaje del asistente genera una tarjeta de resultados.
+ * 审计修复 (S-02): 助手消息视频生成结果卡片。
  *
- * generate_video Después del éxito, videoFileUri escribe el mensaje y lo coloca en la biblioteca.,Renderizado aquí:
- * Marcador de posición oscuro + icono de reproducción,Haga clic para iniciar el reproductor del sistema con ACTION_VIEW;
- * Revisión de corrección (2.0 C-01): ACTION_VIEW Básicamente no disponible para datos: vídeos URI(La mayoría de los reproductores del sistema.
- * No reconocido data: scheme),Cuando haga clic en él, primero decodifique el URI de datos y guárdelo en cacheDir antes de reproducir el archivo.,
- * http(s) URL Todavía inicia directamente el reproductor del sistema.;Aviso del sistema cuando no hay aplicaciones para procesar.
+ * generate_video 成功后 videoFileUri 写入消息并落库,此处渲染:
+ * 深色占位 + 播放图标,点击用 ACTION_VIEW 调起系统播放器;
+ * 审查修复 (2.0 C-01): ACTION_VIEW 对 data: URI 视频基本不可用(多数系统播放器
+ * 不识别 data: scheme),点击时先把 data URI 解码落盘到 cacheDir 再播放文件,
+ * http(s) URL 仍直接调起系统播放器;无应用可处理时 Toast 提示。
  */
 @Composable
 internal fun AssistantVideoCard(videoUri: String, modifier: Modifier = Modifier) {
@@ -476,7 +476,7 @@ internal fun AssistantVideoCard(videoUri: String, modifier: Modifier = Modifier)
             .background(MaterialTheme.colorScheme.surfaceVariant)
             .clickable {
                 runCatching {
-                    // C-01: data URI → Reproduzca el archivo después de decodificar cacheDir.;http(s) juego directo
+                    // C-01: data URI → 解码落盘 cacheDir 后播放文件;http(s) 直放
                     val playable = if (videoUri.startsWith("data:")) {
                         val commaIndex = videoUri.indexOf(',')
                         val base64 = if (commaIndex > 0) videoUri.substring(commaIndex + 1) else videoUri
@@ -506,7 +506,7 @@ internal fun AssistantVideoCard(videoUri: String, modifier: Modifier = Modifier)
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(MuseIconSizes.iconEmpty),
         )
-        // icono de reproducción central(scrim El fondo semitransparente mejora el contraste.,Consistente con los archivos adjuntos de videos del usuario.)
+        // 中央播放图标(scrim 半透明背景提升对比度,与用户视频附件一致)
         Box(
             modifier = Modifier
                 .size(56.dp)
@@ -525,18 +525,18 @@ internal fun AssistantVideoCard(videoUri: String, modifier: Modifier = Modifier)
 }
 
 /**
- * Etapa 4: Cursor de transmisión — Una barra vertical parpadeante adjunta al final del texto del mensaje de transmisión de IA.
+ * 阶段 4: 流式光标 — 末尾 AI 流式消息文本后追加的闪烁竖线。
  *
- * diseño: 2.5dp Ancho/barra vertical 18dp alto,Pase [rememberInfiniteTransition] + [animateFloat]
- *       en 1.0 ↔ 0.2 FastOutSlowInEasing ida y vuelta(530ms ciclo),presente"respiración de máquina de escribir".
- * color: Tomado de MaterialTheme.colorScheme.primary(verde laurel #2D8C5F),
- *       Sea coherente con los colores de la marca.,conformarse a"lámpara de mesa nocturna"La regla de hierro de la combinación de colores(<5% Adorno de color de la marca.).
+ * 设计: 2.5dp 宽 / 18dp 高竖条,通过 [rememberInfiniteTransition] + [animateFloat]
+ *       在 1.0 ↔ 0.2 间用 FastOutSlowInEasing 往返(530ms 周期),呈现"打字机呼吸感"。
+ * 颜色: 取自 MaterialTheme.colorScheme.primary(月桂绿 #2D8C5F),
+ *       与品牌色保持一致,符合"深夜台灯"配色铁律(<5% 品牌色点缀)。
  *
- * v1.0.3 mejorar:
- *  - El tiempo del ciclo se reduce de 1 s a 530ms,parece más"activo",Haga coincidir un ritmo de entrada de contenido más rápido
- *  - alpha Rango de 0~1 Cambiar a 0.2~1,evitar desaparecer por completo,Más continuidad visual
- *  - La aceleración cambió de LinearEasing a FastOutSlowInEasing,La respiración se siente más natural
- *  - El ancho aumenta de 2dp a 2.5dp,La altura aumentó de 16 dp a 18dp,Un poco más llamativo
+ * v1.0.3 改进:
+ *  - 周期从 1s 缩短到 530ms,看起来更"活跃",与更快的内容流入节奏匹配
+ *  - alpha 范围从 0~1 改为 0.2~1,避免完全消失,视觉更连贯
+ *  - 缓动从 LinearEasing 改为 FastOutSlowInEasing,呼吸感更自然
+ *  - 宽度从 2dp 加到 2.5dp,高度从 16dp 加到 18dp,略微更醒目
  */
 @Composable
 internal fun StreamingCursor(color: Color, modifier: Modifier = Modifier) {
@@ -563,11 +563,11 @@ internal fun StreamingCursor(color: Color, modifier: Modifier = Modifier) {
 }
 
 /**
- * AI transmisión/Indicador de estado del pensamiento — Animación de tinta + "pensando…"Redacción publicitaria.
+ * AI 流式/思考状态指示器 — 墨形动画 + "正在思考…"文案。
  *
- * Utilice la misma animación en forma de tinta que la barra horizontal de la subtarea (las hojas/estrellas/anillos se deforman entre sí):
- * Las palabras "ocupadas" en los dos lugares deberían verse iguales, en lugar de girar en un lugar y saltar en el otro.
- * Para el tamaño [MuseThinkingGlyphSize], está reservado para este lugar.
+ * 用与子任务横条同一个墨形动画（叶 / 星 / 环 三者互相形变）：
+ * 两处的「在忙」应该长得一样，而不是一处转圈、一处跳点。
+ * 尺寸用 [MuseThinkingGlyphSize]，它就是为这里留的。
  */
 @Composable
 internal fun ThinkingIndicator() {
@@ -588,9 +588,9 @@ internal fun ThinkingIndicator() {
 }
 
 /**
- * Función2: TTS Reproductor de mensajes de voz. Se muestra debajo de la burbuja de mensajes de IA,Aparece mientras TTS lee el mensaje actual.
+ * 功能2: TTS 语音消息播放器。显示在 AI 消息气泡下方,当前消息正在 TTS 朗读时出现。
  *
- * Contiene animación de barra de ondas + reproducción./Botón de pausa + barra de progreso + selección de doble velocidad.
+ * 包含波形条动画 + 播放/暂停按钮 + 进度条 + 倍速选择。
  */
 @Composable
 internal fun TtsAudioPlayer(modifier: Modifier = Modifier) {
@@ -615,7 +615,7 @@ internal fun TtsAudioPlayer(modifier: Modifier = Modifier) {
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(MusePaddings.contentGap),
             ) {
-                // jugar/botón de pausa
+                // 播放/暂停按钮
                 MuseTactileButton(
                     icon = if (isPlaying) MuseIcons.pause else MuseIcons.play,
                     onClick = {
@@ -636,13 +636,13 @@ internal fun TtsAudioPlayer(modifier: Modifier = Modifier) {
                     iconSize = 20.dp,
                     modifier = Modifier.defaultMinSize(minWidth = MuseIconSizes.touchTarget, minHeight = MuseIconSizes.touchTarget),
                 )
-                // Animación de barra de ondas(4 tiras verticales,Rebote con estado de reproducción)
+                // 波形条动画(4 条竖条,随播放状态弹跳)
                 WaveformBars(isActive = isPlaying)
                 Spacer(Modifier.weight(1f))
-                // Selección de doble velocidad
+                // 倍速选择
                 Text(
                     text = "${speeds[speedIndex]}x",
-                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                    style = MaterialTheme.typography.labelSmallStrong,
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier
                         .clickable {
@@ -655,7 +655,7 @@ internal fun TtsAudioPlayer(modifier: Modifier = Modifier) {
                 )
             }
             Spacer(Modifier.height(MusePaddings.tinyGap))
-            // barra de progreso
+            // 进度条
             MuseSlider(
                 value = progress,
                 onValueChange = { v ->
@@ -670,7 +670,7 @@ internal fun TtsAudioPlayer(modifier: Modifier = Modifier) {
 }
 
 /**
- * Animación de barra de ondas — 4 tiras verticales,Escalonar los rebotes uno por uno durante la reproducción.,Deténgase cuando esté en pausa.
+ * 波形条动画 — 4 条竖条,播放时逐条错开弹跳,暂停时静止。
  */
 @Composable
 internal fun WaveformBars(isActive: Boolean) {
@@ -680,7 +680,7 @@ internal fun WaveformBars(isActive: Boolean) {
     Row(
         horizontalArrangement = Arrangement.spacedBy(2.dp),
         verticalAlignment = Alignment.CenterVertically,
-        // v1.0.52: Accesibilidad — TalkBack Se puede informar el estado de la forma de onda
+        // v1.0.52: 无障碍 — TalkBack 可播报波形状态
         modifier = Modifier.semantics {
             contentDescription = if (isActive) voicePlayingCd else voiceReadyCd
         },
@@ -723,10 +723,10 @@ internal fun WaveformBars(isActive: Boolean) {
 }
 
 /**
- * v0.48: Formato de marca de tiempo del mensaje — Tiempo controlado por chatPrefs.use24Hour,
- * Visualización predeterminada de 24 horas "HH:mm",12 visualización de la hora "h:mm a".
+ * v0.48: 消息时间戳格式化 — 受 chatPrefs.use24Hour 控制时制,
+ * 默认 24 小时制显示 "HH:mm",12 小时制显示 "h:mm a"。
  */
-// v1.79 (L-B12): SimpleDateFormat caché a nivel de archivo,Evite crear cada mensaje de forma independiente
+// v1.79 (L-B12): SimpleDateFormat 提为文件级缓存,避免每条消息独立创建
 private val sdf24Hour by lazy {
     java.text.SimpleDateFormat(MuseDateFormats.TIME_SHORT, java.util.Locale.getDefault())
 }
@@ -734,15 +734,15 @@ private val sdf12Hour by lazy {
     java.text.SimpleDateFormat(MuseDateFormats.TIME_12H, java.util.Locale.getDefault())
 }
 
-// L-MB3: Eliminar anotaciones @Composable redundantes(La función no utiliza ningún Composable API)
+// L-MB3: 移除多余的 @Composable 注解(函数不使用任何 Composable API)
 internal fun formatMessageTime(timestamp: Long, use24Hour: Boolean = true): String {
     val sdf = if (use24Hour) sdf24Hour else sdf12Hour
     return sdf.format(java.util.Date(timestamp))
 }
 
 /**
- * Formato de duración del vídeo:milisegundos → "M:SS"(Más de 1 hora "H:MM:SS").
- * Solo se usa para la etiqueta de duración en la esquina inferior derecha de la burbuja del mensaje.,La semántica es coherente con la función del mismo nombre en InputBar.
+ * 视频时长格式化:毫秒 → "M:SS"(超过 1 小时则 "H:MM:SS")。
+ * 仅用于消息气泡右下角时长标签,与 InputBar 中同名函数语义一致。
  */
 internal object MessageBubbleFormatters {
     fun formatVideoDuration(durationMs: Long): String {

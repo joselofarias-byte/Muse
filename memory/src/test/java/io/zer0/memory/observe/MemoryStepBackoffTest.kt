@@ -5,7 +5,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** D3-P3: Prueba de retroceso fallida(Crecimiento exponencial / limitación / compensación / independencia). */
+/** D3-P3: 失败退避器测试(指数增长 / 封顶 / 清零 / 独立)。 */
 class MemoryStepBackoffTest {
 
     private var now = 1_000_000L
@@ -24,9 +24,9 @@ class MemoryStepBackoffTest {
     @Test
     fun `failure blocks until window elapses`() {
         backoff.recordFailure("compileFacts")
-        assertFalse("Debería entrar en retirada después del fracaso.", backoff.shouldRun("compileFacts"))
+        assertFalse("失败后应进入退避", backoff.shouldRun("compileFacts"))
         now += 1000L
-        assertTrue("La ventana base debe restaurarse después", backoff.shouldRun("compileFacts"))
+        assertTrue("基础窗口过后应恢复", backoff.shouldRun("compileFacts"))
     }
 
     @Test
@@ -43,7 +43,7 @@ class MemoryStepBackoffTest {
     @Test
     fun `backoff is capped`() {
         repeat(10) { backoff.recordFailure("x") }
-        assertEquals("debe estar limitado", 8000L, backoff.remainingBackoffMs("x"))
+        assertEquals("应封顶", 8000L, backoff.remainingBackoffMs("x"))
     }
 
     @Test
@@ -58,7 +58,7 @@ class MemoryStepBackoffTest {
     @Test
     fun `steps are independent`() {
         backoff.recordFailure("a")
-        assertTrue("b no debe verse afectado por un", backoff.shouldRun("b"))
+        assertTrue("b 不应受 a 影响", backoff.shouldRun("b"))
         assertFalse(backoff.shouldRun("a"))
     }
 }

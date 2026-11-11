@@ -8,7 +8,7 @@ import org.junit.Test
 import java.io.File
 import java.nio.file.Files
 
-/** AtomicFileStore Escrituras atómicas y pruebas de aislamiento de archivos corruptos. */
+/** AtomicFileStore 的原子写入和损坏文件隔离测试。 */
 class AtomicFileStoreTest {
 
     @Test

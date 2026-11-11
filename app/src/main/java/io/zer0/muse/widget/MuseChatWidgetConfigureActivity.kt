@@ -47,7 +47,7 @@ class MuseChatWidgetConfigureActivity : ComponentActivity() {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     WidgetAssistantPicker(
                         title = stringResource(R.string.widget_chat_pick_assistant),
-                        // v2.6.7 fix (AUDIT F12): Lea el valor almacenado para la selección inicial.
+                        // v2.6.7 fix (AUDIT F12): 读已存值作初始选中。
                         initialSelectedId = WidgetPrefs.getChatWidgetAssistant(this, appWidgetId),
                         onAssistantSelected = { assistantId ->
                             WidgetPrefs.saveChatWidgetAssistant(this, appWidgetId, assistantId)
@@ -79,8 +79,8 @@ class MuseChatWidgetConfigureActivity : ComponentActivity() {
 @Composable
 fun WidgetAssistantPicker(
     title: String,
-    /** v2.6.7 fix (AUDIT F12): Valor inicial seleccionado. Implementación antigua codificada "default",
-     * Al reconfigurar, simplemente haga clic en Confirmar para sobrescribir la selección original del usuario a la predeterminada. */
+    /** v2.6.7 fix (AUDIT F12): 初始选中值。旧实现写死 "default"，
+     * 重配置时直接点确认就把用户原选择覆盖成 default。 */
     initialSelectedId: String = "default",
     onAssistantSelected: (String) -> Unit,
 ) {
@@ -123,8 +123,8 @@ fun WidgetAssistantPicker(
         }
         MuseCapsuleButton(
             text = stringResource(R.string.common_confirm),
-            // v2.6.7 fix (AUDIT F12): No se permite la confirmación cuando la lista está vacía ——
-            // La implementación anterior se guardará silenciosamente. "default", el usuario cree que está seleccionado.
+            // v2.6.7 fix (AUDIT F12): 列表为空时不允许确认 ——
+            // 旧实现会静默存下 "default"，用户以为选了。
             onClick = { if (assistants.isNotEmpty()) onAssistantSelected(selectedId) },
             enabled = assistants.isNotEmpty(),
             modifier = Modifier.padding(top = 16.dp),

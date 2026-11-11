@@ -6,8 +6,8 @@ import io.zer0.muse.data.quicknote.QuickNoteEntity
 import io.zer0.muse.data.session.MuseDb
 
 /**
- * P1-3b Dedomaining: Implementación rápida de herramienta de grabación.
- * Registrado en ToolRegistry por QuickNoteToolsRegistrar.
+ * P1-3b 拆域：快速记录工具实现。
+ * 由 QuickNoteToolsRegistrar 注册到 ToolRegistry。
  */
 class QuickNoteToolsImpl(private val context: Context) {
 
@@ -112,7 +112,7 @@ class QuickNoteToolsImpl(private val context: Context) {
                 context.getString(
                     R.string.tool_quick_note_list_item,
                     it.id,
-                    if (it.pinned) "[Arriba]" else "",
+                    if (it.pinned) "[顶]" else "",
                     it.title,
                     it.tags.joinToString(","),
                 ),

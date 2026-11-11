@@ -5,108 +5,46 @@ import io.zer0.ai.core.Model
 import io.zer0.ai.core.ModelAbility
 
 /**
- * P2-5: SiliconFlow Una lista completa de modelos gratuitos en la plataforma.
+ * 内置免费额度的模型清单。
  *
- * fondo:
- *  - SiliconFlow en `https://api.siliconflow.cn/v1` Proporciona puntos finales compatibles con OpenAI,
- *    Y etiquetar algunos modelos de código abierto. `:free` sufijo(Gratis disponible,Pero normalmente hay límites de RPM/QPS).
- *  - Después de que el usuario obtenga la apiKey de SiliconFlow,Muchas veces porque no lo sé"¿Qué modelos son gratuitos?"Y prueba uno por uno,
- *    Mala experiencia. Este objeto está preestablecido con una lista de modelos gratuitos y disponibles actualmente conocidos.,
- *    en ProviderEditPage(Cuando baseUrl llega a Siliconflow.cn)Proporciona entrada de "relleno de modelos gratuito con un solo clic".
+ * 历史说明：本对象原名「SiliconFlow 免费模型」，免费额度已迁到 agnes 网关
+ * （`apihub.agnes-ai.com`），类名保留是为了不动 12 处调用点；
+ * 真正的供应商 id 与 base url 一律读 [FreeModelConfig]，不要在别处另写一份。
  *
- * diseño:
- *  - Sólo modelos récord [Model.id] y habilidades básicas(supportsVision / abilities / contextWindow),
- *    No se incluye información sobre precios.(Las estrategias de plataforma cambiarán,Sujeto al sitio web oficial.).
- *  - [PROVIDER_ID] Corregido usando el proveedor predeterminado id,Asegúrese de que la etapa predeterminada Model.providerId no esté vacía;
- *    Después de que el usuario se guarde como un proveedor real,ModelRegistry.enrich / ProviderConfig Al persistir
- *    Será sincronizado por Provider.id providerId,No hay necesidad de preocuparse aquí.
- *  - supportsVision Sólo para modelos que realmente admiten la entrada de imágenes(Como la serie Qwen2.5-VL)conjunto true;
- *    Esta lista no contiene actualmente variantes de VL,Por lo tanto todos son false,Reservar campos para su posterior ampliación.
- *  - supportsTools Pase [ModelAbility.TOOL] marca;DeepSeek-R1 es un modelo de inferencia pura,
- *    marca [ModelAbility.REASONING] En lugar de abrir HERRAMIENTA.
+ * 用途有两处，必须保持一致：
+ *  1. 预设供应商预填的模型（用户未填 key 时直接可用）；
+ *  2. 供应商编辑页「一键填入免费模型」。
  *
- * mantenimiento:
- *  - La lista de modelos cambiará según la estrategia de la plataforma SiliconFlow.(Ajuste de límite de velocidad recién agregado/eliminado),
- *    Comparación periódica `https://siliconflow.cn/zh-cn/models` Solo revíselo una vez.
+ * 与 [FreeModelConfig.FREE_MODEL_IDS] 的关系：那份是「谁可以用内置 key」的白名单，
+ * 这里是「界面上展示哪些模型」。两边不一致时，用户会选中一个列表里没有额度的模型，
+ * 请求带着空 key 出去 —— 所以改动时两处一起改。
  */
 object SiliconFlowFreeModels {
 
-    /** SiliconFlow Puntos finales compatibles con la plataforma OpenAI. */
-    const val BASE_URL = "https://api.siliconflow.cn/v1"
+    /** 免费额度上游 OpenAI 兼容端点。 */
+    const val BASE_URL = FreeModelConfig.AGNES_BASE_URL
 
-    /** Reparación del proveedor predeterminado id(Consistente con PresetProviders.siliconFlowFree). */
+    /** 预设 Provider 的固定 id(与 PresetProviders.siliconFlowFree 中保持一致)。 */
     const val PROVIDER_ID = FreeModelConfig.FREE_PROVIDER_ID
 
     /**
-     * SiliconFlow Lista de modelos disponibles actualmente de forma gratuita en la plataforma(No incluido en el precio,Cambiará con la estrategia de la plataforma).
+     * 免费额度可用模型。
      *
-     * Descripción:
-     *  - contextWindow Tome la longitud del contexto oficial publicada por cada fabricante.(unidad:token);
-     *    Si hay alguna ambigüedad, tome el valor menor de manera conservadora.,Evite la interfaz de usuario"El contexto ocupa un pequeño círculo."La pantalla es demasiado grande.
-     *  - no contiene maxOutputTokens(Déjelo en blanco para permitir que el tiempo de ejecución se declare por upstream/modelos).
-     *  - entrada/Valor predeterminado modal de salida ["text"](modelo no visual),El modelo visual se complementa bajo demanda. "image".
+     * 能力按上游实测填：agnes-2.5-flash 接受图文输入，单请求 max_tokens 到 65536
+     * 不被拒，返回里带 reasoning_content，因此同时标 REASONING 与 TOOL。
+     * 上下文长度按平台声明填 512k；它只影响 UI 上的占用提示与裁剪预算，
+     * 填小了会提前截断，填大了只是显示乐观。
      */
     val MODELS: List<Model> = listOf(
-        // ── Qwen2.5 Instruct Serie(apoyo tool calling,sin visión)──
         Model(
-            id = "Qwen/Qwen2.5-7B-Instruct",
-            name = "Qwen2.5 7B (Free)",
+            id = "agnes-2.5-flash",
+            name = "agnes-2.5-flash (免费)",
             providerId = PROVIDER_ID,
-            contextWindow = 32_768,
-            abilities = setOf(ModelAbility.TOOL),
-        ),
-        Model(
-            id = "Qwen/Qwen2.5-14B-Instruct",
-            name = "Qwen2.5 14B (Free)",
-            providerId = PROVIDER_ID,
-            contextWindow = 32_768,
-            abilities = setOf(ModelAbility.TOOL),
-        ),
-        Model(
-            id = "Qwen/Qwen2.5-32B-Instruct",
-            name = "Qwen2.5 32B (Free)",
-            providerId = PROVIDER_ID,
-            contextWindow = 32_768,
-            abilities = setOf(ModelAbility.TOOL),
-        ),
-        Model(
-            id = "Qwen/Qwen2.5-72B-Instruct",
-            name = "Qwen2.5 72B (Free)",
-            providerId = PROVIDER_ID,
-            contextWindow = 32_768,
-            abilities = setOf(ModelAbility.TOOL),
-        ),
-        // ── DeepSeek Serie(V2.5 apoyo tool calling;R1 es un modelo de inferencia pura)──
-        Model(
-            id = "deepseek-ai/DeepSeek-V2.5",
-            name = "DeepSeek V2.5 (Free)",
-            providerId = PROVIDER_ID,
-            contextWindow = 32_768,
-            abilities = setOf(ModelAbility.TOOL),
-        ),
-        Model(
-            id = "deepseek-ai/DeepSeek-R1",
-            name = "DeepSeek R1 (Free)",
-            providerId = PROVIDER_ID,
-            contextWindow = 65_536,
-            // R1 para modelo de inferencia,No compatible tool calling(Las habilidades vacías no ingresan a la rama HERRAMIENTA)
-            abilities = setOf(ModelAbility.REASONING),
-        ),
-        // ── espectro de sabiduría GLM-4-9B-Chat(apoyo tool calling,sin visión)──
-        Model(
-            id = "THUDM/glm-4-9b-chat",
-            name = "GLM-4 9B (Free)",
-            providerId = PROVIDER_ID,
-            contextWindow = 32_768,
-            abilities = setOf(ModelAbility.TOOL),
-        ),
-        // ── Meta Llama 3.1 8B Instruct(apoyo tool calling,sin visión)──
-        Model(
-            id = "meta-llama/Meta-Llama-3.1-8B-Instruct",
-            name = "Llama 3.1 8B (Free)",
-            providerId = PROVIDER_ID,
-            contextWindow = 131_072,
-            abilities = setOf(ModelAbility.TOOL),
+            contextWindow = 512_000,
+            maxOutputTokens = 65_536,
+            supportsVision = true,
+            inputModalities = setOf("text", "image"),
+            abilities = setOf(ModelAbility.TOOL, ModelAbility.REASONING),
         ),
     )
 }

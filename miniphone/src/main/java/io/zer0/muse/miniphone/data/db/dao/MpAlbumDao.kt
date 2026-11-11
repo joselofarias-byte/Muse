@@ -7,10 +7,10 @@ import androidx.room.Query
 import io.zer0.muse.miniphone.data.db.entity.MpAlbumEntity
 import kotlinx.coroutines.flow.Flow
 
-/** Lectura y escritura de álbumes de fotografías. */
+/** 相册的读写。 */
 @Dao
 interface MpAlbumDao {
-    /** [includeHidden] Cuando es falso, solo se devuelven imágenes no ocultas. */
+    /** [includeHidden] 为 false 时只返回没隐藏的图。 */
     @Query(
         "SELECT * FROM mp_album WHERE (:includeHidden = 1 OR hidden = 0) " +
             "ORDER BY createdAt DESC, id DESC",

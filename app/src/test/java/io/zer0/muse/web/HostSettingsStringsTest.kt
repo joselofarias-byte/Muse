@@ -10,11 +10,11 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 
 /**
- * Configure un análisis de redacción publicitaria para verificar los recursos reales de la aplicación.
+ * 设置文案解析对真实应用资源的校验。
  *
- * `HostSettingsCatalog` En cada grupo/entrada, solo se escribe el nombre del recurso y la copia la escribe
- * [AndroidHostSettingsStrings] Analizado en el idioma actual en el momento de la instantánea. Aquí analizamos los recursos reales uno por uno:
- * Cualquier cambio de nombre, eliminación de clave u omisión (volver al nombre del recurso) se dividirá aquí en lugar de convertirse en una línea en blanco en la página web.
+ * `HostSettingsCatalog` 里每个分组 / 条目都只写资源名，文案由
+ * [AndroidHostSettingsStrings] 在快照时按当前语言解析。这里拿真资源逐条解析一遍：
+ * 任何一条改名、删键或漏翻（退回资源名）都会在这里断出来，而不是在网页上变成一行空白。
  */
 @RunWith(RobolectricTestRunner::class)
 class HostSettingsStringsTest {
@@ -22,7 +22,7 @@ class HostSettingsStringsTest {
     private val context: Context = ApplicationProvider.getApplicationContext()
     private val strings = AndroidHostSettingsStrings(context)
 
-    /** Nombres de todos los recursos de redacción en el directorio que se mostrarán en la interfaz (título del grupo + título de la entrada + descripción de la entrada). */
+    /** 目录里所有要在界面上显示的文案资源名（分组标题 + 条目标题 + 条目说明）。 */
     private val catalogResourceNames: List<String> = buildList {
         HostSettingsCatalog.groups.forEach { group ->
             add(group.key)
@@ -35,10 +35,10 @@ class HostSettingsStringsTest {
 
     @Test
     fun `every catalog resource name resolves to non blank text`() {
-        // Se deben analizar tanto el directorio de recursos predeterminado (chino) como el directorio en inglés para obtener la copia.
+        // 默认资源目录（中文）与英文目录都必须解析得到文案。
         listOf("system", "zh", "en").forEach { language ->
             val missing = catalogResourceNames.filter { strings.resolve(it, language).isNullOrBlank() }
-            assertTrue("language=$language Estos recursos de redacción de configuración no se pueden analizar: $missing", missing.isEmpty())
+            assertTrue("language=$language 这些设置文案资源解析不到: $missing", missing.isEmpty())
         }
     }
 
@@ -46,13 +46,13 @@ class HostSettingsStringsTest {
     fun `resolved text follows the requested language`() {
         val name = "settings_screen_group_assistants"
 
-        // Lenguaje explícito:values/ Es el directorio predeterminado chino.values-en Es un catálogo en inglés.
+        // 显式语言：values/ 是中文默认目录，values-en 是英文目录。
         val zh = strings.resolve(name, "zh")
         val en = strings.resolve(name, "en")
 
-        assertTrue("Los catálogos chinos deben analizar la copia", !zh.isNullOrBlank())
-        assertTrue("El catálogo en inglés debe analizar la copia.", !en.isNullOrBlank())
-        assertNotEquals("Después de cambiar al inglés, la copia debería cambiar en consecuencia; de lo contrario, significa que no se analiza según el idioma.", zh, en)
+        assertTrue("中文目录必须解析出文案", !zh.isNullOrBlank())
+        assertTrue("英文目录必须解析出文案", !en.isNullOrBlank())
+        assertNotEquals("切到英文后文案应跟着变，否则等于没按语言解析", zh, en)
     }
 
     @Test

@@ -6,20 +6,20 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import kotlinx.coroutines.flow.Flow
 
-/** recuento de mensajes de rol(Para panel de estadísticas). */
+/** 角色消息计数(统计面板用)。 */
 data class RoleCount(
     val role: String,
     val cnt: Int,
 )
 
-/** Uso total medido para una sola sesión (provider Número de tokens devueltos, estimación no local). */
+/** 单会话实测用量合计（provider 返回的 token 数，非本地估算）。 */
 data class SessionUsageAggregate(
     val requests: Int,
     val promptTokens: Long,
     val completionTokens: Long,
 )
 
-/** Phase 10.3: Resultados de la búsqueda ÚNETE a la proyección(Mensaje + título de la conversación,Evite consultas N+1). */
+/** Phase 10.3: 搜索结果 JOIN 投影(消息 + 会话标题,避免 N+1 查询)。 */
 data class MessageSearchJoin(
     val messageId: String,
     val sessionId: String,
@@ -30,42 +30,46 @@ data class MessageSearchJoin(
 )
 
 /**
- * Objeto de acceso a datos de mensajes.
+ * 消息数据访问对象。
  */
 @Dao
 interface MessageDao {
 
-    /** Observar todos los mensajes en una conversación específica.(Ordenar ascendente por secuencia monótona). Para copia de seguridad y exportación,Se requiere carga completa. */
+    /** 观察指定会话的全部消息(按 seq 单调序列升序)。备份导出用,需全量加载。 */
     @Query(
-        "SELECT * FROM messages WHERE sessionId = :sessionId ORDER BY CASE WHEN commitSeq > 0 THEN commitSeq ELSE seq END ASC, createdAt ASC, id ASC",
+        "SELECT * FROM messages WHERE sessionId = :sessionId ORDER BY CASE WHEN commitSeq > 0 THEN commitSeq " +
+            "ELSE seq END ASC, createdAt ASC, id ASC",
     )
     fun observeBySession(sessionId: String): Flow<List<MessageEntity>>
 
     /**
-     * H-SESS3: Observe los últimos mensajes de límite de la sesión especificada(Ordenar por creadoEn ascendente),UI Para renderizado en streaming.
+     * H-SESS3: 观察指定会话最近 limit 条消息(按 createdAt 升序),UI 流式渲染用。
      *
-     * Para evitar OOM causado por la carga completa de sesiones largas: la subconsulta primero presiona DESC para obtener la última barra de límite,
-     * La capa exterior está ordenada por ASC.,Se garantiza que devolverá los "elementos límite más recientes" y los mostrará en orden cronológico.
-     * La historia anterior consiste en [getOlderBySession] Cargando en páginas.limit Pasado por la persona que llama
-     * (Como por ejemplo [SessionRepository.OBSERVE_LIMIT]).
+     * 避免长会话全量加载导致 OOM:子查询先按 DESC 取最近 limit 条,
+     * 外层再按 ASC 排序,保证返回的是「最近 limit 条」且按时间正序展示。
+     * 更早的历史由 [getOlderBySession] 分页加载。limit 由调用方传入
+     * (如 [SessionRepository.OBSERVE_LIMIT])。
      */
     @Query(
-        "SELECT * FROM (SELECT * FROM messages WHERE sessionId = :sessionId AND deletedAt IS NULL ORDER BY CASE WHEN commitSeq > 0 THEN commitSeq ELSE seq END DESC, createdAt DESC, id DESC LIMIT :limit) ORDER BY CASE WHEN commitSeq > 0 THEN commitSeq ELSE seq END ASC, createdAt ASC, id ASC",
+        "SELECT * FROM (SELECT * FROM messages WHERE sessionId = :sessionId AND deletedAt IS NULL ORDER BY " +
+            "CASE WHEN commitSeq > 0 THEN commitSeq ELSE seq END DESC, createdAt DESC, id DESC LIMIT :limit) " +
+            "ORDER BY CASE WHEN commitSeq > 0 THEN commitSeq ELSE seq END ASC, createdAt ASC, id ASC",
     )
     fun observeRecentBySession(sessionId: String, limit: Int): Flow<List<MessageEntity>>
 
     /**
-     * v1.53-A1: carga de ventana — Obtenga los últimos mensajes de límite de la sesión especificada(Tome en orden descendente por creado en,Luego inviértelo en la memoria.).
+     * v1.53-A1: 窗口加载 — 取指定会话最近 limit 条消息(按 createdAt 降序取,再在内存里反转)。
      *
-     * Se utiliza para la paginación en la carga inicial.:Obtenga solo los artículos de PAGE_SIZE más recientes,Evite el retraso causado por cargar todo a la vez/OOM.
-     * El orden de devolución es descendente.(último primero),La persona que llama necesita reversed().
+     * 用于初始加载时分页:只取最近 PAGE_SIZE 条,避免一次性加载全部导致卡顿/OOM。
+     * 返回顺序为降序(最新在前),调用方需自行 reversed()。
      */
     @Query(
-        "SELECT * FROM messages WHERE sessionId = :sessionId AND deletedAt IS NULL ORDER BY CASE WHEN commitSeq > 0 THEN commitSeq ELSE seq END DESC, createdAt DESC, id DESC LIMIT :limit",
+        "SELECT * FROM messages WHERE sessionId = :sessionId AND deletedAt IS NULL ORDER BY CASE WHEN " +
+            "commitSeq > 0 THEN commitSeq ELSE seq END DESC, createdAt DESC, id DESC LIMIT :limit",
     )
     suspend fun getRecentBySession(sessionId: String, limit: Int): List<MessageEntity>
 
-    /** Recuperación del historial planificada:Leer solo mensajes con información de visualización de herramientas,Evite cargar sesiones largas enteras para planes de recuperación. */
+    /** 计划历史恢复用:只读取带工具展示信息的消息,避免为恢复计划加载整段长会话。 */
     @Query(
         "SELECT * FROM messages WHERE sessionId = :sessionId AND toolCallInfoJson IS NOT NULL " +
             "ORDER BY CASE WHEN commitSeq > 0 THEN commitSeq ELSE seq END ASC, createdAt ASC, id ASC",
@@ -73,13 +77,13 @@ interface MessageDao {
     suspend fun getToolCallMessagesBySession(sessionId: String): List<MessageEntity>
 
     /**
-     * v1.53-A1: carga de ventana — Obtener la sesión especificada "secuencia válida" < beforeSeq mensajes de primer límite(orden descendente).
+     * v1.53-A1: 窗口加载 — 取指定会话 "有效序列" < beforeSeq 的前 limit 条消息(降序)。
      *
-     * Solía deslizarse hacia arriba para cargar más.:Una secuencia válida del mensaje más antiguo de la lista actual.(commitSeq>0 tomar commitSeq,
-     * De lo contrario toma seq)como punto de anclaje,Tomemos como ejemplo la historia anterior. La clave de filtro y la clave de clasificación tienen el mismo origen(Igual que
-     * CASE WHEN commitSeq > 0 THEN commitSeq ELSE seq END),Evite creado en
-     * REPLACE(Editar/renacer/Interrumpir la recuperación)Duplicación de paginación causada por la actualización/Noticias filtradas.
-     * El orden de devolución es descendente.(último primero),La persona que llama necesita reversed().
+     * 用于上滑加载更多:以当前列表最早一条消息的有效序列(commitSeq>0 取 commitSeq,
+     * 否则取 seq)为锚点,取更早的历史。过滤键与排序键同源(同为
+     * CASE WHEN commitSeq > 0 THEN commitSeq ELSE seq END),避免 createdAt 在
+     * REPLACE(编辑/重生成/中断恢复)时被刷新导致的分页重复/漏消息。
+     * 返回顺序为降序(最新在前),调用方需自行 reversed()。
      */
     @Query(
         "SELECT * FROM messages WHERE sessionId = :sessionId " +
@@ -89,19 +93,19 @@ interface MessageDao {
     )
     suspend fun getOlderBySession(sessionId: String, beforeSeq: Long, limit: Int): List<MessageEntity>
 
-    /** v1.53-A1: Número total de mensajes de conversación(El juicio de paginación tieneMásSe utiliza historial). */
+    /** v1.53-A1: 会话消息总数(分页判断 hasMoreHistory 用)。 */
     @Query("SELECT COUNT(*) FROM messages WHERE sessionId = :sessionId")
     suspend fun countBySession(sessionId: String): Int
 
-    /** v92: Max dentro de la sesión seq(A los nuevos mensajes se les asigna seq con). */
+    /** v92: 会话内最大 seq(新消息分配 seq 用)。 */
     @Query("SELECT COALESCE(MAX(seq), 0) FROM messages WHERE sessionId = :sessionId")
     suspend fun getMaxSeq(sessionId: String): Long
 
     /**
-     * v1.58/v2.4: Consultar la sesión hasta el punto de anclaje especificado.(Contiene)todas las noticias de(orden ascendente),Se utiliza para conversar bifurcando tenedores.
+     * v1.58/v2.4: 查询会话中到指定锚点为止(含)的全部消息(升序),用于对话分叉 Fork。
      *
-     * El límite de la bifurcación debe utilizar la misma clave compuesta que la clasificación de lectura de la sesión. Simplemente truncar mediante createAt tomará el mismo milisegundo
-     * También se copian los mensajes posteriores al punto de anclaje.,Tanto la escritura en streaming como la importación por lotes pueden producir la misma marca de tiempo.
+     * 分叉边界必须与会话读取排序使用同一个复合键。仅按 createdAt 截断会把同一毫秒内
+     * 锚点之后的消息一并复制,而流式写入和批量导入都可能产生相同时间戳。
      */
     @Query(
         """
@@ -124,33 +128,34 @@ interface MessageDao {
     )
     suspend fun getUpToBySession(sessionId: String, untilOrder: Long, untilCreatedAt: Long, untilMessageId: String): List<MessageEntity>
 
-    /** insertar mensaje(Reemplazar en caso de conflicto,Admite mensajes del asistente de actualización de transmisión). */
+    /** 插入消息(冲突时替换,支持流式更新 assistant 消息)。 */
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(message: MessageEntity)
 
-    /** Para resumen diario:Recibir mensajes de usuario dentro de un intervalo de tiempo específico(orden ascendente,edición limitada). */
+    /** 每日总结用:取指定时间区间内的用户消息(升序,限量)。 */
     @Query(
-        "SELECT * FROM messages WHERE role = 'USER' AND createdAt >= :fromCreatedAt AND createdAt < :toCreatedAt ORDER BY createdAt ASC, rowid ASC LIMIT :limit",
+        "SELECT * FROM messages WHERE role = 'USER' AND createdAt >= :fromCreatedAt AND createdAt < " +
+            ":toCreatedAt ORDER BY createdAt ASC, rowid ASC LIMIT :limit",
     )
     suspend fun getUserMessagesBetween(fromCreatedAt: Long, toCreatedAt: Long, limit: Int): List<MessageEntity>
 
-    /** Compatible con consultas de límite inferior de otras personas que llaman. */
+    /** 兼容其他调用方的下界查询。 */
     @Query("SELECT * FROM messages WHERE role = 'USER' AND createdAt >= :fromCreatedAt ORDER BY createdAt ASC, rowid ASC LIMIT :limit")
     suspend fun getUserMessagesSince(fromCreatedAt: Long, limit: Int): List<MessageEntity>
 
-    /** Inserción por lotes. */
+    /** 批量插入。 */
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertAll(messages: List<MessageEntity>)
 
-    /** Eliminar todos los mensajes en la conversación especificada(Cascada activada cuando se elimina la sesión,También se puede ajustar manualmente). */
+    /** 删除指定会话的全部消息(会话删除时级联触发,也可手动调)。 */
     @Query("DELETE FROM messages WHERE sessionId = :sessionId")
     suspend fun deleteBySession(sessionId: String)
 
-    /** Leer mensajes antes de eliminar la sesión en cascada id,Sidecar de imagen para limpiar discos. */
+    /** 级联删除会话前读取消息 id,供清理落盘的图片 sidecar。 */
     @Query("SELECT id FROM messages WHERE sessionId = :sessionId")
     suspend fun getMessageIdsBySessionId(sessionId: String): List<String>
 
-    /** 7 Días de eliminación en cascada de sesiones caducadas antes de leer mensajes id,Para limpieza de sidecar de imagen. */
+    /** 7 天过期会话级联删除前读取消息 id,供清理图片 sidecar。 */
     @Query(
         "SELECT messages.id FROM messages " +
             "INNER JOIN sessions ON sessions.id = messages.sessionId " +
@@ -158,11 +163,11 @@ interface MessageDao {
     )
     suspend fun getMessageIdsForExpiredSessions(cutoff: Long): List<String>
 
-    /** Leer mensajes antes de eliminarlos por completo id,Para limpieza de sidecar de imagen. */
+    /** 全量硬删除前读取消息 id,供清理图片 sidecar。 */
     @Query("SELECT id FROM messages")
     suspend fun getAllMessageIds(): List<String>
 
-    /** Una vez que la copia de seguridad y la restauración sean exitosas, confirme la ruta a la imagen del disco a la que todavía hace referencia el mensaje. */
+    /** 备份恢复成功后确认仍被消息引用的落盘图片路径。 */
     @Query(
         """
         SELECT imageBase64Json FROM messages
@@ -171,59 +176,62 @@ interface MessageDao {
     )
     suspend fun getMessagesWithPersistedImagePaths(): List<String>
 
-    /** v2.6.16: Referencias de audio de voz a las que todavía hacen referencia los mensajes (se utilizan como lista blanca al limpiar archivos de voz huérfanos). */
+    /** v2.6.16: 当前仍被消息引用的语音音频引用（清理孤儿语音文件时作为白名单）。 */
     @Query("SELECT voiceUri FROM messages WHERE voiceUri IS NOT NULL")
     suspend fun getReferencedVoiceUris(): List<String>
 
-    /** v1.48: Eliminar un solo mensaje por id(Mantenga presionado el menú para eliminar mensajes enviados accidentalmente). También limpie el índice FTS. */
+    /** v1.48: 按 id 删除单条消息(长按菜单删除误发消息用)。同时清理 FTS 索引。 */
     @Query("DELETE FROM messages WHERE id = :messageId")
     suspend fun deleteById(messageId: String)
 
-    /** v1.0.80 (T-4): Verifique todos los mensajes secundarios del mensaje principal(Al eliminar el mensaje de un usuario, elimine las respuestas del asistente en cascada). */
+    /** v1.0.80 (T-4): 查父消息的所有子消息(删除 user 消息时级联删除其 assistant 回复)。 */
     @Query("SELECT * FROM messages WHERE parentGroupId = :parentId OR parentMessageId = :parentId")
     suspend fun getChildrenByParentId(parentId: String): List<MessageEntity>
 
-    /** Eliminar un solo mensaje por id(Editar/Se utiliza para truncamiento durante la regeneración.). */
+    /** 按 id 删除单条消息(编辑/重生成时截断用)。 */
     @Query("DELETE FROM messages WHERE sessionId = :sessionId AND createdAt >= :fromCreatedAt")
     suspend fun deleteFromCreatedAt(sessionId: String, fromCreatedAt: Long)
 
-    /** Obtenga el último mensaje de la sesión especificada. */
+    /** 取指定会话的最后一条消息。 */
     @Query("SELECT * FROM messages WHERE sessionId = :sessionId ORDER BY createdAt DESC LIMIT 1")
     suspend fun getLastBySession(sessionId: String): MessageEntity?
 
-    /** Recibe un solo mensaje por id(Para editar mensajes del asistente). */
+    /** 按 id 取单条消息(编辑助手消息用)。 */
     @Query("SELECT * FROM messages WHERE sessionId = :sessionId AND id = :messageId LIMIT 1")
     suspend fun getById(sessionId: String, messageId: String): MessageEntity?
 
-    /** v1.107: Recibe solo un mensaje por ID de mensaje(Verifique el ID de sesión al eliminar para mantener el recuento de redundancia). */
+    @Query("SELECT * FROM messages WHERE id IN (:messageIds)")
+    suspend fun getByIds(messageIds: List<String>): List<MessageEntity>
+
+    /** v1.107: 只按 messageId 取单条消息(删除时查 sessionId 用于冗余计数维护)。 */
     @Query("SELECT * FROM messages WHERE id = :messageId LIMIT 1")
     suspend fun getByMessageId(messageId: String): MessageEntity?
 
-    /** P3-16: Recibe el último mensaje del asistente global(Para widgets de conversación de escritorio,Entre sesiones). */
+    /** P3-16: 取全局最近一条 assistant 消息(桌面对话小部件用,跨会话)。 */
     @Query("SELECT * FROM messages WHERE role = 'ASSISTANT' ORDER BY createdAt DESC LIMIT 1")
     suspend fun getLastAssistantMessage(): MessageEntity?
 
     /**
-     * v1.0.4: Recibe los últimos N mensajes del asistente a nivel mundial(Entre sesiones,Para páginas de informes/seguimiento del estado de ánimo).
+     * v1.0.4: 取全局最近 N 条 assistant 消息(跨会话,情绪追踪 / 报告页用)。
      *
-     * usado para [io.zer0.muse.data.emotion.MoodParser] Analizar desde el contenido del mensaje `<mood>` etiqueta,
-     * Las tendencias de sentimiento agregadas se muestran en la página del informe.
+     * 用于 [io.zer0.muse.data.emotion.MoodParser] 从消息内容中解析 `<mood>` 标签,
+     * 聚合情绪趋势展示在报告页。
      */
     @Query("SELECT * FROM messages WHERE role = 'ASSISTANT' ORDER BY createdAt DESC LIMIT :limit")
     suspend fun getRecentAssistantMessages(limit: Int): List<MessageEntity>
 
     /**
-     * LIKE Una búsqueda exhaustiva:Sólo si FTS no puede anular el query(Sin token/palabra indexable)O se utiliza cuando se produce una excepción de consulta FTS.
+     * LIKE 兜底搜索:仅当 FTS 无法覆盖该 query(无可索引 token / 单字)或 FTS 查询异常时使用。
      *
-     * Una única sesión SQL JOIN recupera el título de la sesión a la vez(Sin inspección adicional artículo por artículo N+1);Regresar [MessageSearchJoin]
-     * (Contiene contenido texto original.),Construido en base al texto original por la capa Repositorio usando buildSnippet
-     * [SearchResult.contentSnippet],Consistente con la semántica del fragmento de ruta FTS.
+     * 单条 SQL JOIN sessions 一次取回会话标题(无逐条补查的 N+1);返回 [MessageSearchJoin]
+     * (含 content 原文),由 Repository 层用 buildSnippet 基于原文构建
+     * [SearchResult.contentSnippet],与 FTS 路径片段语义一致。
      *
-     * Notas de rendimiento:LIKE Es un escaneo de tabla completo.,naturalmente más lento que FTS;pasa aqui (a) Sólo se activa en los límites antes mencionados,
-     * (b) [limit] Un límite superior limita el costo a un rango acotado,Por lo tanto, se reserva como red de seguridad en lugar de forzar un cambio al FTS.
+     * 性能说明:LIKE 是全表扫描,天然慢于 FTS;这里通过 (a) 只在前述边界触发、
+     * (b) [limit] 上界把代价限制在有界范围,故保留为兜底而非强行改走 FTS。
      *
-     * @param pattern Cadena de patrón LIKE escapada(Como por ejemplo %keyword%),cooperar ESCAPE '\'
-     * @param limit Número máximo de artículos devueltos(Predeterminado 50)
+     * @param pattern 已转义的 LIKE 模式串(如 %keyword%),配合 ESCAPE '\'
+     * @param limit 最大返回条数(默认 50)
      */
     @Query(
         """
@@ -264,87 +272,87 @@ interface MessageDao {
     )
     suspend fun searchMessageContentLikeInSession(sessionId: String, pattern: String, limit: Int = 50): List<MessageSearchJoin>
 
-    /** flujo total de mensajes(Para panel de estadísticas). */
+    /** 消息总数流(统计面板用)。 */
     @Query("SELECT COUNT(*) FROM messages")
     fun observeCount(): Flow<Int>
 
-    // ── v1.0.30: Gestión de variantes ──
+    // ── v1.0.30: 变体管理 ──
 
-    /** Obtenga todos los mensajes para el mismo grupo de variantes (ordenados por índice de variantes). */
+    /** 获取同一变体组的所有消息（按 variantIndex 排序）。 */
     @Query("SELECT * FROM messages WHERE variantGroupId = :groupId ORDER BY variantIndex ASC")
     suspend fun getVariants(groupId: String): List<MessageEntity>
 
-    /** Actualiza el recuento de variantes de todos los mensajes dentro del grupo de variantes. */
+    /** 更新变体组内所有消息的 variantCount。 */
     @Query("UPDATE messages SET variantCount = :count WHERE variantGroupId = :groupId")
     suspend fun updateVariantCount(groupId: String, count: Int)
 
-    /** Borrar todos los mensajes(Se utiliza para realizar copias de seguridad y restaurar,Android 16 prohibido execSQL DML). */
+    /** 清空全部消息(备份恢复时用,Android 16 禁止 execSQL DML)。 */
     @Query("DELETE FROM messages")
     suspend fun deleteAll()
 
-    /** Obtener todos los mensajes(rebuild Para indexar,tomar solo id + content). */
+    /** 取全部消息(rebuild 索引用,只取 id + content)。 */
     @Query("SELECT id, content FROM messages")
     suspend fun getAllForFtsRebuild(): List<FtsRebuildRow>
 
     /**
-     * Toma el más cercano [limit] mensajes(id + content,Orden descendente por creado en).FTS Para comprobar la coherencia del contenido.
+     * 取最近 [limit] 条消息(id + content,按 createdAt 降序)。FTS 一致性内容抽查用。
      *
-     * C-23: ensureFtsIndexConsistent Cuando el número de filas es igual pero el contenido puede variar,Muestra de noticias recientes
-     * Validación MATCH a nivel de contenido. La última novedad es el editor./Regenerar en las áreas más frecuentemente tocadas.,La tasa de aciertos de muestreo más alta;
-     * El límite acotado evita la carga completa(full rebuild solo necesito getAllForFtsRebuild).
+     * C-23: ensureFtsIndexConsistent 的行数相等但内容可能漂移时,抽样最近消息做
+     * 内容级 MATCH 校验。最近消息是编辑/重生成最常触达的区域,抽样命中率最高;
+     * 有界 limit 避免全量加载(full rebuild 才需要 getAllForFtsRebuild)。
      */
     @Query("SELECT id, content FROM messages ORDER BY createdAt DESC LIMIT :limit")
     suspend fun getFtsSample(limit: Int): List<FtsRebuildRow>
 
-    /** Phase 10.3: messages Número de filas de la tabla(ensureFtsIndexConsistent Más útil). */
+    /** Phase 10.3: messages 表行数(ensureFtsIndexConsistent 比较用)。 */
     @Query("SELECT COUNT(*) FROM messages")
     suspend fun countMessages(): Int
 
-    /** Número de mensajes para cada rol.(Para panel de estadísticas). */
+    /** 各角色消息数(统计面板用)。 */
     @Query("SELECT role, COUNT(*) as cnt FROM messages GROUP BY role")
     suspend fun countByRole(): List<RoleCount>
 
     /**
-     * v0.46: Para mapas de calor estadísticos — Consulta la marca de tiempo creada en todos los mensajes de usuario.
-     * Se utiliza para agrupar por fecha en la capa ViewModel,Cuente el número de mensajes diarios.
-     * Solo revisa los mensajes de los usuarios(Comportamiento activo del usuario),No marque el asistente/sistema/herramienta.
+     * v0.46: 统计热力图用 — 查询所有 user 消息的 createdAt 时间戳。
+     * 用于在 ViewModel 层 groupBy 日期,统计每日消息数。
+     * 只查 user 消息(用户主动行为),不查 assistant/system/tool。
      *
-     * role las tiendas de campo MessageRole.USER.name(mayúsculas enum name,Como por ejemplo "USER"),
-     * con [getLastAssistantMessage] de `role = 'ASSISTANT'` Sea coherente en su estilo de escritura.
+     * role 字段存的是 MessageRole.USER.name(大写 enum name,如 "USER"),
+     * 与 [getLastAssistantMessage] 的 `role = 'ASSISTANT'` 写法保持一致。
      */
     @Query("SELECT createdAt FROM messages WHERE role = 'USER'")
     suspend fun getAllUserMessageTimestamps(): List<Long>
 
     /**
-     * v1.104 U8: Para filtrar el rango de tiempo de la página de estadísticas. — Consulta la marca de tiempo creada en todos los mensajes del ASISTENTE.
+     * v1.104 U8: 统计页时间范围筛选用 — 查询全部 ASSISTANT 消息的 createdAt 时间戳。
      *
-     * con [getAllUserMessageTimestamps] simetria,Para ViewModel después de filtrar por rango de tiempo en la memoria
-     * calcular totalAiMessages(Evite depender de countByRole para la agregación completa).
+     * 与 [getAllUserMessageTimestamps] 对称,供 ViewModel 在内存按 timeRange 过滤后
+     * 计算 totalAiMessages(避免依赖 countByRole 的全量聚合)。
      */
     @Query("SELECT createdAt FROM messages WHERE role = 'ASSISTANT'")
     suspend fun getAllAssistantMessageTimestamps(): List<Long>
 
     /**
-     * v0.46: Para la página de estadísticas — Consulta todas las novedades(Sin límite de roles)La marca de tiempo creada en.
-     * Se utiliza para contar el número total de mensajes/semana/mes/promedio diario/tendencias semanales y otros indicadores derivados,
-     * Calculado después de la fecha groupBy en la capa ViewModel.
+     * v0.46: 统计页用 — 查询全部消息(不限角色)的 createdAt 时间戳。
+     * 用于统计总消息数 / 本周 / 本月 / 平均每日 / 每周趋势等衍生指标,
+     * 在 ViewModel 层 groupBy 日期后计算。
      */
     @Query("SELECT createdAt FROM messages")
     suspend fun getAllMessageTimestamps(): List<Long>
 
     /**
-     * Phase 8.3: Establecer el estado de la recopilación de mensajes.
+     * Phase 8.3: 设置消息收藏状态。
      */
     @Query("UPDATE messages SET favorite = :favorite WHERE id = :id")
     suspend fun setFavorite(id: String, favorite: Boolean)
 
     /**
-     * Phase 8.3: Observe todos los mensajes favoritos en todas las sesiones(Para panel de colección,Orden descendente por creado en).
+     * Phase 8.3: 观察跨会话的全部收藏消息(收藏面板用,按 createdAt 降序)。
      *
-     * El calibre es consistente con otras consultas en este documento.:JOIN sessions Excluya conversaciones eliminadas temporalmente y excluya mensajes eliminados temporalmente.
-     * Las consultas desnudas anteriores dejarán los favoritos de las sesiones eliminadas en la lista(El usuario hace clic y no puede encontrar la sesión.),
-     * y traer LIMIT 200 —— A partir del artículo 201, es silencioso y no puede ser descobrado. La recopilación la inicia el usuario
-     * Una pequeña colección salvada,La lista está alojada en LazyColumn.,No se realiza ningún truncamiento silencioso.
+     * 口径与本文件其它查询一致:JOIN sessions 排除软删会话、排除软删消息。
+     * 此前的裸查询会把已删会话里的收藏留在列表里(用户点进去找不到会话),
+     * 而且带 LIMIT 200 —— 第 201 条起静默不可见也无法取消收藏。收藏是用户主动
+     * 攒下的小集合,列表由 LazyColumn 承载,不做静默截断。
      */
     @Query(
         "SELECT m.* FROM messages m JOIN sessions s ON m.sessionId = s.id " +
@@ -354,20 +362,20 @@ interface MessageDao {
     fun observeAllFavorites(): Flow<List<MessageEntity>>
 
     /**
-     * v1.104 U7: Establecer etiquetas de grupos favoritos(null = Mover a desagrupado).
+     * v1.104 U7: 设置收藏分组标签(null = 移到未分组)。
      */
     @Query("UPDATE messages SET favoriteTag = :tag WHERE id = :id")
     suspend fun setMessageFavoriteTag(id: String, tag: String?)
 
-    /** Función1: Establecer respuesta de emoticón de mensaje(null = Cancelar respuesta). */
+    /** 功能1: 设置消息表情回应(null = 取消回应)。 */
     @Query("UPDATE messages SET reaction = :reaction WHERE id = :id")
     suspend fun setReaction(id: String, reaction: String?)
 
     /**
-     * v1.104 U7: Observe todas las etiquetas de grupos de colecciones con nombre(Eliminar NULL/eliminar duplicados/orden ascendente).
+     * v1.104 U7: 观察所有已命名的收藏分组标签(去 NULL / 去重 / 升序)。
      *
-     * Para la representación de FilterChip en la parte superior de la pantalla Favoritos"Todos / tag1 / tag2 / …".
-     * NULL(No agrupado)No en este resultado — Por UI solo con"No agrupado"chip Llega al fondo de esto.
+     * 供 FavoritesScreen 顶部 FilterChip 渲染"全部 / tag1 / tag2 / …"。
+     * NULL(未分组)不在此结果里 — 由 UI 单独以"未分组"chip 兜底。
      */
     @Query(
         "SELECT DISTINCT m.favoriteTag FROM messages m JOIN sessions s ON m.sessionId = s.id " +
@@ -377,12 +385,12 @@ interface MessageDao {
     fun observeAllFavoriteTags(): Flow<List<String>>
 
     /**
-     * §11-4: Obtenga los números de serie de la última versión de cada grupo de variantes.
+     * §11-4: 取一批变体组各自的最新版本序号。
      *
-     * La colección es**OK**,La regeneración agregará una nueva fila de variantes, pero el favorito de la fila anterior no cambiará. Entonces en los favoritos
-     * probablemente acostado“1ra edición”,La sesión muestra la versión 3. Aquí, el modo de solo lectura toma el valor máximo de cada grupo. variantIndex,
-     * Marcar colecciones más pequeñas que ellas como versiones anteriores mediante la interfaz de usuario —— No cambie la ubicación de la colección ni muestre el contenido.,
-     * por mostrar“Última versión”Hará que los no favoritos caigan en una línea de no favoritos(Se hizo clic pero no hubo respuesta.).
+     * 收藏存的是**行**,重新生成会新增一条变体行、旧行的 favorite 不动。于是收藏夹里
+     * 可能躺着“第 1 版”,而会话里展示的是第 3 版。这里只读地拿每组最大 variantIndex,
+     * 由 UI 把小于它的收藏标成旧版本 —— 不改收藏位、不换展示内容,
+     * 因为展示“最新版”会让取消收藏落到一条并未收藏的行上(点了没反应)。
      */
     @Query(
         "SELECT variantGroupId, MAX(variantIndex) AS variantIndex FROM messages " +
@@ -390,18 +398,18 @@ interface MessageDao {
     )
     suspend fun getLatestVariantIndexes(groupIds: List<String>): List<VariantHead>
 
-    // ── v0.47: Extensión de la página de estadísticas(migración cero,consulta pura) ──
+    // ── v0.47: 统计页扩展(零迁移,纯查询) ──
 
-    /** v1.0.30: ASSISTANT Longitud del contenido acumulativo del mensaje (≈ token base de estimación). */
+    /** v1.0.30: ASSISTANT 消息累计内容长度（≈ token 估算基准）。 */
     @Query("SELECT COALESCE(SUM(LENGTH(content)), 0) FROM messages WHERE role = 'ASSISTANT'")
     suspend fun sumAssistantContentLength(): Long
 
     /**
-     * Uso total medido para una sola sesión (get_token_usage columna "Esta sesión").
+     * 单个会话的实测用量合计（get_token_usage 的「本会话」一栏）。
      *
-     * La tabla de flujo de uso use_records no tiene una dimensión de sesión y los números a nivel de sesión solo se pueden medir a partir de mensajes en el proveedor.
-     * Campos de uso de suma: cuente solo las filas ASISTENTES (usage Cuelgue solo los mensajes del asistente), omita líneas eliminadas y líneas de ceros,
-     * De acuerdo con el enfoque de "no recordar todos los ceros" de use_records.
+     * 用量流水表 usage_records 没有会话维度，会话级数字只能从 messages 上 provider 实测的
+     * 用量字段求和：只数 ASSISTANT 行（usage 只挂在助手消息上）、跳过已删除行与全零行，
+     * 与 usage_records 的「全零不记」口径保持一致。
      */
     @Query(
         """
@@ -418,19 +426,19 @@ interface MessageDao {
     suspend fun usageTotalsBySession(sessionId: String): SessionUsageAggregate
 
     /**
-     * v0.47: Cuente el número de mensajes del ASISTENTE agrupados por modelId(Para gráficos de anillos).
+     * v0.47: 按 modelId 分组统计 ASSISTANT 消息数(环形图用)。
      *
-     * Cuente solo los mensajes con el rol ASISTENTE y el ID de modelo no vacío(user/system Ningún mensaje modelId).
-     * Se utiliza para verificar el repositorio de configuración en la capa ViewModel para obtener el nombre para mostrar del modelo.
+     * 只统计 ASSISTANT 角色且 modelId 非空的消息(user/system 消息无 modelId)。
+     * 用于在 ViewModel 层反查 SettingsRepository 得到模型显示名。
      */
     @Query("SELECT modelId, COUNT(*) as cnt FROM messages WHERE role = 'ASSISTANT' AND modelId IS NOT NULL GROUP BY modelId")
     suspend fun countByModel(): List<ModelCount>
 
     /**
-     * v0.47: Estadísticas de mensajes agrupados por ID de asistente(Para gráficos de barras horizontales).
+     * v0.47: 按 assistantId 分组统计消息数(横向条形图用)。
      *
-     * JOIN sessions tomar assistantId,Agregue el número de todos los mensajes por asistente.
-     * Se utiliza para verificar el AssistantRepository en la capa ViewModel para obtener el nombre para mostrar del asistente.
+     * JOIN sessions 取 assistantId,按助手聚合全部消息数。
+     * 用于在 ViewModel 层反查 AssistantRepository 得到助手显示名。
      */
     @Query(
         "SELECT s.assistantId as assistantId, COUNT(*) as cnt FROM messages m JOIN sessions s ON m.sessionId = s.id GROUP BY s.assistantId",
@@ -438,10 +446,10 @@ interface MessageDao {
     suspend fun countByAssistant(): List<AssistantCount>
 
     /**
-     * v0.47: Número agregado de mensajes por hora(24 Para gráfico de barras).
+     * v0.47: 按小时聚合消息数(24 根柱状图用)。
      *
-     * createdAt marca de tiempo en milisegundos,/1000 Utilice strftime para obtener la hora en la zona horaria local después de convertir segundos(00-23).
-     * Las horas faltantes las completa ViewModel 0,Haz una lista de 24 elementos.
+     * createdAt 为毫秒时间戳,/1000 转秒后用 strftime 取本地时区小时(00-23)。
+     * 缺失的小时由 ViewModel 补 0,凑成 24 元素列表。
      */
     @Query(
         "SELECT strftime('%H', createdAt/1000, 'unixepoch', 'localtime') as hour, " +
@@ -450,21 +458,21 @@ interface MessageDao {
     suspend fun countByHour(): List<HourCount>
 
     /**
-     * v0.47: Obtenga las N conversaciones principales con la mayor cantidad de mensajes(Top 10 Para listas).
+     * v0.47: 取消息数最多的前 N 个会话(Top 10 列表用)。
      *
-     * Agregar el número de mensajes por ID de sesión,orden descendente [n] artículo.
-     * Se utiliza para verificar SessionDao en la capa ViewModel para obtener el título de la sesión.
+     * 按 sessionId 聚合消息数,降序取前 [n] 条。
+     * 用于在 ViewModel 层反查 SessionDao 得到会话标题。
      */
     @Query("SELECT sessionId, COUNT(*) as cnt FROM messages GROUP BY sessionId ORDER BY cnt DESC LIMIT :n")
     suspend fun topSessionsByMessageCount(n: Int): List<SessionMessageCount>
 
     /**
-     * widget de escritorio:Obtenga el último mensaje del asistente del "asistente seleccionado por el usuario en el widget".
+     * 桌面小组件:取「用户在小组件里选中的助手」最近一条 assistant 消息。
      *
-     * Anteriormente, el widget se ajustaba directamente [getLastAssistantMessage] Obtenga la última versión global,La selección de un asistente no tiene ningún impacto en el contenido mostrado.
+     * 此前小组件直接调 [getLastAssistantMessage] 取全局最近一条,选助手对显示内容零影响。
      *
-     * Se coloca al final de la interfaz para no mover los números de línea de los métodos existentes. —— La línea base de ktlint de este módulo coincide por número de línea,
-     * Insertar en el medio hará que todas las entradas posteriores se desvíen hacia"Nueva violación".
+     * 放在接口末尾是为了不移动既有方法的行号 —— 本模块 ktlint 基线按行号匹配,
+     * 中间插入会让后面所有条目漂移成"新增违规"。
      */
     @Query(
         "SELECT m.* FROM messages m JOIN sessions s ON m.sessionId = s.id " +
@@ -475,39 +483,39 @@ interface MessageDao {
     suspend fun getLastAssistantMessageForAssistant(assistantId: String): MessageEntity?
 }
 
-/** Phase 10.3: FTS rebuild Utilice proyección ligera. */
+/** Phase 10.3: FTS rebuild 用的轻量投影。 */
 data class FtsRebuildRow(
     val id: String,
     val content: String,
 )
 
-// ── v0.47: Proyección ampliada de la página de estadísticas(migración cero,Para consulta pura) ──
+// ── v0.47: 统计页扩展投影(零迁移,纯查询用) ──
 
-/** v0.47: Recuento de mensajes de ASISTENTE agrupados por modelId(Para gráficos de anillos). */
+/** v0.47: 按 modelId 分组的 ASSISTANT 消息计数(环形图用)。 */
 data class ModelCount(
     val modelId: String,
     val cnt: Int,
 )
 
-/** v0.47: Recuento de mensajes agrupados por ID de asistente(Para gráficos de barras horizontales). */
+/** v0.47: 按 assistantId 分组的消息计数(横向条形图用)。 */
 data class AssistantCount(
     val assistantId: String,
     val cnt: Int,
 )
 
-/** v0.47: Recuento de mensajes agrupados por hora(24 Para gráfico de barras,hour para "00"-"23"). */
+/** v0.47: 按小时分组的消息计数(24 根柱状图用,hour 为 "00"-"23")。 */
 data class HourCount(
     val hour: String,
     val cnt: Int,
 )
 
-/** v0.47: Proyección del recuento de mensajes para una sola sesión(Top 10 Para listas). */
+/** v0.47: 单个会话的消息数投影(Top 10 列表用)。 */
 data class SessionMessageCount(
     val sessionId: String,
     val cnt: Int,
 )
 
-/** §11-4: La proyección del número de serie de la última versión del grupo de variantes.(Pestaña de favoritos“versión antigua”usar). */
+/** §11-4: 变体组的最新版本序号投影(收藏页标“旧版本”用)。 */
 data class VariantHead(
     val variantGroupId: String,
     val variantIndex: Int,

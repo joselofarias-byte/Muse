@@ -1,99 +1,99 @@
-<!-- devdoc: Documentación de desarrollo interno.,No se muestra a los usuarios,LLM Consulta a través de Knowledge_search -->
-# Guía completa para la configuración del asistente
+<!-- devdoc: 内部开发文档,不向用户展示,LLM 通过 knowledge_search 查询 -->
+# 助手配置完整指南
 
-> escena desencadenante: Usuario preguntó"Cómo crear un asistente""¿Qué configuraciones tiene el asistente?""Cómo combinar modelos exclusivos""Cómo configurar la lista blanca de herramientas""Cómo compartir asistente"tiempo,Consulte este documento y responda con sinceridad.
-> Este documento está basado en el código fuente. AssistantEntity.kt / AssistantRepository.kt / AssistantDetailPages.kt verdadera realización.
+> 触发场景: 用户问"怎么创建助手""助手有哪些设置""专属模型怎么配""工具白名单怎么设""怎么分享助手"时,参考本文档据实回答。
+> 本文档基于源码 AssistantEntity.kt / AssistantRepository.kt / AssistantDetailPages.kt 的真实实现。
 
-## 1. Descripción general
+## 一、概述
 
-Muse cada asistente(Agent)es un**personalidad independiente**:Tiene sistema independiente, modelo, lista blanca de herramientas, lista blanca de habilidades, configuración de memoria y extensiones.(Lorebook/Inyección rápida de palabras/mensaje rapido). Múltiples asistentes pueden colaborar(delegate_agent/chat grupal).
+Muse 的每个助手(Agent)是一个**独立人格**:拥有独立的 systemPrompt、模型、工具白名单、技能白名单、记忆配置、扩展(Lorebook/提示词注入/快捷消息)。多助手可协作(delegate_agent/群聊)。
 
-- entrada: ajustes → asistente
-- El asistente principal existe por defecto.(id="default",nombre"Asistente predeterminado")
-- Número ilimitado de asistentes,Cada asistente se configura de forma independiente
+- 入口: 设置 → 助手
+- 默认存在主助手(id="default",名字"默认助手")
+- 助手数量无上限,每个助手独立配置
 
-## 2. Crear/Editar/Eliminar
+## 二、创建/编辑/删除
 
-1. ajustes → asistente → Crear nuevo asistente
-2. Completa el nombre(Requerido),Seleccione avatar, modelo
-3. Editar la configuración de cada subpágina(Ver abajo)
-4. Eliminar: Lista de asistentes pulsación larga → Eliminar(No recuperable,Presta atención para confirmar.)
+1. 设置 → 助手 → 新建助手
+2. 填写名称(必填),选择头像、模型
+3. 编辑各子页配置(见下)
+4. 删除: 助手列表长按 → 删除(不可恢复,注意确认)
 
-## 3. Explicación detallada de 5 subpáginas de detalles del asistente
+## 三、助手详情 5 个子页详解
 
-### 3.1 Basic(Conceptos básicos)
-| campo | Descripción | Predeterminado |
+### 3.1 Basic(基础)
+| 字段 | 说明 | 默认 |
 |---|---|---|
-| avatar | avatar personalizado | Icono predeterminado |
-| Nombre | nombre para mostrar | - |
-| modelId / providerId | **modelo exclusivo**: Después de especificarlo, el asistente siempre utilizará este modelo.,No afectado por el cambio global | vacío=Usar modelo global |
-| Exportación de tarjeta asistente | Exportar a archivo/código qr | - |
+| 头像 | 自定义头像 | 默认图标 |
+| 名称 | 显示名 | - |
+| modelId / providerId | **专属模型**: 指定后该助手固定用此模型,不受全局切换影响 | 空=用全局模型 |
+| 助手卡片导出 | 导出为文件/二维码 | - |
 
-### 3.2 Prompt(palabra rápida)
-| campo | Descripción |
+### 3.2 Prompt(提示词)
+| 字段 | 说明 |
 |---|---|
-| systemPrompt | Configuración de personalidad/reglas de conducta(apoyo {{var}} Variables de plantilla) |
-| messageTemplate | Plantilla de mensaje(Pebble subconjunto compatible) |
-| presetMessagesJson | Mensaje predeterminado(Palabras de apertura, etc.) |
+| systemPrompt | 人格设定/行为规则(支持 {{var}} 模板变量) |
+| messageTemplate | 消息模板(Pebble 兼容子集) |
+| presetMessagesJson | 预设消息(开场白等) |
 
-### 3.3 Extensions(Expandir)
-| campo | Descripción |
+### 3.3 Extensions(扩展)
+| 字段 | 说明 |
 |---|---|
-| toolIdsJson | Lista blanca de herramientas(`[]`=Todos;matriz=Habilitar solo los listados) |
-| skillIdsJson | Lista blanca de habilidades(Todo integrado de forma predeterminada) |
-| mcpServerIdsJson | vinculante MCP server(La conexión se realiza correctamente y el asistente principal se vincula automáticamente.) |
-| Lorebook | Configuración de la visión mundial,Activar inyección por palabra clave |
-| PromptInjection | Inyecte palabras adicionales según las condiciones. |
-| QuickMessage | mensaje rapido chips |
+| toolIdsJson | 工具白名单(`[]`=全部;数组=只启用列出的) |
+| skillIdsJson | 技能白名单(默认全部内置) |
+| mcpServerIdsJson | 绑定 MCP server(连接成功自动绑定主助手) |
+| Lorebook | 世界观设定,按关键词触发注入 |
+| PromptInjection | 按条件注入额外提示词 |
+| QuickMessage | 快捷消息 chips |
 
-### 3.4 Memory(memoria)
-| campo | Descripción | Predeterminado |
+### 3.4 Memory(记忆)
+| 字段 | 说明 | 默认 |
 |---|---|---|
-| memoryEnabled | El asistente usa la memoria | true |
-| useGlobalMemory | Usar memoria compartida global(De lo contrario, memoria independiente) | true |
-| enableRecentChatsReference | Inyectar referencias de sesiones recientes | false |
-| enableTimeReminder | inyección de memoria dependiente del tiempo | true |
+| memoryEnabled | 助手使用记忆 | true |
+| useGlobalMemory | 用全局共享记忆(否则独立记忆) | true |
+| enableRecentChatsReference | 注入近期会话参考 | false |
+| enableTimeReminder | 时间相关记忆注入 | true |
 
-### 3.5 Advanced(Avanzado)
-| campo | Descripción | Predeterminado |
+### 3.5 Advanced(高级)
+| 字段 | 说明 | 默认 |
 |---|---|---|
-| temperature | Temperatura de muestreo | incumplimiento global |
-| reasoningLevel | nivel de pensamiento | AUTO |
-| Encabezado de solicitud | Encabezados HTTP personalizados(Algunos servicios modelo requieren) | - |
+| temperature | 采样温度 | 全局默认 |
+| reasoningLevel | 思考等级 | AUTO |
+| 请求头 | 自定义 HTTP 头(部分模型服务需要) | - |
 
-## 4. La relación entre el modelo excluyente y el modelo global(centrarse)
+## 四、专属模型与全局模型的关系(重点)
 
-- El asistente está configurado. modelId(modelo exclusivo): el asistente**Modelo exclusivo para uso fijo.**,Se sobrescribirá el cambio de modelos en una sesión.(Aviso al cambiar"Se han cubierto los modelos específicos de asistente.",Recuperación de sesión de cambio)
-- Asistente no configurado: Usar modelo predeterminado global(ajustes→Modelos y Servicios)
-- modelo de herramienta(toolModelId): Un modelo liviano para rondas de llamadas de herramientas.,per-assistant Disponible
+- 助手配置了 modelId(专属模型): 该助手**固定用专属模型**,会话里切换模型会被覆盖(切换时提示"已覆盖助手专属模型",切会话恢复)
+- 助手未配置: 用全局默认模型(设置→模型与服务)
+- 工具模型(toolModelId): 工具调用轮次用的轻量模型,per-assistant 可配
 
-## 5. Comprobación rápida de la semántica de la lista blanca
+## 五、白名单语义速查
 
-| Configuración | vacío/Predeterminado | Especificar |
+| 配置 | 空/默认 | 指定 |
 |---|---|---|
-| toolIdsJson | Todas las herramientas | Habilitar solo aquellos en la lista |
-| skillIdsJson | todas las habilidades | Habilitar solo aquellos en la lista |
-| mcpServerIdsJson | Ninguno MCP | en la lista vinculante server |
-| memoryEnabled | true | false=No hay necesidad de recordar |
+| toolIdsJson | 全部工具 | 只启用列表中的 |
+| skillIdsJson | 全部技能 | 只启用列表中的 |
+| mcpServerIdsJson | 无 MCP | 绑定列表中的 server |
+| memoryEnabled | true | false=不用记忆 |
 
-## 6. Asistente para compartir e importar
+## 六、分享与导入助手
 
-- Exportar: Detalles del asistente → Tarjeta de exportación → Generar archivo o código QR
-- importar: Escanea el código QR o importa el archivo → Generar nuevo ayudante(Contiene mensaje/lista blanca/configuración de memoria)
-- compartir con otros: La otra parte escanea el código para obtener el mismo asistente de configuración.
+- 导出: 助手详情 → 导出卡片 → 生成文件或二维码
+- 导入: 扫码或导入文件 → 生成新助手(含 prompt/白名单/记忆配置)
+- 分享给别人: 对方扫码即可获得同配置助手
 
-## 7. Preguntas frecuentes Q&A
+## 七、常见问题 Q&A
 
-1. **"Cómo permitir que cada asistente use diferentes modelos"**: Detalles del asistente → Basic → Elige tu propio modelo.
-2. **"¿Por qué cortar el modelo no tiene ningún efecto?"**: El asistente está configurado con un modelo dedicado.;El cambio manual dentro de una sesión se sobrescribirá(Consejos),La recuperación de sesiones cortadas es exclusiva.
-3. **"Cómo hacer que el asistente utilice sólo algunas herramientas"**: Extensions → Lista blanca de herramientas,Cancela lo que no necesitas.
-4. **"El nuevo asistente MCP no se puede utilizar"**: Asistente de confirmación Extensions → MCP el server(El asistente principal recién conectado se vinculará automáticamente).
-5. **"Cómo hacer una copia de seguridad de la configuración del asistente"**: Tarjeta de exportación(Archivo/código qr),Sólo guárdalo.
-6. **"systemPrompt ¿Qué variables se pueden utilizar en"**: {{user_name}}/{{char}}/{{date}} espera,Pebble Filtros de soporte de subconjuntos/bucle/condiciones.
+1. **"怎么让每个助手用不同模型"**: 助手详情 → Basic → 选专属模型。
+2. **"为什么切了模型没效果"**: 该助手配置了专属模型;在会话里手动切换会覆盖(提示),切会话恢复专属。
+3. **"怎么让助手只用部分工具"**: Extensions → 工具白名单,取消不需要的。
+4. **"新 MCP 助手用不了"**: 确认助手 Extensions → MCP 已绑定该 server(新连接的主助手会自动绑定)。
+5. **"怎么备份助手配置"**: 导出卡片(文件/二维码),存好即可。
+6. **"systemPrompt 里能用什么变量"**: {{user_name}}/{{char}}/{{date}} 等,Pebble 子集支持过滤器/循环/条件。
 
-## 8.LLM Puntos de llamada
+## 八、LLM 调用要点
 
-- El asistente es una personalidad independiente.: Estilo de respuesta/El comportamiento se basa en el sistema de ayuda.
-- Usuario preguntó"quien eres tu/¿Qué asistente eres?"tiempo,Responder según la configuración actual del asistente
-- No mezcle recuerdos de varios asistentes/identidad(scope El aislamiento está garantizado por el sistema.)
-- Usuario mencionado"Modificar la configuración del asistente"tiempo,Arrancar en Configuración → asistente(No cambie directamente la configuración a nivel de herramienta,Evite sobrepasar su autoridad)
+- 助手是独立人格: 回复风格/行为以该助手 systemPrompt 为准
+- 用户问"你是谁/你是哪个助手"时,按当前助手设定回答
+- 不要混淆多个助手的记忆/身份(scope 隔离由系统保证)
+- 用户提到"修改助手配置"时,引导到 设置 → 助手(工具层面不直接改配置,避免越权)

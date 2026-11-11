@@ -30,6 +30,7 @@ import io.zer0.muse.R
 import io.zer0.muse.data.ChatPreferences
 import io.zer0.muse.data.SettingsRepository
 import io.zer0.muse.data.routing.UtilityModelBinding
+import io.zer0.muse.data.routing.UtilityModelHealth
 import io.zer0.muse.data.routing.UtilityTier
 import io.zer0.muse.ui.ModelSwitchSheet
 import io.zer0.muse.ui.common.feedback.MuseDialog
@@ -45,29 +46,29 @@ import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
 /**
- * v2.x: Página de configuración del modelo auxiliar(Originales"Enrutamiento de tareas"reconstrucción de página).
+ * v2.x: 辅助模型设置页(原"任务路由"页重构)。
  *
- * Selección de modelo para modelos de tres niveles para converger uniformemente tareas auxiliares en segundo plano:
- *  - Modelo de dispositivo: Tareas breves como generación de títulos, clasificación ligera, rueda de herramientas de conversación, mensaje de portada, resumen de canal, etc.;
- *  - modelo de herramienta grande: Compresión de contexto, recuperación de memoria, resumen de actividades, descomposición de tareas.(subagente)Espere escenas que requieran comprensión.;
- *  - Modelo de ayuda visual: Comprensión de imágenes / PDF OCR,Haga clic para ingresar a la configuración de la página independiente.(Selección de modelo + prueba de sonda).
+ * 三档模型统一收敛后台辅助任务的模型选择:
+ *  - 小工具模型: 标题生成、轻量分类、对话工具轮、封面 prompt、渠道摘要等短任务;
+ *  - 大工具模型: 上下文压缩、记忆提取、活动摘要、任务拆解(子代理)等需要理解力的场景;
+ *  - 视觉辅助模型: 图片理解 / PDF OCR,点击进入独立页配置(模型选择 + 探针测试)。
  *
- * reglas en cascada: Deje las herramientas grandes en blanco → Reutilizar gadgets;Gadgets dejados en blanco → Regresar al modelo de diálogo principal.
- * Banda uniforme de encuadernación. Provider,Pulsa con precisión el canal seleccionado(Se corrigió la falla histórica en la sincronización entre canales entre canales con la misma ID.).
+ * 级联规则: 大工具留空 → 复用小工具;小工具留空 → 回退主对话模型。
+ * 绑定均带 Provider,精确命中所选渠道(修复跨渠道同 id 串台的历史缺陷)。
  *
- * Descripción: Originales"Divide automáticamente el modelo principal según el contenido de la conversación."La función de descarga de tareas se ha eliminado en su totalidad según las solicitudes de los usuarios.
- * (El lado de Android tiene demasiados escenarios y altas barreras de uso.);TaskRoutingConfig La estructura de almacenamiento se conserva para compatibilidad con datos históricos.
+ * 说明: 原"按对话内容自动分流主模型"的任务分流功能已按用户要求整体移除
+ * (安卓端场景过重、使用门槛高);TaskRoutingConfig 存储结构保留以兼容历史数据。
  */
 @Composable
 fun TaskRoutingSettingsPage(
     onBack: () -> Unit,
-    /** v2.x: Abrir página independiente de ayuda visual(Entrada visual a los bloques modelo auxiliares.). */
+    /** v2.x: 打开视觉辅助独立页(辅助模型区块的视觉入口)。 */
     onOpenVision: () -> Unit = {},
 ) {
     val settings: SettingsRepository = koinInject()
     val providers by settings.providersFlow.collectAsStateWithLifecycle(initialValue = emptyList())
     val activeProviderId by settings.activeProviderIdFlow.collectAsStateWithLifecycle(initialValue = null)
-    // v2.x: Modelo global por defecto(dialogo principal/Agent compartir)
+    // v2.x: 全局默认模型(主对话/Agent 共用)
     val selectedModelId by settings.selectedModelIdFlow.collectAsStateWithLifecycle(initialValue = null)
     val currentModelName = remember(providers, activeProviderId, selectedModelId) {
         val provider = providers.firstOrNull { it.id == activeProviderId } ?: providers.firstOrNull()
@@ -75,16 +76,16 @@ fun TaskRoutingSettingsPage(
         model?.name ?: "—"
     }
     var showMainModelPicker by remember { mutableStateOf(false) }
-    // v2.x: Modelo auxiliar(artilugio/grandes herramientas)Estado de enlace + visualización del modelo visual
+    // v2.x: 辅助模型(小工具/大工具)绑定状态 + 视觉模型展示
     val utilityBinding by settings.utilityModelBindingFlow.collectAsStateWithLifecycle(initialValue = null)
     val utilityLargeBinding by settings.utilityLargeModelBindingFlow.collectAsStateWithLifecycle(initialValue = null)
     val visionModelId by settings.visionModelIdFlow.collectAsStateWithLifecycle(initialValue = null)
     val visionProviderId by settings.visionProviderIdFlow.collectAsStateWithLifecycle(initialValue = null)
     val scope = rememberCoroutineScope()
     var editingProviderId by remember { mutableStateOf<String?>(null) }
-    // v2.x: Estado de edición del modelo auxiliar(null=Ninguno;De lo contrario, el archivo que se está editando)
+    // v2.x: 辅助模型编辑态(null=无;否则正在编辑的档位)
     var editingUtilityTier by remember { mutableStateOf<UtilityTier?>(null) }
-    // v2.x: Nombre para mostrar del modelo auxiliar(Al vincularse con el proveedor, dé prioridad a los aciertos precisos.)
+    // v2.x: 辅助模型显示名(绑定带 provider 时优先精确命中)
     val utilitySmallLabel = remember(utilityBinding, providers) {
         utilityBinding?.let { b ->
             providers.firstOrNull { it.id == b.providerId }?.models?.firstOrNull { it.id == b.modelId }?.name
@@ -105,25 +106,32 @@ fun TaskRoutingSettingsPage(
                 ?: providers.flatMap { it.models }.firstOrNull { it.id == visionModelId }?.name
         }
     }
-    // v2.x: Palabras de indicación de compresión personalizadas(Inicio de página de memoria propia)
+    // v2.x: 自定义压缩提示词(自记忆页归位)
     val customCompressPrompt by settings.customCompressPromptFlow.collectAsStateWithLifecycle(initialValue = null)
-    // Pensamiento profundo predeterminado: si el diálogo principal permite el razonamiento de forma predeterminada
+    // 默认深度思考：主对话是否默认开推理
     val chatPrefs by settings.chatPreferencesFlow
         .collectAsStateWithLifecycle(initialValue = ChatPreferences())
     var showCompressPromptDialog by remember { mutableStateOf(false) }
     var compressPromptDraft by remember(customCompressPrompt) { mutableStateOf(customCompressPrompt.orEmpty()) }
     val utilitySmallInheritText = stringResource(R.string.settings_agent_tool_model_not_set_inherit)
     val utilityLargeInheritText = stringResource(R.string.settings_agent_utility_large_not_set_inherit)
+    // 辅助模型挂了聊天照常，不在这里摆出来，用户只能翻日志才发现——
+    // 这正是「换遍模型都没用」的来源。只提示，不自动换模型。
+    val utilityFailures by UtilityModelHealth.failures.collectAsStateWithLifecycle()
+    val utilityFailure = remember(utilityFailures, utilityLargeBinding, utilityBinding) {
+        listOfNotNull(utilityLargeBinding, utilityBinding)
+            .firstNotNullOfOrNull { binding -> utilityFailures["${binding.providerId}|${binding.modelId}"] }
+    }
 
     SettingsSubPageScaffold(
         title = stringResource(R.string.settings_task_routing_aux_section),
         onBack = onBack,
     ) {
-        // v2.x: División del grupo — El "modelo de diálogo principal" y el "modelo auxiliar" son independientes label(Eliminar la ambigüedad de las capas mixtas)
+        // v2.x: 分组拆分 — 「主对话模型」与「辅助模型」各自独立 label(消除混层歧义)
         item { SectionLabel(stringResource(R.string.settings_task_routing_main_models_label)) }
         item {
             SettingsGroup(modifier = Modifier.padding(top = 4.dp)) {
-                // Modelo de diálogo principal(incumplimiento global) — chat principal/Agent modelo maestro compartido
+                // 主对话模型(全局默认) — 主聊天/Agent 共用的主模型
                 SettingsItemRow(
                     icon = MuseIcons.chat,
                     title = stringResource(R.string.settings_agent_current_model),
@@ -133,7 +141,7 @@ fun TaskRoutingSettingsPage(
                     ChevronRight()
                 }
                 SettingsGroupDivider()
-                // Pensamiento profundo de forma predeterminada: no es necesario presionar un botón para cada nueva sesión
+                // 默认深度思考：免去每次新会话都要按按钮
                 SettingsSwitchRow(
                     icon = MuseIcons.atom,
                     title = stringResource(R.string.settings_chat_default_deep_thinking),
@@ -145,10 +153,36 @@ fun TaskRoutingSettingsPage(
                 )
             }
         }
+        utilityFailure?.let { failure ->
+            item(key = "aux_utility_failure") {
+                Column(
+                    modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                ) {
+                    Text(
+                        text = stringResource(R.string.settings_task_routing_utility_failed_title),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                    Text(
+                        text =
+                        stringResource(
+                            R.string.settings_task_routing_utility_failed_desc,
+                            failure.modelId,
+                            failure.message,
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                    )
+                }
+            }
+        }
         item { SectionLabel(stringResource(R.string.settings_task_routing_aux_models_label)) }
         item {
             SettingsGroup(modifier = Modifier.padding(top = 4.dp)) {
-                // Modelo de dispositivo
+                // 小工具模型
                 SettingsItemRow(
                     icon = MuseIcons.wrench,
                     title = stringResource(R.string.settings_agent_tool_model_title),
@@ -164,7 +198,7 @@ fun TaskRoutingSettingsPage(
                     )
                 }
                 SettingsGroupDivider()
-                // modelo de herramienta grande
+                // 大工具模型
                 SettingsItemRow(
                     icon = MuseIcons.bolt,
                     title = stringResource(R.string.settings_agent_subagent_model_title),
@@ -180,7 +214,7 @@ fun TaskRoutingSettingsPage(
                     )
                 }
                 SettingsGroupDivider()
-                // Modelo de compresión: siga el modelo predeterminado del diálogo principal y no lo configure por separado
+                // 压缩模型：跟随主对话默认模型，不单独配置
                 SettingsItemRow(
                     icon = MuseIcons.gauge,
                     title = stringResource(R.string.settings_chat_compress_model),
@@ -188,7 +222,7 @@ fun TaskRoutingSettingsPage(
                     onClick = null,
                 )
                 SettingsGroupDivider()
-                // v2.x: Palabras de indicación de compresión personalizadas(Inicio de página de memoria propia;La compresión contextual es responsabilidad de las grandes herramientas)
+                // v2.x: 自定义压缩提示词(自记忆页归位;上下文压缩归大工具职责)
                 SettingsItemRow(
                     icon = MuseIcons.edit,
                     title = stringResource(R.string.settings_memory_custom_compress_prompt),
@@ -201,7 +235,7 @@ fun TaskRoutingSettingsPage(
                     },
                 ) { ChevronRight() }
                 SettingsGroupDivider()
-                // Modelo de ayuda visual(Saltar a configuración de página independiente)
+                // 视觉辅助模型(跳独立页配置)
                 SettingsItemRow(
                     icon = MuseIcons.eye,
                     title = stringResource(R.string.settings_vision_title),
@@ -214,7 +248,7 @@ fun TaskRoutingSettingsPage(
         }
     }
 
-    // v2.x: Ventana emergente de selección de modelo predeterminado global(Agrupar por proveedor,Haga clic para cambiar de proveedor y seleccionar modelo)
+    // v2.x: 全局默认模型选择弹窗(按 Provider 分组,点击即切 Provider 并选模型)
     if (showMainModelPicker) {
         MainModelPickerDialog(
             providers = providers,
@@ -231,7 +265,7 @@ fun TaskRoutingSettingsPage(
         )
     }
 
-    // v2.x: Ventana emergente de palabra de solicitud de compresión personalizada(Inicio de página de memoria propia)
+    // v2.x: 自定义压缩提示词弹窗(自记忆页归位)
     if (showCompressPromptDialog) {
         MuseDialog(
             onDismissRequest = { showCompressPromptDialog = false },
@@ -254,7 +288,7 @@ fun TaskRoutingSettingsPage(
         )
     }
 
-    // v2.x: Ventana emergente de edición de modelo auxiliar(artilugio/Gran intercambio de herramientas,ModelSwitchSheet Con selección de proveedor)
+    // v2.x: 辅助模型编辑弹窗(小工具/大工具共用,ModelSwitchSheet 带 Provider 选择)
     editingUtilityTier?.let { tier ->
         val currentBinding = when (tier) {
             UtilityTier.SMALL -> utilityBinding
@@ -277,8 +311,8 @@ fun TaskRoutingSettingsPage(
                 editingUtilityTier = null
                 editingProviderId = null
             },
-            // Los modelos auxiliares requieren"vinculación explícita"con"no obligado(cascada)"distinguible;
-            // El ModelSwitchSheet del chat normal aún conserva la semántica de enlace clara original.
+            // 辅助模型需要"显式绑定"与"未绑定(级联)"可区分;
+            // 普通聊天的 ModelSwitchSheet 仍保留原来的清除绑定语义。
             onPickDefaultModel = {
                 val providerId = editingProviderId ?: activeProviderId
                 val defaultModelId = providers.firstOrNull { it.id == providerId }
@@ -292,7 +326,7 @@ fun TaskRoutingSettingsPage(
                 editingUtilityTier = null
                 editingProviderId = null
             },
-            onRefreshModels = { /* La lista de modelos se mantiene en la página de configuración del proveedor. */ },
+            onRefreshModels = { /* 模型列表由 Provider 设置页维护 */ },
             isFetchingModels = false,
             fetchModelsError = null,
             onDismiss = {
@@ -303,7 +337,7 @@ fun TaskRoutingSettingsPage(
     }
 }
 
-/** v2.x: Guardar modelo auxiliar vinculante por engranaje(null=encuadernación clara,toma la cascada). */
+/** v2.x: 按档位保存辅助模型绑定(null=清除绑定,走级联)。 */
 private suspend fun saveUtilityBinding(settings: SettingsRepository, tier: UtilityTier, binding: UtilityModelBinding?) {
     when (tier) {
         UtilityTier.SMALL -> settings.saveUtilityModelBinding(binding)
@@ -313,8 +347,8 @@ private suspend fun saveUtilityBinding(settings: SettingsRepository, tier: Utili
 }
 
 /**
- * v2.x: Ventana emergente de selección de modelo predeterminado global — Listar todos los modelos agrupados por Proveedor,
- * Haga clic para cambiar para activar el proveedor y establecer el modelo predeterminado global(dialogo principal/Agent compartir).
+ * v2.x: 全局默认模型选择弹窗 — 按 Provider 分组列出全部模型,
+ * 点击即切换激活 Provider 并设置全局默认模型(主对话/Agent 共用)。
  */
 @Composable
 private fun MainModelPickerDialog(
@@ -352,7 +386,7 @@ private fun MainModelPickerDialog(
                                     fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
                                     color = MaterialTheme.colorScheme.onSurface,
                                     modifier = Modifier.weight(1f),
-                                    // LAYOUT-01: Row Anchura el texto interior + limita la línea para evitar que el ícono de verificación a la derecha lo comprima en una columna al ampliar el tamaño de fuente
+                                    // LAYOUT-01: Row 内文本取宽 + 限行，防放大字号下被右侧勾选图标挤成一列
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
                                 )
@@ -383,10 +417,10 @@ private fun MainModelPickerDialog(
     )
 }
 
-/** Valor del modelo de cola — Alinear a la derecha el valor de una sola línea + flecha estándar.
+/** 尾部模型取值 — 右对齐单行值 + 标准箭头。
  *
- * v2.x: Reemplazar originales“Las cápsulas contienen frases largas + flechas incrustadas.”estilo — El texto largo apretará la barra de título,Y se repite la semántica de las flechas en línea y los clics en las filas.
- * Atado = color normal;no obligado = debilitar el color("heredar/Reutilizar"Consejos);Elipses extralargas.
+ * v2.x: 替换原“胶囊内含长句 + 内嵌箭头”样式 — 长文本会挤压标题列,且内嵌箭头与行点击语义重复。
+ * 已绑定 = 正常色;未绑定 = 弱化色("沿用/复用"提示);超长省略号。
  */
 @Composable
 private fun ModelValue(text: String, bound: Boolean) {

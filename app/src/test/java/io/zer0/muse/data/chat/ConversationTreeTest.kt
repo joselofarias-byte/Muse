@@ -42,8 +42,8 @@ class ConversationTreeTest {
 
     @Test
     fun build_createsTwoLevelTree() {
-        val u = user("Hola")
-        val a = assistant("¡Hola!", group = "ag1", parentGroup = u.id.toString(), at = u.createdAt + 1)
+        val u = user("你好")
+        val a = assistant("你好！", group = "ag1", parentGroup = u.id.toString(), at = u.createdAt + 1)
 
         val tree = ConversationTree.build(listOf(u, a))
 
@@ -56,68 +56,68 @@ class ConversationTreeTest {
 
     @Test
     fun build_separateUserNodes_showsAllTurnsInOrder() {
-        val u1 = user("Hola")
-        val a1 = assistant("responder1", group = "ag1", parentGroup = u1.id.toString(), at = u1.createdAt + 1)
-        val u2 = user("Prueba de respuesta de cotización")
-        val a2 = assistant("responder2", group = "ag2", parentGroup = u2.id.toString(), at = u2.createdAt + 1)
+        val u1 = user("你好")
+        val a1 = assistant("回答1", group = "ag1", parentGroup = u1.id.toString(), at = u1.createdAt + 1)
+        val u2 = user("引用回复测试")
+        val a2 = assistant("回答2", group = "ag2", parentGroup = u2.id.toString(), at = u2.createdAt + 1)
 
         val tree = ConversationTree.build(listOf(u1, a1, u2, a2))
 
         assertEquals(2, tree.userNodes.size)
         assertEquals(
-            listOf("Hola", "responder1", "Prueba de respuesta de cotización", "responder2"),
+            listOf("你好", "回答1", "引用回复测试", "回答2"),
             tree.displayMessages.map { it.content },
         )
-        assertEquals("Prueba de respuesta de cotización", tree.selectedUserVariant?.content)
+        assertEquals("引用回复测试", tree.selectedUserVariant?.content)
     }
 
     @Test
     fun build_legacyAssistantWithoutParentGroup_attachesByCreationTime() {
-        // Editar escena: Mensajes de usuario u0 -> asistente a1(datos antiguos,Ninguno parentGroupId)
-        // Después de editar: Aparece nueva versión de usuario u1, nueva respuesta a2(parentGroupId = u1.id)
-        // El antiguo asistente a1 debe colgarse debajo de la versión anterior u0., No porque"Obtener la última versión"Colgar en u1 provoca la división del mensaje
-        val u0 = user("escribe un poema", at = 1000L)
-        val a1 = assistant("Antigua respuesta", group = "ag1", at = 1001L) // datos antiguos: Ninguno parentGroupId
-        val u1 = user("Cambiar a escribir letras", group = u0.id.toString(), index = 1, count = 2, at = 2000L)
-        val a2 = assistant("nueva respuesta", group = "ag2", parentGroup = u1.id.toString(), at = 2001L)
+        // 编辑场景: 用户消息 u0 -> 助手 a1(旧数据,无 parentGroupId)
+        // 编辑后: 新用户版本 u1 出现, 新回复 a2(parentGroupId = u1.id)
+        // 旧助手 a1 必须挂在旧版本 u0 下, 不能因为"取最后一个版本"挂到 u1 导致消息分裂
+        val u0 = user("写首诗", at = 1000L)
+        val a1 = assistant("旧回复", group = "ag1", at = 1001L) // 旧数据: 无 parentGroupId
+        val u1 = user("改成写词", group = u0.id.toString(), index = 1, count = 2, at = 2000L)
+        val a2 = assistant("新回复", group = "ag2", parentGroup = u1.id.toString(), at = 2001L)
 
         val tree = ConversationTree.build(listOf(u0, a1, u1, a2))
 
         assertEquals(1, tree.userNodes.size)
         val node = tree.userNodes.first()
         assertEquals(2, node.variants.size)
-        // Seleccione la última versión u1
+        // 选中最新版本 u1
         assertEquals(u1.id, node.currentVariant?.message?.id)
-        // u1 Sólo nuevas respuestas a continuación, Las respuestas antiguas no deben incluirse.
+        // u1 下只有新回复, 不应包含旧回复
         val u1Assistants = node.currentVariant?.assistantNodes?.map { it.currentVariant?.content }
-        assertEquals(listOf("nueva respuesta"), u1Assistants)
-        // u0 Publicar respuesta anterior
+        assertEquals(listOf("新回复"), u1Assistants)
+        // u0 下挂旧回复
         val u0Assistants = node.variants.first().assistantNodes.map { it.currentVariant?.content }
-        assertEquals(listOf("Antigua respuesta"), u0Assistants)
+        assertEquals(listOf("旧回复"), u0Assistants)
     }
 
     @Test
     fun rebuild_appendedNewTurn_selectsLatestUserNode() {
-        val u1 = user("Hola")
-        val a1 = assistant("responder1", group = "ag1", parentGroup = u1.id.toString(), at = u1.createdAt + 1)
+        val u1 = user("你好")
+        val a1 = assistant("回答1", group = "ag1", parentGroup = u1.id.toString(), at = u1.createdAt + 1)
         val initial = ConversationTree.build(listOf(u1, a1))
 
-        val u2 = user("Segunda pregunta")
+        val u2 = user("第二问")
         val placeholder = assistant("", group = "ag2", parentGroup = u2.id.toString(), at = u2.createdAt + 1)
         val rebuilt = ConversationTree.build(listOf(u1, a1, u2, placeholder), initial)
 
         assertEquals(2, rebuilt.userNodes.size)
-        assertEquals("Segunda pregunta", rebuilt.selectedUserVariant?.content)
+        assertEquals("第二问", rebuilt.selectedUserVariant?.content)
         assertEquals(
-            listOf("Hola", "responder1", "Segunda pregunta", ""),
+            listOf("你好", "回答1", "第二问", ""),
             rebuilt.displayMessages.map { it.content },
         )
     }
 
     @Test
     fun retry_appendsVariantToSameAssistantGroup() {
-        val u = user("pregunta", group = "ug1")
-        val a1 = assistant("responder1", group = "ag1", index = 0, count = 1, parentGroup = u.id.toString(), at = u.createdAt + 1)
+        val u = user("问题", group = "ug1")
+        val a1 = assistant("回答1", group = "ag1", index = 0, count = 1, parentGroup = u.id.toString(), at = u.createdAt + 1)
         val tree = ConversationTree.build(listOf(u, a1))
 
         val update = tree.retryLastAssistant()
@@ -133,32 +133,32 @@ class ConversationTreeTest {
 
     @Test
     fun edit_createsNewUserVariantWithFreshReply() {
-        val u = user("pregunta original", group = "ug1")
-        val a1 = assistant("responder1", group = "ag1", index = 0, count = 1, parentGroup = u.id.toString(), at = u.createdAt + 1)
+        val u = user("原始提问", group = "ug1")
+        val a1 = assistant("回答1", group = "ag1", index = 0, count = 1, parentGroup = u.id.toString(), at = u.createdAt + 1)
         val tree = ConversationTree.build(listOf(u, a1))
 
-        val edit = tree.editUserMessage(u.id, "Pregunta revisada")
+        val edit = tree.editUserMessage(u.id, "修改后的提问")
 
         assertNotNull(edit)
         assertEquals("ug1", edit?.newUserMessage?.variantGroupId)
         assertEquals(1, edit?.newUserMessage?.variantIndex)
         assertEquals(2, edit?.tree?.userNodes?.first()?.variants?.size)
-        assertEquals("Pregunta revisada", edit?.tree?.selectedUserVariant?.content)
-        // La nueva versión solo tiene respuestas de marcador de posición y no copia las respuestas de la versión anterior.
+        assertEquals("修改后的提问", edit?.tree?.selectedUserVariant?.content)
+        // 新版本只有占位回复，不复制旧版本的回复
         val assistants = edit?.tree?.selectedUserNode?.currentVariant?.assistantNodes.orEmpty()
         assertEquals(1, assistants.size)
         assertEquals("", assistants[0].currentVariant?.content)
         assertEquals(edit?.newUserMessage?.id?.toString(), assistants[0].currentVariant?.parentGroupId)
-        // Las versiones anteriores aún conservan sus propias respuestas.
+        // 旧版本仍保留自己的回复
         val oldVariant = edit?.tree?.userNodes?.first()?.variants?.first()
-        assertEquals("responder1", oldVariant?.assistantNodes?.first()?.currentVariant?.content)
+        assertEquals("回答1", oldVariant?.assistantNodes?.first()?.currentVariant?.content)
     }
 
     @Test
     fun rebuild_restoresTreeFromFlatMessages() {
-        val u1 = user("pregunta original", group = "ug1", index = 0, count = 2, at = 100)
-        val a1 = assistant("responder1", group = "ag1", index = 0, count = 1, parentGroup = u1.id.toString(), at = 101)
-        val u2 = user("Pregunta revisada", group = "ug1", index = 1, count = 2, at = 102)
+        val u1 = user("原始提问", group = "ug1", index = 0, count = 2, at = 100)
+        val a1 = assistant("回答1", group = "ag1", index = 0, count = 1, parentGroup = u1.id.toString(), at = 101)
+        val u2 = user("修改后的提问", group = "ug1", index = 1, count = 2, at = 102)
         val placeholder = assistant("", group = "ag2", index = 0, count = 1, parentGroup = u2.id.toString(), at = 103)
 
         val tree = ConversationTree.build(listOf(u1, a1, u2, placeholder))
@@ -167,60 +167,60 @@ class ConversationTreeTest {
         assertEquals(2, tree.userNodes.first().variants.size)
         assertEquals(1, tree.userNodes.first().variants[0].assistantNodes.size)
         assertEquals(1, tree.userNodes.first().variants[1].assistantNodes.size)
-        assertEquals("responder1", tree.userNodes.first().variants[0].assistantNodes.first().currentVariant?.content)
+        assertEquals("回答1", tree.userNodes.first().variants[0].assistantNodes.first().currentVariant?.content)
         assertEquals("", tree.userNodes.first().variants[1].assistantNodes.first().currentVariant?.content)
-        // La última versión del usuario está seleccionada de forma predeterminada.
-        assertEquals("Pregunta revisada", tree.displayMessages.first().content)
+        // 默认选中最新用户版本
+        assertEquals("修改后的提问", tree.displayMessages.first().content)
         assertEquals("", tree.displayMessages.last().content)
     }
 
     @Test
     fun legacyData_withoutParentGroup_infersParent() {
-        val u = user("Pregunta sobre datos antiguos")
-        val a = assistant("respuesta de datos antiguos", group = "ag1", at = u.createdAt + 1)
+        val u = user("旧数据提问")
+        val a = assistant("旧数据回答", group = "ag1", at = u.createdAt + 1)
 
         val tree = ConversationTree.build(listOf(u, a))
 
         assertEquals(1, tree.userNodes.size)
-        assertEquals("respuesta de datos antiguos", tree.userNodes.first().currentVariant?.assistantNodes?.first()?.currentVariant?.content)
+        assertEquals("旧数据回答", tree.userNodes.first().currentVariant?.assistantNodes?.first()?.currentVariant?.content)
         assertEquals(2, tree.displayMessages.size)
     }
 
     @Test
     fun userVariants_isolateAssistantSubtrees() {
-        val g1 = user("hacer una preguntaA", group = "gA", index = 0, count = 2, at = 100)
-        val a1 = assistant("responderA-1", group = "agA", index = 0, count = 1, parentGroup = g1.id.toString(), at = 101)
-        val g1v2 = user("hacer una preguntaAcambiar", group = "gA", index = 1, count = 2, at = 102)
-        val a1v2 = assistant("responderA-2", group = "agB", index = 0, count = 1, parentGroup = g1v2.id.toString(), at = 103)
-        val g2 = user("hacer una preguntaB", group = "gB", index = 0, count = 1, at = 104)
-        val a2 = assistant("responderB", group = "agC", index = 0, count = 1, parentGroup = g2.id.toString(), at = 105)
+        val g1 = user("提问A", group = "gA", index = 0, count = 2, at = 100)
+        val a1 = assistant("回答A-1", group = "agA", index = 0, count = 1, parentGroup = g1.id.toString(), at = 101)
+        val g1v2 = user("提问A改", group = "gA", index = 1, count = 2, at = 102)
+        val a1v2 = assistant("回答A-2", group = "agB", index = 0, count = 1, parentGroup = g1v2.id.toString(), at = 103)
+        val g2 = user("提问B", group = "gB", index = 0, count = 1, at = 104)
+        val a2 = assistant("回答B", group = "agC", index = 0, count = 1, parentGroup = g2.id.toString(), at = 105)
 
         val tree = ConversationTree.build(listOf(g1, a1, g1v2, a1v2, g2, a2))
 
         assertEquals(2, tree.userNodes.size)
-        // La última ronda está seleccionada de forma predeterminada; dentro del mismo grupo de preguntas, solo se muestra la versión actualmente seleccionada del grupo.
-        assertEquals("hacer una preguntaB", tree.selectedUserVariant?.content)
-        assertEquals(listOf("hacer una preguntaAcambiar", "responderA-2", "hacer una preguntaB", "responderB"), tree.displayMessages.map { it.content })
-        // Al volver a la versión anterior,A El grupo cambia a la versión anterior de respuesta,B El grupo se mantiene sin cambios.
+        // 默认选中最新一轮；同一提问组内只显示该组当前选中的版本
+        assertEquals("提问B", tree.selectedUserVariant?.content)
+        assertEquals(listOf("提问A改", "回答A-2", "提问B", "回答B"), tree.displayMessages.map { it.content })
+        // 切回旧版本时，A 组切到旧版回复，B 组保持不变
         val switched = tree.selectUserVariant(tree.userNodes.first().userId, 0)
-        assertEquals("hacer una preguntaA", switched.selectedUserVariant?.content)
-        assertEquals(listOf("hacer una preguntaA", "responderA-1", "hacer una preguntaB", "responderB"), switched.displayMessages.map { it.content })
-        // hacer una preguntaB y preguntasA No interfieran el uno con el otro
-        assertEquals("responderB", tree.userNodes[1].variants.first().assistantNodes.first().currentVariant?.content)
+        assertEquals("提问A", switched.selectedUserVariant?.content)
+        assertEquals(listOf("提问A", "回答A-1", "提问B", "回答B"), switched.displayMessages.map { it.content })
+        // 提问B 与提问A 互不干扰
+        assertEquals("回答B", tree.userNodes[1].variants.first().assistantNodes.first().currentVariant?.content)
     }
 
     @Test
     fun selectAssistantVariant_changesOnlyTargetGroup() {
-        val u = user("hacer una pregunta", group = "ug1")
-        val a1 = assistant("responder1", group = "ag1", index = 0, count = 2, parentGroup = u.id.toString(), at = 101)
-        val a2 = assistant("responder2", group = "ag1", index = 1, count = 2, parentGroup = u.id.toString(), at = 102)
+        val u = user("提问", group = "ug1")
+        val a1 = assistant("回答1", group = "ag1", index = 0, count = 2, parentGroup = u.id.toString(), at = 101)
+        val a2 = assistant("回答2", group = "ag1", index = 1, count = 2, parentGroup = u.id.toString(), at = 102)
 
         val tree = ConversationTree.build(listOf(u, a1, a2))
 
-        assertEquals("responder2", tree.displayMessages.last().content)
+        assertEquals("回答2", tree.displayMessages.last().content)
 
         val switched = tree.selectAssistantVariant(u.id.toString(), "ag1", 0)
-        assertEquals("responder1", switched.displayMessages.last().content)
+        assertEquals("回答1", switched.displayMessages.last().content)
     }
 
     @Test
@@ -237,37 +237,37 @@ class ConversationTreeTest {
 
     @Test
     fun rebuild_keepsUserVariantSelection() {
-        val u1 = user("pregunta original", group = "ug1", index = 0, count = 2, at = 100)
-        val u2 = user("Pregunta revisada", group = "ug1", index = 1, count = 2, at = 102)
+        val u1 = user("原始提问", group = "ug1", index = 0, count = 2, at = 100)
+        val u2 = user("修改后的提问", group = "ug1", index = 1, count = 2, at = 102)
 
         val initial = ConversationTree.build(listOf(u1, u2))
         val switched = initial.selectUserVariant(initial.userNodes.first().userId, 0)
         val rebuilt = ConversationTree.build(listOf(u1, u2), switched)
 
-        assertEquals("pregunta original", rebuilt.selectedUserVariant?.content)
-        assertEquals("pregunta original", rebuilt.displayMessages.first().content)
+        assertEquals("原始提问", rebuilt.selectedUserVariant?.content)
+        assertEquals("原始提问", rebuilt.displayMessages.first().content)
     }
 
     @Test
     fun rebuild_keepsAssistantVariantSelection() {
-        val u = user("hacer una pregunta", group = "ug1")
-        val a1 = assistant("responder1", group = "ag1", index = 0, count = 2, parentGroup = u.id.toString(), at = 101)
-        val a2 = assistant("responder2", group = "ag1", index = 1, count = 2, parentGroup = u.id.toString(), at = 102)
+        val u = user("提问", group = "ug1")
+        val a1 = assistant("回答1", group = "ag1", index = 0, count = 2, parentGroup = u.id.toString(), at = 101)
+        val a2 = assistant("回答2", group = "ag1", index = 1, count = 2, parentGroup = u.id.toString(), at = 102)
 
         val initial = ConversationTree.build(listOf(u, a1, a2))
         val switched = initial.selectAssistantVariant(u.id.toString(), "ag1", 0)
         val rebuilt = ConversationTree.build(listOf(u, a1, a2), switched)
 
-        assertEquals("responder1", rebuilt.userNodes.first().currentVariant?.assistantNodes?.first()?.currentVariant?.content)
-        assertEquals("responder1", rebuilt.displayMessages.last().content)
+        assertEquals("回答1", rebuilt.userNodes.first().currentVariant?.assistantNodes?.first()?.currentVariant?.content)
+        assertEquals("回答1", rebuilt.displayMessages.last().content)
     }
 
     @Test
     fun branchInfoFor_findsUserAndAssistantGroups() {
-        val u1 = user("hacer una preguntaA", group = "ug1", index = 0, count = 2, at = 100)
-        val u2 = user("hacer una preguntaAcambiar", group = "ug1", index = 1, count = 2, at = 102)
-        val a1 = assistant("responder1", group = "ag1", index = 0, count = 2, parentGroup = u2.id.toString(), at = 101)
-        val a2 = assistant("responder2", group = "ag1", index = 1, count = 2, parentGroup = u2.id.toString(), at = 103)
+        val u1 = user("提问A", group = "ug1", index = 0, count = 2, at = 100)
+        val u2 = user("提问A改", group = "ug1", index = 1, count = 2, at = 102)
+        val a1 = assistant("回答1", group = "ag1", index = 0, count = 2, parentGroup = u2.id.toString(), at = 101)
+        val a2 = assistant("回答2", group = "ag1", index = 1, count = 2, parentGroup = u2.id.toString(), at = 103)
 
         val tree = ConversationTree.build(listOf(u1, a1, u2, a2))
 
@@ -283,10 +283,10 @@ class ConversationTreeTest {
 
     @Test
     fun branchInfoIndex_uses_each_user_variant_as_assistant_parent() {
-        val u1 = user("hacer una preguntaA", group = "ug-index", index = 0, count = 2, at = 100)
-        val u2 = user("hacer una preguntaAcambiar", group = "ug-index", index = 1, count = 2, at = 102)
-        val a1 = assistant("responderA", group = "ag-index", index = 0, count = 1, parentGroup = u1.id.toString(), at = 101)
-        val b1 = assistant("responderB", group = "bg-index", index = 0, count = 1, parentGroup = u2.id.toString(), at = 103)
+        val u1 = user("提问A", group = "ug-index", index = 0, count = 2, at = 100)
+        val u2 = user("提问A改", group = "ug-index", index = 1, count = 2, at = 102)
+        val a1 = assistant("回答A", group = "ag-index", index = 0, count = 1, parentGroup = u1.id.toString(), at = 101)
+        val b1 = assistant("回答B", group = "bg-index", index = 0, count = 1, parentGroup = u2.id.toString(), at = 103)
         val tree = ConversationTree
             .build(listOf(u1, a1, u2, b1))
             .selectUserVariant("ug-index", 0)
@@ -299,9 +299,9 @@ class ConversationTreeTest {
 
     @Test
     fun build_normalizesDuplicateVariantIndexes() {
-        val u = user("hacer una pregunta", group = "ug1")
-        val a1 = assistant("responder1", group = "ag1", index = 1, count = 2, parentGroup = u.id.toString(), at = 101)
-        val a2 = assistant("responder2", group = "ag1", index = 1, count = 2, parentGroup = u.id.toString(), at = 102)
+        val u = user("提问", group = "ug1")
+        val a1 = assistant("回答1", group = "ag1", index = 1, count = 2, parentGroup = u.id.toString(), at = 101)
+        val a2 = assistant("回答2", group = "ag1", index = 1, count = 2, parentGroup = u.id.toString(), at = 102)
 
         val tree = ConversationTree.build(listOf(u, a1, a2))
 
@@ -313,23 +313,23 @@ class ConversationTreeTest {
 
     @Test
     fun selectedVariantFlatMessages_containsAllRetryVariants() {
-        val u = user("hacer una pregunta", group = "ug1")
-        val a1 = assistant("responder1", group = "ag1", index = 0, count = 1, parentGroup = u.id.toString(), at = 101)
+        val u = user("提问", group = "ug1")
+        val a1 = assistant("回答1", group = "ag1", index = 0, count = 1, parentGroup = u.id.toString(), at = 101)
         val tree = ConversationTree.build(listOf(u, a1))
 
         val update = tree.retryLastAssistant()
 
         val flat = update.tree.selectedVariantFlatMessages
         assertEquals(3, flat.size)
-        assertEquals("responder1", flat[1].content)
+        assertEquals("回答1", flat[1].content)
         assertEquals("", flat[2].content)
     }
 
     @Test
     fun allFlatMessages_preservesEveryUserVariantAndRetryVariant() {
-        val u1 = user("hacer una pregunta1", group = "ug1", index = 0, count = 2, at = 100)
-        val a1 = assistant("responder1", group = "ag1", index = 0, count = 1, parentGroup = u1.id.toString(), at = 101)
-        val u2 = user("hacer una pregunta2", group = "ug1", index = 1, count = 2, at = 102)
+        val u1 = user("提问1", group = "ug1", index = 0, count = 2, at = 100)
+        val a1 = assistant("回答1", group = "ag1", index = 0, count = 1, parentGroup = u1.id.toString(), at = 101)
+        val u2 = user("提问2", group = "ug1", index = 1, count = 2, at = 102)
         val placeholder = assistant("", group = "ag2", index = 0, count = 1, parentGroup = u2.id.toString(), at = 103)
 
         val tree = ConversationTree.build(listOf(u1, a1, u2, placeholder))
@@ -337,16 +337,16 @@ class ConversationTreeTest {
 
         val flat = afterRetry.allFlatMessages
         assertEquals(5, flat.size)
-        assertEquals(listOf("hacer una pregunta1", "responder1", "hacer una pregunta2", "", ""), flat.map { it.content })
+        assertEquals(listOf("提问1", "回答1", "提问2", "", ""), flat.map { it.content })
     }
 
     @Test
     fun editThenRetry_keepsTwoUserVariantsAndTwoAssistantVariants() {
-        val u1 = user("pregunta original", group = "ug1", index = 0, count = 1, at = 100)
-        val a1 = assistant("responder1", group = "ag1", index = 0, count = 1, parentGroup = u1.id.toString(), at = 101)
+        val u1 = user("原始提问", group = "ug1", index = 0, count = 1, at = 100)
+        val a1 = assistant("回答1", group = "ag1", index = 0, count = 1, parentGroup = u1.id.toString(), at = 101)
         val tree = ConversationTree.build(listOf(u1, a1))
 
-        val edit = tree.editUserMessage(u1.id, "Pregunta revisada") ?: error("edit failed")
+        val edit = tree.editUserMessage(u1.id, "修改后的提问") ?: error("edit failed")
         val afterRetry = edit.tree.retryLastAssistant().tree
 
         val newUser = edit.newUserMessage ?: error("new user missing")
@@ -354,40 +354,40 @@ class ConversationTreeTest {
         assertEquals(2, afterRetry.branchInfoFor(newUser.id)?.branchCount)
         assertEquals(2, afterRetry.branchInfoFor(placeholder.id)?.branchCount)
         assertEquals(2, afterRetry.userNodes.first().currentVariant?.assistantNodes?.first()?.variants?.size)
-        assertEquals("Pregunta revisada", afterRetry.selectedUserVariant?.content)
+        assertEquals("修改后的提问", afterRetry.selectedUserVariant?.content)
     }
 
     @Test
     fun mergeRebuildMessages_preservesRetryVariantsAndNewMessages() {
-        val u1 = user("hacer una pregunta1", group = "ug1", at = 100)
-        val a1 = assistant("responder1", group = "ag1", index = 0, count = 2, parentGroup = u1.id.toString(), at = 101)
-        val a2 = assistant("responder2", group = "ag1", index = 1, count = 2, parentGroup = u1.id.toString(), at = 102)
+        val u1 = user("提问1", group = "ug1", at = 100)
+        val a1 = assistant("回答1", group = "ag1", index = 0, count = 2, parentGroup = u1.id.toString(), at = 101)
+        val a2 = assistant("回答2", group = "ag1", index = 1, count = 2, parentGroup = u1.id.toString(), at = 102)
         val tree = ConversationTree.build(listOf(u1, a1, a2))
 
-        // La pantalla actual solo contiene la versión de reintento actualmente seleccionada.,La versión anterior debe conservarse después de la fusión.
+        // 当前显示只包含当前选中的重试版本,合并后必须保留旧版本。
         val merged = mergeRebuildMessages(tree, tree.displayMessages)
-        assertEquals(listOf("hacer una pregunta1", "responder1", "responder2"), merged.map { it.content })
+        assertEquals(listOf("提问1", "回答1", "回答2"), merged.map { it.content })
         val rebuilt = ConversationTree.build(merged, tree)
         assertEquals(2, rebuilt.userNodes.first().currentVariant?.assistantNodes?.first()?.variants?.size)
 
-        // Mensajes de usuario recién agregados/El marcador de posición del asistente no está en el árbol antiguo.,También se deben ingresar los resultados de la fusión.
-        val u2 = user("hacer una pregunta2")
+        // 新追加的用户消息/助手占位不在旧树中,也必须进入合并结果。
+        val u2 = user("提问2")
         val placeholder = assistant("", group = "ag2", parentGroup = u2.id.toString(), at = u2.createdAt + 1)
         val mergedWithNew = mergeRebuildMessages(tree, tree.displayMessages + u2 + placeholder)
-        assertEquals(listOf("hacer una pregunta1", "responder1", "responder2", "hacer una pregunta2", ""), mergedWithNew.map { it.content })
+        assertEquals(listOf("提问1", "回答1", "回答2", "提问2", ""), mergedWithNew.map { it.content })
     }
 
     @Test
     fun mergeRebuildMessages_currentMessageWinsOverStaleTreeSnapshot() {
-        val userMessage = user("hacer una pregunta", at = 100)
+        val userMessage = user("提问", at = 100)
         val staleAssistant = assistant(
-            content = "antigua instantánea intermedia",
+            content = "旧的中间快照",
             group = "ag1",
             parentGroup = userMessage.id.toString(),
             at = 101,
         )
         val preservedBranch = assistant(
-            content = "otra rama",
+            content = "另一条分支",
             group = "ag1",
             index = 1,
             count = 2,
@@ -395,49 +395,49 @@ class ConversationTreeTest {
             at = 102,
         )
         val tree = ConversationTree.build(listOf(userMessage, staleAssistant, preservedBranch))
-        val currentAssistant = staleAssistant.copy(content = "respuesta final")
+        val currentAssistant = staleAssistant.copy(content = "最终回复")
 
         val merged = mergeRebuildMessages(tree, listOf(userMessage, currentAssistant))
 
-        assertEquals("respuesta final", merged.first { it.id == staleAssistant.id }.content)
+        assertEquals("最终回复", merged.first { it.id == staleAssistant.id }.content)
         assertTrue(merged.any { it.id == preservedBranch.id })
     }
 
     @Test
     fun removeMessage_removesAssistantVariantAndReindexes() {
-        val u = user("hacer una pregunta", group = "ug1")
-        val a1 = assistant("responder1", group = "ag1", index = 0, count = 2, parentGroup = u.id.toString(), at = 101)
-        val a2 = assistant("responder2", group = "ag1", index = 1, count = 2, parentGroup = u.id.toString(), at = 102)
+        val u = user("提问", group = "ug1")
+        val a1 = assistant("回答1", group = "ag1", index = 0, count = 2, parentGroup = u.id.toString(), at = 101)
+        val a2 = assistant("回答2", group = "ag1", index = 1, count = 2, parentGroup = u.id.toString(), at = 102)
         val tree = ConversationTree.build(listOf(u, a1, a2))
 
         val removed = tree.removeMessage(a2.id)
 
         val variants = removed.userNodes.first().currentVariant?.assistantNodes?.first()?.variants.orEmpty()
         assertEquals(1, variants.size)
-        assertEquals(listOf("responder1"), variants.map { it.content })
+        assertEquals(listOf("回答1"), variants.map { it.content })
         assertEquals(0, variants[0].variantIndex)
         assertEquals(1, variants[0].variantCount)
-        assertEquals(listOf("hacer una pregunta", "responder1"), removed.displayMessages.map { it.content })
+        assertEquals(listOf("提问", "回答1"), removed.displayMessages.map { it.content })
     }
 
     @Test
     fun removeMessage_removesUserVariantWithItsAssistants() {
-        val u1 = user("hacer una pregunta1", group = "ug1", at = 100)
-        val a1 = assistant("responder1", group = "ag1", parentGroup = u1.id.toString(), at = 101)
-        val u2 = user("hacer una pregunta2", group = "ug2", at = 102)
-        val a2 = assistant("responder2", group = "ag2", parentGroup = u2.id.toString(), at = 103)
+        val u1 = user("提问1", group = "ug1", at = 100)
+        val a1 = assistant("回答1", group = "ag1", parentGroup = u1.id.toString(), at = 101)
+        val u2 = user("提问2", group = "ug2", at = 102)
+        val a2 = assistant("回答2", group = "ag2", parentGroup = u2.id.toString(), at = 103)
         val tree = ConversationTree.build(listOf(u1, a1, u2, a2))
 
         val removed = tree.removeMessage(u1.id)
 
         assertEquals(1, removed.userNodes.size)
-        assertEquals(listOf("hacer una pregunta2", "responder2"), removed.displayMessages.map { it.content })
+        assertEquals(listOf("提问2", "回答2"), removed.displayMessages.map { it.content })
     }
 
     @Test
     fun removeMessage_removesLastUserNode_returnsEmptyTree() {
-        val u = user("hacer una pregunta", group = "ug1")
-        val a = assistant("responder", group = "ag1", parentGroup = u.id.toString(), at = u.createdAt + 1)
+        val u = user("提问", group = "ug1")
+        val a = assistant("回答", group = "ag1", parentGroup = u.id.toString(), at = u.createdAt + 1)
         val tree = ConversationTree.build(listOf(u, a))
 
         val removed = tree.removeMessage(u.id)
@@ -448,7 +448,7 @@ class ConversationTreeTest {
 
     @Test
     fun removeMessage_unknownId_returnsSameTree() {
-        val u = user("hacer una pregunta", group = "ug1")
+        val u = user("提问", group = "ug1")
         val tree = ConversationTree.build(listOf(u))
 
         val removed = tree.removeMessage(Uuid.random())

@@ -31,9 +31,9 @@ import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
 /**
- * Compartir página de configuración(v2.0: Originales"Seguridad y uso compartido"Convergido en una única página para compartir,Tarjeta de descripción de bloqueo de aplicaciones eliminada).
+ * 分享设置页(v2.0: 原"安全与分享"收敛为单一分享页,应用锁说明卡片已移除)。
  *
- * Compartir:Qué contenido y formato se incluyen al exportar la conversación.
+ * 分享:导出对话时包含哪些内容、格式。
  */
 @Composable
 fun SecuritySettingsPage(onBack: () -> Unit) {
@@ -42,7 +42,7 @@ fun SecuritySettingsPage(onBack: () -> Unit) {
     val scope = rememberCoroutineScope()
 
     SettingsSubPageScaffold(title = stringResource(R.string.settings_share_page_title), onBack = onBack) {
-        // ── Compartir plantilla(v2.0: La tarjeta de descripción de bloqueo de aplicaciones se eliminó a petición del usuario,Esta página sólo conserva la posibilidad de compartir.)──
+        // ── 分享模板(v2.0: 应用锁说明卡片已按用户要求移除,本页只保留分享能力)──
         item { SectionLabel(stringResource(R.string.settings_security_share_template_section)) }
         item {
             SettingsGroup {

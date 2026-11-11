@@ -55,7 +55,7 @@
     <string name="skill_delegate_failed">보조 보조자 %1$s 호출 실패: %2$s</string>
     <string name="skill_delegate_timeout">보조 보조자 %1$s 통화 시간 초과(%2$d초)</string>
     <string name="skill_delegate_empty">보조 보조자 %1$s가 빈 콘텐츠를 반환했습니다.</string>
-    <string name="skill_delegate_done">「%1$s"이(가) 위임된 작업을 완료했습니다.:</string>
+    <string name="skill_delegate_done">「%1$s」이(가) 위임된 작업을 완료했습니다.：</string>
     <string name="skill_delegate_max_depth">대리자 중첩 깊이가 제한(%1$d)을 초과하여 추가 중첩이 거부되었습니다.</string>
     <string name="skill_task_blank">작업은 비워둘 수 없습니다.</string>
     <string name="skill_title_blank">제목은 비워둘 수 없습니다.</string>
@@ -161,7 +161,21 @@
     <string name="tool_start_time_format_error">시작 시간 형식이 잘못되었습니다.</string>
     <string name="tool_no_calendar_account">사용 가능한 캘린더 계정이 없습니다.</string>
     <string name="tool_calendar_added">추가된 캘린더 이벤트: %1$s</string>
+    <string name="tool_calendar_choose_required">쓰기 가능한 캘린더가 여러 개입니다. calendar_id 로 지정하세요: %1$s</string>
+    <string name="tool_calendar_unknown_id">지정한 캘린더가 없습니다: id=%1$s</string>
+    <string name="tool_calendar_added_with_id">일정 &quot;%1$s&quot; 추가됨 (event_id=%2$s). 이 id 로 수정하거나 삭제할 수 있습니다</string>
     <string name="tool_calendar_add_failed_perm">캘린더 일정을 추가하지 못했습니다(WRITE_CALENDAR 권한을 확인하세요).</string>
+    <string name="tool_calendar_invalid_scope">scope 는 all 또는 this 여야 합니다: %1$s</string>
+    <string name="tool_calendar_invalid_event_id">event_id 가 올바르지 않습니다: %1$s</string>
+    <string name="tool_calendar_nothing_to_update">수정할 항목이 없습니다 (title/start_time/end_time/description/location/all_day 중 하나)</string>
+    <string name="tool_calendar_this_needs_occurrence">scope=this 에는 occurrence_time(해당 회차 시작 시각)이 필요합니다</string>
+    <string name="tool_calendar_this_update_unsupported">단일 회차만 수정하는 것은 아직 지원되지 않습니다. scope=all 로 시리즈 전체를 수정하거나, 삭제의 scope=this 로 해당 회차를 취소하세요</string>
+    <string name="tool_calendar_updated">일정을 수정했습니다 (id=%1$s)</string>
+    <string name="tool_calendar_deleted">일정을 삭제했습니다 (id=%1$s)</string>
+    <string name="tool_calendar_canceled_this">이 시리즈의 해당 회차를 취소했습니다 (id=%1$s)</string>
+    <string name="tool_calendar_event_not_found">일정을 찾을 수 없습니다 (id=%1$s). 삭제되었거나 id 가 잘못되었을 수 있습니다</string>
+    <string name="tool_calendar_update_failed">수정 실패: %1$s</string>
+    <string name="tool_calendar_delete_failed">삭제 실패: %1$s</string>
     <string name="tool_calendar_add_failed">캘린더 일정을 추가하지 못했습니다.</string>
     <string name="tool_missing_param_hour">누락된 매개변수: 시(0-23)</string>
     <string name="tool_hour_range">시간은 0-23이어야 합니다.</string>
@@ -262,7 +276,29 @@
     <string name="tool_brightness_auto">자동</string>
     <string name="tool_brightness_manual">수동</string>
     <string name="tool_brightness_set">밝기가 %1$d로 설정되었습니다.</string>
+    <string name="tool_write_verified">(적용 확인됨)</string>
+    <string name="tool_write_permission_denied">시스템이 쓰기를 거부했습니다 (시스템 설정 변경 권한이 필요할 수 있습니다)</string>
+    <string name="automation_handoff_title">가상 디스플레이 인계</string>
+    <string name="assist_service_label">Musa 어시스턴트</string>
+    <string name="automation_handoff_desc">어시스턴트가 남긴 가상 디스플레이 %1$d개. 미리 보고 직접 조작할 수 있습니다</string>
+    <string name="automation_handoff_bring_main">메인 화면으로 가져오기</string>
+    <string name="automation_handoff_bring_main_hint">앱만 메인 화면으로 가져옵니다. 이전 페이지와 입력 상태는 앱에 따라 사라질 수 있습니다.</string>
+    <string name="automation_handoff_bring_main_ok">메인 화면으로 가져왔습니다 (상태 유지는 앱에 따라 다름)</string>
+    <string name="automation_handoff_bring_main_failed">실패: 화면 서비스를 사용할 수 없거나 앱을 시작할 수 없습니다</string>
+    <string name="automation_handoff_close_destroy">닫고 이 화면 폐기</string>
+    <string name="tool_volume_failed">볼륨 설정 실패: %1$s</string>
+    <string name="tool_write_verified_transition">(적용 확인됨: %1$d → %2$d)</string>
+    <string name="tool_write_unverified">(전송됨, 미확인)</string>
+    <string name="tool_write_not_applied">설정이 적용되지 않았습니다: 기대 %1$d, 실제 %2$d</string>
     <string name="tool_brightness_auto_set">자동 밝기가 활성화되었습니다.</string>
+    <string name="read_aloud_channel_name">읽어주기 재생</string>
+    <string name="notif_task_stage_title">작업 실행 중</string>
+    <string name="notif_task_stage_stop">중지</string>
+    <string name="skill_url_dialog_title">GitHub 에서 스킬 설치</string>
+    <string name="skill_url_hint">https://github.com/작성자/저장소</string>
+    <string name="skill_url_help">GitHub 저장소만 지원합니다. 아카이브를 내려받아 SKILL.md 를 읽습니다.</string>
+    <string name="read_aloud_notification_text">읽어주는 중…</string>
+    <string name="read_aloud_notification_stop">중지</string>
     <string name="tool_brightness_missing">누락된 매개변수: 값</string>
     <string name="tool_brightness_failed">밝기를 설정하지 못했습니다: %1$s</string>
     <string name="tool_volume_info">%1$s 볼륨: %2$d / %3$d</string>
@@ -277,7 +313,7 @@
     <string name="tool_flashlight_on">손전등이 켜졌습니다</string>
     <string name="tool_flashlight_off">손전등이 꺼졌습니다</string>
     <string name="tool_flashlight_state">손전등 상태: %1$s</string>
-    <string name="tool_flashlight_state_unknown">손전등 상태: 알 수 없음(이 세션에서 조작하지 않음)</string>
+    <string name="tool_flashlight_state_unknown">손전등 상태: 알 수 없음 (시스템이 제때 응답하지 않음)</string>
     <string name="tool_flashlight_unavailable">장치가 손전등을 지원하지 않습니다</string>
     <string name="tool_flashlight_no_camera">사용할 수 있는 카메라가 없습니다.</string>
     <string name="tool_flashlight_invalid_action">작업은 켜짐/꺼짐/상태여야 합니다.</string>
@@ -399,7 +435,7 @@
     <string name="skill_update_validate_failed">업데이트 검증 실패: %1$s</string>
     <string name="skill_updated">스킬이 업데이트됨: %1$s(id=%2$s)</string>
 
-    <!-- Control de aplicaciones (app_* Herramienta): Los resultados se devuelven al modelo y la redacción debe explicarse por sí misma. -->
+    <!-- 应用控制（app_* 工具）：结果回给模型，措辞需自解释 -->
     <string name="app_control_need_app_arg">앱 이름 또는 패키지 이름을 입력하세요.</string>
     <string name="app_control_launch_action">실행</string>
     <string name="app_control_settings_action">설정 열기</string>
@@ -413,7 +449,7 @@
     <string name="app_control_reason_not_found">앱을 찾을 수 없습니다. app_list 로 이름과 패키지 이름을 확인하세요</string>
     <string name="app_control_reason_need_elevated">이 작업에는 Shizuku/adb 또는 Root 권한이 필요하지만 이 기기에서는 사용할 수 없습니다. 다른 방법을 쓰거나 설정에서 허용하세요</string>
     <string name="app_control_reason_system_app">시스템 앱에는 이 작업이 허용되지 않습니다</string>
-    <string name="app_control_reason_self">Muse 자체에는 이 작업이 허용되지 않습니다</string>
+    <string name="app_control_reason_self">Musa 자체에는 이 작업이 허용되지 않습니다</string>
     <string name="app_control_via_app">앱 권한</string>
     <string name="app_control_via_shell">Shizuku/adb</string>
     <string name="app_control_via_root">Root</string>

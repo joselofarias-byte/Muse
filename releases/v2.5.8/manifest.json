@@ -26,5 +26,5 @@
   "sourceCommit": "d41d7ed1",
   "sourceRef": "v2.5.8",
   "generatedAt": "2026-10-10T19:30:00+08:00",
-  "note": "Este paquete es una versión de prueba: contiene todos los cambios desde v2.5.8 a d41d7ed1 (A2A/Tasker/complementoHook/Lanzamiento de sandbox, deuda técnica A/C/E,ChatViewModel Dividir S1-S5) para una aceptación real de la máquina."
+  "note": "本包为测试构建：包含 v2.5.8 之后至 d41d7ed1 的全部改动（A2A/Tasker/插件Hook/沙盒放开、技术债 A/C/E、ChatViewModel 拆分 S1-S5），供真机验收。"
 }

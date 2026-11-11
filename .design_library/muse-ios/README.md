@@ -10,7 +10,7 @@ A design system reconstruction of **Muse** — an AI companion app with chat, st
 
 ### Key design decision
 
-iOS Design Language adapted for Muse — preserving verde laurel (Laurel Green) brand identity, literatos (literati) warmth, and acompañar (companionship) tone while adopting Apple's large title navigation, frosted glass materials, progressive rounding, and subtle spring motion. The canvas is 90% neutral; brand green occupies less than 5% of visible surface, reserved exclusively for interactive elements.
+iOS Design Language adapted for Muse — preserving 月桂绿 (Laurel Green) brand identity, 文人 (literati) warmth, and 陪伴 (companionship) tone while adopting Apple's large title navigation, frosted glass materials, progressive rounding, and subtle spring motion. The canvas is 90% neutral; brand green occupies less than 5% of visible surface, reserved exclusively for interactive elements.
 
 ---
 
@@ -18,22 +18,22 @@ iOS Design Language adapted for Muse — preserving verde laurel (Laurel Green) 
 
 ### Voice & tone
 
-Muse speaks with a companionable, literati warmth. Chinese is the primary UI language — every surface label, button, and system message is Chinese-first. The tone avoids corporate coldness; instead it carries the quiet refinement of a literatos companion. No emoji appear on any UI surface; warmth comes from typography choices (Noto Serif SC for AI replies) and color temperature (warm-tuned neutrals at `#FAFAF8`, never cold pure grays) rather than decorative embellishment. AI responses use serif typography to evoke a literati quality, creating a reading experience that feels like conversing with a thoughtful scholar rather than querying a machine.
+Muse speaks with a companionable, literati warmth. Chinese is the primary UI language — every surface label, button, and system message is Chinese-first. The tone avoids corporate coldness; instead it carries the quiet refinement of a 文人 companion. No emoji appear on any UI surface; warmth comes from typography choices (Noto Serif SC for AI replies) and color temperature (warm-tuned neutrals at `#FAFAF8`, never cold pure grays) rather than decorative embellishment. AI responses use serif typography to evoke a literati quality, creating a reading experience that feels like conversing with a thoughtful scholar rather than querying a machine.
 
 ### Concrete copy examples
 
-- Chat tab label: *dialogo*
-- Memory feature: *memoria*
-- Knowledge base: *base de conocimientos*
-- Settings: *ajustes*
-- Send action: *enviar*
-- Streaming state: *Pensando*
-- Tool invocation: *llamada de herramienta*
-- Human-in-the-loop: *Aprobación*
-- Stop generation: *dejar de generar*
-- New conversation: *Nueva sesión*
-- Sidebar header: *Lista de conversación*
-- Workspace: *espacio de trabajo*
+- Chat tab label: *对话*
+- Memory feature: *记忆*
+- Knowledge base: *知识库*
+- Settings: *设置*
+- Send action: *发送*
+- Streaming state: *思考中*
+- Tool invocation: *工具调用*
+- Human-in-the-loop: *审批*
+- Stop generation: *停止生成*
+- New conversation: *新建会话*
+- Sidebar header: *会话列表*
+- Workspace: *工作区*
 
 ### When generating copy
 
@@ -50,7 +50,7 @@ Muse speaks with a companionable, literati warmth. Chinese is the primary UI lan
 
 The entire color architecture rests on a 90% neutral canvas philosophy. The light-mode background is warm white `#FAFAF8` — deliberately off-white to carry companionable warmth, never the cold `#FFFFFF` of a generic productivity app. In dark mode, the canvas drops to OLED pure black `#000000` for battery savings on AMOLED displays, with surface elevation achieved through progressive lighter grays (`#1C1C1E` for elevated surfaces, `#2C2C2E` for containers).
 
-The brand primary is Laurel Green (verde laurel) `#2A7A55` — a bamboo/cyan-leaning green that anchors the entire identity. It carries a full 10-step scale from the palest tint `#E6F2EC` (primary-50) through the brand anchor `#2A7A55` (primary-500) to the deepest forest `#0F3D2A` (primary-900). In dark mode, the primary shifts upward to `#4A9F70` (primary-500 dark) for sufficient contrast against OLED black. This green is intentionally scarce: it occupies less than 5% of visible surface area, reserved exclusively for interactive elements — the send button, active tab indicators, primary CTAs, and focused input borders. Large-area green fills are forbidden.
+The brand primary is Laurel Green (月桂绿) `#2A7A55` — a bamboo/cyan-leaning green that anchors the entire identity. It carries a full 10-step scale from the palest tint `#E6F2EC` (primary-50) through the brand anchor `#2A7A55` (primary-500) to the deepest forest `#0F3D2A` (primary-900). In dark mode, the primary shifts upward to `#4A9F70` (primary-500 dark) for sufficient contrast against OLED black. This green is intentionally scarce: it occupies less than 5% of visible surface area, reserved exclusively for interactive elements — the send button, active tab indicators, primary CTAs, and focused input borders. Large-area green fills are forbidden.
 
 The neutral scale runs 10 stops from `#FAFAF8` through `#1A1A1A`, with the dominant working neutrals being `#FAFAF8` (canvas), `#F2F2F0` (container-low), `#E8E8E4` (container-high and divider), `#8E8E93` (secondary text), and `#1A1A1A` (primary text). Text ink is `#1A1A1A` in light mode, inverting to `#E8E8E8` in dark mode.
 
@@ -60,7 +60,7 @@ Four semantic scales each carry 10 stops: success anchors at `#3E9C5E` (a leaf-g
 
 Three font families define the typographic system, each with a distinct role. The primary sans stack is `-apple-system, 'SF Pro Display', system-ui, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei'` for display and heading text, shifting to `'SF Pro Text'` in the body stack — on Apple devices these render SF Pro Display and SF Pro Text respectively; on Android the `system-ui` keyword resolves to the system sans (typically Roboto or Noto Sans SC); on Windows to Segoe UI or Microsoft YaHei. This stack serves all UI chrome: navigation titles, button labels, input text, captions, and tab labels. No paid fonts are imported.
 
-The serif family is **Noto Serif SC** (with `Songti SC` and `Georgia` as fallbacks) — a free Google Font that provides the literatos (literati) quality for AI reply content and empty-state headings. This is the typographic signature of the system: when the AI speaks, the text shifts to serif, creating a visual duality between UI chrome (sans) and AI voice (serif). It is loaded via Google Fonts CDN with `font-display: swap` to avoid render-blocking.
+The serif family is **Noto Serif SC** (with `Songti SC` and `Georgia` as fallbacks) — a free Google Font that provides the 文人 (literati) quality for AI reply content and empty-state headings. This is the typographic signature of the system: when the AI speaks, the text shifts to serif, creating a visual duality between UI chrome (sans) and AI voice (serif). It is loaded via Google Fonts CDN with `font-display: swap` to avoid render-blocking.
 
 The mono stack is `'SF Mono', 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo` — used for code blocks, tool-call parameters and results, thinking-process content, and any monospaced data display.
 

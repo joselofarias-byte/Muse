@@ -8,10 +8,10 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
 
 /**
- * v1.136: Biblioteca de recursos locales.
+ * v1.136: 本地资源库。
  *
- * Se utiliza para guardar, recuperar y eliminar fragmentos de recursos de texto.(Como palabras clave de uso común, contenido de referencia, notas, etc.),
- * Los datos se almacenan en el directorio privado de la aplicación en forma de archivos JSON.
+ * 用于保存、检索、删除文本资源片段(如常用提示词、参考内容、笔记等),
+ * 数据以 JSON 文件形式存储在应用私有目录。
  */
 class ResourceLibraryStore(private val context: Context) {
 
@@ -20,14 +20,14 @@ class ResourceLibraryStore(private val context: Context) {
     @Volatile
     private var lastError: String? = null
 
-    /** Consume el último recordatorio de daños.(UI Llamado después de la visualización). */
+    /** 消费最近一次损坏提示(UI 展示后调用)。 */
     fun consumeError(): String? {
         val e = lastError
         lastError = null
         return e
     }
 
-    /** enumerar recursos,Admite filtrado por palabras clave. */
+    /** 列出资源,支持按关键字过滤。 */
     fun list(keyword: String? = null, limit: Int = 20): List<ResourceItem> {
         var all = readAll()
         if (!keyword.isNullOrBlank()) {
@@ -41,15 +41,15 @@ class ResourceLibraryStore(private val context: Context) {
         return all.take(limit)
     }
 
-    /** Obtenga un único recurso basado en id. */
+    /** 根据 id 获取单个资源。 */
     fun get(id: String): ResourceItem? {
         return readAll().find { it.id == id }
     }
 
     /**
-     * Añade recursos.
+     * 添加资源。
      *
-     * @return Recursos id
+     * @return 资源 id
      */
     fun add(title: String, content: String, tags: List<String>): String {
         val now = System.currentTimeMillis()
@@ -66,7 +66,7 @@ class ResourceLibraryStore(private val context: Context) {
         return item.id
     }
 
-    /** Actualice el recurso especificado. */
+    /** 更新指定资源。 */
     fun update(id: String, title: String?, content: String?, tags: List<String>?): Boolean {
         val all = readAll().toMutableList()
         val index = all.indexOfFirst { it.id == id }
@@ -82,7 +82,7 @@ class ResourceLibraryStore(private val context: Context) {
         return true
     }
 
-    /** Eliminar el recurso especificado. */
+    /** 删除指定资源。 */
     fun remove(id: String): Boolean {
         val all = readAll().toMutableList()
         val removed = all.removeIf { it.id == id }
@@ -96,8 +96,8 @@ class ResourceLibraryStore(private val context: Context) {
             AppJson.decodeFromString(ListSerializer(ResourceItem.serializer()), file.readText())
         } catch (e: Exception) {
             backupCorruptFile()
-            lastError = "El archivo de la biblioteca de recursos está dañado. Se realizó una copia de seguridad y se reconstruyó el archivo original."
-            Logger.e(TAG, "No se pudo leer la biblioteca de recursos, se hicieron copias de seguridad de los archivos defectuosos: ${e.message}", e)
+            lastError = "资源库文件损坏，已备份原文件并重建"
+            Logger.e(TAG, "读取资源库失败，已备份坏文件: ${e.message}", e)
             emptyList()
         }
     }
@@ -107,9 +107,9 @@ class ResourceLibraryStore(private val context: Context) {
             if (file.exists()) {
                 val backup = java.io.File(file.parentFile, "${file.name}.bak-${System.currentTimeMillis()}")
                 file.copyTo(backup, overwrite = true)
-                Logger.w(TAG, "Se ha realizado una copia de seguridad de los archivos corruptos en ${backup.absolutePath}")
+                Logger.w(TAG, "损坏文件已备份到 ${backup.absolutePath}")
             }
-        }.onFailure { Logger.w(TAG, "Error en la copia de seguridad de archivos dañados: ${it.message}") }
+        }.onFailure { Logger.w(TAG, "备份损坏文件失败: ${it.message}") }
     }
 
     private fun writeAll(list: List<ResourceItem>) {
@@ -117,7 +117,7 @@ class ResourceLibraryStore(private val context: Context) {
             file.parentFile?.mkdirs()
             file.writeText(AppJson.encodeToString(ListSerializer(ResourceItem.serializer()), list))
         } catch (e: Exception) {
-            Logger.w(TAG, "No se pudo escribir en la biblioteca de recursos: ${e.message}")
+            Logger.w(TAG, "写入资源库失败: ${e.message}")
         }
     }
 

@@ -25,10 +25,10 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * Hay cuatro destinos para los mensajes no solicitados: tachados/en los que se hizo clic/caducados/aprendidos a “no volver a decir esto”.
+ * 主动消息的四种去向：划掉 / 点开 / 过期 / 被学成「别再说这类」。
  *
- * Ejecutar con almacén real + sala de memoria: estas cuatro cosas dependen de las condiciones de estado de SQL (el estado final no está degradado,
- * Tome solo el último, solo PENDIENTE) y reemplácelo con el resultado de reproducción falso del almacén, lo que equivale a no verificar nada.
+ * 用真实仓库 + 内存 Room 跑：这四件事全部落在 SQL 的状态条件上（终态不降级、
+ * 只取最近一条、只收 PENDING），换成假仓库回放结果，等于什么都没验。
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -40,7 +40,7 @@ class ProactiveOutcomeFeedbackTest {
         const val OTHER_SESSION = "s2"
         const val HOUR = 3_600_000L
 
-        /** El valor inicial de la intimidad, y [ProactiveRelationEntity] El valor predeterminado es el mismo. */
+        /** 亲密度初值，与 [ProactiveRelationEntity] 的默认值一致。 */
         const val INITIAL_INTIMACY = 0.15f
         const val EPS = 1e-4f
     }
@@ -80,25 +80,25 @@ class ProactiveOutcomeFeedbackTest {
     }
 
     // ══════════════════════════════════════════════════════════════
-    // 1. "Esta vez no" en el aviso
+    // 一、通知上的「这次不用」
     // ══════════════════════════════════════════════════════════════
 
     @Test
-    fun `Haga clic en No marcar este tiempo como tachado y enfriado`() = runTest {
+    fun `点这次不用把这条记为划掉并降温`() = runTest {
         val id = outcomes.recordSent(thought = null, sessionId = SESSION, now = now, assistantId = ASSISTANT)
 
         scheduler.onProactiveDismissed(id)
 
         val stored = outcome(id)
         assertEquals(OutcomeState.DISMISSED, stored.stateEnum())
-        assertNotNull("Debes anotar el tiempo que tachaste, de lo contrario no podrás contar cuánto tiempo tomó tacharlo.", stored.dismissedAt)
+        assertNotNull("划掉的时间要写下来，否则统计不出「多久之内被划掉」", stored.dismissedAt)
         val expected = ProactiveLearning.applyOutcome(INITIAL_INTIMACY, OutcomeState.DISMISSED)
         assertEquals(expected, intimacy(), EPS)
-        assertTrue("Tacharlo debería significar enfriarse, no lo hagas en sentido contrario.", expected < INITIAL_INTIMACY)
+        assertTrue("划掉应当是降温，方向别搞反", expected < INITIAL_INTIMACY)
     }
 
     @Test
-    fun `Tachar el mismo elemento dos veces no provocará un enfriamiento repetido`() = runTest {
+    fun `同一条划掉两次不会重复降温`() = runTest {
         val id = outcomes.recordSent(thought = null, sessionId = SESSION, now = now, assistantId = ASSISTANT)
         scheduler.onProactiveDismissed(id)
         val first = outcome(id)
@@ -108,12 +108,12 @@ class ProactiveOutcomeFeedbackTest {
 
         val second = outcome(id)
         assertEquals(OutcomeState.DISMISSED, second.stateEnum())
-        assertEquals("Hacer clic en el botón repetidamente no debería actualizar la marca de tiempo", first.dismissedAt, second.dismissedAt)
-        assertEquals("Hacer clic en el botón repetidamente no debería deducir el nivel de intimidad nuevamente", afterFirst, intimacy(), EPS)
+        assertEquals("重复点按钮不该刷新时间戳", first.dismissedAt, second.dismissedAt)
+        assertEquals("重复点按钮不该再扣一次亲密度", afterFirst, intimacy(), EPS)
     }
 
     @Test
-    fun `Tachar la notificación después de responder no degradará la respuesta`() = runTest {
+    fun `回复之后划掉通知不会把回复降级`() = runTest {
         val id = outcomes.recordSent(thought = null, sessionId = SESSION, now = now, assistantId = ASSISTANT)
         outcomes.resolve(id, OutcomeState.REPLIED, now)
 
@@ -123,35 +123,46 @@ class ProactiveOutcomeFeedbackTest {
     }
 
     // ══════════════════════════════════════════════════════════════
-    // 2. Abre la sesión y léela.
+    // 二、打开会话即已读
     // ══════════════════════════════════════════════════════════════
 
     @Test
-    fun `Abre la conversación y marca la respuesta pendiente como leída`() = runTest {
+    fun `打开会话把待反应的这条记为已读`() = runTest {
         val id = outcomes.recordSent(thought = null, sessionId = SESSION, now = now, assistantId = ASSISTANT)
 
         scheduler.onSessionOpened(SESSION)
 
         val stored = outcome(id)
         assertEquals(OutcomeState.OPENED, stored.stateEnum())
-        assertNotNull("Anota el horario de apertura", stored.openedAt)
+        assertNotNull("打开时间要写下来", stored.openedAt)
     }
 
     @Test
-    fun `Abra una conversación y marque solo la entrada más reciente de la conversación`() = runTest {
+    fun `打开会话只标记这个会话里最近的一条`() = runTest {
         val older = outcomes.recordSent(thought = null, sessionId = SESSION, now = now - 2 * HOUR, assistantId = ASSISTANT)
         val newer = outcomes.recordSent(thought = null, sessionId = SESSION, now = now - HOUR, assistantId = ASSISTANT)
         val elsewhere = outcomes.recordSent(thought = null, sessionId = OTHER_SESSION, now = now, assistantId = ASSISTANT)
 
         scheduler.onSessionOpened(SESSION)
 
-        assertEquals("El más reciente ha sido leído.", OutcomeState.OPENED, outcome(newer).stateEnum())
-        assertEquals("El anterior tampoco debe marcarse como leído.", OutcomeState.PENDING, outcome(older).stateEnum())
-        assertEquals("Otras conversaciones no deberían estar involucradas.", OutcomeState.PENDING, outcome(elsewhere).stateEnum())
+        assertEquals("最近一条先记已读", OutcomeState.OPENED, outcome(newer).stateEnum())
+        assertEquals("更早的那条不该被一起标成已读", OutcomeState.PENDING, outcome(older).stateEnum())
+        assertEquals("别的会话不该被牵连", OutcomeState.PENDING, outcome(elsewhere).stateEnum())
     }
 
     @Test
-    fun `Abrir una sesión no sobrescribe los registros ya respondidos`() = runTest {
+    fun `通知精确 id 不会误标同会话更新的一条`() = runTest {
+        val older = outcomes.recordSent(thought = null, sessionId = SESSION, now = now - HOUR, assistantId = ASSISTANT)
+        val newer = outcomes.recordSent(thought = null, sessionId = SESSION, now = now, assistantId = ASSISTANT)
+
+        scheduler.onProactiveOpened(older)
+
+        assertEquals(OutcomeState.OPENED, outcome(older).stateEnum())
+        assertEquals("点击旧通知不能顺手标记新消息", OutcomeState.PENDING, outcome(newer).stateEnum())
+    }
+
+    @Test
+    fun `打开会话不覆盖已经回复的记录`() = runTest {
         val id = outcomes.recordSent(thought = null, sessionId = SESSION, now = now - HOUR, assistantId = ASSISTANT)
         outcomes.resolve(id, OutcomeState.REPLIED, now - HOUR)
 
@@ -159,15 +170,15 @@ class ProactiveOutcomeFeedbackTest {
 
         val stored = outcome(id)
         assertEquals(OutcomeState.REPLIED, stored.stateEnum())
-        assertNull("Los registros respondidos no deben tener un tiempo de apertura adicional", stored.openedAt)
+        assertNull("已回复的记录不该补一个打开时间", stored.openedAt)
     }
 
     // ══════════════════════════════════════════════════════════════
-    // 3. Caducidad
+    // 三、过期
     // ══════════════════════════════════════════════════════════════
 
     @Test
-    fun `Si a nadie le importa durante un día, se considerará caducado`() = runTest {
+    fun `发出一天没人理就收尾为过期`() = runTest {
         val stale = outcomes.recordSent(thought = null, sessionId = SESSION, now = now - 25 * HOUR, assistantId = ASSISTANT)
 
         val expired = outcomes.expireOverdue(now)
@@ -175,22 +186,22 @@ class ProactiveOutcomeFeedbackTest {
         assertEquals(1, expired)
         assertEquals(OutcomeState.EXPIRED, outcome(stale).stateEnum())
         val expected = ProactiveLearning.applyOutcome(INITIAL_INTIMACY, OutcomeState.EXPIRED)
-        assertEquals("El final también debe considerarse como retroalimentación y el grado de intimidad debe ajustarse en consecuencia.", expected, intimacy(), EPS)
+        assertEquals("收尾也要算一次反馈，亲密度得跟着动", expected, intimacy(), EPS)
     }
 
     @Test
-    fun `Los registros de respuesta pendientes que tengan menos de un día de antigüedad no se moverán`() = runTest {
+    fun `未满一天的待反应记录不动`() = runTest {
         val fresh = outcomes.recordSent(thought = null, sessionId = SESSION, now = now - 23 * HOUR, assistantId = ASSISTANT)
 
         val expired = outcomes.expireOverdue(now)
 
         assertEquals(0, expired)
         assertEquals(OutcomeState.PENDING, outcome(fresh).stateEnum())
-        assertNull("No debes tocar el nivel de intimidad antes de que llegue al punto, y ni siquiera deberías armar una pelea.", relations.get(ASSISTANT))
+        assertNull("没到点就不该动亲密度，连行都不该建", relations.get(ASSISTANT))
     }
 
     @Test
-    fun `Los registros que se hayan abierto no se sobrescribirán cuando caduquen`() = runTest {
+    fun `已经点开过的记录不会被过期覆盖`() = runTest {
         val opened = outcomes.recordSent(thought = null, sessionId = SESSION, now = now - 30 * HOUR, assistantId = ASSISTANT)
         outcomes.resolve(opened, OutcomeState.OPENED, now - 2 * HOUR)
 
@@ -199,61 +210,60 @@ class ProactiveOutcomeFeedbackTest {
     }
 
     @Test
-    fun `Caducado solo se ejecuta una vez`() = runTest {
+    fun `过期只跑一次`() = runTest {
         outcomes.recordSent(thought = null, sessionId = SESSION, now = now - 25 * HOUR, assistantId = ASSISTANT)
 
         assertEquals(1, outcomes.expireOverdue(now))
-        assertEquals("No deberías volver a cobrarlo en la segunda ronda.", 0, outcomes.expireOverdue(now))
+        assertEquals("第二轮不该再收一遍", 0, outcomes.expireOverdue(now))
     }
 
     // ══════════════════════════════════════════════════════════════
-    // 4. Los tipos impopulares ingresan al filtrado de candidatos
+    // 四、不受欢迎的类型进候选过滤
     // ══════════════════════════════════════════════════════════════
 
     @Test
-    fun `Los tipos que estén tachados repetidamente serán bloqueados para los candidatos`() = runTest {
+    fun `反复划掉的类型会被挡在候选之外`() = runTest {
         repeat(3) { seedOutcome("d$it", ThoughtKind.MILESTONE, OutcomeState.DISMISSED, now - it * HOUR) }
         seedOutcome("r1", ThoughtKind.MILESTONE, OutcomeState.REPLIED, now - 3 * HOUR)
         seedOutcome("c1", ThoughtKind.CARE, OutcomeState.REPLIED, now - 4 * HOUR)
 
         val banned = outcomes.unpopularKinds(ASSISTANT, listOf(ThoughtKind.MILESTONE, ThoughtKind.CARE))
 
-        assertEquals("Sólo las categorías con más de la mitad de la tasa de tachaduras deben incluirse en la lista negra.", setOf(ThoughtKind.MILESTONE), banned)
+        assertEquals("只有划掉率过半的那一类该被拉黑", setOf(ThoughtKind.MILESTONE), banned)
         val candidates = listOf(
             thought("t1", ThoughtKind.MILESTONE, weight = 0.9f),
             thought("t2", ThoughtKind.CARE, weight = 0.2f),
         )
-        assertTrue("Premisa: El archivo estándar permite estas dos categorías.", ProactiveIntensity.STANDARD.allows(ThoughtKind.MILESTONE))
+        assertTrue("前提：标准档允许这两类", ProactiveIntensity.STANDARD.allows(ThoughtKind.MILESTONE))
         assertEquals(
-            "Después de que aquellos con mayor peso sean incluidos en la lista negra, sólo queda otra categoría entre los candidatos.",
+            "权重更高的被拉黑后，候选里只剩另一类",
             listOf("t2"),
             ProactiveCandidateFilter.select(candidates, ProactiveIntensity.STANDARD, banned).map { it.id },
         )
         assertEquals(
-            "Ambos estaban presentes cuando no estaba bloqueado, lo que demuestra que el anterior se perdió debido al filtrado en lugar de la clasificación.",
+            "没被拉黑时两条都在，证明上面那条是过滤而不是排序丢了",
             listOf("t1", "t2"),
             ProactiveCandidateFilter.select(candidates, ProactiveIntensity.STANDARD).map { it.id },
         )
     }
 
     @Test
-    fun `Si no hay muestras suficientes, no se considerará no interesado`() = runTest {
+    fun `样本不足时不判定为不感兴趣`() = runTest {
         repeat(2) { seedOutcome("d$it", ThoughtKind.MILESTONE, OutcomeState.DISMISSED, now - it * HOUR) }
         repeat(3) { seedOutcome("r$it", ThoughtKind.MILESTONE, OutcomeState.REPLIED, now - (it + 3) * HOUR) }
 
         val banned = outcomes.unpopularKinds(ASSISTANT, listOf(ThoughtKind.MILESTONE))
 
-        assertTrue("La tasa de tachados es inferior a la mitad y las muestras son insuficientes, por lo que no debería incluirlo en la lista negra.", banned.isEmpty())
+        assertTrue("划掉率没过半且样本不足，不该拉黑", banned.isEmpty())
         assertFalse(outcomes.isKindUnpopular(ASSISTANT, ThoughtKind.CARE))
     }
 
     // ══════════════════════════════════════════════════════════════
 
     private suspend fun outcome(id: String): ProactiveOutcomeEntity =
-        requireNotNull(database.proactiveOutcomeDao().getById(id)) { "El resultado debería estar en la cuenta. $id" }
+        requireNotNull(database.proactiveOutcomeDao().getById(id)) { "结果账里应该有 $id" }
 
-    private suspend fun intimacy(): Float =
-        requireNotNull(relations.get(ASSISTANT)) { "Para llevar cuentas debe haber intimidad" }.intimacy
+    private suspend fun intimacy(): Float = requireNotNull(relations.get(ASSISTANT)) { "有记账就该有亲密度行" }.intimacy
 
     private suspend fun seedOutcome(id: String, kind: ThoughtKind, state: OutcomeState, sentAt: Long) {
         database.proactiveOutcomeDao().upsert(
@@ -272,7 +282,7 @@ class ProactiveOutcomeFeedbackTest {
         id = id,
         assistantId = ASSISTANT,
         kind = kind.name,
-        seed = "para probar",
+        seed = "测试用",
         weight = weight,
         createdAt = now,
     )

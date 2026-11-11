@@ -9,10 +9,10 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 
 /**
- * v2.x Tiempo de ejecución extendido (P0 Pruebas): herramienta de autoprueba integrada de Node Sandbox.
+ * v2.x 扩展运行时（P0 打样）：内置 Node 沙盒自检工具。
  *
- * Los usuarios pueden pedirle al asistente que llame a esta herramienta en el chat para verificar el tiempo de ejecución integrado (libmuse_node.so + npm datos)
- * Disponibilidad en dispositivos reales. Excepto por la descompresión de datos única, todas las comprobaciones son de solo lectura y no tienen otros efectos secundarios.
+ * 用户可在聊天里让助手调用本工具，验证内置运行时（libmuse_node.so + npm 数据）
+ * 在真机上的可用性。除一次性数据解压外均为只读检查，无其它副作用。
  */
 object RuntimeSelfCheckTool {
 
@@ -20,9 +20,9 @@ object RuntimeSelfCheckTool {
 
     fun toolDef(): ToolRegistry.ToolDef = ToolRegistry.ToolDef(
         name = NAME,
-        description = "Consulte el tiempo de ejecución de Node integrado de Muse(Entorno de ejecución dentro del entorno limitado de la aplicación)Estado:node versión,npm Estado de versión y descompresión de datos." +
-            "Cuando el usuario pregunta sobre el \"tiempo de ejecución integrado\" y la \"autoprueba del tiempo de ejecución\"Node Caja de arena\"MCP \"Entorno de ejecución\" o se llama cuando necesita solucionar problemas de tiempo de ejecución integrados." +
-            "Regresar: Texto del resultado de la subinspección.",
+        description = "检查 Muse 内置 Node 运行时(应用沙盒内的运行环境)状态:node 版本、npm 版本、数据解压情况。" +
+            "当用户询问「内置运行时」「运行时自检」「Node 沙盒」「MCP 运行环境」或需要排查内置运行时问题时调用。" +
+            "返回: 分项检查结果文本。",
         parameters = emptyMap(),
         required = emptySet(),
         category = "built-in",
@@ -31,38 +31,38 @@ object RuntimeSelfCheckTool {
 
     suspend fun execute(
         context: Context,
-        /** v2.6.7: Inyección opcional. Si es necesario, agregue la sección \"Canal de tres niveles de automatización de equipos\" —— El autoexamen debe realizarse de una sola vez. */
+        /** v2.6.7: 可选注入。有则补「设备自动化三档通道」段 —— 自检要一次说完。 */
         automation: io.zer0.muse.automation.core.AutomationManager? = null,
     ): String {
-        val sb = StringBuilder("[Autoprueba de tiempo de ejecución incorporada]")
+        val sb = StringBuilder("【内置运行时自检】")
 
         val node = MuseRuntime.nodeBinary(context)
-        sb.append("\n- Node binario: ").append(
+        sb.append("\n- Node 二进制: ").append(
             if (node.isFile) {
-                "existir (${node.length() / 1024 / 1024}MB)"
+                "存在 (${node.length() / 1024 / 1024}MB)"
             } else {
-                "desaparecido (${MuseRuntime.nativeLibDir(context)})"
+                "缺失 (${MuseRuntime.nativeLibDir(context)})"
             },
         )
 
         val nodeV = runCatching { MuseRuntime.execNode(context, listOf("-v"), timeoutMs = 20_000) }.getOrNull()
         sb.append("\n- node -v: ").append(
             when {
-                nodeV == null -> "excepción de ejecución"
+                nodeV == null -> "执行异常"
                 nodeV.exitCode == 0 -> "${nodeV.stdout} ✓"
                 else -> {
                     val detail = if (nodeV.stderr.isNotBlank()) " ${nodeV.stderr.take(120)}" else ""
-                    "falló (exit=${nodeV.exitCode}$detail)"
+                    "失败 (exit=${nodeV.exitCode}$detail)"
                 }
             },
         )
 
         val data = MuseRuntime.ensureData(context)
-        sb.append("\n- datos de tiempo de ejecución: ").append(
+        sb.append("\n- 运行时数据: ").append(
             if (data.isSuccess) {
-                "Listo (${MuseRuntime.RUNTIME_DATA_VERSION})"
+                "已就绪 (${MuseRuntime.RUNTIME_DATA_VERSION})"
             } else {
-                "La descompresión falló (${data.exceptionOrNull()?.message})"
+                "解压失败 (${data.exceptionOrNull()?.message})"
             },
         )
 
@@ -73,36 +73,36 @@ object RuntimeSelfCheckTool {
             }.getOrNull()
             sb.append("\n- npm -v: ").append(
                 when {
-                    npmV == null -> "excepción de ejecución"
+                    npmV == null -> "执行异常"
                     npmV.exitCode == 0 -> "${npmV.stdout} ✓"
-                    else -> "falló (exit=${npmV.exitCode})"
+                    else -> "失败 (exit=${npmV.exitCode})"
                 },
             )
         } else {
-            sb.append("\n- npm: No listo")
+            sb.append("\n- npm: 未就绪")
         }
 
         sb.append(buildCpuSection(probeCpu(context)))
 
-        sb.append("\n- Conclusión: ").append(
+        sb.append("\n- 结论: ").append(
             if (nodeV?.exitCode == 0 && MuseRuntime.isReady(context)) {
-                "Listo en tiempo de ejecución ✓"
+                "运行时就绪 ✓"
             } else {
-                "Incompleto en tiempo de ejecución, consulte los detalles arriba"
+                "运行时不完整，详见上方明细"
             },
         )
         sb.append("\n\n")
         appendPythonSection(context, sb)
-        // v2.6.7: Crea el tercer canal. —— Autoexamen del asistente: "runtime_selfcheck Solo me registré en Node/Python,
-        // Los tres canales de automatización de la interfaz de usuario no se informan y la autoprueba no se realiza, por lo que es necesario ajustarla dos veces". Ahora repórtalo todo de una vez.
+        // v2.6.7: 补三档通道 —— 助手自审：「runtime_selfcheck 只报了 Node/Python，
+        // 没有报 UI 自动化三通道，自检不自检，得调两次」。现在一次报全。
         automation?.let { appendChannelSection(it, sb) }
         return sb.toString()
     }
 
     /**
-     * CPU Detección: Nodo incorporado `os.cpus()` / `os.availableParallelism()` Ya sea para obtener el número central.
+     * CPU 探测：内置 Node 的 `os.cpus()` / `os.availableParallelism()` 是否取到核数。
      *
-     * De hecho, es posible que no se pueda obtener el entorno sandbox (libuv La lista de CPU no se puede leer), por lo que solo informa advertencias y no participa en la conclusión general.
+     * 沙盒环境确实可能拿不到（libuv 读不到 CPU 列表），所以只报 warn，不参与整体结论。
      */
     private suspend fun probeCpu(context: Context): CpuProbe? {
         val r = runCatching { MuseRuntime.execNode(context, listOf("-e", CPU_PROBE_SCRIPT), timeoutMs = 20_000) }.getOrNull()
@@ -118,23 +118,23 @@ object RuntimeSelfCheckTool {
         }.getOrNull()
     }
 
-    /** Representa elementos de detección de CPU (función pura, conveniente para pruebas individuales). Si no se obtiene el valor, se informará una advertencia, que no afecta la conclusión general. */
+    /** 渲染 CPU 探测项（纯函数，便于单测）。取不到值时报 warn，不影响整体结论。 */
     internal fun buildCpuSection(probe: CpuProbe?): String {
-        val prefix = "\n- CPU detección: "
-        if (probe == null) return prefix + "warn(La detección no se ejecutó con éxito; el hecho de no obtener el número central en el sandbox no afecta la conclusión general)"
+        val prefix = "\n- CPU 探测: "
+        if (probe == null) return prefix + "warn（探测未执行成功；沙盒里取不到核数不影响整体结论）"
         val entries = probe.entries ?: 0
         val parallelism = probe.parallelism ?: 0
         val detail =
             "os.cpus().length=$entries, os.availableParallelism()=$parallelism, " +
-                "MUSE_CPU_COUNT=${probe.envCount ?: "No inyectado"}"
+                "MUSE_CPU_COUNT=${probe.envCount ?: "未注入"}"
         return if (entries > 0 && parallelism > 0) {
             prefix + detail + " ✓"
         } else {
-            prefix + detail + " warn(No se puede obtener la cantidad de núcleos; los scripts que dependen de la cantidad de CPU se degradarán, pero eso no afecta la conclusión general)"
+            prefix + detail + " warn（取不到核数；依赖 CPU 数的脚本会退化，但不影响整体结论）"
         }
     }
 
-    /** Resultado de detección de CPU del lado del nodo integrado (nulo si falta el campo). */
+    /** 内置 Node 侧 CPU 探测结果（字段缺失时为 null）。 */
     internal data class CpuProbe(val entries: Int?, val parallelism: Int?, val envCount: Int?)
 
     private const val CPU_PROBE_SCRIPT =
@@ -142,43 +142,43 @@ object RuntimeSelfCheckTool {
             "console.log(JSON.stringify({cpus:os.cpus().length," +
             "ap:os.availableParallelism(),env:process.env.MUSE_CPU_COUNT||null}))"
 
-    /** Segmento del canal de control del dispositivo (accesible / Shizuku / Root + Solicitud de permiso de tiempo de ejecución único). */
+    /** 设备控制通道段（无障碍 / Shizuku / Root + 单项运行时权限提示）。 */
     private suspend fun appendChannelSection(automation: io.zer0.muse.automation.core.AutomationManager, sb: StringBuilder) {
         val state = automation.refreshPermissions()
-        sb.append("\n\n[Autoprueba del canal de control del equipo]")
-        sb.append("\n- Accesibilidad: ").append(if (state.accessibilityEnabled) "Ya encendido ✓" else "No encendido")
+        sb.append("\n\n【设备控制通道自检】")
+        sb.append("\n- 无障碍: ").append(if (state.accessibilityEnabled) "已开启 ✓" else "未开启")
         sb.append("\n- Shizuku/ADB: ").append(
-            if (state.shellEnabled) "Listo ✓" else "No disponible (${state.shizukuMessage})",
+            if (state.shellEnabled) "已就绪 ✓" else "不可用（${state.shizukuMessage}）",
         )
-        sb.append("\n- Root: ").append(if (state.rootEnabled) "Obtenido ✓" else "No obtenido")
-        sb.append("\n- Nivel más alto disponible: ").append(state.highestLevelName())
-        sb.append("\n- Conclusión: ").append(
+        sb.append("\n- Root: ").append(if (state.rootEnabled) "已获取 ✓" else "未获取")
+        sb.append("\n- 最高可用层级: ").append(state.highestLevelName())
+        sb.append("\n- 结论: ").append(
             if (state.anyEnabled) {
-                "Se pueden realizar operaciones del dispositivo; por favor llame a las herramientas específicas disponibles. tool_status"
+                "可执行设备操作；具体哪些工具可用请调 tool_status"
             } else {
-                "Sin canal de control de dispositivo, pantalla/Solicitud/shell Todas las herramientas no están disponibles; sólo se pueden realizar operaciones dentro de la aplicación"
+                "无任何设备控制通道，屏幕/应用/shell 类工具均不可用；只能做应用内操作"
             },
         )
     }
 
-    /** v2.7: Se agregó una sección de autoverificación del tiempo de ejecución de Python incorporada (eliminada para controlar la longitud y la complejidad de una sola función). */
+    /** v2.7: 追加内置 Python 运行时自检段（拆出以控制单函数长度与复杂度）。 */
     private suspend fun appendPythonSection(context: Context, sb: StringBuilder) {
-        sb.append("[Autoprueba integrada del tiempo de ejecución de Python]")
+        sb.append("【内置 Python 运行时自检】")
         val pyBin = PythonRuntime.pythonBinary(context)
         sb.append("\n- Python stub: ").append(
-            if (pyBin.isFile) "existir (${pyBin.length() / 1024}KB)" else "desaparecido (${PythonRuntime.nativeLibDir(context)})",
+            if (pyBin.isFile) "存在 (${pyBin.length() / 1024}KB)" else "缺失 (${PythonRuntime.nativeLibDir(context)})",
         )
         val pyV = runCatching { PythonRuntime.execPython(context, listOf("-V"), timeoutMs = 30_000) }.getOrNull()
         sb.append("\n- python -V: ").append(
             when {
-                pyV == null -> "excepción de ejecución"
+                pyV == null -> "执行异常"
                 pyV.exitCode == 0 -> "${(pyV.stdout + pyV.stderr).trim()} ✓"
-                else -> "falló (exit=${pyV.exitCode} ${pyV.stderr.take(120)})"
+                else -> "失败 (exit=${pyV.exitCode} ${pyV.stderr.take(120)})"
             },
         )
         val pyData = PythonRuntime.ensureData(context)
-        sb.append("\n- Python datos: ").append(
-            if (pyData.isSuccess) "Listo (${PythonRuntime.PYTHON_DATA_VERSION})" else "La descompresión falló (${pyData.exceptionOrNull()?.message})",
+        sb.append("\n- Python 数据: ").append(
+            if (pyData.isSuccess) "已就绪 (${PythonRuntime.PYTHON_DATA_VERSION})" else "解压失败 (${pyData.exceptionOrNull()?.message})",
         )
         if (pyV?.exitCode == 0 && pyData.isSuccess) {
             val probe = runCatching {
@@ -188,23 +188,23 @@ object RuntimeSelfCheckTool {
                     timeoutMs = 30_000,
                 )
             }.getOrNull()
-            sb.append("\n- Extensiones de biblioteca estándar: ").append(
-                if (probe?.exitCode == 0 && probe.stdout.contains("ext-ok")) "ssl/sqlite3/zlib/json ✓" else "Cargando excepción",
+            sb.append("\n- 标准库扩展: ").append(
+                if (probe?.exitCode == 0 && probe.stdout.contains("ext-ok")) "ssl/sqlite3/zlib/json ✓" else "加载异常",
             )
         }
-        sb.append("\n- Python Conclusión: ").append(
-            if (pyV?.exitCode == 0 && PythonRuntime.isReady(context)) "Listo en tiempo de ejecución ✓" else "Incompleto en tiempo de ejecución, consulte los detalles arriba",
+        sb.append("\n- Python 结论: ").append(
+            if (pyV?.exitCode == 0 && PythonRuntime.isReady(context)) "运行时就绪 ✓" else "运行时不完整，详见上方明细",
         )
     }
 }
 
 /**
- * v2.x Tiempo de ejecución extendido (P0): Registro de herramienta de autoprueba (init El bloque se registra automáticamente en ToolRegistry).
+ * v2.x 扩展运行时（P0）：自检工具注册器（init 块自动注册到 ToolRegistry）。
  */
 class RuntimeSelfCheckToolRegistrar(
     private val toolRegistry: ToolRegistry,
     private val context: Context,
-    /** v2.6.7: Después de la inyección, la autoprueba informará el estado de los tres canales juntos. */
+    /** v2.6.7: 注入后自检会一并上报三档通道状态。 */
     private val automationManager: io.zer0.muse.automation.core.AutomationManager? = null,
 ) {
     init {

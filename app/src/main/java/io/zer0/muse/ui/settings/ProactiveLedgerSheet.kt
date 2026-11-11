@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -23,7 +24,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import io.zer0.muse.R
 import io.zer0.muse.data.proactive.PendingThoughtEntity
@@ -33,14 +33,14 @@ import io.zer0.muse.ui.common.form.MuseBottomSheet
 import io.zer0.muse.ui.theme.MusePaddings
 
 /**
- * Panel de libro mayor.
+ * 牵挂账本面板。
  *
- * Esta interfaz de usuario es la forma de realizar el nuevo diseño: los usuarios pueden ver "¿Por qué me busca?"
- * También puedes ver "cuando se calla".
+ * 这块 UI 是新设计的兑现方式：用户能看见「它凭什么找我」，
+ * 也能看见「它什么时候闭嘴」。
  *
- * Puntajes de condición física, umbrales,intimacy Estos parámetros internos ——
- * Esos son para registros, no para usuarios. Lo que los usuarios quieren ver es "en qué está pensando".
- * y "¿Todavía me pueden molestar hoy?"
+ * 特意不展示 fitness 分数、阈值、intimacy 这些内部参数 ——
+ * 那些是给日志看的，不是给用户看的。用户要看的是「它在惦记什么」
+ * 和「今天还能不能被打扰」。
  */
 @Composable
 fun ProactiveLedgerSheet(
@@ -59,12 +59,12 @@ fun ProactiveLedgerSheet(
         ) {
             Text(
                 text = stringResource(R.string.settings_proactive_v2_ledger),
-                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
+                style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.onSurface,
             )
             Spacer(Modifier.size(MusePaddings.contentGap))
 
-            // ── Nivel de iniciativa ──
+            // ── 主动等级 ──
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -75,8 +75,8 @@ fun ProactiveLedgerSheet(
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                // Probé "sticky" y quise volver al valor predeterminado. No debería haber regresado uno por uno, y hoy ya gasté el dinero.
-                // La cuota también deberá reponerse en consecuencia. —— Este es el "reset" que quieren los usuarios.
+                // 试过「黏人」想回默认时不该自己一格一格往回点，而且今天已经花掉的
+                // 额度也得跟着回满 —— 这是用户要的「重置」。
                 Text(
                     text = stringResource(R.string.settings_proactive_v2_reset),
                     style = MaterialTheme.typography.labelMedium,
@@ -88,13 +88,13 @@ fun ProactiveLedgerSheet(
             IntensityRow(current = state.intensity, onSelect = onIntensityChange)
             Spacer(Modifier.size(MusePaddings.contentGap))
 
-            // ── la cuota de hoy ──
+            // ── 今日额度 ──
             val unlimited = state.intensity.unlimited
             val remainingTimes = if (state.remainingBudget >= 1f) state.remainingBudget.toInt() else 0
             Text(
                 text = when {
                     state.cooldownUntil > state.now -> stringResource(R.string.settings_proactive_v2_cooldown_sub)
-                    // El límite del archivo pegajoso es Int.MAX_VALUE. La representación directa se convertirá en "Puedo decir 2147483647 veces hoy"
+                    // 黏人档的额度是 Int.MAX_VALUE，直接渲染会变成「今天还能说 2147483647 次」
                     unlimited -> stringResource(R.string.settings_proactive_v2_budget_unlimited)
                     else -> stringResource(R.string.settings_proactive_v2_budget, remainingTimes)
                 },
@@ -103,7 +103,7 @@ fun ProactiveLedgerSheet(
             )
             Spacer(Modifier.size(MusePaddings.contentGap))
 
-            // ── lista de libro mayor ──
+            // ── 账本列表 ──
             if (state.thoughts.isEmpty()) {
                 Text(
                     text = stringResource(R.string.settings_proactive_v2_empty),
@@ -126,8 +126,8 @@ fun ProactiveLedgerSheet(
 
             Spacer(Modifier.size(MusePaddings.contentGap))
 
-            // ── interruptor de enfriamiento ──
-            // Al enfriarse, esta área debe convertirse en "Recuperación": si solo hay una entrada unidireccional, si hace clic en el botón incorrecto, tendrá que esperar siete días.
+            // ── 冷却开关 ──
+            // 冷却中时这里必须变成「恢复」：只给单向入口的话，点错了就只能等七天。
             val coolingDown = state.cooldownUntil > state.now
             Box(
                 modifier = Modifier
@@ -159,7 +159,7 @@ fun ProactiveLedgerSheet(
     }
 }
 
-/** Todo el estado de visualización del panel. Empaquetar en un tipo es permitir que el sitio de llamada se alinee con un solo parámetro. */
+/** 面板的全部展示状态。打包成一个类型，是为了让调用处只用一个参数就能对齐。 */
 data class LedgerUiState(
     val thoughts: List<PendingThoughtEntity>,
     val intensity: ProactiveIntensity,
@@ -168,44 +168,122 @@ data class LedgerUiState(
     val now: Long,
 )
 
-/** Las pendientes de cinco velocidades están dispuestas horizontalmente. Entra en vigor una vez que hace clic en él, no se requiere confirmación. */
+/**
+ * 填充比例：第 [index] 档占轨道的多少。整条轨道代表"额度全部用完"，
+ * 所以是 `(index + 1) / count` 而不是 `index / (count - 1)` —— 最左一档也该有可见的填充，
+ * 否则用户会以为"安静"= 一格都没有（等于关掉），语义就糊了。
+ */
+internal fun intensityFillFraction(index: Int, count: Int): Float {
+    if (count <= 0) return 0f
+    return (index.coerceIn(0, count - 1) + 1f) / count.toFloat()
+}
+
+/**
+ * 把手中心落在哪：第 [index] 档那一格的**中点**，不是右边界。
+ *
+ * 用右边界的话最右档的把手会贴边被裁，最左档则跑到起点外面 ——
+ * 参照平台是把把手停在格子中间，读起来才像"当前在这格"。
+ */
+internal fun intensityHandleFraction(index: Int, count: Int): Float {
+    if (count <= 0) return 0f
+    return (index.coerceIn(0, count - 1) + 0.5f) / count.toFloat()
+}
+
+/**
+ * 主动程度选择器（整改计划 第 4 条差异①）。
+ *
+ * 参照形态是一条**连续轨道 + 已填充段 + 带当前档位名的把手**，而不是一排各自独立的按钮：
+ * 五档是同一根"热情度"刻度上的位置，用分离按钮表达会读成五个互不相干的开关。
+ *
+ * 实现上刻意**不用 Material3 的 `Slider`**：
+ *  - `check_component_convergence` 禁止业务页直接写裸 M3 `Slider`（必须先有 Muse 封装）；
+ *  - M3 Slider 的把手只能拖动、不能"点某档直达"，而这里五档是离散选择，点才是主交互。
+ * 所以是自建轨道 + 五个 `weight(1f)`、高 56dp 的点击格（点击区 ≥48dp，满足 touch target 门禁）。
+ */
+// internal 而非 private：本仓测试需要单独驱动它（结构重复、把手错位这类缺陷
+// 只有在真实渲染下才看得见；页面级测试见 `ProactiveIntensityRowTest`）。
 @Composable
-private fun IntensityRow(current: ProactiveIntensity, onSelect: (ProactiveIntensity) -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
+internal fun IntensityRow(current: ProactiveIntensity, onSelect: (ProactiveIntensity) -> Unit) {
+    val levels = ProactiveIntensity.entries
+    val selectedIndex = levels.indexOf(current).coerceAtLeast(0)
+
+    // 轨道 + 把手 + 点击格叠在同一块里：把手要压在轨道上，只能同层定位。
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(56.dp),
     ) {
-        ProactiveIntensity.entries.forEach { level ->
-            val selected = level == current
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .background(
-                        if (selected) {
-                            MaterialTheme.colorScheme.primaryContainer
-                        } else {
-                            MaterialTheme.colorScheme.surfaceVariant
-                        },
-                        RoundedCornerShape(10.dp),
-                    ).clickable { if (!selected) onSelect(level) }
-                    .padding(vertical = 10.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = stringResource(level.labelRes()),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = if (selected) {
-                        MaterialTheme.colorScheme.onPrimaryContainer
+        // 轨道底：一整条 surfaceVariant
+        Box(
+            modifier = Modifier
+                .align(Alignment.CenterStart)
+                .fillMaxWidth()
+                .height(6.dp)
+                .padding(top = 12.dp)
+                .background(
+                    MaterialTheme.colorScheme.surfaceVariant,
+                    RoundedCornerShape(3.dp),
+                ),
+        )
+        // 已填充段：primary，长度由纯函数算出（可测）
+        Box(
+            modifier = Modifier
+                .align(Alignment.CenterStart)
+                .fillMaxWidth(intensityFillFraction(selectedIndex, levels.size))
+                .height(6.dp)
+                .padding(top = 12.dp)
+                .background(
+                    MaterialTheme.colorScheme.primary,
+                    RoundedCornerShape(3.dp),
+                ),
+        )
+        // 五个等宽点击格：档位名只在选中格上显示（就是参照里那颗把手）
+        Row(modifier = Modifier.fillMaxWidth()) {
+            levels.forEachIndexed { index, level ->
+                val selected = index == selectedIndex
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(56.dp)
+                        .clickable { if (!selected) onSelect(level) },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (selected) {
+                        // 把手胶囊：档位名写在里面，用户不用猜"这一格是什么"
+                        Box(
+                            modifier = Modifier
+                                .background(
+                                    MaterialTheme.colorScheme.primaryContainer,
+                                    RoundedCornerShape(14.dp),
+                                ).padding(horizontal = 10.dp, vertical = 4.dp),
+                        ) {
+                            Text(
+                                text = stringResource(level.labelRes()),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            )
+                        }
                     } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    },
-                )
+                        // 其余档位**照样要显示名字**：我第一版只画了一个刻度点，测试
+                        // `ProactiveIntensityRowTest` 当场抓到文字总数从 5 掉到 1 ——
+                        // 四个档位变成"不知道是什么的东西"，可发现性直接倒退。
+                        // 保留轨道与填充的隐喻，但每格都得说清自己是什么档。
+                        Text(
+                            text = stringResource(level.labelRes()),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                            modifier = Modifier.padding(top = 12.dp),
+                        )
+                    }
+                }
             }
         }
     }
 }
 
-/** Una sola preocupación. La etiqueta de naturaleza a la izquierda, la razón y el sentido del tiempo a la derecha. */
+/** 单条牵挂。左侧性质标签，右侧事由与时间感。 */
 @Composable
 private fun ThoughtRow(thought: PendingThoughtEntity, now: Long) {
     Row(
@@ -241,14 +319,14 @@ private fun ThoughtRow(thought: PendingThoughtEntity, now: Long) {
     }
 }
 
-/** sentido del tiempo. Los usuarios se sienten mejor cuando miran \"Hace tres días\" que cuando miran la marca de tiempo. */
+/** 事由的时间感。用户看「三天前想起」比看时间戳有感觉。 */
 @Composable
 private fun describeAge(thought: PendingThoughtEntity, now: Long): String {
     val hours = (now - thought.createdAt).coerceAtLeast(0L) / 3_600_000L
     return when {
-        hours < 1 -> "justo ahora"
-        hours < 24 -> "${hours} hace horas"
-        else -> "${hours / 24} hace dias"
+        hours < 1 -> stringResource(R.string.proactive_ledger_age_now)
+        hours < 24 -> stringResource(R.string.proactive_ledger_age_hours, hours)
+        else -> stringResource(R.string.proactive_ledger_age_days, hours / 24)
     }
 }
 

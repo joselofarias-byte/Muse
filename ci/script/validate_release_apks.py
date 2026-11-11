@@ -57,13 +57,13 @@ def verify_apk(apk: Path, apksigner: Path) -> None:
     if result.returncode != 0:
         detail = (result.stderr or result.stdout).strip().splitlines()
         safe_detail = detail[-1] if detail else "apksigner returned a non-zero exit code"
-        raise RuntimeError(f"APK Error en la verificación de firma: {apk.name}: {safe_detail}")
+        raise RuntimeError(f"APK 签名校验失败: {apk.name}: {safe_detail}")
     output = f"{result.stdout}\n{result.stderr}"
     fingerprints = [value.lower() for value in CERTIFICATE_SHA256_RE.findall(output)]
     if not fingerprints:
-        raise RuntimeError(f"APK Certificado de firma no devuelto SHA-256: {apk.name}")
+        raise RuntimeError(f"APK 未返回签名证书 SHA-256: {apk.name}")
     if any(value != EXPECTED_SIGNING_CERT_SHA256 for value in fingerprints):
-        raise RuntimeError(f"APK El certificado de firma no coincide con el certificado de publicación.: {apk.name}")
+        raise RuntimeError(f"APK 签名证书与发布证书不一致: {apk.name}")
 
 
 def expand_apks(patterns: list[str]) -> list[Path]:
@@ -86,18 +86,18 @@ def expand_apks(patterns: list[str]) -> list[Path]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--apk", action="append", required=True, help="APK Archivo o glob, se puede pasar repetidamente")
-    parser.add_argument("--apksigner", type=Path, help="Ruta de apksigner opcional")
+    parser.add_argument("--apk", action="append", required=True, help="APK 文件或 glob，可重复传入")
+    parser.add_argument("--apksigner", type=Path, help="可选的 apksigner 路径")
     args = parser.parse_args()
     apks = expand_apks(args.apk)
     if not apks:
-        print("FATAL: No coincidió con ninguno APK", file=sys.stderr)
+        print("FATAL: 没有匹配到任何 APK", file=sys.stderr)
         return 1
     try:
         apksigner = resolve_apksigner(args.apksigner)
         for apk in apks:
             verify_apk(apk, apksigner)
-            print(f"[Verificación de firma] PASS: {apk.name}")
+            print(f"[签名校验] PASS: {apk.name}")
     except (FileNotFoundError, OSError, RuntimeError) as error:
         print(f"release APK signing preflight failed: {error}", file=sys.stderr)
         return 1

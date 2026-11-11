@@ -6,40 +6,40 @@ import androidx.compose.ui.platform.LocalConfiguration
 import io.zer0.muse.ui.theme.MuseBreakpoints
 
 /**
- * P1-4 Adaptación de tableta:Clasificación del ancho de ventana.
+ * P1-4 平板适配:窗口宽度分级。
  *
- * umbral(Material de alineación 3 Especificación de clase de tamaño de ventana,Los valores convergen a [MuseBreakpoints] ficha):
- *  - [Compact]:  < 600dp(Pantalla vertical del teléfono celular)
- *  - [Medium]:   600dp - 839dp(Pantalla vertical de tableta/pantalla horizontal de teléfono celular)
- *  - [Expanded]: ≥ 840dp(Tableta horizontal/escritorio)
+ * 阈值(对齐 Material 3 WindowSizeClass 规范,数值收敛于 [MuseBreakpoints] 令牌):
+ *  - [Compact]:  < 600dp(手机竖屏)
+ *  - [Medium]:   600dp - 839dp(平板竖屏 / 手机横屏)
+ *  - [Expanded]: ≥ 840dp(平板横屏 / 桌面)
  *
- * Instrucciones de implementación:El proyecto no está actualmente presentado. androidx.compose.material3:material3-window-size-class
- * dependencia independiente,Por lo tanto usado [LocalConfiguration] El juicio screenWidthDp(Semánticamente equivalente a WindowSizeClass
- * Juicio basado en windowSizeDp,Y se puede llamar directamente en cualquier ámbito Composable,No es necesario el contenedor BoxWithConstraints).
+ * 实现说明:项目当前未引入 androidx.compose.material3:material3-window-size-class
+ * 单独依赖,故用 [LocalConfiguration] 的 screenWidthDp 判断(语义等价于 WindowSizeClass
+ * 基于 windowSizeDp 的判断,且可在任意 Composable 作用域直接调用,无需 BoxWithConstraints 包装)。
  */
 enum class WindowWidthClass {
-    /** Pantalla vertical del teléfono celular(< 600dp). */
+    /** 手机竖屏(< 600dp)。 */
     Compact,
 
-    /** Pantalla vertical de tableta/pantalla horizontal de teléfono celular(600dp - 839dp). */
+    /** 平板竖屏 / 手机横屏(600dp - 839dp)。 */
     Medium,
 
-    /** Tableta horizontal/escritorio(≥ 840dp). */
+    /** 平板横屏 / 桌面(≥ 840dp)。 */
     Expanded,
 }
 
 /**
- * Inferido en función del ancho de la ventana actual [WindowWidthClass].
+ * 根据当前窗口宽度推断 [WindowWidthClass]。
  *
- * En cambios de configuración(Girar, dividir pantalla)LocalConfiguration se volverá a ensamblar cuando,Vuelve automáticamente a la nueva calificación.
+ * 在配置变更(旋转、分屏)时 LocalConfiguration 会重新组合,自动返回新分级。
  *
- * Ejemplo de uso:
+ * 使用示例:
  * ```
  * val widthClass = rememberWindowWidthClass()
  * if (widthClass == WindowWidthClass.Expanded) {
- *     // Diseño de doble columna
+ *     // 双列布局
  * } else {
- *     // diseño de una sola columna
+ *     // 单列布局
  * }
  * ```
  */

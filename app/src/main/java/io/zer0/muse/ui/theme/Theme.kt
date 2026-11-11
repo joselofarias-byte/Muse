@@ -29,8 +29,8 @@ import androidx.core.view.WindowCompat
 import io.zer0.common.Logger
 
 /**
- * v0.52: Buscar en la cadena de contexto Activity(para operación Window).
- * Compose LocalContext puede estar empaquetado por ContextWrapper,Debe realizar un seguimiento para encontrar la actividad.
+ * v0.52: 从 Context 链中查找 Activity(用于操作 Window)。
+ * Compose 里 LocalContext 可能是 ContextWrapper 包裹的,需向上回溯找到 Activity。
  */
 private fun Context.findActivity(): Activity? {
     var context = this
@@ -42,38 +42,46 @@ private fun Context.findActivity(): Activity? {
 }
 
 /**
- * Muse Entrada temática (v0.22 reescribir).
+ * 当前生效的主题 id（`mono` / `sumi` / 自定义 id …）。
  *
- * decisiones de diseño:
- *  - usar [MaterialExpressiveTheme] sustituto MaterialTheme,habilitar [MotionScheme.expressive]
- *    (CardGroup La animación de prensa y la animación elástica de cambio de página se basan en esto.)
- *  - 6 conjunto de temas predeterminados (warm_paper / sakura / ocean / spring / autumn / amoled) por [themeId] cambiar
- *  - v1.97 gap7: Admite temas personalizados ([customThemes]) — Generado por el usuario según el color de la semilla ColorScheme,
- *    La prioridad está entre colores dinámicos y temas predeterminados.(color dinámico > Personalizar > Predeterminado)
- *  - modo tema (system / light / dark) por [darkTheme] controlar
- *  - Deshabilitar la selección dinámica de colores de Material You (dynamicColor):Los colores de la marca no se contaminan con los fondos de pantalla del sistema.
- *    (si es necesario en el futuro,Puedes agregar interruptores en la configuración.,Mantenga los parámetros aquí)
- *  - Escala del tamaño de fuente [fontSizeScale] Pase [MuseTypography.scaled] Aplicar a todo el texto
+ * 少数组件需要按主题做**结构性**差异（例如黑白主题下气泡必须是纯灰阶、不能带渐变），
+ * 用 id 判断比拿 ColorScheme 反推可靠。
+ */
+val LocalMuseThemeId = androidx.compose.runtime.staticCompositionLocalOf { "mono" }
+
+/**
+ * Muse 主题入口 (v0.22 重写)。
  *
- * Safe Mode Descripción (L-13):Cada parámetro tiene un valor predeterminado.(darkTheme Sigue el sistema,themeId=mono,
- * fontSizeScale=medium),Por lo tanto `MuseTheme { content }` puede funcionar de forma independiente.Safe Mode objetivos de diseño
- * si"Mínimo disponible":En un escenario de degradación donde SettingsRepository no está listo o falla la lectura,No depende de ningún tiempo de ejecución
- * La interfaz básica se puede representar en el estado,Por lo tanto, los colores dinámicos, los temas personalizados y la escala del tamaño de fuente no están conectados deliberadamente.
+ * 设计决策:
+ *  - 用 [MaterialExpressiveTheme] 替代 MaterialTheme,启用 [MotionScheme.expressive]
+ *    (CardGroup 按压动画、页面切换弹性动效均依赖此)
+ *  - 6 套预设主题 (warm_paper / sakura / ocean / spring / autumn / amoled) 由 [themeId] 切换
+ *  - v1.97 gap7: 支持自定义主题 ([customThemes]) — 用户基于种子色生成的 ColorScheme,
+ *    优先级介于动态色与预设主题之间(动态色 > 自定义 > 预设)
+ *  - 主题模式 (system / light / dark) 由 [darkTheme] 控制
+ *  - 不启用 Material You 动态取色 (dynamicColor):品牌色不被系统壁纸污染
+ *    (如未来需要,可在 settings 加开关,这里保留参数)
+ *  - 字号缩放 [fontSizeScale] 通过 [MuseTypography.scaled] 应用到所有文字
  *
- * @param darkTheme Si el modo oscuro (Determinado por la persona que llama según SettingsRepository.themeModeFlow)
- * @param themeId Tema predeterminado id (Pasado por la persona que llama SettingsRepository.themeIdFlow)
- * @param darkThemeId Tema independiente del modo oscuro id (Una cadena vacía indica una versión oscura que sigue el tema claro.)
- * @param fontSizeScale Rango de tamaño de fuente "small" / "medium" / "large" / "xlarge"
- * @param dynamicColor Si se debe habilitar la selección dinámica de color de Material You (Predeterminado false)
- * @param customThemes v1.97 gap7: Lista de temas definidos por el usuario(Generar según el color de la semilla. ColorScheme)
- * @param bodyFontFamily E2: Familia de fuentes de texto personalizadas(Fuente predeterminada del sistema;Cargado por la persona que llama por customFontPath)
+ * Safe Mode 说明 (L-13):各参数均带默认值(darkTheme 跟随系统、themeId=mono、
+ * fontSizeScale=medium),故 `MuseTheme { content }` 即可独立运行。Safe Mode 设计目标
+ * 是"最小可用":在 SettingsRepository 尚未就绪或读取失败的降级场景下,不依赖任何运行时
+ * 状态即可渲染基本界面,因此刻意不接入动态色 / 自定义主题 / 字号缩放。
+ *
+ * @param darkTheme 是否深色模式 (由调用方据 SettingsRepository.themeModeFlow 决定)
+ * @param themeId 预设主题 id (由调用方据 SettingsRepository.themeIdFlow 传入)
+ * @param darkThemeId 深色模式独立主题 id (空字符串表示跟随亮色主题的暗色版)
+ * @param fontSizeScale 字号档位 "small" / "medium" / "large" / "xlarge"
+ * @param dynamicColor 是否启用 Material You 动态取色 (默认 false)
+ * @param customThemes v1.97 gap7: 用户自定义主题列表(基于种子色生成 ColorScheme)
+ * @param bodyFontFamily E2: 自定义正文字体族(默认系统字体;由调用方按 customFontPath 加载)
  */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 @Suppress(
     "LongParameterList",
     "CyclomaticComplexMethod",
-    // Componente raíz del tema:modo tema/color dinámico/Tema personalizado/El conjunto de parámetros, como las fuentes y la rama de reserva de color, son estructuras inherentes a nivel de pantalla.
+    // 主题根组件:主题模式/动态色/自定义主题/字体等参数集合与取色回退分支为屏幕级固有结构
 )
 fun MuseTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
@@ -83,52 +91,52 @@ fun MuseTheme(
     dynamicColor: Boolean = false,
     customThemes: List<CustomTheme> = emptyList(),
     bodyFontFamily: FontFamily = FontFamily.Default,
-    /** H5: tema de alto contraste — perspectivas/Contraste de fondo completo(oscuro=Fondo negro puro y caracteres blancos puros.,color claro=Texto negro puro sobre fondo blanco puro),Para usuarios con baja visión. */
+    /** H5: 高对比主题 — 前景/背景对比拉满(深色=纯黑底纯白字,浅色=纯白底纯黑字),面向弱视用户。 */
     highContrast: Boolean = false,
     content: @Composable () -> Unit,
 ) {
-    // L-1: LocalContext.current Debe leerse afuera, recuerda.(remember La clave no contiene context,
-    // De lo contrario, los cambios de contexto no activarán el recálculo);colorScheme Almacenamiento en caché con recordar,Evite reconstruir cada vez que reorganice
-    // ColorScheme(dynamicColorScheme Leer recursos del sistema,Tabla de verificación de temas predeterminados,Todo debe estar en caché).
-    // v1.97 gap7: remember key Unirse customThemes,hacer nuevo/Editar/Vuelva a calcular inmediatamente después de eliminar un tema personalizado.
+    // L-1: LocalContext.current 必须在 remember 外读取(remember 的 key 不含 context,
+    // 否则 context 变化不会触发重算);colorScheme 用 remember 缓存,避免每次重组都重建
+    // ColorScheme(dynamicColorScheme 会读系统资源,预设主题会查表,均应缓存)。
+    // v1.97 gap7: remember key 加入 customThemes,使新增/编辑/删除自定义主题后立即重算。
     val context = LocalContext.current
     val composeDensity = LocalDensity.current
     val composeConfiguration = LocalConfiguration.current
     val resolvedThemeId = if (darkTheme && darkThemeId.isNotBlank()) darkThemeId else themeId
     val colorScheme = remember(dynamicColor, darkTheme, resolvedThemeId, customThemes) {
         when {
-            // color dinámico (Android 12+): Selección de color de fondo de pantalla del sistema (Desactivado de forma predeterminada,Interfaz reservada)
+            // 动态色 (Android 12+): 系统壁纸取色 (默认关闭,保留接口)
             dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
                 if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
             }
-            // v1.97 gap7: Tema personalizado — Generado en base al algoritmo HCT de color de semilla ColorScheme
-            // La prioridad es después de los colores dinámicos y antes de los temas predeterminados.,Permitir a los usuarios usar el color del fondo de pantalla del sistema,Colores de semillas personalizados también disponibles
+            // v1.97 gap7: 自定义主题 — 基于种子色 HCT 算法生成 ColorScheme
+            // 优先级在动态色之后、预设主题之前,让用户既可用系统壁纸色,也可用自定义种子色
             else -> {
                 val custom = customThemes.firstOrNull { it.id == resolvedThemeId }
                 if (custom != null) {
                     custom.generateColorScheme(darkTheme)
                 } else {
-                    // Tema predeterminado (Ruta de acceso predeterminada)
+                    // 预设主题 (默认回退路径)
                     val preset = findPresetTheme(resolvedThemeId)
                     if (darkTheme) preset.darkScheme else preset.lightScheme
                 }
             }
         }
     }
-    // H5: El modo de alto contraste superpone el fondo sobre el color del tema/Contraste de perspectiva,Mantenga la semántica del color del tema, como primario
-    // v1.0.90: En otros casos, hazlo una vez."gris blanquecino"normalización —— Predeterminado/Personalizar/Colores dinámicos en distintos tonos de neutros.,
-    // Sin embargo, la apariencia constante del producto es que el color de fondo es similar al blanco del papel y la diferencia de gradación entre los bloques grises es muy pequeña.(No es una tarjeta gris).
+    // H5: 高对比模式在主题色之上覆盖背景/前景对比,保留 primary 等主题色语义
+    // v1.0.90: 其余情况统一做一次"偏白的灰"归一化 —— 预设/自定义/动态色的中性色深浅不一,
+    // 但产品一贯的观感是底色接近纸白、灰块之间层级差很小(不是灰卡)。
     val effectiveColorScheme = when {
         highContrast -> colorScheme.toHighContrast(darkTheme)
         else -> colorScheme.toWhiterNeutrals(darkTheme)
     }
 
-    // v0.52: Barra de estado pretintada + barra de navegación,Evite el parpadeo al cambiar de tema(Blanco primero, luego negro / Negro primero, luego blanco).
-    // usar DisposableEffect(darkTheme) Restablece sincrónicamente la apariencia de la barra del sistema cuando cambia el tema oscuro,
-    // Antes que SideEffect y se activa inmediatamente cuando cambia la clave,Reduce la aberración cromática en un cuadro.
-    // L-3: key tomar solo darkTheme —— Apariencia de la barra del sistema(Icono claro y oscuro)Confíe únicamente en los modos claro y oscuro,Nada que ver con themeId,
-    // Incluir themeId hace que las barras del sistema se restablezcan innecesariamente al cambiar de tema.themeId causado por cambios colorScheme
-    // El cambio se realiza automáticamente recordando lo anterior,No afecta la apariencia de la barra del sistema.
+    // v0.52: 预染色状态栏 + 导航栏,避免主题切换闪烁(先白后黑 / 先黑后白)。
+    // 用 DisposableEffect(darkTheme) 在 darkTheme 变化时同步重设系统栏外观,
+    // 比 SideEffect 更早且在 key 变化时立即触发,减少一帧色差。
+    // L-3: key 只取 darkTheme —— 系统栏外观(图标明暗)仅依赖明暗模式,与 themeId 无关,
+    // 纳入 themeId 会导致切换主题时多余地重设系统栏。themeId 变化引发的 colorScheme
+    // 切换由上方 remember 自动处理,不影响系统栏外观。
     val view = LocalView.current
     LaunchedEffect(
         composeDensity.density,
@@ -137,8 +145,8 @@ fun MuseTheme(
         composeConfiguration.screenHeightDp,
         composeConfiguration.smallestScreenWidthDp,
     ) {
-        // maquina real“Toda la interfaz de usuario se reduce.”Diagnóstico: Grabar Redacción/Recursos/Ver zoom de tres capas al mismo tiempo,
-        // Se utiliza para distinguir entre el tamaño de visualización del sistema, la escala compatible con el proveedor y la escala del código de la aplicación.
+        // 实机“整套 UI 缩小”诊断：同时记录 Compose/Resources/View 三层缩放，
+        // 用于区分系统显示大小、厂商兼容缩放与应用代码缩放。
         val resourceMetrics = context.resources.displayMetrics
         Logger.i(
             "MuseDensity",
@@ -153,12 +161,12 @@ fun MuseTheme(
         DisposableEffect(darkTheme, effectiveColorScheme) {
             val window = context.findActivity()?.window
             if (window != null) {
-                // edge-to-edge MainActivity.enableEdgeToEdge es responsable de unificar,L-11 Eliminar aquí
-                // setDecorFitsSystemWindows Llamado para evitar configuraciones repetidas.
-                // v2.0 Reparación(Sistema oscuro + al aplicar color claro.,Los iconos de la barra de estado permanecen claros e ilegibles):
-                // enableEdgeToEdge SystemBarStyle.auto predeterminado sigue“sistema”modo oscuro,Su valor automático estará en
-                // Las oportunidades posteriores sobrescribirán la configuración aquí.;Utilice decorView en su lugar para obtener controller,Y configúrelo una vez después del primer cuadro.,
-                // Garantizar un tema ligero para la barra de estado dentro de la aplicación/Los iconos de la barra de navegación siempre están oscuros.
+                // edge-to-edge 由 MainActivity.enableEdgeToEdge 统一负责,L-11 删除此处
+                // setDecorFitsSystemWindows 调用以免重复设置。
+                // v2.0 修复(系统深色 + 应用浅色时,状态栏图标仍为浅色不可读):
+                // enableEdgeToEdge 默认 SystemBarStyle.auto 跟随“系统”深色模式,其 auto 值会在
+                // 后续时机覆盖此处设置;改用 decorView 取 controller,并在首帧后补设一次,
+                // 确保应用内浅色主题时状态栏/导航栏图标始终为深色。
                 val applySystemBarAppearance = {
                     val controller = WindowCompat.getInsetsController(window, window.decorView)
                     controller.isAppearanceLightStatusBars = !darkTheme
@@ -166,26 +174,26 @@ fun MuseTheme(
                 }
                 applySystemBarAppearance()
                 window.decorView.post { applySystemBarAppearance() }
-                // v2.6.4: Inmersión en la barra del sistema. —— Cambie el fondo a transparente para que el contenido de la página/El fondo se extiende debajo de la barra de estado y la barra de navegación.
-                // En lugar de revelar el color del tema (comentarios de los usuarios“Xiaobaitiao no es adecuado”).
-                // statusBarsPadding / NavigationBarsPadding aún evita el contenido legible en cada página para evitar las barras del sistema.
-                // La claridad y la oscuridad de los iconos de la barra de estado y de la barra de navegación han sido configuradas por el controlador de arriba.
+                // v2.6.4: 系统栏沉浸化 —— 背景改透明，让页面内容/背景延伸到状态栏与导航栏下方，
+                // 而不是露出一条主题色（用户反馈“小白条没适配”）。
+                // 可读内容仍由各页的 statusBarsPadding / navigationBarsPadding 避开系统栏。
+                // 状态栏与导航栏图标明暗已由上面的 controller 设置。
                 window.statusBarColor = android.graphics.Color.TRANSPARENT
                 window.navigationBarColor = android.graphics.Color.TRANSPARENT
-                // API 29+ Desactive la máscara de contraste de la barra de navegación (cuando no se utiliza la barra de gestos, se colocará una capa oscura debajo de la barra de navegación).
-                // Se convertirá en una franja abrupta y oscura sobre un fondo transparente).
+                // API 29+ 关闭导航栏对比度遮罩（不用手势条时会在导航栏下铺一层深色，
+                // 透明背景下会变成一条突兀的暗条）。
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
                     window.isNavigationBarContrastEnforced = false
                 }
-                // v2.6.4: decorView El fondo sigue el tema —— Una vez que la barra del sistema se vuelve transparente, si hay páginas que no ocupan toda la ventana,
-                // El color de fondo del tema se expone debajo de la barra del sistema en lugar del color predeterminado de la ventana (para evitar que las barras blancas queden expuestas debajo de los temas oscuros).
+                // v2.6.4: decorView 背景跟随主题 —— 系统栏透明后，若有页面未铺满整窗，
+                // 系统栏下方露出的是主题背景色而不是 window 默认色（防深色主题下露白条）。
                 window.decorView.setBackgroundColor(effectiveColorScheme.background.toArgb())
             }
             onDispose {
-                // L-2: Mantener el aspecto actual,No se realiza ninguna restauración.MuseTheme envolver todo App,onDispose solo en
-                // Activity Se activa cuando se destruye,no existe"La próxima interfaz sin temática de Muse"Escenas que necesitan ser restauradas.;
-                // Configuración del código original !darkTheme En realidad no-op(Establecer el mismo valor que el cuerpo del efecto.),La anotación afirma
-                // "Volver a los valores predeterminados del sistema",La anotación de propiedad no coincide con el comportamiento,Comentarios corregidos aquí para que coincidan con la semántica real.
+                // L-2: 保持当前外观,不做还原。MuseTheme 包裹整个 App,onDispose 仅在
+                // Activity 销毁时触发,不存在"下一个非 Muse 主题界面"需要还原的场景;
+                // 原代码设置 !darkTheme 实为 no-op(与 effect 体设置相同值),注释却声称
+                // "交还给系统默认",属注释与行为不符,此处修正注释以匹配实际语义。
                 val window = context.findActivity()?.window
                 if (window != null) {
                     val controller = WindowCompat.getInsetsController(window, view)
@@ -196,13 +204,13 @@ fun MuseTheme(
         }
     }
 
-    // M-TP1: Caché escalado por fontSizeScale Typography,Evite copiar toda la tipografía cada vez que reorganice.
-    // E2: bodyFontFamily cambiar(importar/fuente clara)reconstruir juntos,Aplique fuentes personalizadas a todos los estilos.
+    // M-TP1: 按 fontSizeScale 缓存缩放后的 Typography,避免每次重组都 copy 整个 Typography。
+    // E2: bodyFontFamily 变化(导入/清除字体)时一并重建,将自定义字体应用到全部样式。
     val scaledTypography = remember(fontSizeScale, bodyFontFamily) {
         val base = MuseTypography.scaled(fontSizeScale)
         if (bodyFontFamily == FontFamily.Default) base else base.withFontFamily(bodyFontFamily)
     }
-    // L-TH2: MotionScheme.expressive() Caché como singleton,Evite reorganizar y crear nuevos cada vez.
+    // L-TH2: MotionScheme.expressive() 缓存为单例,避免每次重组新建。
     val motionScheme = remember { MotionScheme.expressive() }
 
     MuseMotion.Provide {
@@ -212,30 +220,34 @@ fun MuseTheme(
             shapes = MuseShapes,
             motionScheme = motionScheme,
         ) {
-            // v1.0.92: Eliminar globalmente la máscara de prensa circular(ripple).
-            // CMP-03 La ondulación predeterminada de M3 restaurada se extenderá por todo el ancho de la fila de la tarjeta formando un gran círculo gris que cubrirá la mayor parte de la tarjeta.
-            // (M3 bounded ripple El radio se calcula desde el punto de contacto hasta la esquina más alejada.),Eliminar todo por decisión del producto:
-            //  - LocalIndication Cambio a implementación silenciosa(Foundation clickable / Camino de control desnudo);
-            //  - LocalRippleConfiguration conjunto null(M3 Dentro del componente ripple() camino,
-            //    Material3 1.3+ interruptor oficial:configuration cuando es nulo ripple() Devuelve una implementación vacía).
-            // Los componentes que requieren comentarios de la prensa son autodibujados.(MuseDialogButton Presione para comprimir y liberar, etc.).
-            // El código comercial ya no codifica los colores nude(Inyecta sincrónicamente color de estado semántico y color de resaltado de código).
+            // v1.0.92: 全局移除圆形按压遮罩(ripple)。
+            // CMP-03 恢复的 M3 默认 ripple 在整行宽卡片上会扩散出覆盖大半张卡的大灰圆
+            // (M3 bounded ripple 半径按触摸点到最远角计算),按产品决策全部去掉:
+            //  - LocalIndication 换静默实现(Foundation clickable / 裸控件路径);
+            //  - LocalRippleConfiguration 置 null(M3 组件内部 ripple() 路径,
+            //    Material3 1.3+ 的官方开关:configuration 为 null 时 ripple() 返回空实现)。
+            // 需要按压反馈的组件走自绘(MuseDialogButton 按压缩放等)。
+            // 业务代码不再硬编码裸色(同步注入语义状态色与代码高亮色)。
             val statusColors = if (darkTheme) DarkStatusColors else LightStatusColors
             val codeColors = if (darkTheme) DarkCodeColors else LightCodeColors
             CompositionLocalProvider(
-                LocalIndication provides MuseNoRippleIndication,
+                LocalMuseThemeId provides resolvedThemeId,
+                LocalIndication provides
+                    if (MuseMotion.isReducedMotion()) {
+                        // 系统关闭动画：维持零覆盖，凝光不产生任何动画循环。
+                        MuseNoRippleIndication
+                    } else {
+                        edgeGlowIndication()
+                    },
                 LocalRippleConfiguration provides null,
                 LocalStatusColors provides statusColors,
                 LocalCodeColors provides codeColors,
-                // Deshabilite globalmente el rebote elástico de desplazamiento excesivo para contenedores de desplazamiento.
-                //
-                // Stretch Rebound encabeza la lista en Android/tiempo de fondo“banda de goma”efecto,
-                // En la interfaz de la tarjeta, el borde del gesto se confundirá con el área de retorno del sistema y también se confundirá con el área de retorno del sistema.
-                // La determinación del área de exclusión de gestos interfiere entre sí (cuando el dedo comienza desde el borde, el desplazamiento será devorado primero por el rebote).
-                // Aquí se desactiva uniformemente y se detiene al desplazarse hasta el borde, lo que hace que la interacción sea más segura.
-                androidx.compose.foundation.LocalOverscrollFactory provides null,
-                // v2.6.2(comentarios de los usuarios): Si la descarga está actualmente oscura —— Para antecedentes de chat y otras necesidades
-                // “poco profundo/Dos series de profundidad”El consumidor lee isSystemInDarkTheme en lugar de adivinar cada uno.
+                // F3.3（用户批准推翻旧全局关闭决策）：不再 provide null，
+                // 交回平台默认越界效果——API31+ 为低强度橡皮筋拉伸，更低版本
+                // 平台本身无拉伸（自然降级为硬停）。真机验收含低帧率设备观察，
+                // 不达标可单行回退。
+                // v2.6.2（用户反馈）: 下传当前是否深色 —— 供聊天背景等需要
+                // “浅/深两套”的消费方读取，而不是各自猜 isSystemInDarkTheme。
                 io.zer0.muse.ui.theme.LocalIsDarkTheme provides darkTheme,
             ) {
                 content()
@@ -245,9 +257,9 @@ fun MuseTheme(
 }
 
 /**
- * H5: modo de alto contraste — poner fondo/perspectivas/Los colores relacionados con la superficie maximizan el contraste(negro puro/blanco puro),Conserva el color semántico primario del tema.
- * Para usuarios con baja visión:Máximo contraste entre texto y fondo.(21:1),secondaryContainer/errorContainer espera
- * Los colores de los contenedores semánticos permanecen sin cambios.,Evite dañar la legibilidad del color del estado.
+ * H5: 高对比模式 — 把背景/前景/表面相关颜色拉满对比度(纯黑/纯白),保留主题 primary 语义色。
+ * 面向弱视用户:文本与背景对比度达到最大(21:1),secondaryContainer/errorContainer 等
+ * 语义容器色保持不变,避免破坏状态色可辨识度。
  */
 private fun ColorScheme.toHighContrast(darkTheme: Boolean): ColorScheme = if (darkTheme) {
     copy(
@@ -270,29 +282,30 @@ private fun ColorScheme.toHighContrast(darkTheme: Boolean): ColorScheme = if (da
 }
 
 /**
- * v1.0.90: Tema irrelevante"gris blanquecino"Normalizar.
+ * v1.0.90: 主题无关的"偏白的灰"归一化。
  *
- * Tema preestablecido, escala de grises ajustada a mano y temas personalizados(HCT generar)Las escalas de grises son de diferentes tonalidades y son inconsistentes cuando se ven en la misma pantalla;
- * La apariencia del producto siempre ha sido que el color de fondo es cercano al blanco del papel y la diferencia de gradación entre los bloques grises es muy pequeña (no es una tarjeta gris).
- * Aquí, la familia de superficies y la variante de contorno se unifican en el extremo blanco:
+ * 预设主题手调的灰阶与自定义主题(HCT 生成)的灰阶深浅不一，同一屏里看着也不一致；
+ * 而产品一直以来的观感是底色接近纸白、灰块之间的层级差很小（不是一张灰卡）。
+ * 这里把 surface 家族与 outlineVariant 统一往白端拉一档：
  *
- *  - Sólo se toca el color base, no hay error primario/secundario, ni ningún on* con color de texto;
- * Aclarar el color de fondo sólo aumentará el contraste del texto de primer plano, pero no creará un riesgo de legibilidad.
- *  - Se levanta más en modo ligero(El color de fondo es parecido al blanco del papel.), el modo oscuro solo mejora un poco(Mantenga el OLED oscuro y solo ilumine las áreas grises un nivel).
- *  - El modo de alto contraste no va aquí(ver [toHighContrast]), los dos tienen objetivos opuestos.
+ *  - 只动底层面色，不碰 primary/secondary/error，也不碰任何 on* 与文字色；
+ * 底色变浅只会抬高前景文字的对比度，不会制造可读性风险。
+ *  - 浅色模式下抬得多(底色接近纸白)，深色模式只抬一点点(保持 OLED 的暗底，只把灰块提亮一档)。
+ *  - 高对比模式不走这里(见 [toHighContrast])，两者的目标相反。
  *
- * v2.0.1 "Doble plano": el modo de luz agrega además color de fondo de la página (background/surfaceDim) Presione un nivel hacia el extremo negro,
- * dejar"Color de fondo claro + superficie de tarjeta más brillante(surface)"La diferencia de brillo se convierte en el principal portador de jerarquía;
- * La superficie de la tarjeta ya no depende de los trazos./Capas de sombra. El modo oscuro permanece sin cambios por el momento (pendiente de calibración de referencia oscura).
+ * v2.0.1 「双平面」：把 page 底色（background/surfaceDim）朝黑端压一档、把卡面（surface）
+ * 朝白端提一档，让"底 vs 卡"的明度差成为层级的主要载体；卡面不再靠描边/阴影分层。
+ * 浅色与深色同构：深色底压向 OLED 纯黑、卡面独立提亮（不再与底色同系数压黑，否则底=卡、无层级）。
+ * 具体幅度是校准参数，随样张/实机观感迭代；方向性不变量由 DoublePlaneTest 钉住。
  */
-private fun ColorScheme.toWhiterNeutrals(darkTheme: Boolean): ColorScheme = if (darkTheme) {
+internal fun ColorScheme.toWhiterNeutrals(darkTheme: Boolean): ColorScheme = if (darkTheme) {
     copy(
-        // v2.x Plano dual oscuro(Calibración del modo oscuro):El color de fondo está un paso más cerca del negro puro OLED(con colores claros"Color de fondo más oscuro"isomorfismo);
-        // Referencia de medición real:oscuro = #000 Tarjeta inferior / #1A1A1A,Fondo de la jerarquía-Pobre cominidad.
+        // 深色双平面：底色向 OLED 纯黑压一档；卡面独立提亮一档(见 DOUBLE_PLANE_DARK_SURFACE_LIFT)，
+        // 纯黑底 → 近 #1A1A1A 卡，层级靠底-卡明度差。
         background = darkenToward(background, DOUBLE_PLANE_DARK_BG_PUSH),
-        surface = darkenToward(surface, DOUBLE_PLANE_DARK_BG_PUSH),
+        surface = liftTowardWhite(surface, DOUBLE_PLANE_DARK_SURFACE_LIFT),
         surfaceDim = darkenToward(surfaceDim, DOUBLE_PLANE_DARK_BG_PUSH),
-        // Los bloques grises en la superficie de la tarjeta están moderadamente convergentes.(El ascensor original es ligeramente más alto.,La tarjeta es más brillante cuando se combina con un fondo profundo.;Reciclaje aprox. 30%,Reservar"Mate pero no tapado"Percepción).
+        // 卡面灰块适度收敛(原 lift 略高,与深底搭配时卡偏亮;回收约 30%,保留"雾面不闷"观感)。
         surfaceBright = liftTowardWhite(surfaceBright, 0.04f),
         surfaceContainerLowest = liftTowardWhite(surfaceContainerLowest, 0.02f),
         surfaceContainerLow = liftTowardWhite(surfaceContainerLow, 0.04f),
@@ -304,8 +317,9 @@ private fun ColorScheme.toWhiterNeutrals(darkTheme: Boolean): ColorScheme = if (
     )
 } else {
     copy(
-        // v2.0.1 Plano doble: el color de fondo se presiona un nivel más profundo (×0.955), superficie de la tarjeta(surface)Mantenga el fondo blanco y use brillo contrastante para crear jerarquía.
+        // 双平面：底色压深一档（×0.92）、卡面(surface)提亮一档，明度差建立层级。
         background = darkenToward(background, DOUBLE_PLANE_BG_PUSH),
+        surface = liftTowardWhite(surface, DOUBLE_PLANE_LIGHT_SURFACE_LIFT),
         surfaceDim = darkenToward(surfaceDim, DOUBLE_PLANE_BG_PUSH),
         surfaceContainerLowest = liftTowardWhite(surfaceContainerLowest, 0.25f),
         surfaceContainerLow = liftTowardWhite(surfaceContainerLow, 0.40f),
@@ -317,18 +331,28 @@ private fun ColorScheme.toWhiterNeutrals(darkTheme: Boolean): ColorScheme = if (
     )
 }
 
-/** Rango de profundidad del color de fondo del modo de color de luz de \"plano dual\":1 - 0.955 = 4.5%. (Parámetros de calibración, ajustados durante la iteración de la muestra). */
-private const val DOUBLE_PLANE_BG_PUSH = 0.045f
+/** 「双平面」浅色模式底色压深幅度：1 - 0.92 = 8%。（校准参数，样张迭代时调整。） */
+private const val DOUBLE_PLANE_BG_PUSH = 0.08f
+
+/** 「双平面」浅色模式卡面提亮幅度：向白拉 35%，与压深的底色拉开明度差。（校准参数。） */
+private const val DOUBLE_PLANE_LIGHT_SURFACE_LIFT = 0.35f
 
 /**
- * Amplitud de ennegrecimiento del color de fondo del modo oscuro de "plano dual" (calibración del modo oscuro,v2.x):
- * 75% de presión hacia el negro puro OLED (predeterminado cerca del fondo negro, como #101014 → #040405 nivel),
- * dejar"fondo vs tarjeta"Las diferencias de luminosidad se convierten en el principal portador de los niveles de oscuridad.
- * (Parámetros de calibración: con capturas de pantalla oscuras/Ajuste de un solo punto durante la iteración de la apariencia y sensación de la máquina real. )
+ * 「双平面」深色模式底色压黑幅度（深色模式校准，v2.x）：
+ * 向 OLED 纯黑压 75%（预设近黑底如 #101014 → #040405 级别），
+ * 让"底 vs 卡"明度差成为深色层级的主要载体。
+ * （校准参数：随深色截图/实机观感迭代时单点调整。）
  */
 private const val DOUBLE_PLANE_DARK_BG_PUSH = 0.75f
 
-/** Lleva el color hacia el blanco puro. [amount](0..1), solo cambia el brillo sin cambiar el tono. */
+/**
+ * 「双平面」深色模式卡面提亮幅度：向白拉 10%（纯黑底 → 近 #1A1A1A 卡），与压黑的底色拉开明度差。
+ * 此前卡面与底色同系数压黑导致底=卡、深色无层级，这里改为独立提亮修复。
+ * （校准参数：待深色样张/实机观感迭代时单点调整；方向性不变量由 DoublePlaneTest 钉住。）
+ */
+private const val DOUBLE_PLANE_DARK_SURFACE_LIFT = 0.10f
+
+/** 把颜色向纯白拉 [amount](0..1)，只改亮度不做色相偏移。 */
 private fun liftTowardWhite(color: Color, amount: Float): Color = Color(
     red = color.red + (1f - color.red) * amount,
     green = color.green + (1f - color.green) * amount,
@@ -336,7 +360,7 @@ private fun liftTowardWhite(color: Color, amount: Float): Color = Color(
     alpha = color.alpha,
 )
 
-/** v2.0.1 Plano dual: presione el color hacia el extremo negro [amount](0..1), mantiene el tono (oscurecimiento multiplicativo, solo se usa para la superficie del fondo). */
+/** v2.0.1 双平面：把颜色朝黑端压 [amount](0..1)，保持色相（乘性压暗，只用于底色面）。 */
 private fun darkenToward(color: Color, amount: Float): Color = Color(
     red = color.red * (1f - amount),
     green = color.green * (1f - amount),
@@ -345,9 +369,9 @@ private fun darkenToward(color: Color, amount: Float): Color = Color(
 )
 
 /**
- * v2.6.2(comentarios de los usuarios): Si el tema oscuro se utiliza actualmente (configuración de usuario resuelta, no valor del sistema).
+ * v2.6.2（用户反馈）: 当前是否深色主题（已解析用户设置，不是系统值）。
  *
- * necesidades de suministro "superficiales"/Los consumidores utilizan "Deep Two Sets" (como la cobertura de fondo oscuro en el chat).
- * El valor predeterminado es falso, lo que garantiza que no falle al renderizar fuera de MuseTheme.
+ * 供需要「浅/深两套」的消费方使用（如聊天背景深色覆盖）。
+ * 默认 false，保证在 MuseTheme 之外渲染时不崩。
  */
 val LocalIsDarkTheme = androidx.compose.runtime.staticCompositionLocalOf { false }

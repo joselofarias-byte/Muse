@@ -11,54 +11,54 @@ import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
 
 /**
- * SillyTavern Exportador de tarjetas de personajes.
+ * SillyTavern 角色卡导出器。
  *
- * Soporta dos salidas:
- *  - PNG: Escribir JSON base64 codificado PNG tEXt chunk (keyword="chara")
- *  - JSON: Escribe la tarjeta de personaje V2 directamente JSON
+ * 支持两种输出:
+ *  - PNG: 把 JSON base64 编码后写入 PNG tEXt chunk (keyword="chara")
+ *  - JSON: 直接写 V2 角色卡 JSON
  *
- * PNG Política de exportación:
- *  - si [avatar] No vacío,Úselo como un vector PNG (compress Postinyección de bytes PNG tEXt)
- *  - si [avatar] esta vacio,Generar PNG transparente 1x1 como vector (Solo lleva metadatos,Sin vista)
+ * PNG 导出策略:
+ *  - 若 [avatar] 非空,用其作为 PNG 载体 (compress 为 PNG 字节后注入 tEXt)
+ *  - 若 [avatar] 为空,生成 1x1 透明 PNG 作为载体 (仅承载元数据,无可视图)
  *
- * PNG chunk Implementación manual de inyección. (ver [PngChunkUtil]),No se agregan nuevas dependencias.
+ * PNG chunk 注入手动实现 (见 [PngChunkUtil]),不新增依赖。
  *
- * Siga las convenciones de formato de tarjeta de personaje v2 de SillyTavern:PNG tEXt chunk y JSON dos operadores.
+ * 遵循 SillyTavern 角色卡 v2 格式约定:PNG tEXt chunk 与 JSON 两种载体。
  */
 object CharacterCardExporter {
 
     private const val TAG = "CharacterCardExporter"
 
     /**
-     * Exporta como tarjetas de personajes PNG de SillyTavern.
+     * 导出为 SillyTavern PNG 角色卡。
      *
-     * @param context Utilizado por ContentResolver para escribir destUri
-     * @param assistant Asistente de fuente
-     * @param avatar avatar opcional Bitmap;Si es nulo, utilice un PNG transparente de 1x1 como vector.
-     * @param destUri objetivo URI (SAF CreateDocument Regresar)
+     * @param context 用于 ContentResolver 写 destUri
+     * @param assistant 源助手
+     * @param avatar 可选头像 Bitmap;为 null 时用 1x1 透明 PNG 作载体
+     * @param destUri 目标 URI (SAF CreateDocument 返回)
      */
     suspend fun exportToPng(context: Context, assistant: AssistantEntity, avatar: Bitmap?, destUri: Uri): Result<Unit> =
         withContext(Dispatchers.IO) {
             runCatching {
                 val card = SillyTavernCardV2.fromAssistantEntity(assistant)
                 val json = AppJson.encodeToString(SillyTavernCardV2.serializer(), card)
-                // NO_WRAP: No insertar nuevas líneas, Segmento único de fragmento de texto garantizado text
+                // NO_WRAP: 不插入换行, 保证 tEXt chunk 单段 text
                 val base64 = Base64.encodeToString(json.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
 
-                // Generar bytes vectoriales PNG (avatar o 1x1 transparente)
+                // 生成 PNG 载体字节 (头像 or 1x1 透明)
                 val pngBytes = encodePngBytes(avatar)
-                // inyectar tEXt chunk (Después de insertar en IHDR)
+                // 注入 tEXt chunk (插到 IHDR 之后)
                 val finalBytes = PngChunkUtil.writeTextChunk(pngBytes, "chara", base64)
 
                 context.contentResolver.openOutputStream(destUri)?.use { os ->
                     os.write(finalBytes)
                     os.flush()
-                } ?: error("No se puede escribir en el destino URI")
+                } ?: error("无法写入目标 URI")
             }.onFailure { Logger.w(TAG, "exportToPng failed: ${it.message}") }
         }
 
     /**
-     * Exportar como tarjeta de personaje JSON de SillyTavern (V2 estructura).
+     * 导出为 SillyTavern JSON 角色卡 (V2 结构)。
      */
     suspend fun exportToJson(context: Context, assistant: AssistantEntity, destUri: Uri): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
@@ -67,13 +67,13 @@ object CharacterCardExporter {
             context.contentResolver.openOutputStream(destUri)?.use { os ->
                 os.write(json.toByteArray(Charsets.UTF_8))
                 os.flush()
-            } ?: error("No se puede escribir en el destino URI")
+            } ?: error("无法写入目标 URI")
         }.onFailure { Logger.w(TAG, "exportToJson failed: ${it.message}") }
     }
 
-    // ── herramientas internas ──
+    // ── 内部工具 ──
 
-    /** Codificar mapa de bits en bytes PNG;bitmap Devuelve un PNG transparente de 1x1 cuando es nulo. */
+    /** 把 Bitmap 编码为 PNG 字节;bitmap 为 null 时返回 1x1 透明 PNG。 */
     private fun encodePngBytes(bitmap: Bitmap?): ByteArray {
         val bmp = bitmap ?: Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888)
         val out = ByteArrayOutputStream()

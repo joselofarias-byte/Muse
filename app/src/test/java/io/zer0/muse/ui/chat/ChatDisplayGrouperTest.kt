@@ -7,16 +7,16 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * [ChatDisplayGrouper] prueba única de lógica pura(no depende de Android).
+ * [ChatDisplayGrouper] 的纯逻辑单测(不依赖 Android)。
  *
- * Portada:Lista vacía/todos los elementos individuales/todos agregables/elementos individuales agregables pero no agrupados/cabeza y cola y capa intermedia/mapeo de índice.
+ * 覆盖:空列表 / 全单条 / 全可聚合 / 单条可聚合不成组 / 首尾与中间夹层 / 索引映射。
  */
 class ChatDisplayGrouperTest {
 
-    /** Utilice el contenido como identificador estable(Evite depender de experimentos Uuid.parse). */
+    /** 用 content 当稳定标识(避免依赖实验性的 Uuid.parse)。 */
     private fun msg(marker: String) = UIMessage(role = MessageRole.ASSISTANT, content = marker, createdAt = 1L)
 
-    /** Agregable = content a "tool" comienzo(No relacionado con el negocio,Sólo para pruebas). */
+    /** 可聚合 = content 以 "tool" 开头(与业务无关,仅测试用)。 */
     private val isGroupable: (UIMessage) -> Boolean = { it.content.startsWith("tool") }
 
     private fun contentsOf(items: List<ChatDisplayItem>): List<String> = items.flatMap { item ->
@@ -41,8 +41,8 @@ class ChatDisplayGrouperTest {
 
     @Test
     fun `single groupable also forms a group`() {
-        // MIN_RUN_SIZE Se ha cambiado a 1: cuando solo se ajusta una herramienta en una ronda o solo hay un período de pensamiento,
-        // También debería integrarse en tarjetas de proceso en lugar de ser herramientas independientes./Piensa que aparecen bloques.
+        // MIN_RUN_SIZE 已改为 1：一轮只调一个工具或只有一段思考时，
+        // 也要收敛进过程卡，而不是以独立的工具/思考块出现。
         val items = ChatDisplayGrouper.group(listOf(msg("tool1")), isGroupable)
         assertEquals(1, items.size)
         val grouped = items.single() as ChatDisplayItem.Grouped
@@ -95,20 +95,20 @@ class ChatDisplayGrouperTest {
         val index = ChatDisplayGrouper.indexByMessageId(items)
         val ids = items.flatMap { it.messageIds }
         assertEquals(4, ids.size)
-        // Diseño:[Single(text1), Grouped(tool1,tool2), Single(text2)]
-        // dos en el grupo(tool1/tool2)apunta al mismo subíndice del elemento de la lista
+        // 布局:[Single(text1), Grouped(tool1,tool2), Single(text2)]
+        // 组内两条(tool1/tool2)指向同一个列表项下标
         assertEquals(index[ids[1]], index[ids[2]])
-        // Línea única y grupo, grupo y última línea individual tienen elementos diferentes
+        // 单条与组、组与末尾单条各自不同项
         assertTrue(index[ids[0]] != index[ids[1]])
         assertTrue(index[ids[2]] != index[ids[3]])
-        // Dos mensajes en el grupo apuntan al mismo elemento de la lista,y el artículo es de hecho un Grouped
+        // 组内两条消息指向同一个列表项,且该项确实是一个 Grouped
         assertTrue(items[index[ids[1]]!!] is ChatDisplayItem.Grouped)
     }
 
     @Test
     fun `transparent message does not split the group`() {
-        // En una ronda de respuestas, la tarjeta de tarea se cuelga en el mensaje del medio: no participa en la agrupación.
-        // Pero los dos procesos antes y después deberían fusionarse en un solo grupo en lugar de dividirse por la mitad.
+        // 一轮回复里，任务卡挂在中间那条消息上：它不参与分组，
+        // 但前后两段过程要合并成一组，而不是被它切成两半。
         val tool1 = msg("tool1")
         val plan = msg("plan")
         val tool2 = msg("tool2")
@@ -117,7 +117,7 @@ class ChatDisplayGrouperTest {
             isGroupable = isGroupable,
             isTransparent = { it.content == "plan" },
         )
-        // Espere: un grupo (tool1 + tool2), agregue un mensaje de tarjeta de tarea independiente.
+        // 期望：一个组（tool1 + tool2），加一条独立的任务卡消息。
         assertEquals(2, items.size)
         val grouped = items[0] as ChatDisplayItem.Grouped
         assertEquals(listOf("tool1", "tool2"), grouped.msgs.map { it.content })
@@ -134,7 +134,7 @@ class ChatDisplayGrouperTest {
             isGroupable = isGroupable,
             isTransparent = { it.content == "plan" },
         )
-        // Las tarjetas de tareas se organizan después del grupo, el orden es estable y no se pierde ningún mensaje.
+        // 任务卡排在组之后，顺序稳定，不丢消息。
         assertEquals(listOf("tool1", "tool2", "plan"), contentsOf(items))
     }
 }

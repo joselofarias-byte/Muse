@@ -10,12 +10,12 @@ import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.unit.dp
 
 /**
- * Pequeño conjunto de iconos autodibujados de teléfono celular.
+ * 小手机自绘图标集。
  *
- * Usar todo [ImageVector.Builder] dibujar del camino,Un camino y un conjunto de coordenadas.,No cites la biblioteca de íconos ni la expliques detalladamente. Material Icons:
- * Los íconos del escritorio, la barra de estado y los botones del encabezado requieren el mismo trazo(1.7 Unidad Línea Delgada + Extremo Redondo),Se desmorona cuando cambias la biblioteca.
+ * 全部用 [ImageVector.Builder] 从路径画出来,一条路径一组坐标,不引图标库也不拼 Material Icons:
+ * 桌面图标、状态栏、页头按钮要的是同一个笔触(1.7 单位细线 + 圆端),换库就散架。
  *
- * El color es siempre negro puro.,por `Icon(tint = ...)` Teñido uniforme.
+ * 颜色一律给纯黑,由 `Icon(tint = ...)` 统一染色。
  */
 
 private val IconSize = 24.dp
@@ -23,7 +23,7 @@ private const val VIEWPORT_SIZE = 24f
 private const val LINE_WIDTH = 1.7f
 private const val THIN_LINE_WIDTH = 1.5f
 
-/** Coeficiente de aproximación del arco:Desplazamiento del punto de control equivalente a Bézier de cuatro segmentos de radio r. */
+/** 圆弧近似系数:半径 r 的四段贝塞尔等价控制点偏移。 */
 private const val ARC_FACTOR = 0.5523f
 
 private fun lineIcon(name: String, block: ImageVector.Builder.() -> Unit): ImageVector = ImageVector.Builder(
@@ -49,7 +49,7 @@ private fun ImageVector.Builder.fillPath(pathBuilder: PathBuilder.() -> Unit) {
     path(pathBuilder = pathBuilder, fill = SolidColor(Color.Black))
 }
 
-/** redondo:Cuatro secciones de ortografía cúbica de Bézier,para avatar/Los gráficos como las brújulas deben ser redondos. */
+/** 圆:四段三次贝塞尔拼成,用于头像/指南针这类必须圆的图形。 */
 private fun PathBuilder.circle(cx: Float, cy: Float, radius: Float) {
     val k = radius * ARC_FACTOR
     moveTo(cx - radius, cy)
@@ -60,7 +60,7 @@ private fun PathBuilder.circle(cx: Float, cy: Float, radius: Float) {
     close()
 }
 
-/** rectángulo redondeado:Las cuatro esquinas también usan Bezier.,El radio de la esquina es tan pequeño como 1 y no está borroso. */
+/** 圆角矩形:四角同样用贝塞尔,圆角半径小到 1 也不糊。 */
 private fun PathBuilder.roundedRect(left: Float, top: Float, right: Float, bottom: Float, radius: Float) {
     val k = radius * ARC_FACTOR
     moveTo(left + radius, top)
@@ -75,7 +75,7 @@ private fun PathBuilder.roundedRect(left: Float, top: Float, right: Float, botto
     close()
 }
 
-/** barra de estado:señal de cuatro cuadros,Cuanto más alto, más fuerte. */
+/** 状态栏:四格信号,越高越强。 */
 private fun signalIcon(): ImageVector = lineIcon("mp-signal") {
     strokePath(width = 2.2f) {
         moveTo(4f, 15.6f)
@@ -89,7 +89,7 @@ private fun signalIcon(): ImageVector = lineIcon("mp-signal") {
     }
 }
 
-/** barra de estado:Wi-Fi,Tres arcos más un punto. */
+/** 状态栏:Wi-Fi,三道弧加一个点。 */
 private fun wifiIcon(): ImageVector = lineIcon("mp-wifi") {
     strokePath {
         moveTo(3f, 9.4f)
@@ -109,14 +109,14 @@ private fun wifiIcon(): ImageVector = lineIcon("mp-wifi") {
     fillPath { circle(12f, 19.2f, 1.2f) }
 }
 
-/** barra de estado:Caja de alimentación + electrodo + bloque de alimentación. */
+/** 状态栏:电量外壳 + 电极 + 电量块。 */
 private fun batteryIcon(): ImageVector = lineIcon("mp-battery") {
     strokePath(width = THIN_LINE_WIDTH) { roundedRect(2.6f, 7.4f, 19.2f, 16.6f, 2.8f) }
     fillPath { roundedRect(19.8f, 10.6f, 21.6f, 13.4f, 1.2f) }
     fillPath { roundedRect(4.6f, 9.4f, 14.2f, 14.6f, 1.8f) }
 }
 
-/** noticias:Una burbuja con una cola inferior izquierda. */
+/** 消息:一个带左下尾巴的气泡。 */
 private fun messageIcon(): ImageVector = lineIcon("mp-message") {
     strokePath {
         moveTo(5.6f, 4f)
@@ -134,7 +134,7 @@ private fun messageIcon(): ImageVector = lineIcon("mp-message") {
     }
 }
 
-/** libreta de direcciones:una tarjeta de contacto —— La tarjeta perfila una figura humana. */
+/** 通讯录:一张联系人名片 —— 卡片轮廓里一个人形。 */
 private fun contactsIcon(): ImageVector = lineIcon("mp-contacts") {
     strokePath { roundedRect(4f, 3.4f, 20f, 20.6f, 3.2f) }
     strokePath { circle(12f, 9.6f, 2.7f) }
@@ -145,7 +145,7 @@ private fun contactsIcon(): ImageVector = lineIcon("mp-contacts") {
     }
 }
 
-/** descubrir:brújula,Agrega una aguja oblicua al anillo exterior. */
+/** 发现:指南针,外圈加一枚斜指的针。 */
 private fun discoverIcon(): ImageVector = lineIcon("mp-discover") {
     strokePath { circle(12f, 12f, 8.4f) }
     fillPath {
@@ -157,7 +157,7 @@ private fun discoverIcon(): ImageVector = lineIcon("mp-discover") {
     }
 }
 
-/** yo:una sola figura,Separado de la libreta de direcciones y de las tarjetas de visita. */
+/** 我:单独一个人形,和通讯录名片区分开。 */
 private fun meIcon(): ImageVector = lineIcon("mp-me") {
     strokePath { circle(12f, 7.8f, 3.4f) }
     strokePath {
@@ -167,7 +167,7 @@ private fun meIcon(): ImageVector = lineIcon("mp-me") {
     }
 }
 
-/** Momentos:una estrella de cuatro puntas,No choca con el disco de la brújula. */
+/** 朋友圈:一枚四角星,和指南针的圆盘不撞。 */
 private fun momentsIcon(): ImageVector = lineIcon("mp-moments") {
     strokePath(width = 1.6f) {
         moveTo(12f, 3.4f)
@@ -182,7 +182,7 @@ private fun momentsIcon(): ImageVector = lineIcon("mp-moments") {
     }
 }
 
-/** La flecha que apunta a la derecha de la lista. */
+/** 列表右侧的指向箭头。 */
 private fun chevronIcon(): ImageVector = lineIcon("mp-chevron") {
     strokePath(width = 1.6f) {
         moveTo(9.6f, 6.6f)
@@ -191,7 +191,7 @@ private fun chevronIcon(): ImageVector = lineIcon("mp-chevron") {
     }
 }
 
-/** Botón \"Volver al escritorio\" en la parte superior de la página:Una pantalla más una línea horizontal de Inicio. */
+/** 页头的「回桌面」按钮:一块屏幕加一条 Home 横线。 */
 private fun homeIcon(): ImageVector = lineIcon("mp-home") {
     strokePath(width = THIN_LINE_WIDTH) { roundedRect(6.4f, 3.2f, 17.6f, 20.8f, 2.8f) }
     strokePath(width = 1.6f) {
@@ -200,7 +200,7 @@ private fun homeIcon(): ImageVector = lineIcon("mp-home") {
     }
 }
 
-/** Flecha de retorno del encabezado:Una barra diagonal más una línea horizontal,con el derecho [chevronIcon] Distinguir. */
+/** 页头的返回箭头:一条斜线加一道横线,与右侧的 [chevronIcon] 区分。 */
 private fun backIcon(): ImageVector = lineIcon("mp-back") {
     strokePath(width = 1.8f) {
         moveTo(19f, 12f)
@@ -213,7 +213,7 @@ private fun backIcon(): ImageVector = lineIcon("mp-back") {
     }
 }
 
-/** enviar:Un avión de papel mirando hacia arriba y hacia la derecha. */
+/** 发送:一枚朝右上的纸飞机。 */
 private fun sendIcon(): ImageVector = lineIcon("mp-send") {
     strokePath(width = 1.7f) {
         moveTo(4.2f, 11.4f)
@@ -228,7 +228,7 @@ private fun sendIcon(): ImageVector = lineIcon("mp-send") {
     }
 }
 
-/** Entrada de imagen:Marco de imagen + sol + cresta. */
+/** 图片入口:相框 + 太阳 + 一道山脊。 */
 private fun imageIcon(): ImageVector = lineIcon("mp-image") {
     strokePath(width = THIN_LINE_WIDTH) { roundedRect(3.4f, 5.2f, 20.6f, 18.8f, 3f) }
     strokePath(width = 1.6f) { circle(9.2f, 10.2f, 1.7f) }
@@ -241,7 +241,7 @@ private fun imageIcon(): ImageVector = lineIcon("mp-image") {
     }
 }
 
-/** la imagen esta rota:mismo marco de fotos,Hay una grieta en el medio. */
+/** 图片坏了:同一个相框,中间一道裂纹。 */
 private fun brokenImageIcon(): ImageVector = lineIcon("mp-image-broken") {
     strokePath(width = THIN_LINE_WIDTH) { roundedRect(3.4f, 5.2f, 20.6f, 18.8f, 3f) }
     strokePath(width = 1.6f) {
@@ -253,7 +253,7 @@ private fun brokenImageIcon(): ImageVector = lineIcon("mp-image-broken") {
     }
 }
 
-/** barra de voz:jugar,Un triángulo sólido mirando hacia la derecha. */
+/** 语音条:播放,一个朝右的实心三角。 */
 private fun playIcon(): ImageVector = lineIcon("mp-play") {
     fillPath {
         moveTo(9.4f, 6.2f)
@@ -263,13 +263,13 @@ private fun playIcon(): ImageVector = lineIcon("mp-play") {
     }
 }
 
-/** barra de voz:pausa,Dos barras verticales. */
+/** 语音条:暂停,两根竖条。 */
 private fun pauseIcon(): ImageVector = lineIcon("mp-pause") {
     fillPath { roundedRect(8.2f, 6.4f, 11.1f, 17.6f, 1.1f) }
     fillPath { roundedRect(12.9f, 6.4f, 15.8f, 17.6f, 1.1f) }
 }
 
-/** Entrada de voz:un micrófono vertical,Hay un arco y un poste corto debajo. */
+/** 语音输入:一枚竖直话筒,底下托一道弧与短杆。 */
 private fun micIcon(): ImageVector = lineIcon("mp-mic") {
     strokePath(width = 1.7f) { roundedRect(9.4f, 3.2f, 14.6f, 12.8f, 2.6f) }
     strokePath(width = 1.7f) {
@@ -283,7 +283,7 @@ private fun micIcon(): ImageVector = lineIcon("mp-mic") {
     }
 }
 
-/** Me gusta:una forma de corazón,Los dos arcos superiores convergen en una punta afilada. */
+/** 点赞:一枚心形,两条上弧收成一个尖。 */
 private fun heartIcon(): ImageVector = lineIcon("mp-heart") {
     strokePath(width = 1.7f) {
         moveTo(12f, 20f)
@@ -297,7 +297,7 @@ private fun heartIcon(): ImageVector = lineIcon("mp-heart") {
     }
 }
 
-/** Entrada de grupo:Una ventaja. Dos rectas de igual longitud se cruzan,El mismo conjunto de trazos que los otros íconos de líneas finas en la parte superior de la página. */
+/** 建群入口:一个加号。两根一样长的线相交,与页头其他细线图标同一套笔触。 */
 private fun plusIcon(): ImageVector = lineIcon("mp-plus") {
     strokePath(width = 1.8f) {
         moveTo(12f, 5.2f)
@@ -309,7 +309,7 @@ private fun plusIcon(): ImageVector = lineIcon("mp-plus") {
     }
 }
 
-/** seleccionado:Una marca de verificación. */
+/** 已选中:一枚对勾。 */
 private fun checkIcon(): ImageVector = lineIcon("mp-check") {
     strokePath(width = 2f) {
         moveTo(5.4f, 12.6f)
@@ -318,7 +318,7 @@ private fun checkIcon(): ImageVector = lineIcon("mp-check") {
     }
 }
 
-/** escribe un mensaje:un bolígrafo inclinado,Apunte la punta del lápiz hacia abajo. */
+/** 写一条:一枚斜放的笔,笔尖朝下。 */
 private fun penIcon(): ImageVector = lineIcon("mp-pen") {
     strokePath(width = 1.7f) {
         moveTo(4.4f, 19.6f)

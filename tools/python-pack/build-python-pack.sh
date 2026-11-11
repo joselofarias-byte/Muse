@@ -1,55 +1,55 @@
 #!/usr/bin/env bash
 # =============================================================================
-# Muse Python Runtime Pack Script de compilación (ejecutado en entorno WSL/Linux)
+# Muse Python Runtime Pack 构建脚本（在 WSL / Linux 环境运行）
 # -----------------------------------------------------------------------------
-# Función: descargue la versión oficial de python.org **Android embeddable package**, salida después del procesamiento:
+# 作用：从 python.org 下载官方 **Android embeddable package**，处理后输出：
 #
-#   app/src/main/jniLibs/<abi>/libpython3.14.so   ← Intérprete (parte ejecutable, enviado con APK)
+#   app/src/main/jniLibs/<abi>/libpython3.14.so   ← 解释器（可执行部分，随 APK）
 #   app/src/main/jniLibs/<abi>/libpython3.so
 #   app/src/main/jniLibs/<abi>/libcrypto_python.so
 #   app/src/main/jniLibs/<abi>/libssl_python.so
 #   app/src/main/jniLibs/<abi>/libsqlite3_python.so
-#   app/src/main/jniLibs/<abi>/_*.cpython-314-<abi>-*.so  ← lib-dynload C Extensión (requiere dlopen)
-#   app/src/main/assets/muse-python-assets.zip     ← stdlib Datos puros de Python (desempaquetados en filesDir)
+#   app/src/main/jniLibs/<abi>/_*.cpython-314-<abi>-*.so  ← lib-dynload C 扩展（需 dlopen）
+#   app/src/main/assets/muse-python-assets.zip     ← stdlib 纯 Python 数据（解压到 filesDir）
 #
-# Uso:
-#   bash tools/python-pack/build-python-pack.sh both      # arm64 + x86_64(predeterminado)
+# 用法：
+#   bash tools/python-pack/build-python-pack.sh both      # arm64 + x86_64（默认）
 #   bash tools/python-pack/build-python-pack.sh arm64
 #
-# dependencia del medio ambiente (WSL Ubuntu Ejemplo):
+# 环境依赖（WSL Ubuntu 示例）：
 #   sudo apt-get install -y curl ca-certificates
 #
-# ## División de distribución: por qué las extensiones C van a jniLibs en lugar de assets
+# ## 分发拆分：为什么 C 扩展进 jniLibs 而不是 assets
 #
-# Android 10+(targetSdk 29+) de W^X La restricción impide que una aplicación se ejecute desde un directorio grabable; mientras que la extensión C
-# Necesita ser abierto (asignado a la memoria ejecutable), la fuente más confiable es el APK extraído durante la instalación.**solo lectura**
-# nativeLibraryDir(jniLibs Directorio canónico, todas las aplicaciones se abren desde aquí).
+# Android 10+（targetSdk 29+）的 W^X 限制禁止应用从可写目录 execve；而 C 扩展
+# 需要被 dlopen（映射为可执行内存），最可靠的来源是 APK 安装时解压出的**只读**
+# nativeLibraryDir（jniLibs 规范目录，所有 app 都从这里 dlopen）。
 #
-# Otra razón clave:**aislamiento arquitectónico**. La extensión .so depende de ABI (aarch64 / x86_64 uno cada uno),
-# Y stdlib es Python puro (común en todas las arquitecturas). Expandir jniLibs/<abi>/ Naturalmente separados por ABI;
-# Si se coloca un paquete de activos compartidos, las dos ABI se sobrescribirán debido al mismo nombre y a una arquitectura diferente.
+# 另一个关键理由：**架构隔离**。扩展 .so 是 ABI 相关的（aarch64 / x86_64 各一份），
+# 而 stdlib 是纯 Python（跨架构通用）。扩展放 jniLibs/<abi>/ 天然按 ABI 分开；
+# 若放共享的 assets 包，两个 ABI 会因同名不同架构而互相覆盖。
 #
-# Medición real:AGP convertirá .so con prefijo no lib (_ssl.cpython-314-....so) empaquetados juntos
-# APK de lib/<abi>/, extráigalo a NativeLibraryDir durante la instalación (consulte .gitignore del mismo origen
-# jniLibs acuerdo).
+# 实测：AGP 会把非 lib 前缀的 .so（_ssl.cpython-314-....so）一并打包进
+# APK 的 lib/<abi>/，安装时解压到 nativeLibraryDir（见 .gitignore 同源的
+# jniLibs 约定）。
 #
-# ## Por qué no es necesario cambiar el nombre de patchelf (diferencia clave con respecto al tiempo de ejecución de Node)
+# ## 为什么不需要 patchelf 改名（与 Node 运行时的关键差异）
 #
-# python.org paquete oficial**Ya**Se distinguen las bibliotecas con el mismo nombre que Node runtime:
-#   libssl.so / libcrypto.so / libsqlite3.so El SONAME ya está *_python.so,
-#   Y las 67 extensiones lib-dynload DT_NEEDED apuntan a *_python Variantes.
-# Entonces con Nodo libssl.so / libcrypto.so / libsqlite3.so Archivo con el mismo nombre**Sin conflicto**,
-# No es necesario realizar un procesamiento secundario patchelf (evitando la introducción de la trampa de tiras de Node).
+# python.org 官方包**已经**把与 Node 运行时重名的库做了区分：
+#   libssl.so / libcrypto.so / libsqlite3.so 的 SONAME 已是 *_python.so，
+#   且全部 67 个 lib-dynload 扩展的 DT_NEEDED 都指向 *_python 变体。
+# 因此与 Node 的 libssl.so / libcrypto.so / libsqlite3.so 同名文件**不冲突**，
+# 无需 patchelf 二次处理（避免引入 Node 那套 strip 陷阱）。
 #
-# ## Proceso de actualización (sincronizado elemento por elemento al cambiar las versiones de Python)
-#   1. Modificar a continuación PY_VER
-#   2. sincronizar app/src/main/java/io/zer0/muse/runtime/PythonRuntime.kt de
+# ## 升级流程（换 Python 版本时逐项同步）
+#   1. 修改下方 PY_VER
+#   2. 同步 app/src/main/java/io/zer0/muse/runtime/PythonRuntime.kt 的
 #      PYTHON_VERSION / PYTHON_DATA_VERSION
-#   3. app/src/main/jni/muse_python.c Resolución del nombre de la biblioteca (si cambia el número de versión principal)
-#   4. Después de la reconstrucción, ejecute PythonRuntimeSelfCheck(connected prueba) verificación
+#   3. app/src/main/jni/muse_python.c 的库名解析（若主版本号变化）
+#   4. 重新构建后跑 PythonRuntimeSelfCheck（connected 测试）验证
 #
-# ⚠️ Alineación de página:Android 15+ Requiere alineación de página de 16 KB (0x4000). El paquete oficial está satisfecho,
-#    Este script se verificará; si no está calificado, fallará directamente.
+# ⚠️ 页对齐：Android 15+ 要求 16KB 页对齐（0x4000）。官方包已满足，
+#    本脚本会校验，不合格直接失败。
 # =============================================================================
 set -euo pipefail
 
@@ -57,22 +57,22 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJ_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 WORK="${MUSE_PY_WORK:-/tmp/muse-python-pack}"
 
-# ─── versión bloqueada ───────────────────────────────────────────────────────────────
+# ─── 版本锁定 ───────────────────────────────────────────────────────────────
 PY_VER="3.14.8"
-PY_SERIES="3.14"                 # para el nombre del directorio libpython3.14.so/python3.14
+PY_SERIES="3.14"                 # 用于 libpython3.14.so / python3.14 目录名
 
-# python.org Android embeddable package Denominación:python-<ver>-<arch>-linux-android.tar.gz
+# python.org Android embeddable package 命名：python-<ver>-<arch>-linux-android.tar.gz
 declare -A ARCH_MAP=(
   [arm64]="aarch64"
   [x86_64]="x86_64"
 )
-# jniLibs nombre del directorio
+# jniLibs 目录名
 declare -A ABI_DIR=(
   [arm64]="arm64-v8a"
   [x86_64]="x86_64"
 )
 
-# ─── Requiere .so empaquetado (de prefijo/lib/) ─────────────────────────────────────
+# ─── 需要随包的 .so（来自 prefix/lib/） ─────────────────────────────────────
 LIB_SO_FILES=(
   "libpython${PY_SERIES}.so"
   "libpython3.so"
@@ -81,9 +81,9 @@ LIB_SO_FILES=(
   "libsqlite3_python.so"
 )
 
-# ─── stdlib Recortar: Eliminar inútil para dispositivos celulares/Subdirectorio muy grande ───────────────────────────────
-# test 37MB(CPython kit de autoprueba),idlelib 2MB(IDE de escritorio),turtledemo 112KB,
-# tkinter(Android Sin Tk). Estos no afectan las importaciones regulares.
+# ─── stdlib 裁剪：删除移动端无用/超大的子目录 ───────────────────────────────
+# test 37MB（CPython 自测套件）、idlelib 2MB（桌面 IDE）、turtledemo 112KB、
+# tkinter（Android 无 Tk）。这些不影响常规 import。
 PRUNE_DIRS=(
   "test"
   "idlelib"
@@ -91,7 +91,7 @@ PRUNE_DIRS=(
   "tkinter"
   "lib2to3"
 )
-# Corta la extensión C correspondiente en lib-dynload
+# 裁剪 lib-dynload 中对应的 C 扩展
 PRUNE_DYNLOAD_GLOBS=(
   "_tkinter.*"
   "_test*.*"
@@ -99,15 +99,31 @@ PRUNE_DYNLOAD_GLOBS=(
 
 fetch_pkg() { # $1=arch(aarch64|x86_64) $2=archivo objeto
   local arch="$1" out="$2"
-  if [ ! -f "$out" ]; then
-    local url="https://www.python.org/ftp/python/${PY_VER}/python-${PY_VER}-${arch}-linux-android.tar.gz"
-    echo "  Descargar $url"
-    curl -sSL --retry 3 --connect-timeout 20 -o "$out" "$url"
+  local filename="python-${PY_VER}-${arch}-linux-android.tar.gz"
+  local url="https://www.python.org/ftp/python/${PY_VER}/$filename"
+  local expected
+  expected=$(awk -v name="$filename" '$2 == name {print $1}' "$SCRIPT_DIR/SHA256SUMS")
+  [ -n "$expected" ] || { echo "!! Falta SHA-256 para $filename" >&2; return 1; }
+  if [ -f "$out" ] && printf '%s  %s\n' "$expected" "$out" | sha256sum --check --status; then
+    return
   fi
+  echo "  Descargar $url"
+  rm -f "$out" "$out.part"
+  if ! curl --fail --silent --show-error --location --retry 3 --connect-timeout 20 -o "$out.part" "$url"; then
+    rm -f "$out.part"
+    return 1
+  fi
+  if ! printf '%s  %s\n' "$expected" "$out.part" | sha256sum --check --status ||
+     ! tar tzf "$out.part" > /dev/null; then
+    echo "!! Paquete inválido o SHA-256 incorrecto: $filename" >&2
+    rm -f "$out.part"
+    return 1
+  fi
+  mv "$out.part" "$out"
 }
 
-# Verifique que un ELF tenga una página de 16 KB alineada
-check_align() { # $1=Archivo
+# 校验一个 ELF 是否 16KB 页对齐
+check_align() { # $1=文件
   local al
   al=$(readelf -lW "$1" 2>/dev/null | awk '/LOAD/{print $NF; exit}')
   [ "$al" = "0x4000" ]
@@ -121,42 +137,40 @@ build_abi() { # $1=arm64|x86_64
   local tgz="$base/python.tar.gz"
   local unpack="$base/unpacked"
 
-  echo "== [$abi] preparar Python $PY_VER ($arch) =="
+  echo "== [$abi] 准备 Python $PY_VER ($arch) =="
   mkdir -p "$base"
   fetch_pkg "$arch" "$tgz"
 
-  if [ ! -d "$unpack/prefix" ]; then
-    rm -rf "$unpack"; mkdir -p "$unpack"
-    tar xzf "$tgz" -C "$unpack"
-  fi
+  rm -rf "$unpack"; mkdir -p "$unpack"
+  tar xzf "$tgz" -C "$unpack"
   local prefix="$unpack/prefix"
 
-  echo "== [$abi] Comprobar la alineación de la página =="
+  echo "== [$abi] 校验页对齐 =="
   local fail=0
   for f in "$prefix/lib"/*.so "$prefix/lib/python${PY_SERIES}/lib-dynload"/*.so; do
     [ -f "$f" ] || continue
-    check_align "$f" || { echo "  !! $(basename "$f") No alineado con 16 KB"; fail=1; }
+    check_align "$f" || { echo "  !! $(basename "$f") 非 16KB 对齐"; fail=1; }
   done
-  [ "$fail" = 1 ] && { echo "!! [$abi] Existe un archivo alineado que no es de 16 KB, finalizado"; exit 1; }
-  echo "  16KB Alineación ✓"
+  [ "$fail" = 1 ] && { echo "!! [$abi] 存在非 16KB 对齐文件，终止"; exit 1; }
+  echo "  16KB 对齐 ✓"
 
-  echo "== [$abi] Exportar biblioteca principal -> $outdir =="
+  echo "== [$abi] 输出核心库 -> $outdir =="
   mkdir -p "$outdir"
   for name in "${LIB_SO_FILES[@]}"; do
     if [ ! -f "$prefix/lib/$name" ]; then
-      echo "  !! desaparecido $name"; exit 1
+      echo "  !! 缺少 $name"; exit 1
     fi
     cp "$prefix/lib/$name" "$outdir/$name"
   done
 
-  echo "== [$abi] Salida de la extensión C lib-dynload -> $outdir =="
+  echo "== [$abi] 输出 lib-dynload C 扩展 -> $outdir =="
   local dynload="$prefix/lib/python${PY_SERIES}/lib-dynload"
   local count=0
   for f in "$dynload"/*.so; do
     [ -f "$f" ] || continue
     local bn
     bn="$(basename "$f")"
-    # Recorta las extensiones inútiles
+    # 裁剪无用扩展
     local skip=0
     for g in "${PRUNE_DYNLOAD_GLOBS[@]}"; do
       case "$bn" in $g) skip=1 ;; esac
@@ -165,40 +179,40 @@ build_abi() { # $1=arm64|x86_64
     cp "$f" "$outdir/$bn"
     count=$((count + 1))
   done
-  echo "  Salida $count extensiones"
+  echo "  已输出 $count 个扩展"
 
-  echo "== [$abi] Completo =="
-  ls -1 "$outdir" | wc -l | xargs echo "  jniLibs/$abi Número de archivos:"
+  echo "== [$abi] 完成 =="
+  ls -1 "$outdir" | wc -l | xargs echo "  jniLibs/$abi 文件数:"
 }
 
-# ─── stdlib paquete (assets, uso único; Python puro es universal en todas las arquitecturas)─────────────────
+# ─── stdlib 数据包（assets，一次性；纯 Python 跨架构通用）─────────────────
 #
-# Nota:stdlib Hay uno en **ABI Relacionado**Archivo `_sysconfigdata__android_<abi>.py`
-# (pip / sysconfig / leer al compilar la extensión). Hay uno para cada uno de los dos ABI. No se puede poner sólo una copia.
-# De lo contrario en otra arquitectura `import _sysconfigdata` Será ModuleNotFoundError.
-# Procesamiento: coloque los archivos de ambas ABI en activos y ejecútelos de acuerdo con la situación real mediante PythonRuntime. ABI
-# Cree un enlace simbólico/copia con el nombre esperado para la arquitectura actual.
+# 注意：stdlib 里有一个 **ABI 相关**文件 `_sysconfigdata__android_<abi>.py`
+# （pip / sysconfig / 编译扩展时读取）。两个 ABI 各自一个，不能只放一份，
+# 否则另一架构上 `import _sysconfigdata` 会 ModuleNotFoundError。
+# 处理：把两个 ABI 的该文件都放入 assets，运行时由 PythonRuntime 按实际 ABI
+# 建一个 symlink/复制为当前架构期望的名字。
 build_stdlib_assets() {
   local stage="$WORK/stdlib-stage"
   local outzip="$PROJ_ROOT/app/src/main/assets/muse-python-assets.zip"
 
-  echo "== [stdlib] preparar staging =="
+  echo "== [stdlib] 准备 staging =="
   rm -rf "$stage"; mkdir -p "$stage/lib"
-  # Basado principalmente en stdlib de arm64 (el contenido .py puro es consistente entre las dos arquitecturas)
+  # 以 arm64 的 stdlib 为主（纯 .py 内容两架构一致）
   cp -r "$WORK/arm64/unpacked/prefix/lib/python${PY_SERIES}" "$stage/lib/python${PY_SERIES}"
 
-  echo "== [stdlib] Cultivo =="
+  echo "== [stdlib] 裁剪 =="
   for d in "${PRUNE_DIRS[@]}"; do
     if [ -d "$stage/lib/python${PY_SERIES}/$d" ]; then
       rm -rf "$stage/lib/python${PY_SERIES}/$d"
-      echo "  Eliminar $d"
+      echo "  删除 $d"
     fi
   done
 
-  # lib-dynload El .so depende de ABI (aarch64 / x86_64 Se ha incluido un ejemplar de cada uno. jniLibs/<abi>/
-  # Distribuir.assets Es compartido por las dos ABI y no se puede ampliar (diferentes arquitecturas con el mismo nombre se sobrescribirán entre sí).
-  # Aquí solo queda una nota de marcador de posición, y el tiempo de ejecución viene dado por PythonRuntime.setupDynloadLinks() usar symlink
-  # Apunte lib-dynload a NativeLibraryDir.
+  # lib-dynload 的 .so 是 ABI 相关的（aarch64 / x86_64 各一份），已随 jniLibs/<abi>/
+  # 分发。assets 是两 ABI 共享的，不能放扩展（同名不同架构会互相覆盖）。
+  # 这里只留一个占位说明，运行时由 PythonRuntime.setupDynloadLinks() 用 symlink
+  # 把 lib-dynload 指向 nativeLibraryDir。
   local dl="$stage/lib/python${PY_SERIES}/lib-dynload"
   if [ -d "$dl" ]; then
     rm -rf "$dl"
@@ -209,25 +223,25 @@ See PythonRuntime.setupDynloadLinks().
 EOF
   fi
 
-  # Limpiar __pycache__ (volumen + arquitectura independiente pero inútil)
+  # 清理 __pycache__（体积 + 架构无关但无用）
   find "$stage" -name '__pycache__' -type d -prune -exec rm -rf {} + 2>/dev/null || true
 
-  # v2.7: Parche en _sysconfigdata para todas las ABI (ABI Relacionado, consulte los comentarios del encabezado de la función).
-  # El nombre esperado por la arquitectura actual está determinado por el tiempo de ejecución por ABI, quedando ambos.
+  # v2.7: 补入所有 ABI 的 _sysconfigdata（ABI 相关，见函数头注释）。
+  # 当前架构期望的名字由运行时按 ABI 决定，两个都留。
   for _abi in arm64 x86_64; do
     _arch="${ARCH_MAP[$_abi]}"
     _scd="$WORK/$_abi/unpacked/prefix/lib/python${PY_SERIES}/_sysconfigdata__android_${_arch}-linux-android.py"
     if [ -f "$_scd" ]; then
       cp "$_scd" "$stage/lib/python${PY_SERIES}/"
-      echo "  rellenar _sysconfigdata: $_abi"
+      echo "  补入 _sysconfigdata: $_abi"
     else
-      echo "  !! no encontrado $_abi de _sysconfigdata: $_scd"
+      echo "  !! 未找到 $_abi 的 _sysconfigdata: $_scd"
     fi
   done
 
   echo "Python ${PY_VER} stdlib" > "$stage/VERSION.txt"
 
-  echo "== [stdlib] paquete -> $outzip =="
+  echo "== [stdlib] 打包 -> $outzip =="
   [ -f "$outzip" ] && rm -f "$outzip"
   python3 - "$stage" "$outzip" <<'PYEOF'
 import sys, zipfile, os
@@ -239,17 +253,17 @@ with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED, compresslevel=6) as z:
             full = os.path.join(dirpath, fn)
             z.write(full, os.path.relpath(full, root))
             count += 1
-print(f"  zip Completo: {count} archivos, {os.path.getsize(out)/1e6:.2f}MB")
+print(f"  zip 完成: {count} 个文件, {os.path.getsize(out)/1e6:.2f}MB")
 PYEOF
 }
 
-# ─── Proceso principal ─────────────────────────────────────────────────────────────────
+# ─── 主流程 ─────────────────────────────────────────────────────────────────
 TARGETS="${1:-both}"
 case "$TARGETS" in
   both)   TARGET_LIST=(arm64 x86_64) ;;
   arm64)  TARGET_LIST=(arm64) ;;
   x86_64) TARGET_LIST=(x86_64) ;;
-  *) echo "Uso: $0 [both|arm64|x86_64]"; exit 1 ;;
+  *) echo "用法: $0 [both|arm64|x86_64]"; exit 1 ;;
 esac
 
 mkdir -p "$WORK"
@@ -258,7 +272,7 @@ build_stdlib_assets
 
 echo
 echo "============================================================"
-echo "La construcción está completa. Productos:"
-echo "  app/src/main/jniLibs/{arm64-v8a,x86_64}/  (libpython + Dependencias + extensión lib-dynload)"
-echo "  app/src/main/assets/muse-python-assets.zip (stdlib datos)"
-echo "Recordatorio: ejecutar :app:connectedDebugAndroidTest -P...class=...PythonRuntimeSelfCheck Hacer verificación."
+echo "构建完成。产物："
+echo "  app/src/main/jniLibs/{arm64-v8a,x86_64}/  （libpython + 依赖 + lib-dynload 扩展）"
+echo "  app/src/main/assets/muse-python-assets.zip （stdlib 数据）"
+echo "提醒：跑 :app:connectedDebugAndroidTest -P...class=...PythonRuntimeSelfCheck 做验证。"

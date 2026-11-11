@@ -44,19 +44,19 @@ import io.zer0.muse.ui.theme.MuseMotion
 import io.zer0.muse.ui.theme.MuseShapes
 
 /**
- * v1.55: Agent Tarjeta de planificación del flujo de trabajo.
+ * v1.55: Agent 工作流计划卡。
  *
- * Cuando LLM llama a la herramienta task_plan para crear un plan estructurado,Representado como una lista de verificación rastreable en el flujo de mensajes.
- * Diferencias con TaskCard:
- *  - TaskCard Mostrar pasos de llamada a la herramienta(Cada paso es una llamada a una herramienta.,Seguimiento automático del estado de ejecución)
- *  - PlanCard Mostrar pasos para la planificación de LLM(Cada paso es una tarea descriptiva.,Estado actualizado proactivamente por LLM)
+ * 当 LLM 调用 task_plan 工具创建结构化计划后,在消息流中渲染为可追踪的检查清单。
+ * 与 TaskCard 的区别:
+ *  - TaskCard 显示工具调用步骤(每步是一个工具调用,自动追踪执行状态)
+ *  - PlanCard 显示 LLM 规划的步骤(每步是一个描述性任务,由 LLM 主动更新状态)
  */
 @Composable
 fun PlanCard(plan: AgentPlan, modifier: Modifier = Modifier) {
-    // Los contenedores de planes vacíos no se representan cuando los datos históricos están dañados o falla el análisis de parámetros.
+    // 历史数据损坏或参数解析失败时不渲染空计划容器。
     if (plan.steps.isEmpty()) return
 
-    // M-TC3 Reparación: remember Cambiar a rememberSaveable,Expandir/Estado colapsado tras el cambio de configuración/Retenido después de la recuperación del proceso
+    // M-TC3 修复: remember 改为 rememberSaveable,展开/折叠状态在配置变更/进程恢复后保留
     var expanded by rememberSaveable { mutableStateOf(true) }
 
     Surface(
@@ -64,13 +64,13 @@ fun PlanCard(plan: AgentPlan, modifier: Modifier = Modifier) {
         color = MaterialTheme.colorScheme.surface,
         modifier = modifier.fillMaxWidth(),
         tonalElevation = 1.dp,
-        // CHAT-09: Estándares unificados para tarjetas dentro de mensajes. — Color base + trazo 1dp + esquinas redondeadas uniformes
+        // CHAT-09: 消息内卡片统一规范 — 底色 + 1dp 描边 + 统一圆角
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
     ) {
         Column {
-            // barra de título:Color degradado + título del plan + progreso
-            // M-TC1 Reparación: texto/El color del icono cambió de Color codificado. Blanco a MaterialTheme.colorScheme.onPrimary,
-            // Contraste garantizado bajo temas personalizados
+            // 标题栏:渐变色 + 计划标题 + 进度
+            // M-TC1 修复: 文字/图标色从硬编码 Color.White 改为 MaterialTheme.colorScheme.onPrimary,
+            // 保证在自定义主题下的对比度
             val onPrimaryColor = MaterialTheme.colorScheme.onPrimary
             Row(
                 modifier = Modifier
@@ -84,7 +84,7 @@ fun PlanCard(plan: AgentPlan, modifier: Modifier = Modifier) {
                         ),
                     )
                     .clip(RoundedCornerShape(topStart = MuseCornerRadius.SEMI_LARGE.dp, topEnd = MuseCornerRadius.SEMI_LARGE.dp))
-                    // CHAT-06: Se puede hacer clic en toda la línea — Después de que la flecha se mueva a la fila del encabezado,La barra de título se puede plegar en cualquier posición./Expandir
+                    // CHAT-06: 整行可点 — 箭头移入头部行后,标题栏任何位置都可折叠/展开
                     .clickable { expanded = !expanded }
                     .padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -99,7 +99,7 @@ fun PlanCard(plan: AgentPlan, modifier: Modifier = Modifier) {
                         overflow = TextOverflow.Ellipsis,
                     )
                     Spacer(Modifier.height(2.dp))
-                    // v2.0.1: Planifique con anticipación — El estado plegado predice el siguiente paso (alineación"planea hacer"visibilidad)
+                    // v2.0.1: 计划前瞻 — 折叠态预告下一步（对齐"计划要做的事"可见性）
                     val nextStep = remember(plan.steps) {
                         plan.steps.firstOrNull { it.status == AgentPlanStepStatus.IN_PROGRESS }
                             ?: plan.steps.firstOrNull { it.status == AgentPlanStepStatus.PENDING }
@@ -112,8 +112,8 @@ fun PlanCard(plan: AgentPlan, modifier: Modifier = Modifier) {
                         }
                     Text(
                         text = buildString {
-                            append("${plan.completedSteps}/${plan.totalSteps} paso completado")
-                            if (plan.failedSteps > 0) append(" · ${plan.failedSteps} falló")
+                            append("${plan.completedSteps}/${plan.totalSteps} 步完成")
+                            if (plan.failedSteps > 0) append(" · ${plan.failedSteps} 失败")
                             if (nextStepLabel != null) append(" · " + nextStepLabel)
                         },
                         style = MaterialTheme.typography.labelSmall,
@@ -135,7 +135,7 @@ fun PlanCard(plan: AgentPlan, modifier: Modifier = Modifier) {
                         modifier = Modifier.size(20.dp),
                     )
                 }
-                // CHAT-06: La flecha de colapso se movió a la fila del encabezado,48dp zona caliente;Ahora se puede hacer clic en toda la fila.
+                // CHAT-06: 折叠箭头移入头部行,48dp 热区;整行也已可点。
                 Box(
                     modifier = Modifier
                         .padding(start = 8.dp)
@@ -155,7 +155,7 @@ fun PlanCard(plan: AgentPlan, modifier: Modifier = Modifier) {
                 }
             }
 
-            // barra de progreso
+            // 进度条
             if (!plan.isAllDone && plan.progress > 0f) {
                 MuseProgressBar(
                     progress = plan.progress,
@@ -165,7 +165,7 @@ fun PlanCard(plan: AgentPlan, modifier: Modifier = Modifier) {
                 )
             }
 
-            // Lista de pasos
+            // 步骤列表
             AnimatedVisibility(
                 visible = expanded,
                 enter = MuseMotion.expandFadeEnter(),
@@ -175,7 +175,7 @@ fun PlanCard(plan: AgentPlan, modifier: Modifier = Modifier) {
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
-                    // L-TC6 Reparación: forEach agregar key,Cuando cambia el estado del paso, Compose puede reorganizar con precisión las filas correspondientes.
+                    // L-TC6 修复: forEach 加 key,步骤状态变化时 Compose 能精准重组对应行
                     plan.steps.forEach { step ->
                         key(step.id) {
                             PlanStepRow(step = step)
@@ -195,14 +195,14 @@ private fun PlanStepRow(step: AgentPlanStep) {
             .padding(vertical = 4.dp),
         verticalAlignment = Alignment.Top,
     ) {
-        // icono de estado
+        // 状态图标
         val (icon, color) = when (step.status) {
             AgentPlanStepStatus.PENDING -> MuseIcons.circle to MaterialTheme.colorScheme.outline
             AgentPlanStepStatus.IN_PROGRESS -> null to MaterialTheme.colorScheme.primary
             AgentPlanStepStatus.DONE -> MuseIcons.check to MaterialTheme.colorScheme.primary
             AgentPlanStepStatus.FAILED -> MuseIcons.x to MaterialTheme.colorScheme.error
             AgentPlanStepStatus.SKIPPED -> MuseIcons.play to MaterialTheme.colorScheme.outline
-            // Phase 3: Agregar estado final — Usar color de advertencia para el tiempo de espera,Cancelar el color debilitado.,Consistente con la semántica de TaskCard
+            // Phase 3: 新增终态 — 超时用警示色,取消用弱化色,与 TaskCard 的语义保持一致
             AgentPlanStepStatus.TIMED_OUT -> MuseIcons.alertTriangle to MaterialTheme.colorScheme.error
             AgentPlanStepStatus.CANCELLED -> MuseIcons.x to MaterialTheme.colorScheme.outline
         }
@@ -230,8 +230,8 @@ private fun PlanStepRow(step: AgentPlanStep) {
             }
         }
 
-        // M-TC4 Reparación: Originalmente Spacer(height(0.dp).padding(horizontal=6.dp)) esta mal,
-        // height(0.dp) Deja que Spacer no tenga altura.,padding Tampoco funciona. Cambiar a width(6.dp) Hacer espaciado horizontal
+        // M-TC4 修复: 原先 Spacer(height(0.dp).padding(horizontal=6.dp)) 是错误的,
+        // height(0.dp) 让 Spacer 无高度,padding 也不生效。改为 width(6.dp) 做水平间距
         Spacer(Modifier.width(6.dp))
 
         Column(modifier = Modifier.weight(1f)) {

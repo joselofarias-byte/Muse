@@ -12,6 +12,7 @@ import androidx.annotation.RequiresApi
 import io.zer0.common.Logger
 import io.zer0.muse.R
 import io.zer0.muse.notification.MuseNotificationManager
+import io.zer0.muse.util.GlobalCoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -22,80 +23,86 @@ import kotlinx.coroutines.launch
 import org.koin.android.ext.android.inject
 
 /**
- * v1.43: El chat genera servicio front-end.
+ * v1.43: 聊天生成前台服务。
  *
- * Cuando el usuario pasa al fondo,Mantenga vivo el proceso como un servicio en primer plano,Asegúrese de que la generación de IA no se vea interrumpida por el reciclaje del sistema.
- * - Mostrar notificaciones persistentes al inicio(Reutilizar [MuseNotificationManager.updateLiveProgress] de ID)
- * - Enviado por la persona que llama después de que se completa la generación [ACTION_STOP] detener el servicio
- * - El servicio en sí no realiza la lógica de compilación.,Solo como contenedor frontend keep-alive;La lógica de generación continúa. [ChatGenerationManager] En la corrutina a nivel de aplicación
+ * 当用户切到后台时,以前台服务形式保持进程存活,确保 AI 生成不被系统回收中断。
+ * - 启动时显示常驻通知(复用 [MuseNotificationManager.updateLiveProgress] 的 ID)
+ * - 生成结束后由调用方发送 [ACTION_STOP] 停止服务
+ * - 服务本身不执行生成逻辑,仅作为前台保活容器;生成逻辑运行在 [ChatGenerationManager] 的应用级协程中
  *
- * v1.112: Reparación ForegroundServiceDidNotStartInTimeException colapsar.
- *  - Originales:Sólo se llama en StartCommand startForeground(),Si el hilo principal está ocupado/Koin inyectar/compilación de notificaciones
- *    tarda más de 5 segundos,O pasar una acción desconocida para omitir la rama cuando,El sistema genera una excepción de tiempo de espera y falla directamente.
- *  - nuevo:en onCreate() Inmediatamente startForeground()(La creación del servicio ingresa inmediatamente a la recepción.),onStartCommand solo manejar
- *    Lógica posterior;when Añade más para decir la verdad.;startForeground Pasar adaptación de tipo explícita Android 14+(SDK 34+).
+ * v1.112: 修复 ForegroundServiceDidNotStartInTimeException 崩溃。
+ *  - 原:在 onStartCommand 中才调用 startForeground(),若主线程繁忙/Koin 注入/通知构建
+ *    耗时超过 5 秒,或传入未知 action 跳过 when 分支,系统抛超时异常直接崩溃。
+ *  - 新:在 onCreate() 中立即 startForeground()(服务创建即进前台),onStartCommand 只处理
+ *    后续逻辑;when 加 else 兜底;startForeground 传显式 type 适配 Android 14+(SDK 34+)。
  */
 class ChatGenerationService : Service() {
 
     private val notificationManager: MuseNotificationManager by inject()
     private val chatGenerationManager: ChatGenerationManager by inject()
 
-    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO + GlobalCoroutineExceptionHandler)
     private var observeJob: Job? = null
     private var emptyStateStopJob: Job? = null
     private val stopGate = ForegroundServiceStopGate()
     private var latestStartId: Int = 0
 
-    // v1.0.15: Wakelock mantener vivo,Evite los bloqueos de la red causados por la hibernación de la CPU en modo Doze
+    // v1.0.15: Wakelock 保活,防止 Doze 模式下 CPU 休眠导致网络挂起
     private var wakeLock: PowerManager.WakeLock? = null
 
     override fun onCreate() {
         super.onCreate()
         stopGate.reset()
-        // v2.2.0: Koin Salir con gracia cuando no se haya iniciado(no choques) — El reinicio del servicio fijo del sistema puede ocurrir en
-        // MuseApp Saltar el proceso de modo seguro de startKoin; Si aquí no hay defensa, Seguimiento by inject
-        // puede tirar "KoinApplication has not been started" Se forma un ciclo de choque.
+        // v2.2.0: Koin 未启动时优雅退场(不崩溃) — 系统 sticky 重启服务可发生在
+        // MuseApp 跳过 startKoin 的 Safe Mode 进程里; 此处若无防御, 后续 by inject
+        // 会抛 "KoinApplication has not been started" 形成崩溃循环。
         if (org.koin.core.context.GlobalContext.getOrNull() == null) {
-            Logger.w("ChatGenService", "Koin No iniciado(Safe Mode/Recuperación de excepción de proceso) — Renunciar a seguir vivo")
-            stopService()
+            Logger.w("ChatGenService", "Koin 未启动(Safe Mode/进程异常恢复) — 放弃保活")
+            runCatching { stopSelf() }
             return
         }
-        // v1.112: Cuando se crea el servicio, entra en estado de primer plano.,Evite el retraso de onStartCommand que provoca un bloqueo del tiempo de espera de 5 segundos.
-        // Construir una notificación con un título predeterminado;El onStartCommand posterior se actualizará de acuerdo con el estado de generación real.
+        // 兜底（真机崩溃修复）：**任何**初始化异常都不允许让 Service 创建失败。
+        // Service onCreate 抛异常时系统会反复重启它 → 崩溃循环，用户看到的就是「一开就闪退」。
+        // 这里的 try 比「只在 Koin 判断上加守卫」更稳：Koin 版本差异、通知构建、WakeLock
+        // 任何一处抛 Throwable 都只会导致「这次保活放弃」，而不是整个应用挂掉。
         try {
-            val notification = notificationManager.buildGenerationNotification(
-                getString(R.string.schedule_generating_default_title),
-                0,
-                io.zer0.muse.notification.MuseNotificationTarget.Chat,
-            )
-            startForegroundCompat(notification)
+            initForegroundAndWakeLock()
         } catch (t: Throwable) {
-            // También se debe llamar cuando se notifica que la compilación falla. startForeground,De lo contrario, se activará un bloqueo del tiempo de espera;
-            // Utilice un aviso mínimo para cubrir todo(Si NotificationManager no está disponible,Deténgase directamente para renunciar a mantenerse con vida.).
-            Logger.e("ChatGenService", "onCreate startForeground falló,Renunciar a seguir vivo", t)
-            stopSelf()
-            return
+            Logger.e("ChatGenService", "onCreate 初始化失败 — 放弃保活(避免崩溃循环)", t)
+            runCatching { stopSelf() }
         }
-        // v1.0.15: Obtener PARTIAL_WAKE_LOCK,Asegúrese de que la CPU no entre en suspensión y que Doze no suspenda la red durante la generación.
+    }
+
+    /** onCreate 的正常路径：进前台 + 拿 WakeLock。异常由 [onCreate] 统一兜底。 */
+    private fun initForegroundAndWakeLock() {
+        // v1.112: 服务创建即进入前台状态,避免 onStartCommand 延迟导致 5 秒超时崩溃。
+        // 用默认标题构造通知;后续 onStartCommand 会按实际生成状态更新。
+        val notification = notificationManager.buildGenerationNotification(
+            getString(R.string.schedule_generating_default_title),
+            0,
+            io.zer0.muse.notification.MuseNotificationTarget.Chat,
+        )
+        startForegroundCompat(notification)
+        // v1.0.15: 获取 PARTIAL_WAKE_LOCK,保证生成期间 CPU 不休眠、网络不被 Doze 挂起
         wakeLock = (getSystemService(Context.POWER_SERVICE) as PowerManager)
             .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Muse:ChatGeneration")
             .also { it.setReferenceCounted(false) }
-        // El ciclo de vida del servicio front-end es generar un ciclo de vida de mantenimiento.,No se utiliza la versión de tiempo de espera de 10 minutos.
-        // Las tareas largas de MCP/herramienta pueden exceder los 10 minutos;stopService/onDestroy El bloqueo se liberará explícitamente.
+        // 前台服务的生命周期就是生成保活生命周期,不使用 10 分钟超时版本。
+        // 长 MCP/工具任务可能超过 10 分钟;stopService/onDestroy 会明确释放锁。
         runCatching { wakeLock?.acquire() }
-            .onFailure { Logger.w("ChatGenService", "wakelock acquire falló", it) }
+            .onFailure { Logger.w("ChatGenService", "wakelock acquire 失败", it) }
         Logger.i("ChatGenService", "service created & foreground started & wakelock acquired")
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         latestStartId = startId
-        // v2.2.0: Igual que la defensa Koin de onCreate — null Intent(sticky Reiniciar)Lo más común en este escenario.,
-        // Debe ser interceptado antes de acceder a cualquiera de las propiedades de inyección.
-        // 2026-09-27 Reparación de accidentes de máquinas reales: ChatGenerationService Era el único componente sin defensa Koin.,
-        // Lanzar cuando falta "KoinApplication has not been started" colapsar.
+        // v2.2.0: 同 onCreate 的 Koin 防御 — null Intent(sticky 重启)在此场景最常见,
+        // 必须在访问任何 by inject 属性前拦截。
+        // 2026-09-27 真机崩溃修复: ChatGenerationService 曾是唯一无 Koin 防御的组件,
+        // 缺失时抛 "KoinApplication has not been started" 崩溃。
         if (org.koin.core.context.GlobalContext.getOrNull() == null) {
-            Logger.w("ChatGenService", "Koin No iniciado(Safe Mode?) — detener el servicio,No entres en el circuito de observación.")
-            stopService()
+            Logger.w("ChatGenService", "Koin 未启动(Safe Mode?) — 停止服务,不进入观察循环")
+            runCatching { stopSelf() }
             return START_NOT_STICKY
         }
         val action = intent?.action ?: ACTION_START
@@ -103,19 +110,19 @@ class ChatGenerationService : Service() {
             ACTION_START -> startObserve()
             ACTION_STOP -> stopService()
             else -> {
-                // v1.112: La acción desconocida también inicia la observación.,Asegúrese de que omitir ramas no provoque que el servicio quede inactivo.
-                Logger.w("ChatGenService", "desconocido action: $action,Presione INICIO para procesar")
+                // v1.112: 未知 action 兜底也启动观察,确保不会因跳过分支导致服务空转。
+                Logger.w("ChatGenService", "未知 action: $action,按 START 处理")
                 startObserve()
             }
         }
-        // El servicio solo es responsable de mantener vivo y observar el administrador de compilación a nivel de aplicación.;Después de ser reciclado por la ROM, debes intentar reanudar la observación.,
-        // Deje que los engendros supervivientes de appScope sigan teniendo prioridad en primer plano.
+        // 服务只负责保活和观察应用级生成管理器;自身被 ROM 回收后应尝试恢复观察,
+        // 让仍存活的 appScope 生成继续保持前台优先级。
         return START_STICKY
     }
 
     private fun startObserve() {
         stopGate.reset()
-        // Actualizar el título de la notificación con el estado de compilación más reciente
+        // 用最新生成状态更新通知标题
         val active = chatGenerationManager.activeGenerations.value.values
             .maxByOrNull { it.lastUpdatedAt }
         val title = active?.sessionTitle ?: getString(R.string.schedule_generating_default_title)
@@ -131,16 +138,16 @@ class ChatGenerationService : Service() {
             )
             startForegroundCompat(notification)
         } catch (t: Throwable) {
-            Logger.w("ChatGenService", "No se pudo actualizar la notificación en primer plano", t)
+            Logger.w("ChatGenService", "更新前台通知失败", t)
         }
 
-        // Supervisar los cambios de estado de compilación,Actualizar el contenido de la notificación/Progreso
+        // 监听生成状态变化,更新通知内容/进度
         observeJob?.cancel()
         observeJob = serviceScope.launch {
             chatGenerationManager.activeGenerations.collect { generations ->
                 if (generations.isEmpty()) {
-                    // dar“Iniciar servicio”y“Registrar tarea”Deja una ventana de carrera corta;Si se reinicia el proceso
-                    // manager sin tareas,luego sal rapido,No dejes que START_STICKY quede sin usar durante 15 minutos.
+                    // 给“启动服务”和“登记任务”留一个很短的竞态窗口;如果进程重启后
+                    // manager 没有任何任务,则快速退出,不要让 START_STICKY 服务空耗 15 分钟。
                     if (emptyStateStopJob == null) {
                         emptyStateStopJob = launch {
                             delay(EMPTY_STATE_GRACE_MS)
@@ -159,14 +166,14 @@ class ChatGenerationService : Service() {
                     System.currentTimeMillis() - generation.lastUpdatedAt > HEARTBEAT_TIMEOUT_MS
                 }
                 if (stale != null) {
-                    Logger.w("ChatGenService", "Generar tiempo de espera de latido,Detener esta sesión(sesión: ${stale.sessionTitle})")
-                    // Cuando hay varias sesiones simultáneas, solo se cancelan las tareas que pierden latidos.,No se puede mantener viva la recepción de otras tareas normales
-                    // Apágalo juntos. La cancelación de la ruta será respondida por la parte de persistencia de ChatViewModel/Control.
+                    Logger.w("ChatGenService", "生成心跳超时,停止该会话(会话: ${stale.sessionTitle})")
+                    // 多会话并发时只取消失去心跳的任务,不能把其他正常任务的前台保活
+                    // 一起关掉。取消路径会由 ChatViewModel 持久化部分回复/检查点。
                     chatGenerationManager.stop(stale.sessionId)
                     return@collect
                 }
-                // Las notificaciones muestran tareas actualizadas recientemente cuando hay varias sesiones simultáneas;Las decisiones de mantenimiento de la vida utilizan instantáneas completas.
-                // v2.5.0 fix: Mostrar recuento de palabras reales(Anteriormente Hengchuan 0,El número de palabras en la copia del aviso permanece sin cambios.,El usuario piensa erróneamente que está atascado).
+                // 多会话并发时通知展示最近更新的任务;保活判定使用完整快照。
+                // v2.5.0 fix: 展示真实字数(此前恒传 0,通知文案字数不变,用户误以为卡死)。
                 val gen = generations.values.maxByOrNull { it.lastUpdatedAt } ?: return@collect
                 notificationManager.updateLiveProgress(
                     gen.sessionTitle,
@@ -184,15 +191,15 @@ class ChatGenerationService : Service() {
         observeJob = null
         emptyStateStopJob?.cancel()
         emptyStateStopJob = null
-        // v1.0.15: liberar wakelock
+        // v1.0.15: 释放 wakelock
         runCatching { wakeLock?.takeIf { it.isHeld }?.release() }
         wakeLock = null
-        // v2.5.0 fix: Cancele la notificación primero y luego salga de la recepción. —— startForeground Las notificaciones no pueden ser nm.cancel
-        // Eliminar individualmente(El sistema se recuperará.),primero debe stopForeground;Por el contrario, si cancela primero, la identidad del front-end lo tragará.,
-        // Queda un mensaje con la misma cantidad de caracteres en la barra de notificaciones."Barra de progreso dinámica"(Prueba real del usuario).
+        // v2.5.0 fix: 先取消通知再退前台 —— startForeground 的通知无法被 nm.cancel
+        // 单独移除(系统会恢复),必须先 stopForeground;反过来先 cancel 会被前台身份吞掉,
+        // 通知栏残留一条字数不变的"动态进度条"(用户实测)。
         notificationManager.clearLiveProgress()
         runCatching { stopForeground(STOP_FOREGROUND_REMOVE) }
-            .onFailure { Logger.w("ChatGenService", "No se pudo eliminar el estado de primer plano", it) }
+            .onFailure { Logger.w("ChatGenService", "移除前台状态失败", it) }
         if (latestStartId > 0) {
             stopSelfResult(latestStartId)
         } else {
@@ -205,20 +212,20 @@ class ChatGenerationService : Service() {
     override fun onTimeout(startId: Int, foregroundServiceType: Int) {
         Logger.w(
             "ChatGenService",
-            "El servicio de recepción ha alcanzado el límite de tiempo del sistema.,Cancelar la compilación activa y detener el servicio. (startId=$startId, type=$foregroundServiceType)",
+            "前台服务达到系统时限,取消活跃生成并停止服务 (startId=$startId, type=$foregroundServiceType)",
         )
         runCatching { stopService() }
-            .onFailure { Logger.e("ChatGenService", "No se pudo detener el servicio en primer plano después del tiempo de espera del sistema", it) }
+            .onFailure { Logger.e("ChatGenService", "系统超时后停止前台服务失败", it) }
         runCatching { chatGenerationManager.stop() }
-            .onFailure { Logger.e("ChatGenService", "No se pudo cancelar la generación después del tiempo de espera del sistema", it) }
+            .onFailure { Logger.e("ChatGenService", "系统超时后取消生成失败", it) }
     }
 
     /**
-     * v1.112: compatibles Android 14+(SDK 34+)Se inicia el servicio de recepción.
+     * v1.112: 兼容 Android 14+(SDK 34+)的前台服务启动。
      *
-     * Android 14 Se requiere que startForeground se pase explícitamente foregroundServiceType,y debe ser manifest
-     * Los tipos declarados son consistentes.(Esta declaración de servicio es dataSync). Se inferirá una sobrecarga de dos parámetros debido a la inferencia de tipos en algunas ROM OEM.
-     * Activado en caso de falla ForegroundServiceDidNotStartInTimeException.
+     * Android 14 起要求 startForeground 显式传入 foregroundServiceType,且必须与 manifest
+     * 声明的类型一致(本服务声明为 dataSync)。两参重载在部分 OEM ROM 上会因类型推断
+     * 失败而触发 ForegroundServiceDidNotStartInTimeException。
      */
     private fun startForegroundCompat(notification: Notification) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
@@ -238,23 +245,33 @@ class ChatGenerationService : Service() {
         super.onDestroy()
         observeJob?.cancel()
         emptyStateStopJob?.cancel()
-        // v1.0.15: liberar wakelock(Defensivo:stopService liberado,Aquí está el resultado final)
+        // v1.0.15: 释放 wakelock(防御性:stopService 已释放,这里兜底)
         runCatching { wakeLock?.takeIf { it.isHeld }?.release() }
         wakeLock = null
-        // M-009: Cancelar serviceScope,Evite las fugas causadas por corrutinas que aún contienen referencias después de la destrucción del servicio.
+        // M-009: 取消 serviceScope,避免服务销毁后仍有协程持有引用导致泄漏
         serviceScope.cancel()
-        // v2.5.0 fix: Notificación sobre el progreso de la limpieza de la base. —— stopService no se ejecutará cuando el sistema cierre el servicio a la fuerza,
-        // En la barra de notificaciones permanecerá una barra de progreso dinámica con el mismo recuento de palabras.(Prueba real del usuario"Salir de la aplicación también mantiene").
-        notificationManager.clearLiveProgress()
+        // v2.5.0 fix: 兼底清理进度通知 —— 服务被系统强杀时 stopService 不会执行,
+        // 通知栏会残留一条字数不变的动态进度条(用户实测"退出应用也一直在")。
+        // v2.6.22 fix: 不能直接用 by inject 的字段。崩溃后下次启动会进 Safe Mode
+        // (MuseApp 跳过 startKoin),系统仍会重建本服务并在停止时走 onDestroy;
+        // 此时访问注入属性抛 "KoinApplication has not been started",被
+        // ActivityThread.handleStopService 包成 "Unable to stop service" 再崩一次,
+        // 于是每次崩溃都附带一条二次崩溃,真正的 OOM 反而更难看到。
+        runCatching { notificationManagerOrNull()?.clearLiveProgress() }
+            .onFailure { Logger.w("ChatGenService", "onDestroy 清理进度通知失败", it) }
     }
+
+    /** Koin 未启动时返回 null,不抛异常(供 onDestroy 这类无法失败的回调使用)。 */
+    private fun notificationManagerOrNull(): MuseNotificationManager? =
+        runCatching { org.koin.core.context.GlobalContext.getOrNull()?.get<MuseNotificationManager>() }.getOrNull()
 
     companion object {
         private const val NOTIFICATION_ID = 2001
 
-        /** P1 auditoría: Generar umbral de tiempo de espera de latido(15 Si no hay progreso en minutos, se detendrá el mantenimiento.,Evite la residencia permanente). */
+        /** P1 审计: 生成心跳超时阈值(15 分钟无任何进度则停止保活,避免永久常驻)。 */
         private const val HEARTBEAT_TIMEOUT_MS = 15 * 60 * 1000L
 
-        /** Breve almacenamiento en búfer de carrera cuando no hay tareas después del reinicio del servicio,Evite START_STICKY el ralentí. */
+        /** 服务重启后没有任务时的短暂竞态缓冲,避免 START_STICKY 空转。 */
         private const val EMPTY_STATE_GRACE_MS = 5_000L
         const val ACTION_START = "io.zer0.muse.action.START_GENERATION"
         const val ACTION_STOP = "io.zer0.muse.action.STOP_GENERATION"
@@ -270,8 +287,8 @@ class ChatGenerationService : Service() {
             val intent = Intent(context, ChatGenerationService::class.java).apply {
                 action = ACTION_STOP
             }
-            // Detén el servicio y vete. stopService,Evite volver a llamar a startForegroundService en 5 segundos
-            // Activado llamando a startForeground ForegroundServiceDidNotStartInTimeException.
+            // 停止服务走 stopService,避免再次调用 startForegroundService 后未在 5s 内
+            // 调用 startForeground 而触发 ForegroundServiceDidNotStartInTimeException。
             context.stopService(intent)
         }
     }

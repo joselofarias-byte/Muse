@@ -21,16 +21,16 @@ import java.io.File
 import java.io.FileOutputStream
 
 /**
- * Phase 5 5D: compartir roles — Export Assistant genera PNG de tarjetas de personajes para archivos JSON + PNG.
+ * Phase 5 5D: 角色分享 — 导出助手为 JSON 文件 + 生成角色卡片 PNG。
  *
- * JSON Formato: Contiene el nombre del asistente/Descripción/systemPrompt/Temperatura y otras configuraciones.
- * PNG tarjeta: Avatar + Nombre + Eslogan + Marca de agua
+ * JSON 格式: 包含助手名称/描述/systemPrompt/温度等配置
+ * PNG 卡片: 头像 + 名称 + 标语 + 水印
  */
 object CharacterSharer {
 
     private const val TAG = "CharacterShare"
 
-    // v2.x: Color de la tarjeta — Alineado con el sistema UiTheme Laurel Green(Canvas Draw no puede leer el tema Redactar,Obtener el mismo valor de color)
+    // v2.x: 卡片配色 — 与 UiTheme 月桂绿体系对齐(Canvas 绘制读不到 Compose 主题,取同源色值)
     private val LAUREL_DEEP = android.graphics.Color.parseColor("#0F3D2A")
     private val LAUREL_MAIN = android.graphics.Color.parseColor("#2A7A55")
     private val LAUREL_BRIGHT = android.graphics.Color.parseColor("#4A9F70")
@@ -41,14 +41,14 @@ object CharacterSharer {
     private val STAR_GOLD = android.graphics.Color.parseColor("#F5C842")
 
     /**
-     * Exportar ayudante como cadena JSON(Se puede guardar como un archivo para compartir.).
+     * 导出助手为 JSON 字符串(可保存为文件分享)。
      */
     fun exportToJson(assistant: ShareableAssistant): String {
         return AppJson.encodeToString(ShareableAssistant.serializer(), assistant)
     }
 
     /**
-     * Importar ayudante desde JSON.
+     * 从 JSON 导入助手。
      */
     fun importFromJson(json: String): ShareableAssistant? {
         return try {
@@ -60,12 +60,12 @@ object CharacterSharer {
     }
 
     /**
-     * v2.x: Generar tarjetas de personajes PNG(Corona de laurel verde degradado + avatar redondo + nombre/Descripción + marca de agua de marca).
+     * v2.x: 生成角色卡片 PNG(月桂绿渐变冠部 + 圆形头像 + 名字/描述 + 品牌水印)。
      *
-     * Prioridad de avatar [ShareableAssistant.avatarUrl] imagen local apuntada a(corte redondo);
-     * Cuando no haya imagen, usa emoji para dibujarla en el centro. Especificaciones de la tarjeta 1080×1350(3:4),Perfecto para compartir en redes sociales.
+     * 头像优先使用 [ShareableAssistant.avatarUrl] 指向的本地图片(圆形裁剪);
+     * 无图片时用 emoji 居中绘制。卡片规格 1080×1350(3:4),适合社交分享。
      *
-     * @return Archivos generados URI, para compartir
+     * @return 生成的文件 URI, 用于分享
      */
     fun generateCardPng(context: Context, assistant: ShareableAssistant, width: Int = 1080, height: Int = 1350): Uri? {
         return try {
@@ -74,7 +74,7 @@ object CharacterSharer {
             val w = width.toFloat()
             val h = height.toFloat()
 
-            // ── 1. corona:gradiente verde laurel(profundo→brillante) ──
+            // ── 1. 冠部:月桂绿渐变(深→亮) ──
             val topHeight = h * 0.46f
             val topPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                 shader = LinearGradient(
@@ -86,11 +86,11 @@ object CharacterSharer {
             }
             canvas.drawRect(0f, 0f, w, topHeight, topPaint)
 
-            // ── 2. sujeto:blanco cálido ──
+            // ── 2. 主体:暖白 ──
             val bodyPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = WARM_WHITE }
             canvas.drawRect(0f, topHeight, w, h, bodyPaint)
 
-            // ── 3. avatar(redondo,cabalgando sobre la línea divisoria) ──
+            // ── 3. 头像(圆形,骑在分界线上) ──
             val cx = w / 2f
             val avatarR = 180f
             val cy = topHeight + 12f
@@ -127,7 +127,7 @@ object CharacterSharer {
                 )
             }
 
-            // ── 4. nombre y descripción ──
+            // ── 4. 名字与描述 ──
             val namePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                 color = INK
                 textSize = 68f
@@ -146,21 +146,21 @@ object CharacterSharer {
                 canvas.drawText(desc, cx, cy + avatarR + 220f, descPaint)
             }
 
-            // ── 5. adorno de corona(puntos de estrellas doradas) ──
+            // ── 5. 冠部点缀(金色星点) ──
             val starPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = STAR_GOLD }
             canvas.drawCircle(w * 0.13f, h * 0.075f, 9f, starPaint)
             canvas.drawCircle(w * 0.87f, h * 0.13f, 5f, starPaint)
             canvas.drawCircle(w * 0.78f, h * 0.055f, 4f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = LAUREL_PALE })
 
-            // ── 6. Marca de agua inferior ──
+            // ── 6. 底部水印 ──
             val markPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                 color = SUBTLE
                 textSize = 22f
                 textAlign = Paint.Align.CENTER
             }
-            canvas.drawText("Made with Muse · museai.ltd", cx, h - 52f, markPaint)
+            canvas.drawText("Creado con Muse · museai.ltd", cx, h - 52f, markPaint)
 
-            // ── guardar ──
+            // ── 保存 ──
             val file = File(context.cacheDir, "character_card_${System.currentTimeMillis()}.png")
             FileOutputStream(file).use { out ->
                 bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
@@ -179,7 +179,7 @@ object CharacterSharer {
     }
 
     /**
-     * Comparte tarjetas de personajes a través de Intent.SEND.
+     * 分享角色卡片通过 Intent.SEND。
      */
     fun shareCard(context: Context, uri: Uri) {
         val intent = Intent(Intent.ACTION_SEND).apply {
@@ -191,7 +191,7 @@ object CharacterSharer {
     }
 
     /**
-     * Comparte archivos JSON.
+     * 分享 JSON 文件。
      */
     fun shareJson(context: Context, json: String, fileName: String = "character.json") {
         val file = File(context.cacheDir, fileName)
@@ -211,7 +211,7 @@ object CharacterSharer {
 }
 
 /**
- * Datos del asistente compartibles(Exportar/Para importar).
+ * 可分享的助手数据(导出/导入用)。
  */
 @Serializable
 data class ShareableAssistant(

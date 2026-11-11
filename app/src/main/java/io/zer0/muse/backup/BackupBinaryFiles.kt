@@ -6,58 +6,58 @@ import java.io.File
 import java.util.Base64
 
 /**
- * v4.1: Almacenamiento de archivos de directorio(Nota adjunta/copia privada del avatar)copia de seguridad y recuperación.
+ * v4.1: 目录型文件存储(笔记附件 / 头像私有副本)的备份与恢复。
  *
- * fondo:anterior [BackupService.backupFileStorePaths] Sobrescribir solo la lista blanca de un solo archivo,
- * `note_attachments/`(NoteAttachmentStore,Mezclando binario y texto)con `avatar/`
- * (AvatarStorage copia privada de)No hay ninguna copia de seguridad —— Después del reemplazo y recuperación. QuickNoteEntity.attachmentsJson
- * y AssistantEntity.avatarImageUrl apuntan a archivos que no existen.
+ * 背景:此前的 [BackupService.backupFileStorePaths] 只覆盖单文件白名单,
+ * `note_attachments/`(NoteAttachmentStore,二进制与文本混存)与 `avatar/`
+ * (AvatarStorage 的私有副本)完全没进备份 —— 换机恢复后 QuickNoteEntity.attachmentsJson
+ * 与 AssistantEntity.avatarImageUrl 全部指向不存在的文件。
  *
- * restricciones de diseño:
- *  - La clave de respaldo es**Ruta relativa a filesDir**(Como por ejemplo `note_attachments/img_x.png`),El valor es texto Base64;
- *  - solo permitido [allowedPrefixes] directorio en,Debe volver a verificarse durante la recuperación.,Está prohibido escribir fuera de la lista blanca.;
- *  - archivo único ≤ 2MB, total para cada directorio ≤ 16MB,Saltar y registrar cuando se exceda el límite(Sin truncamiento silencioso);
- *  - Leer saltos y registros de errores(No permita que falle la copia de seguridad general);Los errores de escritura se propagan hacia arriba(Activar la reversión del punto de recuperación).
+ * 设计约束:
+ *  - 备份键是**相对 filesDir 的路径**(如 `note_attachments/img_x.png`),值是 Base64 文本;
+ *  - 只允许 [allowedPrefixes] 里的目录,恢复时必须重新校验,禁止写到白名单外;
+ *  - 单文件 ≤ 2MB、每个目录合计 ≤ 16MB,超限跳过并打日志(不静默截断);
+ *  - 读失败跳过并记日志(不让整体备份失败);写失败向上传播(触发恢复点回滚)。
  */
 internal object BackupBinaryFiles {
 
-    /** Prefijos de directorio permitidos para la copia de seguridad(relativamente filesDir),Verifique de acuerdo con la misma lista al restaurar. */
+    /** 允许备份的目录前缀(相对 filesDir),恢复时按同一份清单校验。 */
     val allowedPrefixes: List<String> = listOf(
         "note_attachments/",
         "avatar/",
-        // 2026-11-01: Los datos de la tarjeta se cambian a fragmentación por tarjeta (CardDataStore), el archivo único card_data.json se reserva únicamente como fuente de migración.
-        // Si no agrega este elemento, los datos de la tarjeta no se incluirán en el alcance de la copia de seguridad después de la fragmentación. —— Todo el contenido de show_card se pierde después de la recuperación.
+        // 2026-11-01: 卡片数据改为按卡片分片（CardDataStore），单文件 card_data.json 只留作迁移源。
+        // 不加这一条的话，分片之后卡片数据就不在备份范围里 —— 恢复后所有 show_card 内容丢失。
         "card_data/",
-        // 2026-11-01: La bandeja de entrada del canal cambió a fragmentación por elemento (ChannelInbox), el archivo único channel_inbox.json está reservado solo como fuente de migración.
-        // Sin este elemento, todos los eventos que se enviarán y el historial entrante reciente se perderán después de la recuperación.
+        // 2026-11-01: 渠道收件箱改为按条目分片（ChannelInbox），单文件 channel_inbox.json 只留作迁移源。
+        // 不加这一条的话，恢复后待派发事件与近期入站历史全部丢失。
         "channel_inbox/",
     )
 
-    /** Límite de un solo archivo:2MB. */
+    /** 单文件上限:2MB。 */
     const val MAX_FILE_BYTES: Long = 2L * 1024 * 1024
 
-    /** Límite superior total para cada directorio de la lista blanca:16MB. */
+    /** 每个白名单目录合计上限:16MB。 */
     const val MAX_DIR_BYTES: Long = 16L * 1024 * 1024
 
     private const val TAG = "BackupBinaryFiles"
 
-    /** Un artículo que se escribirá para exportar.:Ruta relativa + bytes sin formato. */
+    /** 导出用的一个待写条目:相对路径 + 原始字节。 */
     data class Entry(val path: String, val bytes: ByteArray) {
-        // ByteArray es un tipo de referencia,data class La semántica predeterminada igual puede ser engañosa;Apágalo explícitamente.
+        // ByteArray 是引用类型,data class 默认的 equals 语义会误导;显式关掉。
         override fun equals(other: Any?): Boolean = this === other
         override fun hashCode(): Int = System.identityHashCode(this)
     }
 
-    /** Saltar estadísticas. */
+    /** 跳过统计。 */
     data class SkipStats(val skippedFiles: Int = 0, val skippedBytes: Long = 0L)
 
-    /** Exportar instantánea:Entradas ordenadas por ruta + omitir estadísticas. */
+    /** 导出快照:按路径排序的条目 + 跳过统计。 */
     data class Snapshot(val items: List<Entry>, val skipped: SkipStats = SkipStats()) {
-        /** Para exportación JSON única:camino → Base64. */
+        /** 单 JSON 导出用:路径 → Base64。 */
         fun asBase64Map(): Map<String, String> = items.associate { it.path to Base64.getEncoder().encodeToString(it.bytes) }
     }
 
-    /** Resultados de recuperación. */
+    /** 恢复结果。 */
     data class RestoreResult(
         val writtenFiles: Int = 0,
         val skippedFiles: Int = 0,
@@ -65,15 +65,15 @@ internal object BackupBinaryFiles {
     )
 
     /**
-     * Verificación de ruta:El prefijo de lista blanca + rechaza cualquier escritura que pueda atravesar el directorio.
+     * 路径校验:白名单前缀 + 拒绝任何可能穿越目录的写法。
      *
-     * rechazar expresamente:
-     *  - camino absoluto(a `/` o `\` comienzo)
-     *  - barra invertida(Utilice la misma clave de respaldo `/`;La barra invertida es delimitador en Windows,ambigüedad semántica)
-     *  - cualquier cosa que contenga `..` clave(incluir `note_attachments/../../evil` este tipo de"El prefijo es legal pero contiene recorrido.")
-     *  - Sección vacía / `.` segmento(Como por ejemplo `note_attachments//x`,`note_attachments/./x`)
-     *  - NUL personaje
-     *  - Sólo prefijo de directorio, sin clave de nombre de archivo
+     * 明确拒绝:
+     *  - 绝对路径(以 `/` 或 `\` 开头)
+     *  - 反斜杠(备份键统一用 `/`;反斜杠在 Windows 上是分隔符,语义歧义)
+     *  - 任何含 `..` 的键(包括 `note_attachments/../../evil` 这种"前缀合法但内含穿越")
+     *  - 空段 / `.` 段(如 `note_attachments//x`、`note_attachments/./x`)
+     *  - NUL 字符
+     *  - 只有目录前缀、没有文件名的键
      */
     fun isAllowedPath(path: String): Boolean {
         val prefix = prefixOf(path)
@@ -87,15 +87,15 @@ internal object BackupBinaryFiles {
             path.split('/').none { it.isBlank() || it == "." }
     }
 
-    /** Devuelve el prefijo de la lista blanca al que pertenece la ruta.;Devuelve nulo si no está en la lista blanca. */
+    /** 返回该路径所属的白名单前缀;不在白名单内返回 null。 */
     fun prefixOf(path: String): String? = allowedPrefixes.firstOrNull { path.startsWith(it) }
 
     /**
-     * Analice la clave de copia de seguridad en el archivo de destino en filesDir.
+     * 把备份键解析成 filesDir 下的目标文件。
      *
-     * doble verificación:pasar primero [isAllowedPath] lista blanca de sintaxis,Luego use canonicalFile para confirmar el directorio principal
-     * de hecho cae dentro de filesDir(Enlace anti-soft `avatar/x` Apuntar a directorio externo).
-     * @return archivo de destino legal;retorno ilegal null(La persona que llama debe saltarse,No se permite escribir en el disco).
+     * 双重校验:先过 [isAllowedPath] 的语法白名单,再用 canonicalFile 确认父目录
+     * 确实落在 filesDir 之内(防软链接把 `avatar/x` 指向外部目录)。
+     * @return 合法目标文件;非法返回 null(调用方必须跳过,不得写盘)。
      */
     fun resolveTarget(filesDir: File, path: String): File? = if (!isAllowedPath(path)) {
         null
@@ -106,19 +106,19 @@ internal object BackupBinaryFiles {
         target.takeIf { root != null && parent != null && isInside(root, parent) }
     }
 
-    /** Si el directorio principal se encuentra dentro de la raíz(Contiene la raíz misma). */
+    /** 父目录是否落在 root 之内(含 root 本身)。 */
     private fun isInside(root: File, parent: File): Boolean = parent.path == root.path || parent.path.startsWith(root.path + File.separator)
 
-    /** Si el número total de archivos o directorios individuales excede el límite superior. */
+    /** 单文件或目录合计是否超过上限。 */
     fun exceedsLimit(size: Long, usedBytes: Long): Boolean = size > MAX_FILE_BYTES || usedBytes + size > MAX_DIR_BYTES
 
     /**
-     * Leer archivos en directorios incluidos en la lista blanca(bytes sin procesar).
+     * 读取白名单目录下的文件(原始字节)。
      *
-     * Si un solo archivo no se puede leer o excede el límite, solo se omitirá y se contará.,Finalmente, haz un registro W ——
-     * Los usuarios deben poder ver"Esta copia de seguridad está incompleta",En lugar de asumir que la copia de seguridad está completa.
-     * La lectura se completa antes de que se escriba el meta.,Por lo tanto, la cantidad de elementos declarados por meta es consistente con la cantidad de elementos realmente escritos.
-     * (NDJSON La conciliación B-34 en el lado de las importaciones se basa en esto).
+     * 单个文件读取失败、超限都只跳过并累计计数,最后统一打一条 W 日志 ——
+     * 用户必须能看出"这次备份不完整",而不是以为备份是完整的。
+     * 读取在 meta 写出之前完成,因此 meta 声明的条数与实际写出的条数一致
+     * (NDJSON 导入侧的 B-34 对账依赖这一点)。
      */
     fun read(filesDir: File): Snapshot {
         val entries = mutableListOf<Entry>()
@@ -134,7 +134,7 @@ internal object BackupBinaryFiles {
                 return@forEach
             }
             val bytes = runCatching { file.readBytes() }
-                .onFailure { Logger.w(TAG, "No se pudo leer el archivo,saltado: $relative", it) }
+                .onFailure { Logger.w(TAG, "读取文件失败,已跳过: $relative", it) }
                 .getOrNull()
             val used = dirBytes[prefix] ?: 0L
             if (bytes == null || exceedsLimit(bytes.size.toLong(), used)) {
@@ -146,16 +146,16 @@ internal object BackupBinaryFiles {
             dirBytes[prefix] = used + bytes.size
         }
         val stats = SkipStats(skippedFiles, skippedBytes)
-        logSkipped("Exportar", stats)
+        logSkipped("导出", stats)
         return Snapshot(entries, stats)
     }
 
     /**
-     * Escriba los archivos del directorio en la copia de seguridad en filesDir.
+     * 把备份里的目录文件写回 filesDir。
      *
-     * saltar(No bloquear):Rutas fuera de la lista blanca,Base64 Ilegal y superando el límite de capacidad.
-     * propagar(bloquear):[write] Cualquier excepción lanzada —— El almacenamiento basado en archivos comparte el libro de recuperación con tres bibliotecas de Room,
-     * El error de escritura debe desencadenar la reversión del punto de recuperación,No puede dejar la mitad del directorio de archivos adjuntos en silencio.
+     * 跳过(不阻断):白名单外路径、Base64 非法、超出容量上限。
+     * 传播(阻断):[write] 抛出的任何异常 —— 文件型存储与三个 Room 库共享恢复账本,
+     * 写失败必须能触发 recovery point 回滚,不能静默留下半个附件目录。
      */
     suspend fun restore(
         files: Map<String, String>,
@@ -175,14 +175,14 @@ internal object BackupBinaryFiles {
             if (prefix == null || target == null) {
                 skippedFiles++
                 skippedBytes += base64SizeHint(encoded)
-                Logger.w(TAG, "Denegar la recuperación de rutas fuera de la lista blanca: $path")
+                Logger.w(TAG, "拒绝恢复白名单外的路径: $path")
                 return@forEach
             }
             val bytes = runCatching { Base64.getDecoder().decode(encoded) }.getOrNull()
             if (bytes == null) {
                 skippedFiles++
                 skippedBytes += base64SizeHint(encoded)
-                Logger.w(TAG, "Base64 Contenido ilegal,saltado: $path")
+                Logger.w(TAG, "Base64 内容非法,已跳过: $path")
                 return@forEach
             }
             val used = dirBytes[prefix] ?: 0L
@@ -191,21 +191,21 @@ internal object BackupBinaryFiles {
                 skippedBytes += bytes.size
                 return@forEach
             }
-            // fail-fast:El error de escritura no se captura,Déjelo en la capa superior para restaurar el libro mayor y revertirlo.
+            // fail-fast:写失败不捕获,交由上层恢复账本回滚。
             write(target, bytes)
             dirBytes[prefix] = used + bytes.size
             writtenFiles++
         }
         val stats = SkipStats(skippedFiles, skippedBytes)
-        logSkipped("restaurar", stats)
+        logSkipped("恢复", stats)
         return RestoreResult(writtenFiles = writtenFiles, skippedFiles = stats.skippedFiles, skippedBytes = stats.skippedBytes)
     }
 
     /**
-     * Importar búfer lateral:Después de poner NDJSON `binaryFile` Las listas blancas y la reducción de capacidad se realizan antes de que las filas se conserven en la memoria.
+     * 导入侧缓冲区:在把 NDJSON 的 `binaryFile` 行留在内存之前先做白名单与容量裁剪。
      *
-     * malicioso/Las copias de seguridad corruptas pueden declarar cualquier cantidad de entradas de cualquier tamaño;Si no lo intercepta aquí, primero se producirá OOM y luego se discutirá la verificación.
-     * Al escribir disco [restore] Lo comprobaré de nuevo(defensa en profundidad).
+     * 恶意/损坏备份可以声明任意多、任意大的条目;不在这里拦截就会先 OOM 再谈校验。
+     * 写盘时 [restore] 会再校验一遍(纵深防御)。
      */
     class Buffer {
         private val files = linkedMapOf<String, String>()
@@ -220,7 +220,7 @@ internal object BackupBinaryFiles {
             if (prefix == null || !isAllowedPath(path)) {
                 skippedFiles++
                 skippedBytes += base64SizeHint(encoded)
-                Logger.w(TAG, "La ruta en la copia de seguridad no está en la lista blanca,saltado: $path")
+                Logger.w(TAG, "备份中的路径不在白名单内,已跳过: $path")
                 return
             }
             val estimated = base64SizeHint(encoded)
@@ -237,15 +237,15 @@ internal object BackupBinaryFiles {
     }
 }
 
-/** Límite de profundidad de recursividad del directorio(Ambas tiendas son en realidad planas.,Limite la profundidad solo para evitar estructuras de directorios anormales). */
+/** 目录递归深度上限(两个存储实际都是扁平的,限制深度只为防御异常目录结构)。 */
 private const val MAX_DEPTH = 4
 
 private const val BINARY_TAG = "BackupBinaryFiles"
 
-/** Calcule el número bruto de bytes correspondientes al texto Base64(Solo se usa para omitir estadísticas y predicción de capacidad.,No participa en la decodificación y verificación.). */
+/** 估算 Base64 文本对应的原始字节数(仅用于跳过统计与容量预判,不参与解码校验)。 */
 private fun base64SizeHint(encoded: String): Long = (encoded.length / 4 * 3).toLong()
 
-/** Recopile todos los archivos normales en el directorio de la lista blanca(Ruta relativa a filesDir → File),La clasificación por ruta garantiza la estabilidad de las exportaciones. */
+/** 收集白名单目录下的全部普通文件(相对 filesDir 的路径 → File),按路径排序保证导出稳定。 */
 private fun collectFiles(filesDir: File): List<Pair<String, File>> {
     val out = mutableListOf<Pair<String, File>>()
     BackupBinaryFiles.allowedPrefixes.forEach { prefix ->
@@ -270,8 +270,8 @@ private fun logSkipped(action: String, stats: BackupBinaryFiles.SkipStats) {
     if (stats.skippedFiles == 0) return
     Logger.w(
         BINARY_TAG,
-        "$action saltar ${stats.skippedFiles} archivos de directorio(total ${stats.skippedBytes} bytes):" +
-            "Más allá de un solo archivo ${BackupBinaryFiles.MAX_FILE_BYTES / 1024 / 1024}MB / " +
-            "total del directorio ${BackupBinaryFiles.MAX_DIR_BYTES / 1024 / 1024}MB Límite superior, ruta ilegal o error de lectura,El contenido de la copia de seguridad está incompleto",
+        "$action 跳过 ${stats.skippedFiles} 个目录文件(共 ${stats.skippedBytes} 字节):" +
+            "超出单文件 ${BackupBinaryFiles.MAX_FILE_BYTES / 1024 / 1024}MB / " +
+            "目录合计 ${BackupBinaryFiles.MAX_DIR_BYTES / 1024 / 1024}MB 上限、路径不合法或读取失败,备份内容不完整",
     )
 }

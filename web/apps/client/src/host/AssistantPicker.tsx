@@ -10,11 +10,11 @@ interface AssistantPickerProps {
 }
 
 /**
- * Selección de asistente antes de crear una nueva sesión.
+ * 新建会话前的助手选择。
  *
- * Aparece solo cuando hay más de un asistente (uno creado directamente, cero asistentes predeterminados entregados al Anfitrión),
- * La lista es `assistants.list` Tal cual: avatar + nombre + etiqueta predeterminada.Esc Cerca.
- * El nombre del asistente lo emite el anfitrión y se muestra tal cual.
+ * 只在助手多于一个时出现（一个直接建、零个交给 Host 的默认助手），
+ * 列表就是 `assistants.list` 原样：头像 + 名字 + 默认标记。Esc 关闭。
+ * 助手名是 Host 下发的，原样显示。
  */
 export function AssistantPicker({ assistants, onPick, onClose }: AssistantPickerProps) {
   const { t } = useI18n();

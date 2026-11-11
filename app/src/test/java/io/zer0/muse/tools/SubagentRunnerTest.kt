@@ -4,6 +4,7 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.slot
 import io.zer0.ai.ChatService
 import io.zer0.ai.core.ChatCompletion
 import io.zer0.ai.core.ToolCall
@@ -16,37 +17,37 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * v1.0.52 P2-1: SubagentRunner + SubagentXmlRenderer Pruebas unitarias.
+ * v1.0.52 P2-1: SubagentRunner + SubagentXmlRenderer 单元测试。
  *
- * Cobertura:
- *  - [SubagentXmlRenderer] función pura(XML Representación / escape / truncamiento)
- *  - [SubagentRunner] Verificación de parámetros(Tarea vacía/truncamiento de maxToolCalls)
- *  - [SubagentRunner] Filtrado de lista blanca de herramientas(HIGH + Se excluyen las herramientas recursivas.)
- *  - [SubagentRunner] Proceso del ciclo de herramienta(Sin toolCalls / Con toolCalls / Cuota agotada)
- *  - [SubagentRunSkill] Análisis de parámetros + empalme XML
+ * 覆盖范围:
+ *  - [SubagentXmlRenderer] 纯函数(XML 渲染 / 转义 / 截断)
+ *  - [SubagentRunner] 参数校验(空 task / maxToolCalls 截断)
+ *  - [SubagentRunner] 工具白名单过滤(HIGH + 递归工具被排除)
+ *  - [SubagentRunner] 工具循环流程(无 toolCalls / 有 toolCalls / 配额耗尽)
+ *  - [SubagentRunSkill] 参数解析 + XML 拼接
  *
- * Modo de operación: `./gradlew :app:testDebugUnitTest --tests "*SubagentRunnerTest*"`
+ * 运行方式: `./gradlew :app:testDebugUnitTest --tests "*SubagentRunnerTest*"`
  */
 class SubagentRunnerTest {
 
-    // ── SubagentXmlRenderer Pruebas de función pura ──────────────────────────────────────
+    // ── SubagentXmlRenderer 纯函数测试 ──────────────────────────────────────
 
     @Test
     fun `renderStart produces correct XML format`() {
-        val xml = SubagentXmlRenderer.renderStart("Buscar información de corrutinas de Kotlin", 8)
-        assertEquals("<subagent_start task=\"Buscar información de corrutinas de Kotlin\" max_tool_calls=\"8\"/>", xml)
+        val xml = SubagentXmlRenderer.renderStart("搜索 Kotlin 协程资料", 8)
+        assertEquals("<subagent_start task=\"搜索 Kotlin 协程资料\" max_tool_calls=\"8\"/>", xml)
     }
 
     @Test
     fun `renderStart escapes XML special characters in task`() {
-        val xml = SubagentXmlRenderer.renderStart("Tarea <Contiene> especial \"personaje\" & 'símbolo'", 4)
+        val xml = SubagentXmlRenderer.renderStart("任务 <含> 特殊 \"字符\" & '符号'", 4)
         assertTrue(xml.contains("&lt;"))
         assertTrue(xml.contains("&gt;"))
         assertTrue(xml.contains("&quot;"))
         assertTrue(xml.contains("&amp;"))
         assertTrue(xml.contains("&apos;"))
-        // No debe contener caracteres especiales sin escape(dentro del valor del atributo)
-        assertFalse(xml.contains("task=\"Tarea <Contiene>"))
+        // 不应包含未转义的特殊字符(属性值内)
+        assertFalse(xml.contains("task=\"任务 <含>"))
     }
 
     @Test
@@ -56,7 +57,7 @@ class SubagentRunnerTest {
             maxToolCalls = 8,
             toolName = "web_search",
             argsJson = """{"query":"kotlin"}""",
-            result = "Se encontraron 3 resultados.",
+            result = "找到 3 条结果",
             success = true,
         )
         assertTrue(xml.startsWith("<subagent_progress "))
@@ -91,12 +92,12 @@ class SubagentRunnerTest {
             success = true,
             rounds = 2,
             toolCalls = 2,
-            summary = "Misión cumplida,Se encontraron 3 resultados.",
+            summary = "任务完成,找到 3 条结果",
         )
         assertTrue(xml.contains("<subagent_result success=\"true\""))
         assertTrue(xml.contains("rounds=\"2\""))
         assertTrue(xml.contains("tool_calls=\"2\""))
-        assertTrue(xml.contains("Misión cumplida,Se encontraron 3 resultados."))
+        assertTrue(xml.contains("任务完成,找到 3 条结果"))
         assertTrue(xml.contains("</subagent_result>"))
     }
 
@@ -106,21 +107,21 @@ class SubagentRunnerTest {
             success = false,
             rounds = 1,
             toolCalls = 0,
-            summary = "Resultados parciales",
-            error = "tiempo de espera",
+            summary = "部分结果",
+            error = "超时",
         )
         assertTrue(xml.contains("success=\"false\""))
         assertTrue(xml.contains("[FAILED]"))
-        assertTrue(xml.contains("tiempo de espera"))
+        assertTrue(xml.contains("超时"))
         assertTrue(xml.contains("[PARTIAL]"))
-        assertTrue(xml.contains("Resultados parciales"))
+        assertTrue(xml.contains("部分结果"))
     }
 
     @Test
     fun `renderBudgetExhausted includes maxToolCalls value`() {
         val text = SubagentXmlRenderer.renderBudgetExhausted(8)
         assertTrue(text.contains("8"))
-        assertTrue(text.contains("límite de cuota"))
+        assertTrue(text.contains("配额上限"))
     }
 
     @Test
@@ -136,7 +137,7 @@ class SubagentRunnerTest {
         assertFalse(xml.contains("truncated"))
     }
 
-    // ── SubagentRunner Prueba de verificación de parámetros ─────────────────────────────────────────
+    // ── SubagentRunner 参数校验测试 ─────────────────────────────────────────
 
     @Test
     fun `run returns error when task is blank`() = runTest {
@@ -177,40 +178,46 @@ class SubagentRunnerTest {
         every { mockToolRegistry.listToolsAsToolDefinitions(any()) } returns emptyList()
         coEvery {
             mockChatService.completeText(any(), any(), any(), any(), any(), any(), any(), any())
-        } returns ChatCompletion(text = "Completo", finishReason = "stop")
+        } returns ChatCompletion(text = "完成", finishReason = "stop")
 
         val runner =
             SubagentRunner(mockChatService, mockToolRegistry, mockThreadStore(), mockLimiter(), mockk(relaxed = true), ToolApprovalRouter())
-        // Se superó el límite máximo 20,debe truncarse a 20(No se reportará ningún error)
-        val result = runner.run(SubagentRunner.Params(task = "prueba", maxToolCalls = 100))
+        // 超出硬上限 20,应被截断到 20(不会报错)
+        val result = runner.run(SubagentRunner.Params(task = "测试", maxToolCalls = 100))
         assertTrue(result.success)
     }
 
-    // ── SubagentRunner Prueba de filtrado de lista blanca de herramientas ───────────────────────────────────
+    // ── SubagentRunner 工具白名单过滤测试 ───────────────────────────────────
 
     @Test
     fun `run excludes HIGH risk tools from allowed list`() = runTest {
         val mockChatService = mockk<ChatService>(relaxed = true)
         val mockToolRegistry = mockk<ToolRegistry>(relaxed = true)
-        // Simular herramienta ALTA + SEGURA registrada
+        // 模拟注册了 HIGH + SAFE 工具
         every { mockToolRegistry.listTools() } returns listOf(
             ToolRegistry.ToolDef("web_search", "search", emptyMap(), riskLevel = ToolRiskLevel.SAFE),
             ToolRegistry.ToolDef("subagent_run", "delegate", emptyMap(), riskLevel = ToolRiskLevel.HIGH),
             ToolRegistry.ToolDef("delegate_agent", "delegate", emptyMap(), riskLevel = ToolRiskLevel.HIGH),
         )
-        every { mockToolRegistry.listToolsAsToolDefinitions(any()) } returns listOf(
+        // 捕获实际传给 listToolsAsToolDefinitions 的名单 —— 这才是「模型看得到什么」。
+        // 原来这里只 assertTrue(result.success)，注释写着「间接确认」，实际一句断言都没有，
+        // HIGH 工具被放进来也不会红。改成真断言。
+        val offered = slot<List<String>>()
+        every { mockToolRegistry.listToolsAsToolDefinitions(capture(offered)) } returns listOf(
             ToolDefinition("web_search", "search", "{}"),
         )
         coEvery {
             mockChatService.completeText(any(), any(), any(), any(), any(), any(), any(), any())
-        } returns ChatCompletion(text = "Completo", finishReason = "stop")
+        } returns ChatCompletion(text = "完成", finishReason = "stop")
 
         val runner =
             SubagentRunner(mockChatService, mockToolRegistry, mockThreadStore(), mockLimiter(), mockk(relaxed = true), ToolApprovalRouter())
-        val result = runner.run(SubagentRunner.Params(task = "prueba"))
+        val result = runner.run(SubagentRunner.Params(task = "测试"))
         assertTrue(result.success)
-        // Verifique que se llame a listToolsAsToolDefinitions solo con web_search(HIGH Las herramientas se filtran)
-        // La lista de definiciones de herramientas devueltas por la validación contiene solo confirmaciones indirectas de web_search
+
+        val names = offered.captured
+        assertTrue("SAFE 工具应在名单内，实际: $names", names.contains("web_search"))
+        assertTrue("HIGH 工具必须被剔除，实际: $names", names.none { it == "subagent_run" || it == "delegate_agent" })
     }
 
     @Test
@@ -218,7 +225,7 @@ class SubagentRunnerTest {
         val mockChatService = mockk<ChatService>(relaxed = true)
         val mockToolRegistry = mockk<ToolRegistry>(relaxed = true)
         every { mockToolRegistry.listTools() } returns listOf(
-            // subagent_task / delegate_agent marcado como HIGH,Pero incluso los marcados como SAFE deberían excluirse
+            // subagent_task / delegate_agent 标为 HIGH,但即使标 SAFE 也应被排除
             ToolRegistry.ToolDef("subagent_task", "async", emptyMap(), riskLevel = ToolRiskLevel.SAFE),
             ToolRegistry.ToolDef("delegate_agent", "delegate", emptyMap(), riskLevel = ToolRiskLevel.SAFE),
             ToolRegistry.ToolDef("web_search", "search", emptyMap(), riskLevel = ToolRiskLevel.SAFE),
@@ -228,15 +235,15 @@ class SubagentRunnerTest {
         )
         coEvery {
             mockChatService.completeText(any(), any(), any(), any(), any(), any(), any(), any())
-        } returns ChatCompletion(text = "Completo", finishReason = "stop")
+        } returns ChatCompletion(text = "完成", finishReason = "stop")
 
         val runner =
             SubagentRunner(mockChatService, mockToolRegistry, mockThreadStore(), mockLimiter(), mockk(relaxed = true), ToolApprovalRouter())
-        val result = runner.run(SubagentRunner.Params(task = "prueba"))
+        val result = runner.run(SubagentRunner.Params(task = "测试"))
         assertTrue(result.success)
     }
 
-    // ── SubagentRunner Pruebas del proceso del ciclo de herramientas ─────────────────────────────────────
+    // ── SubagentRunner 工具循环流程测试 ─────────────────────────────────────
 
     @Test
     fun `run returns summary immediately when LLM has no tool calls`() = runTest {
@@ -246,14 +253,14 @@ class SubagentRunnerTest {
         every { mockToolRegistry.listToolsAsToolDefinitions(any()) } returns emptyList()
         coEvery {
             mockChatService.completeText(any(), any(), any(), any(), any(), any(), any(), any())
-        } returns ChatCompletion(text = "Este es el resumen final.", finishReason = "stop")
+        } returns ChatCompletion(text = "这是最终总结", finishReason = "stop")
 
         val runner =
             SubagentRunner(mockChatService, mockToolRegistry, mockThreadStore(), mockLimiter(), mockk(relaxed = true), ToolApprovalRouter())
-        val result = runner.run(SubagentRunner.Params(task = "Respuesta directa a la tarea."))
+        val result = runner.run(SubagentRunner.Params(task = "直接回答任务"))
 
         assertTrue(result.success)
-        assertEquals("Este es el resumen final.", result.summary)
+        assertEquals("这是最终总结", result.summary)
         assertEquals(1, result.rounds)
         assertEquals(0, result.toolCalls)
         assertFalse(result.budgetExhausted)
@@ -270,7 +277,7 @@ class SubagentRunnerTest {
         every { mockToolRegistry.listToolsAsToolDefinitions(any()) } returns listOf(
             ToolDefinition("echo", "echo", "{}"),
         )
-        // Vuelve la primera llamada toolCalls,Devolver resumen en texto plano por segunda vez
+        // 第一次调用返回 toolCalls,第二次返回纯文本总结
         coEvery {
             mockChatService.completeText(any(), any(), any(), any(), any(), any(), any(), any())
         } returnsMany listOf(
@@ -279,18 +286,18 @@ class SubagentRunnerTest {
                 finishReason = "tool_calls",
                 toolCalls = listOf(ToolCall(id = "call_1", name = "echo", arguments = """{"text":"hi"}""")),
             ),
-            ChatCompletion(text = "Llamada de herramienta completada,este es el resumen", finishReason = "stop"),
+            ChatCompletion(text = "工具调用完成,这是总结", finishReason = "stop"),
         )
         coEvery { mockToolRegistry.executeFromJson("echo", any()) } returns "hi"
-        // Los niveles de riesgo deben indicarse explícitamente.:Si no se puede recuperar la puerta, presione ALTO (conservador),Y el eco en sí es una herramienta de solo lectura.
+        // 风险等级要显式声明:闸门取不到就按 HIGH 处理（保守）,而 echo 本身是只读工具
         every { mockToolRegistry.getToolRiskLevel("echo") } returns ToolRiskLevel.SAFE
 
         val runner =
             SubagentRunner(mockChatService, mockToolRegistry, mockThreadStore(), mockLimiter(), mockk(relaxed = true), ToolApprovalRouter())
-        val result = runner.run(SubagentRunner.Params(task = "Llame a la herramienta de eco", maxToolCalls = 5))
+        val result = runner.run(SubagentRunner.Params(task = "调用 echo 工具", maxToolCalls = 5))
 
         assertTrue(result.success)
-        assertEquals("Llamada de herramienta completada,este es el resumen", result.summary)
+        assertEquals("工具调用完成,这是总结", result.summary)
         assertEquals(2, result.rounds)
         assertEquals(1, result.toolCalls)
         assertEquals(1, result.progressEntries.size)
@@ -309,7 +316,7 @@ class SubagentRunnerTest {
         every { mockToolRegistry.listToolsAsToolDefinitions(any()) } returns listOf(
             ToolDefinition("echo", "echo", "{}"),
         )
-        // volver cada vez toolCalls,Agotamiento de cuota de activación
+        // 每次都返回 toolCalls,触发配额耗尽
         coEvery {
             mockChatService.completeText(any(), any(), any(), any(), any(), any(), any(), any())
         } returns ChatCompletion(
@@ -317,19 +324,19 @@ class SubagentRunnerTest {
             finishReason = "tool_calls",
             toolCalls = listOf(ToolCall(id = "call_x", name = "echo", arguments = """{"text":"loop"}""")),
         )
-        // Convocatoria sumaria tras agotamiento de cupos(tools=null)
+        // 配额耗尽后的总结调用(tools=null)
         coEvery {
             mockChatService.completeText(any(), any(), any(), any(), isNull(), any(), any(), any())
-        } returns ChatCompletion(text = "Resumen de agotamiento de cuotas", finishReason = "stop")
+        } returns ChatCompletion(text = "配额耗尽总结", finishReason = "stop")
         coEvery { mockToolRegistry.executeFromJson("echo", any()) } returns "loop"
         every { mockToolRegistry.getToolRiskLevel("echo") } returns ToolRiskLevel.SAFE
 
         val runner =
             SubagentRunner(mockChatService, mockToolRegistry, mockThreadStore(), mockLimiter(), mockk(relaxed = true), ToolApprovalRouter())
-        val result = runner.run(SubagentRunner.Params(task = "llamada en bucle", maxToolCalls = 2))
+        val result = runner.run(SubagentRunner.Params(task = "循环调用", maxToolCalls = 2))
 
         assertTrue(result.success)
-        assertEquals("Resumen de agotamiento de cuotas", result.summary)
+        assertEquals("配额耗尽总结", result.summary)
         assertEquals(2, result.toolCalls)
         assertTrue(result.budgetExhausted)
         assertEquals(2, result.progressEntries.size)
@@ -341,11 +348,11 @@ class SubagentRunnerTest {
         val mockToolRegistry = mockk<ToolRegistry>(relaxed = true)
         every { mockToolRegistry.listTools() } returns emptyList()
         every { mockToolRegistry.listToolsAsToolDefinitions(any()) } returns emptyList()
-        // Devolución no válida toolCalls(nombre vacío / vacío arguments),Debe manejarse como si no fuera una llamada a ninguna herramienta.
+        // 返回无效 toolCalls(空 name / 空 arguments),应按无工具调用处理
         coEvery {
             mockChatService.completeText(any(), any(), any(), any(), any(), any(), any(), any())
         } returns ChatCompletion(
-            text = "Llamada de herramienta no válida,resumen directo",
+            text = "无效工具调用,直接总结",
             finishReason = "tool_calls",
             toolCalls = listOf(
                 ToolCall(id = "1", name = "", arguments = """{"a":"b"}"""),
@@ -355,10 +362,10 @@ class SubagentRunnerTest {
 
         val runner =
             SubagentRunner(mockChatService, mockToolRegistry, mockThreadStore(), mockLimiter(), mockk(relaxed = true), ToolApprovalRouter())
-        val result = runner.run(SubagentRunner.Params(task = "prueba"))
+        val result = runner.run(SubagentRunner.Params(task = "测试"))
 
         assertTrue(result.success)
-        assertEquals("Llamada de herramienta no válida,resumen directo", result.summary)
+        assertEquals("无效工具调用,直接总结", result.summary)
         assertEquals(0, result.toolCalls)
     }
 
@@ -372,7 +379,7 @@ class SubagentRunnerTest {
         every { mockToolRegistry.listToolsAsToolDefinitions(any()) } returns listOf(
             ToolDefinition("echo", "echo", "{}"),
         )
-        // LLM Alucinación llama a una herramienta que no está en la lista blanca
+        // LLM 幻觉调用了一个不在白名单的工具
         coEvery {
             mockChatService.completeText(any(), any(), any(), any(), any(), any(), any(), any())
         } returnsMany listOf(
@@ -381,28 +388,28 @@ class SubagentRunnerTest {
                 finishReason = "tool_calls",
                 toolCalls = listOf(ToolCall(id = "1", name = "dangerous_tool", arguments = """{"x":"y"}""")),
             ),
-            ChatCompletion(text = "Resumen", finishReason = "stop"),
+            ChatCompletion(text = "总结", finishReason = "stop"),
         )
 
         val runner =
             SubagentRunner(mockChatService, mockToolRegistry, mockThreadStore(), mockLimiter(), mockk(relaxed = true), ToolApprovalRouter())
-        val result = runner.run(SubagentRunner.Params(task = "prueba", maxToolCalls = 3))
+        val result = runner.run(SubagentRunner.Params(task = "测试", maxToolCalls = 3))
 
         assertTrue(result.success)
         assertEquals(1, result.toolCalls)
         assertEquals(1, result.progressEntries.size)
-        // El resultado de la ejecución de la herramienta debería ser un mensaje de error.
+        // 工具执行结果应是错误信息
         assertTrue(result.progressEntries[0].result.contains("Error"))
         assertFalse(result.progressEntries[0].success)
     }
 
-    // ── Puerta de aprobación: la decisión del subagente debe ser coherente con el modo de sesión ────────────────────────────
+    // ── 审批闸门：子代理的判定必须与会话模式一致 ────────────────────────────
 
     /**
-     * Cuando existe un canal de aprobación: la llamada regresa a la cadena de aprobación de la sesión principal.STRICT Las herramientas NORMALES de la sesión deben estar deshabilitadas para su ejecución.
+     * 有审批通道时：调用退到主会话审批链，STRICT 会话下的 NORMAL 工具必须进不了执行。
      *
-     * Bridge aquí juega la cadena de aprobación de la sesión principal (con [io.zer0.muse.ui.chat.ChatToolApprovalCoordinator] misma llamada al analizador),
-     * Por lo tanto, la prueba puede identificar "el modo entra en vigor" y "se pasan todos los parámetros" al mismo tiempo.
+     * 桥接这里扮演主会话审批链（与 [io.zer0.muse.ui.chat.ChatToolApprovalCoordinator] 同一条解析器调用），
+     * 因此测试能同时钉住「模式生效」与「传的是全量参数」。
      */
     @Test
     fun `approval bridge blocks normal tool in strict session and receives full args`() = runTest {
@@ -429,15 +436,15 @@ class SubagentRunnerTest {
         val router = ToolApprovalRouter().also { it.delegate = bridge }
         val mockToolRegistry = mockk<ToolRegistry>(relaxed = true)
         every { mockToolRegistry.listTools() } returns listOf(
-            ToolRegistry.ToolDef("write_file", "escribir archivo", emptyMap(), riskLevel = ToolRiskLevel.NORMAL),
+            ToolRegistry.ToolDef("write_file", "写文件", emptyMap(), riskLevel = ToolRiskLevel.NORMAL),
         )
         every { mockToolRegistry.listToolsAsToolDefinitions(any()) } returns listOf(
-            ToolDefinition("write_file", "escribir archivo", "{}"),
+            ToolDefinition("write_file", "写文件", "{}"),
         )
         every { mockToolRegistry.getToolRiskLevel("write_file") } returns ToolRiskLevel.NORMAL
 
         val mockChatService = mockk<ChatService>(relaxed = true)
-        // El número total de parámetros supera con creces la duración de la vista previa,La decisión debe ver su valor total
+        // 参数总量远超预览长度,判定必须看到完整值
         val longPath = "/sdcard/notes/" + "a".repeat(400) + ".txt"
         val arguments = """{"path":"$longPath","content":"hello"}"""
         coEvery {
@@ -448,26 +455,30 @@ class SubagentRunnerTest {
                 finishReason = "tool_calls",
                 toolCalls = listOf(ToolCall(id = "call_1", name = "write_file", arguments = arguments)),
             ),
-            ChatCompletion(text = "La herramienta está bloqueada", finishReason = "stop"),
+            ChatCompletion(text = "工具被拦住了", finishReason = "stop"),
         )
         coEvery { mockToolRegistry.executeFromJson("write_file", any()) } returns "written"
 
         val runner = SubagentRunner(
-            mockChatService, mockToolRegistry, mockThreadStore(), mockLimiter(),
-            mockk(relaxed = true), router,
+            mockChatService,
+            mockToolRegistry,
+            mockThreadStore(),
+            mockLimiter(),
+            mockk(relaxed = true),
+            router,
         )
-        val result = runner.run(SubagentRunner.Params(task = "escribir archivo", maxToolCalls = 3))
+        val result = runner.run(SubagentRunner.Params(task = "写文件", maxToolCalls = 3))
 
         coVerify(exactly = 0) { mockToolRegistry.executeFromJson("write_file", any()) }
         assertEquals(1, result.progressEntries.size)
         assertFalse(result.progressEntries[0].success)
         assertTrue(result.progressEntries[0].result.contains("Error"))
-        // Determinar que lo que se recibe es la cantidad total de parámetros.,La vista previa está truncada.
+        // 判定收到的是全量参数,预览才是截断的
         assertEquals(longPath, seen.single()["path"])
-        assertTrue("La vista previa no debería traer parámetros completos", previews.single().length <= 200)
+        assertTrue("预览不应该带上完整参数", previews.single().length <= 200)
     }
 
-    /** Cuando existe un canal de aprobación y el usuario aprueba, la herramienta se ejecuta como de costumbre. */
+    /** 有审批通道且用户批准时，工具照常执行。 */
     @Test
     fun `approval bridge keeps normal tool executable when approved`() = runTest {
         val router = ToolApprovalRouter().also {
@@ -482,10 +493,10 @@ class SubagentRunnerTest {
         }
         val mockToolRegistry = mockk<ToolRegistry>(relaxed = true)
         every { mockToolRegistry.listTools() } returns listOf(
-            ToolRegistry.ToolDef("write_file", "escribir archivo", emptyMap(), riskLevel = ToolRiskLevel.NORMAL),
+            ToolRegistry.ToolDef("write_file", "写文件", emptyMap(), riskLevel = ToolRiskLevel.NORMAL),
         )
         every { mockToolRegistry.listToolsAsToolDefinitions(any()) } returns listOf(
-            ToolDefinition("write_file", "escribir archivo", "{}"),
+            ToolDefinition("write_file", "写文件", "{}"),
         )
         val mockChatService = mockk<ChatService>(relaxed = true)
         coEvery {
@@ -496,30 +507,34 @@ class SubagentRunnerTest {
                 finishReason = "tool_calls",
                 toolCalls = listOf(ToolCall(id = "call_1", name = "write_file", arguments = """{"path":"a.txt"}""")),
             ),
-            ChatCompletion(text = "Terminado", finishReason = "stop"),
+            ChatCompletion(text = "写完了", finishReason = "stop"),
         )
         coEvery { mockToolRegistry.executeFromJson("write_file", any()) } returns "written"
 
         val runner = SubagentRunner(
-            mockChatService, mockToolRegistry, mockThreadStore(), mockLimiter(),
-            mockk(relaxed = true), router,
+            mockChatService,
+            mockToolRegistry,
+            mockThreadStore(),
+            mockLimiter(),
+            mockk(relaxed = true),
+            router,
         )
-        val result = runner.run(SubagentRunner.Params(task = "escribir archivo", maxToolCalls = 3))
+        val result = runner.run(SubagentRunner.Params(task = "写文件", maxToolCalls = 3))
 
         coVerify(exactly = 1) { mockToolRegistry.executeFromJson("write_file", any()) }
         assertTrue(result.progressEntries[0].success)
         assertEquals("written", result.progressEntries[0].result)
     }
 
-    /** Sin canal de aprobación + ESTRICTO (settings Cobertura en caso de falta):NORMAL Herramientas bloqueadas. */
+    /** 无审批通道 + STRICT（settings 缺失时的兜底）:NORMAL 工具被拦。 */
     @Test
     fun `no approval channel blocks normal tool without settings`() = runTest {
         val mockToolRegistry = mockk<ToolRegistry>(relaxed = true)
         every { mockToolRegistry.listTools() } returns listOf(
-            ToolRegistry.ToolDef("write_file", "escribir archivo", emptyMap(), riskLevel = ToolRiskLevel.NORMAL),
+            ToolRegistry.ToolDef("write_file", "写文件", emptyMap(), riskLevel = ToolRiskLevel.NORMAL),
         )
         every { mockToolRegistry.listToolsAsToolDefinitions(any()) } returns listOf(
-            ToolDefinition("write_file", "escribir archivo", "{}"),
+            ToolDefinition("write_file", "写文件", "{}"),
         )
         every { mockToolRegistry.getToolRiskLevel("write_file") } returns ToolRiskLevel.NORMAL
         val mockChatService = mockk<ChatService>(relaxed = true)
@@ -531,31 +546,35 @@ class SubagentRunnerTest {
                 finishReason = "tool_calls",
                 toolCalls = listOf(ToolCall(id = "call_1", name = "write_file", arguments = """{"path":"a.txt"}""")),
             ),
-            ChatCompletion(text = "La herramienta está bloqueada", finishReason = "stop"),
+            ChatCompletion(text = "工具被拦住了", finishReason = "stop"),
         )
         coEvery { mockToolRegistry.executeFromJson("write_file", any()) } returns "written"
 
-        // settings = null ⇒ El modo no se puede recuperar,Ten todo en cuenta STRICT
+        // settings = null ⇒ 模式取不到,兜底 STRICT
         val runner = SubagentRunner(
-            mockChatService, mockToolRegistry, mockThreadStore(), mockLimiter(),
-            mockk(relaxed = true), ToolApprovalRouter(),
+            mockChatService,
+            mockToolRegistry,
+            mockThreadStore(),
+            mockLimiter(),
+            mockk(relaxed = true),
+            ToolApprovalRouter(),
         )
-        val result = runner.run(SubagentRunner.Params(task = "escribir archivo", maxToolCalls = 3))
+        val result = runner.run(SubagentRunner.Params(task = "写文件", maxToolCalls = 3))
 
         coVerify(exactly = 0) { mockToolRegistry.executeFromJson("write_file", any()) }
         assertFalse(result.progressEntries[0].success)
         assertTrue(result.progressEntries[0].result.contains("Error"))
     }
 
-    /** Sin canal de aprobación + sesión PREGUNTAR:Pending equivalente al rechazo,No se puede permitir que pase en silencio. */
+    /** 无审批通道 + ASK 会话:Pending 等于拒绝,不能默默放行。 */
     @Test
     fun `no approval channel turns pending into denial`() = runTest {
         val mockToolRegistry = mockk<ToolRegistry>(relaxed = true)
         every { mockToolRegistry.listTools() } returns listOf(
-            ToolRegistry.ToolDef("write_file", "escribir archivo", emptyMap(), riskLevel = ToolRiskLevel.NORMAL),
+            ToolRegistry.ToolDef("write_file", "写文件", emptyMap(), riskLevel = ToolRiskLevel.NORMAL),
         )
         every { mockToolRegistry.listToolsAsToolDefinitions(any()) } returns listOf(
-            ToolDefinition("write_file", "escribir archivo", "{}"),
+            ToolDefinition("write_file", "写文件", "{}"),
         )
         every { mockToolRegistry.getToolRiskLevel("write_file") } returns ToolRiskLevel.NORMAL
         val mockChatService = mockk<ChatService>(relaxed = true)
@@ -567,31 +586,36 @@ class SubagentRunnerTest {
                 finishReason = "tool_calls",
                 toolCalls = listOf(ToolCall(id = "call_1", name = "write_file", arguments = """{"path":"a.txt"}""")),
             ),
-            ChatCompletion(text = "La herramienta está bloqueada", finishReason = "stop"),
+            ChatCompletion(text = "工具被拦住了", finishReason = "stop"),
         )
         coEvery { mockToolRegistry.executeFromJson("write_file", any()) } returns "written"
         val settings = mockSettings(SessionPermissionMode.ASK)
 
         val runner = SubagentRunner(
-            mockChatService, mockToolRegistry, mockThreadStore(), mockLimiter(),
-            mockk(relaxed = true), ToolApprovalRouter(), settings,
+            mockChatService,
+            mockToolRegistry,
+            mockThreadStore(),
+            mockLimiter(),
+            mockk(relaxed = true),
+            ToolApprovalRouter(),
+            settings,
         )
-        val result = runner.run(SubagentRunner.Params(task = "escribir archivo", maxToolCalls = 3))
+        val result = runner.run(SubagentRunner.Params(task = "写文件", maxToolCalls = 3))
 
         coVerify(exactly = 0) { mockToolRegistry.executeFromJson("write_file", any()) }
         assertFalse(result.progressEntries[0].success)
         assertTrue(result.progressEntries[0].result.contains("Error"))
     }
 
-    /** Sin canal de aprobación + sesión DE CONFIANZA:Liberación normal (la puerta se juzga según el modo,No siempre rechazado). */
+    /** 无审批通道 + TRUSTED 会话:正常放行（闸门按模式判定,不是一律拒绝）。 */
     @Test
     fun `no approval channel follows trusted session mode`() = runTest {
         val mockToolRegistry = mockk<ToolRegistry>(relaxed = true)
         every { mockToolRegistry.listTools() } returns listOf(
-            ToolRegistry.ToolDef("write_file", "escribir archivo", emptyMap(), riskLevel = ToolRiskLevel.NORMAL),
+            ToolRegistry.ToolDef("write_file", "写文件", emptyMap(), riskLevel = ToolRiskLevel.NORMAL),
         )
         every { mockToolRegistry.listToolsAsToolDefinitions(any()) } returns listOf(
-            ToolDefinition("write_file", "escribir archivo", "{}"),
+            ToolDefinition("write_file", "写文件", "{}"),
         )
         every { mockToolRegistry.getToolRiskLevel("write_file") } returns ToolRiskLevel.NORMAL
         val mockChatService = mockk<ChatService>(relaxed = true)
@@ -603,25 +627,30 @@ class SubagentRunnerTest {
                 finishReason = "tool_calls",
                 toolCalls = listOf(ToolCall(id = "call_1", name = "write_file", arguments = """{"path":"a.txt"}""")),
             ),
-            ChatCompletion(text = "Terminado", finishReason = "stop"),
+            ChatCompletion(text = "写完了", finishReason = "stop"),
         )
         coEvery { mockToolRegistry.executeFromJson("write_file", any()) } returns "written"
 
         val runner = SubagentRunner(
-            mockChatService, mockToolRegistry, mockThreadStore(), mockLimiter(),
-            mockk(relaxed = true), ToolApprovalRouter(), mockSettings(SessionPermissionMode.TRUSTED),
+            mockChatService,
+            mockToolRegistry,
+            mockThreadStore(),
+            mockLimiter(),
+            mockk(relaxed = true),
+            ToolApprovalRouter(),
+            mockSettings(SessionPermissionMode.TRUSTED),
         )
-        val result = runner.run(SubagentRunner.Params(task = "escribir archivo", maxToolCalls = 3))
+        val result = runner.run(SubagentRunner.Params(task = "写文件", maxToolCalls = 3))
 
         coVerify(exactly = 1) { mockToolRegistry.executeFromJson("write_file", any()) }
         assertTrue(result.progressEntries[0].success)
     }
 
     /**
-     * El rechazo total parametrizado tiene efecto en la ruta del subagente y analiza todos los parámetros.
+     * 参数化硬拒在子代理路径上生效，且看的是全量参数。
      *
-     * El modo de sesión está configurado en TRUSTED (determinación estática de liberación completa),Por lo tanto, el bloqueo sólo puede provenir de estrategias parametrizadas.;
-     * Los marcadores de peligro se colocan intencionalmente después de 200 caracteres.,No puedes verlo con solo mirar la vista previa.
+     * 会话模式设为 TRUSTED（静态判定全放行）,所以被拦只能来自参数化策略;
+     * 危险标记特意放在 200 字符之后,只看预览就抓不到。
      */
     @Test
     fun `parametrized hard denial applies on subagent path with full args`() = runTest {
@@ -629,7 +658,7 @@ class SubagentRunnerTest {
         ParamPolicies.register(probeTool) { args ->
             val path = args["path"] as? String ?: return@register null
             if (path.contains("secret")) {
-                ToolApprovalState.Denied("Rechazo duro parametrizado de golpe de ruta,Bloqueado")
+                ToolApprovalState.Denied("路径命中参数化硬拒,已拦截")
             } else {
                 null
             }
@@ -637,10 +666,10 @@ class SubagentRunnerTest {
         try {
             val mockToolRegistry = mockk<ToolRegistry>(relaxed = true)
             every { mockToolRegistry.listTools() } returns listOf(
-                ToolRegistry.ToolDef(probeTool, "herramienta de sonda", emptyMap(), riskLevel = ToolRiskLevel.NORMAL),
+                ToolRegistry.ToolDef(probeTool, "探针工具", emptyMap(), riskLevel = ToolRiskLevel.NORMAL),
             )
             every { mockToolRegistry.listToolsAsToolDefinitions(any()) } returns listOf(
-                ToolDefinition(probeTool, "herramienta de sonda", "{}"),
+                ToolDefinition(probeTool, "探针工具", "{}"),
             )
             every { mockToolRegistry.getToolRiskLevel(probeTool) } returns ToolRiskLevel.NORMAL
             val mockChatService = mockk<ChatService>(relaxed = true)
@@ -653,26 +682,34 @@ class SubagentRunnerTest {
                     finishReason = "tool_calls",
                     toolCalls = listOf(ToolCall(id = "call_1", name = probeTool, arguments = """{"path":"$path"}""")),
                 ),
-                ChatCompletion(text = "La herramienta está bloqueada", finishReason = "stop"),
+                ChatCompletion(text = "工具被拦住了", finishReason = "stop"),
             )
             coEvery { mockToolRegistry.executeFromJson(probeTool, any()) } returns "done"
 
             val runner = SubagentRunner(
-                mockChatService, mockToolRegistry, mockThreadStore(), mockLimiter(),
-                mockk(relaxed = true), ToolApprovalRouter(), mockSettings(SessionPermissionMode.TRUSTED),
+                mockChatService,
+                mockToolRegistry,
+                mockThreadStore(),
+                mockLimiter(),
+                mockk(relaxed = true),
+                ToolApprovalRouter(),
+                mockSettings(SessionPermissionMode.TRUSTED),
             )
-            val result = runner.run(SubagentRunner.Params(task = "sonda", maxToolCalls = 3))
+            val result = runner.run(SubagentRunner.Params(task = "探针", maxToolCalls = 3))
 
             coVerify(exactly = 0) { mockToolRegistry.executeFromJson(probeTool, any()) }
             assertFalse(result.progressEntries[0].success)
-            assertTrue(result.progressEntries[0].result.contains("Rechazo duro parametrizado"))
+            assertTrue(
+                "应回传参数化硬拒的原因，实际: ${result.progressEntries[0].result}",
+                result.progressEntries[0].result.contains("参数化硬拒"),
+            )
         } finally {
-            // La política de parámetros es un registro global.:Vuelva a cambiarlo a "sin intercepción" inmediatamente después de su uso.,Sin efectos secundarios de otras pruebas.
+            // 参数策略是全局注册表:用完立即改回「不拦截」,不给其他测试留副作用
             ParamPolicies.register(probeTool) { null }
         }
     }
 
-    // ── SubagentRunSkill Prueba de análisis de parámetros ───────────────────────────────────────
+    // ── SubagentRunSkill 参数解析测试 ───────────────────────────────────────
 
     @Test
     fun `SubagentRunSkill execute returns error XML when task missing`() = runTest {
@@ -687,20 +724,20 @@ class SubagentRunnerTest {
     fun `SubagentRunSkill execute parses target_paths as comma separated list`() = runTest {
         val mockRunner = mockk<SubagentRunner>(relaxed = true)
         coEvery { mockRunner.run(any()) } returns SubagentRunner.Result(
-            success = true, summary = "Completo", rounds = 1, toolCalls = 0,
+            success = true, summary = "完成", rounds = 1, toolCalls = 0,
         )
         val result = SubagentRunSkill.execute(
             mapOf(
-                "task" to "prueba",
+                "task" to "测试",
                 "target_paths" to "/a/b.txt, /c/d.txt , /e/f.txt",
                 "max_tool_calls" to "5",
             ),
             mockRunner,
         )
-        // Verificar que existan las tres fases de XML
+        // 验证三阶段 XML 都存在
         assertTrue(result.contains("<subagent_start"))
         assertTrue(result.contains("<subagent_result"))
-        // Verifique que max_tool_calls esté analizado
+        // 验证 max_tool_calls 被解析
         assertTrue(result.contains("max_tool_calls=\"5\""))
     }
 
@@ -713,14 +750,14 @@ class SubagentRunnerTest {
         assertEquals("integer", def.parameterTypes["max_tool_calls"])
     }
 
-    // v1.0.53: modo de permiso de sesión mock — La puerta lee el modo predeterminado global cuando no hay un canal de aprobación.
+    // v1.0.53: 会话权限模式 mock — 闸门在无审批通道时读全局默认模式
     private fun mockSettings(mode: SessionPermissionMode): io.zer0.muse.data.SettingsRepository {
         val repo = io.mockk.mockk<io.zer0.muse.data.SettingsRepository>(relaxed = true)
         io.mockk.every { repo.defaultSessionPermissionModeFlow } returns kotlinx.coroutines.flow.flowOf(mode)
         return repo
     }
 
-    // v1.0.53: Libro mayor de hilos mock — getOrCreate Devolución válida Pair,runSerialized Ejecución transparente
+    // v1.0.53: 线程账本 mock — getOrCreate 返回有效 Pair,runSerialized 透传执行
     private fun mockThreadStore(): io.zer0.muse.data.subagent.SubagentThreadStore {
         val store = io.mockk.mockk<io.zer0.muse.data.subagent.SubagentThreadStore>(relaxed = true)
         io.mockk.coEvery { store.getOrCreate(any(), any(), any(), any(), any()) } returns ("test-thread" to true)
@@ -731,12 +768,70 @@ class SubagentRunnerTest {
         return store
     }
 
-    // v1.0.53: Límite de corriente concurrente mock — run Ejecución transparente block
+    // v1.0.53: 并发限流 mock — run 透传执行 block
     private fun mockLimiter(): io.zer0.muse.tools.AgentConcurrencyLimiter {
         val limiter = io.mockk.mockk<io.zer0.muse.tools.AgentConcurrencyLimiter>(relaxed = true)
         io.mockk.coEvery { limiter.run<Any>(any()) } coAnswers {
             firstArg<suspend () -> Any>()()
         }
         return limiter
+    }
+
+    @Test
+    fun `run never offers screen automation tools to subagents`() = runTest {
+        // 子代理是「文本工作者」，不该在用户没看屏的时候按 back/home/拉通知栏 ——
+        // 与「子 agent 不应操作浏览器」同一条 UI 状态隔离原则。
+        val mockChatService = mockk<ChatService>(relaxed = true)
+        val mockToolRegistry = mockk<ToolRegistry>(relaxed = true)
+        every { mockToolRegistry.listTools() } returns listOf(
+            ToolRegistry.ToolDef("web_search", "search", emptyMap(), riskLevel = ToolRiskLevel.SAFE),
+            ToolRegistry.ToolDef("read_file", "read", emptyMap(), riskLevel = ToolRiskLevel.SAFE),
+            // 下面这些是 NORMAL/SAFE，能穿过「只允许 SAFE+NORMAL」的过滤，必须被显式黑名单挡掉
+            ToolRegistry.ToolDef("screen_back", "back", emptyMap(), riskLevel = ToolRiskLevel.NORMAL),
+            ToolRegistry.ToolDef("screen_home", "home", emptyMap(), riskLevel = ToolRiskLevel.NORMAL),
+            ToolRegistry.ToolDef("screen_open_settings", "settings", emptyMap(), riskLevel = ToolRiskLevel.NORMAL),
+            ToolRegistry.ToolDef("screen_permission_status", "status", emptyMap(), riskLevel = ToolRiskLevel.SAFE),
+        )
+        val offered = slot<List<String>>()
+        every { mockToolRegistry.listToolsAsToolDefinitions(capture(offered)) } returns emptyList()
+        coEvery {
+            mockChatService.completeText(any(), any(), any(), any(), any(), any(), any(), any())
+        } returns ChatCompletion(text = "完成", finishReason = "stop")
+
+        val runner = SubagentRunner(
+            mockChatService,
+            mockToolRegistry,
+            mockThreadStore(),
+            mockLimiter(),
+            mockk(relaxed = true),
+            ToolApprovalRouter(),
+        )
+        runner.run(SubagentRunner.Params(task = "整理笔记"))
+
+        val names = offered.captured
+        assertTrue("普通只读工具应保留，实际: $names", names.contains("web_search"))
+        assertTrue("屏幕自动化工具必须全部剔除，实际: $names", names.none { it.startsWith("screen_") })
+    }
+
+    @Test
+    fun `a named profile that does not exist is refused instead of silently downgraded`() = runTest {
+        val runner = SubagentRunner(
+            mockk(relaxed = true),
+            mockk(relaxed = true),
+            mockThreadStore(),
+            mockLimiter(),
+            mockk(relaxed = true),
+            ToolApprovalRouter(),
+            settings = null,
+            profileResolver = { null },
+        )
+
+        val result = runner.run(SubagentRunner.Params(task = "x", profile = "ghost"))
+
+        assertFalse(result.success)
+        assertTrue(
+            "角色不存在要明确说，否则用户以为角色生效了: ${result.error}",
+            result.error?.contains("找不到角色") == true,
+        )
     }
 }

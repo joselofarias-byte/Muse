@@ -52,7 +52,7 @@ class SkillDelegateAgentImplTest {
         )
 
         assertFalse(result.success)
-        assertTrue(result.error.orEmpty().contains("cancelada"))
+        assertTrue(result.error.orEmpty().contains("取消"))
         assertEquals("req-cancelled", result.requestId)
     }
 }

@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-check_detekt_debt.py — P4-2 detekt Aseveración del techo de deuda.
+check_detekt_debt.py — P4-2 detekt 债务上限断言。
 
-El número total de entradas CurrentIssues en detekt-baseline.xml de cada módulo debe estar dentro de ci/detekt_debt_cap.json
-Dentro del límite total registrado,Y ningún módulo individual no debe exceder el límite superior de su nivel de módulo.(valla doble,Se prohíben nuevas incorporaciones.).
-Después de la limpieza por lotes: Regenerar el módulo correspondiente. baseline → Ajustar manualmente el valor del archivo cap DOWN,Y explicar qué limpiar.
-Nunca está permitido simplemente ajustar la tapa hacia ARRIBA sin limpiarla.(Entonces el control de acceso será sólo una decoración.).
+各模块 detekt-baseline.xml 的 CurrentIssues 条目总数必须在 ci/detekt_debt_cap.json
+记录的 total 上限内,且任意单模块不得超出其模块级上限(双重围栏,禁止新增)。
+按批次清理后: 重生成对应模块 baseline → 手动把 cap 文件数值调 DOWN,并说明清理内容。
+绝不允许只把 cap 调 UP 而不清理(那样门禁就只是摆设)。
 
-correr: py -3 ci/script/check_detekt_debt.py [--root ROOT] [--cap CAPFILE]
+运行: py -3 ci/script/check_detekt_debt.py [--root ROOT] [--cap CAPFILE]
 """
 
 import argparse
@@ -21,13 +21,13 @@ DEFAULT_CAP = Path(__file__).resolve().parents[1] / "detekt_debt_cap.json"
 
 
 def count_baseline(baseline_file: Path) -> int:
-    """Número de CurrentIssues de referencia de detección de estadísticas;Falla si falta una estructura o no es válida."""
+    """统计 detekt 基线 CurrentIssues 条数;缺失或结构无效时失败。"""
     if not baseline_file.is_file():
-        raise FileNotFoundError(f"desaparecido detekt baseline: {baseline_file}")
+        raise FileNotFoundError(f"缺少 detekt baseline: {baseline_file}")
     tree = ET.parse(baseline_file)
     current = tree.getroot().find("CurrentIssues")
     if current is None:
-        raise ValueError(f"detekt baseline desaparecido CurrentIssues: {baseline_file}")
+        raise ValueError(f"detekt baseline 缺少 CurrentIssues: {baseline_file}")
     return len(current)
 
 
@@ -43,7 +43,7 @@ def check(root: Path, cap_file: Path) -> list[str]:
         baseline = root / module / "detekt-baseline.xml"
         if not baseline.is_file():
             actual[module] = "MISSING"
-            errors.append(f"{module}: desaparecido detekt baseline ({baseline})")
+            errors.append(f"{module}: 缺少 detekt baseline ({baseline})")
             continue
         n = count_baseline(baseline)
         actual[module] = n
@@ -51,16 +51,16 @@ def check(root: Path, cap_file: Path) -> list[str]:
         module_cap = module_caps.get(module)
         if module_cap is not None and n > module_cap:
             errors.append(
-                f"{module}: línea de base {n} Artículo > Límite de módulo {module_cap} Artículo —— Se prohíben nuevas incorporaciones.,Limpiar por lotes primero"
+                f"{module}: 基线 {n} 条 > 模块上限 {module_cap} 条 —— 禁止新增,先按批次清理"
             )
 
     if total > total_cap:
-        errors.append(f"detekt deuda total {total} Artículo > límite superior {total_cap} Artículo —— Se prohíben nuevas incorporaciones.")
+        errors.append(f"detekt 债务总量 {total} 条 > 上限 {total_cap} 条 —— 禁止新增")
 
-    print(f"detekt Medición de la deuda: {total} Artículo (Cada módulo {actual})")
+    print(f"detekt 债务实测: {total} 条 (各模块 {actual})")
     if errors:
         return errors
-    print(f"en {total_cap} dentro del límite superior,control de acceso")
+    print(f"在 {total_cap} 条上限内,门禁通过")
     return []
 
 
@@ -71,7 +71,7 @@ def main() -> int:
     args = parser.parse_args()
     errors = check(Path(args.root), Path(args.cap))
     if errors:
-        print("P4-2 detekt Fracasa la afirmación del techo de deuda:")
+        print("P4-2 detekt 债务上限断言失败:")
         for err in errors:
             print(f"  - {err}")
         return 1

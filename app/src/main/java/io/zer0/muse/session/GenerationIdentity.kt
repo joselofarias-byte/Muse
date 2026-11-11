@@ -1,11 +1,11 @@
 package io.zer0.muse.session
 
 /**
- * Identidades estables generadas una vez a través de eventos entre capas.
+ * 一次生成在跨层事件中的稳定身份。
  *
- * [generationId] Distinguir entre diferentes generaciones dentro de una misma sesión;[turnId] Representa una ronda de negocios;
- * [streamId] Representa uno de los flujos del proveedor. El reintento o la recuperación se pueden realizar a través de
- * [parentGenerationId] Vinculado a la generación original, pero no puede reutilizar la identidad de la generación original.
+ * [generationId] 区分同一会话中的不同生成代际；[turnId] 表示业务回合；
+ * [streamId] 表示其中一次 Provider 流。重试或恢复可以通过
+ * [parentGenerationId] 关联到原代，但不能复用原代身份。
  */
 data class GenerationIdentity(
     val sessionId: String,

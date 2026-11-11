@@ -4,7 +4,7 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 
 /**
- * El diario de un día.[date] para `yyyy-MM-dd` clave primaria de texto,Una pieza al día.
+ * 一天的日记。[date] 为 `yyyy-MM-dd` 文本主键,一天一条。
  */
 @Entity(tableName = "mp_diary")
 data class MpDiaryEntity(

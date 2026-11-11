@@ -1,5 +1,7 @@
 package io.zer0.muse.miniphone.ui.chat
 
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelStore
 import io.zer0.muse.miniphone.api.MiniPhoneHost
 import io.zer0.muse.miniphone.api.MpActivityKind
 import io.zer0.muse.miniphone.api.MpCharacter
@@ -42,10 +44,10 @@ import org.robolectric.annotation.Config
 import java.io.File
 
 /**
- * Estado de la página de chat:Enviar bucle, serialización, borrar no leídos, paginación inversa.
+ * 聊天页状态:发送回路、串行化、未读清零、倒序分页。
  *
- * Úsalo de verdad Room(banco de memoria)Verifique el asunto de "entregar primero y luego solicitar" —— El DAO falso solo puede probar la secuencia de llamada,
- * No se puede demostrar que Curry realmente tenga usuarios primero.
+ * 用真 Room(内存库)验证「先落库再请求」这件事 —— 假 DAO 只能证明调用顺序,
+ * 证明不了库里真的先有用户那句话。
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
@@ -57,13 +59,21 @@ class MiniPhoneChatViewModelTest {
 
     @Before
     fun setUp() {
-        Dispatchers.setMain(UnconfinedTestDispatcher())
+        Dispatchers.setMain(mainDispatcher)
         db = newInMemoryMiniPhoneDb()
         idCounter = 0
     }
 
     @After
     fun tearDown() {
+        // 先让刚被取消的协程跑完最后一步，再换全局 Main。
+        // 反过来做就会在"还有人读 Main"的瞬间 resetMain —— kotlinx 直接抛
+        // `Dispatchers.Main is used concurrently with setting it`。
+        // 这个窗口是上一轮加 clear() 时我自己引进来的：修泄漏的动作本身也要讲顺序。
+        runBlocking {
+            createdVmStore.clear()
+            mainDispatcher.scheduler.advanceUntilIdle()
+        }
         Dispatchers.resetMain()
         db.close()
     }
@@ -71,22 +81,22 @@ class MiniPhoneChatViewModelTest {
     @Test
     fun userMessageIsPersistedBeforeTheCharacterIsAsked() = runBlocking {
         seedThread()
-        val host = GatedHost(answer = "en")
+        val host = GatedHost(answer = "在的")
         val viewModel = createViewModel(host)
 
-        viewModel.send("¿Está ahí?")
+        viewModel.send("在吗")
         withTimeout(TIMEOUT_MS) { host.firstCallReached.await() }
 
-        // La compilación ya se está ejecutando.,Ya debe haber información del usuario en la biblioteca en este momento.,Y aún no hay respuesta de rol
+        // 生成已经在跑,此刻库里必须已经有用户消息,而且还没有角色回复
         assertEquals(listOf(MpActorType.USER), storedSenders())
-        assertEquals("¿Está ahí?", host.lastHistory.last().content)
+        assertEquals("在吗", host.lastHistory.last().content)
 
         host.letThrough()
 
         val state = awaitChat(viewModel) { chat -> chat.messages.size == 2 && !chat.isGenerating }
         assertEquals(listOf(MpActorType.USER, MpActorType.CHARACTER), storedSenders())
-        assertEquals(listOf("¿Está ahí?", "en"), bubbleContents(state))
-        assertEquals("ali", state.peerName)
+        assertEquals(listOf("在吗", "在的"), bubbleContents(state))
+        assertEquals("阿离", state.peerName)
     }
 
     @Test
@@ -94,58 +104,58 @@ class MiniPhoneChatViewModelTest {
         seedThread()
         val viewModel = createViewModel(FakeHost(answer = null))
 
-        viewModel.send("¿Está ahí?")
+        viewModel.send("在吗")
 
         val state = awaitChat(viewModel) { chat -> chat.messages.size == 2 && !chat.isGenerating }
         val notice = state.messages.last()
         assertEquals(MpMessageType.SYSTEM, notice.type)
-        assertEquals("La otra parte no respondió.", notice.content)
-        assertFalse("El sistema solicita no participar en la división de columnas izquierda y derecha", notice.isMine)
+        assertEquals(MpSentinel.NO_REPLY, notice.content)
+        assertFalse("系统提示不参与左右分栏", notice.isMine)
         assertEquals(listOf(MpActorType.USER, MpActorType.SYSTEM), storedSenders())
     }
 
     @Test
     fun activityIsShownWhileWorkingAndClearedAfterTheText() = runBlocking {
         seedThread()
-        val host = GatedHost(answer = "lo encontré")
+        val host = GatedHost(answer = "找到了")
         val viewModel = createViewModel(host)
 
-        viewModel.send("Ayúdame a encontrarlo")
+        viewModel.send("帮我找找")
         withTimeout(TIMEOUT_MS) { host.firstCallReached.await() }
 
         val working = awaitChat(viewModel) { it.activity != null }
         assertEquals(MpActivityKind.SEARCHING, working.activity)
-        assertEquals("El recordatorio de actividad no ingresa a la lista de mensajes", 1, working.messages.size)
+        assertEquals("活动提示不进消息列表", 1, working.messages.size)
 
         host.letThrough()
 
         val done = awaitChat(viewModel) { chat -> chat.messages.size == 2 && chat.activity == null }
-        assertEquals("lo encontré", done.messages.last().content)
+        assertEquals("找到了", done.messages.last().content)
     }
 
     @Test
     fun repliesQueueUpInsteadOfRunningConcurrently() = runBlocking {
         seedThread()
-        val host = GatedHost(answer = "bueno")
+        val host = GatedHost(answer = "好")
         val viewModel = createViewModel(host)
 
-        viewModel.send("primera frase")
+        viewModel.send("第一句")
         withTimeout(TIMEOUT_MS) { host.firstCallReached.await() }
-        // Si la respuesta aún no ha llegado, enviaré otra.:permitir,Pero solo puedes hacer cola
-        viewModel.send("segunda frase")
-        // Espere hasta que la segunda oración se coloque en la biblioteca antes de publicarla. Primera respuesta: de lo contrario, "quién lo coloca primero en la biblioteca" depende de la programación del hilo.,en lugar de comportamiento
+        // 回复还没回来就再发一条:允许,但只能排队
+        viewModel.send("第二句")
+        // 等第二句真的落库再放行第一条回复：否则「谁先入库」就取决于线程调度,而不是行为
         withTimeout(TIMEOUT_MS) {
             while (db.messageDao().countInThread(THREAD_ID) < 2) delay(5L)
         }
-        assertEquals("El primero aún no ha vuelto, por lo que no deberías iniciar la segunda generación.", 1, host.callCount)
+        assertEquals("第一条还没回来，不应该开始第二次生成", 1, host.callCount)
 
         host.letThrough()
 
         val state = awaitChat(viewModel) { chat -> chat.messages.size == 4 && !chat.isGenerating }
         assertEquals(2, host.callCount)
-        assertEquals("Dos generaciones no pueden superponerse", 1, host.maxConcurrent)
-        // Los mensajes de usuario no esperan a la red.:La segunda frase se elimina primero.,Se ponen en cola dos respuestas una tras otra.
-        assertEquals(listOf("primera frase", "segunda frase", "bueno", "bueno"), bubbleContents(state))
+        assertEquals("两次生成不能重叠", 1, host.maxConcurrent)
+        // 用户消息不等网络:第二句先落库,两条回复排队依次到
+        assertEquals(listOf("第一句", "第二句", "好", "好"), bubbleContents(state))
     }
 
     @Test
@@ -153,7 +163,7 @@ class MiniPhoneChatViewModelTest {
         seedThread(unread = 5)
         assertEquals(5, db.threadDao().unreadCount(THREAD_ID))
 
-        createViewModel(FakeHost(answer = "en"))
+        createViewModel(FakeHost(answer = "在的"))
 
         withTimeout(TIMEOUT_MS) {
             while (db.threadDao().unreadCount(THREAD_ID) != 0) delay(POLL_INTERVAL_MS)
@@ -163,10 +173,10 @@ class MiniPhoneChatViewModelTest {
     @Test
     fun reEnteringTheChatClearsUnreadAgain() = runBlocking {
         seedThread()
-        val viewModel = createViewModel(FakeHost(answer = "en"))
+        val viewModel = createViewModel(FakeHost(answer = "在的"))
         awaitChat(viewModel) { chat -> chat.characterId.isNotEmpty() }
 
-        // Reutilizar el mismo ViewModel en la misma sesión: hay que borrar el nuevo no leído al ingresar nuevamente a la página
+        // 同一个会话复用同一个 ViewModel:再次进页时还得把新未读抹掉
         db.threadDao().setUnread(THREAD_ID, 3)
         viewModel.markRead()
 
@@ -178,14 +188,14 @@ class MiniPhoneChatViewModelTest {
     @Test
     fun newMessageWhileChatIsVisibleClearsUnread() = runBlocking {
         seedThread(unread = 1)
-        val viewModel = createViewModel(FakeHost(answer = "en"))
-        // Página visible:Limpia la página una vez,Luego, bórrelo nuevamente cada vez que llegue un mensaje nuevo.
+        val viewModel = createViewModel(FakeHost(answer = "在的"))
+        // 页面可见:进页清一次,之后每来一条新消息再清一次
         viewModel.setVisible(true)
         withTimeout(TIMEOUT_MS) {
             while (db.threadDao().unreadCount(THREAD_ID) != 0) delay(POLL_INTERVAL_MS)
         }
 
-        // Coloca un mensaje de personaje en segundo plano y agrega uno como no leído(Utilice la misma ruta de escritura que el mensaje privado activo)
+        // 后台落一条角色消息并把未读加一(与主动私信走同一条写入路径)
         db.messageDao().insert(
             MpMessageEntity(
                 id = "bg-1",
@@ -193,13 +203,15 @@ class MiniPhoneChatViewModelTest {
                 characterId = CHARACTER_ID,
                 sender = MpActorType.CHARACTER,
                 type = MpMessageType.TEXT,
-                content = "¿Estás ocupado?",
+                content = "在忙吗",
                 createdAt = NOW_BASE + MINUTE_MS,
             ),
         )
+        // Let the message notification arrive before the background unread update.
+        delay(QUIET_CHECK_MS)
         db.threadDao().increaseUnread(THREAD_ID)
 
-        // Si la cantidad de mensajes cambia, bórrelo nuevamente.:El usuario está viendo esta conversación.,No debería haber una marca de no leído en la lista.
+        // 消息数变了就再清一次:用户正看着这条会话,列表上不该留未读角标
         withTimeout(TIMEOUT_MS) {
             while (db.threadDao().unreadCount(THREAD_ID) != 0) delay(POLL_INTERVAL_MS)
         }
@@ -209,12 +221,12 @@ class MiniPhoneChatViewModelTest {
     @Test
     fun leavingTheChatStopsClearingUnread() = runBlocking {
         seedThread()
-        val viewModel = createViewModel(FakeHost(answer = "en"))
+        val viewModel = createViewModel(FakeHost(answer = "在的"))
         viewModel.setVisible(true)
         awaitChat(viewModel) { chat -> chat.characterId.isNotEmpty() }
         viewModel.setVisible(false)
 
-        // Después de salir de la página, apareció otro mensaje de fondo.:Debe permanecer sin leer,De lo contrario, el usuario nunca verá el mensaje.
+        // 离页后后台又来了消息:未读必须留着,否则用户永远看不到提示
         db.messageDao().insert(
             MpMessageEntity(
                 id = "bg-2",
@@ -222,7 +234,7 @@ class MiniPhoneChatViewModelTest {
                 characterId = CHARACTER_ID,
                 sender = MpActorType.CHARACTER,
                 type = MpMessageType.TEXT,
-                content = "¿Has dormido?",
+                content = "睡了吗",
                 createdAt = NOW_BASE + MINUTE_MS,
             ),
         )
@@ -235,27 +247,27 @@ class MiniPhoneChatViewModelTest {
     @Test
     fun firstPageLoadsThirtyAndOlderPageCompletesTheHistory() = runBlocking {
         seedThread(messageCount = 40)
-        val viewModel = createViewModel(FakeHost(answer = "en"))
+        val viewModel = createViewModel(FakeHost(answer = "在的"))
 
         val first = awaitChat(viewModel) { chat -> chat.messages.size == CHAT_PAGE_SIZE }
-        assertTrue("hay noticias anteriores", first.hasMore)
-        assertEquals((11..40).map { "No. $it frase" }, bubbleContents(first))
+        assertTrue("还有更早的消息", first.hasMore)
+        assertEquals((11..40).map { "第 $it 句" }, bubbleContents(first))
 
         viewModel.loadOlder()
 
         val full = awaitChat(viewModel) { chat -> chat.messages.size == 40 }
-        assertFalse("Todo el historial ha sido cargado.", full.hasMore)
-        assertEquals((1..40).map { "No. $it frase" }, bubbleContents(full))
-        assertTrue("Las noticias más antiguas son lo primero", full.messages.first().createdAt < full.messages.last().createdAt)
+        assertFalse("历史已全部加载", full.hasMore)
+        assertEquals((1..40).map { "第 $it 句" }, bubbleContents(full))
+        assertTrue("更早的消息排在前面", full.messages.first().createdAt < full.messages.last().createdAt)
     }
 
     @Test
     fun unknownCharacterFallsBackToThePlaceholderName() = runBlocking {
         seedThread()
-        val viewModel = createViewModel(FakeHost(answer = "en", characters = listOf(MpCharacter(id = "someone-else", name = "otros"))))
+        val viewModel = createViewModel(FakeHost(answer = "在的", characters = listOf(MpCharacter(id = "someone-else", name = "别人"))))
 
-        val state = awaitChat(viewModel) { chat -> chat.peerName.isNotEmpty() }
-        assertEquals("Rol desconectado", state.peerName)
+        val state = awaitChat(viewModel) { chat -> chat.characters.isNotEmpty() }
+        assertEquals("对手不在名单时名字留空，那句提示属于界面而不是状态", "", state.peerName)
     }
 
     @Test
@@ -264,20 +276,20 @@ class MiniPhoneChatViewModelTest {
         val host = SwitchableHost(answer = null)
         val viewModel = createViewModel(host)
 
-        viewModel.send("¿Está ahí?")
+        viewModel.send("在吗")
         val failed = awaitChat(viewModel) { chat -> chat.messages.size == 2 && !chat.isGenerating }
         val mine = failed.messages.first { it.isMine }
-        assertEquals("No salió ni una sola palabra después de toda la ronda.,La entrada del usuario se considera un fracaso.", MpMessageStatus.FAILED, mine.status)
+        assertEquals("一轮下来一句都没落,用户那条算失败", MpMessageStatus.FAILED, mine.status)
         assertEquals(MpMessageStatus.FAILED, db.messageDao().getMessage(mine.id)?.status)
 
-        // Reenviar:La misma línea vuelve a "Enviando",Después de recibir la respuesta, se envía.
-        host.answer = "en"
+        // 重发:同一行回到「发送中」,拿到回复后变成已发出
+        host.answer = "在的"
         viewModel.resend(mine.id)
 
-        val done = awaitChat(viewModel) { chat -> chat.messages.lastOrNull()?.content == "en" && !chat.isGenerating }
+        val done = awaitChat(viewModel) { chat -> chat.messages.lastOrNull()?.content == "在的" && !chat.isGenerating }
         assertEquals(MpMessageStatus.SENT, db.messageDao().getMessage(mine.id)?.status)
         assertEquals(MpMessageStatus.SENT, done.messages.first { it.id == mine.id }.status)
-        assertEquals("La reedición no puede contener más que la misma.", 1, done.messages.count { it.isMine && it.content == "¿Está ahí?" })
+        assertEquals("重发不能多出一条一样的", 1, done.messages.count { it.isMine && it.content == "在吗" })
     }
 
     @Test
@@ -286,10 +298,10 @@ class MiniPhoneChatViewModelTest {
         val host = GatedHost(answer = null)
         val viewModel = createViewModel(host)
 
-        viewModel.send("¿Está ahí?")
+        viewModel.send("在吗")
         withTimeout(TIMEOUT_MS) { host.firstCallReached.await() }
 
-        // La solicitud aún está en camino:Este elemento es "Enviando",Ni fracaso ni éxito
+        // 请求还在路上:这一条是「发送中」,不是失败也不是成功
         val sending = awaitChat(viewModel) { chat -> chat.messages.size == 1 }
         assertEquals(MpMessageStatus.SENDING, sending.messages.single().status)
         assertEquals(MpMessageStatus.SENDING, db.messageDao().getMessage(sending.messages.single().id)?.status)
@@ -298,23 +310,60 @@ class MiniPhoneChatViewModelTest {
 
         val failed = awaitChat(viewModel) { chat -> chat.messages.size == 2 && !chat.isGenerating }
         assertEquals(MpMessageStatus.FAILED, failed.messages.first { it.isMine }.status)
-        assertTrue("Si falla, aún aparecerá un mensaje del sistema.", failed.messages.last().isSystem)
+        assertTrue("失败仍落一条系统提示", failed.messages.last().isSystem)
     }
 
     @Test
     fun deletingAMessageRemovesItFromTheWindowAndTheDatabase() = runBlocking {
         seedThread(messageCount = 2)
-        val viewModel = createViewModel(FakeHost(answer = "en"))
+        val viewModel = createViewModel(FakeHost(answer = "在的"))
         val loaded = awaitChat(viewModel) { chat -> chat.messages.size == 2 }
         val target = loaded.messages.first()
 
         viewModel.deleteMessage(target.id)
 
         val after = awaitChat(viewModel) { chat -> chat.messages.size == 1 }
-        assertEquals(listOf("Oración 2"), after.messages.map { it.content })
+        assertEquals(listOf("第 2 句"), after.messages.map { it.content })
         assertNull(db.messageDao().getMessage(target.id))
-        assertEquals("Solo borrar mensajes,Conversación retenida", 1, db.messageDao().countInThread(THREAD_ID))
+        assertEquals("只删消息,会话留着", 1, db.messageDao().countInThread(THREAD_ID))
         assertNotNull(db.threadDao().getThread(THREAD_ID))
+    }
+
+    @Test
+    fun blankInputStoresNothingAndNeverAsksTheCharacter() = runBlocking {
+        val host = GatedHost(answer = "在的")
+        val viewModel = createViewModel(host)
+
+        // 空白输入不该在库里留一条"空气消息"：用户看到的是自己没发出去，
+        // 而不是发完冒出一个空泡再报错。
+        viewModel.send("   \n\t ")
+
+        assertEquals("空白输入不产生任何一条消息", emptyList<MpActorType>(), storedSenders())
+    }
+
+    /**
+     * 本类创建过的 ViewModel。
+     *
+     * 必须在 `@After` 里清掉：`viewModelScope` 用 `Dispatchers.Main.immediate`，
+     * VM 不回收 → 它的收集协程还活着、还会再读全局 Main；下一个测试类
+     * `Dispatchers.setMain(...)` 就撞上 kotlinx-coroutines-test 的
+     * "不许并发换 Main" 检查（那条约 1/5 概率飘红的 flake 就是这么来的）。
+     *
+     * 先 clear 再 resetMain：治的是**泄漏本身**，不去动全局 Main 的安装策略 ——
+     * 后者会和 Compose 测试规则抢 Main（已验证过是错的改法）。
+     */
+    /** 自己留着 Main 那个调度器：收尾时要先把它排空，再换掉全局 Main。 */
+    private val mainDispatcher = UnconfinedTestDispatcher()
+
+    private val createdVmStore = ViewModelStore()
+    private var trackedCount = 0
+
+    // 挂进一个 ViewModelStore，好在 @After 里一次性回收（ViewModel.clear() 是 internal，测试里调不到）
+
+    private fun <T : ViewModel> track(viewModel: T): T {
+        trackedCount += 1
+        createdVmStore.put("vm-$trackedCount", viewModel)
+        return viewModel
     }
 
     private fun createViewModel(host: MiniPhoneHost): MiniPhoneChatViewModel {
@@ -342,7 +391,7 @@ class MiniPhoneChatViewModelTest {
                     "new-$idCounter"
                 },
             ),
-        )
+        ).also { track(it) }
     }
 
     private suspend fun seedThread(messageCount: Int = 0, unread: Int = 0) {
@@ -363,7 +412,7 @@ class MiniPhoneChatViewModelTest {
                     characterId = CHARACTER_ID,
                     sender = if (number % 2 == 0) MpActorType.CHARACTER else MpActorType.USER,
                     type = MpMessageType.TEXT,
-                    content = "No. $number frase",
+                    content = "第 $number 句",
                     createdAt = number * MINUTE_MS,
                 ),
             )
@@ -375,7 +424,7 @@ class MiniPhoneChatViewModelTest {
     private suspend fun awaitChat(viewModel: MiniPhoneChatViewModel, predicate: (ChatUiState) -> Boolean): ChatUiState =
         withTimeout(TIMEOUT_MS) { viewModel.uiState.first(predicate) }
 
-    /** Obtener solo líneas de mensaje,La separación temporal no permite comparación. */
+    /** 只取消息行,时间分隔不进比较。 */
     private fun bubbleContents(state: ChatUiState): List<String> =
         state.items.filterIsInstance<ChatItem.Message>().map { it.message.content }
 
@@ -385,24 +434,24 @@ class MiniPhoneChatViewModelTest {
         const val TIMEOUT_MS: Long = 5_000L
         const val POLL_INTERVAL_MS: Long = 5L
 
-        /** El período de ventana que se debe esperar al verificar \"No más lectura después de abandonar la página\":mucho más largo que el intervalo de votación,Lo suficiente como para provocar la huelga de un coleccionista defectuoso. */
+        /** 验证「离页后不再动未读」时要等的空窗期:比轮询间隔长得多,足够让一个错误的收集器发作。 */
         const val QUIET_CHECK_MS: Long = 300L
         const val MINUTE_MS: Long = 60_000L
 
-        /** El punto de partida del reloj falso,Se garantiza que el nuevo mensaje debe ser más reciente que el mensaje inicial. */
+        /** 假时钟的起点,保证新消息一定比种子消息新。 */
         const val NOW_BASE: Long = 10_000_000L
     }
 }
 
-/** Un anfitrión que puede cambiar sus palabras a mitad de camino.:No hay respuesta por primera vez.,poner [answer] Una vez cumplimentado, regresar con normalidad. */
+/** 可中途改口的宿主:第一次不给回复,把 [answer] 填上之后就正常回。 */
 private class SwitchableHost(
     var answer: String?,
-    private val characters: List<MpCharacter> = listOf(MpCharacter(id = "c1", name = "ali")),
+    private val characters: List<MpCharacter> = listOf(MpCharacter(id = "c1", name = "阿离")),
 ) : MiniPhoneHost {
 
     override fun observeCharacters(): Flow<List<MpCharacter>> = flowOf(characters)
 
-    override fun observeProfile(): Flow<MpProfile> = flowOf(MpProfile(nickname = "Ziqi"))
+    override fun observeProfile(): Flow<MpProfile> = flowOf(MpProfile(nickname = "子奇"))
 
     override fun respond(characterId: String, history: List<MpChatTurn>): Flow<MpReplyEvent> = flow {
         val reply = answer
@@ -420,15 +469,15 @@ private class SwitchableHost(
     override suspend fun supportsVoiceTranscription(): Boolean = false
 }
 
-/** El anfitrión que da la respuesta de inmediato.`answer` Emitido cuando es nulo `Failed`,Corresponde a \"la otra parte no respondió\". */
+/** 立即给答案的宿主。`answer` 为 null 时发 `Failed`,与「对方没有回应」对应。 */
 private class FakeHost(
     private val answer: String?,
-    private val characters: List<MpCharacter> = listOf(MpCharacter(id = "c1", name = "ali")),
+    private val characters: List<MpCharacter> = listOf(MpCharacter(id = "c1", name = "阿离")),
 ) : MiniPhoneHost {
 
     override fun observeCharacters(): Flow<List<MpCharacter>> = flowOf(characters)
 
-    override fun observeProfile(): Flow<MpProfile> = flowOf(MpProfile(nickname = "Ziqi"))
+    override fun observeProfile(): Flow<MpProfile> = flowOf(MpProfile(nickname = "子奇"))
 
     override fun respond(characterId: String, history: List<MpChatTurn>): Flow<MpReplyEvent> = flow {
         emit(if (answer == null) MpReplyEvent.Failed else MpReplyEvent.Text(answer))
@@ -446,13 +495,13 @@ private class FakeHost(
 }
 
 /**
- * Un anfitrión estancado:Primero di "lo estoy buscando",y luego esperar hasta [letThrough] Sólo da el texto.
+ * 会卡住的宿主:先报一句「在翻找」,然后一直等到 [letThrough] 才给出文本。
  *
- * Por cierto, registre la cantidad de llamadas y la concurrencia máxima. —— Lo del "serial" sólo se puede leer desde aquí.
+ * 顺带记下调用次数与并发峰值 —— 「串行」这件事只能从这里读出来。
  */
 private class GatedHost(
     private val answer: String?,
-    private val characters: List<MpCharacter> = listOf(MpCharacter(id = "c1", name = "ali")),
+    private val characters: List<MpCharacter> = listOf(MpCharacter(id = "c1", name = "阿离")),
 ) : MiniPhoneHost {
 
     val firstCallReached: CompletableDeferred<Unit> = CompletableDeferred()
@@ -480,7 +529,7 @@ private class GatedHost(
 
     override fun observeCharacters(): Flow<List<MpCharacter>> = flowOf(characters)
 
-    override fun observeProfile(): Flow<MpProfile> = flowOf(MpProfile(nickname = "Ziqi"))
+    override fun observeProfile(): Flow<MpProfile> = flowOf(MpProfile(nickname = "子奇"))
 
     override fun respond(characterId: String, history: List<MpChatTurn>): Flow<MpReplyEvent> = flow {
         callCount += 1

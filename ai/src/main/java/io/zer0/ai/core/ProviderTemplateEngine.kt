@@ -6,10 +6,10 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
 /**
- * B3-05: Provider Plantilla de solicitud personalizada y herramienta de ruta de respuesta.
+ * B3-05: Provider 自定义请求模板与响应路径工具。
  *
- * - [renderRequestTemplate]: poner `{{messages}}` / `{{model}}` Los marcadores de posición se reemplazan con valores JSON.
- * - [extractByPath]: Extraiga campos de estructuras de respuesta estándar que no sean OpenAI,apoyo `$.choices[0].message.content`.
+ * - [renderRequestTemplate]: 把 `{{messages}}` / `{{model}}` 等占位符替换为 JSON 值。
+ * - [extractByPath]: 提取非 OpenAI 标准响应结构中的字段,支持 `$.choices[0].message.content`。
  */
 object ProviderTemplateEngine {
 

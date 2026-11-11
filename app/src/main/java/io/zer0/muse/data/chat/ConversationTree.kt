@@ -5,24 +5,24 @@ import io.zer0.ai.core.UIMessage
 import kotlin.uuid.Uuid
 
 /**
- * P0 Modelo de árbol de diálogo (v2: La versión de la pregunta de cada usuario está vinculada de forma independiente a la respuesta del asistente).
+ * P0 对话树模型（v2：每个用户提问版本独立挂助手回复）。
  *
- * Estructura:
+ * 结构：
  * ```
- * Grupo de preguntas UserNode(variantGroupId igual)
- *   ├─ Versión de usuario 1/N (UserVariant)
- *   │    └─ Grupo de respuesta del asistente (múltiples versiones de respuestas generadas por reintentos)
- *   ├─ Versión de usuario 2/N (UserVariant, editor/Resultado del reintento)
- *   │    └─ Grupos de respuesta de asistente separados
+ * 提问组 UserNode（variantGroupId 相同）
+ *   ├─ 用户版本 1/N（UserVariant）
+ *   │    └─ 助手回复组（重试产生的多版本回答）
+ *   ├─ 用户版本 2/N（UserVariant，编辑/重试产生）
+ *   │    └─ 各自独立的助手回复组
  *   └─ ...
  * ```
  *
- * Invariante:
- * - Al cambiar de versión de usuario, los subárboles de asistente se intercambian entre sí sin contaminarse entre sí.
- * - Reintento del asistente = Se agrega una nueva variante de asistente al último grupo de asistentes en la versión de usuario actual.
- * - Editar mensaje de usuario = Mantenga la versión anterior, cree una nueva versión de usuario y coloque un grupo de marcador de posición de asistente vacío.
- * - Persistencia: La versión de usuario consta de [UIMessage.variantGroupId/variantIndex/variantCount] expresar;
- *   Mensaje del asistente [UIMessage.parentGroupId] Apunta al ID del mensaje de la versión del usuario (compatible con datos antiguos montados por ID de grupo).
+ * 不变式：
+ * - 切换用户版本时，助手子树一起切换，互不污染。
+ * - 助手重试 = 当前用户版本下最后一个助手组新增助手变体。
+ * - 编辑用户消息 = 保留旧版本，新建用户版本并放一个空助手占位组。
+ * - 持久化：用户版本由 [UIMessage.variantGroupId/variantIndex/variantCount] 表达；
+ *   助手消息 [UIMessage.parentGroupId] 指向所属用户版本的消息 ID（兼容旧数据按组 ID 挂载）。
  */
 data class ConversationTree(
     val userNodes: List<UserNode> = emptyList(),
@@ -32,7 +32,7 @@ data class ConversationTree(
     val selectedUserNode: UserNode?
         get() = userNodes.getOrNull(selectedUserIndex)
 
-    /** El mensaje de usuario seleccionado actualmente. */
+    /** 当前选中的用户消息。 */
     val selectedUserVariant: UIMessage?
         get() = selectedUserNode?.currentVariant?.message
 
@@ -41,7 +41,7 @@ data class ConversationTree(
 
     val displayMessages: List<UIMessage>
         get() {
-            // Múltiples rondas de diálogo que muestran cada ronda en orden.;Varias versiones dentro del mismo grupo de preguntas solo mostrarán la versión seleccionada actualmente.
+            // 多轮对话按顺序展示每一轮;同一提问组内的多版本只展示当前选中的版本。
             return buildList {
                 userNodes.forEach { user ->
                     val variant = user.currentVariant ?: return@forEach
@@ -51,7 +51,7 @@ data class ConversationTree(
             }
         }
 
-    /** Todos los mensajes planos para la versión de usuario seleccionada actualmente (incluidas todas las variantes de reintento del asistente), utilizados para conservar ramas durante la reconstrucción del árbol. */
+    /** 当前选中用户版本的全部扁平消息（含所有助手重试变体），用于树重建时保留分支。 */
     val selectedVariantFlatMessages: List<UIMessage>
         get() {
             val variant = selectedUserNode?.currentVariant ?: return emptyList()
@@ -61,7 +61,7 @@ data class ConversationTree(
             }
         }
 
-    /** Mensajes planos para todas las versiones de usuario y variantes de reintento del asistente, utilizados para mantener todas las ramas intactas durante la reconstrucción del árbol. */
+    /** 全部用户版本及助手重试变体的扁平消息，用于树重建时完整保留所有分支。 */
     val allFlatMessages: List<UIMessage>
         get() = buildList {
             userNodes.forEach { user ->
@@ -72,7 +72,7 @@ data class ConversationTree(
             }
         }
 
-    /** La información del grupo de sucursales al que pertenece un determinado mensaje se utiliza para el cambio de variantes de representación de la interfaz de usuario. */
+    /** 某条消息所属分支组信息，供 UI 渲染变体切换器。 */
     fun branchInfoFor(messageId: Uuid): BranchInfo? {
         userNodes.forEach { user ->
             user.variants.forEach { variant ->
@@ -102,17 +102,17 @@ data class ConversationTree(
     }
 
     /**
-     * v1.0.92: Índice completo de información sobre sucursales — Proporciona una ruta de renderizado de alta frecuencia de la interfaz de usuario O(1) Consulta.
+     * v1.0.92: 全量 branchInfo 索引 — 供 UI 高频渲染路径 O(1) 查询。
      *
-     * [branchInfoFor] Una sola consulta es un recorrido de árbol completo.;Cuando se le llama una vez por cuadro por mensaje en la lista de chat
-     * costo total O(n²),Vuelva a calcular cada 50 ms durante la transmisión de sesiones largas,Es una de las principales fuentes de retraso.
+     * [branchInfoFor] 单次查询是整树遍历;聊天列表每条消息每帧调用一次时
+     * 总开销 O(n²),长会话流式期间每 50ms 重算,是卡顿的主要来源之一。
      *
-     * v2.4.6 Refactorizar:El selector de variantes del asistente se cambia a "Espera el último mensaje de toda la ronda de respuestas".
-     * La implementación anterior tomó lo mismo. [BranchInfo] Llame al grupo de respuesta**cada artículo**mensaje variante en,y uno
-     * Las variantes del asistente pueden contener varios mensajes.(pensar/Herramientas/Texto),Hace que cada mensaje muestre uno
-     * conmutador —— Al responder en varios pasos, la flecha aparece debajo del primer elemento y el contenido se superpone y desalinea después de volver a intentarlo.
-     * Ahora solo da"El último mensaje del asistente renderizado en esta ronda de respuestas."Asistente para colgar [BranchInfo];
-     * El conmutador de versión de usuario todavía se bloquea en los mensajes de usuario(Semántica sin cambios).
+     * v2.4.6 重构:助手的变体切换器改为「挂在整轮回复的最后一条消息上」。
+     * 旧实现把同一个 [BranchInfo] 打到回复组内**每一条**变体消息上,而一条
+     * 助手变体可能包含多条消息(思考/工具/正文),导致每条消息各自渲染一个
+     * 切换器 —— 多步回复时箭头出现在第一条下、且重试后内容叠加错位。
+     * 现在只给"这一轮回复中最后一条被渲染的助手消息"挂助手 [BranchInfo];
+     * 用户版本切换器仍挂在用户消息上(语义不变)。
      */
     fun buildBranchInfoIndex(): Map<String, BranchInfo> {
         val map = HashMap<String, BranchInfo>()
@@ -120,7 +120,7 @@ data class ConversationTree(
             val userGroupId = user.currentVariant?.message?.variantGroupId ?: user.groupId
             user.variants.forEach { variant ->
                 val userParentId = variant.message.id.toString()
-                // Cambiador de versión de usuario:Espera los mensajes de los usuarios(Editar/Versión de la pregunta generada al reintentar)
+                // 用户版本切换器:挂在用户消息上(编辑/重试产生的提问版本)
                 map.putIfAbsent(
                     userParentId,
                     BranchInfo(
@@ -130,11 +130,11 @@ data class ConversationTree(
                         branchCount = user.variants.size,
                     ),
                 )
-                // Conmutador de variante asistente:sólo espera"El último mensaje de esta ronda de respuestas."en.
-                // Responder en esta ronda = Todo bajo esta variante de usuario. assistantNodes;
-                // Número de variantes"nodo de respuesta"(Nodos con mensajes que no son de herramientas)número de variantes —— Los nodos de herramientas puras no se pueden volver a intentar"Responder".
-                // Primero se recupera el último elemento y se recupera la variante actual del nodo de recuperación.(definitivamente será renderizado;Los nodos de herramientas se pueden agregar en tarjetas de grupo),
-                // Devuelve la variante actual del último nodo cuando no hay nodos que respondan.
+                // 助手变体切换器:只挂在"本轮回复的最后一条消息"上。
+                // 该轮回复 = 此 user variant 下全部 assistantNodes;
+                // 变体数取"回复节点"(含非工具消息的节点)的变体数 —— 纯工具节点不是可重试的"回复"。
+                // 末条优先取回复节点的当前变体(它一定会被渲染;工具节点可能被聚合为组卡),
+                // 无回复节点时退回最后一个节点的当前变体。
                 val replyNode = variant.assistantNodes.lastOrNull { node ->
                     node.variants.any { it.toolCallInfo == null }
                 }
@@ -197,12 +197,12 @@ data class ConversationTree(
     }
 
     /**
-     * v1.0.80 (T-4): Eliminar un solo mensaje del árbol(Árbol de sincronización al eliminar mensajes).
+     * v1.0.80 (T-4): 从树中移除单条消息(删除消息时同步树)。
      *
-     * Si el árbol no se actualiza después de eliminar el mensaje,reconstruirConversationTree pasará al volver a la sesión
-     * mergeRebuildMessages Fusionar mensajes eliminados en el árbol antiguo,resultando en mensajes eliminados"resurrección"
-     * (Comentarios de los usuarios:Eliminado y reingresado y todavía está ahí.,Las viejas noticias de repente se vuelven más recientes).
-     * Este método toma el mensaje de todas las variantes de usuario./Eliminado de las variantes auxiliares.,Y reorganice el índice de variantes/el recuento de variantes.
+     * 删除消息后若树不更新,切回会话时 rebuildConversationTree 会通过
+     * mergeRebuildMessages 把旧树里的被删消息合并回来,导致已删消息"复活"
+     * (用户反馈:删了重进还在,旧消息突然变最新)。
+     * 此方法把该消息从所有用户变体/助手变体中剔除,并重排 variantIndex/variantCount。
      */
     fun removeMessage(messageId: Uuid): ConversationTree {
         var changed = false
@@ -265,7 +265,7 @@ data class ConversationTree(
         return copy(userNodes = newNodes, selectedUserIndex = selected)
     }
 
-    /** Vuelva a intentar la última respuesta del asistente en la versión de usuario actual y devuelva el nuevo árbol + mensajes nuevos que deben conservarse. */
+    /** 重试当前用户版本下的最后一条助手回复，返回新树 + 需持久化的新消息。 */
     fun retryLastAssistant(): TreeUpdate {
         val user = selectedUserNode ?: return TreeUpdate(this, null, null)
         val variant = user.currentVariant ?: return TreeUpdate(this, null, null)
@@ -274,9 +274,9 @@ data class ConversationTree(
 
         if (variant.assistantNodes.isEmpty()) {
             val groupId = "asg_" + Uuid.random()
-            // v1.0.85 (T-1): Reenviar el nuevo mensaje con creadoAt"Mensajes de usuario+1ms"en lugar de la hora actual —
-            // Usado antes System.currentTimeMillis(),El tiempo del mensaje salta al final después de la retransmisión.,
-            // ConversationTree Cuélgalo debajo del último mensaje de usuario.(La primera respuesta se convierte en la última.).
+            // v1.0.85 (T-1): 重发新消息的 createdAt 用"用户消息+1ms"而非当前时间 —
+            // 此前用 System.currentTimeMillis(),重发后消息时序跳到末尾,
+            // ConversationTree 把它挂到最后一个用户消息下(第一句回复变最后一句)。
             val newMsg = UIMessage(
                 role = MessageRole.ASSISTANT,
                 content = "",
@@ -296,15 +296,15 @@ data class ConversationTree(
             )
         }
 
-        // v1.0.92: Sólo reconoce "nodos de respuesta"— Nodos donde existen variantes de mensajes que no son herramientas. Mensaje en pantalla de herramienta
-        // (toolCallInfo != null) es un nodo independiente,No es una 'respuesta' reintentable;La implementación anterior toma directamente last(),
-        // Cuando se llama a una herramienta, la nueva variante se agregará al "Grupo de herramientas",La tarjeta de herramientas se convierte en "Herramientas/1/2 variante de "Responder".
+        // v1.0.92: 只认「回复节点」— 存在非工具消息变体的节点。工具展示消息
+        // (toolCallInfo != null) 是独立节点,不是可重试的「回复」;旧实现直接取 last(),
+        // 有工具调用时会把新变体挂进「工具组」,工具卡变成「工具/回复」的 1/2 变体。
         val replyIndex = variant.assistantNodes.indexOfLast { node ->
             node.variants.any { it.toolCallInfo == null }
         }
         if (replyIndex < 0) {
-            // Esta ronda solo tiene novedades de herramientas(Generar interrupción/detenido):Aún no hay respuesta para volver a intentarlo,
-            // Agregar un nuevo grupo de respuesta al final,Vuelva a intentar comenzar de nuevo con "Respuesta vacía".
+            // 本轮只有工具消息(生成中断/被停止):还没有可重试的回复,
+            // 在末尾新增一个全新回复组,重试从「空回复」重新开始。
             val groupId = "asg_" + Uuid.random()
             val anchorAt = variant.assistantNodes.last().currentVariant?.createdAt
                 ?: userMsg.createdAt
@@ -330,8 +330,8 @@ data class ConversationTree(
         val last = variant.assistantNodes[replyIndex]
         val newIndex = last.variants.size
         val newCount = newIndex + 1
-        // v1.0.85 (T-1): La nueva variante hereda el primer mensaje del grupo original. createdAt(Mantén tu posición estable),
-        // en lugar de la hora actual — De lo contrario, el tiempo de respuesta reenviado salta al final y la posición de visualización se desordena.
+        // v1.0.85 (T-1): 新变体继承原组第一条消息的 createdAt(保持位置稳定),
+        // 而非当前时间 — 否则重发的回复时序跳到末尾、显示位置错乱。
         val baseCreatedAt = last.variants.firstOrNull()?.createdAt ?: last.currentVariant?.createdAt ?: userMsg.createdAt
         val newMsg = UIMessage(
             role = MessageRole.ASSISTANT,
@@ -347,9 +347,9 @@ data class ConversationTree(
             selectIndex = newIndex,
         )
         val updatedVariant = variant.copy(
-            // v1.0.92: Reemplace el nodo de respuesta reintentado por subíndice. Usar antes de reparar dropLast(1) + copiar,
-            // Equivalente sólo si el último resulta ser el último elemento de la lista;Cuando el nodo de herramienta se clasifica después del nodo de respuesta,
-            // La copia actualizada se agregará al final y el grupo de respuesta original permanecerá en su estado anterior.(Variantes perdidas).
+            // v1.0.92: 按下标替换被重试的回复节点。修复前用 dropLast(1) + 副本,
+            // 仅在 last 恰好是列表末项时等价;工具节点排在回复节点之后时,
+            // 会把更新副本追加到末尾、原回复组保持旧状态(变体丢失)。
             assistantNodes = variant.assistantNodes.toMutableList().apply {
                 this[replyIndex] = updatedAssistant
             },
@@ -361,7 +361,7 @@ data class ConversationTree(
         )
     }
 
-    /** Editar mensaje de usuario: mantenga la versión anterior, cree una nueva versión de usuario y coloque un grupo de marcador de posición de asistente vacío. */
+    /** 编辑用户消息：保留旧版本，新建用户版本并放一个空助手占位组。 */
     fun editUserMessage(messageId: Uuid, newContent: String): EditUpdate? {
         val nodeIndex = userNodes.indexOfFirst { user ->
             user.variants.any { it.message.id == messageId && it.message.role == MessageRole.USER }
@@ -373,10 +373,10 @@ data class ConversationTree(
         val newIndex = user.variants.size
         val newCount = newIndex + 1
         val now = System.currentTimeMillis()
-        // Se requiere createAt para nuevas variantes.**Publica el mensaje original**, no se puede usar ahora:
-        // Reconstruir árbol (fromMessages) Ordenado por creado en, usar ahora ordenará este elemento hasta el final de toda la sesión,
-        // Entonces "editar el del medio" parece "publicar otro al final"—— Esto es exactamente lo que informaron los usuarios.
-        // con la variante auxiliar (retryAssistant) mantener el mismo conjunto de prácticas:base + número de serie.
+        // 新变体的 createdAt 必须**贴着原消息**，不能用 now：
+        // 重建树（fromMessages）按 createdAt 排序，用 now 会把这条排到整个会话最后，
+        // 于是「编辑中间那条」看起来变成「在末尾又发了一条」—— 用户反馈的正是这个。
+        // 与助手变体（retryAssistant）保持同一套做法：base + 序号。
         val baseCreatedAt = user.currentVariant?.message?.createdAt ?: now
         val newUserMsg = UIMessage(
             role = MessageRole.USER,
@@ -413,12 +413,12 @@ data class ConversationTree(
     }
 
     /**
-     * v2.5.3 (P3-1): Editar mensaje del asistente —— Siempre se agregan nodos de nueva versión y las versiones antiguas se conservan permanentemente en la rama.
+     * v2.5.3 (P3-1): 编辑助手消息 —— 一律新增版本节点，旧版本永久保留在分支里。
      *
-     * con [retryLastAssistant] La diferencia: reintentar es“Regenerar una variante de respuesta vacía”, el editor es“Utilice contenido escrito por los usuarios.
-     * como nueva variante de respuesta”, ambos siguen“No sobrescribir, solo agregar”Según el principio de múltiples sucursales, siempre se pueden rastrear las respuestas antiguas.
+     * 与 [retryLastAssistant] 的差别：重试是“重新生成一个空回复变体”，编辑是“用用户写好的内容
+     * 作为新回复变体”，两者都遵循“不覆盖、只追加”的多分支原则，旧回复永远可回溯。
      *
-     * @return null Indica que no se encuentra el mensaje del asistente de destino; de lo contrario, se devuelve un nuevo árbol + un nuevo mensaje (requiere persistencia).
+     * @return null 表示未找到目标助手消息；否则返回新树 + 新消息（需持久化）。
      */
     fun editAssistantMessage(messageId: Uuid, newContent: String): TreeUpdate? {
         val nodeIndex =
@@ -433,7 +433,7 @@ data class ConversationTree(
         if (variant == null || node == null || original == null) return null
         val newIndex = node.variants.size
         val newCount = newIndex + 1
-        // La nueva versión hereda el original creado en la línea base + índice, manteniendo la posición estable (mismo calibre que la regeneración).
+        // 新版本继承原版 createdAt 基准 + index，保持位置稳定（与重生成同口径）。
         val baseCreatedAt = node.variants.firstOrNull()?.createdAt ?: original.createdAt
         val edited =
             original.copy(
@@ -496,7 +496,7 @@ data class ConversationTree(
         val newAssistantPlaceholder: UIMessage?,
     )
 
-    /** Grupo de preguntas de usuario: se comparten varias versiones de usuario del mismo varianteGroupId“Ubicación de la pregunta”. */
+    /** 用户提问组：同一 variantGroupId 的多个用户版本共享“提问位置”。 */
     data class UserNode(
         val userId: String,
         val groupId: String,
@@ -509,13 +509,13 @@ data class ConversationTree(
         fun selectVariant(index: Int): UserNode = copy(selectIndex = index.coerceIn(0, variants.lastIndex))
     }
 
-    /** Versión de usuario: un mensaje de usuario + su propio grupo de respuesta de asistente. */
+    /** 用户版本：一条用户消息 + 它自己的助手回复组。 */
     data class UserVariant(
         val message: UIMessage,
         val assistantNodes: List<AssistantNode> = emptyList(),
     )
 
-    /** Grupo de respuesta del asistente: múltiples variaciones de reintento de la misma posición de respuesta. */
+    /** 助手回复组：同一回复位置的多个重试变体。 */
     data class AssistantNode(
         val groupId: String,
         val variants: List<UIMessage>,
@@ -529,16 +529,16 @@ data class ConversationTree(
 
     companion object {
         /**
-         * Reconstrucción de un árbol de conversación a partir de una lista de mensajes plana.
+         * 从扁平消息列表重建对话树。
          *
-         * Compatible con dos tipos de datos:
-         * 1. Nuevos datos:assistant cinta de mensaje [UIMessage.parentGroupId] = ID de mensaje de versión de usuario, montaje preciso.
-         * 2. Datos antiguos:parentGroupId es el ID del grupo de usuarios y está vinculado a la última versión de usuario del grupo.
+         * 兼容两种数据：
+         * 1. 新数据：assistant 消息带 [UIMessage.parentGroupId] = 用户版本消息 ID，精确挂载。
+         * 2. 旧数据：parentGroupId 为用户组 ID，挂到该组最后一个用户版本。
          */
         fun build(messages: List<UIMessage>, previous: ConversationTree? = null): ConversationTree {
             if (messages.isEmpty()) return ConversationTree()
-            // La reconstrucción del árbol no puede confiar en el orden de inserción de la Lista actual de la persona que llama: puede ser de una combinación de instantáneas anterior,
-            // Retroalimentación paginada o transmisión de actualizaciones asincrónicas. Organícelos primero en orden persistente para evitar que los mensajes antiguos se coloquen al principio.
+            // 树重建不能信任调用方当前 List 的插入顺序：它可能来自旧快照合并、
+            // 分页回灌或流式异步更新。统一按持久化顺序先排一次，防止旧消息被挂到最前。
             val orderedMessages = orderConversationMessages(messages)
 
             val groups = LinkedHashMap<String, MutableList<UIMessage>>()
@@ -549,7 +549,7 @@ data class ConversationTree(
                 groupOrder.add(gid)
             }
 
-            // v1.0.63: Índice de sucursales normalizado/Cuente, corrija el mismo conjunto de índices de variantes duplicados en datos históricos.
+            // v1.0.63: 归一化分支索引/计数，修复历史数据中同一组重复 variantIndex。
             groups.forEach { (_, msgs) ->
                 val sorted = msgs.sortedWith(compareBy({ it.variantIndex }, { it.createdAt }))
                 val normalized = sorted.mapIndexed { idx, msg ->
@@ -596,10 +596,10 @@ data class ConversationTree(
                         } ?: lastUserGroupId?.let { gidRef ->
                             userNodeByGroup[gidRef]?.let { idx ->
                                 val node = userNodes[idx]
-                                // v1.x Reparación: Los mensajes antiguos del asistente de datos sin parentGroupId se atribuyen según el momento de creación ——
-                                // espera"La última versión de usuario creada antes de este mensaje del asistente"en.
-                                // Anteriormente, recuperar directamente la última versión,El usuario edita el mensaje(Nueva versión V1)después,
-                                // Se cuelgan mensajes antiguos del asistente V1,con marcador de posición/Nuevas respuestas empatadas,Se muestra como"Mensaje del asistente dividido en varios mensajes".
+                                // v1.x 修复: 无 parentGroupId 的旧数据助手消息按创建时间归属 ——
+                                // 挂在"最后一个早于该助手消息创建的用户版本"上。
+                                // 此前直接取最后一个版本,用户编辑消息(新建版本 V1)后,
+                                // 旧助手消息被挂到 V1,与占位/新回复并列,表现为"助手消息分裂成多条"。
                                 val groupCreatedAt = groupMsgs.first().createdAt
                                 node.variants.lastOrNull { it.message.createdAt <= groupCreatedAt }
                                     ?: node.variants.lastOrNull()
@@ -691,28 +691,28 @@ data class ConversationTree(
 }
 
 /**
- * Al reconstruir el árbol, combine todas las ramas del árbol antiguo con la pantalla plana actual para garantizar que no se pierdan los mensajes nuevos y que se vuelvan a intentar los mensajes antiguos./Las ramas de edición se conservan.
+ * 重建树时合并旧树全部分支与当前扁平显示，保证新消息不丢、旧重试/编辑分支保留。
  *
- * @param summarizedIds v2.3.2 (D): Mensajes que han sido anulados por resúmenes contextuales id —— Estos textos originales ya no se fusionan del antiguo árbol,
- *        De lo contrario"Resumen + texto original"permanecerá en contexto al mismo tiempo(token cuenta doble), la compresión no es nada.
- *        (persona que llama desde `io.zer0.muse.transformer.CompressionSummaryStore` tomar;Conjunto vacío predeterminado = Comportamiento antiguo.)
+ * @param summarizedIds v2.3.2 (D): 已被上下文摘要覆盖的消息 id —— 这些原文不再从旧树合并回来，
+ *        否则"摘要 + 原文"会同时留在上下文里(token 双计)，压缩等于白做。
+ *        (调用方从 `io.zer0.muse.transformer.CompressionSummaryStore` 取;缺省空集 = 旧行为。)
  */
 fun mergeRebuildMessages(tree: ConversationTree, current: List<UIMessage>, summarizedIds: Set<String> = emptySet()): List<UIMessage> {
-    // Snapshot Sólo se guardan las selecciones de sucursales.SnapshotStore Para restaurar la estructura del árbol, se construirá createdAt=0,
-    // content Nodos de usuario virtuales con identificaciones aleatorias y vacías; Estos nodos no deben mezclarse con mensajes reales, de lo contrario serán
-    // Organizado en la parte superior de la lista, el rendimiento es el siguiente“Las viejas noticias pasan al frente”.
+    // Snapshot 只保存分支选择。SnapshotStore 为了还原树形结构会构造 createdAt=0、
+    // content 为空、随机 id 的虚拟用户节点；这些节点绝不能混入真实消息，否则会被
+    // 排到列表最前面，表现为“旧消息跑到最前面”。
     val persistedTreeMessages =
         tree.allFlatMessages.filter { it.createdAt > 0L && it.id.toString() !in summarizedIds }
     if (persistedTreeMessages.isEmpty()) return orderConversationMessages(current)
     val merged = linkedMapOf<String, UIMessage>()
-    // El árbol antiguo sólo es responsable de complementar las ramas faltantes de la lista actual; el contenido con la misma identificación debe ser ganado por la lista actual.
-    // De lo contrario, la respuesta final transmitida será sobrescrita por la instantánea del árbol anterior, lo que provocará que el texto parpadee y luego desaparezca.
+    // 旧树只负责补充当前列表缺失的分支；同一 id 的内容必须由当前列表胜出。
+    // 否则流式最终回复会被较早的树快照覆盖，表现为正文闪现后消失。
     val source = persistedTreeMessages + current
     source.forEach { message -> merged[message.id.toString()] = message }
     return orderConversationMessages(merged.values.toList())
 }
 
-/** La única regla de clasificación de memoria para los mensajes de sesión debe ser coherente con MessageDao/MessageProjector. */
+/** 会话消息唯一的内存排序规则，必须与 MessageDao/MessageProjector 保持一致。 */
 fun orderConversationMessages(messages: List<UIMessage>): List<UIMessage> {
     fun UIMessage.stableOrder(): Long? = when {
         commitSeq > 0L -> commitSeq
@@ -720,17 +720,17 @@ fun orderConversationMessages(messages: List<UIMessage>): List<UIMessage> {
         else -> null
     }
 
-    // antigua importación/Es posible que las instantáneas antiguas no tengan ninguna secuencia. En este momento, es posible que no se confíe en createAt,
-    // No se permite la reorganización incondicional; el orden pasado por la base de datos es el único orden disponible.
+    // 旧导入/旧快照可能完全没有 seq。此时 createdAt 也可能不可信，
+    // 不能无条件重排，数据库传入顺序才是唯一可用顺序。
     if (messages.none { it.stableOrder() != null }) return messages
 
-    // v2.3.2: Cambiar a"Primero calcule una clave para cada mensaje.,Ordenar por una sola clave" —— Comparación por pares de implementación original,si"Un lado está ordenado y el otro está desordenado."
-    // un par regresó createdAt,Tres mensajes pueden formar un círculo.(Medición real A(seq=10,createdAt=3000),B(seq=0,createdAt=1000),
-    // C(seq=20,createdAt=100) se obtendrá al mismo tiempo A>C,A<B,B<C),TimSort posiblemente vender
-    // "Comparison method violates its general contract!" O dar una secuencia inestable.
-    // gobernante:Los mensajes ordenados ocupan un número par de posiciones según la clasificación secuencial(seq Prioridad,consistente con lo existente);
-    //       Botón de mensaje desordenado"createdAt El número de mensajes ordenados antes"Ocupa un número impar de dígitos(Aún inserte el período de tiempo correcto según el tiempo.).
-    // Las claves se calculan una vez antes de ordenar,Por lo tanto el comparador es estrictamente orden total(transitivo, antisimétrico, reflexivo),No más dependencia del orden de comparación.
+    // v2.3.2: 改成"先给每条消息算一个键,再单键排序" —— 原实现逐对比较,对"一边有序一边无序"
+    // 的一对退回 createdAt,三个消息就能成环(实测 A(seq=10,createdAt=3000)、B(seq=0,createdAt=1000)、
+    // C(seq=20,createdAt=100) 会同时得出 A>C、A<B、B<C),TimSort 下可能抛
+    // "Comparison method violates its general contract!" 或给出不稳定顺序。
+    // 标尺:有序消息按 seq 排名占偶数位(seq 优先,与既有一致);
+    //       无序消息按"createdAt 早于它的有序消息条数"占奇数位(仍按时间插回正确时间段)。
+    // 键在排序前一次算好,因此比较器是严格全序(传递、反对称、自反),不再依赖比较顺序。
     val ordered = messages.filter { it.stableOrder() != null }.sortedBy { it.stableOrder() }
     val unordered = messages.filter { it.stableOrder() == null }
     val keys = HashMap<String, Long>(messages.size)
@@ -751,8 +751,8 @@ private fun restoreSelection(tree: ConversationTree, previous: ConversationTree?
     val previousUserGroup = previous.selectedUserNode?.let {
         it.currentVariant?.message?.variantGroupId ?: it.groupId
     }
-    // Cuando se agrega una nueva ronda de mensajes de usuario,Corta la capa seleccionada a la última ronda.,Asegúrese de que reintentar/continuar chat apunte a mensajes nuevos;
-    // Al cambiar de versión dentro del mismo grupo de preguntas, se conservará el índice seleccionado anteriormente.
+    // 新追加了一轮用户消息时,把选中层切到最新一轮,保证 retry/续聊都指向新消息;
+    // 同一提问组内切换版本时仍保留之前的选中索引。
     val selectedUserIndex = if (tree.userNodes.size > previous.userNodes.size) {
         tree.userNodes.lastIndex
     } else {

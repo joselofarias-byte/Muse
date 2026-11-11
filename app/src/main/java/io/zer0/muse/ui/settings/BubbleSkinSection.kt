@@ -58,26 +58,26 @@ import io.zer0.muse.ui.theme.PluginSkinSource
 import kotlinx.coroutines.launch
 
 /**
- * Phase 4: Selección de máscara de burbuja y área de vista previa.
+ * Phase 4: 气泡皮肤选择与预览区。
  *
- * Reutilizar [CustomThemeSection] de"lista + importar/Exportar + Seleccionar"modo:
- *  - almacenamiento:[BubbleSkinStore](Compartido con AppearanceSettingsStore `muse_settings` DataStore);
- *  - Fuente:Valor predeterminado integrado + importación de usuario/Complemento personalizado + instalado(ui-skin,por [PluginSkinSource] Proporcionado después de una nueva verificación);
- *  - Vista previa:Compartir con la página de chat [BubbleSkinResolver],Cubriendo tres roles: usuario/asistente/asistente de chat grupal,
- *    light/dark Dos modos,Y escale el texto de muestra de acuerdo con el tamaño de fuente actual y el skin fontScale;
- *  - La máscara no está seleccionada o la máscara seleccionada es ilegal/Cuando el complemento está deshabilitado, tanto la vista previa como la representación real vuelven a la versión integrada. default(null piel),
- *    El comportamiento de la página de confirmación es exactamente el mismo que antes de la transformación.
+ * 复用 [CustomThemeSection] 的"列表 + 导入/导出 + 选中"模式:
+ *  - 存储:[BubbleSkinStore](与 AppearanceSettingsStore 共用 `muse_settings` DataStore);
+ *  - 来源:内置默认 + 用户导入/自定义 + 已安装插件(ui-skin,由 [PluginSkinSource] 重新校验后提供);
+ *  - 预览:与聊天页共用 [BubbleSkinResolver],覆盖 user / assistant / 群聊助手三种角色、
+ *    light/dark 两种模式,并按当前字号档位与皮肤 fontScale 缩放样例文字;
+ *  - 未选中或选中皮肤非法/插件被禁用时预览与真实渲染都回退内置 default(null 皮肤),
+ *    确认页行为与改造前完全一致。
  *
- * @param fontSizeScale Equipo de tamaño de fuente actual("small"/"medium"/"large"/"xlarge"),
- * Se utiliza para realizar cambios en la vista previa según la configuración del tamaño de fuente.
- * @param defaultDark Vista previa del modo inicial,Tome el tono del tema actual.
+ * @param fontSizeScale 当前字号档位("small"/"medium"/"large"/"xlarge"),
+ * 用于让预览随字号设置变化。
+ * @param defaultDark 预览初始模式,取当前主题深浅。
  */
 @Composable
 internal fun BubbleSkinSection(fontSizeScale: String, defaultDark: Boolean) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    // Phase 4: Fuente de máscara de complemento — El complemento ui-skin se instaló y se volvió a verificar para ingresar a la lista opcional.;
-    // Desactivar/Desinstalar/la tienda ya no lo devuelve cuando se revoca la confianza,Tanto la vista previa como la representación real recurren al valor predeterminado integrado.
+    // Phase 4: 插件皮肤来源 — 已安装 ui-skin 插件重新校验后进入可选列表;
+    // 禁用/卸载/信任撤销时 store 不再返回它,预览与真实渲染都回退内置 default。
     val pluginSkinSource: PluginSkinSource = org.koin.compose.koinInject()
     val store = remember(context, pluginSkinSource) {
         BubbleSkinStore(context, pluginSkinSource)
@@ -91,7 +91,7 @@ internal fun BubbleSkinSection(fontSizeScale: String, defaultDark: Boolean) {
     var previewDark by rememberSaveable { mutableStateOf(defaultDark) }
     var deletingSkin by remember { mutableStateOf<BubbleSkin?>(null) }
 
-    // E1 Mismo estilo:SAF Seleccione el archivo para importar la máscara JSON;analizar/Si la verificación falla, la máscara actual permanecerá sin cambios y aparecerá un mensaje.
+    // E1 同款:SAF 选文件导入皮肤 JSON;解析/校验失败保持当前皮肤不变并提示。
     val importLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument(),
     ) { uri ->
@@ -99,12 +99,12 @@ internal fun BubbleSkinSection(fontSizeScale: String, defaultDark: Boolean) {
         val text = runCatching {
             context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
         }.onFailure { e ->
-            Logger.w("BubbleSkinSection", "Error al leer la importación de piel: ${e.message}")
+            Logger.w("BubbleSkinSection", "皮肤导入读取失败: ${e.message}")
         }.getOrNull()
         scope.launch {
             val imported = store.importSkin(text)
             if (imported != null) {
-                // Cambiar automáticamente a una nueva máscara después de importar,Consistente con el comportamiento de importación de temas personalizados
+                // 导入后自动切换到新皮肤,与自定义主题导入行为一致
                 store.saveSelectedSkinId(imported.id)
                 MuseToast.show(context.getString(R.string.settings_bubble_skin_import_success))
             } else {
@@ -129,7 +129,7 @@ internal fun BubbleSkinSection(fontSizeScale: String, defaultDark: Boolean) {
     SettingsGroup(
         modifier = Modifier.padding(top = 8.dp),
     ) {
-        // Máscara predeterminada incorporada:Seleccione para borrar selecciones personalizadas,El renderizado mantiene el aspecto existente
+        // 内置默认皮肤:选中即清空自定义选择,渲染保持既有外观
         BubbleSkinRow(
             name = stringResource(R.string.settings_bubble_skin_builtin),
             subtitle = stringResource(R.string.settings_bubble_skin_builtin_desc),
@@ -152,7 +152,7 @@ internal fun BubbleSkinSection(fontSizeScale: String, defaultDark: Boolean) {
             )
         }
         SettingsGroupDivider()
-        // línea de acción de importación(El mismo estilo que la entrada de importación del área temática personalizada.)
+        // 导入操作行(与自定义主题区的导入入口同款)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -179,7 +179,7 @@ internal fun BubbleSkinSection(fontSizeScale: String, defaultDark: Boolean) {
         }
     }
 
-    // ── Phase 4: Máscara declarativa para complementos instalados(pantalla de solo lectura/elegir,No se admiten la exportación ni la eliminación.) ──
+    // ── Phase 4: 已安装插件的声明式皮肤(只读展示/选择,不支持导出与删除) ──
     if (pluginSkins.isNotEmpty()) {
         SectionLabel(stringResource(R.string.settings_bubble_skin_plugin_section))
         SettingsGroup(
@@ -209,8 +209,8 @@ internal fun BubbleSkinSection(fontSizeScale: String, defaultDark: Boolean) {
         }
     }
 
-    // La identificación seleccionada existe pero la máscara es ilegal./perdido(Se endurecen las reglas de redacción y verificación de versiones antiguas)→ Un recordatorio claro de que se ha devuelto el valor predeterminado;
-    // Razón de la dimensión del complemento dada al acceder a un diseño de complemento instalado pero no disponible,Para evitar que los usuarios piensen erróneamente que su piel está dañada.
+    // 选中 id 存在但皮肤非法/已丢失(旧版本写入、校验规则收紧)→ 明确提示已回退默认;
+    // 命中已安装但不可用的插件皮肤时给出插件维度原因,避免用户误以为皮肤损坏。
     if (selectedId != BubbleSkinCatalog.DEFAULT_SKIN_ID && selectedSkin == null) {
         val pluginEntry = pluginSkins.firstOrNull { it.skin.id == selectedId }
         Text(
@@ -258,10 +258,10 @@ internal fun BubbleSkinSection(fontSizeScale: String, defaultDark: Boolean) {
 }
 
 /**
- * línea de piel única — nombre + autor/Descripción + Seleccionado + Exportar/borrar.
+ * 单张皮肤行 — 名称 + 作者/说明 + 选中态 + 导出/删除。
  *
- * [enabled] = false(Complemento no confirmado/Discapacitado/fracaso de confianza)No se puede hacer clic,Usar juntos [note] Explique el motivo de la indisponibilidad.;
- * En este estado, no se puede seleccionar ninguno.,No cambiará la piel actualmente activa.
+ * [enabled] = false(插件未确认/已禁用/信任失效)时不可点击,并用 [note] 说明不可用原因;
+ * 该状态下既不能选中,也不会改变当前生效皮肤。
  */
 @Composable
 private fun BubbleSkinRow(
@@ -321,13 +321,13 @@ private fun BubbleSkinRow(
             )
         }
         if (onExport != null) {
-            // CMP-11: desnudo IconButton → Convergencia con los componentes de Muse MuseTopBarIconButton
+            // CMP-11: 裸 IconButton → 收敛到 Muse 组件 MuseTopBarIconButton
             MuseTopBarIconButton(
                 icon = MuseIcons.share,
                 contentDescription = stringResource(R.string.settings_bubble_skin_export),
                 onClick = onExport,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                // UI-FIX A: Las operaciones pequeñas en línea de la fila de lista mantienen los íconos desnudos (dos círculos negros dentro de la fila son demasiado ruidosos)
+                // UI-FIX A: 列表行内联小操作保持裸图标（行内两个黑圆太吵）
                 solid = false,
             )
         }
@@ -344,10 +344,10 @@ private fun BubbleSkinRow(
 }
 
 /**
- * Panel de vista previa de la piel — Usuario de portada/asistente/asistente de chat grupal × light / dark × Escalado de fuentes.
+ * 皮肤预览面板 — 覆盖 user / assistant / 群聊助手 × light / dark × 字体缩放。
  *
- * Usa cada burbuja [BubbleSkinResolver.resolve] analizar,con MessageBubble /
- * GroupChatMessageBubble Tome el mismo enlace alternativo:Cuando el aspecto es nulo o la verificación falla, el resultado del análisis está integrado de forma predeterminada.
+ * 每个气泡都用 [BubbleSkinResolver.resolve] 解析,与 MessageBubble /
+ * GroupChatMessageBubble 走同一条回退链路:皮肤为 null 或校验失败时解析结果即内置 default。
  */
 @Composable
 private fun BubbleSkinPreviewPanel(skin: BubbleSkin?, dark: Boolean, fontSizeScale: String, onDarkChange: (Boolean) -> Unit) {
@@ -404,7 +404,7 @@ private fun BubbleSkinPreviewPanel(skin: BubbleSkin?, dark: Boolean, fontSizeSca
 }
 
 /**
- * burbuja de vista previa única — Renderice directamente la salida de las esquinas redondeadas mediante el solucionador/color de fondo/color de primer plano/relleno/ancho máximo/Escalado de fuentes.
+ * 单个预览气泡 — 直接渲染 resolver 输出的圆角/底色/前景色/内边距/最大宽度/字体缩放。
  */
 @Composable
 private fun BubbleSkinPreviewBubble(
@@ -420,8 +420,8 @@ private fun BubbleSkinPreviewBubble(
         BubbleSkinResolver.resolve(skin, role, darkTheme = dark)
     }
     val style = resolved.style
-    // Mismo factor de escala que ThemeSection.FontSizePreview,Deje que la vista previa cambie en tiempo real según la configuración del tamaño de fuente;
-    // propia de la piel fontScale(0.75~1.5)Superponer encima de esto.
+    // 与 ThemeSection.FontSizePreview 相同的档位系数,让预览随字号设置实时变化;
+    // 皮肤自身的 fontScale(0.75~1.5)在此之上叠加。
     val fontScale = fontSizeScaleFactor(fontSizeScale) * style.fontScale
     val contentStyle = MaterialTheme.typography.bodyMedium.copy(
         fontSize = (MaterialTheme.typography.bodyMedium.fontSize.value * fontScale).sp,
@@ -466,7 +466,7 @@ private fun BubbleSkinPreviewBubble(
     }
 }
 
-/** Coeficiente de engranaje del tamaño de fuente,Consistente con MuseTypography.scaled. */
+/** 字号档位系数,与 MuseTypography.scaled 保持一致。 */
 private fun fontSizeScaleFactor(scale: String): Float = when (scale) {
     "small" -> 0.85f
     "large" -> 1.15f

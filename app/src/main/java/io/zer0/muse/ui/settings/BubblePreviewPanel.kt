@@ -29,7 +29,7 @@ import io.zer0.muse.data.ChatPreferences
 import io.zer0.muse.ui.theme.MuseBubbleStyles
 import io.zer0.muse.ui.theme.MusePaddings
 
-/** v2.5.0: Vista previa del estilo del cuerpo — Misma fuente que el diseño de texto de MessageBubble(Escala del tamaño de fuente + espaciado entre caracteres). */
+/** v2.5.0: 预览正文样式 — 与 MessageBubble 正文排版同源(字号缩放 + 字间距)。 */
 @Composable
 private fun previewBodyStyle(prefs: ChatPreferences): TextStyle {
     val bodyBase = MaterialTheme.typography.bodyMedium
@@ -42,11 +42,11 @@ private fun previewBodyStyle(prefs: ChatPreferences): TextStyle {
 }
 
 /**
- * v2.5.0: Panel de vista previa del diseño del chat — El efecto compuesto de la configuración actual de la apariencia del chat se muestra en tiempo real en la página de configuración.
+ * v2.5.0: 聊天排版预览面板 — 设置页里实时呈现当前聊天外观设置的合成效果。
  *
- * Anular: tamaño de fuente del mensaje/Espaciado entre caracteres, redondeo de burbujas/pancarta,MOOD/Piense en visualizaciones de bloques, marcas de tiempo y nombres de modelos.
- * Datos de demostración estática; El cálculo de estilo tiene el mismo origen que MessageBubble.(MuseBubbleStyles + Misma escala de diseño),
- * garantia"Lo que ves es lo que obtienes".
+ * 覆盖：消息字号/字间距、气泡圆角/通栏、MOOD/思考块显示、时间戳、模型名。
+ * 静态演示数据；样式计算与 MessageBubble 同源(MuseBubbleStyles + 同一排版缩放)，
+ * 保证"所见即所得"。
  */
 @Composable
 internal fun BubblePreviewPanel(prefs: ChatPreferences, modifier: Modifier = Modifier) {
@@ -58,7 +58,7 @@ internal fun BubblePreviewPanel(prefs: ChatPreferences, modifier: Modifier = Mod
     }
 }
 
-/** Vista previa: mensajes de usuario (derecha,Fondo claro de color principal.,esquinas redondeadas/pancarta/Las marcas de tiempo se reflejan en tiempo real). */
+/** 预览：用户消息（右侧,主色浅底,圆角/通栏/时间戳实时反映）。 */
 @Composable
 private fun PreviewUserBubble(prefs: ChatPreferences, bodyStyle: TextStyle) {
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
@@ -88,7 +88,7 @@ private fun PreviewUserBubble(prefs: ChatPreferences, bodyStyle: TextStyle) {
     }
 }
 
-/** Vista previa:AI Mensaje (izquierda,tarjeta de color claro;MOOD/Piense en filas de etiquetas con nombres de modelos mostrados por interruptor). */
+/** 预览：AI 消息（左侧,浅色卡片；MOOD/思考标签行与模型名按开关显示）。 */
 @Composable
 private fun PreviewAssistantBubble(prefs: ChatPreferences, bodyStyle: TextStyle) {
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {

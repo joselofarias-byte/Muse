@@ -5,8 +5,8 @@ import kotlinx.serialization.Serializable
 import kotlin.uuid.Uuid
 
 /**
- * Rol del mensaje.Phase 1 Sólo uso SYSTEM/USER/ASSISTANT,
- * TOOL Déjelo para las llamadas a herramientas de la Fase 3.
+ * 消息角色。Phase 1 只用 SYSTEM/USER/ASSISTANT,
+ * TOOL 留给 Phase 3 工具调用。
  */
 @Serializable
 enum class MessageRole {
@@ -17,12 +17,12 @@ enum class MessageRole {
 }
 
 /**
- * Una solicitud de llamada de herramienta(LLM Generado cuando se toma la decisión de invocar la herramienta.).
+ * 一次工具调用请求(LLM 决策调用工具时产生)。
  *
- * OpenAI campo de protocolo:
- *  - [id] Sólo llamada de herramienta id(para relleno tool_call_id)
- *  - [name] nombre de la función
- *  - [arguments] Cadena JSON de parámetro(Posiblemente transmitiendo fragmentos delta)
+ * OpenAI 协议字段:
+ *  - [id] 工具调用唯一 id(用于回填 tool_call_id)
+ *  - [name] 函数名
+ *  - [arguments] 参数 JSON 字符串(可能是流式增量片段)
  */
 @Serializable
 data class ToolCall(
@@ -32,10 +32,10 @@ data class ToolCall(
 )
 
 /**
- * v0.47: Información de la tarjeta de llamada de herramientas(Usado por MessageBubble para representar tarjetas colapsadas).
+ * v0.47: 工具调用卡片信息(用于 MessageBubble 渲染折叠卡片)。
  *
- * no persistió en MessageEntity(Perdido después de reiniciar,aceptable,Las tarjetas de visita de herramientas son información instantánea,
- * Contenido de texto sin formato para conversaciones históricas.).
+ * 不持久化到 MessageEntity(重启后丢失,可接受,工具调用卡片是即时反馈,
+ * 历史会话用纯文本 content 兜底)。
  */
 @Immutable
 @Serializable
@@ -45,29 +45,29 @@ data class ToolCallInfo(
     val result: String,
     val isSuccess: Boolean,
     /**
-     * Tiempo de ejecución local (milisegundos).
+     * 本地执行耗时（毫秒）。
      *
-     * Solo cubre el período en el que Muse ejecuta sus propias herramientas, excluyendo la espera de la red y el tiempo de generación del modelo;
-     * Es nulo durante la ejecución y el ejecutor lo reescribirá una vez finalizado. Se utiliza para mostrar el consumo de tiempo en el lado derecho del paso de la herramienta.
-     * Permitir que los usuarios juzguen“¿Es lento en el modelo o en la herramienta?”.
+     * 仅覆盖 Muse 自己执行工具的那一段，不含网络等待与模型生成时间；
+     * 执行中为 null，结束后由执行器回写。用于在工具步骤右侧展示耗时，
+     * 让用户能判断“慢在模型还是慢在工具”。
      */
     val durationMs: Long? = null,
 )
 
 /**
- * v1.0.47: Referencia del archivo adjunto del mensaje(Persistencia estructurada de metadatos de archivos sin formato).
+ * v1.0.47: 消息附件引用(结构化持久化原始文件元数据)。
  *
- * Situación actual:Después del análisis del documento, fusionar en content,Se descartaron los metadatos del archivo original.
- * Este campo conserva la información del archivo adjunto original.,UI Chip de documento restaurable(Haga clic para ver el texto completo),
- * Provider Todavía se usa al enviar solicitudes. content(Compatible con el viejo Provider).
+ * 现状:文档解析后合并进 content,原始文件元数据丢弃。
+ * 本字段保留原始附件信息,UI 可还原文档芯片(点击查看全文),
+ * Provider 发送请求时仍用 content(兼容旧 Provider)。
  *
- * @param id El único apego id
- * @param name nombre de archivo
- * @param mimeType MIME Tipo
- * @param size tamaño de archivo(bytes)
- * @param sourceType Tipo de fuente(FILE=archivo local / URL=enlace web)
- * @param extractedText Contenido de texto extraído(Después del análisis del documento)
- * @param workspacePath Ruta relativa del espacio de trabajo(Como por ejemplo `attachments/report.pdf`)
+ * @param id 附件唯一 id
+ * @param name 文件名
+ * @param mimeType MIME 类型
+ * @param size 文件大小(字节)
+ * @param sourceType 来源类型(FILE=本地文件 / URL=网络链接)
+ * @param extractedText 提取的文本内容(文档解析后)
+ * @param workspacePath 工作区相对路径(如 `attachments/report.pdf`)
  */
 @Immutable
 @Serializable
@@ -79,42 +79,42 @@ data class AttachmentRef(
     val sourceType: String = "FILE",
     val extractedText: String? = null,
     /**
-     * Ruta relativa del espacio de trabajo.
+     * 工作区相对路径。
      *
-     * Es necesario reabrir el original del mensaje: el original se deja en el espacio de trabajo cuando se envía el archivo adjunto. `attachments/` abajo,
-     * Deje solo una línea de texto de cita en el cuerpo del mensaje. Si la ruta no se guarda, el usuario sólo puede ir al espacio de trabajo y explorarlo él mismo después.
-     * Vacío significa que no quedan copias accesibles (mensajes antiguos o una ruta de degradación si el espacio de trabajo no está disponible).
+     * 有它才能在消息里重新打开原件：附件发送时原件落在工作区 `attachments/` 下，
+     * 消息正文里只留一行引用文本。不存路径的话，用户事后只能去工作区自己翻。
+     * 为空表示没有留下可访问的副本（旧消息、或工作区不可用时的降级路径）。
      */
     val workspacePath: String? = null,
 )
 
 /**
- * UI El cuerpo del mensaje utilizado por la capa. Independiente del formato de solicitud de cualquier proveedor,
- * Depende de cada Proveedor traducirlo en la carga útil de la API correspondiente.
+ * UI 层使用的消息体。独立于任何 Provider 的请求格式,
+ * 由各 Provider 自己把它翻译成对应 API 的 payload。
  *
- * Phase 1 Sólo se admite texto sin formato;[parts] La estructura multimodal queda para la Fase 3.
+ * Phase 1 仅支持纯文本;[parts] 的多模态结构留给 Phase 3。
  *
- * Phase 5-G: [imageUrls] Se utiliza para generar resultados de imágenes.(ASSISTANT noticias),
- *            Provider Ignore este campo al enviar una solicitud(Enviar solo texto content).
+ * Phase 5-G: [imageUrls] 用于图片生成结果(ASSISTANT 消息),
+ *            Provider 发送请求时忽略此字段(只发送文本 content)。
  *
- * Phase 7: [toolCalls] Para herramientas de toma de decisiones de LLM(ASSISTANT noticias),
- *          [toolCallId] Se utiliza para rellenar los resultados de ejecución de la herramienta.(TOOL noticias,corresponder tool_call_id).
+ * Phase 7: [toolCalls] 用于 LLM 决策调用工具(ASSISTANT 消息),
+ *          [toolCallId] 用于回填工具执行结果(TOOL 消息,对应 tool_call_id)。
  *
- * Phase 8.3: [favorite] marca favorita(Capa de interfaz de usuario pura,Provider Ignorar al enviar la solicitud).
+ * Phase 8.3: [favorite] 收藏标记(纯 UI 层,Provider 发送请求时忽略)。
  *
- * Phase 8.4: [citationUrls] Lista de URL de resultados de búsqueda en Internet(assistant Solo mensaje).
- *            Cuando se muestra en Respuesta AI [N] Al citar números,UI En consecuencia [N] Representar como enlace en el que se puede hacer clic,
- *            Haga clic para saltar a citationUrls[N-1].Provider Este campo se ignora al enviar la solicitud.
+ * Phase 8.4: [citationUrls] 联网搜索结果 URL 列表(assistant 消息专用)。
+ *            当 AI 回复中出现 [N] 引用编号时,UI 据此把 [N] 渲染为可点击链接,
+ *            点击跳转到 citationUrls[N-1]。Provider 发送请求时忽略此字段。
  *
- * v1.133: [ragCitations] Lista de citas de búsqueda de la base de conocimientos(assistant Solo mensaje).
- *         por RagService.buildInjectionContextWithCitations Regresar,
- *         MessageBubble Se puede hacer clic en chip(Haga clic para ampliar snippet,Mantenga presionado para saltar a los detalles del documento.).
- *         Provider Este campo se ignora al enviar la solicitud.
+ * v1.133: [ragCitations] 知识库检索引用列表(assistant 消息专用)。
+ *         由 RagService.buildInjectionContextWithCitations 返回,
+ *         MessageBubble 渲染为可点击 chip(点击展开 snippet,长按跳转文档详情)。
+ *         Provider 发送请求时忽略此字段。
  *
- * Phase 8.6: [imageBase64List] USER Una lista base64 de imágenes locales adjuntas al mensaje.(Ninguno dato: prefijo),
- *            Para enviar al modelo visual.(Gemini inlineData / OpenAI image_url).
- *            ASSISTANT Los mensajes también pueden llevar(Gemini Dibujo devuelto inlineData).
- *            UI Representar la miniatura de la imagen del mensaje de USUARIO en consecuencia,Provider Construya solicitudes multimodales en consecuencia.
+ * Phase 8.6: [imageBase64List] USER 消息附带的本地图片 base64 列表(无 data: 前缀),
+ *            用于发送给视觉模型(Gemini inlineData / OpenAI image_url)。
+ *            ASSISTANT 消息也可能携带(Gemini 绘图返回的 inlineData)。
+ *            UI 据此渲染 USER 消息图片缩略图,Provider 据此构造多模态请求。
  */
 @Immutable
 @Serializable
@@ -124,122 +124,122 @@ data class UIMessage(
     val content: String,
     val reasoning: String? = null,
     /**
-     * v1.80 (M-ANT4): Anthropic thinking firma de bloque(Se requieren múltiples rondas de reproducción del diálogo de pensamiento).
+     * v1.80 (M-ANT4): Anthropic thinking 块的签名(多轮 thinking 对话回放必需)。
      *
-     * Anthropic extended thinking Publicado al final del bloque de pensamiento. signature_delta,
-     * La siguiente ronda de solicitudes debe devolver la firma en el bloque de pensamiento del mensaje del asistente para continuar la cadena de pensamiento.
-     * Por ChatViewModel de [io.zer0.ai.core.ChatStreamEvent.ReasoningDelta.signature] Acumular y almacenar en este campo.
-     * v1.121: AnthropicProvider.splitSystem razonamiento/pensamientoDevolución de firma procesada,
-     * ASSISTANT El bloque de contenido de pensamiento del mensaje contiene thinking+signature,El servidor puede verificar la integridad del preámbulo.
-     * Otros proveedores ignoran este campo.
+     * Anthropic extended thinking 在 thinking 块结束时下发 signature_delta,
+     * 下一轮请求需在 assistant 消息的 thinking 块里回传该 signature 才能继续思考链。
+     * 由 ChatViewModel 从 [io.zer0.ai.core.ChatStreamEvent.ReasoningDelta.signature] 累积并存入此字段。
+     * v1.121: AnthropicProvider.splitSystem 已处理 reasoning/thinkingSignature 回传,
+     * ASSISTANT 消息的 thinking content block 包含 thinking+signature,服务端可验证前序思考完整性。
+     * 其他 Provider 忽略此字段。
      */
     val thinkingSignature: String? = null,
-    /** B5-03: OpenAI Responses reasoning item contenido_cifrado. */
+    /** B5-03: OpenAI Responses reasoning item 的 encrypted_content。 */
     val thinkingEncryptedContent: String? = null,
     val modelId: String? = null,
     val createdAt: Long = System.currentTimeMillis(),
-    /** Orden estable dentro de una sesión de base de datos;0 Representa una instantánea antigua./El mensaje no persistió. */
+    /** 数据库会话内稳定顺序；0 表示旧快照/未持久化消息。 */
     val seq: Long = 0L,
-    /** Nuevo orden de envío de enlaces de conversación; tiene prioridad sobre seq cuando está presente. */
+    /** 新对话链路提交顺序；有值时优先于 seq。 */
     val commitSeq: Long = 0L,
     val imageUrls: List<String> = emptyList(),
-    /** Referencia de audio (URI de archivo local o ruta absoluta) del mensaje de voz emitido por el asistente.Provider Ignorado al enviar la solicitud. */
+    /** 助手发出的语音消息音频引用（本地文件 URI 或绝对路径）。Provider 发送请求时忽略。 */
     val voiceUri: String? = null,
-    /** Duración de la voz, milisegundos.UI Se utiliza para visualización, devuelto por TTS o detectado por archivo durante la síntesis. */
+    /** 语音时长，毫秒。UI 显示用，合成时由 TTS 返回或按文件探测。 */
     val voiceDurationMs: Long = 0L,
     val toolCalls: List<ToolCall>? = null,
     val toolCallId: String? = null,
     val favorite: Boolean = false,
     /**
-     * v1.104 U7: Etiquetas de grupos favoritos(Definido por el usuario,Como por ejemplo"inspiración"/"fragmento de código").
+     * v1.104 U7: 收藏分组标签(用户自定义,如"灵感"/"代码片段")。
      *
-     * solo en [favorite]=true significativo;null Indica desagrupado(Los favoritos se muestran en"Todos"abajo).
-     * Por pantalla de favoritos Mantenga presionada la tarjeta para que aparezca"Configurar grupos"Escritura de diálogos.
+     * 仅在 [favorite]=true 时有意义;null 表示未分组(收藏夹显示在"全部"下)。
+     * 由 FavoritesScreen 长按卡片弹"设置分组"对话框写入。
      */
     val favoriteTag: String? = null,
     val citationUrls: List<String> = emptyList(),
-    /** v1.133: Lista de citas de búsqueda de la base de conocimientos(assistant Solo mensaje,Provider Ignorar al enviar la solicitud). */
+    /** v1.133: 知识库检索引用列表(assistant 消息专用,Provider 发送请求时忽略)。 */
     val ragCitations: List<RagCitation> = emptyList(),
-    /** Phase 8.6: Lista de imágenes locales base64(Ninguno dato: prefijo,Predeterminado image/jpeg). */
+    /** Phase 8.6: 本地图片 base64 列表(无 data: 前缀,默认 image/jpeg)。 */
     val imageBase64List: List<String> = emptyList(),
     /**
-     * V-GEM1: Adjunto de vídeo(Subido a la API de archivos Gemini uri),Actualmente sólo lee el proveedor Gemini.
+     * V-GEM1: 视频附件(已上传到 Gemini Files API 的 uri),仅 Gemini Provider 当前会读取。
      *
-     * - [videoFileUri] en forma de "https://generativelanguage.googleapis.com/v1beta/files/abc123"
-     *   (uploadFile regresó file.uri),Completado por la persona que llama después de una carga exitosa
-     * - [videoMimeType] Declarado al subir MIME(Como por ejemplo "video/mp4"),Consistente con fileData.mimeType
-     * - Los proveedores que no pertenecen a Gemini actualmente ignoran este campo;En el futuro, cuando OpenAI y otros admitan video, se podrán expandir en la capa del Proveedor.
+     * - [videoFileUri] 形如 "https://generativelanguage.googleapis.com/v1beta/files/abc123"
+     *   (uploadFile 返回的 file.uri),由调用方在上传成功后填入
+     * - [videoMimeType] 上传时声明的 MIME(如 "video/mp4"),与 fileData.mimeType 一致
+     * - 非 Gemini Provider 当前忽略此字段;未来 OpenAI 等支持视频时可在 Provider 层扩展
      */
     val videoFileUri: String? = null,
     val videoMimeType: String? = null,
-    /** v1.43: Lista de identificadores de artefactos asociados con el mensaje(Generado por ArtifactExtractor). */
+    /** v1.43: 消息关联的 Artifact id 列表(由 ArtifactExtractor 生成)。 */
     val artifactIds: List<String> = emptyList(),
-    /** B6-03/B6-02: Logotipo de piel emocional(rage/rage2/desire/vuoto/moonlight/off),con <moodfx> Correspondencia de etiquetas. */
+    /** B6-03/B6-02: 情绪皮肤标识(rage/rage2/desire/vuoto/moonlight/off),与 <moodfx> 标签对应。 */
     val moodSkin: String? = null,
     /**
-     * v0.30-b: MOOD bloquear(LLM Salida manuscrita interna antes del texto principal.,6 Paso Flujo de trabajo Paso 2).
+     * v0.30-b: MOOD 块(LLM 在正文前输出的内部腹稿,6 步工作流第 2 步)。
      *
-     * Muse reducido a un solo <mood> etiqueta + 4 campos(Vibe/Sparks/Reflections/Will).
-     * Este campo se almacena en este campo después de que MoodTagTransformer lo elimine del contenido.
-     * UI Representar como tarjeta plegable(Plegado predeterminado,Similar a los bloques de pensamiento profundo).
+     * Muse 简化为单一 <mood> 标签 + 4 字段(Vibe/Sparks/Reflections/Will)。
+     * 由 MoodTagTransformer 从 content 中剥离后存入此字段。
+     * UI 渲染为可折叠卡片(默认折叠,类似深度思考块)。
      */
     val mood: String? = null,
     /**
-     * v0.32 Autorreflexión experimental: el bloque de autorreflexión generado por LLM al final de una respuesta.
+     * v0.32 实验性 selfReflection:LLM 在回复末尾输出的自我反思块。
      *
-     * Por MoodTagTransformer / ChatViewModel.updateAssistant del contenido
-     * despegar `<reflection>...</reflection>` Luego guárdelo en este campo.
-     * 3 campo(Precisión/integridad/tono).UI No hagas renderizado todavía,Las tareas posteriores de la interfaz de usuario se mostrarán nuevamente.
+     * 由 MoodTagTransformer / ChatViewModel.updateAssistant 从 content 中
+     * 剥离 `<reflection>...</reflection>` 后存入此字段。
+     * 3 字段(准确性/完整性/语气)。UI 渲染先不做,后续 UI 任务再展示。
      */
     val reflection: String? = null,
     /**
-     * v0.47: Información de la tarjeta de llamada de herramientas(Usado por MessageBubble para representar tarjetas colapsadas,Reemplazar texto sin formato"herramienta de llamada xxx"noticias).
+     * v0.47: 工具调用卡片信息(用于 MessageBubble 渲染折叠卡片,替代纯文本"调用工具 xxx"消息)。
      *
-     * Cuando no esté vacío, MessageBubble se representará primero con ToolCallCard.,Ignora el contenido.
-     * no persistió en MessageEntity(Al reproducir sesiones históricas, este campo es null,content Aún conservando el texto sin formato.).
+     * 非空时 MessageBubble 优先用 ToolCallCard 渲染,忽略 content。
+     * 不持久化到 MessageEntity(历史会话回放时该字段为 null,content 仍保留纯文本兜底)。
      */
     val toolCallInfo: ToolCallInfo? = null,
     /**
-     * Cotización Responder:El contenido del mensaje citado.(Solo utilizado por la capa UI,No persistido en la base de datos).
-     * Cuando persista, comience con el contenido `> ` Portador de la marca.
+     * 引用回复:被引用消息的内容(仅 UI 层使用,不持久化到数据库)。
+     * 持久化时通过 content 开头的 `> ` 标记承载。
      */
     val quotedContent: String? = null,
-    /** Función1: Tecla de respuesta del emoticón del mensaje(ThumbUp/Favorite/SentimentSatisfied/SentimentDissatisfied/MoodBad/Bolt,null=Ninguno). */
+    /** 功能1: 消息表情回应键(ThumbUp/Favorite/SentimentSatisfied/SentimentDissatisfied/MoodBad/Bolt,null=无)。 */
     val reaction: String? = null,
-    /** v1.0.30: ID de grupo variante (compartido por múltiples respuestas de asistente en la misma ubicación),null = Mensaje no variante. */
+    /** v1.0.30: 变体组 ID（同位置多个 assistant 回复共享），null = 非变体消息。 */
     val variantGroupId: String? = null,
-    /** v1.0.30: Número de variante (0-based, posición en el grupo actual). */
+    /** v1.0.30: 变体序号（0-based，在当前组中的位置）。 */
     val variantIndex: Int = 0,
-    /** v1.0.30: Número total de variantes (número de mensajes dentro del grupo). */
+    /** v1.0.30: 变体总数（组内消息数）。 */
     val variantCount: Int = 1,
     /**
-     * P0 árbol de diálogo: El grupo de variantes de preguntas del usuario al que pertenece la variante del asistente. ID(parentGroupId).
-     * Se utiliza para montar con precisión las respuestas del asistente a la variante de usuario correspondiente.,Evite volver a intentar entre preguntas/Contaminación del interruptor.
-     * ConversationTreeBuilder infiere cronológicamente los nodos principales cuando los datos antiguos son nulos.
+     * P0 对话树: 助手变体所属的用户提问变体组 ID(parentGroupId)。
+     * 用于把 assistant 回复精确挂载到对应 user 变体下,避免跨提问重试/切换污染。
+     * 旧数据为 null 时由 ConversationTreeBuilder 按时间顺序推断父节点。
      */
     val parentGroupId: String? = null,
     /**
-     * v2.5.2: Referencia explícita del mensaje principal (v94 Ya existe un campo DB, que se agrega aquí para ser transportado por la capa UI).
-     * El mensaje de visualización de la herramienta apunta al mensaje del asistente correspondiente, de modo que al eliminar el mensaje del asistente, presione la cascada principal para encontrar la tarjeta de la herramienta.
-     * No dejes cartas huérfanas.
+     * v2.5.2: 显式父消息引用（v94 已有 DB 字段，此处补 UI 层承载）。
+     * 工具展示消息指向所属助手消息，使删除助手消息时按 parent 级联能找到工具卡片，
+     * 不留下孤儿卡片。
      */
     val parentMessageId: String? = null,
-    /** v1.0.47: Lista de archivos adjuntos de mensajes(Persistencia estructurada de metadatos de archivos sin formato,Provider Ignorar al enviar la solicitud,usar content). */
+    /** v1.0.47: 消息附件列表(结构化持久化原始文件元数据,Provider 发送请求时忽略,用 content)。 */
     val attachments: List<AttachmentRef> = emptyList(),
     /**
-     * A5: Metadatos de generación de mensajes(Para visualización de información,Provider Ignorar al enviar la solicitud).
+     * A5: 消息生成元数据(信息展示用,Provider 发送请求时忽略)。
      *
-     * Rellenado por ChatViewModel al final de la generación(provider Se prefiere la medición real,Visualización de estimación local de UI cuando falta):
-     *  - [durationMs] El tiempo total necesario para generar este mensaje.(milisegundos,Con ciclo de herramienta)
-     *  - [promptTokens] provider Entrada medida token(Uso de streamingDelta último valor)
-     *  - [completionTokens] provider Salida medida token
-     *  - [reasoningTokens] provider razonamiento empírico token(o1/DeepSeek-R1 espera)
-     *  - [cachedTokens] provider Caché de solicitud de prueba real**leer** token(Anthropic cache_read / OpenAI cached_tokens / Gemini cachedContentTokenCount)
-     *  - [cacheWriteTokens] provider Caché de solicitud de prueba real**escribir** token(solo Anthropic cache_creation;OpenAI/Gemini Sin este artículo, es null)
-     * Ambos son nulos, lo que indica que no hay ninguna medición real./No rellenado(Datos antiguos o proveedor no devueltos usage).
+     * 由 ChatViewModel 在生成结束时回填(provider 实测优先,缺失时 UI 本地估算展示):
+     *  - [durationMs] 本消息生成总耗时(毫秒,含工具循环)
+     *  - [promptTokens] provider 实测输入 token(流式 UsageDelta 末值)
+     *  - [completionTokens] provider 实测输出 token
+     *  - [reasoningTokens] provider 实测推理 token(o1/DeepSeek-R1 等)
+     *  - [cachedTokens] provider 实测 prompt 缓存**读取** token(Anthropic cache_read / OpenAI cached_tokens / Gemini cachedContentTokenCount)
+     *  - [cacheWriteTokens] provider 实测 prompt 缓存**写入** token(仅 Anthropic cache_creation;OpenAI/Gemini 无此项，为 null)
+     * 均为 null 表示无实测/未回填(旧数据或 provider 未返回 usage)。
      *
-     * Compatible con datos antiguos:antes de dividir [cachedTokens] El valor combinado "lectura + escritura" está instalado, no hay [cacheWriteTokens] columnas.
-     * Al leer, se conserva el valor original (explicado según "lectura", sin relleno, sin recálculo) y la cantidad de escritura es nula (desconocida).
+     * 旧数据兼容:拆分前 [cachedTokens] 装的是「读 + 写」合并值，没有 [cacheWriteTokens] 列。
+     * 读取时保留原值不动（按「读」解释，不回填、不重算），写入量为 null（未知）。
      */
     val durationMs: Long? = null,
     val promptTokens: Int? = null,
@@ -248,25 +248,25 @@ data class UIMessage(
     val cachedTokens: Int? = null,
     val cacheWriteTokens: Int? = null,
     /**
-     * H11: La traducción conserva el texto original. — El mensaje de traducción apunta al mensaje fuente traducido. id(forma de cadena).
-     * Cuando no es nula, la interfaz de usuario se proporciona debajo de la burbuja de traducción."Ver texto original"doblar,Se puede comparar con el texto original.
-     * Solo para comparación en tiempo real dentro de conversaciones,provider Ignorado al enviar la solicitud.
+     * H11: 翻译保留原文 — 译文消息指向被翻译的源消息 id(字符串形式)。
+     * 非 null 时 UI 在译文气泡下方提供"查看原文"折叠,可与原文对照。
+     * 仅对话内即时对照用,provider 发送请求时忽略。
      */
     val translationSourceId: String? = null,
     /**
-     * v2.4.6: Mapeo de traducción para este mensaje(Nombre del idioma → traducción),Conserve el mensaje en sí y no abra ningún otro mensaje del asistente.
+     * v2.4.6: 该消息的译文映射(语言名 → 译文),挂在消息本身、不再另开一条助手消息。
      *
-     * UI Se muestra debajo del mensaje en el mismo bloque expandible que MOOD/Pensamiento,No ingrese al historial de conversaciones y no participe en variaciones.
-     * provider Este campo se ignora al enviar la solicitud.
+     * UI 在消息下方以与 MOOD/思考同款的可展开块展示,不进对话历史、不参与变体。
+     * provider 发送请求时忽略此字段。
      */
     val translations: Map<String, String> = emptyMap(),
 ) {
-    /** Deletrear texto sin formato para mostrar(Sin proceso de razonamiento). */
+    /** 拼出用于显示的纯文本(不含推理过程)。 */
     fun toText(): String = content
 
     /**
-     * v1.80 (L-CORE4): deletrear para resumen/Texto coincidente contextualmente(Contiene proceso de razonamiento).
-     * memory abstracto,context Escenarios como el emparejamiento pueden requerir información de razonamiento.
+     * v1.80 (L-CORE4): 拼出用于摘要/上下文匹配的文本(含推理过程)。
+     * memory 摘要、context 匹配等场景可能需要 reasoning 信息。
      */
     fun toSummaryText(): String = buildString {
         append(content)
@@ -275,37 +275,37 @@ data class UIMessage(
 }
 
 /**
- * Segmentación del contexto consciente de la dependencia de herramientas — Regresar (fuera de la ventana, ventana interior) Dos párrafos.
+ * 工具依赖感知的上下文切分 — 返回 (窗口外, 窗口内) 两段。
  *
- * fondo:sencillo `takeLast(N)` posiblemente de assistant(tool_call) con tool(result) cortar entre,
- * Hace que el primer mensaje después del truncamiento sea un resultado de herramienta huérfano o huérfano tool_call,Proveedor de activación HTTP 400.
- * Esta función funciona hacia atrás en el punto tangente.:Si el primer mensaje involucra herramientas(tool_call / tool_result),Luego continúa retrocediendo,
- * El primer mensaje hasta el punto de corte es un mensaje ordinario que no involucra herramientas.(o volver al principio de la lista).
+ * 背景:简单的 `takeLast(N)` 可能从 assistant(tool_call) 与 tool(result) 之间切开,
+ * 导致截断后的首条消息是孤儿 tool result 或孤儿 tool_call,触发 provider HTTP 400。
+ * 本函数在切点处倒推:若切点首条消息涉及工具(tool_call / tool_result),则继续往前回退,
+ * 直到切点首条消息是不涉及工具的普通消息(或回退到列表起点)。
  *
- * La persona que llama puede crear un extracto del historial de la parte que se encuentra fuera de la ventana.(ver [ContextHistoryDigest]),Evite descartar conversaciones en silencio.
+ * 调用方可对窗口外部分构建历史摘录(见 [ContextHistoryDigest]),避免静默丢弃对话。
  *
- * comportamiento:
- *  - maxSize <= 0 o size <= maxSize:la ventana esta vacia,Todos los mensajes en la ventana.
- *  - El primer mensaje del pointcut es ASSISTANT.toolCalls no vacío o role=TOOL: startIndex-- continuar
- *  - De lo contrario, detenga la reversión.,Dentro de la ventana está subList(startIndex, size)
+ * 行为:
+ *  - maxSize <= 0 或 size <= maxSize:窗口外为空,窗口内为全部消息
+ *  - 切点首条消息是 ASSISTANT.toolCalls 非空 或 role=TOOL: startIndex-- 继续
+ *  - 否则停止回退,窗口内为 subList(startIndex, size)
  *
- * Nota:El número real de mensajes retenidos después de la reversión puede ser ligeramente superior a maxSize(Para mantener la integridad),Nada menos.
- * casos extremos(Toda la historia es una cadena de llamadas de herramientas.)startIndex caerá de nuevo a 0,Todo el historial se muestra en la ventana.
+ * 注意:回退后实际保留的消息数可能略多于 maxSize(为保完整性),不会少于。
+ * 极端情况下(整段历史都是 tool 调用链)startIndex 会回退到 0,窗口内为全部历史。
  *
- * @param maxSize El número máximo de mensajes que se espera conservar.(En realidad, puede que sea un poco más)
+ * @param maxSize 期望保留的最大消息条数(实际可能略多)
  */
 fun List<UIMessage>.splitContextWindow(maxSize: Int): Pair<List<UIMessage>, List<UIMessage>> {
     if (maxSize <= 0 || this.size <= maxSize) return emptyList<UIMessage>() to this
     var startIndex = this.size - maxSize
 
-    // Ajuste hacia atrás startIndex,Asegúrese de no romper el emparejamiento tool_call/tool_result
+    // 倒推调整 startIndex,确保不破坏 tool_call / tool_result 配对
     while (startIndex > 0) {
         val current = this[startIndex]
         val hasToolCalls = current.toolCalls?.isNotEmpty() == true
         val isToolResult = current.role == MessageRole.TOOL
 
         if (hasToolCalls || isToolResult) {
-            // Las noticias actuales involucran herramientas.,Continúe para encontrar USUARIO o ASSISTANT(tool_call)
+            // 当前消息涉及工具,往前找到配对的 USER 或 ASSISTANT(tool_call)
             startIndex--
             continue
         }
@@ -316,8 +316,8 @@ fun List<UIMessage>.splitContextWindow(maxSize: Int): Pair<List<UIMessage>, List
 }
 
 /**
- * Truncamiento del contexto según la dependencia de la herramienta — [splitContextWindow] vista de ventana(Preservar la semántica de la persona que llama existente).
+ * 工具依赖感知的上下文截断 — [splitContextWindow] 的窗口内视图(保留既有调用方语义)。
  *
- * @param maxSize El número máximo de mensajes que se espera conservar.(En realidad, puede que sea un poco más)
+ * @param maxSize 期望保留的最大消息条数(实际可能略多)
  */
 fun List<UIMessage>.limitContextWithContext(maxSize: Int): List<UIMessage> = splitContextWindow(maxSize).second

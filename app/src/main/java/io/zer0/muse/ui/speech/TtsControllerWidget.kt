@@ -44,30 +44,30 @@ import io.zer0.muse.ui.theme.MuseMotion
 import org.koin.compose.koinInject
 
 /**
- * v1.4: Controlador TTS suspendido.
+ * v1.4: 悬浮 TTS 控制器。
  *
- * Implementado con ventana flotante Redactar(No depende de la biblioteca de terceros de FloatingWindow),Mostrado en la esquina inferior derecha de la pantalla,
- * InputBar arriba. solo si [TtsManager.playbackState] Se muestra cuando no está inactivo.
+ * 用 Compose 浮窗实现(不依赖 FloatingWindow 第三方库),显示在屏幕底部右下角,
+ * InputBar 上方。仅当 [TtsManager.playbackState] 不是 Idle 时显示。
  *
- * Diseño(Botón principal redondo + barra de herramientas horizontal):
- *  - Botón principal redondo:progreso de doble anillo(Progreso del audio del círculo exterior/progreso de fragmentación del círculo interior) + Ícono central de reproducción/pausa
- *  - botón de parada
- *  - Después de desplegar:botón de velocidad(0.8x/1.0x/1.2x/1.5x bucle)+ Botón de avance rápido 5s
- *  - Expandir/Botón contraer
+ * 布局(圆形主按钮 + 横向工具栏):
+ *  - 圆形主按钮:双圆环进度(外圈音频进度 / 内圈分片进度) + 中心 Play/Pause 图标
+ *  - 停止按钮
+ *  - 展开后:速度按钮(0.8x/1.0x/1.2x/1.5x 循环)+ 快进 5s 按钮
+ *  - 展开/收起按钮
  *
- * Uso:Box Riga en ChatScreen `TtsControllerWidget(Modifier.align(BottomEnd))`.
+ * 用法:在 ChatScreen 的 Box 里加 `TtsControllerWidget(Modifier.align(BottomEnd))`。
  *
- * @param modifier alineación externa + padding(Ubicación especificada por la persona que llama)
+ * @param modifier 外部对齐 + padding(由调用方指定位置)
  */
 @Composable
 fun TtsControllerWidget(modifier: Modifier = Modifier, ttsManager: TtsManager = koinInject()) {
     val state by ttsManager.playbackState.collectAsStateWithLifecycle()
     val visible = state.status != PlaybackStatus.Idle
 
-    // Índice de ciclo de velocidad(0.8x → 1.0x → 1.2x → 1.5x)
+    // 速度档位循环索引(0.8x → 1.0x → 1.2x → 1.5x)
     val speeds = remember { listOf(0.8f, 1.0f, 1.2f, 1.5f) }
-    // L-SP5 Reparación: speedIndex/expanded Usar en su lugar rememberSaveable,Cambios de configuración(rotar/Reciclaje de fondo)El estado final no se pierde.
-    var speedIndex by rememberSaveable { mutableIntStateOf(1) } // Predeterminado 1.0x
+    // L-SP5 修复: speedIndex/expanded 改用 rememberSaveable,配置变更(旋转/后台回收)后状态不丢失
+    var speedIndex by rememberSaveable { mutableIntStateOf(1) } // 默认 1.0x
     var expanded by rememberSaveable { mutableStateOf(false) }
 
     AnimatedVisibility(
@@ -89,7 +89,7 @@ fun TtsControllerWidget(modifier: Modifier = Modifier, ttsManager: TtsManager = 
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(2.dp),
             ) {
-                // Botón principal redondo:Progreso de doble anillo + Centro Play/Pause
+                // 圆形主按钮:双圆环进度 + 中心 Play/Pause
                 CircleProgressButton(
                     isPlaying = state.status == PlaybackStatus.Playing,
                     audioProgress = if (state.durationMs > 0) {
@@ -111,7 +111,7 @@ fun TtsControllerWidget(modifier: Modifier = Modifier, ttsManager: TtsManager = 
                     },
                 )
 
-                // botón de parada
+                // 停止按钮
                 CircleIconButton(
                     contentDescription = stringResource(R.string.speech_stop_reading_cd),
                     onClick = { ttsManager.stop() },
@@ -124,7 +124,7 @@ fun TtsControllerWidget(modifier: Modifier = Modifier, ttsManager: TtsManager = 
                     )
                 }
 
-                // Después de desplegar:Navegación por cortes + 5 segundos hacia adelante y hacia atrás + doble velocidad
+                // 展开后:分片导航 + 进退 5s + 倍速
                 AnimatedVisibility(
                     visible = expanded,
                     enter = MuseMotion.expandFadeEnter(),
@@ -134,7 +134,7 @@ fun TtsControllerWidget(modifier: Modifier = Modifier, ttsManager: TtsManager = 
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(2.dp),
                     ) {
-                        // Pieza anterior
+                        // 上一片
                         CircleIconButton(
                             contentDescription = stringResource(R.string.speech_previous_chunk_cd),
                             onClick = { ttsManager.previousChunk() },
@@ -146,7 +146,7 @@ fun TtsControllerWidget(modifier: Modifier = Modifier, ttsManager: TtsManager = 
                                 modifier = Modifier.size(22.dp),
                             )
                         }
-                        // siguiente pieza
+                        // 下一片
                         CircleIconButton(
                             contentDescription = stringResource(R.string.speech_next_chunk_cd),
                             onClick = { ttsManager.nextChunk() },
@@ -158,7 +158,7 @@ fun TtsControllerWidget(modifier: Modifier = Modifier, ttsManager: TtsManager = 
                                 modifier = Modifier.size(22.dp),
                             )
                         }
-                        // Atrás 5s
+                        // 后退 5s
                         CircleIconButton(
                             contentDescription = stringResource(R.string.speech_seek_backward_5s_cd),
                             onClick = { ttsManager.seekBy(-5_000) },
@@ -170,7 +170,7 @@ fun TtsControllerWidget(modifier: Modifier = Modifier, ttsManager: TtsManager = 
                                 modifier = Modifier.size(22.dp),
                             )
                         }
-                        // avance rápido 5s
+                        // 快进 5s
                         CircleIconButton(
                             contentDescription = stringResource(R.string.speech_seek_forward_5s_cd),
                             onClick = { ttsManager.seekBy(5_000) },
@@ -182,7 +182,7 @@ fun TtsControllerWidget(modifier: Modifier = Modifier, ttsManager: TtsManager = 
                                 modifier = Modifier.size(22.dp),
                             )
                         }
-                        // botón de velocidad(Haga clic para repetir 0.8x → 1.0x → 1.2x → 1.5x)
+                        // 速度按钮(点击循环 0.8x → 1.0x → 1.2x → 1.5x)
                         CircleIconButton(
                             contentDescription = stringResource(R.string.speech_playback_speed_cd, speeds[speedIndex].toString()),
                             onClick = {
@@ -201,7 +201,7 @@ fun TtsControllerWidget(modifier: Modifier = Modifier, ttsManager: TtsManager = 
                     }
                 }
 
-                // Expandir/cerrar
+                // 展开/收起
                 CircleIconButton(
                     contentDescription = if (expanded) stringResource(R.string.common_collapse) else stringResource(R.string.common_expand),
                     onClick = { expanded = !expanded },
@@ -223,16 +223,16 @@ fun TtsControllerWidget(modifier: Modifier = Modifier, ttsManager: TtsManager = 
 }
 
 /**
- * Botón principal redondo — progreso de doble anillo(Audio del anillo exterior + corte del anillo interior)+ Ícono central de reproducción/pausa.
+ * 圆形主按钮 — 双圆环进度(外圈音频 + 内圈分片)+ 中心 Play/Pause 图标。
  *
- * - anillo exterior [CircularProgressIndicator]:Progreso de la reproducción de audio(positionMs / durationMs)
- * - Círculo interior CircularProgressIndicator: progreso de fragmentación(currentChunkIndex / totalChunks)
- * - Centro:Playing mostrar Pause(Haga clic para pausar);Paused/Ended mostrar PlayArrow(Haga clic para restaurar)
+ * - 外圈 [CircularProgressIndicator]:音频播放进度(positionMs / durationMs)
+ * - 内圈 CircularProgressIndicator:分片进度(currentChunkIndex / totalChunks)
+ * - 中心:Playing 显示 Pause(点击暂停);Paused/Ended 显示 PlayArrow(点击恢复)
  *
- * @param isPlaying ¿Se está reproduciendo actualmente?
- * @param audioProgress progreso de audio 0..1
- * @param chunkProgress Progreso de fragmentación 0..1
- * @param onClick Haga clic en devolución de llamada(cambiar de juego/pausa)
+ * @param isPlaying 当前是否在播放
+ * @param audioProgress 音频进度 0..1
+ * @param chunkProgress 分片进度 0..1
+ * @param onClick 点击回调(切换播放/暂停)
  */
 @Composable
 private fun CircleProgressButton(isPlaying: Boolean, audioProgress: Float, chunkProgress: Float, onClick: () -> Unit) {
@@ -258,19 +258,19 @@ private fun CircleProgressButton(isPlaying: Boolean, audioProgress: Float, chunk
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        // anillo exterior:progreso de audio(Tamaño 48dp,llenar todo Box)
+        // 外圈:音频进度(尺寸 48dp,填满整个 Box)
         MuseProgressBar(
             progress = animatedAudio,
             color = MaterialTheme.colorScheme.primary,
             trackColor = MaterialTheme.colorScheme.surfaceVariant,
         )
-        // círculo interior:Progreso de fragmentación(Tamaño 38dp,Deje un espacio de 5 dp)
+        // 内圈:分片进度(尺寸 38dp,留 5dp 间隙)
         MuseProgressBar(
             progress = animatedChunk,
             color = MaterialTheme.colorScheme.tertiary,
             trackColor = Color.Transparent,
         )
-        // icono central(Play / Pause cambiar)
+        // 中心图标(Play / Pause 切换)
         Icon(
             imageVector = if (isPlaying) MuseIcons.pause else MuseIcons.play,
             contentDescription = if (isPlaying) stringResource(R.string.speech_pause_cd) else stringResource(R.string.speech_resume_cd),
@@ -281,14 +281,14 @@ private fun CircleProgressButton(isPlaying: Boolean, audioProgress: Float, chunk
 }
 
 /**
- * Botón redondo pequeño universal(48dp clickable Box,Icono de poner en el centro/texto).
+ * 通用圆形小按钮(48dp clickable Box,中心放图标/文字)。
  *
- * Utilice Box + en el que se puede hacer clic en su lugar IconButton,Evite el relleno predeterminado de IconButton para expandir el diseño,Haga que las ventanas flotantes sean más compactas.
- * Toque la línea roja MD3 de alineación del objetivo(48dp = [MuseIconSizes.touchTarget]),Asegure la posibilidad de hacer clic en la ventana flotante.
+ * 用 Box + clickable 替代 IconButton,避免 IconButton 默认 padding 撑大布局,让浮窗更紧凑。
+ * 触摸目标对齐 MD3 红线(48dp = [MuseIconSizes.touchTarget]),保证浮窗内可点性。
  *
- * @param contentDescription Descripción de accesibilidad
- * @param onClick Haga clic en devolución de llamada
- * @param content contenido(Icon / Text)
+ * @param contentDescription 无障碍描述
+ * @param onClick 点击回调
+ * @param content 内容(Icon / Text)
  */
 @Composable
 private fun CircleIconButton(contentDescription: String, onClick: () -> Unit, content: @Composable () -> Unit) {

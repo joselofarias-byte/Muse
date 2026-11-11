@@ -27,20 +27,20 @@ object RenderDataTool {
     fun toolDef(): ToolRegistry.ToolDef = ToolRegistry.ToolDef(
         name = NAME,
         description =
-        "Muestra datos estructurados directamente en el chat.type=bar/line/donut cuando los datos necesitan ser " +
-            "{\"labels\":[...],\"values\":[...]};type=table cuando los datos necesitan ser " +
-            "{\"columns\":[...],\"rows\":[[...]]}. Los datos solo se procesan localmente y no acceden a la red.",
+        "在聊天中直接展示结构化数据。type=bar/line/donut 时 data 需为 " +
+            "{\"labels\":[...],\"values\":[...]}；type=table 时 data 需为 " +
+            "{\"columns\":[...],\"rows\":[[...]]}。数据仅在本地渲染，不访问网络。",
         parameters = mapOf(
-            "type" to "Requerido:bar | line | donut | table",
-            "title" to "Requerido,Título del gráfico o tabla",
-            "data" to "Datos JSON requeridos:Uso de gráficos labels/values,Uso de la mesa columns/rows",
+            "type" to "必填:bar | line | donut | table",
+            "title" to "必填,图表或表格标题",
+            "data" to "必填 JSON 数据:图表使用 labels/values,表格使用 columns/rows",
         ),
         required = setOf("type", "title", "data"),
         category = "built-in",
         riskLevel = ToolRiskLevel.SAFE,
-        // data son objetos anidados (etiquetas/valores de gráfico, columnas/filas de tabla).
-        // La implementación anterior no declaraba el tipo. → schema De forma predeterminada, está marcada como cadena y el modelo la pasará como una cadena JSON con escape.
-        // El defecto de reducción de escape de la extracción de parámetros superpuestos provocará un error en el análisis. Aquí el objeto se declara explícitamente.
+        // data 是嵌套对象（图表 labels/values、表格 columns/rows）。
+        // 旧实现未声明类型 → schema 默认标成 string，模型便把它按转义 JSON 字符串传递，
+        // 叠加参数提取的转义还原缺陷会解析失败。这里显式声明 object。
         parameterTypes = mapOf("data" to "object"),
     )
 
@@ -51,14 +51,14 @@ object RenderDataTool {
         val data = rawData?.let { runCatching { AppJson.parseToJsonElement(it) as? JsonObject }.getOrNull() }
         val rendered =
             when {
-                type == null -> error("desaparecido type")
-                title == null -> error("desaparecido title")
-                title.isBlank() -> error("title no puede estar vacío")
-                rawData == null -> error("desaparecido data")
-                data == null -> error("data Debe ser un objeto JSON")
+                type == null -> error("缺少 type")
+                title == null -> error("缺少 title")
+                title.isBlank() -> error("title 不能为空")
+                rawData == null -> error("缺少 data")
+                data == null -> error("data 必须是 JSON 对象")
                 type in CHART_TYPES -> renderChart(type, title, data)
                 type == "table" -> renderTable(title, data)
-                else -> error("type Solo soporta barra,line,donut o table")
+                else -> error("type 只支持 bar、line、donut 或 table")
             }
         return rendered
     }
@@ -66,14 +66,14 @@ object RenderDataTool {
     private fun renderChart(type: String, title: String, data: JsonObject): String {
         val labels = stringArray(data["labels"])
         val values = numberArray(data["values"])
-        // Cada una de las ramas de verificación produce un texto de error; Sólo cuando todo pasa, se produce la tarjeta JSON. ambos lados son cuerdas,
-        // Por lo tanto, no se requiere ningún criterio de tipo adicional y no se incluirá la redacción incorrecta por error. ```card bloque de código.
+        // 校验分支各自产出错误文案；只有全部通过才产出卡片 JSON。两侧都是 String，
+        // 因此不需要额外的类型判断，也不会误把错误文案包进 ```card 代码块。
         return when {
-            labels == null -> error("Las etiquetas de los gráficos deben ser una matriz de cadenas.")
-            values == null -> error("Los valores del gráfico deben ser una matriz finita de números.")
-            labels.isEmpty() || values.isEmpty() -> error("Los datos del gráfico no pueden estar vacíos")
-            labels.size != values.size -> error("labels Debe tener la misma longitud que los valores.")
-            labels.size > MAX_ROWS -> error("Los datos del gráfico admiten hasta $MAX_ROWS punto")
+            labels == null -> error("图表 labels 必须是字符串数组")
+            values == null -> error("图表 values 必须是有限数字数组")
+            labels.isEmpty() || values.isEmpty() -> error("图表数据不能为空")
+            labels.size != values.size -> error("labels 与 values 长度必须一致")
+            labels.size > MAX_ROWS -> error("图表数据最多支持 $MAX_ROWS 个点")
             else -> {
                 val cardJson =
                     buildJsonObject {
@@ -101,9 +101,9 @@ object RenderDataTool {
                 .firstOrNull { (_, cells) -> cells == null || cells.size != columns.size }
                 ?.let { (index, cells) ->
                     if (cells == null) {
-                        error("No. ${index + 1} la fila debe ser una cadena/conjunto de números")
+                        error("第 ${index + 1} 行必须是字符串/数字数组")
                     } else {
-                        error("No. ${index + 1} El número de filas y columnas no coincide con el de las columnas.")
+                        error("第 ${index + 1} 行列数与 columns 不一致")
                     }
                 }
         } else {
@@ -113,17 +113,17 @@ object RenderDataTool {
             shapeError != null -> shapeError
             rowsError != null -> rowsError
             columns != null && normalizedRows != null -> renderTableBody(title, columns, normalizedRows)
-            else -> error("Los datos de la tabla están incompletos.")
+            else -> error("表格数据不完整")
         }
     }
 
-    /** mesa"forma"Verificación de nivel (columna en sí, número de fila), devuelve nulo para indicar que se aprobó. */
+    /** 表格"形状"层面的校验（列本身、行数），返回 null 表示通过。 */
     private fun validateTableShape(columns: List<String>?, rows: JsonArray?): String? = when {
-        columns == null -> error("Las columnas de la tabla deben ser una matriz de cadenas.")
-        columns.isEmpty() -> error("La tabla requiere al menos una columna.")
-        columns.size > MAX_COLUMNS -> error("El formulario admite hasta $MAX_COLUMNS columna")
-        rows == null -> error("Las filas de la tabla deben ser una matriz bidimensional")
-        rows.size > MAX_ROWS -> error("El formulario admite hasta $MAX_ROWS OK")
+        columns == null -> error("表格 columns 必须是字符串数组")
+        columns.isEmpty() -> error("表格至少需要一列")
+        columns.size > MAX_COLUMNS -> error("表格最多支持 $MAX_COLUMNS 列")
+        rows == null -> error("表格 rows 必须是二维数组")
+        rows.size > MAX_ROWS -> error("表格最多支持 $MAX_ROWS 行")
         else -> null
     }
 

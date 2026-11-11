@@ -17,10 +17,10 @@ import org.junit.Before
 import org.junit.Test
 
 /**
- * R-TEST-05: Anthropic / Gemini / Ollama(OpenAI compatibles)Solicite una prueba de instantánea dorada de DTO.
+ * R-TEST-05: Anthropic / Gemini / Ollama(OpenAI 兼容)请求 DTO 黄金快照测试。
  *
- * Entrada fija + MockWebServer captura el cuerpo de la solicitud real,Afirmar consistente con la instantánea JSON,
- * Evite que cambios posteriores de DTO/Proveedor rompan silenciosamente el formato de solicitud.
+ * 固定输入 + MockWebServer 捕获真实请求体,断言与快照 JSON 一致,
+ * 防止后续 DTO/Provider 改动悄悄破坏请求格式。
  */
 class ProviderRequestBodySnapshotTest {
 
@@ -41,7 +41,7 @@ class ProviderRequestBodySnapshotTest {
 
     private val tool = ToolDefinition(
         name = "getWeather",
-        description = "comprobar el clima",
+        description = "查询天气",
         parametersJsonSchema = """{"type":"object","properties":{"city":{"type":"string"}}}""",
     )
 
@@ -60,11 +60,11 @@ class ProviderRequestBodySnapshotTest {
     private fun assertJsonEquals(expected: String, actual: String) {
         val expectedJson: JsonElement = AppJson.parseToJsonElement(expected)
         val actualJson: JsonElement = AppJson.parseToJsonElement(actual)
-        assertEquals("La instantánea del cuerpo de la solicitud no es coherente\nExpectativa=$expected\nreal=$actual", expectedJson, actualJson)
+        assertEquals("请求体快照不一致\n期望=$expected\n实际=$actual", expectedJson, actualJson)
     }
 
     @Test
-    fun `Anthropic Solicitar instantánea dorada del cuerpo`() = runTest {
+    fun `Anthropic 请求体黄金快照`() = runTest {
         server.enqueue(
             MockResponse().setHeader("Content-Type", "application/json").setBody(
                 """
@@ -98,7 +98,7 @@ class ProviderRequestBodySnapshotTest {
               "tools": [
                 {
                   "name": "getWeather",
-                  "description": "comprobar el clima",
+                  "description": "查询天气",
                   "input_schema": {"type":"object","properties":{"city":{"type":"string"}}}
                 }
               ]
@@ -109,7 +109,7 @@ class ProviderRequestBodySnapshotTest {
     }
 
     @Test
-    fun `Gemini Solicitar instantánea dorada del cuerpo`() = runTest {
+    fun `Gemini 请求体黄金快照`() = runTest {
         server.enqueue(
             MockResponse().setHeader("Content-Type", "application/json").setBody(
                 """
@@ -145,7 +145,7 @@ class ProviderRequestBodySnapshotTest {
                   "functionDeclarations": [
                     {
                       "name": "getWeather",
-                      "description": "comprobar el clima",
+                      "description": "查询天气",
                       "parameters": {"type":"object","properties":{"city":{"type":"string"}}}
                     }
                   ]
@@ -158,7 +158,7 @@ class ProviderRequestBodySnapshotTest {
     }
 
     @Test
-    fun `Ollama OpenAI Compatible con la instantánea dorada del cuerpo de la solicitud`() = runTest {
+    fun `Ollama OpenAI 兼容请求体黄金快照`() = runTest {
         server.enqueue(
             MockResponse().setHeader("Content-Type", "application/json").setBody(
                 """
@@ -197,7 +197,7 @@ class ProviderRequestBodySnapshotTest {
                   "type": "function",
                   "function": {
                     "name": "getWeather",
-                    "description": "comprobar el clima",
+                    "description": "查询天气",
                     "parameters": {"type":"object","properties":{"city":{"type":"string"}}}
                   }
                 }
@@ -209,7 +209,7 @@ class ProviderRequestBodySnapshotTest {
     }
 
     @Test
-    fun `OpenAI El cuerpo de la solicitud se lleva al aclarar la intención de la herramienta required tool_choice`() = runTest {
+    fun `OpenAI 请求体在明确工具意图时携带 required tool_choice`() = runTest {
         server.enqueue(
             MockResponse().setHeader("Content-Type", "application/json").setBody(
                 """{"choices":[{"message":{"role":"assistant","content":"ok"},"finish_reason":"stop"}]}""",

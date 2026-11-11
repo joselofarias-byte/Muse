@@ -111,7 +111,7 @@ class PebbleTemplateEngineTest {
         assertEquals("other", engine.render(template, mapOf("x" to 2)))
         assertEquals("other", engine.render(template, mapOf("x" to -1)))
 
-        // Pruebe también el caso de uso de comparación de cadenas original
+        // 同时测试原始的字符串比较用例
         val template2 = "{% if x == 'two' %}two{% else %}other{% endif %}"
         assertEquals("two", engine.render(template2, mapOf("x" to "two")))
         assertEquals("other", engine.render(template2, mapOf("x" to "other")))

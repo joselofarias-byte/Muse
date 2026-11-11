@@ -5,65 +5,65 @@ import io.zer0.muse.ui.SsrfGuard
 import kotlinx.serialization.Serializable
 
 /**
- * Phase 9.5 (M3): MCP Tipo de transferencia.
+ * Phase 9.5 (M3): MCP 传输类型。
  *
- * - [SSE]: Server-Sent Events transmisión(MCP 2024-11-05 normativo).
- *   Exposición del lado del servidor SSE endpoint(usado para server→client empujar)+ POST endpoint(usado para client→server Solicitar).
- *   Se aplica a versiones anteriores. MCP server(Como por ejemplo @modelcontextprotocol/server-everything v0.x).
- * - [STREAMABLE_HTTP]: Streamable HTTP transmisión(MCP 2025-03-26 normativo).
- *   soltero endpoint,POST Solicitar + Accept: application/json, text/event-stream.
- *   La respuesta puede ser una única secuencia JSON o SSE.(Depende de si el servidor necesita streaming push).
- *   Aplicable a la nueva versión MCP server(2025-03-26 después).
+ * - [SSE]: Server-Sent Events 传输(MCP 2024-11-05 规范)。
+ *   服务端暴露 SSE endpoint(用于 server→client 推送)+ POST endpoint(用于 client→server 请求)。
+ *   适用于旧版 MCP server(如 @modelcontextprotocol/server-everything v0.x)。
+ * - [STREAMABLE_HTTP]: Streamable HTTP 传输(MCP 2025-03-26 规范)。
+ *   单一 endpoint,POST 请求 + Accept: application/json, text/event-stream。
+ *   响应可以是单个 JSON 或 SSE 流(取决于 server 是否需要流式推送)。
+ *   适用于新版 MCP server(2025-03-26 之后)。
  *
- * - [STDIO]: transferencia de subproceso local (P1-A).
- *   En el tiempo de ejecución de Nodo integrado de la aplicación (MuseRuntime) para iniciar el servidor MCP local (soporte de comandos
- *   node / npm / npx), delimitando la comunicación JSON-RPC mediante líneas stdin/stdout.
- *   (Antecedentes históricos: Zeng Yin Android W^X La decisión límite no es factible y se resolvió mediante la solución de tiempo de ejecución incorporada. )
+ * - [STDIO]: 本地子进程传输（P1-A）。
+ *   在应用内置 Node 运行时（MuseRuntime）中启动本地 MCP server（命令支持
+ *   node / npm / npx），通过 stdin/stdout 行分隔 JSON-RPC 通信。
+ *   （历史背景：曾因 Android W^X 限制判定不可行，已由内置运行时方案解决。）
  */
 @Serializable
 enum class McpTransportType { SSE, STREAMABLE_HTTP, STDIO }
 
 /**
- * Phase 9.5 (M3): MCP server Estado de la conexión.
+ * Phase 9.5 (M3): MCP server 连接状态。
  */
 enum class McpConnectionState {
-    /** No conectado(Inicial / Cerrado). */
+    /** 未连接(初始 / 已关闭)。 */
     DISCONNECTED,
 
-    /** Conectando(Inicializar apretón de manos). */
+    /** 正在连接(握手 initialize 中)。 */
     CONNECTING,
 
-    /** Conectado(initialize éxito,Puede enviar y recibir solicitudes). */
+    /** 已连接(initialize 成功,可收发请求)。 */
     CONNECTED,
 
-    /** Reconectando(Retiro exponencial). */
+    /** 正在重连(指数退避中)。 */
     RECONNECTING,
 
-    /** La conexión falló(Se superó el número máximo de reintentos). */
+    /** 连接失败(超过最大重试次数)。 */
     FAILED,
 
-    /** Phase 10.4: Es necesario volver a autorizar la autorización de OAuth(token Caducó y la actualización falló). */
+    /** Phase 10.4: 需要重新 OAuth 授权(token 过期且 refresh 失败)。 */
     NEEDS_AUTH,
 }
 
 /**
- * Phase 10.4 (M3): MCP OAuth 2.1 PKCE configuración.
+ * Phase 10.4 (M3): MCP OAuth 2.1 PKCE 配置。
  *
- * MCP Requisitos de especificación OAuth 2.1(= OAuth 2.0 + fuerza PKCE + best practices).
- * Proceso de código de autorización + PKCE:
- *  1. client generar code_verifier(43-128 cadena aleatoria de caracteres)
+ * MCP 规范要求 OAuth 2.1(= OAuth 2.0 + 强制 PKCE + best practices)。
+ * 授权码流程 + PKCE:
+ *  1. client 生成 code_verifier(43-128 字符随机串)
  *  2. code_challenge = BASE64URL(SHA256(code_verifier))
- *  3. Abra el navegador para authorization_endpoint,response_type=code&code_challenge=...
- *  4. Después de la autorización del usuario,server redirigir a redirect_uri,Con parámetro de código
- *  5. client Reemplazar con código + code_verifier access_token + refresh_token
- *  6. Solicitudes de seguimiento Bearer access_token;Utilice refresco_token para renovar cuando caduque
+ *  3. 打开浏览器到 authorization_endpoint,response_type=code&code_challenge=...
+ *  4. 用户授权后,server 重定向到 redirect_uri,带 code 参数
+ *  5. client 用 code + code_verifier 换 access_token + refresh_token
+ *  6. 后续请求带 Bearer access_token;过期用 refresh_token 续期
  *
- * @param clientId OAuth client id(Necesita preinscribirse en el servidor o dynamic registration)
- * @param redirectUri devolución de llamada URI(app deep link,Como por ejemplo io.zer0.muse://oauth/callback)
- * @param authorizationEndpoint Página de autorización URL(Como por ejemplo https://server/oauth/authorize)
- * @param tokenEndpoint token Intercambio URL(Como por ejemplo https://server/oauth/token)
- * @param scopes Lista de ámbitos separados por espacios(Como por ejemplo "tools:read tools:call")
- * @param enabled Ya sea para habilitar OAuth(Para cerrar, utilice [McpServerConfig.authToken] estático token)
+ * @param clientId OAuth client id(需在 server 预注册或 dynamic registration)
+ * @param redirectUri 回调 URI(app deep link,如 io.zer0.muse://oauth/callback)
+ * @param authorizationEndpoint 授权页 URL(如 https://server/oauth/authorize)
+ * @param tokenEndpoint token 交换 URL(如 https://server/oauth/token)
+ * @param scopes 空格分隔的 scope 列表(如 "tools:read tools:call")
+ * @param enabled 是否启用 OAuth(关闭则用 [McpServerConfig.authToken] 静态 token)
  */
 @Serializable
 data class McpOAuthConfig(
@@ -76,11 +76,11 @@ data class McpOAuthConfig(
 )
 
 /**
- * Configuración de identidad de la aplicación de Feishu MCP.
+ * 飞书 MCP 的应用身份配置。
  *
- * Uso de Feishu MCP tenant_access_token(TAT)como encabezado de solicitud,El token tiene un período de validez corto.,
- * No se puede guardar como ficha de portador permanente.Muse Sólo persiste cifrado appId/appSecret,
- * Obtenga el TAT a corto plazo bajo demanda durante el tiempo de ejecución y guárdelo en caché en [McpTokenInfo].
+ * 飞书 MCP 使用 tenant_access_token(TAT)作为请求头,该 token 有效期较短,
+ * 不能把它当作永久 Bearer token 保存。Muse 只持久化加密后的 appId/appSecret,
+ * 运行时按需获取并把短期 TAT 缓存到 [McpTokenInfo]。
  */
 @Serializable
 data class McpFeishuAuthConfig(
@@ -88,16 +88,16 @@ data class McpFeishuAuthConfig(
     val appId: String = "",
     val appSecret: String = "",
 ) {
-    /** ¿Ha completado suficientes credenciales de solicitud?,Puedes intentar cambiar automáticamente por TAT. */
+    /** 是否已填写足够的应用凭证,可以尝试自动换取 TAT。 */
     fun isConfigured(): Boolean = enabled && appId.isNotBlank() && appSecret.isNotBlank()
 
-    /** Devolver una copia de la credencial cifrada,Para la persistencia del almacén de datos. */
+    /** 返回加密凭证副本,供 DataStore 持久化。 */
     suspend fun encrypted(): McpFeishuAuthConfig = copy(
         appId = SecureKeyStore.encrypt(appId),
         appSecret = SecureKeyStore.encrypt(appSecret),
     )
 
-    /** Devolver una copia de la credencial descifrada,Para usar antes de las solicitudes de MCP. */
+    /** 返回解密凭证副本,供 MCP 请求前使用。 */
     suspend fun decrypted(): McpFeishuAuthConfig = copy(
         appId = SecureKeyStore.decrypt(appId),
         appSecret = SecureKeyStore.decrypt(appSecret),
@@ -105,12 +105,12 @@ data class McpFeishuAuthConfig(
 }
 
 /**
- * Phase 10.4 (M3): OAuth token caché(persistir en DataStore).
+ * Phase 10.4 (M3): OAuth token 缓存(持久化到 DataStore)。
  *
- * @param accessToken token de acceso(Traer al solicitar Bearer)
- * @param refreshToken token de actualización(access_token Usar cuando esté caducado)
- * @param expiresAt Marca de tiempo de vencimiento(ms),0 Indica que no tiene vencimiento
- * @param scope realmente autorizado scope(puede diferir de lo solicitado scope)
+ * @param accessToken 访问令牌(请求时带 Bearer)
+ * @param refreshToken 刷新令牌(access_token 过期时用)
+ * @param expiresAt 过期时间戳(ms),0 表示无过期
+ * @param scope 实际授权的 scope(可能不同于请求的 scope)
  */
 @Serializable
 data class McpTokenInfo(
@@ -119,18 +119,18 @@ data class McpTokenInfo(
     val expiresAt: Long = 0L,
     val scope: String = "",
 ) {
-    /** ¿Ha caducado?(Deje un plazo de entrega de 30 años,Evitar caducar en el momento de la solicitud.). */
+    /** 是否已过期(留 30s 提前量,避免请求时刚好过期)。 */
     fun isExpired(now: Long = System.currentTimeMillis()): Boolean = expiresAt in 1..(now + 30_000L)
 
-    /** ¿Es válido?(Hay accessToken y no ha caducado). */
+    /** 是否有效(有 accessToken 且未过期)。 */
     fun isValid(now: Long = System.currentTimeMillis()): Boolean = accessToken.isNotBlank() && !isExpired(now)
 
-    /** Si se puede actualizar(si refreshToken). */
+    /** 是否可刷新(有 refreshToken)。 */
     fun canRefresh(): Boolean = refreshToken.isNotBlank()
 
     /**
-     * M-05: Devolver accessToken/refreshToken cifrado(ir [SecureKeyStore.encrypt])copia de,Por llamar antes que la perseverancia.
-     * Los valores nulos se dejan como están.(No cifrar valores nulos). Comportamiento coherente con WebServerConfig.encrypted.
+     * M-05: 返回 accessToken/refreshToken 已加密(走 [SecureKeyStore.encrypt])的副本,供持久化前调用。
+     * 空值原样保留(不加密空值)。与 WebServerConfig.encrypted 行为一致。
      */
     suspend fun encrypted(): McpTokenInfo = copy(
         accessToken = SecureKeyStore.encrypt(accessToken),
@@ -138,8 +138,8 @@ data class McpTokenInfo(
     )
 
     /**
-     * M-05: Devolver accessToken/refreshToken descifrado(ir [SecureKeyStore.decrypt])copia de,Se llama después de leer desde la capa de persistencia.
-     * El antiguo texto sin formato se transmite de forma transparente mediante descifrado.(compatibles). Comportamiento coherente con WebServerConfig.decrypted.
+     * M-05: 返回 accessToken/refreshToken 已解密(走 [SecureKeyStore.decrypt])的副本,供从持久化层读出后调用。
+     * 旧版明文由 decrypt 透传(兼容)。与 WebServerConfig.decrypted 行为一致。
      */
     suspend fun decrypted(): McpTokenInfo = copy(
         accessToken = SecureKeyStore.decrypt(accessToken),
@@ -148,26 +148,26 @@ data class McpTokenInfo(
 }
 
 /**
- * Phase 9.5 (M3): MCP server configuración.
+ * Phase 9.5 (M3): MCP server 配置。
  *
- * uno [McpServerConfig] Corresponde a un servidor MCP externo.Muse Conéctese a él como cliente MCP,
- * Registre sus herramientas localmente [io.zer0.muse.tools.ToolRegistry],Para llamadas a funciones LLM.
+ * 一个 [McpServerConfig] 对应一个外部 MCP server。Muse 作为 MCP client 连接到它,
+ * 把它的 tools 注册到本地 [io.zer0.muse.tools.ToolRegistry],供 LLM function calling 调用。
  *
- * @param id solo id(Se utiliza para la persistencia de la sala + prefijo del nombre de la herramienta ToolRegistry)
- * @param name nombre para mostrar(legible por el usuario,Como por ejemplo "GitHub MCP")
- * @param transportType Tipo de transmisión SSE / STREAMABLE_HTTP / STDIO
- * @param url punto final URL:
- *   - SSE: SSE endpoint(Como por ejemplo https://server/sse),client Recibir eventos de esta URL,
- *          POST endpoint Obtenido dinámicamente del campo de punto final en el evento SSE
- *   - STREAMABLE_HTTP: soltero endpoint(Como por ejemplo https://server/mcp),Todas las solicitudes PUBLICAR aquí URL
- * @param headers Encabezado de solicitud personalizado(Como autorización,X-API-Key)
- * @param authToken Bearer token(estático token,OAuth Usado cuando no está habilitado;Prioridad inferior a OAuth token)
- * @param enabled Ya sea para habilitar(Los servidores deshabilitados no se conectan automáticamente)
- * @param autoReconnect Ya sea para reconectarse automáticamente(retroceso exponencial)
- * @param maxReconnectAttempts Número máximo de reconexiones(Predeterminado 5,Cambie al estado FALLADO después de alcanzar)
- * @param reconnectBaseMs Reconectar el intervalo base(Predeterminado 1000ms,retroceso exponencial:base * 2^attempt,límite superior 30s)
- * @param requestTimeoutMs Tiempo de espera de solicitud única(Predeterminado 30s)
- * @param oauthConfig Phase 10.4: OAuth 2.1 PKCE Configuración(enabled=true prioridad al usar OAuth token)
+ * @param id 唯一 id(用于 Room 持久化 + ToolRegistry 工具名前缀)
+ * @param name 显示名(用户可读,如 "GitHub MCP")
+ * @param transportType 传输类型 SSE / STREAMABLE_HTTP / STDIO
+ * @param url 端点 URL:
+ *   - SSE: SSE endpoint(如 https://server/sse),client 从此 URL 接收事件,
+ *          POST endpoint 从 SSE 事件里的 endpoint 字段动态获取
+ *   - STREAMABLE_HTTP: 单一 endpoint(如 https://server/mcp),所有请求 POST 到此 URL
+ * @param headers 自定义请求头(如 Authorization、X-API-Key)
+ * @param authToken Bearer token(静态 token,OAuth 未启用时用;优先级低于 OAuth token)
+ * @param enabled 是否启用(禁用的 server 不自动连接)
+ * @param autoReconnect 是否自动重连(指数退避)
+ * @param maxReconnectAttempts 最大重连次数(默认 5,达到后转 FAILED 状态)
+ * @param reconnectBaseMs 重连基础间隔(默认 1000ms,指数退避:base * 2^attempt,上限 30s)
+ * @param requestTimeoutMs 单次请求超时(默认 30s)
+ * @param oauthConfig Phase 10.4: OAuth 2.1 PKCE 配置(enabled=true 时优先用 OAuth token)
  */
 @Serializable
 data class McpServerConfig(
@@ -175,7 +175,7 @@ data class McpServerConfig(
     val name: String,
     val transportType: McpTransportType = McpTransportType.STREAMABLE_HTTP,
     val url: String = "",
-    /** P1-A: stdio Comandos de inicio transmitidos (p. ej. "npx -y @modelcontextprotocol/server-filesystem /sdcard"). */
+    /** P1-A: stdio 传输的启动命令（如 "npx -y @modelcontextprotocol/server-filesystem /sdcard"）。 */
     val command: String = "",
     val headers: Map<String, String> = emptyMap(),
     val authToken: String = "",
@@ -185,19 +185,29 @@ data class McpServerConfig(
     val reconnectBaseMs: Long = 1000L,
     val requestTimeoutMs: Long = 30_000L,
     val oauthConfig: McpOAuthConfig = McpOAuthConfig(),
-    /** Feishu tenant_access_token actualiza automáticamente la configuración,Desactivado de forma predeterminada para mantener la compatibilidad con configuraciones de MCP anteriores. */
+    /** 飞书 tenant_access_token 自动刷新配置,默认关闭以保持旧 MCP 配置兼容。 */
     val feishuAuth: McpFeishuAuthConfig = McpFeishuAuthConfig(),
-    /** v1.0.92 (B-4): La marca de tiempo de la última conexión exitosa.(0=nunca lo logré);Visualización de la página de configuración"Última conexión"Usar. */
+    /** v1.0.92 (B-4): 最近一次连接成功的时间戳(0=从未成功);设置页展示"最后连接"用。 */
     val lastConnectedAt: Long = 0L,
-    /** v1.0.92 (B-2): Tiempo de espera a que esta herramienta del servidor esté lista(milisegundos);Tome el valor máximo cuando varios servidores estén esperando al mismo tiempo. */
+    /** v1.0.92 (B-2): 等待该 server 工具就绪的超时(毫秒);多 server 同时等待时取最大值。 */
     val toolsReadyTimeoutMs: Long = 5_000L,
 ) {
     /**
-     * Fusionar encabezados y authToken,Authorization Utilice encabezados primero.
+     * 这条配置**现在是否可以发起连接** —— 必填字段按传输类型选。
      *
-     * Phase 10.4: OAuth token por [McpClient] Inyectado dinámicamente antes de la solicitud.(No se maneja de esta manera),
-     * Dado que el token de OAuth puede caducar, es necesario refresh,lógica en McpClient.ensureValidToken() adentro.
-     * Este método solo maneja estática authToken(Escenarios que no son OAuth).
+     * 以前五处判定一律写死 `url.isNotBlank()`，而 STDIO 的合法形状恰恰是
+     * `command` 非空 + `url` 为空（见 [validate] 的 stdio 分支与 SSRF 豁免），
+     * 于是 stdio server 在"自动连接 / 添加 / 更新 / 就绪判断 / 等待工具"五条路径上
+     * 全被当成没配置 —— 只有 `reconnect()` 不带这个判定。
+     */
+    fun isConnectable(): Boolean = enabled && if (transportType == McpTransportType.STDIO) command.isNotBlank() else url.isNotBlank()
+
+    /**
+     * 合并 headers 和 authToken,Authorization 优先用 headers 里的。
+     *
+     * Phase 10.4: OAuth token 由 [McpClient] 在请求前动态注入(不在此方法处理),
+     * 因为 OAuth token 可能过期需要 refresh,逻辑在 McpClient.ensureValidToken() 里。
+     * 此方法只处理静态 authToken(非 OAuth 场景)。
      */
     fun resolvedHeaders(): Map<String, String> {
         val result = headers.toMutableMap()
@@ -208,8 +218,8 @@ data class McpServerConfig(
     }
 
     /**
-     * M-05: Devolver authToken cifrado(ir [SecureKeyStore.encrypt])copia de,Por llamar antes que la perseverancia.
-     * Los valores nulos se dejan como están.(No cifrar valores nulos). Comportamiento coherente con WebServerConfig.encrypted.
+     * M-05: 返回 authToken 已加密(走 [SecureKeyStore.encrypt])的副本,供持久化前调用。
+     * 空值原样保留(不加密空值)。与 WebServerConfig.encrypted 行为一致。
      */
     suspend fun encrypted(): McpServerConfig = copy(
         headers = headers.mapValues { (key, value) ->
@@ -230,8 +240,8 @@ data class McpServerConfig(
     }
 
     /**
-     * M-05: Devolver authToken descifrado(ir [SecureKeyStore.decrypt])copia de,Se llama después de leer desde la capa de persistencia.
-     * El antiguo texto sin formato se transmite de forma transparente mediante descifrado.(compatibles). Comportamiento coherente con WebServerConfig.decrypted.
+     * M-05: 返回 authToken 已解密(走 [SecureKeyStore.decrypt])的副本,供从持久化层读出后调用。
+     * 旧版明文由 decrypt 透传(兼容)。与 WebServerConfig.decrypted 行为一致。
      */
     suspend fun decrypted(): McpServerConfig = copy(
         headers = headers.mapValues { (key, value) ->
@@ -242,25 +252,25 @@ data class McpServerConfig(
     )
 
     /**
-     * G2: SSRF protección — Negarse a apuntar el servidor MCP a la red privada RFC1918/enlace local 169.254 /
-     * nube metadata(169.254.169.254)/ ULA Esperar dirección que no sea de confianza(Anti-LLM mcp_server_configure
-     * Ser inducido a dirigir el tráfico a la intranet.).
+     * G2: SSRF 防护 — 拒绝把 MCP server 指向 RFC1918 私网 / 169.254 链路本地 /
+     * 云 metadata(169.254.169.254)/ ULA 等不可信地址(防 LLM 经 mcp_server_configure
+     * 被诱导把流量打向内网)。
      *
-     * excepción:permitir loopback(localhost / 127.x / ::1)—— MCP A menudo apunta a servicios de desarrollo nativos.
-     * (Ollama / Host MCP local/herramienta web integrada server). juicio:URL debe ser http/https,
-     * Si la dirección es toda loopback, se permitirá.;El resto es juzgado por SsrfGuard por su convergencia.
+     * 例外:允许 loopback(localhost / 127.x / ::1)—— MCP 常指向本机开发服务
+     * (Ollama / 本地 MCP host / Web 工具内嵌 server)。判定:URL 必须为 http/https,
+     * 地址若全为 loopback 则放行;其余经 SsrfGuard 收敛判定。
      */
     fun isSsrfBlocked(): Boolean {
-        // P1-A: stdio Sin punto final de red,El rostro de la SSRF no existe
+        // P1-A: stdio 无网络端点,不存在 SSRF 面
         if (transportType == McpTransportType.STDIO) return false
         val uri = runCatching { java.net.URI(url) }.getOrNull()
-            ?: return true // No se puede analizar → rechazo conservador
+            ?: return true // 无法解析 → 保守拒绝
         if (uri.scheme?.lowercase() !in setOf("http", "https")) return true
         val host = uri.host ?: return true
         val resolved = runCatching { java.net.InetAddress.getAllByName(host) }.getOrNull()
-            ?: return true // El análisis falló → rechazo conservador
+            ?: return true // 解析失败 → 保守拒绝
         val all = resolved.filter { !it.isLoopbackAddress }
-        if (all.isEmpty()) return false // lleno loopback(localhost/127.x/::1)→ permitir locales MCP
+        if (all.isEmpty()) return false // 全 loopback(localhost/127.x/::1)→ 允许本地 MCP
         return SsrfGuard.isBlocked(url)
     }
 }

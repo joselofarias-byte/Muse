@@ -11,22 +11,22 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * B4-03: RAG Prueba de filtrado de metadatos.
+ * B4-03: RAG 元数据过滤测试。
  *
- * Cubrir puntos de aceptación:
- *  - sin filtro = cantidad total(metadataFilter Valor predeterminado nulo/vacío → Las personas que llaman existentes se comportan sin cambios)
- *  - Después de filtrar por documentId,enlace vectorial con BM25(Búsqueda híbrida)Los resultados del enlace son consistentes
- *  - La coincidencia de título/fuente funciona igual de bien en ambos enlaces
- *  - [VectorSearchService.MetadataFilter.matches] Determinación dimensión por dimensión
+ * 覆盖验收点:
+ *  - 无过滤 = 全量(metadataFilter 默认 null/空 → 现有调用方行为不变)
+ *  - 按 documentId 过滤后,向量链路与 BM25(混合检索)链路结果一致
+ *  - 标题 / 来源匹配在两条链路同样生效
+ *  - [VectorSearchService.MetadataFilter.matches] 逐维度判定
  *
- * datos de prueba:2 bloques cada uno para ambos documentos,Todos los vectores de bloque están en la misma dirección que la consulta.(El coseno es siempre 1.0),
- * Entonces, el conjunto de resultados solo está determinado por el filtrado de metadatos.,No afectado por el umbral de similitud.
+ * 测试数据:两个文档各 2 个块,所有块向量与查询同向(余弦恒为 1.0),
+ * 因此结果集合只由元数据过滤决定,不受相似度阈值干扰。
  */
 class MetadataFilterSearchTest {
 
     private val dim = 4
 
-    /** Todos los bloques comparten el mismo vector.,Y en la misma dirección que el vector de consulta. → La similitud del coseno es siempre 1,0. */
+    /** 所有块共用同一向量,且与查询向量同向 → 余弦相似度恒为 1.0。 */
     private val sharedVector = FloatArray(dim) { 0.5f }
 
     private data class Chunk(
@@ -38,10 +38,10 @@ class MetadataFilterSearchTest {
     )
 
     private val chunks = listOf(
-        Chunk("A1", "doc-A", "Principios generales del derecho contractual", """{"source":"upload/legal"}"""),
-        Chunk("A2", "doc-A", "Principios generales del derecho contractual", """{"source":"upload/legal"}"""),
-        Chunk("B1", "doc-B", "ley de responsabilidad extracontractual", """{"source":"web"}"""),
-        Chunk("B2", "doc-B", "ley de responsabilidad extracontractual", """{"source":"web"}"""),
+        Chunk("A1", "doc-A", "合同法总则", """{"source":"upload/legal"}"""),
+        Chunk("A2", "doc-A", "合同法总则", """{"source":"upload/legal"}"""),
+        Chunk("B1", "doc-B", "侵权责任法", """{"source":"web"}"""),
+        Chunk("B2", "doc-B", "侵权责任法", """{"source":"web"}"""),
     )
 
     private fun toChunkWithDoc(c: Chunk) = VectorSearchService.ChunkWithDoc(
@@ -61,7 +61,7 @@ class MetadataFilterSearchTest {
         chunkCountProvider = { chunks.size },
     )
 
-    /** BM25 El golpe abarca dos documentos:Proporcione ejemplos que \"deben ser excluidos por el enlace BM25\" para filtrar casos de uso. */
+    /** BM25 命中横跨两个文档:为过滤用例提供「必须被 BM25 链路剔除」的样本。 */
     private fun ftsDao(): KnowledgeChunkFtsDao {
         val fts = mockk<KnowledgeChunkFtsDao>(relaxed = true)
         coEvery { fts.searchBm25(any(), any()) } returns listOf(
@@ -95,21 +95,21 @@ class MetadataFilterSearchTest {
         val vector = vectorService()
         val vectorHits = vector.search(sharedVector, topK = 10, threshold = 0f)
         assertEquals(
-            "El enlace vectorial debe devolver todos los bloques sin filtrar",
+            "无过滤时向量链路应返回全部块",
             chunks.map { it.chunkId }.toSet(),
             vectorHits.map { it.chunkId }.toSet(),
         )
         assertEquals(setOf("doc-A", "doc-B"), vectorHits.map { it.docId }.toSet())
 
         val hybridHits = hybridService(vector).hybridSearch(
-            query = "Agravio de derecho contractual",
+            query = "合同法 侵权",
             queryVector = sharedVector,
             topK = 10,
             threshold = 0f,
             mmrLambda = 1f,
         )
         assertEquals(
-            "Mezclar sin filtración(BM25+Vector)El enlace debería devolver ambos documentos.",
+            "无过滤时混合(BM25+向量)链路应返回两个文档",
             setOf("doc-A", "doc-B"),
             hybridHits.map { it.docId }.toSet(),
         )
@@ -121,32 +121,32 @@ class MetadataFilterSearchTest {
 
         val vector = vectorService()
         val vectorHits = vector.search(sharedVector, topK = 10, threshold = 0f, metadataFilter = filter)
-        assertTrue("Los enlaces vectoriales no deben estar vacíos después de filtrar por docId", vectorHits.isNotEmpty())
+        assertTrue("向量链路按 docId 过滤后不得为空", vectorHits.isNotEmpty())
         assertTrue(
-            "Después del filtrado, los enlaces vectoriales solo pueden contener doc-A,real=${vectorHits.map { it.docId }}",
+            "向量链路过滤后只能含 doc-A,实际=${vectorHits.map { it.docId }}",
             vectorHits.all { it.docId == "doc-A" },
         )
 
-        // enlace híbrido:lado del vector filtrado,BM25 El bando también debe eliminar los impactos del doc-B.(B1)
+        // 混合链路:向量侧已过滤,BM25 侧必须同样剔除 doc-B 的命中(B1)
         val hybridHits = hybridService(vector).hybridSearch(
-            query = "derecho contractual",
+            query = "合同法",
             queryVector = sharedVector,
             topK = 10,
             threshold = 0f,
             mmrLambda = 1f,
             metadataFilter = filter,
         )
-        assertTrue("Los enlaces híbridos no deben estar vacíos después de filtrar por docId", hybridHits.isNotEmpty())
+        assertTrue("混合链路按 docId 过滤后不得为空", hybridHits.isNotEmpty())
         assertTrue(
-            "BM25(mezclar)Después del filtrado del enlace, solo puede contener doc-A,real=${hybridHits.map { it.docId }}",
+            "BM25(混合)链路过滤后只能含 doc-A,实际=${hybridHits.map { it.docId }}",
             hybridHits.all { it.docId == "doc-A" },
         )
         assertTrue(
-            "BM25 El lado debe eliminar los bloques que no sean doc-A fuera de A1/A2.",
+            "BM25 侧应剔除非 doc-A 的命中 A1/A2 之外的块",
             hybridHits.none { it.chunkId == "B1" },
         )
         assertEquals(
-            "enlace vectorial con BM25(mezclar)Las colecciones de documentos vinculados deben ser consistentes",
+            "向量链路与 BM25(混合)链路的文档集合必须一致",
             vectorHits.map { it.docId }.toSet(),
             hybridHits.map { it.docId }.toSet(),
         )
@@ -154,15 +154,15 @@ class MetadataFilterSearchTest {
 
     @Test
     fun `title keyword filter applies to both paths`() = runBlocking {
-        val filter = VectorSearchService.MetadataFilter(titleKeyword = "extracontractual")
+        val filter = VectorSearchService.MetadataFilter(titleKeyword = "侵权")
 
         val vector = vectorService()
         val vectorHits = vector.search(sharedVector, topK = 10, threshold = 0f, metadataFilter = filter)
         assertTrue(vectorHits.isNotEmpty())
-        assertTrue("Después del filtrado del encabezado, los enlaces vectoriales deben quedar solo con doc-B", vectorHits.all { it.docId == "doc-B" })
+        assertTrue("标题过滤后向量链路应只剩 doc-B", vectorHits.all { it.docId == "doc-B" })
 
         val hybridHits = hybridService(vector).hybridSearch(
-            query = "extracontractual",
+            query = "侵权",
             queryVector = sharedVector,
             topK = 10,
             threshold = 0f,
@@ -170,7 +170,7 @@ class MetadataFilterSearchTest {
             metadataFilter = filter,
         )
         assertTrue(hybridHits.isNotEmpty())
-        assertTrue("Después del filtrado de encabezados, los enlaces híbridos deben quedar solo con doc-B", hybridHits.all { it.docId == "doc-B" })
+        assertTrue("标题过滤后混合链路应只剩 doc-B", hybridHits.all { it.docId == "doc-B" })
     }
 
     @Test
@@ -180,10 +180,10 @@ class MetadataFilterSearchTest {
         val vector = vectorService()
         val vectorHits = vector.search(sharedVector, topK = 10, threshold = 0f, metadataFilter = filter)
         assertTrue(vectorHits.isNotEmpty())
-        assertTrue("Después del filtrado de fuente, los enlaces vectoriales deben quedar solo con doc-B", vectorHits.all { it.docId == "doc-B" })
+        assertTrue("来源过滤后向量链路应只剩 doc-B", vectorHits.all { it.docId == "doc-B" })
 
         val hybridHits = hybridService(vector).hybridSearch(
-            query = "infracción",
+            query = "侵权",
             queryVector = sharedVector,
             topK = 10,
             threshold = 0f,
@@ -191,17 +191,17 @@ class MetadataFilterSearchTest {
             metadataFilter = filter,
         )
         assertTrue(hybridHits.isNotEmpty())
-        assertTrue("Después del filtrado de fuente, el enlace híbrido debe quedar solo con doc-B", hybridHits.all { it.docId == "doc-B" })
+        assertTrue("来源过滤后混合链路应只剩 doc-B", hybridHits.all { it.docId == "doc-B" })
     }
 
     @Test
     fun `empty filter is treated as no filter`() = runBlocking {
         val filter = VectorSearchService.MetadataFilter()
-        assertTrue("Un filtro completamente vacío debe considerarse como sin filtrado.", filter.isEmpty())
+        assertTrue("全空 filter 应视为不过滤", filter.isEmpty())
 
         val hits = vectorService().search(sharedVector, topK = 10, threshold = 0f, metadataFilter = filter)
         assertEquals(
-            "Los resultados del filtro vacío deben ser consistentes con los resultados sin filtrado.",
+            "空 filter 结果应与无过滤一致",
             chunks.map { it.chunkId }.toSet(),
             hits.map { it.chunkId }.toSet(),
         )
@@ -214,18 +214,18 @@ class MetadataFilterSearchTest {
             tag = "rag",
             startTime = 100L,
             endTime = 200L,
-            titleKeyword = "contractual",
+            titleKeyword = "合同",
             sourceKeyword = "legal",
         )
         assertFalse(filter.isEmpty())
         val meta = """{"tag":"rag","source":"legal"}"""
 
-        assertTrue("Todas las condiciones golpean", filter.matches("doc-A", "derecho contractual", meta, 150L))
-        assertFalse("docId señorita", filter.matches("doc-B", "derecho contractual", meta, 150L))
-        assertFalse("Título perdido", filter.matches("doc-A", "ley de daños", meta, 150L))
-        assertFalse("Falta la fuente", filter.matches("doc-A", "derecho contractual", """{"tag":"rag","source":"web"}""", 150L))
-        assertFalse("tag señorita", filter.matches("doc-A", "derecho contractual", """{"source":"legal"}""", 150L))
-        assertFalse("antes que startTime", filter.matches("doc-A", "derecho contractual", meta, 50L))
-        assertFalse("más tarde que endTime", filter.matches("doc-A", "derecho contractual", meta, 250L))
+        assertTrue("全部条件命中", filter.matches("doc-A", "合同法", meta, 150L))
+        assertFalse("docId 不命中", filter.matches("doc-B", "合同法", meta, 150L))
+        assertFalse("标题不命中", filter.matches("doc-A", "侵权法", meta, 150L))
+        assertFalse("来源不命中", filter.matches("doc-A", "合同法", """{"tag":"rag","source":"web"}""", 150L))
+        assertFalse("tag 不命中", filter.matches("doc-A", "合同法", """{"source":"legal"}""", 150L))
+        assertFalse("早于 startTime", filter.matches("doc-A", "合同法", meta, 50L))
+        assertFalse("晚于 endTime", filter.matches("doc-A", "合同法", meta, 250L))
     }
 }

@@ -1,54 +1,54 @@
 package io.zer0.muse.ui.speech
 
 /**
- * Cortadora de texto — Corte el texto largo en trozos pequeños adecuados para la lectura TTS según la puntuación.
+ * 文本分片器 — 把长文本按标点切成适合 TTS 朗读的小片。
  *
- * Puntos de implementación:
- *  - Utilice la búsqueda atrás normal `(?<=[. ! ? ,,:;.!?:,\n])` Dividido por puntuación(La puntuación permanece en la pieza delantera.)
- *  - estrategia de acumulación:El segmento actual + el siguiente segmento no excederán [maxChunkLength] Solo sigue acumulando,Cortar nuevas rodajas después de exceder
- *  - Cortar con fuerza el bolsillo:Para párrafos largos sin puntuación chunked(maxChunkLength) Cortar por la fuerza,Evite una sola sección que sea demasiado larga para reventar la síntesis TTS
+ * 实现要点:
+ *  - 用 lookbehind 正则 `(?<=[。！？，、：;.!?:,\n])` 按标点切分(标点保留在前片)
+ *  - 累积策略:当前片 + 下一段不超过 [maxChunkLength] 就继续累积,超过才切新片
+ *  - 硬截断兜底:无标点长段用 chunked(maxChunkLength) 强切,避免单段过长撑爆 TTS 合成
  *
- * compensaciones de diseño:maxChunkLength = 150 Teniendo en cuenta tanto el "retraso de la síntesis" como la "naturalidad de la segmentación de la oración"
- *  - demasiado corto(<50):¿Cuántas palabras por pieza?,Alta sobrecarga de síntesis,Oraciones rotas
- *  - demasiado tiempo(>300):Síntesis de un solo chip en segundos,Retraso obvio en la primera palabra,Se produjo un error y es necesario reorganizar la película.
+ * 设计权衡:maxChunkLength = 150 兼顾「合成时延」与「断句自然度」
+ *  - 太短(<50):每片几个字,合成开销大,断句破碎
+ *  - 太长(>300):单片合成数秒,首字时延明显,出错需重整片
  */
 object TextChunker {
 
-    /** El número máximo predeterminado de caracteres en un solo chip. */
+    /** 默认单片最大字符数。 */
     const val DEFAULT_MAX_CHUNK_LENGTH = 150
 
     /**
-     * Puntuación al final de la oración(Chino e inglés + salto de línea).
-     * lookbehind `(?<=[...])` Coincidir con la posición de ancho cero después de la puntuación,String.split Cortar en esta ubicación,
-     * La puntuación en sí permanece en el párrafo anterior.(Haga una pausa natural al leer en voz alta).
+     * 句子结束标点(中英文 + 换行)。
+     * lookbehind `(?<=[...])` 匹配标点后的零宽位置,String.split 在该位置切割,
+     * 标点本身保留在前一段(朗读时停顿自然)。
      */
     private val sentenceEndRegex = Regex("(?<=[。！？，、：;.!?:,\n])")
 
     /**
-     * poner [text] Una lista de piezas cortadas en trozos adecuados para la lectura TTS.
+     * 把 [text] 切成适合 TTS 朗读的小片列表。
      *
-     * algoritmo:
-     *  1. usar [sentenceEndRegex] Dividido por puntuación,obtener el párrafo original(Se ha añadido puntuación al final del párrafo.)
-     *  2. Recorrer párrafos para acumular:El segmento actual + el siguiente segmento excede [maxChunkLength] → Enviar pieza actual,nueva película
-     *  3. Un solo segmento excede [maxChunkLength](Párrafo largo sin puntuación)→ usar [chunked] corte duro
+     * 算法:
+     *  1. 用 [sentenceEndRegex] 按标点切分,得到原始段落(标点已附在段尾)
+     *  2. 遍历段落做累积:当前片 + 下一段超过 [maxChunkLength] → 提交当前片,开新片
+     *  3. 单段超过 [maxChunkLength](无标点长段)→ 用 [chunked] 硬切
      *
-     * @param text texto original(Se recomienda pasar primero. [TtsManager.stripMarkdown] limpiar Markdown)
-     * @param maxChunkLength Número máximo de caracteres en un solo chip
-     * @return lista de fragmentos(El texto vacío/todos los espacios en blanco devuelve una lista vacía)
+     * @param text 原始文本(建议先经过 [TtsManager.stripMarkdown] 清理 Markdown)
+     * @param maxChunkLength 单片最大字符数
+     * @return 分片列表(空文本 / 全空白返回空列表)
      */
     fun chunk(text: String, maxChunkLength: Int = DEFAULT_MAX_CHUNK_LENGTH): List<String> {
         if (text.isBlank()) return emptyList()
-        // Dividido por puntuación(La puntuación permanece en la pieza delantera.),Filtrar espacios en blanco(Evite los párrafos vacíos causados ​​por la puntuación continua)
+        // 按标点切分(标点保留在前片),过滤空白片(避免连续标点产生空段)
         val rawSegments = text.split(sentenceEndRegex).filter { it.isNotBlank() }
         val result = mutableListOf<String>()
         val current = StringBuilder()
         for (segment in rawSegments) {
-            // estrategia de acumulación:El segmento actual + el siguiente segmento excede el límite superior,Envíe la película actual primero y luego abra una nueva película.
+            // 累积策略:当前片 + 下一段超过上限,先提交当前片再开新片
             if (current.isNotEmpty() && current.length + segment.length > maxChunkLength) {
                 result.add(current.toString())
                 current.clear()
             }
-            // Cortar con fuerza el bolsillo:segmento único(Párrafo largo sin puntuación)Superar el límite superior,Utilice trozos para forzar el corte
+            // 硬截断兜底:单段(无标点长段)超过上限,用 chunked 强切
             if (segment.length > maxChunkLength) {
                 if (current.isNotEmpty()) {
                     result.add(current.toString())

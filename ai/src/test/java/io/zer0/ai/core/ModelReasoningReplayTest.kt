@@ -7,79 +7,79 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * v2.5.3 (P2-1): La reproducción de inferencias a nivel de modelo reclama pruebas de análisis.
+ * v2.5.3 (P2-1): 模型级推理回放声明解析测试。
  *
- * El nuevo modelo de serie que cubre "Keep Thinking" también puede declarar la estrategia de reproducción correcta en un sitio de agregación/host desconocido.
- * y los modelos desconocidos no se declaran (dejados a ProviderCompat/comportamiento predeterminado).
+ * 覆盖「保留思考」新系模型在未知 host / 聚合站下也能声明正确回放策略，
+ * 以及未知模型不声明（交由 ProviderCompat / 默认行为）。
  */
 class ModelReasoningReplayTest {
 
     private fun declare(id: String) = ModelReasoningReplayResolver.declare(id)
 
     @Test
-    fun `deepseekDeclaración de modelo de pensamientoreasoning_contenty el campo es obligatorio`() {
+    fun `deepseek思考模型声明reasoning_content且字段必需`() {
         val d = declare("deepseek-v4-flash")
         assertNotNull(d)
         assertEquals(ReasoningCarrier.REASONING_CONTENT, d!!.carrier)
         assertEquals(ReasoningReplayPolicy.REQUIRE_TOOL_CALL, d.policy)
-        assertTrue("DeepSeek El campo del modo de pensamiento no se puede omitir y se debe enviar un marcador de posición de cadena vacía.", d.requiresNonEmptyReasoning)
+        assertTrue("DeepSeek 思考模式字段不能省，需发空串占位", d.requiresNonEmptyReasoning)
     }
 
     @Test
-    fun `kimiconglmDeclaración del Departamento de Pensamientoreasoning_content`() {
+    fun `kimi与glm思考系声明reasoning_content`() {
         listOf("kimi-k2.5", "kimi-k3", "glm-z1-air", "glm-4.7", "glm-5").forEach { id ->
             val d = declare(id)
-            assertNotNull("$id La repetición debe ser declarada.", d)
+            assertNotNull("$id 应声明回放", d)
             assertEquals(ReasoningCarrier.REASONING_CONTENT, d!!.carrier)
         }
     }
 
     @Test
-    fun `qwencondoubaoTolera los valores predeterminados para que no se requiera ocupación de cadenas vacías`() {
+    fun `qwen与doubao容忍缺省故不需要空串占位`() {
         listOf("qwen3-235b", "qwq-32b", "doubao-1.5-thinking-pro").forEach { id ->
             val d = declare(id)
-            assertNotNull("$id La repetición debe ser declarada.", d)
+            assertNotNull("$id 应声明回放", d)
             assertEquals(ReasoningCarrier.REASONING_CONTENT, d!!.carrier)
-            assertTrue("$id No se requiere un marcador de posición de cadena vacía", !d.requiresNonEmptyReasoning)
+            assertTrue("$id 不需要空串占位", !d.requiresNonEmptyReasoning)
         }
     }
 
     @Test
-    fun `openaiSistema de respuesta yanthropiccongeminiDeclarar los respectivos transportistas`() {
+    fun `openai响应系与anthropic与gemini声明各自载体`() {
         assertEquals(ReasoningCarrier.REASONING_ITEMS, declare("gpt-5")!!.carrier)
         assertEquals(ReasoningCarrier.THINKING_BLOCKS, declare("claude-sonnet-4-5")!!.carrier)
         assertEquals(ReasoningCarrier.THOUGHT_SIGNATURE, declare("gemini-3-pro")!!.carrier)
     }
 
     @Test
-    fun `El prefijo de la estación de agregación aún se puede identificar después de la normalización`() {
+    fun `聚合站前缀归一化后仍能识别`() {
         assertEquals(ReasoningCarrier.REASONING_CONTENT, declare("openrouter/deepseek/deepseek-v4")!!.carrier)
         assertEquals(ReasoningCarrier.REASONING_CONTENT, declare("siliconflow/kimi-k2.5")!!.carrier)
     }
 
     @Test
-    fun `El modelo desconocido no está declarado`() {
+    fun `未知模型不声明`() {
         assertNull(declare("some-random-model"))
         assertNull(declare(""))
         assertNull(ModelReasoningReplayResolver.declare(null))
     }
 
     @Test
-    fun `resolveen lo desconocidohostEl resultado final está cubierto por declaraciones a nivel de modelo`() {
-        // Host de estación de transferencia desconocido, el modelo es un sistema de pensamiento de búsqueda profunda -> Todavía merece un contrato de repetición
+    fun `resolve在未知host下由模型级声明兜底`() {
+        // 未知中转站 host，模型是 deepseek 思考系 -> 仍应得到回放契约
         val compat = ProviderCompatRules.resolve(
             ProviderType.OPENAI,
             "https://unknown-relay.example.com/v1",
             "deepseek-v4-flash",
         )
         val contract = compat.reasoningReplayContract
-        assertNotNull("Los hosts desconocidos deben estar cubiertos por declaraciones a nivel de modelo", contract)
+        assertNotNull("未知 host 下应由模型级声明兜底", contract)
         assertEquals(ReasoningCarrier.REASONING_CONTENT, contract!!.carrier)
     }
 
     @Test
-    fun `explícitohostDeclarar no cubierto por coberteras a nivel de modelo`() {
-        // El host oficial de Deepseek ha declarado el contrato en la capa de host y no debe reescribirse a nivel de modelo.
+    fun `显式host声明不被模型级兜底覆盖`() {
+        // 官方 deepseek host 已在 host 层声明契约，模型级不应改写
         val compat = ProviderCompatRules.resolve(
             ProviderType.OPENAI,
             "https://api.deepseek.com/v1",

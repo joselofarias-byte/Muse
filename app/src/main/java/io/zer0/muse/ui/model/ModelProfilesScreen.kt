@@ -76,7 +76,7 @@ fun ModelProfilesScreen(onBack: () -> Unit, settings: SettingsRepository = koinI
     io.zer0.muse.ui.common.surface.MusePageScaffold(
         topBar = {
             MuseTopBar(
-                title = stringResource(R.string.model_profile_title), // Correcciones en la interfaz (i18n-4)
+                title = stringResource(R.string.model_profile_title), // 前端修复 (i18n-4)
                 onBack = onBack,
             )
         },
@@ -89,8 +89,8 @@ fun ModelProfilesScreen(onBack: () -> Unit, settings: SettingsRepository = koinI
                 }
             }
             else -> {
-                // v1.131: Captura con variable local no nula,sustituto !!(Las propiedades delegadas no pueden smart-cast).
-                // La rama de carga/nula ha sido excluida en este momento,providers No debe estar vacío,Pero requireNotNull hace que el contrato sea más explícito.
+                // v1.131: 用局部非空变量捕获,替代 !!(委托属性无法 smart-cast)。
+                // 此时已排除 loading/null 分支,providers 一定非空,但 requireNotNull 让契约更显式。
                 val providerList = requireNotNull(providers) { "providers must be non-null in loaded state" }
                 val allModels = providerList.flatMap { provider ->
                     provider.models.map { model -> provider.displayName.ifBlank { provider.type.name } to model }
@@ -100,7 +100,7 @@ fun ModelProfilesScreen(onBack: () -> Unit, settings: SettingsRepository = koinI
                     Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
                         MuseEmptyState(
                             icon = MuseIcons.memoryChip,
-                            title = stringResource(R.string.model_profile_empty_title), // Correcciones en la interfaz (i18n-4)
+                            title = stringResource(R.string.model_profile_empty_title), // 前端修复 (i18n-4)
                             subtitle = stringResource(R.string.model_profile_empty_subtitle),
                         )
                     }

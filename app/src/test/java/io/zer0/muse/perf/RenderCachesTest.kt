@@ -12,14 +12,14 @@ import org.junit.Before
 import org.junit.Test
 
 /**
- * Casos de uso de Edge para el almacenamiento en caché de renderizado.
+ * 渲染缓存的边界用例。
  *
- * Esté atento a tres cosas:
- *  - Markdown sin transmisión llega directamente al caché cuando el mismo texto se ingresa en la composición por segunda vez.(No más análisis);
- *  - Cuando el caché excede el límite superior, se eliminará el elemento no utilizado más antiguo.,en lugar de un crecimiento infinito;
- *  - data-URI La imagen ya no se volverá a decodificar cuando llegue al caché.
+ * 盯住三件事:
+ *  - 非流式 Markdown 同一段正文第二次进入 composition 时直接命中缓存(不再解析);
+ *  - 缓存超出上限时淘汰最久未使用的一条,而不是无限增长;
+ *  - data-URI 图片命中缓存时不再重新解码。
  *
- * Los cachés son todos singleton a nivel de proceso.,Borre antes de que comience cada caso de uso.
+ * 缓存都是进程级单例,每个用例开始前清空。
  */
 class RenderCachesTest {
 
@@ -29,25 +29,25 @@ class RenderCachesTest {
         DataUriImageCache.clear()
     }
 
-    /** Función analítica para contar.:Omita el caché y vaya directamente al análisis real,Se utiliza para contar cuántas veces se analizó realmente. */
+    /** 计数用的解析函数:绕开缓存直接走真实解析,用来数实际解析了几次。 */
     private fun countingParser(counter: () -> Unit): (String) -> List<MarkdownBlock> = {
         counter()
         parseMarkdown(it)
     }
 
-    // ── Markdown analizar caché ──
+    // ── Markdown 解析缓存 ──
 
     @Test
     fun `same content parsed only once`() {
         var parseCount = 0
         val parse = countingParser { parseCount++ }
 
-        val first = MarkdownParseCache.getOrParse("msg-1", "## Título\nTexto", parse)
-        val second = MarkdownParseCache.getOrParse("msg-1", "## Título\nTexto", parse)
+        val first = MarkdownParseCache.getOrParse("msg-1", "## 标题\n正文", parse)
+        val second = MarkdownParseCache.getOrParse("msg-1", "## 标题\n正文", parse)
 
-        assertEquals("La segunda solicitud llega al caché.,sin reparar", 1, parseCount)
-        assertSame("Devuelve el mismo resultado de análisis cuando se golpea", first, second)
-        assertTrue("El resultado analizado no debe estar vacío.", first.isNotEmpty())
+        assertEquals("第二次应命中缓存,不重新解析", 1, parseCount)
+        assertSame("命中时返回同一份解析结果", first, second)
+        assertTrue("解析结果不应为空", first.isNotEmpty())
     }
 
     @Test
@@ -55,28 +55,28 @@ class RenderCachesTest {
         var parseCount = 0
         val parse = countingParser { parseCount++ }
 
-        MarkdownParseCache.getOrParse("msg-1", "primer párrafo", parse)
-        MarkdownParseCache.getOrParse("msg-1", "Segundo párrafo", parse)
-        MarkdownParseCache.getOrParse("msg-1", "primer párrafo", parse)
+        MarkdownParseCache.getOrParse("msg-1", "第一段", parse)
+        MarkdownParseCache.getOrParse("msg-1", "第二段", parse)
+        MarkdownParseCache.getOrParse("msg-1", "第一段", parse)
 
-        assertEquals("Cada uno de los dos párrafos de contenido se analiza una vez.,tercer golpe", 2, parseCount)
+        assertEquals("两段内容各解析一次,第三次命中", 2, parseCount)
     }
 
     @Test
     fun `cache key includes message id and content hash`() {
-        val base = MarkdownParseCache.keyOf("msg-1", "el mismo texto")
+        val base = MarkdownParseCache.keyOf("msg-1", "同一段正文")
 
-        assertNotEquals("Diferentes mensajes con el mismo contenido no comparten espacios", base, MarkdownParseCache.keyOf("msg-2", "el mismo texto"))
-        assertNotEquals("Los mismos cambios en el contenido del mensaje deben reemplazarse. key", base, MarkdownParseCache.keyOf("msg-1", "Texto corregido"))
+        assertNotEquals("不同消息同内容不共用槽位", base, MarkdownParseCache.keyOf("msg-2", "同一段正文"))
+        assertNotEquals("同消息内容变化应换 key", base, MarkdownParseCache.keyOf("msg-1", "改过的正文"))
         assertEquals(
-            "Degenera en contenido cuando no hay identificación de mensaje hash,Contenido similar tiene la misma clave",
-            MarkdownParseCache.keyOf(null, "el mismo texto"),
-            MarkdownParseCache.keyOf(null, "el mismo texto"),
+            "无消息 id 时退化为内容 hash,同类内容 key 相同",
+            MarkdownParseCache.keyOf(null, "同一段正文"),
+            MarkdownParseCache.keyOf(null, "同一段正文"),
         )
         assertNotEquals(
-            "Cuando no hay identificación, aún es necesario distinguir diferentes contenidos.",
-            MarkdownParseCache.keyOf(null, "un"),
-            MarkdownParseCache.keyOf(null, "b"),
+            "无 id 时不同内容仍要区分",
+            MarkdownParseCache.keyOf(null, "甲"),
+            MarkdownParseCache.keyOf(null, "乙"),
         )
     }
 
@@ -84,20 +84,20 @@ class RenderCachesTest {
     fun `eldest entry evicted when over capacity`() {
         val parse: (String) -> List<MarkdownBlock> = { emptyList() }
         repeat(MARKDOWN_CACHE_MAX_ENTRIES) { index ->
-            MarkdownParseCache.getOrParse(null, "contenido-$index", parse)
+            MarkdownParseCache.getOrParse(null, "内容-$index", parse)
         }
         assertEquals(MARKDOWN_CACHE_MAX_ENTRIES, MarkdownParseCache.size())
 
-        val newest = "contenido-$MARKDOWN_CACHE_MAX_ENTRIES"
+        val newest = "内容-$MARKDOWN_CACHE_MAX_ENTRIES"
         MarkdownParseCache.getOrParse(null, newest, parse)
 
-        assertEquals("Una vez que la capacidad alcance el límite superior, la cantidad de elementos ya no aumentará.", MARKDOWN_CACHE_MAX_ENTRIES, MarkdownParseCache.size())
+        assertEquals("容量达上限后条数不再增长", MARKDOWN_CACHE_MAX_ENTRIES, MarkdownParseCache.size())
         assertFalse(
-            "Se debe eliminar la entrada escrita más antigua.",
-            MarkdownParseCache.containsKey(MarkdownParseCache.keyOf(null, "contenido-0")),
+            "最早写入的条目应被淘汰",
+            MarkdownParseCache.containsKey(MarkdownParseCache.keyOf(null, "内容-0")),
         )
         assertTrue(
-            "Se debe conservar la entrada escrita más reciente.",
+            "最新写入的条目应保留",
             MarkdownParseCache.containsKey(MarkdownParseCache.keyOf(null, newest)),
         )
     }
@@ -114,23 +114,23 @@ class RenderCachesTest {
         MarkdownParseCache.getOrParse(null, huge, parse)
         MarkdownParseCache.getOrParse(null, huge, parse)
 
-        assertEquals("El texto muy largo no se almacenará en caché,analizado ambas veces", 2, parseCount)
-        assertEquals("El texto extralargo no ocupa espacios de caché", 0, MarkdownParseCache.size())
+        assertEquals("超长正文不进缓存,两次都解析", 2, parseCount)
+        assertEquals("超长正文不占缓存槽位", 0, MarkdownParseCache.size())
     }
 
-    // ── Universales LRU ──
+    // ── 通用 LRU ──
 
     @Test
     fun `lru evicts least recently used`() {
         val cache = BoundedLruCache<String, String>(2) { 1 }
         cache.put("a", "A")
         cache.put("b", "B")
-        assertNotNull("visita a,Empujarlo a usado recientemente", cache.get("a"))
+        assertNotNull("访问 a,把它推到最近使用端", cache.get("a"))
 
         cache.put("c", "C")
 
-        assertNotNull("a recién visitado,debe ser retenido", cache.get("a"))
-        assertFalse("b El que lleva más tiempo sin usarse,debe ser eliminado", cache.containsKey("b"))
+        assertNotNull("a 刚被访问过,应保留", cache.get("a"))
+        assertFalse("b 是最久未使用的,应被淘汰", cache.containsKey("b"))
         assertTrue(cache.containsKey("c"))
     }
 
@@ -143,11 +143,11 @@ class RenderCachesTest {
 
         cache.put("k3", "cccc")
 
-        assertEquals("Los límites en bytes están vigentes.", 8, cache.totalSize())
+        assertEquals("按字节计的上限生效", 8, cache.totalSize())
         assertEquals(2, cache.size())
     }
 
-    // ── data-URI Caché de imagen ──
+    // ── data-URI 图片缓存 ──
 
     @Test
     fun `image cache hit does not decode again`() {
@@ -163,7 +163,7 @@ class RenderCachesTest {
             "decoded-bitmap"
         }
 
-        assertEquals("No se debe volver a decodificar al acceder al caché", 1, decodeCount)
+        assertEquals("命中缓存时不应重新解码", 1, decodeCount)
         assertSame(first, second)
     }
 

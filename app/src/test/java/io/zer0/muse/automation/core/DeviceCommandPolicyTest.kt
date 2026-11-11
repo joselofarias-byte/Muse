@@ -3,7 +3,7 @@ package io.zer0.muse.automation.core
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** v2.x Automatización Fase I:device_shell Política de lista blanca de comandos. */
+/** v2.x 自动化一期:device_shell 命令白名单策略。 */
 class DeviceCommandPolicyTest {
     private fun valid(cmd: String) = DeviceCommandPolicy.validate(cmd) is DeviceCommandPolicy.Check.Valid
 
@@ -36,7 +36,7 @@ class DeviceCommandPolicyTest {
             "`reboot`",
             "input text \$(reboot)",
         )) {
-            assertTrue("debe ser rechazado: $bad", invalid(bad))
+            assertTrue("应拒绝: $bad", invalid(bad))
         }
     }
 

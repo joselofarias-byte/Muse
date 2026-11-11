@@ -5,27 +5,27 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
 /**
- * v2.x: Puente de importación de paquetes de caracteres externos.
+ * v2.x: 外部角色包导入桥。
  *
- * Recibido de VER intención .muse-assistant URI(Haga clic en el archivo del paquete de personajes fuera de la aplicación.)pasó a
- * Página del asistente,Vaciar después del consumo mediante el cuadro de diálogo de vista previa de importación.
+ * 从 VIEW Intent 收到的 .muse-assistant URI(应用外点开角色包文件)经此传递到
+ * 助手页,由导入预览对话框消费后清空。
  *
- * Utilizado bajo arquitectura de actividad única de proceso único [StateFlow]:No importa"No en la página del asistente cuando se recibió"Aún así
- * "Recibido nuevamente en la página del asistente."Dos tiempos,Se puede comprar en el lado de red de la página del asistente.
+ * 单进程单 Activity 架构下用 [StateFlow]:无论"收到时不在助手页"还是
+ * "已在助手页再收到"两种时序,助手页的收集端都能消费到。
  */
 object AssistantCardImportBridge {
 
     private val _pendingUri = MutableStateFlow<Uri?>(null)
 
-    /** Paquete de personajes a importar URI(null = Nada pendiente). */
+    /** 待导入的角色包 URI(null = 无待处理)。 */
     val pendingUri: StateFlow<Uri?> = _pendingUri
 
-    /** Registros a importar URI(Llamado por el controlador de intención de MainActivity). */
+    /** 记录待导入 URI(由 MainActivity 的 Intent 处理调用)。 */
     fun offer(uri: Uri) {
         _pendingUri.value = uri
     }
 
-    /** consumir y aclarar(Llamado por AssistantScreen). */
+    /** 消费并清空(由 AssistantScreen 调用)。 */
     fun consume() {
         _pendingUri.value = null
     }

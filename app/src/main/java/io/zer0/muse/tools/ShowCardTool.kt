@@ -1,39 +1,39 @@
 package io.zer0.muse.tools
 
 /**
- * show_card Herramientas.
+ * show_card 工具。
  *
- * Agent Genere contenido de tarjeta HTML/SVG y presentelo en línea en la conversación; el renderizado real lo maneja el renderizador de tarjetas en el lado de la interfaz de usuario.
+ * Agent 生成 HTML/SVG 卡片内容，在对话中内联渲染；实际渲染由 UI 侧的卡片渲染器处理。
  *
- * ## Propiedad de la identidad de la tarjeta
+ * ## 卡片身份归属
  *
- * La herramienta no genera ni devuelve la identidad de la tarjeta. La identidad de la tarjeta es**el mensaje que lo lleva id**,
- * Sólo la capa de renderizado lo sabe. Se aprobó el guión de la tarjeta `window.muse.cardId` Léelo.
+ * 工具不产生、也不返回卡片的身份标识。卡片的身份是**承载它的那条消息的 id**，
+ * 只有渲染层知道。卡片脚本通过 `window.muse.cardId` 读到它。
  *
- * Solía ​​haber una identificación única autogenerada (`c_<ts>_<seq>`) y utilizarlo como clave para el enlace de datos,
- * El resultado es que se almacena una identificación en ambos extremos: la tarjeta se verifica mediante la identificación del mensaje y la herramienta se verifica mediante `c_xxx` escribir,
- * Lo que se lee siempre es nulo y no se informa ningún error. Una identidad sólo puede tener una fuente.
+ * 这里曾有过一个自己生成的一次性 id（`c_<ts>_<seq>`）并把它当作数据绑定的 key，
+ * 结果是两端各存一个 id：卡片按消息 id 去查、工具按 `c_xxx` 去写，
+ * 读到的永远是 null，而且不报错。身份只能有一个来源。
  */
 object ShowCardTool {
 
     /**
-     * analizar `update_card_data` La identificación de la tarjeta de destino.
+     * 解析 `update_card_data` 的目标卡片 id。
      *
-     * Señala cuando card_id se omite del modelo**El mensaje actual del asistente.**Tarjeta encendida: Acaba de terminar show_card,
-     * Lo único que sabe con seguridad es "éste", no una identificación que nunca antes haya visto.
-     * Si se da explícitamente prevalecerá (cambie la tarjeta en un mensaje anterior), y la verificación quedará en manos de quien llama.
+     * 模型省略 card_id 时指向**当前这条助手消息**上的卡片：它刚 show_card 完，
+     * 手上唯一确定的就是「这一条」，而不是一个它从未见过的 id。
+     * 显式给了就以它为准（改之前某条消息里的卡片），校验交给调用方。
      *
-     * El propósito de extraer funciones puras es permitir pruebas únicas: esta lógica es inaccesible cuando está integrada en la lambda registrada por la herramienta.
+     * 抽成纯函数是为了能单测：这段逻辑嵌在工具注册的 lambda 里时不可达。
      */
     internal fun resolveCardTarget(requested: String?, contextMessageId: String?): String =
         requested?.trim().orEmpty().ifBlank { contextMessageId?.trim().orEmpty() }
 
     fun toolDef() = ToolRegistry.ToolDef(
         name = "show_card",
-        description = "Mostrar contenido visual(SVG Gráfico, cuadro o interactivo HTML),Procese en línea en tarjetas interactivas en un WebView de espacio aislado." +
-            "Adecuado para diagramas de flujo, paneles de control, tablas de datos y líneas de tiempo.,O cualquier cosa que requiera distribución espacial." +
-            "No incluya DOCTYPE,<html>,<head>,<body> etiqueta,Ofrezca sólo fragmentos de contenido." +
-            "La tarjeta lee su propia identidad a través de window.muse.cardId;Esta herramienta no devuelve identificadores.",
+        description = "展示可视化内容(SVG 图形、图表或交互式 HTML),在沙箱 WebView 里内联渲染成可交互卡片。" +
+            "适用于流程图、仪表盘、数据表、时间线,或任何需要空间布局的内容。" +
+            "不要包含 DOCTYPE、<html>、<head>、<body> 标签,只给内容片段。" +
+            "卡片通过 window.muse.cardId 读取自身身份;本工具不返回 id。",
         parameters = mapOf(
             "title" to "Required. Short snake_case identifier (e.g. 'q4_revenue_chart').",
             "code" to "Required. HTML or SVG fragment. Use CSS variables for theming.",
@@ -45,22 +45,22 @@ object ShowCardTool {
         ),
         required = setOf("title", "code"),
         category = "built-in",
-        // v2.6.10: Las cartas son puramente acciones de visualización.,Representación en un WebView en espacio aislado,Sin efectos secundarios del dispositivo.
-        // Después de regresar a SAFE, ya no se aprobarán uno por uno. —— De lo contrario, en el modo PREGUNTAR, cada tarjeta esperará a que el usuario haga clic y acepte.,
-        // 30 Rechazar automáticamente después de un tiempo de espera de segundos,La percepción del usuario es"No se puede generar la tarjeta".
+        // v2.6.10: 卡片是纯展示动作,渲染在沙盒 WebView 里,无设备副作用。
+        // 归 SAFE 后不再逐次审批 —— 否则 ASK 模式下每张卡都等用户点同意,
+        // 30 秒超时即自动拒绝,用户感知就是"卡片生成不了"。
         riskLevel = ToolRiskLevel.SAFE,
     )
 
     /**
-     * Verificar parámetros y dar un resumen ejecutivo.
+     * 校验参数并给出一句执行摘要。
      *
-     * tarjeta `data` No es necesario colocar los parámetros aquí: la capa de renderizado los sacará de los parámetros de la herramienta tal como están y los inyectará en línea.
-     * (Ver `parseShowCardArgs` → `inlineCardData`), esa ruta no depende de ninguna convención de identificación.
-     * Las actualizaciones posteriores serán proporcionadas por `update_card_data` Escriba según la identificación del mensaje y los usos de la tarjeta. `window.muse.data.onChange`
-     * Sólo suscríbete.
+     * 卡片的 `data` 参数不需要在这里落盘：渲染层会从工具参数里把它原样取出并内联注入
+     * （见 `parseShowCardArgs` → `inlineCardData`），那条路径不依赖任何 id 约定。
+     * 后续更新由 `update_card_data` 按消息 id 写入，卡片用 `window.muse.data.onChange`
+     * 订阅即可。
      *
-     * @param messageId El host inyecta la identificación del mensaje que lleva esta tarjeta. El recibo le dirá al modelo:
-     *   Cuando el propio modelo quiere actualizar esta tarjeta, necesita una identificación que le dé un nombre y no puede saberlo desde ningún otro lugar.
+     * @param messageId 承载这张卡的消息 id，由宿主注入。回执里会把它告诉模型：
+     *   模型自己要更新这张卡时，需要一个能指名它的 id，而它无法从其他地方得知。
      */
     fun execute(args: Map<String, String>, messageId: String? = null): String {
         val title = args["title"]?.trim()

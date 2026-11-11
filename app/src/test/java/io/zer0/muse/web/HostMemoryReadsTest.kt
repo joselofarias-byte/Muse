@@ -9,23 +9,19 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** `memory.list` / `memory.search` prueba de proyección de carga(Paginación, truncamiento, fragmentos, categorías de fuentes.). */
+/** `memory.list` / `memory.search` 的载荷投影测试(分页、截断、片段、来源类别)。 */
 class HostMemoryReadsTest {
 
-    private fun record(
-        id: Long,
-        content: String = "memoria $id",
-        source: String = HostMemorySourceKind.CONVERSATION,
-        pinned: Boolean = false,
-    ) = HostMemoryRecord(
-        id = id.toString(),
-        content = content,
-        createdAt = "2026-10-31T0$id:00:00Z",
-        source = source,
-        pinned = pinned,
-    )
+    private fun record(id: Long, content: String = "记忆 $id", source: String = HostMemorySourceKind.CONVERSATION, pinned: Boolean = false) =
+        HostMemoryRecord(
+            id = id.toString(),
+            content = content,
+            createdAt = "2026-10-31T0$id:00:00Z",
+            source = source,
+            pinned = pinned,
+        )
 
-    /** 1..[count] entrada,Simular identificación de incremento automático. */
+    /** 1..[count] 号条目,模拟自增 id。 */
     private fun records(count: Int): List<HostMemoryRecord> = (1..count).map { record(it.toLong()) }
 
     @Test
@@ -35,7 +31,7 @@ class HostMemoryReadsTest {
         val first = HostMemoryReads.page(all, cursor = null, limit = HostMemoryReads.DEFAULT_LIMIT)
         assertEquals(30, first.entries.size)
         assertTrue(first.hasMore)
-        // Lo más nuevo en stock primero:75 comenzando con el número,46 El número termina.
+        // 最新入库在前:75 号开头,46 号收尾。
         assertEquals("75", first.entries.first().id)
         val cursor = first.entries.last().id.toLong()
         assertEquals("46", first.entries.last().id)
@@ -47,10 +43,10 @@ class HostMemoryReadsTest {
 
         val third = HostMemoryReads.page(all, cursor = second.entries.last().id.toLong(), limit = HostMemoryReads.DEFAULT_LIMIT)
         assertEquals(15, third.entries.size)
-        assertFalse("La última página no debe mencionarse y hay otra página.", third.hasMore)
+        assertFalse("最后一页不该再说还有下一页", third.hasMore)
         assertEquals("1", third.entries.last().id)
 
-        // Las tres páginas juntas son exactamente la colección completa.,Sin duplicaciones ni omisiones.
+        // 三页拼起来正好是全集,没有重复也没有跳条。
         val ids = (first.entries + second.entries + third.entries).map { it.id }
         assertEquals(75, ids.size)
         assertEquals(75, ids.distinct().size)
@@ -82,7 +78,7 @@ class HostMemoryReadsTest {
 
     @Test
     fun `a cursor that is no longer in the list still continues by id`() {
-        // La última entrada en la página anterior fue eliminada.:Ancla no encontrada,También debemos continuar recuperando la identificación anterior.,No puedo volver a la primera página.
+        // 上一页最后一条被删了:锚点找不到,也要接着往更早的 id 取,不能回到第一页。
         val page = HostMemoryReads.page(records(10), cursor = 4, limit = 3)
 
         assertEquals(listOf("3", "2", "1"), page.entries.map { it.id })
@@ -91,7 +87,7 @@ class HostMemoryReadsTest {
 
     @Test
     fun `list truncates long content to two hundred characters`() {
-        val long = "Memoria muy larga.".repeat(100)
+        val long = "很长的记忆。".repeat(100)
 
         val event = HostMemoryReads.listEvent(listOf(record(1, content = long)), null, 30, "req-trunc")
 
@@ -120,30 +116,34 @@ class HostMemoryReadsTest {
 
     @Test
     fun `search returns hits with a snippet around the keyword`() {
-        val content = "A los usuarios les gusta acudir los fines de semana a librerías de segunda mano en el oeste de la ciudad." + "Hay muchos detalles más adelante.".repeat(20)
+        val content = "用户喜欢在周末去城西的旧书店。" + "后面还有很多细节。".repeat(20)
 
         val event = HostMemoryReads.searchEvent(
-            query = "segunda mano",
+            query = "旧书店",
             records = listOf(record(7, content = content, pinned = true)),
             requestId = "req-search",
         )
 
         assertEquals(HostMemoryReads.TYPE_SEARCH, event.type)
-        val hit = event.memoryHits.single()
-        assertTrue("El fragmento debe contener la palabra clave.: ${hit.snippet}", hit.snippet.contains("segunda mano"))
-        assertTrue(hit.snippet.length <= HostMemoryReads.SNIPPET_LIMIT)
-        assertEquals("7", hit.entry.id)
-        assertTrue(hit.entry.pinned)
-        // La estructura de entrada es la misma que la lista.(Texto truncado a 200 palabras).
-        assertTrue(hit.entry.content.length <= HostMemoryReads.CONTENT_LIMIT)
+        val hit = event.memory.single()
+        // 命中片段现在**扁平挂在条目上**（客户端的 HostMemoryItem 就是扁平形状）；
+        // 用 requireNotNull 而不是 `?.` + `== true`：后者在 snippet 为 null 时只会静默失败，
+        // 给不出"扁平化没生效"这条信息。
+        val snippet = requireNotNull(hit.snippet) { "搜索命中必须自带片段，实际=$hit" }
+        assertTrue("片段应包含命中词: $snippet", snippet.contains("旧书店"))
+        assertTrue(snippet.length <= HostMemoryReads.SNIPPET_LIMIT)
+        assertEquals("7", hit.id)
+        assertTrue(hit.pinned)
+        // 条目结构与列表同一套(正文按 200 字截断)。
+        assertTrue(hit.content.length <= HostMemoryReads.CONTENT_LIMIT)
     }
 
     @Test
     fun `search with no hit returns an empty array`() {
-        val event = HostMemoryReads.searchEvent(query = "algo que no existe", records = emptyList(), requestId = "req-miss")
+        val event = HostMemoryReads.searchEvent(query = "不存在的东西", records = emptyList(), requestId = "req-miss")
 
         assertEquals(HostMemoryReads.TYPE_SEARCH, event.type)
-        assertTrue(event.memoryHits.isEmpty())
+        assertTrue(event.memory.isEmpty())
         assertNull(event.error)
     }
 
@@ -164,5 +164,22 @@ class HostMemoryReadsTest {
         assertEquals(event, decoded)
         assertEquals(2, decoded.memory.size)
         assertEquals(true, decoded.hasMore)
+    }
+
+    /** 时间转换的边界：三种历史形态都要认，认不出的必须留空而不是编一个日期。 */
+    @Test
+    fun `memory createdAt converts known shapes and falls back to zero`() {
+        assertTrue(
+            "Instant 形态应转出毫秒",
+            memoryCreatedAtToMillis("2024-01-02T03:04:05Z") > 0,
+        )
+        assertEquals(
+            "同一时刻的两种写法必须给出同一个毫秒数",
+            memoryCreatedAtToMillis("2024-01-02T03:04:05Z"),
+            memoryCreatedAtToMillis("2024-01-02T11:04:05+08:00"),
+        )
+        assertEquals("纯毫秒数字串原样接受", 1_700_000_000_000L, memoryCreatedAtToMillis("1700000000000"))
+        assertEquals("空串按未知时间", 0L, memoryCreatedAtToMillis("   "))
+        assertEquals("乱码不得编出一个日期", 0L, memoryCreatedAtToMillis("昨天下午三点"))
     }
 }

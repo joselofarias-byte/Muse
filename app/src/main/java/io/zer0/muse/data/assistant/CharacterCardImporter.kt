@@ -11,41 +11,41 @@ import kotlinx.serialization.json.jsonObject
 import java.io.ByteArrayOutputStream
 
 /**
- * SillyTavern Importador de tarjetas de personajes.
+ * SillyTavern 角色卡导入器。
  *
- * Soporta dos fuentes:
- *  - PNG fotos: tEXt chunk (keyword="chara") Almacenar codificado en base64 JSON
- *  - JSON Archivo: Analizado directamente en tarjetas de personajes V1/V2
+ * 支持两种来源:
+ *  - PNG 图片: tEXt chunk (keyword="chara") 存储 base64 编码的 JSON
+ *  - JSON 文件: 直接解析为 V1/V2 角色卡
  *
- * PNG chunk Analizar implementación manual (ver [PngChunkUtil]),No se introducen bibliotecas PNG de terceros.
+ * PNG chunk 解析手动实现 (见 [PngChunkUtil]),不引入第三方 PNG 库。
  *
- * V1/V2 reconocimiento automático:JSON La capa superior contiene "spec" Los campos son tratados como V2,De lo contrario, se analiza según la estructura plana V1.
+ * V1/V2 自动识别:JSON 顶层含 "spec" 字段视为 V2,否则按 V1 扁平结构解析。
  *
- * No hay nuevas dependencias,Simplemente use android.util.Base64 + ContentResolver.
+ * 不新增依赖,仅用 android.util.Base64 + ContentResolver。
  *
- * Siga las convenciones de formato de tarjeta de personaje v2 de SillyTavern:PNG tEXt chunk y JSON dos operadores.
+ * 遵循 SillyTavern 角色卡 v2 格式约定:PNG tEXt chunk 与 JSON 两种载体。
  */
 object CharacterCardImporter {
 
     private const val TAG = "CharacterCardImporter"
 
-    // Restricción en fila única 20MB,Evite que archivos grandes maliciosos causen OOM (Las tarjetas de personajes generalmente < 5MB)
+    // 限制单文件 20MB,防止恶意大文件导致 OOM (角色卡通常 < 5MB)
     private const val MAX_FILE_BYTES = 20L * 1024 * 1024
 
     /**
-     * Importe tarjetas de personajes desde metadatos de imágenes PNG.
+     * 从 PNG 图片元数据导入角色卡。
      *
-     * PNG tEXt chunk Formato: length(4) + "tEXt"(4) + keyword + 0x00 + text + CRC(4)
-     * SillyTavern Acuerdo keyword="chara", text=base64(JSON).
+     * PNG tEXt chunk 格式: length(4) + "tEXt"(4) + keyword + 0x00 + text + CRC(4)
+     * SillyTavern 约定 keyword="chara", text=base64(JSON)。
      *
-     * @return Devuelve con éxito los datos de la tarjeta de personaje. [AssistantEntity] (id esta vacio, La persona que llama necesita generar una identificación y upsert);
-     *         Retorno del fracaso Result.failure
+     * @return 成功返回包含角色卡数据的 [AssistantEntity] (id 为空, 调用方需生成 id 并 upsert);
+     *         失败返回 Result.failure
      */
     suspend fun importFromPng(context: Context, uri: Uri): Result<AssistantEntity> = withContext(Dispatchers.IO) {
         runCatching {
-            val bytes = readUriWithLimit(context, uri) ?: error("No se puede leer el archivo")
+            val bytes = readUriWithLimit(context, uri) ?: error("无法读取文件")
             val base64Text = PngChunkUtil.readTextChunk(bytes, "chara")
-                ?: error("PNG metadatos de chara no encontrados en (Tarjetas de personajes que no son de SillyTavern)")
+                ?: error("PNG 中未找到 chara 元数据 (非 SillyTavern 角色卡)")
             val json = String(Base64.decode(base64Text, Base64.DEFAULT), Charsets.UTF_8)
             val card = parseCardJson(json)
             card.toAssistantEntity()
@@ -53,11 +53,11 @@ object CharacterCardImporter {
     }
 
     /**
-     * Importar tarjetas de personajes desde un archivo JSON (V1 Disponible en construcción plana o envuelta V2).
+     * 从 JSON 文件导入角色卡 (V1 扁平结构或 V2 包裹结构均可)。
      */
     suspend fun importFromJson(context: Context, uri: Uri): Result<AssistantEntity> = withContext(Dispatchers.IO) {
         runCatching {
-            val bytes = readUriWithLimit(context, uri) ?: error("No se puede leer el archivo")
+            val bytes = readUriWithLimit(context, uri) ?: error("无法读取文件")
             val json = String(bytes, Charsets.UTF_8)
             val card = parseCardJson(json)
             card.toAssistantEntity()
@@ -65,12 +65,12 @@ object CharacterCardImporter {
     }
 
     /**
-     * Reconoce formatos e importa automáticamente.
+     * 自动识别格式并导入。
      *
-     * estrategia de despacho:
-     *  - MIME Contiene "png" → ir [importFromPng]
-     *  - MIME Contiene "json" → ir [importFromJson]
-     *  - MIME desconocido → Pruebe primero PNG, Inténtalo de nuevo después del fracaso. JSON (Compatible con fuentes donde MIME no está anotado correctamente)
+     * 分派策略:
+     *  - MIME 含 "png" → 走 [importFromPng]
+     *  - MIME 含 "json" → 走 [importFromJson]
+     *  - MIME 未知 → 先试 PNG, 失败再试 JSON (兼容未正确标注 MIME 的来源)
      */
     suspend fun importAuto(context: Context, uri: Uri): Result<AssistantEntity> = withContext(Dispatchers.IO) {
         val mime = runCatching { context.contentResolver.getType(uri) }.getOrNull() ?: ""
@@ -78,16 +78,16 @@ object CharacterCardImporter {
             mime.contains("png", ignoreCase = true) -> importFromPng(context, uri)
             mime.contains("json", ignoreCase = true) -> importFromJson(context, uri)
             else -> {
-                // MIME desconocido: Pruebe primero PNG, Repliegue ante el fracaso JSON
+                // MIME 未知: 先试 PNG, 失败回退 JSON
                 val pngResult = importFromPng(context, uri)
                 if (pngResult.isSuccess) pngResult else importFromJson(context, uri)
             }
         }
     }
 
-    // ── herramientas internas ──
+    // ── 内部工具 ──
 
-    /** Leer todos los bytes de URI,exceder [MAX_FILE_BYTES] rechazar,Devuelve nulo. */
+    /** 读 URI 全部字节,超过 [MAX_FILE_BYTES] 拒绝,返回 null。 */
     private fun readUriWithLimit(context: Context, uri: Uri): ByteArray? {
         return try {
             context.contentResolver.openInputStream(uri)?.use { input ->
@@ -98,7 +98,7 @@ object CharacterCardImporter {
                 while (input.read(buf).also { read = it } > 0) {
                     total += read
                     if (total > MAX_FILE_BYTES) {
-                        Logger.w(TAG, "El archivo excede ${MAX_FILE_BYTES / 1024 / 1024}MB límite superior, Importación rechazada")
+                        Logger.w(TAG, "文件超过 ${MAX_FILE_BYTES / 1024 / 1024}MB 上限, 拒绝导入")
                         return null
                     }
                     out.write(buf, 0, read)
@@ -111,15 +111,15 @@ object CharacterCardImporter {
         }
     }
 
-    /** Analizar JSON en tarjetas V2;Reconoce automáticamente la estructura plana V1 y la envuelve en V2. */
+    /** 解析 JSON 为 V2 卡片;自动识别 V1 扁平结构并包裹为 V2。 */
     private fun parseCardJson(json: String): SillyTavernCardV2 {
         val element = AppJson.parseToJsonElement(json)
         val obj = element.jsonObject
         return if (obj["spec"] != null) {
-            // V2: El nivel superior contiene el campo de especificaciones.,Decodificar directamente
+            // V2: 顶层含 spec 字段,直接解码
             AppJson.decodeFromString(SillyTavernCardV2.serializer(), json)
         } else {
-            // V1: estructura plana,Trate el campo plano como datos y envuélvalo en V2
+            // V1: 扁平结构,把 flat 字段当 data 包成 V2
             val data = AppJson.decodeFromString(SillyTavernCardData.serializer(), json)
             SillyTavernCardV2(data = data)
         }

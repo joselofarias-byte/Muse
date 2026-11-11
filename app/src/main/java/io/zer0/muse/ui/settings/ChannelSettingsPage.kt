@@ -41,6 +41,7 @@ import io.zer0.muse.channel.ChannelConfig
 import io.zer0.muse.channel.ChannelInbox
 import io.zer0.muse.channel.ChannelManager
 import io.zer0.muse.channel.ChannelPlatform
+import io.zer0.muse.channel.ChannelPolicy
 import io.zer0.muse.channel.DingtalkReceiver
 import io.zer0.muse.channel.FeishuReceiver
 import io.zer0.muse.channel.QqReceiver
@@ -51,6 +52,9 @@ import io.zer0.muse.channel.buildCredentials
 import io.zer0.muse.data.assistant.AssistantRepository
 import io.zer0.muse.ui.common.feedback.MuseDialog
 import io.zer0.muse.ui.common.feedback.MuseToast
+import io.zer0.muse.ui.common.form.IosCapsuleButtonVariant
+import io.zer0.muse.ui.common.form.MuseBottomSheet
+import io.zer0.muse.ui.common.form.MuseCapsuleButton
 import io.zer0.muse.ui.common.form.MuseDropdown
 import io.zer0.muse.ui.common.form.MuseSwitch
 import io.zer0.muse.ui.common.form.MuseTextField
@@ -67,12 +71,12 @@ import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
 /**
- * v1.0.92: Página de configuración del canal de mensajes — Puente de mensajería instantánea externa(Feishu/QQ, etc.).
+ * v1.0.92: 消息渠道配置页 — 外部 IM 桥接(飞书 / QQ 等)。
  *
- * Responsabilidades:
- *  - lista de canales(Iniciar/detener interruptor/editar/eliminar);
- *  - agregar/Editar cuadro de diálogo(AppID/AppSecret/objetivo ID,Las credenciales se guardan cifradas localmente);
- *  - Breve descripción(Capacidad de inserción + Límite de seguridad de credenciales + Dónde registrarse).
+ * 职责:
+ *  - 渠道列表(启停开关 / 编辑 / 删除);
+ *  - 添加/编辑对话框(AppID/AppSecret/目标 ID,凭据本地加密保存);
+ *  - 简要说明(推送能力 + 凭据安全边界 + 去哪注册)。
  */
 @Composable
 fun ChannelSettingsScreen(onBack: () -> Unit, onOpenConversations: (String) -> Unit = {}) {
@@ -82,13 +86,17 @@ fun ChannelSettingsScreen(onBack: () -> Unit, onOpenConversations: (String) -> U
     val dingtalkReceiver: DingtalkReceiver = koinInject()
     val qqReceiver: QqReceiver = koinInject()
     val feishuReceiver: FeishuReceiver = koinInject()
-    // Reinicie todos los receptores después de los cambios de configuración(encuesta larga/Las conexiones largas se reconstruyen según la última configuración del canal.)
-    val restartAllReceivers = {
-        weClawReceiver.restart()
-        telegramReceiver.restart()
-        dingtalkReceiver.restart()
-        qqReceiver.restart()
-        feishuReceiver.restart()
+    // 配置变更只重启受影响的平台。
+    // 此前任何渠道保存都会把其他平台的长连接一起掐断:QQ 那边表现为一条「连接异常」告警
+    // 外加一次多余的重新鉴权与 Resume,断连窗口里的消息会丢。
+    val restartReceiverFor: (ChannelPlatform) -> Unit = { platform ->
+        when (platform) {
+            ChannelPlatform.WECLAW -> weClawReceiver.restart()
+            ChannelPlatform.TELEGRAM -> telegramReceiver.restart()
+            ChannelPlatform.DINGTALK -> dingtalkReceiver.restart()
+            ChannelPlatform.QQ -> qqReceiver.restart()
+            ChannelPlatform.FEISHU -> feishuReceiver.restart()
+        }
     }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -107,7 +115,7 @@ fun ChannelSettingsScreen(onBack: () -> Unit, onOpenConversations: (String) -> U
         title = stringResource(R.string.channel_page_title),
         onBack = onBack,
     ) {
-        // ── tarjeta de instrucciones ──
+        // ── 说明卡 ──
         item(key = "intro") {
             CardGroup(modifier = Modifier.padding(horizontal = 16.dp)) {
                 item {
@@ -128,7 +136,7 @@ fun ChannelSettingsScreen(onBack: () -> Unit, onOpenConversations: (String) -> U
             }
         }
 
-        // ── lista de canales ──
+        // ── 渠道列表 ──
         channels.forEach { cfg ->
             item(key = cfg.id) {
                 CardGroup(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
@@ -139,7 +147,7 @@ fun ChannelSettingsScreen(onBack: () -> Unit, onOpenConversations: (String) -> U
                             onToggle = { enabled ->
                                 scope.launch {
                                     manager.upsert(cfg.copy(enabled = enabled))
-                                    restartAllReceivers()
+                                    restartReceiverFor(cfg.platform)
                                 }
                             },
                             onEdit = { editTarget = cfg },
@@ -161,7 +169,7 @@ fun ChannelSettingsScreen(onBack: () -> Unit, onOpenConversations: (String) -> U
             }
         }
 
-        // ── Botón Agregar (v2.0.1: Ir a antes de "Recibidos recientemente") ──
+        // ── 添加按钮（v2.0.1: 上移至「最近收到」之前） ──
         item(key = "add") {
             Surface(
                 shape = MuseShapes.medium,
@@ -195,7 +203,7 @@ fun ChannelSettingsScreen(onBack: () -> Unit, onOpenConversations: (String) -> U
             }
         }
 
-        // ── Mensajes entrantes recientes(webhook recibir) ──
+        // ── 最近入站消息(webhook 接收) ──
         if (inbox.isNotEmpty()) {
             item(key = "inbox_title") {
                 Text(
@@ -209,7 +217,7 @@ fun ChannelSettingsScreen(onBack: () -> Unit, onOpenConversations: (String) -> U
                 item(key = "inbox_${msg.timestamp}_${msg.platform}") {
                     CardGroup(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
                         item {
-                            // v2.0.1: Localización del nombre de la plataforma (los datos históricos se almacenan en nombres de enumeración, como WECLAW).
+                            // v2.0.1: 平台名本地化（历史数据存的是枚举名，如 WECLAW）。
                             val inboxPlatform =
                                 remember(msg.platform) {
                                     runCatching { ChannelPlatform.valueOf(msg.platform) }.getOrNull()
@@ -238,7 +246,7 @@ fun ChannelSettingsScreen(onBack: () -> Unit, onOpenConversations: (String) -> U
         }
     }
 
-    // ── Cuadro de diálogo Agregar/Editar ──
+    // ── 添加 / 编辑对话框 ──
     if (showAdd || editTarget != null) {
         ChannelEditDialog(
             initial = editTarget,
@@ -249,7 +257,7 @@ fun ChannelSettingsScreen(onBack: () -> Unit, onOpenConversations: (String) -> U
             onSave = { cfg ->
                 scope.launch {
                     manager.upsert(cfg)
-                    restartAllReceivers()
+                    restartReceiverFor(cfg.platform)
                     showAdd = false
                     editTarget = null
                 }
@@ -257,7 +265,7 @@ fun ChannelSettingsScreen(onBack: () -> Unit, onOpenConversations: (String) -> U
         )
     }
 
-    // ── Eliminar confirmación ──
+    // ── 删除确认 ──
     deleteTarget?.let { cfg ->
         MuseDialog(
             onDismissRequest = { deleteTarget = null },
@@ -270,7 +278,7 @@ fun ChannelSettingsScreen(onBack: () -> Unit, onOpenConversations: (String) -> U
             onConfirm = {
                 scope.launch {
                     manager.remove(cfg.id)
-                    restartAllReceivers()
+                    restartReceiverFor(cfg.platform)
                 }
                 deleteTarget = null
             },
@@ -280,7 +288,7 @@ fun ChannelSettingsScreen(onBack: () -> Unit, onOpenConversations: (String) -> U
     }
 }
 
-/** Tarjeta monocanal:Nombre/Objetivo de plataforma + interruptor de inicio/parada(primera linea);Botones de operación en una fila separada,evitar nombres largos/Deformación de extrusión de ID larga. */
+/** 单条渠道卡片:名称/平台目标 + 启停开关(首行);操作按钮独立一行,避免长名称/长 ID 挤压变形。 */
 @Composable
 private fun ChannelRow(
     config: ChannelConfig,
@@ -346,7 +354,7 @@ private fun ChannelRow(
     }
 }
 
-/** Texto del botón de acción del canal(Área en la que se puede hacer clic con relleno,dispuestos en una fila separada). */
+/** 渠道操作按钮文本(带内边距的可点区域,独立一行排列)。 */
 @Composable
 private fun ChannelActionText(text: String, color: Color, onClick: () -> Unit) {
     Text(
@@ -361,14 +369,14 @@ private fun ChannelActionText(text: String, color: Color, onClick: () -> Unit) {
     )
 }
 
-/** La parte central se omite cuando el ID del objetivo es demasiado largo.(primero 8 + … + cola 6),Evite que los documentos de identidad largos se doblen verticalmente en pantallas estrechas. */
+/** 目标 ID 过长时中段省略(首 8 + … + 尾 6),避免长 ID 在窄屏上折行成竖排。 */
 private fun shortTargetId(raw: String): String {
     val id = raw.ifBlank { "-" }
     if (id.length <= 18) return id
     return id.take(8) + "…" + id.takeLast(6)
 }
 
-/** agregar/Editar cuadro de diálogo de canal (v2.0.1: Accede a campos personalizados por plataforma). */
+/** 添加/编辑渠道对话框（v2.0.1: 按平台定制接入字段）。 */
 @Composable
 private fun ChannelEditDialog(initial: ChannelConfig?, onDismiss: () -> Unit, onSave: (ChannelConfig) -> Unit) {
     var platform by remember { mutableStateOf(initial?.platform ?: ChannelPlatform.FEISHU) }
@@ -385,14 +393,37 @@ private fun ChannelEditDialog(initial: ChannelConfig?, onDismiss: () -> Unit, on
     var region by remember { mutableStateOf(initial?.region ?: "cn") }
     var autoReply by remember { mutableStateOf(initial?.autoReply ?: false) }
     var assistantId by remember { mutableStateOf(initial?.assistantId.orEmpty()) }
+    // v2.6.23(C1): 对话目标策略草稿。名单以多行/逗号录入,保存时规范化。
+    var policyMode by remember { mutableStateOf(initial?.policyMode ?: "open") }
+    var policyTargetsRaw by remember {
+        mutableStateOf((initial?.policyTargets ?: emptyList()).joinToString("\n"))
+    }
     var showBind by remember { mutableStateOf(false) }
     var showTutorial by remember { mutableStateOf(false) }
     var showSecret by remember { mutableStateOf(false) }
     var showWebhookVerificationToken by remember { mutableStateOf(false) }
     var validating by remember { mutableStateOf(false) }
     var validationResult by remember { mutableStateOf<Pair<Boolean, String>?>(null) }
-    // null = Sin modificar; cadena vacía = Desvincularse explícitamente; no vacio = El token obtenido al escanear nuevamente el código QR.
+    // null = 未改动；空字符串 = 明确解除绑定；非空 = 新扫码得到的 token。
     var weclawTokenOverride by remember { mutableStateOf<String?>(null) }
+    var confirmWeclawUnbind by remember { mutableStateOf(false) }
+    // 解绑会丢掉只有扫码才能再得到的令牌,而同页删除渠道早有确认 —— 补齐同一道闸门。
+    if (confirmWeclawUnbind) {
+        MuseDialog(
+            onDismissRequest = { confirmWeclawUnbind = false },
+            title = stringResource(R.string.channel_weclaw_unbind),
+            content = { Text(stringResource(R.string.channel_weclaw_unbind_confirm)) },
+            confirmText = stringResource(R.string.channel_weclaw_unbind),
+            onConfirm = {
+                confirmWeclawUnbind = false
+                weclawTokenOverride = ""
+                targetId = ""
+            },
+            dismissText = stringResource(R.string.settings_common_cancel),
+            onDismiss = { confirmWeclawUnbind = false },
+            destructive = true,
+        )
+    }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val manager: ChannelManager = koinInject()
@@ -418,6 +449,43 @@ private fun ChannelEditDialog(initial: ChannelConfig?, onDismiss: () -> Unit, on
         } else {
             secretInput.trim().ifBlank { storedSecretForPlatform }
         }
+
+    // 新建渠道的 id 与创建时间在草稿期固定:每次重算都会拿到新值,比对就永远"有改动"。
+    val draftId = remember { initial?.id ?: ("ch_" + System.currentTimeMillis()) }
+    val draftCreatedAt = remember { initial?.createdAt ?: System.currentTimeMillis() }
+
+    // 草稿只在这里拼一次:保存与"是否已有未保存改动"共用同一份口径,不会两处各写一份而漂移。
+    fun buildDraft(): ChannelConfig = ChannelConfig(
+        id = draftId,
+        platform = platform,
+        name = name.trim(),
+        enabled = initial?.enabled ?: true,
+        appId = appId.trim(),
+        appSecret = effectiveSecret.trim(),
+        webhookEnabled = webhookEnabled &&
+            (platform == ChannelPlatform.FEISHU || platform == ChannelPlatform.QQ),
+        webhookVerificationToken = if (platform == ChannelPlatform.FEISHU || platform == ChannelPlatform.QQ) {
+            effectiveWebhookVerificationToken
+        } else {
+            ""
+        },
+        targetId = targetId.trim(),
+        targetType = qqType,
+        robotCode = robotCode.trim(),
+        corpId = corpId.trim(),
+        apiBaseUrl = apiBaseUrl.trim(),
+        region = region,
+        autoReply = autoReply,
+        assistantId = assistantId,
+        policyMode = policyMode,
+        policyTargets = ChannelPolicy.normalizeTargets(policyTargetsRaw),
+        createdAt = draftCreatedAt,
+    )
+    val draftBaseline = remember { buildDraft() }
+    var showDiscardDraft by remember { mutableStateOf(false) }
+    val requestDismiss: () -> Unit = {
+        if (buildDraft() != draftBaseline) showDiscardDraft = true else onDismiss()
+    }
     val accountOptions =
         remember(inbox, platform) {
             inbox.filter { it.platform == platform.name && it.from.isNotBlank() }
@@ -426,7 +494,7 @@ private fun ChannelEditDialog(initial: ChannelConfig?, onDismiss: () -> Unit, on
                 .take(6)
         }
     val validationFailedText = stringResource(R.string.channel_test_failed)
-    // v2.7: Las reglas requeridas están integradas en el propio tipo de bono y las nuevas plataformas no cambiarán esto aquí.
+    // v2.7: 必填规则下沉到凭证类型自身，新增平台不再改这里。
     val canSave =
         platform.buildCredentials(
             appId = appId,
@@ -464,397 +532,412 @@ private fun ChannelEditDialog(initial: ChannelConfig?, onDismiss: () -> Unit, on
         Unit
     }
 
-    MuseDialog(
-        onDismissRequest = onDismiss,
-        title = stringResource(if (initial == null) R.string.channel_add else R.string.channel_edit_title),
-        content = {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                Text(
-                    text = stringResource(R.string.channel_how_to),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier =
-                    Modifier
-                        .align(Alignment.End)
-                        .clickable { showTutorial = true }
-                        .padding(vertical = 2.dp),
-                )
-                val platformOptions = mutableListOf<Pair<String, String>>()
-                for (p in ChannelPlatform.entries) {
-                    platformOptions += p.name to stringResource(channelPlatformNameRes(p))
-                }
-                MuseDropdown(
-                    value = platform.name,
-                    onValueChange = { value ->
-                        ChannelPlatform.entries.firstOrNull { it.name == value }?.let {
-                            if (platform != it) {
-                                webhookEnabled = false
-                                webhookVerificationTokenInput = ""
-                            }
-                            platform = it
-                            validationResult = null
+    // 长表单按组件规范走底部面板:5-14 个字段挤在 320dp 对话框里,键盘一弹底部"保存"
+    // 就够不着。面板自带唯一滚动容器、键盘避让与安全区处理。
+    MuseBottomSheet(
+        onDismissRequest = requestDismiss,
+        maxHeightFraction = 0.92f,
+    ) {
+        Text(
+            text = stringResource(if (initial == null) R.string.channel_add else R.string.channel_edit_title),
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.channel_how_to),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+                modifier =
+                Modifier
+                    .align(Alignment.End)
+                    .clickable { showTutorial = true }
+                    .padding(vertical = 2.dp),
+            )
+            val platformOptions = mutableListOf<Pair<String, String>>()
+            for (p in ChannelPlatform.entries) {
+                platformOptions += p.name to stringResource(channelPlatformNameRes(p))
+            }
+            MuseDropdown(
+                value = platform.name,
+                onValueChange = { value ->
+                    ChannelPlatform.entries.firstOrNull { it.name == value }?.let {
+                        if (platform != it) {
+                            webhookEnabled = false
+                            webhookVerificationTokenInput = ""
                         }
-                    },
-                    label = stringResource(R.string.channel_field_platform),
-                    options = platformOptions,
-                )
-                MuseTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text(stringResource(R.string.channel_field_name)) },
-                    singleLine = true,
-                )
+                        platform = it
+                        validationResult = null
+                    }
+                },
+                label = stringResource(R.string.channel_field_platform),
+                options = platformOptions,
+            )
+            MuseTextField(
+                value = name,
+                onValueChange = { name = it },
+                label = { Text(stringResource(R.string.channel_field_name)) },
+                singleLine = true,
+            )
 
-                when (platform) {
-                    ChannelPlatform.WECLAW -> {
-                        val bound = effectiveSecret.isNotBlank()
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                        ) {
-                            Text(
-                                text =
-                                stringResource(
-                                    if (bound) {
-                                        R.string.channel_weclaw_logged_in
-                                    } else {
-                                        R.string.channel_weclaw_need_scan
-                                    },
-                                ),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color =
+            when (platform) {
+                ChannelPlatform.WECLAW -> {
+                    val bound = effectiveSecret.isNotBlank()
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Text(
+                            text =
+                            stringResource(
                                 if (bound) {
-                                    MaterialTheme.colorScheme.primary
+                                    R.string.channel_weclaw_logged_in
                                 } else {
-                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                    R.string.channel_weclaw_need_scan
                                 },
-                            )
-                            if (bound) {
-                                Text(
-                                    text = stringResource(R.string.channel_weclaw_unbind),
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.error,
-                                    modifier =
-                                    Modifier
-                                        .clickable {
-                                            weclawTokenOverride = ""
-                                            targetId = ""
-                                        }
-                                        .padding(4.dp),
-                                )
-                            }
-                        }
-                        Surface(
-                            shape = MuseShapes.medium,
-                            color = MaterialTheme.colorScheme.secondaryContainer,
-                            modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .clickable { showBind = true },
-                        ) {
-                            Text(
-                                text =
-                                stringResource(
-                                    if (bound) {
-                                        R.string.channel_weclaw_rescan
-                                    } else {
-                                        R.string.channel_weclaw_scan
-                                    },
-                                ),
-                                style = MaterialTheme.typography.labelLarge,
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-                            )
-                        }
-                        Text(
-                            text = stringResource(R.string.channel_weclaw_hint),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Text(
-                            text = stringResource(R.string.channel_weclaw_exclusive),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.outline,
-                        )
-                        Surface(
-                            shape = MuseShapes.medium,
-                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Text(
-                                text = stringResource(R.string.channel_weclaw_reply_window),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                            )
-                        }
-                    }
-                    ChannelPlatform.FEISHU -> {
-                        val regionOptions =
-                            listOf(
-                                "cn" to stringResource(R.string.channel_region_feishu_cn),
-                                "intl" to stringResource(R.string.channel_region_lark_global),
-                            )
-                        MuseDropdown(
-                            value = region,
-                            onValueChange = { region = it },
-                            label = stringResource(R.string.channel_field_region),
-                            options = regionOptions,
-                        )
-                        MuseTextField(
-                            value = appId,
-                            onValueChange = { appId = it },
-                            label = { Text(stringResource(R.string.channel_field_app_id)) },
-                            singleLine = true,
-                        )
-                        SecretInputField(
-                            value = secretInput,
-                            onValueChange = { secretInput = it },
-                            label = stringResource(R.string.channel_field_app_secret),
-                            storedSecret = storedSecretForPlatform,
-                            visible = showSecret,
-                            onToggleVisible = { showSecret = !showSecret },
-                        )
-                        WebhookReceiverToggle(
-                            checked = webhookEnabled,
-                            onCheckedChange = { webhookEnabled = it },
-                            hint = stringResource(R.string.channel_webhook_feishu_hint),
-                        )
-                        if (webhookEnabled) {
-                            SecretInputField(
-                                value = webhookVerificationTokenInput,
-                                onValueChange = { webhookVerificationTokenInput = it },
-                                label = stringResource(R.string.channel_webhook_verification_token),
-                                storedSecret = storedWebhookVerificationToken,
-                                visible = showWebhookVerificationToken,
-                                onToggleVisible = { showWebhookVerificationToken = !showWebhookVerificationToken },
-                            )
-                        }
-                        PlatformCredentialFooter(
-                            hint = stringResource(R.string.channel_feishu_hint),
-                            validating = validating,
-                            result = validationResult,
-                            onValidate = validate,
-                        )
-                    }
-                    ChannelPlatform.TELEGRAM -> {
-                        SecretInputField(
-                            value = secretInput,
-                            onValueChange = { secretInput = it },
-                            label = stringResource(R.string.channel_field_telegram_token),
-                            storedSecret = storedSecretForPlatform,
-                            visible = showSecret,
-                            onToggleVisible = { showSecret = !showSecret },
-                        )
-                        PlatformCredentialFooter(
-                            hint = stringResource(R.string.channel_telegram_hint),
-                            validating = validating,
-                            result = validationResult,
-                            onValidate = validate,
-                        )
-                    }
-                    ChannelPlatform.DINGTALK -> {
-                        MuseTextField(
-                            value = corpId,
-                            onValueChange = { corpId = it },
-                            label = { Text(stringResource(R.string.channel_field_corp_id)) },
-                            singleLine = true,
-                        )
-                        MuseTextField(
-                            value = appId,
-                            onValueChange = { appId = it },
-                            label = { Text(stringResource(R.string.channel_field_client_id)) },
-                            singleLine = true,
-                        )
-                        SecretInputField(
-                            value = secretInput,
-                            onValueChange = { secretInput = it },
-                            label = stringResource(R.string.channel_field_client_secret),
-                            storedSecret = storedSecretForPlatform,
-                            visible = showSecret,
-                            onToggleVisible = { showSecret = !showSecret },
-                        )
-                        MuseTextField(
-                            value = robotCode,
-                            onValueChange = { robotCode = it },
-                            label = { Text(stringResource(R.string.channel_field_robot_code)) },
-                            supportingText = { Text(stringResource(R.string.channel_robot_code_hint)) },
-                            singleLine = true,
-                        )
-                        MuseTextField(
-                            value = apiBaseUrl,
-                            onValueChange = { apiBaseUrl = it },
-                            label = { Text(stringResource(R.string.channel_field_api_base)) },
-                            placeholder = { Text(stringResource(R.string.channel_dingtalk_api_default)) },
-                            singleLine = true,
-                        )
-                        PlatformCredentialFooter(
-                            hint = stringResource(R.string.channel_dingtalk_hint),
-                            validating = validating,
-                            result = validationResult,
-                            onValidate = validate,
-                        )
-                    }
-                    ChannelPlatform.QQ -> {
-                        MuseTextField(
-                            value = appId,
-                            onValueChange = { appId = it },
-                            label = { Text(stringResource(R.string.channel_field_app_id)) },
-                            singleLine = true,
-                        )
-                        SecretInputField(
-                            value = secretInput,
-                            onValueChange = { secretInput = it },
-                            label = stringResource(R.string.channel_field_app_secret),
-                            storedSecret = storedSecretForPlatform,
-                            visible = showSecret,
-                            onToggleVisible = { showSecret = !showSecret },
-                        )
-                        WebhookReceiverToggle(
-                            checked = webhookEnabled,
-                            onCheckedChange = { webhookEnabled = it },
-                            hint = stringResource(R.string.channel_webhook_qq_hint),
-                        )
-                        if (webhookEnabled) {
-                            SecretInputField(
-                                value = webhookVerificationTokenInput,
-                                onValueChange = { webhookVerificationTokenInput = it },
-                                label = stringResource(R.string.channel_webhook_verification_token),
-                                storedSecret = storedWebhookVerificationToken,
-                                visible = showWebhookVerificationToken,
-                                onToggleVisible = { showWebhookVerificationToken = !showWebhookVerificationToken },
-                            )
-                        }
-                        MuseDropdown(
-                            value = qqType,
-                            onValueChange = { qqType = it },
-                            label = stringResource(R.string.channel_field_qq_type),
-                            options =
-                            listOf(
-                                "group" to stringResource(R.string.channel_type_group),
-                                "c2c" to stringResource(R.string.channel_type_c2c),
                             ),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color =
+                            if (bound) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
                         )
-                        PlatformCredentialFooter(
-                            hint = stringResource(R.string.channel_qq_hint),
-                            validating = validating,
-                            result = validationResult,
-                            onValidate = validate,
+                        if (bound) {
+                            Text(
+                                text = stringResource(R.string.channel_weclaw_unbind),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.error,
+                                modifier =
+                                Modifier
+                                    .clickable { confirmWeclawUnbind = true }
+                                    .padding(4.dp),
+                            )
+                        }
+                    }
+                    Surface(
+                        shape = MuseShapes.medium,
+                        color = MaterialTheme.colorScheme.secondaryContainer,
+                        modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .clickable { showBind = true },
+                    ) {
+                        Text(
+                            text =
+                            stringResource(
+                                if (bound) {
+                                    R.string.channel_weclaw_rescan
+                                } else {
+                                    R.string.channel_weclaw_scan
+                                },
+                            ),
+                            style = MaterialTheme.typography.labelLarge,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
                         )
                     }
-                }
-
-                if (platform != ChannelPlatform.WECLAW) {
+                    // 三段连着堆要滚很久才到保存；合并成一段，细节仍走页内"怎么配？"。
                     Text(
-                        text = stringResource(R.string.channel_owner_select),
-                        style = MaterialTheme.typography.labelLarge,
+                        text = stringResource(R.string.channel_weclaw_summary),
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    if (accountOptions.isNotEmpty()) {
-                        val accountPairs = mutableListOf<Pair<String, String>>()
-                        for (account in accountOptions) {
-                            accountPairs += account to prettifyAccount(account)
-                        }
-                        MuseDropdown(
-                            value = targetId,
-                            onValueChange = { targetId = it },
-                            label = stringResource(R.string.channel_owner_select),
-                            options = accountPairs,
+                }
+                ChannelPlatform.FEISHU -> {
+                    val regionOptions =
+                        listOf(
+                            "cn" to stringResource(R.string.channel_region_feishu_cn),
+                            "intl" to stringResource(R.string.channel_region_lark_global),
                         )
-                    } else {
-                        Text(
-                            text = stringResource(R.string.channel_owner_none),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.outline,
+                    MuseDropdown(
+                        value = region,
+                        onValueChange = { region = it },
+                        label = stringResource(R.string.channel_field_region),
+                        options = regionOptions,
+                    )
+                    MuseTextField(
+                        value = appId,
+                        onValueChange = { appId = it },
+                        label = { Text(stringResource(R.string.channel_field_app_id)) },
+                        singleLine = true,
+                    )
+                    SecretInputField(
+                        value = secretInput,
+                        onValueChange = { secretInput = it },
+                        label = stringResource(R.string.channel_field_app_secret),
+                        storedSecret = storedSecretForPlatform,
+                        visible = showSecret,
+                        onToggleVisible = { showSecret = !showSecret },
+                    )
+                    WebhookReceiverToggle(
+                        checked = webhookEnabled,
+                        onCheckedChange = { webhookEnabled = it },
+                        hint = stringResource(R.string.channel_webhook_feishu_hint),
+                    )
+                    if (webhookEnabled) {
+                        SecretInputField(
+                            value = webhookVerificationTokenInput,
+                            onValueChange = { webhookVerificationTokenInput = it },
+                            label = stringResource(R.string.channel_webhook_verification_token),
+                            storedSecret = storedWebhookVerificationToken,
+                            visible = showWebhookVerificationToken,
+                            onToggleVisible = { showWebhookVerificationToken = !showWebhookVerificationToken },
                         )
                     }
+                    PlatformCredentialFooter(
+                        hint = stringResource(R.string.channel_feishu_hint),
+                        validating = validating,
+                        result = validationResult,
+                        onValidate = validate,
+                    )
+                }
+                ChannelPlatform.TELEGRAM -> {
+                    SecretInputField(
+                        value = secretInput,
+                        onValueChange = { secretInput = it },
+                        label = stringResource(R.string.channel_field_telegram_token),
+                        storedSecret = storedSecretForPlatform,
+                        visible = showSecret,
+                        onToggleVisible = { showSecret = !showSecret },
+                    )
+                    PlatformCredentialFooter(
+                        hint = stringResource(R.string.channel_telegram_hint),
+                        validating = validating,
+                        result = validationResult,
+                        onValidate = validate,
+                    )
+                }
+                ChannelPlatform.DINGTALK -> {
+                    MuseTextField(
+                        value = corpId,
+                        onValueChange = { corpId = it },
+                        label = { Text(stringResource(R.string.channel_field_corp_id)) },
+                        singleLine = true,
+                    )
+                    MuseTextField(
+                        value = appId,
+                        onValueChange = { appId = it },
+                        label = { Text(stringResource(R.string.channel_field_client_id)) },
+                        singleLine = true,
+                    )
+                    SecretInputField(
+                        value = secretInput,
+                        onValueChange = { secretInput = it },
+                        label = stringResource(R.string.channel_field_client_secret),
+                        storedSecret = storedSecretForPlatform,
+                        visible = showSecret,
+                        onToggleVisible = { showSecret = !showSecret },
+                    )
+                    MuseTextField(
+                        value = robotCode,
+                        onValueChange = { robotCode = it },
+                        label = { Text(stringResource(R.string.channel_field_robot_code)) },
+                        supportingText = { Text(stringResource(R.string.channel_robot_code_hint)) },
+                        singleLine = true,
+                    )
+                    MuseTextField(
+                        value = apiBaseUrl,
+                        onValueChange = { apiBaseUrl = it },
+                        label = { Text(stringResource(R.string.channel_field_api_base)) },
+                        placeholder = { Text(stringResource(R.string.channel_dingtalk_api_default)) },
+                        singleLine = true,
+                    )
+                    PlatformCredentialFooter(
+                        hint = stringResource(R.string.channel_dingtalk_hint),
+                        validating = validating,
+                        result = validationResult,
+                        onValidate = validate,
+                    )
+                }
+                ChannelPlatform.QQ -> {
+                    MuseTextField(
+                        value = appId,
+                        onValueChange = { appId = it },
+                        label = { Text(stringResource(R.string.channel_field_app_id)) },
+                        singleLine = true,
+                    )
+                    SecretInputField(
+                        value = secretInput,
+                        onValueChange = { secretInput = it },
+                        label = stringResource(R.string.channel_field_app_secret),
+                        storedSecret = storedSecretForPlatform,
+                        visible = showSecret,
+                        onToggleVisible = { showSecret = !showSecret },
+                    )
+                    WebhookReceiverToggle(
+                        checked = webhookEnabled,
+                        onCheckedChange = { webhookEnabled = it },
+                        hint = stringResource(R.string.channel_webhook_qq_hint),
+                    )
+                    if (webhookEnabled) {
+                        SecretInputField(
+                            value = webhookVerificationTokenInput,
+                            onValueChange = { webhookVerificationTokenInput = it },
+                            label = stringResource(R.string.channel_webhook_verification_token),
+                            storedSecret = storedWebhookVerificationToken,
+                            visible = showWebhookVerificationToken,
+                            onToggleVisible = { showWebhookVerificationToken = !showWebhookVerificationToken },
+                        )
+                    }
+                    MuseDropdown(
+                        value = qqType,
+                        onValueChange = { qqType = it },
+                        label = stringResource(R.string.channel_field_qq_type),
+                        options =
+                        listOf(
+                            "group" to stringResource(R.string.channel_type_group),
+                            "c2c" to stringResource(R.string.channel_type_c2c),
+                        ),
+                    )
+                    PlatformCredentialFooter(
+                        hint = stringResource(R.string.channel_qq_hint),
+                        validating = validating,
+                        result = validationResult,
+                        onValidate = validate,
+                    )
+                }
+            }
+
+            if (platform != ChannelPlatform.WECLAW) {
+                Text(
+                    text = stringResource(R.string.channel_owner_select),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                if (accountOptions.isNotEmpty()) {
+                    val accountPairs = mutableListOf<Pair<String, String>>()
+                    for (account in accountOptions) {
+                        accountPairs += account to prettifyAccount(account)
+                    }
+                    MuseDropdown(
+                        value = targetId,
+                        onValueChange = { targetId = it },
+                        label = stringResource(R.string.channel_owner_select),
+                        options = accountPairs,
+                    )
+                } else {
                     Text(
-                        text = stringResource(R.string.channel_owner_warning),
+                        text = stringResource(R.string.channel_owner_none),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.outline,
                     )
-                    MuseTextField(
-                        value = targetId,
-                        onValueChange = { targetId = it },
-                        label = { Text(stringResource(R.string.channel_field_target)) },
-                        singleLine = true,
-                    )
                 }
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = stringResource(R.string.channel_auto_reply),
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
-                        Text(
-                            text = stringResource(R.string.channel_auto_reply_desc),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.outline,
-                        )
-                    }
-                    MuseSwitch(checked = autoReply, onCheckedChange = { autoReply = it })
-                }
-                // v2.0.1: Asistente para usar en respuestas automáticas — Hereda su carácter, modelo y parámetros.
-                val assistantOptions = mutableListOf<Pair<String, String>>()
-                assistantOptions += "" to stringResource(R.string.channel_assistant_default)
-                for (a in assistants) {
-                    assistantOptions += a.id to a.name
-                }
-                MuseDropdown(
-                    value = assistantId,
-                    onValueChange = { assistantId = it },
-                    label = stringResource(R.string.channel_field_assistant),
-                    options = assistantOptions,
-                )
                 Text(
-                    text = stringResource(R.string.channel_assistant_hint),
+                    text = stringResource(R.string.channel_owner_warning),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.outline,
                 )
+                MuseTextField(
+                    value = targetId,
+                    onValueChange = { targetId = it },
+                    label = { Text(stringResource(R.string.channel_field_target)) },
+                    singleLine = true,
+                )
             }
-        },
-        confirmText = stringResource(R.string.channel_save),
-        confirmEnabled = canSave,
-        onConfirm = {
-            onSave(
-                ChannelConfig(
-                    id = initial?.id ?: ("ch_" + System.currentTimeMillis()),
-                    platform = platform,
-                    name = name.trim(),
-                    enabled = initial?.enabled ?: true,
-                    appId = appId.trim(),
-                    appSecret = effectiveSecret.trim(),
-                    webhookEnabled = webhookEnabled &&
-                        (platform == ChannelPlatform.FEISHU || platform == ChannelPlatform.QQ),
-                    webhookVerificationToken =
-                    if (platform == ChannelPlatform.FEISHU || platform == ChannelPlatform.QQ) {
-                        effectiveWebhookVerificationToken
-                    } else {
-                        ""
-                    },
-                    targetId = targetId.trim(),
-                    targetType = qqType,
-                    robotCode = robotCode.trim(),
-                    corpId = corpId.trim(),
-                    apiBaseUrl = apiBaseUrl.trim(),
-                    region = region,
-                    autoReply = autoReply,
-                    assistantId = assistantId,
-                    createdAt = initial?.createdAt ?: System.currentTimeMillis(),
-                ),
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(R.string.channel_auto_reply),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    Text(
+                        text = stringResource(R.string.channel_auto_reply_desc),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.outline,
+                    )
+                }
+                MuseSwitch(checked = autoReply, onCheckedChange = { autoReply = it })
+            }
+            // v2.0.1: 自动回复使用的助手 — 继承其人设、模型与参数。
+            val assistantOptions = mutableListOf<Pair<String, String>>()
+            assistantOptions += "" to stringResource(R.string.channel_assistant_default)
+            for (a in assistants) {
+                assistantOptions += a.id to a.name
+            }
+            MuseDropdown(
+                value = assistantId,
+                onValueChange = { assistantId = it },
+                label = stringResource(R.string.channel_field_assistant),
+                options = assistantOptions,
             )
-        },
-        dismissText = stringResource(R.string.settings_common_cancel),
-        onDismiss = onDismiss,
-    )
+            Text(
+                text = stringResource(R.string.channel_assistant_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.outline,
+            )
+            // ── v2.6.23(C1): 对话目标策略(入站自动回复与出站发送共用同一判定) ──
+            val policyOptions = listOf(
+                "open" to stringResource(R.string.channel_policy_open),
+                "allowlist" to stringResource(R.string.channel_policy_allowlist),
+                "denylist" to stringResource(R.string.channel_policy_denylist),
+            )
+            MuseDropdown(
+                value = policyMode,
+                onValueChange = { policyMode = it },
+                label = stringResource(R.string.channel_policy_label),
+                options = policyOptions,
+            )
+            Text(
+                text = stringResource(R.string.channel_policy_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.outline,
+            )
+            if (policyMode != "open") {
+                MuseTextField(
+                    value = policyTargetsRaw,
+                    onValueChange = { policyTargetsRaw = it },
+                    label = { Text(stringResource(R.string.channel_policy_targets_label)) },
+                    supportingText = { Text(stringResource(R.string.channel_policy_targets_hint)) },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 2,
+                )
+            }
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.End),
+        ) {
+            MuseCapsuleButton(
+                text = stringResource(R.string.settings_common_cancel),
+                onClick = requestDismiss,
+                variant = IosCapsuleButtonVariant.Text,
+                fillWidth = false,
+            )
+            MuseCapsuleButton(
+                text = stringResource(R.string.channel_save),
+                onClick = { onSave(buildDraft()) },
+                enabled = canSave,
+                variant = IosCapsuleButtonVariant.Primary,
+                fillWidth = false,
+            )
+        }
+    }
+
+    if (showDiscardDraft) {
+        MuseDialog(
+            onDismissRequest = { showDiscardDraft = false },
+            title = stringResource(R.string.settings_unsaved_changes_title),
+            content = { Text(stringResource(R.string.settings_unsaved_changes_content)) },
+            confirmText = stringResource(R.string.settings_unsaved_discard),
+            onConfirm = {
+                showDiscardDraft = false
+                onDismiss()
+            },
+            dismissText = stringResource(R.string.settings_common_cancel),
+            onDismiss = { showDiscardDraft = false },
+            destructive = true,
+        )
+    }
 
     if (showBind) {
         WeClawBindDialog(
@@ -863,10 +946,10 @@ private fun ChannelEditDialog(initial: ChannelConfig?, onDismiss: () -> Unit, on
                 weclawTokenOverride = status.botToken
                 appId = status.botId
                 if (status.userId.isNotBlank()) targetId = status.userId
-                // v2.0.1: Escanear el código QR para vincularse es una intención clara — Respuesta automática activada de forma predeterminada,evitar"Empatado pero sin respuesta".
+                // v2.0.1: 扫码绑定是明确意图 — 默认打开自动回复,避免"绑了却没反应"。
                 autoReply = true
                 showBind = false
-                // v2.2.1: Después de escanear el código QR para confirmar, debes dar una respuesta clara.(No hay aviso antes,El usuario pensó que no estaba conectado y hizo clic en Cancelar.)
+                // v2.2.1: 扫码确认后必须给明确反馈(此前无提示,用户以为没绑上又去点取消)
                 MuseToast.show(context.getString(R.string.channel_weclaw_logged_in))
             },
         )
@@ -879,10 +962,10 @@ private fun ChannelEditDialog(initial: ChannelConfig?, onDismiss: () -> Unit, on
     }
 }
 
-/** ClawBot El código QR actualiza automáticamente el límite superior(get_qrcode_status Cambiar automáticamente a un nuevo código cuando se devuelva el código caducado,Consistente con la implementación oficial). */
+/** ClawBot 二维码自动刷新上限(get_qrcode_status 返回 expired 时自动换新码,与官方实现一致)。 */
 private const val MAX_QR_REFRESH_COUNT = 3
 
-/** v2.0: ClawBot Cuadro de diálogo de enlace de código de escaneo(Tirar código QR → Estado de sondeo → Rellenar credenciales). */
+/** v2.0: ClawBot 扫码绑定对话框(拉取二维码 → 轮询状态 → 回填凭据)。 */
 @Composable
 private fun WeClawBindDialog(onDismiss: () -> Unit, onBound: (WeClawClient.QrStatus) -> Unit) {
     var bitmap by remember { mutableStateOf<Bitmap?>(null) }
@@ -904,8 +987,8 @@ private fun WeClawBindDialog(onDismiss: () -> Unit, onBound: (WeClawClient.QrSta
             return@LaunchedEffect
         }
         status = "wait"
-        // v2.2.1: get_qrcode_status Es una encuesta larga(El servidor tiene aproximadamente 30s,El tiempo de espera es normal,Reintentar oficialmente con espera);
-        // Renovar automáticamente el código cuando caduque(acción oficial,hasta 3 veces). Registra cada resultado,Conveniente para localizar el enlace del código de escaneo en línea.
+        // v2.2.1: get_qrcode_status 是长轮询(服务端 hold 约 30s,超时属正常,官方以 wait 重试);
+        // 过期时自动换新码(官方行为,最多 3 次)。每次结果打日志,便于线上定位扫码链路。
         while (isActive) {
             val st = WeClawClient.getQrStatus(qr.qrcode).getOrNull()
             if (st == null) {
@@ -915,7 +998,7 @@ private fun WeClawBindDialog(onDismiss: () -> Unit, onBound: (WeClawClient.QrSta
                 continue
             }
             pollFailures = 0
-            Logger.i("WeClawBind", "Estado del código de escaneo: ${st.status}")
+            Logger.i("WeClawBind", "扫码状态: ${st.status}")
             when (st.status.lowercase()) {
                 "confirmed" -> {
                     onBound(st)
@@ -938,7 +1021,7 @@ private fun WeClawBindDialog(onDismiss: () -> Unit, onBound: (WeClawClient.QrSta
                 }
                 "scaned", "scanned" -> status = "scaned"
                 "wait" -> if (status == "unstable") status = "wait"
-                else -> Unit // Estado desconocido ignorado,Continuar encuestando
+                else -> Unit // 未知状态忽略,继续轮询
             }
             delay(1_000)
         }
@@ -994,7 +1077,7 @@ private fun WeClawBindDialog(onDismiss: () -> Unit, onBound: (WeClawClient.QrSta
     )
 }
 
-/** Cuadro de entrada de clave: las claves existentes no se repetirán, solo se pueden ingresar nuevos valores para sobrescribirlas. */
+/** 密钥输入框：已有密钥不回显，只允许输入新值覆盖。 */
 @Composable
 private fun SecretInputField(
     value: String,
@@ -1066,7 +1149,7 @@ private fun WebhookReceiverToggle(checked: Boolean, onCheckedChange: (Boolean) -
     )
 }
 
-/** Descripción de credenciales + conexión de prueba + resultados. */
+/** 凭证说明 + 测试连接 + 结果。 */
 @Composable
 private fun PlatformCredentialFooter(hint: String, validating: Boolean, result: Pair<Boolean, String>?, onValidate: () -> Unit) {
     Text(
@@ -1106,7 +1189,7 @@ private fun PlatformCredentialFooter(hint: String, validating: Boolean, result: 
     }
 }
 
-/** Tutorial de acceso a la plataforma: Sigue los pasos oficiales de configuración de la plataforma. */
+/** 平台接入教程：按平台官方配置步骤。 */
 @Composable
 private fun ChannelTutorialDialog(platform: ChannelPlatform, onDismiss: () -> Unit) {
     val stepsRes =
@@ -1142,13 +1225,13 @@ private fun ChannelTutorialDialog(platform: ChannelPlatform, onDismiss: () -> Un
     )
 }
 
-/** v2.0.1: Embellecimiento de la visualización del ID de cuenta — Si es demasiado largo, mantén el principio y el final. */
+/** v2.0.1: 账号 id 展示美化 — 过长时保留首尾。 */
 private fun prettifyAccount(raw: String): String = if (raw.length <= 18) raw else raw.take(8) + "…" + raw.takeLast(4)
 
 /**
- * v2.0.1: Nombre para mostrar localizado en la plataforma — UI No muestre directamente el nombre de la constante de enumeración (FEISHU / WECLAW etc. escritura británica).
+ * v2.0.1: 平台本地化显示名 — UI 不直接显示枚举常量名（FEISHU / WECLAW 等英式写法）。
  *
- * value El partido aún termina con [ChannelPlatform.name] Es una clave estable; sólo la capa de presentación cambia con el idioma.
+ * value 匹配仍以 [ChannelPlatform.name] 为稳定键；仅展示层随语言变化。
  */
 @androidx.annotation.StringRes
 private fun channelPlatformNameRes(platform: ChannelPlatform): Int = when (platform) {

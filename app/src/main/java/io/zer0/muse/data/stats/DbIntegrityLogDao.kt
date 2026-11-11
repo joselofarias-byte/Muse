@@ -6,7 +6,7 @@ import androidx.room.Query
 import kotlinx.coroutines.flow.Flow
 
 /**
- * v1.107 Registro de verificación de integridad de la base de datos DAO.
+ * v1.107 数据库完整性校验日志 DAO。
  */
 @Dao
 interface DbIntegrityLogDao {

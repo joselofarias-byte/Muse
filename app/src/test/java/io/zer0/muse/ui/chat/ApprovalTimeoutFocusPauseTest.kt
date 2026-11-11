@@ -5,11 +5,11 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Criterios de congelación de cuenta regresiva de aprobación.
+ * 审批倒计时冻结判据。
  *
- * Además de "El usuario colapsa y lee la lista de aprobación pendiente", la sesión de aprobación también debe congelarse cuando no está en primer plano:
- * De lo contrario, si el usuario corta otra sesión y regresa después de unos minutos, solo verá un registro de rechazo que ya expiró.
- * El modelo también tratará este tiempo de espera como rechazo del usuario y lo redireccionará.
+ * 除「用户折叠阅读待审批列表」外，审批所属会话不在前台时也应冻结：
+ * 否则用户切去别的会话几分钟再回来，只会看到一条早已超时的拒绝记录，
+ * 模型还会把这次超时当成用户拒绝而改道。
  */
 class ApprovalTimeoutFocusPauseTest {
 
@@ -48,7 +48,7 @@ class ApprovalTimeoutFocusPauseTest {
 
     @Test
     fun `unknown focus keeps the original counting behavior`() {
-        // No se puede obtener el enfoque si la sesión no se ha inicializado y no se puede considerar que esté desenfocado en este momento.——De lo contrario, la aprobación quedará congelada permanentemente.
+        // 会话尚未初始化时拿不到焦点，此时不能判成失焦——否则审批会被永久冻结。
         assertFalse(
             shouldPauseApprovalTimeout(
                 foldedPaused = false,
@@ -60,7 +60,7 @@ class ApprovalTimeoutFocusPauseTest {
 
     @Test
     fun `unfocused pause budget is bounded`() {
-        // Debe haber un límite superior para la congelación fuera de foco; de lo contrario, las rondas de rutina y sesión se bloquearán permanentemente cuando el usuario no regrese.
+        // 失焦冻结必须有上限，否则用户不再回来时协程与会话轮次会永久挂住。
         assertTrue(ChatToolApprovalCoordinator.APPROVAL_UNFOCUSED_PAUSE_MAX_MS > 0L)
         assertTrue(
             ChatToolApprovalCoordinator.APPROVAL_UNFOCUSED_PAUSE_MAX_MS >

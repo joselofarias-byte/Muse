@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 
 /**
- * Suscríbase a una consulta de medios CSS.
+ * 订阅一条 CSS 媒体查询。
  *
- * Solo se usa en algunos lugares donde "el diseño del equipo afecta el comportamiento"——Actualmente, solo existe la columna izquierda de la sesión: el archivo del escritorio es residente y debe recuperarse previamente.
- * Vista previa de la sesión; Este lote de solicitudes no debe enviarse cuando el cajón de archivos del teléfono/tableta esté cerrado. Las diferencias de engranaje puramente visuales se dejan en manos de CSS.
- * No lo vuelvas a hacer en JS.
+ * 只用于「布局档位影响行为」的少数地方——目前只有会话左栏：桌面档常驻，要预取
+ * 会话预览；手机 / 平板档抽屉收起时不该发这批请求。纯视觉的档位差异一律留给 CSS，
+ * 不要在 JS 里再判一次。
  *
- * La cadena de consulta debe coincidir con el punto de interrupción en estilos.css (el script de aserción se comparará con el número 1024).
+ * 查询串必须与 styles.css 里的断点一致（断言脚本会比对 1024 这个数字）。
  */
 export function useMediaQuery(query: string): boolean {
   const [matches, setMatches] = useState(() => matchesNow(query));
@@ -24,7 +24,7 @@ export function useMediaQuery(query: string): boolean {
   return matches;
 }
 
-/** Los entornos sin matchMedia (navegadores antiguos) se tratan como no coincidentes: se pueden recuperar previamente una vez como máximo sin fallar. */
+/** 没有 matchMedia 的环境（老浏览器）当成不匹配：最多少预取一次，不会崩。 */
 function matchesNow(query: string): boolean {
   if (typeof window === "undefined" || typeof window.matchMedia !== "function") return false;
   return window.matchMedia(query).matches;

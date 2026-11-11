@@ -22,16 +22,16 @@ import io.zer0.muse.ui.common.surface.museTopBarInsets
 import io.zer0.muse.ui.theme.MusePaddings
 
 /**
- * barra superior universal — Reemplaza el material TopAppBar / LargeTopAppBar.
+ * 通用顶部栏 — 替代 Material TopAppBar / LargeTopAppBar。
  *
- * estructura:statusBarsPadding → Fila del botón de retorno → Large Title(Opcional).
- * Se aplica a todas las subpáginas.(Establecer subpágina/asistente/base de conocimientos/memoria/Traducción, etc.).
+ * 结构:statusBarsPadding → 返回按钮行 → Large Title(可选)。
+ * 适用于所有子页面(设置子页/助手/知识库/记忆/翻译等)。
  *
- * @param title texto del título
- * @param onBack devolución de llamada(Si es nulo, no muestra el botón Atrás)
- * @param largeTitle Si se debe utilizar el estilo de título grande(32dp Negrita)
- * @param actions Área de operación derecha(botón me gusta/icono)
- * @param modifier modificador
+ * @param title 标题文本
+ * @param onBack 返回回调(为 null 时不显示返回按钮)
+ * @param largeTitle 是否使用 Large Title 样式(32dp 粗体)
+ * @param actions 右侧操作区(如按钮/图标)
+ * @param modifier 修饰符
  */
 @Composable
 fun MuseTopBar(
@@ -44,12 +44,12 @@ fun MuseTopBar(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            // v1.132: background Debe preceder a statusBarsPadding,De lo contrario, el fondo sólo se dibuja padding
-            // área de contenido después,El área de la barra de estado será transparente.(La barra de estado de la página de segundo nivel confirma de forma transparente que se debe a este problema de secuencia.)
+            // v1.132: background 必须在 statusBarsPadding 之前,否则背景只画在 padding
+            // 之后的内容区域,状态栏区域会透明(二级页状态栏透明确认由该顺序问题导致)
             .background(MaterialTheme.colorScheme.background)
             .museTopBarInsets(),
     ) {
-        // Botón Atrás + contraparte del título(modo normal)
+        // 返回按钮 + 标题同行(普通模式)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -71,7 +71,7 @@ fun MuseTopBar(
                         fontWeight = FontWeight.SemiBold,
                     ),
                     color = MaterialTheme.colorScheme.onBackground,
-                    // v2.0.1: Se omite una sola línea del título de la columna superior — Cuando hay muchos botones de operación (como el navegador de productos de 4 teclas), el título ya no se doblará en varias líneas.
+                    // v2.0.1: 顶栏标题单行省略 — 操作按钮较多时（如产物浏览器 4 键）标题不再折成多行。
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier
@@ -83,7 +83,7 @@ fun MuseTopBar(
             }
             actions()
         }
-        // Large Title linea exclusiva(v1.0.19: El tamaño de fuente cambió para usar el token displayLarge,Cumple con el estándar de bloque de título grande de 34 sp.)
+        // Large Title 独占一行(v1.0.19: 字号改用 displayLarge 令牌,符合大标题栏 34sp 标准)
         if (largeTitle) {
             Text(
                 text = title,

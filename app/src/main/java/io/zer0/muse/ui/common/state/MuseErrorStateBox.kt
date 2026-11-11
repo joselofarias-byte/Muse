@@ -36,26 +36,26 @@ import io.zer0.muse.ui.theme.MuseShapes
 import io.zer0.muse.ui.theme.pill
 
 /**
- * Componente de estado de error unificado,Con botón de reintento.
+ * 统一错误状态组件,带重试按钮。
  *
- * v1.0.20 Actualización visual(Componente zombie de resurrección):
- *  - Se cambió de la barra de error de fila a la página de estado centrada en la columna.,con [MuseEmptyState] simetría visual
- *  - Contenedor de fondo de color de error redondo(error 8% abajo + icono de error 60%)
- *  - Textura cálida en lugar de rojo frío. errorContainer,Reducir la agresión visual
- *  - El diseño centrado es más adecuado para estados de error de pantalla completa,Reemplace el mensaje de error de texto simple en cada página
+ * v1.0.20 视觉升级(复活僵尸组件):
+ *  - 从 Row 错误条改为 Column 居中状态页,与 [MuseEmptyState] 视觉对称
+ *  - 圆形 error 色背景容器(error 8% 底 + error 60% 图标)
+ *  - 暖调质感替代冷红 errorContainer,降低视觉攻击性
+ *  - 居中布局更适合全屏错误态,替换各页面裸 Text 错误提示
  *
- * v1.0.23 Efecto de micromovimiento de admisión.:
- *  - con [MuseEmptyState] Desvanecimiento simétrico + deslizamiento hacia arriba(20px)Transición
- *  - uso [MuseAnimation.NORMAL_MS](240ms)+ [MuseAnimation.EaseOutCubic] Curva
+ * v1.0.23 入场微动效:
+ *  - 与 [MuseEmptyState] 对称的渐入 + 上滑(20px)过渡
+ *  - 使用 [MuseAnimation.NORMAL_MS](240ms)+ [MuseAnimation.EaseOutCubic] 曲线
  *
- * @param message Copia incorrecta
- * @param onRetry Reintentar devolución de llamada(Opcional,Mostrar después de proporcionar"Inténtalo de nuevo"botón)
- * @param onDismiss Cerrar devolución de llamada(Opcional,Mostrar después de proporcionar"cerrar"botón)
- * @param modifier modificador
+ * @param message 错误文案
+ * @param onRetry 重试回调(可选,提供后显示"重试"按钮)
+ * @param onDismiss 关闭回调(可选,提供后显示"关闭"按钮)
+ * @param modifier 修饰符
  */
 @Composable
 fun MuseErrorStateBox(message: String, onRetry: (() -> Unit)? = null, onDismiss: (() -> Unit)? = null, modifier: Modifier = Modifier) {
-    // v1.0.23: La primera combinación desencadena la transición de entrada.(AnimatedVisibility inicial visible=true No reproduzcas animación.).
+    // v1.0.23: 首次组合触发 enter 转场(AnimatedVisibility 初始 visible=true 不播放动画)。
     var visible by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { visible = true }
 
@@ -65,8 +65,8 @@ fun MuseErrorStateBox(message: String, onRetry: (() -> Unit)? = null, onDismiss:
             animationSpec = MuseMotion.tween(MuseAnimation.NORMAL_MS, easing = MuseAnimation.EaseOutCubic),
         ) + slideInVertically(
             animationSpec = MuseMotion.tween(MuseAnimation.NORMAL_MS, easing = MuseAnimation.EaseOutCubic),
-            // v2.6.7: El desplazamiento recibió el 5%. Originalmente la mitad de la altura (50%), para grandes piezas de contenido, como estados vacíos
-            // Se muestra como"Toda la pieza fue levantada"; El estado corto debe aumentar suave y ligeramente.
+            // v2.6.7: 位移收到 5%。原为高度一半（50%），对空态这类大块内容
+            // 表现为"整块被抽上来"；空态应当柔和小幅上浮。
             initialOffsetY = { (it * MuseAnimation.SLIDE_FRACTION_CONTENT).toInt() },
         ),
     ) {
@@ -77,7 +77,7 @@ fun MuseErrorStateBox(message: String, onRetry: (() -> Unit)? = null, onDismiss:
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(MusePaddings.contentGap),
         ) {
-            // v1.0.20: Contenedor de fondo redondo de color incorrecto
+            // v1.0.20: 圆形错误色背景容器
             Box(
                 modifier = Modifier
                     .size(MuseIconSizes.iconEmpty + MusePaddings.screen * 2)

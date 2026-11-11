@@ -27,26 +27,26 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
 /**
- * v1.137: Generación de vídeo universal compatible con OpenAI Provider(Refactorizar,darse cuenta [VideoProvider]).
+ * v1.137: 通用 OpenAI 兼容视频生成 Provider(重构,实现 [VideoProvider])。
  *
- * punto final de llamada: POST {baseUrl}{videoGenerationsPath}(Predeterminado /videos/generations).
- * Certificación: Bearer Token.
+ * 调用端点: POST {baseUrl}{videoGenerationsPath}(默认 /videos/generations)。
+ * 认证: Bearer Token。
  *
- * Este Proveedor es compatible con ambos tipos de formularios de respuesta:
- *  1. Retorno sincrónico:Incluido directamente en el cuerpo de la respuesta. video URL → isAsync=false
- *  2. Tareas asincrónicas:El cuerpo de la respuesta contiene task_id / id → isAsync=true,seguimiento [poll] sondeo
+ * 该 Provider 同时兼容两类响应形态:
+ *  1. 同步返回:响应体中直接包含 video URL → isAsync=false
+ *  2. 异步任务:响应体中包含 task_id / id → isAsync=true,后续走 [poll] 轮询
  *
- * v1.137 Cambiar:
- *  - implementar nuevo [VideoProvider] interfaz,Unificar el protocolo de envío/encuesta
- *  - Agregar soporte para tareas asincrónicas:Analizar task_id y sondear(GET {baseUrl}{path}/{taskId})
- *  - Eliminar el modelo predeterminado falso de gpt-4o-video(El modelo en realidad no existe.,Hará que la llamada a la API falle)
- *  - El cronograma de votación avanza hasta [VideoGenerationService],Esta clase solo es responsable de una única consulta.
+ * v1.137 改动:
+ *  - 实现新的 [VideoProvider] 接口,统一 submit/poll 协议
+ *  - 增加异步任务支持:解析 task_id 走轮询(GET {baseUrl}{path}/{taskId})
+ *  - 移除虚假的 gpt-4o-video 默认模型(该模型实际不存在,会导致 API 调用失败)
+ *  - 轮询调度上移到 [VideoGenerationService],本类只负责单次查询
  *
- * Punto final de consulta asincrónica: GET {baseUrl}{videoGenerationsPath}/{taskId}
- *  - Punto final genérico compatible con OpenAI(DashScope / MiniMax espera)Generalmente sigue esta convención.
- *  - Si la URL de consulta devuelta por el proveedor es diferente,Se recomienda implementar especializados. [VideoProvider] En lugar de seguir las reglas generales
+ * 异步查询端点: GET {baseUrl}{videoGenerationsPath}/{taskId}
+ *  - 通用 OpenAI 兼容端点(DashScope / MiniMax 等)通常遵循此约定
+ *  - 若供应商返回的查询 URL 不同,建议实现专门的 [VideoProvider] 而非走本通用兜底
  *
- * @param client OkHttp cliente
+ * @param client OkHttp 客户端
  */
 class GenericOpenAiVideoProvider(
     private val client: OkHttpClient,
@@ -59,7 +59,7 @@ class GenericOpenAiVideoProvider(
     private val json = Json { ignoreUnknownKeys = true }
 
     /**
-     * Contexto almacenado en caché por taskId(poll cuando sea necesario apiKey / baseUrl / path).
+     * 按 taskId 缓存的上下文(poll 时需要 apiKey / baseUrl / path)。
      */
     private val taskContext = ConcurrentHashMap<String, TaskContext>()
 
@@ -71,19 +71,19 @@ class GenericOpenAiVideoProvider(
     )
 
     /**
-     * Envíe una tarea de generación de video.
+     * 提交视频生成任务。
      *
-     * clasificación de respuesta:
-     *  - Contiene video URL(Ninguno task_id) → isAsync=false,Regresar directamente videoUrl
-     *  - Contiene task_id / id(Ninguno video URL) → isAsync=true,Contexto de caché para uso por encuesta
+     * 响应分类:
+     *  - 含 video URL(无 task_id) → isAsync=false,直接返回 videoUrl
+     *  - 含 task_id / id(无 video URL) → isAsync=true,缓存上下文供 poll 使用
      */
     override suspend fun submit(request: VideoGenRequest): VideoSubmitResult = withContext(Dispatchers.IO) {
         resultOf {
             if (request.apiKey.isBlank()) {
-                error("La clave API de generación de video está vacía")
+                error("La clave API para generar vídeo está vacía")
             }
             if (request.prompt.isBlank()) {
-                error("Prompt esta vacio")
+                error("La descripción está vacía")
             }
 
             val baseUrl = (request.baseUrl ?: DEFAULT_BASE_URL).trimEnd('/')
@@ -117,12 +117,12 @@ class GenericOpenAiVideoProvider(
 
                 val root = json.parseToJsonElement(respBody).jsonObject
 
-                // Priorizar intentar sincronizar resultados:Incluido directamente en el cuerpo de la respuesta. video URL
+                // 优先尝试同步结果:响应体中直接包含 video URL
                 val syncVideoUrl = extractVideoUrl(root)
                 if (syncVideoUrl != null) {
-                    Logger.i(TAG, "submit Sincronizar vídeo de regreso: url=$syncVideoUrl")
+                    Logger.i(TAG, "submit 同步返回视频: url=$syncVideoUrl")
                     return@use VideoSubmitResult(
-                        // Las tareas de sincronización se derivan mediante URL taskId,Facilitar la correlación de registros;no entrará poll
+                        // 同步任务用 URL 派生 taskId,便于日志关联;不会进入 poll
                         taskId = "$SYNC_PREFIX${System.nanoTime()}",
                         videoUrl = syncVideoUrl,
                         isAsync = false,
@@ -130,11 +130,11 @@ class GenericOpenAiVideoProvider(
                     )
                 }
 
-                // De lo contrario, se procesará como una tarea asincrónica.:analizar task_id / id
+                // 否则按异步任务处理:解析 task_id / id
                 val taskId = root["task_id"]?.jsonPrimitive?.content
                     ?: root["id"]?.jsonPrimitive?.content
                     ?: root["task"]?.jsonPrimitive?.content
-                    ?: error("La URL del video no se encuentra en la respuesta de generación de video o task_id: $respBody")
+                    ?: error("No se encontró la URL del vídeo ni task_id en la respuesta de generación: $respBody")
 
                 taskContext[taskId] = TaskContext(
                     apiKey = request.apiKey,
@@ -142,14 +142,14 @@ class GenericOpenAiVideoProvider(
                     path = path,
                     modelName = request.model,
                 )
-                Logger.i(TAG, "submit Tareas asincrónicas: taskId=$taskId")
+                Logger.i(TAG, "submit 异步任务: taskId=$taskId")
                 VideoSubmitResult(taskId = taskId, isAsync = true, modelName = request.model)
             }
         }.getOrThrow()
     }
 
     /**
-     * Consultar el estado de las tareas asincrónicas.
+     * 查询异步任务状态。
      *
      * GET {baseUrl}{path}/{taskId}
      */
@@ -159,7 +159,8 @@ class GenericOpenAiVideoProvider(
             if (ctx == null) {
                 return@resultOf VideoPollResult(
                     status = PollStatus.FAILED,
-                    errorMessage = "GenericOpenAi poll Falta contexto de tarea(taskId=$taskId, Puede ser que la tarea de sincronización estuviera mal ajustada. poll)",
+                    errorMessage = "Falta el contexto de la tarea al consultar GenericOpenAi " +
+                        "(taskId=$taskId, es posible que se haya consultado por error una tarea síncrona)",
                 )
             }
 
@@ -173,10 +174,10 @@ class GenericOpenAiVideoProvider(
             exec(httpRequest).use { resp ->
                 val respBody = readBody(resp)
                 if (!resp.isSuccessful) {
-                    // HTTP Los errores no se juzgan directamente como fracasos.,Déjelo en manos del mecanismo de reintento de la capa superior.
+                    // HTTP 错误不直接判失败,交给上层重试机制处理
                     return@use VideoPollResult(
                         status = PollStatus.PENDING,
-                        errorMessage = "GenericOpenAi poll HTTP ${resp.code}: $respBody",
+                        errorMessage = "Error HTTP al consultar GenericOpenAi: ${resp.code}: $respBody",
                     )
                 }
                 val root = json.parseToJsonElement(respBody).jsonObject
@@ -192,7 +193,8 @@ class GenericOpenAiVideoProvider(
                         if (videoUrl == null) {
                             VideoPollResult(
                                 status = PollStatus.PENDING,
-                                errorMessage = "GenericOpenAi El estado es exitoso pero no se encontró ningún video. URL: $respBody",
+                                errorMessage = "GenericOpenAi indica que la tarea se completó, " +
+                                    "pero no se encontró la URL del vídeo: $respBody",
                             )
                         } else {
                             VideoPollResult(status = status, videoUrl = videoUrl)
@@ -201,7 +203,7 @@ class GenericOpenAiVideoProvider(
                     PollStatus.FAILED -> {
                         val errMsg = root["error"]?.jsonObject?.get("message")?.jsonPrimitive?.content
                             ?: root["message"]?.jsonPrimitive?.content
-                            ?: "GenericOpenAi Falló la generación de video(status=$statusStr)"
+                            ?: "La generación de vídeo de GenericOpenAi falló (status=$statusStr)"
                         taskContext.remove(taskId)
                         VideoPollResult(status = status, errorMessage = errMsg)
                     }
@@ -213,16 +215,17 @@ class GenericOpenAiVideoProvider(
             is io.zer0.common.Result.Success -> r.data
             is io.zer0.common.Result.Error -> VideoPollResult(
                 status = PollStatus.PENDING,
-                errorMessage = "GenericOpenAi poll anormal: ${r.throwable?.message ?: r.throwable?.toString() ?: r.message}",
+                errorMessage = "Error al consultar la tarea de GenericOpenAi: " +
+                    "${r.throwable?.message ?: r.throwable?.toString() ?: r.message}",
             )
         }
     }
 
     /**
-     * Construya el cuerpo de la solicitud JSON.
+     * 构造请求体 JSON。
      *
-     * v1.137: Eliminar el modelo predeterminado falso de gpt-4o-video — model Debe ser transmitido por la persona que llama
-     * (Filtrar de la lista de modelos de ProviderConfig supportsVideoOutput() modelo).
+     * v1.137: 移除虚假的 gpt-4o-video 默认模型 — model 必须由调用方传入
+     * (从 ProviderConfig 的模型列表中筛选 supportsVideoOutput() 的模型)。
      */
     internal fun buildRequestBody(request: VideoGenRequest): String {
         return buildJsonObject {
@@ -236,23 +239,23 @@ class GenericOpenAiVideoProvider(
             if (images.size == 1) {
                 put("image", images[0])
             } else if (images.size > 1) {
-                // Se pasan varias imágenes en forma de matriz.(Compatible con puntos finales que admiten múltiples gráficos)
+                // 多图以数组形式传递(兼容支持多图的端点)
                 put("image", JsonArray(images.map { JsonPrimitive(it) }))
             }
         }.toString()
     }
 
     /**
-     * Extraiga la URL del vídeo de la respuesta.
+     * 从响应中提取视频 URL。
      *
-     * Formatos soportados:
+     * 支持格式:
      *  - {"data":[{"url":"..."}]}
      *  - {"video":{"url":"..."}}
      *  - {"url":"..."}
      *  - {"output_url":"..."} / {"video_url":"..."}
      */
     private fun extractVideoUrl(root: JsonObject): String? {
-        // campo superior directo
+        // 直接顶层字段
         for (key in VIDEO_URL_KEYS) {
             val v = root[key]
             if (v is JsonPrimitive && v.isString) {
@@ -260,7 +263,7 @@ class GenericOpenAiVideoProvider(
                 if (s.startsWith("http://", true) || s.startsWith("https://", true)) return s
             }
         }
-        // data matriz
+        // data 数组
         val data = root["data"]
         if (data is JsonArray) {
             for (item in data) {
@@ -269,7 +272,7 @@ class GenericOpenAiVideoProvider(
                 }
             }
         }
-        // video objeto
+        // video 对象
         val video = root["video"]
         if (video is JsonObject) {
             extractVideoUrl(video)?.let { return it }
@@ -284,7 +287,7 @@ class GenericOpenAiVideoProvider(
     }
 
     /**
-     * Intente analizar una respuesta de error de estilo OpenAI {"error":{"message":"..."}} O ordinario {"message":"..."}.
+     * 尝试解析 OpenAI 风格的错误响应 {"error":{"message":"..."}} 或普通 {"message":"..."}。
      */
     private fun parseApiErrorMessage(body: String): String? {
         if (body.isBlank()) return null
@@ -320,25 +323,25 @@ class GenericOpenAiVideoProvider(
     companion object {
         private const val TAG = "GenericOpenAiVideoProvider"
 
-        /** Provider identificador único,en [VideoProviderRegistry] como red de seguridad general. */
+        /** Provider 唯一标识,在 [VideoProviderRegistry] 中作为通用兜底。 */
         const val PROVIDER_ID = "openai_video_generic"
 
-        /** Base predeterminada URL(Respaldo cuando no se pasa baseUrl). */
+        /** 默认基础 URL(未传入 baseUrl 时回退)。 */
         const val DEFAULT_BASE_URL = "https://api.openai.com/v1"
 
-        /** Ruta predeterminada del punto final de generación de vídeo. */
+        /** 默认视频生成端点路径。 */
         const val DEFAULT_PATH = "videos/generations"
 
-        /** Prefijo de ID de tarea de sincronización(para correlación logarítmica,no entrará poll). */
+        /** 同步任务 ID 前缀(用于日志关联,不会进入 poll)。 */
         private const val SYNC_PREFIX = "sync:"
 
-        /** El tamaño máximo del cuerpo de respuesta es 1 MB. */
+        /** 响应体大小上限 1MB。 */
         private const val MAX_RESPONSE_BYTES = 1 * 1024 * 1024
 
-        /** Campo candidato de URL de resultado de vídeo(Ordenar por prioridad). */
+        /** 视频结果 URL 候选字段(按优先级排序)。 */
         private val VIDEO_URL_KEYS = listOf("url", "video_url", "output_url")
     }
 }
 
-/** String Expandir:URL codificación de segmento de ruta(Evite caracteres especiales que interrumpan las solicitudes). */
+/** String 扩展:URL 路径段编码(避免特殊字符破坏请求)。 */
 private fun String.encodeUrlPathSegment(): String = java.net.URLEncoder.encode(this, "UTF-8").replace("+", "%20")

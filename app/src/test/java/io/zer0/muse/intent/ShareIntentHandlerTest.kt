@@ -12,10 +12,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * v2.x: ShareIntentHandler El paquete de funciones recibe pruebas de rama.
+ * v2.x: ShareIntentHandler 角色包接收分支测试。
  *
- * Portada: VIEW + application/x-muse-assistant → ImportAssistantCard;
- * Otros mimos no se activarán por error.; Las regresiones de ruta de texto ACTION_SEND existentes no se ven afectadas.
+ * 覆盖: VIEW + application/x-muse-assistant → ImportAssistantCard;
+ * 其他 mime 不误触发; 既有 ACTION_SEND 文本路径回归不受影响。
  */
 class ShareIntentHandlerTest {
 
@@ -31,7 +31,7 @@ class ShareIntentHandlerTest {
 
         val result = ShareIntentHandler(context).handle(intent)
 
-        assertTrue("debería regresar ImportAssistantCard,real: $result", result is ShareIntentHandler.ShareResult.ImportAssistantCard)
+        assertTrue("应返回 ImportAssistantCard,实际: $result", result is ShareIntentHandler.ShareResult.ImportAssistantCard)
         assertEquals(
             uri,
             (result as ShareIntentHandler.ShareResult.ImportAssistantCard).uri,
@@ -48,7 +48,7 @@ class ShareIntentHandlerTest {
 
         val result = ShareIntentHandler(context).handle(intent)
 
-        assertTrue("El mimo del paquete sin función no debería activar la importación,real: $result", result !is ShareIntentHandler.ShareResult.ImportAssistantCard)
+        assertTrue("非角色包 mime 不应触发导入,实际: $result", result !is ShareIntentHandler.ShareResult.ImportAssistantCard)
     }
 
     @Test
@@ -56,11 +56,11 @@ class ShareIntentHandlerTest {
         val intent = mockk<Intent>(relaxed = true)
         every { intent.action } returns Intent.ACTION_SEND
         every { intent.data } returns null
-        every { intent.getStringExtra(Intent.EXTRA_TEXT) } returns "Texto compartido"
+        every { intent.getStringExtra(Intent.EXTRA_TEXT) } returns "分享的文本"
 
         val result = ShareIntentHandler(context).handle(intent)
 
-        assertTrue("Debería tomar el camino precargado,real: $result", result is ShareIntentHandler.ShareResult.PrefillText)
-        assertEquals("Texto compartido", (result as ShareIntentHandler.ShareResult.PrefillText).text)
+        assertTrue("应走预填路径,实际: $result", result is ShareIntentHandler.ShareResult.PrefillText)
+        assertEquals("分享的文本", (result as ShareIntentHandler.ShareResult.PrefillText).text)
     }
 }

@@ -42,7 +42,7 @@ interface SessionSummaryDao {
         spaceId: String? = null,
     ): List<SessionSummaryEntity>
 
-    /** Obtener todo"sucio" session(summary !== snapshot). */
+    /** 获取所有"脏" session(summary !== snapshot)。 */
     @Query("SELECT * FROM session_summaries WHERE summary != '' AND summary != snapshot")
     suspend fun getDirty(): List<SessionSummaryEntity>
 
@@ -52,16 +52,16 @@ interface SessionSummaryDao {
     @Query("DELETE FROM session_summaries")
     suspend fun deleteAll()
 
-    /** P2: Eliminar el resumen de la sesión especificada(Se utiliza para recordar la interfaz de usuario de la página para eliminar entradas de la capa de resumen). */
+    /** P2: 删除指定 session 的摘要(用于记忆页 UI 删除 Summary 层条目)。 */
     @Query("DELETE FROM session_summaries WHERE session_id = :sessionId")
     suspend fun deleteById(sessionId: String)
 
     /**
-     * Cuando se elimina un asistente, se borran todos los resúmenes de sesiones bajo su nombre.
+     * 助手被删除时清掉它名下的全部会话摘要。
      *
-     * La línea de sesión en sí no se elimina aquí. —— Se conservan las conversaciones que ya pertenecen al asistente.,Simplemente suelta la encuadernación.
+     * 会话行本身不在这里删 —— 已属于该助手的对话保留下来,只是失去绑定。
      *
-     * @return número real de filas eliminadas
+     * @return 实际删除的行数
      */
     @Query("DELETE FROM session_summaries WHERE assistant_id = :assistantId")
     suspend fun deleteByAssistant(assistantId: String): Int

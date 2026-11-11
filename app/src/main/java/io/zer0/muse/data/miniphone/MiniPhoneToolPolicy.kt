@@ -8,28 +8,28 @@ import io.zer0.muse.tools.ToolPermissionResolver
 import io.zer0.muse.tools.ToolRiskLevel
 
 /**
- * Una superficie de herramienta que pueden utilizar los personajes de teléfonos celulares pequeños.
+ * 小手机里角色能用的工具面。
  *
- * La mensajería privada en un teléfono celular pequeño es una escena de juego de roles,No es un banco de trabajo auxiliar:Sólo aquellos directamente relacionados con la "vida del personaje" son de sólo lectura./Las herramientas livianas permiten,
- * Ejecución de código, terminal, lectura y escritura de archivos, navegador, subagente,UI Las herramientas dinámicas de automatización, complementos y MCP no están disponibles para los modelos.
+ * 小手机私信是角色扮演场景,不是助手工作台:只有与「角色的生活」直接相关的只读/轻量工具允许出现,
+ * 代码执行、终端、文件读写、浏览器、子智能体、UI 自动化、插件与 MCP 动态工具一律不给模型。
  *
- * tres puertas,en orden:
- *  1. lista blanca de nombres [ALLOWED](Memoria/Recordatorio de calendario/Consulta de información y clima/Notas/Biblioteca de recursos Cinco clanes);
- *  2. Puerta de clasificación:debe estar en [ALLOWED_CATEGORIES] adentro —— GLOBAL(Clase de ejecución, navegador,UI Automatización),
- *     LEGACY,y herramientas dinámicas para categorías no registradas(complemento `plugin_*` / MCP `mcp_*__*`)bloqueado aquí;
- *  3. puerta de riesgo [ToolPermissionResolver.riskLevelFor] No HIGH —— Mismo calibre que las tareas en segundo plano,
- *     Herramientas para escribir semántica de nombres de bajo riesgo pero de alto riesgo en el libro de registro(Como por ejemplo `save_memory`)Detente como siempre.
+ * 三道闸,按顺序:
+ *  1. 名字白名单 [ALLOWED](记忆 / 日历提醒 / 天气与信息查询 / 笔记 / 资源库五族);
+ *  2. 分类闸:必须在 [ALLOWED_CATEGORIES] 里 —— GLOBAL(执行类、浏览器、UI 自动化)、
+ *     LEGACY,以及未登记分类的动态工具(插件 `plugin_*` / MCP `mcp_*__*`)在这里被挡掉;
+ *  3. 风险闸 [ToolPermissionResolver.riskLevelFor] 不是 HIGH —— 与后台任务同一口径,
+ *     注册台账里写低风险但名字语义高危的工具(如 `save_memory`)照旧拦下。
  */
 internal object MiniPhoneToolPolicy {
 
-    /** Categorías permitidas:Núcleo, normalmente abierto, opcional.GLOBAL y LEGACY no están entre ellos.;No registrado(complemento/MCP)El retorno nulo también está bloqueado. */
+    /** 允许的分类:核心、常开、可选。GLOBAL 与 LEGACY 不在其中;未登记(插件/MCP)返回 null 也挡掉。 */
     private val ALLOWED_CATEGORIES: Set<ToolCategory> = setOf(
         ToolCategory.CORE,
         ToolCategory.STANDARD,
         ToolCategory.OPTIONAL,
     )
 
-    /** Categoría de memoria. */
+    /** 记忆类。 */
     private val MEMORY_TOOLS: Set<String> = setOf(
         "save_memory",
         "search_memory",
@@ -44,7 +44,7 @@ internal object MiniPhoneToolPolicy {
         "memory_config_set",
     )
 
-    /** Categoría Calendario/Recordatorio. */
+    /** 日历 / 提醒类。 */
     private val CALENDAR_TOOLS: Set<String> = setOf(
         "get_calendar_today",
         "calendar_today",
@@ -56,10 +56,10 @@ internal object MiniPhoneToolPolicy {
         "list_reminders",
     )
 
-    /** clima. */
+    /** 天气。 */
     private val WEATHER_TOOLS: Set<String> = setOf("get_weather")
 
-    /** Otras consultas de información:Búsqueda externa y autocomprobación del estado actual. */
+    /** 其余信息查询:外部检索与当前状态自查。 */
     private val QUERY_TOOLS: Set<String> = setOf(
         "web_search",
         "web_fetch",
@@ -68,7 +68,7 @@ internal object MiniPhoneToolPolicy {
         "translate",
     )
 
-    /** Categoría de notas. */
+    /** 笔记类。 */
     private val NOTES_TOOLS: Set<String> = setOf(
         "quick_note_add",
         "quick_note_list",
@@ -79,7 +79,7 @@ internal object MiniPhoneToolPolicy {
         "quick_note_pin",
     )
 
-    /** Clase de biblioteca de recursos. */
+    /** 资源库类。 */
     private val RESOURCE_TOOLS: Set<String> = setOf(
         "resource_add",
         "resource_list",
@@ -92,10 +92,10 @@ internal object MiniPhoneToolPolicy {
         MEMORY_TOOLS + CALENDAR_TOOLS + WEATHER_TOOLS + QUERY_TOOLS + NOTES_TOOLS + RESOURCE_TOOLS
 
     /**
-     * Nombres familiares e individuales explícitamente prohibidos.
+     * 明确禁止的族与个别名字。
      *
-     * La mayoría de estos no estaban allí para empezar. [ALLOWED] adentro,Se enumeran para que los límites sean visibles en el código.:
-     * Al agregar nombres a la lista blanca en el futuro,No traeré a ninguno de ellos de vuelta fácilmente.
+     * 这些大部分本来就不在 [ALLOWED] 里,列出来是为了让边界写在代码里看得见:
+     * 以后往白名单里加名字时,不会顺手把其中某个带回来。
      */
     private val DENIED_PREFIXES: List<String> = listOf(
         "execute_",
@@ -112,7 +112,7 @@ internal object MiniPhoneToolPolicy {
         "mcp_",
     )
 
-    /** Artículos prohibidos seleccionados individualmente:El nombre no se parece a ninguno de los clanes anteriores.,Pero ambos caen bajo el límite de \"archivo de contacto/dispositivo cruzado\". */
+    /** 单拎出来的禁止项:名字不像上面任何一族,但同属「接触文件 / 跨设备」边界。 */
     private val DENIED: Set<String> = setOf(
         "read_file",
         "read_user_file",
@@ -121,10 +121,10 @@ internal object MiniPhoneToolPolicy {
         "automation_workflow",
     )
 
-    /** Conserve únicamente las definiciones de herramientas que se puedan enviar al modelo. */
+    /** 只保留能发给模型的工具定义。 */
     fun filter(definitions: List<ToolDefinition>): List<ToolDefinition> = definitions.filter { isAllowed(it.name) }
 
-    /** Sólo está permitido después de pasar las tres puertas. */
+    /** 三道闸都过才算允许。 */
     fun isAllowed(name: String): Boolean {
         if (isDenied(name) || name !in ALLOWED) return false
         val category = ToolCategories.categoryOf(name) ?: return false
@@ -132,7 +132,7 @@ internal object MiniPhoneToolPolicy {
         return ToolPermissionResolver.riskLevelFor(name) != ToolRiskLevel.HIGH
     }
 
-    /** Nombre de la herramienta → El tipo de redacción publicitaria para esa línea de interfaz. El nombre solo se lee aquí,No dejará al anfitrión. */
+    /** 工具名 → 界面那一行文案的种类。名字只在这里被读,不会离开宿主。 */
     fun activityKindOf(name: String): MpActivityKind = when (name) {
         in MEMORY_TOOLS -> MpActivityKind.REMEMBERING
         in CALENDAR_TOOLS -> MpActivityKind.CALENDAR

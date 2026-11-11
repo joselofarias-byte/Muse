@@ -1,75 +1,75 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- ===== ToolsScreen.kt ===== -->
-    <!-- Título y descripción -->
-    <string name="tools_screen_title">AI Herramientas</string>
+    <!-- 标题与说明 -->
+    <string name="tools_screen_title">Herramientas de IA</string>
     <string name="tools_intro_what">Las herramientas son capacidades a las que puede recurrir la IA, como leer notificaciones, cálculos, ejecutar código, etc.</string>
     <string name="tools_intro_manage">En la página de detalles del asistente → Expandir → Herramientas, que se pueden habilitar individualmente para cada asistente./Desactivar herramientas. Las herramientas de alto riesgo (como la ejecución de código) requieren la confirmación del usuario antes de ser llamadas.</string>
     <string name="tool_exec_empty_result">Herramientas %1$s La ejecución se completó, pero no se devolvió ningún contenido visualizable.</string>
 
-    <!-- Estadísticas -->
+    <!-- 统计 -->
     <string name="tools_stats_count">total %1$d herramientas · %2$d un alto riesgo</string>
 
-    <!-- Complementos integrados -->
+    <!-- 内置插件 -->
     <string name="tools_plugins_section">Complementos integrados</string>
     <string name="tools_plugins_desc">Los complementos son un conjunto de capacidades más generales que las herramientas y declaran los permisos necesarios y el momento de activación. A continuación se muestra una lista de complementos integrados preestablecidos por la aplicación para ayudarlo a comprender los límites de las capacidades disponibles para la IA.</string>
 
-    <!-- Insignia de nivel de riesgo -->
+    <!-- 风险等级徽章 -->
     <string name="tools_risk_safe">seguro</string>
     <string name="tools_risk_normal">ordinario</string>
     <string name="tools_risk_high">alto riesgo</string>
 
-    <!-- Ventana emergente de detalles de la herramienta -->
+    <!-- 工具详情弹窗 -->
     <string name="tools_detail_category_label">Categoría:%1$s</string>
     <string name="tools_detail_params">parámetros</string>
     <string name="tools_detail_sandbox_title">Restricciones de seguridad de la zona de pruebas</string>
     <string name="tools_detail_sandbox_content">• Basado en el motor WebView V8, aislado de las páginas del sistema\n• Desactivar fetch / XHR / WebSocket, no conectado a Internet\n• blockNetworkLoads Interceptar todas las solicitudes de red\n• El tiempo de espera predeterminado es de 10 segundos para evitar bucles interminables.\n• Se requerirá la confirmación del usuario antes de llamar (permisos de herramientas de alto riesgo)</string>
 
-    <!-- Línea de parámetros -->
+    <!-- 参数行 -->
     <string name="tools_param_required">Requerido</string>
 
-    <!-- Clasificación de herramientas -->
+    <!-- 工具分类 -->
     <string name="tools_category_built_in">Herramientas integradas</string>
     <string name="tools_category_local">herramientas locales</string>
     <string name="tools_category_mcp">MCP Herramientas</string>
 
-    <!-- Letra pequeña de capacidad de complemento -->
+    <!-- 插件能力小字 -->
     <string name="tools_permissions_label">Permisos: </string>
     <string name="tools_activation_label">Activación: </string>
 
-    <!-- ===== v1.0.20: ToolsSettingsPage.kt(Página de gestión de aprobación de herramientas)===== -->
-    <!-- Títulos y búsqueda -->
+    <!-- ===== v1.0.20: ToolsSettingsPage.kt(工具批准管理页)===== -->
+    <!-- 标题与搜索 -->
     <string name="tools_settings_title">aprobación de herramienta</string>
     <string name="tools_settings_search_hint">Nombre o descripción de la herramienta de búsqueda</string>
 
-    <!-- Estadísticas(Total N herramientas · siempre permitido X · preguntar Y · siempre rechace Z) -->
+    <!-- 统计信息(共 N 个工具 · 始终允许 X · 询问 Y · 始终拒绝 Z) -->
     <string name="tools_settings_stats">total %1$d herramientas · siempre permitido %2$d · preguntar %3$d · siempre rechace %4$d</string>
 
-    <!-- Título del grupo de nivel de riesgo -->
+    <!-- 风险等级分组标题 -->
     <string name="tools_settings_section_safe">Herramientas de seguridad (solo lectura/consulta)</string>
     <string name="tools_settings_section_normal">Herramientas comunes (efectos secundarios locales)</string>
     <string name="tools_settings_section_high">Herramientas de alto riesgo (operaciones irreversibles/sensibles)</string>
 
-    <!-- Estado vacío -->
+    <!-- 空态 -->
     <string name="tools_settings_empty">No se encontró ninguna herramienta coincidente</string>
 
-    <!-- Área de descripción de la estrategia inferior -->
+    <!-- 底部策略说明区 -->
     <string name="tools_settings_footer_section">Descripción de la estrategia</string>
     <string name="tools_settings_policy_always_allow">siempre permitido</string>
     <string name="tools_settings_policy_always_allow_desc">La herramienta se llama y se libera directamente sin que aparezca la tarjeta de aprobación.</string>
     <string name="tools_settings_policy_ask">pregunta cada vez</string>
-    <string name="tools_settings_policy_ask_desc">La tarjeta de aprobación aparece antes de llamar y depende de usted aprobarla o rechazarla.</string>
+    <string name="tools_settings_policy_ask_desc">La tarjeta de aprobación aparece antes de llamar y puedes aprobarla o rechazarla.</string>
     <string name="tools_settings_policy_always_deny">siempre rechace</string>
-    <string name="tools_settings_policy_always_deny_desc">La herramienta está deshabilitada.,AI No puedo llamar</string>
+    <string name="tools_settings_policy_always_deny_desc">La herramienta está desactivada y la IA no puede utilizarla.</string>
 
-    <!-- Copia breve de control segmentado(Selector de tres posiciones dentro de una sola fila de herramientas) -->
+    <!-- 分段控件短文案(单工具行内三档选择器) -->
     <string name="tools_settings_policy_always_allow_short">permitir</string>
     <string name="tools_settings_policy_ask_short">preguntar</string>
     <string name="tools_settings_policy_always_deny_short">rechazar</string>
     <string name="tools_empty_title">Aún no hay herramientas registradas</string>
-    <string name="tools_empty_subtitle">Verifique la configuración del complemento o MCP y luego vuelva a ingresar a esta página.</string>
+    <string name="tools_empty_subtitle">Comprueba la configuración del complemento o MCP y luego vuelva a ingresar a esta página.</string>
 
-    <!-- I18N-01 batch1: ToolCallVisuals Resumen/etiqueta -->
+    <!-- I18N-01 batch1: ToolCallVisuals 摘要/标签 -->
     <string name="tool_summary_add_calendar_event">Evento de calendario agregado</string>
     <string name="tool_summary_add_contact">Contacto añadido</string>
     <string name="tool_summary_calculator">calcular</string>
@@ -216,10 +216,10 @@
     <string name="tool_label_write_file">escribir archivo</string>
     <string name="tool_label_workspace_write">Escritura en el espacio de trabajo</string>
     <string name="tool_label_workspace_edit">Edición parcial del espacio de trabajo.</string>
-    <!-- P4: Copia de estado plegado de seguimiento de herramientas(P2-22 Nuevo) -->
+    <!-- P4: 工具轨迹折叠态状态文案(P2-22 新增) -->
     <string name="tool_trace_running">ejecutando</string>
     <string name="tool_trace_empty">Resultado vacío</string>
-    <!-- P4: mercado de complementos/Copia de error de gestión de confianza(P0-9/P2-28 Nuevo) -->
+    <!-- P4: 插件市场/信任管理错误文案(P0-9/P2-28 新增) -->
     <string name="plugin_market_load_failed">Error al cargar el directorio</string>
     <string name="plugin_market_state_invalid">El estado del directorio ha caducado, actualice el directorio</string>
     <string name="plugin_download_failed">Falló la descarga del complemento</string>

@@ -5,52 +5,52 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 
 /**
- * v1.0.81: Acumulador de argumentos de streaming tool_call.
+ * v1.0.81: 流式 tool_call arguments 累积器。
  *
- * Antecedentes del problema:
- *  OpenAI La transmisión canónica tool_call.arguments es el incremento de cadena (`{"lim` + `it":20}`),
- *  Simplemente agregue para completar el JSON. Pero modelos como DeepSeek V4/La estación de transferencia llamará a la misma herramienta.
- *  arguments a**Múltiples objetos JSON completos**Se emite la fragmentación del formulario:
+ * 问题背景：
+ *  OpenAI 规范的流式 tool_call.arguments 是字符串增量（`{"lim` + `it":20}`），
+ *  直接 append 即可拼成完整 JSON。但 DeepSeek V4 等模型/中转站会把同一 tool call 的
+ *  arguments 以**多个完整 JSON 对象**形式分片发出：
  *
  *  ```
  *  {"limit":20}
- *  {"query":"clima"}
+ *  {"query":"天气"}
  *  ```
  *
- *  Anexar ciego deletreará `{"limit":20}{"query":"clima"}`, que es JSON ilegal, aguas abajo SkillExecutor
- *  parseArgs se basa en dividir y fusionar segmentos para compensarlo. Si encuentra un segmento no cerrado, perderá el campo y finalmente activará"Parámetro faltante: query".
+ *  盲目 append 会拼成 `{"limit":20}{"query":"天气"}`，这是非法 JSON，下游 SkillExecutor
+ *  的 parseArgs 靠拆段合并补锅，遇到未闭合片段就丢字段，最终触发"缺少参数: query"。
  *
- * Este acumulador está en [append] Hay dos situaciones en las que se distingue el tiempo:
- *  1. Incremento de cadena (más común): búfer actual + nuevo fragmento, el conjunto se puede analizar en JsonObject y retener.
- *  2. Fragmentación completa del objeto: el búfer actual ya es un JsonObject completo y el nuevo fragmento se recorta con `{` principio y él mismo
- *     También es un JsonObject completo, que combina dos objetos.**Fusión de campos**(El campo que llega más tarde con el mismo nombre sobrescribe el campo que llega antes), generando un único
- *     Objeto Json legal.
+ * 本累积器在 [append] 时区分两种情况：
+ *  1. 字符串增量（最常见）：当前缓冲 + 新片段，整体能解析成 JsonObject 就保留。
+ *  2. 完整对象分片：当前缓冲已经是一个完整 JsonObject，新片段 trim 后以 `{` 开头且自身
+ *     也是完整 JsonObject，把两个对象**字段合并**（后到的同名字段覆盖先到的），产出单个
+ *     合法 JsonObject。
  *
- * Truncar/Los fragmentos no cerrados se adjuntan como de costumbre,[isValidJson] Devuelve falso, la capa superior decide esperar los fragmentos posteriores
- * Todavía informa un error y nunca pierde campos silenciosamente.
+ * 截断/未闭合的片段照常 append，[isValidJson] 返回 false，由上层决定是等待后续片段
+ * 还是报错，绝不静默丢字段。
  */
 internal class ToolCallArgsAccumulator {
 
     private val buffer = StringBuilder()
 
-    /** Si se produjeron varias fusiones completas de fragmentos de objetos JSON. */
+    /** 是否发生过多个完整 JSON 对象分片合并。 */
     private var mergedObjects = false
 
-    /** La cadena sin procesar acumulada actual. */
+    /** 当前累积的原始字符串。 */
     fun current(): String = buffer.toString()
 
-    /** El número acumulado actual de caracteres. */
+    /** 当前累积字符数。 */
     val length: Int get() = buffer.length
 
-    /** Si el contenido ha sido acumulado. */
+    /** 是否已累积内容。 */
     fun isNotEmpty(): Boolean = buffer.isNotEmpty()
 
-    /** Acumula un fragmento de incremento de argumentos. */
+    /** 累积一个 arguments 增量片段。 */
     fun append(fragment: String?) {
         val piece = fragment ?: return
         if (piece.isBlank()) return
 
-        // Caso 2: el búfer ya es un objeto completo y el nuevo fragmento también es un objeto completo → Fusionar campos.
+        // 情况 2：缓冲已经是完整对象，新片段也是完整对象 → 合并字段。
         val existingObj = parseObjectOrNull(buffer.toString())
         if (existingObj != null) {
             val newObj = parseObjectOrNull(piece.trim())
@@ -63,11 +63,11 @@ internal class ToolCallArgsAccumulator {
             }
         }
 
-        // Caso 1: Incremento de cadena normal.append Si todo se empalma en varios objetos (obj1}{obj2}),
-        // Dividir segmentos y fusionar; De lo contrario, manténgalos como están (los objetos individuales o los segmentos no cerrados no se volverán a serializar para evitar cambios en los espacios en blanco)./formato).
+        // 情况 1：普通字符串增量。append 后若整体是拼接的多个对象（obj1}{obj2}），
+        // 拆段合并；否则原样保留（单对象或未闭合片段都不重序列化，避免改动空白/格式）。
         buffer.append(piece)
         val combined = buffer.toString()
-        if (parseObjectOrNull(combined) != null) return // Ya es un objeto único legal, manténgalo como está.
+        if (parseObjectOrNull(combined) != null) return // 已经是合法单对象，原样保留
         val mergedFromConcat = tryMergeConcatenatedObjects(combined)
         if (mergedFromConcat != null) {
             mergedObjects = true
@@ -76,15 +76,15 @@ internal class ToolCallArgsAccumulator {
         }
     }
 
-    /** Si el contenido acumulado actual es un objeto JSON legal. */
+    /** 当前累积内容是否为合法 JSON 对象。 */
     fun isValidJson(): Boolean = parseObjectOrNull(buffer.toString()) != null
 
     /**
-     * ¿Se han producido varias fusiones completas de fragmentos de objetos JSON?(DeepSeek V4 Espere a que el modelo arguments
-     * dividir en {"a":1}{"b":2} múltiples objetos).
+     * 是否发生过多个完整 JSON 对象分片合并(DeepSeek V4 等模型会把 arguments
+     * 拆成 {"a":1}{"b":2} 多个对象)。
      *
-     * cuando es cierto,El río arriba ya no puede"Fragmento delta original"Enviar a aguas abajo append(Eso lo volverá a ensamblar en una cuerda empalmada.),
-     * En lugar de enviar [current]()(Completar después de fusionar JSON)como instantánea,Downstream utiliza instantáneas en lugar de anexos.
+     * 为 true 时,上游不能再把"原始增量片段"发给下游 append(那会重新拼成拼接串),
+     * 而应发送 [current]()(合并后的完整 JSON)作为快照,下游用快照而非追加。
      */
     fun hasMergedObjects(): Boolean = mergedObjects
 
@@ -98,13 +98,13 @@ internal class ToolCallArgsAccumulator {
     }
 
     /**
-     * Detección "obj1}{obj2}{obj3}" Esta cadena concatenada se divide en varios JsonObjects y se fusiona.
-     * Devuelve nulo cuando no se puede desmontar (tome la ruta de incremento de cadena normal).
+     * 检测 "obj1}{obj2}{obj3}" 这种拼接串，拆成多个 JsonObject 合并。
+     * 拆不动时返回 null（走普通字符串增量路径）。
      */
     private fun tryMergeConcatenatedObjects(raw: String): JsonObject? {
         val text = raw.trim()
         if (!text.startsWith("{")) return null
-        // Objetos de nivel superior divididos profundamente usando paréntesis
+        // 用括号深度切分顶层对象
         val objects = splitTopLevelObjects(text) ?: return null
         if (objects.size < 2) return null
         var merged: JsonObject? = null
@@ -115,7 +115,7 @@ internal class ToolCallArgsAccumulator {
         return merged
     }
 
-    /** Dividido por par de llaves de nivel superior, devolviendo el texto original de cada objeto. Devuelve nulo si es ilegal. */
+    /** 按顶层花括号配对切分，返回每个对象的原文。不合法时返回 null。 */
     private fun splitTopLevelObjects(text: String): List<String>? {
         val parts = mutableListOf<String>()
         var depth = 0
@@ -144,19 +144,19 @@ internal class ToolCallArgsAccumulator {
                         parts.add(text.substring(start, i + 1))
                         start = -1
                     } else if (depth < 0) {
-                        return null // corchetes no coinciden
+                        return null // 括号不配对
                     }
                 }
             }
         }
-        if (depth != 0 || inString) return null // no cerrado
+        if (depth != 0 || inString) return null // 未闭合
         return parts.takeIf { it.isNotEmpty() }
     }
 
     private fun mergeObjects(a: JsonObject, b: JsonObject): JsonObject = buildJsonObject {
-        // Pon todos los campos de un primero.
+        // 先放 a 的全部字段
         a.forEach { (k, v) -> put(k, v) }
-        // b Sobrescribir campos con el mismo nombre; si ambos lados son objetos, fusionar recursivamente
+        // b 覆盖同名字段；若两边都是对象，递归合并
         b.forEach { (k, v) ->
             val existing = a[k]
             if (existing is JsonObject && v is JsonObject) {

@@ -63,10 +63,10 @@ import io.zer0.muse.ui.theme.pill
 import kotlinx.coroutines.delay
 
 /**
- * Muse Cápsula de grabación rápida global en su interior.
+ * Muse 内全局快速记录胶囊。
  *
- * El pequeño mango en el borde derecho permite hacer clic o deslizar el dedo hacia la izquierda.,Evoca un panel de entrada deslizante lateral desenmascarado.
- * Esta es la implementación en la aplicación.,No solicitar permiso de ventana flotante,No se adelantará a los gestos del sistema de otras aplicaciones.
+ * 右侧边缘的小把手支持点击或向左滑动,唤起一个不带遮罩的侧滑输入面板。
+ * 这是应用内实现,不申请悬浮窗权限,不会抢占其他 App 的系统手势。
  */
 @Composable
 internal fun QuickCaptureEdgeOverlay(enabled: Boolean, viewModel: QuickNotesViewModel, modifier: Modifier = Modifier) {
@@ -76,7 +76,7 @@ internal fun QuickCaptureEdgeOverlay(enabled: Boolean, viewModel: QuickNotesView
     var draft by rememberSaveable { mutableStateOf("") }
     var panelOffsetX by rememberSaveable { mutableIntStateOf(0) }
     var panelOffsetY by rememberSaveable { mutableIntStateOf(0) }
-    // v2.6.1: FocusRequester Debe reutilizarse en todas las reorganizaciones (los nuevos creados con cada reorganización perderán el objetivo de enfoque).
+    // v2.6.1: FocusRequester 必须跨重组复用（每次重组新建会丢失焦点目标）。
     val focusRequester = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
 

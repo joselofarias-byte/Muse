@@ -1,325 +1,325 @@
-<!-- devdoc: Documentación de desarrollo interno.,No se muestra a los usuarios,LLM Consulta a través de Knowledge_search -->
-# Muse Guía del usuario
+<!-- devdoc: 内部开发文档,不向用户展示,LLM 通过 knowledge_search 查询 -->
+# Muse 用户使用指南
 
-Cuando el usuario pregunta"como usar""como usar""Instrucciones""Documentación de ayuda""Guía para principiantes""Cómo configurar""Introducción a la función""Tutorial""¿Cuál es esta función?""como operar"Consulte este documento al hacerlo. Utilice un lenguaje sencillo al responder,Evite la jerga técnica,Da ejemplos cuando sea necesario. Todas las entradas de funciones se basan en código real.,Si no lo encuentras, no lo inventes.
-
----
-
-## 1.Muse que es
-
-Muse Es una aplicación de asistente de IA para Android.,El posicionamiento central es"Cliente LLM complementario + plataforma de agente".
-
-La mayor diferencia con la versión web ordinaria del chat AI:
-
-- Tiene memoria.Muse Capacidad para refinar y compilar en resúmenes los hechos mencionados en las conversaciones.,Inyectado automáticamente durante la siguiente conversación,entonces"recuerda"Algo que dijiste antes.
-- Puede actuar. No solo charlar,Puede leer y escribir archivos en el entorno limitado de la aplicación, buscar en Internet, configurar despertadores, enviar mensajes de texto, consultar calendarios, abrir aplicaciones, leer el portapapeles, etc.
-- Puede tener múltiples personalidades. Puedes crear múltiples asistentes.,Cada uno tiene palabras, modelos, herramientas y recuerdos independientes del sistema.
-- Es privado. Todos los datos se almacenan localmente en su teléfono,No subir a servidores de terceros(Excepto llamar a su propio proveedor de modelo configurado).
-- Puede venir a ti. Después de configurar el mensaje activo,El asistente le enviará mensajes regulares como un amigo de WeChat.
+当用户问"怎么用""使用方法""说明书""帮助文档""新手指南""怎么设置""功能介绍""教程""这是什么功能""怎么操作"时参考本文档。回答时用通俗语言,避免技术术语,必要时举例说明。所有功能入口均基于真实代码,查不到的不要编造。
 
 ---
 
-## 2. Comience a usar
+## 一、Muse 是什么
 
-### Abierto por primera vez
+Muse 是一个 Android 端的 AI 助手应用,核心定位是"陪伴型 LLM 客户端 + Agent 平台"。
 
-Muse primer comienzo(Y cuando no hay un proveedor de modelos local)La página de inicio se mostrará en pantalla completa.,Dos pasos en total:
+和普通 AI 聊天网页版最大的区别:
 
-1. Introducción a la función paso uno:Desliza hacia la izquierda o hacia la derecha para ver 5 páginas de tarjetas de funciones(Chat, Asistente, Privacidad, Búsqueda en Internet, Herramientas),hay en el fondo"Siguiente paso"y"saltar".
-2. Paso 2: Título personalizado:Complete los dos cuadros de entrada
-   - Nombre del asistente(¿Cómo quieres llamar a tu asistente?,por ejemplo"Xiao Miao""JARVIS")
-   - Nombre de usuario(¿Cómo quieres que te llame tu asistente?,por ejemplo"Xiaoming""jefe")
-   - Estos dos títulos se escribirán en el retrato del usuario.,Afecta cómo se llama la IA y se dirige a ti en las conversaciones. Puede omitirlos dejándolos en blanco.
-   - Dos botones en la parte inferior:"empezar"(Ir directamente a la interfaz principal)o"Agregar proveedor de modelo"(Ir a configuración API).
-
-### Agregar proveedor de modelo
-
-Página de guía"Agregar proveedor de modelo",O ve a Configuración más tarde → Modelos y Servicios → proveedor,OK:
-
-- Agregar manualmente:Complete la clave API,Base URL, identificación del modelo.
-- agregar desde preestablecido:Elija proveedores comunes(OpenAI / Anthropic / Google / DeepSeek espera).
-- Escanear código para importar:Escanee el código QR para importar rápidamente la configuración del proveedor.
-- Importar configuración de cliente de terceros:Admite la importación de exportaciones de CherryStudio y Chatbox JSON(Formato de rastreo automático,Sólo importar proveedores y modelos.,No importar el historial de conversaciones).
-
-Después de emparejar al menos un proveedor,Regrese a la interfaz principal para iniciar la conversación.
+- 它有记忆。Muse 能把对话中提到的事实提炼、编译成摘要,下次对话时自动注入,所以它"记得"你之前说过的事。
+- 它能动手。不只是聊天,它可以读写应用沙盒内的文件、联网搜索、设闹钟、发短信、查日历、打开应用、读剪贴板等。
+- 它可以有多个人格。你能创建多个助手,每个有独立的系统提示词、模型、工具、记忆。
+- 它是私有的。所有数据存在你手机本地,不上传第三方服务器(调用你自己配置的模型供应商除外)。
+- 它能主动找你。配好主动消息后,助手会像微信好友一样定时给你发消息。
 
 ---
 
-## 3. Habla con el asistente
+## 二、开始使用
 
-### Operaciones básicas
+### 首次打开
 
-- enviar mensaje:Escriba en el cuadro de entrada inferior,Haga clic en el botón Enviar para enviar.
-- Deja de responder:Mientras el asistente responde,El botón de enviar se convertirá en un botón de parada.,Haga clic para interrumpir.
-- Colapso de mensaje largo:Las respuestas que sean demasiado largas se colapsarán automáticamente y mostrarán una máscara de degradado.,Haga clic para ampliar el texto completo.
-- El contenido del mensaje admite representación Markdown, resaltado de código, fórmulas matemáticas y tablas.
-- Rich media en las respuestas del asistente:SVG/HTML/Los bloques de código de gráficos se convierten en contenido visual(Los gráficos admiten gráficos de barras, gráficos de líneas y gráficos circulares.).
-- tarjeta de producto:Las respuestas incluyen código, documentación,JSON Esperando contenido reutilizable,Se generarán tarjetas de productos en las que se puede hacer clic.,Conveniente para ver individualmente o copiar.
+Muse 首次启动(且本地没有任何模型供应商时)会全屏显示引导页,共两步:
 
-### pensamiento profundo
+1. 第一步 功能介绍:左右滑动看 5 页功能卡片(聊天、助手、隐私、联网搜索、工具),底部有"下一步"和"跳过"。
+2. 第二步 个性化称呼:填写两个输入框
+   - 助手名字(你想叫助手什么,比如"小缪""JARVIS")
+   - 用户称呼(你想让助手怎么叫你,比如"小明""老板")
+   - 这两个称呼会写入用户画像,影响对话中 AI 的自称和对你的称呼。可以都留空跳过。
+   - 底部两个按钮:"开始使用"(直接进入主界面)或"添加模型供应商"(去配置 API)。
 
-En el menú + en el lado izquierdo del campo de entrada, hay"pensamiento profundo"cambiar. Después de encenderlo, la conversación utilizará un razonamiento de alta intensidad.(8000 tokens Piensa en el presupuesto),Adecuado para problemas complejos. Nota:Este cambio solo tiene efecto para la conversación actual.,No persistente,Restaure la configuración predeterminada del Asistente después de cambiar de sesión o reiniciar la aplicación.
+### 添加模型供应商
 
-### búsqueda en internet
+引导页点"添加模型供应商",或之后进入 设置 → 模型与服务 → 供应商,可以:
 
-También hay un menú con el signo + en el campo de entrada."búsqueda en internet"cambiar. Después de activarlo, cada vez que haga una pregunta, los resultados de la red se buscarán primero como contexto. Usado por defecto Bing(atrapar cn.bing.com,No es necesario API Key),También apoya SearXNG(Autohospedado)y Tavily(necesidad Key),en la configuración → Modelos y Servicios → Web Búsqueda o configuración → charlar → Cambio de motor de búsqueda predeterminado.
+- 手动添加:填 API Key、Base URL、模型 ID。
+- 从预设添加:选常见供应商(OpenAI / Anthropic / Google / DeepSeek 等)。
+- 扫码导入:扫描二维码快速导入供应商配置。
+- 导入第三方客户端配置:支持导入 CherryStudio 和 Chatbox 导出的 JSON(自动嗅探格式,只导入供应商和模型,不导入对话历史)。
 
-### Mensaje de menú de pulsación larga
-
-Pulsación larga(o haga clic)Cualquier mensaje hará aparecer el menú de operación.:
-
-- Copiar:Copie el texto completo del mensaje al portapapeles.
-- regenerar:Pídele al asistente que responda esta pregunta nuevamente.(Para mensajes del asistente).
-- Eliminar:borrar este mensaje(Los contenidos publicados por error se pueden retirar así.,Aparecerá un cuadro de confirmación).
-- Editar:Edite el contenido del mensaje del usuario y reenvíelo.
-- Cotización:Responder con una cita de este mensaje(Aparecerá un bloque de cotización en la parte superior del mensaje.).
-- Traducción:Traducir el mensaje al idioma de destino(punto"Traducción"Luego aparecerá un submenú de idioma para seleccionar el idioma de destino.).
-- leer en voz alta:Lea este mensaje en voz alta con voz TTS(Esta opción solo está disponible para los mensajes del Asistente).
-- Colección:Añade este mensaje a tus favoritos.
-- Compartir:Comparta el contenido del mensaje con otras aplicaciones.
-
-El último mensaje del asistente también mostrará un acceso directo adicional"Copiar"y"regenerar"botón,Se puede operar sin ingresar al menú.
+配好至少一个供应商后,回到主界面就可以开始对话了。
 
 ---
 
-## 4. Asistente de dirección
+## 三、和助手对话
 
-### Múltiples asistentes
+### 基本操作
 
-Muse Admite la creación de múltiples asistentes,Cada uno es un individuo independiente.,Tiene su propio nombre, avatar, palabras de aviso del sistema, modelos, herramientas, recuerdos e historial de conversaciones. Viene con uno por defecto"Asistente predeterminado".
+- 发送消息:在底部输入框打字,点发送按钮发送。
+- 停止回复:助手正在回复时,发送按钮会变成停止按钮,点一下即可中断。
+- 长消息折叠:回复太长会自动折叠并显示渐变遮罩,点击可展开全文。
+- 消息内容支持 Markdown 渲染、代码高亮、数学公式、表格。
+- 助手回复里的富媒体:SVG/HTML/图表代码块会渲染成可视化内容(图表支持柱状图、折线图、饼图)。
+- 产物卡片:回复中包含代码、文档、JSON 等可复用内容时,会生成可点击的产物卡片,方便单独查看或复制。
 
-entrada:ajustes → asistente. Aquí puede crear, cambiar y eliminar asistentes.
+### 深度思考
 
-### Detalles del asistente 5 subpáginas
+输入栏左侧的 + 号菜单里有"深度思考"开关。开启后该次对话会用高强度推理(8000 tokens 思考预算),适合复杂问题。注意:这个开关只对当前这次对话生效,不持久化,切换会话或重启 app 后恢复助手默认设置。
 
-Ir a configuración → asistente → Elige un asistente,Verás 5 subpáginas:
+### 联网搜索
 
-1. Conceptos básicos(Basic):nombre, clasificación,emoji Avatar o avatar de imagen, imagen de fondo de chat y transparencia.
-2. palabra rápida(Prompt):Palabra de aviso del sistema(Configuración de personajes), plantilla de mensaje(apoyo {{variable}} marcador de posición), mensaje predeterminado(Contexto fijo inyectado antes de iniciar un chat.).
-3. Expandir(Extensions):herramientas locales habilitadas,MCP servidor,Skill,Lorebook, mensaje rápido,Prompt Encabezados de solicitud personalizados e inyección/Cuerpo de solicitud.
-4. memoria(Memory):Ya sea para inyectar memoria a largo plazo, si se usa memoria global, si se inyectan resúmenes de sesiones recientes y si se habilitan recordatorios de tiempo.
-5. Avanzado(Advanced):identificación del modelo, temperatura,top-p, token máximo, número de mensajes de contexto, nivel de inferencia y si se debe transmitir la salida.
+输入栏 + 号菜单里还有"联网搜索"开关。开启后每次提问会先搜网络结果作为上下文。默认用 Bing(抓 cn.bing.com,不需要 API Key),也支持 SearXNG(自托管)和 Tavily(需 Key),在 设置 → 模型与服务 → Web 搜索 或 设置 → 聊天 → 默认搜索引擎 切换。
 
-Cada asistente se configura de forma independiente,No se afecten unos a otros. Después de cambiar de asistente,Lo que ves son las conversaciones y configuraciones del asistente correspondiente.
+### 消息长按菜单
 
----
+长按(或点击)任一条消息会弹出操作菜单:
 
-## 5. Sistema de memoria
+- 复制:复制消息全文到剪贴板。
+- 重新生成:让助手重新回答这一条(针对助手消息)。
+- 删除:删掉这条消息(误发内容可这样撤回,会弹确认框)。
+- 编辑:编辑用户消息内容后重新发送。
+- 引用:引用这条消息的内容回复(消息顶部会显示引用块)。
+- 翻译:把消息翻译成目标语言(点"翻译"后还会弹出语言子菜单选择目标语言)。
+- 朗读:用 TTS 语音朗读这条消息(仅助手消息有此选项)。
+- 收藏:把这条消息加入收藏。
+- 分享:把消息内容分享到其他应用。
 
-Muse la memoria tiene varias capas:
-
-### memoria a largo plazo
-
-durante la conversación,El sistema lo extraerá de los mensajes históricos. Fact(hechos),Guardar en base de datos,Luego compílelo en un resumen de rebajas. la próxima vez que hablemos,Este resumen se inyectará en la palabra de aviso del sistema.,Entonces asistente"recuerda"Algo que dijiste antes.
-
-Puntos clave(Debe ser honesto con los usuarios.):
-
-- memoria a largo plazo"Resumen compilado"inyección de forma,No hecho por hecho. Lo que ve el Asistente es el texto resumido.
-- La refinación ocurre en puntos de tiempo diarios del oleoducto(Normalmente tarda unas horas),No en tiempo real. Es posible que aún no se recuerden los hechos que acaba de exponer.
-- Detalles del cambio de memoria en el Asistente → subpágina de memoria(Habilitado por defecto).
-- Longitud del resumen(token presupuesto)Disponible en Configuración → Ajuste de memoria.
-
-### Pinned Memories(memoria fija)
-
-poner"debe recordar"La información clave es fija.,no depende de daily pipeline,Inyectado en cada conversación.
-
-- Dilo directamente en la conversación."recuerda:no tomo cafe",El asistente lo fijará usando la herramienta pin_memory.
-- También puedes configurarlo en Configuración → asistente → Las páginas de memoria se agregan manualmente.
-- La memoria fija existe en archivos locales.,Protegido por tamaño máximo y número de entradas.
-
-entrada:ajustes → memoria,o configuración → asistente → Subpágina de memoria.
+最后一条助手消息还会额外显示快捷"复制"和"重新生成"按钮,不用进菜单也能操作。
 
 ---
 
-## 6. Base de conocimientos
+## 四、助手管理
 
-Los usuarios pueden importar documentos a la base de conocimientos.,El asistente busca texto completo por título y contenido a través de la herramienta Knowledge_Search.
+### 多助手
 
-- Formatos soportados:txt / md / csv / json.
-- entrada:ajustes → base de conocimientos.
-- Después de importar,El asistente recupera automáticamente los documentos relevantes como referencia al responder.
-- Nota:base de conocimientos fileType="devdoc" Las entradas son documentos de desarrollo interno.(Este documento es),Solo para consultas de LLM,No se muestra en la lista de UI de la base de conocimientos.
+Muse 支持创建多个助手,每个都是独立的个体,有自己的名字、头像、系统提示词、模型、工具、记忆和对话历史。默认会自带一个"默认助手"。
 
----
+入口:设置 → 助手。在这里可以新建、切换、删除助手。
 
-## 7. Tareas programadas
+### 助手详情 5 个子页
 
-Deje que el asistente ejecute tareas regularmente según expresiones cron,Incluso si no abres la aplicación.
+进入 设置 → 助手 → 选择某个助手,会看到 5 个子页:
 
-- entrada:ajustes → Tareas programadas.
-- Utilice expresiones cron estándar(minutos horas días meses semanas)Configurar el tiempo de activación.
-- Después de llegar al punto, el asistente generará un mensaje y mostrará una notificación.
-- se puede habilitar/Desactivar/Eliminar tareas existentes.
+1. 基础(Basic):名字、排序、emoji 头像或图片头像、聊天背景图与透明度。
+2. 提示词(Prompt):系统提示词(角色设定)、消息模板(支持 {{变量}} 占位符)、预设消息(开聊前注入的固定上下文)。
+3. 扩展(Extensions):启用的本地工具、MCP 服务器、Skill、Lorebook、快捷消息、Prompt 注入、自定义请求头/请求体。
+4. 记忆(Memory):是否注入长期记忆、是否用全局记忆、是否注入最近会话摘要、是否启用时间提醒。
+5. 高级(Advanced):模型 ID、温度、top-p、最大 token、上下文消息条数、推理等级、是否流式输出。
 
----
-
-## 8. Noticias proactivas
-
-El asistente será como un amigo de WeChat.,Enviarle mensajes activamente y notificaciones emergentes a intervalos establecidos.
-
-- entrada:ajustes → charlar → Mensajería proactiva.
-- Configuración:interruptor + intervalo de envío(1 / 2 / 4 / 8 / 12 / 24 horas).
-- Después de llegar al punto, use el asistente predeterminado + el contexto de la primera sesión para generar un mensaje,Insertar conversación y mostrar notificación emergente de alta prioridad(Título"X Vienen noticias").
-- estilo:Envía WeChat como una persona real,texto plano corto,Sin prefijo.
-
-Razones comunes para no recibir mensajes no solicitados:El interruptor no está activado/el intervalo no ha expirado/la sesión o el asistente predeterminado está vacío/no se concede el permiso de notificación.
+每个助手独立配置,互不影响。切换助手后,看到的是对应助手的对话和设置。
 
 ---
 
-## 9. Chat grupal(Colaboración entre múltiples agentes)
+## 五、记忆系统
 
-Deje que varios asistentes colaboren y discutan en un grupo.
+Muse 的记忆是多层级的:
 
-- entrada:ajustes → Agent.
-- Crear chat grupal,Seleccionar asistentes participantes.
-- Cada asistente en el chat grupal habla según su propia personalidad y experiencia.,Puedes leer mensajes de otros miembros.
-- Si el asistente siente que el tema actual no requiere que hable,Esta ronda se puede saltar.
-- Adecuado para escenas que requieren diferentes perspectivas(Por ejemplo, deje que una persona que sea buena escribiendo y un asistente que sea bueno en análisis discutan lo mismo.).
+### 长期记忆
 
----
+对话过程中,系统会从历史消息里提炼 Fact(事实),存入数据库,再编译成 markdown 摘要。下次对话时,这份摘要会注入到系统提示词里,所以助手"记得"你之前说过的事。
 
-## 10. Página de traducción independiente
+关键点(必须对用户坦诚):
 
-Muse Hay una página de traducción separada en pantalla completa.(iOS estilo).
+- 长期记忆以"编译后的摘要"形式注入,不是逐条 fact。助手看到的是摘要文本。
+- 提炼发生在 daily pipeline 时点(通常需要等几小时),不是实时的。你刚说的事实可能还没被记住。
+- 记忆开关在助手详情 → 记忆子页(默认开启)。
+- 摘要长度(token 预算)可在 设置 → 记忆 调整。
 
-- entrada:ajustes → Herramientas → AI Traducir.
-- Diseño:Seleccione el idioma de destino en la parte superior,Cuadro de entrada central(con adhesivo/boton borrar),Los resultados de la traducción se muestran a continuación.(Copiar opcional),Utilice el botón flotante en la esquina inferior derecha para iniciar la traducción o cancelarla.
-- Durante la traducción se muestra una barra de progreso.
-- También puedes seleccionarlo en el menú de mensaje de pulsación larga."Traducción"Traducir un solo mensaje(Aparecerá el submenú de idioma).
+### Pinned Memories(固定记忆)
 
----
+把"必须记住"的关键信息固定下来,不依赖 daily pipeline,每次对话都注入。
 
-## 11. Tema y personalización
+- 对话中直接说"记住:我不喝咖啡",助手会用 pin_memory 工具帮你钉住。
+- 也可以在 设置 → 助手 → 记忆页 手动添加。
+- 固定记忆存在本地文件,有大小和条目数上限保护。
 
-### Tema
-
-entrada:ajustes → Apariencia.
-
-El sistema temático tiene tres niveles de prioridad.(de mayor a menor):
-
-1. color dinámico(Material You):Android 12+ Sigue el fondo de pantalla del sistema para elegir colores.(Desactivado de forma predeterminada,Necesita abrir manualmente).
-2. Tema personalizado:Genere una combinación de colores completa utilizando el algoritmo HCT basado en el color de la semilla(Ver abajo).
-3. Tema predeterminado:6 Conjunto de combinaciones de colores personalizadas(warm_paper Papel cálido / flor de cerezo de sakura / océano océano / primavera primavera / otoño otoño / negro puro amoled).
-
-modo tema(Seguimiento del sistema / Claro / Oscuro)y rango de tamaño de fuente(Pequeño / Mediano / Grande / Extra Grande)Ajústalo aquí también.
-
-### Tema personalizado
-
-en la configuración → Apariencia Se pueden crear temas personalizados.:
-
-- elegir 1~3 color de semilla(primary Requerido,secondary / tertiary Opcional).
-- El sistema deriva automáticamente la paleta de colores completa utilizando el espacio de color HCT de Material Color Utilities.(Mismo algoritmo que el color dinámico del fondo de pantalla de Android 12+).
-- Sólo necesitas elegir el color de la semilla.,No es necesario comprender más de 50 campos de color.
-
-### Retrato de usuario
-
-entrada:ajustes → Modelos y Servicios → Retrato de usuario.
-
-Rellenable:Nombre del asistente, título de usuario, edad, ciudad,MBTI, ocupación, intereses. Esta información se inyectará en las palabras de aviso del sistema.,Deja que tu asistente te conozca mejor y te hable usando tu título preferido.
+入口:设置 → 记忆,或 设置 → 助手 → 记忆子页。
 
 ---
 
-## 12. Copia de seguridad e importación
+## 六、知识库
 
-### copia de seguridad
+用户可以把文档导入知识库,助手通过 knowledge_search 工具按标题和内容全文检索。
 
-entrada:ajustes → copia de seguridad(o configuración → Datos y respaldo).
-
-- copia de seguridad local:Exportar/importar datos de la aplicación a archivos locales.
-- Copia de seguridad en la nube:Soporta S3 y WebDAV,Se puede consultar el saldo.
-- El contenido de la copia de seguridad incluye conversaciones, mensajes, asistentes, configuraciones, etc.
-
-### Importar configuración de cliente de terceros
-
-Las exportaciones de CherryStudio y Chatbox se pueden importar en la configuración del proveedor. JSON:
-
-- Formato de rastreo automático,No es necesario seleccionar fuentes manualmente.
-- Sólo importar proveedores y modelos.(API Key,Base URL, lista de modelos).
-- No importar el historial de conversaciones(Formato incompatible).
-- No se importan configuraciones avanzadas como asistentes y mensajes rápidos.
-- id Saltar el conflicto,No sobrescribe la configuración existente.
+- 支持格式:txt / md / csv / json。
+- 入口:设置 → 知识库。
+- 导入后,助手在回答时会自动检索相关文档作为参考。
+- 注意:知识库里 fileType="devdoc" 的条目是内部开发文档(本文档即是),只供 LLM 查询,不在知识库 UI 列表显示。
 
 ---
 
-## trece,Web servidor
+## 七、定时任务
 
-Muse Insertar un servidor Ktor,Admite la capacidad de llamar de forma remota a aplicaciones dentro de la red de área local.
+让助手按 cron 表达式定时执行任务,即使你不打开 app。
 
-- entrada:ajustes → Web servidor(o configuración → Datos y respaldo → Web servidor).
-- Después de habilitar,Los dispositivos en la misma LAN se pueden llamar de forma remota a través de HTTP + JWT.
-- Coopere con el descubrimiento de servicios mDNS,Transmitir automáticamente en LAN.
-- Adecuado para escenarios en los que se invocan las capacidades del asistente celular en una computadora.
-
----
-
-## 14. Habilidades prácticas
-
-### Pídele a tu asistente que recuerde información
-
-Dilo directamente en la conversación."recuerda:mi cumpleaños es el 3 de mayo",El asistente lo fijará usando la herramienta pin_memory.,Puedes recordarlo para la próxima conversación. no depende de daily pipeline,Con efecto inmediato.
-
-Si solo se mencionara casualmente,Es posible que pasen varias horas hasta que la canalización diaria termine de ejecutarse antes de que se recuerde. Se recomienda indicar explícitamente la información importante."recuerda".
-
-### Utilice el pensamiento profundo para resolver problemas complejos
-
-Problemas encontrados que requieren razonamiento.(Matemáticas, lógica, comparación de planes.),Abra el menú + en el campo de entrada"pensamiento profundo",El asistente dedicará más tiempo a pensar en un análisis en profundidad del presupuesto. No es necesario abrirlo para una pequeña charla normal.,será más lento.
-
-### Habilidades de traducción
-
-La traducción de oraciones cortas se puede seleccionar directamente desde el menú de pulsación larga del mensaje."Traducción". Para traducir el texto completo, vaya a Configuración → Herramientas → AI Traducción,Tener página de pantalla completa independiente,Admite pegar, borrar y copiar resultados.
-
-### Emoticonos y rich media
-
-El asistente puede generar gráficos SVG,HTML fragmentos, diagramas(columnar/Polilínea/gráfico circular). Solo pregunta cuando necesites visualizar datos."dibujar un diagrama"o"Mostrar con fotos".
-
-### Tema personalizado
-
-No satisfecho con el tema predeterminado,Ir a configuración → Apariencia Crear un tema personalizado,Elige un color de semilla que te guste,El sistema deriva automáticamente la paleta de colores completa.
-
-### Pídele a tu asistente que te llame como quieras
-
-Ir a configuración → Modelos y Servicios → Relleno de retrato de usuario"Nombre de usuario"(por ejemplo"jefe")y"Nombre del asistente"(por ejemplo"Xiao Miao"),El asistente te llamará de esta manera durante la conversación.
-
-### División del trabajo entre múltiples asistentes.
-
-Cree múltiples asistentes para realizar sus propias tareas.(Uno se dedica a traducir, otro se dedica a escribir código y el otro se dedica a chatear.),en la configuración → Alternar asistente. También puedes crear un chat grupal para que colaboren.
-
-### Ahorra tráfico
-
-No es necesario buscar en línea una pequeña charla;Sólo se necesita información en tiempo real(Noticias, clima, precios de acciones)Abrir de nuevo más tarde. Lo mismo ocurre con el pensamiento profundo.,Encienda a pedido.
+- 入口:设置 → 定时任务。
+- 用标准 cron 表达式(分 时 日 月 周)配置触发时间。
+- 到点后助手会生成消息并弹通知。
+- 可以启用/禁用/删除已有任务。
 
 ---
 
-## 15. Preguntas frecuentes
+## 八、主动消息
 
-### El asistente no recuerda lo que dije antes.?
+助手会像微信好友一样,按设定间隔主动给你发消息并弹通知。
 
-Consulta los datos del asistente → Si el interruptor de memoria de la subpágina de memoria está activado. La memoria a largo plazo es el resumen compilado.,No artículo por artículo fact,Y el funcionamiento del canal diario tarda varias horas. INFORMACIÓN IMPORTANTE CONSEJO DICE"recuerda:XXX"Corregido con pin_memory,o ir a configuración → asistente → Las páginas de memoria se agregan manualmente.
+- 入口:设置 → 聊天 → 主动消息。
+- 配置:开关 + 发送间隔(1 / 2 / 4 / 8 / 12 / 24 小时)。
+- 到点后用默认助手 + 第一个会话的上下文生成消息,插入会话并弹高优先级通知(标题"X 来消息了")。
+- 风格:像真人发微信,短纯文本,不带前缀。
 
-### La búsqueda en Internet no arrojó resultados?
+没收到主动消息的常见原因:开关没开 / 还没到间隔 / 默认助手或会话为空 / 通知权限没授。
 
-comprobar la configuración → Modelos y Servicios → Web Configuración del motor de búsqueda en Buscar. Bing no lo requiere de forma predeterminada Key,Pero si la red está restringida, es posible que no puedas captarla. Se puede cambiar SearXNG(Autohospedado)o Tavily(necesidad Key). Confirme también el campo de entrada + menú"búsqueda en internet"El interruptor está encendido.
+---
 
-### La traducción falló?
+## 九、群聊(多 Agent 协作)
 
-La página de traducción independiente debe configurarse con un proveedor modelo antes de poder usarse. comprobar la configuración → Hay al menos un proveedor disponible en Modelos y Servicios. Mensaje de menú de pulsación larga"Traducción"La misma razón. Si el modelo en sí no es compatible,Cambie a un modelo compatible.
+让多个助手在一个群里协作讨论。
 
-### El tema no aplica?
+- 入口:设置 → Agent。
+- 创建群聊,选择参与的助手。
+- 群聊里每个助手按自己的人格和专长发言,可以读到其他成员的消息。
+- 助手如果觉得当前话题不需要自己发言,可以跳过本轮。
+- 适合需要不同视角的场景(比如让一个擅长写作的和一个擅长分析的助手讨论同一件事)。
 
-comprobar la configuración → Selección del tema de apariencia. Si el color dinámico está activado(Android 12+),Sólo los cambios en el fondo de pantalla del sistema afectarán la combinación de colores. Primero es necesario crear temas personalizados y luego seleccionarlos. modo tema(El sistema sigue/color claro/oscuro)Controla individualmente la luz y la oscuridad.
+---
 
-### No se recibió ningún mensaje activo?
+## 十、独立翻译页
 
-comprobar la configuración → charlar → Mensaje activo: si el interruptor está activado, si se alcanza el intervalo y si se concede el permiso de notificación. También requiere que exista al menos una sesión y un asistente predeterminado.,De lo contrario, ningún contexto genera el mensaje.
+Muse 有一个独立的全屏翻译页面(iOS 风格)。
 
-### Cómo leer la página de la guía nuevamente?
+- 入口:设置 → 工具 → AI 翻译。
+- 布局:顶部选目标语言,中间输入框(带粘贴/清空按钮),下方显示翻译结果(可选中复制),右下角悬浮按钮开始翻译或取消。
+- 翻译中会显示进度条。
+- 也可以在消息长按菜单里选"翻译"翻译单条消息(会弹语言子菜单)。
 
-Página de inicio solo en el primer lanzamiento(y no hay proveedor)mostrar. Si quieres volver a verlo, puedes ir a Configuración. → Acerca de → Vuelva a mostrar el arranque. Para modificar el título, vaya a Configuración → Modelos y Servicios → Retrato de usuario.
+---
 
-### El pensamiento profundo está activado pero no hay cambios.?
+## 十一、主题与个性化
 
-El pensamiento profundo requiere modelos actuales que respalden el razonamiento. Algunos modelos no soportan la inferencia intensiva. Además, el pensamiento profundo sólo tiene efecto en la conversación actual.,no persistirá,Restaure la configuración predeterminada del Asistente para la próxima conversación.
+### 主题
 
-### Cómo importar configuraciones de otras aplicaciones?
+入口:设置 → 外观。
 
-Importe exportaciones de CherryStudio o Chatbox en la configuración del proveedor JSON,Formato de rastreo automático,Sólo se importan proveedores y modelos. El historial de conversaciones y la configuración avanzada no se importan.
+主题系统有三层优先级(从高到低):
+
+1. 动态色(Material You):Android 12+ 跟随系统壁纸取色(默认关闭,需手动开)。
+2. 自定义主题:基于种子色用 HCT 算法生成完整配色(见下文)。
+3. 预设主题:6 套手工调校的配色(warm_paper 暖纸 / sakura 樱花 / ocean 海洋 / spring 春天 / autumn 秋日 / amoled 纯黑)。
+
+主题模式(系统跟随 / 浅色 / 深色)和字号档位(小 / 中 / 大 / 超大)也在这里调。
+
+### 自定义主题
+
+在 设置 → 外观 可以创建自定义主题:
+
+- 选 1~3 个种子色(primary 必填,secondary / tertiary 可选)。
+- 系统用 Material Color Utilities 的 HCT 色彩空间自动派生完整配色(和 Android 12+ 壁纸动态色同款算法)。
+- 你只需选种子色,不用理解 50 多个颜色字段。
+
+### 用户画像
+
+入口:设置 → 模型与服务 → 用户画像。
+
+可填写:助手名字、用户称呼、年龄、城市、MBTI、职业、兴趣。这些信息会注入系统提示词,让助手更了解你、用你喜欢的称呼和你说话。
+
+---
+
+## 十二、备份与导入
+
+### 备份
+
+入口:设置 → 备份(或 设置 → 数据与备份)。
+
+- 本地备份:导出 / 导入应用数据到本地文件。
+- 云备份:支持 S3 和 WebDAV,可查询余额。
+- 备份内容包括会话、消息、助手、设置等。
+
+### 导入第三方客户端配置
+
+在供应商设置里可以导入 CherryStudio 和 Chatbox 导出的 JSON:
+
+- 自动嗅探格式,不用手动选来源。
+- 只导入供应商和模型(API Key、Base URL、模型列表)。
+- 不导入对话历史(格式不兼容)。
+- 不导入助手、快捷消息等高级配置。
+- id 冲突时跳过,不覆盖已有配置。
+
+---
+
+## 十三、Web 服务器
+
+Muse 内嵌一个 Ktor 服务器,支持局域网内远程调用 app 能力。
+
+- 入口:设置 → Web 服务器(或 设置 → 数据与备份 → Web 服务器)。
+- 启用后,同一局域网的设备可以通过 HTTP + JWT 远程调用。
+- 配合 mDNS 服务发现,自动在局域网广播。
+- 适合在电脑上调用手机端助手能力的场景。
+
+---
+
+## 十四、实用技巧
+
+### 让助手记住信息
+
+对话中直接说"记住:我的生日是 5 月 3 号",助手会用 pin_memory 工具固定下来,下次对话也能记得。不依赖 daily pipeline,立即生效。
+
+如果只是随口提到,可能要等几小时 daily pipeline 跑完才被记住。重要信息建议显式说"记住"。
+
+### 用深度思考处理复杂问题
+
+遇到需要推理的问题(数学、逻辑、方案对比),在输入栏 + 号菜单开"深度思考",助手会花更多思考预算深入分析。普通闲聊不用开,会更慢。
+
+### 翻译技巧
+
+短句翻译直接在消息长按菜单选"翻译"。整段文本翻译去 设置 → 工具 → AI 翻译,有独立全屏页面,支持粘贴、清空、复制结果。
+
+### 表情包与富媒体
+
+助手可以输出 SVG 图形、HTML 片段、图表(柱状/折线/饼图)。需要可视化数据时直接说"画个图表"或"用图展示"。
+
+### 自定义主题
+
+觉得预设主题不满意,去 设置 → 外观 创建自定义主题,选一个喜欢的种子色,系统自动派生完整配色。
+
+### 让助手用你喜欢的称呼
+
+去 设置 → 模型与服务 → 用户画像 填"用户称呼"(比如"老板")和"助手名字"(比如"小缪"),对话中助手就会这样自称和称呼你。
+
+### 多助手分工
+
+创建多个助手各司其职(一个专门翻译、一个专门写代码、一个专门聊天),在 设置 → 助手 切换。还可以建群聊让它们协作。
+
+### 省流量
+
+闲聊不用开联网搜索;只有需要实时信息(新闻、天气、股价)时再开。深度思考也一样,按需开启。
+
+---
+
+## 十五、常见问题
+
+### 助手不记得我之前说的话?
+
+检查助手详情 → 记忆子页的记忆开关是否开启。长期记忆是编译后的摘要,不是逐条 fact,而且 daily pipeline 要等几小时才跑。重要信息建议说"记住:XXX"用 pin_memory 固定,或去 设置 → 助手 → 记忆页手动添加。
+
+### 联网搜索没结果?
+
+检查 设置 → 模型与服务 → Web 搜索 里的搜索引擎配置。默认 Bing 不需要 Key,但如果网络受限可能抓不到。可以换 SearXNG(自托管)或 Tavily(需 Key)。另外确认输入栏 + 号菜单的"联网搜索"开关是开的。
+
+### 翻译失败?
+
+独立翻译页需要配置过模型供应商才能用。检查 设置 → 模型与服务 里至少有一个可用供应商。消息长按菜单的"翻译"同理。如果模型本身不支持,换一个支持的模型。
+
+### 主题不应用?
+
+检查 设置 → 外观 的主题选择。如果开了动态色(Android 12+),系统壁纸变化才会影响配色。自定义主题需要先创建再选中。主题模式(系统跟随/浅色/深色)单独控制明暗。
+
+### 主动消息没收到?
+
+检查 设置 → 聊天 → 主动消息 开关是否开启、间隔是否到了、通知权限是否授予。还需要至少有一个会话和默认助手存在,否则没有上下文生成消息。
+
+### 引导页怎么重新看?
+
+引导页只在首次启动(且没有供应商时)显示。想重新看可以去 设置 → 关于 → 重新显示引导。修改称呼则去 设置 → 模型与服务 → 用户画像。
+
+### 深度思考开了但没变化?
+
+深度思考需要当前模型支持 reasoning。有些模型不支持高强度推理。另外深度思考只对当次对话生效,不会持久化,下次对话恢复助手默认设置。
+
+### 怎么导入其他 app 的配置?
+
+在供应商设置里导入 CherryStudio 或 Chatbox 导出的 JSON,自动嗅探格式,只导入供应商和模型。对话历史和高级配置不导入。

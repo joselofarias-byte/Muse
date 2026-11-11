@@ -81,6 +81,7 @@ import io.zer0.muse.ui.theme.PresetTheme
 import io.zer0.muse.ui.theme.PresetThemes
 import io.zer0.muse.ui.theme.semiLarge
 import io.zer0.muse.ui.theme.tiny
+import io.zer0.muse.util.AppLocales
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -88,14 +89,14 @@ import java.io.File
 import kotlin.math.roundToInt
 
 /**
- * Etapa 7: Aparición section — Lista agrupada.
+ * 阶段 7: 外观 section — 分组列表。
  *
- * diseño:
- *  - usar [SettingsGroup] Envolver varias líneas item,Finas líneas divisorias entre líneas.
- *  - modo tema(sistema/color claro/oscuro)Controles segmentados mediante cápsulas.
- *  - Selección del tamaño de fuente(pequeño/en/grande/extra grande)Controles segmentados mediante cápsulas.
- *  - variaciones del tema(mono/warm_paper/ocean_blue)Convergido,Mantenga solo colores claros y oscuros.
- *  - Apenas usado elevation,Agrupados por superficieBloques de colores variantes
+ * 设计:
+ *  - 用 [SettingsGroup] 包裹多行 item,行间细分割线
+ *  - 主题模式(系统/浅色/深色)用胶囊分段控件
+ *  - 字号选择(小/中/大/特大)用胶囊分段控件
+ *  - 主题变体(mono/warm_paper/ocean_blue)已收敛,只保留浅色 + 深色
+ *  - 几乎不用 elevation,靠 surfaceVariant 色块分组
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -103,25 +104,25 @@ internal fun ThemeSection(themeMode: String, fontSizeScale: String, settings: Se
     val scope = rememberCoroutineScope()
     val themeId by settings.themeIdFlow.collectAsStateWithLifecycle(initialValue = AppearanceSettingsStore.DEFAULT_THEME_ID)
 
-    // v1.65: Interruptor de selección de color dinámico(El código ya está listo.,La interfaz de usuario anterior no tenía ningún interruptor y nunca estuvo disponible.)
+    // v1.65: 动态取色开关(代码早已就绪,此前 UI 无开关导致永远不可用)
     val dynamicColor by settings.dynamicColorFlow.collectAsStateWithLifecycle(initialValue = false)
     val context = LocalContext.current
-    // Android 12+ Solo admite selección de color dinámica,Las versiones inferiores están atenuadas(El número de versión no cambia durante el ciclo de vida del dispositivo.,Utilice el almacenamiento en caché de memoria para evitar lecturas repetidas durante la reorganización.)
+    // Android 12+ 才支持动态取色,低版本灰显(版本号在设备生命周期内不变,用 remember 缓存避免重组时重复读取)
     val dynamicColorSupported = remember { android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S }
-    // v1.97 gap7: Lista de temas definidos por el usuario + editar/Eliminar estado de ventana emergente
+    // v1.97 gap7: 用户自定义主题列表 + 编辑/删除弹窗状态
     val customThemes by settings.customThemesFlow.collectAsStateWithLifecycle(initialValue = emptyList())
-    // E2: Ruta de fuente de texto personalizada(filesDir/fonts/ abajo;null=Valor predeterminado del sistema)
+    // E2: 自定义正文字体路径(filesDir/fonts/ 下;null=系统默认)
     val customFontPath by settings.customFontPathFlow.collectAsStateWithLifecycle(initialValue = null)
-    // H5: Cambio de tema de alto contraste(Mejorar las perspectivas/contraste de fondo,Para usuarios con baja visión)
+    // H5: 高对比主题开关(增强前景/背景对比,面向弱视用户)
     val highContrast by settings.highContrastFlow.collectAsStateWithLifecycle(initialValue = false)
-    // v2.5.0: modo de vidrio líquido(off/water/frost)con intensidad(0..100) — La configuración está oculta,Conservar la colección para su posterior publicación.
+    // v2.5.0: 液态玻璃模式(off/water/frost)与强度(0..100) — 设置项已隐藏,保留收集供后续放出
 
     @Suppress("UnusedPrivateProperty")
     val liquidGlassMode by settings.liquidGlassModeFlow.collectAsStateWithLifecycle(initialValue = "off")
 
     @Suppress("UnusedPrivateProperty")
     val liquidGlassStrength by settings.liquidGlassStrengthFlow.collectAsStateWithLifecycle(initialValue = 55)
-    // E2: SAF Abrir archivo de fuente(TTF/OTF) → Copiar al directorio privado de la aplicación → guardar ruta
+    // E2: SAF 打开字体文件(TTF/OTF) → 复制到应用私有目录 → 保存路径
     val fontImportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
         scope.launch {
@@ -136,17 +137,17 @@ internal fun ThemeSection(themeMode: String, fontSizeScale: String, settings: Se
     var editingTheme by remember { mutableStateOf<CustomTheme?>(null) }
     var showEditDialog by remember { mutableStateOf(false) }
     var deletingTheme by remember { mutableStateOf<CustomTheme?>(null) }
-    // R-UI-05: Ventana emergente de selección de tiempo de conmutación programado
+    // R-UI-05: 定时切换时间选择弹窗
     var wakeTimeDialog by remember { mutableStateOf(false) }
     var sleepTimeDialog by remember { mutableStateOf(false) }
-    // La vista previa del tema personalizado debe generarse de acuerdo con el modo de tema actual ColorScheme(system El patrón sigue la profundidad del sistema.)
+    // 自定义主题预览需要按当前主题模式生成 ColorScheme(system 模式跟随系统深浅)
     val isDark = when (themeMode) {
         "light" -> false
         "dark" -> true
         else -> isSystemInDarkTheme()
     }
 
-    // ── modo tema ──
+    // ── 主题模式 ──
     SectionLabel(stringResource(R.string.settings_theme_appearance))
     SettingsGroup(
         modifier = Modifier.padding(top = 8.dp),
@@ -154,7 +155,7 @@ internal fun ThemeSection(themeMode: String, fontSizeScale: String, settings: Se
         val followSystem = stringResource(R.string.settings_theme_follow_system)
         val lightLabel = stringResource(R.string.settings_theme_light)
         val darkLabel = stringResource(R.string.settings_theme_dark)
-        // Los controles segmentados reemplazan los botones de la cápsula
+        // 分段控件替代胶囊按钮
         val modeOptions = listOf(followSystem, lightLabel, darkLabel)
         val selectedMode = when (themeMode) {
             "system" -> 0
@@ -198,13 +199,13 @@ internal fun ThemeSection(themeMode: String, fontSizeScale: String, settings: Se
             subtitle = modeLabel,
         )
         SettingsGroupDivider()
-        // H5: Cambio de tema de alto contraste — perspectivas/Contraste de fondo completo,Para usuarios con baja visión
+        // H5: 高对比主题开关 — 前景/背景对比拉满,面向弱视用户
         HighContrastRow(
             enabled = highContrast,
             onToggle = { v -> scope.launch { settings.saveHighContrast(v) } },
         )
         SettingsGroupDivider()
-        // v2.5.2: vidrio liquido — Versión rediseñada(fondo borroso+resaltar el borde+Accidente cerebrovascular),Restaurar configuración
+        // v2.5.2: 液态玻璃 — 重设计版(模糊底+高光边+描边),恢复设置项
         LiquidGlassSection(
             mode = liquidGlassMode,
             strength = liquidGlassStrength,
@@ -213,9 +214,9 @@ internal fun ThemeSection(themeMode: String, fontSizeScale: String, settings: Se
         )
     }
 
-    // ── v0.22: cambio de tema(Selector de cuadrícula de temas predeterminado) ──
+    // ── v0.22: 主题切换(预设主题网格选择器) ──
     SectionLabel(stringResource(R.string.section_theme))
-    // cuadrícula de temas: 3 Tarjetas de columna,Cada imagen muestra el color principal.+color de la superficie+Nombre+Estado seleccionado
+    // 主题网格: 3 列卡片,每张展示主色+表面色+名称+选中态
     ThemeGridPicker(
         themes = PresetThemes,
         selectedThemeId = themeId,
@@ -225,7 +226,7 @@ internal fun ThemeSection(themeMode: String, fontSizeScale: String, settings: Se
     SettingsGroup(
         modifier = Modifier.padding(top = 8.dp),
     ) {
-        // v1.65: Interruptor de selección de color dinámico — Android 12+ Extraer colores del fondo de pantalla del sistema,Anular el tema predeterminado
+        // v1.65: 动态取色开关 — Android 12+ 从系统壁纸提取颜色,覆盖预设主题
         DynamicColorRow(
             enabled = dynamicColor,
             supported = dynamicColorSupported,
@@ -233,13 +234,13 @@ internal fun ThemeSection(themeMode: String, fontSizeScale: String, settings: Se
         )
     }
 
-    // ── v1.97 gap7: Área temática personalizada(Generar según el color de la semilla. ColorScheme) ──
-    // E1: Exportación JSON del tema/importar — Compartir como texto(ACTION_SEND),Importar archivos seleccionados SAF
+    // ── v1.97 gap7: 自定义主题区(基于种子色生成 ColorScheme) ──
+    // E1: 主题 JSON 导出/导入 — 分享为文本分享(ACTION_SEND),导入走 SAF 选文件
     val shareTheme: (CustomTheme) -> Unit = { theme ->
         val json = AppJson.encodeToString(CustomTheme.serializer(), theme)
         val sendIntent = Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"
-            putExtra(Intent.EXTRA_SUBJECT, "Muse Theme: ${theme.name}")
+            putExtra(Intent.EXTRA_SUBJECT, "Tema de Muse: ${theme.name}")
             putExtra(Intent.EXTRA_TEXT, json)
         }
         context.startActivity(
@@ -261,17 +262,17 @@ internal fun ThemeSection(themeMode: String, fontSizeScale: String, settings: Se
         } catch (e: kotlin.coroutines.cancellation.CancellationException) {
             throw e
         } catch (e: java.io.IOException) {
-            Logger.w("ThemeSection", "Error de lectura de importación de tema: ${e.message}")
+            Logger.w("ThemeSection", "主题导入读取失败: ${e.message}")
             MuseToast.show(context.getString(R.string.settings_theme_custom_import_failed))
             return@rememberLauncherForActivityResult
         } catch (e: kotlinx.serialization.SerializationException) {
-            Logger.w("ThemeSection", "Error al analizar la importación del tema: ${e.message}")
+            Logger.w("ThemeSection", "主题导入解析失败: ${e.message}")
             MuseToast.show(context.getString(R.string.settings_theme_custom_import_failed))
             return@rememberLauncherForActivityResult
         }
         scope.launch {
             settings.upsertCustomTheme(theme)
-            // Cambiar automáticamente a este tema después de importar,Consistente con el comportamiento de creación.
+            // 导入后自动切换到该主题,与创建行为一致
             settings.saveThemeId(theme.id)
         }
         MuseToast.show(context.getString(R.string.settings_theme_custom_import_success))
@@ -298,7 +299,7 @@ internal fun ThemeSection(themeMode: String, fontSizeScale: String, settings: Se
         onExport = shareTheme,
     )
 
-    // Editar/Crear ventana emergente(MuseDialog sustituto ModalBottomSheet — ModalBottomSheet tiene malla atascada en una máquina real bug)
+    // 编辑/创建弹窗(MuseDialog 替代 ModalBottomSheet — 真机上 ModalBottomSheet 有 scrim 卡死 bug)
     if (showEditDialog) {
         CustomThemeEditDialog(
             theme = editingTheme,
@@ -310,7 +311,7 @@ internal fun ThemeSection(themeMode: String, fontSizeScale: String, settings: Se
             onSave = { theme ->
                 scope.launch {
                     settings.upsertCustomTheme(theme)
-                    // Cambiar automáticamente a este tema después de guardar
+                    // 保存后自动切换到该主题
                     settings.saveThemeId(theme.id)
                 }
                 showEditDialog = false
@@ -319,7 +320,7 @@ internal fun ThemeSection(themeMode: String, fontSizeScale: String, settings: Se
         )
     }
 
-    // Eliminar ventana emergente de confirmación
+    // 删除确认弹窗
     deletingTheme?.let { theme ->
         MuseDialog(
             onDismissRequest = { deletingTheme = null },
@@ -335,7 +336,7 @@ internal fun ThemeSection(themeMode: String, fontSizeScale: String, settings: Se
             onConfirm = {
                 scope.launch {
                     settings.deleteCustomTheme(theme.id)
-                    // Después de la eliminación, si el themeId actual apunta al tema eliminado,Volver al valor preestablecido predeterminado
+                    // 删除后若当前 themeId 指向被删主题,回退到默认预设
                     if (themeId == theme.id) {
                         settings.saveThemeId(AppearanceSettingsStore.DEFAULT_THEME_ID)
                     }
@@ -348,10 +349,10 @@ internal fun ThemeSection(themeMode: String, fontSizeScale: String, settings: Se
         )
     }
 
-    // v1.0.92: La entrada del tema independiente del modo oscuro ha estado desconectada — Se corrigió después de la versión oscura del tema claro.,
-    // A los usuarios ya no se les presentan opciones de tema oscuro(Requisitos del usuario:Mantenga únicamente sistemas temáticos de colores brillantes).
+    // v1.0.92: 深色模式独立主题入口已下线 — 固定跟随亮色主题的暗色版,
+    // 不再向用户展示深色主题选择(用户要求:只保留亮色主题体系)。
 
-    // ── Cambio programado de tema(Feature 4) ──
+    // ── 主题定时切换(Feature 4) ──
     val schedule by settings.themeScheduleFlow.collectAsStateWithLifecycle(initialValue = io.zer0.muse.data.ThemeScheduleConfig())
     SectionLabel(stringResource(R.string.settings_theme_schedule))
     SettingsGroup(
@@ -432,7 +433,7 @@ internal fun ThemeSection(themeMode: String, fontSizeScale: String, settings: Se
         )
     }
 
-    // ── Selección del tamaño de fuente ──
+    // ── 字号选择 ──
     SectionLabel(stringResource(R.string.settings_theme_font_size))
     SettingsGroup(
         modifier = Modifier.padding(top = 8.dp),
@@ -445,7 +446,7 @@ internal fun ThemeSection(themeMode: String, fontSizeScale: String, settings: Se
         val largeScale = stringResource(R.string.settings_theme_font_large_label)
         val xlargeScale = stringResource(R.string.settings_theme_font_xlarge_label)
         val mediumScale = stringResource(R.string.settings_theme_font_medium_label)
-        // Los controles segmentados reemplazan los botones de la cápsula
+        // 分段控件替代胶囊按钮
         val fontOptions = listOf(smallLabel, mediumLabel, largeLabel, xlargeLabel)
         val selectedFont = when (fontSizeScale) {
             "small" -> 0
@@ -483,24 +484,24 @@ internal fun ThemeSection(themeMode: String, fontSizeScale: String, settings: Se
             title = stringResource(R.string.settings_theme_current_font_size),
             subtitle = scaleLabel,
         )
-        // Etapa K: vista previa del tamaño de fuente(Visualización en tiempo real del efecto de texto bajo el tamaño de fuente actual,Sensación de lujo)
+        // 阶段 K: 字号预览(实时展示当前字号下的文本效果,高级感)
         SettingsGroupDivider()
         FontSizePreview(fontSizeScale)
     }
 
-    // ── E2: Importación de fuentes de texto personalizadas/Borrar ──
+    // ── E2: 自定义正文字体导入/清除 ──
     FontSection(
         customFontPath = customFontPath,
         onImport = { fontImportLauncher.launch(arrayOf("font/ttf", "font/otf", "application/octet-stream")) },
         onClear = {
             scope.launch {
-                // Después de borrar la ruta, los archivos antiguos permanecen en filesDir/fonts/,La próxima importación sobrescribirá el archivo con el mismo nombre.,No es necesario eliminar activamente
+                // 清除路径后旧文件保留在 filesDir/fonts/,下次导入覆盖同名文件,无需主动删除
                 settings.setCustomFontPath(null)
             }
         },
     )
 
-    // ── Phase 4: Opciones de piel de burbuja/Vista previa(Compartir con la página de chat BubbleSkinResolver) ──
+    // ── Phase 4: 气泡皮肤选择/预览(与聊天页共用 BubbleSkinResolver) ──
     BubbleSkinSection(
         fontSizeScale = fontSizeScale,
         defaultDark = isDark,
@@ -508,8 +509,8 @@ internal fun ThemeSection(themeMode: String, fontSizeScale: String, settings: Se
 }
 
 /**
- * v1.65: Selección de color dinámica(Material You)Cambiar de fila.
- * Android 12+ Extraer el color principal del fondo de pantalla del sistema,Anular el tema predeterminado;La versión inferior aparece atenuada y se le indica que no es compatible.
+ * v1.65: 动态取色(Material You)开关行。
+ * Android 12+ 从系统壁纸提取主色调,覆盖预设主题;低版本灰显并提示不支持。
  */
 @Composable
 private fun DynamicColorRow(enabled: Boolean, supported: Boolean, onToggle: (Boolean) -> Unit) {
@@ -556,8 +557,8 @@ private fun DynamicColorRow(enabled: Boolean, supported: Boolean, onToggle: (Boo
 }
 
 /**
- * H5: Fila de cambio de tema de alto contraste — Después de su apertura, MuseTheme será negro puro./fondo blanco puro/renderizado en primer plano(Contraste 21:1),
- * Para usuarios con baja visión;Se conserva el color semántico primario del tema.
+ * H5: 高对比主题开关行 — 开启后 MuseTheme 以纯黑/纯白背景/前景渲染(对比度 21:1),
+ * 面向弱视用户;主题 primary 语义色保留。
  */
 @Composable
 private fun HighContrastRow(enabled: Boolean, onToggle: (Boolean) -> Unit) {
@@ -598,7 +599,7 @@ private fun HighContrastRow(enabled: Boolean, onToggle: (Boolean) -> Unit) {
     }
 }
 
-/** v2.5.0: Área de colocación de vidrio líquido — modo(cerrar/vaso de agua/helado) + Control deslizante de fuerza(0..100). Oculto temporalmente,Se liberará nuevamente después de ajustar el efecto. */
+/** v2.5.0: 液态玻璃设置区 — 模式(关/水玻璃/磨砂) + 强度滑杆(0..100)。暂时隐藏,待效果调优后重新放出。 */
 @Suppress("FunctionNaming", "UnusedPrivateMember")
 @Composable
 private fun LiquidGlassSection(mode: String, strength: Int, onModeChange: (String) -> Unit, onStrengthChange: (Int) -> Unit) {
@@ -638,14 +639,14 @@ private fun LiquidGlassSection(mode: String, strength: Int, onModeChange: (Strin
             }
         }
         Spacer(Modifier.height(10.dp))
-        // modo: Cerrar / vaso de agua / vidrio esmerilado
+        // 模式: 关 / 水玻璃 / 磨砂玻璃
         MuseCapsuleTab(
             tabs = modeOptions,
             selectedIndex = selectedMode,
             onSelect = { idx -> onModeChange(modeValues[idx]) },
         )
-        // v2.6.0: La intensidad se cambia a tres niveles fijos.(bajo/en/alto) —— Control deslizante continuo en“No puedo permitirme un viaje de negocios”en el intervalo
-        // Sólo puede resultar confuso; Los engranajes fijos aseguran que cada engranaje sea un salto visible.
+        // v2.6.0: 强度改为固定三档(低/中/高) —— 连续滑条在“看不出差”的区间里
+        // 只能让人困惑；固定档位保证每一档都是肉眼可辨的跃迁。
         if (mode != io.zer0.muse.ui.theme.LiquidGlassConfig.MODE_OFF) {
             Spacer(Modifier.height(8.dp))
             Text(
@@ -660,9 +661,9 @@ private fun LiquidGlassSection(mode: String, strength: Int, onModeChange: (Strin
                     stringResource(R.string.settings_glass_level_medium),
                     stringResource(R.string.settings_glass_level_high),
                 )
-            // Guardar 0..100 sin cambios (compatible con valores antiguos); aumente el valor del engranaje a 20/55/95 para garantizar un salto obvio en apariencia y sensación.
+            // 存 0..100 不变（兼容旧值）；档位值拉开到 20/55/95，保证观感跃迁明显。
             val levelValues = listOf(20, 55, 95)
-            // Asigna el valor actual al último nivel (se repite cuando se selecciona).
+            // 把当前值映射到最近的一档（选中态回显）。
             val currentLevel = levelValues.indices.minByOrNull { kotlin.math.abs(levelValues[it] - strength) } ?: 1
             MuseCapsuleTab(
                 tabs = levelLabels,
@@ -674,10 +675,10 @@ private fun LiquidGlassSection(mode: String, strength: Int, onModeChange: (Strin
 }
 
 /**
- * Etapa K: vista previa del tamaño de fuente — Representa texto de muestra utilizando el tamaño de fuente seleccionado actualmente,Permita que los usuarios sientan intuitivamente los cambios en el tamaño de fuente.
+ * 阶段 K: 字号预览 — 用当前选中字号渲染样例文本,让用户直观感受字号变化。
  *
- * Ejemplo de representación de tres líneas en una superficieTarjeta translúcida variante(Título/Texto/Letra pequeña),
- * El tamaño de fuente se escala en tiempo real según la escala.,encarnar"Lo que ves es lo que obtienes".
+ * 在 surfaceVariant 半透明卡片中渲染三行样例(标题 / 正文 / 小字),
+ * 字号按 scale 实时缩放,体现"所见即所得"。
  */
 @Composable
 private fun FontSizePreview(scale: String) {
@@ -725,10 +726,10 @@ private fun FontSizePreview(scale: String) {
 }
 
 /**
- * v0.22: línea de asunto — Nombre del tema a la izquierda,lado derecho Check icon(Mostrar solo cuando se selecciona).
+ * v0.22: 主题选项行 — 左侧主题名,右侧 Check icon(仅选中时显示)。
  *
- * estilo con [SettingsItemRow] Alineación(16/12 padding),como"Tema"Elección única dentro de un grupo;
- * Cuando se selecciona, el nombre del tema y el ícono se resaltan en el color primario.
+ * 样式与 [SettingsItemRow] 对齐(16/12 padding),作为"主题"分组内的单选项;
+ * 选中时主题名与图标都用 primary 色高亮。
  */
 @Composable
 private fun ThemeOptionRow(name: String, isSelected: Boolean, onClick: () -> Unit) {
@@ -753,7 +754,7 @@ private fun ThemeOptionRow(name: String, isSelected: Boolean, onClick: () -> Uni
                 MaterialTheme.colorScheme.onSurface
             },
             modifier = Modifier.weight(1f),
-            // LAYOUT-01: Row Anchura el texto interior + limita la línea para evitar que el icono seleccionado a la derecha la comprima en una columna cuando se amplía el tamaño de fuente
+            // LAYOUT-01: Row 内文本取宽 + 限行，防放大字号下被右侧选中图标挤成一列
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
@@ -769,9 +770,9 @@ private fun ThemeOptionRow(name: String, isSelected: Boolean, onClick: () -> Uni
 }
 
 /**
- * Selector de cuadrícula de temas — 3 Las tarjetas de columnas muestran temas predeterminados,Cada tarjeta muestra el color principal.+color de la superficie+Nombre.
+ * 主题网格选择器 — 3 列卡片展示预设主题,每张卡片显示主色+表面色+名称。
  *
- * Estado seleccionado: Borde de color del tema + marca de verificación. Color de luz de apoyo/Vista previa del modo oscuro.
+ * 选中态: 主题色边框 + 勾号。支持浅色/深色模式预览。
  */
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
@@ -800,7 +801,7 @@ private fun ThemeGridPicker(themes: List<PresetTheme>, selectedThemeId: String, 
 }
 
 /**
- * Tarjeta de cuadrícula de un solo tema — Vista previa de muestra + nombre + marca de verificación.
+ * 单张主题网格卡片 — 色板预览 + 名称 + 选中勾号。
  */
 @Composable
 private fun ThemeGridCard(
@@ -829,7 +830,7 @@ private fun ThemeGridCard(
     ) {
         Box(modifier = Modifier.padding(10.dp)) {
             Column {
-                // Muestras: Puntos de color principal + barras de color de superficie
+                // 色板: 主色圆点 + 表面色条
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -856,7 +857,7 @@ private fun ThemeGridCard(
                     maxLines = 1,
                 )
             }
-            // marca de verificación
+            // 选中勾号
             if (isSelected) {
                 Icon(
                     imageVector = MuseIcons.check,
@@ -872,9 +873,9 @@ private fun ThemeGridCard(
 }
 
 /**
- * v1.60-C: Área de selección de idioma — Controles segmentados de cápsulas,Imitación del modo ThemeModeOption.
- * Opciones:Siga el sistema/chino/inglés/japonés/coreano/ruso.
- * v1.132: Se agregaron tres nuevos idiomas ja/ko/ru,6 Opción de utilizar el diseño FlowRow de dos filas y tres columnas,Evite apretar demasiado la pantalla.
+ * v1.60-C: 语言选择区 — 胶囊分段控件,仿 ThemeModeOption 模式。
+ * 选项:跟随系统 + [AppLocales.Language] 全集,标签用语言自称(与引导页同一份)。
+ * v1.132: 新增 ja/ko/ru 三种语言,6 选项改用 FlowRow 两行三列布局,避免窄屏挤压。
  */
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
@@ -886,13 +887,8 @@ internal fun LanguageSection(language: String, settings: SettingsRepository) {
         modifier = Modifier.padding(top = 8.dp),
     ) {
         val followSystem = stringResource(R.string.settings_theme_follow_system)
-        val esLabel = stringResource(R.string.settings_theme_language_es)
-        val enLabel = stringResource(R.string.settings_theme_language_en)
-        val jaLabel = stringResource(R.string.settings_theme_language_ja)
-        val koLabel = stringResource(R.string.settings_theme_language_ko)
-        val ruLabel = stringResource(R.string.settings_theme_language_ru)
-        val ptLabel = stringResource(R.string.settings_theme_language_pt)
-        // v1.132: 6 opciones envueltas con FlowRow,Máximo 3 por línea,Evite apretar demasiado la pantalla.
+        val languageOptions = AppLocales.Language.entries.map { it.code to stringResource(it.labelRes) }
+        // v1.132: 6 个选项用 FlowRow 包装,每行最多 3 个,避免窄屏挤压。
         androidx.compose.foundation.layout.FlowRow(
             modifier = Modifier
                 .fillMaxWidth()
@@ -901,32 +897,20 @@ internal fun LanguageSection(language: String, settings: SettingsRepository) {
             verticalArrangement = Arrangement.spacedBy(8.dp),
             maxItemsInEachRow = 3,
         ) {
-            // I4: Cambio de idioma en caliente — La actividad ya no se reinicia.
-            // plano original(recreate/Intent+finish)Hay problemas con ANR bloqueado y la configuración regional de ROM no tiene efecto al reconstruir la Actividad;
-            // Ahora monitoreado por MainActivity.RuntimeLocaleProvider languageFlow,Alternar solo reorganización Compose UI,
-            // El idioma inicial del arranque en frío todavía está garantizado mediante adjuntoBaseContext + wrapWithLanguage.
+            // I4: 语言热切换 — 不再重启 Activity。
+            // 原方案(recreate/Intent+finish)重建 Activity 存在 ANR 卡死与 ROM locale 不生效问题;
+            // 现由 MainActivity.RuntimeLocaleProvider 监听 languageFlow,切换仅重组 Compose UI,
+            // 冷启动初始语言仍由 attachBaseContext + wrapWithLanguage 保证。
             val switchLanguage: (String) -> Unit = { lang ->
                 scope.launch { settings.saveLanguage(lang) }
             }
             ThemeModeOption(followSystem, language == "system") { switchLanguage("system") }
-            ThemeModeOption(esLabel, language == "es") { switchLanguage("es") }
-            ThemeModeOption(enLabel, language == "en") { switchLanguage("en") }
-            ThemeModeOption(ptLabel, language == "pt-rBR") { switchLanguage("pt-rBR") }
-            // v1.132: Idioma japonés agregado/coreano/Opciones de tres idiomas rusos
-            ThemeModeOption(jaLabel, language == "ja") { switchLanguage("ja") }
-            ThemeModeOption(koLabel, language == "ko") { switchLanguage("ko") }
-            ThemeModeOption(ruLabel, language == "ru") { switchLanguage("ru") }
+            languageOptions.forEach { (code, label) ->
+                ThemeModeOption(label, language == code) { switchLanguage(code) }
+            }
         }
         SettingsGroupDivider()
-        val langLabel = when (language) {
-            "es", "zh" -> esLabel
-            "en" -> enLabel
-            "pt-rBR" -> ptLabel
-            "ja" -> jaLabel
-            "ko" -> koLabel
-            "ru" -> ruLabel
-            else -> followSystem
-        }
+        val langLabel = languageOptions.firstOrNull { it.first == language }?.second ?: followSystem
         SettingsItemRow(
             icon = MuseIcons.languages,
             title = stringResource(R.string.settings_theme_current_language),
@@ -936,8 +920,8 @@ internal fun LanguageSection(language: String, settings: SettingsRepository) {
 }
 
 /**
- * v1.95: Activar el área de selección de página predeterminada — Controles segmentados de cápsulas,Imitación del patrón LanguageSection.
- * Opciones:Tareas/Agente/Chat grupal. Determinar la página inicial solo al inicio,Cambiar la configuración sobre la marcha no restablece la página actual.
+ * v1.95: 启动默认页选择区 — 胶囊分段控件,仿 LanguageSection 模式。
+ * 选项:任务 / Agent / 群聊。仅在启动时决定初始页,运行中切换设置不会重置当前页。
  */
 @Composable
 internal fun DefaultHomePageSection(settings: SettingsRepository) {
@@ -982,24 +966,24 @@ internal fun DefaultHomePageSection(settings: SettingsRepository) {
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// v1.97 gap7: Tema personalizado UI(Generar según el color de la semilla. ColorScheme)
-// Implementación de referencia:rikkahub SettingThemePage.kt(Apache 2.0)
+// v1.97 gap7: 自定义主题 UI(基于种子色生成 ColorScheme)
+// 参考实现:rikkahub SettingThemePage.kt(Apache 2.0)
 // ──────────────────────────────────────────────────────────────────────────────
 
 /**
- * gap7: Área temática personalizada — Lista + botón Agregar + mensaje de lista vacía.
+ * gap7: 自定义主题区 — 列表 + 添加按钮 + 空列表提示。
  *
- * Usuario creado aquí/Editar/Eliminar/Elija un tema personalizado basado en los colores de las semillas,Alineado visualmente con el área temática preestablecida arriba:
- *  - usar [SectionLabel] + [SettingsGroup] paquete,Consistente con el modo de tema/área de selección de tamaño de fuente
- *  - Fila fija en la parte superior"Agregar tema"linea de operacion
- *  - Mostrar texto de aviso cuando la lista esté vacía,Evite las tarjetas en blanco
- *  - Cada artículo [CustomThemeItemRow] Contiene muestras de cuadrantes de 4 colores + nombre + edición/boton borrar
+ * 用户在此创建/编辑/删除/选择基于种子色的自定义主题,与上方预设主题区视觉对齐:
+ *  - 用 [SectionLabel] + [SettingsGroup] 包裹,与主题模式 / 字号选择区一致
+ *  - 顶部固定一行"添加主题"操作行
+ *  - 空列表时显示提示文字,避免空白卡片
+ *  - 每项 [CustomThemeItemRow] 含 4 色象限色板 + 名称 + 编辑/删除按钮
  */
 @Composable
 @Suppress(
     "LongParameterList",
     "LongMethod",
-    // colección de devolución de llamada(elegir/agregar/Editar/Eliminar/importar/Exportar)es una estructura inherente a nivel de pantalla;El área de lista incluye agregar/Importar entradas duales y ramas vacías
+    // 回调集合(选择/添加/编辑/删除/导入/导出)为屏幕级固有结构;列表区含添加/导入双入口与空态分支
 )
 private fun CustomThemeSection(
     customThemes: List<CustomTheme>,
@@ -1009,16 +993,16 @@ private fun CustomThemeSection(
     onAdd: () -> Unit,
     onEdit: (CustomTheme) -> Unit,
     onDelete: (CustomTheme) -> Unit,
-    /** E1: Abra el selector de archivos SAF para importar el tema JSON. */
+    /** E1: 打开 SAF 文件选择器导入主题 JSON。 */
     onImport: () -> Unit,
-    /** E1: Exporte temas individuales como JSON para compartir. */
+    /** E1: 导出单个主题为 JSON 分享。 */
     onExport: (CustomTheme) -> Unit,
 ) {
     SectionLabel(stringResource(R.string.settings_theme_custom_section))
     SettingsGroup(
         modifier = Modifier.padding(top = 8.dp),
     ) {
-        // agregar/Importar líneas de acción de temas(Se puede hacer clic en ancho completo,icono izquierdo,Texto correcto)
+        // 添加/导入主题操作行(全宽可点击,左图标,右文字)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1064,7 +1048,7 @@ private fun CustomThemeSection(
                 )
             }
         }
-        // Lista vacía de mensajes/temas
+        // 空列表提示 / 主题列表
         if (customThemes.isEmpty()) {
             SettingsGroupDivider()
             Box(
@@ -1097,17 +1081,17 @@ private fun CustomThemeSection(
 }
 
 /**
- * gap7: Línea de asunto personalizada única — 4 muestras de cuadrante de color a la izquierda,segundo nombre,Editar a la derecha/Botón eliminar.
+ * gap7: 单个自定义主题行 — 左侧 4 色象限色板,中间名称,右侧编辑/删除按钮。
  *
- * Para paleta de colores [Canvas] Dibuja una cuadrícula de 2x2:primaryContainer / secondaryContainer /
- * tertiaryContainer / punto primario central(Cuando se selecciona, el punto se amplía y se superpone a una marca de verificación blanca.).
- * Las esquinas redondeadas se utilizan en este proyecto. [MuseShapes] Simbólico.
+ * 色板用 [Canvas] 绘制 2x2 网格:primaryContainer / secondaryContainer /
+ * tertiaryContainer / 中心 primary 圆点(选中时圆点放大并叠加白色对勾)。
+ * 圆角用本项目的 [MuseShapes] 令牌。
  */
 @Composable
 @Suppress(
     "LongParameterList",
     "LongMethod",
-    // Una sola línea contiene 4 devoluciones de llamada.(elegir/Editar/Eliminar/Exportar)+ Tema y estado seleccionado.,Un conjunto de parámetros intrínsecos a nivel de pantalla.
+    // 单行含 4 个回调(选择/编辑/删除/导出)+ 主题与选中态,属屏幕级固有参数集合
 )
 private fun CustomThemeItemRow(
     theme: CustomTheme,
@@ -1116,12 +1100,12 @@ private fun CustomThemeItemRow(
     onSelect: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
-    /** E1: Exporte el tema JSON. */
+    /** E1: 导出该主题 JSON。 */
     onExport: () -> Unit,
 ) {
     val scheme = remember(theme, isDark) { theme.generateColorScheme(isDark) }
     val unnamedLabel = stringResource(R.string.settings_theme_custom_unnamed)
-    // v2.x unificación: Las acciones en línea convergen en el menú "Más"(Evite que las columnas de texto de la pantalla estrechas sean comprimidas por varios botones)
+    // v2.x 统一化: 行内动作收敛为「更多」菜单(防止窄屏文本列被多个按钮挤压)
     val moreCd = stringResource(R.string.settings_mcp_more)
     var menuExpanded by remember { mutableStateOf(false) }
 
@@ -1134,7 +1118,7 @@ private fun CustomThemeItemRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        // 4 muestras de cuadrante de color(40dp)
+        // 4 色象限色板(40dp)
         Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier.size(40.dp),
@@ -1144,34 +1128,34 @@ private fun CustomThemeItemRow(
                     .clip(CircleShape)
                     .size(40.dp),
             ) {
-                // arriba a la izquierda:primaryContainer
+                // 左上:primaryContainer
                 drawRect(color = scheme.primaryContainer, size = size)
-                // arriba a la derecha:secondaryContainer
+                // 右上:secondaryContainer
                 drawRect(
                     color = scheme.secondaryContainer,
                     size = size,
                     topLeft = Offset(x = size.width / 2f, y = 0f),
                 )
-                // abajo a la izquierda:tertiaryContainer
+                // 左下:tertiaryContainer
                 drawRect(
                     color = scheme.tertiaryContainer,
                     size = size,
                     topLeft = Offset(x = 0f, y = size.height / 2f),
                 )
-                // abajo a la derecha:surface(Espacio en blanco)
+                // 右下:surface(留白感)
                 drawRect(
                     color = scheme.surface,
                     size = size,
                     topLeft = Offset(x = size.width / 2f, y = size.height / 2f),
                 )
-                // punto primario central(Ampliar cuando se selecciona)
+                // 中心 primary 圆点(选中时放大)
                 drawCircle(
                     color = scheme.primary,
                     radius = if (isSelected) 12.dp.toPx() else 6.dp.toPx(),
                     center = Offset(x = size.width / 2f, y = size.height / 2f),
                 )
             }
-            // Marca de verificación blanca superpuesta cuando se selecciona
+            // 选中时叠加白色对勾
             if (isSelected) {
                 Icon(
                     imageVector = MuseIcons.check,
@@ -1181,7 +1165,7 @@ private fun CustomThemeItemRow(
                 )
             }
         }
-        // Nombre del tema(Reserva de nombre vacío"Sin nombre")
+        // 主题名称(空名回退"未命名")
         Text(
             text = theme.name.ifEmpty { unnamedLabel },
             style = MaterialTheme.typography.titleMedium,
@@ -1244,19 +1228,19 @@ private fun CustomThemeItemRow(
 }
 
 /**
- * gap7: Edición de temas personalizados/Crear ventana emergente — Basado en [MuseDialog] en lugar de ModalBottomSheet.
+ * gap7: 自定义主题编辑/创建弹窗 — 基于 [MuseDialog] 而非 ModalBottomSheet。
  *
- * muse En el proyecto, ModalBottomSheet tiene malla pegada a la máquina real. bug,Reemplace todo con MuseDialog.
- * El contenido de la ventana emergente se puede desplazar(Evite que el contenido extenso se desborde),contiene:
- *  - Cuadro de entrada del nombre del tema
- *  - 3 un [ColorPickerRow](primary/secondary/tertiary)
- *  - [ThemeColorPreview] Vista previa de coincidencia de colores en tiempo real
+ * muse 项目中 ModalBottomSheet 在真机上有 scrim 卡死 bug,全部替换为 MuseDialog。
+ * 弹窗内容可滚动(防长内容溢出),包含:
+ *  - 主题名称输入框
+ *  - 3 个 [ColorPickerRow](primary/secondary/tertiary)
+ *  - [ThemeColorPreview] 实时配色预览
  *
- * El botón Guardar está deshabilitado cuando el nombre está vacío.
+ * 保存按钮在名称为空时禁用。
  */
 @Composable
 private fun CustomThemeEditDialog(theme: CustomTheme?, isDark: Boolean, onDismiss: () -> Unit, onSave: (CustomTheme) -> Unit) {
-    // Heredar valores al editar un tema existente;Utilice valores predeterminados al crear nuevos temas(Color de semilla verde laurel)
+    // 编辑现有主题时沿用其值;创建新主题时用默认值(月桂绿种子色)
     var currentTheme by remember {
         mutableStateOf(theme ?: CustomTheme())
     }
@@ -1270,15 +1254,15 @@ private fun CustomThemeEditDialog(theme: CustomTheme?, isDark: Boolean, onDismis
         onDismissRequest = onDismiss,
         title = title,
         content = {
-            // editar formulario(El desplazamiento está unificado por Box.verticalScroll del MuseDialog externo.,
-            // Agregar otra capa de desplazamiento vertical aquí provocará la caída de restricciones de altura infinitas.,
-            // Por lo tanto, utilice únicamente Column + spacedBy normal para la composición tipográfica.).
+            // 编辑表单(滚动由外层 MuseDialog 的 Box.verticalScroll 统一负责,
+            // 这里再套一层 verticalScroll 会触发 infinite height constraints 崩溃,
+            // 故仅用普通 Column + spacedBy 排版)。
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                // Nombre del tema
+                // 主题名称
                 MuseTextField(
                     value = currentTheme.name,
                     onValueChange = { currentTheme = currentTheme.copy(name = it) },
@@ -1287,7 +1271,7 @@ private fun CustomThemeEditDialog(theme: CustomTheme?, isDark: Boolean, onDismis
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                 )
-                // v1.97: Botones de acceso directo de colores seleccionados — Haga clic para llenar tres colores primario/secundario/terciario con un solo clic
+                // v1.97: 精选配色快捷按钮 — 点击后一键填充 primary/secondary/tertiary 三色
                 Text(
                     text = stringResource(R.string.settings_theme_custom_presets),
                     style = MaterialTheme.typography.labelMedium,
@@ -1316,7 +1300,7 @@ private fun CustomThemeEditDialog(theme: CustomTheme?, isDark: Boolean, onDismis
                         )
                     }
                 }
-                // color principal(Requerido)
+                // 主色(必填)
                 Text(
                     text = stringResource(R.string.settings_theme_custom_primary_color),
                     style = MaterialTheme.typography.titleSmall,
@@ -1331,7 +1315,7 @@ private fun CustomThemeEditDialog(theme: CustomTheme?, isDark: Boolean, onDismis
                         )
                     },
                 )
-                // color secundario(Opcional,Mostrar resultados derivados automáticamente cuando no se especifica)
+                // 辅色(可选,未指定时显示自动派生结果)
                 Text(
                     text = stringResource(R.string.settings_theme_custom_secondary_color),
                     style = MaterialTheme.typography.titleSmall,
@@ -1341,7 +1325,7 @@ private fun CustomThemeEditDialog(theme: CustomTheme?, isDark: Boolean, onDismis
                 ColorPickerRow(
                     color = currentTheme.secondaryColorArgb?.toInt()?.let { Color(it) }
                         ?: run {
-                            // Cuando no se especifica, se muestra automáticamente derivado de la información primaria. secondary,Permitir que los usuarios vean los valores predeterminados
+                            // 未指定时显示由 primary 自动派生的 secondary,让用户看到默认值
                             Color(currentTheme.generateColorScheme(isDark).secondary.toArgb())
                         },
                     onColorChange = {
@@ -1350,7 +1334,7 @@ private fun CustomThemeEditDialog(theme: CustomTheme?, isDark: Boolean, onDismis
                         )
                     },
                 )
-                // color de acento(Opcional)
+                // 强调色(可选)
                 Text(
                     text = stringResource(R.string.settings_theme_custom_tertiary_color),
                     style = MaterialTheme.typography.titleSmall,
@@ -1366,7 +1350,7 @@ private fun CustomThemeEditDialog(theme: CustomTheme?, isDark: Boolean, onDismis
                         )
                     },
                 )
-                // Vista previa de coincidencia de colores en tiempo real
+                // 实时配色预览
                 ThemeColorPreview(theme = currentTheme, isDark = isDark)
             }
         },
@@ -1378,13 +1362,13 @@ private fun CustomThemeEditDialog(theme: CustomTheme?, isDark: Boolean, onDismis
 }
 
 /**
- * gap7: HSL selector de color — Paleta de colores circular + tres controles deslizantes H/S/L + entrada de texto HSL.
+ * gap7: HSL 颜色选择器 — 圆形色板 + H/S/L 三滑块 + HSL 文本输入。
  *
- * uso [androidx.core.graphics.ColorUtils] llevar a cabo
- * HSL ↔ Color Convertir(Misma implementación que el selector de color del sistema Android).
+ * 使用 [androidx.core.graphics.ColorUtils] 进行
+ * HSL ↔ Color 转换(与 Android 系统色彩选择器同一实现)。
  *
- * Soporte de entrada de texto `hsl(267 36% 48%)` / `hsl(267, 36%, 48%)` / `267 36 48` formato etc.,
- * Cuando el análisis falla, se muestra un mensaje de error pero no bloquea la operación del control deslizante.
+ * 文本输入支持 `hsl(267 36% 48%)` / `hsl(267, 36%, 48%)` / `267 36 48` 等格式,
+ * 解析失败时显示错误提示但不阻塞滑块操作。
  */
 @Composable
 private fun ColorPickerRow(color: Color, onColorChange: (Color) -> Unit) {
@@ -1414,7 +1398,7 @@ private fun ColorPickerRow(color: Color, onColorChange: (Color) -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            // Vista previa de la paleta de colores circular(40dp)
+            // 圆形色板预览(40dp)
             Canvas(
                 modifier = Modifier
                     .size(40.dp)
@@ -1423,13 +1407,13 @@ private fun ColorPickerRow(color: Color, onColorChange: (Color) -> Unit) {
                 drawCircle(color = color)
             }
             Column(modifier = Modifier.weight(1f)) {
-                // H control deslizante(0-360)
+                // H 滑块(0-360)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = stringResource(R.string.settings_theme_custom_color_h),
                         style = MaterialTheme.typography.labelSmall,
                         modifier = Modifier.width(16.dp),
-                        // LAYOUT-01: El ancho fijo es 16.dp. La marca de escala está limitada a 1 línea. Cuando se amplía el tamaño de la fuente, ya no se doblará en dos líneas ni se recortará.
+                        // LAYOUT-01: 定宽 16.dp 刻度标注限 1 行，放大字号下不再折成两行被裁
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -1441,13 +1425,13 @@ private fun ColorPickerRow(color: Color, onColorChange: (Color) -> Unit) {
                         modifier = Modifier.weight(1f),
                     )
                 }
-                // S control deslizante(0-1)
+                // S 滑块(0-1)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = stringResource(R.string.settings_theme_custom_color_s),
                         style = MaterialTheme.typography.labelSmall,
                         modifier = Modifier.width(16.dp),
-                        // LAYOUT-01: Igual que arriba, el etiquetado de escala está limitado a 1 línea
+                        // LAYOUT-01: 同上，刻度标注限 1 行
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -1459,13 +1443,13 @@ private fun ColorPickerRow(color: Color, onColorChange: (Color) -> Unit) {
                         modifier = Modifier.weight(1f),
                     )
                 }
-                // L control deslizante(0-1)
+                // L 滑块(0-1)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = stringResource(R.string.settings_theme_custom_color_l),
                         style = MaterialTheme.typography.labelSmall,
                         modifier = Modifier.width(16.dp),
-                        // LAYOUT-01: Igual que arriba, el etiquetado de escala está limitado a 1 línea
+                        // LAYOUT-01: 同上，刻度标注限 1 行
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -1479,7 +1463,7 @@ private fun ColorPickerRow(color: Color, onColorChange: (Color) -> Unit) {
                 }
             }
         }
-        // HSL Entrada de texto(apoyo hsl(267 36% 48%) formato etc.)
+        // HSL 文本输入(支持 hsl(267 36% 48%) 等格式)
         MuseTextField(
             value = hslCode,
             onValueChange = { value ->
@@ -1503,10 +1487,10 @@ private fun ColorPickerRow(color: Color, onColorChange: (Color) -> Unit) {
 }
 
 /**
- * gap7: Vista previa del color del tema personalizado — Muestra 6 parches de colores clave.
+ * gap7: 自定义主题配色预览 — 显示 6 个关键色块。
  *
- * Utilice el actualmente editado [theme] Generación en tiempo real ColorScheme,mostrar primary / secondary / tertiary /
- * primaryContainer / secondaryContainer / surface seis colores,Permita a los usuarios obtener una vista previa del efecto antes de guardarlo.
+ * 用当前编辑中的 [theme] 实时生成 ColorScheme,展示 primary / secondary / tertiary /
+ * primaryContainer / secondaryContainer / surface 六色,让用户在保存前预览效果。
  */
 @Composable
 private fun ThemeColorPreview(theme: CustomTheme, isDark: Boolean) {
@@ -1539,7 +1523,7 @@ private fun ThemeColorPreview(theme: CustomTheme, isDark: Boolean) {
 }
 
 /**
- * gap7: bloque de un solo color — Muestra redonda + etiqueta debajo.
+ * gap7: 单个色块 — 圆形色板 + 下方标签。
  */
 @Composable
 private fun ColorSwatch(color: Color, label: String) {
@@ -1562,20 +1546,20 @@ private fun ColorSwatch(color: Color, label: String) {
     }
 }
 
-// ── HSL función auxiliar de análisis ──
+// ── HSL 解析辅助函数 ──
 
-/** HSL Regularidad para hacer coincidir números en la entrada de texto(Soporta números enteros y decimales). */
+/** HSL 文本输入中匹配数字的正则(支持整数与小数)。 */
 private val hslNumberRegex = Regex("""[-+]?\d*\.?\d+""")
 
 /**
- * Analizar texto HSL como FloatArray(longitud 3:[hue, saturation, lightness]).
+ * 解析 HSL 文本为 FloatArray(长度 3:[hue, saturation, lightness])。
  *
- * Formatos soportados:
- *  - `hsl(267 36% 48%)` (CSS Color 4 gramática moderna)
- *  - `hsl(267, 36%, 48%)` (CSS Color 3 gramática tradicional)
- *  - `267 36 48` (Números puros separados por espacios.)
+ * 支持格式:
+ *  - `hsl(267 36% 48%)` (CSS Color 4 现代语法)
+ *  - `hsl(267, 36%, 48%)` (CSS Color 3 传统语法)
+ *  - `267 36 48` (纯数字空格分隔)
  *
- * Devolver si falla el análisis null(La persona que llama muestra un mensaje de error en consecuencia).
+ * 解析失败返回 null(调用方据此显示错误提示)。
  */
 private fun parseHslCode(value: String): FloatArray? {
     val values = buildList {
@@ -1592,9 +1576,9 @@ private fun parseHslCode(value: String): FloatArray? {
 }
 
 /**
- * Analizar la saturación de HSL/componente de ligereza — Porcentaje de soporte(>1 como porcentaje)o decimal(0-1).
+ * 解析 HSL 饱和度/明度分量 — 支持百分比(>1 当作百分数)或小数(0-1)。
  *
- * Ejemplo:`36%` → 0.36;`36` → 0.36;`0.36` → 0.36;`1.5` → 1.0(límite superior de saturación).
+ * 例:`36%` → 0.36;`36` → 0.36;`0.36` → 0.36;`1.5` → 1.0(饱和度上限)。
  */
 private fun parseHslPercentOrFraction(value: Float): Float? {
     if (!value.isFinite()) return null
@@ -1605,14 +1589,14 @@ private fun parseHslPercentOrFraction(value: Float): Float? {
     }
 }
 
-/** Formatee un triplete HSL como `hsl(267 36% 48%)` cuerda(Se utiliza para el eco del cuadro de entrada de texto.). */
+/** 格式化 HSL 三元组为 `hsl(267 36% 48%)` 字符串(用于文本输入框回显)。 */
 private fun formatHslCode(hue: Float, saturation: Float, lightness: Float): String {
     return "hsl(${hue.roundToInt()} ${(saturation * 100).roundToInt()}% ${(lightness * 100).roundToInt()}%)"
 }
 
 /**
- * v1.97: Datos de combinación de colores destacados.
- * ARGB int valor,Tres colores para rellenar temas personalizados con un solo clic.
+ * v1.97: 精选配色方案数据。
+ * ARGB int 值,用于一键填充自定义主题的三色。
  */
 private data class PresetColorScheme(
     val name: String,
@@ -1621,20 +1605,20 @@ private data class PresetColorScheme(
     val tertiary: Int,
 )
 
-/** v1.97: 8 Conjunto de colores seleccionados(apto para daltónicos,Cubrir caliente/frio/tonos neutros). */
+/** v1.97: 8 套精选配色(色盲友好,覆盖暖/冷/中性色调)。 */
 private val PRESET_COLOR_SCHEMES = listOf(
-    PresetColorScheme("verde laurel", 0xFF2E7D32.toInt(), 0xFF66BB6A.toInt(), 0xFFA5D6A7.toInt()),
-    PresetColorScheme("azul marino profundo", 0xFF1565C0.toInt(), 0xFF42A5F5.toInt(), 0xFF90CAF9.toInt()),
-    PresetColorScheme("morado crepusculo", 0xFF6A1B9A.toInt(), 0xFFAB47BC.toInt(), 0xFFCE93D8.toInt()),
-    PresetColorScheme("Chixiahong", 0xFFC62828.toInt(), 0xFFEF5350.toInt(), 0xFFFFCDD2.toInt()),
-    PresetColorScheme("naranja ámbar", 0xFFE65100.toInt(), 0xFFFF7043.toInt(), 0xFFFFCC80.toInt()),
-    PresetColorScheme("verde celadón", 0xFF00695C.toInt(), 0xFF26A69A.toInt(), 0xFF80CBC4.toInt()),
-    PresetColorScheme("Papel tinta gris", 0xFF424242.toInt(), 0xFF757575.toInt(), 0xFFBDBDBD.toInt()),
-    PresetColorScheme("polvo de sakura", 0xFFAD1457.toInt(), 0xFFEC407A.toInt(), 0xFFF8BBD0.toInt()),
+    PresetColorScheme("Verde laurel", 0xFF2E7D32.toInt(), 0xFF66BB6A.toInt(), 0xFFA5D6A7.toInt()),
+    PresetColorScheme("Azul marino", 0xFF1565C0.toInt(), 0xFF42A5F5.toInt(), 0xFF90CAF9.toInt()),
+    PresetColorScheme("Violeta crepuscular", 0xFF6A1B9A.toInt(), 0xFFAB47BC.toInt(), 0xFFCE93D8.toInt()),
+    PresetColorScheme("Rojo atardecer", 0xFFC62828.toInt(), 0xFFEF5350.toInt(), 0xFFFFCDD2.toInt()),
+    PresetColorScheme("Naranja ámbar", 0xFFE65100.toInt(), 0xFFFF7043.toInt(), 0xFFFFCC80.toInt()),
+    PresetColorScheme("Verde celadón", 0xFF00695C.toInt(), 0xFF26A69A.toInt(), 0xFF80CBC4.toInt()),
+    PresetColorScheme("Gris tinta", 0xFF424242.toInt(), 0xFF757575.toInt(), 0xFFBDBDBD.toInt()),
+    PresetColorScheme("Rosa cerezo", 0xFFAD1457.toInt(), 0xFFEC407A.toInt(), 0xFFF8BBD0.toInt()),
 )
 
 /**
- * v1.97: Fichas rápidas de combinación de colores seleccionadas — Mostrar puntos de tres colores + nombre,Haga clic para llenar.
+ * v1.97: 精选配色快捷芯片 — 显示三色小圆点 + 名称,点击一键填充。
  */
 @Composable
 private fun PresetColorChip(name: String, primary: Color, secondary: Color, tertiary: Color, onClick: () -> Unit) {
@@ -1661,10 +1645,10 @@ private fun PresetColorChip(name: String, primary: Color, secondary: Color, tert
 }
 
 /**
- * E2: Área de configuración de fuente de texto personalizada.
+ * E2: 自定义正文字体设置区。
  *
- * Inmediatamente después de importar [io.zer0.muse.ui.theme.loadCustomFontFamily] Globalmente eficaz
- * (MainActivity Recopilar la reconstrucción personalizada de FontPathFlow MuseTheme Typography).
+ * 导入后立即经 [io.zer0.muse.ui.theme.loadCustomFontFamily] 全局生效
+ * (MainActivity 收集 customFontPathFlow 重建 MuseTheme Typography)。
  */
 @Composable
 private fun FontSection(customFontPath: String?, onImport: () -> Unit, onClear: () -> Unit) {
@@ -1707,10 +1691,10 @@ private fun FontSection(customFontPath: String?, onImport: () -> Unit, onClear: 
 }
 
 /**
- * E2: Copie los archivos de fuentes seleccionados por SAF al directorio privado de la aplicación filesDir/fonts/custom_body_font.ttf.
+ * E2: 将 SAF 选中的字体文件复制到应用私有目录 filesDir/fonts/custom_body_font.ttf。
  *
- * Nombre de archivo de destino fijo,Sobrescribir directamente la siguiente importación;Retorno del fracaso null(La persona que llama le pregunta al usuario).
- * La replicación y la creación de directorios son ambas en disco. IO,Ejecute en el programador IO para evitar bloquear el hilo principal.
+ * 固定目标文件名,下次导入直接覆盖;失败返回 null(调用方提示用户)。
+ * 复制与目录创建均为磁盘 IO,在 IO 调度器执行避免卡主线程。
  */
 private suspend fun importFontFile(context: android.content.Context, uri: Uri): String? {
     return withContext(Dispatchers.IO) {
@@ -1724,10 +1708,10 @@ private suspend fun importFontFile(context: android.content.Context, uri: Uri): 
             }
             target.absolutePath
         } catch (e: java.io.IOException) {
-            Logger.w("ThemeSection", "Error al copiar el archivo de fuente: ${e.message}")
+            Logger.w("ThemeSection", "字体文件复制失败: ${e.message}")
             null
         } catch (e: SecurityException) {
-            Logger.w("ThemeSection", "Lectura del archivo de fuente rechazada: ${e.message}")
+            Logger.w("ThemeSection", "字体文件读取被拒绝: ${e.message}")
             null
         }
     }

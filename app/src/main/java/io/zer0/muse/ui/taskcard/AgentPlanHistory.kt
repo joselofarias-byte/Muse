@@ -15,10 +15,10 @@ private val HISTORICAL_PLAN_ID_PATTERN = Regex(
 )
 
 /**
- * Muestra el estado del plan de reproducción de mensajes de las herramientas caídas.
+ * 从已落库的工具展示消息重放计划状态。
  *
- * Los mensajes programados pueden preceder a la ventana de la mitad superior de la página del chat.,Por lo tanto, la persona que llama debe pasar el historial completo de la sesión.
- * Los registros sin pasos válidos no ingresarán a los resultados.,Evite que la interfaz de usuario vuelva a ser una tarjeta de programación vacía.
+ * 计划消息可能早于聊天首屏分页窗口,所以调用方应传入会话全量历史。
+ * 没有有效步骤的记录不会进入结果,避免 UI 恢复成空计划卡。
  */
 internal fun restoreAgentPlansFromHistory(
     messages: List<UIMessage>,
@@ -37,10 +37,10 @@ internal fun restoreAgentPlansFromHistory(
             "update_plan_step" -> applyHistoricalPlanUpdate(plans, message, toolInfo)
         }
     }
-    // v2.6.4: Todos los mensajes arrojados a la biblioteca son turnos completados y no deben incluirse en el historial.“corriendo”plan.
-    // settleUnfinished=true Cuando el paso PENDIENTE/EN_PROGRESS termina con CANCELADO,
-    // De lo contrario, el último paso del plan anterior siempre quedará atascado a mitad de camino (dando vueltas) al volver a ingresar a la sesión.
-    // La persona que llama pasa falso mientras la sesión aún se transmite en segundo plano, sin interrumpir la programación activa.
+    // v2.6.4: 落库的消息都是已完成的 turn，历史里不应有“正在跑”的计划。
+    // settleUnfinished=true 时把 PENDING / IN_PROGRESS 步骤收尾为 CANCELLED，
+    // 否则重新进入会话时旧计划的最后一步会永远停在中途（转圈）。
+    // 会话仍在后台流式时调用方传 false，不打断活跃计划。
     return if (settleUnfinished) {
         plans.mapValues { (_, plan) -> plan.settleAsCancelled() }
     } else {
@@ -61,7 +61,7 @@ private fun parseHistoricalPlan(message: UIMessage, toolInfo: ToolCallInfo, sess
     val title = historicalJsonText(arguments["title"])
         ?.trim()
         ?.takeIf { it.isNotBlank() }
-        ?: "planificación de la misión"
+        ?: "任务计划"
 
     return AgentPlan(
         id = planId,
@@ -137,7 +137,7 @@ private fun parseHistoricalPlanSteps(value: JsonElement?): List<AgentPlanStep> {
             title = historicalJsonText(obj["title"])
                 ?.trim()
                 ?.takeIf { it.isNotBlank() }
-                ?: "pasos ${index + 1}",
+                ?: "步骤 ${index + 1}",
             description = historicalJsonText(obj["description"])
                 ?.trim()
                 .orEmpty(),

@@ -1,30 +1,30 @@
 package io.zer0.ai.core
 
 /**
- * v1.0.7: Provider Parche de aviso del sistema exclusivo.
+ * v1.0.7: Provider 专属 system prompt 补丁。
  *
- * principios de diseño:
- *  - responsabilidad única:Este módulo sólo es responsable de**generar**matriz de texto de parche,No me importa cómo inyectar;
- *    Inyectado por la persona que llama(OpenAIProvider.buildRequestBody / buildResponsesRequestBody)Procesamiento unificado,
- *    Agregue el parche al final del contenido del mensaje del sistema o al campo de instrucciones de la API de Respuestas.
- *  - parche temporal:Cada parche debe indicar las condiciones de eliminación.(Se puede eliminar después de que el fabricante solucione el problema subyacente.).
- *  - Salida según la localidad/bilingue ingles,El valor predeterminado es chino(1muse idioma principal).
+ * 设计原则:
+ *  - 单一职责:本模块只负责**生成**补丁文本数组,不关心如何注入;
+ *    注入由调用方(OpenAIProvider.buildRequestBody / buildResponsesRequestBody)统一处理,
+ *    把补丁追加到 system 消息 content 末尾或 Responses API 的 instructions 字段。
+ *  - 临时补丁:每个补丁都应写明删除条件(厂商修复底层问题后可移除)。
+ *  - 按 locale 输出中/英双语,默认走中文(1muse 主语言)。
  *
- * Parches actualmente implementados:
- *  - [deepseekOutputContractPrompt]:DeepSeek Contrato de salida del modelo de inferencia
- *    (Evite que el modelo solo genere razonamiento_contenido/pensamiento sin escribir final assistant content)
+ * 当前实现的补丁:
+ *  - [deepseekOutputContractPrompt]:DeepSeek 推理模型输出契约
+ *    (防止模型只输出 reasoning_content / thinking 而不写 final assistant content)
  */
 object ProviderPromptPatches {
 
     /**
-     * Genere una lista de parches de avisos del sistema específicos del proveedor.
+     * 生成 Provider 专属 system prompt 补丁列表。
      *
-     * @param model modelo objetivo(Se utiliza para determinar familias de modelos.)
-     * @param baseUrl Provider de baseUrl(Se utiliza para determinar el fabricante.,Como por ejemplo api.deepseek.com)
-     * @param thinkingFormat ProviderCompat formato de pensamiento derivado(Se utiliza para determinar la familia DeepSeek)
-     * @param reasoningLevel nivel de razonamiento(OFF No se inyectan parches cuando)
-     * @param locale etiqueta de idioma(null Chino predeterminado,"zh*" chino,Otro inglés)
-     * @return Lista de texto de parche;Una lista vacía indica que no es necesario inyectar parches.
+     * @param model 目标模型(用于判定模型家族)
+     * @param baseUrl Provider 的 baseUrl(用于判定厂商,如 api.deepseek.com)
+     * @param thinkingFormat ProviderCompat 派生的思考格式(用于判定 DeepSeek 家族)
+     * @param reasoningLevel 推理等级(OFF 时不注入任何补丁)
+     * @param locale 语言标签(null 默认中文,"zh*" 中文,其他英文)
+     * @return 补丁文本列表;空列表表示无补丁需要注入
      */
     fun getProviderPromptPatches(
         model: Model,
@@ -33,12 +33,12 @@ object ProviderPromptPatches {
         reasoningLevel: ReasoningLevel,
         locale: String? = null,
     ): List<String> {
-        // Piensa en cerrar sin inyectar ningún parche.
+        // 思考关闭时不注入任何补丁
         if (reasoningLevel == ReasoningLevel.OFF) return emptyList()
 
         val patches = mutableListOf<String>()
 
-        // DeepSeek Contrato de salida del modelo de inferencia
+        // DeepSeek 推理模型输出契约
         if (isDeepSeekReasoningModel(model, baseUrl, thinkingFormat)) {
             patches.add(deepseekOutputContractPrompt(locale))
         }
@@ -47,40 +47,40 @@ object ProviderPromptPatches {
     }
 
     /**
-     * Determine si es un modelo de inferencia de DeepSeek.
+     * 判定是否为 DeepSeek 推理模型。
      *
-     * determinar el camino(Cualquier acierto se considera familia DeepSeek.,y satisfacer las condiciones del modelo de inferencia.):
-     *  1. baseUrl contiene api.deepseek.com(Punto final oficial)
-     *  2. modelId contiene deepseek-reasoner / deepseek-r1 / deepseek-v4(modelo de inferencia id)
-     *  3. modelId Contiene deepseek-ai/ o deepseek/(Prefijo de alojamiento de terceros,Como por ejemplo OpenRouter / SiliconFlow)
-     *  4. thinkingFormat == DEEPSEEK(ProviderCompat resultados derivados)
+     * 判定路径(任一命中即视为 DeepSeek 家族,且满足推理模型条件):
+     *  1. baseUrl 包含 api.deepseek.com(官方端点)
+     *  2. modelId 包含 deepseek-reasoner / deepseek-r1 / deepseek-v4(推理模型 id)
+     *  3. modelId 包含 deepseek-ai/ 或 deepseek/(第三方托管前缀,如 OpenRouter / SiliconFlow)
+     *  4. thinkingFormat == DEEPSEEK(ProviderCompat 派生结果)
      *
-     * Nota:sin limite provider — OpenRouter / SiliconFlow / ModelScope Esperando alojamiento de terceros
-     *   DeepSeek modelo(Como por ejemplo deepseek-ai/DeepSeek-R1)También golpeará.
+     * 注:不限制 provider — OpenRouter / SiliconFlow / ModelScope 等第三方托管的
+     *   DeepSeek 模型(如 deepseek-ai/DeepSeek-R1)也会命中。
      *
-     * @param model modelo objetivo
-     * @param baseUrl Provider de baseUrl
-     * @param thinkingFormat ProviderCompat formato de pensamiento derivado
+     * @param model 目标模型
+     * @param baseUrl Provider 的 baseUrl
+     * @param thinkingFormat ProviderCompat 派生的思考格式
      */
     private fun isDeepSeekReasoningModel(model: Model, baseUrl: String, thinkingFormat: ThinkingFormat?): Boolean {
-        // camino rápido:thinkingFormat se ha derivado como DEEPSEEK
+        // 快速路径:thinkingFormat 已派生为 DEEPSEEK
         if (thinkingFormat == ThinkingFormat.DEEPSEEK) return true
 
         val modelId = model.id.lowercase()
         val host = baseUrl.lowercase()
 
-        // punto final no oficial + no deepseek modelId → No es la familia DeepSeek
+        // 非官方端点 + 非 deepseek modelId → 不是 DeepSeek 家族
         val isDeepSeekHost = host.contains("api.deepseek.com")
         val isDeepSeekModelId = modelId.contains("deepseek-ai/") ||
             modelId.contains("deepseek/") ||
             modelId.startsWith("deepseek-")
         if (!isDeepSeekHost && !isDeepSeekModelId) return false
 
-        // Confirmado que será la familia DeepSeek,Determinar más a fondo si se debe inferir el modelo.:
-        //  - deepseek-reasoner / deepseek-r1 / deepseek-v4 Serie(deepseek-v4 / deepseek-v4-pro espera)
-        //  - deepseek-ai/DeepSeek-R1(depósito en garantía R1)
-        //  - deepseek-ai/deepseek-r1(forma minúscula)
-        //  - ordinario deepseek-chat / deepseek-v3 / deepseek-v3.1 No activado(modelo no inferencial)
+        // 已确认是 DeepSeek 家族,进一步判定是否推理模型:
+        //  - deepseek-reasoner / deepseek-r1 / deepseek-v4 系列(deepseek-v4 / deepseek-v4-pro 等)
+        //  - deepseek-ai/DeepSeek-R1(第三方托管的 R1)
+        //  - deepseek-ai/deepseek-r1(小写形式)
+        //  - 普通的 deepseek-chat / deepseek-v3 / deepseek-v3.1 不触发(非推理模型)
         return modelId.contains("deepseek-reasoner") ||
             modelId.contains("deepseek-r1") ||
             modelId.contains("deepseek-v4") ||
@@ -88,26 +88,26 @@ object ProviderPromptPatches {
     }
 
     /**
-     * DeepSeek El modelo de inferencia genera parches de contrato.
+     * DeepSeek 推理模型输出契约补丁。
      *
-     * eliminar condición:DeepSeek El modelo de inferencia puede mostrar de manera estable respuestas visibles para los usuarios en proveedores oficiales y externos.
-     * Después de escribir el contenido final del asistente,Este parche se puede quitar.
+     * 删除条件:DeepSeek 推理模型在官方与第三方 provider 上都能稳定把用户可见答案
+     * 写入 final assistant content 后,可移除此补丁。
      *
-     * Antecedentes del problema:DeepSeek-R1 / DeepSeek-V4 El modelo de inferencia solo genera resultados en algunos escenarios.
-     * reasoning_content / thinking(cadena de pensamiento)Este es el final de esta ronda de respuestas.,Como resultado, los usuarios no pueden ver la respuesta final.
-     * Este parche requiere explícitamente que el modelo escriba la respuesta en el contenido final del asistente después de pensar.
+     * 问题背景:DeepSeek-R1 / DeepSeek-V4 等推理模型在部分场景下只输出
+     * reasoning_content / thinking(思考链)就结束本轮回复,导致用户看不到最终答案。
+     * 此补丁明确要求模型在思考结束后把答案写入 final assistant content。
      *
-     * @param locale etiqueta de idioma(null Chino predeterminado,"zh*" chino,Otro inglés)
+     * @param locale 语言标签(null 默认中文,"zh*" 中文,其他英文)
      */
     private fun deepseekOutputContractPrompt(locale: String?): String {
-        val isZh = locale == null || locale.let { it.startsWith("es", ignoreCase = true) || it.startsWith("zh", ignoreCase = true) }
+        val isZh = locale == null || locale.startsWith("zh", ignoreCase = true)
         return if (isZh) {
             """
-Si está utilizando el modelo DeepSeek,Cumpla con el siguiente contrato de salida de DeepSeek:
-reasoning_content / thinking Se utiliza únicamente para borradores de razonamiento interno.
-Cualquier respuesta, sugerencia, código, lista, pregunta, resúmenes o conclusiones que deban mostrarse a los usuarios.,El contenido final del asistente debe escribirse una vez completado el pensamiento.
-No finalice esta ronda de respuestas simplemente generando razonamiento_contenido/pensamiento.
-Si usa <think> etiqueta,Primero debes cerrar la pestaña Pensar.,Luego genere la respuesta final.
+如果你使用的是 DeepSeek 模型,请遵守以下 DeepSeek 输出契约:
+reasoning_content / thinking 只用于内部推理草稿。
+任何需要展示给用户的回答、建议、代码、列表、问题、摘要、结论,都必须在思考结束后写入最终 assistant content。
+不要只输出 reasoning_content / thinking 就结束本轮回复。
+如果使用 <think> 标签,必须先关闭思考标签,再输出最终回答。
             """.trimIndent()
         } else {
             """

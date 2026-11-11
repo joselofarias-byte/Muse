@@ -1,11 +1,11 @@
 /**
- * Afirmación de apariencia (tema/tamaño de fuente): escritura de atributos de tema de tres estados, mapeo de tamaño de fuente de cuatro niveles,theme-color actualizar,
- * La reversión de fallas de conmutación, los atributos raíz y los selectores de CSS son consistentes.
+ * 外观（主题 / 字号）的断言：三态主题的属性写入、四档字号映射、theme-color 更新、
+ * 切换失败回滚、根属性与 CSS 选择器是否对得上。
  *
- * Ejecute directamente con pura lógica;DOM La aplicación utiliza un sustituto de destino mínimo (no hace referencia a jsdom);
- * CSS Presione la estructura del código fuente para afirmar el selector y la ampliación, y verifique que las dos declaraciones oscuras no estén flotando.
+ * 纯逻辑直接跑；DOM 应用用一个极小的 target 替身（不引 jsdom）；
+ * CSS 侧按源码结构断言选择器与倍率，并检查两块暗色声明没有漂。
  *
- * Uso:npm --workspace @muse/client run test
+ * 用法：npm --workspace @muse/client run test
  */
 import { build } from "esbuild";
 import { readFileSync } from "node:fs";
@@ -62,7 +62,7 @@ const PRIMITIVES = readFileSync(join(ROOT, "src", "components", "primitives.css"
 const TOKEN_CSS = readFileSync(join(ROOT, "src", "design", "token-css.ts"), "utf8");
 const CHAT = readFileSync(join(ROOT, "src", "host", "HostChat.tsx"), "utf8");
 
-/** tomar un cierto `@media (…)` de bloques. */
+/** 取某个 `@media (…)` 的块体。 */
 function mediaBlock(source, query) {
   const marker = `@media (${query}) {`;
   const start = source.indexOf(marker);
@@ -79,7 +79,7 @@ function mediaBlock(source, query) {
   return "";
 }
 
-/** Obtener una regla determinada (selector + `{`) cuerpo de la declaración. */
+/** 取某条规则（选择器 + `{`）的声明体。 */
 function ruleBody(source, selector) {
   const start = source.indexOf(selector);
   if (start < 0) return "";
@@ -89,7 +89,7 @@ function ruleBody(source, selector) {
   return source.slice(open + 1, close);
 }
 
-/** Divida el cuerpo de la declaración en { "--ui-surface": "var(…)" } Tal mapeo. */
+/** 把声明体拆成 { "--ui-surface": "var(…)" } 这样的映射。 */
 function declarations(body) {
   const map = {};
   for (const part of body.split(";")) {
@@ -102,13 +102,13 @@ function declarations(body) {
   return map;
 }
 
-const settingsWith = (values, display = { language: "es", themeMode: "system", fontSizeScale: "1", themeId: "default" }) => ({
+const settingsWith = (values, display = { language: "zh", themeMode: "system", fontSizeScale: "1", themeId: "default" }) => ({
   snapshot: { groups: [], toggles: [], display, writableKeys: [], values },
   loading: false,
 });
 
 try {
-  // ── 1. Tema de tres estados: escritura de atributos + prioridad ─────────────────────────────
+  // ── 1. 三态主题：属性写入 + 优先级 ─────────────────────────────
   const makeTarget = (tokens = {}) => {
     const dataset = {};
     const meta = { content: "initial" };
@@ -117,98 +117,98 @@ try {
 
   const system = makeTarget({ "--muse-color-scheme-light-surface": "#FAFAF8", "--muse-color-scheme-dark-surface": "#000000" });
   mod.applyAppearance(system, "system", "medium", false);
-  assert(system.dataset.theme === "system", "system Escritura de patrones data-theme=system(Referido a consultas de los medios)");
-  assert(system.dataset.fontScale === "medium", "El rango de tamaño de fuente se escribe como data-font-scale");
+  assert(system.dataset.theme === "system", "system 模式写 data-theme=system（交给媒体查询）");
+  assert(system.dataset.fontScale === "medium", "字号档位写成 data-font-scale");
 
   const forcedDark = makeTarget({ "--muse-color-scheme-light-surface": "#FAFAF8", "--muse-color-scheme-dark-surface": "#000000" });
   mod.applyAppearance(forcedDark, "dark", "medium", false);
-  assert(forcedDark.dataset.theme === "dark", "dark Forzar color oscuro (incluso si el sistema es de color claro)");
+  assert(forcedDark.dataset.theme === "dark", "dark 强制深色（即使系统是浅色）");
 
   const forcedLight = makeTarget();
   mod.applyAppearance(forcedLight, "light", "medium", true);
-  assert(forcedLight.dataset.theme === "light", "light Forzar color claro (incluso si el sistema está oscuro)");
+  assert(forcedLight.dataset.theme === "light", "light 强制浅色（即使系统是深色）");
 
-  assert(mod.resolveScheme("system", true) === "dark", "system + Sistema oscuro → dark");
-  assert(mod.resolveScheme("system", false) === "light", "system + Color de luz del sistema → light");
-  assert(mod.resolveScheme("light", true) === "light", "Forzar colores claros no se ve afectado por el sistema.");
-  assert(mod.resolveScheme("dark", false) === "dark", "Forzar que el color oscuro no se vea afectado por el sistema.");
+  assert(mod.resolveScheme("system", true) === "dark", "system + 系统深色 → dark");
+  assert(mod.resolveScheme("system", false) === "light", "system + 系统浅色 → light");
+  assert(mod.resolveScheme("light", true) === "light", "强制浅色不受系统影响");
+  assert(mod.resolveScheme("dark", false) === "dark", "强制深色不受系统影响");
 
-  assert(JSON.stringify(mod.THEME_MODES) === '["system","light","dark"]', "El tercer nivel del tema es system/light/dark");
-  assert(mod.readThemeMode("DARK") === "dark" && mod.readThemeMode(" system ") === "system", "Los valores de tema son tolerantes a mayúsculas y minúsculas y espacios en blanco.");
-  assert(mod.readThemeMode("blue") === undefined, "Los temas desconocidos se tratan como si no se hubieran dado.");
+  assert(JSON.stringify(mod.THEME_MODES) === '["system","light","dark"]', "主题三档就是 system/light/dark");
+  assert(mod.readThemeMode("DARK") === "dark" && mod.readThemeMode(" system ") === "system", "主题值大小写与空白都容忍");
+  assert(mod.readThemeMode("blue") === undefined, "不认识的主题值当作没给");
 
-  // CSS: Dos declaraciones (consulta de medios + atributo) en color oscuro son consistentes entre sí
+  // CSS：深色两处声明（媒体查询 + 属性）且互相一致
   const mediaDark = declarations(ruleBody(mediaBlock(PRIMITIVES, "prefers-color-scheme: dark"), ':root:not([data-theme="light"])'));
   const attrDark = declarations(ruleBody(PRIMITIVES, ':root[data-theme="dark"]'));
-  assert(Object.keys(attrDark).length > 10, `El atributo bloque oscuro tiene ${Object.keys(attrDark).length} Declaración`);
+  assert(Object.keys(attrDark).length > 10, `属性深色块有 ${Object.keys(attrDark).length} 条声明`);
   assert(
     JSON.stringify(mediaDark) === JSON.stringify(attrDark),
-    "Las dos declaraciones oscuras de consultas de medios y atributos son consistentes una por una (para evitar derivas)",
+    "媒体查询与属性两处暗色声明逐条一致（防止漂移）",
   );
-  assert(/var\(--muse-color-scheme-dark-surface\)/.test(attrDark["--ui-surface"] ?? ""), "Forzar que lo oscuro apunte al token de esquema oscuro");
-  assert(PRIMITIVES.includes(':root:not([data-theme="light"])'), "Si fuerza el color claro cuando el sistema está oscuro, se omitirán las consultas de medios.");
-  assert(CSS.includes(':root[data-theme="dark"] .host-scope { color-scheme: dark; }'), "host El alcance sigue el color oscuro forzado");
-  assert(CSS.includes(':root[data-theme="light"] .host-scope { color-scheme: light; }'), "host El alcance sigue el color de luz forzado");
+  assert(/var\(--muse-color-scheme-dark-surface\)/.test(attrDark["--ui-surface"] ?? ""), "强制深色指向 dark scheme 令牌");
+  assert(PRIMITIVES.includes(':root:not([data-theme="light"])'), "系统深色时若强制浅色，媒体查询会被跳过");
+  assert(CSS.includes(':root[data-theme="dark"] .host-scope { color-scheme: dark; }'), "host 作用域跟随强制深色");
+  assert(CSS.includes(':root[data-theme="light"] .host-scope { color-scheme: light; }'), "host 作用域跟随强制浅色");
 
-  // ── 2. theme-color actualizar ──────────────────────────────────────
-  assert(system.meta.content === "#FAFAF8", `system(Color de luz del sistema)theme-color Tome una superficie clara:${system.meta.content}`);
-  assert(makeTarget && mod.themeColorFor("dark", (name) => (name.endsWith("dark-surface") ? "#000000" : "#FAFAF8")) === "#000000", "themeColorFor Obtener token por esquema");
+  // ── 2. theme-color 更新 ──────────────────────────────────────
+  assert(system.meta.content === "#FAFAF8", `system（系统浅色）theme-color 取浅色 surface：${system.meta.content}`);
+  assert(makeTarget && mod.themeColorFor("dark", (name) => (name.endsWith("dark-surface") ? "#000000" : "#FAFAF8")) === "#000000", "themeColorFor 按 scheme 取令牌");
   const darkMeta = makeTarget({ "--muse-color-scheme-dark-surface": "#000000", "--muse-color-scheme-light-surface": "#FAFAF8" });
   mod.applyAppearance(darkMeta, "dark", "medium", false);
-  assert(darkMeta.meta.content === "#000000", "Después de cambiar al color oscuro, el color del tema cambiará a color oscuro. surface");
+  assert(darkMeta.meta.content === "#000000", "切换深色后 theme-color 跟着变成深色 surface");
   const noTokens = makeTarget();
   mod.applyAppearance(noTokens, "dark", "medium", false);
-  assert(noTokens.meta.content === "initial", "Cuando el token no se puede leer, el meta no se cambia (no queda ninguna cadena vacía)");
+  assert(noTokens.meta.content === "initial", "读不到令牌时不动 meta（不留空串）");
 
-  // ── 3. Mapeo de tamaño de fuente de cuatro niveles ─────────────────────────────────────────
-  assert(JSON.stringify(mod.FONT_SCALES) === '["small","medium","large","xlarge"]', "La cuarta marcha es small/medium/large/xlarge");
-  assert(mod.FONT_SCALE_FACTOR.small === 0.9 && mod.FONT_SCALE_FACTOR.medium === 1, "Rango pequeño 0.9, rango medio 1.0");
-  assert(mod.FONT_SCALE_FACTOR.large === 1.1 && mod.FONT_SCALE_FACTOR.xlarge === 1.2, "Engranaje grande 1.1, extra grande 1.2");
-  assert(mod.readFontScale("xlarge") === "xlarge" && mod.readFontScale("LARGE") === "large", "Tolerancia entre mayúsculas y minúsculas en el tamaño de fuente y el nombre de archivo");
-  assert(mod.readFontScale("1") === "medium", "Número 1 normalizado medium");
-  assert(mod.readFontScale(0.9) === "small" && mod.readFontScale("1.2") === "xlarge", "La ampliación digital está normalizada a la marcha más cercana.");
-  assert(mod.readFontScale("huge") === undefined && mod.readFontScale(0) === undefined, "Si no reconoce el aumento, trátelo como si no estuviera dado.");
+  // ── 3. 四档字号映射 ─────────────────────────────────────────
+  assert(JSON.stringify(mod.FONT_SCALES) === '["small","medium","large","xlarge"]', "四档就是 small/medium/large/xlarge");
+  assert(mod.FONT_SCALE_FACTOR.small === 0.9 && mod.FONT_SCALE_FACTOR.medium === 1, "小档 0.9、中档 1.0");
+  assert(mod.FONT_SCALE_FACTOR.large === 1.1 && mod.FONT_SCALE_FACTOR.xlarge === 1.2, "大档 1.1、特大 1.2");
+  assert(mod.readFontScale("xlarge") === "xlarge" && mod.readFontScale("LARGE") === "large", "字号档位名大小写容忍");
+  assert(mod.readFontScale("1") === "medium", "数字 1 归一成 medium");
+  assert(mod.readFontScale(0.9) === "small" && mod.readFontScale("1.2") === "xlarge", "数字倍率归一到最近的档");
+  assert(mod.readFontScale("huge") === undefined && mod.readFontScale(0) === undefined, "不认识的倍率当作没给");
 
   for (const scale of ["small", "medium", "large", "xlarge"]) {
-    assert(CSS.includes(`:root[data-font-scale="${scale}"]`), `CSS para ${scale} Se proporciona el selector de escala de fuente de datos.`);
+    assert(CSS.includes(`:root[data-font-scale="${scale}"]`), `CSS 为 ${scale} 提供了 data-font-scale 选择器`);
   }
   const largeRule = declarations(ruleBody(CSS, ':root[data-font-scale="large"]'));
-  assert(largeRule["--text-scale"] === "1.1", "large Identificador de archivo: la escala de texto está configurada en 1.1");
-  assert(largeRule["--host-bubble-boost"] === "1.08", "large Por cierto, relaja las burbujas. 8%");
+  assert(largeRule["--text-scale"] === "1.1", "large 档把 --text-scale 设成 1.1");
+  assert(largeRule["--host-bubble-boost"] === "1.08", "large 档顺带把气泡放宽 8%");
   const xlargeRule = declarations(ruleBody(CSS, ':root[data-font-scale="xlarge"]'));
-  assert(xlargeRule["--host-bubble-boost"] === "1.16", "xlarge El engranaje se ensancha un 16% (0.7 × 1.16 ≈ 0.81 Sigue sin aparecer en pantalla)");
+  assert(xlargeRule["--host-bubble-boost"] === "1.16", "xlarge 档放宽 16%（0.7 × 1.16 ≈ 0.81 仍不出屏）");
 
-  // El token de composición tipográfica realmente se multiplica y el token de espaciado no se escala como un todo.
-  assert(/calc\(\$\{value\}px \* var\(--text-scale, 1\)\)/.test(TOKEN_CSS), "Multiplicación de tokens de tamaño de fuente/alto de línea --text-scale");
-  assert(/key !== "fontSize" && key !== "lineHeight"/.test(TOKEN_CSS), "Solo escale fontSize / lineHeight, dejando el espaciado sin cambios");
-  assert(/max-width: calc\(100% \* var\(--muse-component-bubble-max-width-ratio\) \* var\(--host-bubble-boost\)\)/.test(CSS), "El ancho máximo de la burbuja aumenta con el tamaño de fuente.");
-  assert(/--host-page: calc\(var\(--muse-space-screen\) \* var\(--text-scale\)\)/.test(CSS), "Los márgenes se ajustan proporcionalmente al tamaño de fuente.");
-  assert(/padding: calc\(var\(--muse-component-bubble-inner-padding-y\) \* var\(--text-scale\)\)/.test(CSS), "Los márgenes internos de las burbujas se ajustan proporcionalmente al tamaño de fuente (sin bordes)");
+  // 排版令牌真的乘了倍率，间距令牌没被整体缩放
+  assert(/calc\(\$\{value\}px \* var\(--text-scale, 1\)\)/.test(TOKEN_CSS), "字号 / 行高令牌乘 --text-scale");
+  assert(/key !== "fontSize" && key !== "lineHeight"/.test(TOKEN_CSS), "只缩放 fontSize / lineHeight，不动间距");
+  assert(/max-width: calc\(100% \* var\(--muse-component-bubble-max-width-ratio\) \* var\(--host-bubble-boost\)\)/.test(CSS), "气泡最大宽随字号放宽");
+  assert(/--host-page: calc\(var\(--muse-space-screen\) \* var\(--text-scale\)\)/.test(CSS), "页边距随字号按比例调整");
+  assert(/padding: calc\(var\(--muse-component-bubble-inner-padding-y\) \* var\(--text-scale\)\)/.test(CSS), "气泡内边距随字号按比例调整（不贴边）");
 
-  // ── 4. Leer la apariencia del valor establecido + revertir en caso de falla ─────────────────────────────
+  // ── 4. 从设置值读外观 + 失败回滚 ─────────────────────────────
   const darkSnapshot = settingsWith([
     { key: "appearance.themeMode", type: "enum", value: "dark" },
     { key: "appearance.fontSizeScale", type: "enum", value: "xlarge" },
   ]);
   const read0 = mod.readAppearance(darkSnapshot);
-  assert(read0.mode === "dark" && read0.scale === "xlarge", "Lea el tema y el tamaño de fuente a partir de los valores (la clave también se puede reconocer con un prefijo)");
+  assert(read0.mode === "dark" && read0.scale === "xlarge", "从 values 读到主题与字号（键带前缀也能认）");
 
-  const legacy = settingsWith(undefined, { language: "es", themeMode: "light", fontSizeScale: "1.1", themeId: "default" });
+  const legacy = settingsWith(undefined, { language: "zh", themeMode: "light", fontSizeScale: "1.1", themeId: "default" });
   const readLegacy = mod.readAppearance(legacy);
-  assert(readLegacy.mode === "light" && readLegacy.scale === "large", "El antiguo Host también puede leerlo cuando solo se utiliza la pantalla.");
+  assert(readLegacy.mode === "light" && readLegacy.scale === "large", "老 Host 只给 display 时也能读出来");
 
   const empty = mod.readAppearance({ loading: false });
-  assert(empty.mode === "system" && empty.scale === "medium", "Volver si no hay configuración system + medium");
+  assert(empty.mode === "system" && empty.scale === "medium", "没有设置时退回 system + medium");
 
-  // Conmutación optimista:values Cambie tan pronto como cambie el tema; restaurar después de revertir
+  // 乐观切换：values 一变主题就变；回滚后恢复
   const optimistic = mod.applySettingValue(darkSnapshot.snapshot, "appearance.themeMode", "light");
-  assert(mod.readAppearance({ ...darkSnapshot, snapshot: optimistic }).mode === "light", "El tema se aclara inmediatamente después de una escritura optimista.");
+  assert(mod.readAppearance({ ...darkSnapshot, snapshot: optimistic }).mode === "light", "乐观写入后主题立刻变浅色");
   const rolledBack = mod.applySettingValue(optimistic, "appearance.themeMode", "dark");
-  assert(mod.readAppearance({ ...darkSnapshot, snapshot: rolledBack }).mode === "dark", "El tema vuelve al color oscuro después de la reversión");
-  assert(CHAT.includes("useAppearance(settings)"), "El shell de chat conecta los valores de configuración con la apariencia.");
-  assert(/requestSettings\(\)/.test(CHAT), "Simplemente obtenga la configuración una vez conectado (sin esperar a abrir la página de configuración)");
+  assert(mod.readAppearance({ ...darkSnapshot, snapshot: rolledBack }).mode === "dark", "回滚后主题恢复深色");
+  assert(CHAT.includes("useAppearance(settings)"), "聊天壳把设置值接到外观上");
+  assert(/requestSettings\(\)/.test(CHAT), "连上就取一次设置（不等打开设置页）");
 
-  // ── 5. Los elementos autodibujados siguen el esquema (solo use tokens) ────────────────────
+  // ── 5. 自绘元素跟着 scheme 走（只用令牌） ────────────────────
   const tokenDriven = [
     [".host-lightbox", "--host-scrim"],
     [".host-voice-track", "--host-veil"],
@@ -217,15 +217,15 @@ try {
   ];
   for (const [selector, needle] of tokenDriven) {
     const body = ruleBody(CSS, `${selector} {`);
-    assert(body.length > 0 && body.includes(needle), `${selector} Ir token (${needle})`);
+    assert(body.length > 0 && body.includes(needle), `${selector} 走令牌（${needle}）`);
   }
   assert(
     /\.muse-skeleton \{[\s\S]{0,400}?var\(--ui-surface-variant\)/.test(PRIMITIVES),
-    "El esqueleto utiliza el color de fondo del token, que cambiará automáticamente a colores oscuros.",
+    "骨架用令牌底色，深色下自动变",
   );
 
-  if (failures > 0) throw new Error(`Error al afirmar la apariencia (${failures} artículo)`);
-  console.log("\nSe aprobaron todas las afirmaciones de apariencia (tema de tres estados/tamaño de fuente de cuatro niveles/color del tema/retroceso/vinculación).");
+  if (failures > 0) throw new Error(`外观断言未通过（${failures} 条）`);
+  console.log("\n外观断言全部通过（三态主题 / 四档字号 / theme-color / 回滚 / 联动）。");
 } finally {
   await rm(TEMP, { force: true });
 }

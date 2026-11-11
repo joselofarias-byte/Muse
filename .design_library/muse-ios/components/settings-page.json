@@ -41,7 +41,7 @@
     }
   ],
   "anatomy": [
-    "Large title: ajustes 34px Bold",
+    "Large title: 设置 34px Bold",
     "Profile card: avatar + name + model + edit",
     "Grouped sections: section header + rounded card containing rows",
     "Toggle row: label + iOS switch",

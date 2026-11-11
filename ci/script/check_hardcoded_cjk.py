@@ -1,25 +1,25 @@
 #!/usr/bin/env python3
 """
-check_hardcoded_cjk.py — UI Verificación literal china codificada.
+check_hardcoded_cjk.py — UI 硬编码中文字面量检查。
 
-Escanee el código Jetpack Compose en el directorio ui/ e intercepte el código que omite stringResource.
-Cadenas chinas codificadas (se ignora la existencia, se agrega una nueva interceptación, solo disminuye pero no aumenta).
+扫描 ui/ 目录下的 Jetpack Compose 代码，拦截绕过 stringResource 的
+硬编码中文字符串（存量放过、新增拦截、只降不升）。
 
-Alcance del reconocimiento:
-  - La misma línea de cadenas entre comillas dobles contiene literales CJK, como Text("Hola")
-  - La misma línea contiene comillas dobles y contiene el código de portada de CJK (que cubre el comienzo de la cadena sin formato)./línea final)
-  - Elimine automáticamente los comentarios de línea y bloquee los comentarios para evitar falsos positivos en los ejemplos de documentos.
+识别范围：
+  - 同一行双引号字符串内包含 CJK 字面量，如 Text("你好")
+  - 同一行包含双引号且包含 CJK 的兜底识别（覆盖 raw string 起始/结束行）
+  - 自动剔除行注释与块注释，避免文档示例误报
 
-Limitaciones conocidas:
-  - No se reconocen las líneas de continuación sin comillas en cadenas sin formato que abarcan varias líneas
-  - El análisis léxico de Kotlin más estricto se deja en manos de los complementos IDE/Lint; este script se utiliza para la puerta rápida de CI
+已知局限：
+  - 跨越多行的 raw string 中不含引号的续行不会识别
+  - 更严格的 Kotlin 词法解析留给 IDE/Lint 插件，本脚本用于 CI 快速闸门
 
-Baseline Mecanismo:
-  - CI modo(--baseline ci/baseline/hardcoded_cjk_baseline.txt):
-    Compare el número de infracciones archivo por archivo. Si es mayor que la línea base o aparecen nuevos archivos de infracción, fallará.
-  - actualizar línea base (--update-baseline): Regenerar después de limpiar el inventario.
+Baseline 机制：
+  - CI 模式（--baseline ci/baseline/hardcoded_cjk_baseline.txt）：
+    逐文件对比违规数，多于 baseline 或出现新违规文件则失败
+  - 更新 baseline（--update-baseline）：清理存量后重新生成
 
-Uso:
+用法：
   py -3 ci/script/check_hardcoded_cjk.py
   py -3 ci/script/check_hardcoded_cjk.py --baseline <path>
   py -3 ci/script/check_hardcoded_cjk.py --update-baseline
@@ -39,11 +39,12 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 UI_DIR = PROJECT_ROOT / "app" / "src" / "main" / "java" / "io" / "zer0" / "muse" / "ui"
 BASELINE_PATH = PROJECT_ROOT / "ci" / "baseline" / "hardcoded_cjk_baseline.txt"
 
-# Las cadenas entre comillas dobles en la misma línea contienen CJK
+# 同一行双引号字符串内包含 CJK
 CJK_IN_QUOTED_STRING = re.compile(r'"([^"\n]*[\u4e00-\u9fff][^"\n]*)"')
-# Solución de problemas: líneas que contienen comillas dobles y CJK (que cubren las líneas límite de una cadena sin formato)
+# 兜底：行内含双引号且含 CJK（覆盖 raw string 的边界行）
 CJK_WITH_QUOTE = re.compile(r'[\u4e00-\u9fff]')
 LOGGER_CALL_START = re.compile(r'\b(?:Logger|Log)\.[A-Za-z]+\s*\(')
+SEARCH_KEYWORDS_START = re.compile(r'\bkeywords\s*=\s*(?:listOf\s*\()?')
 
 
 @dataclass
@@ -54,7 +55,7 @@ class Violation:
 
 
 def strip_comments(line: str, in_block_comment: bool) -> tuple[str, bool]:
-    """bloque de sacrificio/Comentarios de línea,y omitir literales de cadena(No "text/*" adentro /* Cuando bloquear comentarios,Evite tragar el código posterior)."""
+    """剔除块/行注释,并跳过字符串字面量(不把 "text/*" 里的 /* 当块注释,避免吞掉其后代码)。"""
     out: list[str] = []
     i = 0
     n = len(line)
@@ -68,7 +69,7 @@ def strip_comments(line: str, in_block_comment: bool) -> tuple[str, bool]:
             i += 1
             continue
         if ch in "\"'":
-            # literal de cadena:tal cual emit,saltarse el /* con //(Contiene escape)
+            # 字符串字面量:原样 emit,跳过其中的 /* 与 //(含转义)
             quote = ch
             out.append(ch)
             i += 1
@@ -89,14 +90,14 @@ def strip_comments(line: str, in_block_comment: bool) -> tuple[str, bool]:
             i += 2
             continue
         if ch == "/" and i + 1 < n and line[i + 1] == "/":
-            break  # Comentarios de línea,Descartar el resto
+            break  # 行注释,丢弃剩余
         out.append(ch)
         i += 1
     return "".join(out), in_block_comment
 
 
 def strip_cjk_logger_calls(code: str, in_logger_call: bool = False) -> tuple[str, bool]:
-    """Eliminar la expresión completa de llamada Logger/Log,Admite parámetros de llamada entre líneas."""
+    """剔除完整 Logger/Log 调用表达式,支持调用参数跨行。"""
     result: list[str] = []
     cursor = 0
     depth = 1 if in_logger_call else 0
@@ -131,21 +132,263 @@ def strip_cjk_logger_calls(code: str, in_logger_call: bool = False) -> tuple[str
     return "".join(result), depth > 0
 
 
+def strip_search_keywords(code: str, in_keyword_list: bool = False) -> tuple[str, bool]:
+    """剔除搜索关键词列表；它们用于索引匹配，不是直接展示给用户的文案。"""
+    start = SEARCH_KEYWORDS_START.search(code)
+    if not in_keyword_list and start is None:
+        return code, False
+
+    prefix = code[: start.start()] if start is not None else ""
+    cursor = start.end() if start is not None else 0
+    open_parens = 1 if start is not None and start.group(0).rstrip().endswith("(") else 0
+    bracket_depth = 0
+    index = cursor
+    while index < len(code):
+        ch = code[index]
+        if ch in "\"'":
+            quote = ch
+            index += 1
+            while index < len(code):
+                if code[index] == "\\":
+                    index += 2
+                    continue
+                if code[index] == quote:
+                    index += 1
+                    break
+                index += 1
+            continue
+        if ch == "(":
+            open_parens += 1
+        elif ch == ")":
+            if open_parens == 0:
+                return prefix + code[index + 1 :], False
+            open_parens -= 1
+        elif ch in "[{":
+            bracket_depth += 1
+        elif ch in "]}":
+            bracket_depth -= 1
+        elif (
+            ch == ","
+            and open_parens == 0
+            and bracket_depth == 0
+        ):
+            return prefix + code[index + 1 :], False
+        index += 1
+    return prefix, start is not None
+
+
+def strip_keyword_list_arguments(code: str) -> str:
+    """剔除作为参数传入的裸 listOf(...) 关键词，不误伤同一行的其他可见文案。"""
+    result: list[str] = []
+    cursor = 0
+    marker = "listOf("
+    while True:
+        start = code.find(marker, cursor)
+        if start < 0:
+            result.append(code[cursor:])
+            return "".join(result)
+        segment = code[cursor:start]
+        context = "".join(result) + segment
+        argument_prefix = re.split(r"\brecord\s*\(", context)[-1]
+        inside_record = (
+            re.search(r"\brecord\s*\(", context) is not None
+            and len(re.findall(r"\b\w+\s*=", argument_prefix)) == 0
+        )
+        if not re.search(r"\bkeywords\s*=\s*$", segment) and not inside_record:
+            result.append(code[cursor : start + len(marker)])
+            cursor = start + len(marker)
+            continue
+        result.append(segment)
+        depth = 1
+        index = start + len(marker)
+        while index < len(code) and depth > 0:
+            ch = code[index]
+            if ch in "\"'":
+                quote = ch
+                index += 1
+                while index < len(code):
+                    if code[index] == "\\":
+                        index += 2
+                        continue
+                    if code[index] == quote:
+                        index += 1
+                        break
+                    index += 1
+                continue
+            if ch == "(":
+                depth += 1
+            elif ch == ")":
+                depth -= 1
+            index += 1
+        if (
+            inside_record
+            and not re.search(r"\bkeywords\s*=\s*$", segment)
+            and re.search(r"^\s*,\s*\w+\s*=", code[index:])
+        ):
+            result.append(code[start:index])
+            cursor = index
+            continue
+        cursor = index
+
+
+def strip_record_keyword_arguments(code: str) -> str:
+    """剔除 SettingsSearchExtras 中 record() 的末位关键词参数。"""
+    stripped = code.strip()
+    if stripped.startswith("listOf(") and re.search(r"listOf\([^()]*\)\s*,?\s*$", stripped):
+        return ""
+    if re.search(r"\brecord\s*\(", code) is None:
+        return code
+    if not re.search(r"\brecord\s*\(.+\)", code):
+        return code
+    if not re.search(
+        r"\brecord\s*\([^()]*,\s*[^()]*,\s*[^()]*,\s*(?:listOf\([^()]*\)|\"[^\"]*\")\s*\)",
+        code,
+    ):
+        return code
+    result: list[str] = []
+    cursor = 0
+    start = 0
+    in_record_call = False
+    while True:
+        if not in_record_call:
+            match = re.search(r"\brecord\s*\(", code[start:])
+            if match is None:
+                result.append(code[cursor:])
+                return "".join(result)
+            record_start = start + match.start()
+            result.append(code[cursor:record_start])
+            start = start + match.end()
+            cursor = start
+            in_record_call = True
+        while start < len(code) and code[start].isspace():
+            start += 1
+        if start >= len(code):
+            result.append(code[cursor:])
+            return "".join(result)
+        if not (code.startswith("listOf(", start) or code[start] in "\"'"):
+            start += 1
+            continue
+
+        end = start
+        if code.startswith("listOf(", start):
+            end = start + len("listOf(")
+            depth = 1
+            while end < len(code) and depth > 0:
+                ch = code[end]
+                if ch in "\"'":
+                    quote = ch
+                    end += 1
+                    while end < len(code):
+                        if code[end] == "\\":
+                            end += 2
+                            continue
+                        if code[end] == quote:
+                            end += 1
+                            break
+                        end += 1
+                    continue
+                if ch == "(":
+                    depth += 1
+                elif ch == ")":
+                    depth -= 1
+                end += 1
+        else:
+            quote = code[start]
+            end = start + 1
+            while end < len(code):
+                if code[end] == "\\":
+                    end += 2
+                    continue
+                if code[end] == quote:
+                    end += 1
+                    break
+                end += 1
+
+        after = end
+        while after < len(code) and code[after].isspace():
+            after += 1
+        if (
+            in_record_call
+            and after < len(code)
+            and (code[after] in ")]" or code[after] == ",")
+            and not code[after - 1 : after].isspace()
+        ):
+            cursor = end
+            start = end
+            continue
+
+        result.append(code[cursor:end])
+        cursor = end
+        start = end
+        in_record_call = False
+
+
 def scan_file(path: Path) -> list[Violation]:
     violations: list[Violation] = []
     try:
         lines = path.read_text(encoding="utf-8").splitlines()
     except (OSError, UnicodeDecodeError) as e:
-        print(f"WARN: No puedo leer {path}: {e}", file=sys.stderr)
+        print(f"WARN: 无法读取 {path}: {e}", file=sys.stderr)
         return violations
     in_block_comment = False
     in_logger_call = False
+    in_keyword_list = False
+    in_record_keyword_call = False
+    record_paren_depth = 0
+    in_settings_catalog = path.name in {"SettingsCatalog.kt", "SettingsSearchCatalog.kt"}
+    in_search_record = False
+    search_record_depth = 0
+    in_keywords_list = False
+    keywords_list_depth = 0
     for lineno, line in enumerate(lines, 1):
         code, in_block_comment = strip_comments(line, in_block_comment)
+        if in_settings_catalog and code.lstrip().startswith("record("):
+            in_search_record = True
+            search_record_depth = 0
+        if in_search_record:
+            search_record_depth += code.count("(") - code.count(")")
+        if (
+            in_search_record
+            and re.match(r"^\s+", code)
+            and re.match(r"^\s+\"", code)
+        ):
+            in_record_keyword_call = True
+            record_paren_depth += code.count("(") - code.count(")")
+            continue
+        if code.lstrip().startswith("record("):
+            in_record_keyword_call = True
+            record_paren_depth = 0
+        if in_record_keyword_call:
+            record_paren_depth += code.count("(") - code.count(")")
+            if (
+                re.search(r"listOf\s*\(", code)
+                and re.search(r"\)\s*,?\s*$", code)
+                and record_paren_depth <= 1
+            ):
+                code = re.sub(r"listOf\s*\(.*\)\s*,?\s*$", "", code)
+            if record_paren_depth <= 0:
+                in_record_keyword_call = False
+        if in_search_record and search_record_depth <= 0:
+            in_search_record = False
+        if in_keywords_list:
+            keywords_list_depth += code.count("(") - code.count(")")
+            if keywords_list_depth <= 0:
+                in_keywords_list = False
+            continue
+        if re.search(r"\bkeywords\s*=\s*listOf\s*\(", code):
+            keywords_list_depth = code.count("(") - code.count(")")
+            if keywords_list_depth > 0:
+                in_keywords_list = True
+                continue
         code, in_logger_call = strip_cjk_logger_calls(code, in_logger_call)
+        code, in_keyword_list = strip_search_keywords(code, in_keyword_list)
+        code = strip_keyword_list_arguments(code)
+        code = strip_record_keyword_arguments(code)
+        if in_settings_catalog and code == "":
+            continue
         if not code.strip():
             continue
-        # Las llamadas de registro son diagnósticos internos,No incluido en las comprobaciones de copia de UI i18n
+        # 日志调用属于内部诊断,不纳入 UI 文案 i18n 检查
         if re.search(r'\b(Logger|Log)\.[A-Za-z]+\(.*[\u4e00-\u9fff]', code):
             continue
         if CJK_IN_QUOTED_STRING.search(code):
@@ -185,11 +428,11 @@ def load_baseline(path: Path) -> dict[str, int]:
 def write_baseline(path: Path, violations: dict[str, list[Violation]]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     lines = [
-        "# hardcoded_cjk baseline — Lista de exenciones de literales chinos codificados existentes",
-        "# Formato: <file>: <Número de violaciones>;Agregar o aumentar fallará,solo se permite descender",
-        "# Ejecutar después de limpiar el inventario.: py -3 ci/script/check_hardcoded_cjk.py --update-baseline",
+        "# hardcoded_cjk baseline — 存量硬编码中文字面量豁免清单",
+        "# 格式: <file>: <违规数>;新增或上升都会失败,只允许下降",
+        "# 清理存量后运行: py -3 ci/script/check_hardcoded_cjk.py --update-baseline",
         "#",
-        f"# total actual {sum(len(v) for v in violations.values())} en,Distribución {len(violations)} archivos",
+        f"# 当前共 {sum(len(v) for v in violations.values())} 处,分布 {len(violations)} 个文件",
     ]
     for file, vs in sorted(violations.items()):
         lines.append(f"{file}: {len(vs)}")
@@ -197,10 +440,10 @@ def write_baseline(path: Path, violations: dict[str, list[Violation]]) -> None:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="UI Verificación literal china codificada")
-    parser.add_argument("--baseline", type=Path, default=BASELINE_PATH, help="baseline ruta del archivo")
-    parser.add_argument("--update-baseline", action="store_true", help="Sobrescribir con los resultados del análisis actual baseline")
-    parser.add_argument("--verbose", action="store_true", help="Imprimir detalles de cada infracción")
+    parser = argparse.ArgumentParser(description="UI 硬编码中文字面量检查")
+    parser.add_argument("--baseline", type=Path, default=BASELINE_PATH, help="baseline 文件路径")
+    parser.add_argument("--update-baseline", action="store_true", help="用当前扫描结果重写 baseline")
+    parser.add_argument("--verbose", action="store_true", help="打印每一处违规明细")
     args = parser.parse_args()
 
     violations = scan_all()
@@ -208,11 +451,11 @@ def main() -> int:
 
     if args.update_baseline:
         write_baseline(args.baseline, violations)
-        print(f"baseline actualizado: {args.baseline}")
-        print(f"  total {total} Literales chinos codificados,Distribución {len(violations)} archivos")
+        print(f"baseline 已更新: {args.baseline}")
+        print(f"  共 {total} 处硬编码中文字面量,分布 {len(violations)} 个文件")
         return 0
 
-    print(f"[hardcoded-cjk] Escanee el directorio ui/: {total} Literales chinos codificados,Distribución {len(violations)} archivos")
+    print(f"[hardcoded-cjk] 扫描 ui/ 目录: {total} 处硬编码中文字面量,分布 {len(violations)} 个文件")
 
     if args.verbose:
         for file, vs in sorted(violations.items()):
@@ -230,26 +473,26 @@ def main() -> int:
         allowed = baseline.get(file, 0)
         if current > allowed:
             delta = current - allowed
-            failures.append(f"  {file}: {current} en (baseline {allowed},Nuevo {delta})")
+            failures.append(f"  {file}: {current} 处 (baseline {allowed},新增 {delta})")
         elif current < allowed:
-            improved.append(f"  {file}: {allowed} → {current} (limpiado {allowed - current} en)")
+            improved.append(f"  {file}: {allowed} → {current} (清理了 {allowed - current} 处)")
     cleaned_files = [f for f in baseline if f not in violations]
     for f in cleaned_files:
-        improved.append(f"  {f}: Borrado")
+        improved.append(f"  {f}: 已清零")
 
     if improved:
-        print("[hardcoded-cjk] hay mejora,Se recomienda ejecutar --update-baseline para ajustar:")
+        print("[hardcoded-cjk] 有改善,建议运行 --update-baseline 收紧:")
         for line in improved:
             print(line)
 
     if failures:
-        print("[hardcoded-cjk] FAILED — Se agregaron literales chinos codificados:")
+        print("[hardcoded-cjk] FAILED — 新增硬编码中文字面量:")
         for line in failures:
             print(line)
-        print("como solucionarlo: uso stringResource(R.string.xxx);Si está en stock, límpielo. --update-baseline")
+        print("修复方式: 使用 stringResource(R.string.xxx);若为存量请清理后 --update-baseline")
         return 1
 
-    print(f"[hardcoded-cjk] PASS — No hay nuevos literales chinos codificados (Valores {total} en,Exento por línea de base)")
+    print(f"[hardcoded-cjk] PASS — 无新增硬编码中文字面量 (存量 {total} 处,按 baseline 豁免)")
     return 0
 
 

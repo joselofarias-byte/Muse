@@ -3,22 +3,22 @@ import "./primitives.css";
 
 export interface ScreenProps {
   readonly children?: ReactNode;
-  /** Área de la barra superior (generalmente pasada <TopBar />). El área segura de la barra de estado se agregará al renderizar. */
+  /** 顶栏区域（通常传 <TopBar />）。渲染时会补状态栏安全区。 */
   readonly topBar?: ReactNode;
-  /** Área fija inferior (isla de entrada/operación principal). El área segura inferior se agregará al renderizar. */
+  /** 底部固定区（输入岛 / 主操作）。渲染时会补底部安全区。 */
   readonly footer?: ReactNode;
-  /** Si el área de contenido cubre los márgenes de la pantalla (MusePaddings.screen). Verdadero predeterminado. */
+  /** 内容区是否套屏幕边距（MusePaddings.screen）。默认 true。 */
   readonly padded?: boolean;
-  /** En una funda de teléfono celular de posicionamiento fijo (flex columna) para completar la altura disponible, el valor predeterminado es falso. */
+  /** 在固定定位的手机壳（flex 列）里撑满可用高度，默认 false。 */
   readonly fill?: boolean;
   readonly className?: string;
 }
 
 /**
- * Esqueleto de página: barra superior + área de contenido de desplazamiento + área inferior, además de relleno de área segura.
+ * 页面骨架：顶栏 + 滚动内容区 + 底部区，外加安全区内边距。
  *
- * Corresponde a MusePageScaffold de Compose (contentWindowInsets = 0, la barra de estado se entrega a topBar,
- * La parte inferior se entrega al pie de página), la diferencia es que la Web usa variables de zona segura CSS env(safe-area-inset-*).
+ * 对应 Compose 的 MusePageScaffold（contentWindowInsets = 0，状态栏交给 topBar、
+ * 底部交给 footer），区别只是 Web 用 CSS 安全区变量 env(safe-area-inset-*)。
  */
 export function Screen({ children, topBar, footer, padded = true, fill = false, className }: ScreenProps) {
   const classes = ["muse-screen"];

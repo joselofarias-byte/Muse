@@ -29,52 +29,52 @@ import io.github.fletchmckee.liquid.LiquidState
 import io.github.fletchmckee.liquid.liquid
 
 /**
- * v2.6: Cubo con efecto de vidrio líquido (motor de vidrio verdadero).
+ * v2.6: 液态玻璃效果中枢（真玻璃引擎）。
  *
- * ## Cambios sustanciales de v2.5.2 a v2.6
- * v2.5.2 Utilice "Haze 1.5.3 "Fondo difuso + tres elementos autopintados", porque el proyecto estaba en Compose 1.7.x en ese momento,
- * Las bibliotecas de Glass dedicadas requieren Compose 1.10+ (Haze 2.x / backdrop / liquid Misma razón).
- * v2.6 El proyecto se actualizó a Compose 1.10.4, se borró el umbral y se cambió a**motor dedicado**:
+ * ## 从 v2.5.2 到 v2.6 的实质变化
+ * v2.5.2 用「Haze 1.5.3 模糊底 + 自绘三要素」，因为当时项目在 Compose 1.7.x，
+ * 而专用玻璃库都要求 Compose 1.10+（Haze 2.x / backdrop / liquid 同理）。
+ * v2.6 起项目已升级到 Compose 1.10.4，门槛清掉，改用**专用引擎**：
  *
- * | estilo | motor | pila de efectos |
+ * | 风格 | 引擎 | 效果栈 |
  * |---|---|---|
- * | FROST(helado) | kyant `backdrop` | vibrancy + blur + lens(refracción/dispersión) + Highlight + Shadow |
- * | WATER(vaso de agua) | fletchmckee `liquid` | RuntimeShader(liquid):frost/curve/refraction/dispersion/saturation/contrast |
+ * | FROST（磨砂） | kyant `backdrop` | vibrancy + blur + lens(折射/色散) + Highlight + Shadow |
+ * | WATER（水玻璃） | fletchmckee `liquid` | RuntimeShader(liquid)：frost/curve/refraction/dispersion/saturation/contrast |
  *
- * ambos de**capa de fondo global**encuadre ([LocalLayerBackdrop] / [LocalWaterGlassState]),
- * en lugar de capturar cada uno —— Por lo tanto, la fuente de muestreo solo se registra una vez para toda la pantalla, compartida por decenas de superficies de vidrio, y el desplazamiento no se duplica.
+ * 两者都从**全局背景层**取景（[LocalLayerBackdrop] / [LocalWaterGlassState]），
+ * 而不是各自捕获 —— 所以整屏只登记一次取样源，几十个玻璃面共享，滚动不翻倍。
  *
- * ## Bajar de versión inferior
- * - FROST/WATER El vidrio verdadero requiere API 33+ (RuntimeShader). Por debajo de 33 o sin capa de fondo,
- *   Regresar automáticamente a [Modifier.glassEdgeHighlight] + [Modifier.glassBorder] vidrio falso
- *   (Los mismos tres elementos resaltados que en v2.5.2), apariencia similar, costo cero.
- * - Todas las burbujas de mensajes están hechas de vidrio falso ([glassFakeSurfaceColor])——Docenas de desenfoques reales en una pantalla ralentizarán el desplazamiento.
- *   Este es un límite de rendimiento preservado intencionalmente, consistente con v2.5.2.
+ * ## 低版本降级
+ * - FROST/WATER 真玻璃需要 API 33+（RuntimeShader）。低于 33 或无背景层，
+ *   自动回退到 [Modifier.glassEdgeHighlight] + [Modifier.glassBorder] 的假玻璃
+ *   （与 v2.5.2 同款高光三要素），观感接近、零成本。
+ * - 消息气泡一律走假玻璃（[glassFakeSurfaceColor]）——一屏几十个真模糊会拖垮滚动，
+ *   这是刻意保留的性能边界，与 v2.5.2 一致。
  *
- * ## compatibilidad retenida
+ * ## 保留的兼容面
  * [GlassStyle] / [LiquidGlassConfig] / [GlassIsland] / [glassEdgeHighlight] /
- * [glassFakeSurfaceColor] / [glassBorder] / [LocalLiquidGlass] La firma permanece sin cambios y el punto de llamada no tiene cambios.
+ * [glassFakeSurfaceColor] / [glassBorder] / [LocalLiquidGlass] 的签名不变，调用点零改动。
  */
 
-/** Estilo de cristal. */
+/** 玻璃风格。 */
 enum class GlassStyle {
-    /** vaso de agua — Fino y translúcido, con reflejos nítidos. */
+    /** 水玻璃 — 轻薄透亮，高光锐利。 */
     WATER,
 
-    /** vidrio esmerilado — Blanco lechoso y espeso con reflejos suaves. */
+    /** 磨砂玻璃 — 厚重乳白，高光柔和。 */
     FROST,
 }
 
-/** Configuración global de vidrio líquido;mode=OFF o strength<=0 significa cerrado. */
+/** 液态玻璃全局配置;mode=OFF 或 strength<=0 表示关闭。 */
 data class LiquidGlassConfig(
     val style: GlassStyle = GlassStyle.FROST,
-    /** intensidad 0f..1f;0 = Cerca. */
+    /** 强度 0f..1f;0 = 关闭。 */
     val strength: Float = 0.5f,
     /**
-     * v2.6.1: modo original(off/water/frost).
+     * v2.6.1: 原始模式(off/water/frost)。
      *
-     * fondo:Anteriormente habilitado solo miraba la fuerza, lo que resultaba en“El modo está desactivado pero el control deslizante de intensidad no está 0”tiempo
-     * El cristal sigue vigente (prueba real del usuario: el cristal sigue ahí cuando se apaga la animación). ahora habilitado también requiere mode != off.
+     * 背景:此前 enabled 只看 strength，导致“模式设为关闭但强度滑条不为 0”时
+     * 玻璃仍然生效（用户实测：关了动效还有玻璃）。现在 enabled 同时要求 mode != off。
      */
     val mode: String = MODE_OFF,
 ) {
@@ -94,17 +94,17 @@ data class LiquidGlassConfig(
     }
 }
 
-/** API mínima requerida para True Glass Engine (RuntimeShader / RenderEffect completo). */
+/** 真玻璃引擎所需的最低 API（RuntimeShader / RenderEffect 完备）。 */
 private const val GLASS_MIN_API = Build.VERSION_CODES.TIRAMISU
 
-/** Si el dispositivo actual admite vidrio verdadero (API 33+). */
+/** 当前设备是否支持真玻璃（API 33+）。 */
 fun isRealGlassSupported(): Boolean = Build.VERSION.SDK_INT >= GLASS_MIN_API
 
 /**
- * Puntos de anclaje del parámetro de vidrio (fuerzas 0 y 1 en ambos lados, interpolación lineal en el medio).
+ * 玻璃参数锚点（强度 0 与 1 两端，中间线性插值）。
  *
- * - tint restringir —— Hacer visible el desenfoque y la refracción (tint Demasiado peso convertirá el vidrio en un bloque gris translúcido)
- * - El vaso de agua es borroso y poco profundo, dependiendo de la refracción./La dispersión apoya la textura; el desenfoque esmerilado es profundo y el tinte/resaltado apoya el grosor
+ * - tint 克制 —— 让模糊与折射看得见（tint 过重会把玻璃盖成半透明灰块）
+ * - 水玻璃模糊浅、靠折射/色散撑质感；磨砂模糊深、靠 tint/高光撑厚度
  */
 private data class GlassAnchor(
     val blurAt0: Dp,
@@ -113,20 +113,20 @@ private data class GlassAnchor(
     val baseAlphaAt1: Float,
     val tintAlphaAt0: Float,
     val tintAlphaAt1: Float,
-    /** Pico alfa del borde de resaltado superior (compartido con vidrio falso y resaltado). */
+    /** 顶部高光边峰值 alpha（假玻璃与 Highlight 共用）。 */
     val highlightAt0: Float,
     val highlightAt1: Float,
 )
 
 private val ANCHORS = mapOf(
-    // Vaso de agua: baja resistencia=Desenfoque muy superficial(claro);alta resistencia=Obviamente esmerilado (los usuarios pueden levantarlo para obtener una sensación de vidrio esmerilado)
+    // 水玻璃：低强度=极浅模糊(清透)；高强度=明显磨砂（用户可拉高获得毛玻璃感）
     GlassStyle.WATER to GlassAnchor(
         blurAt0 = 2.dp, blurAt1 = 32.dp,
         baseAlphaAt0 = 0.05f, baseAlphaAt1 = 0.20f,
         tintAlphaAt0 = 0.06f, tintAlphaAt1 = 0.26f,
         highlightAt0 = 0.30f, highlightAt1 = 0.55f,
     ),
-    // Mate: baja intensidad=Ligeramente esmerilado; alta resistencia=Vidrio esmerilado grueso (borroso y teñido levantado simultáneamente, evitar“Difuso pero transparente”)
+    // 磨砂：低强度=轻磨砂；高强度=厚毛玻璃（模糊与 tint 同步拉高，避免“糊而还透”）
     GlassStyle.FROST to GlassAnchor(
         blurAt0 = 6.dp, blurAt1 = 72.dp,
         baseAlphaAt0 = 0.12f, baseAlphaAt1 = 0.55f,
@@ -135,7 +135,7 @@ private val ANCHORS = mapOf(
     ),
 )
 
-/** Parámetros de vidrio analizados (compartidos por estilos y acumulaciones). */
+/** 解析后的玻璃参数（供样式与叠层共用）。 */
 internal data class ResolvedGlass(
     val blur: Dp,
     val baseAlpha: Float,
@@ -157,29 +157,54 @@ internal fun resolveGlass(config: LiquidGlassConfig): ResolvedGlass {
     )
 }
 
-/** color base de tinte de vidrio (trazo/vidrio falso/Highlight Fuente de consistencia con el color base). */
+/**
+ * F3.4: 玻璃高光的统一光源参数——真玻璃(Highlight)与假玻璃(边缘画线)共用一套词汇。
+ *
+ * 数值与收敛前逐项相同，纯消灭"两处各自维护同一物理含义常数"的漂移风险；
+ * 光源方向为常量顶部（顶带最亮 + 左上→右下扫过），不做可调项。
+ */
+internal object MuseGlassLight {
+    /** 描边基准宽（dp）：Highlight.width 与假玻璃带共用的"边缘厚度"单位。 */
+    const val EDGE_WIDTH_DP = 1f
+
+    /** 高光模糊相对边宽倍率（kyant Highlight.blurRadius = EDGE * 此值）。 */
+    const val BLUR_FACTOR = 2.4f
+
+    /** 假玻璃顶高光带高度（dp）。 */
+    const val TOP_BAND_DP = 1.5f
+
+    /** 假玻璃底部暗带高度（dp）与相对 alpha 增益（体积感，弱于顶光）。 */
+    const val BOTTOM_BAND_DP = 1f
+    const val BOTTOM_GAIN = 0.35f
+
+    /** 斜向环境光扫过终点（宽的 0.85 × 高）与其相对 alpha 增益。 */
+    const val SWEEP_END_X_FRACTION = 0.85f
+    const val SWEEP_GAIN = 0.55f
+}
+
+/** 玻璃 tint 基调色（描边/假玻璃/Highlight 与底色的一致性来源）。 */
 internal fun ResolvedGlass.surfaceTint(surfaceColor: Color): Color =
     surfaceColor.copy(alpha = (tintAlpha + baseAlpha * 0.35f).coerceIn(0f, 0.85f))
 
 /**
- * v2.6: FROST vidrio real —— kyant backdrop motor.
+ * v2.6: FROST 真玻璃 —— kyant backdrop 引擎。
  *
- * Pila de efectos:vibrancy(Aumentar la saturación)+ blur(borroso)+ lens(refracción/dispersión),
- * Además del borde resaltado superior (Highlight) y proyección (Shadow), y finalmente aplique una capa de tinte translúcido.
+ * 效果栈：vibrancy（提升饱和度）+ blur（模糊）+ lens（折射/色散），
+ * 外加顶部高光边（Highlight）与投影（Shadow），最后叠一层半透明 tint。
  *
- * debe ser colgado [LocalLayerBackdrop]Utilizado en el árbol (capa de contenido);backdrop cuando es nulo
- * Las personas que llaman deberían recurrir a fakeGlass([glassIslandModifier] La sucursal ha sido procesada).
+ * 必须在已挂 [LocalLayerBackdrop]（内容层）的树上使用；backdrop 为 null 时
+ * 调用方应回退到假玻璃（[glassIslandModifier] 已处理该分支）。
  */
 @Composable
 fun Modifier.frostGlass(backdrop: LayerBackdrop?, shape: Shape, surfaceColor: Color, config: LiquidGlassConfig): Modifier {
     if (backdrop == null || !config.enabled) return this
     val p = resolveGlass(config)
     val tint = p.surfaceTint(surfaceColor)
-    // v2.6.0 fix: La fuerza realmente impulsa los parámetros centrales —— refracción de la lente original/Radio de sombra codificado,
-    // La fuerza solo se puede cambiar para desenfocar(14→4dp La brecha es pequeña)con reflejos alpha,Es casi invisible a simple vista.
-    // Ahora refracciones, desenfoques, reflejos,tint Todos varían linealmente con la intensidad.,Y ampliar la brecha entre los dos extremos.
+    // v2.6.0 fix: 强度真正驱动核心参数 —— 原先 lens 折射/阴影半径写死,
+    // 强度只能改模糊(14→4dp 差距小)与高光 alpha,肉眼几乎看不出。
+    // 现在折射、模糊、高光、tint 全部随强度线性变化,且拉开两端差距。
     val s = config.strength.coerceIn(0f, 1f)
-    val edgeWidth = 1.dp
+    val edgeWidth = MuseGlassLight.EDGE_WIDTH_DP.dp
     val refractionHeight = (4f + 20f * s).dp
     val refractionAmount = (4f + 26f * s).dp
     val shadowRadius = (4f + 18f * s).dp
@@ -198,7 +223,7 @@ fun Modifier.frostGlass(backdrop: LayerBackdrop?, shape: Shape, surfaceColor: Co
         highlight = {
             Highlight(
                 width = edgeWidth,
-                blurRadius = edgeWidth * 2.4f,
+                blurRadius = edgeWidth * MuseGlassLight.BLUR_FACTOR,
                 alpha = p.highlightAlpha,
             )
         },
@@ -215,10 +240,10 @@ fun Modifier.frostGlass(backdrop: LayerBackdrop?, shape: Shape, surfaceColor: Co
 }
 
 /**
- * v2.6: WATER vidrio real —— fletchmckee liquid motor (RuntimeShader).
+ * v2.6: WATER 真玻璃 —— fletchmckee liquid 引擎（RuntimeShader）。
  *
- * con [frostGlass] La diferencia: tómalo en serio·Sombreador de refracción (curve/frost/refraction/dispersion),
- * La apariencia y el tacto se acercan más al vidrio líquido. La persona que llama primero debe colgarlo en la capa de contenido. `Modifier.liquefiable(state)`.
+ * 与 [frostGlass] 的差别：走真·折射着色器（curve/frost/refraction/dispersion），
+ * 观感更接近液态玻璃。需要先由调用方在内容层挂 `Modifier.liquefiable(state)`。
  */
 @Composable
 fun Modifier.waterGlass(state: LiquidState?, shape: Shape, surfaceColor: Color, config: LiquidGlassConfig): Modifier {
@@ -226,9 +251,9 @@ fun Modifier.waterGlass(state: LiquidState?, shape: Shape, surfaceColor: Color, 
     val p = resolveGlass(config)
     val light = surfaceColor.luminance() >= 0.5f
     val tint = p.surfaceTint(surfaceColor)
-    // v2.6.0 fix: La fuerza realmente impulsa los parámetros centrales —— Originalmente todo escrito hasta la muerte.,La fuerza tiene poco efecto sobre el vaso soluble.
-    // ahora frost/curve/refraction/dispersion/saturation/contrast todos varían con la intensidad:
-    // baja intensidad → película ligera(baja refracción/Baja dispersión/casi lineal);Alta resistencia → vidrio grueso(fuerte refracción/Fuerte dispersión/alto contraste).
+    // v2.6.0 fix: 强度真正驱动核心参数 —— 原先全部写死,强度对水玻璃几乎无效。
+    // 现在 frost/curve/refraction/dispersion/saturation/contrast 均随强度变化:
+    // 低强度 → 轻薄膜(低折射/低色散/近线性);高强度 → 厚玻璃(强折射/强色散/高对比)。
     val params = waterGlassParams(light, config.strength.coerceIn(0f, 1f))
     return this.liquid(state) {
         this.shape = shape
@@ -243,10 +268,10 @@ fun Modifier.waterGlass(state: LiquidState?, shape: Shape, surfaceColor: Color, 
 }
 
 /**
- * Parámetros del vaso de agua(Sacar y bajar [waterGlass] La complejidad ciclomática de).
+ * 水玻璃参数(抽出来降低 [waterGlass] 的圈复杂度)。
  *
- * @param light ¿El color base es más brillante?(Determinar la combinación de la capa base y el rango de intensidad.)
- * @param s intensidad 0..1
+ * @param light 基色是否偏亮(决定基础层与强度幅度的分档)
+ * @param s 强度 0..1
  */
 private data class WaterGlassParams(
     val frost: Float,
@@ -267,14 +292,14 @@ private fun waterGlassParams(light: Boolean, s: Float): WaterGlassParams = Water
 )
 
 /**
- * v2.5.2: Laminación de tres elementos con borde de vidrio —— Fuente de textura de vidrio falso (sin desenfoque).
+ * v2.5.2: 玻璃边缘三要素叠层 —— 假玻璃（无模糊）的质感来源。
  *
- * Dibuja en orden:
- * 1. Borde resaltado superior: el blanco se desvanece de arriba a abajo (la principal fuente del grosor del vidrio)
- * 2. Borde oscuro en la parte inferior: el negro se desvanece ligeramente de abajo hacia arriba (sensación de volumen)
- * 3. Escaneo de luz oblicua: aprox. 35° Degradado lineal blanco (reflejo de luz ambiental)
+ * 依次画：
+ * 1. 顶部高光边：从上往下的白色渐隐（玻璃厚度感的主要来源）
+ * 2. 底部暗边：从下往上的黑色微渐隐（体积感）
+ * 3. 斜向光扫：约 35° 的白色线性渐变（环境光反射）
  *
- * v2.6 No solo sirve para degradar las versiones inferiores, sino que también sirve para la superposición opcional de "agregar una capa de luz de borde al vidrio real".
+ * v2.6 起既服务低版本降级，也服务于「真玻璃上再加一层边缘光」的可选叠加。
  */
 fun Modifier.glassEdgeHighlight(shape: Shape, config: LiquidGlassConfig): Modifier = this.clip(shape).drawWithContent {
     drawContent()
@@ -283,8 +308,8 @@ fun Modifier.glassEdgeHighlight(shape: Shape, config: LiquidGlassConfig): Modifi
     val h = size.height
     val hi = p.highlightAlpha
 
-    // 1. borde resaltado superior —— 1.5dp Del interior brillante al transparente
-    val topBand = 1.5.dp.toPx()
+    // 1. 顶部高光边 —— 1.5dp 内从亮到透明
+    val topBand = MuseGlassLight.TOP_BAND_DP.dp.toPx()
     drawRect(
         brush = Brush.verticalGradient(
             0f to Color.White.copy(alpha = hi),
@@ -294,49 +319,80 @@ fun Modifier.glassEdgeHighlight(shape: Shape, config: LiquidGlassConfig): Modifi
         ),
         size = Size(w, topBand),
     )
-    // 2. Borde oscuro en la parte inferior —— 1dp De oscuro a transparente (sensación de volumen)
-    val bottomBand = 1.dp.toPx()
+    // 2. 底部暗边 —— 1dp 内从暗到透明（体积感）
+    val bottomBand = MuseGlassLight.BOTTOM_BAND_DP.dp.toPx()
     drawRect(
         brush = Brush.verticalGradient(
             0f to Color.Transparent,
-            1f to Color.Black.copy(alpha = hi * 0.35f),
+            1f to Color.Black.copy(alpha = hi * MuseGlassLight.BOTTOM_GAIN),
             startY = h - bottomBand,
             endY = h,
         ),
         topLeft = Offset(0f, h - bottomBand),
         size = Size(w, bottomBand),
     )
-    // 3. escaneo de luz oblicua —— De arriba a la izquierda a abajo a la derecha, el blanco se desvanece (luz ambiental)
+    // 3. 斜向光扫 —— 左上到右下，白色渐隐（环境光）
     drawRect(
         brush = Brush.linearGradient(
-            0f to Color.White.copy(alpha = hi * 0.55f),
+            0f to Color.White.copy(alpha = hi * MuseGlassLight.SWEEP_GAIN),
             0.45f to Color.Transparent,
             start = Offset(0f, 0f),
-            end = Offset(w * 0.85f, h),
+            end = Offset(w * MuseGlassLight.SWEEP_END_X_FRACTION, h),
         ),
     )
 }
 
 /**
- * v2.5.2: fondo de vidrio falso —— Úselo para superficies rodantes de alta frecuencia, como burbujas (sin difuminar).
+ * 假玻璃的色阶（纯函数，便于把"暗色不许变灰白"钉成断言）。
  *
- * Reemplace el desenfoque con un degradado vertical: ligeramente más claro en la parte superior (luz ambiental), ligeramente más oscuro en la parte inferior (volumen), superpuesto al color base.
- * cooperar [glassEdgeHighlight] Puede obtener una apariencia similar al vidrio a un costo casi nulo.
+ * **暗色必须向黑压深，不能向白提亮**：`lerp(base, White, 0.4~0.7)` 会把
+ * `surfaceContainerLowest`(#0F0D13) 这种近黑底提成中灰→浅灰，
+ * 在深色页面上就是一块突兀的"气泡底"（2026-11-06 用户截图指出菜单与底部面板都是这样）。
+ * 暗色下的玻璃观感应当是：**整体仍是深色**，只有顶边一丝环境光 + 底部压深表达体积。
  */
-fun glassFakeSurfaceColor(base: Color, config: LiquidGlassConfig): Brush {
+internal fun fakeGlassStops(base: Color, config: LiquidGlassConfig): List<Pair<Float, Color>> {
     val p = resolveGlass(config)
     val lift = 0.10f * (p.highlightAlpha / 0.55f).coerceIn(0.3f, 1f)
-    fun mix(alpha: Float) = androidx.compose.ui.graphics.lerp(base, Color.White, alpha)
-    return Brush.verticalGradient(
-        0f to mix(p.baseAlpha + lift),
-        0.55f to mix(p.baseAlpha + p.tintAlpha * 0.6f),
-        1f to mix(p.baseAlpha + p.tintAlpha),
-    )
+    val depth = ((p.baseAlpha + p.tintAlpha) * 0.5f).coerceIn(0f, 0.55f)
+    fun lerpTo(target: Color, alpha: Float) = androidx.compose.ui.graphics.lerp(base, target, alpha.coerceIn(0f, 1f))
+    return if (base.luminance() < 0.5f) {
+        // 两步，缺一不可：
+        // ① 先把近黑底抬到"看得见的深灰"（最多 12% 白）。纯黑上做体积渐变是看不见的，
+        //    面板会变成一块死黑板；而旧实现是 43.5%~70.5% 白 —— 那才是用户截图里的灰白"气泡"。
+        // ② 再在深灰上表达体积：顶边一丝环境光、底部压深。
+        val lifted = androidx.compose.ui.graphics.lerp(base, Color.White, 0.12f)
+        fun onLifted(target: Color, alpha: Float) = androidx.compose.ui.graphics.lerp(lifted, target, alpha.coerceIn(0f, 1f))
+        listOf(
+            0f to onLifted(Color.White, 0.05f + lift * 0.06f),
+            0.45f to onLifted(Color.Black, depth * 0.35f),
+            1f to onLifted(Color.Black, depth * 0.70f),
+        )
+    } else {
+        listOf(
+            0f to lerpTo(Color.White, p.baseAlpha + lift),
+            0.55f to lerpTo(Color.White, p.baseAlpha + p.tintAlpha * 0.6f),
+            1f to lerpTo(Color.White, p.baseAlpha + p.tintAlpha),
+        )
+    }
 }
 
 /**
- * v2.5.2: trazos de vidrio —— Un borde de 1 px con oscuridad superior e inferior brillante para mejorar aún más el"pieza de vidrio"borde.
- * con [glassEdgeHighlight] Úselos juntos (resalte primero y luego trace).
+ * v2.5.2: 假玻璃底 —— 给气泡这类高频、滚动中的表面用（不跑模糊）。
+ *
+ * 用垂直渐变替代模糊：顶部略亮（环境光）、底部略深（体积），叠加在基调色上。
+ * 配合 [glassEdgeHighlight] 即可获得近似玻璃观感，成本几乎为零。
+ * 明暗分向见 [fakeGlassStops]。
+ */
+fun glassFakeSurfaceColor(base: Color, config: LiquidGlassConfig): Brush {
+    // 色阶恒为三段（FakeGlassStopsTest 有断言），直接解构传参：
+    // 不用 `*...toTypedArray()`，那会每次重组多分配一个数组（detekt 的 SpreadOperator 也指这条）。
+    val (top, mid, bottom) = fakeGlassStops(base, config)
+    return Brush.verticalGradient(top, mid, bottom)
+}
+
+/**
+ * v2.5.2: 玻璃描边 —— 上亮下暗的一圈 1px 边，进一步强化"玻璃片"边界。
+ * 与 [glassEdgeHighlight] 配合使用（先画高光再描边）。
  */
 fun Modifier.glassBorder(shape: Shape, config: LiquidGlassConfig): Modifier {
     val p = resolveGlass(config)
@@ -352,12 +408,12 @@ fun Modifier.glassBorder(shape: Shape, config: LiquidGlassConfig): Modifier {
 }
 
 /**
- * v2.6: Aspecto uniforme del acristalamiento (para [GlassIsland] etcétera).
+ * v2.6: 统一装配玻璃外观（供 [GlassIsland] 等复用）。
  *
- * Orden de decisión:
- * 1. FROST + Hay una capa de fondo + API 33+ → [frostGlass]
- * 2. WATER + si liquidState + API 33+ → [waterGlass]
- * 3. El resto (versión inferior/sin capas/apagado)→ Vidrio falso:[glassFakeSurfaceColor] + Resaltado + Trazo
+ * 决策顺序：
+ * 1. FROST + 有 backdrop 层 + API 33+ → [frostGlass]
+ * 2. WATER + 有 liquidState + API 33+ → [waterGlass]
+ * 3. 其余（低版本 / 无层 / 关闭）→ 假玻璃：[glassFakeSurfaceColor] + 高光 + 描边
  */
 @Composable
 internal fun glassSurfaceModifier(
@@ -374,7 +430,7 @@ internal fun glassSurfaceModifier(
         realGlass && config.style == GlassStyle.WATER && waterState != null ->
             Modifier.waterGlass(waterState, shape, surfaceColor, config)
         else ->
-            // Degradación: vidrio falso (base degradada + resaltar tres elementos + trazo)
+            // 降级：假玻璃（渐变底 + 高光三要素 + 描边）
             Modifier
                 .clip(shape)
                 .background(glassFakeSurfaceColor(surfaceColor, config))
@@ -384,10 +440,10 @@ internal fun glassSurfaceModifier(
 }
 
 /**
- * v2.6.1: Modificador de apariencia de vidrio falso —— ventana independiente(Popup / Dialog / BottomSheet)Para uso interno.
+ * v2.6.1: 假玻璃外观修饰符 —— 独立窗口(Popup / Dialog / BottomSheet)内用。
  *
- * La fuente de fondo de la ventana principal no se puede seleccionar en todas las ventanas,El vidrio real hará que la pantalla se vuelva negra;Aquí use directamente la base de degradado + resaltado de borde + trazo,
- * Exprese la textura del vidrio sin depender del fondo. La configuración y el color base se toman del tema actual.
+ * 跨窗口采不到主窗口的背景源,真玻璃会黑屏;这里直接用渐变底 + 高光边 + 描边,
+ * 在不依赖 backdrop 的前提下表达玻璃质感。配置与基调色都从当前主题取。
  */
 @Composable
 fun Modifier.fakeGlassSurface(shape: Shape, surfaceColor: Color): Modifier {
@@ -399,26 +455,26 @@ fun Modifier.fakeGlassSurface(shape: Shape, surfaceColor: Color): Modifier {
         .glassBorder(shape, config)
 }
 
-/** Instantánea global de la configuración del vidrio líquido;MainActivity Proporcionado después de recopilar el flujo de configuración. Desactivado de forma predeterminada. */
+/** 液态玻璃配置的全局快照;MainActivity 收集设置流后提供。默认关闭。 */
 val LocalLiquidGlass = staticCompositionLocalOf { LiquidGlassConfig(strength = 0f) }
 
 /**
- * v2.6: Capa de fondo global FROST (kyant backdrop). Para capa de contenido `Modifier.layerBackdrop(it)` registro;
- * null = Glass no está habilitado ni es compatible.
+ * v2.6: 全局 FROST 背景层（kyant backdrop）。内容层用 `Modifier.layerBackdrop(it)` 登记；
+ * null = 玻璃未启用或不支持。
  */
 val LocalLayerBackdrop = staticCompositionLocalOf<LayerBackdrop?> { null }
 
 /**
- * v2.6: Estado mundial del AGUA (fletchmckee liquid). Para capa de contenido `Modifier.liquefiable(it)` registro;
- * null = Glass no está habilitado ni es compatible.
+ * v2.6: 全局 WATER 状态（fletchmckee liquid）。内容层用 `Modifier.liquefiable(it)` 登记；
+ * null = 玻璃未启用或不支持。
  */
 val LocalWaterGlassState = staticCompositionLocalOf<LiquidState?> { null }
 
 /**
- * v2.6: ¿El fondo detrás del cristal está oscuro?
+ * v2.6: 玻璃背后背景是否偏暗。
  *
- * El vidrio es translúcido, el color del contenido de la isla debe coincidir“fondo que brilla”Sólo en comparación se puede ver con claridad.
- * Determinado por la página en función de su propio fondo (sin fondo/gradiente de luz=false, degradado oscuro/Imagen de fondo oscuro=true),
- * [GlassIsland] Con el título de la columna superior seleccionado en consecuencia, la profundidad/Color de contenido claro.
+ * 玻璃是半透明的，岛内内容色必须与“透出来的背景”对比才能看清。
+ * 由页面根据自身背景决定（无背景/浅色渐变=false，深色渐变/深色背景图=true），
+ * [GlassIsland] 与顶栏标题据此选择深/浅内容色。
  */
 val LocalGlassIsBackgroundDark = staticCompositionLocalOf { false }

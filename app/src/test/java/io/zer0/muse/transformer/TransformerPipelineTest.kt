@@ -9,10 +9,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * TransformerPipeline Pruebas unitarias ejecutoras de tuberías.
+ * TransformerPipeline 管道执行器单元测试。
  *
- * Concatenación de canalizaciones de prueba, canalizaciones vacías, comportamiento tolerante a fallos,y tres ganchos(execute/visualTransform/onGenerationFinish)
- * Semántica de reinicio de cobertura y excepción(H-PIPE1 CancellationException / M-PIPE2 Error).
+ * 测试管道串联、空管道、容错行为,以及三个钩子(execute/visualTransform/onGenerationFinish)
+ * 的覆盖与异常重抛语义(H-PIPE1 CancellationException / M-PIPE2 Error)。
  */
 class TransformerPipelineTest {
 
@@ -23,7 +23,7 @@ class TransformerPipelineTest {
             messages.map { it.copy(content = "$prefix${it.content}") }
     }
 
-    // con un sufijo empalmado al final Transformer
+    // 在末尾拼接后缀的 Transformer
     private class AppendTransformer(private val suffix: String) : Transformer {
         override val name: String = "Append($suffix)"
         override suspend fun transform(messages: List<UIMessage>, context: TransformContext): List<UIMessage> =
@@ -34,51 +34,51 @@ class TransformerPipelineTest {
     private class FailingTransformer : Transformer {
         override val name: String = "Failing"
         override suspend fun transform(messages: List<UIMessage>, context: TransformContext): List<UIMessage> =
-            throw RuntimeException("La simulación falló")
+            throw RuntimeException("模拟失败")
     }
 
     /**
-     * Subclase CancellationException personalizada,Se utiliza para verificar que se vuelve a lanzar la excepción de cancelación de rutina.(H-PIPE1).
+     * 自定义 CancellationException 子类,用于验证协程取消异常被重抛(H-PIPE1)。
      *
-     * Utilice subclases en lugar de JobCancellationException,Evite enredarse con el estado interno del trabajo de runTest.
-     * Mensaje de etiqueta única para facilitar la identificación de la afirmación.
+     * 用子类而不用 JobCancellationException,避免与 runTest 内部 Job 状态纠缠。
+     * 带唯一标记 message 便于断言识别。
      */
     private class TestCancellationException(message: String) :
         CancellationException(message)
 
-    /** Lanzar excepción de cancelación Transformer,Se utiliza para verificar la semántica de reinicio de H-PIPE1. */
+    /** 抛 CancellationException 的 Transformer,用于验证 H-PIPE1 重抛语义。 */
     private class CancellingTransformer : Transformer {
         override val name: String = "Cancelling"
         override suspend fun transform(messages: List<UIMessage>, context: TransformContext): List<UIMessage> =
             throw TestCancellationException("cancel-from-test")
     }
 
-    /** Lanzar OutOfMemoryError Transformer,Se utiliza para verificar la semántica de reinicio de M-PIPE2. */
+    /** 抛 OutOfMemoryError 的 Transformer,用于验证 M-PIPE2 重抛语义。 */
     private class ErrorTransformer : Transformer {
         override val name: String = "Error"
         override suspend fun transform(messages: List<UIMessage>, context: TransformContext): List<UIMessage> =
             throw OutOfMemoryError("simulated-oom")
     }
 
-    // Agregar al contenido en la etapa visualTransform [V] marcado Transformer
+    // 在 visualTransform 阶段对 content 追加 [V] 标记的 Transformer
     private class VisualMarkTransformer : Transformer {
         override val name: String = "VisualMark"
-        override suspend fun transform(messages: List<UIMessage>, context: TransformContext): List<UIMessage> = messages // transform El escenario no cambia
+        override suspend fun transform(messages: List<UIMessage>, context: TransformContext): List<UIMessage> = messages // transform 阶段不改
 
         override suspend fun visualTransform(messages: List<UIMessage>, context: TransformContext): List<UIMessage> =
             messages.map { it.copy(content = "[V]${it.content}") }
     }
 
-    // Agregar contenido en la etapa onGenerationFinish [F] marcado Transformer
+    // 在 onGenerationFinish 阶段对 content 追加 [F] 标记的 Transformer
     private class FinishMarkTransformer : Transformer {
         override val name: String = "FinishMark"
-        override suspend fun transform(messages: List<UIMessage>, context: TransformContext): List<UIMessage> = messages // transform El escenario no cambia
+        override suspend fun transform(messages: List<UIMessage>, context: TransformContext): List<UIMessage> = messages // transform 阶段不改
 
         override suspend fun onGenerationFinish(messages: List<UIMessage>, context: TransformContext): List<UIMessage> =
             messages.map { it.copy(content = "${it.content}[F]") }
     }
 
-    // Lanzar RuntimeException en la etapa visualTransform Transformer
+    // 在 visualTransform 阶段抛 RuntimeException 的 Transformer
     private class VisualFailingTransformer : Transformer {
         override val name: String = "VisualFailing"
         override suspend fun transform(messages: List<UIMessage>, context: TransformContext): List<UIMessage> = messages
@@ -87,7 +87,7 @@ class TransformerPipelineTest {
             throw RuntimeException("visual-fail")
     }
 
-    // Lanzar RuntimeException en la etapa onGenerationFinish Transformer
+    // 在 onGenerationFinish 阶段抛 RuntimeException 的 Transformer
     private class FinishFailingTransformer : Transformer {
         override val name: String = "FinishFailing"
         override suspend fun transform(messages: List<UIMessage>, context: TransformContext): List<UIMessage> = messages
@@ -135,7 +135,7 @@ class TransformerPipelineTest {
     fun `empty pipeline returns original messages`() = runTest {
         val pipeline = TransformerPipeline(emptyList())
         val msgs = listOf(
-            io.zer0.ai.core.UIMessage(role = io.zer0.ai.core.MessageRole.USER, content = "Hola"),
+            io.zer0.ai.core.UIMessage(role = io.zer0.ai.core.MessageRole.USER, content = "你好"),
         )
         val result = pipeline.execute(msgs, TransformContext())
 
@@ -157,7 +157,7 @@ class TransformerPipelineTest {
         val result = pipeline.execute(listOf(msg), TransformContext())
 
         assertEquals(1, result.size)
-        // FailingTransformer saltado,Preservar la salida de PrependTransformer
+        // FailingTransformer 被跳过,保留 PrependTransformer 的输出
         assertEquals("OK-test", result[0].content)
     }
 
@@ -177,7 +177,7 @@ class TransformerPipelineTest {
         assertEquals("B1:x:B2", result[0].content)
     }
 
-    // ── Phase 2.3.6 suplemento:applyVisualTransform / applyOnGenerationFinish gancho ────
+    // ── Phase 2.3.6 补充:applyVisualTransform / applyOnGenerationFinish 钩子 ────
 
     @Test
     fun `applyVisualTransform chains visual hooks in order`() = runTest {
@@ -198,19 +198,19 @@ class TransformerPipelineTest {
         )
         val result = pipeline.applyVisualTransform(listOf(msg), TransformContext())
 
-        // cadena:VisualMark agregar [V] prefijo → VisualSuffix agregar [V2] sufijo
+        // 链式:VisualMark 加 [V] 前缀 → VisualSuffix 加 [V2] 后缀
         assertEquals("[V]streaming[V2]", result[0].content)
     }
 
     @Test
     fun `applyVisualTransform with default hooks returns original list`() = runTest {
-        // La implementación predeterminada de visualTransform lo devuelve tal cual,Las tuberías deben ser equivalentes a no-op
+        // 默认实现 visualTransform 原样返回,管道应等价于 no-op
         val pipeline = TransformerPipeline(
             listOf(
                 object : Transformer {
                     override val name: String = "DefaultVisual"
                     override suspend fun transform(messages: List<UIMessage>, context: TransformContext) = messages
-                    // visualTransform Usar implementación predeterminada
+                    // visualTransform 用默认实现
                 },
             ),
         )
@@ -219,7 +219,7 @@ class TransformerPipelineTest {
         )
         val result = pipeline.applyVisualTransform(msgs, TransformContext())
 
-        // El visualTransform predeterminado regresa sin cambios,debería obtener una lista equivalente(Puede que no sea la misma referencia.,Pero el contenido es el mismo.)
+        // 默认 visualTransform 原样返回,应得到等价列表(可能不是同一引用,但内容一致)
         assertEquals(1, result.size)
         assertEquals("hi", result[0].content)
     }
@@ -231,8 +231,8 @@ class TransformerPipelineTest {
             io.zer0.ai.core.UIMessage(role = io.zer0.ai.core.MessageRole.USER, content = "x"),
         )
         val result = pipeline.applyVisualTransform(msgs, TransformContext())
-        // L-PIPE3: Una tubería vacía devuelve la lista original por adelantado
-        assertSame("Una tubería vacía debería devolver la misma referencia.(L-PIPE3 Optimizar)", msgs, result)
+        // L-PIPE3: 空管道提前返回原列表
+        assertSame("空管道应返回同一引用(L-PIPE3 优化)", msgs, result)
     }
 
     @Test
@@ -255,7 +255,7 @@ class TransformerPipelineTest {
         )
         val result = pipeline.applyVisualTransform(listOf(msg), TransformContext())
 
-        // VisualFailingTransformer Se salta el fracaso,Mantener el resultado del paso anterior;AfterFail posterior continúa procesándose
+        // VisualFailingTransformer 失败被跳过,保留前一步结果;后续 AfterFail 继续处理
         assertEquals("[V]text-after", result[0].content)
     }
 
@@ -278,7 +278,7 @@ class TransformerPipelineTest {
         )
         val result = pipeline.applyOnGenerationFinish(listOf(msg), TransformContext())
 
-        // cadena:FinishMark agregar [F] sufijo → FinishPrefix agregar [F2] prefijo
+        // 链式:FinishMark 加 [F] 后缀 → FinishPrefix 加 [F2] 前缀
         assertEquals("[F2]final[F]", result[0].content)
     }
 
@@ -289,7 +289,7 @@ class TransformerPipelineTest {
                 object : Transformer {
                     override val name: String = "DefaultFinish"
                     override suspend fun transform(messages: List<UIMessage>, context: TransformContext) = messages
-                    // onGenerationFinish Usar implementación predeterminada
+                    // onGenerationFinish 用默认实现
                 },
             ),
         )
@@ -309,7 +309,7 @@ class TransformerPipelineTest {
             io.zer0.ai.core.UIMessage(role = io.zer0.ai.core.MessageRole.USER, content = "x"),
         )
         val result = pipeline.applyOnGenerationFinish(msgs, TransformContext())
-        assertSame("Una tubería vacía debería devolver la misma referencia.(L-PIPE3 Optimizar)", msgs, result)
+        assertSame("空管道应返回同一引用(L-PIPE3 优化)", msgs, result)
     }
 
     @Test
@@ -332,15 +332,15 @@ class TransformerPipelineTest {
         )
         val result = pipeline.applyOnGenerationFinish(listOf(msg), TransformContext())
 
-        // FinishFailingTransformer Se salta el fracaso,AfterFail posterior continúa procesándose
+        // FinishFailingTransformer 失败被跳过,后续 AfterFail 继续处理
         assertEquals("text[F]-after", result[0].content)
     }
 
-    // ── Phase 2.3.6 suplemento:Semántica de reinicio de excepciones(H-PIPE1 / M-PIPE2) ────────────────
+    // ── Phase 2.3.6 补充:异常重抛语义(H-PIPE1 / M-PIPE2) ────────────────
 
     @Test
     fun `execute rethrows CancellationException instead of swallowing`() = kotlinx.coroutines.runBlocking {
-        // H-PIPE1: Se debe volver a lanzar la excepción de cancelación de rutina,no tragar
+        // H-PIPE1: 协程取消异常必须重抛,不可吞掉
         val pipeline = TransformerPipeline(
             listOf(
                 PrependTransformer("before-"),
@@ -357,13 +357,13 @@ class TransformerPipelineTest {
         } catch (e: TestCancellationException) {
             caught = e
         }
-        assertTrue("debe ser capturado TestCancellationException(re-lanzado,No tragado)", caught != null)
+        assertTrue("应捕获到 TestCancellationException(被重抛,非吞掉)", caught != null)
         assertEquals("cancel-from-test", caught!!.message)
     }
 
     @Test
     fun `execute rethrows Error instead of swallowing`() = kotlinx.coroutines.runBlocking {
-        // M-PIPE2: OOM/StackOverflow etc. El error no es una excepción recuperable.,Vuelve a lanzar y deja que el nivel superior se encargue de ello.
+        // M-PIPE2: OOM/StackOverflow 等 Error 不属于可恢复异常,重抛让上层处理
         val pipeline = TransformerPipeline(
             listOf(
                 PrependTransformer("before-"),
@@ -380,13 +380,13 @@ class TransformerPipelineTest {
         } catch (e: OutOfMemoryError) {
             caught = e
         }
-        assertTrue("debe ser capturado OutOfMemoryError(Error re-lanzado,No tragado)", caught != null)
+        assertTrue("应捕获到 OutOfMemoryError(Error 被重抛,非吞掉)", caught != null)
         assertEquals("simulated-oom", caught!!.message)
     }
 
     @Test
     fun `applyVisualTransform rethrows CancellationException`() = kotlinx.coroutines.runBlocking {
-        // H-PIPE1: visualTransform También hay que volver a lanzar etapas CancellationException
+        // H-PIPE1: visualTransform 阶段同样必须重抛 CancellationException
         val pipeline = TransformerPipeline(
             listOf(
                 object : Transformer {
@@ -407,13 +407,13 @@ class TransformerPipelineTest {
         } catch (e: TestCancellationException) {
             caught = e
         }
-        assertTrue("visualTransform Habría que volver a lanzar el escenario. CancellationException", caught != null)
+        assertTrue("visualTransform 阶段应重抛 CancellationException", caught != null)
         assertEquals("visual-cancel", caught!!.message)
     }
 
     @Test
     fun `applyOnGenerationFinish rethrows CancellationException`() = kotlinx.coroutines.runBlocking {
-        // H-PIPE1: onGenerationFinish También hay que volver a lanzar etapas CancellationException
+        // H-PIPE1: onGenerationFinish 阶段同样必须重抛 CancellationException
         val pipeline = TransformerPipeline(
             listOf(
                 object : Transformer {
@@ -434,18 +434,18 @@ class TransformerPipelineTest {
         } catch (e: TestCancellationException) {
             caught = e
         }
-        assertTrue("onGenerationFinish Habría que volver a lanzar el escenario. CancellationException", caught != null)
+        assertTrue("onGenerationFinish 阶段应重抛 CancellationException", caught != null)
         assertEquals("finish-cancel", caught!!.message)
     }
 
     @Test
     fun `execute continues after non-fatal exception in middle transformer`() = runTest {
-        // verificar:Tiro del transformador medio RuntimeException,Los transformadores posteriores continuarán ejecutándose.
-        // (estrategia de tolerancia a fallos:Saltar pasos fallidos,Mantener el resultado del paso anterior,Continuar con el seguimiento)
+        // 验证:中间 Transformer 抛 RuntimeException,后续 Transformer 仍继续执行
+        // (容错策略:跳过失败步骤,保留前一步结果,继续后续)
         val pipeline = TransformerPipeline(
             listOf(
                 PrependTransformer("A-"),
-                FailingTransformer(), // saltar
+                FailingTransformer(), // 跳过
                 AppendTransformer("-Z"),
             ),
         )
@@ -456,7 +456,7 @@ class TransformerPipelineTest {
         val result = pipeline.execute(listOf(msg), TransformContext())
 
         assertEquals(1, result.size)
-        // Failing saltado,current Reservar "A-x";AppendTransformer Continuar agregando -Z
+        // Failing 被跳过,current 保留 "A-x";AppendTransformer 继续追加 -Z
         assertEquals("A-x-Z", result[0].content)
     }
 }

@@ -57,7 +57,7 @@ fun RecentlyDeletedScreen(onBack: () -> Unit, sessionRepository: SessionReposito
     var pendingPermanentDeleteId by remember { mutableStateOf<String?>(null) }
     val dateFormat = remember { SimpleDateFormat(MuseDateFormats.DATE_TIME_FULL, Locale.getDefault()) }
 
-    // Limpiar automáticamente sesiones antiguas eliminadas
+    // 自动清理旧的已删除会话
     LaunchedEffect(Unit) {
         withContext(Dispatchers.IO) { sessionRepository.purgeOldDeletedSessions() }
     }
@@ -143,7 +143,10 @@ private fun DeletedSessionCard(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = session.title.ifBlank { stringResource(R.string.chat_new_session) },
+                    text = io.zer0.muse.data.session.displaySessionTitle(
+                        session.title,
+                        stringResource(R.string.chat_new_session),
+                    ),
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium,
                     maxLines = 1,

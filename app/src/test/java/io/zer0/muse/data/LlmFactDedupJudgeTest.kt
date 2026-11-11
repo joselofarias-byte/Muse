@@ -9,7 +9,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** v12: LlmFactDedupJudge Pruebas de comportamiento de análisis y degradación.(No es realmente melodioso LLM). */
+/** v12: LlmFactDedupJudge 解析与降级行为测试(不真调 LLM)。 */
 class LlmFactDedupJudgeTest {
 
     private class StubLlm(private val response: String) : MemoryLlmClient {
@@ -29,7 +29,7 @@ class LlmFactDedupJudgeTest {
 
     @Test
     fun `parses clean json`() = runTest {
-        val judge = LlmFactDedupJudge(StubLlm("""{"same": true, "confidence": 0.95, "reason": "lo mismo"}"""))
+        val judge = LlmFactDedupJudge(StubLlm("""{"same": true, "confidence": 0.95, "reason": "同一件事"}"""))
         val v = judge.judge("a", "b", null, null)
         assertTrue(v.same)
         assertTrue(v.highConfidenceSame)
@@ -37,14 +37,14 @@ class LlmFactDedupJudgeTest {
 
     @Test
     fun `parses json inside markdown fence`() = runTest {
-        val judge = LlmFactDedupJudge(StubLlm("```json\n{\"same\": false, \"confidence\": 0.8, \"reason\": \"diferente\"}\n```"))
+        val judge = LlmFactDedupJudge(StubLlm("```json\n{\"same\": false, \"confidence\": 0.8, \"reason\": \"不同\"}\n```"))
         val v = judge.judge("a", "b", null, null)
         assertFalse(v.same)
     }
 
     @Test
     fun `parses json with extra text around`() = runTest {
-        val judge = LlmFactDedupJudge(StubLlm("OK,El análisis es el siguiente.:\n{\"same\": true, \"confidence\": 0.9, \"reason\": \"Misma semántica\"}\nTerminado"))
+        val judge = LlmFactDedupJudge(StubLlm("好的,分析如下:\n{\"same\": true, \"confidence\": 0.9, \"reason\": \"语义相同\"}\n完毕"))
         val v = judge.judge("a", "b", null, null)
         assertTrue(v.same)
     }
@@ -63,14 +63,14 @@ class LlmFactDedupJudgeTest {
         }
         val judge = LlmFactDedupJudge(llm)
         val v = judge.judge("a", "b", null, null)
-        assertFalse("Las excepciones deben degradarse a un nivel diferente.", v.same)
+        assertFalse("异常应降级为不同一", v.same)
     }
 
     @Test
     fun `garbage output degrades to not same`() = runTest {
-        val judge = LlmFactDedupJudge(StubLlm("Este es el modelo chateando en lugar de emitiendo JSON"))
+        val judge = LlmFactDedupJudge(StubLlm("这是模型在聊天而不是输出 JSON"))
         val v = judge.judge("a", "b", null, null)
-        assertFalse("No se puede analizar, debe degradarse a diferente", v.same)
+        assertFalse("无法解析应降级为不同一", v.same)
         assertEquals(DedupVerdict.NOT_SAME, v)
     }
 
@@ -78,8 +78,8 @@ class LlmFactDedupJudgeTest {
     fun `prompt mentions redacted placeholder semantics`() = runTest {
         val llm = StubLlm("""{"same": true, "confidence": 0.9, "reason": "ok"}""")
         val judge = LlmFactDedupJudge(llm)
-        judge.judge("[REDACTED]Me gusta la fotografía", "A Zhang San le gusta la fotografía", "Zhang San", "Zhang San")
-        assertTrue("system prompt debe contener [REDACTED] descripción semántica", llm.lastSystem!!.contains("[REDACTED]"))
-        assertTrue("system prompt debe incluir guía física", llm.lastSystem!!.contains("entidad"))
+        judge.judge("[REDACTED]喜欢摄影", "张三喜欢摄影", "张三", "张三")
+        assertTrue("system prompt 应包含 [REDACTED] 语义说明", llm.lastSystem!!.contains("[REDACTED]"))
+        assertTrue("system prompt 应包含实体制导", llm.lastSystem!!.contains("实体"))
     }
 }

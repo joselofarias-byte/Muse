@@ -96,19 +96,19 @@ class KnowledgeKeywordFallbackTest {
         val chunk = KnowledgeChunkEntity(
             id = "chunk-cn",
             docId = "doc-cn",
-            content = "Contenido de la base de conocimientos",
+            content = "知识库内容",
         )
 
-        coEvery { fts.searchBm25Safe("base de conocimientos", any()) } returns listOf(
+        coEvery { fts.searchBm25Safe("\"知识\" \"识库\"", any()) } returns listOf(
             KnowledgeChunkFtsHit("chunk-cn", -1.0),
         )
         coEvery { chunks.getByIds(listOf("chunk-cn")) } returns listOf(chunk)
         coEvery { docs.getByIds(listOf("doc-cn")) } returns listOf(
-            KnowledgeDocEntity(id = "doc-cn", title = "documentación china"),
+            KnowledgeDocEntity(id = "doc-cn", title = "中文文档"),
         )
 
         val results = KnowledgeKeywordFallback.search(
-            query = "base de conocimientos",
+            query = "知识库",
             topK = 5,
             scopeDocIds = null,
             metadataFilter = null,

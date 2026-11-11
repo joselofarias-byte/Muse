@@ -15,12 +15,12 @@ import java.io.File
 import java.security.MessageDigest
 
 /**
- * Utilice el validador propio de la aplicación para verificar la aceptación `tools/market-signer` productos de mercado producidos.
+ * 用 App 自身的验签器验收 `tools/market-signer` 产出的市场产物。
  *
- * Este es el criterio autorizado para "si la herramienta de firma es coherente palabra por palabra con el algoritmo de la aplicación": siempre que pase esta prueba,
- * La aplicación definitivamente aceptará directorios en línea y paquetes de complementos. El producto es generado por el script en
- * `app/build/market-signing/out`(Directorio de compilación, no incluido en la biblioteca); omitir si falta,
- * Por lo tanto, la CI no fallará sin artefactos firmados localmente.
+ * 这是「签名工具是否与 App 算法逐字一致」的权威判据：只要本测试通过，
+ * 线上目录与插件包就一定能被 App 接受。产物由脚本生成在
+ * `app/build/market-signing/out`（构建目录，不入库）；缺失时跳过，
+ * 因此 CI 在没有本地签名产物时不会失败。
  */
 class MarketSigningFixtureTest {
 
@@ -43,7 +43,7 @@ class MarketSigningFixtureTest {
     fun signedArtifactsFromOfflineToolAreAcceptedByApp() {
         val keysFile = File(fixtureRoot, "public-keys.json")
         val catalogFile = File(fixtureRoot, "signed-catalog.json")
-        assumeTrue("Producto de firma no encontrado, omitir (es necesario ejecutar tools/market-signer/sign.py primero)", keysFile.isFile && catalogFile.isFile)
+        assumeTrue("未找到签名产物，跳过（需先运行 tools/market-signer/sign.py）", keysFile.isFile && catalogFile.isFile)
 
         val keys = AppJson.decodeFromString<PublicKeys>(keysFile.readText())
         val signed = AppJson.decodeFromString<SignedPluginCatalog>(catalogFile.readText())
@@ -53,24 +53,24 @@ class MarketSigningFixtureTest {
             trustedKeys = mapOf(keys.catalog.keyId to keys.catalog.publicKey),
             nowEpochMs = System.currentTimeMillis(),
         )
-        assertTrue("Error en la verificación de la firma del directorio: ${verification.reason}", verification.valid)
+        assertTrue("目录验签失败: ${verification.reason}", verification.valid)
         assertFalse(signed.payload.entries.isEmpty())
 
         signed.payload.entries.forEach { entry ->
             val artifactFile = File(File(fixtureRoot, "packages"), "${entry.id}-${entry.version}.muse-plugin")
-            assertTrue("Paquete de complementos faltante: ${artifactFile.name}", artifactFile.isFile)
+            assertTrue("缺少插件包: ${artifactFile.name}", artifactFile.isFile)
             val bytes = artifactFile.readBytes()
-            assertEquals("El tamaño del paquete no coincide con el directorio: ${entry.id}", entry.artifactBytes, bytes.size.toLong())
-            assertEquals("El resumen del paquete no coincide con el directorio: ${entry.id}", entry.artifactSha256, sha256Hex(bytes))
+            assertEquals("包大小与目录不符: ${entry.id}", entry.artifactBytes, bytes.size.toLong())
+            assertEquals("包摘要与目录不符: ${entry.id}", entry.artifactSha256, sha256Hex(bytes))
 
             val loaded = PluginPackageLoader.loadFromZip(bytes)
             val package_ = (loaded as? PluginPackageLoader.Result.Ok)?.package_
-            assertTrue("Error al cargar el paquete: $loaded", package_ != null)
+            assertTrue("包加载失败: $loaded", package_ != null)
             val decision = PluginSecurityGate.review(package_!!, keys.publishers)
 
-            assertTrue("Firma no confiable: ${decision.reason}", decision.isInstallable)
+            assertTrue("签名未被信任: ${decision.reason}", decision.isInstallable)
             assertEquals(PluginSecurityGate.SignatureStatus.VALID_TRUSTED, decision.signature.status)
-            assertEquals("El resumen del contenido no coincide con la tabla de contenidos.: ${entry.id}", entry.manifestSha256, decision.preview.contentSha256)
+            assertEquals("内容摘要与目录不符: ${entry.id}", entry.manifestSha256, decision.preview.contentSha256)
             assertEquals(entry.id, decision.preview.id)
             assertEquals(entry.version, decision.preview.version)
             assertEquals(entry.publisherKeyFingerprint, decision.preview.publisherKeyFingerprint)
@@ -81,14 +81,14 @@ class MarketSigningFixtureTest {
     fun tamperedPackageIsRejectedEvenWithTrustedPublisher() {
         val keysFile = File(fixtureRoot, "public-keys.json")
         val catalogFile = File(fixtureRoot, "signed-catalog.json")
-        assumeTrue("Producto exclusivo no encontrado, omitir", keysFile.isFile && catalogFile.isFile)
+        assumeTrue("未找到签名产物，跳过", keysFile.isFile && catalogFile.isFile)
 
         val keys = AppJson.decodeFromString<PublicKeys>(keysFile.readText())
         val signed = AppJson.decodeFromString<SignedPluginCatalog>(catalogFile.readText())
         val entry = signed.payload.entries.first()
         val bytes = File(File(fixtureRoot, "packages"), "${entry.id}-${entry.version}.muse-plugin").readBytes()
 
-        // Comparación negativa: el emisor confiable + el código de entrada modificado aún deben fallar; de lo contrario, el paso anterior no tiene sentido.
+        // 负向对照：受信发行者 + 被改动的入口代码必须仍然判失败，否则上面的通过毫无意义。
         val loaded = PluginPackageLoader.loadFromZip(bytes) as PluginPackageLoader.Result.Ok
         val tampered = loaded.package_.copy(entryCode = loaded.package_.entryCode + "\n// tampered\n")
         val decision = PluginSecurityGate.review(tampered, keys.publishers)
@@ -98,16 +98,16 @@ class MarketSigningFixtureTest {
     }
 
     /**
-     * La clave pública del lado de publicación debe ser coherente con la raíz de confianza del directorio oficial integrada en el paquete de instalación.
+     * 发布侧公钥必须与安装包内置的官方目录信任根一致。
      *
-     * Esta es una prueba de control para "las aplicaciones publicadas pueden verificar los directorios en línea": usar la clave privada incorrecta para firmar el directorio fallará aquí.
-     * En lugar de esperar a que el usuario vea la "clave de firma de directorio desconocida" en el dispositivo.
+     * 这是「线上目录能被已发布 App 验签」的守门测试：用错私钥签发目录会在这里失败，
+     * 而不是等用户在设备上看到「未知的目录签名密钥」。
      */
     @Test
     fun publishedCatalogIsSignedByBuiltInOfficialRoot() {
         val keysFile = File(fixtureRoot, "public-keys.json")
         val catalogFile = File(fixtureRoot, "signed-catalog.json")
-        assumeTrue("Producto exclusivo no encontrado, omitir", keysFile.isFile && catalogFile.isFile)
+        assumeTrue("未找到签名产物，跳过", keysFile.isFile && catalogFile.isFile)
 
         val keys = AppJson.decodeFromString<PublicKeys>(keysFile.readText())
         val signed = AppJson.decodeFromString<SignedPluginCatalog>(catalogFile.readText())
@@ -117,42 +117,42 @@ class MarketSigningFixtureTest {
         assertEquals(PluginMarketDefaults.CATALOG_ROOT_FINGERPRINT, keys.catalog.fingerprint)
         assertEquals(PluginMarketDefaults.CATALOG_ID, signed.payload.catalogId)
 
-        // Utilice únicamente la verificación de firma de raíz de confianza incorporada en el paquete de instalación para demostrar que la configuración del mercado lista para usar está disponible.
+        // 仅用安装包内置信任根验签，证明开箱即用的市场配置可用。
         val verification = PluginCatalogVerifier.verify(
             signed = signed,
             trustedKeys = PluginMarketDefaults.catalogRootKeys,
             nowEpochMs = System.currentTimeMillis(),
         )
-        assertTrue("La raíz de confianza integrada no puede verificar el directorio publicado: ${verification.reason}", verification.valid)
+        assertTrue("内置信任根无法验证已发布目录: ${verification.reason}", verification.valid)
     }
 
     /**
-     * El paquete de máscara debe ser analizable por el modelo de máscara del host y pasar la verificación del host (rango de valores + contraste WCAG).
+     * 皮肤包必须能被宿主的皮肤模型解析并通过宿主校验（取值范围 + WCAG 对比度）。
      *
-     * La piel son datos declarativos. Si la verificación del host falla, la burbuja incorporada se revertirá silenciosamente; si no se comprueba antes de publicar,
-     * Después de que el usuario lo instale, sentirá que "la instalación es inútil". La misma verificación de contraste se realiza en el lado del script de publicación; aquí está el lado de la aplicación.
+     * 皮肤是声明式数据，宿主校验不通过时会静默回退内置气泡；如果发布前不检查，
+     * 用户装完只会觉得「装了没用」。发布脚本侧有同样的对比度检查，这里是 App 侧的对照。
      */
     @Test
     fun skinPackagesParseAndPassHostValidation() {
         val keysFile = File(fixtureRoot, "public-keys.json")
         val catalogFile = File(fixtureRoot, "signed-catalog.json")
-        assumeTrue("Producto exclusivo no encontrado, omitir", keysFile.isFile && catalogFile.isFile)
+        assumeTrue("未找到签名产物，跳过", keysFile.isFile && catalogFile.isFile)
 
         val keys = AppJson.decodeFromString<PublicKeys>(keysFile.readText())
         val signed = AppJson.decodeFromString<SignedPluginCatalog>(catalogFile.readText())
         val skinEntries = signed.payload.entries.filter {
             PluginSecurityGate.UI_SKIN_CAPABILITY in it.capabilities
         }
-        assumeTrue("No hay ningún paquete de skin en el directorio, omítalo", skinEntries.isNotEmpty())
+        assumeTrue("目录中没有皮肤包，跳过", skinEntries.isNotEmpty())
 
         skinEntries.forEach { entry ->
             val bytes = File(File(fixtureRoot, "packages"), "${entry.id}-${entry.version}.muse-plugin").readBytes()
             val loaded = PluginPackageLoader.loadFromZip(bytes) as PluginPackageLoader.Result.Ok
             val skin = loaded.package_.skin
-            assertTrue("El paquete de piel no resolvió la piel.: ${entry.id}", skin != null)
-            assertEquals("Los skins no deben llevar entradas ejecutables.: ${entry.id}", "", loaded.package_.entryCode)
+            assertTrue("皮肤包未解析出皮肤: ${entry.id}", skin != null)
+            assertEquals("皮肤不应携带可执行入口: ${entry.id}", "", loaded.package_.entryCode)
             val errors = BubbleSkinValidator.validate(skin!!)
-            assertTrue("La máscara no pasó la verificación del host.: ${entry.id} $errors", errors.isEmpty())
+            assertTrue("皮肤未通过宿主校验: ${entry.id} $errors", errors.isEmpty())
             assertEquals(entry.id, skin.id)
         }
     }

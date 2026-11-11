@@ -8,10 +8,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * ProviderConfig Pruebas unitarias.
+ * ProviderConfig 单元测试。
  *
- * Anular construcciones, valores predeterminados,resolvedBaseUrl() Presione escribir para tomar el valor predeterminado,
- * resolvedSpecific() Devuelve la subclase ProviderSpecificConfig correspondiente y otros comportamientos clave.
+ * 覆盖构造、默认值、resolvedBaseUrl() 按 type 取默认、
+ * resolvedSpecific() 兜底返回对应 ProviderSpecificConfig 子类等关键行为。
  */
 class ProviderConfigTest {
 

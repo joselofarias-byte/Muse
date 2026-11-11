@@ -6,36 +6,36 @@ import io.zer0.muse.data.knowledge.KnowledgeDocDao
 import io.zer0.muse.rag.EmbeddingService
 
 /**
- * Comando de solo lectura de conocimiento(`knowledge.list` / `knowledge.documents`)proyección de carga.
+ * 知识只读命令(`knowledge.list` / `knowledge.documents`)的载荷投影。
  *
- * dos cosas:
- *  - Convierta el banco de almacenamiento en un acuerdo DTO(Las bibliotecas vacías se pliegan en matrices vacías,La biblioteca no existe y se convierte en evento con error,No lanzar excepción);
- *  - Diámetro de paginación y número de recortes.([pageLimit]),con `memory.list` Lo mismo lo hace primero la capa de comando y luego lo verifica.
+ * 两件事:
+ *  - 把仓储行折成协议 DTO(空库折成空数组,库不存在折成带 error 的事件,不抛异常);
+ *  - 分页口径与次数夹取([pageLimit]),与 `memory.list` 一样由命令层先夹再查。
  *
- * ## Tamaño de página
+ * ## 分页口径
  *
- * Los documentos están ordenados por "los más recientes actualizados primero"(`updated_at DESC, id DESC`),`cursor` Obtenga el último elemento en la página anterior id,
- * La página siguiente solo toma las filas que la siguen.keyset En lugar de desplazamiento: al importar un nuevo documento solo se insertará antes de la primera página,
- * Las siguientes páginas no estarán llenas de repeticiones ni líneas saltadas.
+ * 文档按「最近更新在前」排(`updated_at DESC, id DESC`),`cursor` 取上一页最后一条的 id,
+ * 下一页只取排在它后面的行。keyset 而不是 offset:导入新文档只会插到第一页之前,
+ * 不会把后面几页挤得重复或跳条。
  */
 internal object HostKnowledgeReads {
 
     const val TYPE_LIST = "knowledge.list"
     const val TYPE_DOCUMENTS = "knowledge.documents"
 
-    /** El valor predeterminado del número de elementos en una sola página. */
+    /** 单页条数默认值。 */
     const val DEFAULT_LIMIT = 20
 
-    /** Número máximo de entradas en una sola página:La página web no puede caber más en una pantalla.,Cualquier página más grande sólo hará que el recibo sea más grande. */
+    /** 单页条数上限:网页端一屏放不下更多,再大的页只会把回执撑大。 */
     const val MAX_LIMIT = 50
 
-    /** valor de error cuando la base de conocimientos no existe(`knowledge.documents` El kbId falla). */
+    /** 知识库不存在时的 error 值(`knowledge.documents` 的 kbId 没命中)。 */
     const val ERROR_KB_NOT_FOUND = "knowledge_base_not_found"
 
-    /** Documento de una página + si hay una página siguiente. */
+    /** 一页文档 + 是否还有下一页。 */
     data class DocumentPage(val documents: List<HostKnowledgeDocument>, val hasMore: Boolean)
 
-    /** `knowledge.list` Acuse de recibo. Enviar matriz vacía bajo biblioteca vacía,No es un error. */
+    /** `knowledge.list` 回执。空库下发空数组,不是错误。 */
     fun listEvent(bases: List<HostKnowledgeBase>, requestId: String?): HostEvent = HostEvent(
         type = TYPE_LIST,
         requestId = requestId,
@@ -43,10 +43,10 @@ internal object HostKnowledgeReads {
     )
 
     /**
-     * `knowledge.documents` Acuse de recibo.
+     * `knowledge.documents` 回执。
      *
-     * [page] Si es nulo, la base de conocimientos de destino no existe. —— volver [ERROR_KB_NOT_FOUND] en lugar de una página vacía,
-     * De lo contrario, la página web mostrará "La biblioteca ha sido eliminada" como "No hay ningún documento en la biblioteca".
+     * [page] 为 null 表示目标知识库不存在 —— 回 [ERROR_KB_NOT_FOUND] 而不是空页,
+     * 否则网页端会把「库被删了」显示成「库里没文档」。
      */
     fun documentsEvent(kbId: String, page: DocumentPage?, requestId: String?): HostEvent {
         if (page == null) {
@@ -61,10 +61,10 @@ internal object HostKnowledgeReads {
         )
     }
 
-    /** El número solicitado de elementos por página se recorta a `1..`[MAX_LIMIT];No pases el botón [DEFAULT_LIMIT]. */
+    /** 请求的每页条数夹到 `1..`[MAX_LIMIT];不传按 [DEFAULT_LIMIT]。 */
     fun pageLimit(requested: Int?): Int = (requested ?: DEFAULT_LIMIT).coerceIn(1, MAX_LIMIT)
 
-    /** Estado del índice del documento.[embeddingModel] Cuando el índice no alcanza el valor centinela, primero se determina que es necesario reconstruirlo. */
+    /** 文档索引状态。[embeddingModel] 命中索引失败哨兵值时优先判为需重建。 */
     fun statusOf(chunkCount: Int, embeddingModel: String): String = when {
         embeddingModel == KnowledgeDocDao.INDEX_BROKEN_SENTINEL -> HostDocumentStatus.INDEX_BROKEN
         chunkCount > 0 -> HostDocumentStatus.INDEXED
@@ -73,24 +73,24 @@ internal object HostKnowledgeReads {
 }
 
 /**
- * Fuente de datos para comandos de conocimiento de solo lectura.
+ * 知识只读命令的数据源。
  *
- * La interfaz de comisión permite que la puerta de enlace funcione sin conectarse a la base de conocimientos.(RAG no habilitado, escenario de chat puro)También puedes recibir el recibo como de costumbre.;
- * Ver producción y montaje [DaoHostKnowledgeSource].
+ * 抽成接口是为了让网关在不接知识库(未启用 RAG、纯聊天场景)时也能照常回执;
+ * 生产装配见 [DaoHostKnowledgeSource]。
  */
 internal interface HostKnowledgeSource {
 
-    /** Base de conocimientos de un vistazo,Ordene primero las actualizaciones más recientes. */
+    /** 知识库一览,按最近更新在前。 */
     suspend fun bases(): List<HostKnowledgeBase>
 
     /**
-     * Una página de documentos bajo una determinada base de conocimientos.
+     * 某知识库下的一页文档。
      *
-     * @return null expresar [kbId] La base de conocimientos correspondiente no existe.
+     * @return null 表示 [kbId] 对应的知识库不存在
      */
     suspend fun documents(kbId: String, cursor: String?, limit: Int): HostKnowledgeReads.DocumentPage?
 
-    /** Implementación vacía cuando no está ensamblada:No hay biblioteca. */
+    /** 未装配时的空实现:没有库。 */
     object Empty : HostKnowledgeSource {
         override suspend fun bases(): List<HostKnowledgeBase> = emptyList()
 
@@ -99,10 +99,10 @@ internal interface HostKnowledgeSource {
 }
 
 /**
- * Lea directamente las fuentes de datos de tres tablas en la base de conocimientos.(La misma biblioteca y el mismo conjunto de criterios de filtrado que la página de base de conocimientos de la aplicación).
+ * 直接读知识库三张表的数据源(与 App 知识库页同一个库、同一套过滤口径)。
  *
- * No se lee ningún conteo `knowledge_bases.doc_count` tipo de columna de escritura,Pero en términos reales:
- * El número de documentos consta de [KnowledgeBaseDao.getAll] La subconsulta de da,El número de bloques está dado por [KnowledgeChunkDao.countByKb] agregación.
+ * 计数都不读 `knowledge_bases.doc_count` 那种写入列,而是现算:
+ * 文档数由 [KnowledgeBaseDao.getAll] 的子查询给出,分块数由 [KnowledgeChunkDao.countByKb] 聚合。
  */
 internal class DaoHostKnowledgeSource(
     private val baseDao: KnowledgeBaseDao,
@@ -128,9 +128,9 @@ internal class DaoHostKnowledgeSource(
     }
 
     override suspend fun documents(kbId: String, cursor: String?, limit: Int): HostKnowledgeReads.DocumentPage? {
-        // Asegúrese de que el inventario exista primero:El kbId inexistente y la "biblioteca vacía" deben dar recibos diferentes.
+        // 先确认库存在:不存在的 kbId 与「空库」必须给出不同回执。
         if (baseDao.getById(kbId) == null) return null
-        // Toma uno más solo para juzgar hasMore,No incluido en el recibo.
+        // 多取一条只为判断 hasMore,回执里不带。
         val rows = docDao.getPageByKb(kbId = kbId, cursor = cursor, limit = limit + 1)
         return HostKnowledgeReads.DocumentPage(
             documents = rows.take(limit).map { row ->
@@ -148,14 +148,13 @@ internal class DaoHostKnowledgeSource(
     }
 
     /**
-     * El nombre del backend de inserción actualmente efectivo.
+     * 当前实际生效的 embedding 后端名。
      *
-     * tomar [EmbeddingService.activeBackend] Esta instantánea del tiempo de ejecución(Este proceso solo se completará después de que el Proveedor esté realmente construido.),
-     * En lugar de en la configuración `embeddingSource` —— Los dos son diferentes cuando se cambia a palabras clave locales.,Lo que queremos aquí es el que realmente se está ejecutando.
-     * Devuelto cuando el backend no ha sido analizado en el proceso null,Deje este campo en blanco en el recibo.
+     * 取 [EmbeddingService.activeBackend] 这份运行时快照(本次进程真正建过 Provider 才会填),
+     * 而不是配置里的 `embeddingSource` —— 降级到本地关键词时两者不同,这里要的是实际在跑的那个。
+     * 进程内还没解析过后端时返回 null,回执里该字段留空。
      */
-    private fun embeddingBackend(): String? =
-        embeddingService.activeBackend.value
-            ?.let { state -> state.modelName.ifBlank { state.backendId } }
-            ?.takeIf { it.isNotBlank() }
+    private fun embeddingBackend(): String? = embeddingService.activeBackend.value
+        ?.let { state -> state.modelName.ifBlank { state.backendId } }
+        ?.takeIf { it.isNotBlank() }
 }

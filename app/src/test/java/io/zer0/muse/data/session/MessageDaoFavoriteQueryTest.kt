@@ -16,12 +16,12 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * Calibre de consulta de colección (auditoría §11-3 / §11-4).
+ * 收藏查询口径（审计 §11-3 / §11-4）。
  *
- * Fija tres cosas:
- *  1. Los favoritos en sesiones eliminadas temporalmente no aparecerán en favoritos (ni aparecerán en chips de grupo);
- *  2. Las colecciones ya no tienen un límite silencioso de 200 artículos;
- *  3. Se puede verificar el número de serie de la última versión del grupo de variantes y la página de colección se marca en consecuencia."versión antigua".
+ * 钉住三件事：
+ *  1. 软删会话里的收藏不出现在收藏夹（也不再出现在分组 chip 里）；
+ *  2. 收藏不再有静默的 200 条上限；
+ *  3. 变体组的最新版序号可查，收藏页据此标"旧版本"。
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -52,7 +52,7 @@ class MessageDaoFavoriteQueryTest {
         )
     }
 
-    /** Guardar un mensaje.[variant] Es una tupla de grupos de variantes para evitar que la lista de parámetros sea demasiado larga. */
+    /** 收藏一条消息。[variant] 是变体组二元组，避免参数列表过长。 */
     private suspend fun favorite(
         id: String,
         createdAt: Long,
@@ -93,7 +93,7 @@ class MessageDaoFavoriteQueryTest {
         session("live")
         favorite("alive", createdAt = 1_000L)
         favorite("removed", createdAt = 2_000L)
-        // Mensaje de eliminación temporal: cambie directamente la línea sin ayuda (deletedAt Aparece solo en ciertos casos de uso)
+        // 软删消息：直接改行，不用 helper（deletedAt 只在个别用例出现）
         database.messageDao().upsert(
             MessageEntity(
                 id = "removed",
@@ -115,12 +115,12 @@ class MessageDaoFavoriteQueryTest {
     fun `favorite tags ignore soft deleted sessions`() = runTest {
         session("live")
         session("gone", deletedAt = 500L)
-        favorite("a", createdAt = 1_000L, tag = "inspiración")
-        favorite("b", createdAt = 2_000L, sessionId = "gone", tag = "en otro lugar")
+        favorite("a", createdAt = 1_000L, tag = "灵感")
+        favorite("b", createdAt = 2_000L, sessionId = "gone", tag = "别处")
 
         val tags = database.messageDao().observeAllFavoriteTags().first()
 
-        assertEquals(listOf("inspiración"), tags)
+        assertEquals(listOf("灵感"), tags)
     }
 
     @Test
@@ -133,7 +133,7 @@ class MessageDaoFavoriteQueryTest {
         val favorites = database.messageDao().observeAllFavorites().first()
 
         assertEquals(205, favorites.size)
-        assertTrue("El último debe estar en él.", favorites.any { it.id == "m-204" })
+        assertTrue("最新一条必须在里面", favorites.any { it.id == "m-204" })
     }
 
     @Test

@@ -1,6 +1,5 @@
-# design_tokens baseline — Lista de exenciones de colores nude codificadas en stock
-# Formato: <file>: <Número de violaciones>;CI Solo permita que disminuya el número de infracciones.,Agregar o aumentar fallará
-# Ejecutar después de limpiar el inventario.: py -3 ci/script/check_design_tokens.py --update-baseline
+# design_tokens baseline — 存量硬编码裸色豁免清单
+# 格式: <file>: <违规数>;CI 只允许违规数下降,新增或上升都会失败
+# 清理存量后运行: py -3 ci/script/check_design_tokens.py --update-baseline
 #
-# total actual 13 en,Distribución 1 archivos
-app/src/main/java/io/zer0/muse/ui/markdown/card/CardTheme.kt: 13
+# 当前共 0 处,分布 0 个文件

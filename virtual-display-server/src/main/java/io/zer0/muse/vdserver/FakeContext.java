@@ -4,15 +4,15 @@ import android.content.Context;
 import android.content.ContextWrapper;
 
 /**
- * v2.2.1 pantalla virtual:Contexto de enmascaramiento del proceso.
+ * v2.2.1 虚拟屏:进程伪装上下文。
  *
- * El servidor se ejecuta como uid de shell.,Pero el lado del marco(DisplayManagerService / WMS)verificará
- * "El nombre del paquete de la persona que llama es coherente con el uid de llamada". Esta clase se disfraza de com.android.shell(uid 2000 de
- * paquete oficial),Deje que el DisplayManager construido mediante reflexión pase la validación.
+ * 服务端以 shell uid 运行,但 framework 侧(DisplayManagerService / WMS)会校验
+ * "调用方包名与调用 uid 一致"。本类把自己伪装成 com.android.shell(uid 2000 的
+ * 官方包),让反射构造的 DisplayManager 通过校验。
  */
 public final class FakeContext extends ContextWrapper {
 
-    /** shell (adb) uid,Coincide con el paquete com.android.shell. */
+    /** shell (adb) uid,与 com.android.shell 包匹配。 */
     public static final int SHELL_UID = 2000;
 
     private static final String SHELL_PACKAGE = "com.android.shell";
@@ -42,10 +42,10 @@ public final class FakeContext extends ContextWrapper {
     }
 
     /**
-     * ContextWrapper De forma predeterminada, getSystemServiceName/getSystemService se delega a mBase,
-     * Y si mBase es nulo, se generará NPE. Excepto DisplayManager,Reserva unificada para"contexto del sistema"
-     * (Proporcionado por ActivityThread parcheado de Workarounds)Analizar servicios reales del sistema.
-     * (Como por ejemplo UserManager —— DisplayManager Inspección interna isVisibleBackgroundUsersSupported).
+     * ContextWrapper 默认把 getSystemServiceName/getSystemService 委派给 mBase,
+     * 而 mBase 为 null 会抛 NPE。这里除 DisplayManager 外,统一回退到"系统上下文"
+     * (由 Workarounds 修补后的 ActivityThread 提供)解析真实系统服务
+     * (如 UserManager —— DisplayManager 内部会查 isVisibleBackgroundUsersSupported)。
      */
     @Override
     public String getSystemServiceName(Class<?> serviceClass) {
@@ -62,10 +62,10 @@ public final class FakeContext extends ContextWrapper {
         return ctx != null ? ctx.getSystemService(name) : null;
     }
 
-    // Nota:Context.getSystemService(Class) para final(Internamente, se ajustarán las dos anulaciones de Nombre/Cadena anteriores.),
-    // Por lo tanto no es necesario(Tampoco puede)Anular en esta clase.
+    // 注:Context.getSystemService(Class) 为 final(内部会调上面的 Name/String 两个覆写),
+    // 因此不需要(也不能)在本类覆写。
 
-    /** Tome prestado el ActivityThread parcheado para obtener el contexto del sistema(Sólo se utiliza para resolver objetos de servicio del sistema.). */
+    /** 借修补后的 ActivityThread 拿系统上下文(仅用于解析系统服务对象)。 */
     private static android.content.Context systemContext() {
         try {
             Class<?> activityThreadClass = Class.forName("android.app.ActivityThread");
@@ -85,9 +85,9 @@ public final class FakeContext extends ContextWrapper {
 
     @Override
     public android.content.AttributionSource getAttributionSource() {
-        // v2.3.2: AttributionSource Es un tipo sólo disponible en API 31;La versión inferior regresa directamente null,
-        // Ya no depende de"new Una clase inexistente arroja NoClassDefFoundError nuevamente catch"para controlar el proceso
-        // (Comportamiento sin cambios:Resulta que <31 Lo mismo que arriba, usando catch para regresar null,Pero luego la pelusa informará NewApi).
+        // v2.3.2: AttributionSource 是 API 31 才有的类型;低版本直接返回 null,
+        // 不再依赖"new 一个不存在的类抛 NoClassDefFoundError 再 catch"来控制流程
+        // (行为不变:原来在 <31 上同样是走 catch 返回 null,但那时 lint 会报 NewApi)。
         if (android.os.Build.VERSION.SDK_INT < 31) {
             return null;
         }

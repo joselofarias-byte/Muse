@@ -42,10 +42,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import io.zer0.muse.miniphone.R
 import io.zer0.muse.miniphone.ui.icons.MiniPhoneIcons
+import io.zer0.muse.miniphone.ui.launchGuarded
 import io.zer0.muse.miniphone.ui.theme.MiniPhoneTheme
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
@@ -54,22 +57,22 @@ import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
 
 /**
- * Entrada a la página de chat:Obtener sesión propia ViewModel,Cuelgue el valor de retorno en la clave de retorno del sistema,Y es responsable de abrir el selector de imágenes del sistema.
+ * 聊天页入口:取会话自己的 ViewModel,把返回值挂到系统返回键上,并负责拉起系统图片选择器。
  *
- * La identificación de la sesión es el único parámetro de construcción de esta página.,VM Úselo como clave para almacenarlo en ViewModelStore —— Salir y volver a entrar en la misma sesión.
- * Reutilizará el mismo estado.,No volverá a ser retirado de la biblioteca.
+ * 会话 id 是本页唯一的构造参数,VM 以它为键存在 ViewModelStore 里 —— 退出再进同一个会话
+ * 会复用同一份状态,不会重新从库里拉一遍。
  */
 @Composable
 internal fun MiniPhoneChatRoute(threadId: String, onBack: () -> Unit, modifier: Modifier = Modifier) {
-    // Utilice la identificación de sesión como clave de ViewModel:Un estado para cada sesión,Salir y volver a entrar en la misma sesión.
+    // 以会话 id 作 ViewModel 键:不同会话各一份状态,同一个会话退出再进复用
     val viewModel: MiniPhoneChatViewModel = koinViewModel(key = threadId) { parametersOf(threadId) }
     val state by viewModel.uiState.collectAsState()
-    // Selector de imagen del sistema:Sólo reconoce imágenes,Máximo MAX_PICKED_IMAGES a la vez;Los seleccionados se entregan a la VM para su almacenamiento uno por uno.
+    // 系统图片选择器:只认图片,一次最多 MAX_PICKED_IMAGES 张;选中的交给 VM 逐张落库
     val pickImages = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickMultipleVisualMedia(MAX_PICKED_IMAGES),
     ) { uris -> viewModel.sendImages(uris) }
-    // La página permanecerá sin leer mientras esté visible.:Limpia la página una vez,Después de eso, bórrelo nuevamente cada vez que llegue un mensaje nuevo.
-    // Colgar sólo cuando esté visible —— Si está claro en otra parte,Los mensajes que vienen en segundo plano nunca verán el recordatorio de no leídos.
+    // 页面可见期间持续清未读:进页清一次,之后每来一条新消息再清一次。
+    // 只在可见时挂着 —— 在别处也清的话,后台来的消息会永远看不到未读提示
     DisposableEffect(viewModel) {
         viewModel.setVisible(true)
         onDispose { viewModel.setVisible(false) }
@@ -101,18 +104,21 @@ internal fun MiniPhoneChatRoute(threadId: String, onBack: () -> Unit, modifier: 
 }
 
 /**
- * pagina de chat:Barra superior + lista de mensajes + campo de entrada,Y la capa visual superpuesta encima.
+ * 聊天页:顶栏 + 消息列表 + 输入栏,以及覆盖在最上面的看图层。
  *
- * apátrida:El estado y las devoluciones de llamada provienen del exterior.,cambio por uno [ChatUiState] Puede obtener una vista previa o afirmar desde cualquier lugar.
- * La imagen actualmente ampliada solo se encuentra en esta página.([rememberSaveable]),la pagina se ha ido,No entrar `ChatUiState`.
+ * 无状态:状态与回调都从外面来,换一份 [ChatUiState] 就能在任何地方预览或断言。
+ * 当前放大的图片只活在本页([rememberSaveable]),关页就没了,不进 `ChatUiState`。
  *
- * Nuevas alertas de noticias también están disponibles en esta página.:Cuando llega otro mensaje después de que la persona sale del fondo,Un "N nuevos mensajes,
- * Haga clic para volver al último;No se muestra cuando la persona se detiene en el último elemento. La lógica de decisión es [NewMessagesEffect].
+ * 新消息提示也活在本页:人离开底部后又有消息到达时,底部浮出一枚「N 条新消息」,
+ * 点一下平滑回到最新一条;人本来就停在最新一条上时不显示。判定逻辑在 [NewMessagesEffect]。
  *
- * @param input Tres devoluciones de llamada para el campo de entrada(Enviar / seleccionar imágenes / grabar y transcribir)
- * @param messageActions Reenviar y eliminar un solo mensaje
- * @param groupActions Acciones de gestión para páginas de miembros del grupo.(Cambiar nombre/Agregar personas/Eliminar/Disolver);No se puede utilizar en mensajes privados.
+ * @param input 输入栏的三个回调(发送 / 选图 / 录音转写)
+ * @param messageActions 单条消息上的重发与删除
+ * @param groupActions 群成员页的管理动作(改名 / 加人 / 移出 / 解散);私信里用不到
  */
+// 日志里认出是哪条后台任务/动作失败了。
+private const val TAG_CHAT_UI = "MiniPhoneChatScreen"
+
 @Composable
 internal fun MiniPhoneChatScreen(
     state: ChatUiState,
@@ -125,9 +131,9 @@ internal fun MiniPhoneChatScreen(
 ) {
     val colors = MiniPhoneTheme.colors
     var viewingUri by rememberSaveable { mutableStateOf<String?>(null) }
-    // La página de miembro del grupo está superpuesta en la página de chat.:Leer solo un nivel,Cerrar para volver a la conversación.
+    // 群成员页盖在聊天页上:只读一层,关掉就回到对话
     var membersOpen by rememberSaveable { mutableStateOf(false) }
-    // Estado de la lista mencionado en esta página:El nuevo mensaje te pide que lo leas para deducir "¿Está la persona de abajo?"
+    // 列表状态提到本页:新消息提示要读它推导「人在不在底部」
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
     var newMessageCount by remember { mutableIntStateOf(0) }
@@ -136,9 +142,15 @@ internal fun MiniPhoneChatScreen(
         messageTotal = state.messages.size,
         onCountChanged = { count -> newMessageCount = count },
     )
-    // Ver cuando la capa se superpone en la página de chat,Presione la tecla de retorno para cerrarlo primero.
+    // 看图层盖在聊天页上时,返回键先关它
     BackHandler(enabled = viewingUri != null) { viewingUri = null }
     BackHandler(enabled = membersOpen) { membersOpen = false }
+    // 名字可能是空的(没起名的群 / 已删的对手)。空在这里就地补一句当前语言的话——
+    // 界面语言随时可切,占位词写在状态里就会跟着语言一起过期。
+    val removedContactText = stringResource(R.string.mp_shell_unknown_character)
+    val titleText = state.title.ifBlank {
+        if (state.isGroup) stringResource(R.string.mp_shell_untitled_group) else removedContactText
+    }
     Box(modifier = modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
@@ -146,10 +158,10 @@ internal fun MiniPhoneChatScreen(
                 .background(colors.background),
         ) {
             ChatTopBar(
-                name = state.title,
+                name = titleText,
                 avatarUri = if (state.isGroup) null else state.peerAvatarUri,
                 onBack = onBack,
-                // La columna superior del grupo significa que hay más personas en la fila.,Nadie en el mensaje privado sabe de esta entrada.
+                // 群里顶栏就人多一行,私信里既没有人也不知道这个入口
                 memberCount = state.memberCount.takeIf { state.isGroup },
                 onOpenMembers = if (state.isGroup) {
                     { membersOpen = true }
@@ -175,9 +187,9 @@ internal fun MiniPhoneChatScreen(
                     ChatNewMessagesPill(
                         count = newMessageCount,
                         onClick = {
-                            // Recoge la cápsula primero y luego enróllala.:Durante el proceso de desplazamiento, la persona ya está de regreso al final.,No es necesario esperar a que termine la animación.
+                            // 先收起胶囊再滚:滚动过程中人已经在回底部的路上,不必等动画结束
                             newMessageCount = 0
-                            scope.launch { listState.animateScrollToItem(0) }
+                            scope.launchGuarded(TAG_CHAT_UI, "回到最新消息") { listState.animateScrollToItem(0) }
                         },
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
@@ -199,7 +211,7 @@ internal fun MiniPhoneChatScreen(
         if (membersOpen && state.isGroup) {
             GroupMembersPage(
                 members = state.members,
-                title = state.title,
+                title = titleText,
                 characters = state.characters,
                 onBack = { membersOpen = false },
                 actions = GroupAdminActions(
@@ -207,7 +219,7 @@ internal fun MiniPhoneChatScreen(
                     onAddMembers = groupActions.onAddMembers,
                     onRemoveMember = groupActions.onRemoveMember,
                     onDisband = {
-                        // Después de disolverse, la sesión ya no existe.:Cerrar página de miembro,Volver a la lista de mensajes
+                        // 解散之后这个会话已经不在了:关掉成员页,再退回消息列表
                         groupActions.onDisband()
                         membersOpen = false
                         onBack()
@@ -219,10 +231,10 @@ internal fun MiniPhoneChatScreen(
 }
 
 /**
- * barra superior:Retorno, avatar, nombre;Una persona más en el chat grupal.,Haga clic para ir a la página de miembros.
+ * 顶栏:返回、头像、名字;群聊多一个人数,点一下进成员页。
  *
- * Deje un espacio a la derecha que tenga el mismo ancho que la tecla de retorno,Los nombres no serán eliminados. El número de personas sigue el nombre en lugar de a la derecha.——
- * "Ayuan, Xiaoman, yo (3)" es un todo,Escribirlos por separado se leerá como dos mensajes no relacionados.
+ * 右侧留一块与返回键等宽的空白,名字不会被挤偏。人数紧跟名字而不是靠右——
+ * 「阿远、小满、我（3）」是一个整体,分开写会读成两个不相干的信息。
  */
 @Composable
 private fun ChatTopBar(
@@ -259,7 +271,7 @@ private fun ChatTopBar(
             ) {
                 Icon(
                     imageVector = MiniPhoneIcons.Back,
-                    contentDescription = BACK_DESCRIPTION,
+                    contentDescription = stringResource(BACK_DESCRIPTION_RES),
                     tint = colors.textPrimary,
                     modifier = Modifier.size(TopBarIconSize),
                 )
@@ -306,14 +318,14 @@ private fun ChatTopBar(
     }
 }
 
-/** Cómo escribir el número de personas en un grupo.:Los corchetes angulares completos siguen inmediatamente al nombre. */
-internal fun memberCountLabelOf(memberCount: Int): String = "($memberCount)"
+/** 群人数写法:全角括号紧跟名字。 */
+internal fun memberCountLabelOf(memberCount: Int): String = "（$memberCount）"
 
 /**
- * Lista de mensajes.
+ * 消息列表。
  *
- * `reverseLayout = true` Viene con un "nuevo → datos antiguos:El subíndice 0 cae al final,Entrar en la página equivale a detenerse en la última,
- * Y las noticias anteriores están arriba.,Desplazarse hacia arriba es la dirección para pasar la página. Las sugerencias en generación también se insertan en el índice 0.
+ * `reverseLayout = true` 配一份「新 → 旧」的数据:下标 0 落在底部,进页就等于停在最新一条,
+ * 而更早的消息在上方,滚到顶就是翻页方向。生成中的提示也插在下标 0。
  */
 @Composable
 private fun ChatMessageList(
@@ -326,10 +338,12 @@ private fun ChatMessageList(
     modifier: Modifier = Modifier,
 ) {
     val displayed = remember(state.items) { state.items.asReversed() }
-    // Las identidades de ambos lados sólo cambian con el estatus.,No es necesario volver a calcular cada fila
+    // 两侧的身份只随状态变,不必每行都重新算一次
     val self = remember(state.selfName, state.selfAvatarUri) { ChatPersona(state.selfName, state.selfAvatarUri) }
     val peer = remember(state.peerName, state.peerAvatarUri) { ChatPersona(state.peerName, state.peerAvatarUri) }
     val activity = state.activity
+    // 名字为空 = 对手已经不在名单里；那句话属于界面，在这里按当前语言补。
+    val removedContactText = stringResource(R.string.mp_shell_unknown_character)
     LazyColumn(
         state = listState,
         reverseLayout = true,
@@ -337,16 +351,16 @@ private fun ChatMessageList(
         modifier = modifier.testTag(MiniPhoneChatTags.MESSAGE_LIST),
     ) {
         if (activity != null) {
-            // Las indicaciones para hacer cosas ocupan el espacio de "escritura":Saber en qué está ocupada la otra persona es más específico que tres puntos
+            // 去做事的提示占掉「正在输入」那一格:知道对方在忙什么比三个点更具体
             item(key = ACTIVITY_ITEM_KEY, contentType = ACTIVITY_ITEM_KEY) {
                 ChatActivityRow(kind = activity)
             }
         } else if (state.isGenerating) {
             item(key = TYPING_ITEM_KEY, contentType = TYPING_ITEM_KEY) {
                 ChatTypingRow(
-                    peerName = state.typingName ?: state.peerName,
+                    peerName = (state.typingName ?: state.peerName).ifBlank { removedContactText },
                     peerAvatarUri = if (state.typingName != null) state.typingAvatarUri else state.peerAvatarUri,
-                    // Dos personajes del grupo se turnan para hablar.:Esa línea debería indicar claramente quién juega ahora.
+                    // 群里两个角色轮流说话:那一行要写清现在是谁在打
                     showName = state.isGroup,
                 )
             }
@@ -358,7 +372,11 @@ private fun ChatMessageList(
                     message = item.message,
                     self = self,
                     peer = peer,
-                    senderLabel = if (state.isGroup) state.memberNames[item.message.characterId] else null,
+                    senderLabel = if (state.isGroup) {
+                        state.memberNames[item.message.characterId]?.ifBlank { removedContactText }
+                    } else {
+                        null
+                    },
                     maxBubbleWidth = maxBubbleWidth,
                     onOpenImage = onOpenImage,
                     messageActions = messageActions,
@@ -369,7 +387,7 @@ private fun ChatMessageList(
     LoadOlderEffect(listState = listState, hasMore = state.hasMore, onLoadOlder = onLoadOlder)
 }
 
-/** Desplácese hasta el principio de la lista(En el orden inverso, es el último subíndice.)cuando esté cerca,Ir a la página anterior. */
+/** 滚到列表的「顶」(倒序布局里就是最后一个下标)附近时,要上一页。 */
 @Composable
 private fun LoadOlderEffect(listState: LazyListState, hasMore: Boolean, onLoadOlder: () -> Unit) {
     val loadOlder by rememberUpdatedState(onLoadOlder)
@@ -391,22 +409,22 @@ private fun contentTypeOf(item: ChatItem): String = when (item) {
     is ChatItem.Message -> "message"
 }
 
-/** Puede seleccionar hasta nueve imágenes a la vez:No importa cuántos haya, no es fácil leerlos todos en una sola pantalla.,Y cada uno debe contener un mensaje separado. */
+/** 一次最多选九张:再多也不便于一屏看完,而且每张都要单独落一条消息。 */
 private const val MAX_PICKED_IMAGES: Int = 9
 
-/** La relación entre la burbuja más ancha y el ancho de la pantalla.:Si es más ancho, empújalo hacia el lado opuesto.,Las columnas izquierda y derecha ya no son visibles. */
+/** 气泡最宽占屏宽的比例:再宽就顶到对侧,左右分栏看不出来了。 */
 private const val BUBBLE_MAX_WIDTH_RATIO: Float = 0.72f
 
-/** Cuando queden algunos elementos al final de la lista, comience a ir a la página anterior. */
+/** 离列表末端还剩几条时开始要上一页。 */
 private const val LOAD_OLDER_THRESHOLD: Int = 2
 
 private const val TYPING_ITEM_KEY: String = "mp-chat-typing-item"
 private const val ACTIVITY_ITEM_KEY: String = "mp-chat-activity-item"
-private const val BACK_DESCRIPTION: String = "Regresar"
+private val BACK_DESCRIPTION_RES: Int = R.string.mp_back_cd
 
 private val TopBarButtonSize = 40.dp
 private val TopBarIconSize = 20.dp
 private val TopBarAvatarSize = 28.dp
 
-/** La distancia entre la cápsula y el campo de entrada.:Flota un poco contra el borde inferior del área del mensaje.,No suprimas la última burbuja. */
+/** 胶囊离输入栏的间距:贴着消息区下沿浮一点,不压住最后一条气泡。 */
 private val PillBottomGap = 12.dp

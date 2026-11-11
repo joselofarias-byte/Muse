@@ -69,7 +69,7 @@
     <string name="tools_empty_title">No registered tools</string>
     <string name="tools_empty_subtitle">Check your plugins or MCP configuration, then reopen this page.</string>
 
-    <!-- I18N-01 batch1: ToolCallVisuals Resumen/etiqueta -->
+    <!-- I18N-01 batch1: ToolCallVisuals 摘要/标签 -->
     <string name="tool_summary_add_calendar_event">Added a calendar event</string>
     <string name="tool_summary_add_contact">Added a contact</string>
     <string name="tool_summary_calculator">Calculated</string>

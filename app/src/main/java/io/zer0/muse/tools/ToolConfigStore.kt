@@ -12,18 +12,18 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
-// v1.x Reparación: DataStore delegate Debe definirse en el nivel superior del archivo.(singleton).
-// Cuando se define dentro de una clase,Cada instancia se registra de forma independiente. delegate;
-// múltiples instancias(Koin Inyectar + directo new)activará
-// "multiple DataStores active for the same file" colapsar.
+// v1.x 修复: DataStore delegate 必须定义在文件顶层(单例)。
+// 定义在类内部时,每个实例都会注册独立 delegate;
+// 多实例(Koin 注入 + 直接 new)会触发
+// "multiple DataStores active for the same file" 崩溃。
 private val Context.toolDataStore: androidx.datastore.core.DataStore<Preferences> by
     preferencesDataStore(name = "muse_tool_config")
 
 /**
- * Almacenamiento persistente de la política de aprobación de herramientas.
+ * 工具审批策略持久化存储。
  *
- * Guarde la política de aprobación en DataStore por nombre de herramienta; las herramientas que no están configuradas explícitamente de forma predeterminada son ALWAYS_ALLOW.
- * El formato de almacenamiento es objeto JSON,DataStore key fijo a `tool_policies`.
+ * 按工具名保存审批策略到 DataStore；未显式配置的工具默认 ALWAYS_ALLOW。
+ * 存储格式为 JSON 对象，DataStore key 固定为 `tool_policies`。
  */
 class ToolConfigStore(private val context: Context) {
 
@@ -48,28 +48,28 @@ class ToolConfigStore(private val context: Context) {
         }
 
     /**
-     * Usuario**explícito**La política configurada; devuelve nulo si no está configurado.
+     * 用户**显式**配置的策略；未配置返回 null。
      *
-     * La revisión determinó que se debe utilizar este método: No configurado ≠ El usuario lo permite. Trate "no configurado" como [ToolApprovalPolicy.ALWAYS_ALLOW]
-     * dejará [ToolPermissionResolver] Se considera que el usuario ha sido liberado explícitamente, saltándose el nivel de riesgo en modo ASK/STRICT.
-     * Debidas aprobaciones (defectos históricos:ASK En el modo, las herramientas de alto riesgo en realidad no mostrarán la tarjeta de aprobación).
+     * 审批判定必须用这个方法：未配置 ≠ 用户允许。把「未配置」当成 [ToolApprovalPolicy.ALWAYS_ALLOW]
+     * 会让 [ToolPermissionResolver] 认为用户已显式放行，从而跳过 ASK/STRICT 模式下按风险等级
+     * 应有的审批（历史缺陷：ASK 模式下高风险工具实际不会弹审批卡）。
      */
     suspend fun getConfiguredPolicy(toolName: String): ToolApprovalPolicy? = policiesFlow.first()[toolName]
 
     /**
-     * Accesores compatibles: respaldo cuando no están configurados [ToolApprovalPolicy.ALWAYS_ALLOW].
+     * 兼容访问器：未配置时回退为 [ToolApprovalPolicy.ALWAYS_ALLOW]。
      *
-     * Este respaldo hace que "no configurado" parezca "el usuario lo ha liberado", por lo que solo es adecuado para "solo le importa si el usuario lo deshabilitó explícitamente".
-     * punto de llamada; cualquier decisión de revisión que determine "si se puede implementar" debe utilizar [getConfiguredPolicy] y poner null
-     * entregar [ToolPermissionResolver] Determinar en función del modo de sesión + nivel de riesgo (la puerta de herramientas del subagente también sigue esta regla).
+     * 这个回落让「未配置」看起来像「用户已放行」，因此它只适合「只关心用户是否显式禁用」
+     * 的调用点；任何要决定「能不能执行」的审批判定必须用 [getConfiguredPolicy] 并把 null
+     * 交给 [ToolPermissionResolver] 按会话模式 + 风险等级判定（子 agent 的工具闸门也是这条规矩）。
      */
     suspend fun getPolicy(toolName: String): ToolApprovalPolicy = getConfiguredPolicy(toolName) ?: ToolApprovalPolicy.ALWAYS_ALLOW
 
     /**
-     * Establezca la política de aprobación para la herramienta especificada.
+     * 设置指定工具的审批策略。
      *
-     * [ToolApprovalPolicy.ALWAYS_ALLOW] voluntad**escribe como siempre**: Significa que el usuario libera explícitamente,
-     * Debe distinguirse de "Nunca configurado", de lo contrario, el usuario no puede coexistir con el estado predeterminado después de hacer clic en "Permitir siempre".
+     * [ToolApprovalPolicy.ALWAYS_ALLOW] 会**照常写入**：它表示用户显式放行，
+     * 必须与「从未配置」区分开，否则用户点过「始终允许」之后无法与默认状态共存。
      */
     suspend fun setPolicy(toolName: String, policy: ToolApprovalPolicy) {
         context.toolDataStore.edit { prefs ->
@@ -82,15 +82,18 @@ class ToolConfigStore(private val context: Context) {
     }
 
     /**
-     * Según**salvado**La política analiza el estado de aprobación.
+     * 根据**已存储**的策略解析审批状态。
      *
-     * Se devuelven tanto la versión no configurada como la explícita. [ToolApprovalState.Auto], es decir, este método solo maneja el veto explícito por parte del usuario
-     * con solicitud explícita de aprobación; modo/La determinación predeterminada del nivel de riesgo se basa en [ToolPermissionResolver] Sea responsable.
+     * 未配置与显式放行都返回 [ToolApprovalState.Auto]，即该方法只处理用户的显式否决
+     * 与显式要求审批；模式/风险等级的默认判定由 [ToolPermissionResolver] 负责。
      */
     suspend fun resolveApprovalState(toolName: String): ToolApprovalState {
         return when (getConfiguredPolicy(toolName)) {
             null, ToolApprovalPolicy.ALWAYS_ALLOW -> ToolApprovalState.Auto
-            ToolApprovalPolicy.ALWAYS_DENY -> ToolApprovalState.Denied("Tool disabled by user")
+            ToolApprovalPolicy.ALWAYS_DENY -> ToolApprovalState.Denied(
+                "Tool disabled by user",
+                source = DenySource.POLICY,
+            )
             ToolApprovalPolicy.ASK_EVERY_TIME -> ToolApprovalState.Pending
         }
     }

@@ -7,7 +7,7 @@ import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.io.File
 
-/** D3-P1: Prueba de registro de canalización(Agregar/Desplazar/Tolerancia a fallos). */
+/** D3-P1: 管线日志测试(追加 / 滚动 / 容错)。 */
 class PipelineLogTest {
 
     @get:Rule
@@ -56,8 +56,8 @@ class PipelineLogTest {
                 error = null,
             )
         }
-        assertTrue("El registro maestro debería existir", File(tmp.root, "pl.jsonl").exists())
-        assertTrue("Se debe generar un archivo continuo después de exceder el límite.", File(tmp.root, "pl.jsonl.1").exists())
+        assertTrue("主日志应存在", File(tmp.root, "pl.jsonl").exists())
+        assertTrue("超限后应生成滚动文件", File(tmp.root, "pl.jsonl.1").exists())
     }
 
     @Test

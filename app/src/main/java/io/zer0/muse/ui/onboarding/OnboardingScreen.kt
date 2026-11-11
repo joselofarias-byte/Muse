@@ -1,6 +1,6 @@
 package io.zer0.muse.ui.onboarding
 
-import androidx.compose.animation.Crossfade
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -48,8 +49,11 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -80,11 +84,12 @@ import io.zer0.muse.ui.theme.MuseShapes
 import io.zer0.muse.ui.theme.PresetThemes
 import io.zer0.muse.ui.theme.pill
 import io.zer0.muse.ui.theme.semiLarge
+import io.zer0.muse.util.AppLocales
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
-// ── Estado de la conexión de prueba ──────────────────────────────────────────────
+// ── 测试连接状态 ──────────────────────────────────────────────
 private sealed class TestStatus {
     data object Idle : TestStatus()
     data object Loading : TestStatus()
@@ -93,33 +98,40 @@ private sealed class TestStatus {
 }
 
 /**
- * Página de inicio — pantalla completa HorizontalPager,8 Complete la configuración inicial en un solo paso:
- * bienvenido(Carrusel de saludos multilingüe) → Idioma → saber → memoria → Acceso → modelo → Apariencia → Activar.
+ * 开机引导页面 — 全屏 HorizontalPager,8 步完成初始配置:
+ * 欢迎(多语言问候轮播) → 语言 → 认识 → 记忆 → 接入 → 模型 → 外观 → 出发。
  *
- * Flujo de datos:OnboardingScreen recibir [onComplete] Devolución de llamada, obtenida internamente usando koinInject
- * [SettingsRepository] / [AssistantRepository] / [PresetProviders],
- * Guarde instantáneamente en el repositorio de configuración después de completar cada paso.
+ * 数据流：OnboardingScreen 接收 [onComplete] 回调，内部用 koinInject 获取
+ * [SettingsRepository] / [AssistantRepository] / [PresetProviders]，
+ * 每步完成后即时保存到 SettingsRepository。
  *
- * Ficha de diseño: uso [MuseShapes](esquinas redondeadas) y [MusePaddings](ficha de espaciado),
- * Íconos materiales en todas partes (sin emoji),Material 3 componentes.
+ * 设计令牌：使用 [MuseShapes]（圆角）与 [MusePaddings]（间距令牌），
+ * 全程 Material Icons（无 emoji），Material 3 组件。
  */
+// onOpenSection:引导关掉后由宿主导航 —— 老用户换机在完成页就有「从备份恢复」出口,
+// 四张「接下来可以试试」卡片也各自直达。
 @Composable
-fun OnboardingScreen(onComplete: () -> Unit) {
+fun OnboardingScreen(onComplete: () -> Unit, onOpenSection: (String) -> Unit = {}) {
     val settings: SettingsRepository = koinInject()
     val assistantRepo: AssistantRepository = koinInject()
     val presetProviders: PresetProviders = koinInject()
     val scope = rememberCoroutineScope()
-    val localizedResources = androidx.compose.ui.platform.LocalResources.current
-    val pagerState = rememberPagerState(pageCount = { 8 })
+    val context = LocalContext.current
+    val resources = LocalResources.current
+    // 引导走到第几步存几步:中途按返回退出后再进来,不该从第 1 步重来。
+    var lastPage by rememberSaveable { mutableStateOf(0) }
+    val pagerState = rememberPagerState(initialPage = lastPage, pageCount = { 8 })
+
     val keyboardController = LocalSoftwareKeyboardController.current
 
-    // ── Estado de cada paso ──
+    // ── 各步骤状态 ──
     var selectedLanguage by rememberSaveable { mutableStateOf("es") }
     var selectedThemeId by rememberSaveable { mutableStateOf("mono") }
     var userName by rememberSaveable { mutableStateOf("") }
     var agentName by rememberSaveable { mutableStateOf("Muse") }
     var selectedPresetId by rememberSaveable { mutableStateOf("") }
-    var apiKey by rememberSaveable { mutableStateOf("") }
+    // 密钥不进 saved state:部分 ROM 会把 Bundle 落盘,引导期填的 key 不该留下磁盘痕迹。
+    var apiKey by remember { mutableStateOf("") }
     var customBaseUrl by rememberSaveable { mutableStateOf("") }
     var apiKeyVisible by rememberSaveable { mutableStateOf(false) }
     var testStatus by remember { mutableStateOf<TestStatus>(TestStatus.Idle) }
@@ -127,15 +139,25 @@ fun OnboardingScreen(onComplete: () -> Unit) {
     var selectedModelId by rememberSaveable { mutableStateOf("") }
     var modelSearchQuery by rememberSaveable { mutableStateOf("") }
     var providerSkipped by rememberSaveable { mutableStateOf(false) }
-    // v2.x: interruptor del sistema de memoria(Agregar nuevos pasos;Activado de forma predeterminada,Cambiar a acceso instantáneo)
+    // v2.x: 记忆系统开关(新增步骤;默认开,切换即时落库)
     var memoryEnabled by rememberSaveable { mutableStateOf(true) }
 
-    // Ocultar el teclado al pasar páginas
+    // 翻页时收起键盘,并记住走到第几步
     LaunchedEffect(pagerState.currentPage) {
         keyboardController?.hide()
+        lastPage = pagerState.currentPage
     }
 
-    // El proveedor predeterminado actualmente seleccionado (la baseUrl completada por el usuario se inyecta al personalizar)
+    // 后退目标:跳过供应商后,模型步(5)是空态死角;而前进时被整体跳过(4→6),
+    // 所以从外观步(6)后退同样不能落回那一页 —— 两处一起跳过,回到记忆步(3)。
+    fun previousPage(from: Int): Int = if (providerSkipped && (from == 5 || from == 6)) 3 else from - 1
+
+    // 引导期误触系统返回不该直接退应用:非首页先回上一步,首页才交回系统默认行为。
+    BackHandler(enabled = pagerState.currentPage > 0) {
+        scope.launch { pagerState.animateScrollToPage(previousPage(pagerState.currentPage)) }
+    }
+
+    // 当前选中的预设供应商（自定义时注入用户填写的 baseUrl）
     val selectedPreset: ProviderConfig? = remember(selectedPresetId, customBaseUrl) {
         presetProviders.all.firstOrNull { it.id == selectedPresetId }?.let { preset ->
             if (preset.id == "preset_custom_openai" && customBaseUrl.isNotBlank()) {
@@ -154,9 +176,10 @@ fun OnboardingScreen(onComplete: () -> Unit) {
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
             .statusBarsPadding()
-            .navigationBarsPadding(),
+            .navigationBarsPadding()
+            .imePadding(),
     ) {
-        // punto de progreso superior
+        // 顶部进度圆点
         ProgressDots(
             currentPage = currentPage,
             pageCount = pageCount,
@@ -165,7 +188,7 @@ fun OnboardingScreen(onComplete: () -> Unit) {
                 .padding(vertical = MusePaddings.sectionGap),
         )
 
-        // área de contenido
+        // 内容区域
         HorizontalPager(
             state = pagerState,
             modifier = Modifier.weight(1f),
@@ -177,7 +200,7 @@ fun OnboardingScreen(onComplete: () -> Unit) {
                     selectedLanguage = selectedLanguage,
                     onLanguageSelected = { lang ->
                         selectedLanguage = lang
-                        // I4: Cambio de idioma en caliente — Reorganizado inmediatamente por RuntimeLocaleProvider después de guardar,no reconstruir Activity
+                        // I4: 语言热切换 — 保存后由 RuntimeLocaleProvider 即时重组,不重建 Activity
                         scope.launch { settings.saveLanguage(lang) }
                     },
                 )
@@ -217,21 +240,21 @@ fun OnboardingScreen(onComplete: () -> Unit) {
                     testStatus = testStatus,
                     onTestConnection = {
                         val preset = selectedPreset
-                        // v1.0.18: allowMissingApiKey proveedor(Como SiliconFlow gratuito)Permite probar la conexión sin necesidad de rellenar la clave.
+                        // v1.0.18: allowMissingApiKey 供应商(如 SiliconFlow 免费)允许不填 key 测试连接
                         if (preset == null || (apiKey.isBlank() && !preset.allowMissingApiKey)) return@StepProviderConfig
                         testStatus = TestStatus.Loading
                         scope.launch {
                             val config = preset.copy(apiKey = apiKey)
-                            // Verifique con una conversación real en lugar de simplemente mirar /modelos.
-                            // La página de introducción es donde el usuario contacta por primera vez con un proveedor. Fracasar aquí equivale a decirle“No puedo usarlo”,
-                            // Y /models a menudo simplemente no está implementado o tiene autenticación separada.
+                            // 以一次真实对话验证，而不是只看 /models。
+                            // 引导页是用户第一次接触一个供应商的地方，这里判失败等于告诉他“用不了”，
+                            // 而 /models 往往只是没实现或做了单独鉴权。
                             when (val outcome = ProviderModelFetcher.verify(config)) {
                                 is ProviderModelFetcher.VerifyOutcome.Ready -> {
                                     fetchedModels = outcome.models
                                     testStatus = TestStatus.Success(outcome.models)
                                     selectedModelId = outcome.modelId
-                                    // Una vez que la prueba sea exitosa, se colocará en la biblioteca.(idempotente),Ya no depende de"Siguiente paso"sincronización ——
-                                    // Haga clic nuevamente después de que la prueba anterior sea exitosa"saltar"El contenido completado se descartará silenciosamente.
+                                    // 测试成功即落库(幂等),不再依赖"下一步"时机 ——
+                                    // 此前测试成功后再点"跳过"会把已填内容静默丢弃。
                                     val bound = config.copy(
                                         baseUrl = outcome.usedConfig.baseUrl,
                                         models = outcome.models,
@@ -241,11 +264,14 @@ fun OnboardingScreen(onComplete: () -> Unit) {
                                     settings.saveSelectedModel(outcome.modelId)
                                 }
                                 is ProviderModelFetcher.VerifyOutcome.NotReady -> {
-                                    Logger.w("Onboarding", "La conexión de prueba falló: ${outcome.kind} ${outcome.reason}")
+                                    Logger.w("Onboarding", "测试连接失败: ${outcome.kind} ${outcome.reason}")
                                     testStatus = TestStatus.Error(
-                                        localizedResources.getString(
+                                        resources.getString(
                                             R.string.settings_provider_test_error_failed,
-                                            friendlyConnectError(outcome.reason),
+                                            friendlyConnectError(
+                                                raw = outcome.reason,
+                                                context = context,
+                                            ),
                                         ),
                                     )
                                 }
@@ -253,8 +279,8 @@ fun OnboardingScreen(onComplete: () -> Unit) {
                         }
                     },
                     onSkip = {
-                        // v2.x: Cuando la prueba sea exitosa, la configuración se colocará inmediatamente en la biblioteca durante el proceso de prueba.;saltar = saltar"Acceso+modelo"dos pasos,
-                        // Retención del tema y del final(saltar a"Apariencia"paso).
+                        // v2.x: 测试成功时配置已在测试环节即时落库;跳过 = 跳过"接入+模型"两步,
+                        // 主题与收尾保留(跳转到"外观"步)。
                         val preset = selectedPreset
                         if (testStatus is TestStatus.Success && preset != null) {
                             scope.launch {
@@ -287,23 +313,31 @@ fun OnboardingScreen(onComplete: () -> Unit) {
                         scope.launch { settings.saveThemeId(id) }
                     },
                 )
-                7 -> StepComplete()
+                7 -> StepComplete(
+                    onOpenSection = { route ->
+                        scope.launch {
+                            // 走这条路也要落"引导已完成":否则下次冷启动又从头再来一遍。
+                            settings.saveOnboardingShown()
+                            onOpenSection(route)
+                        }
+                    },
+                )
             }
         }
 
-        // Área del botón inferior
+        // 底部按钮区域
         BottomButtons(
             currentPage = currentPage,
-            // paso de acceso(4)La prueba debe tener éxito antes de poder dar el siguiente paso.
+            // 接入步(4)需测试成功才能下一步
             canGoNext = when (currentPage) {
                 4 -> testStatus is TestStatus.Success
                 else -> true
             },
             onPrevious = {
-                scope.launch { pagerState.animateScrollToPage(currentPage - 1) }
+                scope.launch { pagerState.animateScrollToPage(previousPage(currentPage)) }
             },
             onNext = {
-                // Guarde los datos del paso actual antes de pasar las páginas
+                // 翻页前保存当前步骤数据
                 scope.launch {
                     saveStepData(
                         currentPage = currentPage,
@@ -318,7 +352,7 @@ fun OnboardingScreen(onComplete: () -> Unit) {
                         providerSkipped = providerSkipped,
                     )
                     val targetPage = when {
-                        // paso de acceso(4)→ Si te has saltado la configuración, ve directamente a"Apariencia"(6),Por cierto, salta el paso del modelo.
+                        // 接入步(4)→ 若已跳过配置则直接去"外观"(6),顺带跳过模型步
                         currentPage == 4 && providerSkipped -> 6
                         else -> currentPage + 1
                     }
@@ -347,11 +381,11 @@ fun OnboardingScreen(onComplete: () -> Unit) {
     }
 }
 
-// ── punto de progreso superior ──────────────────────────────────────────────
+// ── 顶部进度圆点 ──────────────────────────────────────────────
 @Composable
 private fun ProgressDots(currentPage: Int, pageCount: Int, modifier: Modifier = Modifier) {
-    // Los puntos sólo pueden expresar "aproximadamente cuántos más hay" y no pueden leer la ubicación específica. Añade un "N / M"
-    // Informe a los usuarios directamente en qué paso se encuentran y cuántos pasos tienen en total.
+    // 圆点只能表达「大概还有多少」，读不出具体位置。右侧补一个「N / M」
+    // 让用户直接知道自己在第几步、总共几步。
     Row(
         modifier = modifier,
         horizontalArrangement = Arrangement.Center,
@@ -387,40 +421,23 @@ private fun ProgressDots(currentPage: Int, pageCount: Int, modifier: Modifier = 
     }
 }
 
-// ── Paso 0: página de bienvenida ──────────────────────────────────────────────
-/**
- * Carrusel de saludos — Siga los idiomas admitidos para cambiar uno por uno(chino primero,en segundo lugar ingles,El resto del pedido rota).
- * Cada artículo en sí es el texto original en el idioma correspondiente.,No localizar recursos.
- */
-private val WELCOME_GREETINGS = listOf(
-    "Hola, por fin nos conocemos.",
-    "Hi, nice to meet you.",
-    "はじめまして.",
-    "반가워요.",
-    "Hola, encantado.",
-    "Olá, prazer.",
-    "Привет, рады знакомству.",
-)
+// ── 步骤 0：欢迎页 ──────────────────────────────────────────────
+private const val WELCOME_GREETING = "Hola, encantado."
 
 @Composable
 private fun StepWelcome() {
-    // v2.x: Reconstrucción de la primera pantalla. — Logotipo grande solo(Sin marco inferior),El nombre está debajo,saludo del logotipo"Expandir"Admisión.
-    // No más subtítulos y mosaicos de funciones:En la primera pantalla solo queda el logo/nombre/un saludo.
+    // v2.x: 首屏重构 — 大 logo 单放(无底框),名字在下,问候语从 logo 处"展开"入场。
+    // 不再有副标题与特性磁贴:首屏只留 logo / 名字 / 一句问候。
     var entered by remember { mutableStateOf(false) }
     var nameVisible by remember { mutableStateOf(false) }
     var greetingVisible by remember { mutableStateOf(false) }
-    var greetingIndex by remember { mutableStateOf(0) }
     LaunchedEffect(Unit) {
-        // Horario de admisión:logo → nombre → Saludos"Expandir";Luego ingresa al carrusel multiidioma(2.6s/Artículo)
+        // 入场时序:logo → 名字 → 问候"展开"
         entered = true
         delay(260)
         nameVisible = true
         delay(390)
         greetingVisible = true
-        while (true) {
-            delay(2600)
-            greetingIndex = (greetingIndex + 1) % WELCOME_GREETINGS.size
-        }
     }
 
     val logoAlpha by animateFloatAsState(
@@ -462,7 +479,7 @@ private fun StepWelcome() {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        // grande logo — jugar solo,Sin marco inferior
+        // 大 logo — 单放,不加底框
         Image(
             painter = painterResource(R.drawable.ic_muse_logo),
             contentDescription = null,
@@ -487,7 +504,7 @@ private fun StepWelcome() {
                 .offset(y = nameOffset),
         )
         Spacer(modifier = Modifier.height(MusePaddings.contentGap))
-        // saludo:Desde la dirección del logotipo"Expandir"aparecer(La parte superior es el origen del zoom.),Luego, el carrusel multilingüe se fusiona
+        // 问候语:从 logo 方向"展开"出场(顶端为缩放原点)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -500,22 +517,19 @@ private fun StepWelcome() {
                 },
             contentAlignment = Alignment.Center,
         ) {
-            Crossfade(
-                targetState = greetingIndex,
-                animationSpec = MuseMotion.tween(MuseAnimation.NORMAL_MS),
-                // Utilice Crossfade en lugar de AnimatedContent: este último viene con SizeTransform de forma predeterminada.
-                // Dos saludos con diferentes alturas participarán en el diseño al mismo tiempo y se apilarán en la misma posición.
-                // Visualmente, las dos frases están juntas.Crossfade Solo haz desvanecimientos dentro de la misma ranura.
-                label = "welcomeGreeting",
-            ) { index ->
-                Text(
-                    text = WELCOME_GREETINGS[index],
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    textAlign = TextAlign.Center,
-                )
-            }
+            Text(
+                text = WELCOME_GREETING,
+                style = MaterialTheme.typography.headlineSmall,
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.Center,
+            )
         }
+        Text(
+            text = stringResource(R.string.onboarding_welcome_greetings_caption),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
     }
 }
 
@@ -523,19 +537,19 @@ private data class FeatureItem(
     val icon: androidx.compose.ui.graphics.vector.ImageVector,
     val title: String,
     val description: String,
+    /** 卡片点进去的去处:引导关掉后由宿主导航。 */
+    val route: String,
 )
 
-// ── Paso 1: Idioma ────────────────────────────────────────────────
+// ── 步骤 1：语言 ────────────────────────────────────────────────
 @Composable
 private fun StepLanguage(selectedLanguage: String, onLanguageSelected: (String) -> Unit) {
-    val languages = listOf(
-        "es" to stringResource(R.string.onboarding_lang_es),
-        "en" to stringResource(R.string.onboarding_lang_en),
-        "pt-rBR" to stringResource(R.string.onboarding_lang_pt),
-        "ja" to stringResource(R.string.onboarding_lang_ja),
-        "ko" to stringResource(R.string.onboarding_lang_ko),
-        "ru" to stringResource(R.string.onboarding_lang_ru),
-    )
+    // 与 AppLocales.parse / values-* 一一对应的 7 种语言。原先列了 zh-TW 却没有繁体资源,
+    // 选中它等于没选(映射返回 null,悄悄回落系统语言);而西/葡/俄已有全量文案却没进选项,
+    // 用户在欢迎页问候轮播里看到自己的语言,到了设置语言这一步却选不到。
+    val languages = AppLocales.Language.entries
+        .sortedBy { if (it == AppLocales.Language.ES) 0 else 1 }
+        .map { it.code to stringResource(it.labelRes) }
 
     Column(
         modifier = Modifier
@@ -566,7 +580,7 @@ private fun StepLanguage(selectedLanguage: String, onLanguageSelected: (String) 
     }
 }
 
-// ── Paso 6: Apariencia ────────────────────────────────────────────────
+// ── 步骤 6：外观 ────────────────────────────────────────────────
 @Composable
 private fun StepTheme(selectedThemeId: String, onThemeSelected: (String) -> Unit) {
     Column(
@@ -587,7 +601,7 @@ private fun StepTheme(selectedThemeId: String, onThemeSelected: (String) -> Unit
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(modifier = Modifier.height(MusePaddings.itemGap))
-        // 12 Conjunto de cuadrículas de temas (3 columnas x 4 filas)
+        // 12 套主题网格（3 列 x 4 行）
         PresetThemes.chunked(3).forEach { rowThemes ->
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -601,7 +615,7 @@ private fun StepTheme(selectedThemeId: String, onThemeSelected: (String) -> Unit
                         modifier = Modifier.weight(1f),
                     )
                 }
-                // Si hay menos de 3, complete los marcadores de posición y mantenga la cuadrícula alineada.
+                // 不足 3 个时补齐占位，保持网格对齐
                 repeat(3 - rowThemes.size) {
                     Spacer(modifier = Modifier.weight(1f))
                 }
@@ -703,7 +717,7 @@ private fun ThemeColorBlock(
     }
 }
 
-// ── Paso 2: Tu nombre ──────────────────────────────────────────
+// ── 步骤 2：你的名字 ──────────────────────────────────────────
 @Composable
 private fun StepNames(userName: String, onUserNameChange: (String) -> Unit, agentName: String, onAgentNameChange: (String) -> Unit) {
     Column(
@@ -725,7 +739,7 @@ private fun StepNames(userName: String, onUserNameChange: (String) -> Unit, agen
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(modifier = Modifier.height(MusePaddings.sectionGap))
-        // v1.0.28: label Colóquelo encima del cuadro de entrada.,Evite el bloque de fondo blanco de la etiqueta interior de OutlinedTextField
+        // v1.0.28: label 放到输入框上方,避免 OutlinedTextField 内部 label 的白色背景块
         Text(
             text = stringResource(R.string.onboarding_names_user_label),
             style = MaterialTheme.typography.bodyMedium,
@@ -735,7 +749,8 @@ private fun StepNames(userName: String, onUserNameChange: (String) -> Unit, agen
         MuseTextField(
             value = userName,
             onValueChange = onUserNameChange,
-            placeholder = { Text(stringResource(R.string.onboarding_names_user_label)) },
+            // 提示语不再重复上方标签,改为给一个示例:用户看到的是"这里该填什么形态的内容"。
+            placeholder = { Text(stringResource(R.string.onboarding_names_user_placeholder)) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
@@ -749,7 +764,7 @@ private fun StepNames(userName: String, onUserNameChange: (String) -> Unit, agen
         MuseTextField(
             value = agentName,
             onValueChange = onAgentNameChange,
-            placeholder = { Text(stringResource(R.string.onboarding_names_agent_label)) },
+            placeholder = { Text(stringResource(R.string.onboarding_names_agent_placeholder)) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
@@ -762,7 +777,7 @@ private fun StepNames(userName: String, onUserNameChange: (String) -> Unit, agen
     }
 }
 
-// ── Paso 3: recuerda ────────────────────────────────────────────────
+// ── 步骤 3：记忆 ────────────────────────────────────────────────
 @Composable
 private fun StepMemory(memoryEnabled: Boolean, onMemoryEnabledChange: (Boolean) -> Unit) {
     Column(
@@ -784,7 +799,7 @@ private fun StepMemory(memoryEnabled: Boolean, onMemoryEnabledChange: (Boolean) 
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(modifier = Modifier.height(MusePaddings.itemGap))
-        // tarjeta de interruptor de memoria:Título + descripción de una línea + lado derecho Switch
+        // 记忆开关卡片:标题 + 一行说明 + 右侧 Switch
         Surface(
             modifier = Modifier.fillMaxWidth(),
             shape = MuseShapes.semiLarge,
@@ -801,7 +816,8 @@ private fun StepMemory(memoryEnabled: Boolean, onMemoryEnabledChange: (Boolean) 
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Icon(
-                    imageVector = MuseIcons.atom,
+                    // 记忆功能的图形统一为 brain(助手详情/数据管理/进程列表同一口径),不再借 atom。
+                    imageVector = MuseIcons.brain,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -829,28 +845,31 @@ private fun StepMemory(memoryEnabled: Boolean, onMemoryEnabledChange: (Boolean) 
     }
 }
 
-// ── Paso 4: Configurar el proveedor ──────────────────────────────────────────
-/** La altura visual máxima de la lista preestablecida de proveedores en la página de inicio (aproximadamente 5 líneas), después de lo cual la lista se desplaza internamente. */
+// ── 步骤 4：配置供应商 ──────────────────────────────────────────
+/** 引导页供应商预设列表的最大可视高度（约 5 行），超出后列表内部滚动。 */
 private val ONBOARDING_PRESET_LIST_MAX_HEIGHT = 320.dp
 
 /**
- * poner río arriba/Los errores internos se traducen en una frase procesable para el usuario.
+ * 把上游/内部错误翻译成用户能行动的一句话。
  *
- * El texto original devuelto por el upstream (como `HTTP 500 [server error]: Model ...`) permanecer en el registro,
- * La interfaz primero proporciona "qué se debe cambiar" y luego adjunta una breve información original para copiar cuando se solicita ayuda.
+ * 上游返回的原文（如 `HTTP 500 [server error]: Model ...`）留在日志里，
+ * 界面上先给出「该去改什么」，再附一小段原始信息供求助时复制。
  */
-private fun friendlyConnectError(raw: String): String {
+private fun friendlyConnectError(raw: String, context: android.content.Context): String {
     val lower = raw.lowercase()
-    // Tabla de reglas: combinar en orden y regresar si se golpea.
-    // Utilice una tabla en lugar de un cuándo largo para evitar exceder la complejidad ciclomática de una sola función.
+    // 规则表：按顺序匹配，命中即返回。
+    // 用表而非长 when，避免单函数圈复杂度超标。
     val rules = listOf(
-        listOf("401", "unauthorized", "invalid api key") to "API La clave no es válida o ha caducado, complétela nuevamente",
-        listOf("403", "forbidden") to "Sin derechos de acceso, confirme que la clave se ha activado para este modelo",
-        listOf("404", "model_not_found", "no such model") to "La dirección de la interfaz o el nombre del modelo es incorrecto, verifíquelo e inténtelo nuevamente.",
-        listOf("429", "rate limit") to "La solicitud es demasiado frecuente, inténtalo de nuevo más tarde.",
-        listOf("timeout", "timed out") to "Se agotó el tiempo de conexión; verifique la dirección de red o de interfaz",
-        listOf("500", "502", "503", "server error") to "El servicio del proveedor es anormal, inténtelo nuevamente más tarde; Si continúa fallando, es posible que el modelo integrado esté fuera de línea.",
-        listOf("no model") to "No se encontró ningún modelo comprobable. Haga clic en \"Obtener\" para obtener la lista de modelos primero.",
+        listOf("401", "unauthorized", "invalid api key") to
+            context.getString(R.string.onboarding_connect_error_unauthorized),
+        listOf("403", "forbidden") to context.getString(R.string.onboarding_connect_error_forbidden),
+        listOf("404", "model_not_found", "no such model") to
+            context.getString(R.string.onboarding_connect_error_not_found),
+        listOf("429", "rate limit") to context.getString(R.string.onboarding_connect_error_rate_limit),
+        listOf("timeout", "timed out") to context.getString(R.string.onboarding_connect_error_timeout),
+        listOf("500", "502", "503", "server error") to
+            context.getString(R.string.onboarding_connect_error_server),
+        listOf("no model") to context.getString(R.string.onboarding_connect_error_no_model),
     )
     val hit = rules.firstOrNull { (keys, _) -> keys.any { it in lower } }
     return hit?.second ?: raw
@@ -892,16 +911,16 @@ private fun StepProviderConfig(
         )
         Spacer(modifier = Modifier.height(MusePaddings.itemGap))
 
-        // Lista de selección de proveedores (seleccionados: en el extranjero)/Nacional/Transfiera cada uno aproximadamente 1/3 + personalizado)
+        // 供应商选择列表（精选：海外/国产/中转各约 1/3 + 自定义）
         Text(
             text = stringResource(R.string.onboarding_provider_select_label),
             style = MaterialTheme.typography.titleSmall,
             color = MaterialTheme.colorScheme.onSurface,
         )
         Spacer(modifier = Modifier.height(MusePaddings.contentGap))
-        // La lista predeterminada se desplaza de forma independiente y tiene un límite de altura: los más de 20 elementos anteriores están en mosaico y el cuadro de entrada clave a continuación está
-        // El botón "Probar conexión" desaparece de la pantalla y los usuarios no pueden encontrar una manera de continuar después de seleccionar un proveedor.
-        // El mensaje que desaparece en la parte inferior dice "todavía hay contenido para desplazar" para evitar que la última fila se corte cuidadosamente en la mitad de una tarjeta incompleta.
+        // 预设列表独立滚动并限高：此前 20+ 项平铺，把下方的 Key 输入框与
+        // 「测试连接」按钮推到屏幕外，用户选完供应商却找不到继续的办法。
+        // 底部渐隐提示「还有内容可滚」，避免最后一行被整齐切断成半张残缺卡片。
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -921,12 +940,12 @@ private fun StepProviderConfig(
                     Spacer(modifier = Modifier.height(MusePaddings.contentGap))
                 }
             }
-            // Máscara de desvanecimiento inferior: no intercepta toques, solo proporciona indicaciones visuales.
+            // 底部渐隐遮罩：不拦截触摸，仅做视觉提示。
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
-                    .height(24.dp)
+                    .height(36.dp)
                     .background(
                         Brush.verticalGradient(
                             colors = listOf(
@@ -938,7 +957,7 @@ private fun StepProviderConfig(
             )
         }
 
-        // Proveedor personalizado:baseUrl entrada
+        // 自定义供应商：baseUrl 输入
         androidx.compose.animation.AnimatedVisibility(
             visible = isCustomSelected,
             enter = MuseMotion.expandFadeEnter(),
@@ -962,7 +981,7 @@ private fun StepProviderConfig(
             }
         }
 
-        // API Key entrada
+        // API Key 输入
         Text(
             text = stringResource(R.string.onboarding_provider_apikey_label),
             style = MaterialTheme.typography.titleSmall,
@@ -1001,8 +1020,8 @@ private fun StepProviderConfig(
 
         Spacer(modifier = Modifier.height(MusePaddings.itemGap))
 
-        // Botón de prueba de conexión (el proveedor personalizado también requiere baseUrl)
-        // v1.0.18: allowMissingApiKey proveedor(Como SiliconFlow gratuito)Permite probar la conexión sin necesidad de rellenar la clave.
+        // 测试连接按钮（自定义供应商还需 baseUrl）
+        // v1.0.18: allowMissingApiKey 供应商(如 SiliconFlow 免费)允许不填 key 测试连接
         val canTest = selectedPresetId.isNotBlank() &&
             (apiKey.isNotBlank() || selectedPreset?.allowMissingApiKey == true) &&
             (!isCustomSelected || customBaseUrl.isNotBlank())
@@ -1045,7 +1064,7 @@ private fun StepProviderConfig(
             }
         }
 
-        // Visualización del resultado de la prueba
+        // 测试结果展示
         when (testStatus) {
             is TestStatus.Success -> {
                 Spacer(modifier = Modifier.height(MusePaddings.contentGap))
@@ -1057,12 +1076,16 @@ private fun StepProviderConfig(
                     )
                     Spacer(modifier = Modifier.width(MusePaddings.iconPadding))
                     Text(
-                        text = stringResource(R.string.onboarding_provider_test_success, testStatus.models.size),
+                        text = pluralStringResource(
+                            R.plurals.onboarding_provider_test_success,
+                            testStatus.models.size,
+                            testStatus.models.size,
+                        ),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurface,
                     )
                 }
-                // v2.x: Resumen de coincidencia de competencias — probar"La lista extraída ya tiene información de capacidad."(Visión/razonamiento/Herramientas)
+                // v2.x: 能力匹配摘要 — 证明"拉取到的清单已经带上能力信息"(视觉/推理/工具)
                 val visionCount = testStatus.models.count { it.supportsVisionInput() }
                 val reasoningCount = testStatus.models.count { it.supportsReasoning() }
                 val toolCount = testStatus.models.count { it.supportsToolCalling() }
@@ -1089,11 +1112,22 @@ private fun StepProviderConfig(
                     )
                 }
             }
-            else -> {}
+            else -> {
+                // 置灰的"下一步"必须说清为什么灰:此前用户只看到按钮点不动,
+                // 不知道该先做哪一步。
+                if (!canTest) {
+                    Spacer(modifier = Modifier.height(MusePaddings.contentGap))
+                    Text(
+                        text = stringResource(R.string.onboarding_provider_next_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
         }
 
         Spacer(modifier = Modifier.height(MusePaddings.sectionGap))
-        // Saltar configuración
+        // 跳过配置
         MuseCapsuleButton(
             text = stringResource(R.string.onboarding_provider_skip),
             onClick = onSkip,
@@ -1104,7 +1138,7 @@ private fun StepProviderConfig(
     }
 }
 
-// ── Paso 4: Selecciona un modelo ──────────────────────────────────────────
+// ── 步骤 4：选择模型 ──────────────────────────────────────────
 @Composable
 private fun StepSelectModel(
     models: List<Model>,
@@ -1115,7 +1149,7 @@ private fun StepSelectModel(
     providerSkipped: Boolean,
 ) {
     if (providerSkipped || models.isEmpty()) {
-        // Cuando se omite el paso 3 o no hay ningún modelo, solicite al usuario
+        // 步骤 3 被跳过或无模型时，提示用户
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -1222,7 +1256,7 @@ private fun ModelItem(model: Model, selected: Boolean, onClick: () -> Unit) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Spacer(modifier = Modifier.height(MusePaddings.tightGap))
-                // v2.x: Insignia de competencia — Mismo calibre que la página de edición del proveedor.(Reutilizar el mismo componente)
+                // v2.x: 能力徽章 — 与供应商编辑页同口径(复用同一组件)
                 ModelAbilityChips(model = model)
             }
             if (selected) {
@@ -1236,29 +1270,33 @@ private fun ModelItem(model: Model, selected: Boolean, onClick: () -> Unit) {
     }
 }
 
-// ── Paso 5: Completa la página ──────────────────────────────────────────────
+// ── 步骤 5：完成页 ──────────────────────────────────────────────
 @Composable
-private fun StepComplete() {
+private fun StepComplete(onOpenSection: (String) -> Unit) {
     val tutorials = listOf(
         FeatureItem(
             MuseIcons.chat,
             stringResource(R.string.onboarding_tutorial_chat_title),
             stringResource(R.string.onboarding_tutorial_chat_desc),
+            route = "chat",
         ),
         FeatureItem(
             MuseIcons.user,
             stringResource(R.string.onboarding_tutorial_assistant_title),
             stringResource(R.string.onboarding_tutorial_assistant_desc),
+            route = "assistants",
         ),
         FeatureItem(
             MuseIcons.wrench,
             stringResource(R.string.onboarding_tutorial_tools_title),
             stringResource(R.string.onboarding_tutorial_tools_desc),
+            route = "tools",
         ),
         FeatureItem(
             MuseIcons.cloudUpload,
             stringResource(R.string.onboarding_tutorial_backup_title),
             stringResource(R.string.onboarding_tutorial_backup_desc),
+            route = "backup",
         ),
     )
 
@@ -1270,7 +1308,7 @@ private fun StepComplete() {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        // icono hecho:Usar avatar de asistente predeterminado
+        // 完成图标:使用默认助手头像
         Surface(
             shape = CircleShape,
             color = MaterialTheme.colorScheme.surfaceContainer,
@@ -1301,15 +1339,22 @@ private fun StepComplete() {
         )
         Spacer(modifier = Modifier.height(MusePaddings.sectionGap))
         tutorials.forEach { item ->
-            TutorialCard(item = item)
+            TutorialCard(item = item, onClick = { onOpenSection(item.route) })
             Spacer(modifier = Modifier.height(MusePaddings.itemGap))
         }
+        MuseCapsuleButton(
+            text = stringResource(R.string.onboarding_restore_from_backup),
+            onClick = { onOpenSection("backup") },
+            variant = IosCapsuleButtonVariant.Secondary,
+            fillWidth = false,
+        )
     }
 }
 
 @Composable
-private fun TutorialCard(item: FeatureItem) {
+private fun TutorialCard(item: FeatureItem, onClick: () -> Unit) {
     Surface(
+        onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
         shape = MuseShapes.large,
         color = MaterialTheme.colorScheme.surfaceContainer,
@@ -1356,7 +1401,7 @@ private fun TutorialCard(item: FeatureItem) {
     }
 }
 
-// ── botón de cápsula ──────────────────────────────────────────
+// ── 胶囊按钮 ──────────────────────────────────────────
 
 @Composable
 private fun PrimaryPillButton(
@@ -1378,7 +1423,7 @@ private fun PrimaryPillButton(
         modifier = modifier.heightIn(min = 52.dp),
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = MusePaddings.contentGap, vertical = MusePaddings.tightGap),
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -1397,6 +1442,8 @@ private fun PrimaryPillButton(
             }
             Text(
                 text = text,
+                modifier = Modifier.weight(1f, fill = false),
+                textAlign = TextAlign.Center,
                 style = MaterialTheme.typography.labelLarge.copy(
                     fontWeight = FontWeight.SemiBold,
                 ),
@@ -1422,15 +1469,15 @@ private fun SecondaryPillButton(
         shape = MuseShapes.pill,
         color = MaterialTheme.colorScheme.surface,
         border = androidx.compose.foundation.BorderStroke(
-            // El trazo alfa de 0,2 original es casi invisible y el contorno del botón está borroso;
-            // El botón principal tiene un fondo negro sólido y el contraste entre los dos es demasiado extremo. Oscurezca a 0,45 para que las operaciones secundarias sean igualmente visibles.
+            // 原先 0.2 alpha 的描边几乎看不见，按钮轮廓虚化；
+            // 主按钮是实心黑底，两者对比过于极端。加深到 0.45 让次要操作同样可辨。
             width = 1.dp,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f),
         ),
         modifier = modifier.heightIn(min = 52.dp),
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = MusePaddings.contentGap, vertical = MusePaddings.tightGap),
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -1445,6 +1492,8 @@ private fun SecondaryPillButton(
             }
             Text(
                 text = text,
+                modifier = Modifier.weight(1f, fill = false),
+                textAlign = TextAlign.Center,
                 style = MaterialTheme.typography.labelLarge.copy(
                     fontWeight = FontWeight.SemiBold,
                 ),
@@ -1454,7 +1503,7 @@ private fun SecondaryPillButton(
     }
 }
 
-// ── botón inferior ──────────────────────────────────────────────────
+// ── 底部按钮 ──────────────────────────────────────────────────
 
 @Composable
 private fun BottomButtons(currentPage: Int, canGoNext: Boolean, onPrevious: () -> Unit, onNext: () -> Unit, onComplete: () -> Unit) {
@@ -1463,7 +1512,7 @@ private fun BottomButtons(currentPage: Int, canGoNext: Boolean, onPrevious: () -
         color = MaterialTheme.colorScheme.surface,
     ) {
         when (currentPage) {
-            // Paso 0: Sólo"Empezar a configurar"Botón (centrado)
+            // 步骤 0：只有"开始设置"按钮（居中）
             0 -> {
                 PrimaryPillButton(
                     text = stringResource(R.string.onboarding_button_start),
@@ -1473,10 +1522,10 @@ private fun BottomButtons(currentPage: Int, canGoNext: Boolean, onPrevious: () -
                         .padding(MusePaddings.screen),
                 )
             }
-            // Paso 7: Sólo"empezar"Botón (centrado)
+            // 步骤 7：只有"开始使用"按钮（居中）
             7 -> {
-                // v2.0 Reparación: Surface Internamente Box,Si dos botones se yuxtaponen directamente, se superpondrán y el texto se superpondrá. —
-                // Cambiar a disposición vertical(El botón principal está en la parte superior y la entrada de visitantes está en la parte inferior.).
+                // v2.0 修复: Surface 内部为 Box,两个按钮直接并列会叠画导致文字重叠 —
+                // 改为垂直排列(主按钮在上、游客入口在下)。
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -1491,7 +1540,7 @@ private fun BottomButtons(currentPage: Int, canGoNext: Boolean, onPrevious: () -
                     )
                 }
             }
-            // Pasos 1-6: izquierda"Paso anterior", cierto"Siguiente paso"
+            // 步骤 1-6：左边"上一步"，右边"下一步"
             else -> {
                 Row(
                     modifier = Modifier
@@ -1518,17 +1567,17 @@ private fun BottomButtons(currentPage: Int, canGoNext: Boolean, onPrevious: () -
     }
 }
 
-// ── Guardar datos de paso ──────────────────────────────────────────────
+// ── 步骤数据保存 ──────────────────────────────────────────────
 
 /**
- * Guarde los datos del paso actual en un almacenamiento persistente antes de pasar la página.
+ * 翻页前保存当前步骤的数据到持久化存储。
  *
- * La lógica de guardado correspondiente a cada paso:
- *  - Paso 2: guardar el nombre de usuario (mockLogin)+ Actualizar el nombre del asistente predeterminado
- *  - Paso 4: Cree y guarde la configuración de ProviderConfig + para activar el proveedor
- *  - Paso 5: guarda el modelo seleccionado id
+ * 各步骤对应的保存逻辑：
+ *  - 步骤 2：保存用户名（mockLogin）+ 更新默认助手名字
+ *  - 步骤 4：创建并保存 ProviderConfig + 设置激活供应商
+ *  - 步骤 5：保存选中的模型 id
  *
- * Idioma(pasos 1)/interruptor de memoria(pasos 3)/Tema(pasos 6)Se guarda inmediatamente cuando el usuario opera y no se repetirá aquí.
+ * 语言(步骤 1)/记忆开关(步骤 3)/主题(步骤 6)在用户操作时即时保存，此处不重复。
  */
 private suspend fun saveStepData(
     currentPage: Int,
@@ -1544,15 +1593,16 @@ private suspend fun saveStepData(
 ) {
     when (currentPage) {
         2 -> {
-            // Guardar nombre de usuario
-            settings.mockLogin(userName)
-            // Actualizar el nombre del asistente predeterminado
+            // 保存用户名 —— 只有真填了才写:空串会把称呼落库成空,
+            // 个人资料页与注入 system prompt 的称呼一起变空。
+            if (userName.isNotBlank()) settings.mockLogin(userName)
+            // 更新默认助手名字
             val defaultAssistant = assistantRepo.getById("default")
             if (defaultAssistant != null && agentName.isNotBlank()) {
                 assistantRepo.upsert(defaultAssistant.copy(name = agentName))
             }
-            // v1.0.27 Reparación: El título completado en la página de la guía se sincroniza con UserProfile,Hacer visible la página de perfil e inyectar system prompt
-            // La implementación anterior solo escribe en la tabla account_user_name + Assistant,UserProfileEditPage lo que se lee es user_profile_json,Tres conjuntos de almacenamiento independiente sin sincronización
+            // v1.0.27 修复: 引导页填写的称呼同步到 UserProfile,让个人资料页能看到且注入 system prompt
+            // 旧实现只写到 account_user_name + Assistant 表,UserProfileEditPage 读的是 user_profile_json,三套独立存储无同步
             val profile = settings.getUserProfile()
             settings.saveUserProfile(
                 profile.copy(
@@ -1562,9 +1612,9 @@ private suspend fun saveStepData(
             )
         }
         4 -> {
-            // Crear y guardar la configuración del proveedor (solo si la prueba es exitosa y no se omite)
-            // v1.0.18: allowMissingApiKey proveedor(Como SiliconFlow gratuito)Permitir guardar sin clave
-            // v2.0: Utilice upsert para guardar de forma idempotente. — Cuando la prueba sea exitosa, se colocará inmediatamente en la biblioteca.,Aquí está la página para pasar al final.,evitar entradas duplicadas
+            // 创建并保存供应商配置（仅当测试成功且未跳过时）
+            // v1.0.18: allowMissingApiKey 供应商(如 SiliconFlow 免费)允许不填 key 保存
+            // v2.0: 改用 upsert 幂等保存 — 测试成功时已即时落库,此处为翻页兑底,避免重复条目
             if (!providerSkipped && selectedPreset != null &&
                 (apiKey.isNotBlank() || selectedPreset.allowMissingApiKey)
             ) {
@@ -1577,7 +1627,7 @@ private suspend fun saveStepData(
             }
         }
         5 -> {
-            // Guardar modelo seleccionado
+            // 保存选中的模型
             settings.saveSelectedModel(selectedModelId.ifBlank { null })
         }
     }

@@ -14,12 +14,12 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * Prueba del almacenamiento de preferencias del usuario.
+ * 用户偏好存储的测试。
  *
- * Ítem 20 de autoevaluación del asistente: "Aprendizaje de preferencias del usuario: por ejemplo, si está acostumbrado, no utilice estímulos vacíos ni haga un resumen de tres puntos.
- * Estos pueden resolverse mediante restricciones estrictas en lugar de depender de mi juicio sobre el terreno. "
+ * 助手自审第 20 条：「用户偏好学习：比如你习惯我别用空泛鼓励、别列三点总结，
+ * 这些能沉淀成硬约束而不是靠我临场判断。」
  *
- * Fijado aquí: la escritura se puede volver a leer, la duplicación no se superpone, la desactivación no elimina, la normalización y la deduplicación.
+ * 这里钉住：写入能读回、重复不叠加、可停用不删、归一化去重。
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(application = android.app.Application::class, sdk = [33])
@@ -36,55 +36,55 @@ class PreferenceStoreTest {
 
     @Test
     fun `saved preference can be read back`() = runTest {
-        store.add("No respondas con estímulos vacíos.")
+        store.add("回答不要用空泛的鼓励")
 
         val rules = store.enabledPreferences().map { it.rule }
 
-        assertEquals(listOf("No respondas con estímulos vacíos."), rules)
+        assertEquals(listOf("回答不要用空泛的鼓励"), rules)
     }
 
     @Test
     fun `duplicate preference is not added twice`() = runTest {
-        val first = store.add("Hagamos un resumen de tres puntos")
-        val second = store.add("Hagamos un resumen de tres puntos")
+        val first = store.add("别列三点总结")
+        val second = store.add("别列三点总结")
 
         assertTrue(first)
-        assertFalse("La misma preferencia de oración no debe guardarse repetidamente", second)
+        assertFalse("同一句偏好不该重复存", second)
         assertEquals(1, store.enabledPreferences().size)
     }
 
     @Test
     fun `duplicate detection ignores whitespace and trailing punctuation`() = runTest {
-        store.add("No uses estímulos vacíos")
+        store.add("别用空泛鼓励")
 
-        val added = store.add("  No uses estímulos vacíos. ")
+        val added = store.add("  别用空泛鼓励。 ")
 
-        assertFalse("Si son iguales después de la normalización, no se deben agregar.", added)
+        assertFalse("归一化后相同就不该新增", added)
         assertEquals(1, store.enabledPreferences().size)
     }
 
     @Test
     fun `different preferences are both kept`() = runTest {
-        store.add("No respondas con estímulos vacíos.")
-        store.add("No termines con un resumen de tres puntos")
+        store.add("回答不要用空泛的鼓励")
+        store.add("不要在结尾列三点总结")
 
         assertEquals(2, store.enabledPreferences().size)
     }
 
     @Test
     fun `disabled preference is excluded from injection but kept in storage`() = runTest {
-        store.add("No uses estímulos vacíos")
+        store.add("别用空泛鼓励")
         val id = store.preferencesFlow.first().single().id
 
         store.setEnabled(id, false)
 
-        assertTrue("No se deben ingresar palabras de aviso después de la desactivación", store.enabledPreferences().isEmpty())
-        assertEquals("La desactivación no es la eliminación", 1, store.preferencesFlow.first().size)
+        assertTrue("停用后不该进提示词", store.enabledPreferences().isEmpty())
+        assertEquals("停用不是删除", 1, store.preferencesFlow.first().size)
     }
 
     @Test
     fun `re-enabling brings it back`() = runTest {
-        store.add("No uses estímulos vacíos")
+        store.add("别用空泛鼓励")
         val id = store.preferencesFlow.first().single().id
         store.setEnabled(id, false)
         store.setEnabled(id, true)
@@ -94,7 +94,7 @@ class PreferenceStoreTest {
 
     @Test
     fun `remove deletes the preference`() = runTest {
-        store.add("No uses estímulos vacíos")
+        store.add("别用空泛鼓励")
         val id = store.preferencesFlow.first().single().id
 
         store.remove(id)
@@ -110,11 +110,11 @@ class PreferenceStoreTest {
 
     @Test
     fun `source wording is preserved for traceability`() = runTest {
-        store.add("No respondas con estímulos vacíos.", source = "No me elogies de ahora en adelante, solo di palabras humanas.")
+        store.add("回答不要用空泛的鼓励", source = "以后别夸我，说人话就行")
 
         val saved = store.preferencesFlow.first().single()
 
-        assertEquals("No me elogies de ahora en adelante, solo di palabras humanas.", saved.source)
+        assertEquals("以后别夸我，说人话就行", saved.source)
     }
 
     @Test
@@ -129,8 +129,8 @@ class PreferenceStoreTest {
 
     @Test
     fun `enabled filter drops blank rules that slipped through`() = runTest {
-        // Las rutas normales no escribirán reglas vacías y aquí se simulan datos históricos sucios.
-        store.add("Preferencias efectivas")
+        // 正常路径不会写入空规则，这里模拟历史脏数据
+        store.add("有效偏好")
 
         assertTrue(store.enabledPreferences().all { it.rule.isNotBlank() })
     }

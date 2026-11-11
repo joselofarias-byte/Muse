@@ -7,17 +7,17 @@ import androidx.room.Query
 import io.zer0.muse.miniphone.data.db.entity.MpMomentCommentEntity
 import kotlinx.coroutines.flow.Flow
 
-/** Lectura y escritura de comentarios dinámicos. */
+/** 动态评论的读写。 */
 @Dao
 interface MpMomentCommentDao {
     @Query("SELECT * FROM mp_moment_comment WHERE momentId = :momentId ORDER BY createdAt ASC, id ASC")
     fun observeComments(momentId: String): Flow<List<MpMomentCommentEntity>>
 
-    /** Obtener todos los comentarios de una publicación a la vez:No es necesario abrir un flujo de observación cuando solo necesita leerlo una vez. */
+    /** 一次性取某条动态的全部评论:只需要读一眼时不必开一条观察流。 */
     @Query("SELECT * FROM mp_moment_comment WHERE momentId = :momentId ORDER BY createdAt ASC, id ASC")
     suspend fun commentsOf(momentId: String): List<MpMomentCommentEntity>
 
-    /** Un lote de comentarios dinámicos.:Solo puedes consultar este tiempo en una página de la línea de tiempo.,Luego, agrúpelos dinámicamente en la memoria. */
+    /** 一批动态的评论:时间线一页只查这一次,再在内存里按动态归组。 */
     @Query("SELECT * FROM mp_moment_comment WHERE momentId IN (:momentIds) ORDER BY createdAt ASC, id ASC")
     suspend fun commentsOfMomentIds(momentIds: List<String>): List<MpMomentCommentEntity>
 
@@ -30,7 +30,7 @@ interface MpMomentCommentDao {
     @Query("DELETE FROM mp_moment_comment WHERE id = :commentId")
     suspend fun delete(commentId: String)
 
-    /** Eliminar un lote a la vez:Al eliminar un comentario,Las respuestas que cuelgan debajo también deberían seguir. */
+    /** 一次删一批:删一条评论时,它下面挂着的回复也要跟着走。 */
     @Query("DELETE FROM mp_moment_comment WHERE id IN (:commentIds)")
     suspend fun deleteByIds(commentIds: List<String>)
 

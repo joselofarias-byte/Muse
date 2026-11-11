@@ -12,35 +12,35 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 
 /**
- * v1.134 P1-5: tarjeta de tarea Coordinator — Estado de la tarjeta de tareas y lógica de reintento extraída de ChatViewModel.
+ * v1.134 P1-5: 任务卡 Coordinator — 从 ChatViewModel 抽离的任务卡状态与重试逻辑。
  *
- * Responsabilidades:
- *  - [updateTaskCardPhase]: Actualizar etapa de tarjeta de tarea(PLANNING / EXECUTING / DONE)
- *  - [updateTaskCardStep]: Actualizar con precisión un solo TaskStep,Evite la reconstrucción completa de la tabla
- *  - [toggleTaskCardExpand]: Alternar expansión/contraer tarjeta de tareas
- *  - [toggleTaskStepPause]: Pausar/reanudar un paso de herramienta que aún no se ha iniciado
- *  - [toggleTaskCardPause]: Pausar/reanudar todos los pasos de la herramienta en la tarjeta de tareas que aún no se han iniciado
- *  - [retryFailedStep]: Reintentar pasos fallidos en una tarjeta de tarea(El usuario activa activamente)
- *  - [isToolResultSuccess]: Determinación del éxito/fracaso del resultado de la ejecución de la herramienta
+ * 职责:
+ *  - [updateTaskCardPhase]: 更新任务卡阶段(PLANNING / EXECUTING / DONE)
+ *  - [updateTaskCardStep]: 精准更新单个 TaskStep,避免全表重建
+ *  - [toggleTaskCardExpand]: 切换任务卡展开 / 折叠
+ *  - [toggleTaskStepPause]: 暂停 / 恢复一个尚未开始的工具步骤
+ *  - [toggleTaskCardPause]: 暂停 / 恢复任务卡中所有尚未开始的工具步骤
+ *  - [retryFailedStep]: 重试任务卡中失败的步骤(用户主动触发)
+ *  - [isToolResultSuccess]: 工具执行结果成功 / 失败判定
  *
- * descripción del diseño:
- *  - Mismo origen que ChatStreamCoordinator / ChatMiscCoordinator,Todo pasó [ChatStateAccessor] leer y escribir state,
- *    No hay dependencia inversa de ChatViewModel.
- *  - launchStream El tema permanece en ChatViewModel(Debido a la captura de una gran cantidad de variables de cierre.,El riesgo de retirada total y regresión es alto.,
- *    prensa project_memory Lessons Learned),Sus llamadas internas a updateTaskCardPhase/updateTaskCardStep
- *    Reenviado a este Coordinador a través de ChatViewModel.
+ * 设计说明:
+ *  - 与 ChatStreamCoordinator / ChatMiscCoordinator 同源,均通过 [ChatStateAccessor] 读写 state,
+ *    不反向依赖 ChatViewModel。
+ *  - launchStream 主体仍保留在 ChatViewModel(因捕获大量闭包变量,完全抽离回归风险高,
+ *    按 project_memory Lessons Learned),其内部对 updateTaskCardPhase / updateTaskCardStep 的调用
+ *    通过 ChatViewModel 转发到本 Coordinator。
  */
 class ChatTaskCardCoordinator(
     private val accessor: ChatStateAccessor,
     private val toolRegistry: ToolRegistry,
-    /** Phase 3: Tiempo de espera de ejecución de reintento de un solo paso(Predeterminado 2 minutos,Alinear con el tiempo de espera de ejecución de la herramienta);Las pruebas pueden inyectar valores más cortos. */
+    /** Phase 3: 单步重试执行超时(默认 2 分钟,与工具执行超时对齐);测试可注入更短值。 */
     private val retryTimeoutMs: Long = DEFAULT_RETRY_TIMEOUT_MS,
 ) {
     private val routeGuard = io.zer0.muse.tools.ToolRouteExecutionGuard(toolRegistry)
 
-    /** Actualizar etapa de tarjeta de tarea(PLANNING / EXECUTING / DONE). */
+    /** 更新任务卡阶段(PLANNING / EXECUTING / DONE)。 */
     fun updateTaskCardPhase(taskCardId: String?, phase: TaskCardPhase) {
-        // v1.0.53: send_sticker-only La escena no crea una tarjeta.,TaskCardId se puede dejar vacío y omitir directamente.
+        // v1.0.53: send_sticker-only 场景不建卡,可空 taskCardId 直接跳过
         if (taskCardId == null) return
         accessor.update { state ->
             val card = state.taskCards[taskCardId] ?: return@update state
@@ -49,20 +49,20 @@ class ChatTaskCardCoordinator(
     }
 
     /**
-     * v1.98 (P-TOOL): Actualizar con precisión un solo TaskStep,Evite la reconstrucción completa de la tabla mapValues ​​+ mapIndexed.
+     * v1.98 (P-TOOL): 精准更新单个 TaskStep,避免 mapValues + mapIndexed 全表重建。
      *
-     * La implementación anterior recorre todo el mapa de taskCards + la lista de pasos de cada tarjeta cada vez que cambia el estado de los pasos de la herramienta.,
-     * Las devoluciones de llamadas de alta frecuencia de onProgress provocan tormentas de reorganización de Compose. La nueva implementación localiza directamente por clave + actualizaciones por índice.
+     * 旧实现每次工具步骤状态变更都遍历整个 taskCards map + 每个 card 的 steps 列表,
+     * 高频 onProgress 回调下导致 Compose 重组风暴。新实现直接按 key 定位 + 按 index 更新。
      */
     fun updateTaskCardStep(taskCardId: String?, stepIndex: Int, transform: (TaskStep) -> TaskStep) {
-        // v1.0.53: send_sticker-only La escena no crea una tarjeta.,TaskCardId se puede dejar vacío y omitir directamente.
+        // v1.0.53: send_sticker-only 场景不建卡,可空 taskCardId 直接跳过
         if (taskCardId == null) return
         accessor.update { state ->
             val card = state.taskCards[taskCardId] ?: return@update state
             if (stepIndex !in card.steps.indices) return@update state
             val newSteps = card.steps.toMutableList()
             newSteps[stepIndex] = transform(newSteps[stepIndex])
-            // v1.0.47 P8-3: Expandir automáticamente cuando falla la herramienta TaskCard,Permitir que los usuarios vean los detalles del error inmediatamente
+            // v1.0.47 P8-3: 工具失败时自动展开 TaskCard,让用户立即看到错误详情
             val shouldAutoExpand = newSteps[stepIndex].status == TaskStepStatus.FAILED
             state.copy(
                 taskCards = state.taskCards + (
@@ -75,7 +75,7 @@ class ChatTaskCardCoordinator(
         }
     }
 
-    /** Pasos de actualización por ID de llamada_herramienta estable,Evite que el índice original se desplace después del filtrado silencioso de la herramienta. */
+    /** 按稳定 tool_call id 更新步骤,避免静默工具过滤后原始索引发生偏移。 */
     fun updateTaskCardStepByToolCallId(taskCardId: String?, toolCallId: String, transform: (TaskStep) -> TaskStep) {
         if (taskCardId == null || toolCallId.isBlank()) return
         accessor.update { state ->
@@ -88,7 +88,7 @@ class ChatTaskCardCoordinator(
         }
     }
 
-    /** Leer la intención de pausa del paso actual,Para uso en puertas de seguridad dinámicas antes de la ejecución de la herramienta. */
+    /** 读取当前步骤的暂停意图,供工具执行前的动态安全闸门使用。 */
     fun isTaskStepPauseRequested(taskCardId: String?, toolCallId: String, fallbackIndex: Int = -1): Boolean {
         val steps = taskCardId?.let { accessor.snapshot.taskCards[it]?.steps }
         val step =
@@ -103,10 +103,10 @@ class ChatTaskCardCoordinator(
     }
 
     /**
-     * Reclame atómicamente un paso pendiente y escriba EN EJECUCIÓN.
+     * 原子地认领一个待执行步骤并写入 RUNNING。
      *
-     * El botón de pausa puede llegar al mismo tiempo que el hilo de ejecución.;No puedes simplemente leer la pausa solicitada primero y luego escribirla por separado. RUNNING,
-     * De lo contrario existe“El usuario acaba de hacer clic en pausa pero la herramienta aún está liberada.”ventana. Devolver falso indica que el paso se ha pausado.
+     * 暂停按钮可能与执行线程在同一时间到达;不能只先读 pauseRequested 再单独写 RUNNING,
+     * 否则存在“用户刚点暂停但工具仍被放行”的窗口。返回 false 表示该步骤已被暂停。
      */
     fun markTaskStepRunningIfNotPaused(
         taskCardId: String?,
@@ -142,7 +142,7 @@ class ChatTaskCardCoordinator(
         return marked
     }
 
-    /** Alternar el estado expandido/contraído de la tarjeta de tareas. */
+    /** 切换任务卡展开 / 折叠状态。 */
     fun toggleTaskCardExpand(taskCardId: String) {
         accessor.update { state ->
             val card = state.taskCards[taskCardId] ?: return@update state
@@ -151,10 +151,10 @@ class ChatTaskCardCoordinator(
     }
 
     /**
-     * Cambie un paso de herramienta que aún no se haya iniciado.
+     * 切换一个尚未开始的工具步骤。
      *
-     * Las herramientas en funcionamiento no admiten el aborto forzado:Una herramienta de efectos secundarios desconocida puede haber cruzado el límite de la irreversibilidad,
-     * Por lo tanto, sólo se permite el paso PENDIENTE para establecer la intención de pausa.,por [ToolOrchestrator] Lea nuevamente antes de ejecutar.
+     * 运行中的工具不支持强制中止:未知副作用工具可能已越过不可逆边界,
+     * 因此这里只允许 PENDING 步骤设置暂停意图,由 [ToolOrchestrator] 在执行前再次读取。
      */
     fun toggleTaskStepPause(taskCardId: String, stepId: String) {
         accessor.update { state ->
@@ -173,9 +173,9 @@ class ChatTaskCardCoordinator(
     }
 
     /**
-     * Alterna la intención de pausa de todos los pasos de la tarjeta de tareas que aún no se han iniciado.
+     * 切换任务卡中所有尚未开始步骤的暂停意图。
      *
-     * EN EJECUCIÓN / Los pasos completados permanecen en su estado original,prevenir"Toda la tarjeta está suspendida."Malinterpretado como un efecto secundario externo de la matanza que se realiza.
+     * 已 RUNNING / 已完成步骤保持原状态,防止"整卡暂停"被误解为强杀正在执行的外部副作用。
      */
     fun toggleTaskCardPause(taskCardId: String) {
         accessor.update { state ->
@@ -195,18 +195,18 @@ class ChatTaskCardCoordinator(
     }
 
     /**
-     * Error al reintentar la tarjeta de tarea/Paso de tiempo de espera.
-     * - stepId = "ALL_FAILED":Reintentar todos los pasos reintentables(FAILED / TIMED_OUT)
-     * - stepId = ID de paso específico: reintentar un único paso reintentable
+     * 重试任务卡中失败/超时的步骤。
+     * - stepId = "ALL_FAILED":重试全部可重试步骤(FAILED / TIMED_OUT)
+     * - stepId = 具体 step id:重试单个可重试步骤
      *
-     * Phase 3 Mejora de la confiabilidad:
-     *  - Reintento de un solo paso [retryTimeoutMs] restricción,Tiempo de espera para escribir de nuevo [TaskStepStatus.TIMED_OUT];
-     *  - Cancelar(CancellationException)no ser tragado — Primero escribe los pasos como [TaskStepStatus.CANCELLED]
-     *    Tíralo hacia arriba otra vez,Evite que la interfaz de usuario se quede atascada en EJECUCIÓN para siempre.
+     * Phase 3 可靠性增强:
+     *  - 单步重试受 [retryTimeoutMs] 约束,超时写回 [TaskStepStatus.TIMED_OUT];
+     *  - 取消(CancellationException)不被吞掉 — 先把步骤写成 [TaskStepStatus.CANCELLED]
+     *    再向上抛出,避免 UI 永远停在 RUNNING。
      *
-     * Nota:Reintentar solo actualiza el estado de la interfaz de usuario(RUNNING → SUCCESS / FAILED / TIMED_OUT / CANCELLED),
-     * No volver a solicitar LLM(Los parámetros de la herramienta se conservan en pasos.).
-     * Si necesita dejar que LLM continúe en función de nuevos resultados,Los usuarios deben regenerar manualmente.
+     * 注意:重试仅更新 UI 状态(RUNNING → SUCCESS / FAILED / TIMED_OUT / CANCELLED),
+     * 不重新请求 LLM(工具参数已在步骤中保留)。
+     * 若需要让 LLM 基于新结果继续,用户应手动重生成。
      */
     fun retryFailedStep(taskCardId: String, stepId: String) {
         val taskCard = accessor.snapshot.taskCards[taskCardId] ?: return
@@ -218,7 +218,7 @@ class ChatTaskCardCoordinator(
             }
             if (stepsToUpdate.isEmpty()) return@launch
 
-            // marcado como RUNNING
+            // 标记为 RUNNING
             accessor.update {
                 it.copy(
                     taskCards = it.taskCards.mapValues { (k, v) ->
@@ -246,22 +246,23 @@ class ChatTaskCardCoordinator(
                 )
             }
 
-            // Vuelva a ejecutar uno por uno — Reparación de auditoría (2.6): Priorizar lo completo rawArgs(La implementación original sólo trunca 200 caracteres.
-            // detail,Se producirá un error al volver a intentarlo después de que se trunquen los parámetros complejos de la herramienta.);rawArgs Volver al detalle sólo cuando esté vacío.
+            // 逐个重新执行 — 审计修复 (2.6): 优先用完整 rawArgs(原实现只有截断 200 字符的
+            // detail,复杂工具参数被截断后重试必失败);rawArgs 为空时才回退 detail。
             stepsToUpdate.forEach { step ->
                 val startedAt = System.currentTimeMillis()
-                // v2.6.2(Auditoría de herramientas): Los reintentos automáticos omiten la aprobación/Riesgos de los permisos —— Ajuste la ruta de reintento original directamente
-                // routeGuard.executeFromJson, sin pasar ToolPermissionResolver / ALWAYS_DENY /
-                // Tarjeta/gancho de aprobación. Para las herramientas de efectos secundarios que han sido rechazadas por el usuario durante la aprobación, haga clic en“Inténtalo de nuevo”se disparará de nuevo.
-                // Agregue una puerta conservadora aquí: reintente automáticamente solo herramientas que no sean ALTAS;HIGH Herramientas (send_/delete_/browser_/ui_ etc)
-                // Ya no se reenviará automáticamente, solicitando al usuario que reinicie (siguiendo el enlace de aprobación normal).
+                // v2.6.2（工具审计）: 自动重试存在绕过审批/权限的风险 —— 原有重试路径直接调
+                // routeGuard.executeFromJson，不经过 ToolPermissionResolver / ALWAYS_DENY /
+                // 审批卡 / hook。用户在审批时拒绝过的副作用工具，点“重试”会再次触发。
+                // 这里加保守闸：只自动重试非 HIGH 工具；HIGH 工具（send_/delete_/browser_/ui_ 等）
+                // 不再自动重发，提示用户重新发起（走正常审批链路）。
                 val retryRisk = io.zer0.muse.tools.ToolPermissionResolver.riskLevelFor(step.title)
                 if (retryRisk == io.zer0.muse.tools.ToolRiskLevel.HIGH) {
                     writeRetriedStep(
                         taskCardId = taskCardId,
                         stepId = step.id,
                         status = TaskStepStatus.FAILED,
-                        result = "[Necesito manual] Herramientas de alto riesgo ${step.title} No lo vuelve a intentar automáticamente. Vuelva a intentarlo para confirmar.",
+                        result = "[Acción manual] La herramienta de alto riesgo ${step.title} no se reintenta automáticamente. " +
+                            "Vuelve a solicitarla para confirmar su ejecución.",
                         startedAt = startedAt,
                         finishedAt = System.currentTimeMillis(),
                         autoExpand = true,
@@ -269,8 +270,8 @@ class ChatTaskCardCoordinator(
                     return@forEach
                 }
                 val retryArgs = step.rawArgs.ifBlank { step.detail }
-                // Phase 3: reintentar establecer withTimeoutOrNull;resultOf Garantizado para no tragar. CancellationException,
-                // Aquí nuevamente captura explícita para distinguir."tiempo de espera(null)"con"Cancelación externa(tirar)".
+                // Phase 3: 重试套 withTimeoutOrNull;resultOf 已保证不吞 CancellationException,
+                // 这里再显式 catch 以区分"超时(null)"与"外部取消(抛出)"。
                 val retryResult: String? = try {
                     withTimeoutOrNull(retryTimeoutMs) {
                         when (
@@ -279,17 +280,17 @@ class ChatTaskCardCoordinator(
                             }
                         ) {
                             is io.zer0.common.Result.Success -> r.data
-                            is io.zer0.common.Result.Error -> "Reintentar excepción de ejecución: ${r.message}"
+                            is io.zer0.common.Result.Error -> "Error: no se pudo reintentar la ejecución: ${r.message}"
                         }
                     }
                 } catch (ce: CancellationException) {
-                    // Las cancelaciones deben propagarse hacia arriba.(La persona que llama es responsable de cerrar),Pero primero escribe los pasos en el estado final antes de tirarlos.
+                    // 取消必须向上传播(调用方负责收尾),但先把步骤写成终态再抛。
                     withContext(NonCancellable) {
                         writeRetriedStep(
                             taskCardId = taskCardId,
                             stepId = step.id,
                             status = TaskStepStatus.CANCELLED,
-                            result = "[Cancelar] Inténtalo de nuevo ${step.title} Cancelado",
+                            result = "[Cancelado] Se ha cancelado el reintento de ${step.title}",
                             startedAt = startedAt,
                             finishedAt = System.currentTimeMillis(),
                             autoExpand = false,
@@ -301,7 +302,7 @@ class ChatTaskCardCoordinator(
 
                 val timedOut = retryResult == null
                 val toolResult = retryResult
-                    ?: "[tiempo de espera] Inténtalo de nuevo ${step.title} exceder ${retryTimeoutMs / 1000} Sin respuesta por segundos,terminado"
+                    ?: "[Tiempo agotado] Se ha detenido el reintento de ${step.title} tras ${retryTimeoutMs / 1000} segundos sin respuesta"
                 val isSuccess = !timedOut && isToolResultSuccess(toolResult)
                 writeRetriedStep(
                     taskCardId = taskCardId,
@@ -318,13 +319,13 @@ class ChatTaskCardCoordinator(
                 )
             }
 
-            // Reintento completado,volver atrás DONE
+            // 重试完毕,切回 DONE
             updateTaskCardPhase(taskCardId, TaskCardPhase.DONE)
         }
     }
 
     /**
-     * Phase 3: Escriba el estado final del reintento en el paso especificado según el estado(Tarjeta de expansión automática opcional para mostrar detalles de fallas).
+     * Phase 3: 把重试终态按状态写回指定步骤(可选自动展开卡片展示失败详情)。
      */
     private fun writeRetriedStep(
         taskCardId: String,
@@ -339,7 +340,7 @@ class ChatTaskCardCoordinator(
             it.copy(
                 taskCards = it.taskCards.mapValues { (k, v) ->
                     if (k == taskCardId) {
-                        // v1.0.47 P8-3: Expandir automáticamente cuando falla la herramienta TaskCard,Permitir que los usuarios vean los detalles del error inmediatamente
+                        // v1.0.47 P8-3: 工具失败时自动展开 TaskCard,让用户立即看到错误详情
                         v.copy(
                             isExpanded = if (autoExpand) true else v.isExpanded,
                             steps = v.steps.map { s ->
@@ -364,13 +365,13 @@ class ChatTaskCardCoordinator(
     }
 
     /**
-     * Determinar si el resultado de la ejecución de la herramienta es exitoso(P2-22:Delegado árbitro compartido [io.zer0.muse.tools.ToolResultJudge],
-     * con subagente/tareas programadas/Las pruebas comparten la misma implementación.,Eliminar la deriva del juicio de subcadenas chinas).
+     * 判定工具执行结果是否成功(P2-22:委托共享判定器 [io.zer0.muse.tools.ToolResultJudge],
+     * 与子代理/定时任务/测试共用同一实现,消除中文子串判定漂移)。
      */
     fun isToolResultSuccess(result: String): Boolean = io.zer0.muse.tools.ToolResultJudge.isSuccess(result)
 
     private companion object {
-        /** Phase 3: Tiempo de espera de ejecución de reintento de un solo paso(2 minutos,Alineación con el tiempo de espera de la herramienta de ToolOrchestrator). */
+        /** Phase 3: 单步重试执行超时(2 分钟,与 ToolOrchestrator 的工具超时对齐)。 */
         const val DEFAULT_RETRY_TIMEOUT_MS = 120_000L
     }
 }

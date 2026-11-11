@@ -4,40 +4,40 @@ import io.zer0.memory.compile.CompiledSectionHit
 import io.zer0.memory.fact.FactStore
 
 /**
- * search_memory Herramientas.
+ * search_memory 工具。
  *
- * Deje que LLM recupere activamente la memoria a largo plazo. apoyo:
- *  - Búsqueda de texto completo(FTS4 + CJK 2-gram,dos etapas:Prioridad precisa + cualquier acierto está garantizado)
- *  - Etiquetar coincidencia exacta(OR lógica,Orden descendente por número de coincidencias)
- *  - Filtro de rango de fechas(ISO 8601 cuerda,Opcional)
- *  - Volver al resumen compilado cuando no se puede encontrar la tabla de hechos(Aquellos párrafos de prosa en los que se inyectan palabras clave.)
+ * 让 LLM 主动检索长期记忆。支持:
+ *  - 全文搜索(FTS4 + CJK 2-gram,两段式:精确优先 + 任一命中兜底)
+ *  - 标签精确匹配(OR 逻辑,按匹配数降序)
+ *  - 日期范围过滤(ISO 8601 字符串,可选)
+ *  - 事实表查不到时回落到编译摘要(注入提示词的那几段散文)
  */
 object SearchMemoryTool {
 
     /**
-     * Puerto de búsqueda de resúmenes compilados.
+     * 编译摘要检索口。
      *
-     * facts La tabla contiene solo hechos estructurados.,El párrafo HOY/SEMANA/LARGO PLAZO inyectado con palabras clave es la prosa resumida por LLM,
-     * El texto original a menudo no se encuentra en los hechos. No pueden considerarse como“memoria programada”usar,pero de hecho“Visible para los usuarios”,
-     * Por lo tanto, sólo retrocede cuando la búsqueda de hechos está vacía.,E indicar claramente la fuente en los resultados.
+     * facts 表只装了结构化事实,而注入提示词的 TODAY/WEEK/LONGTERM 段是 LLM 归纳的散文,
+     * 原文常常根本不在 facts 里。它们不能当作“编排好的记忆”用,但确实“用户看得见”,
+     * 所以只有 facts 检索全空时才回落过去,并在结果里把来源标清楚。
      */
     fun interface CompiledSummarySearch {
         /**
-         * @param query Cadena de consulta del usuario
-         * @param scope alcance de la memoria
-         * @param spaceId espacio de memoria
-         * @param limit Número máximo de artículos devueltos
+         * @param query 用户查询串
+         * @param scope 记忆作用域
+         * @param spaceId 记忆空间
+         * @param limit 最多返回几条
          */
         suspend fun search(query: String, scope: String, spaceId: String, limit: Int): List<CompiledSectionHit>
     }
 
     fun toolDef() = ToolRegistry.ToolDef(
         name = "search_memory",
-        description = "Busque en la memoria a largo plazo del usuario datos sobre él. Cuando la respuesta puede depender de sus preferencias, experiencias, identidad, objetivos." +
-            "O usado en conversaciones anteriores. Separe varias palabras clave con espacios,Presionará primero“Todos los éxitos”Presione nuevamente“cualquier golpe”Dos rondas de búsquedas;" +
-            "Cada resultado viene con fact id,Se puede pasar directamente a delete_memory." +
-            "Es posible que algunos recuerdos tempranos hayan salido de la recuperación automática según la frecuencia de uso.(No más inyección automática de contexto),Una búsqueda explícita aún puede recuperarlos.;" +
-            "Entonces, si no puede encontrarlo, no concluya directamente que no está en la memoria.",
+        description = "在用户长期记忆里搜索关于他的事实。当答案可能取决于他的偏好、经历、身份、目标" +
+            "或早前对话时使用。多条关键词用空格分开,会先按“全部命中”再按“任一命中”两轮检索;" +
+            "每条结果都带 fact id,可直接传给 delete_memory。" +
+            "部分早期记忆可能已按使用频率退出自动召回(不再自动注入上下文),显式检索仍能找回它们;" +
+            "所以搜不到时不要直接断定记忆里没有。",
         parameters = mapOf(
             "query" to "Required. Keywords to search for in memory facts.",
             "tags" to "Optional. Comma-separated tag names (OR logic).",
@@ -51,16 +51,15 @@ object SearchMemoryTool {
         riskLevel = ToolRiskLevel.SAFE,
     )
 
-    suspend fun execute(args: Map<String, String>, factStore: FactStore): String =
-        executeInternal(args, factStore, null, null)
+    suspend fun execute(args: Map<String, String>, factStore: FactStore): String = executeInternal(args, factStore, null, null)
 
     suspend fun execute(args: Map<String, String>, factStore: FactStore, executionContext: ToolExecutionContext): String =
         executeInternal(args, factStore, executionContext, null)
 
     /**
-     * Entrada de ejecución con reserva de resumen de compilación.
+     * 带编译摘要回落的执行入口。
      *
-     * @param compiledSearch Puerto de búsqueda de resumen cuando la tabla de hechos está completamente vacía;Cuando es nulo, no se realiza ninguna reserva.
+     * @param compiledSearch 事实表全空时的摘要检索口;为 null 时不做回落
      */
     suspend fun execute(
         args: Map<String, String>,
@@ -121,7 +120,7 @@ object SearchMemoryTool {
         }.trimEnd()
     }
 
-    /** Dependiendo de si existe un contexto/etiqueta de ejecución, se realiza una búsqueda de etiquetas o una búsqueda de texto completo en dos etapas, respectivamente. */
+    /** 按有无执行上下文 / 标签分别走标签检索或两段式全文检索。 */
     private suspend fun searchFacts(
         factStore: FactStore,
         query: String,
@@ -148,10 +147,10 @@ object SearchMemoryTool {
     }
 
     /**
-     * Consulte el resumen compilado cuando la tabla de hechos esté completamente vacía.
+     * 事实表全空时查编译摘要。
      *
-     * Sin contexto de ejecución no hay alcance,No adivines el valor predeterminado:Ese tipo de ruta de llamadas preferiría no retroceder.,
-     * No lea los resúmenes de otras personas entre los asistentes.
+     * 没有执行上下文就没有作用域,不猜默认值:那种调用路径宁可不回落,
+     * 也不要跨助手把别人的摘要读出来。
      */
     private suspend fun searchCompiledSummary(
         query: String,
@@ -164,12 +163,12 @@ object SearchMemoryTool {
         return hits.take(limit)
     }
 
-    /** Representación de visitas resumidas:Marcar artículo por artículo“compilar resumen”con el segmento,Distinguirse claramente de los hechos. */
+    /** 摘要命中的渲染:逐条标出“编译摘要”与所在段,与事实行明确区分。 */
     private fun renderCompiledHits(hits: List<CompiledSectionHit>): String = buildString {
-        appendLine("De hecho, no hay coincidencia en la memoria.;Lo siguiente es un extracto del resumen compilado.(La fuente está marcada como“compilar resumen·Nombre de la sección”,No es una entrada en la tabla de hechos.,No fact id):")
+        appendLine("事实记忆里没有匹配项;以下内容摘自编译摘要(来源标注为“编译摘要·段名”,不是 facts 表里的条目,没有 fact id):")
         appendLine()
         hits.forEachIndexed { index, hit ->
-            appendLine("${index + 1}. [compilar resumen·${hit.sectionKey}] ${hit.text}")
+            appendLine("${index + 1}. [编译摘要·${hit.sectionKey}] ${hit.text}")
             appendLine()
         }
     }.trimEnd()

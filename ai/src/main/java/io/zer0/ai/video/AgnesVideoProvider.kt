@@ -29,36 +29,36 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
 /**
- * v1.137: Agnes AI Implementación de Proveedor de generación de video.
+ * v1.137: Agnes AI 视频生成 Provider 实现。
  *
- * Puntos de implementación:
+ * 实现要点:
  *
- * punto final:
- *  - Enviar: POST {baseUrl}/videos        (baseUrl Predeterminado https://apihub.agnes-ai.com/v1)
- *  - Consulta: GET  {rootBase}/agnesapi?video_id=X&model_name=Y
- *          (rootBase para eliminar la raíz del sufijo /v1,Eso es https://apihub.agnes-ai.com)
+ * 端点:
+ *  - 提交: POST {baseUrl}/videos        (baseUrl 默认 https://apihub.agnes-ai.com/v1)
+ *  - 查询: GET  {rootBase}/agnesapi?video_id=X&model_name=Y
+ *          (rootBase 为剥离 /v1 后缀的根,即 https://apihub.agnes-ai.com)
  *
- * Certificación: Bearer Token.
+ * 认证: Bearer Token。
  *
- * modo:
- *  - text2video:        Sin imagen de referencia
- *  - image2video:       Imagen de referencia única(image campo)
- *  - multiframe2video:  2+ Imagen de referencia(extra_body.image matriz)
+ * 模式:
+ *  - text2video:        无参考图
+ *  - image2video:       单张参考图(image 字段)
+ *  - multiframe2video:  2+ 张参考图(extra_body.image 数组)
  *
- * Restricciones de número de fotogramas([resolveNumFrames]):
- *  - num_frames debe estar satisfecho 8n+1,alcance [81, 441](corresponder 3-18s @ 1-60fps)
- *  - Si los numFrames pasados por la persona que llama no cumplen con las restricciones,Se corregirá automáticamente al valor legal más cercano
+ * 帧数约束([resolveNumFrames]):
+ *  - num_frames 必须满足 8n+1,范围 [81, 441](对应 3-18s @ 1-60fps)
+ *  - 调用方传入的 numFrames 若不满足约束,会自动校正到最近的合法值
  *
- * mapeo estatal([mapStatus]):
+ * 状态映射([mapStatus]):
  *  - failed / error / cancelled / canceled → [PollStatus.FAILED]
  *  - completed / success / succeeded / done → [PollStatus.SUCCESS]
- *  - Otros → [PollStatus.PENDING]
+ *  - 其他 → [PollStatus.PENDING]
  *
- * Extracción de resultados([extractVideoUrl]):
- *  - Pruebe por turno remixed_from_video_id / video_url / url / output_url campo
- *  - Compatible con matrices de datos anidadas
+ * 结果提取([extractVideoUrl]):
+ *  - 依次尝试 remixed_from_video_id / video_url / url / output_url 字段
+ *  - 兼容嵌套 data 数组
  *
- * @param client OkHttp cliente(Inyectado por Koin named("chat"))
+ * @param client OkHttp 客户端(由 Koin 注入 named("chat"))
  */
 class AgnesVideoProvider(
     private val client: OkHttpClient,
@@ -71,25 +71,25 @@ class AgnesVideoProvider(
     private val json = Json { ignoreUnknownKeys = true }
 
     /**
-     * Contexto almacenado en caché por taskId(poll cuando sea necesario apiKey / modelName).
+     * 按 taskId 缓存的上下文(poll 时需要 apiKey / modelName)。
      *
-     * key = submit regresó taskId,value = La apiKey de la tarea y el nombre del modelo utilizado al enviar.
-     * El estado final de la tarea es seguido por [VideoGenerationService] Limpiando la lógica(aqui solo put,No proactivo remove,
-     * Porque el mismo taskId no se reutilizará,El número de entradas está limitado.).
+     * key = submit 返回的 taskId,value = 该任务的 apiKey 与提交时使用的模型名。
+     * 任务终态后由 [VideoGenerationService] 的清理逻辑兜底(此处仅 put,不主动 remove,
+     * 因为同一 taskId 不会被复用,条目数有界)。
      */
     private val taskContext = ConcurrentHashMap<String, TaskContext>()
 
     private data class TaskContext(val apiKey: String, val modelName: String, val baseUrl: String)
 
     /**
-     * Envíe una tarea de generación de video.
+     * 提交视频生成任务。
      *
-     * Según [VideoGenRequest.referenceImages] Modo de selección automática de cantidad:
-     *  - 0 zhang → text2video
-     *  - 1 zhang → image2video(image campo)
-     *  - 2+ zhang → multiframe2video(extra_body.image matriz)
+     * 根据 [VideoGenRequest.referenceImages] 数量自动选择模式:
+     *  - 0 张 → text2video
+     *  - 1 张 → image2video(image 字段)
+     *  - 2+ 张 → multiframe2video(extra_body.image 数组)
      */
-    /** R-TEST-20: Agnes Estructura del cuerpo de la solicitud de vídeo(puro DTO,Fácil de probar). */
+    /** R-TEST-20: Agnes 视频请求体构造(纯 DTO,便于测试)。 */
     internal fun buildRequestBody(request: VideoGenRequest, numFrames: Int): JsonObject {
         val images = request.referenceImages.filter { it.isNotBlank() }
         return buildJsonObject {
@@ -116,17 +116,17 @@ class AgnesVideoProvider(
     override suspend fun submit(request: VideoGenRequest): VideoSubmitResult = withContext(Dispatchers.IO) {
         resultOf {
             if (request.apiKey.isBlank()) {
-                error("Agnes API key esta vacio")
+                error("La clave API de Agnes está vacía")
             }
             if (request.prompt.isBlank()) {
-                error("Prompt esta vacio")
+                error("La descripción está vacía")
             }
 
             val model = request.model.ifBlank { DEFAULT_MODEL }
             val base = agnesV1Base(request.baseUrl)
             val url = "$base/videos"
 
-            // Corrija el número de fotograma al valor legal 8n+1
+            // 校正帧数到 8n+1 合法值
             val numFrames = resolveNumFrames(request.numFrames, request.frameRate, request.duration)
 
             val body = buildRequestBody(request, numFrames)
@@ -150,25 +150,25 @@ class AgnesVideoProvider(
                 if (!resp.isSuccessful) {
                     val apiMsg = parseApiErrorMessage(respBody)
                     error(
-                        "Agnes submit falló: HTTP ${resp.code}" +
+                        "Error al enviar la solicitud a Agnes: HTTP ${resp.code}" +
                             (apiMsg?.let { ": $it" }
                                 ?: ProviderError.safeErrorDetail(respBody)?.let { ": $it" }.orEmpty()),
                     )
                 }
                 val root = json.parseToJsonElement(respBody).jsonObject
-                // tener prioridad video_id,en segundo lugar task_id / id
+                // 优先取 video_id,其次 task_id / id
                 val taskId = root["video_id"]?.jsonPrimitive?.content
                     ?: root["task_id"]?.jsonPrimitive?.content
                     ?: root["id"]?.jsonPrimitive?.content
                     ?: error(
-                        "Agnes submit Falta respuesta video_id/task_id: " +
+                        "La respuesta de envío de Agnes no contiene video_id/task_id: " +
                             (ProviderError.safeErrorDetail(respBody) ?: "<empty>"),
                     )
 
-                // Cheque de devolución sincrónico:En algunos escenarios, el estado de finalización puede volver directamente al vídeo. URL
+                // 同步返回检查:部分场景下完成态可能直接返回视频 URL
                 val syncVideoUrl = extractVideoUrl(root)
                 if (syncVideoUrl != null) {
-                    Logger.i(TAG, "submit Sincronizar vídeo de regreso: taskId=$taskId")
+                    Logger.i(TAG, "submit 同步返回视频: taskId=$taskId")
                     return@use VideoSubmitResult(
                         taskId = taskId,
                         videoUrl = syncVideoUrl,
@@ -180,21 +180,21 @@ class AgnesVideoProvider(
                 taskContext[taskId] = TaskContext(
                     apiKey = request.apiKey,
                     modelName = model,
-                    // Reparación de auditoría (7.6): guardar baseUrl,poll Utilice el mismo punto final(Nombre de dominio predeterminado codificado en la encuesta original,
-                    // Agente autoconstruido de configuración de usuario/El envío se realizó correctamente durante la transferencia, pero el sondeo alcanzó el nombre de dominio predeterminado.,Las tareas nunca se pueden encontrar)
+                    // 审计修复 (7.6): 存 baseUrl,poll 用同一端点(原 poll 硬编码默认域名,
+                    // 用户配置自建代理/中转时提交成功但轮询打到默认域名,任务永远查不到)
                     baseUrl = agnesRootBase(request.baseUrl),
                 )
-                Logger.i(TAG, "submit éxito: taskId=$taskId")
+                Logger.i(TAG, "submit 成功: taskId=$taskId")
                 VideoSubmitResult(taskId = taskId, isAsync = true, modelName = model)
             }
         }.getOrThrow()
     }
 
     /**
-     * Consultar el estado de la tarea.
+     * 查询任务状态。
      *
      * GET {rootBase}/agnesapi?video_id=X&model_name=Y
-     * rootBase Elimine el sufijo /v1 de baseUrl.
+     * rootBase 为 baseUrl 剥离 /v1 后缀。
      */
     override suspend fun poll(taskId: String): VideoPollResult = withContext(Dispatchers.IO) {
         val r = resultOf {
@@ -204,7 +204,7 @@ class AgnesVideoProvider(
             if (apiKey.isBlank()) {
                 return@resultOf VideoPollResult(
                     status = PollStatus.FAILED,
-                    errorMessage = "Agnes poll desaparecido apiKey(taskId=$taskId, Se ha perdido el contexto de la tarea.)",
+                    errorMessage = "Falta apiKey al consultar la tarea de Agnes (taskId=$taskId, se ha perdido el contexto de la tarea)",
                 )
             }
 
@@ -224,10 +224,10 @@ class AgnesVideoProvider(
             exec(httpRequest).use { resp ->
                 val respBody = readBody(resp)
                 if (!resp.isSuccessful) {
-                    // HTTP Los errores no se juzgan directamente como fracasos.,Déjelo en manos del mecanismo de reintento de la capa superior.(Falló 5 veces seguidas)
+                    // HTTP 错误不直接判失败,交给上层重试机制处理(连续 5 次才失败)
                     return@use VideoPollResult(
                         status = PollStatus.PENDING,
-                        errorMessage = "Agnes poll HTTP ${resp.code}: $respBody",
+                        errorMessage = "Error HTTP al consultar Agnes: ${resp.code}: $respBody",
                     )
                 }
                 val root = json.parseToJsonElement(respBody).jsonObject
@@ -239,16 +239,16 @@ class AgnesVideoProvider(
                         val videoUrl = extractVideoUrl(root)
                             ?: return@use VideoPollResult(
                                 status = PollStatus.PENDING,
-                                errorMessage = "Agnes El estado es exitoso pero no se encontró ningún video. URL: $respBody",
+                                errorMessage = "Agnes indica que la tarea se completó, pero no se encontró la URL del vídeo: $respBody",
                             )
-                        // Limpiar el contexto después del éxito
+                        // 成功后清理上下文
                         taskContext.remove(taskId)
                         VideoPollResult(status = status, videoUrl = videoUrl)
                     }
                     PollStatus.FAILED -> {
                         val errMsg = root["error"]?.jsonObject?.get("message")?.jsonPrimitive?.content
                             ?: root["message"]?.jsonPrimitive?.content
-                            ?: "Agnes Falló la generación de video(status=$statusStr)"
+                            ?: "La generación de vídeo de Agnes falló (status=$statusStr)"
                         taskContext.remove(taskId)
                         VideoPollResult(status = status, errorMessage = errMsg)
                     }
@@ -260,25 +260,25 @@ class AgnesVideoProvider(
             is io.zer0.common.Result.Success -> r.data
             is io.zer0.common.Result.Error -> VideoPollResult(
                 status = PollStatus.PENDING,
-                errorMessage = "Agnes poll anormal: ${r.throwable?.message ?: r.throwable?.toString() ?: r.message}",
+                errorMessage = "Error al consultar la tarea de Agnes: ${r.throwable?.message ?: r.throwable?.toString() ?: r.message}",
             )
         }
     }
 
-    // ── Restricciones de número de fotogramas ─────────────────────────────────────────────────────────────
+    // ── 帧数约束 ─────────────────────────────────────────────────────────────
 
     /**
-     * Corregir numFrames al valor legal 8n+1,alcance [81, 441].
+     * 校正 numFrames 到合法的 8n+1 值,范围 [81, 441]。
      *
-     *  - Si el valor entrante es legal,Usar directamente
-     *  - En caso contrario, tome el más cercano. 8n+1,Si es menor que el límite inferior, tome el límite superior(81),Si es mayor que el límite superior, tome el límite superior(441)
+     *  - 若传入值已合法,直接使用
+     *  - 否则向下取最近的 8n+1,小于下限则取下限(81),大于上限则取上限(441)
      */
     private fun resolveNumFrames(numFrames: Int, frameRate: Int, duration: Int): Int {
-        // Si numFrames ya es válido 8n+1 y está dentro del rango,Usar directamente
+        // 若 numFrames 已是合法的 8n+1 且在范围内,直接用
         if (numFrames in MIN_FRAMES..MAX_FRAMES && (numFrames - 1) % 8 == 0) {
             return numFrames
         }
-        // De lo contrario presione duration * frameRate + 1 Deducir el número de fotograma de destino
+        // 否则按 duration * frameRate + 1 推导目标帧数
         val rate = if (frameRate in 1..60) frameRate else DEFAULT_FRAME_RATE
         val dur = if (duration in 3..18) duration else DEFAULT_DURATION
         val target = dur * rate + 1
@@ -286,18 +286,18 @@ class AgnesVideoProvider(
     }
 
     /**
-     * Sujete cualquier número de fotogramas al valor legal 8n+1 más cercano.
+     * 把任意帧数 clamp 到最近的合法 8n+1 值。
      */
     private fun clampToValidFrames(target: Int): Int {
         if (target <= MIN_FRAMES) return MIN_FRAMES
         if (target >= MAX_FRAMES) return MAX_FRAMES
-        // (n - 1) / 8 redondo,otra vez *8 + 1
+        // (n - 1) / 8 取整,再 *8 + 1
         val n = (target - 1) / 8
         val candidate = n * 8 + 1
         return if (candidate in MIN_FRAMES..MAX_FRAMES) candidate else MIN_FRAMES
     }
 
-    // ── mapeo estatal ─────────────────────────────────────────────────────────────
+    // ── 状态映射 ─────────────────────────────────────────────────────────────
 
     internal fun mapStatus(statusStr: String): PollStatus = when (statusStr) {
         "failed", "error", "cancelled", "canceled" -> PollStatus.FAILED
@@ -305,13 +305,13 @@ class AgnesVideoProvider(
         else -> PollStatus.PENDING
     }
 
-    // ── Análisis de respuesta ─────────────────────────────────────────────────────────────
+    // ── 响应解析 ─────────────────────────────────────────────────────────────
 
     /**
-     * Extraiga la URL del vídeo de la respuesta.
+     * 从响应中提取视频 URL。
      *
-     * Pruebe por turno: remixed_from_video_id / video_url / url / output_url
-     * Compatible con matrices de datos anidadas(búsqueda recursiva).
+     * 依次尝试: remixed_from_video_id / video_url / url / output_url
+     * 兼容嵌套 data 数组(递归查找)。
      */
     internal fun extractVideoUrl(root: JsonObject): String? {
         for (key in VIDEO_URL_KEYS) {
@@ -321,7 +321,7 @@ class AgnesVideoProvider(
                 if (s.startsWith("http://", true) || s.startsWith("https://", true)) return s
             }
         }
-        // Matriz de datos anidados
+        // 嵌套 data 数组
         val data = root["data"]
         if (data is JsonArray) {
             for (item in data) {
@@ -334,7 +334,7 @@ class AgnesVideoProvider(
     }
 
     /**
-     * Intente analizar la respuesta de error de Agnes {"error":{"message":"..."}} o {"message":"..."}.
+     * 尝试解析 Agnes 错误响应 {"error":{"message":"..."}} 或 {"message":"..."}。
      */
     internal fun parseApiErrorMessage(body: String): String? {
         if (body.isBlank()) return null
@@ -346,13 +346,13 @@ class AgnesVideoProvider(
         }.getOrNull()
     }
 
-    // ── URL Herramientas ─────────────────────────────────────────────────────────────
+    // ── URL 工具 ─────────────────────────────────────────────────────────────
 
     /**
-     * Normalice baseUrl para que se forme con el sufijo /v1.
-     *  - dejar en blanco → Predeterminado [DEFAULT_BASE_URL]
-     *  - Ya traído /v1 → Úselo como está
-     *  - sin /v1 → anexar /v1
+     * 把 baseUrl 规范化为带 /v1 后缀的形式。
+     *  - 留空 → 默认 [DEFAULT_BASE_URL]
+     *  - 已带 /v1 → 原样使用
+     *  - 不带 /v1 → 追加 /v1
      */
     internal fun agnesV1Base(baseUrl: String?): String {
         val base = baseUrl?.trim()?.trimEnd('/')?.ifBlank { DEFAULT_BASE_URL } ?: DEFAULT_BASE_URL
@@ -360,22 +360,22 @@ class AgnesVideoProvider(
     }
 
     /**
-     * Normalice baseUrl a la raíz con el sufijo /v1 eliminado.
-     * Se utiliza para consultar el punto final. /agnesapi(ruta raíz,no /v1).
+     * 把 baseUrl 规范化为剥离 /v1 后缀的根。
+     * 用于查询端点 /agnesapi(根路径,非 /v1)。
      */
     internal fun agnesRootBase(baseUrl: String?): String {
         return agnesV1Base(baseUrl).replace(Regex("/v1$", RegexOption.IGNORE_CASE), "")
     }
 
-    /** Codificación de valor de consulta de URL simple(Codificar solo caracteres especiales). */
+    /** 简易 URL query 值编码(仅编码特殊字符)。 */
     private fun urlEncode(value: String): String = java.net.URLEncoder.encode(value, "UTF-8")
 
-    // ── HTTP Herramientas(Consistente con KlingVideoProvider) ───────────────────────────────
+    // ── HTTP 工具(与 KlingVideoProvider 一致) ───────────────────────────────
 
     private fun readBody(resp: Response): String {
         val bytes = resp.body?.bytes() ?: return ""
         if (bytes.size > MAX_RESPONSE_BYTES) {
-            error("Agnes Respuesta demasiado grande: ${bytes.size} bytes")
+            error("La respuesta de Agnes es demasiado grande: ${bytes.size} bytes")
         }
         return String(bytes, Charsets.UTF_8)
     }
@@ -397,31 +397,31 @@ class AgnesVideoProvider(
     companion object {
         private const val TAG = "AgnesVideoProvider"
 
-        /** Provider Identificador único. */
+        /** Provider 唯一标识。 */
         const val PROVIDER_ID = "agnes"
 
-        /** Agnes API URL base predeterminada. */
+        /** Agnes API 默认基础 URL。 */
         const val DEFAULT_BASE_URL = "https://apihub.agnes-ai.com/v1"
 
-        /** Modelo de vídeo predeterminado. */
+        /** 默认视频模型。 */
         const val DEFAULT_MODEL = "agnes-video-v2.0"
 
-        /** Velocidad de fotogramas predeterminada. */
+        /** 默认帧率。 */
         private const val DEFAULT_FRAME_RATE = 24
 
-        /** Duración predeterminada(segundos). */
+        /** 默认时长(秒)。 */
         private const val DEFAULT_DURATION = 5
 
-        /** Velocidad de fotogramas mínima(8n+1,corresponder 3s@24fps). */
+        /** 帧数下限(8n+1,对应 3s@24fps)。 */
         private const val MIN_FRAMES = 81
 
-        /** Límite de velocidad de fotogramas(8n+1,corresponder 18s@24fps). */
+        /** 帧数上限(8n+1,对应 18s@24fps)。 */
         private const val MAX_FRAMES = 441
 
-        /** El tamaño máximo del cuerpo de respuesta es 1 MB. */
+        /** 响应体大小上限 1MB。 */
         private const val MAX_RESPONSE_BYTES = 1 * 1024 * 1024
 
-        /** Campo candidato de URL de resultado de vídeo(Ordenar por prioridad). */
+        /** 视频结果 URL 候选字段(按优先级排序)。 */
         private val VIDEO_URL_KEYS = listOf(
             "remixed_from_video_id",
             "video_url",

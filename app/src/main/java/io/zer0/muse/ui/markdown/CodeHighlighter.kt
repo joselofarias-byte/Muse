@@ -14,29 +14,29 @@ import io.zer0.muse.ui.theme.codeColors
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * Resaltado de código ligero(autoimplementable,No se introducen bibliotecas de resaltado de terceros).
+ * 轻量代码高亮(自实现,不引入第三方高亮库)。
  *
- * E6 Mejora: Conjunto de idiomas ampliado de 10 a 21 idiomas principales + resaltado de nivel de línea diferencial.
- * Idiomas soportados: kotlin / java / python / javascript / typescript / go / rust / shell /
- *           sql / json / xml(Predeterminado) / c / cpp / csharp / ruby / swift / php / dart /
+ * E6 升级: 语言集从 10 扩展至 21 主流语言 + diff 行级高亮。
+ * 支持语言: kotlin / java / python / javascript / typescript / go / rust / shell /
+ *           sql / json / xml(默认) / c / cpp / csharp / ruby / swift / php / dart /
  *           html / css / yaml / diff
- * Resaltar dimensiones:
- *  - Palabras clave(keyword): Negrita + azul violeta
- *  - cuerda(string): verde
- *  - Comentario(comment): gris cursiva
- *  - numeros(number): naranja
- *  - anotación/decorador(annotation): amarillo
- *  - diff(diff): coloración a nivel de fila — hunk Cabeza azul / Agregar fila verde / Eliminar fila roja(Con fondo de fila translúcido.)
+ * 高亮维度:
+ *  - 关键字(keyword): 粗体 + 蓝紫
+ *  - 字符串(string): 绿
+ *  - 注释(comment): 灰斜体
+ *  - 数字(number): 橙
+ *  - 注解/装饰器(annotation): 黄
+ *  - diff(diff): 行级着色 — hunk 头蓝 / 新增行绿 / 删除行红(带半透明行底色)
  *
- * Estrategia: Seleccionar conjuntos de palabras clave por idioma,Alternancia regular de una exploración,Coloreado por tipo de coincidencia.
- * Sin análisis completo del árbol de sintaxis,Simplemente cubra las escenas destacadas comunes.
+ * 策略: 按语言选关键字集,正则 alternation 一次扫描,按匹配类型着色。
+ * 不做完整语法树分析,覆盖常见高亮场景即可。
  *
- * Phase 12: La coincidencia de colores cambió de codificada a @Composable MaterialTheme.colorScheme,
- * Los temas oscuros utilizan automáticamente colores más brillantes,Asegurar el contraste.
+ * Phase 12: 配色从硬编码改为 @Composable 取 MaterialTheme.colorScheme,
+ * 暗色主题自动用亮化版色,保证对比度。
  */
 object CodeHighlighter {
 
-    /** Conjuntos de palabras clave para cada idioma(minúscula). */
+    /** 各语言关键字集(小写)。 */
     private val KEYWORDS: Map<String, Set<String>> = mapOf(
         "kotlin" to setOf(
             "fun", "val", "var", "class", "object", "interface", "enum", "sealed", "data",
@@ -98,9 +98,9 @@ object CodeHighlighter {
             "LIMIT", "OFFSET", "DISTINCT", "UNION", "ALL", "INTO", "VALUES", "SET",
             "PRIMARY", "KEY", "FOREIGN", "REFERENCES", "DEFAULT", "CHECK",
         ),
-        // L3 Reparación: Conjunto completo de palabras clave json(true/false/null);xml Sin palabras clave,ir DEFAULT_KEYWORDS
+        // L3 修复: 补全 json 关键字集(true/false/null);xml 无关键字,走 DEFAULT_KEYWORDS
         "json" to setOf("true", "false", "null"),
-        // E6 Mejora: Serie C convencional/script/conjunto de idiomas de front-end
+        // E6 升级: 主流 C 系 / 脚本 / 前端语言集
         "c" to setOf(
             "auto", "break", "case", "char", "const", "continue", "default", "do", "double",
             "else", "enum", "extern", "float", "for", "goto", "if", "int", "long", "register",
@@ -169,20 +169,20 @@ object CodeHighlighter {
         "yaml" to setOf("true", "false", "null", "yes", "no", "on", "off"),
     )
 
-    /** palabras clave genéricas fallback(shell/sql aparte del predeterminado). */
+    /** 通用关键字 fallback(shell/sql 以外的默认)。 */
     private val DEFAULT_KEYWORDS = setOf(
         "function", "return", "if", "else", "for", "while", "break", "continue",
         "true", "false", "null", "none", "nil", "undefined",
     )
 
-    /** L3 Reparación: Mapeo normalizado de alias de idioma,Asigne abreviaturas a nombres completos en PALABRAS CLAVE. */
+    /** L3 修复: 语言别名归一化映射,把缩写映射到 KEYWORDS 中的标准名。 */
     private val LANG_ALIASES: Map<String, String> = mapOf(
         "js" to "javascript",
         "ts" to "typescript",
         "py" to "python",
         "sh" to "shell",
         "golang" to "go",
-        // E6 Mejora: Alias más comunes
+        // E6 升级: 更多常见别名
         "bash" to "shell",
         "zsh" to "shell",
         "yml" to "yaml",
@@ -196,13 +196,13 @@ object CodeHighlighter {
         "html5" to "html",
     )
 
-    /** L4 Reparación: Fragmentos regulares que nunca coinciden.(Se utiliza para cerrar la rama de comentarios de un idioma.). */
+    /** L4 修复: 永不匹配的正则片段(用于关闭某语言的注释分支)。 */
     private const val NEVER_MATCH = "[^\\s\\S]"
 
-    /** M3 Reparación: Caché compilado expresión regular resaltada por idioma,Evite la recompilación línea por línea de bloques de código grandes. Utilice ConcurrentHashMap para garantizar la seguridad de los subprocesos. */
+    /** M3 修复: 按语言缓存编译后的高亮正则,避免大代码块逐行重编译。用 ConcurrentHashMap 保证线程安全。 */
     private val regexCache = ConcurrentHashMap<String, Regex>()
 
-    /** M3 Reparación: tomar(o compilar y almacenar en caché)Resalte las reglas habituales para el idioma especificado. */
+    /** M3 修复: 取(或构建并缓存)指定语言的高亮正则。 */
     private fun getRegex(lang: String?): Regex {
         val key = lang ?: ""
         return regexCache.getOrPut(key) {
@@ -211,14 +211,14 @@ object CodeHighlighter {
     }
 
     /**
-     * Phase 12: Resalte la clase de datos de coincidencia de colores.
+     * Phase 12: 高亮配色数据类。
      *
-     * Los temas brillantes utilizan colores con mayor saturación,Utilice colores aclarantes para temas oscuros.,Asegurar el contraste.
+     * 亮色主题用饱和度较高的色,暗色主题用亮化版色,保证对比度。
      *
-     * M-MD12 Descripción: La combinación de colores es un código que resalta el color semántico funcional.,Ya concentrado en HighlightColors,
-     * por highlightColors() Derivar luz de MaterialTheme.colorScheme/Dos conjuntos oscuros.
-     * Estos valores de color no pertenecen al color del tema de la marca.,Mantenga una codificación independiente para garantizar el contraste semántico entre los bloques de código.,
-     * no con"lámpara de mesa nocturna"Tema conflicto férreo. Si es necesario ajuste,Cambio unificado highlightColors() Eso es todo.
+     * M-MD12 说明: 配色为代码高亮功能性语义色,已集中在 HighlightColors 中,
+     * 由 highlightColors() 根据 MaterialTheme.colorScheme 派生亮/暗两套。
+     * 这些色值不属于品牌主题色,保留独立硬编码以保证代码块语义对比度,
+     * 不与"深夜台灯"主题铁律冲突。如需调整,统一改 highlightColors() 即可。
      */
     data class HighlightColors(
         val keyword: Color,
@@ -226,20 +226,20 @@ object CodeHighlighter {
         val comment: Color,
         val number: Color,
         val annotation: Color,
-        /** diff Agregar nueva fila. */
+        /** diff 新增行。 */
         val diffAdded: Color,
-        /** diff Eliminar la fila. */
+        /** diff 删除行。 */
         val diffRemoved: Color,
-        /** diff hunk cabeza(+++/---/@@). */
+        /** diff hunk 头(+++/---/@@)。 */
         val diffHunk: Color,
     )
 
     /**
-     * Phase 12: Deriva el color de resaltado de MaterialTheme.
+     * Phase 12: 从 MaterialTheme 派生高亮配色。
      *
-     * v1.0.52: Paleta de colores movida a ui/theme/StatusColors.kt [MuseCodeColors],
-     * Inyectado por MuseTheme según colores oscuros y claros. CompositionLocal,Aquí solo se realiza el mapeo de campos.
-     * Los temas personalizados posteriores pueden anular el color de resaltado del código.
+     * v1.0.52: 色板上移至 ui/theme/StatusColors.kt 的 [MuseCodeColors],
+     * 由 MuseTheme 按深浅色注入 CompositionLocal,这里只做字段映射。
+     * 后续自定义主题可覆盖代码高亮色。
      */
     @Composable
     fun highlightColors(): HighlightColors {
@@ -257,19 +257,19 @@ object CodeHighlighter {
     }
 
     /**
-     * Resaltar el texto del código,Devuelve cadena anotada.
+     * 高亮代码文本,返回 AnnotatedString。
      *
-     * Phase 12: Cambiar a @Composable,Obtener color de MaterialTheme,El tema oscuro se adapta automáticamente.
+     * Phase 12: 改为 @Composable,从 MaterialTheme 取色,暗色主题自动适配。
      *
-     * @param code código original
-     * @param language identificador de idioma(minúscula,puede ser null)
+     * @param code 原始代码
+     * @param language 语言标识(小写,可为 null)
      */
     @Composable
     fun highlight(code: String, language: String?): AnnotatedString {
         val rawLang = language?.lowercase()?.trim()
-        // E6 Mejora: diff identificar — fence el idioma puede ser "diff" / "git diff" / "unified diff"
+        // E6 升级: diff 识别 — fence 语言可能是 "diff" / "git diff" / "unified diff"
         val isDiff = rawLang != null && rawLang.contains("diff")
-        // L3 Reparación: Normalización de alias(js→javascript espera),Verifique el conjunto de palabras clave y el caché nuevamente
+        // L3 修复: 别名归一化(js→javascript 等),再查关键字集与缓存
         val normalizedLang = if (isDiff) "diff" else LANG_ALIASES[rawLang] ?: rawLang
         val colors = highlightColors()
         if (isDiff) {
@@ -294,43 +294,43 @@ object CodeHighlighter {
     }
 
     /**
-     * Colorea fichas individuales capturando el tipo de grupo.
-     * Extraído como una función independiente para controlar highlight() La complejidad ciclomática de(6 capturar ramas del grupo).
+     * 按捕获组类型着色单个 token。
+     * 提取为独立函数以控制 highlight() 的圈复杂度(6 个捕获组分支)。
      */
     private fun AnnotatedString.Builder.appendHighlightedToken(token: String, match: MatchResult, colors: HighlightColors) {
         when {
             match.groups[1] != null -> {
-                // Comentarios de línea(por idioma: // o # o --,Ver detalles buildRegex)
+                // 行注释(按语言: // 或 # 或 --,详见 buildRegex)
                 withStyle(SpanStyle(color = colors.comment, fontStyle = FontStyle.Italic)) {
                     append(token)
                 }
             }
             match.groups[2] != null -> {
-                // bloquear comentarios /* */
+                // 块注释 /* */
                 withStyle(SpanStyle(color = colors.comment, fontStyle = FontStyle.Italic)) {
                     append(token)
                 }
             }
             match.groups[3] != null -> {
-                // cuerda "..." o '...'
+                // 字符串 "..." 或 '...'
                 withStyle(SpanStyle(color = colors.string)) {
                     append(token)
                 }
             }
             match.groups[4] != null -> {
-                // Palabras clave
+                // 关键字
                 withStyle(SpanStyle(color = colors.keyword, fontWeight = FontWeight.Bold)) {
                     append(token)
                 }
             }
             match.groups[5] != null -> {
-                // numeros
+                // 数字
                 withStyle(SpanStyle(color = colors.number)) {
                     append(token)
                 }
             }
             match.groups[6] != null -> {
-                // anotación @...
+                // 注解 @...
                 withStyle(SpanStyle(color = colors.annotation)) {
                     append(token)
                 }
@@ -339,14 +339,14 @@ object CodeHighlighter {
         }
     }
 
-    /** E6: diff clasificación de filas — Para renderizado a nivel de fila y pruebas unitarias. */
+    /** E6: diff 行分类 — 供行级渲染与单测使用。 */
     internal enum class DiffLineKind { HUNK_HEADER, ADDED, REMOVED, CONTEXT, EMPTY }
 
     /**
-     * E6: Categorizar texto de diferencias de una sola línea.
+     * E6: 分类单行 diff 文本。
      *
-     * orden de sentencia: hunk cabeza(@@ o +++/---)Prefiere +/- líneas de un solo carácter,
-     * evitar "+++ b/File" Se consideró erróneamente como una nueva línea.
+     * 判定顺序: hunk 头(@@ 或 +++/---)优先于 +/- 单字符行,
+     * 避免 "+++ b/File" 被误判为新增行。
      */
     internal fun classifyDiffLine(line: String): DiffLineKind {
         if (line.isEmpty()) return DiffLineKind.EMPTY
@@ -360,8 +360,8 @@ object CodeHighlighter {
     }
 
     /**
-     * E6: diff Resaltado a nivel de fila — hunk Cabeza azul / Agregar fila verde / Eliminar fila roja(Con fondo de fila translúcido.).
-     * Coloración independiente fila por fila.,Compatible con el método de llamada de resaltado línea por línea de MarkdownText.
+     * E6: diff 行级高亮 — hunk 头蓝 / 新增行绿 / 删除行红(带半透明行底色)。
+     * 逐行独立着色,与 MarkdownText 的逐行高亮调用方式兼容。
      */
     private fun highlightDiff(code: String, colors: HighlightColors): AnnotatedString = buildAnnotatedString {
         code.split("\n").forEachIndexed { index, line ->
@@ -380,7 +380,7 @@ object CodeHighlighter {
                     color = colors.diffRemoved,
                     background = colors.diffRemoved.copy(alpha = 0.12f),
                 )
-                // CONTEXT / EMPTY Mantener el estilo predeterminado
+                // CONTEXT / EMPTY 保持默认样式
                 else -> null
             }
             if (style != null) {
@@ -391,22 +391,22 @@ object CodeHighlighter {
         }
     }
 
-    /** Construir regularidad resaltada. */
+    /** 构建高亮正则。 */
     private fun buildRegex(keywords: Set<String>, lang: String?): Regex {
-        // v0.42: Reparación IndexOutOfBoundsException — Grupo sin captura utilizado originalmente (?:...),
-        // pero highlight() Pase groups[1..6] Determinar el tipo de token,Regular debe proporcionar 6 grupos de captura.,
-        // De lo contrario match.groups[N] puede tirar "No group N".
-        // SQL Poner en mayúsculas las palabras clave,unificado más \b Los límites de las palabras evitan discrepancias(Rama SQL original Ninguna \b coincidirá con ON en CONFIGURATION).
+        // v0.42: 修复 IndexOutOfBoundsException — 原先用非捕获组 (?:...),
+        // 但 highlight() 通过 groups[1..6] 判断 token 类型,正则必须提供 6 个捕获组,
+        // 否则 match.groups[N] 会抛 "No group N"。
+        // SQL 关键字大写,统一加 \b 词边界避免误匹配(原 SQL 分支无 \b 会把 ON 匹配进 CONFIGURATION)。
         val kwPattern = keywords.joinToString("|") { Regex.escape(it) }
-        // grupo: 1=Comentarios de línea 2=bloquear comentarios 3=cuerda 4=Palabras clave 5=numeros 6=anotación
-        // Utilice grupos de captura para todos (...),con highlight() en groups[1..6] correspondencia uno a uno
-        // L4 Reparación: Las reglas de comentarios cambian según el idioma,Evite # ser juzgado mal como comentario en kotlin/java.// Mal juzgado en Python.
-        //  - kotlin/java/js/ts/go/rust/c/cpp/csharp/swift/php/dart: Comentarios de línea // + comentarios de bloque /* */
-        //  - python/shell/ruby/yaml: Comentarios de línea #,Sin bloquear comentarios
-        //  - sql: Comentarios de línea --,Sin bloquear comentarios
-        //  - Otros(Contiene json/xml/html/css): rama sin comentar(Utilice marcadores de posición NEVER_MATCH,Mantener la estructura de 6 grupos.)
+        // 分组: 1=行注释 2=块注释 3=字符串 4=关键字 5=数字 6=注解
+        // 全部用捕获组 (...),与 highlight() 中 groups[1..6] 一一对应
+        // L4 修复: 注释规则按语言开关,避免 # 在 kotlin/java 中被误判为注释、// 在 python 中被误判。
+        //  - kotlin/java/js/ts/go/rust/c/cpp/csharp/swift/php/dart: 行注释 // + 块注释 /* */
+        //  - python/shell/ruby/yaml: 行注释 #,无块注释
+        //  - sql: 行注释 --,无块注释
+        //  - 其他(含 json/xml/html/css): 无注释分支(用 NEVER_MATCH 占位,保持 6 组结构)
         val (lineComment, blockComment) = when (lang) {
-            // E6 Mejora: Serie C agregada / swift / php / dart heredar // + /* */
+            // E6 升级: 新增 C 系 / swift / php / dart 沿用 // + /* */
             "kotlin", "java", "javascript", "typescript", "go", "rust",
             "c", "cpp", "csharp", "swift", "php", "dart",
             -> "//[^\\n]*" to "/\\*[\\s\\S]*?\\*/"
@@ -414,10 +414,10 @@ object CodeHighlighter {
             "sql" -> "--[^\\n]*" to NEVER_MATCH
             else -> NEVER_MATCH to NEVER_MATCH
         }
-        // M-MD10 Reparación: IGNORE_CASE ya no está unificado para todos los idiomas.
-        // SQL Las palabras clave se almacenan en mayúsculas.(SELECT/FROM...),El usuario podrá ingresar en minúsculas,necesitar IGNORE_CASE;
-        // Otros idiomas(kotlin/java/python/js/ts/go/rust/shell)Las palabras clave distinguen entre mayúsculas y minúsculas
-        // (Por ejemplo, la diversión de Kotlin no debería coincidir. Fun),No agregue IGNORE_CASE.
+        // M-MD10 修复: 不再对所有语言统一 IGNORE_CASE。
+        // SQL 关键字以大写存储(SELECT/FROM...),用户可能小写输入,需要 IGNORE_CASE;
+        // 其余语言(kotlin/java/python/js/ts/go/rust/shell)关键字大小写敏感
+        // (如 kotlin 的 fun 不应匹配 Fun),不加 IGNORE_CASE。
         val options = if (lang == "sql") setOf(RegexOption.IGNORE_CASE) else emptySet()
         return Regex(
             """($lineComment)|($blockComment)|("[^"]*"|'[^']*'|`[^`]*`)|(\b(?:$kwPattern)\b)|(\b\d+\.?\d*[fFlL]?\b)|(@\w+)""",

@@ -6,14 +6,14 @@ import org.koin.core.qualifier.named
 import org.koin.dsl.module
 
 /**
- * P2-3 Desdominio: plantilla de Word rápida, generación de portada,Hook registro,SystemPromptAssembler Registre módulos independientes.
+ * P2-3 拆域：提示词模板、封面生成、Hook 注册表、SystemPromptAssembler 注册独立模块。
  */
 val appPromptModule = module {
 
-    // Phase 12: PromptTemplateLoader — Cargue plantillas de mensajes de texto desde activos/prompt_templates/
+    // Phase 12: PromptTemplateLoader — 从 assets/prompt_templates/ 加载提示词模板
     single { io.zer0.muse.transformer.PromptTemplateLoader(androidContext()) }
 
-    // v1.0.53: Biblioteca de portadas + generación de portadas con IA(cubrir el flujo de trabajo)
+    // v1.0.53: 封面库 + AI 封面生成(封面工作流)
     single { io.zer0.muse.data.cover.CoverLibraryRepository(androidContext()) }
     single {
         io.zer0.muse.tools.CoverGenerator(
@@ -27,7 +27,11 @@ val appPromptModule = module {
         )
     }
 
-    // P1-1: Hook Registro(Singleton global,Todos los Hooks se registran a través de este)
+    // v2.7.x(E2): 会话术语的读写面。装配器与术语页共用同一个实例,
+    // 免得两处各建一个 store 后，注入侧与页面看到的次数对不上。
+    single { io.zer0.muse.data.terms.SessionTermStore(get<io.zer0.muse.data.session.MuseDb>().sessionTermDao()) }
+
+    // P1-1: Hook 注册表(全局单例,所有 Hook 通过此注册)
     single { io.zer0.muse.hook.HookRegistry() }
 
     single {
@@ -42,30 +46,32 @@ val appPromptModule = module {
             getExperiments = { settings.experimentsCache },
             getMultiAgentConfig = { settings.multiAgentConfigCache },
             assistantRepository = get(),
-            // v1.98: paso a través experienceRepository,Cuando el interruptor de la biblioteca de experiencias está activado, las entradas de experiencias se inyectan en system prompt
+            // v1.98: 透传 experienceRepository,经验库开关开启时注入经验条目到 system prompt
             experienceRepository = get(),
-            // v1.202: paso a través agentDmRepository,Inyecte el resumen de la bandeja de entrada cuando el asistente principal genere el mensaje del sistema
+            // v1.202: 透传 agentDmRepository,主助手构建 system prompt 时注入收件箱摘要
             agentDmRepository = get(),
-            // v2.x: paso a través groupChatMemoryRepository,El asistente principal inyecta el resumen de la memoria del chat grupal al generar el mensaje del sistema.
-            // (usar <group_chat_memory> Etiquetas y memoria principal <long_term_memory> distinguir,No contamina la memoria principal)
+            // v2.x: 透传 groupChatMemoryRepository,主助手构建 system prompt 时注入群聊记忆摘要
+            // (用 <group_chat_memory> 标签与主记忆 <long_term_memory> 区分,不污染主记忆)
             groupChatMemoryRepository = get(),
-            // v1.0.52: paso a través sessionRepository,Se inyecta cuando el asistente principal genera un mensaje del sistema. Recent Chats Reference
-            // (usar <recent_chats> Etiquetas que envuelven títulos de sesiones recientes+Vista previa,Proporcionar un contexto de continuidad de la conversación.)
+            // v1.0.52: 透传 sessionRepository,主助手构建 system prompt 时注入 Recent Chats Reference
+            // (用 <recent_chats> 标签包裹最近会话标题+预览,提供对话连续性上下文)
             sessionRepository = get(),
-            // v12 (T2-2): paso a través factStore,Cuando el asistente principal genere el mensaje del sistema, presione el FTS del problema actual para recuperar recuerdos relevantes.
+            // v12 (T2-2): 透传 factStore,主助手构建 system prompt 时按当前问题 FTS 召回相关记忆
+            // v2.7.x(E2): 会话术语注入（未确认条目标「不确定」，最多 5 条）
+            sessionTermStore = get(),
             factStore = get(),
-            // v1.0.86: Las memorias relacionadas son independientes de la selección actual del Asistente facts.db
+            // v1.0.86: 相关记忆按当前 Assistant 选择独立 facts.db
             factDbProvider = get(),
-            // Reparación de auditoría (S-03): paso a través pinnedMemoryStore,Fuente de datos de memoria anclada unificada
-            // (El lado previamente inyectado dice que nadie escribió pinned_memories.json,El contenido fijado nunca se inyecta)
+            // 审计修复 (S-03): 透传 pinnedMemoryStore,统一置顶记忆数据源
+            // (此前注入侧读无人写入的 pinned_memories.json,置顶内容永不注入)
             pinnedMemoryStore = get(),
-            // P1-1: paso a través hookRegistry,SystemPromptComposeHook Llamado al final de la construcción.
+            // P1-1: 透传 hookRegistry,SystemPromptComposeHook 在 build 末尾调用
             hookRegistry = get(),
-            // v2.x: paso a través stickerRepository,Instrucciones para inyectar emoticones cuando la biblioteca no está vacía y el interruptor está encendido
+            // v2.x: 透传 stickerRepository,库非空且开关开启时注入表情包使用指南
             stickerRepository = get(),
-            // v2.6.7(P1-1): Inyección de estado civil (intimidad/etiqueta de relación/Interacciones recientes)
+            // v2.6.7（P1-1）: 关系状态注入（亲密度/关系标签/最近互动）
             relationshipRepository = get(),
-            // Política de aprobación de herramientas: el número de "invocables en esta ronda" en la palabra del mensaje tiene la misma fuente que el esquema emitido y las herramientas con ALWAYS_DENY deben excluirse
+            // 工具审批策略：提示词里的「本轮可调用」数与 schema 下发同源，需排除 ALWAYS_DENY 的工具
             toolConfigStore = get(),
         )
     }

@@ -3,17 +3,17 @@ package io.zer0.muse.tools
 import io.zer0.muse.data.experience.ExperienceRepository
 
 /**
- * recall_experience Herramientas.
+ * recall_experience 工具。
  *
- * divulgación progresiva:Devuelve el índice de categoría sin parámetros.,
- * Con un nombre de categoría, se devuelve la experiencia específica de esta categoría.
+ * 渐进式披露:不带参数时返回分类索引,
+ * 带分类名时返回该分类下的具体经验。
  */
 object RecallExperienceTool {
 
     fun toolDef() = ToolRegistry.ToolDef(
         name = "recall_experience",
-        description = "Explore la biblioteca de experiencias. Devuelve una descripción general de cada categoría sin parámetros.;Con un nombre de categoría, se devuelve la experiencia específica de esta categoría." +
-            "Compruébelo antes de comenzar tareas específicas como escribir código, investigar o analizar problemas. No se requieren conversaciones triviales ni preguntas y respuestas.",
+        description = "浏览经验库。不带参数时返回各分类概览;带分类名时返回该分类下的具体经验。" +
+            "开始写代码、调研、分析问题这类具体任务前先查一次。闲聊与问答不需要。",
         parameters = mapOf(
             "category" to "Optional. Category name. Omit to get an overview of all categories.",
         ),
@@ -28,7 +28,7 @@ object RecallExperienceTool {
         if (all.isEmpty()) return "Experience library is empty. No experiences recorded yet."
 
         return if (category.isNullOrEmpty()) {
-            // índice de retorno:Agrupar por categoría
+            // 返回索引:按分类分组
             val grouped = all.groupBy { it.category }
             buildString {
                 appendLine("Experience Library (${all.size} entries, ${grouped.size} categories):")

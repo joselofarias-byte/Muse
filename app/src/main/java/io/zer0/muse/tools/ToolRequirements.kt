@@ -1,65 +1,65 @@
 package io.zer0.muse.tools
 
 /**
- * v2.6.7: Los canales del dispositivo requeridos por la herramienta.
+ * v2.6.7: 工具所需的设备通道。
  *
- * ## ¿Por qué necesitas esta mesa?
+ * ## 为什么需要这张表
  *
- * La principal queja del autoexamen del Asistente es “Hay 206 herramientas, pero no sé cuál es realmente útil”:
- * `ToolDef` Solo existe RiskLevel (nivel de riesgo) y no hay ningún campo que indique "de qué canal depende esta herramienta".
- * Así que sólo pude probar los modelos uno por uno. Sólo cuando choqué contra una pared supe que no tenía permiso. —— que"no proporcionado en absoluto"Duele aún más la experiencia.
+ * 助手自审的核心抱怨是「工具 206 个，但我不知道哪个真能用」：
+ * `ToolDef` 里只有 riskLevel（风险等级），没有任何字段声明「这个工具依赖哪条通道」。
+ * 于是模型只能一个个试，撞墙了才知道没权限 —— 比"根本不提供"更伤体验。
  *
- * Esta tabla hace explícita la "dependencia", lo que permite que tool_status filtre la lista verdaderamente invocable según los permisos actuales.
+ * 这张表把「依赖关系」显式化，让 tool_status 能按当前权限过滤出真正可调用的清单。
  *
- * ## mantener la disciplina
+ * ## 维护纪律
  *
- * Al agregar nuevas herramientas que requieren canales de dispositivos**debe**Regístrese aquí; de lo contrario, tool_status lo informará falsamente como disponible.
- * Las herramientas no registradas están predeterminadas en [Requirement.NONE] Procesamiento (herramienta en la aplicación, no se requieren permisos).
+ * 新增需要设备通道的工具时**必须**在这里登记，否则 tool_status 会把它误报为可用。
+ * 未登记的工具默认按 [Requirement.NONE] 处理（应用内工具，任何权限都不用）。
  */
 object ToolRequirements {
 
-    /** El tipo de canal del que depende la herramienta. */
+    /** 工具依赖的通道类型。 */
     enum class Channel {
-        /** Servicios de accesibilidad (lectura de pantalla, gestos, entrada). */
+        /** 无障碍服务（读屏、手势、输入）。 */
         ACCESSIBILITY,
 
-        /** Shizuku / adb shell. */
+        /** Shizuku / adb shell。 */
         SHELL,
 
-        /** Root. */
+        /** Root。 */
         ROOT,
 
-        /** Acceso de uso (UsageStats). */
+        /** 使用情况访问权限（UsageStats）。 */
         USAGE_STATS,
 
-        /** Notificación de derechos de uso. */
+        /** 通知使用权。 */
         NOTIFICATION_LISTENER,
 
-        /** Contacto leído. */
+        /** 联系人读取。 */
         CONTACTS,
 
-        /** SMS. */
+        /** 短信。 */
         SMS,
 
-        /** llamar. */
+        /** 通话。 */
         PHONE_CALL,
 
-        /** Calendario. */
+        /** 日历。 */
         CALENDAR,
 
-        /** Posicionamiento. */
+        /** 定位。 */
         LOCATION,
 
-        /** Permisos de tiempo de ejecución de cámara/micrófono, etc. */
+        /** 相机 / 麦克风等运行时权限。 */
         RUNTIME,
     }
 
     /**
-     * Descripción de dependencia de una herramienta.
+     * 一个工具的依赖描述。
      *
-     * @param anyOf satisfacerlo**cualquiera**Se puede llamar al canal (como operación de pantalla: sin barreras o Shell)
-     * @param allOf debe**al mismo tiempo**Satisfecho (por ejemplo, la instalación silenciosa requiere Shell y leer la lista de paquetes)
-     * @param note Instrucciones complementarias para modelos (cómo abrir cuando faltan permisos)
+     * @param anyOf 满足其中**任意一条**通道即可调用（如屏幕操作：无障碍或 Shell 都行）
+     * @param allOf 必须**同时**满足（如静默安装需要 Shell，且要读包列表）
+     * @param note 面向模型的补充说明（缺权限时怎么开）
      */
     data class Requirement(
         val anyOf: Set<Channel> = emptySet(),
@@ -69,33 +69,33 @@ object ToolRequirements {
         val isUnconditional: Boolean get() = anyOf.isEmpty() && allOf.isEmpty()
     }
 
-    /** No se requiere ningún canal de dispositivo —— Herramientas en la aplicación (memoria/tarjeta/sesión/base de conocimientos, etc.). */
+    /** 不需要任何设备通道 —— 应用内工具（记忆/卡片/会话/知识库等）。 */
     private val NONE = Requirement()
 
-    /** Funcionamiento de la pantalla: Disponible sin barreras o Shell. */
+    /** 屏幕操作：无障碍或 Shell 任一可用即可。 */
     private val SCREEN = Requirement(
         anyOf = setOf(Channel.ACCESSIBILITY, Channel.SHELL),
-        note = "Requiere Servicios de Accesibilidad o Shizuku/ADB; también disponible en Configuración→Habilitar el servicio Muse en accesibilidad",
+        note = "需要无障碍服务，或 Shizuku/ADB；也可以在设置→无障碍里开启 Muse 服务",
     )
 
-    /** Shell Operación de nivel: Debe ser Shell o Root. */
+    /** Shell 级操作：必须是 Shell 或 Root。 */
     private val SHELL_ONLY = Requirement(
         anyOf = setOf(Channel.SHELL, Channel.ROOT),
-        note = "Requiere Shizuku o Root;Shizuku Primero debe instalarse y autorizarse Muse",
+        note = "需要 Shizuku 或 Root；Shizuku 需先安装并授权 Muse",
     )
 
-    /** Tabla de mapeo: nombre de la herramienta → Dependencia. Los que no figuran en la lista se consideran [NONE]. */
+    /** 映射表：工具名 → 依赖。未列出的视为 [NONE]。 */
     private val TABLE: Map<String, Requirement> = buildMap {
-        // ── Operación de pantalla (accesible/shell cualquiera)──
+        // ── 屏幕操作（无障碍 / Shell 任一）──
         listOf(
             "screen_read", "screen_tap", "screen_tap_text", "screen_swipe", "screen_swipe_path",
             "screen_pinch", "screen_wait", "screen_back", "screen_home", "screen_current_app",
-            "screen_input", "screen_launch_app", "screen_open_notifications",
+            "screen_input", "screen_open_notifications",
             "ui_agent", "input_inject", "virtual_screen", "virtual_screen_input",
             "automation_workflow",
         ).forEach { put(it, SCREEN) }
 
-        // ── Shell nivel ──
+        // ── Shell 级 ──
         listOf(
             "device_shell", "am_start", "app_force_stop", "app_clear_data", "app_uninstall",
             "list_packages", "list_installed_apps", "network_toggle", "toggle_wifi",
@@ -103,32 +103,32 @@ object ToolRequirements {
             "open_system_setting", "app_settings",
         ).forEach { put(it, SHELL_ONLY) }
 
-        // ── Permisos de tiempo de ejecución individuales ──
-        put("screen_time", Requirement(anyOf = setOf(Channel.USAGE_STATS), note = "Se requiere permiso de acceso"))
-        put("get_foreground_app", Requirement(anyOf = setOf(Channel.USAGE_STATS), note = "Se requiere permiso de acceso"))
+        // ── 单项运行时权限 ──
+        put("screen_time", Requirement(anyOf = setOf(Channel.USAGE_STATS), note = "需要「使用情况访问」权限"))
+        put("get_foreground_app", Requirement(anyOf = setOf(Channel.USAGE_STATS), note = "需要「使用情况访问」权限"))
         put(
             "get_recent_notifications",
-            Requirement(anyOf = setOf(Channel.NOTIFICATION_LISTENER), note = "Se requiere \"aviso de derechos de uso\""),
+            Requirement(anyOf = setOf(Channel.NOTIFICATION_LISTENER), note = "需要「通知使用权」"),
         )
         listOf("get_contacts_list", "get_contacts_count", "add_contact").forEach {
-            put(it, Requirement(anyOf = setOf(Channel.CONTACTS), note = "Requiere permiso de \"Contactos\""))
+            put(it, Requirement(anyOf = setOf(Channel.CONTACTS), note = "需要「联系人」权限"))
         }
-        put("send_sms", Requirement(allOf = setOf(Channel.SMS), note = "Requiere permiso \"SMS\""))
-        put("make_phone_call", Requirement(allOf = setOf(Channel.PHONE_CALL), note = "Requiere permiso \"Teléfono\""))
+        put("send_sms", Requirement(allOf = setOf(Channel.SMS), note = "需要「短信」权限"))
+        put("make_phone_call", Requirement(allOf = setOf(Channel.PHONE_CALL), note = "需要「电话」权限"))
         listOf("add_calendar_event", "calendar_today", "list_reminders").forEach {
-            put(it, Requirement(anyOf = setOf(Channel.CALENDAR), note = "Requiere permiso \"Calendario\""))
+            put(it, Requirement(anyOf = setOf(Channel.CALENDAR), note = "需要「日历」权限"))
         }
         listOf("get_location").forEach {
-            put(it, Requirement(anyOf = setOf(Channel.LOCATION), note = "Requiere permiso de \"Ubicación\""))
+            put(it, Requirement(anyOf = setOf(Channel.LOCATION), note = "需要「定位」权限"))
         }
 
-        // ── NINGUNO explícito (en la aplicación, escrito para que los lectores sepan que se han verificado)──
+        // ── 明确的 NONE（应用内，写出来是为了让 reader 知道这些已核对过）──
         listOf(
             "show_card", "update_card_data", "render_data", "notify", "todo_write",
             "save_memory", "pin_memory", "delete_memory", "unpin_memory", "search_memory",
             "recall_experience", "record_experience", "search_conversation",
             "current_status", "runtime_selfcheck", "platform_selfcheck", "find_tools",
-            // v2.x: token Autocomprobación del uso (todos los datos de la aplicación, sin permisos del sistema)
+            // v2.x: token 用量自查（全应用内数据，无系统权限）
             "get_token_usage",
             "calculator", "base64_encode", "base64_decode", "url_encode", "url_decode",
             "hash_text", "generate_uuid", "generate_password", "json_pretty", "random_number",
@@ -140,26 +140,26 @@ object ToolRequirements {
             "session_move_folder", "channel_reply", "channel_pass", "channel_read_context",
             "subagent_task", "subagent_run", "subagent_close", "delegate_agent",
             "generate_image", "generate_video", "generate_qr_code",
-            // v2.x: mensaje de voz——Síntesis TTS local + colgar mensajes propios,No toques los permisos del sistema.
+            // v2.x: 语音消息——本地 TTS 合成 + 挂在自己的消息上,不碰系统权限
             "send_voice",
         ).forEach { put(it, NONE) }
     }
 
-    /** Consultar las dependencias de una herramienta. No registrado = NONE(herramienta en la aplicación). */
+    /** 查询某工具依赖。未登记 = NONE（应用内工具）。 */
     fun of(toolName: String): Requirement = TABLE[toolName] ?: NONE
 
-    /** Nombre de herramienta registrada (para autoprueba/Cobertura de verificación de prueba). */
+    /** 已登记的工具名（供自检/测试核对覆盖度）。 */
     fun registeredNames(): Set<String> = TABLE.keys
 
     /**
-     * Determine si la herramienta es realmente invocable en función de los canales disponibles actualmente.
+     * 按当前可用通道判断工具是否真的可调用。
      *
-     * @param availableChannels La colección de canales actualmente listos.
+     * @param availableChannels 当前已就绪的通道集合
      */
     fun isUsable(toolName: String, availableChannels: Set<Channel>): Boolean {
         val req = of(toolName)
-        // Una sola expresión evita múltiples devoluciones (ReturnCount):
-        // AllOf debe satisfacerse al mismo tiempo;anyOf Si no está vacío, al menos uno debe acertar; si ambos están vacíos, se puede utilizar incondicionalmente.
+        // 单表达式避免多点 return（ReturnCount）：
+        // 必须同时满足 allOf；anyOf 非空时至少要命中一个；两者皆空则可无条件使用。
         val allSatisfied = req.allOf.all { it in availableChannels }
         val anySatisfied = req.anyOf.isEmpty() || req.anyOf.any { it in availableChannels }
         return allSatisfied && anySatisfied

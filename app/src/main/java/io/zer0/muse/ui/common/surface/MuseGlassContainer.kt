@@ -15,27 +15,27 @@ import androidx.compose.ui.unit.dp
 import io.zer0.muse.ui.theme.MuseCornerRadius
 
 /**
- * Recipiente de vidrio esmerilado.
+ * 毛玻璃容器。
  *
- * Proporciona efectos visuales de vidrio esmerilado para campos de entrada u otros componentes.:
- *  - fondo de color de superficie translúcida
- *  - outline@20% alpha frontera (1px)
- *  - esquinas redondeadas 20dp
+ * 为输入栏或其他组件提供毛玻璃视觉效果:
+ *  - 半透明 surface 色背景
+ *  - outline@20% alpha 边框 (1px)
+ *  - 圆角 20dp
  *
- * Nota: Compose El filtro de fondo nativo debe coincidir [androidx.compose.ui.graphics.RenderEffect]
- * Solo disponible en Android 12+, Utilice el esquema de compatibilidad aquí (Translucidez + simulación de micro-desenfoque).
+ * 注: Compose 原生 BackdropFilter 需配合 [androidx.compose.ui.graphics.RenderEffect]
+ * 在 Android 12+ 才可用, 此处使用兼容方案 (半透明 + 微模糊模拟)。
  *
- * Uso:
+ * 用法:
  * ```
  * MuseGlassContainer {
- *     // Contenido del campo de entrada
+ *     // 输入栏内容
  * }
  * ```
  *
- * @param modifier modificador
- * @param cornerRadius radio de esquina (Predeterminado 20dp)
- * @param blurRadius radio de desenfoque (Predeterminado 0dp, Solo tiene efecto en Android 12+)
- * @param content Contenido del contenedor
+ * @param modifier 修饰符
+ * @param cornerRadius 圆角半径 (默认 20dp)
+ * @param blurRadius 模糊半径 (默认 0dp, 仅在 Android 12+ 生效)
+ * @param content 容器内容
  */
 @Composable
 fun MuseGlassContainer(
@@ -57,7 +57,7 @@ fun MuseGlassContainer(
                 if (blurRadius > 0.dp) Modifier.blur(blurRadius) else Modifier,
             ),
     ) {
-        // capa de fondo translúcido
+        // 半透明背景层
         Box(
             modifier = Modifier
                 .matchParentSize()

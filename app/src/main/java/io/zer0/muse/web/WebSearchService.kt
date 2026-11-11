@@ -17,12 +17,12 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
 /**
- * Phase 8.4: Web Entrada de resultados de búsqueda.
+ * Phase 8.4: Web 搜索结果条目。
  *
- * @param title Título
- * @param url Enlace original(Se puede hacer clic)
- * @param snippet fragmento de resumen(truncado,Facilita la inyección de contexto LLM.)
- * @param source Fuente(provider nombre,Como por ejemplo "SearXNG"/"Tavily")
+ * @param title 标题
+ * @param url 原文链接(可点击)
+ * @param snippet 摘要片段(已截断,便于注入 LLM 上下文)
+ * @param source 来源(provider 名,如 "SearXNG"/"Tavily")
  */
 @Serializable
 data class WebSearchResult(
@@ -33,92 +33,92 @@ data class WebSearchResult(
 )
 
 /**
- * Phase 8.4: Servicio de búsqueda en Internet.
+ * Phase 8.4: 联网搜索服务。
  *
- * Diseñado para soportar múltiples búsquedas provider,
- * abstracción unificada como [search] interfaz,Regresar [WebSearchResult] lista.
+ * 设计支持多家搜索 provider,
+ * 统一抽象为 [search] 接口,返回 [WebSearchResult] 列表。
  *
- * Implementación actual:
- *  - [SearXNGProvider]: Metabuscador de código abierto,Autohospedado,No es necesario API key(Predeterminado endpoint = https://searx.be)
- *  - [TavilyProvider]: Búsqueda comercial de IA API,necesidad API key(https://tavily.com)
+ * 当前实现:
+ *  - [SearXNGProvider]: 开源元搜索,自托管,无需 API key(默认 endpoint = https://searx.be)
+ *  - [TavilyProvider]: 商用 AI 搜索 API,需 API key(https://tavily.com)
  *
- * Se puede ampliar más tarde: Brave Search / Google CSE / Serper espera(quedarse Phase 8.4+)
+ * 后续可扩展: Brave Search / Google CSE / Serper 等(留 Phase 8.4+)
  *
- * Uso:
- *  - ChatViewModel Habilitado por el usuario"búsqueda en internet"tiempo,Ajustar primero [search] Obtenga los mejores N resultados
- *  - Formatee los resultados como un resumen de rebajas.,Inyectado como contexto del SISTEMA(prompt engineering)
- *  - LLM Respuesta basada en el contexto de Internet.,MarkdownText hace que se pueda hacer clic automáticamente en los enlaces de las respuestas generadas
+ * 用法:
+ *  - ChatViewModel 在用户开启"联网搜索"时,先调 [search] 取前 N 条结果
+ *  - 把结果格式化为 markdown 摘要,作为 SYSTEM 上下文注入(prompt engineering)
+ *  - LLM 基于联网上下文回答,生成的回复中链接由 MarkdownText 自动渲染为可点击
  */
 interface WebSearchService {
-    /** provider logotipo(para configuración pantalla + registro). */
+    /** provider 标识(用于 settings 显示 + 日志)。 */
     val name: String
 
     /**
-     * Realizar una búsqueda.
-     * @param query palabra de consulta
-     * @param maxResults Número máximo de devoluciones(Predeterminado 5)
-     * @return Lista de resultados;Devuelve una lista vacía en caso de error.(El error ha sido log,No lanzar excepción)
+     * 执行搜索。
+     * @param query 查询词
+     * @param maxResults 最大返回数(默认 5)
+     * @return 结果列表;失败返回空列表(错误已 log,不抛异常)
      */
     suspend fun search(query: String, maxResults: Int = 5): List<WebSearchResult>
 
     /**
-     * Buscar con opciones adicionales(date_range / time_period Filtrar por rango de tiempo igual).
+     * 带额外选项的搜索(date_range / time_period 等时间范围过滤)。
      *
-     * La implementación predeterminada ignora las opciones y delega directamente a [search],Se pueden anular proveedores específicos según sea necesario para respaldar
-     * Filtrado avanzado como rango de tiempo. De esta forma, el antiguo proveedor puede ser compatible con nuevas llamadas sin modificaciones.
+     * 默认实现忽略 options 直接委托给 [search],具体 provider 可按需覆写以支持
+     * 时间范围等高级筛选。这样老 provider 无需改动即可兼容新调用。
      *
-     * @param options Opciones adicionales map,Puede contener rango de fecha/período de tiempo, etc. key
+     * @param options 额外选项 map,可含 date_range / time_period 等 key
      */
     suspend fun searchWithOptions(query: String, maxResults: Int = 5, options: Map<String, String> = emptyMap()): List<WebSearchResult> =
         search(query, maxResults)
 }
 
 /**
- * SearXNG provider — Metabuscador de código abierto,Instancia pública predeterminada https://searx.be。
+ * SearXNG provider — 开源元搜索,默认公共实例 https://searx.be。
  *
- * Acuerdo: GET {endpoint}/search?q={query}&format=json&categories=general
- * Regresar: { results: [{ title, url, content, ... }] }
+ * 协议: GET {endpoint}/search?q={query}&format=json&categories=general
+ * 返回: { results: [{ title, url, content, ... }] }
  *
- * Las instancias autohospedadas se pueden cambiar endpoint(Configurar en ajustes). Las instancias públicas pueden tener un flujo de corriente limitado/No disponible,
- * Por lo tanto, la degradación devuelve una lista vacía cuando falla.,No bloquees las conversaciones.
+ * 自托管实例可改 endpoint(在 settings 配置)。公共实例可能限流/不可用,
+ * 故失败时降级返回空列表,不阻塞对话。
  */
 
 /**
- * Web Configuración de búsqueda(persistir en SettingsRepository).
+ * Web 搜索配置(持久化在 SettingsRepository)。
  *
- * @param providerName provider nombre("SearXNG" / "Tavily")
- * @param apiKey API key(Tavily Requerido,SearXNG ignorar)
- * @param endpoint Personalizar endpoint(SearXNG Instancia autohospedada/Agente de Tavily)
- * @param enabled Ya sea para habilitar"búsqueda en internet"cambiar(InputBar encender)
+ * @param providerName provider 名("SearXNG" / "Tavily")
+ * @param apiKey API key(Tavily 必填,SearXNG 忽略)
+ * @param endpoint 自定义 endpoint(SearXNG 自托管实例 / Tavily 代理)
+ * @param enabled 是否启用"联网搜索"开关(InputBar 上的开关)
  */
 @Serializable
 enum class WebSearchMode {
     OFF,
 
-    /** Prioridad automática: utilice la búsqueda nativa del modelo cuando sea compatible; de ​​lo contrario, utilice la cadena de búsqueda local. */
+    /** 自动优先：支持时使用模型原生搜索，否则走本地搜索链。 */
     AUTO,
     LOCAL,
     NATIVE,
 }
 
 /**
- * Motor de búsqueda definido por el usuario.
+ * 用户自定义的搜索引擎。
  *
- * Para "conectar su propio servicio de búsqueda": SearXNG autohospedado, puerta de enlace interna de la empresa, cualquier API de búsqueda que devuelva JSON.
- * No es necesario cambiar el código, simplemente rellena la plantilla y podrás acceder.
+ * 面向「接自己的检索服务」：自托管 SearXNG、公司内部网关、任意返回 JSON 的搜索 API。
+ * 不用改代码，填模板即可接入。
  *
- * @param id Identificación estable (para agregar y eliminar listas, no use nombres como identificadores, el cambio de nombre se interrumpirá)
- * @param name Nombre para mostrar, también utilizado como nombre del proveedor en el enlace
- * @param endpoint Dirección de solicitud completa (incluido el protocolo, excluyendo la cadena de consulta)
- * @param apiKey Opcional, inyectado como Portador si no está vacío
- * @param method GET o POST
- * @param queryParam GET nombre del parámetro de consulta, predeterminado q
- * @param bodyTemplate POST cuerpo de la solicitud (JSON texto,{query} será reemplazado,{count} Cambiar el número de resultados)
- * @param resultsPath La ruta de la matriz de resultados en el JSON de respuesta, como data.results/web.pages. Déjelo en blanco para indicar que la raíz es una matriz.
- * @param titlePath El nombre del campo del título en un solo resultado, predeterminado title
- * @param urlPath El nombre del campo del enlace en un único resultado, predeterminado url
- * @param snippetPath El nombre del campo del resumen en un solo resultado, predeterminado content
- * @param enabled Si habilitarlo (la configuración se mantendrá pero no se ingresará al enlace después de deshabilitarlo)
+ * @param id 稳定标识（列表增删用，不要用名称当 id，重命名会断）
+ * @param name 展示名，同时作为链路里的 provider 名
+ * @param endpoint 完整请求地址（含协议，不含 query string）
+ * @param apiKey 可选，非空时以 Bearer 注入
+ * @param method GET 或 POST
+ * @param queryParam GET 时的查询参数名，默认 q
+ * @param bodyTemplate POST 时的请求体（JSON 文本，{query} 会被替换，{count} 换结果数）
+ * @param resultsPath 结果数组在响应 JSON 里的路径，如 data.results / web.pages，留空表示根是数组
+ * @param titlePath 单条结果里标题的字段名，默认 title
+ * @param urlPath 单条结果里链接的字段名，默认 url
+ * @param snippetPath 单条结果里摘要的字段名，默认 content
+ * @param enabled 是否启用（停用后保留配置但不进链路）
  */
 @Serializable
 data class CustomSearchEngine(
@@ -138,38 +138,50 @@ data class CustomSearchEngine(
 
 @Serializable
 data class WebSearchConfig(
-    /** Modo de búsqueda; De forma predeterminada, prioriza automáticamente la búsqueda nativa del modelo y luego recurre a la cadena API/HTTP local. */
+    /** 搜索模式；默认自动优先模型原生搜索，再回退到本地 API/HTTP 链。 */
     val mode: WebSearchMode = WebSearchMode.AUTO,
     val providerName: String = "Auto",
     val apiKey: String = "",
     val endpoint: String = "",
-    /** v1 Campos compatibles:mode=OFF La sincronización horaria se considera desactivada; Las personas que llaman anteriormente todavía pueden leer habilitadas. */
+    /** v1 兼容字段：mode=OFF 时同步视为关闭；旧调用方仍可读取 enabled。 */
     val enabled: Boolean = false,
-    /** v2: El presupuesto de búsqueda de ronda única evita que el modelo se llame infinitamente en una respuesta. por defecto 50(en realidad déjalo ir,Solo ciclo anti-muertos). */
+    /** v2: 单轮搜索预算，防止模型在一次回答里无限重复调用。默认 50(实际放开,仅防死循环)。 */
     val maxSearchesPerTurn: Int = 50,
-    /** v2: El número máximo de resultados devueltos a la vez. */
+    /** v2: 单次最多返回结果数。 */
     val maxResults: Int = 5,
-    /** v2: provider Si se debe continuar usando la cadena de respaldo gratuita después de una falla. */
+    /** v2: provider 失败后是否继续走免费备用链。 */
     val fallbackEnabled: Boolean = true,
-    /** Busque la versión de configuración de la política. Si falta la configuración anterior, el almacén de configuración la migrará al valor predeterminado actual. */
+
+    /**
+     * Auto 回退链的**用户顺序**（引擎名，按用户想要的先后排列）。
+     *
+     * 空 = 沿用内置顺序（旧行为，一条都不变），所以老配置不需要迁移。
+     * 列出的引擎按这里的顺序排在前面；没列出的保持它们原本的相对顺序跟在后面；
+     * 写了不存在或没配置的引擎名会被忽略（不是错误——用户改了插件配置不该让搜索挂掉）。
+     *
+     * 为什么值得做：内置顺序是"自定义引擎 → 配了 Key 的 API → 免费抓取"，
+     * 但谁家的 API 更稳、谁更快，用户比代码清楚；以前这层只能看不能调。
+     */
+    val providerOrder: List<String> = emptyList(),
+    /** 搜索策略配置版本，旧配置缺失时由设置仓库迁移到当前默认值。 */
     val policyVersion: Int = 0,
     /**
-     * v1.135: Mapeo de claves API de múltiples motores de búsqueda(providerName → key).
-     * suministro [AutoWebSearchService] Se utiliza al crear la cadena de respaldo del proveedor.
-     * En modo de proveedor único [apiKey] Se sincronizará con la clave del proveedor actual.
+     * v1.135: 多搜索引擎 API key 映射(providerName → key)。
+     * 供 [AutoWebSearchService] 构建 provider fallback 链时使用。
+     * 单 provider 模式下的 [apiKey] 会与当前 provider 的 key 保持同步。
      */
     val apiKeys: Map<String, String> = emptyMap(),
     /**
-     * v2.6.10: Lista de motores de búsqueda definida por el usuario.
+     * v2.6.10: 用户自定义搜索引擎列表。
      *
-     * Los motores personalizados ocupan el primer lugar en enlaces automáticos —— Se trata de un servicio prestado por los propios usuarios.
-     * Más cerca de sus necesidades que cualquier rastreo gratuito integrado.
+     * 自定义引擎在 Auto 链路里排在最前 —— 那是用户自己配的服务，
+     * 比任何内置免费抓取都更贴近他的需求。
      */
     val customEngines: List<CustomSearchEngine> = emptyList(),
 ) {
     /**
-     * M-04: Devuelve apiKey/apiKeys cifradas(ir [SecureKeyStore.encrypt])copia de,Por llamar antes que la perseverancia.
-     * Los valores nulos se dejan como están.(No cifrar valores nulos). Presione WebServerConfig.modo cifrado.
+     * M-04: 返回 apiKey / apiKeys 已加密(走 [SecureKeyStore.encrypt])的副本,供持久化前调用。
+     * 空值原样保留(不加密空值)。按 WebServerConfig.encrypted 模式。
      */
     suspend fun encrypted(): WebSearchConfig = copy(
         apiKey = SecureKeyStore.encrypt(apiKey),
@@ -177,11 +189,11 @@ data class WebSearchConfig(
     )
 
     /**
-     * M-04: Devolver apiKey / apiKeys descifrados(ir [SecureKeyStore.decrypt])copia de,Se llama después de leer desde la capa de persistencia.
-     * El antiguo texto sin formato se transmite de forma transparente mediante descifrado.(compatibles). Presione WebServerConfig.modo descifrado.
+     * M-04: 返回 apiKey / apiKeys 已解密(走 [SecureKeyStore.decrypt])的副本,供从持久化层读出后调用。
+     * 旧版明文由 decrypt 透传(兼容)。按 WebServerConfig.decrypted 模式。
      *
-     * v1.135 compatibles:La versión antigua sólo salvó una [apiKey],Sincronízalo aquí para [apiKeys] mapeo,
-     * Permita seguir usando la clave configurada después de cambiar al modo automático.
+     * v1.135 兼容:旧版只保存了单 [apiKey],这里把它同步到 [apiKeys] 映射,
+     * 使切换到 Auto 模式后仍能使用已配置的 key。
      */
     suspend fun decrypted(): WebSearchConfig {
         val decryptedKey = SecureKeyStore.decrypt(apiKey)
@@ -203,11 +215,11 @@ data class WebSearchConfig(
 
     companion object {
         /**
-         * Lista de proveedores admitidos(SettingsScreen Para menú desplegable).
-         * v1.28: Trae el tuyo y quédate solo Bing(Gratis no es necesario API key),guarda otro"Personalizar API"
-         * Opción para que los usuarios accedan a sus propias búsquedas API(SearXNG/Tavily Interfaz compatible).
+         * 支持的 provider 列表(SettingsScreen 下拉用)。
+         * v1.28: 自带只保留 Bing(免费无需 API key),另保留一个"自定义 API"
+         * 选项供用户接入自己的搜索 API(SearXNG/Tavily 兼容接口)。
          *
-         * v1.98: Nuevo Perplexity(sonar-pro + citations),Empatado con Valiente/Exa/Bocha.
+         * v1.98: 新增 Perplexity(sonar-pro + citations),与 Brave/Exa/Bocha 并列。
          */
         val SUPPORTED_PROVIDERS = listOf(
             "Auto",
@@ -217,21 +229,21 @@ data class WebSearchConfig(
             "Perplexity",
         )
 
-        /** v2.3.1: Nombre del motor API personalizado — Guardar en configuración(providerName)logotipo,No se puede cambiar a voluntad. */
-        const val CUSTOM_PROVIDER_NAME: String = "Personalizar API"
+        /** v2.3.1: 自定义 API 引擎名 — 存于配置(providerName)的标识,不可随意改动。 */
+        const val CUSTOM_PROVIDER_NAME: String = "自定义 API"
 
-        /** v2.3.1: El método de escritura histórica en inglés de API personalizada(Las configuraciones antiguas pueden almacenar este valor.). */
+        /** v2.3.1: 自定义 API 的英文历史写法(旧配置可能存此值)。 */
         const val CUSTOM_PROVIDER_NAME_EN: String = "Custom API"
 
-        /** v2.3.1: Una colección de dos métodos de escritura para API personalizadas.(UI Se comparten la determinación de la cadena de deduplicación y reversión). */
+        /** v2.3.1: 自定义 API 的两种写法集合(UI 去重与回退链判定共用)。 */
         val CUSTOM_PROVIDER_NAMES: Set<String> = setOf(CUSTOM_PROVIDER_NAME, CUSTOM_PROVIDER_NAME_EN)
 
         /**
-         * Colección de proveedores que requiere clave API(WebSearchSection Determine si se mostrará el cuadro de entrada de la clave API en función de esto).
+         * 需要 API Key 的 provider 集合(WebSearchSection 据此决定是否显示 API Key 输入框)。
          *
-         * - "Personalizar API" Mostrado en chino en la copia de la interfaz de usuario,Ambos métodos de escritura se incluyen aquí para evitar omisiones.
-         * - Bing / SearXNG / Jina(Sin clave, ve al nivel gratuito)No es necesario API Key,Por lo tanto no está en el set.
-         * - Cubrir simultáneamente Brave / Perplexity / Exa / Bocha Espere todas las búsquedas comerciales. API
+         * - "自定义 API" 在 UI 文案里显示为中文,这里两种写法都纳入以防遗漏
+         * - Bing / SearXNG / Jina(无 key 走免费层)不需要 API Key,故不在集合内
+         * - 同时覆盖 Brave / Perplexity / Exa / Bocha 等所有商用搜索 API
          */
         val PROVIDERS_NEEDING_API_KEY: Set<String> = setOf(
             CUSTOM_PROVIDER_NAME, CUSTOM_PROVIDER_NAME_EN,
@@ -243,11 +255,11 @@ data class WebSearchConfig(
 }
 
 /**
- * Phase 8.4: Compartir OkHttpClient(para búsqueda web,Independiente del cliente ChatService,
- * Evite que el SSE de conexión larga y la búsqueda de conexión corta se afecten entre sí).
+ * Phase 8.4: 共享 OkHttpClient(供 web search 用,与 ChatService 的 client 独立,
+ * 避免长连接 SSE 与短连接 search 互相影响)。
  */
 fun createWebSearchClient(): OkHttpClient = OkHttpClient.Builder()
-    // MuMu/Las rutas IPv6 en algunas redes domésticas a menudo se ECONNREFUSEN directamente; Se prefiere IPv4,IPv6 Todavía reservado como respaldo.
+    // MuMu/部分国内网络的 IPv6 路由经常直接 ECONNREFUSED；优先 IPv4，IPv6 仍保留为备用。
     .dns(object : Dns {
         override fun lookup(hostname: String): List<java.net.InetAddress> =
             Dns.SYSTEM.lookup(hostname).sortedBy { if (it is java.net.Inet4Address) 0 else 1 }
@@ -255,16 +267,16 @@ fun createWebSearchClient(): OkHttpClient = OkHttpClient.Builder()
     .connectTimeout(8, TimeUnit.SECONDS)
     .readTimeout(15, TimeUnit.SECONDS)
     .callTimeout(30, TimeUnit.SECONDS)
-    // v2.6.9: Cambie a ProxyProvider dinámico (el cambio de proxy entra en vigor inmediatamente)
+    // v2.6.9: 改用动态 ProxyProvider（改代理立即生效）
     .also { io.zer0.ai.core.ProxyProvider.applyTo(it) }
     .build()
 
 /**
- * v2.6.0: Según [ProxyConfig] Configure el proxy y la autenticación de proxy para OkHttpClient.Builder.
+ * v2.6.0: 根据 [ProxyConfig] 为 OkHttpClient.Builder 设置代理与代理认证。
  *
- * herramientas publicas —— Anteriormente privado para uso exclusivo en búsquedas web,Dando como resultado intercambios de tokens de OAuth, solicitudes de modelos, etc.
- * Los enlaces de red restantes están conectados directamente y no pueden pasar por el proxy global.(Prueba real del usuario:El navegador ha sido autorizado correctamente por el proxy.,Pero la aplicación token
- * Error en el intercambio,La región rechazó la conexión directa a auth.openai.com).
+ * 公共工具 —— 原为 private 仅供 websearch 使用,导致 OAuth token 交换、模型请求等
+ * 其余网络链路直连、走不了全局代理(用户实测:浏览器经代理授权成功,但应用 token
+ * 交换失败,因直连 auth.openai.com 被地区拒绝)。
  */
 fun OkHttpClient.Builder.applyProxy(config: ProxyConfig): OkHttpClient.Builder {
     if (!config.enabled || config.host.isBlank() || config.port <= 0) return this
@@ -286,11 +298,11 @@ fun OkHttpClient.Builder.applyProxy(config: ProxyConfig): OkHttpClient.Builder {
 }
 
 /**
- * M-WS2: poner el bloqueado client.newCall(req).execute() Envuelto en una llamada suspendida cancelable.
+ * M-WS2: 把阻塞的 client.newCall(req).execute() 包装为可取消的 suspend 调用。
  *
- * usar suspendCancellableCoroutine + enqueue + invokeOnCancellation{call.cancel()} modo,
- * Interrumpir llamadas de red bloqueadas cuando se cancela la rutina(de cada proveedor original execute() Bloqueará el hilo y no podrá responder a la cancelación.).
- * Para reutilización por parte de los proveedores de SearXNG/Tavily/Bing.
+ * 用 suspendCancellableCoroutine + enqueue + invokeOnCancellation{call.cancel()} 模式,
+ * 协程取消时中断阻塞的网络调用(原各 provider 的 execute() 会阻塞线程且无法响应取消)。
+ * 供 SearXNG/Tavily/Bing 三个 provider 复用。
  */
 internal suspend fun OkHttpClient.executeAsync(request: Request): Response = suspendCancellableCoroutine { cont ->
     val call = newCall(request)
@@ -307,5 +319,5 @@ internal suspend fun OkHttpClient.executeAsync(request: Request): Response = sus
 }
 
 /**
- * L-WS1: HTML La eliminación de etiquetas se ha migrado a io.zer0.muse.util.HtmlUtils#stripHtmlSimple.
+ * L-WS1: HTML 标签剥离已迁移到 io.zer0.muse.util.HtmlUtils#stripHtmlSimple。
  */

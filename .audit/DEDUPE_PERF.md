@@ -1,19 +1,19 @@
-# Enlace 9: Rendimiento y Estabilidad — Línea base de deduplicación
+# 链路 9：性能与稳定性 — 去重基线
 
-## Solución confirmada/Conocido (no hay más informes)
-- ANR Se ha solucionado la falsa alarma de vigilancia (AnrDetector ticket Contar + congelar sobreimpulso + controlador de referencia fuerte + tiempo real transcurrido); utilice la validación cruzada de seguimientos del sistema para una verdadera solución de problemas de ANR.
-- AssistantAvatar OOM(Decodificado según el tamaño de la pantalla) Fijo; palabras de indicaciones de caracteres extra largas/Esta solución no cubre otras posibilidades de OOM, como el almacenamiento en caché de imágenes de mensajes.——Este"no cubierto"Se puede explorar pero no se considera un descubrimiento nuevo. Encontrar un nuevo camino específico se considera nueva evidencia.
-- Las operaciones de CPU/disco de indexación de documentos se sacaron del hilo principal;44MB zip Importar reparación de la causa raíz del fallo (HNSW Estrangulamiento de la placa de caída).
-- Guardia de vencimiento del cambio de sesión (88405e1c); Se omite la rueda de precalentamiento de compresión.
-- Compose: Lista larga de recordatorios de costos de reestructuración en PROJECT_GUIDE §5;MuseDialog Se conoce la trampa de desplazamiento del área de contenido.
-- SQLiteConnection.close warning(Observado ocasionalmente durante pruebas a gran escala, no se ha demostrado que esté relacionado con cambios)——Observaciones conocidas.
-- DataStore/Robolectric flake:BubbleSkinPluginSourceTest AccessDeniedException(Conocido por estar curado);TransformerPipelineTest Se eliminó RobolectricTestRunner (la causa raíz del problema no está determinada y requiere observación a largo plazo).
+## 已确认修复/已知（不得再报）
+- ANR 看门狗误报已修（AnrDetector ticket 计数 + 冻结 overshoot + 强引用 Handler + elapsedRealtime）；真 ANR 排查用系统 traces 交叉验证。
+- AssistantAvatar OOM（按显示尺寸解码）已修；超长角色提示词/消息图片缓存等其他 OOM 可能性未被该修复覆盖——这条"未覆盖"可以探查但不算全新发现，找到具体新路径算新证据。
+- 文档索引 CPU/磁盘操作移出主线程；44MB zip 导入闪退根因修复（HNSW 落盘节流）。
+- 会话切换过期守卫（88405e1c）；压缩预热轮跳过。
+- Compose：长列表重组成本提醒在 PROJECT_GUIDE §5；MuseDialog 内容区滚动陷阱已知。
+- SQLiteConnection.close warning（全量测试时偶见，未证明与改动相关）——已知观察项。
+- DataStore/Robolectric flake：BubbleSkinPluginSourceTest AccessDeniedException（已知待根治）；TransformerPipelineTest 已去 RobolectricTestRunner（根因 fixture 未定，需长期观察）。
 
-## La dirección de exploración clave de este enlace.
-1. **Ruta de inicio**:MuseApp.onCreate Estado actual (v2.5.x Nueva sembradora/ensureIndexed/A2A/diagnostica si la inicialización ralentiza el arranque en frío);Koin Tamaño del gráfico del módulo; cantidad de trabajo antes del primer fotograma.
-2. **ChatViewModel Impacto en el rendimiento después de la división**:S1-S5 Si la extracción introduce copias de estado adicionales/Colección intermedia; Distribución en la ruta caliente del ciclo de la herramienta.
-3. Generar rutas activas de enlaces:GenerationTrace enterrar el punto,shadow Se superpone la sobrecarga generada por eventos y consultas de compresión de marcas de agua en cada ronda.
-4. Memoria de sesión larga: árbol de mensajes+tarjeta de tarea+tarjeta de producto+Almacenamiento completo de imágenes; Reciclaje de memoria fuera de los límites de carga de paginación.
-5. Riesgo del hilo principal: nuevo código (A2A handler,Tasker receiver, embalaje de exportación de diagnóstico) límites de hilo——BroadcastReceiver.onReceive hilo principal,ContentResolver/Ubicación del archivo IO.
-6. Estabilidad del proceso: Singleton global (AutomationManager/ToolRegistry/MuseRuntime) propagación de fallos de inicialización; el estado de cada administrador se restaura cuando se finaliza el proceso.
-7. WorkManager/Doze: Tareas programadas, mensajes activos y resumen diario de comportamientos en Doze (nivel de código:setExactAndAllowWhileIdle etc. Corrección del uso de API).
+## 本链路重点探查方向
+1. **启动路径**：MuseApp.onCreate 现状（v2.5.x 新增的 seeder/ensureIndexed/A2A/诊断初始化是否拖慢冷启动）；Koin 模块图大小；首帧前的工作量。
+2. **ChatViewModel 拆分后的性能影响**：S1-S5 提取是否引入了额外的状态拷贝/中间集合；工具循环热路径上的分配。
+3. 生成链路热路径：GenerationTrace 埋点、shadow 事件、压缩水位线查询在每轮生成的开销叠加。
+4. 长会话内存：消息树+任务卡+产物卡+图片的全量驻留；分页加载边界外的内存回收。
+5. 主线程风险：新代码（A2A handler、Tasker receiver、诊断导出打包）的线程边界——BroadcastReceiver.onReceive 主线程、ContentResolver/文件 IO 位置。
+6. 进程稳定性：全局单例（AutomationManager/ToolRegistry/MuseRuntime）的初始化失败传播；进程被杀时各 manager 的状态恢复。
+7. WorkManager/Doze：定时任务、主动消息、每日总结在 Doze 下的行为（代码层面：setExactAndAllowWhileIdle 等 API 用法正确性）。

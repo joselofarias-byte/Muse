@@ -1,31 +1,31 @@
 #!/usr/bin/env python3
 """
-compose_stability_report.py — Reúna los informes de estabilidad del compilador Compose en una lista de verificación verificable.
+compose_stability_report.py — 把 Compose 编译器的稳定性报告汇总成可核对的清单。
 
-## por qué es necesario
+## 为什么需要它
 
-`app/build.gradle.kts` abierto `composeCompiler { reportsDestination / metricsDestination }`,
-El producto es `app/build/compose_reports/` Los siguientes tres archivos de texto son de varios cientos de KB. Hay tres problemas con la lectura directa:
-Los informes se enumeran por parámetros componibles e inestables.**sin `unstable` prefijo**(no escribí `stable` Es simplemente inestable),
-y "lo que cae en el diálogo/Se requiere filtrado manual en el enlace de la tarjeta.
+`app/build.gradle.kts` 打开了 `composeCompiler { reportsDestination / metricsDestination }`，
+产物是 `app/build/compose_reports/` 下三个几百 KB 的文本文件。直接读有三个麻烦：
+报告按 composable 罗列、不稳定参数**不带 `unstable` 前缀**（没写 `stable` 就是不稳定）、
+以及「哪些落在对话/卡片链路上」需要人工过滤。
 
-Lo que realmente es necesario responder al realizar la rectificación del rendimiento son dos preguntas:
-  1. ¿Cuántos elementos componibles no se pueden omitir (condiciones de entrada para la optimización de la reorganización)?
-  2. dialogo/¿Qué elementos componibles tienen parámetros inestables en el enlace de la tarjeta?
+性能整改时真正要回答的是两个问题：
+  1. 有多少 composable 不可跳过（重组优化的入口条件）？
+  2. 对话/卡片链路上哪些 composable 带不稳定参数？
 
-## Uso
+## 用法
 
-    # Ejecute primero una compilación para generar el informe.
+    # 先跑一次编译让报告生成
     .\\gradlew.bat :app:compileDebugKotlin --rerun-tasks
     python ci/script/compose_stability_report.py
 
-Salida:`build/perf/compose_report_summary.txt`e imprima un resumen en la salida estándar.
+输出：`build/perf/compose_report_summary.txt`，并在 stdout 打印摘要。
 
-## Calibre
+## 口径
 
-- `restartable skippable ...` = Se puede omitir;`restartable ...`(no saltable)= No se puede omitir.
-- La línea de parámetros solo tiene `stable ` Los que tienen el prefijo se consideran estables; el resto se considera inestable según el calibre del compilador.
-- "Diálogo/enlace de tarjeta= Accesos al nombre del paquete o al nombre de la función [FOCUS_PACKAGES] / [FOCUS_NAMES], se puede ampliar según sea necesario.
+- `restartable skippable ...` = 可跳过；`restartable ...`（无 skippable）= 不可跳过。
+- 参数行只有带 `stable ` 前缀的才算稳定；其余按编译器口径视为不稳定。
+- 「对话/卡片链路」= 包名或函数名命中 [FOCUS_PACKAGES] / [FOCUS_NAMES]，可按需扩展。
 """
 
 from __future__ import annotations
@@ -62,7 +62,7 @@ FOCUS_NAMES = (
 
 
 def parse_entries(text: str) -> list[tuple[str, list[str]]]:
-    """Cortar el informe en [(fila de encabezado, [Línea de parámetros...]), ...]."""
+    """把报告切成 [(头部行, [参数行...]), ...]。"""
     entries: list[tuple[str, list[str]]] = []
     head: str | None = None
     params: list[str] = []
@@ -84,9 +84,9 @@ def parse_entries(text: str) -> list[tuple[str, list[str]]]:
 
 def main() -> None:
     if not REPORT.exists():
-        print(f"[compose-stability] El informe no existe:{REPORT}", file=sys.stderr)
+        print(f"[compose-stability] 报告不存在：{REPORT}", file=sys.stderr)
         print(
-            "[compose-stability] Ejecutar una vez:.\\gradlew.bat :app:compileDebugKotlin --rerun-tasks",
+            "[compose-stability] 先跑一次：.\\gradlew.bat :app:compileDebugKotlin --rerun-tasks",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -95,9 +95,9 @@ def main() -> None:
     total = len(entries)
     if total < 300:
         print(
-            f"[compose-stability] Advertencia: el informe solo analiza {total} un componible,"
-            "Lo más probable es que sea producto de una compilación incremental (esta vez solo se recompilan archivos)."
-            "Para obtener una lista completa, ejecute --rerun-tasks.",
+            f"[compose-stability] 警告：报告只解析出 {total} 个 composable，"
+            "极可能是增量编译产物（只含本次重编译的文件）。"
+            "要全量清单请跑 --rerun-tasks。",
             file=sys.stderr,
         )
     skippable = [entry for entry in entries if "skippable" in entry[0].split("scheme")[0]]
@@ -116,7 +116,7 @@ def main() -> None:
         f"skippable = {len(skippable)}  ({len(skippable) * 100 // max(total, 1)}%)",
         f"NOT skippable = {len(non_skippable)}",
         "",
-        "=== No se puede omitir y entra dentro del diálogo./tarjeta/En enlaces de componentes públicos (clasificados por número de parámetros inestables)===",
+        "=== 不可跳过、且落在对话/卡片/公共组件链路上的（按不稳定参数数量排）===",
     ]
     rows: list[tuple[int, str, list[str]]] = []
     for fn, bad in unstable.items():
@@ -125,13 +125,13 @@ def main() -> None:
             rows.append((len(bad), fn, bad))
     rows.sort(reverse=True)
     for count, fn, bad in rows:
-        lines.append(f"- {fn}  [{count} parámetros inestables]")
+        lines.append(f"- {fn}  [{count} 个不稳定参数]")
         for param in bad:
             lines.append(f"    · {param}")
     lines.append("")
-    lines.append(f"(Diálogo/Número total de tarjetas en el enlace {len(rows)} no se puede omitir componible)")
+    lines.append(f"（对话/卡片链路上共 {len(rows)} 个不可跳过 composable）")
 
-    lines.extend(["", "=== Clases consideradas inestables (eliminación de duplicaciones, top 60)==="])
+    lines.extend(["", "=== 被判为不稳定的 class（去重，前 60）==="])
     if CLASSES.exists():
         names = re.findall(
             r"unstable class ([\w.$]+)",
@@ -141,10 +141,10 @@ def main() -> None:
         for name in names:
             if name not in seen:
                 seen.append(name)
-        lines.append(f"unstable class Después de la deduplicación = {len(seen)}")
+        lines.append(f"unstable class 去重后 = {len(seen)}")
         lines.extend(f"- {name}" for name in seen[:60])
     else:
-        lines.append("(app-classes.txt desaparecido)")
+        lines.append("(app-classes.txt 缺失)")
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text("\n".join(lines), encoding="utf-8")

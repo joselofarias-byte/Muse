@@ -15,11 +15,11 @@ import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.serializer
 
 /**
- * P2-2 Dividir: subrepositorio de configuración de comportamiento de chat.
+ * P2-2 拆分：聊天行为设置子仓库。
  *
- * Incluye estimación de tokens, pegado en archivo, restricciones de contexto mínimo, entrada de texto enriquecido y preferencia de chat JSON.
+ * 承载 Token 估算、粘贴转文件、楼层上下文限制、富文本输入、聊天偏好 JSON。
  */
-/** Derivar la deduplicación del flujo de configuración:DataStore.data Elimine únicamente los duplicados de todas las Preferencias.map Luego, cada uno se deduplica para suprimir la emisión repetida del mismo valor provocada por claves irrelevantes. */
+/** 派生配置流去重：DataStore.data 只对整份 Preferences 去重，map 后各自去重以抑制无关 key 触发的相同值重复发射。 */
 private fun <T> Flow<Preferences>.mapDistinct(transform: suspend (Preferences) -> T): Flow<T> = map(transform).distinctUntilChanged()
 
 class ChatSettingsStore(private val context: Context) {
@@ -46,7 +46,7 @@ class ChatSettingsStore(private val context: Context) {
             prefs[KEY_FLOOR_LIMIT] ?: 16
         }
 
-    /** v2.x: Límite de ronda de herramientas(0=Ilimitado;Ilimitado por defecto,Las tareas largas ya no se verán interrumpidas por rondas.). */
+    /** v2.x: 工具轮次上限(0=无限制;默认无限制,长任务不再被轮次卡断)。 */
     val toolLoopMaxRoundsFlow: Flow<Int> =
         store.data.mapDistinct { prefs ->
             prefs[KEY_TOOL_LOOP_MAX_ROUNDS] ?: 0
@@ -57,18 +57,18 @@ class ChatSettingsStore(private val context: Context) {
         }
 
     /**
-     * Active "Visualización de tarjeta" y "Salida de tarjeta preferida" a la vez.
+     * 一次性把「卡片展示」与「偏好卡片输出」打开。
      *
-     * Historia: Esta fue originalmente una migración inversa (migrateCardOutputOffOnce), ponga todos los usuarios
-     * preferCardOutput Cerrado incondicionalmente porque el enlace de representación de la tarjeta aún se está rehaciendo. Esa migración ha sido
-     * Lo he ejecutado en muchos dispositivos y lo que se almacena en el disco es false —— Simplemente cambiando el valor predeterminado de la clase de datos no se pueden cambiar estos dispositivos.
+     * 历史：这里原本是一个反向迁移（migrateCardOutputOffOnce），把所有用户的
+     * preferCardOutput 无条件关掉，理由是卡片渲染链路还在重做。那条迁移已经
+     * 在不少设备上跑过，盘里存的是 false —— 只改数据类默认值改不到这些设备。
      *
-     * Ahora que la cadena de renderizado puede seguir las dimensiones del contenido y tener dimensiones declaradas por el modelo, es hora de devolverle el cambio al usuario.
-     * Así que simplemente escriba la migración al revés en lugar de agregar una migración "abierta":
-     * Uno se cancela y el otro se cancela. El estado final depende de la orden de ejecución. Este tipo de dependencia secuencial no debería existir.
+     * 现在渲染链路已能跟随内容尺寸、也能由模型声明尺寸，该把开关交回给用户了。
+     * 所以直接把迁移反过来写，而不是再加一条「打开」的迁移：
+     * 一条写关、一条写开，最终状态取决于执行顺序，这种先后依赖不该存在。
      *
-     * Utilice nuevas claves de etiqueta para garantizar que los dispositivos que se han migrado también se abran esta vez;
-     * Sólo se mueven estos dos bits booleanos y no se tocan otras preferencias del usuario.
+     * 用新的标记键，保证曾经跑过关迁移的设备这次也会被打开；
+     * 只动这两个布尔位，不碰用户的其它偏好。
      */
     suspend fun migrateCardOutputOnOnce() {
         if (store.data.first()[KEY_CARD_OUTPUT_ON_MIGRATED] == true) return
@@ -86,7 +86,7 @@ class ChatSettingsStore(private val context: Context) {
         }
     }
 
-    /** C3: Lista de ID de sesiones de navegación recientes(Más reciente primero,Ir a restablecer arriba,la mayoría [RECENT_SESSIONS_CAP] Artículo). */
+    /** C3: 最近浏览会话 id 列表(最近优先,去重置顶,最多 [RECENT_SESSIONS_CAP] 条)。 */
     val recentSessionsFlow: Flow<List<String>> =
         store.data.mapDistinct { prefs ->
             decodeRecentSessions(prefs[KEY_RECENT_SESSIONS])
@@ -95,18 +95,18 @@ class ChatSettingsStore(private val context: Context) {
     suspend fun getChatPreferences(): ChatPreferences = chatPreferencesFlow.first()
 
     /**
-     * v2.5.3 (P1-1): Actualización funcional ChatPreferences —— Fuente de verdad única en memoria + lecturas atómicas-cambiar-Escribir.
+     * v2.5.3 (P1-1): 函数式更新 ChatPreferences —— 内存唯一事实源 + 原子读-改-写。
      *
-     * Clave: Los tres pasos de leer el valor anterior, aplicar el bloqueo y volver a escribir se completan dentro de la misma transacción de edición.
-     * DataStore Se garantiza que el bloque de edición obtendrá el último valor confirmado, por lo que las escrituras simultáneas no se sobrescribirán entre sí.
-     * este es el reemplazo“Pase toda la clase de datos para volver a escribir”La entrada correcta: la persona que llama sólo describe“¿Qué debo cambiar?”,
-     * En lugar de tomar una instantánea primero y luego escribir la copia completa (este último usará la instantánea desactualizada para sobrescribir las modificaciones en otros lugares).
+     * 关键：读旧值、应用 block、写回这三步全部在 edit 的同一事务内完成，
+     * DataStore 的 edit 块保证拿到的是最新已提交值，因此并发写不会互相覆盖。
+     * 这是替换“传整份 data class 回写”的正确入口：调用方只描述“我要改什么”，
+     * 而不是先 snapshot 再整份写回（后者会拿过时快照覆盖别处的修改）。
      */
     suspend fun updateChatPreferences(block: (ChatPreferences) -> ChatPreferences) {
         store.edit { prefs ->
             val raw = prefs[KEY_CHAT_PREFERENCES]
-            // P1-2: Detectar corrupción antes de escribir —— Cuando el JSON existente no esté vacío pero no se pueda decodificar, primero haga una copia de seguridad del contenido original.
-            // Evite que los valores predeterminados se vuelvan a escribir como datos del usuario y borre silenciosamente todas las configuraciones.
+            // P1-2: 写前检测损坏 —— 存量 JSON 非空但解不开时，先把原始内容备份，
+            // 避免默认值被当成用户数据写回、静默清空全部设置。
             backupIfCorrupt(raw)
             val current = decodeChatPreferences(raw)
             prefs[KEY_CHAT_PREFERENCES] = AppJson.encodeToString(ChatPreferences.serializer(), block(current))
@@ -114,15 +114,15 @@ class ChatSettingsStore(private val context: Context) {
     }
 
     /**
-     * v2.5.3 (P1-2): Cuando el JSON de preferencia almacenado está dañado, se realiza una copia de seguridad de la cadena original para su posterior recuperación.
+     * v2.5.3 (P1-2): 存量偏好 JSON 损坏时备份原始串，供事后找回。
      *
-     * solo en“El texto original no está vacío pero no se puede resolver.”Activado cuando; la copia de seguridad se escribe en una clave independiente y no sobrescribe el valor actual.
+     * 只在“原文非空但解不开”时触发；备份写入独立键，不覆盖当前值。
      */
     private fun backupIfCorrupt(raw: String?) {
         if (raw.isNullOrBlank()) return
         val ok = runCatching { AppJson.decodeFromString(ChatPreferences.serializer(), raw) }.isSuccess
         val prefs = context.getSharedPreferences(CORRUPT_BACKUP_PREFS, Context.MODE_PRIVATE)
-        // Escriba solo si está dañado y no se ha realizado una copia de seguridad (conserve el sitio original del problema y no lo sobrescriba repetidamente)
+        // 损坏且尚未备份时才写（保留最初的问题现场，不反复覆盖）
         if (!ok && !prefs.contains(CORRUPT_BACKUP_KEY)) {
             prefs
                 .edit()
@@ -131,16 +131,16 @@ class ChatSettingsStore(private val context: Context) {
                 .apply()
             io.zer0.common.Logger.w(
                 "ChatSettingsStore",
-                "chat_preferences_json Contenido original corrupto respaldado(${raw.length} personaje)llegar $CORRUPT_BACKUP_PREFS/$CORRUPT_BACKUP_KEY",
+                "chat_preferences_json 损坏，已备份原始内容(${raw.length} 字符)到 $CORRUPT_BACKUP_PREFS/$CORRUPT_BACKUP_KEY",
             )
         }
     }
 
     /**
-     * @Deprecated v2.5.3 (P1-1): La reescritura completa de la clase de datos tomará la instantánea desactualizada y sobrescribirá las modificaciones en otros lugares.
-     * Usar en su lugar [updateChatPreferences] Realizar actualizaciones funcionales. Este método está reservado únicamente para pruebas y llamadas de stock de compatibilidad.
+     * @Deprecated v2.5.3 (P1-1): 整份 data class 回写会拿过时快照覆盖别处修改。
+     * 改用 [updateChatPreferences] 做函数式更新。保留此方法仅为兼容存量调用与测试。
      */
-    @Deprecated("Usar en su lugar updateChatPreferences(block) Realice actualizaciones funcionales atómicas para evitar que toda la reescritura cubra modificaciones simultáneas")
+    @Deprecated("改用 updateChatPreferences(block) 做原子函数式更新，避免整份回写覆盖并发修改")
     suspend fun saveChatPreferences(prefs: ChatPreferences) {
         store.edit { it[KEY_CHAT_PREFERENCES] = AppJson.encodeToString(ChatPreferences.serializer(), prefs) }
     }
@@ -165,14 +165,14 @@ class ChatSettingsStore(private val context: Context) {
         store.edit { it[KEY_FLOOR_LIMIT] = limit }
     }
 
-    /** v2.x: Guardar límite de ronda de herramienta(0=Ilimitado). */
+    /** v2.x: 保存工具轮次上限(0=无限制)。 */
     suspend fun saveToolLoopMaxRounds(limit: Int) {
         store.edit { it[KEY_TOOL_LOOP_MAX_ROUNDS] = limit }
     }
 
     /**
-     * C3: Grabar una sesión de navegación — Ir a restablecer arriba(Mover la misma identificación al frente),Cola recortada de ultra capacidad.
-     * punto de llamada: ChatViewModel.switchSession(Embudo unificado de cambio de sesión).
+     * C3: 记录一次会话浏览 — 去重置顶(同 id 移到最前),超容量裁剪尾部。
+     * 调用点: ChatViewModel.switchSession(会话切换统一漏斗)。
      */
     suspend fun recordSessionViewed(sessionId: String) {
         store.edit { prefs ->
@@ -192,7 +192,7 @@ class ChatSettingsStore(private val context: Context) {
 
     private fun decodeRecentSessions(value: String?): List<String> {
         if (value.isNullOrBlank()) return emptyList()
-        // Volver a la lista vacía cuando los datos históricos están dañados,No afecta el proceso principal.(El historial de navegación es una función de accesibilidad)
+        // 历史数据损坏时回退空列表,不影响主流程(浏览历史属辅助功能)
         return runCatching {
             AppJson.decodeFromString(ListSerializer(String.serializer()), value)
         }.getOrElse { emptyList() }
@@ -201,8 +201,8 @@ class ChatSettingsStore(private val context: Context) {
     private companion object {
         private const val RECENT_SESSIONS_CAP = 10
 
-        // v2.5.3 (P1-2): Ubicación de copia de seguridad para JSON de preferencia corrupto(SharedPreferences, independiente de DataStore,
-        // Evite la pérdida de copias de seguridad cuando el propio DataStore esté dañado).
+        // v2.5.3 (P1-2): 损坏偏好 JSON 的备份位置(SharedPreferences，独立于 DataStore，
+        // 避免 DataStore 自身损坏时备份也丢失)。
         private const val CORRUPT_BACKUP_PREFS = "muse_settings_corrupt_backup"
         private const val CORRUPT_BACKUP_KEY = "chat_preferences_json_corrupt"
         private const val CORRUPT_BACKUP_TS_KEY = "chat_preferences_json_corrupt_at"
@@ -215,7 +215,7 @@ class ChatSettingsStore(private val context: Context) {
         private val KEY_TOOL_LOOP_MAX_ROUNDS = intPreferencesKey("tool_loop_max_rounds")
         private val KEY_CHAT_PREFERENCES = stringPreferencesKey("chat_preferences_json")
 
-        /** Marca de migración única: \"Salida de tarjeta de preferencias\" se ha desactivado a la fuerza una vez. */
+        /** 一次性迁移标记：「偏好卡片输出」已强制关过一次。 */
         private val KEY_CARD_OUTPUT_ON_MIGRATED = booleanPreferencesKey("card_output_on_migrated")
     }
 }

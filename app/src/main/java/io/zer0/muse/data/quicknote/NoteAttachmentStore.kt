@@ -7,23 +7,23 @@ import java.io.File
 import java.util.UUID
 
 /**
- * v2.6.7: Grabe rápidamente el almacenamiento de imágenes adjuntas.
+ * v2.6.7: 快速记录的附件图片存储。
  *
- * ## ¿Por qué abrir un directorio separado en lugar de reutilizar el pequeño álbum de fotos del teléfono celular? mini_album_import
+ * ## 为什么单开一个目录，不复用小手机相册的 mini_album_import
  *
- * El directorio del álbum de fotos importado aparecerá en su totalidad en la página "Álbum pequeño para teléfono celular" (listImported Escanee el directorio).
- * Si la nota adjunta también está escrita allí y el usuario pega una imagen en la nota, aparecerá una imagen adicional en el álbum de la nada. —— Dos funciones
- * Los límites de los datos pueden contaminarse entre sí. Entonces cada uno usa su propio directorio.
+ * 相册导入目录会被「小手机相册」页整个列出（listImported 扫目录）。
+ * 笔记附件若也写进那里，用户往笔记贴一张图，相册里就凭空多一张 —— 两个功能的
+ * 数据边界会互相污染。所以各用各的目录。
  *
- * ## ¿Por qué guardar el archivo en lugar de simplemente URI
+ * ## 为什么存文件而不是只存 URI
  *
- * El URI de contenido del álbum del sistema solo tiene permiso de lectura a corto plazo (y está sujeto al ciclo de vida SAF).
- * Para poder ver los archivos adjuntos durante mucho tiempo en las notas, los bytes deben copiarse en el directorio privado de la aplicación.
+ * 系统相册的 content URI 只有短暂读权限（且受 SAF 生命周期约束），
+ * 笔记要能长期回看附件，必须把字节复制进应用私有目录。
  *
- * ## Nomenclatura de archivos
+ * ## 文件命名
  *
- * `img_<uuid>.<ext>` —— La identificación de la nota no se lleva. La relación entre notas y archivos adjuntos existe.
- * QuickNoteEntity.attachmentsJson(matriz de ruta), al eliminar notas, recicle los archivos de acuerdo con la lista.
+ * `img_<uuid>.<ext>` —— 不携带笔记 id。笔记与附件的关系存在
+ * QuickNoteEntity.attachmentsJson（路径数组）里，删除笔记时按清单回收文件。
  */
 class NoteAttachmentStore(private val context: Context) {
 
@@ -31,10 +31,10 @@ class NoteAttachmentStore(private val context: Context) {
         get() = File(context.filesDir, DIR_NAME).apply { mkdirs() }
 
     /**
-     * Copie la imagen seleccionada en un directorio privado y devuelva una cadena de ruta file:// legible a largo plazo.
+     * 把选中的图片复制进私有目录，返回可长期读取的 file:// 路径字符串。
      *
-     * Error (sin permiso de lectura, archivo vacío,IO Excepción) retorno null —— La persona que llama avisa al usuario en consecuencia,
-     * No escriba un registro adjunto que apunte a un archivo que no existe.
+     * 失败（无读权限、空文件、IO 异常）返回 null —— 调用方据此提示用户，
+     * 不写入一条指向不存在文件的附件记录。
      */
     fun importOne(uri: Uri): String? = runCatching {
         val ext = guessExtension(uri)
@@ -43,35 +43,35 @@ class NoteAttachmentStore(private val context: Context) {
         input.use { stream ->
             target.outputStream().use { output -> stream.copyTo(output) }
         }
-        // 0 La descripción del byte leída se rechaza o la fuente está vacía y no puede considerarse una importación exitosa.
+        // 0 字节说明读取被拒或源为空，不能当成导入成功
         if (target.length() <= 0L) {
             target.delete()
             return@runCatching null
         }
         Uri.fromFile(target).toString()
     }.onFailure { t ->
-        Logger.w(TAG, "No se pudieron importar archivos adjuntos de notas: ${t.message}")
+        Logger.w(TAG, "笔记附件导入失败: ${t.message}")
     }.getOrNull()
 
     /**
-     * Eliminar un archivo adjunto.
+     * 删除一个附件文件。
      *
-     * Límite de seguridad: solo se permite eliminar archivos de este directorio.attachmentsJson En teoría, los datos se pueden importar desde el exterior.
-     * La contaminación y la falta de verificación resultarán en la eliminación arbitraria del archivo.
+     * 安全边界：只允许删本目录下的文件。attachmentsJson 理论上可被外部导入数据
+     * 污染，不校验就会变成任意文件删除。
      */
     fun delete(uriString: String): Boolean = runCatching {
         val path = Uri.parse(uriString).path ?: return@runCatching false
         val file = File(path)
         if (file.parentFile?.absolutePath != dir.absolutePath) {
-            Logger.w(TAG, "Negarse a eliminar archivos adjuntos fuera del directorio de notas: ${file.name}")
+            Logger.w(TAG, "拒绝删除笔记目录之外的附件: ${file.name}")
             return@runCatching false
         }
         file.delete()
     }.onFailure { t ->
-        Logger.w(TAG, "No se pudo eliminar la nota adjunta: ${t.message}")
+        Logger.w(TAG, "删除笔记附件失败: ${t.message}")
     }.getOrDefault(false)
 
-    /** Reciclar archivos por lista (llamado cuando las notas se eliminan permanentemente o se vacía la papelera de reciclaje). */
+    /** 按清单回收文件（笔记被永久删除 / 回收站清空时调用）。 */
     fun deleteAll(uriStrings: List<String>) {
         uriStrings.forEach { delete(it) }
     }
@@ -92,7 +92,7 @@ class NoteAttachmentStore(private val context: Context) {
         }
     }
 
-    /** Verifique si una ruta es realmente un archivo adjunto administrado por este almacenamiento. */
+    /** 校验某个路径是否确实是本存储管理的附件。 */
     fun isManaged(uriString: String): Boolean = uriString.contains("/$DIR_NAME/")
 
     companion object {

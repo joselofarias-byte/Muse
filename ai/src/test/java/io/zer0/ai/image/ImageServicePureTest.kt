@@ -12,7 +12,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * R-TEST-20: Frecuencia de sondeo del servicio de imágenes y prueba puramente lógica de conversión de salida.
+ * R-TEST-20: 图片服务轮询频率与输出转换纯逻辑测试。
  */
 class ImageServicePureTest {
 

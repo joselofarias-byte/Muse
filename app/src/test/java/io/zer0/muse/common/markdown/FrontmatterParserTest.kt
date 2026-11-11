@@ -6,133 +6,133 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * v1.0.53: FrontmatterParser Pruebas unitarias(Guía de casos de uso de aceptación de la fase 0).
+ * v1.0.53: FrontmatterParser 单元测试(指南 Phase 0 验收用例)。
  */
 class FrontmatterParserTest {
 
     @Test
-    fun `Los tres campos completos del front-matter se analizan correctamente`() {
+    fun `完整 frontmatter 三字段解析正确`() {
         val md = """
             ---
-            title: Mis documentos
+            title: 我的文档
             cover: covers/hero.jpg
-            description: Descripción de una frase
+            description: 一句话描述
             ---
-            # Título del texto
-            Contenido del texto
+            # 正文标题
+            正文内容
         """.trimIndent()
 
         val fm = FrontmatterParser.parse(md)
         assertTrue(fm != null)
-        assertEquals("Mis documentos", fm?.title)
+        assertEquals("我的文档", fm?.title)
         assertEquals("covers/hero.jpg", fm?.cover)
-        assertEquals("Descripción de una frase", fm?.description)
+        assertEquals("一句话描述", fm?.description)
         assertEquals(3, fm?.raw?.size)
     }
 
     @Test
-    fun `Ningún texto inicial devuelve nulo y la tira devuelve sin cambios`() {
-        val md = "# solo titulo\n\nsin metadatos"
+    fun `无 frontmatter 文本返回 null 且 strip 原样返回`() {
+        val md = "# 只有标题\n\n没有元数据"
         assertNull(FrontmatterParser.parse(md))
         assertEquals(md, FrontmatterParser.strip(md))
     }
 
     @Test
-    fun `frontmatter devolución no cerrada null`() {
+    fun `frontmatter 未闭合返回 null`() {
         val md = """
             ---
-            title: no cerrado
+            title: 没有关闭
         """.trimIndent()
         assertNull(FrontmatterParser.parse(md))
     }
 
     @Test
-    fun `Análisis normal con BOM`() {
-        val md = "\uFEFF---\ntitle: BOMDocumentación\n---\nTexto"
+    fun `带 BOM 正常解析`() {
+        val md = "\uFEFF---\ntitle: BOM文档\n---\n正文"
         val fm = FrontmatterParser.parse(md)
         assertTrue(fm != null)
-        assertEquals("BOMDocumentación", fm?.title)
+        assertEquals("BOM文档", fm?.title)
     }
 
     @Test
-    fun `Eliminación del valor de las comillas`() {
-        val md = "---\ntitle: \"Título citado\"\ncover: 'covers/x.jpg'\n---\n"
+    fun `引号值去引号`() {
+        val md = "---\ntitle: \"带引号标题\"\ncover: 'covers/x.jpg'\n---\n"
         val fm = FrontmatterParser.parse(md)
-        assertEquals("Título citado", fm?.title)
+        assertEquals("带引号标题", fm?.title)
         assertEquals("covers/x.jpg", fm?.cover)
     }
 
     @Test
-    fun `El campo de valor nulo es null`() {
-        val md = "---\ntitle:\ncover: \n---\nTexto"
+    fun `空值字段为 null`() {
+        val md = "---\ntitle:\ncover: \n---\n正文"
         val fm = FrontmatterParser.parse(md)
         assertNull(fm?.title)
         assertNull(fm?.cover)
     }
 
     @Test
-    fun `Las claves no distinguen entre mayúsculas y minúsculas y se eliminan los espacios`() {
-        val md = "---\n  Title : tecla mayúscula\n---\n"
+    fun `键大小写不敏感且去空格`() {
+        val md = "---\n  Title : 大写键\n---\n"
         val fm = FrontmatterParser.parse(md)
-        assertEquals("tecla mayúscula", fm?.title)
+        assertEquals("大写键", fm?.title)
     }
 
     @Test
-    fun `Las líneas de sintaxis no admitidas se ignoran`() {
+    fun `不支持语法行被忽略`() {
         val md = """
             ---
-            title: normales
+            title: 正常
             tags:
               - a
               - b
             nested: { x: 1 }
             ---
-            Texto
+            正文
         """.trimIndent()
         val fm = FrontmatterParser.parse(md)
         assertTrue(fm != null)
-        assertEquals("normales", fm?.title)
-        // tags/nested No es una clave válida: valor de una sola línea,debe ser ignorado
+        assertEquals("正常", fm?.title)
+        // tags/nested 不是合法 key: value 单行,应被忽略
         assertNull(fm?.raw?.get("tags"))
     }
 
     @Test
-    fun `strip Conserva solo el texto`() {
-        val md = "---\ntitle: Documentación\n---\n# Título del texto\nprimer párrafo"
+    fun `strip 只保留正文`() {
+        val md = "---\ntitle: 文档\n---\n# 正文标题\n第一段"
         val body = FrontmatterParser.strip(md)
-        assertTrue(body.startsWith("# Título del texto"))
+        assertTrue(body.startsWith("# 正文标题"))
         assertTrue(!body.contains("title:"))
     }
 
     @Test
-    fun `withCover Crear nuevo y extraer del encabezado cuando no haya ningún tema inicial title`() {
-        val md = "# mi articulo\n\nTexto"
+    fun `withCover 无 frontmatter 时新建并从标题提取 title`() {
+        val md = "# 我的文章\n\n正文"
         val out = FrontmatterParser.withCover(md, "covers/gen_001.jpg")
         val fm = FrontmatterParser.parse(out)
-        assertEquals("mi articulo", fm?.title)
+        assertEquals("我的文章", fm?.title)
         assertEquals("covers/gen_001.jpg", fm?.cover)
-        // Texto reservado
-        assertTrue(out.contains("Texto"))
+        // 正文保留
+        assertTrue(out.contains("正文"))
     }
 
     @Test
-    fun `withCover Reemplazar la línea de portada cuando ya exista el front-matter`() {
-        val md = "---\ntitle: documentos antiguos\ncover: covers/old.jpg\n---\nTexto"
+    fun `withCover 已有 frontmatter 时替换 cover 行`() {
+        val md = "---\ntitle: 旧文档\ncover: covers/old.jpg\n---\n正文"
         val out = FrontmatterParser.withCover(md, "covers/new.jpg")
         val fm = FrontmatterParser.parse(out)
         assertEquals("covers/new.jpg", fm?.cover)
-        assertEquals("documentos antiguos", fm?.title)
-        // No genere líneas de portada duplicadas
+        assertEquals("旧文档", fm?.title)
+        // 不产生重复 cover 行
         val coverLines = out.lineSequence().filter { it.trimStart().startsWith("cover:") }.count()
         assertEquals(1, coverLines)
     }
 
     @Test
-    fun `withCover Insertar cuando ya hay frontmatter y no hay portada`() {
-        val md = "---\ntitle: Sin documento de portada\n---\nTexto"
+    fun `withCover 已有 frontmatter 无 cover 时插入`() {
+        val md = "---\ntitle: 无封面文档\n---\n正文"
         val out = FrontmatterParser.withCover(md, "covers/added.jpg")
         val fm = FrontmatterParser.parse(out)
         assertEquals("covers/added.jpg", fm?.cover)
-        assertEquals("Sin documento de portada", fm?.title)
+        assertEquals("无封面文档", fm?.title)
     }
 }

@@ -4,18 +4,18 @@ import io.zer0.muse.miniphone.api.MpChatTurn
 import io.zer0.muse.miniphone.data.db.MpActorType
 import io.zer0.muse.miniphone.data.db.MpMessageType
 
-/** El separador entre el nombre del hablante y el texto en el historial del chat grupal. */
-internal const val SPEAKER_SEPARATOR: String = ":"
+/** 群聊历史里发言人名字与正文之间的分隔符。 */
+internal const val SPEAKER_SEPARATOR: String = "："
 
 /**
- * Historial de sesiones entregado al anfitrión:Recupere solo mensajes de texto que se hayan colocado en la biblioteca,En orden cronológico.
+ * 交给宿主的会话历史:只取已落库的文本消息,按时间正序。
  *
- * Avisos e imágenes del sistema./La línea de voz no participa. —— Lo primero no es algo que dijo el personaje.,Este último no tiene texto para enviar.
+ * 系统提示和图片/语音行不参与 —— 前者不是角色说过的话,后者没有文本可发。
  *
- * Los mensajes de rol en los chats grupales siempre deben escribirse como "Nombre del portavoz: Texto". Sólo hay dos niveles de rondas de anfitriones: "Usuario/No usuario",
- * Varias personas hablando en el mismo grupo tendrán la misma identidad de asistente:Sin prefijo,La última persona que habló no supo decir nada.
- * ¿Quién dijo la frase anterior?,Es fácil repetir la frase anterior o responder a la persona equivocada. Completa el prefijo,Quien responda puede seguir el contexto.
- * Los mensajes de usuario permanecen como están.(Lo mismo ocurre con los mensajes privados.),El host no necesita cambiar ninguna interfaz.
+ * 群聊里角色消息一律写成「发言人名字：正文」。宿主的轮次只有「用户 / 非用户」两档,
+ * 同一个群里几个人说话会落成同一个 assistant 身份:不打前缀,后说话的人根本看不出
+ * 前面那句是谁说的,容易重复上一句或者答错人。打完前缀,谁接话都能顺着上下文往下说。
+ * 用户消息保持原样(私信里也一样),宿主不需要改任何接口。
  */
 internal fun chatHistoryOf(state: ChatUiState): List<MpChatTurn> = state.messages
     .filter { it.type == MpMessageType.TEXT && it.content.isNotBlank() }

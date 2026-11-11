@@ -1,6 +1,7 @@
 package io.zer0.muse.miniphone.ui.moments
 
 import androidx.compose.runtime.Immutable
+import io.zer0.muse.miniphone.R
 import io.zer0.muse.miniphone.api.MpCharacter
 import io.zer0.muse.miniphone.data.db.MpActorType
 import io.zer0.muse.miniphone.data.db.MpMomentSource
@@ -11,10 +12,10 @@ import io.zer0.muse.miniphone.data.moment.MP_LOCAL_ACTOR_ID
 import io.zer0.muse.miniphone.data.moment.decodeMomentImages
 
 /**
- * Todos los estados se mostrarán en la página del círculo de amigos.
+ * 朋友圈页要展示的全部状态。
  *
- * [isLoaded] Se utiliza para distinguir entre "Aún no he terminado de leer" y "Realmente no hay noticias".:Ambos son una lista vacía.,
- * Pero sólo este último debería mostrar un estado vacío.,Lo primero debería dejarse discretamente en blanco.
+ * [isLoaded] 用来区分「还没读完」和「真的没有动态」:两者都是一份空列表,
+ * 但只有后者该显示空态,前者应当安静地留白。
  */
 @Immutable
 data class MomentsUiState(
@@ -29,10 +30,10 @@ data class MomentsUiState(
 )
 
 /**
- * Una línea dinámica en la interfaz.
+ * 一条动态在界面上的一行。
  *
- * [likes] Conserva solo el nombre de la persona a la que le gustó.(Ordenar por tiempo similar),La interfaz los une;
- * [comments] Estructura de dos niveles ya montada.,Los comentarios de alto nivel vienen con sus propias respuestas.
+ * [likes] 只保留点赞人名字(按点赞时间先后),界面把它们串成一行;
+ * [comments] 已经是组装好的两级结构,顶层评论带各自的回复。
  */
 @Immutable
 data class MomentUi(
@@ -47,11 +48,11 @@ data class MomentUi(
     val likes: List<String>,
     val likedByMe: Boolean,
     val comments: List<MomentCommentUi>,
-    /** El rango visible permanece como está.:cadena vacía = Visible para todos. Esta etapa sólo se utiliza para marcar la tarjeta como \"Visible sólo para ti\". */
+    /** 可见范围原样:空串 = 所有人可见。本阶段只用来在卡片上标一句「仅自己可见」。 */
     val visibleToJson: String = "",
 )
 
-/** un comentario superior(Los que comentan directamente la noticia.). */
+/** 一条顶层评论(直接评论动态的那些)。 */
 @Immutable
 data class MomentCommentUi(
     val id: String,
@@ -63,10 +64,10 @@ data class MomentCommentUi(
 )
 
 /**
- * Una respuesta debajo del comentario superior.
+ * 顶层评论下面的一条回复。
  *
- * [replyToName] Sólo se da si "responder a otra respuesta":La visualización de dos niveles colocará todas las respuestas bajo el mismo comentario de nivel superior.,
- * No indiques quién está en el siguiente nivel.,El lector pensará que ha estado hablando con el cartel original.
+ * [replyToName] 只在「回复的是另一条回复」时给出:两级展示会把所有回复压到同一条顶层评论下,
+ * 不标出上一层是谁,读者会以为它一直在跟楼主说话。
  */
 @Immutable
 data class MomentReplyUi(
@@ -78,7 +79,7 @@ data class MomentReplyUi(
     val isMine: Boolean = false,
 )
 
-/** ¿A quién apunta actualmente el cuadro de entrada de comentarios?:Responder a un comentario con su id y nombre del autor.,Está vacío al comentar directamente la actualización. */
+/** 评论输入框当前指向谁:回复一条评论时带上它的 id 与作者名,直接评论动态时为空。 */
 @Immutable
 data class CommentTarget(
     val commentId: String,
@@ -86,10 +87,10 @@ data class CommentTarget(
 )
 
 /**
- * Los tres datos de Curry → Una línea en la interfaz.
+ * 库里的三份数据 → 界面上的一行。
  *
- * El avatar y el nombre del autor se toman de la lista de personajes proporcionada por el anfitrión.:El nombre almacenado en la fila dinámica es la instantánea en el momento del lanzamiento.,
- * Si se cambia el nombre del personaje más tarde, el texto histórico no debe reescribirse,Pero el avatar puede seguir la lista actual.
+ * 作者头像与名字取自宿主给的角色名单:动态行里存的名字是发布当时的快照,
+ * 角色后来改名不该改写历史正文,但头像可以跟着当前名单走。
  */
 internal fun buildMomentUi(
     entity: MpMomentEntity,
@@ -112,11 +113,11 @@ internal fun buildMomentUi(
 )
 
 /**
- * Comentarios de Tile → Estructura de dos niveles.
+ * 平铺的评论 → 两级结构。
  *
- * La capa superior es `parentId` esta vacio(O señalar un comentario que ya no existe)de esos,en orden cronológico;
- * El resto estará vinculado al comentario de nivel superior donde se encuentra. —— Las respuestas también se devuelven a la parte superior.,No más de dos niveles de profundidad.,
- * Puedes leerlo todo en una línea de comentarios.
+ * 顶层是 `parentId` 为空(或指向一条已不存在的评论)的那些,按时间正序;
+ * 其余一律挂到它所在那条顶层评论下 —— 回复的回复也压回顶层,深度不超过两级,
+ * 一行评论里读得完。
  */
 internal fun buildCommentTree(comments: List<MpMomentCommentEntity>): List<MomentCommentUi> {
     if (comments.isEmpty()) return emptyList()
@@ -157,7 +158,7 @@ private fun groupRepliesByRoot(
     return grouped
 }
 
-/** seguir `parentId` Subir a los comentarios del nivel superior.;Cuando la cadena sea demasiado larga o tenga bucles, deténgase en la actual.,No sigas en círculos. */
+/** 顺着 `parentId` 往上找到顶层评论;链太长或成环时停在当时那一条,不跟着转圈。 */
 private fun rootIdOf(comment: MpMomentCommentEntity, byId: Map<String, MpMomentCommentEntity>): String {
     var current = comment
     repeat(MAX_COMMENT_DEPTH) {
@@ -167,34 +168,39 @@ private fun rootIdOf(comment: MpMomentCommentEntity, byId: Map<String, MpMomentC
     return current.id
 }
 
-/** Encuentre el número máximo de pasos hasta el nivel superior:Para una conversación normal, el nivel dos o tres es suficiente.,Si excede el límite, los datos se consideran corruptos. */
+/** 往上找顶层的最大步数:正常的对话两三级就够,超过就当数据坏了。 */
 private const val MAX_COMMENT_DEPTH: Int = 8
 
-/** ¿Un comentario está escrito por un usuario local? —— Sólo tú puedes eliminarlo. */
+/** 一条评论是不是本机用户自己写的 —— 只有自己能删。 */
 private val MpMomentCommentEntity.isMine: Boolean
     get() = senderType == MpActorType.USER && senderId == MP_LOCAL_ACTOR_ID
 
-/** La lista Me gusta contiene como máximo algunos nombres uno por uno.,Si hay más, deja de decir \"esperando a N personas\". */
+/** 点赞名单最多逐个列几个名字,再多就收口成「等 N 人」。 */
 internal const val LIKERS_INLINE_MAX: Int = 10
 
-/** El número de nombres enumerados uno por uno después del cierre. */
+/** 收口后逐个列出来的名字个数。 */
 internal const val LIKERS_SHOWN_WHEN_FOLDED: Int = 9
 
 /**
- * Me gusta la línea en la lista:Terminado en una línea,Sin desplazamiento en el cuadro.
+ * 点赞名单那一行:一行写完,不在框里滚动。
  *
- * Tres personas son "❤️ Un Yuan, Xiao Man, Lao Chen ";exceder [LIKERS_INLINE_MAX] Sólo la primera vez
- * [LIKERS_SHOWN_WHEN_FOLDED] un,Seguido de "esperando a N personas"——N ¿Es el número total de me gusta?,No el número de personas omitidas.
- * Utilice comas chinas entre nombres,Se distingue del texto principal por una coma.
+ * 三个人就是「❤️ 阿远，小满，老陈」;超过 [LIKERS_INLINE_MAX] 个时只列前
+ * [LIKERS_SHOWN_WHEN_FOLDED] 个,后面接「等 N 人」——N 是全部点赞人数,不是省略掉的人数。
+ * 名字之间用中文逗号,与正文的顿号区分开。
  */
-internal fun likersLineOf(names: List<String>): String {
+internal fun likersLineOf(context: android.content.Context, names: List<String>): String {
+    val separator = context.getString(R.string.mp_likers_separator)
     val shown = names.map(String::trim).filter(String::isNotEmpty)
     if (shown.isEmpty()) return ""
     val folded = shown.size > LIKERS_INLINE_MAX
     val parts = shown.take(if (folded) LIKERS_SHOWN_WHEN_FOLDED else shown.size)
-    val namesText = parts.joinToString(LIKERS_SEPARATOR)
-    return if (folded) "$LIKERS_MARK$namesText${LIKERS_SEPARATOR}espera ${shown.size} gente" else "$LIKERS_MARK$namesText"
+    val namesText = parts.joinToString(separator)
+    return if (folded) {
+        // N 是全部点赞人数，不是省略掉的人数（原口径，别改）
+        LIKERS_MARK + namesText + separator + context.getString(R.string.mp_likers_fold, shown.size)
+    } else {
+        LIKERS_MARK + namesText
+    }
 }
 
 private const val LIKERS_MARK: String = "❤️ "
-private const val LIKERS_SEPARATOR: String = ","

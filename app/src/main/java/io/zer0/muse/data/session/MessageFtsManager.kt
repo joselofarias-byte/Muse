@@ -1,44 +1,44 @@
 package io.zer0.muse.data.session
 
 /**
- * Phase 10.3: FTS4 Gestor de segmentación de palabras chinas.
+ * Phase 10.3: FTS4 中文分词管理器。
  *
- * Adopte la solución ngram de capa de aplicación(Evite dependencias de NDK + compatible con todas las versiones de Android):
- *  - chino(CJK ideograma unificado + kana)Haz una ventana corredera de 2 gramos.,espacio separado
- *  - ingles/Los números conservan las palabras originales.(Minúsculas)
- *  - puntuación/El espacio como separador
+ * 采用应用层 ngram 方案(避免 NDK 依赖 + 兼容所有 Android 版本):
+ *  - 中文(CJK 统一表意文字 + 假名)做 2-gram 滑窗,空格分隔
+ *  - 英文/数字保留原词(小写化)
+ *  - 标点/空格作为分隔符
  *
- * indexación:Convertir mensaje.content a ngram,Almacenar en la tabla virtual message_fts
- * Al consultar:Convertir consulta a ngram,usar FTS4 MATCH(Semántica Y predeterminada)
+ * 索引时:把 message.content 转成 ngram,存入 messages_fts 虚拟表
+ * 查询时:把 query 转成 ngram,用 FTS4 MATCH(默认 AND 语义)
  *
- * Ejemplo:
- *  - "hola mundo" → "hola buen mundo mundo"
- *  - "hello Hola" → "hello Hola"
- *  - "GPT-4 modelo" → "gpt 4 modelo"(GPT-4 Dividir en gpt y 4)
+ * 示例:
+ *  - "你好世界" → "你好 好世 世界"
+ *  - "hello 你好" → "hello 你好"
+ *  - "GPT-4 模型" → "gpt 4 模型"(GPT-4 拆成 gpt 和 4)
  *
- * recordar:2-gram Cubre la mayoría de las coincidencias difusas chinas(Excepto consulta de una sola palabra,movimiento de una sola palabra LIKE fallback).
- * Volumen del índice:Aproximadamente 2 veces el texto original(chino 2-gram,El inglés no está inflado.).
+ * 召回率:2-gram 覆盖大部分中文模糊匹配(单字查询除外,单字走 LIKE fallback)。
+ * 索引体积:约 2x 原文(中文 2-gram,英文不膨胀)。
  */
 object MessageFtsManager {
 
-    /** CJK 2-gram El tamaño de la ventana de la ventana corredera. */
+    /** CJK 2-gram 滑窗的窗口大小。 */
     private const val NGRAM_SIZE = 2
 
-    /** Determinar si el personaje es CJK(chino/japonés/coreano). */
+    /** 判断字符是否为 CJK(中文/日文/韩文)。 */
     private fun isCjk(ch: Char): Boolean {
         val code = ch.code
-        return (code in 0x4E00..0x9FFF) || // CJK ideogramas unificados
-            (code in 0x3400..0x4DBF) || // CJK Expandir A
-            (code in 0x3040..0x309F) || // hiragana
-            (code in 0x30A0..0x30FF) || // Katakana
-            (code in 0xAC00..0xD7AF) // sílabas coreanas
+        return (code in 0x4E00..0x9FFF) || // CJK 统一表意文字
+            (code in 0x3400..0x4DBF) || // CJK 扩展 A
+            (code in 0x3040..0x309F) || // 平假名
+            (code in 0x30A0..0x30FF) || // 片假名
+            (code in 0xAC00..0xD7AF) // 韩文音节
     }
 
     /**
-     * Convertir texto en secuencia de ngram(cadena de token separada por espacios).
+     * 把文本转成 ngram 序列(空格分隔的 token 串)。
      *
-     * hacer en chino 2-gram,ingles/Los números conservan las palabras originales.(Minúsculas),La puntuación sirve como separador.
-     * Carácter único CJK(aislado)directamente como token(Admite consultas de una sola palabra).
+     * 中文做 2-gram,英文/数字保留原词(小写化),标点作为分隔符。
+     * 单个 CJK 字符(孤立)直接作为 token(支持单字查询)。
      */
     fun toNgram(text: String): String {
         if (text.isBlank()) return ""
@@ -54,7 +54,7 @@ object MessageFtsManager {
                     tokens.add(s.substring(i, i + NGRAM_SIZE))
                 }
             }
-            // También se añade la última palabra.(Admite consulta de última palabra)
+            // 尾部单字也加入(支持末尾单字查询)
             if (s.isNotEmpty()) {
                 tokens.add(s.last().toString())
             }
@@ -89,28 +89,28 @@ object MessageFtsManager {
     }
 
     /**
-     * Convierta términos de consulta en expresiones FTS4 MATCH.
+     * 把查询词转成 FTS4 MATCH 表达式。
      *
-     * - La consulta vacía devuelve una cadena vacía(La persona que llama debe omitir la búsqueda.)
-     * - El token único regresa directamente
-     * - Varias fichas están conectadas con espacios.(FTS4 Semántica Y predeterminada)
-     * - Escapar de caracteres especiales(FTS4 de " * : espera)
+     * - 空查询返回空字符串(调用方应跳过搜索)
+     * - 单 token 直接返回
+     * - 多 token 用空格连接(FTS4 默认 AND 语义)
+     * - 对特殊字符做转义(FTS4 的 " * : 等)
      */
     fun toMatchQuery(query: String): String {
         val ngram = toNgram(query)
         if (ngram.isBlank()) return ""
-        // Escapar de los caracteres especiales de FTS4:Envuelva cada uno entre comillas dobles token
+        // 转义 FTS4 特殊字符:用双引号包裹每个 token
         return ngram.split(' ')
             .filter { it.isNotBlank() }
             .joinToString(" ") { "\"${it.replace("\"", "")}\"" }
     }
 
     /**
-     * Convierta términos de consulta en expresiones FTS5 MATCH(unicode61 Índice de texto original).
+     * 把查询词转成 FTS5 MATCH 表达式(unicode61 原文索引)。
      *
-     * - cada párrafo separado por espacios en blanco como una frase(entre comillas dobles),Y semántica entre segmentos
-     * - Las comillas dobles se convierten en dos comillas dobles según las reglas FTS5
-     * - puro en blanco/La puntuación devuelve una cadena vacía,La persona que llama usa LIKE para llegar al fondo de las cosas.
+     * - 每个空白分隔段作为短语(双引号包裹),段之间为 AND 语义
+     * - 双引号按 FTS5 规则转义为两个双引号
+     * - 纯空白/标点返回空串,调用方走 LIKE 兜底
      */
     fun toFts5MatchQuery(query: String): String {
         return query.trim()

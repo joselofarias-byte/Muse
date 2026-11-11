@@ -30,10 +30,10 @@ import io.zer0.muse.ui.theme.MuseShapes
 import io.zer0.muse.ui.theme.tiny
 
 /**
- * B1-05: Pantalla de esqueleto de lista universal.
+ * B1-05: 通用列表骨架屏。
  *
- * Utilice un único cepillo de barrido impulsado por InfiniteTransition para tarjetas de sesión, líneas de avatar y entradas de memoria.
- * Proporciona una imagen brillante de bajo costo consistente con el flujo del chat.
+ * 用单条 InfiniteTransition 驱动的扫光 Brush 为会话卡片、头像行、记忆条目
+ * 提供与聊天流一致的低成本 shimmer 视觉。
  */
 @Composable
 fun MuseShimmerBrush(): Brush {

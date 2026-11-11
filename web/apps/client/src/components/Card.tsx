@@ -4,16 +4,16 @@ import "./primitives.css";
 
 export interface CardProps {
   readonly children?: ReactNode;
-  /** Relleno:true Usado cuando cardInner(16/12),false Deje que las filas internas se organicen solas (para agrupar listas). */
+  /** 内边距：true 时用 cardInner(16/12)，false 交给内部行自己排（列表分组用）。 */
   readonly padded?: boolean;
   readonly className?: string;
 }
 
 /**
- * Tarjetas con esquinas redondeadas:largeCard esquinas redondeadas(24dp) + Color de fondo de la tarjeta + micro elevación.
+ * 圆角卡片：largeCard 圆角(24dp) + 卡面底色 + micro 高程。
  *
- * Corresponde a Compose CardGroup MuseSurface(shape = MuseShapes.largeCard,
- * color = colorScheme.surface, elevation = MuseElevation.micro).
+ * 对应 Compose CardGroup 里的 MuseSurface(shape = MuseShapes.largeCard,
+ * color = colorScheme.surface, elevation = MuseElevation.micro)。
  */
 export function Card({ children, padded = false, className }: CardProps) {
   const classes = ["muse-card"];
@@ -23,15 +23,15 @@ export function Card({ children, padded = false, className }: CardProps) {
 }
 
 export interface CardGroupProps {
-  /** Título del grupo (representado como Etiqueta de sección encima de la tarjeta). */
+  /** 分组标题（渲染为 SectionLabel，位于卡片上方）。 */
   readonly title?: ReactNode;
   readonly children?: ReactNode;
   readonly className?: string;
 }
 
 /**
- * Contenedor de grupo: título de grupo opcional + una tarjeta con esquinas redondeadas compartidas.
- * Utilice ListRow para dibujar líneas separadas para las filas de la tarjeta (la última fila se pasa divider={false}).
+ * 分组容器：可选分组标题 + 一张共享圆角的卡片。
+ * 卡片内的行用 ListRow 自己画分隔线（最后一行传 divider={false}）。
  */
 export function CardGroup({ title, children, className }: CardGroupProps) {
   const classes = ["muse-card-group"];

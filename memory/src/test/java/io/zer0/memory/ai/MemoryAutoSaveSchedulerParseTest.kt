@@ -18,7 +18,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-/** Pruebas de regresión:LLM Devolver explícitamente un valor nulo no debería invalidar todo el análisis de guardado automático. */
+/** 回归测试：LLM 显式返回 null 不应让整份 auto-save 分析结果失效。 */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
 class MemoryAutoSaveSchedulerParseTest {
@@ -95,7 +95,7 @@ class MemoryAutoSaveSchedulerParseTest {
         val result = scheduler.parseAnalysisResult(
             """{
                 "mainProblem": {"title": null, "content": null},
-                "extractedEntities": [{"title": null, "content": "a los usuarios les gusta Kotlin"}],
+                "extractedEntities": [{"title": null, "content": "用户喜欢 Kotlin"}],
                 "links": [{"sourceTitle": null, "targetTitle": null}]
             }""",
         )
@@ -103,7 +103,7 @@ class MemoryAutoSaveSchedulerParseTest {
         assertNotNull(result)
         assertEquals("", result?.mainProblem?.title)
         assertEquals("", result?.mainProblem?.content)
-        assertEquals("a los usuarios les gusta Kotlin", result?.extractedEntities?.single()?.content)
+        assertEquals("用户喜欢 Kotlin", result?.extractedEntities?.single()?.content)
         assertEquals("", result?.links?.single()?.sourceTitle)
     }
 
@@ -166,11 +166,11 @@ class MemoryAutoSaveSchedulerParseTest {
             model = null,
         )
 
-        assertTrue(capturedHistory.contains("**sistema**: system instruction"))
-        assertTrue(capturedHistory.contains("**Usuario**: user statement"))
-        assertTrue(capturedHistory.contains("**asistente**: assistant statement"))
-        assertTrue(capturedHistory.contains("**Herramientas**: tool result"))
-        assertFalse(capturedHistory.contains("**asistente**: system instruction"))
-        assertFalse(capturedHistory.contains("**asistente**: tool result"))
+        assertTrue(capturedHistory.contains("**系统**: system instruction"))
+        assertTrue(capturedHistory.contains("**用户**: user statement"))
+        assertTrue(capturedHistory.contains("**助手**: assistant statement"))
+        assertTrue(capturedHistory.contains("**工具**: tool result"))
+        assertFalse(capturedHistory.contains("**助手**: system instruction"))
+        assertFalse(capturedHistory.contains("**助手**: tool result"))
     }
 }

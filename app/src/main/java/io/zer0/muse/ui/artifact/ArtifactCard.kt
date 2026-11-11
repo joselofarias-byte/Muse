@@ -35,15 +35,15 @@ import io.zer0.muse.ui.theme.MuseShapes
 import io.zer0.muse.ui.theme.largeCard
 
 /**
- * tarjeta de producto —— v2.0.1 Paradigma de tarjeta grande (tarjeta de ancho completo: encabezado/área de vista previa/fila de información).
+ * 产物卡片 —— v2.0.1 大卡范式（全宽卡片：头部 / 预览区 / 信息行）。
  *
- * - Categoría de página web (html / svg / chart / mermaid): La barra de marcador de posición le indica que puede hacer clic para obtener una vista previa de la página web.
- *   Haga clic para ingresar al modo de navegador de pantalla completa (SettingsSearchBridge Vista previa en pantalla completa del mismo conjunto);
- * - Categoría de código: las primeras 6 líneas de fuente monoespaciada;
- * - Texto/Otro: Vista previa de las primeras 4 líneas de texto.
+ * - 网页类（html / svg / chart / mermaid）：占位条提示可点按预览网页，
+ *   点击后进全屏浏览器形态（SettingsSearchBridge 同一套全屏预览）；
+ * - 代码类：等宽字体前 6 行片段；
+ * - 文本 / 其他：前 4 行文本预览。
  *
- * Se puede hacer clic en toda la tarjeta (abra el visor/navegador de pantalla completa); operaciones como compartir y guardar que se proporcionan en el visor.
- * La versión anterior es una tarjeta pequeña de ancho fijo de 180 dp con información delgada y"Archivo"Inconsistencia mental (comentarios de los usuarios"demasiado feo/En blanco").
+ * 整卡可点（打开查看器 / 全屏浏览器）；分享、另存等操作在查看器内提供。
+ * 旧版为 180dp 固定宽小卡，信息薄、与"文件"心智不符（用户反馈"太丑/毛坯"）。
  */
 @Composable
 fun ArtifactCard(artifact: ArtifactEntity, onClick: () -> Unit, modifier: Modifier = Modifier) {
@@ -67,7 +67,7 @@ fun ArtifactCard(artifact: ArtifactEntity, onClick: () -> Unit, modifier: Modifi
             modifier = Modifier.padding(MusePaddings.cardInner),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            // Encabezado: escriba icono + título + escriba logotipo
+            // 头部：类型图标 + 标题 + 类型徽标
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -95,7 +95,7 @@ fun ArtifactCard(artifact: ArtifactEntity, onClick: () -> Unit, modifier: Modifi
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            // área de vista previa
+            // 预览区
             if (isWeb) {
                 Row(
                     modifier = Modifier
@@ -118,7 +118,7 @@ fun ArtifactCard(artifact: ArtifactEntity, onClick: () -> Unit, modifier: Modifi
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                // v2.0.1: Resumen de contenido — El primer párrafo de texto después de eliminar etiquetas.(Comprender rápidamente el contenido de la página.)
+                // v2.0.1: 内容摘要 — 去标签后的首段文本(快速了解页面内容)
                 val plainPreview = remember(artifact.content) {
                     io.zer0.muse.util.stripHtmlComprehensive(artifact.content)
                         .replace(Regex("\\s+"), " ")
@@ -145,10 +145,10 @@ fun ArtifactCard(artifact: ArtifactEntity, onClick: () -> Unit, modifier: Modifi
                                 .asSequence()
                                 .map { it.trim() }
                                 .filter { it.isNotEmpty() }
-                                // Filas separadas por tabla (|---|---|) no es informativo sobre la vista previa
+                                // 表格分隔行（|---|---|）对预览毫无信息量
                                 .filterNot { it.matches(Regex("^[|\\s:-]{3,}$")) }
                                 .map { previewLine ->
-                                    // Filas de datos de la tabla: las líneas verticales se reemplazan por puntos para leerse como un resumen de una línea
+                                    // 表格数据行：竖线换成分隔点，读起来像一行摘要
                                     if (previewLine.startsWith("|")) {
                                         previewLine
                                             .trim('|')
@@ -165,7 +165,7 @@ fun ArtifactCard(artifact: ArtifactEntity, onClick: () -> Unit, modifier: Modifi
                                 .joinToString("\n")
                         }
                     }
-                // v2.0.1: Los fragmentos de código tienen sintaxis resaltada (reutilizando CodeHighlighter)
+                // v2.0.1: 代码片段走语法高亮（复用 CodeHighlighter）
                 val highlightedPreview = if (isCode) {
                     CodeHighlighter.highlight(previewText, artifact.language)
                 } else {
@@ -189,7 +189,7 @@ fun ArtifactCard(artifact: ArtifactEntity, onClick: () -> Unit, modifier: Modifi
                     )
                 }
             }
-            // línea de mensaje
+            // 信息行
             Text(
                 text = stringResource(R.string.artifact_char_count, charCount),
                 style = MaterialTheme.typography.labelSmall,
@@ -199,10 +199,10 @@ fun ArtifactCard(artifact: ArtifactEntity, onClick: () -> Unit, modifier: Modifi
     }
 }
 
-/** Cuando la lista supera este número,Pantalla trasera "+N" doblar tarjeta(por [ArtifactCardList] uso). */
+/** 列表超过该数量时,尾部显示 "+N" 折叠卡片(由 [ArtifactCardList] 使用)。 */
 internal const val MAX_VISIBLE_ARTIFACT_CARDS = 3
 
-/** Tipo de producto + Fuente(lenguaje de código)Redacción combinada,Como por ejemplo "código · Kotlin". */
+/** 产物类型 + 来源(代码语言)组合文案,如 "代码 · Kotlin"。 */
 @Composable
 internal fun artifactMetaLabel(type: String, language: String?): String {
     val typeLabel = artifactTypeLabel(type)
@@ -210,7 +210,7 @@ internal fun artifactMetaLabel(type: String, language: String?): String {
     return "$typeLabel · $source"
 }
 
-/** El nombre para mostrar localizado del tipo de producto.(Los tipos desconocidos vuelven a ser primitivos type,Pantalla de tipo vacío"Otros"). */
+/** 产物类型的本地化展示名(未知类型回退为原始 type,空类型显示"其他")。 */
 @Composable
 internal fun artifactTypeLabel(type: String): String = when (type.lowercase()) {
     "code" -> stringResource(R.string.artifact_type_code)
@@ -223,7 +223,7 @@ internal fun artifactTypeLabel(type: String): String = when (type.lowercase()) {
     else -> type.ifBlank { stringResource(R.string.artifact_type_other) }
 }
 
-/** más allá [MAX_VISIBLE_ARTIFACT_CARDS] de la cola "+N" tira plegable,Haga clic para expandir todo. */
+/** 超出 [MAX_VISIBLE_ARTIFACT_CARDS] 时尾部的 "+N" 折叠条,点击展开全部。 */
 @Composable
 internal fun ArtifactOverflowCard(hiddenCount: Int, onClick: () -> Unit) {
     val description = stringResource(R.string.artifact_more_count, hiddenCount)

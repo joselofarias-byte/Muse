@@ -9,18 +9,18 @@ import androidx.room.PrimaryKey
 import androidx.room.Query
 
 /**
- * Flujo de uso para una solicitud de modelo.
+ * 一次模型请求的用量流水。
  *
- * Por qué se necesita esta tabla: anteriormente, la página de estadísticas tenía que recorrer todos los mensajes, analizar JSON y deserializar el campo del token.
- * Si hay demasiadas sesiones, tendrás que esperar unos segundos para abrirlas; y**Solicitudes no conversacionales**(Compresión, creación de títulos, traducción, organización de memoria,OCR)
- * No hay ningún portador de mensajes y el uso es completamente invisible.
+ * 为什么需要这张表：此前统计页要遍历全部消息、解析 JSON 反序列化出 token 字段，
+ * 会话多了打开就要等几秒；而且**非对话类请求**（压缩、起标题、翻译、记忆整理、OCR）
+ * 根本没有消息载体，用量完全不可见。
  *
- * Aquí, cada solicitud ingresa a una fila y las estadísticas se cambian para agregar directamente esta tabla: la consulta es rápida, el calibre está unificado y las fuentes se pueden dividir.
+ * 这里每次请求落一行，统计改为直接聚合本表：查询快、口径统一、来源可拆分。
  *
- * Puntos de diseño:
- *  - Solo agrega pero no modifica, por lo que, naturalmente, es adecuado para la agregación por rango de tiempo;
- *  - [source] Utilice cadenas en lugar de números de enumeración, de modo que se agreguen nuevas fuentes en el futuro sin necesidad de migración;
- *  - Los registros de conversaciones se rellenan con el campo de uso existente en los mensajes durante la migración y los datos históricos no se pierden.
+ * 设计要点：
+ *  - 只追加不修改，天然适合按时间范围聚合；
+ *  - [source] 用字符串而非枚举序号，将来加新来源不需要迁移；
+ *  - 对话类记录在迁移时用 messages 上已有的 usage 字段回填，历史数据不丢。
  */
 @Entity(
     tableName = "usage_records",
@@ -32,35 +32,35 @@ import androidx.room.Query
 )
 data class UsageRecordEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    /** La hora a la que se produjo la solicitud (milisegundos). */
+    /** 请求发生时间（毫秒）。 */
     @ColumnInfo(name = "created_at") val createdAt: Long = System.currentTimeMillis(),
-    /** Para fuentes de solicitud, consulte [UsageSource]. */
+    /** 请求来源，见 [UsageSource]。 */
     val source: String,
-    /** Identificador de modelo (como deepseek-v4-flash), cadena vacía si se desconoce. */
+    /** 模型标识（如 deepseek-v4-flash），未知时为空串。 */
     @ColumnInfo(name = "model_id", defaultValue = "") val modelId: String = "",
-    /** ID de proveedor (para dividir por canal). */
+    /** 供应商标识（用于按通道拆分）。 */
     @ColumnInfo(name = "provider_id", defaultValue = "") val providerId: String = "",
     @ColumnInfo(name = "prompt_tokens", defaultValue = "0") val promptTokens: Int = 0,
     @ColumnInfo(name = "completion_tokens", defaultValue = "0") val completionTokens: Int = 0,
     @ColumnInfo(name = "reasoning_tokens", defaultValue = "0") val reasoningTokens: Int = 0,
     @ColumnInfo(name = "cached_tokens", defaultValue = "0") val cachedTokens: Int = 0,
     /**
-     * caché**escribir** token(Anthropic cache_creation_input_tokens).
+     * 缓存**写入** token（Anthropic cache_creation_input_tokens）。
      *
-     * con [cachedTokens]Desglose de la columna (lectura de caché): el precio unitario de escritura es más alto que el de la entrada normal (Anthropic es 1,25 veces),
-     * Una vez combinado en un número, ya no se puede separar. Comportamiento anterior 0 (no hay volumen de escritura para recordar si la columna no existe).
+     * 与 [cachedTokens]（缓存读取）分列：写入单价高于普通输入（Anthropic 为 1.25 倍），
+     * 合进一个数就再也拆不开。旧行为 0（该列不存在时不存在写入量可记）。
      */
     @ColumnInfo(name = "cache_write_tokens", defaultValue = "0") val cacheWriteTokens: Int = 0,
     /**
-     * Retraso de la primera palabra (milisegundos).0 Indica que no está registrado (solicitud sin transmisión o datos antiguos).
-     * Esta es la percepción del usuario.“rápido o lento”El indicador más directo es más significativo que el tiempo total invertido.
+     * 首字延迟（毫秒）。0 表示未记录（非流式请求或旧数据）。
+     * 这是用户感知“快慢”最直接的指标，比总耗时更有意义。
      */
     @ColumnInfo(name = "first_token_ms", defaultValue = "0") val firstTokenMs: Long = 0,
-    /** La solicitud completa tomó (milisegundos),0 Indica no registrado. */
+    /** 整个请求耗时（毫秒），0 表示未记录。 */
     @ColumnInfo(name = "duration_ms", defaultValue = "0") val durationMs: Long = 0,
 )
 
-/** Fuente de dosificación. Constantes de cadena, las nuevas fuentes no requieren migración de la base de datos. */
+/** 用量来源。字符串常量，新增来源无需数据库迁移。 */
 object UsageSource {
     const val CHAT = "chat"
     const val COMPRESS = "compress"
@@ -74,7 +74,7 @@ object UsageSource {
     val ALL = listOf(CHAT, COMPRESS, TITLE, SUGGESTION, TRANSLATE, MEMORY, OCR, OTHER)
 }
 
-/** Una fila agregada por fuente. */
+/** 按来源聚合的一行。 */
 data class UsageBySource(
     val source: String,
     val requests: Int,
@@ -82,21 +82,21 @@ data class UsageBySource(
     val completionTokens: Long,
 )
 
-/** Una fila agregada por modelo. */
+/** 按模型聚合的一行。 */
 data class UsageByModel(
     val modelId: String,
     val requests: Int,
     val totalTokens: Long,
 )
 
-/** Una fila agregada por día (day para aaaa-MM-dd). */
+/** 按天聚合的一行（day 为 yyyy-MM-dd）。 */
 data class UsageByDay(
     val day: String,
     val requests: Int,
     val totalTokens: Long,
 )
 
-/** Uso total. */
+/** 用量总计。 */
 data class UsageTotals(
     val requests: Int,
     @ColumnInfo(name = "prompt_tokens") val promptTokens: Long,
@@ -116,7 +116,7 @@ interface UsageRecordDao {
     @Insert
     suspend fun insertAll(records: List<UsageRecordEntity>)
 
-    /** Rango de tiempo total.sinceMs Un valor de 0 significa que no hay punto de partida. */
+    /** 时间范围总计。sinceMs 为 0 表示不限起点。 */
     @Query(
         """
         SELECT COUNT(*) AS requests,
@@ -132,7 +132,7 @@ interface UsageRecordDao {
     )
     suspend fun totalsSince(sinceMs: Long): UsageTotals?
 
-    /** Dividido por fuente. */
+    /** 按来源拆分。 */
     @Query(
         """
         SELECT source AS source,
@@ -147,7 +147,7 @@ interface UsageRecordDao {
     )
     suspend fun bySourceSince(sinceMs: Long): List<UsageBySource>
 
-    /** Clasificación del modelo (por token total). */
+    /** 模型排行（按总 token）。 */
     @Query(
         """
         SELECT model_id AS modelId,
@@ -163,10 +163,10 @@ interface UsageRecordDao {
     suspend fun topModelsSince(sinceMs: Long, limit: Int = 8): List<UsageByModel>
 
     /**
-     * Agregado por día (day = yyyy-MM-dd, zona horaria local).
+     * 按天聚合（day = yyyy-MM-dd，本地时区）。
      *
-     * Usando SQLite date() cooperar 'localtime', garantizado para ser consistente con la fecha vista por el usuario;
-     * El desplazamiento de la zona horaria se maneja en SQL para evitar volver a calcularlo por parte de Kotlin.
+     * 用 SQLite 的 date() 配合 'localtime'，保证与用户看到的日期一致；
+     * 时区偏移在 SQL 里处理，避免 Kotlin 侧再算一遍。
      */
     @Query(
         """
@@ -181,7 +181,7 @@ interface UsageRecordDao {
     )
     suspend fun byDaySince(sinceMs: Long): List<UsageByDay>
 
-    /** Limpiar registros anteriores al tiempo especificado (la operación a largo plazo evita el crecimiento infinito de la tabla). */
+    /** 清理早于指定时间的记录（长期运行避免表无限增长）。 */
     @Query("DELETE FROM usage_records WHERE created_at < :beforeMs")
     suspend fun deleteBefore(beforeMs: Long): Int
 

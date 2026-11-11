@@ -1,28 +1,28 @@
 # Muse v2.5.5
 
-Esta ronda se centra en reparar problemas relacionados con el vidrio y los sub-asistentes, y en unificar la forma del riel superior.
+本轮集中修玻璃与子助手相关的问题，并统一顶栏形态。
 
-## vidrio liquido
+## 液态玻璃
 
-- **Arreglar "Aún funciona después de cerrar"**: Anteriormente, el interruptor del vidrio solo juzgaba la intensidad, no el modo, lo que provocaba que el vidrio aún permaneciera en el estado "apagado" siempre que la intensidad no fuera 0. El modo ahora está "apagado", lo que significa que está completamente cerrado.
-- **Reparar la falta de respuesta de la página de configuración**: El interruptor de modo (apagado/agua/escarchado) y el control deslizante de intensidad no tenían efecto antes, pero ahora están vinculados.
-- **Reparación de vidrio laminado elástico**: Se han reparado la máscara negra y el agujero cuadrado transparente del menú Más; Se ha agregado la textura de vidrio del menú Plus.
+- **修复「关闭后仍有效果」**：玻璃开关之前只判断强度，不判断模式，导致「关闭」状态下只要强度不为 0 玻璃还在。现在模式为「关闭」即彻底关闭。
+- **修复设置页无响应**：模式切换（关 / 水 / 磨砂）与强度滑条此前不真正生效，现已联动。
+- **修复弹层玻璃**：更多菜单的黑遮罩与方形透明洞已修；加号菜单补上玻璃质感。
 
-## Barra superior y campo de entrada
+## 顶栏与输入栏
 
-- **La barra superior se unifica en una gran isla.**: La barra superior del chat individual ha cambiado a la misma forma que el chat grupal, con una isla grande que contiene la tecla de retorno/título/más tecla.
-- **Tres modos de cristal con la misma forma.**: La forma de la isla grande en la barra superior ya no cambia con el interruptor, solo el material cambia con el modo (originalmente era una nueva forma solo cuando se encendía el vidrio).
-- **Cambiar el botón de enviar a avión de papel**: El chat único y el chat grupal están unificados.
+- **顶栏统一为一整块大岛**：单聊顶栏改为与群聊一致的形态，一条大岛含返回键 / 标题 / 更多键。
+- **三种玻璃模式同形**：顶栏大岛形状不再随开关改变，只有材质随模式变化（原来仅在开启玻璃时才是新形态）。
+- **发送键改回纸飞机**：单聊、群聊统一。
 
-## Reparación
+## 修复
 
-- **Las tarjetas de planes ya no rotan permanentemente**: El plan anterior era promover la actualización activa del modelo de dependencia. Cuando el ciclo de la herramienta terminaba de manera anormal, el usuario detenía o reingresaba a la sesión, nadie la terminaba y la tarjeta siempre se detenía a la mitad. Ahora las tres rutas colocarán los pasos inacabados en el estado final "Cancelado".
+- **计划卡不再永久转圈**：此前计划推进依赖模型主动更新，工具循环异常结束、用户停止、或重新进入会话时都无人收尾，卡片会永远停在中途。现在三条路径都会把未完成步骤落成「已取消」终态。
 
-## sub-asistente
+## 子助手
 
-- **La interfaz converge en un solo lugar.**: Elimina la pequeña ventana flotante en el lado derecho y la barra de delegación en la parte superior. La información del subasistente se unifica en una tarjeta de tareas expandible dentro del flujo de conversación. Puede comprobar el progreso y cancelar la tarea.
+- **界面收敛为一处**：移除右侧贴边的浮动小窗和顶部的委派横条，子助手信息统一在对话流内的一条可展开任务卡中，可查看进度、取消任务。
 
-## Descripción
+## 说明
 
-- La versión 110 de la base de datos, igual que la v2.5.4, se puede actualizar directamente sin perder datos.
-- Este paquete solo se crea localmente para pruebas en máquinas reales y no se ha publicado en GitHub Release.
+- 数据库版本 110，与 v2.5.4 相同，直接升级不丢数据。
+- 本包仅本地构建，用于真机测试，未发布 GitHub Release。

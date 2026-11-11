@@ -2,4 +2,37 @@
 <resources>
     <string name="automation_tasker_title">Tasker / внешняя автоматизация</string>
     <string name="automation_tasker_desc">Разрешает другим приложениям отправлять один запрос на дополнение текста. Доступ к инструментам не предоставляется, но может расходоваться квота модели.</string>
+    <string name="automation_master_title">Разрешить автоматизацию экрана</string>
+    <string name="automation_master_desc">Главный переключатель. Когда он выключен, чтение экрана, нажатия, ввод и многошаговые инструменты недоступны до повторного включения.</string>
+    <string name="automation_master_off_banner">Сейчас отключено: чтение экрана, нажатия, ввод и многошаговые инструменты недоступны, пока вы не включите переключатель выше.</string>
+    <string name="automation_a11y_off_banner">Служба специальных возможностей не подключена (возможно, система остановила её). Чтение экрана и нажатия не будут работать.</string>
+    <string name="automation_a11y_off_action">Включить специальные возможности</string>
+    <string name="automation_autonomous_title">Автономные специальные возможности по расписанию</string>
+    <string name="automation_autonomous_desc">Сначала явно задайте задачу в чате. В разрешённый период автоматически доступны только разрешённые чтение экрана, нажатия и прокрутка. Ввод, отправка, публикация, оплата и удаление по-прежнему требуют подтверждения.</string>
+    <string name="automation_autonomous_enabled">Включить автономные специальные возможности</string>
+    <string name="automation_autonomous_enabled_desc">Автоматизация запускается, только если совпадают временной интервал, приложение, действие и дневной лимит.</string>
+    <string name="automation_autonomous_window">Разрешённый временной интервал</string>
+    <string name="automation_autonomous_start">Время начала</string>
+    <string name="automation_autonomous_end">Время окончания</string>
+    <string name="automation_autonomous_packages">Разрешённые пакеты приложений</string>
+    <string name="automation_autonomous_packages_desc">Один пакет в строке. Пакет Xiaohongshu по умолчанию: com.xingin.xhs.</string>
+    <string name="automation_autonomous_actions">Разрешённые действия</string>
+    <string name="automation_autonomous_read">Чтение экрана</string>
+    <string name="automation_autonomous_click">Нажатие</string>
+    <string name="automation_autonomous_scroll">Прокрутка</string>
+    <string name="automation_autonomous_input_locked">Ввод текста всегда требует подтверждения</string>
+    <string name="automation_autonomous_daily_limit">Максимум запусков в день</string>
+    <string name="automation_autonomous_daily_limit_desc">Учитываются только успешные выполнения. При достижении лимита разрешение на текущую задачу отзывается.</string>
+    <string name="automation_autonomous_task">Разрешение на задачу из чата</string>
+    <string name="automation_autonomous_task_desc">Один лишь временной интервал не даёт доступа. Укажите пакет и действие в чате, затем подтвердите здесь. Разрешение ограничено последним сообщением пользователя в этом чате.</string>
+    <string name="automation_autonomous_confirm_task">Подтвердить текущую задачу</string>
+    <string name="automation_autonomous_confirm_required">Сначала укажите задачу и пакет в текущем чате</string>
+    <string name="automation_autonomous_saved">Настройки автономных специальных возможностей сохранены</string>
+    <string name="automation_autonomous_task_confirmed">Текущая задача в этом чате разрешена</string>
+    <string name="automation_autonomous_task_cleared">Разрешение на автономное выполнение задачи отозвано</string>
+    <string name="automation_autonomous_task_missing_session">Откройте чат перед подтверждением задачи</string>
+    <string name="automation_autonomous_task_text">Текущая задача: %1$s</string>
+    <string name="automation_autonomous_active_until">Разрешение: действует при совпадении временного интервала и активного приложения</string>
+    <string name="automation_autonomous_no_grant">Разрешение: отсутствует</string>
+    <string name="automation_autonomous_save">Сохранить настройки</string>
 </resources>

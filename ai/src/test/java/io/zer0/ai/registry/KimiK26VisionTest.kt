@@ -5,45 +5,45 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * v1.0.53: Kimi K2.6 Pruebas de regresión de reconocimiento multimodal.
+ * v1.0.53: Kimi K2.6 多模态识别回归测试。
  *
- * fondo:KnownModels Kimi-k2.6 marcado como texto sin formato(TEXT_IN),causa:
- *  - Incluso si la estación de tránsito declara multimodal,También se sobrescribe en texto plano mediante la lógica de corrección de errores v1.137.
- *  - Las imágenes son sólo para ayuda visual.,No puedo alisar el cabello
- * Reparación:ModelRegistry Se agregó la regla precisa KIMI_K2_6 + KnownModels cambió VISION_IN.
+ * 背景:KnownModels 曾把 kimi-k2.6 标记为纯文本(TEXT_IN),导致:
+ *  - 中转站即使声明多模态,也被 v1.137 纠错逻辑覆盖为纯文本
+ *  - 图片只能走视觉辅助,不能直发
+ * 修复:ModelRegistry 新增 KIMI_K2_6 精确规则 + KnownModels 改 VISION_IN。
  */
 class KimiK26VisionTest {
 
     @Test
     fun `kimi-k2_6 resolves vision input modality`() {
         val modalities = ModelRegistry.resolveInputModalities("kimi-k2.6")
-        assertTrue("kimi-k2.6 Debería admitir la entrada de imágenes,real=$modalities", "image" in modalities)
+        assertTrue("kimi-k2.6 应支持 image 输入,实际=$modalities", "image" in modalities)
     }
 
     @Test
     fun `kimi-k2_6 keeps tool and reasoning abilities`() {
         val abilities = ModelRegistry.resolveAbilities("kimi-k2.6")
-        assertTrue("debe contener TOOL", abilities.contains(ModelAbility.TOOL))
-        assertTrue("debe contener REASONING", abilities.contains(ModelAbility.REASONING))
+        assertTrue("应含 TOOL", abilities.contains(ModelAbility.TOOL))
+        assertTrue("应含 REASONING", abilities.contains(ModelAbility.REASONING))
     }
 
     @Test
     fun `kimi-k2 stays text-only`() {
-        // kimi-k2(no 2.6)No incluye visuales — Las reglas precisas no deben confundirse
+        // kimi-k2(非 2.6)不含视觉 — 精确规则不应误伤
         val modalities = ModelRegistry.resolveInputModalities("kimi-k2")
-        assertTrue("kimi-k2 Debe ser texto plano,real=$modalities", "image" !in modalities)
+        assertTrue("kimi-k2 应为纯文本,实际=$modalities", "image" !in modalities)
     }
 
     @Test
     fun `kimi-k2_5 stays text-only`() {
         val modalities = ModelRegistry.resolveInputModalities("kimi-k2.5")
-        assertTrue("kimi-k2.5 Debe ser texto plano,real=$modalities", "image" !in modalities)
+        assertTrue("kimi-k2.5 应为纯文本,实际=$modalities", "image" !in modalities)
     }
 
     @Test
     fun `prefixed kimi-k2_6 still resolves vision`() {
-        // estación de transferencia/Sitio de agregación con prefijo ID(Como por ejemplo opencode/kimi-k2.6)
+        // 中转站/聚合站带前缀的 ID(如 opencode/kimi-k2.6)
         val modalities = ModelRegistry.resolveInputModalities("opencode/kimi-k2.6")
-        assertTrue("con prefijo kimi-k2.6 debería ser compatible image,real=$modalities", "image" in modalities)
+        assertTrue("带前缀 kimi-k2.6 应支持 image,实际=$modalities", "image" in modalities)
     }
 }

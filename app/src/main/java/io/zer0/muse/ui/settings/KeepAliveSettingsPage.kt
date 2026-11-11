@@ -33,15 +33,15 @@ import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
 /**
- * v2.6.9: Página de configuración de fondo permanente.
+ * v2.6.9: 常驻后台设置页。
  *
- * Lo que hacemos es "utilizar todos los medios disponibles para mantenernos con vida bajo la autorización del usuario", en lugar de disfrazar u ocultar:
- *  - Servicio de recepción para residentes (el único medio eficaz y compatible con las normas para mantener vivos los procesos)
- *  - WakeLock opcional (permanece conectado incluso cuando la pantalla está apagada, consume más energía)
- *  - Arranque de exención de optimización de batería + arranque de lista blanca de inicio automático del fabricante (reutilizando KeepAliveGuide existente)
+ * 做的是「在用户授权下把能用的保活手段都用上」，而不是伪装或隐藏：
+ *  - 常驻前台服务（唯一合规且有效的进程保活手段）
+ *  - 可选 WakeLock（屏幕关闭也保持连接，更耗电）
+ *  - 电池优化豁免引导 + 厂商自启动白名单引导（复用既有 KeepAliveGuide）
  *
- * Específicamente no se debe hacer: cambiar los nombres de los paquetes, falsificar los íconos de otras aplicaciones, ocultar notificaciones.
- * Se trata de firmas de malware que los sistemas pueden detectar y afectar la reputación de los proyectos de código abierto.
+ * 明确不做：改包名、仿冒其他应用图标、隐藏通知。
+ * 那些是恶意软件特征，会被系统标记并影响开源项目声誉。
  */
 @Composable
 fun KeepAliveSettingsPage(onBack: () -> Unit) {
@@ -125,9 +125,9 @@ fun KeepAliveSettingsPage(onBack: () -> Unit) {
 }
 
 /**
- * Grupo de interruptores de mantenimiento de actividad: interruptor principal + bloqueo de activación + entrada de copia de notificación.
+ * 保活开关组：总开关 + 唤醒锁 + 通知文案入口。
  *
- * El propósito de escribir una carta por separado es permitir [KeepAliveSettingsPage] Manténgalo en una longitud legible.
+ * 单独成函是为了让 [KeepAliveSettingsPage] 保持在可读长度内。
  */
 @Composable
 private fun KeepAliveSwitchesGroup(
@@ -168,10 +168,10 @@ private fun KeepAliveSwitchesGroup(
 }
 
 /**
- * Editor de copia de notificaciones residente.
+ * 常驻通知文案编辑器。
  *
- * Este texto se mostrará permanentemente en la barra de notificaciones y el título y el texto se pueden cambiar para evitar exponer directamente el contenido de la conversación a otras personas.
- * Vuelva a la copia predeterminada incorporada cuando ambas se dejen en blanco (consulte KeepAliveService.buildNotification).
+ * 通知栏会常驻显示这段文字，可改标题与正文，避免直接把对话内容暴露给旁人。
+ * 两项都留空时回落到内置默认文案（见 KeepAliveService.buildNotification）。
  */
 @Composable
 private fun NotificationTextDialog(currentTitle: String, currentText: String, onDismiss: () -> Unit, onSave: (String, String) -> Unit) {

@@ -11,9 +11,9 @@ import androidx.room.PrimaryKey
 import androidx.room.Query
 
 /**
- * Estado de giro de construcción persistente.
+ * 持久化的生成回合状态。
  *
- * turnId Es finalizar idempotente; Los eventos del antiguo StreamId o del antiguo GenerationSerial no deben anular la nueva ronda.
+ * turnId 是 finalize 幂等边界；旧 streamId 或旧 generationSerial 的事件不得覆盖新回合。
  */
 @Entity(
     tableName = "conversation_turns",
@@ -69,14 +69,14 @@ interface ConversationTurnDao {
     suspend fun finishIfOpen(turnId: String, phase: String, finishedAt: Long): Int
 
     /**
-     * A9: Deje el proceso colgado cuando el proceso finalice, gire (`finishedAt IS NULL`) converge al estado final de inmediato.
+     * A9: 把进程被杀留下的悬挂 turn（`finishedAt IS NULL`）一次性收敛到终态。
      *
-     * Una sola declaración SQL completa toda la lectura del lote+En cambio, la idempotencia proviene de escribir la condición misma:`finishedAt IS NULL` Es una condición de filtro.
-     * La condición previa también se actualiza y la segunda ejecución coincide con 0 filas. Ya `finishedAt` Las filas nunca se modifican y no se revertirán
-     * phase O anular el tiempo de finalización.`updatedAt` con `finishedAt` Tómese el mismo tiempo que [finishIfOpen] coherente.
+     * 单条 SQL 完成整批读+改，幂等性来自写入条件本身：`finishedAt IS NULL` 既是筛选条件
+     * 也是更新前置条件，第二次执行匹配 0 行。已有 `finishedAt` 的行永不改动，不会被回退
+     * phase 或覆盖完成时间。`updatedAt` 与 `finishedAt` 取同一时刻，与 [finishIfOpen] 一致。
      *
-     * @param startedBefore solo convergencia `startedAt` Las líneas anteriores a este momento dejan una ventana para el giro actual de este proceso.
-     * @return El número de filas convergió esta vez.
+     * @param startedBefore 只收敛 `startedAt` 早于此时刻的行，给本进程正在进行的 turn 留窗口
+     * @return 本次收敛的行数
      */
     @Query(
         "UPDATE conversation_turns SET phase = :phase, finishedAt = :finishedAt, updatedAt = :finishedAt " +
@@ -87,11 +87,11 @@ interface ConversationTurnDao {
     @Query("DELETE FROM conversation_turns WHERE sessionId = :sessionId")
     suspend fun deleteBySession(sessionId: String)
 
-    /** P0-10: Exportación de copia de seguridad/para la recuperación — Leer completo. */
+    /** P0-10: 备份导出/恢复用 — 全量读取。 */
     @Query("SELECT * FROM conversation_turns")
     suspend fun getAll(): List<ConversationTurnEntity>
 
-    /** P0-10: Para respaldo y recuperación — Borrar todo. */
+    /** P0-10: 备份恢复用 — 全量清空。 */
     @Query("DELETE FROM conversation_turns")
     suspend fun deleteAll()
 }

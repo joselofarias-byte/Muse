@@ -11,6 +11,7 @@ import android.service.notification.StatusBarNotification
 import androidx.core.app.NotificationManagerCompat
 import io.zer0.common.AppJson
 import io.zer0.common.Logger
+import io.zer0.muse.util.GlobalCoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -24,42 +25,42 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
 
 /**
- * Servicio de escucha de notificaciones — Detecta notificaciones de otras aplicaciones como fuentes de eventos.
+ * 通知监听服务 — 感知其他 App 的通知作为事件源。
  *
- * Los usuarios deben autorizar en la configuración del sistema."Aviso de derechos de uso"para que surta efecto.
- * Después de la autorización,Cuando otras aplicaciones envían notificaciones,Este servicio captura y almacena notificaciones recientes.
- * LLM Las notificaciones recientes se pueden consultar a través de la herramienta get_recent_notifications.
+ * 用户需在系统设置中授权"通知使用权"才能生效。
+ * 授权后,当其他 App 发通知时,本服务会捕获并存储到 recentNotifications。
+ * LLM 可通过 get_recent_notifications 工具查询最近的通知。
  *
- * Nota:Esta clase tiene estática. StateFlow,La instancia de servicio en sí está vinculada al sistema./La desvinculación no afectará a las notificaciones recogidas.
+ * 注意:本类持有静态 StateFlow,服务实例本身被系统绑定/解绑时不影响已采集的通知。
  */
 class MuseNotificationListenerService : NotificationListenerService() {
 
     companion object {
-        // L1-1: Nombre del paquete del sistema filtrado,Evite asignar nuevos List
+        // L1-1: 过滤的系统包名,避免每次调用分配新 List
         private val IGNORED_PACKAGES: Set<String> = setOf("android", "com.android.systemui", "io.zer0.muse")
 
-        // Reparación de auditoría (1.5): Nombre del paquete de notificación de alta sensibilidad — banco/pagar/Clase de código de verificación,El texto principal no se recoge directamente.
-        // (Solo se conservan el nombre y la hora del paquete fuente,text marcador de posición),Prevenir código de verificación/Saldo/El agua se filtra a través del LLM.
+        // 审计修复 (1.5): 高敏通知包名 — 银行/支付/验证码类,正文直接不采集
+        // (仅保留来源包名与时间,text 置占位),防止验证码/余额/流水经 LLM 外泄。
         private val SENSITIVE_PACKAGES: Set<String> = setOf(
-            // pagar/banco(doméstico común)
+            // 支付/银行(常见国内)
             "com.eg.android.AlipayGphone", "com.tencent.mm", "com.unionpay",
             "com.android.bankabc", "com.chinamworld.bocmbci", "com.icbc", "com.ccb.life",
             "com.cmbchina.ccd.pluto.cmbActivity", "com.android.citic", "com.spdbccc.app",
-            // SMS/Clase de agregación de códigos de verificación
+            // 短信/验证码聚合类
             "com.google.android.apps.messaging", "com.android.mms", "com.miui.securitycenter",
             "com.huawei.hwid", "com.oneplus.security",
-            // B-29: Mensajería instantánea convencional, correo electrónico y redes sociales——texto libre(private Chat, chat grupal)Aunque la PII esté bloqueada, todavía no se puede bloquear,
-            // El texto principal no se recoge directamente.,Sólo se conservan el nombre y la hora del paquete fuente.
-            // IM/mensajería instantánea
+            // B-29: 主流 IM / 邮箱 / 社交——自由文本(private 聊天、群里闲聊)经 PII 遮蔽仍挡不住,
+            // 正文直接不采集,只保留来源包名与时间。
+            // IM/即时通讯
             "com.tencent.mobileqq", "com.alibaba.android.rimet", "org.telegram.messenger",
             "com.slack", "com.tencent.tim", "com.immomo.momo", "com.tencent.wework",
-            // Correo electrónico
+            // 邮箱
             "com.google.android.gm", "com.microsoft.office.outlook",
-            // sociales/vídeo corto
+            // 社交/短视频
             "com.sina.weibo", "com.ss.android.ugc.aweme",
         )
 
-        // La escucha de notificaciones no solo sirve al proceso actual;Conserva los últimos 200 artículos.,Aún se puede ver en páginas y herramientas después de reiniciar la aplicación.
+        // 通知监听不仅服务当前进程;保留最近 200 条,应用重启后仍可在页面和工具中查看。
         private const val MAX_RECENT_NOTIFICATIONS = 200
         private const val PREFS_NAME = "muse_notification_listener"
         private const val KEY_RECORDS = "records_json"
@@ -67,10 +68,10 @@ class MuseNotificationListenerService : NotificationListenerService() {
         private const val TAG = "MuseNotifListener"
         private const val REBIND_BACKOFF_MS = 30_000L
         private val stateLock = Any()
-        private val persistenceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        private val persistenceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO + GlobalCoroutineExceptionHandler)
         private val persistenceMutex = Mutex()
 
-        // Cuando los acontecimientos llegan rápidamente,Permitir que solo se descargue al disco la última instantánea,Evite que IO concurrentes vuelvan a escribir la lista anterior.
+        // 事件快速到达时,只允许最新快照落盘,防止并发 IO 把旧列表写回。
         private var persistenceSequence = 0L
         private var persistedSequence = 0L
         private var preferences: SharedPreferences? = null
@@ -81,41 +82,41 @@ class MuseNotificationListenerService : NotificationListenerService() {
         @Volatile
         private var initialized = false
 
-        // Lista de notificaciones recientes(Conservar como máximo MAX_RECENT_NOTIFICATIONS elementos)
+        // 最近通知列表(最多保留 MAX_RECENT_NOTIFICATIONS 条)
         private val _recentNotifications = MutableStateFlow<List<NotificationRecord>>(emptyList())
         val recentNotifications = _recentNotifications.asStateFlow()
 
         /**
-         * v2.6.2(comentarios de los usuarios): El texto del aviso ya no insensibilizará la PII.
+         * v2.6.2（用户反馈）: 通知正文不再做 PII 脱敏。
          *
-         * fondo: Muse Es una aplicación local y los datos no pasan por el servidor del desarrollador; El envío del texto de notificación depende de
-         * Proveedor configurado por el usuario (BYOK), el riesgo corre a cargo del usuario y la parte de la aplicación solo proporciona notificación de riesgo.
-         * La implementación anterior coloca el código de verificación al recopilar/Reemplace el número de tarjeta, etc. con [REDACTED], provocando que el asistente no pueda recordar
-         * El contenido específico de la notificación (como el código de verificación, el monto, la dirección), y“El asistente necesita conocer la notificación.”Contradictorio.
+         * 背景: Muse 是本地应用，数据不经开发者服务器；通知正文是否外发取决于
+         * 用户自己配置的 Provider（BYOK），风险由用户自担，应用侧只做风险告知。
+         * 旧实现在采集时把验证码/卡号等替换为 [REDACTED]，导致助手无法记住
+         * 通知里的具体内容（如验证码、金额、地址），与“助手要能知道通知”相悖。
          *
-         * Nota: Gao Sen Bao (WeChat)/alipay/SMS, etc).“El texto no se recopila de forma predeterminada”aún retenido,
-         * El usuario lo abre paquete por paquete en la página de notificación (autorización de puente de mensajes); esta función solo maneja el procesamiento de texto después de la recopilación.
+         * 注: 高敏包（微信/支付宝/短信等）的“默认不采集正文”仍然保留，
+         * 由用户在通知页逐包开启（消息桥授权）；本函数只管采集后的文本处理。
          */
         private fun scrubText(text: String): String = text
 
-        // ¿Está conectado?(El usuario está autorizado)
+        // 是否已连接(用户已授权)
         @Volatile
         private var connected = false
         fun isConnected() = connected
 
-        // ── v1.0.92: Autorización de puente de mensajes(per-package) — Después de que el usuario enciende explícitamente,El texto de notificación del paquete.
-        //    Retenido con enmascaramiento de PII(Los paquetes no autorizados de alta sensibilidad solo registran la fuente pero no el texto.).
+        // ── v1.0.92: 消息桥授权(per-package) — 用户显式开启后,该包通知正文
+        //    经 PII 遮蔽保留(未授权的高敏包仍只记来源不记正文)。
 
-        /** Una colección de nombres de paquetes autorizados para leer el texto. */
+        /** 已授权读取正文的包名集合。 */
         private val unlockedPackages = MutableStateFlow<Set<String>>(emptySet())
 
-        /** Estado de autorización para que la UI se suscriba. */
+        /** 供 UI 订阅的授权状态。 */
         val unlockedPackagesFlow: StateFlow<Set<String>> = unlockedPackages.asStateFlow()
 
-        /** Si el paquete está autorizado a leer el texto. */
+        /** 该包是否已授权读取正文。 */
         fun isPackageUnlocked(pkg: String): Boolean = pkg in unlockedPackages.value
 
-        /** Establezca la autorización de lectura de texto de un determinado paquete y consérvelo. */
+        /** 设置某包的正文读取授权并持久化。 */
         fun setPackageUnlocked(pkg: String, unlocked: Boolean) {
             if (pkg.isBlank()) return
             val updated = if (unlocked) unlockedPackages.value + pkg else unlockedPackages.value - pkg
@@ -123,7 +124,7 @@ class MuseNotificationListenerService : NotificationListenerService() {
             preferences?.edit()?.putStringSet(KEY_UNLOCKED_PACKAGES, updated)?.apply()
         }
 
-        /** Solicita al servicio que resincronice las notificaciones actualmente existentes del sistema. */
+        /** 请求服务从系统重新同步当前仍存在的通知。 */
         fun refreshActiveNotifications() {
             val service = serviceInstance ?: return
             persistenceScope.launch {
@@ -132,15 +133,15 @@ class MuseNotificationListenerService : NotificationListenerService() {
                     markRecordsNotActive(active.map(::sourceKey).toSet())
                     active.forEach(service::recordNotification)
                 }.onFailure { error ->
-                    Logger.w(TAG, "Error en la sincronización manual de las notificaciones actuales: ${error.message}", error)
+                    Logger.w(TAG, "手动同步当前通知失败: ${error.message}", error)
                 }
             }
         }
 
-        /** Cree claves estables entre procesos basadas en objetos del sistema. */
+        /** 根据系统对象构建跨进程稳定键。 */
         private fun sourceKey(sbn: StatusBarNotification): String = "${sbn.key}|${sbn.id}|${sbn.tag.orEmpty()}"
 
-        /** Inicializar el almacenamiento persistente;Puede ser llamado primero por UI,No es necesario esperar a que el sistema vincule el servicio de escucha. */
+        /** 初始化持久化存储;可由 UI 先调用,不必等系统绑定监听服务。 */
         fun initialize(context: Context) {
             synchronized(stateLock) {
                 if (initialized) return
@@ -155,7 +156,7 @@ class MuseNotificationListenerService : NotificationListenerService() {
                                 raw,
                             )
                         }.onFailure { error ->
-                            Logger.w(TAG, "Error al recuperar el registro de notificaciones,Borrar caché corrupto: ${error.message}", error)
+                            Logger.w(TAG, "通知记录恢复失败,清空损坏缓存: ${error.message}", error)
                             prefs.edit().remove(KEY_RECORDS).apply()
                         }.getOrNull()
                     }
@@ -168,14 +169,14 @@ class MuseNotificationListenerService : NotificationListenerService() {
             }
         }
 
-        /** Si la aplicación actual ya está en la lista de derechos de uso de notificaciones del sistema. */
+        /** 当前应用是否已在系统通知使用权列表中。 */
         fun hasListenerAccess(context: Context): Boolean = runCatching {
             NotificationManagerCompat.getEnabledListenerPackages(context).contains(context.packageName)
         }.onFailure { error ->
-            Logger.w(TAG, "No se pudieron leer los derechos de uso de notificaciones: ${error.message}", error)
+            Logger.w(TAG, "读取通知使用权失败: ${error.message}", error)
         }.getOrDefault(connected)
 
-        /** Consultar notificaciones recientes(Llamado por ToolRegistry). */
+        /** 查询最近通知(供 ToolRegistry 调用)。 */
         fun getRecent(
             limit: Int = 20,
             packageName: String? = null,
@@ -196,25 +197,25 @@ class MuseNotificationListenerService : NotificationListenerService() {
                 .take(limit.coerceIn(1, MAX_RECENT_NOTIFICATIONS))
         }
 
-        /** El nombre del paquete fuente que ha aparecido hasta ahora.,Para uso en menús de filtro de UI. */
+        /** 当前已出现过的来源包名,供 UI 筛选菜单使用。 */
         fun getPackages(): List<String> = _recentNotifications.value
             .map { it.packageName }
             .distinct()
             .sorted()
 
-        /** v1.0.92: Paquetes altamente confidenciales que han aparecido en registros de notificaciones recientes(Lista de UI de autorización de puente de mensajes). */
+        /** v1.0.92: 最近通知记录中出现过的高敏包(供消息桥授权 UI 列表)。 */
         fun getSensitivePackagesPresent(): List<String> = _recentNotifications.value
             .map { it.packageName }
             .filter { it in SENSITIVE_PACKAGES }
             .distinct()
             .sorted()
 
-        /** Obtenga la clave estable de un solo registro,Compatible con versiones antiguas sin registros sourceKey. */
+        /** 获取单条记录的稳定键,兼容旧版没有 sourceKey 的记录。 */
         fun keyOf(record: NotificationRecord): String = record.sourceKey
             .takeIf { it.isNotBlank() }
             ?: "legacy:${record.packageName}:${record.timestamp}:${record.title}:${record.text}"
 
-        /** Marque elementos individuales como leídos. */
+        /** 标记单条已读。 */
         fun markRead(record: NotificationRecord) {
             updateRecords { current ->
                 current.map { item ->
@@ -223,23 +224,23 @@ class MuseNotificationListenerService : NotificationListenerService() {
             }
         }
 
-        /** Marcar todo como leído. */
+        /** 标记全部已读。 */
         fun markAllRead() {
             updateRecords { current -> current.map { it.copy(isRead = true) } }
         }
 
-        /** Eliminar un solo registro. */
+        /** 删除单条记录。 */
         fun delete(record: NotificationRecord) {
             updateRecords { current -> current.filterNot { keyOf(it) == keyOf(record) } }
         }
 
-        /** Exportar registros de notificaciones actualmente guardados JSON,Escrito por la interfaz de usuario a través de SAF en la ubicación seleccionada por el usuario. */
+        /** 导出当前已保存的通知记录 JSON,由 UI 通过 SAF 写入用户选择的位置。 */
         fun exportJson(): String = AppJson.encodeToString(
             ListSerializer(NotificationRecord.serializer()),
             _recentNotifications.value,
         )
 
-        /** Borrar historial de notificaciones. */
+        /** 清空通知记录。 */
         fun clearAll() {
             updateRecords { emptyList() }
         }
@@ -270,7 +271,7 @@ class MuseNotificationListenerService : NotificationListenerService() {
             val encoded = runCatching {
                 AppJson.encodeToString(ListSerializer(NotificationRecord.serializer()), snapshot)
             }.getOrElse { error ->
-                Logger.w(TAG, "Falló la serialización del registro de notificación: ${error.message}", error)
+                Logger.w(TAG, "通知记录序列化失败: ${error.message}", error)
                 return
             }
             val sequence = synchronized(stateLock) {
@@ -279,7 +280,7 @@ class MuseNotificationListenerService : NotificationListenerService() {
             }
             persistenceScope.launch {
                 persistenceMutex.withLock {
-                    // IO La programación puede estar fuera de orden,Incluso si la instantánea anterior se bloquea más tarde, no puede sobrescribir la nueva instantánea.
+                    // IO 调度可能乱序,旧快照即使后拿到锁也不能覆盖新快照。
                     if (sequence < persistedSequence) return@withLock
                     if (prefs.edit().putString(KEY_RECORDS, encoded).commit()) {
                         persistedSequence = sequence
@@ -310,21 +311,21 @@ class MuseNotificationListenerService : NotificationListenerService() {
 
     override fun onListenerConnected() {
         connected = true
-        Logger.i(TAG, "Notificar que el servicio de escucha está conectado.")
-        // Cuando el sistema vuelva a vincular el servicio, compensará las notificaciones que aún existen.,Evite páginas en blanco durante mucho tiempo durante la reconexión de autorización.
+        Logger.i(TAG, "通知监听服务已连接")
+        // 系统重新绑定服务时补读当前仍存在的通知,避免授权重连期间页面长期空白。
         runCatching {
             val active = activeNotifications.orEmpty()
             markRecordsNotActive(active.map(::sourceKey).toSet())
             active.forEach(::recordNotification)
         }.onFailure { error ->
-            Logger.w(TAG, "No se pudo restaurar la notificación actual: ${error.message}", error)
+            Logger.w(TAG, "恢复当前通知失败: ${error.message}", error)
         }
     }
 
     override fun onListenerDisconnected() {
         connected = false
-        Logger.w(TAG, "El servicio de escucha de notificaciones ha sido desconectado.")
-        // Android Puede deberse al reciclaje del sistema./Cambio de permisos y desvinculación activa;Solicitar una nueva vinculación del sistema,Pero ¿retrocedes los registros de prevención?/IPC tormenta.
+        Logger.w(TAG, "通知监听服务已断开")
+        // Android 可能因系统回收/权限切换主动解绑;请求一次系统重绑,但做退避防止日志/IPC 风暴。
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             val now = System.currentTimeMillis()
             if (now - lastRebindRequestAt >= REBIND_BACKOFF_MS) {
@@ -332,23 +333,60 @@ class MuseNotificationListenerService : NotificationListenerService() {
                 runCatching {
                     requestRebind(ComponentName(this, MuseNotificationListenerService::class.java))
                 }.onFailure { error ->
-                    Logger.w(TAG, "La solicitud para notificar al servicio de escucha que vuelva a vincularse falló.: ${error.message}", error)
+                    Logger.w(TAG, "请求通知监听服务重绑失败: ${error.message}", error)
                 }
             }
         }
     }
 
+    /**
+     * 通知历史（有界 + 保留期限），与"当前通知列表"分开存。
+     *
+     * 用 `applicationContext` 且延迟到首次使用：Service 构造时还没 attach，
+     * 那时候碰 Context 会拿到空实现。
+     */
+    private val historyStore by lazy {
+        io.zer0.muse.data.notification.NotificationHistoryStore(
+            java.io.File(applicationContext.filesDir, io.zer0.muse.data.notification.NotificationHistoryStore.FILE_NAME),
+        )
+    }
+
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         runCatching { recordNotification(sbn) }
-            .onFailure { error -> Logger.w(TAG, "No se pudo manejar la notificación: ${error.message}", error) }
+            .onFailure { error -> Logger.w(TAG, "处理通知失败: ${error.message}", error) }
+        // 历史落盘（P2-02）：与"当前通知列表"分开，用户能问"今天上午有什么通知"
+        runCatching { historyStore.append(sbn.toHistoryEntry()) }
+            .onFailure { error -> Logger.w(TAG, "记录通知历史失败: ${error.message}") }
+    }
+
+    /** 从系统通知里取"能给人看"的三要素；取不到的字段留空，不编。 */
+    private fun StatusBarNotification.toHistoryEntry(): io.zer0.muse.data.notification.NotificationHistoryStore.Entry {
+        val extras = notification?.extras
+        val title = firstNonBlank(
+            extras?.getCharSequence(Notification.EXTRA_TITLE_BIG)?.toString(),
+            extras?.getCharSequence(Notification.EXTRA_TITLE)?.toString(),
+        ).orEmpty()
+        val text = firstNonBlank(
+            extras?.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString(),
+            extras?.getCharSequence(Notification.EXTRA_TEXT)?.toString(),
+        ).orEmpty()
+        return io.zer0.muse.data.notification.NotificationHistoryStore.Entry(
+            atMillis = System.currentTimeMillis(),
+            packageName = packageName,
+            title = title,
+            text = text,
+        )
     }
 
     private fun recordNotification(sbn: StatusBarNotification) {
         val notification = sbn.notification ?: return
+        // 历史落盘（P2-02）：与"当前通知列表"分开，用户能问"今天上午有什么通知"
+        runCatching { historyStore.append(sbn.toHistoryEntry()) }
+            .onFailure { Logger.w(TAG, "记录通知历史失败: ${it.message}") }
         val extras = notification.extras
         val pkg = sbn.packageName
 
-        // Filtrar la interfaz de usuario del sistema y las autonotificaciones,evitar el ruido
+        // 过滤掉系统 UI 和自身通知,避免噪音
         if (pkg in IGNORED_PACKAGES) return
 
         val rawTitle = firstNonBlank(
@@ -363,17 +401,17 @@ class MuseNotificationListenerService : NotificationListenerService() {
             extras.getCharSequence(Notification.EXTRA_SUB_TEXT)?.toString(),
         )
 
-        // De forma predeterminada, los nombres de paquetes de alta sensibilidad solo recuerdan la fuente y no el texto.;Habilitado explícitamente por el usuario"puente de mensajes"Después de la autorización,
-        // El texto del paquete está protegido por enmascaramiento PII.(Escondido sin autorización). El resto del texto de la notificación estará enmascarado como PII.
+        // 高敏包名默认只记来源不记正文;用户显式开启"消息桥"授权后,
+        // 该包正文经 PII 遮蔽保留(未授权仍隐藏)。其余通知正文一律过 PII 遮蔽。
         val bodyHidden = pkg in SENSITIVE_PACKAGES && !isPackageUnlocked(pkg)
         val (safeTitle, safeText) = if (bodyHidden) {
-            "[Notificación sensible]" to "(Texto oculto,Fuente: $pkg)"
+            "[敏感通知]" to "(已隐藏正文,来源: $pkg)"
         } else {
             scrubText(rawTitle) to scrubText(rawText)
         }
         val appLabel = runCatching {
             packageManager.getApplicationLabel(packageManager.getApplicationInfo(pkg, 0)).toString()
-        }.onFailure { error -> Logger.d(TAG, "No se pudo leer el nombre de la aplicación de notificación($pkg): ${error.message}") }
+        }.onFailure { error -> Logger.d(TAG, "读取通知应用名称失败($pkg): ${error.message}") }
             .getOrDefault(pkg)
 
         val record = NotificationRecord(
@@ -441,7 +479,7 @@ class MuseNotificationListenerService : NotificationListenerService() {
 }
 
 /**
- * Registro único de notificación(Para que las herramientas LLM lean).
+ * 单条通知记录(供 LLM 工具读取)。
  */
 @Serializable
 data class NotificationRecord(
@@ -449,30 +487,30 @@ data class NotificationRecord(
     val title: String,
     val text: String,
     val timestamp: Long,
-    /** sistema sbn.key,Se utiliza para actualizar la deduplicación.;Las claves de compatibilidad se generan a partir del contenido cuando los registros antiguos están vacíos. */
+    /** 系统 sbn.key,用于更新去重;旧记录为空时由内容生成兼容键。 */
     val sourceKey: String = "",
-    /** ¿Se ha visto en Muse? */
+    /** 是否已在 Muse 中查看。 */
     val isRead: Boolean = false,
-    /** Si se trata de una notificación permanente. */
+    /** 是否为常驻通知。 */
     val isOngoing: Boolean = false,
-    /** Nombre de la aplicación legible por humanos,Recurra al nombre del paquete si no se puede recuperar. */
+    /** 应用可读名称,取不到时回退包名。 */
     val appLabel: String = "",
-    /** Android ID del canal de notificación. */
+    /** Android 通知渠道 id。 */
     val channelId: String? = null,
-    /** Android Categoría de notificación. */
+    /** Android 通知类别。 */
     val category: String? = null,
-    /** Clave de agrupación de sistemas. */
+    /** 系统分组键。 */
     val groupKey: String? = null,
-    /** Prioridad de notificación y visibilidad. */
+    /** 通知优先级与可见性。 */
     val priority: Int = Notification.PRIORITY_DEFAULT,
     val visibility: Int = Notification.VISIBILITY_PRIVATE,
-    /** Si es un resumen del grupo de notificación. */
+    /** 是否为通知组摘要。 */
     val isGroupSummary: Boolean = false,
-    /** Si el sistema permite a los usuarios borrar. */
+    /** 系统是否允许用户清除。 */
     val isClearable: Boolean = true,
-    /** Si la notificación aún existe en la barra de notificaciones del sistema. */
+    /** 通知是否仍存在于系统通知栏。 */
     val isActive: Boolean = true,
-    /** Tiempo de eliminación y motivo de eliminación del sistema(Los datos antiguos están vacíos.). */
+    /** 移除时间与系统移除原因(旧数据为空)。 */
     val removedAt: Long? = null,
     val removedReason: Int? = null,
 )

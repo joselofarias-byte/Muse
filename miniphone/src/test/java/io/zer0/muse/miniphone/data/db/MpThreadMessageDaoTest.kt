@@ -18,7 +18,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * Lectura y escritura básica de sesión y mensaje DAO.:Crear hilo → observado → agregar mensaje → Cambios no leídos → Claro.
+ * 会话与消息 DAO 的基本读写:建线程 → 观察到 → 追加消息 → 未读数变化 → 清零。
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -65,16 +65,16 @@ class MpThreadMessageDaoTest {
     fun appendedMessagesMoveUnreadCounterAndClearResetsIt() = runBlocking {
         threads.upsert(thread("t1", "c1"))
 
-        messages.insert(message("m1", "t1", createdAt = 1_000L, content = "¿Está ahí?"))
-        threads.updateLastMessage("t1", "¿Está ahí?", 1_000L)
+        messages.insert(message("m1", "t1", createdAt = 1_000L, content = "在吗"))
+        threads.updateLastMessage("t1", "在吗", 1_000L)
         threads.increaseUnread("t1")
-        messages.insert(message("m2", "t1", createdAt = 2_000L, content = "en"))
-        threads.updateLastMessage("t1", "en", 2_000L)
+        messages.insert(message("m2", "t1", createdAt = 2_000L, content = "在的"))
+        threads.updateLastMessage("t1", "在的", 2_000L)
         threads.increaseUnread("t1")
 
         assertEquals(2, threads.unreadCount("t1"))
         assertEquals(2, messages.countInThread("t1"))
-        assertEquals("en", threads.getThread("t1")?.lastMessagePreview)
+        assertEquals("在的", threads.getThread("t1")?.lastMessagePreview)
 
         threads.clearUnread("t1")
 
@@ -84,8 +84,8 @@ class MpThreadMessageDaoTest {
     @Test
     fun messagesAreObservedInAscendingOrder() = runBlocking {
         threads.upsert(thread("t1", "c1"))
-        messages.insert(message("m2", "t1", createdAt = 2_000L, content = "segunda frase"))
-        messages.insert(message("m1", "t1", createdAt = 1_000L, content = "primera frase"))
+        messages.insert(message("m2", "t1", createdAt = 2_000L, content = "第二句"))
+        messages.insert(message("m1", "t1", createdAt = 1_000L, content = "第一句"))
 
         val observed = withTimeout(TIMEOUT_MS) { messages.observeMessages("t1").first() }
 
@@ -96,14 +96,14 @@ class MpThreadMessageDaoTest {
     fun pageMessagesWalksFromNewestToOldest() = runBlocking {
         threads.upsert(thread("t1", "c1"))
         (1..5).forEach { index ->
-            messages.insert(message("m$index", "t1", createdAt = index * 1_000L, content = "No. $index frase"))
+            messages.insert(message("m$index", "t1", createdAt = index * 1_000L, content = "第 $index 句"))
         }
-        messages.insert(message("other", "t2", createdAt = 9_000L, content = "otras conversaciones"))
+        messages.insert(message("other", "t2", createdAt = 9_000L, content = "别的会话"))
 
         assertEquals(listOf("m5", "m4"), messages.pageMessages("t1", limit = 2, offset = 0).map { it.id })
         assertEquals(listOf("m3", "m2"), messages.pageMessages("t1", limit = 2, offset = 2).map { it.id })
         assertEquals(listOf("m1"), messages.pageMessages("t1", limit = 2, offset = 4).map { it.id })
-        // Los mensajes de otras conversaciones no se mezclan
+        // 别的会话的消息不混进来
         assertEquals(5, messages.countInThread("t1"))
     }
 
@@ -111,7 +111,7 @@ class MpThreadMessageDaoTest {
     fun messageEnumColumnsSurviveRoundTrip() = runBlocking {
         threads.upsert(thread("t1", "c1"))
         messages.insert(
-            message("v1", "t1", createdAt = 1_000L, content = "Voz", type = MpMessageType.VOICE)
+            message("v1", "t1", createdAt = 1_000L, content = "语音", type = MpMessageType.VOICE)
                 .copy(sender = MpActorType.CHARACTER, mediaUri = "file:///voice/1.m4a", voiceDurationMs = 2_400L),
         )
 
@@ -128,7 +128,7 @@ class MpThreadMessageDaoTest {
         threads.upsert(thread("t1", "c1"))
         threads.upsert(thread("t2", "c2"))
 
-        // Un mismo personaje solo puede ser uno.,No captará las conversaciones de otras personas entre roles.
+        // 同一角色只能是那一条,不会跨角色取到别人的会话
         assertEquals("t1", threads.findThreadByCharacter("c1")?.id)
         assertEquals("t2", threads.findThreadByCharacter("c2")?.id)
         assertNull(threads.findThreadByCharacter("c9"))
@@ -137,18 +137,18 @@ class MpThreadMessageDaoTest {
     @Test
     fun statusUpdatesAndDeletionTouchOnlyTheRowTheyName() = runBlocking {
         threads.upsert(thread("t1", "c1"))
-        messages.insert(message("m1", "t1", createdAt = 1_000L, content = "¿Está ahí?"))
-        messages.insert(message("m2", "t1", createdAt = 2_000L, content = "en"))
-        assertEquals("Las nuevas líneas se emiten de forma predeterminada.", MpMessageStatus.SENT, messages.getMessage("m1")?.status)
+        messages.insert(message("m1", "t1", createdAt = 1_000L, content = "在吗"))
+        messages.insert(message("m2", "t1", createdAt = 2_000L, content = "在的"))
+        assertEquals("新行默认已发出", MpMessageStatus.SENT, messages.getMessage("m1")?.status)
 
         messages.updateStatus("m1", MpMessageStatus.FAILED)
         assertEquals(MpMessageStatus.FAILED, messages.getMessage("m1")?.status)
-        assertEquals("El otro no se ve afectado.", MpMessageStatus.SENT, messages.getMessage("m2")?.status)
+        assertEquals("另一条不受影响", MpMessageStatus.SENT, messages.getMessage("m2")?.status)
 
         messages.deleteMessage("m1")
         assertNull(messages.getMessage("m1"))
         assertEquals(1, messages.countInThread("t1"))
-        assertEquals("Eliminar mensajes y dejar conversaciones sin cambios", 1, threads.observeThreads().first().size)
+        assertEquals("删消息不动会话", 1, threads.observeThreads().first().size)
     }
 
     private fun thread(id: String, characterId: String, lastMessageAt: Long = 0L, pinned: Boolean = false): MpThreadEntity = MpThreadEntity(

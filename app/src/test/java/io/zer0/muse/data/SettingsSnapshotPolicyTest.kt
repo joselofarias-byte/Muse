@@ -5,7 +5,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * R-TEST-04: Política de selección de claves para instantáneas de configuración de respaldo.
+ * R-TEST-04: 备份设置快照的密钥剔除策略。
  */
 class SettingsSnapshotPolicyTest {
 
@@ -37,11 +37,11 @@ class SettingsSnapshotPolicyTest {
 
     @Test
     fun `stringSet favourites are whitelisted`() {
-        // AUDIT §11.3-7: Estos dos elementos son activos del usuario.,Se requiere una copia de seguridad.
+        // AUDIT §11.3-7: 这两项是用户资产,必须进备份。
         assertTrue(SettingsSnapshotPolicy.isSafeKey("stringSet:moment_favorite_ids"))
         assertTrue(SettingsSnapshotPolicy.isSafeKey("stringSet:mini_album_favorite_image_ids"))
-        // Tipo sensible:sin prefijo = string Tipo,Por lo tanto, los nombres en la lista blanca de stringSet no se pueden usar como cadenas.
-        // (De lo contrario, una copia de seguridad dañada puede escribir la clave con el mismo nombre en otro tipo. DataStore).
+        // 类型敏感:不带前缀 = string 类型,不能因此把 stringSet 白名单里的名字当 string 放行
+        // (否则一份褐改的备份能把同名 key 以另一种类型写进 DataStore)。
         assertFalse(SettingsSnapshotPolicy.isSafeKey("moment_favorite_ids"))
         assertFalse(SettingsSnapshotPolicy.isSafeKey("bool:theme_id"))
         assertFalse(SettingsSnapshotPolicy.isSafeKey("int:keep_awake"))
@@ -49,10 +49,10 @@ class SettingsSnapshotPolicyTest {
 
     @Test
     fun `scheduling and view state stringSets are excluded`() {
-        // Tres personas que deliberadamente no ingresan a las copias de seguridad stringSet:
-        //  - daily_summary_*: Programación del estado de deduplicación,Restaurar el antiguo valor haría que hoy/El resumen en este momento se considera completado.;
-        //  - miniphone_hidden_apps: "¿Qué aplicaciones están ocultas?"¿Es el estado de vista lateral del dispositivo?;
-        //  - mini_album_hidden_image_ids: Ocultar lista,Junto con datos derivados del álbum,Sin sentido en todos los dispositivos.
+        // 刻意不进备份的三个 stringSet:
+        //  - daily_summary_*: 调度去重状态,恢复旧值会让今天/本时点的总结被当成已完成;
+        //  - miniphone_hidden_apps: "隐藏了哪些应用"是设备侧视图状态;
+        //  - mini_album_hidden_image_ids: 隐藏列表,与相册派生数据耦合,跨设备无意义。
         assertFalse(SettingsSnapshotPolicy.isSafeKey("stringSet:daily_summary_claimed_slots"))
         assertFalse(SettingsSnapshotPolicy.isSafeKey("stringSet:daily_summary_completed_slots"))
         assertFalse(SettingsSnapshotPolicy.isSafeKey("stringSet:miniphone_hidden_apps"))
@@ -68,8 +68,8 @@ class SettingsSnapshotPolicyTest {
 
     @Test
     fun `media config excluded from backup snapshot`() {
-        // P0-2: MediaConfig Contiene credenciales ttsApiKey,media_config_json No debe aparecer en las instantáneas de respaldo
-        assertFalse("media_config_json Debe excluirse de la instantánea de respaldo", SettingsSnapshotPolicy.isSafeKey("media_config_json"))
+        // P0-2: MediaConfig 含 ttsApiKey 凭据,media_config_json 不得出现在备份快照中
+        assertFalse("media_config_json 必须从备份快照排除", SettingsSnapshotPolicy.isSafeKey("media_config_json"))
         val raw = mapOf("media_config_json" to """{"ttsApiKey":"sk-tts-123","ttsEngine":"openai"}""")
         val safe = SettingsSnapshotPolicy.sanitize(raw)
         assertFalse(safe.containsKey("media_config_json"))

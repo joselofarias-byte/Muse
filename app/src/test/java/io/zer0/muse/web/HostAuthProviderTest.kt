@@ -13,7 +13,6 @@ import io.ktor.server.routing.routing
 import io.ktor.server.websocket.WebSockets
 import io.ktor.server.websocket.webSocket
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.net.HttpURLConnection
 import java.net.InetSocketAddress
@@ -23,14 +22,14 @@ import java.net.URL
 import java.util.Date
 
 /**
- * Puerta JWT en el lado de producción:[installHostAuthProvider] El supuesto proveedor utiliza HTTP real.
+ * 生产侧的 JWT 闸门：[installHostAuthProvider] 装出来的 provider，走真 HTTP。
  *
- * Aquí no hay más sustitutos. —— Las pruebas anteriores de JVM omitieron ktor `jwt()` provider, porque cuando reciba el bono
- * Para cargar los excluidos `com.auth0.jwk.JwkException`; Ahora el lado de producción ya no usa ese módulo.
- * La instalación de prueba es el mismo código en WebServer.
+ * 这里不再有任何替身 —— 之前 JVM 测试绕开 ktor 的 `jwt()` provider，是因为它在取凭证时
+ * 要载被排除的 `com.auth0.jwk.JwkException`；现在生产侧也不用那个模块了，
+ * 测试装的就是 WebServer 里同一段代码。
  *
- * Afirmación clave "401 En lugar de 500": credenciales faltantes, firmas inconsistentes, caducadas, todo debe estar limpio 401,
- * De lo contrario `/ws` El protocolo de enlace le aparece al navegador como "no se puede conectar".
+ * 重点断言「401 而不是 500」：缺凭证、签名不符、过期，都必须是干净的 401，
+ * 否则 `/ws` 握手在浏览器看来就是「连不上」。
  */
 class HostAuthProviderTest {
 
@@ -47,7 +46,7 @@ class HostAuthProviderTest {
         .withExpiresAt(Date(expiresAt))
         .sign(Algorithm.HMAC256(secret))
 
-    /** Un servicio mínimo isomorfo a WebServer: el mismo código de proveedor, una ruta REST protegida + un /ws protegido. */
+    /** 与 WebServer 同构的最小服务：同一段 provider 代码，一条受保护 REST 路由 + 一条受保护 /ws。 */
     private fun withServer(block: (port: Int) -> Unit) {
         val port = ServerSocket(0).use { it.localPort }
         val server = embeddedServer(CIO, host = "127.0.0.1", port = port) {
@@ -58,7 +57,7 @@ class HostAuthProviderTest {
             routing {
                 authenticate(AUTH_NAME) {
                     get("/api/sessions") { call.respondText("[]") }
-                    webSocket("/ws") { /* El protocolo de enlace es exitoso y no se ejecuta ningún comando. */ }
+                    webSocket("/ws") { /* 握手成功即可，不跑命令 */ }
                 }
             }
         }
@@ -76,14 +75,14 @@ class HostAuthProviderTest {
         withServer { port ->
             val response = get(port, "/api/sessions")
 
-            assertEquals("Las credenciales faltantes deben ser 401, no pueden ser 500: ${response.text()}", HttpURLConnection.HTTP_UNAUTHORIZED, response.status)
+            assertEquals("缺凭证必须 401，不能是 500: ${response.text()}", HttpURLConnection.HTTP_UNAUTHORIZED, response.status)
         }
     }
 
     @Test
     fun `websocket handshake without credentials is a clean 401`() {
         withServer { port ->
-            assertEquals("Si el protocolo de enlace carece de credenciales, debe ser 401 y no puede ser 500", HttpURLConnection.HTTP_UNAUTHORIZED, rawHandshake(port))
+            assertEquals("握手缺凭证必须 401，不能是 500", HttpURLConnection.HTTP_UNAUTHORIZED, rawHandshake(port))
         }
     }
 
@@ -92,7 +91,7 @@ class HostAuthProviderTest {
         withServer { port ->
             val response = get(port, "/api/sessions", authorization = "Bearer ${token()}")
 
-            assertEquals("Se deben liberar tokens legítimos: ${response.text()}", HttpURLConnection.HTTP_OK, response.status)
+            assertEquals("合法 token 应放行: ${response.text()}", HttpURLConnection.HTTP_OK, response.status)
             assertEquals("[]", response.text())
         }
     }
@@ -102,7 +101,7 @@ class HostAuthProviderTest {
         withServer { port ->
             val response = get(port, "/api/sessions", cookie = "${HOST_AUTH_COOKIE}=${token()}")
 
-            assertEquals("Cookie Los tokens legales también deberían liberarse.: ${response.text()}", HttpURLConnection.HTTP_OK, response.status)
+            assertEquals("Cookie 里的合法 token 同样应放行: ${response.text()}", HttpURLConnection.HTTP_OK, response.status)
         }
     }
 
@@ -113,7 +112,7 @@ class HostAuthProviderTest {
 
             assertEquals(HttpURLConnection.HTTP_UNAUTHORIZED, get(port, "/api/sessions", "Bearer $expired").status)
             assertEquals(
-                "Los tokens caducados deben colocarse en las cookies. 401",
+                "过期 token 放在 Cookie 里也该 401",
                 HttpURLConnection.HTTP_UNAUTHORIZED,
                 get(port, "/api/sessions", cookie = "${HOST_AUTH_COOKIE}=$expired").status,
             )
@@ -142,7 +141,7 @@ class HostAuthProviderTest {
     fun `websocket handshake with a valid token upgrades`() {
         withServer { port ->
             assertEquals(
-                "Un token válido debería completar el protocolo de enlace.",
+                "合法 token 应完成握手",
                 SWITCHING_PROTOCOLS,
                 rawHandshake(port, authorization = "Bearer ${token()}"),
             )
@@ -153,7 +152,7 @@ class HostAuthProviderTest {
     fun `websocket handshake with the token in a cookie upgrades too`() {
         withServer { port ->
             assertEquals(
-                "Cookie También es una fuente legítima de credenciales.",
+                "Cookie 也是合法凭证来源",
                 SWITCHING_PROTOCOLS,
                 rawHandshake(port, cookie = "${HOST_AUTH_COOKIE}=${token()}"),
             )
@@ -161,11 +160,11 @@ class HostAuthProviderTest {
     }
 
     /**
-     * Envíe una solicitud de actualización de WebSocket real utilizando un socket simple y devuelva el código de estado de respuesta.
+     * 用裸 socket 发一次真正的 WebSocket 升级请求，返回响应状态码。
      *
-     * No utilice HttpURLConnection: se descartará silenciosamente `Connection: Upgrade` Este tipo de cabeza restringida,
-     * Cuando la solicitud llega al servidor, ya no es una solicitud de actualización.WebSockets El complemento devuelve 400 primero y la autenticación no se ejecuta en absoluto. —— de esa manera
-     * No hay forma de detectar "el certificado faltante es 401 en lugar de 500".
+     * 不用 HttpURLConnection：它会默默丢掉 `Connection: Upgrade` 这类受限头，
+     * 请求到了服务端已不是升级请求，WebSockets 插件先回 400，鉴权根本没跑 —— 那样
+     * 就验不出「缺凭证是 401 而不是 500」。
      */
     private fun rawHandshake(port: Int, authorization: String? = null, cookie: String? = null): Int {
         val extra = buildString {
@@ -190,8 +189,8 @@ class HostAuthProviderTest {
                 flush()
             }
             val statusLine = socket.getInputStream().bufferedReader(Charsets.US_ASCII).readLine().orEmpty()
-            // en forma de `HTTP/1.1 401 Unauthorized`
-            return statusLine.split(' ').getOrNull(1)?.toIntOrNull() ?: error("No se puede analizar la línea de respuesta: $statusLine")
+            // 形如 `HTTP/1.1 401 Unauthorized`
+            return statusLine.split(' ').getOrNull(1)?.toIntOrNull() ?: error("无法解析响应行: $statusLine")
         }
     }
 
@@ -199,12 +198,7 @@ class HostAuthProviderTest {
         fun text(): String = String(body, Charsets.UTF_8)
     }
 
-    private fun get(
-        port: Int,
-        path: String,
-        authorization: String? = null,
-        cookie: String? = null,
-    ): Response {
+    private fun get(port: Int, path: String, authorization: String? = null, cookie: String? = null): Response {
         val connection = URL("http://127.0.0.1:$port$path").openConnection() as HttpURLConnection
         connection.connectTimeout = 5_000
         connection.readTimeout = 5_000
@@ -224,13 +218,13 @@ class HostAuthProviderTest {
             if (ready) return
             Thread.sleep(10)
         }
-        error("Servicio de prueba de autenticación no iniciado")
+        error("鉴权测试服务未启动")
     }
 
     private companion object {
         const val AUTH_NAME = "auth-jwt"
 
-        /** Código de estado para una actualización exitosa. */
+        /** 升级成功的状态码。 */
         const val SWITCHING_PROTOCOLS = 101
     }
 }

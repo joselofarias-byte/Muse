@@ -27,7 +27,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -43,20 +42,20 @@ import io.zer0.muse.ui.common.state.MuseSpinner
 import io.zer0.muse.ui.theme.MuseDateFormats
 import io.zer0.muse.ui.theme.MusePaddings
 import io.zer0.muse.ui.theme.MuseShapes
+import io.zer0.muse.ui.theme.bodySmallStrong
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 import java.text.SimpleDateFormat
 import java.util.Date
-import java.util.Locale
 
 /**
- * v1.126: Agent Bandeja de entrada de mensajes privados — Muestra todos los intercambios de mensajes privados entre agentes.
+ * v1.126: Agent 私信收件箱 — 展示所有 Agent 间的私信往来。
  *
- * Función:
- * - Mostrar todos los mensajes privados en orden cronológico inverso
- * - Mostrar recuento no leído agrupado por asistente
- * - Marcar todo como leído con un clic
- * - Haga clic en el mensaje para marcar un solo mensaje como leído
+ * 功能:
+ * - 按时间倒序展示所有私信
+ * - 按助手分组显示未读数量
+ * - 一键全部标记已读
+ * - 点击消息标记单条已读
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -70,21 +69,21 @@ fun AgentDmScreen(
         initialValue = emptyList<io.zer0.muse.data.assistant.AssistantEntity>(),
     )
 
-    // Correcciones en la interfaz (persistencia-12): La lista de mensajes es una lista de entidades personalizadas.,no puede directamente saveable,mantener remember;
-    // Mejores prácticas:El estado del mensaje se mueve a ViewModel y lo mantiene la capa de estado.,UI Suscríbete solo
+    // 前端修复 (持久化-12): 消息列表为自定义实体列表,无法直接 saveable,保持 remember;
+    // 更优做法:消息状态迁入 ViewModel 由状态层持有,UI 只订阅
     var messages by remember { mutableStateOf<List<AgentMessageEntity>>(emptyList()) }
-    // Correcciones en la interfaz (persistencia-12): Boolean Cambios de estado de carga rememberSaveable
+    // 前端修复 (持久化-12): Boolean 加载态改 rememberSaveable
     var isLoading by rememberSaveable { mutableStateOf(true) }
 
-    // Cargar todos los mensajes(Agregado por agente)
+    // 加载所有消息(按 agent 聚合)
     fun refreshMessages() {
         scope.launch {
-            // Fusionar las bandejas de entrada de todos los asistentes
+            // 取所有助手的收件箱合并
             val allMessages = mutableListOf<AgentMessageEntity>()
             for (assistant in assistants) {
                 allMessages.addAll(repository.getInbox(assistant.id, limit = 100))
             }
-            // Eliminar duplicados en orden cronológico inverso
+            // 按时间倒序去重
             messages = allMessages
                 .distinctBy { it.id }
                 .sortedByDescending { it.createdAt }
@@ -101,7 +100,7 @@ fun AgentDmScreen(
     }
 
     val totalUnread = messages.count { !it.isRead }
-    val fmt = remember { SimpleDateFormat(MuseDateFormats.DATE_TIME_SHORT, Locale.getDefault()) }
+    val fmt = remember { MuseDateFormats.dateTimeShort() }
 
     io.zer0.muse.ui.common.surface.MusePageScaffold(
         topBar = {
@@ -155,7 +154,7 @@ fun AgentDmScreen(
                     .padding(horizontal = MusePaddings.screen),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                // Estadísticas no leídas
+                // 未读统计
                 if (totalUnread > 0) {
                     item {
                         Text(
@@ -211,7 +210,7 @@ private fun AgentMessageCard(
             modifier = Modifier.padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            // remitente → Receptor
+            // 发送方 → 接收方
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -226,7 +225,7 @@ private fun AgentMessageCard(
                 }
                 Text(
                     text = fromName,
-                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                    style = MaterialTheme.typography.bodySmallStrong,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
                 Text(
@@ -246,7 +245,7 @@ private fun AgentMessageCard(
                     color = MaterialTheme.colorScheme.outline,
                 )
             }
-            // Contenido del mensaje
+            // 消息内容
             Text(
                 text = message.content,
                 style = MaterialTheme.typography.bodyMedium,

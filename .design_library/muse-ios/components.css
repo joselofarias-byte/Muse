@@ -6,7 +6,7 @@
 
 /* ── Agent Plan Card ───────────────────────────────────────── */
 /* @anatomy
-   <span class="label">ejecutando</span> <div class="plan-card executing"> <div class="plan-header"> <span class="plan-icon"></span> <span class="plan-title">Agent planear</span> <span class="plan-progress">3/5</span>
+   <span class="label">执行中</span> <div class="plan-card executing"> <div class="plan-header"> <span class="plan-icon"></span> <span class="plan-title">Agent 计划</span> <span class="plan-progress">3/5</span>
 */
 .plan-card { flex: 1; min-width: 0; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: var(--space-4); box-shadow: var(--shadow-2); }
 .plan-card.executing { border-color: var(--primary-200); background: var(--color-primary-container); }
@@ -38,7 +38,7 @@
 
 /* ── Approval Card ─────────────────────────────────────────── */
 /* @anatomy
-   <span class="label">bajo riesgo</span><div class="acard low" data-evidence-sample="Pending Low Risk"><div class="ahd"><img class="aico" src="https://cdn.jsdelivr.net/npm/lucide-static@1.8.0/icons/shield-check.svg" alt="shield"><span class="atitle">solicitar aprobación</span><span class="atool">llamada de herramienta</span>
+   <span class="label">低风险</span><div class="acard low" data-evidence-sample="Pending Low Risk"><div class="ahd"><img class="aico" src="https://cdn.jsdelivr.net/npm/lucide-static@1.8.0/icons/shield-check.svg" alt="shield"><span class="atitle">请求批准</span><span class="atool">工具调用</span>
 */
 .acard{flex:1;min-width:0;border-radius:var(--radius-card);padding:var(--space-4);border:1px solid;overflow:hidden}
 .acard.low{background:var(--primary-50);border-color:var(--primary-200)}
@@ -65,7 +65,7 @@
 
 /* ── Conversation List ─────────────────────────────────────── */
 /* @anatomy
-   <span class="label">Predeterminado</span>
+   <span class="label">默认</span>
 */
 .conv-list{width:100%;display:flex;flex-direction:column;gap:4px}
 .conv-item{display:flex;align-items:center;gap:10px;padding:11px 10px;border-radius:10px;background:transparent;cursor:pointer;transition:background .15s}
@@ -88,7 +88,7 @@
 
 /* ── Input Bar ─────────────────────────────────────────────── */
 /* @anatomy
-   <span class="label">Predeterminado</span> <div class="inputbar" data-evidence-sample="default-text-mode"> <button type="button" class="ib-btn ib-tool">llamada de herramienta</button> <textarea placeholder="dialogo"></textarea> <button type="button" class="ib-btn ib-send">enviar</button>
+   <span class="label">默认</span> <div class="inputbar" data-evidence-sample="default-text-mode"> <button type="button" class="ib-btn ib-tool">工具调用</button> <textarea placeholder="对话"></textarea> <button type="button" class="ib-btn ib-send">发送</button>
 */
 .inputbar{display:flex;align-items:flex-end;gap:var(--space-2);width:100%;background:var(--glass-bg);backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturation));-webkit-backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturation));border:1px solid var(--hairline);border-radius:var(--radius-bubble);padding:var(--space-2) var(--space-3);min-height:49px;box-shadow:var(--shadow-2);box-sizing:border-box;}
 .inputbar textarea{flex:1;min-width:0;min-height:28px;max-height:132px;border:none;background:transparent;resize:none;outline:none;font-family:var(--font-body);font-size:var(--font-size-body-m);line-height:var(--line-height-body);color:var(--color-on-surface);padding:var(--space-1) 0;}
@@ -103,7 +103,7 @@
 
 /* ── Media Card ────────────────────────────────────────────── */
 /* @anatomy
-   <span class="label">imagen · generando</span>
+   <span class="label">图像 · 生成中</span>
 */
 .mc{width:100%;background:var(--surface);border-radius:var(--radius-card);overflow:hidden;box-shadow:var(--shadow-2);border:1px solid var(--hairline)}
 .mc-media{position:relative;aspect-ratio:16/9;background:var(--surface-container);display:flex;align-items:center;justify-content:center;overflow:hidden}
@@ -132,7 +132,7 @@
 
 /* ── Message Bubble ────────────────────────────────────────── */
 /* @anatomy
-   <span class="label">dialogo</span> <div class="thread"> <div class="msg end"> <div class="bubble bubble-user">Ayúdame a escribir un poema corto sobre el otoño.
+   <span class="label">对话</span> <div class="thread"> <div class="msg end"> <div class="bubble bubble-user">帮我写一首关于秋天的短诗
 */
 .msg{display:flex;flex-direction:column;gap:var(--space-1);max-width:85%;align-items:flex-start}
 .msg.end{align-self:flex-end;align-items:flex-end;max-width:var(--size-bubble-max)}
@@ -148,7 +148,7 @@
 
 /* ── Navigation Bar ────────────────────────────────────────── */
 /* @anatomy
-   <span class="label">titular</span> <div class="navbar navbar-large"> <div class="navbar-bar"> <button class="nav-btn" aria-label="Regresar"><img src="https://cdn.jsdelivr.net/npm/lucide-static@1.8.0/icons/chevron-left.svg" alt="Regresar"></button> <div class="nav-spacer">
+   <span class="label">大标题</span> <div class="navbar navbar-large"> <div class="navbar-bar"> <button class="nav-btn" aria-label="返回"><img src="https://cdn.jsdelivr.net/npm/lucide-static@1.8.0/icons/chevron-left.svg" alt="返回"></button> <div class="nav-spacer">
 */
 .navbar{display:flex;align-items:center;width:100%;background:var(--glass-bg);backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturation));-webkit-backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturation))}
 .navbar-inline{height:var(--size-navbar);padding:0 var(--space-4)}
@@ -190,7 +190,7 @@
 
 /* ── Thinking Card ─────────────────────────────────────────── */
 /* @anatomy
-   <span class="label">estado plegado</span><div class="tc tc--collapsed" data-evidence-sample="collapsed"><span class="tc__label">Pensando</span>
+   <span class="label">折叠态</span><div class="tc tc--collapsed" data-evidence-sample="collapsed"><span class="tc__label">思考中</span>
 */
 .tc{background:var(--primary-50);border-radius:var(--radius-md);padding:11px 9px;border-left:2px solid var(--primary-300);flex:1;min-width:0}
 .tc--collapsed{display:inline-flex;align-items:center;gap:var(--space-2);border-left:none;flex:0 0 auto;cursor:pointer;transition:filter var(--duration-fast)}
@@ -206,7 +206,7 @@
 
 /* ── Tool Call Card ────────────────────────────────────────── */
 /* @anatomy
-   <span class="label">ejecutando</span><div class="tool-card" data-evidence-sample="Executing"><div class="tc-header"><span class="tc-icon active"><svg width="16" height="16" class="spin"><use href="#i-gear"/></svg></span><span class="tc-name">llamada de herramienta</span><span class="tc-status">ejecutando</span>
+   <span class="label">执行中</span><div class="tool-card" data-evidence-sample="Executing"><div class="tc-header"><span class="tc-icon active"><svg width="16" height="16" class="spin"><use href="#i-gear"/></svg></span><span class="tc-name">工具调用</span><span class="tc-status">执行中</span>
 */
 .tool-card{background:var(--color-surface-container);border:1px solid var(--color-border);border-radius:var(--radius-md);padding:11px 10px;flex:1;min-width:0;box-sizing:border-box}
 .tool-card.danger{background:var(--color-error-container);border-color:var(--color-danger)}

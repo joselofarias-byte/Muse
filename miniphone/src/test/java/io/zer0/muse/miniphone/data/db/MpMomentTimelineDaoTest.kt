@@ -15,7 +15,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-/** línea de tiempo dinámica:Paginar en orden inverso + ordenar de abajo hacia arriba + filtrar por autor. */
+/** 动态时间线:倒序分页 + 同刻兜底排序 + 按作者过滤。 */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
 class MpMomentTimelineDaoTest {
@@ -79,8 +79,8 @@ class MpMomentTimelineDaoTest {
     private fun moment(id: String, createdAt: Long, authorId: String = "c1"): MpMomentEntity = MpMomentEntity(
         id = id,
         authorId = authorId,
-        authorName = "papel$authorId",
-        content = "Dinámico $id",
+        authorName = "角色$authorId",
+        content = "动态 $id",
         createdAt = createdAt,
         source = MpMomentSource.AI,
     )

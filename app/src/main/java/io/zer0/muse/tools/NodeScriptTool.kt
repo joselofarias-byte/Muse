@@ -11,16 +11,16 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
 /**
- * P1-C: Node Herramienta de ejecución de scripts (execute_node_script).
+ * P1-C: Node 脚本执行工具（execute_node_script）。
  *
- * Ejecute scripts de JavaScript en el tiempo de ejecución de Node integrado: capacidades completas (lectura y escritura de archivos/red/subproceso),
- * Puede requerir la sección node_modules del tiempo de ejecución (filesDir/muse-runtime/node_modules) en el paquete npm.
+ * 在内置 Node 运行时中执行 JavaScript 脚本：完整能力（文件读写 / 网络 / 子进程），
+ * 可 require 运行时 node_modules 区（filesDir/muse-runtime/node_modules）中的 npm 包。
  *
- * Herramientas de alto riesgo:ASK / STRICT El patrón requiere aprobación;TRUSTED El modo está sujeto a la selección explícita del usuario sin confirmación.
+ * 高风险工具：ASK / STRICT 模式要求审批；TRUSTED 模式依用户明确选择免确认。
  *
- * estructura de retorno (JSON, alineado con ejecutar_javascript):
- *  - result: string — Valor de retorno de la ejecución (JSON forma de cadena)
- *  - logs: array — console matriz de registro
+ * 返回结构（JSON，与 execute_javascript 对齐）：
+ *  - result: string — 执行返回值（JSON 字符串形式）
+ *  - logs: array — console 日志数组
  *  - error: string | null
  */
 object NodeScriptTool {
@@ -33,11 +33,11 @@ object NodeScriptTool {
 
     fun toolDef() = ToolRegistry.ToolDef(
         name = TOOL_NAME,
-        description = "Ejecute scripts de JavaScript en el tiempo de ejecución integrado de Node.js(capacidad total:Lectura y escritura de archivos, red, subproceso.;" +
-            "Puede requerir módulos npm de terceros). Regresar JSON(result/logs/error). El tiempo de espera predeterminado es 30 segundos.",
+        description = "在内置 Node.js 运行时中执行 JavaScript 脚本(完整能力:文件读写、网络、子进程;" +
+            "可 require 第三方 npm 模块)。返回 JSON(result/logs/error)。超时默认 30 秒。",
         parameters = mapOf(
-            "code" to "Requerido,Node código de secuencia de comandos(bloque de expresión o declaración;Disponible require/fs/fetch, etc.)",
-            "timeout_ms" to "Opcional,Tiempo de espera en milisegundos,Predeterminado 30000,máximo 300000",
+            "code" to "必填,Node 脚本代码(表达式或语句块;可用 require/fs/fetch 等)",
+            "timeout_ms" to "可选,超时毫秒数,默认 30000,最大 300000",
         ),
         required = setOf("code"),
         category = "built-in",
@@ -49,8 +49,8 @@ object NodeScriptTool {
         val code = args["code"].orEmpty()
         val timeoutMs = args["timeout_ms"]?.toLongOrNull()?.coerceIn(1L, MAX_TIMEOUT_MS) ?: DEFAULT_TIMEOUT_MS
         return when {
-            code.isBlank() -> errorJson("Falta el código de parámetro o está vacío")
-            code.length > MAX_SCRIPT_CHARS -> errorJson("El guión supera la longitud máxima($MAX_SCRIPT_CHARS personaje)")
+            code.isBlank() -> errorJson("参数 code 缺失或为空")
+            code.length > MAX_SCRIPT_CHARS -> errorJson("脚本超过最大长度($MAX_SCRIPT_CHARS 字符)")
             else -> formatResultJson(evaluate(context, code, timeoutMs))
         }
     }
@@ -58,8 +58,8 @@ object NodeScriptTool {
     /** Shared execution path for the direct script tool and durable phone-agent workflows. */
     suspend fun evaluate(context: Context, code: String, timeoutMs: Long = DEFAULT_TIMEOUT_MS): SkillEngineResult {
         return when {
-            code.isBlank() -> SkillEngineResult.Error("Falta el código de parámetro o está vacío")
-            code.length > MAX_SCRIPT_CHARS -> SkillEngineResult.Error("El guión supera la longitud máxima($MAX_SCRIPT_CHARS personaje)")
+            code.isBlank() -> SkillEngineResult.Error("参数 code 缺失或为空")
+            code.length > MAX_SCRIPT_CHARS -> SkillEngineResult.Error("脚本超过最大长度($MAX_SCRIPT_CHARS 字符)")
             else ->
                 ProcessSkillEngine(context).eval(
                     script = code,
@@ -75,7 +75,7 @@ object NodeScriptTool {
         is SkillEngineResult.Error -> errorJson(result.message, result.consoleLogs)
     }
 
-    /** Puente síncrono (adaptado a ToolRegistry `(Map<String,String>) -> String` firma). */
+    /** 同步桥接（适配 ToolRegistry 的 `(Map<String,String>) -> String` 签名）。 */
     fun executeFromArgs(args: Map<String, String>, context: Context): String = runBlocking {
         execute(context, args)
     }

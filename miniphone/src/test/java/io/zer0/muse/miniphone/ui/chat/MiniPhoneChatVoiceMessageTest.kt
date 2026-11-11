@@ -1,5 +1,6 @@
 package io.zer0.muse.miniphone.ui.chat
 
+import androidx.lifecycle.ViewModelStore
 import io.zer0.muse.miniphone.api.MiniPhoneHost
 import io.zer0.muse.miniphone.api.MpActivityKind
 import io.zer0.muse.miniphone.api.MpCharacter
@@ -35,10 +36,10 @@ import org.robolectric.annotation.Config
 import java.io.File
 
 /**
- * Cuando una ronda de respuestas contiene voz,Cómo almacenar y organizar mensajes.
+ * 一轮回复里带语音时,消息怎么落库、怎么排。
  *
- * El orden de los eventos dado por el anfitrión es el orden de los mensajes.:una pieza de texto,Una pieza de voz. Sólo se guarda el texto del mensaje de voz.
- * Vista previa de copia para lista de conversaciones,La referencia de audio y la duración ingresan cada una en sus propios campos.
+ * 宿主给的事件顺序就是消息顺序:一段文本一条,一段语音一条。语音那条的正文只存
+ * 会话列表用的预览文案,音频引用与时长各进自己的字段。
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
@@ -57,6 +58,7 @@ class MiniPhoneChatVoiceMessageTest {
 
     @After
     fun tearDown() {
+        createdVmStore.clear()
         Dispatchers.resetMain()
         db.close()
     }
@@ -67,14 +69,14 @@ class MiniPhoneChatVoiceMessageTest {
         val viewModel = createViewModel(
             ScriptHost(
                 listOf(
-                    MpReplyEvent.Text("habla primero"),
+                    MpReplyEvent.Text("先说话"),
                     MpReplyEvent.Voice(VOICE_URI, DURATION_MS),
-                    MpReplyEvent.Text("hablar de nuevo"),
+                    MpReplyEvent.Text("再说话"),
                 ),
             ),
         )
 
-        viewModel.send("¿Está ahí?")
+        viewModel.send("在吗")
 
         val state = awaitChat(viewModel) { chat -> chat.messages.size == 4 && !chat.isGenerating }
         assertEquals(
@@ -83,10 +85,10 @@ class MiniPhoneChatVoiceMessageTest {
         )
         val voice = state.messages[2]
         assertEquals(MpActorType.CHARACTER, voice.sender)
-        assertEquals("[Voz]", voice.content)
+        assertEquals(MpSentinel.VOICE, voice.content)
         assertEquals(VOICE_URI, voice.mediaUri)
         assertEquals(DURATION_MS, voice.voiceDurationMs)
-        assertTrue("Los mensajes de voz toman la rama de representación de voz", voice.isVoice)
+        assertTrue("语音消息走语音渲染分支", voice.isVoice)
     }
 
     @Test
@@ -94,14 +96,14 @@ class MiniPhoneChatVoiceMessageTest {
         seedThread()
         val viewModel = createViewModel(ScriptHost(listOf(MpReplyEvent.Voice(VOICE_URI, DURATION_MS))))
 
-        viewModel.send("¿Está ahí?")
+        viewModel.send("在吗")
         awaitChat(viewModel) { chat -> chat.messages.size == 2 && !chat.isGenerating }
 
         val stored = db.messageDao().observeMessages(THREAD_ID).first().last()
         assertEquals(MpMessageType.VOICE, stored.type)
         assertEquals(VOICE_URI, stored.mediaUri)
         assertEquals(DURATION_MS, stored.voiceDurationMs)
-        assertEquals("[Voz]", stored.content)
+        assertEquals(MpSentinel.VOICE, stored.content)
     }
 
     @Test
@@ -116,11 +118,23 @@ class MiniPhoneChatVoiceMessageTest {
             ),
         )
 
-        viewModel.send("¿Está ahí?")
+        viewModel.send("在吗")
 
         val state = awaitChat(viewModel) { chat -> chat.messages.size == 2 && !chat.isGenerating }
-        assertEquals("El recordatorio de actividad no ingresa a la lista de mensajes", listOf(MpMessageType.TEXT, MpMessageType.VOICE), state.messages.map { it.type })
-        assertEquals("Ocultar recordatorio de actividad una vez finalizada", null, state.activity)
+        assertEquals("活动提示不进消息列表", listOf(MpMessageType.TEXT, MpMessageType.VOICE), state.messages.map { it.type })
+        assertEquals("结束后收起活动提示", null, state.activity)
+    }
+
+    // 本类创建的 ViewModel 要在 @After 里回收：viewModelScope 挂在 Dispatchers.Main.immediate 上，
+    // 不回收就仍有协程在读全局 Main，下一个类 setMain 时会撞"不许并发换 Main"（那条约 1/5 概率的 flake）。
+    private val createdVmStore = ViewModelStore()
+    private var trackedCount = 0
+
+    // ViewModel.clear() 是 internal，测试里调不到；挂进 ViewModelStore 由它统一回收。
+    private fun <VM : androidx.lifecycle.ViewModel> track(viewModel: VM): VM {
+        trackedCount += 1
+        createdVmStore.put("vm-" + trackedCount, viewModel)
+        return viewModel
     }
 
     private fun createViewModel(host: MiniPhoneHost): MiniPhoneChatViewModel {
@@ -151,7 +165,7 @@ class MiniPhoneChatVoiceMessageTest {
                     "new-$idCounter"
                 },
             ),
-        )
+        ).also { track(it) }
     }
 
     private suspend fun seedThread() {
@@ -178,14 +192,14 @@ class MiniPhoneChatVoiceMessageTest {
     }
 }
 
-/** Envía hosts de eventos en un orden determinado:Se utiliza para precisar la \"secuencia de eventos\". = Secuencia de mensajes\". */
+/** 按给定顺序吐事件的宿主:用来钉住「事件顺序 = 消息顺序」。 */
 private class ScriptHost(
     private val events: List<MpReplyEvent>,
 ) : MiniPhoneHost {
 
-    override fun observeCharacters(): Flow<List<MpCharacter>> = flowOf(listOf(MpCharacter(id = "c1", name = "ali")))
+    override fun observeCharacters(): Flow<List<MpCharacter>> = flowOf(listOf(MpCharacter(id = "c1", name = "阿离")))
 
-    override fun observeProfile(): Flow<MpProfile> = flowOf(MpProfile(nickname = "Ziqi"))
+    override fun observeProfile(): Flow<MpProfile> = flowOf(MpProfile(nickname = "子奇"))
 
     override fun respond(characterId: String, history: List<MpChatTurn>): Flow<MpReplyEvent> = flow {
         events.forEach { emit(it) }

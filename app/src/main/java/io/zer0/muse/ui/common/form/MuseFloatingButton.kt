@@ -1,9 +1,6 @@
 package io.zer0.muse.ui.common.form
 
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.snap
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -30,34 +27,35 @@ import io.zer0.muse.ui.theme.MuseElevation
 import io.zer0.muse.ui.theme.MuseIconSizes
 import io.zer0.muse.ui.theme.MuseMotion
 import io.zer0.muse.ui.theme.MuseShapes
+import io.zer0.muse.ui.theme.MuseSpringTier
 import io.zer0.muse.ui.theme.huge
 
 /**
- * botón flotante — sustituto Material3 [androidx.compose.material3.FloatingActionButton].
+ * 浮动按钮 — 替代 Material3 [androidx.compose.material3.FloatingActionButton]。
  *
- * diferencias visuales:
- *  - sin ondulación(Reemplazado con escala presionada + degradado de color)
- *  - redondo [MuseShapes.huge] recipiente,primary fondo de color
- *  - Zoom de 0,92 cuando se presiona(curva de resorte),Retroalimentación de compresión analógica
- *  - 56dp El tamaño predeterminado se ajusta a la especificación FAB del material.
+ * 视觉差异:
+ *  - 无 ripple 涟漪(用 pressed scale + 颜色渐变替代)
+ *  - 圆形 [MuseShapes.huge] 容器,primary 色背景
+ *  - 按下时 0.92 缩放(弹簧曲线),模拟按压反馈
+ *  - 56dp 默认尺寸符合 Material FAB 规范
  *
- * Uso:
+ * 用法:
  * ```
  * MuseFloatingButton(
  *     icon = MuseIcons.plus,
  *     onClick = { importLauncher.launch(...) },
- *     contentDescription = "Complemento de importación",
+ *     contentDescription = "导入插件",
  * )
  * ```
  *
- * @param icon vector icono
- * @param onClick Haga clic en devolución de llamada
+ * @param icon 图标矢量
+ * @param onClick 点击回调
  * @param modifier Modifier
- * @param contentDescription Descripción de accesibilidad(Muy recomendable proporcionar)
- * @param containerColor color del contenedor(Predeterminado primary)
- * @param contentColor color del icono(Predeterminado onPrimary)
- * @param size tamaño del botón(Predeterminado 56dp,Cumplir con las dimensiones predeterminadas del Material FAB)
- * @param iconSize Tamaño visual del icono(Predeterminado [MuseIconSizes.icon])
+ * @param contentDescription 无障碍描述(强烈建议提供)
+ * @param containerColor 容器颜色(默认 primary)
+ * @param contentColor 图标颜色(默认 onPrimary)
+ * @param size 按钮尺寸(默认 56dp,符合 Material FAB 默认尺寸)
+ * @param iconSize 图标视觉尺寸(默认 [MuseIconSizes.icon])
  */
 @Composable
 fun MuseFloatingButton(
@@ -67,25 +65,17 @@ fun MuseFloatingButton(
     contentDescription: String? = null,
     containerColor: Color = MuseActionColors.container,
     contentColor: Color = MuseActionColors.content,
-    // CMP-08: ficha para caminar de tamaño(56dp = MuseIconSizes.fab,Cumple con las especificaciones de Material FAB)
+    // CMP-08: 尺寸走令牌(56dp = MuseIconSizes.fab,符合 Material FAB 规范)
     size: Dp = MuseIconSizes.fab,
     iconSize: Dp = MuseIconSizes.icon,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
-    val reducedMotion = MuseMotion.isReducedMotion()
 
-    // Zoom de 0,92 cuando se presiona(curva de resorte),Retroalimentación de compresión analógica
+    // 按下时 0.92 缩放(跟手档弹簧),模拟按压反馈
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.92f else 1f,
-        animationSpec = if (reducedMotion) {
-            snap()
-        } else {
-            spring(
-                dampingRatio = Spring.DampingRatioMediumBouncy,
-                stiffness = Spring.StiffnessMedium,
-            )
-        },
+        animationSpec = MuseMotion.spring(MuseSpringTier.RESPONSIVE),
         label = "ios_fab_scale",
     )
 
@@ -119,7 +109,8 @@ fun MuseFloatingButton(
         ) {
             Icon(
                 imageVector = icon,
-                contentDescription = null, // Ya disponible en semántica.
+                // 已在 semantics 提供
+                contentDescription = null,
                 modifier = Modifier.size(iconSize),
             )
         }

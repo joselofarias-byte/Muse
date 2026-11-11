@@ -1,33 +1,33 @@
 package io.zer0.muse.automation.core
 
 /**
- * UI Niveles de permisos automatizados.
+ * UI 自动化权限层级。
  *
- * Tres niveles de gradientes corresponden a diferentes rangos de capacidad:
- * - [ACCESSIBILITY]: Servicios de accesibilidad,leer pantalla+Inyección de gestos,No es necesario conectarse a la computadora
- * - [SHELL]: Shizuku/adb shell,Comandos a nivel del sistema,Instalación silenciosa,settings,input espera
- * - [ROOT]: su Permisos,Control total del sistema
+ * 三层梯度对应不同能力范围：
+ * - [ACCESSIBILITY]: 无障碍服务,读屏+手势注入,无需连接电脑
+ * - [SHELL]: Shizuku/adb shell,系统级命令,静默安装、settings、input 等
+ * - [ROOT]: su 权限,完全系统控制
  *
- * Los ejecutores se registran de forma incremental y jerárquica.,Seleccionar automáticamente el nivel más bajo que satisfaga las necesidades a la hora de distribuir acciones(estrategia de degradación).
+ * 执行器按层级递增注册,动作分发时自动选择满足需求的最低层级(降级策略)。
  */
 enum class PermissionLevel {
-    /** Servicios de Accesibilidad. */
+    /** 无障碍服务。 */
     ACCESSIBILITY,
 
-    /** Shizuku/adb shell. */
+    /** Shizuku/adb shell。 */
     SHELL,
 
-    /** Root (su). */
+    /** Root (su)。 */
     ROOT,
 
-    /** Sin permisos de automatización. */
+    /** 无任何自动化权限。 */
     NONE,
     ;
 
-    /** ¿Este nivel contiene al menos [other] capacidad. */
+    /** 该层级是否至少包含 [other] 的能力。 */
     fun covers(other: PermissionLevel): Boolean = rank >= other.rank
 
-    /** Los niveles de capacidad explícitos evitan que el orden de declaración de enumeración cambie la semántica.NONE Sin habilidad. */
+    /** 显式能力等级，避免枚举声明顺序改变语义。NONE 没有任何能力。 */
     private val rank: Int
         get() = when (this) {
             NONE -> 0
@@ -37,7 +37,7 @@ enum class PermissionLevel {
         }
 
     companion object {
-        /** Analizado a partir de combinaciones de indicadores disponibles. */
+        /** 从可用标志位组合解析。 */
         fun fromFlags(accessibility: Boolean, shell: Boolean, root: Boolean): Set<PermissionLevel> = buildSet {
             if (accessibility) add(ACCESSIBILITY)
             if (shell) add(SHELL)

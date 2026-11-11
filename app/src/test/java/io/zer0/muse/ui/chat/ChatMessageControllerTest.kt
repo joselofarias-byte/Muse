@@ -93,7 +93,7 @@ class ChatMessageControllerTest {
     fun `selectUserVariant on empty tree is a no-op`() = runTest {
         val c = controller(this, mockk<SessionRepository>(relaxed = true))
         c.selectUserVariant("none", 0)
-        // Árbol vacío sin nodos → No se lanza ninguna excepción, el mensaje todavía está vacío
+        // 空树无节点 → 不抛异常、消息仍为空
         assertTrue(c.treeState.value.userNodes.isEmpty())
     }
 

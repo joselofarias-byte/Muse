@@ -7,16 +7,16 @@ import java.io.File
 import java.nio.file.Files
 
 /**
- * `memory.md` Escribe deduplicación.
+ * `memory.md` 写入去重。
  *
- * Antecedentes: Leer ruta `MemoryCompiler.readCompiledMemoryMarkdown` Antes de devolver el contenido, se llamará
- * `writeMemoryMd`(Los productos se colocan en el disco al mismo tiempo para facilitar la depuración y la copia de seguridad). Y las condiciones para eliminar duplicados se presentaron antes. `target == null`,
- * La ruta de lectura siempre toma target → La deduplicación nunca surte efecto → **Cada vez que se lee la memoria, el archivo se escribe de forma atómica.**.
+ * 背景：读路径 `MemoryCompiler.readCompiledMemoryMarkdown` 在返回内容之前会调
+ * `writeMemoryMd`（产物同时落盘，方便调试与备份）。而去重条件早先带 `target == null`，
+ * 读路径永远带 target → 去重永不生效 → **每读一次记忆就原子写一次文件**。
  *
- * Aquí se utiliza el "archivo de manipulación externo" para determinar si realmente se omite la escritura:
- *   - Si se omite, el archivo conserva el contenido manipulado;
- *   - Si se escribe, el archivo se restaura al texto entrante.
- * Más confiable que el cronometraje y no depende de la precisión de la hora del sistema de archivos.
+ * 这里用「外部篡改文件」来判定是否真的跳过了写：
+ *   - 若跳过，文件保持被篡改的内容；
+ *   - 若真写，文件被恢复成传入的正文。
+ * 比计时可靠，也不依赖文件系统时间精度。
  */
 class MemoryFileWriterDedupTest {
 
@@ -38,16 +38,16 @@ class MemoryFileWriterDedupTest {
             val writer = MemoryFileWriter(root)
             val target = MemoryCompileTarget(assistantId = "a1", scope = "a1", spaceId = "daily")
 
-            writer.writeMemoryMd("## hechos\n- como el te", target = target)
+            writer.writeMemoryMd("## 事实\n- 喜欢茶", target = target)
             val file = memoryMd(root, target)
-            assertEquals("## hechos\n- como el te", file.readText())
+            assertEquals("## 事实\n- 喜欢茶", file.readText())
 
-            // Manipulación externa: si el contenido permanece sin cambios, si se descarga nuevamente, el archivo se sobrescribirá con el texto original.
+            // 外部篡改：内容不变时若再次落盘，文件会被覆盖回原文。
             file.writeText("TAMPERED")
-            writer.writeMemoryMd("## hechos\n- como el te", target = target)
+            writer.writeMemoryMd("## 事实\n- 喜欢茶", target = target)
 
             assertEquals(
-                "Se debe omitir la escritura en el disco cuando el contenido no haya cambiado (la ruta de lectura no debe activar la escritura en el disco)",
+                "内容没变时必须跳过写盘（读路径不应触发磁盘写）",
                 "TAMPERED",
                 file.readText(),
             )
@@ -80,7 +80,7 @@ class MemoryFileWriterDedupTest {
             val first = MemoryCompileTarget(assistantId = "a1", scope = "a1", spaceId = "work")
             val second = MemoryCompileTarget(assistantId = "a2", scope = "a2", spaceId = "work")
 
-            // Dos objetivos reciben el mismo contenido: deben colocarse por separado y no pueden bloquearse mediante la deduplicación del anterior.
+            // 两个 target 收到同一份内容：都必须各自落盘，不能被前一个的去重挡住。
             writer.writeMemoryMd("same", target = first)
             writer.writeMemoryMd("same", target = second)
 
@@ -121,10 +121,10 @@ class MemoryFileWriterDedupTest {
                     spaceId = "space$index",
                 )
                 writer.writeMemoryMd("content-$index", target = target)
-                // En realidad, cada objetivo debe escribir su propio contenido (la limpieza de desbordamiento solo puede provocar escrituras múltiples, no escrituras perdidas).
+                // 每个 target 都必须真的写出自己的内容（溢出清理只允许导致多写，不允许漏写）。
                 assertEquals("content-$index", memoryMd(root, target).readText())
             }
-            assertTrue("Las escrituras no deben tener un límite superior implícito en la cantidad de objetivos.", true)
+            assertTrue("写入不应对 target 数量设隐性上限", true)
         } finally {
             root.deleteRecursively()
         }

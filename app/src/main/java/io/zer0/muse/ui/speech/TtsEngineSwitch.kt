@@ -3,10 +3,10 @@ package io.zer0.muse.ui.speech
 import io.zer0.muse.data.MediaConfig
 
 /**
- * El producto de un interruptor de motor.
+ * 一次引擎切换的产物。
  *
- * @param config Nueva configuración que se incluirá en la biblioteca (el motor ha sido reemplazado por uno nuevo)
- * @param voiceReset Los sonidos antiguos no pertenecen al motor nuevo y han sido eliminados. —— UI Esto indicará "El tono se ha restablecido, seleccione nuevamente".
+ * @param config 要落库的新配置（引擎已换成新的）
+ * @param voiceReset 旧音色不属于新引擎、已被清空 —— UI 据此提示「音色已重置，请重新选择」
  */
 data class TtsEngineSwitchResult(
     val config: MediaConfig,
@@ -14,26 +14,26 @@ data class TtsEngineSwitchResult(
 )
 
 /**
- * Sincronice los ID de parches al cambiar de motor TTS.
+ * 切换 TTS 引擎时同步处理音色 id。
  *
- * Solo cambio [MediaConfig.ttsEngine] Se dejará una copia del ID de sonido del motor anterior: el upstream analizará este ID de acuerdo con el nuevo motor.
- * Lo que obtienes es 4xx, y luego todo el enlace vuelve silenciosamente al TTS del sistema. Por lo tanto, se verifica una vez al cambiar.
- * Si no pertenece al nuevo motor, déjelo en blanco (cada implementación de síntesis usará su propio timbre predeterminado cuando encuentre un timbre vacío y no habrá 4xx).
+ * 只换 [MediaConfig.ttsEngine] 会留下一份上一个引擎的音色 id：上游按新引擎解析这个 id，
+ * 得到的是 4xx，然后整条链路静默回落到系统 TTS。所以切换时校验一次，
+ * 不属于新引擎就置空（各合成实现遇到空音色都用自家默认音色，不会再 4xx）。
  */
 object TtsEngineSwitch {
 
-    /** La identificación del motor del sistema TTS (ver [MediaConfig.ttsEngine] valor predeterminado). */
+    /** 系统 TTS 的引擎 id（见 [MediaConfig.ttsEngine] 默认值）。 */
     private const val SYSTEM_ENGINE = "system"
 
     fun apply(config: MediaConfig, newEngine: String): TtsEngineSwitchResult {
-        // Cambiar al mismo motor no cuenta; el cambio al sistema tampoco se mueve. ttsVoice —— La voz del sistema va a ttsVoiceName,
-        // ttsVoice No participa en absoluto en la síntesis bajo el motor del sistema. Borrarlo solo permitirá al usuario volver a la nube y volver a seleccionarla una vez.
+        // 同一引擎不算切换；切到 system 也不动 ttsVoice —— 系统音色走 ttsVoiceName，
+        // ttsVoice 在系统引擎下根本不参与合成，清空只会让用户切回云端后白重选一次。
         if (newEngine == config.ttsEngine || newEngine == SYSTEM_ENGINE) {
             return TtsEngineSwitchResult(config.copy(ttsEngine = newEngine), voiceReset = false)
         }
         val voice = config.ttsVoice
-        // Si no puede obtener la colección de sonidos del nuevo motor (ElevenLabs/MiniMax, sonidos clonados que deben extraerse de Internet), no podrá verificarlo.
-        // Trátelo como "no pertenece": es mejor dejar que el usuario vuelva a seleccionar que enviar una identificación que debe ser 4xx.
+        // 拿不到新引擎的音色集合（要联网拉取的 ElevenLabs / MiniMax、克隆音色）时无法校验，
+        // 按「不属于」处理：宁可让用户重选一次，也不把一个必然 4xx 的 id 送上去。
         val newVoiceIds = CloudTtsService.builtInVoiceIds(newEngine)
         val reset = voice.isNotBlank() && (newVoiceIds == null || voice !in newVoiceIds)
         return TtsEngineSwitchResult(

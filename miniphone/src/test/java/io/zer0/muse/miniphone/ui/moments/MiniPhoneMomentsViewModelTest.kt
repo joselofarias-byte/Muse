@@ -1,6 +1,7 @@
 package io.zer0.muse.miniphone.ui.moments
 
 import android.net.Uri
+import androidx.lifecycle.ViewModelStore
 import io.zer0.muse.miniphone.api.MiniPhoneHost
 import io.zer0.muse.miniphone.api.MpCharacter
 import io.zer0.muse.miniphone.api.MpChatTurn
@@ -56,10 +57,10 @@ import java.time.ZoneId
 import kotlin.random.Random
 
 /**
- * Estado de los momentos:La paginación de la línea de tiempo, la publicación, los me gusta, los comentarios y la actualización desplegable activan la generación de caracteres.
+ * 朋友圈状态:时间线分页、发布、点赞、评论、下拉刷新触发角色生成。
  *
- * el curry es realmente bueno Room(banco de memoria),la imagen es real [MpImageStore](directorio temporal):Ninguna de estas dos cosas debería utilizar un sustituto.,
- * De lo contrario, las dos afirmaciones "la dinámica está realmente escrita" y "el archivo de imagen está realmente ahí" son sólo autoverificación.
+ * 库里跑真 Room(内存库),图片落盘跑真 [MpImageStore](临时目录):这两件事都不该用替身,
+ * 否则「动态真的写进去了」「图片文件真的在」这两条断言就只是自证。
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
@@ -94,6 +95,7 @@ class MiniPhoneMomentsViewModelTest {
 
     @After
     fun tearDown() {
+        createdVmStore.clear()
         Dispatchers.resetMain()
         db.close()
     }
@@ -104,15 +106,15 @@ class MiniPhoneMomentsViewModelTest {
 
         val viewModel = createViewModel(FakeMomentsHost())
         val first = awaitState(viewModel) { state -> state.isLoaded }
-        assertEquals("Hay 20 elementos por página en la primera pantalla.", 20, first.moments.size)
-        assertTrue("Hay mayores que no lo han leído.", first.hasMore)
-        assertEquals("orden inverso:Lo más nuevo en la parte superior", "m25", first.moments.first().id)
+        assertEquals("首屏一页是 20 条", 20, first.moments.size)
+        assertTrue("还有更老的没读", first.hasMore)
+        assertEquals("倒序:最新的在最上面", "m25", first.moments.first().id)
         assertEquals("m6", first.moments.last().id)
 
         viewModel.loadMore()
         val all = awaitState(viewModel) { state -> state.moments.size == 25 }
         assertEquals(25, all.moments.size)
-        assertFalse("Después de leer la última página, no hay más.", all.hasMore)
+        assertFalse("读完最后一页就没有更多了", all.hasMore)
         assertEquals("m25", all.moments.first().id)
         assertEquals("m1", all.moments.last().id)
     }
@@ -122,19 +124,19 @@ class MiniPhoneMomentsViewModelTest {
         val viewModel = createViewModel(FakeMomentsHost())
         awaitState(viewModel) { state -> state.isLoaded }
 
-        viewModel.publish(content = "El clima esta agradable hoy", imageUris = listOf(pickImage("a"), pickImage("b"), pickImage("c")))
+        viewModel.publish(content = "今天天气不错", imageUris = listOf(pickImage("a"), pickImage("b"), pickImage("c")))
 
         val state = awaitState(viewModel) { current -> current.moments.size == 1 }
         val row = state.moments.single()
-        assertEquals("El clima esta agradable hoy", row.content)
+        assertEquals("今天天气不错", row.content)
         assertEquals(3, row.images.size)
-        assertTrue("Puedes eliminar las actualizaciones que publicaste.", row.isMine)
+        assertTrue("自己发的动态可以删", row.isMine)
 
         val stored = requireNotNull(db.momentDao().getMoment(row.id))
         assertEquals(MpMomentSource.USER, stored.source)
         val paths = decodeMomentImages(stored.imagesJson)
-        assertEquals("imagesJson Caen tres artículos", 3, paths.size)
-        paths.forEach { path -> assertTrue("Los archivos de imagen realmente deberían existir:$path", File(path).exists()) }
+        assertEquals("imagesJson 落三项", 3, paths.size)
+        paths.forEach { path -> assertTrue("图片文件应当真实存在:$path", File(path).exists()) }
     }
 
     @Test
@@ -145,14 +147,14 @@ class MiniPhoneMomentsViewModelTest {
 
         viewModel.toggleLike(MOMENT_ID)
         val liked = awaitState(viewModel) { state -> state.moments.single().likes.isNotEmpty() }
-        assertEquals("La persona que le gusta soy yo.", listOf(SELF_NAME), liked.moments.single().likes)
+        assertEquals("点赞人是自己", listOf(SELF_NAME), liked.moments.single().likes)
         assertTrue(liked.moments.single().likedByMe)
         assertEquals(1, db.momentLikeDao().likesOf(MOMENT_ID).size)
 
         viewModel.toggleLike(MOMENT_ID)
         val unliked = awaitState(viewModel) { state -> state.moments.single().likes.isEmpty() }
-        assertFalse("El segundo clic es para cancelar.", unliked.moments.single().likedByMe)
-        assertEquals("Sólo hay una clave primaria compuesta garantizada", 0, db.momentLikeDao().likesOf(MOMENT_ID).size)
+        assertFalse("第二次点是取消", unliked.moments.single().likedByMe)
+        assertEquals("复合主键保证只有一条", 0, db.momentLikeDao().likesOf(MOMENT_ID).size)
     }
 
     @Test
@@ -161,29 +163,29 @@ class MiniPhoneMomentsViewModelTest {
         val viewModel = createViewModel(FakeMomentsHost())
         awaitState(viewModel) { state -> state.isLoaded }
 
-        viewModel.comment(MOMENT_ID, parentId = null, content = "Artículo 1")
+        viewModel.comment(MOMENT_ID, parentId = null, content = "第一条")
         val withTop = awaitState(viewModel) { state -> state.moments.single().comments.size == 1 }
         val top = withTop.moments.single().comments.single()
-        assertEquals("Artículo 1", top.content)
+        assertEquals("第一条", top.content)
         assertTrue(top.replies.isEmpty())
 
-        viewModel.comment(MOMENT_ID, parentId = top.id, content = "Responder")
+        viewModel.comment(MOMENT_ID, parentId = top.id, content = "回一条")
         val withReply = awaitState(viewModel) { state -> state.moments.single().comments.single().replies.size == 1 }
 
         val comment = withReply.moments.single().comments.single()
-        assertEquals("Responder bajo el mismo comentario de nivel superior", 1, comment.replies.size)
-        assertEquals("Responder", comment.replies.single().content)
+        assertEquals("回复压在同一条顶层评论下", 1, comment.replies.size)
+        assertEquals("回一条", comment.replies.single().content)
         assertEquals(SELF_NAME, comment.replies.single().senderName)
 
         val stored = db.momentCommentDao().observeComments(MOMENT_ID).first()
-        val reply = stored.single { it.senderType == MpActorType.USER && it.content == "Responder" }
-        assertEquals("El parentId de la respuesta apunta al comentario principal.", top.id, reply.parentId)
-        assertNull("No hay comentarios destacados parent", stored.single { it.content == "Artículo 1" }.parentId)
+        val reply = stored.single { it.senderType == MpActorType.USER && it.content == "回一条" }
+        assertEquals("回复的 parentId 指向父评论", top.id, reply.parentId)
+        assertNull("顶层评论没有 parent", stored.single { it.content == "第一条" }.parentId)
     }
 
     @Test
     fun refreshInsertsOneGeneratedMomentFromACharacter() = runBlocking {
-        val host = FakeMomentsHost(composed = "Acabo de ver una lluvia")
+        val host = FakeMomentsHost(composed = "刚看完一场雨")
         val viewModel = createViewModel(host)
         awaitState(viewModel) { state -> state.isLoaded }
 
@@ -191,7 +193,7 @@ class MiniPhoneMomentsViewModelTest {
 
         val state = awaitState(viewModel) { current -> !current.isRefreshing && current.moments.isNotEmpty() }
         val row = state.moments.single()
-        assertEquals("Acabo de ver una lluvia", row.content)
+        assertEquals("刚看完一场雨", row.content)
         assertEquals(CHARACTER_ID, row.authorId)
         assertEquals(CHARACTER_NAME, row.authorName)
         assertEquals(1, host.composeCalls)
@@ -200,9 +202,9 @@ class MiniPhoneMomentsViewModelTest {
 
     @Test
     fun manualRefreshCountsAsGenerationForBackgroundDebounce() = runBlocking {
-        // Empezar durante el día(14:00):Desviarse del juicio más avanzado de "período de tranquilidad",Sólo prueba anti-vibración
+        // 白天起手(14:00):把「安静时段」这个更靠前的判定岔开,只验防抖
         clock = DAYTIME_MS
-        val host = FakeMomentsHost(composed = "Este fue dibujado a mano.")
+        val host = FakeMomentsHost(composed = "手刷出来的这条")
         val viewModel = createViewModel(host)
         awaitState(viewModel) { state -> state.isLoaded }
 
@@ -210,7 +212,7 @@ class MiniPhoneMomentsViewModelTest {
 
         val state = awaitState(viewModel) { current -> !current.isRefreshing && current.moments.isNotEmpty() }
         val createdAt = requireNotNull(db.momentDao().getMoment(state.moments.single().id)).createdAt
-        assertEquals("El cepillado de manos exitoso también quedará registrado en el libro de contabilidad anti-vibración.", createdAt, autoStore.lastGeneratedAtMillis)
+        assertEquals("手刷成功也要记进防抖账本", createdAt, autoStore.lastGeneratedAtMillis)
 
         val decision = MpMomentAutoPlan.decide(
             nowMillis = createdAt + THIRTY_MINUTES_MS,
@@ -219,7 +221,7 @@ class MiniPhoneMomentsViewModelTest {
             hasCharacter = true,
             zone = ZONE,
         )
-        assertEquals("30 minutos después del cepillado de manos,Las tareas en segundo plano deben considerarse demasiado rápidas y omitirse", MpMomentAutoDecision.Skip(MpMomentSkipReason.TOO_SOON), decision)
+        assertEquals("手刷后 30 分钟,后台任务应被判太快而跳过", MpMomentAutoDecision.Skip(MpMomentSkipReason.TOO_SOON), decision)
     }
 
     @Test
@@ -232,7 +234,7 @@ class MiniPhoneMomentsViewModelTest {
         viewModel.refresh()
 
         val state = awaitState(viewModel) { current -> !current.isRefreshing }
-        assertEquals("La generación falló sin insertar", 1, state.moments.size)
+        assertEquals("生成失败不插入", 1, state.moments.size)
         assertEquals(1, host.composeCalls)
         assertNotNull(db.momentDao().getMoment(MOMENT_ID))
     }
@@ -244,7 +246,7 @@ class MiniPhoneMomentsViewModelTest {
                 id = SELF_MOMENT_ID,
                 authorId = MP_LOCAL_ACTOR_ID,
                 authorName = SELF_NAME,
-                content = "propia dinámica",
+                content = "自己的动态",
                 createdAt = 1L,
                 source = MpMomentSource.USER,
             ),
@@ -257,9 +259,9 @@ class MiniPhoneMomentsViewModelTest {
         viewModel.deleteMoment(SELF_MOMENT_ID)
 
         val afterDelete = awaitState(viewModel) { state -> state.moments.none { it.id == SELF_MOMENT_ID } && state.moments.size == 1 }
-        assertEquals("La entrada del personaje no se eliminará.", MOMENT_ID, afterDelete.moments.single().id)
-        assertNull("Mi actividad ha sido eliminada", db.momentDao().getMoment(SELF_MOMENT_ID))
-        assertNotNull("Las actualizaciones de otras personas permanecen sin cambios.", db.momentDao().getMoment(MOMENT_ID))
+        assertEquals("角色那条不被删", MOMENT_ID, afterDelete.moments.single().id)
+        assertNull("自己的动态已删", db.momentDao().getMoment(SELF_MOMENT_ID))
+        assertNotNull("别人的动态没动", db.momentDao().getMoment(MOMENT_ID))
     }
 
     @Test
@@ -268,12 +270,12 @@ class MiniPhoneMomentsViewModelTest {
         val viewModel = createViewModel(FakeMomentsHost())
         awaitState(viewModel) { state -> state.isLoaded }
 
-        viewModel.comment(MOMENT_ID, parentId = null, content = "mi comentario")
+        viewModel.comment(MOMENT_ID, parentId = null, content = "我的评论")
         val top = awaitState(viewModel) { state -> state.moments.single().comments.size == 1 }
             .moments.single().comments.single()
-        viewModel.comment(MOMENT_ID, parentId = top.id, content = "mi respuesta")
+        viewModel.comment(MOMENT_ID, parentId = top.id, content = "我的回复")
         awaitState(viewModel) { state -> state.moments.single().comments.single().replies.size == 1 }
-        // Otros responden bajo el mismo artículo.:Sigue el piso superior
+        // 别人回在同一条下面:跟着顶层一起走
         db.momentCommentDao().insert(comment(id = "k-other", momentId = MOMENT_ID, parentId = top.id, at = 90L))
         assertEquals(3, db.momentCommentDao().count(MOMENT_ID))
 
@@ -281,7 +283,7 @@ class MiniPhoneMomentsViewModelTest {
 
         val after = awaitState(viewModel) { state -> state.moments.single().comments.isEmpty() }
         assertTrue(after.moments.single().comments.isEmpty())
-        assertEquals("El comentario se eliminará junto con la respuesta debajo.", 0, db.momentCommentDao().count(MOMENT_ID))
+        assertEquals("评论与它下面的回复一起删", 0, db.momentCommentDao().count(MOMENT_ID))
     }
 
     @Test
@@ -290,13 +292,13 @@ class MiniPhoneMomentsViewModelTest {
         val viewModel = createViewModel(FakeMomentsHost())
         val loaded = awaitState(viewModel) { state -> state.isLoaded && state.moments.isNotEmpty() }
         val top = loaded.moments.first { it.id == "m1" }.comments.single()
-        assertTrue("Los comentarios escritos por A Yuan no le pertenecen.", !top.isMine)
+        assertTrue("阿远写的评论不属于自己", !top.isMine)
 
         viewModel.deleteComment("m1", top.id)
 
         val after = awaitState(viewModel) { state -> state.moments.isNotEmpty() }
-        assertEquals("El comentario de Ayuan y la respuesta a continuación todavía están ahí.", 2, db.momentCommentDao().count("m1"))
-        assertEquals("Todavía está ahí en la interfaz.", 1, after.moments.first { it.id == "m1" }.comments.size)
+        assertEquals("阿远那条评论和它下面的回复都还在", 2, db.momentCommentDao().count("m1"))
+        assertEquals("界面上也还在", 1, after.moments.first { it.id == "m1" }.comments.size)
     }
 
     @Test
@@ -304,11 +306,11 @@ class MiniPhoneMomentsViewModelTest {
         val viewModel = createViewModel(FakeMomentsHost())
         awaitState(viewModel) { state -> state.isLoaded }
 
-        viewModel.publish(content = "Visible por defecto", imageUris = emptyList())
+        viewModel.publish(content = "默认可见", imageUris = emptyList())
 
         val row = awaitState(viewModel) { state -> state.moments.size == 1 }.moments.single()
         val stored = requireNotNull(db.momentDao().getMoment(row.id))
-        assertEquals("Cadena vacía predeterminada = Visible para todos", "", stored.visibleToJson)
+        assertEquals("默认空串 = 所有人可见", "", stored.visibleToJson)
     }
 
     @Test
@@ -316,32 +318,32 @@ class MiniPhoneMomentsViewModelTest {
         val viewModel = createViewModel(FakeMomentsHost())
         awaitState(viewModel) { state -> state.isLoaded }
 
-        viewModel.publish(content = "solo para ti", imageUris = emptyList(), visibleToSelf = true)
+        viewModel.publish(content = "只给自己看", imageUris = emptyList(), visibleToSelf = true)
 
         val row = awaitState(viewModel) { state -> state.moments.size == 1 }.moments.single()
         val stored = requireNotNull(db.momentDao().getMoment(row.id))
-        assertEquals("Después de comprobarlo, escribe el tuyo. id", MP_LOCAL_ACTOR_ID, stored.visibleToJson)
-        assertEquals("La interfaz también obtuvo esta marca.", MP_LOCAL_ACTOR_ID, row.visibleToJson)
+        assertEquals("勾选后写入自己的 id", MP_LOCAL_ACTOR_ID, stored.visibleToJson)
+        assertEquals("界面拿到的也是这份标记", MP_LOCAL_ACTOR_ID, row.visibleToJson)
     }
 
     @Test
     fun onlyMineTimelineShowsOnlyMineNewestFirst() = runBlocking {
-        db.momentDao().insert(ownMoment(id = "mine-early", createdAt = 10L, content = "Mi propio temprano"))
+        db.momentDao().insert(ownMoment(id = "mine-early", createdAt = 10L, content = "自己的早一条"))
         seedMoments(count = 3)
-        db.momentDao().insert(ownMoment(id = "mine-late", createdAt = 50L, content = "El mio llega tarde"))
+        db.momentDao().insert(ownMoment(id = "mine-late", createdAt = 50L, content = "自己的晚一条"))
 
-        val host = FakeMomentsHost(composed = "El personaje acaba de ser lanzado.")
+        val host = FakeMomentsHost(composed = "角色刚发的")
         val viewModel = createViewModel(host, onlyMine = true)
 
         val state = awaitState(viewModel) { current -> current.isLoaded }
 
-        assertEquals("No aparece ninguna de las actualizaciones de otras personas.,propio en orden cronológico inverso", listOf("mine-late", "mine-early"), state.moments.map { it.id })
-        assertTrue("Cada línea es suya", state.moments.all { moment -> moment.isMine })
+        assertEquals("别人的动态一条不出现,自己的按时间倒序", listOf("mine-late", "mine-early"), state.moments.map { it.id })
+        assertTrue("每一行都是自己的", state.moments.all { moment -> moment.isMine })
 
         viewModel.refresh()
 
-        assertEquals("Mi círculo de amigos no se llama generación de personajes.", 0, host.composeCalls)
-        assertEquals("No hay muchas noticias sobre Curry.", 5, db.momentDao().count())
+        assertEquals("我的朋友圈不叫角色生成", 0, host.composeCalls)
+        assertEquals("库里的动态一条不多", 5, db.momentDao().count())
     }
 
     @Test
@@ -349,10 +351,10 @@ class MiniPhoneMomentsViewModelTest {
         val viewModel = createViewModel(FakeMomentsHost(), onlyMine = true)
         awaitState(viewModel) { state -> state.isLoaded }
 
-        viewModel.publish(content = "Sólo una publicación en esta página.", imageUris = emptyList())
+        viewModel.publish(content = "只在这一页发的一条", imageUris = emptyList())
 
         val row = awaitState(viewModel) { state -> state.moments.size == 1 }.moments.single()
-        assertEquals("Sólo una publicación en esta página.", row.content)
+        assertEquals("只在这一页发的一条", row.content)
         assertTrue(row.isMine)
         assertEquals(MpMomentSource.USER, requireNotNull(db.momentDao().getMoment(row.id)).source)
     }
@@ -377,26 +379,26 @@ class MiniPhoneMomentsViewModelTest {
             settings = autoStore,
             material = material(),
             random = Random(0),
-        )
+        ).also { track(it) }
         val state = awaitState(viewModel) { current -> current.isLoaded }
 
         assertEquals(3, state.moments.size)
         val byId = state.moments.associateBy { moment -> moment.id }
-        assertEquals("m1 un me gusta", listOf("Ayuan"), byId.getValue("m1").likes)
-        assertEquals("m1 un comentario superior", 1, byId.getValue("m1").comments.size)
-        assertEquals("m1 Hay una respuesta debajo del comentario de nivel superior.", 1, byId.getValue("m1").comments.single().replies.size)
-        assertEquals("m2 Dos me gusta en orden cronológico", listOf("Ayuan", "Xiaoman"), byId.getValue("m2").likes)
+        assertEquals("m1 一个赞", listOf("阿远"), byId.getValue("m1").likes)
+        assertEquals("m1 一条顶层评论", 1, byId.getValue("m1").comments.size)
+        assertEquals("m1 的顶层评论下挂一条回复", 1, byId.getValue("m1").comments.single().replies.size)
+        assertEquals("m2 两个赞按时间先后", listOf("阿远", "小满"), byId.getValue("m2").likes)
         assertEquals(1, byId.getValue("m2").comments.size)
         assertEquals(1, byId.getValue("m3").likes.size)
         assertEquals(1, byId.getValue("m3").comments.size)
 
-        assertEquals("Me gusta una página y consulta en lotes a la vez", 1, countingLikes.batchCalls)
-        assertEquals("Consulta por lotes para una página de comentarios", 1, countingComments.batchCalls)
-        assertEquals("No revises los Me gusta uno por uno.", 0, countingLikes.singleCalls)
-        assertEquals("No revises los comentarios uno por uno", 0, countingComments.singleCalls)
+        assertEquals("点赞一页一次批量查询", 1, countingLikes.batchCalls)
+        assertEquals("评论一页一次批量查询", 1, countingComments.batchCalls)
+        assertEquals("不逐条查点赞", 0, countingLikes.singleCalls)
+        assertEquals("不逐条查评论", 0, countingComments.singleCalls)
     }
 
-    /** hacer [count] Noticias:createdAt incremento,id De m1 a mN. */
+    /** 造 [count] 条动态:createdAt 递增,id 从 m1 到 mN。 */
     private suspend fun seedMoments(count: Int) {
         (1..count).forEach { index ->
             db.momentDao().insert(
@@ -404,7 +406,7 @@ class MiniPhoneMomentsViewModelTest {
                     id = "m$index",
                     authorId = CHARACTER_ID,
                     authorName = CHARACTER_NAME,
-                    content = "Dinámico $index",
+                    content = "动态 $index",
                     createdAt = index.toLong(),
                     source = MpMomentSource.AI,
                 ),
@@ -412,13 +414,13 @@ class MiniPhoneMomentsViewModelTest {
         }
     }
 
-    /** Cada una de las tres actualizaciones tiene me gusta y comentarios.:m2 dos me gusta,m1 Con una respuesta. */
+    /** 三条动态各带点赞与评论:m2 两个赞,m1 带一条回复。 */
     private suspend fun seedMomentsWithSocial() {
         seedMoments(count = 3)
-        db.momentLikeDao().insert(like(momentId = "m1", likerId = "c2", likerName = "Ayuan", at = 10L))
-        db.momentLikeDao().insert(like(momentId = "m2", likerId = "c2", likerName = "Ayuan", at = 11L))
-        db.momentLikeDao().insert(like(momentId = "m2", likerId = "c3", likerName = "Xiaoman", at = 12L))
-        db.momentLikeDao().insert(like(momentId = "m3", likerId = "c2", likerName = "Ayuan", at = 13L))
+        db.momentLikeDao().insert(like(momentId = "m1", likerId = "c2", likerName = "阿远", at = 10L))
+        db.momentLikeDao().insert(like(momentId = "m2", likerId = "c2", likerName = "阿远", at = 11L))
+        db.momentLikeDao().insert(like(momentId = "m2", likerId = "c3", likerName = "小满", at = 12L))
+        db.momentLikeDao().insert(like(momentId = "m3", likerId = "c2", likerName = "阿远", at = 13L))
         db.momentCommentDao().insert(comment(id = "k1", momentId = "m1", parentId = null, at = 20L))
         db.momentCommentDao().insert(comment(id = "k2", momentId = "m1", parentId = "k1", at = 21L))
         db.momentCommentDao().insert(comment(id = "k3", momentId = "m2", parentId = null, at = 22L))
@@ -448,10 +450,23 @@ class MiniPhoneMomentsViewModelTest {
         parentId = parentId,
         senderType = MpActorType.CHARACTER,
         senderId = "c2",
-        senderName = "Ayuan",
-        content = "Comentario $id",
+        senderName = "阿远",
+        content = "评论 $id",
         createdAt = at,
     )
+
+    // 本类创建的 ViewModel 必须在 @After 回收：viewModelScope 挂在 Dispatchers.Main.immediate 上，
+    // 不回收就仍有协程在读全局 Main —— 本类之前的两次飘红就是它自己踩自己：
+    // `Dispatchers.Main is used concurrently with setting it`，一处发生在 setMain、一处发生在
+    // 遗留协程的 isDispatchNeeded。ViewModel.clear() 是 internal，所以挂进 ViewModelStore 统一清。
+    private val createdVmStore = ViewModelStore()
+    private var trackedCount = 0
+
+    private fun <VM : androidx.lifecycle.ViewModel> track(viewModel: VM): VM {
+        trackedCount += 1
+        createdVmStore.put("vm-" + trackedCount, viewModel)
+        return viewModel
+    }
 
     private fun createViewModel(host: MiniPhoneHost, onlyMine: Boolean = false): MiniPhoneMomentsViewModel = MiniPhoneMomentsViewModel(
         repository = repository,
@@ -460,9 +475,9 @@ class MiniPhoneMomentsViewModelTest {
         material = material(),
         onlyMine = onlyMine,
         random = Random(0),
-    )
+    ).also { track(it) }
 
-    /** Montaje de materiales reales:Tanto las sesiones como las dinámicas se leen desde la biblioteca de memoria.,Hora usando el reloj de prueba. */
+    /** 真的素材组装:会话与动态都从内存库读,时间用测试时钟。 */
     private fun material(): MpCharacterMaterial = MpCharacterMaterial(
         threadDao = db.threadDao(),
         messageDao = db.messageDao(),
@@ -474,7 +489,7 @@ class MiniPhoneMomentsViewModelTest {
     private suspend fun awaitState(vm: MiniPhoneMomentsViewModel, match: (MomentsUiState) -> Boolean): MomentsUiState =
         withTimeout(TIMEOUT_MS) { vm.uiState.first(match) }
 
-    /** Crea una imagen falsa legible y registra sus bytes.;Seleccionar la misma imagen dos veces dará como resultado el mismo archivo. */
+    /** 造一张可读的假图并登记它的字节;同一张图选两次会得到同一个文件。 */
     private fun pickImage(name: String): Uri {
         val uri = Uri.parse("content://mp-test/$name")
         imageBytes[uri.toString()] = PNG_MAGIC + name.toByteArray()
@@ -487,14 +502,14 @@ class MiniPhoneMomentsViewModelTest {
         const val MOMENT_ID: String = "m1"
         const val SELF_MOMENT_ID: String = "mine"
         const val CHARACTER_ID: String = "c1"
-        const val CHARACTER_NAME: String = "ali"
-        const val SELF_NAME: String = "Ziqi"
+        const val CHARACTER_NAME: String = "阿离"
+        const val SELF_NAME: String = "子奇"
         const val TIMEOUT_MS: Long = 5_000L
 
-        /** Punto de partida del reloj falso,Nuevos lanzamientos garantizados/Me gusta/Todos los comentarios son más recientes que los datos iniciales. */
+        /** 假时钟起点,保证新发布/点赞/评论都比种子数据新。 */
         const val NOW_BASE: Long = 100_000L
 
-        /** diurno 14:00(Octavo Distrito Este):Para casos de uso anti-vibración,Evite los momentos de tranquilidad. */
+        /** 白天 14:00(东八区):用于防抖用例,避开安静时段。 */
         val ZONE: ZoneId = ZoneId.of("Asia/Shanghai")
 
         val DAYTIME_MS: Long = LocalDateTime.of(2026, 5, 12, 14, 0).atZone(ZONE).toInstant().toEpochMilli()
@@ -505,8 +520,8 @@ class MiniPhoneMomentsViewModelTest {
     }
 }
 
-/** Haz solo las dos cosas que tu círculo de amigos necesita:Dar una lista de roles,Generar según script(o no generado)Un texto. */
-private val CHARACTER = MpCharacter(id = "c1", name = "ali", tagline = "vivir abajo")
+/** 只做朋友圈需要的两件事:给一份角色名单,按剧本生成(或不生成)一条文本。 */
+private val CHARACTER = MpCharacter(id = "c1", name = "阿离", tagline = "住在楼下")
 
 private class FakeMomentsHost(
     private val composed: String? = null,
@@ -517,7 +532,7 @@ private class FakeMomentsHost(
 
     override fun observeCharacters(): Flow<List<MpCharacter>> = flowOf(listOf(CHARACTER))
 
-    override fun observeProfile(): Flow<MpProfile> = flowOf(MpProfile(nickname = "Ziqi"))
+    override fun observeProfile(): Flow<MpProfile> = flowOf(MpProfile(nickname = "子奇"))
 
     override fun respond(characterId: String, history: List<MpChatTurn>): Flow<MpReplyEvent> = flowOf(MpReplyEvent.Failed)
 
@@ -535,7 +550,7 @@ private class FakeMomentsHost(
     override suspend fun supportsVoiceTranscription(): Boolean = false
 }
 
-/** Asumir la configuración:Solo sirve afirmaciones anti-vibración —— Tenga en cuenta la hora en que fue escrito,El interruptor está siempre encendido. */
+/** 假设置:只服务防抖断言 —— 记下写进来的时间,开关恒为开。 */
 private class FakeAutoStore : MpMomentAutoStore {
 
     private val enabledState = MutableStateFlow(true)
@@ -568,7 +583,7 @@ private class FakeAutoStore : MpMomentAutoStore {
     override suspend fun markProactiveChat(atMillis: Long) = Unit
 }
 
-/** Como el decorador de DAO:Existir solo para una cosa —— Cuente si \"una vez en lotes\" o \"N veces una por una\". */
+/** 点赞 DAO 的装饰器:只为一件事存在 —— 数清「批量一次」还是「逐条 N 次」。 */
 private class CountingLikeDao(private val delegate: MpMomentLikeDao) : MpMomentLikeDao {
 
     var batchCalls: Int = 0
@@ -598,7 +613,7 @@ private class CountingLikeDao(private val delegate: MpMomentLikeDao) : MpMomentL
     override suspend fun deleteAllOf(momentId: String) = delegate.deleteAllOf(momentId)
 }
 
-/** Comentar sobre decoradores DAO:Lo mismo que arriba. */
+/** 评论 DAO 的装饰器:同上。 */
 private class CountingCommentDao(private val delegate: MpMomentCommentDao) : MpMomentCommentDao {
 
     var batchCalls: Int = 0

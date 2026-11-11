@@ -6,43 +6,67 @@ import android.net.Uri
 import io.zer0.common.Logger
 
 /**
- * P3-3: Shizuku instalador(Instalación de arranque).
+ * P3-3: Shizuku 安装器(引导安装)。
  *
- * Muse No incorporado Shizuku APK(Tamaño grande + actualizaciones de versión frecuentes),En su lugar, guíe a los usuarios para que realicen la instalación desde los canales oficiales.:
+ * Muse 不内置 Shizuku APK(体积大 + 版本更新频繁),改为引导用户从官方渠道安装:
  *  - GitHub Releases: https://github.com/RikkaApps/Shizuku/releases
  *  - Google Play: com.rikka.shizuku
  *
- * Responsabilidades:
- *  1. [isInstalled]: Shizuku APK ¿Está instalado?
- *  2. [openDownloadPage]: Abra la página de descarga oficial.(Prioridad Play Store,revertir GitHub)
- *  3. [ensureInstalled]: Verificar y guiar la instalación.
+ * 职责:
+ *  1. [isInstalled]: Shizuku APK 是否已安装
+ *  2. [openDownloadPage]: 打开官方下载页(优先 Play Store,回退 GitHub)
+ *  3. [ensureInstalled]: 检查并引导安装
  */
 class ShizukuInstaller(private val context: Context) {
 
     companion object {
         private const val TAG = "ShizukuInstaller"
 
-        /** Shizuku APK nombre del paquete(No del SDK Java namespace). */
+        /** Shizuku APK 包名(不是 SDK 的 Java namespace)。 */
         const val SHIZUKU_PACKAGE = "moe.shizuku.privileged.api"
 
-        /** Shizuku GitHub Releases Página. */
+        /** Shizuku GitHub Releases 页。 */
         const val DOWNLOAD_URL = "https://github.com/RikkaApps/Shizuku/releases"
     }
 
-    /** Shizuku APK ¿Se ha instalado? */
+    /** Shizuku APK 是否已安装。 */
     fun isInstalled(): Boolean = try {
         context.packageManager.getPackageInfo(SHIZUKU_PACKAGE, 0) != null
     } catch (e: Exception) {
-        // PackageManager.NameNotFoundException cuando getPackageInfo lanza una excepción
+        // PackageManager.NameNotFoundException 时 getPackageInfo 抛异常
         false
     }
 
     /**
-     * Abra la página de descarga de Shizuku(Prioridad Play Store,Se abre el navegador alternativo GitHub).
-     * @return true Salto exitoso;false Salto fallido
+     * 直接打开已安装的 Shizuku 应用（启动服务/手动授权都在它里面完成）。
+     *
+     * 「服务未运行」时把用户扔去下载页是旧实现的错误引导：非 root 设备重启后
+     * Shizuku 必掉，用户需要的是打开 App 点「启动」，不是再下载一遍。
+     * 未安装或拉起失败时才回落到下载页。
+     *
+     * @return true 成功打开应用；false 回落到下载页（仍可能失败）
+     */
+    fun openApp(): Boolean {
+        val launchIntent = runCatching {
+            context.packageManager.getLaunchIntentForPackage(SHIZUKU_PACKAGE)
+        }.getOrNull()
+        if (launchIntent != null) {
+            val opened = runCatching {
+                launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                context.startActivity(launchIntent)
+            }.isSuccess
+            if (opened) return true
+            Logger.w(TAG, "拉起 Shizuku 应用失败,回落下载页")
+        }
+        return openDownloadPage()
+    }
+
+    /**
+     * 打开 Shizuku 下载页(优先 Play Store,回退浏览器打开 GitHub)。
+     * @return true 跳转成功;false 跳转失败
      */
     fun openDownloadPage(): Boolean {
-        // Pruebe primero la página de detalles de Play Store
+        // 优先尝试 Play Store 详情页
         val playIntent = Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$SHIZUKU_PACKAGE")).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
@@ -51,7 +75,7 @@ class ShizukuInstaller(private val context: Context) {
                 context.startActivity(playIntent)
                 true
             } catch (e: Exception) {
-                Logger.w(TAG, "No se pudo abrir Play Store: ${e.message}")
+                Logger.w(TAG, "打开 Play Store 失败: ${e.message}")
                 openGitHubInBrowser()
             }
         }
@@ -66,13 +90,13 @@ class ShizukuInstaller(private val context: Context) {
             context.startActivity(browserIntent)
             true
         } catch (e: Exception) {
-            Logger.e(TAG, "No se puede abrir la página de descarga: ${e.message}", e)
+            Logger.e(TAG, "无法打开下载页: ${e.message}", e)
             false
         }
     }
 
     /**
-     * Asegúrate de que Shizuku esté instalado;Vuelva al indicador de inicio cuando no esté instalado.
+     * 确保 Shizuku 已安装;未安装时返回引导提示。
      * @return [EnsureResult]
      */
     fun ensureInstalled(): EnsureResult {
@@ -80,10 +104,10 @@ class ShizukuInstaller(private val context: Context) {
     }
 
     sealed class EnsureResult {
-        /** Shizuku APK Instalado(Pero eso no significa que el servicio esté funcionando.,Requiere iniciar la aplicación Shizuku). */
+        /** Shizuku APK 已安装(但不代表服务已运行,需启动 Shizuku 应用)。 */
         object Installed : EnsureResult()
 
-        /** Shizuku No instalado,Necesidad de guiar la descarga. */
+        /** Shizuku 未安装,需引导下载。 */
         object NeedsInstall : EnsureResult()
     }
 }

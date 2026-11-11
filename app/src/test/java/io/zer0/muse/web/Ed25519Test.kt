@@ -7,9 +7,9 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * v2.0: Ed25519 prueba de corrección — Utilice la documentación oficial de la plataforma abierta QQ para probar vectores.
+ * v2.0: Ed25519 正确性测试 — 使用 QQ 开放平台官方文档测试向量。
  *
- * Portada:seed Derivar clave pública/certeza de firma(Consistente con el vector oficial) / Verificación de firma aprobada/manipulación rechazada.
+ * 覆盖:seed 派生公钥 / 签名确定性(与官方向量一致) / 验签通过 / 篡改拒绝。
  */
 class Ed25519Test {
 
@@ -17,7 +17,7 @@ class Ed25519Test {
 
     private fun hexToBytes(hex: String): ByteArray = ByteArray(hex.length / 2) { i -> hex.substring(i * 2, i * 2 + 2).toInt(16).toByte() }
 
-    /** DEMOSTRACIÓN oficial: la semilla se agrega repetidamente a 32 bytes para derivar la clave pública especificada.;La parte de la clave pública es coherente con el vector oficial. */
+    /** 官方 DEMO:seed 重复补足到 32 字节派生指定公钥;公钥部分与官方向量一致。 */
     @Test
     fun `seed derives expected public key from official demo`() {
         val secret = "naOC0ocQE3shWLAfffVLB1rhYPG7"
@@ -32,11 +32,11 @@ class Ed25519Test {
     }
 
     /**
-     * vector de firma — con Node.js crypto(Implementación autorizada Ed25519 del mismo modelo que el documento oficial.)Generación de referencia;
-     * Igual que la semilla y el mismo mensaje de salida byte a byte.
+     * 签名向量 — 与 Node.js crypto(官方文档同款的权威 Ed25519 实现)对标生成;
+     * 同 seed 同消息输出逐字节一致。
      *
-     * Nota:La salida DEMO de la firma de la página "Seguridad y autorización" del documento oficial no se puede reproducir después de la enumeración de 96 variantes de mensajes.,
-     * Juzgado como un valor de indicación del documento.;Aquí prevalecerá el vector de referencia de implementación del nodo.
+     * 注:官方文档「安全和授权」页的签名 DEMO 输出经 96 种消息变体枚举均无法复现,
+     * 判断为文档示意值;此处以 Node 实现对标向量为准。
      */
     @Test
     fun `signature matches node js reference vector`() {

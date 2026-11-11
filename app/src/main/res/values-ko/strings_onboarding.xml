@@ -8,15 +8,14 @@
     <string name="onboarding_language_subtitle">인터페이스에 사용됩니다. 언제든 바꿀 수 있어요.</string>
     <string name="onboarding_theme_title">마음에 드는 모습으로.</string>
     <string name="onboarding_theme_subtitle">테마는 설정에서 언제든 바꿀 수 있어요.</string>
-    <string name="onboarding_lang_en">영어</string>
-    <string name="onboarding_lang_ja">일본어</string>
-    <string name="onboarding_lang_ko">한국어</string>
 
     <!-- Step 2: Your Name -->
     <string name="onboarding_names_title">먼저 인사부터.</string>
     <string name="onboarding_names_subtitle">호칭과 이름은 나중에 바꿀 수 있어요.</string>
     <string name="onboarding_names_user_label">뭐라고 부를까요?</string>
     <string name="onboarding_names_agent_label">이름을 지어 주세요</string>
+    <string name="onboarding_names_user_placeholder">예: 철수</string>
+    <string name="onboarding_names_agent_placeholder">예: 노바</string>
     <string name="onboarding_names_hint">이름은 기본 어시스턴트에 적용되며 언제든 바꿀 수 있어요.</string>
     <string name="onboarding_memory_title">당신을 기억하게 해 주세요.</string>
     <string name="onboarding_memory_subtitle">켜면 대화가 끝날 때 장기 기억으로 정리됩니다. 기억이 자주 바뀌면 모델 캐시 적중률이 낮아져요(끄는 쪽이 보통 더 저렴해요). 대신 오래 곁에 있을수록 훨씬 좋아집니다.</string>
@@ -32,11 +31,13 @@
     <string name="onboarding_provider_caps">능력 매칭 완료: 비전 %1$d · 추론 %2$d · 도구 %3$d</string>
     <string name="onboarding_provider_select_label">제공업체 선택</string>
     <string name="onboarding_provider_apikey_label">API 키</string>
-    <string name="onboarding_provider_apikey_input">API 키 입력</string>
+    <string name="onboarding_provider_apikey_input">공급자 콘솔에서 생성합니다. 보통 sk- 로 시작</string>
     <string name="onboarding_provider_apikey_show">키 표시</string>
     <string name="onboarding_provider_apikey_hide">키 숨기기</string>
     <string name="onboarding_provider_test_button">연결 테스트</string>
-    <string name="onboarding_provider_test_success">연결에 성공했습니다. 사용 가능한 모델 수: %1$d개.</string>
+    <plurals name="onboarding_provider_test_success">
+        <item quantity="other">연결에 성공했습니다. 사용 가능한 모델 수: %1$d개.</item>
+    </plurals>
     <string name="onboarding_provider_skip">나중에 설정에서 구성</string>
     <string name="onboarding_provider_custom">맞춤형(OpenAI 호환)</string>
     <string name="onboarding_provider_custom_baseurl_label">맞춤 기본 URL</string>
@@ -50,7 +51,10 @@
 
     <!-- Step 5: Complete -->
     <string name="onboarding_complete_title">준비됐어요.</string>
+    <string name="onboarding_provider_next_hint">제공자를 선택하고 키를 입력한 뒤 연결 테스트를 통과하면 계속할 수 있습니다. 나중에 설정해도 됩니다.</string>
+    <string name="onboarding_welcome_greetings_caption">하나의 인사를 7개 언어로</string>
     <string name="onboarding_complete_subtitle">이런 것부터 해보세요</string>
+    <string name="onboarding_restore_from_backup">백업에서 데이터 복원</string>
     <string name="onboarding_tutorial_chat_title">일일채팅</string>
     <string name="onboarding_tutorial_chat_desc">글, 사진, 파일 모두 보낼 수 있어요</string>
     <string name="onboarding_tutorial_assistant_title">보조자 &amp; 메모리</string>
@@ -66,7 +70,4 @@
     <string name="onboarding_button_next">다음</string>
     <string name="onboarding_button_finish">얘기해 볼까요</string>
     <string name="onboarding_step_progress">%1$d / %2$d 단계</string>
-    <string name="onboarding_lang_es">스페인어</string>
-    <string name="onboarding_lang_pt">포르투갈어</string>
-    <string name="onboarding_lang_ru">러시아어</string>
 </resources>

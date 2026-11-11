@@ -7,13 +7,13 @@ import androidx.room.PrimaryKey
 import io.zer0.muse.miniphone.data.db.MpMomentSource
 
 /**
- * Una actualización.
+ * 一条动态。
  *
- * [imagesJson] es el texto JSON de la matriz uri de la imagen(La imagen vacía es `[]`),La decodificación se realiza a nivel de almacén.,La capa de base de datos no se analiza.
+ * [imagesJson] 是图片 uri 数组的 JSON 文本(空图为 `[]`),解码放到仓库层做,数据库层不解析。
  *
- * [visibleToJson] es el rango visible:Lista separada por comas de objetos visibles id,cadena vacía = Visible para todos.
- * En esta etapa sólo se requiere escribir, no leer. —— La consulta de línea de tiempo no se filtra,Las actualizaciones que son "visibles sólo para usted" seguirán apareciendo en su propia lista.,
- * No lo consideres como si estuvieras en cuarentena.
+ * [visibleToJson] 是可见范围:逗号分隔的可见对象 id,空串 = 所有人可见。
+ * 本阶段只写不读 —— 时间线查询不做过滤,「仅自己可见」的动态在自己这边的列表里照常显示,
+ * 不要把它当成已经做了隔离。
  */
 @Entity(
     tableName = "mp_moment",

@@ -4,12 +4,12 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * AUD-UI-F12: El estado de pausa del tiempo de espera de aprobación debe restablecerse al salir de la combinación.
+ * AUD-UI-F12: 审批超时暂停状态必须在离开组合时复位。
  *
- * La implementación original solo usa LaunchedEffect(approvals.size, approvalsExpanded) conducir:
- * Al salir de una sesión pause=true,Al regresar, si la clave se restaura a la misma combinación,effect No repetir carrera,
- * VM El tiempo de espera de aprobación en pausa permanece true —— La aprobación de una nueva sesión se suspendió permanentemente de forma incorrecta,
- * Ya no activa el rechazo automático de 30 segundos.
+ * 原实现只用 LaunchedEffect(approvals.size, approvalsExpanded) 驱动:
+ * 离开会话页时 pause=true,返回时若 key 恢复成同一组合,effect 不重跑,
+ * VM 的 approvalTimeoutPaused 残留 true —— 新会话审批被错误地永久暂停,
+ * 不再触发 30s 自动拒绝。
  */
 class ApprovalTimeoutPauseResetTest {
 
@@ -19,14 +19,14 @@ class ApprovalTimeoutPauseResetTest {
     fun `disposable effect resets pause on leaving composition`() {
         val src = source()
         val start = src.indexOf("AUD-UI-F12")
-        assertTrue("Bloque de protección AUD-UI-F12 no encontrado", start >= 0)
-        val body = src.substring(start, (start + 900).coerceAtMost(src.length))
+        assertTrue("未找到 AUD-UI-F12 防护块", start >= 0)
+        val body = src.substring(start, (start + 600).coerceAtMost(src.length))
         assertTrue(
-            "Debe usar DesechableEffect para restablecer al salir",
+            "必须用 DisposableEffect 在离开时复位",
             body.contains("DisposableEffect(Unit)"),
         )
         assertTrue(
-            "onDispose El estado de pausa debe restablecerse",
+            "onDispose 必须复位暂停状态",
             body.contains("onDispose { viewModel.setApprovalTimeoutPaused(false) }"),
         )
     }

@@ -13,13 +13,13 @@ import org.robolectric.annotation.Config
 import java.io.File
 
 /**
- * R-DB-03 + v2.2.1 Version Guard ha vuelto.
+ * R-DB-03 + v2.2.1 版本守卫回归。
  *
- * Portada:
- *  - Los primeros archivos de la biblioteca v1/v2 se reconstruyen y se marcan con indicaciones(Comportamiento existente)
- *  - Versión actual(v14)La reapertura de la biblioteca no debe archivarse(Pruebas de regresión de defectos históricos de Guards 13)
- *  - Las bibliotecas posteriores aún deberían archivarse
- *  - Recuperación única de copias de seguridad archivadas por error(Y nunca se restaurará si no hay una marca de archivo.)
+ * 覆盖:
+ *  - 早期 v1/v2 库归档重建并打提示标记(既有行为)
+ *  - 当前版本(v14)库重开不得被归档(守卫写死 13 的历史缺陷回归测试)
+ *  - 更高版本库仍应归档
+ *  - 误归档备份的一次性恢复(且无归档标记时绝不恢复)
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(application = android.app.Application::class, sdk = [33])
@@ -68,17 +68,17 @@ class FactDbLegacyResetTest {
     @Test
     fun `current database survives reopen without archive and keeps facts`() {
         val name = "facts_test_current_reopen.db"
-        // Abrir y escribir un hecho por primera vez.(Simular el uso normal)
+        // 第一次打开并写入一条事实(模拟正常使用)
         val db1 = FactDb.create(context, name)
         db1.openHelper.writableDatabase.execSQL(
-            "INSERT INTO facts (fact, tags, created_at) VALUES ('Hechos de las pruebas de regresión', '[]', '2026-09-27T20:00:00')",
+            "INSERT INTO facts (fact, tags, created_at) VALUES ('回归测试事实', '[]', '2026-09-27T20:00:00')",
         )
         assertEquals(1, countFacts(name))
         db1.close()
 
-        // Abrir de nuevo(Simular reinicio de la aplicación):El guardián de versiones no debe archivar ni reconstruir accidentalmente la versión actual de la biblioteca real.
+        // 再次打开(模拟 App 重启):当前版本真库不得被版本守卫误归档重建。
         val db2 = FactDb.create(context, name)
-        assertEquals("El archivo no debe borrar la biblioteca de la versión actual cuando se vuelve a abrir.", 1, countFacts(name))
+        assertEquals("当前版本库重开不得被归档清空", 1, countFacts(name))
         assertFalse(
             File(context.getDatabasePath(name).parentFile, "$name.pre-destructive.bak").exists(),
         )
@@ -106,16 +106,16 @@ class FactDbLegacyResetTest {
     fun `misarchived backup is recovered once on open`() {
         val name = "facts_test_recover.db"
         val bakName = "$name.pre-destructive.bak"
-        // fabricación"víctima"En el sitio: Base de datos principal vacía(Biblioteca vacía v14 realmente lanzada) + La copia de seguridad archivada accidentalmente contiene datos + etiquetas de archivo no consumidas
+        // 制造"受害者"现场: 主库空(真实落盘的 v14 空库) + 误归档备份有数据 + 未消费的归档标记
         createEmptyDb(name)
         val bak = FactDb.create(context, bakName)
         bak.openHelper.writableDatabase.execSQL(
-            "INSERT INTO facts (fact, tags, created_at) VALUES ('Hechos que fueron mal archivados', '[]', '2026-09-27T20:00:00')",
+            "INSERT INTO facts (fact, tags, created_at) VALUES ('被误归档的事实', '[]', '2026-09-27T20:00:00')",
         )
         bak.close()
         MemoryLegacyReset.mark(context, name)
 
-        // abierto:Se debe activar una recuperación única——Solicitudes de recuperación de datos, migración de copias de seguridad y registro de números de recuperación
+        // 打开:应触发一次性恢复——事实找回、备份被迁回、恢复条数记入提示
         val reopened = FactDb.create(context, name)
         assertEquals(1, countFacts(name))
         assertFalse(context.getDatabasePath(bakName).exists())
@@ -127,13 +127,13 @@ class FactDbLegacyResetTest {
 
     @Test
     fun `recovery does not run without pending archive flag`() {
-        // Cuando no hay marca de archivo:No restaurar incluso si existe una copia de seguridad que no esté vacía(protegerse contra"Después de borrar todos los recuerdos, los datos antiguos se convierten en un cadáver.")
+        // 无归档标记时:即使存在非空备份也不恢复(防"删除全部记忆后旧数据诈尸")
         val name = "facts_test_no_recover.db"
         val bakName = "$name.pre-destructive.bak"
         createEmptyDb(name)
         val bak = FactDb.create(context, bakName)
         bak.openHelper.writableDatabase.execSQL(
-            "INSERT INTO facts (fact, tags, created_at) VALUES ('No debería resucitar', '[]', '2026-09-27T20:00:00')",
+            "INSERT INTO facts (fact, tags, created_at) VALUES ('不该复活', '[]', '2026-09-27T20:00:00')",
         )
         bak.close()
 
@@ -146,7 +146,7 @@ class FactDbLegacyResetTest {
         runCatching { context.getDatabasePath(bakName).delete() }
     }
 
-    /** Cree e implemente una biblioteca vacía v14 real(Room Creación de bases de datos perezosa,Se necesita un toque para realizar el pedido. schema). */
+    /** 创建并落盘一个真实的 v14 空库(Room 惰性建库,需触碰一次才会落盘 schema)。 */
     private fun createEmptyDb(name: String) {
         val db = FactDb.create(context, name)
         db.openHelper.writableDatabase.query("SELECT COUNT(*) FROM facts").use { it.moveToFirst() }

@@ -1,33 +1,33 @@
 package io.zer0.muse.channel
 
 /**
- * Declaración de capacidad del canal.
+ * 渠道能力声明。
  *
- * Resulta que el nivel superior solo puede escribir "si esta plataforma puede enviar activamente/si está ingresando".
- * `when (platform)`, agregar una plataforma requiere cambiar todos los puntos de juicio y es fácil pasarlo por alto.
+ * 原来上层判断「这个平台能不能主动发 / 有没有正在输入」只能写
+ * `when (platform)`，加平台就得改所有判断点，且容易漏。
  *
- * Después de convertir las habilidades en datos,UI La capa de programación solo lee esta tabla y las nuevas plataformas solo agregan una entrada.
+ * 把能力变成数据后，UI 和调度层只读这张表，新增平台只补一条。
  */
 data class ChannelCapabilities(
-    /** ¿Puede iniciar un mensaje de forma proactiva (sin que la otra parte hable primero)? */
+    /** 能否主动发起消息（不需要对方先说话）。 */
     val proactive: Boolean,
-    /** Ya sea para admitir instrucciones de \"escribir\". */
+    /** 是否支持「正在输入」指示。 */
     val typing: Boolean,
-    /** Ya sea para admitir mensajes de los medios. */
+    /** 是否支持媒体消息。 */
     val media: Boolean,
-    /** Ya sea para admitir la recepción de mensajes/Leer. */
+    /** 是否支持消息回执/已读。 */
     val receipt: Boolean,
     /**
-     * Si un único mensaje debe tener el contexto del "correo electrónico más reciente" antes de poder responderlo.
+     * 单条消息是否必须带上「最近一次来信」的上下文才能回复。
      *
-     * El puente WeChat entra en esta categoría: sólo puede responder a la persona que acaba de enviar el mensaje y no puede abrir una nueva conversación de la nada.
+     * 微信桥接端属于这种：只能对刚发来消息的人回复，不能凭空开新会话。
      */
     val requiresRecentInbound: Boolean,
-    /** Tabla de capacidad de medios: método de entrada, tipo admitido, límite de bytes, método de entrega. */
+    /** 媒体能力表：输入方式、支持类型、字节上限、投递方式。 */
     val mediaCapabilities: MediaCapabilities,
 )
 
-/** Tabla de capacidades para cada plataforma. Simplemente agregue una nueva plataforma aquí. */
+/** 各平台的能力表。新增平台在这里补一条即可。 */
 val ChannelPlatform.capabilities: ChannelCapabilities
     get() = when (this) {
         ChannelPlatform.FEISHU -> ChannelCapabilities(
@@ -62,7 +62,7 @@ val ChannelPlatform.capabilities: ChannelCapabilities
             requiresRecentInbound = false,
             mediaCapabilities = TELEGRAM_MEDIA,
         )
-        // El puente WeChat solo puede responder a la persona que acaba de enviar el mensaje y no puede abrir activamente una nueva conversación.
+        // 微信桥接端只能回复刚来信的人，不能主动开新会话。
         ChannelPlatform.WECLAW -> ChannelCapabilities(
             proactive = false,
             typing = false,
@@ -73,10 +73,10 @@ val ChannelPlatform.capabilities: ChannelCapabilities
         )
     }
 
-// ── Tabla de capacidad de medios para cada canal. ────────────────────────────────────────────────
-// Los valores se toman de los límites estrictos de las interfaces oficiales de cada plataforma; los valores que no se indican explícitamente se toman como valores conservadores.
+// ── 各渠道媒体能力表 ────────────────────────────────────────────────
+// 数值取自各平台官方接口的硬限制；未明确写明的取保守值。
 
-/** Fei Shu:im/v1/images Subir, imagen única 10 MB; archivo vaya a im/v1/files. */
+/** 飞书：im/v1/images 上传，单图 10MB；文件走 im/v1/files。 */
 private val FEISHU_MEDIA = MediaCapabilities(
     inputModes = setOf(MediaInputMode.BUFFER, MediaInputMode.LOCAL_FILE, MediaInputMode.PUBLIC_URL),
     supportedKinds = setOf(MediaKind.IMAGE, MediaKind.VIDEO, MediaKind.AUDIO, MediaKind.DOCUMENT),
@@ -109,7 +109,7 @@ private val FEISHU_MEDIA = MediaCapabilities(
     requiresReplyContext = false,
 )
 
-/** QQ: La interfaz de medios enriquecidos debe cargar file_info primero y luego usar msg_type=7 Enviar. */
+/** QQ：富媒体接口需要先上传拿 file_info，再以 msg_type=7 发送。 */
 private val QQ_MEDIA = MediaCapabilities(
     inputModes = setOf(MediaInputMode.LOCAL_FILE, MediaInputMode.PUBLIC_URL),
     supportedKinds = setOf(MediaKind.IMAGE, MediaKind.VIDEO, MediaKind.AUDIO, MediaKind.DOCUMENT),
@@ -136,7 +136,7 @@ private val QQ_MEDIA = MediaCapabilities(
     requiresReplyContext = false,
 )
 
-/** DingTalk: Los mensajes de robots solo admiten imágenes de forma nativa; Los vídeos y audios se degradan a enlaces. */
+/** 钉钉：机器人消息只原生支持图片；视频与音频降级为链接。 */
 private val DINGTALK_MEDIA = MediaCapabilities(
     inputModes = setOf(MediaInputMode.BUFFER, MediaInputMode.PUBLIC_URL),
     supportedKinds = setOf(MediaKind.IMAGE, MediaKind.DOCUMENT),
@@ -157,7 +157,7 @@ private val DINGTALK_MEDIA = MediaCapabilities(
     requiresReplyContext = false,
 )
 
-/** Telegram:sendPhoto/sendVideo/sendAudio/sendDocument;bot El límite de carga es de 50 MB. */
+/** Telegram：sendPhoto/sendVideo/sendAudio/sendDocument；bot 上传上限 50MB。 */
 private val TELEGRAM_MEDIA = MediaCapabilities(
     inputModes = setOf(MediaInputMode.BUFFER, MediaInputMode.LOCAL_FILE, MediaInputMode.PUBLIC_URL),
     supportedKinds = setOf(MediaKind.IMAGE, MediaKind.VIDEO, MediaKind.AUDIO, MediaKind.DOCUMENT),
@@ -190,7 +190,7 @@ private val TELEGRAM_MEDIA = MediaCapabilities(
     requiresReplyContext = false,
 )
 
-/** Puente WeChat: solo puede responder a las personas que acaban de escribir y los medios utilizan CDN + AES. */
+/** 微信桥接端：只能对刚来信的人回复，媒体走 CDN + AES。 */
 private val WECLAW_MEDIA = MediaCapabilities(
     inputModes = setOf(MediaInputMode.BUFFER, MediaInputMode.LOCAL_FILE),
     supportedKinds = setOf(MediaKind.IMAGE, MediaKind.VIDEO, MediaKind.DOCUMENT),
@@ -215,10 +215,10 @@ private val WECLAW_MEDIA = MediaCapabilities(
 )
 
 /**
- * Inicie la autoprueba: recorra las declaraciones de capacidad de medios de todas las plataformas y genere un error si faltan los campos.
+ * 启动自检：遍历所有平台的媒体能力声明，缺字段直接抛错。
  *
- * Póngalo aquí en lugar de esperar el tiempo de ejecución, porque una vez que este tipo de error se filtra a la línea,
- * El rendimiento es "no hay respuesta cuando los usuarios publican imágenes", lo cual es difícil de localizar en los registros.
+ * 放在这里而不是等运行时，是因为这类错误一旦漏到线上，
+ * 表现是「用户发图没反应」，从日志里很难定位。
  */
 internal fun validateChannelCapabilities() {
     ChannelPlatform.entries.forEach { platform ->

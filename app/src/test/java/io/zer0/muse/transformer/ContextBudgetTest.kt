@@ -15,9 +15,9 @@ class ContextBudgetTest {
 
     @Test
     fun `drains system tools output and safety from the window`() {
-        // 200K Ventana, sistema 10K, herramienta 30K, límite superior de salida 8K
-        // margen de seguridad = max(1024, 200000 * 5%) = 10000
-        // presupuesto histórico = 200000 - 10000 - 30000 - 8000 - 10000 = 142000
+        // 200K 窗口，系统 10K，工具 30K，输出上限 8K
+        // 安全余量 = max(1024, 200000 * 5%) = 10000
+        // 历史预算 = 200000 - 10000 - 30000 - 8000 - 10000 = 142000
         val result = ContextBudget.compute(
             contextWindow = 200_000,
             systemTokens = 10_000,
@@ -45,7 +45,7 @@ class ContextBudgetTest {
 
     @Test
     fun `tool heavy sessions keep a floor instead of collapsing to zero`() {
-        // Cuando la definición de la herramienta ocupa la mayor parte de la ventana, la deducción estricta llevará el historial a un número negativo. → La compresión se activa en cada ronda, pero no se puede presionar nada.
+        // 工具定义吃掉大半窗口时，硬扣会把历史压到负数 → 每轮都触发压缩却压不出东西。
         val result = ContextBudget.compute(
             contextWindow = 100_000,
             systemTokens = 20_000,
@@ -53,7 +53,7 @@ class ContextBudgetTest {
             maxOutputTokens = 16_384,
         )
         assertEquals(20_000, result.historyBudget)
-        assertTrue("El presupuesto histórico no debe ser negativo.", result.historyBudget > 0)
+        assertTrue("历史预算不应为负", result.historyBudget > 0)
     }
 
     @Test

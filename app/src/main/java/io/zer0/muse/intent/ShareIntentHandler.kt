@@ -11,128 +11,134 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
- * Phase 8.10: Deep Link + El sistema comparte el procesador de recepción.
+ * Phase 8.10: Deep Link + 系统分享接收处理器。
  *
- * Soporta dos categorías Intent:
+ * 支持两类 Intent:
  *
- * **enlace profundo**(`muse://` Acuerdo):
- *  - `muse://session/{sessionId}` → Abrir sesión especificada
- *  - `muse://new` → Nueva sesión
- *  - `muse://assistants` → Abra la página de gestión del Asistente
- *  - `muse://settings` → Abrir página de configuración
+ * **深度链接**(`muse://` 协议):
+ *  - `muse://session/{sessionId}` → 打开指定会话
+ *  - `muse://new` → 新建会话
+ *  - `muse://assistants` → 打开 Assistant 管理页
+ *  - `muse://settings` → 打开设置页
  *
- * **Compartir sistema**(ACTION_SEND / ACTION_PROCESS_TEXT):
- *  - Otras aplicaciones"Compartir con…"→ muse recibir texto,Precompletar en el cuadro de entrada
- *  - Mantenga presionado para seleccionar texto → "enviado en musa" → Igual que arriba
- *  - apoyo EXTRA_TEXT(texto plano) + EXTRA_STREAM(clase de texto URI,Procesamiento simplificado)
+ * **系统分享**(ACTION_SEND / ACTION_PROCESS_TEXT):
+ *  - 其他 App 调"分享到…"→ muse 接收文本,预填到输入框
+ *  - 长按选中文本 → "在 muse 中发送" → 同上
+ *  - 支持 EXTRA_TEXT(纯文本) + EXTRA_STREAM(文本类 URI,简化处理)
  *
- * diseño:
- *  - Capa analítica pura,no depende de ViewModel;Regresar [ShareResult] por la persona que llama(ChatScreen/ChatViewModel)consumo
- *  - Deep Link Para segmentación de rutas `Uri.host` + `Uri.pathSegments`,No depende de la regularidad
- *  - La extensión máxima del texto compartido es de 10.000 palabras.(Evite los de gran tamaño Intent OOM)
+ * 设计:
+ *  - 纯解析层,不依赖 ViewModel;返回 [ShareResult] 由调用方(ChatScreen/ChatViewModel)消费
+ *  - Deep Link 路径分段用 `Uri.host` + `Uri.pathSegments`,不依赖正则
+ *  - 分享文本最大长度 10000 字(避免超大 Intent OOM)
  *
- * @param context para analizar stream URI(leer InputStream)
+ * @param context 用于解析 stream URI(读 InputStream)
  */
 class ShareIntentHandler(private val context: Context) {
 
-    /** Analiza los resultados. */
+    /** 解析结果。 */
     sealed class ShareResult {
-        /** Abra la sesión especificada. */
-        data class OpenSession(val sessionId: String) : ShareResult()
+        /** 打开指定会话。 */
+        data class OpenSession(
+            val sessionId: String,
+            val proactiveOutcomeId: String? = null,
+        ) : ShareResult()
 
         /**
-         * Crea una nueva sesión.
+         * 新建会话。
          *
-         * [assistantId] No nulo indica la persona que llama(widget de escritorio)Asistente asignado,Debe usarse al crear un nuevo,
-         * De lo contrario, el asistente seleccionado por el usuario en el widget volverá al asistente predeterminado global después de hacer clic en él.
+         * [assistantId] 非空表示调用方(桌面小组件)指定了助手,新建时必须用它,
+         * 否则用户在小组件里选的助手在点开后退回全局默认助手。
          *
-         * [startVoice] Cuando sea verdadero, ingrese la entrada de voz inmediatamente después de crear una nueva creación. —— "Entrada rápida de voz" para widgets de escritorio
-         * Anteriormente, sólo creaba nuevas sesiones y no abría el micrófono, lo que no era digno de su nombre. La lógica de Openmic reutiliza el acceso directo del Lanzador.
+         * [startVoice] 为真时新建后立即进入语音输入 —— 桌面小组件的「快速语音输入」
+         * 此前只新建会话、并不开麦，名不副实。开麦逻辑复用 Launcher 快捷方式那一条。
          */
         data class NewSession(val assistantId: String? = null, val startVoice: Boolean = false) : ShareResult()
 
-        /** Abra la página de gestión del Asistente. */
+        /** 打开 Assistant 管理页。 */
         object OpenAssistants : ShareResult()
 
-        /** Abra la página de configuración. */
+        /** 从深链安装插件（P5）：携带已通过校验的仓库地址。 */
+        data class InstallPlugin(val url: String) : ShareResult()
+
+        /** 打开设置页。 */
         object OpenSettings : ShareResult()
 
-        /** Abrir lista de conversaciones(desde widgets de escritorio"conversaciones recientes"). */
+        /** 打开会话列表(来自桌面小部件"最近会话")。 */
         object OpenChats : ShareResult()
 
-        /** v1.64: Abrir la página de tareas programadas(Haga clic en la notificación de tarea programada). */
+        /** v1.64: 打开定时任务页(来自定时任务通知点击)。 */
         object OpenScheduledTasks : ShareResult()
 
-        /** Abra la tarea programada especificada y expanda el último registro de ejecución. */
+        /** 打开指定定时任务并展开最近一次执行记录。 */
         data class OpenScheduledTask(val taskId: String) : ShareResult()
 
-        /** Abra notas rápidas y expanda la nota especificada. */
+        /** 打开快速记录并展开指定笔记。 */
         data class OpenQuickNote(val noteId: String) : ShareResult()
 
-        /** Abra la página de detalles del chat(Notificaciones sin contexto de sesión específico). */
+        /** 打开聊天详情页(没有具体会话上下文的通知)。 */
         object OpenChat : ShareResult()
 
-        /** Abra la página de inicio de la tarea. */
+        /** 打开任务首页。 */
         object OpenHome : ShareResult()
 
-        /** Abrir configuración-Datos y respaldo. */
+        /** 打开设置-数据与备份。 */
         object OpenSettingsData : ShareResult()
 
-        /** Abrir configuración-Copia de seguridad en la nube. */
+        /** 打开设置-云备份。 */
         object OpenCloudBackup : ShareResult()
 
-        /** Abrir configuración-Apariencia/Acerca de esperar el objetivo de notificación. */
+        /** 打开设置-外观/关于等通知目标。 */
         object OpenSettingsAbout : ShareResult()
 
-        /** Abrir configuración-Asistente y Agente. */
+        /** 打开设置-助手与 Agent。 */
         object OpenSettingsAgent : ShareResult()
 
-        /** Abrir configuración-Modelos y Servicios. */
+        /** 打开设置-模型与服务。 */
         object OpenSettingsModel : ShareResult()
 
-        /** Abre el centro de memoria. */
+        /** 打开记忆中心。 */
         object OpenMemory : ShareResult()
 
-        /** Gestión de bases de conocimiento abiertas. */
+        /** 打开知识库管理。 */
         object OpenKnowledge : ShareResult()
 
-        /** Gestión de colecciones de bases de conocimientos abiertas. */
+        /** 打开知识库集合管理。 */
         object OpenKnowledgeBases : ShareResult()
 
-        /** v2.x: Importar paquete de personajes(.muse-assistant Se hace clic en el archivo). */
+        /** v2.x: 导入角色包(.muse-assistant 文件被点开)。 */
         data class ImportAssistantCard(val uri: Uri) : ShareResult()
 
-        /** Launcher atajo:Abrir página de traducción(de ACTION_TRANSLATE). */
+        /** Launcher 快捷方式:打开翻译页(来自 ACTION_TRANSLATE)。 */
         object OpenTranslate : ShareResult()
 
-        /** Launcher atajo:Vaya a la página de inicio y active la entrada de voz(de ACTION_VOICE_INPUT). */
+        /** Launcher 快捷方式:进入主页并触发语音输入(来自 ACTION_VOICE_INPUT)。 */
         object StartVoiceInput : ShareResult()
 
-        /** v1.0.18: Launcher atajo:Abra la página de registro rápido(de ACTION_QUICK_NOTES). */
+        /** v1.0.18: Launcher 快捷方式:打开快速记录页(来自 ACTION_QUICK_NOTES)。 */
         object OpenQuickNotes : ShareResult()
 
-        /** Precompletar texto en el cuadro de entrada(De compartir/PROCESS_TEXT). */
+        /** 预填文本到输入框(来自分享/PROCESS_TEXT)。 */
         data class PrefillText(val text: String) : ShareResult()
 
-        /** Sin intención coincidente. */
+        /** 无匹配 Intent。 */
         object None : ShareResult()
     }
 
     /**
-     * analizar Activity Intent,Regresar [ShareResult].
-     * en [io.zer0.muse.MainActivity.onNewIntent] y llamó a onCreate.
+     * 解析 Activity Intent,返回 [ShareResult]。
+     * 在 [io.zer0.muse.MainActivity.onNewIntent] 和 onCreate 中调用。
      *
-     * H5-1: Cambiar a suspend,Para archivo interno IO withContext(Dispatchers.IO) paquete,Evite bloquear el hilo principal.
-     * La persona que llama debe llamarlo en la rutina.(Como LaunchedEffect o appScope.launch).
+     * H5-1: 改为 suspend,内部文件 IO 用 withContext(Dispatchers.IO) 包裹,避免阻塞主线程。
+     * 调用方需在协程中调用(如 LaunchedEffect 或 appScope.launch)。
      */
     suspend fun handle(intent: Intent?): ShareResult {
         if (intent == null) return ShareResult.None
-        // Priorizar el procesamiento Deep Link
+        // 优先处理 Deep Link
         val data = intent.data
         if (data != null && data.scheme == SCHEME) {
             return parseDeepLink(data)
         }
-        // v2.x: Se abre el archivo del paquete de personajes(VIEW + application/x-muse-assistant)→ Proceso de vista previa de importación
+        // v2.x: 角色包文件打开(VIEW + application/x-muse-assistant)→ 导入预览流程
         if (intent.action == Intent.ACTION_VIEW && data != null) {
             val type = intent.type ?: withContext(Dispatchers.IO) {
                 resultOf { context.contentResolver.getType(data) }.getOrNull()
@@ -141,7 +147,7 @@ class ShareIntentHandler(private val context: Context) {
                 return ShareResult.ImportAssistantCard(data)
             }
         }
-        // Compartir sistema de reprocesamiento
+        // 再处理系统分享
         when (intent.action) {
             Intent.ACTION_SEND -> return parseShareSend(intent)
             Intent.ACTION_PROCESS_TEXT -> return parseProcessText(intent)
@@ -149,7 +155,7 @@ class ShareIntentHandler(private val context: Context) {
         return ShareResult.None
     }
 
-    /** analizar muse:// deep link(El conjunto de objetivos es limitado y se enumera explícitamente,Facilita la auditoría de cada entrada de notificación.). */
+    /** 解析 muse:// deep link(目标集合有限且显式列出,便于审计每个通知入口)。 */
     @Suppress("CyclomaticComplexMethod")
     private fun parseDeepLink(uri: Uri): ShareResult {
         val host = uri.host ?: return ShareResult.None
@@ -157,11 +163,14 @@ class ShareIntentHandler(private val context: Context) {
         return when (host) {
             "session" -> {
                 val id = segments.firstOrNull()
-                // M4: sessionId Verificación de formato — Antiinyección,Sólo se permiten letras/numeros/subrayado/guión,longitud 1-64
+                // M4: sessionId 格式校验 — 防注入,只允许字母/数字/下划线/短横线,长度 1-64
                 if (id != null && SESSION_ID_REGEX.matches(id)) {
-                    ShareResult.OpenSession(id)
+                    val outcomeId =
+                        uri.getQueryParameter("proactiveOutcomeId")
+                            ?.takeIf { SESSION_ID_REGEX.matches(it) }
+                    ShareResult.OpenSession(id, outcomeId)
                 } else {
-                    if (id != null) Logger.w(TAG, "Deep link sessionId Formato ilegal,ignorado: $id")
+                    if (id != null) Logger.w(TAG, "Deep link sessionId 格式非法,已忽略: $id")
                     ShareResult.None
                 }
             }
@@ -174,6 +183,13 @@ class ShareIntentHandler(private val context: Context) {
                 if (id != null && SESSION_ID_REGEX.matches(id)) {
                     ShareResult.OpenScheduledTask(id)
                 } else {
+                    ShareResult.None
+                }
+            }
+            "plugin" -> when (val link = io.zer0.muse.data.plugin.PluginInstallLink.parse(uri.toString())) {
+                is io.zer0.muse.data.plugin.PluginInstallLink.Parsed.Target -> ShareResult.InstallPlugin(link.url)
+                is io.zer0.muse.data.plugin.PluginInstallLink.Parsed.Invalid -> {
+                    Logger.w(TAG, "插件安装深链被拒绝: ${link.reason}")
                     ShareResult.None
                 }
             }
@@ -203,15 +219,15 @@ class ShareIntentHandler(private val context: Context) {
         }
     }
 
-    /** analizar ACTION_SEND(compartir texto). */
+    /** 解析 ACTION_SEND(分享文本)。 */
     private suspend fun parseShareSend(intent: Intent): ShareResult {
-        // Prioridad EXTRA_TEXT(Compartir texto sin formato)
+        // 优先 EXTRA_TEXT(纯文本分享)
         val text = intent.getStringExtra(Intent.EXTRA_TEXT)
         if (!text.isNullOrBlank()) {
             return ShareResult.PrefillText(text.take(MAX_SHARE_TEXT_LEN))
         }
-        // intentarlo de nuevo EXTRA_STREAM(clase de texto URI,Como un archivo .txt)
-        // M5-1: API 33+ Usar escrito getParcelableExtra,La antigua API toma la ruta obsoleta
+        // 再尝试 EXTRA_STREAM(文本类 URI,如 .txt 文件)
+        // M5-1: API 33+ 使用带类型的 getParcelableExtra,旧 API 走 deprecated 路径
         val stream = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
         } else {
@@ -219,9 +235,9 @@ class ShareIntentHandler(private val context: Context) {
             intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)
         }
         if (stream != null) {
-            // H5-1: Archivo IO en Dispatchers.IO,Evite bloquear el hilo principal.
-            // H5-2: Limitar el volumen de lectura,Deténgase cuando el número total no exceda MAX_SHARE_TEXT_LEN + 1 caracteres,Evite archivos grandes OOM
-            // M5-2: Usar en su lugar resultOf{}(Lanzamiento correcto CancellationException)
+            // H5-1: 文件 IO 放到 Dispatchers.IO,避免阻塞主线程
+            // H5-2: 限制读取量,累计不超过 MAX_SHARE_TEXT_LEN + 1 字符即停止,避免大文件 OOM
+            // M5-2: 改用 resultOf{}(正确重抛 CancellationException)
             val streamText = withContext(Dispatchers.IO) {
                 resultOf {
                     context.contentResolver.openInputStream(stream)?.use { input ->
@@ -239,7 +255,7 @@ class ShareIntentHandler(private val context: Context) {
                             sb.toString()
                         }
                     }
-                }.onError { msg, _ -> Logger.w(TAG, "No se pudo leer la transmisión compartida: $msg") }.getOrNull()
+                }.onError { msg, _ -> Logger.w(TAG, "读取分享流失败: $msg") }.getOrNull()
             }
             if (!streamText.isNullOrBlank()) {
                 return ShareResult.PrefillText(streamText)
@@ -248,7 +264,7 @@ class ShareIntentHandler(private val context: Context) {
         return ShareResult.None
     }
 
-    /** analizar ACTION_PROCESS_TEXT(Mantenga presionado para seleccionar texto → enviado en musa). */
+    /** 解析 ACTION_PROCESS_TEXT(长按选中文本 → 在 muse 中发送)。 */
     private fun parseProcessText(intent: Intent): ShareResult {
         val text = intent.getStringExtra(Intent.EXTRA_PROCESS_TEXT)
         return if (text.isNullOrBlank()) {
@@ -261,14 +277,14 @@ class ShareIntentHandler(private val context: Context) {
     companion object {
         private const val TAG = "ShareIntentHandler"
 
-        /** muse:// scheme(AndroidManifest intent-filter necesidad de coincidir). */
+        /** muse:// scheme(AndroidManifest intent-filter 需匹配)。 */
         const val SCHEME = "muse"
 
         /**
-         * Analice la intención generada por el clic en el widget del escritorio.
+         * 解析桌面小组件点击带来的 Intent。
          *
-         * Generado desde el método privado MainActivity,Esto es para permitir una prueba única de "si se ha leído la ID del asistente presentada por el widget";
-         * Anteriormente, este vínculo sólo podía verificarse haciendo clic en un dispositivo real.,Estuvo desconectado mucho tiempo y nadie se dio cuenta.
+         * 从 MainActivity 私有方法提出来,是为了让「小组件带过来的助手 id 有没有被读」可单测;
+         * 之前这条链路只在真机点一下才能验,断了很久没人发现。
          */
         fun parseWidgetAction(intent: Intent?): ShareResult? {
             val action = intent?.getStringExtra(EXTRA_WIDGET_ACTION) ?: return null
@@ -290,34 +306,34 @@ class ShareIntentHandler(private val context: Context) {
             }
         }
 
-        /** Longitud máxima del texto compartido(Prevenir el sobredimensionamiento Intent OOM). */
+        /** 分享文本最大长度(防止超大 Intent OOM)。 */
         private const val MAX_SHARE_TEXT_LEN = 10_000
 
-        /** M4: sessionId Reglas de verificación de formato — Antiinyección,Sólo se permiten letras/numeros/subrayado/guión,Longitud 1-64. */
+        /** M4: sessionId 格式校验正则 — 防注入,只允许字母/数字/下划线/短横线,长度 1-64。 */
         private val SESSION_ID_REGEX = Regex("^[a-zA-Z0-9_-]{1,64}$")
 
-        /** Phase 12: widgets de escritorio → MainActivity empezar extra key(Alinear con MuseQuickWidget). */
+        /** Phase 12: 桌面小部件 → MainActivity 启动 extra key(与 MuseQuickWidget 对齐)。 */
         const val EXTRA_WIDGET_ACTION = "widget_action"
         const val WIDGET_ACTION_NEW_SESSION = "new_session"
         const val WIDGET_ACTION_OPEN_CHATS = "open_chats"
 
-        /** v2.6.7: Widget de escritorio \"Entrada rápida de voz\"——Ingrese la entrada de voz inmediatamente después de crear una nueva sesión. */
+        /** v2.6.7: 桌面小组件「快速语音输入」——新建会话后立即进入语音输入。 */
         const val WIDGET_ACTION_VOICE_INPUT = "voice_input"
 
-        /** P3-16: Abrir sesión especificada(Usar con EXTRA_WIDGET_SESSION_ID). */
+        /** P3-16: 打开指定会话(配合 EXTRA_WIDGET_SESSION_ID 使用)。 */
         const val WIDGET_ACTION_OPEN_SESSION = "open_session"
         const val EXTRA_WIDGET_SESSION_ID = "widget_session_id"
 
-        /** widget de escritorio → Especificar un asistente al crear una nueva sesión(Usar con WIDGET_ACTION_NEW_SESSION). */
+        /** 桌面小组件 → 新建会话时指定助手(配合 WIDGET_ACTION_NEW_SESSION 使用)。 */
         const val EXTRA_WIDGET_ASSISTANT_ID = "widget_assistant_id"
 
-        /** Launcher Atajo de pulsación larga action(Consistente con la definición en atajos.xml). */
+        /** Launcher 长按快捷方式 action(与 shortcuts.xml 中定义一致)。 */
         const val ACTION_NEW_CHAT = "io.zer0.muse.ACTION_NEW_CHAT"
         const val ACTION_TRANSLATE = "io.zer0.muse.ACTION_TRANSLATE"
         const val ACTION_VOICE_INPUT = "io.zer0.muse.ACTION_VOICE_INPUT"
         const val ACTION_SETTINGS = "io.zer0.muse.ACTION_SETTINGS"
 
-        /** v1.0.18: Graba rápidamente acciones de atajos. */
+        /** v1.0.18: 快速记录快捷方式 action。 */
         const val ACTION_QUICK_NOTES = "io.zer0.muse.ACTION_QUICK_NOTES"
     }
 }

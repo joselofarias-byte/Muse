@@ -3,35 +3,35 @@ package io.zer0.memory.summary
 import androidx.room.withTransaction
 
 /**
- * Lectura y determinación de validez de los puntos de control del contexto de la sesión.
+ * 会话上下文检查点的读取与有效性判定。
  *
- * El punto de control en sí es sólo una fila de datos; lo que realmente determina"¿Todavía cuenta?"Lo que importa es si la historia a la que hace referencia sigue ahí.
- * Aquí, los juicios convergen en un solo lugar para evitar que cada persona que llama implemente un conjunto separado (y falten casos extremos en cada uno).
+ * 检查点本身只是一行数据；真正决定"它还算不算数"的是它引用的历史是否还在。
+ * 这里把判定收敛到一处，避免每个调用方各自实现一套（并各自漏掉边界情况）。
  */
 class ContextCheckpointReader(
     private val db: MemoryDb,
 ) {
     private fun dao(): ContextCheckpointDao = db.contextCheckpointDao()
 
-    /** Leer el punto de control de una sesión (nulo si no hay ninguno). */
+    /** 读取某会话的检查点（没有则 null）。 */
     suspend fun get(sessionId: String?): ContextCheckpointEntity? = sessionId?.takeIf { it.isNotBlank() }?.let { dao().get(it) }
 
     /**
-     * Lea el punto de control y verifique que el mensaje al que hace referencia todavía esté en el historial dado.
+     * 读取检查点并校验它引用边界那条消息是否仍在给定历史里。
      *
-     * - El punto de control no existe → null
-     * - [ContextCheckpointEntity.lastCoveredMessageId] esta vacio → No se puede verificar, devolver"por límites secuenciales"uso
-     *   (Es posible que la identificación del mensaje no sea un UUID en datos muy antiguos. En este caso [ContextCheckpointEntity.coveredSeq] Sigue siendo un límite superior válido)
-     * - Los mensajes fronterizos ya no están en la historia → **Sentencia inválida y eliminada**: El historial ha sido cambiado (eliminado)/Borrar/revertir),
-     *   Si continúa utilizando este resumen,"Contenido que ya no está en contexto"También dijo que sucedió antes, lo cual es una pérdida de historia y preferiría no usarlo.
+     * - 检查点不存在 → null
+     * - [ContextCheckpointEntity.lastCoveredMessageId] 为空 → 无从校验，退回"按 seq 边界"使用
+     *   （消息 id 在极旧数据里可能不是 UUID，此时 [ContextCheckpointEntity.coveredSeq] 仍是有效上界）
+     * - 边界消息已不在历史中 → **判定作废并删除**：历史被改动过（删除/清空/回滚），
+     *   继续用这份摘要会把"已经不在上下文里的内容"又说成发生过，属于丢历史，宁可不用
      *
-     * @param knownMessageIds ID de mensaje visible en el historial de la sesión actual (como una cadena)
+     * @param knownMessageIds 当前会话历史中可见的消息 id（字符串形式）
      */
     suspend fun getValid(sessionId: String?, knownMessageIds: Collection<String>): ContextCheckpointEntity? {
         val entity = get(sessionId)
         val boundaryId = entity?.lastCoveredMessageId.orEmpty()
-        // La frontera está vacía → No se puede verificar, devolver"por límites secuenciales"usando (la identificación del mensaje puede no ser UUID en datos muy antiguos,
-        // En este punto, coverSeq sigue siendo un límite superior válido); El límite ya no está en la historia. → Anular y suprimir.
+        // 边界为空 → 无从校验，退回"按 seq 边界"使用（消息 id 在极旧数据里可能不是 UUID，
+        // 此时 coveredSeq 仍是有效上界）；边界已不在历史里 → 作废并删除。
         val boundaryStillPresent = boundaryId.isBlank() || boundaryId in knownMessageIds
         if (entity != null && !boundaryStillPresent) {
             dao().deleteById(entity.sessionId)
@@ -40,15 +40,15 @@ class ContextCheckpointReader(
     }
 
     /**
-     * Escribir punto de control.
+     * 写入检查点。
      *
-     * Sobrescritura: solo se conserva una sesión de la misma sesión y la nueva compresión reescribe los puntos de control antiguos y los nuevos intervalos en otros nuevos.
+     * 覆盖式：同一会话只保留一条，新一次压缩把旧检查点与新增区间一起改写成新的。
      */
     suspend fun put(entity: ContextCheckpointEntity) {
         db.withTransaction { dao().upsert(entity) }
     }
 
-    /** Eliminar el punto de control de una sesión (llamado cuando se elimina la sesión/se borra el historial). */
+    /** 删除某会话的检查点（会话删除 / 历史清空时调用）。 */
     suspend fun clear(sessionId: String) {
         db.withTransaction { dao().deleteById(sessionId) }
     }

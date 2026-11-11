@@ -38,27 +38,29 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import io.zer0.muse.miniphone.R
 import io.zer0.muse.miniphone.data.voice.MpVoiceCapture
 import io.zer0.muse.miniphone.data.voice.MpVoiceRecorder
 import io.zer0.muse.miniphone.ui.icons.MiniPhoneIcons
 import io.zer0.muse.miniphone.ui.theme.MiniPhoneTheme
 
 /**
- * Campo de entrada inferior:Entrada de imagen + micrófono + entrada multilínea + envío.
+ * 底部输入栏:图片入口 + 麦克风 + 多行输入 + 发送。
  *
- * El cuadro de entrada puede tener hasta cuatro líneas de largo.,Si hay más, simplemente desplácese dentro del cuadro. —— La página de chat no se puede llenar con mensajes a media pantalla con una frase larga.
- * Cuando la entrada está vacía, el botón de enviar solo tiene una forma y se niega a ser presionado.:La devolución de llamada al hacer clic no se bloquea en absoluto,En lugar de presionarlo y no hacer nada.
- * La selección de imágenes en sí no se realiza en este componente.:Levante el selector del sistema al canal de resultados de actividad,Déjelo en manos de los superiores que lo tienen.
+ * 输入框最多长到四行,再多就在框内滚动 —— 聊天页不能被一句长话顶掉半屏消息。
+ * 空输入时发送键只有形不肯按:点击回调根本不挂,而不是按下去什么都不做。
+ * 选图本身不在本组件里做:拉起系统选择器要 Activity 结果通道,交给有它的上层。
  *
- * La voz es un proceso único con puntos finales manuales:Haga clic en el micrófono para comenzar a grabar.,Haga clic en "Finalizar" nuevamente para detener y transcribir.,
- * El texto que aparece solo se agrega al final del cuadro de entrada.,No enviar automáticamente —— Si cometes un error, aún puedes corregirlo.,Una vez que lo envíes, no podrás retirarlo.
- * Durante la grabación, el cuadro de entrada se reemplaza con un mensaje de grabación.:Graba y escribe al mismo tiempo,Nadie puede decir dónde insertar ese párrafo después de la grabación.
+ * 语音是手动端点的一次性流程:点麦克风开始录,再点「结束」停止并转写,
+ * 出来的文字只补进输入框末尾,不自动发送 —— 说错一个字还能改,发出去就收不回来了。
+ * 录音期间输入框换成一条录音提示:边录边打字,录完那段话该插到哪儿没人说得清。
  *
- * @param onTranscribeVoice Envíe el WAV completo al host para su transcripción;Volver cuando no se puede obtener el texto null
- * @param voiceInputEnabled ¿Puede el motor de reconocimiento actual convertir grabaciones en texto?;false El micrófono está atenuado.
+ * @param onTranscribeVoice 把整段 WAV 交给宿主转写;拿不到文字时返回 null
+ * @param voiceInputEnabled 当前识别引擎能不能把录音转成文字;false 时麦克风置灰
  */
 @Composable
 internal fun ChatInputBar(
@@ -91,7 +93,7 @@ internal fun ChatInputBar(
     val voiceState by voice.state.collectAsState()
     val askMic = rememberMicPermissionRequest(
         onGranted = voice::start,
-        onDenied = { context.toast(MIC_PERMISSION_NOTICE) },
+        onDenied = { context.toast(context.getString(MIC_PERMISSION_NOTICE_RES)) },
     )
     Column(
         modifier = modifier
@@ -137,7 +139,7 @@ internal fun ChatInputBar(
                         decorationBox = { innerTextField ->
                             if (text.isEmpty()) {
                                 Text(
-                                    text = INPUT_PLACEHOLDER,
+                                    text = stringResource(INPUT_PLACEHOLDER_RES),
                                     style = typography.body.copy(color = colors.textSecondary),
                                 )
                             }
@@ -152,8 +154,8 @@ internal fun ChatInputBar(
                 enabled = voiceInputEnabled,
                 onClick = {
                     when {
-                        // El motor no admite entrada de grabación.:La clave es gris.,Solo explica una frase,No abra el cuadro de permiso y no inicie la recopilación.
-                        !voiceInputEnabled -> context.toast(VOICE_UNSUPPORTED_NOTICE)
+                        // 引擎不支持录音输入:键是灰的,点了只解释一句,不弹权限框也不开采集
+                        !voiceInputEnabled -> context.toast(context.getString(VOICE_UNSUPPORTED_NOTICE_RES))
                         voiceState is MpVoiceInputState.Recording -> voice.stop()
                         voiceState == MpVoiceInputState.Transcribing -> Unit
                         else -> askMic()
@@ -167,10 +169,10 @@ internal fun ChatInputBar(
 }
 
 /**
- * Pasar una grabación a la máquina de estados.,Y conecta el asunto de "la página ya no está":Deje de minar y elimine archivos temporales al salir de la página.
+ * 把一次录音交给状态机,并把「页面没了」这件事接上:离页时停采并删掉临时文件。
  *
- * Las tres devoluciones de llamada se recrearán en la composición.,Entonces tome el último valor y páselo a la máquina de estados. —— De lo contrario, la máquina de estados captura
- * Cuando se combina por primera vez `text`,El resultado del reconocimiento se escribirá en una línea de texto que haya sido modificado en otro lugar.
+ * 三个回调都会在组合里被重新创建,所以取最新值再传给状态机 —— 否则状态机抓到的是
+ * 第一次组合时的 `text`,识别结果会写到一行早就被别处改过的文字里。
  */
 @Composable
 private fun rememberVoiceInput(
@@ -185,13 +187,14 @@ private fun rememberVoiceInput(
     val currentTranscript = rememberUpdatedState(onTranscript)
     val currentNotice = rememberUpdatedState(onNotice)
     val currentEnabled = rememberUpdatedState(voiceInputEnabled)
+    val context = LocalContext.current
     val controller = remember(recorder) {
         MpVoiceInputController(
             recorder = recorder,
             transcribe = { wav -> currentTranscribe.value(wav) },
             onTranscript = { transcript -> currentTranscript.value(transcript) },
-            onEmptyTranscript = { currentNotice.value(EMPTY_TRANSCRIPT_NOTICE) },
-            onStartFailed = { currentNotice.value(START_FAILED_NOTICE) },
+            onEmptyTranscript = { currentNotice.value(context.getString(EMPTY_TRANSCRIPT_NOTICE_RES)) },
+            onStartFailed = { currentNotice.value(context.getString(START_FAILED_NOTICE_RES)) },
             canRecord = { currentEnabled.value },
             scope = scope,
         )
@@ -203,10 +206,10 @@ private fun rememberVoiceInput(
 }
 
 /**
- * Permisos de micrófono:Si no te han enseñado, solo pregunta una vez.,Después de rechazar, solo indica que el cuadro de diálogo del sistema no volverá a aparecer.
+ * 麦克风权限:没授过就问一次,拒了之后只提示不再弹系统对话框。
  *
- * Reabrir el mismo cuadro de permisos una y otra vez es inútil y molesto. —— El usuario ha expresado su opinión.,Preguntar nuevamente solo bloqueará el campo de entrada.
- * El usuario luego lo libera en la configuración del sistema.,La próxima vez que hagas clic en el micrófono, la grabación comenzará directamente.
+ * 反复弹同一个权限框既没用又烦人 —— 用户已经表过态,再问一遍只会挡住输入栏。
+ * 用户后来在系统设置里放开,下一次点麦克风会直接开始录音。
  */
 @Composable
 private fun rememberMicPermissionRequest(onGranted: () -> Unit, onDenied: () -> Unit): () -> Unit {
@@ -231,7 +234,7 @@ private fun rememberMicPermissionRequest(onGranted: () -> Unit, onDenied: () -> 
     }
 }
 
-/** Entrada de imagen:Icono de álbum de fotos dibujado por uno mismo,Mismo tamaño que el botón enviar,Alinee los bordes inferiores. */
+/** 图片入口:自绘相册图标,和发送键同尺寸,底边对齐。 */
 @Composable
 private fun PickImageButton(onClick: () -> Unit) {
     val colors = MiniPhoneTheme.colors
@@ -245,7 +248,7 @@ private fun PickImageButton(onClick: () -> Unit) {
     ) {
         Icon(
             imageVector = MiniPhoneIcons.Image,
-            contentDescription = PICK_IMAGE_DESCRIPTION,
+            contentDescription = stringResource(PICK_IMAGE_DESCRIPTION_RES),
             tint = colors.textSecondary,
             modifier = Modifier.size(SendIconSize),
         )
@@ -253,11 +256,11 @@ private fun PickImageButton(onClick: () -> Unit) {
 }
 
 /**
- * Botón de micrófono:inactivo es icono,Cambia a "Fin" durante la grabación,La transcripción está atenuada.
+ * 麦克风键:空闲是图标,录音中变成「结束」,转写中置灰不动。
  *
- * Cambia las teclas en la grabación a cápsulas en lugar de seguir sacando el micrófono —— Coloque un micrófono en la misma posición y agregue "Fin",
- * El usuario tiene que pensar “qué pasará si lo presiono ahora” antes de atreverse a presionarlo.
- * Si el motor no admite la entrada de grabación, aparecerá atenuado.,Pero aún así vale la pena:Haga clic para dar una explicación.
+ * 录音中的键换成胶囊而不是继续画话筒 —— 同一个位置上一枚话筒加一句「结束」,
+ * 用户得先想「现在按下去会发生什么」才敢按。
+ * 引擎不支持录音输入时画成灰的,但仍旧可点:点下去给一句解释。
  */
 @Composable
 private fun MicButton(state: MpVoiceInputState, enabled: Boolean, onClick: () -> Unit) {
@@ -274,7 +277,7 @@ private fun MicButton(state: MpVoiceInputState, enabled: Boolean, onClick: () ->
                 .testTag(MiniPhoneChatTags.MIC_BUTTON),
             contentAlignment = Alignment.Center,
         ) {
-            Text(text = STOP_LABEL, style = typography.caption.copy(color = colors.onAccent))
+            Text(text = stringResource(STOP_LABEL_RES), style = typography.caption.copy(color = colors.onAccent))
         }
         state == MpVoiceInputState.Transcribing -> Box(
             modifier = Modifier
@@ -286,7 +289,7 @@ private fun MicButton(state: MpVoiceInputState, enabled: Boolean, onClick: () ->
         ) {
             Icon(
                 imageVector = MiniPhoneIcons.Mic,
-                contentDescription = MIC_DESCRIPTION,
+                contentDescription = stringResource(MIC_DESCRIPTION_RES),
                 tint = colors.divider,
                 modifier = Modifier.size(SendIconSize),
             )
@@ -301,7 +304,7 @@ private fun MicButton(state: MpVoiceInputState, enabled: Boolean, onClick: () ->
         ) {
             Icon(
                 imageVector = MiniPhoneIcons.Mic,
-                contentDescription = MIC_DESCRIPTION,
+                contentDescription = stringResource(MIC_DESCRIPTION_RES),
                 tint = if (enabled) colors.textSecondary else colors.divider,
                 modifier = Modifier.size(SendIconSize),
             )
@@ -309,7 +312,7 @@ private fun MicButton(state: MpVoiceInputState, enabled: Boolean, onClick: () ->
     }
 }
 
-/** Grabación:Un punto rojo dice \"Reclutamiento\",La cantidad de segundos grabados se informará como \"¿Cuánto tiempo lleva grabado?\",A la derecha está la cancelación. */
+/** 录音中:一个红点报「在录」,已录秒数报「录了多久」,右边是取消。 */
 @Composable
 private fun RecordingStrip(elapsedSeconds: Int, onCancel: () -> Unit) {
     val colors = MiniPhoneTheme.colors
@@ -345,7 +348,7 @@ private fun RecordingStrip(elapsedSeconds: Int, onCancel: () -> Unit) {
     }
 }
 
-/** Transcribiendo:Explica dónde fue esta grabación.,No deje los campos de entrada vacíos. */
+/** 转写中:说明这段录音去哪儿了,别让输入框凭空空着。 */
 @Composable
 private fun TranscribingStrip() {
     val colors = MiniPhoneTheme.colors
@@ -356,14 +359,14 @@ private fun TranscribingStrip() {
             .padding(horizontal = 10.dp, vertical = 8.dp),
     ) {
         Text(
-            text = TRANSCRIBING_LABEL,
+            text = stringResource(TRANSCRIBING_LABEL_RES),
             style = typography.body.copy(color = colors.textSecondary),
             modifier = Modifier.testTag(MiniPhoneChatTags.VOICE_STATUS),
         )
     }
 }
 
-/** Enviar clave:Ocupando siempre el puesto,Cambie solo el color de fondo y el estado en el que se puede hacer clic,Evite que el campo de entrada tiemble con el texto. */
+/** 发送键:一直占着位置,只换底色和可点状态,不让输入栏随文字抖动。 */
 @Composable
 private fun SendButton(enabled: Boolean, onClick: () -> Unit) {
     val colors = MiniPhoneTheme.colors
@@ -379,7 +382,7 @@ private fun SendButton(enabled: Boolean, onClick: () -> Unit) {
     ) {
         Icon(
             imageVector = MiniPhoneIcons.Send,
-            contentDescription = SEND_DESCRIPTION,
+            contentDescription = stringResource(SEND_DESCRIPTION_RES),
             tint = if (enabled) colors.onAccent else colors.textSecondary,
             modifier = Modifier.size(SendIconSize),
         )
@@ -393,7 +396,7 @@ private fun Context.toast(message: String) {
     Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
 }
 
-/** Agregue el resultado del reconocimiento al final del cuadro de entrada;Si ya hay contenido en el cuadro, sepárelo con un espacio.,No cubre la mitad de las palabras escritas por el usuario. */
+/** 把识别结果补到输入框末尾;框里已有内容就隔一个空格,不覆盖用户打了一半的字。 */
 internal fun appendTranscript(current: String, addition: String): String {
     val extra = addition.trim()
     if (extra.isEmpty()) return current
@@ -405,17 +408,17 @@ private val SendButtonSize = 38.dp
 private val SendIconSize = 18.dp
 private val RecordingDotSize = 8.dp
 
-/** El cuadro de entrada puede tener hasta cuatro líneas de largo.,Si se alarga, desplácese dentro del cuadro. */
+/** 输入框最多长到四行,再长就在框内滚动。 */
 private const val INPUT_MAX_LINES: Int = 4
 
-private const val INPUT_PLACEHOLDER: String = "di algo…"
-private const val SEND_DESCRIPTION: String = "enviar"
-private const val PICK_IMAGE_DESCRIPTION: String = "Seleccionar imagen"
-private const val MIC_DESCRIPTION: String = "hacer una voz"
-private const val STOP_LABEL: String = "fin"
-private const val CANCEL_LABEL: String = "Cancelar"
-private const val TRANSCRIBING_LABEL: String = "Transcribiendo…"
-private const val EMPTY_TRANSCRIPT_NOTICE: String = "No te escuché claramente. Dilo de nuevo."
-private const val START_FAILED_NOTICE: String = "Error al iniciar la grabación, verifique si el micrófono está ocupado por otras aplicaciones"
-private const val MIC_PERMISSION_NOTICE: String = "Se requiere permiso de micrófono para hablar."
-private const val VOICE_UNSUPPORTED_NOTICE: String = "El motor de reconocimiento de voz actual no admite entradas de grabación. Vaya a la configuración para seleccionar un motor que admita la transcripción."
+private val INPUT_PLACEHOLDER_RES: Int = R.string.mp_chat_input_placeholder
+private val SEND_DESCRIPTION_RES: Int = R.string.mp_chat_send_cd
+private val PICK_IMAGE_DESCRIPTION_RES: Int = R.string.mp_chat_pick_image_cd
+private val MIC_DESCRIPTION_RES: Int = R.string.mp_chat_mic_cd
+private val STOP_LABEL_RES: Int = R.string.mp_chat_stop
+private const val CANCEL_LABEL: String = "取消"
+private val TRANSCRIBING_LABEL_RES: Int = R.string.mp_chat_transcribing
+private val EMPTY_TRANSCRIPT_NOTICE_RES: Int = R.string.mp_chat_empty_transcript
+private val START_FAILED_NOTICE_RES: Int = R.string.mp_chat_start_failed
+private val MIC_PERMISSION_NOTICE_RES: Int = R.string.mp_chat_mic_permission
+private val VOICE_UNSUPPORTED_NOTICE_RES: Int = R.string.mp_chat_voice_unsupported

@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import io.zer0.muse.R
 import io.zer0.muse.data.quicknote.QuickNoteEntity
 import io.zer0.muse.ui.common.feedback.MuseDialog
+import io.zer0.muse.ui.common.findActivity
 import io.zer0.muse.ui.common.form.MuseChip
 import io.zer0.muse.ui.common.form.MuseTextField
 import io.zer0.muse.ui.common.icons.MuseIcons
@@ -52,7 +53,7 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
-/** Cápsula de metainformación de la tarjeta(Marca de tiempo de carpeta/recordatorio). */
+/** 卡片元信息小胶囊(文件夹 / 提醒时间标记)。 */
 @Composable
 internal fun NoteMetaChip(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
@@ -89,16 +90,16 @@ internal fun NoteMetaChip(
 }
 
 /**
- * Mostrar el tiempo relativo según el dibujo de diseño.:Hoy HH:mm / Ayer / Hace N días / MM-dd.
+ * 按设计图显示相对时间:今天 HH:mm / 昨天 / N 天前 / MM-dd。
  *
- * Correcciones en la interfaz (Rendimiento-3): Ya no cada tarjeta inicia su propio bucle infinito de los años 60 produce la rutina estatal,
- * now Pasado por ticker compartido a nivel de página(QuickNotesScreen Transmisión de rutina única),
- * La tarjeta solo vuelve a calcular el texto de la hora cuando se actualiza el teletipo.
+ * 前端修复 (性能-3): 不再每张卡片各自起 60s 无限循环 produceState 协程,
+ * now 由页面级共享 ticker 传入(QuickNotesScreen 单个协程广播),
+ * 卡片只在 ticker 刷新时重算时间文本。
  */
 @Composable
 internal fun formatNoteTime(timestamp: Long, now: Long): String {
     val fmtTime = remember { SimpleDateFormat(MuseDateFormats.TIME_SHORT, Locale.getDefault()) }
-    val fmtDate = remember { SimpleDateFormat(MuseDateFormats.DATE_SHORT, Locale.getDefault()) }
+    val fmtDate = remember { MuseDateFormats.dateShort() }
     if (timestamp <= 0) return ""
 
     val nowCal = Calendar.getInstance().apply { timeInMillis = now }
@@ -133,19 +134,19 @@ internal fun QuickNoteActionMenu(
     onSetReminder: () -> Unit = {},
     onToggleEncrypt: () -> Unit = {},
     /**
-     * v2.6.7: Agregue archivos adjuntos de imágenes.
+     * v2.6.7: 添加图片附件。
      *
-     * La tarjeta de notas ya mostrará "N "Adjunto" (léase acceso lateral), pero no hay ningún lugar en todo el almacén donde se pueda escribir.
-     * Ese indicador nunca enciende —— addAttachment No ha habido ninguna llamada.
+     * 笔记卡片早就会显示「N 个附件」（读侧通），但全仓没有任何地方能写进去，
+     * 那个指示器永远不会亮 —— addAttachment 一直是零调用。
      */
     onAttachImage: (() -> Unit)? = null,
-    /** v2.6.7: La lista de archivos adjuntos actuales (pasada por el análisis de la persona que llama, este componente no toca DAO). */
+    /** v2.6.7: 当前附件清单（由调用方 parse 好传进来，本组件不碰 DAO）。 */
     attachments: List<String> = emptyList(),
     /**
-     * v2.6.7: Retire los archivos adjuntos.
+     * v2.6.7: 移除附件。
      *
-     * Sin esta entrada, los archivos adjuntos sólo se pueden sumar pero no restar; y removeAttachment se convertirá en
-     * Otro método muerto para "implementar llamadas completas pero cero" —— Esto es lo que he estado cultivando en las últimas rondas.
+     * 不给这个入口，附件就只能加不能减；而 removeAttachment 又会变成
+     * 另一个「实现完整但零调用」的死方法 —— 正是这几轮一直在修的东西。
      */
     onRemoveAttachment: ((String) -> Unit)? = null,
 ) {
@@ -167,7 +168,7 @@ internal fun QuickNoteActionMenu(
                     label = stringResource(R.string.quick_notes_copy),
                     onClick = onCopy,
                 )
-                // v2.6.7: Entrada de archivo adjunto (clasificada en edición/Después de copiar, antes de operaciones destructivas)
+                // v2.6.7: 附件入口（排在编辑/复制之后，破坏性操作之前）
                 if (onAttachImage != null) {
                     QuickNoteActionRow(
                         icon = MuseIcons.paperclip,
@@ -175,7 +176,7 @@ internal fun QuickNoteActionMenu(
                         onClick = onAttachImage,
                     )
                 }
-                // v2.6.7: Los archivos adjuntos se han eliminado uno por uno.
+                // v2.6.7: 已有附件逐条给移除入口
                 if (onRemoveAttachment != null) {
                     attachments.forEachIndexed { index, path ->
                         QuickNoteActionRow(
@@ -186,13 +187,13 @@ internal fun QuickNoteActionMenu(
                         )
                     }
                 }
-                // Establecer carpeta
+                // 设置文件夹
                 QuickNoteActionRow(
                     icon = MuseIcons.folderOpen,
                     label = stringResource(R.string.quick_notes_folder_set),
                     onClick = onSetFolder,
                 )
-                // Establecer recordatorio
+                // 设置提醒
                 QuickNoteActionRow(
                     icon = MuseIcons.bell,
                     label = if (note.reminderAt > 0) {
@@ -202,7 +203,7 @@ internal fun QuickNoteActionMenu(
                     },
                     onClick = onSetReminder,
                 )
-                // Cifrado/Descifrar
+                // 加密/解密
                 QuickNoteActionRow(
                     icon = MuseIcons.lock,
                     label = if (note.encrypted) {
@@ -291,7 +292,7 @@ internal fun QuickNoteDialog(existing: QuickNoteEntity?, onDismiss: () -> Unit, 
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
-                // Markdown Cambio de modo + interruptor de vista previa
+                // Markdown 模式切换 + 预览切换
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -344,7 +345,7 @@ internal fun QuickNoteDialog(existing: QuickNoteEntity?, onDismiss: () -> Unit, 
                         }
                     }
                 }
-                // Markdown El modo de vista previa se representa con MarkdownText
+                // Markdown 预览模式用 MarkdownText 渲染
                 if (isMarkdown && previewMode) {
                     Surface(
                         shape = MuseShapes.large,
@@ -407,7 +408,7 @@ internal fun QuickNoteDialog(existing: QuickNoteEntity?, onDismiss: () -> Unit, 
 }
 
 /**
- * Panel de papelera de reciclaje — Listar registros eliminados,Admite recuperación/eliminación permanente/borrar todo.
+ * 回收站面板 — 列出已删除记录,支持恢复 / 永久删除 / 清空全部。
  */
 @Composable
 internal fun QuickNoteTrashDialog(
@@ -577,7 +578,7 @@ internal fun QuickNoteTrashDialog(
     )
 }
 
-/** Extraer #etiquetas del texto,Devuelve una lista de etiquetas sin #. */
+/** 从文本中提取 #标签,返回不含 # 的标签列表。 */
 internal fun extractHashTags(text: String): List<String> {
     val regex = Regex("#([^#\\s,，.。!！?？\\n]+)")
     return regex.findAll(text)
@@ -588,8 +589,8 @@ internal fun extractHashTags(text: String): List<String> {
 }
 
 /**
- * Derivar títulos a partir del contenido.
- * Tome primero la primera línea de texto que no esté vacía;Si la primera línea es demasiado corta o solo contiene etiquetas,Luego toma los primeros 40 caracteres.
+ * 从内容推导标题。
+ * 优先取第一行非空文本;若第一行过短或只有标签,则取前 40 个字符。
  */
 internal fun deriveTitle(text: String, tags: List<String>): String {
     val stripped = text.replace(Regex("#[^#\\s,，.。!！?？\\n]+"), "").trim()
@@ -602,13 +603,13 @@ internal fun deriveTitle(text: String, tags: List<String>): String {
     }
 }
 
-// ── Grabe rápidamente los componentes de mejora ───────────────────────────────────────────────────────
+// ── 快速记录增强组件 ───────────────────────────────────────────────────────
 
 /**
- * Barra de filtro de carpetas — Cápsula de desplazamiento horizontal delimitada,Evite que los elementos del filtro saquen el historial del área visible.
- * - "Todos"(selectedFolder=null): Mostrar todas las carpetas
- * - "Sin categoría"(selectedFolder=""): folder Registros vacíos
- * - Nombre de carpeta específica: Registros en esta carpeta
+ * 文件夹筛选条 — 有界横向滚动胶囊,避免筛选项把历史记录推出可视区域。
+ * - "全部"(selectedFolder=null): 显示所有文件夹
+ * - "未分类"(selectedFolder=""): folder 为空的记录
+ * - 具体文件夹名: 该文件夹下的记录
  */
 @Composable
 internal fun QuickNoteFolderFilterRow(
@@ -665,7 +666,7 @@ private fun FolderChip(label: String, selected: Boolean, onClick: () -> Unit) {
 }
 
 /**
- * Exportar/Menú de importación — Proporciona tres entradas: exportación Markdown/exportación JSON/importación JSON.
+ * 导出/导入菜单 — 提供 Markdown 导出 / JSON 导出 / JSON 导入 三个入口。
  */
 @Composable
 internal fun QuickNoteExportMenu(onDismiss: () -> Unit, onExportMarkdown: () -> Unit, onExportJson: () -> Unit, onImportJson: () -> Unit) {
@@ -700,7 +701,7 @@ internal fun QuickNoteExportMenu(onDismiss: () -> Unit, onExportMarkdown: () -> 
 }
 
 /**
- * Ventana emergente de configuración de carpeta — Listar carpetas existentes + Sin categoría + Cuadro de entrada Nueva carpeta.
+ * 文件夹设置弹窗 — 列出已有文件夹 + 未分类 + 新建文件夹输入框。
  */
 @Composable
 internal fun QuickNoteFolderDialog(folders: List<String>, onDismiss: () -> Unit, onSelect: (String) -> Unit) {
@@ -770,7 +771,7 @@ internal fun QuickNoteFolderDialog(folders: List<String>, onDismiss: () -> Unit,
 }
 
 /**
- * Ventana emergente de configuración de recordatorio — Mostrar el estado actual del recordatorio,Haga clic en Configuración para que aparezca la fecha./Selector de tiempo.
+ * 提醒设置弹窗 — 展示当前提醒状态,点击设置依次弹出日期/时间选择器。
  */
 @Composable
 internal fun QuickNoteReminderDialog(currentReminderAt: Long, onDismiss: () -> Unit, onSet: (Long) -> Unit, onCancel: () -> Unit) {
@@ -780,8 +781,12 @@ internal fun QuickNoteReminderDialog(currentReminderAt: Long, onDismiss: () -> U
 
     fun showDatePicker() {
         val now = Calendar.getInstance()
+        // 原生对话框必须有 Activity 的窗口 token。LocalContext.current 在带 locale 包装的
+        // 容器里是 ContextWrapper，直接 show() 会抛 BadTokenException 把整个应用打崩
+        // （实机：笔记 → 设置提醒 → 设置提醒 → 闪退到桌面）。
+        val dialogContext = context.findActivity() ?: context
         DatePickerDialog(
-            context,
+            dialogContext,
             { _, year, month, day ->
                 val cal = Calendar.getInstance().apply {
                     set(Calendar.YEAR, year)
@@ -789,7 +794,7 @@ internal fun QuickNoteReminderDialog(currentReminderAt: Long, onDismiss: () -> U
                     set(Calendar.DAY_OF_MONTH, day)
                 }
                 TimePickerDialog(
-                    context,
+                    dialogContext,
                     { _, hour, minute ->
                         cal.set(Calendar.HOUR_OF_DAY, hour)
                         cal.set(Calendar.MINUTE, minute)
@@ -826,8 +831,8 @@ internal fun QuickNoteReminderDialog(currentReminderAt: Long, onDismiss: () -> U
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 if (!canExact) {
-                    // Sin el permiso "Despertador y recordatorio", el despertador sólo se puede programar de forma imprecisa (quizás unos minutos más tarde).
-                    // Esto proporciona orientación práctica en lugar de permitir que los usuarios piensen que el recordatorio sonará a tiempo.
+                    // 没有「闹钟和提醒」权限时，闹钟只能非精确排期（可能晚几分钟）。
+                    // 这里给出可操作引导，而不是让用户以为提醒会准时响。
                     Text(
                         text = stringResource(R.string.reminder_exact_permission_hint),
                         style = MaterialTheme.typography.bodySmall,

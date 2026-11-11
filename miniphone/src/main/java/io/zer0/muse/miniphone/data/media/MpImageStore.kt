@@ -14,17 +14,17 @@ import kotlin.math.max
 import kotlin.math.roundToInt
 
 /**
- * La imagen se coloca en el plato.
+ * 图片落盘。
  *
- * Todas las imágenes seleccionadas se copiarán en el directorio privado del módulo.:Sólo la ruta local se almacena en el mensaje.,El usuario elimina el álbum original y el anfitrión borra el caché.,
- * El historial de chat no se convertirá en una imagen vacía. El nombre del archivo toma los primeros 16 bits de SHA-256 del contenido. —— Seleccione la misma imagen dos veces para obtener
- * El mismo archivo, la misma ruta,Los dos mensajes de Curry apuntan a la misma copia,No ocupará espacio repetido.
+ * 选中的图一律复制进模块私有目录:消息里只存本地路径,用户删掉相册原件、宿主清缓存,
+ * 都不会让聊天记录变成空图。文件名取内容 SHA-256 的前 16 位 —— 同一张图选两次得到
+ * 同一个文件、同一个路径,库里两条消息指向同一份,不会重复占空间。
  *
- * exceder [compressMinBytes] La imagen se reduce primero al lado largo. [maxEdgePx] guardar de nuevo:Página de chat mostrada como máximo 200dp,
- * No tiene sentido guardar más de diez MB de imágenes originales. Si la reducción falla, guarde la imagen original.,No permita que la compresión se convierta en un motivo para perder imágenes.
+ * 超过 [compressMinBytes] 的图先缩到长边 [maxEdgePx] 再存:聊天页最多显示 200dp,
+ * 存十几 MB 的原图没意义。缩小失败就存原图,不让压缩成为丢图的理由。
  *
- * @param directory Descargar directorio(Modulo privado,no expuesto al mundo exterior)
- * @param openStream Obtener el flujo de entrada de uri;No se puede leer la devolución null
+ * @param directory 落盘目录(模块私有,不对外暴露)
+ * @param openStream 由 uri 取输入流;读不到返回 null
  */
 class MpImageStore(
     private val directory: File,
@@ -33,10 +33,10 @@ class MpImageStore(
     private val maxEdgePx: Int = DEFAULT_MAX_EDGE_PX,
 ) {
     /**
-     * poner [uri] La imagen puntiaguda se almacena en un directorio privado.,Devuelve la ruta absoluta local.
+     * 把 [uri] 指向的图存进私有目录,返回本地绝对路径。
      *
-     * no puedo leer(Se revocaron los permisos, se eliminó el documento original y la transmisión se interrumpió a la mitad.)O regresa cuando no se puede escribir en el disco. null:
-     * Elige nueve a la vez,No puedes renunciar a todo el lote sólo porque uno de ellos falla.,La persona que llama puede simplemente saltarse este.
+     * 读不到(权限被收回、原件已删、流读到一半断了)或写不进磁盘时返回 null:
+     * 一次选九张,不能因为其中一张失效就整批放弃,调用方跳过这一张即可。
      */
     suspend fun import(uri: Uri): String? = withContext(Dispatchers.IO) {
         val original = readBytes(uri) ?: return@withContext null
@@ -48,7 +48,7 @@ class MpImageStore(
         openStream(uri)?.use(InputStream::readBytes)
     }.getOrNull()?.takeIf(ByteArray::isNotEmpty)
 
-    /** Si el archivo con el mismo nombre ya existe, reutilícelo directamente.:Mismo contenido,No es necesario volver a escribirlo. */
+    /** 同名文件已存在就直接复用:内容相同,不必再写一遍。 */
     private fun write(payload: ByteArray, digest: String): File? = runCatching {
         directory.mkdirs()
         val target = File(directory, "$digest.${extensionOf(payload)}")
@@ -56,7 +56,7 @@ class MpImageStore(
         target
     }.getOrNull()
 
-    /** La recodificación solo se producirá si se excede el umbral y el lado largo excede el límite superior.;Volver a codificar imágenes pequeñas solo degradará la calidad de la imagen. */
+    /** 超过阈值且长边超出上限才重编码;小图重编码只会掉画质。 */
     private fun shrink(bytes: ByteArray): ByteArray? {
         if (bytes.size.toLong() <= compressMinBytes) return null
         val scaled = decodeScaled(bytes) ?: return null
@@ -66,10 +66,10 @@ class MpImageStore(
     }
 
     /**
-     * Desenvolver y encoger hasta el límite superior del lado largo.;Devuelve nulo si no es necesario comprimirlo o no se puede expandir.
+     * 解开并缩到长边上限;不需要缩或解不开时返回 null。
      *
-     * Primero solo usa [BitmapFactory.Options.inJustDecodeBounds] tamaño de lectura,Luego presione la potencia de 2 para obtener la frecuencia de muestreo.,
-     * Evite leer toda la imagen grande en la memoria sólo para medir el tamaño una vez.
+     * 先只用 [BitmapFactory.Options.inJustDecodeBounds] 读尺寸,再按 2 的幂给采样率,
+     * 避免为了量一次尺寸就把整张大图读进内存。
      */
     private fun decodeScaled(bytes: ByteArray): Bitmap? {
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
@@ -81,7 +81,7 @@ class MpImageStore(
         return scaleDown(decoded)
     }
 
-    /** La frecuencia de muestreo es solo una potencia de 2.,Después del muestreo, es posible que aún sea mayor que el límite superior del lado largo.,Aquí está nuevamente reducido. */
+    /** 采样率只取 2 的幂,采样后仍可能比长边上限大,这里再按比例精缩一次。 */
     private fun scaleDown(bitmap: Bitmap): Bitmap {
         val longEdge = max(bitmap.width, bitmap.height)
         if (longEdge <= maxEdgePx) return bitmap
@@ -91,7 +91,7 @@ class MpImageStore(
         return Bitmap.createScaledBitmap(bitmap, width, height, true)
     }
 
-    /** El sufijo es reconocido por el encabezado del archivo.:La imagen comprimida ya está JPEG,No se puede utilizar el sufijo original. */
+    /** 后缀按文件头认:压缩过的图已经是 JPEG,不能沿用原件后缀。 */
     private fun extensionOf(bytes: ByteArray): String = when {
         bytes.hasPrefix(PNG_MAGIC) -> "png"
         bytes.hasPrefix(JPEG_MAGIC) -> "jpg"
@@ -102,13 +102,13 @@ class MpImageStore(
     private fun ByteArray.hasPrefix(magic: IntArray): Boolean =
         size >= magic.size && magic.indices.all { (this[it].toInt() and BYTE_MASK) == magic[it] }
 
-    /** El resumen de contenido ocupa los primeros 8 bytes.(16 caracteres hexadecimales):lo suficientemente largo,No hará que el camino sea difícil de identificar. */
+    /** 内容摘要取前 8 字节(16 个十六进制字符):足够长,又不至于让路径难认。 */
     private fun digestOf(bytes: ByteArray): String = MessageDigest.getInstance(HASH_ALGORITHM).digest(bytes)
         .take(NAME_HASH_BYTES)
         .joinToString(separator = "") { byte -> "%02x".format(byte.toInt() and BYTE_MASK) }
 
     companion object {
-        /** directorio privado del módulo,relativamente `context.filesDir`. */
+        /** 模块私有目录,相对 `context.filesDir`。 */
         const val DIRECTORY_NAME: String = "miniphone/images"
 
         private const val DEFAULT_COMPRESS_MIN_BYTES: Long = 8L * 1024 * 1024
@@ -125,7 +125,7 @@ class MpImageStore(
     }
 }
 
-/** La frecuencia de muestreo es una potencia de 2.:Deje que el lado largo decodificado no sea menos de la mitad del valor objetivo,El escalado de precisión hace el resto. */
+/** 采样率取 2 的幂:让解码后的长边不小于目标值的一半,剩下的交给精确缩放。 */
 internal fun sampleSizeFor(longEdge: Int, maxEdge: Int): Int {
     if (maxEdge <= 0) return 1
     var sample = 1
@@ -133,7 +133,7 @@ internal fun sampleSizeFor(longEdge: Int, maxEdge: Int): Int {
     return sample
 }
 
-/** Instancia predeterminada dentro del módulo:Los directorios están anclados en archivos privados.,El flujo de entrada se toma de ContentResolver. */
+/** 模块内默认实例:目录固定在私有 files 下,输入流从 ContentResolver 取。 */
 fun miniPhoneImageStore(context: Context): MpImageStore = MpImageStore(
     directory = File(context.filesDir, MpImageStore.DIRECTORY_NAME),
     openStream = { uri -> context.contentResolver.openInputStream(uri) },

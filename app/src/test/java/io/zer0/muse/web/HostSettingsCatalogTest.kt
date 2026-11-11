@@ -15,12 +15,12 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * settings.snapshot La coherencia de la lista de grupos y la lista de configuraciones está bloqueada.
+ * settings.snapshot 的分组清单与设置清单的一致性锁定。
  *
- * App El orden, título y propiedad del cambio de los terminales están únicamente en
- * [io.zer0.muse.ui.settings.SettingsCatalog] una declaración aquí;[HostSettingsCatalog] ¿está dando?
- * Web La proyección del protocolo utilizada por el cliente (la clave en el protocolo es el nombre del recurso de cadena). Aquí, el ID del recurso en la lista se restaura al nombre del recurso.
- * Comparación grupo por elemento: si alguna de las partes cambia el grupo, el orden, el título o agrega o elimina elementos, fallará.
+ * App 端的顺序、标题、开关归属只在
+ * [io.zer0.muse.ui.settings.SettingsCatalog] 里声明一份；[HostSettingsCatalog] 是它给
+ * Web 端用的协议投影（协议里的 key 是字符串资源名）。这里把清单里的资源 id 还原成资源名，
+ * 逐组逐项比对：任一侧换了分组、换了顺序、改了标题或增删条目都会失败。
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -33,7 +33,7 @@ class HostSettingsCatalogTest {
     fun `catalog groups match the settings groups and order`() {
         val appGroups = SettingsCatalog.groups.map { resourceName(it.titleRes) }
         assertEquals(
-            "La agrupación no es coherente con la lista de configuraciones:\nApp = $appGroups\nAcuerdo = ${HostSettingsCatalog.groups.map { it.key }}",
+            "分组与设置清单不一致:\nApp = $appGroups\n协议 = ${HostSettingsCatalog.groups.map { it.key }}",
             appGroups,
             HostSettingsCatalog.groups.map { it.key },
         )
@@ -45,29 +45,29 @@ class HostSettingsCatalogTest {
             val hostGroup = HostSettingsCatalog.groups[index]
             val appEntries = group.entries
             assertEquals(
-                "「${hostGroup.key}\"El número de entradas es inconsistente",
+                "「${hostGroup.key}」条目数不一致",
                 appEntries.size,
                 hostGroup.entries.size,
             )
             appEntries.forEachIndexed { entryIndex, entry ->
                 val hostEntry = hostGroup.entries[entryIndex]
                 assertEquals(
-                    "「${hostGroup.key}\"No. ${entryIndex + 1} Los identificadores de elementos son inconsistentes",
+                    "「${hostGroup.key}」第 ${entryIndex + 1} 项的 id 不一致",
                     entry.id.name.lowercase(),
                     hostEntry.id,
                 )
                 assertEquals(
-                    "entrada ${hostEntry.id} Los recursos del título son inconsistentes.",
+                    "条目 ${hostEntry.id} 的标题资源不一致",
                     resourceName(entry.titleRes),
                     hostEntry.titleKey,
                 )
                 assertEquals(
-                    "entrada ${hostEntry.id} Los recursos de descripción son inconsistentes.",
+                    "条目 ${hostEntry.id} 的说明资源不一致",
                     entry.descRes?.let { resourceName(it) },
                     hostEntry.descKey,
                 )
                 assertEquals(
-                    "entrada ${hostEntry.id} El tipo de es incompatible con la acción declarada.",
+                    "条目 ${hostEntry.id} 的类型与声明动作不一致",
                     expectedKind(entry.action),
                     hostEntry.kind,
                 )
@@ -78,15 +78,15 @@ class HostSettingsCatalogTest {
     @Test
     fun `every entry carries the fields the web client renders`() {
         val ids = HostSettingsCatalog.entries.map { it.id }
-        assertEquals("El ID de entrada debe ser único: $ids", ids.size, ids.toSet().size)
+        assertEquals("入口 id 必须唯一: $ids", ids.size, ids.toSet().size)
 
         HostSettingsCatalog.entries.forEach { entry ->
-            assertTrue("entrada ${entry.id} desaparecido id", entry.id.isNotBlank())
-            assertTrue("entrada ${entry.id} desaparecido titleKey", entry.titleKey.isNotBlank())
-            assertTrue("entrada ${entry.id} desaparecido iconKey", entry.iconKey.isNotBlank())
-            assertTrue("entrada ${entry.id} La clave de grupo está vacía", entry.groupKey.isNotBlank())
+            assertTrue("条目 ${entry.id} 缺少 id", entry.id.isNotBlank())
+            assertTrue("条目 ${entry.id} 缺少 titleKey", entry.titleKey.isNotBlank())
+            assertTrue("条目 ${entry.id} 缺少 iconKey", entry.iconKey.isNotBlank())
+            assertTrue("条目 ${entry.id} 的 groupKey 为空", entry.groupKey.isNotBlank())
             assertTrue(
-                "entrada ${entry.id} El tipo no está dentro del valor acordado.: ${entry.kind}",
+                "条目 ${entry.id} 的 kind 不在约定取值内: ${entry.kind}",
                 entry.kind in setOf(
                     HostSettingsCatalog.KIND_LINK,
                     HostSettingsCatalog.KIND_SWITCH,
@@ -95,10 +95,10 @@ class HostSettingsCatalogTest {
             )
         }
 
-        // La clave de grupo de la entrada en el grupo debe ser el grupo al que pertenece.,Evite que los cambios manuales posteriores pierdan la sincronización.
+        // 分组内 entry 的 groupKey 必须就是所属分组,避免后续手改漏同步。
         HostSettingsCatalog.groups.forEach { group ->
             group.entries.forEach { entry ->
-                assertEquals("entrada ${entry.id} La clave de grupo no coincide con el grupo al que pertenece.", group.key, entry.groupKey)
+                assertEquals("条目 ${entry.id} 的 groupKey 与所属分组不一致", group.key, entry.groupKey)
             }
         }
     }
@@ -109,17 +109,17 @@ class HostSettingsCatalogTest {
             .filter { it.action is SettingsEntryAction.Toggle }
             .map { (it.action as SettingsEntryAction.Toggle).key }
         val switches = HostSettingsCatalog.entries.filter { it.kind == HostSettingsCatalog.KIND_SWITCH }
-        assertTrue("La lista de configuraciones debe tener al menos una entrada de interruptor.", switches.isNotEmpty())
-        assertEquals("El número de entradas de interruptor no coincide con la lista", appToggles.size, switches.size)
+        assertTrue("设置清单至少应有一个开关入口", switches.isNotEmpty())
+        assertEquals("开关条目数量与清单不一致", appToggles.size, switches.size)
 
         appToggles.zip(switches).forEach { (toggleKey, entry) ->
             assertEquals(
-                "cambiar de entrada ${entry.id} La clave no coincide con la lista.",
+                "开关条目 ${entry.id} 的键与清单不一致",
                 appSettingKey(toggleKey),
                 entry.toggleKey,
             )
             assertTrue(
-                "cambiar de entrada ${entry.id} de toggleKey=${entry.toggleKey} No en configuración. Actualizar lista blanca",
+                "开关条目 ${entry.id} 的 toggleKey=${entry.toggleKey} 不在 settings.update 白名单内",
                 entry.toggleKey in HostSettingDefinitions.writableKeys,
             )
         }
@@ -129,7 +129,7 @@ class HostSettingsCatalogTest {
     fun `compile time gated entries keep their flag state`() {
         val hostMiniPhone = HostSettingsCatalog.entries.single { it.id == "miniphone" }
         assertEquals(
-            "El estado disponible de la entrada del teléfono celular pequeño debe ser coherente con la puerta en tiempo de compilación.",
+            "小手机入口的可用状态必须与编译期闸门一致",
             FeatureFlags.MINI_PHONE,
             hostMiniPhone.enabled,
         )
@@ -141,7 +141,7 @@ class HostSettingsCatalogTest {
         is SettingsEntryAction.Action -> HostSettingsCatalog.KIND_ACTION
     }
 
-    /** La entrada del interruptor es la clave en settings.update; el nombre de la clave solo está en [HostSettingKeys] Declararlo una vez. */
+    /** 开关条目在 settings.update 里的键；键名只在 [HostSettingKeys] 声明一次。 */
     private fun appSettingKey(key: SettingsToggleKey): String = when (key) {
         SettingsToggleKey.PII_GUARD -> HostSettingKeys.PII_GUARD
     }

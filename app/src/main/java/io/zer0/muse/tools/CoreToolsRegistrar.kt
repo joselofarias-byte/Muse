@@ -10,10 +10,10 @@ import java.util.Locale
 import java.util.TimeZone
 
 /**
- * P1-3b Dedomaining: registrador de herramientas de infraestructura central.
+ * P1-3b 拆域：核心基础工具注册器。
  *
- * Extraído de ToolRegistry.kt get_current_time / calculator / echo,
- * Solo depende de los recursos de la cadena Context y no mantiene el estado interno de ToolRegistry.
+ * 从 ToolRegistry.kt 抽出的 get_current_time / calculator / echo，
+ * 只依赖 Context 字符串资源，不持有 ToolRegistry 内部状态。
  */
 class CoreToolsRegistrar(
     private val context: Context,
@@ -28,12 +28,12 @@ class CoreToolsRegistrar(
             ToolRegistry.ToolDef(
                 name = "get_current_time",
                 description =
-                "Obtenga la hora actual. Zona horaria especificable(Como Asia/Shanghai,UTC),Marcar automáticamente el estado del horario de verano." +
-                    "El mensaje del sistema contiene el tiempo de la ronda actual y los puntos de anclaje de tiempo de los dos mensajes de usuario más recientes; para preguntas generales sobre la hora actual o el intervalo de mensajes, cite directamente." +
-                    "Esto solo se llama cuando el usuario solicita una zona horaria diferente o solicita explícitamente una recuperación.",
+                "获取当前时间。可指定时区(如 Asia/Shanghai、UTC),自动标注夏令时状态。" +
+                    "系统提示已包含本轮时间及最近两条用户消息的时间锚点；普通当前时间或消息间隔问题请直接引用，" +
+                    "只有用户要求其他时区或明确要求重新取时才调用。",
                 parameters = mapOf(
-                    "timezone" to "Opcional,IANA zona horaria(Como Asia/Shanghai,UTC),Predeterminado Asia/Shanghai",
-                    "format" to "Opcional,Formato personalizado(SimpleDateFormat Gramática),Predeterminado yyyy-MM-dd HH:mm:ss z",
+                    "timezone" to "可选,IANA 时区(如 Asia/Shanghai、UTC),默认 Asia/Shanghai",
+                    "format" to "可选,自定义格式(SimpleDateFormat 语法),默认 yyyy-MM-dd HH:mm:ss z",
                 ),
                 required = emptySet(),
                 category = "built-in",
@@ -48,7 +48,7 @@ class CoreToolsRegistrar(
             }
             val pattern = args["format"]?.takeIf { it.isNotBlank() } ?: "yyyy-MM-dd HH:mm:ss z"
             val fmt = resultOf { SimpleDateFormat(pattern, Locale.getDefault()) }
-                .onError { msg, _ -> Logger.w("CoreTools", "Formato de hora no válido: $msg(pattern=$pattern)") }
+                .onError { msg, _ -> Logger.w("CoreTools", "时间格式无效: $msg(pattern=$pattern)") }
                 .getOrNull() ?: SimpleDateFormat("yyyy-MM-dd HH:mm:ss z", Locale.getDefault())
             fmt.timeZone = tz
             val dstLabel = if (tz.inDaylightTime(Date())) {
@@ -62,8 +62,8 @@ class CoreToolsRegistrar(
         toolRegistry.register(
             ToolRegistry.ToolDef(
                 name = "calculator",
-                description = "calculadora sencilla,Admite suma, resta, multiplicación, división y paréntesis. Regresar 'expresión = resultado' texto. Sólo admite cuatro operaciones aritméticas y paréntesis.,No soporta la exponenciación/toma un molde/Conversión de unidades.",
-                parameters = mapOf("expression" to "Requerido,expresión matemática,Como por ejemplo 1+2*3"),
+                description = "简易计算器,支持加减乘除和括号。返回 '表达式 = 结果' 文本。仅支持四则运算与括号,不支持幂/取模/单位换算。",
+                parameters = mapOf("expression" to "必填,数学表达式,如 1+2*3"),
                 required = setOf("expression"),
                 category = "built-in",
                 riskLevel = ToolRiskLevel.SAFE,
@@ -87,8 +87,8 @@ class CoreToolsRegistrar(
         toolRegistry.register(
             ToolRegistry.ToolDef(
                 name = "echo",
-                description = "contenido de entrada de eco(para probar).",
-                parameters = mapOf("text" to "Requerido,texto para hacer eco"),
+                description = "回显输入内容(测试用)。",
+                parameters = mapOf("text" to "必填,要回显的文本"),
                 required = setOf("text"),
                 category = "built-in",
                 riskLevel = ToolRiskLevel.SAFE,
@@ -100,9 +100,9 @@ class CoreToolsRegistrar(
 }
 
 /**
- * calculadora sencilla:apoyo + - * / ( ) y espacios.
- * No se introduce ningún motor de expresión de terceros.,Analizar mediante descenso recursivo.
- * No hay necesidad javax.script(Nashorn Eliminado en JDK 15+,Android Ninguno).
+ * 简易计算器:支持 + - * / ( ) 和空格。
+ * 不引入第三方表达式引擎,用递归下降解析。
+ * 不用 javax.script(Nashorn 在 JDK 15+ 移除,Android 无)。
  */
 private object Calculator {
     fun eval(input: String): Double {

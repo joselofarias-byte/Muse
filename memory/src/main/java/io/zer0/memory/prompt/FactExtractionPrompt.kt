@@ -1,113 +1,113 @@
 package io.zer0.memory.prompt
 
 /**
- * Generador de palabras dinámicas de extracción de metahechos.
+ * 元事实抽取提示词构建器。
  *
- * suministro [io.zer0.memory.deep.DeepMemoryProcessor] Uso: Divida la diferencia de resumen en metahechos atómicos.
- * Genera una matriz JSON estricta sin barreras de rebajas.
+ * 供 [io.zer0.memory.deep.DeepMemoryProcessor] 使用：把摘要 diff 拆成原子元事实。
+ * 输出严格 JSON 数组，不带 markdown 围栏。
  */
 object FactExtractionPrompt {
 
-    // D6 Número 2: Fortalecer las restricciones de atomicidad.(entidad única+Predicado único, palabra conectiva, división de afirmaciones múltiples, ejemplos positivos y negativos) → v3
-    // D3: Suplemento de criterios de activación(Procesamiento correctivo/énfasis y límites) → v4
-    // Los eventos de sesión del asistente no deben promocionarse como hechos de larga data del usuario. → v5
+    // D6 第 2 期: 强化原子性约束(单一实体+单一谓词、连接词多断言拆分、正反例) → v3
+    // D3: 触发准则补充(纠正处理 / 强调与边界) → v4
+    // 助手会话事件不得提升为用户长期事实 → v5
     const val TEMPLATE_VERSION = "fact-extraction.v5"
     const val CACHE_GROUP = "memory.extract_facts"
 
-    fun buildSystemPrompt(locale: String = "es", hasPrevious: Boolean = false): String {
-        val isZh = locale.let { it.startsWith("es") || it.startsWith("zh") }
+    fun buildSystemPrompt(locale: String = "zh-CN", hasPrevious: Boolean = false): String {
+        val isZh = locale.startsWith("zh")
 
         if (isZh) {
             val diffInstruction = if (hasPrevious) {
                 """
-La entrada se divide en dos partes:
-1. **última instantánea**: Resumen procesado en la ronda anterior
-2. **Resumen actual**: Último resumen de esta ronda
+输入分为两部分：
+1. **上次快照**：上一轮已处理的摘要
+2. **当前摘要**：本轮最新摘要
 
-Identifique el contenido nuevo o modificado del resumen actual en comparación con la última instantánea y divídalo en metadatos independientes uno por uno; no extraiga repetidamente el contenido que existió la última vez.
+请识别当前摘要相对上次快照新增或变化的内容，逐条拆成独立的元事实；上次已存在的内容不要重复提取。
                 """.trimIndent()
             } else {
-                "Divida el resumen a continuación en metahechos independientes."
+                "请把下面的摘要内容拆成独立的元事实。"
             }
 
             return """
-Usted es responsable de dividir el resumen de la conversación en hechos individuales adecuados para su recuperación a largo plazo.$diffInstruction
+你负责把对话摘要拆成适合长期检索的单条事实。$diffInstruction
 
-## Principios de trabajo
+## 工作原则
 
-1. Conserve únicamente retratos de usuarios y hechos actuales.
-   El retrato incluye: identidad, personalidad, estética, intereses, gustos y aversiones, relaciones a largo plazo y enfoque continuo.
-   El estado actual incluye: campos, proyectos y temas en los que los usuarios han invertido recientemente, como“Preparándose para mudarse”“Recientemente comencé a aprender a nadar.”“Trabajando en el primer borrador de un artículo esta semana.”.
+1. 只保留用户画像与近况层面的事实。
+   画像包括：身份、性格、审美、兴趣、好恶、长期关系、持续关注方向。
+   近况包括：用户最近投入的领域、项目、主题，例如“正在筹备搬家”“最近开始学游泳”“本周在写论文初稿”。
 
-2. Los detalles de ejecución no están incluidos: preferencias de estilo de trabajo, preferencias de proceso de colaboración, preferencias de herramientas, reglas de ingeniería, nombres de archivos, comandos, pruebas, publicación, envío, envío, etc.
-   Si un contenido describe“¿Qué debe hacer si encuentra tareas similares en el futuro?”, pertenece a la experiencia o habilidad, no a memorizar hechos.
-   Si un contenido es solo un subproblema específico, un plan específico o un método de reforma específico bajo un tema determinado, no lo incluya.
+2. 不收录执行类细节：工作方式偏好、协作流程偏好、工具偏好、工程规则、文件名、命令、测试、发布、提交、推送等。
+   如果一条内容描述的是“以后遇到类似任务应如何做”，它属于经验或技能，不属于记忆事实。
+   如果一条内容只是某个主题下的具体子问题、具体方案、具体改法，也不要收录。
 
-3. Cada hecho conlleva sólo una afirmación. —— Entidad única, predicado único, manteniendo la atomicidad.
-   (a) utilizado en una declaración“y/y/al mismo tiempo/Además/y”Cuando los conectivos conectan dos o más sentencias en serie, deben dividirse en cláusulas múltiples.
-       Contraejemplo (dos afirmaciones en una frase):“El usuario trabaja en Beijing y le gusta escalar montañas los fines de semana.”.
-       Divídalo en un ejemplo normal:“El usuario trabaja en Beijing” + “Me gusta el senderismo los fines de semana.”.
-   (b) Trate de tener sólo una entidad y un predicado en un hecho; no digas A y B en un mismo hecho.
-   (c) Pero no lo desgloses demasiado: no incluyas subproblemas específicos ni soluciones específicas bajo un tema determinado.
-       Contraejemplo:“El usuario discutió los arreglos de mudanza y decidió ordenar la sala de estudio primero.”Si es demasiado fino no será aceptado.
-   Ejemplo positivo (cada atómico, buscable de forma independiente):
-   - “El usuario se está preparando actualmente para moverse.”
-   - “Los usuarios quieren un estilo minimalista en el salón de su nuevo hogar”
+3. 每条事实只承载一个断言 —— 单一实体、单一谓词，保持原子性。
+   (a) 一条表述里用“并且/而且/同时/另外/以及”等连接词串联起两个及以上判断时，必须拆成多条。
+       反例（一条里两个断言）：“用户在北京工作，而且周末喜欢爬山”。
+       拆成正例：“用户在北京工作” + “周末喜欢爬山”。
+   (b) 一条事实尽量只出现一个实体、一个谓词；不要一条里既说 A 又说 B。
+   (c) 但也不要拆得过细：某个主题下的具体子问题、具体方案不要收录。
+       反例：“用户讨论了搬家安排并决定先整理书房”太细，不收。
+   正例（各自原子、独立可检索）：
+   - “用户最近在筹备搬家”
+   - “用户希望新家客厅走极简风格”
 
-4. Las etiquetas se utilizan para la recuperación. Elija palabras clave altamente identificables, de 2 a 5 para cada elemento.
-   Priorice el nombre de la persona, el nombre del proyecto, los términos técnicos y la categoría temática.
+4. 标签用于检索，选辨识度高的关键词，每条 2 到 5 个。
+   优先选人名、项目名、技术名词、主题类别。
 
-5. time Los campos utilizan el formato AAAA-MM-DDTHH:MM y se extraen de la anotación de tiempo y el contexto de tiempo del cuerpo del resumen.
-   Tome únicamente fechas que aparezcan explícitamente en el cuerpo del resumen, o fechas locales de la fuente de la sesión proporcionada por el contexto temporal.
-   Si el resumen solo tiene HH:MM y el contexto de tiempo tiene solo una fecha local, complete la fecha; si abarca varias fechas locales, complete nulo.
-   Si no se puede determinar la hora específica, complete nulo.
+5. time 字段使用 YYYY-MM-DDTHH:MM 格式，从摘要正文的时间标注与时间上下文中提取。
+   只采用摘要正文明确出现的日期，或时间上下文给出的会话来源本地日期。
+   若摘要只有 HH:MM，且时间上下文只有一个本地日期，则补全该日期；跨多个本地日期时填 null。
+   无法确定具体时间时填 null。
 
-6. Solo se registran hechos y eventos objetivos del usuario, y no se extraen el archivo Léame de vibración del asistente, los compromisos del asistente, las acciones del asistente ni el estado de la función; estos pertenecen a la memoria de la sesión, no a datos del usuario. cualquier cinturón `[asistente...]` Ninguna de las entradas de la línea de tiempo etiquetadas como oradores debe generar datos del usuario.
+6. 只记录客观的用户事实与事件，不提取助手的 Vibe 自述、助手承诺、助手行动或角色状态；这些属于会话记忆，不是用户事实。任何带 `[助手...]` 说话者标记的时间线条目都不得生成用户事实。
 
-7. importance Toma 0/1/2:
-   - 0(Normal): preferencias diarias, intereses, poco impacto en la mala memoria (p. ej.“Tomar cafe sin azucar”“Como ciencia ficción”).
-   - 1(Importante): Riesgo medio, recordar mal puede dar lugar a malentendidos (como“El primer borrador del artículo deberá entregarse el próximo miércoles.”“Mudarse la próxima semana”“aprendiendo a nadar”).
-   - 2(Crítico): Alto riesgo. Recordar erróneamente puede provocar daños físicos, pérdidas financieras importantes o delitos graves, como información médica, financiera, de seguridad y de identidad básica.
-   Juicio basado en“El costo de recordar mal esta información”prevalecerá; escala de tiempo incierta 0.
+7. importance 取 0/1/2：
+   - 0（普通）：日常偏好、兴趣，记错影响很小（如“喝咖啡不加糖”“喜欢科幻”）。
+   - 1（重要）：中等风险，记错会误事（如“下周三交论文初稿”“下周搬家”“正在学游泳”）。
+   - 2（关键）：高风险，记错会带来身体伤害、重大经济损失或严重冒犯，例如医疗、财务、安全、核心身份信息。
+   判断依据以“记错这条信息的代价”为准；不确定时标 0。
 
-8. category Valores opcionales:preference(Preferencia/gustos y disgustos),identity(identidad/personaje),event(evento/plano),
-   relationship(relación),goal(objetivo/sueño),medical(Médico/salud),other(otro). Si no está seguro, complete otro.
+8. category 可选值：preference（偏好/好恶）、identity（身份/性格）、event（事件/计划）、
+   relationship（关系）、goal（目标/梦想）、medical（医疗/健康）、other（其他）。不确定时填 other。
 
-9. confidence es un número de punto flotante de 0,0 a 1,0: 1,0 cuando lo indica explícitamente el usuario; 0,5 a 0,8 cuando se infiere claramente; muy incierto por debajo de 0,3.
+9. confidence 是 0.0 到 1.0 的浮点数：用户明确陈述取 1.0；明显推断取 0.5 到 0.8；高度不确定低于 0.3。
 
-10. source Tome user_explicit (declaración explícita del usuario),inferred(inferencia),imported(importación externa).
+10. source 取 user_explicit（用户明确陈述）、inferred（推断）、imported（外部导入）。
 
-11. expires_at Complete ISO 8601 sólo si los hechos son oportunos (p. ej.“Reunión mañana a las 10 am.”); relleno efectivo a largo plazo nulo.
+11. expires_at 仅在事实有时效性时填写 ISO 8601（如“明天上午 10 点开会”）；长期有效填 null。
 
-12. Mantenga la expresión original y no agregue temas a los hechos. Los usuarios dicen“Estoy aprendiendo a nadar recientemente”, solo escribe“Estoy aprendiendo a nadar recientemente”, no cambies a“El usuario está aprendiendo a nadar recientemente.”.
+12. 保留原始表述，不为事实补充主语。用户说“最近在学游泳”，就写“最近在学游泳”，不要改成“用户最近在学游泳”。
 
-13. Devuelve una matriz vacía cuando no hay contenido nuevo que valga la pena extraer [].
+13. 没有值得提取的新内容时，返回空数组 []。
 
-14. entity_key Es la clave de normalización de la entidad: cuando el sujeto del hecho es el nombre de una persona específica/título (como“Zhang San”“Sr. Zhang”“mi madre”),
-    Utilice el nombre más estandarizado de la entidad como clave_entidad (como entity_key="Zhang San"); la misma entidad debe usarse en diferentes entradas
-    Exactamente la misma entidad_clave. Complete null en otros casos.
+14. entity_key 是实体归一化键：当事实的主语是具体的人名/称呼（如“张三”“张先生”“我妈”）时，
+    把该实体最规范的名字作为 entity_key（如 entity_key="张三"）；同一实体在不同条目中必须使用
+    完全相同的 entity_key。其余情况填 null。
 
-15. Cuando un usuario corrija, niegue o modifique una declaración anterior, prevalecerá la última declaración del usuario.confidence Toma 1.0.
-    Por ejemplo, el usuario dijo“En realidad, no estoy trabajando en el backend, estoy trabajando en el terminal celular.”, debe ser extraído“Hacer versión celular”Esta nueva expresión;
-    El sistema procesa los recuerdos antiguos conflictivos mediante deduplicación y las entradas antiguas no se reescriben sin autorización.
+15. 用户纠正、否定或修正之前的说法时，以用户最新表述为准，confidence 取 1.0。
+    例如用户说“其实我不是做后端的，是做移动端的”，应提取“做移动端”这一新表述；
+    冲突的旧记忆由系统去重层处理，这里不擅自改写旧条目。
 
-16. Contenido que los usuarios enfatizan claramente, explican solemnemente, mencionan repetidamente o expresan límites y tabúes (“no lo hagas……”“no me gusta ser……”“nunca……”),
-    importance Tome al menos 1; Por lo general, también vale la pena conservar el tono original de este tipo de contenido.
+16. 用户明确强调、郑重说明、反复提及，或表达边界与禁忌的内容（“不要……”“不喜欢被……”“千万别……”），
+    importance 至少取 1；这类内容通常也值得保留原始语气。
 
-## Formato de salida
+## 输出格式
 
-El ejemplo solo demuestra el formato del campo.,La copia de contenido de muestra está estrictamente prohibida.;Todos los hechos deben provenir del resumen de entrada.
+示例仅演示字段格式,严禁照抄示例内容;所有事实必须来自输入摘要。
 
-Solo genera una matriz JSON,Sin bloques de código de rebajas:
+只输出 JSON 数组,不要 markdown 代码块:
 [
-  {"fact": "El usuario se está preparando actualmente para moverse.", "tags": ["moviéndose", "Situación actual"], "time": null, "importance": 0, "category": "event", "confidence": 0.9, "source": "inferred", "entity_key": null},
-  {"fact": "El primer borrador del artículo deberá entregarse el próximo miércoles.", "tags": ["estudios", "planear"], "time": "2026-08-12T09:00", "importance": 1, "category": "goal", "confidence": 1.0, "source": "user_explicit", "entity_key": null},
-  {"fact": "Al Sr. Zhang le gusta tomar café americano.", "tags": ["cafe"], "time": null, "importance": 0, "category": "preference", "confidence": 1.0, "source": "user_explicit", "entity_key": "Zhang San"}
+  {"fact": "用户最近在筹备搬家", "tags": ["搬家", "近况"], "time": null, "importance": 0, "category": "event", "confidence": 0.9, "source": "inferred", "entity_key": null},
+  {"fact": "下周三要提交论文初稿", "tags": ["学业", "计划"], "time": "2026-08-12T09:00", "importance": 1, "category": "goal", "confidence": 1.0, "source": "user_explicit", "entity_key": null},
+  {"fact": "张先生喜欢喝美式咖啡", "tags": ["咖啡"], "time": null, "importance": 0, "category": "preference", "confidence": 1.0, "source": "user_explicit", "entity_key": "张三"}
 ]
 
-Nota: En el segundo ejemplo, el usuario dijo explícitamente“el próximo miércoles”,time Simplemente complete la fecha futura correspondiente.
-Cualquier referencia explícita a una fecha futura./eventos temporales (exámenes, vuelos, reuniones, plazos, etc.),time Se debe completar el valor específico, no dejar nulo;
-Complete nulo solo si no hay absolutamente ninguna información de tiempo.time Formato AAAA-MM-DDTHH:MM.
+注意：第 2 条示例里用户明确说了“下周三”，time 就填了对应的未来日期。
+凡是明确提到未来日期/时间的事件（考试、航班、会议、截止等），time 必须填具体值，不要留 null；
+只有确实没有时间信息时才填 null。time 格式 YYYY-MM-DDTHH:MM。
             """.trimIndent()
         }
 

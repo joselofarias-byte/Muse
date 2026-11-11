@@ -1,19 +1,21 @@
-// nivel superior build.gradle.kts
+// 顶层 build.gradle.kts
 plugins {
     alias(libs.plugins.android.application) apply false
     alias(libs.plugins.android.library) apply false
     alias(libs.plugins.kotlin.android) apply false
+    alias(libs.plugins.kotlin.jvm) apply false
     alias(libs.plugins.kotlin.compose) apply false
     alias(libs.plugins.kotlin.serialization) apply false
     alias(libs.plugins.ksp) apply false
     alias(libs.plugins.ktlint) apply false
     alias(libs.plugins.detekt)
-    // Phase 2.1: Kover aplicación de alto nivel,Resumen de la cobertura de 6 módulos como módulo de fusión
-    // Cada submódulo todavía necesita el suyo alias(libs.plugins.kover) Sólo entonces se podrá insertar el código de bytes de este módulo.
+    // Phase 2.1: Kover 顶层应用,作为 merging module 汇总 6 模块覆盖率
+    // 各子模块仍需各自 alias(libs.plugins.kover) 才会插桩本模块字节码
     alias(libs.plugins.kover)
 }
 
-// Phase 2.1: Agregue los datos de cobertura de 6 módulos en root,Ejecute :koverXmlReport / :koverHtmlReport para generar un informe completo
+// 聚合 Android/JVM 覆盖率模块；conversation-core 尚未应用 Kover，不能在此
+// 以 :app 消费者的属性解析依赖，否则 koverXmlReport 会因无 kover variant 失败。
 dependencies {
     kover(project(":app"))
     kover(project(":ai"))
@@ -23,9 +25,9 @@ dependencies {
     kover(project(":accessibility"))
 }
 
-// Phase 2.1: Configurar el formato de informe agregado — HTML + XML(Usar la ruta de salida predeterminada)
+// Phase 2.1: 配置聚合报告格式 — HTML + XML(使用默认输出路径)
 
-// R-CI-02: detekt Acceso,Uso unificado de la configuración del directorio raíz del almacén;Análisis de submódulo proyecto por proyecto.
+// R-CI-02: detekt 接入,统一使用仓库根目录配置;子模块逐项目分析
 detekt {
     config.setFrom(rootProject.files("detekt.yml"))
     buildUponDefaultConfig = true
@@ -42,14 +44,14 @@ subprojects {
         }
     }
 
-    // Compose Mejora(2026.02.01 / Compose 1.10)adaptarse:
-    // material3 Es una línea de versión independiente.,No con Compose BOM.BOM 2026.02.01 La restricción de la plataforma pondrá
-    // material3 Y su material3-android top 1.4.0;La versión oficial de 1.4.0 tiene
-    // MaterialExpressiveTheme/MotionScheme mudarse a 1.5.0-alpha,El tema del proyecto se basa en una API expresiva.
-    // Por lo tanto, todo el módulo se ve obligado a bloquear material3 nuevamente en 1.4.0-alpha04.
-    // El uso de fuerza en lugar de estrictamente: estrictamente provocará un conflicto grave con las restricciones de la lista de materiales, lo que provocará que el análisis informe directamente un error.
-    // Nota:subprojects No se puede obtener la extensión del directorio de la versión libs dentro del alcance,Número de versión y libs.versions.toml
-    // material3 ser consistente(Al actualizar esta versión, debe sincronizar aquí).
+    // Compose 升级(2026.02.01 / Compose 1.10)适配:
+    // material3 是独立版本线,不跟 Compose BOM。BOM 2026.02.01 的 platform 约束会把
+    // material3 及其 material3-android 顶到 1.4.0;而 1.4.0 正式版已把
+    // MaterialExpressiveTheme/MotionScheme 移出到 1.5.0-alpha,项目主题依赖 expressive API。
+    // 因此全模块强制将 material3 锁回 1.4.0-alpha04。
+    // 用 force 而非 strictly:strictly 会和 BOM 约束硬冲突导致解析直接报错。
+    // 注:subprojects 作用域内拿不到 libs 版本目录扩展,版本号与 libs.versions.toml 的
+    // material3 保持一致(升级该版本时需同步这里)。
     val material3Version = "1.4.0-alpha04"
     configurations.configureEach {
         resolutionStrategy.force(
@@ -58,19 +60,19 @@ subprojects {
         )
     }
 
-    // P4-1: ktlint Arreglo verde falso.
-    // Este repositorio utiliza soporte Kotlin integrado para AGP 9(El módulo ya no se aplica org.jetbrains.kotlin.android),
-    // ktlint-gradle 12.1.1 Maldita sea withId("org.jetbrains.kotlin.android") Conjunto de fuentes de Android de gancho,
-    // El anzuelo nunca dispara → ktlintCheck Sólo comprobar .kts,Acción cero en .kt(No hay control de acceso).
-    // Aquí está el ktlintKotlinSourceCheck de creación propia: utilice la CLI oficial de ktlint para escanear el código fuente de Kotlin de este módulo.,
-    // Generado automáticamente para la primera ejecución ktlint-baseline.xml(Ya en stock),Agregar nuevas preguntas después no funcionará.;
-    // También afirme que el archivo fuente no está vacío,Evite que el control de acceso degenere en una ejecución vacía nuevamente.
+    // P4-1: ktlint 假绿修复。
+    // 本仓库使用 AGP 9 内置 Kotlin 支持(模块不再应用 org.jetbrains.kotlin.android),
+    // ktlint-gradle 12.1.1 靠 withId("org.jetbrains.kotlin.android") 挂钩 Android 源集,
+    // 该钩子永不触发 → ktlintCheck 只查 .kts,对 .kt 零动作(门禁等于没有)。
+    // 这里自建 ktlintKotlinSourceCheck: 用 ktlint 官方 CLI 真扫本模块 Kotlin 源,
+    // 首跑自动生成 ktlint-baseline.xml(已入库),之后新增问题即失败;
+    // 同时断言源文件非空,防止门禁再次退化为空跑。
     pluginManager.withPlugin("org.jlleitschuh.gradle.ktlint") {
         val ktlintConfiguration =
             configurations.findByName("ktlint")
                 ?: throw GradleException("ktlint configuration missing in project '$name' (ktlint plugin applied?)")
-        // ktlint La configuración en sí no tiene atributos de consumo.,KMP Las dependencias se resolverán en la variante -sources(Falta KLogger, etc. durante el tiempo de ejecución).
-        // Configuración analizable RUNTIME+LIBRARY autoconstruida,extendsFrom ktlint,Obtenga la variante binaria correcta.
+        // ktlint 配置本身不带消费属性,KMP 依赖会解析到 -sources 变体(运行时缺 KLogger 等)。
+        // 自建 RUNTIME+LIBRARY 可解析配置,extendsFrom ktlint,拿到正确的二进制变体。
         val ktlintCliClasspath =
             configurations.create("ktlintCliClasspath_${this.name}") {
                 isCanBeConsumed = false
@@ -86,7 +88,7 @@ subprojects {
             }
         val ktlintKotlinSourceCheckTask = tasks.register<org.gradle.api.tasks.JavaExec>("ktlintKotlinSourceCheck") {
             group = "verification"
-            description = "P4-1: Corre real contra las fuentes de Kotlin ktlint CLI(Reemplace la verificación fallida de ktlintCheck .kt en AGP9)"
+            description = "P4-1: 对 Kotlin 源跑真实 ktlint CLI(替代 AGP9 下失效的 ktlintCheck .kt 检查)"
             classpath = ktlintCliClasspath
             mainClass.set("com.pinterest.ktlint.Main")
 
@@ -111,19 +113,19 @@ subprojects {
                 )
             }
             doLast {
-                // Informar sobre la base de una afirmación no nula: Agregue la cantidad real de archivos lint .kt(del conjunto de fuentes de entrada de tareas,Sin marcador de posición).
+                // 报告非空断言依据: 追加实际落 lint 的 .kt 文件数(来自任务输入源集,非占位)。
                 val linted = inputs.files.files.size
                 reportFile.get().asFile.appendText("\n@linted-file-count=$linted\n")
             }
         }
-        // P4-1b: Dar formato a las tareas reflejadas con klintKotlinSourceCheck —— misma copia CLI/classpath,Realmente ejecute ktlint -F.
-        // por qué es necesario: check cinturón de trabajo --baseline,El problema de inventario afectado por la línea base no se solucionará bajo -F.,
-        // Por lo tanto, debe haber una copia de la deuda formateada para limpiar el stock."sin baseline"entrada;Anteriormente sólo se podía montar a mano. java -cp,No reproducible.
-        // Uso:
-        //   ./gradlew :app:ktlintKotlinSourceFormat                      # Módulo completo
-        //   ./gradlew :app:ktlintKotlinSourceFormat "-PktlintPaths=src/main/java/io/zer0/muse/MainActivity.kt,src/test"  # Definir ruta
-        // Nota: El módulo debe reconstruirse después de formatear ktlint-baseline.xml(ver PROJECT_GUIDE §6).
-        // El valor debe obtenerse durante el periodo de configuración. —— Este almacén está abierto. configuration cache,Si el proyecto se toca durante la ejecución, la construcción fallará directamente.
+        // P4-1b: 与 ktlintKotlinSourceCheck 镜像的格式化任务 —— 同一份 CLI/classpath,真跑 ktlint -F。
+        // 为什么必须有它: check 任务带 --baseline,而 baseline 命中的存量问题在 -F 下不会被修,
+        // 所以清理存量格式化债必须有一份"不带 baseline"的入口;此前只能手工拼 java -cp,不可复现。
+        // 用法:
+        //   ./gradlew :app:ktlintKotlinSourceFormat                      # 全模块
+        //   ./gradlew :app:ktlintKotlinSourceFormat "-PktlintPaths=src/main/java/io/zer0/muse/MainActivity.kt,src/test"  # 限定路径
+        // 注意: 格式化后必须重建该模块 ktlint-baseline.xml(见 PROJECT_GUIDE §6)。
+        // 取值必须在配置期完成 —— 本仓库开了 configuration cache,执行期碰 project 会直接构建失败。
         val formatPaths =
             (project.findProperty("ktlintPaths") as? String)
                 ?.split(',')
@@ -132,17 +134,17 @@ subprojects {
                 ?.takeIf { it.isNotEmpty() }
                 ?: listOf("src")
         val missingFormatPaths = formatPaths.filter { !project.file(it).exists() }
-        // Durante el período de configuración, las referencias relacionadas con el proyecto se convierten en cadenas puras. —— Periodo de ejecución(lambdas)Mantener Project explotará el caché de configuración.
+        // 配置期就把 Project 相关引用拍成纯字符串 —— 执行期(lambdas)持有 Project 会撑爆 configuration cache。
         val formatProjectDir = layout.projectDirectory.asFile.invariantSeparatorsPath
         tasks.register<org.gradle.api.tasks.JavaExec>("ktlintKotlinSourceFormat") {
             group = "verification"
-            description = "P4-1b: Formateo local del código fuente Kotlin de este módulo utilizando la CLI de ktlint(sin baseline,Deuda existente que se puede liquidar)"
+            description = "P4-1b: 用 ktlint CLI 就地格式化本模块 Kotlin 源(不带 baseline,可清理存量债)"
             classpath = ktlintCliClasspath
             mainClass.set("com.pinterest.ktlint.Main")
-            // El formateo cambiará el archivo fuente en su lugar.,No participa en el juicio incremental.(Realmente se ejecuta cada vez que lo ejecuto explícitamente.).
+            // 格式化会就地改源文件,不参与增量判定(每次显式执行都真跑)。
             outputs.upToDateWhen { false }
-            // ktlint -F si"no puedo cambiar"violación de(fila extra larga/Ubicación de la anotación/Caso de nombre de archivo)Regresar 1 —— Esa es la lista de cosas por hacer,
-            // No es un fracaso de la misión. El control de acceso es propiedad de ktlintKotlinSourceCheck: se necesita baseline,Las preguntas nuevas siempre son rojas.
+            // ktlint -F 对"改不了"的违规(超长行/注释位置/文件名大小写)返回 1 —— 那是待办清单,
+            // 不是任务失败。门禁归 ktlintKotlinSourceCheck:它带 baseline,新问题一律红。
             isIgnoreExitValue = true
 
             doFirst {

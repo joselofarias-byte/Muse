@@ -20,40 +20,40 @@ internal class HnswEmbeddingFingerprintMismatchException :
     IllegalArgumentException("HNSW embedding fingerprint does not match the active provider")
 
 /**
- * v1.55: Interfaz unificada de indexación de vectores.
+ * v1.55: 向量索引统一接口。
  *
- * para la abstracción"Cómo se almacenan y recuperan los vectores",Admite el cambio posterior de diferentes algoritmos ANN
- * (Implementación actual:[HnswVectorIndex];El recorrido de fuerza bruta reutiliza lo existente [VectorSearchService]).
+ * 用于抽象"向量如何存储与检索",支持后续切换不同 ANN 算法
+ * (当前实现:[HnswVectorIndex];暴力遍历复用现有 [VectorSearchService])。
  */
 interface VectorIndex {
-    /** Agregar vector(Si ya existe la misma identificación, se sobrescribirá.). */
+    /** 添加向量(同 id 已存在则覆盖)。 */
     fun add(id: String, vector: FloatArray)
 
-    /** Recuperar k vecinos más cercanos(Regresar en orden descendente de similitud). */
+    /** 检索 k 个最近邻(按相似度降序返回)。 */
     fun search(query: FloatArray, k: Int): List<SearchResult>
 
-    /** eliminar especificado id(Ignorar si no existe). */
+    /** 删除指定 id(不存在则忽略)。 */
     fun remove(id: String)
 
-    /** El número de vectores en el índice actual. */
+    /** 当前索引中向量数。 */
     val size: Int
 
-    /** Borre el índice actual. */
+    /** 清空当前索引。 */
     fun clear()
 
-    /** persistir en el archivo(Sobrescribir contenido existente). */
+    /** 持久化到文件(覆盖现有内容)。 */
     fun save(file: File, fingerprint: String? = null)
 
-    /** Cargar desde archivo(Reemplazar el contenido del índice actual). */
+    /** 从文件加载(替换当前索引内容)。 */
     fun load(file: File, expectedFingerprint: String? = null)
 }
 
 /**
- * v1.55: Resultados de búsqueda de vectores.
+ * v1.55: 向量检索结果。
  *
- * @property id chunk logotipo(corresponder [io.zer0.muse.data.knowledge.KnowledgeChunkEntity.id])
- * @property score similitud coseno(alcance [-1,1],Cuanto más grande, más parecido;normalmente [0,1])
- * @property distance distancia coseno(alcance [0,2],Cuanto más pequeños, más parecidos;= 1 - [score])
+ * @property id chunk 标识(对应 [io.zer0.muse.data.knowledge.KnowledgeChunkEntity.id])
+ * @property score 余弦相似度(范围 [-1,1],越大越相似;通常 [0,1])
+ * @property distance 余弦距离(范围 [0,2],越小越相似;= 1 - [score])
  */
 data class SearchResult(
     val id: String,
@@ -62,30 +62,30 @@ data class SearchResult(
 )
 
 /**
- * v1.55: HNSW(Hierarchical Navigable Small World)Índice de vecino más cercano aproximado.
+ * v1.55: HNSW(Hierarchical Navigable Small World)近似最近邻索引。
  *
- * Implementación pura de Kotlin,No se introducen bibliotecas de terceros.(Evite el exceso de dependencia).
- * Descripción del algoritmo:Malkov & Yashunin 2016 "Efficient and robust approximate nearest
- * neighbor search using Hierarchical Navigable Small World graphs".
+ * 纯 Kotlin 实现,不引入第三方库(避免依赖膨胀)。
+ * 算法说明:Malkov & Yashunin 2016 "Efficient and robust approximate nearest
+ * neighbor search using Hierarchical Navigable Small World graphs"。
  *
- * parámetros:
- *  - [M]:Número máximo de conexiones por capa(Límite de nivel 0 = 2*M,otras capas = M)
- *  - [efConstruction]:Tamaño de selección en el momento de la construcción(Cuanto mayor sea el valor, mayor será el retiro.,Cuanto más lenta sea la construcción)
- *  - [efSearch]:Tamaño de selección al realizar consultas(Cuanto mayor sea el valor, mayor será el retiro.,La consulta es más lenta.)
- *  - [maxLayer]:Nivel máximo actual(Mantenimiento en tiempo de ejecución,inicial -1)
+ * 参数:
+ *  - [M]:每层最大连接数(层 0 上限 = 2*M,其他层 = M)
+ *  - [efConstruction]:构建时候选集大小(越大召回越高,构建越慢)
+ *  - [efSearch]:查询时候选集大小(越大召回越高,查询越慢)
+ *  - [maxLayer]:当前最大层级(运行时维护,初始 -1)
  *
- * medida de distancia:distancia coseno = 1 - similitud coseno(alcance [0,2],Cuanto más pequeños, más parecidos).
- * No requiere que los vectores estén normalizados L2 de antemano,Internamente, el punto/norma se calcula de forma independiente para cada par de vectores.
+ * 距离度量:余弦距离 = 1 - 余弦相似度(范围 [0,2],越小越相似)。
+ * 不要求向量预先 L2 归一化,内部对每对向量独立计算 dot / norm。
  *
- * Seguridad del hilo:[ReentrantReadWriteLock] — Leer operación(search/size/save)paralelo,operación de escritura(add/remove/load)exclusivo.
+ * 线程安全:[ReentrantReadWriteLock] — 读操作(search/size/save)并行,写操作(add/remove/load)独占。
  *
- * persistencia:formato binario(magic header + version + Parámetro + recuento de nodos + cada nodo layer/connections/vectors).
- * Eliminar política:eliminación suave(marca deleted=true),Eliminación de compresión al guardar;Las ranuras de índice no se reutilizan para evitar una reasignación extensa de vecinos.
+ * 持久化:二进制格式(magic header + version + 参数 + node count + 各节点 layer/connections/vectors)。
+ * 删除策略:软删除(标记 deleted=true),保存时压缩剔除;不重用 index 槽位以避免大范围邻居重映射。
  *
- * @param M Número máximo de conexiones por capa,Predeterminado 16
- * @param efConstruction Tamaño de selección en el momento de la construcción,Predeterminado 200
- * @param efSearch Tamaño de selección al realizar consultas,Predeterminado 50
- * @param seed semilla aleatoria(Proceso de construcción reproducible)
+ * @param M 每层最大连接数,默认 16
+ * @param efConstruction 构建时候选集大小,默认 200
+ * @param efSearch 查询时候选集大小,默认 50
+ * @param seed 随机种子(可复现构建过程)
  */
 class HnswVectorIndex(
     private val M: Int = DEFAULT_M,
@@ -94,7 +94,7 @@ class HnswVectorIndex(
     private val seed: Long = DEFAULT_SEED,
 ) : VectorIndex {
 
-    /** nodo interno:Vector + nivel + vecinos en cada nivel(Referenciado con índice interno.). */
+    /** 内部节点:向量 + 层级 + 各层邻居(用内部 index 引用)。 */
     private class Node(
         val id: String,
         val vector: FloatArray,
@@ -110,17 +110,17 @@ class HnswVectorIndex(
         val entryPoint: Int,
     )
 
-    private val nodes = mutableListOf<Node>() // interno index → Node
-    private val idToIndex = HashMap<String, Int>() // externo id → interno index
+    private val nodes = mutableListOf<Node>() // 内部 index → Node
+    private val idToIndex = HashMap<String, Int>() // 外部 id → 内部 index
 
-    @Volatile private var entryPoint: Int = -1 // punto de entrada index
+    @Volatile private var entryPoint: Int = -1 // 入口点 index
 
-    @Volatile private var maxLayer: Int = -1 // Nivel máximo actual
+    @Volatile private var maxLayer: Int = -1 // 当前最大层级
     private val rng = Random(seed)
     private val lock = ReentrantReadWriteLock()
     private val saveLock = Any()
 
-    /** mL = 1 / ln(M),Se utiliza para generar jerarquías de nodos según una distribución exponencial.(Fórmula de tesis). */
+    /** mL = 1 / ln(M),用于按指数分布生成节点层级(论文公式)。 */
     private val mL: Double = 1.0 / ln(M.toDouble())
 
     override val size: Int
@@ -205,13 +205,13 @@ class HnswVectorIndex(
         val expectedDimension = idToIndex.values.firstOrNull()?.let { nodes[it].vector.size }
             ?: return@read emptyList()
         if (query.size != expectedDimension) return@read emptyList()
-        // Arriba a 1: Codicioso 1-NN
+        // 顶层到 1:贪心 1-NN
         var cur = entryPoint
         for (layer in maxLayer downTo 1) {
             cur = searchLayer(query, listOf(cur), layer, ef = 1)
                 .firstOrNull()?.second ?: cur
         }
-        // Capa 0: búsqueda ef
+        // 层 0:ef 搜索
         val ef = maxOf(efSearch, k)
         val candidates = searchLayer(query, listOf(cur), 0, ef)
         return@read candidates
@@ -228,23 +228,23 @@ class HnswVectorIndex(
     }
 
     /**
-     * Llamada dentro del bloqueo de escritura:Eliminación temporal del nodo en el índice especificado.
+     * 写锁内调用:软删除指定 index 的节点。
      *
-     * darse cuenta:marca deleted=true + Quitarte de todas las conexiones vecinas;
-     * Si se elimina el punto de entrada,Seleccione el nivel más alto entre los nodos restantes como nueva entrada.
-     * Sin eliminación física de nodos.(Evite la desalineación del índice que lleva a una reasignación de vecinos a gran escala).
+     * 实现:标记 deleted=true + 从所有邻居的连接中移除自己;
+     * 若入口点被删,选择剩余节点中 level 最高的作为新入口。
+     * 不物理移除节点(避免 index 错位导致大规模邻居重映射)。
      */
     private fun softDeleteInternal(removedIdx: Int) {
         if (removedIdx !in nodes.indices) return
         val removed = nodes[removedIdx]
         removed.deleted = true
-        // Quitarte de todas las conexiones vecinas
+        // 从所有邻居的连接中移除自己
         for (layer in 0..removed.level) {
             for (neighborIdx in removed.connections[layer].toList()) {
                 nodes.getOrNull(neighborIdx)?.connections?.getOrNull(layer)?.remove(removedIdx)
             }
         }
-        // Punto de entrada eliminado → Encuentre el nivel más alto entre los nodos restantes no eliminados
+        // 入口点被删 → 找剩余未删除节点中 level 最高的
         if (entryPoint == removedIdx) {
             var newEntry = -1
             var newMaxLayer = -1
@@ -262,13 +262,13 @@ class HnswVectorIndex(
     }
 
     /**
-     * Realizar una búsqueda en la capa especificada(papel Algorithm 2).
+     * 在指定层执行搜索(论文 Algorithm 2)。
      *
-     * @param query vector de consulta
-     * @param entryPoints Lista de índice de puntos de entrada
-     * @param layer capa objetivo
-     * @param ef Tamaño del conjunto de candidatos dinámicos
-     * @return lista de candidatos(distance, index),Ordenar por distancia ascendente
+     * @param query 查询向量
+     * @param entryPoints 入口点 index 列表
+     * @param layer 目标层
+     * @param ef 动态候选集大小
+     * @return 候选列表(distance, index),按距离升序
      */
     private fun searchLayer(query: FloatArray, entryPoints: List<Int>, layer: Int, ef: Int): List<Pair<Float, Int>> {
         if (entryPoints.isEmpty()) return emptyList()
@@ -311,23 +311,23 @@ class HnswVectorIndex(
             }
         }
 
-        return best.toList().sortedBy { it.first } // orden ascendente:más cercano primero
+        return best.toList().sortedBy { it.first } // 升序:最近的在前
     }
 
     /**
-     * heurística de selección de vecinos(papel Algorithm 4).
+     * 邻居选择启发式(论文 Algorithm 4)。
      *
-     * reglas:Seleccione los resultados de los candidatos en orden ascendente de distancia;Si la distancia entre el candidato e y el seleccionado r
-     * más cerca que e para consultar,luego salta e(evitar reuniones).
-     * Si el filtrado heurístico es insuficiente m,llenar(Permitir la suscripción no heurística).
+     * 规则:从候选中按距离升序依次选入结果;若候选 e 到已选 r 的距离
+     * 比 e 到 query 的距离更近,则跳过 e(避免聚集)。
+     * 若启发式过滤后不足 m,补满(允许非启发式选入)。
      */
     private fun selectNeighborsHeuristic(candidates: List<Pair<Float, Int>>, m: Int): List<Pair<Float, Int>> {
         if (candidates.isEmpty()) return emptyList()
-        val sorted = candidates.sortedBy { it.first } // orden ascendente:más cercano a la consulta primero
+        val sorted = candidates.sortedBy { it.first } // 升序:距离 query 最近的在前
         val result = mutableListOf<Pair<Float, Int>>()
         for ((eDist, eIdx) in sorted) {
             if (result.size >= m) break
-            // heurístico:e La distancia a consultar debe ser más cercana que la distancia de e a cualquier r seleccionado
+            // 启发式:e 到 query 的距离必须比 e 到任意已选 r 的距离更近
             var keep = true
             for ((_, rIdx) in result) {
                 val dER = distance(nodes[eIdx].vector, nodes[rIdx].vector)
@@ -338,7 +338,7 @@ class HnswVectorIndex(
             }
             if (keep) result.add(eDist to eIdx)
         }
-        // Insuficiente después del filtrado heurístico m → llenar
+        // 启发式过滤后不足 m → 补满
         if (result.size < m) {
             val existing = result.map { it.second }.toSet()
             for ((eDist, eIdx) in sorted) {
@@ -350,15 +350,15 @@ class HnswVectorIndex(
         return result
     }
 
-    /** Generar jerarquía de nodos según distribución exponencial.:level = floor(-ln(uniform(0,1)) * mL). */
+    /** 按指数分布生成节点层级:level = floor(-ln(uniform(0,1)) * mL)。 */
     private fun randomLevel(): Int {
         val r = rng.nextDouble()
-        // prevenir r=0 Causar que el registro diverja
+        // 防止 r=0 导致 log 发散
         val safeR = if (r <= 0.0) 1e-10 else r
         return Math.floor(-Math.log(safeR) * mL).toInt()
     }
 
-    /** distancia coseno = 1 - similitud coseno(alcance [0,2]);Las dimensiones deben ser consistentes.,Error de cálculo sin prefijo. */
+    /** 余弦距离 = 1 - 余弦相似度(范围 [0,2]);维度必须一致,不按前缀误算。 */
     private fun distance(a: FloatArray, b: FloatArray): Float {
         require(a.size == b.size) { "HNSW distance requires equal vector dimensions" }
         if (a.isEmpty()) return 1f
@@ -379,8 +379,8 @@ class HnswVectorIndex(
 
     override fun save(file: File, fingerprint: String?) = synchronized(saveLock) {
         val parent = checkNotNull(file.absoluteFile.parentFile)
-        check(parent.exists() || parent.mkdirs()) { "No se puede crear el directorio de índice HNSW: ${parent.absolutePath}" }
-        // El bloqueo de lectura durante la serialización permite el paralelismo de recuperación;saveLock Se garantiza que los archivos temporales y el eventual reemplazo serán serializados.
+        check(parent.exists() || parent.mkdirs()) { "无法创建 HNSW 索引目录: ${parent.absolutePath}" }
+        // 序列化期间读锁允许检索并行;saveLock 保证临时文件和最终替换串行。
         val tmp = File(parent, "${file.name}.${java.util.UUID.randomUUID()}.tmp")
         try {
             FileOutputStream(tmp).use { fileOutput ->
@@ -407,9 +407,9 @@ class HnswVectorIndex(
     }
 
 /**
-     * HEADER + NODES carga útil serializada(suministro [save] Escribir en un archivo temporal).
+     * HEADER + NODES 序列化载荷(供 [save] 写入临时文件)。
      *
-     * Primero recopile los nodos supervivientes y cree los antiguos. index → Mapeo de índice compacto,Luego genere el id/nivel/vector nodo por nodo/Conexiones vecinales a todos los niveles.
+     * 先收集存活节点并建立老 index → 紧凑 index 映射,再逐节点输出 id/level/向量/各层邻居连接。
      */
     private fun writePayload(out: DataOutputStream, fingerprint: String?) {
         // HEADER
@@ -424,7 +424,7 @@ class HnswVectorIndex(
         out.write(fingerprintBytes)
         out.writeInt(maxLayer)
 
-        // Recoge nodos supervivientes + crea viejos index → nuevo(Compacto)index mapeo
+        // 收集存活节点 + 建立老 index → 新(紧凑)index 映射
         val alive = nodes.mapIndexedNotNull { idx, node ->
             if (!node.deleted) idx to node else null
         }
@@ -444,7 +444,7 @@ class HnswVectorIndex(
             for (v in node.vector) out.writeFloat(v)
             out.writeInt(node.level + 1)
             for (layer in 0..node.level) {
-                // Filtrar conexiones a nodos eliminados(El índice antiguo no está en oldToNew.)
+                // 过滤掉指向已删除节点的连接(老 index 不在 oldToNew 中)
                 val conns = node.connections[layer].mapNotNull { oldToNew[it] }
                 out.writeInt(conns.size)
                 for (c in conns) out.writeInt(c)
@@ -556,24 +556,24 @@ class HnswVectorIndex(
     }
 
     companion object {
-        /** Predeterminado M: Número máximo de conexiones por capa.M=16 La velocidad de recuperación y construcción están bien equilibradas en la mayoría de los escenarios. */
+        /** 默认 M:每层最大连接数。M=16 在大多数场景下召回与构建速度平衡良好。 */
         const val DEFAULT_M = 16
 
-        /** EfConstruction predeterminado: tamaño de selección al construir.200 Es el valor recomendado del papel. */
+        /** 默认 efConstruction:构建时候选集大小。200 是论文推荐值。 */
         const val DEFAULT_EF_CONSTRUCTION = 200
 
-        /** EfSearch predeterminado: tamaño de selección al realizar consultas.50 Teniendo en cuenta las retiradas(>95%)y velocidad. */
+        /** 默认 efSearch:查询时候选集大小。50 兼顾召回(>95%)与速度。 */
         const val DEFAULT_EF_SEARCH = 50
 
-        /** Semilla aleatoria predeterminada(Proceso de construcción reproducible). */
+        /** 默认随机种子(可复现构建过程)。 */
         const val DEFAULT_SEED = 42L
 
         private const val MAX_FINGERPRINT_BYTES = 4096
 
-        /** archivo de persistencia magic header(6 bytes ASCII). */
+        /** 持久化文件 magic header(6 字节 ASCII)。 */
         private const val MAGIC = "HNSW01"
 
-        /** Versión de archivo persistente(v2 Agregar proveedor de incrustación/modelo/huella digital de dimensión). */
+        /** 持久化文件版本(v2 增加 embedding provider/model/dimension 指纹)。 */
         private const val VERSION = 2
     }
 }

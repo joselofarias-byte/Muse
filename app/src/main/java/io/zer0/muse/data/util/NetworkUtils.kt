@@ -4,15 +4,15 @@ import java.net.Inet4Address
 import java.net.NetworkInterface
 
 /**
- * Fase C: Herramientas de red — Obtenga la dirección IPv4 de LAN del dispositivo.
+ * 阶段 C: 网络工具 — 获取设备局域网 IPv4 地址。
  *
- * Se utiliza para la sección WebServer para mostrar la dirección de acceso real,Evite que los usuarios verifiquen manualmente la IP.
+ * 用于 WebServer section 显示真实访问地址,避免用户手动查 IP。
  *
- * darse cuenta: atravesar todo NetworkInterface,filtrar:
+ * 实现: 遍历所有 NetworkInterface,过滤:
  *  - isUp
  *  - !isLoopback
- *  - inetAddress si Inet4Address
- * Devuelve primero la dirección de wlan0/eth0,Evite las interfaces virtuales(Como por ejemplo docker0).
+ *  - inetAddress 是 Inet4Address
+ * 优先返回 wlan0 / eth0 的地址,避免虚拟接口(如 docker0)。
  */
 object NetworkUtils {
 

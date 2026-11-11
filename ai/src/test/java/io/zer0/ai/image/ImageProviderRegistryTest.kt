@@ -12,7 +12,7 @@ import org.junit.Before
 import org.junit.Test
 
 /**
- * R-TEST-20: Prueba lógica de cobertura y enrutamiento del centro de registro del proveedor de imágenes.
+ * R-TEST-20: 图片 Provider 注册中心路由与覆盖逻辑测试。
  */
 class ImageProviderRegistryTest {
 

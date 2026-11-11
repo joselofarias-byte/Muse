@@ -2,6 +2,7 @@ package io.zer0.muse.data.plugin
 
 import io.zer0.common.AppJson
 import io.zer0.common.Logger
+import io.zer0.muse.util.SafePaths
 import io.zer0.muse.util.readZipEntryWithLimit
 import kotlinx.serialization.decodeFromString
 import java.io.ByteArrayInputStream
@@ -9,26 +10,26 @@ import java.io.IOException
 import java.util.zip.ZipInputStream
 
 /**
- * B6-01: Cargador de paquetes de complementos externos.
+ * B6-01: 外部插件包加载器。
  *
- * apoyo `.muse-plugin` / ZIP Paquete de complementos:
+ * 支持 `.muse-plugin` / ZIP 插件包：
  * ```
  * plugin.muse-plugin (ZIP)
- * ├── manifest.json   (requerido,PluginManifest)
- * ├── main.js         (kind=tool/provider cuando sea necesario,JS entrada)
- * └── assets/         (Recursos complementarios opcionales)
+ * ├── manifest.json   (必需，PluginManifest)
+ * ├── main.js         (kind=tool/provider 时必需，JS 入口)
+ * └── assets/         (可选，插件资源)
  * ```
  *
- * Phase 4 anexar `kind == "ui-skin"` Paquete de aspectos declarativo para:
+ * Phase 4 追加 `kind == "ui-skin"` 的声明式皮肤包：
  * ```
  * skin.muse-plugin (ZIP)
- * ├── manifest.json   (requerido,kind="ui-skin",capabilities Debe contener ui.skin,tools debe estar vacío)
- * └── skin.json       (requerido,BubbleSkin JSON;No aparecerá nada en el paquete .js)
+ * ├── manifest.json   (必需，kind="ui-skin"，capabilities 必须含 ui.skin，tools 必须为空)
+ * └── skin.json       (必需，BubbleSkin JSON；包内不得出现任何 .js)
  * ```
- * El paquete skin solo distribuye JSON, no transporta ni ejecuta JS; el analizado [LoadedPluginPackage.skin] por anfitrión
- * verificar/Cuando fallan el procesamiento y la verificación, BubbleSkinResolver vuelve al valor predeterminado integrado.
+ * 皮肤包只分发 JSON，不携带也不执行 JS；解析出的 [LoadedPluginPackage.skin] 由宿主
+ * 校验/渲染，校验失败时 BubbleSkinResolver 回退内置 default。
  *
- * Restricciones de seguridad:ZIP Deben existir protección contra bombas, intercepción de recorrido de ruta y archivos de entrada.
+ * 安全限制：ZIP 炸弹防护、路径遍历拦截、入口文件必须存在。
  */
 object PluginPackageLoader {
 
@@ -38,7 +39,7 @@ object PluginPackageLoader {
     private const val MAX_TOTAL_SIZE = 10L * 1024 * 1024
     private const val MANIFEST_ENTRY = "manifest.json"
 
-    /** Rutas de recursos de aspectos en paquetes de aspectos declarativos(directorio raíz del paquete). */
+    /** 声明式皮肤包中的皮肤资源路径(包根目录)。 */
     const val UI_SKIN_ENTRY = "skin.json"
 
     sealed class Result {
@@ -51,11 +52,11 @@ object PluginPackageLoader {
         val entryCode: String,
         val extraFiles: Map<String, String> = emptyMap(),
         /**
-         * `kind == "ui-skin"` El aspecto declarativo analizado por el paquete; de lo contrario nulo.
+         * `kind == "ui-skin"` 包解析出的声明式皮肤；其他种类为 null。
          *
-         * Aquí solo se realiza el análisis de la estructura JSON.schema/Rango de valores/El contraste lo determina el anfitrión.
-         * [io.zer0.muse.ui.theme.BubbleSkinValidator] Determinar con resolutor antes de renderizar,
-         * Cuando el juicio falla, el usuario seguirá viendo la burbuja predeterminada incorporada y el cuerpo del mensaje no se verá afectado.
+         * 这里只做 JSON 结构解析，schema/取值范围/对比度由宿主
+         * [io.zer0.muse.ui.theme.BubbleSkinValidator] 与 resolver 在渲染前判定，
+         * 判定失败时用户看到的仍是内置 default 气泡，消息正文不受影响。
          */
         val skin: io.zer0.muse.ui.theme.BubbleSkin? = null,
     )
@@ -71,16 +72,24 @@ object PluginPackageLoader {
                 while (entry != null) {
                     val name = entry.name
                     if (!isSafeRelativePath(name)) {
-                        return Result.Err("camino ilegal: $name")
+                        return Result.Err("非法路径: $name")
                     }
                     if (entry.isDirectory) {
                         entry = zis.nextEntry
                         continue
                     }
-                    // Tipos de archivos aceptados..py ¿Se admite un tiempo de ejecución de complemento desde la versión 2.7 (subproceso CPython integrado)?
-                    // Aquí solo se aceptó .js/.json/.md, por lo que el archivo de entrada del complemento de Python estaba en la etapa de descomprimido.
-                    // Se descartó silenciosamente, pero el siguiente mensaje de error fue "falta un archivo de entrada".—— La causa raíz está aquí.
+                    // 接受的文件类型。.py 是 v2.7 起支持的插件运行时（内置 CPython 子进程）；
+                    // 这里曾经只收 .js/.json/.md，于是 python 插件的入口文件在解包阶段
+                    // 就被静默丢掉，后续报错却是「缺少入口文件」—— 根本原因在这里。
                     val lowerName = name.lowercase()
+                    // 原生库必须**明确拒绝**，不能跟着"不认识的扩展名"一起被静默跳过：
+                    // 静默跳过的结果是插件装得上、运行时才报"找不到库"，作者根本不知道为什么。
+                    if (lowerName.endsWith(NATIVE_LIBRARY_EXTENSION)) {
+                        return Result.Err(
+                            "插件包包含原生库 '$name'：Android 10（API 29）起禁止从应用私有目录加载 .so（W^X 策略），" +
+                                "外部插件无法使用原生库。确实需要时只能做成内置插件随 APK 打包。",
+                        )
+                    }
                     if (ACCEPTED_FILE_EXTENSIONS.none { lowerName.endsWith(it) }) {
                         entry = zis.nextEntry
                         continue
@@ -89,7 +98,7 @@ object PluginPackageLoader {
                     val bytes = readZipEntryWithLimit(zis, MAX_ENTRY_SIZE, name)
                     totalSize += bytes.size
                     if (totalSize > MAX_TOTAL_SIZE) {
-                        return Result.Err("El tamaño total descomprimido supera el límite(${MAX_TOTAL_SIZE / 1024 / 1024}MB)")
+                        return Result.Err("解压总大小超过限制(${MAX_TOTAL_SIZE / 1024 / 1024}MB)")
                     }
 
                     val content = bytes.toString(Charsets.UTF_8)
@@ -102,53 +111,53 @@ object PluginPackageLoader {
                 }
             }
         } catch (e: IOException) {
-            return Result.Err("ZIP Error de lectura: ${e.message}")
+            return Result.Err("ZIP 读取失败: ${e.message}")
         }
 
-        val json = manifestJson ?: return Result.Err("desaparecido manifest.json")
+        val json = manifestJson ?: return Result.Err("缺少 manifest.json")
         val manifest = runCatching {
             AppJson.decodeFromString<PluginManifest>(json)
         }.getOrElse { e ->
-            return Result.Err("manifest.json El análisis falló: ${e.message}")
+            return Result.Err("manifest.json 解析失败: ${e.message}")
         }
 
         if (manifest.id.isBlank() || manifest.name.isBlank()) {
-            return Result.Err("manifest.json desaparecido id/name")
+            return Result.Err("manifest.json 缺少 id/name")
         }
         if (!PLUGIN_ID_REGEX.matches(manifest.id)) {
-            return Result.Err("Los identificadores de complementos solo pueden contener letras minúsculas, números, guiones bajos y guiones.: ${manifest.id}")
+            return Result.Err("插件 id 只能包含小写字母、数字、下划线和连字符: ${manifest.id}")
         }
         if (manifest.tools.isEmpty() && manifest.kind != PluginSecurityGate.UI_SKIN_KIND) {
-            return Result.Err("manifest.json No se declaran herramientas")
+            return Result.Err("manifest.json 未声明任何工具")
         }
-        // Los paquetes externos no tienen firmas de autor ni raíces de confianza integradas, y no pueden autoinformar el acceso completo a través del manifiesto.
+        // 外部包没有作者签名和内置信任根，不能通过清单自报 full-access。
         if (manifest.trust != "sandboxed") {
-            return Result.Err("Los complementos externos deben utilizar el nivel de confianza del espacio aislado")
+            return Result.Err("外部插件必须使用 sandboxed 信任级别")
         }
 
-        // ── Phase 4: Paquete declarativo ui-skin(Sin herramientas, nada JS,Solo se distribuyen skins JSON) ──
+        // ── Phase 4: 声明式 ui-skin 包(无 tools、无 JS,只分发皮肤 JSON) ──
         if (manifest.kind == PluginSecurityGate.UI_SKIN_KIND) {
             if (manifest.tools.isNotEmpty()) {
-                return Result.Err("ui-skin Los complementos no deben declarar herramientas ejecutables")
+                return Result.Err("ui-skin 插件不得声明可执行工具")
             }
             if (PluginSecurityGate.UI_SKIN_CAPABILITY !in manifest.capabilities) {
-                return Result.Err("ui-skin Los complementos deben declarar ${PluginSecurityGate.UI_SKIN_CAPABILITY} Habilidad")
+                return Result.Err("ui-skin 插件必须声明 ${PluginSecurityGate.UI_SKIN_CAPABILITY} 能力")
             }
             if (allFiles.keys.any { key -> FORBIDDEN_SKIN_EXTENSIONS.any { key.lowercase().endsWith(it) } }) {
-                return Result.Err("ui-skin Los complementos no deben contener archivos JS")
+                return Result.Err("ui-skin 插件不得包含 JS 文件")
             }
             val skinJson = allFiles[UI_SKIN_ENTRY]
-                ?: return Result.Err("ui-skin El complemento carece de recursos de máscara.: $UI_SKIN_ENTRY")
+                ?: return Result.Err("ui-skin 插件缺少皮肤资源: $UI_SKIN_ENTRY")
             val skin = runCatching {
                 AppJson.decodeFromString<io.zer0.muse.ui.theme.BubbleSkin>(skinJson)
             }.getOrElse { e ->
-                return Result.Err("$UI_SKIN_ENTRY El análisis falló: ${e.message}")
+                return Result.Err("$UI_SKIN_ENTRY 解析失败: ${e.message}")
             }
-            Logger.i(TAG, "Paquete de complemento ui-skin cargado: ${manifest.id} v${manifest.version} (piel ${skin.id})")
+            Logger.i(TAG, "已加载 ui-skin 插件包: ${manifest.id} v${manifest.version} (皮肤 ${skin.id})")
             return Result.Ok(
                 LoadedPluginPackage(
                     manifest = manifest,
-                    // Los paquetes declarativos no tienen punto de entrada JS;Una cadena vacía garantiza que no se pueda obtener ningún código ejecutable desde ninguna ruta de ejecución.
+                    // 声明式包没有 JS 入口;空串保证任何执行路径都拿不到可运行代码。
                     entryCode = "",
                     extraFiles = allFiles.toMap(),
                     skin = skin,
@@ -156,20 +165,20 @@ object PluginPackageLoader {
             )
         }
 
-        // La extensión de entrada está determinada por manifest.runtime:python El tiempo de ejecución requiere .py, el resto (js predeterminado) requiere .js.
-        // Ambos lugares deben ser consistentes. —— Lista blanca de desembalaje, verificación de entrada,PluginSecurityGate.rejectionReason
-        // Los tres lugares dan la misma respuesta a "¿Se puede ejecutar este complemento?" De lo contrario, aparecerá nuevamente "Se puede instalar pero no ejecutar".
+        // 入口扩展名按 manifest.runtime 判定：python 运行时要求 .py，其余（默认 js）要求 .js。
+        // 两处必须一致 —— 解包白名单、入口校验、PluginSecurityGate.rejectionReason
+        // 三处对「这个插件能不能跑」给出同一个答案，否则又会出现「能装上但跑不了」。
         val expectedExt = expectedEntryExtension(manifest)
         if (!isSafeRelativePath(manifest.entry) || !manifest.entry.lowercase().endsWith(expectedExt)) {
             return Result.Err(
-                "manifest.json La ruta del archivo de entrada es ilegal (runtime=${manifest.runtime} necesitar $expectedExt entrada): ${manifest.entry}",
+                "manifest.json 的入口文件路径非法（runtime=${manifest.runtime} 需要 $expectedExt 入口）: ${manifest.entry}",
             )
         }
 
         val entryCode = allFiles.remove(manifest.entry)
-            ?: return Result.Err("Falta el archivo de entrada: ${manifest.entry}")
+            ?: return Result.Err("缺少入口文件: ${manifest.entry}")
 
-        Logger.i(TAG, "Paquete de complemento cargado: ${manifest.id} v${manifest.version} (${manifest.tools.size} Herramientas)")
+        Logger.i(TAG, "已加载插件包: ${manifest.id} v${manifest.version} (${manifest.tools.size} 工具)")
         return Result.Ok(
             LoadedPluginPackage(
                 manifest = manifest,
@@ -180,12 +189,12 @@ object PluginPackageLoader {
     }
 
     /**
-     * Elimine la máscara declarativa del paquete reconstruido en el directorio instalado(Ruta no ZIP).
+     * 从已安装目录重建的包中取出声明式皮肤(非 ZIP 路径)。
      *
-     * con [loadFromZip] La rama ui-skin mantiene el mismo conjunto de restricciones:solo aceptar `kind == "ui-skin"`,
-     * Declaración [PluginSecurityGate.UI_SKIN_CAPABILITY], sin herramientas y no contiene ningún `.js` paquete.
-     * Cualquier condición no se cumple o `skin.json` Devolver si falla el análisis null,En consecuencia, la persona que llama recurre al teléfono integrado. default,
-     * No se realiza ningún análisis de degradación,Los archivos fuera del directorio del complemento tampoco se modifican.
+     * 与 [loadFromZip] 的 ui-skin 分支保持同一套约束:只接受 `kind == "ui-skin"`、
+     * 声明 [PluginSecurityGate.UI_SKIN_CAPABILITY]、无工具且不含任何 `.js` 的包。
+     * 任一条件不满足或 `skin.json` 解析失败返回 null,调用方据此回退内置 default,
+     * 不做任何降级解析,也不接触插件目录以外的文件。
      */
     fun extractUiSkin(pluginPackage: LoadedPluginPackage): io.zer0.muse.ui.theme.BubbleSkin? {
         val manifest = pluginPackage.manifest
@@ -199,25 +208,21 @@ object PluginPackageLoader {
         }.getOrNull()
     }
 
-    private fun isSafeRelativePath(path: String): Boolean {
-        val normalized = path.trimEnd('/')
-        return normalized.isNotBlank() &&
-            !normalized.startsWith("/") &&
-            !normalized.startsWith("\\") &&
-            !normalized.contains("..") &&
-            !normalized.contains('\\') &&
-            normalized.split('/').none { it.isBlank() || it == "." }
-    }
+    /** 路径校验已收敛到 [SafePaths]（全仓一份实现）。这里只留转发，避免同名校验出现宽严不一。 */
+    private fun isSafeRelativePath(path: String): Boolean = SafePaths.isSafeRelative(path)
 
     private val PLUGIN_ID_REGEX = Regex("^[a-z0-9][a-z0-9_-]*$")
 
-    /** Tipos de archivos permitidos dentro del paquete. */
+    /** 包内允许的文件类型。 */
     private val ACCEPTED_FILE_EXTENSIONS = listOf(".js", ".json", ".md", ".py")
 
-    /** ui-skin Es un paquete declarativo y no debe contener ningún código ejecutable. */
+    /** 原生库扩展名：单独识别，用于给出"平台不允许"的明确原因。 */
+    private const val NATIVE_LIBRARY_EXTENSION = ".so"
+
+    /** ui-skin 是声明式包，不得携带任何可执行代码。 */
     private val FORBIDDEN_SKIN_EXTENSIONS = listOf(".js", ".py")
 
-    /** Presione manifest.runtime para obtener la extensión que debe tener el archivo de entrada. */
+    /** 按 manifest.runtime 得出入口文件应有的扩展名。 */
     private fun expectedEntryExtension(manifest: PluginManifest): String =
         if (manifest.runtime.equals("python", ignoreCase = true)) ".py" else ".js"
 }

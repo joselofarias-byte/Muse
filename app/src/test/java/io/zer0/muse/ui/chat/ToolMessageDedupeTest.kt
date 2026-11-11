@@ -9,11 +9,11 @@ import org.junit.Test
 import kotlin.uuid.Uuid
 
 /**
- * El producto se renderiza y deduplica repetidamente.
+ * 产物重复渲染去重的测试。
  *
- * Comentarios del usuario "Se muestran dos tarjetas dentro de una tarjeta y en ese lugar": aparecerán dos mensajes en la rueda de herramientas ——
- * Un mensaje asistente cuelga la tarjeta de tareas (la tarjeta se ha dibujado en el paso), además de un mensaje en pantalla para cada herramienta.
- * (También vende productos directamente). Si no elimina los duplicados, verá las copias superior e inferior de la misma tarjeta.
+ * 用户反馈「一个卡里面和那个地方展示两个卡片」：工具轮会落两条消息 ——
+ * 一条助手消息挂着任务卡（步骤里已经画了卡片），外加每个工具一条展示消息
+ * （它自己也走产物直出）。不去重就会看到同一张卡上下各一份。
  */
 class ToolMessageDedupeTest {
 
@@ -58,7 +58,7 @@ class ToolMessageDedupeTest {
             taskCardOwnerIds = emptySet(),
         )
 
-        assertTrue("Sin tarjetas de tareas, sin fuentes duplicadas,Los productos no deben ocultarse.", covered.isEmpty())
+        assertTrue("没有任务卡就没有重复来源,不该隐藏产物", covered.isEmpty())
     }
 
     @Test
@@ -72,7 +72,7 @@ class ToolMessageDedupeTest {
             taskCardOwnerIds = setOf(cardOwner.id.toString()),
         )
 
-        assertTrue("El producto debe conservarse cuando el mensaje principal no tenga tarjeta de tarea", covered.isEmpty())
+        assertTrue("父消息没有任务卡时产物必须保留", covered.isEmpty())
     }
 
     @Test
@@ -93,7 +93,7 @@ class ToolMessageDedupeTest {
             taskCardOwnerIds = setOf(orphan.id.toString()),
         )
 
-        assertTrue("Sin una asociación de padres, no hay manera de determinar la duplicación.,Mantenlo de forma conservadora", covered.isEmpty())
+        assertTrue("没有父关联就无从判断重复,保守起见保留", covered.isEmpty())
     }
 
     @Test
@@ -101,7 +101,7 @@ class ToolMessageDedupeTest {
         val owner = assistant()
         val plain = UIMessage(
             role = MessageRole.ASSISTANT,
-            content = "respuesta normal",
+            content = "普通回复",
             parentMessageId = owner.id.toString(),
         )
 

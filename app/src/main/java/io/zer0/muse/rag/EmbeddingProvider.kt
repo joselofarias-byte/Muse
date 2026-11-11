@@ -1,48 +1,48 @@
 package io.zer0.muse.rag
 
 /**
- * v1.54: Embedding Interfaz del proveedor.
+ * v1.54: Embedding 提供者接口。
  *
- * Clase de implementación:
- *  - [OpenAIEmbeddingProvider]: nube API(OpenAI / Interfaces compatibles con OpenAI como Zhipu/Tongyi, etc.)
- *  - [LocalKeywordEmbeddingProvider]: hash de palabras clave locales embedding(Sin conexión,No es necesario ONNX)
- *  - [OnnxEmbeddingProvider]: Inferencia ONNX nativa(reservado,La implementación completa estará habilitada en versiones posteriores.)
+ * 实现类:
+ *  - [OpenAIEmbeddingProvider]: 云端 API(OpenAI / 智谱 / 通义等 OpenAI 兼容接口)
+ *  - [LocalKeywordEmbeddingProvider]: 本地关键词哈希 embedding(离线,无需 ONNX)
+ *  - [OnnxEmbeddingProvider]: 本地 ONNX 推理(预留,完整实现在后续版本启用)
  *
  * @see RagConfig.EmbeddingSource
  */
 interface EmbeddingProvider {
-    /** ID del proveedor(Se utiliza para registros y visualización de UI). */
+    /** 提供者标识(用于日志和 UI 展示)。 */
     val id: String
 
-    /** Nombre para mostrar. */
+    /** 显示名。 */
     val displayName: String
 
-    /** Dimensiones del vector de salida(Diferentes modelos tienen diferentes dimensiones.,Las dimensiones deben ser consistentes al recuperar). */
+    /** 输出向量维度(不同模型维度不同,检索时须维度一致)。 */
     val dimension: Int
 
-    /** Nombre del modelo(para seguimiento knowledge_docs.embedding_model). */
+    /** 模型名(用于追踪 knowledge_docs.embedding_model)。 */
     val modelName: String
 
     /**
-     * v2.6.0 (AUD-RAG-F3): HNSW embedding Apertura dimensional utilizada para huellas dactilares.
+     * v2.6.0 (AUD-RAG-F3): HNSW embedding 指纹用的维度口径。
      *
-     * [dimension] Podría ser solo una suposición antes de la primera inserción (consulte la guía de OpenAIEmbeddingProvider).
-     * guessDimension). Escribir valores de conjetura en las huellas dactilares da como resultado "adivinar"→Salto "verdadero", juzgado cada arranque en frío
-     * La huella dactilar cambia y se reconstruye el índice. Devoluciones de la clase de implementación**estable**Cadena de dimensiones: se ha medido la dimensión real,
-     * La ocupación fija no se utiliza en las pruebas reales.
+     * [dimension] 在首次 embed 前可能只是猜测值（见 OpenAIEmbeddingProvider 的
+     * guessDimension）。把猜测值写进指纹会造成「猜测→真实」跳变，每次冷启动都判定
+     * 指纹变化并重建索引。实现类返回**稳定**的维度字符串：已实测用真实维度，
+     * 未实测用固定占位。
      */
     val fingerprintDimension: String
         get() = dimension.toString()
 
     /**
-     * Generar incrustaciones en lotes.
-     * @param texts Lista de texto a codificar
-     * @return Lista de vectores correspondiente(El orden es consistente con la entrada.),Cada elemento es FloatArray
-     * @throws Exception red/Se lanza cuando se produce un error en el modelo.,Manejado por la persona que llama runCatching
+     * 批量生成 embedding。
+     * @param texts 待编码文本列表
+     * @return 对应的向量列表(顺序与输入一致),每条为 FloatArray
+     * @throws Exception 网络/模型错误时抛出,由调用方 runCatching 处理
      */
     suspend fun embed(texts: List<String>): List<FloatArray>
 
-    /** texto único embedding(método de conveniencia,ajuste interno [embed]). */
+    /** 单条文本 embedding(便捷方法,内部调 [embed])。 */
     suspend fun embed(text: String): FloatArray = embed(listOf(text)).firstOrNull()
         ?: throw IllegalStateException("Provider returned empty vector list")
 }

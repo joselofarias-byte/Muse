@@ -1,32 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- ===== ui/onboarding ===== Página de inicio -->
-    <!-- Paso 0: página de bienvenida -->
+    <!-- ===== ui/onboarding ===== 开机引导页 -->
+    <!-- 步骤 0:欢迎页 -->
 
-    <!-- Paso 1: idioma y apariencia -->
+    <!-- 步骤 1:语言与外观 -->
     <string name="onboarding_language_title">Elige tu idioma</string>
     <string name="onboarding_language_subtitle">Puedes cambiar el idioma de la interfaz en cualquier momento desde Ajustes.</string>
     <string name="onboarding_theme_title">Elige la apariencia</string>
     <string name="onboarding_theme_subtitle">Puedes cambiar el tema en cualquier momento desde Ajustes.</string>
-    <string name="onboarding_lang_es">Español</string>
-    <string name="onboarding_lang_pt">Portugués</string>
-    <string name="onboarding_lang_ru">Ruso</string>
-    <string name="onboarding_lang_en">English</string>
-    <string name="onboarding_lang_ja">Japonés</string>
-    <string name="onboarding_lang_ko">한국어</string>
 
-    <!-- Paso 2: Tu nombre -->
+    <!-- 步骤 2:你的名字 -->
     <string name="onboarding_names_title">Vamos a conocernos</string>
     <string name="onboarding_names_subtitle">Puedes cambiar tu nombre y el del asistente más adelante.</string>
     <string name="onboarding_names_user_label">¿Cómo debería llamarte?</string>
     <string name="onboarding_names_agent_label">Nombre del asistente</string>
+    <string name="onboarding_names_user_placeholder">Por ejemplo, Alex</string>
+    <string name="onboarding_names_agent_placeholder">Por ejemplo, Nova</string>
     <string name="onboarding_names_hint">Este nombre se usará para el asistente predeterminado. Puedes cambiarlo en cualquier momento.</string>
     <string name="onboarding_memory_title">Activa la memoria</string>
     <string name="onboarding_memory_subtitle">Al activarla, Muse organiza automáticamente los recuerdos después de cada conversación. Actualizar la memoria con frecuencia puede reducir el aprovechamiento de la caché del modelo y aumentar el costo, pero permite mantener el contexto a largo plazo.</string>
     <string name="onboarding_memory_switch_title">Habilitar sistema de memoria</string>
     <string name="onboarding_memory_switch_subtitle">Organiza los recuerdos al terminar cada conversación. Puedes desactivarla desde Ajustes.</string>
 
-    <!-- Paso 3: Configurar el proveedor -->
+    <!-- 步骤 3:配置供应商 -->
     <string name="onboarding_provider_title">Conecta un proveedor de IA</string>
     <string name="onboarding_provider_subtitle">Elige un proveedor, introduce tu clave API y prueba la conexión. Muse obtendrá los modelos disponibles y detectará sus capacidades.</string>
     <string name="onboarding_provider_err_auth">Error de autenticación: comprueba tu clave API.</string>
@@ -39,21 +35,28 @@
     <string name="onboarding_provider_apikey_show">Mostrar clave</string>
     <string name="onboarding_provider_apikey_hide">Ocultar clave</string>
     <string name="onboarding_provider_test_button">Probar conexión</string>
-    <string name="onboarding_provider_test_success">Conexión correcta: %1$d modelos disponibles</string>
+    <plurals name="onboarding_provider_test_success">
+        <item quantity="one">Conexión correcta: %1$d modelo disponible</item>
+        <item quantity="many">Conexión correcta: %1$d modelos disponibles</item>
+        <item quantity="other">Conexión correcta: %1$d modelos disponibles</item>
+    </plurals>
     <string name="onboarding_provider_skip">Configurarlo más tarde en ajustes</string>
     <string name="onboarding_provider_custom">Personalizado (compatible con OpenAI)</string>
     <string name="onboarding_provider_custom_baseurl_label">URL base de la API</string>
     <string name="onboarding_provider_custom_baseurl_input">https://api.example.com/v1</string>
 
-    <!-- Paso 4: Selecciona un modelo -->
+    <!-- 步骤 4:选择模型 -->
     <string name="onboarding_model_title">Elige tu modelo principal</string>
     <string name="onboarding_model_search_label">Buscar modelos</string>
     <string name="onboarding_model_empty_title">Ningún proveedor configurado</string>
     <string name="onboarding_model_empty_desc">Puedes agregar un proveedor y elegir un modelo más adelante desde Ajustes.</string>
 
-    <!-- Paso 5: página completa -->
+    <!-- 步骤 5:完成页 -->
     <string name="onboarding_complete_title">Todo listo</string>
+    <string name="onboarding_provider_next_hint">Elige un proveedor, introduce tu clave API y prueba la conexión para continuar. También puedes configurarlo más tarde.</string>
+    <string name="onboarding_welcome_greetings_caption">Tu asistente, a tu manera</string>
     <string name="onboarding_complete_subtitle">Estas son algunas cosas que puedes hacer:</string>
+    <string name="onboarding_restore_from_backup">Restaurar datos desde una copia de seguridad</string>
     <string name="onboarding_tutorial_chat_title">Conversaciones</string>
     <string name="onboarding_tutorial_chat_desc">Conversa con tu asistente y envía texto, imágenes y archivos.</string>
     <string name="onboarding_tutorial_assistant_title">Asistentes y memoria</string>
@@ -63,7 +66,7 @@
     <string name="onboarding_tutorial_backup_title">Copia de seguridad de datos</string>
     <string name="onboarding_tutorial_backup_desc">Guarda tus datos en WebDAV o S3 y recupéralos cuando cambies de dispositivo.</string>
 
-    <!-- botón inferior -->
+    <!-- 底部按钮 -->
     <string name="onboarding_button_start">Empezar a configurar</string>
     <string name="onboarding_button_previous">Paso anterior</string>
     <string name="onboarding_button_next">Siguiente paso</string>

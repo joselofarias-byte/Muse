@@ -13,19 +13,19 @@ import androidx.compose.ui.unit.dp
 import io.zer0.muse.data.artifact.ArtifactEntity
 
 /**
- * Lista horizontal de la tarjeta de producto —— Se utiliza en la parte inferior de la burbuja del mensaje para mostrar todos los productos extraídos del mensaje.
+ * 产物卡片横向列表 —— 用于消息气泡底部展示该消息抽取出的全部产物。
  *
- * Phase 2: exceder [MAX_VISIBLE_ARTIFACT_CARDS] Sólo se mostrarán los primeros 5,
- * para cola "+N" plegado de tarjetas,Haga clic para expandir todo(Asegúrese de que los productos colapsados aún sean accesibles).
+ * Phase 2: 超过 [MAX_VISIBLE_ARTIFACT_CARDS] 个时只展示前 5 个,
+ * 尾部用 "+N" 卡片折叠,点击后展开全部(保证被折叠的产物仍可访问)。
  */
 @Composable
 fun ArtifactCardList(artifacts: List<ArtifactEntity>, onArtifactClick: (ArtifactEntity) -> Unit, modifier: Modifier = Modifier) {
-    // Utilice la primera identificación del producto como clave para guardar:Cambio de mensajes(Listar cambios de contenido)restablecer el estado expandido
+    // 以首条产物 id 作为保存键:消息切换(列表内容变化)时重置展开态
     var expanded by rememberSaveable(artifacts.firstOrNull()?.id) { mutableStateOf(false) }
     val visible = if (expanded) artifacts else artifacts.take(MAX_VISIBLE_ARTIFACT_CARDS)
     val hiddenCount = artifacts.size - visible.size
 
-    // v2.0.1: Camión longitudinal grande — 180dp Las tarjetas horizontales pequeñas se cambian a columnas de tarjetas grandes de ancho completo (formato de tarjeta de producto).
+    // v2.0.1: 纵排大卡 — 180dp 小横卡改为全宽大卡纵列（产物卡范式）。
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(8.dp),

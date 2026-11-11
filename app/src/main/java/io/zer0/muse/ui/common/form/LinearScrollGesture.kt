@@ -29,43 +29,64 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 /**
- * larga sesión**Gesto de desplazamiento lineal**(v2.5.9 para reemplazar la pista visual).
+ * 长会话**线性滚动手势**（v2.5.9 起取代可视轨道）。
  *
- * Interacción: En la zona activa en el lado derecho de la pantalla.**Pulsación larga**Active (mensaje de vibración ligera), luego deslice hacia arriba y hacia abajo para desplazarse linealmente por el contenido.
+ * 交互：在屏幕右侧热区内**长按**激活（轻震动提示），随后上下滑动即可线性滚动内容。
  *
- * ## ¿Por qué no hacer pistas visuales?
+ * ## 为什么不做可视轨道
  *
- * LazyColumn La altura total no está expuesta y solo se puede utilizar"La altura real de los elementos medidos + la extrapolación de la altura promedio de los elementos no medidos"estimación
- * (Ver [LinearScrollModel]). entrada larga (imagen/bloque de código) es mucho mayor que la altura promedio, y el error de estimación
- * Extremadamente grande. cualquiera"Posición absoluta del dedo → Ubicación del contenido de destino"El mapeo (la naturaleza de las órbitas visuales) se verá afectado por errores.
- * Ubicación incorrecta —— Aparece como un arrastre"flotando al azar". El mapeo incremental evita esta contradicción fundamental: presione la línea de base de la instantánea instantánea,
- * Durante el arrastre, sólo**Desplazamiento de los dedos**convertido a**Desplazamiento de contenido**, la línea de base permanece sin cambios → Continuo, imposible de saltar.
+ * LazyColumn 不暴露总高度，只能用"已测项真实高度 + 未测项按平均高外推"估算
+ * （见 [LinearScrollModel]）。长条目（图片/代码块）的真实高度远超平均高，估算误差
+ * 极大。任何"手指绝对位置 → 目标内容位置"的映射（可视轨道的本质）都会因误差而
+ * 落错位置 —— 表现为拖动"乱飘"。增量映射绕开了这个根本矛盾：按下瞬间快照基准，
+ * 拖动中只把**手指位移**换算成**内容位移**，基准不变 → 连续、不可能跳。
  *
- * ## mapeo
+ * ## 映射
  *
- * `Desplazamiento de contenido = Desplazamiento de los dedos/altura de la zona caliente × Rango de desplazamiento accesible`. Equivalente semántico de la barra de desplazamiento: el pulgar se mueve desde la posición actual
- * Al deslizarse por toda la altura de la zona activa, el contenido simplemente se desplaza por todo el rango accesible. El error en la estimación de la altura total sólo afecta"Sensibilidad", no más
- * influencia"Corrección de la colocación".
+ * `内容位移 = 手指位移 / 热区高度 × 可达滚动范围`。语义等同滚动条：拇指从当前位置
+ * 滑过整个热区高度，内容正好滚完整个可达范围。总高估算的误差只影响"灵敏度"，不再
+ * 影响"落点正确性"。
  *
- * No responderá si aún no se ha medido (el modelo no está disponible), lo que garantiza que no se produzcan daños accidentales.
+ * 尚未测量（模型不可用）时不响应，保证不误伤。
  */
 internal val RAIL_TOUCH_WIDTH: Dp = 40.dp
 
-/** La cantidad de píxeles para compensar el desplazamiento al arrastrar hasta el final (desplazarse hasta el final real, evitando el error de estimación de altura total; el desplazamiento se fijará al límite por sí solo). */
+/** 拖到底时补滚的像素量（滚到真实末尾，绕开总高估算误差；滚动会自行钳到边界）。 */
 private const val BOTTOM_OVERSCROLL_PX = 1_000_000f
 
-/** Listar altura visible (px). Priorice el tamaño de la ventana gráfica; retroceda al desplazamiento final de la ventana gráfica cuando el diseño aún no esté terminado. */
-internal fun listViewportPx(state: LazyListState): Float {
-    val h = state.layoutInfo.viewportSize.height.toFloat()
-    return if (h > 0f) h else state.layoutInfo.viewportEndOffset.toFloat()
+/**
+ * One immutable layout sample for long-press navigation.
+ *
+ * Keeping the sample independent from [LazyListState] makes it explicit that
+ * idle composition does not observe list layout and that a gesture works from
+ * one stable baseline.
+ */
+internal data class LinearScrollSnapshot(
+    val visibleItems: List<LinearScrollItem>,
+    val totalItemsCount: Int,
+    val viewportSizePx: Int,
+    val viewportEndOffsetPx: Int,
+    val firstVisibleItemIndex: Int,
+    val firstVisibleItemScrollOffset: Int,
+)
+
+internal data class LinearScrollItem(
+    val index: Int,
+    val size: Int,
+)
+
+/** 列表可视高度（px）。优先用视口尺寸；尚未布局时回退到视口末端偏移。 */
+internal fun listViewportPx(snapshot: LinearScrollSnapshot): Float {
+    val h = snapshot.viewportSizePx.toFloat()
+    return if (h > 0f) h else snapshot.viewportEndOffsetPx.toFloat()
 }
 
 /**
- * Modelo de altura del contenido: poner"posición de desplazamiento"Convierta del calibre del número de serie del artículo al calibre del volumen del contenido.
+ * 内容高度模型：把"滚动位置"从条目序号口径换算到内容量口径。
  *
- * LazyColumn Sólo están expuestos los elementos actualmente visibles y la altura total se estima a partir de dos fuentes:
- *  - La altura real del elemento medido (exacta, de visibleItemsInfo);
- *  - Para artículos no medidos"Altura media medida"Extrapolación (aproximación).
+ * LazyColumn 只暴露当前可见项，用两个来源估算总高：
+ *  - 已测量项的真实高度（精确，来自 visibleItemsInfo）；
+ *  - 未测量项用"已测平均高"外推（近似）。
  */
 internal class LinearScrollModel {
     private val measured = HashMap<Int, Int>()
@@ -73,9 +94,9 @@ internal class LinearScrollModel {
     private var avgCache = 0f
     private var prefix: FloatArray = FloatArray(0)
 
-    /** Actualice el caché con la altura del elemento actualmente visible (cada llamada de reorganización es suficiente). */
-    fun update(state: LazyListState) {
-        state.layoutInfo.visibleItemsInfo.forEach { info ->
+    /** 用当前可见项高度刷新缓存（每次重组调用即可）。 */
+    fun update(snapshot: LinearScrollSnapshot) {
+        snapshot.visibleItems.forEach { info ->
             if (info.size > 0 && measured[info.index] != info.size) {
                 measured[info.index] = info.size
                 dirty = true
@@ -89,7 +110,7 @@ internal class LinearScrollModel {
         return avgCache
     }
 
-    /** Reconstruir la suma del prefijo:prefix[i] = La altura acumulada de los primeros i elementos (px). */
+    /** 重建前缀和：prefix[i] = 前 i 条的累计高度（px）。 */
     private fun ensurePrefix(count: Int) {
         if (!dirty && prefix.size == count + 1) return
         val avg = avgHeight()
@@ -104,28 +125,28 @@ internal class LinearScrollModel {
         dirty = false
     }
 
-    /** Altura total estimada del contenido (px); devuelve 0 cuando no hay medición. */
-    fun totalPx(state: LazyListState): Float {
+    /** 估算的内容总高（px）；无测量时返回 0。 */
+    fun totalPx(snapshot: LinearScrollSnapshot): Float {
         val avg = avgHeight()
         if (avg <= 0f) return 0f
-        val count = state.layoutInfo.totalItemsCount
+        val count = snapshot.totalItemsCount
         ensurePrefix(count)
         return prefix.getOrElse(count) { 0f }
     }
 
-    /** No. [index] El desplazamiento inicial de la barra (px). */
+    /** 第 [index] 条的起始偏移（px）。 */
     fun offsetPx(index: Int): Float {
         val safe = index.coerceAtLeast(0)
         return if (safe < prefix.size) prefix[safe] else 0f
     }
 
-    /** desplazamiento del contenido desplazado (px). */
-    fun scrolledPx(state: LazyListState): Float {
-        ensurePrefix(state.layoutInfo.totalItemsCount)
-        return offsetPx(state.firstVisibleItemIndex) + state.firstVisibleItemScrollOffset
+    /** 已滚过的内容偏移（px）。 */
+    fun scrolledPx(snapshot: LinearScrollSnapshot): Float {
+        ensurePrefix(snapshot.totalItemsCount)
+        return offsetPx(snapshot.firstVisibleItemIndex) + snapshot.firstVisibleItemScrollOffset
     }
 
-    /** desplazamiento de contenido (px) cae en qué entrada (verificación inversa usando el prefijo actual). */
+    /** 内容偏移（px）落在哪个条目（用当前前缀反查）。 */
     fun indexAtOffset(offset: Float): Int {
         if (prefix.size <= 1) return 0
         var i = 0
@@ -136,10 +157,10 @@ internal class LinearScrollModel {
 }
 
 /**
- * Mantenga presionado el lado derecho para desplazarse linealmente por la zona activa.
+ * 右侧长按线性滚动热区。
  *
- * @param listState Lista de objetivos.
- * @param onActiveIndexChange entrada de golpe deslizante**lista de índice absoluto**devolución de llamada (null indica el final).
+ * @param listState 目标列表。
+ * @param onActiveIndexChange 滑动命中条目的**列表绝对索引**回调（null 表示结束）。
  */
 @Suppress("FunctionNaming")
 @Composable
@@ -147,17 +168,15 @@ internal fun LinearScrollGesture(
     listState: LazyListState,
     modifier: Modifier = Modifier,
     onActiveIndexChange: ((Int?) -> Unit)? = null,
-    /** Una pulsación larga activa el cambio de estado (true = Inicie la navegación deslizante,false = final). Se utiliza para mostrar y ocultar señales visuales. */
+    /** 长按激活状态变化（true = 开始滑动导航，false = 结束）。用于显隐可视提示。 */
     onActiveChange: ((Boolean) -> Unit)? = null,
+    snapshotSource: () -> LinearScrollSnapshot = { listState.toLinearScrollSnapshot() },
 ) {
     val scope = rememberCoroutineScope()
     val haptic = LocalHapticFeedback.current
     var active by remember { mutableStateOf(false) }
     val scrollJob = remember { mutableStateOf<Job?>(null) }
     val model = remember { LinearScrollModel() }
-    // Durante la activación**congelar**Modelo de altura: El punto de referencia toma una instantánea cuando se establece una pulsación larga y no acepta nuevas medidas durante el deslizamiento.
-    // garantia"Desplazamiento de los dedos → Desplazamiento de contenido"El factor de conversión es estable.
-    if (!active) model.update(listState)
 
     LaunchedEffect(active) {
         if (!active) onActiveIndexChange?.invoke(null)
@@ -172,11 +191,24 @@ internal fun LinearScrollGesture(
             .pointerInput(listState) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
-                    // Mantenga presionado para activar; pulsación corta/Desliza rápidamente sin bloquear y deja que el evento termine de forma natural.
+                    // 长按才激活；短按/快速滑动不拦截，让事件自然结束。
                     val longPress = awaitLongPressOrCancellation(down.id) ?: return@awaitEachGesture
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    // Reading layoutInfo subscribes the caller to every list
+                    // measurement. Take one snapshot only after activation.
+                    val snapshot = snapshotSource()
+                    model.update(snapshot)
                     active = true
-                    runLinearDrag(down, longPress.position.y, model, listState, scrollJob, scope, onActiveIndexChange)
+                    runLinearDrag(
+                        down,
+                        longPress.position.y,
+                        snapshot,
+                        model,
+                        listState,
+                        scrollJob,
+                        scope,
+                        onActiveIndexChange,
+                    )
                     active = false
                 }
             },
@@ -184,14 +216,15 @@ internal fun LinearScrollGesture(
 }
 
 /**
- * Se establece el ciclo de arrastre después de una pulsación larga: convierta el desplazamiento del dedo en desplazamiento de contenido (mapeo incremental).
+ * 长按成立后的拖动循环：把手指位移换算成内容位移（增量映射）。
  *
- * `Desplazamiento de contenido = Desplazamiento de los dedos/altura de la zona caliente × Rango de desplazamiento accesible`;El punto de referencia toma una instantánea cuando se establece una pulsación larga y permanece sin cambios durante todo el proceso.
+ * `内容位移 = 手指位移 / 热区高 × 可达滚动范围`；基准在长按成立时快照，全程不变。
  */
 @Suppress("LongParameterList")
 private suspend fun AwaitPointerEventScope.runLinearDrag(
     down: PointerInputChange,
     startY: Float,
+    snapshot: LinearScrollSnapshot,
     model: LinearScrollModel,
     listState: LazyListState,
     scrollJob: MutableState<Job?>,
@@ -199,12 +232,12 @@ private suspend fun AwaitPointerEventScope.runLinearDrag(
     onActiveIndexChange: ((Int?) -> Unit)?,
 ) {
     val railHeight = size.height.toFloat().coerceAtLeast(1f)
-    val totalPx = model.totalPx(listState)
-    val viewportPx = listViewportPx(listState)
+    val totalPx = model.totalPx(snapshot)
+    val viewportPx = listViewportPx(snapshot)
     val range = (totalPx - viewportPx).coerceAtLeast(0f)
-    val startScroll = model.scrolledPx(listState)
-    val count = listState.layoutInfo.totalItemsCount
-    // Deslízate por toda la altura de la zona caliente. = Desplácese por todo el rango accesible.
+    val startScroll = model.scrolledPx(snapshot)
+    val count = snapshot.totalItemsCount
+    // 滑过整个热区高度 = 滚完整个可达范围。
     val sensitivity = if (railHeight > 0f) range / railHeight else 0f
 
     fun seek(targetPx: Float) {
@@ -225,7 +258,19 @@ private suspend fun AwaitPointerEventScope.runLinearDrag(
     }
 }
 
-/** Lista de posicionamiento de compensación por contenido de destino: ambos extremos caen directamente al cabezal real/Final verdadero, medio por entrada + desplazamiento dentro de la entrada. */
+private fun LazyListState.toLinearScrollSnapshot(): LinearScrollSnapshot = LinearScrollSnapshot(
+    visibleItems =
+    layoutInfo.visibleItemsInfo.map { info ->
+        LinearScrollItem(index = info.index, size = info.size)
+    },
+    totalItemsCount = layoutInfo.totalItemsCount,
+    viewportSizePx = layoutInfo.viewportSize.height,
+    viewportEndOffsetPx = layoutInfo.viewportEndOffset,
+    firstVisibleItemIndex = firstVisibleItemIndex,
+    firstVisibleItemScrollOffset = firstVisibleItemScrollOffset,
+)
+
+/** 按目标内容偏移定位列表：两端直接落到真首/真末，中间按条目 + 条目内偏移。 */
 private suspend fun seekList(listState: LazyListState, targetPx: Float, range: Float, count: Int, model: LinearScrollModel) {
     when {
         targetPx <= 0f -> listState.scrollToItem(0)

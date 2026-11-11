@@ -45,7 +45,6 @@
     <string name="groupchat_member_required">Пожалуйста, выберите хотя бы одного участника</string>
     <string name="groupchat_team_optional">Связать команду (необязательно)</string>
     <string name="groupchat_no_team">Не связано</string>
-    <string name="groupchat_selected_members">%1$d выбрано участников</string>
     <string name="groupchat_create_btn">Создавать</string>
 
     <!-- ===== ui/account ===== -->
@@ -105,6 +104,13 @@
     <string name="schedule_cancel">Отмена</string>
     <string name="schedule_msg_cancel">Отменить запланированное сообщение</string>
     <string name="schedule_err_name_required">Пожалуйста, введите название задачи</string>
+    <string name="schedule_time_daily">Время ежедневного запуска</string>
+    <string name="schedule_time_weekly">Время еженедельного запуска</string>
+    <string name="schedule_time_once">Выполнить в</string>
+    <string name="schedule_time_unset">Нажмите, чтобы выбрать время</string>
+    <string name="schedule_err_once_time_required">Выберите, когда выполнить эту одноразовую задачу</string>
+    <string name="schedule_status_running">Выполняется</string>
+    <string name="schedule_status_completed">Завершено</string>
     <string name="schedule_err_content_required">Пожалуйста, введите содержание запуска</string>
     <string name="schedule_err_cron_invalid">Недопустимое выражение cron.</string>
     <string name="schedule_assistant">Ассистент</string>
@@ -118,7 +124,7 @@
     <string name="schedule_show_advanced">Показать расширенную автоматизацию</string>
     <string name="schedule_hide_advanced">Скрыть расширенную автоматизацию</string>
 
-    <!-- Correcciones en la interfaz (i18n-5): describeCron human-readable schedule descriptions -->
+    <!-- 前端修复 (i18n-5): describeCron human-readable schedule descriptions -->
     <string name="schedule_cron_daily">Every day at %1$s</string>
     <string name="schedule_cron_hourly">Every hour at minute %1$s</string>
     <string name="schedule_cron_every_minute">Every minute</string>
@@ -252,6 +258,8 @@
     <string name="knowledge_zip_progress">Извлечение и импорт… (импортировано: %1$d)</string>
     <string name="knowledge_zip_done">Создана база знаний %1$s: импортировано документов: %2$d, пропущено: %3$d</string>
     <string name="knowledge_zip_empty">В архиве нет документов для импорта</string>
+    <!-- 回滚没清干净时说这句：否则列表里留着一个打不开的条目，而提示只说「没有可导入的文档」，用户两句对不上 -->
+    <string name="knowledge_zip_empty_leftover">В архиве нет импортируемых документов, а временная запись не удалена: удалите «%1$s» из списка вручную</string>
     <string name="knowledge_import_empty">Не удалось импортировать: содержимое файла пусто.</string>
     <!-- v1.0.47 P7-3: File size friendly prompt -->
     <string name="knowledge_file_too_large_title">Файл слишком большой</string>
@@ -276,7 +284,7 @@
     <string name="knowledge_doc_chunks">· %1$d куски</string>
     <string name="knowledge_doc_not_indexed">· Не индексируется</string>
 
-    <!-- Correcciones en la interfaz (i18n-7): PDF metadata card -->
+    <!-- 前端修复 (i18n-7): PDF metadata card -->
     <string name="knowledge_doc_info">Document info</string>
     <string name="knowledge_doc_outline">Outline (%1$d items)</string>
     <string name="knowledge_sort_updated">По времени обновления</string>
@@ -309,7 +317,7 @@
     <string name="stats_dashboard_subtitle">%1$d сеансов · %2$d активных дней</string>
     <string name="stats_export_cd">Сводная статистика экспорта</string>
     <string name="stats_export_chooser">Поделиться сводной статистикой</string>
-    <string name="stats_export_subject">Сводная статистика Muse</string>
+    <string name="stats_export_subject">Сводная статистика Musa</string>
     <string name="stats_empty_title">Статистика появится здесь после того, как вы начнете общаться</string>
     <string name="stats_empty_action">Начать разговор</string>
     <string name="stats_view_all">Посмотреть все</string>
@@ -329,7 +337,7 @@
     <string name="stats_hourly_chart_cd">Гистограмма распределения сообщений за 24 часа</string>
     <string name="stats_other">Другое</string>
     <string name="stats_model_donut_cd">Кольцевая диаграмма использования моделей</string>
-    <string name="stats_summary_header">===== Сводная статистика Muse =====</string>
+    <string name="stats_summary_header">===== Сводная статистика Musa =====</string>
     <string name="stats_summary_total_sessions">Всего сеансов: %1$d</string>
     <string name="stats_summary_total_messages">Всего сообщений: %1$d</string>
     <string name="stats_summary_ai_replies">Ответов ИИ: %1$d</string>
@@ -382,6 +390,7 @@
     <string name="subagent_task_completed">Завершенный</string>
     <string name="subagent_task_failed">Неуспешный</string>
     <string name="subagent_task_cancel">Отмена</string>
+    <string name="subagent_task_close_cd">Закрыть задачу субагента</string>
 
     <!-- ===== ui/artifact ===== -->
     <string name="artifact_untitled">Без названия</string>
@@ -476,13 +485,13 @@
     <string name="groupchat_tool_context">Контекст группы</string>
     <string name="groupchat_tool_mention">@Упомянуть</string>
 
-    <!-- Correcciones en la interfaz (i18n-1/2): group chat detail background desc, clear memory -->
+    <!-- 前端修复 (i18n-1/2): group chat detail background desc, clear memory -->
     <string name="groupchat_bg_cd">Chat background</string>
     <string name="groupchat_clear_memory">Clear group memory</string>
     <string name="groupchat_clear_memory_confirm">Clear this group\'s memory? Assistants will no longer reference past discussion summaries (including tone and style).</string>
     <string name="groupchat_clear_memory_btn">Clear</string>
-    <!-- v2.x: Cree rápidamente una entrada para escribir un chat grupal -->
-    <!-- v2.x: Archivo de chat grupal -->
+    <!-- v2.x: 写作群聊快速创建入口 -->
+    <!-- v2.x: 群聊归档 -->
     <string name="groupchat_archive">Архивировать</string>
     <string name="groupchat_unarchive">Разархивировать</string>
 
@@ -552,11 +561,11 @@
     <string name="cover_empty_hint">Нажмите кнопку внизу справа, чтобы импортировать изображение, или позвольте ИИ создать обложку</string>
     <string name="quick_notes_settings_title">Настройки быстрой заметки</string>
     <string name="quick_capture_swipe_title">Показывать быструю заметку свайпом</string>
-    <string name="quick_capture_swipe_desc">Показывать ручку быстрой заметки у правого края внутри Muse</string>
+    <string name="quick_capture_swipe_desc">Показывать ручку быстрой заметки у правого края внутри Musa</string>
     <string name="quick_capture_overlay_title">Включить системный оверлей</string>
-    <string name="quick_capture_overlay_desc">Сохранять плавающую капсулу доступной после выхода из Muse для быстрой заметки</string>
+    <string name="quick_capture_overlay_desc">Сохранять плавающую капсулу доступной после выхода из Musa для быстрой заметки</string>
     <string name="quick_capture_overlay_permission_error">Не удалось открыть настройки разрешения оверлея</string>
-    <string name="quick_capture_overlay_hint">Оверлей выключен по умолчанию. При включении система должна разрешить Muse отображаться поверх других приложений.</string>
+    <string name="quick_capture_overlay_hint">Оверлей выключен по умолчанию. При включении система должна разрешить Musa отображаться поверх других приложений.</string>
     <string name="chat_background_cd">Фон чата</string>
     <string name="chat_analyzing_image">Анализ изображения %1$d/%2$d…</string>
     <string name="msg_compressed">Сжато</string>
@@ -565,7 +574,7 @@
     <string name="plugin_models_summary">%1$d моделей · %2$s</string>
     <string name="accessibility_enable_btn">Открыть настройки системы</string>
     <string name="accessibility_section_title">Служба специальных возможностей</string>
-    <string name="accessibility_status_disabled">Не включено. Разрешите «Автоматизацию UI Muse» в настройках системы.</string>
+    <string name="accessibility_status_disabled">Не включено. Разрешите «Автоматизацию UI Musa» в настройках системы.</string>
     <string name="accessibility_status_enabled">Служба специальных возможностей включена. Доступны действия UI (клик/свайп/ввод/скриншот/чтение дерева UI).</string>
     <string name="action_retry">Повторить</string>
     <string name="common_load_failed">Не удалось загрузить</string>
@@ -592,7 +601,7 @@
     <string name="muse_plugins_empty_hint">Нет внешних плагинов. Нажмите +, чтобы импортировать пакет .muse-plugin или ZIP.</string>
     <string name="muse_plugins_imported">Пакет плагина установлен</string>
     <string name="muse_plugins_manage">Плагины</string>
-    <!-- ===== Phase 5: mercado de complementos(Exploración del directorio de firmas + instalación con un clic) ===== -->
+    <!-- ===== Phase 5: 插件市场(签名目录浏览 + 一键安装) ===== -->
     <string name="muse_plugins_market_title">Магазин плагинов</string>
     <string name="muse_plugins_tab_installed">Установленные</string>
     <string name="muse_plugins_market_not_configured">Каталог не настроен</string>
@@ -637,7 +646,7 @@
     <string name="permission_level_none">Нет (автоматизация UI недоступна)</string>
     <string name="permission_level_root">Root одобрен (доступны все возможности)</string>
     <string name="permission_level_shizuku">Shizuku одобрен (доступны UI + команды оболочки)</string>
-    <string name="permission_wizard_desc">Автоматизация UI Muse использует трёхканальную модель прав. Включите каждый канал ниже: чем выше уровень, тем больше операций доступно. Действия UI требуют только «Специальные возможности»; команды оболочки требуют Shizuku или Root.</string>
+    <string name="permission_wizard_desc">Автоматизация UI Musa использует трёхканальную модель прав. Включите каждый канал ниже: чем выше уровень, тем больше операций доступно. Действия UI требуют только «Специальные возможности»; команды оболочки требуют Shizuku или Root.</string>
     <string name="permission_wizard_title">Мастер прав</string>
     <string name="root_section_title">Права root</string>
     <string name="root_status_available">Root одобрен (резервный канал, может напрямую выполнять команды su)</string>
@@ -648,10 +657,19 @@
     <string name="settings_about_join_qq_group">Вступить в группу QQ</string>
     <string name="settings_about_join_qq_group_subtitle">Группа QQ: 905451314</string>
     <string name="settings_about_qq_not_installed">QQ не найден; номер группы 905451314 скопирован в буфер обмена</string>
-    <string name="shizuku_authorize_btn">Авторизовать Muse</string>
+    <string name="shizuku_authorize_btn">Авторизовать Musa</string>
+    <string name="permission_shizuku_opened_toast">Shizuku открыт. Запустите службу в нём, затем вернитесь и обновите</string>
+    <string name="permission_shizuku_activation_hint">Служба не запущена. На Android 11+: включите параметры разработчика, затем выполните сопряжение и запуск через «Беспроводную отладку» в Shizuku; устройства с root могут запустить напрямую. После перезагрузки телефона требуется повторная активация.</string>
+    <string name="permission_shizuku_manual_grant_hint">Диалог разрешения навсегда отклонён («Больше не спрашивать»). Shizuku открыт — разрешите Musa вручную в приложении</string>
+    <string name="permission_shizuku_denied_toast">Разрешение Shizuku отклонено</string>
+    <string name="permission_shizuku_timeout_toast">Истекло время ожидания авторизации Shizuku; повторите попытку</string>
+    <string name="permission_shizuku_unavailable_toast">Служба Shizuku не запущена; сначала запустите её в приложении Shizuku</string>
+    <string name="permission_root_manager_missing">Обнаружено root-решение, но менеджер (Magisk / KernelSU / APatch) не установлен. Запросы su будут молча отклонены — установите и откройте соответствующий менеджер, затем нажмите «Запросить авторизацию» выше.</string>
+    <string name="permission_termux_outdated">Эта версия Termux слишком стара для возврата результатов. Обновите до 0.118+ из F-Droid или GitHub (версия из Play Store больше не обновляется).</string>
+    <string name="permission_shizuku_version_old">Shizuku слишком старый (требуется v11+, рекомендуется v13+). Обновите и повторите.</string>
     <string name="shizuku_install_btn">Скачать Shizuku</string>
-    <string name="shizuku_section_title">Shizuku (рекомендуется)</string>
-    <string name="shizuku_status_authorized">Muse авторизован для использования Shizuku</string>
+    <string name="shizuku_section_title">Shizuku</string>
+    <string name="shizuku_status_authorized">Musa авторизован для использования Shizuku</string>
     <string name="skill_agent_phone_not_configured">agent_phone не настроен: GroupChatScheduler не внедрён</string>
     <string name="skill_agent_phone_target_not_found">Целевой агент не существует</string>
     <string name="skill_message_blank">сообщение не может быть пустым</string>
@@ -770,11 +788,11 @@
     <!-- Диагностика фоновых пробуждений: действительно ли система запланировала их для Muse (только чтение) -->
     <string name="wake_diagnostics_open">Состояние фоновых пробуждений</string>
     <string name="wake_diagnostics_title">Состояние фоновых пробуждений</string>
-    <string name="wake_diagnostics_subtitle">Показывает реальное расписание в очереди системы. Только чтение, расписание не меняется.</string>
+    <string name="wake_diagnostics_subtitle">Это фоновые задачи так, как их реально запланировала система, включая встроенные бэкапы и сводки; это не те задачи, которые создали вы. Только чтение; расписание не меняется.</string>
     <string name="wake_diagnostics_refresh">Обновить</string>
     <string name="wake_diagnostics_copy">Скопировать снимок</string>
     <string name="wake_diagnostics_copied">Снимок скопирован</string>
-    <string name="wake_diagnostics_hint">Если задача «запускалась, но с ошибкой», смотрите failed/skipped/missed в истории задач. «Ни разу не запускалась» обычно означает: не зарегистрирована, ограничена системой или выключен общий переключатель — всё это видно здесь.</string>
+    <string name="wake_diagnostics_hint">Если задача «запускалась, но с ошибкой», смотрите failed／skipped／missed в истории задач. «Ни разу не запускалась» обычно означает: не зарегистрирована, ограничена системой или выключен общий переключатель — всё это видно здесь.</string>
     <string name="wake_diagnostics_total_control">Общий переключатель фоновых задач: %1$s</string>
     <string name="wake_diagnostics_total_control_on">включён</string>
     <string name="wake_diagnostics_total_control_off">выключен (пробуждения идут, но исполнители сразу выходят)</string>
@@ -823,4 +841,77 @@
     <string name="wake_stop_user">Действие пользователя</string>
     <string name="wake_stop_system_processing">Обработка системой</string>
     <string name="wake_stop_launch_time">Изменилось ожидаемое время запуска</string>
+    <string name="plugin_permission_section_title">Возможности и разрешения</string>
+    <string name="plugin_permission_hint">Незаявленные или отключённые возможности отклоняются сразу; переключатели действуют немедленно.</string>
+    <string name="plugin_permission_pending_title">После обновления плагин заявил новые возможности</string>
+    <string name="plugin_permission_approve">Одобрить новые</string>
+    <string name="plugin_permission_none">Плагин не заявил ни одной возможности — доступен только чистый расчёт.</string>
+    <string name="plugin_permission_denied_title">Отклонённые вызовы</string>
+    <string name="plugin_permission_denied_row">%1$s требует возможность %2$s</string>
+    <string name="plugin_permission_allow_session">Разрешить на эту сессию</string>
+    <string name="plugin_permission_recent_title">Недавние вызовы</string>
+    <string name="plugin_permission_recent_empty">Вызовы ещё не записаны</string>
+    <string name="plugin_permission_recent_row">%1$s · %2$s %3$s</string>
+    <string name="plugin_permission_expand">Показать</string>
+    <string name="plugin_permission_collapse">Скрыть</string>
+    <string name="plugin_permission_python_title">Среда Python (высокое доверие)</string>
+    <string name="plugin_permission_python_warning">Плагины Python работают в дочернем процессе с тем же UID, что и приложение, и могут напрямую читать и писать данные приложения, минуя перечисленные переключатели и файловую песочницу. Включайте только для доверенных источников.</string>
+    <string name="plugin_row_python_trusted">Среда Python · разрешено</string>
+    <string name="plugin_row_python_locked">Среда Python · требуется высокое доверие</string>
+    <string name="plugin_row_circuit_cooling">Изолирован: осталось %1$d с</string>
+    <string name="plugin_row_circuit_probing">Полуоткрытая проверка</string>
+    <string name="plugin_permission_node_note">Среда Node: работает в дочернем процессе встроенного Node; возможности проверяются по отдельности; таймауты действительно прерываются и не блокируют другие плагины.</string>
+    <string name="plugin_cap_resource_read">Чтение файлов (только в изолированной папке плагина)</string>
+    <string name="plugin_cap_resource_write">Запись файлов (только в изолированную папку плагина)</string>
+    <string name="plugin_cap_network">Доступ в сеть (локальные и приватные адреса блокируются)</string>
+    <string name="plugin_cap_event_on_message">На каждое сообщение</string>
+    <string name="plugin_cap_event_on_tool_call">На каждый вызов инструмента</string>
+    <string name="plugin_cap_hook_tool_before">Блокировка вызовов инструментов</string>
+    <string name="plugin_cap_hook_system_prompt">Дополнение системного запроса (меняет поведение)</string>
+    <string name="plugin_cap_schedule">Запуск по расписанию (пока приложение активно)</string>
+    <string name="plugin_cap_network_local">Доступ к локальной сети и localhost (домашние сервисы)</string>
+    <string name="plugin_cap_app_navigate">Открыть определённую страницу приложения (главная, настройки, диалог...)</string>
+    <string name="plugin_cap_app_messages">Писать сообщения в диалог (выглядят как слова ассистента)</string>
+    <string name="plugin_cap_app_theme">Переключение светлого и тёмного оформления</string>
+    <string name="plugin_slot_provided_by">Предоставлено плагином «%1$s»</string>
+    <string name="plugin_cap_ui_slot">Показывать интерфейс плагина вверху чата</string>
+    <string name="plugin_cap_runtime_long">Длительные задачи (до 10 минут за вызов)</string>
+    <string name="plugin_cap_schedule_background">Запуск задач по расписанию в фоне (даже когда приложение закрыто)</string>
+    <string name="plugin_service_channel_name">Службы плагинов</string>
+    <string name="plugin_service_channel_desc">Показывается, пока плагины работают в foreground-службе</string>
+    <string name="plugin_service_notification_title">Службы плагинов работают</string>
+    <string name="plugin_service_notification_text">Плагины работают в фоне</string>
+    <string name="plugin_service_notification_stop">Остановить</string>
+    <string name="plugin_cap_runtime_service">Постоянная работа в фоне (foreground-служба)</string>
+    <string name="plugin_cap_app_settings">Изменение настроек (размер шрифта, динамический цвет, контраст, стартовый экран)</string>
+    <string name="plugin_debug_title">Отладка плагинов</string>
+    <string name="plugin_cap_clipboard_read">Чтение буфера обмена</string>
+    <string name="plugin_cap_clipboard_write">Запись в буфер обмена</string>
+    <string name="plugin_cap_clipboard">Чтение и запись буфера обмена</string>
+    <string name="plugin_cap_notify">Показывать уведомления</string>
+    <string name="plugin_cap_device_info">Чтение сведений об устройстве (модель, версия ОС)</string>
+    <string name="plugin_cap_storage">Использовать хранилище плагина (до 8MB)</string>
+    <string name="plugin_cap_config_write">Менять настройки самого плагина (секреты менять нельзя)</string>
+    <string name="plugin_cap_tool_invoke">Запуск других инструментов (каждый требует вашего подтверждения)</string>
+    <string name="plugin_cap_chat_read">Чтение последних сообщений текущего чата (приватно, по умолчанию выкл)</string>
+    <string name="plugin_cap_model_call">Генерация через настроенную модель (расходуется ваш лимит)</string>
+    <string name="plugin_cap_ui_skin">Менять визуальное оформление</string>
+    <string name="plugin_cap_ui_interactive">Форма отправки и запуск обработчика плагина (меняет данные, по умолчанию выкл)</string>
+    <string name="plugin_cap_runtime_python">Запуск Python вне изоляции (высокое доверие)</string>
+    <string name="video_no_video_model_hint">У текущего провайдера нет модели с выводом видео. Включите возможность «вывод видео» для модели в «Настройки › Модели и провайдеры».</string>
+    <string name="permission_next_step">Рекомендуемый следующий шаг: %1$s</string>
+    <string name="permission_optional_channels">Базовое готово; остальные каналы — по желанию</string>
+    <string name="permission_privacy_notice_title">Эти разрешения действуют только на этом устройстве</string>
+    <string name="permission_privacy_notice_body">Чтение экрана и команды выполняются на этом устройстве, ничего не отправляется. Root, Shizuku и Termux — необязательные каналы с высокими привилегиями: включив их, приложение сможет действовать за вас. Отозвать можно в любой момент в системных настройках или в соответствующем приложении.</string>
+    <plurals name="groupchat_selected_members">
+        <item quantity="one">выбран %1$d участник</item>
+        <item quantity="few">выбрано %1$d участника</item>
+        <item quantity="many">выбрано %1$d участников</item>
+        <item quantity="other">выбрано %1$d участника</item>
+    </plurals>
+    <string name="workspace_go_root">В корень рабочего пространства</string>
+    <string name="artifact_center_empty_hint">Артефакты — это изображения, файлы и длинные тексты, которые ассистент создаёт в переписке; здесь их можно пересмотреть и поделиться ими</string>
+    <string name="daily_summary_light_fallback">Сегодня пока нечего вспоминать — я рядом, когда захочется поговорить.</string>
+    <string name="daily_summary_rest_fallback">День выдался долгим — отдохни.</string>
+    <string name="daily_summary_none_fallback">Сегодня новых разговоров пока не было.</string>
 </resources>

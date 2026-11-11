@@ -8,15 +8,14 @@
     <string name="onboarding_language_subtitle">A interface vai usá-lo. Pode mudar quando quiser.</string>
     <string name="onboarding_theme_title">Escolha um visual que goste.</string>
     <string name="onboarding_theme_subtitle">Temas podem ser trocados nas Configurações.</string>
-    <string name="onboarding_lang_en">Inglês</string>
-    <string name="onboarding_lang_ja">Japonês</string>
-    <string name="onboarding_lang_ko">한국어</string>
 
     <!-- Step 2: Your Name -->
     <string name="onboarding_names_title">Vamos nos conhecer.</string>
     <string name="onboarding_names_subtitle">Seu nome e o dele — ambos podem mudar depois.</string>
     <string name="onboarding_names_user_label">Como devo te chamar?</string>
     <string name="onboarding_names_agent_label">Dê um nome a ele</string>
+    <string name="onboarding_names_user_placeholder">Ex.: Alex</string>
+    <string name="onboarding_names_agent_placeholder">Ex.: Nova</string>
     <string name="onboarding_names_hint">Aplica-se ao seu assistente padrão; mude quando quiser.</string>
     <string name="onboarding_memory_title">Deixe-me lembrar de você.</string>
     <string name="onboarding_memory_subtitle">Com isso ativo, as conversas viram memórias de longo prazo. Atualizações frequentes reduzem o cache do modelo (desligar costuma ser mais econômico), mas a companhia de longo prazo melhora muito.</string>
@@ -32,11 +31,15 @@
     <string name="onboarding_provider_caps">Capacidades mapeadas: Visão %1$d · Raciocínio %2$d · Ferramentas %3$d</string>
     <string name="onboarding_provider_select_label">Selecione o provedor</string>
     <string name="onboarding_provider_apikey_label">Chave de API</string>
-    <string name="onboarding_provider_apikey_input">Insira a chave da API</string>
+    <string name="onboarding_provider_apikey_input">Gerado no console do provedor; costuma começar com sk-</string>
     <string name="onboarding_provider_apikey_show">Mostrar chave</string>
     <string name="onboarding_provider_apikey_hide">Ocultar chave</string>
     <string name="onboarding_provider_test_button">Conexão de teste</string>
-    <string name="onboarding_provider_test_success">Conexão bem-sucedida. Modelos disponíveis: %1$d.</string>
+    <plurals name="onboarding_provider_test_success">
+        <item quantity="one">Conexão bem-sucedida. Modelo disponível: %1$d.</item>
+        <item quantity="other">Conexão bem-sucedida. Modelos disponíveis: %1$d.</item>
+        <item quantity="many">Conexão bem-sucedida. Modelos disponíveis: %1$d.</item>
+    </plurals>
     <string name="onboarding_provider_skip">Configurar depois nas Configurações</string>
     <string name="onboarding_provider_custom">Personalizado (compatível com OpenAI)</string>
     <string name="onboarding_provider_custom_baseurl_label">URL base personalizado</string>
@@ -50,7 +53,10 @@
 
     <!-- Step 5: Complete -->
     <string name="onboarding_complete_title">Tudo pronto.</string>
+    <string name="onboarding_provider_next_hint">Escolha um serviço, adicione a chave e passe no teste para continuar; também dá para configurar depois.</string>
+    <string name="onboarding_welcome_greetings_caption">Uma saudação, sete idiomas</string>
     <string name="onboarding_complete_subtitle">Algumas coisas para experimentar</string>
+    <string name="onboarding_restore_from_backup">Restaurar dados de um backup</string>
     <string name="onboarding_tutorial_chat_title">Bate-papo diário</string>
     <string name="onboarding_tutorial_chat_desc">Envie texto, fotos ou arquivos</string>
     <string name="onboarding_tutorial_assistant_title">Assistentes &amp; Memória</string>
@@ -66,7 +72,4 @@
     <string name="onboarding_button_next">Próximo</string>
     <string name="onboarding_button_finish">Vamos conversar</string>
     <string name="onboarding_step_progress">Etapa %1$d de %2$d</string>
-    <string name="onboarding_lang_es">Espanhol</string>
-    <string name="onboarding_lang_pt">Português</string>
-    <string name="onboarding_lang_ru">Russo</string>
 </resources>

@@ -7,37 +7,37 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 
-/** Error de IO en el sistema de archivos del espacio de trabajo. Los mensajes están orientados al usuario y se pueden mostrar tal cual. */
+/** 工作区文件系统的一处 IO 失败。消息面向用户，可原样展示。 */
 class WorkspaceIoException(message: String, cause: Throwable? = null) : Exception(message, cause)
 
 /**
- * Ejecute un bloque IO que puede generar una excepción y, si falla, se convertirá en [WorkspaceIoException].
+ * 跑一段可能抛异常的 IO 块，失败统一转成 [WorkspaceIoException]。
  *
- * Ya [WorkspaceIoException] El fallo se descarta tal cual para evitar que el mensaje quede atrapado en dos capas.
+ * 已经就是 [WorkspaceIoException] 的失败原样上抛，避免消息被套两层。
  *
- * @param op El nombre de la acción se utiliza para escribir "Error de lectura".: xxx"Este tipo de mensaje para que los usuarios lo vean
- * @param block Acciones IO reales
+ * @param op 动作名，用于拼出「读取失败: xxx」这类给用户看的消息
+ * @param block 实际 IO 动作
  */
 internal inline fun <T> workspaceIo(op: String, block: () -> T): T {
     val result = resultOf(block)
     if (result is Result.Error) {
         val cause = result.throwable
         if (cause is WorkspaceIoException) throw cause
-        throw WorkspaceIoException("${op}falló: ${result.message}", cause)
+        throw WorkspaceIoException("${op}失败: ${result.message}", cause)
     }
     return result.getOrThrow()
 }
 
 /**
- * Un directorio en el espacio de trabajo./Entrada de archivo.
+ * 工作区里的一条目录/文件条目。
  *
- * Diferentes fuentes (directorio local, directorio autorizado del sistema) se unifican en esta forma, y ​​la interfaz y las herramientas no necesitan preocuparse por la capa subyacente.
+ * 不同来源（本地目录、系统授权目录）统一成这一种形状，界面与工具不必关心底层。
  *
- * @param name Nombre para mostrar (sin ruta)
- * @param relativePath La ruta relativa al directorio raíz de montaje propietario (que comienza con "/" separados, el directorio raíz es una cadena vacía)
- * @param isDirectory ¿Es un directorio?
- * @param size Número de bytes (el directorio siempre es 0)
- * @param lastModified Marca de tiempo de la última modificación (milisegundos)
+ * @param name 显示名（不含路径）
+ * @param relativePath 相对所属挂载根目录的路径（以 "/" 分隔，根目录为空串）
+ * @param isDirectory 是否为目录
+ * @param size 字节数（目录恒为 0）
+ * @param lastModified 最后修改时间戳（毫秒）
  */
 data class FsEntry(
     val name: String,
@@ -48,76 +48,82 @@ data class FsEntry(
 )
 
 /**
- * El sistema de archivos detrás de un montaje.
+ * 一个挂载背后的文件系统。
  *
- * La razón para abstraer esta capa: el directorio local se puede obtener directamente [File], el directorio de autorización del sistema solo puede obtener el identificador del documento.
- * La semántica de las dos API es bastante diferente. El nivel superior solo enfrenta este conjunto de métodos y ya no está vinculado a la fuente.
+ * 抽象出这一层的原因：本地目录能直接拿到 [File]，系统授权目录只能拿到文档句柄，
+ * 两套 API 语义差得远。上层只面对这组方法，就不再被来源绑死。
  */
+// 文件系统抽象天然是"一组基本操作"：增删改查 + 列目录 + 范围读 + stat。
+// 把它拆成几个接口只会让调用方同时持有多个引用，判定逻辑反而更散。
+@Suppress("TooManyFunctions")
 interface WorkspaceFs {
-    /** Lista de contenidos. Se lanza cuando el directorio no existe o no es un directorio [WorkspaceIoException]. */
+    /** 列目录。不存在或不是目录时抛 [WorkspaceIoException]。 */
     suspend fun list(relative: String): List<FsEntry>
 
-    /** existe. */
+    /** 是否存在。 */
     suspend fun exists(relative: String): Boolean
 
-    /** Si es un directorio. */
+    /** 是否是目录。 */
     suspend fun isDirectory(relative: String): Boolean
 
-    /** Número de bytes; devuelve 0 si no existe o no es un archivo. */
+    /** 字节数；不存在或不是文件时返回 0。 */
     suspend fun size(relative: String): Long
 
-    /** Lee el texto. Exceder el límite superior de la persona que llama está determinado por la capa superior, y aquí no hay un límite superior comercial. */
+    /** 最后修改时间（毫秒）。与 [size] 一起构成 revision：同内容同版本。 */
+    suspend fun lastModified(relative: String): Long
+
+    /** 读文本。超出调用方上限由上层判断，这里不设业务上限。 */
     suspend fun readText(relative: String): String
 
-    /** Leer bytes sin procesar. */
+    /** 读原始字节。 */
     suspend fun readBytes(relative: String): ByteArray?
 
-    /** Leer texto por intervalo de caracteres. */
+    /** 按字符区间读文本。 */
     suspend fun readTextRange(relative: String, offsetChars: Int, lengthChars: Int): String
 
-    /** escribir texto,[append] Se adjunta cuando sea cierto. Creado automáticamente si el directorio principal no existe. */
+    /** 写文本，[append] 为真时追加。父目录不存在时自动创建。 */
     suspend fun writeText(relative: String, content: String, append: Boolean)
 
     /**
-     * Escribe una secuencia de entrada en un archivo y devuelve el número de bytes escritos.
+     * 把一段输入流写到文件，返回写入字节数。
      *
-     * Al importar archivos externos, tome esta ruta: copia en streaming, que no lee el archivo completo en la memoria.
-     * exceder [maxBytes] Lanza una excepción e interrumpe.
+     * 导入外部文件走这条路：流式拷贝，不会把整个文件读进内存。
+     * 超过 [maxBytes] 时抛异常并中断。
      */
     suspend fun writeStream(relative: String, source: java.io.InputStream, maxBytes: Long): Long
 
-    /** Eliminar un archivo o directorio. */
+    /** 删除文件或目录。 */
     suspend fun delete(relative: String)
 
-    /** Cree un directorio (con múltiples niveles). */
+    /** 创建目录（含多级）。 */
     suspend fun mkdirs(relative: String)
 
-    /** Mover o cambiar el nombre. */
+    /** 移动或重命名。 */
     suspend fun move(from: String, to: String)
 
-    /** Copiar. */
+    /** 复制。 */
     suspend fun copy(from: String, to: String)
 
-    /** Recopile archivos de forma recursiva (rutas relativas), hasta [limit] , omita los directorios que comienzan con el punto. */
+    /** 递归收集文件（相对路径），最多 [limit] 个，跳过点开头的目录。 */
     suspend fun walkFiles(relative: String, limit: Int): List<String>
 }
 
 /**
- * El sistema de archivos se monta directamente en el directorio local.
+ * 直接挂在本机目录上的文件系统。
  *
- * Todas las rutas primero toman canonicalPath y luego verifican la relación del prefijo con el directorio raíz:`..`, enlace simbólico,
- * El empalme de ruta relativa y estos métodos de derivación aparecerán después de canónico.
+ * 所有路径都先取 canonicalPath 再校验与根目录的前缀关系：`..`、符号链接、
+ * 相对路径拼接这些绕过手段在 canonical 之后都会现形。
  *
- * @param root Montar directorio raíz
+ * @param root 挂载根目录
  */
 class LocalWorkspaceFs(private val root: File) : WorkspaceFs {
 
     /**
-     * Analice la ruta relativa en un archivo real y realice una verificación fuera de límites.
+     * 把相对路径解析成真实文件，并做越界校验。
      *
-     * @param relative Ruta relativa al directorio raíz
-     * @param allowRoot Si se permite apuntar al directorio raíz
-     * @return Archivo analizado; regresa fuera de límites o falla en el análisis null
+     * @param relative 相对根目录的路径
+     * @param allowRoot 是否允许指向根目录本身
+     * @return 解析后的文件；越界或解析失败返回 null
      */
     private fun resolve(relative: String, allowRoot: Boolean): File? {
         val segments = relative.split('/').filter { it.isNotEmpty() }
@@ -125,7 +131,7 @@ class LocalWorkspaceFs(private val root: File) : WorkspaceFs {
         if (segments.isEmpty()) return if (allowRoot) root else null
         val candidate = File(root, segments.joinToString("/"))
         val canonical = resultOf { candidate.canonicalFile }
-            .onError { message, _ -> Logger.w(TAG, "canonicalFile El análisis falló: $message") }
+            .onError { message, _ -> Logger.w(TAG, "canonicalFile 解析失败: $message") }
             .getOrNull() ?: return null
         val rootCanonical = root.canonicalPath
         val canonicalPath = canonical.canonicalPath
@@ -135,11 +141,11 @@ class LocalWorkspaceFs(private val root: File) : WorkspaceFs {
     }
 
     private fun require(relative: String, allowRoot: Boolean = false): File =
-        resolve(relative, allowRoot) ?: throw WorkspaceIoException("Camino ilegal o acceso transfronterizo: $relative")
+        resolve(relative, allowRoot) ?: throw WorkspaceIoException("非法路径或越界访问: $relative")
 
     override suspend fun list(relative: String): List<FsEntry> = withContext(Dispatchers.IO) {
         val dir = require(relative, allowRoot = true)
-        if (!dir.isDirectory) throw WorkspaceIoException("No es una carpeta: $relative")
+        if (!dir.isDirectory) throw WorkspaceIoException("不是文件夹: $relative")
         val rootCanonical = root.canonicalPath
         (dir.listFiles()?.toList() ?: emptyList()).map { file ->
             FsEntry(
@@ -162,6 +168,10 @@ class LocalWorkspaceFs(private val root: File) : WorkspaceFs {
         resolve(relative, allowRoot = true)?.isDirectory == true
     }
 
+    override suspend fun lastModified(relative: String): Long = withContext(Dispatchers.IO) {
+        require(relative).lastModified()
+    }
+
     override suspend fun size(relative: String): Long = withContext(Dispatchers.IO) {
         val file = resolve(relative, allowRoot = false) ?: return@withContext 0L
         if (file.isFile) file.length() else 0L
@@ -169,8 +179,8 @@ class LocalWorkspaceFs(private val root: File) : WorkspaceFs {
 
     override suspend fun readText(relative: String): String = withContext(Dispatchers.IO) {
         val file = require(relative)
-        if (!file.isFile) throw WorkspaceIoException("no es un archivo: $relative")
-        workspaceIo("leer") { file.readText(Charsets.UTF_8) }
+        if (!file.isFile) throw WorkspaceIoException("不是文件: $relative")
+        workspaceIo("读取") { file.readText(Charsets.UTF_8) }
     }
 
     override suspend fun readBytes(relative: String): ByteArray? = withContext(Dispatchers.IO) {
@@ -181,8 +191,8 @@ class LocalWorkspaceFs(private val root: File) : WorkspaceFs {
 
     override suspend fun readTextRange(relative: String, offsetChars: Int, lengthChars: Int): String = withContext(Dispatchers.IO) {
         val file = require(relative)
-        if (!file.isFile) throw WorkspaceIoException("no es un archivo: $relative")
-        workspaceIo("leer") {
+        if (!file.isFile) throw WorkspaceIoException("不是文件: $relative")
+        workspaceIo("读取") {
             io.zer0.muse.tools.ToolTextFilePager.readPage(
                 file = file,
                 path = relative,
@@ -196,7 +206,7 @@ class LocalWorkspaceFs(private val root: File) : WorkspaceFs {
 
     override suspend fun writeText(relative: String, content: String, append: Boolean): Unit = withContext(Dispatchers.IO) {
         val file = require(relative)
-        workspaceIo("escribir") {
+        workspaceIo("写入") {
             file.parentFile?.takeIf { !it.exists() }?.mkdirs()
             if (append) file.appendText(content, Charsets.UTF_8) else file.writeText(content, Charsets.UTF_8)
         }
@@ -213,7 +223,7 @@ class LocalWorkspaceFs(private val root: File) : WorkspaceFs {
                 while (read >= 0) {
                     if (read > 0) {
                         written += read
-                        if (written > maxBytes) throw WorkspaceIoException("Archivo demasiado grande")
+                        if (written > maxBytes) throw WorkspaceIoException("文件过大")
                         output.write(buffer, 0, read)
                     }
                     read = source.read(buffer)
@@ -223,45 +233,45 @@ class LocalWorkspaceFs(private val root: File) : WorkspaceFs {
         if (result is Result.Error) {
             resultOf { file.delete() }
             val cause = result.throwable
-            throw if (cause is WorkspaceIoException) cause else WorkspaceIoException("Error de escritura: ${result.message}", cause)
+            throw if (cause is WorkspaceIoException) cause else WorkspaceIoException("写入失败: ${result.message}", cause)
         }
         written
     }
 
     override suspend fun delete(relative: String): Unit = withContext(Dispatchers.IO) {
         val file = require(relative, allowRoot = false)
-        if (!file.exists()) throw WorkspaceIoException("el camino no existe: $relative")
-        workspaceIo("Eliminar") {
+        if (!file.exists()) throw WorkspaceIoException("路径不存在: $relative")
+        workspaceIo("删除") {
             val ok = if (file.isDirectory) file.deleteRecursively() else file.delete()
-            if (!ok) throw WorkspaceIoException("Error al eliminar (puede haber subclaves o permisos insuficientes)")
+            if (!ok) throw WorkspaceIoException("删除失败（可能存在子项或权限不足）")
         }
     }
 
     override suspend fun mkdirs(relative: String): Unit = withContext(Dispatchers.IO) {
         val dir = require(relative)
         if (dir.exists()) {
-            if (!dir.isDirectory) throw WorkspaceIoException("El destino ya existe y no es una carpeta.: $relative")
+            if (!dir.isDirectory) throw WorkspaceIoException("目标已存在且不是文件夹: $relative")
             return@withContext
         }
-        if (!dir.mkdirs()) throw WorkspaceIoException("Error al crear el directorio: $relative")
+        if (!dir.mkdirs()) throw WorkspaceIoException("目录创建失败: $relative")
     }
 
     override suspend fun move(from: String, to: String): Unit = withContext(Dispatchers.IO) {
         val src = require(from)
         val dst = require(to)
-        if (!src.exists()) throw WorkspaceIoException("La ruta de origen no existe: $from")
-        if (dst.exists()) throw WorkspaceIoException("El objetivo ya existe: $to")
+        if (!src.exists()) throw WorkspaceIoException("源路径不存在: $from")
+        if (dst.exists()) throw WorkspaceIoException("目标已存在: $to")
         dst.parentFile?.takeIf { !it.exists() }?.mkdirs()
-        if (!src.renameTo(dst)) throw WorkspaceIoException("Movimiento fallido")
+        if (!src.renameTo(dst)) throw WorkspaceIoException("移动失败")
     }
 
     override suspend fun copy(from: String, to: String): Unit = withContext(Dispatchers.IO) {
         val src = require(from)
         val dst = require(to)
-        if (!src.exists()) throw WorkspaceIoException("La ruta de origen no existe: $from")
-        if (dst.exists()) throw WorkspaceIoException("El objetivo ya existe: $to")
+        if (!src.exists()) throw WorkspaceIoException("源路径不存在: $from")
+        if (dst.exists()) throw WorkspaceIoException("目标已存在: $to")
         dst.parentFile?.takeIf { !it.exists() }?.mkdirs()
-        workspaceIo("Copiar") {
+        workspaceIo("复制") {
             if (src.isDirectory) src.copyRecursively(dst, overwrite = false) else src.copyTo(dst, overwrite = false)
         }
     }

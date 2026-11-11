@@ -1,6 +1,7 @@
 package io.zer0.muse.ui.translate
 
 import android.content.Context
+import androidx.compose.runtime.Composable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.zer0.ai.ChatService
@@ -26,19 +27,19 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 /**
- * v1.97 gap8: Página de traducción independiente ViewModel.
+ * v1.97 gap8: 独立翻译页 ViewModel。
  *
- * Reutilizar [ChatService] capacidades universales de finalización de texto,No depende de sesiones/Persistencia de mensajes.
- * estrategias de traducción y [io.zer0.muse.ui.ChatViewModel.translateMessage] consistente:
- *  1. Prioridad [ChatService.completeText](Desechable,rapido)
- *  2. Si el proveedor no implementa completeText o se produce un error,Rebajar [ChatService.streamChat](transmisión,Actualizar traducciones en tiempo real)
+ * 复用 [ChatService] 的通用文本补全能力,不依赖会话/消息持久化。
+ * 翻译策略与 [io.zer0.muse.ui.ChatViewModel.translateMessage] 一致:
+ *  1. 优先 [ChatService.completeText](一次性,速度快)
+ *  2. 若 Provider 未实现 completeText 或出错,降级 [ChatService.streamChat](流式,实时更新译文)
  *
- * v1.0.30 gap4.3 ~ gap4.9 conjunto de mejoras:
- *  - gap4.3 Favoritos:Se pueden agregar estrellas a elementos históricos.,DAO proporcionar observeFavorites/setFavorite
- *  - gap4.4 Traducción por lotes:Traduce varios fragmentos de texto con una llamada de LLM(JSON retorno de matriz)
- *  - gap4.5 Estilo personalizado:SharedPreferences Estilo de usuario persistente,Mostrar junto al estilo predeterminado
- *  - gap4.6 Glosario:[GlossaryStore] Mantener el texto original.→mapeo de traducción,añadido al traducir prompt
- *  - gap4.8 Almacenamiento en caché sin conexión:LruCache(50) caché de traducciones recientes,Los hits regresan directamente para evitar llamadas de LLM
+ * v1.0.30 gap4.3 ~ gap4.9 增强集:
+ *  - gap4.3 收藏夹:历史项可加星,DAO 提供 observeFavorites/setFavorite
+ *  - gap4.4 批量翻译:一次 LLM 调用翻译多段文本(JSON 数组返回)
+ *  - gap4.5 自定义风格:SharedPreferences 持久化用户风格,与默认风格并列展示
+ *  - gap4.6 术语表:[GlossaryStore] 维护原文→译文映射,翻译时附加到 prompt
+ *  - gap4.8 离线缓存:LruCache(50) 缓存最近翻译,命中直接返回避免 LLM 调用
  */
 class TranslateViewModel(
     private val chatService: ChatService,
@@ -48,57 +49,57 @@ class TranslateViewModel(
     private val glossaryStore: GlossaryStore,
 ) : ViewModel() {
 
-    /** UI estado. */
+    /** UI 状态。 */
     data class State(
-        /** El texto original ingresado por el usuario. */
+        /** 用户输入的原文。 */
         val inputText: String = "",
-        /** Traducción traducida. */
+        /** 翻译后的译文。 */
         val translatedText: String = "",
-        /** Si se está traduciendo. */
+        /** 是否正在翻译中。 */
         val translating: Boolean = false,
-        /** idioma de origen(nombre chino),"Detección automática"La representación es juzgada por el modelo. */
+        /** 源语言(中文名),"自动检测"表示由模型判断。 */
         val sourceLanguage: String = SOURCE_LANGUAGES.first(),
-        /** idioma de destino(nombre chino). */
+        /** 目标语言(中文名)。 */
         val targetLanguage: String = TARGET_LANGUAGES.first(),
-        /** v1.0.30: estilo de traducción(Universales/academico/Negocios/coloquial/Polaco + Personalización del usuario). */
+        /** v1.0.30: 翻译风格(通用/学术/商务/口语化/润色 + 用户自定义)。 */
         val translationStyle: String = TRANSLATION_STYLES.first(),
-        /** mensaje de error(null No indica ningún error). */
+        /** 错误消息(null 表示无错误)。 */
         val errorMessage: String? = null,
-        /** v1.97: Historial de traducción(Últimos N artículos,v1.0.17 persistir en Room). */
+        /** v1.97: 翻译历史记录(最近 N 条,v1.0.17 起持久化到 Room)。 */
         val history: List<TranslateHistoryItem> = emptyList(),
-        /** v1.0.30 gap4.3: Historial de traducción de la colección(Actualizado automáticamente por DAO Flow). */
+        /** v1.0.30 gap4.3: 收藏的翻译历史(由 DAO Flow 自动更新)。 */
         val favorites: List<TranslateHistoryItem> = emptyList(),
-        /** v1.0.30 gap4.5: Lista de estilos definidos por el usuario(Cargando desde preferencias compartidas). */
+        /** v1.0.30 gap4.5: 用户自定义风格列表(从 SharedPreferences 加载)。 */
         val customStyles: List<CustomStyle> = emptyList(),
-        /** v1.0.30 gap4.4: Resultados de traducción por lotes(Entrada correspondiente una por una). */
+        /** v1.0.30 gap4.4: 批量翻译结果(逐条对应输入)。 */
         val batchResults: List<BatchResult> = emptyList(),
-        /** v1.0.30 gap4.4: Si la traducción por lotes está en curso. */
+        /** v1.0.30 gap4.4: 是否正在批量翻译。 */
         val batchTranslating: Boolean = false,
-        /** v1.0.30 gap4.6: Glosario(Texto original → traducción),Se completa después de una actualización activada por la interfaz de usuario. */
+        /** v1.0.30 gap4.6: 术语表(原文 → 译文),由 UI 触发刷新后填充。 */
         val glossary: Map<String, String> = emptyMap(),
     )
 
-    /** v1.97: Elemento del historial de traducción. */
+    /** v1.97: 翻译历史记录项。 */
     data class TranslateHistoryItem(
         val id: String,
         val sourceText: String,
         val translatedText: String,
         val sourceLanguage: String,
         val targetLanguage: String,
-        val style: String = "Universales",
+        val style: String = "通用",
         val timestamp: Long = System.currentTimeMillis(),
-        /** v1.0.30 gap4.3: Si ha sido recogido. */
+        /** v1.0.30 gap4.3: 是否已收藏。 */
         val favorite: Boolean = false,
     )
 
-    /** v1.0.30 gap4.5: Personaliza el estilo de traducción. */
+    /** v1.0.30 gap4.5: 自定义翻译风格。 */
     data class CustomStyle(
         val name: String,
-        /** El fragmento de comando agregado al mensaje(Como por ejemplo"Utilice la traducción al chino clásico antiguo"). */
+        /** 附加到 prompt 的指令片段(如"使用古风文言文翻译")。 */
         val prompt: String,
     )
 
-    /** v1.0.30 gap4.4: Traducir resultados individuales en lotes. */
+    /** v1.0.30 gap4.4: 批量翻译单条结果。 */
     data class BatchResult(
         val original: String,
         val translated: String,
@@ -107,21 +108,21 @@ class TranslateViewModel(
     private val _state = MutableStateFlow(State())
     val state: StateFlow<State> = _state.asStateFlow()
 
-    /** v1.0.30 gap4.8: LRU Almacenamiento en caché sin conexión,key = "${sourceText}_${targetLanguage}_${style}". */
+    /** v1.0.30 gap4.8: LRU 离线缓存,key = "${sourceText}_${targetLanguage}_${style}"。 */
     private val translateCache = android.util.LruCache<String, String>(50)
 
-    /** v1.0.30 gap4.5: Preferencias compartidas de estilo personalizado. */
+    /** v1.0.30 gap4.5: 自定义风格 SharedPreferences。 */
     private val stylePrefs by lazy {
         appContext.getSharedPreferences(PREFS_CUSTOM_STYLES, Context.MODE_PRIVATE)
     }
 
     init {
-        // v1.0.17: Cargar historial de traducción desde Room,La fuente de datos se cambia a DAO Flow(La historia no se pierde después de que se mata el proceso.)
+        // v1.0.17: 从 Room 加载翻译历史,数据源改为 DAO Flow(进程被杀后历史不丢失)
         viewModelScope.launch {
             translateHistoryDao.observeRecent(MAX_HISTORY).map { entities ->
                 entities.map { it.toHistoryItem() }
             }.collect { items ->
-                // v1.0.30 gap4.8: Llene el caché LRU al cargar el historial,Las traducciones repetidas posteriores afectan directamente
+                // v1.0.30 gap4.8: 加载历史时填充 LRU 缓存,后续重复翻译直接命中
                 items.forEach { item ->
                     val key = buildCacheKey(item.sourceText, item.targetLanguage, item.style)
                     if (translateCache.get(key) == null) {
@@ -131,7 +132,7 @@ class TranslateViewModel(
                 _state.update { it.copy(history = items) }
             }
         }
-        // v1.0.30 gap4.3: Favoritos Flow
+        // v1.0.30 gap4.3: 收藏夹 Flow
         viewModelScope.launch {
             translateHistoryDao.observeFavorites().map { entities ->
                 entities.map { it.toHistoryItem() }
@@ -139,19 +140,19 @@ class TranslateViewModel(
                 _state.update { it.copy(favorites = items) }
             }
         }
-        // v1.0.30 gap4.5: Cargar estilos personalizados al inicio
+        // v1.0.30 gap4.5: 启动时加载自定义风格
         loadCustomStyles()
-        // v1.0.30 gap4.6: Actualiza el glosario al iniciar para state(UI Mostrar cantidad en consecuencia)
+        // v1.0.30 gap4.6: 启动时刷新术语表到 state(UI 据此显示数量)
         refreshGlossary()
     }
 
-    /** Corrutina de traducción actual,Se admite la cancelación. */
+    /** 当前翻译协程,支持取消。 */
     private var translateJob: Job? = null
 
-    /** v1.0.30 gap4.4: Corrutina de traducción por lotes,Se admite la cancelación. */
+    /** v1.0.30 gap4.4: 批量翻译协程,支持取消。 */
     private var batchJob: Job? = null
 
-    /** v1.0.17: Entity → UI Mapeo del modelo de datos. */
+    /** v1.0.17: Entity → UI 数据模型映射。 */
     private fun TranslateHistoryEntity.toHistoryItem(): TranslateHistoryItem = TranslateHistoryItem(
         id = id,
         sourceText = sourceText,
@@ -163,27 +164,27 @@ class TranslateViewModel(
         favorite = favorite,
     )
 
-    /** Actualizar el texto de entrada. */
+    /** 更新输入文本。 */
     fun updateInput(text: String) {
         _state.update { it.copy(inputText = text) }
     }
 
-    /** Actualizar el idioma de destino. */
+    /** 更新目标语言。 */
     fun updateTargetLanguage(language: String) {
         _state.update { it.copy(targetLanguage = language) }
     }
 
-    /** Actualizar el idioma de origen. */
+    /** 更新源语言。 */
     fun updateSourceLanguage(language: String) {
         _state.update { it.copy(sourceLanguage = language) }
     }
 
-    /** v1.0.30: Estilo de traducción actualizado. */
+    /** v1.0.30: 更新翻译风格。 */
     fun updateTranslationStyle(style: String) {
         _state.update { it.copy(translationStyle = style) }
     }
 
-    /** Intercambiar idiomas de origen y de destino,y rellene la traducción actual en el cuadro de entrada(Traducción fácil de continuar). */
+    /** 交换源语言与目标语言,并将当前译文回填到输入框(便于继续翻译)。 */
     fun swapLanguages() {
         val current = _state.value
         translateJob?.cancel()
@@ -199,7 +200,7 @@ class TranslateViewModel(
         }
     }
 
-    /** Entradas y traducciones claras. */
+    /** 清空输入和译文。 */
     fun clear() {
         translateJob?.cancel()
         _state.update {
@@ -212,7 +213,7 @@ class TranslateViewModel(
         }
     }
 
-    /** v1.97: Cargar elementos del historial en el cuadro de entrada(Retraducir o ver). */
+    /** v1.97: 加载历史记录项到输入框(重新翻译或查看)。 */
     fun loadHistoryItem(item: TranslateHistoryItem) {
         translateJob?.cancel()
         _state.update {
@@ -227,18 +228,18 @@ class TranslateViewModel(
         }
     }
 
-    /** v1.97: Borrar historial de traducción. */
+    /** v1.97: 清空翻译历史。 */
     fun clearHistory() {
-        // v1.0.17: Cambiar a eliminación persistente,DAO Flow Actualizará automáticamente state.history a una lista vacía
+        // v1.0.17: 改为持久化删除,DAO Flow 会自动更新 state.history 为空列表
         viewModelScope.launch {
             translateHistoryDao.deleteAll()
         }
     }
 
     /**
-     * Pegue el texto del portapapeles en el cuadro de entrada.
-     * @param clipText texto del portapapeles(Obtenido de ClipboardManager por capa UI)
-     * @return true Indica pegado exitoso,false Indica que el portapapeles está vacío.
+     * 粘贴剪贴板文本到输入框。
+     * @param clipText 剪贴板文本(由 UI 层从 ClipboardManager 获取)
+     * @return true 表示粘贴成功,false 表示剪贴板为空
      */
     fun paste(clipText: String?): Boolean {
         if (clipText.isNullOrBlank()) return false
@@ -246,7 +247,7 @@ class TranslateViewModel(
         return true
     }
 
-    /** Rellene la traducción en el cuadro de entrada(usado para"Traducir después de la traducción"escena). */
+    /** 将译文回填到输入框(用于"翻译后再翻译"场景)。 */
     fun swapResultToInput() {
         val result = _state.value.translatedText
         if (result.isBlank()) return
@@ -262,19 +263,19 @@ class TranslateViewModel(
     }
 
     /**
-     * Realizar traducción.
+     * 执行翻译。
      *
-     * Estrategia:completeText Prioridad → streamChat Llega al fondo de esto.
-     * Actualizaciones en tiempo real durante la recopilación de streaming translatedText,Permita que el usuario vea el resultado palabra por palabra.
-     * v1.0.30 gap4.8: Verifique el caché LRU antes de traducir,Los hits regresan directamente sin ajustar LLM.
-     * v1.0.30 gap4.6: Se adjunta a la directiva de aviso cuando el glosario no está vacío.
+     * 策略:completeText 优先 → streamChat 兜底。
+     * 流式收集时实时更新 translatedText,让用户看到逐字输出。
+     * v1.0.30 gap4.8: 翻译前先查 LRU 缓存,命中直接返回不调 LLM。
+     * v1.0.30 gap4.6: 术语表非空时附加到 prompt 指令。
      */
     fun translate() {
         val current = _state.value
         if (current.translating) return
         if (current.inputText.isBlank()) return
 
-        // gap4.8: El hit de caché regresa directamente
+        // gap4.8: 缓存命中直接返回
         val cacheKey = buildCacheKey(current.inputText, current.targetLanguage, current.translationStyle)
         val cached = translateCache.get(cacheKey)
         if (cached != null) {
@@ -309,16 +310,16 @@ class TranslateViewModel(
                 )
                 val messages = listOf(UIMessage(role = MessageRole.USER, content = prompt))
 
-                // Prioridad completeText(Devolución única,rapido)
+                // 优先 completeText(一次性返回,速度快)
                 val translated: String = try {
                     val completion: ChatCompletion = chatService.completeText(messages = messages)
-                    // v1.99: Quite las etiquetas incrustadas en el modelo de inferencia,Mantenga solo traducciones puras
+                    // v1.99: 剥离推理模型内嵌的  标签,只保留纯净译文
                     io.zer0.muse.transformer.stripThinkTags(completion.text).trim()
                 } catch (e: UnsupportedOperationException) {
-                    // Provider No implementado completeText,degradar la transmisión
+                    // Provider 未实现 completeText,降级流式
                     collectStream(messages)
                 } catch (e: Exception) {
-                    // Otros errores también degradan la transmisión(Fluctuación de la red, etc.)
+                    // 其他错误也降级流式(网络抖动等)
                     Logger.w(TAG, "completeText failed, fallback to streamChat", e)
                     collectStream(messages)
                 }
@@ -331,9 +332,9 @@ class TranslateViewModel(
                         )
                     }
                 } else {
-                    // gap4.8: Escribir en caché LRU
+                    // gap4.8: 写入 LRU 缓存
                     translateCache.put(cacheKey, translated)
-                    // v1.0.17: Traducido con éxito,persistir en Room(La lista del historial se actualiza automáticamente mediante DAO Flow)
+                    // v1.0.17: 翻译成功,持久化到 Room(历史列表由 DAO Flow 自动更新)
                     val entity = TranslateHistoryEntity(
                         id = java.util.UUID.randomUUID().toString(),
                         sourceText = current.inputText,
@@ -351,68 +352,71 @@ class TranslateViewModel(
                     }
                 }
             } catch (e: CancellationException) {
-                // Cancelación de rutina,No actualizar el estado(cancelTranslation Procesado)
+                // 协程取消,不更新状态(cancelTranslation 已处理)
                 throw e
             } catch (t: Exception) {
                 Logger.e(TAG, "translate failed", t)
                 _state.update {
                     it.copy(
                         translating = false,
-                        errorMessage = appContext.getString(R.string.err_chat_translate_failed, t.message ?: appContext.getString(R.string.err_chat_unknown)),
+                        errorMessage = appContext.getString(
+                            R.string.err_chat_translate_failed,
+                            t.message ?: appContext.getString(R.string.err_chat_unknown),
+                        ),
                     )
                 }
             }
         }
     }
 
-    /** Cancelar la traducción actual. */
+    /** 取消当前翻译。 */
     fun cancelTranslation() {
         translateJob?.cancel()
         _state.update { it.copy(translating = false) }
     }
 
-    /** Consumir mensajes de error(UI Se llama después de que se muestra la capa.,Borrar errorMessage). */
+    /** 消费错误消息(UI 层显示后调用,清除 errorMessage)。 */
     fun consumeError() {
         _state.update { it.copy(errorMessage = null) }
     }
 
-    /** Lea el texto actual en voz alta. */
+    /** 朗读当前原文。 */
     fun speakSource(): Boolean {
         val text = _state.value.inputText.trim()
         if (text.isBlank()) return false
         return ttsManager.speak(text, utteranceId = "translate_source_${System.currentTimeMillis()}")
     }
 
-    /** Lea la traducción actual en voz alta. */
+    /** 朗读当前译文。 */
     fun speakTranslated(): Boolean {
         val text = _state.value.translatedText.trim()
         if (text.isBlank()) return false
         return ttsManager.speak(text, utteranceId = "translate_result_${System.currentTimeMillis()}")
     }
 
-    /** Deja de leer. */
+    /** 停止朗读。 */
     fun stopSpeaking() {
         ttsManager.stop()
     }
 
     /**
-     * v1.0.30 gap4.3: Cambia el estado de la colección de una determinada parte de la historia.
+     * v1.0.30 gap4.3: 切换某条历史的收藏状态。
      */
     fun toggleFavorite(item: TranslateHistoryItem) {
         viewModelScope.launch {
             translateHistoryDao.setFavorite(item.id, !item.favorite)
-            // No hay cambios en el caché(El estado de la colección no tiene nada que ver con la traducción.)
+            // 缓存无需变动(收藏状态与译文无关)
         }
     }
 
     /**
-     * v1.0.30 gap4.4: Traducción por lotes.
+     * v1.0.30 gap4.4: 批量翻译。
      *
-     * Traduce varios fragmentos de texto con una sola convocatoria de LLM,prompt Solicitar modelo para devolver el formato de matriz JSON
-     * `[{"original":"...","translated":"..."}]`,Después del análisis, guárdelos en el historial uno por uno.
+     * 用一次 LLM 调用翻译多段文本,prompt 要求模型返回 JSON 数组格式
+     * `[{"original":"...","translated":"..."}]`,解析后逐条保存到历史。
      *
-     * @param texts Lista de textos a traducir(Cada artículo se traduce de forma independiente.)
-     * @param targetLanguage Idioma de destino Nombre chino
+     * @param texts 待翻译的文本列表(每条独立翻译)
+     * @param targetLanguage 目标语言中文名
      */
     fun translateBatch(texts: List<String>, targetLanguage: String) {
         if (_state.value.batchTranslating) return
@@ -432,8 +436,8 @@ class TranslateViewModel(
             try {
                 val style = _state.value.translationStyle
                 val sourceLang = _state.value.sourceLanguage
-                // v2.6.7: Debe pasarse explícitamente——La versión anterior solo agregaba parámetros predeterminados a buildBatchPrompt.
-                // Si el punto de llamada no se cambia, significa que el glosario y el estilo personalizado aún no se transmiten (el valor predeterminado estará“Fijo”).
+                // v2.6.7: 必须显式传入——上一版只给 buildBatchPrompt 加了默认参数，
+                // 调用点没改就等于术语表与自定义风格依旧不传（默认值会谎报“已修”）。
                 val prompt = buildBatchPrompt(
                     texts = valid,
                     targetLanguage = targetLanguage,
@@ -465,7 +469,7 @@ class TranslateViewModel(
                     return@launch
                 }
 
-                // Escribir historial uno por uno + caché LRU
+                // 逐条写入历史 + LRU 缓存
                 results.forEach { r ->
                     val entity = TranslateHistoryEntity(
                         id = java.util.UUID.randomUUID().toString(),
@@ -489,8 +493,8 @@ class TranslateViewModel(
                 throw e
             } catch (t: Exception) {
                 Logger.e(TAG, "batch translate failed", t)
-                // v2.6.7: romper el banco——La única línea original supera los 140 caracteres (longitud máxima de línea en stock,
-                // Exento por número de línea base). Recórtelo directamente sin depender de la cubierta base.
+                // v2.6.7: 拆行——原单行超 140 字符（存量 max-line-length，
+                // 靠基线行号豁免）。直接修掉，不靠基线盖。
                 val reason = t.message ?: appContext.getString(R.string.err_chat_unknown)
                 _state.update {
                     it.copy(
@@ -502,22 +506,22 @@ class TranslateViewModel(
         }
     }
 
-    /** v1.0.30 gap4.4: Cancelar la traducción por lotes. */
+    /** v1.0.30 gap4.4: 取消批量翻译。 */
     fun cancelBatchTranslation() {
         batchJob?.cancel()
         _state.update { it.copy(batchTranslating = false) }
     }
 
-    /** v1.0.30 gap4.4: Borrar resultados de traducción por lotes(UI Se llama cuando el cuadro de diálogo está cerrado.). */
+    /** v1.0.30 gap4.4: 清空批量翻译结果(UI 关闭对话框时调用)。 */
     fun clearBatchResults() {
         _state.update { it.copy(batchResults = emptyList()) }
     }
 
-    // ── gap4.5 Gestión de estilos personalizados ──
+    // ── gap4.5 自定义风格管理 ──
 
     /**
-     * Agregar estilo personalizado;Si existe el mismo nombre, se sobrescribirá.
-     * persistir en SharedPreferences(JSON matriz:[{"name":"...","prompt":"..."}]).
+     * 添加自定义风格;同名存在则覆盖。
+     * 持久化到 SharedPreferences(JSON 数组:[{"name":"...","prompt":"..."}])。
      */
     fun addCustomStyle(name: String, prompt: String) {
         val trimmedName = name.trim()
@@ -530,7 +534,7 @@ class TranslateViewModel(
         _state.update { it.copy(customStyles = current) }
     }
 
-    /** Eliminar estilo personalizado;Devuelve si realmente se eliminó. */
+    /** 删除自定义风格;返回是否实际删除。 */
     fun removeCustomStyle(name: String): Boolean {
         val current = loadCustomStylesFromPrefs().toMutableList()
         val removed = current.removeAll { it.name == name }
@@ -541,7 +545,7 @@ class TranslateViewModel(
         return removed
     }
 
-    /** Cargue estilos personalizados desde SharedPreferences en el estado. */
+    /** 从 SharedPreferences 加载自定义风格到 state。 */
     private fun loadCustomStyles() {
         _state.update { it.copy(customStyles = loadCustomStylesFromPrefs()) }
     }
@@ -558,7 +562,7 @@ class TranslateViewModel(
                 )
             }.filter { it.name.isNotEmpty() }
         } catch (e: Exception) {
-            Logger.w(TAG, "No se pudo analizar el estilo personalizado: ${e.message}")
+            Logger.w(TAG, "解析自定义风格失败: ${e.message}")
             emptyList()
         }
     }
@@ -576,32 +580,32 @@ class TranslateViewModel(
         stylePrefs.edit().putString(KEY_CUSTOM_STYLES, arr.toString()).apply()
     }
 
-    // ── gap4.6 Glosario ──
+    // ── gap4.6 术语表 ──
 
-    /** Agregar asignación de términos a [GlossaryStore]. */
+    /** 添加术语映射到 [GlossaryStore]。 */
     fun addGlossaryEntry(original: String, translated: String) {
         glossaryStore.add(original, translated)
         refreshGlossary()
     }
 
-    /** Eliminar asignación de términos;Devuelve si realmente se eliminó. */
+    /** 删除术语映射;返回是否实际删除。 */
     fun removeGlossaryEntry(original: String): Boolean {
         val removed = glossaryStore.remove(original)
         if (removed) refreshGlossary()
         return removed
     }
 
-    /** de [GlossaryStore] Actualiza el glosario para indicar. */
+    /** 从 [GlossaryStore] 刷新术语表到 state。 */
     fun refreshGlossary() {
         _state.update { it.copy(glossary = glossaryStore.list()) }
     }
 
-    // ── gap4.7 OCR Traducción ──
+    // ── gap4.7 OCR 翻译 ──
 
     /**
-     * v1.0.30 gap4.7: Complete el cuadro de entrada de texto original con los resultados del reconocimiento OCR.
+     * v1.0.30 gap4.7: 将 OCR 识别结果填入原文输入框。
      *
-     * Llamado por la capa UI [io.zer0.muse.doc.OcrManager.recognize] Páselo después de recibir el texto reconocido.
+     * 由 UI 层调用 [io.zer0.muse.doc.OcrManager.recognize] 得到识别文本后传入。
      */
     fun applyOcrText(text: String) {
         if (text.isBlank()) return
@@ -611,7 +615,7 @@ class TranslateViewModel(
     }
 
     /**
-     * Colección en streaming de resultados de traducción,Texto traducido actualizado en tiempo real.
+     * 流式收集翻译结果,实时更新 translatedText。
      */
     private suspend fun collectStream(messages: List<UIMessage>): String {
         val sb = StringBuilder()
@@ -628,17 +632,17 @@ class TranslateViewModel(
                     )
                 }
                 is ChatStreamEvent.Done -> {
-                    // final de la corriente,Devuelve el texto completo recopilado.
+                    // 流结束,返回收集到的完整文本
                 }
                 else -> {
-                    // ignorar ReasoningDelta / ToolCallDelta / ImageDelta
+                    // 忽略 ReasoningDelta / ToolCallDelta / ImageDelta
                 }
             }
         }
         return io.zer0.muse.transformer.stripThinkTags(sb.toString()).trim()
     }
 
-    /** v1.0.30 gap4.8: Construya la clave de caché LRU. */
+    /** v1.0.30 gap4.8: 构建 LRU 缓存 key。 */
     private fun buildCacheKey(sourceText: String, targetLanguage: String, style: String): String =
         "${sourceText.hashCode()}_${targetLanguage}_$style"
 
@@ -646,11 +650,11 @@ class TranslateViewModel(
         private const val TAG = "TranslateVM"
 
         /**
-         * §11-6: Lista para visualización de áreas históricas.
+         * §11-6: 历史区展示用列表。
          *
-         * La colección de traducciones solía estar completamente desconectada:Capaz de señalar estrellas, almacenarlas y avanzar. [TranslateUiState.favorites],
-         * Pero la interfaz de usuario nunca se muestra favorites,Los usuarios nunca podrán ver lo que han recopilado.
-         * poner aquí"¿Qué datos deben mostrarse?"extraer función pura,UI Únicamente responsable de transmitir interruptores.,Conveniente para pruebas y fijación individuales.
+         * 翻译收藏以前是完整断路:能点星、能落库、能进 [TranslateUiState.favorites],
+         * 但 UI 从没渲染过 favorites,用户永远看不到自己收藏了什么。
+         * 这里把"哪份数据该展示"抽成纯函数,UI 只负责传开关,便于单测钉住。
          */
         internal fun historyForDisplay(
             history: List<TranslateHistoryItem>,
@@ -658,50 +662,50 @@ class TranslateViewModel(
             favoritesOnly: Boolean,
         ): List<TranslateHistoryItem> = if (favoritesOnly) favorites else history
 
-        /** v1.104: Límite superior del historial de traducción(Previamente codificado take(20),Extráigalo como una constante para un fácil ajuste.). */
+        /** v1.104: 翻译历史上限(之前硬编码 take(20),抽出为常量便于调整)。 */
         private const val MAX_HISTORY = 50
 
-        /** v1.0.30 gap4.5: Clave y nombre de archivo de SharedPreferences de estilo personalizado. */
+        /** v1.0.30 gap4.5: 自定义风格 SharedPreferences 文件名与 key。 */
         private const val PREFS_CUSTOM_STYLES = "translate_custom_styles"
         private const val KEY_CUSTOM_STYLES = "custom_styles_json"
 
-        /** Detecta automáticamente los valores de marcador de posición del idioma de origen. */
-        const val SOURCE_AUTO = "Detección automática"
+        /** 自动检测源语言占位值。 */
+        const val SOURCE_AUTO = "自动检测"
 
-        /** Lista de idiomas de origen admitidos(nombre chino,El primer elemento es la detección automática.). */
+        /** 支持的源语言列表(中文名,首项为自动检测)。 */
         val SOURCE_LANGUAGES: List<String> = listOf(
-            SOURCE_AUTO, "chino", "English", "日本語", "한국어",
+            SOURCE_AUTO, "中文", "English", "日本語", "한국어",
             "Français", "Deutsch", "Español", "Русский",
             "العربية", "Português",
         )
 
-        /** Lista de idiomas de destino admitidos(nombre chino,Consistente con ChatViewModel.translateMessage). */
+        /** 支持的目标语言列表(中文名,与 ChatViewModel.translateMessage 一致)。 */
         val TARGET_LANGUAGES: List<String> = listOf(
-            "chino", "English", "日本語", "한국어",
+            "中文", "English", "日本語", "한국어",
             "Français", "Deutsch", "Español", "Русский",
             "العربية", "Português",
         )
 
-        /** v1.0.30: Estilos de traducción admitidos. */
+        /** v1.0.30: 支持的翻译风格。 */
         val TRANSLATION_STYLES: List<String> = listOf(
-            "Universales",
-            "academico",
-            "Negocios",
-            "coloquial",
-            "polaco",
-            "conciso",
+            "通用",
+            "学术",
+            "商务",
+            "口语化",
+            "润色",
+            "简洁",
         )
 
         /**
-         * Crear mensaje de traducción.
+         * 构建翻译 prompt。
          *
-         * v1.0.30 gap4.5: Admite estilos personalizados(customStyles agregue su directiva de aviso cuando se presione el nombre).
-         * v1.0.30 gap4.6: añadido cuando el glosario no está vacío"Consulte el siguiente glosario para la traducción.: A→B, C→D..."instrucciones.
+         * v1.0.30 gap4.5: 支持自定义风格(customStyles 中 name 命中时附加其 prompt 指令)。
+         * v1.0.30 gap4.6: 术语表非空时附加"请参考以下术语表进行翻译: A→B, C→D..."指令。
          *
-         * @param sourceLanguage idioma de origen,Deje que el modelo tome sus propias decisiones durante la detección automática.
-         * @param style estilo de traducción,Afecta el tono y la redacción.
-         * @param customStyles Lista de estilos definidos por el usuario(Agrega el nombre cuando llega prompt)
-         * @param glossary Glosario(Texto original → traducción),añadido a cuando no es nulo prompt
+         * @param sourceLanguage 源语言,自动检测时让模型自行判断
+         * @param style 翻译风格,影响语气与用词
+         * @param customStyles 用户自定义风格列表(命中 name 时附加其 prompt)
+         * @param glossary 术语表(原文 → 译文),非空时附加到 prompt
          */
         fun buildTranslationPrompt(
             text: String,
@@ -712,28 +716,28 @@ class TranslateViewModel(
             glossary: Map<String, String> = emptyMap(),
         ): String = buildString {
             if (sourceLanguage == SOURCE_AUTO) {
-                appendLine("Eres un asistente de traducción profesional. Por favor identifique automáticamente el idioma del texto a continuación,y traducirlo a$targetLanguage.")
+                appendLine("你是一个专业翻译助手。请自动识别下面文本的语言,并将其翻译为$targetLanguage。")
             } else {
-                appendLine("Eres un asistente de traducción profesional. Por favor cambie el texto a continuación de$sourceLanguage traducido como$targetLanguage.")
+                appendLine("你是一个专业翻译助手。请将下面的文本从$sourceLanguage 翻译为$targetLanguage。")
             }
-            appendLine("- Solo genera la traducción,No agregue explicaciones, prefijos o comentarios")
-            appendLine("- Mantener el formato del texto original.(nueva línea/lista/bloques de código, etc.)")
-            appendLine("- Si el texto original ya está$targetLanguage,Salida tal cual")
-            // Estilo personalizado primero:Utilice su directiva de aviso cuando acceda a un estilo personalizado
+            appendLine("- 只输出译文,不要加解释、前缀或注释")
+            appendLine("- 保留原文的格式(换行/列表/代码块等)")
+            appendLine("- 如果原文已经是$targetLanguage,原样输出")
+            // 自定义风格优先:命中自定义风格时使用其 prompt 指令
             appendStyleAndGlossary(style, customStyles, glossary)
             appendLine()
-            appendLine("Texto original:")
+            appendLine("原文:")
             appendLine(text)
         }
 
         /**
-         * v2.6.7: Directivas de estilo y glosario——Comúnmente utilizado para traducción única y traducción por lotes.
+         * v2.6.7: 风格与术语表指令——单条与批量翻译共用。
          *
-         * Anteriormente, escribí una copia en cada uno de los dos lugares, lo que provocó dos problemas:
-         *  1. Se repite el mismo literal de instrucción chino (hardcoded-cjk Por lo tanto, el control de acceso se informa como nuevo);
-         *  2. Prioridades inconsistentes——La única línea es "Si se aplica el estilo personalizado, se sobrescribirá el estilo integrado".
-         *     Lote es la superposición de "integrado + personalizado", y la misma opción de estilo tiene diferentes estilos de traducción en las dos rutas.
-         * Sólo hay una acción después de recolectar un ayudante.
+         * 之前两处各写一份，造成两个问题：
+         *  1. 同一段中文指令字面量重复（hardcoded-cjk 门禁因此报新增）；
+         *  2. 优先级不一致——单条是「自定义风格命中则覆盖内置风格」，
+         *     批量却是「内置 + 自定义」叠加，同一个风格选项在两条路径上译风不同。
+         * 收成一个 helper 后只有一份行为。
          */
         private fun StringBuilder.appendStyleAndGlossary(style: String, customStyles: List<CustomStyle>, glossary: Map<String, String>) {
             val custom = customStyles.firstOrNull { it.name == style }
@@ -741,32 +745,32 @@ class TranslateViewModel(
                 appendLine("- ${custom.prompt}")
             } else {
                 when (style) {
-                    "academico" -> appendLine("- Utiliza expresiones académicas, formales y rigurosas.")
-                    "Negocios" -> appendLine("- Utilice expresiones comerciales, profesionales y educadas.")
-                    "coloquial" -> appendLine("- Utilice expresiones naturales, coloquiales y cercanas a la conversación diaria.")
-                    "polaco" -> appendLine("- Pulir la traducción manteniéndose fiel al significado original.,Hazlo más suave y hermoso.")
-                    "conciso" -> appendLine("- Sea lo más conciso posible,Eliminar expresiones redundantes,Mantener la información básica")
-                    else -> appendLine("- Utilice expresiones comunes, precisas y naturales.")
+                    "学术" -> appendLine("- 使用学术、正式、严谨的表达方式")
+                    "商务" -> appendLine("- 使用商务、专业、礼貌的表达方式")
+                    "口语化" -> appendLine("- 使用自然、口语化、贴近日常对话的表达方式")
+                    "润色" -> appendLine("- 在忠实原意的基础上润色译文,使其更流畅优美")
+                    "简洁" -> appendLine("- 尽量简洁,去除冗余表达,保留核心信息")
+                    else -> appendLine("- 使用通用、准确、自然的表达方式")
                 }
             }
-            // gap4.6: Glosario (reutilización del formato GlossaryStore.formatPromptSnippet, sin reescritura en línea)
+            // gap4.6: 术语表（格式化复用 GlossaryStore.formatPromptSnippet，不内联重写）
             val snippet = GlossaryStore.formatPromptSnippet(glossary)
             if (snippet.isNotEmpty()) {
-                appendLine("- Consulte el siguiente glosario para la traducción.: $snippet")
+                appendLine("- 请参考以下术语表进行翻译: $snippet")
             }
         }
 
         /**
-         * v1.0.30 gap4.4: Cree un mensaje de traducción por lotes.
+         * v1.0.30 gap4.4: 构建批量翻译 prompt。
          *
-         * Pídale al modelo que devuelva una matriz JSON `[{"original":"Texto original1","translated":"traducción1"},...]`,
-         * El orden es consistente con la entrada.,Es conveniente corresponder uno a uno después del análisis.
+         * 要求模型返回 JSON 数组 `[{"original":"原文1","translated":"译文1"},...]`,
+         * 顺序与输入保持一致,便于解析后逐条对应。
          */
-        // v2.6.7: customStyles / glossary Agregado para llenar el vacío de "el lote no cumple con el glosario", el número de parámetros llega a 6.
-        // Mantener la misma forma que un único buildTranslationPrompt es alinear el significado de los dos parámetros de ruta.
-        // No hay ambigüedad entre "uno con estilo y otro sin"; incluir opciones afectará a tres personas que llaman externas
-        // (Página de traducción independiente/herramienta de traducción/traducción en el chat), no vale la pena eliminar una pelusa.
-        // El calibre es el mismo que el de las funciones de ensamblaje a nivel de pantalla, como MessageInputField, y está exento por punto.
+        // v2.6.7: customStyles / glossary 为补齐「批量不遵守术语表」缺口而加，参数达 6 个。
+        // 与单条 buildTranslationPrompt 保持同形，是为了两条路径参数含义对齐、
+        // 不出现「一个有风格一个没有」的歧义；收进 options 会波及三个外部调用方
+        // （独立翻译页 / 翻译工具 / 聊天内翻译），为消一条 lint 不值得。
+        // 口径同 MessageInputField 等屏幕级组装函数，按点豁免。
         @Suppress("LongParameterList")
         fun buildBatchPrompt(
             texts: List<String>,
@@ -777,30 +781,30 @@ class TranslateViewModel(
             glossary: Map<String, String> = emptyMap(),
         ): String = buildString {
             if (sourceLanguage == SOURCE_AUTO) {
-                appendLine("Eres un asistente de traducción profesional. Por favor identifica automáticamente el idioma de cada texto,y traducirlo a$targetLanguage.")
+                appendLine("你是一个专业翻译助手。请自动识别每段文本的语言,并将其翻译为$targetLanguage。")
             } else {
-                appendLine("Eres un asistente de traducción profesional. Cambie cada párrafo del texto siguiente de$sourceLanguage traducido como$targetLanguage.")
+                appendLine("你是一个专业翻译助手。请将下面的每段文本从$sourceLanguage 翻译为$targetLanguage。")
             }
-            appendLine("- Formato de matriz JSON de salida estricto: [{\"original\":\"Texto original\",\"translated\":\"traducción\"},...]")
-            appendLine("- El orden de la matriz corresponde al orden de entrada uno a uno.")
-            appendLine("- original Los campos conservan el texto original.,translated El campo es la traducción correspondiente.")
-            appendLine("- No genere nada que no sea JSON(Sin bloques de código de rebajas)")
-            appendLine("- Si un párrafo ya está$targetLanguage,translated Igual que el original")
-            // v2.6.7: Utilice el mismo método de traducción que la traducción única. helper —— Anteriormente, los estilos y glosarios no se cargaban en lotes.
-            // y incorporado/La personalización es una superposición en lugar de una superposición, y los estilos de traducción de las dos rutas son inconsistentes.
+            appendLine("- 严格输出 JSON 数组格式: [{\"original\":\"原文\",\"translated\":\"译文\"},...]")
+            appendLine("- 数组顺序与输入顺序一一对应")
+            appendLine("- original 字段保留原文,translated 字段为对应译文")
+            appendLine("- 不要输出 JSON 之外的任何内容(不要 markdown 代码块)")
+            appendLine("- 如果某段已经是$targetLanguage,translated 与 original 相同")
+            // v2.6.7: 与单条翻译走同一个 helper —— 之前批量不传风格与术语表，
+            // 而且内置/自定义是叠加而非覆盖，两条路径译风不一致。
             appendStyleAndGlossary(style, customStyles, glossary)
             appendLine()
-            appendLine("Texto a traducir(total ${texts.size} segmento):")
+            appendLine("待翻译文本(共 ${texts.size} 段):")
             texts.forEachIndexed { idx, t ->
                 appendLine("[${idx + 1}] $t")
             }
         }
 
         /**
-         * v1.0.30 gap4.4: Analizar respuestas de traducción por lotes.
+         * v1.0.30 gap4.4: 解析批量翻译响应。
          *
-         * Los modelos pueden devolver bloques de código de rebajas envueltos en JSON,Pele primero y luego analice.
-         * Devuelve una lista vacía cuando falla el análisis(La persona que llama se degrada a un mensaje de error).
+         * 模型可能返回 markdown 代码块包裹的 JSON,先剥离再解析。
+         * 解析失败时返回空列表(调用方降级为错误提示)。
          */
         fun parseBatchResponse(raw: String, originals: List<String>): List<BatchResult> {
             val cleaned = raw
@@ -820,8 +824,8 @@ class TranslateViewModel(
                     BatchResult(original = original, translated = translated)
                 }
             } catch (e: Exception) {
-                Logger.w(TAG, "No se pudo analizar la respuesta de traducción por lotes: ${e.message}")
-                // Ten todo en cuenta:Intente mapear fila por fila(Cuando el modelo no devuelve una matriz JSON)
+                Logger.w(TAG, "解析批量翻译响应失败: ${e.message}")
+                // 兜底:按行尝试映射(模型未返回 JSON 数组时)
                 val lines = raw.split("\n").filter { it.isNotBlank() }
                 if (lines.size == originals.size) {
                     lines.mapIndexedNotNull { idx, line ->
@@ -838,4 +842,30 @@ class TranslateViewModel(
             }
         }
     }
+}
+
+/**
+ * 语言值本身要进 prompt，不能改；展示一律走同一张自称表。
+ *
+ * 走查 三-T3：翻译列表里的 Deutsch / Français / العربية 只在翻译功能出现，
+ * 界面语言列表又叫另一个名字，同一件东西两套词。现在两边都指向 app_language_*，
+ * 只有范围不同的两项（中文 / Português 泛指）用翻译专用 key。
+ */
+@Composable
+internal fun translateLanguageDisplay(option: String, autoLabel: String): String {
+    if (option == TranslateViewModel.SOURCE_AUTO) return autoLabel
+    val res = when (option) {
+        "English" -> io.zer0.muse.R.string.app_language_en
+        "日本語" -> io.zer0.muse.R.string.app_language_ja
+        "한국어" -> io.zer0.muse.R.string.app_language_ko
+        "Español" -> io.zer0.muse.R.string.app_language_es
+        "Русский" -> io.zer0.muse.R.string.app_language_ru
+        "Français" -> io.zer0.muse.R.string.app_language_fr
+        "Deutsch" -> io.zer0.muse.R.string.app_language_de
+        "العربية" -> io.zer0.muse.R.string.app_language_ar
+        "中文" -> io.zer0.muse.R.string.translate_language_zh
+        "Português" -> io.zer0.muse.R.string.translate_language_pt
+        else -> return option
+    }
+    return androidx.compose.ui.res.stringResource(res)
 }

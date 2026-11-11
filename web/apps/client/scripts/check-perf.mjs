@@ -1,11 +1,11 @@
 /**
- * Afirmación del rendimiento y animación de la lista de mensajes.
+ * 消息列表性能与动效的断言。
  *
- * lógica pura (memo Comparación/fusión de instantáneas/ventana/cambio de rendimiento) se ejecuta directamente;CSS afirmación lateral
- * "Usar sólo tokens de movimiento para efectos de animación" "Detener todo al reducir la dinámica"; cableado (ventana, marcador de posición,perf registro)
- * Afirmar según la estructura del código fuente.——Sin un navegador, todo lo que se puede afirmar está roto.
+ * 纯逻辑（memo 比较 / 快照合并 / 窗口化 / perf 开关）直接跑；CSS 侧断言
+ * 「动效只用 motion 令牌」「减少动态时全部停掉」；接线（窗口化、占位、perf 日志）
+ * 按源码结构断言——没有浏览器，能断言的都断了。
  *
- * Uso:npm --workspace @muse/client run test
+ * 用法：npm --workspace @muse/client run test
  */
 import { build } from "esbuild";
 import { readFileSync } from "node:fs";
@@ -53,40 +53,40 @@ const BUBBLE = readFileSync(join(ROOT, "src", "host", "MessageBubble.tsx"), "utf
 const message = (id, overrides = {}) => ({
   id,
   role: "assistant",
-  content: `contenido ${id}`,
+  content: `内容 ${id}`,
   createdAt: 1_700_000_000_000,
   ...overrides,
 });
 
 try {
-  // ── 1. memo Comparar: reconocer solo los campos que afectan la representación ─────────────────────────
+  // ── 1. memo 比较：只认影响渲染的字段 ─────────────────────────
   const base = message("m1");
-  assert(mod.areMessagesEqual(base, base) === true, "Equivalencia directa con la misma referencia");
-  assert(mod.areMessagesEqual(base, message("m1")) === true, "Los nuevos objetos con el mismo contenido son iguales (memo debe omitirse)");
-  assert(mod.areMessagesEqual(base, message("m1", { content: "cambiado" })) === false, "El texto ha cambiado y es necesario volver a renderizarlo.");
-  assert(mod.areMessagesEqual(base, message("m1", { status: "failed" })) === false, "Los cambios de estado requieren volver a renderizarse");
-  assert(mod.areMessagesEqual(base, message("m1", { reasoning: "piensa en ello" })) === false, "Es necesario volver a representar los cambios en el proceso de pensamiento.");
-  assert(mod.areMessagesEqual(base, message("m1", { quotedContent: "Cotización" })) === false, "Los cambios en el bloque de referencia requieren volver a renderizarse");
-  assert(mod.areMessagesEqual(base, message("m2")) === false, "Las diferentes identificaciones se juzgarán de manera diferente.");
+  assert(mod.areMessagesEqual(base, base) === true, "同引用直接判等");
+  assert(mod.areMessagesEqual(base, message("m1")) === true, "内容相同的新对象判等（memo 该跳过）");
+  assert(mod.areMessagesEqual(base, message("m1", { content: "改了" })) === false, "正文变了要重渲染");
+  assert(mod.areMessagesEqual(base, message("m1", { status: "failed" })) === false, "状态变化要重渲染");
+  assert(mod.areMessagesEqual(base, message("m1", { reasoning: "想一下" })) === false, "思考过程变化要重渲染");
+  assert(mod.areMessagesEqual(base, message("m1", { quotedContent: "引用" })) === false, "引用块变化要重渲染");
+  assert(mod.areMessagesEqual(base, message("m2")) === false, "不同 id 判不等");
   assert(
     mod.areMessagesEqual(
       message("m3", { imageUrls: ["/api/media/a"] }),
       message("m3", { imageUrls: ["/api/media/a"] }),
     ) === true,
-    "Las matrices de direcciones de medios se comparan por contenido (no por referencia)",
+    "媒体地址数组按内容比较（不是引用）",
   );
   assert(
     mod.areMessagesEqual(
       message("m3", { imageUrls: ["/api/media/a"] }),
       message("m3", { imageUrls: ["/api/media/b"] }),
     ) === false,
-    "La dirección del medio ha cambiado y es necesario volver a representarla.",
+    "媒体地址变了要重渲染",
   );
   const call = (result) => ({
     toolCalls: [{ callId: "c1", name: "read_file", argumentsPreview: "{}", resultPreview: result, success: true, durationMs: 12 }],
   });
-  assert(mod.areMessagesEqual(message("m4", call("ok")), message("m4", call("ok"))) === true, "Los detalles de la llamada a la herramienta son los mismos.");
-  assert(mod.areMessagesEqual(message("m4", call("ok")), message("m4", call("cambiado"))) === false, "El resultado de la herramienta ha cambiado y es necesario volver a renderizarlo.");
+  assert(mod.areMessagesEqual(message("m4", call("ok")), message("m4", call("ok"))) === true, "工具调用明细相同判等");
+  assert(mod.areMessagesEqual(message("m4", call("ok")), message("m4", call("换了"))) === false, "工具结果变了要重渲染");
 
   const caps = { known: true };
   const bubbleProps = (overrides = {}) => ({
@@ -99,104 +99,104 @@ try {
     selectionMode: false,
     ...overrides,
   });
-  assert(mod.areBubblePropsEqual(bubbleProps(), bubbleProps()) === true, "Saltar renderizado si los accesorios de la burbuja permanecen sin cambios");
+  assert(mod.areBubblePropsEqual(bubbleProps(), bubbleProps()) === true, "气泡 props 没变就跳过渲染");
   assert(
     mod.areBubblePropsEqual(bubbleProps(), bubbleProps({ onCopy: () => undefined, onAction: () => undefined })) === true,
-    "Reemplazar la devolución de llamada con una nueva referencia no afecta el juicio (las devoluciones de llamada son estables y no se compararán)",
+    "回调换新引用不影响判定（回调都是稳定的，不进比较）",
   );
-  assert(mod.areBubblePropsEqual(bubbleProps(), bubbleProps({ streaming: true })) === false, "Los cambios de estado de transmisión requieren volver a renderizarse");
-  assert(mod.areBubblePropsEqual(bubbleProps(), bubbleProps({ actionsOpen: true })) === false, "Es necesario volver a representar la apertura y el cierre del menú.");
-  assert(mod.areBubblePropsEqual(bubbleProps(), bubbleProps({ favorited: true })) === false, "Los cambios de estado de la colección requieren volver a renderizarse");
-  assert(/export const MessageBubble = memo\(MessageBubbleView, areBubblePropsEqual\)/.test(BUBBLE), "De hecho, el componente de mensaje está inactivo. memo");
+  assert(mod.areBubblePropsEqual(bubbleProps(), bubbleProps({ streaming: true })) === false, "流式状态变化要重渲染");
+  assert(mod.areBubblePropsEqual(bubbleProps(), bubbleProps({ actionsOpen: true })) === false, "菜单开合要重渲染");
+  assert(mod.areBubblePropsEqual(bubbleProps(), bubbleProps({ favorited: true })) === false, "收藏态变化要重渲染");
+  assert(/export const MessageBubble = memo\(MessageBubbleView, areBubblePropsEqual\)/.test(BUBBLE), "消息组件确实挂了 memo");
 
-  // ── 2. Fusión de instantáneas: los mensajes sin cambios se reemplazan con referencias antiguas ─────────────────────────
+  // ── 2. 快照合并：没变的消息换回旧引用 ─────────────────────────
   const first = message("a");
   const second = message("b");
   const previous = [first, second];
 
   const sameNext = [message("a"), message("b")];
   const mergedSame = mod.mergeMessages(previous, sameNext);
-  assert(mergedSame === previous, "Si toda la matriz permanece sin cambios, reutilice la matriz anterior directamente.");
+  assert(mergedSame === previous, "整份没变时直接复用旧数组");
 
-  const streamingNext = [message("a"), message("b", { content: "Transmisión…" })];
+  const streamingNext = [message("a"), message("b", { content: "流式中…" })];
   const mergedStreaming = mod.mergeMessages(previous, streamingNext);
-  assert(mergedStreaming[0] === first, "Los mensajes sin cambios reutilizan objetos antiguos (memo solo válido)");
-  assert(mergedStreaming[1] === streamingNext[1], "El cambiado usa un nuevo objeto.");
-  assert(mergedStreaming.length === 2 && mergedStreaming !== previous, "El resultado de la combinación es una nueva matriz, no un cambio in situ.");
+  assert(mergedStreaming[0] === first, "没变的消息复用旧对象（memo 才有效）");
+  assert(mergedStreaming[1] === streamingNext[1], "变了的那条用新对象");
+  assert(mergedStreaming.length === 2 && mergedStreaming !== previous, "合并结果是新数组，不是原地改");
 
   const appended = mod.mergeMessages(previous, [message("a"), message("b"), message("c")]);
-  assert(appended.length === 3 && appended[0] === first && appended[1] === second, "Al agregar, la referencia anterior se mantiene sin cambios.");
-  assert(appended[2]?.id === "c", "Los mensajes recién agregados se agregan a la lista.");
+  assert(appended.length === 3 && appended[0] === first && appended[1] === second, "追加一条时前面的引用不变");
+  assert(appended[2]?.id === "c", "新追加的消息进列表");
 
-  const replacedFirst = mod.mergeMessages(previous, [message("a", { content: "cambiado" }), message("b")]);
+  const replacedFirst = mod.mergeMessages(previous, [message("a", { content: "改了" }), message("b")]);
   assert(
     replacedFirst[0] !== first && replacedFirst !== previous,
-    "Al cambiar al principio, solo se reutiliza el prefijo común (aquí está el prefijo vacío) y la copia completa se reemplaza por una nueva.——No mueva objetos entre ubicaciones",
+    "开头就变时只复用公共前缀（这里是空前缀），整份换新——不做跨位置的对象搬运",
   );
 
-  assert(mod.mergeMessages([], previous) === previous, "La combinación de listas vacías devuelve directamente una nueva instantánea");
+  assert(mod.mergeMessages([], previous) === previous, "空列表合并直接返回新快照");
 
-  // ── 3. Ventanas: cálculo de umbral y área visual ──────────────────────────────
-  assert(mod.WINDOW_THRESHOLD === 150 && mod.WINDOW_OVERSCAN === 20, "Umbral 150, 20 elementos superior e inferior cada uno");
+  // ── 3. 窗口化：阈值与可视区计算 ──────────────────────────────
+  assert(mod.WINDOW_THRESHOLD === 150 && mod.WINDOW_OVERSCAN === 20, "阈值 150、上下各 20 条");
   const small = mod.planWindow({ itemCount: 150, scrollTop: 0, viewportHeight: 600, averageHeight: 100, pinnedToEnd: false });
-  assert(small.active === false && small.start === 0 && small.end === 150, "Renderizar en su totalidad cuando no se incluyen más de 150 elementos");
+  assert(small.active === false && small.start === 0 && small.end === 150, "不超过 150 条时全量渲染");
 
   const big = mod.planWindow({ itemCount: 400, scrollTop: 1000, viewportHeight: 600, averageHeight: 100, pinnedToEnd: false });
-  assert(big.active === true, "Habilitar ventanas cuando se excede el umbral");
-  assert(big.start === 0 && big.end === 36, `desplazamiento 1000px / altura de línea 100 / ventana gráfica 600 → renderizado [0,36): Real [${big.start},${big.end})`);
-  assert(big.topPad === 0 && big.bottomPad === (400 - 36) * 100, "Los espacios ocupados en ambos extremos se llenan hasta la altura total según la altura promedio de fila.");
+  assert(big.active === true, "超过阈值启启用窗口化");
+  assert(big.start === 0 && big.end === 36, `滚动 1000px / 行高 100 / 视口 600 → 渲染 [0,36)：实际 [${big.start},${big.end})`);
+  assert(big.topPad === 0 && big.bottomPad === (400 - 36) * 100, "两端占位按平均行高补齐总高度");
 
   const middle = mod.planWindow({ itemCount: 400, scrollTop: 5000, viewportHeight: 600, averageHeight: 100, pinnedToEnd: false });
-  assert(middle.start === 30 && middle.end === 76, `ventana central [30,76): Real [${middle.start},${middle.end})`);
-  assert(middle.topPad === 30 * 100, "Marcador de posición superior = start × altura de fila");
+  assert(middle.start === 30 && middle.end === 76, `中间位置窗口 [30,76)：实际 [${middle.start},${middle.end})`);
+  assert(middle.topPad === 30 * 100, "顶部占位 = start × 行高");
 
   const tail = mod.planWindow({ itemCount: 400, scrollTop: 0, viewportHeight: 600, averageHeight: 100, pinnedToEnd: true });
-  assert(tail.end === 400 && tail.start === 374, `Anclar el extremo al pegarlo al fondo: real [${tail.start},${tail.end})`);
-  assert(tail.bottomPad === 0, "No queda espacio en la parte inferior al fijarlo a la parte inferior.");
+  assert(tail.end === 400 && tail.start === 374, `贴底时锚定末尾：实际 [${tail.start},${tail.end})`);
+  assert(tail.bottomPad === 0, "贴底时底部不留占位");
 
   const unknown = mod.planWindow({ itemCount: 400, scrollTop: 0, viewportHeight: 600, averageHeight: 0, pinnedToEnd: true });
-  assert(unknown.end === 400 && unknown.start === 400 - Math.ceil(600 / mod.DEFAULT_ROW_HEIGHT) - 20, "Utilice la valoración predeterminada cuando la altura de la fila aún no se haya medido");
+  assert(unknown.end === 400 && unknown.start === 400 - Math.ceil(600 / mod.DEFAULT_ROW_HEIGHT) - 20, "还没量到行高时用默认估值");
   const overscroll = mod.planWindow({ itemCount: 200, scrollTop: 1e9, viewportHeight: 600, averageHeight: 50, pinnedToEnd: false });
-  assert(overscroll.end === 200 && overscroll.bottomPad === 0, "Al desplazarse sobre la cabeza, la ventana se sujeta al final, ocupando el espacio de 0");
-  assert(mod.planWindow({ itemCount: 0, scrollTop: 0, viewportHeight: 0, averageHeight: 0, pinnedToEnd: false }).active === false, "La lista vacía no permite la creación de ventanas");
+  assert(overscroll.end === 200 && overscroll.bottomPad === 0, "滚过头时窗口夹在末尾，占位为 0");
+  assert(mod.planWindow({ itemCount: 0, scrollTop: 0, viewportHeight: 0, averageHeight: 0, pinnedToEnd: false }).active === false, "空列表不启用窗口化");
 
-  assert(mod.measureAverage([100, 200]) === 150, "Altura promedio de fila promediada sobre filas renderizadas");
-  assert(mod.measureAverage([]) === undefined && mod.measureAverage([0, -1]) === undefined, "Devuelto cuando no hay una altura de fila válida undefined");
-  assert(mod.shouldUpdateAverage(0, 80) === true, "Mida la altura de la fila por primera vez y adóptela.");
-  assert(mod.shouldUpdateAverage(100, 105) === false, "Desviación 5% sin actualización (zona muerta)");
-  assert(mod.shouldUpdateAverage(100, 130) === true, "Actualizar solo si la desviación es del 30%");
+  assert(mod.measureAverage([100, 200]) === 150, "平均行高按已渲染行取均值");
+  assert(mod.measureAverage([]) === undefined && mod.measureAverage([0, -1]) === undefined, "没有有效行高时返回 undefined");
+  assert(mod.shouldUpdateAverage(0, 80) === true, "首次量到行高就采纳");
+  assert(mod.shouldUpdateAverage(100, 105) === false, "偏差 5% 不更新（死区）");
+  assert(mod.shouldUpdateAverage(100, 130) === true, "偏差 30% 才更新");
 
-  // ── 4. ?perf=1 Sólo tiene efecto cuando se proporcionan parámetros ────────────────────────────────
-  assert(mod.perfFlag("?perf=1") === true && mod.perfFlag("perf=1") === true, "traer perf=1 recién abierto");
-  assert(mod.perfFlag("") === false && mod.perfFlag("?perf=0") === false && mod.perfFlag("?debug=1") === false, "Sin registros sin parámetros");
+  // ── 4. ?perf=1 只在带参时生效 ────────────────────────────────
+  assert(mod.perfFlag("?perf=1") === true && mod.perfFlag("perf=1") === true, "带 perf=1 才打开");
+  assert(mod.perfFlag("") === false && mod.perfFlag("?perf=0") === false && mod.perfFlag("?debug=1") === false, "不带参数时不打日志");
   const line = mod.formatPerfLine(120, 12.34);
-  assert(line.includes("120 mensajes") && line.includes("12.3ms"), `Formato de registro:${line}`);
+  assert(line.includes("120 条消息") && line.includes("12.3ms"), `日志格式：${line}`);
 
-  // ── 5. Cableado ───────────────────────────────────────────────
-  assert(/useMessageWindow\(/.test(CHAT) && /windowPlan\.topPad/.test(CHAT) && /windowPlan\.bottomPad/.test(CHAT), "La página de chat utiliza un plan con ventanas para representar los marcadores de posición superior e inferior.");
-  assert(/items\.slice\(windowPlan\.start, windowPlan\.end\)/.test(CHAT), "Solo renderiza elementos dentro de la ventana");
-  assert(CHAT.includes('data-host-row'), "Marcas de medición para cada fila (la altura de la fila se rellena a partir de esto)");
-  assert(/perfFlag\(/.test(CHAT) && /formatPerfLine\(/.test(CHAT) && /onSnapshot:/.test(CHAT), "?perf=1 El tiempo que lleva grabar una instantánea.");
-  assert(/stickRef\.current,?\s*$/m.test(CHAT) || CHAT.includes("pinnedToEnd: stickRef.current"), "Al pegar en la parte inferior, el anclaje de la ventana queda al final.");
+  // ── 5. 接线 ───────────────────────────────────────────────
+  assert(/useMessageWindow\(/.test(CHAT) && /windowPlan\.topPad/.test(CHAT) && /windowPlan\.bottomPad/.test(CHAT), "聊天页用窗口化计划渲染上下占位");
+  assert(/items\.slice\(windowPlan\.start, windowPlan\.end\)/.test(CHAT), "只渲染窗口内的条目");
+  assert(CHAT.includes('data-host-row'), "每行带测量标记（行高由此回填）");
+  assert(/perfFlag\(/.test(CHAT) && /formatPerfLine\(/.test(CHAT) && /onSnapshot:/.test(CHAT), "?perf=1 时记录快照耗时");
+  assert(/stickRef\.current,?\s*$/m.test(CHAT) || CHAT.includes("pinnedToEnd: stickRef.current"), "贴底时窗口锚在末尾");
 
-  // ── 6. Dinámica de animación y reducción. ─────────────────────────────────────
+  // ── 6. 动效与减少动态 ─────────────────────────────────────
   assert(
     /\.host-msg-row\[data-new="true"\] \{ animation: host-row-in var\(--muse-motion-durations-content-enter\)/.test(CSS),
-    "Utilice la duración de entrada de contenido para que entren nuevos mensajes (solo se proporciona el último para evitar entradas repetidas durante el desplazamiento de la ventana)",
+    "新消息进入用 content-enter 时长（只给最新一条，避免窗口化滚动时反复入场）",
   );
-  assert(/var\(--muse-motion-easings-emphasized\)/.test(CSS), "Facilitar la obtención del token de movimiento");
-  assert(/\.host-msg-status,\s*\n?\s*\.host-msg-failed \{ animation: host-status-in/.test(CSS), "Hay una transición en los cambios de estado.");
-  assert(/\.host-drawer \{[\s\S]{0,200}var\(--muse-motion-durations-nav-horizontal\)/.test(CSS), "El tiempo de apertura y cierre del cajón mueve la ficha de movimiento.");
-  assert(/\.host-scrim \{ transition: opacity var\(--muse-motion-durations-normal\)/.test(CSS), "La duración del desvanecimiento de la máscara toma el token de movimiento.");
+  assert(/var\(--muse-motion-easings-emphasized\)/.test(CSS), "缓动取 motion 令牌");
+  assert(/\.host-msg-status,\s*\n?\s*\.host-msg-failed \{ animation: host-status-in/.test(CSS), "状态变化有过渡");
+  assert(/\.host-drawer \{[\s\S]{0,200}var\(--muse-motion-durations-nav-horizontal\)/.test(CSS), "抽屉开合时长走 motion 令牌");
+  assert(/\.host-scrim \{ transition: opacity var\(--muse-motion-durations-normal\)/.test(CSS), "遮罩淡入时长走 motion 令牌");
   const reduced = CSS.slice(CSS.indexOf("@media (prefers-reduced-motion: reduce)"));
   for (const selector of [".host-msg-row", ".host-msg-status", ".host-msg-failed", ".host-drawer", ".host-scrim", ".host-picker"]) {
-    assert(reduced.includes(selector), `Al reducir la dinámica. ${selector} también apagado`);
+    assert(reduced.includes(selector), `减少动态时 ${selector} 也被关掉`);
   }
-  assert(/animation: none !important/.test(reduced) && /transition: none !important/.test(reduced), "Reducir la dinámica significa \"no moverse\" en lugar de \"acelerar\"");
-  assert(/\.host-window-pad \{ flex: 0 0 auto/.test(CSS), "El bloque de marcador de posición de la ventana no participa en el escalado.");
+  assert(/animation: none !important/.test(reduced) && /transition: none !important/.test(reduced), "减少动态是「不动」而不是「变快」");
+  assert(/\.host-window-pad \{ flex: 0 0 auto/.test(CSS), "窗口占位块不参与伸缩");
 
-  if (failures > 0) throw new Error(`Las afirmaciones de rendimiento y animación fallaron (${failures} artículo)`);
-  console.log("\nTodas las afirmaciones de rendimiento y animación pasaron (memo / Fusionar/ventanas/cambio de rendimiento/animación).");
+  if (failures > 0) throw new Error(`性能与动效断言未通过（${failures} 条）`);
+  console.log("\n性能与动效断言全部通过（memo / 合并 / 窗口化 / perf 开关 / 动效）。");
 } finally {
   await rm(TEMP, { force: true });
 }

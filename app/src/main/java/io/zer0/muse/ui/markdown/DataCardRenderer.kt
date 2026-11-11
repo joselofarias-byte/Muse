@@ -39,10 +39,10 @@ import io.zer0.muse.ui.theme.MuseShapes
 import io.zer0.muse.ui.theme.statusColors
 
 /**
- * v1.0.53: Representación de tarjeta de datos(Corresponde a la herramienta show_card).
+ * v1.0.53: 数据卡片渲染(对应 show_card 工具)。
  *
- * Tres tipos de gráficos:bar(columnar)/ line(Polilínea)/ donut(anillo).
- * Hay un botón de descarga PNG en la esquina superior derecha de la tarjeta.(por [onDownload] devolución de llamada,Implementado por la persona que llama Canvas→Bitmap→álbum de fotos).
+ * 三种图表:bar(柱状)/ line(折线)/ donut(环形)。
+ * 卡片右上角带下载 PNG 按钮(经 [onDownload] 回调,由调用方实现 Canvas→Bitmap→相册)。
  */
 @Composable
 fun DataCardRenderer(card: DataCard, onDownload: ((DataCard) -> Unit)? = null) {
@@ -55,7 +55,7 @@ fun DataCardRenderer(card: DataCard, onDownload: ((DataCard) -> Unit)? = null) {
         color = colorScheme.surfaceVariant.copy(alpha = 0.35f),
     ) {
         Column(modifier = Modifier.padding(MusePaddings.cardInner)) {
-            // Fila de título + botón de descarga
+            // 标题行 + 下载按钮
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -65,7 +65,7 @@ fun DataCardRenderer(card: DataCard, onDownload: ((DataCard) -> Unit)? = null) {
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.weight(1f),
-                    // LAYOUT-01: El título de la tarjeta (no el texto) está limitado a 1 línea —— El botón de descarga a la derecha apretará la barra de título cuando se amplíe el tamaño de fuente.
+                    // LAYOUT-01: 卡片标题（非正文）限 1 行 —— 右侧下载按钮在放大字号下会挤压标题列
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -82,15 +82,15 @@ fun DataCardRenderer(card: DataCard, onDownload: ((DataCard) -> Unit)? = null) {
             }
             Spacer(Modifier.height(8.dp))
 
-            // área del gráfico
+            // 图表区
             when (card.type) {
                 "bar" -> BarChart(card, accent)
                 "line" -> LineChart(card, accent)
                 "donut" -> DonutChart(card, accent)
             }
 
-            // Leyenda(punto de color + etiqueta + valor).
-            // donut La leyenda comparte la misma paleta de colores que los sectores.,Elige colores en el mismo orden.,Garantía "i-ésimo sector = Leyenda del artículo i".
+            // 图例(颜色点 + 标签 + 值)。
+            // donut 图例与扇区共用同一调色板,同序取色,保证「第 i 个扇区 = 第 i 条图例」。
             val infoColor = MaterialTheme.statusColors.info
             val donutPalette = remember(accent, infoColor) { donutSectorPalette(accent, infoColor) }
             Spacer(Modifier.height(8.dp))
@@ -129,14 +129,14 @@ fun DataCardRenderer(card: DataCard, onDownload: ((DataCard) -> Unit)? = null) {
     }
 }
 
-/** El número máximo de elementos mostrados en la leyenda.(más allá de la visualización +N). */
+/** 图例最多展示的条目数(超出显示 +N)。 */
 private const val MAX_LEGEND_ITEMS = 6
 
 /**
- * Cálculo del ancho de una sola columna.
+ * 单根柱宽计算。
  *
- * datos vacíos(barCount<=0)Regresar 0,La persona que llama no dibuja,evitar `x / 0` tirar ArithmeticException;
- * El lienzo es demasiado estrecho, lo que hace que el ancho disponible se reduzca a 0,Evite pasar un ancho negativo a Canvas.
+ * 空数据(barCount<=0)返回 0,调用方不绘制,避免 `x / 0` 抛 ArithmeticException;
+ * 画布过窄导致可用宽度为负时收缩到 0,避免负宽度传给 Canvas。
  */
 internal fun barWidthFor(canvasWidth: Float, barCount: Int, gap: Float): Float {
     if (barCount <= 0) return 0f
@@ -144,7 +144,7 @@ internal fun barWidthFor(canvasWidth: Float, barCount: Int, gap: Float): Float {
     return (available / barCount).coerceAtLeast(0f)
 }
 
-/** Paleta de sectores del gráfico de anillos(Leyenda compartida con sectores,Índices en el mismo orden.). */
+/** 环形图扇区调色板(图例与扇区共用,索引同序)。 */
 internal fun donutSectorPalette(accent: Color, infoColor: Color): List<Color> = listOf(
     accent,
     accent.copy(alpha = 0.75f),
@@ -153,15 +153,15 @@ internal fun donutSectorPalette(accent: Color, infoColor: Color): List<Color> = 
     infoColor,
 )
 
-/** No. [index] sectores/color de leyenda(Recorrer los colores cuando se excede la longitud de la paleta). */
+/** 第 [index] 个扇区/图例的颜色(超出调色板长度时循环取色)。 */
 internal fun sectorColor(palette: List<Color>, index: Int): Color =
     if (palette.isEmpty()) Color.Unspecified else palette[index % palette.size]
 
-/** Puntos de color de leyenda:donut Mismo orden y mismo color que el sector.,Los gráficos restantes utilizan colores de acento temático. */
+/** 图例色点:donut 与扇区同序同色,其余图表用主题强调色。 */
 internal fun legendSwatchColor(cardType: String, index: Int, accent: Color, donutPalette: List<Color>): Color =
     if (cardType == "donut") sectorColor(donutPalette, index) else accent
 
-/** Gráfico de barras. */
+/** 柱状图。 */
 @Composable
 private fun BarChart(card: DataCard, accent: Color) {
     val maxValue = card.values.maxOrNull()?.coerceAtLeast(1f) ?: 1f
@@ -171,7 +171,7 @@ private fun BarChart(card: DataCard, accent: Color) {
             .height(120.dp),
     ) {
         val barCount = card.values.size
-        // Los datos vacíos no se extraen directamente.:antigua implementación (w - gap * (n - 1)) / n en n == 0 lanzamiento de tiempo ArithmeticException
+        // 空数据直接不绘制:旧实现 (w - gap * (n - 1)) / n 在 n == 0 时抛 ArithmeticException
         if (barCount == 0) return@Canvas
         val w = size.width
         val h = size.height
@@ -189,7 +189,7 @@ private fun BarChart(card: DataCard, accent: Color) {
     }
 }
 
-/** Gráfico de líneas. */
+/** 折线图。 */
 @Composable
 private fun LineChart(card: DataCard, accent: Color) {
     val maxValue = card.values.maxOrNull()?.coerceAtLeast(1f) ?: 1f
@@ -210,7 +210,7 @@ private fun LineChart(card: DataCard, accent: Color) {
                 y = h - padding - ((value - minValue) / range) * (h - padding * 2),
             )
         }
-        // Conectar
+        // 连线
         for (i in 1 until points.size) {
             drawLine(
                 color = accent.copy(alpha = 0.6f),
@@ -219,7 +219,7 @@ private fun LineChart(card: DataCard, accent: Color) {
                 strokeWidth = 2.dp.toPx(),
             )
         }
-        // puntos de datos
+        // 数据点
         points.forEachIndexed { index, point ->
             drawCircle(
                 color = if (index == points.lastIndex) accent else accent.copy(alpha = 0.8f),
@@ -230,11 +230,11 @@ private fun LineChart(card: DataCard, accent: Color) {
     }
 }
 
-/** Gráfico de anillos. */
+/** 环形图。 */
 @Composable
 private fun DonutChart(card: DataCard, accent: Color) {
     val total = card.values.sum().coerceAtLeast(1f)
-    // El color del tema se lee en el contexto Composable,Canvas El dibujo no se puede llamar dentro de lambda
+    // 主题色在 Composable 上下文读取,Canvas 绘制 lambda 内不可调用
     val infoColor = MaterialTheme.statusColors.info
     val palette = remember(accent, infoColor) { donutSectorPalette(accent, infoColor) }
     Box(
@@ -255,7 +255,7 @@ private fun DonutChart(card: DataCard, accent: Color) {
                 drawArc(
                     color = sectorColor(palette, index),
                     startAngle = startAngle,
-                    sweepAngle = sweep - 1f, // pequeña brecha
+                    sweepAngle = sweep - 1f, // 小间隙
                     useCenter = false,
                     topLeft = Offset(center.x - radius, center.y - radius),
                     size = Size(radius * 2, radius * 2),

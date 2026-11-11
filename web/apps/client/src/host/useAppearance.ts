@@ -17,7 +17,7 @@ export interface AppearanceState {
   readonly scale: FontScale;
 }
 
-/** En valores, haga clic en \"La clave contiene estos fragmentos\" para buscar un valor (la clave puede tener el prefijo apariencia.themeMode). */
+/** 在 values 里按「键里包含这些片段」找一个值（键可能是 appearance.themeMode 这种带前缀的）。 */
 function valueOfToken(values: readonly HostSettingValue[] | undefined, tokens: readonly string[]): unknown {
   if (values === undefined) return undefined;
   for (const value of values) {
@@ -28,8 +28,8 @@ function valueOfToken(values: readonly HostSettingValue[] | undefined, tokens: r
 }
 
 /**
- * Leer el estado de apariencia desde la instantánea de configuración: prioridad `values[]`, si no, devuélvelo `display`(El Viejo Anfitrión sólo da lo último).
- * Función pura, fácil de afirmar "mapeo de cuatro niveles" y "volver al valor predeterminado para valores no reconocidos".
+ * 从设置快照里读出外观状态：优先 `values[]`，没有就退回 `display`（老 Host 只给后者）。
+ * 纯函数，便于断言「四档映射」「不认识的值退回默认」。
  */
 export function readAppearance(settings: HostSettingsState): AppearanceState {
   const values = settings.snapshot?.values;
@@ -43,11 +43,11 @@ export function readAppearance(settings: HostSettingsState): AppearanceState {
 }
 
 /**
- * Escribe la apariencia en el elemento raíz.
+ * 把外观写到根元素上。
  *
- * Escribir "sigue el valor de configuración": escribir en la página de configuración es una actualización optimista.`values` Tan pronto como esto cambie, ejecute nuevamente →
- * El tema da en el clavo;Host Configure la capa para que vuelva a escribir el valor anterior al rechazar → Ejecútelo nuevamente aquí para restaurar automáticamente.
- * El tema del sistema también seguirá. `prefers-color-scheme` Cambió, así que me suscribí a esa consulta de medios.
+ * 写入是「跟着设置值走」的：设置页写入是乐观更新，`values` 一变这里立刻重跑 →
+ * 主题当场就切；Host 拒绝时设置层把旧值写回去 → 这里再跑一遍自动还原。
+ * 系统主题还要跟着 `prefers-color-scheme` 变，所以订阅了那条媒体查询。
  */
 export function useAppearance(settings: HostSettingsState): AppearanceState {
   const { mode, scale } = readAppearance(settings);

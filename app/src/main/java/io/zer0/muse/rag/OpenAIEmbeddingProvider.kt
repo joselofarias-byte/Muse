@@ -21,26 +21,26 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 
 /**
- * v1.54: nube Embedding Provider(OpenAI Interfaz compatible).
+ * v1.54: 云端 Embedding Provider(OpenAI 兼容接口)。
  *
- * Reutilizar [ProviderConfig] de baseUrl + apiKey + embeddingsPath,Llame a POST /incrustaciones.
- * Admite todas las API de integración compatibles con OpenAI, como OpenAI / Zhipu / Tongyi / DeepSeek / Dark Side of the Moon / Doubao.
+ * 复用 [ProviderConfig] 的 baseUrl + apiKey + embeddingsPath,调用 POST /embeddings。
+ * 支持 OpenAI / 智谱 / 通义 / DeepSeek / 月之暗面 / 豆包等所有 OpenAI 兼容的 embedding API。
  *
- * Formato de solicitud:
+ * 请求格式:
  * ```
  * POST {baseUrl}/embeddings
  * Authorization: Bearer {apiKey}
  * {"model": "...", "input": ["text1", "text2"]}
  * ```
  *
- * formato de respuesta(OpenAI compatibles):
+ * 响应格式(OpenAI 兼容):
  * ```json
  * {"data": [{"embedding": [0.01, ...], "index": 0}, ...]}
  * ```
  *
- * @param config Provider Configuración(Contiene baseUrl + apiKey + embeddingsPath)
- * @param model embedding Nombre del modelo(El proveedor se utiliza de forma predeterminada cuando la cadena está vacía.)
- * @param client Reutilizar Koin inyectado OkHttpClient(named("chat"))
+ * @param config Provider 配置(含 baseUrl + apiKey + embeddingsPath)
+ * @param model embedding 模型名(空串时用 Provider 默认)
+ * @param client 复用 Koin 注入的 OkHttpClient(named("chat"))
  */
 class OpenAIEmbeddingProvider(
     private val config: ProviderConfig,
@@ -52,30 +52,30 @@ class OpenAIEmbeddingProvider(
     override val displayName: String = "${config.displayName} (Cloud)"
     override val modelName: String = model.ifBlank { defaultModel() }
 
-    /** Las dimensiones se obtienen dinámicamente a partir de la respuesta después de la primera inserción.,Anteriormente, se utilizaba -1 como marcador de posición. */
+    /** 维度在首次 embed 后从响应动态获取,之前用 -1 占位。 */
     @Volatile
     private var cachedDimension: Int = -1
 
     /**
-     * v2.6.0 (AUD-RAG-F3): Si se han medido las dimensiones reales.
+     * v2.6.0 (AUD-RAG-F3): 真实维度是否已实测。
      *
-     * [dimension] Devuelto anteriormente cuando en realidad no se probó [guessDimension] valor estimado,Y RagService
-     * HNSW embedding La huella digital contiene esta dimensión. —— Cuando el valor estimado no coincide con el valor real,La huella digital se escribirá primero basándose en conjeturas,
-     * Después de ser incrustado por primera vez, adquiere la dimensión real.,Como resultado, cada arranque en frío determina los cambios de huellas dactilares y reconstruye el índice.
-     * Ahora se utiliza el lado de la huella digital. [stableDimensionOrNull]:Devolver cuando no se mide null,La persona que llama toma el marcador de posición estable.
-     * huella dactilar de participación,Evite adivinar valores debido a la contaminación de las huellas dactilares.
+     * [dimension] 此前在未实测时返回 [guessDimension] 的猜测值,而 RagService 的
+     * HNSW embedding 指纹包含该维度 —— 猜测值与真实值不一致时,指纹会先按猜测写入、
+     * 首次 embed 后又变成真实维度,导致每次冷启动都判定指纹变化并重建索引。
+     * 现在指纹侧改用 [stableDimensionOrNull]:未实测时返回 null,调用方以稳定占位
+     * 参与指纹,避免猜测值污染指纹。
      */
     override val dimension: Int
         get() = if (cachedDimension > 0) cachedDimension else guessDimension(modelName)
 
-    /** Dimensiones reales medidas;Devuelve nulo si no se mide. */
+    /** 已实测的真实维度;未实测返回 null。 */
     val measuredDimension: Int?
         get() = cachedDimension.takeIf { it > 0 }
 
     /**
-     * Dimensiones para huellas dactilares.:Valores reales medidos y utilizados,Marcador de posición estable no probado en la práctica "unknown"(en lugar de una suposición).
-     * No probado/Se ha medido que las huellas dactilares en los dos estados son diferentes.,Pero cada uno es estable —— Una vez completada la medición real, la huella digital se fija en la dimensión real.,
-     * Los índices ya no se reconstruirán cada inicio en frío debido a saltos en el valor estimado.
+     * 指纹用维度:已实测用真实值,未实测用稳定占位 "unknown"(而非猜测值)。
+     * 未实测/已实测两种状态指纹不同,但各自稳定 —— 实测完成后指纹固定为真实维度,
+     * 不再因猜测值跳变导致每次冷启动重建索引。
      */
     override val fingerprintDimension: String
         get() = measuredDimension?.toString() ?: "unknown"
@@ -108,7 +108,7 @@ class OpenAIEmbeddingProvider(
             .build()
 
         coroutineContext.ensureActive()
-        // v1.0.30: Agregue un tiempo de espera de 10 segundos para evitar que la API de inserción bloquee todo el enlace generado.
+        // v1.0.30: 加 10s 超时，防止 embedding API 挂了阻塞整个生成链路
         val response = kotlinx.coroutines.withTimeout(10_000L) {
             client.newCall(request).execute()
         }
@@ -121,7 +121,7 @@ class OpenAIEmbeddingProvider(
         val json = AppJson.parseToJsonElement(raw).jsonObject
         val dataArray = json["data"]?.jsonArray
             ?: throw RuntimeException("Embedding API response missing data field: ${raw.take(200)}")
-        // Ordene por índice para garantizar que el orden sea coherente con la entrada
+        // 按 index 排序确保顺序与输入一致
         val sorted = dataArray.sortedBy { it.jsonObject["index"]?.jsonPrimitive?.contentOrNull?.toIntOrNull() ?: 0 }
         val result = sorted.map { item ->
             val embArray = item.jsonObject["embedding"]?.jsonArray
@@ -132,23 +132,23 @@ class OpenAIEmbeddingProvider(
         result
     }
 
-    /** Adivina las dimensiones según el nombre del modelo.(Para mostrar la interfaz de usuario antes de la primera llamada). */
+    /** 根据 model 名猜测维度(首次调用前 UI 展示用)。 */
     private fun guessDimension(model: String): Int {
         val m = model.lowercase()
         return when {
             m.contains("text-embedding-3-large") -> 3072
             m.contains("text-embedding-3-small") -> 1536
             m.contains("text-embedding-ada") -> 1536
-            m.contains("embedding-2") -> 1024 // espectro de sabiduría embedding-2
-            m.contains("text-embedding-v3") -> 1024 // significado general text-embedding-v3
+            m.contains("embedding-2") -> 1024 // 智谱 embedding-2
+            m.contains("text-embedding-v3") -> 1024 // 通义 text-embedding-v3
             m.contains("bge-large") -> 1024
             m.contains("bge-small") -> 512
             m.contains("minilm") -> 384
-            else -> 1024 // Suposición predeterminada
+            else -> 1024 // 默认猜测
         }
     }
 
-    /** Devuelve el modelo de incrustación predeterminado según el tipo de proveedor.(cloudModel Llamado cuando está vacío). */
+    /** 根据 Provider 类型返回默认 embedding 模型(cloudModel 为空时调用)。 */
     private fun defaultModel(): String = when (config.type) {
         io.zer0.ai.core.ProviderType.OPENAI, io.zer0.ai.core.ProviderType.OPENAI_RESPONSES -> "text-embedding-3-small"
         io.zer0.ai.core.ProviderType.ANTHROPIC ->

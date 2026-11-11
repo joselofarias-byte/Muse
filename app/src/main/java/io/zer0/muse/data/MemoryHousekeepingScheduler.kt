@@ -10,14 +10,14 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 /**
- * v2.6.2(auditoría de memoria): Programación de limpieza de datos asistida por memoria.
+ * v2.6.2（记忆审计）: 记忆辅助数据清理调度。
  *
- * Antecedentes:`GroupChatMemoryRepository.cleanupOlderThan` con `AgentDmRepository.cleanupOlderThan`
- * Previamente definido pero sin punto de llamada para posición completa —— La anotación dice"Limpiar regularmente", ningún programador realmente lo llama,
- * Esto da como resultado un crecimiento ilimitado de la memoria del chat grupal y de los mensajes privados de los agentes.
+ * 背景：`GroupChatMemoryRepository.cleanupOlderThan` 与 `AgentDmRepository.cleanupOlderThan`
+ * 此前定义了但全仓无调用点 —— 注释写着"定期清理"，实际没有任何调度器调它，
+ * 导致群聊记忆与 Agent 私信无限增长。
  *
- * Este programador los cuelga: límpielos una vez al inicio y luego cada vez [INTERVAL_MS] Límpielo una vez.
- * La retención predeterminada es de 30 días, ajustable en el sitio de la llamada.
+ * 本调度器把它们挂上：启动时清理一次，之后每 [INTERVAL_MS] 清理一次。
+ * 默认保留 30 天，可在调用处调整。
  */
 class MemoryHousekeepingScheduler(
     private val settings: SettingsRepository,
@@ -36,7 +36,7 @@ class MemoryHousekeepingScheduler(
                 runCatching { sweep() }
                     .onFailure {
                         if (it is kotlinx.coroutines.CancellationException) throw it
-                        Logger.w(TAG, "Error al borrar la memoria: ${it.message}")
+                        Logger.w(TAG, "记忆清理失败: ${it.message}")
                     }
                 delay(INTERVAL_MS)
             }
@@ -48,24 +48,24 @@ class MemoryHousekeepingScheduler(
         job = null
     }
 
-    /** Limpieza única (para probar/gatillo manual). */
+    /** 单次清理（供测试/手动触发）。 */
     suspend fun sweep() {
-        // Respetar el interruptor maestro de memoria: No limpiar la memoria cuando el usuario la cierra (los datos se conservan para una fácil reapertura).
+        // 尊重记忆总开关：用户关闭记忆时不清理（数据保留，便于重新开启）。
         if (!settings.isMemoryEnabled()) return
         val keepDays = RETENTION_DAYS
         resultOf { groupChatMemoryRepository.cleanupOlderThan(keepDays) }
-            .onError { msg, t -> Logger.w(TAG, "No se pudo borrar la memoria del chat grupal: $msg", t) }
+            .onError { msg, t -> Logger.w(TAG, "清理群聊记忆失败: $msg", t) }
         resultOf { agentDmRepository.cleanupOlderThan(keepDays) }
-            .onError { msg, t -> Logger.w(TAG, "No se pudieron borrar los mensajes privados del agente: $msg", t) }
+            .onError { msg, t -> Logger.w(TAG, "清理 Agent 私信失败: $msg", t) }
     }
 
     companion object {
         private const val TAG = "MemoryHousekeeping"
 
-        /** intervalo de limpieza (12 horas). */
+        /** 清理间隔（12 小时）。 */
         private const val INTERVAL_MS = 12 * 60 * 60 * 1000L
 
-        /** Número de días a conservar. */
+        /** 保留天数。 */
         private const val RETENTION_DAYS = 30
     }
 }

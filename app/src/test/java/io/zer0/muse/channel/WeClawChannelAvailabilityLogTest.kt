@@ -6,11 +6,11 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 /**
- * Registra la reducción de ruido cuando no hay ningún canal.
+ * 无渠道时的日志降噪。
  *
- * El bucle de recepción debe reintentar cada 30 segundos (de lo contrario el usuario que desactive y vuelva a habilitar el canal nunca volverá a recibir mensajes),
- * Por lo tanto, en el estado estable a largo plazo de "no tener siempre canales", lo único que puede hacer es no tomar notas cada vez.
- * Estos tres tipos de transiciones de estado son los que tienen más probabilidades de escribirse incorrectamente: entrada inicial, continuación del mismo estado y recuperación.
+ * 接收循环必须每 30 秒重试一次（否则用户停用再启用渠道就再也收不到消息），
+ * 所以在「一直没有渠道」这种长时间稳定状态下，唯一能做的就是别每次都记一笔。
+ * 这三种状态转移是最容易写错的：初次进入、持续同状态、恢复。
  */
 class WeClawChannelAvailabilityLogTest {
 

@@ -5,13 +5,13 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Resumen de desplazamiento de memoria con"Compilado hoy"Prueba de intervalo de disparo.
+ * 记忆滚动摘要与"今日编译"的触发间隔测试。
  *
- * Antecedentes: los usuarios informaron que actualizar el resumen de desplazamiento cada 10 rondas era demasiado tarde (es fácil pasar por alto lo que acaba de suceder), por lo que se cambió a cada 5 rondas;
- * pero"Compilación de la memoria de hoy + asamblea."Las escrituras son significativamente más intensas con llamadas de modelos grandes, con 10 rondas a la vez.
+ * 背景：用户反馈 10 轮才更新一次滚动摘要太迟（刚发生的事容易错过），改为每 5 轮；
+ * 但"编译今日记忆 + 装配"的写入与大模型调用明显更重，保持 10 轮一次。
  *
- * Aquí hay dos cosas bloqueadas:① Los dos intervalos surten efecto por separado;② **El intervalo de resumen divide el intervalo de compilación** ——
- * De lo contrario, la compilación se ejecutará antes del resumen y el resumen anterior de la ronda anterior se utilizará para compilar la memoria de hoy.
+ * 这里锁死两件事：① 两个间隔各自生效；② **摘要间隔整除编译间隔** ——
+ * 否则编译会跑在摘要之前，用上一轮的旧摘要去编译今日记忆。
  */
 class MemorySummaryIntervalTest {
 
@@ -20,7 +20,7 @@ class MemorySummaryIntervalTest {
         val expected = setOf(5, 10, 15, 20, 25)
         (1..25).forEach { turn ->
             val should = turn in expected
-            assertTrue("No. $turn El juicio sumario de la ronda debe ser $should", shouldRollSummary(turn) == should)
+            assertTrue("第 $turn 轮的摘要判定应为 $should", shouldRollSummary(turn) == should)
         }
     }
 
@@ -29,7 +29,7 @@ class MemorySummaryIntervalTest {
         val expected = setOf(10, 20, 30)
         (1..30).forEach { turn ->
             val should = turn in expected
-            assertTrue("No. $turn La decisión de compilación de la ronda debe ser $should", shouldCompileToday(turn) == should)
+            assertTrue("第 $turn 轮的编译判定应为 $should", shouldCompileToday(turn) == should)
         }
     }
 
@@ -38,7 +38,7 @@ class MemorySummaryIntervalTest {
         (1..120).forEach { turn ->
             if (shouldCompileToday(turn)) {
                 assertTrue(
-                    "La compilación debe ocurrir simultáneamente con la digestión (sección $turn rueda), de lo contrario se utilizará el resumen anterior para compilar la memoria de hoy",
+                    "编译必须与摘要同时发生（第 $turn 轮），否则会用旧摘要编译今日记忆",
                     shouldRollSummary(turn),
                 )
             }
@@ -48,8 +48,8 @@ class MemorySummaryIntervalTest {
     @Test
     fun `zero and negative turn counts never trigger`() {
         listOf(0, -1, -5).forEach { turn ->
-            assertFalse("No. $turn la ronda no debería activar el resumen", shouldRollSummary(turn))
-            assertFalse("No. $turn la ronda no debería activar la compilación", shouldCompileToday(turn))
+            assertFalse("第 $turn 轮不应触发摘要", shouldRollSummary(turn))
+            assertFalse("第 $turn 轮不应触发编译", shouldCompileToday(turn))
         }
     }
 
@@ -57,7 +57,7 @@ class MemorySummaryIntervalTest {
     fun `summary interval divides the compile interval`() {
         val summary = MemoryTicker.TURNS_PER_SUMMARY
         val compile = MemoryTicker.TURNS_PER_COMPILE
-        assertTrue("intervalo de resumen($summary)Debe dividir el intervalo de compilación($compile)", compile % summary == 0)
-        assertTrue("El resumen debería ser más frecuente que la compilación.", summary < compile)
+        assertTrue("摘要间隔($summary)必须整除编译间隔($compile)", compile % summary == 0)
+        assertTrue("摘要应比编译更频繁", summary < compile)
     }
 }

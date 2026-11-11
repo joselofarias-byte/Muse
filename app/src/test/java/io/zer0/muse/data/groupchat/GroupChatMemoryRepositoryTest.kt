@@ -15,7 +15,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-/** Biblioteca de sala mínima para pruebas:Sólo se incluyen hojas de memoria de chat grupal. */
+/** 测试用最小 Room 库:仅包含群聊记忆表。 */
 @Database(
     entities = [GroupChatMemoryEntity::class],
     version = 1,
@@ -26,19 +26,19 @@ internal abstract class TestMuseDb : RoomDatabase() {
 }
 
 /**
- * v1.0.72: Prueba de almacén de memoria de chat grupal.
+ * v1.0.72: 群聊记忆仓库测试。
  *
- * Cubre las nuevas capacidades v1.0.72(centro de memoria"chat grupal"Tab capa de datos):
- *  - getAll: Consulta de memoria de todos los chats grupales.(pantalla del centro de memoria)
- *  - deleteById: Eliminar un solo elemento(Eliminar un solo elemento en el centro de memoria)
- *  - deleteAll: Limpiar con un clic(Borrar todo el centro de memoria)
- *  - Devoluciones originales saveSummary / getByAssistant(Redacción de resumen de respuesta + lectura de inyección rápida)
+ * 覆盖 v1.0.72 新增能力(记忆中心"群聊"Tab 的数据层):
+ *  - getAll: 全部群聊记忆查询(记忆中心展示)
+ *  - deleteById: 单条删除(记忆中心单条删除)
+ *  - deleteAll: 一键清空(记忆中心清空全部)
+ *  - 原有 saveSummary / getByAssistant 回归(回复摘要写入 + prompt 注入读取)
  *
- * Usando la biblioteca de Room en memoria,No depende de archivos DB reales,CI Puede funcionar de forma estable.
+ * 用内存 Room 库,不依赖真实 DB 文件,CI 可稳定运行。
  *
- * C-31 Evaluación:[TestMuseDb] Sólo definido en este documento,Pruebe la reutilización de otras salas de todo el almacén para producción MuseDb/FactDb/MemoryDb
- * (in-memory),No se copia la misma responsabilidad entre archivos. Baja repetibilidad,No vale la pena construir infraestructura de accesorios de prueba.,Mantenga las clases internas dentro de los archivos.
- * Consulte el informe de auditoría en profundidad C-31 para obtener instrucciones de revisión.
+ * C-31 评估:[TestMuseDb] 仅在本文件定义,全仓库其他 Room 测试复用生产 MuseDb/FactDb/MemoryDb
+ * (in-memory),无同职责跨文件复制。重复度低,不值得建 testFixtures 基建,保持文件内内部类。
+ * 见深度审计报告 C-31 修正说明。
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -65,12 +65,12 @@ class GroupChatMemoryRepositoryTest {
 
     @Test
     fun saveThenGetByAssistantReturnsRecent() = runBlocking {
-        repo.saveSummary("chat1", "assistantA", "En el chat grupal \"Grupo de prueba\",asistenteA Responder:hola")
-        repo.saveSummary("chat1", "assistantB", "En el chat grupal \"Grupo de prueba\",asistenteB Responder:yo soy")
+        repo.saveSummary("chat1", "assistantA", "在群聊「测试群」中,助手A 回复:你好呀")
+        repo.saveSummary("chat1", "assistantB", "在群聊「测试群」中,助手B 回复:我在")
 
         val forA = repo.getByAssistant("assistantA", limit = 10)
         assertEquals(1, forA.size)
-        assertTrue(forA[0].summary.contains("asistenteA"))
+        assertTrue(forA[0].summary.contains("助手A"))
 
         val forB = repo.getByAssistant("assistantB", limit = 10)
         assertEquals(1, forB.size)
@@ -78,35 +78,35 @@ class GroupChatMemoryRepositoryTest {
 
     @Test
     fun getAllReturnsAllMemoriesAcrossChatsAndAssistants() = runBlocking {
-        repo.saveSummary("chat1", "assistantA", "Resumen1")
-        repo.saveSummary("chat1", "assistantB", "Resumen2")
-        repo.saveSummary("chat2", "assistantA", "Resumen3")
+        repo.saveSummary("chat1", "assistantA", "摘要1")
+        repo.saveSummary("chat1", "assistantB", "摘要2")
+        repo.saveSummary("chat2", "assistantA", "摘要3")
 
         val all = repo.getAll()
         assertEquals(3, all.size)
-        // Orden descendente por tiempo:último primero
+        // 按时间降序:最新在前
         assertTrue(all[0].createdAt >= all[1].createdAt)
         assertTrue(all[1].createdAt >= all[2].createdAt)
     }
 
     @Test
     fun deleteByIdRemovesSingleMemory() = runBlocking {
-        // B-18: saveSummary Igual que la ventana predeterminada de 30 minutos. (chat, assistant) Eliminar duplicados,Reunión de segunda convocatoria
-        // Saltar inserción y volver al primer elemento — Esta prueba verifica la semántica de eliminación.,pasar explícitamente dedupWindowMs=0 Deshabilitar la deduplicación
-        val m1 = repo.saveSummary("chat1", "assistantA", "resumen para eliminar", dedupWindowMs = 0)
-        repo.saveSummary("chat1", "assistantA", "resumen retenido", dedupWindowMs = 0)
+        // B-18: saveSummary 默认 30 分钟窗口内同 (chat, assistant) 去重,第二次调用会
+        // 跳过插入并返回第一条 — 本测试验证删除语义,显式传 dedupWindowMs=0 禁用去重
+        val m1 = repo.saveSummary("chat1", "assistantA", "要删除的摘要", dedupWindowMs = 0)
+        repo.saveSummary("chat1", "assistantA", "保留的摘要", dedupWindowMs = 0)
 
         repo.deleteById(m1.id)
 
         val all = repo.getAll()
         assertEquals(1, all.size)
-        assertEquals("resumen retenido", all[0].summary)
+        assertEquals("保留的摘要", all[0].summary)
     }
 
     @Test
     fun deleteAllClearsEverything() = runBlocking {
-        repo.saveSummary("chat1", "assistantA", "Resumen1")
-        repo.saveSummary("chat2", "assistantB", "Resumen2")
+        repo.saveSummary("chat1", "assistantA", "摘要1")
+        repo.saveSummary("chat2", "assistantB", "摘要2")
 
         repo.deleteAll()
 
@@ -115,13 +115,13 @@ class GroupChatMemoryRepositoryTest {
 
     @Test
     fun deleteByGroupChatClearsOnlyThatChat() = runBlocking {
-        repo.saveSummary("chat1", "assistantA", "grupo1de")
-        repo.saveSummary("chat2", "assistantB", "grupo2de")
+        repo.saveSummary("chat1", "assistantA", "群1的")
+        repo.saveSummary("chat2", "assistantB", "群2的")
 
         repo.deleteByGroupChat("chat1")
 
         val all = repo.getAll()
         assertEquals(1, all.size)
-        assertEquals("grupo2de", all[0].summary)
+        assertEquals("群2的", all[0].summary)
     }
 }

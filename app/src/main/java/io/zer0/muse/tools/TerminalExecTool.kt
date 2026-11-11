@@ -1,6 +1,7 @@
 package io.zer0.muse.tools
 
 import io.zer0.common.Logger
+import io.zer0.muse.util.GlobalCoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -10,31 +11,31 @@ import java.io.File
 import java.util.concurrent.TimeUnit
 
 /**
- * v2.x fase terminal uno:terminal_exec Herramientas — Ejecute un único comando de shell dentro del entorno limitado de la aplicación.
+ * v2.x 终端一期:terminal_exec 工具 — 在应用沙盒内执行单条 shell 命令。
  *
- * con [ShellSandboxTool](execute_shell:lista blanca de solo lectura) y device_shell(Shizuku/Root Control de nivel de dispositivo)
- * complementario:Esta herramienta es **App permisos propios** terminales,El directorio de trabajo bloquea el espacio de trabajo de la aplicación,Para procesamiento de archivos, secuencias de comandos,
- * Tareas de sandbox como diagnósticos.HIGH riesgo,Siga la cadena de aprobación existente.
+ * 与 [ShellSandboxTool](execute_shell:只读白名单) 和 device_shell(Shizuku/Root 设备级操控)
+ * 互补:本工具是 **App 自身权限** 的终端,工作目录锁定应用工作区,用于文件处理、脚本、
+ * 诊断等沙盒内任务。HIGH 风险,走既有审批链。
  *
- * límite de seguridad:[ShellCommandBoundary] Dos niveles de criterios. Esta herramienta sólo aplica el conjunto mínimo del primer "absolutamente no permitido".
- * (Eliminar recursivamente el espacio de trabajo/Aplique datos privados, escriba particiones del sistema, formatee, descargue y ejecute, escale privilegios y comandos a nivel de dispositivo, etc.),
- * El modo de aprobación no se puede omitir;El segundo nivel de comandos de "trabajo destructivo pero probablemente normal" se seguirá ejecutando como de costumbre.,Arriesgado por ALTO
- * Responsable de la aprobación uno por uno.,Esta herramienta solo registra un registro de advertencia. Las canalizaciones, redirecciones y asignaciones de variables de entorno no están bloqueadas.
+ * 安全边界:[ShellCommandBoundary] 两档判据。本工具只强制第一档「绝对不许出现」的最小集
+ * (递归删除工作区/应用私有数据、写系统分区、格式化、下载即执行、提权与设备级命令等),
+ * 审批模式绕不过;第二档「有破坏力但可能是正常工作」的命令照旧执行,由 HIGH 风险的
+ * 逐次审批承担,本工具只记一条警告日志。管道、重定向、环境变量赋值不被拦。
  */
 object TerminalExecTool {
     const val NAME = "terminal_exec"
     private const val TAG = "TerminalExec"
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO + GlobalCoroutineExceptionHandler)
 
     fun toolDef() = ToolRegistry.ToolDef(
         name = NAME,
-        description = "Ejecute un único comando de shell dentro del entorno limitado de la aplicación(El directorio de trabajo es el espacio de trabajo de la aplicación.,App permisos propios)." +
-            "Adecuado para el procesamiento de documentos/guión/Diagnóstico;Úselo en su lugar cuando se requieran controles a nivel de dispositivo, como hacer clic, iniciar y detener aplicaciones. device_shell(Requiere autorización Shizuku/Root)." +
-            "Devolver el código de salida y completar la salida;La salida larga se guarda en un archivo de aplicación que se puede leer en segmentos;El comando de tiempo de espera finalizará.",
+        description = "在应用沙盒内执行单条 shell 命令(工作目录为应用工作区,App 自身权限)。" +
+            "适合文件处理/脚本/诊断;需要点击、启停应用等设备级操控时改用 device_shell(需 Shizuku/Root 授权)。" +
+            "返回退出码与完整输出;长输出会保存到可分段读取的应用文件;超时命令会被终止。",
         parameters = mapOf(
-            "command" to "Requerido. Comando de shell único,Como por ejemplo ls -la / cat notes.txt / mkdir -p out(Canalizaciones y redirecciones disponibles;" +
-                "El límite de seguridad rechazará comandos como eliminar recursivamente todo el espacio de trabajo, escribir en la partición del sistema y ejecutar después de la descarga.)",
-            "timeout_ms" to "Opcional. Tiempo de espera en milisegundos,Predeterminado 15000,alcance 1000-60000",
+            "command" to "必填。单条 shell 命令,如 ls -la / cat notes.txt / mkdir -p out(管道与重定向可用;" +
+                "递归删掉整个工作区、写系统分区、下载即执行这类命令会被安全边界拒绝)",
+            "timeout_ms" to "可选。超时毫秒,默认 15000,范围 1000-60000",
         ),
         required = setOf("command"),
         category = "built-in",
@@ -45,16 +46,16 @@ object TerminalExecTool {
     suspend fun execute(args: Map<String, String>, workspaceDir: File, outputDirectory: File): String {
         val command = args["command"]?.trim().orEmpty()
         if (command.isEmpty()) return "Error: command is required."
-        // control de seguridad:Comando de primera marcha con límites estrictos(El mismo piso que la lista negra de ejecuta_shell,Los criterios se basan en el poder destructivo más que en la forma de la cuerda.).
-        // Colóquelo antes de la ejecución y después de la aprobación.:TRUSTED Ni el modo ni "Permitir siempre esta herramienta" pueden anularlo.
+        // 安全检查:命令硬边界第一档(与 execute_shell 黑名单同层的地板,判据按破坏力而不是字符串形状)。
+        // 放在执行之前、审批之后:TRUSTED 模式与「始终允许本工具」都不能越过它。
         val forbidden = ShellCommandBoundary.forbidReason(command, workspaceDir)
         if (forbidden != null) {
-            Logger.w(TAG, "rechazo de la frontera dura:$forbidden")
-            return "Error: Comando rechazado por límite de seguridad — ${forbidden}."
+            Logger.w(TAG, "硬边界拒绝:$forbidden")
+            return "Error: 命令被安全边界拒绝 — $forbidden。"
         }
-        // Segunda marcha:Trabajo destructivo pero normal.,No te detengas aquí(a cargo de la aprobación caso por caso de ALTO riesgo),Sólo quedan registros rastreables.
+        // 第二档:有破坏力但属于正常工作,不在这里拦(由 HIGH 风险的逐次审批承担),只留可回溯的日志。
         ShellCommandBoundary.cautionReason(command)?.let { note ->
-            Logger.w(TAG, "Comando destructivo lanzado(Responsable de la cadena de aprobación.):$note")
+            Logger.w(TAG, "破坏性命令已放行(审批链负责):$note")
         }
         val timeoutMs = (args["timeout_ms"]?.toIntOrNull() ?: 15_000).coerceIn(1_000, 60_000)
         return withContext(Dispatchers.IO) {
@@ -66,7 +67,7 @@ object TerminalExecTool {
                     .start()
             }.getOrElse {
                 capture.close()
-                return@withContext "El inicio falló: ${it.message ?: "error desconocido"}"
+                return@withContext "启动失败: ${it.message ?: "未知错误"}"
             }
 
             val readerFailure = java.util.concurrent.atomic.AtomicReference<Throwable?>(null)
@@ -91,20 +92,20 @@ object TerminalExecTool {
                 readerJob.join()
                 readerFailure.get()?.let { error ->
                     capture.close()
-                    return@withContext "Se agotó el tiempo de espera del comando y no se pudo guardar el resultado completo.: ${error.message ?: "Error de almacenamiento"}"
+                    return@withContext "命令超时，且完整输出无法保存: ${error.message ?: "存储失败"}"
                 }
                 return@withContext capture.finish(
-                    header = "Tiempo de espera del comando(${timeoutMs / 1000}s)terminado",
-                    emptyMessage = "(Sin salida)",
+                    header = "命令超时(${timeoutMs / 1000}s)已终止",
+                    emptyMessage = "(无输出)",
                 )
             }
             readerJob.join()
             readerFailure.get()?.let { error ->
                 capture.close()
-                return@withContext "El comando finaliza, pero no se puede guardar el resultado completo: ${error.message ?: "Error de almacenamiento"}"
+                return@withContext "命令结束，但完整输出无法保存: ${error.message ?: "存储失败"}"
             }
             val exit = process.exitValue()
-            capture.finish(header = "exit=$exit", emptyMessage = "(Sin salida)")
+            capture.finish(header = "exit=$exit", emptyMessage = "(无输出)")
         }
     }
 }

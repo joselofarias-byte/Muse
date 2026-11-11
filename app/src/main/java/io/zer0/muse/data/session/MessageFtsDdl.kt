@@ -1,12 +1,12 @@
 package io.zer0.muse.data.session
 
 /**
- * R-DB-05: messages_fts Cree una tabla SQL y un disparador de contenido externo FTS5.
+ * R-DB-05: messages_fts 建表 SQL 与 FTS5 external content 触发器。
  *
- * - FTS5 Disponible:external content señalar a messages,Indexar el texto original y utilizarlo. SQLite `snippet()`
- *   Generar clips destacados;Sincronizar altas, eliminaciones y modificaciones a la tabla de mensajes mediante disparadores,Evite la deriva de sincronización manual.
- * - FTS5 No disponible:Recurrir a la solución FTS4 + content_ngram existente,continuar por SessionRepository
- *   Eliminar manualmente + insertar mantenimiento de ngram.
+ * - FTS5 可用:external content 指向 messages,索引原文并使用 SQLite `snippet()`
+ *   生成高亮片段;通过触发器与 messages 表增删改同步,避免手动同步漂移。
+ * - FTS5 不可用:回退现有 FTS4 + content_ngram 方案,继续由 SessionRepository
+ *   手动 delete + insert ngram 维护。
  */
 internal object MessageFtsDdl {
 
@@ -26,7 +26,7 @@ internal object MessageFtsDdl {
         )
     """.trimIndent()
 
-    /** FTS5 external content gatillo(Sincronizar altas, eliminaciones y modificaciones en la tabla de mensajes). */
+    /** FTS5 external content 触发器(与 messages 表增删改同步)。 */
     val fts5TriggerSqls: List<String> = listOf(
         """
         CREATE TRIGGER IF NOT EXISTS messages_fts_ai

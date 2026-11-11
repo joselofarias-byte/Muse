@@ -7,10 +7,10 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 /**
- * SSE Prueba de protección de desconexión.
+ * SSE 断开保护测试。
  *
- * Concéntrese en cubrir el camino real del accidente:Después de que el oyente cierra el canal del punto final,Los que esperan se lo merecen. null,
- * En lugar de lanzar ClosedReceiveChannelException.
+ * 重点覆盖真实崩溃路径:监听器关闭 endpoint channel 后,等待方应得到 null,
+ * 而不是抛 ClosedReceiveChannelException。
  */
 class McpClientSseGuardTest {
 

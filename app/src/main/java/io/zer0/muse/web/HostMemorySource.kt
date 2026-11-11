@@ -5,53 +5,52 @@ import io.zer0.memory.fact.FactStore
 import io.zer0.memory.space.MemorySpaceEntity
 
 /**
- * Entradas de memoria en forma intermedia en la capa de protocolo.:El texto no está truncado ni paginado.,Proyección a [HostMemoryReads].
+ * 记忆条目在协议层的中间形态:正文不截断、不分页,投影交给 [HostMemoryReads]。
  *
- * Se utiliza una capa separada para"Leer de qué biblioteca"y"como emitir"separar:El primero se basa en el enrutamiento de habitaciones y subbibliotecas.,Solo se puede ejecutar en el dispositivo;
- * Esta última es una función pura.,Las reglas propensas a errores, como la paginación, el truncamiento y la fragmentación, se pueden probar directamente sin la base de datos.
+ * 单独一层是为了把"从哪个库读"和"怎么下发"分开:前者依赖 Room 与分库路由,只能在设备上跑;
+ * 后者是纯函数,分页、截断、片段这些容易出错的规则可以脱离数据库直接验。
  */
 internal data class HostMemoryRecord(
     val id: String,
     val content: String,
     val createdAt: String,
-    /** Categoría de fuente,ver el valor [HostMemorySourceKind]. */
+    /** 来源类别,取值见 [HostMemorySourceKind]。 */
     val source: String,
     val pinned: Boolean,
 )
 
 /**
- * Fuente de datos de sólo lectura en memoria.
+ * 记忆只读数据源。
  *
- * Solo abre dos rutas de lectura:Enumere por alcance y busque por palabra clave. La implementación debe tener las capacidades de almacenamiento existentes de la aplicación. ——
- * La página web no crea otro índice ni copia una tabla de memoria.,De lo contrario, tarde o temprano el calibre de ambos lados no coincidirá.(Cambió un recuerdo,
- * El sitio web todavía es antiguo.).
+ * 只开两条读路径:按作用域列举、关键词检索。实现方必须是 App 已有的存储能力 ——
+ * 网页端不另建索引、不复制一份记忆表,否则两边口径迟早对不上(改了一条记忆,
+ * 网页上还是旧的)。
  */
 internal interface HostMemorySource {
 
-    /** [assistantId] Todos los elementos del alcance correspondiente;cualquier orden,La paginación se realiza en la capa de proyección. */
+    /** [assistantId] 对应作用域下的全部条目;顺序不限,分页在投影层做。 */
     suspend fun entries(assistantId: String?): List<HostMemoryRecord>
 
-    /** Búsqueda de palabras clave,[limit] El límite superior dado por la persona que llama. */
+    /** 关键词检索,[limit] 为调用方给的上限。 */
     suspend fun search(query: String, assistantId: String?, limit: Int): List<HostMemoryRecord>
 
-    /** Implementación vacía cuando la fuente de datos no está ensamblada:Recibo del pedido como siempre,Simplemente no hay entradas. */
+    /** 未装配数据源时的空实现:命令照常回执,只是没有任何条目。 */
     object Empty : HostMemorySource {
         override suspend fun entries(assistantId: String?): List<HostMemoryRecord> = emptyList()
 
-        override suspend fun search(query: String, assistantId: String?, limit: Int): List<HostMemoryRecord> =
-            emptyList()
+        override suspend fun search(query: String, assistantId: String?, limit: Int): List<HostMemoryRecord> = emptyList()
     }
 }
 
 /**
- * Implementado utilizando la propia tienda de datos de la aplicación. [HostMemorySource].
+ * 用 App 自己的事实存储实现的 [HostMemorySource]。
  *
- * El calibre de enrutamiento es consistente con la página de memoria.:asistente principal(vacío / `default`)leer global `facts.db` + Alcance `main`,
- * asistente de lectura `facts_<id>.db` + El alcance es este ayudante. id —— con lado de escritura([FactDbProvider])es la misma cuenta,
- * Las entradas que se ven en la página web son el lote realmente retirado por el modelo.
+ * 路由口径与记忆页一致:主助手(空 / `default`)读全局 `facts.db` + 作用域 `main`,
+ * 子助手读 `facts_<id>.db` + 作用域为该助手 id —— 与写入侧([FactDbProvider])是同一本账,
+ * 网页端看到的条目就是模型真正召回的那批。
  *
- * Buscar directamente [FactStore] Portal de búsqueda de texto completo,No escriba aquí el segundo conjunto de lógica coincidente.(Esa lógica tiene la suya.
- * Calibre de filtrado de caducidad y segmentación de palabras,Si haces una copia, definitivamente será inconsistente con los resultados de búsqueda en la aplicación.).
+ * 检索直接走 [FactStore] 的全文检索入口,不在这里写第二套匹配逻辑(那套逻辑有自己的
+ * 分词与过期过滤口径,复制一份就一定会跟 App 内的搜索结果不一致)。
  */
 internal class FactHostMemorySource(
     private val factStore: FactStore,
@@ -72,16 +71,15 @@ internal class FactHostMemorySource(
     }
 
     /**
-     * El espacio de memoria donde apareció este alcance en la biblioteca.
+     * 该作用域在库里出现过的记忆空间。
      *
-     * Botón de búsqueda (scope, space) Tome la entrada a los espacios separados de Curry.,Así que primero enumera los espacios.;Utilice el espacio predeterminado cuando la biblioteca esté vacía
-     * Ten todo en cuenta,Asegúrese de que la biblioteca vacía también tome la misma ruta y devuelva una lista vacía,en lugar de abrir otro"sin espacio"cortocircuito.
+     * 检索按 (scope, space) 走库里的分空间入口,所以先把空间列出来;库还空着时用默认空间
+     * 兜底,保证空库也走同一条路径返回空列表,而不是另开一条"没有空间"的短路。
      */
-    private suspend fun spacesOf(store: FactStore, scope: String): List<String> =
-        store.listScopeSpacePairs()
-            .filter { it.first == scope }
-            .map { it.second }
-            .ifEmpty { listOf(MemorySpaceEntity.DEFAULT_SPACE_ID) }
+    private suspend fun spacesOf(store: FactStore, scope: String): List<String> = store.listScopeSpacePairs()
+        .filter { it.first == scope }
+        .map { it.second }
+        .ifEmpty { listOf(MemorySpaceEntity.DEFAULT_SPACE_ID) }
 
     private fun storeFor(assistantId: String?): FactStore {
         val id = assistantId?.trim().orEmpty()
@@ -102,10 +100,10 @@ internal class FactHostMemorySource(
     )
 
     private companion object {
-        /** ID del asistente principal: Su memoria cae globalmente `facts.db`. */
+        /** 主助手 id:它的记忆落在全局 `facts.db`。 */
         const val DEFAULT_ASSISTANT_ID = "default"
 
-        /** El nombre de dominio del asistente principal.,Lo mismo que el lado escrito. */
+        /** 主助手的作用域名,与写入侧一致。 */
         const val MAIN_SCOPE = "main"
     }
 }

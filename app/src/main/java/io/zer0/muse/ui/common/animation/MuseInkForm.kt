@@ -8,51 +8,51 @@ import kotlin.math.pow
 import kotlin.math.sin
 
 /**
- * La geometría de la forma de la tinta: las tres formas comparten una familia de funciones de radio de coordenadas polares.
+ * 墨形的几何：三个形态共用一条极坐标半径函数族。
  *
- * Esta es la restricción clave para todo el conjunto de deformaciones. Las tres formas (hojas/estrellas/anillos) reciben radios en el mismo ángulo,
- * La deformación es el radio interpolado. Debido a que la topología es siempre consistente, no habrá problemas como desgarros, desalineación o conexión inversa de los puntos de control.
- * Tampoco es necesario realizar un fundido cruzado entre formas.
+ * 这是整套变形的关键约束。三个形态（叶 / 星 / 环）都在同一个角度上各自给出半径，
+ * 变形就是插值半径。因为拓扑永远一致，中间不会出现撕裂、错位、控制点反接这类问题，
+ * 也不需要在形态之间做交叉淡变。
  *
- * Después de cambiar a un trazo, la misma función también se reutiliza para realizar el trazo inicial del "dibujo de un trazo" y la luz viaja a lo largo del contorno.
+ * 换成描边路径后，同一个函数还被复用来做「一笔画出」的起笔与沿轮廓游走的光。
  */
 
-/** Forma de la hoja: punta en t=0, el extremo redondo está en t=π. */
+/** 叶形态：尖端在 t=0，圆端在 t=π。 */
 internal const val FORM_LEAF = 0f
 
-/** Forma de estrella: cuatro brazos. */
+/** 星形态：四个臂。 */
 internal const val FORM_SPARK = 1f
 
-/** Forma de anillo: asentada. */
+/** 环形态：落定。 */
 internal const val FORM_RING = 2f
 
-/** Número total de formas para anillos.→Se considera que las hojas están adyacentes al girar. */
+/** 形态总数，用于 环→叶 回绕时判定相邻。 */
 internal const val FORM_COUNT = 3
 
-/** Número de segmentos de muestreo de contorno.18dp Bajo el tamaño, los 96 segmentos ya no son visibles a simple vista. */
+/** 轮廓采样段数。18dp 尺寸下 96 段肉眼已看不出折线。 */
 private const val CONTOUR_SEGMENTS = 96
 
 private const val TWO_PI = (Math.PI * 2).toFloat()
 
-/** Radio de coordenadas polares: cada una de las tres formas da un radio en el mismo ángulo. */
+/** 极坐标半径：三种形态在同一个角度上各自给出半径。 */
 internal fun formRadius(form: Int, angle: Float): Float = when (form) {
-    // Hoja:sin(angle/2) forma de media hoja, punta en angle=0, redondo hacia adentro angle=π. Un índice inferior a 1 hace que las hojas se vuelvan regordetas.
+    // 叶：sin(angle/2) 的半个叶形，尖在 angle=0，圆在 angle=π。指数小于 1 让叶身饱满。
     0 -> 0.02f + 0.98f * (abs(sin(angle / 2f))).pow(0.8f)
-    // Estrella: Cuatro brazos.|cos 2θ| en [0,1] Hay cuatro picos y se presiona la parte inferior para evitar que la cintura colapse hacia el centro.
+    // 星：四臂。|cos 2θ| 在 [0,1] 有四个峰，压底不让腰部塌到中心。
     1 -> 0.34f + 0.66f * (abs(cos(2f * angle))).pow(0.7f)
-    // Lazo: Cerrado y ligeramente ondulado, evitando la rigidez de un círculo geométrico.
+    // 环：闭合且带轻微起伏，避免变成几何圆那样死板。
     else -> 0.66f + 0.09f * cos(3f * angle)
 }
 
-/** Peso de transición suave entre las dos formas (use smoothstep para evitar cambios bruscos de velocidad al principio y al final). */
+/** 两形态之间的平滑过渡权重（走 smoothstep，避免起止处速度突变）。 */
 internal fun smooth01(x: Float): Float {
     val c = x.coerceIn(0f, 1f)
     return c * c * (3f - 2f * c)
 }
 
 /**
- * Valor del patrón en un momento determinado del ciclo:0 hojas → 1 estrella → 2 anillo → Volver a 0.
- * Deje pausas entre cada párrafo para permitir que se vea cada formulario en lugar de deslizarse por completo.
+ * 周期内某一时刻的形态值：0 叶 → 1 星 → 2 环 → 回到 0。
+ * 每段之间留出停顿，让每个形态都被看见，而不是一路滑过去。
  */
 internal fun formAt(progress: Float): Float = when {
     progress < 0.34f -> FORM_LEAF
@@ -63,23 +63,23 @@ internal fun formAt(progress: Float): Float = when {
     else -> FORM_RING + smooth01((progress - 0.86f) / 0.14f) * (FORM_COUNT - FORM_RING)
 }
 
-/** La proporción de una determinada forma bajo el valor de la forma actual, utilizada para desvanecerse dentro y fuera de los elementos adjuntos (tallos de hojas, luz errante). */
+/** 某形态在当前形态值下的占比，用于淡入淡出附属元素（叶柄、游走光）。 */
 internal fun formWeight(form: Float, target: Float): Float {
     val direct = abs(form - target)
-    // anillo(2) con hojas(0) Adyacente al rebobinar, la distancia es 3-|pobre| Plan.
+    // 环(2) 与叶(0) 在回绕时相邻，距离按 3-|差| 计。
     val wrapped = FORM_COUNT - direct
     return (1f - minOf(direct, wrapped)).coerceIn(0f, 1f)
 }
 
-/** El primer 16% es dibujar el contorno mismo y luego mantenerlo intacto. */
+/** 前 16% 把轮廓本身画出来，之后维持完整。 */
 internal fun revealAt(progress: Float): Float = (progress / 0.16f).coerceIn(0f, 1f)
 
 /**
- * Genere rutas de contorno basadas en valores de forma.
+ * 按形态值生成轮廓路径。
  *
- * @param form Valor del formulario, el decimal entre los segmentos completos representa el progreso de la interpolación entre los dos formularios.
- * @param center Centro de lienzo
- * @param radius Radio disponible dentro del lienzo
+ * @param form 形态值，取整段之间的小数表示两形态之间的插值进度
+ * @param center 画布中心
+ * @param radius 画布内可用半径
  */
 internal fun contourPath(form: Float, center: Offset, radius: Float): Path {
     val base = form.toInt().coerceIn(0, FORM_COUNT - 1)

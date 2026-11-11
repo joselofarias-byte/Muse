@@ -4,18 +4,18 @@ import { useI18n } from "../i18n/I18nProvider.js";
 import { formatVoiceDuration } from "./format.js";
 
 interface VoiceBarProps {
-  /** dirección reproducible;undefined el tiempo sólo se puede degradar a una barra de tiempo estática. */
+  /** 可播放地址；undefined 时只能降级成静态时长条。 */
   readonly src?: string | undefined;
-  /** Host La duración de la entrega (milisegundos); si no, léelo de los metadatos de audio. */
+  /** Host 下发的时长（毫秒）；没有就从音频元数据里读。 */
   readonly durationMs?: number | undefined;
 }
 
 /**
- * Barra de voz.
+ * 语音条。
  *
- * - Hay una dirección accesible: play/Pausa + progreso + duración, la capa inferior es una `<audio preload="metadata">`;
- * - Sólo la duración (la antigua Hostia dio `file://` Cita): degradado a "voz · 12″"Barra estática;
- * - Si la carga/reproducción de audio falla, la barra estática volverá y se marcará como "no se puede reproducir" sin dejar una barra de control silenciada.
+ * - 有可访问地址：播放/暂停 + 进度 + 时长，底层就是一个 `<audio preload="metadata">`；
+ * - 只有时长（老 Host 给的是 `file://` 引用）：降级成「语音 · 12″」静态条；
+ * - 音频加载 / 播放失败也退回静态条，并标出「无法播放」，不留一个哑掉的控制条。
  */
 export function VoiceBar({ src, durationMs }: VoiceBarProps) {
   const { t } = useI18n();
@@ -25,7 +25,7 @@ export function VoiceBar({ src, durationMs }: VoiceBarProps) {
   const [measuredMs, setMeasuredMs] = useState<number | undefined>(undefined);
   const [failed, setFailed] = useState(false);
 
-  // Cuando el mismo nodo de mensaje se multiplexa con otra voz, el estado de reproducción se restablece a cero.
+  // 同一条消息节点被复用到另一条语音上时，把播放态归零。
   useEffect(() => {
     setPlaying(false);
     setProgress(0);

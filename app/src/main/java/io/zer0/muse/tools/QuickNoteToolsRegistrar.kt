@@ -3,10 +3,10 @@ package io.zer0.muse.tools
 import android.content.Context
 
 /**
- * P1-3b Desdominio: registrador de herramientas de registro rápido.
+ * P1-3b 拆域：快速记录工具注册器。
  *
- * Registrarse quick_note_add / list / search / get / update / delete / pin.
- * La implementación está ubicada en [QuickNoteToolsImpl.kt].
+ * 注册 quick_note_add / list / search / get / update / delete / pin。
+ * 实现位于 [QuickNoteToolsImpl.kt]。
  */
 class QuickNoteToolsRegistrar(
     private val context: Context,
@@ -22,11 +22,11 @@ class QuickNoteToolsRegistrar(
         toolRegistry.register(
             ToolRegistry.ToolDef(
                 name = "quick_note_add",
-                description = "Agregar un registro rápido(notas ligeras). El modelo puede ayudar a los usuarios a anotar tareas pendientes durante las conversaciones/inspiración/Contenido de referencia.",
+                description = "添加一条快速记录(轻量笔记)。模型可在对话中帮用户记下待办/灵感/参考内容。",
                 parameters = mapOf(
-                    "title" to "Requerido,título del registro",
-                    "content" to "Opcional,Grabar texto",
-                    "tags" to "Opcional,etiqueta,Múltiples separados por comas",
+                    "title" to "必填,记录标题",
+                    "content" to "可选,记录正文",
+                    "tags" to "可选,标签,多个用逗号分隔",
                 ),
                 required = setOf("title"),
                 category = "built-in",
@@ -37,13 +37,13 @@ class QuickNoteToolsRegistrar(
         toolRegistry.register(
             ToolRegistry.ToolDef(
                 name = "quick_note_list",
-                // v1.0.75 fix (Revisión de herramientas 01): El Quick_note_search original es un duplicado exacto de este y ha sido eliminado.,
-                // Modelo de rondas de desperdicio de apuestas de dos opciones. Esta herramienta unifica la lista/filtrar/Buscar.
-                description = "lista/Buscar registros rápidos. Admite el filtrado de etiquetas del cuerpo del título por palabras clave y un filtrado preciso por etiquetas. Si necesita ver el contenido completo de una sola nota, utilice quick_note_get.",
+                // v1.0.75 fix (工具审查 01): 原 quick_note_search 与此完全重复已删除,
+                // 模型二选一赌博浪费轮次。此工具统一处理列表/过滤/搜索。
+                description = "列出/搜索快速记录。支持按关键字过滤标题正文标签、按标签精确过滤。需要看单条完整内容用 quick_note_get。",
                 parameters = mapOf(
-                    "keyword" to "Opcional,Título/Texto/Palabras clave de filtro de etiquetas",
-                    "tag" to "Opcional,Filtrar precisamente por etiquetas",
-                    "limit" to "Opcional,Número máximo de devoluciones,Predeterminado 20",
+                    "keyword" to "可选,标题/正文/标签过滤关键字",
+                    "tag" to "可选,按标签精确过滤",
+                    "limit" to "可选,最多返回数量,默认 20",
                 ),
                 required = emptySet(),
                 category = "built-in",
@@ -55,8 +55,8 @@ class QuickNoteToolsRegistrar(
         toolRegistry.register(
             ToolRegistry.ToolDef(
                 name = "quick_note_get",
-                description = "Obtenga un único registro rápido basado en la identificación.",
-                parameters = mapOf("id" to "Requerido,grabar id"),
+                description = "根据 id 获取单条快速记录。",
+                parameters = mapOf("id" to "必填,记录 id"),
                 required = setOf("id"),
                 category = "built-in",
                 riskLevel = ToolRiskLevel.SAFE,
@@ -66,12 +66,12 @@ class QuickNoteToolsRegistrar(
         toolRegistry.register(
             ToolRegistry.ToolDef(
                 name = "quick_note_update",
-                description = "Actualice el registro rápido especificado.",
+                description = "更新指定快速记录。",
                 parameters = mapOf(
-                    "id" to "Requerido,grabar id",
-                    "title" to "Opcional,nuevo título",
-                    "content" to "Opcional,Nuevo texto",
-                    "tags" to "Opcional,nueva pestaña,Múltiples separados por comas",
+                    "id" to "必填,记录 id",
+                    "title" to "可选,新标题",
+                    "content" to "可选,新正文",
+                    "tags" to "可选,新标签,多个用逗号分隔",
                 ),
                 required = setOf("id"),
                 category = "built-in",
@@ -82,8 +82,8 @@ class QuickNoteToolsRegistrar(
         toolRegistry.register(
             ToolRegistry.ToolDef(
                 name = "quick_note_delete",
-                description = "Eliminar registro rápido especificado(Mover a la papelera de reciclaje,Se puede restaurar en la Papelera de reciclaje).",
-                parameters = mapOf("id" to "Requerido,grabar id"),
+                description = "删除指定快速记录(移入回收站,可在回收站恢复)。",
+                parameters = mapOf("id" to "必填,记录 id"),
                 required = setOf("id"),
                 category = "built-in",
                 riskLevel = ToolRiskLevel.NORMAL,
@@ -93,10 +93,10 @@ class QuickNoteToolsRegistrar(
         toolRegistry.register(
             ToolRegistry.ToolDef(
                 name = "quick_note_pin",
-                description = "fijar hacia arriba/Desanclar un registro rápido.",
+                description = "置顶/取消置顶某条快速记录。",
                 parameters = mapOf(
-                    "id" to "Requerido,grabar id",
-                    "pinned" to "Requerido,true/false",
+                    "id" to "必填,记录 id",
+                    "pinned" to "必填,true/false",
                 ),
                 required = setOf("id", "pinned"),
                 category = "built-in",

@@ -7,18 +7,30 @@ import io.zer0.common.AppJson
 import io.zer0.common.Logger
 import io.zer0.common.resultOf
 import io.zer0.muse.R
+import io.zer0.muse.data.plugin.PluginBridgeRouter
+import io.zer0.muse.data.plugin.PluginCapabilityGateway
+import io.zer0.muse.data.plugin.PluginCapabilityLedgers
+import io.zer0.muse.data.plugin.PluginChatBridge
+import io.zer0.muse.data.plugin.PluginFunctionInvoker
 import io.zer0.muse.data.plugin.PluginManager
+import io.zer0.muse.data.plugin.PluginManifest
+import io.zer0.muse.data.plugin.PluginUiTree
 import io.zer0.muse.data.skill.SkillEntity
 import io.zer0.muse.data.sticker.StickerLibraryRepository
+import io.zer0.muse.tools.script.NodePluginEngine
 import io.zer0.muse.tools.script.PythonSkillEngine
 import io.zer0.muse.tools.script.SkillBridge
 import io.zer0.muse.tools.script.SkillEngineResult
 import io.zer0.muse.tools.script.WebViewSkillEngine
 import io.zer0.muse.ui.qrcode.QrCodeGenerator
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 
 /**
- * P1-3b Deslocalización:Skill medios de comunicación/JS/Implementación de herramienta de complemento (migrada desde SkillExecutor.kt).
- * Llamado por el delegado de SkillExecutor.
+ * P1-3b 拆域：Skill 媒体/JS/插件工具实现（从 SkillExecutor.kt 迁移）。
+ * 由 SkillExecutor 委托调用。
  */
 class SkillMediaToolsImpl(
     private val context: Context,
@@ -27,69 +39,81 @@ class SkillMediaToolsImpl(
     private val imageDrawConfigProvider: suspend () -> Pair<ProviderConfig?, String?> = { null to null },
     private val pluginManager: PluginManager?,
     /**
-     * Interruptor maestro enchufable (habilitado de forma predeterminada).
+     * 插件总开关（默认开启）。
      *
-     * Utilice lambda en lugar de depender directamente de SettingsRepository: esta clase se construye en muchos lugares (incluidas las pruebas).
-     * Agregar una dependencia opcional es más seguro que cambiar todos los puntos de construcción; y [imageDrawConfigProvider] Mismo tipo.
+     * 用 lambda 而不是直接依赖 SettingsRepository：这个类被很多地方构造（含测试），
+     * 加一个可选依赖比改全部构造点安全；与 [imageDrawConfigProvider] 同型。
      */
     private val pluginsGloballyEnabled: suspend () -> Boolean = { true },
+    /**
+     * 插件发起工具调用的通道（`tool_invoke`）。为 null 时该动作一律拒绝 ——
+     * 缺依赖必须是"不可用"，不能退化成"这个动作不存在所以放过"。
+     */
+    private val toolBridge: io.zer0.muse.data.plugin.PluginToolInvokeBridge? = null,
+    /**
+     * 会话读取通道（`chat_read`）。为 null 时该动作一律拒绝 ——
+     * 缺依赖必须是"不可用"，不能退化成"这个动作不存在所以放过"。
+     */
+    private val chatBridge: io.zer0.muse.data.plugin.PluginChatBridge? = null,
+    /** 模型调用通道（`model_call`）。为 null 时该动作一律拒绝。 */
+    private val modelBridge: io.zer0.muse.data.plugin.PluginModelBridge? = null,
 ) {
 
     suspend fun execListStickers(args: Map<String, String>): String {
         val repo = stickerLibraryRepository
             ?: return context.getString(R.string.skill_sticker_not_configured)
         val category = args["category"]?.takeIf { it.isNotBlank() }
-        // v1.0.54: Si no hay ningún parámetro de categoría, solo se devolverá la descripción general de la categoría.(Nombre de la categoría + cantidad),
-        //   Ya no enumera todos los emoticonos en su totalidad — Cuando hay muchos emoticonos, la lista completa puede llegar a decenas de miles de caracteres.,
-        //   Después de ser truncado por Agent Loop, el modelo no puede ver las clasificaciones posteriores.,No te atrevas a llamar a send_sticker.
+        // v1.0.54: 无 category 参数时只返回分类概览(分类名 + 数量),
+        //   不再全量列出每个表情包 — 表情包多时全量列表可达数万字符,
+        //   被 Agent Loop 截断后模型看不到后面的分类,不敢调用 send_sticker。
         if (category == null) {
             val cats = repo.listCategories()
             if (cats.isEmpty()) return context.getString(R.string.skill_sticker_list_empty)
             val sb = StringBuilder()
-            sb.appendLine("total ${cats.size} categorias:")
+            sb.appendLine("共 ${cats.size} 个分类:")
             cats.forEach { c ->
                 val cnt = repo.listStickers(c).size
-                sb.appendLine("[$c]( $cnt un)")
+                sb.appendLine("[$c]( $cnt 个)")
             }
-            // Asistente de Autoevaluación Artículo 16: El nombre de la categoría debe coincidir estrictamente con la lista. Si adivina mal, no será válido y no habrá
-            // Recomendaciones sobre "¿qué es apropiado para este contexto?" Aquí hay una comparación según el contexto, para que el modelo pueda comenzar desde
-            // "¿Cuál es la emoción de la conversación actual?" Se asigna directamente a la clasificación, en lugar de adivinar primero y luego volver a verificar.
+            // 助手自审第 16 条：分类名必须严格匹配清单，猜错就失效，而且没有
+            // 「这个语境适合什么」的推荐。这里按语境给一份对照，让模型从
+            // 「当前对话是什么情绪」直接映射到分类，而不是先猜再回来查。
             appendCategoryGuide(cats, sb)
-            sb.append("Llame a list_stickers y pase el parámetro de categoría para ver los emoticones específicos de una determinada categoría.,Luego llame a send_sticker para enviar.")
+            sb.append("请调用 list_stickers 并传入 category 参数查看某个分类的具体表情包,然后调用 send_sticker 发送。")
             return sb.toString()
         }
         val items = repo.listStickers(category)
         if (items.isEmpty()) {
-            // Si el nombre de la categoría se adivina incorrectamente, proporcione el candidato en lugar de "vacío"—— De lo contrario, el modelo sólo podrá volver a adivinar.
+            // 分类名猜错时给候选，而不是一句「空」—— 否则模型只能再猜一次。
             val cats = repo.listCategories()
             return if (cats.isEmpty()) {
                 context.getString(R.string.skill_sticker_list_empty)
             } else {
                 buildString {
-                    appendLine("Clasificación \"$category\" No hay emoticones a continuación (el nombre de la categoría debe ser exactamente el mismo que el de la lista).")
-                    appendLine("Categorías existentes: ${cats.joinToString(",")}")
-                    append("Seleccione un nombre de categoría preciso y vuelva a llamar a list_stickers.")
+                    appendLine("分类 \"$category\" 下没有表情包（分类名必须与清单完全一致）。")
+                    appendLine("现有分类: ${cats.joinToString("、")}")
+                    append("请从中选一个准确的分类名重新调用 list_stickers。")
                 }
             }
         }
         val sb = StringBuilder()
-        // v1.0.54: La lista de categorías se limita a mostrar los primeros 20 elementos — Puede haber cientos de pegatinas en la categoría.,La salida completa se truncará,
-        //   Si el modelo no puede ver la lista completa, verifíquela repetidamente. list_stickers,Bucle infinito sin ajustar send_sticker.
+        // v1.0.54: 分类列表限制展示前 20 个 — 分类内贴纸可能上百个,全量输出会被截断,
+        //   模型看不到完整列表就反复查 list_stickers,死循环不调 send_sticker。
         val shown = items.take(20)
-        sb.appendLine("total ${items.size} emoticones(Clasificación: $category),Lo siguiente es lo anterior ${shown.size} un:")
+        sb.appendLine("共 ${items.size} 个表情包(分类: $category),以下为前 ${shown.size} 个:")
         shown.forEach { item ->
             sb.appendLine("[${item.category}] ${item.fileName} (id=${item.id})")
         }
-        sb.append("Seleccione uno adecuado de la lista anterior id,Llame a send_sticker inmediatamente para enviar,No repita las listas de consultas.")
+        sb.append("请从以上列表中选择一个合适的 id,立即调用 send_sticker 发送,不要重复查询列表。")
         return sb.toString()
     }
 
     /**
-     * Un cuadro comparativo de clasificaciones según contexto.
+     * 按语境给分类对照表。
      *
-     * Los nombres de las categorías están definidos por el usuario ("Feliz", "Escultura de arena", "Gato Gato"…), no hay forma de codificar el mapeo,
-     * Por lo tanto, las categorías se clasifican en varias emociones de conversación comunes según las palabras clave. No impongas categorías irreconocibles;
-     * Sólo indica "El resto de las categorías se juzgan por sus nombres".—— Adivinar el mapeo incorrecto es peor que no darlo en absoluto.
+     * 分类名是用户自定义的（「开心」「沙雕」「猫猫」…），没法硬编码映射，
+     * 所以按关键词把分类归到几种常见对话情绪下。认不出的分类不硬塞，
+     * 只提示「其余分类按名称自行判断」—— 猜错映射比不给更糟。
      */
     private fun appendCategoryGuide(categories: List<String>, sb: StringBuilder) {
         sb.append(buildCategoryGuide(categories))
@@ -111,7 +135,7 @@ class SkillMediaToolsImpl(
         val prompt = args["prompt"]?.takeIf { it.isNotBlank() }
             ?: return context.getString(R.string.skill_missing_param_prompt)
         val size = args["size"]?.takeIf { it.isNotBlank() } ?: "1024x1024"
-        // v1.136: Skill Se puede especificar explícitamente model,Si no se especifica, ImageService se encargará de ello según ProviderSpecificConfig/Catálogo
+        // v1.136: Skill 可显式指定 model,未指定时由 ImageService 按 ProviderSpecificConfig / Catalog 兜底
         val (drawProviderConfig, configModelId) = imageDrawConfigProvider()
         val model = args["model"]?.takeIf { it.isNotBlank() } ?: configModelId ?: ""
         val referenceImage = args["reference_image"]?.takeIf { it.isNotBlank() }
@@ -129,7 +153,7 @@ class SkillMediaToolsImpl(
             )
             if (urls.isEmpty()) return@resultOf context.getString(R.string.skill_image_no_result, prompt)
             context.getString(R.string.skill_image_generated, prompt, urls.joinToString("\n"))
-        }.onError { msg, _ -> Logger.w("SkillExecutor", "generate_image falló: $msg") }
+        }.onError { msg, _ -> Logger.w("SkillExecutor", "generate_image 失败: $msg") }
             .getOrNull() ?: context.getString(R.string.skill_image_failed, prompt)
     }
 
@@ -147,49 +171,50 @@ class SkillMediaToolsImpl(
             }
             bitmap.recycle()
             context.getString(R.string.skill_qr_generated, file.absolutePath)
-        }.onError { msg, _ -> Logger.w("SkillExecutor", "generate_qr falló: $msg") }
+        }.onError { msg, _ -> Logger.w("SkillExecutor", "generate_qr 失败: $msg") }
             .getOrNull() ?: context.getString(R.string.skill_qr_gen_failed)
     }
 
     suspend fun execExecuteJavascript(args: Map<String, String>): String {
         val code = args["code"]?.takeIf { it.isNotBlank() }
-            ?: return """{"result":"","logs":[],"error":"Falta el código de parámetro o está vacío"}"""
+            ?: return """{"result":"","logs":[],"error":"参数 code 缺失或为空"}"""
         val timeoutMs = args["timeout_ms"]?.toLongOrNull()?.coerceIn(1L, 60_000L) ?: 10000L
-        // inicialización JsSandbox(idempotente)— inyectar Application Context
+        // 初始化 JsSandbox(幂等)— 注入 Application Context
         JsSandbox.init(context)
 
         val input = kotlinx.serialization.json.buildJsonObject {
             put("code", kotlinx.serialization.json.JsonPrimitive(code))
             put("timeout_ms", kotlinx.serialization.json.JsonPrimitive(timeoutMs.toString()))
         }
-        // confiado a CodeExecutionTool.execute(suspend)— Reutilizar el análisis de parámetros unificado y la lógica de serialización de resultados
+        // 委托给 CodeExecutionTool.execute(suspend)— 复用统一的参数解析与结果序列化逻辑
         val output = CodeExecutionTool.execute(input)
         return output.toString()
     }
 
     suspend fun execPluginTool(skill: SkillEntity, argumentsJson: String): String {
         if (!pluginsGloballyEnabled()) {
-            return "El complemento ha sido desactivado globalmente (configuración → Herramientas y extensiones → Interruptor maestro enchufable)"
+            return "插件已被全局停用（设置 → 工具与扩展 → 插件总开关）"
         }
         val parts = skill.implementationKotlin.split(":")
-        if (parts.size < 3) return "Error de formato de enrutamiento de herramienta complementaria: ${skill.implementationKotlin}"
+        if (parts.size < 3) return "插件工具路由格式错误: ${skill.implementationKotlin}"
         val pluginId = parts[1]
         val functionName = parts[2]
-        val manager = pluginManager ?: return "Complemento no instalado: $pluginId"
-        val plugin = manager.findPlugin(pluginId) ?: return "Complemento no instalado: $pluginId"
-        if (!plugin.enabled) return "Complemento deshabilitado: ${plugin.name}"
-        // P0: capabilities/tools/entryCode Siempre proviene del manifiesto después de la nueva verificación del disco.
-        // Las cachés de registro como InstalledPlugin.capabilities ya no son de confianza; y antes de ingresar al sandbox JS
-        // Las denegaciones han sido eliminadas por el nuevo manifiesto./Nombre de función renombrado.
+        val manager = pluginManager ?: return "插件未安装: $pluginId"
+        val plugin = manager.findPlugin(pluginId) ?: return "插件未安装: $pluginId"
+        if (!plugin.enabled) return "插件已禁用: ${plugin.name}"
+        // P0: capabilities/tools/entryCode 一律来自磁盘重新验证后的 manifest，
+        // 不再信任 InstalledPlugin.capabilities 等注册表缓存；并在进入 JS 沙盒前
+        // 拒绝已被新 manifest 移除/改名的 functionName。
         val verified = manager.loadVerifiedFunction(pluginId, functionName)
-            ?: return "La verificación de entrada del complemento falló o la herramienta se eliminó: $pluginId/$functionName"
+            ?: return "插件入口校验失败或工具已移除: $pluginId/$functionName"
 
         val configJson = manager.getPluginConfigJson(verified.manifest)
         val argsJson = "[" + argumentsJson.ifBlank { "{}" } + "]"
 
-        // v2.7: Los motores de ejecución se envían mediante manifest.runtime.
-        //  - python: Tiempo de ejecución de Python integrado (sin zona de pruebas WebView, aislamiento de procesos secundarios)
-        //  - Descanso (js predeterminado):WebView V8 caja de arena + puente __bridge__
+        // v2.7 → P0-6: 按 manifest.runtime 分派执行引擎。
+        //  - python：内置 CPython 子进程（高信任档，需用户单独允许）
+        //  - node：内置 Node 子进程 + vm 无网络上下文（可打断、可杀，见 NodePluginEngine）
+        //  - 其余（默认 js）：WebView V8 沙盒 + __bridge__ 桥接
         if (verified.manifest.runtime.equals("python", ignoreCase = true)) {
             return execPythonPluginTool(
                 pluginId = pluginId,
@@ -200,67 +225,259 @@ class SkillMediaToolsImpl(
             )
         }
 
+        if (PluginFunctionInvoker.isNode(verified.manifest)) {
+            return finishPluginCall(
+                result = NodePluginEngine(context).callPluginFunction(
+                    entryCode = verified.entryCode,
+                    functionName = functionName,
+                    argsJson = argsJson,
+                    scopeKey = pluginId,
+                    pluginConfigJson = configJson,
+                    // 多轮桥接（P0-7-1）：插件里每次 muse.bridge() 都走**与 js 档同一套判定**，
+                    // 不复用第二套逻辑 —— 两套授权的结局一定是其中一套漏检。
+                    bridgeHandler = { requestJson ->
+                        bridgeHandle(bridgeSentinel(requestJson), pluginId, verified.manifest, manager)
+                    },
+                ),
+                manager = manager,
+                pluginId = pluginId,
+                manifest = verified.manifest,
+            )
+        }
+
         JsSandbox.init(context)
-        // C-30: Pase el ID del complemento como scopeKey,Haga que los disyuntores estén aislados del almacenamiento local mediante un complemento,
-        //   El bucle infinito de un complemento no se interrumpirá cuando expire el tiempo de espera/Influya en otros complementos y herramientas JS integradas.
-        return when (
-            val result = WebViewSkillEngine().callFunction(
+        // C-30: 传入 pluginId 作为 scopeKey,使熔断状态与 localStorage 按插件隔离,
+        //   一个插件死循环超时不会熔断/影响其他插件与内置 JS 工具。
+        return finishPluginCall(
+            result = WebViewSkillEngine().callFunction(
                 verified.entryCode,
                 functionName,
                 argsJson,
                 scopeKey = pluginId,
                 pluginConfigJson = configJson,
-            )
-        ) {
-            is SkillEngineResult.Success -> {
-                val value = result.valueJson
-                // F-17 + v2.2.1 Gran arenero;v2.x(Sandbox Unleashed): acción puente**Lanzamiento completo por defecto**.
-                // En el pasado, las capacidades se publicaban una por una estrictamente de acuerdo con la declaración del manifiesto, lo cual era demasiado conservador: si el autor del complemento olvidaba declararlo, no se podía ajustar.
-                // Ahora se cambia a: No hay umbral para acciones, pero**Mantenga dos tipos de resultados finales**(Estos dos elementos son corrección más que conservadurismo):
-                //  1. fs_* Todavía bloqueado en el propio directorio sandbox del complemento(workspace/plugins/<pluginId>), evitar el escape del camino;
-                //  2. http_* Todavía uso protección SSRF (rechazo de red interna)/dirección local).
-                val allowedBridgeActions = SkillBridge.ALL_ACTIONS
-                val bridgeHost = SkillBridge.Host(
-                    context = context,
-                    fsRoot = java.io.File(context.filesDir, "workspace/plugins/$pluginId"),
-                )
-                when (val bridge = SkillBridge.tryHandle(value, allowedBridgeActions, bridgeHost)) {
-                    is SkillBridge.HandleResult.NotBridge -> {
-                        runCatching {
-                            AppJson.decodeFromString<String>(value)
-                        }.getOrElse {
-                            value.ifBlank { "null" }
-                        }
-                    }
-                    // El resultado de la ejecución de la solicitud de puente se devuelve directamente a LLM
-                    is SkillBridge.HandleResult.Output -> bridge.json
-                    // Resolución de puente/La ejecución falló (incluida la acción no admitida)→ Devuelve un objeto de error para evitar que el script piense que fue exitoso
-                    is SkillBridge.HandleResult.Failure ->
-                        kotlinx.serialization.json.buildJsonObject {
-                            put("error", kotlinx.serialization.json.JsonPrimitive(bridge.message))
-                        }.toString()
-                }
-            }
-            is SkillEngineResult.Error -> {
-                if (JsSandbox.isCircuitBrokenFor(pluginId)) {
-                    resultOf { manager.setEnabled(pluginId, false) }
-                        .onError { msg, _ -> Logger.w("SkillMediaToolsImpl", "Falló la desactivación automática de complementos: $msg") }
-                    "El complemento se ha desactivado automáticamente: JS El tiempo de espera del entorno de pruebas se ha agotado continuamente. Vuelva a intentarlo más tarde."
-                } else {
-                    "Error al ejecutar la herramienta de complemento: ${result.message}"
-                }
+            ),
+            manager = manager,
+            pluginId = pluginId,
+            manifest = verified.manifest,
+        )
+    }
+
+    /**
+     * 统一收尾：成功就过桥接（按能力账本放行），失败就处理熔断。
+     *
+     * 抽出来是因为 WebView 档与 Node 档的后续处理**完全一样**；留在原处就得写两遍，
+     * 而"两遍"的结局一定是其中一遍忘了改 —— 桥接与账本恰好是最不能漏的那一处。
+     */
+    private suspend fun finishPluginCall(
+        result: SkillEngineResult,
+        manager: PluginManager,
+        pluginId: String,
+        manifest: PluginManifest,
+    ): String = when (result) {
+        is SkillEngineResult.Success -> bridgeOrValue(result.valueJson, pluginId, manifest, manager)
+        is SkillEngineResult.Error -> {
+            if (JsSandbox.isCircuitBrokenFor(pluginId)) {
+                resultOf { manager.setEnabled(pluginId, false) }
+                    .onError { msg, _ -> Logger.w("SkillMediaToolsImpl", "自动禁用插件失败: $msg") }
+                "插件已自动禁用: JS 沙盒连续超时，请稍后重试"
+            } else {
+                "插件工具执行失败: ${result.message}"
             }
         }
     }
 
     /**
-     * v2.7: Ejecute la herramienta de complemento de Python.
+     * 桥接动作按**能力账本**放行（P0-2）。此前这里无条件传 `ALL_ACTIONS`，
+     * 而安装确认框又向用户展示"声明能力"，等于给了假安全感。
      *
-     * Diferencias con la rama JS:
-     *  - Sin zona de pruebas WebView, sin puente __bridge__ (Python El proceso hijo en sí tiene capacidades completas,
-     *    Lectura y escritura de archivos/red/La biblioteca estándar se utiliza directamente; los riesgos elevados todavía están cubiertos por la cadena de aprobación general de la herramienta plug-in);
-     *  - Asegúrese de que los datos del tiempo de ejecución de Python antes de la primera llamada (stdlib/CA bundle) está listo.
-     *  - El valor de retorno se devuelve directamente como resultado de la herramienta (una cadena); La serialización JSON se utiliza cuando se devuelven elementos que no son cadenas.
+     * 保留的两类底线与能力无关，属正确性：
+     *  1. `fs_*` 仍锁定在插件自己的沙盒目录 `workspace/plugins/<pluginId>`，防路径逃逸；
+     *  2. `http_*` 仍走 SSRF 防护（拒内网/本地地址）。
+     */
+    private suspend fun bridgeOrValue(value: String, pluginId: String, manifest: PluginManifest, manager: PluginManager): String =
+        when (val bridge = bridgeHandle(value, pluginId, manifest, manager)) {
+            is SkillBridge.HandleResult.NotBridge ->
+                runCatching { AppJson.decodeFromString<String>(value) }.getOrElse { value.ifBlank { "null" } }
+            // 桥接请求的执行结果作为技能返回值直接返回给 LLM
+            is SkillBridge.HandleResult.Output -> bridge.json
+            // 桥接解析/执行失败（含 action 未授权）→ 返回错误对象，避免脚本以为成功
+            is SkillBridge.HandleResult.Failure -> buildJsonObject { put("error", JsonPrimitive(bridge.message)) }.toString()
+        }
+
+    /**
+     * 桥接判定的唯一入口：动作集来自**能力账本**（P0-2），不是清单声明、也不是全放行。
+     *
+     * 两类底线与能力无关，属正确性，所以留在 [SkillBridge] 里：
+     *  1. `fs_*` 锁定在插件自己的沙盒目录 `workspace/plugins/<pluginId>`，防路径逃逸；
+     *  2. `http_*` 走 SSRF 防护（拒内网/本地地址）。
+     */
+    private suspend fun bridgeHandle(
+        value: String,
+        pluginId: String,
+        manifest: PluginManifest,
+        manager: PluginManager,
+    ): SkillBridge.HandleResult = bridgeRouter(manager).handle(value, pluginId, manifest)
+
+    /**
+     * 桥接判定的构造点。判定本体在 [PluginBridgeRouter]：
+     * 声明式面板的提交 handler 走的是同一条路，两处各写一份授权迟早强弱不一。
+     */
+    private fun bridgeRouter(manager: PluginManager) = PluginBridgeRouter(
+        context = context,
+        writeConfig = { id, key, newValue -> manager.setPluginConfig(id, key, newValue) },
+        toolBridge = toolBridge,
+        chatBridge = chatBridge,
+        modelBridge = modelBridge,
+    )
+
+    /**
+     * 声明式面板的一次提交：调用插件的 handler，拿回**新的组件树**。
+     *
+     * 四道拒绝都必须给可行动原因（用户看得到、作者改得动）：
+     *  1. `ui.interactive` 未批准 —— 这条默认关，因为提交会改数据；
+     *  2. handler 未在清单声明 —— 由 `loadVerifiedFunction` 把关，不在解析器里重查；
+     *  3. 运行时不是 node —— js 档是单轮桥接语义：一次 bridge 请求就是返回值本身，
+     *     插件没法"先存再返回新界面"。这不是偏好，是运行时的既成限制，直说比静默失效诚实；
+     *  4. handler 自己抛错 —— 原文带回，界面保留用户已填内容。
+     */
+    suspend fun invokeUiSubmitHandler(pluginId: String, handlerName: String, valuesJson: String): UiSubmitResult {
+        val prepared = prepareDeclaredCall(pluginId, handlerName, forInteractiveUi = true)
+        val plan = prepared.plan
+            ?: return UiSubmitResult.Rejected(prepared.reason ?: "无法开始这次界面提交")
+        val manager = plan.manager
+        return PluginFunctionInvoker(context).call(
+            manifest = plan.manifest,
+            entryCode = plan.entryCode,
+            functionName = handlerName,
+            argsJson = "[" + valuesJson + "]",
+            configJson = plan.configJson,
+            bridgeHandler = { requestJson ->
+                bridgeRouter(manager).handle(bridgeSentinel(requestJson), pluginId, plan.manifest)
+            },
+        ).let { result ->
+            when (result) {
+                is SkillEngineResult.Error -> UiSubmitResult.Rejected("界面处理函数执行失败：${result.message}")
+                is SkillEngineResult.Success ->
+                    UiSubmitResult.Tree(PluginUiTree.parse(unquoteJsonString(result.valueJson)))
+            }
+        }
+    }
+
+    /** 调用一个"清单里声明过的函数"所需的全部前置信息。 */
+    private class DeclaredCallPlan(
+        val manager: PluginManager,
+        val manifest: PluginManifest,
+        val entryCode: String,
+        val configJson: String?,
+    )
+
+    private data class DeclaredCallPreparation(val plan: DeclaredCallPlan?, val reason: String?)
+
+    /**
+     * 前置判定收成一条 when：早退写成一串 `?: return` 会撞 detekt 的 ReturnCount，
+     * 而这里与其为少几行去塞基线，不如让"为什么不能调用"只有一处判。
+     *
+     * [forInteractiveUi] 只影响两条 UI 专属规则（`ui.interactive` 授权 + node 运行时）：
+     * 命令没有这两条限制 —— js 档单轮桥接也能返回一段文本，没必要为此拒绝。
+     */
+    private suspend fun prepareDeclaredCall(pluginId: String, handlerName: String, forInteractiveUi: Boolean): DeclaredCallPreparation {
+        val manager = pluginManager
+        val plugin = manager?.findPlugin(pluginId)
+        val verified = manager?.loadVerifiedPlugin(pluginId)
+        val function = manager?.loadVerifiedFunction(pluginId, handlerName)
+        val ledger = PluginCapabilityLedgers.shared(context)
+        val reason = when {
+            // 总闸必须在这里也查一遍。以前只有工具路径（execPluginTool）查，
+            // 于是"安全模式已停用所有插件"的界面承诺对**斜杠命令**与**面板提交**不成立：
+            // 那两条路一路走到这里，只看插件自己的 enabled 标志，插件代码照样执行。
+            // 判的是同一个注入谓词（生产接线里它=设置总开关 ∧ 安全模式文件标志），
+            // 所以三条执行入口现在共用一把闸，不会各留一份。
+            !pluginsGloballyEnabled() ->
+                "插件总闸处于关闭状态（设置 → 工具与扩展 → 插件，或安全模式里的「停用所有插件」），" +
+                    "本次不执行插件代码。"
+            manager == null || plugin == null -> "插件未安装: $pluginId"
+            !plugin.enabled -> "插件已禁用: ${plugin.name}"
+            verified == null -> "插件入口校验失败: $pluginId"
+            forInteractiveUi && !ledger.isApproved(pluginId, PluginCapabilityGateway.UI_INTERACTIVE) ->
+                "该插件的界面提交未获授权（需要能力「ui.interactive」，它会在你点提交时改动数据）。" +
+                    "请在 设置 → 工具与扩展 → 插件 → 「${plugin.name}」→ 能力与权限 中允许后重试"
+            forInteractiveUi && !PluginFunctionInvoker.isNode(verified.manifest) ->
+                "交互面板目前要求 manifest 里写 runtime=node：js 档的桥接是单轮的" +
+                    "（一次 bridge 请求就是返回值本身），无法在存完数据后再返回新界面"
+            function == null -> "调用的函数未在清单中声明: $pluginId/$handlerName"
+            else -> null
+        }
+        if (reason != null) return DeclaredCallPreparation(null, reason)
+        val readyManager = requireNotNull(manager)
+        val readyVerified = requireNotNull(verified)
+        val readyFunction = requireNotNull(function)
+        return DeclaredCallPreparation(
+            DeclaredCallPlan(
+                manager = readyManager,
+                manifest = readyVerified.manifest,
+                entryCode = readyFunction.entryCode,
+                configJson = readyManager.getPluginConfigJson(readyVerified.manifest),
+            ),
+            null,
+        )
+    }
+
+    /**
+     * 执行一条插件斜杠命令（`/name`），返回可直接显示给用户的文本。
+     *
+     * 与工具路径共用同一条执行链：能力账本、桥接路由器、并发额度、超时预算。
+     * js 档是单轮桥接：命令函数若返回桥接哨兵，这里替它执行一次并把结果作为命令输出 ——
+     * 与 `execPluginTool` 的 js 分支同一语义，不会假装"命令已完成"。
+     */
+    suspend fun invokePluginCommand(pluginId: String, handlerName: String, input: String): String {
+        val prepared = prepareDeclaredCall(pluginId, handlerName, forInteractiveUi = false)
+        val plan = prepared.plan ?: return prepared.reason ?: "无法执行这条命令"
+        val argsJson = "[" + buildJsonObject { put("input", input) }.toString() + "]"
+        val result = PluginFunctionInvoker(context).call(
+            manifest = plan.manifest,
+            entryCode = plan.entryCode,
+            functionName = handlerName,
+            argsJson = argsJson,
+            configJson = plan.configJson,
+            bridgeHandler = { requestJson ->
+                bridgeRouter(plan.manager).handle(bridgeSentinel(requestJson), pluginId, plan.manifest)
+            },
+        )
+        return when (result) {
+            is SkillEngineResult.Error -> "命令执行失败：${result.message}"
+            is SkillEngineResult.Success ->
+                commandText(result.valueJson, pluginId, plan.manifest, bridgeRouter(plan.manager))
+        }
+    }
+
+    /** 面板提交的两种结果。[UiSubmitResult.Rejected.reason] 要能直接显示给用户。 */
+    sealed interface UiSubmitResult {
+        data class Tree(val parsed: PluginUiTree.Parsed) : UiSubmitResult
+        data class Rejected(val reason: String) : UiSubmitResult
+    }
+
+    /** 引擎返回的是 JSON 字符串字面量（带引号），组件树要的是裸对象。 */
+    private fun unquoteJsonString(value: String): String = runCatching { AppJson.decodeFromString<String>(value) }.getOrElse { value }
+
+    /** 把 RPC 请求 `{"action":...,"params":...}` 变成 js 档用的 `__bridge__` 哨兵文本。 */
+    private fun bridgeSentinel(requestJson: String): String {
+        val request = runCatching { AppJson.parseToJsonElement(requestJson) as? JsonObject }.getOrNull()
+            ?: return ""
+        return buildJsonObject {
+            put("__bridge__", JsonPrimitive(true))
+            request["action"]?.let { put("action", it) }
+            request["params"]?.let { put("params", it) }
+        }.toString()
+    }
+
+    /**
+     * v2.7: 执行 Python 插件工具。
+     *
+     * 与 JS 分支的差异：
+     *  - 无 WebView 沙盒，也无 __bridge__ 桥接（Python 子进程自身已有完整能力，
+     *    文件读写/网络/标准库直接用；高风险仍由插件工具的整体审批链兜底）；
+     *  - 首次调用前确保 Python 运行时数据（stdlib/CA bundle）已就绪。
+     *  - 返回值直接作为工具结果（字符串）；返回非字符串时 JSON 序列化。
      */
     private suspend fun execPythonPluginTool(
         pluginId: String,
@@ -269,9 +486,16 @@ class SkillMediaToolsImpl(
         argsJson: String,
         configJson: String?,
     ): String {
+        // P0-5：Python 是同 UID 的子进程，能直接读写应用数据，桥接闸门管不到它。
+        // 这一档必须由用户显式批准，且不接受清单自我声明 —— 否则插件写一行 runtime:python 就自给了。
+        if (!PluginCapabilityLedgers.shared(context).isApproved(pluginId, PluginCapabilityGateway.RUNTIME_PYTHON)) {
+            Logger.w("SkillMediaToolsImpl", "Python 插件未获高信任授权: $pluginId")
+            return "插件需要「Python 运行时」高信任授权：Python 以子进程运行、与本应用同一 UID，" +
+                "可直接读写应用数据。请在 设置 → 工具与扩展 → 插件 → 「$pluginId」→ 能力与权限 中允许后重试。"
+        }
         val dataReady = io.zer0.muse.runtime.PythonRuntime.ensureData(context)
         if (dataReady.isFailure) {
-            return "Python No listo en tiempo de ejecución: ${dataReady.exceptionOrNull()?.message}"
+            return "Python 运行时未就绪: ${dataReady.exceptionOrNull()?.message}"
         }
         return when (
             val result = PythonSkillEngine(context).callPluginFunction(
@@ -287,47 +511,50 @@ class SkillMediaToolsImpl(
             }.getOrElse {
                 result.valueJson.ifBlank { "null" }
             }
-            is SkillEngineResult.Error -> "Error al ejecutar la herramienta de complemento: ${result.message}"
-        }
-    }
-    companion object {
-        /**
-         * Generar segmentos de comparación contextual. Función pura, conveniente para pruebas individuales.
-         *
-         * @return Una cadena vacía indica que ninguna categoría coincide con la palabra clave (este párrafo no se publica en este momento)
-         */
-        internal fun buildCategoryGuide(categories: List<String>): String {
-            val guide = STICKER_MOOD_KEYWORDS.mapNotNull { (mood, keys) ->
-                val matched = categories.filter { cat -> keys.any { cat.contains(it, ignoreCase = true) } }
-                if (matched.isEmpty()) null else mood to matched
-            }
-            if (guide.isEmpty()) return ""
-            val covered = guide.flatMap { it.second }.toSet()
-            val rest = categories.filterNot { it in covered }
-            return buildString {
-                appendLine("Elija categorías según el estado de ánimo de la conversación actual:")
-                guide.forEach { (mood, cats) -> appendLine("- $mood → ${cats.joinToString(",")}") }
-                if (rest.isNotEmpty()) appendLine("- El resto de categorías se pueden juzgar por su nombre.: ${rest.joinToString(",")}")
-                appendLine()
-            }
+            is SkillEngineResult.Error -> "插件工具执行失败: ${result.message}"
         }
     }
 }
 
 /**
- * Tabla de palabras clave contextuales para la clasificación de emoji.
+ * 表情包分类的语境关键词表。
  *
- * El nombre de la categoría lo personaliza el usuario. Aquí sólo se realiza una coincidencia débil de "aciertos de palabras clave": los aciertos se clasificarán según las emociones correspondientes.
- * Los aciertos faltantes se dejan al modelo para que los juzgue por su nombre. Es mejor dar menos consejos que dar un mapeo incorrecto.
+ * 分类名由用户自定义，这里只做「关键词命中」的弱匹配：命中就归到对应情绪下，
+ * 没命中就留给模型按名称判断。宁可少给建议，也不要给错映射。
  */
 private val STICKER_MOOD_KEYWORDS: List<Pair<String, List<String>>> = listOf(
-    "feliz/celebrar" to listOf("feliz", "celebrar", "feliz", "feliz", "happy", "celebration", "party"),
-    "comodidad/curar" to listOf("comodidad", "curar", "abrazo", "cálido", "comfort", "hug", "healing"),
-    "triste/abajo" to listOf("triste", "llorar", "abajo", "triste", "sad", "cry"),
-    "enojado/quejarse" to listOf("enojado", "enojado", "quejarse", "poner los ojos en blanco", "angry", "annoyed"),
-    "divertido/escultura de arena" to listOf("divertido", "escultura de arena", "naturaleza demoniaca", "funny", "meme", "silly"),
-    "lindo/actuar lindo" to listOf("lindo", "actuar lindo", "lindo", "cute", "kawaii"),
-    "animar/vamos" to listOf("animar", "vamos", "anímate", "cheer", "encourage"),
-    "indefenso/Mostrado" to listOf("indefenso", "Mostrado", "acostarse", "sigh", "shrug"),
-    "buenas noches/dormir" to listOf("buenas noches", "dormir", "somnoliento", "goodnight", "sleep"),
+    "开心/庆祝" to listOf("开心", "庆祝", "高兴", "快乐", "happy", "celebration", "party"),
+    "安慰/治愈" to listOf("安慰", "治愈", "抱抱", "温暖", "comfort", "hug", "healing"),
+    "难过/低落" to listOf("难过", "哭", "低落", "伤心", "sad", "cry"),
+    "生气/吐槽" to listOf("生气", "愤怒", "吐槽", "白眼", "angry", "annoyed"),
+    "搞笑/沙雕" to listOf("搞笑", "沙雕", "魔性", "funny", "meme", "silly"),
+    "可爱/卖萌" to listOf("可爱", "卖萌", "萌", "cute", "kawaii"),
+    "鼓励/加油" to listOf("鼓励", "加油", "打气", "cheer", "encourage"),
+    "无奈/摆烂" to listOf("无奈", "摆烂", "躺平", "sigh", "shrug"),
+    "晚安/睡觉" to listOf("晚安", "睡", "困", "goodnight", "sleep"),
 )
+
+internal fun buildCategoryGuide(categories: List<String>): String {
+    val guide = STICKER_MOOD_KEYWORDS.mapNotNull { (mood, keys) ->
+        val matched = categories.filter { cat -> keys.any { cat.contains(it, ignoreCase = true) } }
+        if (matched.isEmpty()) null else mood to matched
+    }
+    if (guide.isEmpty()) return ""
+    val covered = guide.flatMap { it.second }.toSet()
+    val rest = categories.filterNot { it in covered }
+    return buildString {
+        appendLine("按当前对话情绪挑分类:")
+        guide.forEach { (mood, cats) -> appendLine("- $mood → ${cats.joinToString("、")}") }
+        if (rest.isNotEmpty()) appendLine("- 其余分类按名称自行判断: ${rest.joinToString("、")}")
+        appendLine()
+    }
+}
+
+/** 命令返回值收尾：普通文本直接用；桥接哨兵替它执行一次（js 单轮语义）。 */
+private suspend fun commandText(raw: String, pluginId: String, manifest: PluginManifest, router: PluginBridgeRouter): String =
+    when (val bridge = router.handle(raw, pluginId, manifest)) {
+        is SkillBridge.HandleResult.Output -> bridge.json
+        is SkillBridge.HandleResult.Failure -> "命令执行失败：${bridge.message}"
+        is SkillBridge.HandleResult.NotBridge ->
+            runCatching { AppJson.decodeFromString<String>(raw) }.getOrElse { raw }
+    }

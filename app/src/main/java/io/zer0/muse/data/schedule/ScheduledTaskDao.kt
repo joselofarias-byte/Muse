@@ -9,7 +9,7 @@ import androidx.room.Transaction
 import kotlinx.coroutines.flow.Flow
 
 /**
- * v1.137: Proyección ligera al seleccionar tareas encadenadas.
+ * v1.137: 链式任务选择时的轻量投影。
  */
 data class TaskIdName(
     @ColumnInfo(name = "id") val id: String,
@@ -25,10 +25,10 @@ interface ScheduledTaskDao {
     suspend fun getDueTasks(timeMillis: Long): List<ScheduledTaskEntity>
 
     /**
-     * next_run_at de la tarea más reciente que aún debe realizarse (se utiliza para impulsar el intervalo de sondeo a"justo a tiempo"en lugar de unos 60 fijos).
+     * 最近一次仍会到期的任务的 next_run_at（用于把轮询间隔压到"刚好赶上"而不是固定 60s）。
      *
-     * excluir [sentinel](Consigue el centinela = Long.MAX_VALUE): eso es"Procesamiento"valor del marcador de posición,
-     * Usarlo como hora de vencimiento nunca calculará la hora de despertarse.
+     * 排除 [sentinel]（领取哨兵 = Long.MAX_VALUE）：那是"处理中"的占位值，
+     * 拿它当到期时间会一直算不出可唤醒时刻。
      */
     @Query("SELECT MIN(next_run_at) FROM scheduled_tasks WHERE enabled = 1 AND next_run_at > :after AND next_run_at != :sentinel")
     suspend fun earliestNextRunAt(after: Long, sentinel: Long): Long?
@@ -43,29 +43,29 @@ interface ScheduledTaskDao {
     suspend fun delete(id: String)
 
     /**
-     * B-12: Recopilar preventivamente las tareas pendientes(CAS,compare-and-set).
+     * B-12: 抢占式领取到期任务(CAS,compare-and-set)。
      *
-     * Solo si next_run_at de la tarea sigue siendo igual al valor esperado leído por la persona que llama(Eso es todavía"No cobrado a su vencimiento")tiempo,
-     * Luego el átomo next_run_at avanza a [claimNextRun](centinela,futuro lejano)para eliminarlo"Caducidad"identidad,
-     * y escribe [claimedAt] como marca de colección,Devuelve el número de filas afectadas.
-     * (1 = Este ejecutor recibió exitosamente;0 = Ya recogido por otros ejecutores primero.,debe omitirse).
+     * 仅当该任务的 next_run_at 仍等于调用方读取到的期望值(即仍"到期未领取")时,
+     * 才把 next_run_at 原子推进为 [claimNextRun](哨兵,远未来)以摘除其"到期"身份,
+     * 并写入 [claimedAt] 作为领取标记,返回受影响行数
+     * (1 = 本执行者领取成功;0 = 已被其他执行者抢先领取,应跳过)。
      *
-     * clave:Debe ser promovido simultáneamente. next_run_at(en lugar de simplemente escribir last_run_at),De lo contrario, los ejecutores B concurrentes
-     * CAS todavía veo next_run_at == El valor de vencimiento original se recopila repetidamente.,Provoca llamadas/notificaciones de IA duplicadas.
-     * Después de una recopilación exitosa, se llamará al proceso de ejecución al final. [recordExecutionAndScheduleNext] poner next_run_at
-     * Restablecer al siguiente tiempo de ejecución real.next_run_at Período centinela temporal del futuro lejano,cualquier escaneo debido
-     * ([getDueTasks])No alcanzará el objetivo si se recoge nuevamente.,Implementar intraproceso y entre procesos.(Worker)Seguridad de concurrencia.
+     * 关键:必须同步推进 next_run_at(而不只写 last_run_at),否则并发执行者 B 的
+     * CAS 仍看到 next_run_at == 原到期值而重复领取,导致重复 AI 调用 / 通知。
+     * 领取成功后执行流程会在结束时调用 [recordExecutionAndScheduleNext] 把 next_run_at
+     * 重置为真实的下次执行时间。next_run_at 临时为远未来哨兵期间,任何到期扫描
+     * ([getDueTasks])与再领取均不会命中,实现进程内与跨进程(Worker)并发安全。
      *
-     * No contener deliberadamente restricciones habilitadas:sondeo/Worker Aprobado [getDueTasks] filtrar enabled=1;
-     * UI "Ejecutar inmediatamente"Permitir la activación manual de tareas deshabilitadas una vez,Por lo tanto, no se habilita ninguna revisión al recibir.
+     * 故意不含 enabled 约束:轮询/Worker 已通过 [getDueTasks] 过滤 enabled=1;
+     * UI "立即执行"允许对已禁用任务手动触发一次,故领取不复查 enabled。
      *
-     * peligro:Si ocurre una excepción durante la ejecución, no se ejecuta el reinicio final.(Solo escenario de error de escritura de base de datos),La misión se detendrá en el valor centinela.
-     * ya no dispara —— En comparación con la ejecución repetida,Una única pausa es la opción más segura(Prefiero perderlo una vez que repetir los efectos secundarios.).
+     * 危险:若执行中途异常导致最终重置未执行(仅 DB 写失败场景),任务会停在哨兵值
+     * 不再触发 —— 相比重复执行,单次暂停是更安全的选择(宁可漏一次也不重复副作用)。
      *
-     * @param id Tarea id
-     * @param expectedNextRunAt Instantánea Next_run_at leída por la persona que llama desde la base de datos(CAS valor esperado)
-     * @param claimedAt Obtener marca de tiempo,Escribe last_run_at con updated_at
-     * @param claimNextRun El valor centinela Next_run_at avanza temporalmente al recibir(futuro lejano),Pasado por la persona que llama
+     * @param id 任务 id
+     * @param expectedNextRunAt 调用方从 DB 读到的 next_run_at 快照(CAS 期望值)
+     * @param claimedAt 领取时间戳,写入 last_run_at 与 updated_at
+     * @param claimNextRun 领取时临时推进的 next_run_at 哨兵值(远未来),由调用方传入
      */
     @Query(
         "UPDATE scheduled_tasks SET next_run_at = :claimNextRun, last_run_at = :claimedAt, updated_at = :claimedAt " +
@@ -80,21 +80,21 @@ interface ScheduledTaskDao {
     suspend fun updateRunState(id: String, nextRunAt: Long, lastRunAt: Long)
 
     /**
-     * B-26: perro guardián centinela —— reciclar"Después de recibir la transacción, ésta falló y se atascó mientras recibía el valor centinela."tareas atrasadas.
+     * B-26: 哨兵看门狗 —— 回收"领取后事务失败、卡死在领取哨兵值"的过期任务。
      *
-     * recibir([claimTask])Avanzará temporalmente next_run_at al centinela del futuro lejano para su eliminación."Caducidad"identidad;si después
-     * [recordExecutionAndScheduleNext] Reversión de fallas de transacción,next_run_at Deténgase siempre en el valor centinela,escaneo de vencimiento
-     * Nunca puedo golpear. poner aquí"next_run_at=Sentinel y update_at han superado el umbral"reinicio de tarea next_run_at
-     * para now(y refrescar updated_at),Se reincorporará a la ejecución del vencimiento en la siguiente ronda de votación.
+     * 领取([claimTask])会把 next_run_at 临时推进为远未来哨兵以摘除"到期"身份;若之后
+     * [recordExecutionAndScheduleNext] 事务失败回滚,next_run_at 永远停在哨兵值,到期扫描
+     * 永远命中不了。这里把"next_run_at=哨兵 且 updated_at 已过阈值"的任务重置 next_run_at
+     * 为 now(并刷新 updated_at),由下一轮轮询重新纳入到期执行。
      *
-     * Evitar reinicios accidentales:
-     *  - updated_at < staleBefore filtrar:El update_at de la tarea que se está ejecutando es la hora que se acaba de recibir.,No superó el umbral
-     *  - enabled = 1 filtrar:Evite resucitar tareas que el usuario haya desactivado manualmente
+     * 防误重置:
+     *  - updated_at < staleBefore 过滤:正在执行中的任务其 updated_at 是刚领取的时间,未过阈值
+     *  - enabled = 1 过滤:避免复活用户已手动禁用的任务
      *
-     * @param sentinel Obtener valor centinela(Generalmente Long.MAX_VALUE)
-     * @param staleBefore Marca de tiempo de determinación de vencimiento(now - umbral de vigilancia),Reciclar solo tareas no publicadas anteriormente
-     * @param now Marca de tiempo de destino para restablecer
-     * @return Número de filas afectadas(Número de tareas recicladas)
+     * @param sentinel 领取哨兵值(通常为 Long.MAX_VALUE)
+     * @param staleBefore 过期判定时间戳(now - 看门狗阈值),只回收此前未释放的任务
+     * @param now 重置到的目标时间戳
+     * @return 受影响行数(回收的任务数)
      */
     @Query(
         "UPDATE scheduled_tasks SET next_run_at = :now, updated_at = :now " +
@@ -103,25 +103,25 @@ interface ScheduledTaskDao {
     suspend fun recoverStuckClaim(sentinel: Long, staleBefore: Long, now: Long): Int
 
     /**
-     * v1.134 P2-1: Sesión dedicada para tareas de actualización. ID(Modo de agregación de sesiones).
+     * v1.134 P2-1: 更新任务的专用会话 ID(会话聚合模式)。
      *
-     * Este método se llama después de crear una sesión dedicada en la primera ejecución para lograr persistencia.,Las ejecuciones posteriores reutilizan la misma sesión.
+     * 首次执行时创建专用会话后调用此方法持久化,后续执行复用同一会话。
      */
     @Query("UPDATE scheduled_tasks SET dedicated_session_id = :sessionId, updated_at = :now WHERE id = :id")
     suspend fun updateDedicatedSessionId(id: String, sessionId: String, now: Long = System.currentTimeMillis())
 
     /**
-     * H-SC1: Registre atómicamente el historial de ejecución y actualice el siguiente tiempo de ejecución.
+     * H-SC1: 原子地记录执行历史并更新下次执行时间。
      *
-     * Coloque la inserción de ejecución y la actualización next_run_at/last_run_at en la misma transacción,
-     * Evite ejecuciones repetidas causadas por escribir solo el historial pero no avanzar next_run_at después de un bloqueo.
+     * 将 execution insert 与 next_run_at/last_run_at update 放在同一事务内,
+     * 避免崩溃后只写入历史但未推进 next_run_at 导致重复执行。
      *
-     * @param execution historial de ejecución
-     * @param taskId Tarea id
-     * @param nextRunAt Marca de tiempo de próxima ejecución;<=0 Indica que no habrá próxima vez(once/ilegal cron),La tarea estará deshabilitada
-     * @param lastRunAt Esta marca de tiempo de ejecución(escribir last_run_at)
-     * @param missedExecutions Esta vez no se realiza ninguna recuperación y solo se registra un historial perdido.(Calculado al fondear y avanzar);
-     *   y registros de ejecución,next_run_at misma transacción escribir
+     * @param execution 执行历史记录
+     * @param taskId 任务 id
+     * @param nextRunAt 下次执行时间戳;<=0 表示无下次(once/非法 cron),将禁用任务
+     * @param lastRunAt 本次执行时间戳(写入 last_run_at)
+     * @param missedExecutions 这次没有补跑、只记录一笔的 missed 历史(锚定推进时算出);
+     *   与执行记录、next_run_at 同事务写入
      */
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertExecution(execution: ScheduledTaskExecutionEntity)
@@ -133,19 +133,19 @@ interface ScheduledTaskDao {
     suspend fun deleteAll()
 
     /**
-     * v1.137: Establecer el próximo tiempo de ejecución de un grupo de tareas en ahora,Activa tareas encadenadas que se ejecutarán en la siguiente ronda de votación.
+     * v1.137: 把一组任务的下次执行时间设置为现在,触发链式任务在下一轮轮询中执行。
      */
     @Query("UPDATE scheduled_tasks SET next_run_at = :now, updated_at = :now WHERE id IN (:ids)")
     suspend fun triggerNextTasks(ids: List<String>, now: Long = System.currentTimeMillis())
 
     /**
-     * v1.0.17: Número de reintentos para actualizar la tarea(Estrategia de reintento de fallo de ejecución).
+     * v1.0.17: 更新任务的重试次数(执行失败重试策略)。
      */
     @Query("UPDATE scheduled_tasks SET retry_count = :retryCount WHERE id = :id")
     suspend fun updateRetryCount(id: String, retryCount: Int)
 
     /**
-     * v1.137: La consulta se puede utilizar como candidata para tareas posteriores en la cadena.(Excluir la tarea actual en sí).
+     * v1.137: 查询可作为链式后续的任务候选(排除当前任务自身)。
      */
     @Query("SELECT id, name FROM scheduled_tasks WHERE id != :excludeId ORDER BY name ASC")
     suspend fun listChainCandidates(excludeId: String): List<TaskIdName>
@@ -159,14 +159,14 @@ interface ScheduledTaskDao {
         retryCount: Int,
         missedExecutions: List<ScheduledTaskExecutionEntity> = emptyList(),
     ) {
-        // Las rondas perdidas se eliminarán primero.:Avanzar la misma transacción que next_run_at,Se garantiza que no habrá ningún “faltado pero no adelantado el horario”.
-        // Resultando en un conteo repetido para la siguiente ronda.
+        // 错过的轮次先落库:与 next_run_at 推进同事务,保证不会出现「记了 missed 但调度没推进」
+        // 导致下一轮重复计数。
         missedExecutions.forEach { insertExecution(it) }
         insertExecution(execution)
         if (nextRunAt > 0) {
             updateRunState(taskId, nextRunAt, lastRunAt)
         } else {
-            // No hay tiempo de próxima ejecución(once / ilegal cron),Deshabilite las tareas para evitar que se activen repetidamente cada minuto
+            // 无下次执行时间(once / 非法 cron),禁用任务避免每分钟重复触发
             setEnabled(taskId, false, lastRunAt)
         }
         updateRetryCount(taskId, retryCount)

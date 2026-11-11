@@ -1,15 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <string name="automation_settings_title">UI Automatización</string>
     <string name="automation_settings_subtitle">Permisos de lectura y operación de pantalla.</string>
     <string name="accessibility_service_description">Permite a Muse leer el contenido de la pantalla de cualquier aplicación (incluida la información confidencial mostrada por otras aplicaciones, como códigos de verificación, registros de chat, etc.) y simular gestos como clics y deslizamientos para la automatización de tareas de IA entre aplicaciones. Habilítelo solo cuando confíe;Muse No se realizarán operaciones de alto riesgo sin su confirmación.</string>
     <string name="automation_permission_a11y">Muse UI Automatización</string>
-    <string name="automation_settings_unavailable">No se puede abrir la configuración del sistema,Vaya a la configuración del sistema para habilitar los permisos manualmente</string>
-    <!-- UI Página de permisos de automatización(v1.x): Tres capas de cartas,Root Solicitud de autorización y redacción de autotest -->
-    <string name="automation_settings_intro">Deje que Muse vea la pantalla y opere el dispositivo por usted, automatizando tareas entre aplicaciones</string>
+    <string name="automation_settings_unavailable">No se puede abrir la configuración del sistema,Ve a la configuración del sistema para habilitar los permisos manualmente</string>
+    <string name="automation_settings_intro">Deja que Muse vea la pantalla y controle el dispositivo para automatizar tareas entre aplicaciones.</string>
     <string name="automation_tier_level">No. %1$d capa</string>
     <string name="automation_tier_accessibility">Servicios de accesibilidad</string>
-    <string name="automation_tier_accessibility_desc">Lea el contenido de la pantalla y simule hacer clic y deslizarse. El umbral es el más bajo y se recomienda habilitarlo.</string>
+    <string name="automation_tier_accessibility_desc">Lea el contenido de la pantalla y simule tocar y deslizarse. El umbral es el más bajo y se recomienda habilitarlo.</string>
     <string name="automation_tier_shell">Shell (Shizuku)</string>
     <string name="automation_tier_shell_desc">Comandos a nivel de sistema, capturas de pantalla, instalación silenciosa.</string>
     <string name="automation_tier_root">Root Permisos</string>
@@ -18,12 +17,12 @@
     <string name="automation_status_enabled">Ya encendido</string>
     <string name="automation_root_action_request">Solicitar permiso de root</string>
     <string name="automation_root_requesting">Solicitando…</string>
-    <string name="automation_root_fallback_action">Abra Magisk/Configuración de la aplicación</string>
+    <string name="automation_root_fallback_action">Abre Magisk/Configuración de la aplicación</string>
     <string name="automation_root_granted">Arraigado</string>
     <string name="automation_root_no_su">El dispositivo no detecta su y no puede obtener privilegios de root</string>
-    <string name="automation_root_timeout">Se agotó el tiempo de espera para la autorización de root, inténtelo de nuevo</string>
+    <string name="automation_root_timeout">Se agotó el tiempo de espera para la autorización de root, inténtalo de nuevo</string>
     <string name="automation_root_denied">Root Autorización denegada</string>
-    <string name="automation_root_failed">Root La solicitud de autorización falló. Vuelva a intentarlo más tarde.</string>
+    <string name="automation_root_failed">Root La solicitud de autorización falló. Vuelve a intentarlo más tarde.</string>
     <string name="automation_test_action">Lectura de pantalla de prueba</string>
     <string name="automation_test_running">Bajo prueba…</string>
     <string name="automation_test_no_channel">✗ Actualmente no hay ningún canal automatizado disponible. Primero habilite la accesibilidad.Shizuku o Root</string>
@@ -33,6 +32,5 @@
     <string name="automation_test_source">✓ Fuente de datos:%1$s</string>
     <string name="automation_test_unknown">desconocido</string>
     <string name="automation_test_failed">Prueba fallida:%1$s</string>
-    <!-- ST-04: La pantalla lee la información de diagnóstico del desarrollador para el título contraído de la autoprueba -->
     <string name="automation_developer_info">Información del desarrollador</string>
 </resources>

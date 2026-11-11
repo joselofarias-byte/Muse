@@ -12,10 +12,10 @@ import androidx.compose.ui.graphics.vector.group
 import androidx.compose.ui.unit.dp
 
 /**
- * Muse Icons — Componga la versión ImageVector del conjunto de iconos personalizados (estático,No componible).
+ * Muse Icons — 自绘图标集的 Compose ImageVector 版本（静态,非 Composable）。
  *
- * Generado automáticamente por muse-icons/scripts/to-compose.py, no lo modifique manualmente.
- * fuente: https://github.com/Zer0Qing/muse-icons
+ * 由 muse-icons/scripts/to-compose.py 自动生成，勿手改。
+ * 源: https://github.com/Zer0Qing/muse-icons
  */
 object MuseIcons {
     /** search */
@@ -5084,6 +5084,109 @@ object MuseIcons {
             )
             addPath(
                 pathData = addPathNodes("M5.5 10l2 2-2 2M18.5 10l-2 2 2 2"),
+                stroke = SolidColor(Color(0xFF000000)),
+                strokeLineWidth = 1.7f,
+                strokeLineCap = StrokeCap.Round,
+                strokeLineJoin = StrokeJoin.Round,
+            )
+        }.build()
+    }
+
+    /** sticker */
+    val sticker: ImageVector by lazy {
+        ImageVector.Builder(
+            name = "sticker",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            addPath(
+                pathData =
+                addPathNodes(
+                    "M8 3.5h8a4.5 4.5 0 0 1 4.5 4.5v8a4.5 4.5 0 0 1 -4.5 4.5h-8a4.5 4.5 0 0 1 -4.5 -4" +
+                        ".5v-8a4.5 4.5 0 0 1 4.5 -4.5z",
+                ),
+                stroke = SolidColor(Color(0xFF000000)),
+                strokeLineWidth = 1.7f,
+                strokeLineCap = StrokeCap.Round,
+                strokeLineJoin = StrokeJoin.Round,
+            )
+            addPath(
+                pathData = addPathNodes("M9 10h.01M15 10h.01"),
+                stroke = SolidColor(Color(0xFF000000)),
+                strokeLineWidth = 1.7f,
+                strokeLineCap = StrokeCap.Round,
+                strokeLineJoin = StrokeJoin.Round,
+            )
+            addPath(
+                pathData = addPathNodes("M8.6 13.9a4.4 4.4 0 0 0 6.8 0"),
+                stroke = SolidColor(Color(0xFF000000)),
+                strokeLineWidth = 1.7f,
+                strokeLineCap = StrokeCap.Round,
+                strokeLineJoin = StrokeJoin.Round,
+            )
+            addPath(
+                pathData = addPathNodes("M20.5 15.9a4.6 4.6 0 0 0 -4.6 4.6"),
+                stroke = SolidColor(Color(0xFF000000)),
+                strokeLineWidth = 1.7f,
+                strokeLineCap = StrokeCap.Round,
+                strokeLineJoin = StrokeJoin.Round,
+            )
+        }.build()
+    }
+
+    /** expand */
+    val expand: ImageVector by lazy {
+        ImageVector.Builder(
+            name = "expand",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            addPath(
+                pathData = addPathNodes("M4.5 9.2L12 4l7.5 5.2"),
+                stroke = SolidColor(Color(0xFF000000)),
+                strokeLineWidth = 1.7f,
+                strokeLineCap = StrokeCap.Round,
+                strokeLineJoin = StrokeJoin.Round,
+            )
+            addPath(
+                pathData = addPathNodes("M4.5 14.8L12 20l7.5-5.2"),
+                stroke = SolidColor(Color(0xFF000000)),
+                strokeLineWidth = 1.7f,
+                strokeLineCap = StrokeCap.Round,
+                strokeLineJoin = StrokeJoin.Round,
+            )
+        }.build()
+    }
+
+    /** reflect */
+    val reflect: ImageVector by lazy {
+        ImageVector.Builder(
+            name = "reflect",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            addPath(
+                pathData = addPathNodes("M4.1 12a7.9 7.9 0 1 1 2.32 5.58"),
+                stroke = SolidColor(Color(0xFF000000)),
+                strokeLineWidth = 1.7f,
+                strokeLineCap = StrokeCap.Round,
+                strokeLineJoin = StrokeJoin.Round,
+            )
+            addPath(
+                pathData = addPathNodes("M4 20v-5.5h5.5"),
+                stroke = SolidColor(Color(0xFF000000)),
+                strokeLineWidth = 1.7f,
+                strokeLineCap = StrokeCap.Round,
+                strokeLineJoin = StrokeJoin.Round,
+            )
+            addPath(
+                pathData = addPathNodes("M12 12h.01"),
                 stroke = SolidColor(Color(0xFF000000)),
                 strokeLineWidth = 1.7f,
                 strokeLineCap = StrokeCap.Round,

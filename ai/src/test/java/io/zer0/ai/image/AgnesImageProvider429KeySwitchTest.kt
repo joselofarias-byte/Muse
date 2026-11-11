@@ -14,15 +14,15 @@ import org.junit.Assert.fail
 import org.junit.Test
 
 /**
- * T1.2: [AgnesImageProvider] 429 Corte la clave y vuelva a intentar la prueba.(MockWebServer).
+ * T1.2: [AgnesImageProvider] 429 切 key 重试测试(MockWebServer)。
  *
- * verificar:
- *  - Múltiples escenarios clave:Después de recibir 429 en la primera solicitud,Cambia automáticamente a la siguiente tecla y vuelve a intentarlo.;
- *  - Reintentar exitosamente(200)Devuelve la imagen cuando;
- *  - Inténtalo de nuevo 429(Si solo hay una tecla o la corriente aún está limitada después de la rotación)Se lanza RATE_LIMITED.
+ * 验证:
+ *  - 多 key 场景:首次请求拿到 429 后,自动切换到下一个 key 重试;
+ *  - 重试成功(200)时返回图片;
+ *  - 重试仍 429(如只有一个 key 或轮换后仍被限流)时抛 RATE_LIMITED。
  *
- * Personalizado inyectando [ProviderKeyRotation] fábrica,Asegúrese de que los escenarios de múltiples claves lleguen a sk_a y
- * 429 y luego cambiar a sk_b,Haga que el encabezado de Autorización de ambas solicitudes sea deterministamente afirmable.
+ * 通过注入定制 [ProviderKeyRotation] 工厂,保证多 key 场景先命中 sk_a、
+ * 429 后切换为 sk_b,使两次请求的 Authorization 头可确定性断言。
  */
 class AgnesImageProvider429KeySwitchTest {
 
@@ -45,9 +45,9 @@ class AgnesImageProvider429KeySwitchTest {
     )
 
     /**
-     * Construir una fábrica de rotación de claves determinista:
-     *  - Tecla única: devolver directamente lo recortado key,switchToNextKey constante false;
-     *  - Clave múltiple: EffectiveApiKey devuelta por primera vez "sk_a",switchToNextKey regresar después "sk_b".
+     * 构造确定性 key 轮换工厂:
+     *  - 单 key:直接返回 trim 后的 key,switchToNextKey 恒 false;
+     *  - 多 key:首次 effectiveApiKey 返回 "sk_a",switchToNextKey 后返回 "sk_b"。
      */
     private fun deterministicKeyRotationFactory(): ((ProviderConfig) -> ProviderKeyRotation) {
         fun factory(config: ProviderConfig): ProviderKeyRotation {
@@ -70,7 +70,7 @@ class AgnesImageProvider429KeySwitchTest {
     fun `429 switches to next key and retry succeeds`() {
         val server = MockWebServer()
         try {
-            // el primero key(sk_a) 429,segundo key(sk_b) éxito
+            // 第一个 key(sk_a) 429,第二个 key(sk_b) 成功
             val successBody = """{"data":[{"b64_json":"AAA"}]}"""
             server.enqueue(MockResponse().setResponseCode(429).setBody("""{"error":{"message":"rate limited"}}"""))
             server.enqueue(MockResponse().setResponseCode(200).setBody(successBody))
@@ -93,7 +93,7 @@ class AgnesImageProvider429KeySwitchTest {
             assertEquals(1, result.images.size)
             assertEquals("AAA", result.images[0].base64)
 
-            // Verificar la solicitud dos veces:La primera autorización es sk_a,La segunda vez es sk_b(Cortar la llave con éxito)
+            // 验证两次请求:第一次 Authorization 是 sk_a,第二次是 sk_b(切 key 成功)
             assertEquals(2, server.requestCount)
             val firstReq = server.takeRequest()
             val secondReq = server.takeRequest()
@@ -129,7 +129,7 @@ class AgnesImageProvider429KeySwitchTest {
             } catch (e: IllegalStateException) {
                 assertTrue(e.message!!.contains("429"))
             }
-            // Una sola llave no corta key,Enviar una solicitud solo una vez
+            // 单 key 不切 key,只发一次请求
             assertEquals(1, server.requestCount)
             assertEquals("Bearer sk_single", server.takeRequest().getHeader("Authorization"))
         } finally {
@@ -141,7 +141,7 @@ class AgnesImageProvider429KeySwitchTest {
     fun `multi key both 429 throws rate limited after switch`() {
         val server = MockWebServer()
         try {
-            // Ambas claves son 429: el reintento después de cortar la clave aún persiste 429
+            // 两个 key 都 429:切 key 后重试仍 429
             server.enqueue(MockResponse().setResponseCode(429))
             server.enqueue(MockResponse().setResponseCode(429))
 
@@ -164,7 +164,7 @@ class AgnesImageProvider429KeySwitchTest {
             } catch (e: IllegalStateException) {
                 assertTrue(e.message!!.contains("429"))
             }
-            // Hizo dos solicitudes(Primer reintento de sk_a + cortar sk_b)
+            // 发了两次请求(首次 sk_a + 切 sk_b 重试)
             assertEquals(2, server.requestCount)
             assertEquals("Bearer sk_a", server.takeRequest().getHeader("Authorization"))
             assertEquals("Bearer sk_b", server.takeRequest().getHeader("Authorization"))

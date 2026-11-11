@@ -4,8 +4,8 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 
 /**
- * Entrada del planificador global,Todos los módulos se pueden recuperar desde aquí. dispatcher,
- * Es conveniente para probar avatares posteriores o cambiar de plataforma.
+ * 全局调度器入口,所有模块统一通过这里取 dispatcher,
+ * 便于后续做测试替身或按平台切换。
  */
 object AppDispatchers {
     val io: CoroutineDispatcher get() = Dispatchers.IO

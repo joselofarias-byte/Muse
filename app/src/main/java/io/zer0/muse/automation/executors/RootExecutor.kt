@@ -3,24 +3,26 @@ package io.zer0.muse.automation.executors
 import android.content.Context
 import io.zer0.common.Logger
 import io.zer0.muse.automation.core.PermissionLevel
+import io.zer0.muse.tools.system.RootAuthorizer
+import io.zer0.muse.tools.system.sanitizeShellCommandForLog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.concurrent.TimeUnit
 
 /**
- * Root actuador —— La tercera capa de automatización de la interfaz de usuario.
+ * Root 执行器 —— 第三层 UI 自动化。
  *
- * herencia [ShellExecutor],Simplemente cambie el prefijo de comando de `sh` Reemplazar con `su`.
- * Habilidades adicionales:
- * - Acceda al directorio /data/data de otras aplicaciones
- * - Modificar archivos del sistema,iptables,kill cualquier proceso
- * - Instalación silenciosa/Desinstalar, otorgar permisos de tiempo de ejecución
+ * 继承 [ShellExecutor],仅把命令前缀从 `sh` 换成 `su`。
+ * 额外能力:
+ * - 访问其他 App 的 /data/data 目录
+ * - 修改系统文件、iptables、kill 任意进程
+ * - 静默安装/卸载、授予运行时权限
  *
- * Detección: correr `su -c id`,Compruebe si la salida contiene "uid=0".
- * Todos los comandos en dispositivos no rooteados fallan silenciosamente.
+ * 检测: 运行 `su -c id`,检查输出是否含 "uid=0"。
+ * 无 root 的设备所有命令静默失败。
  *
- * H-SEC-1: Todos los parámetros están verificados en la lista blanca.,Evite que la inyección rápida provoque una inyección de comando arbitraria.
+ * H-SEC-1: 所有参数经过白名单校验,防止 prompt injection 导致任意命令注入。
  */
 class RootExecutor(
     context: Context,
@@ -30,49 +32,33 @@ class RootExecutor(
 
     override val shellPrefix: List<String> = listOf("su")
 
-    override suspend fun isAvailable(): Boolean = withContext(Dispatchers.IO) {
-        if (!isRooted()) return@withContext false
-        val result = exec("id")
-        result.isSuccess && result.getOrDefault("").contains("uid=0")
-    }
-
-    /** Verifique el dispositivo para ver si tiene el esquema raíz binario o del kernel.(Es posible que no tengas permiso para ejecutar). */
-    private fun isRooted(): Boolean {
-        return try {
-            val paths = arrayOf(
-                "/system/bin/su",
-                "/system/xbin/su",
-                "/sbin/su",
-                "/system/sd/xbin/su",
-                "/system/bin/failsafe/su",
-                "/data/local/xbin/su",
-                "/data/local/bin/su",
-                "/data/local/su",
-                "/su/bin/su",
-            )
-            // v2.0: KernelSU departamento(GKI/LKM)No exponer archivos su,sucompat interceptado por el kernel;
-            // /data/adb Es el directorio de datos del esquema raíz.,como señal de preselección.
-            paths.any { File(it).exists() } || File("/data/adb").exists() || runCatching {
-                ProcessBuilder("which", "su").start().inputStream.bufferedReader().readText().isNotBlank()
-            }.getOrDefault(false)
-        } catch (e: Exception) {
-            false
-        }
-    }
+    /** 权限体系重设计: libsu 门面（持久 shell + 被动授权缓存 + 管理器检测）。 */
+    private val rootAuthorizer = RootAuthorizer(context)
 
     /**
-     * Solicitar explícitamente autorización de Root:Ejecutar una vez `su -c id`,root Gerente(Magisk/KernelSU espera)El cuadro de diálogo de autorización aparecerá en consecuencia.
+     * 被动可用性探测（零副作用）：读 libsu 缓存 + 曾授权标记，**不执行 su、不弹窗**。
+     * 启动 refreshPermissions 与向导刷新都走这里，根治「冷启动即弹 root 授权」。
+     */
+    override suspend fun isAvailable(): Boolean = withContext(Dispatchers.IO) {
+        rootAuthorizer.checkPermission()
+    }
+
+    /** 设备是否存在 root 方案（不一定已授权）；委托门面的广探测（含管理器包）。 */
+    private fun isRooted(): Boolean = rootAuthorizer.isAvailable()
+
+    /**
+     * 显式请求 Root 授权:执行一次 `su -c id`,root 管理器(Magisk/KernelSU 等)会据此弹出授权对话框。
      *
-     * Sólo vale la pena solicitarlo si existe un binario su,De lo contrario regresa directamente [RootRequestFailure.NO_SU_BINARY],No bloquear UI;
-     * El cuadro de diálogo de autorización puede permanecer desatendido durante mucho tiempo.,esperar más que [timeoutMs] Es decir, destruir el proceso hijo y devolverlo.
-     * [RootRequestFailure.TIMEOUT]. Este método solo inicia la autorización.,No elevar privilegios silenciosamente,Tampoco almacena en caché los resultados. ——
-     * El estado de autorización es siempre [isAvailable] Prevalecerá la detección real.
+     * 只有存在 su 二进制时才值得请求,否则直接返回 [RootRequestFailure.NO_SU_BINARY],不阻塞 UI;
+     * 授权对话框可能长时间无人处理,等待超过 [timeoutMs] 即销毁子进程并返回
+     * [RootRequestFailure.TIMEOUT]。本方法只在用户点按钮时发起授权,不静默提权;
+     * 成功后写「曾授权」持久化标记,供下次冷启动被动判可用（真实复验推迟到执行时）。
      *
-     * @return ¿Lo entendiste? uid=0,y una razón legible en caso de falla
+     * @return 是否拿到 uid=0,以及失败时的可读原因
      */
     suspend fun requestRootAccess(timeoutMs: Long = ROOT_REQUEST_TIMEOUT_MS): RootRequestResult = withContext(Dispatchers.IO) {
         if (!isRooted()) {
-            Logger.i(TAG, "root Solicitud de autorización omitida: dispositivo sin su binario")
+            Logger.i(TAG, "root 授权请求跳过: 设备无 su 二进制")
             return@withContext RootRequestResult.failed(RootRequestFailure.NO_SU_BINARY)
         }
         val process = try {
@@ -80,31 +66,79 @@ class RootExecutor(
                 .redirectErrorStream(true)
                 .start()
         } catch (e: Exception) {
-            Logger.w(TAG, "root No se puede iniciar la solicitud de autorización: ${e.message}")
+            Logger.w(TAG, "root 授权请求无法启动: ${e.message}")
             return@withContext RootRequestResult.failed(classifyRootProbeException(e))
         }
         try {
             if (!process.waitFor(timeoutMs, TimeUnit.MILLISECONDS)) {
-                // root La ventana emergente del administrador no ha sido procesada:Mata a los que esperan su,Evite que las solicitudes posteriores se pongan en cola y que la página de configuración se bloquee.
+                // root 管理器弹窗一直未被处理:杀掉等待中的 su,避免后续请求排队、设置页卡死。
                 runCatching { process.destroyForcibly() }
-                Logger.w(TAG, "root Se agotó el tiempo de espera de la solicitud de autorización(${timeoutMs}ms)")
+                Logger.w(TAG, "root 授权请求超时(${timeoutMs}ms)")
                 return@withContext rootProbeTimeout()
             }
             val output = process.inputStream.bufferedReader().use { it.readText() }
             val result = evaluateRootProbe(process.exitValue(), output)
-            Logger.i(TAG, "root Solicitud de autorización finalizada: granted=${result.granted} failure=${result.failure}")
+            if (result.granted) rootAuthorizer.markEverGranted()
+            Logger.i(TAG, "root 授权请求结束: granted=${result.granted} failure=${result.failure}")
             result
         } catch (e: Exception) {
             runCatching { process.destroyForcibly() }
-            Logger.w(TAG, "root Excepción de solicitud de autorización: ${e.message}")
+            Logger.w(TAG, "root 授权请求异常: ${e.message}")
             RootRequestResult.failed(classifyRootProbeException(e))
         }
     }
 
-    /** H-SEC-1: Verificación de la lista blanca de nombres de paquetes,Rechazar argumentos que contengan metacaracteres de shell. */
+    // ── 权限体系重设计: 执行层改走 libsu 持久 shell ──────────────────────────
+    // 覆写 exec/execDetailed 后,继承来的全部命令构造器与输入/读屏动作自动走 libsu,
+    // 不再每条命令起一个新 su 进程。
+
+    override suspend fun exec(command: String): Result<String> = withContext(Dispatchers.IO) {
+        val result = rootAuthorizer.execute(command)
+        if (result.isSuccess) {
+            Result.success(result.stdout)
+        } else {
+            Logger.w(TAG, "root exec failed (exit=${result.exitCode}, verb=${sanitizeShellCommandForLog(command)})")
+            Result.failure(IllegalStateException(result.stderr.ifBlank { "root 命令执行失败" }))
+        }
+    }
+
+    override suspend fun execDetailed(command: String): ExecDetail = withContext(Dispatchers.IO) {
+        val result = rootAuthorizer.execute(command)
+        val merged = buildString {
+            append(result.stdout)
+            if (result.stderr.isNotBlank()) {
+                if (isNotEmpty()) append('\n')
+                append("[stderr]\n")
+                append(result.stderr)
+            }
+        }
+        ExecDetail(result.exitCode, merged)
+    }
+
+    /** 截图走 libsu 写文件再读字节（libsu 输出按行收集,直接接二进制 PNG 会损坏）。 */
+    override suspend fun screenshot(): ByteArray? = withContext(Dispatchers.IO) {
+        val file = File(context.cacheDir, "muse_root_shot_${System.currentTimeMillis()}.png")
+        try {
+            val path = "'" + file.absolutePath.replace("'", "'\\''") + "'"
+            val result = rootAuthorizer.execute("screencap -p $path")
+            if (result.isSuccess && file.exists() && file.length() > 0) {
+                file.readBytes()
+            } else {
+                Logger.w(TAG, "root 截图失败 exit=${result.exitCode}")
+                null
+            }
+        } catch (e: Exception) {
+            Logger.w(TAG, "root 截图异常: ${e.message}")
+            null
+        } finally {
+            file.delete()
+        }
+    }
+
+    /** H-SEC-1: 包名白名单校验,拒绝包含 shell 元字符的参数。 */
     private fun validatePackageName(name: String): Boolean = Regex("^[a-zA-Z][a-zA-Z0-9_.]*\$").matches(name)
 
-    /** H-SEC-1: Verificación de la lista blanca de rutas,Denegar el recorrido de ruta y los caracteres de inyección de shell. */
+    /** H-SEC-1: 路径白名单校验,拒绝路径穿越和 shell 注入字符。 */
     private fun validatePath(path: String): Boolean = Regex("^[/a-zA-Z0-9_.\\-]+$").matches(path)
 
     /**
@@ -131,62 +165,62 @@ class RootExecutor(
         path == root.path || path.startsWith(root.path + File.separator)
     }
 
-    /** Instalación silenciosa APK(root No se requiere confirmación del usuario bajo pm install). */
+    /** 静默安装 APK(root 下 pm install 不需要用户确认)。 */
     suspend fun installApk(apkPath: String): Boolean {
         val canonicalPath = resolveAllowedApkPath(apkPath)
         if (canonicalPath == null) {
-            Logger.w(TAG, "installApk rechazar: Ruta APK ilegal o no permitida")
+            Logger.w(TAG, "installApk 拒绝: 非法或不允许的 APK 路径")
             return false
         }
         val result = exec("pm install -r $canonicalPath")
         return result.isSuccess && result.getOrDefault("").contains("Success", ignoreCase = true)
     }
 
-    /** Desinstalar App(root abajo pm uninstall). */
+    /** 卸载 App(root 下 pm uninstall)。 */
     suspend fun uninstallApp(packageName: String): Boolean {
         if (!validatePackageName(packageName)) {
-            Logger.w(TAG, "uninstallApp rechazar: Nombre de paquete ilegal $packageName")
+            Logger.w(TAG, "uninstallApp 拒绝: 非法包名 $packageName")
             return false
         }
         return exec("pm uninstall $packageName").isSuccess
     }
 
-    /** Conceder permisos de tiempo de ejecución(root abajo pm grant). */
+    /** 授予运行时权限(root 下 pm grant)。 */
     suspend fun grantPermission(packageName: String, permission: String): Boolean {
         if (!validatePackageName(packageName)) {
-            Logger.w(TAG, "grantPermission rechazar: Nombre de paquete ilegal $packageName")
+            Logger.w(TAG, "grantPermission 拒绝: 非法包名 $packageName")
             return false
         }
-        // permission El formato es como android.permission.SEND_SMS,Sólo se permiten letras/numeros/punto/subrayado
+        // permission 格式如 android.permission.SEND_SMS,只允许字母/数字/点/下划线
         if (!Regex("^[a-zA-Z][a-zA-Z0-9_.]*\$").matches(permission)) {
-            Logger.w(TAG, "grantPermission rechazar: Nombre de permiso ilegal $permission")
+            Logger.w(TAG, "grantPermission 拒绝: 非法权限名 $permission")
             return false
         }
         return exec("pm grant $packageName $permission").isSuccess
     }
 
-    /** Forzar la detención de la aplicación. */
+    /** 强制停止 App。 */
     suspend fun forceStop(packageName: String): Boolean {
         if (!validatePackageName(packageName)) {
-            Logger.w(TAG, "forceStop rechazar: Nombre de paquete ilegal $packageName")
+            Logger.w(TAG, "forceStop 拒绝: 非法包名 $packageName")
             return false
         }
         return exec("am force-stop $packageName").isSuccess
     }
 
-    /** Leer otros archivos del directorio privado de la aplicación(necesidad root). */
+    /** 读取其他 App 私有目录文件(需 root)。 */
     suspend fun readAppFile(appPackage: String, relativePath: String): String? {
         if (!validatePackageName(appPackage)) {
-            Logger.w(TAG, "readAppFile rechazar: Nombre de paquete ilegal $appPackage")
+            Logger.w(TAG, "readAppFile 拒绝: 非法包名 $appPackage")
             return null
         }
-        // relativePath No se permiten caminos absolutos ni cruces de caminos.
+        // relativePath 不允许绝对路径或路径穿越
         if (relativePath.startsWith("/") || relativePath.contains("..")) {
-            Logger.w(TAG, "readAppFile rechazar: Camino relativo ilegal $relativePath")
+            Logger.w(TAG, "readAppFile 拒绝: 非法相对路径 $relativePath")
             return null
         }
         if (!validatePath(relativePath)) {
-            Logger.w(TAG, "readAppFile rechazar: La ruta contiene caracteres ilegales $relativePath")
+            Logger.w(TAG, "readAppFile 拒绝: 路径包含非法字符 $relativePath")
             return null
         }
         val path = "/data/data/$appPackage/$relativePath"
@@ -202,15 +236,15 @@ class RootExecutor(
      * Without prefix defaults to `secure:`.
      */
     /**
-     * v2.x: Alternar interruptor de red inalámbrica(`svc wifi|data enable|disable`).
+     * v2.x: 切换无线网络开关(`svc wifi|data enable|disable`)。
      *
-     * Solo lista blanca wifi / data;Vuelven el resto de servicios null(prensa de llamada"No compatible"Proceso).
-     * El comando es empalme fijo.,Sin superficie de inyección de entrada del usuario. Requiere raíz.
+     * 白名单仅 wifi / data;其余服务返回 null(调用方按"不支持"处理)。
+     * 命令为固定拼接,无用户输入注入面。需 root。
      */
     suspend fun svcToggle(service: String, enabled: Boolean): Boolean? {
         val svc = service.trim().lowercase()
         if (svc != "wifi" && svc != "data") {
-            Logger.w(TAG, "svcToggle rechazar: Servicios no compatibles $service")
+            Logger.w(TAG, "svcToggle 拒绝: 不支持的服务 $service")
             return null
         }
         val action = if (enabled) "enable" else "disable"
@@ -218,14 +252,14 @@ class RootExecutor(
     }
 
     suspend fun settingsGet(name: String): String? {
-        // v2.0.1: apoyo "namespace:name"(Como por ejemplo secure:location_mode);Ningún prefijo es seguro por defecto.
+        // v2.0.1: 支持 "namespace:name"(如 secure:location_mode);无前缀默认 secure。
         val idx = name.indexOf(':')
         val nsPart = if (idx >= 0) name.substring(0, idx) else "secure"
         val keyPart = if (idx >= 0) name.substring(idx + 1) else name
         val safeNs = validateSettingsNamespace(nsPart)
         val safeName = validateSettingsName(keyPart)
         if (safeNs == null || safeName == null) {
-            Logger.w(TAG, "settingsGet rechazar: Nombre de configuración ilegal $name")
+            Logger.w(TAG, "settingsGet 拒绝: 非法设置名 $name")
             return null
         }
         val result = exec("settings get $safeNs$safeName")
@@ -241,10 +275,10 @@ class RootExecutor(
         val safeNs = validateSettingsNamespace(namespace)
         val safeName = validateSettingsName(name)
         if (safeNs == null || safeName == null) {
-            Logger.w(TAG, "settingsPut rechazar: Parámetros ilegales ns=$namespace name=$name")
+            Logger.w(TAG, "settingsPut 拒绝: 非法参数 ns=$namespace name=$name")
             return false
         }
-        // v2.0.1: Sólo imprimible ASCII,y escapar con escapeDoubleQuoted,Evite la inyección de cáscara de raíz.
+        // v2.0.1: 只保留可打印 ASCII,并用 escapeDoubleQuoted 转义,防 root shell 注入。
         val safeValue = value.filter { it.code in 32..126 }
         return exec("settings put $safeNs$safeName \"${escapeDoubleQuoted(safeValue)}\"").isSuccess
     }
@@ -255,10 +289,10 @@ class RootExecutor(
      */
     suspend fun amStart(packageName: String, className: String? = null, extras: String? = null): Boolean {
         if (!validatePackageName(packageName)) {
-            Logger.w(TAG, "amStart rechazar: Nombre de paquete ilegal $packageName")
+            Logger.w(TAG, "amStart 拒绝: 非法包名 $packageName")
             return false
         }
-        // v2.0.1: Los nombres de los componentes y los extras deben incluirse primero en la lista blanca.,Luego ingrese el comando de shell raíz,Prevenir la inyección de comandos.
+        // v2.0.1: 组件名与 extras 必须先白名单校验,再拼进 root shell 命令,防命令注入。
         val safeClass = className?.trim()?.takeIf { it.isNotBlank() }?.let { cls ->
             val normalized = if (cls.startsWith(".")) "$packageName$cls" else cls
             if (!COMPONENT_NAME_REGEX.matches(normalized)) {
@@ -289,7 +323,7 @@ class RootExecutor(
      * List installed packages, optionally filtered by a substring match on package name.
      */
     suspend fun listPackages(filter: String? = null): List<String> {
-        // v2.0.1: Utilice los parámetros de filtrado nativos de los paquetes de lista pm en su lugar;Verificación de la lista blanca primero,Evite la inyección de cáscara de raíz.
+        // v2.0.1: 改用 pm list packages 原生过滤参数;先白名单校验,防 root shell 注入。
         val safeFilter = filter?.trim()?.takeIf { it.isNotEmpty() }?.let {
             if (!PACKAGE_FILTER_REGEX.matches(it)) {
                 Logger.w(TAG, "listPackages rejected: invalid filter")
@@ -324,7 +358,7 @@ class RootExecutor(
      */
     suspend fun inputInject(text: String): Boolean {
         if (text.isBlank()) return false
-        // v2.0.1: Las cadenas entre comillas dobles deben tener caracteres de escape. \\ \" $ ` con saltos de línea,De lo contrario, se pueden inyectar comandos arbitrarios en el shell raíz.
+        // v2.0.1: 双引号字符串内必须转义 \\ \" $ ` 与换行,否则 root shell 可被注入任意命令。
         val result = exec("input text \"${escapeDoubleQuoted(text)}\"")
         if (result.isSuccess) return true
         // Fallback: write to clipboard then paste
@@ -338,9 +372,9 @@ class RootExecutor(
         }
     }
 
-    // ── v2.x Automatización Fase I:constructor de comandos(para ejecución en capas Shizuku→Root Reutilizar;null = Parámetro ilegal) ──
+    // ── v2.x 自动化一期:命令构造器(供分层执行 Shizuku→Root 复用;null = 参数非法) ──
 
-    /** `settings get <ns> <name>`;name apoyo "namespace:name",Seguro predeterminado. */
+    /** `settings get <ns> <name>`;name 支持 "namespace:name",默认 secure。 */
     internal fun buildSettingsGet(name: String): String? {
         val idx = name.indexOf(':')
         val nsPart = if (idx >= 0) name.substring(0, idx) else "secure"
@@ -350,7 +384,7 @@ class RootExecutor(
         return "settings get $safeNs$safeName"
     }
 
-    /** `settings put <ns> <name> "<value>"`(Los valores permanecen imprimibles solo en ASCII y con formato de escape). */
+    /** `settings put <ns> <name> "<value>"`(值仅保留可打印 ASCII 并转义)。 */
     internal fun buildSettingsPut(namespace: String, name: String, value: String): String? {
         val safeNs = validateSettingsNamespace(namespace) ?: return null
         val safeName = validateSettingsName(name) ?: return null
@@ -358,14 +392,14 @@ class RootExecutor(
         return "settings put $safeNs$safeName \"${escapeDoubleQuoted(safeValue)}\""
     }
 
-    /** `svc <wifi|data> enable|disable`;Los servicios no compatibles devuelven nulo. */
+    /** `svc <wifi|data> enable|disable`;不支持的服务返回 null。 */
     internal fun buildSvcToggle(service: String, enabled: Boolean): String? {
         val svc = service.trim().lowercase()
         if (svc != "wifi" && svc != "data") return null
         return "svc $svc ${if (enabled) "enable" else "disable"}"
     }
 
-    /** `am start -n pkg/cls [--es k v ...]`;Los parámetros ilegales devuelven nulo. */
+    /** `am start -n pkg/cls [--es k v ...]`;非法参数返回 null。 */
     internal fun buildAmStart(packageName: String, className: String? = null, extras: String? = null): String? {
         if (!validatePackageName(packageName)) return null
         val safeClass = className?.trim()?.takeIf { it.isNotBlank() }?.let { cls ->
@@ -390,7 +424,7 @@ class RootExecutor(
         }
     }
 
-    /** `pm list packages [filter]`;El filtro ilegal devuelve nulo. */
+    /** `pm list packages [filter]`;非法 filter 返回 null。 */
     internal fun buildListPackages(filter: String? = null): String? {
         val safeFilter = filter?.trim()?.takeIf { it.isNotEmpty() }?.let {
             if (!PACKAGE_FILTER_REGEX.matches(it)) return null
@@ -399,10 +433,10 @@ class RootExecutor(
         return "pm list packages" + (safeFilter?.let { " $it" } ?: "")
     }
 
-    /** `logcat -d -t <lines>`. */
+    /** `logcat -d -t <lines>`。 */
     internal fun buildLogcatTail(lines: Int): String = "logcat -d -t $lines"
 
-    /** `input text "<escaped>"`;El texto vacío devuelve nulo. */
+    /** `input text "<escaped>"`;空文本返回 null。 */
     internal fun buildInputInject(text: String): String? {
         if (text.isBlank()) return null
         return "input text \"${escapeDoubleQuoted(text)}\""
@@ -437,16 +471,16 @@ class RootExecutor(
     companion object {
         private const val TAG = "RootExec"
 
-        /** Root Límite de espera de solicitud de autorización:Necesita cubrir el tiempo en que el usuario hace clic manualmente en la ventana emergente del administrador raíz,Ríndete después del tiempo de espera. */
+        /** Root 授权请求等待上限:需覆盖用户手动点 root 管理器弹窗的时间,超时即放弃。 */
         private const val ROOT_REQUEST_TIMEOUT_MS = 30_000L
 
-        /** H-SEC: Lista blanca de nombres de componentes(permitir $ para clases internas). */
+        /** H-SEC: 组件名白名单(允许 $ 用于内部类)。 */
         private val COMPONENT_NAME_REGEX = Regex("^[A-Za-z0-9_.$]+$")
 
-        /** H-SEC: am start extras lista blanca de claves. */
+        /** H-SEC: am start extras 的 key 白名单。 */
         private val EXTRA_KEY_REGEX = Regex("^[A-Za-z0-9_.-]{1,64}$")
 
-        /** H-SEC: pm list packages Filtrar la lista blanca de palabras. */
+        /** H-SEC: pm list packages 过滤词白名单。 */
         private val PACKAGE_FILTER_REGEX = Regex("^[A-Za-z0-9_.-]{1,64}$")
     }
 }

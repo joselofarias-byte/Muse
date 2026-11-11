@@ -3,51 +3,51 @@ package io.zer0.muse.tools
 import java.io.File
 
 /**
- * Herramientas de carcasa universales(El comando es una cadena de shell arbitraria.,Como por ejemplo terminal_exec)Se utiliza el límite de comando de dos paradas.
+ * 通用 Shell 工具(命令是一段任意 shell 字符串,如 terminal_exec)使用的两档命令边界。
  *
- * ## ¿Por qué no aplicarlo directamente? [ToolPermissionResolver.isUnsafeCommand]
- * `execute_shell` si**consulta de solo lectura**Herramientas:17 Lista blanca de comandos, canalizaciones prohibidas, redirecciones prohibidas,entonces [isUnsafeCommand]
- * poner `` ` `` `$` `|` `;` `&` `<` `>` `*` `?` `{}` Toda la gramática establecida junto con rm/git/curl/python/chmod
- * Todos los nombres de archivos ejecutables se consideran inseguros —— Colocarlo en una zona de pruebas de solo lectura no provocará una muerte accidental.
- * `terminal_exec` si**terminales universales**:Corte de registros de canalización, redirección y almacenamiento de resultados, transferencia de parámetros variables, eliminación recursiva de subdirectorios
- * Es todo su trabajo normal.,Si transfieres ese conjunto de criterios tal como están, básicamente será inútil.
- * Así que aquí volvemos a categorizar por "poder destructivo real" en lugar de "forma de cuerda".
+ * ## 为什么不是直接套用 [ToolPermissionResolver.isUnsafeCommand]
+ * `execute_shell` 是**只读查询**工具:17 条命令白名单、禁管道禁重定向,所以 [isUnsafeCommand]
+ * 把 `` ` `` `$` `|` `;` `&` `<` `>` `*` `?` `{}` 整个语法集连同 rm/git/curl/python/chmod
+ * 等可执行文件名一律判为不安全 —— 放在只读沙箱上不会误杀。
+ * `terminal_exec` 是**通用终端**:管道切日志、重定向存输出、变量传参、子目录递归删除
+ * 都是它的正常工作,把那套判据原样搬过来它基本就没法用了。
+ * 所以这里按「真实破坏力」而不是「字符串形状」重新分档。
  *
- * ## dos engranajes
- *  - [forbidReason] —— El conjunto más pequeño que está absolutamente prohibido.terminal_exec Negarse directamente a ejecutar,
- *    TRUSTED El modo y "Permitir siempre esta herramienta" no se pueden omitir:es lista blanca/Aprobación del piso cuando surgen errores.
- *  - [cautionReason] —— Destructivo pero probablemente funcionando(Eliminar archivos en el espacio de trabajo, cambiar permisos, descargar,
- *    `git push --force`, proceso de finalización, comando de estado del dispositivo).terminal_exec **no te detengas**este nivel,
- *    Déjelo en manos de la cadena de aprobación existente.:terminal_exec en sí mismo un ALTO riesgo,ASK/STRICT Juega cartas una por una en el modo,
- *    El usuario puede ver el texto original del comando en la tarjeta. Esta capa solo registra un registro de advertencia adicional,Hace que sea más fácil mirar atrás más tarde.
+ * ## 两档
+ *  - [forbidReason] —— 绝对不许出现的最小集合。terminal_exec 直接拒绝执行,
+ *    TRUSTED 模式与「始终允许该工具」都绕不过:它是白名单/审批层出 bug 时的地板。
+ *  - [cautionReason] —— 有破坏力但很可能是正常工作(删工作区内的文件、改权限、下载、
+ *    `git push --force`、杀进程、设备状态命令)。terminal_exec **不拦**这一档,
+ *    交给既有审批链:terminal_exec 本身是 HIGH 风险,ASK/STRICT 模式下逐次弹卡,
+ *    用户在卡上能看到命令原文。本层只额外记一条警告日志,便于事后回溯。
  *
- * ## El primer nivel es el conjunto más pequeño.,No es un conjunto completo
- * Solo comprenda la forma de "un solo comando puede destruir un dato":Datos privados de la raíz del dispositivo y de la aplicación/Eliminación y escritura en la partición del sistema,
- * Formateo y escritura de dispositivos de bloqueo, cambios de permisos recursivos fuera de límites, descarga y ejecución(`curl … | sh`),
- * Escalada de privilegios y comandos a nivel de dispositivo, matar bombas init/fork. claro**no lo hagas**cosa:
- *  - No agotes los comandos destructivos.`mv` Mover el directorio,`tar` cubierta,`truncate` Claro,`dd` Llena el disco con estos
- *    Innumerables variantes no están aquí.;O caen en segunda marcha,O depende de la cadena de aprobación.
- *  - No puedo evitar "descargar primero y luego ejecutar el script local"(`curl … -o i.sh && sh i.sh`). esta relacionado con `curl … | sh`
- *    Mismo tipo de poder destructivo,Pero deshabilitarlo equivale a deshabilitar toda la ejecución de scripts.(`sh build.sh` es un uso legítimo de esta herramienta);
- *    Esta categoría sólo está marcada en la segunda marcha.,La responsabilidad corre a cargo del texto original del pedido en la tarjeta de aprobación.
- *  - La semántica del Shell no se analiza. Empalme de fragmentos de sustitución de comandos,base64 Decodificar y luego ejecutar,Este límite es invisible
- *    (Solo realiza segmentación y coincidencia a nivel de parámetros.). Lo que bloquea es**Comandos destructivos para la generación de modelos normales.**,
- *    No es una cadena cuidadosamente construida por el atacante. —— Esto último depende del texto original del comando leído por el usuario en la tarjeta de aprobación.
- *  - No reemplaza la caja de arena de herramientas.terminal_exec Ejecutar con los permisos propios de la aplicación.,En primer lugar, la mayoría de las rutas del sistema no se pueden escribir.;
- *    Lo que está bloqueado aquí es la intención de que "incluso si hay un error en la capa de permisos, no debería suceder".
+ * ## 第一档是最小集,不是完备集
+ * 只抓「一条命令就能毁掉一片数据」的形态:设备根与应用私有数据/系统分区上的删除与写入、
+ * 格式化与块设备写入、越界的递归改权限、下载即执行(`curl … | sh`)、
+ * 提权与设备级命令、杀 init / fork 炸弹。明确**不做**的事:
+ *  - 不穷举破坏性命令。`mv` 挪走目录、`tar` 覆盖、`truncate` 清空、`dd` 写满磁盘这些
+ *    无数变种不在这里;它们要么落在第二档,要么由审批链承担。
+ *  - 不禁「先下载、再执行本地脚本」(`curl … -o i.sh && sh i.sh`)。它与 `curl … | sh`
+ *    破坏力同型,但禁止它就等于禁止一切脚本执行(`sh build.sh` 是本工具的正当用途);
+ *    这一类只在第二档标出来,由审批卡上的命令原文承担。
+ *  - 不解析 shell 语义。命令替换的碎片拼接、base64 解码后再执行,本边界看不见
+ *    (它只做分段与参数级匹配)。它拦的是**模型正常生成的破坏性命令**,
+ *    不是攻击者精心构造的字符串 —— 后者要靠审批卡上让用户读到的命令原文。
+ *  - 不替代工具沙盒。terminal_exec 以 App 自身权限运行,绝大多数系统路径本来就写不进去;
+ *    这里拦的是「即使权限层出 bug 也不该发生」的意图。
  *
- * Los métodos de lectura de párrafos y colocación están en [ShellSegment] / [ShellLocator] / [ShellCommandLex] adentro.
+ * 分段、落点这些读法在 [ShellSegment] / [ShellLocator] / [ShellCommandLex] 里。
  */
 internal object ShellCommandBoundary {
 
     /**
-     * primera marcha:Golpe significa que se rechaza la ejecución.
+     * 第一档:命中即拒绝执行。
      *
-     * @param command El texto original del comando de shell que se ejecutará.
-     * @param workspaceDir Directorio de trabajo de la herramienta(terminal_exec espacio de trabajo de la aplicación). Los caminos relativos se resuelven en
-     *   Punto de aterrizaje absoluto,Sólo entonces podremos distinguir entre "limpieza normal en el espacio de trabajo" y "eliminación transfronteriza". La ruta relativa no se puede determinar cuando se pasa nulo.
-     *   punto de aterrizaje,No participa en la primera intercepción.
-     * @return Cuando se cumple una regla, se devuelve un motivo que se puede informar directamente al usuario.;Regresar en caso de error null
+     * @param command 待执行的 shell 命令原文
+     * @param workspaceDir 工具的工作目录(terminal_exec 的应用工作区)。相对路径按它解析成
+     *   绝对落点,才能区分「工作区内的正常清理」与「越界删除」。传 null 时相对路径判不出
+     *   落点,不参与第一档拦截。
+     * @return 命中规则时返回可直接讲给用户的原因;未命中返回 null
      */
     fun forbidReason(command: String, workspaceDir: File? = null): String? {
         if (command.isBlank()) return null
@@ -67,24 +67,23 @@ internal object ShellCommandBoundary {
     }
 
     /**
-     * Segunda marcha:Destructivo pero probablemente funcionando —— **no te detengas**,de la cadena de aprobación existente(HIGH Los riesgos se confirman uno por uno.)
-     * responsable,La persona que llama puede registrar como máximo un registro.
+     * 第二档:有破坏力但很可能就是正常工作 —— **不拦**,由既有审批链(HIGH 风险逐次确认)
+     * 负责,调用方最多记一条日志。
      *
-     * @return descripción destructiva;Regresa cuando el comando no tiene poder destructivo. null
+     * @return 破坏性的描述;命令没有破坏力时返回 null
      */
-    fun cautionReason(command: String): String? =
-        ShellSegment.split(command).firstNotNullOfOrNull(::cautionForSegment)
+    fun cautionReason(command: String): String? = ShellSegment.split(command).firstNotNullOfOrNull(::cautionForSegment)
 
     private fun cautionForSegment(segment: ShellSegment): String? {
         val verb = segment.verb() ?: return null
-        if (verb == "find" && segment.tokens.contains("-delete")) return "find -delete Eliminación por lotes"
-        if (verb == "git" && segment.args().any { it in GIT_DESTRUCTIVE_ARGS }) return "git subcomando destructivo(reset/clean/Recomendación fuerte)"
+        if (verb == "find" && segment.tokens.contains("-delete")) return "find -delete 批量删除"
+        if (verb == "git" && segment.args().any { it in GIT_DESTRUCTIVE_ARGS }) return "git 破坏性子命令(reset/clean/强推)"
         return CAUTION_NOTES[verb]
     }
 
-    // ── Reglas específicas de primer nivel ────────────────────────────────────────────────────
+    // ── 第一档具体规则 ────────────────────────────────────────────────────
 
-    /** Eliminar:El punto de aterrizaje está fuera de los límites.(Raíz del dispositivo/partición del sistema/Datos privados de la aplicación)detener todo;La eliminación recursiva debe cubrir fuera del área de trabajo antes de detenerse. */
+    /** 删除:落点越界(设备根/系统分区/应用私有数据)一律拦;递归删除还得覆盖到工作区外才拦。 */
     private fun deleteReason(segment: ShellSegment, locator: ShellLocator): String? {
         val verb = segment.verb() ?: return null
         if (verb == "find") return findDeleteReason(segment, locator)
@@ -96,26 +95,26 @@ internal object ShellCommandBoundary {
     }
 
     private fun deleteTargetReason(raw: String, target: ShellTarget, recursive: Boolean): String? =
-        unacceptable("Eliminar", target, raw) ?: when {
+        unacceptable("删除", target, raw) ?: when {
             !recursive -> null
-            target.scope == ShellScope.WORKSPACE_ROOT && target.wholeDirectory -> "Eliminar recursivamente todo el espacio de trabajo de la aplicación:$raw"
-            target.scope == ShellScope.STORAGE || target.scope == ShellScope.OUTSIDE -> "Eliminar recursivamente rutas que apunten fuera del espacio de trabajo:$raw"
+            target.scope == ShellScope.WORKSPACE_ROOT && target.wholeDirectory -> "递归删除整个应用工作区:$raw"
+            target.scope == ShellScope.STORAGE || target.scope == ShellScope.OUTSIDE -> "递归删除指向工作区之外的路径:$raw"
             else -> null
         }
 
-    /** `find <raíz> … -delete`:La raíz de escaneo se bloqueará si va más allá del área de trabajo.;La eliminación por predicado en el espacio de trabajo pertenece al segundo nivel. */
+    /** `find <根> … -delete`:扫描根越出工作区就拦;工作区内按谓词删除属于第二档。 */
     private fun findDeleteReason(segment: ShellSegment, locator: ShellLocator): String? {
         if (!segment.tokens.contains("-delete")) return null
         val root = segment.pathArgs().firstOrNull() ?: return null
         val target = locator.target(root)
-        unacceptable("find -delete escanear raíz", target, root)?.let { return it }
+        unacceptable("find -delete 的扫描根", target, root)?.let { return it }
         return when (target.scope) {
-            ShellScope.STORAGE, ShellScope.OUTSIDE -> "find -delete La raíz del escaneo está fuera del espacio de trabajo.:$root"
+            ShellScope.STORAGE, ShellScope.OUTSIDE -> "find -delete 的扫描根在工作区之外:$root"
             else -> null
         }
     }
 
-    /** Destino de escritura explícito:`dd of=`,`tee`,`cp/mv/install/ln` el punto de aterrizaje,`truncate`. */
+    /** 显式写入目标:`dd of=`、`tee`、`cp/mv/install/ln` 的落点、`truncate`。 */
     private fun writeReason(segment: ShellSegment, locator: ShellLocator): String? {
         val destinations = when (segment.verb()) {
             "dd" -> segment.args().filter { it.startsWith("of=") }.map { it.removePrefix("of=") }
@@ -123,12 +122,12 @@ internal object ShellCommandBoundary {
             "cp", "mv", "install", "ln", "truncate" -> listOfNotNull(segment.pathArgs().lastOrNull())
             else -> emptyList()
         }
-        return destinations.firstNotNullOfOrNull { raw -> unacceptable("escribir", locator.target(raw), raw) }
+        return destinations.firstNotNullOfOrNull { raw -> unacceptable("写入", locator.target(raw), raw) }
     }
 
     /**
-     * Cambiar permisos/Dueño. En la raíz del dispositivo y la partición del sistema `chmod`/`chown` detener todo(`chmod 777 /` este tipo);
-     * Cambiar permisos en el espacio de trabajo es un proceso normal para preparar scripts,no te detengas —— Libere de forma recursiva los permisos de escritura fuera del espacio de trabajo antes de bloquear.
+     * 改权限/属主。设备根与系统分区上的 `chmod`/`chown` 一律拦(`chmod 777 /` 这类);
+     * 工作区内的改权限是准备脚本的正常过程,不拦 —— 递归放开工作区外的写权限才拦。
      */
     private fun permissionReason(segment: ShellSegment, locator: ShellLocator): String? {
         val verb = segment.verb() ?: return null
@@ -141,40 +140,35 @@ internal object ShellCommandBoundary {
         }
     }
 
-    private fun permissionTargetReason(
-        verb: String,
-        scope: ShellScope,
-        recursive: Boolean,
-        worldWritable: Boolean,
-        raw: String,
-    ): String? = when {
-        scope == ShellScope.DEVICE_ROOT -> "$verb Actúa en la raíz del dispositivo:$raw"
-        scope == ShellScope.SYSTEM -> "$verb Actúa sobre la partición del sistema.:$raw"
-        scope == ShellScope.APP_DATA -> "$verb Actúa sobre los datos privados de la aplicación fuera del espacio de trabajo en /data:$raw"
-        recursive && worldWritable && scope in OUT_OF_SCOPE_STORAGE -> {
-            "Liberar recursivamente permisos de escritura en rutas fuera del espacio de trabajo:$verb $raw"
+    private fun permissionTargetReason(verb: String, scope: ShellScope, recursive: Boolean, worldWritable: Boolean, raw: String): String? =
+        when {
+            scope == ShellScope.DEVICE_ROOT -> "$verb 作用在设备根上:$raw"
+            scope == ShellScope.SYSTEM -> "$verb 作用在系统分区上:$raw"
+            scope == ShellScope.APP_DATA -> "$verb 作用在 /data 下工作区以外的应用私有数据上:$raw"
+            recursive && worldWritable && scope in OUT_OF_SCOPE_STORAGE -> {
+                "递归放开工作区外路径的写权限:$verb $raw"
+            }
+            else -> null
         }
-        else -> null
-    }
 
-    /** Formatear y bloquear dispositivos:Los objetos de estos comandos no pueden ser archivos en el espacio de trabajo. */
+    /** 格式化与块设备:这些命令的作用对象不可能是工作区里的文件。 */
     private fun formatReason(segment: ShellSegment): String? {
         val verb = segment.verb() ?: return null
-        if (verb == "mkfs" || verb.startsWith("mkfs.")) return "Comando de formato del sistema de archivos:$verb"
-        if (verb in BLOCK_DEVICE_VERBS) return "Manipular particiones directamente/bloquear comandos del dispositivo:$verb"
+        if (verb == "mkfs" || verb.startsWith("mkfs.")) return "文件系统格式化命令:$verb"
+        if (verb in BLOCK_DEVICE_VERBS) return "直接操作分区/块设备的命令:$verb"
         return ddDeviceReason(verb, segment)
     }
 
     private fun ddDeviceReason(verb: String, segment: ShellSegment): String? {
         if (verb != "dd") return null
         val output = segment.args().firstOrNull { it.startsWith("of=") }?.removePrefix("of=").orEmpty()
-        return if (output.startsWith("/dev/") && !ShellCommandLex.isHarmlessSink(output)) "dd Escribir nodo de dispositivo:$output" else null
+        return if (output.startsWith("/dev/") && !ShellCommandLex.isHarmlessSink(output)) "dd 写入设备节点:$output" else null
     }
 
     /**
-     * Comandos a nivel de dispositivo:Escalada de privilegios, suministro de energía, montaje./espacio de nombres,Y borrará o desinstalará los datos de la aplicación. `pm`/`am`/`appops`
-     * subcomando. Estos tienen sus propias herramientas especiales.(device_shell / app_clear_data / am_start espera),
-     * Depende de cada individuo pasar por el proceso de aprobación.;La aparición en el archivo del terminal no tiene finalidad legítima.
+     * 设备级命令:提权、电源、挂载/命名空间,以及会清掉或卸载应用数据的 `pm`/`am`/`appops`
+     * 子命令。这些本来就有各自的专用工具(device_shell / app_clear_data / am_start 等),
+     * 走的是各自的审批;出现在文件终端里没有正当用途。
      */
     private fun deviceReason(segment: ShellSegment): String? {
         val verb = segment.verb() ?: return null
@@ -183,61 +177,60 @@ internal object ShellCommandBoundary {
     }
 
     private fun destructiveSubcommandReason(verb: String, subcommand: String?): String? = when {
-        verb == "pm" && subcommand in PM_DESTRUCTIVE -> "Subcomandos destructivos de gestión de paquetes:pm $subcommand"
-        verb == "am" && subcommand == "force-stop" -> "Comando para forzar la detención de otras aplicaciones:am force-stop"
-        verb == "appops" && subcommand == "set" -> "Comandos para cambiar otros permisos de aplicaciones:appops set"
+        verb == "pm" && subcommand in PM_DESTRUCTIVE -> "包管理破坏性子命令:pm $subcommand"
+        verb == "am" && subcommand == "force-stop" -> "强停其它应用的命令:am force-stop"
+        verb == "appops" && subcommand == "set" -> "改其它应用权限面的命令:appops set"
         else -> null
     }
 
     /**
-     * Categoría "Ejecutar una parte de contenido dinámico como código de comando":Canalizado al shell/intérprete stdin,
-     * o `eval "$(curl …)"`.`curl … | sh`,`wget -qO- … | bash` es su forma típica.
+     * 「把一段动态内容当命令码执行」这一类:管道喂给 shell/解释器的 stdin,
+     * 或 `eval "$(curl …)"`。`curl … | sh`、`wget -qO- … | bash` 是它的典型形态。
      *
-     * El oleoducto en sí no está bloqueado.(`cat x | grep y` Usado todos los días),Bloquear solo cuando el contenido realmente se ejecutará:
-     *  - shell sin `-c` tiempo,stdin es la fuente de su mando → detenerse
-     *  - El intérprete no tiene argumentos de guión.,o el parámetro es `-`/`-s`/`--stdin` → stdin es la fuente del comando → detenerse
-     *  - `… | python3 -m json.tool`,`… | python3 fmt.py`,`… | sh -c 'echo hi'`:
-     *    En la tubería está**datos**No es un código de comando → no te detengas,Este es un uso legítimo del terminal.
+     * 管道本身不拦(`cat x | grep y` 天天在用),只在内容真会被执行时拦:
+     *  - shell 不带 `-c` 时,stdin 就是它的命令来源 → 拦
+     *  - 解释器没有脚本参数,或参数是 `-`/`-s`/`--stdin` → stdin 是命令来源 → 拦
+     *  - `… | python3 -m json.tool`、`… | python3 fmt.py`、`… | sh -c 'echo hi'`:
+     *    管道里是**数据**不是命令码 → 不拦,这是终端的正当用法
      */
     private fun remoteCodeReason(segment: ShellSegment): String? {
         val verb = segment.verb() ?: return null
         val args = segment.args()
         val pipedCode = segment.isPipeInput && verb in INTERPRETERS &&
             ShellCommandLex.stdinIsCommandSource(args, verb in SHELL_INTERPRETERS)
-        if (pipedCode) return "Ejecutar el contenido de la tubería como código de comando:| $verb ${args.joinToString(" ")}".trim()
+        if (pipedCode) return "把管道内容当作命令码执行:| $verb ${args.joinToString(" ")}".trim()
         if (verb in SCRIPT_SOURCES && args.any(ShellCommandLex::loadsRemoteContent)) {
-            return "$verb Ejecutar contenido del script desde la red."
+            return "$verb 执行来自网络的脚本内容"
         }
         return null
     }
 
     private fun killReason(segment: ShellSegment): String? = when {
         segment.verb() != "kill" -> null
-        segment.args().any { it == "1" } -> "kill señalar a PID 1(init)"
-        segment.args().any { it == "-1" } -> "kill Señalar todos los procesos."
+        segment.args().any { it == "1" } -> "kill 指向 PID 1(init)"
+        segment.args().any { it == "-1" } -> "kill 指向全部进程"
         else -> null
     }
 
-    /** Destino de ubicación de redireccionamiento:`> /system/...`,`>> /data/data/...`.`2>&1` Este tipo no es una colocación. */
-    private fun redirectReason(command: String, locator: ShellLocator): String? =
-        REDIRECT.findAll(command)
-            .map { ShellCommandLex.stripQuotes(it.groupValues[1]) }
-            .filter { it.isNotEmpty() && !it.startsWith("&") }
-            .firstNotNullOfOrNull { raw -> unacceptable("redirigir escribir", locator.target(raw), raw) }
+    /** 重定向落盘的目标:`> /system/...`、`>> /data/data/...`。`2>&1` 这类不是落盘。 */
+    private fun redirectReason(command: String, locator: ShellLocator): String? = REDIRECT.findAll(command)
+        .map { ShellCommandLex.stripQuotes(it.groupValues[1]) }
+        .filter { it.isNotEmpty() && !it.startsWith("&") }
+        .firstNotNullOfOrNull { raw -> unacceptable("重定向写入", locator.target(raw), raw) }
 
-    /** Razones por las que los objetivos caen en áreas \"absolutamente inaceptables\";Las áreas restantes las juzga la persona que llama según el equipo. */
+    /** 目标落在「绝对不可接受」的区域时的原因;其余区域由调用方按档位判断。 */
     private fun unacceptable(label: String, target: ShellTarget, raw: String): String? = when (target.scope) {
-        ShellScope.DEVICE_ROOT -> "${label}Pulsa la raíz del dispositivo($raw)"
-        ShellScope.SYSTEM -> "${label}Golpear la partición del sistema($raw)"
-        ShellScope.APP_DATA -> "${label}Acceda a los datos privados de la aplicación fuera del espacio de trabajo en /data($raw)"
+        ShellScope.DEVICE_ROOT -> "${label}命中设备根($raw)"
+        ShellScope.SYSTEM -> "${label}命中系统分区($raw)"
+        ShellScope.APP_DATA -> "${label}命中 /data 下工作区以外的应用私有数据($raw)"
         else -> null
     }
 
-    // ── tabla de criterios ────────────────────────────────────────────────────────────
+    // ── 判据表 ────────────────────────────────────────────────────────────
 
     private val FORK_BOMB_SPACES = Regex("\\s+")
     private const val FORK_BOMB_SHAPE = ":(){:"
-    private const val FORK_BOMB_REASON = "fork bomba autorreplicante"
+    private const val FORK_BOMB_REASON = "fork 炸弹的自我复制写法"
 
     private val REDIRECT = Regex("""\d?>{1,2}\s*("?[^"\s;|&]+)""")
 
@@ -245,26 +238,26 @@ internal object ShellCommandBoundary {
     private val PERMISSION_VERBS = setOf("chmod", "chown", "chgrp")
     private val BLOCK_DEVICE_VERBS = setOf("fdisk", "sfdisk", "parted", "sgdisk", "wipefs", "losetup", "mkswap")
 
-    /** Comandos a nivel de dispositivo:No hay uso legítimo en el terminal App Sandbox,Cada uno tiene sus propias herramientas y aprobaciones específicas. */
+    /** 设备级命令:在 App 沙盒终端里没有正当用途,各自有专用工具与审批。 */
     private val DEVICE_ONLY_VERBS = mapOf(
-        "su" to "Comando de escalada de privilegios",
-        "sudo" to "Comando de escalada de privilegios",
-        "doas" to "Comando de escalada de privilegios",
-        "reboot" to "Comandos de encendido del dispositivo",
-        "poweroff" to "Comandos de encendido del dispositivo",
-        "shutdown" to "Comandos de encendido del dispositivo",
-        "halt" to "Comandos de encendido del dispositivo",
-        "mount" to "Comandos de montaje y ejecución del sistema",
-        "umount" to "Comandos de montaje y ejecución del sistema",
-        "setprop" to "Comandos de montaje y ejecución del sistema",
-        "restorecon" to "Comandos de montaje y ejecución del sistema",
-        "chroot" to "Comandos de montaje y ejecución del sistema",
-        "switch_root" to "Comandos de montaje y ejecución del sistema",
+        "su" to "提权命令",
+        "sudo" to "提权命令",
+        "doas" to "提权命令",
+        "reboot" to "设备电源命令",
+        "poweroff" to "设备电源命令",
+        "shutdown" to "设备电源命令",
+        "halt" to "设备电源命令",
+        "mount" to "挂载与系统运行时命令",
+        "umount" to "挂载与系统运行时命令",
+        "setprop" to "挂载与系统运行时命令",
+        "restorecon" to "挂载与系统运行时命令",
+        "chroot" to "挂载与系统运行时命令",
+        "switch_root" to "挂载与系统运行时命令",
     )
 
     private val PM_DESTRUCTIVE = setOf("clear", "uninstall", "disable", "delete")
 
-    /** Liberar recursivamente los permisos de escritura en estas áreas se considera el primer nivel.;Cambiar permisos en el espacio de trabajo es parte del proceso normal de preparación de scripts. */
+    /** 递归放开这些区域的写权限才算第一档;工作区内改权限属于正常准备脚本的过程。 */
     private val OUT_OF_SCOPE_STORAGE = setOf(ShellScope.STORAGE, ShellScope.OUTSIDE)
 
     private val SHELL_INTERPRETERS = setOf("sh", "bash", "dash", "ash", "ksh", "zsh", "csh", "tcsh")
@@ -272,38 +265,38 @@ internal object ShellCommandBoundary {
         "python", "python2", "python3", "perl", "ruby", "node", "php", "lua",
     )
 
-    /** Declarar explícitamente \"stdin Este es el parámetro de mi fuente de comando\". */
+    /** 显式声明「stdin 就是我的命令来源」的参数。 */
     private val SCRIPT_SOURCES = setOf("eval", "source")
 
     private val GIT_DESTRUCTIVE_ARGS = setOf("--force", "reset", "clean", "push", "checkout")
 
-    /** Segunda marcha:Trabajo destructivo pero normal.,Sólo mantén un registro,No pares. */
+    /** 第二档:有破坏力但属于正常工作,只记日志,不拦。 */
     private val CAUTION_NOTES = mapOf(
-        "rm" to "Eliminar archivos",
-        "rmdir" to "eliminar directorio",
-        "unlink" to "Eliminar archivos",
-        "shred" to "Destruir el contenido del archivo",
-        "mv" to "moverse/sobrescribir archivo",
-        "truncate" to "Truncar archivo",
-        "dd" to "Leer y escribir en bloques.",
-        "chmod" to "Cambiar permisos de archivos",
-        "chown" to "Cambiar propietario del archivo",
-        "chgrp" to "Cambiar el grupo del archivo",
-        "kill" to "Terminar el proceso",
-        "pkill" to "Terminar procesos en lotes por nombre",
-        "killall" to "Terminar procesos en lotes por nombre",
-        "curl" to "descarga de internet",
-        "wget" to "descarga de internet",
-        "pm" to "Comandos de gestión de paquetes",
-        "am" to "Comandos del administrador de actividades",
-        "settings" to "Configuración del sistema de lectura y escritura.",
-        "input" to "Inyectar eventos de entrada",
-        "sh" to "Ejecutar archivo de script",
-        "bash" to "Ejecutar archivo de script",
-        "python" to "Ejecutar archivo de script",
-        "python3" to "Ejecutar archivo de script",
-        "node" to "Ejecutar archivo de script",
-        "perl" to "Ejecutar archivo de script",
-        "ruby" to "Ejecutar archivo de script",
+        "rm" to "删除文件",
+        "rmdir" to "删除目录",
+        "unlink" to "删除文件",
+        "shred" to "销毁文件内容",
+        "mv" to "移动/覆盖文件",
+        "truncate" to "截断文件",
+        "dd" to "按块读写",
+        "chmod" to "改文件权限",
+        "chown" to "改文件属主",
+        "chgrp" to "改文件属组",
+        "kill" to "终止进程",
+        "pkill" to "按名批量终止进程",
+        "killall" to "按名批量终止进程",
+        "curl" to "网络下载",
+        "wget" to "网络下载",
+        "pm" to "包管理命令",
+        "am" to "活动管理器命令",
+        "settings" to "系统设置读写",
+        "input" to "注入输入事件",
+        "sh" to "执行脚本文件",
+        "bash" to "执行脚本文件",
+        "python" to "执行脚本文件",
+        "python3" to "执行脚本文件",
+        "node" to "执行脚本文件",
+        "perl" to "执行脚本文件",
+        "ruby" to "执行脚本文件",
     )
 }

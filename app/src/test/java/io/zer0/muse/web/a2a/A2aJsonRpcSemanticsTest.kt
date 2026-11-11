@@ -11,15 +11,15 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * AUD-20261011-A2A-PROTOCOL: JSON-RPC Parámetros de capa/Semántica del código de error.
+ * AUD-20261011-A2A-PROTOCOL: JSON-RPC 层的参数/错误码语义。
  *
- * Antecedentes de defectos (.audit REPORT_DOCS_TESTS F2):
- *  - GetTask / CancelTask lo que se lee es JSON-RPC **sobre id**, mientras que la especificación A2A pone task id
- *    ponerse `params.id` —— Un cliente normal nunca podrá recuperar la tarea; la identificación del sobre y la identificación de la tarea son exactamente iguales
- *    solo"Copia del cliente"coincidencia.
- *  - Toda la decodificación falló (incluyendo"JSON válido pero falta method") están asignados a PARSE_ERROR(-32700),
- *    y A2AErrors.INVALID_REQUEST(-32600) Es código muerto y no cumple con JSON-RPC 2.0:
- *    Si el análisis falla, será -32700. Si la estructura de la solicitud es ilegal, será -32600.
+ * 缺陷背景（.audit REPORT_DOCS_TESTS F2）：
+ *  - GetTask / CancelTask 读的是 JSON-RPC **信封 id**，而 A2A 规范把 task id
+ *    放在 `params.id` —— 正常客户端永远取不回任务；信封 id 与 task id 恰好相同
+ *    只是"客户端照抄"的巧合。
+ *  - 一切解码失败（含"合法 JSON 但缺 method"）都被映射为 PARSE_ERROR(-32700)，
+ *    而 A2AErrors.INVALID_REQUEST(-32600) 是死码，不符合 JSON-RPC 2.0：
+ *    解析失败才是 -32700，请求结构非法应是 -32600。
  */
 class A2aJsonRpcSemanticsTest {
 
@@ -29,7 +29,7 @@ class A2aJsonRpcSemanticsTest {
     fun `task id is read from params not from the envelope id`() {
         val params = json.parseToJsonElement("""{"id":"task-from-params"}""")
         assertEquals(
-            "A2A La especificación pone la identificación de la tarea en params.id;Leer la identificación del sobre evitará que los clientes normales recuperen la tarea.",
+            "A2A 规范把 task id 放在 params.id;读信封 id 会让正常客户端取不回任务",
             "task-from-params",
             A2aJsonRpc.taskIdFrom(params, envelopeId = JsonPrimitive("envelope-id")),
         )
@@ -37,7 +37,7 @@ class A2aJsonRpcSemanticsTest {
 
     @Test
     fun `task id falls back to envelope id for legacy clients`() {
-        // Compatible con llamadas existentes emitidas por v2.5.8:La identificación del sobre es el uso antiguo de la identificación de la tarea.
+        // 兼容 v2.5.8 已发出的既有调用:信封 id 即 task id 的旧用法
         assertEquals(
             "legacy-envelope",
             A2aJsonRpc.taskIdFrom(params = null, envelopeId = JsonPrimitive("legacy-envelope")),
@@ -48,7 +48,7 @@ class A2aJsonRpcSemanticsTest {
     fun `missing method on valid json is invalid request not parse error`() {
         val decision = A2aJsonRpc.classify("""{"jsonrpc":"2.0","id":1}""")
         assertEquals(
-            "JSON legal pero falta un método, la estructura de la solicitud es ilegal(-32600),No se ha producido un error al analizar(-32700)",
+            "合法 JSON 但缺 method 属请求结构非法(-32600),不是解析失败(-32700)",
             A2aErrors.INVALID_REQUEST,
             decision.errorCode,
         )
@@ -71,7 +71,7 @@ class A2aJsonRpcSemanticsTest {
         val decision = A2aJsonRpc.classify(
             """{"jsonrpc":"2.0","id":7,"method":"message/send","params":{"message":{"parts":[{"kind":"text","text":"hi"}]}}}""",
         )
-        assertNull("Las solicitudes legítimas no deberían generar códigos de error", decision.errorCode)
+        assertNull("合法请求不应产生错误码", decision.errorCode)
         assertEquals("message/send", decision.method)
         assertEquals(JsonPrimitive(7), decision.envelopeId)
     }
@@ -80,7 +80,7 @@ class A2aJsonRpcSemanticsTest {
     fun `unknown method is rejected with method not found`() {
         val decision = A2aJsonRpc.classify("""{"jsonrpc":"2.0","id":1,"method":"tasks/nope"}""")
         assertEquals(
-            "La capa de distribución debe devolver los métodos desconocidos -32601(Aquí sólo se comprueba la estructura.,No debe juzgarse de antemano como un error de análisis.)",
+            "未知方法应由分发层返回 -32601(此处只校验结构,不应提前判定为解析错误)",
             null,
             decision.errorCode,
         )

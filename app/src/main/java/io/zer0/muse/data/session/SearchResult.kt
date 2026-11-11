@@ -1,16 +1,16 @@
 package io.zer0.muse.data.session
 
 /**
- * Elemento de resultado de búsqueda.
+ * 搜索结果项。
  *
- * @param messageId mensaje coincidente id
- * @param sessionId Perteneciente a la sesión id(Haz clic para saltar)
- * @param sessionTitle Título de la sesión(Los resultados muestran)
- * @param contentSnippet fragmento de contenido(Haga coincidir los 30 caracteres antes y después de la palabra clave)
- * @param role rol de mensaje
- * @param createdAt Crear marca de tiempo
- * @param content Tarea 2: Mensaje original(Proporciona interfaz de usuario para extraer el contexto de 2 oraciones antes y después + resaltado de palabras clave);
- *   FTS4 snippet Para camino [contentSnippet] Eso es todo,Este campo se completa a partir de una ruta LIKE o una proyección JOIN
+ * @param messageId 匹配的消息 id
+ * @param sessionId 所属会话 id(点击跳转用)
+ * @param sessionTitle 会话标题(结果显示)
+ * @param contentSnippet 内容片段(匹配关键词前后 30 字)
+ * @param role 消息角色
+ * @param createdAt 创建时间戳
+ * @param content 任务 2:消息原文(供 UI 提取前后 2 句上下文 + 关键词高亮);
+ *   FTS4 snippet 路径用 [contentSnippet] 即可,本字段从 LIKE 路径或 JOIN 投影填充
  */
 data class SearchResult(
     val messageId: String,

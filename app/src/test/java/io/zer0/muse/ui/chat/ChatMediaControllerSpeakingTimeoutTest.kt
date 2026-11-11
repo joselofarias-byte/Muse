@@ -24,14 +24,14 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * P2-33: El estado de voz HABLANDO expira.
+ * P2-33: 语音 SPEAKING 状态超时兜底。
  *
- * Escenario de defecto:`ttsManager.speak()` Regresar true(El motor acepta la solicitud.),Pero la devolución de llamada de estado TTS nunca llega
- * (Devoluciones de llamada perdidas/StateFlow fusionadas),`state.isSpeaking` nunca para true,Paso 3 de
- * SPEAKING → LISTENING La migración nunca desencadena,La máquina de estados está permanentemente atascada en HABLAR.
+ * 缺陷场景:`ttsManager.speak()` 返回 true(引擎接受请求),但 TTS 状态回调始终未到达
+ * (回调丢失 / StateFlow 合并),`state.isSpeaking` 永远不为 true,步骤 3 的
+ * SPEAKING → LISTENING 迁移永不触发,状态机永久卡在 SPEAKING。
  *
- * Después de la reparación:Entra HABLAR, es decir, perros guardianes armados.(Tiempo de espera adaptable según la longitud del texto,Tiempo de espera corto de inyección de prueba),
- * No se recibió ninguna devolución de llamada de estado TTS después del tiempo de espera → Vuelva a ESCUCHAR y registre el motivo.
+ * 修复后:进入 SPEAKING 即武装看门狗(按文本长度自适应超时,测试注入短超时),
+ * 超时未收到任何 TTS 状态回调 → 回落 LISTENING 并记录原因。
  */
 class ChatMediaControllerSpeakingTimeoutTest {
 
@@ -41,7 +41,7 @@ class ChatMediaControllerSpeakingTimeoutTest {
     private lateinit var audioCoordinator: ChatAudioCoordinator
     private lateinit var scope: CoroutineScope
 
-    /** Construir para inyectar tiempo de espera de vigilancia(60ms)de controller;La ruta alternativa es coherente con el código de producción. */
+    /** 构造可注入看门狗超时(60ms)的 controller;回退路径与生产代码一致。 */
     private fun controller(timeoutMs: Long = 60L): ChatMediaController {
         val uiState = mockk<ChatUiState>(relaxed = true)
         every { uiState.asrState } returns ASRState()
@@ -92,7 +92,7 @@ class ChatMediaControllerSpeakingTimeoutTest {
             stateStore = ChatStateStore()
             ttsManager = mockk(relaxed = true)
             every { ttsManager.speak(any(), any(), any()) } returns true
-            // condición de defecto crítico:El motor no informa ningún estado de isSpeaking(devolución de llamada perdida)
+            // 关键缺陷条件:引擎没回报任何 isSpeaking 状态(回调丢失)
             every { ttsManager.isSpeaking() } returns false
             audioCoordinator = mockk(relaxed = true)
             every { audioCoordinator.shouldUseApiRecording() } returns true
@@ -101,28 +101,28 @@ class ChatMediaControllerSpeakingTimeoutTest {
             controller.startVoiceConversation()
             awaitState(VoiceConversationState.LISTENING)
 
-            // 1) Después de que el usuario hace clic en "Finalizar", el ASR finaliza con el texto de reconocimiento. → THINKING enviar
-            //    cambio de comportamiento:isRecording true→false Ya no activa una confirmación por sí solo.,Primero debes finalizar explícitamente esta sección de entrada.
+            // 1) 用户点「结束」后 ASR 收尾并有识别文本 → THINKING 发送
+            //    行为变更:isRecording true→false 本身不再触发提交,必须先显式结束本段输入
             stateStore.state.value = uiState(isRecording = true, isStreaming = false)
-            voiceState.transcript.value = "Hola"
+            voiceState.transcript.value = "你好"
             controller.finishVoiceConversationListening()
             stateStore.state.value = uiState(isRecording = false, isStreaming = false)
             awaitState(VoiceConversationState.THINKING)
 
-            // 2) Respuesta de transmisión completada → SPEAKING(speak() éxito,Pero no hay devolución de llamada de estado TTS)
-            val reply = UIMessage(role = MessageRole.ASSISTANT, content = "OK,Estoy aquí.")
+            // 2) 流式回复完成 → SPEAKING(speak() 成功,但没有 TTS 状态回调)
+            val reply = UIMessage(role = MessageRole.ASSISTANT, content = "好的,我在。")
             stateStore.messages.value = listOf(reply)
             stateStore.state.value = uiState(isRecording = false, isStreaming = true)
             stateStore.state.value = uiState(isRecording = false, isStreaming = false)
             awaitState(VoiceConversationState.SPEAKING)
 
-            // 3) tiempo de espera de vigilancia → retroceder LISTENING(en lugar de quedarse permanentemente SPEAKING)
+            // 3) 看门狗超时 → 回落 LISTENING(而不是永久停在 SPEAKING)
             awaitState(VoiceConversationState.LISTENING)
             assertEquals(VoiceConversationState.LISTENING, voiceState.state.value)
-            assertTrue("Debe borrarse al retroceder. aiReply", voiceState.aiReply.value.isEmpty())
+            assertTrue("回落时应清空 aiReply", voiceState.aiReply.value.isEmpty())
             assertTrue(
-                "Se debe registrar el motivo de la baja.,registro real=$logs",
-                logs.any { it.contains("SPEAKING disparador de vigilancia") && it.contains("No se recibió ninguna devolución de llamada de estado TTS") },
+                "必须记录回落原因,实际日志=$logs",
+                logs.any { it.contains("SPEAKING 看门狗触发") && it.contains("未收到任何 TTS 状态回调") },
             )
         } finally {
             Logger.sink = previousSink
@@ -145,26 +145,26 @@ class ChatMediaControllerSpeakingTimeoutTest {
         controller.startVoiceConversation()
         awaitState(VoiceConversationState.LISTENING)
 
-        // 1) El usuario hace clic en "Finalizar"→ ASR Refinamiento → THINKING(cambio de comportamiento:El final de la grabación en sí ya no es una señal de confirmación.)
+        // 1) 用户点「结束」→ ASR 收尾 → THINKING(行为变更:录音结束本身不再是提交信号)
         stateStore.state.value = uiState(isRecording = true, isStreaming = false)
-        voiceState.transcript.value = "¿Está ahí?"
+        voiceState.transcript.value = "在吗"
         controller.finishVoiceConversationListening()
         stateStore.state.value = uiState(isRecording = false, isStreaming = false)
         awaitState(VoiceConversationState.THINKING)
 
-        stateStore.messages.value = listOf(UIMessage(role = MessageRole.ASSISTANT, content = "En."))
+        stateStore.messages.value = listOf(UIMessage(role = MessageRole.ASSISTANT, content = "在的。"))
         stateStore.state.value = uiState(isRecording = false, isStreaming = true)
         stateStore.state.value = uiState(isRecording = false, isStreaming = false)
         awaitState(VoiceConversationState.SPEAKING)
-        assertEquals("SPEAKING Mostrar el texto a leer durante el periodo.", "En.", voiceState.aiReply.value)
+        assertEquals("SPEAKING 期间展示待朗读文本", "在的。", voiceState.aiReply.value)
 
-        // TTS La devolución de llamada de estado llega normalmente y finaliza normalmente. → Sigue el camino original SPEAKING → LISTENING Migrar,perro guardián cancelado
+        // TTS 状态回调正常到达并正常结束 → 走原有 SPEAKING → LISTENING 迁移,看门狗被取消
         stateStore.state.value = uiState(isRecording = false, isStreaming = false, isSpeaking = true)
         stateStore.state.value = uiState(isRecording = false, isStreaming = false, isSpeaking = false)
         awaitState(VoiceConversationState.LISTENING)
-        assertTrue("Después de la finalización normal, se borrará de acuerdo con la semántica original. aiReply", voiceState.aiReply.value.isEmpty())
+        assertTrue("正常结束后按原语义清空 aiReply", voiceState.aiReply.value.isEmpty())
 
-        // Se superó el tiempo de espera del mecanismo de vigilancia inyectado:Fin normal y el watchdog ha sido cancelado.,Ya no debería haber deriva estatal
+        // 超过注入的看门狗超时:正常结束已取消看门狗,不应再有状态漂移
         delay(2 * 400L)
         assertEquals(VoiceConversationState.LISTENING, voiceState.state.value)
         scope.cancel()

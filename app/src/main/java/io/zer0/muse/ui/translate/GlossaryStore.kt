@@ -7,16 +7,16 @@ import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.serializer
 
 /**
- * v1.0.30 gap4.6: Almacenamiento del glosario de traducción.
+ * v1.0.30 gap4.6: 翻译术语表存储。
  *
- * Los datos se guardan como un archivo JSON en el directorio privado de la aplicación.(`filesDir/translate/glossary.json`),
- * Almacenar texto original → mapeo fijo de traducción(Como por ejemplo "API" → "API").
+ * 数据以 JSON 文件保存在应用私有目录(`filesDir/translate/glossary.json`),
+ * 存储原文 → 译文 的固定映射(如 "API" → "应用程序接口")。
  *
- * en [TranslateViewModel.translate] en,si el glosario no está vacío,estará a la brevedad
- * adicional"Consulte el siguiente glosario para la traducción.: API→API, GPU→procesador de gráficos..."instrucciones,
- * Deje que LLM siga un método de traducción de terminología unificada al traducir(Evite traducciones inconsistentes del mismo término en diferentes traducciones).
+ * 在 [TranslateViewModel.translate] 中,如果术语表非空,会在 prompt 中
+ * 附加"请参考以下术语表进行翻译: API→应用程序接口, GPU→图形处理器..."指令,
+ * 让 LLM 在翻译时遵循统一的术语译法(避免同一术语在不同译文中译法不一致)。
  *
- * Seguridad del hilo:La sincronización interna se utiliza para proteger lecturas y escrituras.(readAll/save).
+ * 线程安全:内部用 synchronized 保护读写(readAll/save)。
  */
 class GlossaryStore(private val context: Context) {
 
@@ -30,10 +30,10 @@ class GlossaryStore(private val context: Context) {
 
     private val lock = Any()
 
-    /** Listar todas las asignaciones de términos(Texto original → traducción). */
+    /** 列出全部术语映射(原文 → 译文)。 */
     fun list(): Map<String, String> = synchronized(lock) { readAll() }
 
-    /** Agregar o actualizar una asignación de términos(Texto original → traducción). */
+    /** 添加或更新一条术语映射(原文 → 译文)。 */
     fun add(original: String, translated: String) {
         if (original.isBlank()) return
         synchronized(lock) {
@@ -43,7 +43,7 @@ class GlossaryStore(private val context: Context) {
         }
     }
 
-    /** Eliminar una asignación de términos;Devuelve si realmente se eliminó. */
+    /** 删除一条术语映射;返回是否实际删除。 */
     fun remove(original: String): Boolean {
         val key = original.trim()
         if (key.isBlank()) return false
@@ -55,17 +55,17 @@ class GlossaryStore(private val context: Context) {
         }
     }
 
-    /** Limpiar el glosario. */
+    /** 清空术语表。 */
     fun clear() {
         synchronized(lock) { save(emptyMap()) }
     }
 
-    /** Si el glosario está vacío. */
+    /** 术语表是否为空。 */
     fun isEmpty(): Boolean = synchronized(lock) { readAll().isEmpty() }
 
     /**
-     * Formatee el glosario en un fragmento de mensaje,Como por ejemplo "API→API, GPU→procesador de gráficos".
-     * La tabla vacía devuelve una cadena vacía(La persona que llama decide entonces si desea conectarse a prompt).
+     * 将术语表格式化为 prompt 片段,如 "API→应用程序接口, GPU→图形处理器"。
+     * 空表返回空字符串(调用方据此决定是否附加到 prompt)。
      */
     fun toPromptSnippet(): String = synchronized(lock) { formatPromptSnippet(readAll()) }
 
@@ -74,7 +74,7 @@ class GlossaryStore(private val context: Context) {
             if (!file.exists()) return emptyMap()
             AppJson.decodeFromString(mapSerializer, file.readText())
         } catch (e: Exception) {
-            Logger.w(TAG, "No se pudo leer el glosario: ${e.message}")
+            Logger.w(TAG, "读取术语表失败: ${e.message}")
             emptyMap()
         }
     }
@@ -84,7 +84,7 @@ class GlossaryStore(private val context: Context) {
             file.parentFile?.mkdirs()
             file.writeText(AppJson.encodeToString(mapSerializer, map))
         } catch (e: Exception) {
-            Logger.w(TAG, "No se pudo guardar el glosario: ${e.message}")
+            Logger.w(TAG, "保存术语表失败: ${e.message}")
         }
     }
 
@@ -92,10 +92,10 @@ class GlossaryStore(private val context: Context) {
         private const val TAG = "GlossaryStore"
 
         /**
-         * v2.6.7: Glosario → prompt Los fragmentos se extraen como funciones puras, dejando solo una implementación.
+         * v2.6.7: 术语表 → prompt 片段，抽为纯函数只留一份实现。
          *
-         * TranslateViewModel Originalmente escribí un joinToString idéntico en línea.
-         * Escribe el mismo formato en dos lugares. Si cambia el separador o la flecha en el futuro, solo se cambiará a un lugar.
+         * TranslateViewModel 原先自己内联写了一份一模一样的 joinToString，
+         * 同一个格式写两处，以后改分隔符或箭头只会改到一处。
          */
         fun formatPromptSnippet(glossary: Map<String, String>): String {
             if (glossary.isEmpty()) return ""

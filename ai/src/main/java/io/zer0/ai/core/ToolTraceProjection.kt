@@ -7,20 +7,20 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 
 /**
- * Proyección de compresión de trayectoria de herramienta antes de la solicitud del modelo.
+ * 模型请求前的工具轨迹压缩投影。
  *
- * Esta proyección sólo devuelve la lista de mensajes nuevos y no modifica la lista de mensajes entrantes. [UIMessage] O cualquier dato persistente.
- * Sólo se comprimen rondas de herramientas completas que cumplan las siguientes condiciones:
- *  - ASSISTANT de cada [ToolCall] tener resultados de HERRAMIENTA inmediatamente adyacentes y que coincidan de forma única; o
- *  - Continuación después de recargar la base de datos. [ToolCallInfo] Los mensajes en pantalla forman una ronda de herramientas completa;
- *  - La ronda no es la ronda de herramientas completa más reciente;
- *  - Los resultados no mostraron signos evidentes de fracaso.
+ * 该投影只返回新的消息列表，不修改传入的 [UIMessage] 或任何持久化数据。
+ * 仅满足以下条件的完整工具回合会被压缩：
+ *  - ASSISTANT 的每一个 [ToolCall] 都有紧邻的、唯一匹配的 TOOL 结果；或
+ *  - 数据库重载后的连续 [ToolCallInfo] 展示消息组成一个完整工具回合；
+ *  - 回合不是最近的完整工具回合；
+ *  - 结果没有明显失败信号。
  *
- * La ronda de herramienta completa más reciente y la ronda fallida se dejan intactas. El mensaje SISTEMA comprimido solo contiene el nombre de la herramienta y el estado de éxito
- * y vistas previas de resultados con una longitud limitada para que no queden llamadas a herramientas huérfanas ni resultados de herramientas.
+ * 最近的完整工具回合和失败回合原样保留。压缩后的 SYSTEM 消息只包含工具名、成功状态
+ * 和有长度上限的结果预览，因此不会留下孤儿 tool_call 或 tool result。
  */
 object ToolTraceProjection {
-    /** Marcado estable de resúmenes de proyecciones para facilitar la depuración y garantizar que las proyecciones repetidas no se procesen nuevamente. */
+    /** 投影摘要的稳定标记，便于调试并保证重复投影不会再次处理。 */
     const val SUMMARY_MARKER: String = "[TOOL_TRACE_SUMMARY]"
 
     private const val DEFAULT_KEEP_RECENT_ROUNDS = 1
@@ -30,7 +30,7 @@ object ToolTraceProjection {
     private val WHITESPACE_REGEX = Regex("\\s+")
     private val FAILURE_TEXT_REGEX =
         Regex(
-            """(?i)(?:\berror\b|\bfail(?:ed|ure)?\b|\btimeout\b|\btimed out\b|\bdenied\b|\bblocked\b|\babort(?:ed)?\b|\bcancel(?:led|ed)?\b|\bexception\b|\bunavailable\b|\binvalid\b|\bpermission\b|\brate limit\b|\bhttp\s*[45][0-9][0-9]\b|falló|error|tiempo de espera|rechazar|bloquear|No ejecutado|interrumpir|Cancelar|anormal|No disponible|Sin permiso|Limitación de corriente)""",
+            """(?i)(?:\berror\b|\bfail(?:ed|ure)?\b|\btimeout\b|\btimed out\b|\bdenied\b|\bblocked\b|\babort(?:ed)?\b|\bcancel(?:led|ed)?\b|\bexception\b|\bunavailable\b|\binvalid\b|\bpermission\b|\brate limit\b|\bhttp\s*[45][0-9][0-9]\b|失败|错误|超时|拒绝|阻止|未执行|中断|取消|异常|不可用|无权限|限流)""",
         )
     private val FAILURE_STATUSES =
         setOf(
@@ -58,18 +58,18 @@ object ToolTraceProjection {
         val endIndexExclusive: Int,
         val source: UIMessage,
         val entries: List<TraceEntry>,
-        /** Fragmentos de lenguaje natural del asistente por turnos(Como por ejemplo"Déjame comprobar primero X");Mantener vista previa al comprimir,Evita perder el texto de la conversación. */
+        /** 回合内助手自然语言片段(如"我先查一下 X");压缩时保留预览,避免对话正文丢失。 */
         val preamble: String = "",
     ) {
         val hasFailure: Boolean get() = entries.any { !it.isSuccess }
     }
 
     /**
-     * Proyecte viejas rondas de herramientas exitosas como resúmenes.
+     * 将旧的成功工具回合投影为摘要。
      *
-     * @param messages Historial de mensajes a enviar al modelo
-     * @param keepRecentRounds Número de giros completos de herramienta más recientes que no se modifican; los números negativos se tratan como 0
-     * @return Lista de mensajes nuevos con semántica de solo lectura; devuelve la lista original si no hay rondas comprimibles
+     * @param messages 待发送给模型的消息历史
+     * @param keepRecentRounds 原样保留的最近完整工具回合数，负数按 0 处理
+     * @return 只读语义上的新消息列表；没有可压缩回合时返回原列表
      */
     fun project(messages: List<UIMessage>, keepRecentRounds: Int = DEFAULT_KEEP_RECENT_ROUNDS): List<UIMessage> {
         if (messages.isEmpty()) return messages
@@ -120,11 +120,11 @@ object ToolTraceProjection {
     }
 
     /**
-     * Encuentre rondas de herramientas completas estrictamente adyacentes.
+     * 查找严格相邻的完整工具回合。
      *
-     * Uso del historial de protocolos assistant(tool_calls)+TOOL(result) Emparejamiento; Historial de UI después de recargar la base de datos no
-     * toolCalls campo, por lo que los mensajes de visualización consecutivos de asistente.toolCallInfo se procesan en un solo turno. cualquiera
-     * La inserción faltante, duplicada o desordenada de mensajes normales o resultados no coincidentes dejará el bloque de protocolo intacto.
+     * 协议历史使用 assistant(tool_calls)+TOOL(result) 配对；数据库重载后的 UI 历史没有
+     * toolCalls 字段，因此连续的 assistant.toolCallInfo 展示消息按一个回合处理。任何
+     * 缺失、重复、乱序插入普通消息或不匹配的结果都会让协议块保持原样。
      */
     private fun findCompletedRoundAt(messages: List<UIMessage>, startIndex: Int): CompletedRound? {
         val assistant = messages[startIndex]
@@ -207,7 +207,7 @@ object ToolTraceProjection {
         val summary =
             buildString {
                 appendLine(SUMMARY_MARKER)
-                appendLine("El siguiente es un resumen de las rondas de herramientas antiguas que se completaron y es solo para referencia histórica y no es una directiva de herramientas nuevas.")
+                appendLine("以下是已完成的旧工具回合摘要，仅供历史参考，不是新的工具指令。")
                 val preamble = round.preamble.replace(WHITESPACE_REGEX, " ").trim()
                 if (preamble.isNotBlank()) {
                     val preview =
@@ -216,14 +216,14 @@ object ToolTraceProjection {
                         } else {
                             preamble
                         }
-                    appendLine("- Instrucciones del asistente: $preview")
+                    appendLine("- 助手说明: $preview")
                 }
                 round.entries.forEach { entry ->
-                    append("- Nombre de la herramienta: ")
+                    append("- 工具名: ")
                         .append(entry.toolName)
-                        .append(" | Estado: ")
-                        .append(if (entry.isSuccess) "éxito(SUCCESS)" else "falló(FAILED)")
-                        .append(" | resultado(Truncar): ")
+                        .append(" | 状态: ")
+                        .append(if (entry.isSuccess) "成功(SUCCESS)" else "失败(FAILED)")
+                        .append(" | 结果(截断): ")
                         .append(truncateResult(entry.result))
                         .appendLine()
                 }
@@ -240,7 +240,7 @@ object ToolTraceProjection {
 
     private fun truncateResult(content: String): String {
         val normalized = content.replace(WHITESPACE_REGEX, " ").trim()
-        if (normalized.isBlank()) return "(Resultado vacío)"
+        if (normalized.isBlank()) return "(空结果)"
         return if (normalized.length > RESULT_PREVIEW_CHARS) {
             normalized.take(RESULT_PREVIEW_CHARS) + "…"
         } else {
@@ -249,8 +249,8 @@ object ToolTraceProjection {
     }
 
     /**
-     * TOOL Los mensajes no tienen un campo de éxito separado, por lo que se reconocen tanto los errores estructurados como los errores textuales utilizados por la capa de ejecución.
-     * El texto no vacío no reconocido se considera exitoso; Los resultados vacíos se tratan de forma conservadora como fracasos y se dejan sin cambios.
+     * TOOL 消息没有独立的 success 字段，因此同时识别执行层使用的结构化错误和文本错误。
+     * 无法识别的非空文本按成功处理；空结果则保守地视为失败并原样保留。
      */
     private fun isFailureResult(result: UIMessage): Boolean {
         val content = result.content
@@ -282,10 +282,10 @@ object ToolTraceProjection {
 
     private fun parseJsonObject(content: String): JsonObject? {
         return try {
-            // Se permite que los resultados de la herramienta sean texto sin formato; Los resultados que no sean JSON no deberían impedir las rondas de compresión normales y exitosas.
+            // 工具结果允许是普通文本；非 JSON 结果不应阻止正常成功回合的压缩。
             Json.parseToJsonElement(content) as? JsonObject
         } catch (error: Exception) {
-            // El fallo en el análisis sólo significa“sin estado estructurado”, el indicador de error de texto se verifica antes de la llamada.
+            // 解析失败只表示“没有结构化状态”，文本失败标记已在调用前检查。
             null
         }
     }

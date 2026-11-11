@@ -8,7 +8,7 @@ import java.nio.file.Files
 import java.util.Base64
 
 /**
- * R-DB-04: MessageImageStore base64 Prueba de caché de disco y LRU.
+ * R-DB-04: MessageImageStore base64 落盘与 LRU 缓存测试。
  */
 class MessageImageStoreTest {
 

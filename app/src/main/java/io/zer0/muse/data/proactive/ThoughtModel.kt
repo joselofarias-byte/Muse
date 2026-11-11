@@ -1,135 +1,135 @@
 package io.zer0.muse.data.proactive
 
 /**
- * La naturaleza de la preocupación.
+ * 牵挂的性质。
  *
- * La materia prima de los mensajes proactivos no es “se acabó el tiempo”, sino “hay algo que quiero decirle”.
- * Esta enumeración responde "cuál es la naturaleza de esa cosa".
+ * 主动消息的原料不是「时间到了」，是「有件事想跟他说」。
+ * 这个枚举回答的就是「那件事是什么性质」。
  *
- * Las cinco propiedades tienen tonos completamente diferentes al generar indicaciones:
- * Los recordatorios deben ser breves y directos, la atención debe dejarse en blanco y el intercambio debe ser informativo.
+ * 五种性质在生成 prompt 里的语气完全不同：
+ * 提醒要简短直接，关心要留白，分享要有信息量。
  */
 enum class ThoughtKind {
-    /** Cosas específicas que el usuario dijo que haría. Tenga un momento o fecha límite claro. */
+    /** 用户说过要做的具体事。有明确时间点或截止日。 */
     REMINDER,
 
-    /** No hay temas cerrados en la conversación. El usuario lo mencionó una vez, pero luego no se dijo nada al respecto. */
+    /** 对话里没闭环的话题。用户提过一嘴，后来没下文。 */
     FOLLOW_UP,
 
-    /** Algo sobre el estado de esta persona. No dormir bien, enfermo, estresado. */
+    /** 关于这个人状态的事。睡不好、生病、压力大。 */
     CARE,
 
-    /** Quiero compartir mi versión de las cosas. Debe ser informativo, no un saludo vacío. */
+    /** 我这边的事，想分享。要有信息量，不能是空洞的问候。 */
     SHARE,
 
-    /** Un nodo en una relación o uso. Úselo con moderación, si lo usa demasiado será una transmisión de logros. */
+    /** 关系或使用上的节点。克制使用，多了就是成就播报。 */
     MILESTONE,
 }
 
 /**
- * Tipo de limitación de interés.
+ * 牵挂的时效类型。
  *
- * Esta es la distinción más crítica en todo el sistema de programación:
- * "No tiene sentido decirlo después de este punto" y "Se puede decir en cualquier momento" son cosas completamente diferentes.
- * La implementación anterior consideraba que los dos eran iguales, por lo que se producía el comportamiento de puntuación negativa de "reemitir recordatorios caducados".
+ * 这是整套调度系统里最关键的一个区分：
+ * 「过了这个点说就没意义了」和「什么时候说都行」是完全不同的东西，
+ * 而旧实现把两者当成同一种，于是产生了「补发过期提醒」这种负分行为。
  */
 enum class ThoughtUrgency {
     /**
-     * No tiene sentido pasar por la ventana. Caducará cuando llegue el momento.**Nunca reeditar**.
+     * 过了窗口就没意义。到点即过期，**绝不补发**。
      *
-     * Típico: "Recuérdele que vea la transmisión en vivo esta noche a las 8 en punto". Al día siguiente agregué: "¿Viste la transmisión en vivo de anoche?"
-     * Peor que no enviarlo —— Revela que el sistema finge tener memoria.
+     * 典型：「今晚 8 点提醒他看直播」。第二天补一句「昨晚的直播你看了吗」
+     * 比不发还糟 —— 它暴露了系统在假装自己有记性。
      */
     IMMEDIATE,
 
-    /** Es apropiado decirlo por un período de tiempo. Selección libre dentro de la ventana, expiró fuera de la ventana. */
+    /** 一段时间内说都合适。窗口内自由选择，出窗过期。 */
     WINDOW,
 
-    /** Puedes decirlo en cualquier momento. No caduca, pero decae con SurfaceCount. */
+    /** 什么时候说都行。不会过期，但会随 surfaceCount 衰减。 */
     EVERGREEN,
 }
 
-/** Estado del ciclo de vida del cuidado. */
+/** 牵挂的生命周期状态。 */
 enum class ThoughtStatus {
-    /** Aún no lo he dicho. Sólo se programará este estado. */
+    /** 还没说出去。只有这个状态会被调度到。 */
     OPEN,
 
-    /** Dicho esto, ya está. */
+    /** 已经说过了，事情完成。 */
     DONE,
 
-    /** El plazo de prescripción pasó y no hubo tiempo para decir nada. */
+    /** 时效窗口过了，没来得及说。 */
     EXPIRED,
 
-    /** Renunciar voluntariamente. Por ejemplo, el mismo tema se ha mencionado demasiadas veces y no ha habido respuesta. */
+    /** 主动放弃。比如同一条被提过太多次还没反应。 */
     DROPPED,
 }
 
-/** La fuente de preocupación se utiliza para recordar \"cuánto me preocupaba esto\". */
+/** 牵挂的来源，用于回溯「这是怎么惦记上的」。 */
 enum class ThoughtSource {
-    /** El propio asistente anotó la conversación. fuente principal. */
+    /** 对话里助手自己记下的。主力来源。 */
     CONVERSATION,
 
-    /** Deducido del sistema de memoria según reglas. */
+    /** 从记忆系统按规则推导的。 */
     MEMORY,
 
-    /** Derivado de hitos. */
+    /** 从里程碑推导的。 */
     MILESTONE,
 
-    /** El usuario acepta activamente. Máxima prioridad. */
+    /** 用户主动约定的。优先级最高。 */
     USER_DEFINED,
 }
 
 /**
- * Nivel de iniciativa —— Los usuarios sólo necesitan expresar "qué tan activo quieren que sea".
+ * 主动等级 —— 用户只需要表达「想让它多主动」。
  *
- * Esta enumeración controla dos cosas:
- *  1. rango de presupuesto ([floor] / [cap])
- *  2. Tipos de inquietudes que se permiten expresar ([allowedKinds])
+ * 这个枚举控制两件事：
+ *  1. 预算区间（[floor] / [cap]）
+ *  2. 允许说出口的牵挂类型（[allowedKinds]）
  *
- * La segunda es la diferencia clave: "Silencio" no es una frecuencia menor, sino una semántica diferente. ——
- * Di sólo lo que hay que decir, no lo que quieras decir. Por lo que corta directamente SHARE/MILESTONE y similares
- * Tipos de "quiero hablar", en lugar de reducir su frecuencia a un nivel muy bajo.
+ * 第二条是关键区别：「安静」不是一个更小的频次，而是一种不同的语义 ——
+ * 只说该说的事，不说想说的话。所以它直接砍掉 SHARE/MILESTONE 这类
+ * 「想说话」的类型，而不是把它们的频次降到很低。
  *
- * Solía haber otro aquí. `threshold`(fitness Umbral), utilizado para filtrar el contenido clasificado por debajo del umbral.
- * El sistema de puntuación se eliminó por completo cuando se reconstruyó el mensaje activo (en su lugar, la conversación más reciente se entregó al modelo, y este decidió si hablar o no).
- * El umbral perderá entonces su lado consumista, y mantenerlo sólo hará que más tarde la gente piense que todavía hay algo en juego.
+ * 这里曾经还有一个 `threshold`（fitness 阈值），用于把评分压在阈值下的内容筛掉。
+ * 评分体系在主动消息重建时被整体移除（改为把最近对话交给模型、由它决定说不说），
+ * 阈值随之失去消费方，留着只会让后来人以为还有个评分在起作用。
  *
- * con aprendizaje a largo plazo [ProactiveRelationEntity.intimacy] División del trabajo:
- * Esta enumeración proporciona directamente el número máximo diario de elementos (silencioso 3 / moderación 8 / estándar 15 / activo 30 / sin límite de apego),
- * Es el seleccionado por el usuario. En la versión anterior, se utilizaba "nivel de piso + valor de aprendizaje de intimidad" para competir por la cuota, lo que resultaba en
- * Los usuarios han optado por ser pegajosos pero sólo pueden publicar 5 mensajes por día, lo cual ha sido abandonado.
+ * 与长期学习的 [ProactiveRelationEntity.intimacy] 分工：
+ * 本枚举直接给出每日条数上限（安静 3 / 克制 8 / 标准 15 / 主动 30 / 黏人不限），
+ * 就是用户选的那一档。早期版本曾用「等级地板 + 亲密度学习值」拼额度，导致
+ * 用户选了黏人却每天只能发 5 条，已废弃。
  */
 enum class ProactiveIntensity(
-    /** La cantidad máxima de mensajes que se pueden enviar por día (el archivo fijo es Int.MAX_VALUE, es decir, no hay límite). */
+    /** 每天最多能发多少条（黏人档为 Int.MAX_VALUE，即不限）。 */
     val cap: Int,
-    /** Este nivel permite expresar el tipo de preocupación. */
+    /** 该等级允许说出口的牵挂类型。 */
     val allowedKinds: Set<ThoughtKind>,
 ) {
-    /** Sólo un recordatorio, no una pequeña charla. Máximo 3 entradas por día. */
+    /** 只要提醒，不要寒暄。每天最多 3 条。 */
     QUIET(
         cap = 3,
         allowedKinds = setOf(ThoughtKind.REMINDER),
     ),
 
-    /** Es agradable pensar en ello de vez en cuando. Máximo 8 entradas por día. */
+    /** 偶尔被想到就好。每天最多 8 条。 */
     RESERVED(
         cap = 8,
         allowedKinds = setOf(ThoughtKind.REMINDER, ThoughtKind.FOLLOW_UP, ThoughtKind.CARE),
     ),
 
-    /** El valor predeterminado para la mayoría de las personas. Máximo 15 por día. */
+    /** 大多数人的默认。每天最多 15 条。 */
     STANDARD(
         cap = 15,
         allowedKinds = ThoughtKind.entries.toSet(),
     ),
 
-    /** Me gusta interactuar. Máximo 30 entradas por día. */
+    /** 喜欢互动。每天最多 30 条。 */
     ACTIVE(
         cap = 30,
         allowedKinds = ThoughtKind.entries.toSet(),
     ),
 
-    /** Quiere una sensación de compañerismo: no hay límite en el número de veces. */
+    /** 要陪伴感：不限次数。 */
     CLINGY(
         cap = Int.MAX_VALUE,
         allowedKinds = ThoughtKind.entries.toSet(),
@@ -137,26 +137,25 @@ enum class ProactiveIntensity(
 
     ;
 
-    /** Si no hay límite para el número de veces (actualmente solo existe el modo de adherencia). */
+    /** 是否不限次数（目前只有黏人档）。 */
     val unlimited: Boolean get() = cap == Int.MAX_VALUE
 
-    /** Si el tipo permite el habla a este nivel. */
+    /** 该类型是否允许在此等级下说出口。 */
     fun allows(kind: ThoughtKind): Boolean = kind in allowedKinds
 
-    /** ¿Este nivel es “solo decir lo que hay que decir”?—— No debes hablar sin una razón específica. */
+    /** 这个等级是不是「只说该说的事」—— 没有具体事由就不该开口。 */
     val onlyWhenNeeded: Boolean get() = this == QUIET
 
     companion object {
-        /** Equipo predeterminado. */
+        /** 默认档位。 */
         val DEFAULT = STANDARD
 
         /**
-         * Restaurar desde una cadena persistente, los valores ilegales vuelven al archivo predeterminado.
+         * 从持久化字符串还原，非法值回落到默认档。
          *
-         * Utilice el nombre en lugar del número de serie: el número de serie se perderá a medida que se agregue o elimine la enumeración.
-         * Después de la actualización, los usuarios pueden cambiar de "estándar" a "fijo".
+         * 用 name 存而不是序号：序号会随枚举增删而错位，
+         * 用户升级后可能从「标准」变成「黏人」。
          */
-        fun fromName(name: String?): ProactiveIntensity =
-            entries.firstOrNull { it.name == name } ?: DEFAULT
+        fun fromName(name: String?): ProactiveIntensity = entries.firstOrNull { it.name == name } ?: DEFAULT
     }
 }

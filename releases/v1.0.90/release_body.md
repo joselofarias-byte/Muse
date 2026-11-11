@@ -1,56 +1,56 @@
 # Muse v1.0.90
 
-Esta actualización incluye una serie de mejoras en la experiencia y correcciones de errores.
+本次更新包含一批体验改进与问题修复。
 
-## charlar
+## 聊天
 
-- Enviar un mensaje ya no lo coloca al principio de la lista de conversaciones.
-- Durante el proceso de respuesta, el asistente no lo arrastrará de regreso al final mientras se desplaza por el historial.
-- Algunas marcas internas que no deberían aparecer ya no se filtrarán en el texto.
-- La entrada de herramientas y la barra de título están ordenadas.
+- 发送消息不再把对话列表甩到最上面。
+- 助手回复的过程中，也不会把正在翻历史记录的你拽回底部。
+- 一些不该出现的内部标记不会再漏进正文。
+- 工具入口和标题栏收拾得更干净。
 
-## Momentos
+## 朋友圈
 
-- **A los asistentes les gustarán y comentarán entre sí.**, el asistente también interactuará con las actualizaciones que publique.
-- **Si comentas las actualizaciones del asistente, el asistente te responderá.**.
-- Cuando alguien viene a interactuar, aparecerá un mensaje emergente, por lo que no es necesario actualizar repetidamente para verlo.
-- La entrada a Me gusta y comentarios se ha cambiado a una apariencia familiar que es fácil de entender de un vistazo.
-- El diseño general es más limpio: los nombres, el texto, las imágenes y la hora están todos en sus lugares correctos y las imágenes ya no están cortadas en cuadrados.
-- El cuadro de entrada de comentarios se cerrará automáticamente después de la publicación.
-- Las fechas del álbum de fotos se distinguirán por años, para que no te confundas al mirar fotos antiguas.
+- **助手之间会互相点赞、互相评论**，你发的动态也会有助手来互动。
+- **你评论助手的动态，助手会回复你**。
+- 有人来互动会弹提示，不用反复刷新去看。
+- 点赞和评论的入口改成了熟悉的样子，一眼就懂。
+- 整体排版更清爽：名字、正文、图片、时间各归其位，图片也不再被裁成方块。
+- 发完评论输入框会自动收起。
+- 相册里的日期会区分年份，翻旧照片不会看混。
 
-## pequeño teléfono celular
+## 小手机
 
-- **El asistente te enviará un mensaje privado.**: Después de leer lo que publicaste en Moments, el asistente seguirá esa publicación para chatear contigo, tal como un amigo ve tu publicación y conversa contigo en privado.
-- Las conversaciones iniciadas aquí permanecerán en el teléfono pequeño y podrán continuar en cualquier momento.
-- En la libreta de direcciones se encuentran sus asistentes, cada uno de los cuales tiene su propia tarjeta de visita.
-- Chatear en un teléfono pequeño es exactamente lo mismo que chatear afuera——También puede enviar fotografías, utilizar herramientas y leer tarjetas.
-- Puedes cambiar los fondos de pantalla y decidir qué aplicaciones aparecen en tu teléfono pequeño.
+- **助手会来私信你**：你在朋友圈发了什么，助手看完会顺着那条动态来找你聊两句，就像朋友看到你的动态私聊你一样。
+- 从这里开的对话会留在小手机里，随时能接着聊。
+- 通讯录里是你的助手们，每个助手都有自己的名片。
+- 小手机里的聊天和外面的完全一样——同样能发图片、用工具、看卡片。
+- 可以换壁纸、决定哪些应用出现在小手机里。
 
-## Apariencia
+## 外观
 
-- Los botones y el estado seleccionado seguirán el color del tema que elijas, y toda la máquina cambiará en consecuencia cuando cambies el tema.
-- La escala de grises del tema en blanco y negro es más suave y no deslumbra cuando se ve durante mucho tiempo.
-- El menú "Más" es más limpio y el estado del interruptor es visible de un vistazo.
+- 按钮和选中态会跟着你选的主题色走，换主题整机跟着变。
+- 黑白主题的灰阶更柔和，长时间看着不刺眼。
+- 「更多」菜单更干净，开关状态一眼可见。
 
-## memoria
+## 记忆
 
-- Se ha rediseñado la constelación de la memoria: cuál es importante y quién está relacionado con quién se puede ver de un vistazo.
+- 记忆星座重新画过：哪个重要、谁和谁有关系，一眼能看出来。
 
-## Configurar e importar
+## 设置与导入
 
-- Las configuraciones de mensajes activos están agrupadas por propósito, para que puedas ver de un vistazo qué elementos pertenecen a la misma categoría.
-- La importación de datos admite más fuentes y los resultados de la importación le indicarán claramente "lo que se importó" en lugar de solo darle algunos ceros.
+- 主动消息的设置按用途分了组，一眼看清哪几项是一类。
+- 数据导入支持更多来源，导入结果会明确告诉你「导入了什么」，不再只给你几个零。
 
-## Navegador incorporado
+## 内置浏览器
 
-- El pequeño navegador ahora puede ingresar la URL, actualizar, avanzar y retroceder, borrar cookies y también abrirla en el navegador del sistema.
-- El asistente puede continuar leyendo y operando las páginas que ha pasado manualmente.
+- 小浏览器现在可以自己输网址、刷新、前进后退、清 Cookie，也能丢到系统浏览器打开。
+- 你手动翻过的页面，助手接着能看、能继续操作。
 
-## complemento
+## 插件
 
-- El mercado de complementos está más estandarizado: la fuente es confiable, la versión se puede revertir y los complementos sin firmar no se ejecutarán.
+- 插件市场更规范：来源可信、版本可回退，未经签名的插件不会被执行。
 
-## Otros
+## 其他
 
-- Se solucionaron varios problemas de estabilidad y se reforzaron las tareas en segundo plano, los permisos de herramientas y la coherencia de los datos.
+- 修复了一批稳定性问题，后台任务、工具权限、数据一致性方面都做了加固。

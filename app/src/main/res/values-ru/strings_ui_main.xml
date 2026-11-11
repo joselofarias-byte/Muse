@@ -28,6 +28,7 @@
     <string name="assistant_detail_exclusive_model">Эксклюзивная модель</string>
     <string name="assistant_detail_temperature">Температура: %1$s</string>
     <string name="assistant_detail_default">По умолчанию</string>
+    <string name="assistant_detail_default_value">По умолчанию (%1$s)</string>
     <string name="assistant_detail_use_default">Использовать по умолчанию</string>
     <string name="assistant_detail_top_p_label">Top P (пусто для значения по умолчанию, 0-1)</string>
     <string name="assistant_detail_max_tokens_label">Max Tokens (пусто для значения по умолчанию)</string>
@@ -156,7 +157,7 @@
     <string name="shizuku_apk_not_installed">APK Shizuku не установлен</string>
     <string name="shizuku_service_running">Служба Shizuku запущена</string>
     <string name="shizuku_service_not_running">Служба Shizuku не запущена (запустите её в приложении Shizuku)</string>
-    <string name="shizuku_status_unauthorized_long">Muse не авторизован для использования Shizuku</string>
+    <string name="shizuku_status_unauthorized_long">Musa не авторизован для использования Shizuku</string>
     <string name="permission_open_shizuku_service">Открыть Shizuku, чтобы запустить службу</string>
     <string name="permission_action_id_help">1 = Назад (BACK)\n2 = Главный экран (HOME)\n3 = Недавние задачи (RECENTS)\n4 = Панель уведомлений (NOTIFICATIONS)\n5 = Быстрые настройки (QUICK_SETTINGS)\n6 = Диалог питания (POWER_DIALOG)\n10 = Закрыть шторку уведомлений (DISMISS_NOTIFICATION_SHADE)\n\nБыстрые инструменты: ui_back (action_id=1), ui_home (action_id=2)</string>
     <string name="memory_screen_ai_understanding">Как AI понимает вас</string>
@@ -284,7 +285,15 @@
     <!-- v1.0.4: Notification listener -->
     <string name="settings_screen_notification_listener">Прослушиватель уведомлений</string>
     <string name="connection_center_title">Центр подключений</string>
-    <string name="connection_center_desc">Каналы, MCP, плагины и одобрение инструментов</string>
+    <string name="connection_tools_subtitle">Одобрения, разрешения и политика безопасности</string>
+    <string name="connection_tools_title">Разрешения инструментов</string>
+    <string name="connection_plugins_subtitle">Установлено плагинов: %1$d; откройте, чтобы увидеть выданные разрешения</string>
+    <string name="connection_plugins_title">Плагины</string>
+    <string name="connection_mcp_subtitle">Настроено серверов: %1$d</string>
+    <string name="connection_mcp_title">Серверы MCP</string>
+    <string name="connection_channels_subtitle">Настроено каналов: %1$d</string>
+    <string name="connection_channels_title">Каналы сообщений</string>
+    <string name="connection_center_desc">Каналы, MCP, плагины и одобрения инструментов</string>
     <string name="channel_page_title">Каналы сообщений</string>
     <string name="message_action_annotate">Заметка</string>
     <string name="message_annotate_title">Заметки к сообщению</string>
@@ -326,6 +335,13 @@
     <string name="channel_type_c2c">Личный чат</string>
     <string name="channel_auto_reply">Автоответ</string>
     <string name="channel_auto_reply_desc">Автоматически запускает ассистента при получении сообщений и отвечает (каждый запуск расходует квоту модели)</string>
+    <string name="channel_policy_label">Политика адресатов</string>
+    <string name="channel_policy_open">Все (без ограничений)</string>
+    <string name="channel_policy_allowlist">Разрешить только список</string>
+    <string name="channel_policy_denylist">Заглушить список</string>
+    <string name="channel_policy_hint">Действует на автоответы и отправку (включая инструменты канала); заблокированные отклоняются политикой, квота модели не тратится</string>
+    <string name="channel_policy_targets_label">Список адресатов (chat_id / openid)</string>
+    <string name="channel_policy_targets_hint">Через запятую или перенос; для групп chat_id, для личных — openid</string>
     <string name="channel_err_ai_timeout">Тайм-аут вызова ИИ</string>
     <string name="channel_err_no_assistant">Нет доступного ассистента для создания автоответа</string>
     <string name="channel_weclaw_bind_title">Привязка WeChat ClawBot</string>
@@ -388,7 +404,6 @@
     <string name="search_try_other">Попробуйте другие ключевые слова</string>
     <string name="search_section_sessions">Сессии</string>
     <string name="search_section_messages">Сообщения</string>
-    <string name="search_new_session">Новая сессия</string>
     <string name="search_time_today">Сегодня %1$s</string>
     <string name="search_time_yesterday">Вчера %1$s</string>
 
@@ -459,7 +474,9 @@
     <!-- ===== QR code share/scan ===== -->
     <string name="qr_share_title">Поделиться QR-кодом провайдера</string>
     <string name="qr_share_cd">QR-код настройки провайдера</string>
-    <string name="qr_share_warning">Этот QR-код содержит API Key в открытом виде. Делитесь только с доверенными получателями</string>
+    <string name="qr_share_warning">Этот QR-код может содержать незашифрованные ключи API, секреты OAuth, закрытые ключи и учётные данные в заголовках, телах и шаблонах запросов. Делитесь им только с доверенными получателями.</string>
+    <string name="qr_share_warning_no_key">Этот QR-код не содержит ключей API, секретов OAuth, закрытых ключей, заголовков, тел и шаблонов запросов. URL и другие данные конфигурации остаются в коде. Получателю необходимо самостоятельно ввести нужные учётные данные.</string>
+    <string name="qr_share_include_key">Включить учётные данные: ключи API, секреты OAuth, закрытые ключи, заголовки, тела и шаблоны запросов</string>
     <string name="qr_share_btn">Поделиться QR-кодом</string>
     <string name="qr_scan_title">Сканировать QR-код</string>
     <string name="qr_scan_pick_image">Выбрать изображение QR-кода из галереи</string>
@@ -497,6 +514,10 @@
     <string name="oauth_login">OAuth вход</string>
     <string name="oauth_login_success">OAuth вход выполнен</string>
     <string name="oauth_login_failed">Ошибка входа OAuth: %1$s</string>
+    <string name="oauth_reason_no_browser">Не удаётся открыть браузер</string>
+    <string name="oauth_reason_no_activity">Не удаётся получить контекст экрана; повторите попытку</string>
+    <string name="oauth_reason_not_configured">OAuth не настроен</string>
+    <string name="provider_test_no_api_key">Ключ API не указан</string>
     <string name="oauth_activity_context_unavailable">Не удалось получить контекст Activity</string>
     <string name="oauth_device_code_prompt">Посетите %1$s и введите код: %2$s</string>
     <string name="oauth_polling">Ожидание авторизации...</string>
@@ -538,7 +559,7 @@
     <string name="audit_log_category_user">Действие пользователя</string>
     <string name="audit_log_category_auth">Аутентификация</string>
     <string name="audit_log_category_system">Система</string>
-    <string name="audit_log_search_hint">Поисковое действие/цель/подробности</string>
+    <string name="audit_log_search_hint">Поиск: действие / цель / детали</string>
     <string name="audit_log_clear_search">Очистить поиск</string>
     <string name="audit_log_no_match">Нет соответствующих журналов</string>
     <string name="audit_log_result_count">Показаны %1$d из %2$d</string>
@@ -583,7 +604,7 @@
 
     <!-- ===== P2-5: SiliconFlow free model fallback (PresetProviders / ProviderEditPage) ===== -->
     <string name="preset_siliconflow">SiliconFlow</string>
-    <string name="preset_siliconflow_free">Бесплатные модели SiliconFlow</string>
+    <string name="preset_siliconflow_free">Встроенная бесплатная модель</string>
     <string name="free_model_service_unavailable">Бесплатная квота недоступна. Добавьте API-ключ или попробуйте позже.</string>
 
     <!-- ===== P2-10: Provider plugin management (ProviderPluginPage) ===== -->
@@ -601,6 +622,7 @@
 
     <!-- ===== P2-7: Workspace (WorkspaceScreen + tool descriptions) ===== -->
     <string name="workspace_title">Рабочее пространство</string>
+    <string name="workspace_tool_outputs">Вывод инструментов</string>
     <string name="workspace_desc">Локальное управление файлами и временное хранилище</string>
     <string name="workspace_empty">Рабочее пространство пусто</string>
     <string name="workspace_new_file">Новый файл</string>
@@ -667,7 +689,7 @@
     <string name="tool_resume_step">Выполняется %1$s (%2$d/%3$d)…</string>
     <string name="tts_not_ready">TTS инициализируется, повторите позже</string>
     <string name="chat_list_reorder">Перетащите для сортировки</string>
-    <!-- Correcciones en la interfaz (i18n-3.x): Configurar el índice de búsqueda de páginas SettingsEntry title i18n(Copiar temporalmente chino,Traducción posterior) -->
+    <!-- 前端修复 (i18n-3.x): 设置页搜索索引 SettingsEntry title i18n(临时复制中文,后续补译) -->
     <string name="settings_screen_entry_tts_playback">Озвучивание TTS</string>
     <string name="settings_screen_entry_api_key">API Key</string>
     <string name="settings_screen_entry_archived">Архивные чаты</string>
@@ -687,7 +709,12 @@
     <string name="settings_screen_archived_desc">Просмотр и восстановление архивных диалогов</string>
     <string name="settings_screen_share">Поделиться</string>
     <string name="settings_share_page_title">Поделиться</string>
-    <string name="settings_search_result_count">Найдено результатов: %1$d</string>
+    <plurals name="settings_search_result_count">
+        <item quantity="one">Найден %1$d результат</item>
+        <item quantity="few">Найдено %1$d результата</item>
+        <item quantity="other">Найдено %1$d результатов</item>
+        <item quantity="many">Найдено %1$d результатов</item>
+    </plurals>
     <string name="settings_screen_miniphone_desc">Ранняя версия экспериментальной функции</string>
     <string name="model_diff_clear_add">Очистить новые модели</string>
     <string name="model_diff_clear_remove">Очистить удалённые модели</string>
@@ -703,7 +730,18 @@
     <string name="chat_list_edit">Изменить</string>
     <string name="chat_list_edit_archive">В архив</string>
     <string name="chat_list_edit_delete">Удалить</string>
-    <string name="chat_list_edit_done">Обработано элементов: %1$d</string>
+    <plurals name="chat_list_edit_delete_confirm">
+        <item quantity="one">Удалить %1$d выбранную беседу и все её сообщения? Это действие необратимо.</item>
+        <item quantity="few">Удалить %1$d выбранные беседы и все их сообщения? Это действие необратимо.</item>
+        <item quantity="other">Удалить %1$d выбранных бесед и все их сообщения? Это действие необратимо.</item>
+        <item quantity="many">Удалить %1$d выбранных бесед и все их сообщения? Это действие необратимо.</item>
+    </plurals>
+    <plurals name="chat_list_edit_done">
+        <item quantity="one">Обработан элемент: %1$d</item>
+        <item quantity="few">Обработано элемента: %1$d</item>
+        <item quantity="other">Обработано элементов: %1$d</item>
+        <item quantity="many">Обработано элементов: %1$d</item>
+    </plurals>
     <string name="chat_list_edit_exit">Выйти</string>
     <string name="chat_list_edit_select_all">Выбрать всё</string>
     <string name="chat_list_restored_toast">Восстановлено</string>
@@ -728,7 +766,7 @@
     <string name="muse_plugins_draft_saved">Сохранено как отключённый черновик</string>
     <string name="muse_plugins_install_confirm_action">Подтвердить установку и включить</string>
     <string name="muse_plugins_install_confirm_capabilities">Возможности, которые он заявляет: %1$s</string>
-    <string name="muse_plugins_capabilities_disclaimer">Заявление лишь описывает, что плагин собирается использовать; оно не ограничивает то, что он сможет делать после установки.</string>
+    <string name="muse_plugins_capabilities_disclaimer">Это границы возможностей плагина: необъявленные действия отклоняются сразу. Переключать отдельные возможности можно и после установки в разделе «Возможности и разрешения».</string>
     <string name="muse_plugins_global_switch_title">Общий выключатель плагинов</string>
     <string name="muse_plugins_global_switch_desc">Когда выключен, ни один плагин не выполняется. Установки и настройки сохраняются.</string>
     <string name="muse_plugins_runtime_label">Среда выполнения: %1$s</string>
@@ -756,6 +794,11 @@
         <!-- B7-01: Plugin configuration contribution -->
     <string name="muse_plugins_config">Настройки плагина</string>
     <string name="muse_plugins_open_panel">Открыть панель</string>
+    <string name="muse_plugins_view_broken">Интерфейс не отрисовался (нажмите, чтобы увидеть причину)</string>
+    <string name="muse_plugins_view_image_missing">(изображение отсутствует)</string>
+    <string name="plugin_ui_busy">Предыдущая отправка ещё выполняется, подождите</string>
+    <string name="plugin_ui_render_failed">Не удалось разобрать интерфейс, возвращённый плагином</string>
+    <string name="plugin_ui_needs_interactive">Этот экран умеет отправлять форму, но нужно разрешение «интерактивный интерфейс» (меняет данные плагина)</string>
     <string name="muse_plugins_trust_catalog_title">Корень доверия каталога</string>
     <string name="muse_plugins_trust_publisher_fingerprint">Отпечаток %1$s</string>
     <string name="muse_plugins_trust_publishers_empty">Вы ещё не доверились ни одному издателю. При установке плагина неизвестного издателя вам будет предложено подтвердить доверие.</string>
@@ -802,6 +845,21 @@
     <string name="workspace_mount_read_only">Только чтение</string>
     <string name="workspace_mount_remove">Удалить</string>
     <string name="workspace_mount_added">%1$s смонтирован</string>
+    <!-- 按下「移除」却什么都没变时必须有话说：以前 removeMount 的返回值被直接丢掉 -->
+    <string name="workspace_mount_remove_failed">Не удалось удалить «%1$s» — запись всё ещё в списке</string>
     <string name="workspace_mount_failed">Не удалось смонтировать: %1$s</string>
     <string name="workspace_read_only_hint">Монтирование только для чтения, изменения невозможны</string>
+    <string name="muse_plugins_market_advice_downgrade">Версия из каталога старше установленной — это будет понижение</string>
+    <string name="muse_plugins_market_advice_unknown_version">Версию не удалось распознать; пока не устанавливайте</string>
+    <string name="muse_plugins_market_advice_needs_newer_app">Этот плагин требует более новой версии приложения</string>
+    <string name="muse_plugins_market_advice_compat_unconfirmed">Совместимость проверяется по манифесту после загрузки; сейчас утверждать нельзя</string>
+    <string name="muse_plugins_market_advice_retained">Локально хранятся эти версии: %1$s (переключение в списке установленных)</string>
+    <string name="audit_log_field_action">Действие</string>
+    <string name="audit_log_field_target">Цель</string>
+    <string name="audit_log_field_detail">Детали</string>
+    <string name="audit_log_field_result">Результат</string>
+    <string name="audit_log_result_ok">Успех</string>
+    <string name="audit_log_result_fail">Сбой</string>
+    <string name="permission_advanced_channels">Дополнительные каналы (Root / Termux)</string>
+    <string name="channel_weclaw_summary">Подключает личный аккаунт через протокол iLink в WeChat. Один аккаунт WeChat может быть привязан только к одному каналу: новая привязка отменяет прежнюю. Инициативные уведомления зависят от окна ответа, открытого недавним входящим сообщением; если они не приходят, отправьте этому каналу сообщение в WeChat.</string>
 </resources>

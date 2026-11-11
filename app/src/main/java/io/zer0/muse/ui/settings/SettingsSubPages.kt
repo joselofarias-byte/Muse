@@ -27,6 +27,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -42,7 +43,6 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -57,13 +57,14 @@ import io.zer0.muse.auth.OAuthManager
 import io.zer0.muse.data.ChatPreferences
 import io.zer0.muse.data.SettingsRepository
 import io.zer0.muse.data.assistant.AssistantRepository
+import io.zer0.muse.ui.chat.usableProviderPresent
 import io.zer0.muse.ui.common.feedback.MuseAlertDialog
 import io.zer0.muse.ui.common.feedback.MuseDialog
 import io.zer0.muse.ui.common.feedback.MuseToast
 import io.zer0.muse.ui.common.findActivity
 import io.zer0.muse.ui.common.form.MuseCapsuleButton
 import io.zer0.muse.ui.common.icons.MuseIcons
-import io.zer0.muse.ui.common.navigation.MuseLargeTitleHeader
+import io.zer0.muse.ui.common.navigation.MuseCompactTitleHeader
 import io.zer0.muse.ui.common.navigation.MuseStickyBackButton
 import io.zer0.muse.ui.common.settings.ChevronRight
 import io.zer0.muse.ui.common.settings.SectionLabel
@@ -90,20 +91,30 @@ import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
 /**
- * v0.34: Contenedor de página de configuración secundaria universal — Gran barra de título.
+ * v0.34: 通用二级设置页容器 — 大标题栏。
  *
- * Navegación en tres pasos(Retorno a la izquierda + título mediano + espacio a la derecha). usar LazyColumn(Admite extensiones LazyListScope como
- * providerListSection).
+ * 三段式导航(左返回 + 中大标题 + 右空)。用 LazyColumn(支持 LazyListScope 扩展如
+ * providerListSection)。
  *
- * P1-4 Adaptación de tableta:[onBack] Cambiar a anulable(No es necesario un botón de retorno en la columna derecha en el modo de doble columna);
- * Expanded LazyColumn está centrado y tiene un ancho limitado en modo 720dp,Evite estirar demasiado los elementos de la lista en pantallas grandes.
+ * P1-4 平板适配:[onBack] 改为可空(双列模式下右栏无需返回按钮);
+ * Expanded 模式下 LazyColumn 居中限宽 720dp,避免大屏上列表项过度拉伸。
  */
 @Composable
-fun SettingsSubPageScaffold(title: String, onBack: (() -> Unit)? = null, content: LazyListScope.() -> Unit) {
-    // v2.0.1: cabeza rodante — Título grande (item 0) se elimina con el desplazamiento (conservando la tecla de retorno).
-    // La barra de búsqueda sólo se conserva en la página de configuración de primer nivel; la barra de búsqueda ya no se encuentra en las subpáginas de segundo y tercer nivel.
-    // Después de que se lanza el título grande, el botón de retorno montado en el techo aparece gradualmente en la esquina superior izquierda (MuseStickyBackButton), garantizado para ser devuelto en cualquier momento.
+fun SettingsSubPageScaffold(
+    title: String,
+    onBack: (() -> Unit)? = null,
+    /** 搜索直达时先滚到的 item 下标(null 表示普通进组,保持顶部)。 */
+    focusItemIndex: Int? = null,
+    content: LazyListScope.() -> Unit,
+) {
+    // 双平面翻新: 子页改用紧凑标题（item 0，圆底返回键 + 22sp 同排），随滚动推出。
+    // 搜索栏只保留在一级设置页；二三级子页不再放置搜索栏。
+    // 紧凑标题推出后，左上角渐显吸顶返回键（MuseStickyBackButton），保证随时可返回。
     val listState = rememberLazyListState()
+    // 搜索直达开关时:进组即滚到那张卡片,剩下的"看哪一行"交给行内短暂高亮。
+    LaunchedEffect(focusItemIndex) {
+        focusItemIndex?.let { listState.scrollToItem(it) }
+    }
     val isHeaderStuck by remember {
         derivedStateOf { listState.firstVisibleItemIndex >= 1 }
     }
@@ -114,7 +125,7 @@ fun SettingsSubPageScaffold(title: String, onBack: (() -> Unit)? = null, content
     )
 
     io.zer0.muse.ui.common.surface.MusePageScaffold(
-        // v2.0.1: El título grande se movió a la lista (se salió al desplazarse),topBar Déjelo en blanco.
+        // 双平面翻新: 紧凑标题移入列表（随滚动推出），topBar 留空。
         topBar = {},
         containerColor = MaterialTheme.colorScheme.background,
         topBarHandlesInsets = true,
@@ -123,18 +134,18 @@ fun SettingsSubPageScaffold(title: String, onBack: (() -> Unit)? = null, content
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.TopCenter,
         ) {
-            // P1-4: Box paquete LazyColumn,Expanded Utilice contentAlignment para centrar y limitar la lista en modo.
-            // P0: Primero abre la ventana/La altura limitada del diseño principal se pasa al contenedor de desplazamiento único.,evitar ciertos Android 16 / ROM
-            // edge-to-edge La ruta de medición coloca a LazyColumn bajo una restricción de altura ilimitada,Activar composición
-            // "Vertically scrollable component was measured with an infinity maximum height".
+            // P1-4: Box 包裹 LazyColumn,Expanded 模式下用 contentAlignment 居中限宽后的列表。
+            // P0: 先把窗口/父布局的有限高度传给唯一滚动容器,避免某些 Android 16 / ROM
+            // edge-to-edge 测量路径把 LazyColumn 放在无界高度约束下,触发 Compose 的
+            // "Vertically scrollable component was measured with an infinity maximum height"。
             BoxWithConstraints(
                 modifier = Modifier
                     .fillMaxSize()
-                    // v2.0.1: El margen interior de la barra de estado está a cargo del contenedor de desplazamiento (el título grande se desplaza con la lista y la barra de búsqueda del techo se adsorbe debajo de la barra de estado).
-                    // Utilice museSafeTopInsetPadding:insets Cuando el tamaño de la pantalla es anormalmente pequeño (como la pantalla virtual MuMu), recurra a un valor conservador para evitar que la barra del techo invada la barra de estado.
+                    // v2.0.1: 状态栏内边距由滚动容器承担（大标题随列表滚动、吸顶搜索栏吸附于状态栏下方）。
+                    // 用 museSafeTopInsetPadding：insets 异常小（如 MuMu 虚拟屏）时回退保守值，避免吸顶栏侵入状态栏。
                     .museSafeTopInsetPadding()
-                    // Las páginas de configuración ordinarias sólo evitan el teclado y la barra de navegación, y no superponen gestos del sistema insertados en todo el contenedor de desplazamiento.
-                    // OPPO La capa de compatibilidad de gestos de pantalla completa puede informar áreas de gestos horizontales anormales, lo que hace que la página parezca más pequeña en general.
+                    // 普通设置页只避让键盘和导航栏，不把 system gestures inset 叠加到整个滚动容器。
+                    // OPPO 全面屏手势兼容层可能回报异常的横向手势区，导致页面看起来整体缩小。
                     .imePadding()
                     .navigationBarsPadding(),
                 contentAlignment = Alignment.TopCenter,
@@ -149,28 +160,29 @@ fun SettingsSubPageScaffold(title: String, onBack: (() -> Unit)? = null, content
                         .fillMaxWidth()
                         .heightIn(max = boundedHeight)
                         .testTag(SETTINGS_SCROLL_CONTAINER_TAG)
-                        // La página de configuración mantiene todo el ancho de la ventana del dispositivo; Las ventanas celulares no se pueden truncar con un valor fijo de 720 dp.
-                        .padding(horizontal = MusePaddings.screen),
+                        // 设置页保持设备窗口的完整宽度；不能用固定 720dp 截断手机窗口。
+                        // 双平面翻新：设置族水平外边距用 pageMargin(20dp),比通用 screen 宽一档。
+                        .padding(horizontal = MusePaddings.pageMargin),
                     contentPadding = PaddingValues(
-                        // El botón de retorno en el techo superior flota en la esquina superior izquierda y el contenido se deslizará debajo de él después de desplazarse (la primera palabra está oscurecida).
-                        // Agregue la altura del botón de acuerdo con el progreso del techo, para que el contenido siempre termine debajo del botón.
+                        // 吸顶返回键浮在左上角，滚动后内容会滑到它下面（首字被遮）。
+                        // 按吸顶进度补一份按钮高度，让内容始终停在按钮下方。
                         top = MusePaddings.touchTarget * backStuckProgress,
                         bottom = innerPadding.calculateBottomPadding() + MusePaddings.screen,
                     ),
                     verticalArrangement = Arrangement.spacedBy(MusePaddings.cardGap),
                 ) {
                     item(key = "settings_large_header") {
-                        // offset Relleno horizontal desplazado de lista: título/El botón Atrás está en el mismo nivel que la página de inicio.
-                        MuseLargeTitleHeader(
+                        // offset 抵消列表的水平内边距：紧凑标题/圆底返回键与卡片同一水平基准(pageMargin)。
+                        MuseCompactTitleHeader(
                             title = title,
                             onBack = onBack,
-                            modifier = Modifier.offset(x = -MusePaddings.screen),
+                            modifier = Modifier.offset(x = -MusePaddings.pageMargin),
                         )
                     }
                     content()
                 }
             }
-            // v2.0.1: El botón de retorno montado en el techo que aparece gradualmente después de desplazarse (aún puedes regresar después de que se lanza el título grande).
+            // v2.0.1: 滚动后渐显的吸顶返回键（大标题推出后仍可返回）。
             if (onBack != null && backStuckProgress > 0.01f) {
                 MuseStickyBackButton(
                     onBack = onBack,
@@ -186,10 +198,10 @@ fun SettingsSubPageScaffold(title: String, onBack: (() -> Unit)? = null, content
 }
 
 /**
- * Devuelve la altura máxima limitada del contenedor de desplazamiento de la página.
+ * 返回设置页滚动容器的有限最大高度。
  *
- * Durante la medición normal, primero se utiliza la altura máxima del diseño principal; si el diseño principal pasa por restricciones ilimitadas(Compose de
- * Infinity),Retroceda a la altura actual de la ventana, asegurando que LazyColumn nunca mida a una altura ilimitada.
+ * 正常测量时优先使用父布局的 maxHeight；如果父布局传入无界约束(Compose 的
+ * Infinity),回退到当前窗口高度，确保 LazyColumn 永远不会在无界高度下测量。
  */
 internal const val SETTINGS_SCROLL_CONTAINER_TAG = "settings-scroll-container"
 
@@ -199,25 +211,25 @@ internal fun boundedSettingsScrollHeight(parentMaxHeight: Dp, windowHeight: Dp):
 }
 
 /**
- * pagina de segundo nivel:Modelos y Servicios(Lista de proveedores)
+ * 二级页:模型与服务(供应商列表)
  *
- * v1.133: Dividir y refactorizar — Sólo se mantiene la lista de proveedores. Otras secciones incrustadas originales se han dividido en páginas independientes de segundo nivel.:
- *  - [SettingsWebSearchPage] búsqueda en internet
- *  - [SettingsAsrPage] reconocimiento de voz ASR
- *  - [SettingsMcpPage] MCP servidor
- *  - [SettingsAssistantResourcesPage] Recursos asistentes(Favoritos/libro mundial/mensaje rapido/inyección de patrón/Skills/interruptor de memoria)
- *  generación de imágenes/La configuración de generación de video ha sido devuelta a la página del proveedor.(ImageGenSection/VideoGenSection).
- *  La entrada con retrato de usuario ya está en el nivel superior."Universales"grupo,No es necesario repetirlo aquí.
+ * v1.133: 拆分重构 — 只保留供应商列表。其他原内嵌 section 已拆为独立二级页:
+ *  - [SettingsWebSearchPage] 联网搜索
+ *  - [SettingsAsrPage] 语音识别 ASR
+ *  - [SettingsMcpPage] MCP 服务器
+ *  - [SettingsAssistantResourcesPage] 助手资源(收藏夹/世界书/快捷消息/模式注入/Skills/记忆开关)
+ *  图像生成/视频生成配置已回收入供应商页(ImageGenSection/VideoGenSection)。
+ *  用户画像入口已在顶级"通用"分组,无需在此重复。
  */
 @Composable
 fun SettingsModelPage(
     onBack: () -> Unit,
-    /** v1.x: Entrada de configuración del motor de reconocimiento de voz(Página del proveedor → ASR página). */
+    /** v1.x: 语音识别引擎设置入口(供应商页 → ASR 页)。 */
     onOpenAsr: () -> Unit = {},
 ) {
     val settings: SettingsRepository = koinInject()
     val assistantRepository: AssistantRepository = koinInject()
-    // v1.48: h13 initialValue usar null,Ingresar al estado de carga por primera vez en lugar de mostrar el estado
+    // v1.48: h13 initialValue 用 null,首次进入显示加载态而非闪空状态
     val providers by settings.providersFlow.collectAsStateWithLifecycle(initialValue = null)
     val visibleProviders = providers?.filterNot { it.hiddenFromSettings }
     val activeProviderId by settings.activeProviderIdFlow.collectAsStateWithLifecycle(initialValue = null)
@@ -225,32 +237,32 @@ fun SettingsModelPage(
     var editingConfig by remember { mutableStateOf<io.zer0.ai.core.ProviderConfig?>(null) }
     var isNewProvider by remember { mutableStateOf(false) }
     var isFromPreset by remember { mutableStateOf(false) }
-    // v1.38: Estado de visualización de la página de pantalla completa de selección de proveedor predeterminado(El ModalBottomSheet original se cambia a una página de pantalla completa)
+    // v1.38: 预设供应商选择全屏页面显示状态(原 ModalBottomSheet 改为全屏页面)
     var showPresetPicker by remember { mutableStateOf(false) }
-    // v2.6.0: Estado de solicitud de Device Flow para iniciar sesión en OAuth con un solo clic(userCode, verificationUri).
-    // Device Flow Debe mostrarse en la interfaz de usuario user_code,Sólo el usuario puede ir a la página de autorización para ingresar;La ruta original de un solo clic solo se reproduce
-    // “Abriendo el navegador”pero no muestra el código → El usuario no puede completar la autorización.
+    // v2.6.0: 一键 OAuth 登录的 Device Flow 提示状态(userCode, verificationUri)。
+    // Device Flow 必须在 UI 展示 user_code,用户才能去授权页输入;原一键路径只弹
+    // “正在打开浏览器”却不展示码 → 用户无从完成授权。
     var quickLoginDeviceInfo by remember { mutableStateOf<Pair<String, String>?>(null) }
-    // v1.97: Escanea el código QR para importar Provider
+    // v1.97: 扫描二维码导入 Provider
     var showQrScanDialog by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
-    // v1.133: Estado de verificación del estado del lote del proveedor(encabezado de lista"Todas las pruebas"disparador de botón)
-    //  - testStatuses: Estado de prueba único indexado por proveedor.id(Testing / Success(latency) / Failed(error))
-    //  - isTestingAllProviders: Detección global en curso(Se utiliza para desactivar el botón + mostrar la rotación del cabezal.)
-    // Utilice mutableStateMapOf en su lugar mutableStateOf<Map> Es para permitir que los async concurrentes actualicen los suyos. key,
-    // evitar leer-cambiar-escribe carrera perdida(Una vez completado cada asíncrono, configure el suyo propio de forma independiente key,SnapshotStateMap Atómico garantizado).
+    // v1.133: 供应商批量健康检测状态(列表头部"全部检测"按钮触发)
+    //  - testStatuses: 按 provider.id 索引的单测状态(Testing / Success(latency) / Failed(error))
+    //  - isTestingAllProviders: 全局检测进行中(用于禁用按钮 + 显示头部转圈)
+    // 用 mutableStateMapOf 而非 mutableStateOf<Map> 是为了让并发 async 各自更新自己的 key,
+    // 避免读-改-写竞态丢失(每条 async 完成后独立 set 自己的 key,SnapshotStateMap 保证原子)。
     val providerTestStatuses = remember { mutableStateMapOf<String, ProviderTestStatus>() }
     var isTestingAllProviders by remember { mutableStateOf(false) }
 
-    // v1.133: "Todas las pruebas" — Pruebe simultáneamente todos los proveedores configurados,Cada proveedor muestra la carga/los resultados de forma independiente
-    //  - Reutilice la lógica de prueba ligera de ProviderEditPage.testConnection(Llame solo al punto final /models,No decir la verdad chat)
-    //  - Concurrencia de rutinas:async + awaitAll,Cada asíncrono actualiza su propio estado de forma independiente(Admite la finalización asincrónica de proveedores rápidos y lentos)
-    //  - Error de reutilización jerárquica settings_provider_test_error_* cuerda,Mantenga la coherencia con una sola prueba
+    // v1.133: "全部检测" — 并发测试所有已配置供应商,各 provider 独立显示 loading/结果
+    //  - 复用 ProviderEditPage.testConnection 的轻量测试逻辑(只调 /models 端点,不发真实 chat)
+    //  - 协程并发:async + awaitAll,每个 async 独立更新自己的状态(支持快慢 provider 异步完成)
+    //  - 错误分级复用 settings_provider_test_error_* 字符串,保持与单测一致
     val onTestAllProviders: () -> Unit = {
         val list = visibleProviders
         when {
-            // Detectando o la lista no se ha cargado.,Ignorar los desencadenantes repetidos
+            // 正在检测中或列表未加载完成,忽略重复触发
             isTestingAllProviders || list == null -> Unit
             list.isEmpty() -> {
                 io.zer0.muse.ui.common.feedback.MuseToast.show(
@@ -260,15 +272,15 @@ fun SettingsModelPage(
             else -> {
                 scope.launch {
                     isTestingAllProviders = true
-                    // restablecer:Todos los proveedores marcados como Testing
+                    // 重置:所有 provider 标记为 Testing
                     providerTestStatuses.clear()
                     list.forEach { providerTestStatuses[it.id] = ProviderTestStatus.Testing }
-                    // Pruebas de concurrencia:Uno por proveedor async,Actualizar el estado de forma independiente cuando se complete
+                    // 并发测试:每个 provider 一个 async,完成后独立更新状态
                     coroutineScope {
                         list.map { config ->
                             async(Dispatchers.IO) {
                                 val status: ProviderTestStatus = if (config.apiKey.isBlank()) {
-                                    // Si no hay una clave API, fallará directamente.,No enviar solicitudes de red
+                                    // 无 API Key 直接判失败,不发网络请求
                                     ProviderTestStatus.Failed(
                                         context.getString(R.string.settings_provider_test_skip_no_key),
                                     )
@@ -301,13 +313,13 @@ fun SettingsModelPage(
                                         }
                                     }
                                 }
-                                // Finalización única — Actualiza el tuyo de forma independiente key(átomo,sin carrera)
+                                // 单条完成 — 独立更新自己的 key(原子,无竞态)
                                 providerTestStatuses[config.id] = status
                             }
                         }.awaitAll()
                     }
                     isTestingAllProviders = false
-                    // Resumen:recuento de éxito/fracaso,Toast Notificar a los usuarios de los resultados finales.
+                    // 汇总:成功 / 失败计数,Toast 通知用户最终结果
                     val successCount = providerTestStatuses.values.count { it is ProviderTestStatus.Success }
                     val failedCount = providerTestStatuses.values.count { it is ProviderTestStatus.Failed }
                     io.zer0.muse.ui.common.feedback.MuseToast.show(
@@ -318,7 +330,7 @@ fun SettingsModelPage(
         }
     }
 
-    // v1.97: Escanee la ventana emergente del código QR
+    // v1.97: 扫描二维码弹窗
     if (showQrScanDialog) {
         io.zer0.muse.ui.qrcode.QrCodeScanDialog(
             onDismiss = { showQrScanDialog = false },
@@ -326,8 +338,8 @@ fun SettingsModelPage(
                 showQrScanDialog = false
                 val provider = io.zer0.muse.ui.qrcode.QrCodeGenerator.parseProviderQr(content)
                 if (provider != null) {
-                    // Genere una nueva ID para evitar conflictos con la configuración original.,Actualice también el ID de proveedor de los modelos.
-                    // Utilice UUID en lugar de marca de tiempo —— Predeterminado/Cuando los códigos QR se importan continuamente, la identificación se eliminará en el mismo milisegundo.
+                    // 生成新 id 避免与原配置冲突,把 models 的 providerId 也一并更新。
+                    // 用 UUID 而非时间戳 —— 预设/二维码连续导入时同毫秒会撞 id。
                     val newId = "provider-" + java.util.UUID.randomUUID()
                     val imported = provider.copy(
                         id = newId,
@@ -349,11 +361,11 @@ fun SettingsModelPage(
         )
     }
 
-    // v1.35: Renderice la página en pantalla completa directamente al editar el proveedor(No hay necesidad Dialog,Evitar que la barra de navegación del sistema bloquee los botones inferiores)
-    // v2.6.1: usar key(config.id) paquete —— ProviderEditPage muchos internos rememberSaveable
-    // Guardar por ubicación combinada de forma predeterminada/restaurar,Al editar diferentes proveedores continuamente, la apiKey del proveedor anterior, etc.
-    // Lleva el estado al siguiente(Prueba real del usuario:La conexión de prueba informa caracteres no ASCII en la clave anterior). Después de separar por ID de configuración,
-    // Cambiar el objeto de edición reconstruirá todo el estado del subárbol,No más residuos.
+    // v1.35: 编辑供应商时直接渲染全屏页面(不用 Dialog,避免系统导航栏遮挡底部按钮)
+    // v2.6.1: 用 key(config.id) 包裹 —— ProviderEditPage 内部大量 rememberSaveable
+    // 默认按组合位置保存/恢复,连续编辑不同供应商时会把上一个供应商的 apiKey 等
+    // 状态带到下一个(用户实测:测试连接报旧密钥里的非 ASCII 字符)。按配置 id 分隔后,
+    // 切换编辑对象会重建该子树的全部状态,不再残留。
     editingConfig?.let { config ->
         key(config.id) {
             ProviderEditPage(
@@ -383,7 +395,7 @@ fun SettingsModelPage(
         return
     }
 
-    // v2.6.0: Ventana emergente de solicitud de Device Flow para iniciar sesión con un solo clic —— Muestra el código de usuario + abre la página de autorización con un clic.
+    // v2.6.0: 一键登录的 Device Flow 提示弹窗 —— 展示 user_code + 一键打开授权页。
     quickLoginDeviceInfo?.let { (userCode, verificationUri) ->
         MuseDialog(
             onDismissRequest = {
@@ -406,7 +418,7 @@ fun SettingsModelPage(
                     ) {
                         Text(
                             text = userCode,
-                            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.SemiBold),
+                            style = MaterialTheme.typography.headlineMedium,
                             color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.fillMaxWidth().padding(vertical = MusePaddings.itemGap),
                             textAlign = TextAlign.Center,
@@ -437,7 +449,7 @@ fun SettingsModelPage(
         )
     }
 
-    // v1.38: Página de pantalla completa de selección de proveedor predeterminada(sustituto ModalBottomSheet,Cura atascada después del cierre)
+    // v1.38: 预设供应商选择全屏页面(替代 ModalBottomSheet,根治关闭后卡死)
     if (showPresetPicker) {
         PresetProviderPickerDialog(
             onDismiss = { showPresetPicker = false },
@@ -449,9 +461,9 @@ fun SettingsModelPage(
                     apiKey = "",
                     models = preset.models.map { it.copy(providerId = newId) },
                 )
-                // v2.6.0: OAuth Inicio de sesión predeterminado con un clic —— Haga clic en Predeterminado para ir directamente a la autorización.
-                // Guardar automáticamente después de la verificación+Actívalo y no ingreses a la página de edición (misma experiencia que la aplicación oficial ChatGPT).
-                // Device Flow Los ajustes preestablecidos (como xAI) no requieren Actividad;Auth Code Flow Necesario.
+                // v2.6.0: OAuth 预设一键登录 —— 点预设直接跳授权，
+                // 验证完回来自动保存+激活，不进编辑页（同 ChatGPT 官方 App 体验）。
+                // Device Flow 预设（如 xAI）无需 Activity；Auth Code Flow 需要。
                 val oauth = preset.oauthConfig
                 if (oauth != null) {
                     val isDeviceFlow = !oauth.deviceCodeUrl.isNullOrBlank()
@@ -467,10 +479,10 @@ fun SettingsModelPage(
                             context.getString(R.string.oauth_quick_login_started),
                         )
                         scope.launch {
-                            // Primero descargue la configuración (después de iniciar sesión correctamente, OAuthManager escribe el token según el ID del proveedor)
+                            // 先落盘配置（登录成功后 OAuthManager 按 providerId 写 token）
                             settings.addProvider(newConfig)
-                            // v2.6.0: Device Flow Estado de escucha durante la encuesta,Después de obtener el código de usuario, aparece una ventana emergente
-                            // (Mismo mecanismo que la página de edición.);De lo contrario, el usuario no podrá ver el código y no podrá autorizarlo.
+                            // v2.6.0: Device Flow 轮询期间监听状态,拿到 userCode 后弹窗展示
+                            // (与编辑页同一机制);否则用户看不到码、无从授权。
                             val watcher = if (isDeviceFlow) {
                                 scope.launch {
                                     OAuthManager.stateFlow.collect { s ->
@@ -497,7 +509,7 @@ fun SettingsModelPage(
                                     )
                                 },
                                 onFailure = { err ->
-                                    // Si el inicio de sesión falla, elimine la configuración vacía recién agregada para evitar dejar un montón de proveedores sin terminar.
+                                    // 登录失败删除刚加的空配置，避免留下一堆未完成的供应商
                                     settings.deleteProvider(newId)
                                     io.zer0.muse.ui.common.feedback.MuseToast.show(
                                         context.getString(R.string.oauth_login_failed, err.message ?: ""),
@@ -528,10 +540,10 @@ fun SettingsModelPage(
         return
     }
 
-    SettingsSubPageScaffold(title = stringResource(R.string.settings_sub_model_services), onBack = onBack) {
+    SettingsSubPageScaffold(title = stringResource(R.string.settings_group_models), onBack = onBack) {
         val providersList = visibleProviders
         if (providersList == null) {
-            // v1.48: h13 Mostrar indicador de carga centrada en la primera carga,Evite el estado intermitente de la lista de proveedores
+            // v1.48: h13 首次加载显示居中加载指示器,避免 providers 列表闪空状态
             item {
                 Column(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 64.dp),
@@ -541,9 +553,10 @@ fun SettingsModelPage(
                 }
             }
         } else {
-            // Provider lista(Empaquetado con la extensión interna LazyListScope,llamar directamente)
+            // Provider 列表(同包 internal LazyListScope 扩展,直接调用)
             providerListSection(
                 providers = providersList,
+                hasUsableProvider = usableProviderPresent(providers.orEmpty()),
                 activeProviderId = activeProviderId,
                 onActivate = { id -> scope.launch { settings.setActiveProvider(id) } },
                 onEdit = { config ->
@@ -559,20 +572,20 @@ fun SettingsModelPage(
                     }
                 },
                 onAddProvider = { showPresetPicker = true },
-                // v1.97: Escanea el código QR para importar Provider
+                // v1.97: 扫描二维码导入 Provider
                 onScanQr = { showQrScanDialog = true },
-                // v1.133: Pruebas de salud por lotes(encabezado de lista"Todas las pruebas"botón)
+                // v1.133: 批量健康检测(列表头部"全部检测"按钮)
                 testStatuses = providerTestStatuses,
                 isTestingAll = isTestingAllProviders,
                 onTestAll = onTestAllProviders,
             )
         }
 
-        // v1.x: Configuración del modelo de generación de medios. — Pasar de la página secundaria de configuración a la página del proveedor
+        // v1.x: 媒体生成模型配置 — 从设置二级页移入供应商页
         item { SectionLabel(stringResource(R.string.settings_provider_media_gen_section)) }
         item { ImageGenSection(settings = settings, scope = scope) }
         item { VideoGenSection(settings = settings, scope = scope) }
-        // v1.x: motor de reconocimiento de voz(Motor independiente fuera del sistema de modelo de proveedor.,La entrada está colapsada a la página del proveedor.)
+        // v1.x: 语音识别引擎(供应商模型体系外的独立引擎,入口收拢到供应商页)
         item {
             SettingsItemRow(
                 icon = MuseIcons.microphone,
@@ -585,9 +598,9 @@ fun SettingsModelPage(
 }
 
 /**
- * v1.133: pagina de segundo nivel — búsqueda en internet(Separarse de ConfiguraciónModelPage).
+ * v1.133: 二级页 — 联网搜索(从 SettingsModelPage 拆出)。
  *
- * Sólo renderizar [WebSearchSection],dejar"Modelos y Servicios"La página solo mantiene una lista de proveedores.
+ * 仅渲染 [WebSearchSection],让"模型与服务"页只保留供应商列表。
  */
 @Composable
 fun SettingsWebSearchPage(onBack: () -> Unit) {
@@ -601,10 +614,10 @@ fun SettingsWebSearchPage(onBack: () -> Unit) {
 }
 
 /**
- * v1.133: pagina de segundo nivel — Recursos asistentes(Separarse de ConfiguraciónModelPage).
+ * v1.133: 二级页 — 助手资源(从 SettingsModelPage 拆出)。
  *
- * acomodar [AssistantEntriesSection]:Gestión asistente/Favoritos/Libro mundial/Mensaje rápido/Modo de inyección/Habilidades/Cambio de memoria a largo plazo.
- * dejar"Modelos y Servicios"La página solo mantiene una lista de proveedores.
+ * 容纳 [AssistantEntriesSection]:助手管理 / 收藏夹 / 世界书 / 快捷消息 / 模式注入 / Skills / 长期记忆开关。
+ * 让"模型与服务"页只保留供应商列表。
  */
 @Composable
 fun SettingsAssistantResourcesPage(
@@ -633,7 +646,7 @@ fun SettingsAssistantResourcesPage(
 }
 
 /**
- * v1.133: pagina de segundo nivel — reconocimiento de voz ASR(Separarse de ConfiguraciónModelPage).
+ * v1.133: 二级页 — 语音识别 ASR(从 SettingsModelPage 拆出)。
  */
 @Composable
 fun SettingsAsrPage(onBack: () -> Unit, onOpenProviderSettings: () -> Unit = {}) {
@@ -647,7 +660,7 @@ fun SettingsAsrPage(onBack: () -> Unit, onOpenProviderSettings: () -> Unit = {})
 }
 
 /**
- * v1.133: pagina de segundo nivel — MCP servidor(Separarse de ConfiguraciónModelPage).
+ * v1.133: 二级页 — MCP 服务器(从 SettingsModelPage 拆出)。
  */
 @Composable
 fun SettingsMcpPage(onBack: () -> Unit) {
@@ -657,9 +670,9 @@ fun SettingsMcpPage(onBack: () -> Unit) {
 }
 
 /**
- * pagina de segundo nivel:Datos y respaldo(Backup + WebServer)
+ * 二级页:数据与备份(Backup + WebServer)
  *
- * La configuración de la copia de seguridad en la nube se gestiona a través de una CloudBackupPage independiente; esta página conserva el estado y las cargas/Acceso rápido a recuperación y sincronización automática.
+ * 云备份配置通过独立的 CloudBackupPage 管理；本页保留状态、上传/恢复和自动同步快捷入口。
  */
 @Composable
 fun SettingsDataPage(onBack: () -> Unit, onOpenCloudBackup: () -> Unit = {}) {
@@ -691,7 +704,7 @@ fun SettingsDataPage(onBack: () -> Unit, onOpenCloudBackup: () -> Unit = {}) {
 }
 
 /**
- * pagina de segundo nivel:Apariencia(tema + tamaño de fuente)
+ * 二级页:外观(主题 + 字号)
  */
 @Composable
 fun SettingsAppearancePage(onBack: () -> Unit) {
@@ -713,25 +726,25 @@ fun SettingsAppearancePage(onBack: () -> Unit) {
                 settings = settings,
             )
         }
-        // v1.95: Iniciar página predeterminada(Tarea/Agente/Chat grupal)
+        // v1.95: 启动默认页(任务 / Agent / 群聊)
         item {
             DefaultHomePageSection(
                 settings = settings,
             )
         }
-        // ── burbuja de mensaje ──
+        // ── 消息气泡 ──
         item { SectionLabel(stringResource(R.string.settings_screen_group_bubble)) }
         item { BubbleStyleSection() }
-        // ── Tarjetas e interfaces generativas (al regresar de la página de chat)──
+        // ── 卡片与生成式界面（从聊天页归位）──
         item { SectionLabel(stringResource(R.string.settings_screen_group_cards)) }
         item { GenerativeUiSection() }
     }
 }
 
 /**
- * Aspecto de la burbuja del mensaje: ancho de la burbuja/avatar del usuario/esquinas redondeadas.
+ * 消息气泡外观：气泡宽度 / 用户头像 / 圆角档位。
  *
- * Estos son "cómo se ve el mensaje" y son dos cosas diferentes del color del tema, por lo que están divididos en secciones separadas.
+ * 这些都是「消息长什么样」，与主题配色是两件事，所以单独成段。
  */
 @Composable
 private fun BubbleStyleSection() {
@@ -760,7 +773,7 @@ private fun BubbleStyleSection() {
             onCheckedChange = { v -> update { it.copy(showUserAvatar = v) } },
         )
         SettingsGroupDivider()
-        // Cuatro niveles de filete de burbujas: cuadrado/esquina redondeada/esquina redondeada grande/cápsula
+        // 四档气泡圆角：方形 / 圆角 / 大圆角 / 胶囊
         val radiusOptions =
             listOf(
                 stringResource(R.string.settings_bubble_radius_none),
@@ -786,8 +799,8 @@ private fun BubbleStyleSection() {
 }
 
 /**
- * Tarjetas e interfaces generativas: si se debe permitir que los modelos utilicen tarjetas interactivas para alojar contenido,
- * y si priorizar proactivamente las tarjetas sobre los textos largos.
+ * 卡片与生成式界面：是否允许模型用可交互卡片承载内容，
+ * 以及是否主动优先卡片而不是长文字。
  */
 @Composable
 private fun GenerativeUiSection() {
@@ -807,7 +820,7 @@ private fun GenerativeUiSection() {
             checked = prefs.generativeUiEnabled,
             onCheckedChange = { v -> update { it.copy(generativeUiEnabled = v) } },
         )
-        // Es un nivel más activo que "Permitir" y está activado de forma predeterminada.
+        // 比「允许」更主动一级，默认开。
         if (prefs.generativeUiEnabled) {
             SettingsGroupDivider()
             SettingsSwitchRow(
@@ -822,27 +835,25 @@ private fun GenerativeUiSection() {
 }
 
 /**
- * pagina de segundo nivel:Acerca de
- * AboutSection Originalmente private,Reescribir en línea aquí(Número de versión + entrada de licencia de código abierto).
+ * 二级页:关于
+ * AboutSection 原为 private,此处内联重写(版本号 + 开源许可入口)。
  *
- * P3-14:Nuevo"retroalimentación"entrada — llamar al correo Intent(Dirección de entrega de precarga/Tema/Información del dispositivo),Cuando no hay solicitud por correo
- *       fallback para copiar el contenido de los comentarios al portapapeles + mensaje de brindis.
- * P3-15:Nuevo"Buscar actualizaciones"botón — Solicitud asincrónica GitHub Releases API,Comparar con la versión localNombre,
- *       Utilice MuseDialog para notificarle cuando haya una nueva versión.(Después de la confirmación, el navegador abre la página de lanzamiento.),Últimos consejos para usar MuseAlertDialog,
- *       Los errores de red se indican con Toast.
+ * P3-14:新增"反馈"入口 — 调起邮件 Intent(预填收件地址/主题/设备信息),无邮件应用时
+ *       fallback 到复制反馈内容到剪贴板 + Toast 提示。
+ * P3-15:新增"检查更新"按钮 — 异步请求 GitHub Releases API,与本地 versionName 比较,
+ *       有新版本用 MuseDialog 提示(确认后浏览器打开 release 页),最新用 MuseAlertDialog 提示,
+ *       网络错误用 Toast 提示。
  */
 @Composable
 fun SettingsAboutPage(
     onBack: () -> Unit,
     onOpenLicenses: () -> Unit = {},
-    // v2.x: Entrada a la página de configuración de informes de fallos(Opcional·La configuración de informes respetuosa con la privacidad está desactivada de forma predeterminada)
+    // v2.x: 崩溃上报设置页入口(可选·默认关闭的隐私友好上报配置)
     onOpenCrashReport: () -> Unit = {},
 ) {
     val context = LocalContext.current
-    val settings: SettingsRepository = koinInject()
     val updateNotifier: UpdateNotifier = koinInject()
     val scope = rememberCoroutineScope()
-    val updateCheckEnabled by settings.updateCheckEnabledFlow.collectAsStateWithLifecycle(initialValue = true)
     val versionName = remember {
         runCatching {
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
@@ -865,19 +876,19 @@ fun SettingsAboutPage(
                 @Suppress("DEPRECATION")
                 context.packageManager.getPackageInfo(context.packageName, 0)
             }
-            // Utilice PackageInfoCompat.getLongVersionCode en su lugar PackageInfo.longVersionCode
-            // (longVersionCode Campo requerido API 28,pero minSdk=26;PackageInfoCompat Compatibilidad de versiones internas)
+            // 用 PackageInfoCompat.getLongVersionCode 替代 PackageInfo.longVersionCode
+            // (longVersionCode 字段需 API 28,但 minSdk=26;PackageInfoCompat 内部做版本兼容)
             PackageInfoCompat.getLongVersionCode(packageInfo)
         }.getOrNull() ?: 26L
     }
 
-    // Los dos portales de actualización manual comparten el mismo notificador para garantizar que el caché del banner de la página de inicio, las notificaciones y los resultados de las comprobaciones tengan el mismo calibre.
+    // 两个手动更新入口共用同一个 notifier，确保首页 Banner 缓存、通知与检查结果口径一致。
     var checking by remember { mutableStateOf(false) }
     var newVersion by remember { mutableStateOf<UpdateChecker.ReleaseInfo?>(null) }
     var upToDate by remember { mutableStateOf(false) }
 
     SettingsSubPageScaffold(title = stringResource(R.string.section_about), onBack = onBack) {
-        // Información de la aplicación
+        // 应用信息
         item {
             SectionLabel(stringResource(R.string.settings_about_app_info))
         }
@@ -889,8 +900,8 @@ fun SettingsAboutPage(
                     modifier = Modifier.padding(MusePaddings.cardInner),
                 ) {
                     Text(
-                        text = "muse",
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                        text = "Muse",
+                        style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurface,
                     )
                     Text(
@@ -899,15 +910,15 @@ fun SettingsAboutPage(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Text(
-                        // v1.66: Cambiar al valor dinámico de BuildConfig,No más codificación "debug"
-                        text = "Build: ${if (BuildConfig.DEBUG) "debug" else "release"}",
+                        // v1.66: 改为动态 BuildConfig 值,不再硬编码 "debug"
+                        text = "Compilación: ${if (BuildConfig.DEBUG) "debug" else "release"}",
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.outline,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
         }
-        // P3-14: Portal de comentarios — llamar al correo Intent,fallback al portapapeles
+        // P3-14: 反馈入口 — 调起邮件 Intent,fallback 到剪贴板
         item {
             SectionLabel(stringResource(R.string.settings_about_feedback_section))
         }
@@ -939,7 +950,7 @@ fun SettingsAboutPage(
                 }
             }
         }
-        // P3-15: Buscar actualizaciones — Solicitud asincrónica GitHub Releases
+        // P3-15: 检查更新入口 — 异步请求 GitHub Releases
         item {
             SectionLabel(stringResource(R.string.settings_about_update_section))
         }
@@ -977,14 +988,6 @@ fun SettingsAboutPage(
                         ChevronRight()
                     }
                 }
-                SettingsGroupDivider()
-                SettingsSwitchRow(
-                    icon = MuseIcons.refresh,
-                    title = stringResource(R.string.settings_about_auto_update),
-                    subtitle = stringResource(R.string.settings_about_auto_update_subtitle),
-                    checked = updateCheckEnabled,
-                    onCheckedChange = { v -> scope.launch { settings.saveUpdateCheckEnabled(v) } },
-                )
             }
         }
         item {
@@ -1002,7 +1005,7 @@ fun SettingsAboutPage(
                 }
             }
         }
-        // v1.119: Agrupación de almacenes de código abierto — Página de inicio del almacén / Estrella / Comentarios sobre problemas(todos saltan GitHub)
+        // v1.119: 开源仓库分组 — 仓库主页 / Star / 问题反馈(均跳转 GitHub)
         item {
             SectionLabel(stringResource(R.string.settings_about_repo_section))
         }
@@ -1034,7 +1037,7 @@ fun SettingsAboutPage(
         }
     }
 
-    // P3-15: Ventana emergente de nueva versión encontrada — Después de la confirmación, utilice su navegador para abrir la página de descarga del sitio web oficial.
+    // P3-15: 发现新版本弹窗 — 确认后用浏览器打开官网下载页
     newVersion?.let { version ->
         MuseDialog(
             onDismissRequest = { newVersion = null },
@@ -1058,7 +1061,7 @@ fun SettingsAboutPage(
         )
     }
 
-    // P3-15: Ya aparece el aviso de la última versión.
+    // P3-15: 已是最新版本提示
     if (upToDate) {
         MuseAlertDialog(
             onDismissRequest = { upToDate = false },
@@ -1070,7 +1073,7 @@ fun SettingsAboutPage(
 }
 
 /**
- * v1.119: abierto externo URL — Inicie el navegador con ACTION_VIEW,Aviso de brindis en caso de falla.
+ * v1.119: 打开外部 URL — 用 ACTION_VIEW 启动浏览器,失败时 Toast 提示。
  */
 private fun openUrl(context: Context, url: String) {
     val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
@@ -1091,7 +1094,7 @@ private fun openUrl(context: Context, url: String) {
 }
 
 /**
- * Abrir tarjeta de grupo QQ;Cuando QQ no esté instalado, copie el número de grupo al portapapeles y solicite.
+ * 打开 QQ 群卡片;未安装 QQ 时把群号复制到剪贴板并提示。
  */
 private fun openQQGroup(context: Context) {
     val uri = Uri.parse(
@@ -1120,8 +1123,8 @@ private fun openQQGroup(context: Context) {
 }
 
 /**
- * P3-14: Enviar comentarios — Llame a la intención del correo electrónico y complete previamente la dirección del destinatario/Tema/Información del dispositivo,
- * Cuando no hay una aplicación de correo electrónico, el respaldo copiará el contenido de los comentarios al portapapeles + mensaje de Toast.
+ * P3-14: 发送反馈 — 调起邮件 Intent 预填收件地址/主题/设备信息,
+ * 无邮件应用时 fallback 到复制反馈内容到剪贴板 + Toast 提示。
  */
 private fun sendFeedback(context: Context, versionName: String) {
     val deviceInfo = buildString {
@@ -1141,7 +1144,7 @@ private fun sendFeedback(context: Context, versionName: String) {
         putExtra(Intent.EXTRA_SUBJECT, context.getString(R.string.settings_feedback_subject))
         putExtra(Intent.EXTRA_TEXT, deviceInfo)
     }
-    // arreglo de fallas: No requerido para el contexto de actividad NEW_TASK,Unificar métodos de seguridad
+    // 崩溃修复: 非 Activity context 需 NEW_TASK,统一走安全方法
     runCatching {
         io.zer0.muse.util.ShareIntentHelper.startChooserSafely(
             context,
@@ -1149,7 +1152,7 @@ private fun sendFeedback(context: Context, versionName: String) {
             context.getString(R.string.settings_feedback_chooser_title),
         )
     }.onFailure {
-        // Aplicación sin correo:fallback al portapapeles
+        // 无邮件应用:fallback 到剪贴板
         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         val feedbackText = buildString {
             appendLine(context.getString(R.string.settings_feedback_recipient))

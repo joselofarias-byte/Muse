@@ -5,6 +5,7 @@ import io.zer0.common.Logger
 import io.zer0.muse.automation.executors.AccessibilityExecutor
 import io.zer0.muse.automation.executors.RootExecutor
 import io.zer0.muse.automation.executors.RootRequestResult
+import io.zer0.muse.permission.PermissionCoordinator
 import io.zer0.muse.tools.system.ShizukuAuthorizer
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,34 +15,39 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 /**
- * UI Gerente de Automatización —— Entrada unificada para tres niveles de actuadores.
+ * UI 自动化管理器 —— 三层执行器的统一入口。
  *
- * Responsabilidades:
- * 1. mantener [AccessibilityExecutor] / [ShellExecutor] / [RootExecutor] Ejemplo
- * 2. Detectar la disponibilidad de cada capa al inicio,expuesto [permissionState]
- * 3. distribución de acciones:Seleccione el actuador según el nivel más bajo requerido para la acción.,Bajar de categoría cuando falla el nivel superior
- * 4. Tratamiento especial para capturas de pantalla.:La capa de accesibilidad no admite capturas de pantalla,prioridad Shell/Root
+ * 职责:
+ * 1. 持有 [AccessibilityExecutor] / [ShellExecutor] / [RootExecutor] 实例
+ * 2. 启动时探测各层可用性,暴露 [permissionState]
+ * 3. 动作分发:按动作所需最低层级选执行器,高一层失败时降级
+ * 4. 截屏特殊处理:无障碍层不支持截屏,优先用 Shell/Root
  *
- * singleton(Koin inyectar),El ciclo de vida sigue la aplicación.
+ * 单例(Koin 注入),生命周期跟随 App。
  */
 class AutomationManager(
     private val context: Context,
     private val shizukuAuthorizer: ShizukuAuthorizer,
     /**
-     * Ejecutor de raíz inyectable(Construido por contexto de forma predeterminada).
-     * El punto de inyección se utiliza para pruebas únicas para simular "sin tiempo de espera/autorización" y otras rutas que no se pueden reproducir en el entorno de prueba.
+     * 可注入的 Root 执行器(默认按 context 构造)。
+     * 注入点供单测模拟「无 su / 授权超时」等无法在测试环境真实复现的路径。
      */
     private val rootExecutor: RootExecutor = RootExecutor(context),
     /**
-     * Ejecutor de Shell inyectable para verificación de raíz cuando se desconecta Shizuku.
-     * El valor predeterminado de producción todavía usa un ShellExecutor compartido con el autorizador.
+     * 可注入的 Shell 执行器，供运行时 Shizuku 断连时验证 Root 兜底。
+     * 生产默认仍使用与授权器共享的 ShellExecutor。
      */
     private val shellExecutor: io.zer0.muse.automation.executors.ShellExecutor =
         io.zer0.muse.automation.executors.ShellExecutor(context, shizukuAuthorizer),
+    /**
+     * 权限体系重设计: 统一协调层（单一事实源 + 事件驱动刷新）。
+     * 生产由 AutomationInitializer 注入；为 null 时退回管理器自探测（单测路径）。
+     */
+    private val coordinator: PermissionCoordinator? = null,
 ) {
     val accessibility = AccessibilityExecutor(context)
 
-    // UI El shell automatizado y la verificación de estado comparten el mismo autorizador Shizuku para evitar“Se nota que está autorizado, pero la ejecución es normal. sh”.
+    // UI 自动化 Shell 与状态检查共用同一个 Shizuku 授权器，避免“显示已授权、执行却走普通 sh”。
     val shell = shellExecutor
     val root: RootExecutor = rootExecutor
 
@@ -49,26 +55,26 @@ class AutomationManager(
 
     private val _permissionState = MutableStateFlow(PermissionState())
 
-    /** Estado de permiso actual de cada capa.,Observe las páginas de configuración y las herramientas a medida que se ejecutan. */
+    /** 当前各层权限状态,设置页和工具执行时观察。 */
     val permissionState: StateFlow<PermissionState> = _permissionState.asStateFlow()
 
     /**
-     * v2.7: Instantánea en tiempo real (sincrónica, liviana)—— La accesibilidad se vuelve a detectar en cada lectura.
+     * v2.7: 实时快照（同步、轻量）—— 每次读都重新探测无障碍通道。
      *
-     * ## por qué es necesario
+     * ## 为什么需要它
      *
-     * [permissionState] es un valor almacenado en caché, sólo en [refreshPermissions] Actualizado cuando se llama explícitamente
-     * (App inicio, regresando de la página de configuración, después de solicitar Root). Pero los servicios de accesibilidad son**conexión asíncrona**de:
-     * Después de que el usuario enciende el interruptor en la configuración del sistema,`MuseAccessibilityService.onServiceConnected`
-     * Simplemente cuelgue la instancia; Si no se activa ninguna actualización en este momento, el caché siempre se detendrá en falso al inicio.
-     * Conducir a un error de cálculo previo a la verificación de herramientas“No autorizado”(Prueba de usuario: El asistente muestra que está abierto, pero la herramienta informa que no se ha abierto).
+     * [permissionState] 是缓存值，只在 [refreshPermissions] 被显式调用时更新
+     * （App 启动、从设置页返回、请求 Root 后）。但无障碍服务是**异步连接**的：
+     * 用户在系统设置里开启开关后，`MuseAccessibilityService.onServiceConnected`
+     * 才把实例挂上；若此刻没有触发刷新，缓存会一直停在启动时的 false，
+     * 导致工具预检误判“未授权”（用户实测：向导显示已开启、工具却报未打开）。
      *
-     * La accesibilidad es una consulta sincrónica (`service?.isAccessibilityServiceEnabled()`),
-     * La sobrecarga es mínima, por lo que se requiere una verificación previa de la herramienta.“estado real actual”Úselo directamente en la escena,
-     * No depende del caché; al mismo tiempo, los resultados de la detección se vuelven a escribir en la memoria caché para mantener la coherencia de la interfaz de usuario.
+     * 无障碍可用性是同步查询（`service?.isAccessibilityServiceEnabled()`），
+     * 开销极小，因此工具预检这类需要“当下真实状态”的场景直接用它，
+     * 不依赖缓存；同时把探测结果写回缓存，保持 UI 一致。
      *
-     * Shell/Root La sonda está suspendida y puede bloquearse (su sonda), no apto para trayectorias sincronizadas,
-     * Por lo tanto, este método solo actualiza la accesibilidad en tiempo real y utiliza valores almacenados en caché para el resto.
+     * Shell/Root 探测是 suspend 且可能阻塞（su 探针），不适合同步路径，
+     * 因此本方法只实时刷新无障碍，其余沿用缓存值。
      */
     fun liveSnapshot(): PermissionState {
         val a11y = accessibility.isAvailableSync()
@@ -78,21 +84,39 @@ class AutomationManager(
         } else {
             val updated = current.copy(accessibilityEnabled = a11y)
             _permissionState.value = updated
-            Logger.i(TAG, "Estado de accesibilidad actualizado en tiempo real: a11y=$a11y")
+            Logger.i(TAG, "无障碍状态实时刷新: a11y=$a11y")
             updated
         }
     }
 
-    /** Todos los actuadores(de menor a mayor). */
+    /** 所有执行器(从低到高)。 */
     private val executors: List<AutomationExecutor> = listOf(accessibility, shell, root)
 
     /**
-     * Detectando disponibilidad de tres niveles. Se debe llamar cuando se inicia la aplicación y al regresar de la página de configuración.
+     * 探测三层可用性。应在 App 启动时和从设置页返回时调用。
      */
     suspend fun refreshPermissions(): PermissionState = mutex.withLock {
+        // 权限体系重设计: 有协调层时以它的被动快照为单一事实源（事件驱动同源刷新）。
+        if (coordinator != null) {
+            val snap = coordinator.refresh()
+            val state = PermissionState(
+                accessibilityEnabled = snap.accessibilityEnabled,
+                shellEnabled = snap.shellEnabled,
+                rootEnabled = snap.rootEnabled,
+                shizukuState = snap.shizukuState,
+                shizukuMessage = snap.shizukuMessage,
+            )
+            _permissionState.value = state
+            Logger.i(
+                TAG,
+                "permissions refreshed via coordinator: " +
+                    "a11y=${state.accessibilityEnabled} shell=${state.shizukuState} root=${state.rootEnabled}",
+            )
+            return@withLock state
+        }
         val a11y = probe("accessibility") { accessibility.isAvailable() }
-        // ordinario `sh` Siempre se puede iniciar en el entorno limitado de la aplicación de Android y no se puede autorizar en nombre de adb/Shizuku.
-        // El estado de segundo nivel debe completar el enlace UserService y no puede simplemente mirar el bit de autorización de Shizuku.
+        // 普通 `sh` 始终能在 Android 应用沙盒中启动，不能代表 adb/Shizuku 授权。
+        // 第二层状态必须完成 UserService bind，不能只看 Shizuku 授权位。
         val shizukuStatus = try {
             shizukuAuthorizer.diagnose()
         } catch (e: CancellationException) {
@@ -101,7 +125,7 @@ class AutomationManager(
             Logger.w(TAG, "shizuku diagnostic failed: ${e.message}", e)
             ShizukuAuthorizer.ShizukuStatus(
                 ShizukuAuthorizer.ShizukuState.USER_SERVICE_UNAVAILABLE,
-                "Shizuku Falló la detección de estado",
+                "Shizuku 状态探测失败",
             )
         }
         val rt = probe("root") { root.isAvailable() }
@@ -120,7 +144,7 @@ class AutomationManager(
         state
     }
 
-    /** La detección de permisos pertenece a la actualización del estado de la interfaz de usuario; cuando un solo canal es anormal, se degrada a no disponible y no se debe penetrar la página de configuración. */
+    /** 权限探测属于 UI 状态刷新；单个通道异常时降级为不可用，不得击穿设置页。 */
     private suspend fun probe(name: String, block: suspend () -> Boolean): Boolean = try {
         block()
     } catch (e: CancellationException) {
@@ -131,11 +155,11 @@ class AutomationManager(
     }
 
     /**
-     * Solicitar explícitamente autorización de Root(El comportamiento principal de la tarjeta de tercera capa en la página de configuración.).
+     * 显式请求 Root 授权(设置页第三层卡片的主行为)。
      *
-     * confiar [RootExecutor.requestRootAccess] Activar ventana emergente del administrador raíz;Independientemente del éxito o el fracaso, vuelva a detectar la capa 3
-     * Estado,dejar [permissionState] Refleja resultados reales de forma inmediata. No retenido [mutex] —— su La sonda puede esperar la acción del usuario.,
-     * Otras llamadas de automatización no deben bloquearse durante este período.
+     * 委托 [RootExecutor.requestRootAccess] 触发 root 管理器弹窗;无论成功与否都重新探测三层
+     * 状态,让 [permissionState] 立刻反映真实结果。不持有 [mutex] —— su 探针可能等待用户操作,
+     * 期间不应阻塞其他自动化调用。
      */
     suspend fun requestRoot(): RootRequestResult {
         val result = root.requestRootAccess()
@@ -143,17 +167,17 @@ class AutomationManager(
         return result
     }
 
-    // ── interfaz de acción unificada ────────────────────────────────────────
+    // ── 统一动作接口 ────────────────────────────────────────
 
     /**
-     * v2.x Automatización Fase I:Ejecución unificada de comandos de dispositivos. —— Shizuku Prioridad,Root Llega al fondo de esto.
+     * v2.x 自动化一期:设备命令统一执行 —— Shizuku 优先,Root 兜底。
      *
-     * @return nombre del puesto("Shizuku"/"Root")con resultados detallados;Devuelve nulo si ninguno de los equipos está disponible.
+     * @return 档位名("Shizuku"/"Root")与详细结果;两档均不可用时返回 null。
      */
     suspend fun execTiered(command: String): Pair<String, io.zer0.muse.automation.executors.ShellExecutor.ExecDetail>? {
         var state = permissionState.value
         if (!state.shellEnabled && !state.rootEnabled) {
-            // La caché puede estar caducada(Recién autorizado/Cancelar),Compruébalo y decide de nuevo.
+            // 缓存可能过期(刚授权/撤销),探一次再决定
             state = refreshPermissions()
         }
         return when {
@@ -171,7 +195,7 @@ class AutomationManager(
         }
     }
 
-    /** captura de pantalla:Priorizar autorizado Shell/Root;API 34+ Finalmente degradado a capturas de pantalla accesibles. */
+    /** 截屏:优先已授权的 Shell/Root;API 34+ 最后降级到无障碍截图。 */
     suspend fun screenshot(): ByteArray? = mutex.withLock {
         firstNonEmptyScreenshot(
             { shell.screenshot() },
@@ -180,7 +204,7 @@ class AutomationManager(
         )
     }
 
-    /** leer pantalla:Priorizar la accesibilidad(El árbol de control es el más completo.),Rebajar Shell(uiautomator dump). */
+    /** 读屏:优先无障碍(控件树最完整),降级 Shell(uiautomator dump)。 */
     suspend fun readScreen(): ScreenInfo = mutex.withLock {
         if (accessibility.isAvailable()) {
             try {
@@ -192,7 +216,7 @@ class AutomationManager(
         }
         if (shell.isAvailable()) return@withLock shell.readScreen()
         if (root.isAvailable()) return@withLock root.readScreen()
-        // No se puede falsificar sin canales automatizados.“shell Leer con éxito”;página de configuración/En consecuencia, la herramienta muestra un estado de indisponibilidad explícito.
+        // 无任何自动化通道时不能伪造“shell 读取成功”;设置页/工具据此展示明确的不可用状态。
         ScreenInfo(
             packageName = null,
             activityName = null,
@@ -203,7 +227,7 @@ class AutomationManager(
         )
     }
 
-    /** Lea el árbol de control de la pantalla virtual de fondo; sólo las capacidades Shell/Root pueden acceder a la pantalla especificada. */
+    /** 读取后台虚拟屏的控件树；仅 Shell/Root 能力可以访问指定 display。 */
     suspend fun readScreenOnDisplay(displayId: Int): ScreenInfo? = mutex.withLock {
         when {
             shell.isAvailable() -> shell.readScreenOnDisplay(displayId)
@@ -212,26 +236,93 @@ class AutomationManager(
         }
     }
 
-    /** El nombre del paquete de interfaz actual. */
+    /** 当前前台包名。 */
     suspend fun currentPackage(): String? = mutex.withLock {
         accessibility.currentPackage() ?: if (shell.isAvailable()) shell.currentPackage() else root.currentPackage()
     }
 
-    /** Haga clic:Priorizar la accesibilidad,Luego presione la autorización real para bajar a Shizuku/Root. */
+    /**
+     * 最近一次动作**实际**走的通道。
+     *
+     * 之前没人知道一次 tap 是无障碍做的还是 root 做的 —— 出问题时只能靠猜。
+     * 现在每次动作都记一行日志，并把这个值留在实例上供状态页/诊断读取。
+     */
+    @Volatile
+    var lastActionTier: PermissionLevel = PermissionLevel.NONE
+        private set
+
+    /**
+     * 按**当前可用性**选一层执行，**只执行一次**。
+     *
+     * 为什么不是「失败了再换一层」：
+     * `back()` / `home()` / `openNotifications()` 之前写的是 `a11y() || shell() || root()` ——
+     * 如果无障碍其实已经把动作做成了、却返回了 false，后面那一层会**再做一次**
+     * （返回两次、回到两个页面、通知栏拉开又收起）。这类动作不可重放，所以只选一层。
+     * 选中的那层失败就返回 false，由模型自己看屏幕决定要不要重试 —— 它本来就在环里。
+     */
+    private suspend fun runOnTier(
+        name: String,
+        onAccessibility: suspend () -> Boolean,
+        onShell: suspend () -> Boolean,
+        onRoot: suspend () -> Boolean,
+    ): Boolean {
+        val tier = when {
+            accessibility.isAvailable() -> PermissionLevel.ACCESSIBILITY
+            shell.isAvailable() -> PermissionLevel.SHELL
+            else -> PermissionLevel.ROOT
+        }
+        lastActionTier = tier
+        val ok = runCatching {
+            when (tier) {
+                PermissionLevel.ACCESSIBILITY -> onAccessibility()
+                PermissionLevel.SHELL -> onShell()
+                else -> onRoot()
+            }
+        }.getOrElse { error ->
+            Logger.w(TAG, "动作 $name 在 ${tier.name} 上抛错: ${error.message}")
+            false
+        }
+        Logger.d(TAG, "动作 $name | tier=${tier.name} | ok=$ok")
+        return ok
+    }
+
+    /**
+     * 屏幕尺寸（像素）：走 `resources.displayMetrics`，**不读控件树**，
+     * 所以比 `readScreen()` 便宜得多，适合每次动作前都查一遍坐标。
+     * 拿不到时是 0x0 —— 那种情况调用方必须放行（见 `boundsIssue`）。
+     */
+    fun screenSize(): Pair<Int, Int> = context.resources.displayMetrics.let {
+        it.widthPixels to it.heightPixels
+    }
+
+    /** 单点越界的确定原因；`null` = 在界内或尺寸未知。 */
+    fun coordinateIssue(x: Int, y: Int): String? {
+        val (w, h) = screenSize()
+        return boundsIssue(x, y, w, h)
+    }
+
+    /** 多点动作（滑动/缩放/路径）的越界原因。 */
+    fun coordinatesIssue(points: List<Pair<Int, Int>>): String? {
+        val (w, h) = screenSize()
+        return pointsBoundsIssue(points, w, h)
+    }
+
+    /** 点击:优先无障碍,再按真实授权降级到 Shizuku/Root。 */
     suspend fun tap(x: Int, y: Int): Boolean = mutex.withLock {
-        if (accessibility.isAvailable()) {
-            accessibility.tap(x, y)
-        } else if (shell.isAvailable()) shell.tap(x, y) else root.tap(x, y)
+        runOnTier("tap", { accessibility.tap(x, y) }, { shell.tap(x, y) }, { root.tap(x, y) })
     }
 
-    /** Pulsación larga. */
+    /** 长按。 */
     suspend fun longPress(x: Int, y: Int, durationMs: Long = 600): Boolean = mutex.withLock {
-        if (accessibility.isAvailable()) {
-            accessibility.longPress(x, y, durationMs)
-        } else if (shell.isAvailable()) shell.longPress(x, y, durationMs) else root.longPress(x, y, durationMs)
+        runOnTier(
+            "longPress",
+            { accessibility.longPress(x, y, durationMs) },
+            { shell.longPress(x, y, durationMs) },
+            { root.longPress(x, y, durationMs) },
+        )
     }
 
-    /** Deslizar. */
+    /** 滑动。 */
     suspend fun swipe(x1: Int, y1: Int, x2: Int, y2: Int, durationMs: Long = 400): Boolean = mutex.withLock {
         if (accessibility.isAvailable()) {
             accessibility.swipe(x1, y1, x2, y2, durationMs)
@@ -243,8 +334,8 @@ class AutomationManager(
     }
 
     /**
-     * v2.x: Pellizcar para hacer zoom — Despacho sin barrerasImplementación de gestos con dos dedos;
-     * Shell/Root El comando de entrada no tiene capacidad de inyección con varios dedos.,Devuelve falso si no está disponible.
+     * v2.x: 双指缩放 — 无障碍 dispatchGesture 双指实现;
+     * Shell/Root 的 input 命令无多指注入能力,不可用时返回 false。
      */
     suspend fun pinch(centerX: Int, centerY: Int, startDistance: Int, endDistance: Int, durationMs: Long = 300): Boolean = mutex.withLock {
         if (accessibility.isAvailable()) {
@@ -254,10 +345,16 @@ class AutomationManager(
         }
     }
 
-    /** v2.x: Deslizamiento multisegmento — Accesible y preciso punto por punto;Los niveles restantes se degradarán en el primer y último punto. */
+    /**
+     * 多段滑动：**只有无障碍**能逐点注入。
+     *
+     * Shell/Root 的 input 命令只能直线滑动 —— 旧实现会把多段路径悄悄降级成「首点→末点」，
+     * 那是**另一个手势**（图案解锁会变成一条直线），比直接失败危险。现在 >2 点时明确拒绝。
+     */
     suspend fun swipePath(points: List<Pair<Int, Int>>, durationMs: Long = 400): Boolean = mutex.withLock {
         if (points.size < 2) return@withLock false
         if (accessibility.isAvailable()) return@withLock accessibility.swipePath(points, durationMs)
+        if (points.size > 2) return@withLock false
         val first = points.first()
         val last = points.last()
         if (shell.isAvailable()) {
@@ -267,69 +364,103 @@ class AutomationManager(
         }
     }
 
-    /** Introduzca texto. */
+    /** 多段路径手势是否可用（只有无障碍能注入多段；Shell/Root 只能直线）。 */
+    suspend fun supportsMultiPointGesture(): Boolean = accessibility.isAvailable()
+
+    /** 输入文本。 */
     suspend fun inputText(text: String): Boolean = mutex.withLock {
-        if (accessibility.isAvailable()) {
-            accessibility.inputText(text)
-        } else if (shell.isAvailable()) shell.inputText(text) else root.inputText(text)
+        runOnTier(
+            "inputText",
+            { accessibility.inputText(text) },
+            { shell.inputText(text) },
+            { root.inputText(text) },
+        )
     }
 
-    /** botón. */
+    /** 按键。 */
     suspend fun pressKey(keyCode: Int): Boolean = mutex.withLock {
-        if (accessibility.isAvailable()) {
-            accessibility.pressKey(keyCode)
-        } else if (shell.isAvailable()) shell.pressKey(keyCode) else root.pressKey(keyCode)
+        runOnTier(
+            "pressKey",
+            { accessibility.pressKey(keyCode) },
+            { shell.pressKey(keyCode) },
+            { root.pressKey(keyCode) },
+        )
     }
 
-    /** Inicie la aplicación. */
+    /** 启动 App。 */
     suspend fun launchApp(packageName: String): Boolean = mutex.withLock {
-        accessibility.launchApp(packageName) ||
-            if (shell.isAvailable()) shell.launchApp(packageName) else root.launchApp(packageName)
+        // 启动是幂等的（同一个 App 拉两次只是再拉到前台），所以这里保留「失败再换一层」；
+        // 但仍然记下实际生效的层级，免得日志里看不出是谁启动的。
+        val viaAccessibility = accessibility.launchApp(packageName)
+        if (viaAccessibility) {
+            lastActionTier = PermissionLevel.ACCESSIBILITY
+            Logger.d(TAG, "动作 launchApp | tier=ACCESSIBILITY | ok=true")
+            return@withLock true
+        }
+        val tier = if (shell.isAvailable()) PermissionLevel.SHELL else PermissionLevel.ROOT
+        lastActionTier = tier
+        val ok = if (tier == PermissionLevel.SHELL) {
+            shell.launchApp(packageName)
+        } else {
+            root.launchApp(packageName)
+        }
+        Logger.d(TAG, "动作 launchApp | tier=${tier.name} | ok=$ok")
+        ok
     }
 
-    /** Devolver. */
+    /** 返回。 */
     suspend fun back(): Boolean = mutex.withLock {
-        accessibility.back() || if (shell.isAvailable()) shell.back() else root.back()
+        runOnTier("back", { accessibility.back() }, { shell.back() }, { root.back() })
     }
 
-    /** Home. */
+    /** Home。 */
     suspend fun home(): Boolean = mutex.withLock {
-        accessibility.home() || if (shell.isAvailable()) shell.home() else root.home()
+        runOnTier("home", { accessibility.home() }, { shell.home() }, { root.home() })
     }
 
-    /** Abra la pantalla de notificaciones. */
+    /** 打开通知栏。 */
     suspend fun openNotifications(): Boolean = mutex.withLock {
-        accessibility.openNotifications() || if (shell.isAvailable()) shell.openNotifications() else root.openNotifications()
+        runOnTier(
+            "openNotifications",
+            { accessibility.openNotifications() },
+            { shell.openNotifications() },
+            { root.openNotifications() },
+        )
     }
 
-    /** Abra la configuración rápida. */
+    /** 打开快速设置。 */
     suspend fun openQuickSettings(): Boolean = mutex.withLock {
-        accessibility.openQuickSettings() || if (shell.isAvailable()) shell.openQuickSettings() else root.openQuickSettings()
+        runOnTier(
+            "openQuickSettings",
+            { accessibility.openQuickSettings() },
+            { shell.openQuickSettings() },
+            { root.openQuickSettings() },
+        )
     }
 
     /**
-     * Busque el control por texto y haga clic en él.readScreen → partido text/description → tap punto central.
-     * @return ¿Has encontrado y hecho clic?
+     * 按文字找控件并点击。readScreen → 匹配 text/description → tap 中心点。
+     * @return 是否找到并点击了
      */
     suspend fun tapByText(text: String, exact: Boolean = false): Boolean {
-        // readScreen/tap Cada uno es responsable del bloqueo; no puede haber otra capa de Mutex aquí; de lo contrario, se producirá un punto muerto no reentrante.
+        // readScreen/tap 各自负责锁；这里不能再包一层 Mutex，否则会发生不可重入死锁。
         val screen = readScreen()
         val node = screen.findBestTextNode(text, exact) ?: return false
         return tap(node.centerX, node.centerY)
     }
 
     /**
-     * Versión mejorada del clic semántico: cuando no se pueda encontrar el objetivo, deslice hacia arriba la pantalla actual un número limitado de veces. Después de hacer clic, puede esperar a que aparezca el texto de verificación.
+     * 语义点击增强版：找不到目标时在当前屏幕有限次上滑，点击后可等待验证文字出现。
      *
-     * Esta es la primitiva de página larga más importante para la capa de accesibilidad;Shell/Root También se puede reutilizar porque [readScreen] con [swipe]
-     * Se degradará automáticamente según los canales disponibles actualmente. El valor predeterminado no es desplazamiento, manténgalo antiguo [tapByText] semántica de una sola vez.
+     * 这是无障碍层最重要的长页面原语；Shell/Root 也能复用，因为 [readScreen] 与 [swipe]
+     * 会按当前可用通道自动降级。默认不滚动，保持旧 [tapByText] 的一次性语义。
      */
     @Suppress("ReturnCount") // Bounded retry loop has explicit success, verification, and channel-failure exits.
     suspend fun tapByTextWithRetry(text: String, exact: Boolean = false, maxSwipes: Int = 0, verifyText: String? = null): Boolean {
         return tapByTextWithRetryDetailed(text, exact, maxSwipes, verifyText).success
     }
 
-    /** Resultados estructurados de clics semánticos para orquestación de herramientas y auditoría de UI. */
+    /** 语义点击的结构化结果，供工具编排与 UI 审计使用。 */
     data class TextActionResult(
         val success: Boolean,
         val attempts: Int,
@@ -338,7 +469,7 @@ class AutomationManager(
         val matchedLabel: String? = null,
     )
 
-    /** con [tapByTextWithRetry] Misma acción pero mantener observaciones./Verificar detalles. */
+    /** 与 [tapByTextWithRetry] 相同的动作，但保留观察/验证细节。 */
     @Suppress("ReturnCount") // Each exit represents a distinct observable action outcome.
     suspend fun tapByTextWithRetryDetailed(
         text: String,
@@ -426,7 +557,7 @@ class AutomationManager(
      */
     suspend fun doubleTap(x: Int, y: Int): Boolean = mutex.withLock {
         if (accessibility.isAvailable()) {
-            // dispatchGesture No se pueden acumular dos clics en un gesto,Utilice dos clics rápidos para aproximarse a un doble clic.
+            // dispatchGesture 无法在一个手势里叠两次点击,用两次快速点击近似双击。
             if (accessibility.tap(x, y)) {
                 kotlinx.coroutines.delay(100)
                 return@withLock accessibility.tap(x, y)
@@ -466,7 +597,63 @@ class AutomationManager(
         return ScreenSnapshot(info = info, screenshotPng = shot, version = version)
     }
 
-    /** Nivel más alto disponible(Sin permiso para regresar NONE). */
+    /** 最高可用层级(无权限返回 NONE)。 */
+    /**
+     * 自动化需要用到的系统设置页。
+     *
+     * 存在的意义：模型发现某层没开时，只能告诉用户「去设置里开一下」——
+     * 用户得自己在十几层菜单里找。有了它，Agent 可以直接把用户送到正确的那一页。
+     */
+    enum class SystemSettingsTarget(val wireName: String) {
+        ACCESSIBILITY("accessibility"),
+        NOTIFICATION_ACCESS("notification_access"),
+        OVERLAY("overlay"),
+        BATTERY_OPTIMIZATION("battery"),
+        APP_DETAILS("app_details"),
+        ;
+
+        companion object {
+            fun fromWire(value: String?): SystemSettingsTarget? = entries.firstOrNull { it.wireName == value?.trim()?.lowercase() }
+        }
+    }
+
+    /**
+     * 打开对应系统设置页。返回是否成功启动（厂商可能不实现某个 action，逐个降级）。
+     *
+     * 走 [io.zer0.muse.automation.ui.openAutomationSettings]：它逐个候选 Intent 检查可解析性并捕获
+     * ActivityNotFoundException —— 厂商系统缺实现时不会把宿主 Activity 弄崩。
+     */
+    fun openSystemSettings(target: SystemSettingsTarget): Boolean {
+        val pkgUri = android.net.Uri.parse("package:" + context.packageName)
+        val candidates = when (target) {
+            SystemSettingsTarget.ACCESSIBILITY -> listOf(
+                android.content.Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS),
+            )
+            SystemSettingsTarget.NOTIFICATION_ACCESS -> listOf(
+                android.content.Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS"),
+                android.content.Intent(android.provider.Settings.ACTION_SETTINGS),
+            )
+            SystemSettingsTarget.OVERLAY -> listOf(
+                android.content.Intent(
+                    android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    pkgUri,
+                ),
+                android.content.Intent(android.provider.Settings.ACTION_SETTINGS),
+            )
+            SystemSettingsTarget.BATTERY_OPTIMIZATION -> listOf(
+                android.content.Intent(android.provider.Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS),
+                android.content.Intent(android.provider.Settings.ACTION_SETTINGS),
+            )
+            SystemSettingsTarget.APP_DETAILS -> listOf(
+                android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, pkgUri),
+                android.content.Intent(android.provider.Settings.ACTION_SETTINGS),
+            )
+        }
+        val started = io.zer0.muse.automation.ui.openAutomationSettings(context, candidates)
+        Logger.i(TAG, "打开系统设置页 | target=${target.wireName} | started=$started")
+        return started
+    }
+
     suspend fun highestLevel(): PermissionLevel {
         val s = _permissionState.value
         return when {
@@ -482,17 +669,17 @@ class AutomationManager(
         val shellEnabled: Boolean = false,
         val rootEnabled: Boolean = false,
         val shizukuState: ShizukuAuthorizer.ShizukuState = ShizukuAuthorizer.ShizukuState.NOT_INSTALLED,
-        val shizukuMessage: String = "No detectado",
+        val shizukuMessage: String = "未探测",
     ) {
-        /** Si hay al menos una capa disponible. */
+        /** 是否至少有一层可用。 */
         val anyEnabled: Boolean get() = accessibilityEnabled || shellEnabled || rootEnabled
 
-        /** v2.6.7: Nombre de jerarquía para la salida de la autoprueba (más legible que el nombre de enumeración). */
+        /** v2.6.7: 面向自检输出的层级名（比 enum 名可读）。 */
         fun highestLevelName(): String = when {
             rootEnabled -> "Root"
             shellEnabled -> "Shell(Shizuku/adb)"
-            accessibilityEnabled -> "Accesibilidad"
-            else -> "Ninguno (solo acciones en la aplicación)"
+            accessibilityEnabled -> "无障碍"
+            else -> "无（仅应用内操作）"
         }
     }
 

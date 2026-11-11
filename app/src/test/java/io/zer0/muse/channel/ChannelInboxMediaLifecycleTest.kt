@@ -10,15 +10,15 @@ import java.nio.file.Files
 import java.util.concurrent.atomic.AtomicLong
 
 /**
- * El ciclo de vida de las imágenes base64 en la bandeja de entrada.
+ * 收件箱里图片 base64 的生命周期。
  *
- * La bandeja de entrada es**Colocación de toda la mesa**(`channel_inbox.json`), cada vez que registra/recibe/completa la distribución, el máximo
- * [ChannelInbox.MAX_PENDING_ITEMS] Los registros se vuelven a serializar. La imagen base64 es el único campo grande en este enlace ——
- * Una vez que permanece en la entrada del historial, este byte debe moverse nuevamente para cada transición de estado posterior.
+ * 收件箱是**整表落盘**（`channel_inbox.json`），每次 record / 领取 / 完成派发都把最多
+ * [ChannelInbox.MAX_PENDING_ITEMS] 条记录重新序列化。图片 base64 是这条链路上唯一的大字段 ——
+ * 它一旦留在历史条目里，之后每一次状态迁移都要重新搬运这份字节。
  *
- * Momento correcto: la imagen se ha copiado en ChannelConversationStore cuando se construye el contexto de respuesta automática.
- * entonces**estado final**(Completado/ignorado) debe borrarse; inacabado (PENDING / PROCESSING / BLOCKED)
- * debe ser retenido —— También se utiliza para reintentos, recuperación y revisión manual.
+ * 正确时机：图片在自动回复构造上下文时已经复制进 ChannelConversationStore，
+ * 所以**终态**（已完成 / 已忽略）就该清掉；未完成（PENDING / PROCESSING / BLOCKED）
+ * 必须保留 —— 重试、恢复、人工复核都还要用它。
  */
 class ChannelInboxMediaLifecycleTest {
 
@@ -28,7 +28,7 @@ class ChannelInboxMediaLifecycleTest {
     private lateinit var journal: ChannelInboxJournal
     private val nowMillis = AtomicLong(1_800_000_000_000L)
 
-    /** 1KB La imagen falsa es base64 (lo suficientemente grande como para notarse en el texto del archivo). */
+    /** 1KB 的假图片 base64（够大，能在文件文本里被察觉）。 */
     private val imageBase64 = "iVBORw0KGgo" + "A".repeat(1_000)
 
     @Before
@@ -45,8 +45,7 @@ class ChannelInboxMediaLifecycleTest {
         directory.deleteRecursively()
     }
 
-
-    /** Todos los fragmentos + el texto del archivo único antiguo (se puede afirmar antes y después de la migración). */
+    /** 全部分片 + 旧单文件的文本（迁移前后都能断言）。 */
     private fun persistedText(): String {
         val dir = File(directory, ChannelInbox.INBOX_DIR_NAME)
         val shards = dir.listFiles().orEmpty().filter { it.isFile }
@@ -63,7 +62,7 @@ class ChannelInboxMediaLifecycleTest {
     private fun imageInbound(eventId: String) = ChannelInbox.Inbound(
         platform = "QQ",
         from = "user",
-        summary = "Mensaje con imagen",
+        summary = "图片消息",
         mediaKind = "image",
         mediaBase64 = imageBase64,
         sourceChannelId = "qq-a",
@@ -76,15 +75,15 @@ class ChannelInboxMediaLifecycleTest {
     fun `completed_dispatch_drops_image_bytes_from_inbox`() {
         journal.record(source("e1"), imageInbound("e1"))
         val claimed = journal.claimNextPending()!!
-        assertEquals("El avatar aún debe conservarse durante la distribución./Bytes de imagen utilizados para construir solicitudes visuales.", imageBase64, claimed.mediaBase64)
+        assertEquals("派发中必须还留着头像/图片字节供构造视觉请求", imageBase64, claimed.mediaBase64)
 
         journal.completeDispatch(claimed.dispatchId, ignored = false)
 
         val stored = journal.snapshot().single()
         assertEquals(ChannelInbox.DispatchState.COMPLETED, stored.dispatchState)
-        assertEquals("Una vez completado, la bandeja de entrada ya no debe contener bytes de imagen.", "", stored.mediaBase64)
+        assertEquals("完成之后收件箱不得再持有图片字节", "", stored.mediaBase64)
         assertTrue(
-            "Este base64 ya no debería aparecer en el archivo del disco (de lo contrario, se moverá repetidamente cada vez que se migre el estado)",
+            "落盘文件里不应再出现这份 base64（否则每次状态迁移都在重复搬运）",
             !persistedText().contains("A".repeat(200)),
         )
     }
@@ -105,7 +104,7 @@ class ChannelInboxMediaLifecycleTest {
 
         val stored = journal.snapshot().single()
         assertEquals(ChannelInbox.DispatchState.BLOCKED, stored.dispatchState)
-        assertEquals("Es posible que también necesites mirar esta imagen para una revisión manual.BLOCKED debe ser retenido", imageBase64, stored.mediaBase64)
+        assertEquals("人工复核可能还要看这张图，BLOCKED 必须保留", imageBase64, stored.mediaBase64)
     }
 
     @Test
@@ -116,16 +115,16 @@ class ChannelInboxMediaLifecycleTest {
 
         val stored = journal.snapshot().single()
         assertEquals(ChannelInbox.DispatchState.PENDING, stored.dispatchState)
-        assertEquals("Reintentar también requiere reconstruir la solicitud, que debe conservarse", imageBase64, stored.mediaBase64)
+        assertEquals("重试还要重新构造请求，必须保留", imageBase64, stored.mediaBase64)
     }
 
     @Test
     fun `legacy_completed_entry_is_stripped_on_restore`() {
-        // Simule la ubicación de versiones antiguas: las entradas del historial contienen base64.
+        // 模拟旧版本落盘：历史条目里带着 base64。
         val legacy = ChannelInbox.Inbound(
             platform = "QQ",
             from = "user",
-            summary = "fotos antiguas",
+            summary = "旧图片",
             mediaKind = "image",
             mediaBase64 = imageBase64,
             dispatchId = "old-1",
@@ -143,7 +142,7 @@ class ChannelInboxMediaLifecycleTest {
 
         assertEquals("", restored.snapshot().single().mediaBase64)
         assertTrue(
-            "Los resultados de la reducción deben reescribirse inmediatamente después de la recuperación para evitar tener que moverlos nuevamente la próxima vez.",
+            "恢复后应立即把精简结果写回，避免下次启动再搬一遍",
             !persistedText().contains("A".repeat(200)),
         )
     }

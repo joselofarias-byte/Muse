@@ -30,10 +30,10 @@ import java.io.File
 import java.nio.file.Files
 
 /**
- * `system.status` carga útil, apertura de volumen, mapeo de respaldo y comportamiento de enfoque.
+ * `system.status` 的载荷、体积口径、备份映射与焦点行为。
  *
- * El volumen y la copia de seguridad se pueden verificar sin pasar por el tiempo de ejecución de Android.:Se puede inyectar el directorio raíz de estadísticas del directorio.,Las asignaciones de respaldo son funciones puras.
- * La estructura de acuse de recibo pasa por la puerta de enlace y se conecta una vez,La afirmación es el JSON realmente recibido por el navegador.
+ * 体积与备份两块不经过 Android 运行时也能验:目录统计的根目录可注入,备份映射是纯函数。
+ * 回执结构走网关真连一次,断言的是浏览器真正收到的那条 JSON。
  */
 class HostSystemStatusTest {
 
@@ -147,9 +147,9 @@ class HostSystemStatusTest {
         assertEquals(55, payload.battery?.level)
         assertEquals(true, payload.battery?.charging)
 
-        // Lo que se lee en la página web es JSON: siete campos de nivel superior, nada menos que uno.,capabilities Los seis elementos son literales booleanos.
+        // 网页端读到的是 JSON:七个顶层字段一个不少,capabilities 六项都是布尔字面量。
         val raw = browser.rawEvents.first { it.contains(HostSystemStatusReads.TYPE) }
-        val wire = AppJson.parseToJsonElement(raw).jsonObject["systemStatus"]!!.jsonObject
+        val wire = AppJson.parseToJsonElement(raw).jsonObject["system"]!!.jsonObject
         assertEquals(
             setOf("appVersion", "appVersionCode", "uptimeMs", "storage", "backup", "capabilities", "battery"),
             wire.keys,
@@ -157,14 +157,14 @@ class HostSystemStatusTest {
         val capabilities = wire["capabilities"]!!.jsonObject
         assertEquals(CAPABILITY_KEYS, capabilities.keys)
         capabilities.forEach { (key, value) ->
-            assertTrue("$key Debe ser un valor booleano,En realidad $value", (value as? JsonPrimitive)?.booleanOrNull != null)
+            assertTrue("$key 必须是布尔值,实际是 $value", (value as? JsonPrimitive)?.booleanOrNull != null)
         }
         assertEquals(
             setOf("databaseBytes", "mediaBytes", "voiceBytes", "workspaceBytes", "cacheBytes", "totalAppBytes"),
             wire["storage"]!!.jsonObject.keys,
         )
 
-        // Los nuevos comandos también deben declararse en el bit de capacidad de la instantánea.,La página web decide si enviar este comando en función de esto.
+        // 新命令也要在快照的能力位里声明,网页端据此决定要不要发这条命令。
         val snapshot = browser.events.first { it.type == "state.snapshot" }
         assertTrue("system_status" in snapshot.capabilityFlags)
 
@@ -201,11 +201,11 @@ class HostSystemStatusTest {
         assertNull(payload.backup.lastBackupAt)
 
         val raw = browser.rawEvents.first { it.contains(HostSystemStatusReads.TYPE) }
-        val capabilities = AppJson.parseToJsonElement(raw).jsonObject["systemStatus"]!!
+        val capabilities = AppJson.parseToJsonElement(raw).jsonObject["system"]!!
             .jsonObject["capabilities"]!!.jsonObject
         assertEquals(CAPABILITY_KEYS, capabilities.keys)
         capabilities.forEach { (key, value) ->
-            assertEquals("$key debe ser falso en lugar de null", false, (value as JsonPrimitive).booleanOrNull)
+            assertEquals("$key 必须是 false 而不是 null", false, (value as JsonPrimitive).booleanOrNull)
         }
 
         browser.incoming.close()
@@ -221,7 +221,7 @@ class HostSystemStatusTest {
         val workspace = tempDir.resolve("workspace").apply { mkdirs() }
         val cache = tempDir.resolve("cache").apply { mkdirs() }
 
-        // Cada directorio tiene una capa de subdirectorios.,Por cierto, demuestra que las estadísticas son recursivas en lugar de simplemente mirar los archivos de nivel superior.
+        // 每个目录都放一层子目录,顺带证明统计是递归而不是只看顶层文件。
         writeBytes(database, "muse.db", 1_000)
         writeBytes(File(database, "wal").apply { mkdirs() }, "muse.db-wal", 24)
         writeBytes(media, "a.png", 2_000)
@@ -278,7 +278,7 @@ class HostSystemStatusTest {
         assertNull(none.lastBackupAt)
         assertNull(none.lastBackupBytes)
         assertEquals(true, none.autoBackupEnabled)
-        // La copia de seguridad en la nube está configurada pero la sincronización automática no está activada:No puede funcionar por sí solo,No cuenta como "habilitado".
+        // 配了云备份但没开自动同步:不会自己跑,不算「已开启」。
         assertEquals(false, none.cloudBackupEnabled)
 
         val recorded = backupStatusOf(
@@ -301,7 +301,7 @@ class HostSystemStatusTest {
     @Test
     fun `system status answers without holding the focus lock`() = runTest {
         val gateway = gateway(HostReadSources(system = FakeSystemStatusSource(HostSystemStatus(appVersion = "2.6.18"))))
-        // La conexión conectada primero mantiene el foco;No puedo conectar el que esta en la parte de atrás,Simular "otro navegador".
+        // 先连上的连接持焦点;后连上的拿不到,模拟「另一个浏览器」。
         val holder = FakeConnection()
         val holderJob = launch { gateway.serve(holder.session) }
         advanceUntilIdle()
@@ -317,7 +317,7 @@ class HostSystemStatusTest {
         assertNull(status.error)
         assertEquals("2.6.18", status.systemStatus?.appVersion)
 
-        // Los comandos de escritura emitidos en la misma conexión aún están bloqueados por el bloqueo de enfoque. —— Explique que la afirmación anterior no es "el bloqueo no surte efecto" sino "el modo de solo lectura no requiere un bloqueo".
+        // 同一连接发写命令仍被焦点锁挡住 —— 说明上一条不是「锁没生效」而是「只读不需要锁」。
         other.send("""{"protocolVersion":1,"type":"session.rename","requestId":"req-rename","sessionId":"s-1","title":"x"}""")
         advanceUntilIdle()
         val rejected = other.events.first { it.requestId == "req-rename" }
@@ -332,7 +332,7 @@ class HostSystemStatusTest {
     }
 
     private companion object {
-        /** capabilities seis llaves:Uno menos o más se considera un cambio de acuerdo. */
+        /** capabilities 的六个键:少一个、多一个都算协议变更。 */
         val CAPABILITY_KEYS = setOf(
             "accessibility",
             "shell",

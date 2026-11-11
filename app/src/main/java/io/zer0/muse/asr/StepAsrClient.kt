@@ -6,6 +6,7 @@ import android.os.SystemClock
 import io.zer0.common.Logger
 import io.zer0.common.resultOf
 import io.zer0.muse.asr.AudioAmplitude.appendAmplitude
+import io.zer0.muse.util.GlobalCoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -35,33 +36,33 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
- * Controlador ASR de transmisión de audio por pasos.
+ * 阶跃星辰 Step-Audio 流式 ASR Controller。
  *
- * Step Punto final compatible con OpenAI Whisper(POST {baseUrl}/v1/audio/transcriptions)No compatible
- * WebSocket transmisión,Por lo tanto, se adopta una estrategia de carga por lotes segmentada.:
- *  - PCM acumulado en el buffer durante la grabación
- *  - por umbral de tiempo(Predeterminado 30s)o umbral de bytes(6MB)gatillo flush
- *  - cada vez flush:PCM -> WAV -> HTTP POST -> Analizar respuesta -> devolución de llamada onTranscriptChange
- *  - [stop] hazlo por última vez flush,Espere a que se complete el trabajo de descarga antes de cortar. Idle
- *  - FlushJob en serie evita el desorden simultáneo
+ * Step 的 OpenAI Whisper 兼容端点(POST {baseUrl}/v1/audio/transcriptions)不支持
+ * WebSocket 流式,因此采用分段批量上传策略:
+ *  - 录音期间 PCM 累积到缓冲区
+ *  - 按时间阈值(默认 30s)或字节阈值(6MB)触发 flush
+ *  - 每次 flush:PCM -> WAV -> HTTP POST -> 解析响应 -> 回调 onTranscriptChange
+ *  - [stop] 时做最后一次 flush,等 flushJob 完成才切 Idle
+ *  - 串行 flushJob 避免并发乱序
  *
- * Solicitar(multipart/form-data):
- *  - file: archivo de audio(wav Formato,PCM 16-bit)
- *  - model: Nombre del modelo(Predeterminado step-audio-r1.1)
- *  - language: Idioma(Opcional)
+ * 请求(multipart/form-data):
+ *  - file: 音频文件(wav 格式,PCM 16-bit)
+ *  - model: 模型名(默认 step-audio-r1.1)
+ *  - language: 语种(可选)
  *
- * respuesta(JSON):
- *  - { "text": "Reconocer texto" }
+ * 响应(JSON):
+ *  - { "text": "识别文本" }
  *
- * @param config ASR Configuración(Debe tener apiKey y model)
- * @param baseUrl API Conceptos básicos URL(Predeterminado https://api.stepfun.com)
+ * @param config ASR 配置(必须有 apiKey 和 model)
+ * @param baseUrl API 基础 URL(默认 https://api.stepfun.com)
  */
 class StepAsrController(
     private val config: AsrConfig,
     private val baseUrl: String = config.baseUrl.ifBlank { DEFAULT_BASE_URL },
 ) : ASRController {
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate + GlobalCoroutineExceptionHandler)
 
     private val _state = MutableStateFlow(ASRState(isAvailable = config.apiKey.isNotBlank()))
     private val isDisposed = AtomicBoolean(false)
@@ -73,15 +74,15 @@ class StepAsrController(
     private val flushMutex = Mutex()
     private var onTranscriptChange: ((String) -> Unit)? = null
 
-    // PCM buffer(bufferLock Copia y reinicio sincrónicos)
+    // PCM 缓冲区(bufferLock 同步拷贝与重置)
     private val pcmBuffer = ByteArrayOutputStream()
     private val bufferLock = Any()
     private var totalTranscript = StringBuilder()
 
-    // B-29: Recuento de fallos de reconocimiento continuo,Descartar el segmento después de alcanzar el límite superior,Evite el apilamiento de reescritura infinita.
+    // B-29: 连续识别失败计数,达到上限后丢弃该段,避免无限回写堆积。
     private var consecutiveFlushFailures = 0
 
-    // Umbral de segmentación:30 segundos o 6 MB, lo que ocurra primero
+    // 分段阈值:30 秒或 6MB 先到先触发
     private val segmentDurationMs = SEGMENT_DURATION_MS
     private val maxSegmentBytes = MAX_SEGMENT_BYTES
     private var segmentStartElapsedMs = 0L
@@ -114,12 +115,12 @@ class StepAsrController(
 
     @SuppressLint("MissingPermission")
     private fun startRecording() {
-        // El bucle de grabación se ejecuta dentro de la rutina IO.,Utilice isActive internamente para comprobar el estado de cancelación
+        // 录音循环在 IO 协程内运行,内部用 isActive 检查取消状态
         recordJob = scope.launch(Dispatchers.IO) {
-            // Verifique los permisos y cree grabadoras a partir de múltiples fuentes compatibles.
+            // 检查权限并按多个兼容音源创建录音器。
             val capture = AsrAudioCapture.create(config.sampleRate, TAG)
             if (capture == null) {
-                setError("Falló la inicialización del micrófono,Por favor verifique los permisos o el dispositivo de grabación.")
+                setError("麦克风初始化失败,请检查权限或录音设备")
                 return@launch
             }
             val recorder = capture.recorder
@@ -133,26 +134,26 @@ class StepAsrController(
                 while (coroutineContext[Job]?.isActive == true) {
                     val read = recorder.read(buffer, 0, buffer.size)
                     if (read > 0) {
-                        // 1. Calcular amplitud -> actualizar state(normalización 0-1f)
+                        // 1. 计算振幅 -> 更新 state(归一化 0-1f)
                         val amplitude = AudioAmplitude.calculateRmsAmplitude(buffer, read)
                         _state.update { it.copy(amplitudes = it.amplitudes.appendAmplitude(amplitude)) }
 
-                        // 2. acumulado hasta pcmBuffer(bufferLock sincronizar),Al mismo tiempo, determine si se alcanza el umbral de segmentación.
+                        // 2. 累积到 pcmBuffer(bufferLock 同步),同时判断是否达到分段阈值
                         val shouldFlush = synchronized(bufferLock) {
                             pcmBuffer.write(buffer, 0, read)
                             val elapsed = SystemClock.elapsedRealtime() - segmentStartElapsedMs
                             pcmBuffer.size() >= maxSegmentBytes || elapsed >= segmentDurationMs
                         }
-                        // 3. súper umbral -> gatillo flush(de serie,No bloquea el bucle de grabación.)
+                        // 3. 超阈值 -> 触发 flush(串行,不阻塞录音循环)
                         if (shouldFlush) {
                             triggerFlush()
                         }
                     } else if (read == 0) {
                         delay(10L)
                     } else if (read < 0) {
-                        Logger.w(TAG, "AudioRecord.read error: $read")
+                        Logger.w(TAG, "AudioRecord.read 错误: $read")
                         if (shouldReportAsrCaptureFailure(_state.value.status, coroutineContext[Job]?.isActive == true)) {
-                            setError("AudioRecord error de lectura: $read")
+                            setError("AudioRecord 读取错误: $read")
                         }
                         break
                     }
@@ -160,9 +161,9 @@ class StepAsrController(
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (e: Exception) {
-                Logger.w(TAG, "Error de grabación: ${e.message}")
+                Logger.w(TAG, "录音失败: ${e.message}")
                 if (shouldReportAsrCaptureFailure(_state.value.status, coroutineContext[Job]?.isActive == true)) {
-                    setError(e.message ?: "Error de grabación")
+                    setError(e.message ?: "录音失败")
                 }
             } finally {
                 releaseRecorder()
@@ -171,8 +172,8 @@ class StepAsrController(
     }
 
     /**
-     * disparar una vez flush(de serie):Sólo se permite ejecutar un FlushJob al mismo tiempo,Evite que los resultados de último llegado primero en ser atendidos estén desordenados.
-     * PCM Copiar y restablecer el búfer en [bufferLock] completado dentro de,HTTP La solicitud se ejecutó fuera de la cerradura.
+     * 触发一次 flush(串行):同一时刻只允许一个 flushJob 运行,避免后发先至导致结果乱序。
+     * PCM 拷贝与 buffer 重置在 [bufferLock] 内完成,HTTP 请求在锁外执行。
      */
     private fun triggerFlush() {
         if (flushJob?.isActive == true) return
@@ -181,19 +182,19 @@ class StepAsrController(
                 resultOf { flushSegment() }
                     .onError { message, throwable ->
                         val error = throwable?.message ?: message
-                        Logger.w(TAG, "Error al vaciar el segmento: $error")
-                        setError("La segmentación del reconocimiento de voz falló: $error")
+                        Logger.w(TAG, "分段 flush 失败: $error")
+                        setError("语音识别分段失败: $error")
                     }
             }
         }
     }
 
     /**
-     * Sacar el buffer actual PCM,Convierta WAV y luego POST al paso /v1/audio/transcripciones.
-     * Los resultados del reconocimiento se adjuntan a [totalTranscript] Y pase la devolución de llamada onTranscriptChange.
+     * 取出当前缓冲区里的 PCM,转 WAV 后 POST 到 Step /v1/audio/transcriptions。
+     * 识别结果追加到 [totalTranscript] 并通过 onTranscriptChange 回调。
      */
     private suspend fun flushSegment() {
-        // bufferLock dentro:copiar PCM -> restablecer buffer -> Restablecer el tiempo dividido
+        // bufferLock 内:拷贝 PCM -> 重置 buffer -> 重置分段计时
         val pcmCopy = synchronized(bufferLock) {
             if (pcmBuffer.size() == 0) return
             val bytes = pcmBuffer.toByteArray()
@@ -202,51 +203,51 @@ class StepAsrController(
             bytes
         }
 
-        // filtro de segmento más corto:PCM < 3200 bytes(100ms @ 16kHz 16bit mono)saltar,Evita los errores 400
+        // 最短段过滤:PCM < 3200 bytes(100ms @ 16kHz 16bit mono)跳过,避免 400 错误
         if (pcmCopy.size < MIN_SEGMENT_BYTES) {
-            Logger.d(TAG, "Saltar descarga: PCM demasiado corto(${pcmCopy.size} bytes)")
+            Logger.d(TAG, "跳过 flush:PCM 过短(${pcmCopy.size} bytes)")
             return
         }
 
         val wavBytes = PcmWavConverter.toWav(pcmCopy, config.sampleRate, channels = 1, bitsPerSample = 16)
         val text = recognizeSegment(wavBytes)
         if (!text.isNullOrBlank()) {
-            // Reconocimiento exitoso:Restablecer el recuento de errores consecutivos,Agregar resultados
+            // 识别成功:重置连续失败计数,追加结果
             consecutiveFlushFailures = 0
             totalTranscript.append(text).append(" ")
             val transcript = totalTranscript.toString().trim()
             _state.update { it.copy(transcript = transcript, errorMessage = null) }
             onTranscriptChange?.invoke(transcript)
         } else {
-            // B-29: El reconocimiento falló(4xx/Regreso del fracaso final null)tiempo,Este segmento de PCM se ha eliminado y no se puede restaurar.
-            //     Reparación:Escribe el segmento nuevamente al comienzo del búfer.,Reservado para el próximo reintento de fusión;Si la falla continua alcanza el límite superior, se descartará.
+            // B-29: 识别失败(4xx/最终失败返回 null)时,该段 PCM 已被取出即 reset、无法恢复。
+            //     修复:把该段回写到 buffer 开头,保留供下次 flush 合并重试;连续失败达上限则丢弃。
             consecutiveFlushFailures++
             if (consecutiveFlushFailures < MAX_CONSECUTIVE_FLUSH_FAILURES) {
                 prependToBuffer(pcmCopy)
-                Logger.w(TAG, "El reconocimiento falló,escribir de nuevo ${pcmCopy.size} Bytes que se volverán a intentar la próxima vez que se complete la combinación(fracasos consecutivos $consecutiveFlushFailures)")
+                Logger.w(TAG, "识别失败,回写 ${pcmCopy.size} 字节待下次合并重试(连续失败 $consecutiveFlushFailures)")
             } else {
-                Logger.w(TAG, "Fallo de reconocimiento continuo $consecutiveFlushFailures veces,descartar este segmento ${pcmCopy.size} bytes")
+                Logger.w(TAG, "连续识别失败 $consecutiveFlushFailures 次,丢弃该段 ${pcmCopy.size} 字节")
                 consecutiveFlushFailures = 0
             }
         }
     }
 
     /**
-     * B-29: Escriba el PCM del segmento fallido al principio del búfer,Se garantiza que se fusionará con nuevos cuadros agregados por el hilo de grabación.
-     * en [bufferLock] completado dentro de,Evite la competencia de lectura y escritura con bucles de grabación.
+     * B-29: 把失败的段 PCM 回写到 buffer 开头,保证与录音线程追加的新帧合并。
+     * 在 [bufferLock] 内完成,避免与录音循环的读写竞争。
      */
     private fun prependToBuffer(pcm: ByteArray) {
         synchronized(bufferLock) {
             val current = pcmBuffer.toByteArray()
             pcmBuffer.reset()
-            pcmBuffer.write(pcm) // Primer párrafo antiguo,Reservado para reidentificación durante la próxima descarga
-            pcmBuffer.write(current) // Posteriormente, empalmar nuevos fotogramas acumulados por el hilo de grabación.
+            pcmBuffer.write(pcm) // 旧段在前,保留供下次 flush 时重新识别
+            pcmBuffer.write(current) // 其后拼接录音线程已累积的新帧
         }
     }
 
     /**
-     * Llame al punto final compatible con Step OpenAI Whisper para identificar una pieza de audio WAV.
-     * Reutilice la lógica multiparte del StepAsrClient original.
+     * 调用 Step OpenAI Whisper 兼容端点识别一段 WAV 音频。
+     * 复用原 StepAsrClient 的 multipart 逻辑。
      */
     private suspend fun recognizeSegment(wavBytes: ByteArray): String? = withContext(Dispatchers.IO) {
         val wavBody = wavBytes.toRequestBody("audio/wav".toMediaType())
@@ -265,14 +266,14 @@ class StepAsrController(
             .build()
         var lastError: String? = null
         var retryableResponse = true
-        // F-34: Desconectar y volver a conectar — red/5xx/429 Si falla, el mismo segmento de audio se retransmitirá según un retroceso exponencial.,Límite superior RECONNECT_MAX_ATTEMPTS.
+        // F-34: 断线重连 — 网络/5xx/429 失败按指数退避补发同一段音频,上限 RECONNECT_MAX_ATTEMPTS。
         for (attempt in 0 until AsrConstants.RECONNECT_MAX_ATTEMPTS) {
             try {
                 val result = client.newCall(request).execute().use { resp: Response ->
                     if (!resp.isSuccessful) {
-                        lastError = "servicio de identificación HTTP ${resp.code}: ${resp.message}"
+                        lastError = "识别服务 HTTP ${resp.code}: ${resp.message}"
                         Logger.w(TAG, "Step ASR HTTP ${resp.code}: ${resp.message}")
-                        // 4xx(especialmente 401/403/413)No tiene sentido volver a intentarlo;5xx/429 Déjelo para el próximo reintento breve.
+                        // 4xx(尤其 401/403/413)重试没有意义;5xx/429 留给下一次短重试。
                         if (!isRetryableAsrHttpStatus(resp.code)) {
                             retryableResponse = false
                             return@use null
@@ -287,14 +288,14 @@ class StepAsrController(
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (e: java.io.IOException) {
-                lastError = e.message ?: "La conexión de red falló"
-                Logger.w(TAG, "Step ASR Solicitud fallida(attempt=${attempt + 1}): ${e.message}")
+                lastError = e.message ?: "网络连接失败"
+                Logger.w(TAG, "Step ASR 请求失败(attempt=${attempt + 1}): ${e.message}")
             }
             if (attempt + 1 < AsrConstants.RECONNECT_MAX_ATTEMPTS) {
                 delay(AsrConstants.HTTP_RETRY_BACKOFF_MS * (attempt + 1))
             }
         }
-        lastError?.let { setError("Error en el reconocimiento de voz: $it") }
+        lastError?.let { setError("语音识别失败: $it") }
         null
     }
 
@@ -309,13 +310,13 @@ class StepAsrController(
         }
     }
 
-    /** Análisis de respuestas de transcripción compatibles con OpenAI,Extraer campo de texto. */
+    /** 解析 OpenAI 兼容 transcription 响应,提取 text 字段。 */
     private fun parseTranscriptionResponse(body: String): String? {
         val fromJson = resultOf {
             val obj = Json.parseToJsonElement(body) as? JsonObject
             (obj?.get("text") as? JsonPrimitive)?.content
         }.getOrNull()
-        // Algunas implementaciones de Paso/tránsito se ignoran response_format,Devuelve texto sin formato directamente.
+        // 部分 Step/中转实现忽略 response_format,直接返回纯文本。
         return fromJson?.takeIf { it.isNotBlank() } ?: body.takeIf { it.isNotBlank() }
     }
 
@@ -324,7 +325,7 @@ class StepAsrController(
         _state.update { it.copy(status = ASRStatus.Stopping) }
         recordJob?.cancel()
         releaseRecorder()
-        // La última descarga: llame directamente después de que se complete el trabajo de descarga actual flushSegment(Omitir la verificación de concurrencia de triggerFlush)
+        // 最后一次 flush:等当前 flushJob 完成后直接调用 flushSegment(绕过 triggerFlush 的并发检查)
         scope.launch(Dispatchers.IO) {
             try {
                 flushJob?.join()
@@ -332,8 +333,8 @@ class StepAsrController(
             } catch (e: kotlin.coroutines.cancellation.CancellationException) {
                 throw e
             } catch (e: Exception) {
-                Logger.w(TAG, "La descarga final falló: ${e.message}")
-                setError(e.message ?: "Step ASR La descarga final falló")
+                Logger.w(TAG, "最终 flush 失败: ${e.message}")
+                setError(e.message ?: "Step ASR 最终 flush 失败")
             } finally {
                 _state.update { it.afterAsrStop() }
             }
@@ -368,28 +369,28 @@ class StepAsrController(
         private const val TAG = "StepAsrController"
         private const val DEFAULT_BASE_URL = "https://api.stepfun.com"
 
-        /** Umbral de tiempo fraccionado:30 Active la descarga una vez por segundo. */
+        /** 分段时间阈值:30 秒触发一次 flush。 */
         private const val SEGMENT_DURATION_MS = 30_000L
 
-        /** Umbral de bytes de fragmento:6MB gatillo flush(plazo de entrega,Evite segmentos individuales que sean demasiado grandes). */
+        /** 分段字节阈值:6MB 触发 flush(提前量,避免单段过大)。 */
         private const val MAX_SEGMENT_BYTES = 6 * 1024 * 1024
 
-        /** Número mínimo de bytes en el segmento:16kHz/16bit/mono abajo 100ms = 3200 bytes,Saltos más cortos que esto evitan 400. */
+        /** 最短段字节数:16kHz/16bit/mono 下 100ms = 3200 bytes,短于此值跳过避免 400。 */
         private const val MIN_SEGMENT_BYTES = 3200
 
-        // B-29: Límite superior de falla de reconocimiento continuo de un solo segmento,Descartar el segmento después de alcanzar,Evite que la reescritura infinita provoque una acumulación de búfer.3 Jitter de la red de cobertura+2subtransitorio.
+        // B-29: 单段连续识别失败上限,达到后丢弃该段,防止无限回写导致缓冲堆积。3 次覆盖网络抖动+2次瞬态。
         private const val MAX_CONSECUTIVE_FLUSH_FAILURES = 3
     }
 }
 
 /**
- * PCM -> WAV Herramientas de embalaje.
+ * PCM -> WAV 封装工具。
  *
- * WAV Estructura de archivos(44 Encabezado de bytes + datos PCM):
- *  - RIFF chunk descriptor(12 bytes): "RIFF" + tamaño de archivo + "WAVE"
- *  - fmt sub-chunk(24 bytes): "fmt " + Tamaño de subbloque + formato de audio + canales + frecuencia de muestreo + velocidad de bytes + alineación de bloque + profundidad de bits
- *  - data sub-chunk(8 bytes): "data" + Tamaño de datos
- *  - PCM datos
+ * WAV 文件结构(44 字节头 + PCM 数据):
+ *  - RIFF chunk descriptor(12 字节): "RIFF" + 文件大小 + "WAVE"
+ *  - fmt sub-chunk(24 字节): "fmt " + 子块大小 + 音频格式 + 声道 + 采样率 + 字节率 + 块对齐 + 位深度
+ *  - data sub-chunk(8 字节): "data" + 数据大小
+ *  - PCM 数据
  */
 internal object PcmWavConverter {
     fun toWav(pcm: ByteArray, sampleRate: Int, channels: Int = 1, bitsPerSample: Int = 16): ByteArray {
@@ -401,22 +402,22 @@ internal object PcmWavConverter {
         val out = ByteArrayOutputStream(44 + dataSize)
         val dos = java.io.DataOutputStream(out)
 
-        // RIFF cabeza
+        // RIFF 头
         dos.writeBytes("RIFF")
         dos.writeIntLittleEndian(chunkSize)
         dos.writeBytes("WAVE")
 
-        // fmt subbloque
+        // fmt 子块
         dos.writeBytes("fmt ")
-        dos.writeIntLittleEndian(16) // PCM Formatear el tamaño del subbloque
-        dos.writeShortLittleEndian(1) // formato de audio = 1 (PCM)
+        dos.writeIntLittleEndian(16) // PCM 格式子块大小
+        dos.writeShortLittleEndian(1) // 音频格式 = 1 (PCM)
         dos.writeShortLittleEndian(channels)
         dos.writeIntLittleEndian(sampleRate)
         dos.writeIntLittleEndian(byteRate)
         dos.writeShortLittleEndian(blockAlign)
         dos.writeShortLittleEndian(bitsPerSample)
 
-        // data subbloque
+        // data 子块
         dos.writeBytes("data")
         dos.writeIntLittleEndian(dataSize)
         dos.write(pcm)

@@ -5,7 +5,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * v2.x cierre del legado:channel_media Prueba única de función pura de estrategia de limpieza(No toques el sistema de archivos.).
+ * v2.x 遗留收尾:channel_media 清理策略纯函数单测(不触碰文件系统)。
  */
 class ChannelMediaCleanerTest {
 
@@ -28,7 +28,7 @@ class ChannelMediaCleanerTest {
     fun deletesOnlyFilesOlderThanTtl() {
         val files = listOf(
             meta("fresh.bin", ageMs = 1 * day, size = 10),
-            meta("edge.bin", ageMs = 30 * day, size = 10), // exactamente igual a TTL,no borrar(Eliminar sólo si es estrictamente mayor que)
+            meta("edge.bin", ageMs = 30 * day, size = 10), // 恰好等于 TTL,不删(严格大于才删)
             meta("stale.bin", ageMs = 31 * day, size = 10),
         )
 
@@ -44,7 +44,7 @@ class ChannelMediaCleanerTest {
 
     @Test
     fun sizeCapEvictsLeastRecentlyModifiedFirst() {
-        // No hay archivos caducados,tamaño total 300 > límite superior 250 → Eliminar a los más viejos hasta ≤ 250
+        // 无过期文件,总大小 300 > 上限 250 → 淘汰最旧的直到 ≤ 250
         val files = listOf(
             meta("a_old.bin", ageMs = 5 * day, size = 100),
             meta("b_mid.bin", ageMs = 3 * day, size = 100),
@@ -63,8 +63,8 @@ class ChannelMediaCleanerTest {
 
     @Test
     fun sizeCapEvictsMultipleOldestUntilUnderLimit() {
-        // total 500 > límite superior 150 → Eliminar los dos más antiguos.(100+100),quedan 300 >150 → borrar otro → quedan 200>150
-        // Continuar eliminando → izquierda 100 ≤150 detener. En realidad, los más antiguos se eliminan primero uno por uno.
+        // 总 500 > 上限 150 → 删两个最旧的(100+100),剩 300 仍 >150 → 再删一个 → 剩 200 仍>150
+        // 继续删 → 剩 100 ≤150 停。实际最旧优先逐个删。
         val files = listOf(
             meta("f1.bin", ageMs = 5 * day, size = 100),
             meta("f2.bin", ageMs = 4 * day, size = 100),
@@ -80,13 +80,13 @@ class ChannelMediaCleanerTest {
             maxTotalBytes = 150,
         )
 
-        // Eliminar del más antiguo:Eliminar f1..f4 y salir 100 ≤ 150 detenerse → Reservar f5
+        // 从最旧删起:删 f1..f4 后剩 100 ≤ 150 停 → 保留 f5
         assertEquals(listOf("f1.bin", "f2.bin", "f3.bin", "f4.bin"), deleted)
     }
 
     @Test
     fun ttlAndSizeCapCombine() {
-        // stale Eliminado por TTL primero;total restante 300 > límite superior 250 → Luego elimina el más viejo. fresh_old
+        // stale 先被 TTL 删;剩余总 300 > 上限 250 → 再淘汰最旧的 fresh_old
         val files = listOf(
             meta("stale.bin", ageMs = 40 * day, size = 999),
             meta("fresh_old.bin", ageMs = 5 * day, size = 150),

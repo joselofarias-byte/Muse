@@ -7,7 +7,7 @@
     <string name="assistant_detail_basic">Basic</string>
     <string name="assistant_detail_basic_desc">Name / Avatar / Model / Sampling</string>
     <string name="assistant_detail_prompt">Prompt</string>
-    <string name="assistant_detail_prompt_desc">systemPrompt / Message Template / Preset Messages</string>
+    <string name="assistant_detail_prompt_desc">Prompt, message template and preset messages</string>
     <string name="assistant_detail_extensions">Extensions</string>
     <string name="assistant_detail_extensions_desc">Quick Messages / Lorebook / Injection / Skills / MCP</string>
     <string name="assistant_detail_memory">Memory</string>
@@ -19,7 +19,7 @@
     <string name="assistant_detail_pick_image">Pick Image</string>
     <string name="assistant_detail_clear">Clear</string>
     <string name="assistant_detail_avatar">Avatar</string>
-    <string name="assistant_detail_avatar_image_set">Image avatar set</string>
+    <string name="assistant_detail_avatar_image_set">Avatar image saved</string>
     <string name="assistant_detail_avatar_emoji">Using Emoji avatar</string>
     <string name="assistant_detail_avatar_initial">Using name initial</string>
     <string name="assistant_detail_name">Name</string>
@@ -28,6 +28,7 @@
     <string name="assistant_detail_exclusive_model">Exclusive Model</string>
     <string name="assistant_detail_temperature">Temperature: %1$s</string>
     <string name="assistant_detail_default">Default</string>
+    <string name="assistant_detail_default_value">Default (%1$s)</string>
     <string name="assistant_detail_use_default">Use Default</string>
     <string name="assistant_detail_top_p_label">Top P (leave empty for default, 0-1)</string>
     <string name="assistant_detail_max_tokens_label">Max Tokens (leave empty for default)</string>
@@ -165,7 +166,7 @@
     <string name="shizuku_apk_not_installed">Shizuku APK not installed</string>
     <string name="shizuku_service_running">Shizuku service running</string>
     <string name="shizuku_service_not_running">Shizuku service not running (start it in the Shizuku app)</string>
-    <string name="shizuku_status_unauthorized_long">Muse is not authorized to use Shizuku</string>
+    <string name="shizuku_status_unauthorized_long">Musa is not authorized to use Shizuku</string>
     <string name="permission_open_shizuku_service">Open Shizuku to start the service</string>
     <string name="permission_action_id_help">1 = Back (BACK)\n2 = Home (HOME)\n3 = Recent tasks (RECENTS)\n4 = Notifications panel (NOTIFICATIONS)\n5 = Quick settings (QUICK_SETTINGS)\n6 = Power dialog (POWER_DIALOG)\n10 = Close notifications shade (DISMISS_NOTIFICATION_SHADE)\n\nQuick tools: ui_back (action_id=1), ui_home (action_id=2)</string>
     <string name="memory_screen_ai_understanding">AI\'s understanding of you</string>
@@ -293,16 +294,16 @@
     <!-- v1.0.4: Notification listener -->
     <string name="settings_screen_notification_listener">Notification Listener</string>
     <string name="channel_page_title">Message channels</string>
-    <string name="connection_center_title">Connections</string>
-    <string name="connection_center_desc">Channels, MCP, plugins &amp; tool approval</string>
+    <string name="connection_center_title">Extensions &amp; connections</string>
+    <string name="connection_center_desc">Channels, MCP, plugins and tool approvals</string>
     <string name="connection_channels_title">Message channels</string>
     <string name="connection_channels_subtitle">%1$d channels configured</string>
     <string name="connection_mcp_title">MCP servers</string>
     <string name="connection_mcp_subtitle">%1$d servers configured</string>
     <string name="connection_plugins_title">Plugins</string>
-    <string name="connection_plugins_subtitle">Manage installed external plugins</string>
+    <string name="connection_plugins_subtitle">%1$d plugins installed; open to review the grants of each</string>
     <string name="connection_tools_title">Tool permissions</string>
-    <string name="connection_tools_subtitle">Approval, trust and safety policies</string>
+    <string name="connection_tools_subtitle">Approvals, grants and safety policy</string>
     <string name="message_action_annotate">Annotate</string>
     <string name="message_annotate_title">Message notes</string>
     <string name="message_annotate_hint">Write a note…</string>
@@ -343,7 +344,7 @@
     <string name="channel_secret_hide">Hide</string>
     <string name="channel_test_connection">Test Connection</string>
     <string name="channel_test_failed">Test failed</string>
-    <string name="channel_owner_select">Which account is you</string>
+    <string name="channel_owner_select">Which account is yours?</string>
     <string name="channel_owner_none">Send a message first to select</string>
     <string name="channel_owner_warning">The selected account will be this channel\'s reply target. Make sure it belongs to you.</string>
     <string name="channel_field_region">Region</string>
@@ -371,6 +372,13 @@
     <string name="channel_type_c2c">Direct</string>
     <string name="channel_auto_reply">Auto reply</string>
     <string name="channel_auto_reply_desc">Run the assistant automatically on incoming messages and reply back (each round consumes model quota)</string>
+    <string name="channel_policy_label">Conversation target policy</string>
+    <string name="channel_policy_open">Everyone (no restriction)</string>
+    <string name="channel_policy_allowlist">Allow only listed targets</string>
+    <string name="channel_policy_denylist">Block listed targets</string>
+    <string name="channel_policy_hint">Applies to inbound auto-replies and outbound sends (including channel send/relay tools); blocked targets are rejected by policy, no model quota spent</string>
+    <string name="channel_policy_targets_label">Target list (chat_id / openid)</string>
+    <string name="channel_policy_targets_hint">Comma- or newline-separated; group chat_id for groups, peer openid for direct chats</string>
     <!-- v2.0.1: Assistant bound to auto reply -->
     <string name="channel_field_assistant">Reply assistant</string>
     <string name="channel_assistant_default">Default assistant</string>
@@ -435,9 +443,7 @@
     <string name="channel_weclaw_scan">Scan to Login</string>
     <string name="channel_weclaw_rescan">Re-login</string>
     <string name="channel_weclaw_unbind">Unbind</string>
-    <string name="channel_weclaw_hint">Connect via WeChat iLink protocol</string>
-    <string name="channel_weclaw_exclusive">Each WeChat account can only be bound to one channel. Binding a new one invalidates the previous one.</string>
-    <string name="channel_weclaw_reply_window">Proactive WeChat notifications require a recent incoming message or reply window. If reminders do not arrive, send this channel a WeChat message to activate that window.</string>
+    <string name="channel_weclaw_unbind_confirm">Unbinding clears the token and the target conversation. Rebinding requires scanning the QR code again.</string>
     <string name="channel_telegram_hint">Get the Bot Token from @BotFather; target is the chat_id (leave blank and auto-reply returns to the sender).</string>
     <string name="channel_dingtalk_hint">Corp ID and app credentials use the current token API; Client ID and Client Secret also open the Stream connection. Robot Code sends replies. API Base URL defaults to https://api.dingtalk.com/v1.0</string>
     <string name="channel_feishu_hint">Get from Feishu Open Platform; events use long connection, no local callback URL needed</string>
@@ -494,7 +500,6 @@
     <string name="search_try_other">Try other keywords</string>
     <string name="search_section_sessions">Sessions</string>
     <string name="search_section_messages">Messages</string>
-    <string name="search_new_session">New Session</string>
     <string name="search_time_today">Today %1$s</string>
     <string name="search_time_yesterday">Yesterday %1$s</string>
 
@@ -565,7 +570,9 @@
     <!-- ===== QR code share/scan ===== -->
     <string name="qr_share_title">Share provider QR code</string>
     <string name="qr_share_cd">Provider config QR code</string>
-    <string name="qr_share_warning">This QR code contains the API Key in plain text. Only share it with trusted recipients.</string>
+    <string name="qr_share_warning">This QR code may include API keys, OAuth secrets, private keys and credentials in request headers, bodies and templates, without encryption. Share it only with trusted recipients.</string>
+    <string name="qr_share_warning_no_key">This QR code excludes API keys, OAuth secrets, private keys and request headers, bodies and templates. URLs and other configuration data remain included. The recipient must enter any required credentials.</string>
+    <string name="qr_share_include_key">Include credentials: API keys, OAuth secrets, private keys, request headers, bodies and templates</string>
     <string name="qr_share_btn">Share QR code</string>
     <string name="qr_scan_title">Scan QR code</string>
     <string name="qr_scan_pick_image">Pick a QR code image from gallery</string>
@@ -603,6 +610,10 @@
     <string name="oauth_login">OAuth Login</string>
     <string name="oauth_login_success">OAuth login successful</string>
     <string name="oauth_login_failed">OAuth login failed: %1$s</string>
+    <string name="oauth_reason_no_browser">Cannot open the browser</string>
+    <string name="oauth_reason_no_activity">No current screen context; please try again</string>
+    <string name="oauth_reason_not_configured">OAuth is not configured</string>
+    <string name="provider_test_no_api_key">No API key entered</string>
     <string name="oauth_activity_context_unavailable">Unable to obtain Activity context</string>
     <string name="oauth_device_code_prompt">Visit %1$s and enter code: %2$s</string>
     <string name="oauth_polling">Waiting for authorization...</string>
@@ -690,7 +701,7 @@
 
     <!-- ===== P2-5: SiliconFlow free model fallback (PresetProviders / ProviderEditPage) ===== -->
     <string name="preset_siliconflow">SiliconFlow</string>
-    <string name="preset_siliconflow_free">SiliconFlow Free Models</string>
+    <string name="preset_siliconflow_free">Built-in free model</string>
     <string name="free_model_service_unavailable">Free quota service is unavailable. Add an API Key or try again later.</string>
 
     <!-- ===== P2-10: Provider plugin management (ProviderPluginPage) ===== -->
@@ -711,6 +722,7 @@
 
     <!-- ===== P2-7: Workspace (WorkspaceScreen + tool descriptions) ===== -->
     <string name="workspace_title">Workspace</string>
+    <string name="workspace_tool_outputs">Tool outputs</string>
     <string name="workspace_desc">Local file management and temporary storage</string>
     <string name="workspace_empty">Workspace is empty</string>
     <string name="workspace_new_file">New File</string>
@@ -783,7 +795,7 @@
     <string name="tts_not_ready">TTS is initializing, please retry later</string>
     <string name="chat_list_reorder">Drag to reorder</string>
 
-    <!-- Correcciones en la interfaz (i18n-3.x): Settings screen search index entry titles -->
+    <!-- 前端修复 (i18n-3.x): Settings screen search index entry titles -->
     <string name="settings_screen_entry_tts_playback">TTS voice playback</string>
     <string name="settings_screen_entry_api_key">API Key</string>
     <string name="settings_screen_entry_archived">Archived chats</string>
@@ -805,7 +817,10 @@
     <!-- v1.x: share settings page (formerly "Security & Sharing"; app lock / search engine removed) -->
     <string name="settings_screen_share">Share</string>
     <string name="settings_share_page_title">Share</string>
-    <string name="settings_search_result_count">%1$d results found</string>
+    <plurals name="settings_search_result_count">
+        <item quantity="one">%1$d result found</item>
+        <item quantity="other">%1$d results found</item>
+    </plurals>
     <string name="settings_screen_miniphone_desc">Early version of an experimental feature</string>
     <string name="model_diff_clear_add">Clear new models</string>
     <string name="model_diff_clear_remove">Clear removed models</string>
@@ -817,7 +832,14 @@
     <string name="chat_list_edit">Edit</string>
     <string name="chat_list_edit_archive">Archive</string>
     <string name="chat_list_edit_delete">Delete</string>
-    <string name="chat_list_edit_done">%1$d items processed</string>
+    <plurals name="chat_list_edit_delete_confirm">
+        <item quantity="one">Delete %1$d selected conversation and all of its messages? This action cannot be undone.</item>
+        <item quantity="other">Delete %1$d selected conversations and all of their messages? This action cannot be undone.</item>
+    </plurals>
+    <plurals name="chat_list_edit_done">
+        <item quantity="one">%1$d item processed</item>
+        <item quantity="other">%1$d items processed</item>
+    </plurals>
     <string name="chat_list_edit_exit">Exit</string>
     <string name="chat_list_edit_select_all">Select all</string>
     <string name="chat_list_restored_toast">Restored</string>
@@ -842,7 +864,7 @@
     <string name="muse_plugins_draft_saved">Saved as a disabled draft</string>
     <string name="muse_plugins_install_confirm_action">Confirm install and enable</string>
     <string name="muse_plugins_install_confirm_capabilities">Capabilities it declares using: %1$s</string>
-    <string name="muse_plugins_capabilities_disclaimer">This declaration only describes what the plugin intends to use; it does not limit what it can do once installed.</string>
+    <string name="muse_plugins_capabilities_disclaimer">This list is the plugin\'s capability boundary: undeclared actions are rejected outright. You can still toggle each capability later under Capabilities and permissions.</string>
     <string name="muse_plugins_global_switch_title">Plugins enabled</string>
     <string name="muse_plugins_global_switch_desc">When off, no plugin runs. Installs and settings are kept.</string>
     <string name="muse_plugins_runtime_label">Runtime: %1$s</string>
@@ -908,6 +930,11 @@
         <!-- B7-01: Plugin configuration contribution -->
     <string name="muse_plugins_config">Plugin Configuration</string>
     <string name="muse_plugins_open_panel">Open panel</string>
+    <string name="muse_plugins_view_broken">Interface failed to render (tap for details)</string>
+    <string name="muse_plugins_view_image_missing">(image missing)</string>
+    <string name="plugin_ui_busy">The previous submit is still running; please wait</string>
+    <string name="plugin_ui_render_failed">The interface returned by the plugin could not be parsed</string>
+    <string name="plugin_ui_needs_interactive">This view can submit a form, but it needs the interactive UI capability (it changes the plugin own data)</string>
     <string name="muse_plugins_trust_catalog_title">Catalog trust root</string>
     <string name="muse_plugins_trust_publisher_fingerprint">Fingerprint %1$s</string>
     <string name="muse_plugins_trust_publishers_empty">You have not trusted any publishers yet. Installing a plugin from an unknown publisher will prompt you to confirm the trust.</string>
@@ -940,9 +967,9 @@
     <string name="greeting_open_todos">You have unfinished items in %1$d conversation(s)</string>
     <string name="settings_preference_title">User preferences</string>
     <string name="settings_preference_subtitle">Lasting rules the assistant recorded</string>
-    <string name="settings_preference_desc">When you tell the assistant "from now on, don't…", it stores that as a hard rule here and follows it in every conversation.</string>
+    <string name="settings_preference_desc">When you tell the assistant "from now on, don\'t…", it stores that as a hard rule here and follows it in every conversation.</string>
     <string name="settings_preference_empty">No preferences recorded yet</string>
-    <string name="settings_preference_empty_hint">Try telling the assistant "don't use generic encouragement from now on"</string>
+    <string name="settings_preference_empty_hint">Try telling the assistant "don\'t use generic encouragement from now on"</string>
     <string name="settings_preference_disable">Disable</string>
     <string name="settings_preference_enable">Enable</string>
     <string name="settings_preference_delete">Delete</string>
@@ -958,6 +985,21 @@
     <string name="workspace_mount_read_only">Read-only</string>
     <string name="workspace_mount_remove">Remove</string>
     <string name="workspace_mount_added">Mounted %1$s</string>
+    <!-- 按下「移除」却什么都没变时必须有话说：以前 removeMount 的返回值被直接丢掉 -->
+    <string name="workspace_mount_remove_failed">Couldn’t remove “%1$s” — it is still in the list</string>
     <string name="workspace_mount_failed">Mount failed: %1$s</string>
     <string name="workspace_read_only_hint">Read-only mount, contents can\'t be changed</string>
+    <string name="muse_plugins_market_advice_downgrade">Catalog version is older than installed; this would downgrade</string>
+    <string name="muse_plugins_market_advice_unknown_version">Version string is not recognizable; do not install yet</string>
+    <string name="muse_plugins_market_advice_needs_newer_app">This plugin requires a newer app version</string>
+    <string name="muse_plugins_market_advice_compat_unconfirmed">Compatibility is checked against the manifest after download; not decided yet</string>
+    <string name="muse_plugins_market_advice_retained">Local archives kept for these versions: %1$s (switch from the installed list)</string>
+    <string name="audit_log_field_action">Action</string>
+    <string name="audit_log_field_target">Target</string>
+    <string name="audit_log_field_detail">Detail</string>
+    <string name="audit_log_field_result">Result</string>
+    <string name="audit_log_result_ok">Success</string>
+    <string name="audit_log_result_fail">Failed</string>
+    <string name="permission_advanced_channels">Advanced channels (Root / Termux)</string>
+    <string name="channel_weclaw_summary">Connects a personal account through the WeChat iLink protocol. One WeChat account can hold only one channel - binding a new one retires the old. Proactive reminders need a reply window opened by a recent incoming message; if one does not arrive, send this channel a WeChat message to reopen it.</string>
 </resources>

@@ -36,10 +36,10 @@ import java.nio.file.Files
 import java.util.Base64
 
 /**
- * En la instantánea se completan tres tipos de datos: dirección accesible a los medios, detalles de la llamada de la herramienta y estado a nivel de mensaje.
+ * 快照里补齐的三类数据：媒体可访问地址、工具调用明细、消息级状态。
  *
- * Todas las afirmaciones caen en `state.snapshot` en eventos —— Este evento es la única fuente de datos para la representación de páginas web.
- * Si no puede obtenerlo, la página web no podrá obtenerlo.
+ * 断言都落在 `state.snapshot` 事件上 —— 这条事件是网页端渲染的唯一数据源，
+ * 它拿不到的东西网页端就一定拿不到。
  */
 class HostWebSocketGatewayMediaTest {
 
@@ -48,7 +48,7 @@ class HostWebSocketGatewayMediaTest {
     private val voiceDir = File(workDir, "voice_messages").apply { mkdirs() }
     private val mediaStore = HostMediaStore(imageDir, voiceDir)
 
-    /** Se abre una conexión falsa a la puerta de enlace: comando de [incoming] enviado, evento de [events] leer. */
+    /** 一条被打通到网关的假连接：命令从 [incoming] 送入，事件从 [events] 读出。 */
     private class FakeConnection {
         val incoming = Channel<Frame>(Channel.UNLIMITED)
         val events = mutableListOf<HostEvent>()
@@ -85,11 +85,8 @@ class HostWebSocketGatewayMediaTest {
         )
     }
 
-    /** Haz una conexión,Tome la primera instantánea que reciba.(Mismo origen que el emitido cuando se creó el servicio.). */
-    private fun snapshotOf(
-        messages: List<UIMessage>,
-        state: ChatUiState = defaultState(),
-    ): HostEvent {
+    /** 起一条连接,取它收到的第一份快照(与 serve 建立时下发的那份同源)。 */
+    private fun snapshotOf(messages: List<UIMessage>, state: ChatUiState = defaultState()): HostEvent {
         var captured: HostEvent? = null
         runTest {
             val connection = FakeConnection()
@@ -101,7 +98,7 @@ class HostWebSocketGatewayMediaTest {
             job.join()
         }
         val event = captured
-        assertNotNull("Debería haber una copia del evento de instantánea.", event)
+        assertNotNull("应有一份快照事件", event)
         return event!!
     }
 
@@ -116,7 +113,7 @@ class HostWebSocketGatewayMediaTest {
                 listOf(
                     UIMessage(
                         role = MessageRole.USER,
-                        content = "mira la foto",
+                        content = "看图",
                         imageUrls = listOf(
                             "file://${file.absolutePath}",
                             dataUri,
@@ -130,7 +127,7 @@ class HostWebSocketGatewayMediaTest {
         ).imageUrls
 
         assertEquals(3, urls.size)
-        urls.forEach { assertTrue("Se debe emitir la dirección que el navegador puede utilizar.: $it", it.startsWith(MEDIA_PREFIX) || it.startsWith("https://")) }
+        urls.forEach { assertTrue("应下发浏览器能用的地址: $it", it.startsWith(MEDIA_PREFIX) || it.startsWith("https://")) }
         assertEquals(file.canonicalFile, mediaStore.resolve(urls[0].removePrefix(MEDIA_PREFIX)))
         assertNotNull(mediaStore.resolve(urls[1].removePrefix(MEDIA_PREFIX)))
         assertEquals("https://cdn.example.com/a.png", urls[2])
@@ -145,10 +142,10 @@ class HostWebSocketGatewayMediaTest {
         val host = message(snapshotOf(listOf(voiceMessage("file://${clip.absolutePath}", 3_400L))), 0)
         val removed = message(snapshotOf(listOf(voiceMessage("file://${cleaned.absolutePath}", 0L))), 0)
 
-        assertTrue("Las direcciones de voz también utilizan el enrutamiento de medios.", host.voiceUrl!!.startsWith(MEDIA_PREFIX))
+        assertTrue("语音地址同样走媒体路由", host.voiceUrl!!.startsWith(MEDIA_PREFIX))
         assertEquals(clip.canonicalFile, mediaStore.resolve(host.voiceUrl!!.removePrefix(MEDIA_PREFIX)))
         assertEquals(3_400L, host.voiceDurationMs!!)
-        assertNull("La dirección no se emitirá cuando la voz haya sido aclarada.", removed.voiceUrl)
+        assertNull("语音已被清理时不下发地址", removed.voiceUrl)
         assertNull(removed.voiceDurationMs)
     }
 
@@ -176,10 +173,10 @@ class HostWebSocketGatewayMediaTest {
         assertEquals("read_file", calls[0].name)
         assertEquals("call_search", calls[1].callId)
         assertEquals("web_search", calls[1].name)
-        assertTrue("La vista previa de parámetros debe truncarse", calls[0].argumentsPreview.length < longArguments.length)
+        assertTrue("参数预览应被截断", calls[0].argumentsPreview.length < longArguments.length)
         assertTrue(calls[0].argumentsPreview.contains("path"))
         assertTrue(calls[0].argumentsPreview.contains("note"))
-        assertNull("Las llamadas en la lista de solicitudes aún no tienen resultados", calls[0].resultPreview)
+        assertNull("请求列表里的调用还没有结果", calls[0].resultPreview)
         assertNull(calls[0].success)
         assertNull(calls[0].durationMs)
         assertEquals("""{"q":"muse"}""", calls[1].argumentsPreview)
@@ -207,9 +204,9 @@ class HostWebSocketGatewayMediaTest {
         assertEquals("""{"cmd":"ls"}""", first.toolCalls[0].argumentsPreview)
         assertEquals(false, first.toolCalls[0].success)
         assertEquals(51L, first.toolCalls[0].durationMs!!)
-        assertTrue("La vista previa del resultado debe truncarse", first.toolCalls[0].resultPreview!!.length < longResult.length)
+        assertTrue("结果预览应被截断", first.toolCalls[0].resultPreview!!.length < longResult.length)
         assertTrue(first.toolCalls[0].resultPreview!!.startsWith("RRR"))
-        assertNull("Los resultados vacíos se dan como nulos en lugar de la cadena vacía", second.toolCalls[0].resultPreview)
+        assertNull("空结果给 null 而不是空串", second.toolCalls[0].resultPreview)
     }
 
     @Test
@@ -231,8 +228,8 @@ class HostWebSocketGatewayMediaTest {
 
     @Test
     fun `status marks the streaming reply while the turn runs`() {
-        val user = UIMessage(role = MessageRole.USER, content = "Hola")
-        val assistant = UIMessage(role = MessageRole.ASSISTANT, content = "apertura")
+        val user = UIMessage(role = MessageRole.USER, content = "你好")
+        val assistant = UIMessage(role = MessageRole.ASSISTANT, content = "开场")
         val state = defaultState(
             ChatStreamState(phase = ChatStreamPhase.STREAMING, isStreaming = true, isWaitingFirstToken = false),
         )
@@ -246,8 +243,8 @@ class HostWebSocketGatewayMediaTest {
 
     @Test
     fun `user message is sending until the first token arrives`() {
-        val assistant = UIMessage(role = MessageRole.ASSISTANT, content = "última ronda")
-        val user = UIMessage(role = MessageRole.USER, content = "nueva ronda")
+        val assistant = UIMessage(role = MessageRole.ASSISTANT, content = "上一轮")
+        val user = UIMessage(role = MessageRole.USER, content = "新一轮")
         val state = defaultState(
             ChatStreamState(phase = ChatStreamPhase.CONNECTING, isStreaming = true, isWaitingFirstToken = true),
         )
@@ -260,24 +257,24 @@ class HostWebSocketGatewayMediaTest {
 
     @Test
     fun `failed turn marks the last assistant message with an error text`() {
-        val user = UIMessage(role = MessageRole.USER, content = "Hola")
+        val user = UIMessage(role = MessageRole.USER, content = "你好")
         val assistant = UIMessage(role = MessageRole.ASSISTANT, content = "")
         val state = ChatUiState(
             sessionState = ChatSessionState(currentSessionId = SESSION_ID),
             streamState = ChatStreamState(phase = ChatStreamPhase.FAILED),
-            errors = listOf(ChatError(type = ChatErrorType.NETWORK, message = "La conexión ascendente se restableció")),
+            errors = listOf(ChatError(type = ChatErrorType.NETWORK, message = "上游连接被重置")),
         )
 
         val snapshot = snapshotOf(listOf(user, assistant), state)
 
         assertEquals(HostMessageStatus.SENT, message(snapshot, 0).status)
         assertEquals(HostMessageStatus.FAILED, message(snapshot, 1).status)
-        assertEquals("La conexión ascendente se restableció", message(snapshot, 1).errorText)
+        assertEquals("上游连接被重置", message(snapshot, 1).errorText)
     }
 
     @Test
     fun `dismissed error leaves the finished reply as sent`() {
-        val assistant = UIMessage(role = MessageRole.ASSISTANT, content = "Media respuesta")
+        val assistant = UIMessage(role = MessageRole.ASSISTANT, content = "半截回复")
         val state = ChatUiState(
             sessionState = ChatSessionState(currentSessionId = SESSION_ID),
             streamState = ChatStreamState(phase = ChatStreamPhase.FAILED),
@@ -300,13 +297,13 @@ class HostWebSocketGatewayMediaTest {
         val info = ToolCallInfo(toolName = "camera_snap", arguments = "{}", result = "ok", isSuccess = true)
         val snapshot = snapshotOf(
             listOf(
-                UIMessage(role = MessageRole.USER, content = "tomar una foto", imageUrls = listOf("file://${file.absolutePath}")),
+                UIMessage(role = MessageRole.USER, content = "拍一张", imageUrls = listOf("file://${file.absolutePath}")),
                 UIMessage(role = MessageRole.ASSISTANT, content = "", toolCallInfo = info),
             ),
         )
 
         assertEquals("user", message(snapshot, 0).role)
-        assertEquals("tomar una foto", message(snapshot, 0).content)
+        assertEquals("拍一张", message(snapshot, 0).content)
         assertEquals(1, message(snapshot, 0).imageUrls.size)
         assertEquals(HostMessageStatus.SENT, message(snapshot, 0).status)
         assertEquals("camera_snap", message(snapshot, 1).toolName)

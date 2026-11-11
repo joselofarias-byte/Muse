@@ -52,6 +52,19 @@ class ProviderErrorTest {
     }
 
     @Test
+    fun `没有可展示的细节时用中文兜底句而不是英文`() {
+        // 这些句子会原样进界面（如「视觉分析失败: …」）。以前留的是
+        // "network error" / "unknown error" —— 中文用户看到一句没头没尾的英文，
+        // 而本模块别处的兜底早就是中文（"流式响应为空，正在切换请求方式"）。
+        val network = ProviderError.from(java.io.IOException(""))
+        val unknown = ProviderError.from(code = null, body = "")
+
+        assertEquals("网络错误", network.displayMessage)
+        assertEquals("未知错误", unknown.displayMessage)
+        assertTrue("不能退化成裸英文", !network.displayMessage.contains("network error"))
+    }
+
+    @Test
     fun throwableMessagesDoNotCopyCredentialQueryParameters() {
         val error = ProviderError.from(
             java.io.IOException("https://provider.example/v1?api_key=sk-live-query-secret"),
@@ -63,24 +76,24 @@ class ProviderErrorTest {
 
     @Test
     fun insufficientQuotaIsClassifiedNotAsInvalidRequest() {
-        // v2.6.8 Los comentarios de los usuarios regresan:402 / insufficient_quota Fue clasificado como Solicitud Inválida,
-        // La copia rápida guía a los usuarios para ajustar los parámetros, pero lo que realmente necesitan hacer es recargar.
+        // v2.6.8 用户反馈回归：402 / insufficient_quota 曾被归到 InvalidRequest，
+        // 提示文案引导用户去调参数，而真正要做的是充值。
         val byCode = ProviderError.from(402, "insufficient_quota")
         assertEquals(ProviderError.InsufficientQuota::class, byCode::class)
-        assertFalse("Saldo insuficiente, no puedo volver a intentarlo", byCode.isRetryable)
+        assertFalse("余额不足不可重试", byCode.isRetryable)
 
-        // No es 402 pero el organismo dice claramente que la cuota es insuficiente, por lo que hay que identificarla.
+        // 非 402 但 body 明说额度不足，也要识别
         val byBody = ProviderError.from(400, "{\"error\":{\"type\":\"insufficient_quota\"}}")
         assertEquals(ProviderError.InsufficientQuota::class, byBody::class)
 
-        // Cómo escribir una estación de transferencia china (copia real en la captura de pantalla del usuario)
+        // 中文中转站写法（用户截图里的真实文案）
         val zh = ProviderError.from(403, "用户额度不足, 剩余额度: -0.08")
         assertEquals(ProviderError.InsufficientQuota::class, zh::class)
     }
 
     @Test
     fun normalInvalidRequestStillClassifiedAsInvalidRequest() {
-        // Protección inversa: los errores de parámetros ordinarios no pueden juzgarse erróneamente como una cuota insuficiente
+        // 反向保护：普通参数错误不能被误判为额度不足
         val error = ProviderError.from(400, "invalid model parameter temperature")
         assertEquals(ProviderError.InvalidRequest::class, error::class)
     }

@@ -28,7 +28,7 @@ import java.io.File
 import java.nio.file.Files
 
 /**
- * Brecha de host en el lado de la sesión: las sesiones archivadas deben ser visibles y se puede hacer clic en ellas; Las nuevas sesiones deben ser reconocidas. `assistantId`.
+ * 会话侧的 Host 缺口：归档会话要能看见、能点开；新建会话要认 `assistantId`。
  */
 class HostSessionSnapshotTest {
 
@@ -107,12 +107,7 @@ class HostSessionSnapshotTest {
         )
     }
 
-    private fun session(
-        id: String,
-        archived: Boolean = false,
-        deletedAt: Long? = null,
-        assistantId: String = "default",
-    ) = SessionEntity(
+    private fun session(id: String, archived: Boolean = false, deletedAt: Long? = null, assistantId: String = "default") = SessionEntity(
         id = id,
         title = id,
         createdAt = 1L,
@@ -139,7 +134,7 @@ class HostSessionSnapshotTest {
 
         val ids = snapshot?.sessions?.map { it.id }
         assertEquals(listOf("live", "archived"), ids)
-        assertEquals("Las sesiones archivadas deben marcarse como archivadas.", true, snapshot?.sessions?.first { it.id == "archived" }?.archived)
+        assertEquals("归档会话要带 archived 标记", true, snapshot?.sessions?.first { it.id == "archived" }?.archived)
         assertEquals(false, snapshot?.sessions?.first { it.id == "live" }?.archived)
 
         connection.incoming.close()
@@ -163,7 +158,7 @@ class HostSessionSnapshotTest {
 
         val accepted = connection.events.firstOrNull { it.requestId == "req-select" }
         assertEquals(
-            "secuencia de eventos: ${connection.events.map { it.type to it.error }}",
+            "事件序列: ${connection.events.map { it.type to it.error }}",
             "command.accepted",
             accepted?.type,
         )

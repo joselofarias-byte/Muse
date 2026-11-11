@@ -4,12 +4,12 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 
 /**
- * v2.2.1 pantalla virtual:framework Compatible con parches(best-effort,Solo falla al iniciar sesión).
+ * v2.2.1 虚拟屏:framework 兼容修补(best-effort,失败仅记日志)。
  *
- * app_process El proceso no pasa por la ruta de inicialización normal de la aplicación de zygote. Algunos componentes del marco
- * (Por ejemplo, DisplayManager se basa internamente en el estado local del subproceso de ActivityThread.)Necesidad de estandarizar
- * ActivityThread singleton"suplemento"progreso. Todos los pasos son independientes. try/catch —— Diferentes campos de ROM/versión
- * Saltar automáticamente si falta,En lugar de permitir que el servidor no se inicie.
+ * app_process 进程没有经过 zygote 的常规 App 初始化路径。部分 framework 组件
+ * (如 DisplayManager 内部依赖 ActivityThread 的线程本地状态)需要把标准的
+ * ActivityThread 单例"补"进进程。所有步骤独立 try/catch —— 不同 ROM/版本字段
+ * 缺失时自动跳过,而不是让服务端启动失败。
  */
 public final class Workarounds {
 
@@ -21,10 +21,10 @@ public final class Workarounds {
     }
 
     /**
-     * v2.3.2: este método**deliberadamente**Acceso a miembros privados del marco —— De esto se trata el parche de compatibilidad(Ver comentarios de clase),
-     * Y cada paso es independiente try/catch(campo/Se omite la construcción faltante,Nunca permita que el servidor no se inicie).
-     * Comprobaciones de pelusa relacionadas(BlockedPrivateApi / SoonBlockedPrivateApi)En el módulo build.gradle.kts
-     * Exento por módulo y exponga los motivos,En lugar de suprimirlo aquí y allá.
+     * v2.3.2: 本方法**故意**访问 framework 私有成员 —— 这正是兼容修补的意义(见类注释),
+     * 且每一步都独立 try/catch(字段/构造缺失即跳过,绝不让服务端启动失败)。
+     * 相关的 lint 检查(BlockedPrivateApi / SoonBlockedPrivateApi)在模块 build.gradle.kts 里
+     * 按模块豁免并写明原因,而不是在此逐处压制。
      */
     private static void mendActivityThread() {
         try {
@@ -42,7 +42,7 @@ public final class Workarounds {
                 systemThread.setAccessible(true);
                 systemThread.setBoolean(activityThread, true);
             } catch (Throwable ignored) {
-                // Ignorar si el campo no existe
+                // 字段不存在时忽略
             }
 
             if (android.os.Build.VERSION.SDK_INT >= 31) {
@@ -55,7 +55,7 @@ public final class Workarounds {
                     controllerField.setAccessible(true);
                     controllerField.set(activityThread, controller);
                 } catch (Throwable ignored) {
-                    // Se ignora cuando cambia la configuración de versiones superiores de ConfigurationController.
+                    // 高版本 ConfigurationController 形态变化时忽略
                 }
             }
 

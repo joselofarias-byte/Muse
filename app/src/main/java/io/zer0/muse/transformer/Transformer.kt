@@ -3,25 +3,25 @@ package io.zer0.muse.transformer
 import io.zer0.ai.core.UIMessage
 
 /**
- * Interfaz del transformador de mensajes(Phase 8.1 H1).
+ * 消息 Transformer 接口(Phase 8.1 H1)。
  *
- * Escrito de forma independiente.
- * Todo el preprocesamiento de listas de mensajes./El posprocesamiento se abstrae como Transformer,
- * prensa [TransformerPipeline] La secuencia se ejecuta en una tubería.
+ * 独立编写。
+ * 所有对消息列表的预处理/后处理都抽象为 Transformer,
+ * 按 [TransformerPipeline] 顺序串成管道执行。
  *
- * principios de diseño:
- *  - función pura: Misma entrada y misma salida,Sin efectos secundarios(Excepto aquellos marcados con suspender IO)
- *  - Se puede combinar: Múltiples transformadores en serie,Borrar orden
- *  - comprobable: Pruebas unitarias independientes para cada Transformador
- *  - Configurable: Depende de la persona que llama decidir qué Transformer(Como la configuración del asistente)
+ * 设计原则:
+ *  - 纯函数: 同输入同输出,无副作用(除 suspend 标记的 IO)
+ *  - 可组合: 多个 Transformer 串联,顺序明确
+ *  - 可测试: 每个 Transformer 独立单元测试
+ *  - 可配置: 由调用方决定启用哪些 Transformer(如 Assistant 配置)
  *
- * Diseño de triple gancho:
- *  - [transform]: Preprocesamiento antes de enviar a LLM(Cambiar mensaje,Afecta las solicitudes reales)
- *  - [visualTransform]: Transiciones visuales durante la transmisión(No cambies el mensaje real.,Solo para visualización de UI)
- *  - [onGenerationFinish]: Procesamiento final tras generación.(El mensaje final se puede cambiar.)
- * Los tres tienen implementaciones predeterminadas.(Volver como está),Manténgase compatible con versiones anteriores,No se necesitan cambios en el antiguo Transformer.
+ * 三钩子设计:
+ *  - [transform]: 发往 LLM 前的预处理(改消息,影响实际请求)
+ *  - [visualTransform]: 流式过程中视觉转换(不改实际消息,仅用于 UI 显示)
+ *  - [onGenerationFinish]: 生成完成后的最终处理(可改最终消息)
+ * 三者均有默认实现(原样返回),保持向后兼容,旧 Transformer 无需改动。
  *
- * Uso:
+ * 用法:
  * ```
  * class MyTransformer : Transformer {
  *     override val name = "MyTransformer"
@@ -32,55 +32,55 @@ import io.zer0.ai.core.UIMessage
  * val processed = pipeline.execute(rawMessages)
  * ```
  *
- * Nota: Transformer procesado es"Lista de mensajes a enviar",No es un delta de transmisión.
- * Las respuestas en streaming son enviadas directamente por el proveedor. ChatStreamEvent,Transformador no andante.
+ * 注意: Transformer 处理的是"待发送的消息列表",不是流式增量。
+ * 流式响应由 Provider 直接发 ChatStreamEvent,不走 Transformer。
  */
 interface Transformer {
-    /** Transformer nombre único(para depurar/Iniciar sesión). */
+    /** Transformer 唯一名(用于调试/日志)。 */
     val name: String
 
     /**
-     * Lista de mensajes de proceso,Volver nueva lista(inmutable,La lista original permanece sin cambios.).
-     * suspend permitido hacer IO(Como leer Memory.db/llamar a la compresión LLM).
+     * 处理消息列表,返回新的列表(不可变,原列表不变)。
+     * suspend 允许做 IO(如读 memory.db / 调用 LLM 压缩)。
      *
-     * @param context El contexto de la solicitud actual.(modelo/temperatura/identificación de sesión, etc.)
+     * @param context 当前请求的上下文(模型/温度/会话 id 等)
      */
     suspend fun transform(messages: List<UIMessage>, context: TransformContext): List<UIMessage>
 
     /**
-     * Transformación visual durante la transmisión(No cambies el mensaje real.,Solo para visualización de UI).
+     * 流式过程中的视觉转换(不改实际消息,仅用于 UI 显示)。
      *
-     * con [transform] la diferencia:
-     *  - [transform] Cambiar mensaje enviado a LLM,Afecta las solicitudes reales
-     *  - [visualTransform] Solo cambia la UI"ver"noticias,No afecta el almacenamiento real/Solicitar
+     * 与 [transform] 的区别:
+     *  - [transform] 改变发往 LLM 的消息,影响实际请求
+     *  - [visualTransform] 仅改变 UI 上"看到"的消息,不影响实际存储/请求
      *
-     * Escenario típico:
-     *  - Se detectó abierto en citometría de flujo. `<think>` etiqueta,cerrado/La parte no cerrada se muestra en tiempo real como reasoning
-     *  - Desnudo en vivo durante la transmisión `<mood>` Etiqueta al campo de estado de ánimo,UI Contraer visualización
+     * 典型场景:
+     *  - 流式中检测到未闭合的 `<think>` 标签,把已闭合/未闭合部分实时显示为 reasoning
+     *  - 流式中实时剥离 `<mood>` 标签到 mood 字段,UI 折叠展示
      *
-     * Implementación predeterminada: Volver como está(Sin conversión),Mantener la compatibilidad con versiones anteriores.
+     * 默认实现: 原样返回(不转换),保持向后兼容。
      *
-     * @param context El contexto de la solicitud actual.
+     * @param context 当前请求的上下文
      */
     suspend fun visualTransform(messages: List<UIMessage>, context: TransformContext): List<UIMessage> {
         return messages
     }
 
     /**
-     * Procesamiento final una vez completada la construcción.
+     * 生成完成后的最终处理。
      *
-     * con [transform] la diferencia:
-     *  - [transform] Procesar mensajes históricos antes de enviar una solicitud.
-     *  - [onGenerationFinish] Procese el mensaje final del asistente una vez completada la compilación(Puede cambiar el contenido/razonamiento/estado de ánimo, etc.)
+     * 与 [transform] 的区别:
+     *  - [transform] 在发请求前处理历史消息
+     *  - [onGenerationFinish] 在生成完成后处理最终 assistant 消息(可改 content/reasoning/mood 等)
      *
-     * Escenario típico:
-     *  - Finalmente limpie las etiquetas de pensamiento no cerradas
-     *  - Extraiga metadatos como artefacto/cita
-     *  - Extracción final del bloque de autorreflexión.
+     * 典型场景:
+     *  - 最终清理未闭合的 think 标签
+     *  - 提取 artifact / citation 等元数据
+     *  - 自我反思块的最终抽取
      *
-     * Implementación predeterminada: Volver como está(No procesado),Mantener la compatibilidad con versiones anteriores.
+     * 默认实现: 原样返回(不处理),保持向后兼容。
      *
-     * @param context El contexto de la solicitud actual.
+     * @param context 当前请求的上下文
      */
     suspend fun onGenerationFinish(messages: List<UIMessage>, context: TransformContext): List<UIMessage> {
         return messages
@@ -88,23 +88,23 @@ interface Transformer {
 }
 
 /**
- * Transformer Contexto de ejecución.
+ * Transformer 执行上下文。
  *
- * @param sessionId sesión actual id(Utilizado para lectura y escritura de memoria.)
- * @param modelId modelo actual id(Se utiliza para decidir si se permite el razonamiento, etc.)
- * @param temperature Temperatura de muestreo
- * @param maxTokens Límite superior de salida
- * @param extras parámetros adicionales(Cada transformador está personalizado. key). escribe inseguro,La persona que llama debe verificar el valor al tomarlo./Convertir.
- *  conocido key(Como referencia para cada transformador.,no exhaustivo):
- *   - "memory_enabled": Boolean — Ya sea para inyectar resúmenes de memoria a largo plazo
- *   - "compress_threshold": Int — El umbral para la cantidad de mensajes que desencadena la compresión histórica
- *   - "lorebook_entries": List<*> — Lorebook entrada(libro mundial/L2 Inyección de desencadenador de palabras clave)
- *   - "prompt_injections": List<String> — Adjunte un fragmento de mensaje inyectado en tiempo de ejecución
- *   - "time_reminder_enabled": Boolean — Si se debe habilitar el recordatorio de tiempo section
- *   - "pinned_memories_enabled": Boolean — Ya sea para inyectar Pinned Memories
- *   - "tool_manifest_enabled": Boolean — Ya sea para inyectar la lista de herramientas
- *   - "group_chat": Boolean — ¿Estás en un entorno de chat grupal?
- *  Cuando cada Transformer personalice una nueva clave, declararla en el KDoc del Transformer correspondiente.,Evite los conflictos de nombres.
+ * @param sessionId 当前会话 id(用于 memory 读写)
+ * @param modelId 当前模型 id(用于决定是否启用 reasoning 等)
+ * @param temperature 采样温度
+ * @param maxTokens 输出上限
+ * @param extras 额外参数(各 Transformer 自定义 key)。类型不安全,取值时须由调用方自行校验/转换。
+ *  已知 key(供各 Transformer 参考,非穷尽):
+ *   - "memory_enabled": Boolean — 是否注入长期记忆摘要
+ *   - "compress_threshold": Int — 触发历史压缩的消息条数阈值
+ *   - "lorebook_entries": List<*> — Lorebook 条目(世界书/L2 关键词触发注入)
+ *   - "prompt_injections": List<String> — 运行时附加注入的提示片段
+ *   - "time_reminder_enabled": Boolean — 是否启用时间提醒 section
+ *   - "pinned_memories_enabled": Boolean — 是否注入 Pinned Memories
+ *   - "tool_manifest_enabled": Boolean — 是否注入工具清单
+ *   - "group_chat": Boolean — 是否处于群聊环境
+ *  各 Transformer 自定义新 key 时请在对应 Transformer 的 KDoc 中声明,避免命名冲突。
  */
 data class TransformContext(
     val sessionId: String? = null,
@@ -113,6 +113,6 @@ data class TransformContext(
     val maxTokens: Int? = null,
     val extras: Map<String, Any?> = emptyMap(),
 ) {
-    /** Adquisición de valor conveniente. */
+    /** 便捷取值。 */
     fun extra(key: String): Any? = extras[key]
 }

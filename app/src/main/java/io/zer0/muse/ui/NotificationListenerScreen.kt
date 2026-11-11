@@ -71,21 +71,21 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * v1.0.4: Página de escucha de notificaciones — poner [MuseNotificationListenerService] Las capacidades existentes pero no basadas en la interfaz de usuario están expuestas a los usuarios.
+ * v1.0.4: 通知监听页 — 把 [MuseNotificationListenerService] 已有但未 UI 化的能力透出给用户。
  *
- * Capacidades de backend(se han realizado):
- *  - [MuseNotificationListenerService.isConnected] Estado de autorización de consulta
- *  - [MuseNotificationListenerService.recentNotifications] Flow Exponer las últimas 200 notificaciones
- *  - [MuseNotificationListenerService.clearAll] Borrar historial de notificaciones
- *  - LLM Herramientas `get_recent_notifications` Registrado,Después de la autorización, los usuarios pueden preguntar en el chat."notificaciones recientes"
+ * 后端能力(均已实现):
+ *  - [MuseNotificationListenerService.isConnected] 查询授权状态
+ *  - [MuseNotificationListenerService.recentNotifications] Flow 暴露最近 200 条通知
+ *  - [MuseNotificationListenerService.clearAll] 清空通知记录
+ *  - LLM 工具 `get_recent_notifications` 已注册,授权后用户可在聊天中问"最近的通知"
  *
- * Responsabilidades de esta página:
- *  1. Mostrar estado de autorización(Autorizado/No autorizado)+ Número de notificaciones recientes
- *  2. Sistema de salto con un clic"Aviso de derechos de uso"página de configuración(`Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS`)
- *  3. Actualizar automáticamente el estado al regresar de la configuración del sistema(DisposableEffect monitorear ON_RESUME)
- *  4. Listar notificaciones recientes(packageName + title + text + tiempo)
- *  5. Botón borrar historial de notificaciones
- *  6. Tarjetas de explicación:Explique el propósito de esta función y los límites de privacidad.(Todo el almacenamiento local,No informar)
+ * 本页职责:
+ *  1. 展示授权状态(已授权/未授权)+ 最近通知条数
+ *  2. 一键跳转系统"通知使用权"设置页(`Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS`)
+ *  3. 从系统设置返回时自动刷新状态(DisposableEffect 监听 ON_RESUME)
+ *  4. 列出最近通知(packageName + title + text + 时间)
+ *  5. 清空通知记录按钮
+ *  6. 解释卡片:说明本功能用途、隐私边界(全部本地存储,不上报)
  */
 @Composable
 fun NotificationListenerScreen(onBack: () -> Unit) {
@@ -94,14 +94,14 @@ fun NotificationListenerScreen(onBack: () -> Unit) {
     val scope = rememberCoroutineScope()
     val settings = org.koin.compose.koinInject<io.zer0.muse.data.SettingsRepository>()
 
-    // Restaurar los registros persistentes primero,Suscríbete de nuevo StateFlow;La página puede mostrar datos históricos normalmente incluso cuando el servicio no está iniciado.
+    // 先恢复持久化记录,再订阅 StateFlow;服务未启动时页面也能正常显示历史数据。
     LaunchedEffect(context) {
         MuseNotificationListenerService.initialize(context)
     }
     val notifications by MuseNotificationListenerService.recentNotifications
         .collectAsStateWithLifecycle(initialValue = emptyList())
 
-    // El estado de autorización está determinado por la devolución de llamada de servicio y la lista de autorizados del sistema.,Evite falsas alarmas temporales de acceso no autorizado cuando recién regresa de la configuración del sistema.
+    // 授权状态由服务回调与系统已授权列表共同判断,避免刚从系统设置返回时短暂误报未授权。
     var connected by remember { mutableStateOf(false) }
     var query by remember { mutableStateOf("") }
     var packageFilter by remember { mutableStateOf<String?>(null) }
@@ -147,8 +147,8 @@ fun NotificationListenerScreen(onBack: () -> Unit) {
         }
     }
 
-    // Al regresar de la configuración del sistema(ON_RESUME)Actualizar estado de autorización — isConnected es un campo @Volatile,
-    // Enlace del sistema/Se actualizará al desvincular el servicio.;La página debe volver a leerse al regresar para reflejar las acciones del usuario en la configuración del sistema.
+    // 从系统设置返回时(ON_RESUME)刷新授权状态 — isConnected 是 @Volatile 字段,
+    // 系统绑定/解绑服务时会更新;返回页面时必须重读才能反映用户在系统设置中的操作
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
@@ -169,7 +169,7 @@ fun NotificationListenerScreen(onBack: () -> Unit) {
         title = stringResource(R.string.notif_listener_screen_title),
         onBack = onBack,
     ) {
-        // ── tarjeta de estado ────────────────────────────────────────────────────
+        // ── 状态卡片 ────────────────────────────────────────────────────
         item(key = "status") {
             CardGroup(modifier = Modifier.padding(horizontal = 16.dp)) {
                 item {
@@ -188,9 +188,9 @@ fun NotificationListenerScreen(onBack: () -> Unit) {
             }
         }
 
-        // ── v2.6.2(comentarios de los usuarios): Notificación → Interruptor maestro de memoria ──────────────────
-        // Después de encenderlo, el asistente clasificará periódicamente las notificaciones (modelo de herramienta grande) y enumerará las que vale la pena recordar (entrega urgente)./horario/factura/Acuerdo
-        // etc.) se escriben en la memoria y se mencionan de forma natural en los mensajes activos. Desactivado de forma predeterminada (las notificaciones contienen información privada y el usuario las activa explícitamente).
+        // ── v2.6.2（用户反馈）: 通知 → 记忆 总开关 ──────────────────
+        // 开启后助手会定期梳理通知（走大工具模型），把值得记的（快递/日程/账单/约定
+        // 等）写入记忆，并在主动消息中自然提起。默认关（通知含私人信息，由用户显式开启）。
         item(key = "notification_memory") {
             val notifMemoryEnabled by settings.notificationMemoryEnabledFlow
                 .collectAsStateWithLifecycle(initialValue = false)
@@ -208,7 +208,7 @@ fun NotificationListenerScreen(onBack: () -> Unit) {
             }
         }
 
-        // ── v1.0.92: Autorización de puente de mensajes — Fuente de alta sensibilidad(WeChat/QQ espera)Ocultar texto por defecto,Se puede habilitar por fuente ──
+        // ── v1.0.92: 消息桥授权 — 高敏来源(微信/QQ 等)默认隐藏正文,可逐源开启 ──
         item(key = "message_bridge") {
             val unlockedPkgs by MuseNotificationListenerService.unlockedPackagesFlow
                 .collectAsStateWithLifecycle(initialValue = emptySet())
@@ -244,7 +244,7 @@ fun NotificationListenerScreen(onBack: () -> Unit) {
                                         text = label,
                                         style = MaterialTheme.typography.bodyMedium,
                                         modifier = Modifier.weight(1f),
-                                        // LAYOUT-01: Row Ancho del texto interno + límite de línea, evita el ajuste de línea palabra por palabra al ampliar el tamaño de fuente
+                                        // LAYOUT-01: Row 内文本取宽 + 限行，防放大字号下逐字换行
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis,
                                     )
@@ -260,7 +260,7 @@ fun NotificationListenerScreen(onBack: () -> Unit) {
             }
         }
 
-        // ── F-15: Permisos de notificación(Android 13+ POST_NOTIFICATIONS)Arranque de estado y rechazo ──
+        // ── F-15: 通知权限(Android 13+ POST_NOTIFICATIONS)状态与拒绝引导 ──
         item(key = "notif_permission") {
             CardGroup(modifier = Modifier.padding(horizontal = 16.dp)) {
                 item {
@@ -301,7 +301,7 @@ fun NotificationListenerScreen(onBack: () -> Unit) {
                                 )
                             }
                         }
-                        // Proporcionado sin autorización"abrir"entrada(Omitir la configuración de notificaciones de la aplicación del sistema)
+                        // 未授权时提供"去开启"入口(跳系统应用通知设置)
                         if (!notifEnabled) {
                             MuseCapsuleButton(
                                 text = stringResource(R.string.notif_permission_open),
@@ -321,7 +321,7 @@ fun NotificationListenerScreen(onBack: () -> Unit) {
             }
         }
 
-        // ── Buscar y filtrar ─────────────────────────────────────────────────
+        // ── 搜索与筛选 ─────────────────────────────────────────────────
         item(key = "filters") {
             CardGroup(modifier = Modifier.padding(horizontal = 16.dp)) {
                 item {
@@ -336,9 +336,9 @@ fun NotificationListenerScreen(onBack: () -> Unit) {
                             singleLine = true,
                             modifier = Modifier.fillMaxWidth(),
                         )
-                        // v2.6.0: El botón de filtro permite el desplazamiento horizontal —— Tres botones de cápsula + contar en pantalla estrecha
-                        // Al apretar la misma línea, se comprimirán y truncarán entre sí (“claro…/lleno…”), cambiado a fila desplazable,
-                        // El recuento se fija en el lado derecho de la ventana gráfica y no participa en la extrusión.
+                        // v2.6.0: 筛选按钮可横向滚动 —— 窄屏上三个胶囊按钮 + 计数
+                        // 挤在同一行会互相压缩截断（“清…/全…”），改为 scrollable 行，
+                        // 计数固定在视口右侧不参与挤压。
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -410,7 +410,7 @@ fun NotificationListenerScreen(onBack: () -> Unit) {
             }
         }
 
-        // ── Botón de acción ────────────────────────────────────────────────────
+        // ── 操作按钮 ────────────────────────────────────────────────────
         item(key = "actions") {
             CardGroup(modifier = Modifier.padding(horizontal = 16.dp)) {
                 item {
@@ -420,7 +420,7 @@ fun NotificationListenerScreen(onBack: () -> Unit) {
                             .padding(MusePaddings.cardInner),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        // botón principal:Ir a la configuración de derechos de uso de notificaciones del sistema
+                        // 主按钮:跳转系统通知使用权设置
                         MuseCapsuleButton(
                             text = stringResource(R.string.notif_listener_auth_settings),
                             onClick = {
@@ -439,8 +439,8 @@ fun NotificationListenerScreen(onBack: () -> Unit) {
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
-                            // v2.6.0: eliminar leadingIcon —— Icono de fuente grande+El texto excede weight(1f)
-                            // El ancho se divide uniformemente y el texto se corta en "claro…/lleno…”. Los iconos de escena de ancho completo tienen un valor bajo y el texto tiene prioridad.
+                            // v2.6.0: 去掉 leadingIcon —— 大字体下图标+文字超出 weight(1f)
+                            // 均分宽度，文字被截成「清…/全…」。全宽场景图标价值低，文字优先。
                             MuseCapsuleButton(
                                 text = stringResource(R.string.notif_listener_clear_records),
                                 onClick = {
@@ -463,7 +463,10 @@ fun NotificationListenerScreen(onBack: () -> Unit) {
                             text = stringResource(R.string.notif_listener_export),
                             onClick = {
                                 runCatching {
-                                    exportLauncher.launch("muse-notifications-${'$'}{System.currentTimeMillis()}.json")
+                                    // 时间戳必须是真插值：写成 ${'$'}{...} 会让文件名里原样出现
+                                    // 这段表达式，于是每次导出都同名、互相覆盖。
+                                    val stamp = System.currentTimeMillis()
+                                    exportLauncher.launch("muse-notifications-$stamp.json")
                                 }.onFailure {
                                     MuseToast.show(context.getString(R.string.notif_listener_export_failed, it.message))
                                 }
@@ -477,7 +480,7 @@ fun NotificationListenerScreen(onBack: () -> Unit) {
             }
         }
 
-        // ── Tarjetas de explicación ────────────────────────────────────────────────────
+        // ── 解释卡片 ────────────────────────────────────────────────────
         item(key = "explanation") {
             CardGroup(modifier = Modifier.padding(horizontal = 16.dp)) {
                 item {
@@ -512,7 +515,7 @@ fun NotificationListenerScreen(onBack: () -> Unit) {
             }
         }
 
-        // ── Lista de notificaciones recientes ────────────────────────────────────────────────
+        // ── 最近通知列表 ────────────────────────────────────────────────
         item(key = "recent_header") {
             Text(
                 text = stringResource(R.string.notif_listener_recent_header, visibleNotifications.size),
@@ -634,7 +637,7 @@ fun NotificationListenerScreen(onBack: () -> Unit) {
 }
 
 /**
- * línea de estado:Insignia de estado de autorización + número de notificaciones recientes + botón de actualización.
+ * 状态行:授权状态徽章 + 最近通知数 + 刷新按钮。
  */
 @Composable
 private fun StatusRow(connected: Boolean, recentCount: Int, activeCount: Int, unreadCount: Int, onRefresh: () -> Unit) {
@@ -679,7 +682,7 @@ private fun StatusRow(connected: Boolean, recentCount: Int, activeCount: Int, un
 }
 
 /**
- * Insignia de estado de autorización — Fondo circular + icono + distinción de color(verde=Autorizado,naranja=No autorizado).
+ * 授权状态徽章 — 圆形背景 + 图标 + 颜色区分(绿=已授权,橙=未授权)。
  */
 @Composable
 private fun StatusBadge(connected: Boolean) {
@@ -707,7 +710,7 @@ private fun StatusBadge(connected: Boolean) {
 }
 
 /**
- * Tarjeta única de registro de notificaciones.
+ * 单条通知记录卡片。
  */
 @Composable
 private fun NotificationRecordItem(record: NotificationRecord, onClick: () -> Unit, onDelete: () -> Unit, modifier: Modifier = Modifier) {

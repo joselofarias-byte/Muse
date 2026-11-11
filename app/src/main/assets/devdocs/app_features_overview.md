@@ -1,285 +1,285 @@
-<!-- devdoc: Documentación de desarrollo interno.,No se muestra a los usuarios,LLM Consulta a través de Knowledge_search -->
-# Muse App Resumen de funciones
+<!-- devdoc: 内部开发文档,不向用户展示,LLM 通过 knowledge_search 查询 -->
+# Muse App 功能总览
 
-> Palabras clave desencadenantes: Cuando el usuario pregunta"¿Qué puedes hacer?""Muse que es""¿Qué funciones tiene esta aplicación?""como usar""que funciones""Introducción a la función""como usar"tiempo,Consulte este documento primero y responda con sinceridad.
-> Este documento es un documento de desarrollo interno consultado por LLM a través de la herramienta Knowledge_Search.,El contenido está basado en el código real del proyecto muse.,No mostrar el texto original a los usuarios.
-> "como hacer las cosas"manual de funcionamiento(Límites de capacidad/procedimientos estándar/rutas de tareas/líneas rojas del habla)Consulte asistente_capability_playbook.md.
+> 触发关键词: 当用户问"你能做什么""Muse 是什么""这个 app 有什么功能""怎么用""有哪些功能""功能介绍""使用方法"时,优先参考本文档并据实回答。
+> 本文档是 LLM 通过 knowledge_search 工具查询的内部开发文档,内容基于 muse 项目真实代码,不向用户展示原文。
+> "怎么做事"的操作手册(能力边界 / 标准流程 / 任务路径 / 话术红线)见 assistant_capability_playbook.md。
 
-## 1.Muse que es
+## 一、Muse 是什么
 
-Muse Es una aplicación de asistente de IA para Android.,El posicionamiento central es"Cliente LLM complementario + plataforma de agente". Combina chat, gestión de la personalidad con múltiples asistentes, memoria a largo plazo, recuperación de la base de conocimientos,Skill Extensiones, tareas programadas, colaboración en chat grupal y otras capacidades están integradas en una sola aplicación,Todos los datos se almacenan localmente(Room base de datos + DataStore).
+Muse 是一个 Android 端的 AI 助手应用,核心定位是"陪伴型 LLM 客户端 + Agent 平台"。它把聊天、多助手人格管理、长期记忆、知识库检索、Skill 扩展、定时任务、群聊协作等能力集成在一个 App 里,所有数据存储在本地(Room 数据库 + DataStore)。
 
-Principales diferencias con el cliente de chat LLM normal:
-- Múltiples asistentes:Cada asistente tiene sistema independiente de configuración de aviso, modelo, herramienta y memoria.
-- memoria a largo plazo:Fact Refinado + compilado para inyección de fragmentos de rebajas system prompt
-- base de conocimientos:Los usuarios pueden importar documentos.,LLM Búsqueda de texto completo a través de Knowledge_search
-- Skill sistema:8 habilidad incorporada + autoexpansión install_skill
-- Agent colaboración:delegate_agent Herramientas para que los asistentes deleguen tareas a otros asistentes,El chat grupal permite que varios asistentes discutan
+和普通 LLM 聊天客户端的主要差异:
+- 多助手:每个助手有独立的 systemPrompt、模型、工具、记忆配置
+- 长期记忆:Fact 提炼 + 编译为 markdown 摘要注入 system prompt
+- 知识库:用户可导入文档,LLM 通过 knowledge_search 全文检索
+- Skill 系统:8 个内置 skill + install_skill 自我扩展
+- Agent 协作:delegate_agent 工具让助手委托任务给其他助手,群聊让多助手讨论
 
-## 2. Módulos funcionales principales
+## 二、核心功能模块
 
-### 1. charlar (ChatScreen)
-Interfaz interactiva principal,Salida en streaming de respuestas de LLM. entrada: Lista de conversaciones de la página de inicio → Ingrese a la sesión.
+### 1. 聊天 (ChatScreen)
+主交互界面,流式输出 LLM 回复。入口: 首页会话列表 → 进入会话。
 
-- Markdown renderizado: resaltado de código(CodeHighlighter),LaTeX fórmula(FormulaView), tabla, bloque de referencia, lista
-- Colapso de mensaje largo: Colapsar automáticamente cuando se excede el umbral,Haga clic para ampliar
-- Operación de burbuja de mensajes: Haga clic/Mantenga presionado para que aparezca el menú de operación.,incluir: Copiar / Reenviar(regenerar) / Eliminar / Editar / Cotizar(quote) / confiar(delegate_agent) / Traducir / leer en voz alta(TTS) / Colección/Tenedor(Copiar el historial de este mensaje a una nueva conversación) / Compartir(Exportar a Markdown y ejecutar el sistema. share sheet)
-- Cotización Responder: Los mensajes de usuario pueden traer `> ` bloque de cotización,El contenido citado se muestra en la parte superior de la burbuja.
-- Cambio de modelo temporal: La cápsula del modelo de campo de entrada puede cambiar temporalmente el modelo de sesión actual
-- pensar en etiquetas: Admite expansión y plegado de etiquetas MOOD/thinking
+- Markdown 渲染: 代码高亮(CodeHighlighter)、LaTeX 公式(FormulaView)、表格、引用块、列表
+- 长消息折叠: 超过阈值自动折叠,点击展开
+- 消息气泡操作: 点击/长按弹出操作菜单,包括: 复制 / 重发(重新生成) / 删除 / 编辑 / 引用(quote) / 委托(delegate_agent) / 翻译 / 朗读(TTS) / 收藏 / 分叉(从该消息复制历史到新会话) / 分享(导出为 Markdown 走系统 share sheet)
+- 引用回复: 用户消息可带 `> ` 引用块,引用内容显示在气泡顶部
+- 模型临时切换: 输入栏模型胶囊可临时切换当前会话模型
+- 思考标签: 支持 MOOD/思考标签展开折叠
 
-### 2. Agent / asistente (AssistantScreen + AssistantDetailPages)
-Gestión de la personalidad con múltiples asistentes. Cada asistente es un individuo independiente.,Hay avisos del sistema, modelos, interruptores de herramientas y configuraciones de memoria independientes. entrada: ajustes → Asistente/Configuración → Agent.
+### 2. Agent / 助手 (AssistantScreen + AssistantDetailPages)
+多助手人格管理。每个助手是独立个体,有独立的 systemPrompt、模型、工具开关、记忆配置。入口: 设置 → 助手 / 设置 → Agent。
 
-Los detalles del asistente se dividen en 5 subpáginas.:
-- Basic(Conceptos básicos): Avatar, nombre, selección de modelo, exportación de tarjeta de asistente
-- Prompt(palabra rápida): systemPrompt,messageTemplate,presetMessagesJson
-- Extensions(Expandir): Lorebook configuración de la cosmovisión,PromptInjection Inyección rápida de palabras,QuickMessage mensaje rápido,Skill cambiar
-- Memory(memoria): memoryEnabled,useGlobalMemory,enableRecentChatsReference,enableTimeReminder
-- Advanced(Avanzado): Parámetros del modelo(temperature / reasoningLevel), encabezado de solicitud
+助手详情分 5 个子页:
+- Basic(基础): 头像、名称、模型选择、助手卡片导出
+- Prompt(提示词): systemPrompt、messageTemplate、presetMessagesJson
+- Extensions(扩展): Lorebook 世界观设定、PromptInjection 提示词注入、QuickMessage 快捷消息、Skill 开关
+- Memory(记忆): memoryEnabled、useGlobalMemory、enableRecentChatsReference、enableTimeReminder
+- Advanced(高级): 模型参数(temperature / reasoningLevel)、请求头
 
-### 3. memoria (MemoryScreen + MemorySettingsPage)
-Sistema de memoria a largo plazo. entrada: ajustes → asistente → Subpágina de memoria/configuración → memoria.
+### 3. 记忆 (MemoryScreen + MemorySettingsPage)
+长期记忆系统。入口: 设置 → 助手 → 记忆子页 / 设置 → 记忆。
 
-- Fact refinar: daily pipeline Extraer hechos de conversaciones
-- compilar inyección: Fact Compilar en resumen de rebajas,Inyección a través de MemoryInjectionTransformer system prompt
-- Pinned Memories: Usuario/LLM memoria fija,Inyectar cada vez,No se descompone con el tiempo
-- recordatorio de tiempo: enableTimeReminder Después de abrir,Inyección de memoria dependiente del tiempo bajo demanda
-- situación general/memoria independiente: useGlobalMemory Alternar uso compartido global o asistente independiente
+- Fact 提炼: daily pipeline 从对话中提炼事实
+- 编译注入: Fact 编译为 markdown 摘要,通过 MemoryInjectionTransformer 注入 system prompt
+- Pinned Memories: 用户/LLM 固定的记忆,每次都注入,不随时间衰退
+- 时间提醒: enableTimeReminder 开启后,时间相关记忆按需注入
+- 全局/独立记忆: useGlobalMemory 切换全局共享或助手独立
 
-### 4. base de conocimientos (KnowledgeScreen)
-Los usuarios importan documentos para que LLM los recupere. entrada: ajustes → base de conocimientos.
+### 4. 知识库 (KnowledgeScreen)
+用户导入文档供 LLM 检索。入口: 设置 → 知识库。
 
-- Formatos soportados: txt / md / csv / json
-- Método de búsqueda: LLM Búsqueda de texto completo por título + contenido a través de la herramienta Knowledge_search
-- RAG búsqueda vectorial: Admite la recuperación semántica después de configurar EmbeddingProvider(OpenAI / ONNX Rebaja de categoría local/palabra clave)
-- devdoc entrada: fileType="devdoc" Las entradas son documentos de desarrollo interno.,Solo para consultas de LLM,No aparece en la interfaz de usuario(Este documento entra en esta categoría.)
+- 支持格式: txt / md / csv / json
+- 检索方式: LLM 通过 knowledge_search 工具按标题 + 内容全文检索
+- RAG 向量检索: 配置 EmbeddingProvider 后支持语义检索(OpenAI / ONNX 本地 / 关键词降级)
+- devdoc 条目: fileType="devdoc" 的条目是内部开发文档,只供 LLM 查询,不在 UI 列出(本文档即属此类)
 
-### 5. Skill sistema (SkillScreen)
-8 Habilidades incorporadas + autoexpansión. entrada: ajustes → Skill.
+### 5. Skill 系统 (SkillScreen)
+8 个内置 skill + 自我扩展。入口: 设置 → Skill。
 
-- Incorporado skill: web_search / web_fetch / knowledge_search / install_skill / delegate_agent / list_stickers / send_sticker espera
-- install_skill: LLM Genere definiciones de habilidades usted mismo y guárdelas en la biblioteca(autoexpansión)
-- Habilidad definida por el usuario: importar .skill.json,Pero la implementaciónKotlin debe ser una implementación en la lista blanca.(Evite que LLM sobrescriba las herramientas integradas)
-- gestión: install / uninstall / enable / disable
+- 内置 skill: web_search / web_fetch / knowledge_search / install_skill / delegate_agent / list_stickers / send_sticker 等
+- install_skill: LLM 自己生成 skill 定义并入库(自我扩展)
+- 用户自定义 skill: 导入 .skill.json,但 implementationKotlin 必须是白名单内的实现(防止 LLM 覆盖内置工具)
+- 管理: install / uninstall / enable / disable
 
-### 6. tareas programadas (ScheduledTasksScreen)
-cron La expresión hace que el asistente genere mensajes y notifique periódicamente. entrada: ajustes → Tareas programadas.
+### 6. 定时任务 (ScheduledTasksScreen)
+cron 表达式定时触发助手生成消息并通知。入口: 设置 → 定时任务。
 
-- Expresión cron estándar de 5 campos(minutos horas días meses semanas)
-- ScheduledTaskRunner llama a ChatGenerationService cuando se activa para permitir que el asistente genere mensajes
-- El historial de ejecución se registra en ScheduledTaskExecutionEntity
-- Intervalo mínimo 10 minutos
+- 标准 5 字段 cron 表达式(分 时 日 月 周)
+- 触发时由 ScheduledTaskRunner 调用 ChatGenerationService 让助手生成消息
+- 执行历史记录在 ScheduledTaskExecutionEntity
+- 最小间隔 10 分钟
 
-### 7. mensajes no solicitados (ChatSettingsPage)
-El asistente envía mensajes de forma proactiva a los usuarios a intervalos regulares y muestra notificaciones emergentes.(Mensaje como WeChat). entrada: ajustes → charlar → Mensajería proactiva.
+### 7. 主动消息 (ChatSettingsPage)
+助手按固定间隔主动给用户发消息并弹通知(像微信来消息)。入口: 设置 → 聊天 → 主动消息。
 
-- Opciones de intervalo: 1 / 2 / 4 / 8 / 12 / 24 horas
-- intervalo real = intervalo base ± desplazamiento aleatorio(Mínimo 1 hora,evitar con demasiada frecuencia)
-- Enviado por ProactiveMessageRunner,Notificaciones emergentes a través de MuseNotificationManager
+- 间隔选项: 1 / 2 / 4 / 8 / 12 / 24 小时
+- 实际间隔 = 基础间隔 ± 随机偏移(下限 1 小时,避免过于频繁)
+- 由 ProactiveMessageRunner 调度,通过 MuseNotificationManager 弹通知
 
-### 8. pensamiento profundo
-El menú + en el campo de entrada del chat se abre temporalmente. entrada: pagina de chat → Campo de entrada + signo → Piensa profundamente.
+### 8. 深度思考
+聊天输入栏 + 号菜单临时开启。入口: 聊天页 → 输入栏 + 号 → 深度思考。
 
-- habilitar ReasoningLevel.HIGH(8000 tokens presupuesto de inferencia)
-- Sólo tiene efecto cuando la sesión actual se está ejecutando,No persistió en la configuración auxiliar
-- Anular el valor predeterminado del asistente reasoningLevel
+- 启用 ReasoningLevel.HIGH(8000 tokens 推理预算)
+- 仅当前会话运行时生效,不持久化到助手配置
+- 覆盖助手默认的 reasoningLevel
 
-### 9. búsqueda en internet
-Campo de entrada + interruptor de menú de signo. entrada: pagina de chat → Campo de entrada + signo → Busque en línea.
+### 9. 联网搜索
+输入栏 + 号菜单开关。入口: 聊天页 → 输入栏 + 号 → 联网搜索。
 
-- Captura de Bing predeterminada cn.bing.com
-- apoyo SearXNG / Tavily(En la configuración → configuración de búsqueda en Internet)
-- Una vez activado, LLM decide de forma independiente cuándo llamar web_search / web_fetch
+- 默认 Bing 抓 cn.bing.com
+- 支持 SearXNG / Tavily(在设置 → 联网搜索配置)
+- 开启后 LLM 自主决定何时调用 web_search / web_fetch
 
-### 10. chat grupal (GroupChatScreen)
-Discusión colaborativa entre múltiples agentes. entrada: Pestaña/Configuración de chat grupal en el hogar → Agent.
+### 10. 群聊 (GroupChatScreen)
+多 Agent 协作讨论。入口: 首页群聊 Tab / 设置 → Agent。
 
-- Asistentes que eligen participar al crear un chat grupal
-- Los usuarios pueden unirse al canal para participar en la conversación.
-- Tipo: DM(Dos personas charlando en privado.) / Group(Grupo multijugador)
-- Turnándose para hablar con el asistente de programación GroupChatScheduler
+- 创建群聊时选择参与的助手
+- 用户可加入频道参与对话
+- 类型: DM(两人私聊) / Group(多人群组)
+- 由 GroupChatScheduler 调度助手轮流发言
 
-### 11. Página de traducción independiente (TranslateScreen)
-Traducción multilingüe. entrada: ajustes → Herramientas → AI Traducir.
+### 11. 独立翻译页 (TranslateScreen)
+多语言互译。入口: 设置 → 工具 → AI 翻译。
 
-- Admite pegar texto fuente y copiar traducción
-- Idioma de origen/destino opcional
-- Revisar la traducción del modelo LLM actualmente configurado
+- 支持粘贴源文本、复制译文
+- 源语言 / 目标语言可选
+- 走当前配置的 LLM 模型翻译
 
-### 12. Tema personalizado
-Apariencia personalizada. entrada: ajustes → Apariencia.
+### 12. 自定义主题
+外观个性化。入口: 设置 → 外观。
 
-- Material You Selección de color dinámica(dynamicColor): Sigue el fondo de pantalla del sistema para elegir colores.(Android 12+)
-- 3 Reversión de capa: dynamicColor > customTheme > presetTheme
-- Tema personalizado: Generar según el color de la semilla. ColorScheme,Personalizable primary / secondary / tertiary Color
-- Tema predeterminado: Múltiples conjuntos de colores incorporados
-- fuente,Markdown El espacio en blanco se puede ajustar.
+- Material You 动态取色(dynamicColor): 跟随系统壁纸取色(Android 12+)
+- 3 层回退: dynamicColor > customTheme > presetTheme
+- 自定义主题: 基于种子色生成 ColorScheme,可自定义 primary / secondary / tertiary 色
+- 预设主题: 内置多套配色
+- 字体、Markdown 留白等可调
 
 ### 13. WebServer (WebServerSection)
-Servidor Ktor integrado. entrada: ajustes → Web servidor.
+嵌入式 Ktor 服务器。入口: 设置 → Web 服务器。
 
-- Capacidad de llamar a la aplicación de forma remota a través de HTTP + JWT dentro de LAN
-- mDNS descubrimiento de servicios(MdnsService),Los dispositivos LAN se pueden descubrir automáticamente
-- Para control remoto en PC u otros dispositivos Muse
+- 局域网内通过 HTTP + JWT 远程调用 app 能力
+- mDNS 服务发现(MdnsService),局域网设备可自动发现
+- 用于 PC 端或其他设备远程控制 Muse
 
-### 14. copia de seguridad (BackupSection)
-Exportación, importación y copia de seguridad de datos en la nube. entrada: ajustes → Respaldo.
+### 14. 备份 (BackupSection)
+数据导出导入与云备份。入口: 设置 → 备份。
 
-- Exportación/importación local: Exportar datos completos a un archivo,Recuperable
-- Copia de seguridad en la nube: S3 / WebDAV
-- Consulta de saldo: Consultar saldo de almacenamiento en la nube
+- 本地导出 / 导入: 全量数据导出为文件,可恢复
+- 云备份: S3 / WebDAV
+- 余额查询: 查询云存储余额
 
-### 15. biblioteca de emoticonos
-v1.95 función. entrada: ajustes → charlar → Biblioteca de emoticonos.
+### 15. 表情包库
+v1.95 功能。入口: 设置 → 聊天 → 表情包库。
 
-- LLM Los emoticones disponibles se pueden enumerar a través de la herramienta list_stickers
-- LLM Transitable send_sticker(id=...) La herramienta envía emoticonos a los usuarios
-- Los emoticones se importan como zip.,Almacenamiento independiente de Room
-- probabilidad de envío: 0-100 Ajustable(Predeterminado 30),El modelo tiene esta probabilidad de llamar cada vez que responde. send_sticker
+- LLM 可通过 list_stickers 工具列出可用表情包
+- LLM 可通过 send_sticker(id=...) 工具发送表情包给用户
+- 表情包以 zip 导入,存储独立于 Room
+- 发送概率: 0-100 可调(默认 30),模型每次回复时有此概率调用 send_sticker
 
 ### 16. TTS
-Texto a voz. Entrada: ajustes → medios de comunicación → TTS.
+文本转语音。入口: 设置 → 媒体 → TTS。
 
-- TTS del sistema: llame al motor TTS del sistema Android
-- nube TTS: OpenAI / MiniMax / Edge(Compatible con el formato de interfaz OpenAI)
-- Menú de mensajes de la página de chat"leer en voz alta"gatillo
+- 系统 TTS: 调用 Android 系统 TTS 引擎
+- 云端 TTS: OpenAI / MiniMax / Edge(兼容 OpenAI 接口格式)
+- 聊天页消息菜单"朗读"触发
 
 ### 17. OCR
-Reconocimiento de texto de imagen. entrada: La página de chat reconoce automáticamente las imágenes al enviarlas.
+图片文字识别。入口: 聊天页发送图片时自动识别。
 
-- ML Kit Identificación fuera de línea
-- Soporte chino + inglés
-- Programación unificada por OcrManager
+- ML Kit 离线识别
+- 支持中文 + 英文
+- 由 OcrManager 统一调度
 
-### 18. Retrato de usuario
-Inyección de información personalizada. entrada: ajustes → Apariencia → Retrato de usuario.
+### 18. 用户画像
+个性化信息注入。入口: 设置 → 外观 → 用户画像。
 
-- Rellenable: Título/Edad/Ciudad/MBTI/Ocupación/Interés
-- inyección de contenido system prompt,Deje que LLM comprenda mejor a los usuarios
+- 可填写: 称呼 / 年龄 / 城市 / MBTI / 职业 / 兴趣
+- 内容注入 system prompt,让 LLM 更了解用户
 
-### 19. Página de inicio (OnboardingScreen)
-Inicie el proceso por primera vez. entrada: Comienza la primera instalación.
+### 19. 引导页 (OnboardingScreen)
+首次启动流程。入口: 首次安装启动。
 
-- Paso 1: tres páginas de introducción a la función(HorizontalPager)+ Siguiente / Saltar
-- Paso 2: configuración de saludo personalizada(Nombre del asistente + título de usuario)+ Comenzar/Agregar proveedor de modelo
+- 步骤 1: 三页功能介绍(HorizontalPager)+ 下一步 / 跳过
+- 步骤 2: 个性化称呼设置(助手名 + 用户称呼)+ 开始使用 / 添加模型供应商
 
 ### 20. MCP (Model Context Protocol)
-Sistema de conectores. entrada: ajustes → Modelos y Servicios → MCP.
+连接器系统。入口: 设置 → 模型与服务 → MCP。
 
-- Administrar múltiples McpClient
-- Admite servicios MCP locales y remotos
-- McpOAuthFlow Admite autorización de inicio de sesión de OAuth
-- Reconexión automática después de la desconexión
-- Después de acceder, LLM puede llamar a las herramientas proporcionadas por MCP como herramientas integradas.
+- 管理多个 McpClient
+- 支持本地和远程 MCP 服务
+- McpOAuthFlow 支持 OAuth 登录授权
+- 断线自动重连
+- 接入后 MCP 提供的工具像内置工具一样供 LLM 调用
 
-### 21. Colaboración entre múltiples agentes
-delegate_agent Herramientas. entrada: LLM Llamada autónoma.
+### 21. 多 Agent 协作
+delegate_agent 工具。入口: LLM 自主调用。
 
-- Deje que el asistente actual delegue la tarea a otros asistentes para que corran durante una ronda. LLM
-- Solicitud para inyectar una lista de identificadores de ayuda disponibles,LLM Elija el objetivo de encomienda en consecuencia
-- Una vez ejecutado el subasistente, los resultados se devuelven al asistente principal.
+- 让当前助手委托任务给其他助手跑一轮 LLM
+- 提示注入可用助手 id 清单,LLM 据此选择委托目标
+- 子助手执行完后返回结果给主助手
 
-### 22. Importación y exportación de códigos QR
-Compartir configuración del asistente. entrada: Detalles del asistente → Exportar código QR.
+### 22. 二维码导入导出
+助手配置分享。入口: 助手详情 → 导出二维码。
 
-- La configuración del asistente puede generar un código QR para compartir
-- Escanea el código QR para importar la configuración del asistente
-- Implementado por QrCodeGenerator / QrCodeScanner
+- 助手配置可生成二维码分享
+- 扫描二维码可导入助手配置
+- 由 QrCodeGenerator / QrCodeScanner 实现
 
-### 23. Prompt variable
-Sistema de variables de plantilla. Utilizado en systemPrompt/messageTemplate.
+### 23. Prompt 变量
+模板变量系统。在 systemPrompt / messageTemplate 中使用。
 
-- Gramática: Pebble subconjunto compatible,{{ var }} forma
-- Variables de uso común: {{user_name}} / {{char}} / {{date}} Esperando usuarios/asistente/variables dependientes del tiempo
-- Filtros de soporte: upper / lower / length / default / trim / join / replace / capitalize
-- Soporte para bucle,if Condiciones
-- por PebbleTemplateEngine(Implementación de Kotlin pura de dependencia cero)renderizado
+- 语法: Pebble 兼容子集,{{ var }} 形式
+- 常用变量: {{user_name}} / {{char}} / {{date}} 等用户/助手/时间相关变量
+- 支持过滤器: upper / lower / length / default / trim / join / replace / capitalize
+- 支持 for 循环、if 条件
+- 由 PebbleTemplateEngine(零依赖纯 Kotlin 实现)渲染
 
-### 24. Reglas de reemplazo regulares
-Postprocesamiento de mensajes. entrada: Detalles del asistente → Extensions.
+### 24. 正则替换规则
+消息后处理。入口: 助手详情 → Extensions。
 
 - RegexMessageTransformer / RegexTransformer
-- Realice un posprocesamiento de reemplazo regular en la salida de LLM de acuerdo con las reglas
-- Las reglas se almacenan mediante la configuración del asistente.
+- 按规则对 LLM 输出做正则替换后处理
+- 规则按助手配置存储
 
 ### 25. Lorebook
-Inyección de configuración de visión mundial. entrada: Detalles del asistente → Extensions → Lorebook.
+世界观设定注入。入口: 助手详情 → Extensions → Lorebook。
 
-- Activar la inyección de entradas de configuración de visión mundial por palabras clave
-- LorebookTransformer inyecta la configuración correspondiente cuando una palabra clave coincide en la conversación
-- Lorebook independienteGestión de pantalla
+- 按关键词触发注入世界观设定条目
+- 由 LorebookTransformer 在对话匹配到关键词时注入对应设定
+- 独立 LorebookScreen 管理
 
 ### 26. PromptInjection
-Rápida inyección de palabras. entrada: Detalles del asistente → Extensions → PromptInjection.
+提示词注入。入口: 助手详情 → Extensions → PromptInjection。
 
-- Inyecte palabras adicionales en el system prompt
-- Manejado por PromptInjectionTransformer
-- Gestión independiente de PromptInjectionScreen
+- 按条件注入额外提示词到 system prompt
+- 由 PromptInjectionTransformer 处理
+- 独立 PromptInjectionScreen 管理
 
 ### 27. QuickMessage
-Mensaje rápido. entrada: Detalles del asistente → Extensions → QuickMessage / Chips de acceso directo al campo de entrada.
+快捷消息。入口: 助手详情 → Extensions → QuickMessage / 输入栏快捷 chips。
 
-- Frases preestablecidas chips,Enviar con un clic
-- Utilice marcadores de posición de doble corchete {{input}} / {{clipboard}} / {{date}},Renderizado automáticamente por QuickMessageRepository.renderTemplate
-- Gestión independiente de QuickMessageScreen
+- 预置短句 chips,一键发送
+- 使用双括号占位符 {{input}} / {{clipboard}} / {{date}},由 QuickMessageRepository.renderTemplate 自动渲染
+- 独立 QuickMessageScreen 管理
 
-## 3. Establecer partición de elementos
+## 三、设置项分区
 
-página de configuración (SettingsScreen) Dividido en las siguientes particiones,de arriba a abajo:
+设置页 (SettingsScreen) 分为以下分区,从上到下:
 
-### 1. Apariencia y personalización(Interruptor de alta frecuencia del usuario en la parte superior)
-- Tema(dynamicColor / customTheme / presetTheme)
-- fuente,Markdown dejar en blanco
-- Retrato de usuario(Título/Edad/Ciudad/MBTI/Ocupación/Interés)
-- Configuración secundaria del chat(Visualización de mensajes/Expansión predeterminada/Temperatura/Avanzado)
+### 1. 外观与个性化(用户高频开关置顶)
+- 主题(dynamicColor / customTheme / presetTheme)
+- 字体、Markdown 留白
+- 用户画像(称呼 / 年龄 / 城市 / MBTI / 职业 / 兴趣)
+- 聊天二级设置(消息显示 / 默认展开 / 温度 / 高级)
 
-### 2. memoria y datos
-- memoria(MemorySettingsPage)
-- Copia de seguridad en la nube(S3 / WebDAV)
-- Importación de datos(DataImportPage)
-- base de conocimientos / RAG(RagSettingsPage)
+### 2. 记忆与数据
+- 记忆(MemorySettingsPage)
+- 云备份(S3 / WebDAV)
+- 数据导入(DataImportPage)
+- 知识库 / RAG(RagSettingsPage)
 
-### 3. Modelos y Servicios
-- proveedor(ProviderSection): API Key / Base URL / OAuth / locales Ollama
-- asistente(AssistantSection)
+### 3. 模型与服务
+- 供应商(ProviderSection): API Key / Base URL / OAuth / 本地 Ollama
+- 助手(AssistantSection)
 - Agent(MultiAgentSettingsPage)
-- búsqueda en internet(WebSearchSection): Bing / SearXNG / Tavily
+- 联网搜索(WebSearchSection): Bing / SearXNG / Tavily
 - MCP(McpSection)
 - ASR(AsrSection)
-- medios de comunicación(MediaSettingsPage): TTS / Generación de imágenes(ImageGenSection)
+- 媒体(MediaSettingsPage): TTS / 图片生成(ImageGenSection)
 
-### 4. Herramientas(Entrada independiente a la herramienta de IA)
-- AI Traducción(TranslateScreen)
+### 4. 工具(独立 AI 工具入口)
+- AI 翻译(TranslateScreen)
 
-### 5. Avanzado(Configuración técnica configurada al final)
-- seguro(SecuritySettingsPage)
-- agente(ProxySettingsPage)
-- Experimental(ExperimentsSettingsPage)
-- Estadísticas(StatsPage)
-- Web servidor(WebServerSection)
+### 5. 高级(技术性设置置底)
+- 安全(SecuritySettingsPage)
+- 代理(ProxySettingsPage)
+- 实验性(ExperimentsSettingsPage)
+- 统计(StatsPage)
+- Web 服务器(WebServerSection)
 
-### 6. Acerca de
-- Tutoría(SettingsTutorialPage)
-- Información de versión/licencia de código abierto(LicensesScreen)
+### 6. 关于
+- 使用教程(SettingsTutorialPage)
+- 版本信息 / 开源许可(LicensesScreen)
 
-## 4. Principios para responder preguntas funcionales de los usuarios.
+## 四、回答用户功能问题时的原则
 
-1. Responde sinceramente: Respuesta basada en las características enumeradas en este documento.,No inventes funciones que no puedas encontrar.
-2. expresión popular: Utilice un lenguaje que los usuarios comunes puedan entender.,Evite la jerga técnica
-3. dar entrada: Al responder funciones, intente decirle a los usuarios dónde encontrarlas.(Establecer ruta o entrada de operación)
-4. Hablando francamente de limitaciones: Si el usuario pregunta sobre una función que Muse no admite,claramente indicado,No pretendas apoyar
-5. Diferenciar versiones: Algunas funciones están marcadas con números de versión.(Como el paquete de emoticonos v1.95),Es posible que las versiones anteriores no tengan
+1. 据实回答: 基于本文档列出的功能回答,查不到的功能不要编造
+2. 通俗表达: 用普通用户能理解的语言,避免堆砌技术术语
+3. 给入口: 回答功能时尽量告诉用户在哪里能找到(设置路径或操作入口)
+4. 坦诚局限: 如果用户问的功能 Muse 不支持,明确说明,不要假装支持
+5. 区分版本: 部分功能标注了版本号(如 v1.95 表情包),旧版本可能没有
 
-## 5. Referencia a preguntas frecuentes
+## 五、常见问题参考
 
-- "Muse ¿Qué se puede hacer?": Consulte la Sección 2 para obtener una introducción paso a paso a los módulos funcionales principales.
-- "Cómo usar la memoria": ajustes → asistente → Se abre la subpágina de memoria,o decir en una conversación"recuerda:XXX"Memoria fija
-- "Cómo importar conocimiento": ajustes → base de conocimientos,importar txt/md/csv/json,LLM Se recuperará a través de Knowledge_search.
-- "Cómo enviar mensajes regularmente": ajustes → tareas programadas,Configurar expresiones cron
-- "¿Cómo consigo que mi asistente me encuentre de forma proactiva?": ajustes → charlar → mensajes no solicitados,Seleccione intervalo de 1/2/4/8/12/24 horas
-- "Cómo cambiar el tema": ajustes → Apariencia,Elija Material You, colores dinámicos o temas personalizados
-- "Cómo pensar profundamente": El campo de entrada del chat + menú numérico abre un pensamiento profundo
-- "Cómo buscar en línea": Campo de entrada de chat + No. de menú para habilitar la búsqueda en Internet,o en la configuración de ajustes SearXNG/Tavily
-- "Cómo colaborar con múltiples asistentes": Crear múltiples asistentes,Déjalos discutirlo en el chat grupal.,O delegar con delegado_agent
-- "Cómo compartir asistente": Detalles del asistente exportar código QR,La otra parte escanea el código para importar
+- "Muse 能做什么": 参考第二节核心功能模块逐条介绍
+- "怎么用记忆": 设置 → 助手 → 记忆子页开启,或对话中说"记住:XXX"可固定记忆
+- "怎么导入知识": 设置 → 知识库,导入 txt/md/csv/json,LLM 会通过 knowledge_search 检索
+- "怎么定时发消息": 设置 → 定时任务,配置 cron 表达式
+- "怎么让助手主动找我": 设置 → 聊天 → 主动消息,选 1/2/4/8/12/24 小时间隔
+- "怎么换主题": 设置 → 外观,选 Material You 动态色或自定义主题
+- "怎么深度思考": 聊天输入栏 + 号菜单开启深度思考
+- "怎么联网搜索": 聊天输入栏 + 号菜单开启联网搜索,或在设置配置 SearXNG/Tavily
+- "怎么多助手协作": 创建多个助手,在群聊里让它们讨论,或用 delegate_agent 委托
+- "怎么分享助手": 助手详情导出二维码,对方扫码导入

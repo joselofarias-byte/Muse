@@ -5,7 +5,7 @@ import io.zer0.muse.data.session.MessagePartEntity
 import io.zer0.muse.data.session.SessionRepository
 import io.zer0.muse.data.session.ToolRoundEntity
 
-/** Entrada enviada en una ronda.parts/toolRounds Se puede dejar vacío, los campos antiguos permanecerán intactos. */
+/** 一次回合提交的输入。parts/toolRounds 可为空，旧字段仍完整保留。 */
 data class MessageCommitRequest(
     val turnId: String,
     val sessionId: String,
@@ -23,10 +23,10 @@ sealed interface MessageCommitResult {
 }
 
 /**
- * Nuevo adaptador de envío de enlaces.
+ * 新链路提交适配器。
  *
- * El verdadero límite idempotente es ConversationTurnDao.finishIfOpen de Room; aún se puede seguir llamando al enlace antiguo
- * SessionRepository.upsertMessage, cambie solo si useNewConversationService está activado explícitamente.
+ * 真正的幂等边界在 Room 的 ConversationTurnDao.finishIfOpen；旧链路仍可继续调用
+ * SessionRepository.upsertMessage，只有显式打开 useNewConversationService 才切换。
  */
 class MessageCommit(
     private val sessionRepository: SessionRepository,
@@ -34,7 +34,7 @@ class MessageCommit(
     suspend fun commit(request: MessageCommitRequest): MessageCommitResult = sessionRepository.commitConversationMessage(request)
 }
 
-/** Genere las partes base de una confirmación a partir de campos UIMessage compatibles; Los mensajes antiguos no están obligados a reponerse. */
+/** 从兼容 UIMessage 字段生成一次提交的基础 parts；旧消息不会被强制回填。 */
 fun buildCommitParts(message: UIMessage, createdAt: Long): List<MessagePartEntity> = buildList {
     val reasoning = message.reasoning
     if (!reasoning.isNullOrEmpty()) {

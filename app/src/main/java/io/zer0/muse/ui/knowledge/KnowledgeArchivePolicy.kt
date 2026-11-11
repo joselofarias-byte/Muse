@@ -1,6 +1,6 @@
 package io.zer0.muse.ui.knowledge
 
-/** Formatos de paquetes comprimidos importables y sus esquemas de origen de documentos. */
+/** 可导入的压缩包格式及其文档来源 scheme。 */
 internal enum class ArchiveFormat(val extension: String, val sourceScheme: String) {
     ZIP("zip", "zip"),
     SEVEN_Z("7z", "7z"),
@@ -15,56 +15,56 @@ internal enum class ArchiveFormat(val extension: String, val sourceScheme: Strin
     }
 }
 
-/** El tipo de entrada de documento en el paquete comprimido. */
+/** 压缩包内文档条目类型。 */
 internal enum class ArchiveEntryKind { TEXT, PARSED, SKIP }
 
 /**
- * Estrategia de importación de paquetes comprimidos — Categorías de la lista blanca,junk Filtrado, limitación y denominación temporal de archivos.
+ * 压缩包导入策略 — 白名单分类、junk 过滤、上限与临时文件命名。
  *
- * v2.3.1: Se agregó juicio de rechazo para paquetes comprimidos importados desde un solo archivo.([isArchiveFile]),Compartido por la página principal de la base de conocimientos y la página de gestión de la base de conocimientos.;
- * Consulte ImportGuards.kt para detectar binarios que requieren ContentResolver.
+ * v2.3.1: 追加单文件导入的压缩包拒绝判定([isArchiveFile]),供主知识库页与知识库管理页共用;
+ * 需要 ContentResolver 的二进制嗅探见 ImportGuards.kt。
  *
- * pura logica(Sin dependencias de Android),Archivos separados para facilitar pruebas únicas;Descomprimir/Realizar el pedido/Proceso de indexación
- * Consulte KnowledgeArchiveImporter.kt.
+ * 纯逻辑(无 Android 依赖),独立成文件便于单测;解压/落盘/索引流程
+ * 见 KnowledgeArchiveImporter.kt。
  */
 internal object KnowledgeArchivePolicy {
-    /** El número máximo de entradas procesadas en una sola importación. */
+    /** 单次导入最多处理的条目数。 */
     const val MAX_ENTRIES = 500
 
-    /** Límite de descompresión de entrada única(bytes,Para la colocación de clases de análisis);Las entradas que exceden el límite se manejan como fallas. */
+    /** 单条目解压上限(字节,解析类落盘用);超限条目按失败处理。 */
     const val MAX_ENTRY_BYTES = 50L * (1L shl 20)
 
-    /** El límite superior del consumo acumulado para una sola importación.(Tamaño de byte,Las entradas de texto se aproximan carácter por carácter.). */
+    /** 单次导入累计消耗上限(字节口径,文本条目按字符近似)。 */
     const val MAX_TOTAL_BYTES = 300L * (1L shl 20)
 
-    /** Requiere un límite de copia temporal del archivo fuente del lector buscable. */
+    /** 需要 seekable reader 的源 archive 临时副本上限。 */
     const val MAX_ARCHIVE_BYTES = 300L * (1L shl 20)
 
-    /** 7z / RAR Límite de memoria para decodificar diccionario. */
+    /** 7z / RAR 解码字典的内存上限。 */
     const val MAX_DECODER_MEMORY_KIB = 128 * 1024
     const val MAX_DECODER_MEMORY_BYTES = 128L * 1024 * 1024
 
-    /** Límite de vista previa del texto del documento,El índice todavía utiliza el contenido completo. */
+    /** 文档正文预览上限,索引仍使用完整内容。 */
     const val MAX_PREVIEW_CHARS = 500_000
 
-    /** Límite de caracteres de lectura de entrada de texto(acuerdo chars*2≈bytes Calibre);Truncado y marcado más allá de los límites. */
+    /** 文本条目读取字符上限(约合 chars*2≈bytes 口径);超限截断并加标记。 */
     const val MAX_TEXT_CHARS = 10_000_000
 
-    /** Lista blanca de texto(md/markdown/txt/csv/json/log). */
+    /** 文本类白名单(md/markdown/txt/csv/json/log)。 */
     private val TEXT_EXTS = setOf("md", "markdown", "txt", "csv", "json", "log")
 
-    /** Lista blanca de clases de análisis(pdf/docx/doc/epub/pptx). */
+    /** 解析类白名单(pdf/docx/doc/epub/pptx)。 */
     private val PARSED_EXTS = setOf("pdf", "docx", "doc", "epub", "pptx")
 
-    /** No se admiten otros formatos de compresión importados como paquetes de base de conocimientos. */
+    /** 不支持作为知识库 bundle 导入的其他压缩格式。 */
     private val UNSUPPORTED_ARCHIVE_EXTS = setOf("tar", "gz", "tgz", "bz2", "xz")
 
-    /** Si el nombre del archivo tiene un formato de compresión no compatible que no debe importarse como texto. */
+    /** 该文件名是否为不应被当文本导入的、不支持的压缩格式。 */
     fun isArchiveFile(name: String): Boolean = extensionOf(name) in UNSUPPORTED_ARCHIVE_EXTS
 
     fun extensionOf(name: String): String = name.substringAfterLast('.', "").lowercase()
 
-    /** Directorios/Archivos ocultos/Bifurcaciones de recursos de macOS, etc. no deben considerarse entradas en la documentación. */
+    /** 目录 / 隐藏文件 / macOS 资源叉等不应视为文档的条目。 */
     fun isJunk(name: String): Boolean {
         val normalized = name.replace('\\', '/')
         val base = normalized.substringAfterLast('/')
@@ -83,7 +83,7 @@ internal object KnowledgeArchivePolicy {
         }
     }
 
-    /** entrada de texto doc.fileType(Igual que el método de importación de un solo archivo). */
+    /** 文本条目的 doc.fileType(与单文件导入口径一致)。 */
     fun textFileType(name: String): String {
         val ext = extensionOf(name)
         return when (ext) {
@@ -94,7 +94,7 @@ internal object KnowledgeArchivePolicy {
         }
     }
 
-    /** Resuelva el doc.fileType de la entrada de clase. */
+    /** 解析类条目的 doc.fileType。 */
     fun parsedFileType(name: String): String {
         val ext = extensionOf(name)
         return when (ext) {
@@ -106,7 +106,7 @@ internal object KnowledgeArchivePolicy {
         }
     }
 
-    /** Nombre de archivo de disco temporal:Preservar la extensión para que la reconozca el analizador.,Eliminar rutas y caracteres ilegales.,Y de duración limitada. */
+    /** 临时落盘文件名:保留扩展名供解析器识别,剔除路径与非法字符,并限长。 */
     fun sanitizeTempName(entryName: String): String {
         val base = entryName.replace('\\', '/').substringAfterLast('/')
         val dot = base.lastIndexOf('.')

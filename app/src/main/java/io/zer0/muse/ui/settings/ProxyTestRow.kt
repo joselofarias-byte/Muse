@@ -14,6 +14,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import io.zer0.common.Logger
@@ -30,25 +31,25 @@ import okhttp3.Request
 import java.util.concurrent.TimeUnit
 
 /**
- * v2.6.9: Prueba de conexión de proxy.
+ * v2.6.9: 代理连接测试。
  *
- * Por qué lo necesitas:
- * No hubo ningún comentario después de que se le asignara un agente antes. El usuario sólo puede volver a la conversación y "mandar un mensaje para intentarlo", y cuando falla
- * Al final, el agente falló,API Key No puedo decir si se trata de una intercepción incorrecta o ascendente.
- * Lo que es peor es que la configuración del proxy tiene la restricción de "requerir un reinicio para que surta efecto", lo que los usuarios del cliente anterior pueden detectar fácilmente.
- * Falso negativo y luego cambie un montón de configuraciones irrelevantes.
+ * 为什么需要它：
+ * 以前配完代理完全没有反馈。用户只能回到对话里「发一条试试」，而失败时
+ * 到底是代理没通、API Key 错、还是上游拦截，完全分不清。
+ * 更糟的是代理配置有「需重启生效」的约束，用户很容易在旧 client 上测出
+ * 假阴性，然后去改一堆无关配置。
  *
- * Diseño:
- *  - usar**El valor en el formulario actual.**Ahora cree un cliente temporal para realizar pruebas, que no se ve afectado por la configuración guardada y las restricciones de reinicio.
- *  - La dirección de la sonda selecciona un punto final que es sensible al proxy y tiene una respuesta mínima (gstatic 204), no utilice ningún servicio que requiera autenticación
- *  - Distinga claramente entre "la conexión directa sin proxy tiene éxito pero el proxy falla", "tiempo de espera de conexión" y "falla de autenticación de proxy".
+ * 设计：
+ *  - 用**当前表单里的值**现建一个临时 client 去测，不受已保存配置与重启约束影响
+ *  - 探针地址选对代理敏感、响应极小的端点（gstatic 204），不走任何需要鉴权的服务
+ *  - 明确区分「不走代理直连成功但走代理失败」「连接超时」「代理认证失败」
  */
 @Composable
 internal fun ProxyTestRow(proxyConfig: ProxyConfig) {
     var running by remember { mutableStateOf(false) }
     var result by remember { mutableStateOf<TestOutcome?>(null) }
     val scope = rememberCoroutineScope()
-    val localizedResources = androidx.compose.ui.platform.LocalResources.current
+    val resources = LocalResources.current
 
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
@@ -72,14 +73,14 @@ internal fun ProxyTestRow(proxyConfig: ProxyConfig) {
                                 runProbe(
                                     proxyConfig,
                                     ProbeTexts(
-                                        invalidConfig = localizedResources.getString(R.string.proxy_test_invalid_config),
-                                        connected = localizedResources.getString(R.string.proxy_test_connected),
-                                        needAuth = localizedResources.getString(R.string.proxy_test_need_auth),
-                                        reachableFailed = localizedResources.getString(R.string.proxy_test_reachable_failed),
-                                        timeout = localizedResources.getString(R.string.proxy_test_timeout),
-                                        dnsFailed = localizedResources.getString(R.string.proxy_test_dns_failed),
-                                        connectFailed = localizedResources.getString(R.string.proxy_test_connect_failed),
-                                        unexpected = localizedResources.getString(R.string.proxy_test_unexpected),
+                                        invalidConfig = resources.getString(R.string.proxy_test_invalid_config),
+                                        connected = resources.getString(R.string.proxy_test_connected),
+                                        needAuth = resources.getString(R.string.proxy_test_need_auth),
+                                        reachableFailed = resources.getString(R.string.proxy_test_reachable_failed),
+                                        timeout = resources.getString(R.string.proxy_test_timeout),
+                                        dnsFailed = resources.getString(R.string.proxy_test_dns_failed),
+                                        connectFailed = resources.getString(R.string.proxy_test_connect_failed),
+                                        unexpected = resources.getString(R.string.proxy_test_unexpected),
                                     ),
                                 )
                             }
@@ -108,7 +109,7 @@ internal fun ProxyTestRow(proxyConfig: ProxyConfig) {
 
 private data class TestOutcome(val ok: Boolean, val message: String)
 
-/** v2.6.9: Recopilación de copywriting para detección. Utilice clases de datos para transportarlo y evitar la expansión del parámetro runProbe. */
+/** v2.6.9: 探测用的文案集合。用数据类承载，避免 runProbe 参数膨胀。 */
 private data class ProbeTexts(
     val invalidConfig: String,
     val connected: String,
@@ -121,8 +122,8 @@ private data class ProbeTexts(
 )
 
 /**
- * Punto final de la sonda:gstatic de generar_204.
- * Razones para elegirlo: se puede acceder a él desde cualquier red, el cuerpo de la respuesta está vacío, no se requiere autenticación y no se considerará tráfico abusivo.
+ * 探针端点：gstatic 的 generate_204。
+ * 选它的理由：任何网络都能访问、响应体为空、不需要鉴权、不会被当成滥用流量。
  */
 private const val TAG = "ProxyTestRow"
 
@@ -137,9 +138,9 @@ private fun runProbe(config: ProxyConfig, texts: ProbeTexts): TestOutcome {
             .connectTimeout(8, TimeUnit.SECONDS)
             .readTimeout(8, TimeUnit.SECONDS)
             .callTimeout(12, TimeUnit.SECONDS)
-        // v2.6.9: Utilice directamente valores de formulario para ensamblar sin utilizar el ProxyProvider global.
-        // La forma antigua de escribir es establecer temporalmente el estado global y luego restaurarlo. Durante la concurrencia, el cliente que envía la solicitud estará sesgado.——
-        // El botón de prueba sólo debería afectar a su propia sonda.
+        // v2.6.9: 直接用表单值装配，不走全局 ProxyProvider。
+        // 旧写法是临时 set 全局状态再还原，并发时会把正在发请求的 client 带偏——
+        // 测试按钮只该影响自己这一条探针。
         val address = java.net.InetSocketAddress.createUnresolved(config.host.trim(), config.port)
         val proxy = when (config.type.uppercase()) {
             "SOCKS", "SOCKS5" -> java.net.Proxy(java.net.Proxy.Type.SOCKS, address)
@@ -172,27 +173,27 @@ private fun runProbe(config: ProxyConfig, texts: ProbeTexts): TestOutcome {
             )
         }
     } catch (e: java.net.SocketTimeoutException) {
-        Logger.w(TAG, "Tiempo de espera de la sonda del agente: ${e.message}")
+        Logger.w(TAG, "代理探测超时: ${e.message}")
         TestOutcome(false, "${texts.timeout} (${e.message ?: e::class.simpleName})")
     } catch (e: java.net.UnknownHostException) {
-        Logger.w(TAG, "Error de DNS en la sonda de proxy: ${e.message}")
+        Logger.w(TAG, "代理探测 DNS 失败: ${e.message}")
         TestOutcome(false, "${texts.dnsFailed} (${e.message ?: e::class.simpleName})")
     } catch (e: java.io.IOException) {
-        Logger.w(TAG, "Error en la conexión de la sonda proxy: ${e.message}")
+        Logger.w(TAG, "代理探测连接失败: ${e.message}")
         TestOutcome(false, "${texts.connectFailed}${e.message ?: e::class.simpleName}")
     } catch (e: kotlinx.coroutines.CancellationException) {
-        // v2.6.9(corrección de errores real): CancellationException La cadena de herencia de es
+        // v2.6.9（真 bug 修复）: CancellationException 的继承链是
         //   IllegalStateException -> RuntimeException -> Exception
-        // La frase original catch(RuntimeException) La cancelación de la rutina se considerará un error, lo que resultará en
-        // La interfaz está cerrada pero el fondo aún se detecta y se pierde la semántica de cancelación. En el proyecto, M-OAI3 ha sido reemplazado por similar
-        // El problema es reemplazar runCatching con resultOf, que debe volver a lanzarse explícitamente.
-        // Nota:JVM La CancellationException de kotlinx y java.util.concurrent es la misma
-        // tipo (typealias), por lo que sólo se necesita una rama.
+        // 原来那句 catch(RuntimeException) 会把协程取消当错误咽掉，导致
+        // 界面已关闭但后台仍在探测、取消语义丢失。项目里 M-OAI3 已因同类
+        // 问题把 runCatching 换成 resultOf，这里必须显式重抛。
+        // 注：JVM 下 kotlinx 与 java.util.concurrent 的 CancellationException 是同一个
+        // 类型（typealias），因此只需一个分支。
         throw e
     } catch (e: IllegalArgumentException) {
-        // v2.6.9: Capture solo tipos específicos. El punto donde se puede lanzar IllegalArgumentException en la sonda es
-        // URI Construcción y análisis JSON (SerializationException es decir, sus subcategorías).
-        Logger.w(TAG, "Excepción del parámetro de detección del agente: ${e.message}", e)
+        // v2.6.9: 只捕具体类型。探针里可能抛 IllegalArgumentException 的点是
+        // URI 构造与 JSON 解析（SerializationException 即其子类）。
+        Logger.w(TAG, "代理探测参数异常: ${e.message}", e)
         TestOutcome(false, "${texts.unexpected}${e.message ?: e::class.simpleName}")
     }
 }

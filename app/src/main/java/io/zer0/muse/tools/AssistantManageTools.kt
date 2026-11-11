@@ -8,23 +8,23 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
 /**
- * Conjunto de herramientas de autogestión del asistente —— Permitir que el asistente cree/Modificar/Quitar asistente.
+ * 助手自管理工具集 —— 让助手能创建/修改/删除助手。
  *
- * ## Diseño con permisos restringidos (esta es la más sensible de todas las herramientas)
+ * ## 限权设计（这是全工具面里最敏感的）
  *
- * AI Cambiar la configuración del asistente puede crear un circuito cerrado excesivo (por ejemplo, atarse a más herramientas).
- * Por lo tanto, este conjunto de herramientas**Solo abre el subconjunto seguro**:
+ * AI 改助手的配置可能形成越权闭环（例如把自己绑到更多工具上）。
+ * 因此本工具集**只开放安全子集**：
  *
- *  | Operación | Campos permitidos para ser modificados | Campos que no se permiten modificar |
+ *  | 操作 | 允许修改的字段 | 禁止修改的字段 |
  *  |---|---|---|
- *  | crear | name, systemPrompt, avatarEmoji | toolIdsJson, skillIdsJson, mcpServerIdsJson, modelId, providerId |
- *  | actualizar | systemPrompt(Redacción de personajes) | toolIdsJson, skillIdsJson, mcpServerIdsJson, modelId, providerId, reasoningLevel |
- *  | Eliminar | asistente completo | El asistente predeterminado no se puede eliminar; el asistente al que pertenece actualmente no se puede eliminar. |
+ *  | 创建 | name, systemPrompt, avatarEmoji | toolIdsJson, skillIdsJson, mcpServerIdsJson, modelId, providerId |
+ *  | 更新 | systemPrompt（人设文案） | toolIdsJson, skillIdsJson, mcpServerIdsJson, modelId, providerId, reasoningLevel |
+ *  | 删除 | 整个助手 | 默认助手不可删；不可删自己当前所属助手 |
  *
- * No se permiten cambios vinculantes (herramienta/Habilidades/MCP)——Esa es la configuración explícita del usuario en la página de configuración del asistente.
- * AI Las modificaciones conducirán a extralimitarse (darse más herramientas). modelo/Lo mismo se aplica a los proveedores (los cambios pueden generar cargos).
+ * 不允许改绑定（工具/技能/MCP）——那是用户在助手设置页的显式配置，
+ * AI 修改会导致越权（给自己挂更多工具）。模型/供应商同理（改了可能产生费用）。
  *
- * denominación unificada `assistant_manage_`.
+ * 命名统一 `assistant_manage_`。
  */
 class AssistantManageTools(
     private val assistantRepository: AssistantRepository,
@@ -45,7 +45,7 @@ class AssistantManageTools(
         registry.register(
             ToolRegistry.ToolDef(
                 name = "assistant_manage_list",
-                description = "Listar todos los asistentes (id, nombre, descripción). para modificación/Confirme la identificación del asistente antes de eliminar.",
+                description = "列出全部助手（id、名称、描述）。用于修改/删除前确认助手 id。",
                 parameters = emptyMap(),
                 required = emptySet(),
                 riskLevel = ToolRiskLevel.SAFE,
@@ -54,10 +54,10 @@ class AssistantManageTools(
             runBlocking {
                 val all = assistantRepository.getAll()
                 if (all.isEmpty()) {
-                    "No hay asistente."
+                    "没有助手。"
                 } else {
                     all.joinToString("\n") { a ->
-                        val isDefault = if (a.id == DEFAULT_ASSISTANT_ID) " (Predeterminado)" else ""
+                        val isDefault = if (a.id == DEFAULT_ASSISTANT_ID) " (默认)" else ""
                         "${a.id} | ${a.name}$isDefault"
                     }
                 }
@@ -69,12 +69,12 @@ class AssistantManageTools(
         registry.register(
             ToolRegistry.ToolDef(
                 name = "assistant_manage_create",
-                description = "Crea un nuevo asistente (solo configura el nombre y la copia del personaje; herramientas/modelo/El enlace lo configura el usuario en la página de configuración)." +
-                    "id Se puede omitir (generado automáticamente).",
+                description = "创建一个新助手（只设置名称和人设文案；工具/模型/绑定由用户在设置页配置）。" +
+                    "id 可省略（自动生成）。",
                 parameters = mapOf(
-                    "name" to "Requerido, nombre del asistente",
-                    "system_prompt" to "Opcional, copia de caracteres (palabra de aviso del sistema)",
-                    "assistant_id" to "Opcional, identificación del asistente (generada automáticamente cuando se omite)",
+                    "name" to "必填，助手名称",
+                    "system_prompt" to "可选，人设文案（系统提示词）",
+                    "assistant_id" to "可选，助手 id（省略时自动生成）",
                 ),
                 required = setOf("name"),
                 riskLevel = ToolRiskLevel.HIGH,
@@ -82,14 +82,14 @@ class AssistantManageTools(
         ) { args ->
             val name = args["name"]?.trim().orEmpty()
             if (name.isBlank()) {
-                errorJson("El nombre del parámetro falta o está vacío")
+                errorJson("参数 name 缺失或为空")
             } else {
                 runBlocking {
                     val id = args["assistant_id"]?.trim().takeUnless { it.isNullOrBlank() }
                         ?: "assistant-${System.currentTimeMillis()}"
                     val existing = assistantRepository.getById(id)
                     if (existing != null) {
-                        errorJson("asistente id=$id Ya existe (nombre:${existing.name})")
+                        errorJson("助手 id=$id 已存在（名称：${existing.name}）")
                     } else {
                         val entity = io.zer0.muse.data.assistant.AssistantEntity(
                             id = id,
@@ -97,8 +97,8 @@ class AssistantManageTools(
                             systemPrompt = args["system_prompt"]?.trim().orEmpty(),
                         )
                         assistantRepository.upsert(entity)
-                        Logger.i(TAG, "Asistente de creación de herramientas: $id ($name)")
-                        okJson("Asistente creado$name\"(id=$id). Herramientas/modelo/Vaya a la página de configuración del asistente para configurar el enlace.")
+                        Logger.i(TAG, "工具创建助手: $id ($name)")
+                        okJson("已创建助手「$name」（id=$id）。工具/模型/绑定请到助手设置页配置。")
                     }
                 }
             }
@@ -109,11 +109,11 @@ class AssistantManageTools(
         registry.register(
             ToolRegistry.ToolDef(
                 name = "assistant_manage_update_persona",
-                description = "Modificar la copia del personaje de un asistente (palabra de aviso del sistema). Sólo se permiten cambios de carácter." +
-                    "No se permite cambiar las fijaciones de las herramientas./modelo/proveedor——Estos son administrados por el usuario en la página de configuración.",
+                description = "修改一个助手的人设文案（系统提示词）。只允许改人设，" +
+                    "不允许改工具绑定/模型/供应商——那些由用户在设置页管理。",
                 parameters = mapOf(
-                    "assistant_id" to "Se necesita asistente id",
-                    "system_prompt" to "Requerido, redacción de nuevos personajes.",
+                    "assistant_id" to "必填，助手 id",
+                    "system_prompt" to "必填，新人设文案",
                 ),
                 required = setOf("assistant_id", "system_prompt"),
                 riskLevel = ToolRiskLevel.HIGH,
@@ -122,16 +122,16 @@ class AssistantManageTools(
             val id = args["assistant_id"]?.trim().orEmpty()
             val prompt = args["system_prompt"]?.trim().orEmpty()
             when {
-                id.isBlank() -> errorJson("El parámetro asistente_id falta o está vacío")
-                prompt.isBlank() -> errorJson("El parámetro system_prompt no puede estar vacío (use un espacio para borrar el carácter)")
+                id.isBlank() -> errorJson("参数 assistant_id 缺失或为空")
+                prompt.isBlank() -> errorJson("参数 system_prompt 不能为空（清空人设请用空格占位）")
                 else -> runBlocking {
                     val assistant = assistantRepository.getById(id)
                     if (assistant == null) {
-                        errorJson("Asistente no encontrado $id")
+                        errorJson("未找到助手 $id")
                     } else {
                         assistantRepository.upsert(assistant.copy(systemPrompt = prompt))
-                        Logger.i(TAG, "Persona asistente cambiada de herramienta: $id (${assistant.name})")
-                        okJson("El asistente ha sido modificado \"${assistant.name}\"($id) redacción de personajes.")
+                        Logger.i(TAG, "工具改助手人设: $id (${assistant.name})")
+                        okJson("已修改助手「${assistant.name}」（$id）的人设文案。")
                     }
                 }
             }
@@ -142,10 +142,10 @@ class AssistantManageTools(
         registry.register(
             ToolRegistry.ToolDef(
                 name = "assistant_manage_delete",
-                description = "Eliminar un asistente. Irrevocable. El asistente predeterminado no se puede eliminar." +
-                    "Assistant_manage_list debe usarse para confirmar la identificación del asistente antes de eliminar.",
+                description = "删除一个助手。不可撤销。默认助手不可删除。" +
+                    "删除前应先用 assistant_manage_list 确认助手 id。",
                 parameters = mapOf(
-                    "assistant_id" to "Se necesita asistente id",
+                    "assistant_id" to "必填，助手 id",
                 ),
                 required = setOf("assistant_id"),
                 riskLevel = ToolRiskLevel.HIGH,
@@ -153,16 +153,16 @@ class AssistantManageTools(
         ) { args ->
             val id = args["assistant_id"]?.trim().orEmpty()
             when {
-                id.isBlank() -> errorJson("El parámetro asistente_id falta o está vacío")
-                id == DEFAULT_ASSISTANT_ID -> errorJson("El asistente predeterminado no se puede eliminar (de acuerdo con la protección de la capa de la interfaz de usuario)")
+                id.isBlank() -> errorJson("参数 assistant_id 缺失或为空")
+                id == DEFAULT_ASSISTANT_ID -> errorJson("默认助手不可删除（与 UI 层保护一致）")
                 else -> runBlocking {
                     val assistant = assistantRepository.getById(id)
                     if (assistant == null) {
-                        errorJson("Asistente no encontrado $id")
+                        errorJson("未找到助手 $id")
                     } else {
                         assistantRepository.delete(id)
-                        Logger.i(TAG, "Asistente de extracción de herramientas.: $id (${assistant.name})")
-                        okJson("Asistente \"eliminado\"${assistant.name}\"($id).")
+                        Logger.i(TAG, "工具删除助手: $id (${assistant.name})")
+                        okJson("已删除助手「${assistant.name}」（$id）。")
                     }
                 }
             }
@@ -180,7 +180,7 @@ class AssistantManageTools(
     }.toString()
 }
 
-/** Registrador: Inyección de Koin, guiada uniformemente por ToolRegistrarBootstrapper. */
+/** 注册器：走 Koin 注入，由 ToolRegistrarBootstrapper 统一引导。 */
 class AssistantManageToolsRegistrar(
     private val toolRegistry: ToolRegistry,
     private val tools: AssistantManageTools,

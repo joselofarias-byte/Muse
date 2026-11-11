@@ -1,27 +1,27 @@
 #!/usr/bin/env python3
 """
-pr_check.py — PR Clasificación de alcance y enrutamiento de carriles.
+pr_check.py — PR 作用域分类与 Lane 路由。
 
-Cambiar la ruta del archivo según PR,Clasificados en diferentes alcances de inspección.(scope),Genera el carril en el que debe ejecutarse la salida.
-GitHub Actions Controle qué trabajos se ejecutan realmente a través de la salida,Evite los PR que solo contienen documentación que activan compilaciones de Android.
+基于 PR 变更文件路径,分类为不同的检查作用域(scope),输出应运行的 Lane。
+GitHub Actions 通过 output 控制哪些 job 实际执行,避免纯文档 PR 触发 Android 构建。
 
-clasificación del alcance:
-  - localization: values-* Cambios en el archivo de recursos
-  - android_resources: res/ Cambios en recursos como XML/dibujable en
-  - android_jvm: Kotlin/Java Cambios en el código fuente(Requiere compilación + prueba única)
-  - android_full: build.gradle/kts o cambios manifiestos(Necesito estar completo assemble)
-  - script: ci/script/ Cambios en el script Python en
-  - docs: Sólo cambios en archivos .md(Sólo una revisión rápida)
-  - config: gradle/config Cambios de archivos
+作用域分类:
+  - localization: values-* 资源文件变更
+  - android_resources: res/ 下的 XML/drawable 等资源变更
+  - android_jvm: Kotlin/Java 源码变更(需编译 + 单测)
+  - android_full: build.gradle/kts 或 manifest 变更(需完整 assemble)
+  - script: ci/script/ 下的 Python 脚本变更
+  - docs: 仅 .md 文件变更(只需快速检查)
+  - config: gradle/config 文件变更
 
-Uso:
-  # prueba local(Comparar CABEZA con main)
+用法:
+  # 本地测试(对比 HEAD 与 main)
   py -3 ci/script/pr_check.py --base origin/main
 
-  # CI utilizado en(GitHub Actions)
+  # CI 中使用(GitHub Actions)
   py -3 ci/script/pr_check.py --base origin/${{ github.base_ref }} --output json
 
-salida(JSON):
+输出(JSON):
   {
     "scopes": ["localization", "android_jvm"],
     "lanes": {
@@ -48,11 +48,11 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
-# ── reglas de clasificación de alcance ──────────────────────────────────────────────────────────
+# ── 作用域分类规则 ──────────────────────────────────────────────────────────
 
-# ruta del archivo → Reglas de coincidencia de alcance(Ordenar por prioridad de mayor a menor)
+# 文件路径 → 作用域的匹配规则(按优先级从高到低)
 SCOPE_RULES = [
-    # localization: values-* Archivos de recursos en el directorio.
+    # localization: values-* 目录下的资源文件
     (
         "localization",
         lambda p: (
@@ -61,9 +61,9 @@ SCOPE_RULES = [
             or (p.startswith("app/src/main/res/values/") and p.endswith(".xml"))
         ),
     ),
-    # script: ci/ Scripts en el directorio
+    # script: ci/ 目录下的脚本
     ("script", lambda p: p.startswith("ci/")),
-    # android_full: Configuración de compilación o cambios de manifiesto
+    # android_full: 构建配置或 manifest 变更
     (
         "android_full",
         lambda p: (
@@ -75,7 +75,7 @@ SCOPE_RULES = [
             or p == "gradle.properties"
         ),
     ),
-    # android_resources: res/ archivos de recursos bajo(no values-* XML/dibujable, etc.)
+    # android_resources: res/ 下的资源文件(非 values-* 的 XML/drawable 等)
     (
         "android_resources",
         lambda p: (
@@ -84,14 +84,14 @@ SCOPE_RULES = [
             or "/res/" in p
         ),
     ),
-    # android_jvm: Kotlin/Java código fuente
+    # android_jvm: Kotlin/Java 源码
     (
         "android_jvm",
         lambda p: p.endswith(".kt") or p.endswith(".java"),
     ),
-    # docs: Markdown Archivo
+    # docs: Markdown 文件
     ("docs", lambda p: p.endswith(".md")),
-    # config: Archivo de configuración
+    # config: 配置文件
     (
         "config",
         lambda p: any(
@@ -103,16 +103,16 @@ SCOPE_RULES = [
 
 
 def classify_file(filepath: str) -> str:
-    """Clasifique las rutas de archivos individuales en ámbitos."""
+    """将单个文件路径分类到作用域。"""
     for scope, matcher in SCOPE_RULES:
         if matcher(filepath):
             return scope
-    # Los archivos no coincidentes se clasifican como "other"
+    # 未匹配的文件归为 "other"
     return "other"
 
 
 def get_changed_files(base: str) -> list[str]:
-    """Obtenga una lista de archivos modificados en relación con la rama base."""
+    """获取相对于 base 分支的变更文件列表。"""
     try:
         result = subprocess.run(
             ["git", "diff", "--name-only", f"{base}...HEAD"],
@@ -132,8 +132,8 @@ def get_changed_files(base: str) -> list[str]:
 
 
 def compute_lanes(scopes: set[str]) -> dict[str, bool]:
-    """Calcula el carril que se debe ejecutar en función de la colección de alcance."""
-    # quick_checks Siempre corriendo(Inspección sanitaria + disciplina de ingeniería.)
+    """根据作用域集合计算应运行的 Lane。"""
+    # quick_checks 始终运行(卫生检查 + 工程纪律)
     lanes = {
         "quick_checks": True,
         "localization": "localization" in scopes,
@@ -146,25 +146,25 @@ def compute_lanes(scopes: set[str]) -> dict[str, bool]:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="PR Clasificación de alcance y trazado de carriles")
+    parser = argparse.ArgumentParser(description="PR 作用域分类与 Lane 路由")
     parser.add_argument(
         "--base",
         default="origin/main",
-        help="Comparar rama base(Predeterminado: origin/main)",
+        help="对比的 base 分支(默认: origin/main)",
     )
     parser.add_argument(
         "--output",
         choices=["json", "text"],
         default="text",
-        help="Formato de salida(Predeterminado: text)",
+        help="输出格式(默认: text)",
     )
     parser.add_argument(
         "--files",
-        help="Pasar directamente la lista de archivos(separados por nueva línea),saltar git diff",
+        help="直接传入文件列表(用换行分隔),跳过 git diff",
     )
     args = parser.parse_args()
 
-    # Obtener archivos de cambios
+    # 获取变更文件
     if args.files:
         changed_files = [f.strip() for f in args.files.split("\n") if f.strip()]
     else:
@@ -183,7 +183,7 @@ def main() -> int:
             print("No changed files detected.")
         return 0
 
-    # Clasificación
+    # 分类
     classification: dict[str, int] = defaultdict(int)
     scopes: set[str] = set()
     for filepath in changed_files:
@@ -191,10 +191,10 @@ def main() -> int:
         classification[scope] += 1
         scopes.add(scope)
 
-    # calcular Lane
+    # 计算 Lane
     lanes = compute_lanes(scopes)
 
-    # salida
+    # 输出
     if args.output == "json":
         result = {
             "scopes": sorted(scopes),

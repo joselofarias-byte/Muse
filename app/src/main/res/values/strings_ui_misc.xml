@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- ===== ui/common Componentes comunes ===== -->
+    <!-- ===== ui/common 通用组件 ===== -->
     <string name="common_state_enabled">Habilitado</string>
     <string name="common_state_disabled">Desactivado</string>
     <string name="common_confirm_delete_message">Confirmar para eliminar "%1$s”?</string>
@@ -17,10 +17,10 @@
     <string name="common_slider_cd">control deslizante, valor actual %1$s</string>
     <string name="common_open_file_failed">No se puede abrir el archivo: %1$s</string>
 
-    <!-- ===== ui/markdown Markdown renderizado ===== -->
+    <!-- ===== ui/markdown Markdown 渲染 ===== -->
     <string name="markdown_only_http">Sólo admite enlaces http/https</string>
     <string name="markdown_open_link_failed">No se puede abrir el enlace: %1$s</string>
-    <!-- v1.97: URL Haga clic dos veces para confirmar -->
+    <!-- v1.97: URL 点击二次确认 -->
     <string name="markdown_open_link_confirm_title">enlace abierto</string>
     <string name="markdown_open_link_confirm_message">¿Abrir este enlace en su navegador?</string>
     <string name="markdown_open_link_confirm_open">abierto</string>
@@ -46,7 +46,7 @@
     <string name="markdown_chart_show_source">Mostrar código fuente</string>
     <string name="markdown_chart_loading">Representación…</string>
     <string name="markdown_chart_render_failed_prefix">Falló el renderizado: </string>
-    <!-- Phase 2: Copia de código fuente de contenido enriquecido/sugerencias de renderizado de terceros de PlantUML -->
+    <!-- Phase 2: 富内容源码复制 / PlantUML 第三方渲染提示 -->
     <string name="markdown_source_copied">Código fuente copiado</string>
     <string name="card_save_cd">guardar como archivo</string>
     <string name="card_favorite">Coleccionar cartas</string>
@@ -56,21 +56,21 @@
     <string name="card_favorite_wrapper">Colección de tarjetas:%1$s</string>
     <string name="markdown_plantuml_remote_notice">PlantUML Los gráficos deben estar conectados a Internet y el código fuente del gráfico se enviará al servicio de terceros plantuml.com para su representación en línea.</string>
     <string name="markdown_plantuml_render_online">Todavía es necesario renderizarlo en línea.</string>
-    <!-- HTML Función de vista previa -->
+    <!-- HTML 预览功能 -->
     <string name="html_preview_title">HTML Vista previa</string>
     <string name="html_preview_open_in_browser_cd">Abrir en el navegador</string>
     <string name="html_preview_copy_source_cd">Copiar código fuente</string>
     <string name="html_preview_open_in_browser_failed">No se puede abrir en un navegador externo: %1$s</string>
     <string name="html_preview_source_copied">Código fuente HTML copiado</string>
     <string name="html_preview_button_cd">Vista previa en pantalla completa</string>
-    <!-- v1.0.47 P8-2: Descargar producto -->
+    <!-- v1.0.47 P8-2: 下载产物 -->
     <string name="html_preview_download_cd">Descargar</string>
     <string name="html_preview_download_success">Guardado en el directorio de descargas: %1$s</string>
     <string name="html_preview_download_failed">Error en la descarga: %1$s</string>
 
-    <!-- ===== ui/theme Nombre del tema predeterminado ===== -->
-    <string name="theme_warm_paper">papel caliente</string>
-    <string name="theme_sakura">flores de cerezo</string>
+    <!-- ===== ui/theme 预设主题名称 ===== -->
+    <string name="theme_warm_paper">Papel cálido</string>
+    <string name="theme_sakura">Sakura</string>
     <string name="theme_ocean">océano</string>
     <string name="theme_spring">primavera</string>
     <string name="theme_autumn">otoño</string>
@@ -79,7 +79,7 @@
     <string name="theme_washi">papel japonés</string>
     <string name="theme_aizome">Aizen</string>
     <string name="theme_twilight_purple">Mu Ziyun</string>
-    <string name="theme_amber_gold">oro ámbar</string>
+    <string name="theme_amber_gold">Ámbar dorado</string>
     <string name="theme_dusk_rose">rosa crepuscular</string>
     <string name="settings_theme_schedule">Conmutación programada</string>
     <string name="settings_theme_schedule_auto">Conmutación automática</string>
@@ -87,7 +87,7 @@
     <string name="settings_theme_wake_time_title">Hora de despertarse (color claro)</string>
     <string name="settings_theme_sleep_time_title">Hora de dormir (oscuro)</string>
 
-    <!-- ===== ui/speech Entrada de voz y TTS ===== -->
+    <!-- ===== ui/speech 语音输入与 TTS ===== -->
     <string name="speech_speak_prompt">por favor habla…</string>
     <string name="speech_tts_init_failed">La inicialización del motor de voz falló y la función de lectura no está disponible.</string>
     <string name="speech_tts_play_error">Error de reproducción de voz</string>
@@ -103,7 +103,7 @@
     <string name="speech_pause_cd">pausa</string>
     <string name="speech_resume_cd">continuar</string>
 
-    <!-- ===== ui/ModelSwitchSheet Panel de interruptores modelo ===== -->
+    <!-- ===== ui/ModelSwitchSheet 模型切换面板 ===== -->
     <string name="model_switch_title">Modelo</string>
     <string name="model_switch_no_provider">No hay proveedores configurados.\nVe a Ajustes → Proveedores para agregar uno.</string>
     <string name="model_switch_provider_label">proveedor</string>
@@ -113,8 +113,8 @@
     <string name="model_switch_refresh">Actualizar</string>
     <string name="model_switch_fetching_upstream">Obteniendo modelos del proveedor…</string>
     <string name="model_switch_no_models">No hay modelos disponibles del proveedor actual.
-Haga clic en Actualizar para extraer la lista desde arriba</string>
-    <!-- v1.0.4 (P2): Botón de reintento fallido al extraer el modelo -->
+Toca en Actualizar para extraer la lista desde arriba</string>
+    <!-- v1.0.4 (P2): 模型拉取失败重试按钮 -->
     <string name="model_switch_retry">Inténtalo de nuevo</string>
     <string name="model_switch_default">%1$s(Predeterminado)</string>
     <string name="model_switch_selected_cd">seleccionado</string>
@@ -127,32 +127,32 @@ Haga clic en Actualizar para extraer la lista desde arriba</string>
     <string name="model_switch_expand_all">Expandir todo</string>
     <string name="model_switch_collapse_all">Contraer todo</string>
     <string name="model_switch_group_count">%1$s (%2$d)</string>
-    <!-- v1.0.18: insignia de modelo gratis/Consejos(Alineación FreeModelConfig) -->
+    <!-- v1.0.18: 免费模型徽章/提示(对齐 FreeModelConfig) -->
     <string name="model_switch_free_badge">gratis</string>
-    <string name="model_switch_free_provider_hint">Disponible sin iniciar sesión, simplemente seleccione el modelo y úselo inmediatamente</string>
+    <string name="model_switch_free_provider_hint">Disponible sin iniciar sesión, simplemente selecciona el modelo y úselo inmediatamente</string>
     <string name="model_switch_context_limit">contexto %1$s</string>
     <string name="model_switch_output_limit">Límite superior de salida %1$s tokens</string>
     <string name="model_switch_metadata_unverified">Información de competencia no verificada</string>
     <string name="model_switch_metadata_suspicious">Información de capacidad sospechosa</string>
 
-    <!-- ===== ui/HomeScreen pagina de inicio ===== -->
+    <!-- ===== ui/HomeScreen 首页 ===== -->
     <string name="home_tab_tasks">Tarea</string>
-<string name="home_tab_agent">Agent</string>
+<string name="home_tab_agent">Agente</string>
     <string name="home_tab_group_chat">chat grupal</string>
     <string name="home_settings_cd">ajustes</string>
     <string name="home_search_cd">Buscar</string>
     <string name="home_miniphone_cd">pequeño teléfono celular</string>
 
-    <!-- ===== ui/FavoritesScreen Favoritos ===== -->
+    <!-- ===== ui/FavoritesScreen 收藏夹 ===== -->
     <string name="favorites_title">Favoritos (%1$d)</string>
     <string name="favorites_empty_title">Aún no hay noticias favoritas</string>
-    <string name="favorites_empty_subtitle">Haga clic en la estrella en la fila de acción del mensaje en la página de chat para agregarlo a sus favoritos</string>
+    <string name="favorites_empty_subtitle">Toca en la estrella en la fila de acción del mensaje en la página de chat para agregarlo a sus favoritos</string>
     <string name="favorites_role_user">yo</string>
     <string name="favorites_role_system">sistema</string>
     <string name="favorites_role_tool">Herramientas</string>
     <string name="favorites_unfavorite_cd">Cancelar favoritos</string>
     <string name="favorites_group_action_cd">Configurar grupos</string>
-    <!-- v1.104 U7: Agrupación de colecciones/etiqueta -->
+    <!-- v1.104 U7: 收藏分组/标签 -->
     <string name="favorites_filter_all">Todos (%1$d)</string>
     <string name="favorites_filter_ungrouped">No agrupado (%1$d)</string>
     <string name="favorites_tag_chip">%1$s (%2$d)</string>
@@ -165,17 +165,17 @@ Haga clic en Actualizar para extraer la lista desde arriba</string>
     <string name="favorites_empty_in_filter">Actualmente no hay colecciones en este grupo.</string>
     <string name="favorites_stale_variant_badge">Fue regenerado más tarde y ésta es una versión antigua.</string>
 
-    <!-- ===== ui/ImageSaveUtils guardar imagen ===== -->
+    <!-- ===== ui/ImageSaveUtils 图片保存 ===== -->
     <string name="image_save_decode_failed">No se puede decodificar la imagen</string>
     <string name="image_save_mediastore_insert_failed">MediaStore insert falló</string>
     <string name="image_save_open_stream_failed">No se puede abrir el flujo de salida</string>
 
 
-    <!-- ===== ui/activity/ActivityPanel Registro de actividad ===== -->
+    <!-- ===== ui/activity/ActivityPanel 活动日志 ===== -->
     <string name="activity_log_title">Registro de actividad</string>
     <string name="activity_empty">Aún no hay registro de actividad.</string>
 
-    <!-- ===== Launcher Atajo de pulsación larga(shortcuts.xml Cotización) ===== -->
+    <!-- ===== Launcher 长按快捷方式(shortcuts.xml 引用) ===== -->
     <string name="shortcut_new_chat_short">nueva conversación</string>
     <string name="shortcut_new_chat_long">Iniciar una nueva conversación</string>
     <string name="shortcut_translate_short">Traducción</string>
@@ -184,23 +184,23 @@ Haga clic en Actualizar para extraer la lista desde arriba</string>
     <string name="shortcut_voice_input_long">Entrada de voz</string>
     <string name="shortcut_settings_short">ajustes</string>
     <string name="shortcut_settings_long">Abrir configuración</string>
-    <!-- v1.0.18: Acceso directo a grabación rápida -->
+    <!-- v1.0.18: 快速记录快捷方式 -->
     <string name="shortcut_quick_notes_short">taquigrafía</string>
     <string name="shortcut_quick_notes_long">registro rápido</string>
-    <!-- v1.0.69: Visor visual del navegador -->
+    <!-- v1.0.69: 浏览器可视化查看器 -->
     <string name="browser_viewer_collapse">Cerrar</string>
     <string name="browser_viewer_refresh">Actualizar</string>
     <string name="browser_viewer_close">Cerrar el navegador</string>
-    <!-- v1.x: Entrada explícita del navegador integrado y estado visible para el usuario -->
+    <!-- v1.x: 内置浏览器显性入口与用户可见状态 -->
     <string name="browser_status_not_started">No iniciado</string>
     <string name="browser_status_blank">Esperando navegación</string>
     <string name="browser_status_loading">Cargando…</string>
     <string name="browser_status_ready">Listo</string>
-    <string name="browser_status_cd">Navegador:%1$s, haga clic para ver</string>
+    <string name="browser_status_cd">Navegador: %1$s, pulsa para ver</string>
     <string name="browser_viewer_blank_title">El navegador está abierto</string>
-    <string name="browser_viewer_blank_message">Espere a que la IA abra la página web o utilice las herramientas del navegador para navegar.</string>
-    <string name="browser_menu_clear_cookies">Borrar Cookie</string>
+    <string name="browser_viewer_blank_message">Espera a que la IA abra la página web o usa las herramientas del navegador para navegar.</string>
+    <string name="browser_menu_clear_cookies">Borrar cookies</string>
     <string name="browser_menu_open_external">Abrir en el navegador del sistema</string>
     <string name="browser_menu_copy_link">Copiar enlace</string>
-    <string name="browser_cookies_cleared">despejado Cookie</string>
+    <string name="browser_cookies_cleared">Cookies borradas</string>
 </resources>

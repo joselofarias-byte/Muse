@@ -1,32 +1,32 @@
 package io.zer0.ai.core
 
 /**
- * v1.0.7: Piensa en formato de enumeración(9 tipos en total).
+ * v1.0.7: 思考格式枚举(共 9 种)。
  *
- * Los diferentes servicios compatibles con OpenAI están representados por diferentes campos."pensar"parámetros,Esta enumeración se centra en describir estas diferencias.
- * Provider Utilice esta enumeración para determinar qué campos enviar al construir el cuerpo de la solicitud.;ProviderCompatRules prensa
- * baseUrl host + modelId Deducir valores específicos.
+ * 不同 OpenAI 兼容服务用不同字段表达"思考"参数,本枚举集中描述这些差异。
+ * Provider 在构造请求体时按此枚举决定发什么字段;ProviderCompatRules 按
+ * baseUrl host + modelId 派生具体值。
  *
- * ## 9 formato
+ * ## 9 种格式
  *
- * - [ANTHROPIC]:Anthropic bloque de pensamiento nativo(Esta enumeración solo se utiliza para la adaptación del protocolo compatible con OpenAI.,
- *   AnthropicProvider Hazte nativo por tu cuenta Messages API,No leas este campo)
- * - [QWEN]:Ali Tong Yi/Qwen-VL Serie,`enable_thinking: bool` + `thinking_budget: int`
- * - [QWEN_CHAT_TEMPLATE]:Qwen3-Instruct etc. modelo chat_template,
+ * - [ANTHROPIC]:Anthropic 原生 thinking 块(本枚举仅用于 OpenAI 兼容协议适配,
+ *   AnthropicProvider 自身走原生 Messages API,不读此字段)
+ * - [QWEN]:阿里通义/Qwen-VL 系列,`enable_thinking: bool` + `thinking_budget: int`
+ * - [QWEN_CHAT_TEMPLATE]:Qwen3-Instruct 等 chat_template 模型,
  *   `chat_template_kwargs: {enable_thinking: bool}`
- * - [ZHIPU]:Serie GLM-4 / GLM-Z1,`thinking: {type: "enabled"|"disabled", clear_thinking: bool}`
- * - [DEEPSEEK]:DeepSeek-R1 / deepseek-reasoner,Sin parámetros de pensamiento(El servidor está habilitado de forma predeterminada),
- *   sólo a través de `reasoning_content` Cadena de pensamiento de retorno de campo
- * - [OPENROUTER]:OpenRouter agregación,`reasoning: {effort: "low"|"medium"|"high"}`
- *   (Extensiones en el protocolo de finalización de chat,Diferente del razonamiento en la API de Respuestas)
- * - [KIMI]:lado oscuro de la luna Kimi K1/K2,`thinking: {type: "enabled"|"disabled", keep: bool}`
- * - [VOLCENGINE]:motor volcánico Doubao 1.5 Thinking,`thinking: {type: "enabled"|"disabled"}`
- * - [LONGCAT]:meituán LongCat,`thinking: {type: "enabled"|"disabled"}`
+ * - [ZHIPU]:智谱 GLM-4 / GLM-Z1 系列,`thinking: {type: "enabled"|"disabled", clear_thinking: bool}`
+ * - [DEEPSEEK]:DeepSeek-R1 / deepseek-reasoner,不发思考参数(服务端默认开),
+ *   仅通过 `reasoning_content` 字段回传思考链
+ * - [OPENROUTER]:OpenRouter 聚合,`reasoning: {effort: "low"|"medium"|"high"}`
+ *   (在 Chat Completions 协议上的扩展,与 Responses API 的 reasoning 不同)
+ * - [KIMI]:月之暗面 Kimi K1/K2,`thinking: {type: "enabled"|"disabled", keep: bool}`
+ * - [VOLCENGINE]:火山引擎 Doubao 1.5 Thinking,`thinking: {type: "enabled"|"disabled"}`
+ * - [LONGCAT]:美团 LongCat,`thinking: {type: "enabled"|"disabled"}`
  *
- * Nota:
- *  - null(no establecido)Sigue los estándares OpenAI `reasoning_effort` campo(Determinado por ProviderCompat.supportsReasoningEffort)
- *  - [DEEPSEEK] No envíes ningún parámetro de pensamiento.,Pero su contenido de razonamiento debe ser analizable en flujo.(Manejado por delta.reasoningContenido de OpenAIProvider)
- *  - Esta enumeración solo impulsa la construcción del cuerpo de solicitud de OpenAIProvider;AnthropicProvider / GeminiProvider Cada uno realiza un pensamiento original.
+ * 注意:
+ *  - null(未设置)走标准 OpenAI `reasoning_effort` 字段(由 ProviderCompat.supportsReasoningEffort 决定)
+ *  - [DEEPSEEK] 不发任何思考参数,但其 reasoning_content 必须能被流式解析(由 OpenAIProvider 的 delta.reasoningContent 处理)
+ *  - 该枚举仅驱动 OpenAIProvider 的请求体构造;AnthropicProvider / GeminiProvider 各自实现原生思考
  */
 enum class ThinkingFormat {
     ANTHROPIC,
@@ -41,20 +41,20 @@ enum class ThinkingFormat {
 }
 
 /**
- * v1.0.7: reasoning portador de reproducción(5 especie carrier).
+ * v1.0.7: reasoning 回放载体(5 种 carrier)。
  *
- * Cuando el mensaje histórico contiene el contenido de la ronda de razonamiento anterior,Diferentes protocolos utilizan diferentes campos de cables para la reproducción.
- * Esta enumeración determina cómo se serializa UIMessage.reasoning/UIMessage.thinkingSignature en el cuerpo de la solicitud.
+ * 当历史消息含上一轮推理内容时,不同协议用不同 wire 字段回放。
+ * 本枚举决定 UIMessage.reasoning / UIMessage.thinkingSignature 如何序列化回请求体。
  *
  * - [REASONING_CONTENT]:Kimi / DeepSeek / MiMo / Zhipu Chat Completions,
- *   en `messages[i].reasoning_content` campo(string),policy Generalmente [ReasoningReplayPolicy.REQUIRE_TOOL_CALL]
- * - [THINKING_BLOCKS]:Anthropic Messages,en `messages[i].content[j]` China y Canadá thinking block
- *   (Manejado por el propio AnthropicProvider,no irse ProviderPayloadNormalizer)
- * - [REASONING_ITEMS]:OpenAI Responses API,en `input[]` adición de hermanos superiores reasoning item
- *   (Manejado por la rama useResponseApi de OpenAIProvider)
- * - [REASONING_DETAILS]:OpenRouter,en `messages[i].reasoning_details: [{type, id, data}]` matriz
- * - [THOUGHT_SIGNATURE]:Gemini native,en `messages[i].content[j]` China y Canadá thought part
- *   (Manejado por el propio GeminiProvider)
+ *   在 `messages[i].reasoning_content` 字段(string),policy 通常为 [ReasoningReplayPolicy.REQUIRE_TOOL_CALL]
+ * - [THINKING_BLOCKS]:Anthropic Messages,在 `messages[i].content[j]` 中加 thinking block
+ *   (由 AnthropicProvider 自身处理,不走 ProviderPayloadNormalizer)
+ * - [REASONING_ITEMS]:OpenAI Responses API,在 `input[]` 顶层 sibling 加 reasoning item
+ *   (由 OpenAIProvider useResponseApi 分支处理)
+ * - [REASONING_DETAILS]:OpenRouter,在 `messages[i].reasoning_details: [{type, id, data}]` 数组
+ * - [THOUGHT_SIGNATURE]:Gemini native,在 `messages[i].content[j]` 中加 thought part
+ *   (由 GeminiProvider 自身处理)
  */
 enum class ReasoningCarrier {
     REASONING_CONTENT,
@@ -65,15 +65,15 @@ enum class ReasoningCarrier {
 }
 
 /**
- * v1.0.7: reasoning Estrategia de repetición(3 especie policy).
+ * v1.0.7: reasoning 回放策略(3 种 policy)。
  *
- * - [NONE]:Sin reproducción(Predeterminado),El campo de razonamiento histórico no está escrito en el cuerpo de la solicitud.
- * - [PRESERVE]:siempre reservado,Mientras el mensaje histórico tenga el campo de razonamiento, se reproducirá tal cual.
+ * - [NONE]:不回放(默认),历史 reasoning 字段不写入请求体
+ * - [PRESERVE]:始终保留,只要历史消息带 reasoning 字段就原样回放
  *   (Anthropic thinking_blocks / OpenAI Responses reasoning_items / OpenRouter reasoning_details /
- *    Gemini thought_signature Todos usan esta estrategia.)
- * - [REQUIRE_TOOL_CALL]:Reproducción solo cuando los mensajes históricos del asistente tengan llamadas a herramientas reasoning_content,
- *   De lo contrario fail closed(Evite que Kimi/DeepSeek informe errores de diálogo de varios turnos debido a la falta de contenido_razonamiento)
- *   (Kimi / DeepSeek / MiMo / Zhipu Chat Completions usa esta estrategia)
+ *    Gemini thought_signature 都用此策略)
+ * - [REQUIRE_TOOL_CALL]:仅当历史 assistant 消息带 tool_calls 时才回放 reasoning_content,
+ *   否则 fail closed(防止 Kimi/DeepSeek 因缺 reasoning_content 报多轮对话错误)
+ *   (Kimi / DeepSeek / MiMo / Zhipu Chat Completions 用此策略)
  */
 enum class ReasoningReplayPolicy {
     NONE,
@@ -82,22 +82,22 @@ enum class ReasoningReplayPolicy {
 }
 
 /**
- * v1.0.7: reasoning contrato de repetición(carrier + policy).
+ * v1.0.7: reasoning 回放契约(carrier + policy)。
  *
- * por [ProviderCompat.reasoningReplayContract] llevar,OpenAIProvider Convertir a OpenAI
- * Consume este contrato cuando haya noticias históricas.,Determina cómo escribir en el campo de razonamiento.
+ * 由 [ProviderCompat.reasoningReplayContract] 携带,OpenAIProvider 在 toOpenAI 转换
+ * 历史消息时消费此契约,决定如何写入 reasoning 字段。
  *
- * @param carrier wire posición de campo(ver [ReasoningCarrier])
- * @param policy Estrategia de repetición(ver [ReasoningReplayPolicy])
+ * @param carrier wire 字段位置(见 [ReasoningCarrier])
+ * @param policy 回放策略(见 [ReasoningReplayPolicy])
  */
 data class ReasoningReplayContract(
     val carrier: ReasoningCarrier,
     val policy: ReasoningReplayPolicy,
     /**
-     * v2.5.3: REQUIRE_TOOL_CALL + Al utilizar herramientas, ¿el asistente histórico tiene que enviar un marcador de posición de cadena vacía cuando falta el razonamiento?
+     * v2.5.3: REQUIRE_TOOL_CALL + 带 tools 时，历史 assistant 缺 reasoning 时是否必须发空串占位。
      *
-     * true(Predeterminado, alineado con el modo de pensamiento DeepSeek/Kimi): el campo debe existir; de lo contrario, el flujo ascendente es 400, por lo que si está vacío, se enviará una cadena vacía;
-     * false: Omitir el campo cuando el contenido esté vacío (Qwen/Doubao Espere a que se tolere el protocolo predeterminado) y guarde los tokens.
+     * true（默认，对齐 DeepSeek/Kimi 思考模式）：字段必须存在，否则上游 400，因此空也发空串；
+     * false：内容为空时省略字段（Qwen/Doubao 等容忍缺省的协议），节省 token。
      */
     val requiresNonEmptyReasoning: Boolean = true,
 )

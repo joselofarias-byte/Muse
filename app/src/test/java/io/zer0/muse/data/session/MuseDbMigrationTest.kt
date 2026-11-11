@@ -18,17 +18,17 @@ import java.io.File
 import java.util.Base64
 
 /**
- * B6-03: MuseDb Pruebas de la cadena de migración.
+ * B6-03: MuseDb 迁移链测试。
  *
- * Cree manualmente la base de datos para cada esquema JSON desde v56 a v68 e inserte un mensaje histórico.
- * Luego migre todo a v74 a través de Room y verifique:
- * - messages.mood_skin La columna existe y está predeterminada NULL
- * - sessions.is_locked La columna existe
- * - generation_checkpoints / group_chat_generation_ledger la mesa existe
- * - El contenido histórico del mensaje y las columnas clave se mantienen intactos
+ * 从 v56 到 v68 的每个 schema JSON 手工建库，插入一条历史消息，
+ * 再通过 Room 全部迁移到 v74，验证：
+ * - messages.mood_skin 列存在且默认 NULL
+ * - sessions.is_locked 列存在
+ * - generation_checkpoints / group_chat_generation_ledger 表存在
+ * - 历史消息内容与关键列完整保留
  *
- * Implementar memoria/FactDbMigrationTest: sin MigrationTestHelper,
- * Utilice FrameworkSQLiteOpenHelperFactory en su lugar para crear la biblioteca antigua directamente según el esquema JSON.
+ * 实现按 memory/FactDbMigrationTest：不用 MigrationTestHelper，
+ * 改用 FrameworkSQLiteOpenHelperFactory 直接按 schema JSON 建旧库。
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -66,7 +66,7 @@ class MuseDbMigrationTest {
                     while (cursor.moveToNext()) {
                         if (cursor.getString(1) == "parentGroupId") hasParentGroup = true
                     }
-                    assertTrue("v$fromVersion Debería haber una columna parentGroupId después de la migración", hasParentGroup)
+                    assertTrue("v$fromVersion 迁移后应有 parentGroupId 列", hasParentGroup)
                 }
                 db.openHelper.writableDatabase.query("PRAGMA table_info(messages)").use { cursor ->
                     var moodSkinDefault: String? = null
@@ -76,9 +76,9 @@ class MuseDbMigrationTest {
                             break
                         }
                     }
-                    assertTrue("v$fromVersion Debería haber una columna moodSkin después de la migración.", moodSkinDefault != null)
+                    assertTrue("v$fromVersion 迁移后应有 moodSkin 列", moodSkinDefault != null)
                     assertTrue(
-                        "moodSkin El valor predeterminado debe ser NULL, got $moodSkinDefault",
+                        "moodSkin 默认值应为 NULL, got $moodSkinDefault",
                         moodSkinDefault == null || moodSkinDefault == "NULL",
                     )
                 }
@@ -91,7 +91,7 @@ class MuseDbMigrationTest {
                             break
                         }
                     }
-                    assertTrue("v$fromVersion Debería haber una columna lastReadMessageId después de la migración", hasLastRead)
+                    assertTrue("v$fromVersion 迁移后应有 lastReadMessageId 列", hasLastRead)
                 }
                 db.openHelper.writableDatabase.query("PRAGMA table_info(sessions)").use { cursor ->
                     var hasLastReadCount = false
@@ -101,7 +101,7 @@ class MuseDbMigrationTest {
                             break
                         }
                     }
-                    assertTrue("v$fromVersion Debería haber una columna lastReadCount después de la migración", hasLastReadCount)
+                    assertTrue("v$fromVersion 迁移后应有 lastReadCount 列", hasLastReadCount)
                 }
                 db.openHelper.writableDatabase.query("PRAGMA table_info(sessions)").use { cursor ->
                     var hasProactiveNext = false
@@ -111,14 +111,14 @@ class MuseDbMigrationTest {
                             break
                         }
                     }
-                    assertTrue("v$fromVersion Debería haber una columna proactiveNextTriggerAt después de la migración", hasProactiveNext)
+                    assertTrue("v$fromVersion 迁移后应有 proactiveNextTriggerAt 列", hasProactiveNext)
                 }
                 db.openHelper.writableDatabase.query(
                     "SELECT content, moodSkin FROM messages WHERE id='legacy-msg'",
                 ).use { cursor ->
-                    assertTrue("v$fromVersion Los mensajes históricos deben conservarse después de la migración", cursor.moveToFirst())
-                    assertEquals("Mensajes históricos antes de la migración", cursor.getString(0))
-                    assertNull("Mensaje histórico mood_skin debería ser NULL", cursor.getString(1))
+                    assertTrue("v$fromVersion 迁移后历史消息应保留", cursor.moveToFirst())
+                    assertEquals("迁移前的历史消息", cursor.getString(0))
+                    assertNull("历史消息 mood_skin 应为 NULL", cursor.getString(1))
                 }
 
                 db.openHelper.writableDatabase.query("PRAGMA table_info(sessions)").use { cursor ->
@@ -126,17 +126,17 @@ class MuseDbMigrationTest {
                     while (cursor.moveToNext()) {
                         if (cursor.getString(1) == "isLocked") hasIsLocked = true
                     }
-                    assertTrue("v$fromVersion Debería haber una columna isLocked después de la migración.", hasIsLocked)
+                    assertTrue("v$fromVersion 迁移后应有 isLocked 列", hasIsLocked)
                 }
                 db.openHelper.writableDatabase.query(
                     "SELECT name FROM sqlite_master WHERE type='table' AND name='generation_checkpoints'",
                 ).use { cursor ->
-                    assertTrue("v$fromVersion Debería haber una tabla Generation_checkpoints después de la migración.", cursor.moveToFirst())
+                    assertTrue("v$fromVersion 迁移后应有 generation_checkpoints 表", cursor.moveToFirst())
                 }
                 db.openHelper.writableDatabase.query(
                     "SELECT name FROM sqlite_master WHERE type='table' AND name='group_chat_generation_ledger'",
                 ).use { cursor ->
-                    assertTrue("v$fromVersion Debería haber una tabla group_chat_generación_ledger después de la migración", cursor.moveToFirst())
+                    assertTrue("v$fromVersion 迁移后应有 group_chat_generation_ledger 表", cursor.moveToFirst())
                 }
                 listOf(
                     "conversation_turns",
@@ -149,15 +149,15 @@ class MuseDbMigrationTest {
                         "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
                         arrayOf(table),
                     ).use { cursor ->
-                        assertTrue("v$fromVersion Después de la migración, debería haber $table mesa", cursor.moveToFirst())
+                        assertTrue("v$fromVersion 迁移后应有 $table 表", cursor.moveToFirst())
                     }
                 }
                 db.openHelper.writableDatabase.query("PRAGMA table_info(messages)").use { cursor ->
                     val columns = buildSet {
                         while (cursor.moveToNext()) add(cursor.getString(1))
                     }
-                    assertTrue("v$fromVersion Debería haber una columna commitSeq después de la migración.", "commitSeq" in columns)
-                    assertTrue("v$fromVersion Debería haber una columna parentMessageId después de la migración", "parentMessageId" in columns)
+                    assertTrue("v$fromVersion 迁移后应有 commitSeq 列", "commitSeq" in columns)
+                    assertTrue("v$fromVersion 迁移后应有 parentMessageId 列", "parentMessageId" in columns)
                 }
 
                 db.close()
@@ -252,20 +252,20 @@ class MuseDbMigrationTest {
                 while (cursor.moveToNext()) {
                     if (cursor.getString(1) == "isLocked") hasIsLocked = true
                 }
-                assertTrue("La migración real v68 debería tener la columna isLocked", hasIsLocked)
+                assertTrue("真实 v68 迁移后应有 isLocked 列", hasIsLocked)
             }
             db.openHelper.writableDatabase.query("PRAGMA table_info(messages)").use { cursor ->
                 var hasParentGroup = false
                 while (cursor.moveToNext()) {
                     if (cursor.getString(1) == "parentGroupId") hasParentGroup = true
                 }
-                assertTrue("La migración real v68 debe tener la columna parentGroupId", hasParentGroup)
+                assertTrue("真实 v68 迁移后应有 parentGroupId 列", hasParentGroup)
             }
             db.openHelper.writableDatabase.query(
                 "SELECT content FROM messages WHERE id='legacy-msg'",
             ).use { cursor ->
                 assertTrue(cursor.moveToFirst())
-                assertEquals("Mensajes históricos antes de la migración", cursor.getString(0))
+                assertEquals("迁移前的历史消息", cursor.getString(0))
             }
             db.close()
         } finally {
@@ -313,7 +313,7 @@ class MuseDbMigrationTest {
             helper.execSQL("CREATE INDEX IF NOT EXISTS index_group_chat_messages_chatId ON group_chat_messages(chatId)")
             helper.execSQL(
                 "INSERT INTO group_chat_messages (id, chatId, senderId, body, timestamp) " +
-                    "VALUES ('legacy-group-msg', 'legacy-group', 'u1', 'Mensajes de chat grupal antes de la migración', 1)",
+                    "VALUES ('legacy-group-msg', 'legacy-group', 'u1', '迁移前的群聊消息', 1)",
             )
             helper.close()
 
@@ -338,7 +338,7 @@ class MuseDbMigrationTest {
                     "messageType",
                     "fileAttachmentsJson",
                 )) {
-                    assertTrue("Después de la migración, debería haber $name columna", name in columns)
+                    assertTrue("迁移后应有 $name 列", name in columns)
                 }
             }
             val defaults = mutableMapOf<String, String?>()
@@ -358,7 +358,7 @@ class MuseDbMigrationTest {
                 assertTrue(cursor.moveToFirst())
                 assertEquals("", cursor.getString(0))
                 assertEquals("", cursor.getString(1))
-                assertEquals("Mensajes de chat grupal antes de la migración", cursor.getString(2))
+                assertEquals("迁移前的群聊消息", cursor.getString(2))
                 assertNull(cursor.getString(3))
                 assertNull(cursor.getString(4))
                 assertNull(cursor.getString(5))
@@ -368,14 +368,14 @@ class MuseDbMigrationTest {
             }
             db.openHelper.writableDatabase.execSQL(
                 "INSERT INTO group_chat_messages (id, chatId, senderType, senderId, senderName, body) " +
-                    "VALUES ('new-group-msg', 'legacy-group', 'assistant', 'a1', 'asistente', 'Escribir después de la migración')",
+                    "VALUES ('new-group-msg', 'legacy-group', 'assistant', 'a1', '助手', '迁移后写入')",
             )
             db.openHelper.writableDatabase.query(
                 "SELECT body, messageType, fileAttachmentsJson, whisper_target_id, reply_to_id, reasoning, mood " +
                     "FROM group_chat_messages WHERE id='new-group-msg'",
             ).use { cursor ->
                 assertTrue(cursor.moveToFirst())
-                assertEquals("Escribir después de la migración", cursor.getString(0))
+                assertEquals("迁移后写入", cursor.getString(0))
                 assertEquals("normal", cursor.getString(1))
                 assertEquals("[]", cursor.getString(2))
                 assertNull(cursor.getString(3))
@@ -391,9 +391,9 @@ class MuseDbMigrationTest {
     }
 
     /**
-     * Regresar:de"Biblioteca antigua real producida por migración manuscrita"(scheduled_tasks Ninguno created_by)Después de la actualización,
-     * v98→99 La migración debe agregar creado_por,De lo contrario, la validación del esquema de la habitación colapsará.
-     * Las pruebas existentes utilizan el esquema JSON para crear la base de datos.(en sí mismo contiene created_by),Esta ruta de actualización no está cubierta.
+     * 回归:从"手写迁移产出的真实旧库"(scheduled_tasks 无 created_by)升级后,
+     * v98→99 迁移必须把 created_by 补上,否则 Room schema 校验会崩。
+     * 现有测试都用 schema JSON 建库(本身含 created_by),覆盖不到这条升级路径。
      */
     @Test
     fun migration98To99_addsCreatedByToScheduledTasks() {
@@ -406,7 +406,7 @@ class MuseDbMigrationTest {
                     .name(dbFile.absolutePath)
                     .callback(object : androidx.sqlite.db.SupportSQLiteOpenHelper.Callback(98) {
                         override fun onCreate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
-                            // Simulando la migración de escritura a mano(9→10)tabla creada:No created_by
+                            // 模拟手写迁移(9→10)建出的表:没有 created_by
                             db.execSQL("CREATE TABLE scheduled_tasks (id TEXT NOT NULL PRIMARY KEY, name TEXT NOT NULL)")
                         }
 
@@ -422,7 +422,7 @@ class MuseDbMigrationTest {
                     if (cursor.getString(1) == "created_by") hasCreatedBy = true
                 }
             }
-            assertTrue("v98→99 las tareas programadas deberían haber creado la columna por después de la migración", hasCreatedBy)
+            assertTrue("v98→99 迁移后 scheduled_tasks 应有 created_by 列", hasCreatedBy)
             helper.close()
         } finally {
             if (dbFile.exists()) dbFile.delete()
@@ -440,7 +440,7 @@ class MuseDbMigrationTest {
                     .name(dbFile.absolutePath)
                     .callback(object : androidx.sqlite.db.SupportSQLiteOpenHelper.Callback(99) {
                         override fun onCreate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
-                            // Simule la biblioteca v99 donde existe la tabla group_chats pero no hay una columna isArchived
+                            // 模拟存在 group_chats 表但没有 isArchived 列的 v99 库
                             db.execSQL("CREATE TABLE group_chats (id TEXT NOT NULL PRIMARY KEY, name TEXT NOT NULL)")
                         }
 
@@ -456,7 +456,7 @@ class MuseDbMigrationTest {
                     if (cursor.getString(1) == "isArchived") hasArchived = true
                 }
             }
-            assertTrue("v99→100 Después de la migración, group_chats debería tener la columna isArchived", hasArchived)
+            assertTrue("v99→100 迁移后 group_chats 应有 isArchived 列", hasArchived)
             helper.close()
         } finally {
             if (dbFile.exists()) dbFile.delete()
@@ -513,10 +513,10 @@ class MuseDbMigrationTest {
                 val stored = JSONArray(cursor.getString(0))
                 assertEquals(2, stored.length())
                 val longRef = stored.getString(0)
-                assertTrue("Long base64 debe externalizarse a la ruta file://", longRef.startsWith("file://"))
+                assertTrue("长 base64 应外置为 file:// 路径", longRef.startsWith("file://"))
                 assertEquals(shortBase64, stored.getString(1))
                 val storedFile = File(longRef.removePrefix("file://"))
-                assertTrue("El archivo de imagen externo debe existir.", storedFile.exists())
+                assertTrue("外置图片文件应存在", storedFile.exists())
                 val roundTrip = MessageImageStore(imageDir).toBase64List(
                     listOf(longRef, shortBase64),
                 )
@@ -551,9 +551,9 @@ class MuseDbMigrationTest {
             db.openHelper.writableDatabase.query(
                 "SELECT sql FROM sqlite_master WHERE type='table' AND name='messages_fts'",
             ).use { cursor ->
-                assertTrue("76→77 message_fts debería existir después de la migración", cursor.moveToFirst())
+                assertTrue("76→77 迁移后 messages_fts 应存在", cursor.moveToFirst())
                 val sql = cursor.getString(0)
-                assertTrue("messages_fts Debería ser una mesa virtual FTS4/FTS5: $sql", sql.contains("FTS4") || sql.contains("fts5"))
+                assertTrue("messages_fts 应为 FTS4/FTS5 虚拟表: $sql", sql.contains("FTS4") || sql.contains("fts5"))
             }
             db.close()
         } finally {
@@ -562,10 +562,10 @@ class MuseDbMigrationTest {
         }
     }
 
-    /** Simulación"Dispositivo estrellado":v80 Tabla incorrecta con índice activado → MIGRATION_80_81 Borrar índice y reconstruir tabla,Todos los datos se conservan.
+    /** 模拟"已崩溃设备":v80 上的带索引坏表 → MIGRATION_80_81 清索引并重建表,数据全部保留。
      *
-     * solo corre 80→81 esta sección:La reunión final de toda la cadena de actualización. 121→122 Eliminar estas dos tablas,
-     * No puedes saber si sigues toda la cadena. 80→81 Se obtiene el resultado del procesamiento. */
+     * 只跑 80→81 这一段:完整升级链的终态会经 121→122 删掉这两张表,
+     * 走全链就断言不到 80→81 的处理结果了。 */
     @Test
     fun migrate80To81_cleansLegacyIndexesFromCrashedDevice() {
         val dbName = "muse_migration_80_crash.db"
@@ -589,7 +589,7 @@ class MuseDbMigrationTest {
                             )
                             db.execSQL("CREATE INDEX idx_moments_created ON ai_moments(createdAt DESC)")
                             db.execSQL("CREATE INDEX idx_moment_comments_moment ON ai_moment_comments(momentId)")
-                            db.execSQL("INSERT INTO ai_moments (id, content, createdAt) VALUES ('m1', 'Mala dinámica heredada del dispositivo', 100)")
+                            db.execSQL("INSERT INTO ai_moments (id, content, createdAt) VALUES ('m1', '坏设备遗留动态', 100)")
                         }
 
                         override fun onUpgrade(db: SupportSQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
@@ -601,15 +601,15 @@ class MuseDbMigrationTest {
             val db = helper.writableDatabase
             MuseDb.MIGRATION_80_81.migrate(db)
 
-            // Los datos todavía están ahí
+            // 数据仍在
             db.query("SELECT count(*) FROM ai_moments").use { c ->
-                assertTrue("Se debe preservar la mala dinámica heredada del dispositivo", c.moveToFirst() && c.getInt(0) == 1)
+                assertTrue("坏设备遗留动态应保留", c.moveToFirst() && c.getInt(0) == 1)
             }
-            // Índice limpio
+            // 索引已清理
             db.query(
                 "SELECT count(*) FROM sqlite_master WHERE type='index' AND name LIKE 'idx_moments%'",
             ).use { c ->
-                assertTrue("Los índices residuales deben limpiarse", c.moveToFirst() && c.getInt(0) == 0)
+                assertTrue("残留索引应被清理", c.moveToFirst() && c.getInt(0) == 0)
             }
         } finally {
             helper.close()
@@ -617,8 +617,8 @@ class MuseDbMigrationTest {
         }
     }
 
-    /** Simular reloj roto versión intermedia de máquina real: mood banda de columna DEFAULT NULL(La máquina real dflt_value se lee como 'NULL'),residuo de índice,
-     * MIGRATION_80_81 Datos después de reconstruir la tabla(Contiene valor del estado de ánimo)Debe conservarse. */
+    /** 模拟真机中间版坏表: mood 列带 DEFAULT NULL(真机 dflt_value 读为 'NULL'),索引残留,
+     * MIGRATION_80_81 重建表后数据(含 mood 值)必须保留。 */
     @Test
     fun migrate80To81_rebuildsTableWithMoodNullDefault() {
         val dbName = "muse_migration_80_moodnull.db"
@@ -641,7 +641,7 @@ class MuseDbMigrationTest {
                                     "createdAt INTEGER NOT NULL DEFAULT 0)",
                             )
                             db.execSQL("CREATE INDEX idx_moments_created ON ai_moments(createdAt DESC)")
-                            db.execSQL("INSERT INTO ai_moments (id, content, mood, createdAt) VALUES ('m1', 'Dinámica versión intermedia', 'feliz', 100)")
+                            db.execSQL("INSERT INTO ai_moments (id, content, mood, createdAt) VALUES ('m1', '中间版动态', '开心', 100)")
                         }
 
                         override fun onUpgrade(db: SupportSQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
@@ -653,11 +653,11 @@ class MuseDbMigrationTest {
             val db = helper.writableDatabase
             MuseDb.MIGRATION_80_81.migrate(db)
 
-            // datos(Contiene valor del estado de ánimo)Reservar
+            // 数据(含 mood 值)保留
             db.query("SELECT content, mood FROM ai_moments WHERE id='m1'").use { c ->
-                assertTrue("Se debe conservar la dinámica de la versión intermedia.", c.moveToFirst())
-                assertEquals("Dinámica versión intermedia", c.getString(0))
-                assertEquals("feliz", c.getString(1))
+                assertTrue("中间版动态应保留", c.moveToFirst())
+                assertEquals("中间版动态", c.getString(0))
+                assertEquals("开心", c.getString(1))
             }
         } finally {
             helper.close()
@@ -711,7 +711,7 @@ class MuseDbMigrationTest {
                 WHERE text_content MATCH '"知识" "识库"'
                 """.trimIndent(),
             ).use { cursor ->
-                assertTrue("Después de la migración, los ngrams chinos deberían verse afectados por el FTS", cursor.moveToFirst())
+                assertTrue("迁移后中文 ngram 应可被 FTS 命中", cursor.moveToFirst())
                 assertEquals("chunk-1", cursor.getString(0))
             }
         } finally {
@@ -721,36 +721,73 @@ class MuseDbMigrationTest {
     }
 
     /**
-     * v2.6.x sección de cola (113..117) de la matriz de control de habitaciones.
+     * v2.6.x 尾段（113..117）的 Room 校验矩阵。
      *
-     * Antecedentes:113/114/115/116 Los cuatro puntos de partida anteriormente sólo contaban con pruebas especiales de "ejecución manual de DDL"
-     * ([io.zer0.muse.data.relationship.AssistantRelationshipMigrationTest],
-     * [MuseDbMigration116To117Test]), ese camino no se abre a través de Room en absoluto,
-     * Por lo tanto, la verificación del esquema a nivel de entidad de Room nunca se ha ejecutado en estos cuatro segmentos.
-     * 117 Es el precursor directo del 118 y está incluido en la matriz.
-     * Usado aquí [migrateEveryVersionTo75_keepsDataAndAddsGenerationTables] El mismo conjunto de mecanismos:
-     * Construya una biblioteca antigua según el esquema JSON → Room.databaseBuilder Desencadenar una migración real → Afirmar el estado final de la migración.
+     * 背景：113/114/115/116 四个起点此前只有「手工执行 DDL」的专项测试
+     * （[io.zer0.muse.data.relationship.AssistantRelationshipMigrationTest]、
+     * [MuseDbMigration116To117Test]），那条路径根本不经过 Room 打开，
+     * 因此 Room 的实体级 schema 校验在这四段上从未真正跑过。
+     * 117 是 118 的直接前驱，一并纳入矩阵。
+     * 这里沿用 [migrateEveryVersionTo75_keepsDataAndAddsGenerationTables] 的同一套机制：
+     * 按 schema JSON 建旧库 → Room.databaseBuilder 触发真实迁移 → 断言迁移终态。
      *
-     * Calibre de afirmación (uno es indispensable, solo afirmar "no bloqueado" significa que no hay prueba):
-     *  - usage_records / assistant_relationship / session_todos / card_entities Conjuntos de columnas y valores predeterminados de las cuatro tablas;
-     *  - usage_records tres índices,session_todos índice único sessionId,
-     *    card_entities El índice único de dockSlot es el mismo que el índice originMessageId;
-     *  - sessions.input_draft columna;
-     *  - Momentos/Las cuatro tablas del diario han sido migradas de la versión anterior (121→122), el estado final ya no debería existir;
-     *  - No se pierde una fila de cada una de las sesiones/mensajes insertados antes de la migración.
+     * 断言口径（缺一不可，只断言「没崩」等于没测）：
+     *  - usage_records / assistant_relationship / session_todos / card_entities 四张表的列集合与默认值；
+     *  - usage_records 三个索引、session_todos 的 sessionId 唯一索引、
+     *    card_entities 的 dockSlot 唯一索引与 originMessageId 索引；
+     *  - sessions.input_draft 列；
+     *  - 朋友圈/日记四张表已在前一版迁移（121→122）中删除，终态不应再存在；
+     *  - 迁移前插入的 sessions / messages 各一行未丢。
      */
     @Test
     fun migrateV113To117Starts_validateThroughRoom() {
         val starts = (113..117).filter { schemaExists(it) }
         assertEquals(
-            "113..117 Las instantáneas del esquema deben estar completas y la biblioteca anterior no se puede crear si falta alguna (no se puede reemplazar por una afirmación vacía).",
+            "113..117 的 schema 快照应齐备，缺任何一份都无法建旧库（不可用空断言顶替）",
             (113..117).toList(),
             starts,
         )
         starts.forEach { assertV113StartUpgradesToLatest(it) }
     }
 
-    /** Single 113..117 Punto de partida: construir una biblioteca antigua → Room Activar la migración activada → Afirmar el estado final. */
+    @Test
+    fun migrateV123StartAddsProactivePreferencesAndValidatesThroughRoom() {
+        assertTrue("123 schema snapshot must exist for real migration validation", schemaExists(123))
+        val dbFile = context.getDatabasePath("muse_migration_v123_to_124_full.db").apply {
+            parentFile?.mkdirs()
+            if (exists()) delete()
+        }
+        try {
+            createSchemaAtVersion(123, dbFile.absolutePath)
+            insertLegacyRow(dbFile.absolutePath, 123)
+
+            val db =
+                Room.databaseBuilder(context, MuseDb::class.java, dbFile.absolutePath)
+                    .addMigrations(*migrationsFrom(123).toTypedArray())
+                    .allowMainThreadQueries()
+                    .build()
+            try {
+                val raw = db.openHelper.writableDatabase
+                raw.query("PRAGMA user_version").use {
+                    assertTrue(it.moveToFirst())
+                    // 断言到"最新版"而不是某个具体号:这一条的名字承诺的是
+                    // "v123 起点能一路升到最新并通过 Room 校验"，写死 124 会在每次加表时准时腐坏。
+                    assertEquals(MuseDb.LATEST_SCHEMA_VERSION, it.getInt(0))
+                }
+                raw.query("SELECT muted FROM session_proactive_preferences").use {
+                    assertTrue("v124 proactive preference table must be usable", it.count >= 0)
+                }
+                assertRoomValidatedLatestSchema(raw, "v123→latest", expectedVersion = MuseDb.LATEST_SCHEMA_VERSION)
+            } finally {
+                db.close()
+            }
+        } finally {
+            if (dbFile.exists()) dbFile.delete()
+            context.deleteDatabase(dbFile.name)
+        }
+    }
+
+    /** 单个 113..117 起点：建旧库 → Room 打开触发迁移 → 断言终态。 */
     private fun assertV113StartUpgradesToLatest(fromVersion: Int) {
         val dbFile = context.getDatabasePath("muse_migration_v26x_$fromVersion.db").apply {
             parentFile?.mkdirs()
@@ -779,29 +816,29 @@ class MuseDbMigrationTest {
         }
     }
 
-    /** v2.6.x Un conjunto completo de afirmaciones para el estado final de la migración (compartidas con la matriz y los casos de uso a lo largo de la cadena). */
+    /** v2.6.x 迁移终态的全套断言（矩阵与全链用例共用）。 */
     private fun assertV26xTerminalState(raw: SupportSQLiteDatabase, tag: String) {
         assertV26xSurfaces(raw, tag)
         assertRoomValidatedLatestSchema(raw, tag)
         raw.query("SELECT title FROM sessions WHERE id='legacy-session'").use { cursor ->
-            assertTrue("$tag: Las sesiones insertadas antes de la migración deben conservarse", cursor.moveToFirst())
-            assertEquals("$tag: El título de la sesión no debe cambiarse", "Pruebas de migración", cursor.getString(0))
+            assertTrue("$tag: 迁移前插入的会话应保留", cursor.moveToFirst())
+            assertEquals("$tag: 会话标题不应被改动", "迁移测试", cursor.getString(0))
         }
         raw.query("SELECT content, moodSkin FROM messages WHERE id='legacy-msg'").use { cursor ->
-            assertTrue("$tag: Los mensajes históricos insertados antes de la migración deben conservarse", cursor.moveToFirst())
-            assertEquals("$tag: El contenido de los mensajes históricos no debe cambiarse.", "Mensajes históricos antes de la migración", cursor.getString(0))
-            assertNull("$tag: El mensaje histórico que moodSkin debería ser NULL", cursor.getString(1))
+            assertTrue("$tag: 迁移前插入的历史消息应保留", cursor.moveToFirst())
+            assertEquals("$tag: 历史消息内容不应被改动", "迁移前的历史消息", cursor.getString(0))
+            assertNull("$tag: 历史消息 moodSkin 应为 NULL", cursor.getString(1))
         }
     }
 
     /**
-     * v112 → 120 Cadena completa: cubre específicamente el reabastecimiento de datos 112→113(usage_records de INSERTAR...SELECCIONAR).
+     * v112 → 120 全链：专门覆盖含数据回填的 112→113（usage_records 的 INSERT...SELECT）。
      *
-     * condición de relleno (MuseDb.MIGRATION_112_113):`role='ASSISTANT' AND (promptTokens + completionTokens) > 0`.
-     * Aquí se cubren deliberadamente cuatro límites: cantidad útil de asistente (reposición), cantidad cero (sin reposición),
-     * token Para NULL (sin relleno), mensajes de usuario con uso (role filtro, sin relleno),
-     * Agregue un asistente con solo un mensaje (relleno). Afirmar el número de elementos de reabastecimiento, valores de campo,
-     * Y hay muchos mensajes en una línea,token El campo no ha sido sobrescrito.
+     * 回填条件（MuseDb.MIGRATION_112_113）：`role='ASSISTANT' AND (promptTokens + completionTokens) > 0`。
+     * 这里刻意铺满四种边界：有用量的 assistant（回填）、零用量（不回填）、
+     * token 为 NULL（不回填）、用户消息带用量（role 过滤，不回填），
+     * 再加一条只有 prompt 的 assistant（回填）。断言回填条数、字段值、
+     * 以及 messages 一行不少、token 字段未被改写。
      */
     @Test
     fun migrateV112ToLatest_backfillsUsageRecordsAndKeepsMessages() {
@@ -836,20 +873,20 @@ class MuseDbMigrationTest {
         }
     }
 
-    /** 112→113 Datos de entrada rellenados. Los nombres de las columnas utilizan los nombres originales de los casos de camellos en la instantánea v112 (messages No se ha cambiado el nombre de ninguna columna). */
+    /** 112→113 回填的输入数据。列名用 v112 快照里的驼峰原名（messages 未做过列重命名）。 */
     private fun seedV112UsageBackfillRows(dbPath: String) {
         val db = android.database.sqlite.SQLiteDatabase.openOrCreateDatabase(File(dbPath), null)
         try {
             db.execSQL(
                 "INSERT INTO sessions (id, title, createdAt, updatedAt, lastMessagePreview, assistantId) " +
-                    "VALUES ('legacy-session', 'prueba de relleno', 1, 1, '', 'default')",
+                    "VALUES ('legacy-session', '回填测试', 1, 1, '', 'default')",
             )
             val rows = listOf(
-                arrayOf<Any?>("msg-assistant-usage", "ASSISTANT", "Respuestas útiles", 1_000L, 120, 80, 30, 10),
-                arrayOf<Any?>("msg-assistant-zero", "ASSISTANT", "Respuesta de uso cero", 2_000L, 0, 0, 0, 0),
-                arrayOf<Any?>("msg-assistant-null", "ASSISTANT", "Respuesta antigua sin campo de token", 3_000L, null, null, null, null),
-                arrayOf<Any?>("msg-user-usage", "USER", "Los mensajes de usuario también tienen campos de uso.", 4_000L, 500, 0, 0, 0),
-                arrayOf<Any?>("msg-assistant-prompt-only", "ASSISTANT", "Introduzca sólo el uso", 5_000L, 7, 0, 0, 0),
+                arrayOf<Any?>("msg-assistant-usage", "ASSISTANT", "有用量的回复", 1_000L, 120, 80, 30, 10),
+                arrayOf<Any?>("msg-assistant-zero", "ASSISTANT", "零用量回复", 2_000L, 0, 0, 0, 0),
+                arrayOf<Any?>("msg-assistant-null", "ASSISTANT", "无 token 字段的旧回复", 3_000L, null, null, null, null),
+                arrayOf<Any?>("msg-user-usage", "USER", "用户消息也带用量字段", 4_000L, 500, 0, 0, 0),
+                arrayOf<Any?>("msg-assistant-prompt-only", "ASSISTANT", "只有输入用量", 5_000L, 7, 0, 0, 0),
             )
             rows.forEach { row ->
                 db.execSQL(
@@ -864,7 +901,7 @@ class MuseDbMigrationTest {
         }
     }
 
-    /** afirmar 112→113 INSERT...SELECT solo rellena las filas que están rellenadas y los campos se asignan correctamente. */
+    /** 断言 112→113 的 INSERT...SELECT 只回填该回填的行，且字段映射正确。 */
     private fun assertUsageBackfill(db: SupportSQLiteDatabase) {
         val byCreatedAt = mutableMapOf<Long, List<Int>>()
         db.query(
@@ -872,11 +909,11 @@ class MuseDbMigrationTest {
                 "reasoning_tokens, cached_tokens, first_token_ms, duration_ms FROM usage_records",
         ).use { cursor ->
             while (cursor.moveToNext()) {
-                assertEquals("La fuente del registro de reposición debe ser chat", "chat", cursor.getString(1))
-                assertEquals("El model_id del registro de reposición debe ser una cadena vacía (los mensajes antiguos no tienen ningún modelo registrado)", "", cursor.getString(2))
-                assertEquals("El id_proveedor del registro de reposición debe ser una cadena vacía.", "", cursor.getString(3))
-                assertEquals("El registro de relleno first_token_ms debe ser 0 (los datos antiguos no tienen este indicador)", 0, cursor.getInt(8))
-                assertEquals("Duración_ms del registro de relleno debe ser 0 (los datos antiguos no tienen este indicador)", 0, cursor.getInt(9))
+                assertEquals("回填记录的 source 应为 chat", "chat", cursor.getString(1))
+                assertEquals("回填记录的 model_id 应为空串（旧消息未记录模型）", "", cursor.getString(2))
+                assertEquals("回填记录的 provider_id 应为空串", "", cursor.getString(3))
+                assertEquals("回填记录 first_token_ms 应为 0（旧数据无此指标）", 0, cursor.getInt(8))
+                assertEquals("回填记录 duration_ms 应为 0（旧数据无此指标）", 0, cursor.getInt(9))
                 byCreatedAt[cursor.getLong(0)] = listOf(
                     cursor.getInt(4),
                     cursor.getInt(5),
@@ -886,58 +923,62 @@ class MuseDbMigrationTest {
             }
         }
         assertEquals(
-            "Solo se deben reponer los mensajes útiles del asistente (uso cero)./NULL token/Los mensajes de usuario no se completan)",
+            "只应回填有用量的 assistant 消息（零用量/NULL token/用户消息都不回填）",
             listOf(1_000L, 5_000L),
             byCreatedAt.keys.sorted(),
         )
-        assertEquals("created_at Debe tomarse de mensajes.createdAt,token Las cuatro columnas deben llevarse como están.", listOf(120, 80, 30, 10), byCreatedAt[1_000L])
-        assertEquals("Los mensajes del Asistente que solo se usan rápidamente también se deben reponer", listOf(7, 0, 0, 0), byCreatedAt[5_000L])
+        assertEquals("created_at 应取自 messages.createdAt，token 四列应原样搬运", listOf(120, 80, 30, 10), byCreatedAt[1_000L])
+        assertEquals("只有 prompt 用量的 assistant 消息也应回填", listOf(7, 0, 0, 0), byCreatedAt[5_000L])
     }
 
-    /** Afirme que el relleno no ha cambiado los mensajes: el número de filas permanece sin cambios, el contenido permanece sin cambios,token El campo no ha sido sobrescrito. */
+    /** 断言回填没有动 messages：行数不变、内容不变、token 字段未被改写。 */
     private fun assertMessagesSurvivedBackfill(db: SupportSQLiteDatabase) {
         val contents = mutableMapOf<String, String>()
         db.query("SELECT id, content FROM messages").use { cursor ->
             while (cursor.moveToNext()) contents[cursor.getString(0)] = cursor.getString(1)
         }
-        assertEquals("messages El número de filas debe ser el mismo que antes de la migración (5 artículo)", 5, contents.size)
-        assertEquals("Respuestas útiles", contents["msg-assistant-usage"])
-        assertEquals("Respuesta de uso cero", contents["msg-assistant-zero"])
-        assertEquals("Respuesta antigua sin campo de token", contents["msg-assistant-null"])
-        assertEquals("Los mensajes de usuario también tienen campos de uso.", contents["msg-user-usage"])
-        assertEquals("Introduzca sólo el uso", contents["msg-assistant-prompt-only"])
+        assertEquals("messages 行数应与迁移前一致（5 条）", 5, contents.size)
+        assertEquals("有用量的回复", contents["msg-assistant-usage"])
+        assertEquals("零用量回复", contents["msg-assistant-zero"])
+        assertEquals("无 token 字段的旧回复", contents["msg-assistant-null"])
+        assertEquals("用户消息也带用量字段", contents["msg-user-usage"])
+        assertEquals("只有输入用量", contents["msg-assistant-prompt-only"])
         db.query(
             "SELECT promptTokens, completionTokens, reasoningTokens, cachedTokens " +
                 "FROM messages WHERE id='msg-assistant-usage'",
         ).use { cursor ->
-            assertTrue("El mensaje original debe conservarse.", cursor.moveToFirst())
-            assertEquals("El relleno no debe sobrescribirse messages.promptTokens", 120, cursor.getInt(0))
-            assertEquals("El relleno no debe sobrescribirse messages.completionTokens", 80, cursor.getInt(1))
-            assertEquals("El relleno no debe sobrescribirse messages.reasoningTokens", 30, cursor.getInt(2))
-            assertEquals("El relleno no debe sobrescribirse messages.cachedTokens", 10, cursor.getInt(3))
+            assertTrue("原消息应保留", cursor.moveToFirst())
+            assertEquals("回填不应改写 messages.promptTokens", 120, cursor.getInt(0))
+            assertEquals("回填不应改写 messages.completionTokens", 80, cursor.getInt(1))
+            assertEquals("回填不应改写 messages.reasoningTokens", 30, cursor.getInt(2))
+            assertEquals("回填不应改写 messages.cachedTokens", 10, cursor.getInt(3))
         }
     }
 
     /**
-     * Pruebas contundentes:Room Después de pasar la verificación, su identidad_hash se escribirá en room_master_table.
-     * Si la estructura del resultado de la migración no coincide con la entidad,RoomOpenHelper.onValidateSchema Lo tiraré primero
-     * "Migration didn't properly handle", no hay forma de escribir un hash.
-     * Entonces "hash == Último (v122) el identidadHash de la instantánea" es equivalente a "Room Realmente comparé y aprobé el estado final".
+     * 硬证据：Room 校验通过后会把自己的 identity_hash 写进 room_master_table。
+     * 如果迁移产出的结构与实体不符，RoomOpenHelper.onValidateSchema 会先抛
+     * "Migration didn't properly handle"，根本走不到写 hash 这步。
+     * 所以「hash == 最新（v122）快照的 identityHash」等价于「Room 真的比对过并认可了终态」。
      */
-    private fun assertRoomValidatedLatestSchema(db: SupportSQLiteDatabase, tag: String) {
-        val expected = loadSchema(122).getJSONObject("database").getString("identityHash")
+    private fun assertRoomValidatedLatestSchema(
+        db: SupportSQLiteDatabase,
+        tag: String,
+        expectedVersion: Int = MuseDb.LATEST_SCHEMA_VERSION,
+    ) {
+        val expected = loadSchema(expectedVersion).getJSONObject("database").getString("identityHash")
         val actual = mutableListOf<String>()
         db.query("SELECT identity_hash FROM room_master_table WHERE id = 42").use { cursor ->
             while (cursor.moveToNext()) actual += cursor.getString(0)
         }
         assertEquals(
-            "$tag: Room El Identity_hash escrito debe ser igual al último (v122) Instantánea de la entidad (demuestra que Room ha verificado y reconocido el esquema final)",
+            "$tag: Room 写入的 identity_hash 应等于最新（v$expectedVersion）实体快照（证明 Room 已校验并认可终态 schema）",
             listOf(expected),
             actual,
         )
     }
 
-    /** v2.6.x Se agregan afirmaciones unificadas para la nueva superficie (cuatro tablas nuevas + tres columnas) y la matriz se comparte con los casos de uso de cadena completa. */
+    /** v2.6.x 新增面（四张新表 + 三列）的统一断言，矩阵与全链用例共用。 */
     private fun assertV26xSurfaces(db: SupportSQLiteDatabase, tag: String) {
         assertUsageRecordsSurface(db, tag)
         assertRelationshipSurface(db, tag)
@@ -945,7 +986,7 @@ class MuseDbMigrationTest {
         assertCardEntitiesSurface(db, tag)
         assertMomentSurfaces(db, tag)
         assertEquals(
-            "$tag: sessions.input_draft El valor predeterminado es una cadena vacía (las sesiones de cambio mantienen borradores respectivamente)",
+            "$tag: sessions.input_draft 默认空串（切换会话各自保留草稿）",
             "''",
             columnDefaults(db, "sessions")["input_draft"],
         )
@@ -954,7 +995,7 @@ class MuseDbMigrationTest {
     private fun assertUsageRecordsSurface(db: SupportSQLiteDatabase, tag: String) {
         val defaults = columnDefaults(db, "usage_records")
         assertEquals(
-            "$tag: usage_records La colección de columnas debe ser coherente con UsageRecordEntity",
+            "$tag: usage_records 列集合应与 UsageRecordEntity 一致",
             setOf(
                 "id",
                 "created_at",
@@ -987,7 +1028,7 @@ class MuseDbMigrationTest {
             tag,
         )
         assertEquals(
-            "$tag: usage_records El índice debe ser coherente con la declaración @Index de la entidad",
+            "$tag: usage_records 索引应与实体 @Index 声明一致",
             setOf(
                 "index_usage_records_created_at",
                 "index_usage_records_source_created_at",
@@ -1000,7 +1041,7 @@ class MuseDbMigrationTest {
     private fun assertRelationshipSurface(db: SupportSQLiteDatabase, tag: String) {
         val defaults = columnDefaults(db, "assistant_relationship")
         assertEquals(
-            "$tag: assistant_relationship El conjunto de columnas debe ser coherente con AssistantRelationshipEntity",
+            "$tag: assistant_relationship 列集合应与 AssistantRelationshipEntity 一致",
             setOf(
                 "assistantId",
                 "relationLabel",
@@ -1033,7 +1074,7 @@ class MuseDbMigrationTest {
     private fun assertSessionTodosSurface(db: SupportSQLiteDatabase, tag: String) {
         val defaults = columnDefaults(db, "session_todos")
         assertEquals(
-            "$tag: session_todos La colección de columnas debe ser coherente con SessionTodoEntity",
+            "$tag: session_todos 列集合应与 SessionTodoEntity 一致",
             setOf("id", "sessionId", "todosJson", "hasOpenItems", "createdAt", "updatedAt"),
             defaults.keys,
         )
@@ -1049,21 +1090,21 @@ class MuseDbMigrationTest {
             tag,
         )
         assertTrue(
-            "$tag: sessionId En realidad, debería existir un índice único. ${indexNames(db, "session_todos")}",
+            "$tag: sessionId 唯一索引应存在，实际 ${indexNames(db, "session_todos")}",
             "index_session_todos_sessionId" in indexNames(db, "session_todos"),
         )
     }
 
     /**
-     * 118 Nuevas facetas:card_entities El conjunto de columnas / predeterminado / dos índices y el índice único de dockSlot realmente tienen efecto.
+     * 118 新增面：card_entities 的列集合 / 默认值 / 两个索引，以及 dockSlot 唯一索引真的生效。
      *
-     * Simplemente afirmar que "la tabla existe" no es suficiente: los nombres de columnas a la deriva o los valores predeterminados harán que la verificación de la sala de máquinas real falle durante las actualizaciones.
-     * La unicidad de dockSlot determina directamente si el orden del área de acoplamiento es estable, por lo que aquí también se prueba el comportamiento de las restricciones.
+     * 只断言「表存在」不够：列名或默认值漂移会让真机 Room 校验在升级时崩溃，
+     * 而 dockSlot 的唯一性直接决定停靠区顺序是否稳定，所以这里也验一次约束行为。
      */
     private fun assertCardEntitiesSurface(db: SupportSQLiteDatabase, tag: String) {
         val defaults = columnDefaults(db, "card_entities")
         assertEquals(
-            "$tag: card_entities El conjunto de columnas debe ser coherente con CardEntity",
+            "$tag: card_entities 列集合应与 CardEntity 一致",
             setOf(
                 "id",
                 "legacyCardId",
@@ -1098,7 +1139,7 @@ class MuseDbMigrationTest {
             tag,
         )
         assertEquals(
-            "$tag: card_entities El índice debe ser coherente con la declaración CardEntity @Index",
+            "$tag: card_entities 索引应与 CardEntity @Index 声明一致",
             setOf("index_card_entities_dockSlot", "index_card_entities_originMessageId"),
             indexNames(db, "card_entities"),
         )
@@ -1106,11 +1147,11 @@ class MuseDbMigrationTest {
     }
 
     /**
-     * dockSlot Dos comportamientos clave de índices únicos:
-     *  - Varias tarjetas son NULL (solo flujo de mensajes) y no deben entrar en conflicto. —— De lo contrario, no se pueden escribir todas las cartas excepto la primera;
-     *  - Se deben rechazar dos espacios idénticos que no sean NULL —— De lo contrario, la secuencia de atraque será doble.
+     * dockSlot 唯一索引的两个关键行为：
+     *  - 多张卡都是 NULL（仅消息流）不得冲突 —— 否则第一张以外的卡全部写不进去；
+     *  - 两个相同的非 NULL 槽位必须被拒 —— 否则停靠顺序会出双。
      *
-     * Verifique con filas temporales y elimínelas inmediatamente sin contaminar los datos migrados (las afirmaciones de datos antiguas aún se mantienen en otros lugares).
+     * 用临时行验证后立即删除，不污染迁移后数据（旧数据断言在其它地方仍成立）。
      */
     private fun assertDockSlotUniquenessAllowsNull(db: SupportSQLiteDatabase, tag: String) {
         db.execSQL("INSERT INTO card_entities (id, title) VALUES ('slot-probe-a', 'a')")
@@ -1121,10 +1162,10 @@ class MuseDbMigrationTest {
                 db.execSQL("UPDATE card_entities SET dockSlot = 0 WHERE id = 'slot-probe-b'")
                 false
             } catch (e: android.database.sqlite.SQLiteConstraintException) {
-                e.message?.let { assertTrue("$tag: Se espera que sea un conflicto de restricciones único, en realidad $it", it.contains("UNIQUE", ignoreCase = true)) }
+                e.message?.let { assertTrue("$tag: 应为唯一约束冲突，实际 $it", it.contains("UNIQUE", ignoreCase = true)) }
                 true
             }
-            assertTrue("$tag: No se permiten dos tarjetas en el mismo dockSlot (de lo contrario la secuencia de acoplamiento será doble)", rejected)
+            assertTrue("$tag: 同一 dockSlot 不允许两张卡（否则停靠顺序会出双）", rejected)
         } finally {
             db.execSQL("DELETE FROM card_entities WHERE id IN ('slot-probe-a', 'slot-probe-b')")
         }
@@ -1132,7 +1173,7 @@ class MuseDbMigrationTest {
 
     private fun assertMomentSurfaces(db: SupportSQLiteDatabase, tag: String) {
         assertEquals(
-            "$tag: Momentos/Las cuatro tablas del diario deben estar en 121→122 Eliminado durante la migración (los datos antiguos del teléfono celular se eliminaron por completo)",
+            "$tag: 朋友圈/日记四张表应在 121→122 迁移中删除（旧小手机数据已整体移除）",
             emptySet<String>(),
             setOf("ai_moments", "ai_moment_comments", "ai_moment_likes", "ai_diaries")
                 .filter { tableExists(db, it) }
@@ -1156,7 +1197,7 @@ class MuseDbMigrationTest {
         db.query("SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='$table'").use { cursor ->
             while (cursor.moveToNext()) {
                 val name = cursor.getString(0)
-                // Omite el índice interno generado automáticamente por SQLite para PRIMARY KEY/UNIQUE y solo compara el índice nombrado declarado por la entidad.
+                // 跳过 SQLite 为 PRIMARY KEY/UNIQUE 自动生成的内部索引，只比对实体声明的命名索引。
                 if (!name.startsWith("sqlite_autoindex")) names += name
             }
         }
@@ -1165,26 +1206,26 @@ class MuseDbMigrationTest {
 
     private fun assertDefaults(defaults: Map<String, String?>, expected: Map<String, String>, tag: String) {
         expected.forEach { (column, value) ->
-            assertTrue("$tag: columna faltante $column, la columna real ${defaults.keys}", defaults.containsKey(column))
-            assertEquals("$tag: $column El valor predeterminado debe ser $value", value, defaults[column])
+            assertTrue("$tag: 缺少列 $column，实际列 ${defaults.keys}", defaults.containsKey(column))
+            assertEquals("$tag: $column 默认值应为 $value", value, defaults[column])
         }
     }
 
     /**
-     * Revisión de corrección (2.0 B-27): Cadena de migración temprana suma cobertura Robolectric — schemas/ El directorio realmente existe
-     * 22..88 Todas las instantáneas de,Las SchemaVersions disponibles anteriormente devolvieron un valor nulo, lo que dio como resultado una anulación 22..54 a partir de cero.
-     * (Contiene tabla de mensajes/skills/FTS Reconstrucción de segmentos de alto riesgo). Ahora habilitado por presencia de instantáneas 22..54;
-     * 1..21 Sin instantánea(1→22 para una evolución general temprana),No se puede sobrescribir automáticamente,Todavía dejando la máquina real para regresar.
+     * 审查修复 (2.0 B-27): 早期迁移链加入 Robolectric 覆盖 — schemas/ 目录实际存在
+     * 22..88 的全部快照,此前 availableSchemaVersions 返回空导致 22..54 起点零覆盖
+     * (含消息表/skills/FTS 重建高风险段)。现在按快照存在性启用 22..54;
+     * 1..21 无快照(1→22 为早期整体演进),无法自动覆盖,仍留真机回归。
      */
     /**
-     * Revisión de corrección (2.0 B-27): Cobertura de la cadena de migración temprana 22..54 —
-     * Room Ruta de verificación(RoomOpenHelper.onValidateSchema)Artefactos de doble conectividad bajo Robolectric:
-     * El índice recién creado dentro de la transacción de migración no es visible para la conexión de verificación(55+ El punto de partida no se ve afectado porque el índice está creado previamente a partir de la instantánea.),
-     * Provocó que 22..54 puntos de partida fueran falsos positivos bajo Robolectric "Migration didn't properly handle".
-     * La conexión única de la máquina real no tiene este problema(Verificación manual de la cadena paso a paso y retención de índices durante todo el proceso.).
-     * Por lo tanto:
-     *  - Esta matriz de verificación de habitaciones reserva más de 55 puntos de partida(El comportamiento de verificación es auténtico y confiable.);
-     *  - 22..54 El punto de partida es [migrateEveryLegacyVersionManually] Cobertura de prueba de cadena manual(Equivalente a una máquina real).
+     * 审查修复 (2.0 B-27): 早期迁移链 22..54 的覆盖 —
+     * Room 校验路径(RoomOpenHelper.onValidateSchema)在 Robolectric 下存在双连接伪影:
+     * 迁移事务内新建的索引对校验连接不可见(55+ 起点因索引为快照预建而不受影响),
+     * 导致 22..54 起点在 Robolectric 下误报 "Migration didn't properly handle"。
+     * 真机单连接无此问题(手动逐步执行链验证索引全程保留)。
+     * 因此:
+     *  - 本 Room 校验矩阵保留 55+ 起点(校验行为真实可靠);
+     *  - 22..54 起点由 [migrateEveryLegacyVersionManually] 手动链测试覆盖(真机等价)。
      */
     private fun availableSchemaVersions(): List<Int> = ((55..68) + (113..117)).filter { schemaExists(it) }
 
@@ -1199,11 +1240,11 @@ class MuseDbMigrationTest {
         return candidates.any { it.exists() }
     }
 
-    /** Recopile las migraciones registradas de MuseDb mediante la reflexión,Ordene por versión para obtener la cadena de actualización completa. */
+    /** 用反射收集 MuseDb 已注册迁移,按 fromVersion 排序得到完整升级链。 */
     private fun migrationsFrom(fromVersion: Int, imageDir: File = imageStorageDir): List<androidx.room.migration.Migration> {
-        // MIGRATION_* Es el valor del objeto complementario de MuseDb. Después de la compilación, Kotlin solo genera para ellos.
-        // publico getter(getMIGRATION_x_y),La reflexión no puede obtener el campo correspondiente(Los campos de entidad están ocultos/síntesis),
-        // Así que aquí enumeramos desde el método público de la instancia Companion —— MuseDb::class.java.declaredFields También está vacío.
+        // MIGRATION_* 是 MuseDb companion object 里的 val。编译后 Kotlin 只为它们生成
+        // 公开 getter(getMIGRATION_x_y),反射取不到对应的字段(实体字段被隐藏/合成),
+        // 因此这里从 Companion 实例的公开方法枚举 —— MuseDb::class.java.declaredFields 也是空的。
         val companion: Any = runCatching {
             MuseDb::class.java.getDeclaredField("Companion")
                 .apply { isAccessible = true }
@@ -1271,7 +1312,7 @@ class MuseDbMigrationTest {
                     }
 
                     override fun onUpgrade(db: androidx.sqlite.db.SupportSQLiteDatabase, oldVersion: Int, newVersion: Int) {
-                        // Room migration hacerse cargo
+                        // Room migration 接管
                     }
                 })
                 .build(),
@@ -1285,7 +1326,7 @@ class MuseDbMigrationTest {
         else -> "''"
     }
 
-    /** Columna de mensajes NOT NULL sin valor predeterminado en el esquema anterior,Al insertar datos de prueba, complete el valor predeterminado por tipo. */
+    /** 旧 schema 中 NOT NULL 且无默认值的 messages 列,插入测试数据时按类型补默认值。 */
     private fun requiredExtraMessageColumns(helper: androidx.sqlite.db.SupportSQLiteDatabase): List<Pair<String, String>> {
         val result = mutableListOf<Pair<String, String>>()
         val base = setOf("id", "sessionId", "role", "content", "createdAt")
@@ -1317,13 +1358,13 @@ class MuseDbMigrationTest {
         helper.execSQL(
             """
             INSERT INTO sessions (id, title, createdAt, updatedAt, lastMessagePreview, assistantId)
-            VALUES ('legacy-session', 'Pruebas de migración', 1, 1, '', 'default')
+            VALUES ('legacy-session', '迁移测试', 1, 1, '', 'default')
             """.trimIndent(),
         )
         val requiredExtra = requiredExtraMessageColumns(helper)
         val messageColumns = listOf("id", "sessionId", "role", "content", "createdAt") + requiredExtra.map { it.first }
         val messageValues = listOf(
-            "'legacy-msg'", "'legacy-session'", "'ASSISTANT'", "'Mensajes históricos antes de la migración'", "1",
+            "'legacy-msg'", "'legacy-session'", "'ASSISTANT'", "'迁移前的历史消息'", "1",
         ) + requiredExtra.map { it.second }
         helper.execSQL(
             "INSERT INTO messages (${messageColumns.joinToString(", ")}) " +
@@ -1339,7 +1380,7 @@ class MuseDbMigrationTest {
             File("../app/schemas/io.zer0.muse.data.session.MuseDb/$version.json"),
         )
         val file = candidates.firstOrNull { it.exists() }
-            ?: error("no encontrado $version.json schema, confirme que se hayan generado la aplicación/esquemas")
+            ?: error("找不到 $version.json schema，请确认 app/schemas 已生成")
         return JSONObject(file.readText())
     }
 

@@ -5,25 +5,25 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * v1.97 Etapa 2: URL_AUTOLINK_REGEX Pruebas de casos de uso de límites.
+ * v1.97 阶段二: URL_AUTOLINK_REGEX 边界用例测试。
  *
- * Valide URL de texto sin formato e identifique automáticamente coincidencias regulares/comportamiento excluyente:
- *  - Coincidencia completa de URL http/https estándar
- *  - URL Contiene cadena de consulta/punto de anclaje/ruta de coincidencia completa
- *  - URL seguido de blanco/comillas/paréntesis/tiempo de puntuación chino,La puntuación no está incluida en el partido.
- *  - Texto sin formato, ninguna URL no coincide
- *  - Varias URL coinciden de forma independiente
- *  - El protocolo http/https no en minúsculas no coincide(comportamiento esperado,Las URL en mayúsculas están representadas por markdown [text](url) Proceso)
- *  - ftp/mailto Espere a que los protocolos que no sean http no coincidan
+ * 验证纯文本 URL 自动识别正则的匹配/排除行为:
+ *  - 标准 http/https URL 全匹配
+ *  - URL 含 query string / 锚点 / 路径 全匹配
+ *  - URL 后跟空白/引号/括号/中文标点时,标点不纳入匹配
+ *  - 纯文本无 URL 不匹配
+ *  - 多个 URL 各自独立匹配
+ *  - 非小写 http/https 协议不匹配(预期行为,大写 URL 由 markdown [text](url) 处理)
+ *  - ftp/mailto 等非 http 协议不匹配
  *
- * Descripción: Puntuación china al final.(. ,,;:!?』』)Excluido por limpieza secundaria en el sitio de la llamada.
+ * 说明: 尾部中文标点(。、,;:!?」』)由调用处的二次清理排除。
  */
 class UrlAutolinkRegexTest {
 
-    /** Extraiga todos los resultados de coincidencias de URL en el texto como una lista de cadenas(Fácil de afirmar). */
+    /** 提取文本中所有 URL 匹配结果为字符串列表(便于断言)。 */
     private fun urls(input: String): List<String> = URL_AUTOLINK_REGEX.findAll(input).map { it.value }.toList()
 
-    // ── partido estándar ──
+    // ── 标准匹配 ──
 
     @Test
     fun `standard https url matches fully`() {
@@ -67,7 +67,7 @@ class UrlAutolinkRegexTest {
         )
     }
 
-    // ── Exclusión del separador final ──
+    // ── 尾部分隔符排除 ──
 
     @Test
     fun `url followed by space excludes space`() {
@@ -103,10 +103,10 @@ class UrlAutolinkRegexTest {
 
     @Test
     fun `url followed by chinese period excludes period`() {
-        // Los períodos chinos deben excluirse.(Limpiado dos veces por el sitio de llamadas)
+        // 中文句号应被排除(由调用处二次清理)
         assertEquals(
             listOf("https://example.com"),
-            urls("Ver https://example.com。。"),
+            urls("查看 https://example.com。这是下一句。"),
         )
     }
 
@@ -114,7 +114,7 @@ class UrlAutolinkRegexTest {
     fun `url followed by chinese comma excludes comma`() {
         assertEquals(
             listOf("https://example.com"),
-            urls("visita https://example.com,se puede ver"),
+            urls("访问 https://example.com,即可看到"),
         )
     }
 
@@ -122,7 +122,7 @@ class UrlAutolinkRegexTest {
     fun `url followed by chinese semicolon excludes it`() {
         assertEquals(
             listOf("https://example.com"),
-            urls("URL https://example.com;Recuerda recolectar"),
+            urls("网址 https://example.com;记得收藏"),
         )
     }
 
@@ -136,7 +136,7 @@ class UrlAutolinkRegexTest {
 
     @Test
     fun `url followed by chinese right corner quote excludes it`() {
-        // "" Se deben excluir las comillas de la esquina derecha.
+        // 「」右角引号应被排除
         assertEquals(
             listOf("https://example.com"),
             urls("「官网: https://example.com」"),
@@ -145,9 +145,9 @@ class UrlAutolinkRegexTest {
 
     @Test
     fun `url followed by ascii period includes period`() {
-        // ASCII período `.` Válido dentro de la URL(example.com),La regularidad no excluye,final de la frase `.` será incluido en el partido.
-        // La parte que llama es responsable de la limpieza secundaria de la puntuación al final de las frases.,
-        // Aquí solo se realiza el reconocimiento de texto plano,Mantenga las clases de personajes simples.
+        // ASCII 句点 `.` 在 URL 内合法(example.com),正则不排除,句末 `.` 会被纳入匹配。
+        // 句末标点的二次清理由调用处负责,
+        // 此处仅做纯文本识别,保持字符类简单。
         assertEquals(
             listOf("https://example.com."),
             urls("Visit https://example.com."),
@@ -162,7 +162,7 @@ class UrlAutolinkRegexTest {
         )
     }
 
-    // ── Varias URL frente a ninguna URL ──
+    // ── 多 URL 与无 URL ──
 
     @Test
     fun `multiple urls match independently`() {
@@ -174,20 +174,20 @@ class UrlAutolinkRegexTest {
 
     @Test
     fun `plain text without url produces no matches`() {
-        assertTrue(urls("hello world, Este es un texto normal.").isEmpty())
+        assertTrue(urls("hello world, 这是普通文本").isEmpty())
     }
 
     @Test
     fun `text mentioning protocol without scheme does not match`() {
-        // "example.com" Sin discrepancia de prefijo http/https(Evite la identificación errónea)
+        // "example.com" 不带 http/https 前缀不匹配(避免误识别)
         assertTrue(urls("visit example.com sometime").isEmpty())
     }
 
-    // ── comportamiento inesperado(borrar no coincide)──
+    // ── 非预期行为(明确不匹配)──
 
     @Test
     fun `uppercase https does not match`() {
-        // Normalmente distingue entre mayúsculas y minúsculas,HTTPS en mayúsculas no coincide(comportamiento esperado)
+        // 正则区分大小写,大写 HTTPS 不匹配(预期行为)
         assertTrue(urls("HTTPS://EXAMPLE.COM").isEmpty())
     }
 
@@ -203,9 +203,9 @@ class UrlAutolinkRegexTest {
 
     @Test
     fun `url embedded in chinese text matches only the url`() {
-        // URL incrustada en una oración china: hay espacios antes y después de la URL,La coincidencia regular comienza desde https,Termina con el siguiente espacio.
-        // El resto de la oración china no afecta el reconocimiento de URL.
-        val matches = urls("Puede visitar https://example.com/path para obtener más información.")
+        // 嵌在中文句子中的 URL:URL 前后是空格,正则从 https 开始匹配,到下一个空格结束。
+        // 中文句子的其余部分不影响 URL 识别。
+        val matches = urls("你可以访问 https://example.com/path 来了解详情")
         assertEquals(1, matches.size)
         assertEquals("https://example.com/path", matches[0])
     }

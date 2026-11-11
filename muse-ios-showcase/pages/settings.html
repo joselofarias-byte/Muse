@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ajustes</title>
+    <title>设置</title>
     <style id="theme-vars">
 /* @group-priority: primary, success, info, danger, accent */
 @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600;700&display=swap');
 
 /* =========================================================================
    Muse iOS — Design Library Tokens
-   Brand: Muse Laurel Green (verde laurel) · iOS Design Language
+   Brand: Muse Laurel Green (月桂绿) · iOS Design Language
    ========================================================================= */
 
 :root {
@@ -330,7 +330,7 @@
 
 /* ── Agent Plan Card ───────────────────────────────────────── */
 /* @anatomy
-   <span class="label">ejecutando</span> <div class="plan-card executing"> <div class="plan-header"> <span class="plan-icon"></span> <span class="plan-title">Agent planear</span> <span class="plan-progress">3/5</span>
+   <span class="label">执行中</span> <div class="plan-card executing"> <div class="plan-header"> <span class="plan-icon"></span> <span class="plan-title">Agent 计划</span> <span class="plan-progress">3/5</span>
 */
 .plan-card { flex: 1; min-width: 0; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: var(--space-4); box-shadow: var(--shadow-2); }
 .plan-card.executing { border-color: var(--primary-200); background: var(--color-primary-container); }
@@ -362,7 +362,7 @@
 
 /* ── Approval Card ─────────────────────────────────────────── */
 /* @anatomy
-   <span class="label">bajo riesgo</span><div class="acard low" data-evidence-sample="Pending Low Risk"><div class="ahd"><svg class="aico" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-label="shield"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg><span class="atitle">solicitar aprobación</span><span class="atool">llamada de herramienta</span>
+   <span class="label">低风险</span><div class="acard low" data-evidence-sample="Pending Low Risk"><div class="ahd"><svg class="aico" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-label="shield"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg><span class="atitle">请求批准</span><span class="atool">工具调用</span>
 */
 .acard{flex:1;min-width:0;border-radius:var(--radius-card);padding:var(--space-4);border:1px solid;overflow:hidden}
 .acard.low{background:var(--primary-50);border-color:var(--primary-200)}
@@ -389,7 +389,7 @@
 
 /* ── Conversation List ─────────────────────────────────────── */
 /* @anatomy
-   <span class="label">Predeterminado</span>
+   <span class="label">默认</span>
 */
 .conv-list{width:100%;display:flex;flex-direction:column;gap:4px}
 .conv-item{display:flex;align-items:center;gap:10px;padding:11px 10px;border-radius:10px;background:transparent;cursor:pointer;transition:background .15s}
@@ -412,7 +412,7 @@
 
 /* ── Input Bar ─────────────────────────────────────────────── */
 /* @anatomy
-   <span class="label">Predeterminado</span> <div class="inputbar" data-evidence-sample="default-text-mode"> <button type="button" class="ib-btn ib-tool">llamada de herramienta</button> <textarea placeholder="dialogo"></textarea> <button type="button" class="ib-btn ib-send">enviar</button>
+   <span class="label">默认</span> <div class="inputbar" data-evidence-sample="default-text-mode"> <button type="button" class="ib-btn ib-tool">工具调用</button> <textarea placeholder="对话"></textarea> <button type="button" class="ib-btn ib-send">发送</button>
 */
 .inputbar{display:flex;align-items:flex-end;gap:var(--space-2);width:100%;background:var(--glass-bg);backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturation));-webkit-backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturation));border:1px solid var(--hairline);border-radius:var(--radius-bubble);padding:var(--space-2) var(--space-3);min-height:49px;box-shadow:var(--shadow-2);box-sizing:border-box;}
 .inputbar textarea{flex:1;min-width:0;min-height:28px;max-height:132px;border:none;background:transparent;resize:none;outline:none;font-family:var(--font-body);font-size:var(--font-size-body-m);line-height:var(--line-height-body);color:var(--color-on-surface);padding:var(--space-1) 0;}
@@ -427,7 +427,7 @@
 
 /* ── Media Card ────────────────────────────────────────────── */
 /* @anatomy
-   <span class="label">imagen · generando</span>
+   <span class="label">图像 · 生成中</span>
 */
 .mc{width:100%;background:var(--surface);border-radius:var(--radius-card);overflow:hidden;box-shadow:var(--shadow-2);border:1px solid var(--hairline)}
 .mc-media{position:relative;aspect-ratio:16/9;background:var(--surface-container);display:flex;align-items:center;justify-content:center;overflow:hidden}
@@ -456,7 +456,7 @@
 
 /* ── Message Bubble ────────────────────────────────────────── */
 /* @anatomy
-   <span class="label">dialogo</span> <div class="thread"> <div class="msg end"> <div class="bubble bubble-user">Ayúdame a escribir un poema corto sobre el otoño.
+   <span class="label">对话</span> <div class="thread"> <div class="msg end"> <div class="bubble bubble-user">帮我写一首关于秋天的短诗
 */
 .msg{display:flex;flex-direction:column;gap:var(--space-1);max-width:85%;align-items:flex-start}
 .msg.end{align-self:flex-end;align-items:flex-end;max-width:var(--size-bubble-max)}
@@ -472,7 +472,7 @@
 
 /* ── Navigation Bar ────────────────────────────────────────── */
 /* @anatomy
-   <span class="label">titular</span> <div class="navbar navbar-large"> <div class="navbar-bar"> <button class="nav-btn" aria-label="Regresar"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button> <div class="nav-spacer">
+   <span class="label">大标题</span> <div class="navbar navbar-large"> <div class="navbar-bar"> <button class="nav-btn" aria-label="返回"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button> <div class="nav-spacer">
 */
 .navbar{display:flex;align-items:center;width:100%;background:var(--glass-bg);backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturation));-webkit-backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturation))}
 .navbar-inline{height:var(--size-navbar);padding:0 var(--space-4)}
@@ -514,7 +514,7 @@
 
 /* ── Thinking Card ─────────────────────────────────────────── */
 /* @anatomy
-   <span class="label">estado plegado</span><div class="tc tc--collapsed" data-evidence-sample="collapsed"><span class="tc__label">Pensando</span>
+   <span class="label">折叠态</span><div class="tc tc--collapsed" data-evidence-sample="collapsed"><span class="tc__label">思考中</span>
 */
 .tc{background:var(--primary-50);border-radius:var(--radius-md);padding:11px 9px;border-left:2px solid var(--primary-300);flex:1;min-width:0}
 .tc--collapsed{display:inline-flex;align-items:center;gap:var(--space-2);border-left:none;flex:0 0 auto;cursor:pointer;transition:filter var(--duration-fast)}
@@ -530,7 +530,7 @@
 
 /* ── Tool Call Card ────────────────────────────────────────── */
 /* @anatomy
-   <span class="label">ejecutando</span><div class="tool-card" data-evidence-sample="Executing"><div class="tc-header"><span class="tc-icon active"><svg width="16" height="16" class="spin"><use href="#i-gear"/></svg></span><span class="tc-name">llamada de herramienta</span><span class="tc-status">ejecutando</span>
+   <span class="label">执行中</span><div class="tool-card" data-evidence-sample="Executing"><div class="tc-header"><span class="tc-icon active"><svg width="16" height="16" class="spin"><use href="#i-gear"/></svg></span><span class="tc-name">工具调用</span><span class="tc-status">执行中</span>
 */
 .tool-card{background:var(--color-surface-container);border:1px solid var(--color-border);border-radius:var(--radius-md);padding:11px 10px;flex:1;min-width:0;box-sizing:border-box}
 .tool-card.danger{background:var(--color-error-container);border-color:var(--color-danger)}
@@ -785,7 +785,7 @@
             <div class="page-frame">
                 <!-- Top nav bar: frosted glass, large title -->
                 <nav class="navbar navbar-large" data-component="navigation-bar">
-                    <h1 class="nav-title-large">ajustes</h1>
+                    <h1 class="nav-title-large">设置</h1>
                 </nav>
 
                 <!-- Scrollable settings content -->
@@ -793,64 +793,64 @@
                     <!-- Profile header card -->
                     <div class="settings-section" style="padding-top: var(--space-3);">
                         <div class="profile-card profile-accent">
-                            <div class="avatar">Miao</div>
+                            <div class="avatar">缪</div>
                             <div class="profile-info">
-                                <span class="profile-name">musa</span>
-                                <span class="profile-sub">GPT-4 · modo de compañía</span>
+                                <span class="profile-name">缪斯</span>
+                                <span class="profile-sub">GPT-4 · 陪伴模式</span>
                             </div>
-                            <button class="profile-edit">Editar</button>
+                            <button class="profile-edit">编辑</button>
                         </div>
                     </div>
 
-                    <!-- Section: Universales -->
+                    <!-- Section: 通用 -->
                     <div class="settings-section">
-                        <div class="section-header">Universales</div>
+                        <div class="section-header">通用</div>
                         <div class="settings-group">
-                            <!-- Toggle row: modo oscuro (OFF) -->
+                            <!-- Toggle row: 深色模式 (OFF) -->
                             <div class="settings-row">
-                                <span class="settings-label">modo oscuro</span>
+                                <span class="settings-label">深色模式</span>
                                 <div class="ios-switch"></div>
                             </div>
-                            <!-- Navigation row: Idioma -->
+                            <!-- Navigation row: 语言 -->
                             <div class="settings-row">
-                                <span class="settings-label">Idioma</span>
+                                <span class="settings-label">语言</span>
                                 <div class="row-trailing">
-                                    <span class="settings-value">Chino simplificado</span>
+                                    <span class="settings-value">简体中文</span>
                                     <i data-lucide="chevron-right" class="chevron"></i>
                                 </div>
                             </div>
-                            <!-- Navigation row: tamaño de fuente -->
+                            <!-- Navigation row: 字体大小 -->
                             <div class="settings-row">
-                                <span class="settings-label">tamaño de fuente</span>
+                                <span class="settings-label">字体大小</span>
                                 <div class="row-trailing">
-                                    <span class="settings-value">Estándar</span>
+                                    <span class="settings-value">标准</span>
                                     <i data-lucide="chevron-right" class="chevron"></i>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Section: AI modelo -->
+                    <!-- Section: AI 模型 -->
                     <div class="settings-section">
-                        <div class="section-header">AI modelo</div>
+                        <div class="section-header">AI 模型</div>
                         <div class="settings-group">
-                            <!-- Navigation row: modelo -->
+                            <!-- Navigation row: 模型 -->
                             <div class="settings-row">
-                                <span class="settings-label">modelo</span>
+                                <span class="settings-label">模型</span>
                                 <div class="row-trailing">
                                     <span class="settings-value">GPT-4</span>
                                     <i data-lucide="chevron-right" class="chevron"></i>
                                 </div>
                             </div>
-                            <!-- Toggle row: Salida de transmisión (ON) -->
+                            <!-- Toggle row: 流式输出 (ON) -->
                             <div class="settings-row">
-                                <span class="settings-label">Salida de transmisión</span>
+                                <span class="settings-label">流式输出</span>
                                 <div class="ios-switch on"></div>
                             </div>
-                            <!-- Slider row: temperatura -->
+                            <!-- Slider row: 温度 -->
                             <div class="settings-row slider-row">
                                 <div class="slider-row-top">
-                                    <span class="settings-label">temperatura</span>
+                                    <span class="settings-label">温度</span>
                                     <span class="settings-value">0.7</span>
                                 </div>
                                 <div class="slider-track">
@@ -861,21 +861,21 @@
                         </div>
                     </div>
 
-                    <!-- Section: Acerca de -->
+                    <!-- Section: 关于 -->
                     <div class="settings-section">
-                        <div class="section-header">Acerca de</div>
+                        <div class="section-header">关于</div>
                         <div class="settings-group">
-                            <!-- Navigation row: versión -->
+                            <!-- Navigation row: 版本 -->
                             <div class="settings-row">
-                                <span class="settings-label">versión</span>
+                                <span class="settings-label">版本</span>
                                 <div class="row-trailing">
                                     <span class="settings-value">1.0.0</span>
                                     <i data-lucide="chevron-right" class="chevron"></i>
                                 </div>
                             </div>
-                            <!-- Action row: Buscar actualizaciones -->
+                            <!-- Action row: 检查更新 -->
                             <div class="settings-row">
-                                <span class="settings-label settings-action">Buscar actualizaciones</span>
+                                <span class="settings-label settings-action">检查更新</span>
                             </div>
                         </div>
                     </div>
@@ -885,19 +885,19 @@
                 <nav class="tabbar" data-component="navigation-bar">
                     <a class="tab-item" href="#">
                         <i data-lucide="message-circle" class="tab-icon"></i>
-                        <span class="tab-label">dialogo</span>
+                        <span class="tab-label">对话</span>
                     </a>
                     <a class="tab-item" href="#">
                         <i data-lucide="brain" class="tab-icon"></i>
-                        <span class="tab-label">memoria</span>
+                        <span class="tab-label">记忆</span>
                     </a>
                     <a class="tab-item" href="#">
                         <i data-lucide="book-open" class="tab-icon"></i>
-                        <span class="tab-label">base de conocimientos</span>
+                        <span class="tab-label">知识库</span>
                     </a>
                     <a class="tab-item active" href="#">
                         <i data-lucide="settings" class="tab-icon"></i>
-                        <span class="tab-label">ajustes</span>
+                        <span class="tab-label">设置</span>
                     </a>
                 </nav>
             </div>

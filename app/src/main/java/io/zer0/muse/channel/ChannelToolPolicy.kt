@@ -7,7 +7,7 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonPrimitive
 
 /**
- * El canal no tiene un enlace de aprobación interactivo.:Cuando la lista blanca está corrupta fail closed,Y el final de la ejecución solo acepta herramientas que no sean ALTAS y que realmente estén expuestas en esta ronda.
+ * 渠道没有交互式审批链路:白名单损坏时 fail closed,且执行端只接受本轮实际暴露的非 HIGH 工具。
  */
 internal fun parseChannelToolAllowlist(json: String): Set<String>? {
     if (json.isBlank()) return emptySet()

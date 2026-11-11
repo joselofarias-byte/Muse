@@ -1,27 +1,27 @@
 package io.zer0.muse.channel
 
 /**
- * Un contrato unificado en el extremo receptor del canal.
+ * 渠道接收端的统一契约。
  *
- * Implementación de recepción de cinco plataformas (WeChat Broadcast, Feishu/QQ/Conexión larga de clavo Ding,Telegram sondeo)
- * Anteriormente eran independientes, pero los métodos del ciclo de vida son en realidad los mismos: ambos `restart()` / `stop()`.
- * Aquí, este acuerdo existente se declara explícitamente, de modo que el registro y la gestión del ciclo de vida solo dependen de interfaces.
- * ya no uno por uno when (platform) rama.
+ * 五个平台的接收实现（微信广播、飞书/QQ/钉钉长连接、Telegram 轮询）
+ * 此前各自独立，但生命周期方法其实已经一致：都是 `restart()` / `stop()`。
+ * 这里把这个既有约定显式声明出来，让注册与生命周期管理只依赖接口，
+ * 不再逐个 when (platform) 分支。
  *
- * Nota: Este paso solo unifica el ciclo de vida y no cambia ningún comportamiento de envío y recepción.
- * Los mensajes entrantes todavía están normalizados en [ChannelInbox.Inbound] Luego entrégalo al nivel superior.
+ * 注意：这一步只统一生命周期，不改任何收发行为。
+ * 入站消息仍然各自归一化成 [ChannelInbox.Inbound] 后交给上层。
  */
 interface ChannelReceiver {
-    /** La plataforma correspondiente a este extremo receptor. */
+    /** 该接收端对应的平台。 */
     val platform: ChannelPlatform
 
     /**
-     * Iniciar o reiniciar la recepción.
+     * 启动或重启接收。
      *
-     * Permitir llamadas repetidas: se debe detener la conexión anterior internamente y se debe establecer una nueva.
+     * 允许重复调用：内部应自行停止旧连接再建立新的。
      */
     fun restart()
 
-    /** Deja de recibir y liberar recursos. Se permiten llamadas repetidas. */
+    /** 停止接收并释放资源。允许重复调用。 */
     fun stop()
 }

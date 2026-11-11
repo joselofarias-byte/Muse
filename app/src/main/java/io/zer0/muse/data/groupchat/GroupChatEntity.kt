@@ -6,19 +6,19 @@ import androidx.room.PrimaryKey
 import kotlinx.serialization.Serializable
 
 /**
- * Entidad de chat grupal.
+ * 群聊实体。
  *
- * Un chat grupal contiene varios miembros del Agente,Después de que el usuario envía un mensaje, [GroupChatScheduler] La serie hace que cada agente se turne para hablar.
- * - [memberIdsJson] almacenamiento List<String> Serialización JSON de(Assistant id lista)
- * - [teamId] Asociación opcional de equipos en MultiAgentConfig id
+ * 一个群聊包含多个 Agent 成员,用户发消息后由 [GroupChatScheduler] 串行触发各 Agent 轮转发言。
+ * - [memberIdsJson] 存储 List<String> 的 JSON 序列化(Assistant id 列表)
+ * - [teamId] 可选关联 MultiAgentConfig 中的团队 id
  *
- * @param id Solo chat grupal id
- * @param name Nombre del chat grupal
- * @param description Descripción del chat grupal/Propósito
- * @param memberIdsJson Cadena JSON de la lista de ID de asistente de miembro
- * @param teamId Equipos asociados id(Opcional)
- * @param createdAt Crear marca de tiempo
- * @param updatedAt Última marca de tiempo actualizada
+ * @param id 群聊唯一 id
+ * @param name 群聊名称
+ * @param description 群聊描述/用途
+ * @param memberIdsJson 成员 assistantId 列表的 JSON 字符串
+ * @param teamId 关联的团队 id(可选)
+ * @param createdAt 创建时间戳
+ * @param updatedAt 最近更新时间戳
  */
 @Serializable
 @Entity(tableName = "group_chats")
@@ -31,76 +31,76 @@ data class GroupChatEntity(
     @ColumnInfo(defaultValue = "0") val pinned: Boolean = false,
     @ColumnInfo(defaultValue = "0") val createdAt: Long = System.currentTimeMillis(),
     @ColumnInfo(defaultValue = "0") val updatedAt: Long = System.currentTimeMillis(),
-    // ── v1.107 campos redundantes(Evite las listas de chat grupal JOIN messages,Repository Mantenimiento de doble escritura) ──
-    /** Vista previa del último mensaje(Visualización de lista,Truncado a 50 palabras). */
+    // ── v1.107 冗余字段(避免群聊列表 JOIN messages,Repository 双写维护) ──
+    /** 最后一条消息预览(列表显示,截断到 50 字)。 */
     @ColumnInfo(defaultValue = "") val lastMessagePreview: String = "",
-    /** El número total de mensajes de chat grupal. */
+    /** 群聊消息总数。 */
     @ColumnInfo(defaultValue = "0") val messageCount: Int = 0,
-    /** Marca de tiempo de la última actividad(para clasificar,igual al último mensaje createdAt). */
+    /** 最后活动时间戳(排序用,等于最后一条消息的 createdAt)。 */
     @ColumnInfo(defaultValue = "0") val lastActivityAt: Long = 0,
-    // ── v2.x Modo de discusión de chat grupal ──
+    // ── v2.x 群聊讨论模式 ──
     /**
-     * modo de discusión:
-     * - "round_robin": rotación en serie(Predeterminado,compatible con versiones anteriores)— Después de que el usuario envía un mensaje, cada IA ​​hablará durante una ronda por turno.
-     * - "auto": discusión libre — AI diálogo continuo automático entre,alcanzar [autoMaxRounds] o detenerse cuando todos PASEN
-     * - "debate": modo debate — cadena fija:Preguntas de usuario → A dar un plan → B encontrar lagunas → C mejorar,Cada ronda debe responder a la persona anterior.
-     * - "host": Modo moderador — por [hostId] La IA designada analiza el problema y envía tareas dinámicamente a otros miembros.
+     * 讨论模式:
+     * - "round_robin": 串行轮转(默认,向后兼容)— 用户发消息后每个 AI 依次发言一轮
+     * - "auto": 自由讨论 — AI 之间自动连续对话,达到 [autoMaxRounds] 或全部 PASS 时停止
+     * - "debate": 辩论模式 — 固定链条:用户提问 → A 给方案 → B 找漏洞 → C 提改进,每轮必须回应上一人
+     * - "host": 主持人模式 — 由 [hostId] 指定的 AI 分析问题后动态派发任务给其他成员
      */
     @ColumnInfo(defaultValue = "round_robin") val discussionMode: String = "round_robin",
-    /** Auto modo:AI Número máximo de rondas de diálogo consecutivas entre(cada ronda = Todos los miembros hablan una vez.). */
+    /** Auto 模式:AI 之间最大连续对话轮数(每轮 = 所有成员各发言一次)。 */
     @ColumnInfo(defaultValue = "5") val autoMaxRounds: Int = 5,
-    /** Modo moderador:Se desempeñó como moderador del grupo. assistant id,null Recurrir a round_robin. */
+    /** 主持人模式:担任群主持的 assistant id,null 时回退到 round_robin。 */
     @ColumnInfo(name = "host_id", defaultValue = "NULL") val hostId: String? = null,
-    // ── v2.x Gestión del contexto del chat grupal ──
+    // ── v2.x 群聊上下文管理 ──
     /**
-     * Documentos compartidos en grupo(JSON cuerda,Predeterminado "[]").
+     * 群共享文档(JSON 字符串,默认 "[]")。
      *
-     * serializado a [List<GroupSharedDoc>],Visible para todos los miembros del grupo,Se inyectará en cada agente. system prompt
-     * como conocimiento previo compartido([Documento compartido en grupo] Párrafo).
+     * 序列化为 [List<GroupSharedDoc>],所有群成员可见,会注入到每个 agent 的 system prompt
+     * 中作为共享背景知识(【群共享文档】段落)。
      *
-     * Propósito:Materiales compartidos dentro de los chats grupales.(Como actas de reuniones, documentos de requisitos, materiales de referencia.),Dejemos que todas las IA discutan basándose en el mismo material.
+     * 用途:群聊内共享的资料(如会议纪要、需求文档、参考资料),让所有 AI 基于同一份材料讨论。
      */
     @ColumnInfo(name = "shared_docs_json", defaultValue = "[]") val sharedDocsJson: String = "[]",
     /**
-     * AI Contexto exclusivo(JSON cuerda,Predeterminado "{}").
+     * AI 专属上下文(JSON 字符串,默认 "{}")。
      *
-     * serializado a `Map<String, String>`(key = assistantId,value = El texto contextual privado de la IA).
-     * Sólo el agente correspondiente es visible,Inyectar en el indicador del sistema([Su contexto exclusivo] Párrafo),
-     * No puede ser visto por otros miembros del grupo.,con [whisperTargetId] Los susurros juntos constituyen"contexto privado"Capacidad.
+     * 序列化为 `Map<String, String>`(key = assistantId,value = 该 AI 的私密上下文文本)。
+     * 仅对应的 agent 可见,注入到其 system prompt 中(【你的专属上下文】段落),
+     * 其他群成员看不到,与 [whisperTargetId] 悄悄话共同构成"私密上下文"能力。
      *
-     * Propósito:Inyecte configuraciones de roles, limitaciones privadas, preferencias no reveladas, etc. en IA específicas.
+     * 用途:给特定 AI 注入角色设定、私有约束、未公开的偏好等。
      */
     @ColumnInfo(name = "member_private_context_json", defaultValue = "{}") val memberPrivateContextJson: String = "{}",
-    /** v2.x: Etiqueta de archivo de chat grupal.trueLos chats grupales están ocultos de la lista principal y se pueden ver y restaurar en la lista de archivos */
+    /** v2.x: 群聊归档标记。true时群聊从主列表隐藏，可在归档列表中查看和恢复 */
     @ColumnInfo(defaultValue = "0") val isArchived: Boolean = false,
 
-    // ── v2.x Rango de longitud del discurso ──
+    // ── v2.x 发言长度档位 ──
     /**
-     * Rango de longitud del discurso:
-     * - "brief": corto — lluvia de ideas/saludos,Explique claramente en una o dos oraciones.
-     * - "standard": Estándar(Predeterminado)
-     * - "detailed": detallado — Revisión/Discusión en profundidad,completamente expandido
+     * 发言长度档位:
+     * - "brief": 简短 — 头脑风暴/寒暄,一两句说清
+     * - "standard": 标准(默认)
+     * - "detailed": 详尽 — 评审/深度讨论,充分展开
      */
     @ColumnInfo(defaultValue = "standard") val replyLengthMode: String = "standard",
 
-    // ── v2.x miembro observador ──
+    // ── v2.x 观察者成员 ──
     /**
-     * Lista de identificaciones de miembros observadores(JSON cuerda,Predeterminado "[]").
+     * 观察者成员 id 列表(JSON 字符串,默认 "[]")。
      *
-     * Los observadores no participan en la rotación predeterminada.(Mirar y discutir en silencio.),pero permanecer en la lista de miembros;lista vacía = Ningún observador.
+     * 观察者不参与默认轮转发言(静观讨论),但保留在成员列表中;空列表 = 无观察者。
      */
     @ColumnInfo(name = "observer_ids_json", defaultValue = "[]") val observerIdsJson: String = "[]",
 )
 
 /**
- * v2.x: Estructura de datos de documentos compartidos del chat grupal.
+ * v2.x: 群聊共享文档数据结构。
  *
- * - [id] Documento único id(para eliminación/actualizar)
- * - [title] Título del documento(Para visualización y recuperación)
- * - [content] Texto del documento(inyectar en agent system prompt)
- * - [addedAt] Agregar marca de tiempo
+ * - [id] 文档唯一 id(用于删除/更新)
+ * - [title] 文档标题(展示与检索用)
+ * - [content] 文档正文(注入到 agent system prompt)
+ * - [addedAt] 添加时间戳
  *
- * Serializado a JSON y almacenado en [GroupChatEntity.sharedDocsJson] en el campo.
+ * 序列化为 JSON 存储在 [GroupChatEntity.sharedDocsJson] 字段中。
  */
 @Serializable
 data class GroupSharedDoc(

@@ -162,14 +162,16 @@
     <string name="assistant_import_sillytavern">SillyTavern キャラクターカードをインポート</string>
     <!-- Assistant detail: character card sharing section -->
     <string name="assistant_detail_share_section">キャラクターカードの共有</string>
+    <string name="assistant_summary_empty">説明がありません。ペルソナは「プロンプト」に書かれています</string>
+    <string name="assistant_detail_export_section">キャラクターカードをファイルに書き出す</string>
     <string name="assistant_detail_export_png">PNG キャラクターカードとしてエクスポート</string>
     <string name="assistant_detail_export_png_desc">SillyTavern 形式 (メタデータ付き)</string>
     <string name="assistant_detail_export_json">JSON 文字カードとしてエクスポート</string>
     <string name="assistant_detail_export_json_desc">SillyTavern V2 JSON</string>
     <string name="assistant_detail_share_muse_card">ミューズキャラクターカードをシェアする</string>
     <string name="assistant_detail_share_muse_card_desc">ビジュアルカードを生成し、システム経由で共有</string>
-    <string name="assistant_detail_share_muse_json">Muse JSONを共有する</string>
-    <string name="assistant_detail_share_muse_json_desc">システム経由で Muse JSON を共有する</string>
+    <string name="assistant_detail_share_muse_json">Musa JSONを共有する</string>
+    <string name="assistant_detail_share_muse_json_desc">システム経由で Musa JSON を共有する</string>
     <string name="assistant_detail_share_pack">キャラクターパックを送信</string>
     <string name="assistant_detail_share_pack_desc">アバター付きの完全なキャラクターパックを任意のアプリで送信できます。受信側はそのままインポート可能</string>
     <string name="assistant_import_preview_title">キャラクターカードをインポート</string>
@@ -184,4 +186,24 @@
     <string name="assistant_disable_cd">アシスタントを無効にする</string>
     <string name="assistant_enable">有効にする</string>
     <string name="assistant_enable_cd">アシスタントを有効にする</string>
+    <string name="assistant_diff_name">名前</string>
+    <string name="assistant_diff_summary">概要</string>
+    <string name="assistant_diff_system_prompt">システムプロンプト</string>
+    <string name="assistant_diff_persona_definition">ペルソナ定義</string>
+    <string name="assistant_diff_thinking_chain">思考チェーン</string>
+    <string name="assistant_diff_message_template">メッセージテンプレ</string>
+    <string name="assistant_diff_preset_messages">冒頭メッセージ</string>
+    <string name="assistant_diff_temperature">温度</string>
+    <string name="assistant_diff_top_p">Top P</string>
+    <string name="assistant_diff_max_tokens">最大トークン</string>
+    <string name="assistant_diff_context_size">コンテキスト件数</string>
+    <string name="assistant_diff_reasoning_level">推論強度</string>
+    <string name="assistant_diff_memory_enabled">記憶</string>
+    <string name="assistant_diff_use_global_memory">グローバル記憶</string>
+    <string name="assistant_diff_allow_group_chat">グループチャット</string>
+    <string name="assistant_diff_will_create">新しいアシスタントを作成します（使用中のものは変わりません）</string>
+    <string name="assistant_diff_will_change">同名のアシスタントと比較し、%1$d 項目が変更</string>
+    <string name="assistant_diff_legacy_pack">旧形式カード：ペルソナのみ取り込み、鍵・モデル紐付け・利用統計は持ち込みません</string>
+    <string name="assistant_diff_no_switch">取り込んでも現在のアシスタントは切り替わらず、会話の帰属も変わりません</string>
+    <string name="assistant_diff_more">…ほか %1$d 項目</string>
 </resources>

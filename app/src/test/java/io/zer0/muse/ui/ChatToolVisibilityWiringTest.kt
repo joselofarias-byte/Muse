@@ -6,11 +6,11 @@ import java.nio.file.Files
 import java.nio.file.Path
 
 /**
- * v2.4.5 fix Regresar: El interruptor "Mostrar proceso de llamada de herramienta" debe controlar ambas rutas de renderizado al mismo tiempo.
+ * v2.4.5 fix 回归: 「显示工具调用过程」开关必须同时管住两条渲染路径。
  *
- * fondo:Cuando el interruptor está apagado, ChatScreen configura la tarjeta de tarea en null,Si el que está dentro de MessageBubble
- * `toolInfo != null` La sucursal no está controlada,El renderizado caerá sobre él.,La tarjeta de herramientas aparece como de costumbre.
- * (Comentarios reales de la máquina del usuario:Apague el interruptor y aún verá la tarjeta "Herramienta llamada").
+ * 背景:开关关闭时 ChatScreen 把 taskCard 置 null,若 MessageBubble 内部那条
+ * `toolInfo != null` 分支不受控,渲染就会落到它上面,工具卡片照旧弹出
+ * (用户实机反馈:关掉开关仍看到「调用了工具」卡片)。
  */
 class ChatToolVisibilityWiringTest {
 
@@ -19,7 +19,7 @@ class ChatToolVisibilityWiringTest {
         val source = readChatSource("ChatScreen.kt")
         assertTrue(source.contains("state.chatPreferences.showToolCallDetails"))
         assertTrue(source.contains("if (showToolCallDetails)"))
-        // ChatScreen El interruptor debe pasarse de forma transparente a MessageBubble,De lo contrario, el camino dentro de la burbuja queda incontrolado.
+        // ChatScreen 必须把开关透传给 MessageBubble,否则气泡内路径仍然不受控。
         assertTrue(source.contains("showToolCallDetails = showToolCallDetails"))
     }
 
@@ -27,16 +27,16 @@ class ChatToolVisibilityWiringTest {
     fun `message bubble gates its own tool call card behind the preference`() {
         val bubble = readChatSource("MessageBubble.kt")
         assertTrue(
-            "MessageBubble Necesita recibir el parámetro showToolCallDetails",
+            "MessageBubble 需要接收 showToolCallDetails 参数",
             bubble.contains("showToolCallDetails: Boolean"),
         )
         assertTrue(
-            "Las tarjetas de herramientas huérfanas dentro de las burbujas deben estar controladas por interruptores.",
+            "气泡内孤立工具卡必须受开关门控",
             bubble.contains("toolPayloadShowing(toolInfo.toolName, showToolCallDetails)"),
         )
-        // v2.6.0: show_card es una tarjeta de contenido,interruptor de exención;La función de activación en sí aún necesita conservar el juicio del interruptor.
+        // v2.6.0: show_card 是内容卡,豁免开关;门控函数自身仍需保留开关判断。
         assertTrue(
-            "La función de activación de la tarjeta de herramientas debe contener el juicio del interruptor",
+            "工具卡门控函数必须含开关判断",
             bubble.contains("showToolCallDetails || toolName == \"show_card\""),
         )
     }

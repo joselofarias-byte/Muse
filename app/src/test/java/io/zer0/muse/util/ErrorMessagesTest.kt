@@ -11,7 +11,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * Prueba de función pura de clasificación de errores de red(Las responsabilidades se han exportado desde ChatViewModel a [ErrorMessages]).
+ * 网络错误分类纯函数测试(职责已从 ChatViewModel 收口到 [ErrorMessages])。
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -69,7 +69,7 @@ class ErrorMessagesTest {
     @Test
     fun `unmatched message falls back to request failed`() {
         val result = classified("some totally unknown failure")
-        assertTrue("Los mensajes no coincidentes deberían recurrir al texto de error genérico", result.isNotEmpty())
+        assertTrue("未匹配消息应回退到通用失败文案", result.isNotEmpty())
     }
 
     @Test

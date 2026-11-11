@@ -20,10 +20,10 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * Reglas para la creación de grupos y nombres de grupos.
+ * 建群与群名的规则。
  *
- * el curry es realmente bueno Room(banco de memoria):¿Se escriben juntos "una conversación grupal + varias filas de miembros"?
- * ¿Es confiable la secuencia?,Sólo puedes verlo si realmente ejecutas SQL. El nombre del grupo y "¿Puedes presionar Listo?" son puras reglas,Afirmar solo.
+ * 库里跑真 Room(内存库):「一条群会话 + 若干成员行」到底有没有一起写进去、
+ * 顺序靠不靠得住,只有真跑一遍 SQL 才看得出来。群名与「能不能按完成」是纯规则,单独断言。
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -52,47 +52,47 @@ class MpGroupChatStoreTest {
 
     @Test
     fun selectingThreeCharactersWritesOneGroupThreadAndThreeMembers() = runBlocking {
-        val threadId = store.createGroup(listOf("c1", "c2", "c3"), groupTitleOf(listOf("Ayuan", "Xiaoman", "Awu")))
+        val threadId = store.createGroup(listOf("c1", "c2", "c3"), groupTitleOf(listOf("阿远", "小满", "阿吾")))
 
         assertEquals(GROUP_THREAD_ID, threadId)
         val thread = requireNotNull(db.threadDao().getThread(GROUP_THREAD_ID))
-        assertTrue("La conversación es un chat grupal.", thread.isGroup)
-        assertEquals("El nombre del grupo es el resultado del empalme.", "Ayuan, Xiaoman, Awu", thread.title)
-        assertEquals("Cuando busques a alguien con quien hablar, utiliza el primer miembro.", "c1", thread.characterId)
+        assertTrue("会话是群聊", thread.isGroup)
+        assertEquals("群名就是拼接结果", "阿远、小满、阿吾", thread.title)
+        assertEquals("要找人开口时用第一个成员", "c1", thread.characterId)
 
         val members = db.threadMemberDao().observeMembers(GROUP_THREAD_ID).first()
-        assertEquals("Tabla de miembros tres filas", 3, members.size)
-        assertEquals("El orden es el orden de selección.", listOf("c1", "c2", "c3"), members.map { it.characterId })
-        assertEquals("El tiempo de entrada al grupo aumenta fila por fila", listOf(JOINED_AT, JOINED_AT + 1, JOINED_AT + 2), members.map { it.joinedAt })
-        assertEquals("Un grupo solo ocupa una sesión", 1, db.threadDao().observeThreads().first().size)
+        assertEquals("成员表三行", 3, members.size)
+        assertEquals("顺序就是选择顺序", listOf("c1", "c2", "c3"), members.map { it.characterId })
+        assertEquals("入群时间逐行递增", listOf(JOINED_AT, JOINED_AT + 1, JOINED_AT + 2), members.map { it.joinedAt })
+        assertEquals("一个群只占一条会话", 1, db.threadDao().observeThreads().first().size)
     }
 
     @Test
     fun fewerThanTwoMembersCreatesNothing() = runBlocking {
-        assertNull("Una persona no forma un grupo.", store.createGroup(listOf("c1"), "Ayuan, yo"))
-        assertNull("No basta con que una persona lo repita dos veces.", store.createGroup(listOf("c1", "c1"), "Ayuan, yo"))
-        assertNull("La lista vacía no es un grupo", store.createGroup(emptyList(), "yo"))
+        assertNull("一个人不成群", store.createGroup(listOf("c1"), "阿远、我"))
+        assertNull("一个人重复两次也不成", store.createGroup(listOf("c1", "c1"), "阿远、我"))
+        assertNull("空名单不成群", store.createGroup(emptyList(), "我"))
 
-        assertTrue("La mesa de sesiones no ha sido tocada.", db.threadDao().observeThreads().first().isEmpty())
-        assertEquals("La lista de miembros tampoco ha sido tocada.", 0, db.threadMemberDao().countInThread(GROUP_THREAD_ID))
+        assertTrue("会话表没被动过", db.threadDao().observeThreads().first().isEmpty())
+        assertEquals("成员表也没被动过", 0, db.threadMemberDao().countInThread(GROUP_THREAD_ID))
     }
 
     @Test
     fun groupTitleJoinsSelectedNamesAndSkipsBlanks() {
-        assertEquals("Ayuan, Xiaoman", groupTitleOf(listOf("Ayuan", "Xiaoman")))
-        assertEquals("Solo hay uno y es verdad.", "Ayuan", groupTitleOf(listOf(" Ayuan ")))
-        assertEquals("¿Tres o uno por uno?", "Ayuan, Xiaoman, Awu", groupTitleOf(listOf("Ayuan", "Xiaoman", "Awu")))
-        assertEquals("Una persona sin nombre no ocupa un puesto", "Ayuan, Xiaoman, Awu", groupTitleOf(listOf("Ayuan", "", "Xiaoman", "  ", "Awu")))
-        assertEquals("Si no tienes un nombre, deja que la interfaz se encargue de ello.", "", groupTitleOf(listOf("", "  ")))
+        assertEquals("阿远、小满", groupTitleOf(listOf("阿远", "小满")))
+        assertEquals("只有一个也照实写", "阿远", groupTitleOf(listOf(" 阿远 ")))
+        assertEquals("三个还是逐个列", "阿远、小满、阿吾", groupTitleOf(listOf("阿远", "小满", "阿吾")))
+        assertEquals("没有名字的人不占一个位置", "阿远、小满、阿吾", groupTitleOf(listOf("阿远", "", "小满", "  ", "阿吾")))
+        assertEquals("没有名字就交给界面兜底", "", groupTitleOf(listOf("", "  ")))
     }
 
     @Test
     fun groupTitleFoldsLongMemberListsIntoACount() {
-        val names = listOf("Ayuan", "Xiaoman", "Awu", "azen", "Ah Chi")
+        val names = listOf("阿远", "小满", "阿吾", "阿岑", "阿迟")
 
-        assertEquals("Si son más de tres personas, sólo se enumerarán las dos primeras.,El número es el número total de caracteres.", "Ayuan, Xiaoman y 5 personas más", groupTitleOf(names))
-        assertEquals("Sólo cuatro de ellos comenzaron a recolectar", "Ayuan, Xiaoman y otras 4 personas.", groupTitleOf(names.take(4)))
-        assertEquals("La N en la notación final no incluye a los usuarios locales.", "Esperando a 5 personas", groupTitleTailOf(5))
+        assertEquals("超过三个人只列前两个,数字是全部角色数", "阿远、小满等 5 人", groupTitleOf(names))
+        assertEquals("刚好四个也开始收", "阿远、小满等 4 人", groupTitleOf(names.take(4)))
+        assertEquals("收口写法里的 N 不含本机用户", "等 5 人", groupTitleTailOf(5))
     }
 
     @Test
@@ -106,64 +106,64 @@ class MpGroupChatStoreTest {
     @Test
     fun aGroupDoesNotStealTheDirectMessageOfItsFirstMember() = runBlocking {
         db.threadDao().upsert(MpThreadEntity(id = "t-1v1", characterId = "c1", lastMessageAt = 1_000L))
-        store.createGroup(listOf("c1", "c2"), "Ayuan, Xiaoman")
+        store.createGroup(listOf("c1", "c2"), "阿远、小满")
 
-        assertEquals("Encuentra conversaciones por rol y reconoce solo mensajes privados", "t-1v1", db.threadDao().findThreadByCharacter("c1")?.id)
-        assertNull("La segunda persona del grupo no tiene mensaje privado para empezar.", db.threadDao().findThreadByCharacter("c2"))
+        assertEquals("按角色找会话只认私信", "t-1v1", db.threadDao().findThreadByCharacter("c1")?.id)
+        assertNull("群里的第二个人本来就没有私信", db.threadDao().findThreadByCharacter("c2"))
     }
 
     @Test
     fun renamingWritesTheTitleAndMarksItCustomized() = runBlocking {
-        store.createGroup(listOf("c1", "c2"), "Ayuan, Xiaoman")
+        store.createGroup(listOf("c1", "c2"), "阿远、小满")
 
-        assertTrue(store.renameGroup(GROUP_THREAD_ID, "  equipo de fin de semana  "))
+        assertTrue(store.renameGroup(GROUP_THREAD_ID, "  周末小队  "))
 
         val thread = requireNotNull(db.threadDao().getThread(GROUP_THREAD_ID))
-        assertEquals("Elimine los espacios en blanco iniciales y finales y escriba", "equipo de fin de semana", thread.title)
-        assertTrue("Nombre cambiado de usuario", thread.titleCustomized)
+        assertEquals("首尾空白去掉后写入", "周末小队", thread.title)
+        assertTrue("用户改过名", thread.titleCustomized)
     }
 
     @Test
     fun blankTitleIsRejectedAndTooLongIsCut() = runBlocking {
-        store.createGroup(listOf("c1", "c2"), "Ayuan, Xiaoman")
+        store.createGroup(listOf("c1", "c2"), "阿远、小满")
 
-        assertFalse("No se permite guardar nombres vacíos.", store.renameGroup(GROUP_THREAD_ID, "   "))
+        assertFalse("空名不许保存", store.renameGroup(GROUP_THREAD_ID, "   "))
         val untouched = requireNotNull(db.threadDao().getThread(GROUP_THREAD_ID))
-        assertEquals("Un nombre vacío no sobrescribirá el nombre del grupo original.", "Ayuan, Xiaoman", untouched.title)
-        assertFalse("Si el nombre está vacío, el grupo no debe marcarse como si se le hubiera cambiado el nombre.", untouched.titleCustomized)
+        assertEquals("空名不覆盖原群名", "阿远、小满", untouched.title)
+        assertFalse("空名也不该把群标成改过名", untouched.titleCustomized)
 
-        val tooLong = "Uno, dos, tres, cuatro, cinco, seis, siete, ocho, noventa".repeat(3)
+        val tooLong = "一二三四五六七八九十".repeat(3)
         assertTrue(store.renameGroup(GROUP_THREAD_ID, tooLong))
         val cut = requireNotNull(db.threadDao().getThread(GROUP_THREAD_ID)).title
-        assertEquals("Límite a 20 palabras", GROUP_TITLE_MAX_LENGTH, cut.length)
+        assertEquals("截到 20 字", GROUP_TITLE_MAX_LENGTH, cut.length)
         assertEquals(tooLong.take(GROUP_TITLE_MAX_LENGTH), cut)
     }
 
     @Test
     fun addingMembersSkipsThoseAlreadyInAndRecomputesTheDefaultTitle() = runBlocking {
-        store.createGroup(listOf("c1", "c2"), "Ayuan, Xiaoman")
+        store.createGroup(listOf("c1", "c2"), "阿远、小满")
 
-        assertTrue(store.addMembers(GROUP_THREAD_ID, listOf("c2", "c3", "c3"), autoTitle = "Ayuan, Xiaoman, Awu"))
+        assertTrue(store.addMembers(GROUP_THREAD_ID, listOf("c2", "c3", "c3"), autoTitle = "阿远、小满、阿吾"))
 
-        assertEquals("Se omitirán los duplicados y los que ya estén en el grupo.", listOf("c1", "c2", "c3"), memberIds())
-        assertEquals("Los grupos cuyos nombres no hayan sido cambiados se volverán a calcular en consecuencia.", "Ayuan, Xiaoman, Awu", db.threadDao().getThread(GROUP_THREAD_ID)?.title)
-        assertFalse("El recálculo no cuenta los cambios de nombre de usuario", db.threadDao().getThread(GROUP_THREAD_ID)?.titleCustomized ?: true)
+        assertEquals("重复与已在群里的都跳过", listOf("c1", "c2", "c3"), memberIds())
+        assertEquals("没改过名的群跟着重算", "阿远、小满、阿吾", db.threadDao().getThread(GROUP_THREAD_ID)?.title)
+        assertFalse("重算不算用户改名", db.threadDao().getThread(GROUP_THREAD_ID)?.titleCustomized ?: true)
     }
 
     @Test
     fun addingMembersLeavesACustomizedTitleAlone() = runBlocking {
-        store.createGroup(listOf("c1", "c2"), "Ayuan, Xiaoman")
-        store.renameGroup(GROUP_THREAD_ID, "equipo de fin de semana")
+        store.createGroup(listOf("c1", "c2"), "阿远、小满")
+        store.renameGroup(GROUP_THREAD_ID, "周末小队")
 
         assertTrue(store.addMembers(GROUP_THREAD_ID, listOf("c3"), autoTitle = null))
 
-        assertEquals("El nombre cambiado no es pasivo.", "equipo de fin de semana", db.threadDao().getThread(GROUP_THREAD_ID)?.title)
+        assertEquals("改过的名字不被动", "周末小队", db.threadDao().getThread(GROUP_THREAD_ID)?.title)
         assertEquals(3, db.threadMemberDao().countInThread(GROUP_THREAD_ID))
     }
 
     @Test
     fun removingAMemberDropsTheRowButKeepsHisWords() = runBlocking {
-        store.createGroup(listOf("c1", "c2", "c3"), "Ayuan, Xiaoman, Awu")
+        store.createGroup(listOf("c1", "c2", "c3"), "阿远、小满、阿吾")
         db.messageDao().insert(
             MpMessageEntity(
                 id = "said-1",
@@ -171,41 +171,41 @@ class MpGroupChatStoreTest {
                 characterId = "c2",
                 sender = MpActorType.CHARACTER,
                 type = MpMessageType.TEXT,
-                content = "Yo dije",
+                content = "我说过的",
                 createdAt = 1L,
             ),
         )
 
-        assertTrue(store.removeMember(GROUP_THREAD_ID, "c2", autoTitle = "Ayuan, Awu"))
+        assertTrue(store.removeMember(GROUP_THREAD_ID, "c2", autoTitle = "阿远、阿吾"))
 
         assertEquals(listOf("c1", "c3"), memberIds())
-        assertEquals("Lo que dijo queda en el grupo.", 1, db.messageDao().countInThread(GROUP_THREAD_ID))
-        assertEquals("El nombre predeterminado se recalcula según el número de personas.", "Ayuan, Awu", db.threadDao().getThread(GROUP_THREAD_ID)?.title)
+        assertEquals("他说过的话留在群里", 1, db.messageDao().countInThread(GROUP_THREAD_ID))
+        assertEquals("默认名跟着人数重算", "阿远、阿吾", db.threadDao().getThread(GROUP_THREAD_ID)?.title)
     }
 
     @Test
     fun theLastMemberCannotBeRemoved() = runBlocking {
-        store.createGroup(listOf("c1", "c2"), "Ayuan, Xiaoman")
-        assertTrue(store.removeMember(GROUP_THREAD_ID, "c2", autoTitle = "Ayuan"))
+        store.createGroup(listOf("c1", "c2"), "阿远、小满")
+        assertTrue(store.removeMember(GROUP_THREAD_ID, "c2", autoTitle = "阿远"))
 
-        assertFalse("Cuando solo quede una persona, no se permitirá ningún movimiento adicional.", store.removeMember(GROUP_THREAD_ID, "c1", autoTitle = ""))
+        assertFalse("只剩一个人时不许再移", store.removeMember(GROUP_THREAD_ID, "c1", autoTitle = ""))
 
         assertEquals(1, db.threadMemberDao().countInThread(GROUP_THREAD_ID))
-        assertEquals("El grupo sigue ahí", GROUP_THREAD_ID, db.threadDao().getThread(GROUP_THREAD_ID)?.id)
+        assertEquals("群行还在", GROUP_THREAD_ID, db.threadDao().getThread(GROUP_THREAD_ID)?.id)
     }
 
     @Test
     fun removingTheOpeningCharacterHandsTheRoleToTheNextMember() = runBlocking {
-        store.createGroup(listOf("c1", "c2", "c3"), "Ayuan, Xiaoman, Awu")
+        store.createGroup(listOf("c1", "c2", "c3"), "阿远、小满、阿吾")
 
         assertTrue(store.removeMember(GROUP_THREAD_ID, "c1", autoTitle = null))
 
-        assertEquals("Es necesario que haya alguien en el grupo que pueda hablar.", "c2", db.threadDao().getThread(GROUP_THREAD_ID)?.characterId)
+        assertEquals("群里还得有个人能开口", "c2", db.threadDao().getThread(GROUP_THREAD_ID)?.characterId)
     }
 
     @Test
     fun disbandingClearsThreadMembersAndMessages() = runBlocking {
-        store.createGroup(listOf("c1", "c2"), "Ayuan, Xiaoman")
+        store.createGroup(listOf("c1", "c2"), "阿远、小满")
         db.messageDao().insert(
             MpMessageEntity(
                 id = "msg-1",
@@ -213,37 +213,37 @@ class MpGroupChatStoreTest {
                 characterId = "c1",
                 sender = MpActorType.CHARACTER,
                 type = MpMessageType.TEXT,
-                content = "¿Está ahí?",
+                content = "在吗",
                 createdAt = 1L,
             ),
         )
 
         assertTrue(store.disbandGroup(GROUP_THREAD_ID))
 
-        assertNull("la sesion se fue", db.threadDao().getThread(GROUP_THREAD_ID))
-        assertEquals("los miembros se han ido", 0, db.threadMemberDao().countInThread(GROUP_THREAD_ID))
-        assertEquals("la noticia se fue", 0, db.messageDao().countInThread(GROUP_THREAD_ID))
-        assertTrue("No queda en la lista", db.threadDao().observeThreads().first().isEmpty())
+        assertNull("会话没了", db.threadDao().getThread(GROUP_THREAD_ID))
+        assertEquals("成员没了", 0, db.threadMemberDao().countInThread(GROUP_THREAD_ID))
+        assertEquals("消息没了", 0, db.messageDao().countInThread(GROUP_THREAD_ID))
+        assertTrue("列表里也不剩", db.threadDao().observeThreads().first().isEmpty())
     }
 
     @Test
     fun privateThreadsCannotBeManaged() = runBlocking {
         db.threadDao().upsert(MpThreadEntity(id = "t-dm", characterId = "c1", lastMessageAt = 1L))
 
-        assertFalse(store.renameGroup("t-dm", "nombre"))
+        assertFalse(store.renameGroup("t-dm", "名字"))
         assertFalse(store.addMembers("t-dm", listOf("c2"), autoTitle = "x"))
         assertFalse(store.removeMember("t-dm", "c1", autoTitle = null))
         assertFalse(store.disbandGroup("t-dm"))
 
-        assertEquals("La línea de mensajes privados no se ha movido en absoluto.", "", db.threadDao().getThread("t-dm")?.title)
+        assertEquals("私信行一点没动", "", db.threadDao().getThread("t-dm")?.title)
         assertTrue(db.threadMemberDao().membersOf("t-dm").isEmpty())
     }
 
     @Test
     fun normalizeCutsBlanksAndOverlongNames() {
-        assertEquals("equipo de fin de semana", normalizeGroupTitle("  equipo de fin de semana  "))
+        assertEquals("周末小队", normalizeGroupTitle("  周末小队  "))
         assertEquals("", normalizeGroupTitle("   "))
-        assertEquals(20, normalizeGroupTitle("uno".repeat(30)).length)
+        assertEquals(20, normalizeGroupTitle("一".repeat(30)).length)
     }
 
     private suspend fun memberIds(): List<String> = db.threadMemberDao().membersOf(GROUP_THREAD_ID).map { member -> member.characterId }

@@ -6,50 +6,50 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * v2.6.7: Determinación de la disponibilidad de herramientas —— tool_status de fundación.
+ * v2.6.7: 工具可用性判定 —— tool_status 的地基。
  *
- * La queja principal del autoexamen del asistente es: "No sé qué herramienta se puede utilizar realmente". Esta prueba asegura:
- *  - Las herramientas dentro de la aplicación están disponibles con cualquier permiso (los modelos no se pueden vincular a la memoria)/No me atrevo a utilizar la tarjeta);
- *  - Las herramientas que requieren un canal se consideran correctamente como no disponibles cuando falta el canal (evitando "déjame hacer clic en él" y luego fallar);
- *  - anyOf La semántica (ya sea Accesibilidad o Shell será suficiente) no se confunde con la semántica de allOf (ambas deben ser verdaderas).
+ * 助手自审的核心抱怨是「不知道哪个工具真能用」。这张测试确保：
+ *  - 应用内工具在任何权限下都可用（不能让模型连记忆/卡片都不敢用）；
+ *  - 需要通道的工具在通道缺失时被正确判为不可用（避免「我帮你点一下」然后失败）；
+ *  - anyOf 语义（无障碍或 Shell 任一即可）与 allOf 语义（必须同时满足）不混淆。
  */
 class ToolRequirementsTest {
 
     @Test
     fun `app-internal tools are usable without any channel`() {
         val none = emptySet<Channel>()
-        // Estos son los lotes de modelos más utilizados y también deben estar disponibles cuando faltan permisos.
+        // 这些是模型最常用的一批，缺权限时也必须可用
         listOf("show_card", "save_memory", "search_memory", "todo_write", "calculator", "find_tools")
             .forEach { tool ->
-                assertTrue("$tool No debe depender de los canales del dispositivo", ToolRequirements.of(tool).isUnconditional)
-                assertTrue("$tool debería estar disponible", ToolRequirements.isUsable(tool, none))
+                assertTrue("$tool 不应依赖设备通道", ToolRequirements.of(tool).isUnconditional)
+                assertTrue("$tool 应可用", ToolRequirements.isUsable(tool, none))
             }
     }
 
     @Test
     fun `screen tools require accessibility or shell`() {
         val req = ToolRequirements.of("screen_tap")
-        assertTrue("Debe confiar en los canales de pantalla", req.anyOf.contains(Channel.ACCESSIBILITY))
-        assertTrue("Shell también debería estar disponible", req.anyOf.contains(Channel.SHELL))
+        assertTrue("应依赖屏幕通道", req.anyOf.contains(Channel.ACCESSIBILITY))
+        assertTrue("Shell 也应可用", req.anyOf.contains(Channel.SHELL))
 
-        assertFalse("No disponible cuando no hay ningún canal", ToolRequirements.isUsable("screen_tap", emptySet()))
-        assertTrue("Sin barreras", ToolRequirements.isUsable("screen_tap", setOf(Channel.ACCESSIBILITY)))
-        assertTrue("La concha también está disponible", ToolRequirements.isUsable("screen_tap", setOf(Channel.SHELL)))
+        assertFalse("全无通道时不可用", ToolRequirements.isUsable("screen_tap", emptySet()))
+        assertTrue("有无障碍即可", ToolRequirements.isUsable("screen_tap", setOf(Channel.ACCESSIBILITY)))
+        assertTrue("有 Shell 也可", ToolRequirements.isUsable("screen_tap", setOf(Channel.SHELL)))
     }
 
     @Test
     fun `shell-only tools reject accessibility alone`() {
-        // device_shell No se puede hacer sin barreras: sólo no se puede permitir el acceso sin barreras.
+        // device_shell 是无障碍做不到的：只开无障碍不能放行。
         assertFalse(
-            "La accesibilidad no es un sustituto Shell",
+            "无障碍不能替代 Shell",
             ToolRequirements.isUsable("device_shell", setOf(Channel.ACCESSIBILITY)),
         )
         assertTrue(
-            "Shell Listo",
+            "Shell 就绪即可",
             ToolRequirements.isUsable("device_shell", setOf(Channel.SHELL)),
         )
         assertTrue(
-            "Root También cubierto Shell",
+            "Root 也覆盖 Shell",
             ToolRequirements.isUsable("device_shell", setOf(Channel.ROOT)),
         )
     }
@@ -67,8 +67,8 @@ class ToolRequirementsTest {
 
     @Test
     fun `unknown tool defaults to unconditional`() {
-        // Cuando se olvida registrar una nueva herramienta, se considerará disponible (el modelo la probará una vez).
-        // No lo juzgues erróneamente como no disponible (el modelo abandonará permanentemente una herramienta que realmente funciona).
+        // 新增工具忘记登记时，宁可判为可用（模型会试一次），
+        // 也不要误判为不可用（模型会永久放弃一个其实能用的工具）。
         assertTrue(ToolRequirements.of("some_new_tool_never_registered").isUnconditional)
     }
 }

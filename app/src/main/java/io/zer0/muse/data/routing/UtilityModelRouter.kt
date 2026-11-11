@@ -7,27 +7,27 @@ import kotlinx.coroutines.flow.first
 import kotlinx.serialization.Serializable
 
 /**
- * Nivel de tarea auxiliar — modelo de tercera marcha(Gadgets / Grandes herramientas / Visión).
+ * 辅助任务档位 — 三档模型(小工具 / 大工具 / 视觉)。
  *
- * con [SettingsRepository.TaskRoutingConfig](Divida el tráfico en el modelo principal según el contenido de la conversación.)son dos dimensiones:
- * Esta enumeración solo maneja tareas auxiliares en segundo plano.(Título, compresión, memoria, juicio de enrutamiento, etc.)selección de modelo.
+ * 与 [SettingsRepository.TaskRoutingConfig](按对话内容为主模型分流)是两个维度:
+ * 本枚举只管后台辅助任务(标题、压缩、记忆、路由判断等)的模型选择。
  */
 enum class UtilityTier {
-    /** artilugio:Tareas breves como generación de títulos, clasificación ligera, enrutamiento de intenciones, mensajes de portada y resúmenes de canales. */
+    /** 小工具:标题生成、轻量分类、意图路由、封面 prompt、渠道摘要等短任务。 */
     SMALL,
 
-    /** grandes herramientas:Escenarios que requieren comprensión, como compresión de contexto, recuperación de memoria, resumen de actividades, desmontaje de tareas, subagente, etc. */
+    /** 大工具:上下文压缩、记忆提取、活动摘要、任务拆解、子代理等需要理解力的场景。 */
     LARGE,
 
-    /** Visión:Comprensión de imágenes/ayuda OCR(Heredar la configuración del modelo de visión existente). */
+    /** 视觉:图片理解 / OCR 辅助(沿用现有视觉模型配置)。 */
     VISION,
 }
 
 /**
- * Encuadernación de modelo auxiliar — También lleve Proveedor.
+ * 辅助模型绑定 — 同时携带 Provider。
  *
- * v1.0.62 Lecciones:El modelo comprimido solía almacenar solo model id,La coincidencia entre proveedores por identificación afectará a canales irrelevantes
- * Modelo pequeño del mismo nombre.,Conduciendo a alta y baja calidad. Después de vincular con el ID del proveedor,El enrutamiento siempre llega a la elección exacta del usuario.
+ * v1.0.62 的教训:压缩模型曾只存 model id,跨 Provider 按 id 匹配会命中无关渠道的
+ * 同名小模型,导致质量忽高忽低。绑定带上 providerId 后,路由始终精确命中用户选择。
  */
 @Serializable
 data class UtilityModelBinding(
@@ -36,18 +36,18 @@ data class UtilityModelBinding(
 )
 
 /**
- * Enrutamiento de modelo auxiliar — Convergencia uniforme de la selección de modelos para todas las tareas auxiliares en segundo plano.
+ * 辅助模型路由 — 统一收敛所有后台辅助任务的模型选择。
  *
- * reglas en cascada:
- *  - [UtilityTier.LARGE] dejar en blanco → Reutilizar [UtilityTier.SMALL]
- *  - [UtilityTier.SMALL] dejar en blanco → Regresar null,La persona que llama hereda el modelo de conversación principal.
- *  - [UtilityTier.VISION] Heredar la configuración del modelo de visión existente,No habilitado/No seleccionado → null
+ * 级联规则:
+ *  - [UtilityTier.LARGE] 留空 → 复用 [UtilityTier.SMALL]
+ *  - [UtilityTier.SMALL] 留空 → 返回 null,调用方沿用主对话模型
+ *  - [UtilityTier.VISION] 沿用现有视觉模型配置,未启用/未选择 → null
  *
- * El análisis falló(Provider Eliminado/Modelo eliminado)Devuelve lo mismo null,La persona que llama revierte el modelo principal.,No bloquees tareas.
+ * 解析失败(Provider 已删 / 模型已删)同样返回 null,调用方回退主模型,不阻断任务。
  */
 class UtilityModelRouter(private val settings: SettingsRepository) {
 
-    /** analizar engranaje → (providerConfig, model);null Indica que se utiliza el modelo de diálogo principal. */
+    /** 解析档位 → (providerConfig, model);null 表示沿用主对话模型。 */
     suspend fun resolve(tier: UtilityTier): Pair<ProviderConfig, Model>? {
         val binding = when (tier) {
             UtilityTier.SMALL -> settings.utilityModelBindingFlow.first()
@@ -66,7 +66,7 @@ class UtilityModelRouter(private val settings: SettingsRepository) {
         return resolveBinding(binding)
     }
 
-    /** Resolver un enlace directamente(página de configuración"Detección"Reutilización de escenas como botones.). */
+    /** 直接解析一个绑定(供设置页"检测"按钮等场景复用)。 */
     suspend fun resolveBinding(binding: UtilityModelBinding): Pair<ProviderConfig, Model>? {
         val provider = settings.getProviderById(binding.providerId) ?: return null
         val model = provider.models.firstOrNull { it.id == binding.modelId } ?: return null

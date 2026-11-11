@@ -10,9 +10,9 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 
 /**
- * Mensaje estructurado que forma parte del nuevo enlace de conversación.
+ * 新对话链路的结构化消息 part。
  *
- * Los mensajes antiguos no se transmiten; la capa de proyección deriva piezas compatibles del campo antiguo cuando no hay piezas.
+ * 旧消息不会被强制转换；投影层在没有 parts 时从旧字段派生兼容 parts。
  */
 @Entity(
     tableName = "message_parts",
@@ -58,11 +58,11 @@ interface MessagePartDao {
     @Query("DELETE FROM message_parts WHERE messageId IN (SELECT id FROM messages WHERE sessionId = :sessionId)")
     suspend fun deleteBySession(sessionId: String)
 
-    /** P0-10: Para copia de seguridad y exportación — Leer completo. */
+    /** P0-10: 备份导出用 — 全量读取。 */
     @Query("SELECT * FROM message_parts")
     suspend fun getAll(): List<MessagePartEntity>
 
-    /** P0-10: Para respaldo y recuperación — Borrar todo. */
+    /** P0-10: 备份恢复用 — 全量清空。 */
     @Query("DELETE FROM message_parts")
     suspend fun deleteAll()
 }

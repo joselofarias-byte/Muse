@@ -12,9 +12,12 @@ import io.zer0.muse.ui.qrcode.QrCodeGenerator
 import io.zer0.muse.ui.speech.TtsSynthResult
 import io.zer0.muse.ui.speech.VoiceMessageArchiver
 import io.zer0.muse.ui.speech.VoiceSynthesizer
+import io.zer0.muse.util.GlobalCoroutineExceptionHandler
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
@@ -26,76 +29,76 @@ import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.coroutineContext
 import kotlin.uuid.Uuid
 
-/** P2-23: Tipo de generación de medios (los mensajes de voz siguen el mismo enlace de entrega). */
+/** P2-23: 媒体生成类型（语音消息沿用同一条投递链路）。 */
 enum class MediaGenKind { IMAGE, VIDEO, QR_CODE, VOICE }
 
 /**
- * P2-23: Un resultado generado por los medios(suministro [MediaGenSlot] Escribir mensaje de sesión).
+ * P2-23: 一次媒体生成的结果(供 [MediaGenSlot] 写入会话消息)。
  */
 sealed interface MediaGenResult {
-    /** Generado con éxito.[imageUrls] para originales URL / data URI;[videoFileUri] es la dirección del vídeo;[voiceUri] Cita para archivo de discursos. */
+    /** 生成成功。[imageUrls] 为原始 URL / data URI;[videoFileUri] 为视频地址;[voiceUri] 为语音存档引用。 */
     data class Success(
         val imageUrls: List<String> = emptyList(),
         val videoFileUri: String? = null,
-        /** Referencia de audio del mensaje de voz (`file://` + camino absoluto); nulo para mensajes que no son de voz. */
+        /** 语音消息音频引用（`file://` + 绝对路径）；非语音消息为 null。 */
         val voiceUri: String? = null,
-        /** Duración de la voz (milisegundos);0 = Desconocido (fallo de la sonda o mensaje sin voz). */
+        /** 语音时长（毫秒）；0 = 未知（探测失败或非语音消息）。 */
         val voiceDurationMs: Long = 0L,
     ) : MediaGenResult
 
-    /** Error de compilación;[message] Solo razones,El host presiona la copia del prefijo. [MediaGenKind] Conjunto de plantillas de localización. */
+    /** 生成失败;[message] 只含原因,前缀文案由宿主按 [MediaGenKind] 套本地化模板。 */
     data class Failure(val message: String) : MediaGenResult
 
-    /** Esta ronda de generación está cancelada.(Se canceló la rutina de herramientas.). */
+    /** 本轮生成被取消(工具协程被取消)。 */
     data object Cancelled : MediaGenResult
 }
 
 /**
- * P2-23: Un identificador de entrega de sesión generado por medios.
+ * P2-23: 一次媒体生成的会话投递句柄。
  *
- * por [MediaGenHost.begin] Anclar mensaje de sesión de destino antes de que comience la generación,Una vez completada la generación, el
- * [MediaGenToolsImpl] llamar [report] Escribe el resultado.
+ * 由 [MediaGenHost.begin] 在生成开始前锚定目标会话消息,生成结束后由
+ * [MediaGenToolsImpl] 调用 [report] 写入结果。
  */
 interface MediaGenSlot {
     /**
-     * Si esta ronda de generación sigue siendo válida.
+     * 本轮生成是否仍然有效。
      *
-     * El token de generación cambia cuando el usuario envía un nuevo mensaje/cambia de sesión,Los resultados de compilación que lleguen tarde no se incluirán en los mensajes de error.
+     * 用户发送新消息 / 切会话会使代际令牌变化,晚到的生成结果不得写进错误消息。
      */
     fun isActive(): Boolean
 
-    /** Devolución de llamada de progreso de tarea larga(La generación de video ocurre cada 5 segundos.). */
+    /** 长任务进度回调(视频生成每 5 秒一次)。 */
     suspend fun onProgress(elapsedSeconds: Int)
 
-    /** Escriba los resultados generados en el mensaje de sesión anclado. */
+    /** 把生成结果写入锚定的会话消息。 */
     suspend fun report(result: MediaGenResult)
 }
 
 /**
- * P2-23: Host de entrega de sesiones para resultados de generación de medios.
+ * P2-23: 媒体生成结果的会话投递宿主。
  *
- * El proceso de diálogo con la interfaz de usuario se implementa mediante la instalación de ChatViewModel.(Agregue el resultado al mensaje actual del asistente y suéltelo en la biblioteca.);
- * Los procesos sin interfaz de usuario, como tareas programadas/chats grupales/subagentes, no instalan hosts,[MediaGenToolsImpl] degenerar en
- * Coloque los resultados en el archivo de caché de la aplicación o devuélvalos directamente URL,Representado por el modelo.,No más depender de la interfaz de usuario para registrarse/Ejecutar.
+ * 有 UI 的对话进程由 ChatViewModel 安装实现(把结果追加到当前助手消息并落库);
+ * 定时任务 / 群聊 / 子代理等无 UI 进程不安装宿主,[MediaGenToolsImpl] 退化为
+ * 把结果落到应用缓存文件或直接返回 URL,由模型转述,不再依赖 UI 才能注册/执行。
  */
 interface MediaGenHost {
     /**
-     * Comienza la construcción:pantalla del anfitrión"generando"Se realiza la entrega con asa y se devuelve.
+     * 生成开始:宿主展示"正在生成"占位并返回投递句柄。
      *
-     * Actualmente no hay mensajes de sesión para escribir(Sin proceso de interfaz de usuario / sin generación activa)Devuelve nulo.
+     * 当前没有可写入的会话消息(无 UI 进程 / 无活跃生成)时返回 null。
      */
     suspend fun begin(kind: MediaGenKind): MediaGenSlot?
 
-    /** Fin de generación(éxito/falló/Cancelar):El anfitrión borra el estado de ocupación. */
+    /** 生成结束(成功/失败/取消):宿主清理占位状态。 */
     suspend fun finish(kind: MediaGenKind)
 }
 
 /**
- * v2.x (B3): Anulación del host de entrega de medios dentro del alcance de la rutina.
+ * v2.x (B3): 协程作用域内的媒体投递宿主覆盖。
  *
- * El enlace del chat grupal no tiene un host de interfaz de usuario;Utilizado antes de la ejecución de la herramienta. `withContext(MediaGenHostContext(host)) { ... }`
- * Inyecte este elemento,[MediaGenToolsImpl] tómalo primero,Devolver el gráfico generado como archivo adjunto al mensaje de chat grupal,
- * sin tocar la situación general [MediaGenToolsImpl.installHost] Host de interfaz de usuario instalado(charla privada/Seguridad de simultaneidad de chat grupal).
+ * 群聊链路没有 UI 宿主;工具执行前用 `withContext(MediaGenHostContext(host)) { ... }`
+ * 注入本元素,[MediaGenToolsImpl] 优先取它,把生成图交回群聊消息附件,
+ * 而不触碰全局 [MediaGenToolsImpl.installHost] 安装的 UI 宿主(单聊/群聊并发安全)。
  */
 class MediaGenHostContext(val host: MediaGenHost) :
     AbstractCoroutineContextElement(MediaGenHostContext) {
@@ -103,70 +106,70 @@ class MediaGenHostContext(val host: MediaGenHost) :
 }
 
 /**
- * P2-23: Implementación de herramienta de generación de medios.(Imágenes / Vídeos / Códigos QR),Nada que ver con ViewModel.
+ * P2-23: 媒体生成工具实现(图片 / 视频 / 二维码),与 ViewModel 无关。
  *
- * Desde ChatViewModel `execGenerateImage / execGenerateVideo / execGenerateQrCode` se mudó
- * Implementación de herramientas,por [MediaGenToolsRegistrar] Regístrese cuando se inicie la aplicación [ToolRegistry],Por lo tanto
- * También están disponibles enlaces sin interfaz de usuario, como tareas programadas, chats grupales y subagentes.
+ * 从 ChatViewModel 的 `execGenerateImage / execGenerateVideo / execGenerateQrCode` 迁出的
+ * 工具实现,由 [MediaGenToolsRegistrar] 在 App 启动时注册进 [ToolRegistry],因此
+ * 定时任务、群聊、子代理等无 UI 链路同样可用。
  *
- * Las dependencias sólo conservan lo que realmente se necesita para construir.:
- *  - [settings]:Dibujo/Configuración de persistencia para generación de video.(Parámetros de imagen, proveedores, modelos.)con lista de proveedores;
- *  - [imageService] / [videoGenerationService]:llamada de construcción real;
- *  - [context]:Directorio de redacción publicitaria y colocación de resultados localizado sin interfaz de usuario.
+ * 依赖只保留生成真正需要的东西:
+ *  - [settings]:绘图/视频生成的持久化配置(图片参数、供应商、模型)与供应商列表;
+ *  - [imageService] / [videoGenerationService]:实际生成调用;
+ *  - [context]:本地化文案与无 UI 时的结果落盘目录。
  *
- * Originario de `ChatViewModel._state` Leer el estado temporal dentro de la sesión(Parámetros de dibujo, imágenes de referencia.)Cambiar para leer la configuración de persistencia:
- *  - Tamaño/calidad/estilo/Cantidad/Formato de devolución → `SettingsRepository.imageGenConfigFlow`([ImageGenConfig]);
- *  - La imagen de referencia solo toma los parámetros de la herramienta. —— El álbum está seleccionado temporalmente para no persistir.,No se transmite a través de procesos.
+ * 原先从 `ChatViewModel._state` 读取的会话内临时状态(绘图参数、参考图)改为读持久化配置:
+ *  - 尺寸/质量/风格/数量/返回格式 → `SettingsRepository.imageGenConfigFlow`([ImageGenConfig]);
+ *  - 参考图只取工具参数 —— 相册临时选择不持久化,不跨进程传递。
  *
- * Los mensajes de sesión se escriben a través de [MediaGenHost] El puerto se implementa en el lado de la interfaz de usuario.,Esta clase no conoce el modelo de mensaje.
+ * 会话消息写入通过 [MediaGenHost] 端口交由 UI 侧实现,本类不感知消息模型。
  */
 class MediaGenToolsImpl(
     private val context: Context,
     private val settings: SettingsRepository,
     private val imageService: ImageService,
     private val videoGenerationService: VideoGenerationService,
-    /** Puerto de síntesis de mensajes de voz ([io.zer0.muse.ui.speech.TtsManager] Implementación; una sola prueba inyecta una implementación falsa). */
+    /** 语音消息合成端口（[io.zer0.muse.ui.speech.TtsManager] 实现；单测注入假实现）。 */
     private val voiceSynthesizer: VoiceSynthesizer,
-    /** Puerto de archivo de mensajes de voz ([io.zer0.muse.ui.speech.VoiceMessageStore] realizado). */
+    /** 语音消息存档端口（[io.zer0.muse.ui.speech.VoiceMessageStore] 实现）。 */
     private val voiceMessageStore: VoiceMessageArchiver,
 ) {
 
-    /** UI anfitrión de entrega;Sin persistencia del proceso de UI null(El resultado es la ruta del archivo./URL Regresar). */
+    /** UI 投递宿主;无 UI 进程保持 null(结果以文件路径/URL 返回)。 */
     @Volatile
     private var host: MediaGenHost? = null
 
-    /** La cantidad de barras de voz en esta ronda (clave = Identificador de turno inyectado por el anfitrión). */
+    /** 本回合语音条数额度（键 = 宿主注入的回合标识）。 */
     private val voiceQuota = TurnVoiceQuota(limit = VOICE_TURN_LIMIT, trackedTurns = VOICE_TURN_WINDOW)
 
-    /** Instalación/Desinstalar el host de entrega de sesiones(Llamado únicamente por el proceso de diálogo de la interfaz de usuario). */
+    /** 安装/卸载会话投递宿主(仅 UI 对话进程调用)。 */
     fun installHost(host: MediaGenHost?) {
         this.host = host
     }
 
     /**
-     * v2.x (B3): Analizar el host de entrega actualmente efectivo — Cobertura del alcance de rutina([MediaGenHostContext])Prioridad,
-     * Recurra al host de UI instalado globalmente sin anulación. Tres herramientas multimedia exec* Todos los métodos toman esta entrada.
+     * v2.x (B3): 解析当前生效的投递宿主 — 协程作用域覆盖([MediaGenHostContext])优先,
+     * 无覆盖时回退到全局安装的 UI 宿主。媒体工具三个 exec* 方法均走此入口。
      */
     private suspend fun currentHost(): MediaGenHost? = coroutineContext[MediaGenHostContext]?.host ?: host
 
     /**
-     * Genera imágenes basadas en descripciones de usuarios.
+     * 根据用户描述生成图片。
      *
-     * Prioridad de selección de modelo:args.model → persistente imageGenConfig.modelId →
-     * provider Modelos cuyas modalidades de salida contienen imágenes en la lista de modelos.(Déjelo en blanco y deje que ImageService se encargue de ello.).
+     * 模型选择优先级:args.model → 持久化的 imageGenConfig.modelId →
+     * provider 模型列表中 outputModalities 含 image 的模型(留空由 ImageService 兜底)。
      */
     suspend fun execGenerateImage(args: Map<String, String>): String {
         val prompt = args["prompt"]?.takeIf { it.isNotBlank() }
-            ?: return "Falta el parámetro requerido: prompt"
-        // P2-23: La implementación original retrocede cuando faltan parámetros ChatViewModel._state.imageGenParams(Anulación temporal durante la sesión),
-        // Ahora cambie a "Configuración de retorno"→Valor predeterminado de persistencia para "Generación de imágenes",Los procesos en segundo plano también son legibles.
+            ?: return "缺少必填参数: prompt"
+        // P2-23: 原实现在缺失参数时回退 ChatViewModel._state.imageGenParams(会话内临时覆盖),
+        // 现改为回退「设置→图片生成」的持久化默认值,后台进程同样可读。
         val genConfig = settings.imageGenConfigFlow.first()
         val size = args["size"]?.takeIf { it.isNotBlank() } ?: genConfig.size
         val quality = args["quality"]?.takeIf { it.isNotBlank() } ?: genConfig.quality
         val style = args["style"]?.takeIf { it.isNotBlank() } ?: genConfig.style
         val n = args["n"]?.toIntOrNull()?.coerceAtLeast(1) ?: genConfig.n
-        // v1.0.18: Imagen de referencia(Tu Sheng Tu),apoyo URL / base64 / data URI. Obtener solo parámetros de herramienta —
-        // La imagen de referencia temporal seleccionada por el usuario en el álbum no persiste,No existe un proceso de interfaz de usuario ni forma de inyectar.
+        // v1.0.18: 参考图(图生图),支持 URL / base64 / data URI。仅取工具参数 —
+        // 用户在相册里选的临时参考图不持久化,无 UI 进程也无从注入。
         val referenceImage = args["reference_image"]?.takeIf { it.isNotBlank() }
         val slot = currentHost()?.begin(MediaGenKind.IMAGE)
 
@@ -174,9 +177,9 @@ class MediaGenToolsImpl(
             val providerConfig = genConfig.providerId.takeIf { it.isNotBlank() }
                 ?.let { settings.getProviderById(it) }
                 ?: settings.get()
-                ?: return "Proveedor de generación de imágenes no configurado,Primero agregue soporte para dibujar. Provider(Como por ejemplo OpenAI / Agnes)"
+                ?: return "未配置图片生成供应商,请先添加支持绘图的 Provider(如 OpenAI / Agnes)"
             if (providerConfig.apiKey.isBlank() && !providerConfig.allowMissingApiKey) {
-                return "La clave API del proveedor de generación de imágenes está vacía"
+                return "图片生成供应商的 API Key 为空"
             }
             val model = args["model"]?.takeIf { it.isNotBlank() }
                 ?: genConfig.modelId.takeIf { it.isNotBlank() }
@@ -193,22 +196,22 @@ class MediaGenToolsImpl(
             )
             val urls = imageService.generate(prompt, params, providerConfig)
             if (urls.isEmpty()) {
-                slot.safeReport(MediaGenResult.Failure("No se obtuvieron resultados"))
-                return "Error al generar la imagen: No se obtuvieron resultados"
+                slot.safeReport(MediaGenResult.Failure("未返回结果"))
+                return "图片生成失败: 未返回结果"
             }
-            // A-13: La generación de imágenes puede tardar decenas de segundos,Es posible que se hayan publicado nuevos mensajes durante este período. — Los medios no deben escribir ningún mensaje cuando expire el token generacional
+            // A-13: 图片生成可达数十秒,期间可能已发新消息 — 代际令牌失效时媒体不得写入任何消息
             if (slot != null && !slot.isActive()) {
-                Logger.w(TAG, "A-13: La generación de la imagen se completa pero la generación ha caducado.(nueva ronda de generación),Saltar la escritura en los medios")
-                return "La imagen ha sido generada.,Pero la generación actual ha caducado.,Resultados no mostrados(Puedes volver a solicitar si es necesario)"
+                Logger.w(TAG, "A-13: 图片生成完成但生成已失效(新一轮生成),跳过媒体写入")
+                return "图片已生成,但当前生成已失效,结果未展示(如需可重新请求)"
             }
             if (slot != null) {
                 slot.safeReport(MediaGenResult.Success(imageUrls = urls))
-                // v1.0.75 fix (Comentarios de los usuarios): La cadena devuelta al modelo ya no contiene URL —
-                //   La imagen ha sido renderizada en la conversación.,La reformulación del modelo de la URL sólo causará"Enlaces incrustados en la página de chat"experiencia.
-                "La imagen ha sido generada y mostrada en la conversación."
+                // v1.0.75 fix (用户反馈): 返回给模型的字符串不再包含 URL —
+                //   图片已渲染进对话,模型复述 URL 只会造成"聊天页里塞链接"的体验。
+                "图片已生成并展示在对话中"
             } else {
-                // P2-23: Sin sesión de interfaz de usuario(tareas programadas/chat grupal/subagente)——Los medios no entran en el diálogo.,Representar ubicaciones accesibles para el modelo.
-                "La imagen ha sido generada.(Actualmente no hay ninguna interfaz de diálogo.,No mostrado),Posición del resultado:\n" +
+                // P2-23: 无 UI 会话(定时任务/群聊/子代理)——媒体不进对话,把可访问位置给模型转述
+                "图片已生成(当前无对话界面,未展示),结果位置:\n" +
                     externalizeMedia(urls, "img").joinToString("\n")
             }
         } catch (e: CancellationException) {
@@ -217,25 +220,25 @@ class MediaGenToolsImpl(
         } catch (e: Exception) {
             val msg = e.message ?: context.getString(R.string.err_chat_unknown)
             slot.safeReport(MediaGenResult.Failure(msg))
-            "Error al generar la imagen: $msg"
+            "图片生成失败: $msg"
         } finally {
             safeFinish(MediaGenKind.IMAGE)
         }
     }
 
     /**
-     * Genere videos cortos basados ​​en descripciones de usuarios.
+     * 根据用户描述生成短视频。
      *
-     * Seleccione dinámicamente un proveedor configurado que admita salida de video/modelo:
-     *  - Si args se especifica explícitamente provider_id,Priorizar el uso de este proveedor;
-     *  - Si args se especifica explícitamente model,Preferir proveedores que incluyan este modelo;
-     *  - De lo contrario, utilice primero los persistentes. VideoGenConfig.providerId;
-     *  - De lo contrario, se selecciona automáticamente el primer modelo que admita salida de vídeo.
+     * 动态选择已配置且支持视频输出的供应商/模型:
+     *  - 若 args 显式指定 provider_id,优先使用该供应商;
+     *  - 若 args 显式指定 model,优先使用包含该模型的供应商;
+     *  - 否则优先使用持久化的 VideoGenConfig.providerId;
+     *  - 再否则自动选择第一个支持视频输出的模型。
      */
     @Suppress("ReturnCount", "LongMethod", "CyclomaticComplexMethod")
     suspend fun execGenerateVideo(args: Map<String, String>): String {
         val prompt = args["prompt"]?.takeIf { it.isNotBlank() }
-            ?: return "Falta el parámetro requerido: prompt"
+            ?: return "缺少必填参数: prompt"
         val duration = args["duration"]?.toIntOrNull()?.let { if (it == 5 || it == 10) it else 5 } ?: 5
         val resolution = args["resolution"]?.takeIf { it.isNotBlank() } ?: "720p"
         val requestedModelId = args["model"]?.takeIf { it.isNotBlank() }
@@ -243,38 +246,38 @@ class MediaGenToolsImpl(
         val referenceImages = parseReferenceImages(args["reference_images"])
 
         val providers = settings.getAllProviders().filter { it.enabled && it.apiKey.isNotBlank() }
-        // Leer usuario en"ajustes→generación de vídeo"Proveedor predeterminado configurado/modelo(LLM Tiene prioridad cuando no se especifica explícitamente)
+        // 读取用户在"设置→视频生成"配置的默认供应商/模型(LLM 未显式指定时优先使用)
         val videoGenConfig = settings.videoGenConfigFlow.first()
         val (providerConfig, videoModel) = when {
             requestedProviderId != null -> {
                 val config = providers.firstOrNull { it.id == requestedProviderId }
-                    ?: return "No se encontró ningún proveedor: $requestedProviderId"
+                    ?: return "未找到供应商: $requestedProviderId"
                 val model = requestedModelId?.let { id ->
                     config.models.firstOrNull { it.id == id && it.supportsVideoOutput() }
                 } ?: config.models.firstOrNull { it.supportsVideoOutput() }
-                    ?: return "proveedor ${config.displayName} Ningún modelo admite salida de vídeo"
+                    ?: return "供应商 ${config.displayName} 没有支持视频输出的模型"
                 config to model
             }
             requestedModelId != null -> {
                 val config = providers.firstOrNull { p ->
                     p.models.any { it.id == requestedModelId && it.supportsVideoOutput() }
-                } ?: return "No se encontró ningún modelo de soporte $requestedModelId proveedores"
+                } ?: return "未找到支持模型 $requestedModelId 的供应商"
                 val model = config.models.first { it.id == requestedModelId && it.supportsVideoOutput() }
                 config to model
             }
-            // Priorizar los proveedores de vídeo configurados por el usuario(VideoGenConfig.providerId)
+            // 优先使用用户配置的视频供应商(VideoGenConfig.providerId)
             videoGenConfig.providerId.isNotBlank() -> {
                 val config = providers.firstOrNull { it.id == videoGenConfig.providerId }
-                    ?: return "Proveedor de generación de video no encontrado: ${videoGenConfig.providerId}"
+                    ?: return "未找到视频生成供应商: ${videoGenConfig.providerId}"
                 val model = videoGenConfig.modelId.takeIf { it.isNotBlank() }?.let { id ->
                     config.models.firstOrNull { it.id == id && it.supportsVideoOutput() }
                 } ?: config.models.firstOrNull { it.supportsVideoOutput() }
-                    ?: return "proveedor ${config.displayName} Ningún modelo admite salida de vídeo"
+                    ?: return "供应商 ${config.displayName} 没有支持视频输出的模型"
                 config to model
             }
             else -> {
                 val config = providers.firstOrNull { p -> p.models.any { it.supportsVideoOutput() } }
-                    ?: return "No está configurado un proveedor que admita la generación de vídeo. Por favor vaya a \"Configuración\"→Habilite la capacidad de \"Salida de video\" para un modelo en \"Modelos y servicios\"."
+                    ?: return "未配置支持视频生成的供应商。请在「设置→模型与服务」中为某个模型开启「视频输出」能力。"
                 val model = config.models.first { it.supportsVideoOutput() }
                 config to model
             }
@@ -282,9 +285,13 @@ class MediaGenToolsImpl(
 
         val slot = currentHost()?.begin(MediaGenKind.VIDEO)
         val startedAt = System.currentTimeMillis()
-        // v1.135: Actualizar mensaje de progreso cada 5 segundos,Deje que los usuarios sientan que aún hay tareas largas en progreso.
+        // v1.135: 每 5 秒刷新一次进度提示,让用户感知长任务仍在进行。
         val progressJob = slot?.let { target ->
-            CoroutineScope(coroutineContext).launch {
+            // 用带父 Job 的 SupervisorJob：调用方取消时它照样被取消，
+            // 但进度提示自己出错不会把用户的生成任务一起带崩。
+            CoroutineScope(
+                coroutineContext + SupervisorJob(coroutineContext[Job]) + GlobalCoroutineExceptionHandler,
+            ).launch {
                 while (isActive) {
                     delay(PROGRESS_INTERVAL_MS)
                     target.onProgress(((System.currentTimeMillis() - startedAt) / 1000).toInt())
@@ -299,19 +306,19 @@ class MediaGenToolsImpl(
                 resolution = resolution,
                 referenceImages = referenceImages,
             )
-            // v1.137: Enrutamiento por specId/host a través de VideoProviderRegistry,
-            // No más coincidencias difíciles por ID de proveedor(Reparación preset_kling ≠ kling enrutamiento bug)
+            // v1.137: 通过 VideoProviderRegistry 按 specId/host 路由,
+            // 不再按 providerId 硬匹配(修复 preset_kling ≠ kling 的路由 bug)
             val videoUrl = videoGenerationService.generateVideo(providerConfig, request).getOrThrow()
-            // A-13: La generación de vídeo lleva un tiempo considerable,Verifique que esta ronda de generación aún esté activa,Evite la contaminación entre sesiones
+            // A-13: 视频生成耗时可观,校验本轮生成仍活跃,避免跨会话污染
             if (slot != null && !slot.isActive()) {
-                Logger.w(TAG, "A-13: La generación de video se completó pero la generación expiró(nueva ronda de generación),Saltar la escritura en los medios")
-                return "El vídeo ha sido generado.,Pero la generación actual ha caducado.,Resultados no mostrados(Puedes volver a solicitar si es necesario)"
+                Logger.w(TAG, "A-13: 视频生成完成但生成已失效(新一轮生成),跳过媒体写入")
+                return "视频已生成,但当前生成已失效,结果未展示(如需可重新请求)"
             }
             if (slot != null) {
                 slot.safeReport(MediaGenResult.Success(videoFileUri = videoUrl))
-                "Vídeo generado y mostrado en la conversación."
+                "视频已生成并展示在对话中"
             } else {
-                "El vídeo ha sido generado.(Actualmente no hay ninguna interfaz de diálogo.,No mostrado),Posición del resultado:\n$videoUrl"
+                "视频已生成(当前无对话界面,未展示),结果位置:\n$videoUrl"
             }
         } catch (e: CancellationException) {
             slot.safeReport(MediaGenResult.Cancelled)
@@ -319,7 +326,7 @@ class MediaGenToolsImpl(
         } catch (e: Exception) {
             val msg = e.message ?: context.getString(R.string.err_chat_unknown)
             slot.safeReport(MediaGenResult.Failure(msg))
-            "Falló la generación de video: $msg"
+            "视频生成失败: $msg"
         } finally {
             progressJob?.cancel()
             safeFinish(MediaGenKind.VIDEO)
@@ -327,76 +334,76 @@ class MediaGenToolsImpl(
     }
 
     /**
-     * Convierte cualquier texto en una imagen de código QR.
+     * 把任意文本转换为二维码图片。
      *
-     * UI Visualización de ImageUrls del mensaje del asistente actual escrito en la sesión;El proceso sin interfaz de usuario se coloca en el directorio de caché de la aplicación y devuelve la ruta.
+     * UI 会话中写入当前助手消息的 imageUrls 展示;无 UI 进程落盘到应用缓存目录并返回路径。
      */
     suspend fun execGenerateQrCode(args: Map<String, String>): String {
         val content = args["content"]?.takeIf { it.isNotBlank() }
-            ?: return "Falta el parámetro requerido: content"
+            ?: return "缺少必填参数: content"
         val size = args["size"]?.toIntOrNull()?.coerceIn(128, 1024) ?: 400
         val slot = currentHost()?.begin(MediaGenKind.QR_CODE)
 
         return try {
             val bitmap = QrCodeGenerator.generateQrBitmap(content, size)
-                ?: return "Falló la generación del código QR"
+                ?: return "二维码生成失败"
             val bytes = java.io.ByteArrayOutputStream().apply {
                 bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, this)
             }.toByteArray()
             bitmap.recycle()
             val dataUri = "data:image/png;base64," +
                 android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
-            // A-13: Verifique que esta ronda de generación aún esté activa,Evite la contaminación entre sesiones
+            // A-13: 校验本轮生成仍活跃,避免跨会话污染
             if (slot != null && !slot.isActive()) {
-                Logger.w(TAG, "A-13: La generación del código QR se completa pero la generación ha caducado.(nueva ronda de generación),Saltar la escritura en los medios")
-                return "Se ha generado el código QR,Pero la generación actual ha caducado.,Resultados no mostrados(Puedes volver a solicitar si es necesario)"
+                Logger.w(TAG, "A-13: 二维码生成完成但生成已失效(新一轮生成),跳过媒体写入")
+                return "二维码已生成,但当前生成已失效,结果未展示(如需可重新请求)"
             }
             if (slot != null) {
                 slot.safeReport(MediaGenResult.Success(imageUrls = listOf(dataUri)))
-                "Código QR generado exitosamente"
+                "二维码生成成功"
             } else {
                 val path = writePngToCache(bytes, "qr")
-                if (path == null) "Falló la generación del código QR: Los resultados no se pueden guardar" else "Se ha generado el código QR: $path"
+                if (path == null) "二维码生成失败: 结果无法保存" else "二维码已生成: $path"
             }
         } catch (e: Exception) {
-            "Falló la generación del código QR: ${e.message ?: "error desconocido"}"
+            "二维码生成失败: ${e.message ?: "未知错误"}"
         } finally {
             safeFinish(MediaGenKind.QR_CODE)
         }
     }
 
     /**
-     * Sintetice un fragmento de texto en voz y envíelo como el mensaje de voz del asistente.
+     * 把一段文字合成为语音，作为助手自己的语音消息发出。
      *
-     * Gráfico en enlace y sin procesar/La misma forma que el vídeo sin formato ([MediaGenHost] puerto + token de generación), la diferencia está en el producto:
-     * Audio primero `cacheDir` Archivos temporales (el sistema se puede borrar en cualquier momento) y luego [VoiceMessageArchiver]
-     * Movido al directorio persistente, el mensaje solo contiene `file://` Cita.
+     * 链路上与生图/生视频同形（[MediaGenHost] 端口 + 代际令牌），差别在产物：
+     * 音频先写 `cacheDir` 临时文件（系统随时可清），再由 [VoiceMessageArchiver]
+     * 搬进持久目录，消息里只存 `file://` 引用。
      *
-     * Cada llamada tiene su propia [MediaGenHost.begin] Una vez, sin compartir el mismo espacio con otras llamadas: al enviar varias voces seguidas
-     * Cada pieza completa de forma independiente la "síntesis" → Archivo → Delivery", los mangos de las ranuras no se comparten entre sí.
+     * 每次调用都自己 [MediaGenHost.begin] 一次，不和其他调用共用一个槽：连续发多条语音时
+     * 每条独立完成「合成 → 存档 → 投递」，槽位句柄互不共享。
      *
-     * Hay dos puertas antes de la síntesis:
-     *  - No hay caracteres chinos en el texto. → No sintetizado (la narración en inglés del personaje bilingüe es difícil de escuchar en chino y el crédito se desperdicia);
-     *  - Se ha alcanzado el número de líneas de voz en esta ronda [VOICE_TURN_LIMIT] → No sintético.
+     * 合成前有两道闸：
+     *  - 正文里没有任何汉字 → 不合成（双语角色的英文旁白用中文音色念很难听，还白花额度）；
+     *  - 本回合语音条数已达 [VOICE_TURN_LIMIT] → 不合成。
      *
-     * @param args `text`(obligatorio)/ `emotion`(opcional, texto libre,provider Si no lo admites, simplemente ignóralo)
-     * @param turnKey El identificador fijo de esta ronda (la identificación del mensaje del asistente inyectada por el anfitrión); si está vacío, no habrá límite en la cantidad de mensajes.
-     * @return Redacción publicitaria para modelos;**sin uri** —— La voz ha entrado en la conversación y el camino sólo ocupará el contexto.
+     * @param args `text`（必填）/ `emotion`（可选，自由文本，provider 不认就当空）
+     * @param turnKey 本回合的固定标识（宿主注入的助手消息 id）；为空时不做条数限制
+     * @return 给模型的文案；**不带 uri** —— 语音已进对话，路径只会白占上下文
      */
     suspend fun execSendVoice(args: Map<String, String>, turnKey: String? = null): String {
         val text = args["text"]?.takeIf { it.isNotBlank() }
-            ?: return "Falta el parámetro requerido: text"
+            ?: return "缺少必填参数: text"
         voiceBlockReason(text, turnKey)?.let { return it }
         val emotion = args["emotion"]?.takeIf { it.isNotBlank() }
         val slot = currentHost()?.begin(MediaGenKind.VOICE)
-        // Los archivos temporales se colocan en cacheDir: VoiceMessageStore se encarga de la persistencia y no se ensuciará si falla a mitad de camino. filesDir
+        // 临时文件放 cacheDir：持久化由 VoiceMessageStore 负责，中途失败也不会脏 filesDir
         val tempFile = File(context.cacheDir, "$VOICE_TEMP_PREFIX${Uuid.random()}.wav")
 
         return try {
             when (val outcome = voiceSynthesizer.synthesizeTo(text, tempFile, emotion)) {
-                // Éxito en la nube/sonido del sistema completado directamente: solo informa "Mensaje de voz enviado" como antes de la transformación
+                // 云成功 / 系统音色直成：与改造前一样只报「已发出语音消息」
                 TtsSynthResult.Success -> deliverVoice(slot, tempFile, text, emotion, fallbackReason = null)
-                // Regresar al sistema TTS: El audio se puede utilizar, pero el sonido no lo asigna el usuario. Hay que dejarlo claro.
+                // 回落到系统 TTS：音频能用，但声音不是用户配的，必须说清楚
                 is TtsSynthResult.SystemFallback ->
                     deliverVoice(slot, tempFile, text, emotion, fallbackReason = outcome.reason)
                 is TtsSynthResult.Failure -> reportFailure(slot, VOICE_SYNTH_FAILED)
@@ -407,43 +414,48 @@ class MediaGenToolsImpl(
         } catch (e: Exception) {
             val msg = e.message ?: context.getString(R.string.err_chat_unknown)
             slot.safeReport(MediaGenResult.Failure(msg))
-            "Error al enviar mensaje de voz: $msg"
+            "语音消息发送失败: $msg"
         } finally {
-            // éxito/falló/Cancele las tres rutas para eliminar archivos temporales (el archivo ya es una copia independiente)
+            // 成功/失败/取消三条路径都要删临时文件（存档已经是独立副本）
             tempFile.delete()
             safeFinish(MediaGenKind.VOICE)
         }
     }
 
-    // ── herramientas internas ────────────────────────────────────────────────────────
+    // ── 内部工具 ────────────────────────────────────────────────────────
 
     /**
-     * Dos puertas antes de la síntesis.
+     * 合成前的两道闸。
      *
-     * @return null Indica que se puede sintetizar.;De lo contrario, la copia de la descripción se devolverá directamente al modelo.
+     * @return null 表示可以合成;否则是直接回给模型的说明文案
      */
     private fun voiceBlockReason(text: String, turnKey: String?): String? {
-        if (!containsSpeakableText(text)) return VOICE_SKIPPED_NO_SPEECH
+        if (!containsChinese(text)) return VOICE_SKIPPED_NO_CHINESE
         if (!voiceQuota.tryConsume(turnKey)) {
-            return "La cantidad de mensajes de voz en esta ronda ha alcanzado el límite superior ($VOICE_TURN_LIMIT ), este artículo no genera voz."
+            return "本轮语音条数已达上限（$VOICE_TURN_LIMIT 条），这条未生成语音"
         }
         return null
     }
 
-    /** Hay letras (español, chino u otro idioma) que se pueden leer en voz alta. */
-    private fun containsSpeakableText(text: String): Boolean {
+    /** 文本里是否含汉字（CJK 统一表意文字及其扩展区 / 兼容区）。 */
+    private fun containsChinese(text: String): Boolean {
         var index = 0
         while (index < text.length) {
             val codePoint = text.codePointAt(index)
-            if (Character.isLetter(codePoint)) return true
+            if (isCjkIdeograph(codePoint)) return true
             index += Character.charCount(codePoint)
         }
         return false
     }
 
-    /** Colocación de voz + detección de duración + entrega; la copia devuelta al modelo no contiene uri.
+    private fun isCjkIdeograph(codePoint: Int): Boolean = codePoint in CJK_UNIFIED_RANGE ||
+        codePoint in CJK_EXT_A_RANGE ||
+        codePoint in CJK_COMPAT_RANGE ||
+        codePoint in CJK_EXT_B_RANGE
+
+    /** 语音落盘 + 时长探测 + 投递；返回给模型的文案不带 uri。
      *
-     * @param fallbackReason La razón por la cual la nube no surte efecto; no nulo significa que esta voz utiliza el tono incorporado del sistema
+     * @param fallbackReason 云端没生效的原因；非 null 表示这条语音用的是系统自带音色
      */
     private suspend fun deliverVoice(
         slot: MediaGenSlot?,
@@ -452,56 +464,56 @@ class MediaGenToolsImpl(
         emotion: String?,
         fallbackReason: String?,
     ): String {
-        // key estable → La síntesis repetida del mismo texto y la misma emoción llegará al mismo archivo y no se acumularán múltiples copias de audio equivalente.
+        // key 稳定 → 同文本同情绪重复合成命中同一存档文件，不会堆出多份等价音频
         val voiceUri = voiceMessageStore.persist(tempFile, text + VOICE_KEY_SEPARATOR + (emotion ?: ""))
-            ?: return reportFailure(slot, "No se pudo guardar el archivo de voz")
-        // La duración solo se utiliza para la visualización de la interfaz de usuario y no se puede detectar (0) también se entregará como de costumbre
+            ?: return reportFailure(slot, "语音文件保存失败")
+        // 时长只给 UI 显示用，探测不出来（0）也照常投递
         val durationMs = voiceMessageStore.probeDurationMs(tempFile)
         if (slot == null || !slot.isActive()) {
-            // A-13 Fallo generacional/sin proceso de UI: ningún mensaje hará referencia a esta voz, elimínela para evitar dejar archivos huérfanos
+            // A-13 代际失效 / 无 UI 进程：这条语音不会被任何消息引用，删掉免得留孤儿存档
             voiceMessageStore.delete(voiceUri)
-            return "El discurso ha sido sintetizado.,Pero no hay mensajes que entregar,Mensaje de voz no enviado"
+            return "语音已合成,但没有可投递的消息,语音消息未发出"
         }
         slot.safeReport(MediaGenResult.Success(voiceUri = voiceUri, voiceDurationMs = durationMs))
         return if (fallbackReason == null) {
-            "Mensaje de voz enviado"
+            "已发出语音消息"
         } else {
-            "Se envió un mensaje de voz, pero actualmente se utiliza el tono integrado del teléfono (TTS en la nube no tiene efecto:$fallbackReason)"
+            "已发出语音消息，但当前用的是手机自带音色（云端 TTS 未生效：$fallbackReason）"
         }
     }
 
-    /** Las fallas se escriben en el mensaje de la sesión (si hay mensajes que se pueden escribir) y el motivo se devuelve como resultado de la herramienta. */
+    /** 失败写进会话消息（如果还有可写的消息），并把原因作为工具结果返回。 */
     private suspend fun reportFailure(slot: MediaGenSlot?, message: String): String {
         slot.safeReport(MediaGenResult.Failure(message))
         return message
     }
 
     /**
-     * Publique los resultados en el mensaje de la sesión.
+     * 投递结果到会话消息。
      *
-     * paquete [NonCancellable]:La rutina de herramienta en la ruta de cancelación ha sido cancelada.,Las llamadas de suspensión ordinarias se cancelarán inmediatamente.
-     * CancellationException,causa"Construcción cancelada"Avisar que el mensaje no se puede escribir.(Requisitos de comportamiento consistentes con la implementación anterior.).
+     * 包 [NonCancellable]:取消路径上工具协程已取消,普通挂起调用会立即抛
+     * CancellationException,导致"生成已取消"提示写不进消息(与旧实现一致的行为要求)。
      */
     private suspend fun MediaGenSlot?.safeReport(result: MediaGenResult) {
         val slot = this ?: return
         runCatching { withContext(NonCancellable) { slot.report(result) } }
-            .onFailure { Logger.w(TAG, "Error en la entrega del resultado multimedia: ${it.message}") }
+            .onFailure { Logger.w(TAG, "媒体结果投递失败: ${it.message}") }
     }
 
-    /** generación final(Limpiar el estado del marcador de posición de la interfaz de usuario),La falla no afecta los valores de retorno de la herramienta. */
+    /** 结束生成(清理 UI 占位状态),失败不影响工具返回值。 */
     private suspend fun safeFinish(kind: MediaGenKind) {
         val target = currentHost() ?: return
         runCatching { withContext(NonCancellable) { target.finish(kind) } }
-            .onFailure { Logger.w(TAG, "Error al cerrar la generación de medios(kind=$kind): ${it.message}") }
+            .onFailure { Logger.w(TAG, "媒体生成收尾失败(kind=$kind): ${it.message}") }
     }
 
     /**
-     * v1.137: Analizar lista de imágenes de referencia(Opcional,Usado para videos de Tusheng/Vídeo de DuoTuSheng).
+     * v1.137: 解析参考图列表(可选,用于图生视频/多图生视频)。
      *
-     * B-05: data URI Contiene comas(data:image/png;base64,AAA),La división por coma se romperá.
-     * Revisión de corrección (2.0 B-05): Admite la combinación de URL y URI de datos — Recorrer sección por sección,a "data:" comienzo
-     * párrafo y el párrafo siguiente(base64 cargar)Volver a empalmar con comas(data URI Sólo hay una coma dentro del separador.,
-     * base64 El alfabeto no contiene comas.),Los segmentos de URL normales se dejan intactos.
+     * B-05: data URI 内含逗号(data:image/png;base64,AAA),按逗号拆分必被拆坏。
+     * 审查修复 (2.0 B-05): 支持 URL 与 data URI 混排 — 逐段遍历,以 "data:" 开头的
+     * 段与其后一段(base64 载荷)用逗号重新拼接(data URI 内仅分隔符一个逗号,
+     * base64 字母表不含逗号),普通 URL 段原样保留。
      */
     private fun parseReferenceImages(raw: String?): List<String> = raw?.let { value ->
         val trimmed = value.trim()
@@ -513,7 +525,7 @@ class MediaGenToolsImpl(
             var i = 0
             while (i < tokens.size) {
                 if (tokens[i].startsWith("data:")) {
-                    // data URI:Este párrafo + siguiente párrafo(base64 cargar,No contiene comas)
+                    // data URI:本段 + 下一段(base64 载荷,本身不含逗号)
                     val payload = tokens.getOrNull(i + 1)
                     if (payload != null) {
                         rebuilt.add(tokens[i] + "," + payload)
@@ -532,17 +544,17 @@ class MediaGenToolsImpl(
     } ?: emptyList()
 
     /**
-     * Externalización de resultados sin sesión de UI:data URI Colocar en el disco como archivo de caché(Devolver ruta absoluta),
-     * http(s) URL Devolver como está. Evite abarrotar MB de base64 en resultados de herramientas que abrumen el contexto del modelo.
+     * 无 UI 会话时的结果外化:data URI 落盘为缓存文件(返回绝对路径),
+     * http(s) URL 原样返回。避免把 MB 级 base64 塞进工具结果撑爆模型上下文。
      */
     private fun externalizeMedia(urls: List<String>, prefix: String): List<String> = urls.mapNotNull { url ->
         when {
             url.startsWith("data:") -> writeDataUriToCache(url, prefix)
             else -> url
         }
-    }.ifEmpty { listOf("(No se puede acceder a ninguna ubicación de resultados)") }
+    }.ifEmpty { listOf("(无可访问的结果位置)") }
 
-    /** Decodifica el URI de datos base64 y descárgalo al disco;Devuelve nulo en caso de error. */
+    /** 把 base64 data URI 解码落盘;失败返回 null。 */
     private fun writeDataUriToCache(dataUri: String, prefix: String): String? {
         val base64 = dataUri.substringAfter("base64,", "")
         if (base64.isBlank()) return null
@@ -551,7 +563,7 @@ class MediaGenToolsImpl(
         }.getOrNull()
     }
 
-    /** Escriba bytes PNG en el directorio de caché de la aplicación,Devolver ruta absoluta;Devuelve nulo en caso de error. */
+    /** 把 PNG 字节写入应用缓存目录,返回绝对路径;失败返回 null。 */
     private fun writePngToCache(bytes: ByteArray, prefix: String): String? = runCatching {
         val dir = File(context.cacheDir, CACHE_DIR)
         if (!dir.exists() && !dir.mkdirs()) return null
@@ -563,45 +575,51 @@ class MediaGenToolsImpl(
     private companion object {
         const val TAG = "MediaGenTools"
 
-        /** El directorio donde se eliminan los resultados multimedia cuando no hay sesión de UI(caché de aplicaciones,Puede ser limpiado por el sistema.). */
+        /** 无 UI 会话时媒体结果的落盘目录(应用缓存,可被系统清理)。 */
         const val CACHE_DIR = "mediagen"
 
-        /** Intervalo de actualización del progreso de la generación de video(v1.135 comportamiento:cada 5 segundos). */
+        /** 视频生成进度刷新间隔(v1.135 行为:每 5 秒一次)。 */
         const val PROGRESS_INTERVAL_MS = 5_000L
 
-        /** Prefijo de archivo temporal de mensaje de voz (escribir cacheDir, reproducir/Eliminar después de guardar). */
+        /** 语音消息临时文件前缀（写 cacheDir，播/存之后即删）。 */
         const val VOICE_TEMP_PREFIX = "voice-message-"
 
-        /** Delimitador de clave de archivo de voz:`text \u0000 emotion`, para evitar colisiones con diferentes emociones en un mismo texto. */
+        /** 语音存档 key 的分隔符：`text \u0000 emotion`，避免同文本不同情绪撞车。 */
         const val VOICE_KEY_SEPARATOR = "\u0000"
 
-        /** El número máximo de voces enviadas por el asistente en una ronda (superando el rechazo directo, sin síntesis). */
+        /** 一次助手回合最多发出的语音条数（超出直接拒绝，不合成）。 */
         const val VOICE_TURN_LIMIT = 5
 
-        /** El límite superior del número de rondas retenidas por el recuento de elementos para evitar el crecimiento ilimitado de la tabla de recuento después de una operación a largo plazo. */
+        /** 条数计数保留的回合数上限，防止长期运行后计数表无界增长。 */
         const val VOICE_TURN_WINDOW = 16
 
-        /** Resultados de la herramienta cuando no hay caracteres chinos en el texto: explique el motivo y solicite utilizar texto en su lugar. */
-        const val VOICE_SKIPPED_NO_SPEECH =
-            "Este párrafo no tiene texto para leer en voz alta"
+        /** 正文里没有汉字时的工具结果：说明原因，并提示改用文字。 */
+        const val VOICE_SKIPPED_NO_CHINESE =
+            "这段没有中文，未生成语音（英文等内容请用文字回复，别念出来）"
 
-        /** La herramienta surge cuando el TTS de la nube y del sistema no se sintetizan (la redacción es la misma que antes de la transformación). */
-        const val VOICE_SYNTH_FAILED = "La síntesis de voz falló"
+        /** 云端与系统 TTS 都没合成出来时的工具结果（文案与改造前一致）。 */
+        const val VOICE_SYNTH_FAILED = "语音合成失败"
+
+        /** 汉字码位：CJK 统一表意文字（4E00–9FFF）及其扩展 A / 兼容 / 扩展 B 区。 */
+        val CJK_UNIFIED_RANGE = 0x4E00..0x9FFF
+        val CJK_EXT_A_RANGE = 0x3400..0x4DBF
+        val CJK_COMPAT_RANGE = 0xF900..0xFAFF
+        val CJK_EXT_B_RANGE = 0x20000..0x2FA1F
     }
 }
 
 /**
- * La cantidad de barras de voz por ronda.
+ * 每回合语音条数额度。
  *
- * La clave es el identificador de ronda inyectado por el anfitrión (fijado dentro de la ronda y la clave se cambiará naturalmente en la siguiente ronda), por lo que no es necesario realizar una devolución de llamada al final de la ronda;
- * Mantenga solo el más reciente [trackedTurns] El recuento de rondas, cuando se introduce una nueva ronda, el recuento anterior se invalidará en su totalidad para evitar un crecimiento ilimitado.
- * El tiempo que supere el límite no se contará (volver a intentar la misma frase seguirá bloqueado).
+ * 键是宿主注入的回合标识（回合内固定，下一回合自然换键），因此不需要回合结束回调；
+ * 只保留最近 [trackedTurns] 个回合的计数，新回合挤进来时整体作废旧计数，避免无界增长。
+ * 超限的那次不计数（重试同一句仍会被挡住）。
  */
 private class TurnVoiceQuota(private val limit: Int, private val trackedTurns: Int) {
 
     private val counts = HashMap<String, Int>()
 
-    /** Grabar un consumo de voz; devuelve falso si se excede el límite. No hay límite cuando no existe un identificador de ronda (enlace de no conversación). */
+    /** 记一次语音消费；超限返回 false。没有回合标识（非对话链路）时不设限。 */
     @Synchronized
     fun tryConsume(turnKey: String?): Boolean {
         val key = turnKey?.takeIf { it.isNotBlank() } ?: return true

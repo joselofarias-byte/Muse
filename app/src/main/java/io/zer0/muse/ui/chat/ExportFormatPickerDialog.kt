@@ -21,32 +21,32 @@ import io.zer0.muse.ui.common.feedback.MuseDialog
 import io.zer0.muse.ui.common.form.MuseCapsuleTab
 
 /**
- * Cuadro de diálogo de selección de formato de exportación(Markdown / HTML / PDF Elige uno de tres).
+ * 导出格式选择对话框(Markdown / HTML / PDF 三选一)。
  *
- * Puntos de diseño:
- *  - selector de segmento([MuseCapsuleTab])Hacer cambio de formato
- *  - Después de seleccionar, haga clic en la parte inferior"Exportar"Devolución de llamada del disparador de botón [onFormatSelected]
- *  - Una breve descripción aparece debajo de cada formato.,Ayude a los usuarios a comprender la diferencia
+ * 设计要点:
+ *  - 分段选择器([MuseCapsuleTab])做格式切换
+ *  - 选中后点击底部"导出"按钮触发回调 [onFormatSelected]
+ *  - 每种格式下方显示简短说明,帮助用户理解差异
  *
- * Uso:
+ * 用法:
  * ```
  * if (showDialog) {
  *     ExportFormatPickerDialog(
  *         onDismiss = { showDialog = false },
  *         onFormatSelected = { format ->
  *             showDialog = false
- *             // Llame al método de exportación correspondiente.
+ *             // 调用对应导出方法
  *         },
  *     )
  * }
  * ```
  *
- * @param onDismiss Cerrar devolución de llamada de diálogo(Cancelar/clic externo)
- * @param onFormatSelected Devolución de llamada después de que el usuario confirme el formato de exportación.
+ * @param onDismiss 关闭对话框回调(取消 / 外部点击)
+ * @param onFormatSelected 用户确认导出格式后的回调
  */
 @Composable
 fun ExportFormatPickerDialog(onDismiss: () -> Unit, onFormatSelected: (ExportFormat) -> Unit) {
-    // Índice de formato seleccionado actualmente,Predeterminado Markdown
+    // 当前选中的格式索引,默认 Markdown
     var selectedIndex by remember { mutableStateOf(0) }
     val formats = listOf(ExportFormat.MARKDOWN, ExportFormat.HTML, ExportFormat.PDF)
     val labels = listOf("Markdown", "HTML", "PDF")
@@ -62,13 +62,13 @@ fun ExportFormatPickerDialog(onDismiss: () -> Unit, onFormatSelected: (ExportFor
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                // selector de segmento
+                // 分段选择器
                 MuseCapsuleTab(
                     tabs = labels,
                     selectedIndex = selectedIndex,
                     onSelect = { selectedIndex = it },
                 )
-                // Una breve descripción del formato actual.
+                // 当前格式的简短说明
                 Text(
                     text = formatDescription(formats[selectedIndex]),
                     style = MaterialTheme.typography.bodySmall,
@@ -86,7 +86,7 @@ fun ExportFormatPickerDialog(onDismiss: () -> Unit, onFormatSelected: (ExportFor
     )
 }
 
-/** Devuelve una breve descripción en chino de cada formato de exportación. */
+/** 返回各导出格式的简短中文说明。 */
 @Composable
 private fun formatDescription(format: ExportFormat): String = when (format) {
     ExportFormat.MARKDOWN -> stringResource(R.string.chat_export_format_markdown)

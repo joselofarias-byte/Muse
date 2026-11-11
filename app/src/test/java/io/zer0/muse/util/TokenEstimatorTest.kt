@@ -5,59 +5,59 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * v1.56: TokenEstimator Pruebas unitarias(BPE tokenizer).
+ * v1.56: TokenEstimator 单元测试(BPE tokenizer)。
  *
- * Verifique que la integración de jtokkit sea correcta,Tanto el conteo preciso como el respaldo heurístico funcionan.
+ * 验证 jtokkit 集成正确,精确计数与启发式回退均工作。
  */
 class TokenEstimatorTest {
 
     @Test
-    fun `Texto vacío devuelto 0`() {
+    fun `空文本返回 0`() {
         assertEquals(0, TokenEstimator.estimate(""))
         assertEquals(0, TokenEstimator.estimate("   "))
     }
 
     @Test
-    fun `El número de token de texto en inglés es mayor que 0`() {
+    fun `英文文本 token 数大于 0`() {
         val tokens = TokenEstimator.estimate("Hello World")
-        assertTrue("El número de token en inglés debe > 0,real $tokens", tokens > 0)
+        assertTrue("英文 token 数应 > 0,实际 $tokens", tokens > 0)
     }
 
     @Test
-    fun `El número de token de texto chino es mayor que 0`() {
-        val tokens = TokenEstimator.estimate("hola mundo")
-        assertTrue("El número de token chino debe > 0,real $tokens", tokens > 0)
+    fun `中文文本 token 数大于 0`() {
+        val tokens = TokenEstimator.estimate("你好世界")
+        assertTrue("中文 token 数应 > 0,实际 $tokens", tokens > 0)
     }
 
     @Test
-    fun `El número de tokens en texto largo es mayor que en texto corto`() {
+    fun `长文本 token 数大于短文本`() {
         val short = TokenEstimator.estimate("Hello")
         val long = TokenEstimator.estimate("Hello World This Is A Longer Text")
-        assertTrue("Los tokens de texto largos deberían ser más: short=$short, long=$long", long > short)
+        assertTrue("长文本 token 应更多: short=$short, long=$long", long > short)
     }
 
     @Test
-    fun `Aproximadamente 4 caracteres en inglés per token`() {
-        // "hello" = 1 token (cl100k_base),Verifique aproximadamente el orden de magnitud.
+    fun `英文约 4 字符 per token`() {
+        // "hello" = 1 token (cl100k_base),粗略验证数量级
         val tokens = TokenEstimator.estimate("hello hello hello hello")
-        assertTrue("5 hola cita 5+ token,real $tokens", tokens >= 4)
+        assertTrue("5 个 hello 约 5+ token,实际 $tokens", tokens >= 4)
     }
 
     @Test
-    fun `Aproximadamente 1 o 2 caracteres chinos per token`() {
-        // Los caracteres chinos suelen tener entre 1 y 2 caracteres en BPE/token
-        val tokens = TokenEstimator.estimate("hola hola hola hola") // 8 palabra
-        assertTrue("8 un contrato de palabra chino 4-8 token,real $tokens", tokens in 3..12)
+    fun `中文约 1-2 字 per token`() {
+        // 中文字符在 BPE 中通常 1-2 字/token
+        val tokens = TokenEstimator.estimate("你好你好你好你好") // 8 字
+        assertTrue("8 个中文字约 4-8 token,实际 $tokens", tokens in 3..12)
     }
 
     @Test
-    fun `El texto mixto cuenta correctamente`() {
-        val tokens = TokenEstimator.estimate("Hello hola mundo mundo")
-        assertTrue("Los tokens de texto mixto deben > 2,real $tokens", tokens > 2)
+    fun `混合文本正确计数`() {
+        val tokens = TokenEstimator.estimate("Hello 你好 World 世界")
+        assertTrue("混合文本 token 应 > 2,实际 $tokens", tokens > 2)
     }
 
     @Test
-    fun `estimate messages lista`() {
+    fun `estimate messages 列表`() {
         val messages = listOf(
             io.zer0.ai.core.UIMessage(
                 role = io.zer0.ai.core.MessageRole.USER,
@@ -69,11 +69,11 @@ class TokenEstimatorTest {
             ),
         )
         val total = TokenEstimator.estimate(messages, systemPrompt = "You are a helpful assistant.")
-        assertTrue("El número total de tokens en la lista de mensajes debe ser > 5,real $total", total > 5)
+        assertTrue("消息列表总 token 应 > 5,实际 $total", total > 5)
     }
 
     @Test
-    fun `system prompt ser contado`() {
+    fun `system prompt 被计入`() {
         val withoutSys = TokenEstimator.estimate(
             listOf(io.zer0.ai.core.UIMessage(role = io.zer0.ai.core.MessageRole.USER, content = "test")),
             systemPrompt = "",
@@ -82,42 +82,42 @@ class TokenEstimatorTest {
             listOf(io.zer0.ai.core.UIMessage(role = io.zer0.ai.core.MessageRole.USER, content = "test")),
             systemPrompt = "You are a very helpful assistant that helps users with their questions.",
         )
-        assertTrue("Debería haber más tokens cuando hay un aviso del sistema.", withSys > withoutSys)
+        assertTrue("有 system prompt 时 token 应更多", withSys > withoutSys)
     }
 
-    // ── Casos de uso complementarios:Lista de mensajes vacía / gastos generales por mensaje / mezcla de chino e inglés ─────────────────
+    // ── 补充用例:空消息列表 / 每条消息开销 / 中英文混合 ─────────────────
 
     @Test
-    fun `Lista de mensajes vacía y no se devuelve ningún mensaje del sistema 0`() {
+    fun `空消息列表且无 system prompt 返回 0`() {
         val total = TokenEstimator.estimate(emptyList(), systemPrompt = "")
-        assertEquals("La lista de mensajes vacía + el mensaje del sistema vacío debe ser 0,real $total", 0, total)
+        assertEquals("空消息列表 + 空 system prompt 应为 0,实际 $total", 0, total)
     }
 
     @Test
-    fun `Cuando la lista de mensajes vacía solo contiene mensajes del sistema, es igual a la cantidad de tokens del mensaje del sistema`() {
+    fun `空消息列表仅含 system prompt 时等于 system prompt 的 token 数`() {
         val sysPrompt = "You are a helpful assistant."
         val total = TokenEstimator.estimate(emptyList(), systemPrompt = sysPrompt)
         val sysOnly = TokenEstimator.estimate(sysPrompt)
-        assertEquals("La lista de mensajes vacía + systemPrompt debe ser igual al número de token del propio systemPrompt", sysOnly, total)
+        assertEquals("空消息列表 + systemPrompt 应等于 systemPrompt 自身 token 数", sysOnly, total)
     }
 
     @Test
-    fun `La sobrecarga por mensaje se incluye correctamente en el total token`() {
-        // Mensaje único frente a dos mensajes idénticos:El total de tokens debe duplicarse(Eliminar la interferencia de avisos del sistema)
+    fun `每条消息开销被正确计入总 token`() {
+        // 单条消息 vs 两条相同消息:总 token 应当翻倍(去掉 system prompt 干扰)
         val msg = io.zer0.ai.core.UIMessage(
             role = io.zer0.ai.core.MessageRole.USER,
             content = "Hello World",
         )
         val single = TokenEstimator.estimate(listOf(msg), systemPrompt = "")
         val doubled = TokenEstimator.estimate(listOf(msg, msg), systemPrompt = "")
-        // El total de tokens de dos mensajes idénticos debe ser el doble que el de un solo mensaje.(Sin interferencias de aviso del sistema)
-        assertEquals("El token de dos mensajes idénticos debe ser el doble que el de un solo mensaje.: single=$single, doubled=$doubled", single * 2, doubled)
+        // 两条相同消息的总 token 应是单条的两倍(无 system prompt 干扰)
+        assertEquals("两条相同消息的 token 应是单条的两倍: single=$single, doubled=$doubled", single * 2, doubled)
     }
 
     @Test
-    fun `El token total de la lista de mensajes es igual al sistema más el contenido de cada mensaje más la sobrecarga fija de cada mensaje`() {
-        // verificar estimate(messages, systemPrompt) = estimate(systemPrompt) + Σ estimate(msg.content) + Gastos generales fijos por mensaje
-        // M6: Aproximadamente 4 tokens por mensaje(OpenAI Gastos generales fijos por mensaje del protocolo.:role marca + delimitador)
+    fun `消息列表总 token 等于 system 加各消息 content 加每条消息固定开销`() {
+        // 验证 estimate(messages, systemPrompt) = estimate(systemPrompt) + Σ estimate(msg.content) + 每条消息固定开销
+        // M6: 每条消息约 4 tokens 开销(OpenAI 协议每条消息的固定开销:role 标记 + 分隔符)
         val perMessageOverhead = 4
         val sysPrompt = "system"
         val m1 = io.zer0.ai.core.UIMessage(
@@ -134,35 +134,35 @@ class TokenEstimatorTest {
             TokenEstimator.estimate(m2.content) +
             messages.size * perMessageOverhead
         val actual = TokenEstimator.estimate(messages, systemPrompt = sysPrompt)
-        assertEquals("El token total de la lista de mensajes debe ser igual a la suma de sus partes.(Incluyendo gastos generales fijos por mensaje)", expected, actual)
+        assertEquals("消息列表总 token 应等于各部分之和(含每条消息固定开销)", expected, actual)
     }
 
     @Test
-    fun `La sobrecarga fija por mensaje aumenta linealmente con el número de mensajes`() {
-        // M6: Aproximadamente 4 tokens por mensaje.N Hay más de 1 mensaje idéntico. (N-1)*4 + (N-1)*contentTokens
+    fun `每条消息固定开销随消息数线性增长`() {
+        // M6: 每条消息约 4 tokens 开销。N 条相同消息比 1 条多 (N-1)*4 + (N-1)*contentTokens
         val msg = io.zer0.ai.core.UIMessage(
             role = io.zer0.ai.core.MessageRole.USER,
             content = "Hello World",
         )
         val one = TokenEstimator.estimate(listOf(msg), systemPrompt = "")
         val three = TokenEstimator.estimate(listOf(msg, msg, msg), systemPrompt = "")
-        // Tres mensajes son 2 mensajes más que uno.:2 * (4 + contentTokens)
+        // 三条比一条多 2 条消息的开销:2 * (4 + contentTokens)
         val delta = three - one
-        assertTrue("Tres mensajes son más de uno. $delta,debe ser mayor que 2*4=8", delta >= 2 * 4)
-        // Verifique también la linealidad.:three debe ser igual a one + 2 * (Contribución única)
-        // Contribución única = 4(perMessageOverhead) + estimate(msg.content)
+        assertTrue("三条消息比一条多 $delta,应大于 2*4=8", delta >= 2 * 4)
+        // 同时验证线性:three 应等于 one + 2 * (单条贡献)
+        // 单条贡献 = 4(perMessageOverhead) + estimate(msg.content)
         val singleContribution = 4 + TokenEstimator.estimate(msg.content)
-        assertEquals("Tres mensajes deben ser iguales a uno. + 2*Contribución única", one + 2 * singleContribution, three)
+        assertEquals("三条消息应等于一条 + 2*单条贡献", one + 2 * singleContribution, three)
     }
 
     @Test
-    fun `La estimación para texto mixto en chino e inglés es mayor que 0 y entre chino puro e inglés puro`() {
+    fun `中英文混合文本的估算大于 0 且介于纯中纯英之间`() {
         val pureEn = TokenEstimator.estimate("Hello World")
-        val pureCn = TokenEstimator.estimate("hola mundo")
-        val mixed = TokenEstimator.estimate("Hello hola mundo mundo")
-        assertTrue("Los tokens de texto mixto deben > 0,real $mixed", mixed > 0)
-        // El texto mixto no debe tener menos caracteres que cualquiera de las versiones monolingües.,token El número tampoco debe ser inferior al mínimo.
+        val pureCn = TokenEstimator.estimate("你好世界")
+        val mixed = TokenEstimator.estimate("Hello 你好 World 世界")
+        assertTrue("混合文本 token 应 > 0,实际 $mixed", mixed > 0)
+        // 混合文本字符数不少于任一单语版本,token 数也应不少于最少者
         val minPure = minOf(pureEn, pureCn)
-        assertTrue("texto mixto token($mixed)No debe ser menos que medio puro./mínimo de inglés puro($minPure)", mixed >= minPure)
+        assertTrue("混合文本 token($mixed)应不少于纯中/纯英最小值($minPure)", mixed >= minPure)
     }
 }

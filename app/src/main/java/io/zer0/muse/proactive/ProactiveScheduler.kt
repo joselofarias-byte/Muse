@@ -10,13 +10,13 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 /**
- * Programador de mensajes proactivo (reconstruido).
+ * 主动消息调度器（重建版）。
  *
- * con el viejo [io.zer0.muse.schedule.ProactiveMessageRunner] La diferencia fundamental es**El reloj maestro ha sido cambiado.**:
- * Las encuestas de implementación anteriores se basaban en "X minutos desde la última vez" y la nueva implementación se basa en "¿Hay algo en la cuenta que haya llegado al punto?".
- * No hay ningún tick fijo en el proceso. Después de cada ronda, puedes determinar cuándo mirarla la próxima vez y luego retrasarla hasta ese punto.
+ * 与旧 [io.zer0.muse.schedule.ProactiveMessageRunner] 的根本区别是**主时钟换了**：
+ * 旧实现按「距上次 X 分钟」轮询，新实现按「账上有没有到点的事」驱动。
+ * 进程内没有固定 tick，每轮跑完自己算出下次该什么时候看，然后 delay 到那个点。
  *
- * Esta clase sólo es responsable del ciclo de vida y la entrada externa; ¿Cómo ejecutar la primera ronda específicamente? [ProactiveCycleRunner] adentro.
+ * 这个类只负责生命周期与对外入口；一轮具体怎么跑在 [ProactiveCycleRunner] 里。
  */
 class ProactiveScheduler(
     private val stores: ProactiveStores,
@@ -27,19 +27,33 @@ class ProactiveScheduler(
     companion object {
         private const val TAG = "ProactiveSched"
 
-        /** El intervalo de revisión cuando hay algún problema con la cuenta. */
+        /** 账上有事时的复查间隔。 */
         private const val CHECK_WITH_WORK_MS = 20 * 60 * 1000L
 
-        /** El intervalo de revisión cuando no hay nada en la cuenta. Es más tranquilo y de todos modos no tengo nada que decir. */
+        /** 账上没事时的复查间隔。更闲一点，反正也没话说。 */
         private const val CHECK_IDLE_MS = 60 * 60 * 1000L
 
         /**
-         * El intervalo de reintento cuando esta ronda está ocupada por otras fuentes de activación.
+         * 本轮被别的触发源占着时的重试间隔。
          *
-         * Sólo se utiliza para "compensar esta ronda" y no forma parte del ritmo de programación: simplemente espere hasta que termine la ronda anterior y luego vuelva a verla.
-         * En ese momento, volverá a calcular cuánto tiempo debe dormir según el libro mayor.
+         * 只用来「把这一轮补上」，不是调度节奏的一部分：等前一轮跑完再看一次即可，
+         * 那时它会自己按账本重新算出该睡多久。
          */
         private const val CHECK_RETRY_MS = 5 * 60 * 1000L
+
+        /** v2.6.23(P2): 连续 Skip 退避的天花板（6 小时）。再长就和每日保底/Worker 唤醒脱节了。 */
+        internal const val MAX_SKIP_BACKOFF_MS = 6 * 60 * 60 * 1000L
+
+        /**
+         * v2.6.23(P2): 按连续 Skip 轮数指数拉长复查间隔，封顶 [MAX_SKIP_BACKOFF_MS]。
+         *
+         * internal 纯函数:被钉死可测。位移封顶 4(×16),防止 skips 很大时溢出。
+         */
+        internal fun backoffForSkips(baseMs: Long, consecutiveSkips: Int): Long {
+            if (consecutiveSkips <= 0) return baseMs
+            val shifted = baseMs shl minOf(consecutiveSkips, 4)
+            return minOf(shifted, MAX_SKIP_BACKOFF_MS)
+        }
 
         const val TRIGGER_STARTUP = "startup"
         const val TRIGGER_TIMER = "timer"
@@ -50,51 +64,57 @@ class ProactiveScheduler(
 
     private var job: Job? = null
 
-    /** La conclusión de la última inspección se puede proporcionar para obtener comentarios honestos mediante el botón \"Prueba\" en la página de configuración. */
+    /** 最近一次巡检的结论，供设置页「测试」按钮如实反馈。 */
     @Volatile
     var lastOutcome: String? = null
         private set
 
     /**
-     * ¿Ya hay una ronda de inspecciones en marcha?
+     * 是否已经有一轮巡检在跑。
      *
-     * Expuesto al mundo exterior, el Trabajador hace una predicción barata: cuando el sistema lo despierte, si descubre que el proceso
-     * Si solo hay una ronda en ejecución, no es necesario analizar las dependencias y leer las configuraciones nuevamente. verdadera exclusión mutua
-     * todavía en [ProactiveCycleRunner.execute] adentro —— Esto simplemente ahorra un despertar innecesario.
+     * 对外暴露给 Worker 做一次廉价的预判：它被系统唤醒时若发现进程内
+     * 正好有一轮在跑，就没必要再解析一次依赖、读一次配置。真正的互斥
+     * 仍然在 [ProactiveCycleRunner.execute] 里 —— 这里只是省掉一次无谓的唤醒。
      */
     val isCycleInFlight: Boolean get() = cycle.isInFlight
 
     // ══════════════════════════════════════════════════════════════
-    // ciclo de vida
+    // 生命周期
     // ══════════════════════════════════════════════════════════════
 
     /**
-     * Inicie el sondeo en proceso.
+     * 启动进程内轮询。
      *
-     * No es un tick fijo: al final de cada ronda, la próxima vez se calcula en función del estado del libro mayor.
-     * Si tienes algo que ver con tu cuenta, revísala cada 20 minutos; Si no tienes nada que hacer, revísalo una vez cada hora. —— Es inútil mirarlo cuando de todos modos no pasa nada.
+     * 不是固定 tick：每轮结束按账本状态算下一次的时间。
+     * 账上有事就 20 分钟看一次，没事就 1 小时 —— 反正没事的时候看也没用。
      *
-     * La excepción no se descarta: se trata de un bucle en segundo plano y, al ejecutarlo, se finalizará todo el trabajo de forma silenciosa.
-     * Y nadie tomará la iniciativa de informar este tipo de falla como "ya no se envían mensajes activos".
+     * 异常不向外抛：这是后台循环，抛出去会静默杀死整个 job，
+     * 而「主动消息不发了」这种故障没人会主动报上来。
      */
     fun start() {
         job?.cancel()
         job = appScope.launch(GlobalCoroutineExceptionHandler) {
-            Logger.i(TAG, "La programación activa de mensajes ha comenzado.")
+            Logger.i(TAG, "主动消息调度已启动")
             while (isActive) {
-                // Utilice runCycle en lugar de Cycle.execute: las cuatro fuentes de activación deben caer en la misma entrada.
-                // De lo contrario, el carril bici no podrá obtener el último resultado y también será fácil pasarlo por alto durante el próximo cambio.
+                // 走 runCycle 而不是 cycle.execute：四路触发源必须落在同一个入口上，
+                // 否则周期路径既拿不到 lastOutcome，也容易在下次改动时被漏掉互斥。
                 val outcome = runCatching { runCycle(TRIGGER_TIMER, force = false) }
-                    .onFailure { e -> Logger.w(TAG, "Anormalidad de inspección: ${e.message}") }
+                    .onFailure { e -> Logger.w(TAG, "巡检异常: ${e.message}") }
                     .getOrNull()
-                // Esta ronda estuvo ocupada por otras fuentes de activación y no se pudo ejecutar, por lo que se desconoce el estado del libro mayor. ——
-                // Si presionas "Nada" y duermes una hora, perderás una oportunidad en vano. Tendrás que esperar un poco para volver a verlo.
+                // 三种情况的节奏不同，别混：
+                //  · null 只可能来自抛异常（被别的触发源占着时会返回 alreadyRunning=true 的对象），
+                //    异常后立刻重试容易变成热循环，按「没事」睡一小时；
+                //  · alreadyRunning 才是「被占着」—— 等前一轮跑完再看，所以是短间隔。
+                // v2.6.23(P2): 连续被模型 Skip 时指数拉长（上限 6 小时）——
+                // 「没话说」是持续状态，不该每小时醒一次重复同一次空判断。
                 delay(
                     when {
                         outcome == null -> CHECK_IDLE_MS
                         outcome.alreadyRunning -> CHECK_RETRY_MS
-                        outcome.ledgerNotEmpty -> CHECK_WITH_WORK_MS
-                        else -> CHECK_IDLE_MS
+                        outcome.ledgerNotEmpty ->
+                            backoffForSkips(CHECK_WITH_WORK_MS, cycle.consecutiveSkips)
+
+                        else -> backoffForSkips(CHECK_IDLE_MS, cycle.consecutiveSkips)
                     },
                 )
             }
@@ -104,14 +124,14 @@ class ProactiveScheduler(
     fun stop() {
         job?.cancel()
         job = null
-        Logger.i(TAG, "El envío de mensajes activos se ha detenido")
+        Logger.i(TAG, "主动消息调度已停止")
     }
 
     // ══════════════════════════════════════════════════════════════
-    // entrada exterior
+    // 对外入口
     // ══════════════════════════════════════════════════════════════
 
-    /** Corre una ronda (Worker / Regrese a la página de configuración/recepción para realizar la prueba (vaya aquí). */
+    /** 跑一轮（Worker / 回前台 / 设置页测试都走这里）。 */
     suspend fun runCycle(trigger: String, force: Boolean = false): ProactiveCycleRunner.Outcome {
         val outcome = cycle.execute(trigger, force)
         lastOutcome = outcome.detail
@@ -119,13 +139,13 @@ class ProactiveScheduler(
     }
 
     /**
-     * Se llama una vez cuando el usuario envía activamente un mensaje.
+     * 用户主动发消息时调一次。
      *
-     * Haga dos cosas: verifique si se trata de una respuesta al mensaje no solicitado más reciente (escriba RESPUESTA),
-     * Y el monto de la compensación (vino a explicarme que la relación se está estrechando).
+     * 做两件事：检查这条是不是在回应最近的主动消息（回写 REPLIED），
+     * 以及回补额度（他来找我说明关系在走近）。
      *
-     * Anormalidad tragada durante todo el proceso: se trata de un desvío en la ruta de envío del chat. Registre un error de retroalimentación.
-     * No debería influir en los usuarios para que envíen sus palabras.
+     * 全程吞异常：这是聊天发送路径上的旁路，记一笔反馈失败
+     * 不该影响用户把话发出去。
      */
     suspend fun onUserSpoke(sessionId: String) {
         runCatching {
@@ -133,49 +153,56 @@ class ProactiveScheduler(
             val pending = stores.outcomes.findPendingInSession(sessionId)
             if (pending != null) {
                 stores.outcomes.resolve(pending.id, OutcomeState.REPLIED, now)
-                Logger.i(TAG, "El usuario respondió al mensaje proactivo y se actualizó el nivel de intimidad.")
+                Logger.i(TAG, "用户回复了主动消息，亲密度更新")
             }
-        }.onFailure { e -> Logger.w(TAG, "Falló la grabación de comentarios: ${e.message}") }
+        }.onFailure { e -> Logger.w(TAG, "反馈记录失败: ${e.message}") }
     }
 
     /**
-     * El usuario ha abierto una conversación: el mensaje activo más reciente de la conversación que aún no haya sido respondido se registrará como leído.
+     * 用户打开了会话：把该会话里最近一条还没反应的主动消息记为已读。
      *
-     * Solo mira la más reciente y no regreses a escanear el historial: la acción del usuario de abrir una sesión solo puede significar “vio esta”.
-     * Y marcar los anteriores como ABIERTOS equivale a crear de la nada un montón de comentarios positivos "en los que se hace clic".
+     * 只看最近一条，不回头扫历史：用户打开会话这个动作只能说明「这一条他看到了」，
+     * 而把更早那些一起标成 OPENED，等于凭空造出一堆「被点开过」的正反馈。
      *
-     * El portal de notificaciones, el pequeño teléfono celular y el chat principal convergen en la ruta de cambio de sesión.
-     * Por lo tanto, el pulsador de llamada sólo necesita ser descolgado allí una vez.
+     * 通知入口、小手机、主聊天全部收敛到会话切换这一条路径上，
+     * 所以调用点只需要在那里接一次。
      */
     suspend fun onSessionOpened(sessionId: String) {
         runCatching {
             val pending = stores.outcomes.findPendingInSession(sessionId) ?: return@runCatching
             stores.outcomes.resolve(pending.id, OutcomeState.OPENED, System.currentTimeMillis())
-        }.onFailure { e -> Logger.w(TAG, "No se pudo registrar la lectura del mensaje activo: ${e.message}") }
+        }.onFailure { e -> Logger.w(TAG, "记录主动消息已读失败: ${e.message}") }
+    }
+
+    /** 通知点击携带的精确结果账 id，避免并发通知误标较新的记录。 */
+    suspend fun onProactiveOpened(outcomeId: String) {
+        runCatching {
+            stores.outcomes.resolve(outcomeId, OutcomeState.OPENED, System.currentTimeMillis())
+        }.onFailure { e -> Logger.w(TAG, "记录主动消息已读失败: ${e.message}") }
     }
 
     /**
-     * El usuario hizo clic en "Esta vez no" en la notificación.
+     * 用户点了通知上的「这次不用」。
      *
-     * A diferencia de "tachar la notificación", esta es una afirmación clara: esto no es lo que quiere ver.
-     * Sólo afecta a este registro (DISMISSED), sin cambiar la configuración ni pausar rondas posteriores.
+     * 与「划掉通知」不同，这是一个明确表态：这条恰好不是他想看的。
+     * 只影响这一条记录（DISMISSED），不连带改设置、不暂停后面几轮。
      */
     suspend fun onProactiveDismissed(outcomeId: String) {
         runCatching {
             stores.outcomes.resolve(outcomeId, OutcomeState.DISMISSED, System.currentTimeMillis())
-            Logger.i(TAG, "Los usuarios marcan los mensajes proactivos como \"no utilizados esta vez\"")
-        }.onFailure { e -> Logger.w(TAG, "No se pudo grabar \"No se usó esta vez\": ${e.message}") }
+            Logger.i(TAG, "用户把主动消息标为「这次不用」")
+        }.onFailure { e -> Logger.w(TAG, "记录「这次不用」失败: ${e.message}") }
     }
 
     /**
-     * El usuario dijo "No me molestes últimamente".
+     * 用户说「最近别烦我」。
      *
-     * La primera pregunta de las cuatro preguntas durante el período de reflexión se intercepta directamente, pero el libro mayor se acumula como de costumbre. ——
-     * Todavía se recuerdan cosas, pero no se habla de ellas.
+     * 冷却期内四问的 Q1 直接拦截，但账本照常积累 ——
+     * 事还是记着，只是不说。
      */
     suspend fun startCooldown(assistantId: String, days: Int = 7): String {
         stores.relations.startCooldown(assistantId, System.currentTimeMillis(), days)
-        Logger.i(TAG, "El usuario solicita refrigeración $days dia")
-        return "Bien, esto $days Dios, no tomaré la iniciativa de encontrarte. Llámame en cualquier momento si necesitas algo."
+        Logger.i(TAG, "用户请求冷却 $days 天")
+        return "好，这 $days 天我不会主动找你。有事随时叫我。"
     }
 }

@@ -11,7 +11,7 @@
     <string name="moment_add_images_hint">Adicionar imagens (máx. %1$d)</string>
     <!-- ===== Diário (MiniDiaryScreen) ===== -->
     <string name="diary_generate_failed">Falha ao gerar o diário, tente novamente mais tarde</string>
-    <string name="diary_title">Diário do Muse</string>
+    <string name="diary_title">Diário do Musa</string>
     <string name="diary_date_title">%3$s/%2$d/%1$d</string>
     <string name="diary_empty_today">Ainda não há diário de hoje</string>
     <string name="diary_empty_other_day">Não há diário para este dia</string>
@@ -73,7 +73,7 @@
     <string name="moment_comment_cd">Comentar</string>
     <string name="moment_favorite">Favorito</string>
     <string name="moment_more_actions">Mais ações para esta publicação</string>
-    <string name="moment_sender_muse">Muse</string>
+    <string name="moment_sender_muse">Musa</string>
     <string name="moment_sender_me">Eu</string>
     <string name="moment_comment_hint">Publicar comentário:</string>
     <string name="moment_delete_title">Excluir publicação</string>
@@ -84,7 +84,7 @@
     <string name="moment_messages_cd">Mensagens</string>
     <string name="moment_publish_cd">Publicar (toque para imagem, pressione e segure para texto)</string>
     <string name="moment_empty_feed">Ainda não há publicações</string>
-    <string name="moment_empty_hint">Toque em + no canto superior direito para criar sua primeira publicação\nMuse e os assistentes também compartilharão suas vidas</string>
+    <string name="moment_empty_hint">Toque em + no canto superior direito para criar sua primeira publicação\nMusa e os assistentes também compartilharão suas vidas</string>
     <string name="moment_messages_empty">Ainda não há curtidas ou comentários</string>
     <string name="moment_notification_liked">%1$s curtiu sua publicação</string>
     <string name="moment_notification_commented">%1$s comentou sua publicação</string>
@@ -130,7 +130,12 @@
     <string name="chat_tool_call_result">Resultado: %1$s</string>
     <string name="chat_share_failed_no_uri">Falha ao compartilhar: não foi possível obter a URI do arquivo</string>
     <string name="chat_companion_days_zero">Acabei de me conhecer hoje</string>
-    <string name="chat_companion_days">Juntos por %1$d dias</string>
+    <plurals name="chat_companion_days">
+        <item quantity="one">Juntos por %1$d dia</item>
+        <item quantity="other">Juntos por %1$d dias</item>
+        <item quantity="many">Juntos por %1$d dias</item>
+    </plurals>
+
     <string name="chat_thinking">Pensamento…</string>
 
     <!-- Errors and permissions -->
@@ -197,6 +202,7 @@
     <plurals name="chat_process_ops">
         <item quantity="one">%1$d ação</item>
         <item quantity="other">%1$d ações</item>
+        <item quantity="many">%1$d ações</item>
     </plurals>
     <string name="chat_reasoning_elapsed">%1$ds</string>
     <string name="chat_reasoning_collapse_cd">Recolher raciocínio</string>
@@ -419,12 +425,33 @@
     <string name="settings_sticker_freq_occasional">Ocasional</string>
     <string name="settings_sticker_freq_normal">Normal</string>
     <string name="settings_sticker_freq_frequent">Frequente</string>
-    <string name="settings_sticker_upload_zip">Importar ZIP</string>
+    <string name="settings_sticker_upload">Importar figurinhas</string>
+    <string name="settings_sticker_upload_subtitle">Aceita zip, documentos docx/pptx e imagens; um arquivo por vez</string>
+    <string name="settings_sticker_add_from_gallery">Adicionar da galeria</string>
+    <string name="settings_sticker_add_from_gallery_subtitle">Escolha varias de uma vez; vao para o pacote aberto</string>
+    <string name="settings_sticker_review_title">Revisar %1$d adesivos</string>
+    <string name="settings_sticker_review_hint">A selecao automatica pode errar; toque para desmarcar. Pacote: %2$s</string>
+    <string name="settings_sticker_review_import">Importar %1$d</string>
+    <string name="settings_sticker_export_pack">Exportar este pacote</string>
+    <string name="settings_sticker_export_done">“%1$s” exportado com %2$d adesivos</string>
+    <string name="settings_sticker_download_originals">Baixar originais pelos links (%1$d)</string>
+    <string name="settings_sticker_download_result">%1$d substituídos, %2$d falharam</string>
+    <string name="settings_sticker_rename_pack">Renomear este pacote</string>
+    <string name="settings_sticker_rename_title">Renomear pacote</string>
+    <string name="settings_sticker_action_saved">Atualizado</string>
+    <string name="settings_sticker_action_failed">Nao alterado: %1$s</string>
+    <string name="settings_sticker_actions_title">Este adesivo</string>
+    <string name="settings_sticker_actions_hint">Esta em “%1$s”</string>
+    <string name="settings_sticker_caption_label">Texto</string>
+    <string name="settings_sticker_move_target_label">Mover para outro pacote (nome novo cria um)</string>
+    <string name="settings_sticker_move_up">Mover para cima</string>
+    <string name="settings_sticker_move_down">Mover para baixo</string>
     <string name="settings_sticker_upload_zip_subtitle">Escolha um arquivo ZIP;</string>
     <string name="settings_sticker_imported">Adesivos %1$d importados</string>
     <string name="settings_sticker_import_failed">Falha na importação: %1$s</string>
+    <string name="settings_sticker_export_location_failed">Não é possível gravar no local selecionado</string>
     <string name="settings_sticker_empty_title">Ainda não há adesivos</string>
-    <string name="settings_sticker_empty_subtitle">Toque em \"Importar ZIP\" acima para adicionar um arquivo ZIP</string>
+    <string name="settings_sticker_empty_subtitle">Toque em \"Importar figurinhas\" acima; aceita ZIP, DOCX/PPTX e imagens</string>
     <string name="settings_sticker_delete_confirm">Excluir este adesivo?</string>
     <string name="settings_sticker_category_all">Todos</string>
 
@@ -445,7 +472,7 @@
     <string name="slash_command_reset_busy">Não é possível redefinir durante a geração, pare primeiro</string>
     <string name="slash_command_archive_done">Sessão arquivada</string>
     <string name="chat_agent_tab_title">Agent</string>
-    <!-- Correcciones en la interfaz (i18n-3.x): Eliminación por lotes de emoticones/Borrar i18n(Copiar temporalmente chino,Traducción posterior) -->
+    <!-- 前端修复 (i18n-3.x): 表情包批量删除/清空 i18n(临时复制中文,后续补译) -->
     <string name="settings_sticker_batch_done">Concluído</string>
     <string name="settings_sticker_batch_delete">Exclusão em lote</string>
     <string name="settings_sticker_delete_selected">Excluir %1$d itens selecionados</string>
@@ -464,7 +491,7 @@
     <string name="chat_tool_card_open">Ver cartão</string>
     <string name="chat_update_compress">Comprimir contexto</string>
     <string name="chat_ignore_memory_option">Esta conversa não usará a memória</string>
-    <!-- A5: Capa emergente de información del mensaje(modelo/Consume mucho tiempo/Token Dosis) -->
+    <!-- A5: 消息信息弹层(模型/耗时/Token 用量) -->
     <string name="msg_info_title">Informações da mensagem</string>
     <string name="msg_info_model">Modelo</string>
     <string name="msg_info_time">Hora</string>
@@ -480,7 +507,7 @@
     <string name="msg_info_estimated">Estimado</string>
     <string name="msg_info_no_data">Sem dados de geração</string>
     <string name="msg_info_unknown">Desconhecido</string>
-    <!-- A1: Buscar dentro de una sesión(Cuadro de búsqueda local en la página de chat) -->
+    <!-- A1: 会话内查找(聊天页就地查找框) -->
     <string name="chat_find_in_conversation">Buscar na conversa</string>
     <string name="chat_find_placeholder">Pesquisar nesta conversa</string>
     <string name="chat_find_count">%1$d de %2$d</string>
@@ -488,7 +515,7 @@
     <string name="chat_find_prev">Anterior</string>
     <string name="chat_find_next">Próxima</string>
     <string name="chat_find_close">Fechar busca</string>
-    <!-- C2: Búsqueda instantánea de la lista de conversaciones -->
+    <!-- C2: 会话列表即时搜索 -->
 
     <string name="chat_pending_queue_title">Pendentes</string>
     <string name="chat_pending_count">%1$d itens</string>
@@ -570,7 +597,7 @@
     <string name="chat_token_output">Saída</string>
     <string name="chat_token_prompt">Prompt</string>
 
-    <!-- Divisor de compresión de contexto (solo se muestra en la interfaz, no se ingresa en el contexto del modelo) -->
+    <!-- 上下文压缩分隔线（仅界面展示，不进模型上下文） -->
     <string name="chat_context_divider_title">Contexto compactado</string>
     <string name="chat_context_divider_title_count">Contexto compactado · %1$d mensagens resumidas</string>
     <string name="chat_context_divider_hint_collapsed">Toque para ver as mensagens originais</string>
@@ -581,7 +608,7 @@
     <string name="moment_visibility_title">Visível para</string>
     <string name="moment_visibility_public">Todos</string>
     <string name="diary_perspective_character">Visão do personagem: este diário é escrito por ele/ela</string>
-    <!-- v2.6.7: Aviso visible cuando la ejecución de la herramienta se pausa globalmente (de lo contrario, el usuario solo ve"suspendido"Pero no sé por qué) -->
+    <!-- v2.6.7: 工具执行被全局暂停时的可见提示（否则用户只看到"已暂停"却不知为何） -->
     <string name="chat_tool_paused_banner">A execução de ferramentas está pausada, então não serão executadas.</string>
     <string name="chat_tool_paused_banner_action">Configurações</string>
     <string name="settings_chat_show_assistant_name">Mostrar nome do assistente</string>
@@ -604,4 +631,35 @@
     <string name="chat_process_running_command">Executando um comando</string>
     <string name="chat_process_subagent_running">%1$d tarefas de subagente em execução</string>
     <string name="chat_process_subagent_section">Subagentes em segundo plano</string>
+    <string name="chat_process_running">Em execução</string>
+    <string name="chat_process_completed">Concluído</string>
+    <string name="chat_process_steps_completed">%1$d etapas concluídas</string>
+    <string name="chat_process_steps_progress">%1$d de %2$d etapas concluídas</string>
+    <string name="chat_process_step_fallback">Etapa</string>
+    <string name="chat_process_running_status">Em andamento</string>
+    <string name="proactive_ledger_age_now">Agora mesmo</string>
+    <string name="proactive_ledger_age_hours">Há %1$d horas</string>
+    <string name="proactive_ledger_age_days">Há %1$d dias</string>
+    <string name="search_custom_engine_saved">Salvo</string>
+    <string name="search_custom_engine_endpoint_required">A URL da solicitação é obrigatória</string>
+    <string name="channel_contact_group_label">Grupo</string>
+    <string name="channel_conversation_attachment_placeholder">[Anexo]</string>
+    <string name="channel_conversation_image_placeholder">[Imagem]</string>
+    <string name="channel_conversation_empty_placeholder">[Mensagem vazia]</string>
+    <string name="plugin_debug_empty">Ainda não há chamadas de ponte. Instale um plugin e execute-o uma vez para ver a atividade aqui.</string>
+    <string name="backup_import_error_unreadable">Não é possível ler o backup. Verifique se o arquivo está completo.</string>
+    <string name="backup_import_error_mismatch">O backup não corresponde a esta versão. O estado anterior foi restaurado.</string>
+    <string name="backup_import_error_password">Falha na extração. Verifique a senha do backup.</string>
+    <string name="backup_import_error_version">A versão do backup é nova ou antiga demais para este app.</string>
+    <string name="backup_import_error_missing">O arquivo de backup não foi encontrado. Ele pode ter sido movido ou excluído.</string>
+    <string name="backup_import_error_space">Não há espaço suficiente. Libere espaço e tente novamente.</string>
+    <string name="backup_import_error_unknown">O backup é inválido. O estado anterior foi restaurado.</string>
+    <string name="onboarding_connect_error_unauthorized">A chave de API é inválida ou expirou. Informe-a novamente.</string>
+    <string name="onboarding_connect_error_forbidden">Acesso negado. Verifique se a chave pode usar este modelo.</string>
+    <string name="onboarding_connect_error_not_found">O URL ou nome do modelo está incorreto. Verifique ambos.</string>
+    <string name="onboarding_connect_error_rate_limit">Há muitas solicitações. Tente novamente em instantes.</string>
+    <string name="onboarding_connect_error_timeout">A conexão expirou. Verifique a rede ou o URL.</string>
+    <string name="onboarding_connect_error_server">O provedor está indisponível. Tente mais tarde; se continuar, o modelo pode ter sido desativado.</string>
+    <string name="onboarding_connect_error_no_model">Não há modelo para testar. Busque primeiro a lista de modelos.</string>
+    <string name="sticker_category_default">Padrão</string>
 </resources>

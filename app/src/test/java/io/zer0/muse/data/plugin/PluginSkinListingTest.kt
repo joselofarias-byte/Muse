@@ -31,28 +31,28 @@ import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
 /**
- * Se instaló el complemento ui-skin como prueba para la fuente de piel de burbuja.
+ * 已安装 ui-skin 插件作为气泡皮肤来源的测试。
  *
- * Portada:Las máscaras legales se pueden enumerar y aún se pueden leer a través de la ruta de "revalidación" incluso si falta el archivo de marcador de posición de entrada JS.
- * piel ilegal(schema/Contraste), borradores no confirmados, deshabilitados, desinstalados y confianza revocada no producirán máscaras renderizables,
- * Los complementos que no son de interfaz de usuario no generan entradas de máscara.
+ * 覆盖:合法皮肤可被列出并在缺失 JS 入口占位文件后仍能通过「重新校验」路径读取、
+ * 非法皮肤(schema/对比度)、未确认草稿、禁用、卸载与信任撤销都不会产生可渲染皮肤,
+ * 非 ui-skin 插件不产生皮肤条目。
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
 class PluginSkinListingTest {
 
     /**
-     * La versión de la aplicación se proporciona explícitamente en el caso de uso.
+     * 用例里显式给出 App 版本。
      *
-     * La instalación del complemento verificará la minAppVersion del manifiesto y [PluginManager] El valor predeterminado es
-     * BuildConfig.VERSION_NAME: Cuando se compila sin -PversionName localmente, es el valor centinela 0.0.0-dev.
-     * es más pequeño que el 1.0.0 requerido por el complemento, el caso de uso será“Los parámetros de construcción no están incluidos.”Y fracasó.
+     * 插件安装会校验 manifest 的 minAppVersion，而 [PluginManager] 默认取
+     * BuildConfig.VERSION_NAME：本地不带 -PversionName 构建时那是哨兵值 0.0.0-dev，
+     * 比插件要求的 1.0.0 小，用例就会因“构建参数没带”而失败。
      */
     private val testAppVersion = "2.6.17"
 
     private val context: Context get() = ApplicationProvider.getApplicationContext()
 
-    /** Utilice un editor independiente para cada paquete de complementos ID,Evite que varias claves públicas compitan por la misma raíz de entrada de confianza dentro del mismo método de prueba. */
+    /** 每个插件包使用独立发行者 ID,避免同一测试方法内多把公钥争抢同一信任根条目。 */
     private fun publisherIdFor(pluginId: String): String = "publisher.$pluginId"
 
     private val validStyle = BubbleRoleStyle(
@@ -88,8 +88,8 @@ class PluginSkinListingTest {
         assertTrue(listed.single().enabled)
         assertEquals("aurora-bubble", listed.single().skin.id)
 
-        // El paquete skin no tiene entrada JS.:Después de eliminar los archivos de marcador de posición vacíos que quedaron durante la instalación,La ruta de reverificación aún debe estar disponible,
-        // De lo contrario, skin.json se puede instalar pero nunca se volverá a leer.(Pruebas de regresión).
+        // 皮肤包没有 JS 入口:删除安装时留下的空占位文件后,重新校验路径仍必须可用,
+        // 否则 skin.json 装得上却永远读不回来(回归测试)。
         val placeholder = File(context.filesDir, "plugins/skin-pack/main.js")
         assertTrue(placeholder.exists())
         assertTrue(placeholder.delete())
@@ -97,7 +97,7 @@ class PluginSkinListingTest {
         val verified = manager.loadVerifiedPlugin("skin-pack")
         assertNotNull(verified)
         assertEquals("", verified!!.entryCode)
-        // El resumen del contenido sigue siendo coherente con el registro de instalación al volver a leer(loadVerifiedPlugin La verificación del resumen interno es un requisito previo).
+        // 重新读取时内容摘要仍与安装记录一致(loadVerifiedPlugin 内部的摘要校验是前提)。
         assertEquals(installed.contentSha256, manager.findPlugin("skin-pack")?.contentSha256)
         assertEquals("aurora-bubble", manager.listInstalledSkins().single().skin.id)
         trustFile.delete()
@@ -123,7 +123,7 @@ class PluginSkinListingTest {
         assertTrue(entry.exists())
         assertTrue(entry.delete())
 
-        // Los archivos de entrada que faltan para complementos que no son de interfaz de usuario siguen siendo errores,No puedes confiar en la tolerancia a fallas del paquete de skin para dejarte ir.
+        // 非 ui-skin 插件缺少入口文件仍是错误,不能借皮肤包的容错放行。
         assertNull(manager.loadVerifiedPlugin("tool-pack"))
         assertTrue(manager.listInstalledSkins().isEmpty())
         trustFile.delete()
@@ -136,7 +136,7 @@ class PluginSkinListingTest {
         val trustStore = PluginTrustStore(trustFile)
         val manager = PluginManager(context, skillRepoMock(), trustStore, appVersionName = testAppVersion)
 
-        // El contraste no está a la altura
+        // 对比度不达标
         installTrusted(
             manager,
             signedZip(
@@ -151,7 +151,7 @@ class PluginSkinListingTest {
                 trustStore = trustStore,
             ),
         )
-        // No compatible schemaVersion
+        // 不支持的 schemaVersion
         installTrusted(
             manager,
             signedZip(
@@ -170,7 +170,7 @@ class PluginSkinListingTest {
             ),
         )
 
-        // El complemento en sí se instaló correctamente.,Pero las máscaras ilegales no se pueden seleccionar ni mostrar.
+        // 插件本身安装成功,但非法皮肤既不可选也不展示。
         assertEquals(2, manager.list().size)
         assertTrue(manager.listInstalledSkins().isEmpty())
         assertTrue(manager.listInstalledSkins(includeDisabled = true).isEmpty())
@@ -219,7 +219,7 @@ class PluginSkinListingTest {
         val installed = installTrusted(manager, zip)
         assertEquals(1, manager.listInstalledSkins().size)
 
-        // Ya no está disponible después de desactivarse,Sin embargo, aún puede aparecer como "No disponible" en la página de configuración.
+        // 禁用后不再可用,但仍能在设置页以「不可用」展示。
         manager.setEnabled(installed.id, false)
         assertTrue(manager.listInstalledSkins().isEmpty())
         val unavailable = manager.listInstalledSkins(includeDisabled = true)
@@ -227,11 +227,11 @@ class PluginSkinListingTest {
         assertFalse(unavailable.single().enabled)
         assertEquals("aurora-bubble", unavailable.single().skin.id)
 
-        // Estará disponible nuevamente después de volver a habilitarlo.
+        // 重新启用后恢复可用。
         manager.setEnabled(installed.id, true)
         assertEquals(1, manager.listInstalledSkins().size)
 
-        // Desaparece completamente después de la desinstalación,El lado del consumidor recurre al valor predeterminado incorporado.
+        // 卸载后彻底消失,消费侧回退内置 default。
         manager.uninstall(installed.id)
         assertTrue(manager.listInstalledSkins().isEmpty())
         assertTrue(manager.listInstalledSkins(includeDisabled = true).isEmpty())
@@ -258,7 +258,7 @@ class PluginSkinListingTest {
 
         assertTrue(trustStore.revoke(publisherIdFor("skin-pack")))
 
-        // La revisión de firma falla después de la revocación del fideicomiso:No renderizable,Se muestra solo como artículos no disponibles.
+        // 信任撤销后签名复核失败:不可渲染,只以不可用条目展示。
         assertTrue(manager.listInstalledSkins().isEmpty())
         assertFalse(manager.listInstalledSkins(includeDisabled = true).single().enabled)
         trustFile.delete()
@@ -347,8 +347,8 @@ class PluginSkinListingTest {
     }
 
     /**
-     * Genere un paquete de complemento firmado que se haya escrito en la raíz de confianza local;Manifiesto de cobertura de firma + contenido de entrada + archivos adjuntos,
-     * Consistente con la entrada de firma de PluginSecurityGate.
+     * 生成一个已写入本机信任根的签名插件包;签名覆盖 manifest + 入口内容 + 附加文件,
+     * 与 PluginSecurityGate 的签名输入保持一致。
      */
     private fun signedZip(
         id: String,
@@ -396,7 +396,7 @@ class PluginSkinListingTest {
         )
     }
 
-    /** Paquete de aspectos sin firmar:Sólo permitir la instalación como borrador deshabilitado,No se puede convertir en una máscara renderizable. */
+    /** 无签名皮肤包:只允许作为禁用草稿安装,不能成为可渲染皮肤。 */
     private fun unsignedSkinZip(id: String, extraFiles: Map<String, String>): File {
         val manifest = PluginManifest(
             id = id,
@@ -421,7 +421,7 @@ class PluginSkinListingTest {
                     zos.closeEntry()
                 }
                 put("manifest.json", manifestJson)
-                // ui-skin El paquete no lleva entrada JS.,Consistente con las restricciones de PluginPackageLoader.
+                // ui-skin 包不携带 JS 入口,与 PluginPackageLoader 的约束一致。
                 if (entryCode.isNotEmpty()) put("main.js", entryCode)
                 extraFiles.forEach { (name, content) -> put(name, content) }
             }
@@ -432,7 +432,7 @@ class PluginSkinListingTest {
         }
     }
 
-    /** Real DAO regresa para identificaciones desocupadas null;relaxed mock Devuelve no vacío por defecto mock,La detección de conflictos puede activarse por error. */
+    /** 真实 DAO 对未占用的 id 返回 null;relaxed mock 默认返回非空 mock,会误触发冲突检测。 */
     private fun skillRepoMock(): SkillRepository = mockk<SkillRepository>(relaxed = true).also { repo ->
         coEvery { repo.getById(any()) } returns null
     }

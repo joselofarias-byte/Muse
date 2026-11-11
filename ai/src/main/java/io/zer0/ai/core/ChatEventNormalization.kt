@@ -1,25 +1,25 @@
 package io.zer0.ai.core
 
 /**
- * M2.4/M2.5: Límites de eventos unificados para streaming y no streaming.
+ * M2.4/M2.5: 流式与非流式的统一事件边界。
  *
- * - [ChatCompletion.toEventSequence]:Convierta resultados únicos que no sean de transmisión en streamChat()
- *   lo mismo [ChatStreamEvent] secuencia de eventos(contenido → pensar → Herramientas → Dosis → Cotización → Completo).
- *   Anteriormente, esta lógica solo existía en el chat de la capa de aplicaciones. UI(io.zer0.muse.ui.chat.ChatResponsePolicy),
- *   M2 Iniciar y descender al módulo ai como única implementación de normalización,app La capa se cambia para delegar llamada.
- * - [ChatEventReducer]:Agrega secuencias de eventos de cualquier fuente en [NormalizedChatResult],
- *   suministro"transmisión/Equivalente de proyección final sin streaming"Las pruebas de aceptación se utilizan con la repetición de partidos SSE.
+ * - [ChatCompletion.toEventSequence]:把非流式一次性结果转换为与 streamChat()
+ *   相同的 [ChatStreamEvent] 事件序列(内容 → 思考 → 工具 → 用量 → 引用 → 完成)。
+ *   此前该逻辑只存在于 app 层聊天 UI(io.zer0.muse.ui.chat.ChatResponsePolicy),
+ *   M2 起下沉到 ai 模块作为唯一归一化实现,app 层改为委托调用。
+ * - [ChatEventReducer]:把任意来源的事件序列聚合为 [NormalizedChatResult],
+ *   供"流式/非流式最终 projection 等价"验收与 SSE fixture replay 测试使用。
  *
- * convención de secuencia de eventos(Consistente con el KDoc de ChatStreamEvent):
- *  ReasoningDelta → ContentDelta → ImageDelta* → ToolCallDelta*(index orden ascendente) →
+ * 事件序列约定(与 ChatStreamEvent 的 KDoc 一致):
+ *  ReasoningDelta → ContentDelta → ImageDelta* → ToolCallDelta*(index 升序) →
  *  UsageDelta* → CitationDelta → Done
  */
 
 /**
- * Convierta un resultado completo que no sea de transmisión en una secuencia de eventos equivalente a la transmisión.
+ * 把非流式完整结果转换为与流式等价的事件序列。
  *
- * Texto vacío, respuesta de sólo razonamiento(Comportamiento sin transmisión de algunos modelos de inferencia)También produce secuencias válidas.:
- * reasoning Los eventos se emiten como de costumbre.,La persona que llama determina que la respuesta es válida basándose en esto.,En lugar de informar falsamente un error de texto vacío.
+ * 空正文、仅 reasoning 的响应(部分推理模型的非流式行为)也产生有效序列:
+ * reasoning 事件照常发出,调用方据此判断响应有效,而不是误报空文本错误。
  */
 fun ChatCompletion.toEventSequence(): List<ChatStreamEvent> = buildList {
     reasoningContent?.takeIf { it.isNotEmpty() }?.let {
@@ -39,7 +39,7 @@ fun ChatCompletion.toEventSequence(): List<ChatStreamEvent> = buildList {
                 id = toolCall.id,
                 name = toolCall.name,
                 argumentsDelta = toolCall.arguments,
-                // Los resultados que no son de transmisión contienen instantáneas completas de los parámetros,Los consumidores deberían reemplazar en lugar de agregar
+                // 非流式结果携带完整参数快照,消费方应替换而非追加
                 isSnapshot = true,
             ),
         )
@@ -50,23 +50,23 @@ fun ChatCompletion.toEventSequence(): List<ChatStreamEvent> = buildList {
 }
 
 /**
- * M2.4: Resultados de chat normalizados — El producto unificado de agregación de streaming y conversión sin streaming.
+ * M2.4: 归一化聊天结果 — 流式聚合与非流式转换的统一产物。
  *
- * La misma respuesta lógica sin importar dónde esté streamChat() Aún así completeText() → toEventSequence(),
- * por [ChatEventReducer] obtenido después de la polimerización [NormalizedChatResult] debe ser igual(M2 Aceptación).
+ * 同一逻辑响应无论走 streamChat() 还是 completeText() → toEventSequence(),
+ * 经 [ChatEventReducer] 聚合后得到的 [NormalizedChatResult] 必须相等(M2 验收)。
  *
- * @param text Texto agregado(Una cadena vacía indica que no hay texto)
- * @param reasoning Pensamientos agregados(null significa ninguno)
- * @param toolCalls Llamadas de herramientas agregadas(Ordenar por índice ascendente)
- * @param finishReason Motivo de finalización(Done transporte de eventos)
- * @param usage último evento de uso(Provider Cuando no se devuelve, es null)
- * @param citationUrls Cotización URL(Mantenga el orden de los eventos y elimine la duplicación)
- * @param thinkingSignature Piensa en la firma(Anthropic / OpenAI Responses)
+ * @param text 聚合后的正文(空串表示无正文)
+ * @param reasoning 聚合后的思考内容(null 表示无)
+ * @param toolCalls 聚合后的工具调用(按 index 升序)
+ * @param finishReason 完成原因(Done 事件携带)
+ * @param usage 最后一次用量事件(Provider 未返回时为 null)
+ * @param citationUrls 引用 URL(保持事件顺序去重)
+ * @param thinkingSignature 思考签名(Anthropic / OpenAI Responses)
  * @param thinkingEncryptedContent OpenAI Responses encrypted_content
- * @param imageBase64List Gemini inlineData Incremento de imagen(en orden de llegada)
- * @param error mensaje de evento de error(Error/StreamInterrupted);null Indica que el flujo se completó normalmente.
- * @param interrupted ¿Es StreamInterrupted(Interrumpido después de recibir parte del contenido.)
- * @param postFinishFramesDropped Done El número de fotogramas delta que llegaron y se eliminaron después(Observación de anomalías del protocolo.)
+ * @param imageBase64List Gemini inlineData 图片增量(按到达顺序)
+ * @param error 错误事件消息(Error/StreamInterrupted);null 表示流正常完成
+ * @param interrupted 是否为 StreamInterrupted(已收部分内容后中断)
+ * @param postFinishFramesDropped Done 之后到达并被丢弃的 delta 帧数(协议异常观测)
  */
 data class NormalizedChatResult(
     val text: String = "",
@@ -84,18 +84,18 @@ data class NormalizedChatResult(
 )
 
 /**
- * M2.6: [ChatStreamEvent] agregador(fixture replay La función central pura de).
+ * M2.6: [ChatStreamEvent] 聚合器(fixture replay 的核心纯函数)。
  *
- * reglas de agregación:
- *  - ContentDelta/ReasoningDelta:Adjuntar en orden de llegada.
- *  - ToolCallDelta:Agregado por índice;isSnapshot=true al reemplazar el parámetro de índice(Repetir fotograma de instantánea
- *    Quitar peso de forma natural),De lo contrario, anexar incrementalmente;id/name El primer valor no nulo entra en vigor.;La salida se ordena por índice en orden ascendente.
- *    Nota:Text ContentDelta no realiza deduplicación arbitraria —— Las respuestas legítimas pueden contener fragmentos duplicados.,
- *    La deduplicación de fotogramas duplicados es solo para"Reemplazo completo de instantáneas"Seguridad del marco de llamada de herramienta semántica.
- *  - UsageDelta:último efectivo(Anthropic entrada/La salida se envía en dos).
- *  - CitationDelta:Fusión secuencial y deduplicación.
- *  - Done:grabar finishReason;Los fotogramas delta posteriores se descartan y cuentan.(finish Después delta es una excepción de protocolo).
- *  - Error / StreamInterrupted:Errores de registro e indicadores de interrupción,Contenido agregado retenido(Algunas respuestas no se perderán.).
+ * 聚合规则:
+ *  - ContentDelta/ReasoningDelta:按到达顺序追加。
+ *  - ToolCallDelta:按 index 聚合;isSnapshot=true 时替换该 index 的参数(重复快照帧
+ *    天然去重),否则增量追加;id/name 首个非空值生效;输出按 index 升序。
+ *    注:正文 ContentDelta 不做任意去重 —— 合法响应可能含重复片段,
+ *    重复帧去重只对"完整快照替换"语义的工具调用帧安全。
+ *  - UsageDelta:最后一次生效(Anthropic 输入/输出分两次发出)。
+ *  - CitationDelta:顺序合并去重。
+ *  - Done:记录 finishReason;之后的 delta 帧丢弃并计数(finish 后 delta 是协议异常)。
+ *  - Error / StreamInterrupted:记录错误与中断标志,已聚合内容保留(部分回复不丢)。
  */
 class ChatEventReducer {
 
@@ -107,9 +107,9 @@ class ChatEventReducer {
     private var finishReason: String? = null
 
     /**
-     * Revisión de corrección(P2): La determinación del estado final utiliza indicadores explícitos en lugar de `finishReason != null` —
-     * [ChatStreamEvent.Done] permitir terminar la razón para ser null(Algunos proveedores no tienen motivos para dejar de hacerlo.),
-     * Sólo confiar en FinishReason hará Done(null) Los fotogramas incrementales posteriores no se descartan,No es consistente con el acuerdo.
+     * 审查修复(P2): 终态判定用显式标志而非 `finishReason != null` —
+     * [ChatStreamEvent.Done] 允许 finishReason 为 null(部分 Provider 无停止原因),
+     * 只靠 finishReason 会让 Done(null) 之后的增量帧不被丢弃,与协议约定不符。
      */
     private var doneSeen = false
     private var usage: UsageTokens? = null
@@ -119,10 +119,10 @@ class ChatEventReducer {
     private var interrupted = false
     private var postFinishFramesDropped = 0
 
-    /** Agregación evento por evento;Se puede llamar en serie desde cualquier hilo.(No es seguro para subprocesos,El que llama garantiza el orden). */
+    /** 逐事件聚合;可在任意线程串行调用(非线程安全,调用方保证顺序)。 */
     fun reduce(event: ChatStreamEvent) {
         if (doneSeen && isIncrementalFrame(event)) {
-            // Done Después solo se descartan los fotogramas incrementales.(Observación de anomalías del protocolo.);evento terminal(Error/Usage/Citation)Tratalo como de costumbre
+            // Done 之后只丢弃增量帧(协议异常观测);终结性事件(Error/Usage/Citation)照常处理
             postFinishFramesDropped++
             return
         }
@@ -135,20 +135,20 @@ class ChatEventReducer {
         }
     }
 
-    /** Piensa incrementalmente:Acumulación de texto + firma/El contenido cifrado está cubierto con valores que no están vacíos. */
+    /** 思考增量:正文累积 + 签名/加密内容取非空覆盖。 */
     private fun consumeReasoning(event: ChatStreamEvent.ReasoningDelta) {
         reasoning.append(event.delta)
         event.signature?.let { signature = it }
         event.encryptedContent?.let { encryptedContent = it }
     }
 
-    /** finalidad/evento de control(Uso, referencia, finalización, error, desconexión, aviso de degradación). */
+    /** 终结性/控制事件(用量、引用、完成、错误、断流、降级提示)。 */
     private fun reduceControl(event: ChatStreamEvent) = when (event) {
         is ChatStreamEvent.UsageDelta -> usage = event.usage
         is ChatStreamEvent.CitationDelta -> citations.addAll(event.urls)
         is ChatStreamEvent.Done -> {
             finishReason = event.finishReason
-            // Revisión de corrección(P2): Done(null) También es el estado final.,debe ser configurado,Los fotogramas incrementales posteriores se descartarán
+            // 审查修复(P2): Done(null) 也是终态,必须置位,后续增量帧才会被丢弃
             doneSeen = true
         }
         is ChatStreamEvent.Error -> recordFailure(event.message, interrupted = false)
@@ -156,19 +156,19 @@ class ChatEventReducer {
         else -> Unit
     }
 
-    /** Marcos de llamada de herramientas agregados por índice(Reemplazo de instantánea/anexo incremental). */
+    /** 工具调用帧按 index 聚合(快照替换 / 增量追加)。 */
     private fun consumeToolCall(event: ChatStreamEvent.ToolCallDelta) {
         val acc = toolCalls.getOrPut(event.index) { ToolCallAccumulator() }
         acc.consume(event)
     }
 
-    /** error/Detener el flujo y ajustar cuentas:Preservar el contenido agregado(Algunas respuestas no se perderán.). */
+    /** 错误/断流落账:保留已聚合内容(部分回复不丢)。 */
     private fun recordFailure(message: String, interrupted: Boolean) {
         error = message
         this.interrupted = interrupted
     }
 
-    /** Decisión de marco incremental:Done Las tramas que aparecen más tarde son excepciones al protocolo.,Descartar y contar. */
+    /** 增量帧判定:Done 之后出现的这类帧属于协议异常,丢弃并计数。 */
     private fun isIncrementalFrame(event: ChatStreamEvent): Boolean = when (event) {
         is ChatStreamEvent.ContentDelta,
         is ChatStreamEvent.ReasoningDelta,
@@ -182,7 +182,7 @@ class ChatEventReducer {
         events.forEach(::reduce)
     }
 
-    /** Resultados de agregación de salida;Se puede llamar varias veces(Volver a la instantánea,No cambia el estado de agregación.). */
+    /** 输出聚合结果;可多次调用(返回快照,不改变聚合状态)。 */
     fun toResult(): NormalizedChatResult = NormalizedChatResult(
         text = content.toString(),
         reasoning = reasoning.toString().ifEmpty { null },
@@ -199,8 +199,8 @@ class ChatEventReducer {
     )
 
     /**
-     * Acumulador de herramientas que requiere un único índice.
-     * id/name Obtener el primer valor no nulo(Los fragmentos posteriores suelen ser null);Los parámetros se reemplazan o agregan de acuerdo con la semántica de isSnapshot.
+     * 单个 index 的工具调用累积器。
+     * id/name 取首个非空值(后续分片通常为 null);参数按 isSnapshot 语义替换或追加。
      */
     private class ToolCallAccumulator {
         var id: String? = null
@@ -228,6 +228,6 @@ class ChatEventReducer {
 }
 
 /**
- * Entrada conveniente:La secuencia de eventos se agrega en [NormalizedChatResult].
+ * 便捷入口:事件序列一次性聚合为 [NormalizedChatResult]。
  */
 fun List<ChatStreamEvent>.normalize(): NormalizedChatResult = ChatEventReducer().also { it.reduceAll(this) }.toResult()

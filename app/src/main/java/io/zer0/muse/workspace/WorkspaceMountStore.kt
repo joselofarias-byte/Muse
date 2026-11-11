@@ -12,31 +12,31 @@ import kotlinx.serialization.json.Json
 import java.io.File
 
 /**
- * Persistencia de tablas de montaje.
+ * 挂载表的持久化。
  *
- * Guarde un JSON en el directorio privado de la aplicación: el montaje es "configuración" en lugar de "datos".
- * Usar un archivo es más liviano que importar una nueva tabla y no es necesario migrar según la versión de la base de datos.
+ * 存一份 JSON 到应用私有目录：挂载是「配置」而不是「数据」，
+ * 用文件比引一张新表更轻，也不用跟着数据库版本走迁移。
  *
- * Los montajes integrados no se colocan en el disco y se muestran cada vez que se leen: apuntan a directorios fijos dentro del entorno limitado de la aplicación.
- * El usuario no podrá eliminarlo ni modificarlo.
+ * 内置挂载不落盘，每次读取时现拼：它们指向应用沙盒内的固定目录，
+ * 用户既删不掉也不该被改坏。
  *
- * @param context Contexto de aplicación, utilizado para posicionamiento. filesDir
+ * @param context 应用 Context，用于定位 filesDir
  */
 class WorkspaceMountStore(private val context: Context) {
 
-    /** Montar archivo de tabla. */
+    /** 挂载表文件。 */
     private val storeFile: File = File(context.filesDir, "workspace_mounts.json")
 
-    /** El directorio sandbox correspondiente se monta de forma predeterminada, utilizando la ruta histórica, y los datos antiguos están disponibles en su lugar. */
-    private val mainDir: File = File(context.filesDir, MAIN_DIR_NAME)
+    /** 默认挂载对应的沙盒目录，沿用历史路径，老数据原地可用。 */
+    private val mainDir: File = WorkspaceLocation.resolve(context)
 
-    /** El directorio de salida largo de la herramienta es de solo lectura en la raíz del montaje integrado. */
+    /** 工具长输出目录，只读内置挂载的根。 */
     private val toolOutputsDir: File = File(context.filesDir, TOOL_OUTPUTS_DIR_NAME)
 
-    /** La lectura y la escritura se excluyen mutuamente para evitar que la interfaz y las herramientas se sobrescriban entre sí al cambiar de tabla al mismo tiempo. */
+    /** 读写互斥，避免界面与工具同时改表时互相覆盖。 */
     private val mutex = Mutex()
 
-    /** Caché en memoria; el archivo es la única fuente de verdad y el caché solo se usa para reducir el análisis repetido. */
+    /** 内存缓存；文件是唯一事实来源，缓存只用于减少重复解析。 */
     @Volatile
     private var cache: List<WorkspaceMount>? = null
 
@@ -47,22 +47,22 @@ class WorkspaceMountStore(private val context: Context) {
     }
 
     /**
-     * Montar todos, primero los integrados y el resto en orden.
+     * 全部挂载，内置挂载在前，其余按落盘顺序。
      *
-     * Los montajes integrados no participan en la persistencia: el espacio de trabajo siempre tiene una raíz disponible, incluso si el archivo está vacío o dañado.
-     * y un directorio de salida de herramientas que se puede enumerar y leer.
+     * 内置挂载不参与持久化：即使文件为空或损坏，工作区也始终有一个可用的根，
+     * 以及一个能被列出、能被读到的工具输出目录。
      */
     suspend fun mounts(): List<WorkspaceMount> = withContext(Dispatchers.IO) {
         mutex.withLock { builtInMounts() + readStored().filter { it.id !in BUILT_IN_MOUNT_IDS } }
     }
 
-    /** Todos los ID de montaje registrados actualmente. */
+    /** 当前所有已注册的挂载标识。 */
     suspend fun mountIds(): Set<String> = mounts().mapTo(mutableSetOf()) { it.id }
 
-    /** Busque una montura por su ID y devuelva nulo si no la encuentra. */
+    /** 按标识查找一条挂载，找不到返回 null。 */
     suspend fun find(id: String): WorkspaceMount? = mounts().firstOrNull { it.id == id }
 
-    /** Montado por defecto. */
+    /** 默认挂载。 */
     fun mainMount(): WorkspaceMount {
         if (!mainDir.exists()) mainDir.mkdirs()
         return WorkspaceMount(
@@ -76,10 +76,10 @@ class WorkspaceMountStore(private val context: Context) {
     }
 
     /**
-     * Un montaje de solo lectura del directorio de salida largo de la herramienta.
+     * 工具长输出目录的只读挂载。
      *
-     * El directorio en sí lo escribe la herramienta (no sujeto a esta capacidad); colgar en el espacio de trabajo es para las personas/La entrada a la visualización de modelos,
-     * Así que solo enumere y lea: no hay ningún uso legítimo para sobrescribir o eliminar la salida de la herramienta desde aquí.
+     * 目录本身由工具写入（不受这份能力位约束）；挂在工作区上是给人/模型看的入口，
+     * 所以只给列出与读取：从这里改写或删除工具输出没有任何正当用途。
      */
     fun toolOutputsMount(): WorkspaceMount {
         if (!toolOutputsDir.exists()) toolOutputsDir.mkdirs()
@@ -93,54 +93,54 @@ class WorkspaceMountStore(private val context: Context) {
         )
     }
 
-    /** Montaje incorporado (no cae al disco, no se puede eliminar, no se puede cambiar el nombre). */
+    /** 内置挂载（不落盘、不可删、不可改名）。 */
     private fun builtInMounts(): List<WorkspaceMount> = listOf(mainMount(), toolOutputsMount())
 
     /**
-     * Agregue o actualice una montura.
+     * 新增或更新一条挂载。
      *
-     * Verificación: el identificador cumple con las reglas de nomenclatura y no está reservado por el sistema.LOCAL El directorio montado debe existir y no debe estar duplicado por otros montajes.
+     * 校验：标识符合命名规则、非系统保留、LOCAL 挂载的目录必须存在、目录不与其他挂载重复。
      *
-     * @return Después del éxito, se devuelve la lista de montaje después del disco; en caso de error, se devuelve un error con un motivo.
+     * @return 成功后返回落盘后的挂载列表；失败返回带原因的错误
      */
     suspend fun upsert(mount: WorkspaceMount): MountStoreResult = withContext(Dispatchers.IO) {
         if (mount.id in BUILT_IN_MOUNT_IDS) {
-            return@withContext MountStoreResult.Error("Los soportes integrados no se pueden modificar")
+            return@withContext MountStoreResult.Error("内置挂载不可修改")
         }
         if (!WorkspaceMount.isValidId(mount.id)) {
-            return@withContext MountStoreResult.Error("El ID de montaje solo puede ser una letra que comience con una letra minúscula, un número, un guión bajo o un guión.")
+            return@withContext MountStoreResult.Error("挂载标识只能是小写字母开头的字母、数字、下划线或连字符")
         }
         if (mount.provider == MountProvider.LOCAL) {
             val root = mount.rootPath?.let(::File)
             if (root == null || !root.isDirectory) {
-                return@withContext MountStoreResult.Error("El directorio no existe o no es una carpeta")
+                return@withContext MountStoreResult.Error("目录不存在或不是文件夹")
             }
             if (root.absolutePath == toolOutputsDir.absolutePath) {
-                return@withContext MountStoreResult.Error("El directorio de salida de la herramienta ya existe como montaje integrado.,No es necesario volver a colgar")
+                return@withContext MountStoreResult.Error("工具输出目录已作为内置挂载存在,不需要再挂一次")
             }
         } else {
             if (mount.treeUri.isNullOrBlank()) {
-                return@withContext MountStoreResult.Error("Falta autorización de directorio")
+                return@withContext MountStoreResult.Error("缺少目录授权")
             }
         }
         mutex.withLock {
             val stored = readStored()
             if (stored.any { it.id != mount.id && sameRoot(it, mount) }) {
-                return@withLock MountStoreResult.Error("Este directorio ya ha sido montado.")
+                return@withLock MountStoreResult.Error("该目录已经挂载过了")
             }
             val next = stored.filter { it.id != mount.id } + mount
-            if (!writeStored(next)) return@withLock MountStoreResult.Error("Error al guardar")
+            if (!writeStored(next)) return@withLock MountStoreResult.Error("保存失败")
             cache = next
             MountStoreResult.Success(builtInMounts() + next)
         }
     }
 
     /**
-     * Eliminar una montura.
+     * 删除一条挂载。
      *
-     * Sólo se eliminará el registro y no se tocarán los archivos del disco.——La montura es un registro de autorización, no de propiedad.
+     * 只删登记，不动磁盘上的文件——挂载是一条授权记录，不是所有权。
      *
-     * @return ¿Realmente eliminaste un elemento?
+     * @return 是否真的删掉了一条
      */
     suspend fun remove(id: String): Boolean = withContext(Dispatchers.IO) {
         if (id in BUILT_IN_MOUNT_IDS) return@withContext false
@@ -154,7 +154,7 @@ class WorkspaceMountStore(private val context: Context) {
         }
     }
 
-    /** Registre un uso y utilícelo para ordenar la interfaz por uso reciente. */
+    /** 记录一次使用，用于界面按最近使用排序。 */
     suspend fun touch(id: String): Unit = withContext(Dispatchers.IO) {
         if (id in BUILT_IN_MOUNT_IDS) return@withContext
         mutex.withLock {
@@ -167,7 +167,7 @@ class WorkspaceMountStore(private val context: Context) {
         }
     }
 
-    /** Lea la tabla de montaje del disco caído; cuando el archivo falta o está dañado, se devuelve una tabla vacía para evitar que los archivos defectuosos bloqueen todo el espacio de trabajo. */
+    /** 读取落盘的挂载表；文件缺失或损坏时返回空表，不让坏文件挡住整个工作区。 */
     private fun readStored(): List<WorkspaceMount> {
         cache?.let { return it }
         if (!storeFile.exists()) return emptyList()
@@ -178,14 +178,14 @@ class WorkspaceMountStore(private val context: Context) {
             } else {
                 json.decodeFromString(ListSerializer(WorkspaceMount.serializer()), text)
             }
-        }.onError { message, _ -> Logger.w(TAG, "No se pudo leer la tabla de montaje: $message") }
+        }.onError { message, _ -> Logger.w(TAG, "读取挂载表失败: $message") }
             .getOrNull() ?: return emptyList()
         val cleaned = parsed.filter { it.id !in BUILT_IN_MOUNT_IDS && WorkspaceMount.isValidId(it.id) }
         cache = cleaned
         return cleaned
     }
 
-    /** Escritura atómica: primero escriba el archivo temporal y luego cámbiele el nombre para evitar que lo eliminen a la mitad y deje la mitad del JSON. */
+    /** 原子写入：先写临时文件再改名，避免中途被杀留下半份 JSON。 */
     private fun writeStored(mounts: List<WorkspaceMount>): Boolean = resultOf {
         val payload = json.encodeToString(ListSerializer(WorkspaceMount.serializer()), mounts)
         val temp = File(storeFile.parentFile, "${storeFile.name}.tmp")
@@ -194,16 +194,16 @@ class WorkspaceMountStore(private val context: Context) {
             storeFile.writeText(payload, Charsets.UTF_8)
             temp.delete()
         }
-    }.onError { message, _ -> Logger.w(TAG, "No se pudo escribir en la tabla de montaje: $message") }.isSuccess
+    }.onError { message, _ -> Logger.w(TAG, "写入挂载表失败: $message") }.isSuccess
 
-    /** Si los dos soportes apuntan a la misma ubicación. */
+    /** 两条挂载是否指向同一个位置。 */
     private fun sameRoot(a: WorkspaceMount, b: WorkspaceMount): Boolean = when {
         a.provider != b.provider -> false
         a.provider == MountProvider.SAF -> a.treeUri == b.treeUri
         else -> a.rootPath == b.rootPath
     }
 
-    /** [upsert] resultado. */
+    /** [upsert] 的结果。 */
     sealed class MountStoreResult {
         data class Success(val mounts: List<WorkspaceMount>) : MountStoreResult()
 
@@ -213,22 +213,21 @@ class WorkspaceMountStore(private val context: Context) {
     companion object {
         private const val TAG = "WorkspaceMountStore"
 
-        /** El nombre del directorio montado predeterminado. */
-        private const val MAIN_DIR_NAME = "workspace"
+        /** 默认挂载的目录名。 */
 
-        /** El nombre para mostrar montado predeterminado. */
-        private const val MAIN_LABEL = "espacio de trabajo"
+        /** 默认挂载的展示名。 */
+        private const val MAIN_LABEL = "工作区"
 
-        /** El nombre del directorio generado por la herramienta también es su identificador como montaje integrado. */
+        /** 工具长输出的目录名，也是它作为内置挂载的标识。 */
         private const val TOOL_OUTPUTS_DIR_NAME = "tool_outputs"
 
-        /** La herramienta genera el ID de montaje. */
+        /** 工具输出挂载的标识。 */
         const val TOOL_OUTPUTS_MOUNT_ID: String = TOOL_OUTPUTS_DIR_NAME
 
-        /** La herramienta genera el nombre para mostrar del montaje. */
-        private const val TOOL_OUTPUTS_LABEL = "Salida de herramienta"
+        /** 工具输出挂载的展示名。 */
+        private const val TOOL_OUTPUTS_LABEL = "工具输出"
 
-        /** Montaje integrado: no se puede colocar en el disco, no se puede eliminar y no se le puede cambiar el nombre. */
+        /** 内置挂载：不落盘、不可删除、不可改名。 */
         private val BUILT_IN_MOUNT_IDS: Set<String> = setOf(WorkspaceMount.MAIN_ID, TOOL_OUTPUTS_MOUNT_ID)
     }
 }

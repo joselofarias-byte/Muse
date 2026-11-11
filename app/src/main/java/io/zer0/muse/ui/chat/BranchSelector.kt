@@ -19,12 +19,12 @@ import io.zer0.muse.ui.common.icons.MuseIcons
 import io.zer0.muse.ui.theme.MuseMotion
 
 /**
- * IU del selector de sucursales.
+ * 分支选择器 UI。
  *
  * Displays left/right arrows with "1/3" indicator to switch between
  * alternative assistant responses at the same conversation position.
  *
- * Solo visible si existen varias ramas(hasBranches = true).
+ * 仅在存在多个分支时可见(hasBranches = true)。
  */
 @Composable
 fun BranchSelector(

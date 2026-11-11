@@ -11,7 +11,7 @@
     <string name="moment_add_images_hint">Добавить изображения (макс. %1$d)</string>
     <!-- ===== Дневник (MiniDiaryScreen) ===== -->
     <string name="diary_generate_failed">Не удалось создать дневник, повторите попытку позже</string>
-    <string name="diary_title">Дневник Muse</string>
+    <string name="diary_title">Дневник Musa</string>
     <string name="diary_date_title">%3$s.%2$d.%1$d</string>
     <string name="diary_empty_today">Сегодня ещё нет дневника</string>
     <string name="diary_empty_other_day">В этот день нет дневника</string>
@@ -73,7 +73,7 @@
     <string name="moment_comment_cd">Комментарий</string>
     <string name="moment_favorite">В избранное</string>
     <string name="moment_more_actions">Дополнительные действия для этой публикации</string>
-    <string name="moment_sender_muse">Muse</string>
+    <string name="moment_sender_muse">Musa</string>
     <string name="moment_sender_me">Я</string>
     <string name="moment_comment_hint">Оставить комментарий:</string>
     <string name="moment_delete_title">Удалить запись</string>
@@ -84,7 +84,7 @@
     <string name="moment_messages_cd">Сообщения</string>
     <string name="moment_publish_cd">Опубликовать (нажмите для фото, удерживайте для текста)</string>
     <string name="moment_empty_feed">Записей пока нет</string>
-    <string name="moment_empty_hint">Нажмите + в правом верхнем углу, чтобы создать первую запись\nMuse и ассистенты тоже поделятся своей жизнью</string>
+    <string name="moment_empty_hint">Нажмите + в правом верхнем углу, чтобы создать первую запись\nMusa и ассистенты тоже поделятся своей жизнью</string>
     <string name="moment_messages_empty">Пока нет отметок «Нравится» и комментариев</string>
     <string name="moment_notification_liked">%1$s понравилась ваша запись</string>
     <string name="moment_notification_commented">%1$s прокомментировал(а) вашу запись</string>
@@ -130,7 +130,13 @@
     <string name="chat_tool_call_result">Результат: %1$s</string>
     <string name="chat_share_failed_no_uri">Не удалось поделиться: не удалось получить URI файла</string>
     <string name="chat_companion_days_zero">Только сегодня встретились</string>
-    <string name="chat_companion_days">Вместе %1$d дней</string>
+    <plurals name="chat_companion_days">
+        <item quantity="one">Вместе %1$d день</item>
+        <item quantity="few">Вместе %1$d дня</item>
+        <item quantity="other">Вместе %1$d дней</item>
+        <item quantity="many">Вместе %1$d дней</item>
+    </plurals>
+
     <string name="chat_thinking">Думая…</string>
 
     <!-- Errors and permissions -->
@@ -421,12 +427,33 @@
     <string name="settings_sticker_freq_occasional">Редко</string>
     <string name="settings_sticker_freq_normal">Обычно</string>
     <string name="settings_sticker_freq_frequent">Часто</string>
-    <string name="settings_sticker_upload_zip">Импортировать ZIP-файл</string>
+    <string name="settings_sticker_upload">Импортировать стикеры</string>
+    <string name="settings_sticker_upload_subtitle">Поддерживаются zip, документы docx/pptx и картинки; по одному файлу</string>
+    <string name="settings_sticker_add_from_gallery">Добавить из галереи</string>
+    <string name="settings_sticker_add_from_gallery_subtitle">Можно выбрать сразу несколько; попадут в открытую коллекцию</string>
+    <string name="settings_sticker_review_title">Просмотр %1$d стикеров</string>
+    <string name="settings_sticker_review_hint">Автоотбор и авторезка могут ошибаться; нажмите, чтобы снять. Набор: %2$s</string>
+    <string name="settings_sticker_review_import">Импорт %1$d</string>
+    <string name="settings_sticker_export_pack">Экспортировать набор</string>
+    <string name="settings_sticker_export_done">Набор «%1$s» экспортирован: %2$d шт.</string>
+    <string name="settings_sticker_download_originals">Скачать оригиналы по ссылкам (%1$d)</string>
+    <string name="settings_sticker_download_result">Заменено %1$d, сбоев %2$d</string>
+    <string name="settings_sticker_rename_pack">Переименовать набор</string>
+    <string name="settings_sticker_rename_title">Переименовать набор стикеров</string>
+    <string name="settings_sticker_action_saved">Обновлено</string>
+    <string name="settings_sticker_action_failed">Не изменено: %1$s</string>
+    <string name="settings_sticker_actions_title">Этот стикер</string>
+    <string name="settings_sticker_actions_hint">Сейчас в «%1$s»</string>
+    <string name="settings_sticker_caption_label">Подпись</string>
+    <string name="settings_sticker_move_target_label">Перенести в другой набор (новое имя создаёт набор)</string>
+    <string name="settings_sticker_move_up">Выше</string>
+    <string name="settings_sticker_move_down">Ниже</string>
     <string name="settings_sticker_upload_zip_subtitle">Выберите ZIP-файл;</string>
     <string name="settings_sticker_imported">Импортированные стикеры %1$d</string>
     <string name="settings_sticker_import_failed">Не удалось импортировать: %1$s</string>
+    <string name="settings_sticker_export_location_failed">Не удалось записать в выбранное место</string>
     <string name="settings_sticker_empty_title">Наклеек пока нет</string>
-    <string name="settings_sticker_empty_subtitle">Нажмите «Импортировать ZIP» выше, чтобы добавить ZIP-файл.</string>
+    <string name="settings_sticker_empty_subtitle">Нажмите «Импортировать стикеры» выше; поддерживаются ZIP, DOCX/PPTX и изображения</string>
     <string name="settings_sticker_delete_confirm">Удалить эту наклейку?</string>
     <string name="settings_sticker_category_all">Все</string>
 
@@ -447,7 +474,7 @@
     <string name="slash_command_reset_busy">Сброс невозможен во время генерации, сначала остановите</string>
     <string name="slash_command_archive_done">Сессия заархивирована</string>
     <string name="chat_agent_tab_title">Agent</string>
-    <!-- Correcciones en la interfaz (i18n-3.x): Eliminación por lotes de emoticones/Borrar i18n(Copiar temporalmente chino,Traducción posterior) -->
+    <!-- 前端修复 (i18n-3.x): 表情包批量删除/清空 i18n(临时复制中文,后续补译) -->
     <string name="settings_sticker_batch_done">Готово</string>
     <string name="settings_sticker_batch_delete">Массовое удаление</string>
     <string name="settings_sticker_delete_selected">Удалить выбранные %1$d элементов</string>
@@ -466,7 +493,7 @@
     <string name="chat_tool_card_open">Открыть карточку</string>
     <string name="chat_update_compress">Сжать контекст</string>
     <string name="chat_ignore_memory_option">Этот диалог не будет использовать память</string>
-    <!-- A5: Capa emergente de información del mensaje(modelo/Consume mucho tiempo/Token Dosis) -->
+    <!-- A5: 消息信息弹层(模型/耗时/Token 用量) -->
     <string name="msg_info_title">Информация о сообщении</string>
     <string name="msg_info_model">Модель</string>
     <string name="msg_info_time">Время</string>
@@ -482,7 +509,7 @@
     <string name="msg_info_estimated">Оценка</string>
     <string name="msg_info_no_data">Нет данных о генерации</string>
     <string name="msg_info_unknown">Неизвестно</string>
-    <!-- A1: Buscar dentro de una sesión(Cuadro de búsqueda local en la página de chat) -->
+    <!-- A1: 会话内查找(聊天页就地查找框) -->
     <string name="chat_find_in_conversation">Поиск в беседе</string>
     <string name="chat_find_placeholder">Поиск в текущей беседе</string>
     <string name="chat_find_count">%1$d из %2$d</string>
@@ -490,7 +517,7 @@
     <string name="chat_find_prev">Назад</string>
     <string name="chat_find_next">Вперёд</string>
     <string name="chat_find_close">Закрыть поиск</string>
-    <!-- C2: Búsqueda instantánea de la lista de conversaciones -->
+    <!-- C2: 会话列表即时搜索 -->
 
     <string name="chat_pending_queue_title">Ожидают отправки</string>
     <string name="chat_pending_count">%1$d шт.</string>
@@ -572,7 +599,7 @@
     <string name="chat_token_output">Вывод</string>
     <string name="chat_token_prompt">Входной контекст</string>
 
-    <!-- Divisor de compresión de contexto (solo se muestra en la interfaz, no se ingresa en el contexto del modelo) -->
+    <!-- 上下文压缩分隔线（仅界面展示，不进模型上下文） -->
     <string name="chat_context_divider_title">Контекст сжат</string>
     <string name="chat_context_divider_title_count">Контекст сжат · %1$d сообщений в сводке</string>
     <string name="chat_context_divider_hint_collapsed">Нажмите, чтобы показать исходные сообщения</string>
@@ -583,7 +610,7 @@
     <string name="moment_visibility_title">Кому видно</string>
     <string name="moment_visibility_public">Всем</string>
     <string name="diary_perspective_character">Взгляд персонажа: этот дневник написан им</string>
-    <!-- v2.6.7: Aviso visible cuando la ejecución de la herramienta se pausa globalmente (de lo contrario, el usuario solo ve"suspendido"Pero no sé por qué) -->
+    <!-- v2.6.7: 工具执行被全局暂停时的可见提示（否则用户只看到"已暂停"却不知为何） -->
     <string name="chat_tool_paused_banner">Выполнение инструментов приостановлено, поэтому они не запускаются.</string>
     <string name="chat_tool_paused_banner_action">Настройки</string>
     <string name="settings_chat_show_assistant_name">Показывать имя ассистента</string>
@@ -606,4 +633,35 @@
     <string name="chat_process_running_command">Выполняется команда</string>
     <string name="chat_process_subagent_running">Фоновых подзадач: %1$d</string>
     <string name="chat_process_subagent_section">Фоновые подзадачи</string>
+    <string name="chat_process_running">Выполняется</string>
+    <string name="chat_process_completed">Завершено</string>
+    <string name="chat_process_steps_completed">Завершено шагов: %1$d</string>
+    <string name="chat_process_steps_progress">Завершено шагов: %1$d из %2$d</string>
+    <string name="chat_process_step_fallback">Шаг</string>
+    <string name="chat_process_running_status">В процессе</string>
+    <string name="proactive_ledger_age_now">Только что</string>
+    <string name="proactive_ledger_age_hours">%1$d ч. назад</string>
+    <string name="proactive_ledger_age_days">%1$d дн. назад</string>
+    <string name="search_custom_engine_saved">Сохранено</string>
+    <string name="search_custom_engine_endpoint_required">Укажите URL запроса</string>
+    <string name="channel_contact_group_label">Группа</string>
+    <string name="channel_conversation_attachment_placeholder">[Вложение]</string>
+    <string name="channel_conversation_image_placeholder">[Изображение]</string>
+    <string name="channel_conversation_empty_placeholder">[Пустое сообщение]</string>
+    <string name="plugin_debug_empty">Вызовов моста пока нет. Установите плагин и запустите его один раз, чтобы увидеть записи здесь.</string>
+    <string name="backup_import_error_unreadable">Не удается прочитать резервную копию. Проверьте целостность файла.</string>
+    <string name="backup_import_error_mismatch">Резервная копия не соответствует этой версии. Предыдущее состояние восстановлено.</string>
+    <string name="backup_import_error_password">Ошибка распаковки. Проверьте пароль резервной копии.</string>
+    <string name="backup_import_error_version">Версия резервной копии слишком новая или слишком старая.</string>
+    <string name="backup_import_error_missing">Файл резервной копии не найден. Возможно, он перемещен или удален.</string>
+    <string name="backup_import_error_space">Недостаточно места. Освободите место и повторите попытку.</string>
+    <string name="backup_import_error_unknown">Резервная копия повреждена. Предыдущее состояние восстановлено.</string>
+    <string name="onboarding_connect_error_unauthorized">Ключ API недействителен или истек. Введите его снова.</string>
+    <string name="onboarding_connect_error_forbidden">Доступ запрещен. Проверьте, разрешена ли этому ключу выбранная модель.</string>
+    <string name="onboarding_connect_error_not_found">Неверный адрес или имя модели. Проверьте оба значения.</string>
+    <string name="onboarding_connect_error_rate_limit">Слишком много запросов. Повторите попытку позже.</string>
+    <string name="onboarding_connect_error_timeout">Время подключения истекло. Проверьте сеть или URL.</string>
+    <string name="onboarding_connect_error_server">Поставщик недоступен. Повторите позже; если ошибка не исчезает, модель могла быть отключена.</string>
+    <string name="onboarding_connect_error_no_model">Нет модели для проверки. Сначала загрузите список моделей.</string>
+    <string name="sticker_category_default">По умолчанию</string>
 </resources>

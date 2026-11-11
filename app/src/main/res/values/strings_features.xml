@@ -36,10 +36,10 @@
     <string name="groupchat_template_debate">Debate sobre pros y contras</string>
     <string name="groupchat_template_brainstorm">lluvia de ideas</string>
     <string name="groupchat_template_retro">Revisión del proyecto</string>
-    <string name="groupchat_collapsed_round">Todavía hay más en esta ronda. %1$d Comentarios, haga clic para ampliar</string>
+    <string name="groupchat_collapsed_round">Todavía hay más en esta ronda. %1$d Comentarios, toca para ampliar</string>
     <string name="groupchat_observers">Observador (no participa en los turnos)</string>
     <string name="chat_committee">Iniciar una discusión</string>
-    <!-- v2.6.2(comentarios de los usuarios): Antecedentes de esta conversación -->
+    <!-- v2.6.2（用户反馈）: 本对话背景 -->
     <string name="chat_set_background">Antecedentes de esta conversación</string>
     <string name="settings_chat_background_assistant_title">El fondo de chat del asistente</string>
     <string name="settings_chat_background_assistant_subtitle">Se aplica a todas las conversaciones del asistente, las conversaciones individuales se pueden cubrir por separado</string>
@@ -74,14 +74,13 @@
     <string name="groupchat_name_label">Nombre del chat grupal</string>
     <string name="groupchat_name_required">Por favor ingresa el nombre del chat grupal</string>
     <string name="groupchat_select_members">Seleccionar miembros</string>
-    <string name="groupchat_no_assistants">Aún no hay asistente. Primero cree uno en la página de administración de agentes.</string>
-    <string name="groupchat_member_required">Por favor seleccione al menos un miembro</string>
+    <string name="groupchat_no_assistants">Aún no hay asistentes. Crea uno desde la gestión de asistentes.</string>
+    <string name="groupchat_member_required">Por favor selecciona al menos un miembro</string>
     <string name="groupchat_team_optional">Equipos asociados (opcional)</string>
     <string name="groupchat_no_team">No relevante</string>
-    <string name="groupchat_selected_members">Seleccionado %1$d miembros</string>
     <string name="groupchat_create_btn">crear</string>
     <string name="groupchat_edit_cd">Editar chat grupal</string>
-    <!-- v1.0.72: Menú de tres puntos -->
+    <!-- v1.0.72: 三点菜单 -->
     <string name="groupchat_search">Buscar</string>
     <string name="groupchat_edit_provider">Proveedor de asistente de edición</string>
     <string name="groupchat_search_hint">Buscar mensajes de chat grupal</string>
@@ -90,14 +89,14 @@
     <string name="groupchat_edit">Editar</string>
     <string name="groupchat_edit_title">Editar chat grupal</string>
     <string name="groupchat_edit_btn">Guardar</string>
-    <string name="groupchat_edit_member_required">Por favor mantenga al menos un miembro</string>
+    <string name="groupchat_edit_member_required">Por favor mantén al menos un miembro</string>
     <string name="groupchat_edit_name_hint">Nombre del chat grupal</string>
-    <!-- v2.x: Modo de discusión de chat grupal -->
+    <!-- v2.x: 群聊讨论模式 -->
     <string name="groupchat_mode_title">modo de discusión</string>
     <string name="groupchat_mode_round_robin">girar para hablar</string>
     <string name="groupchat_mode_round_robin_desc">Después de que el usuario envía un mensaje, cada IA ​​hablará durante una ronda por turno.</string>
     <string name="groupchat_mode_auto">discusión libre</string>
-    <string name="groupchat_mode_auto_desc">AI Continúan automáticamente las conversaciones entre ellos, deteniéndose cuando se alcanza el límite superior o nadie habla.</string>
+    <string name="groupchat_mode_auto_desc">Los asistentes conversan automáticamente hasta alcanzar el límite o hasta que ninguno tenga nada que añadir.</string>
     <string name="groupchat_mode_debate">modo debate</string>
     <string name="groupchat_mode_debate_desc">Cadena fija: propuesta → pregunta → Mejora, todos deben responder a la persona anterior.</string>
     <string name="groupchat_mode_host">Modo moderador</string>
@@ -105,75 +104,75 @@
     <string name="groupchat_mode_auto_rounds">Número máximo de rondas</string>
     <string name="groupchat_mode_select_host">Seleccionar anfitrión</string>
     <string name="groupchat_mode_no_host">No seleccionado (rotación alternativa)</string>
-    <!-- v2.x: Operación de mensajes de chat grupal y mejora de la colaboración -->
+    <!-- v2.x: 群聊消息操作与协同增强 -->
     <string name="groupchat_regenerate">regenerar</string>
     <string name="groupchat_reply">Cotización Responder</string>
     <string name="groupchat_whisper">susurrar</string>
-    <string name="groupchat_whisper_hint">Ingrese el contenido del mensaje privado…</string>
+    <string name="groupchat_whisper_hint">Escribe el mensaje privado…</string>
     <string name="groupchat_whisper_to">mensaje privado a %1$s</string>
     <string name="groupchat_vote">Iniciar una votación</string>
-    <string name="groupchat_vote_topic_hint">Ingrese la pregunta de votación…</string>
+    <string name="groupchat_vote_topic_hint">Escribe la pregunta de la votación…</string>
     <string name="groupchat_vote_title">Iniciar una votación</string>
     <string name="groupchat_summary_title">Resumen de conclusiones</string>
     <string name="groupchat_message_whisper">[susurrar] Visible solo para ti</string>
     <string name="groupchat_reply_quote">Cotización %1$s:%2$s</string>
-    <!-- v1.x: Modo de selección múltiple -->
+    <!-- v1.x: 多选模式 -->
     <string name="groupchat_select">elegir</string>
     <string name="groupchat_select_all">Seleccionar todo</string>
     <string name="groupchat_delete_selected_title">Eliminar %1$d ¿mensaje?</string>
     <string name="groupchat_delete_selected_confirm">Los mensajes seleccionados se eliminarán y esta operación no se podrá deshacer.</string>
     <string name="groupchat_selected_count">Seleccionado %1$d Artículo</string>
     <string name="groupchat_streaming_title">Entrando</string>
-    <string name="groupchat_reply_hint">Ingrese el contenido de la respuesta…</string>
-    <string name="groupchat_summary_desc">Elija una IA para resumir el consenso y el desacuerdo en la discusión actual</string>
+    <string name="groupchat_reply_hint">Escribe tu respuesta…</string>
+    <string name="groupchat_summary_desc">Elige una IA para resumir el consenso y el desacuerdo en la discusión actual</string>
     <string name="groupchat_summary_auto">Selección automática (primer miembro)</string>
-    <!-- v2.x: Gestión del contexto del chat grupal -->
+    <!-- v2.x: 群聊上下文管理 -->
     <string name="groupchat_context_shared_docs">Documentos compartidos en grupo</string>
     <string name="groupchat_context_shared_docs_desc">Visible para todos los miembros, inyectado como conocimiento previo compartido.</string>
     <string name="groupchat_context_add_doc">Agregar documento</string>
     <string name="groupchat_context_doc_title">Título</string>
     <string name="groupchat_context_doc_content">Texto</string>
-    <string name="groupchat_context_doc_title_hint">Introduzca el título del documento</string>
-    <string name="groupchat_context_doc_content_hint">Ingrese el texto del documento (se admite texto sin formato)</string>
+    <string name="groupchat_context_doc_title_hint">Introduce el título del documento</string>
+    <string name="groupchat_context_doc_content_hint">Introduce el texto del documento (se admite texto sin formato)</string>
     <string name="groupchat_context_no_docs">Aún no hay documentos compartidos</string>
     <string name="groupchat_context_doc_chars">%1$d palabra</string>
-    <string name="groupchat_context_private_context">AI Contexto exclusivo</string>
+    <string name="groupchat_context_private_context">Contexto privado del asistente</string>
     <string name="groupchat_context_private_context_desc">Solo visible para la IA correspondiente, no para otros miembros.</string>
-    <string name="groupchat_context_private_context_hint">Ingrese al contexto único de la IA (configuración de roles, restricciones privadas, etc.)</string>
+    <string name="groupchat_context_private_context_hint">Introduce el contexto privado de la IA (roles, restricciones, etc.)</string>
     <string name="groupchat_context_private_context_set">Ya configurado</string>
     <string name="groupchat_context_private_context_empty">no establecido</string>
     <string name="groupchat_context_save">Guardar</string>
     <string name="groupchat_context_clear">Borrar</string>
-    <!-- ActivityHub: agent Redacción de chips de estado activo (inactivo/pensar/trabajo/espera/completado) -->
+    <!-- ActivityHub: agent 活动状态 chip 文案（空闲/思考/工作/等待/完成） -->
     <string name="groupchat_activity_viewing">leyendo las noticias</string>
     <string name="groupchat_activity_replying">Respondiendo</string>
     <string name="groupchat_activity_no_reply">Elige no responder</string>
     <string name="groupchat_activity_error">error</string>
-    <!-- v2.1: Chat grupal más mejora del menú(Miembros / Votación / Resumen / Contexto) -->
+    <!-- v2.1: 群聊加号菜单增强(成员 / 表决 / 总结 / 上下文) -->
     <string name="groupchat_tool_members">Lista de miembros</string>
     <string name="groupchat_tool_vote">Iniciar una votación</string>
     <string name="groupchat_tool_summary">Discusión resumida</string>
     <string name="groupchat_tool_context">Contexto del chat grupal</string>
     <string name="groupchat_tool_mention">@Mencionar miembros</string>
 
-    <!-- Correcciones en la interfaz (i18n-1/2): Detalles del chat grupal y descripción de antecedentes, borrado de la memoria del chat grupal -->
+    <!-- 前端修复 (i18n-1/2): 群聊详情背景描述、清空群聊记忆 -->
     <string name="groupchat_bg_cd">Fondo de chat</string>
     <string name="groupchat_clear_memory">Borrar la memoria del chat grupal</string>
     <string name="groupchat_clear_memory_confirm">¿Estás seguro de que deseas borrar la memoria del chat grupal de este grupo? El asistente ya no citará resúmenes de discursos anteriores en este grupo (incluidos el tono y el estilo).</string>
     <string name="groupchat_clear_memory_btn">Borrar</string>
-    <!-- v2.x: Cree rápidamente una entrada para escribir un chat grupal -->
-    <!-- v2.x: Archivo de chat grupal -->
+    <!-- v2.x: 写作群聊快速创建入口 -->
+    <!-- v2.x: 群聊归档 -->
     <string name="groupchat_archive">Archivo</string>
     <string name="groupchat_unarchive">Desarchivar</string>
 
     <!-- ===== ui/account ===== -->
-    <string name="account_default_user">Muse Usuario</string>
+    <string name="account_default_user">Usuario de Muse</string>
     <string name="account_loading">por favor espera…</string>
-    <!-- v2.x: Editar página de perfil(Sin registro de inicio de sesión UI,Solo avatar local + apodo) -->
+    <!-- v2.x: 编辑个人资料页(无登录注册 UI,仅本地头像 + 昵称) -->
     <string name="account_edit_profile">Editar perfil</string>
     <string name="account_avatar">Avatar</string>
     <string name="account_change_avatar">Cambiar avatar</string>
-    <string name="account_change_avatar_hint">Haga clic en el avatar para seleccionar una imagen del álbum.</string>
+    <string name="account_change_avatar_hint">Toca en el avatar para seleccionar una imagen del álbum.</string>
     <string name="account_name_label">nombre</string>
     <string name="account_name_placeholder">ingresa tu nombre</string>
     <string name="account_save">Guardar</string>
@@ -181,7 +180,7 @@
     <string name="account_user_profile_subtitle">Deja que la IA te conozca mejor</string>
 
     <!-- ===== ui/onboarding ===== -->
-    <!-- onboarding_next / onboarding_start Ya definido en strings.xml principal,No repetido aquí -->
+    <!-- onboarding_next / onboarding_start 已在主 strings.xml 定义,此处不重复 -->
 
     <!-- ===== onboarding v2 (5-step redesign) ===== -->
 
@@ -189,7 +188,7 @@
     <string name="schedule_title">tareas programadas</string>
     <string name="schedule_new_task">Crear una nueva tarea programada</string>
     <string name="schedule_empty_title">Aún no hay tareas programadas</string>
-    <string name="schedule_empty_subtitle">Haga clic en el botón a continuación para crear su primera tarea</string>
+    <string name="schedule_empty_subtitle">Toca en el botón a continuación para crear su primera tarea</string>
     <string name="schedule_deleted">Eliminado</string>
     <string name="schedule_executed">ejecutado</string>
     <string name="schedule_collapse_history">Contraer historial de ejecución</string>
@@ -224,21 +223,28 @@
     <string name="schedule_create_btn">crear</string>
     <string name="schedule_cancel">Cancelar</string>
     <string name="schedule_msg_cancel">Cancelar mensaje programado</string>
-    <string name="schedule_err_name_required">Por favor complete el nombre de la tarea</string>
-    <string name="schedule_err_content_required">Por favor complete el contenido de ejecución.</string>
-    <string name="schedule_err_cron_invalid">Cron Formato de expresión no válido; verifíquelo o utilice el predeterminado.</string>
+    <string name="schedule_err_name_required">Por favor completa el nombre de la tarea</string>
+    <string name="schedule_time_daily">Hora diaria</string>
+    <string name="schedule_time_weekly">Hora semanal</string>
+    <string name="schedule_time_once">Ejecutar a las</string>
+    <string name="schedule_time_unset">Toca para elegir la hora</string>
+    <string name="schedule_err_once_time_required">Elige cuándo debe ejecutarse esta tarea única</string>
+    <string name="schedule_status_running">En ejecución</string>
+    <string name="schedule_status_completed">Completada</string>
+    <string name="schedule_err_content_required">Por favor completa el contenido de ejecución.</string>
+    <string name="schedule_err_cron_invalid">Cron Formato de expresión no válido; compruébalo o usa el predeterminado.</string>
     <string name="schedule_assistant">asistente</string>
     <string name="schedule_select_assistant">Seleccionar asistente</string>
     <string name="schedule_no_assistants">Aún no hay asistente</string>
     <string name="schedule_default_assistant">Asistente predeterminado</string>
-    <string name="schedule_err_ai_timeout">AI tiempo de espera de llamada (%1$ds)</string>
+    <string name="schedule_err_ai_timeout">Se agotó el tiempo de espera de la IA (%1$ds)</string>
     <string name="schedule_err_no_assistant">No hay asistente disponible, por favor crea uno primero</string>
 
-    <!-- v1.137: Configuración automatizada avanzada -->
+    <!-- v1.137: 高级自动化配置 -->
     <string name="schedule_show_advanced">Ampliar la automatización avanzada</string>
     <string name="schedule_hide_advanced">Contraer automatización avanzada</string>
 
-    <!-- Correcciones en la interfaz (i18n-5): describeCron descripción legible por humanos -->
+    <!-- 前端修复 (i18n-5): describeCron 人类可读描述 -->
     <string name="schedule_cron_daily">todos los dias %1$s</string>
     <string name="schedule_cron_hourly">cada hora %1$s puntos</string>
     <string name="schedule_cron_every_minute">por minuto</string>
@@ -269,7 +275,7 @@
     <string name="schedule_condition_start_hour">hora de inicio</string>
     <string name="schedule_condition_end_hour">hora final</string>
     <string name="schedule_action_title">realizar acción</string>
-    <string name="schedule_action_type_ai_prompt">AI Consejos</string>
+    <string name="schedule_action_type_ai_prompt">Instrucciones para la IA</string>
     <string name="schedule_action_type_create_quick_note">Crear registro</string>
     <string name="schedule_action_type_call_tool">herramienta de llamada</string>
     <string name="schedule_action_type_notify">Enviar notificación</string>
@@ -295,7 +301,7 @@
     <string name="quick_notes_delete_title">eliminar registro</string>
     <string name="quick_notes_edit_title">Editar registro</string>
     <string name="quick_notes_attach_image">agregar imagen</string>
-    <string name="quick_notes_attachment_failed">No se pudo agregar la imagen, es posible que no tenga permiso de lectura</string>
+    <string name="quick_notes_attachment_failed">No se pudo añadir la imagen. Comprueba el permiso de lectura.</string>
     <string name="quick_notes_title_label">Título</string>
     <string name="quick_notes_content_label">Texto</string>
     <string name="quick_notes_tags_label">Etiquetas (separadas por comas)</string>
@@ -303,19 +309,19 @@
     <string name="quick_notes_cancel">Cancelar</string>
     <string name="quick_notes_error_required">Por favor completa el título</string>
     <string name="quick_notes_input_hint">Graba tus pensamientos en este momento.…</string>
-    <string name="quick_notes_tag_hint">Ingrese #etiquetas para categorizar registros</string>
+    <string name="quick_notes_tag_hint">Introduce #etiquetas para organizar las notas</string>
     <string name="quick_notes_history">Historia</string>
     <string name="quick_notes_count">total %1$d Artículo</string>
     <string name="quick_notes_empty_title">Aún no hay registros</string>
     <string name="quick_notes_empty_subtitle">Escribe tu primer pensamiento y aparecerá aquí.</string>
     <string name="quick_notes_empty_search_title">No se encontró ningún registro coincidente</string>
-    <string name="quick_notes_empty_search_subtitle">Intente cambiar las palabras clave</string>
+    <string name="quick_notes_empty_search_subtitle">Intenta cambiar las palabras clave</string>
     <string name="quick_notes_copy">Copiar</string>
     <string name="quick_notes_copied">Copiado al portapapeles</string>
     <string name="quick_notes_send_to_chat">Enviar a nueva conversación</string>
     <string name="quick_notes_more">Más</string>
     <string name="quick_notes_clear_search">Borrar búsqueda</string>
-    <!-- v1.0.17: Papelera de reciclaje de registros rápidos -->
+    <!-- v1.0.17: 快速记录回收站 -->
     <string name="quick_notes_trash">papelera de reciclaje</string>
     <string name="quick_notes_trash_title">papelera de reciclaje</string>
     <string name="quick_notes_trash_empty">La papelera de reciclaje está vacía.</string>
@@ -330,40 +336,40 @@
     <string name="quick_notes_clear_trash_confirm">eliminará permanentemente todo lo que esté en la papelera de reciclaje %1$d registros, esta operación es irreversible.</string>
     <string name="quick_notes_trash_count">papelera de reciclaje %1$d Artículo</string>
 
-    <!-- ===== v1.0.18: Notas rápidas sobre 9 mejoras(Clasificación/Exportar/texto enriquecido/Accesorios/recordatorio/Cifrado/Paginación, etc.) ===== -->
-    <!-- carpeta/Clasificación -->
+    <!-- ===== v1.0.18: 快速记录 9 项增强(分类/导出/富文本/附件/提醒/加密/分页等) ===== -->
+    <!-- 文件夹/分类 -->
     <string name="quick_notes_folder_all">Todos</string>
     <string name="quick_notes_folder_uncategorized">Sin categoría</string>
     <string name="quick_notes_folder_set">Establecer carpeta</string>
     <string name="quick_notes_folder_new">Crear nueva carpeta</string>
-    <string name="quick_notes_folder_hint">Introduzca el nombre de la carpeta</string>
-    <!-- Exportar/Importar -->
+    <string name="quick_notes_folder_hint">Introduce el nombre de la carpeta</string>
+    <!-- 导出 / 导入 -->
     <string name="quick_notes_export">Exportar</string>
     <string name="quick_notes_export_markdown">Exportar como Markdown</string>
     <string name="quick_notes_export_json">Exportar como JSON</string>
     <string name="quick_notes_import_json">Importar desde JSON</string>
     <string name="quick_notes_export_empty">No hay registros para exportar</string>
     <string name="quick_notes_import_done">Importado %1$d registros</string>
-    <string name="quick_notes_import_failed">La importación falló, verifique el formato del archivo</string>
+    <string name="quick_notes_import_failed">La importación falló, comprueba el formato del archivo</string>
     <string name="quick_notes_parse_empty">El contenido del archivo está vacío o el formato no se puede analizar</string>
     <string name="quick_notes_share_title">Exportar registros rápidos</string>
-    <!-- texto enriquecido -->
+    <!-- 富文本 -->
     <string name="quick_notes_markdown_preview">Vista previa</string>
     <string name="quick_notes_markdown_edit">Editar</string>
     <string name="quick_notes_toggle_markdown">Markdown modo</string>
-    <!-- Accesorios -->
+    <!-- 附件 -->
     <string name="quick_notes_attachment_count">%1$d archivos adjuntos</string>
-    <!-- recordatorio -->
+    <!-- 提醒 -->
     <string name="quick_notes_reminder">recordatorio</string>
     <string name="quick_notes_reminder_set">Establecer recordatorio</string>
     <string name="quick_notes_reminder_cancel">Cancelar recordatorio</string>
     <string name="quick_notes_reminder_none">Sin recordatorio</string>
     <string name="quick_notes_reminder_scheduled">Conjunto de recordatorios: %1$s</string>
-    <!-- Cifrado -->
+    <!-- 加密 -->
     <string name="quick_notes_encrypt_on">Cifrado</string>
     <string name="quick_notes_encrypt_off">Descifrar</string>
-    <string name="quick_notes_encrypt_placeholder">Este registro ha sido cifrado, haga clic para desbloquearlo y verlo</string>
-    <!-- Paginación -->
+    <string name="quick_notes_encrypt_placeholder">Este registro ha sido cifrado, toca para desbloquearlo y verlo</string>
+    <!-- 分页 -->
     <string name="quick_notes_load_more">cargar más</string>
 
     <!-- ===== ui/knowledge ===== -->
@@ -371,12 +377,12 @@
     <string name="knowledge_folder_browser_hint">Las subcarpetas y archivos se mostrarán como directorios relativos dentro del archivo; También puede ingresar una nueva ruta al mover el documento.</string>
     <string name="knowledge_move_to_folder">Mover a la carpeta</string>
     <string name="knowledge_move_folder_title">Mover documentos</string>
-    <string name="knowledge_move_folder_hint">Ingrese la ruta de la carpeta, p.e. proyecto/Contrato; déjelo en blanco para indicar el directorio raíz de la base de conocimientos actual</string>
+    <string name="knowledge_move_folder_hint">Introduce la ruta de la carpeta, por ejemplo, proyecto/Contrato. Deja el campo vacío para usar el directorio raíz de la base de conocimientos actual.</string>
     <string name="knowledge_move_saving">En movimiento…</string>
     <string name="knowledge_move_success">Documento movido a la carpeta</string>
     <string name="knowledge_move_failed">No se pudo mover el documento:%1$s</string>
     <string name="knowledge_folder_item_files">%1$d archivos</string>
-    <!-- v2.4.6: Adición, eliminación y modificación de carpetas.(La carpeta también es una unidad de aislamiento de búsqueda.) -->
+    <!-- v2.4.6: 文件夹增删改(文件夹同时是检索隔离单位) -->
     <string name="knowledge_folder_new">Crear nueva carpeta</string>
     <string name="knowledge_folder_rename">Cambiar nombre de carpeta</string>
     <string name="knowledge_folder_delete">eliminar carpeta</string>
@@ -393,7 +399,7 @@
     <string name="knowledge_no_match_title">No se encontró ningún documento coincidente</string>
     <string name="knowledge_empty_title">La base de conocimientos está vacía.</string>
     <string name="knowledge_no_match_subtitle">Pruebe otras palabras clave</string>
-    <string name="knowledge_empty_subtitle">Haga clic en la esquina inferior derecha + Importar documento o paquete comprimido (ZIP/7Z/RAR)</string>
+    <string name="knowledge_empty_subtitle">Toca en la esquina inferior derecha + Importar documento o paquete comprimido (ZIP/7Z/RAR)</string>
     <string name="knowledge_deleted">Eliminado</string>
     <string name="knowledge_delete_doc">Eliminar documento</string>
     <string name="knowledge_delete">Eliminar</string>
@@ -419,10 +425,12 @@
     <string name="knowledge_zip_progress">Extrayendo e importando…(Importado %1$d un)</string>
     <string name="knowledge_zip_done">Base de conocimientos creada%1$s": Importar %2$d documentos, saltar %3$d un</string>
     <string name="knowledge_zip_empty">No hay documentos importables en el paquete comprimido.</string>
+    <!-- 回滚没清干净时说这句：否则列表里留着一个打不开的条目，而提示只说「没有可导入的文档」，用户两句对不上 -->
+    <string name="knowledge_zip_empty_leftover">No hay documentos importables en el archivo, y la entrada temporal no se eliminó: elimina «%1$s» de la lista manualmente</string>
     <string name="knowledge_import_empty">Falló la importación: el contenido del archivo está vacío</string>
-    <!-- v1.0.47 P7-3: Consejos para optimizar el tamaño del archivo -->
+    <!-- v1.0.47 P7-3: 文件大小友好提示 -->
     <string name="knowledge_file_too_large_title">Archivo demasiado grande</string>
-    <string name="knowledge_file_too_large_msg">tamaño de archivo %1$s, más de %2$s restricciones.\nSugerencias:\n• Sube archivos más pequeños en lotes\n• Utilice el analizador de la nube (configuración→RAG→analizador de documentos)</string>
+    <string name="knowledge_file_too_large_msg">tamaño de archivo %1$s, más de %2$s restricciones.\nSugerencias:\n• Sube archivos más pequeños en lotes\n• Usa el analizador de la nube (configuración→RAG→analizador de documentos)</string>
     <string name="knowledge_file_too_large_confirm">Lo tengo</string>
     <string name="knowledge_imported_indexed">Importado: %1$s (%2$d Bloque indexado)</string>
     <string name="knowledge_import_batch_progress">Importando %1$d/%2$d</string>
@@ -439,17 +447,17 @@
     <string name="knowledge_reading_default">Leer y analizar el documento.…</string>
     <string name="knowledge_reindexing_default">Reindexación…</string>
     <string name="knowledge_doc_meta_with_date">%1$s · %2$d palabra · %3$s</string>
-    <string name="knowledge_doc_index_broken">El índice se ha perdido (la reconstrucción falló a mitad de camino) y la recuperación no se realizará. Mantenga presionado para volver a indexar.</string>
+    <string name="knowledge_doc_index_broken">El índice se ha perdido (la reconstrucción falló a mitad de camino) y la recuperación no se realizará. Mantén presionado para volver a indexar.</string>
     <string name="knowledge_doc_chars">%1$s · %2$d palabra</string>
     <string name="knowledge_doc_chunks"> · %1$d bloquear</string>
     <string name="knowledge_doc_not_indexed"> · No indexado</string>
 
-    <!-- F-31: Importar base de conocimientos de destino -->
+    <!-- F-31: 导入目标知识库 -->
     <string name="knowledge_import_target_title">Importar a la base de conocimientos de destino</string>
     <string name="knowledge_import_target_default">Base de conocimientos predeterminada</string>
     <string name="knowledge_import_target_confirm">Base de conocimientos predeterminada</string>
 
-    <!-- F-32: Cambio de nombre de documento/edición de texto -->
+    <!-- F-32: 文档重命名 / 正文编辑 -->
     <string name="knowledge_rename_doc">Cambiar nombre</string>
     <string name="knowledge_rename_new_title">nuevo título</string>
     <string name="knowledge_renamed">Renombrado a: %1$s</string>
@@ -458,10 +466,10 @@
     <string name="knowledge_edit_save_reindex">Guardar y reindexar</string>
     <string name="knowledge_content_edited">El texto ha sido actualizado y reindexado.</string>
 
-    <!-- F-33: embedding Advertencia de cambio de modelo -->
+    <!-- F-33: embedding 模型切换预警 -->
     <string name="knowledge_embedding_migrated">El modelo de embeddings cambió. Vuelve a crear el índice para que la búsqueda encuentre los documentos anteriores.</string>
 
-    <!-- Correcciones en la interfaz (i18n-7): PDF tarjeta de metainformación -->
+    <!-- 前端修复 (i18n-7): PDF 元信息卡 -->
     <string name="knowledge_doc_info">Información del documento</string>
     <string name="knowledge_doc_outline">Directorio (%1$d artículo)</string>
     <string name="knowledge_sort_updated">por hora de actualización</string>
@@ -471,7 +479,7 @@
 
     <!-- ===== ui/stats ===== -->
     <string name="stats_back">Regresar</string>
-    <!-- v1.104 U8: Filtro de rango de tiempo -->
+    <!-- v1.104 U8: 时间范围筛选 -->
     <string name="stats_range_cd">Filtro de rango de tiempo</string>
     <string name="stats_range_all">Todos</string>
     <string name="stats_range_month">este mes</string>
@@ -490,7 +498,7 @@
     <string name="stats_assistant_usage">Proporción de uso del asistente</string>
     <string name="stats_hourly_dist">Distribución activa horaria</string>
     <string name="stats_no_data">Aún no hay datos</string>
-    <!-- v2.2 Refactorización del panel -->
+    <!-- v2.2 仪表盘重构 -->
     <string name="stats_dashboard_subtitle">total %1$d conversación · %2$d dia activo</string>
     <string name="stats_export_cd">Resumen estadístico de exportación</string>
     <string name="stats_export_chooser">Compartir resumen estadístico</string>
@@ -504,9 +512,9 @@
     <string name="stats_trend_window_30d">30dia</string>
     <string name="stats_trend_window_90d">90dia</string>
     <string name="stats_tooltip_messages">%1$s · %2$d mensajes</string>
-    <string name="stats_tooltip_hint">Haga clic en una celda para ver detalles</string>
+    <string name="stats_tooltip_hint">Toca en una celda para ver detalles</string>
     <string name="stats_avg_label">promedio %1$.1f</string>
-    <string name="stats_total_tokens_label">acumulativo Token(~)</string>
+    <string name="stats_total_tokens_label">Tokens acumulados (aprox.)</string>
     <string name="stats_range_selected">Seleccionado</string>
     <string name="stats_heatmap_legend_cd">Leyenda de actividad</string>
     <string name="stats_heatmap_cd">mapa de calor activo,%1$dDatos de actividad semanal</string>
@@ -517,7 +525,7 @@
     <string name="stats_summary_header">===== Muse Resumen estadístico =====</string>
     <string name="stats_summary_total_sessions">Conversaciones totales: %1$d</string>
     <string name="stats_summary_total_messages">Número total de mensajes: %1$d</string>
-    <string name="stats_summary_ai_replies">AI Número de respuestas: %1$d</string>
+    <string name="stats_summary_ai_replies">Respuestas de la IA: %1$d</string>
     <string name="stats_summary_user_messages">Número de mensajes de usuario: %1$d</string>
     <string name="stats_summary_streak_days">Continuamente activo: %1$d dia</string>
     <string name="stats_summary_week_messages">Noticias de esta semana: %1$d</string>
@@ -558,15 +566,16 @@
     <!-- ===== ui/taskcard: subagent task list (v1.202) ===== -->
     <string name="subagent_task_list_title">Tareas de subagente en segundo plano</string>
     <string name="skill_impl_not_configured">Herramienta de archivo no configurada</string>
-    <string name="subagent_task_detail_assistant">Assistant</string>
-    <string name="subagent_task_detail_user">User</string>
-    <string name="subagent_task_detail_count">Messages: %1$d</string>
-    <string name="subagent_task_detail_loading">Loading conversation...</string>
-    <string name="subagent_task_detail_empty">No conversation history yet</string>
+    <string name="subagent_task_detail_assistant">Asistente</string>
+    <string name="subagent_task_detail_user">Usuario</string>
+    <string name="subagent_task_detail_count">Mensajes: %1$d</string>
+    <string name="subagent_task_detail_loading">Cargando conversación…</string>
+    <string name="subagent_task_detail_empty">Todavía no hay historial de conversación</string>
     <string name="subagent_task_list_count">%1$d tareas</string>
     <string name="subagent_task_completed">Completado</string>
     <string name="subagent_task_failed">falló</string>
     <string name="subagent_task_cancel">Cancelar</string>
+    <string name="subagent_task_close_cd">Cerrar tarea del subagente</string>
 
     <!-- ===== ui/artifact ===== -->
     <string name="artifact_untitled">Sin nombre</string>
@@ -580,14 +589,14 @@
     <string name="artifact_type_mermaid">diagrama de flujo</string>
     <string name="artifact_type_text">texto</string>
     <string name="artifact_type_other">Otros</string>
-    <string name="artifact_more_count">también %1$d , haga clic para ampliar</string>
-    <string name="artifact_open_web_preview">Haga clic para obtener una vista previa de la página.</string>
+    <string name="artifact_more_count">también %1$d , toca para ampliar</string>
+    <string name="artifact_open_web_preview">Toca para obtener una vista previa de la página.</string>
     <string name="artifact_char_count">%1$d personaje</string>
     <string name="artifact_center_title">Centro de productos</string>
     <string name="artifact_center_empty">Aún no hay producto</string>
     <string name="artifact_share_chooser">Compartir productos</string>
     <string name="artifact_save_text">guardar como texto</string>
-    <string name="artifact_saved">salvado</string>
+    <string name="artifact_saved">Guardado</string>
     <string name="artifact_save_failed">Error al guardar</string>
 
     <!-- ===== ui/markdown ===== -->
@@ -597,9 +606,9 @@
     <!-- ===== ui/model ===== -->
     <string name="model_profile_title">avatar modelo</string>
     <string name="model_profile_empty_title">Aún no hay modelo</string>
-    <string name="model_profile_empty_subtitle">Primero agregue el proveedor de IA en la configuración</string>
+    <string name="model_profile_empty_subtitle">Primero agrega el proveedor de IA en la configuración</string>
 
-    <!-- ===== v1.201: Pausa de delegación/colaboración hombre-máquina ===== -->
+    <!-- ===== v1.201: 人机协作 / 委派暂停 ===== -->
     <string name="delegation_pause_section_title">Colaboración hombre-máquina</string>
     <string name="delegation_pause_before_team">Pausa antes de la ejecución del equipo</string>
     <string name="delegation_pause_before_member">Pausa antes de que cada miembro ejecute</string>
@@ -612,21 +621,21 @@
     <string name="delegation_confirm_target">objetivo</string>
     <string name="delegation_confirm_reason">Razón</string>
     <string name="delegation_confirm_intermediate">resultado intermedio</string>
-    <string name="delegation_confirm_modify_hint">Ingrese las instrucciones modificadas</string>
+    <string name="delegation_confirm_modify_hint">Escribe las instrucciones modificadas</string>
     <string name="delegation_option_approve">Aprobado para continuar</string>
     <string name="delegation_option_cancel">Cancelar delegación</string>
 
-    <!-- ===== v1.201: LLM Revisión completa(LLM_REVIEW estrategia de agregación) ===== -->
+    <!-- ===== v1.201: LLM 综合评审(LLM_REVIEW 聚合策略) ===== -->
     <string name="multi_agent_llm_review_enabled">Habilitar revisión integral de LLM</string>
     <string name="multi_agent_llm_review_model">modelo de revisión</string>
     <string name="multi_agent_llm_review_desc">El uso de llamadas LLM independientes para revisar exhaustivamente los resultados de múltiples agentes tiene mayor calidad pero aumenta el tiempo y el consumo de tokens.</string>
     <string name="quick_notes_settings_title">Configuración de grabación rápida</string>
     <string name="quick_capture_swipe_title">Mostrar registro rápido de deslizamiento lateral</string>
     <string name="quick_capture_swipe_desc">Mostrar el controlador de grabación rápida en el borde derecho dentro de Muse</string>
-    <string name="quick_capture_overlay_title">Abra la ventana flotante del sistema.</string>
-    <string name="quick_capture_overlay_desc">Después de salir de Muse, aún puedes hacer clic en la cápsula flotante para grabar rápidamente</string>
+    <string name="quick_capture_overlay_title">Abre la ventana flotante del sistema.</string>
+    <string name="quick_capture_overlay_desc">Después de salir de Muse, aún puedes tocar en la cápsula flotante para grabar rápidamente</string>
     <string name="quick_capture_overlay_permission_error">No se puede abrir la configuración de permisos de la ventana flotante</string>
-    <string name="quick_capture_overlay_hint">La ventana flotante está cerrada de forma predeterminada. Después de encenderlo, el sistema debe permitir que Muse se muestre encima de otras aplicaciones.</string>
+    <string name="quick_capture_overlay_hint">La ventana flotante está desactivada de forma predeterminada. Para activarla, permite que Muse se muestre sobre otras aplicaciones en los ajustes del sistema.</string>
     <string name="chat_background_cd">Fondo de chat</string>
     <string name="chat_analyzing_image">Analizando imágenes %1$d/%2$d…</string>
     <string name="msg_compressed">comprimido</string>
@@ -634,7 +643,7 @@
     <string name="plugin_summary_brief">v%1$s · %2$d Herramientas</string>
     <string name="plugin_models_summary">%1$d modelos · %2$s</string>
 
-    <!-- ===== Phase 3: Estado final de la tarjeta de tareas(Cancelar/tiempo de espera)y redacción escénica ===== -->
+    <!-- ===== Phase 3: 任务卡终态(取消/超时)与阶段文案 ===== -->
     <string name="task_card_plan_title">plan de ejecución (%1$d pasos)</string>
     <string name="task_card_phase_planning">en plano</string>
     <string name="task_card_phase_executing">ejecutando</string>
@@ -655,16 +664,16 @@
     <string name="task_plan_status_cancelled">Cancelado</string>
     <string name="task_plan_status_timed_out">Tiempo agotado</string>
     <string name="mini_album_back_cd">Regresar</string>
-    <string name="mini_album_title">AI álbum de fotos</string>
+    <string name="mini_album_title">Álbum de imágenes con IA</string>
     <string name="mini_album_count">%1$d zhang</string>
     <string name="mini_album_refresh_cd">Actualizar álbum</string>
     <string name="mini_album_visibility_cd_hidden">Ocultar imágenes ocultas</string>
     <string name="mini_album_visibility_cd_shown">Mostrar imágenes ocultas</string>
     <string name="mini_album_empty_no_images">Aún no hay imágenes generadas por IA</string>
     <string name="mini_album_empty_all_hidden">No hay imágenes para mostrar en el álbum.</string>
-    <string name="mini_album_empty_no_images_hint">Después de configurar el modelo de gráfico sin formato,AI La imagen generada aparecerá aquí.</string>
+    <string name="mini_album_empty_no_images_hint">Configura un modelo de generación de imágenes. Las imágenes generadas aparecerán aquí.</string>
     <string name="mini_album_empty_all_hidden_hint">Se puede mostrar en operaciones de imagen.</string>
-    <string name="mini_album_image_cd">AI Generar imágenes</string>
+    <string name="mini_album_image_cd">Imagen generada con IA</string>
     <string name="mini_album_actions_title">Manipulación de imágenes</string>
     <string name="mini_album_restore_hint">Después de la restauración, esta imagen reaparecerá en el pequeño álbum del teléfono celular.</string>
     <string name="mini_album_hide_hint">Esta imagen sólo se ocultará del álbum del teléfono celular y no se eliminará el historial de chat.</string>
@@ -681,9 +690,9 @@
     <string name="settings_chat_background_dark_title">fondo modo oscuro</string>
     <string name="settings_chat_background_dark_subtitle">Cuando la luz y la oscuridad cambian automáticamente, el modo oscuro usa este fondo; si no se establece, se utilizará el fondo superior.</string>
     <string name="assistant_detail_persona_definition_label">definición de personalidad</string>
-    <string name="assistant_detail_persona_definition_hint">Este párrafo es para el asistente.“gente”, se escribirá en el segmento de personalidad de la palabra indicadora del sistema (antes del ancla de identidad). Déjelo en blanco para no inyectar.</string>
+    <string name="assistant_detail_persona_definition_hint">Describe la personalidad del asistente. Este texto se incluye en las instrucciones del sistema, antes de su identidad. Déjalo vacío para no añadirlo.</string>
     <string name="assistant_detail_thinking_chain_label">Proceso de pensamiento personalizado</string>
-    <string name="assistant_detail_thinking_chain_hint">La composición de una cadena de pensamiento con restricciones fuertes, por ejemplo: replantear el problema primero → Enumere 2-3 hipótesis → Excluir uno por uno → Luego da una conclusión. Déjelo en blanco para pensar de la forma predeterminada.</string>
+    <string name="assistant_detail_thinking_chain_hint">Define cómo debe abordar los problemas el asistente. Por ejemplo: reformular el problema, comparar varias hipótesis y dar una conclusión. Deja el campo vacío para usar el comportamiento predeterminado.</string>
     <string name="chat_clear_background">Limpiar el fondo de esta conversación.</string>
     <string name="chat_background_cleared">El trasfondo de esta conversación ha sido aclarado.</string>
     <string name="mini_album_import_cd">Importar imágenes</string>
@@ -691,7 +700,7 @@
     <string name="mini_album_delete_imported_action">Eliminar imagen</string>
     <string name="quick_notes_remove_image">Quitar imagen %1$d</string>
 
-    <!-- Diagnóstico de activación en segundo plano:¿El sistema programa la activación en segundo plano de Muse?(solo lectura,No hay cambios en ningún horario.) -->
+    <!-- 后台唤醒诊断:系统到底有没有为 Muse 排后台唤醒(只读,不改动任何调度) -->
     <string name="wake_diagnostics_open">estado de alerta de fondo</string>
     <string name="wake_diagnostics_title">estado de alerta de fondo</string>
     <string name="wake_diagnostics_subtitle">Lo que se lee aquí es la programación real en la cola del sistema. Es de solo lectura y no cambiará el horario.</string>
@@ -714,16 +723,16 @@
     <string name="wake_diagnostics_stop_reason">Apagado del sistema:%1$s</string>
     <string name="wake_diagnostics_empty">No hay tareas en segundo plano para leer</string>
     <string name="wake_diagnostics_read_failed">Error de lectura:%1$s</string>
-    <!-- Los nombres de estado no están traducidos:Los problemas de comentarios de los usuarios y los desarrolladores utilizan el nombre en inglés WorkInfo.State cuando recuperan materiales en línea.,
-         Por lo tanto, todos los paquetes de idiomas conservan el texto original en inglés y no escriben "cola"./Traducciones como "En funcionamiento". -->
-    <string name="wake_state_enqueued">ENQUEUED</string>
-    <string name="wake_state_running">RUNNING</string>
-    <string name="wake_state_blocked">BLOCKED</string>
-    <string name="wake_state_succeeded">SUCCEEDED</string>
-    <string name="wake_state_failed">FAILED</string>
-    <string name="wake_state_cancelled">CANCELLED</string>
-    <string name="wake_state_not_registered">NOT_REGISTERED</string>
-    <string name="wake_state_unknown">UNKNOWN</string>
+    <!-- 状态名不翻译:用户反馈问题、开发者检索线上材料时用的都是 WorkInfo.State 的英文名,
+         所以所有语言包里都保留英文原文，不写「排队中/运行中」这类译名。 -->
+    <string name="wake_state_enqueued">En cola</string>
+    <string name="wake_state_running">En ejecución</string>
+    <string name="wake_state_blocked">Bloqueada</string>
+    <string name="wake_state_succeeded">Completada</string>
+    <string name="wake_state_failed">Fallida</string>
+    <string name="wake_state_cancelled">Cancelada</string>
+    <string name="wake_state_not_registered">No registrada</string>
+    <string name="wake_state_unknown">Desconocida</string>
     <string name="wake_kind_scheduled_task">tareas programadas</string>
     <string name="wake_kind_moment">Momentos</string>
     <string name="wake_kind_proactive">mensajes no solicitados</string>
@@ -748,4 +757,72 @@
     <string name="wake_stop_user">Acción del usuario</string>
     <string name="wake_stop_system_processing">El sistema está procesando</string>
     <string name="wake_stop_launch_time">Cambios en el tiempo de inicio estimado</string>
+    <string name="plugin_permission_section_title">Capacidades y permisos</string>
+    <string name="plugin_permission_hint">Las capacidades no declaradas o desactivadas se rechazan de inmediato; los cambios surten efecto al instante.</string>
+    <string name="plugin_permission_pending_title">Este complemento declaro nuevas capacidades tras una actualizacion</string>
+    <string name="plugin_permission_approve">Aprobar nuevas</string>
+    <string name="plugin_permission_none">Este complemento no declara capacidades; solo puede ejecutar calculos.</string>
+    <string name="plugin_permission_denied_title">Llamadas bloqueadas</string>
+    <string name="plugin_permission_denied_row">%1$s necesita la capacidad %2$s</string>
+    <string name="plugin_permission_allow_session">Permitir en esta sesion</string>
+    <string name="plugin_permission_recent_title">Llamadas recientes</string>
+    <string name="plugin_permission_recent_empty">Aun no hay llamadas registradas</string>
+    <string name="plugin_permission_recent_row">%1$s · %2$s %3$s</string>
+    <string name="plugin_permission_expand">Mostrar</string>
+    <string name="plugin_permission_collapse">Ocultar</string>
+    <string name="plugin_permission_python_title">Tiempo de ejecucion Python (confianza alta)</string>
+    <string name="plugin_permission_python_warning">Los complementos de Python se ejecutan en un subproceso con el mismo UID que la aplicacion y pueden leer y escribir los datos directamente, sin los interruptores ni elsandbox de archivos. Activalo solo para fuentes confiables.</string>
+    <string name="plugin_row_python_trusted">Runtime Python · permitido</string>
+    <string name="plugin_row_python_locked">Runtime Python · requiere confianza alta</string>
+    <string name="plugin_row_circuit_cooling">Aislado: quedan %1$d s</string>
+    <string name="plugin_row_circuit_probing">Prueba semiabierta en curso</string>
+    <string name="plugin_permission_node_note">Runtime Node: se ejecuta en un subproceso de Node integrado; las capacidades se comprueban una a una; los tiempos limite se interrumpen de verdad y no bloquean otros complementos.</string>
+    <string name="plugin_cap_resource_read">Leer archivos (solo dentro de la carpeta propia del complemento)</string>
+    <string name="plugin_cap_resource_write">Escribir archivos (solo en la carpeta propia del complemento)</string>
+    <string name="plugin_cap_network">Acceder a la red (se bloquean direcciones locales y privadas)</string>
+    <string name="plugin_cap_event_on_message">En cada mensaje</string>
+    <string name="plugin_cap_event_on_tool_call">En cada llamada de herramienta</string>
+    <string name="plugin_cap_hook_tool_before">Bloquear llamadas de herramientas</string>
+    <string name="plugin_cap_hook_system_prompt">Anadir al mensaje de sistema (cambia el comportamiento)</string>
+    <string name="plugin_cap_schedule">Ejecutar periodicamente (con la app activa)</string>
+    <string name="plugin_cap_network_local">Acceder a la red local y a localhost (servicios en casa)</string>
+    <string name="plugin_cap_app_navigate">Abrir una pagina concreta de la app (inicio, ajustes, una sesion...)</string>
+    <string name="plugin_cap_app_messages">Escribir mensajes en un chat (pareceran del asistente)</string>
+    <string name="plugin_cap_app_theme">Cambiar entre apariencia clara y oscura</string>
+    <string name="plugin_slot_provided_by">Proporcionado por el plugin "%1$s"</string>
+    <string name="plugin_cap_ui_slot">Mostrar interfaz del plugin arriba del chat</string>
+    <string name="plugin_cap_runtime_long">Tareas largas (hasta 10 minutos por llamada)</string>
+    <string name="plugin_cap_schedule_background">Ejecutar tareas programadas en segundo plano (aun sin la app abierta)</string>
+    <string name="plugin_service_channel_name">Servicios de plugins</string>
+    <string name="plugin_service_channel_desc">Se muestra mientras los plugins corren en primer plano</string>
+    <string name="plugin_service_notification_title">Servicios de plugins activos</string>
+    <string name="plugin_service_notification_text">Hay plugins en segundo plano; toca para gestionar</string>
+    <string name="plugin_service_notification_stop">Detener</string>
+    <string name="plugin_cap_runtime_service">Seguir en segundo plano (servicio en primer plano)</string>
+    <string name="plugin_cap_app_settings">Cambiar ajustes (tamano de letra, color dinamico, alto contraste, inicio)</string>
+    <string name="plugin_debug_title">Depuracion de plugins</string>
+    <string name="plugin_cap_clipboard_read">Leer el portapapeles</string>
+    <string name="plugin_cap_clipboard_write">Escribir en el portapapeles</string>
+    <string name="plugin_cap_clipboard">Leer y escribir el portapapeles</string>
+    <string name="plugin_cap_notify">Enviar notificaciones</string>
+    <string name="plugin_cap_device_info">Leer información del dispositivo (modelo, versión)</string>
+    <string name="plugin_cap_storage">Usar el almacenamiento propio del complemento (límite 8MB)</string>
+    <string name="plugin_cap_config_write">Cambiar los ajustes del propio complemento (nunca los secretos)</string>
+    <string name="plugin_cap_tool_invoke">Pedir ejecutar otras herramientas (cada una requiere tu aprobación)</string>
+    <string name="plugin_cap_chat_read">Leer los mensajes recientes del chat actual (privado, desactivado)</string>
+    <string name="plugin_cap_model_call">Generar texto con tu modelo configurado (consume tu cuota)</string>
+    <string name="plugin_cap_ui_skin">Cambiar la apariencia visual</string>
+    <string name="plugin_cap_ui_interactive">Mostrar un formulario y ejecutar su controlador (altera datos; desactivado)</string>
+    <string name="plugin_cap_runtime_python">Ejecutar Python fuera del entorno aislado (alta confianza)</string>
+    <string name="video_no_video_model_hint">El proveedor actual no tiene ningún modelo con salida de vídeo. Activa la capacidad de \"salida de vídeo\" en Ajustes › Modelos y proveedores.</string>
+    <plurals name="groupchat_selected_members">
+        <item quantity="one">%1$d miembro seleccionado</item>
+        <item quantity="many">%1$d miembros seleccionados</item>
+        <item quantity="other">%1$d miembros seleccionados</item>
+    </plurals>
+    <string name="workspace_go_root">Volver a la raíz del espacio de trabajo</string>
+    <string name="artifact_center_empty_hint">Los artefactos son las imágenes, archivos y textos largos que el asistente genera en el chat; aquí puedes revisarlos y compartirlos</string>
+    <string name="daily_summary_light_fallback">Hoy no hay mucho que repasar; aquí estoy cuando quieras hablar.</string>
+    <string name="daily_summary_rest_fallback">Ha sido un día largo; descansa.</string>
+    <string name="daily_summary_none_fallback">Hoy no hay conversaciones nuevas.</string>
 </resources>

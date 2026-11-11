@@ -5,24 +5,24 @@ import io.zer0.ai.core.UIMessage
 import io.zer0.muse.data.assistant.AssistantRegex
 
 /**
- * v1.97: Reemplazo regular Transformer — Aplique reglas regulares a nivel de asistente al texto del usuario/asistente en la canalización del mensaje.
+ * v1.97: 正则替换 Transformer — 在消息管道中对 user/assistant 文本应用助手级正则规则。
  *
- * Ver la estructura de reglas [AssistantRegex].
+ * 规则结构见 [AssistantRegex]。
  *
- * comportamiento:
- *  - de context.extra("regex_rules") Obtenga la lista de reglas analizadas previamente
- *    (ChatViewModel Deserializado de AssistantEntity.regexRulesJson)
- *    extra contrato: key="regex_rules",Tipo List<AssistantRegex>,puede ser null
- *  - Aplicar solo visualOnly=false reglas(visualOnly=true Las reglas solo se reemplazan cuando se muestra la interfaz de usuario.,No afecta la entrada de LLM)
- *  - Determinar el alcance de la aplicación según el alcance afectado:
- *    - "user": solo mensajes de usuario
- *    - "assistant": solo mensajes del asistente(El asistente responde en un contexto histórico)
- *    - "both": user + assistant noticias
- *  - SYSTEM Los mensajes no se reemplazan(Evite dañar la estructura de avisos del sistema.)
- *  - Omita una sola regla cuando falle la compilación normal.,No bloquear otras reglas
+ * 行为:
+ *  - 从 context.extra("regex_rules") 取预解析好的规则列表
+ *    (ChatViewModel 已从 AssistantEntity.regexRulesJson 反序列化)
+ *    extra 契约: key="regex_rules",类型 List<AssistantRegex>,可为 null
+ *  - 仅应用 visualOnly=false 的规则(visualOnly=true 的规则仅在 UI 显示时替换,不影响 LLM 输入)
+ *  - 根据 affectingScope 决定应用范围:
+ *    - "user": 仅 user 消息
+ *    - "assistant": 仅 assistant 消息(历史上下文中的助手回复)
+ *    - "both": user + assistant 消息
+ *  - SYSTEM 消息不做替换(避免破坏系统提示结构)
+ *  - 单条规则正则编译失败时跳过该规则,不阻断其他规则
  *
- * posición en la tubería:después de TemplateTransformer,ThinkTagTransformer antes.
- * De esta manera, las variables de la plantilla se reemplazan primero.,Las reglas regulares entran en vigor según el texto final.
+ * 在管道中的位置:位于 TemplateTransformer 之后,ThinkTagTransformer 之前。
+ * 这样模板变量先替换完成,正则规则基于最终文本生效。
  */
 class RegexMessageTransformer : Transformer {
 
@@ -33,13 +33,13 @@ class RegexMessageTransformer : Transformer {
             ?: return messages
         if (rules.isEmpty()) return messages
 
-        // solo visualOnly=false Las reglas se aplican en el proceso.
+        // 仅 visualOnly=false 的规则在管道中应用
         val pipelineRules = rules.filter { it.enabled && !it.visualOnly && it.findRegex.isNotBlank() }
         if (pipelineRules.isEmpty()) return messages
 
         var changed = false
         val result = messages.map { msg ->
-            // SYSTEM Los mensajes no se reemplazan,Evite dañar la estructura de avisos del sistema.
+            // SYSTEM 消息不做替换,避免破坏系统提示结构
             if (msg.role == MessageRole.SYSTEM) return@map msg
 
             val scope = when (msg.role) {

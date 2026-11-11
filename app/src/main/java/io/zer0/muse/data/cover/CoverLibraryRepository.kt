@@ -18,14 +18,14 @@ import java.io.File
 import java.util.UUID
 
 /**
- * Modelo de datos del artículo de portada.
+ * 封面条目数据模型。
  *
- * @param id UUID(identificador único)
- * @param fileName Nombre del archivo de disco,Como por ejemplo "cover_abc123.jpg"
- * @param source Fuente: "local"(Importación de álbum) / "generated"(AI generar) / "imported"
- * @param width Ancho de píxel(Grabar al dibujar;Importado como ancho comprimido)
- * @param height Altura de píxel
- * @param addedAt Marca de tiempo entrante
+ * @param id UUID(唯一标识符)
+ * @param fileName 磁盘文件名,如 "cover_abc123.jpg"
+ * @param source 来源: "local"(相册导入) / "generated"(AI 生成) / "imported"
+ * @param width 像素宽(生图时记录;导入时为压缩后宽度)
+ * @param height 像素高
+ * @param addedAt 入库时间戳
  */
 @Serializable
 data class CoverItem(
@@ -38,59 +38,59 @@ data class CoverItem(
 )
 
 /**
- * v1.0.53: Portada Galería Almacén(Biblioteca de portadas para el flujo de trabajo de portadas).
+ * v1.0.53: 封面图库仓库(封面工作流的封面库)。
  *
- * estructura de almacenamiento:
- *  - Archivos de imagen: `filesDir/covers/<fileName>`(unificar JPEG,lado más largo ≤ [MAX_DIMENSION])
- *  - archivo de manifiesto: `filesDir/covers/manifest.json`(JSON serializado [CoverItem] lista)
+ * 存储结构:
+ *  - 图片文件: `filesDir/covers/<fileName>`(统一 JPEG,最长边 ≤ [MAX_DIMENSION])
+ *  - 清单文件: `filesDir/covers/manifest.json`(JSON 序列化的 [CoverItem] 列表)
  *
- * Puntos de diseño:
- *  - Para leer y escribir listas [Mutex] proteger,IO en [Dispatchers.IO]
- *  - importar/Generar compresión unificada:El lado más largo se reduce a [MAX_DIMENSION](1600),JPEG calidad 85
- *  - Para imágenes muy grandes, utilice primero inSampleSize para evitar la reducción de resolución. OOM
- *  - manifest Escritura atómica(temp + rename),Lista de daños por colisión antiescritura
+ * 设计要点:
+ *  - 清单读写用 [Mutex] 保护,IO 在 [Dispatchers.IO]
+ *  - 导入/生成统一压缩:最长边缩到 [MAX_DIMENSION](1600),JPEG 质量 85
+ *  - 超大图先 inSampleSize 降采样防 OOM
+ *  - manifest 原子写(temp + rename),防写中途崩溃损坏清单
  *
- * @param appContext Solicitud Context(usado para filesDir)
+ * @param appContext 应用 Context(用于 filesDir)
  */
 class CoverLibraryRepository(private val appContext: Context) {
 
-    /** covers directorio raíz(`filesDir/covers`). */
+    /** covers 根目录(`filesDir/covers`)。 */
     private val rootDir: File get() = File(appContext.filesDir, "covers").apply { if (!exists()) mkdirs() }
 
-    /** archivo de manifiesto(`filesDir/covers/manifest.json`). */
+    /** 清单文件(`filesDir/covers/manifest.json`)。 */
     private val manifestFile: File get() = File(rootDir, "manifest.json")
 
-    /** Lista de mutex de lectura y escritura(Importación simultánea garantizada/Eliminar/atomicidad de generación). */
+    /** 清单读写互斥锁(保证并发导入/删除/生成的原子性)。 */
     private val manifestMutex = Mutex()
 
     companion object {
         private const val TAG = "CoverLibraryRepository"
 
-        /** El límite superior del lado más largo de la cubierta.(Píxel). */
+        /** 封面最长边上限(像素)。 */
         const val MAX_DIMENSION = 1600
 
-        /** JPEG Calidad de compresión. */
+        /** JPEG 压缩质量。 */
         const val JPEG_QUALITY = 85
 
-        /** Apunte al borde de la muestra al decodificar(exceder este tamaño primero inSampleSize). */
+        /** 解码时的目标采样边(超过此尺寸先 inSampleSize)。 */
         private const val SAMPLE_THRESHOLD = 4096
     }
 
-    /** Listar todas las portadas,En orden cronológico inverso. */
+    /** 列出全部封面,按时间倒序。 */
     suspend fun listCovers(): List<CoverItem> = withContext(Dispatchers.IO) {
         manifestMutex.withLock { readManifest() }.sortedByDescending { it.addedAt }
     }
 
     /**
-     * Importar una imagen de SAF Uri como portada(Comprimir hacia el lado más largo [MAX_DIMENSION],JPEG).
+     * 从 SAF Uri 导入一张图片为封面(压缩到最长边 [MAX_DIMENSION],JPEG)。
      *
-     * @param uri contenido Uri(álbum de fotos/selector de archivos)
-     * @return importado [CoverItem];Retorno del fracaso Error
+     * @param uri 内容 Uri(相册/文件选择器)
+     * @return 导入的 [CoverItem];失败时返回 Error
      */
     suspend fun importFromUri(uri: Uri): Result<CoverItem> = withContext(Dispatchers.IO) {
         resultOf {
             val bitmap = decodeSampledBitmap(uri)
-                ?: error("No se puede decodificar la imagen seleccionada")
+                ?: error("无法解码所选图片")
             val (w, h) = bitmap.width to bitmap.height
             val fileName = "cover_${UUID.randomUUID().toString().take(8)}.jpg"
             val targetFile = File(rootDir, fileName)
@@ -114,30 +114,30 @@ class CoverLibraryRepository(private val appContext: Context) {
             }
             item
         }.onError { msg, t ->
-            Logger.w(TAG, "No se pudo importar la portada: $msg", t)
+            Logger.w(TAG, "导入封面失败: $msg", t)
         }
     }
 
     /**
-     * Obtener los resultados del gráfico.(ruta del archivo local)Regístrese como portada.
+     * 把生图结果(本地文件路径)登记为封面。
      *
-     * El producto del dibujo suele tener un tamaño aceptable.,Aquí todavía hacemos una bolsa de compresión.(Borde anti-extralargo),Y cópielo en el directorio de portadas.
+     * 生图产物通常已是合格尺寸,这里仍做一次压缩兜底(防超长边),并复制进 covers 目录。
      *
-     * @param file Archivos locales del producto de dibujo.
-     * @param width ancho de píxel original(Metadatos devueltos por imagen sin formato)
-     * @param height altura de píxel original
-     * @return después del registro [CoverItem];Retorno del fracaso Error
+     * @param file 生图产物的本地文件
+     * @param width 原始像素宽(生图返回的元数据)
+     * @param height 原始像素高
+     * @return 登记后的 [CoverItem];失败时返回 Error
      */
     suspend fun registerGenerated(file: File, width: Int, height: Int): Result<CoverItem> = withContext(Dispatchers.IO) {
         resultOf {
             val fileName = "cover_${UUID.randomUUID().toString().take(8)}.jpg"
             val targetFile = File(rootDir, fileName)
-            // Copiar(Si el lado es demasiado largo, comprímalo.;De lo contrario, copie los bytes directamente.)
+            // 复制(若超长边则压缩;否则直接复制字节)
             if (maxOf(width, height) <= MAX_DIMENSION) {
                 file.inputStream().use { input -> targetFile.outputStream().use { output -> input.copyTo(output) } }
             } else {
                 val bitmap = BitmapFactory.decodeFile(file.absolutePath)
-                    ?: error("No se puede decodificar el resultado de la imagen sin procesar")
+                    ?: error("无法解码生图结果")
                 targetFile.outputStream().use { out ->
                     bitmap.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, out)
                 }
@@ -159,11 +159,11 @@ class CoverLibraryRepository(private val appContext: Context) {
             }
             item
         }.onError { msg, t ->
-            Logger.w(TAG, "No se pudo registrar y generar cobertura: $msg", t)
+            Logger.w(TAG, "登记生成封面失败: $msg", t)
         }
     }
 
-    /** Quitar la cubierta(Archivo físico + eliminar del inventario). */
+    /** 删除封面(物理文件 + 从清单移除)。 */
     suspend fun deleteCover(id: String): Boolean = withContext(Dispatchers.IO) {
         manifestMutex.withLock {
             val current = readManifest().toMutableList()
@@ -171,35 +171,35 @@ class CoverLibraryRepository(private val appContext: Context) {
             resultOf {
                 val file = File(rootDir, target.fileName)
                 if (file.exists()) file.delete()
-            }.onError { msg, t -> Logger.w(TAG, "No se pudo eliminar el archivo de portada: $msg", t) }
+            }.onError { msg, t -> Logger.w(TAG, "删除封面文件失败: $msg", t) }
             current.remove(target)
             writeManifest(current)
             true
         }
     }
 
-    /** Obtener archivo de portada(no existe retorno null). */
+    /** 取封面文件(不存在返回 null)。 */
     fun getCoverFile(item: CoverItem): File = File(rootDir, item.fileName)
 
-    /** Buscar entradas por ID(no existe retorno null). */
+    /** 按 id 查条目(不存在返回 null)。 */
     suspend fun getById(id: String): CoverItem? = withContext(Dispatchers.IO) {
         manifestMutex.withLock { readManifest() }.firstOrNull { it.id == id }
     }
 
-    // ── implementación interna ─────────────────────────────────────────────────────────
+    // ── 内部实现 ─────────────────────────────────────────────────────────
 
     /**
-     * Decodificar y comprimir imágenes:Primero reduzca aproximadamente inSampleSize(>4096 tiempo),Luego escale exactamente al lado más largo 1600.
+     * 解码并压缩图片:先 inSampleSize 粗降(>4096 时),再精确缩放到最长边 1600。
      */
     private fun decodeSampledBitmap(uri: Uri): Bitmap? {
-        // primera decodificación:tamaño de solo lectura
+        // 第一次解码:只读尺寸
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         appContext.contentResolver.openInputStream(uri)?.use { input ->
             BitmapFactory.decodeStream(input, null, bounds)
         } ?: return null
         if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
 
-        // Calcular la frecuencia de muestreo:lado más largo > SAMPLE_THRESHOLD Reducir aproximadamente proporcionalmente
+        // 计算采样率:最长边 > SAMPLE_THRESHOLD 时按比例粗降
         var sampleSize = 1
         val longest = maxOf(bounds.outWidth, bounds.outHeight)
         while (longest / (sampleSize * 2) >= SAMPLE_THRESHOLD) sampleSize *= 2
@@ -211,7 +211,7 @@ class CoverLibraryRepository(private val appContext: Context) {
             BitmapFactory.decodeStream(input, null, opts)
         } ?: return null
 
-        // escalado preciso:lado más largo > MAX_DIMENSION lapso de tiempo
+        // 精确缩放:最长边 > MAX_DIMENSION 时缩
         val w = full.width
         val h = full.height
         if (maxOf(w, h) <= MAX_DIMENSION) return full
@@ -227,17 +227,17 @@ class CoverLibraryRepository(private val appContext: Context) {
         return scaled
     }
 
-    /** Leer archivo de manifiesto(La persona que llama debe mantener el candado). La lista no existe o el análisis falla y se devuelve una lista vacía. */
+    /** 读取清单文件(调用方需持锁)。清单不存在或解析失败返回空列表。 */
     private fun readManifest(): List<CoverItem> {
         if (!manifestFile.exists()) return emptyList()
         return resultOf {
             AppJson.decodeFromString(ListSerializer(CoverItem.serializer()), manifestFile.readText())
         }.onError { msg, t ->
-            Logger.w(TAG, "Error al analizar la lista de portada,lista vacía alternativa: $msg", t)
+            Logger.w(TAG, "封面清单解析失败,回退空列表: $msg", t)
         }.getOrNull() ?: emptyList()
     }
 
-    /** Escribir archivo de manifiesto(La persona que llama debe mantener el candado). Escritura atómica(temp+rename). */
+    /** 写入清单文件(调用方需持锁)。原子写(temp+rename)。 */
     private fun writeManifest(items: List<CoverItem>) {
         if (!rootDir.exists()) rootDir.mkdirs()
         val json = AppJson.encodeToString(ListSerializer(CoverItem.serializer()), items)

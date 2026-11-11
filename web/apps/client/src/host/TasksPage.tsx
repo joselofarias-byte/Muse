@@ -6,26 +6,26 @@ import type { HostTasksState } from "./useHostConnection.js";
 
 interface TasksPageProps {
   readonly tasks: HostTasksState;
-  /** Juicio de bit de capacidad/tiempo de ejecución \"no compatible\". */
+  /** 能力位 / 运行时「不支持」判断。 */
   readonly supported: boolean;
   readonly onRequest: () => void;
   readonly onBack: () => void;
+  /** 当前时间；测试注入固定值，避免「2 小时前」跨午夜时变成「昨天」。 */
+  readonly now?: number;
 }
 
 /**
- * Página de tareas programadas (solo lectura).
+ * 定时任务页（只读）。
  *
- * Una tarea por línea: nombre + estado habilitado,cron Mostrar como está y ejecutar la próxima vez (tiempo futuro, tiempo relativo),
- * Última ejecución y último resultado. Este lote no se inicia, se detiene ni se edita. La parte inferior de la página indica que se puede gestionar desde un teléfono celular.
+ * 一行一个任务：名字 + 启用状态、cron 原样展示、下次执行（未来时间，走相对时间）、
+ * 上次执行与上次结果。本批不做启停与编辑，页面底部写明在手机上管理。
  */
-export function TasksPage({ tasks, supported, onRequest, onBack }: TasksPageProps) {
+export function TasksPage({ tasks, supported, onRequest, onBack, now = Date.now() }: TasksPageProps) {
   const { t, locale } = useI18n();
 
   useEffect(() => {
     if (supported) onRequest();
   }, [supported, onRequest]);
-
-  const now = Date.now();
 
   return (
     <Screen fill topBar={<TopBar title={t("tasks.title")} largeTitle onBack={onBack} />}>

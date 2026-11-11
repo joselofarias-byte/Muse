@@ -27,40 +27,41 @@ import io.zer0.muse.ui.theme.MuseActionColors
 import io.zer0.muse.ui.theme.MuseAnimation
 import io.zer0.muse.ui.theme.MuseIconSizes
 import io.zer0.muse.ui.theme.MuseMotion
+import io.zer0.muse.ui.theme.MuseSpringTier
 
 /**
- * icono botón uniforme pieza — Úselo para todos los botones de "solo íconos, sin texto" en toda la aplicación.
+ * 图标按钮统一件 — 全应用所有「只有图标、没有文字」的按钮都用它。
  *
- * El área táctil es siempre [size](Predeterminado [MuseIconSizes.touchTarget] = 48dp),
- * El círculo visual está formado por [container] con [visualSize] Decisión:
- *  - [MuseIconContainer.None]  Sin color de fondo, icono en línea (visual = área táctil)
- *  - [MuseIconContainer.Tonal] Icono de barra superior e inferior redondo claro (visual = 36dp)
- *  - [MuseIconContainer.Solid] Color del tema fondo redondo, operación principal.
- *  - [MuseIconContainer.Neutral] Fondo neutro, no seleccionado/Secundaria
+ * 触摸区域恒为 [size]（默认 [MuseIconSizes.touchTarget] = 48dp），
+ * 视觉圆形由 [container] 与 [visualSize] 决定：
+ *  - [MuseIconContainer.None]  无底色，行内图标（视觉 = 触摸区）
+ *  - [MuseIconContainer.Tonal] 浅色圆底，顶栏图标（视觉 = 36dp）
+ *  - [MuseIconContainer.Solid] 主题色圆底，主操作
+ *  - [MuseIconContainer.Neutral] 中性底，未选中/次要
  *
- * Comentarios de prensa:Degradado de color del icono (200ms easeOutCubic) Compensación del 35%,
- * Superposición de escala de 0,92x cuando hay un fondo; no aparecen ondas de material.
+ * 按压反馈:图标颜色渐变 (200ms easeOutCubic) 偏移 35%，
+ * 有底色时叠加 0.92x 缩放；不出现 Material 涟漪。
  *
- * Uso:
+ * 用法:
  * ```
  * MuseTactileButton(
  *     icon = MuseIcons.sliders,
  *     onClick = { ... },
- *     contentDescription = "ajustes",
+ *     contentDescription = "设置",
  *     container = MuseIconContainer.Tonal,
  * )
  * ```
  *
- * @param icon vector icono
- * @param onClick Haga clic en devolución de llamada
- * @param modifier modificador
- * @param size Diámetro del área táctil (Predeterminado [MuseIconSizes.touchTarget] = 48dp)
- * @param iconSize Tamaño visual del icono (Predeterminado [MuseIconSizes.icon] = 24dp)
- * @param contentDescription Descripción de accesibilidad (obligatoria para los botones de íconos)
- * @param tint Color del icono sin color de fondo (Predeterminado `onSurface`; Cuando hay un color de fondo, el [container] decidir)
- * @param enabled ¿Está disponible?
- * @param container Variante de color base
- * @param visualSize Diámetro del color de fondo circular; El valor predeterminado no es ningún color de fondo. [size], dependiendo del color de fondo [MuseIconSizes.topBarSolid] = 36dp
+ * @param icon 图标矢量
+ * @param onClick 点击回调
+ * @param modifier 修饰符
+ * @param size 触摸区域直径 (默认 [MuseIconSizes.touchTarget] = 48dp)
+ * @param iconSize 图标视觉尺寸 (默认 [MuseIconSizes.icon] = 24dp)
+ * @param contentDescription 无障碍描述（图标按钮必须有）
+ * @param tint 无底色时的图标颜色 (默认 `onSurface`；有底色时由 [container] 决定)
+ * @param enabled 是否可用
+ * @param container 底色变体
+ * @param visualSize 圆形底色直径；默认无底色取 [size]，有底色取 [MuseIconSizes.topBarSolid] = 36dp
  */
 @Composable
 fun MuseTactileButton(
@@ -85,7 +86,7 @@ fun MuseTactileButton(
         MuseIconContainer.Neutral -> MuseActionColors.neutralContainer to MuseActionColors.neutralContent
     }
 
-    // La dirección del cambio de color presionado depende del "color de fondo presionado real": si no hay color de fondo, mire la superficie de la página, si hay un color de fondo, mire el color del contenedor.
+    // 按压色偏移方向取决于「实际压着的底色」：无底色看页面表面，有底色看容器色。
     val pressBase = if (container == MuseIconContainer.None) {
         MaterialTheme.colorScheme.surface
     } else {
@@ -111,15 +112,15 @@ fun MuseTactileButton(
     val hasContainer = container != MuseIconContainer.None
     val scale by animateFloatAsState(
         targetValue = if (isPressed && hasContainer) 0.92f else 1f,
-        animationSpec = MuseMotion.tween(MuseAnimation.FAST_MS),
+        animationSpec = MuseMotion.spring(MuseSpringTier.RESPONSIVE),
         label = "tactile_scale",
     )
 
     val effectiveVisual = visualSize ?: if (hasContainer) MuseIconSizes.topBarSolid else size
 
-    // Nota: Color.Transparent no se puede utilizar directamente copy(alpha) —— Transparent si“negro + alpha 0”,
-    // copy(alpha = 1f) Se volverá negro opaco y el botón del ícono sin color de fondo se convertirá en un círculo negro sólido.
-    // Por lo tanto, cuando no hay color de fondo, se debe utilizar tal cual (para mantener la verdadera transparencia); sólo cuando tenga un color de fondo, deshabilite la reducción de transparencia.
+    // 注意：不能对 Color.Transparent 直接 copy(alpha) —— Transparent 是“黑色 + alpha 0”，
+    // copy(alpha = 1f) 会把它变成不透明黑，无底色的图标按钮就会变成黑实心圆。
+    // 因此无底色时必须原样使用（保持真正透明）；只有带底色时才做禁用降透明度。
     val boxColor = if (!enabled && rawContainer != Color.Transparent) {
         rawContainer.copy(alpha = MuseActionColors.disabledAlpha)
     } else {
@@ -160,18 +161,18 @@ fun MuseTactileButton(
     }
 }
 
-/** Variante de color de fondo del botón del icono. */
+/** 图标按钮的底色变体。 */
 enum class MuseIconContainer {
-    /** Sin color de fondo, iconos en línea. */
+    /** 无底色，行内图标。 */
     None,
 
-    /** Fondo redondo claro (botón icono de la barra superior). */
+    /** 浅色圆底（顶栏图标按钮）。 */
     Tonal,
 
-    /** Fondo redondo de color temático (operación principal). */
+    /** 主题色圆底（主操作）。 */
     Solid,
 
-    /** Fondo neutro (secundario/no seleccionado). */
+    /** 中性底（次要/未选中）。 */
     Neutral,
 }
 

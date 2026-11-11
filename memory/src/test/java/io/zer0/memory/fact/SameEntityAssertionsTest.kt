@@ -13,15 +13,15 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * D6 Número 2: [FactStore.findSameEntityMultiAssertionGroups] prueba.
+ * D6 第 2 期: [FactStore.findSameEntityMultiAssertionGroups] 测试。
  *
- * Portada:
- *  - Misma entidad ≥3 diferentes afirmaciones → Devolver la entidad
- *  - umbral insuficiente → no regresar;El umbral se puede reducir
- *  - Las aserciones duplicadas para la misma entidad cuentan después de la deduplicación(No exagerado)
- *  - Diferentes entidades se agrupan en grupos.,No mezclar grupos
- *  - entity_key Los datos históricos vacíos no participan.
- *  - Los hechos fijados no cuentan
+ * 覆盖:
+ *  - 同实体 ≥3 条不同断言 → 返回该实体
+ *  - 不足阈值 → 不返回;阈值可下调
+ *  - 同实体重复断言去重后计数(不虚高)
+ *  - 不同实体各自成组,不混组
+ *  - entity_key 为空的历史数据不参与
+ *  - 置顶事实不计入
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -44,10 +44,10 @@ class SameEntityAssertionsTest {
         db.close()
     }
 
-    private suspend fun seed(prefix: String = "zhangsan") {
-        store.add(FactStore.Fact(fact = "$prefix prefiere el café americano", entityKey = prefix))
-        store.add(FactStore.Fact(fact = "$prefix nada en la piscina municipal", entityKey = prefix))
-        store.add(FactStore.Fact(fact = "$prefix corre por el parque cada mañana", entityKey = prefix))
+    private suspend fun seed(prefix: String = "张三") {
+        store.add(FactStore.Fact(fact = "${prefix}喜欢咖啡", entityKey = prefix))
+        store.add(FactStore.Fact(fact = "${prefix}在学游泳", entityKey = prefix))
+        store.add(FactStore.Fact(fact = "${prefix}喜欢跑步", entityKey = prefix))
     }
 
     @Test
@@ -56,28 +56,28 @@ class SameEntityAssertionsTest {
         val groups = store.findSameEntityMultiAssertionGroups("main", "default", minAssertions = 3)
 
         assertEquals(1, groups.size)
-        assertEquals("zhangsan", groups[0].entityKey)
+        assertEquals("张三", groups[0].entityKey)
         assertEquals(3, groups[0].assertions.size)
     }
 
     @Test
     fun `entity below threshold is not returned but lower threshold finds it`() = runTest {
-        store.add(FactStore.Fact(fact = "juanperez prefiere el café de la mañana", entityKey = "juanperez"))
-        store.add(FactStore.Fact(fact = "juanperez corre por la costanera", entityKey = "juanperez"))
+        store.add(FactStore.Fact(fact = "李四喜欢咖啡", entityKey = "李四"))
+        store.add(FactStore.Fact(fact = "李四喜欢跑步", entityKey = "李四"))
 
-        assertTrue("2 Artículo < umbral 3,no debe ser devuelto", store.findSameEntityMultiAssertionGroups("main", "default", 3).isEmpty())
-        assertEquals("El umbral reducido a 2 debería alcanzarse", 1, store.findSameEntityMultiAssertionGroups("main", "default", 2).size)
+        assertTrue("2 条 < 阈值 3,不应返回", store.findSameEntityMultiAssertionGroups("main", "default", 3).isEmpty())
+        assertEquals("阈值降到 2 应命中", 1, store.findSameEntityMultiAssertionGroups("main", "default", 2).size)
     }
 
     @Test
     fun `duplicate assertions are deduplicated before counting`() = runTest {
-        // Evite la escritura y la deduplicación e inserte directamente dos líneas con la misma entidad y texto,Simular datos sucios existentes
+        // 绕过写入去重直接插两行同实体同文本,模拟存量脏数据
         val now = java.time.Instant.now().toString()
-        db.factDao().insert(FactEntity(fact = "zhangsan prefiere el café", createdAt = now, entityKey = "zhangsan"))
-        db.factDao().insert(FactEntity(fact = "zhangsan prefiere el café", createdAt = now, entityKey = "zhangsan"))
-        store.add(FactStore.Fact(fact = "zhangsan nada en la pileta", entityKey = "zhangsan"))
+        db.factDao().insert(FactEntity(fact = "张三喜欢咖啡", createdAt = now, entityKey = "张三"))
+        db.factDao().insert(FactEntity(fact = "张三喜欢咖啡", createdAt = now, entityKey = "张三"))
+        store.add(FactStore.Fact(fact = "张三喜欢跑步", entityKey = "张三"))
 
-        // Después de la deduplicación, solo hay dos afirmaciones diferentes. < umbral 3
+        // 去重后仅 2 条不同断言 < 阈值 3
         assertTrue(store.findSameEntityMultiAssertionGroups("main", "default", 3).isEmpty())
         val groups = store.findSameEntityMultiAssertionGroups("main", "default", 2)
         assertEquals(1, groups.size)
@@ -86,32 +86,32 @@ class SameEntityAssertionsTest {
 
     @Test
     fun `distinct entities form separate groups`() = runTest {
-        seed("zhangsan")
-        seed("juanperez")
+        seed("张三")
+        seed("李四")
 
         val groups = store.findSameEntityMultiAssertionGroups("main", "default", 3)
 
         assertEquals(2, groups.size)
-        assertEquals(setOf("zhangsan", "juanperez"), groups.map { it.entityKey }.toSet())
+        assertEquals(setOf("张三", "李四"), groups.map { it.entityKey }.toSet())
     }
 
     @Test
     fun `rows without entity key are ignored`() = runTest {
         val now = java.time.Instant.now().toString()
-        db.factDao().insert(FactEntity(fact = "como el cafe", createdAt = now))
-        db.factDao().insert(FactEntity(fact = "aprendiendo a nadar", createdAt = now))
-        db.factDao().insert(FactEntity(fact = "como correr", createdAt = now))
+        db.factDao().insert(FactEntity(fact = "喜欢咖啡", createdAt = now))
+        db.factDao().insert(FactEntity(fact = "在学游泳", createdAt = now))
+        db.factDao().insert(FactEntity(fact = "喜欢跑步", createdAt = now))
 
         assertTrue(store.findSameEntityMultiAssertionGroups("main", "default", 2).isEmpty())
     }
 
     @Test
     fun `pinned facts are excluded`() = runTest {
-        seed("zhangsan")
+        seed("张三")
         val pinned = store.getByScopeAndSpace("main", "default").first()
         store.setPinned(pinned.id, true)
 
-        // Después de fijarlo en la parte superior,A esta entidad solo le quedan 2 afirmaciones para sugerir < umbral 3
+        // 置顶一条后,该实体只剩 2 条可建议断言 < 阈值 3
         assertTrue(store.findSameEntityMultiAssertionGroups("main", "default", 3).isEmpty())
     }
 }

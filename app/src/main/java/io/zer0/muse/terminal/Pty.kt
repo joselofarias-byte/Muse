@@ -3,54 +3,54 @@ package io.zer0.muse.terminal
 import io.zer0.common.Logger
 
 /**
- * v2.x Fase terminal II:PTY puente(native autocompilado,ver src/main/jni/pty.c).
+ * v2.x 终端二期:PTY 桥(native 自编译,见 src/main/jni/pty.c)。
  *
- * Toda la semántica fd adopta funciones nativas.(Sin experiencia en lectura o escritura. FileDescriptor),Evite las restricciones de API ocultas.
- * [available] Cuando la biblioteca nativa no está lista false,La persona que llama debe revertir el motor de canalización.
+ * 全部 fd 语义走 native 函数(读写均不经 FileDescriptor),规避隐藏 API 限制。
+ * [available] 在 native 库未就绪时为 false,调用方应回退管道引擎。
  */
 object Pty {
 
     private const val TAG = "MusePty"
 
-    /** native Motivo del error al cargar la biblioteca(para diagnóstico;Cargando exitosamente como null). */
+    /** native 库加载失败原因(诊断用;加载成功为 null)。 */
     val loadError: String? = runCatching {
         System.loadLibrary("pty")
         null
     }.getOrElse { t ->
-        val message = "libpty.so Error al cargar: ${t.message}"
+        val message = "libpty.so 加载失败: ${t.message}"
         runCatching { Logger.w(TAG, message) }
         message
     }
 
-    /** native ¿La biblioteca se cargó correctamente?(NDK La construcción que no está conectada es false). */
+    /** native 库是否加载成功(NDK 未接入的构建里为 false)。 */
     val available: Boolean = loadError == null
 
     /**
-     * Cree un subproceso pseudo-terminal.
-     * @return extremo principal fd(>=0);-1 por falla. Escritura pid del proceso secundario pidArray[0].
-     * @param extraPath P1-B: Directorio adjunto al comienzo de PATH(tiempo de ejecución bin);cadena vacía=Sin agregar.
-     * @param preloadLib P1-B: LD_PRELOAD El camino de la cuña ejecutiva;cadena vacía=No establecido.
+     * 创建伪终端子进程。
+     * @return 主端 fd(>=0);失败 -1。子进程 pid 写入 pidArray[0]。
+     * @param extraPath P1-B: 追加到 PATH 首位的目录(运行时 bin);空串=不追加。
+     * @param preloadLib P1-B: LD_PRELOAD 的 exec 垫片路径;空串=不设置。
      */
     external fun createSubprocess(execPath: String, cwd: String, pidArray: IntArray, extraPath: String, preloadLib: String): Int
 
-    /** Bloquear la espera de que salga el proceso secundario,devolver código de salida(señal terminada 128+signo;falló -1). */
+    /** 阻塞等待子进程退出,返回退出码(信号终止 128+signo;失败 -1)。 */
     external fun waitFor(pid: Int): Int
 
-    /** Leer del maestro(bloqueando);<=0 Indica EOF/Error. */
+    /** 从主端读取(阻塞);<=0 表示 EOF/错误。 */
     external fun read(fd: Int, buffer: ByteArray, offset: Int, length: Int): Int
 
-    /** escribir al maestro;Devuelve el número de bytes escritos.(<0 error). */
+    /** 向主端写入;返回写入字节数(<0 出错)。 */
     external fun write(fd: Int, data: ByteArray, offset: Int, length: Int): Int
 
-    /** Número de bytes legibles por el host;Error -1. */
+    /** 主端可读字节数;出错 -1。 */
     external fun available(fd: Int): Int
 
-    /** Tamaño de la ventana de sincronización(Para la composición tipográfica del programa en pantalla completa). */
+    /** 同步窗口尺寸(全屏程序排版用)。 */
     external fun setWindowSize(fd: Int, rows: Int, cols: Int)
 
-    /** Cerrar terminal principal fd(Se utiliza para terminar la sesión.). */
+    /** 关闭主端 fd(用于终止会话)。 */
     external fun closeFd(fd: Int)
 
-    /** llamada al sistema más reciente errno(Para depuración y diagnóstico.). */
+    /** 最近一次系统调用 errno(调试诊断用)。 */
     external fun errnoValue(): Int
 }

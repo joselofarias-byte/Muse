@@ -76,13 +76,13 @@ import org.koin.compose.koinInject
 import java.util.UUID
 
 /**
- * v1.25: Página de gestión del equipo de colaboración multiagente.
+ * v1.25: 多 Agent 协作团队管理页。
  *
- * Función:
- *  - interruptor principal:habilitar/Deshabilitar la colaboración entre múltiples agentes
- *  - lista de equipo:Nombre para mostrar, descripción, avatar de miembro(hasta 3,+N)
- *  - Haga clic en Editar equipo,Pulsación larga/Haga clic en el icono de eliminar para eliminar(Necesito confirmar)
- *  - Botón cápsula "Nuevo equipo" en la parte inferior
+ * 功能:
+ *  - 总开关:启用/禁用多 Agent 协作
+ *  - 团队列表:展示名称、描述、成员头像(最多 3 个,+N)
+ *  - 点击团队编辑,长按/点击删除图标删除(需确认)
+ *  - 底部「新建团队」胶囊按钮
  */
 @Composable
 fun MultiAgentSettingsPage(onBack: () -> Unit) {
@@ -100,7 +100,7 @@ fun MultiAgentSettingsPage(onBack: () -> Unit) {
     val unnamedTeam = stringResource(R.string.settings_multi_agent_unnamed_team)
 
     fun updateConfig(block: (MultiAgentConfig) -> MultiAgentConfig) {
-        // M3: Utilice el método de actualización atómica,evitar leer-cambiar-Escribir condiciones de carrera
+        // M3: 用原子更新方法,避免读-改-写竞态
         scope.launch { settings.updateMultiAgentConfig(block) }
     }
 
@@ -119,7 +119,7 @@ fun MultiAgentSettingsPage(onBack: () -> Unit) {
             }
         }
 
-        // v1.201: LLM Revisión integral del área de configuración global.
+        // v1.201: LLM 综合评审全局设置区
         item { SectionLabel(stringResource(R.string.multi_agent_llm_review_enabled)) }
         item {
             SettingsGroup {
@@ -149,7 +149,7 @@ fun MultiAgentSettingsPage(onBack: () -> Unit) {
         item { SectionLabel(stringResource(R.string.settings_multi_agent_team_list)) }
 
         if (config.teams.isEmpty()) {
-            // v1.48: h14 Utilice el componente MuseEmptyState en su lugar cuando la lista del equipo esté vacía.
+            // v1.48: h14 团队列表空态改用 MuseEmptyState 组件
             item {
                 MuseEmptyState(
                     icon = MuseIcons.users,
@@ -173,7 +173,7 @@ fun MultiAgentSettingsPage(onBack: () -> Unit) {
             }
         }
 
-        // v1.0.92: Plantilla rápida del equipo de redacción — Precarga con un clic para el proceso de colaboración(Los miembros se pueden agregar en orden en el editor.)
+        // v1.0.92: 写作团队快速模板 — 一键预填写作协作流程(成员在编辑器里按顺序添加即可)
         item {
             val writingTeamName = stringResource(R.string.settings_multi_agent_writing_team_name)
             val writingTeamDesc = stringResource(R.string.settings_multi_agent_writing_team_desc)
@@ -195,7 +195,7 @@ fun MultiAgentSettingsPage(onBack: () -> Unit) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(MuseShapes.pill)
-                    // A11Y-02: tocar el objetivo ≥48dp
+                    // A11Y-02: 触控目标 ≥48dp
                     .defaultMinSize(minHeight = MuseIconSizes.touchTarget)
                     .clickable { editingTeam = AgentTeam(id = "") },
                 color = MaterialTheme.colorScheme.primary,
@@ -226,7 +226,7 @@ fun MultiAgentSettingsPage(onBack: () -> Unit) {
             }
         }
 
-        // v1.201: Estrategia de pausa en la colaboración entre humanos y máquinas
+        // v1.201: 人机协作暂停策略
         item { SectionLabel(stringResource(R.string.delegation_pause_section_title)) }
         item {
             SettingsGroup {
@@ -310,24 +310,24 @@ fun MultiAgentSettingsPage(onBack: () -> Unit) {
         )
     }
 
-    // v1.201: LLM Panel de selección de modelo de revisión
-    // descripción del diseño:El modelo de revisión pertenece a"Configuraciones globales",La activación de alternancia no está permitida aquí Provider(evitar efectos secundarios),
-    // Solo permite al usuario elegir de la lista de modelos para los cuales el Proveedor está actualmente activo;Si necesita utilizar otros modelos de proveedor,
-    // Los usuarios primero deben ir a la configuración del proveedor para cambiar la activación. Provider,Regrese a esta página para seleccionar un modelo.
-    // LlmAggregator.resolveReviewModel() Se buscará por id en todos los Proveedores,El cambio entre proveedores no afecta la resolución.
+    // v1.201: LLM 评审模型选择面板
+    // 设计说明:评审模型属于"全局设置",不允许在此切换激活 Provider(避免副作用),
+    // 仅允许用户在当前激活 Provider 的模型列表中挑选;若需使用其他 Provider 的模型,
+    // 用户应先到 Provider 设置切换激活 Provider,再回到此页选择模型。
+    // LlmAggregator.resolveReviewModel() 会在所有 Provider 中按 id 查找,跨 Provider 切换不影响解析。
     if (showReviewModelSheet) {
         ModelSwitchSheet(
             providers = providers,
             activeProviderId = activeProviderId,
             selectedModelId = config.reviewModelId,
-            onPickProvider = { /* El modelo de revisión no cambia la activación global Provider,Implementación vacía para evitar efectos secundarios. */ },
+            onPickProvider = { /* 评审模型不切换全局激活 Provider,空实现避免副作用 */ },
             onPickModel = { modelId ->
                 if (!modelId.isNullOrBlank()) {
                     scope.launch { settings.saveReviewModelId(modelId) }
                 }
                 showReviewModelSheet = false
             },
-            onRefreshModels = { /* La selección del modelo de revisión no proporciona actualización manual,Depende de la página de configuración global del proveedor */ },
+            onRefreshModels = { /* 评审模型选择不提供手动刷新,依赖全局 Provider 配置页 */ },
             isFetchingModels = false,
             fetchModelsError = null,
             onDismiss = { showReviewModelSheet = false },
@@ -336,35 +336,35 @@ fun MultiAgentSettingsPage(onBack: () -> Unit) {
 }
 
 /**
- * v1.201: Analice el nombre para mostrar del modelo de revisión en la interfaz de usuario.
+ * v1.201: 解析评审模型在 UI 上的展示名称。
  *
- * reglas:
- *  - reviewModelId esta vacio → "Modelo predeterminado"(Respaldo al primer modelo del proveedor)
- *  - Buscar por id en todos los proveedores → Modelo de devolución name(Si el nombre está vacío, recurra a id)
- *  - No se encontró ningún modelo coincidente → "modelo desconocido(<id>)"(Quizás el usuario cambió de proveedor o eliminó el modelo.)
+ * 规则:
+ *  - reviewModelId 为空 → "默认模型"(回退到 Provider 首个模型)
+ *  - 在所有 Provider 中按 id 查找 → 返回模型 name(若 name 为空回退到 id)
+ *  - 找不到匹配模型 → "未知模型(<id>)"(可能用户切换了 Provider 或删除了该模型)
  *
- * Nota:Esta función solo muestra el nombre en la capa UI,LlmAggregator.resolveReviewModel() lo haré al llamar
- * El mismo proceso de búsqueda y degradación.,La lógica de búsqueda de los dos sigue siendo consistente.
+ * 注意:此函数只在 UI 层做名称展示,LlmAggregator.resolveReviewModel() 在调用时会做
+ * 同样的查找并降级处理,二者查找逻辑保持一致。
  */
 private fun resolveReviewModelName(reviewModelId: String?, providers: List<ProviderConfig>, activeProviderId: String?): String {
     if (reviewModelId.isNullOrBlank()) return "Modelo predeterminado"
-    // Primera búsqueda en el Proveedor activo(situación más común)
+    // 优先在激活 Provider 中查找(最常见情况)
     val activeProvider = providers.firstOrNull { it.id == activeProviderId }
     activeProvider?.models?.firstOrNull { it.id == reviewModelId }?.let { model ->
         return model.name.ifBlank { model.id }
     }
-    // En segundo lugar, busque en todos los proveedores.(Es posible que el usuario haya cambiado el proveedor activo, pero reviewModelId aún apunta al modelo del proveedor anterior.)
+    // 其次在所有 Provider 中查找(用户可能切换了激活 Provider 但 reviewModelId 仍指向旧 Provider 的模型)
     for (provider in providers) {
         val matched = provider.models.firstOrNull { it.id == reviewModelId }
         if (matched != null) {
             return matched.name.ifBlank { matched.id }
         }
     }
-    return "modelo desconocido($reviewModelId)"
+    return "Modelo desconocido ($reviewModelId)"
 }
 
 /**
- * tarjeta de equipo:Nombre + descripción + avatar de miembro(hasta 3,+N) + Botón eliminar.
+ * 团队卡片:名称 + 描述 + 成员头像(最多 3 个,+N) + 删除按钮。
  */
 @Composable
 private fun TeamCard(team: AgentTeam, assistants: List<AssistantEntity>, onClick: () -> Unit, onDelete: () -> Unit) {
@@ -435,7 +435,7 @@ private fun TeamCard(team: AgentTeam, assistants: List<AssistantEntity>, onClick
 }
 
 /**
- * Fila de avatar de miembro:Mostrar hasta los primeros 3 avatares,+N logos redondos para el resto.
+ * 成员头像行:最多显示前 3 个头像,其余用 +N 圆形徽标。
  */
 @Composable
 private fun MemberAvatarRow(members: List<AssistantEntity>) {
@@ -481,18 +481,18 @@ private fun MemberAvatarRow(members: List<AssistantEntity>) {
 }
 
 /**
- * creación de equipo/Editar ventana emergente:Nombre, descripción, selección múltiple de miembros, disposición del flujo de trabajo.
+ * 团队创建/编辑弹窗:名称、描述、成员多选、工作流编排。
  *
- * v1.0.19: Editar nodos de flujo de trabajo incrustados en esta ventana emergente(Estrategia de agregación/lista de nodos/adición, eliminación y modificación de nodos/gestión de dependencias)
- *  El punto de entrada preferido para la orquestación del flujo de trabajo,Experiencia de usuario consistente(No es necesario saltar a la página de pantalla completa).
+ * v1.0.19: 此弹窗内嵌的工作流节点编辑(聚合策略 / 节点列表 / 节点增删改 / 依赖管理)
+ *  为工作流编排的首选入口,用户体验连贯(无需跳转全屏页)。
  */
 @Composable
 private fun TeamEditDialog(team: AgentTeam, assistants: List<AssistantEntity>, onDismiss: () -> Unit, onSave: (AgentTeam) -> Unit) {
-    // Correcciones en la interfaz (persistencia-9): Revisión del borrador del formulario rememberSaveable,key usar team.id(identificación estable)en lugar de una instancia de equipo;
-    // String campo(name/description)directo saveable
+    // 前端修复 (持久化-9): 表单草稿改 rememberSaveable,key 用 team.id(稳定标识)而非 team 实例;
+    // String 字段(name/description)直接 saveable
     var name by rememberSaveable(team.id) { mutableStateOf(team.name) }
     var description by rememberSaveable(team.id) { mutableStateOf(team.description) }
-    // selectedIds(Set)/workflow es un tipo complejo,no puede directamente saveable,mantener remember(Borrador emergente temporal,Es aceptable volver al valor original después de la reconstrucción.)
+    // selectedIds(Set)/workflow 为复杂类型,无法直接 saveable,保持 remember(临时弹窗草稿,重建后回退原值可接受)
     var selectedIds by remember(team.id) { mutableStateOf(team.memberIds.toSet()) }
     var workflow by remember(team.id) { mutableStateOf(team.workflow ?: DelegationContract.TeamWorkflow()) }
     var editingNode by remember { mutableStateOf<DelegationContract.TeamWorkflowNode?>(null) }
@@ -583,7 +583,7 @@ private fun TeamEditDialog(team: AgentTeam, assistants: List<AssistantEntity>, o
                     }
                 }
 
-                // Orquestación del flujo de trabajo
+                // 工作流编排
                 Spacer(Modifier.height(4.dp))
                 Text(
                     text = stringResource(R.string.settings_multi_agent_workflow),
@@ -920,31 +920,31 @@ private fun WorkflowNodeEditDialog(
 }
 
 private fun aggregationName(strategy: DelegationContract.TeamWorkflow.AggregationStrategy): String = when (strategy) {
-    DelegationContract.TeamWorkflow.AggregationStrategy.MERGE -> "fusionar"
-    DelegationContract.TeamWorkflow.AggregationStrategy.VOTE -> "votar"
-    DelegationContract.TeamWorkflow.AggregationStrategy.EXPERT_REVIEW -> "Revisión de expertos"
-    DelegationContract.TeamWorkflow.AggregationStrategy.FIRST_SUCCESS -> "primer éxito"
-    DelegationContract.TeamWorkflow.AggregationStrategy.LLM_REVIEW -> "LLM Revisión completa"
+    DelegationContract.TeamWorkflow.AggregationStrategy.MERGE -> "Combinar"
+    DelegationContract.TeamWorkflow.AggregationStrategy.VOTE -> "Votación"
+    DelegationContract.TeamWorkflow.AggregationStrategy.EXPERT_REVIEW -> "Revisión experta"
+    DelegationContract.TeamWorkflow.AggregationStrategy.FIRST_SUCCESS -> "Primer éxito"
+    DelegationContract.TeamWorkflow.AggregationStrategy.LLM_REVIEW -> "Revisión integral del LLM"
 }
 
 private fun modeName(mode: DelegationContract.TeamWorkflowNode.Mode): String = when (mode) {
-    DelegationContract.TeamWorkflowNode.Mode.SEQUENTIAL -> "de serie"
-    DelegationContract.TeamWorkflowNode.Mode.PARALLEL -> "paralelo"
-    DelegationContract.TeamWorkflowNode.Mode.CONDITIONAL -> "Condiciones"
+    DelegationContract.TeamWorkflowNode.Mode.SEQUENTIAL -> "Secuencial"
+    DelegationContract.TeamWorkflowNode.Mode.PARALLEL -> "Paralelo"
+    DelegationContract.TeamWorkflowNode.Mode.CONDITIONAL -> "Condicional"
 }
 
 private fun modeShortName(mode: DelegationContract.TeamWorkflowNode.Mode): String = when (mode) {
-    DelegationContract.TeamWorkflowNode.Mode.SEQUENTIAL -> "cuerda"
-    DelegationContract.TeamWorkflowNode.Mode.PARALLEL -> "y"
-    DelegationContract.TeamWorkflowNode.Mode.CONDITIONAL -> "Artículo"
+    DelegationContract.TeamWorkflowNode.Mode.SEQUENTIAL -> "Sec."
+    DelegationContract.TeamWorkflowNode.Mode.PARALLEL -> "Par."
+    DelegationContract.TeamWorkflowNode.Mode.CONDITIONAL -> "Cond."
 }
 
 /**
- * v1.201: Fila del control deslizante de tiempo de espera de pausa de delegación(título + valor actual + control deslizante).
+ * v1.201: 委派暂停超时滑块行(标题 + 当前值 + 滑块)。
  *
- * Rango de valores 60-600 segundos,paso a paso 30,19 puntos discretos en total(steps = 17).
- * CMP-10: El diseño de filas ya no se dibuja solo,Delegación unificada [SettingsSliderRow](Sin forma de icono),
- * con [SettingsSwitchRow] Lo mismo padding,hazlo en [SettingsGroup] Alineación visual interna.
+ * 取值范围 60-600 秒,步进 30,共 19 个离散点(steps = 17)。
+ * CMP-10: 行布局不再自绘,统一委托 [SettingsSliderRow](无图标形态),
+ * 与 [SettingsSwitchRow] 同样的 padding,使其在 [SettingsGroup] 内视觉对齐。
  */
 @Composable
 private fun DelegationTimeoutSliderRow(timeoutSec: Int, onValueChange: (Int) -> Unit) {
@@ -953,7 +953,7 @@ private fun DelegationTimeoutSliderRow(timeoutSec: Int, onValueChange: (Int) -> 
         title = stringResource(R.string.delegation_pause_timeout),
         value = timeoutSec.toFloat(),
         valueRange = 60f..600f,
-        steps = 17, // 60, 90, ..., 600 19 valores en total,steps = 19 - 2 = 17
+        steps = 17, // 60, 90, ..., 600 共 19 个取值,steps = 19 - 2 = 17
         valueText = "$timeoutSec $secUnit",
         onValueChange = { v -> onValueChange(v.toInt()) },
     )

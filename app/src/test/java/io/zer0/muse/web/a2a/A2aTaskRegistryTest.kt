@@ -7,15 +7,15 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * AUD-20261011-A2A-PROTOCOL(.audit REPORT_DOCS_TESTS F2 / REPORT_SECURITY F2 / REPORT_AGENT F5):
+ * AUD-20261011-A2A-PROTOCOL（.audit REPORT_DOCS_TESTS F2 / REPORT_SECURITY F2 / REPORT_AGENT F5）：
  *
- * A2A Es la entrada externa insignia de la versión 2.5.8, pero el protocolo y el libro de tareas anteriores no se probaron en absoluto y tenían tres fallas de implementación:
- *  1) GetTask / CancelTask poner JSON-RPC **sobre id** Cuando se lee la identificación de la tarea (la especificación requiere params.id)——
- *     Un cliente A2A normal nunca podrá recuperar la tarea;
- *  2) CancelTask Ignorar taskId siempre chatViewModel.stop(), lo que puede interrumpir la generación que se está ejecutando en la recepción del usuario;
- *  3) El estado de la tarea no está diferenciado."Tareas desconocidas para este controlador"con"Tareas conocidas", incapaz de realizar la verificación de propiedad.
+ * A2A 是 v2.5.8 的旗舰外部入口，但此前协议与任务簿完全无测试，且有三处实现缺陷：
+ *  1) GetTask / CancelTask 把 JSON-RPC **信封 id** 当 task id 读（规范要求 params.id）——
+ *     正常 A2A 客户端永远取不回任务；
+ *  2) CancelTask 无视 taskId 一律 chatViewModel.stop()，可打断用户前台正在跑的生成；
+ *  3) 任务状态不区分"本 handler 未知的任务"与"已知任务"，无法做归属校验。
  *
- * Esta prueba bloquea la semántica de propiedad y estado del libro de tareas (lógica pura, no depende de Android/ViewModel).
+ * 本测试锁定任务簿的归属与状态语义（纯逻辑，不依赖 Android/ViewModel）。
  */
 class A2aTaskRegistryTest {
 
@@ -33,7 +33,7 @@ class A2aTaskRegistryTest {
         val registry = A2aTaskRegistry()
         assertNull(registry.get("does-not-exist"))
         assertFalse(
-            "Las tareas no registradas no se pueden reclamar,De lo contrario, CancelTask ​​detendrá accidentalmente la generación del propio usuario.",
+            "未登记的任务不得被认领,否则 CancelTask 会误停用户自己的生成",
             registry.isOwned("does-not-exist"),
         )
     }
@@ -52,7 +52,7 @@ class A2aTaskRegistryTest {
         registry.record(task("t2", A2aTaskState.COMPLETED))
         registry.record(task("t3", A2aTaskState.COMPLETED))
         registry.record(task("t4", A2aTaskState.COMPLETED))
-        assertNull("La tarea más antigua debería ser desalojada.,Evite el crecimiento ilimitado del libro de tareas", registry.get("t1"))
+        assertNull("最旧的任务应被逐出,避免任务簿无界增长", registry.get("t1"))
         assertTrue(registry.isOwned("t4"))
         assertEquals(3, registry.size)
     }
@@ -71,8 +71,8 @@ class A2aTaskRegistryTest {
         val registry = A2aTaskRegistry()
         registry.record(task("done", A2aTaskState.COMPLETED))
         registry.record(task("running", A2aTaskState.WORKING))
-        assertFalse("Las tareas completadas ya no deberían provocar la detención", registry.isCancelable("done"))
+        assertFalse("已完成的任务不该再触发停止", registry.isCancelable("done"))
         assertTrue(registry.isCancelable("running"))
-        assertFalse("Las tareas desconocidas no se pueden cancelar", registry.isCancelable("unknown"))
+        assertFalse("未知任务不可取消", registry.isCancelable("unknown"))
     }
 }

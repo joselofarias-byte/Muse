@@ -9,35 +9,35 @@ class DeepMemoryProcessorFactSourceTest {
     @Test
     fun assistantAttributedTimelineItemsAreExcludedFromLongTermExtraction() {
         val summary = """
-            ### hechos importantes
-            - El usuario se está preparando actualmente para moverse.
-            ### que paso
-            - [Usuario] Planes explicados para un nuevo hogar.
-            - [asistente] Comprométete a hacer un seguimiento
-            - [Léame de Vibe del Asistente] Algunos se preocupan por la falta de detalles
+            ### 重要事实
+            - 用户最近在筹备搬家
+            ### 事情经过
+            - [用户] 说明了新家的计划
+            - [助手] 承诺继续跟进
+            - [助手 Vibe 自述] 有些担心遗漏细节
         """.trimIndent()
 
         val source = filterAssistantAttributedMemoryEntries(summary)
 
-        assertTrue(source.contains("El usuario se está preparando actualmente para moverse."))
-        assertTrue(source.contains("[Usuario]"))
-        assertFalse(source.contains("[asistente]"))
-        assertFalse(source.contains("[Léame de Vibe del Asistente]"))
+        assertTrue(source.contains("用户最近在筹备搬家"))
+        assertTrue(source.contains("[用户]"))
+        assertFalse(source.contains("[助手]"))
+        assertFalse(source.contains("[助手 Vibe 自述]"))
     }
 
     @Test
     fun sameUserFactsWithOnlyAssistantTimelineChangesDoNotRequireExtraction() {
         val previous = """
-            ### hechos importantes
-            - El usuario se está preparando actualmente para moverse.
-            ### que paso
-            - [Léame de Vibe del Asistente] Algunos se preocupan por la falta de detalles
+            ### 重要事实
+            - 用户最近在筹备搬家
+            ### 事情经过
+            - [助手 Vibe 自述] 有些担心遗漏细节
         """.trimIndent()
         val current = """
-            ### hechos importantes
-            - El usuario se está preparando actualmente para moverse.
-            ### que paso
-            - [Léame de Vibe del Asistente] me siento mas tranquilo
+            ### 重要事实
+            - 用户最近在筹备搬家
+            ### 事情经过
+            - [助手 Vibe 自述] 感觉更放心了
         """.trimIndent()
 
         assertTrue(

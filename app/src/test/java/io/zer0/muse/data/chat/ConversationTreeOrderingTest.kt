@@ -13,14 +13,14 @@ class ConversationTreeOrderingTest {
         val realUser = UIMessage(
             id = Uuid.random(),
             role = MessageRole.USER,
-            content = "verdadera pregunta",
+            content = "真实问题",
             createdAt = 100L,
             seq = 1L,
         )
         val realAssistant = UIMessage(
             id = Uuid.random(),
             role = MessageRole.ASSISTANT,
-            content = "verdadera respuesta",
+            content = "真实回答",
             createdAt = 101L,
             seq = 2L,
             parentGroupId = realUser.id.toString(),
@@ -47,14 +47,14 @@ class ConversationTreeOrderingTest {
         val first = UIMessage(
             id = Uuid.random(),
             role = MessageRole.USER,
-            content = "primera ronda",
+            content = "第一轮",
             createdAt = 9_999L,
             seq = 1L,
         )
         val second = UIMessage(
             id = Uuid.random(),
             role = MessageRole.ASSISTANT,
-            content = "Artículo 2",
+            content = "第二条",
             createdAt = 1L,
             seq = 2L,
         )
@@ -66,8 +66,8 @@ class ConversationTreeOrderingTest {
     }
 
     @Test
-    fun `Al mezclar seq y createAt, la clasificación sigue siendo orden total(Regresar-bucle comparador)`() {
-        // Revisión de las tríadas formadoras de anillos descubiertas.:La antigua implementación también derivaría A>C(prensa seq),A<B,B<C(prensa createdAt)
+    fun `混合 seq 与 createdAt 时排序仍是全序(回归-比较器成环)`() {
+        // 审查发现的成环三元组:旧实现会同时得出 A>C(按 seq)、A<B、B<C(按 createdAt)
         val a =
             UIMessage(
                 id = Uuid.random(),
@@ -80,7 +80,7 @@ class ConversationTreeOrderingTest {
             UIMessage(
                 id = Uuid.random(),
                 role = MessageRole.USER,
-                content = "B(Mensajes antiguos desordenados)",
+                content = "B(无序旧消息)",
                 createdAt = 1_000L,
                 seq = 0L,
             )
@@ -93,17 +93,17 @@ class ConversationTreeOrderingTest {
                 seq = 20L,
             )
 
-        // no debe ser arrojado "Comparison method violates its general contract!"
+        // 不应抛 "Comparison method violates its general contract!"
         val first = orderConversationMessages(listOf(a, b, c)).map { it.id }
-        // Los mensajes ordenados aún presionan seq(A antes de C),Los mensajes desordenados se insertan nuevamente en el período de tiempo según creado en(B La hora es anterior a A y posterior a C)
+        // 有序消息仍按 seq(A 在 C 前),无序消息按 createdAt 插回时间段(B 的时间早于 A、晚于 C)
         assertEquals(listOf(a.id, b.id, c.id), first)
-        // El resultado es independiente del orden de entrada.(Criterio de orden total)
+        // 结果与输入顺序无关(全序的判据)
         assertEquals(first, orderConversationMessages(listOf(c, b, a)).map { it.id })
         assertEquals(first, orderConversationMessages(listOf(b, c, a)).map { it.id })
     }
 
     @Test
-    fun `Los mensajes antiguos desordenados se insertan nuevamente en el período de tiempo de acuerdo con createAt en lugar de colocarse en un extremo`() {
+    fun `无序旧消息按 createdAt 插回时间段而不是统一塞到一端`() {
         val m1 =
             UIMessage(
                 id = Uuid.random(),
@@ -136,12 +136,12 @@ class ConversationTreeOrderingTest {
     }
 
     @Test
-    fun `El texto original resumido ya no se fusiona con el árbol anterior`() {
+    fun `已摘要的原文不再从旧树合并回来`() {
         val user =
             UIMessage(
                 id = Uuid.random(),
                 role = MessageRole.USER,
-                content = "vieja pregunta",
+                content = "老问题",
                 createdAt = 1L,
                 seq = 1L,
             )
@@ -149,7 +149,7 @@ class ConversationTreeOrderingTest {
             UIMessage(
                 id = Uuid.random(),
                 role = MessageRole.ASSISTANT,
-                content = "Antigua respuesta",
+                content = "老回答",
                 createdAt = 2L,
                 seq = 2L,
                 parentGroupId = user.id.toString(),
@@ -157,30 +157,30 @@ class ConversationTreeOrderingTest {
             )
         val tree = ConversationTree.build(listOf(user, assistant))
 
-        // viejo comportamiento(No pasar colección sumaria):El texto original del árbol antiguo se fusionará nuevamente.
-        assertEquals("El texto original debe fusionarse nuevamente con el comportamiento anterior.", 2, mergeRebuildMessages(tree, emptyList()).size)
-        // El texto original que ha sido cubierto por el resumen no puede ser revivido.,De lo contrario"Resumen + texto original"La coexistencia conduce a una doble contabilización de tokens
+        // 旧行为(不传已摘要集合):旧树原文会被合并回来
+        assertEquals("旧行为下原文应被合并回来", 2, mergeRebuildMessages(tree, emptyList()).size)
+        // 已被摘要覆盖的原文不得复活,否则"摘要 + 原文"共存导致 token 双计
         val filtered =
             mergeRebuildMessages(
                 tree,
                 emptyList(),
                 setOf(user.id.toString(), assistant.id.toString()),
             )
-        assertEquals("El texto original que ha sido resumido no puede resucitar.", 0, filtered.size)
-        // Cuando sólo se cubre parte de la,El que no esté cubierto deberá conservarse igualmente.
+        assertEquals("已摘要的原文不得复活", 0, filtered.size)
+        // 只覆盖一部分时,未被覆盖的那条仍要保留
         val partial = mergeRebuildMessages(tree, emptyList(), setOf(user.id.toString()))
-        assertEquals("Los mensajes descubiertos aún deben volver a fusionarse", listOf(assistant.id), partial.map { it.id })
+        assertEquals("未覆盖的消息仍需合并回来", listOf(assistant.id), partial.map { it.id })
     }
 
     @Test
     fun `editing a middle user message keeps the branch in place after rebuild`() {
-        // Comentarios de los usuarios: después de editar un mensaje en el medio, la nueva rama se ejecutó hasta el final.
-        // Aquí hay un recorrido por el vínculo real: Construyendo un árbol → Editar ronda 2 → Reconstruya el árbol con displayMessages.
+        // 用户反馈：编辑中间某条消息后，新分支跑到最后。
+        // 这里走一遍真实链路：建树 → 编辑第 2 轮 → 用 displayMessages 重建树。
         fun turn(index: Int): Pair<UIMessage, UIMessage> {
             val user = UIMessage(
                 id = Uuid.random(),
                 role = MessageRole.USER,
-                content = "pregunta $index",
+                content = "问题 $index",
                 createdAt = index * 10L,
                 seq = index * 2L,
                 variantGroupId = "ug-$index",
@@ -188,7 +188,7 @@ class ConversationTreeOrderingTest {
             val assistant = UIMessage(
                 id = Uuid.random(),
                 role = MessageRole.ASSISTANT,
-                content = "responder $index",
+                content = "回答 $index",
                 createdAt = index * 10L + 1,
                 seq = index * 2L + 1,
                 variantGroupId = "ag-$index",
@@ -202,20 +202,20 @@ class ConversationTreeOrderingTest {
         val (u3, a3) = turn(3)
         val tree = ConversationTree.build(listOf(u1, a1, u2, a2, u3, a3))
 
-        val edit = tree.editUserMessage(u2.id, "Pregunta 2 (modificada)")
-        assertNotNull("La edición debería tener éxito", edit)
+        val edit = tree.editUserMessage(u2.id, "问题 2（改）")
+        assertNotNull("编辑应成功", edit)
         val shown = edit!!.tree.displayMessages
 
-        // 1) En la proyección del árbol, la nueva variante todavía se encuentra en la posición de la ronda 2.
+        // 1) 树投影里，新变体仍在第 2 轮的位置
         assertEquals(
-            listOf("pregunta 1", "Pregunta 2 (modificada)", "pregunta 3"),
+            listOf("问题 1", "问题 2（改）", "问题 3"),
             shown.filter { it.role == MessageRole.USER }.map { it.content },
         )
 
-        // 2) Utilice esta proyección para reconstruir el árbol (reconstruir después de simular la transmisión) y el orden no se puede cambiar.
+        // 2) 用这份投影重建树（模拟流式结束后的 rebuild），顺序不能变
         val rebuilt = ConversationTree.build(shown)
         assertEquals(
-            listOf("pregunta 1", "Pregunta 2 (modificada)", "pregunta 3"),
+            listOf("问题 1", "问题 2（改）", "问题 3"),
             rebuilt.displayMessages.filter { it.role == MessageRole.USER }.map { it.content },
         )
     }

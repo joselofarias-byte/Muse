@@ -8,10 +8,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Enviar cálculos geométricos para vuelo.
+ * 发送飞行的几何推算。
  *
- * Esta lógica solo tiene un resultado visual en la máquina real y no hay forma de saber si es correcta o incorrecta, por lo que fijé la parte verificable en la prueba:
- * El punto de aterrizaje debe estar dentro de la lista, el ancho está sujeto al límite superior y la entrada no válida se abandonará directamente (es mejor no volar que volar a la posición incorrecta).
+ * 这段逻辑在真机上只有一个观感结果，看不出对错，所以把可验证的部分钉在测试里：
+ * 落点必须落在列表内部、宽度受上限约束、无效输入直接放弃（宁可不飞，也不要飞错位置）。
  */
 class SendFlightTest {
 
@@ -34,18 +34,18 @@ class SendFlightTest {
         val flight = computeSendFlight("hello", input, list)
         assertNotNull(flight)
         val to = requireNotNull(flight).to
-        assertTrue("La parte superior del punto de caída no debe ser más alta que la parte superior de la lista.", to.top >= list.top)
-        assertTrue("La parte inferior del punto de caída no debe ser inferior a la parte inferior de la lista.", to.bottom <= list.bottom)
-        assertTrue("El lado derecho del punto de caída no debe exceder la lista.", to.right <= list.right)
-        assertTrue("El lado izquierdo del punto de aterrizaje no debe ser negativo.", to.left >= list.left)
+        assertTrue("落点顶部不应高于列表顶部", to.top >= list.top)
+        assertTrue("落点底部不应低于列表底部", to.bottom <= list.bottom)
+        assertTrue("落点右边不应超出列表", to.right <= list.right)
+        assertTrue("落点左边不应为负", to.left >= list.left)
     }
 
     @Test
     fun `target width respects the bubble ratio`() {
         val flight = requireNotNull(computeSendFlight("hello", input, list))
         val maxWidth = list.width * 0.72f
-        assertTrue("El ancho del punto de caída no debe exceder el límite superior de la burbuja.", flight.to.width <= maxWidth + 0.5f)
-        assertTrue("El ancho del punto de caída debe ser mayor que cero", flight.to.width > 0f)
+        assertTrue("落点宽度不应超过气泡上限", flight.to.width <= maxWidth + 0.5f)
+        assertTrue("落点宽度应大于零", flight.to.width > 0f)
     }
 
     @Test

@@ -12,28 +12,31 @@ import io.zer0.muse.miniphone.data.chat.groupTitleOf
 import io.zer0.muse.miniphone.data.db.dao.MpThreadDao
 import io.zer0.muse.miniphone.data.db.entity.MpThreadEntity
 import io.zer0.muse.miniphone.data.settings.MpMomentAutoStore
+import io.zer0.muse.miniphone.ui.launchGuarded
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.util.UUID
 
 /**
- * La única fuente de estado del shell.
+ * 外壳的唯一状态来源。
  *
- * cinco corrientes(Tabla de conversación, rol, datos locales, cambio de envío automático a Momentos, cambio de mensaje privado activo de rol)Haz una copia aquí [ShellUiState];
- * La interfaz obtiene los datos combinados.,No retenido DAO,Tampoco hay una biblioteca de cheques en Composable.
+ * 五条流(会话表、角色、本机资料、自动发朋友圈开关、角色主动私信开关)在这里合成一份 [ShellUiState];
+ * 界面拿到的是已合并好的数据,不持有 DAO,也不在 Composable 里查库。
  *
- * Escribir acción en la línea de conversación(Fijar arriba, borrar no leídos, eliminar conversación, borrar)transferir a [MpConversationActions]:
- * La lista en sí es un flujo de tablas de sesiones.,No es necesario actualizar manualmente después de escribir. Crea un grupo y transfiérelo a [MpGroupActions],
- * Deletrea el nombre del grupo aquí —— La lista de personajes proporcionada por el anfitrión ya se encuentra en este estado.,La capa de escritura no tiene que volver a preguntar.
+ * 会话行上的写动作(置顶、清未读、删会话、清空)转给 [MpConversationActions]:
+ * 列表本身是会话表的流,写完不需要手动刷新。建群转给 [MpGroupActions],
+ * 群名在这里拼好 —— 宿主给的角色名单在这份状态里已经有了,写入层不必再问一次。
  *
- * Retenido después de que todos los suscriptores abandonan el sitio [KEEP_ALIVE_MS] Deténgase río arriba nuevamente:Al cambiar a la página de chat y regresar,
- * No es necesario esperar a que se vuelvan a ejecutar los cuatro flujos ascendentes.
+ * 订阅方全部离场后保留 [KEEP_ALIVE_MS] 再停上游:切到聊天页再回来时,
+ * 不必等四条上游重新跑一遍。
  */
+// 日志里区分是哪个用户动作失败了（动作名写在调用处）。
+private const val LOG_TAG = "MiniPhoneShell"
+
 class MiniPhoneShellViewModel(
     private val threadDao: MpThreadDao,
     private val store: MpConversationActions,
@@ -42,13 +45,13 @@ class MiniPhoneShellViewModel(
     private val settings: MpMomentAutoStore,
 ) : ViewModel() {
 
-    /** Nombre de la versión del host:Sin cambios durante toda la estancia.,Solo pregunta una vez al ingresar a la página. */
+    /** 宿主版本名:整个停留期间不变,进页时问一次就够。 */
     private val appVersionName: String = host.appVersionName()
 
-    /** puerta de sesión:La libreta de direcciones no puede crear dos conversaciones ni siquiera con dos clics. */
+    /** 建会话的闸:通讯录连点两下也不能建出两条会话。 */
     private val openThreadMutex = Mutex()
 
-    /** Lista de personajes recibidos más recientemente:Al crear un grupo, utilícelo para reemplazar la identificación seleccionada con el nombre utilizado para el nombre del grupo. */
+    /** 最近一次收到的角色名单:建群时用它把选中的 id 换成群名用的名字。 */
     private var charactersById: Map<String, MpCharacter> = emptyMap()
 
     val uiState: StateFlow<ShellUiState> = combine(
@@ -68,13 +71,13 @@ class MiniPhoneShellViewModel(
     )
 
     /**
-     * Se utiliza al hacer clic en un carácter en la libreta de direcciones.:Si ya tienes una conversación, solo dala directamente. id,Si no, abra una sesión vacía.
+     * 通讯录点一个角色时用:已有会话就直接给 id,没有就开一个空会话。
      *
-     * "Buscar por función" es la única base para juzgar —— La misma persona siempre corresponderá sólo a una conversación 1:1 en la lista de conversaciones.,
-     * Los puntos repetidos no dejarán una línea de diálogo en blanco. Todo eso de "comprobar primero y luego escribir" es [openThreadMutex] hazlo adentro:
-     * Al conectar puntos, esperaré hasta que termine el anterior antes de volver a comprobarlo.,El que encontré fue el que acababan de construir.
+     * 「按角色找」是唯一的判定依据 —— 同一个人在会话列表里永远只对应一条 1:1 会话,
+     * 重复点不会多出一条空白对话。整个「先查后写」在 [openThreadMutex] 里做:
+     * 连点时后一次会等前一次写完再去查,查到的是刚建好的那条。
      *
-     * @return sesión id;Devuelto cuando la identificación del rol está vacía null(La interfaz no debe utilizar un rol vacío para abrir una sesión.)
+     * @return 会话 id;角色 id 为空时返回 null(界面不该拿一个空角色去开会话)
      */
     suspend fun openOrCreateThread(characterId: String): String? {
         if (characterId.isBlank()) return null
@@ -89,24 +92,22 @@ class MiniPhoneShellViewModel(
     }
 
     /**
-     * Crear un grupo y devolver su sesión. id;No hay suficientes personas para elegir(O la identificación del rol está vacía)Devuelve nulo.
+     * 建一个群并返回它的会话 id;选不够两个人(或角色 id 全空)时返回 null。
      *
-     * Los nombres de los grupos se unen en el orden de selección.(terminando con "yo"). El nombre se toma de la lista de personajes más reciente.:
-     * La lista aún no ha llegado o se ha eliminado un determinado personaje.,Degenera en un mensaje en lugar de un nombre vacío. ——
-     * Una vez que el nombre del grupo se escribe en la base de datos, no se volverá a calcular.,Prefiero escribir un nombre que se pueda entender aquí.
+     * 群名按选择顺序拼接(末尾缀「我」)。名字从最近一次的角色名单里取:
+     * 名单还没到或角色已被删就留空,由 [groupTitleOf] 滤掉 —— 群名一旦写进库就不再重算,
+     * 所以库里只放真名字,不放界面提示语。
      *
-     * @param characterIds rol seleccionado id,El orden es el orden en el grupo.
+     * @param characterIds 选中的角色 id,顺序就是群里的顺序
      */
     suspend fun createGroup(characterIds: List<String>): String? {
         val members = characterIds.map(String::trim).filter(String::isNotEmpty).distinct()
         if (!canCreateGroup(members.size)) return null
-        val names = members.map { id ->
-            charactersById[id]?.name?.takeIf(String::isNotBlank) ?: UNKNOWN_CHARACTER_NAME
-        }
+        val names = members.map { id -> charactersById[id]?.name.orEmpty() }
         return groupStore.createGroup(members, groupTitleOf(names))
     }
 
-    /** Estado sintético,Por cierto, deja la lista de personajes en [charactersById] en(Para crear un grupo, use un nombre,No puedes volver a preguntarle al anfitrión.). */
+    /** 合成状态,顺便把角色名单留在 [charactersById] 上(建群要用名字,不能再去问宿主一次)。 */
     private fun assembleWithCharacterCache(
         threads: List<MpThreadEntity>,
         characters: List<MpCharacter>,
@@ -117,42 +118,42 @@ class MiniPhoneShellViewModel(
     }
 
     /**
-     * Activa "Publicar automáticamente en Momentos".
+     * 切「自动发朋友圈」。
      *
-     * Escribir solo configuraciones:El trabajador en segundo plano leerá este interruptor primero en cada ronda.,Si está desactivado, se omitirá toda la ronda y la red no se enviará ni una sola vez.
-     * La tarea programada en sí no se cancela —— Restaurar inmediatamente al reabrir,No es necesario esperar a que el anfitrión vuelva a ajustar el registro.
+     * 只写设置:后台 Worker 每轮都会先读这个开关,关着就整轮跳过、一次网络都不发。
+     * 定时任务本身不取消 —— 重新打开时立刻恢复,不必等宿主再调一次注册。
      */
     fun setAutoMomentEnabled(enabled: Boolean) {
-        viewModelScope.launch { settings.setEnabled(enabled) }
+        viewModelScope.launchGuarded(LOG_TAG, "切「自动发朋友圈」") { settings.setEnabled(enabled) }
     }
 
     /**
-     * Corta "Mensaje privado activo del personaje".
+     * 切「角色主动私信」。
      *
-     * También solo escribe configuraciones.:Worker Lea este cambio primero en cada ronda.,Si está desactivado, se saltará toda la ronda. Desactivado predeterminado,Por lo tanto, los usuarios nunca serán molestados a menos que lo enciendan.
+     * 同样只写设置:Worker 每轮先读这个开关,关着就整轮跳过。默认关,所以用户不开就永远不会被打扰。
      */
     fun setChatProactiveEnabled(enabled: Boolean) {
-        viewModelScope.launch { settings.setChatProactiveEnabled(enabled) }
+        viewModelScope.launchGuarded(LOG_TAG, "切「角色主动私信」") { settings.setChatProactiveEnabled(enabled) }
     }
 
-    /** Anclar/desanclar una conversación. */
+    /** 置顶 / 取消置顶一条会话。 */
     fun setThreadPinned(threadId: String, pinned: Boolean) {
-        viewModelScope.launch { store.setPinned(threadId, pinned) }
+        viewModelScope.launchGuarded(LOG_TAG, "置顶/取消置顶会话") { store.setPinned(threadId, pinned) }
     }
 
-    /** Borrar no leídos:\"Marcar como leído\" en la línea de conversación. */
+    /** 未读清零:会话行上的「标记已读」。 */
     fun markThreadRead(threadId: String) {
-        viewModelScope.launch { store.markRead(threadId) }
+        viewModelScope.launchGuarded(LOG_TAG, "标记会话已读") { store.markRead(threadId) }
     }
 
-    /** Eliminar una conversación y todos sus mensajes. */
+    /** 删一个会话及其全部消息。 */
     fun deleteThread(threadId: String) {
-        viewModelScope.launch { store.deleteThread(threadId) }
+        viewModelScope.launchGuarded(LOG_TAG, "删一个会话及其全部消息") { store.deleteThread(threadId) }
     }
 
-    /** Borrar historial de chat(Todas las conversaciones y mensajes.);Otros datos como Momentos se mantienen sin cambios. */
+    /** 清空聊天记录(所有会话与消息);朋友圈等其它数据不动。 */
     fun clearConversations() {
-        viewModelScope.launch { store.clearAll() }
+        viewModelScope.launchGuarded(LOG_TAG, "清空聊天记录") { store.clearAll() }
     }
 
     private companion object {

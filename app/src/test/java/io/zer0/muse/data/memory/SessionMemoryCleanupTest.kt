@@ -34,12 +34,12 @@ import java.io.File
 import java.util.UUID
 
 /**
- * sesión/Prueba de regresión de limpieza de memoria después de la eliminación del asistente.
+ * 会话/助手删除后的记忆清理回归测试。
  *
- * Cubra tres elementos que se degradan fácilmente en la naturaleza.:
- *  - Eliminar una conversación solo borra el resumen y los hechos de la conversación.,Otras sesiones no se ven afectadas.;
- *  - Limpiar idempotente —— Elimina dos veces sin tirar ni contar repetidamente.;
- *  - Eliminar y escribir una lápida —— La próxima ronda de compilación no tratará el contenido eliminado como"Resumen huérfano"Rellena el formulario.
+ * 覆盖三件容易退化的性质:
+ *  - 删会话只清该会话的摘要与事实,别的会话不受影响;
+ *  - 清理幂等 —— 删两次不抛、不重复计数;
+ *  - 删完写墓碑 —— 下一轮编译不会把删掉的内容当"摘要孤儿"补录回表。
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -116,21 +116,21 @@ class SessionMemoryCleanupTest {
         memoryDb.sessionSummaryDao().upsert(summary(deleted, assistantId = "default"))
         memoryDb.sessionSummaryDao().upsert(summary(kept, assistantId = "default"))
 
-        // Dos entradas en la base de datos principal + una en la base de datos de la sucursal pertenecen a sesiones eliminadas; el otro en la base de datos de la sucursal pertenece a sesiones reservadas.
+        // 主库两条 + 分库一条属于被删会话；分库里另一条属于保留会话。
         val mainStore = factProvider.getFactStore("default")
         val subStore = factProvider.getFactStore("assistant_a")
-        mainStore.add(FactStore.Fact(fact = "A los usuarios les gusta el tema azul", sessionId = deleted), scope = "main")
-        mainStore.add(FactStore.Fact(fact = "El usuario tiene examen el próximo miércoles", sessionId = deleted), scope = "main")
-        subStore.add(FactStore.Fact(fact = "Preferencias anotadas por el subasistente", sessionId = deleted), scope = "assistant_a")
-        subStore.add(FactStore.Fact(fact = "Preservar datos de la sesión", sessionId = kept), scope = "assistant_a")
+        mainStore.add(FactStore.Fact(fact = "用户喜欢蓝色主题", sessionId = deleted), scope = "main")
+        mainStore.add(FactStore.Fact(fact = "用户下周三有考试", sessionId = deleted), scope = "main")
+        subStore.add(FactStore.Fact(fact = "子助手记下的偏好", sessionId = deleted), scope = "assistant_a")
+        subStore.add(FactStore.Fact(fact = "保留会话的事实", sessionId = kept), scope = "assistant_a")
 
         cleanup.cleanSessions(listOf(deleted))
 
-        assertEquals("Las conversaciones eliminadas no pueden salir de resúmenes", 1, memoryDb.sessionSummaryDao().getAll().size)
+        assertEquals("被删会话不能留下摘要", 1, memoryDb.sessionSummaryDao().getAll().size)
         assertEquals(kept, memoryDb.sessionSummaryDao().getAll().single().sessionId)
-        assertEquals("Se deben borrar los datos de la sesión en la base de datos principal.", 0, mainStore.getBySession(deleted).size)
-        assertEquals("También se deberán borrar los hechos de la sesión en la base de datos de la sucursal.", 0, subStore.getBySession(deleted).size)
-        assertEquals("Los hechos de otras conversaciones no se ven afectados.", 1, subStore.getBySession(kept).size)
+        assertEquals("主库里该会话的事实要清空", 0, mainStore.getBySession(deleted).size)
+        assertEquals("分库里该会话的事实同样要清空", 0, subStore.getBySession(deleted).size)
+        assertEquals("别的会话的事实不受影响", 1, subStore.getBySession(kept).size)
     }
 
     @Test
@@ -138,27 +138,27 @@ class SessionMemoryCleanupTest {
         val sessionId = "session-twice"
         memoryDb.sessionSummaryDao().upsert(summary(sessionId, assistantId = "default"))
         val store = factProvider.getFactStore("default")
-        store.add(FactStore.Fact(fact = "El usuario tiene un gato llamado Tuanzi.", sessionId = sessionId), scope = "main")
-        store.add(FactStore.Fact(fact = "Los usuarios se despiertan a las siete de la mañana todos los días.", sessionId = sessionId), scope = "main")
+        store.add(FactStore.Fact(fact = "用户养了一只叫团子的猫", sessionId = sessionId), scope = "main")
+        store.add(FactStore.Fact(fact = "用户每天七点起床", sessionId = sessionId), scope = "main")
 
         cleanup.cleanSessions(listOf(sessionId))
         val tombstonesAfterFirst = store.getTombstones("main", "default").size
-        // La segunda llamada no debe generar una excepción.,ni contar/Voltea la lápida otra vez.
+        // 第二次调用不得抛异常,也不得把计数/墓碑再翻一遍
         cleanup.cleanSessions(listOf(sessionId))
 
         assertEquals(0, store.getBySession(sessionId).size)
-        assertEquals("La limpieza repetida no debería reescribir las lápidas", tombstonesAfterFirst, store.getTombstones("main", "default").size)
+        assertEquals("重复清理不应重复写墓碑", tombstonesAfterFirst, store.getTombstones("main", "default").size)
         assertEquals(2, tombstonesAfterFirst)
     }
 
     @Test
     fun `cleaned facts stay deleted through the next compile pass`() = runTest {
         val sessionId = "session-tombstone"
-        val deletedLine = "A los usuarios les gusta el tema azul"
+        val deletedLine = "用户喜欢蓝色主题"
         val target = MemoryCompileTarget(assistantId = "default", scope = "main", spaceId = "default")
         val store = factProvider.getFactStore("default")
         store.add(FactStore.Fact(fact = deletedLine, sessionId = sessionId), scope = "main")
-        // Esta línea aún permanece en el producto compilado antes de su eliminación. —— La entrada a la resurrección es exactamente"El contenido del segmento se trata como un resumen huérfano y se vuelve a agregar a la tabla.".
+        // 删除前的编译产物里还留着这一行 —— 复活的入口正是"段内容被当作摘要孤儿补录回表"。
         memoryDb.scopedCompiledSectionDao().upsert(
             ScopedCompiledSectionEntity(
                 sectionKey = MemoryCompiler.Section.FACTS.key,
@@ -172,11 +172,11 @@ class SessionMemoryCleanupTest {
         cleanup.cleanSessions(listOf(sessionId))
 
         assertTrue(
-            "Eliminar hechos debe dejar una lápida,De lo contrario, el lado de compilación lo volverá a agregar.",
-            store.getTombstones("main", "default").any { it.contains("tema azul") },
+            "删事实必须留下墓碑,否则编译侧会把它补录回来",
+            store.getTombstones("main", "default").any { it.contains("蓝色主题") },
         )
 
-        // Simular la siguiente ronda de compilación y conciliación.
+        // 模拟下一轮编译对账
         val compiler = MemoryCompiler(
             sectionDao = memoryDb.compiledSectionDao(),
             llmClient = NoopLlm(),
@@ -188,8 +188,8 @@ class SessionMemoryCleanupTest {
         compiler.reconcileFactsSectionWithStore(emptyList(), target)
 
         assertFalse(
-            "Los hechos eliminados después de haber sido golpeados por una lápida no se pueden recuperar.",
-            store.getAll("main").any { it.fact.contains("tema azul") },
+            "墓碑命中后已删事实不得复活",
+            store.getAll("main").any { it.fact.contains("蓝色主题") },
         )
     }
 
@@ -203,28 +203,28 @@ class SessionMemoryCleanupTest {
         memoryDb.scopedCompiledSectionDao().upsert(section(kept))
         museDb.groupChatMemoryDao().insert(groupChatMemory("g-doomed", doomed))
         museDb.groupChatMemoryDao().insert(groupChatMemory("g-kept", kept))
-        contradictions.save(doomed, "default", listOf("viejo dicho" to "nueva declaración"))
-        contradictions.save(kept, "default", listOf("declaración reservada" to "otra forma de decir"))
+        contradictions.save(doomed, "default", listOf("旧说法" to "新说法"))
+        contradictions.save(kept, "default", listOf("保留的说法" to "另一个说法"))
 
         cleanup.cleanAssistant(doomed)
 
         assertEquals(
-            "Eliminar solo el resumen del asistente de destino.",
+            "只删目标助手的摘要",
             listOf(kept),
             memoryDb.sessionSummaryDao().getAll().map { it.assistantId },
         )
         assertEquals(
-            "Eliminar solo los párrafos compilados del alcance de destino.",
+            "只删目标作用域的编译段落",
             listOf(kept),
             memoryDb.scopedCompiledSectionDao().getAll().map { it.scope },
         )
         assertEquals(
-            "Eliminar solo la memoria del chat grupal del asistente objetivo",
+            "只删目标助手的群聊记忆",
             listOf(kept),
             museDb.groupChatMemoryDao().getAll().map { it.assistantId },
         )
-        assertTrue("Se debe borrar la lista de contradicciones en el asistente de destino.", contradictions.list(doomed, "default").isEmpty())
-        assertTrue("Se deben mantener listas de conflictos de otros asistentes", contradictions.list(kept, "default").isNotEmpty())
+        assertTrue("目标助手的矛盾清单要清空", contradictions.list(doomed, "default").isEmpty())
+        assertTrue("其他助手的矛盾清单要保留", contradictions.list(kept, "default").isNotEmpty())
     }
 
     @Test
@@ -233,31 +233,31 @@ class SessionMemoryCleanupTest {
         val memoryDir = File(filesRoot, "memory")
         val rootMd = File(memoryDir, "memory.md").apply {
             parentFile?.mkdirs()
-            writeText("# memoria principal")
+            writeText("# 主记忆")
         }
         val doomedDir = File(memoryDir, "$doomed/default").apply {
             mkdirs()
-            File(this, "memory.md").writeText("# Se borrará la memoria del asistente")
+            File(this, "memory.md").writeText("# 待删助手的记忆")
             File(this, "daily").mkdirs()
-            File(this, "daily/2026-01-01.md").writeText("## 2026-01-01\n\nTexto")
+            File(this, "daily/2026-01-01.md").writeText("## 2026-01-01\n\n正文")
         }
         val keptDir = File(memoryDir, "assistant_keep/default").apply {
             mkdirs()
-            File(this, "memory.md").writeText("# Preservar la memoria del asistente")
+            File(this, "memory.md").writeText("# 保留助手的记忆")
         }
 
         cleanup.cleanAssistant(doomed)
 
-        assertFalse("El directorio de alcance de destino debe eliminarse", doomedDir.exists())
-        assertTrue("Memory.md en la raíz no pertenece a ningún scope,debe ser retenido", rootMd.exists())
-        assertTrue("Otros directorios de alcance no se ven afectados", keptDir.exists())
+        assertFalse("目标 scope 目录要被删掉", doomedDir.exists())
+        assertTrue("根上的 memory.md 不属于任何 scope,必须保留", rootMd.exists())
+        assertTrue("其他 scope 目录不受影响", keptDir.exists())
     }
 
     private fun summary(sessionId: String, assistantId: String) = SessionSummaryEntity(
         sessionId = sessionId,
         createdAt = "2026-01-01T00:00:00Z",
         updatedAt = "2026-01-01T00:00:00Z",
-        summary = "### hechos importantes\n- A los usuarios les gusta el tema azul",
+        summary = "### 重要事实\n- 用户喜欢蓝色主题",
         assistantId = assistantId,
     )
 
@@ -265,7 +265,7 @@ class SessionMemoryCleanupTest {
         sectionKey = MemoryCompiler.Section.FACTS.key,
         scope = assistantId,
         spaceId = "default",
-        content = "- un hecho",
+        content = "- 某个事实",
         updatedAt = "2026-01-01T00:00:00Z",
     )
 
@@ -273,6 +273,6 @@ class SessionMemoryCleanupTest {
         id = id,
         groupChatId = "group-1",
         assistantId = assistantId,
-        summary = "Cosas discutidas en el chat grupal.",
+        summary = "群聊里聊过的事",
     )
 }

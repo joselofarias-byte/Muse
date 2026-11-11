@@ -11,43 +11,43 @@ import io.zer0.ai.core.ProviderType
 import io.zer0.muse.R
 
 /**
- * v1.0.6: Lista de proveedores preestablecidos — 37 proveedores estándar integrados,
- * Otros 8 exclusivos de 1muse están reservados(deepinfra / lingyi / github-copilot / 6 plantilla de estación de transferencia),
- * Un total de 45 proveedores prediseñados.
+ * v1.0.6: 预置供应商清单 — 内置 37 个标准供应商,
+ * 另保留 1muse 特有的 8 个(deepinfra / lingyi / github-copilot / 6 个中转站模板),
+ * 合计 45 个预置供应商。
  *
- * Alinear contenido(Según las especificaciones estándar del proveedor.):
- *  - proveedor id / displayName / baseUrl / defaultApi Acuerdo / authType
- *  - Lista de modelos de chat predeterminados integrados por proveedor(De la lista de modelos predeterminada incorporada)
- *  - 4 Proveedores de Plan de codificación(dashscope-coding / kimi-coding / volcengine-coding / zhipu-coding)
- *    marca specific.codingPlan = true
- *  - minimax / minimax-token-plan Sigue el protocolo de Mensajes Antrópicos(baseUrl = /anthropic)
- *  - xai-oauth Siga el protocolo de respuestas de OpenAI(type = OPENAI_RESPONSES)
- *  - ollama ir authType=none Semántica(allowMissingApiKey = true)
+ * 对齐内容(按标准供应商规格):
+ *  - 供应商 id / displayName / baseUrl / defaultApi 协议 / authType
+ *  - 每个供应商内嵌默认 chat 模型列表(来自内置默认模型清单)
+ *  - 4 个 Coding Plan 供应商(dashscope-coding / kimi-coding / volcengine-coding / zhipu-coding)
+ *    标记 specific.codingPlan = true
+ *  - minimax / minimax-token-plan 走 Anthropic Messages 协议(baseUrl = /anthropic)
+ *  - xai-oauth 走 OpenAI Responses 协议(type = OPENAI_RESPONSES)
+ *  - ollama 走 authType=none 语义(allowMissingApiKey = true)
  *
- * 1muse Reservas especiales:
- *  - SiliconFlow Modelos gratuitos precargados con 8 modelos + botón UI "rellene modelos gratuitos con un clic"
- *  - GitHub Copilot OAuth Predeterminado
- *  - deepinfra / lingyi dos en el extranjero/Proveedores nacionales
- *  - 6 plantilla de estación de transferencia(opencode / api2d / aihubmix / deepbricks / oneapi / newapi)
+ * 1muse 特有保留:
+ *  - SiliconFlow 免费模型预填 8 个模型 + UI「一键填入免费模型」按钮
+ *  - GitHub Copilot OAuth 预设
+ *  - deepinfra / lingyi 两个海外/国产供应商
+ *  - 6 个中转站模板(opencode / api2d / aihubmix / deepbricks / oneapi / newapi)
  *
- * Clasificación:
- *  - funcionario en el extranjero(15): OpenAI / Anthropic / Gemini / xAI / xAI-OAuth / OpenAI-Codex /
+ * 分类:
+ *  - 海外官方(15): OpenAI / Anthropic / Gemini / xAI / xAI-OAuth / OpenAI-Codex /
  *    GitHub-Copilot / Groq / Together / Mistral / OpenRouter / DeepInfra / Fireworks /
  *    Perplexity / Ollama
- *  - funcionario nacional(22): DeepSeek / Tongyi / Zhipu / Kimi / Doubao / Baichuan / Zero One / Paso / SiliconFlow /
- *    Hunyuan / Baidu / Moda / Wuwen Xinqiong / XiaomiMiMo / picanteAgnes / MiniMax /
- *    BailianoCoding / Kimi-Coding / bolsa de frijolCoding / espectro de sabiduríaCoding /
- *    MiniMax-Token-Plan / XiaomiMiMo-Token-Plan
- *  - estación de transferencia(6): OpenCode / API2D / AiHubMix / DeepBricks / OneAPI / NewAPI
+ *  - 国产官方(22): DeepSeek / 通义 / 智谱 / Kimi / 豆包 / 百川 / 零一 / 阶跃 / SiliconFlow /
+ *    混元 / 百度 / 魔搭 / 无问芯穹 / 小米MiMo / 思必驰Agnes / MiniMax /
+ *    百炼Coding / Kimi-Coding / 豆包Coding / 智谱Coding /
+ *    MiniMax-Token-Plan / 小米MiMo-Token-Plan
+ *  - 中转站(6): OpenCode / API2D / AiHubMix / DeepBricks / OneAPI / NewAPI
  *
- * llamador: SettingsRepository.presetProviders(primer comienzo / Onboarding / "agregar Provider" visualización de la hora)
+ * 调用方: SettingsRepository.presetProviders(首次启动 / Onboarding / "添加 Provider" 时展示)
  */
 class PresetProviders(
     private val context: Context,
     private val modelCatalog: ModelCatalogStore? = null,
 ) {
 
-    // ── Constantes de punto final(Gestión centralizada,Conveniente para la modificación unificada)─────────────────────────────
+    // ── 端点常量(集中管理,便于统一修改)─────────────────────────────
     private val ENDPOINT_GROQ = "https://api.groq.com/openai/v1"
     private val ENDPOINT_TOGETHER = "https://api.together.xyz/v1"
     private val ENDPOINT_MISTRAL = "https://api.mistral.ai/v1"
@@ -81,12 +81,12 @@ class PresetProviders(
     private val ENDPOINT_AIHUBMIX = "https://aihubmix.com/v1"
     private val ENDPOINT_DEEPBRICKS = "https://api.deepbricks.ai/v1"
 
-    // P2-5: SiliconFlow Puntos finales compatibles con la plataforma OpenAI(Coherente con SiliconFlowFreeModels.BASE_URL)
+    // P2-5: SiliconFlow 平台 OpenAI 兼容端点(与 SiliconFlowFreeModels.BASE_URL 保持一致)
     private val ENDPOINT_SILICONFLOW = SiliconFlowFreeModels.BASE_URL
 
-    // ── agrupación de proveedores ─────────────────────────────────────────────────
+    // ── 供应商分组 ─────────────────────────────────────────────────
 
-    /** Fabricantes oficiales en el extranjero.(15 un). */
+    /** 海外官方厂商(15 个)。 */
     val overseas: List<ProviderConfig> = listOf(
         openai(),
         anthropic(),
@@ -105,7 +105,7 @@ class PresetProviders(
         ollama(),
     )
 
-    /** Fabricante oficial nacional(Contiene SiliconFlow normal,Coding Plan con Token Plan). */
+    /** 国产官方厂商(含普通 SiliconFlow、Coding Plan 与 Token Plan)。 */
     val domestic: List<ProviderConfig> = listOf(
         deepseek(),
         qwen(),
@@ -115,9 +115,9 @@ class PresetProviders(
         baichuan(),
         lingyi(),
         stepfun(),
-        // Proveedores comunes de SiliconFlow;El respaldo del modelo gratuito se conserva de forma independiente como un ajuste preestablecido interno
+        // 普通 SiliconFlow 供应商;免费模型 fallback 作为内部预置独立保留
         siliconFlow(),
-        // v1.0.6: Agregar proveedores nacionales
+        // v1.0.6: 新增国产供应商
         hunyuan(),
         baiduCloud(),
         modelscope(),
@@ -125,17 +125,17 @@ class PresetProviders(
         mimo(),
         agnes(),
         minimax(),
-        // v1.0.6: Coding Plan Serie
+        // v1.0.6: Coding Plan 系列
         dashscopeCoding(),
         kimiCoding(),
         volcengineCoding(),
         zhipuCoding(),
-        // v1.0.6: Token Plan Serie
+        // v1.0.6: Token Plan 系列
         minimaxTokenPlan(),
         mimoTokenPlan(),
     )
 
-    /** estación de transferencia(6 un,1muse único). */
+    /** 中转站(6 个,1muse 特有)。 */
     val relay: List<ProviderConfig> = listOf(
         opencode(),
         api2d(),
@@ -146,8 +146,8 @@ class PresetProviders(
     )
 
     /**
-     * Personalice las plantillas de proveedores compatibles con OpenAI.
-     * Los usuarios deben completar manualmente baseUrl + apiKey después de seleccionarlo en la página de guía.
+     * 自定义 OpenAI 兼容供应商模板。
+     * 用户在引导页选中后需手动填写 baseUrl + apiKey。
      */
     private fun customOpenAI() = ProviderConfig(
         id = "preset_custom_openai",
@@ -162,10 +162,10 @@ class PresetProviders(
     )
 
     /**
-     * Proveedores seleccionados mostrados en la página de introducción.
-     * en el extranjero/Nacional/La transferencia requerirá 3 de cada uno en una proporción estrictamente 1:1:1.,y agregar opciones personalizadas.
+     * 引导页展示的精选供应商。
+     * 海外/国产/中转严格按 1:1:1 比例各取 3 个,并追加自定义选项。
      *
-     * SiliconFlow Proveedores ordinarios fijados en la cima,Los usuarios pueden completar su propia clave API en la página de configuración.
+     * SiliconFlow 普通供应商置顶,用户可在配置页填写自己的 API Key。
      */
     val onboardingPresets: List<ProviderConfig> = (
         overseas.take(3) +
@@ -177,17 +177,17 @@ class PresetProviders(
     }
 
     /**
-     * Todos los proveedores preestablecidos(15 + 22 + 6 + 1 Plantilla personalizada = 43 + 1 un).
+     * 全部预置供应商(15 + 22 + 6 + 1 自定义模板 = 43 + 1 个)。
      *
-     * v1.0.7: Cada preset se completa automáticamente specId(Eliminar de la identificación "preset_" prefijo),
-     * suministro [io.zer0.ai.core.ProviderSpecMerger] Fusionar modelo predeterminado de especificaciones + superposición de usuario en tiempo de ejecución.
+     * v1.0.7: 每个 preset 自动填入 specId(从 id 去除 "preset_" 前缀),
+     * 供 [io.zer0.ai.core.ProviderSpecMerger] 在运行时合并 spec 默认模型 + 用户 overlay。
      */
     /**
-     * P1 Superposición del catálogo de modelos: use los campos combinados de ModelCatalogStore para sobrescribir el modelo integrado
-     * contextWindow / maxOutputTokens / vision / tools / reasoning.
+     * P1 模型目录 overlay：用 ModelCatalogStore 合并后的字段覆盖内置模型的
+     * contextWindow / maxOutputTokens / vision / tools / reasoning。
      *
-     * v2.6.0:Sí“autoridad de directorio”La lista predeterminada de proveedores (como Codex) está vacía y el directorio de la nube se usa directamente aquí.
-     * La lista de modelos hace que la página de selección predeterminada sea consistente con los modelos reales disponibles (ya no hay códigos integrados).
+     * v2.6.0：对“目录权威”供应商（如 Codex）预设列表为空，这里直接采用云端目录
+     * 的模型清单，使预设选择页与实际可用模型一致（不再内置写死）。
      */
     private fun overlayCatalog(preset: ProviderConfig): List<Model> {
         val catalog = modelCatalog ?: return preset.models
@@ -206,7 +206,7 @@ class PresetProviders(
         )
     }
 
-    /** Preajustes de tiempo de ejecución internos,No participa en la configuración del proveedor ni en la visualización del selector predeterminado. */
+    /** 内部运行时预置,不参与供应商设置与预设选择器展示。 */
     private val internalPresets: List<ProviderConfig> = listOf(siliconFlowFree()).map { preset ->
         preset.copy(
             specId = preset.id.removePrefix("preset_").ifBlank { null },
@@ -214,28 +214,28 @@ class PresetProviders(
         )
     }
 
-    /** Encuentre el proveedor de aprovisionamiento por identificación. */
+    /** 按 id 查找预置供应商。 */
     fun byId(id: String): ProviderConfig? = (all + internalPresets).firstOrNull { it.id == id }
 
     /**
-     * v1.0.7: Encuentre especificaciones de proveedores de aprovisionamiento por specId(Para que ProviderSpecMerger combine modelos predeterminados).
-     * @param specId Identificación de especificaciones incorporada(Como por ejemplo "openai"/"deepseek",no contiene "preset_" prefijo)
+     * v1.0.7: 按 specId 查找预置供应商规格(供 ProviderSpecMerger 合并默认模型)。
+     * @param specId 内置规格标识(如 "openai"/"deepseek",不含 "preset_" 前缀)
      */
     fun bySpecId(specId: String): ProviderConfig? = (all + internalPresets).firstOrNull { it.specId == specId }
 
-    // ── Asistencia en la construcción de modelos. ──────────────────────────────────────────────
+    // ── 模型构造辅助 ──────────────────────────────────────────────
 
     /**
-     * Construir modelo de chat(Simplificar el código repetitivo).
+     * 构造 chat 模型(简化样板代码)。
      *
-     * @param providerId pertenecer Provider id(Igual que ProviderConfig.id)
-     * @param id modelo id(campos modelo enviados a la API)
-     * @param name Nombre para mostrar del modelo(El valor predeterminado es el mismo que id)
-     * @param contextWindow ventana contextual(token numero),null Indica desconocido
-     * @param maxOutputTokens salida máxima token,null Indica que se utiliza el valor predeterminado ascendente
-     * @param supportsVision Ya sea para admitir la entrada de imágenes
-     * @param reasoning Ya sea para apoyar la cadena de inferencia(thinking / o Serie)
-     * @param supportsTools Ya sea para admitir llamadas a funciones
+     * @param providerId 所属 Provider id(与 ProviderConfig.id 一致)
+     * @param id 模型 id(发送到 API 的 model 字段)
+     * @param name 模型显示名(默认同 id)
+     * @param contextWindow 上下文窗口(token 数),null 表示未知
+     * @param maxOutputTokens 最大输出 token,null 表示用上游默认
+     * @param supportsVision 是否支持图像输入
+     * @param reasoning 是否支持推理链(thinking / o 系列)
+     * @param supportsTools 是否支持函数调用
      */
     @Suppress("ktlint:standard:function-naming")
     private fun chatModel(
@@ -254,13 +254,16 @@ class PresetProviders(
         contextWindow = contextWindow,
         maxOutputTokens = maxOutputTokens,
         supportsVision = supportsVision,
+        // 视觉模型同时声明图像输入模态：两个字段用途不同，
+        // supportsVision 用于能力判断，inputModalities 用于展示与兼容层。
+        inputModalities = if (supportsVision) setOf("text", "image") else setOf("text"),
         abilities = buildSet {
             if (reasoning) add(ModelAbility.REASONING)
             if (supportsTools) add(ModelAbility.TOOL)
         },
     )
 
-    // ── funcionario en el extranjero ──────────────────────────────────────────────────────
+    // ── 海外官方 ──────────────────────────────────────────────────────
 
     private fun openai() = ProviderConfig(
         id = "preset_openai",
@@ -365,10 +368,10 @@ class PresetProviders(
     )
 
     /**
-     * P1-6: xAI Proveedor predeterminado(api-key Certificación).
+     * P1-6: xAI 预设供应商(api-key 认证)。
      *
-     * Siga el protocolo compatible con OpenAI(type=OPENAI),baseUrl Utilice el punto final oficial de xAI.
-     * También admite inicio de sesión OAuth(OAuthConfig.XAI_PRESET),Los usuarios pueden elegir api-key u OAuth.
+     * 走 OpenAI 兼容协议(type=OPENAI),baseUrl 用 xAI 官方端点。
+     * 也支持 OAuth 登录(OAuthConfig.XAI_PRESET),用户可选择 api-key 或 OAuth。
      */
     private fun xai() = ProviderConfig(
         id = "preset_xai",
@@ -404,15 +407,15 @@ class PresetProviders(
     )
 
     /**
-     * v1.0.6: xAI OAuth Proveedor predeterminado(Siga el protocolo de respuestas de OpenAI).
+     * v1.0.6: xAI OAuth 预设供应商(走 OpenAI Responses 协议)。
      *
-     * xAI OAuth Predeterminado:Opte por el protocolo OAuth + openai-responses,
-     * baseUrl Apunte al punto final del proxy xAI OAuth(https://cli-chat-proxy.grok.com).
+     * xAI OAuth 预设:走 OAuth + openai-responses 协议,
+     * baseUrl 指向 xAI OAuth 代理端点(https://cli-chat-proxy.grok.com)。
      *
-     * con [xai] diferencia:
-     *  - type = OPENAI_RESPONSES(Vaya a /v1/responses en su lugar /v1/chat/completions)
-     *  - OAuth es el único método de autenticación(dejar en blanco apiKey,Consíguelo a través de OAuth access_token)
-     *  - Enfoque de la lista de modelos Grok 4.5+(Responses API Modelos compatibles)
+     * 与 [xai] 区别:
+     *  - type = OPENAI_RESPONSES(走 /v1/responses 而非 /v1/chat/completions)
+     *  - OAuth 为唯一认证方式(不填 apiKey,通过 OAuth 拿 access_token)
+     *  - 模型列表聚焦 Grok 4.5+(Responses API 支持的模型)
      */
     private fun xaiOauth() = ProviderConfig(
         id = "preset_xai_oauth",
@@ -466,41 +469,41 @@ class PresetProviders(
         ),
         oauthConfig = OAuthConfig.XAI_OAUTH_PRESET,
         specific = ProviderSpecificConfig.OpenAI(useResponseApi = true),
-        allowMissingApiKey = true, // OAuth Permitir espacio vacío antes de obtener el token apiKey
+        allowMissingApiKey = true, // OAuth 拿到 token 前允许空 apiKey
     )
 
     /**
-* v2.x(comentarios de los usuarios): OpenAI Codex Proveedor predeterminado —— ChatGPT Inicie sesión con su cuenta de suscripción.
+* v2.x（用户反馈）: OpenAI Codex 预设供应商 —— ChatGPT 订阅账号登录。
 *
-* Acuerdo verdadero verificado (Codex CLI Mismo estilo):
-*  - punto final de inferencia: `https://chatgpt.com/backend-api/codex/responses`(Responses Acuerdo, tomar cuota de suscripción);
-*  - Certificación: OAuth Authorization Code + PKCE(Ver [OAuthConfig.OPENAI_CODEX_PRESET]),
-*    access_token Cuando sea al portador, adicionalmente se requiere `ChatGPT-Account-ID` encabezado (analizado desde id_token);
-*  - modelo: Codex Departamento (gpt-5.x / codex variante), lista fija;
-*  - Completamente independiente de la ruta de facturación API de api.openai.com.
+* 已验证的真实协议（Codex CLI 同款）：
+*  - 推理端点: `https://chatgpt.com/backend-api/codex/responses`（Responses 协议，走订阅额度）；
+*  - 认证: OAuth Authorization Code + PKCE（见 [OAuthConfig.OPENAI_CODEX_PRESET]），
+*    access_token 当 Bearer，另需 `ChatGPT-Account-ID` 头（从 id_token 解析）；
+*  - 模型: Codex 系（gpt-5.x / codex 变体），固定清单；
+*  - 与 api.openai.com 的 API 计费路径完全独立。
 */
     private fun openaiCodex() = ProviderConfig(
         id = "preset_openai_codex",
-        displayName = "OpenAI Codex (ChatGPT Número de cuenta)",
+        displayName = "OpenAI Codex (ChatGPT 账号)",
         type = ProviderType.OPENAI,
         baseUrl = "https://chatgpt.com/backend-api/codex",
         apiKey = "",
         builtIn = true,
         category = ProviderCategory.OFFICIAL,
-        // v2.6.0: Lista de modelos**Totalmente determinado por el catálogo de modelos en la nube.**(Tabla de contenido providerId `openai-codex-oauth`),
-        // No preestablecido dentro de la aplicación —— ChatGPT Los modelos Codex suscritos se retiraron con estrategia oficial/Las listas codificadas recientemente agregadas caducan fácilmente.
-        // ver ModelCatalogStore.CATALOG_AUTHORITATIVE_PROVIDERS con CatalogProviderIds.
+        // v2.6.0: 模型清单**完全由云端模型目录决定**（目录 providerId `openai-codex-oauth`），
+        // 不在应用内预置 —— ChatGPT 订阅的 Codex 模型随官方策略退役/新增，写死清单易过期。
+        // 见 ModelCatalogStore.CATALOG_AUTHORITATIVE_PROVIDERS 与 CatalogProviderIds。
         models = emptyList(),
         oauthConfig = OAuthConfig.OPENAI_CODEX_PRESET,
         specific = ProviderSpecificConfig.OpenAI(useResponseApi = true),
-        allowMissingApiKey = true, // OAuth Permitir espacio vacío antes de obtener el token apiKey
+        allowMissingApiKey = true, // OAuth 拿到 token 前允许空 apiKey
     )
 
     /**
-     * v1.134 P2-1: GitHub Copilot Proveedor predeterminado(ir GitHub OAuth Device Flow).
+     * v1.134 P2-1: GitHub Copilot 预设供应商(走 GitHub OAuth Device Flow)。
      *
-     * 1muse Único. Después de que el usuario escanee el código QR con su cuenta de GitHub para autorizar,
-     * access_token como apiKey,Copilot Proxy de puerta de enlace para modelos como GPT-4o/Claude.
+     * 1muse 特有。用户用 GitHub 账号扫码授权后,
+     * access_token 当作 apiKey,Copilot 网关代理到 GPT-4o / Claude 等模型。
      */
     private fun githubCopilot() = ProviderConfig(
         id = "preset_github_copilot",
@@ -592,10 +595,10 @@ class PresetProviders(
         apiKey = "",
         builtIn = true,
         category = ProviderCategory.OFFICIAL,
-        models = emptyList(), // plataforma de agregación,La lista de modelos la extrae el usuario de /models
+        models = emptyList(), // 聚合平台,模型列表由用户从 /models 拉取
     )
 
-    /** 1muse Único. */
+    /** 1muse 特有。 */
     private fun deepInfra() = ProviderConfig(
         id = "preset_deepinfra",
         displayName = "DeepInfra",
@@ -633,7 +636,7 @@ class PresetProviders(
         ),
     )
 
-    /** v1.0.6: Perplexity Predeterminado. */
+    /** v1.0.6: Perplexity 预设。 */
     private fun perplexity() = ProviderConfig(
         id = "preset_perplexity",
         displayName = "Perplexity",
@@ -657,11 +660,11 @@ class PresetProviders(
     )
 
     /**
-     * v1.0.6: Ollama Valor predeterminado local.
+     * v1.0.6: Ollama 本地预设。
      *
-     * - authType=none → allowMissingApiKey=true(No es necesario apiKey)
-     * - baseUrl=http://localhost:11434/v1(punto final local)
-     * - models=lista vacía(Determinado por el modelo configurado localmente del usuario.,Se puede extraer de /modelos)
+     * - authType=none → allowMissingApiKey=true(无需 apiKey)
+     * - baseUrl=http://localhost:11434/v1(本地端点)
+     * - models=空列表(由用户本地配置的模型决定,可从 /models 拉取)
      */
     private fun ollama() = ProviderConfig(
         id = "preset_ollama",
@@ -671,11 +674,11 @@ class PresetProviders(
         apiKey = "",
         builtIn = true,
         category = ProviderCategory.OFFICIAL,
-        models = emptyList(), // Determinado por el modelo de extracción de ollama local del usuario.
+        models = emptyList(), // 由用户本地 ollama pull 的模型决定
         allowMissingApiKey = true,
     )
 
-    // ── funcionario nacional ──────────────────────────────────────────────────────
+    // ── 国产官方 ──────────────────────────────────────────────────────
 
     private fun deepseek() = ProviderConfig(
         id = "preset_deepseek",
@@ -767,7 +770,7 @@ class PresetProviders(
         apiKey = "",
         builtIn = true,
         category = ProviderCategory.OFFICIAL,
-        // La identificación del modelo de Doubao es en realidad endpoint id,Los usuarios deben completar el punto de acceso después de crearlo en la consola de Volcano Engine.
+        // 豆包的 model id 实为 endpoint id,用户需在火山引擎控制台创建接入点后填入
         models = emptyList(),
     )
 
@@ -785,7 +788,7 @@ class PresetProviders(
         ),
     )
 
-    /** 1muse único(Zero One Thing ha dejado de funcionar gradualmente,Reservado para usuarios existentes). */
+    /** 1muse 特有(零一万物已逐步停服,保留供存量用户)。 */
     private fun lingyi() = ProviderConfig(
         id = "preset_lingyi",
         displayName = context.getString(R.string.preset_provider_lingyi),
@@ -815,7 +818,7 @@ class PresetProviders(
         ),
     )
 
-    /** Ajustes preestablecidos comunes de proveedores de SiliconFlow. */
+    /** 普通 SiliconFlow 供应商预设。 */
     private fun siliconFlow() = ProviderConfig(
         id = "preset_siliconflow",
         displayName = context.getString(R.string.preset_siliconflow),
@@ -828,54 +831,50 @@ class PresetProviders(
     )
 
     /**
-     * P2-5: SiliconFlow Ajustes preestablecidos de modelos gratuitos.
+     * P2-5: SiliconFlow 免费模型兜底预设。
      *
-     * Este es el proveedor de tiempo de ejecución interno.,No aparece en la lista de configuración del proveedor;La recepción todavía puede pasar.
-     * [io.zer0.ai.core.FreeModelConfig] Utilice modelos gratuitos.
+     * 这是内部运行时供应商,不出现在供应商设置列表;前台仍可通过
+     * [io.zer0.ai.core.FreeModelConfig] 使用免费模型。
      *
-     * v1.0.18: Mecanismo de respaldo de modelo gratuito — Pasado cuando el usuario no completa la apiKey
-     * [io.zer0.ai.core.FreeModelConfig] Inyectar incorporado fallback key,
-     * Se pueden llamar directamente dos modelos gratuitos, THUDM/GLM-4-9B-0414 y Qwen/Qwen3-8B.
-     * Después de que el usuario completa su apiKey, el respaldo falla.,Utilice la clave de usuario para llamar a los modelos remotos y desbloquear más modelos.
+     * v1.0.18: 免费模型 fallback 机制 — 用户未填 apiKey 时通过
+     * [io.zer0.ai.core.FreeModelConfig] 注入内置 fallback key,
+     * 可直接调用 THUDM/GLM-4-9B-0414 与 Qwen/Qwen3-8B 两款免费模型。
+     * 用户填入自己的 apiKey 后 fallback 失效,走用户 key 调远程 /models 解锁更多模型。
      *
-     * - [allowMissingApiKey]=true: Permitir no completar key(fallback Mecanismo para encubrir)
-     * - [models] Solo precargado con 2 modelos gratuitos(SiliconFlow sucursal libre);
-     *   Después de que el usuario complete la clave, puede hacer clic en el botón "Rellenar modelo gratuito con un clic".([SiliconFlowFreeModels.MODELS])
-     *   O llame al control remoto /modelos para obtener todo
-     * - 1muse único:UI Proporciona un botón para "rellenar modelo gratuito con un solo clic"(Solo se muestra cuando baseUrl llega a Siliconflow.cn)
+     * - [allowMissingApiKey]=true: 允许不填 key(fallback 机制兜底)
+     * - [models] 仅预填 2 个免费模型(SiliconFlow 免费分支);
+     *   用户填 key 后可点击「一键填入免费模型」按钮([SiliconFlowFreeModels.MODELS])
+     *   或调远程 /models 拉取全部
+     * - 1muse 特有:UI 提供「一键填入免费模型」按钮(仅当 baseUrl 命中 siliconflow.cn 时显示)
      */
     private fun siliconFlowFree() = ProviderConfig(
         id = SiliconFlowFreeModels.PROVIDER_ID,
         displayName = context.getString(R.string.preset_siliconflow_free),
         type = ProviderType.OPENAI,
         baseUrl = ENDPOINT_SILICONFLOW,
-        apiKey = "", // vacío,Activar el mecanismo de reserva de modelo libre FreeModelConfig
+        apiKey = "", // 空,触发 FreeModelConfig 免费模型 fallback 机制
         builtIn = true,
         hiddenFromSettings = true,
         category = ProviderCategory.OFFICIAL,
-        allowMissingApiKey = true, // v1.0.18: Permitir no completar key,Cubierto por clave alternativa
+        allowMissingApiKey = true, // v1.0.18: 允许不填 key,由 fallback key 兜底
         models = listOf(
-            // v1.0.18: Consistente con FreeModelConfig.FREE_MODEL_IDS
+            // 与 FreeModelConfig.FREE_MODEL_IDS 保持一致：两边不同步会让用户选到没有额度的模型。
             chatModel(
                 SiliconFlowFreeModels.PROVIDER_ID,
-                "THUDM/GLM-4-9B-0414",
-                "GLM-4-9B 0414 (gratis)",
-                contextWindow = 32_768,
-                supportsTools = true,
-            ),
-            chatModel(
-                SiliconFlowFreeModels.PROVIDER_ID,
-                "Qwen/Qwen3-8B",
-                "Qwen3-8B (gratis)",
-                contextWindow = 32_768,
+                "agnes-2.5-flash",
+                "agnes-2.5-flash (免费)",
+                contextWindow = 512_000,
+                maxOutputTokens = 65_536,
+                supportsVision = true,
+                reasoning = true,
                 supportsTools = true,
             ),
         ),
     )
 
-    // ── funcionario nacional(Nuevo)──────────────────────────────
+    // ── 国产官方(新增)──────────────────────────────
 
-    /** v1.0.6: Tencent Hunyuan. */
+    /** v1.0.6: 腾讯混元。 */
     private fun hunyuan() = ProviderConfig(
         id = "preset_hunyuan",
         displayName = context.getString(R.string.preset_provider_hunyuan),
@@ -890,7 +889,7 @@ class PresetProviders(
         ),
     )
 
-    /** v1.0.6: Nube inteligente de Baidu/Wen Xin. */
+    /** v1.0.6: 百度智能云/文心。 */
     private fun baiduCloud() = ProviderConfig(
         id = "preset_baidu_cloud",
         displayName = context.getString(R.string.preset_provider_baidu_cloud),
@@ -912,7 +911,7 @@ class PresetProviders(
         ),
     )
 
-    /** v1.0.6: Modelo mágico: alcance. */
+    /** v1.0.6: 魔搭 ModelScope。 */
     private fun modelscope() = ProviderConfig(
         id = "preset_modelscope",
         displayName = context.getString(R.string.preset_provider_modelscope),
@@ -933,7 +932,7 @@ class PresetProviders(
         ),
     )
 
-    /** v1.0.6: Infinito. */
+    /** v1.0.6: 无问芯穹 Infini。 */
     private fun infini() = ProviderConfig(
         id = "preset_infini",
         displayName = context.getString(R.string.preset_provider_infini),
@@ -948,7 +947,7 @@ class PresetProviders(
         ),
     )
 
-    /** v1.0.6: Xiaomi MiMo. */
+    /** v1.0.6: 小米 MiMo。 */
     private fun mimo() = ProviderConfig(
         id = "preset_mimo",
         displayName = context.getString(R.string.preset_provider_mimo),
@@ -967,20 +966,20 @@ class PresetProviders(
     )
 
     /**
-     * v1.0.6: Inés AI.
+     * v1.0.6: 思必驰 Agnes AI。
      *
-     * v1.0.8: Lista completa de modelos — 2 modelo de chat + 1 modelo gráfico + 1 modelo de vídeo,
-     * Cubre las diversas capacidades modales de Agnes.Agnes Siga el protocolo compatible con OpenAI,
-     * GET /v1/models La lista completa de modelos upstream que se pueden extraer.(Ver [io.zer0.ai.openai.OpenAIProvider.listModels]).
+     * v1.0.8: 补全模型清单 — 2 个 chat 模型 + 1 个生图模型 + 1 个视频模型,
+     * 覆盖 Agnes 各模态能力。Agnes 走 OpenAI 兼容协议,
+     * GET /v1/models 可拉取上游完整模型列表(参见 [io.zer0.ai.openai.OpenAIProvider.listModels])。
      *
-     * v1.0.8 (8.6): listModels Verificación de compatibilidad — No es necesario cambiar el código,Sólo comentarios.
-     *  Verificado que OpenAIProvider.listModels es totalmente compatible con Agnes:
-     *   1. URL empalme:resolvedBaseUrl + "/models" → https://apihub.agnes-ai.com/v1/models ✓
-     *   2. Autenticación:Bearer token(Consistente con la documentación oficial de Agnes.)✓
-     *   3. Análisis de respuesta:OpenAIModelsResponse Estándar {"data":[...]} Formato ✓
-     *   4. Campo de capacidad:7.3 La resolución de nombres de campos múltiples anula lo que devuelve Agnes capabilities/modalities ✓
-     *   5. Clasificación de errores:7.5 El registro en cascada registra etiquetas de clasificación en cada escena de 401/403/404/5xx. ✓
-     *   6. ventana contextual:context_length Los campos se registran automáticamente en ModelContextWindowRegistry ✓
+     * v1.0.8 (8.6): listModels 兼容性验证 — 无需改代码,仅注释。
+     *  已验证 OpenAIProvider.listModels 对 Agnes 完全兼容:
+     *   1. URL 拼接:resolvedBaseUrl + "/models" → https://apihub.agnes-ai.com/v1/models ✓
+     *   2. 鉴权:Bearer token(与 Agnes 官方文档一致)✓
+     *   3. 响应解析:OpenAIModelsResponse 标准 {"data":[...]} 格式 ✓
+     *   4. 能力字段:7.3 多字段名解析覆盖 Agnes 返回的 capabilities/modalities ✓
+     *   5. 错误分级:7.5 瀑布流日志在 401/403/404/5xx 各场景均记录分类标签 ✓
+     *   6. 上下文窗口:context_length 字段自动注册到 ModelContextWindowRegistry ✓
      */
     private fun agnes() = ProviderConfig(
         id = "preset_agnes",
@@ -991,9 +990,9 @@ class PresetProviders(
         builtIn = true,
         category = ProviderCategory.OFFICIAL,
         models = listOf(
-            // chat modelo(Admite entrada visual + llamada de herramienta)
-            // El valor de contexto se toma de forma conservadora según el límite inferior medido real:379k token La entrada todavía responde normalmente,
-            // Complete 256k aquí para dejar un margen de seguridad suficiente y no marque 512k inflados.
+            // chat 模型(支持视觉输入 + 工具调用)
+            // 上下文按实测下限保守取值：379k token 输入仍能正常响应，
+            // 这里填 256k 留足安全边界，不标虚高的 512k。
             chatModel(
                 "preset_agnes",
                 "agnes-2.5-flash",
@@ -1010,18 +1009,18 @@ class PresetProviders(
                 supportsTools = true,
                 supportsVision = true,
             ),
-            // modelo grafico(Modo de imagen de salida)
+            // 生图模型(输出 image 模态)
             Model(
                 id = "agnes-image-2.1-flash",
                 name = "Agnes Image 2.1 Flash",
                 providerId = "preset_agnes",
-                // El modelo de gráfico sin formato no se aplica a la ventana de contexto de texto
+                // 生图模型不适用文本上下文窗口
                 contextWindow = 0,
-                // Marcar como modelo de generación de imágenes(Salida solo modal de imagen,Sin entrada ni salida de texto)
+                // 标记为图片生成模型(仅输出 image 模态,无文本输入输出)
                 inputModalities = emptySet(),
                 outputModalities = setOf("image"),
             ),
-            // modelo de vídeo(Modo de salida de vídeo)
+            // 视频模型(输出 video 模态)
             Model(
                 id = "agnes-video-2.5",
                 name = "Agnes Video 2.5",
@@ -1035,10 +1034,10 @@ class PresetProviders(
     )
 
     /**
-     * v1.0.6: MiniMax Predeterminado.
+     * v1.0.6: MiniMax 预设。
      *
-     * Sigue el protocolo de Mensajes Antrópicos(defaultApi=anthropic-messages),
-     * baseUrl señalar a https://api.minimaxi.com/anthropic(MiniMax Punto final oficial compatible con Anthropic).
+     * 走 Anthropic Messages 协议(defaultApi=anthropic-messages),
+     * baseUrl 指向 https://api.minimaxi.com/anthropic(MiniMax 官方 Anthropic 兼容端点)。
      */
     private fun minimax() = ProviderConfig(
         id = "preset_minimax",
@@ -1065,13 +1064,13 @@ class PresetProviders(
         ),
     )
 
-    // ── Coding Plan Serie─────────────────
+    // ── Coding Plan 系列─────────────────
 
     /**
-     * v1.0.6: Plan de codificación Bailian de Alibaba Cloud.
+     * v1.0.6: 阿里云百炼 Coding Plan。
      *
-     * con [qwen] diferencia:Utilice un punto final de codificación dedicado(coding.dashscope.aliyuncs.com),
-     * Programación enfocada en listas de modelos(qwen3-coder Serie),apiKey Generalmente con un prefijo único.
+     * 与 [qwen] 区别:走专属 coding 端点(coding.dashscope.aliyuncs.com),
+     * 模型列表聚焦编程(qwen3-coder 系列),apiKey 通常带专属前缀。
      */
     private fun dashscopeCoding() = ProviderConfig(
         id = "preset_dashscope_coding",
@@ -1090,10 +1089,10 @@ class PresetProviders(
     )
 
     /**
-     * v1.0.6: Kimi Coding Plan.
+     * v1.0.6: Kimi Coding Plan。
      *
-     * Utilice un punto final de codificación dedicado(api.kimi.com/coding/v1),El modelo es kimi-for-coding,
-     * apoyo thinking(kimi Formato),El nivel de inferencia predeterminado es alto.
+     * 走专属 coding 端点(api.kimi.com/coding/v1),模型为 kimi-for-coding,
+     * 支持 thinking(kimi 格式),默认推理等级 high。
      */
     private fun kimiCoding() = ProviderConfig(
         id = "preset_kimi_coding",
@@ -1117,9 +1116,9 @@ class PresetProviders(
     )
 
     /**
-     * v1.0.6: Plan de codificación del paquete Bean Pack de Volcano Engine.
+     * v1.0.6: 火山引擎豆包 Coding Plan。
      *
-     * Utilice un punto final de codificación dedicado(ark.cn-beijing.volces.com/api/coding/v3),El modelo es doubao-seed-code.
+     * 走专属 coding 端点(ark.cn-beijing.volces.com/api/coding/v3),模型为 doubao-seed-code。
      */
     private fun volcengineCoding() = ProviderConfig(
         id = "preset_volcengine_coding",
@@ -1136,9 +1135,9 @@ class PresetProviders(
     )
 
     /**
-     * v1.0.6: Plan de codificación GLM.
+     * v1.0.6: 智谱 GLM Coding Plan。
      *
-     * Utilice un punto final de codificación dedicado(api.z.ai/api/coding/paas/v4),Programación enfocada en modelos.
+     * 走专属 coding 端点(api.z.ai/api/coding/paas/v4),模型聚焦编程。
      */
     private fun zhipuCoding() = ProviderConfig(
         id = "preset_zhipu_coding",
@@ -1157,13 +1156,13 @@ class PresetProviders(
         ),
     )
 
-    // ── Token Plan Serie──────────────
+    // ── Token Plan 系列──────────────
 
     /**
-     * v1.0.6: MiniMax Token Plan.
+     * v1.0.6: MiniMax Token Plan。
      *
-     * con [minimax] Puntos finales y protocolos compartidos(Anthropic Messages),pero sigue siendo independiente provider id,
-     * Método de facturación del Plan Token para MiniMax(Paquete de tokens de reserva).
+     * 与 [minimax] 共用端点和协议(Anthropic Messages),但保持独立 provider id,
+     * 用于 MiniMax 的 Token Plan 计费方式(预购 token 包)。
      */
     private fun minimaxTokenPlan() = ProviderConfig(
         id = "preset_minimax_token_plan",
@@ -1191,10 +1190,10 @@ class PresetProviders(
     )
 
     /**
-     * v1.0.6: Plan de tokens Xiaomi MiMo.
+     * v1.0.6: 小米 MiMo Token Plan。
      *
-     * Utilice el punto final dedicado del plan de tokens(token-plan-cn.xiaomimimo.com),con [mimo] La lista de modelos es la misma.,
-     * Pero el método de facturación es el paquete de tokens de precompra.
+     * 走专属 token-plan 端点(token-plan-cn.xiaomimimo.com),与 [mimo] 模型列表相同,
+     * 但计费方式为预购 token 包。
      */
     private fun mimoTokenPlan() = ProviderConfig(
         id = "preset_mimo_token_plan",
@@ -1220,13 +1219,13 @@ class PresetProviders(
         ),
     )
 
-    // ── estación de transferencia(1muse único)──────────────────────────────────────────
+    // ── 中转站(1muse 特有)──────────────────────────────────────────
 
     /**
-     * OpenCode Go — OpenCode Servicio oficial de suscripción modelo low cost.
+     * OpenCode Go — OpenCode 官方提供的低成本模型订阅服务。
      *
-     * ID del modelo guardado localmente con el prefijo opencode-go/,se pasará antes de la solicitud real
-     * ProviderSpecificConfig.OpenAI.stripModelPrefix Pelado automático.
+     * 模型 ID 本地保存带 opencode-go/ 前缀,实际请求前会通过
+     * ProviderSpecificConfig.OpenAI.stripModelPrefix 自动剥离。
      */
     private fun opencode() = ProviderConfig(
         id = "preset_opencode",
@@ -1244,7 +1243,7 @@ class PresetProviders(
         ),
     )
 
-    /** API2D estación de transferencia — Transferencia OpenAI de veteranos nacionales. */
+    /** API2D 中转站 — 国内老牌 OpenAI 中转。 */
     private fun api2d() = ProviderConfig(
         id = "preset_api2d",
         displayName = context.getString(R.string.preset_provider_api2d),
@@ -1261,7 +1260,7 @@ class PresetProviders(
         ),
     )
 
-    /** AiHubMix estación de transferencia — Agregado OpenAI/Claude/Gemini, etc. */
+    /** AiHubMix 中转站 — 聚合 OpenAI/Claude/Gemini 等。 */
     private fun aihubmix() = ProviderConfig(
         id = "preset_aihubmix",
         displayName = context.getString(R.string.preset_provider_aihubmix),
@@ -1285,7 +1284,7 @@ class PresetProviders(
         ),
     )
 
-    /** DeepBricks estación de transferencia — OpenAI Compatible. */
+    /** DeepBricks 中转站 — OpenAI 兼容。 */
     private fun deepbricks() = ProviderConfig(
         id = "preset_deepbricks",
         displayName = context.getString(R.string.preset_provider_deepbricks),
@@ -1307,12 +1306,12 @@ class PresetProviders(
         ),
     )
 
-    /** OneAPI Plantilla de transferencia autoconstruida — Autoimplementación del usuario,baseUrl Déjelo en blanco. */
+    /** OneAPI 自建中转模板 — 用户自部署,baseUrl 留空。 */
     private fun oneapiTemplate() = ProviderConfig(
         id = "preset_oneapi",
         displayName = context.getString(R.string.preset_provider_oneapi),
         type = ProviderType.OPENAI,
-        baseUrl = "", // Autoimplementación del usuario,Dejar en blanco para que los usuarios lo completen
+        baseUrl = "", // 用户自部署,留空让用户填
         apiKey = "",
         builtIn = true,
         category = ProviderCategory.RELAY,
@@ -1320,12 +1319,12 @@ class PresetProviders(
         models = emptyList(),
     )
 
-    /** NewAPI Plantilla de transferencia autoconstruida — OneAPI Horquilla mejorada. */
+    /** NewAPI 自建中转模板 — OneAPI 的增强 fork。 */
     private fun newapiTemplate() = ProviderConfig(
         id = "preset_newapi",
         displayName = context.getString(R.string.preset_provider_newapi),
         type = ProviderType.OPENAI,
-        baseUrl = "", // Autoimplementación del usuario,Dejar en blanco para que los usuarios lo completen
+        baseUrl = "", // 用户自部署,留空让用户填
         apiKey = "",
         builtIn = true,
         category = ProviderCategory.RELAY,

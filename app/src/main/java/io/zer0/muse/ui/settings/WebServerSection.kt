@@ -48,23 +48,23 @@ import io.zer0.muse.web.WebServerConfig
 import kotlinx.coroutines.launch
 
 /**
- * P1-2 Reparación: Configuración del servidor web incorporado section — Lista agrupada.
+ * P1-2 修复: 嵌入式 Web 服务器配置 section — 分组列表。
  *
- * Actualización de la fase C: Obtenga dinámicamente IP LAN + dirección de acceso a copia con un solo clic.
+ * 阶段 C 升级: 动态获取局域网 IP + 一键复制访问地址。
  *
- * P2-13:WebServer PIN seguro
- *  - Muestra los 6 dígitos actuales PIN(texto plano),Se utiliza para la verificación de acceso por primera vez en el lado web.
- *  - proporcionar"regenerar PIN"botón,El PIN antiguo caduca inmediatamente
- *  - recordatorio obvio"Otros bajo el mismo Wi-Fi pueden acceder a través de IP + PIN"
+ * P2-13:WebServer PIN 安全
+ *  - 显示当前 6 位 PIN(明文),用于 Web 端首次访问验证
+ *  - 提供"重新生成 PIN"按钮,旧 PIN 立即失效
+ *  - 明显提示"同一 Wi-Fi 下他人可通过 IP + PIN 访问"
  *
- * El servicio backend WebServerConfig + WebServer se inicia automáticamente cuando se inicia MuseApp,
- * Después de guardar la página de configuración, la configuración se aplicará inmediatamente y se mostrará el estado operativo real. Esta sección da control a los usuarios.:
- *  - Interruptor de arranque/parada(Iniciar o detener inmediatamente después de guardar WebServer)
- *  - Configuración de puerto(Predeterminado 8765)
- *  - Contraseña(para iniciar sesión en JWT,Regenerable)
- *  - PIN(Se utiliza para la verificación de acceso por primera vez en el lado web.,Regenerable)
- *  - Dirección de acceso(IP dinámica + botón copiar)
- *  - v2.x: HTTPS cambiar(certificado autofirmado,Desactivado predeterminado);Después de abrirlo, se muestra la huella digital del certificado SHA-256 para su verificación.
+ * 后端 WebServerConfig + WebServer 服务在 MuseApp 启动时自动启动,
+ * 设置页保存后也会立即应用配置并显示真实运行状态。此 section 让用户可控:
+ *  - 启停开关(保存后立即启动或停止 WebServer)
+ *  - 端口配置(默认 8765)
+ *  - 密码(用于 JWT 登录,可重新生成)
+ *  - PIN(用于 Web 端首次访问验证,可重新生成)
+ *  - 访问地址(动态 IP + 复制按钮)
+ *  - v2.x: HTTPS 开关(自签证书,默认关);开启后展示证书 SHA-256 指纹供核对
  */
 @Suppress("LongMethod", "CyclomaticComplexMethod", "FunctionNaming")
 @Composable
@@ -78,7 +78,7 @@ internal fun WebServerSection(settings: SettingsRepository, webServer: WebServer
     val lastError by webServer.lastError.collectAsStateWithLifecycle(initialValue = null)
     var showPortDialog by remember { mutableStateOf(false) }
     var portInput by remember { mutableStateOf(config.port.toString()) }
-    // Obtener LAN dinámicamente IP
+    // 动态获取局域网 IP
     val localIp = remember { NetworkUtils.getLocalIpAddress() }
     val accessUrl = buildAccessUrl(config.allowLan, localIp, config.port, config.httpsEnabled)
     val runningAccessUrl = if (isRunning) accessUrl else null
@@ -101,7 +101,7 @@ internal fun WebServerSection(settings: SettingsRepository, webServer: WebServer
         modifier = Modifier.padding(top = 4.dp),
     )
 
-    // P2-13: recordatorio obvio — Otros bajo el mismo Wi-Fi pueden acceder a través de IP + PIN
+    // P2-13: 明显提示 — 同一 Wi-Fi 下他人可通过 IP + PIN 访问
     if (runningAccessUrl != null && config.pin.isNotBlank() && config.allowLan) {
         Surface(
             modifier = Modifier
@@ -147,7 +147,7 @@ internal fun WebServerSection(settings: SettingsRepository, webServer: WebServer
     SettingsGroup(
         modifier = Modifier.padding(top = 8.dp),
     ) {
-        // Interruptor de arranque/parada
+        // 启停开关
         SettingsSwitchRow(
             icon = MuseIcons.router,
             title = stringResource(R.string.settings_web_enable),
@@ -165,9 +165,9 @@ internal fun WebServerSection(settings: SettingsRepository, webServer: WebServer
         SettingsGroupDivider()
         lanAccessSwitch(config = config, webServer = webServer)
         SettingsGroupDivider()
-        // v2.x: HTTPS cambiar(certificado autofirmado);Después de guardar, reinicie el servicio y listo. TLS
+        // v2.x: HTTPS 开关(自签证书);保存后重启服务即走 TLS
         httpsSwitch(config = config, webServer = webServer)
-        // puerto
+        // 端口
         SettingsItemRow(
             icon = MuseIcons.globe,
             title = stringResource(R.string.settings_web_port),
@@ -178,7 +178,7 @@ internal fun WebServerSection(settings: SettingsRepository, webServer: WebServer
             },
         )
         SettingsGroupDivider()
-        // Contraseña(Pantalla insensibilizada)
+        // 密码(脱敏显示)
         SettingsItemRow(
             icon = MuseIcons.lock,
             title = stringResource(R.string.settings_web_password),
@@ -191,7 +191,7 @@ internal fun WebServerSection(settings: SettingsRepository, webServer: WebServer
             },
         )
         SettingsGroupDivider()
-        // Regenerar contraseña
+        // 重新生成密码
         SettingsItemRow(
             icon = MuseIcons.lock,
             title = stringResource(R.string.settings_web_regenerate_password),
@@ -210,7 +210,7 @@ internal fun WebServerSection(settings: SettingsRepository, webServer: WebServer
             },
         )
         SettingsGroupDivider()
-        // P2-13: actual PIN(visualización de texto claro,Con botón de copiar)
+        // P2-13: 当前 PIN(明文显示,带复制按钮)
         SettingsItemRow(
             icon = MuseIcons.key,
             title = stringResource(R.string.settings_web_pin),
@@ -231,7 +231,7 @@ internal fun WebServerSection(settings: SettingsRepository, webServer: WebServer
             }
         }
         SettingsGroupDivider()
-        // P2-13: regenerar PIN
+        // P2-13: 重新生成 PIN
         SettingsItemRow(
             icon = MuseIcons.key,
             title = stringResource(R.string.settings_web_regenerate_pin),
@@ -250,7 +250,7 @@ internal fun WebServerSection(settings: SettingsRepository, webServer: WebServer
             },
         )
         SettingsGroupDivider()
-        // Dirección de acceso(IP dinámica + botón copiar)
+        // 访问地址(动态 IP + 复制按钮)
         SettingsItemRow(
             icon = MuseIcons.wifi,
             title = stringResource(R.string.settings_web_access_address),
@@ -274,7 +274,7 @@ internal fun WebServerSection(settings: SettingsRepository, webServer: WebServer
                 )
             }
         }
-        // v2.x: HTTPS Exponer la huella digital del certificado SHA-256 en tiempo de ejecución,Para que los usuarios lo comprueben/confianza
+        // v2.x: HTTPS 运行时展示证书 SHA-256 指纹,供用户核对/信任
         if (config.httpsEnabled && isRunning) {
             val fingerprint = webServer.status().fingerprint
             if (fingerprint != null) {
@@ -288,7 +288,7 @@ internal fun WebServerSection(settings: SettingsRepository, webServer: WebServer
         }
     }
 
-    // Cuadro de diálogo de modificación de puerto
+    // 端口修改对话框
     if (showPortDialog) {
         MuseDialog(
             onDismissRequest = { showPortDialog = false },
@@ -334,14 +334,14 @@ internal fun WebServerSection(settings: SettingsRepository, webServer: WebServer
     }
 }
 
-/** R-SEC-03: El valor predeterminado es solo local;La dirección IP de LAN se muestra solo después de habilitar el acceso a LAN. */
+/** R-SEC-03: 默认仅本机;开启局域网访问后才展示局域网 IP 地址。 */
 private fun buildAccessUrl(allowLan: Boolean, localIp: String?, port: Int, httpsEnabled: Boolean): String? {
-    // v2.x: HTTPS Mostrar dirección de acceso https:// cuando esté habilitado(Evite que los usuarios no puedan conectarse a la dirección http al hacer clic en ella)
+    // v2.x: HTTPS 启用时展示 https:// 访问地址(避免用户点了 http 地址连不上)
     val scheme = if (httpsEnabled) "https" else "http"
     return if (allowLan) localIp?.let { "$scheme://$it:$port" } else "$scheme://127.0.0.1:$port"
 }
 
-/** R-SEC-03: conmutador de acceso LAN;El valor predeterminado es solo local,Sólo después de encenderlo se permitirá el acceso al mismo dispositivo Wi-Fi a través de IP. */
+/** R-SEC-03: 局域网访问开关;默认仅本机,开启后才允许同 Wi-Fi 设备通过 IP 访问。 */
 @Composable
 private fun lanAccessSwitch(config: WebServerConfig, webServer: WebServer) {
     val scope = rememberCoroutineScope()
@@ -362,7 +362,7 @@ private fun lanAccessSwitch(config: WebServerConfig, webServer: WebServer) {
     )
 }
 
-/** v2.x: HTTPS cambiar — certificado autofirmado;Después de guardar, reinicie inmediatamente el servicio y cambie HTTP/HTTPS. */
+/** v2.x: HTTPS 开关 — 自签证书;保存后立即重启服务并切换 HTTP/HTTPS。 */
 @Composable
 private fun httpsSwitch(config: WebServerConfig, webServer: WebServer) {
     val scope = rememberCoroutineScope()

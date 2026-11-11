@@ -1,24 +1,26 @@
 package io.zer0.muse.web
 
 /**
- * Host en el acuerdo**solo lectura**Una colección de fuentes de datos para el comando.
+ * Host 协议里**只读**命令的数据源集合。
  *
- * Estas fuentes de datos son independientes entre sí (memoria/base de conocimientos/tareas programadas/estado del sistema), pero son sólo proyecciones de sólo lectura "para ver en la página web".
- * Y todos permiten sin ensamblar (cuando se desensambla, el comando regresa como de costumbre, pero devuelve una lista vacía). Recójalos en un parámetro,
- * Evite agregar un parámetro de construcción más a la puerta de enlace para cada tipo de datos leídos.
+ * 这些数据源彼此独立（记忆 / 知识库 / 定时任务 / 系统状态），但都只是「给网页端看」的只读投影，
+ * 且都允许未装配（未装配时命令照常回执，只是返回空列表）。把它们收成一个参数，
+ * 避免网关的构造参数随每读一类数据就多一个。
  */
 internal data class HostReadSources(
-    /** Recuerde la fuente de datos de los comandos de solo lectura; enviar una lista vacía cuando no esté ensamblada. */
+    /** 记忆只读命令的数据源；未装配时下发空列表。 */
     val memory: HostMemorySource = HostMemorySource.Empty,
-    /** Fuente de datos para comandos de conocimiento de solo lectura; cuando no está ensamblado, se emite/knowledge_base_not_found una lista vacía. */
+    /** 知识只读命令的数据源；未装配时下发空列表 / knowledge_base_not_found。 */
     val knowledge: HostKnowledgeSource = HostKnowledgeSource.Empty,
-    /** Fuente de datos para comandos automatizados de solo lectura; envía una lista vacía cuando no está ensamblada. */
+    /** 自动化只读命令的数据源；未装配时下发空列表。 */
     val tasks: HostTaskSource = HostTaskSource.Empty,
-    /** La fuente de datos del comando de solo lectura del estado del sistema; cuando no está ensamblado, se entrega el estado predeterminado completo. */
+    /** 系统状态只读命令的数据源；未装配时下发全默认状态。 */
     val system: HostSystemStatusSource = HostSystemStatusSource.Empty,
+    /** 「运行」页三条只读命令的数据源（日志尾部 / 诊断快照 / 窗口统计）；未装配时下发空值。 */
+    val runtime: HostRuntimeSource = HostRuntimeSource.Empty,
 ) {
     companion object {
-        /** Todo desmontado: sólo para pruebas y montaje mínimo utilizable. */
+        /** 全部未装配：只用于测试与最小可用装配。 */
         val Empty = HostReadSources()
     }
 }

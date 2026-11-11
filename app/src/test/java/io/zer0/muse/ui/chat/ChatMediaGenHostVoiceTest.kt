@@ -30,11 +30,11 @@ import org.robolectric.annotation.Config
 import kotlin.uuid.Uuid
 
 /**
- * Cuando se envían varias voces en la misma ronda, los mensajes pertenecen a la barandilla.
+ * 同一回合连发多条语音时的消息归属护栏。
  *
- * El mensaje de voz solo ocupa un campo,La segunda escritura sobrescribirá la anterior. —— Entonces esta prueba se centra en
- * [ChatMediaGenHost] desvío:El primero está colgado en el mensaje asistente de esta ronda.,La segunda publicación y las siguientes tienen cada una un mensaje nuevo.,
- * Y el pedido es igual al pedido de entrega. fotos/Se debe mantener la ruta del vídeo."Sólo se genera un mensaje".
+ * 消息上的语音只占一个字段,第二次写入会把前一条覆盖掉 —— 所以本测试盯的是
+ * [ChatMediaGenHost] 的分流:第一条挂在本轮助手消息上,第二条及以后各起一条新消息,
+ * 且顺序等于投递顺序。图片/视频路径必须保持"只产生一条消息"。
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -43,22 +43,22 @@ class ChatMediaGenHostVoiceTest {
     private val context: Context get() = ApplicationProvider.getApplicationContext()
 
     @Test
-    fun `En la misma ronda, tres voces caen sobre tres mensajes del asistente y están ordenadas en el orden de entrega`() = runBlocking {
+    fun `同一回合三条语音落在三条助手消息上且按投递顺序排列`() = runBlocking {
         val fixture = displayedFixture()
         val slot = requireNotNull(fixture.host.begin(MediaGenKind.VOICE))
 
         deliverThree(slot)
 
         val messages = fixture.accessor.messagesSnapshot
-        assertEquals("Mensaje ancla + dos mensajes nuevos", 3, messages.size)
-        assertEquals("El primero todavía está colgado en el mensaje ancla.", ANCHOR_ID, messages.first().id)
-        assertTrue("Los tres son mensajes del asistente.", messages.all { it.role == MessageRole.ASSISTANT })
-        assertEquals("Las voces están ordenadas en orden de entrega y no se cubren entre sí.", listOf(VOICE_1, VOICE_2, VOICE_3), messages.map { it.voiceUri })
-        assertEquals("La duración depende de cada voz.", listOf(1000L, 2000L, 3000L), messages.map { it.voiceDurationMs })
+        assertEquals("锚定消息 + 两条新消息", 3, messages.size)
+        assertEquals("第一条仍挂在锚定消息上", ANCHOR_ID, messages.first().id)
+        assertTrue("三条都是助手消息", messages.all { it.role == MessageRole.ASSISTANT })
+        assertEquals("语音按投递顺序排列且互不覆盖", listOf(VOICE_1, VOICE_2, VOICE_3), messages.map { it.voiceUri })
+        assertEquals("时长跟各自语音走", listOf(1000L, 2000L, 3000L), messages.map { it.voiceDurationMs })
     }
 
     @Test
-    fun `El primer mensaje de voz sólo está vinculado al mensaje ancla y no envía mensajes adicionales`() = runBlocking {
+    fun `第一条语音只挂在锚定消息上且不额外多出消息`() = runBlocking {
         val fixture = displayedFixture()
         val slot = requireNotNull(fixture.host.begin(MediaGenKind.VOICE))
 
@@ -66,31 +66,31 @@ class ChatMediaGenHostVoiceTest {
 
         val messages = fixture.accessor.messagesSnapshot
         assertEquals(VOICE_1, messages.first().voiceUri)
-        assertEquals("Sólo se añaden dos mensajes nuevos.", 2, messages.count { it.id != ANCHOR_ID })
+        assertEquals("只新增两条消息", 2, messages.count { it.id != ANCHOR_ID })
         val placeholder = context.getString(R.string.err_chat_voice_generated)
-        assertEquals("Los mensajes nuevos utilizan la misma copia de marcador de posición", placeholder, messages[1].content)
+        assertEquals("新消息沿用同一句占位文案", placeholder, messages[1].content)
         assertEquals(placeholder, messages[2].content)
-        // Tanto la colocación como el registro de cierre deben cubrir nueva información.,De lo contrario, los nuevos mensajes de voz desaparecerán después de reiniciar.
+        // 落盘与收尾登记都要覆盖到新消息,否则重启后新语音消息消失
         assertEquals(3, fixture.persisted.toSet().size)
         assertEquals(3, fixture.registered.toSet().size)
     }
 
     @Test
-    fun `Cuando el mensaje ancla ya tenga texto, el texto no se sobrescribirá`() = runBlocking {
+    fun `锚定消息已有正文时正文不被覆盖`() = runBlocking {
         val fixture = displayedFixture(anchorContent = EXISTING_TEXT)
         val slot = requireNotNull(fixture.host.begin(MediaGenKind.VOICE))
 
         deliverThree(slot)
 
         val messages = fixture.accessor.messagesSnapshot
-        assertTrue("El texto principal está cubierto por una copia de marcador de posición.: ${messages.first().content}", messages.first().content.contains(EXISTING_TEXT))
+        assertTrue("正文被占位文案覆盖了: ${messages.first().content}", messages.first().content.contains(EXISTING_TEXT))
         assertEquals(VOICE_1, messages.first().voiceUri)
-        assertEquals("Los dos últimos artículos tienen cada uno nuevas novedades.", 2, messages.count { it.id != ANCHOR_ID })
+        assertEquals("后两条各起新消息", 2, messages.count { it.id != ANCHOR_ID })
         assertEquals(listOf(VOICE_2, VOICE_3), messages.drop(1).map { it.voiceUri })
     }
 
     @Test
-    fun `Publicar una imagen todavía solo genera un mensaje`() = runBlocking {
+    fun `投递一张图片仍然只产生一条消息`() = runBlocking {
         val repository = mockk<SessionRepository>(relaxed = true)
         coEvery { repository.toPersistableImageUrls(any(), any()) } returns listOf(PERSISTED_IMAGE)
         val fixture = displayedFixture(repository = repository)
@@ -99,13 +99,13 @@ class ChatMediaGenHostVoiceTest {
         slot.report(MediaGenResult.Success(imageUrls = listOf(RAW_IMAGE)))
 
         val messages = fixture.accessor.messagesSnapshot
-        assertEquals("La ruta de la imagen mantiene una imagen y un mensaje.", 1, messages.size)
+        assertEquals("图片路径保持一图一条消息", 1, messages.size)
         assertEquals(ANCHOR_ID, messages.single().id)
         assertEquals(listOf(PERSISTED_IMAGE), messages.single().imageUrls)
     }
 
     @Test
-    fun `Cuando no se muestra la conversación, se insertan tres voces en la biblioteca y se adjuntan a diferentes mensajes a través de adjuntarMediaToMessage`() = runBlocking {
+    fun `会话不在显示时三条语音插库并通过 attachMediaToMessage 挂到不同消息上`() = runBlocking {
         val repository = VoiceRepositoryFake()
         val fixture = displayedFixture(displayed = false, repository = repository.asMock())
         val slot = requireNotNull(fixture.host.begin(MediaGenKind.VOICE))
@@ -113,28 +113,28 @@ class ChatMediaGenHostVoiceTest {
         deliverThree(slot)
 
         val targets = repository.attachTargets
-        assertEquals("Cuelga una vez por cada una de las tres voces.", 3, targets.size)
-        assertEquals("El primer mensaje ancla", ANCHOR_ID, targets.first())
-        assertEquals("Los tres mensajes de destino son diferentes entre sí.", 3, targets.toSet().size)
-        assertNotEquals("Los dos últimos deben ser mensajes nuevos.", ANCHOR_ID, targets[1])
-        assertEquals("Dos nuevos mensajes", 2, repository.appended.size)
-        assertEquals("Se insertan nuevos mensajes en el pedido de entrega.", listOf(targets[1], targets[2]), repository.appended.map { it.id })
-        assertEquals("El primer mensaje de voz recae sobre el mensaje ancla.", VOICE_1, repository.message(ANCHOR_ID)?.voiceUri)
+        assertEquals("三条语音各挂一次", 3, targets.size)
+        assertEquals("第一条挂锚定消息", ANCHOR_ID, targets.first())
+        assertEquals("三条目标消息互不相同", 3, targets.toSet().size)
+        assertNotEquals("后两条必须是新消息", ANCHOR_ID, targets[1])
+        assertEquals("新消息两条", 2, repository.appended.size)
+        assertEquals("新消息按投递顺序插入", listOf(targets[1], targets[2]), repository.appended.map { it.id })
+        assertEquals("第一条语音落在锚定消息上", VOICE_1, repository.message(ANCHOR_ID)?.voiceUri)
         assertEquals(
-            "Las voces llegan al almacén en el orden de entrega.",
+            "语音按投递顺序落库",
             listOf(VOICE_2, VOICE_3),
             listOf(targets[1], targets[2]).map { repository.message(it)?.voiceUri },
         )
         assertEquals(
-            "El contenido del nuevo mensaje es la misma copia del marcador de posición de la oración.",
+            "新消息内容为同一句占位文案",
             context.getString(R.string.err_chat_voice_generated),
             repository.message(targets[1])?.content,
         )
-        assertEquals("Las ramas que no se muestran no agregan mensajes de memoria", 1, fixture.accessor.messagesSnapshot.size)
-        assertNull("El mensaje ancla en la memoria no está escrito por voz.", fixture.accessor.messagesSnapshot.single().voiceUri)
+        assertEquals("非显示分支不新增内存消息", 1, fixture.accessor.messagesSnapshot.size)
+        assertNull("内存里的锚定消息没被写语音", fixture.accessor.messagesSnapshot.single().voiceUri)
     }
 
-    // ── accesorio ────────────────────────────────────────────────────────────
+    // ── 夹具 ────────────────────────────────────────────────────────────
 
     private class Fixture(
         val host: ChatMediaGenHost,
@@ -196,7 +196,7 @@ class ChatMediaGenHostVoiceTest {
         slot.report(MediaGenResult.Success(voiceUri = VOICE_3, voiceDurationMs = 3000))
     }
 
-    /** estado de memoria [ChatStateAccessor]:Lista de mensajes + sesión de visualización actual. */
+    /** 内存态 [ChatStateAccessor]:消息列表 + 当前显示会话。 */
     private class FakeAccessor(displayedSessionId: String?) : ChatStateAccessor {
         private val state = MutableStateFlow(
             ChatUiState(sessionState = ChatSessionState(currentSessionId = displayedSessionId)),
@@ -218,7 +218,7 @@ class ChatMediaGenHostVoiceTest {
         }
     }
 
-    /** Suplente del repositorio de sesiones con estado:Los mensajes anclados con adjuntaMediaToMessage recuerdan su propio discurso. */
+    /** 有状态的会话仓储替身:锚定消息随 attachMediaToMessage 记住自己的语音。 */
     private class VoiceRepositoryFake {
 
         private val stored = linkedMapOf(ANCHOR_ID.toString() to anchor(""))
@@ -262,7 +262,7 @@ class ChatMediaGenHostVoiceTest {
         const val SESSION_ID = "session-1"
         const val OTHER_SESSION_ID = "session-2"
         const val GENERATION_TOKEN = 7L
-        const val EXISTING_TEXT = "que decir primero"
+        const val EXISTING_TEXT = "先说的话"
         const val VOICE_1 = "file:///voice/1.wav"
         const val VOICE_2 = "file:///voice/2.wav"
         const val VOICE_3 = "file:///voice/3.wav"

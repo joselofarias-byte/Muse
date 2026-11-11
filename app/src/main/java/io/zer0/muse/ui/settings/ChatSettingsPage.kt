@@ -40,6 +40,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.zer0.common.Logger
 import io.zer0.muse.R
 import io.zer0.muse.data.ChatGradient
 import io.zer0.muse.data.ChatPreferences
@@ -68,24 +69,24 @@ import kotlinx.coroutines.withContext
 import org.koin.compose.koinInject
 
 /**
- * v0.31: Página de configuración secundaria del chat — Ofrezca a los usuarios más control.
+ * v0.31: 聊天二级设置页 — 给用户更多控制权。
  *
- * Eliminar los interruptores relacionados con el chat de la página de apariencia,pagina separada,Organizado en 4 grupos.:
- *  1. visualización de mensajes — MOOD/pensar/token/Nombre del modelo/Marca de tiempo
- *  2. Estado expandido predeterminado — MOOD/Piense en la expansión predeterminada
- *  3. comportamiento interactivo — transmisión/desplazamiento automático/Teclas de volumen/Entra para enviar/haptic
- *  4. Avanzado — Umbral de mensaje largo/Detalles de llamada de herramienta/24 reloj de hora
+ * 把聊天相关开关从外观页拆出,单独成页,组织为 4 个分组:
+ *  1. 消息显示 — MOOD/思考/token/模型名/时间戳
+ *  2. 默认展开状态 — MOOD/思考默认展开
+ *  3. 交互行为 — 流式/自动滚动/音量键/回车发送/haptic
+ *  4. 高级 — 长消息阈值/工具调用详情/24 小时制
  *
- * Todos los interruptores están empaquetados en [ChatPreferences] Un almacenamiento serializado en la clase de datos.
- * MessageBubble / ChatScreen / InputBar La lectura de estos interruptores determina el comportamiento de renderizado e interacción.
+ * 所有开关打包到 [ChatPreferences] 数据类里一次序列化存储。
+ * MessageBubble / ChatScreen / InputBar 读取这些开关决定渲染与交互行为。
  *
- * v1.0.20: Nuevo"Aprobación de llamada de herramienta"grupo(fijar hacia arriba),Contiene tres niveles de modos de permiso de sesión.
- * Las políticas a nivel de herramienta única todavía están configuradas en la página de herramientas,Esta página no proporciona entrada de salto.
+ * v1.0.20: 新增"工具调用批准"分组(置顶),含三档会话权限模式。
+ * 单工具级策略仍在工具页配置,本页不提供跳转入口。
  */
 @Composable
 fun ChatSettingsPage(
     onBack: () -> Unit,
-    /** v2.6.0: Abra la página de personalización del botón de acceso directo al mensaje. */
+    /** v2.6.0: 打开消息快捷按钮自定义页。 */
     onOpenQuickActions: () -> Unit = {},
 ) {
     val settings: SettingsRepository = koinInject()
@@ -93,32 +94,32 @@ fun ChatSettingsPage(
     val scope = rememberCoroutineScope()
 
     fun update(block: (ChatPreferences) -> ChatPreferences) {
-        // v2.5.3 (P1-1): Ya no use toda la instantánea de preferencias recopiladas para escribir (cuando arrastre rápidamente el control deslizante/escriba rápidamente)
-        // Las modificaciones realizadas en otros lugares se sobrescribirán con instantáneas desactualizadas); en cambio, las lecturas atómicas se realizan dentro de la transacción de edición del DataStore.-cambiar-Escribir.
+        // v2.5.3 (P1-1): 不再用收集到的 prefs 快照整份回写（快速拖动 slider / 快速输入时
+        // 会用过时快照覆盖别处的修改）；改为在 DataStore edit 事务内原子读-改-写。
         scope.launch { settings.updateChatPreferences(block) }
     }
 
-    // v1.0.47 P5-3: Token Cambio de estimación(Desactivado de forma predeterminada,Experimental,Evite la sobrecarga de rendimiento de BPE)
+    // v1.0.47 P5-3: Token 估算开关(默认关闭,实验性,避免 BPE 性能开销)
     val tokenEstimateEnabled by settings.tokenEstimateEnabledFlow
         .collectAsStateWithLifecycle(initialValue = false)
     val customTitlePrompt by settings.customTitlePromptFlow.collectAsStateWithLifecycle(initialValue = null)
     val pasteAsFileThreshold by settings.pasteAsFileThresholdFlow.collectAsStateWithLifecycle(initialValue = 2000)
     var showTitlePromptDialog by remember { mutableStateOf(false) }
     var titlePromptDraft by remember(customTitlePrompt) { mutableStateOf(customTitlePrompt.orEmpty()) }
-    // v1.0.47 P5-2: Cambio de pegado de texto largo a archivo(Habilitado por defecto)
+    // v1.0.47 P5-2: 长文本粘贴转文件开关(默认开启)
     val pasteAsFileEnabled by settings.pasteAsFileEnabledFlow
         .collectAsStateWithLifecycle(initialValue = true)
-    // v1.0.51: Política de notificación de respuesta(Mover desde la página de configuración de memoria,Más relevante para el comportamiento del chat)
+    // v1.0.51: 回复通知策略(从记忆设置页移入,与聊天行为更相关)
     val notificationPolicy by settings.notificationPolicyFlow
         .collectAsStateWithLifecycle(initialValue = "when_unfocused")
     val toolLoopMaxRounds by settings.toolLoopMaxRoundsFlow
         .collectAsStateWithLifecycle(initialValue = 0)
-    // Política de aprobación predeterminada global (la página de herramientas comparte la misma fuente de datos que esta página)
+    // 全局默认审批策略（工具页与本页共用同一数据源）
     val permissionMode by settings.defaultSessionPermissionModeFlow
         .collectAsStateWithLifecycle(initialValue = SessionPermissionMode.ASK)
 
     SettingsSubPageScaffold(title = stringResource(R.string.settings_chat_title), onBack = onBack) {
-        // ── 0. Aprobación de llamada de herramienta (arriba)──
+        // ── 0. 工具调用批准（置顶）──
         item { SectionLabel(stringResource(R.string.settings_chat_tool_approval_section)) }
         item {
             SettingsGroup {
@@ -151,7 +152,7 @@ fun ChatSettingsPage(
                     },
                 )
                 SettingsGroupDivider()
-                // Descripción del modo actual (cambio dinámico con la marcha seleccionada)
+                // 当前模式说明（随选中档位动态切换）
                 val modeDescRes =
                     when (permissionMode) {
                         SessionPermissionMode.TRUSTED -> R.string.settings_chat_tool_approval_trusted_desc
@@ -181,8 +182,8 @@ fun ChatSettingsPage(
             }
         }
 
-        // ── 1. visualización de mensajes ──
-        // ── v1.0.74: Fondo de chat(charlar/Agent/Compartir chat grupal) ──
+        // ── 1. 消息显示 ──
+        // ── v1.0.74: 聊天背景(聊天/Agent/群聊共用) ──
         item { SectionLabel(stringResource(R.string.settings_chat_background_section)) }
         item {
             val chatBackground by settings.chatBackgroundFlow.collectAsStateWithLifecycle(initialValue = null)
@@ -194,9 +195,9 @@ fun ChatSettingsPage(
                 ) { uri ->
                     uri?.let { picked ->
                         bgScope.launch {
-                            // Reparación de auditoría (6.5): Cambie la imagen de fondo a la ruta del archivo,DataStore Sólo se almacenan cadenas de ruta.
-                            // Implementación original ~500KB base64 escribe en DataStore Preferences,Completamente reescrito para cada edición.,
-                            // Expansión del archivo de configuración, el inicio en frío se ralentiza,ANR riesgo. Almacenamiento de archivos filesDir,El volumen es controlable.
+                            // 审计修复 (6.5): 背景图改为存文件路径,DataStore 只存路径字符串。
+                            // 原实现把 ~500KB base64 写进 DataStore Preferences,每次 edit 全量重写,
+                            // 设置文件膨胀、冷启动变慢、ANR 风险。文件存 filesDir,体积可控。
                             val savedPath =
                                 withContext(Dispatchers.IO) {
                                     runCatching {
@@ -228,13 +229,23 @@ fun ChatSettingsPage(
                                             fos.write(out.toByteArray())
                                         }
                                         out.close()
-                                        // Compatible con valores antiguos:Continuar usando base64 existente,Nueva ruta de almacenamiento de valor(Comience con file:// para distinguir)
+                                        // 兼容旧值:已存 base64 的继续用,新值存路径(以 file:// 开头区分)
                                         "file://" + target.absolutePath
-                                    }.getOrNull()
+                                    }
+                                        // toast 只说"失败了"，原因只有日志知道：
+                                        // 读不到所选文件、解不出位图、写不进 filesDir 是三种不同修法。
+                                        .onFailure { e ->
+                                            Logger.w(
+                                                "ChatSettings",
+                                                "设置聊天背景失败 uri=$picked | 原因: ${e.message ?: e.javaClass.simpleName}",
+                                                e,
+                                            )
+                                        }
+                                        .getOrNull()
                                 }
                             if (savedPath != null) {
                                 settings.saveChatBackground(savedPath)
-                                // v1.0.74 fix: previamente exitoso/No hay comentarios sobre el fracaso,Los usuarios pensaron que estaba roto.
+                                // v1.0.74 fix: 此前成功/失败均无反馈,用户以为坏了
                                 MuseToast.show(bgContext.getString(R.string.settings_chat_background_saved))
                             } else {
                                 MuseToast.show(bgContext.getString(R.string.settings_chat_background_failed))
@@ -306,7 +317,7 @@ fun ChatSettingsPage(
             }
         }
         item {
-            // v2.6.2(comentarios de los usuarios): Fondo dedicado al modo oscuro —— Con el cambio automático de claro y oscuro, el fondo cambia en consecuencia.
+            // v2.6.2（用户反馈）: 深色模式专用背景 —— 配合明暗自动切换，让背景也跟着换。
             val darkBg by settings.chatBackgroundDarkFlow.collectAsStateWithLifecycle(initialValue = null)
             val darkBgScope = rememberCoroutineScope()
             val darkBgContext = LocalContext.current
@@ -399,7 +410,7 @@ fun ChatSettingsPage(
             }
         }
         item {
-            // E3: Fondo degradado dinámico — Preajuste de degradado lineal de dos colores(La imagen de fondo tiene prioridad,El degradado tiene efecto cuando no hay imagen de fondo)
+            // E3: 动态渐变背景 — 双色线性渐变预设(背景图优先,渐变在无背景图时生效)
             val chatGradient by settings.chatGradientFlow.collectAsStateWithLifecycle(initialValue = null)
             val gradScope = rememberCoroutineScope()
             SettingsGroup {
@@ -490,7 +501,7 @@ fun ChatSettingsPage(
         item {
             SettingsGroup {
                 SettingsSwitchRow(
-                    icon = MuseIcons.atom,
+                    icon = MuseIcons.moodSmile,
                     title = stringResource(R.string.settings_chat_show_mood),
                     subtitle = stringResource(R.string.settings_chat_show_mood_subtitle),
                     checked = prefs.showMoodBlock,
@@ -498,14 +509,15 @@ fun ChatSettingsPage(
                 )
                 SettingsGroupDivider()
                 SettingsSwitchRow(
-                    icon = MuseIcons.atom,
+                    // 思考过程的图形早已定为 brain(进程列表 think/reasoning 同一口径),atom 留给"反思"。
+                    icon = MuseIcons.brain,
                     title = stringResource(R.string.settings_chat_show_reasoning),
                     subtitle = stringResource(R.string.settings_chat_show_reasoning_subtitle),
                     checked = prefs.showReasoning,
                     onCheckedChange = { v -> update { it.copy(showReasoning = v) } },
                 )
                 SettingsGroupDivider()
-                // v2.6.1(comentarios de los usuarios): Pensamiento de retorno del modelo de fuerza —— Después de la apertura, no será suprimida por el nivel de asistente OFF/AUTO.
+                // v2.6.1（用户反馈）: 强制模型返回思考 —— 打开后不被助手级 OFF/AUTO 压掉。
                 SettingsSwitchRow(
                     icon = MuseIcons.brain,
                     title = stringResource(R.string.settings_chat_force_reasoning),
@@ -515,15 +527,16 @@ fun ChatSettingsPage(
                 )
                 SettingsGroupDivider()
                 SettingsSwitchRow(
-                    icon = MuseIcons.atom,
+                    // 反思 = 助手回看自己的输出,用 reflect 的"绕回自身"图形;atom 留给真正的原子/模型类语义。
+                    icon = MuseIcons.reflect,
                     title = stringResource(R.string.settings_chat_show_reflection),
                     subtitle = stringResource(R.string.settings_chat_show_reflection_subtitle),
                     checked = prefs.showReflectionBlock,
                     onCheckedChange = { v -> update { it.copy(showReflectionBlock = v) } },
                 )
                 SettingsGroupDivider()
-                // v1.0.52: Eliminar el interruptor muerto showTokenEstimate — El interruptor nunca es leído por ninguna interfaz de usuario,
-                // Los usuarios lo encienden repetidamente sin ningún efecto. Lo que realmente tiene efecto es"Rendimiento"en grupo"Token estimación"cambiar.
+                // v1.0.52: 移除 showTokenEstimate 死开关 — 该开关从未被任何 UI 读取,
+                // 用户反复开启它但无效果。真正生效的是"性能"分组里的"Token 估算"开关。
                 SettingsSwitchRow(
                     icon = MuseIcons.switch,
                     title = stringResource(R.string.settings_chat_show_model),
@@ -550,9 +563,9 @@ fun ChatSettingsPage(
             }
         }
 
-        // ── v2.6.10: Conexión entre sesiones ──
-        // Al abrir una nueva conversación, la conversación al final de la conversación anterior se pone en contexto.
-        // Cerrado de forma predeterminada: ocupará el token de entrada y se puede activar cuando el usuario claramente necesita una sensación de continuidad.
+        // ── v2.6.10: 跨会话衔接 ──
+        // 开新对话时把上一个会话末尾的对话带进上下文。
+        // 默认关闭：会占用输入 token，用户明确需要连续感时再打开。
         item { SectionLabel(stringResource(R.string.settings_chat_carry_over_section)) }
         item {
             SettingsGroup {
@@ -585,7 +598,7 @@ fun ChatSettingsPage(
                         Slider(
                             value = prefs.carryOverMessageCount.toFloat(),
                             onValueChange = { v ->
-                                // Presione 2 barras por engranaje (una pregunta y una respuesta) para evitar que los usuarios sintonicen números impares extraños.
+                                // 按 2 条一档（一问一答），避免用户调到奇怪的奇数。
                                 val snapped = (v.toInt() / 2 * 2).coerceIn(4, 40)
                                 update { it.copy(carryOverMessageCount = snapped) }
                             },
@@ -598,7 +611,7 @@ fun ChatSettingsPage(
             }
         }
 
-        // ── v2.6.0: Personalización del botón de acceso directo a mensajes (Via (página de nivel de fórmula 3)──
+        // ── v2.6.0: 消息快捷按钮自定义（Via 式三级页）──
         item { SectionLabel(stringResource(R.string.settings_chat_quick_actions)) }
         item {
             SettingsGroup {
@@ -611,9 +624,9 @@ fun ChatSettingsPage(
             }
         }
 
-        // ── Diseño de texto(Tamaño de fuente del mensaje/espaciado entre caracteres, v2.0)──
+        // ── 正文排版(消息字号 / 字间距, v2.0)──
         item { SectionLabel(stringResource(R.string.settings_chat_typography_section)) }
-        // v2.5.0: Panel de vista previa de diseño —— Un efecto compuesto de la configuración actual de apariencia del chat.,Lo que ves es lo que obtienes
+        // v2.5.0: 排版预览面板 —— 当前聊天外观设置的合成效果,所见即所得
         item {
             SettingsGroup {
                 BubblePreviewPanel(prefs = prefs)
@@ -621,7 +634,7 @@ fun ChatSettingsPage(
         }
         item {
             SettingsGroup {
-                // Tamaño de fuente del mensaje:0.85~1.25 veces,Predeterminado 100%
+                // 消息字号:0.85~1.25 倍,默认 100%
                 var fontScaleDraft by remember { mutableStateOf(prefs.messageFontScale) }
                 LaunchedEffect(prefs.messageFontScale) {
                     if (prefs.messageFontScale != fontScaleDraft) {
@@ -645,7 +658,7 @@ fun ChatSettingsPage(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        // LAYOUT-01: El nombre del elemento de configuración toma el ancho restante + límite de línea,El porcentaje es un valor corto de ancho fijo,Límite de 1 línea.
+                        // LAYOUT-01: 设置项名称取剩余宽度 + 限行,百分比是定宽短值,限 1 行。
                         Text(
                             text = stringResource(R.string.settings_chat_message_font_size),
                             style = MaterialTheme.typography.bodyLarge,
@@ -676,7 +689,7 @@ fun ChatSettingsPage(
                     )
                 }
                 SettingsGroupDivider()
-                // espaciado de palabras:-0.02em ~ 0.08em
+                // 字间距:-0.02em ~ 0.08em
                 var letterSpacingDraft by remember { mutableStateOf(prefs.messageLetterSpacingEm) }
                 LaunchedEffect(prefs.messageLetterSpacingEm) {
                     if (prefs.messageLetterSpacingEm != letterSpacingDraft) {
@@ -700,7 +713,7 @@ fun ChatSettingsPage(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        // LAYOUT-01: Igual que arriba,Configuración del ancho del nombre del elemento + límite de línea,Las columnas numéricas están limitadas a 1 fila.
+                        // LAYOUT-01: 同上,设置项名称取宽 + 限行,数值列限 1 行。
                         Text(
                             text = stringResource(R.string.settings_chat_letter_spacing),
                             style = MaterialTheme.typography.bodyLarge,
@@ -733,11 +746,22 @@ fun ChatSettingsPage(
             }
         }
 
-        // ── generar estilo(Temperatura global + estilo de tono + tono)──
+        // ── 生成风格(全局温度 + 语气风格 + 语气)──
         item { SectionLabel(stringResource(R.string.settings_chat_generation_style)) }
         item {
             SettingsGroup {
-                // Control deslizante de temperatura:0-2,tamaño del paso 0.1
+                SettingsSwitchRow(
+                    icon = MuseIcons.languages,
+                    title = stringResource(R.string.settings_chat_reply_language),
+                    subtitle = stringResource(R.string.settings_chat_reply_language_subtitle),
+                    checked = prefs.replyInUserLanguageEnabled,
+                    onCheckedChange = { v -> update { it.copy(replyInUserLanguageEnabled = v) } },
+                )
+            }
+        }
+        item {
+            SettingsGroup {
+                // 温度滑块:0-2,步长 0.1
                 Row(
                     modifier =
                     Modifier
@@ -753,7 +777,7 @@ fun ChatSettingsPage(
                         modifier = Modifier.size(MuseIconSizes.iconMedium),
                     )
                     Column(modifier = Modifier.weight(1f)) {
-                        // Calado local + antivibración de 400 ms:Solo actualiza el borrador al arrastrar,Detente y luego escribe. DataStore,Evite persistir en cada ajuste fino
+                        // 本地草稿 + 400ms 防抖:拖动时只更新草稿,停止后再写 DataStore,避免每次微调都持久化
                         var temperatureDraft by remember { mutableStateOf(prefs.globalTemperature) }
                         LaunchedEffect(prefs.globalTemperature) {
                             if (prefs.globalTemperature != temperatureDraft) {
@@ -771,7 +795,7 @@ fun ChatSettingsPage(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            // LAYOUT-01: Igual que arriba(En este momento, los iconos y Column.weight),El nombre está ampliado + restringido.
+                            // LAYOUT-01: 同上(此时行内还叠加了图标与 Column.weight),名称取宽 + 限行。
                             Text(
                                 text = stringResource(R.string.settings_chat_randomness),
                                 style = MaterialTheme.typography.bodyLarge,
@@ -797,14 +821,14 @@ fun ChatSettingsPage(
                             value = temperatureDraft,
                             onValueChange = { v -> temperatureDraft = v },
                             valueRange = 0f..2f,
-                            // tamaño del paso 0.1,0-2 21 puntos en total,steps = 21 - 2
+                            // 步长 0.1,0-2 共 21 个点,steps = 21 - 2
                             steps = 19,
                             modifier = Modifier.padding(top = 4.dp),
                         )
                     }
                 }
                 SettingsGroupDivider()
-                // elección de estilo:concise/balanced/detailed
+                // 风格选择:concise/balanced/detailed
                 val styleOptions =
                     listOf(
                         stringResource(R.string.settings_chat_style_concise),
@@ -818,7 +842,8 @@ fun ChatSettingsPage(
                         else -> 1
                     }
                 SettingsSegmentedRow(
-                    icon = MuseIcons.atom,
+                    // 回复风格是"怎么说"的文字类设置,与字号/字体同族;atom 是思考/原子的语义,借错了。
+                    icon = MuseIcons.typography,
                     title = stringResource(R.string.settings_chat_style),
                     subtitle = stringResource(R.string.settings_chat_style_subtitle),
                     options = styleOptions,
@@ -834,7 +859,7 @@ fun ChatSettingsPage(
                     },
                 )
                 SettingsGroupDivider()
-                // elección de tono:neutral/friendly/formal/humorous
+                // 语气选择:neutral/friendly/formal/humorous
                 val toneOptions =
                     listOf(
                         stringResource(R.string.settings_chat_tone_neutral),
@@ -871,12 +896,12 @@ fun ChatSettingsPage(
             }
         }
 
-        // ── 2. Estado expandido predeterminado ──
+        // ── 2. 默认展开状态 ──
         item { SectionLabel(stringResource(R.string.settings_chat_default_expand)) }
         item {
             SettingsGroup {
                 SettingsSwitchRow(
-                    icon = MuseIcons.maximize,
+                    icon = MuseIcons.expand,
                     title = stringResource(R.string.settings_chat_mood_expand),
                     subtitle = stringResource(R.string.settings_chat_mood_expand_subtitle),
                     checked = prefs.moodExpandedByDefault,
@@ -884,7 +909,7 @@ fun ChatSettingsPage(
                 )
                 SettingsGroupDivider()
                 SettingsSwitchRow(
-                    icon = MuseIcons.maximize,
+                    icon = MuseIcons.expand,
                     title = stringResource(R.string.settings_chat_expand_button),
                     subtitle = stringResource(R.string.settings_chat_expand_button_subtitle),
                     checked = prefs.showExpandButton,
@@ -892,7 +917,7 @@ fun ChatSettingsPage(
                 )
                 SettingsGroupDivider()
                 SettingsSwitchRow(
-                    icon = MuseIcons.maximize,
+                    icon = MuseIcons.expand,
                     title = stringResource(R.string.settings_chat_reasoning_expand),
                     subtitle = stringResource(R.string.settings_chat_reasoning_expand_subtitle),
                     checked = prefs.reasoningExpandedByDefault,
@@ -900,7 +925,7 @@ fun ChatSettingsPage(
                 )
                 SettingsGroupDivider()
                 SettingsSwitchRow(
-                    icon = MuseIcons.maximize,
+                    icon = MuseIcons.expand,
                     title = stringResource(R.string.settings_chat_reflection_expand),
                     subtitle = stringResource(R.string.settings_chat_reflection_expand_subtitle),
                     checked = prefs.reflectionExpandedByDefault,
@@ -909,7 +934,7 @@ fun ChatSettingsPage(
             }
         }
 
-        // ── 3. comportamiento interactivo ──
+        // ── 3. 交互行为 ──
         item { SectionLabel(stringResource(R.string.settings_chat_interaction)) }
         item {
             SettingsGroup {
@@ -921,7 +946,7 @@ fun ChatSettingsPage(
                     onCheckedChange = { v -> update { it.copy(streamResponse = v) } },
                 )
                 SettingsGroupDivider()
-                // issue #3.5: Modo de respuesta rápida —— Omitir la recuperación de memoria relevante para cada ronda(Encabezado retrasado de la primera palabra).
+                // issue #3.5: 快速回复模式 —— 跳过每轮的相关记忆检索(首字延迟大头)。
                 SettingsSwitchRow(
                     icon = MuseIcons.arrowRight,
                     title = stringResource(R.string.settings_chat_fast_reply),
@@ -972,12 +997,12 @@ fun ChatSettingsPage(
             }
         }
 
-        // ── 4. Avanzado ──
+        // ── 4. 高级 ──
         item { SectionLabel(stringResource(R.string.settings_common_advanced)) }
         item {
             SettingsGroup {
-                // Nota:Umbral de plegado de mensajes largos(longMessageThreshold)Elemento de configuración eliminado ——
-                // MessageBubble Ya no doblar el texto de la respuesta del asistente en su totalidad,Este umbral no tiene consumidor.,La retención puede engañar a los usuarios.
+                // 注:长消息折叠阈值(longMessageThreshold)设置项已移除 ——
+                // MessageBubble 不再对助手回复正文做整体折叠,该阈值无消费方,保留会误导用户。
                 SettingsSwitchRow(
                     icon = MuseIcons.eye,
                     title = stringResource(R.string.settings_chat_show_tool_calls),
@@ -1002,7 +1027,7 @@ fun ChatSettingsPage(
                     onCheckedChange = { v -> update { it.copy(use24Hour = v) } },
                 )
                 SettingsGroupDivider()
-                // v1.0.4 (P3-4): Modo de rendimiento — Acceso MessagePaginator,Las sesiones muy largas solo muestran los últimos N elementos
+                // v1.0.4 (P3-4): 性能模式 — 接入 MessagePaginator,超长会话仅渲染最近 N 条
                 SettingsSwitchRow(
                     icon = MuseIcons.gauge,
                     title = stringResource(R.string.settings_chat_performance_mode),
@@ -1011,11 +1036,11 @@ fun ChatSettingsPage(
                     onCheckedChange = { v -> update { it.copy(performanceMode = v) } },
                 )
                 SettingsGroupDivider()
-                // v2.x: Límite de caché de sesión(Avanzado) — Número de copias en memoria de mensajes de sesión retenidas en segundo plano,La actualización en caliente entra en vigor
+                // v2.x: 会话缓存上限(高级) — 后台保留的会话消息内存副本数,热更生效
                 SessionCacheSizeRow(settings = settings, scope = scope)
                 SettingsGroupDivider()
-                // v1.0.47 P5-3: Token estimación(Desactivado de forma predeterminada)——Después de abrir, el campo de entrada muestra el botón de conteo de tokens.,Haga clic para ver la ocupación del contexto
-                // v1.0.52: Este es el único cambio de token que realmente tiene efecto.(Grupo de visualización de mensajes"mostrarToken"Eliminado,porque nunca funcionó)
+                // v1.0.47 P5-3: Token 估算(默认关闭)——开启后输入栏显示 Token 计数按钮,点击查看上下文占用
+                // v1.0.52: 这是唯一真正生效的 Token 开关(消息显示分组里的"显示Token"已移除,因为它从未工作)
                 SettingsSwitchRow(
                     icon = MuseIcons.chartBar,
                     title = stringResource(R.string.settings_chat_token_estimate),
@@ -1071,10 +1096,10 @@ fun ChatSettingsPage(
             }
         }
 
-        // ── v2.x: Dividir subgrupos — La etiqueta de repetición "Avanzada" original se ha cambiado a tres grupos semánticos.(contexto/memoria/Notificación)──
+        // ── v2.x: 拆分子分组 — 原「高级」重复标签改为三个语义分组(上下文/记忆/通知)──
         item { SectionLabel(stringResource(R.string.settings_chat_context_section)) }
-        // v2.x: Límite de ronda de herramientas(Ilimitado por defecto) — Agent Loop Después de la liberación, las tareas largas ya no se verán interrumpidas por rondas.;
-        // atascado/llamadas repetidas/La protección de bucle, como los fallos continuos, sigue teniendo efecto de forma independiente.
+        // v2.x: 工具轮次上限(默认无限制) — Agent Loop 放开后长任务不再被轮次卡断;
+        // 卡死/重复调用/连续失败等循环保护仍独立生效。
         item {
             SettingsGroup {
                 val roundOptions =
@@ -1110,11 +1135,11 @@ fun ChatSettingsPage(
                 )
             }
         }
-        // ── Notificación ──
+        // ── 通知 ──
         item { SectionLabel(stringResource(R.string.settings_memory_notification_section)) }
         item {
             SettingsGroup {
-                // Política de notificación de respuesta(never / when_unfocused / always)
+                // 回复通知策略(never / when_unfocused / always)
                 NotificationPolicyRow(
                     current = notificationPolicy,
                     onChange = { v ->
@@ -1149,9 +1174,9 @@ fun ChatSettingsPage(
 }
 
 /**
- * v1.0.51: Política de notificación de respuesta Seleccionar línea(Se mudó desde MemorySettingsPage).
+ * v1.0.51: 回复通知策略选择行(从 MemorySettingsPage 移入)。
  *
- * tercera marcha:never / when_unfocused / always,Dispóngalos horizontalmente con MuseChip.
+ * 三档:never / when_unfocused / always,用 MuseChip 横向排列。
  */
 @Composable
 private fun NotificationPolicyRow(current: String, onChange: (String) -> Unit) {
@@ -1208,7 +1233,7 @@ private fun NotificationPolicyRow(current: String, onChange: (String) -> Unit) {
     }
 }
 
-/** Un recurso que convierte los valores de temperatura en indicaciones legibles. ID(0=OK 1=equilibrio 2=creatividad). */
+/** 把温度值转成可读提示的资源 ID(0=确定 1=平衡 2=创造性)。 */
 private fun temperatureHint(value: Float): Int = when {
     value <= 0.3f -> R.string.settings_chat_temp_hint_certain
     value <= 0.7f -> R.string.settings_chat_temp_hint_balanced_low
@@ -1217,15 +1242,15 @@ private fun temperatureHint(value: Float): Int = when {
     else -> R.string.settings_chat_temp_hint_creative
 }
 
-/** Analizar el nombre para mostrar de un modelo comprimido(Texto predeterminado de reserva independiente). */
+/** 解析压缩模型的显示名称(未绑定回退默认文本)。 */
 
 /**
- * v2.x: Línea de selección de límite de caché de sesión(Avanzado) — El número de copias en memoria de los mensajes de sesión retenidas en segundo plano.
+ * v2.x: 会话缓存上限选择行(高级) — 后台保留的会话消息内存副本数。
  *
- * cuanto mas grande:El cambio de sesión es más rápido,El uso de memoria es mayor. La actualización en caliente entra en vigor(El límite superior se lee en tiempo real mediante SettingsRepository).
+ * 越大:会话问切换越快,内存占用越高。热更生效(上限由 SettingsRepository 实时读取)。
  *
- * @param settings Configurar almacén(leer y escribir session_cache_size)
- * @param scope alcance de rutina(Guardar operación)
+ * @param settings 设置仓库(读写 session_cache_size)
+ * @param scope 协程作用域(保存操作)
  */
 @Composable
 private fun SessionCacheSizeRow(settings: SettingsRepository, scope: CoroutineScope) {

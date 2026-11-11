@@ -8,32 +8,32 @@ import io.zer0.muse.tools.system.AccessibilityClient
 import java.io.File
 
 /**
- * v1.0.52 P3-3: UI Conjunto de herramientas de automatización — Capacidades de control de dispositivos expuestas a la IA.
+ * v1.0.52 P3-3: UI 自动化工具集 — 暴露给 AI 的设备操控能力。
  *
- * depender de [AccessibilityClient](Canales de atención sin barreras),10 herramientas proporcionadas:
- *  - [getPageInfo]: Obtener el nivel de UI de la página actual(árbol de nodos,Contiene coordenadas/texto/Capacidad de hacer clic)
- *  - [click] / [longPress]: Haga clic en las coordenadas/Pulsación larga
- *  - [swipe]: gesto de deslizar(Especificar coordenadas de inicio y fin + duración)
- *  - [setText]: en el nodo especificado(Identificado por ruta)Introducir texto
- *  - [screenshot]: Guardar captura de pantalla en un archivo(necesidad Android 14+)
- *  - [back] / [home]: Teclas de acceso directo de acciones globales
- *  - [globalAction]: Realizar cualquier acción de accesibilidad global
- *  - [getCurrentApp]: Consultar la aplicación actual en primer plano.
+ * 依赖 [AccessibilityClient](无障碍服务通道),提供 10 个工具:
+ *  - [getPageInfo]: 获取当前页面 UI 层级(节点树,含坐标/文本/可点击性)
+ *  - [click] / [longPress]: 在坐标点击/长按
+ *  - [swipe]: 滑动手势(指定起止坐标 + 时长)
+ *  - [setText]: 在指定节点(通过 path 标识)输入文本
+ *  - [screenshot]: 截图保存到文件(需 Android 14+)
+ *  - [back] / [home]: 全局动作快捷键
+ *  - [globalAction]: 执行任意全局无障碍动作
+ *  - [getCurrentApp]: 查询当前前台应用
  *
- * seguro:
- *  - Todos los niveles de riesgo ALTO(Controle directamente los dispositivos del usuario,Puede desencadenar operaciones irreversibles.)
- *  - Requiere servicios de accesibilidad habilitados(ACCESSIBILITY y arriba)
- *  - El sistema de permiso de sesión requerirá aprobación.(Modo no CONFIABLE)
+ * 安全:
+ *  - 全部 HIGH 风险等级(直接操控用户设备,可能触发不可逆操作)
+ *  - 需无障碍服务已启用(ACCESSIBILITY 及以上等级)
+ *  - 会话权限体系会要求审批(非 TRUSTED 模式)
  *
- * Formato de devolución:
- *  - éxito: texto legible(JSON o texto estructurado)
- *  - falló: "[error] ..." forma
+ * 返回格式:
+ *  - 成功: 可读文本(JSON 或结构化文本)
+ *  - 失败: "[错误] ..." 形式
  */
 object UIToolsSkill {
 
     private const val TAG = "UIToolsSkill"
 
-    // ── Constante de nombre de herramienta ────────────────────────────────────────────────────────────
+    // ── 工具名常量 ────────────────────────────────────────────────────────────
 
     const val GET_PAGE_INFO = "ui_get_page_info"
     const val CLICK = "ui_click"
@@ -46,14 +46,14 @@ object UIToolsSkill {
     const val GLOBAL_ACTION = "ui_global_action"
     const val GET_CURRENT_APP = "ui_get_current_app"
 
-    // ── Definición de herramienta ──────────────────────────────────────────────────────────────
+    // ── 工具定义 ──────────────────────────────────────────────────────────────
 
     fun toolDefs(): List<ToolRegistry.ToolDef> = listOf(
         ToolRegistry.ToolDef(
             name = GET_PAGE_INFO,
-            description = "Obtenga la información del nivel de UI de la pantalla actual(árbol de nodos). Cada nodo contiene un identificador de ruta.(Como por ejemplo 0.1.2)," +
-                "class,text,bounds(rango de coordenadas),clickable/editable/focused estado." +
-                "Se utiliza para saber qué elementos interactivos y sus coordenadas se encuentran en la página actual. Primero es necesario habilitar los servicios de accesibilidad.",
+            description = "获取当前屏幕的 UI 层级信息(节点树)。每个节点包含路径标识(如 0.1.2)、" +
+                "class、text、bounds(坐标范围)、clickable/editable/focused 状态。" +
+                "用于了解当前页面有哪些可交互元素及其坐标。需先启用无障碍服务。",
             parameters = emptyMap(),
             required = emptySet(),
             category = "built-in",
@@ -61,11 +61,11 @@ object UIToolsSkill {
         ),
         ToolRegistry.ToolDef(
             name = CLICK,
-            description = "Haga clic en las coordenadas especificadas en la pantalla. Las coordenadas son píxeles absolutos en la pantalla." +
-                "Se recomienda utilizar ui_get_page_info para obtener los límites del elemento de destino antes de hacer clic en el punto central.",
+            description = "在屏幕指定坐标执行点击。坐标为屏幕绝对像素。" +
+                "建议先用 ui_get_page_info 获取目标元素的 bounds 再点击中心点。",
             parameters = mapOf(
-                "x" to "Requerido,x coordenada del clic(píxeles de la pantalla)",
-                "y" to "Requerido,coordenada y del clic(píxeles de la pantalla)",
+                "x" to "必填,点击的 x 坐标(屏幕像素)",
+                "y" to "必填,点击的 y 坐标(屏幕像素)",
             ),
             required = setOf("x", "y"),
             category = "built-in",
@@ -74,10 +74,10 @@ object UIToolsSkill {
         ),
         ToolRegistry.ToolDef(
             name = LONG_PRESS,
-            description = "Realice una pulsación larga en las coordenadas especificadas en la pantalla(Mantenga presionado 500ms). A menudo se utiliza para abrir menús contextuales.",
+            description = "在屏幕指定坐标执行长按(按住 500ms)。常用于弹出上下文菜单。",
             parameters = mapOf(
-                "x" to "Requerido,coordenada x de pulsación larga",
-                "y" to "Requerido,coordenada y de pulsación larga",
+                "x" to "必填,长按的 x 坐标",
+                "y" to "必填,长按的 y 坐标",
             ),
             required = setOf("x", "y"),
             category = "built-in",
@@ -86,14 +86,14 @@ object UIToolsSkill {
         ),
         ToolRegistry.ToolDef(
             name = SWIPE,
-            description = "Realice un gesto de deslizamiento en la pantalla. Deslizarse desde el punto inicial hasta el punto final,duration controlar la velocidad(Cuanto más se alarga, más lento se vuelve)." +
-                "Desliza hacia arriba para pasar páginas:startY gran final pequeño;Lo contrario ocurre con las caídas.",
+            description = "在屏幕执行滑动手势。从起点滑到终点,duration 控制速度(越长越慢)。" +
+                "上滑翻页:startY 大 endY 小;下滑反之。",
             parameters = mapOf(
-                "start_x" to "Requerido,Coordenada x del punto de partida",
-                "start_y" to "Requerido,Punto de partida coordenada y",
-                "end_x" to "Requerido,Coordenada x del punto final",
-                "end_y" to "Requerido,Punto final coordenada y",
-                "duration" to "Opcional,Duración de la diapositiva(milisegundos),Predeterminado 300,Cuanto más grande, más lento",
+                "start_x" to "必填,起点 x 坐标",
+                "start_y" to "必填,起点 y 坐标",
+                "end_x" to "必填,终点 x 坐标",
+                "end_y" to "必填,终点 y 坐标",
+                "duration" to "可选,滑动时长(毫秒),默认 300,越大越慢",
             ),
             required = setOf("start_x", "start_y", "end_x", "end_y"),
             category = "built-in",
@@ -108,12 +108,12 @@ object UIToolsSkill {
         ),
         ToolRegistry.ToolDef(
             name = SET_TEXT,
-            description = "Establecer texto en el nodo especificado(Pase ACTION_SET_TEXT)." +
-                "node_id Identificador de ruta devuelto por ui_get_page_info(Como por ejemplo 0.1.2)O el nodo enfocado en ui_get_page_info." +
-                "Se utiliza para completar el contenido en el cuadro de entrada.",
+            description = "在指定节点上设置文本(通过 ACTION_SET_TEXT)。" +
+                "node_id 来自 ui_get_page_info 返回的路径标识(如 0.1.2)或 ui_get_page_info 中的 focused 节点。" +
+                "用于在输入框填写内容。",
             parameters = mapOf(
-                "node_id" to "Requerido,ruta del nodo objetivo(de ui_get_page_info [path])",
-                "text" to "Requerido,texto para ingresar",
+                "node_id" to "必填,目标节点路径(来自 ui_get_page_info 的 [path])",
+                "text" to "必填,要输入的文本",
             ),
             required = setOf("node_id", "text"),
             category = "built-in",
@@ -121,11 +121,11 @@ object UIToolsSkill {
         ),
         ToolRegistry.ToolDef(
             name = SCREENSHOT,
-            description = "Tome una captura de pantalla de la pantalla actual y guárdela como una imagen. necesidad Android 14+(API 34)." +
-                "Devuelve la ruta de guardado. Si no se pasa la ruta, se guardará en el directorio de caché de la aplicación.",
+            description = "截取当前屏幕并保存为图片。需 Android 14+(API 34)。" +
+                "返回保存路径。不传 path 时保存到应用缓存目录。",
             parameters = mapOf(
-                "path" to "Opcional,guardar ruta(camino absoluto),Guardar en el directorio de caché de forma predeterminada",
-                "format" to "Opcional,Formato de imagen PNG(Predeterminado) o JPEG",
+                "path" to "可选,保存路径(绝对路径),默认保存到缓存目录",
+                "format" to "可选,图片格式 PNG(默认) 或 JPEG",
             ),
             required = emptySet(),
             category = "built-in",
@@ -133,7 +133,7 @@ object UIToolsSkill {
         ),
         ToolRegistry.ToolDef(
             name = BACK,
-            description = "Simular presionando la tecla de retorno(acción global GLOBAL_ACTION_BACK).",
+            description = "模拟按下返回键(全局动作 GLOBAL_ACTION_BACK)。",
             parameters = emptyMap(),
             required = emptySet(),
             category = "built-in",
@@ -141,7 +141,7 @@ object UIToolsSkill {
         ),
         ToolRegistry.ToolDef(
             name = HOME,
-            description = "Simular presionando el botón Inicio(Volver al escritorio,GLOBAL_ACTION_HOME).",
+            description = "模拟按下 Home 键(回到桌面,GLOBAL_ACTION_HOME)。",
             parameters = emptyMap(),
             required = emptySet(),
             category = "built-in",
@@ -149,10 +149,10 @@ object UIToolsSkill {
         ),
         ToolRegistry.ToolDef(
             name = GLOBAL_ACTION,
-            description = "Realizar acciones de accesibilidad global. de uso común action_id: 1=BACK, 2=HOME, 3=RECENTS(tareas recientes)," +
-                " 4=NOTIFICATIONS, 5=QUICK_SETTINGS, 6=POWER_DIALOG, 7=TOGGLE_NOTIFICATION, 10=DISMISS_NOTIFICATION_SHADE.",
+            description = "执行全局无障碍动作。常用 action_id: 1=BACK, 2=HOME, 3=RECENTS(最近任务)," +
+                " 4=NOTIFICATIONS, 5=QUICK_SETTINGS, 6=POWER_DIALOG, 7=TOGGLE_NOTIFICATION, 10=DISMISS_NOTIFICATION_SHADE。",
             parameters = mapOf(
-                "action_id" to "Requerido,acción global ID(Como por ejemplo 1=Regresar, 2=HOME)",
+                "action_id" to "必填,全局动作 ID(如 1=返回, 2=HOME)",
             ),
             required = setOf("action_id"),
             category = "built-in",
@@ -161,8 +161,8 @@ object UIToolsSkill {
         ),
         ToolRegistry.ToolDef(
             name = GET_CURRENT_APP,
-            description = "Obtener la aplicación actual en primer plano/Activity nombre del componente(Como por ejemplo com.android.settings/.Settings)." +
-                "Se utiliza para saber en qué aplicación se encuentra actualmente el usuario.",
+            description = "获取当前前台应用/Activity 的组件名(如 com.android.settings/.Settings)。" +
+                "用于了解用户当前在哪个应用。",
             parameters = emptyMap(),
             required = emptySet(),
             category = "built-in",
@@ -170,96 +170,96 @@ object UIToolsSkill {
         ),
     )
 
-    // ── lógica de ejecución ──────────────────────────────────────────────────────────────
+    // ── 执行逻辑 ──────────────────────────────────────────────────────────────
 
     suspend fun getPageInfo(client: AccessibilityClient): String {
-        if (!ensureConnected(client)) return "[error] Los servicios de accesibilidad no están habilitados"
+        if (!ensureConnected(client)) return "[错误] 无障碍服务未启用"
         val info = client.getPageInfo()
-        return info.ifBlank { "[error] No se puede obtener la jerarquía de la interfaz de usuario(Puede que no haya ninguna ventana activa)" }
+        return info.ifBlank { "[错误] 无法获取 UI 层级(可能无活动窗口)" }
     }
 
     suspend fun click(client: AccessibilityClient, x: Int, y: Int): String {
-        if (!ensureConnected(client)) return "[error] Los servicios de accesibilidad no están habilitados"
+        if (!ensureConnected(client)) return "[错误] 无障碍服务未启用"
         val ok = client.click(x, y)
-        return if (ok) "[éxito] Se hizo clic ($x, $y)" else "[falló] Haga clic en Sin terminar(Las coordenadas están fuera de límites o el gesto se cancela.)"
+        return if (ok) "[成功] 已点击 ($x, $y)" else "[失败] 点击未完成(坐标越界或手势被取消)"
     }
 
     suspend fun longPress(client: AccessibilityClient, x: Int, y: Int): String {
-        if (!ensureConnected(client)) return "[error] Los servicios de accesibilidad no están habilitados"
+        if (!ensureConnected(client)) return "[错误] 无障碍服务未启用"
         val ok = client.longPress(x, y)
-        return if (ok) "[éxito] presionado durante mucho tiempo ($x, $y)" else "[falló] La pulsación larga no se completa"
+        return if (ok) "[成功] 已长按 ($x, $y)" else "[失败] 长按未完成"
     }
 
     suspend fun swipe(client: AccessibilityClient, startX: Int, startY: Int, endX: Int, endY: Int, duration: Long): String {
-        if (!ensureConnected(client)) return "[error] Los servicios de accesibilidad no están habilitados"
+        if (!ensureConnected(client)) return "[错误] 无障碍服务未启用"
         val ok = client.swipe(startX, startY, endX, endY, duration)
-        return if (ok) "[éxito] deslizado ($startX,$startY) -> ($endX,$endY)" else "[falló] Deslizamiento no completado"
+        return if (ok) "[成功] 已滑动 ($startX,$startY) -> ($endX,$endY)" else "[失败] 滑动未完成"
     }
 
     suspend fun setText(client: AccessibilityClient, nodeId: String, text: String): String {
-        if (!ensureConnected(client)) return "[error] Los servicios de accesibilidad no están habilitados"
-        if (nodeId.isBlank()) return "[error] Falta el parámetro node_id"
+        if (!ensureConnected(client)) return "[错误] 无障碍服务未启用"
+        if (nodeId.isBlank()) return "[错误] 缺少 node_id 参数"
         val ok = client.setText(nodeId, text)
-        return if (ok) "[éxito] Ya en el nodo $nodeId Introducir texto" else "[falló] Error al configurar el texto(El nodo no es editable o no existe)"
+        return if (ok) "[成功] 已在节点 $nodeId 输入文本" else "[失败] 设置文本失败(节点不可编辑或不存在)"
     }
 
     suspend fun screenshot(client: AccessibilityClient, context: Context, path: String?, format: String): String {
-        if (!ensureConnected(client)) return "[error] Los servicios de accesibilidad no están habilitados"
+        if (!ensureConnected(client)) return "[错误] 无障碍服务未启用"
         val targetPath = path?.takeIf { it.isNotBlank() } ?: run {
             val ext = if (format.equals("JPEG", ignoreCase = true)) ".jpg" else ".png"
             File(context.cacheDir, "ui_screenshot_${System.currentTimeMillis()}$ext").absolutePath
         }
         val ok = client.screenshot(targetPath, format)
-        if (ok) return "[éxito] Captura de pantalla guardada: $targetPath"
-        // v2.6.13: distinguir“No obtuve la habilidad”con“Lo conseguí pero fallé esta vez.”De lo contrario, el modelo sólo puede adivinar la causa a ciegas.
+        if (ok) return "[成功] 截图已保存: $targetPath"
+        // v2.6.13: 区分“能力没拿到”与“拿到了但这次失败”，否则模型只能盲猜原因。
         val hint = if (!client.canTakeScreenshot()) {
-            "El servicio no tiene la capacidad de realizar capturas de pantalla. Apague y luego vuelva a habilitar el servicio de accesibilidad de Muse en la configuración del sistema."
+            "服务未获得截图能力，请在系统设置里关闭再重新开启 Muse 的无障碍服务"
         } else {
-            "Requiere Android 14+ o las capturas de pantalla están prohibidas en la página actual (como pago/página de contraseña)"
+            "需 Android 14+，或当前页面禁止截屏（如支付/密码页）"
         }
-        return "[falló] Error en la captura de pantalla($hint)"
+        return "[失败] 截图失败($hint)"
     }
 
     suspend fun back(client: AccessibilityClient): String {
-        if (!ensureConnected(client)) return "[error] Los servicios de accesibilidad no están habilitados"
+        if (!ensureConnected(client)) return "[错误] 无障碍服务未启用"
         val ok = client.globalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK)
-        return if (ok) "[éxito] regresó" else "[falló] La acción de devolución falló"
+        return if (ok) "[成功] 已返回" else "[失败] 返回动作失败"
     }
 
     suspend fun home(client: AccessibilityClient): String {
-        if (!ensureConnected(client)) return "[error] Los servicios de accesibilidad no están habilitados"
+        if (!ensureConnected(client)) return "[错误] 无障碍服务未启用"
         val ok = client.globalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_HOME)
-        return if (ok) "[éxito] Regresado al escritorio" else "[falló] HOME La acción falló"
+        return if (ok) "[成功] 已回到桌面" else "[失败] HOME 动作失败"
     }
 
     suspend fun globalAction(client: AccessibilityClient, actionId: Int): String {
-        if (!ensureConnected(client)) return "[error] Los servicios de accesibilidad no están habilitados"
+        if (!ensureConnected(client)) return "[错误] 无障碍服务未启用"
         val ok = client.globalAction(actionId)
-        return if (ok) "[éxito] acción global $actionId ejecutado" else "[falló] acción global $actionId falló"
+        return if (ok) "[成功] 全局动作 $actionId 已执行" else "[失败] 全局动作 $actionId 失败"
     }
 
     suspend fun getCurrentApp(client: AccessibilityClient): String {
-        if (!ensureConnected(client)) return "[error] Los servicios de accesibilidad no están habilitados"
+        if (!ensureConnected(client)) return "[错误] 无障碍服务未启用"
         val name = client.currentActivityName()
-        return name.ifBlank { "[Consejos] La aplicación en primer plano no se puede determinar actualmente" }
+        return name.ifBlank { "[提示] 当前无法确定前台应用" }
     }
 
-    // ── herramientas internas ──────────────────────────────────────────────────────────────
+    // ── 内部工具 ──────────────────────────────────────────────────────────────
 
     private suspend fun ensureConnected(client: AccessibilityClient): Boolean {
-        // P3-3: Bajo esquema de instancia estática,Las conexiones son gestionadas por el sistema. — Una vez habilitado el servicio, la instancia está disponible automáticamente.,
-        // app No se puede tomar la iniciativa bindService(del esquema AIDL original connect() Eliminado).
-        // Aquí solo se realizan comprobaciones de estado:Liberar si está conectado,De lo contrario, deje que la persona que llama regrese"No habilitado"Error.
+        // P3-3: 静态实例方案下,连接由系统管理 — 服务启用后 instance 自动可用,
+        // app 无法主动 bindService(原 AIDL 方案的 connect() 已移除)。
+        // 这里仅做状态检查:已连接则放行,否则让调用方返回"未启用"错误。
         return client.isConnected()
     }
 }
 
 /**
- * UI Registrador de herramientas — Registre 10 herramientas de interfaz de usuario para [ToolRegistry].
+ * UI 工具注册器 — 把 10 个 UI 工具注册到 [ToolRegistry]。
  *
- * depender de ToolRegistry + AccessibilityClient + Context.
- * Creado cuando se inicializa AppKoinModule(Las herramientas solo están disponibles si los servicios de accesibilidad están habilitados,Pero el registro siempre se hace.,
- * ejecutado por [UIToolsSkill.ensureConnected] Verificar el estado de la conexión).
+ * 依赖 ToolRegistry + AccessibilityClient + Context。
+ * 在 AppKoinModule 初始化时创建(无障碍服务启用后工具才可用,但注册始终进行,
+ * 执行时由 [UIToolsSkill.ensureConnected] 检查连接状态)。
  */
 class UIToolsRegistrar(
     private val toolRegistry: ToolRegistry,
@@ -272,30 +272,30 @@ class UIToolsRegistrar(
 
     fun registerAll() {
         val client = accessibilityClient
-        // Nombre de la herramienta -> Ejecutar mapeo de lambda,Análisis de parámetros unificados
+        // 工具名 -> 执行 lambda 的映射,统一参数解析
         val executors: List<Pair<ToolRegistry.ToolDef, suspend (Map<String, String>) -> String>> = listOf(
             UIToolsSkill.toolDefs()[0] to { UIToolsSkill.getPageInfo(client) },
             UIToolsSkill.toolDefs()[1] to { args ->
-                val x = args["x"]?.toIntOrNull() ?: return@to "[error] Argumento x faltante o no válido"
-                val y = args["y"]?.toIntOrNull() ?: return@to "[error] Argumento y faltante o no válido"
+                val x = args["x"]?.toIntOrNull() ?: return@to "[错误] 缺少或无效的 x 参数"
+                val y = args["y"]?.toIntOrNull() ?: return@to "[错误] 缺少或无效的 y 参数"
                 UIToolsSkill.click(client, x, y)
             },
             UIToolsSkill.toolDefs()[2] to { args ->
-                val x = args["x"]?.toIntOrNull() ?: return@to "[error] Argumento x faltante o no válido"
-                val y = args["y"]?.toIntOrNull() ?: return@to "[error] Argumento y faltante o no válido"
+                val x = args["x"]?.toIntOrNull() ?: return@to "[错误] 缺少或无效的 x 参数"
+                val y = args["y"]?.toIntOrNull() ?: return@to "[错误] 缺少或无效的 y 参数"
                 UIToolsSkill.longPress(client, x, y)
             },
             UIToolsSkill.toolDefs()[3] to { args ->
-                val sx = args["start_x"]?.toIntOrNull() ?: return@to "[error] desaparecido start_x"
-                val sy = args["start_y"]?.toIntOrNull() ?: return@to "[error] desaparecido start_y"
-                val ex = args["end_x"]?.toIntOrNull() ?: return@to "[error] desaparecido end_x"
-                val ey = args["end_y"]?.toIntOrNull() ?: return@to "[error] desaparecido end_y"
+                val sx = args["start_x"]?.toIntOrNull() ?: return@to "[错误] 缺少 start_x"
+                val sy = args["start_y"]?.toIntOrNull() ?: return@to "[错误] 缺少 start_y"
+                val ex = args["end_x"]?.toIntOrNull() ?: return@to "[错误] 缺少 end_x"
+                val ey = args["end_y"]?.toIntOrNull() ?: return@to "[错误] 缺少 end_y"
                 val dur = args["duration"]?.toLongOrNull() ?: 300L
                 UIToolsSkill.swipe(client, sx, sy, ex, ey, dur)
             },
             UIToolsSkill.toolDefs()[4] to { args ->
-                val nodeId = args["node_id"] ?: return@to "[error] desaparecido node_id"
-                val text = args["text"] ?: return@to "[error] desaparecido text"
+                val nodeId = args["node_id"] ?: return@to "[错误] 缺少 node_id"
+                val text = args["text"] ?: return@to "[错误] 缺少 text"
                 UIToolsSkill.setText(client, nodeId, text)
             },
             UIToolsSkill.toolDefs()[5] to { args ->
@@ -306,7 +306,7 @@ class UIToolsRegistrar(
             UIToolsSkill.toolDefs()[6] to { UIToolsSkill.back(client) },
             UIToolsSkill.toolDefs()[7] to { UIToolsSkill.home(client) },
             UIToolsSkill.toolDefs()[8] to { args ->
-                val actionId = args["action_id"]?.toIntOrNull() ?: return@to "[error] Falta o no es válida action_id"
+                val actionId = args["action_id"]?.toIntOrNull() ?: return@to "[错误] 缺少或无效的 action_id"
                 UIToolsSkill.globalAction(client, actionId)
             },
             UIToolsSkill.toolDefs()[9] to { UIToolsSkill.getCurrentApp(client) },
@@ -314,6 +314,6 @@ class UIToolsRegistrar(
         executors.forEach { (def, fn) ->
             toolRegistry.register(def, fn)
         }
-        Logger.i("UIToolsRegistrar", "Registrado ${executors.size} herramientas de interfaz de usuario")
+        Logger.i("UIToolsRegistrar", "已注册 ${executors.size} 个 UI 工具")
     }
 }

@@ -3,7 +3,7 @@
     {
       "id": "page-conversation",
       "type": "page",
-      "title": "Lista de conversación",
+      "title": "会话列表",
       "version": 1,
       "createdAt": 1788780529,
       "canvasData": {
@@ -26,7 +26,7 @@
     {
       "id": "page-chat",
       "type": "page",
-      "title": "charlar",
+      "title": "聊天",
       "version": 1,
       "createdAt": 1788780529,
       "canvasData": {
@@ -49,7 +49,7 @@
     {
       "id": "page-settings",
       "type": "page",
-      "title": "ajustes",
+      "title": "设置",
       "version": 1,
       "createdAt": 1788780529,
       "canvasData": {

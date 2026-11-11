@@ -1,77 +1,286 @@
-name: JolufaSoft Musa APK release (es)
+name: JolufaSoft Musa signed release preflight (es)
 on:
   workflow_dispatch:
-  push:
-    paths:
-      - .github/workflows/jolufasoft-musa-apk.yml
+    inputs:
+      previous_release_tag:
+        description: "Release de producción previa del fork para verificar continuidad de firma"
+        required: false
+        type: string
+      first_release:
+        description: "Primera instalación Musa: sin APK de producción anterior"
+        required: true
+        default: false
+        type: boolean
 permissions:
   contents: write
+concurrency:
+  group: musa-release-${{ github.ref }}
+  cancel-in-progress: false
+env:
+  VERSION_NAME: 2.6.23-muse-es.2
+  VERSION_CODE: '1000002'
+  BUILD_TOOLS: 36.0.0
 jobs:
   apk:
     runs-on: ubuntu-latest
-    timeout-minutes: 75
+    timeout-minutes: 90
     steps:
-      - name: Checkout Spanish translation
+      - name: Checkout workflow commit
         uses: actions/checkout@v4
         with:
-          ref: cursor/spanish-default-locale-f884
+          ref: ${{ github.sha }}
           persist-credentials: false
+      - name: Validate release mode
+        env:
+          FIRST_RELEASE: ${{ inputs.first_release }}
+          PREVIOUS_RELEASE_TAG: ${{ inputs.previous_release_tag }}
+        run: |
+          if [ "$FIRST_RELEASE" = true ]; then
+            test -z "$PREVIOUS_RELEASE_TAG"
+          else
+            test -n "$PREVIOUS_RELEASE_TAG"
+          fi
       - name: Java 21
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '21'
-      - name: Android SDK
-        uses: android-actions/setup-android@v3
-        with:
-          packages: platform-tools platforms;android-35 build-tools;35.0.0 ndk;27.0.12077973 cmake;3.22.1
-      - name: Node 22
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
       - name: Python 3.12
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Prepare embedded assets
+      - name: Signing helper unit tests and Spanish localization gates
         shell: bash
         run: |
           set -euo pipefail
-          if [ -f web/package-lock.json ]; then
-            (cd web && npm ci && npm run build)
-          fi
-          if [ -f ci/script/pack_embedded_runtimes.py ]; then
-            python3 ci/script/pack_embedded_runtimes.py
-          fi
-      - name: Create isolated release signing key
+          python3 -m unittest discover -s ci/script -p test_validate_release_signing.py
+          python3 -m pip install pytest==8.3.5
+          python3 -m pytest -q ci/test/test_verify_musa_upgrade.py
+          python3 ci/test/test_release_preflight.py
+          bash tools/runtime-pack/test-downloads.sh
+          python3 ci/script/check_localizations.py --strict-locales es
+          python3 ci/script/check_translation_residue.py
+      - name: Restore permanent signing key (no fallback)
+        shell: bash
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          umask 077
+          python3 ci/script/validate_release_signing.py \
+            --keystore-out "$RUNNER_TEMP/musa-release.jks" \
+            --properties-out "$GITHUB_WORKSPACE/keystore.properties"
+          python3 - <<'PYTHON'
+          import hashlib
+          import os
+          from pathlib import Path
+          import subprocess
+          import sys
+
+          sys.path.insert(0, 'ci/script')
+          from validate_release_signing import keytool_path, require_secrets
+
+          values = require_secrets()
+          env = os.environ.copy()
+          env['MUSE_STORE_PASSWORD'] = values['store_password']
+          cert = Path(os.environ['RUNNER_TEMP']) / 'musa-release-cert.der'
+          subprocess.run([
+              keytool_path(), '-exportcert', '-keystore',
+              str(cert.with_name('musa-release.jks')),
+              '-storepass:env', 'MUSE_STORE_PASSWORD', '-alias', values['alias'],
+              '-file', str(cert),
+          ], env=env, check=True)
+          digest = hashlib.sha256(cert.read_bytes()).hexdigest()
+          expected = Path('docs/MUSA_RELEASE_CERT.sha256').read_text().strip()
+          if digest != expected:
+              raise SystemExit('Restored key does not match permanent Musa signing identity')
+          cert.with_name('musa-cert.sha256').write_text(digest)
+          PYTHON
+      - name: Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools platforms;android-36 build-tools;36.0.0 ndk;27.0.12077973 cmake;3.22.1
+      - name: Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Prepare embedded web assets
         shell: bash
         run: |
           set -euo pipefail
-          keytool -genkeypair -noprompt -keystore "$RUNNER_TEMP/musa-release.jks" -storetype PKCS12 -alias musa -keyalg RSA -keysize 3072 -validity 3650 -storepass "MusaCI2026Temporary" -keypass "MusaCI2026Temporary" -dname "CN=Musa CI, OU=JolufaSoft, O=JolufaSoft, C=UY"
-          printf 'storeFile=%s\\nstorePassword=%s\\nkeyAlias=musa\\nkeyPassword=%s\\n' "$RUNNER_TEMP/musa-release.jks" "MusaCI2026Temporary" "MusaCI2026Temporary" > keystore.properties
-      - name: Assemble release APK without LeakCanary
+          cd web
+          npm ci
+          npm run build
+      - name: Pack required Node and Python runtimes (full Musa)
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y patchelf
+          bash tools/runtime-pack/build-runtime-pack.sh both
+          bash tools/python-pack/build-python-pack.sh both
+          for abi in arm64-v8a x86_64; do
+            test -s "app/src/main/jniLibs/$abi/libmuse_node.so"
+            test -s "app/src/main/jniLibs/$abi/libpython3.14.so"
+          done
+          test -s app/src/main/assets/muse-runtime-assets.zip
+          test -s app/src/main/assets/muse-python-assets.zip
+      - name: Lint release, all-module debug unit tests and shrunk release APKs
         shell: bash
         run: |
           set -euo pipefail
           chmod +x gradlew
-          ./gradlew :app:assembleRelease --stacktrace --no-daemon -PversionCode=266 -PversionName=2.6.6-musa-es
-          find app/build/outputs/apk/release -name '*.apk' -type f -size +1M -print
-      - name: Publish prerelease without Actions artifacts
+          # Keep repository R8/Compose safety rules; do not override minify/shrink.
+          ./gradlew :app:lintRelease testDebugUnitTest :app:assembleRelease \
+            --stacktrace --no-daemon -PnoUniversal \
+            -PversionCode="$VERSION_CODE" -PversionName="$VERSION_NAME"
+          ./gradlew :app:dependencies --configuration releaseRuntimeClasspath \
+            --no-daemon -PversionCode="$VERSION_CODE" -PversionName="$VERSION_NAME" \
+            > "$RUNNER_TEMP/musa-release-dependencies.txt"
+          if grep -Ei 'leakcanary|com\.squareup\.shark' "$RUNNER_TEMP/musa-release-dependencies.txt"; then
+            echo 'Release runtime includes LeakCanary/Shark' >&2
+            exit 1
+          fi
+      - name: Verify ARM64 APK, embedded provider, metadata and integrity
+        shell: bash
+        run: |
+          set -euo pipefail
+          tools="$ANDROID_HOME/build-tools/$BUILD_TOOLS"
+          export APKSIGNER="$tools/apksigner"
+          export ZIPALIGN="$tools/zipalign"
+          export AAPT="$tools/aapt"
+          mkdir -p dist
+          python3 - <<'PY'
+          import hashlib
+          import os
+          from pathlib import Path
+          import re
+          import subprocess
+          import zipfile
+
+          apks = list(Path('app/build/outputs/apk/release').glob('*arm64-v8a*.apk'))
+          if len(apks) != 1:
+              raise SystemExit(f'Expected exactly one ARM64 release APK, got {len(apks)}')
+          source = apks[0]
+          expected_cert = (Path(os.environ['RUNNER_TEMP']) / 'musa-cert.sha256').read_text().strip()
+
+          def verify(apk):
+              result = subprocess.check_output(
+                  [os.environ['APKSIGNER'], 'verify', '--verbose', '--print-certs', str(apk)], text=True)
+              print(result)
+              certs = re.findall(r'Signer #\d+ certificate SHA-256 digest: ([0-9a-fA-F]{64})', result)
+              if not certs or any(cert.lower() != expected_cert for cert in certs):
+                  raise SystemExit('APK signer does not match the restored permanent key')
+              subprocess.run([os.environ['ZIPALIGN'], '-c', '-P', '16', '-v', '4', str(apk)], check=True)
+              with zipfile.ZipFile(apk) as archive:
+                  if archive.testzip() is not None:
+                      raise SystemExit('APK ZIP integrity check failed')
+                  for name in archive.namelist():
+                      if re.fullmatch(r'classes\d*\.dex', name):
+                          dex = archive.read(name).lower()
+                          if b'leakcanary/' in dex or b'leakcanary.' in dex:
+                              raise SystemExit('LeakCanary found in APK DEX')
+
+          verify(source)
+          badging = subprocess.check_output([os.environ['AAPT'], 'dump', 'badging', str(source)], text=True)
+          print(badging)
+          for value in (
+              "name='io.zer0.muse'", f"versionCode='{os.environ['VERSION_CODE']}'",
+              f"versionName='{os.environ['VERSION_NAME']}'", "native-code: 'arm64-v8a'",
+          ):
+              if value not in badging:
+                  raise SystemExit(f'APK metadata mismatch: {value}')
+          if 'application-debuggable' in badging:
+              raise SystemExit('Release APK is debuggable')
+          with zipfile.ZipFile(source) as archive:
+              for required in (
+                  'lib/arm64-v8a/libmuse_node.so', 'lib/arm64-v8a/libpython3.14.so',
+                  'assets/muse-runtime-assets.zip', 'assets/muse-python-assets.zip',
+              ):
+                  if archive.getinfo(required).file_size == 0:
+                      raise SystemExit(f'Required full-Musa runtime asset is empty: {required}')
+              abis = {name.split('/')[1] for name in archive.namelist() if name.startswith('lib/')}
+              if abis != {'arm64-v8a'}:
+                  raise SystemExit(f'Unexpected APK ABIs: {abis}')
+              provider = Path(os.environ['RUNNER_TEMP']) / 'musa-provider-release.apk'
+              provider.write_bytes(archive.read('assets/a11y/accessibility-provider.apk'))
+          verify(provider)
+          output = Path('dist') / f"Musa-{os.environ['VERSION_NAME']}-arm64-v8a-release.apk"
+          output.write_bytes(source.read_bytes())
+          digest = hashlib.sha256(output.read_bytes()).hexdigest()
+          Path('dist/SHA256SUMS.txt').write_text(f'{digest}  {output.name}\n')
+          PY
+          (cd dist && sha256sum --check SHA256SUMS.txt)
+      - name: Verify upgrade certificate against previous production release
+        if: ${{ !inputs.first_release }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PREVIOUS_RELEASE_TAG: ${{ inputs.previous_release_tag }}
+        run: |
+          set -euo pipefail
+          test -n "$PREVIOUS_RELEASE_TAG"
+          mkdir -p "$RUNNER_TEMP/musa-previous"
+          gh release download "$PREVIOUS_RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
+            --pattern '*arm64*.apk' --dir "$RUNNER_TEMP/musa-previous"
+          mapfile -t previous < <(find "$RUNNER_TEMP/musa-previous" -maxdepth 1 -name '*.apk')
+          test "${#previous[@]}" -eq 1
+          python3 ci/script/verify_musa_upgrade.py \
+            --apk "dist/Musa-${VERSION_NAME}-arm64-v8a-release.apk" \
+            --previous-apk "${previous[0]}" \
+            --aapt "$ANDROID_HOME/build-tools/$BUILD_TOOLS/aapt" \
+            --apksigner "$ANDROID_HOME/build-tools/$BUILD_TOOLS/apksigner"
+      - name: Create and download-check signed draft release
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          apk="$(find app/build/outputs/apk/debug -name '*.apk' -type f -size +1M | head -n 1)"
-          test -n "$apk"
-          cp "$apk" Musa-es-release-test.apk
-          sha256sum Musa-es-debug.apk > SHA256SUMS.txt
-          tag="musa-es-ci-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
-          gh release create "$tag" Musa-es-debug.apk SHA256SUMS.txt \
-            --repo "$GITHUB_REPOSITORY" \
-            --target "$GITHUB_SHA" \
-            --title "Musa español release de prueba - build ${GITHUB_RUN_ID}" \
-            --notes "APK release sin LeakCanary, rama cursor/spanish-default-locale-f884. Firma temporal de CI: requiere desinstalar antes de actualizar y no debe usarse como firma de producción." \
-            --prerelease
-          echo "### APK Musa" >> "$GITHUB_STEP_SUMMARY"
-          echo "https://github.com/$GITHUB_REPOSITORY/releases/tag/$tag" >> "$GITHUB_STEP_SUMMARY"
+          tag="musa-${VERSION_NAME}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          apk="Musa-${VERSION_NAME}-arm64-v8a-release.apk"
+          cat > "$RUNNER_TEMP/musa-release-notes.md" <<NOTES
+          Musa ${VERSION_NAME} — versionCode ${VERSION_CODE}, ARM64.
+          Commit: ${GITHUB_SHA}
+
+          Verificado en CI: :app:lintRelease, testDebugUnitTest (todos los módulos), :app:assembleRelease,
+          firma permanente (incluido el proveedor de accesibilidad), zipalign,
+          integridad ZIP, metadatos, ausencia de LeakCanary y SHA-256.
+          Se conservan minificación/reducción de recursos y la protección -dontoptimize de Compose.
+
+          BORRADOR: no publicar hasta verificar instalación y funcionamiento.
+          Pendiente: instalación, arranque, funcionamiento y actualización con datos en un dispositivo.
+          No es una declaración de validación funcional ni de traducción española completa.
+          Actualización sin desinstalar: requiere firma instalada compatible y versionCode anterior
+          menor que ${VERSION_CODE}; no se garantiza migración de datos sin prueba real.
+          NOTES
+          gh release create "$tag" "dist/$apk" dist/SHA256SUMS.txt \
+            --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+            --title "Musa ${VERSION_NAME} — preflight firmado" \
+            --notes-file "$RUNNER_TEMP/musa-release-notes.md" --draft --prerelease
+          mkdir -p "$RUNNER_TEMP/musa-published"
+          gh release download "$tag" --repo "$GITHUB_REPOSITORY" \
+            --pattern "$apk" --pattern SHA256SUMS.txt --dir "$RUNNER_TEMP/musa-published"
+          cmp dist/SHA256SUMS.txt "$RUNNER_TEMP/musa-published/SHA256SUMS.txt"
+          cmp "dist/$apk" "$RUNNER_TEMP/musa-published/$apk"
+          (cd "$RUNNER_TEMP/musa-published" && sha256sum --check SHA256SUMS.txt)
+          "$ANDROID_HOME/build-tools/$BUILD_TOOLS/apksigner" verify \
+            --verbose --print-certs "$RUNNER_TEMP/musa-published/$apk"
+          {
+            echo '### Musa: borrador privado firmado; NO publicado'
+            echo 'Pendiente: instalación, funcionamiento y actualización con datos en dispositivo.'
+            echo "Commit: $GITHUB_SHA; versión: $VERSION_NAME ($VERSION_CODE)"
+            gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json url --jq .url
+            cat dist/SHA256SUMS.txt
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Remove restored signing material
+        if: always()
+        shell: bash
+        run: |
+          rm -f "$GITHUB_WORKSPACE/keystore.properties" \
+            "$RUNNER_TEMP/musa-release.jks" "$RUNNER_TEMP/musa-release-cert.der" \
+            "$RUNNER_TEMP/musa-cert.sha256"

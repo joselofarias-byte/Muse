@@ -1,6 +1,6 @@
 /**
- * `?perf=1` Modificador de depuración: solo imprime información de representación de instantáneas en la consola cuando este parámetro está configurado; generalmente no se imprime ni una sola línea.
- * No se introducen dependencias de seguimiento ni se realizan informes.
+ * `?perf=1` 调试开关：只在带这个参数时往控制台打快照渲染信息，平时一行都不打。
+ * 不引入任何监控依赖，也不上报。
  */
 export function perfFlag(search: string): boolean {
   const query = search.startsWith("?") ? search.slice(1) : search;
@@ -13,5 +13,5 @@ export function perfFlag(search: string): boolean {
 
 export function formatPerfLine(messages: number, elapsedMs: number): string {
   const ms = Number.isFinite(elapsedMs) ? elapsedMs.toFixed(1) : "?";
-  return `[muse perf] renderizado de instantáneas ${messages} mensajes / ${ms}ms`;
+  return `[muse perf] 快照渲染 ${messages} 条消息 / ${ms}ms`;
 }

@@ -9,22 +9,22 @@ import kotlinx.coroutines.flow.first
 import org.koin.core.context.GlobalContext
 
 /**
- * v1.134: Trabajador de actualización de caché de agregación de estadísticas.
+ * v1.134: 统计聚合缓存刷新 Worker。
  *
- * [StatsCacheManager] La clase ya existe(v1.107)Pero nunca se ha conectado al sistema de despacho.(Componente huérfano).
- * Este trabajador se inicia a través de la tarea periódica diaria de WorkManager.,llamar [StatsCacheManager.refreshAll]
- * Actualizar completamente todas las cachés agregadas(Número de mensajes/Distribución del modelo/Distribución horaria/Top Conversación, etc.),Evite que la página de estadísticas se abra cada vez
- * Activa un escaneo GROUP BY de tabla completa.
+ * [StatsCacheManager] 类已存在(v1.107)但从未接入调度系统(孤儿组件)。
+ * 本 Worker 通过 WorkManager 每日周期任务拉起,调用 [StatsCacheManager.refreshAll]
+ * 全量刷新各聚合缓存(消息数/模型分布/小时分布/Top 会话等),避免统计页每次打开都
+ * 触发全表 GROUP BY 扫描。
  *
- * Compensaciones de diseño(con [ScheduledTaskWorker] consistente):
- *  - Periodo 24 horas(1 vez por día,Cumple las convenciones de anotación de clases de StatsCacheManager)
- *  - No utilice setExpedited: el caché de estadísticas no es urgente
- *  - No se requieren restricciones de red:Operaciones de bases de datos locales
- *  - Regresar Result.success():En caso de falla, solo se registra una advertencia.,La próxima vez que se active el Trabajador, se intentará nuevamente.
+ * 设计取舍(与 [ScheduledTaskWorker] 一致):
+ *  - 周期 24 小时(每日 1 次,符合 StatsCacheManager 类注释约定)
+ *  - 不使用 setExpedited:统计缓存非紧急
+ *  - 不要求网络约束:本地数据库操作
+ *  - 返回 Result.success():失败仅记录警告,下次 Worker 触发会重试
  *
- * Koin obtener dependencia:WorkManager Se ejecuta en el proceso principal de forma predeterminada.,Worker MuseApp.onCreate se ha ejecutado al inicio,
- * Koin Inicializado. si en Safe Mode(startKoin falló),GlobalContext esta vacio,
- * La excepción detectada aquí devuelve el éxito y esta vez se salta.,Espere a que se restablezca el próximo inicio.
+ * Koin 拿依赖:WorkManager 默认跑在主进程,Worker 启动时 MuseApp.onCreate 已执行,
+ * Koin 已初始化。若处于 Safe Mode(startKoin 失败),GlobalContext 为空,
+ * 这里捕获异常返回 success 跳过本次,等下次启动恢复。
  */
 class StatsCacheWorker(
     appContext: Context,
@@ -34,27 +34,27 @@ class StatsCacheWorker(
     override suspend fun doWork(): Result {
         val koin = resultOf { GlobalContext.get() }.getOrNull()
         if (koin == null) {
-            Logger.w(TAG, "Koin no inicializado(Safe Mode?),Omitir la ejecución de este trabajador")
+            Logger.w(TAG, "Koin 未初始化(Safe Mode?),跳过本次 Worker 执行")
             return Result.success()
         }
-        // v1.xxx: Control maestro de programación backend — Omitir el cuerpo ejecutable al apagar,El calendario periódico en sí sigue siendo,Reabrir para restaurar
+        // v1.xxx: 后台调度总控 — 关闭时跳过执行体,周期调度本身仍保留,重新打开即恢复
         val workEnabled =
             scheduleWorkEnabledOrFalse(
                 resultOf { koin.get<io.zer0.muse.data.SettingsRepository>()?.scheduleWorkEnabledFlow?.first() }
                     .getOrNull(),
             )
         if (!workEnabled) {
-            Logger.i(TAG, "Se ha cerrado el control maestro de programación en segundo plano.,Saltar esta ejecución")
+            Logger.i(TAG, "后台调度总控已关闭,跳过本次执行")
             return Result.success()
         }
         val manager = resultOf { koin.get<io.zer0.muse.data.stats.StatsCacheManager>() }.getOrNull()
         if (manager == null) {
-            Logger.w(TAG, "StatsCacheManager El análisis falló,Omitir la ejecución de este trabajador")
+            Logger.w(TAG, "StatsCacheManager 解析失败,跳过本次 Worker 执行")
             return Result.success()
         }
         resultOf { manager.refreshAll() }
             .onError { msg, t -> Logger.w(TAG, "refreshAll failed: ${t?.message ?: msg}") }
-        // independientemente del éxito interno,Todo devuelve éxito: el error solo registra advertencias
+        // 不论内部是否成功,都返回 success:失败仅记录警告
         return Result.success()
     }
 

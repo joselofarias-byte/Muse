@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Launcher Atajo de pulsación larga:Este menú aparece cuando el usuario mantiene presionado el ícono de la aplicación.,Vaya directamente a la función correspondiente.
-     Especificación de referencia de Android ShortcutManager(Hasta 4 atajos estáticos).
-     cada uno <shortcut> debe contener shortcutId / icon / shortcutShortLabel,intent Se requieren acción y targetClass. -->
+<!-- Launcher 长按快捷方式:用户长按应用图标时弹出此菜单,直接进入对应功能。
+     参考 Android ShortcutManager 规范(静态快捷方式最多 4 个)。
+     每个 <shortcut> 必须包含 shortcutId / icon / shortcutShortLabel,intent 必须有 action 和 targetClass。 -->
 <shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- nueva conversación:Crea una nueva sesión y ve a la página de inicio. -->
+    <!-- 新对话:创建新会话并进入主页 -->
     <shortcut
         android:shortcutId="new_chat"
         android:enabled="true"
@@ -17,7 +17,7 @@
             android:targetClass="io.zer0.muse.MainActivity" />
     </shortcut>
 
-    <!-- Traducción:Abra directamente la página de traducción independiente -->
+    <!-- 翻译:直接打开独立翻译页 -->
     <shortcut
         android:shortcutId="translate"
         android:enabled="true"
@@ -30,7 +30,7 @@
             android:targetClass="io.zer0.muse.MainActivity" />
     </shortcut>
 
-    <!-- Entrada de voz:Vaya a la página de inicio y active la entrada de voz -->
+    <!-- 语音输入:进入主页并触发语音输入 -->
     <shortcut
         android:shortcutId="voice_input"
         android:enabled="true"
@@ -43,7 +43,7 @@
             android:targetClass="io.zer0.muse.MainActivity" />
     </shortcut>
 
-    <!-- ajustes:Abra la página de configuración directamente -->
+    <!-- 设置:直接打开设置页 -->
     <shortcut
         android:shortcutId="settings"
         android:enabled="true"
@@ -56,7 +56,7 @@
             android:targetClass="io.zer0.muse.MainActivity" />
     </shortcut>
 
-    <!-- v1.0.18: registro rápido:Abra directamente la página de registro rápido -->
+    <!-- v1.0.18: 快速记录:直接打开快速记录页 -->
     <shortcut
         android:shortcutId="quick_notes"
         android:enabled="true"

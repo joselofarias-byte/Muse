@@ -3,6 +3,7 @@
 package io.zer0.muse.ui.common.surface
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -26,6 +27,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.Dp
@@ -34,46 +36,48 @@ import io.zer0.muse.ui.theme.MuseHaptics
 import io.zer0.muse.ui.theme.MuseListItemSizes
 import io.zer0.muse.ui.theme.MuseMotion
 import io.zer0.muse.ui.theme.MusePaddings
+import io.zer0.muse.ui.theme.MuseSpringTier
+import io.zer0.muse.ui.theme.edgeGlowIndication
 
-/** menú/El panel de selección utiliza filas compactas y el cuerpo de la página conserva su densidad original. */
+/** 菜单/选择面板使用紧凑行，页面正文保持原有密度。 */
 internal val LocalMuseCompactList = androidx.compose.runtime.staticCompositionLocalOf { false }
 
 /**
- * Muse UI Kit — Elemento de lista primitivo [MuseListItem].
+ * Muse UI Kit — 列表项基元 [MuseListItem]。
  *
- * v1.0.26: Alternativa a llamar directamente Material3 [androidx.compose.material3.ListItem],
- * Unifique los estilos de fila de todas las páginas/formularios/listas de configuración,resolver:
- *  - ListItem Color de contenedor predeterminado/La elevación de tono produce bloques de color anidados dentro de la tarjeta
- *  - El relleno/tamaño de icono/tamaño de fuente de cada página no es uniforme
- *  - Material3 ListItem Comportamiento errático del color bajo diferentes alfas
+ * v1.0.26: 替代直接调用 Material3 [androidx.compose.material3.ListItem],
+ * 统一所有设置页 / 表单 / 列表的行样式,解决:
+ *  - ListItem 默认容器色/色调 elevation 在卡片内产生嵌套色块
+ *  - 各页面 padding / icon 尺寸 / 字号不统一
+ *  - Material3 ListItem 在不同 alpha 下颜色行为不稳定
  *
- * Especificaciones(Estilo de configuración del sistema):
- *  - altura minima 60dp(Alinear Material3 ListItem predeterminado,Asegúrate de tocar el objetivo.)
- *  - nivel padding 16dp,verticales padding 12dp
- *  - leading content espaciado correcto 16dp,trailing content espaciado izquierdo 12dp
+ * 规格(系统设置风格):
+ *  - 最小高度 64dp(双平面翻新由 60 上调,确保触摸目标且行更舒展)
+ *  - 水平 padding 16dp,垂直 padding 12dp
+ *  - leading content 右侧间距 16dp,trailing content 左侧间距 12dp
  *  - headline: titleMedium + onSurface
  *  - supporting: bodySmall + onSurfaceVariant
- *  - fondo transparente(desde la capa exterior [MuseSurface] / [CardGroup] Los contenedores proporcionan un contexto unificado)
+ *  - 背景透明(由外层 [MuseSurface] / [CardGroup] 容器提供统一背景)
  *
- * Uso:
+ * 用法:
  * ```
  * MuseListItem(
  *     onClick = { ... },
  *     leadingContent = { Icon(MuseIcons.palette, null) },
- *     headlineContent = { Text("Apariencia") },
- *     supportingContent = { Text("Tema, tamaño de fuente, modo oscuro") },
+ *     headlineContent = { Text("外观") },
+ *     supportingContent = { Text("主题、字号、深色模式") },
  *     trailingContent = { ChevronRight() },
  * )
  * ```
  *
- * @param onClick Haga clic en devolución de llamada(null Indica que no se puede hacer clic)
- * @param onLongClick Devolución de llamada con pulsación larga(Opcional,Proporcionado al mismo tiempo que onClick combinedClickable)
- * @param modifier modificador
- * @param headlineContent título principal(Requerido)
- * @param supportingContent subtítulo(Opcional,pequeñas letras grises)
- * @param leadingContent Contenido a la izquierda(normalmente un icono,Opcional)
- * @param trailingContent Contenido correcto(flecha/Switch espera,Opcional)
- * @param minHeight altura minima(Predeterminado 60dp)
+ * @param onClick 点击回调(null 表示不可点击)
+ * @param onLongClick 长按回调(可选,与 onClick 同时提供时走 combinedClickable)
+ * @param modifier 修饰符
+ * @param headlineContent 主标题(必填)
+ * @param supportingContent 副标题(可选,灰色小字)
+ * @param leadingContent 左侧内容(通常是图标,可选)
+ * @param trailingContent 右侧内容(箭头/Switch 等,可选)
+ * @param minHeight 最小高度(默认 64dp,紧凑列表 48dp)
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -89,7 +93,7 @@ fun MuseListItem(
 ) {
     val haptic = LocalHapticFeedback.current
     val interactionSource = remember { MutableInteractionSource() }
-    // v2.x: Comentarios visuales para compresiones de filas — Ligero brillo del fondo(Sincronizar con hápticos existentes;Originalmente solo tacto y ninguna visión.)
+    // v2.x: 行按压视觉反馈 — 轻微背景提亮(与既有触觉同步;原仅触觉无视觉)
     val pressed by interactionSource.collectIsPressedAsState()
     val rowBgColor by animateColorAsState(
         targetValue = if (pressed && onClick != null) {
@@ -100,11 +104,21 @@ fun MuseListItem(
         animationSpec = MuseMotion.tween(MuseAnimation.FAST_MS),
         label = "listItemPress",
     )
+    // F3.1: 列表行轻微按压缩放（0.98，跟手档弹簧；reduced-motion 由工厂统一即时化）
+    val rowScale by animateFloatAsState(
+        targetValue = if (pressed && onClick != null) 0.98f else 1f,
+        animationSpec = MuseMotion.spring(MuseSpringTier.RESPONSIVE),
+        label = "listItemScale",
+    )
 
     Row(
         modifier = modifier
             .fillMaxWidth()
             .heightIn(min = minHeight)
+            .graphicsLayer {
+                scaleX = rowScale
+                scaleY = rowScale
+            }
             .background(rowBgColor)
             .padding(
                 horizontal = MusePaddings.screen,
@@ -114,7 +128,7 @@ fun MuseListItem(
                 when {
                     onClick != null && onLongClick != null -> Modifier.combinedClickable(
                         interactionSource = interactionSource,
-                        indication = null,
+                        indication = edgeGlowIndication(),
                         role = Role.Button,
                         onClick = {
                             MuseHaptics.light(haptic)
@@ -127,7 +141,7 @@ fun MuseListItem(
                     )
                     onClick != null -> Modifier.clickable(
                         interactionSource = interactionSource,
-                        indication = null,
+                        indication = edgeGlowIndication(),
                         role = Role.Button,
                         onClick = {
                             MuseHaptics.light(haptic)
@@ -145,7 +159,7 @@ fun MuseListItem(
             Spacer(Modifier.width(MusePaddings.screen))
         }
 
-        // headline + supporting(disposición vertical,Ocupar el espacio restante)
+        // headline + supporting(垂直排列,占满剩余空间)
         Column(
             modifier = Modifier.weight(1f),
         ) {

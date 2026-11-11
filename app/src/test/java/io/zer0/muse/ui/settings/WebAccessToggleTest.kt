@@ -8,14 +8,14 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Secuencia de efectos secundarios del interruptor "Habilitar versión web".
+ * 「启用网页版」开关的副作用序列。
  *
- * El cambio de página sólo se puede ajustar [applyWebAccessEnabled], entonces lo que está bloqueado aquí es lo que sucede cuando el usuario presiona el interruptor:
- * Se debe escribir la configuración y el servicio se puede iniciar o detener según demanda, y cada cosa ocurre solo una vez.
+ * 页面的开关只调 [applyWebAccessEnabled]，所以这里锁定的是用户按下开关后会发生什么：
+ * 配置一定写入，服务按需启动或停止，而且各自只发生一次。
  */
 class WebAccessToggleTest {
 
-    /** Registre la doble llamada del servicio. */
+    /** 记录调用的服务替身。 */
     private class RecordingHost(private val startResult: Boolean = true) : WebAccessHost {
         val saved = mutableListOf<WebServerConfig>()
         var startCalls = 0
@@ -47,14 +47,14 @@ class WebAccessToggleTest {
 
         assertTrue(running)
         assertEquals(1, host.saved.size)
-        assertTrue("habilitado en la configuración debe estar instalado", host.saved.single().enabled)
-        assertEquals("El puerto y el PIN no se pueden cambiar mediante el conmutador", "123456", host.saved.single().pin)
+        assertTrue("配置里的 enabled 必须落盘", host.saved.single().enabled)
+        assertEquals("端口与 PIN 不能被开关改动", "123456", host.saved.single().pin)
         assertEquals(1, host.startCalls)
         assertEquals(0, host.stopCalls)
-        assertEquals("El inicio debe ocurrir después de escribir la configuración.", 1, host.startAttemptsAfterSave)
+        assertEquals("启动必须发生在配置写入之后", 1, host.startAttemptsAfterSave)
     }
 
-    /** Encienda el interruptor nuevamente cuando el servicio ya se esté ejecutando y no lo inicie nuevamente. */
+    /** 服务已经在跑时再开一次开关，不重复启动。 */
     @Test
     fun `enabling while running does not start again`() = runTest {
         val host = RecordingHost()
@@ -62,7 +62,7 @@ class WebAccessToggleTest {
         val running = applyWebAccessEnabled(host, disabled.copy(enabled = true), enabled = true, running = true)
 
         assertTrue(running)
-        assertEquals("No se debe iniciar repetidamente cuando ya está funcionando.", 0, host.startCalls)
+        assertEquals("已运行时不应重复启动", 0, host.startCalls)
         assertEquals(0, host.stopCalls)
     }
 
@@ -73,12 +73,12 @@ class WebAccessToggleTest {
         val running = applyWebAccessEnabled(host, disabled.copy(enabled = true), enabled = false, running = true)
 
         assertFalse(running)
-        assertFalse("habilitado en la configuración debe colocarse como false", host.saved.single().enabled)
+        assertFalse("配置里的 enabled 必须落盘为 false", host.saved.single().enabled)
         assertEquals(1, host.stopCalls)
         assertEquals(0, host.startCalls)
     }
 
-    /** El interruptor no se apaga durante la ejecución: la configuración es tal como está escrita, pero no se realiza ninguna parada sin sentido. */
+    /** 本来就没在跑时关开关：配置照写，但不做无意义的 stop。 */
     @Test
     fun `disabling while stopped skips the stop call`() = runTest {
         val host = RecordingHost()
@@ -90,7 +90,7 @@ class WebAccessToggleTest {
         assertEquals(0, host.stopCalls)
     }
 
-    /** Cuando el inicio falla, devuelva falso a la página y en la página aparecerá \"Error de inicio\" en consecuencia. */
+    /** 启动失败时把 false 交回页面，页面据此弹「启动失败」。 */
     @Test
     fun `start failure is reported back to the caller`() = runTest {
         val host = RecordingHost(startResult = false)

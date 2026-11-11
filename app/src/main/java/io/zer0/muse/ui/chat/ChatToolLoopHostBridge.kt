@@ -16,27 +16,27 @@ import io.zer0.muse.ui.ChatErrorType
 import kotlin.uuid.Uuid
 
 /**
- * v2.x Refactorizar S1: [ChatToolLoopRunner] Acceda a la interfaz de puente estrecho de ChatViewModel.
+ * v2.x 重构 S1: [ChatToolLoopRunner] 访问 ChatViewModel 的窄桥接口。
  *
- * razón de ser:Cuerpo de bucle de herramienta(1392 OK)Después de mudarse como un todo,Aún necesito acceder a una pequeña cantidad del ViewModel original.
- * Miembros y métodos. Utilice interfaces explícitas para declarar centralmente estos accesos,En lugar de pasar el ViewModel como un todo ——
- * La superficie de dependencia es visible, mensurable y reemplazable.
+ * 存在的理由:工具循环体(1392 行)整体搬出后,仍需要访问原 ViewModel 的少量
+ * 成员与方法。用显式接口把这些访问集中声明,而不是把 ViewModel 整体传进去 ——
+ * 依赖面可见、可测、可替身。
  *
- * Propiedades de migración:Extracción pura. Todos los métodos de esta interfaz son para miembros originales de VM./metodológico**Reenviar directamente**,
- * No cambia ninguna semántica.ChatViewModel Implementar esta interfaz en forma de anulación,No se escribe ningún código de reenvío.
+ * 迁移性质:纯抽取。本接口所有方法均为对原 VM 成员/方法的**直接转发**,
+ * 不改变任何语义。ChatViewModel 以 override 形式实现本接口,不写转发代码。
  */
 @Suppress("TooManyFunctions", "LongParameterList", "ComplexInterface")
 internal interface ChatToolLoopHostBridge {
 
-    // ── Estado ───────────────────────────────────────────────────────────
+    // ── 状态 ───────────────────────────────────────────────────────────
 
-    /** Originales `_state` / `_messages` titular. */
+    /** 原 `_state` / `_messages` 的持有者。 */
     val stateStore: ChatStateStore
 
-    /** Originales `generationState`(toolAssistantId / activeToolSessionId / toolMediaMessages). */
+    /** 原 `generationState`(toolAssistantId / activeToolSessionId / toolMediaMessages)。 */
     val generationState: io.zer0.muse.ui.chat.ChatGenerationState
 
-    // ── depender de(campo constructor original,VM Anulación lateral expuesta)────────────────────────
+    // ── 依赖(原构造器字段,VM 侧 override 暴露)────────────────────────
 
     val appContext: android.content.Context
     val settings: SettingsRepository
@@ -44,10 +44,10 @@ internal interface ChatToolLoopHostBridge {
     val chatService: ChatService
 
     /**
-     * Compresor de contexto.
+     * 上下文压缩器。
      *
-     * Solo se usa para "recuperación de desbordamiento de contexto": cuando el proveedor considera que la solicitud ha excedido la ventana del modelo, presionará una ronda de historial y luego la reenviará.
-     * runner Solo se llama a su transformación, sin cambiar nada de su comportamiento o semántica de umbral.
+     * 只给「上下文溢出恢复」用：请求被 provider 判定超出模型窗口时，压一轮历史再重发。
+     * runner 只调用它的 transform，不改变其任何行为与阈值语义。
      */
     val contextCompressTransformer: ContextCompressTransformer
     val sessionManager: ConversationSessionManager
@@ -58,8 +58,9 @@ internal interface ChatToolLoopHostBridge {
     val chatGenerationManager: io.zer0.muse.schedule.ChatGenerationManager
     val sessionPermissionStore: io.zer0.muse.tools.SessionPermissionStore
     val toolOrchestrator: io.zer0.muse.tools.ToolOrchestrator
+    val autonomousAccessibilityRuntime: io.zer0.muse.automation.core.AutonomousAccessibilityRuntime?
 
-    // ── Reenvío del método de VM original(La firma corresponde al lado de la VM uno a uno.)──────────────────────────
+    // ── 原 VM 方法转发(签名与 VM 侧一一对应)──────────────────────────
 
     fun addError(type: ChatErrorType, message: String, isRecoverable: Boolean = true)
     fun classifyErrorType(message: String, throwable: Throwable? = null): ChatErrorType
@@ -107,12 +108,12 @@ internal interface ChatToolLoopHostBridge {
     suspend fun updateContextTokenCount()
     suspend fun waitForNetworkRecovery(timeoutMs: Long): Boolean
 
-    /** Originales `taskCardCoordinator`. */
+    /** 原 `taskCardCoordinator`。 */
     val generationController: ChatGenerationController
     val coroutineScope: kotlinx.coroutines.CoroutineScope
     val accessor: ChatStateAccessor
     val taskCardCoordinator: ChatTaskCardCoordinator
 
-    /** Originales `messageController`. */
+    /** 原 `messageController`。 */
     val messageController: ChatMessageController
 }

@@ -4,19 +4,19 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import io.zer0.muse.ui.common.icons.MuseIcons
 
 /**
- * v2.6.0: Grupo de acciones completo del botón de acceso directo a mensajes (Via Menú personalizado estilo navegador).
+ * v2.6.0: 消息快捷按钮全量动作池（Via 浏览器式定制菜单）。
  *
- * Diseño: la fila de acceso directo debajo del mensaje ya no es un conjunto de interruptores fijos, sino un "grupo de acciones completo + lista de activación ordenada"——
- * Página de configuración (configuración de chat → Botón de acceso directo a mensajes → Personalizado) donde el usuario selecciona acciones del grupo y las clasifica,
- * La parte inferior del mensaje se muestra en este orden; el final de la línea está fijo para proporcionar "más" para ingresar al panel de pulsación larga completa.
+ * 设计：消息下方的快捷排不再是一组固定开关，而是「全量动作池 + 有序启用列表」——
+ * 设置页（聊天设置 → 消息快捷按钮 → 自定义）里用户从池中挑选动作并排序，
+ * 消息下方按该顺序渲染；行尾固定提供「更多」进入完整长按面板。
  *
- * piscina llena = Seis interruptores originales (copiados/pensar/Traducción/Compartir/regenerar/eliminar)+ Mantenga presionado el panel "Más" para todas las acciones
- * (Cita/Comentario/confiar/rama/opción múltiple/información del mensaje/Colección/leer en voz alta/Editar/adelante).
- * Condiciones visualizables para cada acción (rol de mensaje/El estado del contenido) está determinado por el lado de renderizado,
- * Aquí sólo describimos"Qué es, cómo se ve, clasificación predeterminada".
+ * 全量池 = 原六开关（复制/思考/翻译/分享/重新生成/删除）+ 长按「更多」面板全部动作
+ * （引用/批注/委托/分支/多选/消息信息/收藏/朗读/编辑/转发）。
+ * 每个动作的可显示条件（消息角色/内容状态）由渲染侧判定，
+ * 这里只描述"是什么、长什么样、默认排位"。
  *
- * @param id Identificación estable, persistente a ChatPreferences.quickActionOrder
- * @param defaultInRow Habilitado de forma predeterminada (clasificación inicial cuando no está configurado)
+ * @param id 稳定标识，持久化到 ChatPreferences.quickActionOrder
+ * @param defaultInRow 默认启用（未配置时的初始排位）
  */
 enum class QuickAction(
     val id: String,
@@ -33,7 +33,9 @@ enum class QuickAction(
     DELETE("delete", io.zer0.muse.R.string.chat_delete_message, MuseIcons.trash, defaultRank = 50),
     QUOTE("quote", io.zer0.muse.R.string.message_action_quote, MuseIcons.reply),
     ANNOTATE("annotate", io.zer0.muse.R.string.message_action_annotate, MuseIcons.edit),
-    DELEGATE("delegate", io.zer0.muse.R.string.chat_delegate_action, MuseIcons.users),
+
+    // 委托 = 交给另一个助手执行,画成 robot 而非 users:与 ProcessIconMap 的 delegate/agent 口径一致。
+    DELEGATE("delegate", io.zer0.muse.R.string.chat_delegate_action, MuseIcons.robot),
     FORK("fork", io.zer0.muse.R.string.chat_fork_action, MuseIcons.gitMerge),
     MULTI_SELECT("multi_select", io.zer0.muse.R.string.chat_select_messages, MuseIcons.square),
     INFO("info", io.zer0.muse.R.string.msg_info_title, MuseIcons.info),
@@ -44,7 +46,7 @@ enum class QuickAction(
     ;
 
     companion object {
-        /** Disposición predeterminada: reserva cuando QuickActionOrder no está configurado (correspondiente al valor predeterminado del interruptor de seis acciones). */
+        /** 默认排布：未配置 quickActionOrder 时的回退（对应存量六开关默认值）。 */
         val DEFAULT_ORDER: List<QuickAction> =
             entries.filter { it.defaultInRow }.sortedBy { it.defaultRank }
 

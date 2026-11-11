@@ -11,9 +11,9 @@ import io.ktor.server.application.ApplicationCall
 import io.ktor.server.application.install
 import io.ktor.server.auth.Authentication
 import io.ktor.server.auth.authenticate
+import io.ktor.server.cio.CIO
 import io.ktor.server.engine.EmbeddedServer
 import io.ktor.server.engine.embeddedServer
-import io.ktor.server.cio.CIO
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.plugins.cors.routing.CORS
 import io.ktor.server.plugins.origin
@@ -53,47 +53,47 @@ import java.util.Date
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * Phase 8.11: Servidor web integrado(Ktor Netty + JWT + mDNS,Opcional HTTPS).
+ * Phase 8.11: 嵌入式 Web 服务器(Ktor Netty + JWT + mDNS,可选 HTTPS)。
  *
- * Función:
- *  - Expuesto dentro de LAN REST API,Permitir sesiones y configuraciones de navegación de PC/otros dispositivos
- *  - JWT Autenticación(Contraseña → HMAC-SHA256 firma token,24h Periodo de validez)
- *  - mDNS Registrarse(Los mismos dispositivos Wi-Fi se pueden descubrir a través de Bonjour/Avahi)
- *  - La notificación permanente muestra el estado de ejecución(Haga clic para regresar App)
+ * 功能:
+ *  - 在局域网内暴露 REST API,允许 PC/其他设备浏览会话与设置
+ *  - JWT 鉴权(密码 → HMAC-SHA256 签名 token,24h 有效期)
+ *  - mDNS 注册(同 Wi-Fi 设备可通过 Bonjour/Avahi 发现)
+ *  - 常驻通知显示运行状态(点击回到 App)
  *
- * P2-13:WebServer PIN seguro
- *  - Genera 6 dígitos al inicio PIN(aleatorio),Se utiliza para la verificación de acceso por primera vez en el lado web.
- *  - Web pase final `POST /api/auth/pin-login` Enviar PIN,Emitido después de la verificación por parte del servidor. JWT
- *  - JWT sólo a través de Cookie(`token`)con cuerpo de respuesta de inicio de sesión(Authorization cabeza)Problema,No es necesario volver a ingresar para solicitudes posteriores.
- *  - C-29/C-11: No más query param(`?token=`)cabello nuevo JWT(query Entrará en el historial del navegador./Referer/registro de acceso);
- *    La autenticación JWT para rutas protegidas solo lee el encabezado de Autorización y `token` Cookie,Completamente eliminado `?token=` leer ruta
- *    (La interfaz de usuario web del lado del servidor se basa completamente en httpOnly Cookie,`?token=` Los residuos sólo provocarán fugas simbólicas.,Ya no es compatible)
+ * P2-13:WebServer PIN 安全
+ *  - 启动时生成 6 位数字 PIN(随机),用于 Web 端首次访问验证
+ *  - Web 端通过 `POST /api/auth/pin-login` 提交 PIN,服务端校验后签发 JWT
+ *  - JWT 仅通过 Cookie(`token`)与登录响应体(Authorization 头)下发,后续请求无需再次输入
+ *  - C-29/C-11: 不再经 query param(`?token=`)新发 JWT(query 会进浏览器历史/Referer/访问日志);
+ *    受保护路由的 JWT 鉴权仅读取 Authorization 头与 `token` Cookie,已彻底移除 `?token=` 读取路径
+ *    (服务端 Web UI 完全基于 httpOnly Cookie,`?token=` 残留只会造成 token 泄漏面,已无兼容价值)
  *
- * enrutamiento:
- *  - `GET  /api/health` — chequeo de salud(No se requiere autenticación;LAN Campo de versión de convergencia/tiempo de actividad cuando es externo)
- *  - `POST /api/auth/login` — cambio de contraseña JWT(No se requiere autenticación)
- *  - `POST /api/auth/pin-login` — PIN Cambiar JWT(No se requiere autenticación,ajustes Cookie)
- *  - `POST /api/auth/logout` — Cerrar sesión,Caducado `token` Cookie(A-10,No se requiere autenticación)
- *  - `GET  /api/sessions` — Lista de conversación(JWT Autenticación)
- *  - `GET  /api/sessions/{id}/messages` — Lista de mensajes de conversación(JWT Autenticación)
- *  - `GET  /api/settings` — Resumen de configuración(Provider Nombre/Número de modelos,Desensibilización clave)(JWT Autenticación)
- *  - `GET  /api/media/{token}` — imagen del mensaje/Voz(JWT Autenticación,solo lectura,Envíe únicamente archivos que hayan sido registrados y todavía estén en el directorio permitido)
+ * 路由:
+ *  - `GET  /api/health` — 健康检查(无需鉴权;LAN 对外时收敛 version/uptime 字段)
+ *  - `POST /api/auth/login` — 密码换 JWT(无需鉴权)
+ *  - `POST /api/auth/pin-login` — PIN 换 JWT(无需鉴权,设置 Cookie)
+ *  - `POST /api/auth/logout` — 退出登录,过期 `token` Cookie(A-10,无需鉴权)
+ *  - `GET  /api/sessions` — 会话列表(JWT 鉴权)
+ *  - `GET  /api/sessions/{id}/messages` — 会话消息列表(JWT 鉴权)
+ *  - `GET  /api/settings` — 设置摘要(Provider 名称/模型数,密钥脱敏)(JWT 鉴权)
+ *  - `GET  /api/media/{token}` — 消息图片/语音(JWT 鉴权,只读,只发已登记且仍在允许目录内的文件)
  *
- * Selección de motor:
- *  - CIO(Ktor motor nativo)— puro Kotlin, Sin dependencias de reflexión, apoyo HTTPS/WSS, Para acceso cifrado LAN
- *  - Antes de cambiar, era CIO(No compatible HTTPS,Se informará un error directamente al inicio.);Mantener la dependencia del CIO sólo para evitar ampliar el impacto.
+ * 引擎选择:
+ *  - CIO(Ktor 原生引擎)— 纯 Kotlin, 无反射依赖, 支持 HTTPS/WSS, 用于局域网加密访问
+ *  - 切换前为 CIO(不支持 HTTPS,启动会直接报错);保留 CIO 依赖仅为避免影响面扩大
  *
- * v2.x: Opcional HTTPS(certificado autofirmado)
- *  - [WebServerConfig.httpsEnabled] Configurado por el CIO después de ser encendido `sslConnector`,WebSocket Caminar sincrónicamente wss
- *  - Certificado por [WebServerTls] Primero generado y persistido hasta filesDir,Reiniciar multiplexación
- *  - Configuración de cookies de autenticación cuando HTTPS está habilitado secure=true;Certificado SHA-256 huella digital expuesta a través de registros y estado
+ * v2.x: 可选 HTTPS(自签证书)
+ *  - [WebServerConfig.httpsEnabled] 开启后由 CIO 配 `sslConnector`,WebSocket 同步走 wss
+ *  - 证书由 [WebServerTls] 首次生成并持久化到 filesDir,重启复用
+ *  - 启用 HTTPS 时鉴权 Cookie 置 secure=true;证书 SHA-256 指纹经日志与状态暴露
  *
- * seguro:
- *  - Enlace predeterminado `127.0.0.1`;Vincular después de habilitar el acceso LAN `0.0.0.0`(Todas las tarjetas de red)
- *  - R-SEC-03: JWT Utilice una clave de firma aleatoria independiente,Separado de la contraseña del usuario
- *  - Todas las rutas protegidas requieren `Authorization: Bearer <token>` cabeza
- *  - Cuando la contraseña está vacía, se genera y persiste automáticamente una contraseña aleatoria de 8 dígitos.(Cuando se habilita por primera vez)
- *  - PIN Genere automáticamente un PIN aleatorio de 6 dígitos cuando esté vacío y consérvelo(Cuando se habilita por primera vez)
+ * 安全:
+ *  - 默认绑定 `127.0.0.1`;开启局域网访问后才绑定 `0.0.0.0`(所有网卡)
+ *  - R-SEC-03: JWT 使用独立随机签名密钥,与用户密码分离
+ *  - 所有受保护路由需 `Authorization: Bearer <token>` 头
+ *  - 密码为空时自动生成 8 位随机密码并持久化(首次启用时)
+ *  - PIN 为空时自动生成 6 位随机 PIN 并持久化(首次启用时)
  */
 @Suppress("LongParameterList")
 class WebServer(
@@ -106,23 +106,25 @@ class WebServer(
     generationManager: io.zer0.muse.schedule.ChatGenerationManager,
     private val chatService: io.zer0.ai.ChatService,
     private val assistantRepository: io.zer0.muse.data.assistant.AssistantRepository,
-    /** v2.0: webhook Clave de canal requerida para la verificación de firma(QQ Bot Secret;Actualización perezosa). */
+    /** v2.0: webhook 验签所需渠道密钥(QQ Bot Secret;懒刷新)。 */
     private val channelManager: io.zer0.muse.channel.ChannelManager,
-    /** Base de datos del asistente maestro(situación general `facts.db`):La fuente principal del grupo de memoria para memorizar comandos de solo lectura. */
+    /** 主助手事实库(全局 `facts.db`):记忆只读命令的主记忆池来源。 */
     private val factStore: io.zer0.memory.fact.FactStore,
-    /** Proveedor de subbiblioteca:La memoria del subasistente es `facts_<id>.db`,El mismo conjunto de enrutamiento que el lado de escritura. */
+    /** 分库提供者:子助手的记忆在 `facts_<id>.db`,与写入侧同一套路由。 */
     private val factDbProvider: io.zer0.memory.fact.FactDbProvider,
-    /** Tres tablas en la base de conocimientos. DAO(Fuente de datos para comandos de conocimiento de solo lectura). */
+    /** 知识库三张表的 DAO(知识只读命令的数据源)。 */
     private val knowledgeBaseDao: io.zer0.muse.data.knowledge.KnowledgeBaseDao,
     private val knowledgeDocDao: io.zer0.muse.data.knowledge.KnowledgeDocDao,
     private val knowledgeChunkDao: io.zer0.muse.data.knowledge.KnowledgeChunkDao,
-    /** embedding servicio:Leer solo su instantánea del backend en tiempo de ejecución(Base de conocimientos de un vistazo embeddingBackend). */
+    /** embedding 服务:只读它的运行时后端快照(知识库一览的 embeddingBackend)。 */
     private val embeddingService: io.zer0.muse.rag.EmbeddingService,
-    /** Dos horarios para tareas programadas DAO(Fuente de datos para comandos automatizados de solo lectura). */
+    /** 定时任务两张表的 DAO(自动化只读命令的数据源)。 */
     private val scheduledTaskDao: io.zer0.muse.data.schedule.ScheduledTaskDao,
     private val scheduledTaskExecutionDao: io.zer0.muse.data.schedule.ScheduledTaskExecutionDao,
-    /** Fuente de datos para comandos de solo lectura del estado del sistema(Volumen/Copia de seguridad/Capacidad/Batería). */
+    /** 系统状态只读命令的数据源(体积 / 备份 / 能力位 / 电量)。 */
     private val systemStatusSource: HostSystemStatusSource = HostSystemStatusSource.Empty,
+    /** 「运行」页三条只读命令的数据源(日志尾部 / 诊断快照 / 窗口统计)。 */
+    private val runtimeSource: HostRuntimeSource = HostRuntimeSource.Empty,
 ) {
     private val hostMediaStore = HostMediaStore(
         imageDir = File(context.filesDir, IMAGE_MEDIA_DIR),
@@ -132,14 +134,14 @@ class WebServer(
 
     private val hostMediaLinks = HostMediaLinks(hostMediaStore)
 
-    /** Fuente de datos de memoria para comandos de solo lectura:Comparte el enrutamiento de la base de datos y la recuperación de texto completo con la página de memoria. */
+    /** 记忆只读命令的数据源:与记忆页共用分库路由与全文检索。 */
     private val hostMemorySource: HostMemorySource = FactHostMemorySource(factStore, factDbProvider)
 
-    /** Fuente de datos para comandos de conocimiento de solo lectura:El mismo lote de tablas que la página de la base de conocimientos de la aplicación. */
+    /** 知识只读命令的数据源:与 App 知识库页同一批表。 */
     private val hostKnowledgeSource: HostKnowledgeSource =
         DaoHostKnowledgeSource(knowledgeBaseDao, knowledgeDocDao, knowledgeChunkDao, embeddingService)
 
-    /** Fuente de datos para comandos automatizados de solo lectura:La misma consulta que la página de tareas programadas de la aplicación. */
+    /** 自动化只读命令的数据源:与 App 定时任务页同一个查询。 */
     private val hostTaskSource: HostTaskSource = DaoHostTaskSource(scheduledTaskDao, scheduledTaskExecutionDao)
 
     private val hostWebSocketGateway = HostWebSocketGateway(
@@ -148,7 +150,7 @@ class WebServer(
         sessionRepo = sessionRepo,
         assistantRepo = assistantRepository,
         settingsRepo = settings,
-        // Configurar la redacción publicitaria para que se analice según el idioma de la aplicación:createConfigurationContext Sólo se pueden leer directorios como valores-ja.
+        // 设置文案按应用内语言解析:createConfigurationContext 才读得到 values-ja 那类目录。
         settingsStrings = AndroidHostSettingsStrings(context),
         mediaLinks = hostMediaLinks,
         readSources = HostReadSources(
@@ -156,10 +158,11 @@ class WebServer(
             knowledge = hostKnowledgeSource,
             tasks = hostTaskSource,
             system = systemStatusSource,
+            runtime = runtimeSource,
         ),
     )
 
-    /** v2.x: A2A Procesador de protocolo estándar (Agent Card + JSON-RPC). Coexiste con el protocolo privado del Host. */
+    /** v2.x: A2A 标准协议处理器（Agent Card + JSON-RPC）。与 Host 私有协议并存。 */
     private val a2aHandler = io.zer0.muse.web.a2a.A2aHandler(
         chatService = chatService,
         sessionRepo = sessionRepo,
@@ -171,14 +174,14 @@ class WebServer(
     @Volatile
     private var server: EmbeddedServer<*, *>? = null
 
-    /** Serialice \"guardar configuración + iniciar y detener\" para evitar reiniciar repetidamente los servicios y desconectar las conexiones establecidas cuando la interfaz escribe configuraciones continuamente. */
+    /** 串行化「保存配置 + 启停」，避免界面连续写配置时把服务反复重启、搞断已建立的连接。 */
     private val applyConfigMutex = Mutex()
     private val lifecycleMutex = Mutex()
     private val _isRunning = MutableStateFlow(false)
     val isRunning: StateFlow<Boolean> = _isRunning
     private val _lastError = MutableStateFlow<String?>(null)
 
-    /** Motivo diagnosticable del fallo de arranque más reciente; borrado después de un arranque exitoso. */
+    /** 最近一次启动失败的可诊断原因；成功启动后清除。 */
     val lastError: StateFlow<String?> = _lastError
 
     @Volatile
@@ -190,21 +193,21 @@ class WebServer(
     @Volatile
     private var currentPin: String = ""
 
-    /** v2.x: ¿Está actualmente habilitado? HTTPS(Determinar el atributo seguro y la visualización del estado de las cookies de autenticación.). */
+    /** v2.x: 当前是否启用 HTTPS(决定鉴权 Cookie 的 secure 属性与状态展示)。 */
     @Volatile
     private var currentHttpsEnabled: Boolean = false
 
-    /** v2.x: Certificado autofirmado HTTPS actual Huella digital SHA-256(Sólo tiene valor si HTTPS está habilitado). */
+    /** v2.x: 当前 HTTPS 自签证书 SHA-256 指纹(仅 HTTPS 启用时有值)。 */
     @Volatile
     private var currentFingerprint: String? = null
 
-    /** Marca de tiempo de inicio(cálculo del tiempo de actividad para /api/health). */
+    /** 启动时间戳(用于 /api/health 的 uptime 计算)。 */
     @Volatile
     private var startedAt: Long = 0L
 
     /**
-     * Inicie el servidor web.
-     * @return true Comenzó con éxito,false El inicio falló(Ocupación del puerto/anomalía de configuración)
+     * 启动 Web 服务器。
+     * @return true 启动成功,false 启动失败(端口占用 / 配置异常)
      */
     @Suppress("TooGenericExceptionCaught")
     suspend fun start(): Boolean = withContext(Dispatchers.IO) {
@@ -215,17 +218,17 @@ class WebServer(
         } catch (t: kotlin.coroutines.cancellation.CancellationException) {
             throw t
         } catch (t: Exception) {
-            // El límite de inicio debe reducir uniformemente la ocupación de puertos, la decodificación de configuración y los errores de inicialización del motor a un estado visible, y no puede permitir que la rutina de disparar y olvidar falle silenciosamente.
-            recordStartFailure(t.message ?: "Falló la configuración o la inicialización del motor", t)
+            // 启动边界必须把端口占用、配置解码和引擎初始化错误统一落到可见状态，不能让 fire-and-forget 协程静默失败。
+            recordStartFailure(t.message ?: "配置或引擎初始化失败", t)
             false
         }
     }
 
     /**
-     * Guarde la configuración y aplíquela inmediatamente.
+     * 保存配置并立即应用。
      *
-     * La página de configuración originalmente solo se escribió en el DataStore y el servicio debe esperar hasta la próxima vez que se cree realmente el proceso de la Aplicación antes de leerla.
-     * propenso a aparecer“La página muestra la dirección, pero 127.0.0.1 aún es inaccesible”estado de funcionamiento falso.
+     * 设置页原先只写入 DataStore，服务必须等到下次真正创建 Application 进程才会读取，
+     * 容易出现“页面显示了地址，但 127.0.0.1 仍无法访问”的假运行状态。
      */
     suspend fun saveAndApplyConfig(config: WebServerConfig): Boolean = applyConfigMutex.withLock {
         val previous = settings.webServerConfigFlow.first()
@@ -234,8 +237,8 @@ class WebServer(
             stop()
             return@withLock true
         }
-        // Sólo cuando los campos que afectan el enlace cambian es necesario reiniciar. No reinicie al cambiar PIN/contraseña/otros elementos no vinculantes:
-        // Al reiniciar se cortarán todos los WebSockets establecidos y la página web informará "no se puede conectar" en ese momento.
+        // 只有影响绑定的字段变了才需要重启。改 PIN / 密码 / 其他非绑定项时不重启：
+        // 重启会掐断所有已建立的 WebSocket，网页端当时就会报「无法连接」。
         val bindingChanged = previous.enabled != config.enabled ||
             previous.port != config.port ||
             previous.allowLan != config.allowLan ||
@@ -247,30 +250,30 @@ class WebServer(
         }
         stop()
         check(start()) {
-            "WebServer El inicio falló: ${lastError.value ?: "error desconocido"}"
+            "WebServer 启动失败: ${lastError.value ?: "未知错误"}"
         }
         return@withLock true
     }
 
     private suspend fun startLocked(): Boolean {
         if (server != null) {
-            Logger.w(TAG, "WebServer Ya corriendo,Saltar inicios repetidos")
+            Logger.w(TAG, "WebServer 已在运行中,跳过重复启动")
             return true
         }
         _lastError.value = null
         val config = settings.webServerConfigFlow.first()
         val port = config.port.coerceIn(MIN_PORT, MAX_PORT)
         var password = config.password
-        // primer comienzo: Genere contraseñas aleatorias y consérvelas,Hazlo visible para los usuarios en la página de configuración.
+        // 首次启动: 生成随机密码并持久化,让用户在设置页可见
         if (password.isBlank()) {
             password = WebServerConfig.generateRandomPassword()
         }
-        // P2-13: Primera compilación de arranque de 6 bits PIN,Después de la persistencia, hágalo visible para los usuarios en la página de configuración.
+        // P2-13: 首次启动生成 6 位 PIN,持久化后让用户在设置页可见
         var pin = config.pin
         if (pin.isBlank()) {
             pin = WebServerConfig.generateRandomPin()
         }
-        // R-SEC-03: Clave de firma JWT independiente,Iniciar generación y persistencia por primera vez.
+        // R-SEC-03: 独立 JWT 签名密钥,首次启动生成并持久化
         var jwtSecret = config.jwtSecret
         if (jwtSecret.isBlank()) {
             jwtSecret = WebServerConfig.generateRandomJwtSecret()
@@ -279,26 +282,26 @@ class WebServer(
             settings.saveWebServerConfig(config.copy(password = password, pin = pin, jwtSecret = jwtSecret))
         }
 
-        // M11: startedAt en it.start() Asignado antes,Evite que museRoutes capture 0 y cause errores en el cálculo del tiempo de actividad
+        // M11: startedAt 在 it.start() 之前赋值,避免 museRoutes 捕获到 0 导致 uptime 计算错误
         startedAt = System.currentTimeMillis()
-        // M4: runCatching Cambiar a resultOf;M14: withContext(Dispatchers.IO) Asegúrese de que la lectura de la configuración no esté en el hilo principal
+        // M4: runCatching 改为 resultOf;M14: withContext(Dispatchers.IO) 保证配置读取不在主线程
         return resultOf {
             val bindHost = WebServer.bindHost(config.allowLan)
             val listenPort = port
-            // v2.x: HTTPS — Preparar certificado autofirmado cuando esté habilitado(primera generación,Reutilizar filesDir más tarde keystore)
+            // v2.x: HTTPS — 启用时准备自签证书(首次生成,之后复用 filesDir 中的 keystore)
             val tls = if (config.httpsEnabled) {
                 WebServerTls.loadOrCreate(context).also { material ->
-                    Logger.i(TAG, "WebServer HTTPS Habilitado,Certificado autofirmado de huella dactilar SHA-256: ${material.fingerprint}")
+                    Logger.i(TAG, "WebServer HTTPS 已启用,自签证书 SHA-256 指纹: ${material.fingerprint}")
                 }
             } else {
                 null
             }
-            // KTOR-7298: Ktor 3.0.x En la versión de lanzamiento ofuscada de R8,engine factory de
-            // ServiceLoader La detección obtendrá múltiples candidatos,interno single() tirar
+            // KTOR-7298: Ktor 3.0.x 在 R8 混淆的 release 构建里,engine factory 的
+            // ServiceLoader 探测会拿到多个候选,内部 single() 抛
             // `IllegalArgumentException: Array has more than one element`(issue #4),
-            // WebServer Nunca te levantes.
-            // Doble seguro:① actualizar a Ktor 3.1.3(Solución oficial KTOR-7298);
-            //         ② proguard-rules.pro Mantenga las clases relacionadas con ServiceLoader en META-INF/servicios.
+            // WebServer 永远起不来。
+            // 双保险:① 升级到 Ktor 3.1.3(官方修复 KTOR-7298);
+            //         ② proguard-rules.pro 里 keep 住 ServiceLoader 相关类与 META-INF/services。
             val candidate = embeddedServer(
                 CIO,
                 configure = webServerEngineConfiguration(tls, bindHost, listenPort),
@@ -308,6 +311,7 @@ class WebServer(
                 configureSerialization()
                 configureCors(config.allowLan)
                 configureStatusPages()
+                configureLatencyStats()
                 museRoutes(password, jwtSecret, pin, sessionRepo, settings, config.allowLan)
             }
             candidate.start(wait = false)
@@ -320,8 +324,8 @@ class WebServer(
             _isRunning.value = true
             mdnsService.register(port)
             notificationManager.updateWebServerStatus(port, true)
-            // H4: Ya no se muestran contraseñas en texto claro/PIN,Evite registros que revelen credenciales confidenciales
-            Logger.i(TAG, "WebServer iniciado: $bindHost:$port (${if (config.httpsEnabled) "HTTPS" else "HTTP"})")
+            // H4: 不再明文输出密码/PIN,避免日志泄露敏感凭据
+            Logger.i(TAG, "WebServer 已启动: $bindHost:$port (${if (config.httpsEnabled) "HTTPS" else "HTTP"})")
             true
         }.onError { msg, t ->
             recordStartFailure(t?.message?.takeIf { it.isNotBlank() } ?: msg, t)
@@ -330,7 +334,7 @@ class WebServer(
 
     private fun recordStartFailure(detail: String, throwable: Throwable?) {
         _lastError.value = detail
-        Logger.e(TAG, "WebServer El inicio falló: $detail", throwable)
+        Logger.e(TAG, "WebServer 启动失败: $detail", throwable)
         server = null
         _isRunning.value = false
         currentPort = 0
@@ -341,7 +345,7 @@ class WebServer(
         startedAt = 0L
     }
 
-    /** Detener el servidor web(idempotente,No funciona cuando no está en funcionamiento).M13: Cambiar a suspend,bloqueado it.stop() Cambie al hilo IO. */
+    /** 停止 Web 服务器(幂等,未运行时无操作)。M13: 改为 suspend,阻塞的 it.stop() 切到 IO 线程。 */
     suspend fun stop() = withContext(Dispatchers.IO) {
         lifecycleMutex.withLock {
             stopLocked()
@@ -350,7 +354,7 @@ class WebServer(
 
     private suspend fun stopLocked() {
         server?.let {
-            // M5: runCatching Cambiar a resultOf;M13: it.stop() es una operación de bloqueo,usar withContext(Dispatchers.IO) paquete
+            // M5: runCatching 改为 resultOf;M13: it.stop() 是阻塞操作,用 withContext(Dispatchers.IO) 包裹
             resultOf { withContext(Dispatchers.IO) { it.stop(GRACE_PERIOD_MS, TIMEOUT_PERIOD_MS) } }
             server = null
         }
@@ -358,7 +362,7 @@ class WebServer(
             _isRunning.value = false
             mdnsService.unregister()
             notificationManager.updateWebServerStatus(currentPort, false)
-            Logger.i(TAG, "WebServer Detenido")
+            Logger.i(TAG, "WebServer 已停止")
         }
         currentPort = 0
         currentPassword = ""
@@ -368,7 +372,7 @@ class WebServer(
         startedAt = 0L
     }
 
-    /** Obtener información del estado de ejecución actual(Para visualización de interfaz de usuario).M9: password/pin Desensibilización,Devuelve sólo cadena booleana + enmascarada. */
+    /** 获取当前运行状态信息(供 UI 显示)。M9: password/pin 脱敏,仅返回布尔 + 脱敏字符串。 */
     fun status(): Status {
         return Status(
             isRunning = _isRunning.value,
@@ -384,26 +388,26 @@ class WebServer(
         )
     }
 
-    /** Tratamiento de desensibilización:Mantener los 2 primeros,Para otros fines * Reemplazar. La cadena vacía se devuelve sin cambios. */
+    /** 脱敏处理:保留前 2 位,其余用 * 替换。空串原样返回。 */
     private fun maskSecret(secret: String): String {
         if (secret.isBlank()) return ""
         if (secret.length <= 2) return "*".repeat(secret.length)
         return secret.take(2) + "*".repeat(secret.length - 2)
     }
 
-    // ── Ktor Configuración(Application función de extensión) ──────────────────────────────────
+    // ── Ktor 配置(Application 扩展函数) ──────────────────────────────────
 
     /**
-     * JWT Configuración de autenticación.
-     * P2-13: Pase `authHeader` Extracción de tokens personalizados,Soporta dos fuentes:
-     *  1. `Authorization: Bearer <token>` cabeza(comportamiento original)
-     *  2. `token` Cookie(PIN/La contraseña la guarda automáticamente el navegador después de iniciar sesión)
-     *  C-11: par eliminado `?token=` query param de lectura — La interfaz de usuario web del lado del servidor se basa completamente en httpOnly Cookie,
-     *  `?token=` Restante simplemente hará que el JWT entre en el historial del navegador./registro de acceso/Referer,No se realizan más lecturas compatibles.
+     * JWT 鉴权配置。
+     * P2-13: 通过 `authHeader` 自定义 token 提取,支持两种来源:
+     *  1. `Authorization: Bearer <token>` 头(原有行为)
+     *  2. `token` Cookie(PIN/密码登录后由浏览器自动携带)
+     *  C-11: 已移除对 `?token=` query param 的读取 — 服务端 Web UI 完全基于 httpOnly Cookie,
+     *  `?token=` 残留只会让 JWT 进入浏览器历史/访问日志/Referer,不再作任何兼容读取。
      *
-     * usar `bearer` + Verificación manual HMAC sin ktor `jwt()` provider(Por razones, ver
-     * [installHostAuthProvider]): Este último cargará los excluidos al momento de recibir el bono. `com.auth0.jwk`,
-     * Convierta la solicitud que debería ser 401 en 500,`/ws` El apretón de manos también se volvió "incapaz de conectarse".
+     * 用 `bearer` + 手动 HMAC 校验，不用 ktor 的 `jwt()` provider（原因见
+     * [installHostAuthProvider]）：后者取凭证时会去载被排除的 `com.auth0.jwk`，
+     * 把本该 401 的请求变成 500，`/ws` 握手也跟着变成「连不上」。
      */
     private fun Application.configureSecurity(jwtSecret: String) {
         val algorithm = Algorithm.HMAC256(jwtSecret)
@@ -417,7 +421,7 @@ class WebServer(
         }
     }
 
-    /** JSON Configuración de serialización(Reutilizar AppJson,Ignorar campos desconocidos). */
+    /** JSON 序列化配置(复用 AppJson,忽略未知字段)。 */
     private fun Application.configureSerialization() {
         install(ContentNegotiation) {
             json(AppJson)
@@ -425,14 +429,14 @@ class WebServer(
     }
 
     /**
-     * CORS configuración.
-     * R-SEC-03: Solo se permiten fuentes nativas de forma predeterminada;Se permite cualquier origen solo después de que se habilite el acceso a la LAN.
+     * CORS 配置。
+     * R-SEC-03: 默认仅允许本机来源;开启局域网访问后才允许任意 Origin。
      */
     private fun Application.configureCors(allowLan: Boolean) {
         install(CORS) {
-            // Límite de seguridad:anyHost() Solo aplicable al modelo de confianza LAN. Cuando se expone a la red pública, es necesario configurar la lista blanca de Origin.
+            // 安全边界：anyHost() 仅适用于局域网信任模型，公网暴露时需配置 Origin 白名单
             if (allowLan) {
-                // Límite de seguridad:anyHost() Se aplica solo al modelo de confianza LAN
+                // 安全边界：anyHost() 仅适用于局域网信任模型
                 anyHost()
             } else {
                 allowHost("localhost", schemes = listOf("http", "https"))
@@ -446,12 +450,12 @@ class WebServer(
         }
     }
 
-    /** Manejo de excepciones globales(Devolver respuesta de error JSON,Evite el texto plano predeterminado de Ktor). */
+    /** 全局异常处理(返回 JSON 错误响应,避免 Ktor 默认纯文本)。 */
     private fun Application.configureStatusPages() {
         install(StatusPages) {
             exception<Throwable> { call, cause ->
                 if (cause is kotlin.coroutines.cancellation.CancellationException) throw cause
-                Logger.e(TAG, "WebServer excepción no detectada: ${cause.message}")
+                Logger.e(TAG, "WebServer 未捕获异常: ${cause.message}")
                 call.respond(
                     HttpStatusCode.InternalServerError,
                     ErrorResponse("internal_error", cause.message ?: context.getString(R.string.webserver_unknown_error)),
@@ -460,12 +464,37 @@ class WebServer(
         }
     }
 
-    // ── enrutamiento ──────────────────────────────────────────────────────────────
+    /**
+     * v2.6.23(S4): 请求延迟统计 —— 诊断卡 p95 的数据源。
+     *
+     * 只计 `/api/` 业务路由:静态资源(web-client 打包)是毫秒级批量命中,
+     * 混进来会把 p95 稀释到失真。样本不足由诊断卡自己标注,不在这里截断。
+     */
+    private fun Application.configureLatencyStats() {
+        val startKey = io.ktor.util.AttributeKey<Long>("web.request.start.ms")
+        val plugin = io.ktor.server.application.createApplicationPlugin(name = "RequestLatencyStats") {
+            onCall { call ->
+                // 用 local.uri 判定业务路由:与文件内其它 request.local 读取同族,不依赖额外扩展 import
+                if (call.request.local.uri.startsWith("/api/")) {
+                    call.attributes.put(startKey, android.os.SystemClock.elapsedRealtime())
+                }
+            }
+            onCallRespond { call, _ ->
+                val start = call.attributes.getOrNull(startKey) ?: return@onCallRespond
+                io.zer0.muse.diagnostics.WebHostLatencyStats.shared.record(
+                    android.os.SystemClock.elapsedRealtime() - start,
+                )
+            }
+        }
+        install(plugin)
+    }
+
+    // ── 路由 ──────────────────────────────────────────────────────────────
 
     /**
-     * Todas las definiciones de rutas API.
-     * P2-13: Nuevo `POST /api/auth/pin-login`,Acepta 6 personas PIN,Emitido después de pasar la verificación. JWT,
-     * y enviado a través de cookies,Web Las solicitudes posteriores del cliente no requieren PIN.
+     * 所有 API 路由定义。
+     * P2-13: 新增 `POST /api/auth/pin-login`,接受 6 位 PIN,校验通过后签发 JWT,
+     * 并通过 Cookie 下发,Web 端后续请求无需再带 PIN。
      */
     @Suppress("CyclomaticComplexMethod", "LongMethod")
     private fun Application.museRoutes(
@@ -481,11 +510,11 @@ class WebServer(
         routing {
             installChannelWebhookRoutes(context, channelManager)
 
-            // chequeo de salud(No se requiere autenticación,Para la detección de clientes mDNS)
-            // C-18: Habilitar acceso LAN(bind 0.0.0.0)Campo de retorno de convergencia — número de versión/El tiempo de ejecución pertenece a la información precisa de la huella digital.,
-            //   Al mismo tiempo, puede ser detectado por un tercero dentro de la red de área local.,Sólo en esta máquina/Regresar en modo de depuración no LAN;El estado de salud en sí está siempre disponible.
+            // 健康检查(无需鉴权,用于 mDNS 客户端探测)
+            // C-18: 开启局域网访问(bind 0.0.0.0)时收敛返回字段 — 版本号/运行时长属于精确指纹信息,
+            //   同时可能被局域网内第三方探测,仅在本机/非 LAN 调试模式下返回;健康状态本身始终可用。
             get("/api/health") {
-                // M11: cotización directa this@WebServer.startedAt,Evite las variables locales en start() capturado antes 0
+                // M11: 直接引用 this@WebServer.startedAt,避免局部变量在 start() 前捕获到 0
                 val health = if (allowLan) {
                     HealthResponse(status = "ok")
                 } else {
@@ -498,16 +527,16 @@ class WebServer(
                 call.respond(health)
             }
 
-            // Cerrar sesión: A-10 JS no puede eliminar la cookie httpOnly del front-end,Debe ser borrado por la Set-Cookie caducada del lado del servidor.
-            // No se requiere autenticación(Al iniciar sesión, el navegador muestra automáticamente Cookie,Llamar sin iniciar sesión también devuelve un éxito idempotente.),No participa en la limitación de tarifas.
+            // 退出登录: A-10 前端 httpOnly Cookie 无法被 JS 删除,需经服务端过期 Set-Cookie 清理。
+            // 无需鉴权(已登录态下浏览器自动带 Cookie,未登录调用亦幂等返回成功),不参与速率限制。
             post("/api/auth/logout") {
                 call.expireTokenCookie()
                 call.respond(LogoutResponse(loggedOut = true))
             }
 
-            // Iniciar sesión: cambio de contraseña JWT
+            // 登录: 密码换 JWT
             post("/api/auth/login") {
-                // H5: límite de tasa — Hasta 5 intentos fallidos cada 30 segundos por IP
+                // H5: 速率限制 — 每 IP 每 30 秒最多 5 次失败尝试
                 val clientIp = call.request.local.remoteHost
                 if (!checkRateLimit(clientIp)) {
                     val remaining = getRateLimitRemainingSeconds(clientIp)
@@ -535,15 +564,15 @@ class WebServer(
                 }
                 clearAttempts(clientIp)
                 val token = issueJwt(algorithm)
-                // C-29: El inicio de sesión con contraseña también se emite a través de Set-Cookie JWT,Igual que el inicio de sesión con PIN,Evite la entrada de token en la consulta/URL.
-                //   El cuerpo de la respuesta aún devuelve el token para clientes que no son navegadores.(como guión)tomar;Web Elimine la cookie httpOnly.
+                // C-29: 密码登录同样通过 Set-Cookie 下发 JWT,与 PIN 登录一致,避免 token 进 query/URL。
+                //   响应体仍返回 token 供非浏览器客户端(如脚本)取用;Web 端走 httpOnly Cookie。
                 call.appendTokenCookie(token)
                 call.respond(LoginResponse(token = token, expiresIn = TOKEN_TTL_MS / 1000))
             }
 
-            // P2-13: PIN Iniciar sesión — 6 cambio de PIN JWT,Establecer simultáneamente Cookie
+            // P2-13: PIN 登录 — 6 位 PIN 换 JWT,同时设置 Cookie
             post("/api/auth/pin-login") {
-                // H5: límite de tasa — Hasta 5 intentos fallidos cada 30 segundos por IP
+                // H5: 速率限制 — 每 IP 每 30 秒最多 5 次失败尝试
                 val clientIp = call.request.local.remoteHost
                 if (!checkRateLimit(clientIp)) {
                     val remaining = getRateLimitRemainingSeconds(clientIp)
@@ -574,37 +603,37 @@ class WebServer(
                 }
                 clearAttempts(clientIp)
                 val token = issueJwt(algorithm)
-                // C-29: token Enviado únicamente a través de cookies,No entrar query/URL;Web El navegador del cliente lo transporta automáticamente con solicitudes posteriores.
+                // C-29: token 仅经 Cookie 下发,不进 query/URL;Web 端浏览器后续请求自动携带。
                 call.appendTokenCookie(token)
                 call.respond(LoginResponse(token = token, expiresIn = TOKEN_TTL_MS / 1000))
             }
 
-            // Host Mode: El navegador sólo es responsable de la visualización,Android ChatViewModel Responsable de generación, herramientas, memoria y persistencia.
-            // WebSocket El protocolo de enlace reutiliza la autenticación de autorización/galleta JWT y no abre canales en tiempo real no autenticados.
+            // Host Mode：浏览器只负责展示，Android ChatViewModel 负责生成、工具、记忆和持久化。
+            // WebSocket 握手复用 JWT Cookie/Authorization 鉴权，不开放未认证的实时通道。
             authenticate(AUTH_JWT_NAME) {
                 webSocket("/ws") {
-                    // El protocolo de enlace ha pasado la autenticación para llegar aquí; escriba la fuente y si se trae la cookie,
-                    // La próxima vez que "la página web no se pueda conectar", podrá saber directamente en el registro si se trata de una falla de autenticación o de una falla de red.
+                    // 握手通过鉴权才会走到这；把来源与 Cookie 是否带上一并记下，
+                    // 下次「网页端连不上」时能直接从日志分辨是鉴权失败还是网络不通。
                     Logger.i(
                         TAG,
-                        "/ws Creado: remote=${call.request.origin.remoteHost} " +
-                            "cookie=${if (call.request.cookies[TOKEN_COOKIE_NAME] != null) "si" else "Ninguno"}",
+                        "/ws 已建立: remote=${call.request.origin.remoteHost} " +
+                            "cookie=${if (call.request.cookies[TOKEN_COOKIE_NAME] != null) "有" else "无"}",
                     )
                     hostWebSocketGateway.serve(this)
                 }
 
-                // medios de noticias(fotos/Voz):Mismo bloque de autenticación que /ws,solo lectura,token Regístrese al enviar un mensaje.
+                // 消息媒体(图片/语音):与 /ws 同一鉴权块,只读,token 由下发消息时登记。
                 installHostMediaRoutes(hostMediaStore)
 
-                // Las siguientes rutas REST requieren autenticación JWT
-                // Lista de conversación
+                // 以下 REST 路由需要 JWT 鉴权
+                // 会话列表
                 get("/api/sessions") {
-                    // M12: Flow.first() Agregar tiempo de espera,Evite bloquear solicitudes durante largos periodos de tiempo
+                    // M12: Flow.first() 加超时,避免长时间阻塞请求
                     val sessions = withTimeout(5_000L) { sessionRepo.observeSessions().first() }
                     call.respond(sessions.map { it.toDto() })
                 }
 
-                // Lista de mensajes de conversación
+                // 会话消息列表
                 get("/api/sessions/{id}/messages") {
                     val id = call.parameters["id"]
                     if (id.isNullOrBlank()) {
@@ -614,14 +643,14 @@ class WebServer(
                         )
                         return@get
                     }
-                    // M12: Flow.first() Agregar tiempo de espera
+                    // M12: Flow.first() 加超时
                     val messages = withTimeout(5_000L) { sessionRepo.observeMessages(id).first() }
                     call.respond(messages.map { it.toDto() })
                 }
 
-                // Resumen de configuración(Provider Nombre + número de modelos,Desensibilización clave)
+                // 设置摘要(Provider 名称 + 模型数,密钥脱敏)
                 get("/api/settings") {
-                    // M12: Flow.first() Agregar tiempo de espera
+                    // M12: Flow.first() 加超时
                     val providers = withTimeout(5_000L) { settings.providersFlow.first() }
                     val activeId = withTimeout(5_000L) { settings.activeProviderIdFlow.first() }
                     val modelId = withTimeout(5_000L) { settings.selectedModelIdFlow.first() }
@@ -634,14 +663,14 @@ class WebServer(
                     )
                 }
 
-                // v1.120: POST /api/send Decisiones de diseño de endpoints — No implementado.
-                //   WebServer Orientar la navegación de solo lectura(sesión/noticias/ajustes),No se admite el inicio de mensajes nuevos desde la web.
-                //   Razón:Para enviar un mensaje, debe llamar a la lógica ChatViewModel.sendMessage,Implica respuesta de transmisión de LLM +
-                //   SessionRepository Biblioteca de escritura + programación de herramientas,La cadena de dependencia es pesada,Y el lado web carece de una solución de reenvío SSE de transmisión.,
-                //   Forzar la implementación puede introducir fácilmente nuevos errores. Si necesitas enviar un mensaje vía Web,Se recomienda diseñar el canal WebSocket por separado en el futuro.
+                // v1.120: POST /api/send 端点设计决策 — 不实现。
+                //   WebServer 定位为只读浏览(会话/消息/设置),不支持从 Web 端发起新消息。
+                //   原因:发送消息需调用 ChatViewModel.sendMessage 逻辑,涉及 LLM 流式响应 +
+                //   SessionRepository 写库 + 工具调度,依赖链较重,且 Web 端缺少流式 SSE 转发方案,
+                //   强行实现易引入新 bug。如需 Web 发消息,建议后续单独设计 WebSocket 通道。
             }
 
-            // React Host UI prioridad;APK Recurra a la página de diagnóstico integrada al crear el producto sin web.
+            // React Host UI 优先；APK 未带 Web 构建产物时回退到内嵌诊断页面。
             get("/assets/{path...}") {
                 val path = call.parameters.getAll("path")?.joinToString("/").orEmpty()
                 if (!servePackagedAsset(call, "muse-web/assets/$path")) {
@@ -657,7 +686,7 @@ class WebServer(
             get("/icon.svg") {
                 if (!servePackagedAsset(call, "muse-web/icon.svg")) call.respond(HttpStatusCode.NotFound)
             }
-            // iOS No reconocer iconos SVG:PWA La compilación también producirá archivos PNG, a los que se debe poder acceder cuando el escritorio esté montado en la pared; de lo contrario, serán reemplazados por capturas de pantalla.
+            // iOS 不认 SVG 图标：PWA 构建会同时产出 PNG，桌面上墙时需要它们可访问，否则会用截图兑。
             get("/apple-touch-icon.png") {
                 if (!servePackagedAsset(call, "muse-web/apple-touch-icon.png")) call.respond(HttpStatusCode.NotFound)
             }
@@ -668,20 +697,20 @@ class WebServer(
                 if (!servePackagedAsset(call, "muse-web/icon-512.png")) call.respond(HttpStatusCode.NotFound)
             }
             get("/") {
-                // L1: Agregar encabezado de política de referencia,Evite que el parámetro de consulta JWT se filtre a terceros a través del encabezado Referer
+                // L1: 添加 Referrer-Policy 头,防止 JWT query param 通过 Referer 头泄露到第三方
                 call.response.headers.append("Referrer-Policy", "no-referrer")
                 if (!servePackagedAsset(call, "muse-web/index.html")) {
                     call.respondText(WebServerUi.INDEX_HTML, ContentType.Text.Html)
                 }
             }
 
-            // ── v2.x: A2A Protocolo estándar (Agent-to-Agent)──
-            // Agent Card: Metadatos públicos, insensibles, no se requiere autenticación (para descubrimiento de agentes externos).
+            // ── v2.x: A2A 标准协议（Agent-to-Agent）──
+            // Agent Card：公开元数据，不敏感，无需鉴权（外部 agent 发现用）。
             get(io.zer0.muse.web.a2a.AGENT_CARD_PATH) {
                 val base = "${if (currentHttpsEnabled) "https" else "http"}://${call.request.local.localHost}:$currentPort"
                 call.respond(a2aHandler.agentCard(base))
             }
-            // JSON-RPC Punto final: enviar mensaje/Las tareas de consulta requieren autenticación (igual que /ws JWT).
+            // JSON-RPC 端点：发消息/查任务需鉴权（与 /ws 同 JWT）。
             authenticate(AUTH_JWT_NAME) {
                 post(io.zer0.muse.web.a2a.A2A_PATH) {
                     val raw = runCatching { call.receiveText() }.getOrNull().orEmpty()
@@ -691,11 +720,23 @@ class WebServer(
         }
     }
 
-    /** Emitido con validez de 24h JWT,Comparte la misma clave de firma que el inicio de sesión con contraseña(password → HMAC-SHA256). */
+    /** 签发 24h 有效期的 JWT,与密码登录共用同一签名密钥(password → HMAC-SHA256)。 */
     @Suppress("ReturnCount")
     private suspend fun servePackagedAsset(call: ApplicationCall, assetPath: String): Boolean {
         if (assetPath.contains("..") || assetPath.startsWith("/") || assetPath.contains("\\")) return false
         val bytes = resultOf { context.assets.open(assetPath).use { it.readBytes() } }.getOrNull() ?: return false
+        // S6: HTML 入口要带上「这台 App 的版本 + 协议」,否则资源与 App 不同步时
+        // 网页端只会一直转圈,用户拿不到任何线索。只改 HTML,不碰 JS/CSS。
+        if (assetPath.endsWith(".html", ignoreCase = true)) {
+            val html = bytes.toString(Charsets.UTF_8)
+            val tagged = if (HostVersionTag.isAlreadyInjected(html)) {
+                html
+            } else {
+                HostVersionTag.inject(html, io.zer0.muse.BuildConfig.VERSION_NAME, CURRENT_PROTOCOL_VERSION)
+            }
+            call.respondBytes(tagged.toByteArray(Charsets.UTF_8), ContentType.Text.Html)
+            return true
+        }
         val contentType = when {
             assetPath.endsWith(".html", ignoreCase = true) -> ContentType.Text.Html
             assetPath.endsWith(".js", ignoreCase = true) -> ContentType.Application.JavaScript
@@ -711,10 +752,10 @@ class WebServer(
     }
 
     /**
-     * v2.x: Manejar solicitudes A2A JSON-RPC.
+     * v2.x: 处理 A2A JSON-RPC 请求。
      *
-     * Métodos admitidos:SendMessage / GetTask / CancelTask.
-     * Devuelve una cadena JSON (escribe la respuesta directamente para evitar el procesamiento adicional de JsonElement por parte del serializador Ktor).
+     * 支持方法：SendMessage / GetTask / CancelTask。
+     * 返回 JSON 字符串（直写响应，避免 Ktor 序列化器对 JsonElement 的额外处理）。
      */
     @Suppress("TooGenericExceptionCaught", "CyclomaticComplexMethod", "ReturnCount")
     private suspend fun handleA2aJsonRpc(raw: String): String {
@@ -757,7 +798,7 @@ class WebServer(
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {
-            Logger.w("WebServer", "A2A Error de procesamiento: ${e.message}", e)
+            Logger.w("WebServer", "A2A 处理失败: ${e.message}", e)
             a2aError(idJson, io.zer0.muse.web.a2a.A2aErrors.INTERNAL_ERROR, e.message ?: "internal error")
         }
     }
@@ -796,10 +837,10 @@ class WebServer(
     }
 
     /**
-     * C-29: Enviado mediante cookie httpOnly JWT(No entrar query/URL,Evite entrar en el historial del navegador/Referer/registro de acceso).
-     * v2.x: Habilitar la configuración HTTPS secure=true(Devolución de datos solo a través de TLS);De lo contrario mantener false(JWT Solo modelo de confianza LAN).
-     * A-10/C-11: Ktor 3 Ningún parámetro independiente del mismo sitio,Escrito mediante extensiones `SameSite=Lax`,
-     *   Mitigar el riesgo de que las solicitudes entre sitios transporten cookies en escenarios CSRF(El inicio de sesión solo se solicita a través del mismo origen del navegador.).
+     * C-29: 通过 httpOnly Cookie 下发 JWT(不进 query/URL,避免进浏览器历史/Referer/访问日志)。
+     * v2.x: 启用 HTTPS 时置 secure=true(仅经 TLS 回传);否则保持 false(JWT 仅限局域网信任模型)。
+     * A-10/C-11: Ktor 3 无独立 sameSite 参数,经 extensions 写入 `SameSite=Lax`,
+     *   缓解 CSRF 场景下 Cookie 被跨站请求携带的风险(登录仅经浏览器同源请求)。
      */
     private fun ApplicationCall.appendTokenCookie(token: String) {
         response.cookies.append(
@@ -814,9 +855,9 @@ class WebServer(
     }
 
     /**
-     * A-10: Caduca al cerrar sesión `token` Cookie(Set-Cookie: token=; Max-Age=0; Path=/),
-     * porque debería Cookie httpOnly=true,El navegador JS no puede leer/Eliminar,El comando de caducidad debe ser emitido por el servidor.
-     * SameSite La propiedad no tiene significado práctico en las cookies caducadas,Pero manténgala coherente con la cookie de inicio de sesión en caso de diferencias de análisis.
+     * A-10: 退出登录时过期 `token` Cookie(Set-Cookie: token=; Max-Age=0; Path=/),
+     * 因为该 Cookie httpOnly=true,浏览器 JS 无法读取/删除,必须由服务端下发过期指令。
+     * SameSite 属性在过期 Cookie 上无实际意义,但保持与登录 Cookie 一致以防解析差异。
      */
     private fun ApplicationCall.expireTokenCookie() {
         response.cookies.append(
@@ -830,7 +871,7 @@ class WebServer(
         )
     }
 
-    // ── DTO Convertir ──────────────────────────────────────────────────────────
+    // ── DTO 转换 ──────────────────────────────────────────────────────────
 
     private fun SessionEntity.toDto(): SessionDto = SessionDto(
         id = id,
@@ -859,7 +900,7 @@ class WebServer(
         enabled = enabled,
     )
 
-    // ── DTO clase de datos ────────────────────────────────────────────────────────
+    // ── DTO 数据类 ────────────────────────────────────────────────────────
 
     data class Status(
         val isRunning: Boolean,
@@ -870,9 +911,9 @@ class WebServer(
         val pinMasked: String,
         val startedAt: Long,
         val lastError: String? = null,
-        /** v2.x: Si actualmente se está ejecutando a través de HTTPS. */
+        /** v2.x: 当前是否以 HTTPS 运行。 */
         val httpsEnabled: Boolean = false,
-        /** v2.x: HTTPS Certificado autofirmado de huella dactilar SHA-256(Cuando HTTPS no está habilitado null). */
+        /** v2.x: HTTPS 自签证书 SHA-256 指纹(未启用 HTTPS 时为 null)。 */
         val fingerprint: String? = null,
     )
 
@@ -882,14 +923,14 @@ class WebServer(
     @Serializable
     data class LoginRequest(val password: String)
 
-    /** P2-13: PIN Cuerpo de solicitud de inicio de sesión(6 dígitos PIN). */
+    /** P2-13: PIN 登录请求体(6 位数字 PIN)。 */
     @Serializable
     data class PinLoginRequest(val pin: String)
 
     @Serializable
     data class LoginResponse(val token: String, val expiresIn: Long)
 
-    /** A-10: Respuesta de cierre de sesión(La interfaz usa esto para confirmar que la cookie se ha borrado.). */
+    /** A-10: 退出登录响应(前端据此确认 Cookie 已清除)。 */
     @Serializable
     data class LogoutResponse(val loggedOut: Boolean)
 
@@ -938,7 +979,7 @@ class WebServer(
         private const val LAN_BIND_HOST = "0.0.0.0"
         private const val LOCAL_BIND_HOST = "127.0.0.1"
 
-        /** R-SEC-03: El valor predeterminado es solo local,Solo vincule todas las tarjetas de red después de habilitar explícitamente el acceso a la LAN. */
+        /** R-SEC-03: 默认仅本机,显式开启局域网访问后才绑定所有网卡。 */
         fun bindHost(allowLan: Boolean): String = if (allowLan) LAN_BIND_HOST else LOCAL_BIND_HOST
         private const val MIN_PORT = 1024
         private const val MAX_PORT = 65535
@@ -946,39 +987,39 @@ class WebServer(
         private const val TIMEOUT_PERIOD_MS = 2000L
         private const val AUTH_JWT_NAME = "auth-jwt"
 
-        /** Nombre del directorio donde se colocan las imágenes de los mensajes,con [io.zer0.muse.data.session.MessageImageStore] El directorio de almacenamiento es consistente. */
+        /** 消息图片落盘目录名,与 [io.zer0.muse.data.session.MessageImageStore] 的存储目录一致。 */
         private const val IMAGE_MEDIA_DIR = "muse_images"
 
-        /** Nombre del directorio del archivo de voz,con [io.zer0.muse.ui.speech.VoiceMessageStore] El directorio de almacenamiento es consistente. */
+        /** 语音存档目录名,与 [io.zer0.muse.ui.speech.VoiceMessageStore] 的存储目录一致。 */
         private const val VOICE_MEDIA_DIR = "voice_messages"
 
-        /** Nombre del directorio del avatar del asistente,con [io.zer0.muse.data.AvatarStorage] El directorio de almacenamiento es consistente. */
+        /** 助手头像目录名,与 [io.zer0.muse.data.AvatarStorage] 的存储目录一致。 */
         private const val AVATAR_MEDIA_DIR = "avatar"
         private const val REALM = "muse-web"
 
-        /** con [HOST_AUTH_SUBJECT] El mismo valor: emisión y verificación deben ser consistentes. */
+        /** 与 [HOST_AUTH_SUBJECT] 同一个值：签发与校验必须一致。 */
         private const val CLAIM_SUB_VALUE = HOST_AUTH_SUBJECT
-        private const val TOKEN_TTL_MS = 24L * 60 * 60 * 1000 // 24 horas
+        private const val TOKEN_TTL_MS = 24L * 60 * 60 * 1000 // 24 小时
 
-        // P2-13: Web Relacionado con la seguridad del PIN del terminal
-        /** PIN/Nombre de cookie emitido después de iniciar sesión con contraseña,Web El navegador del cliente lo llevará automáticamente. */
+        // P2-13: Web 端 PIN 安全相关
+        /** PIN/密码登录后下发的 Cookie 名,Web 端浏览器会自动携带。 */
         private const val TOKEN_COOKIE_NAME = HOST_AUTH_COOKIE
 
-        /** 6 Código de verificación PIN de dígitos. */
+        /** 6 位数字 PIN 校验正则。 */
         private val PIN_REGEX = Regex("^\\d{6}$")
 
-        // H5: Límite de tasa de inicio de sesión — Hasta 5 intentos fallidos cada 30 segundos por IP,Regresar más allá del límite 429
+        // H5: 登录速率限制 — 每 IP 每 30 秒最多 5 次失败尝试,超限返回 429
         private const val RATE_LIMIT_WINDOW_MS = 30_000L
         private const val RATE_LIMIT_MAX_FAILURES = 5
         private val loginAttempts = ConcurrentHashMap<String, AttemptTracker>()
 
-        /** rastreador de límite de tasa:Registre el número de fallas y el tiempo del primer intento. */
+        /** 速率限制跟踪器:记录失败次数与首次尝试时间。 */
         private class AttemptTracker(var count: Int, var firstAttemptAt: Long)
 
-        /** Compruebe si se excede el límite de tarifa(Devuelve verdadero para permitir la solicitud.). */
+        /** 检查是否超过速率限制(返回 true 表示允许请求)。 */
         private fun checkRateLimit(ip: String): Boolean {
             val now = System.currentTimeMillis()
-            // Limpiar el vencimiento más allá de la ventana de los 30 entry,Evite las pérdidas de memoria causadas por la acumulación permanente de direcciones IP que nunca han iniciado sesión correctamente
+            // 清理超过 30s 窗口的过期 entry,避免从未成功登录的 IP 永久堆积导致内存泄漏
             loginAttempts.entries.removeIf { (_, attempt) ->
                 now - attempt.firstAttemptAt > RATE_LIMIT_WINDOW_MS
             }
@@ -999,7 +1040,7 @@ class WebServer(
             }
         }
 
-        /** Registra un intento fallido. */
+        /** 记录一次失败尝试。 */
         private fun recordFailedAttempt(ip: String) {
             val now = System.currentTimeMillis()
             val tracker = loginAttempts.getOrPut(ip) { AttemptTracker(0, now) }
@@ -1013,12 +1054,12 @@ class WebServer(
             }
         }
 
-        /** Borrar el registro de fallas de la IP especificada(Llamado cuando el inicio de sesión es exitoso). */
+        /** 清除指定 IP 的失败记录(登录成功时调用)。 */
         private fun clearAttempts(ip: String) {
             loginAttempts.remove(ip)
         }
 
-        /** Devuelve los segundos de bloqueo restantes para la IP actual(Volver desbloqueado 0). */
+        /** 返回当前 IP 剩余的锁定秒数(未锁定返回 0)。 */
         private fun getRateLimitRemainingSeconds(ip: String): Long {
             val now = System.currentTimeMillis()
             val tracker = loginAttempts[ip] ?: return 0L

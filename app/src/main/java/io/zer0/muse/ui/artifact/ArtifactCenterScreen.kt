@@ -28,11 +28,11 @@ import io.zer0.muse.ui.theme.MusePaddings
 import org.koin.compose.koinInject
 
 /**
- * v2.0.1: Centro de productos — Resuma los productos de todas las sesiones (lista de tarjetas de ancho completo).
+ * v2.0.1: 产物中心 — 汇总所有会话的产物（全宽大卡列表）。
  *
- * Haga clic en la tarjeta para abrir: Contenido enriquecido (HTML/SVG/Chart/Mermaid) en modo de navegador de pantalla completa,
- * El resto (código/texto) visor de ventana emergente (compartido [ArtifactOpenHost]).
- * Entrada: barra superior de la página del espacio de trabajo.
+ * 点击卡片打开：富内容（HTML/SVG/Chart/Mermaid）进全屏浏览器形态，
+ * 其余（代码/文本）走弹窗查看器（共用 [ArtifactOpenHost]）。
+ * 入口：工作区页顶栏。
  */
 @Composable
 fun ArtifactCenterScreen(onBack: () -> Unit) {
@@ -50,7 +50,7 @@ fun ArtifactCenterScreen(onBack: () -> Unit) {
         },
         containerColor = MaterialTheme.colorScheme.background,
     ) { innerPadding ->
-        // v2.0.1 fix(Defensa contra accidentes de máquinas reales): Lo mismo ConnectionCenter — La rejilla se cuelga después de cerrar la altura limitada.
+        // v2.0.1 fix（真机崩溃防御）: 同 ConnectionCenter — 有限高度收口后再挂网格。
         androidx.compose.foundation.layout.BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
@@ -63,10 +63,11 @@ fun ArtifactCenterScreen(onBack: () -> Unit) {
             if (artifacts.isEmpty()) {
                 MuseEmptyState(
                     title = stringResource(R.string.artifact_center_empty),
+                    subtitle = stringResource(R.string.artifact_center_empty_hint),
                     modifier = Modifier.align(Alignment.Center),
                 )
             } else {
-                // v2.0.1: Library cuadrícula — Exploración de miniaturas de dos columnas (las tarjetas grandes se reducen de forma adaptativa dentro de la cuadrícula)
+                // v2.0.1: Library 网格 — 两列缩略浏览（大卡在网格内自适应收窄）
                 androidx.compose.foundation.lazy.grid.LazyVerticalGrid(
                     columns = androidx.compose.foundation.lazy.grid.GridCells.Fixed(2),
                     modifier = Modifier

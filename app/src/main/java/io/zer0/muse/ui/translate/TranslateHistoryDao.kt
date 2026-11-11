@@ -11,7 +11,7 @@ interface TranslateHistoryDao {
     @Query("SELECT * FROM translate_history ORDER BY created_at DESC LIMIT :limit")
     fun observeRecent(limit: Int = 100): Flow<List<TranslateHistoryEntity>>
 
-    // v1.0.30 gap4.3: Favoritos de traducción
+    // v1.0.30 gap4.3: 翻译收藏夹
     @Query("SELECT * FROM translate_history WHERE favorite = 1 ORDER BY created_at DESC")
     fun observeFavorites(): Flow<List<TranslateHistoryEntity>>
 
@@ -29,14 +29,14 @@ interface TranslateHistoryDao {
     @Query("DELETE FROM translate_history")
     suspend fun deleteAll()
 
-    /** P0-10: Para copia de seguridad y exportación — Leer completo. */
+    /** P0-10: 备份导出用 — 全量读取。 */
     @Query("SELECT * FROM translate_history")
     suspend fun getAll(): List<TranslateHistoryEntity>
 
     @Query("SELECT COUNT(*) FROM translate_history")
     suspend fun count(): Int
 
-    // v1.0.30 gap4.3: Favoritos / No favoritos
+    // v1.0.30 gap4.3: 收藏 / 取消收藏
     @Query("UPDATE translate_history SET favorite = :favorite WHERE id = :id")
     suspend fun setFavorite(id: String, favorite: Boolean)
 }

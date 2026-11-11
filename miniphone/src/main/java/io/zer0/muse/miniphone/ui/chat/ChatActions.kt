@@ -3,14 +3,14 @@ package io.zer0.muse.miniphone.ui.chat
 import androidx.compose.runtime.Immutable
 
 /**
- * Tres devoluciones de llamada requeridas por el campo de entrada.
+ * 输入栏要的三个回调。
  *
- * Sintetiza un valor para llevar contigo:La mayoría de los parámetros en la página de chat son "devoluciones de llamada requeridas para un área determinada".,
- * Después de agrupar por región,Los lectores pueden darse cuenta de un vistazo que se trata de salidas para lo mismo.
+ * 合成一个值随身携带:聊天页的参数表里大半都是「某块区域要的回调」,
+ * 按区域分组之后,读的人一眼能看出这几个是同一件事的出口。
  *
- * @param onSend enviar un texto
- * @param onPickImages Levante el selector de imágenes del sistema.
- * @param onTranscribeVoice Convertir grabación a texto;No puedo transferir de regreso null
+ * @param onSend 发一条文本
+ * @param onPickImages 拉起系统图片选择器
+ * @param onTranscribeVoice 把录音转成文字;转不了返回 null
  */
 @Immutable
 data class ChatInputActions(
@@ -20,9 +20,9 @@ data class ChatInputActions(
 )
 
 /**
- * Dos operaciones en un solo mensaje:Reenviar y eliminar.
+ * 单条消息上的两个操作:重发与删除。
  *
- * Los parámetros son mensajes. id —— La interfaz no sabe qué enlace debe tomar este mensaje.,Solo sabe en qué elemento hizo clic el usuario.
+ * 参数都是消息 id —— 界面不知道这条消息该走哪条链路,只知道用户点了哪一条。
  */
 @Immutable
 data class ChatMessageActions(

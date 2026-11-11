@@ -13,8 +13,8 @@ import io.zer0.muse.data.moment.MiniContextBuilder
 import io.zer0.muse.miniphone.api.MpChatTurn
 import io.zer0.muse.miniphone.api.MpReplyEvent
 import io.zer0.muse.miniphone.data.db.MpActorType
-import io.zer0.muse.ui.speech.VoiceMessageArchiver
 import io.zer0.muse.ui.speech.TtsSynthResult
+import io.zer0.muse.ui.speech.VoiceMessageArchiver
 import io.zer0.muse.ui.speech.VoiceSynthesizer
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.toList
@@ -28,10 +28,10 @@ import org.junit.rules.TemporaryFolder
 import java.io.File
 
 /**
- * Segmentación y degradación de las marcas del habla.:Qué párrafos se sintetizan en voz, qué párrafos solo se pueden usar como texto, el orden y el límite superior del número de párrafos.
+ * 语音标记的切分与降级:哪几段合成语音、哪几段只能当文本、顺序与条数上限。
  *
- * La salida del modelo, el puerto de síntesis y el puerto de archivo de voz son falsos. —— Aquí solo probamos la división y degradación del host.,
- * No toque la red ni el motor TTS.
+ * 模型输出、合成端口、语音存档端口全部是假的 —— 这里只验宿主的切分与降级,
+ * 不碰网络与 TTS 引擎。
  */
 class MiniPhoneVoiceScriptTest {
 
@@ -39,101 +39,101 @@ class MiniPhoneVoiceScriptTest {
     val tempDir = TemporaryFolder()
 
     @Test
-    fun `Sintetizar voz dentro de la marca y enviar texto en el orden original fuera de la marca`() = runBlocking {
-        val host = voiceHost(answer = "Hola[Voz]Lee esta frase[/Voz]Adiós")
+    fun `标记内合成语音 标记外按原顺序发文本`() = runBlocking {
+        val host = voiceHost(answer = "你好[语音]这句话要念出来[/语音]再见")
 
         val events = host.respond("a1", USER_TURN).toList()
 
         assertEquals(
             listOf(
-                MpReplyEvent.Text("Hola"),
+                MpReplyEvent.Text("你好"),
                 MpReplyEvent.Voice(VOICE_URI, DURATION_MS),
-                MpReplyEvent.Text("Adiós"),
+                MpReplyEvent.Text("再见"),
             ),
             events,
         )
     }
 
     @Test
-    fun `En la versión bilingüe no se habla la parte sin chino`() = runBlocking {
+    fun `双语里没有中文的那一段不发语音`() = runBlocking {
         val synthesizer = mockk<VoiceSynthesizer>()
-        val host = voiceHost(answer = "[Voz]Okay let's go[/Voz]", synthesizer = synthesizer)
+        val host = voiceHost(answer = "[语音]Okay let's go[/语音]", synthesizer = synthesizer)
 
         val events = host.respond("a1", USER_TURN).toList()
 
         assertEquals(listOf(MpReplyEvent.Text("Okay let's go")), events)
-        coVerify(exactly = 1) { synthesizer.synthesizeTo(any(), any(), any()) }
+        coVerify(exactly = 0) { synthesizer.synthesizeTo(any(), any(), any()) }
     }
 
     @Test
-    fun `Cuando hay más de cinco párrafos, los párrafos adicionales se degradan a texto`() = runBlocking {
-        val script = (1..7).joinToString(separator = "") { "[Voz]No. $it frase[/Voz]" }
+    fun `超过五段时多出来的段降级成文本`() = runBlocking {
+        val script = (1..7).joinToString(separator = "") { "[语音]第 $it 句[/语音]" }
         val host = voiceHost(answer = script)
 
         val events = host.respond("a1", USER_TURN).toList()
 
-        assertEquals("Solo sintetiza los primeros cinco párrafos.", 5, events.count { it is MpReplyEvent.Voice })
+        assertEquals("只合成前五段", 5, events.count { it is MpReplyEvent.Voice })
         assertEquals(
-            "Los dos párrafos adicionales se degradan a texto.",
-            listOf(MpReplyEvent.Text("No. 6 frase"), MpReplyEvent.Text("No. 7 frase")),
+            "多出来的两段降级成文本",
+            listOf(MpReplyEvent.Text("第 6 句"), MpReplyEvent.Text("第 7 句")),
             events.drop(5),
         )
     }
 
     @Test
-    fun `Cuando la síntesis falla, este párrafo se degrada a texto`() = runBlocking {
+    fun `合成失败时这一段降级成文本`() = runBlocking {
         val synthesizer = mockk<VoiceSynthesizer>()
-        coEvery { synthesizer.synthesizeTo(any(), any(), any()) } returns TtsSynthResult.Failure("La síntesis falló")
-        val host = voiceHost(answer = "[Voz]Lee esta frase[/Voz]", synthesizer = synthesizer)
+        coEvery { synthesizer.synthesizeTo(any(), any(), any()) } returns TtsSynthResult.Failure("合成失败")
+        val host = voiceHost(answer = "[语音]这句话要念出来[/语音]", synthesizer = synthesizer)
 
         val events = host.respond("a1", USER_TURN).toList()
 
-        assertEquals(listOf(MpReplyEvent.Text("Lee esta frase")), events)
+        assertEquals(listOf(MpReplyEvent.Text("这句话要念出来")), events)
     }
 
     @Test
-    fun `Este párrafo también se degrada a texto cuando el archivo no se puede guardar`() = runBlocking {
+    fun `存档落不下时这一段也降级成文本`() = runBlocking {
         val store = archiver(archivedUri = null)
-        val host = voiceHost(answer = "[Voz]Lee esta frase[/Voz]", store = store)
+        val host = voiceHost(answer = "[语音]这句话要念出来[/语音]", store = store)
 
         val events = host.respond("a1", USER_TURN).toList()
 
-        assertEquals(listOf(MpReplyEvent.Text("Lee esta frase")), events)
+        assertEquals(listOf(MpReplyEvent.Text("这句话要念出来")), events)
     }
 
     @Test
-    fun `Sintetizado sin emoción`() = runBlocking {
+    fun `合成时不带情绪`() = runBlocking {
         val synthesizer = mockk<VoiceSynthesizer>()
         coEvery { synthesizer.synthesizeTo(any(), any(), any()) } answers {
             secondArg<File>().writeBytes(ByteArray(TEMP_BYTES))
             TtsSynthResult.Success
         }
-        val host = voiceHost(answer = "[Voz]Lee esta frase[/Voz]", synthesizer = synthesizer)
+        val host = voiceHost(answer = "[语音]这句话要念出来[/语音]", synthesizer = synthesizer)
 
         host.respond("a1", USER_TURN).toList()
 
-        coVerify(exactly = 1) { synthesizer.synthesizeTo("Lee esta frase", any(), null) }
+        coVerify(exactly = 1) { synthesizer.synthesizeTo("这句话要念出来", any(), null) }
     }
 
     @Test
-    fun `La colocación de pedidos y las etiquetas no cerradas no están incluidas en el texto`() = runBlocking {
-        val host = voiceHost(answer = "[Voz]Lee esta frase[/Voz][/Voz] fin[Voz]la mitad")
+    fun `落单与没闭合的标记都不进正文`() = runBlocking {
+        val host = voiceHost(answer = "[语音]念这句[/语音][/语音] 结束[语音]半截")
 
         val events = host.respond("a1", USER_TURN).toList()
 
         assertEquals(
             listOf(
                 MpReplyEvent.Voice(VOICE_URI, DURATION_MS),
-                // La señal de estar solo solo se borra,Deletrear un párrafo de texto antes y después
-                MpReplyEvent.Text("finla mitad"),
+                // 落单的标记只被抹掉,前后文字拼回一段
+                MpReplyEvent.Text("结束半截"),
             ),
             events,
         )
     }
 
     @Test
-    fun `Si el marcado puro no tiene cuerpo, se considerará fallido`() = runBlocking {
-        val host = voiceHost(answer = "[Voz][/Voz]")
+    fun `纯标记没有正文时按失败处理`() = runBlocking {
+        val host = voiceHost(answer = "[语音][/语音]")
 
         val events = host.respond("a1", USER_TURN).toList()
 
@@ -141,16 +141,16 @@ class MiniPhoneVoiceScriptTest {
     }
 
     @Test
-    fun `La identificación china solo se fija en los caracteres chinos y no en la puntuación ni en las letras latinas`() {
-        assertTrue(hasChineseCharacters("buenas noches"))
-        assertTrue(hasChineseCharacters("Okay, buenas noches"))
-        assertTrue(hasChineseCharacters("Okay let's go"))
-        assertFalse(hasChineseCharacters("\"\"\"\"."))
+    fun `中文判定只看汉字 不看标点与拉丁字母`() {
+        assertTrue(hasChineseCharacters("晚安"))
+        assertTrue(hasChineseCharacters("Okay，晚安"))
+        assertFalse(hasChineseCharacters("Okay let's go"))
+        assertFalse(hasChineseCharacters("「」《》。"))
     }
 
-    // ── accesorio ────────────────────────────────────────────────────────────
+    // ── 夹具 ────────────────────────────────────────────────────────────
 
-    /** La respuesta generada en una ronda está dada por [answer] decidir,Puerto de archivo y síntesis de voz. */
+    /** 一轮生成的答案由 [answer] 决定,语音走假的合成与存档端口。 */
     private fun voiceHost(
         answer: String,
         synthesizer: VoiceSynthesizer = okSynthesizer(),
@@ -163,7 +163,7 @@ class MiniPhoneVoiceScriptTest {
             contextBuilder.buildMessages(assistant = any(), userContent = any(), sessionId = any(), voiceMessageEnabled = any())
         } answers {
             listOf(
-                UIMessage(role = MessageRole.SYSTEM, content = "eres un ling"),
+                UIMessage(role = MessageRole.SYSTEM, content = "你是阿绫"),
                 UIMessage(role = MessageRole.USER, content = secondArg()),
             )
         }
@@ -193,14 +193,14 @@ class MiniPhoneVoiceScriptTest {
 
     private fun defaultRepo(): AssistantRepository {
         val repo = mockk<AssistantRepository>(relaxed = true)
-        val assistant = AssistantEntity(id = "a1", name = "un ling")
+        val assistant = AssistantEntity(id = "a1", name = "阿绫")
         every { repo.observeAll } returns flowOf(listOf(assistant))
         coEvery { repo.getById("a1") } returns assistant
         return repo
     }
 
     private companion object {
-        val USER_TURN = listOf(MpChatTurn(MpActorType.USER, "¿Está ahí?"))
+        val USER_TURN = listOf(MpChatTurn(MpActorType.USER, "在吗"))
         const val TEMP_BYTES: Int = 64
         const val VOICE_URI: String = "file:///data/voice_messages/abc.wav"
         const val DURATION_MS: Long = 1_500L

@@ -10,46 +10,46 @@ import androidx.room.Query
 import kotlinx.coroutines.flow.Flow
 import kotlinx.serialization.Serializable
 
-/** Clasificación de experiencia valor de almacenamiento estable(No cambia con el idioma de la interfaz.). */
-const val DEFAULT_EXPERIENCE_CATEGORY = "Universales"
+/** 经验分类稳定存储值(不随界面语言变化)。 */
+const val DEFAULT_EXPERIENCE_CATEGORY = "通用"
 
 /**
- * v1.98: Entrada a la base de datos de experiencias — almacenamiento"¿Qué debe hacer si encuentra tareas similares en el futuro?"conocimiento experiencial.
+ * v1.98: 经验库条目 — 存储"以后遇到类似任务应该怎么做"的经验性知识。
  *
- * y la memoria ordinaria(fact)la diferencia:
- * - fact grabar"¿Qué tipo de persona es el usuario?"(propiedades estáticas:nombre/carrera/Preferencia)
- * - experience grabar"cómo hacer un determinado tipo de tarea"(experiencia dinámica:mejores practicas/Aprende de las trampas/Flujo de trabajo)
+ * 与普通记忆(fact)的区别:
+ * - fact 记录"用户是什么样的人"(静态属性:姓名/职业/偏好)
+ * - experience 记录"如何做某类任务"(动态经验:最佳实践/踩坑教训/工作流)
  *
- * Fuente:
- * 1. LLM Extracción automática(Recopilación de memoria para identificar contenido experiencial de conversaciones.)
- * 2. Usuario agregado manualmente(pagina de memoria CRUD)
+ * 来源:
+ * 1. LLM 自动提取(记忆编译时从对话中识别经验性内容)
+ * 2. 用户手动添加(记忆页 CRUD)
  *
- * Inyectar mensaje del sistema: cuando experienceEnabled=true tiempo,Inyectar elementos de experiencia en la memoria a largo plazo,
- * Deje que la IA consulte experiencias pasadas cuando se encuentre con tareas similares.
+ * 注入 system prompt:当 experienceEnabled=true 时,把经验条目注入到长期记忆下方,
+ * 让 AI 在遇到类似任务时参考过往经验。
  */
 @Serializable
 @Entity(tableName = "experiences")
 data class ExperienceEntity(
     @PrimaryKey
     val id: String,
-    /** Título(breve descripción,Como por ejemplo"Kotlin Mejores prácticas para el manejo del tiempo de espera de rutina") */
+    /** 标题(简短描述,如"Kotlin 协程超时处理最佳实践") */
     val title: String,
-    /** Detalles(Texto de experiencia,Puede contener pasos/Cosas a tener en cuenta/fragmento de código) */
+    /** 详细内容(经验正文,可含步骤/注意事项/代码片段) */
     val content: String,
-    /** Clasificación(Como por ejemplo"Programación"/"Uso de herramientas"/"Flujo de trabajo"/"Universales"),Fácil de filtrar */
+    /** 分类(如"编程"/"工具使用"/"工作流"/"通用"),便于过滤 */
     @ColumnInfo(defaultValue = DEFAULT_EXPERIENCE_CATEGORY)
     val category: String = DEFAULT_EXPERIENCE_CATEGORY,
-    /** etiqueta(JSON cadena de matriz,Como por ejemplo ["kotlin","coroutine"]),para recuperación */
+    /** 标签(JSON 数组字符串,如 ["kotlin","coroutine"]),用于检索 */
     @ColumnInfo(defaultValue = "[]")
     val tagsJson: String = "[]",
-    /** Fuente: "manual"(Agregar manualmente) / "llm"(LLM Extracto) */
+    /** 来源: "manual"(手动添加) / "llm"(LLM 提取) */
     @ColumnInfo(defaultValue = "manual")
     val source: String = "manual",
-    /** Extraer sesión fuente ID(LLM Grabar al extraer,Fácil de rastrear) */
+    /** 提取来源会话 ID(LLM 提取时记录,便于回溯) */
     val sessionId: String? = null,
-    /** Crear marca de tiempo */
+    /** 创建时间戳 */
     val createdAt: Long = System.currentTimeMillis(),
-    /** Actualizar marca de tiempo */
+    /** 更新时间戳 */
     val updatedAt: Long = System.currentTimeMillis(),
 )
 

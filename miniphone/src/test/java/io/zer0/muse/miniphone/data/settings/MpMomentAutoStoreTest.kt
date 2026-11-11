@@ -19,11 +19,11 @@ import org.junit.rules.TemporaryFolder
 import java.io.File
 
 /**
- * Ubicación de la configuración del módulo:El mensaje privado activo del personaje cambia y la última vez.
+ * 模块设置落盘:角色主动私信的开关与上次时间。
  *
- * Corre verdadero DataStore(archivos temporales),Sin sustituto —— Lo que hay que probar es "las claves siguen ahí cuando se escriben y se vuelven a leer".:
- * Los valores predeterminados, la lectura tras escritura y las marcas de tiempo son comportamientos verdaderos en esta ruta.
- * Un documento nuevo por caso de uso,No hay residuos entre sí.
+ * 跑真 DataStore(临时文件),不替身 —— 要验的正是「键写进去、读回来还在」:
+ * 默认值、写后读、时间戳三件事都是这条路径上的真行为。
+ * 每个用例一份新文件,互不残留。
  */
 class MpMomentAutoStoreTest {
 
@@ -36,7 +36,7 @@ class MpMomentAutoStoreTest {
     @Before
     fun setUp() {
         storeScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-        // El nombre del archivo es consistente con la producción.(DataStore Agregue el sufijo .preferences_pb al nombre del archivo)
+        // 文件名与生产一致(DataStore 按文件名加 .preferences_pb 后缀)
         val file = File(tempFolder.newFolder(), "miniphone_settings.preferences_pb")
         store = DataStoreMpMomentAutoStore(
             PreferenceDataStoreFactory.create(scope = storeScope, produceFile = { file }),
@@ -50,10 +50,10 @@ class MpMomentAutoStoreTest {
 
     @Test
     fun chatProactiveIsOffByDefault() = runTest {
-        // Desactivado predeterminado:Si el usuario no lo ha abierto, no será molestado.
+        // 默认关:用户没打开过就一直不打扰
         assertFalse(store.isChatProactiveEnabled())
         assertFalse(store.chatProactiveEnabledFlow.first())
-        // Nunca escribí nada la última vez.
+        // 上次时间也从没写过
         assertNull(store.lastProactiveChatAt())
     }
 
@@ -63,7 +63,7 @@ class MpMomentAutoStoreTest {
 
         assertTrue(store.isChatProactiveEnabled())
         assertTrue(store.chatProactiveEnabledFlow.first())
-        // El cambio para publicar automáticamente en Momentos no se ve afectado(Las dos llaves hacen cada una lo suyo.)
+        // 自动发朋友圈的开关不受影响(两个键各管各的)
         assertTrue(store.isEnabled())
     }
 

@@ -15,10 +15,10 @@ import coil.compose.AsyncImage
 import io.zer0.muse.miniphone.ui.shell.MiniPhoneAvatar
 
 /**
- * avatar de la página de chat:Si hay una uri, carga la imagen real.,No hay respaldo a las iniciales o no se pudo cargar.
+ * 聊天页头像:有 uri 就加载真图,没有或加载失败回落到首字圆章。
  *
- * Retroceder no es una tapadera,Es la forma de avatar propia del módulo. —— Se utiliza para libretas de direcciones y listas de mensajes.,
- * No habrá dos miradas "sin avatar" en la misma pantalla.
+ * 回落不是兜底文案,而是本模块自有的头像形制 —— 通讯录与消息列表用的就是它,
+ * 同一屏里不会出现两种「没有头像」的样子。
  */
 @Composable
 internal fun MiniPhoneChatAvatar(name: String, avatarUri: String?, size: Dp, modifier: Modifier = Modifier) {
@@ -26,7 +26,7 @@ internal fun MiniPhoneChatAvatar(name: String, avatarUri: String?, size: Dp, mod
         MiniPhoneAvatar(name = name, size = size, modifier = modifier)
         return
     }
-    // No más reintentos después de que falla la carga:Si el mismo uri falla repetidamente, solo parpadeará.,no tendrá éxito
+    // 加载失败后不再重试:同一 uri 反复失败只会闪,不会成功
     var failed by remember(avatarUri) { mutableStateOf(false) }
     if (failed) {
         MiniPhoneAvatar(name = name, size = size, modifier = modifier)

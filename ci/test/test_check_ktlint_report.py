@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-test_check_ktlint_report.py — check_ktlint_report.py pruebas unitarias.
+test_check_ktlint_report.py — check_ktlint_report.py 的单元测试。
 
-correr: py -3 ci/test/test_check_ktlint_report.py
+运行: py -3 ci/test/test_check_ktlint_report.py
 """
 
 import sys

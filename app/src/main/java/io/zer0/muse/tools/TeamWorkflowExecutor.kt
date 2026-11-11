@@ -9,56 +9,56 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 
 /**
- * v1.200: Ejecutor del flujo de trabajo del equipo.
+ * v1.200: 团队工作流执行器。
  *
- * Admite tres modos de orquestación:
- * - de serie(SEQUENTIAL):Ejecutar en orden de nodos,Resultados de pedidos anticipados como contexto de pedidos posteriores
- * - paralelo(PARALLEL):Ningún nodo dependiente se ejecuta simultáneamente,Finalmente fusionar según la estrategia de agregación.
- * - Condiciones(CONDITIONAL):Determinar si ejecutar en función de resultados anteriores(Actualmente implementado como un simple interruptor.)
+ * 支持三种编排模式:
+ * - 串行(SEQUENTIAL):按节点顺序依次执行,前序结果作为后序上下文
+ * - 并行(PARALLEL):无依赖节点同时执行,最后按聚合策略合并
+ * - 条件(CONDITIONAL):根据前序结果判断是否执行(当前实现为简单开关)
  *
- * Si el equipo no ha configurado el flujo de trabajo,Luego se degrada a la ejecución en serie en el orden de los miembros.
+ * 若团队未配置工作流,则退化到按 memberIds 顺序串行执行。
  *
- * v1.201: Nuevo [llmAggregator] parámetros,LLM_REVIEW La estrategia de agregación consiste en [LlmAggregator.review]
- * Revisión integral completa;llmAggregator Cuando el LLM_REVIEW nulo se degrada a EXPERT_REVIEW.
- * v1.201: Nuevo [pauseManager] + [pausePolicy] parámetros,Flujo de trabajo del equipo de soporte antes de la ejecución/antes de que cada miembro ejecute
- * Punto de pausa en la colaboración entre humanos y máquinas;pauseManager Cuando es nulo, se omiten todos los puntos de pausa.
+ * v1.201: 新增 [llmAggregator] 参数,LLM_REVIEW 聚合策略时由 [LlmAggregator.review]
+ * 完成综合评审;llmAggregator 为 null 时 LLM_REVIEW 降级为 EXPERT_REVIEW。
+ * v1.201: 新增 [pauseManager] + [pausePolicy] 参数,支持团队工作流执行前/每个成员执行前的
+ * 人机协作暂停点;pauseManager 为 null 时跳过所有暂停点。
  *
  * v1.202:
- *  - Nuevo [delegationChainTracker] parámetros,Sincronice el estado del nodo secundario con el rastreador de enlaces al ejecutar cada nodo miembro,
- *    Habilite las tarjetas de enlace de la interfaz de usuario para mostrar la estructura de árbol de los flujos de trabajo del equipo(parentRequestId El mecanismo inserta automáticamente nodos secundarios en los nodos principales. subNodes).
- *  - Nuevo [chatService] parámetros,CONDITIONAL Utilice LLM para juzgar antes de la ejecución del nodo"Si este nodo debe ejecutarse en función de los resultados anteriores",
- *    Responda NO para omitir(marcado como skipped);chatService CONDICIONAL vuelve a la vieja lógica cuando es nulo(Ejecución directa).
- *  - Una vez completado el flujo de trabajo, el árbol de resultados se construye como [DelegationContract.DelegationResult.subResultTree].
+ *  - 新增 [delegationChainTracker] 参数,执行每个成员节点时把子节点状态同步到链路追踪器,
+ *    使 UI 链路卡片能展示团队工作流的树形结构(parentRequestId 机制自动把子节点插入父节点 subNodes)。
+ *  - 新增 [chatService] 参数,CONDITIONAL 节点执行前用 LLM 判断"根据前置结果是否应该执行此节点",
+ *    回答 NO 则跳过(标记为 skipped);chatService 为 null 时 CONDITIONAL 降级为旧逻辑(直接执行)。
+ *  - 工作流完成后把结果树构造成 [DelegationContract.DelegationResult.subResultTree]。
  */
 class TeamWorkflowExecutor(
-    /** Devolución de llamada para ejecutar una única solicitud de delegado,Generalmente se pasa en SkillExecutor::delegateAgent. */
+    /** 执行单个委派请求的回调,通常传入 SkillExecutor::delegateAgent。 */
     private val delegate: suspend (DelegationContract.DelegationRequest) -> DelegationContract.DelegationResult,
-    /** v1.201: LLM Agregador de reseñas completo,LLM_REVIEW Utilizado en estrategia;Se degrada a EXPERT_REVIEW cuando es nulo. */
+    /** v1.201: LLM 综合评审聚合器,LLM_REVIEW 策略时使用;为 null 时降级为 EXPERT_REVIEW。 */
     private val llmAggregator: LlmAggregator? = null,
     /**
-     * Cambio de revisión integral de Global LLM([io.zer0.muse.data.MultiAgentConfig.llmReviewEnabled]).
-     * Al cerrar, LLM_REVIEW baja a EXPERT_REVIEW —— Anteriormente, el interruptor era ajustable en la interfaz de usuario pero no tenía un punto de lectura de producción.,
-     * Apagarlo tampoco funciona. El valor predeterminado es verdadero para mantener el comportamiento anterior de las personas que llaman sin conexión.
+     * 全局 LLM 综合评审开关([io.zer0.muse.data.MultiAgentConfig.llmReviewEnabled])。
+     * 关闭时 LLM_REVIEW 降级为 EXPERT_REVIEW —— 此前该开关在 UI 上可调却没有生产读取点,
+     * 关掉也不起作用。默认 true 以保持未接线调用方的旧行为。
      */
     private val llmReviewEnabled: Boolean = true,
-    /** v1.201: Gestor de pausas delegado,null para omitir todos los puntos de pausa. */
+    /** v1.201: 委派暂停管理器,null 时跳过所有暂停点。 */
     private val pauseManager: DelegationPauseManager? = null,
-    /** v1.201: política de pausa,Solo tiene efecto cuando pausaManager no es nulo. */
+    /** v1.201: 暂停策略,仅在 pauseManager 非 null 时生效。 */
     private val pausePolicy: DelegationPauseManager.PausePolicy = DelegationPauseManager.PausePolicy(),
-    /** v1.202: Rastreador de enlaces delegados,Sincronizar el estado de ejecución de los miembros del equipo con la tarjeta de enlace de la interfaz de usuario;Cuando es nulo, el vínculo no se registra. */
+    /** v1.202: 委派链路追踪器,把团队成员执行状态同步到 UI 链路卡片;为 null 时不记录链路。 */
     private val delegationChainTracker: DelegationChainTracker? = null,
-    /** v1.202: ChatService,Juicio condicional de LLM para nodos CONDICIONALES;Cuando es nulo, el nodo CONDICIONAL se degrada a ejecución directa. */
+    /** v1.202: ChatService,用于 CONDITIONAL 节点的 LLM 条件判断;为 null 时 CONDITIONAL 节点降级为直接执行。 */
     private val chatService: ChatService? = null,
-    /** v1.0.53: Limitador de corriente concurrente global(Requerido,Inyectado por SkillExecutor). Ajuste del tiempo de ejecución del nodo paralelo limiter.run,Evite que el paralelismo del equipo + la delegación del agente maestro superpongan la concurrencia. */
+    /** v1.0.53: 全局并发限流器(必填,由 SkillExecutor 注入)。并行节点执行时包裹 limiter.run,防止团队并行 + 主 agent 委派叠加爆并发。 */
     private val concurrencyLimiter: AgentConcurrencyLimiter,
-    /** v1.0.53 Phase 2: Registro de recuperación de puntos de interrupción del flujo de trabajo;Saltar lectura y escritura del diario cuando sea nulo(Sin posibilidad de currículum). */
+    /** v1.0.53 Phase 2: 工作流断点恢复日志;为 null 时跳过 journal 读写(无 resume 能力)。 */
     private val journal: WorkflowJournal? = null,
 ) {
 
     /**
-     * v1.202: CONDITIONAL El conjunto de ID de solicitud de omisión se registra cuando el nodo determina NO.
-     * Apoyado por ConcurrentHashMap Set,async Seguridad de escritura concurrente(Alineación ejecutada en modo H-TWE1).
-     * TeamWorkflowExecutor Cree una nueva instancia para cada ejecución en SkillExecutor,Entonces no es necesario aclarar.
+     * v1.202: CONDITIONAL 节点判断为 NO 时记录的跳过 requestId 集合。
+     * 用 ConcurrentHashMap 支撑的 Set,async 并发写入安全(对齐 executed 的 H-TWE1 模式)。
+     * TeamWorkflowExecutor 在 SkillExecutor 中每次执行都新建实例,故无需 clear。
      */
     private val skippedRequestIds: MutableSet<String> =
         java.util.Collections.newSetFromMap(java.util.concurrent.ConcurrentHashMap<String, Boolean>())
@@ -70,14 +70,14 @@ class TeamWorkflowExecutor(
     }
 
     /**
-     * Ejecutar el flujo de trabajo del equipo.
+     * 执行团队工作流。
      *
-     * @param workflow Definición de flujo de trabajo
-     * @param teamTask Descripción general de la misión del equipo.
-     * @param parentRequestId solicitud de los padres id,Se utiliza para generar subsolicitudes. id
-     * @param teamMembers Lista de ID de asistente de miembro del equipo,Como orden degenerado cuando flujo de trabajo.nodes está vacío
-     * @param baseContext Compartir mensajes contextuales(Opcional)
-     * @return Resultados de delegación agregados,subResults Contiene resultados para cada nodo.
+     * @param workflow 工作流定义
+     * @param teamTask 团队总体任务描述
+     * @param parentRequestId 父请求 id,用于生成子请求 id
+     * @param teamMembers 团队成员 assistantId 列表,作为 workflow.nodes 为空时的退化顺序
+     * @param baseContext 共享上下文消息(可选)
+     * @return 汇总后的委派结果,subResults 包含每个节点的结果
      */
     suspend fun execute(
         workflow: DelegationContract.TeamWorkflow,
@@ -85,9 +85,9 @@ class TeamWorkflowExecutor(
         parentRequestId: String,
         teamMembers: List<String>,
         baseContext: List<UIMessage> = emptyList(),
-        /** v1.0.53 Phase 2: journal run id;Cuando es nulo, los metadatos del resultado se generan y escriben automáticamente para un currículum posterior. */
+        /** v1.0.53 Phase 2: journal run id;为 null 时自动生成并写入结果 metadata 供后续 resume。 */
         runId: String? = null,
-        /** v1.0.53 Phase 2: Ya sea para restaurar desde el diario(resume=true El nodo que llega al caché se devolverá en segundos.,Se reinicia el primer nodo sin caché.). */
+        /** v1.0.53 Phase 2: 是否从 journal 恢复(resume=true 时命中缓存的节点秒回,首个未缓存节点起重跑)。 */
         resume: Boolean = false,
     ): DelegationContract.DelegationResult {
         val startedAt = System.currentTimeMillis()
@@ -96,22 +96,22 @@ class TeamWorkflowExecutor(
                 DelegationContract.TeamWorkflowNode(
                     id = "step-$idx",
                     assistantId = assistantId,
-                    name = "pasos del equipo $idx",
+                    name = "团队步骤 $idx",
                     taskTemplate = teamTask,
                 )
             }
 
         if (nodes.isEmpty()) {
-            return errorResult(parentRequestId, "El equipo no tiene miembros.,No se puede ejecutar el flujo de trabajo", startedAt)
+            return errorResult(parentRequestId, "团队没有成员,无法执行工作流", startedAt)
         }
 
-        // verificar assistantId
+        // 校验 assistantId
         val invalidNodes = nodes.filter { it.assistantId.isBlank() }
         if (invalidNodes.isNotEmpty()) {
-            return errorResult(parentRequestId, "Falta el nodo de flujo de trabajo assistantId: ${invalidNodes.map { it.id }}", startedAt)
+            return errorResult(parentRequestId, "工作流节点缺少 assistantId: ${invalidNodes.map { it.id }}", startedAt)
         }
 
-        // v1.0.53 Phase 2: generar/Reutilizar runId,Crear mapeo nodeSeq + cálculo expectedKeys
+        // v1.0.53 Phase 2: 生成/复用 runId,建立 nodeSeq 映射 + 计算 expectedKeys
         val effectiveRunId = runId ?: "workflow-$startedAt-${(100..999).random()}"
         val nodeSeqMap: Map<String, Int> = nodes.mapIndexed { idx, node -> node.id to idx }.toMap()
         val expectedKeys: Map<Int, String> = if (journal != null && resume) {
@@ -125,17 +125,17 @@ class TeamWorkflowExecutor(
             emptyMap()
         }
 
-        // H-TWE1: Utilice ConcurrentHashMap en su lugar mutableMapOf,async Seguridad de escritura concurrente
+        // H-TWE1: 用 ConcurrentHashMap 替代 mutableMapOf,async 并发写入安全
         val executed = java.util.concurrent.ConcurrentHashMap<String, DelegationContract.DelegationResult>()
         val errors = mutableListOf<String>()
 
-        // v1.0.53 Phase 2: resume caché de precarga,Los nodos de impacto se completan directamente en ejecutados y se eliminan de pendientes
+        // v1.0.53 Phase 2: resume 时预加载缓存,命中节点直接填入 executed 并从 pending 移除
         val cachedNodeIds = mutableSetOf<String>()
         if (journal != null && resume) {
             val resumeResult = journal.resume(effectiveRunId, expectedKeys)
             resumeResult.cached.forEach { (seq, entry) ->
                 val node = nodes.getOrNull(seq) ?: return@forEach
-                // delegation nodo de clase:Acceso y uso de caché(result tal cual);llm_generative:vacio,Todavía necesito correr de nuevo
+                // delegation 类节点:缓存命中即用(result 原样);llm_generative:已置空,仍需重跑
                 if (entry.nodeKind != WorkflowJournal.NODE_KIND_LLM_GENERATIVE && entry.result.isNotEmpty()) {
                     executed[node.id] = DelegationContract.DelegationResult(
                         requestId = "$parentRequestId/${node.id}",
@@ -152,23 +152,23 @@ class TeamWorkflowExecutor(
                     cachedNodeIds.add(node.id)
                 }
             }
-            Logger.d("TeamWorkflowExecutor", "journal resume runId=$effectiveRunId: ${cachedNodeIds.size}/${nodes.size} Caché de aciertos de nodo")
+            Logger.d("TeamWorkflowExecutor", "journal resume runId=$effectiveRunId: ${cachedNodeIds.size}/${nodes.size} 节点命中缓存")
         }
 
         try {
-            // v1.201: Pausa antes de la ejecución del equipo(pauseBeforeTeam)
+            // v1.201: 团队执行前暂停(pauseBeforeTeam)
             if (pauseManager != null && pausePolicy.pauseBeforeTeam) {
                 if (pauseManager.isCancelled(parentRequestId)) {
-                    return errorResult(parentRequestId, "Flujo de trabajo del equipo cancelado por el usuario", startedAt)
+                    return errorResult(parentRequestId, "团队工作流被用户取消", startedAt)
                 }
                 val pauseReq = DelegationPauseManager.PauseRequest(
                     requestId = "pause-$parentRequestId-before-team",
                     taskId = parentRequestId,
-                    taskTitle = "Confirmación antes de la ejecución del flujo de trabajo del equipo",
+                    taskTitle = "团队工作流执行前确认",
                     taskDescription = teamTask,
                     targetType = "team",
                     targetName = parentRequestId,
-                    reason = "Confirmación antes de la ejecución del flujo de trabajo del equipo",
+                    reason = "团队工作流执行前确认",
                     options = listOf(
                         DelegationPauseManager.PauseOption.APPROVE,
                         DelegationPauseManager.PauseOption.REJECT,
@@ -179,16 +179,24 @@ class TeamWorkflowExecutor(
                 when (resp.decision) {
                     DelegationPauseManager.PauseDecision.CANCEL,
                     DelegationPauseManager.PauseDecision.REJECT,
-                    ->
-                        return errorResult(parentRequestId, "El usuario cancela el flujo de trabajo del equipo", startedAt)
+                    -> {
+                        val text = pauseManager.rejectionText(
+                            resp,
+                            pausePolicy,
+                            subject = "团队工作流",
+                            userRejected = "用户拒绝团队工作流",
+                            userCancelled = "用户取消团队工作流",
+                        )
+                        return errorResult(parentRequestId, text, startedAt)
+                    }
                     DelegationPauseManager.PauseDecision.APPROVE,
                     DelegationPauseManager.PauseDecision.MODIFY,
-                    -> { /* continuar */ }
+                    -> { /* 继续 */ }
                 }
             }
 
-            // En capas por topología de dependencia:Ejecutar sin dependencias primero,Una vez completado, desbloquea los nodos que dependen de él.
-            // v1.0.53 Phase 2: Los nodos que han llegado a la caché del diario se eliminan de pendientes(No es necesario volver a ejecutar)
+            // 按依赖拓扑分层:无依赖的先执行,完成后解锁依赖它的节点
+            // v1.0.53 Phase 2: 已命中 journal 缓存的节点从 pending 移除(无需重跑)
             val pending = nodes.filter { it.id !in cachedNodeIds }.toMutableList()
             while (pending.isNotEmpty()) {
                 val ready = pending.filter { node ->
@@ -197,13 +205,13 @@ class TeamWorkflowExecutor(
                 if (ready.isEmpty()) {
                     return errorResult(
                         parentRequestId,
-                        "El flujo de trabajo tiene dependencias circulares o dependencias no resueltas: ${pending.map { it.id }}",
+                        "工作流存在循环依赖或无法解析的依赖: ${pending.map { it.id }}",
                         startedAt,
                     )
                 }
 
-                // Los nodos predecesores que fallan o son omitidos por una condición no pueden desbloquear los nodos sucesores.
-                // De lo contrario, un guardia devuelve NO después,Los nodos de efectos secundarios que dependen de él seguirán ejecutándose.
+                // 失败或被条件跳过的前置节点不能解锁后继节点。
+                // 否则一个 guard 返回 NO 后,依赖它的副作用节点仍会继续执行。
                 val blocked = ready.filter { node ->
                     node.dependsOn.any { dependencyId ->
                         val dependency = executed[dependencyId] ?: return@any false
@@ -223,7 +231,7 @@ class TeamWorkflowExecutor(
                         } else {
                             errorResult(
                                 childRequestId,
-                                "Error en el paso previo,El nodo ha sido bloqueado para su ejecución.",
+                                "前置步骤未成功,已阻止执行该节点",
                                 startedAt,
                             )
                         }
@@ -239,7 +247,7 @@ class TeamWorkflowExecutor(
                     delegationChainTracker?.onDelegationFinished(
                         requestId = childRequestId,
                         success = blockedResult.success,
-                        resultText = if (inheritedSkip) "(saltado: No se cumplen las condiciones previas)" else "",
+                        resultText = if (inheritedSkip) "(已跳过: 前置条件不满足)" else "",
                         error = blockedResult.error,
                     )
                     recordToJournal(
@@ -258,10 +266,10 @@ class TeamWorkflowExecutor(
                 val executableReady = ready.filterNot { blocked.contains(it) }
                 if (executableReady.isEmpty()) continue
 
-                // v1.201: Pausa antes de que cada miembro ejecute(pauseBeforeEachMember)
+                // v1.201: 每个成员执行前暂停(pauseBeforeEachMember)
                 if (pauseManager != null && pausePolicy.pauseBeforeEachMember) {
                     if (pauseManager.isCancelled(parentRequestId)) {
-                        return errorResult(parentRequestId, "Flujo de trabajo del equipo cancelado por el usuario", startedAt)
+                        return errorResult(parentRequestId, "团队工作流被用户取消", startedAt)
                     }
                     executableReady.forEach { node ->
                         val pauseReq = DelegationPauseManager.PauseRequest(
@@ -271,7 +279,7 @@ class TeamWorkflowExecutor(
                             taskDescription = node.taskTemplate.ifBlank { teamTask },
                             targetType = "assistant",
                             targetName = node.assistantId,
-                            reason = "miembro del equipo ${node.name.ifBlank { node.id }} Confirmar antes de la ejecución",
+                            reason = "团队成员 ${node.name.ifBlank { node.id }} 执行前确认",
                             options = listOf(
                                 DelegationPauseManager.PauseOption.APPROVE,
                                 DelegationPauseManager.PauseOption.REJECT,
@@ -281,22 +289,28 @@ class TeamWorkflowExecutor(
                         val resp = pauseManager.awaitPauseDecision(pauseReq, pausePolicy)
                         when (resp.decision) {
                             DelegationPauseManager.PauseDecision.CANCEL ->
-                                return errorResult(parentRequestId, "El usuario cancela el flujo de trabajo del equipo", startedAt)
+                                return errorResult(parentRequestId, "用户取消团队工作流", startedAt)
                             DelegationPauseManager.PauseDecision.REJECT -> {
-                                // saltar este nodo,Marcar como fallido
+                                // 跳过该节点,标记为失败
                                 executed[node.id] = errorResult(
                                     "$parentRequestId/${node.id}",
-                                    "El usuario se niega a ejecutar el nodo.",
+                                    pauseManager.rejectionText(
+                                        resp,
+                                        pausePolicy,
+                                        subject = "该节点",
+                                        userRejected = "用户拒绝执行该节点",
+                                        userCancelled = "用户取消团队工作流",
+                                    ),
                                     System.currentTimeMillis(),
                                 )
                                 pending.remove(node)
                             }
                             DelegationPauseManager.PauseDecision.APPROVE,
                             DelegationPauseManager.PauseDecision.MODIFY,
-                            -> { /* Continuar la ejecución */ }
+                            -> { /* 继续执行 */ }
                         }
                     }
-                    // Si se rechazan todos los nodos listos,Continuar a la siguiente ronda.
+                    // 如果所有 ready 节点都被拒绝,继续下一轮
                     if (executableReady.all { executed.containsKey(it.id) }) {
                         pending.removeAll(executableReady)
                         continue
@@ -306,11 +320,19 @@ class TeamWorkflowExecutor(
                 val runnable = executableReady.filterNot { executed.containsKey(it.id) }
                 if (runnable.isEmpty()) continue
 
-                // Los nodos en la misma capa determinan serie o paralelo según el modo.
+                // 同一层节点按 mode 决定串行或并行
                 val sequential = runnable.first().mode == DelegationContract.TeamWorkflowNode.Mode.SEQUENTIAL
                 val layerResults: List<DelegationContract.DelegationResult> = if (sequential) {
                     runnable.map { node ->
-                        executed[node.id] ?: executeNode(node, teamTask, parentRequestId, baseContext, executed, effectiveRunId, nodeSeqMap[node.id] ?: -1).also {
+                        executed[node.id] ?: executeNode(
+                            node,
+                            teamTask,
+                            parentRequestId,
+                            baseContext,
+                            executed,
+                            effectiveRunId,
+                            nodeSeqMap[node.id] ?: -1,
+                        ).also {
                             executed[node.id] = it
                         }
                     }
@@ -328,7 +350,7 @@ class TeamWorkflowExecutor(
             val resultText = aggregateResults(workflow.aggregationStrategy, orderedResults, teamTask)
             val finishedAt = System.currentTimeMillis()
 
-            // v1.202: Construir árbol de subresultados,Proporciona un árbol de interfaz de usuario para mostrar el estado de ejecución de los miembros del flujo de trabajo del equipo.
+            // v1.202: 构造子结果树,供 UI 树形展示团队工作流成员执行状态
             val subResultTree = buildSubResultTree(nodes, orderedResults, teamTask)
 
             return DelegationContract.DelegationResult(
@@ -346,7 +368,7 @@ class TeamWorkflowExecutor(
                 subResultTree = subResultTree,
             )
         } catch (e: Exception) {
-            return errorResult(parentRequestId, "Excepción de ejecución del flujo de trabajo: ${e.message}", startedAt)
+            return errorResult(parentRequestId, "工作流执行异常: ${e.message}", startedAt)
         }
     }
 
@@ -356,17 +378,17 @@ class TeamWorkflowExecutor(
         parentRequestId: String,
         baseContext: List<UIMessage>,
         executed: Map<String, DelegationContract.DelegationResult>,
-        /** v1.0.53 Phase 2: journal run id(null Saltar registros del diario cuando). */
+        /** v1.0.53 Phase 2: journal run id(null 时跳过 journal 记录)。 */
         runId: String? = null,
-        /** v1.0.53 Phase 2: Número de serie del nodo(Utilizado para registros de diario.;-1 salto de tiempo). */
+        /** v1.0.53 Phase 2: 节点序号(用于 journal 记录;-1 时跳过)。 */
         nodeSeq: Int = -1,
     ): DelegationContract.DelegationResult {
         val childRequestId = "$parentRequestId/${node.id}"
         val task = buildNodeTask(node, teamTask, executed)
 
-        // v1.202 Transformación 2: juicio de condición verdadera del nodo CONDICIONAL.
-        // Requerido cuando falta el servicio condicional, la llamada falla o devuelve algo distinto de SÍ/NO fail-closed,no puedo poner
-        // “incapaz de juzgar”Como“permitir la ejecución”,De lo contrario, las delegaciones posteriores podrían tener efectos secundarios externos.
+        // v1.202 改造 2: CONDITIONAL 节点真条件判断。
+        // 条件服务缺失、调用失败或返回非 YES/NO 时必须 fail-closed,不能把
+        // “无法判断”当成“允许执行”,否则后续委派可能产生外部副作用。
         if (node.mode == DelegationContract.TeamWorkflowNode.Mode.CONDITIONAL &&
             node.dependsOn.isNotEmpty()
         ) {
@@ -400,10 +422,10 @@ class TeamWorkflowExecutor(
                     return errorResult(childRequestId, reason, System.currentTimeMillis())
                 }
                 ConditionalDecision.Skip -> {
-                    // Marcado como omitido:resultTextDejar en blanco,Resultados agregados naturalmente isNotBlank() filtrar
+                    // 标记为 skipped:resultText 留空,自然被 aggregateResults 的 isNotBlank() 过滤
                     skippedRequestIds.add(childRequestId)
-                    // Sincronizar con el rastreador de enlaces:Iniciar + finalizar inmediatamente(skipped Estado)
-                    // usar "(saltado)" como vista previa del resultado,UI Las tarjetas pueden mostrar directamente el motivo de la omisión
+                    // 同步到链路追踪器:开始 + 立即结束(skipped 状态)
+                    // 用 "(已跳过)" 作为结果预览,UI 卡片可直接展示跳过原因
                     delegationChainTracker?.onDelegationStarted(
                         requestId = childRequestId,
                         parentRequestId = parentRequestId,
@@ -415,9 +437,9 @@ class TeamWorkflowExecutor(
                     delegationChainTracker?.onDelegationFinished(
                         requestId = childRequestId,
                         success = true,
-                        resultText = "(saltado: Condición no cumplida)",
+                        resultText = "(已跳过: 条件不满足)",
                     )
-                    // v1.0.53 Phase 2: CONDITIONAL Una determinación de NO es un resultado determinista.(temperatura=0),registrado como llm_deterministic
+                    // v1.0.53 Phase 2: CONDITIONAL 判定为 NO 属确定性结果(温度=0),记为 llm_deterministic
                     recordToJournal(runId, nodeSeq, task, node, "(skipped)", "done", WorkflowJournal.NODE_KIND_LLM_DETERMINISTIC)
                     return skippedResult(childRequestId)
                 }
@@ -426,8 +448,8 @@ class TeamWorkflowExecutor(
 
         val contextMessages = buildNodeContext(node, baseContext, executed)
 
-        // v1.202 Modificación 1: Notificar al rastreador de enlaces que comienza la delegación
-        // parentRequestId El mecanismo insertará automáticamente este nodo secundario en el nodo principal. subNodes
+        // v1.202 改造 1: 通知链路追踪器委派开始
+        // parentRequestId 机制会自动把此子节点插入父节点的 subNodes
         delegationChainTracker?.onDelegationStarted(
             requestId = childRequestId,
             parentRequestId = parentRequestId,
@@ -448,7 +470,7 @@ class TeamWorkflowExecutor(
         )
         val result = delegate(request)
 
-        // v1.202 Modificación 1: Notificar al rastreador de enlaces que la delegación está completa,Actualizar el estado del nodo secundario
+        // v1.202 改造 1: 通知链路追踪器委派完成,更新子节点状态
         delegationChainTracker?.onDelegationFinished(
             requestId = childRequestId,
             success = result.success,
@@ -456,7 +478,7 @@ class TeamWorkflowExecutor(
             error = result.error,
         )
 
-        // v1.0.53 Phase 2: Registre los resultados del nodo de delegación a journal(delegation clase,Los resultados de la herramienta se pueden almacenar en caché)
+        // v1.0.53 Phase 2: 记录委派节点结果到 journal(delegation 类,工具结果可缓存)
         recordToJournal(
             runId,
             nodeSeq,
@@ -470,7 +492,7 @@ class TeamWorkflowExecutor(
     }
 
     /**
-     * v1.0.53 Phase 2: Registre los resultados del nodo en journal(ignorar null runId / -1 nodeSeq).
+     * v1.0.53 Phase 2: 记录节点结果到 journal(忽略 null runId / -1 nodeSeq)。
      */
     private suspend fun recordToJournal(
         runId: String?,
@@ -493,14 +515,14 @@ class TeamWorkflowExecutor(
         parentRequestId: String,
         baseContext: List<UIMessage>,
         executed: Map<String, DelegationContract.DelegationResult>,
-        /** v1.0.53 Phase 2: journal run id. */
+        /** v1.0.53 Phase 2: journal run id。 */
         runId: String? = null,
-        /** v1.0.53 Phase 2: nodo id → seq cartografía. */
+        /** v1.0.53 Phase 2: 节点 id → seq 映射。 */
         nodeSeqMap: Map<String, Int> = emptyMap(),
     ): Map<String, DelegationContract.DelegationResult> = coroutineScope {
         nodes.associate { node ->
             node.id to async {
-                // v1.0.53: Los nodos paralelos también adoptan la vista global. limiter,Evite que el paralelismo del equipo + la delegación del agente maestro superpongan la concurrencia.
+                // v1.0.53: 并行节点也走全局 limiter,防止团队并行 + 主 agent 委派叠加爆并发
                 concurrencyLimiter.run {
                     executeNode(node, teamTask, parentRequestId, baseContext, executed, runId, nodeSeqMap[node.id] ?: -1)
                 }
@@ -517,11 +539,11 @@ class TeamWorkflowExecutor(
         if (node.dependsOn.isEmpty()) return base
         val dependencySummary = node.dependsOn.joinToString("\n\n") { depId ->
             val dep = executed[depId]
-            val header = "## Pasos preliminares $depId resultado"
+            val header = "## 前置步骤 $depId 结果"
             when {
-                dep == null -> "$header: (No ejecutado)"
+                dep == null -> "$header: (未执行)"
                 dep.success -> "$header:\n${dep.resultText.take(2000)}"
-                else -> "$header:\nerror: ${dep.error ?: "error desconocido"}"
+                else -> "$header:\n错误: ${dep.error ?: "未知错误"}"
             }
         }
         return """$base
@@ -537,7 +559,7 @@ $dependencySummary
     ): List<UIMessage> {
         val messages = baseContext.toMutableList()
         if (node.mode == DelegationContract.TeamWorkflowNode.Mode.CONDITIONAL && node.dependsOn.isNotEmpty()) {
-            // nodo de condición:Inyecte resultados previos al éxito cuando el sistema lo solicite,Juicio auxiliar sobre si ejecutar/como ejecutar
+            // 条件节点:把前置成功结果作为 system 提示注入,辅助判断是否执行/如何执行
             val conditionContext = node.dependsOn.mapNotNull { executed[it] }
                 .filter { it.success }
                 .joinToString("\n") { "[${it.requestId}]: ${it.resultText.take(500)}" }
@@ -545,7 +567,7 @@ $dependencySummary
                 messages.add(
                     UIMessage(
                         role = MessageRole.SYSTEM,
-                        content = "Continuar la ejecución cuando se cumplan las siguientes condiciones::\n$conditionContext",
+                        content = "以下条件成立时继续执行:\n$conditionContext",
                     ),
                 )
             }
@@ -553,7 +575,7 @@ $dependencySummary
         return messages
     }
 
-    /** B3-08: Resultado experto similitud de 3 gramos(0~1),para la agrupación por consenso. */
+    /** B3-08: 专家结果 3-gram 相似度(0~1),用于共识聚类。 */
     private fun expertTextSimilarity(a: String, b: String): Double {
         fun grams(s: String): Set<String> {
             val clean = s.lowercase().filter { it.isLetterOrDigit() }
@@ -571,27 +593,27 @@ $dependencySummary
         teamTask: String,
     ): String {
         val successful = results.filter { it.success && it.resultText.isNotBlank() }
-        if (successful.isEmpty()) return "(No hay resultados disponibles)"
+        if (successful.isEmpty()) return "(无可用结果)"
 
         return when (strategy) {
             DelegationContract.TeamWorkflow.AggregationStrategy.MERGE -> {
                 buildString {
-                    appendLine("Resumen de los resultados de la ejecución del equipo:")
+                    appendLine("团队执行结果汇总:")
                     successful.forEachIndexed { idx, r ->
                         appendLine()
-                        appendLine("--- subresultados ${idx + 1} [${r.metadata.assistantName ?: r.metadata.assistantId ?: r.requestId}] ---")
+                        appendLine("--- 子结果 ${idx + 1} [${r.metadata.assistantName ?: r.metadata.assistantId ?: r.requestId}] ---")
                         appendLine(r.resultText)
                     }
                 }.trimEnd()
             }
             DelegationContract.TeamWorkflow.AggregationStrategy.VOTE -> {
-                // voto simple:Cuente la frecuencia después de deduplicar los resultados.,Devolver los resultados más frecuentes
+                // 简单投票:结果去重后统计频次,返回最高频结果
                 val votes = successful.groupingBy { it.resultText }.eachCount()
                 val best = votes.maxByOrNull { it.value }
-                "Resultados de la votación(total ${successful.size} billete): Los resultados más frecuentes aparecen ${best?.value} veces\n\n${best?.key ?: ""}"
+                "投票结果(共 ${successful.size} 票): 最高频结果出现 ${best?.value} 次\n\n${best?.key ?: ""}"
             }
             DelegationContract.TeamWorkflow.AggregationStrategy.EXPERT_REVIEW -> {
-                // B3-08: El consenso primero — Haga primero el agrupamiento por similitud,La mayoría produce directamente;Revisión integral de LLM sin consenso
+                // B3-08: 共识优先 — 先做相似度聚类,多数派直接输出;无共识时调 LLM 综合评审
                 val clusters = mutableListOf<MutableList<DelegationContract.DelegationResult>>()
                 for (r in successful) {
                     val target = clusters.firstOrNull { cluster ->
@@ -602,7 +624,7 @@ $dependencySummary
                 val majority = clusters.maxByOrNull { it.size }
                 if (majority != null && majority.size >= 2) {
                     val consensus = majority.maxByOrNull { it.resultText.length }
-                    "Consenso de expertos(${majority.size}/${successful.size}):\n\n${consensus?.resultText ?: ""}"
+                    "专家共识(${majority.size}/${successful.size}):\n\n${consensus?.resultText ?: ""}"
                 } else {
                     val candidates = successful.map { r ->
                         AgentResultAggregator.Candidate(
@@ -623,7 +645,7 @@ $dependencySummary
                         aggregation.output
                     } else {
                         val expert = successful.maxByOrNull { it.resultText.length }
-                        "Resultados de la selección de la revisión de expertos:\n\n${expert?.resultText ?: ""}"
+                        "专家评审选定结果:\n\n${expert?.resultText ?: ""}"
                     }
                 }
             }
@@ -631,9 +653,9 @@ $dependencySummary
                 successful.first().resultText
             }
             DelegationContract.TeamWorkflow.AggregationStrategy.LLM_REVIEW -> {
-                // v1.201: LLM Revisión completa — Convertir resultado de delegación a Candidate,
-                // Llame a AgentResultAggregator.aggregate y páselo llmAggregator?.review como llmReviewer.
-                // llmAggregator es nulo o cuando falla la llamada LLM,AgentResultAggregator Rebaja de categoría interna a EXPERT_REVIEW.
+                // v1.201: LLM 综合评审 — 把 DelegationResult 转换为 Candidate,
+                // 调用 AgentResultAggregator.aggregate 并传入 llmAggregator?.review 作为 llmReviewer。
+                // llmAggregator 为 null 或 LLM 调用失败时,AgentResultAggregator 内部降级为 EXPERT_REVIEW。
                 val candidates = successful.map { r ->
                     AgentResultAggregator.Candidate(
                         source = r.metadata.assistantName
@@ -647,7 +669,7 @@ $dependencySummary
                     candidates = candidates,
                     strategy = AgentResultAggregator.Strategy.LLM_REVIEW,
                     question = teamTask,
-                    // No hay transmisión cuando el interruptor está cerrado. reviewer,AgentResultAggregator Se bajará automáticamente a EXPERT_REVIEW.
+                    // 开关关闭时不传 reviewer,AgentResultAggregator 会自动降级为 EXPERT_REVIEW。
                     llmReviewer = if (llmReviewEnabled) {
                         llmAggregator?.let { agg -> { c, q -> agg.review(c, q) } }
                     } else {
@@ -674,11 +696,11 @@ $dependencySummary
     }
 
     /**
-     * v1.202 Modificación 2: omitir resultados para nodos CONDICIONALES.
+     * v1.202 改造 2: CONDITIONAL 节点的跳过结果。
      *
-     * - success=true(Saltarse no cuenta como fracaso,No afecta la agregación de errores.)
-     * - resultText dejar en blanco,Naturalmente [aggregateResults] de `it.resultText.isNotBlank()` filtrar
-     * - requestId Unirse [skippedRequestIds],suministro [buildSubResultTree] marcar el estado como "skipped"
+     * - success=true(跳过不算失败,不影响 errors 聚合)
+     * - resultText 留空,自然被 [aggregateResults] 的 `it.resultText.isNotBlank()` 过滤
+     * - requestId 加入 [skippedRequestIds],供 [buildSubResultTree] 把 status 标记为 "skipped"
      */
     private fun skippedResult(requestId: String): DelegationContract.DelegationResult {
         val now = System.currentTimeMillis()
@@ -695,14 +717,14 @@ $dependencySummary
     }
 
     /**
-     * v1.202 Modificación 2: utilice LLM para determinar si se debe ejecutar el nodo CONDICIONAL.
+     * v1.202 改造 2: 用 LLM 判断 CONDITIONAL 节点是否应该执行。
      *
-     * Puntos de implementación:
-     *  - construcción corta prompt,Proporcione el resumen del resultado anterior + la tarea actual a LLM,Solicitar solo respuesta YES/NO
-     *  - temperature=0 Certeza garantizada,maxTokens=10 Evite que LLM sea detallado y derrochador token
-     *  - coincidencia de prioridad NO(Evite errores de juicio al contener SÍ/NO)
-     *  - LLM llamada fallida/tiempo de espera/Excepción fail-closed,Evitar que el nodo se ejecute
-     *  - Impide la ejecución incluso si todos los resultados anteriores están vacíos.,Evite la provocación infundada de efectos secundarios.
+     * 实现要点:
+     *  - 构造简短 prompt,把前置结果摘要 + 当前任务交给 LLM,要求只回答 YES/NO
+     *  - temperature=0 保证确定性,maxTokens=10 防止 LLM 啰嗦浪费 token
+     *  - 优先匹配 NO(避免同时含 YES/NO 时误判)
+     *  - LLM 调用失败/超时/异常时 fail-closed,阻止该节点执行
+     *  - 前置结果全为空时也阻止执行,避免无依据地触发副作用
      */
     private suspend fun evaluateConditional(
         node: DelegationContract.TeamWorkflowNode,
@@ -710,35 +732,35 @@ $dependencySummary
     ): ConditionalDecision {
         val previousResults = node.dependsOn.mapNotNull { depId ->
             executed[depId]?.let { dep ->
-                val status = if (dep.success) "éxito" else "falló"
+                val status = if (dep.success) "成功" else "失败"
                 "[$depId]($status): ${dep.resultText.take(500)}"
             }
         }.joinToString("\n")
-        // No hay resultados previos para hacer referencia.,impedir la ejecución
+        // 无前置结果可参考,阻止执行
         if (previousResults.isBlank()) {
-            return ConditionalDecision.Failed("El juicio condicional carece de resultados previos,El nodo ha sido bloqueado para su ejecución.")
+            return ConditionalDecision.Failed("条件判断缺少前置结果,已阻止执行该节点")
         }
 
         val nodeTask = node.taskTemplate.ifBlank { node.name.ifBlank { node.id } }
-        val prompt = """Según los siguientes pre-resultados,Determinar si se debe realizar una tarea."$nodeTask". Responda SÍ o NO.
+        val prompt = """根据以下前置结果,判断是否应该执行任务"$nodeTask"。回答 YES 或 NO。
 
-preresultado:
+前置结果:
 $previousResults
 
-Simplemente responda SÍ o NO,No expliques.
+只回答 YES 或 NO,不要解释。
         """.trimIndent()
 
         val messages = listOf(
             UIMessage(
                 role = MessageRole.SYSTEM,
-                content = "Eres un juez estricto de las condiciones del flujo de trabajo.,Simplemente responda SÍ o NO,No genere nada más.",
+                content = "你是严谨的工作流条件判断器,只回答 YES 或 NO,不要输出其他内容。",
             ),
             UIMessage(role = MessageRole.USER, content = prompt),
         )
 
-        // resultOf{} Relanzamiento automático CancellationException,No rompe la semántica de cancelación de rutinas
+        // resultOf{} 自动重抛 CancellationException,不破坏协程取消语义
         val service = chatService
-            ?: return ConditionalDecision.Failed("El servicio de juicio condicional no está disponible,El nodo ha sido bloqueado para su ejecución.")
+            ?: return ConditionalDecision.Failed("条件判断服务不可用,已阻止执行该节点")
         val completion = resultOf {
             service.completeText(
                 messages = messages,
@@ -746,22 +768,22 @@ Simplemente responda SÍ o NO,No expliques.
                 maxTokens = 10,
             )
         }.onError { msg, t ->
-            Logger.w("TeamWorkflowExecutor", "CONDITIONAL Falló la convocatoria de LLM de juicio condicional,Ejecución de nodo bloqueada: $msg", t)
-        }.getOrNull() ?: return ConditionalDecision.Failed("La decisión de juicio condicional falló,El nodo ha sido bloqueado para su ejecución.")
+            Logger.w("TeamWorkflowExecutor", "CONDITIONAL 条件判断 LLM 调用失败,已阻止节点执行: $msg", t)
+        }.getOrNull() ?: return ConditionalDecision.Failed("条件判断调用失败,已阻止执行该节点")
 
         val text = completion.text.trim().uppercase()
         return when {
             text.startsWith("NO") -> ConditionalDecision.Skip
             text.startsWith("YES") -> ConditionalDecision.Execute
-            else -> ConditionalDecision.Failed("El juicio condicional arroja resultados irreconocibles,El nodo ha sido bloqueado para su ejecución.")
+            else -> ConditionalDecision.Failed("条件判断返回无法识别的结果,已阻止执行该节点")
         }
     }
 
     /**
-     * v1.202 Transformación 1: construir el resultado de la ejecución del flujo de trabajo en [DelegationContract.SubResultNode] árbol.
+     * v1.202 改造 1: 把工作流执行结果构造成 [DelegationContract.SubResultNode] 树。
      *
-     * Los flujos de trabajo son listas planas de miembros,Por lo tanto, los niños están vacíos.;Los niños se procesarán de forma recursiva cuando se admitan flujos de trabajo anidados en el futuro.
-     * status valor:success / failed / skipped(skipped de [skippedRequestIds]).
+     * 工作流是扁平的成员列表,故 children 为空;未来支持嵌套工作流时再递归处理 children。
+     * status 取值:success / failed / skipped(skipped 来自 [skippedRequestIds])。
      */
     private fun buildSubResultTree(
         nodes: List<DelegationContract.TeamWorkflowNode>,
@@ -770,7 +792,7 @@ Simplemente responda SÍ o NO,No expliques.
     ): List<DelegationContract.SubResultNode> {
         if (orderedResults.isEmpty()) return emptyList()
         return orderedResults.mapIndexed { idx, result ->
-            // Alinear con resultados ordenados:nodes También mapeado en orden ejecutado.;Si hay escasez de nodos, utilice nombres vacíos para cubrirlo.
+            // 与 orderedResults 对齐:nodes 也按 executed 顺序映射;若 nodes 短缺则用空名兜底
             val node = nodes.getOrNull(idx)
             val assistantId = result.metadata.assistantId ?: node?.assistantId ?: ""
             val assistantName = result.metadata.assistantName

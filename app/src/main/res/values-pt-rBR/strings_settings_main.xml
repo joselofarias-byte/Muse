@@ -19,6 +19,8 @@
     <string name="settings_provider_empty_title">Ainda não há provedores</string>
     <string name="settings_provider_empty_subtitle">Adicione um provedor para o assistente começar a funcionar</string>
     <string name="settings_provider_empty_action">Adicionar provedor</string>
+    <string name="settings_provider_free_ready_title">Os modelos gratuitos integrados estão prontos</string>
+    <string name="settings_provider_free_ready_subtitle">Já dá para conversar. Adicionar seu próprio provedor é opcional e amplia cota e recursos.</string>
     <string name="settings_provider_category_official">Oficial</string>
     <string name="settings_provider_category_relay">Relé</string>
     <string name="settings_provider_category_custom">Personalizado</string>
@@ -44,9 +46,9 @@
     <string name="settings_provider_unable_to_resolve_server">Não é possível resolver o endereço do servidor</string>
     <string name="settings_provider_query_timeout">A consulta expirou</string>
     <string name="settings_provider_query_failed">Falha na consulta: %1$s</string>
-    <string name="settings_provider_discard_changes_title">Descartar alterações?</string>
-    <string name="settings_provider_discard_changes_content">Você tem alterações não salvas que serão perdidas.</string>
-    <string name="settings_provider_discard">Descartar</string>
+    <string name="settings_unsaved_changes_title">Descartar alterações?</string>
+    <string name="settings_unsaved_changes_content">Você tem alterações não salvas que serão perdidas.</string>
+    <string name="settings_unsaved_discard">Descartar</string>
     <string name="settings_provider_new">Novo provedor</string>
     <!-- v2.4: standalone connection test result messages (short, distinct from fetchModels error grading) -->
     <string name="settings_provider_test_success_count">Conexão OK · Modelos %1$d</string>
@@ -68,6 +70,7 @@
     <string name="settings_provider_tab_models">Modelos</string>
     <string name="settings_provider_file_picker_failed">Não é possível abrir o seletor de arquivos: %1$s</string>
     <string name="settings_provider_delete_title">Excluir provedor</string>
+    <string name="settings_provider_delete_consequence">A chave de API e a lista de modelos configurada também serão excluídas.</string>
     <string name="settings_provider_delete_content">Tem certeza de que deseja excluir %1$s?</string>
     <string name="settings_provider_action_activate">Definir como atual</string>
     <string name="settings_model_catalog_refresh">Verificar atualizações</string>
@@ -307,6 +310,8 @@
     <string name="settings_chat_show_timestamp">Mostrar carimbo de data/hora</string>
     <string name="settings_chat_show_timestamp_subtitle">Mostrar o horário de envio de cada mensagem</string>
     <string name="settings_chat_generation_style">Estilo de Geração</string>
+    <string name="settings_chat_reply_language">Responder no idioma do usuário</string>
+    <string name="settings_chat_reply_language_subtitle">As respostas seguem o idioma da sua mensagem e, sem definição, o do app. Desative para que os prompts decidam</string>
     <string name="settings_chat_randomness">Aleatoriedade de resposta</string>
     <string name="settings_chat_temp_hint_certain">Determinístico, estável e previsível</string>
     <string name="settings_chat_temp_hint_balanced_low">Inclinação equilibrada, estável, mas diversificada</string>
@@ -382,12 +387,19 @@
     <string name="cloud_backup_backup_now">Fazer backup agora</string>
     <string name="cloud_backup_backup_success">Enviado para a nuvem</string>
     <string name="cloud_backup_config_saved">Configuração salva</string>
+    <string name="cloud_backup_config_save_failed">Falha ao salvar</string>
     <string name="cloud_backup_delete_failed">Falha ao excluir</string>
+    <string name="cloud_backup_delete_consequence">Esta versão na nuvem será excluída permanentemente. Se for a única cópia, você perde a alternativa de recuperação na nuvem.</string>
     <string name="cloud_backup_delete_success">Excluído</string>
     <string name="cloud_backup_delete_this">Excluir</string>
     <string name="cloud_backup_enable">Ativar backup na nuvem</string>
     <string name="cloud_backup_hide_secret">Ocultar</string>
     <string name="cloud_backup_interval_hint">Intervalos menores significam envios mais frequentes, consumindo mais dados e bateria; para bases grandes, recomenda-se ≥ 3 dias</string>
+    <plurals name="cloud_backup_interval_days">
+        <item quantity="one">%1$d dia</item>
+        <item quantity="other">%1$d dias</item>
+        <item quantity="many">%1$d dias</item>
+    </plurals>
     <string name="cloud_backup_interval_label">Intervalo de backup (dias)</string>
     <string name="cloud_backup_list_empty">Nenhum backup remoto ainda</string>
     <string name="cloud_backup_list_load_failed">Falha ao carregar; verifique a configuração e tente novamente</string>
@@ -413,7 +425,7 @@
     <string name="cloud_backup_type_webdav">WebDAV</string>
     <string name="settings_chat_expand_button">Mostrar botão de edição em tela cheia</string>
     <string name="settings_chat_expand_button_subtitle">Mostrar botão de edição em tela cheia à direita da barra de entrada</string>
-    <!-- Correcciones en la interfaz (i18n-3.x): restricciones de contexto del piso i18n(Copiar temporalmente chino,Traducción posterior) -->
+    <!-- 前端修复 (i18n-3.x): 楼层式上下文限制 i18n(临时复制中文,后续补译) -->
     <string name="settings_chat_floor_limiter">Limite de contexto por andares</string>
     <string name="settings_chat_floor_limiter_subtitle">Trata mensagens do usuário como andares, mantém os últimos N andares completos para evitar cortar no meio da conversa</string>
     <string name="settings_chat_tool_rounds">Limite de rodadas de ferramentas</string>
@@ -423,7 +435,7 @@
     <string name="settings_chat_floor_keep">Andares a manter</string>
     <string name="settings_chat_floor_keep_subtitle">Mensagens antigas além dessa contagem de andares são truncadas</string>
 
-    <!-- Correcciones en la interfaz (i18n-3.x): Copia de compensación pública(Emoticones/Compartir memoria de chat grupal) -->
+    <!-- 前端修复 (i18n-3.x): 公共清空文案(表情包/群聊记忆共用) -->
     <string name="settings_common_clear_all">Limpar tudo</string>
     <string name="settings_common_clear">Limpar</string>
     <string name="settings_chat_background_section">Aparência</string>

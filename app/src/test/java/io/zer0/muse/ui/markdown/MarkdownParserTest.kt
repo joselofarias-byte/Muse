@@ -6,11 +6,11 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Phase 11.4: MarkdownParser Pruebas unitarias.
+ * Phase 11.4: MarkdownParser 单元测试。
  *
- * Anular tipos de nivel de bloque de claves:Paragraph / Heading / CodeBlock / ListItem / Quote / Divider / Blank / Formula.
- * formato en línea(Negrita/cursiva/código en línea/enlace)Procesado al renderizar con MarkdownText Composable,
- * Parser Solo responsable de la segmentación a nivel de bloque,Por lo tanto, aquí no hay ninguna prueba.
+ * 覆盖关键块级类型:Paragraph / Heading / CodeBlock / ListItem / Quote / Divider / Blank / Formula。
+ * 行内格式(粗体/斜体/行内代码/链接)在 MarkdownText Composable 渲染时处理,
+ * Parser 只负责块级切分,故此处不测行内。
  */
 class MarkdownParserTest {
 
@@ -72,7 +72,7 @@ class MarkdownParserTest {
         val md = "- apple\n- banana\n- cherry"
         val blocks = parseMarkdown(md)
         assertEquals(3, blocks.size)
-        // El campo de índice de la lista desordenada no incrementa(siempre 0);La lista ordenada se incrementa
+        // 无序列表的 index 字段不递增(始终为 0);有序列表才递增
         blocks.forEach { block ->
             val item = block as MarkdownBlock.ListItem
             assertEquals(false, item.ordered)
@@ -103,7 +103,7 @@ class MarkdownParserTest {
     fun `blank line preserves as Blank`() {
         val md = "paragraph 1\n\nparagraph 2"
         val blocks = parseMarkdown(md)
-        // Expectativa:Paragraph / Blank / Paragraph
+        // 期望:Paragraph / Blank / Paragraph
         assertEquals(3, blocks.size)
         assertTrue(blocks[0] is MarkdownBlock.Paragraph)
         assertTrue(blocks[1] is MarkdownBlock.Blank)
@@ -134,7 +134,7 @@ class MarkdownParserTest {
             appendLine("```")
         }
         val blocks = parseMarkdown(md.trimEnd())
-        // orden esperado:Heading / Blank / Paragraph / Blank / ListItem / ListItem / Blank / CodeBlock
+        // 期望顺序:Heading / Blank / Paragraph / Blank / ListItem / ListItem / Blank / CodeBlock
         assertTrue(blocks[0] is MarkdownBlock.Heading)
         assertTrue(blocks[1] is MarkdownBlock.Blank)
         assertTrue(blocks[2] is MarkdownBlock.Paragraph)
@@ -149,63 +149,63 @@ class MarkdownParserTest {
     fun `formula block parses`() {
         val md = "\$\$\nE = mc^2\n\$\$"
         val blocks = parseMarkdown(md)
-        // Análisis de bloques de fórmulas(Phase 8.6)
+        // 公式块解析(Phase 8.6)
         val formula = blocks.firstOrNull { it is MarkdownBlock.Formula } as? MarkdownBlock.Formula
         assertTrue(formula != null)
         assertTrue(formula!!.latex.contains("E = mc^2"))
     }
 
     @Test
-    fun `formula block Cierre de pares recortado para comenzar y terminar con doble dólar`() {
-        // fórmula cerrada entre pares:$$ E = mc^2 $$(a $$ comenzando con $$ finalizando,longitud > 4)
+    fun `formula block 同行闭合 trimmed 为开头结尾双美元`() {
+        // 同行闭合公式:$$ E = mc^2 $$(以 $$ 开头且以 $$ 结尾,长度 > 4)
         val md = "\$\$ E = mc^2 \$\$"
         val blocks = parseMarkdown(md)
-        // no debe confundirse con Paragraph,debe ser soltero Formula
-        assertEquals("La fórmula de cierre de pares debe producir solo 1 bloque,real ${blocks.size}", 1, blocks.size)
+        // 不应被误识别为 Paragraph,必须是单个 Formula
+        assertEquals("同行闭合公式应只产生 1 个块,实际 ${blocks.size}", 1, blocks.size)
         val formula = blocks[0] as? MarkdownBlock.Formula
-        assertTrue("Debe ser de tipo Fórmula,real ${blocks[0]::class.simpleName}", formula != null)
+        assertTrue("应为 Formula 类型,实际 ${blocks[0]::class.simpleName}", formula != null)
         assertEquals("E = mc^2", formula!!.latex)
     }
 
     @Test
-    fun `formula block El cierre paralelo contiene el signo igual y letras griegas`() {
+    fun `formula block 同行闭合含等号与希腊字母`() {
         val md = "\$\$ \\alpha + \\beta = \\gamma \$\$"
         val blocks = parseMarkdown(md)
         val formula = blocks.firstOrNull { it is MarkdownBlock.Formula } as? MarkdownBlock.Formula
-        assertTrue("debe ser identificado como Formula", formula != null)
+        assertTrue("应识别为 Formula", formula != null)
         assertTrue(formula!!.latex.contains("\\alpha"))
         assertTrue(formula.latex.contains("\\gamma"))
     }
 
     @Test
-    fun `dollar El texto sin formato con prefijo no se reconoce erróneamente como una fórmula`() {
-        // M2 Reparación:solo $$ comienzo + $$ final y longitud>4 esa es la formula;simplemente $$ El texto normal al principio se procesa como párrafos.
-        // Usado aquí "$$ El precio es 100 yuanes." Simulación:a $$ comenzando pero no con $$ finalizando,debe usarse como Paragraph
-        val md = "\$\$ El precio es 100 yuanes."
+    fun `dollar 前缀的普通文本不被误识别为公式`() {
+        // M2 修复:仅 $$ 开头 + $$ 结尾且长度>4 才是公式;单纯以 $$ 开头的普通文本按段落处理
+        // 此处用 "$$ 价格是 100 元" 模拟:以 $$ 开头但不以 $$ 结尾,应作为 Paragraph
+        val md = "\$\$ 价格是 100 元"
         val blocks = parseMarkdown(md)
-        // El bloque Fórmula no debería aparecer
+        // 不应出现 Formula 块
         val hasFormula = blocks.any { it is MarkdownBlock.Formula }
-        assertFalse("No debe reconocerse como un bloque de fórmula", hasFormula)
-        // El primer bloque debe ser Paragraph,Mantener el texto original.(trim después)
+        assertFalse("不应被识别为公式块", hasFormula)
+        // 第一块应为 Paragraph,保留原文(trim 后)
         val para = blocks.firstOrNull { it is MarkdownBlock.Paragraph } as? MarkdownBlock.Paragraph
-        assertTrue("Debe manejarse como párrafo", para != null)
-        assertTrue(para!!.text.contains("precio"))
+        assertTrue("应作为 Paragraph 处理", para != null)
+        assertTrue(para!!.text.contains("价格"))
     }
 
     @Test
-    fun `La fila de un solo dólar no se reconoce como fórmula`() {
-        // Sólo toda la fila es exactamente $$ Simplemente ingrese el bloque de fórmulas;soltero $ debería ser Paragraph
+    fun `单个 dollar 行不识别为公式`() {
+        // 仅整行恰好为 $$ 才进入公式块;单个 $ 应为 Paragraph
         val md = "\$100"
         val blocks = parseMarkdown(md)
         val hasFormula = blocks.any { it is MarkdownBlock.Formula }
-        assertFalse("soltero \$ no debe ser reconocido como una fórmula", hasFormula)
+        assertFalse("单 \$ 不应识别为公式", hasFormula)
         assertEquals(1, blocks.size)
         assertTrue(blocks[0] is MarkdownBlock.Paragraph)
     }
 
     @Test
-    fun `Los bloques de fórmulas de varias líneas abarcan varias líneas de contenido`() {
-        // fórmula de varias líneas:$$ empezar,Varias líneas en el medio latex,hasta contener $$ final de línea
+    fun `多行公式块跨多行内容`() {
+        // 多行公式:$$ 开始,中间多行 latex,直到含 $$ 的行结束
         val md = buildString {
             append("\$\$")
             append("\n\\begin{aligned}")
@@ -216,7 +216,7 @@ class MarkdownParserTest {
         }
         val blocks = parseMarkdown(md)
         val formula = blocks.firstOrNull { it is MarkdownBlock.Formula } as? MarkdownBlock.Formula
-        assertTrue("Debe reconocerse como varias líneas. Formula", formula != null)
+        assertTrue("应识别为多行 Formula", formula != null)
         assertTrue(formula!!.latex.contains("aligned"))
         assertTrue(formula.latex.contains("x &= 1 + 2"))
         assertTrue(formula.latex.contains("y &= 3 + 4"))
@@ -225,22 +225,22 @@ class MarkdownParserTest {
     @Test
     fun `empty string returns empty list`() {
         val blocks = parseMarkdown("")
-        // cadena vacía split("\n") Regresar [""],Puede resolverse a 1 en blanco o Paragraph
-        // Siempre que no contenga otros tipos
+        // 空字符串 split("\n") 返回 [""],可能解析为 1 个 Blank 或 Paragraph
+        // 只要不含其他类型即可
         assertTrue(blocks.all { it is MarkdownBlock.Blank || it is MarkdownBlock.Paragraph })
     }
 
-    // ── A3: El análisis incremental es semánticamente equivalente al análisis completo ────────────────────────────────
+    // ── A3: 增量解析器与全量解析语义等价 ────────────────────────────────
 
     @Test
-    fun `Análisis incremental, agregar carácter por carácter, equivalente a la cantidad total`() {
+    fun `增量解析 逐字符追加 与全量等价`() {
         val md = buildString {
-            appendLine("# Título")
+            appendLine("# 标题")
             appendLine()
-            appendLine("texto del párrafo **Negrita**.")
+            appendLine("段落文本 **加粗**。")
             appendLine()
-            appendLine("- un")
-            appendLine("- b")
+            appendLine("- 甲")
+            appendLine("- 乙")
             appendLine()
             appendLine("```kotlin")
             appendLine("val x = 1")
@@ -259,20 +259,20 @@ class MarkdownParserTest {
         for (ch in md) {
             acc += ch
             assertEquals(
-                "La adición carácter por carácter es inconsistente, len=${acc.length}",
+                "逐字符追加不一致, len=${acc.length}",
                 parseMarkdown(acc),
                 parser.parse(acc),
             )
         }
-        assertEquals("El resultado final equivale al importe total.", parseMarkdown(md), parser.parse(md))
+        assertEquals("最终结果与全量等价", parseMarkdown(md), parser.parse(md))
     }
 
     @Test
-    fun `Análisis incremental Agregar por fila, equivalente al monto total, incluidos los estados intermedios no cerrados`() {
+    fun `增量解析 按行追加 与全量等价 含未闭合中间态`() {
         val lines = listOf(
-            "Prefacio",
+            "前言",
             "",
-            "# Título",
+            "# 标题",
             "",
             "```kotlin",
             "fun a() = 1",
@@ -282,104 +282,104 @@ class MarkdownParserTest {
             "- item1",
             "- item2",
             "",
-            "> Cotización",
+            "> 引用",
             "",
             "| C1 | C2 |",
             "|---|---|",
             "| x | y |",
             "| z | w |",
             "",
-            "sección de cola",
+            "尾段",
         )
         val parser = IncrementalMarkdownParser()
         var acc = ""
         for (line in lines) {
             acc += line + "\n"
             assertEquals(
-                "Agregar por fila es inconsistente, OK=$line",
+                "按行追加不一致, 行=$line",
                 parseMarkdown(acc),
                 parser.parse(acc),
             )
         }
-        assertEquals("El resultado final equivale al importe total.", parseMarkdown(acc), parser.parse(acc))
+        assertEquals("最终结果与全量等价", parseMarkdown(acc), parser.parse(acc))
     }
 
     @Test
-    fun `Análisis incremental Agregar dentro del mismo párrafo equivale al monto total`() {
-        // Los formatos fluidos suelen agregarse dentro de la misma línea de un párrafo. token(Sin nuevos saltos de línea),El último bloque debe volverse a escanear en lugar de reutilizarse directamente.
+    fun `增量解析 段落同行内追加 与全量等价`() {
+        // 流式常在段落同一行内追加 token(无新增换行),需重扫最后一块而非直接复用
         val parser = IncrementalMarkdownParser()
-        var acc = "primer párrafo"
+        var acc = "第一段"
         assertEquals(parseMarkdown(acc), parser.parse(acc))
-        acc += "continuar"
-        assertEquals("El párrafo adjunto es inconsistente", parseMarkdown(acc), parser.parse(acc))
-        acc += "Continuar"
+        acc += "继续"
+        assertEquals("段落同行追加不一致", parseMarkdown(acc), parser.parse(acc))
+        acc += "再续"
         assertEquals(parseMarkdown(acc), parser.parse(acc))
-        // Ingrese un nuevo bloque después de agregar una nueva línea
-        acc += "\nSegundo párrafo"
+        // 追加换行后进入新块
+        acc += "\n第二段"
         assertEquals(parseMarkdown(acc), parser.parse(acc))
     }
 
     @Test
-    fun `Análisis incremental la valla no cerrada se cierra gradualmente, lo que equivale al importe total`() {
+    fun `增量解析 未闭合围栏逐步闭合 与全量等价`() {
         val parser = IncrementalMarkdownParser()
-        var acc = "comienzo"
+        var acc = "开头"
         acc += "\n```kotlin"
-        assertEquals("Valla abierta abierta", parseMarkdown(acc), parser.parse(acc))
+        assertEquals("未闭合 fence 打开", parseMarkdown(acc), parser.parse(acc))
         acc += "\nval a = 1"
-        assertEquals("fence Agregar líneas de código dentro", parseMarkdown(acc), parser.parse(acc))
+        assertEquals("fence 内追加代码行", parseMarkdown(acc), parser.parse(acc))
         acc += "\nval b = 2"
-        assertEquals("fence Añadir más dentro", parseMarkdown(acc), parser.parse(acc))
+        assertEquals("fence 内再追加", parseMarkdown(acc), parser.parse(acc))
         acc += "\n```"
-        assertEquals("fence cerrado", parseMarkdown(acc), parser.parse(acc))
-        acc += "\npárrafo final"
-        assertEquals("Agregar párrafo después de cerrar", parseMarkdown(acc), parser.parse(acc))
+        assertEquals("fence 闭合", parseMarkdown(acc), parser.parse(acc))
+        acc += "\n结尾段"
+        assertEquals("闭合后追加段落", parseMarkdown(acc), parser.parse(acc))
     }
 
     @Test
-    fun `Análisis incremental las fórmulas de varias líneas no cerradas se cierran gradualmente y equivalen al monto total`() {
+    fun `增量解析 未闭合多行公式逐步闭合 与全量等价`() {
         val parser = IncrementalMarkdownParser()
         var acc = "\$\$"
-        assertEquals("Fórmula abierta", parseMarkdown(acc), parser.parse(acc))
+        assertEquals("公式打开", parseMarkdown(acc), parser.parse(acc))
         acc += "\nx &= 1 + 2"
-        assertEquals("Agregar en fórmula", parseMarkdown(acc), parser.parse(acc))
+        assertEquals("公式内追加", parseMarkdown(acc), parser.parse(acc))
         acc += "\n\$\$"
-        assertEquals("cierre de fórmula", parseMarkdown(acc), parser.parse(acc))
+        assertEquals("公式闭合", parseMarkdown(acc), parser.parse(acc))
     }
 
     @Test
-    fun `Análisis incremental la tabla agrega gradualmente filas de datos, lo que equivale a la cantidad total`() {
+    fun `增量解析 表格逐步追加数据行 与全量等价`() {
         val parser = IncrementalMarkdownParser()
         var acc = "| A | B |\n|---|---|"
-        assertEquals("encabezado+divisor", parseMarkdown(acc), parser.parse(acc))
+        assertEquals("表头+分隔线", parseMarkdown(acc), parser.parse(acc))
         acc += "\n| 1 | 2 |"
-        assertEquals("Agregar filas de datos", parseMarkdown(acc), parser.parse(acc))
+        assertEquals("追加数据行", parseMarkdown(acc), parser.parse(acc))
         acc += "\n| 3 | 4 |"
-        assertEquals("Agregar filas de datos", parseMarkdown(acc), parser.parse(acc))
-        acc += "\nPárrafo después de la tabla"
-        assertEquals("Después de cerrar el formulario", parseMarkdown(acc), parser.parse(acc))
+        assertEquals("再追加数据行", parseMarkdown(acc), parser.parse(acc))
+        acc += "\n表格后段落"
+        assertEquals("表格闭合后", parseMarkdown(acc), parser.parse(acc))
     }
 
     @Test
-    fun `Análisis incremental, reemplazo de texto, retroceso al volumen completo`() {
+    fun `增量解析 文本替换回退全量`() {
         val parser = IncrementalMarkdownParser()
-        parser.parse("contenido antiguo contenido antiguo")
-        // apéndice impuro(El texto nuevo no tiene el prefijo del texto antiguo)→ Análisis completo,El resultado es consistente con el monto total directo.
-        val fresh = "# Título nuevo\n\nContenido nuevo"
+        parser.parse("旧内容旧内容")
+        // 非纯追加(新文本不以旧文本为前缀)→ 全量解析,结果与直接全量一致
+        val fresh = "# 全新标题\n\n全新内容"
         assertEquals(parseMarkdown(fresh), parser.parse(fresh))
     }
 
     @Test
-    fun `Resolución incremental El bloque de estabilización de la cabeza sigue siendo el mismo`() {
-        // Afirmaciones principales para caché de nodo estable:Al agregar la cola,La instancia del bloque de encabezado cerrado permanece sin cambios.,
-        // Compose para omitir el reensamblaje de estos bloques
+    fun `增量解析 头部稳定块保持同一实例`() {
+        // 稳定节点缓存的核心断言:追加尾部时,已闭合头部块实例不变,
+        // Compose 才能跳过这些块的重新组合
         val parser = IncrementalMarkdownParser()
-        val first = parser.parse("Título de encabezado fijo #\n\n```kotlin\nval x = 1\n```")
+        val first = parser.parse("固定头部 # 标题\n\n```kotlin\nval x = 1\n```")
         assertEquals(3, first.size) // Paragraph / Blank / CodeBlock
-        val second = parser.parse("Título de encabezado fijo #\n\n```kotlin\nval x = 1\n```\n\nAgregar nuevo párrafo")
+        val second = parser.parse("固定头部 # 标题\n\n```kotlin\nval x = 1\n```\n\n新增段落")
         assertEquals(5, second.size)
-        // Cabeza 3 piezas(Paragraph/Blank/CodeBlock)Debería ser la misma instancia
-        assertTrue("Paragraph Las instancias deben reutilizarse", first[0] === second[0])
-        assertTrue("Blank Las instancias deben reutilizarse", first[1] === second[1])
-        assertTrue("CodeBlock Las instancias deben reutilizarse", first[2] === second[2])
+        // 头部 3 块(Paragraph/Blank/CodeBlock)应为同一实例
+        assertTrue("Paragraph 应复用实例", first[0] === second[0])
+        assertTrue("Blank 应复用实例", first[1] === second[1])
+        assertTrue("CodeBlock 应复用实例", first[2] === second[2])
     }
 }

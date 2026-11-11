@@ -10,11 +10,11 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * R-TEST-03/04: MuMu Verificación del dispositivo.
+ * R-TEST-03/04: MuMu 设备面验证。
  *
- * - SecureKeyStore Realice el verdadero viaje de ida y vuelta de cifrado y descifrado del almacén de claves de Android
- * - BackupCrypto Dispositivo real AES-GCM ida y vuelta
- * - SettingsSnapshotPolicy Excluir claves sensibles en un entorno real
+ * - SecureKeyStore 走真实 Android Keystore 加解密往返
+ * - BackupCrypto 真实设备 AES-GCM 往返
+ * - SettingsSnapshotPolicy 在真实环境排除敏感键
  */
 @RunWith(AndroidJUnit4::class)
 class SecureKeyStoreInstrumentedTest {
@@ -23,8 +23,8 @@ class SecureKeyStoreInstrumentedTest {
     fun keystoreEncryptDecryptRoundTrip() = runBlocking {
         val plain = "sk-test-${System.currentTimeMillis()}"
         val encrypted = SecureKeyStore.encrypt(plain)
-        assertTrue("Debe tener el prefijo enc_v1:", encrypted.startsWith("enc_v1:"))
-        assertFalse("El texto cifrado no debe contener texto sin formato.", encrypted.contains(plain))
+        assertTrue("应带 enc_v1: 前缀", encrypted.startsWith("enc_v1:"))
+        assertFalse("密文不应含明文", encrypted.contains(plain))
         assertEquals(plain, SecureKeyStore.decrypt(encrypted))
     }
 

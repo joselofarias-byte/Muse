@@ -1,71 +1,71 @@
-<!-- devdoc: Documentación de desarrollo interno.,No se muestra a los usuarios,LLM Consulta a través de Knowledge_search -->
-# Guía completa de personalización.
+<!-- devdoc: 内部开发文档,不向用户展示,LLM 通过 knowledge_search 查询 -->
+# 个性化配置完整指南
 
-> escena desencadenante: Usuario preguntó"Cómo cambiar el tema""Cómo cambiar la fuente""¿Para qué sirven los retratos de usuarios?""Cómo hacer que la IA me entienda mejor"tiempo,Consulte este documento y responda con sinceridad.
-> Este documento se basa en la implementación real del código fuente AppearanceSettingsStore.kt/SettingsScreen.kt.
+> 触发场景: 用户问"怎么换主题""怎么改字体""用户画像是干嘛的""怎么让 AI 更了解我"时,参考本文档据实回答。
+> 本文档基于源码 AppearanceSettingsStore.kt / SettingsScreen.kt 的真实实现。
 
-## 1. Descripción general
+## 一、概述
 
-La personalización se divide en dos partes.:
-1. **Apariencia**: Tema(Selección de color dinámica/Personalizar/Predeterminado), fuente,Markdown dejar en blanco
-2. **Retrato de usuario**: Información básica del usuario,Inyecte el mensaje del sistema para permitir que la IA comprenda mejor al usuario
+个性化分两大块:
+1. **外观**: 主题(动态取色/自定义/预设)、字体、Markdown 留白
+2. **用户画像**: 用户的背景信息,注入 system prompt 让 AI 更了解用户
 
-## 2. Sistema temático(Respaldo de la capa 3)
+## 二、主题系统(三层回退)
 
-Prioridad de mayor a menor:
-1. **Material You Selección de color dinámica**(dynamicColor): Sigue el fondo de pantalla del sistema para elegir colores.(Android 12+)
-2. **Tema personalizado**(customTheme): Generar según el color de la semilla. ColorScheme,Personalizable primary/secondary/tertiary
-3. **Tema predeterminado**(presetTheme): Múltiples conjuntos de colores incorporados
+优先级从高到低:
+1. **Material You 动态取色**(dynamicColor): 跟随系统壁纸取色(Android 12+)
+2. **自定义主题**(customTheme): 基于种子色生成 ColorScheme,可自定义 primary/secondary/tertiary
+3. **预设主题**(presetTheme): 内置多套配色
 
-cadena de reserva: La selección dinámica de colores está disponible → úsalo;De lo contrario, personaliza el tema.;De lo contrario, se utiliza el tema predeterminado.
+回退链: 动态取色可用 → 用之;否则自定义主题;否则预设主题。
 
-### Configuración
-- ajustes → Apariencia → Tema
-- Tema personalizado: Elige el color de la semilla → Genera automáticamente un conjunto completo de colores.;Se pueden ajustar tres colores principales
-- Tema predeterminado: Múltiples conjuntos integrados(oscuro/color claro/Color etc)
+### 配置
+- 设置 → 外观 → 主题
+- 自定义主题: 选种子色 → 自动生成整套配色;可微调三主色
+- 预设主题: 内置多套(深色/浅色/彩色等)
 
-## 3. Fuentes y composición tipográfica
+## 三、字体与排版
 
-- ajustes → Apariencia → fuente
-- Opciones: Predeterminado del sistema/múltiples fuentes integradas
-- Markdown El espacio en blanco es ajustable.(Comodidad de lectura)
+- 设置 → 外观 → 字体
+- 选项: 系统默认 / 多种内置字体
+- Markdown 留白可调(阅读舒适度)
 
-## 4. Retrato de usuario
+## 四、用户画像
 
-### 4.1 campo
-| campo | Descripción |
+### 4.1 字段
+| 字段 | 说明 |
 |---|---|
-| título | AI Nombre del usuario(Como por ejemplo"Ziqi") |
-| edad | - |
-| ciudad | - |
-| MBTI | tipo de personalidad |
-| carrera | - |
-| Interés | Lista de pasatiempos separados por comas |
+| 称呼 | AI 对用户的称呼(如"子奇") |
+| 年龄 | - |
+| 城市 | - |
+| MBTI | 性格类型 |
+| 职业 | - |
+| 兴趣 | 逗号分隔的爱好列表 |
 
-### 4.2 mecanismo de inyección
-- Inyección de contenido de imagen system prompt,Deje que la IA se manifieste naturalmente en las conversaciones(título/charla de la ciudad/Recomendación de interés)
-- Después de la modificación**El nuevo mensaje entra en vigor**(La información histórica se mantiene sin cambios.)
+### 4.2 注入机制
+- 画像内容注入 system prompt,让 AI 在对话中自然体现(称呼/城市话题/兴趣推荐)
+- 修改后**新消息生效**(历史消息不变)
 
-## 5. Opciones de apariencia del chat
+## 五、聊天外观选项
 
-| Opciones | Descripción |
+| 选项 | 说明 |
 |---|---|
-| Expandir por defecto | AI Los mensajes largos se expanden de forma predeterminada./doblar |
-| visualización de mensajes | Burbujas/Marca de tiempo/Opciones de visualización como avatares. |
-| temperatura | Temperatura de muestreo predeterminada global(0-2) |
-| Avanzado | longitud del contexto, etc. |
+| 默认展开 | AI 长消息默认展开/折叠 |
+| 消息显示 | 气泡/时间戳/头像等显示选项 |
+| 温度 | 全局默认采样温度(0-2) |
+| 高级 | 上下文长度等 |
 
-## 6. Preguntas frecuentes Q&A
+## 六、常见问题 Q&A
 
-1. **"No hay respuesta después de cambiar el tema."**: Confirma que la aplicación ha desbloqueado el tema.;La selección dinámica de colores requiere Android 12+ y Material You está activado en el sistema.
-2. **"Quiero que la IA me llame con un apodo"**: ajustes → Apariencia → Retrato de usuario → Completa el título,Los nuevos mensajes entran en vigor.
-3. **"Cómo restaurar la fuente a los valores predeterminados"**: Apariencia → fuente → Seleccione el valor predeterminado del sistema.
-4. **"¿Para qué utilizará la IA los retratos de los usuarios?"**: inyectar system prompt,Deja que AI use tu título y charle sobre tu ciudad/Temas relacionados con intereses;No se subirá a la nube.
-5. **"¿Son iguales los retratos de todos los asistentes?"**: Los retratos de usuarios son globales;Los asistentes difieren según la configuración de avisos de su sistema.
+1. **"换了主题没反应"**: 确认应用未锁主题;动态取色需 Android 12+ 且系统开启了 Material You。
+2. **"想让 AI 叫我昵称"**: 设置 → 外观 → 用户画像 → 填写称呼,新消息生效。
+3. **"字体怎么恢复默认"**: 外观 → 字体 → 选系统默认。
+4. **"用户画像会被 AI 用来干嘛"**: 注入 system prompt,让 AI 用你的称呼、聊你城市/兴趣相关话题;不会上传云端。
+5. **"每个助手画像一样吗"**: 用户画像是全局的;助手差异靠各自 systemPrompt 设定。
 
-## 7.LLM Puntos de llamada
+## 七、LLM 调用要点
 
-- Título en retrato de usuario/ciudad/Intereses, etc.,usado naturalmente en la conversación(llamar/Mencionar el clima de la ciudad./Temas de interés recomendados)
-- No leas el contenido del retrato con rigidez.(Como por ejemplo"Según tu MBTI eres INTJ"),integración natural
-- Después de que el usuario modifica el retrato.,Chat por mensaje nuevo
-- No preguntes al usuario"cuales son tus intereses"Cuando ya hay en el retrato.
+- 用户画像中的称呼/城市/兴趣等,对话中自然使用(叫称呼/提城市天气/荐兴趣话题)
+- 不要生硬念出画像内容(如"根据你的 MBTI 你是 INTJ"),自然融入
+- 用户修改画像后,按新信息对话
+- 不要追问用户"你的兴趣是什么"当画像里已有

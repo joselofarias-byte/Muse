@@ -1,7 +1,7 @@
 package io.zer0.muse.tools
 
-import io.zer0.muse.data.stats.UsageByModel
 import io.zer0.muse.data.stats.UsageByDay
+import io.zer0.muse.data.stats.UsageByModel
 import io.zer0.muse.data.stats.UsageBySource
 import io.zer0.muse.data.stats.UsageRecordDao
 import io.zer0.muse.data.stats.UsageRecordEntity
@@ -16,21 +16,20 @@ import java.time.Instant
 import java.time.ZoneId
 
 /**
- * get_token_usage El formato de retorno y la ruta de degradación.
+ * get_token_usage 的返回格式与降级路径。
  *
- * Lo que está fijado aquí son las "esas líneas vistas por el modelo": el calibre de abreviatura numérica, el punto de partida de la ventana de hoy y la identificación de sesión que falta. /
- * Qué se debe mostrar cuando no hay datos o falta la sonda de contexto.DAO Solo se usa como sustituto y la agregación real se ejecuta en TokenUsageDaoTest.
+ * 这里钉住的都是「模型看到的那几行」：数字简写口径、今日窗口起点、会话 id 缺失 /
+ * 无数据 / 上下文探针缺失时分别该显示什么。DAO 只做替身，真实聚合在 TokenUsageDaoTest 里跑。
  */
 class TokenUsageToolTest {
 
     private val zone = ZoneId.of("Asia/Shanghai")
 
-    /** 2026-10-29 10:00 (+08:00), el punto de partida de hoy debería ser 2026-10-28T16:00Z. */
+    /** 2026-10-29 10:00 (+08:00)，今日起点应为 2026-10-28T16:00Z。 */
     private val now = Instant.parse("2026-10-29T02:00:00Z").toEpochMilli()
     private val startOfToday = Instant.parse("2026-10-28T16:00:00Z").toEpochMilli()
 
-    private fun context(sessionId: String? = "s-1") =
-        ToolExecutionContext(scope = "chat", spaceId = "default", sessionId = sessionId)
+    private fun context(sessionId: String? = "s-1") = ToolExecutionContext(scope = "chat", spaceId = "default", sessionId = sessionId)
 
     private class FakeDao(
         var totals: UsageTotals? = null,
@@ -59,16 +58,15 @@ class TokenUsageToolTest {
         override suspend fun count(): Int = 0
     }
 
-    private fun totals(requests: Int = 12, prompt: Long = 1_234_567L, completion: Long = 45_678L, cached: Long = 0L) =
-        UsageTotals(
-            requests = requests,
-            promptTokens = prompt,
-            completionTokens = completion,
-            reasoningTokens = 0,
-            cachedTokens = cached,
-            cacheWriteTokens = 0,
-            avgFirstTokenMs = 0,
-        )
+    private fun totals(requests: Int = 12, prompt: Long = 1_234_567L, completion: Long = 45_678L, cached: Long = 0L) = UsageTotals(
+        requests = requests,
+        promptTokens = prompt,
+        completionTokens = completion,
+        reasoningTokens = 0,
+        cachedTokens = cached,
+        cacheWriteTokens = 0,
+        avgFirstTokenMs = 0,
+    )
 
     @Test
     fun `formatTokens shortens large numbers`() {
@@ -134,7 +132,7 @@ class TokenUsageToolTest {
             )
 
         assertTrue(text.contains("session: unavailable"))
-        // Si no se puede obtener la dimensión de la sesión, no se comprobará el flujo: no se creará un número de "esta sesión" según la ventana de tiempo.
+        // 会话维度拿不到就不查流水：不按时间窗口臆造一个「本会话」数字
         assertNull(dao.lastSinceMs)
     }
 

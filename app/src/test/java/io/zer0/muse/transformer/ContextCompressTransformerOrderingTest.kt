@@ -7,7 +7,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** Pruebas de regresión: la compresión de contexto universal no debe reorganizar la cadena de llamadas de herramientas al preservar los mensajes prioritarios. */
+/** 回归测试：通用上下文压缩保留优先级消息时不得重排工具调用链。 */
 class ContextCompressTransformerOrderingTest {
 
     @Test
@@ -27,7 +27,7 @@ class ContextCompressTransformerOrderingTest {
         val recentUser = UIMessage(role = MessageRole.USER, content = "recent")
         val messages = listOf(userBefore, assistantCall, toolResult, recentUser)
 
-        // Simulación assistant(tool_call) En la zona a comprimir,TOOL(result) Escenas que abarcan puntos de corte en el área reciente.
+        // 模拟 assistant(tool_call) 在待压缩区、TOOL(result) 在 recent 区的跨切点场景。
         val retained = retainMessagesInOriginalOrder(
             messages = messages,
             recent = listOf(toolResult, recentUser),

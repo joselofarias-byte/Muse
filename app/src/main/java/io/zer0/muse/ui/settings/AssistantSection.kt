@@ -14,14 +14,14 @@ import io.zer0.muse.ui.common.settings.SettingsGroupDivider
 import io.zer0.muse.ui.common.settings.SettingsItemRow
 
 /**
- * Etapa 7: Tarjeta de entrada section — Lista agrupada.
+ * 阶段 7: 入口卡片 section — 分组列表。
  *
- * usar [SettingsGroup] Paquete múltiple [SettingsItemRow],Finas líneas divisorias entre líneas.,Sin elevación.
- * reemplazar viejo"Cada línea es independiente. Card + spacedBy"Modo de apilamiento.
+ * 用 [SettingsGroup] 包裹多个 [SettingsItemRow],行间细分割线,无 elevation。
+ * 替代旧的"每行独立 Card + spacedBy"堆叠模式。
  *
- * contiene:Assistant Gestión/Favoritos/Libro Mundial/Mensaje Rápido/Modo Inyección.
+ * 包含:Assistant 管理 / 收藏夹 / 世界书 / 快捷消息 / 模式注入。
  *
- * v2.x: El interruptor de memoria a largo plazo se ha movido a la página de configuración de memoria.
+ * v2.x: 长期记忆开关已移至记忆设置页。
  */
 @Composable
 internal fun AssistantEntriesSection(
@@ -33,7 +33,7 @@ internal fun AssistantEntriesSection(
     onOpenPromptInjections: () -> Unit,
     onOpenSkills: () -> Unit,
 ) {
-    // ── Phase 8.2: Asistente de Gestión + Favoritos + Libro Mundial + Mensaje Rápido + Inyección de Patrones ──
+    // ── Phase 8.2: 助手管理 + 收藏夹 + 世界书 + 快捷消息 + 模式注入 ──
     SectionLabel(stringResource(R.string.settings_assistant_section))
     SettingsGroup(
         modifier = Modifier.padding(top = 8.dp),
@@ -65,7 +65,7 @@ internal fun AssistantEntriesSection(
             ChevronRight()
         }
         SettingsGroupDivider()
-        // P1-2: Libro del mundo dinámico(permanente/palabras clave/regular/inyección profunda,independiente de Lorebook)
+        // P1-2: 动态世界书(常驻/关键词/正则/深度注入,独立于 Lorebook)
         SettingsItemRow(
             icon = MuseIcons.globe,
             title = stringResource(R.string.settings_assistant_worldbook),

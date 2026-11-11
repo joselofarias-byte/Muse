@@ -28,7 +28,7 @@ class RootToolsOutputTest {
     fun `failure output is not truncated`() {
         val detail = "failure detail ".repeat(200)
 
-        val result = formatRootFailureOutput("Root", "Error de lectura", detail, 1)
+        val result = formatRootFailureOutput("Root", "读取失败", detail, 1)
 
         assertTrue(result.endsWith(detail))
     }

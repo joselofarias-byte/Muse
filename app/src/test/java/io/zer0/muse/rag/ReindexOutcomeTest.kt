@@ -4,11 +4,11 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**
- * Determinación del estado final de la reindexación global —— La línea de defensa de retorno para los artículos de revisión.
+ * 全局重索引终态判定 —— 复核项的回归防线。
  *
- * fondo:anteriormente [ReindexAllWorker] Independientemente del éxito o el fracaso, simplemente escriba el registro y regrese Result.success(),
- * Después de que el usuario hace clic en "Reindexar todo" y la notificación de progreso desaparece, no puede ver ningún resultado.,Todos los documentos fallan también con
- * Todos los éxitos son indistinguibles. El estado final ahora determina el texto y la prioridad de la notificación del resultado.,Las reglas de decisión están clavadas aquí.
+ * 背景:此前 [ReindexAllWorker] 无论成功失败都只写日志并返回 Result.success(),
+ * 用户点完「重新索引全部」在进度通知消失后看不到任何结果,全部文档失败也与
+ * 全部成功无法区分。现在终态决定结果通知的文案与优先级,这里钉住判定规则。
  */
 class ReindexOutcomeTest {
 
@@ -41,14 +41,14 @@ class ReindexOutcomeTest {
 
     @Test
     fun `no count combination collapses failed into success`() {
-        // Agotando un pequeño abanico de combinaciones:falló(0 Exitoso y documentado)No se debe juzgar igual que "todo éxito"
+        // 穷举小范围组合:失败(0 成功且有文档)绝不能与「全部成功」同判
         for (total in 1..12) {
             for (success in 0..total) {
                 val outcome = reindexOutcomeOf(success, total)
                 if (success == 0) {
-                    assertEquals("total=$total success=0 debe fallar", ReindexOutcome.FAILED, outcome)
+                    assertEquals("total=$total success=0 必须判失败", ReindexOutcome.FAILED, outcome)
                 } else if (success < total) {
-                    assertEquals("total=$total success=$success Debe ser juzgado como fracaso parcial.", ReindexOutcome.PARTIAL, outcome)
+                    assertEquals("total=$total success=$success 必须判部分失败", ReindexOutcome.PARTIAL, outcome)
                 } else {
                     assertEquals(ReindexOutcome.SUCCESS, outcome)
                 }

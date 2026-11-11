@@ -1,5 +1,5 @@
-// base de conocimientos(KB)Componentes del ciclo de vida con carpetas. — Para su reutilización por KnowledgeScreen fusionado.
-// Extraído de la KnowledgeBaseManagePage original(KbRow / KbEditDialog),Y agregue nuevas operaciones de carpeta.
+// 知识库(KB)与文件夹的生命周期组件 — 供合并后的 KnowledgeScreen 复用。
+// 从原 KnowledgeBaseManagePage 抽出(KbRow / KbEditDialog),并新增文件夹操作。
 @file:Suppress("TooManyFunctions", "FunctionNaming", "LongParameterList")
 
 package io.zer0.muse.ui.knowledge
@@ -27,7 +27,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.zer0.muse.R
@@ -37,9 +36,10 @@ import io.zer0.muse.ui.common.icons.MuseIcons
 import io.zer0.muse.ui.settings.SettingField
 import io.zer0.muse.ui.theme.MusePaddings
 import io.zer0.muse.ui.theme.MuseShapes
+import io.zer0.muse.ui.theme.bodyLargeStrong
 
 /**
- * v2.4.6: KB conjunto de operaciones de fila — Agregar en un parámetro,Evite LongParameterList.
+ * v2.4.6: KB 行操作集合 — 聚合成一个参数,避免 LongParameterList。
  */
 data class KbRowActions(
     val onOpen: () -> Unit,
@@ -50,10 +50,10 @@ data class KbRowActions(
 )
 
 /**
- * KB elemento de la lista — nombre + descripción + número de documentos;lado derecho:Ingresar/agregar documento/reindexar/editar/eliminar.
+ * KB 列表项 — 名称 + 描述 + 文档数;右侧:进库 / 添加文档 / 重索引 / 编辑 / 删除。
  *
- * Comparado con la página de administración v1.133 KbRow:Haga clic en toda la fila = Ingrese a la base de conocimientos para explorar carpetas y documentos,
- * Los botones de acción de la derecha permanecen sin cambios.
+ * 与 v1.133 管理页的 KbRow 相比:点击整行 = 进入该知识库浏览文件夹与文档,
+ * 右侧动作按钮保持不变。
  */
 @Composable
 fun KbRow(kb: KnowledgeBaseEntity, actions: KbRowActions) {
@@ -79,7 +79,7 @@ fun KbRow(kb: KnowledgeBaseEntity, actions: KbRowActions) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     kb.name,
-                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
+                    style = MaterialTheme.typography.bodyLargeStrong,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -128,7 +128,7 @@ fun KbRow(kb: KnowledgeBaseEntity, actions: KbRowActions) {
     }
 }
 
-/** KB/Botón de icono de carpeta en línea(40dp Toque objetivo + icono de 20 dp). */
+/** KB/文件夹 行内图标按钮(40dp 触摸目标 + 20dp 图标)。 */
 @Composable
 fun KbActionIcon(icon: ImageVector, contentDescription: String, tint: Color, onClick: () -> Unit) {
     Box(
@@ -142,7 +142,7 @@ fun KbActionIcon(icon: ImageVector, contentDescription: String, tint: Color, onC
 }
 
 /**
- * v2.4.6: Editar opciones de formulario de ventana emergente — Campos relacionados con la visualización agregada,Evite LongParameterList.
+ * v2.4.6: 编辑弹窗形态选项 — 聚合展示相关字段,避免 LongParameterList。
  */
 data class KbEditOptions(
     val initialDesc: String = "",
@@ -151,7 +151,7 @@ data class KbEditOptions(
 )
 
 /**
- * Nombre + Descripción ventana emergente de edición de dos campos(KB Nuevo/Cambiar nombre, crear nueva carpeta/Cambiar nombre común).
+ * 名称 + 描述 两字段编辑弹窗(KB 新建/重命名、文件夹新建/重命名通用)。
  */
 @Composable
 fun KbEditDialog(

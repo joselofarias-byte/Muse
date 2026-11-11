@@ -19,10 +19,10 @@ import org.robolectric.annotation.Config
 import java.io.File
 
 /**
- * Denominación correcta de importaciones concurrentes.
+ * 并发导入的命名正确性。
  *
- * El número de serie se agregará automáticamente cuando haya un nombre duplicado, y la determinación del número de serie y la realización del pedido deben completarse dentro de la misma retención de bloqueo;
- * Si solo se bloquea la escritura, dos importaciones simultáneas calcularán cada una el mismo número de secuencia y la que se escriba más tarde sobrescribirá la que se escribió primero.
+ * 重名时自动追加序号，序号判定与落盘必须在同一次持锁内完成；
+ * 只锁写入的话，两个并发导入会各自算出同一个序号，后写的那次把先写的那次覆盖掉。
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -38,7 +38,7 @@ class WorkspaceImportConcurrencyTest {
         manager = WorkspaceManager(context)
     }
 
-    /** Cree un archivo fuente para importarlo y devuelva su URI. */
+    /** 造一个待导入的源文件，返回它的 URI。 */
     private fun sourceFile(name: String, content: String): Uri {
         val file = File(context.cacheDir, name)
         file.parentFile?.mkdirs()
@@ -46,17 +46,16 @@ class WorkspaceImportConcurrencyTest {
         return Uri.fromFile(file)
     }
 
-    private fun importedContent(relativePath: String): String =
-        runBlocking {
-            val result = manager.readFile(relativePath)
-            assertTrue("Los resultados de la importación no se pueden volver a leer: $relativePath -> $result", result is WorkspaceManager.ReadResult.Success)
-            (result as WorkspaceManager.ReadResult.Success).content
-        }
+    private fun importedContent(relativePath: String): String = runBlocking {
+        val result = manager.readFile(relativePath)
+        assertTrue("导入结果读不回来: $relativePath -> $result", result is WorkspaceManager.ReadResult.Success)
+        (result as WorkspaceManager.ReadResult.Success).content
+    }
 
     @Test
-    fun `Cuando importo archivos con el mismo nombre simultáneamente, obtengo dos nombres de archivo diferentes y ambos contenidos están en`() {
-        val first = sourceFile("import-a.txt", "Contenido A: Primera copia\n")
-        val second = sourceFile("import-b.txt", "Contenido B: Segunda copia\n")
+    fun `并发导入同名文件时得到两个不同文件名且两份内容都在`() {
+        val first = sourceFile("import-a.txt", "内容 A：第一份\n")
+        val second = sourceFile("import-b.txt", "内容 B：第二份\n")
 
         val results = runBlocking {
             coroutineScope {
@@ -69,20 +68,20 @@ class WorkspaceImportConcurrencyTest {
         }
 
         val paths = results.map { result ->
-            assertTrue("Importación fallida: $result", result is WorkspaceManager.FileImportResult.Success)
+            assertTrue("导入失败: $result", result is WorkspaceManager.FileImportResult.Success)
             (result as WorkspaceManager.FileImportResult.Success).relativePath
         }
 
-        assertEquals("Se deben realizar dos importaciones con el mismo nombre en dos archivos: $paths", 2, paths.toSet().size)
+        assertEquals("同名的两次导入必须落成两个文件: $paths", 2, paths.toSet().size)
         assertEquals(
-            "Ambos contenidos deben estar en: ${paths.map { importedContent(it) }}",
-            setOf("Contenido A: Primera copia\n", "Contenido B: Segunda copia\n"),
+            "两份内容都要在: ${paths.map { importedContent(it) }}",
+            setOf("内容 A：第一份\n", "内容 B：第二份\n"),
             paths.map { importedContent(it) }.toSet(),
         )
     }
 
     @Test
-    fun `Después de la importación simultánea, continuar importando un tercer archivo con el mismo nombre aún pospondrá el número de serie`() {
+    fun `并发导入之后继续导入第三个同名文件仍会顺延序号`() {
         val first = sourceFile("import-c.txt", "c1")
         val second = sourceFile("import-d.txt", "c2")
         val third = sourceFile("import-e.txt", "c3")
@@ -96,8 +95,8 @@ class WorkspaceImportConcurrencyTest {
         }
         val thirdPath = runBlocking { manager.importFile(third, targetDirectory = "", displayName = "same.txt") }
 
-        assertTrue("La tercera importación falló: $thirdPath", thirdPath is WorkspaceManager.FileImportResult.Success)
+        assertTrue("第三次导入失败: $thirdPath", thirdPath is WorkspaceManager.FileImportResult.Success)
         val allPaths = paths + (thirdPath as WorkspaceManager.FileImportResult.Success).relativePath
-        assertEquals("Se deben completar tres importaciones en tres archivos.: $allPaths", 3, allPaths.toSet().size)
+        assertEquals("三次导入必须落成三个文件: $allPaths", 3, allPaths.toSet().size)
     }
 }

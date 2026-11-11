@@ -45,25 +45,25 @@ import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
 /**
- * v1.0.20: Página de gestión de aprobación de herramientas — Estrategia de aprobación granular de una sola herramienta.
+ * v1.0.20: 工具批准管理页 — 单工具粒度的审批策略。
  *
- * con [io.zer0.muse.ui.ToolsScreen] la diferencia:
- *  - ToolsScreen es una pantalla de solo lectura(Lista de herramientas + ventana emergente de detalles),Incontrolable
- *  - Esta página es una página de administración grabable.:Cada herramienta puede cambiar entre tres estrategias.
- *    - ALWAYS_ALLOW:siempre permitido(Equivalente a la lista blanca de la herramienta.)
- *    - ASK_EVERY_TIME:pregunta cada vez(Predeterminado)
- *    - ALWAYS_DENY:siempre rechace(Equivale a desactivar la herramienta.)
+ * 与 [io.zer0.muse.ui.ToolsScreen] 的区别:
+ *  - ToolsScreen 是只读展示(工具列表 + 详情弹窗),不可控
+ *  - 本页是可写管理页:每个工具可在三档策略间切换
+ *    - ALWAYS_ALLOW:始终允许(等价于该工具的白名单)
+ *    - ASK_EVERY_TIME:每次询问(默认)
+ *    - ALWAYS_DENY:始终拒绝(等价于禁用该工具)
  *
- * La estrategia de la tercera marcha dura hasta [ToolConfigStore],por [io.zer0.muse.tools.ToolPermissionResolver]
- * Lea y determine el estado de aprobación antes de cada llamada a la herramienta.
+ * 三档策略持久化到 [ToolConfigStore],由 [io.zer0.muse.tools.ToolPermissionResolver]
+ * 在每次工具调用前读取并决定审批状态。
  *
- * Estructura de la página:
- *  1. cuadro de búsqueda superior(Por nombre de herramienta/Filtro de descripción)
- *  2. Agrupar por nivel de riesgo:SAFE / NORMAL / HIGH
- *  3. Una fila por herramienta:Nombre + Descripción + Mando segmentado de tres posiciones
- *  4. Tarjeta de instrucciones inferior:Explicar la relación entre la estrategia de tres niveles y el modo de permiso de sesión.
+ * 页面结构:
+ *  1. 顶部搜索框(按工具名/描述过滤)
+ *  2. 按风险等级分组:SAFE / NORMAL / HIGH
+ *  3. 每个工具一行:名称 + 描述 + 三档分段控件
+ *  4. 底部说明卡片:解释三档策略与会话权限模式的关系
  *
- * estilo y [ChatSettingsPage] consistente(SettingsSubPageScaffold + SettingsGroup + MuseCapsuleTab).
+ * 风格与 [ChatSettingsPage] 一致(SettingsSubPageScaffold + SettingsGroup + MuseCapsuleTab)。
  */
 @Composable
 fun ToolsSettingsPage(onBack: () -> Unit) {
@@ -71,20 +71,20 @@ fun ToolsSettingsPage(onBack: () -> Unit) {
     val toolRegistry: ToolRegistry = koinInject()
     val toolConfigStore: ToolConfigStore = koinInject()
     val scope = rememberCoroutineScope()
-    // Política de aprobación predeterminada global (reubicada de la página de chat a la página de herramientas)
+    // 全局默认审批策略（从聊天页归位到工具页）
     val permissionMode by settings.defaultSessionPermissionModeFlow
         .collectAsStateWithLifecycle(initialValue = SessionPermissionMode.ASK)
 
-    // Lista de herramientas(Lectura sincrónica ConcurrentHashMap,No es necesario IO)
+    // 工具列表(同步读取 ConcurrentHashMap,无需 IO)
     val tools = remember { toolRegistry.listTools().sortedBy { it.name } }
 
-    // El actual mapa político persistente(toolName → policy)
+    // 当前已持久化的策略映射(toolName → policy)
     val policies by toolConfigStore.policiesFlow.collectAsStateWithLifecycle(initialValue = emptyMap())
 
-    // consulta de búsqueda(estado local,No persistente)
+    // 搜索查询(本地状态,不持久化)
     var searchQuery by remember { mutableStateOf("") }
 
-    // Herramienta de filtrado por término de búsqueda(Devolver todo cuando la consulta esté vacía)
+    // 按搜索词过滤工具(空查询时返回全部)
     val filteredTools = remember(searchQuery, tools) {
         if (searchQuery.isBlank()) {
             tools
@@ -96,7 +96,7 @@ fun ToolsSettingsPage(onBack: () -> Unit) {
         }
     }
 
-    // Agrupar por nivel de riesgo(orden:SAFE → NORMAL → HIGH)
+    // 按风险等级分组(顺序:SAFE → NORMAL → HIGH)
     val grouped = remember(filteredTools) {
         filteredTools.groupBy { it.riskLevel }.toSortedMap(compareBy { it.ordinal })
     }
@@ -105,8 +105,8 @@ fun ToolsSettingsPage(onBack: () -> Unit) {
         title = stringResource(R.string.tools_settings_title),
         onBack = onBack,
     ) {
-        // ── Política de aprobación predeterminada global ──
-        // Las anulaciones para herramientas individuales se enumeran a continuación; Los valores predeterminados se muestran aquí.
+        // ── 全局默认审批策略 ──
+        // 单个工具的覆盖在下方列表里；这里管的是默认值。
         item { SectionLabel(stringResource(R.string.settings_chat_tool_approval_section)) }
         item {
             SettingsGroup {
@@ -139,7 +139,7 @@ fun ToolsSettingsPage(onBack: () -> Unit) {
                     },
                 )
                 SettingsGroupDivider()
-                // Descripción del modo actual (visualización dinámica)
+                // 当前模式说明（动态显示）
                 val modeDescRes =
                     when (permissionMode) {
                         SessionPermissionMode.TRUSTED -> R.string.settings_chat_tool_approval_trusted_desc
@@ -169,7 +169,7 @@ fun ToolsSettingsPage(onBack: () -> Unit) {
             }
         }
 
-        // ── cuadro de búsqueda superior ────────────────────────────────────────────────
+        // ── 顶部搜索框 ────────────────────────────────────────────────
         item(key = "search") {
             MuseTextField(
                 value = searchQuery,
@@ -193,7 +193,7 @@ fun ToolsSettingsPage(onBack: () -> Unit) {
             )
         }
 
-        // ── Estadísticas ─────────────────────────────────────────────────
+        // ── 统计信息 ─────────────────────────────────────────────────
         item(key = "stats") {
             val allowedCount = tools.count { policies[it.name] == ToolApprovalPolicy.ALWAYS_ALLOW }
             val deniedCount = tools.count { policies[it.name] == ToolApprovalPolicy.ALWAYS_DENY }
@@ -212,7 +212,7 @@ fun ToolsSettingsPage(onBack: () -> Unit) {
             )
         }
 
-        // ── Se muestra en grupos por nivel de riesgo. ───────────────────────────────────────
+        // ── 按风险等级分组展示 ───────────────────────────────────────
         grouped.forEach { (riskLevel, toolsInGroup) ->
             item(key = "header_${riskLevel.name}") {
                 SectionLabel(stringResource(riskLevelSectionTitle(riskLevel)))
@@ -237,7 +237,7 @@ fun ToolsSettingsPage(onBack: () -> Unit) {
             }
         }
 
-        // ── Estado vacío(No se encontraron resultados)──────────────────────────────────────
+        // ── 空态(搜索无结果)──────────────────────────────────────
         if (filteredTools.isEmpty()) {
             item(key = "empty") {
                 Box(
@@ -264,12 +264,12 @@ fun ToolsSettingsPage(onBack: () -> Unit) {
             }
         }
 
-        // ── Tarjeta de instrucciones inferior ─────────────────────────────────────────────
+        // ── 底部说明卡片 ─────────────────────────────────────────────
         item(key = "footer_header") {
             SectionLabel(stringResource(R.string.tools_settings_footer_section))
         }
         item(key = "footer") {
-            // v1.0.52: Color de estado semántico,El modo oscuro cambia automáticamente al modo brillante
+            // v1.0.52: 语义状态色,深色模式自动切亮档
             val statusColors = MaterialTheme.statusColors
             SettingsGroup {
                 PolicyExplanationRow(
@@ -298,9 +298,9 @@ fun ToolsSettingsPage(onBack: () -> Unit) {
 }
 
 /**
- * Filas de estrategia para instrumentos individuales — Icono + nombre + descripción + control segmentado de tres posiciones.
+ * 单个工具的策略行 — 图标 + 名称 + 描述 + 三档分段控件。
  *
- * El cambio de política se mantendrá inmediatamente para [ToolConfigStore],Entra en vigor la próxima vez que se llama a la herramienta.
+ * 策略切换会立即持久化到 [ToolConfigStore],下次工具调用时生效。
  */
 @Composable
 private fun ToolPolicyRow(
@@ -317,7 +317,7 @@ private fun ToolPolicyRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        // Icono de nivel de riesgo(v1.0.52: Color de estado semántico,El modo oscuro cambia automáticamente al modo brillante)
+        // 风险等级图标(v1.0.52: 语义状态色,深色模式自动切亮档)
         val statusColors = MaterialTheme.statusColors
         val (icon, iconTint) = when (riskLevel) {
             ToolRiskLevel.SAFE -> MuseIcons.shieldCheck to statusColors.success
@@ -346,7 +346,7 @@ private fun ToolPolicyRow(
                     maxLines = 2,
                 )
             }
-            // Control segmentado de tres posiciones
+            // 三档分段控件
             val options = listOf(
                 stringResource(R.string.tools_settings_policy_always_allow_short),
                 stringResource(R.string.tools_settings_policy_ask_short),
@@ -375,7 +375,7 @@ private fun ToolPolicyRow(
 }
 
 /**
- * línea de descripción de política — icono + título + descripción(Tarjeta de instrucciones inferior para).
+ * 策略说明行 — 图标 + 标题 + 描述(底部说明卡片用)。
  */
 @Composable
 private fun PolicyExplanationRow(
@@ -413,7 +413,7 @@ private fun PolicyExplanationRow(
     }
 }
 
-/** Asigna niveles de riesgo a ID de recursos de encabezado de grupo. */
+/** 把风险等级映射为分组标题资源 ID。 */
 private fun riskLevelSectionTitle(level: ToolRiskLevel): Int = when (level) {
     ToolRiskLevel.SAFE -> R.string.tools_settings_section_safe
     ToolRiskLevel.NORMAL -> R.string.tools_settings_section_normal

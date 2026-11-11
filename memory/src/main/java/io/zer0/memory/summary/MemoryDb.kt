@@ -5,20 +5,21 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
-internal const val MEMORY_DB_VERSION = 5
+// v2.6.23(S4): public —— 诊断卡(DiagnosticsSnapshot.AppSection)要展示当前 schema 版本。
+const val MEMORY_DB_VERSION = 5
 
 /**
- * Memory La base de datos de Room del módulo.
+ * Memory 模块的 Room 数据库。
  *
- * Resume todas las tablas de persistencia del sistema de memoria.:
- *  - [SessionSummaryEntity]: session Resumen(rolling summary)
- *  - [ContextCheckpointEntity]: punto de control de contexto(producto de compresión de sesión,puntero de límite)
- *  - [DailyStateEntity]: Progreso de compilación diario(daily-state.json Versión habitación)
- *  - [CompiledSectionEntity]: Cuatro piezas de productos compilados.(facts/today/week/longterm.md Versión habitación)
- *  - [FactEntity] por independiente [io.zer0.memory.fact.FactDb] gestión(Porque FTS5 requiere raw SQL)
+ * 汇总了 memory 系统的所有持久化表:
+ *  - [SessionSummaryEntity]: session 摘要(rolling summary)
+ *  - [ContextCheckpointEntity]: 上下文检查点(会话压缩产物,含边界指针)
+ *  - [DailyStateEntity]: 每日编译进度(daily-state.json 的 Room 版本)
+ *  - [CompiledSectionEntity]: 四块编译产物(facts/today/week/longterm.md 的 Room 版本)
+ *  - [FactEntity] 由独立的 [io.zer0.memory.fact.FactDb] 管理(因为 FTS5 需要 raw SQL)
  *
- * Nota: Phase 2 Simplificar,poner"sistema de archivos + facts.db"Dos juegos de almacenamiento
- * Mover todo a Room,Android Los hábitos son más consistentes.
+ * 注意: Phase 2 简化,把"文件系统 + facts.db"两套存储
+ * 全部迁到 Room,Android 习惯更一致。
  */
 @Database(
     entities = [
@@ -29,7 +30,7 @@ internal const val MEMORY_DB_VERSION = 5
         ScopedCompiledSectionEntity::class,
     ],
     version = MEMORY_DB_VERSION,
-    // v1.78 (H4): Habilitar exportación de esquema,Migración de escritura para proporcionar una base para futuras actualizaciones de versiones
+    // v1.78 (H4): 开启 schema 导出,为未来 version 升级编写 Migration 提供基线
     exportSchema = true,
 )
 abstract class MemoryDb : RoomDatabase() {
@@ -40,7 +41,7 @@ abstract class MemoryDb : RoomDatabase() {
     abstract fun scopedCompiledSectionDao(): ScopedCompiledSectionDao
 
     companion object {
-        /** Solo se agregan columnas, todos los resúmenes antiguos se clasifican como predeterminados y no se elimina ningún dato histórico. */
+        /** 仅增加列，旧摘要全部归入 default，不删除任何历史数据。 */
         val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL(
@@ -64,7 +65,7 @@ abstract class MemoryDb : RoomDatabase() {
                     )
                     """.trimIndent(),
                 )
-                // Los productos antiguos de un solo espacio solo se mueven a ranuras predeterminadas compatibles y las tablas antiguas se conservan como fuentes de reversión y reversión.
+                // 旧单空间产物只迁入兼容默认槽位，保留旧表作为回退与回滚源。
                 db.execSQL(
                     """
                     INSERT OR IGNORE INTO compiled_sections_scoped
@@ -77,10 +78,10 @@ abstract class MemoryDb : RoomDatabase() {
         }
 
         /**
-         * v2.x: Se agregó una tabla de puntos de control de contexto (producto de compresión de sesiones).
+         * v2.x: 新增上下文检查点表（会话压缩产物）。
          *
-         * Adición pura de mesa: no se toca ninguna mesa existente. Después de la actualización, la sesión anterior es simplemente"Aún no hay punto de control",
-         * Escrito de forma natural cuando se comprime por primera vez.
+         * 纯增表：不触碰任何既有表，升级后旧会话只是"还没有检查点"，
+         * 首次压缩时自然写入。
          */
         val MIGRATION_3_4 = object : Migration(3, 4) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -102,15 +103,15 @@ abstract class MemoryDb : RoomDatabase() {
                     )
                     """.trimIndent(),
                 )
-                // Nota: No cree índices adicionales aquí —— Room El esquema se verificará según la definición @Entity de la entidad.
-                // La presencia de índices no declarados en entidades de la biblioteca provocará inconsistencias en el esquema al abrir la base de datos.
+                // 注意：不要在这里额外建索引 —— Room 会按实体的 @Entity 定义校验 schema，
+                // 库里存在实体未声明的索引会导致打开数据库时报 schema 不一致。
             }
         }
 
         /**
-         * v2.x: Aumento del punto de control"El número acumulado de elementos fusionados en el resumen."(Para visualización de divisores de interfaz).
+         * v2.x: 检查点增加"累计并入摘要的条数"（界面分隔线展示用）。
          *
-         * Solo agregue columnas, el valor del punto de control anterior es 0 —— Capa de presentación encontrada 0 pulsación"desconocido"Proceso, sin rellenos ni conjeturas.
+         * 只增列，旧检查点该值为 0 —— 展示层遇到 0 按"未知"处理，不回填也不猜测。
          */
         val MIGRATION_4_5 = object : Migration(4, 5) {
             override fun migrate(db: SupportSQLiteDatabase) {

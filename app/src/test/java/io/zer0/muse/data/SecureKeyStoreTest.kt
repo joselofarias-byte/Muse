@@ -9,10 +9,10 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * R-TEST-03: SecureKeyStore Compatible con lógica de transmisión transparente;Android Keystore Se requiere una máquina real para cifrar y descifrar (Robolectric Sin AndroidKeyStore).
+ * R-TEST-03: SecureKeyStore 兼容透传逻辑；Android Keystore 加解密往返需真机（Robolectric 无 AndroidKeyStore）。
  *
- * Phase 3 (Fiabilidad P1): anexar [SecureKeyCipher.decryptOrNull] Pruebas semánticas de fallas explícitas —
- * El error de descifrado regresa null(El motivo está documentado por la implementación.),Entrada compatible [SecureKeyStore.decrypt] Mantener la semántica de cadenas vacías.
+ * Phase 3 (可靠性 P1): 追加 [SecureKeyCipher.decryptOrNull] 显式失败语义测试 —
+ * 解密失败返回 null(原因由实现记录),兼容入口 [SecureKeyStore.decrypt] 保持空串语义。
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])
@@ -34,7 +34,7 @@ class SecureKeyStoreTest {
         override suspend fun decrypt(stored: String): String =
             if (stored.startsWith("fake:")) stored.removePrefix("fake:").reversed() else stored
 
-        /** Phase 3 (P1): "fake:broken" Clave de suplantación no válida/Corrupción de datos → Nulo explícito. */
+        /** Phase 3 (P1): "fake:broken" 模拟密钥失效/数据损坏 → 显式 null。 */
         override suspend fun decryptOrNull(stored: String): String? = if (stored == "fake:broken") null else decrypt(stored)
     }
 
@@ -54,8 +54,8 @@ class SecureKeyStoreTest {
         val original = SecureKeyStore.delegate
         try {
             SecureKeyStore.delegate = FakeCipher()
-            assertNull("El error de descifrado debe devolverse explícitamente null", SecureKeyStore.decryptOrNull("fake:broken"))
-            // Las entradas de compatibilidad mantienen la semántica antigua(cadena vacía),Los guardias de llamadas existentes permanecen sin cambios
+            assertNull("解密失败必须显式返回 null", SecureKeyStore.decryptOrNull("fake:broken"))
+            // 兼容入口保持旧语义(空串),既有调用方守卫不变
             assertEquals("", SecureKeyStore.decrypt("fake:broken"))
         } finally {
             SecureKeyStore.delegate = original

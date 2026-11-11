@@ -55,7 +55,7 @@
     <string name="skill_delegate_failed">Falha na chamada do subassistente %1$s: %2$s</string>
     <string name="skill_delegate_timeout">Chamada do subassistente %1$s expirou (%2$d s)</string>
     <string name="skill_delegate_empty">O subassistente %1$s retornou conteúdo vazio</string>
-    <string name="skill_delegate_done">「%1$s"concluiu a tarefa delegada:</string>
+    <string name="skill_delegate_done">「%1$s」concluiu a tarefa delegada:</string>
     <string name="skill_delegate_max_depth">A profundidade de aninhamento delegado excedeu o limite (%1$d), recusou-se a aninhar mais</string>
     <string name="skill_task_blank">a tarefa não pode ficar vazia</string>
     <string name="skill_title_blank">o título não pode ficar vazio</string>
@@ -161,7 +161,21 @@
     <string name="tool_start_time_format_error">Formato de hora de início inválido;</string>
     <string name="tool_no_calendar_account">Nenhuma conta de calendário disponível encontrada</string>
     <string name="tool_calendar_added">Evento de calendário adicionado: %1$s</string>
+    <string name="tool_calendar_choose_required">Ha varios calendarios gravaveis; indique um com calendar_id: %1$s</string>
+    <string name="tool_calendar_unknown_id">O calendario indicado nao existe: id=%1$s</string>
+    <string name="tool_calendar_added_with_id">Evento &quot;%1$s&quot; adicionado (event_id=%2$s); use este id para atualizar ou excluir</string>
     <string name="tool_calendar_add_failed_perm">Falha ao adicionar evento da agenda (verifique a permissão WRITE_CALENDAR)</string>
+    <string name="tool_calendar_invalid_scope">scope deve ser all ou this: %1$s</string>
+    <string name="tool_calendar_invalid_event_id">event_id invalido: %1$s</string>
+    <string name="tool_calendar_nothing_to_update">Nada para atualizar; informe ao menos title/start_time/end_time/description/location/all_day</string>
+    <string name="tool_calendar_this_needs_occurrence">scope=this exige occurrence_time (o inicio daquela ocorrencia)</string>
+    <string name="tool_calendar_this_update_unsupported">Editar apenas uma ocorrencia ainda nao e suportado: use scope=all para a serie ou exclua com scope=this para cancelar uma</string>
+    <string name="tool_calendar_updated">Evento atualizado (id=%1$s)</string>
+    <string name="tool_calendar_deleted">Evento excluido (id=%1$s)</string>
+    <string name="tool_calendar_canceled_this">Esta ocorrencia da serie foi cancelada (id=%1$s)</string>
+    <string name="tool_calendar_event_not_found">Evento nao encontrado (id=%1$s); pode ter sido excluido ou o id esta errado</string>
+    <string name="tool_calendar_update_failed">Falha ao atualizar: %1$s</string>
+    <string name="tool_calendar_delete_failed">Falha ao excluir: %1$s</string>
     <string name="tool_calendar_add_failed">Falha ao adicionar evento da agenda</string>
     <string name="tool_missing_param_hour">Parâmetro ausente: hora (0-23)</string>
     <string name="tool_hour_range">hora deve ser 0-23</string>
@@ -262,7 +276,29 @@
     <string name="tool_brightness_auto">Auto</string>
     <string name="tool_brightness_manual">Manual</string>
     <string name="tool_brightness_set">Brilho definido como %1$d</string>
+    <string name="tool_write_verified"> (confirmado)</string>
+    <string name="tool_write_permission_denied">O sistema recusou a gravacao (provavelmente falta uma permissao como Modificar configuracoes do sistema)</string>
+    <string name="automation_handoff_title">Entrega de tela virtual</string>
+    <string name="assist_service_label">Assistente Musa</string>
+    <string name="automation_handoff_desc">O assistente deixou %1$d tela(s); pre-visualize e opere</string>
+    <string name="automation_handoff_bring_main">Trazer para a tela principal</string>
+    <string name="automation_handoff_bring_main_hint">Apenas o app vai para a tela principal; a pagina e o estado anteriores dependem do app e podem ser perdidos.</string>
+    <string name="automation_handoff_bring_main_ok">Trazido para a tela principal (a retencao do estado depende do app)</string>
+    <string name="automation_handoff_bring_main_failed">Falha: o servico de tela nao esta disponivel ou o app nao iniciou</string>
+    <string name="automation_handoff_close_destroy">Fechar e destruir esta tela</string>
+    <string name="tool_volume_failed">Falha ao ajustar o volume: %1$s</string>
+    <string name="tool_write_verified_transition"> (confirmado: %1$d para %2$d)</string>
+    <string name="tool_write_unverified"> (enviado, sem confirmacao)</string>
+    <string name="tool_write_not_applied">Nao aplicado: esperado %1$d, obtido %2$d</string>
     <string name="tool_brightness_auto_set">Brilho automático ativado</string>
+    <string name="read_aloud_channel_name">Reproducao de leitura</string>
+    <string name="notif_task_stage_title">Executando uma tarefa</string>
+    <string name="notif_task_stage_stop">Parar</string>
+    <string name="skill_url_dialog_title">Instalar habilidade do GitHub</string>
+    <string name="skill_url_hint">https://github.com/autor/repositorio</string>
+    <string name="skill_url_help">Apenas repositorios do GitHub; o arquivo e baixado e o SKILL.md e lido.</string>
+    <string name="read_aloud_notification_text">Lendo em voz alta…</string>
+    <string name="read_aloud_notification_stop">Parar</string>
     <string name="tool_brightness_missing">Parâmetro ausente: valor</string>
     <string name="tool_brightness_failed">Falha ao definir o brilho: %1$s</string>
     <string name="tool_volume_info">%1$s volume: %2$d / %3$d</string>
@@ -277,7 +313,7 @@
     <string name="tool_flashlight_on">Lanterna ligada</string>
     <string name="tool_flashlight_off">Lanterna desligada</string>
     <string name="tool_flashlight_state">Estado da lanterna: %1$s</string>
-    <string name="tool_flashlight_state_unknown">Estado da lanterna: desconhecido (não operado nesta sessão)</string>
+    <string name="tool_flashlight_state_unknown">Estado da lanterna: desconhecido (o sistema nao respondeu a tempo)</string>
     <string name="tool_flashlight_unavailable">O dispositivo não suporta lanterna</string>
     <string name="tool_flashlight_no_camera">Nenhuma câmera disponível</string>
     <string name="tool_flashlight_invalid_action">a ação deve estar ligada/desligada/status</string>
@@ -399,7 +435,7 @@
     <string name="skill_update_validate_failed">Falha na validação da atualização: %1$s</string>
     <string name="skill_updated">Skill atualizada: %1$s(id=%2$s)</string>
 
-    <!-- Control de aplicaciones (app_* Herramienta): Los resultados se devuelven al modelo y la redacción debe explicarse por sí misma. -->
+    <!-- 应用控制（app_* 工具）：结果回给模型，措辞需自解释 -->
     <string name="app_control_need_app_arg">Informe o nome do aplicativo ou do pacote.</string>
     <string name="app_control_launch_action">abrir</string>
     <string name="app_control_settings_action">abrir as configuracoes de</string>
@@ -413,7 +449,7 @@
     <string name="app_control_reason_not_found">aplicativo nao encontrado; use app_list para consultar o nome e o pacote</string>
     <string name="app_control_reason_need_elevated">esta acao exige acesso Shizuku/adb ou Root, indisponivel neste dispositivo; use outro caminho ou conceda nas configuracoes</string>
     <string name="app_control_reason_system_app">esta acao nao e permitida em aplicativos do sistema</string>
-    <string name="app_control_reason_self">esta acao nao e permitida no proprio Muse</string>
+    <string name="app_control_reason_self">esta acao nao e permitida no proprio Musa</string>
     <string name="app_control_via_app">permissao do app</string>
     <string name="app_control_via_shell">Shizuku/adb</string>
     <string name="app_control_via_root">Root</string>

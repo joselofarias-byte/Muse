@@ -5,7 +5,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** Valor de detección de CPU en la autoprueba: correcto cuando es normal, advierte cuando no está disponible y no afecta la conclusión general. */
+/** 自检里的 CPU 探测量：正常时 ok，取不到时 warn，且不影响整体结论。 */
 class RuntimeSelfCheckCpuProbeTest {
 
     private val okProbe = RuntimeSelfCheckTool.CpuProbe(entries = 8, parallelism = 8, envCount = 8)
@@ -14,33 +14,33 @@ class RuntimeSelfCheckCpuProbeTest {
     @Test
     fun `cpu probe item exists as its own self-check entry`() {
         val section = RuntimeSelfCheckTool.buildCpuSection(okProbe)
-        assertTrue("Debe ser un elemento independiente.", section.startsWith("\n- CPU detección: "))
-        assertTrue("necesidad de informar os.cpus().length", section.contains("os.cpus().length=8"))
-        assertTrue("necesidad de informar availableParallelism", section.contains("os.availableParallelism()=8"))
-        assertTrue("Necesidad de informar el valor de la inyección", section.contains("MUSE_CPU_COUNT=8"))
+        assertTrue("必须是独立一项", section.startsWith("\n- CPU 探测: "))
+        assertTrue("需报 os.cpus().length", section.contains("os.cpus().length=8"))
+        assertTrue("需报 availableParallelism", section.contains("os.availableParallelism()=8"))
+        assertTrue("需报注入值", section.contains("MUSE_CPU_COUNT=8"))
     }
 
     @Test
     fun `ok when both values are positive`() {
         val section = RuntimeSelfCheckTool.buildCpuSection(okProbe)
-        assertTrue("Se debe marcar el valor obtenido. ok", section.contains("✓"))
-        assertFalse("No debe aparecer cuando se obtiene el valor. warn", section.contains("warn"))
+        assertTrue("取到值应标 ok", section.contains("✓"))
+        assertFalse("取到值时不应出现 warn", section.contains("warn"))
     }
 
     @Test
     fun `warn when values cannot be read`() {
         val section = RuntimeSelfCheckTool.buildCpuSection(emptyProbe)
-        assertTrue("El valor no se puede obtener y debe marcarse warn", section.contains("warn"))
-        assertFalse("No debería pujar ok", section.contains("✓"))
+        assertTrue("取不到值应标 warn", section.contains("warn"))
+        assertFalse("不应标 ok", section.contains("✓"))
     }
 
     @Test
     fun `probe failure only warns and leaves overall verdict alone`() {
         val section = RuntimeSelfCheckTool.buildCpuSection(null)
         assertTrue(section.contains("warn"))
-        assertFalse("El fracaso no se puede escribir como un fracaso general.", section.contains("Incompleto en tiempo de ejecución"))
-        assertFalse("No puedes traer tus propias líneas de resumen (solo puedes explicar que no afecta la conclusión)", section.contains("Conclusión:"))
-        assertFalse("No debe informar cuando no se ejecuta la sonda. ok", section.contains("✓"))
+        assertFalse("不能把失败写成整体失败", section.contains("运行时不完整"))
+        assertFalse("不能自带总结论行（只能说明不影响结论）", section.contains("结论:"))
+        assertFalse("探测未执行时也不应报 ok", section.contains("✓"))
     }
 
     @Test

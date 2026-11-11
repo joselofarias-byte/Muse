@@ -34,16 +34,16 @@ import java.security.MessageDigest
 import java.util.concurrent.atomic.AtomicInteger
 
 /**
- * v1.54: RAG Servicios de orquestación(Fragmentación + incrustación + indexación + recuperación + inyección).
+ * v1.54: RAG 编排服务(分块 + embedding + 索引 + 检索 + 注入)。
  *
- * v1.133 Transformación:
- *  - embedding almacenamiento:BLOB(sustituto JSON,5× acelerar)
- *  - FTS4 sincronizar:Cree un índice FTS simultáneamente al indexar documentos,Sincronizar la limpieza al eliminar documentos
- *  - Múltiples bases de conocimiento:retrieve apoyo [scopeDocIds](@mention Orientación/encuadernación asistente KB)
- *  - Búsqueda híbrida:[hybridSearchService] Proporciona fusión RRF vectorial BM25+
- *  - Rerank:[rerankProvider] si top-K×5 reordenación de candidatos
- *  - token presupuesto:[tokenBudget] Controlar el número de tokens inyectados,Compartir grupo de presupuesto con webSearch
- *  - Devolución de referencia:[buildInjectionContextWithCitations] Regresar [RagInjection](Contiene citations)
+ * v1.133 改造:
+ *  - embedding 存储:BLOB(替代 JSON,5× 加速)
+ *  - FTS4 同步:索引文档时同步建立 FTS 索引,删文档时同步清理
+ *  - 多知识库:retrieve 支持 [scopeDocIds](@mention 定向 / 助手绑定 KB)
+ *  - 混合检索:[hybridSearchService] 提供 BM25+向量 RRF 融合
+ *  - Rerank:[rerankProvider] 对 top-K×5 候选重排序
+ *  - token 预算:[tokenBudget] 控制注入 token 数,与 webSearch 共享预算池
+ *  - 引用返回:[buildInjectionContextWithCitations] 返回 [RagInjection](含 citations)
  */
 @Suppress("LongParameterList", "LargeClass")
 class RagService(
@@ -52,45 +52,45 @@ class RagService(
     private val ftsDao: KnowledgeChunkFtsDao,
     private val docTitleProvider: suspend () -> Map<String, String>,
     private val embeddingService: EmbeddingService,
-    /** v1.133: Servicio de búsqueda híbrido(Opcional,solo [RagConfig.hybridEnabled]=true habilitado cuando). */
+    /** v1.133: 混合检索服务(可选,仅 [RagConfig.hybridEnabled]=true 时启用)。 */
     private val hybridSearchService: HybridSearchService? = null,
-    /** v1.133: Rerank Provider(Opcional,solo [RagConfig.rerankEnabled]=true habilitado cuando). */
+    /** v1.133: Rerank Provider(可选,仅 [RagConfig.rerankEnabled]=true 时启用)。 */
     private val rerankProvider: RerankProvider? = null,
     /**
-     * v1.134: locales ONNX Cross-Encoder Rerank Provider(Opcional).
+     * v1.134: 本地 ONNX Cross-Encoder Rerank Provider(可选)。
      *
-     * solo si [RagConfig.rerankProvider] == "onnx" habilitado cuando;Bajar a cuando el modelo no esté disponible [rerankProvider].
+     * 仅当 [RagConfig.rerankProvider] == "onnx" 时启用;模型不可用时降级到 [rerankProvider]。
      */
     private val onnxRerankProvider: OnnxRerankProvider? = null,
     /**
-     * P2-6: Cliente HTTP utilizado para la reclasificación de la nube (opcional, la reclasificación de la nube se degrada a la reclasificación local cuando no se inyecta).
+     * P2-6: 云端 rerank 用的 HTTP client（可选，未注入时云端 rerank 降级为本地重排）。
      */
     private val httpClientProvider: (() -> okhttp3.OkHttpClient)? = null,
     /**
-     * Palabras clave sin alcance cuando la búsqueda vectorial no arroja resultados. Los resultados estructurados preservan los metadatos de referencia y filtrado.
+     * 向量检索无结果时的无作用域关键词兜底。结构化结果保留引用与过滤元数据。
      */
     private val keywordSearchFallback: (suspend (String, Int) -> List<KeywordFallbackResult>)? = null,
     /**
-     * Cobertura de palabras clave con alcance; El alcance del documento, las exclusiones internas de documentos y el filtro de metadatos deben mantenerse coherentes.
+     * 作用域感知的关键词兜底；必须保持文档范围、内部文档排除和 metadataFilter 一致。
      */
     private val scopedKeywordSearchFallback: (
         suspend (String, Int, List<String>?, VectorSearchService.MetadataFilter?) -> List<KeywordFallbackResult>
     )? = null,
     /**
-     * v1.55: HNSW Ruta del archivo de persistencia del índice(null = No persistente,solo memoria,App Perdido después de reiniciar).
+     * v1.55: HNSW 索引持久化文件路径(null = 不持久化,仅内存,App 重启后丢失)。
      *
-     * Inyectado por AppKoinModule `File(androidContext().filesDir, "rag/hnsw_index.bin")`.
-     * App Llamado al inicio [loadVectorIndexIfNeeded] Cargar;Actualización incremental + guardado periódico cuando se agregan nuevos fragmentos.
+     * 由 AppKoinModule 注入 `File(androidContext().filesDir, "rag/hnsw_index.bin")`。
+     * App 启动时调用 [loadVectorIndexIfNeeded] 加载;新增 chunk 时增量更新 + 定期 save。
      */
     private val indexFile: File? = null,
     /** Cache directory used to stage a full source before replacing its current index. */
     private val reindexStagingDirectory: File? = null,
 ) {
     /**
-     * El backend de inserción actualmente efectivo(Contiene motivos para la degradación silenciosa).
+     * 当前实际生效的 embedding 后端(含静默降级原因)。
      *
-     * Cuando la integración en la nube configurada por el usuario no está disponible o las capacidades no son compatibles,[io.zer0.muse.rag.EmbeddingService] Recurrirá a la implementación de palabras clave locales,
-     * Tráelo aquí en este momento. `degraded=true` Redacción con motivos;página de configuración/La página de diagnóstico pregunta "¿Qué backend integrado se está utilizando ahora?"
+     * 用户配置的云端 embedding 不可用或能力不支持时,[io.zer0.muse.rag.EmbeddingService] 会回落本地关键词实现,
+     * 此时这里带 `degraded=true` 与原因文案;供设置页/诊断页提示「现在到底在用哪个 embedding 后端」。
      */
     val activeEmbeddingBackend: StateFlow<EmbeddingService.BackendState?> = embeddingService.activeBackend
 
@@ -103,7 +103,7 @@ class RagService(
         runCatching {
             marker.parentFile?.mkdirs()
             marker.writeText(reason.take(512))
-        }.onFailure { Logger.e("RagService", "Error al escribir en la etiqueta de reconstrucción HNSW: ${it.message}", it) }
+        }.onFailure { Logger.e("RagService", "写入 HNSW 重建标记失败: ${it.message}", it) }
     }
 
     /** HNSW is derived data; invalidation forces DB-vector retrieval until a complete reindex. */
@@ -120,13 +120,13 @@ class RagService(
         if (!markerWritten) {
             // If marker persistence fails, a missing index plus remaining DB vectors forces rebuild on next boot.
             indexFile?.let { file ->
-                if (file.exists() && !file.delete()) Logger.e("RagService", "No se puede invalidar el índice HNSW antiguo: ${file.absolutePath} ($reason)")
+                if (file.exists() && !file.delete()) Logger.e("RagService", "无法使旧 HNSW 索引失效: ${file.absolutePath} ($reason)")
             }
         }
-        Logger.w("RagService", "HNSW Marcado para reconstrucción completa: $reason")
+        Logger.w("RagService", "HNSW 标记为需全量重建: $reason")
     }
 
-    /** R-DB-02: FTS Cuando falta la tabla, primero autorrecupere y reconstruya y luego vuelva a intentarlo.(Las inserciones masivas se realizan fuera de la transacción Room,Evite los puntos muertos de DDL). */
+    /** R-DB-02: FTS 表缺失时先自愈重建再重试(批量插入在 Room 事务外调用,避免 DDL 死锁)。 */
     private suspend fun <T> withFtsSelfHeal(block: suspend () -> T): T {
         try {
             return block()
@@ -137,27 +137,27 @@ class RagService(
         }
     }
 
-    // ── v1.55: HNSW Índice de vecino más cercano aproximado(Biblioteca a gran escala >=5000 chunk habilitado cuando) ──
+    // ── v1.55: HNSW 近似最近邻索引(大规模库 >=5000 chunk 时启用) ──
     /**
-     * HNSW Ejemplo de índice vectorial(por [VectorIndexFactory] crear,Política HNSW predeterminada).
+     * HNSW 向量索引实例(由 [VectorIndexFactory] 创建,默认 HNSW 策略)。
      *
-     * - Al buscar si [vectorIndex].size > 0 Y no búsqueda mixta/búsqueda no dirigida → Tome la ruta HNSW
-     * - De lo contrario retroceder [vectorSearch] recorrido violento(compatible con versiones anteriores,<5000 chunk La antigua biblioteca todavía está disponible.)
-     * - App pasado al inicio [loadVectorIndexIfNeeded] de [indexFile] Cargar
-     * - Incremento al agregar un nuevo fragmento add;acumulativo [SAVE_INTERVAL] Automáticamente después save
+     * - 检索时若 [vectorIndex].size > 0 且非混合检索/非定向检索 → 走 HNSW 路径
+     * - 否则回退 [vectorSearch] 暴力遍历(向后兼容,<5000 chunk 的旧库仍可用)
+     * - App 启动时通过 [loadVectorIndexIfNeeded] 从 [indexFile] 加载
+     * - 新增 chunk 时增量 add;累计 [SAVE_INTERVAL] 次后自动 save
      */
     private val vectorIndex: VectorIndex? = VectorIndexFactory.createIndex(
         VectorIndexFactory.IndexStrategy.HNSW,
     )
 
     /**
-     * chunkId → Metadatos(Se utiliza para rellenar los resultados de búsqueda de HNSW docId/docTitle/content/chunkIndex).
-     * B-35: Cambiar a caché limitada por LRU(access-order,Impulso de golpe,Eliminado y sin uso durante más tiempo.),límite superior [MAX_CHUNK_META],
-     * Evite que todo el contenido de una gran base de conocimientos resida en la memoria. OOM;Los resultados de HNSW se degradan en general a vectorSearch en caso de errores.
+     * chunkId → 元数据(用于 HNSW 检索结果回填 docId/docTitle/content/chunkIndex)。
+     * B-35: 改为 LRU 上限缓存(access-order,命中提升,淘汰最久未用),上限 [MAX_CHUNK_META],
+     * 防止大知识库全量 chunk content 常驻内存导致 OOM;未命中时 HNSW 结果整体降级到 vectorSearch。
      */
     private val chunkMetaCache = LruChunkMetaCache(MAX_CHUNK_META)
 
-    /** HNSW Si el índice se ha cargado desde el disco(Evite la duplicación en cada búsqueda. load). */
+    /** HNSW 索引是否已从磁盘加载(避免每次检索都重复 load)。 */
     @Volatile
     private var vectorIndexLoaded = false
     private val vectorIndexMutex = kotlinx.coroutines.sync.Mutex()
@@ -171,13 +171,13 @@ class RagService(
     @Volatile
     private var vectorEmbeddingsNeedReindex = false
 
-    /** El recuento acumulado que se guardará desde la primera adición.,alcanzar [SAVE_INTERVAL] desencadenado cuando [saveVectorIndex]. */
+    /** 自首次 add 后累计的待保存计数,达到 [SAVE_INTERVAL] 时触发 [saveVectorIndex]。 */
     private val pendingSaveCount = AtomicInteger(0)
 
-    /** v2.x: HNSW Colocar placa de estrangulamiento — No es suficiente desde la última colocación [SAVE_THROTTLE_MS] tiempo libre,Evite que documentos grandes se reescriban por completo cada 50 bloques. */
+    /** v2.x: HNSW 落盘节流 — 距上次落盘不足 [SAVE_THROTTLE_MS] 时暂缓,防大文档每 50 块全量重写索引。 */
     private val lastVectorIndexSaveAt = java.util.concurrent.atomic.AtomicLong(0L)
 
-    /** v1.55: chunk Entradas de caché de metadatos(HNSW Relleno de resultados de búsqueda). */
+    /** v1.55: chunk 元数据缓存条目(HNSW 检索结果回填用)。 */
     private data class ChunkMeta(
         val chunkId: String,
         val docId: String,
@@ -186,12 +186,12 @@ class RagService(
     )
 
     /**
-     * B-35: Caché de metadatos de fragmentos LRU seguro para subprocesos,límite superior [capacity] Artículo,Evite que el contenido completo del fragmento resida en la memoria.
-     * access-order LinkedHashMap:get hit promocionará la entrada a la utilizada más recientemente,Cuando la inserción esté llena, se eliminará la entrada más antigua no utilizada.
-     * todo variable/Todas las operaciones de solo lectura mantienen el mismo bloqueo,evitar el recorrido(values)La simultaneidad con las escrituras da como resultado una excepción ConcurrentModificationException.
+     * B-35: 线程安全的 LRU chunk 元数据缓存,上限 [capacity] 条,防止全量 chunk content 常驻内存。
+     * access-order 的 LinkedHashMap:get 命中会把条目提升为最近使用,插入满员时淘汰最久未用条目。
+     * 所有可变/只读操作均持同一把锁,避免遍历(values)与写并发导致 ConcurrentModificationException。
      */
     private class LruChunkMetaCache(private val capacity: Int) {
-        // accessOrder=true:get Visitas promocionadas a usadas recientemente;Cuando esté lleno se eliminarán los más antiguos que lleven mucho tiempo sin utilizarse.(keys primer elemento).
+        // accessOrder=true:get 命中提升为最近使用;满员时淘汰最久未用(keys 首项)。
         private val delegate = java.util.LinkedHashMap<String, ChunkMeta>(capacity, 0.75f, true)
 
         fun get(id: String): ChunkMeta? = synchronized(delegate) { delegate[id] }
@@ -219,15 +219,15 @@ class RagService(
         fun asList(): List<ChunkMeta> = synchronized(delegate) { delegate.values.toList() }
     }
 
-    // v1.0.47: embedding fusible — embed La recuperación volverá directamente vacía dentro de los 5 minutos posteriores al error.,
-    //   Deje que buildInjectionContextWithCitations se degrade naturalmente a keywordSearchFallback(Búsqueda de bases de datos locales),
-    //   Evite presionar 404 en cada conversación, desperdiciando entre 60 y 200 ms + actualización de pantalla + activación del límite de rpm de SenseTime.
-    //   5 Curación en minutos:Inténtalo de nuevo embed,Si tiene éxito, borre el fusible.,El fallo continúa durante 5 minutos.
+    // v1.0.47: embedding 熔断器 — embed 失败后 5 分钟内 retrieve 直接返回空,
+    //   让 buildInjectionContextWithCitations 自然降级到 keywordSearchFallback(本地数据库搜索),
+    //   避免每次对话都打 404 浪费 60-200ms + 刷屏 + 触发商汤 rpm 限制。
+    //   5 分钟后自愈:重新尝试 embed,成功则清熔断,失败则续 5 分钟。
     @Volatile
     private var embeddingFailureUntil: Long = 0L
 
-    // v1.133: docTitle TTL caché — Evite buscar en toda la tabla cada vez(docTitleProvider original cada vez observeAll().first())
-    // 5 los minutos caducan,La sincronización tarda hasta 5 minutos después de agregar o eliminar documentos;indexDocument/deleteDocIndex falla activa
+    // v1.133: docTitle TTL 缓存 — 避免每次检索都查全表(原 docTitleProvider 每次 observeAll().first())
+    // 5 分钟过期,文档增删后最多 5 分钟同步;indexDocument/deleteDocIndex 时主动失效
     @Volatile
     private var cachedTitles: Map<String, String>? = null
 
@@ -235,19 +235,19 @@ class RagService(
     private var cachedTitlesAt: Long = 0
     private val titlesMutex = kotlinx.coroutines.sync.Mutex()
 
-    /** v1.133: Obtener docTitle con caché — 5 minutos TTL,Recargar después del fallo. */
+    /** v1.133: 带缓存的 docTitle 获取 — 5 分钟 TTL,失效后重新加载。 */
     private suspend fun getCachedTitles(): Map<String, String> {
         val now = System.currentTimeMillis()
         cachedTitles?.let {
             if (now - cachedTitlesAt < TITLES_TTL_MS) return it
         }
         return titlesMutex.withLock {
-            // doble verificación,Evite la carga repetida durante la concurrencia
+            // 双重检查,避免并发时重复加载
             cachedTitles?.let {
                 if (now - cachedTitlesAt < TITLES_TTL_MS) return@withLock it
             }
             val titles = resultOf { docTitleProvider() }
-                .onError { msg, e -> Logger.w("RagService", "docTitle Error al cargar: $msg", e) }
+                .onError { msg, e -> Logger.w("RagService", "docTitle 加载失败: $msg", e) }
                 .getOrNull() ?: emptyMap()
             cachedTitles = titles
             cachedTitlesAt = System.currentTimeMillis()
@@ -255,19 +255,19 @@ class RagService(
         }
     }
 
-    /** v1.133: Invalidar activamente la caché de docTitle(Se llama después de agregar o eliminar un documento.). */
+    /** v1.133: 主动失效 docTitle 缓存(文档增删后调用)。 */
     private fun invalidateTitlesCache() {
         cachedTitles = null
         cachedTitlesAt = 0
     }
 
-    // ── v1.55: HNSW Gestión del ciclo de vida del índice ──
+    // ── v1.55: HNSW 索引生命周期管理 ──
 
     /**
-     * v1.55: App Llamado después del inicio — de [indexFile] Cargar índice HNSW,y reconstruir desde DB [chunkMetaCache].
+     * v1.55: App 启动后调用 — 从 [indexFile] 加载 HNSW 索引,并从 DB 重建 [chunkMetaCache]。
      *
-     * idempotente:Solo la primera vez se carga cuando se llama varias veces.,Regrese directamente más tarde.
-     * incluso si [indexFile] es nulo o no se pudo cargar,también será reconstruido chunkMetaCache(Asegúrese de que la recuperación posterior de HNSW esté disponible).
+     * 幂等:多次调用只首次实际加载,后续直接返回。
+     * 即使 [indexFile] 为 null 或加载失败,也会重建 chunkMetaCache(保证后续 HNSW 检索可用)。
      */
     /** Invalidate derived HNSW state after backup restore; DB embeddings remain authoritative. */
     suspend fun invalidateAfterRestore() {
@@ -283,7 +283,7 @@ class RagService(
             vectorEmbeddingsNeedReindex = false
             indexFile?.let { file ->
                 if (file.exists() && !file.delete()) {
-                    Logger.w("RagService", "La eliminación del antiguo índice HNSW falla después de la restauración de la copia de seguridad: ${file.absolutePath}")
+                    Logger.w("RagService", "备份恢复后删除旧 HNSW 索引失败: ${file.absolutePath}")
                 }
             }
         }
@@ -328,7 +328,7 @@ class RagService(
                 vectorIndexNeedsFullRebuild = false
             }
             vectorIndexFingerprint = expectedFingerprint
-            // Independientemente de si la carga es exitosa o no,son reconstruidos chunkMetaCache(HNSW Es necesario rellenar los resultados de la búsqueda)
+            // 无论 load 是否成功,都重建 chunkMetaCache(HNSW 检索结果回填需要)
             rebuildChunkMetaCache()
             vectorIndexLoaded = true
         }
@@ -354,20 +354,20 @@ class RagService(
             vi.load(file, expectedFingerprint)
             true
         }
-            .onSuccess { Logger.i("RagService", "HNSW Carga del índice completada:size=${vi.size}") }
+            .onSuccess { Logger.i("RagService", "HNSW 索引加载完成:size=${vi.size}") }
             .onError { msg, error ->
                 fingerprintMismatch = error is HnswEmbeddingFingerprintMismatchException
-                Logger.w("RagService", "HNSW Error al cargar el índice(Caminará a través de la violencia): $msg", error)
+                Logger.w("RagService", "HNSW 索引加载失败(将走暴力遍历): $msg", error)
             }
             .getOrNull() == true
         return IndexLoadResult(loaded, fingerprintMismatch)
     }
 
     /**
-     * v1.55: Llamado al recuperar — Activar la carga si el índice no está cargado,De lo contrario, regrese directamente.
+     * v1.55: 检索时调用 — 若索引未加载则触发加载,否则直接返回。
      *
-     * con [loadVectorIndexIfNeeded] la diferencia:Este método es sólo para [retrieve] Uso interno,
-     * Evite la sobrecarga de lectura volátil + verificación Mutex para cada recuperación.
+     * 与 [loadVectorIndexIfNeeded] 的区别:此方法仅供 [retrieve] 内部使用,
+     * 避免每次检索都做 volatile 读 + Mutex 检查的开销。
      */
     private suspend fun ensureVectorIndexLoaded() {
         if (vectorIndexLoaded) return
@@ -375,50 +375,50 @@ class RagService(
     }
 
     /**
-     * v1.55: Persistir en el índice HNSW para [indexFile].
+     * v1.55: 把 HNSW 索引持久化到 [indexFile]。
      *
-     * tiempo de activación:
-     *  - [addChunksToVectorIndex] acumulativo [SAVE_INTERVAL] Se activa automáticamente después
-     *  - App Llamado activamente por la persona que llama al salir/en segundo plano
-     *  - [deleteDocIndex] Entonces la persona que llama toma la iniciativa de llamar.(Opcional)
+     * 触发时机:
+     *  - [addChunksToVectorIndex] 累计 [SAVE_INTERVAL] 次后自动触发
+     *  - App 退出 / 后台时由调用方主动调用
+     *  - [deleteDocIndex] 后由调用方主动调用(可选)
      */
     suspend fun saveVectorIndex(fingerprint: String? = vectorIndexFingerprint) {
         val vi = vectorIndex
         val file = indexFile
         if (vi == null || file == null) return
         if (vectorIndexNeedsFullRebuild || vectorEmbeddingsNeedReindex) {
-            Logger.i("RagService", "Embedding Algunos índices HNSW no persistirán hasta que se vuelva a indexar toda la base de datos.")
+            Logger.i("RagService", "Embedding 全库重新索引完成前，暂不持久化部分 HNSW 索引")
             return
         }
         resultOf {
-            // Ejecutar dentro del bloque sincronizado IO(HNSW save Bloqueo de lectura interno,No bloquear search)
+            // 同步块内执行 IO(HNSW save 内部用读锁,不阻塞 search)
             vi.save(file, fingerprint)
         }.onSuccess {
             pendingSaveCount.set(0)
             lastVectorIndexSaveAt.set(System.currentTimeMillis())
             vectorIndexRebuildMarkerFile?.let { marker ->
-                if (marker.exists() && !marker.delete()) Logger.w("RagService", "HNSW Error al limpiar el archivo de marca: ${marker.absolutePath}")
+                if (marker.exists() && !marker.delete()) Logger.w("RagService", "HNSW 标记文件清理失败: ${marker.absolutePath}")
             }
-            Logger.d("RagService", "HNSW Índice guardado:size=${vi.size}, file=${file.absolutePath}")
+            Logger.d("RagService", "HNSW 索引已保存:size=${vi.size}, file=${file.absolutePath}")
         }.onError { msg, e ->
-            Logger.w("RagService", "HNSW Error al guardar el índice: $msg", e)
+            Logger.w("RagService", "HNSW 索引保存失败: $msg", e)
         }
     }
 
     /**
-     * v1.55: Cargue completamente los metadatos de fragmentos de la base de datos a [chunkMetaCache].
+     * v1.55: 从 DB 全量加载 chunk 元数据到 [chunkMetaCache]。
      *
-     * usado para [loadVectorIndexIfNeeded] Construir caché al inicio;Borrar caché en caso de error(Las búsquedas posteriores de HNSW serán
-     * chunkMetaCache Perdido y degradado a vectorSearch,No afecta la funcionalidad).
+     * 用于 [loadVectorIndexIfNeeded] 启动时构建缓存;失败时清空缓存(后续 HNSW 检索会因
+     * chunkMetaCache 未命中而降级到 vectorSearch,不影响功能)。
      */
     private suspend fun rebuildChunkMetaCache() {
-        // P3-3(informe de auditoría): Lea en lotes para evitar cargar todo el fragmento de la biblioteca + incrustarlo en la memoria a la vez.
-        // Para implementación anterior getAllWithEmbedding(), memoria máxima = El tamaño de toda la biblioteca;
-        // Ahora, simplemente tomando la columna de metadatos y leyéndola por página, el pico se reduce a una sola página.
+        // P3-3（审计报告）: 分批读取，避免一次性把整库 chunk + embedding 载入内存。
+        // 旧实现用 getAllWithEmbedding()，峰值内存 = 整库大小；
+        // 现在只取元数据列并按页读取，峰值降到单页。
         chunkMetaCache.clear()
         var offset = 0
         var page = resultOf { chunkDao.getPageWithoutEmbedding(CACHE_REBUILD_PAGE_SIZE, offset) }
-            .onError { msg, e -> Logger.w("RagService", "chunkMetaCache La reconstrucción falló: $msg", e) }
+            .onError { msg, e -> Logger.w("RagService", "chunkMetaCache 重建失败: $msg", e) }
             .getOrNull()
         while (!page.isNullOrEmpty()) {
             for (chunk in page) {
@@ -434,17 +434,17 @@ class RagService(
             if (page.size < CACHE_REBUILD_PAGE_SIZE) break
             offset += CACHE_REBUILD_PAGE_SIZE
             page = resultOf { chunkDao.getPageWithoutEmbedding(CACHE_REBUILD_PAGE_SIZE, offset) }
-                .onError { msg, e -> Logger.w("RagService", "chunkMetaCache Error de lectura de página: $msg", e) }
+                .onError { msg, e -> Logger.w("RagService", "chunkMetaCache 分页读取失败: $msg", e) }
                 .getOrNull()
         }
-        Logger.d("RagService", "chunkMetaCache Reconstrucción completada:${chunkMetaCache.size()} Artículo")
+        Logger.d("RagService", "chunkMetaCache 重建完成:${chunkMetaCache.size()} 条")
     }
 
     /**
-     * v1.55: Agregue el nuevo fragmento al índice HNSW + fragmentoMetaCache.
+     * v1.55: 把新 chunk 加入 HNSW 索引 + chunkMetaCache。
      *
-     * No se lanza ninguna excepción en caso de error.(El error de actualización del índice no afecta la base de datos que se ha escrito. chunk,La próxima vez que se inicie la aplicación, se reconstruirá desde la base de datos.).
-     * acumulativo [SAVE_INTERVAL] Activado después [saveVectorIndex] Persistencia.
+     * 失败不抛异常(索引更新失败不影响 DB 已写入的 chunk,下次 App 启动会从 DB 重建)。
+     * 累计 [SAVE_INTERVAL] 次后触发 [saveVectorIndex] 持久化。
      */
     private suspend fun addChunksToVectorIndex(
         entities: List<KnowledgeChunkEntity>,
@@ -460,7 +460,7 @@ class RagService(
             resultOf { vi.add(entity.id, vec) }
                 .onError { msg, e ->
                     added = false
-                    Logger.w("RagService", "HNSW add falló(chunkId=${entity.id}): $msg", e)
+                    Logger.w("RagService", "HNSW add 失败(chunkId=${entity.id}): $msg", e)
                 }
             if (added) {
                 chunkMetaCache.put(
@@ -488,12 +488,12 @@ class RagService(
     }
 
     /**
-     * v1.55: Elimine todos los fragmentos del documento especificado del índice HNSW + fragmentoMetaCache.
+     * v1.55: 从 HNSW 索引 + chunkMetaCache 移除指定 doc 的全部 chunk。
      *
-     * P2-35: Originalmente solo hice clic [chunkMetaCache](LRU,límite superior [MAX_CHUNK_META]) Contrainvestigación,El de la gran biblioteca. doc
-     * Se omiten y eliminan fragmentos después de ser eliminados por LRU,HNSW Datos sucios restantes(La búsqueda aún devuelve contenido eliminado). Cambiar a base de datos
-     * chunkId Toda la colección se elimina de la fuente.(El almacenamiento en caché es sólo para limpiar la tabla de memoria.),Y superponga la identificación residual eliminada de la base de datos en el caché.
-     * La persona que llama debe ejecutar este método antes de eliminar la base de datos.(DB es una fuente autorizada).
+     * P2-35: 原先只按 [chunkMetaCache](LRU,上限 [MAX_CHUNK_META]) 反查,大库中该 doc
+     * 的 chunk 被 LRU 淘汰后漏删,HNSW 残留脏数据(检索仍返回已删内容)。改为以 DB 的
+     * chunkId 全集为删除源(缓存只为清理内存表),并叠加缓存里 DB 已删的残留 id。
+     * 调用方必须先于 DB 删除执行本方法(DB 是权威来源)。
      */
     private suspend fun removeDocChunksFromVectorIndex(docId: String) {
         val vi = vectorIndex ?: return
@@ -501,7 +501,7 @@ class RagService(
         val dbIds = resultOf { chunkDao.getByDoc(docId).map { it.id } }
             .onError { msg, e ->
                 dbReadFailed = true
-                Logger.e("RagService", "No se pudo leer el ID del fragmento del documento que se va a eliminar(docId=$docId): $msg", e)
+                Logger.e("RagService", "读取待删除文档的 chunkId 失败(docId=$docId): $msg", e)
             }
             .getOrNull()
         val cacheIds = chunkMetaCache.asList().filter { it.docId == docId }.map { it.chunkId }
@@ -517,7 +517,7 @@ class RagService(
                 resultOf { vi.remove(id) }
                     .onError { msg, e ->
                         removeFailed = true
-                        Logger.e("RagService", "HNSW remove falló(chunkId=$id): $msg", e)
+                        Logger.e("RagService", "HNSW remove 失败(chunkId=$id): $msg", e)
                     }
                 chunkMetaCache.remove(id)
             }
@@ -545,8 +545,8 @@ class RagService(
         chunkCountProvider = { chunkDao.countIndexed() },
         chunkPageByDocIdsProvider = { docIds, limit, offset ->
             val titles = getCachedTitles()
-            // v1.133: Conjunto de candidatos filtrado por docIds(@mention Para búsqueda dirigida)
-            // P2-33: respeto limit/offset(Anteriormente, los parámetros de paginación se ignoraban y todos los bloques del alcance se cargaban completamente en cada llamada.)
+            // v1.133: 按 docIds 过滤的候选集(@mention 定向检索用)
+            // P2-33: 尊重 limit/offset(此前忽略分页参数、每次调用都全量载入 scope 内全部分块)
             val chunks = if (docIds.isNotEmpty()) chunkDao.getPageByDocIds(docIds, limit, offset) else emptyList()
             chunks.map { chunk ->
                 VectorSearchService.ChunkWithDoc(
@@ -591,12 +591,12 @@ class RagService(
     )
 
     /**
-     * Documentos indexados:Chunking + incrustación + almacenamiento + sincronización FTS.
+     * 索引文档:分块 + embedding + 存储 + FTS 同步。
      *
-     * v2.x: fragmentación/HNSW Las operaciones de CPU y disco, como la escritura, son [Dispatchers.Default] ejecutar,
-     * Evite importaciones de archivos grandes en el hilo de la persona que llama(hilo principal)en la interfaz de bloqueo.
+     * v2.x: 分块/HNSW 写入等 CPU 与磁盘操作在 [Dispatchers.Default] 执行,
+     * 避免大文件导入在调用方线程(主线程)上阻塞界面。
      *
-     * @return Número de bloques
+     * @return 分块数
      */
     suspend fun indexDocument(
         docId: String,
@@ -621,7 +621,7 @@ class RagService(
         if (content.isBlank()) return@withContext 0
         val perfTimer = Perf.start("rag-index-$docId")
 
-        // 1. fragmentación(v1.133:apoyo markdownAware / chunkByToken)
+        // 1. 分块(v1.133:支持 markdownAware / chunkByToken)
         val chunker = TextChunker(
             targetSize = ragConfig.chunkSize,
             overlap = ragConfig.chunkOverlap,
@@ -635,18 +635,18 @@ class RagService(
         }
         Logger.d(
             "RagService",
-            "Documentación $docId fragmentación ${chunks.size} bloquear(markdownAware=${ragConfig.markdownAware}, chunkByToken=${ragConfig.chunkByToken})",
+            "文档 $docId 分块 ${chunks.size} 块(markdownAware=${ragConfig.markdownAware}, chunkByToken=${ragConfig.chunkByToken})",
         )
         perfTimer.split("chunk")
 
-        // 2. lote embedding
+        // 2. 批量 embedding
         val provider = embeddingService.getProvider(ragConfig)
         loadVectorIndexIfNeeded(provider)
         val embeddings = mutableListOf<FloatArray>()
         for (i in chunks.indices step embedBatchSize) {
             val batch = chunks.subList(i, minOf(i + embedBatchSize, chunks.size))
             val vectors = resultOf { provider.embed(batch.map { it.content }) }
-                .onError { msg, e -> Logger.e("RagService", "Embedding lote $i falló: $msg", e) }
+                .onError { msg, e -> Logger.e("RagService", "Embedding 批次 $i 失败: $msg", e) }
                 .getOrThrow()
             check(vectors.size == batch.size) {
                 "Provider returned ${vectors.size} vectors for ${batch.size} chunks (batch $i)"
@@ -656,9 +656,9 @@ class RagService(
         }
         perfTimer.split("embedding")
 
-        // v1.133: embedding Comprobación de coherencia de dimensiones — Las nuevas dimensiones de incrustación deben ser coherentes con las dimensiones de fragmentos existentes en la biblioteca.
-        // Las dimensiones inconsistentes harán que la recuperación de vectores cosSim siempre sea 0(Interceptado por falta de coincidencia de tamaño),base de conocimientos"Parece que está indexado pero no se puede encontrar.".
-        // Lanza una excepción cuando falla la verificación,Registrado como error por reindexAllInKbs/caller de la capa superior,No escrito en la base de datos.
+        // v1.133: embedding 维度一致性校验 — 新 embedding 维度必须与库中已有 chunk 维度一致
+        // 维度不一致会导致向量检索 cosSim 永远为 0(被 size mismatch 拦截),知识库"看起来索引了但搜不到"。
+        // 校验失败时抛异常,由上层 reindexAllInKbs/调用方记录为失败,不写入数据库。
         val newDim = embeddings.firstOrNull()?.size ?: 0
         if (newDim > 0) {
             val existingDim = resultOf { chunkDao.getFirstIndexedEmbeddingDim() }.getOrNull()
@@ -667,7 +667,7 @@ class RagService(
             }
         }
 
-        // 3. El primer lote de comprobaciones de incrustación y dimensiones ha sido exitoso;Cualquier falla a partir de este momento debe borrar el estado semiindexado.
+        // 3. 首批 embedding + 维度检查已成功;从此任何失败都必须清理半索引状态。
         var destructiveStarted = false
         try {
             destructiveStarted = true
@@ -675,15 +675,15 @@ class RagService(
             chunkDao.deleteByDoc(docId)
             withFtsSelfHeal { ftsDao.deleteByDoc(docId) }
 
-            // 4. almacenamiento chunk + embedding(BLOB)
+            // 4. 存储 chunk + embedding(BLOB)
             val now = System.currentTimeMillis()
             val entities = createChunkEntities(docId, chunks, embeddings, chunker, now)
             chunkDao.insertAll(entities)
 
-            // v1.55: Únase sincrónicamente al índice HNSW(actualización incremental)
+            // v1.55: 同步加入 HNSW 索引(增量更新)
             addChunksToVectorIndex(entities, embeddings, provider)
 
-            // 5. FTS Sincronizar índice(Para vías de recuperación híbridas BM25)
+            // 5. FTS 同步索引(用于混合检索 BM25 路径)
             val ftsRows = entities.map {
                 KnowledgeChunkFtsRow(
                     chunkId = it.id,
@@ -692,13 +692,13 @@ class RagService(
                 )
             }
             resultOf { withFtsSelfHeal { ftsDao.insertAll(ftsRows) } }
-                .onError { msg, e -> Logger.w("RagService", "FTS Error de sincronización(No afecta la recuperación de vectores): $msg", e) }
+                .onError { msg, e -> Logger.w("RagService", "FTS 同步失败(不影响向量检索): $msg", e) }
 
             perfTimer.split("store")
             vectorSearch.invalidateCache()
             invalidateTitlesCache()
 
-            Logger.d("RagService", "Documentación $docId Indexación completada:${entities.size} bloquear,Dimensiones ${embeddings.firstOrNull()?.size ?: 0}")
+            Logger.d("RagService", "文档 $docId 索引完成:${entities.size} 块,维度 ${embeddings.firstOrNull()?.size ?: 0}")
             perfTimer.end()
             return@withContext entities.size
         } catch (cancelled: kotlinx.coroutines.CancellationException) {
@@ -715,31 +715,31 @@ class RagService(
         runCatching { removeDocChunksFromVectorIndex(docId) }
             .onFailure {
                 cleanupFailed = true
-                Logger.e("RagService", "Limpiar el estado de HNSW después de que falla el reemplazo del índice(docId=$docId)", it)
+                Logger.e("RagService", "索引替换失败后清理 HNSW 状态失败(docId=$docId)", it)
             }
         runCatching { withFtsSelfHeal { ftsDao.deleteByDoc(docId) } }
             .onFailure {
                 cleanupFailed = true
-                Logger.e("RagService", "La limpieza de FTS falla después de que falla el reemplazo del índice(docId=$docId)", it)
+                Logger.e("RagService", "索引替换失败后清理 FTS 失败(docId=$docId)", it)
             }
         runCatching { chunkDao.deleteByDoc(docId) }
             .onFailure {
                 cleanupFailed = true
-                Logger.e("RagService", "La limpieza de filas de fragmentos falla después de que falla el reemplazo del índice(docId=$docId)", it)
+                Logger.e("RagService", "索引替换失败后清理 chunk 行失败(docId=$docId)", it)
             }
-        // P0-3(informe de auditoría): Márquelo como "El índice se ha perdido y debe reconstruirse" en lugar de borrarlo silenciosamente.
-        // Cuando falla a mitad de camino, el bloque antiguo se ha eliminado, el nuevo bloque está incompleto y el documento sigue ahí pero no se puede recuperar;
-        // Los usuarios no ven ningún mensaje, simplemente sienten“Esta biblioteca no funciona”.
+        // P0-3（审计报告）: 标记为「索引已丢，需重建」而不是静默清零。
+        // 中途失败时旧块已被删、新块不完整，文档仍在但检索不到；
+        // 用户看不到任何提示，只会觉得“这个库不灵了”。
         runCatching {
             docDao.markIndexBroken(docId)
         }.onFailure {
             cleanupFailed = true
-            Logger.e("RagService", "Error al marcar el estado del documento después de que falló el reemplazo del índice(docId=$docId)", it)
+            Logger.e("RagService", "索引替换失败后标记文档状态失败(docId=$docId)", it)
         }
         Logger.w(
             "RagService",
-            "Documentación $docId El reemplazo del índice falló a mitad de camino, los bloques antiguos se borraron y los bloques nuevos están incompletos; ha sido marcado para su reconstrucción." +
-                "El documento no se está recuperando actualmente.",
+            "文档 $docId 索引替换中途失败，旧块已清空、新块不完整；已标记为需重建。" +
+                "该文档当前不会被检索命中。",
         )
         if (cleanupFailed) markVectorIndexNeedsFullRebuild("cleanup failed for doc $docId")
         vectorSearch.invalidateCache()
@@ -747,24 +747,24 @@ class RagService(
     }
 
     /**
-     * v2.x: Transmisión de documentos indexados — fragmentación/embedding/Almacenar flujo completo,Uso de memoria O(ventana) en vez de O(Texto completo).
+     * v2.x: 流式索引文档 — 分块/embedding/存储全程流式,内存占用 O(窗口) 而非 O(全文)。
      *
-     * v2.x: Segmentación de ventana deslizante y escritura por lotes HNSW en [Dispatchers.Default] ejecutar,Evite que las importaciones de archivos grandes bloqueen el hilo principal.
+     * v2.x: 滑窗切分与 HNSW 批量写入在 [Dispatchers.Default] 执行,避免大文件导入阻塞主线程。
      *
-     * con [indexDocument] alineación semántica(Primero borre los bloques antiguos y luego escriba nuevos bloques/verificación de dimensiones/sincronización FTS),Diferencia en la entrada de texto:
-     * El texto comienza con [textPieces] Transmisión de transmisión fragmentada,No es necesario cargar el texto completo en la memoria a la vez.,Admite la importación de archivos de cualquier tamaño.
+     * 与 [indexDocument] 语义对齐(先清旧块再写新块 / 维度校验 / FTS 同步),差异在文本入口:
+     * 文本以 [textPieces] 分片流式喂入,不需要把全文一次性载入内存,支持任意大小文件导入。
      *
-     * darse cuenta:Toma de ventana corredera — El buffer se acumula hasta [windowChars] detrás del límite seguro(párrafo/nueva línea)cortar ventana,
-     * Reutilizar [TextChunker] Bloquear por ventana;bloquear lote([embedBatchSize])Escriba la tabla de fragmentos/HNSW/FTS en lotes después de la incrustación.
+     * 实现:滑窗摄取 — 缓冲区累积到 [windowChars] 后在安全边界(段落/换行)切窗,
+     * 复用 [TextChunker] 逐窗分块;块攒批([embedBatchSize])嵌入后分批写入 chunk 表 / HNSW / FTS。
      *
-     * semántica del fracaso:
-     *  - El primer lote de incrustación falló o las dimensiones no coincidieron:Sin limpieza de bloques viejos, cero escrituras.(con [indexDocument] consistente);
-     *  - Falló a mitad de camino:Bloques escritos reservados(índice parcial),Los datos antiguos se limpiarán antes del primer lote de escrituras al volver a importarlos.
+     * 失败语义:
+     *  - 首批 embedding 失败或维度不匹配:不清理旧块、零写入(与 [indexDocument] 一致);
+     *  - 中途失败:已写入块保留(部分索引),重新导入时首批写入前会清理旧数据。
      *
-     * @param textPieces secuencia de fragmentos de texto(Bucle de lectura de archivos bloque a bloque emit)
-     * @param windowChars Tamaño de ventana corredera(personaje,Predeterminado [STREAM_WINDOW_CHARS];La prueba se puede ajustar en tamaño pequeño.)
-     * @param onProgress Devolución de llamada de recuento de bloques indexados(Una vez por lote)
-     * @return Número total de bloques de índice
+     * @param textPieces 文本分片流(文件读取循环逐块 emit)
+     * @param windowChars 滑窗大小(字符,默认 [STREAM_WINDOW_CHARS];测试可调小)
+     * @param onProgress 已索引块数回调(每批一次)
+     * @return 总索引块数
      */
     suspend fun indexDocumentStreamed(
         docId: String,
@@ -794,28 +794,28 @@ class RagService(
         suspend fun cleanupPartialIndex() {
             if (!destructiveStarted) return
             runCatching { deleteDocIndex(docId) }
-                .onFailure { Logger.e("RagService", "La limpieza parcial del índice falla después de una falla del índice de transmisión(docId=$docId)", it) }
+                .onFailure { Logger.e("RagService", "流式索引失败后的部分索引清理失败(docId=$docId)", it) }
             runCatching { docDao.clearIndexStatus(docId) }
-                .onFailure { Logger.e("RagService", "Error en la limpieza del estado del índice del documento después de que falló la indexación en streaming(docId=$docId)", it) }
+                .onFailure { Logger.e("RagService", "流式索引失败后清理文档索引状态失败(docId=$docId)", it) }
         }
 
         suspend fun storeBatch(batch: List<TextChunker.Chunk>) {
             if (batch.isEmpty()) return
             val vectors = resultOf { provider.embed(batch.map { it.content }) }
-                .onError { msg, e -> Logger.e("RagService", "Falló el lote de incrustación de índice de transmisión(indexado $totalIndexed bloquear): $msg", e) }
+                .onError { msg, e -> Logger.e("RagService", "流式索引 embedding 批次失败(已索引 $totalIndexed 块): $msg", e) }
                 .getOrThrow()
             check(vectors.size == batch.size) {
                 "Provider returned ${vectors.size} vectors for ${batch.size} chunks"
             }
             if (!initialized) {
-                // primer lote:Comprobación de coherencia de dimensiones(Mismo calibre que indexDocument;No limpie bloques antiguos en caso de falla, cero escrituras)
+                // 首批:维度一致性校验(与 indexDocument 相同口径;失败时不清理旧块、零写入)
                 val newDim = vectors.firstOrNull()?.size ?: 0
                 if (newDim > 0) {
                     val existingDim = resultOf { chunkDao.getFirstIndexedEmbeddingDim() }.getOrNull()
                     if (existingDim != null && existingDim > 0 && existingDim != newDim) {
                         Logger.e(
                             "RagService",
-                            "Embedding Las dimensiones no coinciden:La dimensión del fragmento ya existe en la biblioteca.=$existingDim,nuevo documento $docId Dimensiones=$newDim.",
+                            "Embedding 维度不匹配:库中已有 chunk 维度=$existingDim,新文档 $docId 维度=$newDim。",
                         )
                         throw IllegalStateException(
                             "Embedding dimension mismatch: existing=$existingDim, new=$newDim (doc=$docId). " +
@@ -823,8 +823,8 @@ class RagService(
                         )
                     }
                 }
-                // Limpiar bloques antiguos después de que el primer lote de incrustaciones sea exitoso(Con indexDocumento "embedding Después del éxito, elimine los fragmentos antiguos y alinéelos.).
-                // A partir de aquí, cualquier fallo en el proceso deberá limpiar este índice parcial para evitar que el documento quede en“semi-buscable”estado.
+                // 首批 embedding 成功后才清理旧块(与 indexDocument「embedding 成功后删旧分块」对齐)。
+                // 从此处开始，任何中途失败都必须清理本次部分索引，避免文档处于“半可检索”状态。
                 destructiveStarted = true
                 removeDocChunksFromVectorIndex(docId)
                 chunkDao.deleteByDoc(docId)
@@ -855,12 +855,12 @@ class RagService(
                 )
             }
             resultOf { withFtsSelfHeal { ftsDao.insertAll(ftsRows) } }
-                .onError { msg, e -> Logger.w("RagService", "FTS Error de sincronización(No afecta la recuperación de vectores): $msg", e) }
+                .onError { msg, e -> Logger.w("RagService", "FTS 同步失败(不影响向量检索): $msg", e) }
             totalIndexed += entities.size
             onProgress(totalIndexed)
         }
 
-        /** Corta una ventana y únete a la cola en trozos;Devuelve si se ha consumido alguna ventana. */
+        /** 切出一窗并分块入队;返回是否有窗口被消费。 */
         fun drainWindow(hard: Boolean): Boolean {
             if (buffer.isEmpty()) return false
             if (!hard && buffer.length < effectiveWindow) return false
@@ -898,9 +898,9 @@ class RagService(
                     }
                 }
             }
-            // Refinamiento:Las ventanas restantes se ciclan y cortan.(Cada desagüe sólo consume una ventana),Los bloques están escritos en lotes a continuación.
+            // 收尾:残余窗口循环切完(每次 drain 只消费一窗),块在下方按批写入
             while (drainWindow(hard = true)) {
-                // Una ventana para cada ronda de consumo.,hasta que el buffer esté vacío
+                // 每轮消费一窗,直到缓冲区空
             }
             while (pending.size >= embedBatchSize) {
                 val batch = pending.subList(0, embedBatchSize).toList()
@@ -917,7 +917,7 @@ class RagService(
                 invalidateTitlesCache()
             }
             perfTimer.end()
-            Logger.d("RagService", "Documentación $docId Indexación de streaming completada:$totalIndexed bloquear")
+            Logger.d("RagService", "文档 $docId 流式索引完成:$totalIndexed 块")
             return@withContext totalIndexed
         } catch (cancelled: kotlinx.coroutines.CancellationException) {
             cleanupPartialIndex()
@@ -929,15 +929,15 @@ class RagService(
     }
 
     /**
-     * v2.x: Segmentación garantizada por ingesta de streaming — El bloque de texto sin formato superlargo de la ventana se divide en dos partes.
+     * v2.x: 流式摄取保底切分 — 窗口内超长纯文本块二次切分。
      *
-     * TextChunker El modo consciente de las rebajas presiona los límites de la estructura(Título/bloque de código/mesa)cortar,
-     * Los párrafos largos sin estructura Markdown se fusionarán en un solo fragmento.(ver TextChunkerTest
-     * "Los párrafos puros y sin bordes se fusionarán en un solo bloque"). Si se ingresa directamente un bloque enorme en la incrustación, excederá el límite superior del modelo.
-     * Entrar en la búsqueda arrastrará hacia abajo la calidad de la inyección.,Entonces, en el lado de la ingesta de streaming durante más de 2×targetSize bloque de texto plano
-     * Haz un corte duro con un fondo garantizado.(Cortar en la magnitud del tamaño objetivo,Reservar overlap).
+     * TextChunker 的 markdown-aware 模式按结构边界(标题/代码块/表格)切分,
+     * 无 Markdown 结构的纯段落长文会被合并成单一巨块(见 TextChunkerTest
+     * 「纯段落无边界时会合并到单块」)。巨块直接进入 embedding 会超模型上限、
+     * 进入检索会拖垮注入质量,因此在流式摄取侧对超过 2×targetSize 的纯文本块
+     * 做保底硬切(切成 targetSize 量级,保留 overlap)。
      *
-     * bloque de código/mesa(metadata type=code/table)Respetar la semántica estructural,Mantén todo sin cortes.
+     * 代码块/表格(metadata type=code/table)尊重结构语义,保持整体不切。
      */
     private fun splitOversizedPlainChunk(chunk: TextChunker.Chunk, targetSize: Int, overlap: Int): List<TextChunker.Chunk> {
         val type = chunk.metadata["type"]
@@ -957,14 +957,14 @@ class RagService(
     }
 
     /**
-     * v1.133: Buscar — Admite recuperación mixta/MMR/scopeDocIds.
+     * v1.133: 检索 — 支持混合检索 / MMR / scopeDocIds。
      *
-     * v1.55: Biblioteca a gran escala(>=5000 chunk)Dar prioridad al vecino más cercano aproximado de HNSW;
-     *       En un escenario de recuperación no híbrida/no dirigida, si [vectorIndex] Si tienes datos, úsalos. HNSW,De lo contrario, volverá a caer en un cruce violento.
+     * v1.55: 大规模库(>=5000 chunk)优先走 HNSW 近似最近邻;
+     *       非混合 / 非定向检索场景下若 [vectorIndex] 有数据则用 HNSW,否则回退暴力遍历。
      *
-     * @param scopeDocIds Limitar el alcance de la búsqueda(@mention Búsqueda dirigida/KB de enlace del Asistente)
-     * @param metadataFilter Filtros de metadatos(docIds/Título/Fuente/tag/rango de tiempo,Opcional,null = Sin filtrado);
-     *   También funciona en búsquedas híbridas.(Vector+BM25)Dos enlaces con recuperación vectorial pura.
+     * @param scopeDocIds 限定检索范围(@mention 定向检索 / 助手绑定 KB 用)
+     * @param metadataFilter 元数据过滤条件(docIds/标题/来源/tag/时间范围,可选,null = 不过滤);
+     *   同时作用于混合检索(向量+BM25)与纯向量检索两条链路。
      */
     suspend fun retrieve(
         query: String,
@@ -976,22 +976,22 @@ class RagService(
     ): List<VectorSearchService.SearchResult> {
         if (query.isBlank()) return emptyList()
         val start = System.currentTimeMillis()
-        // v1.0.47: Regresa directamente vacío durante el período del disyuntor,Deja ir la cima keywordSearchFallback(Búsqueda de bases de datos locales),
-        //   Ya no ajuste la inserción para activar 404.5 Se curará solo en minutos.
+        // v1.0.47: 熔断期内直接返回空,让上层走 keywordSearchFallback(本地数据库搜索),
+        //   不再调 embed 触发 404。5 分钟后自愈。
         if (System.currentTimeMillis() < embeddingFailureUntil) {
             Perf.log("rag-retrieve", System.currentTimeMillis() - start)
             return emptyList()
         }
         val provider = embeddingService.getProvider(ragConfig)
-        // P0-1 Reparación (informe de auditoría): Agregue un tiempo de espera estricto para consultar la incrustación.
+        // P0-1 修复（审计报告）: 给 query embedding 加硬超时。
         //
-        // La implementación anterior solo tenía cortes de circuito (saltos dentro de los 5 minutos posteriores al fallo) sin tiempos de espera. si embedding
-        // punto final“Acepta conexión pero nunca responde”, la llamada se colgará hasta que charle OkHttpClient
-        // readTimeout=300s —— Los usuarios esperan hasta 5 minutos en la ruta crítica para enviar un mensaje antes de ver la primera palabra.
-        // Agregue aquí un tiempo de espera estricto de 10 segundos: el tiempo de espera también activa un disyuntor y la capa superior se degrada a la recuperación de palabras clave locales.
-        // Primero verifique el caché de vectores: si el acceso tiene éxito, no ingresará a la ventana de tiempo de espera de la red (repetir preguntas/volver a intentar la misma oración es lo más común).
-        // Deliberadamente no se usa aquí embedWithCache —— Eso convierte la excepción del Proveedor en nula, mientras que lo siguiente
-        // Excepción de dependencia lógica del disyuntor; si no se puede encontrar, se seguirá utilizando la ruta original withTimeout + proveedor.embed.
+        // 旧实现只有熔断（失败后 5 分钟内跳过），没有任何超时。如果 embedding
+        // 端点“接受连接但永不响应”，调用会一直挂到 chat OkHttpClient 的
+        // readTimeout=300s —— 用户在发消息关键路径上最长等 5 分钟才看到首字。
+        // 这里加 10s 硬超时：超时同样触发熔断，上层降级到本地关键词检索。
+        // 先查向量缓存：命中就不进网络超时窗口（重复提问 / 重试同一句话最常见）。
+        // 这里刻意不用 embedWithCache —— 那个把 Provider 异常吞成 null，而下面的
+        // 熔断逻辑依赖异常；查不到时仍走原来的 withTimeout + provider.embed 路径。
         val cachedQueryVector: FloatArray? = resultOf {
             embeddingService.cachedVector(ragConfig, query)
         }.getOrNull()
@@ -999,26 +999,26 @@ class RagService(
             withTimeout(EMBED_QUERY_TIMEOUT_MS) { provider.embed(query) }
         }
             .onError { msg, e ->
-                Logger.w("RagService", "Query embedding falló/tiempo de espera: $msg", e)
-                // v1.0.47: Configure el fusible para que se rompa durante 5 minutos.,Durante la recuperación, regresa vacío directamente. → Degradar la búsqueda local desde el nivel superior
+                Logger.w("RagService", "Query embedding 失败/超时: $msg", e)
+                // v1.0.47: 设熔断 5 分钟,期间 retrieve 直接返回空 → 上层降级本地搜索
                 embeddingFailureUntil = System.currentTimeMillis() + EMBEDDING_CIRCUIT_BREAKER_MS
-                Logger.i("RagService", "embedding fusible ${EMBEDDING_CIRCUIT_BREAKER_MS / 1000}s,La búsqueda de período se degrada a palabras clave locales")
+                Logger.i("RagService", "embedding 熔断 ${EMBEDDING_CIRCUIT_BREAKER_MS / 1000}s,期间检索降级到本地关键词")
             }
             .getOrNull()
             ?: return emptyList<VectorSearchService.SearchResult>().also { Perf.log("rag-retrieve", System.currentTimeMillis() - start) }
-        // v1.0.47: embed éxito → fusible claro(autocuración),La próxima vez, reanude la recuperación normal de vectores.
+        // v1.0.47: embed 成功 → 清熔断(自愈),下次恢复走正常向量检索
         embeddingFailureUntil = 0L
         if (cachedQueryVector == null) {
-            // El almacenamiento en caché de escritura es una optimización pura: el error no afecta los resultados de esta recuperación.
+            // 写缓存是纯优化：失败不影响本次检索结果。
             resultOf { embeddingService.rememberVector(ragConfig, query, queryVector) }
         }
 
         if (vectorEmbeddingsNeedReindex) {
-            Logger.w("RagService", "Embedding El modelo es inconsistente con el vector almacenado. Espere a que se vuelva a indexar toda la base de datos antes de reanudar la recuperación de vectores.")
+            Logger.w("RagService", "Embedding 模型与已存储向量不一致，等待全库重新索引后再恢复向量检索")
             return emptyList()
         }
 
-        // v1.133: Rutas de búsqueda mixtas
+        // v1.133: 混合检索路径
         if (ragConfig.hybridEnabled && hybridSearchService != null) {
             val hybrid = resultOf {
                 hybridSearchService.hybridSearch(
@@ -1032,7 +1032,7 @@ class RagService(
                     scopeDocIds = scopeDocIds,
                     metadataFilter = metadataFilter,
                 )
-            }.onError { msg, e -> Logger.w("RagService", "La búsqueda mixta falló,vector de degradación: $msg", e) }
+            }.onError { msg, e -> Logger.w("RagService", "混合检索失败,降级向量: $msg", e) }
                 .getOrNull()
             if (hybrid != null) {
                 Perf.log("rag-retrieve-hybrid", System.currentTimeMillis() - start)
@@ -1046,27 +1046,27 @@ class RagService(
                         chunkId = it.chunkId,
                     )
                 }
-                // v1.133: Rellene el campo isInternal(Consulta por lotes desde KnowledgeDocEntity,Reemplazo unificado de la codificación del prefijo docId)
+                // v1.133: 回填 isInternal 字段(从 KnowledgeDocEntity 批量查询,统一替代 docId 前缀硬编码)
                 return applyIsInternal(mapped)
             }
         }
 
-        // v1.55: HNSW camino(Biblioteca a gran escala + búsqueda no direccional)
-        // Condiciones:vectorIndex Con datos + Ninguno scopeDocIds(scope El conjunto de candidatos de escena es pequeño,El recorrido violento es suficiente)
-        //      + Ninguno metadataFilter: resultados de HNSW sin metadatos,No se puede filtrar;Cuando el filtrado está activado, debe caer a
-        //        vectorSearch(su apoyo interno metadataFilter),Evite que los filtros se ignoren silenciosamente.
-        // Nota:Esto también sucederá cuando la recuperación mixta falle. — HNSW Mucho más rápido que la fuerza bruta
+        // v1.55: HNSW 路径(大规模库 + 非定向检索)
+        // 条件:vectorIndex 有数据 + 无 scopeDocIds(scope 场景候选集小,暴力遍历足够)
+        //      + 无 metadataFilter:HNSW 结果不带元数据,无法过滤;过滤开启时必须落到
+        //        vectorSearch(其内部支持 metadataFilter),避免过滤被静默忽略。
+        // 注意:混合检索失败 fallback 时也会走到这里 — HNSW 比 brute-force 快得多
         val vi = vectorIndex
         if (vi != null && scopeDocIds.isNullOrEmpty() && (metadataFilter == null || metadataFilter.isEmpty())) {
             loadVectorIndexIfNeeded(provider)
             if (!vectorIndexNeedsFullRebuild && vi.size > 0) {
                 val hnswResults = resultOf { vi.search(queryVector, topK) }
-                    .onError { msg, e -> Logger.w("RagService", "HNSW Error de recuperación,Reducir el recorrido de fuerza bruta: $msg", e) }
+                    .onError { msg, e -> Logger.w("RagService", "HNSW 检索失败,降级暴力遍历: $msg", e) }
                     .getOrNull()
                 if (hnswResults != null && hnswResults.isNotEmpty()) {
                     val titles = getCachedTitles()
                     val mapped = hnswResults.mapNotNull { r ->
-                        // chunkMetaCache golpear → Relleno directo;señorita(raro,El índice no es consistente con DB)→ saltar
+                        // chunkMetaCache 命中 → 直接回填;未命中(罕见,索引与 DB 不一致)→ 跳过
                         val meta = chunkMetaCache.get(r.id) ?: return@mapNotNull null
                         VectorSearchService.SearchResult(
                             docId = meta.docId,
@@ -1079,10 +1079,10 @@ class RagService(
                     }.filter { it.score >= threshold }
                     if (mapped.isNotEmpty()) {
                         Perf.log("rag-retrieve-hnsw", System.currentTimeMillis() - start)
-                        // v1.133: Rellene el campo isInternal
+                        // v1.133: 回填 isInternal 字段
                         return applyIsInternal(mapped)
                     }
-                    // HNSW El resultado está vacío.(Puede que todo esté por debajo del umbral o que todos los fragmentos de MetaCache fallen)→ caer a vectorSearch
+                    // HNSW 结果为空(可能全部低于阈值或 chunkMetaCache 全未命中)→ 落到 vectorSearch
                 }
             }
         }
@@ -1096,53 +1096,53 @@ class RagService(
             metadataFilter = metadataFilter,
         )
         Perf.log("rag-retrieve", System.currentTimeMillis() - start)
-        // v1.133: Rellene el campo isInternal
+        // v1.133: 回填 isInternal 字段
         return applyIsInternal(results)
     }
 
     /**
-     * v1.133: Relleno por lotes [VectorSearchService.SearchResult.isInternal] campo.
+     * v1.133: 批量回填 [VectorSearchService.SearchResult.isInternal] 字段。
      *
-     * de [KnowledgeDocDao.getByIds] Consulta la etiqueta isInternal correspondiente a cada docId,Luego copiar a cada
-     * SearchResult en. Reemplazo unificado original `docId.startsWith("devdoc-")` Juicios codificados.
+     * 从 [KnowledgeDocDao.getByIds] 查询各 docId 对应的 isInternal 标记,然后 copy 到每条
+     * SearchResult 上。统一替代原 `docId.startsWith("devdoc-")` 硬编码判断。
      *
-     * Se devuelve una lista vacía cuando la consulta falla o falta la entidad del documento.fail-closed, evita documentos internos o huérfanos chunk
-     * Ingrese el contexto del usuario cuando los metadatos no estén disponibles.
+     * 查询失败或文档实体缺失时返回空列表，fail-closed，避免内部文档或孤儿 chunk
+     * 在元数据不可用时进入用户上下文。
      */
     private suspend fun applyIsInternal(results: List<VectorSearchService.SearchResult>): List<VectorSearchService.SearchResult> {
         if (results.isEmpty()) return results
         val docIds = results.map { it.docId }.filter { it.isNotEmpty() }.distinct()
         if (docIds.isEmpty()) return results
         val docs = resultOf { docDao.getByIds(docIds) }
-            .onError { msg, e -> Logger.w("RagService", "Error en la consulta por lotes de metadatos del documento: $msg", e) }
+            .onError { msg, e -> Logger.w("RagService", "文档元数据批量查询失败: $msg", e) }
             .getOrNull()
             ?: return emptyList() // Fail closed: metadata failure must not expose internal documents as user content.
         if (docs.isEmpty()) return emptyList()
         val isInternalMap = docs.associate { it.id to it.isInternal }
-        // chunk/HNSW/FTS Los registros que permanecen en el documento pero cuya entidad de documento se ha eliminado no deben continuar ingresando al contexto.
+        // chunk/HNSW/FTS 中残留但文档实体已删除的记录不得继续进入上下文。
         return results
             .filter { it.docId in isInternalMap }
             .map { r -> r.copy(isInternal = isInternalMap[r.docId] == true) }
     }
 
     /**
-     * v1.54: Construir texto inyectado(compatible con versiones anteriores). El nuevo código debería usar [buildInjectionContextWithCitations].
+     * v1.54: 构建注入文本(向后兼容)。新代码应使用 [buildInjectionContextWithCitations]。
      */
     suspend fun buildInjectionContext(query: String, ragConfig: RagConfig): String =
         buildInjectionContextWithCitations(query, ragConfig, scopeDocIds = null).text
 
     /**
-     * v1.133: Inyección de construcción — Regresar [RagInjection](Contiene texto + lista de citas.).
+     * v1.133: 构建注入 — 返回 [RagInjection](含文本 + 引用列表)。
      *
-     * apoyo:
-     *  - Búsqueda híbrida / MMR / scopeDocIds
-     *  - Rerank(si top-K×5 reordenación de candidatos)
-     *  - Token control presupuestario(Acumular en orden descendente de similitud,Detener si se excede el presupuesto)
-     *  - Lista de referencias(Para renderizado ChatUI)
+     * 支持:
+     *  - 混合检索 / MMR / scopeDocIds
+     *  - Rerank(对 top-K×5 候选重排序)
+     *  - Token 预算控制(按相似度降序累加,超预算即停)
+     *  - 引用列表(供 ChatUI 渲染)
      *
-     * @param scopeDocIds Limitar el alcance de la búsqueda(@mention Para búsqueda dirigida)
-     * @param metadataFilter Filtros de metadatos(Opcional,null = Sin filtrado);por [retrieve] paso hacia abajo,
-     *   Son válidos tanto los enlaces vectoriales como los BM25.
+     * @param scopeDocIds 限定检索范围(@mention 定向检索用)
+     * @param metadataFilter 元数据过滤条件(可选,null = 不过滤);由 [retrieve] 向下透传,
+     *   向量与 BM25 两条链路都生效。
      */
     suspend fun buildInjectionContextWithCitations(
         query: String,
@@ -1153,19 +1153,19 @@ class RagService(
         val start = System.currentTimeMillis()
         if (query.isBlank()) return RagInjection("", emptyList(), 0)
 
-        // 1. Buscar(Ampliar el grupo de candidatos a topK×5 Para uso de reclasificación)
+        // 1. 检索(扩大候选池到 topK×5 供 Rerank 用)
         val activeRerankProvider = resolveRerankProvider(ragConfig)
         val candidateK = if (ragConfig.rerankEnabled && activeRerankProvider != null) ragConfig.topK * 5 else ragConfig.topK
-        // La documentación interna solo permite el uso de rutas explícitas de know_search include_internal.
-        // No se debe ingresar la inyección automática de RAG solicitada por el sistema.
+        // 内部文档只允许显式的 knowledge_search include_internal 路径使用，
+        // 不得进入自动 system-prompt RAG 注入。
         var results = retrieve(query, candidateK, ragConfig.threshold, ragConfig, scopeDocIds, metadataFilter)
             .filterNot { it.isInternal }
 
-        // v1.133: caché docId → isInternal mapeo(retrieve Ya reabastecido),rerank Necesito completar nuevamente más tarde
-        // (Rerank La ruta descartará el SearchResult original y lo reconstruirá.,rerank El resultado no trae isInternal)
+        // v1.133: 缓存 docId → isInternal 映射(retrieve 已回填过),rerank 后需重新回填
+        // (Rerank 路径会丢弃原 SearchResult 重建,rerank 结果不带 isInternal)
         val isInternalMap = results.associate { it.docId to it.isInternal }
 
-        // 2. Reordenar
+        // 2. 重排序
         var matchType = if (ragConfig.hybridEnabled) "hybrid" else "vector"
         if (ragConfig.rerankEnabled && activeRerankProvider != null && results.isNotEmpty()) {
             val candidates = results.map {
@@ -1178,7 +1178,7 @@ class RagService(
                 )
             }
             val reranked = resultOf { activeRerankProvider.rerank(query, candidates, ragConfig.topK) }
-                .onError { msg, e -> Logger.w("RagService", "Rerank falló,Degradar secuencia original: $msg", e) }
+                .onError { msg, e -> Logger.w("RagService", "Rerank 失败,降级原序: $msg", e) }
                 .getOrNull()
             if (reranked != null) {
                 results = reranked.map { r ->
@@ -1189,7 +1189,7 @@ class RagService(
                         score = r.score,
                         chunkIndex = r.chunkIndex,
                         chunkId = r.chunkId,
-                        // v1.133: Reservar isInternal(retrieve Comprobado,Evite la pérdida de reconstrucción por cambio de rango)
+                        // v1.133: 保留 isInternal(retrieve 已查过,避免 rerank 重建丢失)
                         isInternal = isInternalMap[r.docId] ?: false,
                     )
                 }
@@ -1199,32 +1199,32 @@ class RagService(
             results = results.take(ragConfig.topK)
         }
 
-        // 3. Construir texto + cita(Aplicar presupuesto simbólico)
+        // 3. 构造文本 + 引用(应用 token 预算)
         if (results.isNotEmpty()) {
             val citations = mutableListOf<RagCitation>()
             val sb = StringBuilder()
-            sb.appendLine("La siguiente es información relevante recuperada de la base de conocimientos.,Por favor consúltelo al responder.(La similitud es solo para referencia.):")
+            sb.appendLine("以下是从知识库检索到的相关资料,回答时请参考(相似度仅供参考):")
             var usedTokens = 0
             val budget = ragConfig.tokenBudget
-            // El límite superior de la inyección de un solo bloque: mucho más grande que el antiguo 200 codificado, lo que garantiza que el contenido realmente pueda ingresar al contexto después de aumentar el tamaño del fragmento.
-            // Cuando hay un presupuesto simbólico, la verdadera adaptación se realiza mediante la lógica presupuestaria siguiente, que es el límite superior seguro.
+            // 单块注入上限：远大于旧硬编码 200，保证 chunkSize 调大后内容能真正进上下文。
+            // 有 token 预算时，真正的裁剪由下方预算逻辑完成，这里是安全上限。
             val chunkSnippetCap = 1200
             for ((idx, r) in results.withIndex()) {
-                // P1-3 Reparación (informe de auditoría): No más codificación take(200).
-                // La implementación anterior solo inyecta las primeras 200 palabras de cada bloque. Cuando el usuario ajusta el tamaño del fragmento a 500,
-                // El último 60% nunca entrará en el contexto. —— Gastar más dinero en incorporación y obtener menos información es una pura pérdida.
-                // Ahora se ha cambiado a: Déjelo en manos del presupuesto simbólico que aparece a continuación para recortarlo; si no hay límite de presupuesto, presione
-                // [chunkSnippetCap] Límite superior, el valor predeterminado es mucho mayor que 200.
+                // P1-3 修复（审计报告）: 不再硬编码 take(200)。
+                // 旧实现每块只注入前 200 字，用户把 chunkSize 调到 500 时，
+                // 后 60% 永远进不了上下文 —— 多花 embedding 钱、少拿信息，纯亏。
+                // 现改为：交给下方的 token 预算裁剪；无预算限制时按
+                // [chunkSnippetCap] 上限，默认远大于 200。
                 val chunkSnippet = r.chunkContent.take(chunkSnippetCap)
-                // La inyección solo envía fragmentos y el presupuesto también debe medirse en función del texto inyectado real para evitar eliminar accidentalmente los resultados posteriores con el número de token completo.
+                // 注入只发送 snippet，预算也必须按实际注入文本计量，避免用整块 token 数误杀后续结果。
                 val chunkTokens = TokenEstimator.estimate(chunkSnippet)
-                // token control presupuestario(0 = sin limite)
+                // token 预算控制(0 = 不限制)
                 if (budget > 0 && usedTokens + chunkTokens > budget) {
-                    Logger.d("RagService", "Token Presupuesto agotado(budget=$budget, used=$usedTokens, restante ${results.size - idx} Tiras desechadas)")
+                    Logger.d("RagService", "Token 预算用尽(budget=$budget, used=$usedTokens, 剩余 ${results.size - idx} 条丢弃)")
                     break
                 }
                 usedTokens += chunkTokens
-                sb.appendLine("[${idx + 1}] Fuente: ${r.docTitle} (Similitud ${"%.2f".format(r.score)})")
+                sb.appendLine("[${idx + 1}] 来源: ${r.docTitle} (相似度 ${"%.2f".format(r.score)})")
                 // Keep the actual injected text identical to the budgeted snippet.
                 sb.appendLine(chunkSnippet)
                 sb.appendLine()
@@ -1238,7 +1238,7 @@ class RagService(
                         snippet = chunkSnippet,
                         score = r.score,
                         matchType = matchType,
-                        // v1.133: Pasado desde SearchResult isInternal(Reemplace el juicio codificado del prefijo docId original)
+                        // v1.133: 从 SearchResult 传入 isInternal(替代原 docId 前缀硬编码判断)
                         isInternal = r.isInternal,
                     ),
                 )
@@ -1250,7 +1250,7 @@ class RagService(
             )
         }
 
-        // 4. No hay resultados para la búsqueda de vectores → Palabras clave: mantenlo en secreto(LIKE coincidencia de subcadenas)
+        // 4. 向量检索无结果 → 关键词兜底(LIKE 子串匹配)
         val fallback = scopedKeywordSearchFallback ?: if (scopeDocIds == null) {
             keywordSearchFallback?.let { legacy ->
                 { text: String, limit: Int, _: List<String>?, _: VectorSearchService.MetadataFilter? -> legacy(text, limit) }
@@ -1260,7 +1260,7 @@ class RagService(
         } ?: return RagInjection("", emptyList(), System.currentTimeMillis() - start)
         val allowedDocIds = scopeDocIds?.toSet()
         val fallbackResults = resultOf { fallback(query, ragConfig.topK, scopeDocIds, metadataFilter) }
-            .onError { msg, e -> Logger.w("RagService", "Palabras clave: falta de encubrimiento: $msg", e) }
+            .onError { msg, e -> Logger.w("RagService", "关键词兜底失败: $msg", e) }
             .getOrNull().orEmpty()
             // Defend at the final injection boundary too; a fallback provider must not be
             // able to leak internal or out-of-scope documents into automatic prompts.
@@ -1276,17 +1276,17 @@ class RagService(
 
         val citations = mutableListOf<RagCitation>()
         val sb = StringBuilder()
-        sb.appendLine("La siguiente es información relevante recuperada de la base de conocimientos.(concordancia de palabras clave),Por favor consúltelo al responder.:")
+        sb.appendLine("以下是从知识库检索到的相关资料(关键词匹配),回答时请参考:")
         var usedTokens = 0
         val budget = ragConfig.tokenBudget
-        // P1-3 Solución: la misma ruta vectorial, ya no codificada en 200.
+        // P1-3 修复：同向量路径，不再硬编码 200。
         val chunkSnippetCap = 1200
         for ((idx, result) in fallbackResults.withIndex()) {
             val snippet = result.snippet.take(chunkSnippetCap)
             val snippetTokens = TokenEstimator.estimate(snippet)
             if (budget > 0 && usedTokens + snippetTokens > budget) break
             usedTokens += snippetTokens
-            sb.appendLine("[${idx + 1}] Fuente: ${result.docTitle}")
+            sb.appendLine("[${idx + 1}] 来源: ${result.docTitle}")
             sb.appendLine(snippet)
             sb.appendLine()
             citations.add(
@@ -1310,24 +1310,24 @@ class RagService(
         )
     }
 
-    /** Eliminar todo el índice de bloque del documento.(Contiene FTS + HNSW). */
+    /** 删除文档的全部分块索引(含 FTS + HNSW)。 */
     suspend fun deleteDocIndex(docId: String) {
         require(docId.isNotBlank()) { "docId must not be blank" }
-        // Primero cargue el índice del disco y asegúrese de que la eliminación también sobrescriba las entradas HNSW antiguas que aún no están en la memoria.
+        // 先加载磁盘索引，确保删除也覆盖尚未进入内存的旧 HNSW 条目。
         ensureVectorIndexLoaded()
-        // P2-35: Cambie el orden de eliminación a "Borrar primero" HNSW(DB Recuperación autorizada del conjunto completo de chunkId)→ Eliminar DB/FTS nuevamente",
-        // Asegúrese de que los fragmentos eliminados por LRU en la base de datos grande también se puedan eliminar del índice,Sin residuos.
+        // P2-35: 删除顺序改为「先清 HNSW(DB 权威取 chunkId 全集)→ 再删 DB/FTS」,
+        // 保证大库中被 LRU 淘汰的 chunk 也能从索引删除,不残留。
         removeDocChunksFromVectorIndex(docId)
-        // FTS Las fallas de limpieza deben descartarse: continuar eliminando fragmentos dejará resultados FTS fantasma no diagnosticables.
+        // FTS 清理失败必须上抛：继续删除 chunk 会留下不可诊断的幽灵 FTS 命中。
         withFtsSelfHeal { ftsDao.deleteByDoc(docId) }
         chunkDao.deleteByDoc(docId)
-        // HNSW Es un índice derivado; se coloca inmediatamente después de la eliminación para evitar que el proceso se reinicie y resucite los documentos eliminados del índice anterior.
+        // HNSW 是派生索引；删除后立即落盘，避免进程重启从旧索引复活已删除文档。
         saveVectorIndex()
         vectorSearch.invalidateCache()
         invalidateTitlesCache()
     }
 
-    /** Eliminar la entidad del documento y todos sus índices derivados;UI/Si desea importar o cancelar, diríjase a esta entrada. */
+    /** 删除文档实体及其全部派生索引；UI/导入取消统一走此入口。 */
     suspend fun deleteDocument(docId: String) {
         deleteDocIndex(docId)
         docDao.delete(docId)
@@ -1382,18 +1382,18 @@ class RagService(
     }.flowOn(Dispatchers.IO)
 
     /**
-     * v1.133: Reindexar por lotes todos los documentos en KB especificado(para la página de administración de KB"Reindexar todo"botón).
+     * v1.133: 批量重新索引指定 KB 下的全部文档(用于 KB 管理页"重新索引全部"按钮)。
      *
-     * proceso:
-     *  1. Pase [KnowledgeDocDao.getByKbIds] Obtenga todos los documentos en KB
-     *  2. Llame artículo por artículo [indexDocument](Internamente, deleteByDoc se eliminará primero y luego se reconstruirá.)
-     *  3. Devolución de llamada después de completar cada artículo. [onProgress](current, total)
-     *  4. Sin interrupción si algún artículo falla,Continuar al siguiente artículo.,Finalmente devuelve una lista de documentos fallidos.
+     * 流程:
+     *  1. 通过 [KnowledgeDocDao.getByKbIds] 取 KB 下全部文档
+     *  2. 逐篇调用 [indexDocument](内部会先 deleteByDoc 再重建)
+     *  3. 每篇完成后回调 [onProgress](current, total)
+     *  4. 任意一篇失败不中断,继续下一篇,最终返回失败的 docId 列表
      *
-     * @param kbIds Lista de identificadores de KB para reindexar(lista vacía = No ejecutado)
-     * @param ragConfig Configuración RAG utilizada(Parámetros de fragmentación/embedding Fuente)
-     * @param onProgress Devolución de llamada de progreso,(current, total) — 1-based
-     * @return falló docId → Razón del fracaso Map
+     * @param kbIds 要重索引的 KB id 列表(空列表 = 不执行)
+     * @param ragConfig 使用的 RAG 配置(分块参数/embedding 来源)
+     * @param onProgress 进度回调,(current, total) — 1-based
+     * @return 失败的 docId → 失败原因 Map
      */
     suspend fun reindexAllInKbs(
         kbIds: List<String>,
@@ -1406,26 +1406,26 @@ class RagService(
                 null
             } else {
                 resultOf { docDao.getByKbIds(kbIds) }
-                    .onError { msg, e -> Logger.e("RagService", "KB Reindexar:No se pudo cargar el documento: $msg", e) }
+                    .onError { msg, e -> Logger.e("RagService", "KB 重索引:加载文档失败: $msg", e) }
                     .getOrNull()
             }
         if (visibleDocs == null) {
-            if (kbIds.isNotEmpty()) Logger.w("RagService", "KB Reindexar:No hay documentos para procesar")
+            if (kbIds.isNotEmpty()) Logger.w("RagService", "KB 重索引:无文档可处理")
             return emptyMap()
         }
         val provider = embeddingService.getProvider(ragConfig)
         loadVectorIndexIfNeeded(provider)
         val plan = createReindexPlan(kbIds, visibleDocs)
         val failures = mutableMapOf<String, String>()
-        // P1-9: Los documentos integrados también participan en la reconstrucción (para garantizar una indexación completa), pero no se incluyen en el número total visto por el usuario./progreso.
-        // La implementación anterior los mezclaba en total, por lo que el usuario veía 30 de sus propios documentos pero se le solicitaban 46.
+        // P1-9: 内建文档也参与重建（保证索引完整），但不计入用户看到的总数/进度。
+        // 旧实现把它们混在 total 里，用户看到 30 篇自己的文档却提示 46 篇。
         val visibleDocCount = plan.documents.count { !it.isInternal }
         val internalDocCount = plan.documents.size - visibleDocCount
         val total = visibleDocCount
         Logger.i(
             "RagService",
-            "KB Comienza la reindexación:Documentación de usuario $visibleDocCount Capítulo" +
-                (if (internalDocCount > 0) "(Incluyendo incorporado $internalDocCount artículos, no incluidos en progreso)" else "") +
+            "KB 重索引开始:用户文档 $visibleDocCount 篇" +
+                (if (internalDocCount > 0) "（含内建 $internalDocCount 篇，不计入进度）" else "") +
                 " (kbIds=$kbIds)",
         )
         var visibleDone = 0
@@ -1433,8 +1433,8 @@ class RagService(
             try {
                 reindexDocument(doc, ragConfig, plan.allowDimensionChange, sourceContentProvider)
             } catch (e: Throwable) {
-                Logger.w("RagService", "KB Reindexar:Documentación ${doc.id} falló: ${e.message}", e)
-                // Los errores de documentos integrados no entran en la lista de errores visibles para el usuario.
+                Logger.w("RagService", "KB 重索引:文档 ${doc.id} 失败: ${e.message}", e)
+                // 内建文档失败不进入用户可见的失败列表
                 if (!doc.isInternal) failures[doc.id] = e.message ?: e.javaClass.simpleName
             }
             if (!doc.isInternal) {
@@ -1448,15 +1448,15 @@ class RagService(
             vectorEmbeddingsNeedReindex = false
             saveVectorIndex(vectorIndexFingerprint)
         }
-        Logger.i("RagService", "KB Reindexación completada:éxito ${total - failures.size}/$total,falló ${failures.size}")
+        Logger.i("RagService", "KB 重索引完成:成功 ${total - failures.size}/$total,失败 ${failures.size}")
         return failures
     }
 
     /**
-     * Reindexar un solo documento.
+     * 重新索引单个文档。
      *
-     * [KnowledgeDocEntity.content] Puede que sea sólo un adelanto; cuando [contentHash] Cuando no es coherente con el hash de vista previa,
-     * debe pasar [sourceContentProvider] Lea el contenido original y desactive la sobrescritura de la vista previa en un nuevo índice completo.
+     * [KnowledgeDocEntity.content] 可能只是预览；当 [contentHash] 与预览哈希不一致时，
+     * 必须通过 [sourceContentProvider] 读取原始内容，禁止把预览覆盖成新的完整索引。
      */
     suspend fun reindexDocument(
         docId: String,
@@ -1487,9 +1487,9 @@ class RagService(
             .getOrNull()
             ?.filter { it.kbId in targetKbIds }
         val targetDocIds = allDocsInTargetKbs?.map { it.id }
-        // P1-5 Reparación (informe de auditoría): Para implementación anterior chunkDao.getAllWithEmbedding() Pon toda la biblioteca
-        // chunk Junto con la incrustación, se carga en la memoria una vez, solo para calcular un valor booleano.
-        // Cambie a la capa SQL COUNT: el número de fragmentos que no pertenecen a la colección de documentos de destino es 0, es decir, "cobertura completa".
+        // P1-5 修复（审计报告）: 旧实现用 chunkDao.getAllWithEmbedding() 把全库
+        // chunk 连同 embedding 一次性载入内存，只为算一个布尔值。
+        // 改为 SQL 层 COUNT：不属于目标文档集合的 chunk 数为 0，即「全覆盖」。
         val outsideChunkCount = if (targetDocIds.isNullOrEmpty()) {
             null
         } else {
@@ -1499,13 +1499,13 @@ class RagService(
             targetDocIds != null &&
             outsideChunkCount == 0
         val documents = if (vectorIndexNeedsFullRebuild && coversAllIndexedDocuments) {
-            // P1-9 Reparación (informe de auditoría): Al reconstruir completamente, es necesario colocar los documentos integrados (devdoc) junto con la reindexación,
-            // De lo contrario, el índice estaría incompleto; sin embargo**No permita que cuenten para la cantidad de artículos vistos por el usuario.** ——
-            // La implementación anterior devuelve directamente todos los DocsInTargetKbs (sin filtrar is_internal),
-            // El usuario ve 30 de sus propios documentos, pero cuando hace clic en Reconstruir, aparece el mensaje "46 Capítulo",
-            // La primera reacción es“¿De dónde saqué 46 artículos? ¿Son datos sucios?”.
+            // P1-9 修复（审计报告）: 全量重建时确实需要把内建文档（devdoc）一起重索引，
+            // 否则索引会不完整；但**不能让它们计入用户看到的篇数** ——
+            // 旧实现直接返回 allDocsInTargetKbs（未过滤 is_internal），
+            // 用户看到 30 篇自己的文档，点重建却提示「46 篇」，
+            // 第一反应是“我哪来 46 篇？是不是脏数据？”。
             //
-            // Ahora se ha cambiado a: los documentos visibles para el usuario van primero (esta parte se incluye en el total) y los documentos integrados se añaden al final y se cuentan por separado.
+            // 现改为：用户可见文档在前（这部分计入 total），内建文档追加在后并单独统计。
             val visibleIds = visibleDocs.mapTo(mutableSetOf()) { it.id }
             val internals = allDocsInTargetKbs.orEmpty().filter { it.id !in visibleIds }
             visibleDocs + internals
@@ -1623,8 +1623,8 @@ class RagService(
     private fun throwDimensionMismatch(docId: String, existingDim: Int, newDim: Int): Nothing {
         Logger.e(
             "RagService",
-            "Embedding Las dimensiones no coinciden:La dimensión del fragmento ya existe en la biblioteca.=$existingDim,nuevo documento $docId Dimensiones=$newDim." +
-                "Vaya a la página de administración de la base de conocimientos y haga clic en\"Reindexar todo\",Reconstruya el índice utilizando el mismo modelo de incrustación.",
+            "Embedding 维度不匹配:库中已有 chunk 维度=$existingDim,新文档 $docId 维度=$newDim。" +
+                "请到知识库管理页点击\"重新索引全部\",用同一 embedding 模型重建索引。",
         )
         throw IllegalStateException(
             "Embedding dimension mismatch: existing=$existingDim, new=$newDim (doc=$docId). " +
@@ -1633,8 +1633,8 @@ class RagService(
     }
 
     /**
-     * R-DB-02/R-UI-01: Corrija Knowledge_chunks_fts y vuelva a indexar todos los documentos del usuario.
-     * Limpia la mesa de sombra y reconstrúyela primero. FTS,Luego volver a indexar según la KB del documento al que pertenece;Mapa de devoluciones de documentos fallidos.
+     * R-DB-02/R-UI-01: 修复 knowledge_chunks_fts 并重索引全部用户文档。
+     * 先清影子表重建 FTS,再按文档所属 KB 全量重索引;失败文档返回 map。
      */
     suspend fun repairKnowledgeFtsIndex(
         ragConfig: RagConfig,
@@ -1642,7 +1642,7 @@ class RagService(
     ): Map<String, String> {
         KnowledgeChunkFtsSelfHealer.repair()
         val kbIds = resultOf { docDao.getAll() }
-            .onError { msg, e -> Logger.e("RagService", "Arreglar FTS: no se pudo cargar el documento: $msg", e) }
+            .onError { msg, e -> Logger.e("RagService", "修复 FTS:加载文档失败: $msg", e) }
             .getOrNull()
             ?.map { it.kbId }
             ?.distinct()
@@ -1655,21 +1655,21 @@ class RagService(
     suspend fun indexedChunkCount(): Int = chunkDao.countIndexed()
 
     /**
-     * v1.134: Según la corriente [RagConfig] Resuelva el proveedor de reclasificación real utilizado.
+     * v1.134: 根据当前 [RagConfig] 解析实际使用的 Rerank Provider。
      *
-     * - rerankEnabled=false → null(Sin reordenamiento)
-     * - rerankProvider="onnx" + onnxRerankProvider Disponible → OnnxRerankProvider
-     * - rerankProvider="onnx" + onnxRerankProvider No disponible → Rebajar rerankProvider(LocalRerankProvider)
-     * - Otros → rerankProvider(LocalRerankProvider)
+     * - rerankEnabled=false → null(不重排)
+     * - rerankProvider="onnx" + onnxRerankProvider 可用 → OnnxRerankProvider
+     * - rerankProvider="onnx" + onnxRerankProvider 不可用 → 降级 rerankProvider(LocalRerankProvider)
+     * - 其他 → rerankProvider(LocalRerankProvider)
      */
     private fun resolveRerankProvider(ragConfig: RagConfig): RerankProvider? {
         if (!ragConfig.rerankEnabled) return null
-        // P2-6(informe de auditoría): nube rerank —— OpenAI Compatible con el protocolo /rerank.
-        // Anteriormente, solo existían LocalRerankProvider (básicamente inactivo para chinos) y ONNX no implementado.
-        // No hay ninguna solución en la nube. Se construye bajo demanda cuando se completa la configuración y degrada automáticamente a local si falla.
+        // P2-6（审计报告）: 云端 rerank —— OpenAI 兼容 /rerank 协议。
+        // 此前只有 LocalRerankProvider（对中文基本空转）与未实现的 ONNX，
+        // 云端完全没有方案。配置齐全时按需构造，失败自动降级本地。
         if (ragConfig.rerankProvider == "remote") {
             if (ragConfig.rerankBaseUrl.isBlank() || ragConfig.rerankModel.isBlank()) {
-                Logger.w("RagService", "La configuración de cambio de rango en la nube está incompleta(baseUrl/model esta vacio), degradar el reordenamiento local")
+                Logger.w("RagService", "云端 rerank 配置不完整(baseUrl/model 为空)，降级本地重排")
             } else {
                 return RemoteRerankProvider(
                     baseUrl = ragConfig.rerankBaseUrl,
@@ -1686,14 +1686,14 @@ class RagService(
     }
 
     /**
-     * P2-6: POST HTTP mínimo para reclasificación en la nube (no se introducen nuevas dependencias, se reutiliza OkHttp).
+     * P2-6: 云端 rerank 的最小 HTTP POST（不引入新依赖，复用 OkHttp）。
      *
-     * No inyecte OkHttpClient directamente para evitar expandir la firma de construcción de RagService;
-     * Ir al cliente de chat, tiempo de espera por [RemoteRerankProvider.DEFAULT_TIMEOUT_MS] Restricciones para la persona que llama.
+     * 不直接注入 OkHttpClient，避免扩大 RagService 构造签名；
+     * 走 chat client，超时由 [RemoteRerankProvider.DEFAULT_TIMEOUT_MS] 在调用方约束。
      */
     private suspend fun httpPostJson(url: String, headers: Map<String, String>, body: String): String = withContext(Dispatchers.IO) {
         val client = httpClientProvider?.invoke()
-            ?: error("Cambio de rango en la nube no disponible: no inyectado HTTP client")
+            ?: error("云端 rerank 不可用：未注入 HTTP client")
         val request = okhttp3.Request.Builder()
             .url(url)
             .post(body.toRequestBody("application/json".toMediaType()))
@@ -1709,24 +1709,24 @@ class RagService(
     }
 
     /**
-     * Composición de huellas dactilares:provider id + Nombre del modelo + dimensiones.
+     * 指纹组成:provider id + 模型名 + 维度。
      *
-     * v2.6.0 (AUD-RAG-F3): Uso de dimensiones [EmbeddingProvider.fingerprintDimension] ——
-     * [EmbeddingProvider.dimension] Puede ser un valor aproximado antes de la primera inserción, que no coincide con la dimensión real.
-     * permitirá que las huellas dactilares "adivinen"→Salte entre "real", cada arranque en frío determina los cambios de huellas dactilares y reconstruye el índice HNSW.
+     * v2.6.0 (AUD-RAG-F3): 维度改用 [EmbeddingProvider.fingerprintDimension] ——
+     * [EmbeddingProvider.dimension] 在首次 embed 前可能是猜测值，与真实维度不一致
+     * 会让指纹在「猜测→真实」之间跳变，每次冷启动都判定指纹变化并重建 HNSW 索引。
      */
     private fun embeddingFingerprint(provider: EmbeddingProvider): String =
         "${provider.id}\u0000${provider.modelName}\u0000${provider.fingerprintDimension}"
 
     /**
-     * v1.133: Analizar el texto @mention en una lista de docIds(@mention Para búsqueda dirigida).
+     * v1.133: 解析 @mention 文本为 docId 列表(@mention 定向检索用)。
      *
-     * proceso:
-     *  1. de [text] Extraiga todas las etiquetas @xxx de(Quitar el prefijo @)
-     *  2. Llamado para cada palabra clave mencionada [KnowledgeDocDao.findByTitleKeyword] coincidencia difusa
-     *  3. Fusionar todos los documentos visitados id(Eliminar duplicados)
+     * 流程:
+     *  1. 从 [text] 中提取所有 @xxx 标记(去掉 @ 前缀)
+     *  2. 对每个 mention 关键词调用 [KnowledgeDocDao.findByTitleKeyword] 模糊匹配
+     *  3. 合并所有命中文档的 id(去重)
      *
-     * @return lista de docId después de la deduplicación;Una lista vacía significa que no se alcanzaron documentos(La persona que llama debe realizar una búsqueda completa en la base de datos.)
+     * @return 去重后的 docId 列表;空列表表示未命中任何文档(调用方应走全库检索)
      */
     suspend fun resolveMentionToDocIds(text: String): List<String> {
         if (text.isBlank()) return emptyList()
@@ -1737,40 +1737,40 @@ class RagService(
         for (mention in mentions) {
             val escaped = KnowledgeDocDao.escapeLikeQuery(mention)
             val docs = resultOf { docDao.findByTitleKeyword(escaped) }
-                .onError { msg, e -> Logger.w("RagService", "@mention El análisis falló '$mention': $msg", e) }
+                .onError { msg, e -> Logger.w("RagService", "@mention 解析失败 '$mention': $msg", e) }
                 .getOrNull() ?: emptyList()
             docs.forEach { docIds.add(it.id) }
         }
-        Logger.d("RagService", "@mention analizar: ${mentions.size} un mention → ${docIds.size} un docId")
+        Logger.d("RagService", "@mention 解析: ${mentions.size} 个 mention → ${docIds.size} 个 docId")
         return docIds.toList()
     }
 
     /**
-     * Amplíe el ID de la base de conocimientos vinculado al asistente a un ID de documento con capacidad de búsqueda.
-     * Una lista vacía indica claramente que no hay ninguna base de conocimientos vinculada.,Las personas que llaman deben seguir utilizando la semántica de recuperación global.
+     * 把助手绑定的知识库 id 展开为可检索文档 id。
+     * 空列表明确表示未绑定任何知识库,调用方应继续使用全局检索语义。
      */
     suspend fun resolveKnowledgeBaseDocIds(knowledgeBaseIds: List<String>): List<String> {
         val ids = knowledgeBaseIds.map { it.trim() }.filter { it.isNotBlank() }.distinct()
         if (ids.isEmpty()) return emptyList()
         return resultOf { docDao.getByKbIds(ids).map { it.id }.distinct() }
             .onError { msg, throwable ->
-                Logger.w("RagService", "No se pudo expandir el asistente vinculado a la base de conocimientos: ${throwable?.message ?: msg}", throwable)
+                Logger.w("RagService", "助手绑定知识库展开失败: ${throwable?.message ?: msg}", throwable)
             }
             .getOrNull()
             ?: emptyList()
     }
 
     /**
-     * v2.4.6: Expanda por "Base de conocimientos + Ruta de la carpeta" para recuperar el ID del documento.
+     * v2.4.6: 按「知识库 + 文件夹路径」展开可检索文档 id。
      *
-     * visión del mundo:base de conocimientos(KB)= raíz,carpeta = Subdirectorios bajo la raíz. Una carpeta es un dominio de búsqueda independiente.,
-     * [folderPath] es una ruta relativa dentro de KB,Una cadena vacía representa toda la biblioteca. Expandir reglas = Coincidencia de prefijo de ruta:
-     *  - camino vacío → Toda la documentación de usuario para esta KB;
-     *  - camino `contrato` → folderPath para `contrato` o `contrato/...` Documentación(Contiene subdirectorios).
-     * Esto garantiza que los resultados de búsqueda de diferentes carpetas no se confundan entre sí.
+     * 世界观:知识库(KB)= 根,文件夹 = 根下的子目录。一个文件夹就是一个独立检索域,
+     * [folderPath] 为 KB 内相对路径,空串表示整库。展开规则 = 路径前缀匹配:
+     *  - 路径空 → 该 KB 全部用户文档;
+     *  - 路径 `合同` → folderPath 为 `合同` 或 `合同/...` 的文档(含子目录)。
+     * 这保证不同文件夹的检索结果互不串。
      *
-     * @param scopes en forma de (kbId, folderPath) lista vinculante
-     * @return El conjunto de identificadores de documentos visitados.;Una colección vacía significa sin consolidar(Búsqueda global de reserva de llamadas)
+     * @param scopes 形如 (kbId, folderPath) 的绑定列表
+     * @return 命中的文档 id 集合;空集合表示未绑定(调用方回退全局检索)
      */
     suspend fun resolveKbFolderScopes(scopes: List<Pair<String, String>>): List<String> {
         val normalized = scopes
@@ -1783,7 +1783,7 @@ class RagService(
         } else {
             resultOf { docDao.getByKbIds(kbIds) }
                 .onError { msg, throwable ->
-                    Logger.w("RagService", "KB+Falló la expansión del alcance de la carpeta: ${throwable?.message ?: msg}", throwable)
+                    Logger.w("RagService", "KB+文件夹作用域展开失败: ${throwable?.message ?: msg}", throwable)
                 }
                 .getOrNull()
                 .orEmpty()
@@ -1803,47 +1803,47 @@ class RagService(
         }
     }
 
-    /** Determinar si el documento se encuentra en una determinada ruta de carpeta(camino vacío = Toda la biblioteca;De lo contrario, el prefijo de ruta coincide,Contiene subdirectorios). */
+    /** 判断文档是否落在某文件夹路径下(空路径 = 整库;否则路径前缀匹配,含子目录)。 */
     private fun pathHitsFolder(doc: KnowledgeDocEntity, path: String): Boolean {
         if (path.isEmpty()) return true
         val p = io.zer0.muse.rag.KnowledgeFolderBrowser.folderPath(doc)
         return p == path || p.startsWith("$path/")
     }
 
-    /** v1.133: @mention extraer regular(Sinónimo de ChatViewModel.KNOWLEDGE_MENTION_REGEX,RagService uso personal). */
+    /** v1.133: @mention 提取正则(与 ChatViewModel.KNOWLEDGE_MENTION_REGEX 同义,RagService 自用)。 */
     companion object {
         val MENTION_REGEX = Regex("@[^\\s@]+")
 
-        /** docTitle TTL de caché: 5 minutos(Invalidar automáticamente cuando se agregan o eliminan documentos,No es necesario esperar a que caduque). */
+        /** docTitle 缓存 TTL:5 分钟(文档增删时主动失效,无需等过期)。 */
         const val TITLES_TTL_MS = 5L * 60 * 1000
 
-        /** v1.55: HNSW Umbral de guardado automático del índice(Se activa una vez después de agregar SAVE_INTERVAL fragmentos en total save). */
+        /** v1.55: HNSW 索引自动保存阈值(累计新增 SAVE_INTERVAL 个 chunk 后触发一次 save)。 */
         const val SAVE_INTERVAL = 50
 
-        /** v2.x: HNSW Intervalo mínimo entre la realización de pedidos — Incluso si llega SAVE_INTERVAL,No debe haber menos de este intervalo entre dos colocaciones. */
+        /** v2.x: HNSW 落盘最小间隔 — 即使达到 SAVE_INTERVAL,两次落盘间也不少于该间隔。 */
         const val SAVE_THROTTLE_MS = 15_000L
 
-        /** v2.x: Tamaño de la ventana deslizante del índice de transmisión(personaje). Cuanto mayor sea la ventana, mayor será el pico de memoria y menos divisiones entre ventanas. */
+        /** v2.x: 流式索引滑窗大小(字符)。窗口越大内存峰值越高、窗口间切分越少。 */
         const val STREAM_WINDOW_CHARS = 200_000
 
         private const val REINDEX_PREVIEW_CHARS = 500_000
 
-        /** B-35: chunkMetaCache LRU Número máximo de artículos(Aproximadamente 20 MB de tamaño,Evitar que el contenido completo resida en la memoria). */
+        /** B-35: chunkMetaCache LRU 上限条数(约 20MB 量级,防止全量 content 常驻内存)。 */
         const val MAX_CHUNK_META = 2000
 
-        /** v1.0.47: embedding duración del fusible — La recuperación volverá directamente vacía dentro de los 5 minutos posteriores al error.,Degradar la búsqueda local. */
+        /** v1.0.47: embedding 熔断时长 — 失败后 5 分钟内 retrieve 直接返回空,降级本地搜索。 */
         const val EMBEDDING_CIRCUIT_BREAKER_MS = 5L * 60 * 1000
 
         /**
-         * P0-1(informe de auditoría): query embedding tiempo de espera difícil.
+         * P0-1（审计报告）: query embedding 的硬超时。
          *
-         * Recupere la ruta clave para enviar mensajes y reutilice OkHttpClient del chat (readTimeout=300s).
-         * punto final“Aceptando conexión pero sin respuesta”, el usuario quedará atrapado hasta 5 minutos antes de ver la primera palabra.
-         * 10s Es un límite superior razonable: las consultas de incrustación normales son mucho más bajas que esto y el disyuntor se degradará cuando expire el tiempo de espera.
+         * 检索在发消息关键路径上，且复用 chat 的 OkHttpClient（readTimeout=300s）。
+         * 端点“接受连接但无响应”时，用户会卡最长 5 分钟才看到首字。
+         * 10s 为合理上限：正常 embedding 查询远低于此，超时即熔断降级。
          */
         private const val EMBED_QUERY_TIMEOUT_MS = 10_000L
 
-        /** P3-3: chunkMetaCache El número de elementos leídos por página durante la reconstrucción. */
+        /** P3-3: chunkMetaCache 重建时每页读取条数。 */
         private const val CACHE_REBUILD_PAGE_SIZE = 500
 
         /** v1.133: content SHA-256 used by all knowledge import entry points. */
@@ -1853,7 +1853,7 @@ class RagService(
         }.getOrNull() ?: ""
     }
 
-    /** v1.133: Serializar el mapa de metadatos de fragmentos a JSON. */
+    /** v1.133: 把 chunk metadata Map 序列化为 JSON。 */
     private fun encodeMetadata(meta: Map<String, String>): String =
         resultOf { json.encodeToString(MapSerializer(String.serializer(), String.serializer()), meta) }
             .getOrNull() ?: "{}"

@@ -18,36 +18,36 @@ import io.zer0.muse.ui.theme.MuseShapes
 import io.zer0.muse.ui.theme.largeCard
 
 /**
- * v0.34 / v1.0.26: Diseño de componentes de agrupación de tarjetas.(Muse UI Kit reescribir).
+ * v0.34 / v1.0.26: 卡片分组组件设计(Muse UI Kit 重写)。
  *
- * uno [CardGroup] múltiples dentro [item] Comparte el mismo contenedor de tarjetas redondeado.:
- *  - Esquinas redondeadas en la parte superior del primer elemento 20dp,Esquina inferior redondeada del último elemento 20dp,Empalme en ángulo recto del elemento medio
- *  - Título de grupo opcional(primary color + títuloFuente pequeña)
- *  - item utilizado entre [MuseDivider] separar(56dp sangría,Alinear la configuración del sistema)
+ * 一个 [CardGroup] 内的多个 [item] 共享同一个圆角卡片容器:
+ *  - 第一项顶部圆角 20dp,最后一项底部圆角 20dp,中间项直角拼接
+ *  - 可选的分组标题(primary 色 + titleSmall 字体)
+ *  - item 之间用 [MuseDivider] 分隔(缩进跟随内容左边线:有图标缩到文字列,无图标落行内边距)
  *
- * v1.0.26 Refactorizar:
- *  - contenedor en lugar [MuseSurface] Primitivo,Procesamiento unificado de clip/color/sombra
- *  - Uso de elementos de lista [MuseListItem] Primitivo,Unificar relleno/tamaño de fuente/color
- *  - Línea de separación en su lugar [MuseDivider] Primitivo,Unificar espesor/color/sangría
- *  - Eliminar la animación de esquinas redondeadas incorporada de ListItem(El elemento del medio ya no está recortado y tiene esquinas redondeadas.,Recortado uniformemente por la MuseSurface exterior)
+ * v1.0.26 重构:
+ *  - 容器改用 [MuseSurface] 基元,统一 clip/color/shadow 处理
+ *  - 列表项改用 [MuseListItem] 基元,统一 padding/字号/颜色
+ *  - 分隔线改用 [MuseDivider] 基元,统一 thickness/color/缩进
+ *  - 移除 ListItem 自带圆角动画(中间项不再 clip 圆角,由外层 MuseSurface 统一裁切)
  *
- * Uso(DSL estilo):
+ * 用法(DSL 风格):
  * ```
  * CardGroup(
- *     title = { Text("Universales") },
+ *     title = { Text("通用") },
  *     modifier = Modifier.padding(horizontal = 16.dp),
  * ) {
  *     item(
  *         onClick = { navController.navigate(...) },
  *         leadingContent = { Icon(MuseIcons.sun, null) },
- *         headlineContent = { Text("modo oscuro") },
- *         supportingContent = { Text("Sigue el sistema") },
+ *         headlineContent = { Text("深色模式") },
+ *         supportingContent = { Text("跟随系统") },
  *         trailingContent = { Switch(checked=..., onCheckedChange=...) },
  *     )
  * }
  * ```
  *
- * adaptado a musa Material Icons(en vez de HugeIcons)y temas de papel caliente.
+ * 适配 muse 的 Material Icons(而非 HugeIcons)和 warm-paper 主题。
  */
 private data class CardGroupItem(
     val key: Any?,
@@ -66,15 +66,15 @@ private annotation class CardGroupDsl
 @CardGroupDsl
 interface CardGroupScope {
     /**
-     * Un artículo dentro de un grupo de tarjetas.
+     * 卡片分组内的一项。
      *
-     * @param onClick Haga clic en devolución de llamada(null no se puede hacer clic)
-     * @param onLongClick Devolución de llamada con pulsación larga(Opcional,El menú emergente de pulsación larga se pasa al mismo tiempo que onClick)
-     * @param headlineContent título principal(Requerido)
-     * @param supportingContent subtítulo(pequeñas letras grises,Opcional)
-     * @param leadingContent Contenido a la izquierda(normalmente un icono,Opcional)
-     * @param trailingContent Contenido correcto(Switch / Flecha / Seleccionar / Control deslizante, etc.,Opcional)
-     * @param modifier de este artículo Modifier(Predeterminado Modifier)
+     * @param onClick 点击回调(null 则不可点击)
+     * @param onLongClick 长按回调(可选,与 onClick 同时传入时长按弹菜单)
+     * @param headlineContent 主标题(必填)
+     * @param supportingContent 副标题(灰色小字,可选)
+     * @param leadingContent 左侧内容(通常是图标,可选)
+     * @param trailingContent 右侧内容(Switch / 箭头 / Select / Slider 等,可选)
+     * @param modifier 该项的 Modifier(默认 Modifier)
      */
     fun item(
         key: Any? = null,
@@ -117,14 +117,14 @@ private class CardGroupScopeImpl : CardGroupScope {
 }
 
 /**
- * v0.34 / v1.0.26: Contenedor de agrupación de tarjetas(Muse UI Kit reescribir).
+ * v0.34 / v1.0.26: 卡片分组容器(Muse UI Kit 重写)。
  *
- * Consulte la documentación en la parte superior del archivo para conocer su uso. todos [content] dentro [CardGroupScope.item] se recogerán las llamadas,
- * Representado como una baraja de cartas que comparte un fondo redondeado.
+ * 用法见文件顶部文档。所有 [content] 内的 [CardGroupScope.item] 调用会被收集,
+ * 渲染为一个共享圆角背景的卡片组。
  *
- * @param modifier cubierta entera(con titulo)de Modifier
- * @param title Título de grupo opcional(primary Color,Mostrar tarjeta de arriba)
- * @param content DSL bloque de contenido,Para uso interno [CardGroupScope.item] Agregar elementos
+ * @param modifier 整个卡片组(含标题)的 Modifier
+ * @param title 可选的分组标题(primary 色,显示在卡片上方)
+ * @param content DSL 内容块,内部用 [CardGroupScope.item] 添加项
  */
 @Composable
 fun CardGroup(modifier: Modifier = Modifier, title: (@Composable () -> Unit)? = null, content: CardGroupScope.() -> Unit) {
@@ -132,8 +132,8 @@ fun CardGroup(modifier: Modifier = Modifier, title: (@Composable () -> Unit)? = 
     scope.content()
 
     Column(modifier = modifier) {
-        // El título está fuera de la tarjeta.,No afectado por clips de tarjetas
-        // v1.0.27 Reparación:Alinear el encabezado del grupo de configuración del sistema — Fuentes grises pequeñas, espacios reducidos
+        // 标题在卡片外部,不被卡片 clip 影响
+        // v1.0.27 修复:对齐系统设置分组标题 — 灰色小字、紧凑间距
         if (title != null) {
             CompositionLocalProvider(
                 LocalContentColor provides MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f),
@@ -141,7 +141,7 @@ fun CardGroup(modifier: Modifier = Modifier, title: (@Composable () -> Unit)? = 
                 ProvideTextStyle(MaterialTheme.typography.labelLarge) {
                     Box(
                         modifier = Modifier
-                            // Alinee el título del grupo con el borde interior de la tarjeta.,No se supone ninguna sangría adicional para el ancho del icono.
+                            // 分组标题对齐卡片内侧边线,不按假定图标宽度额外缩进。
                             .padding(
                                 start = MusePaddings.screen,
                                 end = MusePaddings.screen,
@@ -156,23 +156,26 @@ fun CardGroup(modifier: Modifier = Modifier, title: (@Composable () -> Unit)? = 
             }
         }
 
-        // contenedor de tarjetas:Unificar con primitivas de MuseSurface clip/color/shadow
-        // v1.0.27 Reparación:fondo cambiado a surface(blanco puro/blanco cálido),Cancelar sombra — curar"Empalme de bloques grises"ilusión
-        // v2.0.1 biplano:El nivel consiste en"color de fondo(Profundidad) vs Cara de la tarjeta(blanco)"La diferencia de brillo lleva——
-        // Elimina el trazo y reduce la sombra a micro,ya no se usa"línea"y"sombra"Capas.
+        // 卡片容器:用 MuseSurface 基元统一 clip/color/shadow
+        // v1.0.27 修复:背景改为 surface(纯白/暖白),取消阴影 — 根治"灰块拼接"错觉
+        // v2.0.1 双平面:层级由"底色(压深) vs 卡面(白)"的明度差承载——
+        // 去掉描边、阴影降为 micro,不再用"线"和"影"分层。
         MuseSurface(
             modifier = Modifier.fillMaxWidth(),
             shape = MuseShapes.largeCard,
             color = MaterialTheme.colorScheme.surface,
             elevation = MuseElevation.micro,
             tonalElevation = MuseElevation.none,
-            // El contenedor en sí no responde a la prensa.,Los comentarios de prensa son manejados internamente por MuseListItem
+            // 容器本身不响应按压,按压反馈由内部 MuseListItem 处理
             enablePressedFeedback = false,
         ) {
             Column {
                 val count = scope.items.size
+                // 双平面翻新：分隔线起点跟随内容左边线——整组有 leading 图标时缩到图标右侧文字列,
+                // 无图标卡落到行内边距(不再无条件 56dp,根治无图标卡比内容线多缩 40dp)。
+                val dividerIndent = museDividerStartIndent(hasLeading = scope.items.any { it.leadingContent != null })
                 scope.items.fastForEachIndexed { index, item ->
-                    // Envolver con llave,Crear elementos de lista con clave agregada y eliminada/Recuerda recordar el estado al refluir(Como fuente interactiva, estado expandido)
+                    // 用 key 包裹,使带 key 的列表项在增删/重排时保留 remember 状态(如交互源、展开态)
                     key(item.key ?: index) {
                         MuseListItem(
                             onClick = item.onClick,
@@ -184,9 +187,9 @@ fun CardGroup(modifier: Modifier = Modifier, title: (@Composable () -> Unit)? = 
                             trailingContent = item.trailingContent,
                         )
                     }
-                    // Separar con primitivas MuseDivider item,Unificar espesor/color/sangría
+                    // 用 MuseDivider 基元分隔 item,统一 thickness/color/缩进
                     if (index != count - 1) {
-                        MuseDivider()
+                        MuseDivider(startIndent = dividerIndent)
                     }
                 }
             }

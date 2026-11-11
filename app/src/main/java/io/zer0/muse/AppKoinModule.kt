@@ -28,69 +28,92 @@ import org.koin.dsl.module
 import java.util.concurrent.TimeUnit
 
 /**
- * app Montaje de módulos Koin.
+ * app 模块的 Koin 装配。
  *
- * Acuerdo de orden de registro:
+ * 注册顺序约定:
  *  1. appModule: SettingsRepository / ProviderConfigStore / MemoryLlmClient / AppScope /
- *                MuseDb / SessionRepository / OkHttpClient / DocumentParser / ToolRegistry / BackupService y otros componentes básicos
- *  2. aiModule: ChatService + ImageService(depender de ProviderConfigStore + OkHttpClient)
- *  3. memoryModule: Room + Servicios básicos + MemoryTicker(depender de MemoryLlmClient + AppScope)
+ *                MuseDb / SessionRepository / OkHttpClient / DocumentParser / ToolRegistry / BackupService 等基础组件
+ *  2. aiModule: ChatService + ImageService(依赖 ProviderConfigStore + OkHttpClient)
+ *  3. memoryModule: Room + 核心服务 + MemoryTicker(依赖 MemoryLlmClient + AppScope)
  *
- * [SettingsRepository] Regístrese simultáneamente para usted y [ProviderConfigStore] darse cuenta,
- * De esta manera, el ChatService / ImageService del módulo ai se puede inyectar a través de la interfaz.
- * [ChatViewModel] Regístrese en viewModel DSL,UI usar koinViewModel() Llevar.
+ * [SettingsRepository] 同时注册为自身和 [ProviderConfigStore] 实现,
+ * 这样 ai 模块的 ChatService / ImageService 能通过接口注入。
+ * [ChatViewModel] 用 viewModel DSL 注册,UI 用 koinViewModel() 取用。
  */
 val appModule = module {
-    single { SettingsRepository(androidContext(), get(), get()) }
+// 插件读会话的唯一通道：会话身份由宿主随调用注入，这里只提供读写入口。
+    single { io.zer0.muse.data.plugin.PluginChatBridge(get()) }
+    // 插件写消息通道（app.messages）。与只读的 chat 通道分开：写错了是「用户看到假消息」。
+    single { io.zer0.muse.data.plugin.PluginMessageBridge(get()) }
+    // 插件改外观通道（app.theme）。只开放明暗模式，具体皮肤留给用户自己挑。
+    single { io.zer0.muse.data.plugin.PluginAppearanceBridge(get()) }
+    // 插件定时任务：上次执行时间落盘，进程被杀之后仍能算出"该不该补跑"
+    single {
+        io.zer0.muse.data.plugin.PluginScheduleRunner(
+            pluginManager = get(),
+            bridge = get(),
+            ledger = io.zer0.muse.data.plugin.PluginCapabilityLedgers.shared(androidContext()),
+            settings = get(),
+            store = io.zer0.muse.data.plugin.PluginScheduleRunner.PersistentStore(
+                io.zer0.muse.data.plugin.PluginScheduleStore.forContext(androidContext()),
+            ),
+        )
+    }
+    // 插件调模型：走既有辅助模型路由与 UTILITY 通道；拿不到 SettingsRepository 时回落主对话模型。
+    single { io.zer0.muse.data.plugin.PluginModelBridge(get(), getOrNull()) }
+    // 启动期一次性写盘在这里触发（而不是在 SettingsRepository.init 里自动跑）：
+    // 生产时序不变，但直接构造仓库的单元测试不会再多一个并发后台写手 ——
+    // 那正是「跑全量偶发挂一条、单跑必过、每轮换受害者」那族 flaky 的真实成因。
+    single { SettingsRepository(androidContext(), get(), get()).also { it.startStartupWork() } }
     single<ProviderConfigStore> { get<SettingsRepository>() }
     single<MemoryLlmClient> { MemoryLlmClientImpl(get(), get(), androidContext()) }
-    // v12: LLM determinante de deduplicación de hechos — Los candidatos difusos de la misma entidad que no pueden ser determinados por la capa del algoritmo se entregan al modelo grande para su evaluación.
+    // v12: LLM 事实去重判定器 — 算法层无法确定的同实体模糊候选交给大模型判断
     single<io.zer0.memory.fact.FactDedupJudge> { io.zer0.muse.data.LlmFactDedupJudge(get()) }
 
-    // CoroutineScope a nivel de aplicación: se utiliza para tareas en segundo plano, como el ticker de memoria.
+    // 应用级 CoroutineScope: memory ticker 等后台任务用
     single<CoroutineScope> {
         CoroutineScope(SupervisorJob() + Dispatchers.IO + io.zer0.muse.util.GlobalCoroutineExceptionHandler)
     }
 
-    // Phase 5: unificar OkHttpClient(ai ChatService/ImageService reutilización de módulos)
-    // Phase 8.5 Reparación:Agregue un calificador para distinguirlo del cliente de búsqueda web,Evite que este último sobrescriba al primero y provoque que se agote el tiempo de espera de generación de la imagen.
-    // v1.39: Utilice la caché @Volatile en su lugar runBlocking,Eliminar hilo principal ANR
+    // Phase 5: 统一 OkHttpClient(ai 模块的 ChatService/ImageService 复用)
+    // Phase 8.5 修复:加 qualifier 与 Web 搜索 client 区分,避免后者覆盖前者导致图片生成超时
+    // v1.39: 用 @Volatile 缓存而非 runBlocking,消除主线程 ANR
     //
-    // v2.6.9: client Sigue siendo un singleton de Koin (construido solo una vez), pero el agente que instala ya no está construido.
-    // fijo proxy(), pero de io.zer0.ai.core.ProxyProvider**Dinámico ProxySelector**.
-    // OkHttp Cada vez que se establezca una nueva conexión, se le preguntará al selector. Por lo tanto, después de que el usuario cambie el proxy, la nueva conexión pasará inmediatamente por la nueva configuración.
-    // No es necesario reiniciar ni reconstruir el cliente (11 No es necesario cambiar todos los puntos de inyección).
+    // v2.6.9: client 本身仍是 Koin 单例（只构造一次），但它装的代理不再是 build 时
+    // 固定的 proxy()，而是 io.zer0.ai.core.ProxyProvider 的**动态 ProxySelector**。
+    // OkHttp 每次建立新连接都会询问 selector，因此用户改代理后新连接立即走新配置，
+    // 不需要重启、也不需要重建 client（11 处注入点全部不用改）。
     //
-    // Este cambio pretende solucionar“El navegador puede iniciar sesión, pero la aplicación no puede conectarse”Informe con Codex
-    // Invalid content-type: null Un tipo de causa: bajo la implementación anterior, el cliente puede repararse al inicio.
-    // En la configuración de conexión directa, el proxy configurado por el usuario nunca tendrá efecto.
+    // 这一改动正是为了解决“浏览器能登、应用连不上”与 Codex 报
+    // Invalid content-type: null 的一类成因：旧实现下 client 可能固定在启动时的
+    // 直连配置上，用户后配的代理永远不生效。
     single(named("chat")) {
         OkHttpClient.Builder()
             .connectTimeout(30, TimeUnit.SECONDS)
-            // v1.114 Reparación: modelo de pensamiento(Como por ejemplo Claude 3.5 thinking)El retraso de la primera palabra puede exceder los 2 minutos.,
-            //   readTimeout 120s Esto hará que la fase de pensamiento se agote sin resultados.;Aquí está 300s(5minutos),El tiempo suficiente para pensar.
-            // C-02: Unificar código y comentarios(Anteriormente el comentario estaba escrito 300s pero el código es 120s).
+            // v1.114 修复: 思考模型(如 Claude 3.5 thinking)首字延迟可能超过 2 分钟,
+            //   readTimeout 120s 会导致思考阶段未输出即超时;此处为 300s(5分钟),足够长思考。
+            // C-02: 代码与注释统一(此前注释写 300s 但代码是 120s)。
             .readTimeout(300, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
-            // v2.6.9: Utilice dinámica en su lugar ProxyProvider —— Después de cambiar el proxy, entrará en vigor la próxima vez que establezca una conexión, no es necesario reiniciar.
+            // v2.6.9: 改用动态 ProxyProvider —— 改代理后下一次建连即生效，不用重启
             .also { io.zer0.ai.core.ProxyProvider.applyTo(it) }
             .build()
     }
 
-    // Phase 5: app La base de datos de la sala(Persistencia de sesión + mensaje + Assistant)
+    // Phase 5: app 的 Room 数据库(会话 + 消息持久化 + Assistant)
     single { MuseDb.get(androidContext()) }
     single { get<MuseDb>().sessionDao() }
     single { get<MuseDb>().messageDao() }
-    single { get<MuseDb>().artifactDao() } // v1.43: artefacto de conversación
+    single { get<MuseDb>().artifactDao() } // v1.43: 会话产物
     single { get<MuseDb>().assistantDao() } // Phase 8.2
     single { get<MuseDb>().lorebookDao() } // Phase 8.5
-    single { get<MuseDb>().worldBookDao() } // P1-2: Worldbook Libro del mundo dinámico
+    single { get<MuseDb>().worldBookDao() } // P1-2: Worldbook 动态世界书
     single { get<MuseDb>().quickMessageDao() } // Phase 8.5
     single { get<MuseDb>().promptInjectionDao() } // Phase 8.5
     single { get<MuseDb>().skillDao() } // Phase 8.8
     single { get<MuseDb>().folderDao() } // Phase 9.1 (M13)
-    single { get<MuseDb>().scheduledTaskDao() } // tareas programadas
-    single { get<MuseDb>().knowledgeDocDao() } // base de conocimientos
+    single { get<MuseDb>().scheduledTaskDao() } // 定时任务
+    single { get<MuseDb>().knowledgeDocDao() } // 知识库
     single {
         io.zer0.muse.data.knowledge.BuiltInKnowledgeDocSeeder(
             androidContext(),
@@ -99,24 +122,24 @@ val appModule = module {
             ragConfigProvider = { get<io.zer0.muse.data.SettingsRepository>().getRagConfig() },
         )
     }
-    single { get<MuseDb>().knowledgeChunkDao() } // v1.54: Fragmentación de la base de conocimientos(RAG)
-    single { get<MuseDb>().scheduledTaskExecutionDao() } // P1-7: Historial de ejecución de tareas programadas
-    single { get<MuseDb>().groupChatDao() } // v1.30: chat grupal
-    single { get<MuseDb>().groupChatMessageDao() } // v1.30: Mensajes de chat grupal
-    single { get<MuseDb>().groupChatMemoryDao() } // v2.x: Aislamiento de memoria de chat grupal(independiente fact store)
+    single { get<MuseDb>().knowledgeChunkDao() } // v1.54: 知识库分块(RAG)
+    single { get<MuseDb>().scheduledTaskExecutionDao() } // P1-7: 定时任务执行历史
+    single { get<MuseDb>().groupChatDao() } // v1.30: 群聊
+    single { get<MuseDb>().groupChatMessageDao() } // v1.30: 群聊消息
+    single { get<MuseDb>().groupChatMemoryDao() } // v2.x: 群聊记忆隔离(独立 fact store)
     single { get<MuseDb>().experienceDao() } // v1.98
     single { get<MuseDb>().milestoneDao() } // Phase 2 2B: milestone
-    single { get<MuseDb>().agentMessageDao() } // Sistema de herramientas existente port: agent DM
-    single { get<MuseDb>().auditLogDao() } // P2-4: Registro de auditoría
-    single { get<MuseDb>().quickNoteDao() } // v1.0.17: registro rápido
-    // v1.134 P1-1/P1-2: Requerido para acceder a componentes huérfanos DAO(AutoBackupHelper / StatsCacheManager depender de)
-    single { get<MuseDb>().autoBackupLogDao() } // Registro de copia de seguridad automática
-    single { get<MuseDb>().statsCacheDao() } // Caché de estadísticas
-    single { get<MuseDb>().integrityLogDao() } // P3-3: Registro de integridad de la base de datos
-    single { get<MuseDb>().translateHistoryDao() } // v1.0.17: Historial de traducción
+    single { get<MuseDb>().agentMessageDao() } // 既有工具系统 port: agent DM
+    single { get<MuseDb>().auditLogDao() } // P2-4: 审计日志
+    single { get<MuseDb>().quickNoteDao() } // v1.0.17: 快速记录
+    // v1.134 P1-1/P1-2: 孤儿组件接入所需的 DAO(AutoBackupHelper / StatsCacheManager 依赖)
+    single { get<MuseDb>().autoBackupLogDao() } // 自动备份日志
+    single { get<MuseDb>().statsCacheDao() } // 统计缓存
+    single { get<MuseDb>().integrityLogDao() } // P3-3: 数据库完整性日志
+    single { get<MuseDb>().translateHistoryDao() } // v1.0.17: 翻译历史
     single { get<MuseDb>().patrolLogDao() }
-    // v2.6.7(P0-1): Omitir el generador de contexto de construcción — Deje que los pequeños mensajes privados del teléfono celular generen enlaces completos
-    // (El libro mundial, la memoria, el retrato del usuario y la inyección rápida de palabras tienen efecto), ya no solo se unen tres cadenas.
+    // v2.6.7（P0-1）: 旁路生成上下文构建器 — 让小手机私信走完整生成链路
+    // （世界书 / 记忆 / 用户画像 / 提示词注入都生效），不再只做三段字符串拼接。
     single {
         io.zer0.muse.data.moment.MiniContextBuilder(
             systemPromptAssembler = get(),
@@ -125,8 +148,8 @@ val appModule = module {
             settingsRepository = get(),
         )
     }
-    single { AuditLogger(get()) } // P2-4: Registrador de auditoría
-    // P3-3: Comprobador de integridad de la base de datos(Para que DebugScreen active la inspección y muestre el último resultado)
+    single { AuditLogger(get()) } // P2-4: 审计日志记录器
+    // P3-3: 数据库完整性校验器(供 DebugScreen 触发检查 + 展示最近一次结果)
     single {
         io.zer0.muse.data.stats.IntegrityChecker(
             integrityLogDao = get(),
@@ -135,51 +158,51 @@ val appModule = module {
     }
     single { io.zer0.muse.data.milestone.MilestoneChecker(get(), get(), get()) } // Phase 2 2B: milestone checker
     single { io.zer0.muse.data.experience.ExperienceRepository(get()) } // v1.98
-    single { io.zer0.muse.data.agentdm.AgentDmRepository(get()) } // Sistema de herramientas existente port: agent DM
-    // v1.134 P1-2: Servicio de almacenamiento de imágenes de mensajes.,responsable base64 ↔ Conversión de ruta de archivo,
-    // Deja que el panorama general llegue a la mesa filesDir/muse_images/,DB Guardar solo ruta,Evite la expansión del tamaño de fila de la tabla de mensajes
+    single { io.zer0.muse.data.agentdm.AgentDmRepository(get()) } // 既有工具系统 port: agent DM
+    // v1.134 P1-2: 消息图片存储服务,负责 base64 ↔ 文件路径转换,
+    // 让大图片落盘到 filesDir/muse_images/,DB 只存路径,避免 messages 表行体积膨胀
     single {
         io.zer0.muse.data.session.MessageImageStore(
             storageDir = java.io.File(androidContext().filesDir, "muse_images"),
         )
     }
-    // +MuseDb: Transacciones entre mesas(H-SESS1); +SessionMemoryCleanup: Eliminar sesión y borrar memoria
+    // +MuseDb: 跨表事务(H-SESS1); +SessionMemoryCleanup: 删会话连带清记忆
     single { SessionRepository(get(), get(), get(), androidContext(), get(), get(), get(), get(), get()) }
-    single { io.zer0.muse.data.artifact.ArtifactRepository(get()) } // v1.43: repositorio de productos de sesión
+    single { io.zer0.muse.data.artifact.ArtifactRepository(get()) } // v1.43: 会话产物仓库
     single {
         AssistantRepository(get(), androidContext(), get(), get(), get())
-    } // Phase 8.2 + v1.0.51 inyectar SettingsRepository;P0-10 inyectar FactDbProvider(Eliminar la biblioteca de inventario del asistente);Borrar memoria al borrar
+    } // Phase 8.2 + v1.0.51 注入 SettingsRepository;P0-10 注入 FactDbProvider(删助手清分库);删除时连带清记忆
     single { LorebookRepository(get()) } // Phase 8.5
-    single { io.zer0.muse.worldbook.WorldBookRepository(get()) } // P1-2: Worldbook Libro del mundo dinámico
+    single { io.zer0.muse.worldbook.WorldBookRepository(get()) } // P1-2: Worldbook 动态世界书
     single { QuickMessageRepository(get()) } // Phase 8.5
     single { PromptInjectionRepository(get(), androidContext()) } // Phase 8.5
     single { io.zer0.muse.data.skill.SkillRepository(get()) } // Phase 8.8
     single {
         io.zer0.muse.data.session.FolderRepository(get(), get(), get(), androidContext())
-    } // Phase 9.1 (M13) +MuseDb: deleteFolder negocios(M-SESS8)
+    } // Phase 9.1 (M13) +MuseDb: deleteFolder 事务(M-SESS8)
     single {
         io.zer0.muse.data.groupchat.GroupChatRepository(get(), get(), get(), get(), get())
-    } // v1.30: Almacén de chat grupal(Contiene MuseDb para transacciones entre tablas)+ v2.x cierre del legado MessageImageStore
-    // v2.x: Almacén de aislamiento de memoria de chat grupal(independiente fact store,No contamina la memoria principal)
+    } // v1.30: 群聊仓库(含 MuseDb 用于跨表事务)+ v2.x 遗留收尾 MessageImageStore
+    // v2.x: 群聊记忆隔离仓库(独立 fact store,不污染主记忆)
     single { io.zer0.muse.data.groupchat.GroupChatMemoryRepository(get()) }
-    // v2.6.7(P1-1): Estado de la relación de rol (intimidad/nivel de deseo/interacciones recientes)
+    // v2.6.7（P1-1）: 角色关系状态（亲密度 / 意愿档位 / 最近互动）
     single { get<MuseDb>().assistantRelationshipDao() }
     single { io.zer0.muse.data.relationship.AssistantRelationshipRepository(get()) }
-    // v2.6.7: Aprendizaje de preferencias del usuario (precipitación con restricciones estrictas)
+    // v2.6.7: 用户偏好学习（硬约束沉淀）
     single { io.zer0.muse.data.PreferenceStore(androidContext()) }
-    // v2.6.7: Persistencia de tareas pendientes de la sesión (libro mayor entre sesiones)
+    // v2.6.7: 会话待办持久化（跨会话台账）
     single { get<MuseDb>().sessionTodoDao() }
     single { io.zer0.muse.data.todo.SessionTodoRepository(get()) }
-    // v1.95: Almacén de paquetes de expresión(Almacenamiento de archivos,no tocar MuseDb)
+    // v1.95: 表情包库仓库(文件存储,不碰 MuseDb)
     single { io.zer0.muse.data.sticker.StickerLibraryRepository(androidContext()) }
 
-    // v1.120: Cargador de datos con licencia de código abierto(Leer el manifiesto de dependencia de activos/licenses/manifest.json)
+    // v1.120: 开源许可数据加载器(从 assets/licenses/manifest.json 读取依赖清单)
     single { io.zer0.muse.license.LicenseRepository(androidContext()) }
 
-    // PresetProviders Proveedor predeterminado
-    // v2.6.0: La lista de modelos está sujeta al directorio de la nube. —— ModelCatalogStore Acceso ModelCatalogRepository
-    // directorio (assets/model-catalog.json + caché remoto),Codex espera“autoridad de directorio”modelo del proveedor
-    // Ya no está preestablecido en el código. Los cambios publicados en se volverán a calcular automáticamente después de actualizar el directorio remoto.
+    // PresetProviders 预设供应商
+    // v2.6.0: 模型清单以云端目录为准 —— ModelCatalogStore 接入 ModelCatalogRepository
+    // 的目录（assets/model-catalog.json + 远端缓存），Codex 等“目录权威”供应商的模型
+    // 不再在代码内预置。远端目录刷新后 publishedAt 变化会自动重算。
     single {
         val catalogRepo: io.zer0.muse.data.catalog.ModelCatalogRepository = get()
         io.zer0.muse.data.preset.ModelCatalogStore(
@@ -189,34 +212,34 @@ val appModule = module {
     }
     single { PresetProviders(androidContext(), get()) }
 
-    // P2-11: OAuth Aislamiento de credenciales — cifrado independiente SP(Keystore AES-256-GCM),
-    // con ordinario API Key(SettingsRepository.providers Flow)aislamiento físico,
-    // solo OAuthManager + UI(revocar el acceso)visita
+    // P2-11: OAuth 凭证隔离 — 独立加密 SP(Keystore AES-256-GCM),
+    // 与普通 API Key(SettingsRepository.providers Flow)物理隔离,
+    // 仅 OAuthManager + UI(撤销访问)访问
     single { io.zer0.muse.auth.SecureCredentialStore(androidContext()) }
 
-    // P2-10: Provider Centro de registro de complementos(JSON Proveedor personalizado impulsado por la configuración)
-    // v1.134 P1-3: Inyecte filesDir/muse_plugins/ como directorio de persistencia,App Restaurar automáticamente después del reinicio
+    // P2-10: Provider 插件注册中心(JSON 配置驱动的自定义供应商)
+    // v1.134 P1-3: 注入 filesDir/muse_plugins/ 作为持久化目录,App 重启后自动恢复
     single {
         io.zer0.ai.plugin.ProviderPluginRegistry(
             storageDir = java.io.File(androidContext().filesDir, "muse_plugins"),
         )
     }
 
-    // v0.23: Ejecutor de tareas programadas(sondeo de antecedentes,Verifique las tareas pendientes cada 60 segundos y ejecútelas:Ajustar AI + sesión de escritura + notificación)
-    // H-SC1: executionDao Eliminado — historial de ejecución+next_run_at Escritura atómica a través de ScheduledTaskDao.@Transaction
-    // La ejecución real se cambia a inyección. ChatService / SessionRepository / AssistantRepository(Lo mismo ProactiveMessageRunner)
+    // v0.23: 定时任务执行器(后台轮询,每 60s 检查到期任务并执行:调 AI + 写会话 + 通知)
+    // H-SC1: executionDao 已移除 — 执行历史+next_run_at 通过 ScheduledTaskDao.@Transaction 原子写入
+    // 真正执行改为注入 ChatService / SessionRepository / AssistantRepository(同 ProactiveMessageRunner)
     single { io.zer0.muse.schedule.ScheduledTaskRunner(get(), get(), get(), get(), androidContext(), get(), get(), get(), get()) }
 
-    // Programación activa de mensajes(El asistente complementario envía mensajes periódicamente a los usuarios + notificaciones emergentes)
-    // ── v2.6.9 Reconstrucción: modelo de libro mayor ──
-    // El antiguo ProactiveMessageRunner todavía está registrado (es necesario que coexista con la entrada anterior de la página de configuración),
-    // va nuevo enlace io.zer0.muse.proactive.ProactiveScheduler, los dos no comparten el estado de programación.
-    // v2.6.9: Las tres tablas del libro mayor DAO (MuseDb Ya construido,Koin Cada lado debe registrarse uno por uno)
+    // 主动消息调度(陪伴助手定时主动给用户发消息 + 弹通知)
+    // ── v2.6.9 重建：牵挂账本模型 ──
+    // 旧 ProactiveMessageRunner 仍在注册（设置页的旧入口与期间共存需要），
+    // 新链路走 io.zer0.muse.proactive.ProactiveScheduler，两者不共享调度状态。
+    // v2.6.9: 牵挂账本三表 DAO（MuseDb 已建，Koin 侧需要逐个登记）
     single { get<MuseDb>().pendingThoughtDao() }
     single { get<MuseDb>().pendingThoughtWriteDao() }
     single { get<MuseDb>().proactiveOutcomeDao() }
     single { get<MuseDb>().proactiveRelationDao() }
-    // Los puertos de lectura y escritura de cada una de las tres tablas (separación de lectura y escritura: la lectura está en el camino caliente para inspección y la escritura está en el camino frío para contabilidad)
+    // 三张表各自的读写口（读写分离：读在巡检热路径，写在记账冷路径）
     single { io.zer0.muse.data.proactive.ProactiveRelationRepository(get()) }
     single {
         io.zer0.muse.data.proactive.ProactiveThoughtRepository(
@@ -237,6 +260,8 @@ val appModule = module {
             outcomes = get(),
         )
     }
+    single { get<MuseDb>().sessionProactivePreferenceDao() }
+    single { io.zer0.muse.proactive.ProactiveSessionPreferenceRepository(get()) }
     single {
         io.zer0.muse.proactive.ProactiveSources(
             factStore = get(),
@@ -250,11 +275,20 @@ val appModule = module {
             assistants = get(),
             notifier = get(),
             generations = get(),
+            proactiveSessionPreferences = get(),
         )
     }
-    single { io.zer0.muse.proactive.ProactiveComposer(chatService = get(), promptAssembler = get()) }
-    // Cuatro fuentes de activación(Horario/Trabajador/Regreso a recepción/Manual)Comparte esta puerta de mosca única.
-    // Debe ser un singleton: cada uno que toma uno equivale a que cada uno tiene una puerta.,Es como si no hubiera puerta.
+    single { io.zer0.muse.data.assistant.AgentDirectiveStore.of(androidContext()) }
+    single {
+        io.zer0.muse.proactive.ProactiveComposer(
+            chatService = get(),
+            promptAssembler = get(),
+            // 传取用器而不是实例：装配时才算，避免这里把读盘提前到 Koin 建图阶段。
+            directiveStoreProvider = { get() },
+        )
+    }
+    // 四路触发源(定时 / Worker / 回前台 / 手动)共用这一份单飞闸。
+    // 必须是单例：各拿一份就等于各有一道闸,等于没有闸。
     single { io.zer0.muse.proactive.ProactiveCycleGuard() }
     single {
         io.zer0.muse.proactive.ProactiveContextLoader(
@@ -279,17 +313,17 @@ val appModule = module {
             appScope = get(),
         )
     }
-    // orden de dependencia:SettingsRepository / ChatService(ai módulo) / SessionRepository / AssistantRepository /
+    // 依赖顺序:SettingsRepository / ChatService(ai 模块) / SessionRepository / AssistantRepository /
     //         MuseNotificationManager / ProactiveScoreEngine / ExperienceRepository / MilestoneDao /
-    //         LorebookRepository / FactStore(memory módulo) / UserActivityProfile / Context / AppScope Espere las dependencias del tiempo de ejecución
-    // v2.0 Refactorizar:Acceso ExperienceRepository / MilestoneDao / LorebookRepository / FactStore,
-    //           Se utiliza para la construcción del contexto de inspección.(5.3/5.10)con nuevos recuerdos/hito/Experimente la detección de diferencias
-    // v2.1: Acceso UserActivityProfile,Usar actividad/continuidad del diálogo/Programación adaptativa emocional de tres factores que reemplaza las compensaciones aleatorias
+    //         LorebookRepository / FactStore(memory 模块) / UserActivityProfile / Context / AppScope 等运行时依赖
+    // v2.0 重构:接入 ExperienceRepository / MilestoneDao / LorebookRepository / FactStore,
+    //           用于巡检上下文构造(5.3/5.10)与新记忆/里程碑/经验差量检测
+    // v2.1: 接入 UserActivityProfile,用活跃度/对话连续性/情绪三因子自适应调度替换随机偏移
     single { io.zer0.muse.schedule.UserActivityProfile(androidContext()) }
 
-    // v1.x: Generador de recordatorios personalizados de saludo(LLM generar,No volver a la versión de la regla)
+    // v1.x: 问候语个性化提醒生成器(LLM 生成,失败回退规则版)
     single { io.zer0.muse.schedule.GreetingHintGenerator(get()) }
-    // v1.x: La única entrada para la generación de resumen diario: la compensación de la recepción de la página de inicio y WorkManager comparten el mismo servicio.
+    // v1.x: 每日总结唯一生成入口：首页前台补偿与 WorkManager 共用同一服务。
     single {
         io.zer0.muse.schedule.DailySummaryService(
             settings = get(),
@@ -299,17 +333,18 @@ val appModule = module {
             notificationManager = runCatching {
                 get<io.zer0.muse.notification.MuseNotificationManager>()
             }.getOrNull(),
+            appContext = androidContext(),
         )
     }
 
-    // v1.30: Programación de chat grupal(Después de que el usuario envía un mensaje, se activa en serie a cada agente para que se turne para hablar.)
-    // v1.111: recoger appScope/appContext/chatGenerationManager,El carrusel de chat grupal continúa appScope,Cortar páginas/Sin interrupciones en segundo plano
-    // Modificación 1: recoger SkillExecutor,Delegar cuando el chat grupal está asociado a un equipo y tiene un flujo de trabajo TeamWorkflowExecutor
-    // ActivityHub: recoger GroupChatActivityHub,Actualizar el estado del agente en cada etapa de rotación.(UI Mostrar actividad en tiempo real chip)
-    // v1.202: recoger DelegationChainTracker,invokeAgent Estado del enlace sincrónico(Proceso de ejecución del chat grupal visible de la interfaz de usuario de la sesión principal)
+    // v1.30: 群聊调度(用户发消息后串行触发各 Agent 轮转发言)
+    // v1.111: 接 appScope/appContext/chatGenerationManager,群聊轮转运行于 appScope,切页/后台不中断
+    // 改造 1: 接 SkillExecutor,群聊关联团队且有 workflow 时委托 TeamWorkflowExecutor
+    // ActivityHub: 接 GroupChatActivityHub,轮转各阶段 upsert agent 状态(UI 实时展示活动 chip)
+    // v1.202: 接 DelegationChainTracker,invokeAgent 中同步链路状态(主会话 UI 可见群聊执行过程)
     single { io.zer0.muse.ui.groupchat.GroupChatActivityHub() }
-    // v2.x: Agregar al final GroupChatMemoryRepository,Se utiliza para aislar la memoria del chat grupal.(agent Los resúmenes de respuestas se escriben de forma independiente. fact store)
-    // v1.0.53: anexar SystemPromptAssembler,Se utiliza para inyectar memoria a largo plazo y memoria de chat grupal en el mensaje del sistema de chat grupal.
+    // v2.x: 末尾追加 GroupChatMemoryRepository,用于群聊记忆隔离(agent 回复摘要写入独立 fact store)
+    // v1.0.53: 追加 SystemPromptAssembler,用于在群聊 system prompt 中注入长期记忆和群聊记忆
     single {
         io.zer0.muse.schedule.GroupChatScheduler(
             get(),
@@ -330,34 +365,34 @@ val appModule = module {
         )
     }
 
-    // v1.43: Administrador de generación de chat a nivel de aplicación(Cortar páginas/Sigue generando en segundo plano sin interrupciones)
+    // v1.43: 应用级聊天生成管理器(切页/后台保持生成不中断)
     single { io.zer0.muse.schedule.ChatGenerationManager(get(), get(), androidContext()) }
 
-    // v1.x: Administrador de recursos a nivel de sesión(Recuento de referencias + limpieza inactiva),Depende del nivel de aplicación appScope(Koin registrado CoroutineScope)
+    // v1.x: 会话级资源管理器(引用计数 + idle 清理),依赖应用级 appScope(Koin 注册的 CoroutineScope)
     single { io.zer0.muse.session.ConversationSessionManager(get()) }
-    // v1.x: Registro unificado LLM/Herramientas/Aprobación/Navegador/Los recursos de ejecución, como los agentes secundarios, se utilizan para la cancelación y la delimitación de resultados tardíos.
+    // v1.x: 统一登记 LLM/工具/审批/浏览器/子 Agent 等执行资源，供取消和 late-result fencing 使用。
     single { io.zer0.muse.session.SessionExecutionRegistry() }
 
-    // v1.0.15: Oyente de estado de red(StreamInterrupted Reconexión automática + dependencia de visualización del estado de la red UI)
+    // v1.0.15: 网络状态监听器(StreamInterrupted 自动重连 + UI 网络状态显示依赖)
     single { io.zer0.muse.network.NetworkMonitor(androidContext()) }
 
-    // compresor de diálogo(Resumen de LLM paralelo fragmentado + modelo económico independiente,Para uso de ContextCompressTransformer)
-    // depender de ChatService + SettingsRepository,Configure un modelo económico independiente a través de compressModelId
+    // 对话压缩器(分块并行 LLM 摘要 + 独立便宜模型,供 ContextCompressTransformer 使用)
+    // 依赖 ChatService + SettingsRepository,通过 compressModelId 配置独立便宜模型
     single { io.zer0.muse.transformer.ConversationCompressor(get(), get()) }
 
-    // v1.98: Programador de carga programada automática de respaldo en la nube(Compruebe la caducidad cada 10 minutos.)
+    // v1.98: 云备份自动定时上传调度器(每 10 分钟检查是否到期)
     single { io.zer0.muse.schedule.CloudBackupScheduler(get(), get(), get(), get()) }
 
-    // Phase 3 3E: Administrador de mensajes programados
+    // Phase 3 3E: 定时消息管理器
     single { io.zer0.muse.data.schedule.PendingMessageManager(androidContext()) }
 
-    // Phase 4 4A: Gerente de sistema de cuentas
-    // v1.134 P1-3: Quitar CloudSyncManager(Componentes huérfanos originales de la fase 4 4B,TODO implementación vacía,
-    // La copia de seguridad real en la nube la realiza CloudBackupScheduler + BackupService.exportToCloud)
-    // Phase 4 4C: API administrador de cuotas
+    // Phase 4 4A: 账户系统管理器
+    // v1.134 P1-3: 移除 CloudSyncManager(原 Phase 4 4B 孤儿组件,TODO 空实现,
+    // 真正的云备份由 CloudBackupScheduler + BackupService.exportToCloud 承担)
+    // Phase 4 4C: API 配额管理器
 
-    // v1.134 P1-1: Asistente de respaldo automático(Componente huérfano original v1.107,Este acceso a la programación de Koin + WorkManager)
-    // depender de AutoBackupLogDao + Context + MessageDao + SettingsRepository,Obtenido diariamente por AutoBackupWorker
+    // v1.134 P1-1: 自动备份助手(原 v1.107 孤儿组件,本次接入 Koin + WorkManager 调度)
+    // 依赖 AutoBackupLogDao + Context + MessageDao + SettingsRepository,由 AutoBackupWorker 每日拉起
     single {
         io.zer0.muse.data.stats.AutoBackupHelper(
             autoBackupLogDao = get(),
@@ -366,8 +401,8 @@ val appModule = module {
             settings = get(),
         )
     }
-    // v1.134 P1-2: Administrador de caché de estadísticas(Componente huérfano original v1.107,Este acceso a la programación de Koin + WorkManager)
-    // depender de StatsCacheDao + MessageDao + SessionDao,Obtenido diariamente por StatsCacheWorker
+    // v1.134 P1-2: 统计缓存管理器(原 v1.107 孤儿组件,本次接入 Koin + WorkManager 调度)
+    // 依赖 StatsCacheDao + MessageDao + SessionDao,由 StatsCacheWorker 每日拉起
     single {
         io.zer0.muse.data.stats.StatsCacheManager(
             statsCacheDao = get(),
@@ -375,27 +410,27 @@ val appModule = module {
             sessionDao = get(),
         )
     }
-    // Phase 4 4D: Motor de puntuación de mensajes proactivo
+    // Phase 4 4D: 主动消息评分引擎
 
-    // v1.0.47 P9: Quitar McpExtensionRegistry(Componentes huérfanos originales de la Fase 5 5E,Las tres extensiones son stub,
-    // isAvailable=false Nunca habilitar,execute siempre regresa Error,Sin llamadas externas)
+    // v1.0.47 P9: 移除 McpExtensionRegistry(原 Phase 5 5E 孤儿组件,三个扩展均为 stub,
+    // isAvailable=false 永不启用,execute 永远返回 Error,无任何外部调用方)
 
-    // Phase 6 6E: Rastreador de análisis locales
+    // Phase 6 6E: 本地分析追踪器
     single { io.zer0.muse.data.analytics.LocalAnalyticsTracker(androidContext()) }
-    // Almacén de catálogo de capacidad de modelo(Activo incorporado / caché local / museai.ltd remoto tres capas + cadena de degradación)
+    // 模型能力目录仓库(内置 asset / 本地缓存 / 远程 museai.ltd 三层 + 降级链)
     single { io.zer0.muse.data.catalog.ModelCatalogRepository(androidContext()) }
 
-    // Implementación del sistema de herramientas existente:administrador de archivos de sesión
+    // 既有工具系统实现:会话文件管理器
     single { io.zer0.muse.data.session.SessionFileManager(androidContext()) }
-    // Implementación del sistema de herramientas existente:Almacenamiento de experiencias basado en archivos
+    // 既有工具系统实现:基于文件的体验存储
     single { io.zer0.muse.data.experience.ExperienceStore(androidContext()) }
-    // v2.0: Almacenamiento de datos de la tarjeta(show_card / update_card_data enlace de datos)
+    // v2.0: 卡片数据存储(show_card / update_card_data 的数据绑定)
     single { io.zer0.muse.data.card.CardDataStore(androidContext()) }
-    // Implementación del sistema de herramientas existente:Registrador de herramientas(Registrarse pin/experience/search_memory/todo/card/notify/status Herramientas)
-    // v1.202: inyectar SkillExecutor / SubagentThreadStore / DeferredResultStore / appScope,
-    //         suministro SubagentTool(launch/reply/close conjunto de tres piezas)uso
+    // 既有工具系统实现:工具注册器(注册 pin/experience/search_memory/todo/card/notify/status 工具)
+    // v1.202: 注入 SkillExecutor / SubagentThreadStore / DeferredResultStore / appScope,
+    //         供 SubagentTool(launch/reply/close 三件套)使用
     single {
-        // v2.x: token La autocomprobación de uso requiere el uso de la dimensión de sesión (usage_records No hay ninguna columna de sesión).
+        // v2.x: token 用量自查需要会话维度的用量（usage_records 没有会话列）。
         val sessionRepository = get<SessionRepository>()
         io.zer0.muse.tools.AgentToolsRegistrar(
             toolRegistry = get(),
@@ -412,14 +447,14 @@ val appModule = module {
             appScope = get(),
             subagentRunner = get(),
             cardDataStore = get(),
-            // v2.6.7: tool_status Necesita leer el estado de preparación del canal de tres capas.
-            // Utilice getOrNull: entorno de prueba/Los hosts que no están equipados con módulos de automatización no deberían colapsar por completo debido a la falta de esta dependencia.
-            // Y ToolStatusTool no se registra cuando no puede obtener el administrador (preferiría no proporcionarlo antes que dar un estado falso).
+            // v2.6.7: tool_status 需要读三层通道就绪状态。
+            // 用 getOrNull：测试环境/未装配自动化模块的宿主不应因为缺这一个依赖就整体崩，
+            // 而 ToolStatusTool 在拿不到 manager 时本来就不注册（宁可不提供也不给假状态）。
             automationManager = getOrNull(),
-            // v2.6.9: Libro mayor de ideas para que note_thinked escriba.
+            // v2.6.9: 牵挂账本，供 note_thought 写入。
             proactiveThoughtStore = getOrNull(),
-            // v2.x: token Dosificación de autocontrol. El flujo de uso y la tabla de mensajes están ambos en MuseDb; la ocupación del contexto está determinada por
-            // ChatViewModel Proporcionada por la sonda vinculada, esta línea se omite automáticamente cuando no se abre el cuadro de diálogo.
+            // v2.x: token 用量自查。用量流水与消息表都在 MuseDb 里；上下文占用由
+            // ChatViewModel 绑定的探针提供，未打开对话时自动省略该行。
             usageRecordDao = get<MuseDb>().usageRecordDao(),
             sessionUsageReader = { sessionId ->
                 sessionRepository.getUsageTotalsBySession(sessionId).let { row ->
@@ -431,8 +466,8 @@ val appModule = module {
                 }
             },
             contextOccupancy = { io.zer0.muse.ui.chat.ContextOccupancyProbe.current() },
-            // facts Cuando no se pueda encontrar la tabla, recurra al resumen compilado (prosa HOY/SEMANA/LARGO PLAZO con palabras clave inyectadas).
-            // Usando getOrNull: prueba única compilada sin memoria ensambladora/No vuelve a caer en el host, en lugar de fallar al inicio.
+            // facts 表查不到时回落到编译摘要（注入提示词的 TODAY/WEEK/LONGTERM 散文）。
+            // 用 getOrNull：没有装配记忆编译的单测/宿主里不回落，而不是启动就崩。
             compiledSummarySearch = getOrNull<io.zer0.memory.compile.MemoryCompiler>()?.let { compiler ->
                 io.zer0.muse.tools.SearchMemoryTool.CompiledSummarySearch { query, scope, spaceId, limit ->
                     compiler.searchCompiledSections(query, scope, spaceId, limit)
@@ -448,12 +483,12 @@ val appModule = module {
             settings = get(),
         )
     }
-    // v1.0.52 P2-1: Passive Subagent corredor(Niño independiente de bloqueo sincrónico agent,Ciclo completo de herramienta)
-    // B2-04: Enrutamiento de aprobación de subagente(Registro de la sesión principal delegate,El subagente reutiliza el mismo enlace de aprobación)
+    // v1.0.52 P2-1: Passive Subagent 运行器(同步阻塞式独立子 agent,完整工具循环)
+    // B2-04: 子代理审批路由(主会话注册 delegate,子代理复用同一审批链路)
     single { io.zer0.muse.tools.ToolApprovalRouter() }
 
-    // v1.0.53 Phase 1: agregar threadStore(Continuación de la persistencia)+ concurrencyLimiter(Límite actual simultáneo global)
-    // v1.0.53 Phase 4: agregar toolConfigStore(deny_on_prompt Estrategia de aprobación)
+    // v1.0.53 Phase 1: 加 threadStore(持久化续接)+ concurrencyLimiter(全局并发限流)
+    // v1.0.53 Phase 4: 加 toolConfigStore(deny_on_prompt 审批策略)
     single {
         io.zer0.muse.tools.SubagentRunner(
             chatService = get(),
@@ -463,16 +498,22 @@ val appModule = module {
             toolConfigStore = get(),
             toolApprovalRouter = get(),
             settings = get(),
+            // 角色目录：工作区下的 agents/。读不到就返回空，不影响委派本身。
+            profileResolver = { name ->
+                io.zer0.muse.tools.AgentProfileCatalog
+                    .load(io.zer0.muse.workspace.WorkspaceLocation.resolve(androidContext()))
+                    .firstOrNull { it.name == name }
+            },
         )
     }
 
-    // P2-7: Administrador de directorio del espacio de trabajo(directorio raíz /data/data/io.zer0.muse/files/workspace/,
-    // Proporciona verificación de seguridad de ruta listDir/readFile/writeFile/delete/mkdir/move/copy)
+    // P2-7: 工作区目录管理器(根目录 /data/data/io.zer0.muse/files/workspace/,
+    // 提供路径安全校验的 listDir/readFile/writeFile/delete/mkdir/move/copy)
     single { io.zer0.muse.workspace.WorkspaceManager(androidContext()) }
-    // P2-7: Registrador de herramientas de espacio de trabajo(poner workspace_list/read/write/delete/mkdir/move Regístrese para ToolRegistry)
-    // depender de ToolRegistry + WorkspaceManager,init Bloquear registro de autocompletar
+    // P2-7: 工作区工具注册器(把 workspace_list/read/write/delete/mkdir/move 注册到 ToolRegistry)
+    // 依赖 ToolRegistry + WorkspaceManager,init 块自动完成注册
     single { io.zer0.muse.tools.WorkspaceToolsRegistrar(get(), get()) }
-    // v1.0.47 P2: Registrador de herramientas de archivos y enlaces(read_file/create_download/parse_link)
+    // v1.0.47 P2: 文件与链接工具注册器(read_file/create_download/parse_link)
     single {
         io.zer0.muse.tools.FileToolsRegistrar(
             get(),
@@ -480,8 +521,8 @@ val appModule = module {
             io.zer0.muse.workspace.WorkspaceManager(androidContext()).rootDir,
         )
     }
-    // v1.0.52 P2-4: PDF Análisis visual(PdfRenderer + 4 Concurrencia de carreteras + modelo visual OCR)
-    // depender de ChatService + ProviderConfigStore(Consultar disponibilidad del modelo de visión.)+ Context
+    // v1.0.52 P2-4: PDF 视觉解析(PdfRenderer + 4 路并发 + 视觉模型 OCR)
+    // 依赖 ChatService + ProviderConfigStore(检查视觉模型可用性)+ Context
     single<io.zer0.muse.tools.VisionOcrClient> {
         io.zer0.muse.tools.DefaultVisionOcrClient(
             chatService = get(),
@@ -495,7 +536,7 @@ val appModule = module {
             ocrClient = get(),
         )
     }
-    // P2-4: parse_pdf Registrador de herramientas(init Los bloques se registran automáticamente en ToolRegistry)
+    // P2-4: parse_pdf 工具注册器(init 块自动注册到 ToolRegistry)
     single {
         io.zer0.muse.tools.PdfVisionToolsRegistrar(
             toolRegistry = get(),
@@ -504,7 +545,7 @@ val appModule = module {
             workspaceRoot = io.zer0.muse.workspace.WorkspaceManager(androidContext()).rootDir,
         )
     }
-    // v1.0.47 P2-6: Shell Registrador de herramientas Sandbox(execute_shell,Sólo disponible en Modo Agente + Aprobación)
+    // v1.0.47 P2-6: Shell 沙箱工具注册器(execute_shell,仅 Agent Mode + 审批可用)
     single {
         io.zer0.muse.tools.ShellSandboxToolRegistrar(
             get(),
@@ -512,17 +553,17 @@ val appModule = module {
         )
     }
 
-    // v2.x Tiempo de ejecución extendido(P0):Registrador de autoprueba integrado de Node sandbox(runtime_selfcheck,solo lectura)
+    // v2.x 扩展运行时(P0):内置 Node 沙盒自检注册器(runtime_selfcheck,只读)
     single {
         io.zer0.muse.tools.RuntimeSelfCheckToolRegistrar(
             get(),
             androidContext(),
-            // v2.6.7: La autoprueba también informará el estado del canal de tres capas; si no se puede obtener, omita esta sección.
+            // v2.6.7: 自检一并上报三层通道状态；拿不到就跳过该段。
             getOrNull(),
         )
     }
 
-    // v2.7 Tiempo de ejecución extendido(Python):Python Registrador de ejecución de scripts(execute_python_script,alto riesgo)
+    // v2.7 扩展运行时(Python):Python 脚本执行注册器(execute_python_script,高风险)
     single {
         io.zer0.muse.tools.PythonScriptToolRegistrar(
             get(),
@@ -530,7 +571,7 @@ val appModule = module {
         )
     }
 
-    // v2.x Registrador de autoprueba de plataforma(platform_selfcheck,solo lectura):Anular el tiempo de ejecución del nodo + estado de cada canal de herramienta
+    // v2.x 平台自检注册器(platform_selfcheck,只读):覆盖 Node 运行时 + 各工具通道状态
     single {
         io.zer0.muse.tools.PlatformSelfCheckToolRegistrar(
             get(),
@@ -538,17 +579,27 @@ val appModule = module {
         )
     }
 
-    // P3-3: Accesibilidad + Shizuku + Enrutamiento raíz de tres canales — UI Base de capacidad de automatización
-    // AccessibilityClient: bindService Vincular servicios de accesibilidad,Proporciona operaciones de interfaz de usuario para agentes AIDL.
+    // P3-3: 无障碍 + Shizuku + Root 三通道路由 — UI 自动化能力底座
+    // AccessibilityClient: bindService 绑定无障碍服务,提供 UI 操作 AIDL 代理
     single { io.zer0.muse.tools.system.AccessibilityClient(androidContext()) }
-    // ShizukuAuthorizer: Shizuku SDK integrar,Ejecutar comandos con privilegios de shell(No es necesario root)
+    // ShizukuAuthorizer: Shizuku SDK 集成,以 shell 权限执行命令(无需 root)
     single { io.zer0.muse.tools.system.ShizukuAuthorizer(androidContext()) }
-    // RootAuthorizer: root detectar + su ejecutar(canal de degradación)
-    single { io.zer0.muse.tools.system.RootAuthorizer() }
-    // instalador(arranque habilitado/Instalación)
+    // RootAuthorizer: libsu 门面(被动授权缓存 + 持久 shell + 管理器检测,降级通道)
+    single { io.zer0.muse.tools.system.RootAuthorizer(androidContext()) }
+    // 安装器(引导启用/安装)
     single { io.zer0.muse.tools.system.AccessibilityProviderInstaller(androidContext()) }
     single { io.zer0.muse.tools.system.ShizukuInstaller(androidContext()) }
-    // P3-3: UI Registrador de herramientas(init Los bloques registran automáticamente 10 ui_* Llegan las herramientas ToolRegistry,Todos son ALTOS riesgos)
+    // 权限体系重设计: 统一权限协调层(四通道单一事实源 + 事件驱动刷新),向导与管理器同源消费
+    single {
+        io.zer0.muse.permission.PermissionCoordinator(
+            shizukuAuthorizer = get(),
+            shizukuInstaller = get(),
+            rootAuthorizer = get(),
+            a11yInstaller = get(),
+            termuxChannel = io.zer0.muse.terminal.TermuxChannel.get(androidContext()),
+        )
+    }
+    // P3-3: UI 工具注册器(init 块自动注册 10 个 ui_* 工具到 ToolRegistry,均为 HIGH 风险)
     single {
         io.zer0.muse.tools.defaultTool.UIToolsRegistrar(
             toolRegistry = get(),
@@ -557,13 +608,13 @@ val appModule = module {
         )
     }
 
-    // P2-23: herramientas de generación de medios(generate_image / generate_video / generate_qr_code).
-    // Implementación independiente de ViewModel,Confíe únicamente en la configuración persistente + ImageService / VideoGenerationService;
-    // Sin enlace de interfaz de usuario(tareas programadas/chat grupal/subagente)No instalar el servidor de entrega,El resultado es la ruta del archivo./URL Devolver.
+    // P2-23: 媒体生成工具(generate_image / generate_video / generate_qr_code)。
+    // 实现与 ViewModel 无关,只依赖持久化配置 + ImageService / VideoGenerationService;
+    // 无 UI 链路(定时任务/群聊/子代理)不安装投递宿主,结果以文件路径/URL 返回。
     single {
-        // v2.x: Enviar mensaje de voz —— Utilice TtsManager para síntesis y VoiceMessageStore para ubicación.
-        // TtsManager No implementar VoiceSynthesizer (criarlo invalidaría la exención a nivel de clase de la línea base de detekt),
-        // Aquí, se utiliza el adaptador SAM para conectarlo de una sola vez.
+        // v2.x: 发语音消息 —— 合成走 TtsManager，落盘走 VoiceMessageStore。
+        // TtsManager 不实现 VoiceSynthesizer（给它加父类型会让 detekt 基线的类级豁免失效），
+        // 这里用 SAM 适配一次性接上。
         val tts = get<io.zer0.muse.ui.speech.TtsManager>()
         io.zer0.muse.tools.MediaGenToolsImpl(
             context = androidContext(),
@@ -574,8 +625,8 @@ val appModule = module {
             voiceMessageStore = get<io.zer0.muse.ui.speech.VoiceMessageStore>(),
         )
     }
-    // P2-23: Registrador de herramientas de generación de medios(init Los bloques se registran automáticamente en ToolRegistry).
-    // La misma instancia de MediaGenToolsImpl que ChatViewModel.installHost instala el host de entrega.
+    // P2-23: 媒体生成工具注册器(init 块自动注册到 ToolRegistry)。
+    // 与 ChatViewModel.installHost 安装投递宿主的是同一 MediaGenToolsImpl 实例。
     single {
         io.zer0.muse.tools.MediaGenToolsRegistrar(
             toolRegistry = get(),
@@ -583,7 +634,7 @@ val appModule = module {
         )
     }
 
-    // Guía de inicio del registrador de herramientas:Forzar la creación de instancias de todos lazy single,Haga que más de 100 herramientas sean realmente accesibles ToolRegistry
+    // 工具注册器启动引导:强制实例化全部 lazy single,让 100+ 工具真正进入 ToolRegistry
     single {
         io.zer0.muse.tools.ToolRegistrarBootstrapper(
             toolRegistry = get(),
@@ -608,18 +659,18 @@ val appModule = module {
             pdfVisionToolsRegistrar = get(),
             shellSandboxToolRegistrar = get(),
             uiToolsRegistrar = get(),
-            // P2-23: herramientas de generación de medios(fotos/vídeo/código qr)
+            // P2-23: 媒体生成工具(图片/视频/二维码)
             mediaGenToolsRegistrar = get(),
-            // v1.0.92: Herramientas del canal de mensajes(Envío de mensajería instantánea externa)
+            // v1.0.92: 消息渠道工具(外部 IM 发送)
             channelToolsRegistrar = get(),
             connectorToolsRegistrar = get(),
-            // v2.0.1: Herramienta de mercado de complementos(Instalación de recuperación/aprobación)
+            // v2.0.1: 插件市场工具(检索 / 审批安装)
             pluginMarketToolsRegistrar = get(),
-            // v2.x Tiempo de ejecución extendido(P0):Autoprueba integrada de la zona de pruebas de Node
+            // v2.x 扩展运行时(P0):内置 Node 沙盒自检
             runtimeSelfCheckToolRegistrar = get(),
-            // v2.7 Tiempo de ejecución extendido(Python):Python Ejecución de script
+            // v2.7 扩展运行时(Python):Python 脚本执行
             pythonScriptToolRegistrar = get(),
-            // v2.6.2: Gestión de la base de conocimientos + gestión de sesiones (las operaciones de escritura están sujetas a aprobación)
+            // v2.6.2: 知识库管理 + 会话管理（写操作走审批）
             knowledgeManageToolsRegistrar = get(),
             knowledgeReadToolRegistrar = get(),
             sessionManageToolsRegistrar = get(),
@@ -628,7 +679,7 @@ val appModule = module {
         )
     }
 
-    // v2.6.2: Conjunto de herramientas de gestión de la base de conocimientos (eliminar documentos/Eliminar base de datos/Construir una base de datos/hacer una lista)
+    // v2.6.2: 知识库管理工具集（删文档/删库/建库/列清单）
     single {
         io.zer0.muse.tools.KnowledgeManageToolsRegistrar(
             toolRegistry = get(),
@@ -639,14 +690,14 @@ val appModule = module {
             ),
         )
     }
-    // v2.6.2: Lea el texto completo de la base de conocimientos (segmentado)
+    // v2.6.2: 知识库全文读取（分段）
     single {
         io.zer0.muse.tools.KnowledgeReadToolRegistrar(
             toolRegistry = get(),
             docDao = get(),
         )
     }
-    // v2.6.2: Conjunto de herramientas de gestión de sesiones (eliminado)/Cambiar título/Mover carpeta/Archivo)
+    // v2.6.2: 会话管理工具集（删/改标题/移文件夹/归档）
     single {
         io.zer0.muse.tools.SessionManageToolsRegistrar(
             toolRegistry = get(),
@@ -656,7 +707,7 @@ val appModule = module {
             ),
         )
     }
-    // v2.6.2: Conjunto de herramientas de gestión de habilidades (lista/Iniciar y detener/eliminar)
+    // v2.6.2: 技能管理工具集（列表/启停/删除）
     single {
         io.zer0.muse.tools.SkillManageToolsRegistrar(
             toolRegistry = get(),
@@ -665,7 +716,7 @@ val appModule = module {
             ),
         )
     }
-    // v2.6.2: Conjunto de herramientas de autogestión del asistente (permisos restringidos: solo cambie la personalidad, no el enlace)/modelo)
+    // v2.6.2: 助手自管理工具集（限权：只改人设，不改绑定/模型）
     single {
         io.zer0.muse.tools.AssistantManageToolsRegistrar(
             toolRegistry = get(),
@@ -675,13 +726,13 @@ val appModule = module {
         )
     }
 
-    // Phase 8.8: Skill actuador(Kotlin Realización directa,No hay necesidad QuickJS)
-    // v0.24: inyectar WebSearchService / KnowledgeDocDao / SkillRepository para la clase de búsqueda + install_skill
-    // v0.46: Inyectar ChatService/AssistantRepository para delegate_agent(Colaboración entre múltiples agentes)
-    // v1.30: Inyecte GroupChatRepository para la herramienta de chat grupal(channel_reply / channel_pass / channel_read_context)
-    // P1-3b Desterritorialización: Skill Implementación de herramientas de archivos(Llamado por el delegado de SkillExecutor)
+    // Phase 8.8: Skill 执行器(Kotlin 直实现,不用 QuickJS)
+    // v0.24: 注入 WebSearchService / KnowledgeDocDao / SkillRepository 用于搜索类 + install_skill
+    // v0.46: 注入 ChatService / AssistantRepository 用于 delegate_agent(多 Agent 协作)
+    // v1.30: 注入 GroupChatRepository 用于群聊工具(channel_reply / channel_pass / channel_read_context)
+    // P1-3b 拆域: Skill 文件工具实现(被 SkillExecutor 委托调用)
     single { io.zer0.muse.tools.SkillFileToolsImpl(androidContext(), get(named("chat"))) }
-    // P1-3b Desterritorialización: Skill medios de comunicación/JS/Implementación de herramientas de complemento(Llamado por el delegado de SkillExecutor)
+    // P1-3b 拆域: Skill 媒体/JS/插件工具实现(被 SkillExecutor 委托调用)
     single {
         io.zer0.muse.tools.SkillMediaToolsImpl(
             androidContext(),
@@ -703,15 +754,40 @@ val appModule = module {
                 }
             },
             get(),
-            // Conmutador maestro enchufable: realice una lectura de ruta activa una vez y no habilite la suscripción.
-            { get<io.zer0.muse.data.SettingsRepository>().arePluginsGloballyEnabled() },
+            // 插件总开关：执行热路径读一次，不开订阅。
+            // 安全模式的总闸（文件标志）并进来：它是"关掉一切"的最后一道，
+            // 读文件失败按未关闭处理，不能让读不到就当成关了。
+            {
+                val appContext = get<android.content.Context>()
+                !io.zer0.muse.data.plugin.PluginKillSwitch.isDisabled(appContext) &&
+                    get<io.zer0.muse.data.SettingsRepository>().arePluginsGloballyEnabled()
+            },
+            // 插件调工具（tool_invoke）的通道。审批判定与主会话、子代理共用同一个 ToolCallGate：
+            // 三处各留一份判定的话，最先松动的就是绕过审批的入口。缺这条通道时动作直接拒绝，
+            // 不静默降级成"这个动作不存在"。
+            io.zer0.muse.data.plugin.PluginToolInvokeBridge(
+                gateCall = io.zer0.muse.data.plugin.PluginToolInvokeBridge.of(
+                    io.zer0.muse.tools.ToolCallGate(
+                        approvalRouter = get<io.zer0.muse.tools.ToolApprovalRouter>(),
+                        toolRegistry = get<io.zer0.muse.tools.ToolRegistry>(),
+                        toolConfigStore = get<io.zer0.muse.tools.ToolConfigStore>(),
+                        settings = getOrNull<io.zer0.muse.data.SettingsRepository>(),
+                    ),
+                ),
+                executeTool = { name, args -> get<io.zer0.muse.tools.ToolRegistry>().executeFromJson(name, args) },
+            ),
+            // model_call 的模型通道：复用既有路由与 UTILITY 请求通道，不建第二条出口。
+            modelBridge = getOrNull(),
+            // chat_read 的会话通道；缺它时该动作一律拒绝。
+            // 命名参数必须排在所有位置参数之后，所以放在 toolBridge 后面。
+            chatBridge = getOrNull(),
         )
     }
-    // P1-3b Desterritorialización: Skill Implementación de herramientas de gestión.(Llamado por el delegado de SkillExecutor)
+    // P1-3b 拆域: Skill 管理工具实现(被 SkillExecutor 委托调用)
     single { io.zer0.muse.tools.SkillManagementToolsImpl(androidContext(), get()) }
-    // Implementación de la herramienta de complemento autoescrita del asistente(Llamado por el delegado de SkillExecutor):Sólo produce borradores sin firmar.
+    // 助手自写插件工具实现(被 SkillExecutor 委托调用):只产出未签名草稿
     single { io.zer0.muse.tools.PluginAuthoringToolsImpl(androidContext(), get()) }
-    // P1-3b Desterritorialización: Skill Buscar/HTTP Implementación de herramientas(Llamado por el delegado de SkillExecutor)
+    // P1-3b 拆域: Skill 搜索/HTTP 工具实现(被 SkillExecutor 委托调用)
     single { io.zer0.muse.web.WebSearchCoordinator(get<WebSearchService>()) }
     single {
         io.zer0.muse.tools.SkillSearchToolsImpl(
@@ -733,7 +809,7 @@ val appModule = module {
             builtInKnowledgeDocSeeder = get(),
         )
     }
-    // P1-3e Desterritorialización: Skill Agent Flujo de trabajo/Implementación de herramienta de chat grupal(Llamado por el delegado de SkillExecutor)
+    // P1-3e 拆域: Skill Agent 工作流/群聊工具实现(被 SkillExecutor 委托调用)
     single {
         io.zer0.muse.tools.SkillAgentToolsImpl(
             androidContext(),
@@ -743,10 +819,10 @@ val appModule = module {
         )
     }
 
-    // P1-3e Desterritorialización: Implementación de herramienta de traducción(Llamado por el delegado de SkillExecutor)
+    // P1-3e 拆域: 翻译工具实现(被 SkillExecutor 委托调用)
     single { io.zer0.muse.tools.TranslateToolsImpl() }
 
-    // P1-3e Desterritorialización: delegateAgent darse cuenta(Llamado por el delegado de SkillExecutor)
+    // P1-3e 拆域: delegateAgent 实现(被 SkillExecutor 委托调用)
     single {
         io.zer0.muse.tools.SkillDelegateAgentImpl(
             androidContext(),
@@ -794,18 +870,18 @@ val appModule = module {
             pauseManager = get(),
             delegationChainTracker = get(),
             agentDmRepository = get(),
-            // v1.202 Retrofit 2: infraestructura necesaria para la delegación sin bloqueo(Registrado como singleton a continuación)
+            // v1.202 改造 2: 非阻塞委派所需基础设施(已在下方注册为单例)
             deferredResultStore = get(),
             subagentThreadStore = get(),
-            // v1.0.53: Limitador de simultaneidad global de subagente(Compartido por todos los portales de la delegación.)
+            // v1.0.53: 子 agent 全局并发限流器(所有委派入口共享)
             agentConcurrencyLimiter = get(),
-            // v1.0.53 Phase 2: Registro de recuperación de puntos de interrupción del flujo de trabajo
+            // v1.0.53 Phase 2: 工作流断点恢复日志
             journal = get(),
-            // v1.0.53 Phase 5: GroupChatScheduler Carga diferida provider(agent_phone Para herramientas).
-            // Análisis perezoso con lambda:SkillExecutor Regístrate aquí(bloque único debajo),GroupChatScheduler en
-            // line 192 Registrarse(Registrado ante SkillExecutor),Pero dentro de lambda get() Se analiza sólo cuando la herramienta se ejecuta realmente.,
-            // En este punto ambos han sido inicializados.,Evite las dependencias circulares.
-            // Utilice runCatching para descubrirlo:Devuelto cuando el entorno de prueba o Koin no se inicia null,agent_phone Herramienta rebajada a"No configurado".
+            // v1.0.53 Phase 5: GroupChatScheduler 懒加载 provider(agent_phone 工具用)。
+            // 用 lambda 延迟解析:SkillExecutor 在此注册(下方 single 块),GroupChatScheduler 在
+            // line 192 注册(已先于 SkillExecutor 注册),但 lambda 体内 get() 在工具实际执行时才解析,
+            // 此时两者均已初始化完成,避免循环依赖。
+            // 用 runCatching 兜底:测试环境或 Koin 未启动时返回 null,agent_phone 工具降级为"未配置"。
             pluginManager = get(),
             fileTools = get(),
             searchTools = get(),
@@ -816,17 +892,22 @@ val appModule = module {
             agentTools = get(),
             delegateTools = get(),
             groupChatSchedulerProvider = {
-                runCatching { get<io.zer0.muse.schedule.GroupChatScheduler>() }.getOrNull()
+                // 降级行为不变（取不到就返回 null，工具报「未配置」），
+                // 但**失败原因必须留在日志里**：以前这句是裸 runCatching，
+                // 生产上装配出错也一声不响，排查时只知道"没配上"、不知道为什么。
+                io.zer0.muse.util.lookupOrNull("GroupChatScheduler") {
+                    get<io.zer0.muse.schedule.GroupChatScheduler>()
+                }
             },
         )
     }
 
-    // B6-01: Administrador de complementos externo(importar/Desinstalar/Iniciar y detener/Registro de herramientas)
+    // B6-01: 外部插件管理器(导入/卸载/启停/工具注册)
     single { io.zer0.muse.data.plugin.PluginManager(androidContext(), get()) }
-    // Phase 4: La representación de la piel se basa únicamente en interfaces estrechas,UI No contiene directamente la implementación del administrador de complementos.
+    // Phase 4: 皮肤渲染只依赖窄接口,UI 不直接持有插件管理器实现。
     single<io.zer0.muse.ui.theme.PluginSkinSource> { get<io.zer0.muse.data.plugin.PluginManager>() }
-    // v2.0.1: Componentes compartidos del mercado de complementos — Página de gestión de complementos(UI)y herramientas de backend(plugin_market_search/install)
-    // Compartiendo la misma instancia: caché de directorio/La secuencia aceptada tiene un solo estado.,Varias instancias pueden hacer que la protección alternativa se bifurque.
+    // v2.0.1: 插件市场共享组件 — 插件管理页(UI)与后台工具(plugin_market_search/install)
+    // 共用同一实例：目录缓存/已接受 sequence 只有一份状态,多实例会让回退防护出现分叉。
     single { io.zer0.muse.data.plugin.market.PluginMarketSettings(androidContext()) }
     single { io.zer0.muse.data.plugin.market.PluginMarketTrustRoots(get()) }
     single {
@@ -837,19 +918,19 @@ val appModule = module {
             trustRootKeys = { trustRoots.current() },
         )
     }
-    // v1.201: Gestor de pausas delegado(Singleton global,ChatViewModel Compartir con SkillExecutor)
+    // v1.201: 委派暂停管理器(全局单例,ChatViewModel 与 SkillExecutor 共享)
     single { io.zer0.muse.tools.DelegationPauseManager() }
-    // v1.201: Rastreador de enlaces delegados(Singleton global,ChatViewModel Compartir con SkillExecutor)
+    // v1.201: 委派链路追踪器(全局单例,ChatViewModel 与 SkillExecutor 共享)
     single { io.zer0.muse.tools.DelegationChainTracker() }
-    // v1.201: LLM Agregador de reseñas completo(Para la política TeamWorkflow LLM_REVIEW)
+    // v1.201: LLM 综合评审聚合器(用于 TeamWorkflow LLM_REVIEW 策略)
     single { io.zer0.muse.tools.LlmAggregator(get(), get()) }
-    // v1.200: Agent enrutamiento automático(Recomendar el mejor asistente según el texto de la tarea + etiqueta de habilidad/equipo)
-    // v2.x: Inyecte ChatService para admitir el enrutamiento semántico LLM(El interruptor está apagado de forma predeterminada,ver MultiAgentConfig.llmRoutingEnabled)
+    // v1.200: Agent 自动路由(根据任务文本 + 能力标签推荐最佳助手/团队)
+    // v2.x: 注入 ChatService 支持 LLM 语义路由(开关默认关闭,见 MultiAgentConfig.llmRoutingEnabled)
     single { io.zer0.muse.tools.AgentRouter(get(), get(), get()) }
-    // v1.0.53 Phase 1: Libro mayor de hilos de subagente(Versión persistente,Reemplaza las herramientas antiguas. Versión de memoria SubagentThreadStore)
-    //  - Room mesa subagent_threads(MIGRATION_58_59 crear):Metadatos del hilo + estado + runCount
-    //  - JSONL Historial de subsesiones(filesDir/subagent_sessions/<threadId>.jsonl):Cada ronda de resultados de la herramienta LLM + se agrega de forma incremental
-    //  - Dos rutas de subagente compartidas:camino A(SubagentTool + delegateAgent nonBlocking)+ camino B(SubagentRunner)
+    // v1.0.53 Phase 1: 子 agent 线程账本(持久化版,替代旧 tools.SubagentThreadStore 内存版)
+    //  - Room 表 subagent_threads(MIGRATION_58_59 创建):线程元数据 + 状态 + runCount
+    //  - JSONL 子会话历史(filesDir/subagent_sessions/<threadId>.jsonl):每轮 LLM + 工具结果增量追加
+    //  - 两条 subagent 路径共享:路径 A(SubagentTool + delegateAgent nonBlocking)+ 路径 B(SubagentRunner)
     single {
         io.zer0.muse.data.subagent.SubagentSessionStore(
             sessionsDir = java.io.File(androidContext().filesDir, "subagent_sessions").apply { mkdirs() },
@@ -862,42 +943,42 @@ val appModule = module {
             sessionStore = get(),
         )
     }
-    // v1.0.53: Limitador de simultaneidad global de subagente(Todos los portales de delegación comparten la misma cuota)
+    // v1.0.53: 子 agent 全局并发限流器(所有委派入口共享同一配额)
     single { io.zer0.muse.tools.AgentConcurrencyLimiter() }
-    // v1.0.53 Phase 2: Registro de recuperación de puntos de interrupción del flujo de trabajo
-    //  - Archivo: filesDir/workflow_journals/<runId>.jsonl
-    //  - TeamWorkflowExecutor resume El nodo que llega al caché se devolverá en segundos.,Se reinicia el primer nodo sin caché.
+    // v1.0.53 Phase 2: 工作流断点恢复日志
+    //  - 文件: filesDir/workflow_journals/<runId>.jsonl
+    //  - TeamWorkflowExecutor resume 时命中缓存的节点秒回,首个未缓存节点起重跑
     single {
         io.zer0.muse.tools.WorkflowJournal(
             journalDir = java.io.File(androidContext().filesDir, "workflow_journals").apply { mkdirs() },
             resultCipher = io.zer0.muse.data.SecureKeyStore,
         )
     }
-    // v1.202: Comentarios asincrónicos sobre los resultados de las tareas delegadas(Infraestructura central de delegación sin bloqueo,El agente principal regresa inmediatamente. taskId)
+    // v1.202: 异步委派任务结果回灌(非阻塞委派核心基础设施,主 agent 立即返回 taskId)
     single { io.zer0.muse.tools.DeferredResultStore() }
 
-    // Phase 5-E: analizador de documentos
+    // Phase 5-E: 文档解析器
     single { DocumentParser(get(named("chat"))) }
 
-    // v0.30-a: Ensamblador de avisos del sistema(6 flujo de trabajo paso a paso,Ensamble de 1 a 9 secciones juntas)
-    // v0.32 Experimental:Cierre transparente de getExperiments,Deje que el experimento cambie en la página de configuración.
-    //         (forceMoodBlock / selfReflection)impacto real system prompt
-    //         Los cierres se leen cada vez. settings.experimentsCache(@Volatile,Bloqueo cero),
-    //         en lugar de almacenar en caché en el momento de la construcción,Asegúrese de que el usuario cambie la página de configuración para que surta efecto inmediatamente(Según el método de escritura MemoryConfigCache).
-    // v1.25: Transmisión transparente simultánea getMultiAgentConfig,Las indicaciones de colaboración del agente leen Settings.multiAgentConfigCache.
-    // v1.97: paso a través assistantRepository,Solicite a delegado_agent que inserte una lista de identificadores de asistente disponibles.
+    // v0.30-a: 系统提示组装器(6 步工作流,连 1 到 9 个 section 集中拼装)
+    // v0.32 实验性:透传 getExperiments 闭包,让设置页的实验开关
+    //         (forceMoodBlock / selfReflection)真正影响 system prompt
+    //         闭包每次都读 settings.experimentsCache(@Volatile,零阻塞),
+    //         而不是在构造时缓存,保证用户改完设置页立即生效(按 memoryConfigCache 写法)。
+    // v1.25: 同时透传 getMultiAgentConfig,供 Agent 协作提示读取 settings.multiAgentConfigCache。
+    // v1.97: 透传 assistantRepository,供 delegate_agent 提示注入可用助手 id 清单。
 }
 
 /**
- * El pequeño host de teléfono celular implementa la inyección.
+ * 小手机宿主实现注入。
  *
- * Koin 4.0 No `override<T>` DSL: La misma definición clave se expresa como "el orden de carga del módulo gana".
- * (`KoinApplication` Predeterminado allowOverride = true, la definición cargada más tarde reemplaza la definición cargada primero con la misma clave).
- * Por lo tanto, este módulo debe clasificarse [io.zer0.muse.miniphone.di.miniPhoneModule] Después de eso,
- * Cubre los marcadores de posición en este módulo desde aquí MiniPhoneHost —— ver [allKoinModules].
+ * Koin 4.0 没有 `override<T>` DSL：同 key 定义以「模块加载顺序靠后者胜」表达覆盖
+ * （`KoinApplication` 默认 allowOverride = true，后加载的定义替换先加载的同 key 定义）。
+ * 所以本模块必须排在 [io.zer0.muse.miniphone.di.miniPhoneModule] 之后，
+ * 由这里覆盖该模块内的占位 MiniPhoneHost —— 见 [allKoinModules]。
  */
 val miniPhoneHostModule = module {
-    // Una ronda de generación de herramientas en mensajes privados:La superficie de la herramienta se estrecha dentro del canal.,Aquí solo se dan el formulario de entrada y registro.
+    // 私信里的一轮工具生成:工具面在 runner 内部收窄,这里只给入口与注册表
     single {
         io.zer0.muse.data.miniphone.MiniPhoneToolTurnRunner(
             chatService = get<io.zer0.ai.ChatService>(),
@@ -912,8 +993,8 @@ val miniPhoneHostModule = module {
             textGenerator = get(),
             contextBuilder = get(),
             toolTurnRunner = get(),
-            // TtsManager No implementa VoiceSynthesizer (criarlo como padre rompería la exención de nivel de clase de detekt),
-            // El método de conexión es coherente con el método send_voice de AppMediaModule:SAM Adaptarse una vez
+            // TtsManager 不实现 VoiceSynthesizer（给它加父类型会破 detekt 类级豁免），
+            // 与 AppMediaModule 的 send_voice 接法一致：SAM 适配一次
             voiceSynthesizer = { text, file, emotion -> tts.synthesizeTo(text, file, emotion) },
             voiceStore = get<io.zer0.muse.ui.speech.VoiceMessageStore>(),
             cacheDir = androidContext().cacheDir,
@@ -929,7 +1010,7 @@ val miniPhoneHostModule = module {
 }
 
 /**
- * Todos los módulos Koin se cargan cuando se inicia la aplicación.
+ * 应用启动时加载的全部 Koin 模块。
  */
 val allKoinModules = listOf(
     appModule,
@@ -940,13 +1021,13 @@ val allKoinModules = listOf(
     appMediaModule,
     appRagModule,
     appViewModelModule,
-    // G4: Figura de referencia Puente de verificación de la SSRF — Registrarse RefImageUrlValidator(SsrfGuard.refImageUrlValidator),
-    // Inyectado por AgnesImageProvider de aiModule(Debe estar registrado antes de aiModule)
+    // G4: 参考图 SSRF 校验桥接 — 注册 RefImageUrlValidator(SsrfGuard.refImageUrlValidator),
+    // 供 aiModule 的 AgnesImageProvider 注入(必须在 aiModule 前注册)
     SsrfBridgeModule,
     aiModule,
     memoryModule,
-    // P0: Pequeño módulo de teléfono celular (viene con la biblioteca Room + marcador de posición MiniPhoneHost)
+    // P0: 小手机模块（自带 Room 库 + 占位 MiniPhoneHost）
     io.zer0.muse.miniphone.di.miniPhoneModule,
-    // Debe clasificarse después de lo anterior: con la misma definición de clave, prevalecerá la que se cargue más tarde, y la implementación del marcador de posición se anula aquí.
+    // 必须排在上面之后：同 key 定义以后加载者为准，这里覆盖占位实现
     miniPhoneHostModule,
 )

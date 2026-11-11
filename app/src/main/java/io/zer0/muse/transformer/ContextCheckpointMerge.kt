@@ -5,45 +5,45 @@ import io.zer0.ai.core.UIMessage
 import io.zer0.memory.summary.ContextCheckpointEntity
 
 /**
- * Fusionar el punto de control de la sesión en el historial para enviarlo —— "contexto comprimido"El verdadero punto de efecto.
+ * 把会话检查点合并进待发送的历史 —— "压缩后的上下文"真正的生效点。
  *
- * ## Semántica
+ * ## 语义
  *
- * El puesto de control es"Límites fusionados en resumen". Lo que se le da al modelo después de la fusión es:
- * **Resumen del punto de control + mensaje después del límite**;Los mensajes de límites y anteriores ya no entrarán en esta solicitud.
+ * 检查点记的是"已并入摘要的边界"。合并后送给模型的是：
+ * **检查点摘要 + 边界之后的消息**；边界及更早的消息不再进入本次请求。
  *
- * Este paso sólo se aplica a**Historia de los modelos emitidos.**, la sesión en sí no se modifica: los mensajes antiguos todavía están en la biblioteca y en la interfaz.
- * Simplemente ya no ocupa el contexto del modelo (consulte el separador de contexto para ver la presentación en la interfaz).
+ * 这一步只作用于**发给模型的历史**，不修改会话本身：老消息仍在库里、界面上也还在，
+ * 只是不再占用模型上下文（界面上的呈现见上下文分隔线）。
  *
- * ## Cómo localizar límites
+ * ## 边界如何定位
  *
- * usar [ContextCheckpointEntity.lastCoveredMessageId] Localizar mensajes de límites en el historial:
- *  - encontró → Esta posición y su mensaje anterior (en el lado del asistente) son reemplazados por el resumen; Los mensajes de usuario y los prefijos del sistema se conservan.
- *    evitar"Lo que dijeron los usuarios"Todo el párrafo desaparece del contexto;
- *  - No encontrado pero el historial actual es solo una ventana de paginación → uso [ContextCheckpointEntity.coveredSeq] Determinar si la ventana
- *    Ya detrás del límite; Sea conservador y no fusione cuando no se pueda probar (es mejor traer más historial que borrarlo por error).
+ * 用 [ContextCheckpointEntity.lastCoveredMessageId] 在历史里定位边界消息：
+ *  - 找到 → 该位置及其之前的消息（助手侧）被摘要取代；用户消息与系统前缀一律保留，
+ *    避免"用户说过的话"从上下文里整段消失；
+ *  - 找不到但当前历史只是分页窗口 → 使用 [ContextCheckpointEntity.coveredSeq] 判断窗口是否
+ *    已在边界之后；无法证明时保守不合并（宁可多带点历史，也不能错删）。
  *
- * Coloque el mensaje del SISTEMA primero en el resumen y déjelo claro en el texto."Este es un resultado condensado de una conversación anterior.", para evitar que el modelo lo tome
- * Trátelo como una entrada de usuario recién recibida.
+ * 摘要以 SYSTEM 消息放在最前，并在正文里明确"这是更早对话的压缩结果"，避免模型把它
+ * 当成新收到的用户输入。
  */
 object ContextCheckpointMerge {
 
-    /** Marcado visible para mensajes de resumen (la base para identificar separadores de contexto, consistentes con las marcas de compresión existentes). */
+    /** 摘要消息的可见标记（上下文分隔线的识别依据，与既有压缩标记保持一致）。 */
     const val MARKER = "[COMPRESSED]"
 
     /**
-     * en la interfaz"separador de contexto"marca.
+     * 界面上的"上下文分隔线"标记。
      *
-     * con [MARKER] separado: mensaje resumido ([MARKER]) es**Enviado al modelo**contenido; la línea separadora es**solo en la interfaz**de
-     * Punto de anclaje de posicionamiento, utilizado para indicarle al usuario"El diálogo anterior aquí se ha comprimido y el modelo ya no es visible.". Mezclar los dos hará"¿Qué ve el modelo?"
-     * con"¿Qué muestra la interfaz?"contaminarse unos a otros.
+     * 与 [MARKER] 分开：摘要消息（[MARKER]）是**发给模型的**内容；分隔线是**只在界面上**的
+     * 定位锚点，用来告诉用户"这里之前的对话已压缩、模型不再看到"。两者混用会让"模型看到什么"
+     * 与"界面显示什么"互相污染。
      */
     const val DIVIDER_MARKER = "[CONTEXT_DIVIDER]"
 
-    /** El encabezado del texto del resumen: informe al modelo que este párrafo es"historia anterior", no es una nueva entrada en esta ronda. */
-    private const val HEADER = "Resumen de conversaciones históricas (el contenido anterior se ha condensado, los aspectos más destacados a continuación)"
+    /** 摘要正文的抬头：让模型知道这段是"更早的历史"，不是本轮新输入。 */
+    private const val HEADER = "历史对话摘要（更早的内容已压缩，以下为要点）"
 
-    /** Fusionar resultados.[applied]=false Indica que no es efectivo (ningún punto de control/límite no se puede colocar de manera segura) y regresa como está. */
+    /** 合并结果。[applied]=false 表示未生效（无检查点 / 边界无法安全定位），此时原样返回。 */
     data class Result(
         val messages: List<UIMessage>,
         val applied: Boolean,
@@ -54,10 +54,10 @@ object ContextCheckpointMerge {
     }
 
     /**
-     * Dentro de la cobertura de los puntos de control,**será reemplazado por un resumen**La identificación del mensaje (es decir, el límite y el contenido del lado anterior del asistente).
+     * 检查点覆盖范围内、**会被摘要替代**的消息 id（即边界及更早的助手侧内容）。
      *
-     * con [apply] Las compensaciones deben ser consistentes: los mensajes de usuario y los prefijos del sistema no se reemplazan ni se cuentan como"contexto guardado",
-     * De lo contrario, la estimación de la tasa de ocupación será falsamente baja y los ingresos mostrados también serán falsos.
+     * 与 [apply] 的取舍必须一致：用户消息与系统前缀既不会被替代，也不该算作"省下的上下文"，
+     * 否则占用率估算会虚低，显示出来的收益也是假的。
      */
     fun coveredMessageIds(messages: List<UIMessage>, checkpoint: ContextCheckpointEntity?): Set<String> {
         val boundaryId = checkpoint?.lastCoveredMessageId.orEmpty()
@@ -72,23 +72,23 @@ object ContextCheckpointMerge {
     }
 
     /**
-     * Fusionar puntos de control.
+     * 合并检查点。
      *
-     * @param messages Historial ordenado y limpio de llamadas a herramientas huérfanas
-     * @param checkpoint Punto de control válido de la sesión actual (la persona que llama debe determinar primero la validez)
+     * @param messages 已排序、已清理孤儿 tool_call 的历史
+     * @param checkpoint 当前会话的有效检查点（调用方需先做有效性判定）
      */
     fun apply(messages: List<UIMessage>, checkpoint: ContextCheckpointEntity?): Result {
         val currentCheckpoint = checkpoint ?: return Result.unchanged(messages)
         val boundaryId = currentCheckpoint.lastCoveredMessageId
         val boundaryIndex = messages.indexOfFirst { it.id.toString() == boundaryId }
         val alreadySummarized = messages.any { it.role == MessageRole.SYSTEM && it.content.startsWith(MARKER) }
-        // Situaciones que no deben fusionarse: no hay puntos de control/el historial está vacío/falta el límite/el límite no está en el historial/el resumen ya existe
+        // 不该合并的情形：没有检查点 / 历史为空 / 边界缺失 / 边界不在历史里 / 摘要已存在
         val noCheckpoint = messages.isEmpty() || boundaryId.isBlank()
         if (noCheckpoint || alreadySummarized) return Result.unchanged(messages)
 
-        // La página de chat generalmente solo contiene la página de mensajes más reciente; el límite del punto de control persistente puede ser anterior a esta página.
-        // En este momento, use seq/commitSeq para determinar que la página actual está detrás del límite y que el resumen aún se puede insertar de forma segura.
-        // no puedo poner“La paginación no se lleva al borde.”confundido con“historial eliminado”.
+        // 聊天页通常只持有最近一页消息；持久检查点的边界可能早于这页。
+        // 此时用 seq/commitSeq 判断当前页都在边界之后，仍可安全插入摘要，
+        // 不能把“分页没带到边界”误当成“历史被删除”。
         if (boundaryIndex < 0) {
             val coveredSeq = currentCheckpoint.coveredSeq
             val stableOrder: (UIMessage) -> Long = { message ->
@@ -108,12 +108,12 @@ object ContextCheckpointMerge {
             return Result(listOf(summaryMessage(currentCheckpoint)) + retained, applied = true)
         }
 
-        // Mensajes después del límite: todos se conservan (el resultado de la herramienta y la respuesta del asistente se conservan)."trabajo en progreso")
+        // 边界之后的消息：一律保留（工具结果与助手回复是"正在进行的工作"）
         val kept = messages.drop(boundaryIndex + 1)
-        // Dentro de los límites: recicle solo el contenido extenso en el lado del asistente (respuesta/pensar/resultados de la herramienta).
-        // Los mensajes de usuario y el prefijo del sistema deben dejarse —— ellos son"¿Qué dijo el usuario?"registros originales,
-        // Y el prefijo del sistema (system prompt / RAG / Libro Mundial) es una inyección irrecuperable, y no puede deberse a caer en
-        // Los límites ya se han desechado antes.
+        // 边界之内：只回收助手侧的长内容（回复/思考/工具结果）。
+        // 用户消息与系统前缀必须留下 —— 它们是"用户到底说了什么"的原始记录，
+        // 且系统前缀（system prompt / RAG / 世界书）本就是不可恢复的注入，不能因为落在
+        // 边界之前就被丢掉。
         val retained = messages.take(boundaryIndex + 1)
             .filter { it.role == MessageRole.USER || it.role == MessageRole.SYSTEM }
 

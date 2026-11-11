@@ -67,10 +67,10 @@ import kotlinx.serialization.json.buildJsonObject
 import java.time.Instant
 
 /**
- * P2: Diálogo de edición de contenido universal.
+ * P2: 通用内容编辑对话框。
  *
- * @param statusNote este recuerdo“¿Por qué no en uso normal?”descripción(Fusionado/Apareció/reemplazado),
- *   Después de hacer clic en la insignia de la lista, debe poder hacer coincidir el número;Las entradas ordinarias no tendrán en cuenta la altura adicional cuando se pasan como nulas.
+ * @param statusNote 这条记忆“为什么不在正常使用中”的说明(已合并/已出场/被取代),
+ *   列表徽章点开后要能对上号;普通条目传 null 时不占额外高度。
  */
 @Composable
 internal fun FactEditDialog(
@@ -113,7 +113,7 @@ internal fun FactEditDialog(
             }
         },
         confirmText = stringResource(R.string.memory_screen_save),
-        // MEM-07: El contenido vacío desactiva el botón guardar,En lugar de no responder después de hacer clic
+        // MEM-07: 空内容禁用保存按钮,而非点了无反应
         confirmEnabled = text.isNotBlank() && !isSaving,
         onConfirm = {
             if (!isSaving) {
@@ -136,7 +136,7 @@ internal fun FactEditDialog(
 }
 
 /**
- * Se agregó un cuadro de diálogo de metadatos.
+ * 新增元事实对话框。
  */
 @Composable
 internal fun AddFactDialog(onDismiss: () -> Unit, onConfirm: (String, (Boolean) -> Unit) -> Unit) {
@@ -149,7 +149,7 @@ internal fun AddFactDialog(onDismiss: () -> Unit, onConfirm: (String, (Boolean) 
 }
 
 /**
- * v4: Cuadro de diálogo de selección de importancia.
+ * v4: 重要程度选择对话框。
  */
 @Composable
 internal fun ImportanceSelectDialog(currentImportance: Int, onDismiss: () -> Unit, onSelect: (Int) -> Unit) {
@@ -185,7 +185,7 @@ internal fun ImportanceSelectDialog(currentImportance: Int, onDismiss: () -> Uni
 }
 
 /**
- * v4: Línea de artículo de importancia.
+ * v4: 重要程度选项行。
  */
 @Composable
 internal fun ImportanceOptionRow(title: String, desc: String, selected: Boolean, onClick: () -> Unit) {
@@ -221,7 +221,7 @@ internal fun ImportanceOptionRow(title: String, desc: String, selected: Boolean,
 }
 
 /**
- * Tarjeta de estadísticas generales — 3 Columnas de números grandes + finas líneas verticales los separan.
+ * 概览统计卡片 — 3 列大数字 + 细竖线分隔。
  */
 @Composable
 internal fun OverviewStatCard(state: MemoryUiState) {
@@ -250,8 +250,8 @@ internal fun OverviewStatCard(state: MemoryUiState) {
                     )
                     VerticalHairline()
                     OverviewStatColumn(
-                        // U-9: El número de capas ya no está codificado"4",Cambiar a sin números"mucho",Evite la codificación excesiva de diagnóstico
-                        value = "mucho",
+                        // U-9: 层数不再写死"4",改为不带数字的"多",避免过度诊断化硬编码
+                        value = "Muchos",
                         label = stringResource(R.string.memory_overview_layers),
                         modifier = Modifier.weight(1f),
                     )
@@ -300,9 +300,9 @@ internal fun VerticalHairline() {
 }
 
 /**
- * v0.51: Tarjeta de descripción general del tablero de memoria.
+ * v0.51: 记忆 dashboard 概览卡片。
  *
- * uso [CardGroup] como contenedor,Mantenga cuadros estadísticos y detalles de salud.
+ * 使用 [CardGroup] 作为容器,保持统计图表与健康详情。
  */
 @Composable
 internal fun MemoryDashboardCard(state: MemoryUiState) {
@@ -343,7 +343,7 @@ internal fun MemoryDashboardCard(state: MemoryUiState) {
 
                     if (state.syncStatus.isNotBlank()) {
                         Spacer(Modifier.size(4.dp))
-                        // U-8: El estado de sincronización cambió al estilo de información neutral(normalidad outline,Deja de usar ámbar/terciario para crear ansiedad)
+                        // U-8: 同步状态改中性信息样式(常态 outline,不再用 amber/tertiary 制造焦虑)
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -421,7 +421,7 @@ internal fun MemoryDashboardCard(state: MemoryUiState) {
                             )
                             Spacer(Modifier.size(4.dp))
                             state.topSessions.take(3).forEachIndexed { index, (_, count) ->
-                                // U-9: No mostrar desnudez session id,Utilice números de serie en su lugar"N sesión"Evite una sensación de diagnóstico técnico.
+                                // U-9: 不展示裸 session id,改用序号"N 号会话"避免技术化诊断感
                                 DashboardMetricRow(
                                     label = stringResource(R.string.memory_stats_session_live, index + 1),
                                     value = stringResource(R.string.memory_stats_session_count, count),
@@ -460,7 +460,7 @@ internal fun MemoryDashboardCard(state: MemoryUiState) {
                                 },
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.outline,
-                                // LAYOUT-01: El ancho de la etiqueta se agregará al límite de línea y el ancho restante ya no se ajustará a palabras cuando el ancho restante sea extremadamente pequeño.
+                                // LAYOUT-01: 已取宽的标签补限行，剩余宽度极小时不再逐字换行
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                                 modifier = Modifier.weight(1f),
@@ -497,7 +497,7 @@ internal fun MemoryDashboardCard(state: MemoryUiState) {
 }
 
 /**
- * v5: Etiqueta pequeña de estadísticas.
+ * v5: 统计小标签。
  */
 @Composable
 internal fun StatChip(label: String, value: String) {
@@ -524,7 +524,7 @@ internal fun StatChip(label: String, value: String) {
 }
 
 /**
- * v5: Gráfico circular de distribución de importancia.
+ * v5: 重要度分布饼图。
  */
 @Composable
 internal fun ImportancePieChart(distribution: Map<Int, Int>) {
@@ -583,7 +583,7 @@ internal fun ImportancePieChart(distribution: Map<Int, Int>) {
 }
 
 /**
- * v5: Gráfico de líneas de tendencia de crecimiento de la memoria.
+ * v5: 记忆增长趋势折线图。
  */
 @Composable
 internal fun TrendLineChart(dailyData: List<Pair<String, Int>>) {
@@ -624,7 +624,7 @@ internal fun TrendLineChart(dailyData: List<Pair<String, Int>>) {
 }
 
 /**
- * dashboard Indicador de una sola línea.
+ * dashboard 单行指标。
  */
 @Composable
 internal fun DashboardMetricRow(label: String, value: String, valueColor: Color = MaterialTheme.colorScheme.onSurface) {
@@ -635,7 +635,7 @@ internal fun DashboardMetricRow(label: String, value: String, valueColor: Color 
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        // LAYOUT-01: El nombre del indicador toma el ancho restante (el valor todavía está fijo a la derecha) y el tamaño de la fuente se amplía y ya no se ajusta palabra por palabra.
+        // LAYOUT-01: 指标名取剩余宽度（数值仍固定靠右），放大字号下不再逐字换行
         Text(
             text = label,
             style = MaterialTheme.typography.bodyMedium,
@@ -644,7 +644,7 @@ internal fun DashboardMetricRow(label: String, value: String, valueColor: Color 
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
         )
-        // LAYOUT-01: El valor del indicador se fija a la derecha (SpaceBetween), solo línea, sin ancho
+        // LAYOUT-01: 指标值靠右固定（SpaceBetween），只限行、不取宽
         Text(
             text = value,
             style = MaterialTheme.typography.bodyMedium,
@@ -657,7 +657,7 @@ internal fun DashboardMetricRow(label: String, value: String, valueColor: Color 
 }
 
 /**
- * Filas saludables de pasos de memoria únicos.
+ * 单个记忆步骤的健康行。
  */
 @Composable
 internal fun HealthStepRow(stepKey: String, health: io.zer0.memory.ticker.MemoryTicker.StepHealth) {
@@ -667,7 +667,7 @@ internal fun HealthStepRow(stepKey: String, health: io.zer0.memory.ticker.Memory
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            // LAYOUT-01: El nombre del paso ocupa el ancho restante (la copia de estado siempre está a la derecha) y el tamaño de fuente se amplía sin ajustar palabra por palabra.
+            // LAYOUT-01: 步骤名取剩余宽度（状态文案固定靠右），放大字号下不再逐字换行
             Text(
                 text = stepKey,
                 style = MaterialTheme.typography.bodySmall,
@@ -677,7 +677,7 @@ internal fun HealthStepRow(stepKey: String, health: io.zer0.memory.ticker.Memory
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
             )
-            // LAYOUT-01: La copia de estado está fijada a la derecha (SpaceBetween), solo línea, sin ancho
+            // LAYOUT-01: 状态文案靠右固定（SpaceBetween），只限行、不取宽
             Text(
                 text = if (health.failCount > 0) {
                     stringResource(
@@ -715,7 +715,7 @@ internal fun HealthStepRow(stepKey: String, health: io.zer0.memory.ticker.Memory
 }
 
 /**
- * v0.51: "AI comprensión de ti" Tarjeta resumen.
+ * v0.51: "AI 对你的理解" 摘要卡片。
  */
 @Composable
 internal fun MemorySummaryCard(markdown: String) {
@@ -780,7 +780,7 @@ internal fun MemorySummaryCard(markdown: String) {
 }
 
 /**
- * v1.98: Tarjeta de experiencia.
+ * v1.98: 经验库卡片。
  */
 @Composable
 internal fun ExperienceLibraryCard(
@@ -888,7 +888,7 @@ internal fun ExperienceLibraryCard(
 }
 
 /**
- * v1.98: Nueva biblioteca de experiencias agregada/Editar cuadro de diálogo.
+ * v1.98: 经验库新增/编辑对话框。
  */
 @Composable
 internal fun ExperienceEditDialog(
@@ -947,10 +947,10 @@ internal fun ExperienceEditDialog(
             }
         },
         confirmText = stringResource(R.string.memory_screen_save),
-        // MEM-07: Deshabilite el botón Guardar cuando el título o el contenido estén vacíos
+        // MEM-07: 标题或内容为空时禁用保存按钮
         confirmEnabled = titleText.isNotBlank() && contentText.isNotBlank(),
         onConfirm = {
-            val tags = tagsText.split(",", ",", ";", ";")
+            val tags = tagsText.split(",", "，", ";", "；")
                 .map { it.trim() }
                 .filter { it.isNotBlank() }
             onConfirm(titleText, contentText, categoryText, tags)
@@ -988,9 +988,9 @@ internal fun buildMemoryMarkdown(facts: List<MemoryItem>, summaries: List<Memory
 }
 
 internal fun buildMemoryJson(facts: List<MemoryItem>, summaries: List<MemoryItem>): String {
-    // Reparación de auditoría (8.9): Escape JSON completo — La implementación original solo maneja " y \n,
-    // barra invertida/\r/\t/Los personajes de control no se escapan.,El contenido contiene C:\Users La salida es ilegal. JSON,
-    // tags También se empalma directamente sin escapar. Utilice la codificación kotlinx.serialization en su lugar para garantizar la legalidad.
+    // 审计修复 (8.9): 完整 JSON 转义 — 原实现只处理 " 和 \n,
+    // 反斜杠/\r/\t/控制字符不转义,内容含 C:\Users 之类即产出非法 JSON,
+    // tags 也不转义直接拼接。改用 kotlinx.serialization 编码保证合法。
     val factsJson = facts.map { f ->
         buildJsonObject {
             put("id", JsonPrimitive(f.id))
@@ -1026,10 +1026,10 @@ internal object MemoryExportHelpers {
 }
 
 /**
- * Panel de "entradas y salidas" de la memoria —— Enumere el historial de revisiones de este hecho.
+ * 记忆「来龙去脉」面板 —— 列出该条事实的修订历史。
  *
- * Cada fila: hora de cambio/motivo/valor anterior(−) / nuevo valor(+) / "Volver a esta versión".
- * Después de la reversión, el servidor recordará otra revisión, por lo que podrá revertirse en cualquier momento.
+ * 每行：改动时间 / 原因 / 旧值(−) / 新值(+) / 「回到此版本」。
+ * 回滚后服务端会再记一条修订，因此随时可再回滚。
  */
 @Composable
 fun FactRevisionsSheet(

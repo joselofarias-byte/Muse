@@ -9,22 +9,22 @@ import org.junit.Test
 import java.io.File
 
 /**
- * v2.6.8: `card_entities` Protector de cableado de respaldo.
+ * v2.6.8: `card_entities` 备份接线守护。
  *
- * Antecedentes: una vez acoplada la tarjeta, se separa del flujo de mensajes y solo queda un marcador de posición en el mensaje; si esta tabla no tiene una copia de seguridad, después de cambiar la máquina
- * Todas las tarjetas de muelle se pierden permanentemente y no se pueden reconstruir a partir del mensaje. Esta prueba señala tres cosas:
- *  1. El formato de línea de ida y vuelta no pierde campos, incluidos los espacios nulos y de acoplamiento;
- *  2. El orden de exportación es estable (las tarjetas acopladas se basan en las ranuras, las tarjetas desacopladas se basan en el tiempo de creación);
- *  3. Todas las conexiones están disponibles en el nivel del código fuente (exportar instantánea/restaurar borrado/restaurar escritura/mapeo NDJSON).
+ * 背景：卡片停靠后即脱离消息流，消息里只剩一条占位；不备份这张表，换机后
+ * 所有停靠卡永久丢失，且无法从消息重建。本测试钉住三件事：
+ *  1. 线格式 round-trip 不丢字段，含 null 与停靠槽位；
+ *  2. 导出顺序稳定（停靠卡按槽位、未停靠卡按创建时间）；
+ *  3. 源码层面四处接线都在（导出快照 / 恢复清空 / 恢复写入 / NDJSON 映射）。
  *
- * La protección "No te pierdas una lista al hacer una lista escrita a mano" se eliminó en v2.6.9: se cambió la lectura y escritura de respaldo.
- * `CardEntityDao`, los nombres de las columnas están determinados por Room por `@ColumnInfo` Las entidades y campos generados no necesitan modificarse.
- * Al hacer una copia de seguridad de cualquier archivo de su lado, el riesgo de pérdida silenciosa de archivos desaparece desde la raíz. El resto "la duplicación del formato de línea tiene que mantenerse al día"
- * El riesgo de "campos de entidad" todavía existe, causado por `line format mirrors every entity field` Guardia.
+ * 「手写列清单不能漏列」那条守护在 v2.6.9 被撤掉：备份读写已改走
+ * `CardEntityDao`，列名由 Room 按 `@ColumnInfo` 生成，实体加字段不需要再改
+ * 备份侧任何文件，这类静默丢列的风险从根上消失。剩下「线格式镜像要跟上
+ * 实体字段」的风险仍在，由 `line format mirrors every entity field` 守着。
  *
- * El artículo 3 utiliza el modelo de "contrato de código fuente", que es coherente con el almacén existente. BackupRestoreTodoRelationshipTest /
- * BackupNdJsonRestoreContractTest Mismo tipo:buildBackup / applyBackupInternal Todos
- * private Y se basa en tres conjuntos de bibliotecas Room reales, por lo que no se puede llamar directamente a la capa de unidades.
+ * 第 3 条用「源码契约」模式，与仓库既有 BackupRestoreTodoRelationshipTest /
+ * BackupNdJsonRestoreContractTest 同型：buildBackup / applyBackupInternal 都是
+ * private 且依赖三套真实 Room 库，单元层无法直接调用。
  */
 class BackupCardEntitiesTest {
 
@@ -35,7 +35,7 @@ class BackupCardEntitiesTest {
         legacyCardId = "c_$id",
         originSessionId = "s1",
         originMessageId = "m1",
-        title = "Título $id",
+        title = "标题 $id",
         code = "<div>$id</div>",
         isSvg = false,
         dataJson = """{"v":1}""",
@@ -47,7 +47,7 @@ class BackupCardEntitiesTest {
 
     private fun source(): String = File("src/main/java/io/zer0/muse/backup/BackupService.kt").readText()
 
-    // ── 1. El formato de línea se alinea con los campos de entidad ──
+    // ── 1. 线格式与实体字段对齐 ──
 
     @Test
     fun `line format mirrors every entity field`() {
@@ -55,15 +55,15 @@ class BackupCardEntitiesTest {
         val recordProps = instanceFields(CardEntityRecord::class.java)
 
         assertEquals(
-            "El formato de línea no corresponde a los campos de la entidad,Los nuevos campos no están respaldados",
+            "线格式与实体字段不对应,新增字段未进备份",
             entityProps,
             recordProps,
         )
     }
 
     /**
-     * data class El nombre del campo de instancia. Excluir cosas generadas en tiempo de compilación:kotlinx.serialization de
-     * estático `Companion` campos, y `$` El campo sintético de clases internas al principio.
+     * data class 的实例字段名。排除编译期生成的东西：kotlinx.serialization 的
+     * 静态 `Companion` 字段，以及 `$` 开头的合成内部类字段。
      */
     private fun instanceFields(type: Class<*>): Set<String> = type.declaredFields
         .filterNot { java.lang.reflect.Modifier.isStatic(it.modifiers) }
@@ -90,9 +90,9 @@ class BackupCardEntitiesTest {
         )
 
         assertEquals(2, restored.cardEntities.size)
-        assertEquals("El estado acoplado debe devolverse tal como está.", docked, restored.cardEntities[0].toEntity())
-        assertEquals("También se deben conservar las tarjetas de desacoplamiento.", inline, restored.cardEntities[1].toEntity())
-        assertNull("dockSlot para tarjetas desacopladas debe ser nulo en lugar de 0", restored.cardEntities[1].dockSlot)
+        assertEquals("停靠态必须原样往返", docked, restored.cardEntities[0].toEntity())
+        assertEquals("未停靠卡同样必须保留", inline, restored.cardEntities[1].toEntity())
+        assertNull("未停靠卡的 dockSlot 必须是 null 而不是 0", restored.cardEntities[1].dockSlot)
     }
 
     @Test
@@ -128,7 +128,7 @@ class BackupCardEntitiesTest {
         assertEquals(emptyList<CardEntityRecord>(), restored.cardEntities)
     }
 
-    // ── 3. orden ──
+    // ── 3. 顺序 ──
 
     @Test
     fun `dock order puts docked cards first by slot then inline by createdAt`() {
@@ -141,7 +141,7 @@ class BackupCardEntitiesTest {
         )
 
         assertEquals(
-            "Las tarjetas acopladas se enumeran primero en orden ascendente de espacios, y las tarjetas desacopladas se enumeran al final en orden ascendente de tiempo de creación.",
+            "停靠卡按槽位升序在前，未停靠卡按创建时间在后",
             listOf("slot-0", "slot-1", "slot-2", "inline-early", "inline-late"),
             records.inDockOrder().map { it.id },
         )
@@ -155,25 +155,25 @@ class BackupCardEntitiesTest {
         )
 
         assertEquals(
-            "Las tarjetas con la misma marca de tiempo se ordenan por identificación y los dos resultados de exportación deben ser consistentes.",
+            "同一时间戳的卡用 id 兜底排序，两次导出结果必须一致",
             listOf("a", "b"),
             records.inDockOrder().map { it.id },
         )
         assertEquals(records.inDockOrder(), records.reversed().inDockOrder())
     }
 
-    // ── 4. Contrato de código fuente para cableado en todas partes ──
+    // ── 4. 四处接线的源码契约 ──
 
     @Test
     fun `buildBackup snapshots card entities`() {
         val src = source()
         assertTrue(
-            "buildBackup La instantánea db.withTransaction debe leer card_entities" +
-                "(Es la fuente del punto de recuperación. Si se pierde la lectura, la reversión borrará todas las tarjetas.)",
+            "buildBackup 的 db.withTransaction 快照必须读 card_entities" +
+                "(它是 recovery point 的来源，漏读会让回滚清空全部卡片)",
             src.contains("cardEntities = db.cardEntityDao().getAll()"),
         )
         assertTrue(
-            "buildBackup CardEntities debe pasarse Backup(...) estructura",
+            "buildBackup 必须把 cardEntities 传进 Backup(...) 构造",
             Regex("cardEntities\\s*=\\s*cardEntities").containsMatchIn(src),
         )
     }
@@ -182,12 +182,12 @@ class BackupCardEntitiesTest {
     fun `restore clears and writes card entities`() {
         val src = source()
         assertTrue(
-            "Debe borrarse antes de restaurar card_entities",
+            "恢复之前必须先清空 card_entities",
             src.contains("db.cardEntityDao().deleteAll()"),
         )
-        assertTrue("La recuperación debe volver a escribir card_entities", src.contains("replaceCardEntities(") || src.contains("appendCardEntities("))
+        assertTrue("恢复必须写回 card_entities", src.contains("replaceCardEntities(") || src.contains("appendCardEntities("))
         assertTrue(
-            "Después de la recuperación, card_entities debe conciliarse con el número de filas",
+            "恢复后必须对 card_entities 做行数对账",
             src.contains("\"cardEntities\" -> db.cardEntityDao().count()"),
         )
 
@@ -195,27 +195,27 @@ class BackupCardEntitiesTest {
             src.indexOf("private suspend fun applyBackupInternal"),
             src.indexOf("private suspend fun pruneRestoredMessageImages"),
         )
-        assertTrue("También es necesario escribir en la tarjeta una única ruta de recuperación JSON.", applyBackup.contains("replaceCardEntities"))
-        assertTrue("La ruta de recuperación JSON única también necesita verificar la ranura/reconciliación", applyBackup.contains("verifyCardEntitiesRestored"))
+        assertTrue("单 JSON 恢复路径也要写卡", applyBackup.contains("replaceCardEntities"))
+        assertTrue("单 JSON 恢复路径也要校验槽位/对账", applyBackup.contains("verifyCardEntitiesRestored"))
     }
 
     @Test
     fun `ndjson exports and restores card entity records`() {
         val src = source()
         assertTrue(
-            "NDJSON La exportación debe escribir la línea cardEntity",
+            "NDJSON 导出必须写 cardEntity 行",
             src.contains("writeTypedLines(writer, \"cardEntity\""),
         )
         assertTrue(
-            "NDJSON meta El recuento de cardEntities debe declararse",
+            "NDJSON meta 必须声明 cardEntities 计数",
             src.contains("put(\"cardEntities\", cardEntities.size)"),
         )
         assertTrue(
-            "type→meta El mapeo debe contener cardEntity(La información faltante hará que la verificación de relectura y la conciliación omitan toda la tabla.)",
+            "type→meta 映射必须含 cardEntity(缺失会让读回校验与对账漏掉整张表)",
             src.contains("\"cardEntity\" to \"cardEntities\""),
         )
         assertTrue(
-            "NDJSON La distribución de recuperación debe tener una rama cardEntity",
+            "NDJSON 恢复分发必须有 cardEntity 分支",
             src.contains("\"cardEntity\" ->"),
         )
     }
@@ -225,12 +225,12 @@ class BackupCardEntitiesTest {
         val duplicated = listOf(card("a", dockSlot = 0), card("b", dockSlot = 0))
         val error = runCatching { requireNoDuplicateDockSlots(duplicated) }.exceptionOrNull()
 
-        assertTrue("Debe arrojar error", error is IllegalStateException)
+        assertTrue("必须抛错", error is IllegalStateException)
         assertTrue(
-            "El mensaje de error debería indicar que la ranura está duplicada.,En lugar de SQLite UNIQUE constraint failed: ${error?.message}",
-            error?.message?.contains("Ranuras de acoplamiento para tarjetas duplicadas") == true,
+            "错误信息要指出是槽位重复,而不是 SQLite 的 UNIQUE constraint failed: ${error?.message}",
+            error?.message?.contains("停靠槽位重复") == true,
         )
-        // Puede haber varias tarjetas desacopladas y no se cuentan como duplicadas.
+        // 未停靠卡可以有多张，不算重复
         requireNoDuplicateDockSlots(listOf(card("a"), card("b")))
     }
 }

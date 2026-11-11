@@ -24,50 +24,50 @@ import io.zer0.muse.ui.theme.MuseMotion
 import io.zer0.muse.ui.theme.MuseShapes
 
 /**
- * Muse UI Kit — Primitivas de contenedor [MuseSurface].
+ * Muse UI Kit — 容器基元 [MuseSurface]。
  *
- * v1.0.26: Unifique la implementación de todas las tarjetas/contenedores de grupos/rectángulos en los que se puede hacer clic,
- * eliminar manuales `Modifier.clip().background().shadow()` La combinación produce un borde gris grueso sobre un fondo claro,
- * Comportamiento inestable como penetración de sombras y bloques de color anidados.
+ * v1.0.26: 统一所有卡片 / 分组容器 / 可点击矩形的实现,
+ * 消除手动 `Modifier.clip().background().shadow()` 组合在浅色背景下产生的粗灰边、
+ * 阴影穿透、嵌套色块等不稳定行为。
  *
- * Características:
- *  - por Material3 [Surface] Procesamiento unificado clip / color / shadow,Consigue tonos suaves y naturales
- *  - Comentarios de prensa opcionales(gradiente de color + táctil,sin ondulaciones)
- *  - Compresión opcional para expandir.(Desactivado de forma predeterminada)
- *  - El color presionado cambia hacia el blanco en el modo claro y hacia el negro en el modo oscuro.,Adaptarse al tema del papel cálido
+ * 特性:
+ *  - 由 Material3 [Surface] 统一处理 clip / color / shadow,获得柔和自然的阴影
+ *  - 可选的按压反馈(颜色渐变 + 触觉,无涟漪)
+ *  - 可选的按压缩放(默认关闭)
+ *  - 浅色模式向白方向偏移、深色模式向黑方向偏移的按压色,适配暖纸主题
  *
- * Yohara [io.zer0.muse.ui.common.surface.MuseCardPress] diferencia:
- *  - De superficie, no manual Surface + scale + clickable,Más estable y más ligero
- *  - denominación unificada `Muse` espacio de nombres
- *  - No obligatorio `indication = null`,Determinado por la persona que llama(pressed Cuando el gradiente de color es suficiente retroalimentación)
+ * 与原 [io.zer0.muse.ui.common.surface.MuseCardPress] 的差异:
+ *  - 基于 Surface 而非手动 Surface + scale + clickable,更稳更轻
+ *  - 命名统一 `Muse` 命名空间
+ *  - 不强制 `indication = null`,由调用方决定(pressed 时颜色渐变已足够反馈)
  *
- * Uso:
+ * 用法:
  * ```
- * // tarjeta estática
+ * // 静态卡片
  * MuseSurface(shape = MuseShapes.extraLarge, elevation = MuseElevation.card) {
- *     Text("contenido")
+ *     Text("内容")
  * }
- * // tarjetas en las que se puede hacer clic(Respuesta automática de prensa + háptica)
+ * // 可点击卡片(自动按压反馈 + 触觉)
  * MuseSurface(
  *     onClick = { ... },
  *     shape = MuseShapes.extraLarge,
  *     elevation = MuseElevation.card,
  * ) {
- *     Text("tarjetas en las que se puede hacer clic")
+ *     Text("可点击卡片")
  * }
  * ```
  *
- * @param onClick Haga clic en devolución de llamada(null Indica que no se puede hacer clic,Contenedor de exhibición puro)
- * @param modifier modificador
- * @param shape forma(Predeterminado extraLarge,es decir, esquinas redondeadas de 20 dp,En línea con las principales esquinas redondeadas de la tarjeta.)
- * @param color color de fondo(Predeterminado surface,Material3 La superposición de tonos tonalElevation se manejará automáticamente)
- * @param elevation altura de la sombra(Predeterminado 0dp,pegatina plana;Sugerencias de escenas de cartas 1-2dp)
- * @param tonalElevation elevación de tono(Predeterminado 0dp,Evite bloques de colores anidados en modo claro)
- * @param border Borde opcional(Predeterminado null,Sugerencias de escenas de cartas 0.5dp outlineVariant)
- * @param enablePressedFeedback Si se debe habilitar la retroalimentación del gradiente de color de la prensa(solo [onClick] Válido cuando no está vacío,Predeterminado true)
- * @param enableHaptic Si habilitar la retroalimentación táctil(Predeterminado true)
- * @param enableScale Ya sea para habilitar la compresión y el escalado(Predeterminado false,Sólo se recomienda activarlo en escenarios especiales como tarjetas grandes.)
- * @param content contenido
+ * @param onClick 点击回调(null 表示不可点击,纯展示容器)
+ * @param modifier 修饰符
+ * @param shape 形状(默认 extraLarge,即 20dp 圆角,符合卡片主力圆角)
+ * @param color 背景色(默认 surface,Material3 会自动处理 tonalElevation 色调叠加)
+ * @param elevation 阴影高度(默认 0dp,平贴;卡片场景建议 1-2dp)
+ * @param tonalElevation 色调海拔(默认 0dp,避免在浅色模式下产生嵌套色块)
+ * @param border 可选边框(默认 null,卡片场景建议 0.5dp outlineVariant)
+ * @param enablePressedFeedback 是否启用按压颜色渐变反馈(仅 [onClick] 非空时生效,默认 true)
+ * @param enableHaptic 是否启用触觉反馈(默认 true)
+ * @param enableScale 是否启用按压缩放(默认 false,仅特殊场景如大卡片建议开启)
+ * @param content 内容
  */
 @Composable
 fun MuseSurface(
@@ -84,7 +84,7 @@ fun MuseSurface(
     content: @Composable () -> Unit,
 ) {
     if (onClick == null) {
-        // Contenedor de exhibición puro:Sin comentarios de prensa,Usar directamente Surface
+        // 纯展示容器:无按压反馈,直接用 Surface
         Surface(
             modifier = modifier,
             shape = shape,
@@ -97,12 +97,12 @@ fun MuseSurface(
         return
     }
 
-    // contenedor en el que se puede hacer clic:Presione gradiente de color + retroalimentación táctil(sin ondulaciones)
+    // 可点击容器:按压颜色渐变 + 触觉反馈(无涟漪)
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     val haptic = LocalHapticFeedback.current
 
-    // Presione gradiente de color: Ambos temas están sólo ligeramente iluminados.,Evite las barras blancas y los destellos fuertes.
+    // 按压颜色渐变: 两种主题都只做轻微提亮,避免白色横条和强烈闪烁。
     val isLight = MaterialTheme.colorScheme.surface.luminance() > 0.5f
     val pressedColor = if (isLight) {
         color.copy(

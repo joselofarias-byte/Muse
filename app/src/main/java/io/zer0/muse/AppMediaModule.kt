@@ -5,41 +5,41 @@ import org.koin.core.qualifier.named
 import org.koin.dsl.module
 
 /**
- * P2-3 Deslocalización:OCR / TTS / Los servicios de medios como la clonación de voz registran módulos independientes.
+ * P2-3 拆域：OCR / TTS / 语音克隆等媒体服务注册独立模块。
  */
 val appMediaModule = module {
 
-    // Phase 8.6: Administrador de OCR local(ML Kit Reconocimiento fuera de línea de chino e inglés)
+    // Phase 8.6: 本地 OCR 管理器(ML Kit 中英文离线识别)
     single { io.zer0.muse.doc.OcrManager() }
 
-    // v1.0.30 gap4.6: Almacenamiento del glosario de traducción(JSON Texto original de persistencia de archivos→mapeo de traducción)
+    // v1.0.30 gap4.6: 翻译术语表存储(JSON 文件持久化原文→译文映射)
     single { io.zer0.muse.ui.translate.GlossaryStore(androidContext()) }
 
-    // Phase 8.7: TTS Gerente(Android sistema TextToSpeech,0 APK Volumen)
-    // v1.97: Inyecte CloudTtsService para admitir la nube TTS(OpenAI/MiniMax/Edge)
-    // v1.97 Reparación: CloudTtsService Necesidades de construcción OkHttpClient,Debe usar named("chat") qualifier.
-    //   Koin Sólo registrado con calificador OkHttpClient(chat/webSearch),desnudo get() Definición no encontrada,
-    //   release Provocado por la confusión NoDefinitionFoundException,El encadenamiento hace que falle la creación de ChatViewModel → La aplicación falla.
-    //   chat client Tiempo de espera configurado de 30 s/120 s/30 s + proxy,Adecuado para solicitudes de red TTS,No es necesario construir uno separado.
+    // Phase 8.7: TTS 管理器(Android 系统 TextToSpeech,0 APK 体积)
+    // v1.97: 注入 CloudTtsService 支持云端 TTS(OpenAI/MiniMax/Edge)
+    // v1.97 修复: CloudTtsService 构造需要 OkHttpClient,必须用 named("chat") qualifier。
+    //   Koin 只注册了带 qualifier 的 OkHttpClient(chat/webSearch),裸 get() 找不到定义,
+    //   release 混淆下触发 NoDefinitionFoundException,链式导致 ChatViewModel 创建失败 → 应用崩溃。
+    //   chat client 已配置 30s/120s/30s 超时 + 代理,适合 TTS 网络请求,无需单独再建一个。
     single { io.zer0.muse.ui.speech.CloudTtsService(get(named("chat"))) }
     single { io.zer0.muse.ui.speech.TtsManager(androidContext(), get()) }
 
-    // v2.6.16: Archivo de audio de mensajes de voz (filesDir/voice_messages/, separados de los archivos temporales cacheDir para evitar que el sistema los limpie)
+    // v2.6.16: 语音消息音频存档（filesDir/voice_messages/，与 cacheDir 临时文件分开，避免被系统清理）
     single {
         io.zer0.muse.ui.speech.VoiceMessageStore(
             storageDir = java.io.File(androidContext().filesDir, "voice_messages"),
         )
     }
 
-    // v2.6.16: Controlador de reproducción para compartir mensajes de voz —— Las barras de voz no contienen cada una de ellas un jugador,
-    //   Esta única instancia garantiza que "sólo se reproduzca una voz al mismo tiempo".
+    // v2.6.16: 语音消息共享播放控制器 —— 语音条不各自持有播放器，
+    //   由这一个单例保证「同一时刻只有一条语音在播」。
     single { io.zer0.muse.ui.speech.VoicePlaybackController() }
 
-    // P2-9: Clonación de voz — ElevenLabs Voice Cloning Provider Reutilizar chat OkHttpClient
-    //   (Para uso interno newBuilder() Anula tres tiempos de espera de 30 segundos,satisfacer"API La llamada debe tener un tiempo de espera.(30 segundos)"restricción)
+    // P2-9: 语音克隆 — ElevenLabs Voice Cloning Provider 复用 chat OkHttpClient
+    //   (内部用 newBuilder() 覆盖为 30s 三项超时,满足"API 调用必须有超时(30 秒)"约束)
     single { io.zer0.muse.ui.speech.ElevenLabsVoiceCloningProvider(get(named("chat"))) }
     single { io.zer0.muse.ui.speech.FishAudioVoiceCloningProvider(get(named("chat"))) }
-    // P2-9: VoiceCloningService Distribución multiproveedor(OpenVoice / Fish Audio, etc. se pueden seguir agregando en el futuro. map)
+    // P2-9: VoiceCloningService 多 Provider 分发(后续 OpenVoice / Fish Audio 等可继续加入 map)
     single {
         io.zer0.muse.ui.speech.VoiceCloningService(
             mapOf(

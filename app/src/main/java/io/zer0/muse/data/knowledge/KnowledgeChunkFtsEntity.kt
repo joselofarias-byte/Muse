@@ -5,26 +5,26 @@ import androidx.room.Query
 import androidx.room.SkipQueryVerification
 
 /**
- * v1.133: knowledge_chunks mesa virtual FTS4 — Utilizado para la búsqueda de texto completo BM25(Una búsqueda híbrida).
+ * v1.133: knowledge_chunks 的 FTS4 虚拟表 — 用于 BM25 全文检索(混合检索的一支)。
  *
- * diseño:
- *  - **No**Registrado como Room @Entity en una lista de entidades @Database.
- *    Razón:Room KSP La base de datos en memoria sqlite-jdbc utilizada para la verificación del esquema en tiempo de compilación es independiente de FTS4 vtable
- *    (Ninguno contentEntity)La construcción CREAR TABLA VIRTUAL informa un error "vtable constructor failed".
- *    Cambiar al modo SQL sin formato completo — por [io.zer0.muse.data.session.MuseDb.MIGRATION_38_39] crear,
- *    DAO Todos los métodos más @SkipQueryVerification,Room La mesa no es consciente de su existencia.
- *  - chunkId / docId como una columna normal(Utilizado por documento/Posicionamiento al eliminar en trozos).
- *  - Buscar usando el operador MATCH,BM25 para clasificar `bm25(knowledge_chunks_fts)` función(SQLite 3.x Incorporado).
+ * 设计:
+ *  - **不**作为 Room @Entity 注册到 @Database entities 列表。
+ *    原因:Room KSP 编译期 schema 验证用的 sqlite-jdbc 内存数据库对独立 FTS4 vtable
+ *    (无 contentEntity)的 CREATE VIRTUAL TABLE 构造报错 "vtable constructor failed"。
+ *    改为完全 raw SQL 模式 — 由 [io.zer0.muse.data.session.MuseDb.MIGRATION_38_39] 创建,
+ *    DAO 所有方法加 @SkipQueryVerification,Room 不感知该表存在。
+ *  - chunkId / docId 作为普通列(用于按文档/分块删除时定位)。
+ *  - 检索用 MATCH 操作符,BM25 排序用 `bm25(knowledge_chunks_fts)` 函数(SQLite 3.x 内置)。
  *
- * Estrategia de sincronización(por [io.zer0.muse.rag.RagService] gatillo):
- *  - Nuevo chunk → [insert] Inserción sincrónica
- *  - Eliminar chunk → [deleteByDoc] / [deleteByChunkIds] Eliminación sincrónica
- *  - Índice de reconstrucción → primero [deleteAll] lote de nuevo [insert]
- *  - "upsert" Semántica:FTS rowid Generado automáticamente,REPLACE sin sentido,La persona que llama debe eliminar primero y luego insert
+ * 同步策略(由 [io.zer0.muse.rag.RagService] 触发):
+ *  - 新增 chunk → [insert] 同步插入
+ *  - 删除 chunk → [deleteByDoc] / [deleteByChunkIds] 同步删除
+ *  - 重建索引 → 先 [deleteAll] 再批量 [insert]
+ *  - "upsert" 语义:FTS rowid 自动生成,REPLACE 无意义,调用方需先 delete 再 insert
  *
- * R-DB-02: Llamado después de una única operación de escritura no captura dicha tabla [KnowledgeChunkFtsSelfHealer.repair] Autocurate y vuelve a intentarlo.
- * lote [insertAll] Aún dentro de la transacción Habitación,por [io.zer0.muse.rag.RagService] Realizar reintentos de autorreparación fuera de la transacción,
- * Evite DDL y conexiones de transacciones esperando unas a otras.
+ * R-DB-02: 单条写操作捕获 no such table 后调用 [KnowledgeChunkFtsSelfHealer.repair] 自愈重试。
+ * 批量 [insertAll] 仍在 Room 事务内,由 [io.zer0.muse.rag.RagService] 在事务外做自愈重试,
+ * 避免 DDL 与事务连接互相等待。
  */
 @Dao
 interface KnowledgeChunkFtsDao {
@@ -50,7 +50,7 @@ interface KnowledgeChunkFtsDao {
     @Query("DELETE FROM knowledge_chunks_fts")
     suspend fun deleteAllRaw()
 
-    /** Inserto de lote — Utilice transacciones para garantizar la atomicidad. */
+    /** 批量插入 — 用事务保证原子性。 */
     @androidx.room.Transaction
     suspend fun insertAll(rows: List<KnowledgeChunkFtsRow>) {
         for (r in rows) {
@@ -59,9 +59,9 @@ interface KnowledgeChunkFtsDao {
     }
 
     /**
-     * Inserto de una sola fila.@Insert Requiere enlace de tipo de entidad,Utilice @Query SQL sin formato en su lugar.
-     * OnConflictStrategy.REPLACE Basado en la tabla FTS rowid(Generado automáticamente),
-     * En realidad INSERT,No se reemplazará por chunkId. La persona que llama primero debe [deleteByChunkIds] otra vez [insert] Implementar semántica upsert.
+     * 单行插入。@Insert 需要 entity 类型绑定,这里改用 @Query raw SQL。
+     * OnConflictStrategy.REPLACE 在 FTS 表上基于 rowid(自动生成),
+     * 实际是 INSERT,不会按 chunkId 替换。调用方需先 [deleteByChunkIds] 再 [insert] 实现 upsert 语义。
      */
     suspend fun insert(chunkId: String, docId: String, content: String) = withFtsSelfHeal { insertRaw(chunkId, docId, content) }
 
@@ -72,13 +72,13 @@ interface KnowledgeChunkFtsDao {
     suspend fun deleteAll() = withFtsSelfHeal { deleteAllRaw() }
 
     /**
-     * v1.133: BM25 Búsqueda de texto completo — Devolver el ID de fragmento coincidente y la puntuación BM25(Cuanto más pequeño mejor,SQLite bm25() Devolver valor negativo).
-     * La persona que llama debe invertir la puntuación como peso adelantado.
+     * v1.133: BM25 全文检索 — 返回匹配的 chunkId 及 BM25 分数(越小越好,SQLite bm25() 返回负值)。
+     * 调用方需把分数取反作为正向权重。
      *
-     * query Requiere sintaxis FTS4:Las palabras separadas por espacios son AND,Utilice comillas dobles para frases.
-     * Ejemplo:"incumplimiento de contrato" → Contiene ambos"contrato"y"incumplimiento de contrato";"\"Responsabilidad por incumplimiento de contrato\"" → Frase completa.
+     * query 需用 FTS4 语法:单词空格分隔为 AND,短语用双引号。
+     * 例:"合同 违约" → 同时包含"合同"和"违约";"\"违约责任\"" → 完整短语。
      *
-     * Regresar:List<FTSGolpee el ID del fragmento + la puntuación BM25>
+     * 返回:List<FTS命中 chunkId + BM25 分数>
      */
     @SkipQueryVerification
     @Query(
@@ -106,14 +106,14 @@ interface KnowledgeChunkFtsDao {
     }
 }
 
-/** FTS BM25 Filas de resultados de búsqueda. */
+/** FTS BM25 检索结果行。 */
 data class KnowledgeChunkFtsHit(
     val chunkId: String,
-    /** SQLite bm25() Devolver valor negativo,Cuanto más pequeño, más relevante;La persona que llama toma el inverso como peso delantero. */
+    /** SQLite bm25() 返回负值,越小越相关;调用方取反作为正向权重。 */
     val score: Double,
 )
 
-/** FTS Vector ligero para insertar filas.(no entity,solo [KnowledgeChunkFtsDao.insertAll] Para referencia). */
+/** FTS 插入行的轻量载体(非 entity,仅供 [KnowledgeChunkFtsDao.insertAll] 传参用)。 */
 data class KnowledgeChunkFtsRow(
     val chunkId: String,
     val docId: String,

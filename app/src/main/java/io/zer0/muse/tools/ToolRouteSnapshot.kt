@@ -22,12 +22,12 @@ data class ToolRouteSnapshot(
 /** Builds a deterministic per-turn table. Local tools always win over same-named skills. */
 object RouteTable {
     /**
-     * v2.x: Herramienta de unificación de habilidades de palabras rápidas schema — Agregue parámetros de entrada opcionales.
-     * Sin un esquema de parámetros, el modelo no podrá pasar solicitudes específicas a la habilidad de palabra rápida.("Instalado pero no puedo usarlo"Una de las fuentes de experiencia.).
+     * v2.x: 提示词技能统一工具 schema — 追加可选 input 参数。
+     * 无参 schema 会让模型无法向提示词技能传入具体请求("装了但用不上"的体验根源之一)。
      */
     private const val PROMPT_SKILL_INPUT_SCHEMA =
         "{\"type\":\"object\",\"properties\":{\"input\":{\"type\":\"string\"," +
-            "\"description\":\"Texto de entrada o solicitud pasado a la habilidad;será sustituido en el comando {{input}}/{{args}} marcador de posición,Si no hay ningún marcador de posición, se añade al final de la instrucción.\"}},\"required\":[]}"
+            "\"description\":\"传给该技能的输入或请求文本;会代入指令中的 {{input}}/{{args}} 占位符,无占位符时追加到指令末尾\"}},\"required\":[]}"
 
     fun snapshot(localDefinitions: List<ToolDefinition>, skills: Collection<SkillEntity>): ToolRouteSnapshot {
         val localByName = localDefinitions.distinctBy { it.name }.associateBy { it.name }
@@ -42,7 +42,7 @@ object RouteTable {
                     ToolDefinition(
                         name = skill.id,
                         description = skill.description,
-                        // v2.x: La habilidad de palabra rápida agrega un parámetro de entrada opcional(Puerto de entrada cuando la instrucción no tiene parámetros propios)
+                        // v2.x: 提示词技能追加可选 input 参数(指令无自带参数时的输入口)
                         parametersJsonSchema =
                         if (SkillImporter.isPromptSkill(skill.implementationKotlin)) {
                             PROMPT_SKILL_INPUT_SCHEMA

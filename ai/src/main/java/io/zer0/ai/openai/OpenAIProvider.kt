@@ -37,6 +37,7 @@ import io.zer0.common.resultOf
 import io.zer0.common.toMessage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.delay
@@ -72,20 +73,20 @@ import java.util.concurrent.atomic.AtomicReference
 import kotlin.random.Random
 
 /**
- * v2.x(Registro de solución de problemas): Responses API El resultado del procesamiento de un mensaje histórico durante el ensamblaje.
+ * v2.x（日志排障）: Responses API 组装时对一条历史消息的处置结果。
  *
- * fondo: Responses API Rechazar mensajes con contenido vacío (HTTP 400 `Message content cannot be empty`).
- * Una vez que el mensaje del asistente vacío (comúnmente encontrado en la rueda de herramientas o el remanente del último fallo) ingresa al historial, causará 400 en cada ronda posterior.
- * Formando un ciclo autorrecurrente.
+ * 背景: Responses API 拒绝 content 为空的消息（HTTP 400 `Message content cannot be empty`）。
+ * 空 assistant 消息（常见于工具轮或上次失败残留）一旦进入历史，会让之后每一轮都 400，
+ * 形成自我复现的死循环。
  */
 internal enum class ResponsesMessageDisposition {
-    /** Conservar normalmente (junto con su elemento de mensaje). */
+    /** 正常保留（连同其 message item）。 */
     KEEP,
 
-    /** Conserve el mensaje (porque contiene llamadas a herramientas y debe convertirse a función_call), pero no genere un elemento de mensaje con contenido vacío. */
+    /** 保留消息（因其带 toolCalls，需转 function_call），但不产生 content 为空的 message item。 */
     SKIP_MESSAGE_ITEM,
 
-    /** Un mensaje completamente vacío sin ningún contenido.: Saltar en general. */
+    /** 完全无内容的纯空消息: 整体跳过。 */
     SKIP,
 }
 
@@ -108,13 +109,13 @@ internal fun shouldRetryResponsesFailure(code: Int?, anyDeltaSent: Boolean, retr
 }
 
 /**
- * Reparación de auditoría (Comentarios de los usuarios): DeepSeek Normalización oficial del nombre del modelo API.
- * listModels Regreso con fecha/variaciones de casos id(Como por ejemplo "DeepSeek-V4-Flash-0731"),
- * Pero /chat/completions sólo acepta nombres canónicos en minúsculas(deepseek-v4-pro / deepseek-v4-flash),
- * Enviar la identificación original directamente 400 "The supported API model names are..."(Pruebas de usuarios reales).
- * regla de normalización: eliminar el separador después de minúsculas,Si comienza con deepseek-v4-flash → deepseek-v4-flash;
- * Comience con deepseek-v4-pro → deepseek-v4-pro; Solo tiene efecto para la baseUrl oficial de DeepSeek.
- * La API oficial que no pertenece a DeepSeek regresa tal cual(Las estaciones de tránsito pueden tener nombres personalizados).
+ * 审计修复 (用户反馈): DeepSeek 官方 API 模型名归一化。
+ * listModels 返回带日期/大小写变体的 id(如 "DeepSeek-V4-Flash-0731"),
+ * 但 /chat/completions 只接受小写规范名(deepseek-v4-pro / deepseek-v4-flash),
+ * 直接发原 id 会 400 "The supported API model names are..."(真实用户实测)。
+ * 归一化规则: 小写后去分隔符,若以 deepseek-v4-flash 开头 → deepseek-v4-flash;
+ * 以 deepseek-v4-pro 开头 → deepseek-v4-pro; 仅对官方 DeepSeek baseUrl 生效。
+ * 非 DeepSeek 官方 API 原样返回(中转站可能有自定义命名)。
  */
 internal fun normalizeDeepSeekModelId(modelId: String, currentBaseUrl: String): String {
     if (!currentBaseUrl.lowercase().contains("api.deepseek.com")) return modelId
@@ -127,25 +128,25 @@ internal fun normalizeDeepSeekModelId(modelId: String, currentBaseUrl: String): 
 }
 
 /**
- * v2.6.1: Quite la etiqueta del grupo principal adjunta a la lista de modelos de la estación de retransmisión del sistema one-api/new-api.
+ * v2.6.1: 剥离 one-api/new-api 系中转站在模型列表里附加的前导分组标签。
  *
- * Algunas estaciones de transferencia se utilizan en /v1/modelos `[grupo]Nombre del modelo` Mostrar agrupación de canales(Como por ejemplo `[ais]gemini-3.8-flash`),
- * Pero la sección de corchetes**No es un nombre de modelo enrutable**,Si lo envías tal cual, recibirás
- * `No available channel for model [ais]xxx ... code=model_not_found`(Pruebas de usuarios reales).
- * Los nombres de los modelos legales no contienen corchetes,Por lo tanto, mientras haya una dirección `[...]` Sólo quítalo;Soporte multinivel(Como por ejemplo `[A][vip]claude-3`).
- * Vaciar después de pelar(etiqueta pura,Sin nombre de modelo real)Volver al valor original,Evite enviar solicitudes a un modelo vacío.
+ * 部分中转站在 /v1/models 里用 `[分组]模型名` 展示渠道分组(如 `[ais]gemini-3.8-flash`),
+ * 但该方括号段**不是可路由的模型名**,原样发出会得到
+ * `No available channel for model [ais]xxx ... code=model_not_found`(真实用户实测)。
+ * 合法模型名不含方括号,因此只要存在前导 `[...]` 就剥离;支持多级(如 `[A][vip]claude-3`)。
+ * 剥后为空(纯标签,无真实模型名)时回退原值,避免把请求发成空 model。
  *
- * Ver la implementación [io.zer0.ai.core.stripChannelGroupLabels](función compartida,La capa de identificación de capacidades también utiliza).
+ * 实现见 [io.zer0.ai.core.stripChannelGroupLabels](共享函数,能力识别层同样使用)。
  */
 internal fun stripChannelGroupLabelsImpl(modelId: String): String = io.zer0.ai.core.stripChannelGroupLabels(modelId)
 
 /**
- * OpenAI Compatible con proveedores. También es compatible con todas las transferencias que utilizan el protocolo OpenAI Chat Completions./Servicios autohospedados,
- * solo [ProviderConfig.baseUrl] Diferente.
+ * OpenAI 兼容 Provider。同时兼容所有走 OpenAI Chat Completions 协议的中转/自托管服务,
+ * 仅 [ProviderConfig.baseUrl] 不同。
  *
- * - transmisión: ir SSE,`data: [DONE]` Indica el final
- * - Cancelar: UI sintonizar [ChatRequest.abortSignal] -> Cancelar OkHttp Call
- * - error: HTTP Cuando no sea 200, lea el cuerpo para extraer la estructura de error de OpenAI,Volver al texto original en caso de error
+ * - 流式: 走 SSE,`data: [DONE]` 表示结束
+ * - 取消: UI 调 [ChatRequest.abortSignal] -> 取消 OkHttp Call
+ * - 错误: HTTP 非 200 时读 body 提取 OpenAI 错误结构,失败回退原始文本
  */
 class OpenAIProvider(
     config: ProviderConfig,
@@ -154,28 +155,28 @@ class OpenAIProvider(
     override val id: String get() = config.id
     override val displayName: String get() = config.displayName
 
-    /** Configuración específica de OpenAI analizada(specific Cuando sea nulo, presione escribir).L-OAI12: by lazy Evite el análisis repetido. */
+    /** 解析后的 OpenAI 特定配置(specific 为 null 时按 type 兜底)。L-OAI12: by lazy 避免重复解析。 */
     private val openAIConfig: ProviderSpecificConfig.OpenAI by lazy {
         config.resolvedSpecific() as? ProviderSpecificConfig.OpenAI
             ?: ProviderSpecificConfig.OpenAI()
     }
 
-    /** B3-05: Custom Configuración específica del proveedor(Plantilla de solicitud personalizada/ruta de respuesta/encabezados/campo de cuerpo). */
+    /** B3-05: Custom 供应商专用配置(自定义请求模板 / 响应路径 / headers / body 字段)。 */
     private val customConfig: ProviderSpecificConfig.Custom? by lazy {
         config.specific as? ProviderSpecificConfig.Custom
     }
 
-    /** Tanto los campos de solicitud adicionales específicos de OpenAI como los personalizados admiten campos de solicitud adicionales. */
+    /** 普通 OpenAI specific 与 Custom specific 都支持附加请求字段。 */
     private val customHeaders: Map<String, String> by lazy {
         customConfig?.customHeaders ?: openAIConfig.customHeaders
     }
 
     /**
-     * v2.6.1: Los encabezados de solicitud adicionales reales enviados.
+     * v2.6.1: 实际发送的附加请求头。
      *
-     * Codex Además del portador, el backend también necesita identificar la familia del cliente. originator / User-Agent,
-     * Los encabezados adicionales del usuario están unificados aquí.(Se dará prioridad cuando el usuario configure explícitamente un encabezado con el mismo nombre.);Los puntos finales restantes mantienen su comportamiento original.
-     * `ChatGPT-Account-ID` Escrito después de iniciar sesión en OAuth customHeaders,Haga efecto juntos.
+     * Codex 后端除 Bearer 外还需标识客户端家族的 originator / User-Agent,
+     * 这里统一并入用户附加头(用户显式配置同名头时优先);其余端点保持原行为。
+     * `ChatGPT-Account-ID` 由 OAuth 登录后写入 customHeaders,一并生效。
      */
     private val requestHeaders: Map<String, String> by lazy {
         if (!isCodexBackend()) {
@@ -184,9 +185,9 @@ class OpenAIProvider(
             buildMap {
                 put("originator", "muse")
                 put("User-Agent", CODEX_USER_AGENT)
-                // v2.6.2: Codex /responses El punto final requiere el encabezado beta del protocolo Responses,
-                // Tanto la CLI oficial como la implementación comunitaria vienen con `responses=experimental`(o códice-1).
-                // Cuando falta, el backend puede rechazar directamente la solicitud de transmisión (tipo de contenido no válido medido por los usuarios).
+                // v2.6.2: Codex /responses 端点要求 Responses 协议 beta 头，
+                // 官方 CLI 与社区实现均带 `responses=experimental`（或 codex-1）。
+                // 缺失时后端可能直接拒绝流式请求（用户实测 Invalid content-type）。
                 put("OpenAI-Beta", "responses=experimental")
                 putAll(customHeaders)
             }
@@ -197,12 +198,12 @@ class OpenAIProvider(
     }
 
     /**
-     * v2.6.2: Los encabezados adicionales realmente enviados por esta solicitud.
+     * v2.6.2: 本次请求实际发送的附加头。
      *
-     * en estático [requestHeaders] Básicamente, presione baseUrl host para completar automáticamente el encabezado obligatorio de la estación de transferencia.
-     * (como el de OpenCode Go `x-opencode-session`)—— Este encabezado debe ser estable por sesión, por lo que debe
-     * En el nivel de solicitud presione [sessionId] Actualmente, no se puede almacenar en caché en instancias de proveedores.
-     * Se dará prioridad cuando el usuario complete explícitamente el encabezado con el mismo nombre en el encabezado personalizado (ver [RelayRequiredHeaders.mergeWithUserHeaders]).
+     * 在静态 [requestHeaders] 基础上，按 baseUrl host 自动补入中转站强制头
+     * （如 OpenCode Go 的 `x-opencode-session`）—— 该头需按会话稳定，故必须
+     * 在请求层按 [sessionId] 现算，不能缓存在 provider 实例上。
+     * 用户在自定义头里显式填了同名头时优先（见 [RelayRequiredHeaders.mergeWithUserHeaders]）。
      */
     private fun requestHeadersFor(sessionId: String?): Map<String, String> {
         val auto = io.zer0.ai.core.RelayRequiredHeaders.autoHeaders(baseUrl(), sessionId, config.id)
@@ -211,27 +212,27 @@ class OpenAIProvider(
     }
 
     /**
-     * v1.0.7: Ya sea para ir Responses API(/v1/responses punto final).
+     * v1.0.7: 是否走 Responses API(/v1/responses 端点)。
      *
-     * Implementado de acuerdo con el protocolo API de Respuestas oficial de OpenAI.
-     * cuando [ProviderSpecificConfig.OpenAI.useResponseApi]=true tiempo:
-     *  - streamChat/completeText Cambia tu ruta [responsesPath] punto final(Predeterminado /responses)
-     *  - En su lugar, el cuerpo de la solicitud utiliza la estructura ResponsesRequest.(messages → input, system → instructions)
-     *  - Las respuestas en streaming utilizan el evento Response.output_text.delta en su lugar.(sustituto delta.content)
-     *  - respuesta sin transmisión en su lugar output[] matriz(sustituto choices[0].message)
+     * 按 OpenAI 官方 Responses API 协议实现。
+     * 当 [ProviderSpecificConfig.OpenAI.useResponseApi]=true 时:
+     *  - streamChat/completeText 改走 [responsesPath] 端点(默认 /responses)
+     *  - 请求体改用 ResponsesRequest 结构(messages → input, system → instructions)
+     *  - 流式响应改用 response.output_text.delta 事件(替代 delta.content)
+     *  - 非流式响应改用 output[] 数组(替代 choices[0].message)
      *
-     * Reparación"engañar a los usuarios bug":ProviderType.OPENAI_RESPONSES + useResponseApi=true declarado,
-     * Pero las versiones anteriores de OpenAIProvider no leen esta bandera en absoluto,Siga siempre el protocolo de finalización del chat.,
-     * Como resultado, después de que el usuario configura la API de respuestas, el formato de finalización del chat se envía a /chat/completions,
-     * Y el punto final de la API de Responses es /responses y la solicitud/La estructura de respuesta es completamente diferente. — Serán 404 o 400.
+     * 修复"骗用户 bug":ProviderType.OPENAI_RESPONSES + useResponseApi=true 已声明,
+     * 但旧版 OpenAIProvider 完全不读此标志,始终走 Chat Completions 协议,
+     * 导致用户配置 Responses API 后实际发 Chat Completions 格式到 /chat/completions,
+     * 而 Responses API 端点是 /responses 且请求/响应结构完全不同 — 会 404 或 400。
      */
     private val useResponsesApi: Boolean by lazy { openAIConfig.useResponseApi }
 
     private val sseFactory by lazy {
         EventSources.createFactory(
-            // v2.5.1 fix: Sin tiempo de espera total para la transmisión —— glm-5.3 Esperando el período de pensamiento del modelo de pensamiento profundo.(10min+)cero delta,
-            // El callTimeout de 600 del cliente compartido acabará con toda la transmisión.(La segunda ronda de respuestas reales de los usuarios fue truncada.).
-            // La suspensión silenciosa todavía la realiza readTimeout(300s) atrapar,La cancelación es manejada por abortSignal.
+            // v2.5.1 fix: 流式不设总超时 —— glm-5.3 等深度思考模型思考期(10min+)零 delta,
+            // 共享 client 的 600s callTimeout 会硬杀整个流(用户实测第 2 轮整回复被截断)。
+            // 静默挂起仍由 readTimeout(300s) 抓住,取消由 abortSignal 兑底。
             httpClient.newBuilder()
                 .callTimeout(ProviderHttpDefaults.STREAM_CALL_TIMEOUT_SEC, TimeUnit.SECONDS)
                 .build(),
@@ -239,26 +240,26 @@ class OpenAIProvider(
     }
 
     /**
-     * Obtenga la identificación del modelo realmente enviada a la API.
+     * 获取实际发送给 API 的 model id。
      *
-     * v1.0.2 Arreglar HTTP 400: eliminar el automático `substringAfterLast("/")` Elimina la lógica.
+     * v1.0.2 修复 HTTP 400: 移除 v1.135 引入的自动 `substringAfterLast("/")` 剥离逻辑。
      *
-     * Conclusiones prácticas compatibles.:Transmitir todo tal cual es model id,
-     * No se realiza ninguna eliminación de prefijos.OpenRouter / Console GO / new-api Espere hasta que la estación de transferencia requiera explícitamente que se reserve. "provider/model"
-     * prefijo de barra diagonal(por ejemplo `openai/gpt-4o`,`anthropic/claude-3`),El desmontaje automático evitará que se encuentre la estación de transferencia
-     * modelo,Devuelve HTTP 400 invalid_request_error.
+     * 兼容实践结论:全部原样透传 model id,
+     * 不做前缀剥离。OpenRouter / Console GO / new-api 等中转站明确要求保留 "provider/model"
+     * 斜杠前缀(例如 `openai/gpt-4o`、`anthropic/claude-3`),自动剥离会让中转站找不到
+     * 模型,返回 HTTP 400 invalid_request_error。
      *
-     * v1.135 La extracción automática es"Reparación"estación de transferencia 400,De hecho, se convirtieron en las nuevas 400 causas fundamentales.
+     * v1.135 的自动剥离本是"修复"中转站 400,实际反而成了新的 400 根因。
      *
-     * estrategia actual:
-     * - Transmisión transparente como está por defecto.
-     * - Cuando el usuario necesita desnudarse,Configuración explícita [ProviderSpecificConfig.OpenAI.stripModelPrefix]
-     *   (por ejemplo stripModelPrefix = "openai/",será despojado de "gpt-4o")
-     * - v2.6.1: Pelado automático**Etiquetas de agrupación de corchetes iniciales**(Como por ejemplo `[ais]gemini-3.8-flash` en `[ais]`).
-     *   Algunas estaciones de transferencia(one-api/new-api departamento)Utilizado en la lista de modelos. `[grupo]Nombre del modelo` Mostrar agrupación de canales,
-     *   Pero la etiqueta de grupo no**No es un nombre de modelo enrutable**,Si lo envías tal cual, recibirás
+     * 现策略:
+     * - 默认原样透传
+     * - 用户需要剥离时,显式配置 [ProviderSpecificConfig.OpenAI.stripModelPrefix]
+     *   (例如 stripModelPrefix = "openai/",会剥离成 "gpt-4o")
+     * - v2.6.1: 自动剥离**前导方括号分组标签**(如 `[ais]gemini-3.8-flash` 中的 `[ais]`)。
+     *   部分中转站(one-api/new-api 系)在模型列表里用 `[分组]模型名` 展示渠道分组,
+     *   但该分组标签并**不是可路由的模型名**,原样发出会得到
      *   `HTTP 503 No available channel for model [ais]gemini-3.8-flash ... code=model_not_found`
-     *   (Pruebas de usuarios reales). Los nombres de los modelos legales no contienen corchetes,Pelar con seguridad.
+     *   (真实用户实测)。合法模型名不含方括号,剥离安全。
      */
     private fun effectiveModelId(modelId: String): String {
         val configuredPrefix = openAIConfig.stripModelPrefix.takeIf { it.isNotBlank() }
@@ -267,24 +268,24 @@ class OpenAIProvider(
         } else {
             modelId
         }
-        // v2.6.1: Quitar las etiquetas del grupo principal en la lista de modelos de tránsito(Puede haber varios niveles,Como por ejemplo "[a][b]model").
+        // v2.6.1: 剥掉中转站模型列表里的前导分组标签(可能有多级,如 "[a][b]model")。
         val base = stripChannelGroupLabelsImpl(prefixStripped)
         if (base != modelId) {
-            Logger.d("OpenAIProvider", "Normalización del nombre del modelo: \"$modelId\" -> \"$base\"(Agrupación de tiras/Prefijo de configuración)")
+            Logger.d("OpenAIProvider", "模型名归一化: \"$modelId\" -> \"$base\"(剥离分组/配置前缀)")
         }
-        // Reparación de auditoría (Comentarios de los usuarios): Solicitar normalización del nombre del modelo DeepSeek de capa(ver normalizeDeepSeekModelId)
+        // 审计修复 (用户反馈): 请求层 DeepSeek 模型名归一化(见 normalizeDeepSeekModelId)
         return normalizeDeepSeekModelId(base, baseUrl())
     }
 
     override fun streamChat(request: ChatRequest): Flow<ChatStreamEvent> {
-        // v1.0.7: useResponseApi=true Es hora de ramificar la API de Respuestas(Reparación"engañar a los usuarios bug")
+        // v1.0.7: useResponseApi=true 时走 Responses API 分支(修复"骗用户 bug")
         if (useResponsesApi) return streamChatResponses(request)
         return streamChatCompletions(request)
     }
 
     /**
-     * B-28: Desensibilización de URL de registro — Eliminar parámetro de consulta(Para algunas puertas de enlace ?key= Clave de paso,
-     * URL completa en logcat/file log/DebugLogStore Puede ser recuperado por adb). Alineado con AnthropicProvider.
+     * B-28: 日志 URL 脱敏 — 移除 query 参数(部分网关用 ?key= 传密钥,
+     * 完整 URL 进 logcat/文件日志/DebugLogStore 可被 adb 回捞)。与 AnthropicProvider 对齐。
      */
     private fun sanitizeUrl(url: String): String {
         val qIdx = url.indexOf('?')
@@ -292,20 +293,20 @@ class OpenAIProvider(
     }
 
     /**
-     * v2.6.9: Sólo para la recopilación de pruebas —— Resumen de encabezados de respuesta.
+     * v2.6.9: 取证专用 —— 响应头摘要。
      *
-     * fondo:Codex Enlace esporádico `Invalid content-type: null`. Esta copia proviene de okhttp-sse
-     * (RealEventSource.processResponse: Lanzado en respuesta a 2xx pero el tipo de contenido no es un flujo de eventos
-     * IllegalStateException("Invalid content-type: " + body.contentType())).
-     * `null` Indica que la respuesta no tiene ningún tipo de contenido. Originalmente, onFailure solo se leía después de cruzar la rama de reintento.
-     * response?.code,Los encabezados de respuesta nunca se registran,No se puede localizar qué estación de transferencia es/Qué tipo de puerta de entrada le quitó la cabeza.
+     * 背景:Codex 链路偶发 `Invalid content-type: null`。该文案来自 okhttp-sse
+     * (RealEventSource.processResponse: 响应 2xx 但 Content-Type 不是 event-stream 时抛
+     * IllegalStateException("Invalid content-type: " + body.contentType()))。
+     * `null` 表示响应完全没带 Content-Type。原先 onFailure 只在越过重试分支后才读
+     * response?.code,响应头从未记录,无法定位是哪个中转站/哪类网关摘掉了头。
      *
-     * Calibre de desensibilización:Solo generar encabezados de lista blanca(Metainformación de la capa de protocolo),Sin salida Authorization / Cookie /
-     * cualquier encabezado de credencial personalizado;Content-Type Juega explícitamente cuando falta la cabeza. `null`,Fácil de distinguir"desaparecido"con"no event-stream".
+     * 脱敏口径:只输出白名单头(协议层元信息),不输出 Authorization / Cookie /
+     * 任何自定义凭证头;Content-Type 缺头时显式打 `null`,便于区分"缺失"与"非 event-stream"。
      */
     private fun forensicResponseHead(response: Response): String = buildString {
         append("status=").append(response.code).append(' ').append(response.message)
-        // Falta tipografía de encabezado null —— con"no event-stream"distinguir,Esta es la señal clave para esta investigación.
+        // 缺头打字面量 null —— 与"非 event-stream"区分开,这是本次排查的关键信号。
         append(", contentType=").append(response.header("Content-Type") ?: "null")
         append(", contentLength=").append(response.header("Content-Length") ?: "-")
         append(", contentEncoding=").append(response.header("Content-Encoding") ?: "-")
@@ -314,15 +315,15 @@ class OpenAIProvider(
     }
 
     /**
-     * v2.6.9: Sólo para la recopilación de pruebas —— Primer párrafo del cuerpo de la respuesta(Truncar [maxBytes] bytes).
+     * v2.6.9: 取证专用 —— 响应体首段(截断 [maxBytes] 字节)。
      *
-     * usar [Response.peekBody] en vez de [ProviderHttpSupport.readBodySafely]:
-     * peekBody camina adentro `body.source().peek()`,**Solo espía, no consumas**,El cursor no se mueve después de leer.,
-     * No afectará la creación posterior de flujos SSE.;readBodySafely voluntad `body.string()` Consume todo el flujo,
-     * En la devolución de llamada de EventSource, también se generará una IllegalStateException porque el cuerpo ha sido eliminado.
+     * 用 [Response.peekBody] 而非 [ProviderHttpSupport.readBodySafely]:
+     * peekBody 内部走 `body.source().peek()`,**只窥探不消费**,读完游标不动,
+     * 不会影响后续 SSE 建流;readBodySafely 会 `body.string()` 消费整个流,
+     * 在 EventSource 回调里还会因 body 已被 strip 而抛 IllegalStateException。
      *
-     * Siempre regresa en caso de fracaso null(No lanzar excepción):Los registros forenses en sí no deben afectar el flujo de control.
-     * Devolver el contenido y pasar por otro proceso de desensibilización de credenciales.,Evite que la estación de tránsito repita la clave en el cuerpo del error.
+     * 失败一律返回 null(不抛异常):取证日志本身绝不能影响控制流。
+     * 返回内容再过一道凭证脱敏,防止中转站在错误体里回显 key。
      */
     private fun forensicBodyHead(response: Response, maxBytes: Long = 200L): String? = runCatching {
         val peeked = response.peekBody(maxBytes).string()
@@ -330,19 +331,19 @@ class OpenAIProvider(
     }.getOrNull()
 
     /**
-     * v2.6.9: Responses Transmitir registro forense de fallas(Registro puro,No cambiar el flujo de control).
+     * v2.6.9: Responses 流 onFailure 取证日志(纯日志,不改控制流)。
      *
-     * Grabar en el primer punto de devolución de llamada:HTTP estado, original Content-Type(null Escriba explícitamente),
-     * URL no sensible, tipo de excepción y mensaje,y**Solo espía, no consumas**Los primeros 200 bytes del cuerpo de la respuesta.
+     * 在回调最早处记录:HTTP 状态、原始 Content-Type(null 显式打出)、
+     * 脱敏 URL、异常类型与消息,以及**只窥探不消费**的响应体首 200 字节。
      *
-     * Instrucciones de seguridad del cuerpo de respuesta:[Response.peekBody] camina adentro `body.source().peek()`,
-     * Después de leer, el cursor permanece sin cambios y la transmisión no se cierra.,Por lo tanto, no afectará la creación posterior de flujos SSE.
-     * No hay necesidad readBodySafely —— se sintoniza `body.string()` Consumirá toda la transmisión,y en EventSource
-     * En la devolución de llamada, el cuerpo ha sido enmarcado. strip,La lectura también arroja una IllegalStateException.
+     * 响应体安全说明:[Response.peekBody] 内部走 `body.source().peek()`,
+     * 读取后游标不变、不关闭流,因此不会影响后续 SSE 建流。
+     * 不用 readBodySafely —— 它调 `body.string()` 会消费整个流,且在 EventSource
+     * 回调里 body 已被框架 strip,读取还会抛 IllegalStateException。
      */
     private fun logResponsesFailureForensics(t: Throwable?, response: Response?) {
         runCatching {
-            val head = response?.let { forensicResponseHead(it) } ?: "no-response(Fallo de la capa de red,Sin respuesta HTTP)"
+            val head = response?.let { forensicResponseHead(it) } ?: "no-response(网络层失败,无 HTTP 响应)"
             val bodyHead = response?.let { forensicBodyHead(it) }
             Logger.w(
                 "OpenAIProvider",
@@ -354,7 +355,7 @@ class OpenAIProvider(
         }
     }
 
-    /** Desensibilización de registros:Borrar credenciales de portador/clase sk que puedan repetirse(Mismo calibre que ProviderError.redactSecrets). */
+    /** 日志脱敏:抹掉可能回显的 Bearer / sk- 类凭证(与 ProviderError.redactSecrets 同口径)。 */
     private fun redactForLog(text: String): String {
         var value = text
         value = Regex("""(?i)\bBearer\s+[A-Za-z0-9._~+/=-]{8,}""").replace(value, "Bearer [REDACTED]")
@@ -366,27 +367,27 @@ class OpenAIProvider(
     }
 
     /**
-     * v1.0.7: Chat Completions API transmisión(Transmisión originalCuerpo del chat,Extraer en funciones independientes para facilitar la ramificación.).
+     * v1.0.7: Chat Completions API 流式(原 streamChat 主体,提取为独立函数便于分支)。
      *
-     * C-35: Cambiado de callbackFlow a channelFlow(El canal interno es siempre UNLIMITED,Los parámetros de capacidad no son obligatorios y no se pueden pasar).
-     *   callbackFlow La capacidad del canal interno de se fija en 64,aguas abajo `.buffer(Channel.UNLIMITED)`
-     *   Solo se aplica al siguiente nivel de reenvío de flujo. channel,**No cambia la capacidad interna de callbackFlow 64**;
-     *   OkHttp Cuando el hilo de devolución de llamada interrumpe la entrega y la recopilación de la interfaz de usuario es lenta,El trySend interno fallará y descartará la pieza.
-     *   Utilice channelFlow en su lugar para especificar explícitamente elementos internos ilimitados channel,El hilo de devolución de llamada trySend nunca falla debido a su capacidad total.
+     * C-35: 从 callbackFlow 改为 channelFlow(内部 channel 恒为 UNLIMITED,无需也不能传容量参数)。
+     *   callbackFlow 的内部 channel 容量固定为 64,下游 `.buffer(Channel.UNLIMITED)`
+     *   只作用于流转发的下一级 channel,**不改变 callbackFlow 内部 64 容量**;
+     *   OkHttp 回调线程突发投递而 UI 收集慢时,内部 trySend 会失败丢片。
+     *   改用 channelFlow 显式指定无界内部 channel,回调线程 trySend 永不因容量满失败。
      */
     @OptIn(ExperimentalCoroutinesApi::class)
-    // C-35: channelFlow No acepta parámetro de capacidad(Su canal interno es siempre UNLIMITED,exactamente la semántica requerida)
+    // C-35: channelFlow 不接受 capacity 参数(其内部 channel 恒为 UNLIMITED,恰为所需语义)
     private fun streamChatCompletions(request: ChatRequest): Flow<ChatStreamEvent> = channelFlow {
         val body = buildRequestBody(request)
-        // M-OAI4: Utilice elementos de configuración en su lugar chatCompletionsPath(Admite rutas de transferencia personalizadas como Azure)
+        // M-OAI4: 改用配置项 chatCompletionsPath(支持 Azure 等中转自定义路径)
         val url = baseUrl() + chatCompletionsPath()
-        // B-28: El registro sólo registra scheme+host+path,no lo recuerdo query
+        // B-28: 日志只记 scheme+host+path,不记 query
         Logger.i("OpenAIProvider", "streamChat: POST ${sanitizeUrl(url)} model=${request.model} msgs=${request.messages.size}")
 
-        // v1.0.1: httpRequest Cambiar a var,429 Reconstruir después de cambiar de clave
+        // v1.0.1: httpRequest 改为 var,429 切换 key 后重新构造
         fun buildHttpRequest(): Request = Request.Builder()
             .url(url)
-            // v1.0.18: ir modelo libre fallback(El usuario no completó la clave + modelo de lista blanca de SiliconFlow → Usar incorporado key)
+            // v1.0.18: 走免费模型 fallback(用户未填 key + SiliconFlow 白名单模型 → 用内置 key)
             .header("Authorization", "Bearer ${resolveEffectiveApiKey(request.model.id)}")
             .header("Content-Type", "application/json")
             .header("Accept", "text/event-stream")
@@ -396,115 +397,118 @@ class OpenAIProvider(
 
         var httpRequest = buildHttpRequest()
 
-        // Capturar ProducerScope,Para que el oyente anónimo inicie la rutina de reconexión
+        // 捕获 ProducerScope,供匿名 listener 内启动重连协程
         val scope = this@channelFlow
 
-        // v1.135 Diagnóstico de rendimiento:Registre el tiempo empleado en cada etapa.,Ayude a localizar fuentes de latencia para plataformas de tránsito como OpenCode
+        // v1.135 性能诊断:记录各阶段耗时,帮助定位 OpenCode 等中转平台的延迟来源
         val requestStartAt = System.currentTimeMillis()
         var firstByteAt = 0L
         var firstDeltaAt = 0L
 
-        // M-OAI3: Parámetros de reconexión de retroceso exponencial finito
+        // M-OAI3: 有限次指数退避重连参数
         val retryCount = AtomicInteger(0)
-        // M-OAI3: No vuelva a intentarlo si se ha emitido el incremento tool_call(evitar la duplicación)
+        // M-OAI3: 若已发出 tool_call 增量则不重试(避免重复)
         val toolCallDeltaSent = AtomicBoolean(false)
-        // H-OAI1: cualquiera ContentDelta/ReasoningDelta/ToolCallDelta problema postfijo true,
-        //   Comprobar antes de volver a intentarlo !anyDeltaSent.get(),Evite que el contenido filtrado se vuelva a publicar(Solo cheque original toolCallDeltaSent
-        //   No es suficiente para cubrir texto plano/Riesgo de repetición en escenarios de razonamiento puro).
+        // H-OAI1: 任何 ContentDelta/ReasoningDelta/ToolCallDelta 发出后置 true,
+        //   重试前检查 !anyDeltaSent.get(),避免已流出内容被重发(原仅检查 toolCallDeltaSent
+        //   不足以覆盖纯文本/纯推理场景的重发风险)。
         val anyDeltaSent = AtomicBoolean(false)
-        // M-OAI4: tool_call index Ten todo en cuenta,Asigne incrementos locales por índice API usando un mapa acumulativo index
+        // M-OAI4: tool_call index 兜底,用累积 Map 按 API index 分配本地递增 index
         val toolCallIndexMap = mutableMapOf<Int, Int>()
         var nextToolCallIndex = 0
-        // v1.0.20: stream-guard — Acumule el nombre/argumentos/banderas enviadas de tool_call,
-        //   Se utiliza para interceptar llamadas de herramientas no válidas con nombres vacíos y volver a ellas al finalizar ContentDelta
+        // v1.0.20: stream-guard — 累积 tool_call 的 name / arguments / 已发送标志,
+        //   用于拦截空 name 的无效 tool call 并在 Done 时恢复为 ContentDelta
         val toolCallAccMap = mutableMapOf<Int, ToolCallAccState>()
-        // v2.x: "Nombrado pero los parámetros aún están vacíos"llamada pendiente localIndex —— Para que se devuelva la continuación del parámetro sin nombre (consulte el análisis de llamadas a herramientas a continuación)
+        // v2.x: "已命名但参数仍为空"的待补调用 localIndex —— 供无名参数续片归位（见下方 tool_calls 解析）
         var pendingArgsLocalIndex: Int? = null
-        // v2.x: La estación de transferencia reescribirá los fragmentos de parámetros de la misma llamada lógica en nuevos índices consecutivos.
-        // Registra la llamada con nombre más reciente que aún no se ha cerrado, como una secuencia de continuaciones sin nombre/sin nombre.
+        // v2.x: 中转站会把同一逻辑调用的参数片段改写成连续的新 index。
+        // 记录最近一个仍未闭合的已命名调用，作为无 id/无名续片的顺序归属。
         var activeContinuationLocalIndex: Int? = null
-        // v1.0.21: Evitar que emitDoneWithStreamGuard se ejecute dos veces(finishReason + [DONE] Disparar una vez cada uno),
-        //   Hace que el texto recuperado mediante la llamada a la herramienta de nombre vacío se envíe dos veces,Generar contenido duplicado.
+        // v1.0.21: 防止 emitDoneWithStreamGuard 被双重执行(finishReason + [DONE] 各触发一次),
+        //   导致空 name tool call 恢复的文本被发送两遍,产生重复内容。
         val streamGuardDone = AtomicBoolean(false)
-        // v1.0.23: Detección de citometría de final de flujo prematura — SenseTime deepseek-v4-flash y otras implementaciones de transmisión API están bug,
-        //   first delta inmediatamente después finish(Solo genera de 1 a 4 caracteres),Pero la no transmisión puede devolver el contenido completo normalmente.
-        //   Registre el número total de caracteres en ContentDelta,Comprobar cuando haya terminado,Si son muy pocos y lleva muy poco tiempo, volverá a completar Texto.
+        // v1.0.23: 流式过早结束检测 — 商汤 deepseek-v4-flash 等 API 流式实现有 bug,
+        //   first delta 后立即 finish(只输出 1-4 个字符),但非流式能正常返回完整内容。
+        //   记录 ContentDelta 总字符数,在 Done 时检查,若过少且耗时极短则回退到 completeText。
         val contentCharsSent = AtomicInteger(0)
         val emptyNameToolCallCount = AtomicInteger(0)
         val firstDeltaTimestamp = AtomicLong(0L)
-        // v1.0.48: reasoning recuento de caracteres — Cuando el streaming solo envía razonamientos pero no contenidos, se acaba
-        //   (Comportamiento conocido de SenseTime deepseek-v4-flash),No se debe activar el respaldo sin transmisión,De lo contrario conducirá a:
-        //   1) Las solicitudes de reversión también son fáciles Connection reset,Se necesitaron más de 20 años para tener una conversación."Atascado y no terminará"
-        //   2) generation finished Después de rebobinar, todavía se ejecuta en segundo plano.,Solicitud huérfana generada
-        //   Hay un razonamiento que indica que el modelo sí responde.,Simplemente finalice el flujo directamente y permita que el usuario vea el proceso de pensamiento.
+        // v1.0.48: reasoning 字符计数 — 当流式只发 reasoning 不发 content 就结束时
+        //   (商汤 deepseek-v4-flash 的已知行为),不应触发非流式回退,否则会导致:
+        //   1) 回退请求也容易 Connection reset,耗时 20s+ 让对话"卡住不结束"
+        //   2) generation finished 后回退仍在后台跑,产生孤立请求
+        //   有 reasoning 说明模型确实响应了,直接结束流式让用户看到思考过程即可。
         val reasoningCharsSent = AtomicInteger(0)
-        // issue #5(Opción C): Recuento de reintentos por malformaciones del protocolo (afirma llamar a la herramienta pero no a la llamada a la herramienta).
-        //   Cuando se encuentra por primera vez un razonamiento sin vómitos, se activa un reintento; Si el problema persiste después del reintento, el sistema devolverá la garantía de nunca vacío.
+        // issue #5（方案 C）: 协议畸形（声称调工具但无 toolCall）的重试计数。
+        //   首次遇上不吐 reasoning、触发重试；重试仍畸形才退回兜底保 never-empty。
         val malformedToolCallRetries = AtomicInteger(0)
-        // v1.0.24: Bandera de corrutina alternativa en progreso — Evitar la segunda llamada emitDoneWithStreamGuard
-        //   (finishReason + [DONE] Disparar una vez cada uno)Avanzar antes de que se complete la rutina de respaldo close flow,
-        //   El resultado de completeText no se puede enviar a través del canal cerrado.
+        // v1.0.24: 回退协程进行中标志 — 防止第二次 emitDoneWithStreamGuard 调用
+        //   (finishReason + [DONE] 各触发一次)在回退协程完成前提前 close flow,
+        //   导致 completeText 的结果无法通过已关闭的 channel 发送。
         val pendingFallback = AtomicBoolean(false)
-        // El juicio de reversión debe distinguir entre"La transmisión también puede continuar generando eventos."y"SSE ha terminado".
-        // Algunas puertas de enlace finish_reason=tool_calls inmediatamente después onClosed;En este momento, el existente
-        // contentChars Como"Transmisión reanudada",De lo contrario, la rutina alternativa regresa antes,Flow Hecho nunca se recibe.
+        // 回退判断必须区分"流还可能继续产生事件"和"SSE 已经结束"。
+        // 某些网关会在 finish_reason=tool_calls 后立即 onClosed;此时不能再把已有
+        // contentChars 当成"流已恢复",否则回退协程提前返回,Flow 永远收不到 Done。
         val streamSourceClosed = AtomicBoolean(false)
         val consumerClosed = AtomicBoolean(false)
 
         /**
-         * v1.0.20: stream-guard — Cheque acumulado antes del evento Listo toolCallAccMap,
-         *   Devierte una llamada de herramienta no válida con nombre vacío pero argumentos para ContentDelta(texto visible).
+         * v1.0.20: stream-guard — 在 Done 事件前检查累积的 toolCallAccMap,
+         *   把空 name 但有 arguments 的无效 tool call 恢复为 ContentDelta(可见文本)。
          *
-         * darse cuenta `recoverInvalidToolCallText` Semántica:
-         *  - La llamada de herramienta con nombre vacío no se puede ejecutar(No puedo encontrar la herramienta correspondiente),habría sido descartado silenciosamente
-         *  - Restaurar argumentos acumulados como texto,Permitir a los usuarios ver lo que realmente produce el modelo.
-         *  - La interceptación ocurre en el evento Listo en lugar de cada delta,Porque el nombre puede llegar más tarde en la transmisión.
+         * 实现 `recoverInvalidToolCallText` 语义:
+         *  - 空 name 的 tool call 不能执行(找不到对应工具),原本会被静默丢弃
+         *  - 把累积的 arguments 作为正文恢复,让用户看到模型实际生成的内容
+         *  - 拦截发生在 Done 事件而非每个 delta,因为流式中 name 可能稍后才到
          */
         fun emitDoneWithStreamGuard(finishReason: String?) {
-            // v1.0.24: Registro de diagnóstico — Confirme si se llama a emitDoneWithStreamGuard y los valores de cada variable
-            // v1.0.21: Prevenir la doble ejecución — finishReason y [DONE] Cuando se activa una vez cada,
-            //   Enviar Hecho directamente por segunda vez y close,Saltar texto recuperado,Evite el contenido duplicado.
-            // v1.0.24: Si la rutina de reversión está en progreso,La segunda llamada es directamente return,No close,
-            //   Espere a que se complete la rutina de reversión y envíela automáticamente. Done + close
-            // v1.0.53: segunda llamada(finishReason=null)Es un final normal de doble gatillo.,no imprimir diagnose
-            //   (Evite información engañosa en los registros finishReason=null + aborted=true combinación).
+            // v1.0.24: 诊断日志 — 确认 emitDoneWithStreamGuard 是否被调用及各变量值
+            // v1.0.21: 防止双重执行 — finishReason 和 [DONE] 各触发一次时,
+            //   第二次直接发 Done 并 close,跳过已恢复的文本,避免重复内容。
+            // v1.0.24: 若回退协程进行中,第二次调用直接 return,不 close,
+            //   等回退协程完成后自行发 Done + close
+            // v1.0.53: 第二次调用(finishReason=null)是正常的双触发收尾,不打印 diagnose
+            //   (避免日志里出现误导性的 finishReason=null + aborted=true 组合)。
             if (!streamGuardDone.compareAndSet(false, true)) {
                 if (pendingFallback.get()) {
-                    Logger.d("OpenAIProvider", "stream-guard: Reversión en progreso, Saltar evento hecho")
+                    Logger.d("OpenAIProvider", "stream-guard: 回退进行中, 跳过 Done 事件")
                     return
                 }
-                // v1.0.53: Se ha enviado el primer emitDone Done+close,Aquí solo asegúrate de que la transmisión esté cerrada.,No reenviar Listo.
-                //   finishReason y [DONE] Cuando se activa doblemente,La segunda vez Hecho traerá null finishReason,
-                //   redundante Done(null) Puede hacer que la capa superior calcule mal el final anormal del flujo y provoque una interrupción.
+                // v1.0.53: 第一次 emitDone 已发送 Done+close,此处只需确保流关闭,不重发 Done。
+                //   finishReason 和 [DONE] 双触发时,第二次 Done 会带 null finishReason,
+                //   冗余的 Done(null) 可能让上层误判流异常结束并触发 abort。
                 close()
                 return
             }
-            // v1.0.47: diagnose Mover a la primera rama de ejecución(La segunda llamada ya no imprime.,Evite registros engañosos)
+            // v1.0.47: diagnose 移到首次执行分支(第二次调用不再打印,避免误导日志)
             Logger.d(
                 "OpenAIProvider",
                 "stream-guard diagnose: emitDone called | finishReason=$finishReason | " +
-                    "contentChars=${contentCharsSent.get()} | reasoningChars=${reasoningCharsSent.get()} | anyDeltaSent=${anyDeltaSent.get()} | " +
+                    "contentChars=${contentCharsSent.get()} | reasoningChars=${reasoningCharsSent.get()} | " +
+                    "anyDeltaSent=${anyDeltaSent.get()} | " +
                     "aborted=${request.abortSignal.aborted} | useResponsesApi=$useResponsesApi | " +
                     "firstDeltaTs=${firstDeltaTimestamp.get()}",
             )
-            // v1.0.52: Evaluar las condiciones de respaldo antes de restaurar la lógica —
-            //   si finishReason=tool_calls y hay vacio name tool_call,Descripción del modelo en modo streaming.
-            //   El nombre de la herramienta no se muestra correctamente,Necesidad de activar la reversión sin transmisión(En modo sin transmisión, tool_calls generalmente regresa completamente).
-            //   En este momento, los argumentos no se pueden restaurar en ContentDelta(Ese es el parámetro de la herramienta.,No es el texto principal.),De lo contrario, los usuarios ven alucinaciones JSON.
-            val hasEmptyNameToolCall = toolCallAccMap.values.any { !it.recoveredAsContent && it.name.isNullOrBlank() && it.args.isNotEmpty() }
+            // v1.0.52: 在恢复逻辑之前计算 fallback 条件 —
+            //   如果 finishReason=tool_calls 且存在空 name tool_call,说明模型流式模式下
+            //   没有正确输出工具名,需触发非流式回退(非流式模式下 tool_calls 通常完整返回)。
+            //   此时不能把 args 恢复为 ContentDelta(那是工具参数,不是正文),否则用户看到 JSON 幻觉。
+            val hasEmptyNameToolCall = toolCallAccMap.values.any {
+                !it.recoveredAsContent && it.name.isNullOrBlank() && it.args.isNotEmpty()
+            }
 
-            // v1.0.23: SenseTime deepseek-v4-flash y otra detección de errores de finalización prematura de transmisión
-            //   La implementación de transmisión de API de SenseTime tiene un error: inmediatamente después del primer delta finish(Solo genera de 0 a 4 caracteres,
-            //   Incluso solo el contenido de razonamiento se envía pero no se envía content),Sin embargo, la no transmisión puede devolver el contenido completo normalmente.(text=50-200 chars).
-            //   v1.0.24: relajarse para 0-9 chars,Cubre la situación en la que sólo se envía razonamiento pero no contenido.
-            //   Condiciones de detección:ContentDelta Total de caracteres 0-9 y recibidos anyDeltaSent(first delta Llegó),
-            //   Y dentro de los 500 ms posteriores al primer delta finish,No usuario abort,API sin respuestas.
-            //   v1.0.48: reasoning También debe incluirse en el juicio total de carácter. — SenseTime finalizará después de enviar solo de 1 a 4 caracteres de razonamiento.,
-            //     Esta no es una respuesta completa.(La no transmisión puede regresar 253+ chars reasoning).
-            //     contentChars + reasoningChars total < 10 Eso es todo"final prematuro",Activar respaldo sin transmisión.
-            //   v1.0.51: Nuevo"Sólo el razonamiento no content"condición de reserva — SenseTime puede emitir una gran cantidad de reasoning
-            //     Pero el contenido es siempre 0,combined > 9 omitir respaldo,El usuario ve una respuesta vacía.
-            //     En este punto también se debería activar el respaldo sin transmisión(Los que no son de transmisión pueden devolver texto o utilizar el razonamiento para averiguarlo.).
+            // v1.0.23: 商汤 deepseek-v4-flash 等流式过早结束 bug 检测
+            //   商汤 API 流式实现有 bug:first delta 后立即 finish(只输出 0-4 个字符,
+            //   甚至只发 reasoningContent 不发 content),但非流式能正常返回完整内容(text=50-200 chars)。
+            //   v1.0.24: 放宽到 0-9 chars,覆盖仅发 reasoning 而不发 content 的情况。
+            //   检测条件:ContentDelta 总字符 0-9 且收到过 anyDeltaSent(first delta 已到),
+            //   且 first delta 后 500ms 内就 finish,未被用户 abort,非 Responses API。
+            //   v1.0.48: reasoning 也要纳入总字符判断 — 商汤流式只发 1-4 个 reasoning 字符就结束,
+            //     这不是完整响应(非流式能返回 253+ chars reasoning)。
+            //     contentChars + reasoningChars 合计 < 10 才算"过早结束",触发非流式回退。
+            //   v1.0.51: 新增"只有 reasoning 没有 content"的回退条件 — 商汤流式可能发大量 reasoning
+            //     但 content 始终为 0,combined > 9 跳过回退,用户看到空回复。
+            //     此时也应触发非流式回退(非流式能返回 text 或用 reasoning 兜底)。
             val totalChars = contentCharsSent.get()
             val reasoningChars = reasoningCharsSent.get()
             val combinedChars = totalChars + reasoningChars
@@ -514,88 +518,87 @@ class OpenAIProvider(
                 !request.abortSignal.aborted &&
                 !useResponsesApi &&
                 (
-                    // Condición A: Muy poco contenido(combined < 10),y corta duración(< 500ms) — lógica original
+                    // 条件 A: 内容极少(combined < 10),且持续时间短(< 500ms) — 原有逻辑
                     (combinedChars in 0..9 && deltaDuration < 500) ||
-                        // Condiciones B(v1.0.51): content es 0 pero hay reasoning,y corta duración(< 2s) —
-                        //   El modelo solo genera pensamientos pero no texto.,El usuario ve una respuesta vacía,Necesito retroceder
+                        // 条件 B(v1.0.51): content 为 0 但有 reasoning,且持续时间短(< 2s) —
+                        //   模型只输出了思考没有产出正文,用户看到空回复,需回退
                         (totalChars == 0 && reasoningChars > 0 && deltaDuration < 2000) ||
-                        // Condiciones C(v1.0.52): finishReason=tool_calls pero hay vacío name tool_call —
-                        //   El nombre de la herramienta no se muestra correctamente en el modo de transmisión del modelo.(Como por ejemplo GLM-4-9B-0414),
-                        //   args Almacenado pero no disponible como cuerpo(es el parámetro de la herramienta),Activar una reversión sin transmisión para regenerar el modelo
+                        // 条件 C(v1.0.52): finishReason=tool_calls 但存在空 name tool_call —
+                        //   模型流式模式下没有正确输出工具名(如 GLM-4-9B-0414),
+                        //   args 被缓冲但不能作为正文(是工具参数),触发非流式回退让模型重新生成
                         (finishReason == "tool_calls" && hasEmptyNameToolCall)
                     )
 
-            // v1.0.52: Solo restaure el nombre vacío tool_call si no hay ningún respaldo ContentDelta
-            //   No hay recuperación al retroceder(Evite enviar parámetros de herramientas como texto a los usuarios,Luego regresa y envía nuevamente.)
+            // v1.0.52: 只在不回退时才恢复空 name tool_call 为 ContentDelta
+            //   回退时不恢复(避免把工具参数当正文发给用户,然后又回退重复发送)
             if (!shouldFallback) {
                 toolCallAccMap.forEach { (localIndex, acc) ->
-                    // v1.0.22: Saltar restaurado incrementalmente acc,Evite el envío duplicado
+                    // v1.0.22: 跳过已增量恢复的 acc,避免重复发送
                     if (acc.recoveredAsContent) return@forEach
                     if (acc.name.isNullOrBlank() && acc.args.isNotEmpty()) {
                         val recoveredText = acc.args.current()
                         Logger.w(
                             "OpenAIProvider",
-                            "stream-guard: interceptar vacío name tool call (localIndex=$localIndex, args=${acc.args.length} chars)," +
-                                "volver al texto: ${recoveredText.take(50)}",
+                            "stream-guard: 拦截空 name tool call (localIndex=$localIndex, args=${acc.args.length} chars)," +
+                                "恢复为文本: ${recoveredText.take(50)}",
                         )
                         contentCharsSent.addAndGet(recoveredText.length)
                         trySend(ChatStreamEvent.ContentDelta(recoveredText))
                     }
                 }
             }
-            // Borrar map,Evite que se restablezcan nuevamente los desencadenantes falsos posteriores
+            // 清空 map,防止后续误触发再次恢复
             toolCallAccMap.clear()
 
             if (shouldFallback) {
                 pendingFallback.set(true)
                 Logger.w(
                     "OpenAIProvider",
-                    "stream-guard: Detectado fin prematuro de la transmisión (chars=$totalChars, reasoning=$reasoningChars, duration=${deltaDuration}ms), Respaldo automático a solicitudes que no son de transmisión | url=${sanitizeUrl(
-                        url,
-                    )}",
+                    "stream-guard: 检测到流式过早结束 (chars=$totalChars, reasoning=$reasoningChars, " +
+                        "duration=${deltaDuration}ms), 自动回退到非流式请求 | url=${sanitizeUrl(url)}",
                 )
                 var fallbackFailure: Throwable? = null
                 scope.launch {
                     try {
-                        // v1.0.48: Acortar el retiro a 500ms+jitter — Los 1,5 segundos originales causaron un retraso obvio después del final.,
-                        //   429 Ya existe un mecanismo de reintento,No es necesario retroceder demasiado
+                        // v1.0.48: 缩短退避到 500ms+jitter — 原 1.5s 导致结束后卡顿明显,
+                        //   429 已有重试机制兜底,无需过长退避
                         val backoffMs = 500L + Random.nextLong(0, 300)
-                        Logger.d("OpenAIProvider", "stream-guard: Espere antes de revertir ${backoffMs}ms(rpm retirarse)")
+                        Logger.d("OpenAIProvider", "stream-guard: 回退前等待 ${backoffMs}ms(rpm 退避)")
                         delay(backoffMs)
                         if (request.abortSignal.aborted) {
-                            Logger.d("OpenAIProvider", "stream-guard: El usuario cancela mientras espera,Renunciar y retroceder")
+                            Logger.d("OpenAIProvider", "stream-guard: 等待期间用户取消,放弃回退")
                             pendingFallback.set(false)
                             trySend(ChatStreamEvent.Done(finishReason))
                             close()
                             return@launch
                         }
-                        // v1.0.49: Segunda verificación — Si la transmisión ha vuelto a la normalidad durante el período de espera(recibir más content/reasoning),
-                        //   Explica el estilo Shangtang"final prematuro"es una falsa alarma(El delta posterior llega tarde),Ríndete y retrocede.
-                        //   No enviar Hecho No close — Dejar que SSE siga recibiendo seguimiento delta,hasta lo real finishReason
-                        //   O onClosed termina normalmente. Restablezca streamGuardDone para permitir que se vuelva a activar el emitDone posterior
-                        //   (En este punto, contentChars tiene > 9, shouldFallback=false, directo Done+close).
-                        // v1.0.51: Hay que tener en cuenta que la línea de base cuando se activa el retroceso relativo en realidad aumenta."recuperación de flujo".
-                        //   Sólo comprobar content > 0 Juzgará mal el primer delta que se ha recibido como contenido nuevo;
-                        //   Si la conexión realmente ya está onClosed,Esto hará que la rutina de reversión regrese directamente y suspenda permanentemente el flujo superior.
+                        // v1.0.49: 二次校验 — 等待期间若流式已恢复正常(收到更多 content/reasoning),
+                        //   说明商汤流式的"过早结束"是假告警(后续 delta 延迟到达),放弃回退。
+                        //   不发 Done 不 close — 让 SSE 继续接收后续 delta,直到真正的 finishReason
+                        //   或 onClosed 正常结束。重置 streamGuardDone 允许后续 emitDone 重新触发
+                        //   (此时 contentChars 已 > 9, shouldFallback=false, 直接 Done+close)。
+                        // v1.0.51: 必须要求相对回退触发时的基线确实增长才认为"流恢复"。
+                        //   仅检查 content > 0 会把已经收到的首个 delta 误判为新增内容;
+                        //   如果连接其实已经 onClosed,这会让回退协程直接返回并永久挂起上层 Flow。
                         val currentContent = contentCharsSent.get()
                         val currentReasoning = reasoningCharsSent.get()
-                        // Sólo la adición de texto visible cuenta como recuperación de transmisión. Si solo agregas reasoning,Algunos modelos aún pueden
-                        // Desconéctese directamente después de que finalice tool_calls,Si continúa esperando en este momento, la llamada a la herramienta se perderá nuevamente.
+                        // 仅新增可见正文才算流式恢复。若只新增 reasoning,某些模型仍可能
+                        // 在 tool_calls 收尾后直接断开,此时继续等待会再次丢失工具调用。
                         val streamProducedMore = currentContent > totalChars
                         if (!streamSourceClosed.get() && streamProducedMore) {
                             Logger.i(
                                 "OpenAIProvider",
-                                "stream-guard: La transmisión se reanudó mientras se esperaba(content=$currentContent, reasoning=$currentReasoning)," +
-                                    "Renunciar y retroceder,Continuar recibiendo streaming",
+                                "stream-guard: 等待期间流式已恢复(content=$currentContent, reasoning=$currentReasoning)," +
+                                    "放弃回退,继续接收流式",
                             )
                             pendingFallback.set(false)
                             streamGuardDone.set(false)
                             return@launch
                         }
                         if (streamSourceClosed.get()) {
-                            Logger.d("OpenAIProvider", "stream-guard: SSE Cerrado,Continuar con el respaldo sin transmisión")
+                            Logger.d("OpenAIProvider", "stream-guard: SSE 已关闭,继续执行非流式回退")
                         }
-                        // v1.0.48: Retrocede y vuelve a intentarlo — API SenseTime ocasionalmente Connection reset,Vuelva a intentarlo 1 vez para aumentar la tasa de éxito
+                        // v1.0.48: 回退重试 — 商汤 API 偶发 Connection reset,重试 1 次提高成功率
                         var completion: ChatCompletion? = null
                         var lastError: Exception? = null
                         for (attempt in 1..2) {
@@ -607,9 +610,9 @@ class OpenAIProvider(
                                 throw e
                             } catch (e: Exception) {
                                 lastError = e
-                                Logger.w("OpenAIProvider", "stream-guard: Respaldo sin transmisión $attempt falló: ${e.message}")
+                                Logger.w("OpenAIProvider", "stream-guard: 非流式回退第 $attempt 次失败: ${e.message}")
                                 if (attempt < 2 && !request.abortSignal.aborted) {
-                                    // v1.0.53: 429 Espere a que la ventana de RPM esté completa al acelerar(10s)Intentar otra vez,Evite alcanzar el límite actual continuamente
+                                    // v1.0.53: 429 限流时等满 RPM 窗口(10s)再重试,避免连续撞限流
                                     val isRateLimited = e.message?.contains("429") == true ||
                                         e.message?.contains("rate limited") == true
                                     delay(if (isRateLimited) 10_000L else 1_000L)
@@ -621,21 +624,21 @@ class OpenAIProvider(
                             val reasoning = completion.reasoningContent.orEmpty()
                             val toolCalls = ToolCallSanitizer.sanitize(completion.toolCalls.orEmpty())
                             if (toolCalls.isNotEmpty()) {
-                                // v1.0.53: La reversión es exitosa y la decisión del modelo llama a la herramienta. — enviar ToolCallDelta,
-                                // No puedes usar el razonamiento como texto.(ese es el proceso de pensamiento);Las llamadas a herramientas se entregan a la capa superior para su ejecución.
-                                // Anteriormente, las llamadas a herramientas se descartaban silenciosamente.,Hace que se pierda el canal_contraseña/respuesta del chat grupal,
-                                // Llamada de herramienta de chat única(web_search espera)perdido,Los usuarios solo ven el texto del pensamiento.
-                                // v1.x: reasoning Todavía quiero enviar UI,De lo contrario, los usuarios sólo ven la primera palabra y no tienen ningún proceso de pensamiento.
+                                // v1.0.53: 回退成功且模型决策调用工具 — 发送 ToolCallDelta,
+                                // 不能把 reasoning 当正文(那是思考过程);工具调用交给上层执行。
+                                // 此前 toolCalls 被静默丢弃,导致群聊 channel_pass/reply 丢失、
+                                // 单聊工具调用(web_search 等)丢失,用户只看到思考文本。
+                                // v1.x: reasoning 仍要发给 UI,否则用户只看到首字、没有思考过程。
                                 if (reasoning.isNotEmpty()) {
                                     trySend(ChatStreamEvent.ReasoningDelta(reasoning))
                                 }
                                 toolCalls.forEachIndexed { idx, tc ->
-                                    // Clave: La ruta alternativa envía**Parámetros completos**y el agregador agrega de forma incremental de forma predeterminada.
-                                    // La fase de transmisión ha acumulado argumentos para el mismo índice una vez. si no hay
-                                    // isSnapshot, los dos párrafos se juntarán (en el registro len=230 → argsLen=473,
-                                    // casi exactamente dos veces), el JSON detallado ya no es válido → Analizar campos vacíos →
-                                    // channel_reply Informe "content No puede estar vacío"→ Una ronda de silencio.
-                                    // El primer delta también lleva el nombre/id y marca la instantánea para que el agregador la borre y reescriba.
+                                    // 关键：回退路径发送的是**完整参数**，而聚合器默认按增量追加。
+                                    // 流式阶段已经往同一 index 累积过一次 arguments，若这里不带
+                                    // isSnapshot，两段会被拼在一起（日志里 len=230 → argsLen=473，
+                                    // 几乎正好两倍），拼出来的 JSON 不再合法 → 解析出空字段 →
+                                    // channel_reply 报「content 不能为空」→ 整轮静默。
+                                    // 第一个 delta 同时带上 name/id 并标记快照，让聚合器清空重写。
                                     trySend(
                                         ChatStreamEvent.ToolCallDelta(
                                             index = idx,
@@ -647,21 +650,21 @@ class OpenAIProvider(
                                     )
                                 }
                             } else {
-                                // v1.0.51: reasoning Ten todo en cuenta — deepseek-v4-flash El modelo de inferencia puede generar todos
-                                //   Ponlo en razonamiento_content(text esta vacio),En este momento, utilice el razonamiento como cuerpo para enviar,
-                                //   De lo contrario, el usuario verá una respuesta vacía. Es coherente con la lógica básica de MemoryLlmClient.
+                                // v1.0.51: reasoning 兜底 — deepseek-v4-flash 等推理模型可能把全部输出
+                                //   放在 reasoning_content 里(text 为空),此时用 reasoning 作为正文发送,
+                                //   否则用户看到空回复。与 MemoryLlmClient 的兜底逻辑一致。
                                 //
-                                // issue #5 + Semántica del producto (opción C):
-                                //   Herramienta de ajuste de reclamaciones de modelos (finish_reason=tool_calls) pero no devolvió una llamada a herramienta válida,
-                                //   Es una malformación del protocolo. El comportamiento anterior utilizaba directamente el razonamiento como texto y el usuario veía "pensamiento filtrado + herramienta no ejecutada".
-                                //   Si informa un error directamente, recibirá una respuesta en blanco (entra en conflicto con "vomitar está bien, pero vaciarlo no").
-                                //   Entonces son dos pasos:
-                                //     ① encuentro por primera vez → No vomites razonamientos, marca la necesidad de volver a intentarlo y deja que la capa superior lo vuelva a enviar.
-                                //     ② Reintentar, sigue siendo anormal → De vuelta en el bolsillo, garantizado never-empty
+                                // issue #5 + 产品语义（方案 C）:
+                                //   模型声称调工具（finish_reason=tool_calls）却没返回有效 tool_call，
+                                //   是协议畸形。旧行为直接拿 reasoning 当正文，用户看到「思考泄漏 + 工具没执行」。
+                                //   直接报错又会得到空白回复（与「吐可以，空不行」冲突）。
+                                //   所以分两步：
+                                //     ① 第一次遇上 → 不吐 reasoning，标记需要重试，让上层重发一次
+                                //     ② 重试仍畸形 → 退回兜底，保证 never-empty
                                 val claimedToolCall = finishReason == "tool_calls" || finishReason == "function_call"
-                                // v2.6.10: Cuando el texto principal ha sido escrito, ya no es“Afirmó que la herramienta de ajuste no se llamaba”Intentar otra vez.
-                                // Volver a intentarlo descartará este párrafo, tomará otra ronda de tiempo del modelo y existe una alta probabilidad de que se vuelva a enviar el mismo modelo.
-                                // Todavía deformado. Entregar el texto cuando está disponible es más útil que permitir que el usuario vea un mensaje de error.
+                                // v2.6.10: 已经写出正文时不再为“声称调工具却没给调用”重试。
+                                // 重试会把这段话丢掉、再花一轮模型时间，而同一个模型重发一次大概率
+                                // 还是畸形。有正文就交付正文，比让用户看到一条报错有用。
                                 val hasUsableText = text.isNotBlank()
                                 val shouldRetryForMalformedToolCall = claimedToolCall &&
                                     !hasUsableText &&
@@ -670,15 +673,15 @@ class OpenAIProvider(
                                     malformedToolCallRetries.incrementAndGet()
                                     Logger.w(
                                         "OpenAIProvider",
-                                        "stream-guard: Malformación del protocolo — finish_reason=$finishReason pero no analizado toolCall" +
-                                            " (text=${text.length}, reasoning=${reasoning.length})," +
-                                            "No. ${malformedToolCallRetries.get()}/$MAX_MALFORMED_TOOLCALL_RETRIES veces, sin escupir razonamientos, provocando un nuevo intento",
+                                        "stream-guard: 协议畸形 — finish_reason=$finishReason 但未解析出 toolCall" +
+                                            " (text=${text.length}, reasoning=${reasoning.length})，" +
+                                            "第 ${malformedToolCallRetries.get()}/$MAX_MALFORMED_TOOLCALL_RETRIES 次，不吐 reasoning，触发重试",
                                     )
                                     if (reasoning.isNotEmpty()) {
                                         trySend(ChatStreamEvent.ReasoningDelta(reasoning))
                                     }
                                     fallbackFailure = IllegalStateException(
-                                        "El modelo afirma llamar a la herramienta pero no devuelve una respuesta válida tool_call(finish_reason=$finishReason)",
+                                        "模型声称调用工具但未返回有效 tool_call(finish_reason=$finishReason)",
                                     )
                                 } else if (text.isNotBlank()) {
                                     trySend(ChatStreamEvent.ContentDelta(text))
@@ -686,12 +689,12 @@ class OpenAIProvider(
                                         trySend(ChatStreamEvent.ReasoningDelta(reasoning))
                                     }
                                 } else if (reasoning.isNotEmpty()) {
-                                    // Verdadero·reasoning-only, o intente nuevamente para obtener el resultado final que todavía parece normal:
-                                    // Partiendo de la premisa de nunca estar vacío, prefiero dar un período de reflexión que dejarlo en blanco.
+                                    // 真·reasoning-only，或重试仍畸形的最终兜底：
+                                    // 从未空底线出发，宁可给一段思考也不能留白。
                                     if (claimedToolCall) {
                                         Logger.w(
                                             "OpenAIProvider",
-                                            "stream-guard: Después de volver a intentarlo, el protocolo sigue siendo anormal y vuelve al razonamiento.(Evite respuestas en blanco)",
+                                            "stream-guard: 重试后仍为协议畸形，退回 reasoning 兜底(避免空白回复)",
                                         )
                                     }
                                     trySend(ChatStreamEvent.ContentDelta(reasoning))
@@ -699,28 +702,29 @@ class OpenAIProvider(
                             }
                             Logger.i(
                                 "OpenAIProvider",
-                                "stream-guard: La alternativa sin transmisión fue exitosa (text=${text.length} chars, reasoning=${reasoning.length} chars, toolCalls=${toolCalls.size})",
+                                "stream-guard: 非流式回退成功 (text=${text.length} chars, " +
+                                    "reasoning=${reasoning.length} chars, toolCalls=${toolCalls.size})",
                             )
                         } else {
-                            Logger.w("OpenAIProvider", "stream-guard: La alternativa sin transmisión finalmente falla: ${lastError?.message}")
-                            fallbackFailure = lastError ?: IllegalStateException("La alternativa sin transmisión no arroja resultados")
+                            Logger.w("OpenAIProvider", "stream-guard: 非流式回退最终失败: ${lastError?.message}")
+                            fallbackFailure = lastError ?: IllegalStateException("非流式回退未返回结果")
                         }
                     } catch (e: kotlinx.coroutines.CancellationException) {
                         throw e
                     } catch (e: Exception) {
-                        Logger.w("OpenAIProvider", "stream-guard: Excepción de reserva sin transmisión: ${e.message}")
+                        Logger.w("OpenAIProvider", "stream-guard: 非流式回退异常: ${e.message}")
                         fallbackFailure = e
                     }
                     pendingFallback.set(false)
                     when {
                         request.abortSignal.aborted -> {
-                            scope.trySend(ChatStreamEvent.StreamInterrupted("El usuario ha dejado de generar", fallbackFailure))
+                            scope.trySend(ChatStreamEvent.StreamInterrupted("用户已停止生成", fallbackFailure))
                         }
                         fallbackFailure != null -> {
                             val failure = checkNotNull(fallbackFailure)
                             trySend(
                                 ChatStreamEvent.Error(
-                                    "Falló el respaldo sin transmisión: ${failure.message}",
+                                    "非流式回退失败: ${failure.message}",
                                     failure,
                                 ),
                             )
@@ -732,10 +736,10 @@ class OpenAIProvider(
                 return
             }
 
-            // Finalizando: StreamInterrupted se envía cuando el usuario se detiene (deje que FirstEventWatchdog sienta claramente la interrupción,
-            // Ya no espere un tiempo de espera de 15 segundos para activar la reversión sin transmisión); enviar Hecho solo después de la finalización normal.
+            // 收尾：用户停止时发 StreamInterrupted（让 FirstEventWatchdog 明确感知中断，
+            // 不再等待 15s 超时触发非流式回退）；正常完成才发 Done。
             if (request.abortSignal.aborted) {
-                scope.trySend(ChatStreamEvent.StreamInterrupted("El usuario ha dejado de generar"))
+                scope.trySend(ChatStreamEvent.StreamInterrupted("用户已停止生成"))
             } else {
                 trySend(ChatStreamEvent.Done(finishReason))
             }
@@ -760,8 +764,9 @@ class OpenAIProvider(
             }
         }
         val abortListener = request.abortSignal.addAbortListener {
-            // Cancel the active SSE connection immediately; all callbacks observe aborted
-            // and therefore must not schedule fallback/reconnect work.
+            // A failed SSE may have no callback left to finish the producer during backoff.
+            scope.trySend(ChatStreamEvent.StreamInterrupted("用户已停止生成"))
+            scope.close()
             cancelCurrentEventSource()
         }
 
@@ -783,11 +788,11 @@ class OpenAIProvider(
                         Logger.i("OpenAIProvider", "streamChat TTFB: ${firstByteAt - requestStartAt}ms | url=${sanitizeUrl(url)}")
                         if (!response.isSuccessful) {
                             val code = response.code
-                            // v1.0.1: 429 Intente cambiar de clave y vuelva a intentarlo durante la limitación actual(Múltiples escenarios clave)
+                            // v1.0.1: 429 限流时尝试切换 key重试(多 key 场景)
                             if (code == 429 && !anyDeltaSent.get() && retryCount.get() < MAX_RETRIES &&
                                 !request.abortSignal.aborted && switchToNextKey()
                             ) {
-                                Logger.i("OpenAIProvider", "streamChat onOpen 429 Limitación de corriente,Cambiado al siguiente key,Inténtalo de nuevo ahora")
+                                Logger.i("OpenAIProvider", "streamChat onOpen 429 限流,已切换到下一个 key,立即重试")
                                 httpRequest = buildHttpRequest()
                                 retryCount.incrementAndGet()
                                 connectionGeneration.incrementAndGet()
@@ -799,25 +804,25 @@ class OpenAIProvider(
                                 }
                                 return
                             }
-                            // L-OAI1: Utilice readBodySafely en su lugar runCatching
+                            // L-OAI1: 用 readBodySafely 替代 runCatching
                             val errText = ProviderHttpSupport.readBodySafely(response)
                             val msg = parseErrorMessage(code, errText)
                             Logger.w("OpenAIProvider", "streamChat onOpen HTTP $code: $msg")
-                            // v1.0.28: HTTP 400 Registre el cuerpo de la solicitud y el cuerpo completo de la respuesta.,Ayuda a diagnosticar errores de parámetros de la estación de transferencia
-                            // Reparación de auditoría (7.2): Cuerpo de respuesta truncado a 500 caracteres — Se repetirán algunas respuestas de error de la estación de transferencia
-                            // Solicitar contenido(Contiene diálogo/parámetros),El registro completo puede escribir las conversaciones de los usuarios en el archivo de registro.
+                            // v1.0.28: HTTP 400 时记录请求体和完整响应体,帮助诊断中转站参数错误
+                            // 审计修复 (7.2): 响应体截断 500 字符 — 部分中转站错误响应会回显
+                            // 请求内容(含对话/参数),全量打日志可能把用户对话写入日志文件。
                             if (code == 400) {
-                                Logger.w("OpenAIProvider", "streamChat 400 Resumen de la solicitud: ${describeRequestBody(body)}")
+                                Logger.w("OpenAIProvider", "streamChat 400 请求摘要: ${describeRequestBody(body)}")
                                 Logger.w(
                                     "OpenAIProvider",
-                                    "streamChat 400 Resumen de respuesta: ${ProviderError.safeErrorDetail(errText) ?: "<empty>"}",
+                                    "streamChat 400 响应摘要: ${ProviderError.safeErrorDetail(errText) ?: "<empty>"}",
                                 )
                             }
-                            // v1.0.1: 401/403 Marcar la clave actual como fallida cuando falla la autenticación(Múltiples escenarios clave)
+                            // v1.0.1: 401/403 鉴权失败时标记当前 key 失败(多 key 场景)
                             if (code == 401 || code == 403) {
                                 markKeyFailed(hardBlock = true)
                             }
-                            // L-OAI17: Evento de error al llevar throwable,Es conveniente que la capa superior distinga los tipos de error en consecuencia.
+                            // L-OAI17: 错误事件携带 throwable,便于上层据此区分错误类型
                             trySend(
                                 ChatStreamEvent.Error(
                                     msg,
@@ -836,15 +841,15 @@ class OpenAIProvider(
                     override fun onEvent(eventSource: EventSource, id: String?, type: String?, data: String) {
                         if (myGeneration != connectionGeneration.get()) return
                         if (data == "[DONE]") {
-                            // v1.0.47: Cuando la reversión está en curso, el seguimiento se descarta directamente. [DONE] evento,No entrar emitDoneWithStreamGuard,
-                            //   Reducir los registros redundantes desde la fuente(El SenseTime original enviará de 8 a 10 eventos vacíos seguidos para activar la actualización del registro de diagnóstico.)
+                            // v1.0.47: 回退进行中时直接丢弃后续 [DONE] 事件,不进 emitDoneWithStreamGuard,
+                            //   从源头减少冗余日志(原商汤会连发 8-10 个空事件触发 diagnose 日志刷屏)
                             if (pendingFallback.get()) return
-                            // v1.0.20: stream-guard — Done Verificar acumulación en evento toolCallAccMap,
-                            //   Una llamada de herramienta con un nombre vacío vuelve a ContentDelta
+                            // v1.0.20: stream-guard — Done 事件时检查累积 toolCallAccMap,
+                            //   空 name 的 tool call 恢复为 ContentDelta
                             emitDoneWithStreamGuard(null)
                             return
                         }
-                        // B3-05: Custom Ruta de respuesta de transmisión de proveedores(Como por ejemplo $.choices[0].delta.content)
+                        // B3-05: Custom 供应商流式响应路径(如 $.choices[0].delta.content)
                         val customStreamPath = customConfig?.streamResponsePath?.takeIf { it.isNotBlank() }
                         if (customStreamPath != null) {
                             var parseError: Throwable? = null
@@ -878,7 +883,7 @@ class OpenAIProvider(
                             }
                             return
                         }
-                        // M-OAI3: Usar en su lugar resultOf(revenderá CancellationException),sustituto runCatching(tragará CancellationException)
+                        // M-OAI3: 改用 resultOf(会重抛 CancellationException),替代 runCatching(会吞 CancellationException)
                         var parseError: Throwable? = null
                         val chunk = resultOf {
                             AppJson.decodeFromString<OpenAIStreamChunk>(data)
@@ -891,8 +896,8 @@ class OpenAIProvider(
                             return
                         }
 
-                        // A5: stream_options.include_usage El último trozo sólo toma usage(choices es una matriz vacía),
-                        // Debe analizarse antes de que las opciones salgan anticipadamente.,De lo contrario, el fragmento de uso se descarta silenciosamente.
+                        // A5: stream_options.include_usage 时末 chunk 仅带 usage(choices 为空数组),
+                        // 必须在 choices 早退前解析,否则 usage chunk 被静默丢弃
                         chunk.usage?.let { usage ->
                             trySend(ChatStreamEvent.UsageDelta(usage.toUsageTokens()))
                         }
@@ -909,9 +914,9 @@ class OpenAIProvider(
                                         "(TTFB=${firstByteAt - requestStartAt}ms) | url=${sanitizeUrl(url)}",
                                 )
                             }
-                            // v1.0.49: Se seguirá enviando normalmente durante el período de espera de reversión. delta — Shangtang"Las vacaciones terminan prematuramente"El siguiente delta llegará más tarde,
-                            //   Si lo descartas, entonces ríndete. Al retroceder, el contenido se ha perdido y el flujo se ha interrumpido. close,Los usuarios solo ven el primer carácter.
-                            //   Cambiar para enviar normalmente:El contenido no se pierde al rendirse y volver atrás;Solo comienza cuando la reversión es exitosa <10 Los personajes pueden repetirse,Aceptable.
+                            // v1.0.49: 回退等待期间仍正常发送 delta — 商汤"假过早结束"后后续 delta 会延迟到达,
+                            //   若丢弃则放弃回退时内容已丢失且 flow 被 close,用户只看到首字符。
+                            //   改为正常发送:放弃回退时内容不丢;回退成功时仅开头 <10 字符可能重复,可接受。
                             delta.reasoningContent?.takeIf { it.isNotEmpty() }
                                 ?.let {
                                     anyDeltaSent.set(true)
@@ -924,10 +929,10 @@ class OpenAIProvider(
                                     contentCharsSent.addAndGet(it.length)
                                     trySend(ChatStreamEvent.ContentDelta(it))
                                 }
-                            // Phase 7: Analizar el incremento de llamadas a herramientas(Cada índice corresponde a una llamada de herramienta.,arguments Acumulación de fragmentos)
+                            // Phase 7: 解析 tool_calls 增量(每个 index 对应一个工具调用,arguments 分片累积)
                             delta.toolCalls?.forEach { tc ->
-                                // M-OAI4: Utilice el mapa acumulativo para asignar por índice,Evite el 0 predeterminado para fusionar varias llamadas.
-                                // Nueva llamada de herramienta(La primera pieza lleva identificación o name)Activar una nueva asignación de índice.
+                                // M-OAI4: 用累积 Map 按 index 分配,避免默认 0 合并多个调用。
+                                // 新工具调用(首片携带 id 或 name)触发新 index 分配。
                                 val apiIndex = tc.index
                                 val assignment = assignToolCallLocalIndex(
                                     apiIndex = apiIndex,
@@ -937,20 +942,20 @@ class OpenAIProvider(
                                     nextLocalIndex = nextToolCallIndex,
                                 )
                                 nextToolCallIndex = assignment.nextLocalIndex
-                                // L-OAI13: toolCallIndexMap cuando falta(La primera película está perdida./fuera de servicio)No hay respaldo para 0,
-                                //   De lo contrario, la película se fusionará por error index=0 llamada de herramienta.
+                                // L-OAI13: toolCallIndexMap 缺失时(首片丢了/乱序)不 fallback 到 0,
+                                //   否则会把该片误并入 index=0 的工具调用。
                                 var localIndex = assignment.localIndex
                                 if (localIndex == null) {
-                                    // v2.x Reparación: La secuela ha vuelto a su lugar.
-                                    //   Medición real(Shangtang/transmisión de estación de transferencia)aparecerá"Una llamada lógica se divide en varias partes":
-                                    //   La primera película tiene nombre pero los argumentos están vacíos, y las películas posteriores son puras continuaciones de parámetros.(newApiIndex,
-                                    //   Sin identificación ni name)Nuevo índice asignado → Todos los parámetros caen en la llamada sin nombre,
-                                    //   Done La llamada sin nombre se restablece al texto y**La longitud del parámetro de llamada con nombre real es 0**,
-                                    //   Informes directos para la verificación posterior"Falta el parámetro requerido: query", el usuario ve el parámetro JSON mezclado en el texto.
-                                    //   Aquí volvemos a fusionar las películas de parámetros puros en"El único parámetro actualmente por completar"llamada nombrada.
-                                    //   Dar prioridad al uso"La convocatoria nombrada más reciente que aún no se ha cerrado";Si te llamaron recientemente
-                                    //   no disponible, luego recurra al único candidato no emitido. Esto sobrescribirá los parámetros ya
-                                    //   Las secuelas estrenadas después de la primera película también conservarán la primera película./Juicio conservador cuando los parámetros están fuera de orden.
+                                    // v2.x 修复: 续片归位。
+                                    //   实测(商汤/中转站流式)会出现"一个逻辑调用被拆成多片"：
+                                    //   首片带 name 但 arguments 为空，后续纯参数续片(newApiIndex,
+                                    //   无 id 也无 name)被分配了新索引 → 参数全落进无名调用，
+                                    //   Done 时无名调用被恢复成正文，而**真正有名字的调用参数长度为 0**，
+                                    //   下游校验直接报"缺少必填参数: query"，用户看到参数 JSON 混进正文。
+                                    //   这里把纯参数续片并回"当前唯一待补参数"的已命名调用。
+                                    //   优先沿用"最近一个尚未闭合的已命名调用"；若最近调用
+                                    //   不可用，再回退到唯一的未发出候选。这样既覆盖参数已经
+                                    //   发出首片后的续片，也保留首片/参数乱序时的保守判定。
                                     val pending = continuationTarget(
                                         accMap = toolCallAccMap,
                                         activeLocalIndex = activeContinuationLocalIndex,
@@ -963,27 +968,27 @@ class OpenAIProvider(
                                             toolCallIndexMap[apiIndex] = pending
                                             Logger.d(
                                                 "OpenAIProvider",
-                                                "tool_calls El regreso de la secuela: apiIndex=$apiIndex → localIndex=$pending" +
-                                                    " (acumular args=${target.args.length} chars)",
+                                                "tool_calls 续片归位: apiIndex=$apiIndex → localIndex=$pending" +
+                                                    " (累积 args=${target.args.length} chars)",
                                             )
                                         }
                                     }
                                 }
                                 if (localIndex == null) {
-                                    // v2.x(Problema n.º 5 de comentarios de los usuarios): Graba el metraje original cuando se perdió la primera película. ——
-                                    // DeepSeek Esperando informe del modelo"reasoning fuga/El fragmento de protocolo ingresa al texto./La herramienta no se ejecuta"cuando,
-                                    // Estos datos sin procesar son necesarios para localizar si el formato ascendente es anormal o se trata de un problema de análisis.
+                                    // v2.x（用户反馈 issue #5）: 记录首片丢失时的原始片段 ——
+                                    // DeepSeek 等模型报"reasoning 泄漏/协议片段进正文/工具不执行"时，
+                                    // 需要这段原始数据才能定位是上游格式异常还是解析问题。
                                     Logger.w(
                                         "OpenAIProvider",
-                                        "tool_calls fragmento apiIndex=$apiIndex no encontrado en el mapa(Primera película perdida?),Saltar esta película | " +
-                                            "contenido del fragmento: id=${tc.id ?: "null"} name=${tc.function?.name ?: "null"} " +
+                                        "tool_calls 片段 apiIndex=$apiIndex 未在 map 中找到(首片丢失?),跳过该片 | " +
+                                            "片段内容: id=${tc.id ?: "null"} name=${tc.function?.name ?: "null"} " +
                                             "argsLen=${tc.function?.arguments?.length ?: 0} " +
                                             "args=${tc.function?.arguments?.take(200) ?: ""}",
                                     )
                                     return@forEach
                                 }
-                                // v1.0.20: stream-guard — Acumular nombre y argumentos.
-                                //   Acumular incluso si el nombre está vacío,Done Si el nombre aún está vacío, se restaurará en ContentDelta.
+                                // v1.0.20: stream-guard — 累积 name 和 arguments。
+                                //   即便 name 为空也累积,Done 时若 name 仍为空则恢复为 ContentDelta。
                                 val acc = toolCallAccMap.getOrPut(localIndex) { ToolCallAccState() }
                                 if (tc.id != null) acc.id = tc.id
                                 tc.function?.name?.takeIf { it.isNotBlank() }?.let { acc.name = it }
@@ -994,14 +999,14 @@ class OpenAIProvider(
                                 if (activeContinuationLocalIndex == localIndex && acc.args.isValidJson()) {
                                     activeContinuationLocalIndex = null
                                 }
-                                // v2.x: grabar"Nombrado pero los parámetros aún están vacíos"La llamada pendiente (para que la secuela sin nombre sea devuelta a su ubicación).
-                                //   Homing sólo se permite cuando hay un solo candidato. Varios candidatos indican llamadas paralelas y no se pueden adivinar.
+                                // v2.x: 记录"已命名但参数仍为空"的待补调用（供无名续片归位使用）。
+                                //   只有唯一一个候选时才允许归位，多个候选说明是并行调用，不能猜。
                                 pendingArgsLocalIndex = pendingArgsCandidate(toolCallAccMap)
 
-                                // v1.0.22: Restaurado incrementalmente a ContentDelta acc,Los argumentos posteriores continúan enviándose como ContentDelta
-                                //   (Una vez que se determina que el nombre está vacío, la llamada a la herramienta será anormal y se restaurará de forma incremental.,name El texto enviado no será retirado aunque llegue más tarde.)
-                                // v1.0.52: recoveredAsContent ya no está configurado incrementalmente en true(Cuando se cambia a Listo, se determina según el motivo de finalización.),
-                                //   Esta rama conserva la compatibilidad con versiones anteriores, pero en realidad no se incluirá en ella.
+                                // v1.0.22: 已增量恢复为 ContentDelta 的 acc,后续 args 继续作为 ContentDelta 发送
+                                //   (一旦判定为空 name 异常 tool call 并增量恢复,name 后到也不撤回已发送的正文)
+                                // v1.0.52: recoveredAsContent 不再被增量设置为 true(改为 Done 时根据 finishReason 决定),
+                                //   此分支保留向后兼容但实际不会进入
                                 if (acc.recoveredAsContent) {
                                     val argsDelta = tc.function?.arguments.orEmpty()
                                     if (argsDelta.isNotEmpty()) {
@@ -1010,23 +1015,23 @@ class OpenAIProvider(
                                     return@forEach
                                 }
 
-                                // stream-guard: Manejo de nombres vacíos
-                                //   v1.0.20: Almacenar en búfer hasta que esté listo antes de continuar
-                                //   v1.0.22: Cambiar a incremental inmediato volver a ContentDelta
-                                //   v1.0.52: Recurrir solo al almacenamiento en búfer sin enviar — v1.0.22 La recuperación incremental da como resultado llamadas a herramientas reales
-                                //     (finishReason=tool_calls) Los argumentos se convirtieron por error a texto.,Los usuarios ven la ilusión de fragmentos JSON.
-                                //     buffer para Done,Done se determina en función de la razón de finalización:
-                                //       - tool_calls + vacío name → Activar respaldo sin transmisión(El modo de transmisión del modelo no genera correctamente el nombre de la herramienta)
-                                //       - Otro + vacío name → Volver a ContentDelta(ilusión de texto)
+                                // stream-guard: 空 name 处理
+                                //   v1.0.20: 缓冲到 Done 才恢复
+                                //   v1.0.22: 改为立即增量恢复为 ContentDelta
+                                //   v1.0.52: 回退为只缓冲不发送 — v1.0.22 的增量恢复导致真实工具调用
+                                //     (finishReason=tool_calls) 的 arguments 被误转为正文,用户看到 JSON 片段幻觉。
+                                //     改为缓冲到 Done,Done 时根据 finishReason 决定:
+                                //       - tool_calls + 空 name → 触发非流式回退(模型流式模式未正确输出工具名)
+                                //       - 其他 + 空 name → 恢复为 ContentDelta(正文幻觉)
                                 val currentName = acc.name
                                 if (currentName.isNullOrBlank()) {
                                     toolCallDeltaSent.set(true)
                                     anyDeltaSent.set(true)
-                                    // v1.0.52: Sólo búfer,no enviar ContentDelta
+                                    // v1.0.52: 只缓冲,不发送 ContentDelta
                                     val stormCount = emptyNameToolCallCount.incrementAndGet()
                                     if (stormCount > MAX_EMPTY_NAME_TOOL_CALLS) {
-                                        // tormenta:El modelo pequeño divide el texto en una gran cantidad de espacios independientes. name tool call,Continuar amortiguando ralentizará toda la ronda.
-                                        // Después de exceder el umbral, restaurar por incremento de texto,Deje que el nivel superior reciba el texto lo antes posible. Las llamadas a herramientas reales no tendrán tantos nombres vacíos seguidos.
+                                        // 风暴:小模型把正文拆成大量独立空 name tool call,继续缓冲会拖慢整轮。
+                                        // 超过阈值后按正文增量恢复,让上层尽快拿到文本。真实工具调用不会连续出现这么多空 name。
                                         acc.recoveredAsContent = true
                                         val argsDelta = tc.function?.arguments.orEmpty()
                                         if (argsDelta.isNotEmpty()) {
@@ -1035,22 +1040,23 @@ class OpenAIProvider(
                                         }
                                         Logger.w(
                                             "OpenAIProvider",
-                                            "stream-guard: La llamada a la herramienta de nombre vacío excede $MAX_EMPTY_NAME_TOOL_CALLS Artículo,Restaurar por incremento de texto (localIndex=$localIndex)",
+                                            "stream-guard: 空 name tool call 超过 $MAX_EMPTY_NAME_TOOL_CALLS 条," +
+                                                "按正文增量恢复 (localIndex=$localIndex)",
                                         )
                                         return@forEach
                                     }
                                     Logger.d(
                                         "OpenAIProvider",
-                                        "stream-guard: Búfer de llamada de herramienta de nombre vacío (localIndex=$localIndex, acumular args=${acc.args.length} chars)",
+                                        "stream-guard: 空 name tool call 缓冲中 (localIndex=$localIndex, 累积 args=${acc.args.length} chars)",
                                     )
                                     return@forEach
                                 }
 
-                                // name Llegó — enviar ToolCallDelta
+                                // name 已到 — 发送 ToolCallDelta
                                 toolCallDeltaSent.set(true)
                                 anyDeltaSent.set(true)
                                 if (!acc.hasEmitted) {
-                                    // Envío por primera vez — name tarde,Trae el dinero acumulado de una sola vez arguments(ponerse al día)
+                                    // 首次发送 — name 来晚了,一次性带上累积的 arguments(追赶)
                                     trySend(
                                         ChatStreamEvent.ToolCallDelta(
                                             index = localIndex,
@@ -1061,10 +1067,10 @@ class OpenAIProvider(
                                     )
                                     acc.hasEmitted = true
                                 } else {
-                                    // Incrementos posteriores.
-                                    // v1.0.81: Si se combinan demasiados objetos JSON en el acumulador(Mango modelo arguments
-                                    // dividir en {"a":1}{"b":2}),El incremento original no se puede volver a enviar al flujo descendente. append(Eso será reescrito
-                                    // cuerda de empalme),Vuelva a publicar la instantánea JSON completa fusionada,El flujo descendente sobrescribe con instantáneas en lugar de agregarlas.
+                                    // 后续增量。
+                                    // v1.0.81: 若累积器发生过多 JSON 对象分片合并(模型把 arguments
+                                    // 拆成 {"a":1}{"b":2}),不能再发原始增量给下游 append(那会重新拼成
+                                    // 拼接串),改发合并后的完整 JSON 快照,下游用快照覆盖而非追加。
                                     val deltaArgs = if (acc.args.hasMergedObjects()) {
                                         acc.args.current()
                                     } else {
@@ -1074,10 +1080,10 @@ class OpenAIProvider(
                                         ChatStreamEvent.ToolCallDelta(
                                             index = localIndex,
                                             id = tc.id,
-                                            // v2.5.0 fix: El nombre de la película siguiente puede ser una cadena vacía.(Cada delta en la estación de transferencia tiene un campo de nombre.,
-                                            // Las cadenas vacías que no son nulas penetrarán hasta el final y sobrescribirán los nombres de herramientas acumulados.,causa Sanitizer
-                                            // a "name esta vacio" Descartar todas las llamadas a herramientas). Enviar siempre en blanco null,
-                                            // Los nombres acumulados se conservan en sentido posterior con semántica nula.
+                                            // v2.5.0 fix: 后续片 name 可能是空串(中转站每个 delta 都带 name 字段,
+                                            // 空串非 null 会穿透到下游覆盖已累积的工具名,导致 Sanitizer
+                                            // 以 "name 为空" 丢弃全部工具调用)。空白一律发 null,
+                                            // 下游用 null 语义保留已累积的名称。
                                             name = tc.function?.name?.takeIf { it.isNotBlank() },
                                             argumentsDelta = deltaArgs,
                                             isSnapshot = acc.args.hasMergedObjects(),
@@ -1087,10 +1093,10 @@ class OpenAIProvider(
                             }
                         }
                         if (!choice.finishReason.isNullOrBlank()) {
-                            // v1.0.47: Descartar el evento FinishReason cuando la reversión esté en curso(Lo mismo [DONE] Lógica de salida anticipada)
+                            // v1.0.47: 回退进行中时丢弃 finishReason 事件(同 [DONE] 早退逻辑)
                             if (pendingFallback.get()) return
-                            // v1.0.20: stream-guard — Done Verificar acumulación en evento toolCallAccMap,
-                            //   Una llamada de herramienta con un nombre vacío vuelve a ContentDelta
+                            // v1.0.20: stream-guard — Done 事件时检查累积 toolCallAccMap,
+                            //   空 name 的 tool call 恢复为 ContentDelta
                             emitDoneWithStreamGuard(choice.finishReason)
                         }
                     }
@@ -1098,7 +1104,7 @@ class OpenAIProvider(
                     override fun onClosed(eventSource: EventSource) {
                         if (myGeneration != connectionGeneration.get()) {
                             if (request.abortSignal.aborted) {
-                                scope.trySend(ChatStreamEvent.StreamInterrupted("El usuario ha dejado de generar"))
+                                scope.trySend(ChatStreamEvent.StreamInterrupted("用户已停止生成"))
                                 close()
                             } else if (consumerClosed.get() || scope.isClosedForSend) {
                                 close()
@@ -1110,15 +1116,15 @@ class OpenAIProvider(
                             close()
                             return
                         }
-                        // v1.0.23: Las API como SenseTime pueden cerrar directamente la conexión,No enviado [DONE] Tampoco enviado finishReason
-                        //   Si aún no se ha activado stream-guard,Dispare aquí para detectar el final prematuro de la transmisión y el retroceso
-                        // v1.0.24: No cuando la reversión está en curso close,Espere a que se complete la rutina alternativa
+                        // v1.0.23: 商汤等 API 可能直接关闭连接,不发 [DONE] 也不发 finishReason
+                        //   若尚未触发 stream-guard,在此触发以检测流式过早结束并回退
+                        // v1.0.24: 回退进行中时不 close,等回退协程完成
                         if (pendingFallback.get()) {
-                            Logger.d("OpenAIProvider", "streamChat onClosed: Reversión en progreso, esperar a que se complete")
+                            Logger.d("OpenAIProvider", "streamChat onClosed: 回退进行中, 等待完成")
                             return
                         }
                         if (!streamGuardDone.get()) {
-                            Logger.d("OpenAIProvider", "streamChat onClosed: Evento hecho no recibido, gatillo stream-guard")
+                            Logger.d("OpenAIProvider", "streamChat onClosed: 未收到 Done 事件, 触发 stream-guard")
                             emitDoneWithStreamGuard(null)
                         } else {
                             close()
@@ -1128,7 +1134,7 @@ class OpenAIProvider(
                     override fun onFailure(eventSource: EventSource, t: Throwable?, response: Response?) {
                         if (myGeneration != connectionGeneration.get()) {
                             if (request.abortSignal.aborted) {
-                                scope.trySend(ChatStreamEvent.StreamInterrupted("El usuario ha dejado de generar", t))
+                                scope.trySend(ChatStreamEvent.StreamInterrupted("用户已停止生成", t))
                                 close()
                             } else if (consumerClosed.get() || scope.isClosedForSend) {
                                 close()
@@ -1136,37 +1142,37 @@ class OpenAIProvider(
                             return
                         }
                         streamSourceClosed.set(true)
-                        // v1.0.24: No cuando la reversión está en curso close,Espere a que se complete la rutina alternativa
+                        // v1.0.24: 回退进行中时不 close,等回退协程完成
                         if (pendingFallback.get()) {
-                            Logger.d("OpenAIProvider", "streamChat onFailure: Reversión en progreso, Ignorar errores de conexión t=${t?.message}")
+                            Logger.d("OpenAIProvider", "streamChat onFailure: 回退进行中, 忽略连接错误 t=${t?.message}")
                             return
                         }
                         if (streamGuardDone.get() || consumerClosed.get() || scope.isClosedForSend) {
-                            Logger.d("OpenAIProvider", "streamChat onFailure: La transmisión se ha completado o el consumidor se ha cerrado.,Ignorar devoluciones de llamada de cierre")
+                            Logger.d("OpenAIProvider", "streamChat onFailure: 流已完成或消费者已关闭,忽略收尾回调")
                             close()
                             return
                         }
                         if (request.abortSignal.aborted) {
-                            // v1.0.53: Distinguir entre aborto verdadero y limpieza final — Después de que el flujo se complete normalmente, ChatViewModel abort signal
-                            //   Limpiar recursos,En este momento, si la devolución de llamada onFailure está volando,El registro original será engañoso ya que"Abortar usuario".
+                            // v1.0.53: 区分真实中止与收尾清理 — 流正常完成后 ChatViewModel 会 abort signal
+                            //   清理资源,此时若 onFailure 回调在飞,原日志会误导为"用户中止"。
                             if (streamGuardDone.get()) {
-                                Logger.d("OpenAIProvider", "streamChat onFailure: Devolución de llamada final después de que se haya completado la transmisión(ignorar,aborto no usuario)")
+                                Logger.d("OpenAIProvider", "streamChat onFailure: 流已完成后的收尾回调(忽略,非用户中止)")
                             } else {
                                 Logger.d(
                                     "OpenAIProvider",
                                     "streamChat aborted by user | contentChars=${contentCharsSent.get()} | " +
                                         "streamGuardDone=${streamGuardDone.get()} | anyDeltaSent=${anyDeltaSent.get()}",
                                 )
-                                // El usuario se detiene activamente: envíe StreamInterrupted para permitir que el flujo descendente (incluido FirstEventWatchdog) perciba claramente la interrupción.
-                                // Evite el cierre silencioso, lo que provocaría que el perro guardián sea juzgado erróneamente como“Evento sin cabeza”Continúe activando el respaldo sin transmisión.
-                                scope.trySend(ChatStreamEvent.StreamInterrupted("El usuario ha dejado de generar"))
+                                // 用户主动停止：发 StreamInterrupted 让下游（含 FirstEventWatchdog）明确感知中断，
+                                // 避免静默 close 导致 watchdog 误判为“无首事件”继续触发非流式回退。
+                                scope.trySend(ChatStreamEvent.StreamInterrupted("用户已停止生成"))
                             }
                             close()
                             return
                         }
-                        // M-OAI3: Determinar si se puede volver a intentar(408/429/5xx/IOException),y no se emitieron incrementos,Y no se ha alcanzado el límite de reintentos.
-                        // H-OAI1: Reintentar la condición en su lugar anyDeltaSent(Cubre tres tipos de incrementos de Contenido/Razonamiento/Llamada a herramientas),
-                        //   Solo verificar toolCallDeltaSent daría como resultado el flujo del texto/Se reedita el razonamiento.
+                        // M-OAI3: 判断是否可重试(408/429/5xx/IOException),且未发出任何增量,且未达重试上限
+                        // H-OAI1: 重试条件改用 anyDeltaSent(覆盖 Content/Reasoning/ToolCall 三类增量),
+                        //   原仅检查 toolCallDeltaSent 会导致已流出的正文/推理被重发。
                         val code = response?.code
                         val isRetryable = (code != null && (code == 408 || code == 429 || code in 500..599)) ||
                             (t is java.io.IOException)
@@ -1176,43 +1182,42 @@ class OpenAIProvider(
                         ) {
                             val attempt = retryCount.get()
                             var backoffMs = (1L shl attempt) * RETRY_BASE_DELAY_MS
-                            // M-OAI7: 429 La limitación actual utiliza primero el encabezado de respuesta Reintentar después.(segundos → milisegundos)
+                            // M-OAI7: 429 限流优先用 Retry-After 响应头(秒数 → 毫秒)
                             if (code == 429) {
                                 backoffMs = ProviderError.parseRetryAfter(response?.header("Retry-After"))
                                     ?.let { it * 1000L } ?: backoffMs
-                                // v1.0.1: 429 cambiar al siguiente key(Múltiples escenarios clave)
-                                //  Inténtalo de nuevo inmediatamente después de que el cambio sea exitoso.(no esperes backoff),Porque es posible que la nueva clave no tenga límite actual
+                                // v1.0.1: 429 时切换到下一个 key(多 key 场景)
+                                //  切换成功后立即重试(不等 backoff),因为新 key 可能未限流
                                 if (switchToNextKey()) {
-                                    Logger.i("OpenAIProvider", "streamChat 429 Limitación de corriente,Cambiado al siguiente key,Inténtalo de nuevo ahora")
+                                    Logger.i("OpenAIProvider", "streamChat 429 限流,已切换到下一个 key,立即重试")
                                     backoffMs = 0L
                                 }
                             }
-                            // L-OAI9: agregar jitter(0~499ms),Evite los reintentos sincronizados de varios clientes que provocan grupos de pánico
+                            // L-OAI9: 加 jitter(0~499ms),避免多客户端同步重试引发惊群
                             if (backoffMs > 0) {
                                 backoffMs += Random.nextLong(0, 500)
                             }
-                            // v1.0.1: key Reconstruir después de cambiar httpRequest(actualizar Authorization header)
+                            // v1.0.1: key 切换后重新构造 httpRequest(更新 Authorization header)
                             httpRequest = buildHttpRequest()
                             connectionGeneration.incrementAndGet()
-                            // R-AI-03: Borre el grupo de conexiones medio abierto antes de volver a intentarlo/Conexión inactiva,Evite reutilizar conexiones de reinicio
+                            // R-AI-03: 重试前清掉连接池中的半开/空闲连接,避免复用已 reset 连接
                             ProviderHttpSupport.evictIdleConnections()
                             Logger.w(
                                 "OpenAIProvider",
                                 "streamChat onFailure, retry $attempt/$MAX_RETRIES after ${backoffMs}ms: ${t?.message ?: code}",
                             )
                             scope.launch {
+                                if (request.abortSignal.aborted || scope.isClosedForSend) return@launch
                                 delay(backoffMs)
-                                if (request.abortSignal.aborted || scope.isClosedForSend) {
-                                    close()
-                                    return@launch
+                                if (!request.abortSignal.aborted && !scope.isClosedForSend) {
+                                    connect()
                                 }
-                                connect()
                             }
                             return
                         }
-                        // L-OAI1: Utilice readBodySafely en su lugar runCatching
-                        // v1.109 Reparación: SSE Creado(2xx)La post-interrupción es una desconexión,No es un error HTTP
-                        //   Priorizar mensajes arrojables,Evite construcciones engañosas "HTTP 200" error
+                        // L-OAI1: 用 readBodySafely 替代 runCatching
+                        // v1.109 修复: SSE 已建立(2xx)后中断是连接断开,不是 HTTP 错误
+                        //   优先用 Throwable 信息,避免构造误导性的 "HTTP 200" 错误
                         val msg = response?.let {
                             if (it.code in 200..299) {
                                 t?.message?.takeIf { m -> m.isNotBlank() }
@@ -1223,7 +1228,7 @@ class OpenAIProvider(
                             }
                         } ?: (t?.message ?: ErrorCode.NETWORK_ERROR.toMessage())
                         Logger.e("OpenAIProvider", "streamChat onFailure: $msg", t)
-                        // v1.0.15: Enviado cuando se ha recibido parte del contenido StreamInterrupted,Deje que la interfaz de usuario conserve el contenido recibido y solicite la interrupción de la red(Puede reconectarse automáticamente)
+                        // v1.0.15: 已收到部分内容时发 StreamInterrupted,让 UI 保留已收内容并提示网络中断(可自动重连)
                         if (anyDeltaSent.get()) {
                             trySend(ChatStreamEvent.StreamInterrupted(msg, t))
                         } else {
@@ -1239,36 +1244,37 @@ class OpenAIProvider(
         connect()
 
         awaitClose {
+            scope.coroutineContext.cancelChildren()
             abortListener.close()
-            // Liberar solo recursos HTTP,No marque el cierre normal como cancelación iniciada por el usuario.
+            // 只释放 HTTP 资源,不要把正常收尾标记成用户主动取消。
             consumerClosed.set(true)
             cancelCurrentEventSource()
         }
-        // C-35: El canal interno ha sido cambiado a channelFlow(capacity = UNLIMITED),trySend No más pérdidas de tabletas debido a la capacidad total.
-        //   aguas abajo `.buffer(Channel.UNLIMITED)` Solo es efectivo para el reenvío del siguiente nivel del productor al recolector.,
-        //   No se puede solucionar el problema de pérdida del chip interno de 64 capacidades de CallbackFlow(Ha sido solucionado por la capacidad explícita de channelFlow anterior.).
+        // C-35: 内部 channel 已改为 channelFlow(capacity = UNLIMITED),trySend 不再因容量满丢片。
+        //   下游 `.buffer(Channel.UNLIMITED)` 仅作用于生产者到收集者之间的下一级转发生效,
+        //   无法修复 callbackFlow 内部 64 容量丢片问题(已由上方 channelFlow 显式容量根治)。
     }.flowOn(Dispatchers.IO).buffer(Channel.UNLIMITED)
 
     /**
-     * Chat sin transmisión.
+     * 非流式聊天。
      *
-     * v1.80 (L-OAI15): decisiones de diseño — completeText Sin reintentos automáticos(diferente de streamChat).
-     *   Razón:completeText Sirve principalmente para tareas en segundo plano, como compilación de memoria/extracción de hechos.,
-     *   Estas tareas están programadas por JobWorker,Ya tiene un mecanismo de reintento.(Worker.Result.retry);
-     *   Agregar otra capa de reintentos a la capa del proveedor aumenta la latencia y dificulta exponer el progreso al usuario.
-     *   Si realmente necesitas intentarlo de nuevo,Debe ser utilizado por la persona que llama(Worker)Depende del tipo de excepción devuelta.
+     * v1.80 (L-OAI15): 设计决策 — completeText 不做自动重试(不同于 streamChat)。
+     *   原因:completeText 主要服务于 memory 编译 / fact 抽取等后台任务,
+     *   这些任务由 JobWorker 调度,本身已有重试机制(Worker.Result.retry);
+     *   在 Provider 层再加一层重试会放大延迟且难以向用户暴露进度。
+     *   如确需重试,应由调用方(Worker)根据返回的异常类型决定。
      */
     override suspend fun completeText(request: ChatRequest): ChatCompletion = completeTextImpl(request, 0)
 
     private suspend fun completeTextImpl(request: ChatRequest, keySwitchDepth: Int = 0): ChatCompletion = withContext(Dispatchers.IO) {
-        // v1.0.7: useResponseApi=true Es hora de ramificar la API de Respuestas
+        // v1.0.7: useResponseApi=true 时走 Responses API 分支
         if (useResponsesApi) return@withContext completeTextResponses(request, keySwitchDepth)
         val body = buildRequestBody(request, stream = false)
-        // M-OAI4: Utilice elementos de configuración en su lugar chatCompletionsPath(Consistente con streamChat)
+        // M-OAI4: 改用配置项 chatCompletionsPath(与 streamChat 一致)
         val url = baseUrl() + chatCompletionsPath()
         Logger.i("OpenAIProvider", "completeText: POST ${sanitizeUrl(url)} model=${request.model}")
-        // v1.0.1: usar effectiveApiKey() Admite rotación de múltiples teclas
-        // v1.0.18: ir modelo libre fallback(El usuario no completó la clave + modelo de lista blanca de SiliconFlow → Usar incorporado key)
+        // v1.0.1: 用 effectiveApiKey() 支持多 key 轮换
+        // v1.0.18: 走免费模型 fallback(用户未填 key + SiliconFlow 白名单模型 → 用内置 key)
         val httpRequest = Request.Builder()
             .url(url)
             .header("Authorization", "Bearer ${resolveEffectiveApiKey(request.model.id)}")
@@ -1285,30 +1291,30 @@ class OpenAIProvider(
             response.use { resp ->
                 if (!resp.isSuccessful) {
                     val code = resp.code
-                    // v1.0.1: 429 Cambia de tecla y vuelve a intentarlo.(Múltiples escenarios clave);401/403 Error al marcar la clave
+                    // v1.0.1: 429 切换 key 重试(多 key 场景);401/403 标记 key 失败
                     if (code == 429 && !request.abortSignal.aborted && keySwitchDepth < MAX_KEY_SWITCHES && switchToNextKey()) {
-                        Logger.i("OpenAIProvider", "completeText 429 Limitación de corriente,Cambiado al siguiente key,Inténtalo de nuevo ($keySwitchDepth/$MAX_KEY_SWITCHES)")
+                        Logger.i("OpenAIProvider", "completeText 429 限流,已切换到下一个 key,重试 ($keySwitchDepth/$MAX_KEY_SWITCHES)")
                         return@withContext completeTextImpl(request, keySwitchDepth + 1)
                     }
                     if (code == 401 || code == 403) {
                         markKeyFailed(hardBlock = true)
                     }
-                    // L-OAI1: Utilice readBodySafely en su lugar runCatching
+                    // L-OAI1: 用 readBodySafely 替代 runCatching
                     val errText = ProviderHttpSupport.readBodySafely(resp)
                     val msg = parseErrorMessage(code, errText)
                     Logger.w("OpenAIProvider", "completeText HTTP $code: $msg")
-                    // v1.0.28: HTTP 400 Registre el cuerpo de la solicitud y el cuerpo completo de la respuesta.,Ayuda a diagnosticar errores de parámetros de la estación de transferencia
+                    // v1.0.28: HTTP 400 时记录请求体和完整响应体,帮助诊断中转站参数错误
                     if (code == 400) {
-                        Logger.w("OpenAIProvider", "completeText 400 Resumen de la solicitud: ${describeRequestBody(body)}")
+                        Logger.w("OpenAIProvider", "completeText 400 请求摘要: ${describeRequestBody(body)}")
                         Logger.w(
                             "OpenAIProvider",
-                            "completeText 400 Resumen de respuesta: ${ProviderError.safeErrorDetail(errText) ?: "<empty>"}",
+                            "completeText 400 响应摘要: ${ProviderError.safeErrorDetail(errText) ?: "<empty>"}",
                         )
                     }
-                    // L-OAI11: Utilice excepciones personalizadas para reemplazar el juicio de prefijo de cadena
+                    // L-OAI11: 用自定义异常替代字符串前缀判断
                     throw OpenAIHttpException(code, msg, ProviderError.parseRetryAfter(response.header("Retry-After")))
                 }
-                // M-OAI6: body puede ser null(Aunque OkHttp rara vez se usa en la práctica null,Pero en términos de tipo Nullable),Seguridad de cortocircuito unificada
+                // M-OAI6: body 可能为 null(虽然 OkHttp 实际几乎不为 null,但类型上 Nullable),统一做空安全
                 val raw = resp.body?.string()
                     ?: throw ErrorCode.INVALID_RESPONSE.toProviderException("empty_body", resp.code)
                 val customResponsePath = customConfig?.responsePath?.takeIf { it.isNotBlank() }
@@ -1328,35 +1334,35 @@ class OpenAIProvider(
                 val toolCalls = msg?.toolCalls?.map {
                     ToolCall(id = it.id, name = it.function.name, arguments = it.function.arguments)
                 }
-                // issue #9(v2.6.3 volver a probar): DeepSeek Flash regresar a menudo "toolCalls=1 Pero los argumentos están vacíos.",
-                // Degradado por desinfectante a {} Más tarde, channel_reply falló debido a que faltaba contenido.
-                // Aquí, escriba la forma del parámetro de cada llamada (duración, no contenido) —— Los parámetros pueden contener nombre de usuario./portapapeles),
-                // Se utiliza para distinguir "la verdad ascendente está vacía" y "analizamos y perdemos":
-                //   len=0        → Falta el campo de argumentos ascendentes o la cadena está vacía
-                //   raw="{}"    → Lo que proporciona el upstream es un objeto vacío.
-                //   Otros          → Hay contenido en el upstream, pero el problema radica en el proceso de seguimiento.
+                // issue #9（v2.6.3 复测）: DeepSeek Flash 经常返回 "toolCalls=1 但 arguments 为空",
+                // 经 sanitizer 降级为 {} 后 channel_reply 因缺 content 失败。
+                // 这里把每个调用的参数形态记下来（长度，不记内容 —— 参数可能含用户名/剪贴板），
+                // 用来区分「上游真给空」与「我们解析丢」：
+                //   len=0        → 上游 arguments 字段缺失或空串
+                //   raw="{}"    → 上游给的就是空对象
+                //   其它          → 上游有内容，问题在后续环节
                 if (!toolCalls.isNullOrEmpty()) {
-                    // No recuerdo el nombre. Texto original: el modelo a veces coloca la línea completa en el nombre de la función, que puede contener contenido del usuario.
-                    // Sólo recordar el formulario (longitud + si el identificador es legal + longitud del parámetro) es suficiente para localizar el problema.
+                    // 不记 name 原文：模型有时把整句台词塞进函数名，那里面可能夹着用户内容。
+                    // 只记形态（长度 + 是否合法标识符 + 参数长度），足够定位问题。
                     val shape = toolCalls.joinToString(", ") { tc ->
                         val nameValid = ToolCallSanitizer.isValidName(tc.name)
                         "nameLen=${tc.name.length},valid=$nameValid,argsLen=${tc.arguments.length}" +
                             if (tc.arguments.trim() == "{}") ",emptyObj" else ""
                     }
-                    Logger.i("OpenAIProvider", "completeText toolCalls forma paramétrica: $shape | finish=${choice.finishReason}")
+                    Logger.i("OpenAIProvider", "completeText toolCalls 参数形态: $shape | finish=${choice.finishReason}")
                 }
-                // Phase 7: si hay tool_calls,Permitir que el texto esté vacío(Escenario de llamada de herramienta)
-                // M-OAI8: Si hay contenido de inferencia.(reasoning_content),El texto también puede estar vacío.
-                //   (Es posible que algunos modelos de razonamiento solo devuelvan contenido_razonamiento y el contenido esté vacío en respuestas que no son de transmisión.)
+                // Phase 7: 如果有 tool_calls,允许 text 为空(工具调用场景)
+                // M-OAI8: 如果有推理内容(reasoning_content),也允许 text 为空
+                //   (部分推理模型在非流式响应中可能只返回 reasoning_content 而 content 为空)
                 if (text.isBlank() && toolCalls.isNullOrEmpty() && reasoningContent.isBlank()) {
-                    // v2.6.8(comentarios de los usuarios): Solía ​​sólo informar aquí “empty_text”, el usuario no tiene absolutamente ninguna idea de lo que ha devuelto el flujo ascendente.
-                    // Escenario típico: la estación de transferencia devuelve 200 pero el cuerpo es una opción vacía/con solo uso/o una estructura no estándar,
-                    // El usuario piensa que la aplicación no funciona, pero en realidad el dispositivo ascendente está vacío.
-                    // Ahora escriba el formulario de respuesta en el error (sin el texto, solo la estructura) para que el mensaje de error pueda explicarse por sí solo.
+                    // v2.6.8（用户反馈）: 这里以前只报 “empty_text”，用户完全看不出上游到底返回了什么。
+                    // 典型场景：中转站返回 200 但 body 是一个空 choices / 只带 usage / 或非标准结构，
+                    // 用户以为是 app 坏了，实际上是上游给的就是空。
+                    // 现在把响应形态写进错误里（不含正文，只记结构），让错误提示能自己说明白。
                     val shape = ProviderHttpSupport.describeJsonShape(raw)
                     Logger.w(
                         "OpenAIProvider",
-                        "completeText Devolver texto vacío(Ninguno content/reasoning_content/tool_calls), formulario de respuesta: $shape",
+                        "completeText 返回空文本(无 content/reasoning_content/tool_calls)，响应形态: $shape",
                     )
                     throw ErrorCode.INVALID_RESPONSE.toProviderException(
                         "empty_text (upstream returned no content; response shape: $shape)",
@@ -1367,9 +1373,9 @@ class OpenAIProvider(
                     "completeText OK: text=${text.length} chars, " +
                         "reasoning=${reasoningContent.length} chars, toolCalls=${toolCalls?.size ?: 0}",
                 )
-                // v2.x(Problema n.º 5 de comentarios de los usuarios): sospechoso"fuga de protocolo"Diagnóstico —— Upstream degrada la respuesta de tool_calls a
-                // Cuando el texto sin formato (finishReason no tool_calls y toolCalls está vacío),text Aparecerá un fragmento de protocolo.
-                // Solo los registros se registran sin intervención (para evitar dañar accidentalmente conversaciones normales sobre JSON), lo que permite a los usuarios localizar los registros después de exportarlos.
+                // v2.x（用户反馈 issue #5）: 疑似"协议泄漏"诊断 —— 上游把 tool_calls 响应降级成
+                // 纯文本时（finishReason 非 tool_calls 且 toolCalls 为空），text 里会出现协议片段。
+                // 只记日志不干预（避免误伤正常讨论 JSON 的对话），供用户导出日志后定位。
                 val hasNoToolCalls = toolCalls.isNullOrEmpty()
                 val mentionsToolCalls = text.contains("tool_calls")
                 val mentionsFunctionOrArgs = text.contains("""\"function\"""") || text.contains("""\"arguments\"""")
@@ -1378,8 +1384,8 @@ class OpenAIProvider(
                     val leakPreview = text.take(200)
                     Logger.w(
                         "OpenAIProvider",
-                        "Se filtra presunto acuerdo: finishReason=${choice.finishReason} " +
-                            "Pero el texto contiene un fragmento del protocolo tool_calls.(${text.length} chars), primeras 200 palabras: $leakPreview",
+                        "疑似协议泄漏: finishReason=${choice.finishReason} " +
+                            "但 text 含 tool_calls 协议片段(${text.length} chars)，前 200 字: $leakPreview",
                     )
                 }
                 ChatCompletion(
@@ -1397,9 +1403,9 @@ class OpenAIProvider(
             if (request.abortSignal.aborted) {
                 Logger.d("OpenAIProvider", "completeText aborted by user")
             } else if (t is OpenAIHttpException) {
-                // L-OAI11: Errores HTTP registrados,No repetido log
+                // L-OAI11: 已记录的 HTTP 错误,不重复 log
             } else {
-                Logger.e("OpenAIProvider", "completeText anormal", t)
+                Logger.e("OpenAIProvider", "completeText 异常", t)
             }
             throw t
         } finally {
@@ -1411,24 +1417,24 @@ class OpenAIProvider(
     private fun baseUrl(): String = config.resolvedBaseUrl()
 
     /**
-     * v2.6.1: baseUrl Si apuntar al backend Codex de la suscripción ChatGPT.
+     * v2.6.1: baseUrl 是否指向 ChatGPT 订阅的 Codex 后端。
      */
     private fun isCodexUrl(url: String): Boolean = url.contains("chatgpt.com/backend-api/codex", ignoreCase = true)
 
     /**
-     * v2.6.1: Si se debe procesar de acuerdo con el protocolo backend del Codex.
+     * v2.6.1: 是否按 Codex 后端协议处理。
      *
-     * Codex Por defecto, la sección del códice se coloca en baseUrl(`https://chatgpt.com/backend-api/codex`),
-     * responsesPath mantener predeterminado `/responses`;Algunos usuarios también escriben la ruta completa en ResponsesPath.
-     * Cualquier acierto se procesa según el protocolo del Codex.,De lo contrario, la solicitud no estará disponible. store=false / stream=true Y estaba aguas arriba 400.
+     * Codex 预设把 codex 段放在 baseUrl(`https://chatgpt.com/backend-api/codex`),
+     * responsesPath 保持默认 `/responses`;也有用户把完整路径写进 responsesPath。
+     * 任一命中即按 Codex 协议处理,否则请求会缺 store=false / stream=true 而被上游 400。
      */
     private fun isCodexBackend(): Boolean = openAIConfig.responsesPath.contains("codex", ignoreCase = true) || isCodexUrl(baseUrl())
 
     /**
-     * v2.6.1: Analizar la respuesta de la lista de modelos,Compatible con el backend del Codex `{models:[{slug}]}` forma.
+     * v2.6.1: 解析模型列表响应,兼容 Codex 后端的 `{models:[{slug}]}` 形态。
      *
-     * Codex /codex/models Regresar `{"models":[{"slug":"gpt-5.4"}]}`,
-     * con estándares OpenAI `{data:[{id}]}` diferente;Aquí están unificados como [OpenAIModelInfo].
+     * Codex /codex/models 返回 `{"models":[{"slug":"gpt-5.4"}]}`,
+     * 与标准 OpenAI `{data:[{id}]}` 不同;此处统一归一为 [OpenAIModelInfo]。
      */
     private fun parseModelList(raw: String): List<OpenAIModelInfo> {
         val root = runCatching { AppJson.parseToJsonElement(raw) }.getOrNull() as? JsonObject
@@ -1468,43 +1474,43 @@ class OpenAIProvider(
     }
 
     /**
-     * Extraiga la lista de modelos ascendentes.
+     * 拉取上游模型列表。
      *
-     * GET {resolvedBaseUrl()}/models(resolvedBaseUrl Incluido /v1),
-     * Bearer Autenticación,analizar data[].id. La identificación/nombre de cada modelo devuelto es el upstream id,
-     * contextWindow usar [ModelContextWindowRegistry] Ten todo en cuenta(El upstream no devuelve este campo).
+     * GET {resolvedBaseUrl()}/models(resolvedBaseUrl 已含 /v1),
+     * Bearer 鉴权,解析 data[].id。返回的每个 Model 的 id/name 均为上游 id,
+     * contextWindow 用 [ModelContextWindowRegistry] 兜底(上游不返回该字段)。
      *
-     * [config] Los parámetros formales permiten pasar valores editados no guardados(Si se cambia temporalmente apiKey/baseUrl).
+     * [config] 形参允许传入未保存的编辑值(如临时改的 apiKey/baseUrl)。
      *
-     * v1.80 (H-OAI2): Captar explícitamente CancellationException y call.cancel(),
-     *   De lo contrario, OkHttp Call continuará bloqueando el hilo IO durante más tiempo. 300s(readTimeout),Como resultado, el hilo todavía está ocupado después de que se cancela la rutina.
+     * v1.80 (H-OAI2): 显式 catch CancellationException 并 call.cancel(),
+     *   否则 OkHttp Call 会继续阻塞 IO 线程最长 300s(readTimeout),导致协程取消后线程仍被占用。
      *
-     * v1.132 Optimizar:
-     *  - OpenRouter: analizar context_length / max_completion_tokens / pricing,
-     *    Regístrese dinámicamente en [ModelContextWindowRegistry](Tres capas de superposición de metainformación);
-     *    y agregue el encabezado de atribución HTTP-Referer/X-Title
-     *  - Filtrar entradas de excepción:id Pseudo modelo igual a la identificación del propio proveedor(Filtrar pseudomodelos de DeepSeek)
-     *  - Eliminar duplicados por id,mantener el primero
-     *  - Ordenar alfabéticamente por identificación,Fácil de encontrar para los usuarios
-     *  - Utilice tiempos de espera cortos independientes client(30s connect + 30s read),Evite el retraso de listModels y ocupe recursos de conexión de chat largos
-     *  - 401/403 No fallback,Lanzar un error directamente(Los problemas de credenciales no están cubiertos,Manejar por nivel de error)
+     * v1.132 优化:
+     *  - OpenRouter: 解析 context_length / max_completion_tokens / pricing,
+     *    动态注册到 [ModelContextWindowRegistry](三层元信息叠加);
+     *    并附加 HTTP-Referer / X-Title 归因头
+     *  - 过滤异常条目:id 等于 provider 自身 id 的伪模型(过滤 DeepSeek 伪模型)
+     *  - 按 id 去重,保留首个
+     *  - 按 id 字母序排序,便于用户查找
+     *  - 使用独立短超时 client(30s connect + 30s read),避免 listModels 卡顿占用 chat 长连接资源
+     *  - 401/403 不 fallback,直接抛错(凭证问题不掩盖,按错误分级处理)
      *
      * v1.0.8 (7.3 / 7.5):
-     *  - Capacidades del servidor resolución de nombres de múltiples campos:apoyo supports_tool_calls / function_calling /
-     *    supports_vision / image_input / multimodal / supports_streaming / stream etc. nombre del campo,
-     *    Cubrir las diferencias de nombres para diferentes servicios de tránsito/agregación.
-     *  - fetchModels Registro de clasificación de errores en cascada:Registrado en listModels entrada/capa de acierto/capa de error Logger,
-     *    Fácil de solucionar problemas"¿Por qué no obtuve el modelo?".
-     *  - 401/403 Lanzar un error directamente(No fallback);404 / También se producen errores de red, pero las etiquetas de clasificación son diferentes.,
-     *    por la persona que llama(ProviderSection.fetchModels)Utilice URL de múltiples estrategias para completar la solución.
+     *  - 服务端 capabilities 多字段名解析:支持 supports_tool_calls / function_calling /
+     *    supports_vision / image_input / multimodal / supports_streaming / stream 等字段名,
+     *    覆盖不同中转站 / 聚合服务的命名差异。
+     *  - fetchModels 瀑布流错误分级日志:在 listModels 入口 / 命中层 / 失败层均记录 Logger,
+     *    便于排查"为什么没拉到模型"。
+     *  - 401/403 直接抛错(不 fallback);404 / 网络错误也抛错但分类标签不同,
+     *    由调用方(ProviderSection.fetchModels)走 URL 多策略补全兜底。
      */
     override suspend fun listModels(config: ProviderConfig): List<Model> = withContext(Dispatchers.IO) {
         val resolvedBaseUrl = config.resolvedBaseUrl()
-        // v1.0.18: modelo libre provider(SiliconFlow + El usuario no ha completado key)Sin ajuste remoto /models,
-        //   Volver directamente a la lista de modelos gratuitos preestablecidos(Alineación FreeModelConfig.FREE_MODEL_IDS).
-        //   Evite el retorno remoto debido a que no hay una llamada apiKey 401 / 403,Hazlo visible para los usuarios en la página del proveedor de SiliconFlow.
-        //   GLM-4-9B / Qwen3-8B precargado listo para usar. Después de que el usuario completa la clave, isFreeProvider regresa false,
-        //   Utilice la lógica de extracción remota original para desbloquear todos los modelos.
+        // v1.0.18: 免费模型 provider(SiliconFlow + 用户未填 key)不调远程 /models,
+        //   直接返回预设的免费模型清单(对齐 FreeModelConfig.FREE_MODEL_IDS)。
+        //   避免因无 apiKey 调远程返回 401 / 403,让用户在 SiliconFlow 供应商页面看到
+        //   预填的 GLM-4-9B / Qwen3-8B 即可用。用户填 key 后 isFreeProvider 返回 false,
+        //   走原远程拉取逻辑解锁全部模型。
         if (FreeModelConfig.isFreeProvider(
                 config.id,
                 resolvedBaseUrl,
@@ -1512,53 +1518,53 @@ class OpenAIProvider(
                 config.hiddenFromSettings,
             )
         ) {
-            Logger.i("OpenAIProvider", "listModels: SiliconFlow modelo libre provider(No completado key),Volver al valor predeterminado ${config.models.size} modelos")
+            Logger.i("OpenAIProvider", "listModels: SiliconFlow 免费模型 provider(未填 key),返回预设 ${config.models.size} 个模型")
             return@withContext config.models
         }
         val url = resolvedBaseUrl.trimEnd('/') + "/models"
-        // v2.6.1: Codex El punto final del directorio de modelos del backend tiene el parámetro de consulta requerido client_version.
+        // v2.6.1: Codex 后端的模型目录端点带必填查询参数 client_version。
         val isCodexModels = isCodexUrl(resolvedBaseUrl)
         val targetUrl = if (isCodexModels) "$url?client_version=$CODEX_CLIENT_VERSION" else url
-        // P2-3: Identificando los servicios de Ollama(baseUrl host Contiene "ollama" o puerto 11434),
-        //   Se llama a OllamaVisionInferrer para cada modelo en el momento de inferir soportesVision/supportsTools.
+        // P2-3: 识别 Ollama 服务(baseUrl host 含 "ollama" 或端口 11434),
+        //   命中时对每个模型调用 OllamaVisionInferrer 推断 supportsVision/supportsTools。
         val isOllama = isOllamaEndpoint(resolvedBaseUrl)
-        // v1.0.8 (7.5): Registro de entrada — Registrar URL de destino/Id. de proveedor/si ollama,
-        //   Es conveniente rastrear desde el registro qué nivel ha alcanzado la cascada de fetchModels.
+        // v1.0.8 (7.5): 入口日志 — 记录目标 URL / providerId / 是否 ollama,
+        //   方便从日志中追溯 fetchModels 瀑布流走到了哪一层。
         Logger.i("OpenAIProvider", "listModels: GET ${sanitizeUrl(url)}" + if (isOllama) " (ollama)" else "")
 
-        // v1.0.8 (7.5): Verificación previa de credenciales — allowMissingApiKey=false Cuando apiKey está vacía, se genera un error directamente,
-        //   Evite desperdiciar un viaje de ida y vuelta a la red enviando solicitudes 401 sin sentido.
+        // v1.0.8 (7.5): 凭证预检 — allowMissingApiKey=false 时 apiKey 为空直接抛错,
+        //   避免发无意义的 401 请求浪费一次网络往返。
         if (!config.allowMissingApiKey && config.apiKey.isBlank()) {
-            Logger.w("OpenAIProvider", "listModels: apiKey esta vacio,omitir solicitud(providerId=${config.id})")
+            Logger.w("OpenAIProvider", "listModels: apiKey 为空,跳过请求(providerId=${config.id})")
             throw OpenAIHttpException(401, ErrorCode.INVALID_RESPONSE.toMessage("model_list_missing_key", 401))
         }
 
         val builder = Request.Builder()
             .url(targetUrl)
-            // B-27: Cuando hay varias claves, config.apiKey contiene comas/nueva línea,Escribir directamente contaminará el encabezado de Autorización provocando un 401.
-            //     Usar en su lugar effectiveApiKey() Tome un solo efectivo key(Mismo patrón que la solicitud de chat/inserción).
+            // B-27: 多 key 时 config.apiKey 含逗号/换行,直接写入会污染 Authorization 头导致 401。
+            //     改用 effectiveApiKey() 取单个有效 key(与 chat/embedding 请求同模式)。
             .header("Authorization", "Bearer ${effectiveApiKey()}")
             .header("Accept", "application/json")
             .apply { requestHeadersFor(null).forEach { (k, v) -> header(k, v) } }
-        // v1.132: OpenRouter encabezado de atribución(OpenRouter Recomendación oficial)
-        // Nombre de la aplicación del informe + fuente,Cumple con las reglas de clasificación de OpenRouter,Evite también ser identificado como tráfico anónimo
+        // v1.132: OpenRouter 归因头(OpenRouter 官方推荐)
+        // 上报应用名 + 来源,既符合 OpenRouter 排名榜规则,也避免被识别为匿名流量
         if (url.contains("openrouter.ai")) {
             builder.header("HTTP-Referer", "https://github.com/zer0/muse")
                 .header("X-Title", "Muse")
         }
         val httpRequest = builder.get().build()
-        // v1.132: listModels Utilice tiempos de espera cortos independientes client(30s),Desconectado del chat por mucho tiempo de espera
+        // v1.132: listModels 使用独立短超时 client(30s),与 chat 长超时分离
         val listClient = httpClient.newBuilder()
             .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
             .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
             .callTimeout(45, java.util.concurrent.TimeUnit.SECONDS)
             .build()
-        // H-OAI2: Imitación completaModo texto,explícito catch CancellationException + call.cancel()
+        // H-OAI2: 仿 completeText 模式,显式 catch CancellationException + call.cancel()
         val call = listClient.newCall(httpRequest)
         try {
             call.execute().use { resp ->
                 if (!resp.isSuccessful) {
-                    // L-OAI1: Utilice readBodySafely en su lugar runCatching
+                    // L-OAI1: 用 readBodySafely 替代 runCatching
                     val contentType = resp.header("Content-Type").orEmpty()
                     val errText = ProviderHttpSupport.readBodySafely(resp)
                     val htmlHint = openAiHtmlEndpointHint(contentType, errText)
@@ -1566,19 +1572,19 @@ class OpenAIProvider(
                         ErrorCode.INVALID_RESPONSE.toMessage("model_list_fetch", resp.code) +
                             ProviderError.safeErrorDetail(errText)?.let { ": $it" }.orEmpty()
                         )
-                    // v1.0.8 (7.5): Registro de clasificación de errores — 401/403 Los problemas de autenticación frente a los problemas de red 404/5xx se registran por separado
+                    // v1.0.8 (7.5): 错误分级日志 — 401/403 鉴权问题 vs 404/5xx 网络问题分别记录
                     val category = when (resp.code) {
                         401, 403 -> "auth_failed"
                         404 -> "endpoint_not_found"
                         in 500..599 -> "server_error"
                         else -> "http_error"
                     }
-                    Logger.w("OpenAIProvider", "listModels falló [$category] HTTP ${resp.code}: $errMsg")
-                    // L-OAI16: Utilice OpenAIHttpException en lugar de genérico RuntimeException,
-                    //   Mantener el código HTTP como información de tipo(Igual que texto completo),Es conveniente que la capa superior distinga la fuente de errores.
+                    Logger.w("OpenAIProvider", "listModels 失败 [$category] HTTP ${resp.code}: $errMsg")
+                    // L-OAI16: 用 OpenAIHttpException 替代通用 RuntimeException,
+                    //   保留 HTTP code 作为类型信息(与 completeText 一致),便于上层区分错误来源。
                     throw OpenAIHttpException(resp.code, errMsg)
                 }
-                // M-OAI6: body seguridad vacía
+                // M-OAI6: body 空安全
                 val contentType = resp.header("Content-Type").orEmpty()
                 val raw = resp.body?.string()
                     ?: throw ErrorCode.INVALID_RESPONSE.toProviderException("model_list_empty", resp.code)
@@ -1586,7 +1592,7 @@ class OpenAIProvider(
                     throw OpenAIHttpException(resp.code, hint)
                 }
                 val models = try {
-                    // v2.6.1: Compatible con el backend del Codex {models:[{slug}]} forma.
+                    // v2.6.1: 兼容 Codex 后端的 {models:[{slug}]} 形态。
                     parseModelList(raw)
                 } catch (error: kotlinx.serialization.SerializationException) {
                     throw ProviderException(
@@ -1597,29 +1603,29 @@ class OpenAIProvider(
                         ),
                     )
                 }
-                // v1.0.8 (7.5): registro de éxito — Registre el número de modelos devueltos por el upstream,Fácil de solucionar problemas"Devolver 0 modelos"escena
-                Logger.i("OpenAIProvider", "listModels éxito: Regresar aguas arriba ${models.size} modelos")
-                // v1.132: Deduplicación + filtrado + clasificación + enriquecimiento de metainformación
+                // v1.0.8 (7.5): 成功日志 — 记录上游返回的模型数量,便于排查"返回 0 个模型"场景
+                Logger.i("OpenAIProvider", "listModels 成功: 上游返回 ${models.size} 个模型")
+                // v1.132: 去重 + 过滤 + 排序 + 元信息丰富
                 val seen = HashSet<String>()
                 models.asSequence()
-                    // Filtrar identificadores vacíos y modelos falsos(id == provider id,Por ejemplo, la API de búsqueda profunda ocasionalmente devuelve "deepseek")
+                    // 过滤空 id 与伪模型(id == provider id,如 deepseek API 偶发返回 "deepseek")
                     .filter { it.id.isNotBlank() && it.id != config.id }
-                    // Eliminar duplicados por id,mantener el primero(Evitar que upstream devuelva duplicados)
+                    // 按 id 去重,保留首个(防止上游返回重复)
                     .filter { seen.add(it.id) }
                     .map { m ->
-                        // v1.132: OpenRouter/Together El context_length se transmite y registra de forma transparente en la tabla global.
-                        // v1.0.8 Corrección:context_window Semántica diferente de max_completion_tokens,
-                        // Este último sólo se utiliza para maxOutputTokens,Ya no se utiliza como ventana de contexto.
+                        // v1.132: OpenRouter/Together 的 context_length 透传并注册到全局表
+                        // v1.0.8 修正:context_window 与 max_completion_tokens 语义不同,
+                        // 后者仅用于 maxOutputTokens,不再作为 contextWindow 兜底。
                         val contextLength = m.context_length
                         if (contextLength != null && contextLength > 0) {
                             ModelContextWindowRegistry.register(m.id, contextLength)
                         }
-                        // v1.0.8: Servidor de análisis unificado capabilities + modalities,Construir modalidades de entrada/salida.
-                        // prioridad: Declaración explícita del lado del servidor > Ollama inferencia > Solo texto predeterminado.
-                        // v1.0.8 (7.3): Análisis extendido de nombres de campos múltiples — Diferentes estaciones de transferencia utilizan diferentes nombres de campos para declarar capacidades.,
-                        //  Aquí se incluyen todos los alias posibles en la coincidencia.,Mejorar la compatibilidad.
-                        //  Por ejemplo, OpenRouter utiliza "tools",Uso de transferencia parcial "supports_tool_calls",
-                        //  Anthropic Para capa de compatibilidad "function_calling",Ollama usar "tool_call" Esperar.
+                        // v1.0.8: 统一解析服务端 capabilities + modalities,构造 input/outputModalities。
+                        // 优先级: 服务端显式声明 > Ollama 推断 > 默认 text-only。
+                        // v1.0.8 (7.3): 扩展多字段名解析 — 不同中转站用不同字段名声明能力,
+                        //  这里把所有可能的别名都纳入匹配,提升兼容性。
+                        //  例如 OpenRouter 用 "tools",部分中转用 "supports_tool_calls",
+                        //  Anthropic 兼容层用 "function_calling",Ollama 用 "tool_call" 等。
                         val capabilitySet = m.capabilities
                             ?.map { it.trim().lowercase() }
                             ?.toSet()
@@ -1629,7 +1635,7 @@ class OpenAIProvider(
                             ?.toSet()
                             ?: emptySet()
 
-                        // v1.0.8 (7.3): capacidad de entrada visual — Variaciones de nombre de campo admitidas
+                        // v1.0.8 (7.3): 视觉输入能力 — 支持的字段名变体
                         //  vision / image / image_input / supports_vision / multimodal / image_input_enabled
                         val serverVision = capabilitySet.contains("vision") ||
                             capabilitySet.contains("image") ||
@@ -1637,26 +1643,26 @@ class OpenAIProvider(
                             capabilitySet.contains("supports_vision") ||
                             capabilitySet.contains("multimodal") ||
                             modalitySet.contains("image")
-                        // v1.0.8 (7.3): entrada de audio — audio / audio_input / supports_audio
+                        // v1.0.8 (7.3): 音频输入 — audio / audio_input / supports_audio
                         val serverAudio = capabilitySet.contains("audio") ||
                             capabilitySet.contains("audio_input") ||
                             capabilitySet.contains("supports_audio") ||
                             modalitySet.contains("audio")
-                        // v1.0.8 (7.3): entrada de vídeo — video_input / video / supports_video_input
+                        // v1.0.8 (7.3): 视频输入 — video_input / video / supports_video_input
                         val serverVideoIn = capabilitySet.contains("video_input") ||
                             capabilitySet.contains("video") ||
                             capabilitySet.contains("supports_video_input") ||
                             modalitySet.contains("video")
-                        // salida de vídeo — video_output / video_generation / supports_video_output
+                        // 视频输出 — video_output / video_generation / supports_video_output
                         val serverVideoOut = capabilitySet.contains("video_output") ||
                             capabilitySet.contains("video_generation") ||
                             capabilitySet.contains("supports_video_output")
-                        // Salida de imagen — image_generation / image_output / dall-e / supports_image_output
+                        // 图片输出 — image_generation / image_output / dall-e / supports_image_output
                         val serverImageOut = capabilitySet.contains("image_generation") ||
                             capabilitySet.contains("image_output") ||
                             capabilitySet.contains("dall-e") ||
                             capabilitySet.contains("supports_image_output")
-                        // v1.0.8 (7.3): llamada de herramienta — Variaciones de nombre de campo admitidas
+                        // v1.0.8 (7.3): 工具调用 — 支持的字段名变体
                         //  tools / tool_call / tool_calls / function_call / function_calling /
                         //  supports_tool_calls / supports_tools / function_calling_enabled
                         val serverTools = capabilitySet.contains("tools") ||
@@ -1667,13 +1673,13 @@ class OpenAIProvider(
                             capabilitySet.contains("supports_tool_calls") ||
                             capabilitySet.contains("supports_tools") ||
                             capabilitySet.contains("function_calling_enabled")
-                        // v1.0.8 (7.3): capacidad de razonamiento — reasoning / reasoning_ability / supports_reasoning
+                        // v1.0.8 (7.3): 推理能力 — reasoning / reasoning_ability / supports_reasoning
                         val serverReasoning = capabilitySet.contains("reasoning") ||
                             capabilitySet.contains("reasoning_ability") ||
                             capabilitySet.contains("supports_reasoning")
-                        // v1.0.8 (7.3): Nombre del campo de salida de streaming(streaming / stream / supports_streaming)
-                        //  Actualmente solo aparece en los comentarios.,no afecta Model.supportsStreaming(Predeterminado true).
-                        //  Para deshabilitar la transmisión según la declaración ascendente,Se puede escribir después de este juicio. Model.supportsStreaming = false.
+                        // v1.0.8 (7.3): 流式输出字段名(streaming / stream / supports_streaming)
+                        //  目前仅在注释中列出,不影响 Model.supportsStreaming(默认 true)。
+                        //  如需根据上游声明禁用流式,可在此判断后写入 Model.supportsStreaming = false。
 
                         val inferredVision = isOllama && !serverVision &&
                             OllamaVisionInferrer.inferSupportsVision(m.id)
@@ -1701,30 +1707,30 @@ class OpenAIProvider(
                             if (supportsVideoOut) add("video")
                         }
 
-                        // Reparación de auditoría (Comentarios de los usuarios): DeepSeek Normalización oficial del nombre del modelo API — listModels
-                        // Regreso con fecha/Variaciones de casos(Como por ejemplo DeepSeek-V4-Flash-0731),UI Después de guardar la identificación
-                        // 400 cuando se solicite. Normalizado aquí al nombre canónico aceptado por la API oficial.,Haga que la interfaz de usuario sea coherente con las solicitudes.
+                        // 审计修复 (用户反馈): DeepSeek 官方 API 模型名归一化 — listModels
+                        // 返回带日期/大小写变体(如 DeepSeek-V4-Flash-0731),UI 保存该 id 后
+                        // 请求时 400。此处归一化到官方 API 接受的规范名,让 UI 与请求都一致。
                         val effectiveId = normalizeDeepSeekModelId(m.id, resolvedBaseUrl)
                         val rawModel = Model(
                             id = effectiveId,
                             name = effectiveId,
                             providerId = config.id,
-                            // Priorizar aguas arriba context_length,A continuación revisa el formulario de inscripción.(El que acaba de registrar será afectado.)
+                            // 优先用上游 context_length,其次查注册表(刚 register 的会被命中)
                             contextWindow = contextLength ?: ModelContextWindowRegistry.lookup(effectiveId),
-                            // v1.132: Pase de forma transparente max_completion_tokens como maxOutputTokens
+                            // v1.132: 透传 max_completion_tokens 作为 maxOutputTokens
                             maxOutputTokens = m.max_completion_tokens ?: m.top_provider?.max_completion_tokens,
-                            // v1.0.8: Visión/vídeo/Herramientas/capacidad de razonamiento(Prioridad del servidor,Inferir el resultado final)
+                            // v1.0.8: 视觉/视频/工具/推理能力(服务端优先,推断兜底)
                             supportsVision = supportsVision,
                             supportsVideo = supportsVideoOut,
                             abilities = abilities,
                             inputModalities = inputModalities,
                             outputModalities = outputModalities,
                         )
-                        // v1.0.8: Utilice el registro para completar la habilidad nuevamente./modal,Cubrir escenarios no declarados en el lado del servidor
-                        //  (La detección de etiquetado incorrecto en la estación de transferencia interna se realizará internamente,Ver detalles ModelRegistry.enhanceModel)
+                        // v1.0.8: 用 registry 再补全一次能力/模态,覆盖服务端未声明的场景
+                        //  (内部会做中转站误标检测,详见 ModelRegistry.enhanceModel)
                         ModelRegistry.enhanceModel(rawModel)
                     }
-                    // Ordenar alfabéticamente por identificación,Fácil de encontrar para los usuarios
+                    // 按 id 字母序排序,便于用户查找
                     .sortedBy { it.id.lowercase() }
                     .toList()
             }
@@ -1732,20 +1738,20 @@ class OpenAIProvider(
             call.cancel()
             throw e
         } catch (e: java.io.IOException) {
-            // v1.0.8 (7.5): Registro de errores de red — Registro de tipos de IOException específicos,Fácil de solucionar problemas de DNS/TLS/tiempo de espera
-            Logger.w("OpenAIProvider", "listModels error de red: ${e.javaClass.simpleName} - ${e.message}")
+            // v1.0.8 (7.5): 网络错误日志 — 记录具体 IOException 类型,便于排查 DNS / TLS / 超时
+            Logger.w("OpenAIProvider", "listModels 网络错误: ${e.javaClass.simpleName} - ${e.message}")
             throw e
         }
     }
 
     /**
-     * P2-3: Determine si baseUrl es un servicio de Ollama.
+     * P2-3: 判断 baseUrl 是否为 Ollama 服务。
      *
-     * Ollama Puerto predeterminado 11434,Los usuarios también pueden utilizar nombres de host personalizados.(Como por ejemplo "ollama.local"),
-     * o incluirlo explícitamente en baseUrl "ollama" logo. Golpea a cualquiera y presiona Ollama para procesar.,
-     * gatillo [OllamaVisionInferrer] Inferencia.
+     * Ollama 默认端口 11434,用户也可能用自定义主机名(如 "ollama.local"),
+     * 或在 baseUrl 中显式包含 "ollama" 标识。命中任一即按 Ollama 处理,
+     * 触发 [OllamaVisionInferrer] 推断。
      *
-     * Nota: Solo para rama de inferencia de capacidad,No afecta la construcción de solicitudes ni la compatibilidad del protocolo.
+     * 注意: 仅用于能力推断分支,不影响请求构造与协议兼容性。
      */
     private fun isOllamaEndpoint(baseUrl: String): Boolean {
         val lower = baseUrl.lowercase()
@@ -1753,9 +1759,9 @@ class OpenAIProvider(
     }
 
     /**
-     * B3-05: Representa el cuerpo de la solicitud según la configuración personalizada.
-     *  - requestTemplate Reemplazar cuando no esté vacío {{model}} / {{messages}} / {{stream}} / {{prompt}} marcador de posición
-     *  - customBody Fusionar con el nivel superior del JSON final cuando no esté vacío(Tanto la plantilla como el cuerpo de solicitud predeterminado son válidos.)
+     * B3-05: 按 Custom 配置渲染请求体。
+     *  - requestTemplate 非空时替换 {{model}} / {{messages}} / {{stream}} / {{prompt}} 等占位符
+     *  - customBody 非空时合并到最终 JSON 顶层(模板与默认请求体均生效)
      */
     private fun renderCustomRequestBody(defaultBody: String, request: ChatRequest, effectiveModel: String, stream: Boolean): String {
         val template = customConfig?.requestTemplate?.takeIf { it.isNotBlank() }
@@ -1782,7 +1788,7 @@ class OpenAIProvider(
         return mergeCustomBody(body)
     }
 
-    /** B3-05: Fusione los campos de nivel superior de customBody en el JSON de solicitud final. */
+    /** B3-05: 把 customBody 的顶层字段合并进最终请求 JSON。 */
     private fun mergeCustomBody(body: String): String {
         val extras = customBody
         if (extras.isEmpty()) return body
@@ -1792,7 +1798,7 @@ class OpenAIProvider(
         return AppJson.encodeToString(JsonObject.serializer(), JsonObject(obj))
     }
 
-    /** B3-05: Convierta los elementos JSON extraídos en texto legible(primitive / array / object Campos de texto comunes). */
+    /** B3-05: 把提取到的 JSON 元素转成可读文本(primitive / array / object 常见文本字段)。 */
     private fun extractTextFromElement(element: JsonElement?): String? {
         return when (element) {
             null -> null
@@ -1812,19 +1818,19 @@ class OpenAIProvider(
     }
 
     private fun buildRequestBody(request: ChatRequest, stream: Boolean = true): String {
-        // v1.0.7: UTILITY Patrón de pensamiento forzado
-        //  utility camino(memory Tareas de texto breves en segundo plano, como resumen/extracción de hechos/asistencia visual, etc.)No hay necesidad de pensar en la cadena.,
-        //  fuerza effectiveReasoningLevel = OFF Para guardar token + reducir el retraso.
+        // v1.0.7: UTILITY 模式强制关思考
+        //  utility 路径(memory 摘要 / fact 抽取 / 视觉辅助等后台短文本任务)无需思考链,
+        //  强制 effectiveReasoningLevel = OFF 以省 token + 降延迟。
         val effectiveReasoningLevel = if (request.mode == ChatRequestMode.UTILITY) {
             io.zer0.ai.core.ReasoningLevel.OFF
         } else {
             request.reasoningLevel
         }
-        // v1.138: Pensando en la optimización de niveles — Evite pensar demasiado en modelos de problemas simples.
-        // - AUTO: No enviado reasoning_effort(Deja que el servidor decida por sí mismo)
-        // - OFF: Solo oficial de OpenAI API(api.openai.com)enviar "minimal"(o1/o3 Serie de inferencias mínimas);
-        //        Las estaciones de transferencia de terceros no realizan entregas("minimal" es un valor propietario de OpenAI,Si la estación de transferencia no lo reconoce, regresará 400)
-        // - LOW/MEDIUM/HIGH/XHIGH: Enviar correspondencia explícitamente effort
+        // v1.138: 思考等级优化 — 避免简单问题模型过度思考。
+        // - AUTO: 不发 reasoning_effort(让服务端自行决定)
+        // - OFF: 仅 OpenAI 官方 API(api.openai.com)发 "minimal"(o1/o3 系列最小推理);
+        //        第三方中转站不发("minimal" 是 OpenAI 专有值,中转站不识别会返回 400)
+        // - LOW/MEDIUM/HIGH/XHIGH: 显式发送对应 effort
         val isOpenAIOfficial = baseUrl().contains("api.openai.com")
         val effort = when (effectiveReasoningLevel) {
             io.zer0.ai.core.ReasoningLevel.AUTO -> null
@@ -1832,21 +1838,21 @@ class OpenAIProvider(
                 if (request.model.supportsReasoning() && isOpenAIOfficial) "minimal" else null
             else -> effectiveReasoningLevel.effort
         }
-        // compat derivado:prensa type + baseUrl + modelId Tres niveles de emparejamiento,Decida si inyectar razonamiento_effort/herramientas.
-        // usar effectiveModelId(despojado stripModelPrefix)como modelId,Refleja el modelo realmente enviado a la API.
-        // H-COMPAT1: Agregue juicio solo en los puntos de inyección de parámetros más obvios,No refactorice la lógica del cuerpo de construcción de la solicitud.
+        // compat 派生:按 type + baseUrl + modelId 三层匹配,决定是否注入 reasoning_effort / tools。
+        // 用 effectiveModelId(已剥离 stripModelPrefix)作为 modelId,反映真正发给 API 的 model。
+        // H-COMPAT1: 仅在最明显的参数注入点加判断,不重构请求构造主体逻辑。
         val effectiveModel = effectiveModelId(request.model.id)
         val compat: ProviderCompat = config.resolvedCompat(effectiveModel)
-        // v1.0.5: Provider Seguridad de las exportaciones — Primero realice una limpieza general independiente del proveedor en la lista UIMessage.
-        //  (stripOrphanToolMessages Eliminar mensaje de HERRAMIENTA huérfana / stripNativeMediaAttachmentMarkers
-        //   Limpiar etiquetas de imágenes redundantes),Luego haz la traducción del protocolo. Normalización de carga útil unificada.
+        // v1.0.5: Provider 出口兜底 — 先对 UIMessage 列表做 Provider 无关的通用清理
+        //  (stripOrphanToolMessages 删孤儿 TOOL 消息 / stripNativeMediaAttachmentMarkers
+        //   清理冗余图片标记),再做协议翻译。统一 payload 规范化。
         val normalizedMessages = ProviderPayloadNormalizer.normalizeMessages(
             request.messages,
             request.model,
         )
-        // v1.0.7: Provider Prompt Patches — Inyectar un parche de aviso del sistema específico del proveedor
-        //  (Actualmente, solo contrato de salida del modelo de inferencia de DeepSeek)
-        //  UTILITY modo effectiveReasoningLevel=OFF,ProviderPromptPatches La inyección se omitirá internamente
+        // v1.0.7: Provider Prompt Patches — 注入厂商专属 system prompt 补丁
+        //  (当前仅 DeepSeek 推理模型输出契约)
+        //  UTILITY 模式下 effectiveReasoningLevel=OFF,ProviderPromptPatches 内部会跳过注入
         val promptPatches = ProviderPromptPatches.getProviderPromptPatches(
             model = request.model,
             baseUrl = baseUrl(),
@@ -1854,9 +1860,9 @@ class OpenAIProvider(
             reasoningLevel = effectiveReasoningLevel,
         )
         val messagesWithPatches = injectSystemPromptPatches(normalizedMessages, promptPatches)
-        // Primero complete la limpieza del esquema y luego decida la elección de herramienta. Anteriormente, esto se juzgaba según request.tools,
-        // pero ilegal/El esquema incompatible puede ser toOpenAISafely() filtrar todo,finalmente emitido
-        // tool_choice=required Solicitudes donde faltan herramientas,Resultando en un 400 directo para la solicitud de MCP.
+        // 先完成 schema 清洗再决定 tool_choice。此前这里根据 request.tools 判断,
+        // 但非法/不兼容 schema 可能被 toOpenAISafely() 全部过滤,最终发出
+        // tool_choice=required 且 tools 缺失的请求,导致 MCP 请求直接 400。
         val openAiTools = if (compat.supportsToolCalling) {
             request.tools?.mapNotNull { it.toOpenAISafely() }
                 ?.distinctBy { it.function.name }
@@ -1869,29 +1875,29 @@ class OpenAIProvider(
             messages = messagesWithPatches.map { it.toOpenAI(request.model, compat, carriesTools = !openAiTools.isNullOrEmpty()) },
             temperature = request.temperature,
             top_p = request.topP,
-            // v1.0.2 Arreglar HTTP 400: verificación del rango max_tokens,0/Los valores negativos se consideran no establecidos.
-            // Verificación estricta de algunas estaciones de transferencia compatibles con OpenAI max_tokens >= 1,Enviar 0 directamente devolverá 400 invalid_request_error.
-            // null Será ignorado por kotlinx.serialization,No escriba el cuerpo de la solicitud,Deje que upstream use el valor predeterminado.
+            // v1.0.2 修复 HTTP 400: max_tokens 范围校验,0/负值视为未设置。
+            // 部分 OpenAI 兼容中转站严格校验 max_tokens >= 1,直接发 0 会返回 400 invalid_request_error。
+            // null 会被 kotlinx.serialization 忽略,不写入请求体,让上游用默认值。
             max_tokens = request.maxTokens?.takeIf { it > 0 },
             stream = stream,
-            // compat.supportsToolCalling=false No emitido cuando es forzado tools(Como por ejemplo deepseek-reasoner / o1-mini)
-            // v1.0.4 Reparación HTTP 400 "Tool names must be unique":Deduplicación defensiva por función.nombre,
-            // Incluso aguas arriba(ToolRegistry + SkillExecutor)Herramienta faltante con el mismo nombre.,También puedes interceptar aquí.,
-            // Evite que las API como DeepSeek que verifican estrictamente la unicidad del nombre de la herramienta devuelvan 400.
-            // v1.0.5: stripEmptyTools — La lista de herramientas vacía se cambia a null,evitar serializar
-            //  `"tools": []` Rechazado por estricta estación de tránsito.
+            // compat.supportsToolCalling=false 时强制不发 tools(如 deepseek-reasoner / o1-mini)
+            // v1.0.4 修复 HTTP 400 "Tool names must be unique":按 function.name 防御性去重,
+            // 即使上游(ToolRegistry + SkillExecutor)漏过同名工具,这里也能拦截,
+            // 防止 DeepSeek 等严格校验工具名唯一性的 API 返回 400。
+            // v1.0.5: stripEmptyTools — 空 tools 列表改为 null,避免序列化出
+            //  `"tools": []` 被严格中转站拒绝。
             tools = openAiTools,
             tool_choice = if (compat.supportsToolCalling && !openAiTools.isNullOrEmpty()) {
                 request.toolChoice
             } else {
                 null
             },
-            // compat.supportsReasoningEffort=false No emitido cuando es forzado reasoning_effort
-            //   (Como por ejemplo DeepSeek / Zhipu / Gemini OpenAI Capa de compatibilidad,Cada uno utiliza campos de razonamiento_contenido/pensamiento.)
-            // v1.0.5: stripDisabledReasoningEffort — Cuando el valor es falso/ninguno/apagado, se considera no habilitado.,
-            //   Cambie a nulo para no enviar.
-            // v1.0.7: thinkingFormat != null Nunca te des cuenta reasoning_effort
-            //   (Cambiar el campo de extensión del fabricante correspondiente,Como por ejemplo thinking / enable_thinking / chat_template_kwargs)
+            // compat.supportsReasoningEffort=false 时强制不发 reasoning_effort
+            //   (如 DeepSeek / Zhipu / Gemini OpenAI 兼容层,各自用 reasoning_content / thinking 字段)
+            // v1.0.5: stripDisabledReasoningEffort — 值为 false/none/off 时视为未启用,
+            //   改为 null 不发送。
+            // v1.0.7: thinkingFormat != null 时也不发 reasoning_effort
+            //   (改走对应厂商扩展字段,如 thinking / enable_thinking / chat_template_kwargs)
             reasoning_effort = if (compat.supportsReasoningEffort && compat.thinkingFormat == null) {
                 effort?.takeIf { !isDisabledReasoningEffort(it) }
             } else {
@@ -1904,20 +1910,20 @@ class OpenAIProvider(
                 "toolsIn=${request.tools?.size ?: 0} | toolsOut=${payload.tools?.size ?: 0} | " +
                 "compatTools=${compat.supportsToolCalling} | model=$effectiveModel",
         )
-        // v1.0.7: thinkingFormat inyectar — Construir parámetros de pensamiento por campo de extensión del fabricante.
-        // Asigne campos del cuerpo de la solicitud en formatos thinkFormat 9.
-        // darse cuenta:Primero serialice OpenAIRequest como JsonObject,Presione thinkFormat nuevamente para agregar/Modificar campos.
-        // UTILITY modo effectiveReasoningLevel=OFF,injectThinkingFormat escribirá disabled
+        // v1.0.7: thinkingFormat 注入 — 按厂商扩展字段构造思考参数
+        // 按 thinkingFormat 9 种格式映射请求体字段。
+        // 实现:先序列化 OpenAIRequest 为 JsonObject,再按 thinkingFormat 追加/修改字段。
+        // UTILITY 模式下 effectiveReasoningLevel=OFF,injectThinkingFormat 会写入 disabled
         val thinkingFormat = compat.thinkingFormat
         val defaultBody = if (thinkingFormat == null) {
             AppJson.encodeToString(payload)
         } else {
             injectThinkingFormat(payload, thinkingFormat, effectiveReasoningLevel)
         }
-        // A5: Chat Completions transmisión usage — Protocolo estándar OpenAI(thinkingFormat==null)inyectar
-        // stream_options.include_usage,Haz que el último trozo se lleve usage(choices es una matriz vacía).
-        // Acuerdo de extensión del proveedor(thinkingFormat != null,Como por ejemplo DeepSeek/Kimi/Qwen/Zhipu)No inyectado,
-        // Evite devoluciones estrictas de retransmisión en campos desconocidos 400;Dichos puntos finales no pueden transmitir usage,La capa superior vuelve a la estimación local.
+        // A5: Chat Completions 流式 usage — 标准 OpenAI 协议(thinkingFormat==null)注入
+        // stream_options.include_usage,使末 chunk 携带 usage(choices 为空数组)。
+        // 厂商扩展协议(thinkingFormat != null,如 DeepSeek/Kimi/Qwen/Zhipu)不注入,
+        // 避免严格中转站对未知字段返回 400;此类端点拿不到流式 usage,上层回退本地估算。
         val bodyWithUsage = if (stream && thinkingFormat == null) {
             val element = runCatching { AppJson.parseToJsonElement(defaultBody) }.getOrNull()
             val obj = (element as? JsonObject)?.toMutableMap()
@@ -1934,79 +1940,79 @@ class OpenAIProvider(
     }
 
     /**
-     * v1.0.7: prensa [ThinkingFormat] Inyecte campos de pensamiento de extensión de proveedor.
+     * v1.0.7: 按 [ThinkingFormat] 注入厂商扩展思考字段。
      *
-     * Implementado en 9 formatos según thinkFormat:
-     *  - [ThinkingFormat.DEEPSEEK]:No envíes ningún parámetro de pensamiento.(El servidor está habilitado de forma predeterminada,Solo consume streaming reasoning_content)
+     * 按 thinkingFormat 9 种格式实现:
+     *  - [ThinkingFormat.DEEPSEEK]:不发任何思考参数(服务端默认开,仅消费流式 reasoning_content)
      *  - [ThinkingFormat.KIMI]:`thinking: {type: "enabled"|"disabled", keep: false}`
-     *  - [ThinkingFormat.QWEN]:`enable_thinking: bool` + Opcional `thinking_budget: int`(HIGH/XHIGH Shifa)
+     *  - [ThinkingFormat.QWEN]:`enable_thinking: bool` + 可选 `thinking_budget: int`(HIGH/XHIGH 时发)
      *  - [ThinkingFormat.QWEN_CHAT_TEMPLATE]:`chat_template_kwargs: {enable_thinking: bool}`
      *  - [ThinkingFormat.ZHIPU]:`thinking: {type: "enabled"|"disabled", clear_thinking: false}`
      *  - [ThinkingFormat.OPENROUTER]:`reasoning: {effort: "low"|"medium"|"high"}`
      *  - [ThinkingFormat.VOLCENGINE]:`thinking: {type: "enabled"|"disabled"}`
      *  - [ThinkingFormat.LONGCAT]:`thinking: {type: "enabled"|"disabled"}`
-     *  - [ThinkingFormat.ANTHROPIC]:OpenAIProvider No consumir(AnthropicProvider Procesar el propio bloque de pensamiento nativo)
+     *  - [ThinkingFormat.ANTHROPIC]:OpenAIProvider 不消费(AnthropicProvider 自身处理原生 thinking 块)
      *
-     * @param payload originales OpenAIRequest(Ya contiene campos estándar como mensajes/herramientas/transmisión)
-     * @param format thinkingFormat valor de enumeración(no null)
-     * @param level nivel de razonamiento(Determinar habilitado/deshabilitado + valor de esfuerzo)
-     * @return Cadena JSON después de inyectar el campo de pensamiento
+     * @param payload 原始 OpenAIRequest(已含 messages/tools/stream 等标准字段)
+     * @param format thinkingFormat 枚举值(非 null)
+     * @param level 推理等级(决定 enabled/disabled + effort 值)
+     * @return 注入思考字段后的 JSON 字符串
      */
     private fun injectThinkingFormat(payload: OpenAIRequest, format: ThinkingFormat, level: io.zer0.ai.core.ReasoningLevel): String {
-        // Primero serialice OpenAIRequest como JsonObject
+        // 先把 OpenAIRequest 序列化为 JsonObject
         val jsonElement = AppJson.encodeToJsonElement(OpenAIRequest.serializer(), payload)
         val baseObj = jsonElement as? kotlinx.serialization.json.JsonObject
             ?: return AppJson.encodeToString(payload)
         val baseMap = baseObj.toMutableMap()
 
-        // interruptor de razonamiento:OFF → disabled,AUTO → enabled(Deja que el servidor decida la profundidad por sí solo.),Otros → enabled
+        // 推理开关:OFF → disabled,AUTO → enabled(让服务端自行决定深度),其他 → enabled
         val thinkingEnabled = level != io.zer0.ai.core.ReasoningLevel.OFF
 
         when (format) {
             ThinkingFormat.DEEPSEEK -> {
-                // DeepSeek No envíes ningún parámetro de pensamiento.(El servidor activa R1 de forma predeterminada. Pensando)
-                // reasoning_content Resuelto en delta de transmisión,No se requiere control del cuerpo de solicitud
+                // DeepSeek 不发任何思考参数(服务端默认开 R1 思考)
+                // reasoning_content 已在流式 delta 中解析,无需请求体控制
             }
             ThinkingFormat.KIMI -> {
-                // lado oscuro de la luna Kimi:thinking: {type: "enabled"|"disabled", keep: false}
-                // keep=false Indica que la cadena de pensamiento no se retiene en la respuesta final(guardar tokens)
+                // 月之暗面 Kimi:thinking: {type: "enabled"|"disabled", keep: false}
+                // keep=false 表示不保留思考链在最终响应中(节省 tokens)
                 baseMap["thinking"] = buildJsonObject {
                     put("type", if (thinkingEnabled) "enabled" else "disabled")
                     put("keep", false)
                 }
             }
             ThinkingFormat.QWEN -> {
-                // Qwen3:enable_thinking: bool + Opcional thinking_budget: int
+                // Qwen3:enable_thinking: bool + 可选 thinking_budget: int
                 baseMap["enable_thinking"] = JsonPrimitive(thinkingEnabled)
                 if (thinkingEnabled && level.budgetTokens != null && level.budgetTokens > 0) {
                     baseMap["thinking_budget"] = JsonPrimitive(level.budgetTokens)
                 }
             }
             ThinkingFormat.QWEN_CHAT_TEMPLATE -> {
-                // Alí Qwen3-Coder:chat_template_kwargs: {enable_thinking: bool}
-                // (Qwen3-Coder Utilice el protocolo chat_template,enable_thinking Debe estar integrado en chat_template_kwargs)
+                // 阿里 Qwen3-Coder:chat_template_kwargs: {enable_thinking: bool}
+                // (Qwen3-Coder 用 chat_template 协议,enable_thinking 必须嵌在 chat_template_kwargs 内)
                 baseMap["chat_template_kwargs"] = buildJsonObject {
                     put("enable_thinking", thinkingEnabled)
                 }
             }
             ThinkingFormat.ZHIPU -> {
-                // espectro de sabiduría GLM-Z1:thinking: {type: "enabled"|"disabled", clear_thinking: false}
-                // clear_thinking=false Indica no despejar la cadena del pensamiento.(permanecer en respuesta)
+                // 智谱 GLM-Z1:thinking: {type: "enabled"|"disabled", clear_thinking: false}
+                // clear_thinking=false 表示不清除思考链(保留在响应中)
                 baseMap["thinking"] = buildJsonObject {
                     put("type", if (thinkingEnabled) "enabled" else "disabled")
                     put("clear_thinking", false)
                 }
             }
             ThinkingFormat.OPENROUTER -> {
-                // OpenRouter Transferencia de agregación:reasoning: {effort: "low"|"medium"|"high"}
-                // (Chat Completions Extensión de protocolo,Diferente del razonamiento en la API de Respuestas)
+                // OpenRouter 聚合中转:reasoning: {effort: "low"|"medium"|"high"}
+                // (Chat Completions 协议扩展,与 Responses API 的 reasoning 不同)
                 if (thinkingEnabled && level.effort != null) {
-                    // OpenRouter No aceptado "minimal",OFF No emitir campos de razonamiento
+                    // OpenRouter 不接受 "minimal",OFF 时不发 reasoning 字段
                     val openRouterEffort = when (level) {
                         io.zer0.ai.core.ReasoningLevel.LOW -> "low"
                         io.zer0.ai.core.ReasoningLevel.MEDIUM -> "medium"
                         io.zer0.ai.core.ReasoningLevel.HIGH, io.zer0.ai.core.ReasoningLevel.XHIGH -> "high"
-                        else -> null // AUTO/OFF No enviado
+                        else -> null // AUTO/OFF 不发
                     }
                     openRouterEffort?.let {
                         baseMap["reasoning"] = buildJsonObject {
@@ -2016,20 +2022,20 @@ class OpenAIProvider(
                 }
             }
             ThinkingFormat.VOLCENGINE -> {
-                // motor volcánico Doubao Thinking:thinking: {type: "enabled"|"disabled"}
+                // 火山引擎 Doubao Thinking:thinking: {type: "enabled"|"disabled"}
                 baseMap["thinking"] = buildJsonObject {
                     put("type", if (thinkingEnabled) "enabled" else "disabled")
                 }
             }
             ThinkingFormat.LONGCAT -> {
-                // meituán LongCat:thinking: {type: "enabled"|"disabled"}
+                // 美团 LongCat:thinking: {type: "enabled"|"disabled"}
                 baseMap["thinking"] = buildJsonObject {
                     put("type", if (thinkingEnabled) "enabled" else "disabled")
                 }
             }
             ThinkingFormat.ANTHROPIC -> {
-                // Anthropic bloque de pensamiento nativo — OpenAIProvider No consumir
-                // (AnthropicProvider Hazte nativo por tu cuenta Messages API,No sigas por este camino)
+                // Anthropic 原生 thinking 块 — OpenAIProvider 不消费
+                // (AnthropicProvider 自身走原生 Messages API,不经过此路径)
             }
         }
 
@@ -2037,9 +2043,9 @@ class OpenAIProvider(
     }
 
     /**
-     * v1.0.5: Determinar si el valor de razonamiento_effort es"Discapacitado"Semántica.
+     * v1.0.5: 判断 reasoning_effort 值是否为"已禁用"语义。
      *
-     * false / null / cadena vacía / "none" / "off" / "disabled" se consideran discapacitados,No debe enviarse a la API.
+     * false / null / 空串 / "none" / "off" / "disabled" 均视为已禁用,不应发送给 API。
      */
     private fun isDisabledReasoningEffort(value: String?): Boolean {
         if (value == null) return true
@@ -2048,8 +2054,8 @@ class OpenAIProvider(
     }
 
     /**
-     * L-OAI14: analizar [parametersJsonSchema] Omite la herramienta en caso de error y registra una advertencia,
-     *   Evite el esquema ilegal de una sola herramienta que hace que falle toda la solicitud(Otras herramientas todavía se pueden llamar normalmente.).
+     * L-OAI14: 解析 [parametersJsonSchema] 失败时跳过该工具并记录警告,
+     *   避免单个工具的非法 schema 导致整个请求失败(其他工具仍可正常调用)。
      */
     private fun ToolDefinition.toOpenAISafely(): OpenAITool? = try {
         OpenAITool(
@@ -2063,30 +2069,30 @@ class OpenAIProvider(
         if (t is kotlin.coroutines.cancellation.CancellationException) throw t
         Logger.w(
             "OpenAIProvider",
-            "Herramientas '$name' Falló el análisis de parámetros JsonSchema,Saltar esta herramienta: ${t.message}",
+            "工具 '$name' 的 parametersJsonSchema 解析失败,跳过该工具: ${t.message}",
         )
         null
     }
 
     /**
-     * Phase 8.6: UIMessage -> OpenAIMessage.
+     * Phase 8.6: UIMessage -> OpenAIMessage。
      *
-     * procesamiento multimodal:
-     *  - Sin fotos:imageBase64List esta vacio -> content = JsonPrimitive(text)(cadena simple)
-     *  - hay fotos:imageBase64List No vacío -> content = JsonArray([
+     * 多模态处理:
+     *  - 无图片:imageBase64List 为空 -> content = JsonPrimitive(text)(纯字符串)
+     *  - 有图片:imageBase64List 非空 -> content = JsonArray([
      *      {type:"text", text:"..."},
      *      {type:"image_url", image_url:{url:"data:image/jpeg;base64,..."}}
-     *    ])(OpenAI Vision Acuerdo)
+     *    ])(OpenAI Vision 协议)
      *
-     * M-OAI5: Tipo mime de imagen inferido a partir de bytes mágicos del encabezado base64.
-     * M-OAI8: base64 Límite de cantidad de imágenes(<=4zhang)+ Límite de tamaño único(<=2MB),Se descarta si se excede.
-     * L-OAI7: assistant + tool_calls Cuando el contenido esté vacío, pase JsonNull en lugar de una cadena vacía.
+     * M-OAI5: 图片 mime type 从 base64 头部 magic bytes 推断。
+     * M-OAI8: base64 图片数量限制(<=4张)+ 单张大小限制(<=2MB),超限丢弃。
+     * L-OAI7: assistant + tool_calls 时 content 为空传 JsonNull 而非空串。
      *
-     * v1.0.5: filtrado visual defensivo — cuando [model] Cuando la entrada visual no es compatible,Incluso si el mensaje lleva una imagen
-     *  Tome también la ruta de texto sin formato(descartar imageBase64List),Evite enviar imágenes a modelos de solo texto para activar un 400.
-     *  Esta es la última línea de defensa para las exportaciones de proveedores,Enrutamiento de ayuda visual para ChatViewModel en circunstancias normales
-     *  La imagen debería haberse borrado antes de llamar a streamChat.(Vacío después de inyectar descripción de VisionBridge.prepare).
-     *  Este filtro sólo se utiliza para excavar.:Escenarios anormales como imágenes residuales de mensajes históricos/falta de limpieza por parte de la persona que llama.
+     * v1.0.5: 防御性视觉过滤 — 当 [model] 不支持视觉输入时,即使消息携带图片
+     *  也走纯文本路径(丢弃 imageBase64List),避免向纯文本模型发送图片触发 400。
+     *  这是 Provider 出口的最后一道防线,正常情况下 ChatViewModel 的视觉辅助路由
+     *  应已在调用 streamChat 前清空图片(由 VisionBridge.prepare 注入描述后清空)。
+     *  此过滤仅用于兜底:历史消息残留图片 / 调用方遗漏清空等异常场景。
      */
     private fun UIMessage.toOpenAI(model: Model, compat: ProviderCompat? = null, carriesTools: Boolean = false): OpenAIMessage =
         OpenAIMessage(
@@ -2097,18 +2103,18 @@ class OpenAIProvider(
                 MessageRole.TOOL -> "tool"
             },
             content = if (imageBase64List.isEmpty() || !model.supportsVisionInput()) {
-                // v1.0.5: Cuando el modelo no admite imágenes pero el mensaje lleva imágenes.,Descarta la imagen y toma la ruta de texto sin formato.(Defensivo)
+                // v1.0.5: 模型不支持视觉但消息携带图片时,丢弃图片走纯文本路径(防御性)
                 if (imageBase64List.isNotEmpty() && !model.supportsVisionInput()) {
                     Logger.w(
                         "OpenAIProvider",
-                        "toOpenAI: modelo ${model.id} Sin soporte visual,descartar ${imageBase64List.size} fotos(filtrado defensivo)",
+                        "toOpenAI: 模型 ${model.id} 不支持视觉,丢弃 ${imageBase64List.size} 张图片(防御性过滤)",
                     )
                 }
-                // v1.0.2 Reparación HTTP 400: assistant + tool_calls cuando el contenido está vacío,Pase una cadena vacía en lugar de JsonNull.
-                // Según prácticas compatibles:assistant + tool_calls El contenido se normaliza a una cadena vacía.
-                // Normalizar contenido nulo/indefinido a "" cadena vacía,Evite los protocolos compatibles con OpenAI(Estación de transferencia especialmente estricta)
-                // Rechazar mensajes del asistente con contenido: nulo. La transmisión JsonNull original de L-OAI7 activará 400 en algunas estaciones de transferencia.
-                // OpenAI Los protocolos de compatibilidad también requieren que el contenido sea una cadena vacía en lugar de nulo.
+                // v1.0.2 修复 HTTP 400: assistant + tool_calls 时 content 为空,改传空字符串而非 JsonNull。
+                // 按兼容实践:assistant + tool_calls 时 content 规范化为空字符串。
+                // 将 null/undefined content 规范化为 "" 空字符串,避免 OpenAI 兼容协议(尤其严格的中转站)
+                // 拒绝 content: null 的 assistant 消息。原 L-OAI7 传 JsonNull 在部分中转站会触发 400。
+                // OpenAI 兼容协议也要求 content 为空字符串而非 null。
                 if (role == MessageRole.ASSISTANT && !toolCalls.isNullOrEmpty() && content.isBlank()) {
                     JsonPrimitive("")
                 } else {
@@ -2116,24 +2122,24 @@ class OpenAIProvider(
                 }
             } else {
                 buildJsonArray {
-                    // texto part(Agregar incluso si está vacío,evitar messages[].content es una matriz vacía)
+                    // 文本 part(即使为空也添加,避免 messages[].content 为空数组)
                     add(
                         buildJsonObject {
                             put("type", "text")
                             put("text", content)
                         },
                     )
-                    // M-OAI8: Límite de cantidad de imágenes + límite de tamaño de una sola imagen,Descartar más allá del límite
+                    // M-OAI8: 图片数量限制 + 单张大小限制,超限丢弃
                     val validImages = imageBase64List.filter { it.isNotEmpty() }
                     if (validImages.size > MAX_VISION_IMAGES) {
-                        Logger.w("OpenAIProvider", "Número de fotos ${validImages.size} Superar el límite superior $MAX_VISION_IMAGES,descartar el exceso")
+                        Logger.w("OpenAIProvider", "图片数量 ${validImages.size} 超过上限 $MAX_VISION_IMAGES,丢弃多余的")
                     }
                     validImages.take(MAX_VISION_IMAGES).forEach { b64 ->
                         if (b64.length > MAX_IMAGE_BASE64_LEN) {
-                            Logger.w("OpenAIProvider", "Longitud de la imagen base64 ${b64.length} exceder $MAX_IMAGE_BASE64_LEN,descartar")
+                            Logger.w("OpenAIProvider", "图片 base64 长度 ${b64.length} 超过 $MAX_IMAGE_BASE64_LEN,丢弃")
                             return@forEach
                         }
-                        // M-OAI5: Inferido de bytes mágicos mime type
+                        // M-OAI5: 从 magic bytes 推断 mime type
                         val mimeType = inferMimeType(b64)
                         add(
                             buildJsonObject {
@@ -2151,36 +2157,36 @@ class OpenAIProvider(
             },
             toolCalls = toolCalls?.map { it.toOpenAI() },
             toolCallId = toolCallId,
-            // v1.0.7: Reproducción de razonamiento histórico — Determine si inyectar según el razonamientoReplayContract.carrier/policy reasoning_content
+            // v1.0.7: 历史推理回放 — 按 reasoningReplayContract.carrier/policy 决定是否注入 reasoning_content
             reasoningContent = computeReasoningContentForReplay(compat, carriesTools),
         )
 
     /**
-     * v1.0.7: Calcule el valor de Reasoning_content para repeticiones de razonamiento histórico.
+     * v1.0.7: 计算历史推理回放的 reasoning_content 值。
      *
-     * solo si compat.reasoningReplayContract.carrier == REASONING_CONTENT Considere inyectarse
-     * (Kimi / DeepSeek / MiMo / Zhipu Chat Completions Acuerdo).
+     * 仅当 compat.reasoningReplayContract.carrier == REASONING_CONTENT 时考虑注入
+     * (Kimi / DeepSeek / MiMo / Zhipu Chat Completions 协议)。
      *
-     * policy toma de decisiones:
-     *  - [ReasoningReplayPolicy.NONE]:No inyectado(Regresar null)
-     *  - [ReasoningReplayPolicy.PRESERVE]:siempre inyectar(Si el razonamiento no es vacío.)
-     *  - [ReasoningReplayPolicy.REQUIRE_TOOL_CALL]:ASSISTANT El mensaje se inyecta cuando la solicitud contiene herramientas.
-     *    v1.0.81: Alinear el protocolo del modo de pensamiento oficial de DeepSeek — Las solicitudes con herramientas siguen a todos assistant
-     *    Los mensajes deben devolver el campo Reasoning_Content.(Pase una cadena vacía incluso si está vacía,no se puede omitir),De lo contrario 400.
-     *    No se envían conversaciones ordinarias sin herramientas.,Evite contaminar el contexto.
+     * policy 决策:
+     *  - [ReasoningReplayPolicy.NONE]:不注入(返回 null)
+     *  - [ReasoningReplayPolicy.PRESERVE]:始终注入(若 reasoning 非空)
+     *  - [ReasoningReplayPolicy.REQUIRE_TOOL_CALL]:ASSISTANT 消息且请求带 tools 时注入。
+     *    v1.0.81: 对齐 DeepSeek 官方 thinking mode 协议 — 带 tools 的请求后续所有 assistant
+     *    消息都必须回传 reasoning_content 字段(即使空也传空字符串,不能省略),否则 400。
+     *    无 tools 的普通对话不发,避免污染上下文。
      *
-     * Otros carrier(REASONING_ITEMS / REASONING_DETAILS / THINKING_BLOCKS / THOUGHT_SIGNATURE)
-     * No procesado a través de esta función — ellos van Responses API / OpenRouter / Anthropic / Gemini respectivos caminos.
+     * 其他 carrier(REASONING_ITEMS / REASONING_DETAILS / THINKING_BLOCKS / THOUGHT_SIGNATURE)
+     * 不通过此函数处理 — 它们走 Responses API / OpenRouter / Anthropic / Gemini 各自路径。
      *
-     * v2.6.14: guardia de origen —— `thinkingSignature` / `thinkingEncryptedContent` No vacío indica que el bloque de pensamiento
-     * Producido por un acuerdo de firma (Anthropic thinking block firma_delta,OpenAI Responses de
-     * reasoning item id / encrypted_content), es imposible que sea causado por `reasoning_content` Generación de modelos de protocolos.
-     * En este momento, el texto de pensamiento no se envía como razonamiento_contenido. Solo se decide según los requisitos del protocolo si se deja un marcador de posición de cadena vacío.
+     * v2.6.14: 来源守卫 —— `thinkingSignature` / `thinkingEncryptedContent` 非空说明该思考块
+     * 由签名型协议产出（Anthropic thinking block 的 signature_delta、OpenAI Responses 的
+     * reasoning item id / encrypted_content），不可能由 `reasoning_content` 协议的模型生成。
+     * 此时不把思考文本当 reasoning_content 发出，只按协议要求决定是否留空字符串占位。
      */
     private fun UIMessage.computeReasoningContentForReplay(compat: ProviderCompat?, carriesTools: Boolean): String? {
         val contract = compat?.reasoningReplayContract ?: return null
         if (contract.carrier != ReasoningCarrier.REASONING_CONTENT) return null
-        // v2.6.14: Los bloques de pensamiento producidos por protocolos de firma no se pueden reproducir a través de Reasoning_content (fuga entre protocolos).
+        // v2.6.14: 签名型协议产出的思考块不能经 reasoning_content 回放（跨协议泄漏）。
         val hasForeignProvenance = !thinkingSignature.isNullOrBlank() || !thinkingEncryptedContent.isNullOrBlank()
         val replayable = if (hasForeignProvenance) null else reasoning
         return when (contract.policy) {
@@ -2188,14 +2194,14 @@ class OpenAIProvider(
             ReasoningReplayPolicy.PRESERVE -> replayable?.takeIf { it.isNotBlank() }
             ReasoningReplayPolicy.REQUIRE_TOOL_CALL -> {
                 if (role != MessageRole.ASSISTANT) return null
-                // v1.0.81: Alinear el protocolo del modo de pensamiento oficial de DeepSeek — Al solicitar con el parámetro de herramientas,
-                // Todos los mensajes históricos del asistente posteriores en las solicitudes deben devolver el campo Reasoning_content.
-                // Incluso si el modelo en esa ronda no produjo razonamiento/no se llamó a ninguna herramienta, de lo contrario la API devuelve 400:
-                // "The reasoning_content in the thinking mode must be passed back to the API".
-                // Cuando el razonamiento está vacío, se pasa la cadena vacía en lugar de nula (el campo debe existir). Cuando no haya herramientas, manténgalo nulo para guardar tokens.
+                // v1.0.81: 对齐 DeepSeek 官方 thinking mode 协议 — 当请求带 tools 参数时，
+                // 后续所有请求里的历史 assistant 消息都必须回传 reasoning_content 字段，
+                // 即使那一轮模型没有产出 reasoning / 没有调用工具，否则 API 返回 400：
+                // "The reasoning_content in the thinking mode must be passed back to the API"。
+                // 空 reasoning 时传空字符串而非 null（字段必须存在），无 tools 时保持 null 节省 token。
                 if (carriesTools) {
-                    // v2.5.3: Sólo deben estar presentes los campos obligatorios del protocolo (requiresNonEmptyReasoning), se envía el marcador de posición de cadena vacía;
-                    // Qwen/Doubao La cadena vacía del protocolo predeterminado se omite para guardar tokens.
+                    // v2.5.3: 只有协议要求字段必存在（requiresNonEmptyReasoning）时才发空串占位；
+                    // Qwen/Doubao 等容忍缺省的协议空串省略，节省 token。
                     if (contract.requiresNonEmptyReasoning) replayable.orEmpty() else replayable?.takeIf { it.isNotBlank() }
                 } else {
                     replayable?.takeIf { it.isNotBlank() }
@@ -2205,23 +2211,23 @@ class OpenAIProvider(
     }
 
     /**
-     * v1.0.7: Inyecte parches de aviso del proveedor en la lista de mensajes.
+     * v1.0.7: 把 Provider Prompt Patches 注入到 messages 列表。
      *
-     * Estrategia de inyección:
-     *  - patches esta vacio:Volver como está(no copiar,Cero gastos generales)
-     *  - Ya tengo mensaje del sistema:Agregar parches a**Artículo 1** system El final del contenido del mensaje.(separados por doble nueva línea)
-     *    (Evite agregar múltiples mensajes del sistema,Algunas estaciones de transferencia tienen una verificación estricta de la cantidad de mensajes del sistema.)
-     *  - No hay mensajes del sistema:Insertar un nuevo mensaje del sistema al principio de la lista(content = patches empalme)
+     * 注入策略:
+     *  - patches 为空:原样返回(不复制,零开销)
+     *  - 已有 system 消息:把 patches 追加到**第一条** system 消息的 content 末尾(用双换行分隔)
+     *    (避免新增多条 system 消息,部分中转站对 system 消息数量有严格校验)
+     *  - 无 system 消息:在列表开头插入一条新的 system 消息(content = patches 拼接)
      *
-     * Nota:Esta función solo maneja el protocolo de finalización de chat.(messages matriz);
-     *   Responses API El campo de instrucciones está en [buildResponsesRequestBody] procesados ​​por separado.
+     * 注:本函数只处理 Chat Completions 协议(messages 数组);
+     *   Responses API 的 instructions 字段在 [buildResponsesRequestBody] 中单独处理。
      */
     private fun injectSystemPromptPatches(messages: List<UIMessage>, patches: List<String>): List<UIMessage> {
         if (patches.isEmpty()) return messages
         val patchText = patches.joinToString("\n\n")
         val firstSystemIdx = messages.indexOfFirst { it.role == MessageRole.SYSTEM }
         return if (firstSystemIdx >= 0) {
-            // Se adjunta al final del primer mensaje del sistema.
+            // 追加到第一条 system 消息末尾
             messages.toMutableList().also { list ->
                 val orig = list[firstSystemIdx]
                 list[firstSystemIdx] = orig.copy(
@@ -2229,7 +2235,7 @@ class OpenAIProvider(
                 )
             }
         } else {
-            // No hay mensajes del sistema,insertar una línea al principio
+            // 无 system 消息,在开头插入一条
             listOf(
                 UIMessage(role = MessageRole.SYSTEM, content = patchText),
             ) + messages
@@ -2242,16 +2248,16 @@ class OpenAIProvider(
     )
 
     /**
-     * M-OAI5: Inferir el tipo MIME de la imagen a partir de los bytes mágicos del encabezado base64.
+     * M-OAI5: 从 base64 头部 magic bytes 推断图片 MIME 类型。
      * - jpeg: 0xFFD8
      * - png:  0x89504E47
      * - gif:  0x47494638
      * - webp: 0x52494646
-     * Imagen alternativa/jpeg.
+     * 回退 image/jpeg。
      */
     private fun inferMimeType(base64: String): String {
         return try {
-            // Consigue los primeros 8 caracteres base64(6 bytes)solía juzgar magic bytes
+            // 取前 8 个 base64 字符(6 字节)用于判断 magic bytes
             val prefix = base64.take(8).padEnd(8, '=')
             val bytes = java.util.Base64.getMimeDecoder().decode(prefix)
             when {
@@ -2270,13 +2276,13 @@ class OpenAIProvider(
     }
 
     /**
-     * Analiza el mensaje de error.
-     * M-OAI1: Utilice classifyHttpCode para clasificar códigos de estado.
-     * M-OAI2: Truncamiento de mensajes(take 200).
-     * L-OAI10: Adjuntar el campo código.detalle.
-     * L-OAI11: Eliminar truncamiento duplicado(Originales safeBody=take(200) + msg.take(200) Truncado dos veces).
+     * 解析错误消息。
+     * M-OAI1: 用 classifyHttpCode 分类状态码。
+     * M-OAI2: 消息截断(take 200)。
+     * L-OAI10: 追加 detail.code 字段。
+     * L-OAI11: 移除一次重复截断(原 safeBody=take(200) + msg.take(200) 两次截断)。
      */
-    /** R-SEC-06: 400 La solución de problemas solo genera un resumen de la estructura de la solicitud,No incluya contenido de conversaciones de usuarios. */
+    /** R-SEC-06: 400 排障只输出请求结构摘要,不落用户对话内容。 */
     private fun describeRequestBody(body: String): String {
         val parsed = runCatching { AppJson.decodeFromString(OpenAIRequest.serializer(), body) }.getOrNull()
         val bytes = body.toByteArray(Charsets.UTF_8)
@@ -2288,21 +2294,21 @@ class OpenAIProvider(
             "bodyBytes=${bytes.size} sha256=$hashPrefix"
     }
     private fun parseErrorMessage(code: Int, body: String): String {
-        // M-OAI1: HTTP Clasificación del código de estado
+        // M-OAI1: HTTP 状态码分类
         val category = ProviderHttpSupport.classifyHttpCode(code)
-        // M-OAI3: Usar en su lugar resultOf(revenderá CancellationException),sustituto runCatching
+        // M-OAI3: 改用 resultOf(会重抛 CancellationException),替代 runCatching
         val detail = resultOf {
             AppJson.decodeFromString<OpenAIErrorBody>(body).error
         }.getOrNull()
         return buildString {
             append("HTTP ").append(code)
             category?.let { append(" [").append(it).append("]") }
-            // Priorizar lo analizado detail.message,Volver al original body(Truncar uniformemente una vez aquí)
-            // L-OAI11: Quitar safeBody=body.take(200) pretruncamiento,solo aqui take(200)
+            // 优先用解析出的 detail.message,回退到原始 body(统一在此处截断一次)
+            // L-OAI11: 移除 safeBody=body.take(200) 的预先截断,仅在此处 take(200)
             val msg = detail?.message?.takeIf { it.isNotBlank() }
                 ?: ProviderError.safeErrorDetail(body)
             msg?.let { append(": ").append(ProviderError.safeErrorDetail(it) ?: it.take(200)) }
-            // L-OAI10: Agregar campo de código de detalle
+            // L-OAI10: 追加 detail.code 字段
             detail?.code?.let { codeElem ->
                 val codeStr = when (codeElem) {
                     is JsonPrimitive -> codeElem.content
@@ -2315,36 +2321,36 @@ class OpenAIProvider(
     }
 
     // ════════════════════════════════════════════════════════════════════════════
-    // v1.0.7: OpenAI Responses API darse cuenta(/v1/responses punto final)
+    // v1.0.7: OpenAI Responses API 实现(/v1/responses 端点)
     //
-    // Implementado de acuerdo con el protocolo API de Respuestas oficial de OpenAI.
-    // Diferencias clave con la API de finalización de chat:
-    //  - Cuerpo de la solicitud:messages → input;system role → instructions Campos de nivel superior;
-    //    max_tokens → max_output_tokens;Nuevo reasoning: {effort, summary}
-    //  - Respuesta de transmisión:event: response.output_text.delta + data: {delta: "..."},
-    //    etiqueta final response.completed(concurrencia data: [DONE])
-    //  - respuesta sin transmisión:choices[0].message.content → output[] matriz,
-    //    reasoning / function_call Todos ellos son salidas de alto nivel. sibling(no en el mensaje)
+    // 按 OpenAI 官方 Responses API 协议实现。
+    // 与 Chat Completions API 的关键差异:
+    //  - 请求体:messages → input;system role → instructions 顶层字段;
+    //    max_tokens → max_output_tokens;新增 reasoning: {effort, summary}
+    //  - 流式响应:event: response.output_text.delta + data: {delta: "..."},
+    //    结束标记 response.completed(并发 data: [DONE])
+    //  - 非流式响应:choices[0].message.content → output[] 数组,
+    //    reasoning / function_call 都是 output 顶层 sibling(不在 message 内)
     // ════════════════════════════════════════════════════════════════════════════
 
     /**
-     * v1.0.7: Responses API Implementación de streaming.
+     * v1.0.7: Responses API 流式实现。
      *
-     * SSE tipo de evento(Según la especificación API de Respuestas):
-     *  - response.output_text.delta:Incremento de texto → ContentDelta
-     *  - response.output_text.done:Fin del texto(text Ten todo en cuenta)
-     *  - response.reasoning_summary_text.delta:Delta de resumen de razonamiento → ReasoningDelta
-     *  - response.function_call_arguments.delta:Incremento del parámetro de llamada de herramienta → ToolCallDelta
-     *  - response.output_item.added:Nuevo output item(Como se inicia function_call,Contiene id+name)
-     *  - response.completed:final de la corriente(response El campo contiene una matriz de salida final)→ Done
-     *  - data: [DONE]:OpenAI terminador universal → Done
+     * SSE 事件类型(按 Responses API 规范):
+     *  - response.output_text.delta:正文增量 → ContentDelta
+     *  - response.output_text.done:正文结束(text 兜底)
+     *  - response.reasoning_summary_text.delta:推理摘要增量 → ReasoningDelta
+     *  - response.function_call_arguments.delta:工具调用参数增量 → ToolCallDelta
+     *  - response.output_item.added:新增 output item(如 function_call 起始,含 id+name)
+     *  - response.completed:流结束(response 字段含最终 output 数组)→ Done
+     *  - data: [DONE]:OpenAI 通用结束符 → Done
      *
-     * C-35: Cambiado de callbackFlow a channelFlow(El canal interno es siempre UNLIMITED,Los parámetros de capacidad no son obligatorios y no se pueden pasar).
-     *   callbackFlow El problema de pérdida del chip interno de 64 capacidades es el mismo que el del callbackFlow responsivo(ver streamChatCompletions),
-     *   Cambiar a interior ilimitado explícito channel,OkHttp El hilo de devolución de llamada trySend ya no pierde piezas debido a una falla de capacidad total.
+     * C-35: 从 callbackFlow 改为 channelFlow(内部 channel 恒为 UNLIMITED,无需也不能传容量参数)。
+     *   callbackFlow 内部 64 容量丢片问题与响应式 callbackFlow 同理(见 streamChatCompletions),
+     *   改为显式无界内部 channel,OkHttp 回调线程 trySend 不再因容量满失败丢片。
      */
     @OptIn(ExperimentalCoroutinesApi::class)
-    // C-35: channelFlow No acepta parámetro de capacidad(Su canal interno es siempre UNLIMITED,exactamente la semántica requerida)
+    // C-35: channelFlow 不接受 capacity 参数(其内部 channel 恒为 UNLIMITED,恰为所需语义)
     private fun streamChatResponses(request: ChatRequest): Flow<ChatStreamEvent> = channelFlow {
         val body = buildResponsesRequestBody(request, stream = true)
         val url = baseUrl() + openAIConfig.responsesPath
@@ -2352,7 +2358,7 @@ class OpenAIProvider(
 
         fun buildHttpRequest(): Request = Request.Builder()
             .url(url)
-            // v1.0.18: ir modelo libre fallback(El usuario no completó la clave + modelo de lista blanca de SiliconFlow → Usar incorporado key)
+            // v1.0.18: 走免费模型 fallback(用户未填 key + SiliconFlow 白名单模型 → 用内置 key)
             .header("Authorization", "Bearer ${resolveEffectiveApiKey(request.model.id)}")
             .header("Content-Type", "application/json")
             .header("Accept", "text/event-stream")
@@ -2369,40 +2375,40 @@ class OpenAIProvider(
         val retryCount = AtomicInteger(0)
         val anyDeltaSent = AtomicBoolean(false)
         val responseTextSent = AtomicBoolean(false)
-        // Responses API Acumulación de llamadas de herramientas:output_index → mapeo de índice local
+        // Responses API 工具调用累积:output_index → 本地 index 映射
         val toolCallIndexMap = mutableMapOf<String, Int>()
         var nextToolCallIndex = 0
-        // output_item.added La información inicial de function_call transportada por el evento.(id+name)
+        // output_item.added 事件携带的 function_call 起始信息(id+name)
         val pendingFunctionCalls = mutableMapOf<String, Pair<String, String>>() // item_id → (call_id, name)
-        // v1.0.20: stream-guard — Acumule el nombre/argumentos/banderas enviadas de tool_call,
-        //   Se utiliza para interceptar llamadas de herramientas no válidas con nombres vacíos y volver a ellas al finalizar ContentDelta
+        // v1.0.20: stream-guard — 累积 tool_call 的 name / arguments / 已发送标志,
+        //   用于拦截空 name 的无效 tool call 并在 Done 时恢复为 ContentDelta
         val toolCallAccMap = mutableMapOf<Int, ToolCallAccState>()
-        // v1.0.21: Evitar que emitDoneWithStreamGuard se ejecute dos veces
+        // v1.0.21: 防止 emitDoneWithStreamGuard 被双重执行
         val streamGuardDone = AtomicBoolean(false)
         val consumerClosed = AtomicBoolean(false)
 
         /**
-         * v1.0.20: stream-guard — Cheque acumulado antes del evento Listo toolCallAccMap,
-         *   Devierte una llamada de herramienta no válida con nombre vacío pero argumentos para ContentDelta(texto visible).
-         *   Simétrico al emitDoneWithStreamGuard de la ruta ChatCompletions.
+         * v1.0.20: stream-guard — 在 Done 事件前检查累积的 toolCallAccMap,
+         *   把空 name 但有 arguments 的无效 tool call 恢复为 ContentDelta(可见文本)。
+         *   与 ChatCompletions 路径的 emitDoneWithStreamGuard 对称。
          */
         fun emitDoneWithStreamGuard(finishReason: String?) {
             if (!streamGuardDone.compareAndSet(false, true)) {
-                // Reparación de auditoría (7.1): Sólo segunda convocatoria close(),Listo no se volverá a enviar.
-                // Implementación original trySend(Done) + close(),Comportamiento inconsistente con la rama Finalizaciones de chat,
-                // El consumidor podrá finalizar anticipadamente tras recibir dos Dones./Repita el proceso.
+                // 审计修复 (7.1): 二次调用只 close(),不再重复发 Done。
+                // 原实现 trySend(Done) + close(),与 Chat Completions 分支行为不一致,
+                // 消费者收到两个 Done 可能提前结束/重复处理。
                 close()
                 return
             }
             toolCallAccMap.forEach { (localIndex, acc) ->
-                // v1.0.22: Saltar restaurado incrementalmente acc,Evite el envío duplicado
+                // v1.0.22: 跳过已增量恢复的 acc,避免重复发送
                 if (acc.recoveredAsContent) return@forEach
                 if (acc.name.isNullOrBlank() && acc.args.isNotEmpty()) {
                     val recoveredText = acc.args.current()
                     Logger.w(
                         "OpenAIProvider",
-                        "stream-guard(Responses): interceptar vacío name tool call (localIndex=$localIndex, args=${acc.args.length} chars)," +
-                            "volver al texto: ${recoveredText.take(50)}",
+                        "stream-guard(Responses): 拦截空 name tool call (localIndex=$localIndex, args=${acc.args.length} chars)," +
+                            "恢复为文本: ${recoveredText.take(50)}",
                     )
                     trySend(ChatStreamEvent.ContentDelta(recoveredText))
                 }
@@ -2430,8 +2436,9 @@ class OpenAIProvider(
             }
         }
         val abortListener = request.abortSignal.addAbortListener {
-            // Cancel the active SSE connection immediately; all callbacks observe aborted
-            // and therefore must not schedule fallback/reconnect work.
+            // A failed SSE may have no callback left to finish the producer during backoff.
+            scope.trySend(ChatStreamEvent.StreamInterrupted("用户已停止生成"))
+            scope.close()
             cancelCurrentEventSource()
         }
 
@@ -2450,8 +2457,8 @@ class OpenAIProvider(
                         if (myGeneration != connectionGeneration.get()) return
                         firstByteAt = System.currentTimeMillis()
                         Logger.i("OpenAIProvider", "streamChatResponses TTFB: ${firstByteAt - requestStartAt}ms | url=${sanitizeUrl(url)}")
-                        // v2.6.9 recopilación de pruebas: Línea base del encabezado de respuesta durante el establecimiento del flujo normal. Comparación con los registros forenses de onFailure
-                        // Puede ver si la puerta de enlace eliminó el tipo de contenido cuando falló.(Invalid content-type: null).
+                        // v2.6.9 取证: 正常建流时的响应头基线。与 onFailure 的取证日志对比
+                        // 就能看出失败时是不是 Content-Type 被网关摘掉(Invalid content-type: null)。
                         Logger.i(
                             "OpenAIProvider",
                             "[FORENSIC] streamChatResponses onOpen | url=${sanitizeUrl(url)} | " +
@@ -2462,7 +2469,7 @@ class OpenAIProvider(
                             if (code == 429 && !anyDeltaSent.get() && retryCount.get() < MAX_RETRIES &&
                                 !request.abortSignal.aborted && switchToNextKey()
                             ) {
-                                Logger.i("OpenAIProvider", "streamChatResponses onOpen 429 Limitación de corriente,Cambiado key,Inténtalo de nuevo ahora")
+                                Logger.i("OpenAIProvider", "streamChatResponses onOpen 429 限流,已切换 key,立即重试")
                                 httpRequest = buildHttpRequest()
                                 retryCount.incrementAndGet()
                                 connectionGeneration.incrementAndGet()
@@ -2497,10 +2504,10 @@ class OpenAIProvider(
 
                     override fun onEvent(eventSource: EventSource, id: String?, type: String?, data: String) {
                         if (myGeneration != connectionGeneration.get()) return
-                        // Responses API Usar al mismo tiempo [DONE] y respuesta.completada como marca final
+                        // Responses API 同时用 [DONE] 和 response.completed 作结束标记
                         if (data == "[DONE]") {
-                            // v1.0.20: stream-guard — Done Verificar acumulación en evento toolCallAccMap,
-                            //   Una llamada de herramienta con un nombre vacío vuelve a ContentDelta
+                            // v1.0.20: stream-guard — Done 事件时检查累积 toolCallAccMap,
+                            //   空 name 的 tool call 恢复为 ContentDelta
                             emitDoneWithStreamGuard(null)
                             return
                         }
@@ -2551,14 +2558,14 @@ class OpenAIProvider(
                                 }
                             }
                             "response.function_call_arguments.delta" -> {
-                                // Incremento del parámetro de llamada de herramienta,Acumular por item_id
+                                // 工具调用参数增量,按 item_id 累积
                                 val itemId = event.item_id ?: return
                                 val localIndex = toolCallIndexMap.getOrPut(itemId) { nextToolCallIndex++ }
                                 anyDeltaSent.set(true)
-                                // v1.0.20: stream-guard — Acumular nombre y argumentos.
-                                //   name de output_item.added(puede estar vacío),args Incremento de este evento.
+                                // v1.0.20: stream-guard — 累积 name 和 arguments。
+                                //   name 来自 output_item.added(可能为空),args 来自本事件增量。
                                 val acc = toolCallAccMap.getOrPut(localIndex) { ToolCallAccState() }
-                                // La primera película viene con id+name(Si output_item.added está almacenado en caché);Las películas posteriores no se repetirán.
+                                // 首片附带 id+name(若 output_item.added 已缓存);后续片不重复取
                                 if (!acc.hasEmitted) {
                                     val (callId, name) = pendingFunctionCalls.remove(itemId) ?: ("" to "")
                                     if (callId.isNotEmpty()) acc.id = callId
@@ -2566,7 +2573,7 @@ class OpenAIProvider(
                                 }
                                 event.delta?.let { acc.args.append(it) }
 
-                                // v1.0.22: Restaurado incrementalmente a ContentDelta acc,Los argumentos posteriores continúan enviándose como ContentDelta
+                                // v1.0.22: 已增量恢复为 ContentDelta 的 acc,后续 args 继续作为 ContentDelta 发送
                                 if (acc.recoveredAsContent) {
                                     val argsDelta = event.delta.orEmpty()
                                     if (argsDelta.isNotEmpty()) {
@@ -2575,9 +2582,9 @@ class OpenAIProvider(
                                     return
                                 }
 
-                                // stream-guard: Manejo de nombres vacíos
-                                //   v1.0.20: Almacenar en búfer hasta que esté listo antes de continuar — dando como resultado modelos pequeños"Muestra solo la primera palabra y el final."ilusión
-                                //   v1.0.22: Cambiar a incremental inmediato volver a ContentDelta
+                                // stream-guard: 空 name 处理
+                                //   v1.0.20: 缓冲到 Done 才恢复 — 导致小模型"只输出首字即结束"假象
+                                //   v1.0.22: 改为立即增量恢复为 ContentDelta
                                 val currentName = acc.name
                                 if (currentName.isNullOrBlank()) {
                                     val argsDelta = event.delta.orEmpty()
@@ -2586,23 +2593,23 @@ class OpenAIProvider(
                                         trySend(ChatStreamEvent.ContentDelta(argsDelta))
                                         Logger.d(
                                             "OpenAIProvider",
-                                            "stream-guard(Responses): Restaurar incrementalmente la llamada de la herramienta de nombre vacío a ContentDelta " +
-                                                "(localIndex=$localIndex, esta vez=${argsDelta.length} chars, " +
-                                                "acumular=${acc.args.length} chars)",
+                                            "stream-guard(Responses): 增量恢复空 name tool call 为 ContentDelta " +
+                                                "(localIndex=$localIndex, 本次=${argsDelta.length} chars, " +
+                                                "累积=${acc.args.length} chars)",
                                         )
                                     } else {
                                         Logger.d(
                                             "OpenAIProvider",
-                                            "stream-guard(Responses): herramienta de nombre vacío llamada sin incremento de argumentos,saltar " +
-                                                "(localIndex=$localIndex, acumular args=${acc.args.length} chars)",
+                                            "stream-guard(Responses): 空 name tool call 无 args 增量,跳过 " +
+                                                "(localIndex=$localIndex, 累积 args=${acc.args.length} chars)",
                                         )
                                     }
                                     return
                                 }
 
-                                // name Llegó — enviar ToolCallDelta
+                                // name 已到 — 发送 ToolCallDelta
                                 if (!acc.hasEmitted) {
-                                    // Envío por primera vez — Trae el dinero acumulado de una sola vez arguments(ponerse al día)
+                                    // 首次发送 — 一次性带上累积的 arguments(追赶)
                                     trySend(
                                         ChatStreamEvent.ToolCallDelta(
                                             index = localIndex,
@@ -2613,7 +2620,7 @@ class OpenAIProvider(
                                     )
                                     acc.hasEmitted = true
                                 } else {
-                                    // incrementos posteriores
+                                    // 后续增量
                                     trySend(
                                         ChatStreamEvent.ToolCallDelta(
                                             index = localIndex,
@@ -2625,7 +2632,7 @@ class OpenAIProvider(
                                 }
                             }
                             "response.output_item.added" -> {
-                                // Nuevo output item,Analizar la información de inicio de function_call
+                                // 新增 output item,解析 function_call 起始信息
                                 val item = event.item ?: return
                                 val itemType = (item as? kotlinx.serialization.json.JsonObject)
                                     ?.get("type")?.let { (it as? JsonPrimitive)?.content }
@@ -2634,28 +2641,28 @@ class OpenAIProvider(
                                     val itemId = obj["id"]?.let { (it as? JsonPrimitive)?.content } ?: return
                                     val callId = obj["call_id"]?.let { (it as? JsonPrimitive)?.content } ?: ""
                                     val name = obj["name"]?.let { (it as? JsonPrimitive)?.content } ?: ""
-                                    // v1.0.20: stream-guard — Escritura sincrónica accumulator(name puede estar vacío,El delta posterior se juzga en base a esto.)
+                                    // v1.0.20: stream-guard — 同步写入 accumulator(name 可能为空,后续 delta 据此判断)
                                     val localIndex = toolCallIndexMap.getOrPut(itemId) { nextToolCallIndex++ }
                                     val acc = toolCallAccMap.getOrPut(localIndex) { ToolCallAccState() }
                                     if (callId.isNotEmpty()) acc.id = callId
                                     if (name.isNotBlank()) acc.name = name
-                                    // Aún conserva la compatibilidad pendiente de FunctionCalls con rutas antiguas(args delta La primera película intentará tomar)
+                                    // 仍保留 pendingFunctionCalls 兼容旧路径(args delta 首片会尝试取)
                                     pendingFunctionCalls[itemId] = callId to name
                                 }
                             }
                             "response.completed" -> {
-                                // final de la corriente,con objeto de respuesta final
+                                // 流结束,带最终 response 对象
                                 val status = event.response?.status
-                                // Responses API usar status=incomplete + incomplete_details.reason expresar
-                                // La salida alcanza el límite superior; el motivo específico se transmite de forma transparente a la capa superior; de lo contrario, la interfaz de usuario solo se puede ver incompleta.
-                                // No se puede avisar al usuario“Respuesta truncada debido al límite de longitud”.
+                                // Responses API 用 status=incomplete + incomplete_details.reason 表示
+                                // 输出达到上限；向上层透传具体原因，否则 UI 只能看到 incomplete，
+                                // 无法提示用户“回复因长度限制被截断”。
                                 val finishReason = event.response?.incompleteDetails?.reason ?: status
-                                // A5: La respuesta final lleva usage(Valor real) — Emitido antes de hecho,
-                                // lado del consumidor(StreamRunState)Acumular la última aparición no nula
+                                // A5: 最终 response 携带 usage(实测值) — 在 Done 前发出,
+                                // 消费方(StreamRunState)累积最后非 null 一次
                                 event.response?.usage?.let { usage ->
                                     trySend(ChatStreamEvent.UsageDelta(usage.toUsageTokens()))
                                 }
-                                // B5-03: Extraer la firma del razonamiento del resultado final/encrypted_content Para reproducción de biblioteca
+                                // B5-03: 从最终 output 提取 reasoning 签名/encrypted_content 供落库回放
                                 val reasoningItem = event.response?.output?.firstOrNull { it.type == "reasoning" }
                                 if (reasoningItem != null &&
                                     (!reasoningItem.id.isNullOrBlank() || !reasoningItem.encryptedContent.isNullOrBlank())
@@ -2686,8 +2693,8 @@ class OpenAIProvider(
                                         .distinct()
                                     if (urls.isNotEmpty()) trySend(ChatStreamEvent.CitationDelta(urls))
                                 }
-                                // v1.0.20: stream-guard — Done Verificar acumulación en evento toolCallAccMap,
-                                //   Una llamada de herramienta con un nombre vacío vuelve a ContentDelta
+                                // v1.0.20: stream-guard — Done 事件时检查累积 toolCallAccMap,
+                                //   空 name 的 tool call 恢复为 ContentDelta
                                 emitDoneWithStreamGuard(finishReason)
                             }
                         }
@@ -2696,16 +2703,16 @@ class OpenAIProvider(
                     override fun onClosed(eventSource: EventSource) {
                         if (myGeneration != connectionGeneration.get()) {
                             if (request.abortSignal.aborted) {
-                                scope.trySend(ChatStreamEvent.StreamInterrupted("El usuario ha dejado de generar"))
+                                scope.trySend(ChatStreamEvent.StreamInterrupted("用户已停止生成"))
                                 close()
                             } else if (consumerClosed.get() || scope.isClosedForSend) {
                                 close()
                             }
                             return
                         }
-                        // v1.0.23: Igual que la ruta ChatCompletions,Se activa cuando no se recibe el evento Listo stream-guard
+                        // v1.0.23: 同 ChatCompletions 路径,未收到 Done 事件时触发 stream-guard
                         if (!streamGuardDone.get()) {
-                            Logger.d("OpenAIProvider", "streamChatResponses onClosed: Evento hecho no recibido, gatillo stream-guard")
+                            Logger.d("OpenAIProvider", "streamChatResponses onClosed: 未收到 Done 事件, 触发 stream-guard")
                             emitDoneWithStreamGuard(null)
                         } else {
                             close()
@@ -2713,14 +2720,14 @@ class OpenAIProvider(
                     }
 
                     override fun onFailure(eventSource: EventSource, t: Throwable?, response: Response?) {
-                        // v2.6.9 recopilación de pruebas: Debe colocarse antes de todas las sucursales.
-                        // La implementación original solo se lee después de cruzar la rama de reintento. response?.code,encabezado de respuesta/cuerpo nunca registrado,
-                        // resultando en okhttp-sse `Invalid content-type: null`(Ninguna respuesta en absoluto Content-Type)
-                        // No se puede localizar. Registro puro:No consumir/No cerrar el cuerpo de la respuesta,No hay cambios en el flujo de control.
+                        // v2.6.9 取证: 必须放在所有分支之前。
+                        // 原实现只在越过重试分支后才读 response?.code,响应头/体从未记录,
+                        // 导致 okhttp-sse 的 `Invalid content-type: null`(响应完全没带 Content-Type)
+                        // 无法定位。纯日志:不消费/不关闭响应体,不改任何控制流。
                         logResponsesFailureForensics(t, response)
                         if (myGeneration != connectionGeneration.get()) {
                             if (request.abortSignal.aborted) {
-                                scope.trySend(ChatStreamEvent.StreamInterrupted("El usuario ha dejado de generar", t))
+                                scope.trySend(ChatStreamEvent.StreamInterrupted("用户已停止生成", t))
                                 close()
                             } else if (consumerClosed.get() || scope.isClosedForSend) {
                                 close()
@@ -2728,19 +2735,19 @@ class OpenAIProvider(
                             return
                         }
                         if (streamGuardDone.get() || consumerClosed.get() || scope.isClosedForSend) {
-                            Logger.d("OpenAIProvider", "streamChatResponses onFailure: La transmisión se ha completado o el consumidor se ha cerrado.,Ignorar devoluciones de llamada de cierre")
+                            Logger.d("OpenAIProvider", "streamChatResponses onFailure: 流已完成或消费者已关闭,忽略收尾回调")
                             close()
                             return
                         }
                         if (request.abortSignal.aborted) {
                             Logger.d("OpenAIProvider", "streamChatResponses aborted by user")
-                            trySend(ChatStreamEvent.StreamInterrupted("El usuario ha dejado de generar", t))
+                            trySend(ChatStreamEvent.StreamInterrupted("用户已停止生成", t))
                             close()
                             return
                         }
                         val code = response?.code ?: -1
-                        // Responses API Alinear finalizaciones de chat: 408/429/5xx/El error de red aún no se ha generado
-                        // Es posible reintentar al incrementar y se respeta el reintento posterior.
+                        // Responses API 对齐 Chat Completions: 408/429/5xx/网络错误在尚未输出
+                        // 增量时可重试，并尊重 Retry-After。
                         if (shouldRetryResponsesFailure(
                                 code = response?.code,
                                 anyDeltaSent = anyDeltaSent.get(),
@@ -2757,7 +2764,7 @@ class OpenAIProvider(
                                     ?.let { it * 1000L } ?: backoffMs
                                 if (switchToNextKey()) backoffMs = 0L
                             }
-                            // R-AI-03: Borre el grupo de conexiones medio abierto antes de volver a intentarlo/Conexión inactiva
+                            // R-AI-03: 重试前清掉连接池中的半开/空闲连接
                             ProviderHttpSupport.evictIdleConnections()
                             Logger.w(
                                 "OpenAIProvider",
@@ -2765,12 +2772,11 @@ class OpenAIProvider(
                             )
                             connectionGeneration.incrementAndGet()
                             scope.launch {
+                                if (request.abortSignal.aborted || scope.isClosedForSend) return@launch
                                 delay(backoffMs)
-                                if (request.abortSignal.aborted || scope.isClosedForSend) {
-                                    close()
-                                    return@launch
+                                if (!request.abortSignal.aborted && !scope.isClosedForSend) {
+                                    connect()
                                 }
-                                connect()
                             }
                             return
                         }
@@ -2784,7 +2790,7 @@ class OpenAIProvider(
                             }
                         } ?: (t?.message ?: ErrorCode.NETWORK_ERROR.toMessage())
                         Logger.e("OpenAIProvider", "streamChatResponses onFailure: $msg", t)
-                        // v1.0.15: Enviado cuando se ha recibido parte del contenido StreamInterrupted,Deje que la interfaz de usuario conserve el contenido recibido y solicite la interrupción de la red(Puede reconectarse automáticamente)
+                        // v1.0.15: 已收到部分内容时发 StreamInterrupted,让 UI 保留已收内容并提示网络中断(可自动重连)
                         if (anyDeltaSent.get()) {
                             trySend(ChatStreamEvent.StreamInterrupted(msg, t))
                         } else {
@@ -2800,33 +2806,34 @@ class OpenAIProvider(
         connect()
 
         awaitClose {
+            scope.coroutineContext.cancelChildren()
             abortListener.close()
-            // Liberar solo recursos HTTP,No marque el cierre normal como cancelación iniciada por el usuario.
+            // 只释放 HTTP 资源,不要把正常收尾标记成用户主动取消。
             consumerClosed.set(true)
             cancelCurrentEventSource()
         }
-        // C-35: El canal interno ha sido cambiado a channelFlow(capacity = UNLIMITED),trySend No más pérdidas de tabletas debido a la capacidad total.
-        //   aguas abajo `.buffer(Channel.UNLIMITED)` Solo es efectivo para el reenvío del siguiente nivel del productor al recolector.,
-        //   No se puede solucionar el problema de pérdida del chip interno de 64 capacidades de CallbackFlow(Ha sido solucionado por la capacidad explícita de channelFlow anterior.).
+        // C-35: 内部 channel 已改为 channelFlow(capacity = UNLIMITED),trySend 不再因容量满丢片。
+        //   下游 `.buffer(Channel.UNLIMITED)` 仅作用于生产者到收集者之间的下一级转发生效,
+        //   无法修复 callbackFlow 内部 64 容量丢片问题(已由上方 channelFlow 显式容量根治)。
     }.flowOn(Dispatchers.IO).buffer(Channel.UNLIMITED)
 
     /**
-     * v1.0.7: Responses API Implementación sin streaming.
+     * v1.0.7: Responses API 非流式实现。
      *
-     * analizar output[] matriz,Extracto:
-     *  - type="message" de content[].text(Texto visible)
-     *  - type="reasoning" de summary(Contenido de razonamiento,Depósito reasoningContent)
-     *  - type="function_call" de call_id/name/arguments(llamada de herramienta)
+     * 解析 output[] 数组,提取:
+     *  - type="message" 的 content[].text(可见正文)
+     *  - type="reasoning" 的 summary(推理内容,存入 reasoningContent)
+     *  - type="function_call" 的 call_id/name/arguments(工具调用)
      */
     private suspend fun completeTextResponses(request: ChatRequest, keySwitchDepth: Int = 0): ChatCompletion = withContext(Dispatchers.IO) {
-        // v2.6.1: Codex fuerza de fondo stream=true,La no transmisión será 400;Por lo tanto, cambiamos a la agregación de transmisión.
+        // v2.6.1: Codex 后端强制 stream=true,非流式会被 400;故改走流式聚合。
         if (isCodexBackend()) return@withContext completeTextResponsesViaStream(request)
         val body = buildResponsesRequestBody(request, stream = false)
         val url = baseUrl() + openAIConfig.responsesPath
         Logger.i("OpenAIProvider", "completeTextResponses: POST ${sanitizeUrl(url)} model=${request.model}")
         val httpRequest = Request.Builder()
             .url(url)
-            // v1.0.18: ir modelo libre fallback(El usuario no completó la clave + modelo de lista blanca de SiliconFlow → Usar incorporado key)
+            // v1.0.18: 走免费模型 fallback(用户未填 key + SiliconFlow 白名单模型 → 用内置 key)
             .header("Authorization", "Bearer ${resolveEffectiveApiKey(request.model.id)}")
             .header("Content-Type", "application/json")
             .header("Accept", "application/json")
@@ -2842,7 +2849,7 @@ class OpenAIProvider(
                 if (!resp.isSuccessful) {
                     val code = resp.code
                     if (code == 429 && !request.abortSignal.aborted && keySwitchDepth < MAX_KEY_SWITCHES && switchToNextKey()) {
-                        Logger.i("OpenAIProvider", "completeTextResponses 429 Limitación de corriente,Cambiado key,Inténtalo de nuevo ($keySwitchDepth/$MAX_KEY_SWITCHES)")
+                        Logger.i("OpenAIProvider", "completeTextResponses 429 限流,已切换 key,重试 ($keySwitchDepth/$MAX_KEY_SWITCHES)")
                         return@withContext completeTextResponses(request, keySwitchDepth + 1)
                     }
                     if (code == 401 || code == 403) {
@@ -2859,23 +2866,23 @@ class OpenAIProvider(
                 val text = extractResponsesVisibleText(parsed)
                 val reasoningContent = extractResponsesReasoning(parsed)
                 val toolCalls = extractResponsesToolCalls(parsed)
-                // B5-03: Extraiga la firma y el contenido cifrado del elemento de razonamiento para múltiples rondas de reproducción.
+                // B5-03: 提取 reasoning item 的签名与 encrypted_content 供多轮回放
                 val reasoningItem = parsed.output.firstOrNull { it.type == "reasoning" }
 
                 if (text.isBlank() && toolCalls.isNullOrEmpty() && reasoningContent.isBlank()) {
-                    // Primero dejemos la estructura: diferentes estaciones de transferencia tienen diferentes formas de organizar la salida de las Respuestas.
-                    // Sin la forma original, sólo podemos confiar en conjeturas. Aquí agregamos la ruta del valor y el fragmento de respuesta.
+                    // 先把结构留下来：不同中转站对 Responses 的 output 组织方式有差异，
+                    // 没有原始形态就只能靠猜，这里补上取值路径与响应片段。
                     val outputTypes = parsed.output.mapNotNull { it.type }.distinct()
                     Logger.w(
                         "OpenAIProvider",
-                        "completeTextResponses Volver vacío | outputSize=${parsed.output.size} " +
+                        "completeTextResponses 返回空 | outputSize=${parsed.output.size} " +
                             "| outputTypes=$outputTypes | outputTextBlank=${parsed.outputText.isNullOrBlank()} " +
                             "| status=${parsed.status} | rawHead=${raw.take(600)}",
                     )
-                    // Cubierta suelta: escanee cualquier nodo en la salida que parezca texto
+                    // 宽松兜底：扫描 output 里任何形似文本的节点
                     val loose = extractResponsesVisibleTextLoose(parsed)
                     if (loose.isNotBlank()) {
-                        Logger.i("OpenAIProvider", "completeTextResponses Golpes de extracción sueltos ${loose.length} personaje")
+                        Logger.i("OpenAIProvider", "completeTextResponses 宽松提取命中 ${loose.length} 字符")
                         return@withContext ChatCompletion(
                             text = loose,
                             finishReason = parsed.incompleteDetails?.reason ?: parsed.status,
@@ -2892,7 +2899,7 @@ class OpenAIProvider(
                 )
                 ChatCompletion(
                     text = text,
-                    // Responses API Lo incompleto es sólo el estado externo, la razón específica del truncamiento está en los detalles.
+                    // Responses API 的 incomplete 只是外层状态，具体截断原因在 details 中。
                     finishReason = parsed.incompleteDetails?.reason ?: parsed.status,
                     toolCalls = toolCalls,
                     reasoningContent = reasoningContent.takeIf { it.isNotBlank() },
@@ -2914,9 +2921,9 @@ class OpenAIProvider(
             if (request.abortSignal.aborted) {
                 Logger.d("OpenAIProvider", "completeTextResponses aborted by user")
             } else if (t is OpenAIHttpException) {
-                // Errores HTTP registrados
+                // 已记录的 HTTP 错误
             } else {
-                Logger.e("OpenAIProvider", "completeTextResponses anormal", t)
+                Logger.e("OpenAIProvider", "completeTextResponses 异常", t)
             }
             throw t
         } finally {
@@ -2926,10 +2933,10 @@ class OpenAIProvider(
     }
 
     /**
-     * v2.6.1: Codex Implementación equivalente sin transmisión del backend —— Agregado por evento después de la transmisión forzada.
+     * v2.6.1: Codex 后端的非流式等价实现 —— 强制走流式后按事件聚合。
      *
-     * Codex Rechazos de backend stream=false,Por lo tanto, el escenario de texto completo se cambia a consumo. [streamChatResponses]
-     * Usar juntos [io.zer0.ai.core.ChatEventReducer] agregación,Obtén lo mismo que el modo normal sin transmisión [ChatCompletion].
+     * Codex 后端拒绝 stream=false,故 completeText 场景改为消费 [streamChatResponses]
+     * 并用 [io.zer0.ai.core.ChatEventReducer] 聚合,得到与普通非流式一致的 [ChatCompletion]。
      */
     private suspend fun completeTextResponsesViaStream(request: ChatRequest): ChatCompletion {
         val reducer = io.zer0.ai.core.ChatEventReducer()
@@ -2952,39 +2959,39 @@ class OpenAIProvider(
     }
 
     /**
-     * v1.0.7: Construya el cuerpo de solicitud de la API de respuestas.
+     * v1.0.7: 构造 Responses API 请求体。
      *
-     * Reglas de conversión:
-     *  - SYSTEM Los mensajes se extraen en el campo de nivel superior de instrucciones.(No incluido en la matriz de entrada)
-     *  - USER/ASSISTANT/TOOL Los mensajes se convierten en elementos de matriz de entrada.
-     *  - ASSISTANT Las llamadas a herramientas del mensaje se convierten en elementos de llamada de función.(nivel superior sibling,no en el mensaje)
-     *  - TOOL Los mensajes se convierten en elementos function_call_output(Utilice toolCallId como call_id)
-     *  - Utilizado para contenido multimodal ResponsesInputItem.content(JsonElement)oso
+     * 转换规则:
+     *  - SYSTEM 消息提取到 instructions 顶层字段(不入 input 数组)
+     *  - USER/ASSISTANT/TOOL 消息转为 input 数组项
+     *  - ASSISTANT 消息的 toolCalls 转为 function_call 项(顶层 sibling,不在 message 内)
+     *  - TOOL 消息转为 function_call_output 项(用 toolCallId 作为 call_id)
+     *  - 多模态 content 用 ResponsesInputItem.content(JsonElement)承载
      *
-     * Configuración de inferencia:
-     *  - reasoningLevel != OFF/AUTO tiempo,estructura reasoning: {effort} campo
-     *  - Responses API no hay universalidad“Razonamiento cercano” effort valor;OFF omitido cuando reasoning,
-     *    Deje que el upstream lo maneje de acuerdo con su comportamiento predeterminado del protocolo.,Evite asignar incorrectamente OFF a algo que aún desencadene inferencias minimal
-     *  - Codex Acuerdo(responsesPath=/codex/responses)fuerza store=false
+     * 推理配置:
+     *  - reasoningLevel != OFF/AUTO 时,构造 reasoning: {effort} 字段
+     *  - Responses API 没有通用的“关闭推理” effort 值;OFF 时省略 reasoning,
+     *    让上游按其协议默认行为处理,避免把 OFF 错映射成仍会触发推理的 minimal
+     *  - Codex 协议(responsesPath=/codex/responses)强制 store=false
      *
-     * B5-03: REASONING_ITEMS Reproducción(encrypted_content transportista).
-     *  OpenAI Responses API Se requiere que el elemento de razonamiento transporte contenido_encriptado para una reproducción completa en las rondas.
-     *  cadena de pensamiento(El servidor utiliza cargas útiles cifradas para verificar la integridad de la cadena de pensamiento.),El texto resumido por sí solo no es suficiente. flujo de datos completo:
-     *   1. Lado del análisis:streamChatResponses(response.completed)/ completeTextResponses de
-     *      output[type=reasoning] tomar encrypted_content + id,Ingresado a través de ReasoningDelta
-     *      UIMessage.thinkingEncryptedContent / thinkingSignature.
-     *      Nota:El servidor solo responde con solicitudes. `include=["reasoning.encrypted_content"]` Este campo se devuelve sólo cuando,
-     *      Por lo tanto, lleve siempre esta carga útil debajo include;De lo contrario, el contenido_encriptado es null,Esta repetición no se activará.
-     *   2. lado de la solicitud:Atravesar aquí normalizedMessages,ASSISTANT noticias thinkingEncryptedContent
-     *      tiempo no vacío,Insertar antes del elemento del mensaje type="reasoning" de input item
-     *      (id + encrypted_content + vacío summary——summary Matriz requerida en la especificación de entrada).
-     *  Cuando el campo está vacío(datos antiguos/punto final sin razonamiento/No encendido thinking)mantener completamente el status quo,No inserte este artículo.
+     * B5-03: REASONING_ITEMS 回放(encrypted_content 载体)。
+     *  OpenAI Responses API 要求 reasoning item 携带 encrypted_content 才能跨轮完整回放
+     *  思考链(服务端用加密负载校验思考链完整性),仅有 summary 文本不够。完整数据流:
+     *   1. 解析侧:streamChatResponses(response.completed)/ completeTextResponses 从
+     *      output[type=reasoning] 取 encrypted_content + id,经 ReasoningDelta 落库到
+     *      UIMessage.thinkingEncryptedContent / thinkingSignature。
+     *      注意:服务端仅在请求带 `include=["reasoning.encrypted_content"]` 时才返回该字段,
+     *      故下方 payload 恒带此 include;否则 encrypted_content 为 null,本条回放不会触发。
+     *   2. 请求侧:此处遍历 normalizedMessages,ASSISTANT 消息 thinkingEncryptedContent
+     *      非空时,在该 message item 之前插入 type="reasoning" 的 input item
+     *      (id + encrypted_content + 空 summary——summary 在 input 规范中为必填数组)。
+     *  字段为空时(旧数据/非 reasoning 端点/未开启 thinking)完全保持现状,不插入该 item。
      */
     /**
-     * v2.x(Registro de solución de problemas): Responses API Determinación de la disposición de un mensaje durante el montaje.
+     * v2.x（日志排障）: Responses API 组装时对一条消息的处置判定。
      *
-     * fondo: Responses API Rechazar mensajes con contenido vacío (HTTP 400 `Message content cannot be empty`).
-     * Una vez que el mensaje del asistente vacío (comúnmente encontrado en la rueda de herramientas o el remanente de la última falla) ingresa al historial,**cada ronda**Ambos 400.
+     * 背景: Responses API 拒绝 content 为空的消息（HTTP 400 `Message content cannot be empty`）。
+     * 空 assistant 消息（常见于工具轮或上次失败残留）一旦进入历史，会让之后**每一轮**都 400。
      */
     internal fun classifyResponsesMessage(msg: UIMessage): ResponsesMessageDisposition {
         if (!msg.content.isBlank()) return ResponsesMessageDisposition.KEEP
@@ -2992,13 +2999,13 @@ class OpenAIProvider(
         val hasMedia = msg.imageBase64List.isNotEmpty() || msg.imageUrls.isNotEmpty()
         val hasToolOutput = !msg.toolCallId.isNullOrBlank()
         return when {
-            // Asistente vacío con toolCalls: conserva el mensaje (convertido a function_call), pero no genera un mensaje vacío message item
+            // 带 toolCalls 的空 assistant: 保留消息（转 function_call），但不产生空 message item
             hasToolCalls -> ResponsesMessageDisposition.SKIP_MESSAGE_ITEM
-            // Mensaje vacío con imagen.: El contenido es transportado por input_image y retenido
+            // 带图片的空消息: 内容靠 input_image 承载，保留
             hasMedia -> ResponsesMessageDisposition.KEEP
-            // Mensaje de resultado de la herramienta (function_call_output): El contenido lo transporta call_id y se retiene.
+            // 工具结果消息（function_call_output）: 内容靠 call_id 承载，保留
             hasToolOutput -> ResponsesMessageDisposition.KEEP
-            // Un mensaje verdaderamente vacío y sin contenido.: Saltar en general
+            // 真正无内容的纯空消息: 整体跳过
             else -> ResponsesMessageDisposition.SKIP
         }
     }
@@ -3009,53 +3016,53 @@ class OpenAIProvider(
             request.messages,
             request.model,
         )
-        // v1.0.7: compat derivado(Responses API camino,Se utiliza para la determinación de ProviderPromptPatches)
+        // v1.0.7: compat 派生(Responses API 路径,用于 ProviderPromptPatches 判定)
         val compat: ProviderCompat = config.resolvedCompat(effectiveModel)
-        // v1.0.7: UTILITY Patrón de pensamiento forzado
+        // v1.0.7: UTILITY 模式强制关思考
         val effectiveReasoningLevel = if (request.mode == ChatRequestMode.UTILITY) {
             io.zer0.ai.core.ReasoningLevel.OFF
         } else {
             request.reasoningLevel
         }
 
-        // Extracto system → instructions;Los mensajes restantes se transfieren a elementos de entrada.
+        // 提取 system → instructions;其余消息转 input 项
         val instructionsBuilder = StringBuilder()
         val inputItems = mutableListOf<ResponsesInputItem>()
         for (msg in normalizedMessages) {
             if (msg.role == MessageRole.SYSTEM) {
-                // SYSTEM Mensaje fusionado en instructions(Varias líneas separadas por saltos de línea)
+                // SYSTEM 消息合并到 instructions(多条用换行分隔)
                 if (instructionsBuilder.isNotEmpty()) instructionsBuilder.append("\n\n")
                 instructionsBuilder.append(msg.content)
             } else {
-                // v2.x(Registro de solución de problemas): Los mensajes de contenido vacío no se pueden ingresar en Respuestas message item ——
-                // API será directo 400 `Message content cannot be empty`. Este tipo de mensaje de asistente vacío
-                // A menudo utilizado por la rueda de herramientas (content Vacío, solo llamadas a herramientas) o restos del fallo anterior,
-                // Una vez que ingreses al historial, podrás**cada ronda**Ambos 400 (bucles infinitos autorreproductores) deben tratarse durante la fase de montaje.
+                // v2.x（日志排障）: 空 content 消息不能进 Responses 的 message item ——
+                // API 会直接 400 `Message content cannot be empty`。这类空 assistant 消息
+                // 常由工具轮（content 为空、只有 toolCalls）或上一次失败残留产生，
+                // 一旦进入历史会让之后**每一轮**都 400（自我复现的死循环），必须在组装阶段处理。
                 //
-                // Ver las normas de tramitación [classifyResponsesMessage](v2.x Solución de problemas de registro):
-                //  - Asistente vacío con llamadas a herramientas: aún debe conservarse (convertido a function_call a continuación),
-                //    Pero no se puede reconstruir con un contenido vacío. message item —— Por lo tanto, sólo se omite el elemento del mensaje.
-                //  - Un mensaje completamente vacío sin ningún contenido.: Saltar en general.
+                // 处理规则见 [classifyResponsesMessage]（v2.x 日志排障）:
+                //  - 带 toolCalls 的空 assistant: 仍要保留（下面转 function_call），
+                //    但不能为它再构造 content 为空的 message item —— 故只跳过 message item。
+                //  - 完全无内容的纯空消息: 整体跳过。
 
                 val hasToolCalls = msg.role == MessageRole.ASSISTANT && !msg.toolCalls.isNullOrEmpty()
                 val disposition = classifyResponsesMessage(msg)
                 if (disposition == ResponsesMessageDisposition.SKIP) {
                     Logger.w(
                         "OpenAIProvider",
-                        "buildResponsesRequestBody: Saltar mensajes puros y vacíos(Responses No acepta vacio content) | role=${msg.role}",
+                        "buildResponsesRequestBody: 跳过纯空消息(Responses 不接受空 content) | role=${msg.role}",
                     )
                     continue
                 }
                 val skipMessageItem = disposition == ResponsesMessageDisposition.SKIP_MESSAGE_ITEM
-                // B5-03: OpenAI Responses Múltiples rondas de reproducción de pensamiento. — Insertar antes del mensaje del asistente reasoning item
+                // B5-03: OpenAI Responses 多轮 thinking 回放 — 在 assistant 消息前插入 reasoning item
                 if (msg.role == MessageRole.ASSISTANT && !msg.thinkingEncryptedContent.isNullOrBlank()) {
                     inputItems.add(
                         ResponsesInputItem(
                             type = "reasoning",
                             id = msg.thinkingSignature,
                             encrypted_content = msg.thinkingEncryptedContent,
-                            // input El elemento de razonamiento estándar requiere que el resumen sea una matriz requerida;
-                            // El fragmento estructurado original no se conserva por separado,Rellene la matriz vacía según el ejemplo de reproducción oficial.
+                            // input 规范的 reasoning item 要求 summary 为必填数组;
+                            // 原始结构化摘要未单独持久化,按官方回放示例回填空数组。
                             summary = buildJsonArray { },
                         ),
                     )
@@ -3063,7 +3070,7 @@ class OpenAIProvider(
                 if (!skipMessageItem) {
                     inputItems.add(msg.toResponsesInputItem(request.model))
                 }
-                // ASSISTANT Las llamadas a herramientas del mensaje se convierten al nivel superior de function_call sibling
+                // ASSISTANT 消息的 toolCalls 转为 function_call 顶层 sibling
                 if (msg.role == MessageRole.ASSISTANT && !msg.toolCalls.isNullOrEmpty()) {
                     msg.toolCalls.forEach { tc ->
                         inputItems.add(
@@ -3079,9 +3086,9 @@ class OpenAIProvider(
             }
         }
 
-        // v1.0.7: Provider Prompt Patches — Agregar al final de las instrucciones.
-        //  (Responses API El mensaje del sistema toma el campo de instrucciones de nivel superior.,No ingrese a la matriz de entrada)
-        //  UTILITY modo effectiveReasoningLevel=OFF,ProviderPromptPatches La inyección se omitirá internamente
+        // v1.0.7: Provider Prompt Patches — 追加到 instructions 末尾
+        //  (Responses API 的 system prompt 走顶层 instructions 字段,不进 input 数组)
+        //  UTILITY 模式下 effectiveReasoningLevel=OFF,ProviderPromptPatches 内部会跳过注入
         val promptPatches = ProviderPromptPatches.getProviderPromptPatches(
             model = request.model,
             baseUrl = baseUrl(),
@@ -3095,10 +3102,10 @@ class OpenAIProvider(
 
         val instructions = instructionsBuilder.toString().takeIf { it.isNotBlank() }
 
-        // Configuración de inferencia:
-        // Responses API No existe un valor de esfuerzo de desactivación/desactivado común entre los proveedores.
-        // OFF Omitir la configuración de razonamiento cuando,evitar poner“Cerrar pensamiento profundo”error asignado a minimal
-        // (minimal Todavía es posible permitir la inferencia.);El protocolo ascendente determina si el flujo ascendente específico admite el apagado explícito.
+        // 推理配置:
+        // Responses API 没有跨 Provider 通用的 OFF/disabled effort 值。
+        // OFF 时省略 reasoning 配置,避免把“关闭深度思考”错误映射成 minimal
+        // (minimal 仍可能启用推理);具体上游是否支持显式关闭由上游协议决定。
         val effort = when (effectiveReasoningLevel) {
             io.zer0.ai.core.ReasoningLevel.AUTO -> null
             io.zer0.ai.core.ReasoningLevel.OFF -> null
@@ -3106,11 +3113,11 @@ class OpenAIProvider(
         }
         val reasoning = effort?.let { ResponsesReasoningConfig(effort = it) }
 
-        // v2.6.1: Codex aplicación del protocolo store=false.
-        // El juicio se cambia a baseUrl + ResponsesPath doble condición. —— Codex Por defecto, la sección del códice se coloca en baseUrl
-        // (https://chatgpt.com/backend-api/codex),responsesPath Sigue siendo el predeterminado /responses;
-        // Si la implementación anterior solo analiza la ruta de respuestas, no realizará el juicio.,Solicitud sin campo de tienda,De vuelta aguas arriba 400
-        // "Store must be set to false"(Pruebas de usuarios reales).
+        // v2.6.1: Codex 协议强制 store=false。
+        // 判定改为 baseUrl + responsesPath 双条件 —— Codex 预设把 codex 段放在 baseUrl
+        // (https://chatgpt.com/backend-api/codex),responsesPath 仍是默认 /responses;
+        // 旧实现只看 responsesPath 会漏判,请求不带 store 字段,上游回 400
+        // "Store must be set to false"(真实用户实测)。
         val isCodex = isCodexBackend()
         val store = if (isCodex) false else null
 
@@ -3135,37 +3142,37 @@ class OpenAIProvider(
             instructions = instructions,
             stream = stream,
             max_output_tokens = request.maxTokens?.takeIf { it > 0 },
-            // v2.6.1: Codex El backend no acepta temperature(voluntad 400 "Unsupported parameter: temperature"),
-            // Omita este campo al presionar Codex,Los puntos finales de Respuestas restantes permanecen como están.
+            // v2.6.1: Codex 后端不接受 temperature(会 400 "Unsupported parameter: temperature"),
+            // 命中 Codex 时省略该字段,其余 Responses 端点保持原样。
             temperature = request.temperature.takeIf { !isCodex },
             tools = responseTools,
             tool_choice = request.toolChoice?.takeIf { !functionTools.isNullOrEmpty() },
             reasoning = reasoning,
             store = store,
-            // B5-03: Solicitar encrypted_content,De lo contrario, el elemento de razonamiento no tiene soporte de reproducción.
+            // B5-03: 请求 encrypted_content,否则 reasoning item 无回放载体
             include = listOf("reasoning.encrypted_content"),
         )
         return AppJson.encodeToString(payload)
     }
 
     /**
-     * v1.0.7: UIMessage → ResponsesInputItem.
+     * v1.0.7: UIMessage → ResponsesInputItem。
      *
-     * Responses API La estructura del elemento de entrada es diferente del elemento de mensajes de Finalizaciones de chat.:
-     *  - type="message"(noticias generales),role + content
-     *  - type="function_call"(assistant llamada de herramienta,Construido por separado por buildResponsesRequestBody)
-     *  - type="function_call_output"(tool Relleno de mensajes,call_id + output)
+     * Responses API 的 input 项与 Chat Completions 的 messages 项结构不同:
+     *  - type="message"(普通消息),role + content
+     *  - type="function_call"(assistant 工具调用,由 buildResponsesRequestBody 单独构造)
+     *  - type="function_call_output"(tool 消息回填,call_id + output)
      *
-     * content campo:
-     *  - texto plano:string(Transmisión directa JsonPrimitive)
-     *  - multimodal:JsonArray([{type:"input_text", text}, {type:"input_image", image_url}])
-     *    (Nota:Responses API usar input_text / input_image,en lugar de finalizar el chat text / image_url)
+     * content 字段:
+     *  - 纯文本:string(直接传 JsonPrimitive)
+     *  - 多模态:JsonArray([{type:"input_text", text}, {type:"input_image", image_url}])
+     *    (注意:Responses API 用 input_text / input_image,而非 Chat Completions 的 text / image_url)
      */
     private fun UIMessage.toResponsesInputItem(model: Model): ResponsesInputItem {
-        // TOOL transferencia de mensajes function_call_output(Resultados de la herramienta de relleno)
-        // v2.6.7 Reparación: Los nombres de los campos para los resultados de la herramienta son `output` en vez de `content`.
-        // La implementación anterior utiliza contenido y el esquema del servidor informa. 422 `input: missing field 'output'`,
-        // La actuación es "tan pronto como se ejecuta la herramienta y se devuelve el resultado, la ronda inevitablemente fallará".
+        // TOOL 消息转 function_call_output(回填工具结果)
+        // v2.6.7 修复: 工具结果的字段名是 `output` 而非 `content`。
+        // 旧实现用 content，服务端 schema 报 422 `input: missing field 'output'`，
+        // 表现为「工具一执行完、回传结果那一轮必然失败」。
         if (role == MessageRole.TOOL) {
             return ResponsesInputItem(
                 type = "function_call_output",
@@ -3178,19 +3185,19 @@ class OpenAIProvider(
             MessageRole.USER -> "user"
             MessageRole.ASSISTANT -> "assistant"
             MessageRole.SYSTEM -> "system"
-            MessageRole.TOOL -> "user" // Ten todo en cuenta(Teóricamente no vendrá aquí.)
+            MessageRole.TOOL -> "user" // 兜底(理论上不会到这里)
         }
 
         val contentElement = if (imageBase64List.isEmpty() || !model.supportsVisionInput()) {
             if (imageBase64List.isNotEmpty() && !model.supportsVisionInput()) {
                 Logger.w(
                     "OpenAIProvider",
-                    "toResponsesInputItem: modelo ${model.id} Sin soporte visual,descartar ${imageBase64List.size} fotos(filtrado defensivo)",
+                    "toResponsesInputItem: 模型 ${model.id} 不支持视觉,丢弃 ${imageBase64List.size} 张图片(防御性过滤)",
                 )
             }
             JsonPrimitive(content)
         } else {
-            // multimodal:Responses API usar input_text / input_image(Tenga en cuenta que es diferente del texto/imagen_url de Finalizaciones de chat.)
+            // 多模态:Responses API 用 input_text / input_image(注意与 Chat Completions 的 text / image_url 不同)
             buildJsonArray {
                 add(
                     buildJsonObject {
@@ -3200,11 +3207,11 @@ class OpenAIProvider(
                 )
                 val validImages = imageBase64List.filter { it.isNotEmpty() }
                 if (validImages.size > MAX_VISION_IMAGES) {
-                    Logger.w("OpenAIProvider", "Número de fotos ${validImages.size} Superar el límite superior $MAX_VISION_IMAGES,descartar el exceso")
+                    Logger.w("OpenAIProvider", "图片数量 ${validImages.size} 超过上限 $MAX_VISION_IMAGES,丢弃多余的")
                 }
                 validImages.take(MAX_VISION_IMAGES).forEach { b64 ->
                     if (b64.length > MAX_IMAGE_BASE64_LEN) {
-                        Logger.w("OpenAIProvider", "Longitud de la imagen base64 ${b64.length} exceder $MAX_IMAGE_BASE64_LEN,descartar")
+                        Logger.w("OpenAIProvider", "图片 base64 长度 ${b64.length} 超过 $MAX_IMAGE_BASE64_LEN,丢弃")
                         return@forEach
                     }
                     val mimeType = inferMimeType(b64)
@@ -3226,13 +3233,13 @@ class OpenAIProvider(
     }
 
     /**
-     * v1.0.7: Extraiga el cuerpo visible de ResponsesResult.
+     * v1.0.7: 从 ResponsesResult 提取可见正文。
      *
-     * prioridad:
-     *  1. Campo de texto_salida de nivel superior(Si no está vacío, úselo directamente.)
-     *  2. output[] en type="message" de content[].text(type="output_text" o "text")
+     * 优先级:
+     *  1. 顶层 output_text 字段(若非空直接用)
+     *  2. output[] 中 type="message" 的 content[].text(type="output_text" 或 "text")
      *
-     * no puede ser de type="reasoning" Extraer texto del artículo
+     * 不能从 type="reasoning" 的 item 提取文本
      */
     private fun extractResponsesVisibleText(result: ResponsesResult): String {
         result.outputText?.takeIf { it.isNotBlank() }?.let { return it.trim() }
@@ -3246,13 +3253,13 @@ class OpenAIProvider(
     }
 
     /**
-     * Extracción de texto relajada: una solución cuando no se puede encontrar la ruta estándar.
+     * 宽松文本提取：标准路径取不到时的兜底。
      *
-     * Item.type y content.type no están limitados, sólo se reconocen "nodos con campos de texto".
-     * Solía ser compatible con estaciones de transferencia que han ajustado la estructura de Respuestas (por ejemplo, escribir contenido directamente como una cadena,
-     * O cambie el tipo a una variante como output_text_delta).
+     * 不限定 item.type 与 content.type，只认「带 text 字段的节点」。
+     * 用于兼容对 Responses 结构做了微调的中转站（例如把 content 直接写成字符串，
+     * 或把 type 改成 output_text_delta 之类的变体）。
      *
-     * Solo se llama cuando la ruta estándar está vacía, por lo que no cambia los resultados del análisis de las respuestas normales.
+     * 只在标准路径为空时调用，所以不会改变正常响应的解析结果。
      */
     private fun extractResponsesVisibleTextLoose(result: ResponsesResult): String {
         val direct = result.outputText?.takeIf { it.isNotBlank() }
@@ -3265,7 +3272,7 @@ class OpenAIProvider(
     }
 
     /**
-     * v1.0.7: Extraer contenido de inferencia de ResponsesResult(reasoning item de summary).
+     * v1.0.7: 从 ResponsesResult 提取推理内容(reasoning item 的 summary)。
      */
     private fun extractResponsesReasoning(result: ResponsesResult): String {
         return result.output
@@ -3275,7 +3282,7 @@ class OpenAIProvider(
             .joinToString("\n")
     }
 
-    /** v1.0.7: Analizar el campo de resumen del elemento de razonamiento(JsonElement,Puede ser una matriz o una cadena). */
+    /** v1.0.7: 解析 reasoning item 的 summary 字段(JsonElement,可能是数组或字符串)。 */
     private fun parseSummaryTexts(summary: JsonElement): List<String> {
         return when (summary) {
             is kotlinx.serialization.json.JsonPrimitive -> listOf(summary.content)
@@ -3288,9 +3295,9 @@ class OpenAIProvider(
     }
 
     /**
-     * v1.0.7: Llamado desde la herramienta de extracción ResponsesResult.
+     * v1.0.7: 从 ResponsesResult 提取工具调用。
      *
-     * output[] en type="function_call" Los artículos contienen call_id / name / arguments.
+     * output[] 中 type="function_call" 的项含 call_id / name / arguments。
      */
     private fun extractResponsesToolCalls(result: ResponsesResult): List<ToolCall>? {
         val calls = result.output
@@ -3304,53 +3311,53 @@ class OpenAIProvider(
     }
 
     private companion object {
-        // L-OAI12: Quitar charset=utf-8(OpenAI / Las transferencias generalmente se procesan como UTF-8 application/json,
-        //   Y OkHttp decodifica la aplicación/json en UTF-8 de forma predeterminada.;Conjunto de caracteres explícito bajo algunos relés
-        //   En cambio, fue estrictamente verificado. 415).
+        // L-OAI12: 移除 charset=utf-8(OpenAI / 中转普遍按 UTF-8 处理 application/json,
+        //   且 OkHttp 对 application/json 默认即按 UTF-8 解码;显式 charset 在某些中转下
+        //   反而被严格校验导致 415)。
         val JSON_MEDIA_TYPE = "application/json".toMediaType()
 
-        // M-OAI3: Parámetros de reconexión de streaming
+        // M-OAI3: 流式重连参数
         const val MAX_RETRIES = 3
         const val RETRY_BASE_DELAY_MS = 1000L
 
-        // completeText 429 Número máximo de veces para cambiar de clave,Prevenir la recursividad infinita
+        // completeText 429 切换 key 最大次数,防止无限递归
         const val MAX_KEY_SWITCHES = 3
 
         /**
-         * issue #5(Opción C): El número de reintentos por malformación del protocolo.
+         * issue #5（方案 C）: 协议畸形的重试次数。
          *
-         * periódico modelo finish_reason=tool_calls Pero cuando no hay una herramienta_call válida,
-         * Por primera vez, el razonamiento no se trata como el texto principal (para evitar fugas de pensamiento), sino que se pide a la capa superior que lo reenvíe;
-         * Sólo cuando todavía estaba deformado volvió al fondo del bolsillo (never-empty). Tómate 1 vez: más fichas se quemarán en vano.
-         * Las anomalías del protocolo a menudo son causadas por nerviosismo puntual y la mayoría se puede recuperar después de la retransmisión.
+         * 模型报 finish_reason=tool_calls 却没有有效 tool_call 时，
+         * 首次不把 reasoning 当正文（避免思考泄漏），而是让上层重发一次；
+         * 仍畸形才退回兜底（never-empty）。取 1 次：再多会白烧 token，
+         * 而协议畸形往往是一次性抖动，重发一次多数能恢复。
          */
         const val MAX_MALFORMED_TOOLCALL_RETRIES = 1
 
-        /** Umbral de tormenta de llamada de herramienta de nombre nulo:Después de exceder, restaurar según el incremento del texto.,Evite el almacenamiento en búfer infinito que ralentiza la transmisión. */
+        /** 空 name tool call 风暴阈值:超过后按正文增量恢复,避免无限缓冲拖慢流式。 */
         const val MAX_EMPTY_NAME_TOOL_CALLS = 10
 
-        // M-OAI8: Vision Restricciones de imagen
+        // M-OAI8: Vision 图片限制
         const val MAX_VISION_IMAGES = 4
         const val MAX_IMAGE_BASE64_LEN = 2 * 1024 * 1024 // 2MB
 
         /**
-         * v2.6.1: Codex Backend/codex/modelos Requerido client_version.
+         * v2.6.1: Codex 后端 /codex/models 必填的 client_version。
          *
-         * El servidor verificará este valor.:Falta o es demasiado bajo devuelve una lista de modelos vacía(No se reportó ningún error),
-         * Como resultado, fallaron tanto la conexión de prueba como el modelo extraído. La versión evoluciona con el cliente oficial.,Haga un seguimiento después de que el funcionario eleve el umbral.
+         * 服务端会校验该值:缺失或过低会返回空模型列表(不报错),
+         * 导致测试连接与拉取模型双双失败。版本随官方客户端演进,官方提升门槛后再跟进。
          */
         const val CODEX_CLIENT_VERSION = "1.0.0"
 
-        /** v2.6.1: Codex Solicitado User-Agent(Identifica la familia de la persona que llama,No pretendas ser oficial CLI). */
+        /** v2.6.1: Codex 请求的 User-Agent(标识调用方家族,不冒充官方 CLI)。 */
         const val CODEX_USER_AGENT = "muse/1.0 (Android; OpenAI Codex)"
     }
 }
 
 /**
- * L-OAI11: OpenAI HTTP Excepción de error,Llevar código de estado,Juicio de prefijo de cadena alternativo.
+ * L-OAI11: OpenAI HTTP 错误异常,携带状态码,替代字符串前缀判断。
  *
- * v1.0.27 Phase 5-A: heredar en su lugar [ProviderException],Dejar pasar al consumidor.
- * `(throwable as? ProviderException)?.providerError` Obteniendo un error escrito.
+ * v1.0.27 Phase 5-A: 改为继承 [ProviderException],让消费端可通过
+ * `(throwable as? ProviderException)?.providerError` 拿到类型化错误。
  */
 internal fun openAiHtmlEndpointHint(contentType: String, body: String): String? {
     val prefix = body.trimStart().take(256).lowercase()
@@ -3367,8 +3374,8 @@ internal class OpenAIHttpException(
     retryAfterSec: Int? = null,
 ) : ProviderException(
     providerError = when {
-        // v2.6.8: 402 / insufficient_quota —— Saldo insuficiente. Debe ser juzgado antes de InvalidRequest,
-        // De lo contrario, se guiará al usuario para que ajuste los parámetros (este es exactamente el tipo de engaño en la captura de pantalla del usuario).
+        // v2.6.8: 402 / insufficient_quota —— 余额不足。必须在 InvalidRequest 之前判，
+        // 否则用户会被引导去调参数（用户截图里正是这种误导）。
         code == 402 -> ProviderError.InsufficientQuota(httpCode = code, displayMessage = message)
         ProviderError.isInsufficientQuotaBody(message) ->
             ProviderError.InsufficientQuota(httpCode = code, displayMessage = message)
@@ -3382,19 +3389,19 @@ internal class OpenAIHttpException(
 )
 
 /**
- * v2.x: descubrir"Nombrados, los parámetros aún están vacíos y aún no se han emitido ToolCallDelta"La llamada se utiliza como destino de referencia de la continuación del parámetro sin nombre.
+ * v2.x: 找出"已命名、参数仍为空、且尚未发出 ToolCallDelta"的调用，作为无名参数续片的归位目标。
  *
- * Devolver nulo en ambos casos significa**no puedo adivinar**:
- *  - No hay candidatos (es posible que los parámetros aún no hayan comenzado a llegar);
- *  - Hay varios candidatos (varias llamadas en paralelo están esperando parámetros y es imposible determinar a quién pertenece la secuela).
- * Es mejor mantener el comportamiento original (omitir el segmento y alertar) que pasar parámetros a la llamada incorrecta.
+ * 返回 null 的两种情况都表示**不能猜**：
+ *  - 没有任何候选（参数可能还没开始到达）；
+ *  - 有多个候选（并行的多个调用都在等参数，无法判断续片属于谁）。
+ * 宁可保持原有行为（跳过该片并告警），也不要把参数接到错误的调用上。
  */
 internal fun pendingArgsCandidate(accMap: Map<Int, ToolCallAccState>): Int? =
     accMap.filterValues { acc -> !acc.name.isNullOrBlank() && acc.args.length == 0 && !acc.hasEmitted }
         .keys
         .singleOrNull()
 
-/** Un nombre de función en blanco es sólo una continuación de la estación de transferencia; sólo una identificación o un nombre de función que no esté vacío abrirá una nueva llamada lógica. */
+/** 空白函数名只是中转站续片；只有非空 id 或函数名才开启新的逻辑调用。 */
 internal fun isNewToolCall(id: String?, name: String?): Boolean = !id.isNullOrBlank() || !name.isNullOrBlank()
 
 internal data class ToolCallIndexAssignment(
@@ -3427,10 +3434,10 @@ internal fun assignToolCallLocalIndex(
 }
 
 /**
- * Seleccione la propiedad de la continuación sin parámetro id/nameless.
+ * 选择无 id/无名参数续片的归属。
  *
- * La estación de transferencia podrá dividir los parámetros de una misma llamada en nuevos índices consecutivos. Dale prioridad al último que aún no esté cerrado.
- * llamada nombrada de ; sólo acepta contexto único si no hay pedido"El primero aún no ha sido emitido. ToolCallDelta"candidato.
+ * 中转站可能把同一调用的参数拆成连续的新 index。优先沿用最近一个仍未闭合
+ * 的已命名调用；没有顺序上下文时才接受唯一的"尚未发出首个 ToolCallDelta"候选。
  */
 internal fun continuationTarget(accMap: Map<Int, ToolCallAccState>, activeLocalIndex: Int?, incomingName: String? = null): Int? {
     val active = activeLocalIndex?.let { index ->
@@ -3457,40 +3464,40 @@ internal fun continuationTarget(accMap: Map<Int, ToolCallAccState>, activeLocalI
 }
 
 /**
- * v1.0.20: stream-guard acumulador — Acumule si se han enviado el nombre/argumentos/de una única llamada_herramienta.
+ * v1.0.20: stream-guard 累积器 — 累积单个 tool_call 的 name / arguments / 是否已发送。
  *
- * adoptar `invalidToolCalls` Mecanismo de amortiguación:
- *  - el nombre puede estar vacío en la transmisión(El modelo pequeño genera vacío. name tool call),Los argumentos almacenados en el buffer no se envían en este momento ToolCallDelta
- *  - Si el nombre llega en delta posterior,Al enviar por primera vez traer el acumulado arguments(ponerse al día)
- *  - Si el nombre sigue vacío hasta el evento Listo,Convierta los argumentos acumulados a ContentDelta y restaure el texto visible
+ * 采用 `invalidToolCalls` 缓冲机制:
+ *  - 流式中 name 可能为空(小模型生成空 name tool call),此时缓冲 arguments 不发送 ToolCallDelta
+ *  - 若 name 在后续 delta 中到达,首次发送时一次性带上累积的 arguments(追赶)
+ *  - 若直到 Done 事件 name 仍为空,把累积的 arguments 转为 ContentDelta 恢复为可见文本
  *
- * Seguridad del hilo:EventSource Activador de devolución de llamada en serie(hilo único),No se requieren primitivas de sincronización.
+ * 线程安全:EventSource 回调串行触发(单线程),无需同步原语。
  */
 internal class ToolCallAccState {
-    /** llamada de herramienta id(El primer trozo lleva). */
+    /** 工具调用 id(首个 chunk 携带)。 */
     var id: String? = null
 
-    /** nombre de la función(Acumular el primer valor no nulo;Done Si sigue siendo nulo/en blanco, se considerará inválido. tool call). */
+    /** 函数名(累积首个非空值;Done 时若仍为 null/blank 视为无效 tool call)。 */
     var name: String? = null
 
-    /** argumentos acumulados (v1.0.81: Fusione de forma inteligente varios fragmentos de objetos JSON para evitar empalmar cadenas). */
+    /** 累积的 arguments（v1.0.81: 智能合并多 JSON 对象分片，杜绝拼接串）。 */
     val args: ToolCallArgsAccumulator = ToolCallArgsAccumulator()
 
-    /** ¿Se ha enviado aguas abajo? ToolCallDelta(Se utiliza para enviar mensajes de actualización cuando el nombre llega tarde). */
+    /** 是否已向下游发送过 ToolCallDelta(用于 name 来晚时的追赶发送)。 */
     var hasEmitted: Boolean = false
 
     /**
-     * v1.0.22: ¿Se ha restaurado como un delta ContentDelta?(Herramienta de nombre vacío llamada al modo de recuperación incremental).
+     * v1.0.22: 是否已作为 ContentDelta 增量恢复过(空 name tool call 增量恢复模式)。
      *
-     * v1.0.20 El almacenamiento en búfer en modo Listo tiene serios problemas de experiencia:GLM-4-9B-0414 Espere hasta que el modelo pequeño
-     * Todo el texto se divide en una gran cantidad de espacios de índice independientes. name tool call(cada uno 1-4 chars),
-     * stream-guard Almacene todo en buffer hasta que esté listo y luego restáurelo todo de una vez,El usuario solo vio 1 palabra y pensó que había terminado y presionó detener.
+     * v1.0.20 的缓冲到 Done 模式存在严重体验问题:GLM-4-9B-0414 等小模型会把
+     * 整段正文拆成大量独立 index 的空 name tool call(每个 1-4 chars),
+     * stream-guard 全部缓冲到 Done 才一次性恢复,用户只看到 1 个字就以为结束按了停止。
      *
-     * v1.0.22 Cambiar a recuperación incremental:Si el nombre todavía está vacío cuando llegan los primeros argumentos,Enviar inmediatamente como ContentDelta,
-     * Los argumentos posteriores se envían de forma incremental directamente,Evite el almacenamiento en búfer"Parece que solo se emite y termina la primera palabra."espejismo.
+     * v1.0.22 改为增量恢复:首个 args 到达时若 name 仍为空,立即作为 ContentDelta 发送,
+     * 后续 args 直接增量发送,避免缓冲导致"看似只输出首字即结束"的假象。
      *
-     * El nombre de una llamada de herramienta normal suele aparecer en la primera pieza.(OpenAI normativo),Si la primera película no tiene nombre, básicamente se puede juzgar como
-     * Salida anormal del modelo pequeño,La recuperación incremental directa a texto es razonable.
+     * 正常 tool call 的 name 通常在首片就携带(OpenAI 规范),若首片无 name 基本可判定为
+     * 小模型异常输出,直接增量恢复为正文是合理的。
      */
     var recoveredAsContent: Boolean = false
 }

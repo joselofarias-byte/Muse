@@ -6,7 +6,6 @@ import io.zer0.common.resultOf
 import io.zer0.muse.R
 import io.zer0.muse.chat.PendingToolCallStore
 import io.zer0.muse.data.session.SessionRepository
-import io.zer0.muse.rag.SessionAttachmentService
 import io.zer0.muse.tools.BrowserManagerRegistry
 import io.zer0.muse.tools.WeakToolUseDetector
 import io.zer0.muse.ui.ChatStreamPhase
@@ -18,15 +17,15 @@ import org.koin.core.context.GlobalContext
 import kotlin.uuid.Uuid
 
 /**
- * v1.x: Controlador CRUD de sesión separado de ChatViewModel.
+ * v1.x: 从 ChatViewModel 抽离的会话 CRUD Controller。
  *
- * Responsabilidades(Lista de efectos secundarios de la sesión + mantenimiento del ciclo de vida de la sesión,No se carga ningún mensaje/generar):
+ * 职责(会话列表副作用 + 会话生命周期维护,不含消息加载/生成):
  *  - renameSession / setSessionArchived / deleteSession / setSessionIgnoreMemory / forkSessionFromMessage
- *  - Eliminación de sesión/Al presentar:Limpiar la instancia del navegador y la memoria caché de mensajes,y borrar/Cambiar a la primera sesión restante al archivar la sesión actual
- *  - Después de cambiar el interruptor de memoria [SessionFlowBridge.refreshContext] actualizar contexto
+ *  - 会话删除/归档时:清理浏览器实例、内存消息缓存,并在删除/归档当前会话时切换到剩余首个会话
+ *  - 记忆开关变更后经 [SessionFlowBridge.refreshContext] 刷新上下文
  *
- * Llamadas de responsabilidad cruzada(Carga de mensajes, actualización de contexto, desconexión de transmisión e informes de fallas de bifurcación)por [SessionFlowBridge] inyectar,
- * No hay dependencia inversa de ChatViewModel. compartir estado ir [ChatStateAccessor],StateFlow no se copia.
+ * 跨职责调用(消息加载、上下文刷新、断开流式、分叉失败上报)经 [SessionFlowBridge] 注入,
+ * 不反向依赖 ChatViewModel。共享 state 走 [ChatStateAccessor],不复制 StateFlow。
  */
 @Suppress("LongParameterList", "TooManyFunctions", "LargeClass")
 internal class ChatSessionController(
@@ -36,7 +35,7 @@ internal class ChatSessionController(
     private val browserManagerRegistry: BrowserManagerRegistry?,
     private val bridge: SessionFlowBridge,
     private val sessionDeps: SessionDeps,
-    /** Cambie la protección del número de serie. Sólo compartiendo la misma instancia con la persona que llama puede el“Conmutación continua en la misma interfaz”Organizar en orden. */
+    /** 切换序号守卫。与调用方共用同一个实例，才能把“同一界面上的连续切换”排成一个序。 */
     private val switchGuard: SessionSwitchGuard = SessionSwitchGuard(),
 ) {
     fun renameSession(sessionId: String, title: String) {
@@ -45,12 +44,12 @@ internal class ChatSessionController(
         }
     }
 
-    /** v0.45: Alternar el estado de archivo de la sesión. Cambiar a la primera sesión restante al archivar la sesión actual;Borrar estado cuando no quedan sesiones,No se crea ninguna nueva sesión. */
+    /** v0.45: 切换会话归档状态。归档当前会话时切换到剩余首个会话;无剩余会话时清空状态,不创建新会话。 */
     fun setSessionArchived(sessionId: String, archived: Boolean) {
         accessor.coroutineScope.launch {
             if (archived) {
-                // P0-5: Archivar y detener — Evitar que se genere esta sesión + supresión de escritura,Evite que las devoluciones de llamadas de streaming se escriban en archivos
-                // sesión y después de reanudar"resurrección"(El mismo mecanismo que B-1 para eliminar un solo mensaje.)
+                // P0-5: 归档即停 — 停止该会话在途生成 + 写抑制,防止流式回调写入已归档
+                // 会话并在恢复后"复活"(与 B-1 删除单条消息同机制)
                 bridge.stopGenerationForSession(sessionId)
                 bridge.suppressSessionWrites(sessionId)
             }
@@ -70,45 +69,26 @@ internal class ChatSessionController(
 
     fun deleteSession(sessionId: String) {
         accessor.coroutineScope.launch {
-            // P0-5: Eliminar y detener — Primero detenga la sesión en tránsito + supresión de escritura,Eliminación temporal nuevamente,Evitar devoluciones de llamadas en streaming
-            // Continuar a la conversación eliminada temporalmente upsert("resurrección" + Generación residual después de la recuperación.)
+            // P0-5: 删除即停 — 先停止该会话在途生成 + 写抑制,再软删,防止流式回调
+            // 继续向已软删会话 upsert("复活" + 恢复后残留生成)
             bridge.stopGenerationForSession(sessionId)
             bridge.suppressSessionWrites(sessionId)
             sessionRepository.softDeleteSession(sessionId)
-            // v1.x: Libera la instancia del navegador para la sesión cuando se elimina la sesión.
+            // v1.x: 会话删除时释放该会话的浏览器实例
             browserManagerRegistry?.let { registry ->
                 resultOf { registry.closeSession(sessionId) }
-                    .onError { msg, _ -> Logger.w("ChatVM", "closeSession browser falló: $msg") }
+                    .onError { msg, _ -> Logger.w("ChatVM", "closeSession browser 失败: $msg") }
             }
-            // Experimental:Recuperación de archivos adjuntos de sesión —— Cuando se elimina una sesión, también se borra el índice de archivos adjuntos de la sesión.,Evite los residuos de trozos
-            runCatching {
-                GlobalContext.get().get<SessionAttachmentService>()
-                    .dropSessionAttachments(sessionId = sessionId, keepIndex = false)
-            }.onFailure { Logger.w("ChatVM", "Error en el índice de archivos adjuntos de la sesión de limpieza: ${it.message}") }
-            // v1.93+: Eliminado de la memoria caché LRU,Evite conservar copias de mensajes de conversaciones eliminadas(Evite pérdidas de memoria y lecturas sucias)
+            // v1.93+: 从内存 LRU 缓存移除,避免持有已删除会话的消息副本(防止内存泄漏与脏读)
             sessionMemoryCache.remove(sessionId)
-            // v2.6.0 (AUD-UI-F13): Borrar instantáneas pendientes para esta sesión —— TodoTool.sessionTodos(singleton)adentro
-            // TodoList nunca soltar,Para uso a largo plazo, guarde una copia de cada sesión que utilice todo_write.,Y la conversación ha sido eliminada.
-            // Todavía se puede leer a través de getTodos. Esto se limpia sincrónicamente con la eliminación de la sesión.
-            resultOf { io.zer0.muse.tools.TodoTool.clearSession(sessionId) }
-                .onError { msg, _ -> Logger.w("ChatVM", "Error en la sesión de limpieza pendiente: $msg") }
-            // v2.6.7: La copia en la biblioteca también debe eliminarse; de ​​lo contrario, al recrear una sesión con el mismo nombre se leerá la antigua tarea pendiente de la sesión eliminada.
-            runCatching {
-                org.koin.core.context.GlobalContext.get()
-                    .get<io.zer0.muse.data.todo.SessionTodoRepository>()
-                    .delete(sessionId)
-            }.onFailure { Logger.w("ChatVM", "No se pudo eliminar el registro de tareas pendientes: ${it.message}") }
-            // v2.6.7 fix (AUDIT F14): También se debe borrar el registro de la herramienta de sesión.
-            // La implementación anterior solo borraba clearSearchableSkills (llamado cuando finaliza la sesión),
-            // Y clearVisibleTools y SessionToolLoadRegistry.clear no tienen llamadas ——
-            // La sesión eliminada aún deja una herramienta visible configurada en la memoria. Cuando se reconstruya la sesión con el mismo nombre, la carga anterior se heredará al inicio.
-            runCatching {
-                org.koin.core.context.GlobalContext.get()
-                    .get<io.zer0.muse.tools.ToolRegistry>()
-                    .clearVisibleTools(sessionId)
-            }.onFailure { Logger.w("ChatVM", "Error al limpiar el conjunto visible de herramientas: ${it.message}") }
-            runCatching { io.zer0.muse.tools.SessionToolLoadRegistry.clear(sessionId) }
-                .onFailure { Logger.w("ChatVM", "La herramienta de limpieza no pudo cargar registros: ${it.message}") }
+            // 其余会话级残留（附件索引、待办的内存与库、工具可见集与装载记录、对话树快照）
+            // 统一走 SessionArtifactCleanup：**清单只有一处定义**，
+            // 这样"清除全部聊天"和单条删除不会再各自维护一份、然后其中一份漏项。
+            SessionArtifactCleanup.purge(
+                sessionIds = listOf(sessionId),
+                snapshotStore = sessionDeps.treeSnapshotStore,
+                reason = "删除会话",
+            )
             if (accessor.snapshot.currentSessionId == sessionId) {
                 val remaining = sessionRepository.observeSessions().first()
                 val target = remaining.firstOrNull()
@@ -127,7 +107,7 @@ internal class ChatSessionController(
         val sessionId = (if (st.isAgentMode) st.agentSessionId else st.currentSessionId) ?: return
         accessor.coroutineScope.launch {
             sessionRepository.setSessionIgnoreMemory(sessionId, ignore)
-            // Actualizar el estado de la sesión local(Conmutador VacuumChatGuide del controlador + clave de caché del mensaje del sistema)
+            // 更新本地会话状态(驱动 EmptyChatGuide 开关 + system prompt 缓存键)
             accessor.update { state ->
                 state.copy(
                     sessions =
@@ -136,13 +116,13 @@ internal class ChatSessionController(
                     },
                 )
             }
-            // El cambio de memoria afecta las instantáneas estáticas,actualizar contexto
+            // 记忆开关影响静态快照,刷新上下文
             bridge.refreshContext()
         }
     }
 
     /**
-     * v1.58: Bifurca la conversación del mensaje especificado — Crear una sesión bifurcada en el repositorio,Cambie a una nueva sesión si tiene éxito.
+     * v1.58: 从指定消息处分叉对话 — 在 repository 创建分叉会话,成功后切换到新会话。
      */
     @Suppress("TooGenericExceptionCaught")
     fun forkSessionFromMessage(messageId: Uuid) {
@@ -155,7 +135,7 @@ internal class ChatSessionController(
                 val newId = sessionRepository.forkSession(sourceSessionId, messageId.toString())
                 if (newId != null) {
                     switchSession(newId)
-                    // U-23: fork Brinde comentarios claros después del éxito,Evite el cambio silencioso que confunde a los usuarios
+                    // U-23: fork 成功后给出明确反馈,避免静默切换让用户困惑
                     MuseToast.show(sessionDeps.appContext.getString(R.string.chat_fork_success))
                 }
             } catch (e: Exception) {
@@ -165,30 +145,30 @@ internal class ChatSessionController(
         }
     }
 
-    /** Nueva sesión:Liberar sesión anterior → Crear por asistente predeterminado → Restablecer el estado de la interfaz de usuario → Actualizar el contexto.
-     *  v2.x: [assistantIdOverride] Creado con el asistente especificado cuando no está vacío(Los socios se pueden organizar horizontalmente para iniciar rápidamente un chat.). */
+    /** 新建会话:释放旧会话 → 按默认助手创建 → 重置 UI 状态 → 刷新上下文。
+     *  v2.x: [assistantIdOverride] 非空时以指定助手创建(伙伴横排快捷开聊用)。 */
     @Suppress("CyclomaticComplexMethod")
     fun createNewSession(onReady: (() -> Unit)? = null, assistantIdOverride: String? = null) {
         if (accessor.snapshot.isStreaming) bridge.detachStreaming()
-        // Phase 8.7: Detenerse al cambiar de sesión TTS(Evite continuar leyendo entre sesiones.)
+        // Phase 8.7: 切换会话时停止 TTS(避免跨会话继续朗读)
         sessionDeps.onStopTts()
-        // v1.91: lanzamiento de transmisión ASR(Evite seguir ocupando el micrófono entre sesiones.)
+        // v1.91: 释放流式 ASR(避免跨会话继续占用麦克风)
         sessionDeps.onDisposeAsr()
-        // Notificar ticker: la sesión anterior finaliza
+        // 通知 ticker: 旧 session 结束
         sessionDeps.onNotifySessionEnd()
-        // v1.x: Limpiar sesiones antiguas"Esta sesión permite"caché temporal
+        // v1.x: 清理旧会话的"本会话允许"临时缓存
         sessionDeps.currentSessionIdForApproval()?.let { sessionDeps.sessionPermissionStore.clearSession(it) }
         val currentSession = accessor.snapshot.currentSessionId
-        // Conteo de referencias:Liberar sesión anterior(La nueva identificación de sesión se crea dentro del bloque asíncrono y luego acquire)
+        // 引用计数:释放旧会话(新会话 id 在异步块内创建后再 acquire)
         currentSession?.let { sessionDeps.sessionManager.release(it) }
         accessor.coroutineScope.launch {
-            // v1.0.63: Las nuevas tareas utilizan el asistente predeterminado en la configuración
-            // v2.x: assistantIdOverride Creado con el asistente especificado cuando no está vacío(Entrada rápida horizontal de socio)
+            // v1.0.63: 新任务使用设置里的默认助手
+            // v2.x: assistantIdOverride 非空时以指定助手创建(伙伴横排快捷入口)
             val currentAssistantId =
                 assistantIdOverride
                     ?: sessionDeps.settings.defaultAssistantIdFlow.first().ifBlank { "default" }
             val id = sessionRepository.createSession(assistantId = currentAssistantId)
-            // v1.x: El nuevo modo de permiso de sesión sigue el valor predeterminado global
+            // v1.x: 新会话权限模式跟随全局默认
             val permissionMode =
                 sessionDeps.sessionPermissionStore.getMode(
                     id,
@@ -221,26 +201,26 @@ internal class ChatSessionController(
                 )
             }
             onReady?.invoke()
-            // v0.45: Actualizar la ocupación del token de contexto(Los mensajes de nueva sesión están vacíos.,cargar solo contextWindow)
+            // v0.45: 刷新上下文 token 占用(新会话 messages 为空,只加载 contextWindow)
             bridge.refreshContext()
-            // R-UI-02: Sincronice el foco de la vista persistente después de crear una nueva sesión.
+            // R-UI-02: 新建会话后同步持久化查看焦点。
             resultOf { sessionDeps.settings.saveViewedSessionId(id) }
-                .onError { msg, _ -> Logger.w("ChatVM", "saveViewedSessionId falló: $msg") }
+                .onError { msg, _ -> Logger.w("ChatVM", "saveViewedSessionId 失败: $msg") }
         }
     }
 
-    /** reiniciar contexto:Liberar sesión anterior → Crear nueva tarea/Agent sesión → Restablecer el estado de la interfaz de usuario. */
+    /** 重启上下文:释放旧会话 → 新建任务/Agent 会话 → 重置 UI 状态。 */
     fun restartContext() {
         if (accessor.snapshot.isStreaming) bridge.detachStreaming()
         sessionDeps.onStopTts()
         sessionDeps.onNotifySessionEnd()
-        // v1.x: Limpiar sesiones antiguas"Esta sesión permite"caché temporal
+        // v1.x: 清理旧会话的"本会话允许"临时缓存
         sessionDeps.currentSessionIdForApproval()?.let { sessionDeps.sessionPermissionStore.clearSession(it) }
-        // Conteo de referencias:Liberar sesión anterior
+        // 引用计数:释放旧会话
         sessionDeps.currentSessionIdForApproval()?.let { sessionDeps.sessionManager.release(it) }
         accessor.coroutineScope.launch {
             val currentAssistantId = accessor.snapshot.currentAssistant?.id ?: "default"
-            // v1.28: Agent Crear una sesión de Agente en modo,No contamines la lista de tareas
+            // v1.28: Agent 模式下创建 Agent 会话,不污染任务列表
             val id =
                 if (accessor.snapshot.isAgentMode) {
                     sessionRepository.createAgentSession(assistantId = currentAssistantId)
@@ -286,36 +266,36 @@ internal class ChatSessionController(
             accessor.update {
                 it.copy(toast = sessionDeps.appContext.getString(R.string.err_chat_context_restarted_toast))
             }
-            // R-UI-02: Sincronice el foco de la vista persistente después de reiniciar el contexto en modo tarea.
+            // R-UI-02: 任务模式下重启上下文后同步持久化查看焦点。
             if (!accessor.snapshot.isAgentMode) {
                 resultOf { sessionDeps.settings.saveViewedSessionId(id) }
-                    .onError { msg, _ -> Logger.w("ChatVM", "saveViewedSessionId falló: $msg") }
+                    .onError { msg, _ -> Logger.w("ChatVM", "saveViewedSessionId 失败: $msg") }
             }
         }
     }
 
-    /** v1.97 gap8: Enviar texto a una nueva conversación(Crear atómicamente una nueva sesión + completar la entrada + activar el envío). */
+    /** v1.97 gap8: 将文本发送到新会话(原子创建新会话 + 填充输入 + 触发发送)。 */
     fun sendToNewChat(text: String, onReady: (() -> Unit)? = null) {
         if (accessor.snapshot.isStreaming) bridge.detachStreaming()
         sessionDeps.onStopTts()
         sessionDeps.onDisposeAsr()
         sessionDeps.onNotifySessionEnd()
-        // v1.x: Limpiar sesiones antiguas"Esta sesión permite"caché temporal
+        // v1.x: 清理旧会话的"本会话允许"临时缓存
         sessionDeps.currentSessionIdForApproval()?.let { sessionDeps.sessionPermissionStore.clearSession(it) }
         val currentSession = accessor.snapshot.currentSessionId
         val currentInput = accessor.snapshot.input
-        // Conteo de referencias:Liberar sesión anterior
+        // 引用计数:释放旧会话
         currentSession?.let { sessionDeps.sessionManager.release(it) }
         accessor.coroutineScope.launch {
             if (currentSession != null && currentInput.isNotBlank()) {
-                // Los borradores se colocan en la base de datos por sesión (la implementación anterior escribe en el DataStore y nunca lo lee, lo que significa que solo guarda pero no restaura)
+                // 草稿按会话落库（旧实现写 DataStore 且从不读取，等于只存不恢复）
                 resultOf { sessionRepository.saveInputDraft(currentSession, currentInput) }
                     .onError { msg, _ ->
                         Logger.w("ChatVM", "saveInputDraft failed: $msg")
                         MuseToast.show(sessionDeps.appContext.getString(R.string.chat_draft_save_failed))
                     }
             }
-            // v1.0.63: Las nuevas tareas utilizan el asistente predeterminado en la configuración
+            // v1.0.63: 新任务使用设置里的默认助手
             val currentAssistantId = sessionDeps.settings.defaultAssistantIdFlow.first().ifBlank { "default" }
             val id = sessionRepository.createSession(assistantId = currentAssistantId)
             val permissionMode =
@@ -350,16 +330,16 @@ internal class ChatSessionController(
             bridge.refreshContext()
             onReady?.invoke()
             sessionDeps.onSend()
-            // R-UI-02: Sincronice el foco de vista persistente al crear una nueva sesión y enviarla.
+            // R-UI-02: 新建会话并发送时同步持久化查看焦点。
             resultOf { sessionDeps.settings.saveViewedSessionId(id) }
-                .onError { msg, _ -> Logger.w("ChatVM", "saveViewedSessionId falló: $msg") }
+                .onError { msg, _ -> Logger.w("ChatVM", "saveViewedSessionId 失败: $msg") }
         }
     }
 
-    /** v1.28: Establecer el modo de pestaña Agente(restaurar/Crear una sesión de agente independiente;Reanudar la sesión de tareas al salir). */
+    /** v1.28: 设置 Agent Tab 模式(恢复/创建独立 Agent 会话;退出时恢复任务会话)。 */
     @Suppress("LongMethod", "CyclomaticComplexMethod")
     fun setAgentMode(enabled: Boolean, requestedSessionId: String? = null) {
-        // v2.x: número de serie del interruptor — Caducado(Reemplazado por una palanca más nueva)Los resultados de la carga asincrónica se descartan antes del envío.,Evitar conversaciones cruzadas en la sesión
+        // v2.x: 切换序号 — 过期(被更新的切换取代)的异步加载结果在提交前丢弃,防止串会话
         val switchToken = switchGuard.begin()
         if (accessor.snapshot.isStreaming) bridge.detachStreaming()
         sessionDeps.onStopTts()
@@ -382,13 +362,13 @@ internal class ChatSessionController(
                         requestedAgentSession
                             ?: sessionRepository.getRecentAgentByAssistant(preferredAgentId, 1).firstOrNull()
                             ?: run {
-                                // v2.x(comentarios de los usuarios): No más volver a caer"Última sesión de cualquier asistente"(getLatestAgentSession).
-                                // Si el asistente de destino no tiene sesiones históricas después de cambiar de asistente, la lógica anterior obtendrá la antigua sala predeterminada (u otros asistentes).
-                                // Se muestra como"Agent Encendí el asistente en configuración pero no surte efecto". Ahora haga clic directamente en el asistente de destino para crear una nueva sesión.
+                                // v2.x（用户反馈）: 不再回退到"任意助手的最新会话"（getLatestAgentSession）。
+                                // 切助手后若目标助手无历史会话，旧逻辑会拿到 default（或别的助手）的旧房间，
+                                // 表现为"Agent 设置里切了助手但不生效"。现在直接按目标助手新建会话。
                                 val newId = sessionRepository.createAgentSession(preferredAgentId)
                                 Logger.i(
                                     "ChatVM",
-                                    "setAgentMode: El asistente objetivo no tiene salas históricas, cree una nueva sesión de agente(assistant=$preferredAgentId)",
+                                    "setAgentMode: 目标助手无历史房间，新建 agent 会话(assistant=$preferredAgentId)",
                                 )
                                 sessionRepository.getSessionById(newId)
                             }
@@ -404,9 +384,9 @@ internal class ChatSessionController(
                         )
                     val (messages, hasMore) = sessionDeps.messageController.loadMessagesPaged(sessionId)
                     if (switchGuard.isStale(switchToken)) {
-                        // Reemplazado por alternancia actualizada:Suelta esta vez acquire,Descartar resultados de carga
+                        // 已被更新的切换取代:释放本次 acquire,丢弃加载结果
                         sessionDeps.sessionManager.release(sessionId)
-                        Logger.i("ChatVM", "setAgentMode(true) Resultados caducados,descartar: $sessionId")
+                        Logger.i("ChatVM", "setAgentMode(true) 结果过期,丢弃: $sessionId")
                         return@launch
                     }
                     val assistantId = sessionRepository.getAssistantId(sessionId)
@@ -414,7 +394,7 @@ internal class ChatSessionController(
                         sessionDeps.assistantRepository.getById(assistantId)
                             ?: sessionDeps.assistantRepository.getById("default")
                     val agentBackgroundStreaming = sessionDeps.chatGenerationManager.isStreaming(sessionId)
-                    // No finalices un plan activo mientras todavía se esté transmitiendo en segundo plano.
+                    // 后台仍在流式时不要收尾活跃计划
                     val restoredAgentPlans =
                         sessionDeps.messageController.restoreAgentPlansForSession(
                             sessionId,
@@ -446,7 +426,7 @@ internal class ChatSessionController(
                             visionAssistedMessageIds = emptySet(),
                             visionProgress = null,
                             sessionPermissionMode = permissionMode,
-                            // v2.2.1: Agent Restaurar la página a su posición anterior.;nueva sesión(El caché no pertenece a esta sesión.)antes de volver al final de la lista
+                            // v2.2.1: Agent 页面恢复离开前的位置;新会话(缓存不属于该会话)才回落到列表底部
                             agentListFirstVisibleItemIndex =
                             if (it.agentScrollOwnerSessionId == sessionId &&
                                 it.agentListFirstVisibleItemIndex >= 0
@@ -466,8 +446,8 @@ internal class ChatSessionController(
                         )
                     }
                     val model = resultOf { sessionDeps.settings.getSelectedModel() }.getOrNull()
-                    // v2.6.7 fix (AUDIT F7): Agent Tab Calienta también la lista de tareas pendientes ——
-                    // La implementación anterior solo lo hace en switchSession,Agent La barra de tareas pendientes permanece vacía después de reiniciar la sesión.
+                    // v2.6.7 fix (AUDIT F7): Agent Tab 也要预热待办 ——
+                    // 旧实现只在 switchSession 做，Agent 会话重启后待办条恒空。
                     accessor.coroutineScope.launch {
                         runCatching {
                             val repo =
@@ -477,7 +457,7 @@ internal class ChatSessionController(
                             if (!switchGuard.isStale(switchToken)) {
                                 io.zer0.muse.tools.TodoTool.syncFromDatabase(sessionId, todoList)
                             }
-                        }.onFailure { Logger.w("ChatVM", "No se pudo calentar el Agente para hacer: ${it.message}") }
+                        }.onFailure { Logger.w("ChatVM", "预热 Agent 待办失败: ${it.message}") }
                     }
                     val weakHint = WeakToolUseDetector.getWeakToolHint(model)
                     accessor.update {
@@ -488,12 +468,12 @@ internal class ChatSessionController(
                     throw e
                 } catch (e: Exception) {
                     if (switchGuard.isStale(switchToken)) {
-                        Logger.i("ChatVM", "setAgentMode(true) Rama fallida caducada,ignorar")
+                        Logger.i("ChatVM", "setAgentMode(true) 过期失败分支,忽略")
                         return@launch
                     }
-                    // v2.0 Reparación: No puede morir silenciosamente cuando falla el cambio(De lo contrario, la pestaña Agente siempre girará en círculos.).
-                    // volver al estado seguro: Haz tu mejor esfuerzo para crear una sesión de canje,Asegúrese de que la interfaz sea utilizable y conmutable.
-                    Logger.e("ChatVM", "setAgentMode falló,volver al estado seguro", e)
+                    // v2.0 修复: 切换失败时不能静默死掉(否则 Agent Tab 永远转圈)。
+                    // 回落安全态: 尽力创建兑底会话,保证界面可用且可切回。
+                    Logger.e("ChatVM", "setAgentMode 失败,回落安全状态", e)
                     val fallbackId = resultOf { sessionRepository.createAgentSession("default") }.getOrNull()
                     val fallbackAssistant =
                         runCatching {
@@ -509,7 +489,7 @@ internal class ChatSessionController(
                         )
                     }
                 } finally {
-                    // No quedan caminos"Conmutación"Estado de carga;Las tareas caducadas no deben borrar el estado de carga recién cambiado
+                    // 任何路径都不残留"切换中"加载态;过期任务不得清除新切换的加载态
                     if (!switchGuard.isStale(switchToken)) {
                         accessor.update { it.copy(isSwitchingSession = false) }
                     }
@@ -537,9 +517,9 @@ internal class ChatSessionController(
                 accessor.coroutineScope.launch {
                     val (messages, hasMore) = sessionDeps.messageController.loadMessagesPaged(sid)
                     if (switchGuard.isStale(switchToken)) {
-                        // Reemplazado por alternancia actualizada:Suelta esta vez acquire,Descartar resultados de carga
+                        // 已被更新的切换取代:释放本次 acquire,丢弃加载结果
                         sessionDeps.sessionManager.release(sid)
-                        Logger.i("ChatVM", "setAgentMode(false) Resultados caducados,descartar: $sid")
+                        Logger.i("ChatVM", "setAgentMode(false) 结果过期,丢弃: $sid")
                         return@launch
                     }
                     val permissionMode =
@@ -559,12 +539,12 @@ internal class ChatSessionController(
                             settleUnfinished = !taskBackgroundStreaming,
                         )
                     sessionDeps.stateStore.messages.value = messages
-                    // v2.6.7 Reparación (comentarios de los usuarios: eliminar el fondo/tachar el fondo y volver al principio de la lista):
-                    // Se da prioridad a restaurar la sesión donde se quedó la última vez; sólo se descarta el último si nunca se ha grabado antes.
-                    // La implementación anterior escribe lastIndex incondicionalmente, por lo que:
-                    //  - Cambiar de sesión normalmente → Saltar siempre al fondo (no a la posición donde se fue el usuario);
-                    //  - Cuando el proceso finaliza y se reconstruye, los mensajes aún no se han cargado.lastIndex=-1
-                    //    coerce mas tarde 0 → Volver arriba. Ambas actuaciones parten de esta línea de trabajo.
+                    // v2.6.7 修复（用户反馈：杀后台 / 划掉后台后回到列表顶部）:
+                    // 优先恢复该会话上次停住的位置；只有从未记录过时才落到最新一条。
+                    // 旧实现无条件写 lastIndex，于是:
+                    //  - 正常切换会话 → 总跳到最底（不是用户离开的位置）；
+                    //  - 进程被杀重建时 messages 还没加载完，lastIndex=-1
+                    //    coerce 后成 0 → 回到顶部。两种表现都源于这一行。
                     val restoredScroll =
                         resultOf { sessionDeps.settings.getChatScrollPosition(sid) }.getOrNull()
                     val restoredIndex = restoredScroll?.first
@@ -595,24 +575,24 @@ internal class ChatSessionController(
                     }
                     bridge.refreshContext()
                     resultOf { sessionDeps.settings.saveViewedSessionId(sid) }
-                        .onError { msg, _ -> Logger.w("ChatVM", "saveViewedSessionId falló: $msg") }
+                        .onError { msg, _ -> Logger.w("ChatVM", "saveViewedSessionId 失败: $msg") }
                 }
             }
         }
     }
 
-    /** Cambiar a la sesión especificada:limpiar → liberar/Obtener referencia → Cargar mensaje/planear/Permisos → Reanudar aprobación/outbox. */
+    /** 切换到指定会话:清理 → 释放/获取引用 → 加载消息/计划/权限 → 恢复审批/outbox。 */
     @Suppress("LongMethod", "CyclomaticComplexMethod", "NestedBlockDepth", "ComplexCondition")
     fun switchSession(sessionId: String) {
-        // v2.x: número de serie del interruptor — Caducado(Reemplazado por una palanca más nueva)Los resultados de la carga asincrónica se descartan antes del envío.,Evitar conversaciones cruzadas en la sesión
+        // v2.x: 切换序号 — 过期(被更新的切换取代)的异步加载结果在提交前丢弃,防止串会话
         val switchToken = switchGuard.begin()
         if (accessor.snapshot.isStreaming) bridge.detachStreaming()
         sessionDeps.onStopTts()
         sessionDeps.onDisposeAsr()
         sessionDeps.onNotifySessionEnd()
-        // v1.201: Cambiar sesión borra el enlace delegado + estado suspendido
+        // v1.201: 切换会话清空委派链路 + 暂停状态
         sessionDeps.onClearDelegation()
-        // v1.x: Limpiar sesiones antiguas"Esta sesión permite"caché temporal
+        // v1.x: 清理旧会话的"本会话允许"临时缓存
         val approvalSession = sessionDeps.currentSessionIdForApproval()
         approvalSession?.let { sessionDeps.sessionPermissionStore.clearSession(it) }
         val currentSession = accessor.snapshot.currentSessionId
@@ -621,17 +601,17 @@ internal class ChatSessionController(
             sessionDeps.onCancelPendingApprovals(currentSession)
         }
         val currentInput = accessor.snapshot.input
-        // Conteo de referencias:Liberar sesión anterior + obtener nueva sesión
+        // 引用计数:释放旧会话 + 获取新会话
         if (currentSession != null && currentSession != sessionId) {
             sessionDeps.sessionManager.release(currentSession)
         }
         sessionDeps.sessionManager.acquire(sessionId)
-        // C3: Registrar el historial de navegación reciente
+        // C3: 记录最近浏览历史
         accessor.coroutineScope.launch { sessionDeps.settings.recordSessionViewed(sessionId) }
-        // v2.6.7: Calienta la instantánea de las tareas pendientes de la sesión desde la biblioteca —— Anteriormente, la lista de tareas pendientes solo estaba en la memoria y estaba vacía cuando la dejaba y regresaba.
-        // Utilice switchToken para evitar la conversación cruzada de sesiones: si se ha cambiado a otra sesión cuando se vuelve a cargar, se descartará.
-        // v2.6.7 fix (AUDIT F7): Usar en su lugar syncFromDatabase —— La implementación anterior se preparaba solo cuando no era nula,
-        // Por lo tanto, "la biblioteca está vacía" nunca puede sobrescribir la lista anterior en la memoria (especialmente obvio después de restaurar la copia de seguridad).
+        // v2.6.7: 从库里预热该会话的待办快照 —— 此前待办只在内存，切走再回来就空了。
+        // 用 switchToken 防串会话：加载回来时若已切到别的会话就丢弃。
+        // v2.6.7 fix (AUDIT F7): 改用 syncFromDatabase —— 旧实现只在非空时 prime，
+        // 于是「库里已经空了」永远覆盖不掉内存里的旧清单（恢复备份后尤其明显）。
         accessor.coroutineScope.launch {
             runCatching {
                 val repo =
@@ -641,9 +621,9 @@ internal class ChatSessionController(
                 if (!switchGuard.isStale(switchToken)) {
                     io.zer0.muse.tools.TodoTool.syncFromDatabase(sessionId, list)
                 }
-            }.onFailure { Logger.w("ChatVM", "Sesión de calentamiento pendiente fallida: ${it.message}") }
+            }.onFailure { Logger.w("ChatVM", "预热会话待办失败: ${it.message}") }
         }
-        // v1.93+: Almacene la instantánea del mensaje de la sesión actual en la caché LRU antes de cambiar(Si hay ramas variantes, no se almacenarán en caché.)
+        // v1.93+: 切换前把当前会话消息快照存入 LRU 缓存(有变体分支则不缓存)
         if (currentSession != null && sessionDeps.stateStore.messages.value.isNotEmpty() &&
             sessionDeps.stateStore.conversationTree.value.userNodes.none {
                 it.variants.size > 1 || it.currentVariant?.assistantNodes?.any { a -> a.variants.size > 1 } == true
@@ -661,19 +641,19 @@ internal class ChatSessionController(
             }
         }
         accessor.coroutineScope.launch {
-            // F-15: DeepLink control de objetivos — Regrese a la lista de sesiones si la sesión no existe.
-            // Cuando no se pueda encontrar la biblioteca, eche otro vistazo a la lista de sesiones en la memoria: si existe en la lista, continúe cambiando.
-            // De lo contrario, un error instantáneo en la consulta borrará el foco a nulo (lo que el usuario ve es "se hace clic y luego se recupera").
+            // F-15: DeepLink 目标校验 — 会话不存在时回退会话列表。
+            // 库查不到时再看一眼内存里的会话列表：列表里存在就继续切，
+            // 否则一次瞬时查询失败会把焦点清成 null（用户看到的是「点进去了又弹回来」）。
             val exists = resultOf { sessionRepository.getSessionById(sessionId) }.getOrNull() != null ||
                 accessor.snapshot.sessions.any { it.id == sessionId }
             if (switchGuard.isStale(switchToken)) {
-                // Reemplazado por alternancia actualizada:Suelta esta vez acquire,Descartar resultados de carga
+                // 已被更新的切换取代:释放本次 acquire,丢弃加载结果
                 sessionDeps.sessionManager.release(sessionId)
-                Logger.i("ChatVM", "switchSession Resultados caducados,descartar: $sessionId")
+                Logger.i("ChatVM", "switchSession 结果过期,丢弃: $sessionId")
                 return@launch
             }
             if (!exists) {
-                Logger.w("ChatVM", "switchSession La sesión de destino no existe,Lista de sesiones de reversión: $sessionId")
+                Logger.w("ChatVM", "switchSession 目标会话不存在,回退会话列表: $sessionId")
                 accessor.update {
                     it.copy(
                         currentSessionId = null,
@@ -685,16 +665,16 @@ internal class ChatSessionController(
                 sessionDeps.stateStore.messages.value = emptyList()
                 return@launch
             }
-            // Abrir una conversación significa "leer": registre el mensaje activo más reciente en la conversación que aún está esperando respuesta como ABIERTO.
-            // Los enlaces profundos de notificación, los teléfonos celulares pequeños y los chats principales convergen al final en esta ruta de conmutación, por lo que solo se conectan aquí una vez.
-            // Si falla, simplemente lleve un registro: leer es más importante que llevar cuentas y no puede permitir que la omisión ralentice la carga de la página.
-            // Si no puede obtener el programador (los mensajes activos no están habilitados/Koin no se inicia en el entorno de prueba único), simplemente omítalo.
-            // No confíe en excepciones para controlar el proceso —— Una vez arrojado aquí, absorberá la recuperación de enfoque posterior.
+            // 打开会话即「已读」：把该会话最近一条还在等反应的主动消息记为 OPENED。
+            // 通知深链、小手机、主聊天最终都收敛到这一条切换路径，所以只在这里接一次。
+            // 失败只记日志：阅读这件事比记账重要，不能让旁路拖住页面加载。
+            // 取不到调度器（未启用主动消息 / 单测环境没起 Koin）就直接跳过，
+            // 不要靠异常来控制流程 —— 这里一旦抛出去会把后面的焦点恢复吞掉。
             runCatching {
                 org.koin.core.context.GlobalContext.get().get<io.zer0.muse.proactive.ProactiveScheduler>()
             }.getOrNull()?.let { proactive ->
                 resultOf { proactive.onSessionOpened(sessionId) }
-                    .onError { msg, _ -> Logger.w("ChatVM", "Error al marcar el mensaje activo como leído: $msg") }
+                    .onError { msg, _ -> Logger.w("ChatVM", "标记主动消息已读失败: $msg") }
             }
             val isBackgroundStreaming = sessionDeps.chatGenerationManager.isStreaming(sessionId)
             val cached = if (!isBackgroundStreaming) sessionMemoryCache.get(sessionId) else null
@@ -719,19 +699,29 @@ internal class ChatSessionController(
             val assistant =
                 sessionDeps.assistantRepository.getById(assistantId)
                     ?: sessionDeps.assistantRepository.getById("default")
-            // No finalices un plan activo mientras todavía se esté transmitiendo en segundo plano.
+            // 后台仍在流式时不要收尾活跃计划
             val restoredAgentPlans =
                 sessionDeps.messageController.restoreAgentPlansForSession(
                     sessionId,
                     messages,
                     settleUnfinished = !isBackgroundStreaming,
                 )
-            // Borrador de recuperación: al volver a una sesión, el contenido que no se envió la última vez volverá al cuadro de entrada.
-            // Las sesiones que todavía se generan en segundo plano no se reanudan (para evitar confusiones con el contenido que se transmite).
+            // 草稿恢复：切回会话时把上次没发出去的内容还回输入框。
+            // 后台仍在生成的会话不恢复（避免和正在流式的内容混淆）。
             val restoredDraft = if (isBackgroundStreaming) {
                 ""
             } else {
-                resultOf { sessionRepository.loadInputDraft(sessionId) }.getOrNull().orEmpty()
+                val draft = resultOf { sessionRepository.loadInputDraft(sessionId) }.getOrNull().orEmpty()
+                val pendingTexts = resultOf { sessionRepository.getPendingOutbox(sessionId) }.getOrNull()
+                    ?.map { it.text }
+                    .orEmpty()
+                // 崩溃也可能落在「消息已落库、草稿还没清掉」之间：这时待发队列已经清空，
+                // 只比对 outbox 就认不出来。取最近几条里的最后一条用户发言做比对——
+                // 助手可能已经回了（甚至回了「已中断」），但那句用户话就是刚发出去的。
+                val lastSentUserText = messages.takeLast(RECENT_SENT_SCAN)
+                    .lastOrNull { it.role == MessageRole.USER }
+                    ?.content
+                dropAlreadySentDraft(draft, pendingTexts, lastSentUserText)
             }
             accessor.update {
                 sessionDeps.stateStore.messages.value = messages
@@ -739,8 +729,8 @@ internal class ChatSessionController(
                     currentSessionId = sessionId,
                     activeProviderId = sessionDeps.activeProviderForSession(sessionId),
                     selectedModelId = sessionDeps.selectedModelForSession(sessionId),
-                    // Recuperación de borrador: en la implementación anterior, la cadena vacía se escribe directamente aquí y el borrador se perderá para siempre después de volver a cambiar.
-                    // En su lugar, lea el contenido no enviado guardado de la propia sesión (inyectado por recoveryInput arriba).
+                    // 草稿恢复：旧实现这里直接写死空串，切回来永远丢草稿。
+                    // 改为读取该会话自己保存的未发送内容（由上方 restoreInput 注入）。
                     input = restoredDraft,
                     hasDraft = restoredDraft.isNotBlank(),
                     errors = emptyList(),
@@ -755,7 +745,7 @@ internal class ChatSessionController(
                     isWaitingFirstToken = backgroundWaitingForOutput,
                     taskCards = emptyMap(),
                     pendingToolApprovals = emptyList(),
-                    // F-4: Cambie la sesión y borre el banner superior del nivel del mensaje,Evite la transferencia entre sesiones
+                    // F-4: 切换会话清空消息级置顶横幅,避免跨会话残留
                     pinnedMessageContent = null,
                     toolCallHistory = emptyList(),
                     agentPlans = restoredAgentPlans,
@@ -776,23 +766,23 @@ internal class ChatSessionController(
                 sessionMemoryCache.remove(sessionId)
             }
             resultOf { sessionDeps.settings.saveViewedSessionId(sessionId) }
-                .onError { msg, _ -> Logger.w("ChatVM", "saveViewedSessionId falló: $msg") }
-            // v1.0.30: Marcar marca de tiempo de cambio de sesión,Proporcionado a onAppForeground para determinar si se requiere una actualización forzada
+                .onError { msg, _ -> Logger.w("ChatVM", "saveViewedSessionId 失败: $msg") }
+            // v1.0.30: 标记会话切换时间戳,供 onAppForeground 判断是否需强制刷新
             sessionDeps.onSessionSwitched(sessionId)
-            // v0.45: Actualizar la ocupación del token de contexto
+            // v0.45: 刷新上下文 token 占用
             bridge.refreshContext()
-            // P0 árbol de diálogo: Lea la instantánea de la última selección de sucursales,Restaurar usuarios al reconstruir/Variante asistente
+            // P0 对话树: 读取上次分支选择快照,重建时恢复用户/助手变体
             val treeSnapshot = sessionDeps.treeSnapshotStore?.load(sessionId)
             sessionDeps.messageController.rebuildConversationTree(previousOverride = treeSnapshot)
             sessionDeps.restorePendingApprovalsForSession(sessionId)
-            // Reanudar la carga desde el punto de interrupción:Compruebe si hay llamadas de herramientas pendientes en esta sesión
+            // 断点续传:检查本会话是否有未完成的工具调用
             val pendingCount =
                 resultOf { PendingToolCallStore.getForChat(sessionId) }
-                    .onError { msg, t -> Logger.w("ChatVM", "switchSession getForChat falló: $msg", t) }
+                    .onError { msg, t -> Logger.w("ChatVM", "switchSession getForChat 失败: $msg", t) }
                     .getOrNull()?.size ?: 0
             if (pendingCount > 0) {
                 accessor.update { it.copy(pendingToolCallCount = pendingCount) }
-                Logger.i("ChatVM", "switchSession detectado $pendingCount llamadas de herramientas excepcionales,sesión=$sessionId")
+                Logger.i("ChatVM", "switchSession 检测到 $pendingCount 个未完成工具调用,会话=$sessionId")
             } else {
                 accessor.update { it.copy(pendingToolCallCount = 0) }
             }
@@ -802,5 +792,19 @@ internal class ChatSessionController(
 
     companion object {
         private const val MESSAGE_PAGE_SIZE = 50
+
+        /** 找回「刚发出去却没清掉的草稿」时往回看几条；再多就可能在用户重打同样一句话时误删。 */
+        private const val RECENT_SENT_SCAN = 4
     }
+}
+
+/**
+ * 崩溃正好落在「outbox 已落库」与「草稿已清空」之间时，库里那条草稿就是已经发出去的那句话；
+ * 恢复回去等于邀请用户再发一次，所以按 outbox 里待发的原文认出来并丢弃。
+ */
+internal fun dropAlreadySentDraft(draft: String, pendingOutboxTexts: List<String>, lastSentUserText: String? = null): String {
+    if (draft.isBlank()) return ""
+    if (draft in pendingOutboxTexts) return ""
+    if (lastSentUserText != null && lastSentUserText == draft) return ""
+    return draft
 }

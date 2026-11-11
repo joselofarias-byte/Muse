@@ -11,27 +11,27 @@ import io.zer0.common.Logger
 import java.io.File
 
 /**
- * Muse Especificaciones de fuente(Solución completa para alinear el diseño frontal §3).
+ * Muse 字体规范(对齐前端设计完整方案 §3)。
  *
- * Estrategia de fuentes(Decisiones clave contra la IA):
- *  - Todos usan fuentes del sistema.(FontFamily.Default),No introduzcas ninguna fuente personalizada
- *  - La representación de fuentes del sistema es la más clara, la de carga más rápida y la que más se ajusta a los hábitos de lectura de los usuarios de la plataforma.
- *  - Para bloques de código FontFamily.Monospace(Fuente monoespaciada del sistema)
- *  - Eliminar original Inter / Noto Serif SC / JetBrains Mono Google Fonts depender de
+ * 字体策略(反 AI 味关键决策):
+ *  - 全部使用系统字体(FontFamily.Default),不引入任何自定义字体
+ *  - 系统字体渲染最清晰、加载最快、最符合平台用户阅读习惯
+ *  - 代码块用 FontFamily.Monospace(系统等宽字体)
+ *  - 删除原 Inter / Noto Serif SC / JetBrains Mono Google Fonts 依赖
  *
- * Sistema de tamaño de fuente(Jerarquía estándar de alineación):
- *   - titular  displayLarge  34 Bold   "dialogo" / "memoria" / "ajustes" parte superior de la página
- *   - Titular del título Título de sesión pequeño 20 SemiBold / título de grupo establecido
- *   - Cuerpo del textoGrande 16 Regular Contenido del mensaje/texto de configuración
- *   - Cuerpo auxiliarMedio 14 Vista previa del mensaje regular / Proceso de pensamiento
- *   - Cuerpo del comentarioPequeño 12 Marca de tiempo normal/Etiqueta de modelo
- *   - TabEtiqueta de textoPequeña 11 Etiqueta de pestaña inferior mediana(M-TP2:≥11sp Tamaño de fuente mínimo que cumpla con los requisitos de accesibilidad.)
+ * 字号体系(对齐标准层级):
+ *   - 大标题  displayLarge  34 Bold   "对话" / "记忆" / "设置" 页顶
+ *   - 标题    headlineSmall 20 SemiBold 会话标题 / 设置分组标题
+ *   - 正文    bodyLarge     16 Regular 消息内容 / 设置项文字
+ *   - 辅助    bodyMedium    14 Regular 消息预览 / 思考过程
+ *   - 注释    bodySmall     12 Regular 时间戳 / 模型标签
+ *   - Tab文字 labelSmall    11 Medium  底部 Tab 标签(M-TP2:≥11sp 满足无障碍最小字号)
  *
- * altura de fila:Envía mensajes de texto 1,6 veces(16sp → 25.6sp),Más holgado que el 1,4-1,5 normal,
- *      Reduce significativamente la fatiga al leer las respuestas de la IA durante largos períodos de tiempo.
+ * 行高:正文 1.6 倍(16sp → 25.6sp),比常规 1.4-1.5 更宽松,
+ *      长时间阅读 AI 回复时显著降低疲劳。
  */
 val MuseTypography: Typography = Typography(
-    // ── capa de título ───────────────────────────────────────────────────────────
+    // ── 标题层 ───────────────────────────────────────────────────────────
     displayLarge = TextStyle(
         fontFamily = FontFamily.Default,
         fontWeight = FontWeight.Bold,
@@ -70,7 +70,7 @@ val MuseTypography: Typography = Typography(
         lineHeight = 26.sp,
     ),
 
-    // ── capa de título ───────────────────────────────────────────────────────────
+    // ── 标题层 ───────────────────────────────────────────────────────────
     titleLarge = TextStyle(
         fontFamily = FontFamily.Default,
         fontWeight = FontWeight.SemiBold,
@@ -90,28 +90,28 @@ val MuseTypography: Typography = Typography(
         lineHeight = 21.sp,
     ),
 
-    // ── Capa de texto(Fuerza principal del mensaje de chat.) ──────────────────────────────────────────
+    // ── 正文层(聊天消息主力) ──────────────────────────────────────────
     bodyLarge = TextStyle(
         fontFamily = FontFamily.Default,
         fontWeight = FontWeight.Normal,
         fontSize = 16.sp,
-        lineHeight = 25.6.sp, // 1.6 Duplicar la altura de la fila,Los artículos largos son cómodos de leer.
+        lineHeight = 25.6.sp, // 1.6 倍行高,长文阅读舒适
         letterSpacing = 0.1.sp,
     ),
     bodyMedium = TextStyle(
         fontFamily = FontFamily.Default,
         fontWeight = FontWeight.Normal,
         fontSize = 14.sp,
-        lineHeight = 22.4.sp, // 1.6 Duplicar la altura de la fila
+        lineHeight = 22.4.sp, // 1.6 倍行高
     ),
     bodySmall = TextStyle(
         fontFamily = FontFamily.Default,
         fontWeight = FontWeight.Normal,
         fontSize = 13.sp,
-        lineHeight = 20.8.sp, // L-TP3: 1.6 Duplicar la altura de la fila,Consistente con el cuerpo Sistema grande/cuerpo mediano
+        lineHeight = 20.8.sp, // L-TP3: 1.6 倍行高,与 bodyLarge/bodyMedium 体系一致
     ),
 
-    // ── capa de etiqueta(Botón/Pestaña/Línea de acción) ────────────────────────────────────
+    // ── 标签层(按钮 / Tab / 操作行) ────────────────────────────────────
     labelLarge = TextStyle(
         fontFamily = FontFamily.Default,
         fontWeight = FontWeight.Medium,
@@ -128,46 +128,46 @@ val MuseTypography: Typography = Typography(
     labelSmall = TextStyle(
         fontFamily = FontFamily.Default,
         fontWeight = FontWeight.Medium,
-        fontSize = 12.sp, // Las etiquetas compactas también siguen siendo legibles, nada menos que 12sp
+        fontSize = 12.sp, // 紧凑标签也保持可读，不低于 12sp
         lineHeight = 17.sp,
     ),
 )
 
-/** Fuente monoespaciada de bloque de código(sistema Monospace,No se introdujeron fuentes personalizadas). */
+/** 代码块等宽字体(系统 Monospace,不引入自定义字体)。 */
 val MuseMonoFontFamily: FontFamily = FontFamily.Monospace
 
 /**
- * E2: Cargar fuente de cuerpo personalizada desde la ruta del archivo(Usuarios importados vía SAF TTF/OTF).
+ * E2: 从文件路径加载自定义正文字体(用户经 SAF 导入的 TTF/OTF)。
  *
- * Archivo de fuente no válido(Eliminado/dañado/sin fuente)Volver a los valores predeterminados del sistema y registrar registros——Este es el archivo importado por el usuario.
- * Tolerancia a fallos empresariales,No permita que un archivo incorrecto destruya toda la situación UI;La persona que llama debe estar en remember(path) El caché da como resultado,
- * Evite reorganizarse cada vez createFromFile(Disco de sincronización IO).
+ * 字体文件失效(被删/损坏/非字体)时回退系统默认并记日志——这是用户导入文件的
+ * 业务容错,不让一个坏文件拖垮全局 UI;调用方应在 remember(path) 中缓存结果,
+ * 避免每次重组都 createFromFile(同步磁盘 IO)。
  *
- * @param path Ruta absoluta al archivo de fuente;null/Déjelo en blanco y regrese directamente al valor predeterminado del sistema.
+ * @param path 字体文件绝对路径;null/空白直接返回系统默认。
  */
 fun loadCustomFontFamily(path: String?): FontFamily {
     if (path.isNullOrBlank()) return FontFamily.Default
     return try {
-        // createFromFile Aquí solo se realiza la verificación de la validez del archivo.(Excepción de lanzamiento no válida),No se utiliza para la construcción.——
-        // Compose 1.7 La fuente no tiene constructor tipográfico.,Usar en su lugar Font(file) Carga diferida del mismo archivo
+        // createFromFile 在此仅作文件有效性校验(无效抛异常),不用于构建——
+        // Compose 1.7 的 Font 无 Typeface 构造,改用 Font(file) 懒加载同一文件
         android.graphics.Typeface.createFromFile(path)
         FontFamily(Font(File(path)))
     } catch (e: java.io.IOException) {
-        // El archivo de fuente no existe o no es legible
-        Logger.w("MuseTypography", "Error al cargar la fuente personalizada,Volver a los valores predeterminados del sistema: ${e.message}")
+        // 字体文件不存在或不可读
+        Logger.w("MuseTypography", "自定义字体加载失败,回退系统默认: ${e.message}")
         FontFamily.Default
     } catch (e: RuntimeException) {
-        // Typeface genera una excepción de tiempo de ejecución cuando el archivo de fuente está dañado o el formato no es compatible
-        Logger.w("MuseTypography", "Error al cargar la fuente personalizada,Volver a los valores predeterminados del sistema: ${e.message}")
+        // 字体文件损坏或格式不支持时 Typeface 抛运行时异常
+        Logger.w("MuseTypography", "自定义字体加载失败,回退系统默认: ${e.message}")
         FontFamily.Default
     }
 }
 
 /**
- * E2: Reemplaza la familia de fuentes de todos los estilos de tipografía con la fuente especificada.
+ * E2: 将 Typography 全部样式的字体族替换为指定字体。
  *
- * Reemplazar solo fontFamily,Tamaño de fuente reservado/altura de fila/Peso de fuente(El tamaño de fuente se escala por [scaled] independiente y responsable).
- * Los bloques de código no se ven afectados——Ellos usan explícitamente [MuseMonoFontFamily],Sin pasar por la Tipografía global.
+ * 仅替换 fontFamily,保留字号/行高/字重(字号缩放由 [scaled] 独立负责)。
+ * 代码块不受影响——它们显式使用 [MuseMonoFontFamily],不经过全局 Typography。
  */
 fun Typography.withFontFamily(family: FontFamily): Typography = copy(
     displayLarge = displayLarge.copy(fontFamily = family),
@@ -188,22 +188,22 @@ fun Typography.withFontFamily(family: FontFamily): Typography = copy(
 )
 
 /**
- * Escala del tamaño de fuente — Aumente o reduzca el tamaño de fuente/altura de línea de toda la tipografía.
+ * 字号缩放 — 将整个 Typography 的 fontSize / lineHeight 按比例放大或缩小。
  *
- * 4 archivo: small=0.85x / medium=1.0x(Predeterminado) / large=1.15x / xlarge=1.3x.
- * Sólo escalar el tamaño del texto,No afecta el peso de la fuente ni la familia de fuentes.
+ * 4 档: small=0.85x / medium=1.0x(默认) / large=1.15x / xlarge=1.3x。
+ * 只缩放文字尺寸,不影响字重和字体族。
  *
- * @param scale Rango de tamaño de fuente "small" / "medium" / "large" / "xlarge"
+ * @param scale 字号档位 "small" / "medium" / "large" / "xlarge"
  */
 fun Typography.scaled(scale: String): Typography {
     val factor = when (scale) {
         "small" -> 0.85f
-        "medium" -> 1.0f // v1.0.47: Enumerar explícitamente los engranajes predeterminados,Evite que el medio se utilice de otra manera"desconocido"Pantalla de actualización de alarma
+        "medium" -> 1.0f // v1.0.47: 显式列出默认档位,避免 medium 走 else 被当"未知"告警刷屏
         "large" -> 1.15f
         "xlarge" -> 1.3f
         else -> {
-            // L-6: El engranaje desconocido regresa silenciosamente al medio, lo que no favorece la resolución de problemas,Advertir y retroceder aquí medium(1.0x).
-            Logger.w("MuseTypography", "desconocido fontSizeScale=$scale,revertir medium")
+            // L-6: 未知档位静默回退 medium 不利于排查,此处告警并回退 medium(1.0x)。
+            Logger.w("MuseTypography", "未知 fontSizeScale=$scale,回退 medium")
             1.0f
         }
     }
@@ -227,17 +227,17 @@ fun Typography.scaled(scale: String): Typography {
     )
 }
 
-/** Un único TextStyle escala proporcionalmente fontSize / lineHeight / letterSpacing. */
+/** 单个 TextStyle 按比例缩放 fontSize / lineHeight / letterSpacing。 */
 private fun TextStyle.scale(factor: Float): TextStyle {
-    // L-TP4: letterSpacing Escalar por factor sincrónicamente,Evite espacios ajustados en tamaños de fuente grandes.
-    // no establecido explícitamente(Unspecified)permanecer como está,No fuerza el interletraje.
+    // L-TP4: letterSpacing 同步按 factor 缩放,避免大字号下字距偏紧。
+    // 未显式设置(Unspecified)时保持原样,不强行注入字距。
     val scaledLetterSpacing = if (letterSpacing != TextUnit.Unspecified) {
         letterSpacing * factor
     } else {
         letterSpacing
     }
-    // L-7: fontSize / lineHeight También hay que estar vigilado. Unspecified,De lo contrario Unspecified * factor
-    // Inyectará valores inesperados(Aunque la copia conservará el valor original.,Pero la semántica de guardia explícita es más clara y está alineada con el espaciado entre letras.).
+    // L-7: fontSize / lineHeight 同样需守卫 Unspecified,否则 Unspecified * factor
+    // 会注入非预期值(虽然 copy 会保留原值,但显式守卫语义更清晰、与 letterSpacing 对齐)。
     val scaledFontSize = if (fontSize != TextUnit.Unspecified) fontSize * factor else fontSize
     val scaledLineHeight = if (lineHeight != TextUnit.Unspecified) lineHeight * factor else lineHeight
     return copy(

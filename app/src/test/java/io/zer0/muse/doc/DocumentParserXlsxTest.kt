@@ -8,17 +8,17 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * v1.133: DocumentParser XLSX Análisis de pruebas unitarias.
+ * v1.133: DocumentParser XLSX 解析单元测试。
  *
- * prueba [DocumentParser.parseSharedStrings] con [DocumentParser.parseWorksheet] dos
- * Método de procesamiento XML puro(parseResult Usar ContentResolver es inconveniente para pruebas unitarias,tan inesperado).
+ * 测试 [DocumentParser.parseSharedStrings] 与 [DocumentParser.parseWorksheet] 两个
+ * 纯 XML 处理方法(parseResult 走 ContentResolver 不便单元测试,故不测)。
  *
- * Escena de portada:
- *  - Tabla de cadenas compartida:vacío/soltero <t>/mucho <t> texto enriquecido/prefijo de espacio de nombres
- *  - hoja de trabajo:número de celda/Celdas de cadena compartidas/cadena en línea/Booleano/linea en blanco
+ * 覆盖场景:
+ *  - 共享字符串表:空/单 <t>/多 <t> 富文本/命名空间前缀
+ *  - 工作表:数字单元格/共享字符串单元格/内联字符串/布尔/空行
  *
- * Nota:usar RobolectricTestRunner — XmlPullParserFactory.newInstance() en Android stub jar
- * Lanzar por defecto RuntimeException,Robolectric necesita proporcionar una implementación real.
+ * 注:用 RobolectricTestRunner — XmlPullParserFactory.newInstance() 在 Android stub jar
+ * 中默认抛 RuntimeException,需 Robolectric 提供真实实现。
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -29,49 +29,49 @@ class DocumentParserXlsxTest {
     // ── parseSharedStrings ──
 
     @Test
-    fun `sharedStrings La entrada vacía devuelve una lista vacía`() {
+    fun `sharedStrings 空输入返回空列表`() {
         assertTrue(parser.parseSharedStrings(null).isEmpty())
         assertTrue(parser.parseSharedStrings("").isEmpty())
         assertTrue(parser.parseSharedStrings("   ").isEmpty())
     }
 
     @Test
-    fun `sharedStrings Las etiquetas t individuales se analizan secuencialmente`() {
+    fun `sharedStrings 单 t 标签按顺序解析`() {
         val xml = """
             <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
             <sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="3" uniqueCount="3">
-                <si><t>nombre</t></si>
-                <si><t>edad</t></si>
-                <si><t>ciudad</t></si>
+                <si><t>姓名</t></si>
+                <si><t>年龄</t></si>
+                <si><t>城市</t></si>
             </sst>
         """.trimIndent()
         val list = parser.parseSharedStrings(xml)
         assertEquals(3, list.size)
-        assertEquals("nombre", list[0])
-        assertEquals("edad", list[1])
-        assertEquals("ciudad", list[2])
+        assertEquals("姓名", list[0])
+        assertEquals("年龄", list[1])
+        assertEquals("城市", list[2])
     }
 
     @Test
-    fun `sharedStrings Fusión de múltiples etiquetas t de texto enriquecido`() {
+    fun `sharedStrings 富文本多 t 标签合并`() {
         val xml = """
             <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
             <sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
                 <si>
-                    <r><rPr><b/></rPr><t>Negrita</t></r>
-                    <r><t>ordinario</t></r>
+                    <r><rPr><b/></rPr><t>粗体</t></r>
+                    <r><t>普通</t></r>
                 </si>
-                <si><t>texto plano</t></si>
+                <si><t>纯文本</t></si>
             </sst>
         """.trimIndent()
         val list = parser.parseSharedStrings(xml)
         assertEquals(2, list.size)
-        assertEquals("Negritaordinario", list[0])
-        assertEquals("texto plano", list[1])
+        assertEquals("粗体普通", list[0])
+        assertEquals("纯文本", list[1])
     }
 
     @Test
-    fun `sharedStrings Con entidad XML escapando`() {
+    fun `sharedStrings 含 XML 实体转义`() {
         val xml = """
             <sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
                 <si><t>A &amp; B &lt;tag&gt; &quot;quote&quot;</t></si>
@@ -85,7 +85,7 @@ class DocumentParserXlsxTest {
     // ── parseWorksheet ──
 
     @Test
-    fun `worksheet Las celdas numéricas puras generan directamente el valor v`() {
+    fun `worksheet 纯数字单元格直接输出 v 值`() {
         val xml = """
             <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
             <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
@@ -104,8 +104,8 @@ class DocumentParserXlsxTest {
     }
 
     @Test
-    fun `worksheet Tabla de búsqueda de celdas de cadena compartida por índice`() {
-        val shared = listOf("nombre", "Zhang San", "edad", "25")
+    fun `worksheet 共享字符串单元格按索引查表`() {
+        val shared = listOf("姓名", "张三", "年龄", "25")
         val xml = """
             <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
             <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
@@ -125,29 +125,29 @@ class DocumentParserXlsxTest {
         parser.parseWorksheet(xml, shared, sb)
         val lines = sb.toString().trim().lines()
         assertEquals(2, lines.size)
-        assertEquals("nombre\tZhang San", lines[0])
-        assertEquals("edad\t25", lines[1])
+        assertEquals("姓名\t张三", lines[0])
+        assertEquals("年龄\t25", lines[1])
     }
 
     @Test
-    fun `worksheet Lectura de cadenas en línea is_t`() {
+    fun `worksheet 内联字符串读取 is_t`() {
         val xml = """
             <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
             <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
                 <sheetData>
                     <row r="1">
-                        <c r="A1" t="inlineStr"><is><t>valor en línea</t></is></c>
+                        <c r="A1" t="inlineStr"><is><t>内联值</t></is></c>
                     </row>
                 </sheetData>
             </worksheet>
         """.trimIndent()
         val sb = StringBuilder()
         parser.parseWorksheet(xml, sharedStrings = emptyList(), sb = sb)
-        assertEquals("valor en línea", sb.toString().trim())
+        assertEquals("内联值", sb.toString().trim())
     }
 
     @Test
-    fun `worksheet Las celdas booleanas se convierten en TRUE_FALSE`() {
+    fun `worksheet 布尔单元格转换为 TRUE_FALSE`() {
         val xml = """
             <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
             <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
@@ -165,7 +165,7 @@ class DocumentParserXlsxTest {
     }
 
     @Test
-    fun `worksheet Varias líneas separadas por nuevas líneas`() {
+    fun `worksheet 多行用换行分隔`() {
         val xml = """
             <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
             <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
@@ -186,8 +186,8 @@ class DocumentParserXlsxTest {
     }
 
     @Test
-    fun `worksheet Volver al valor original cuando el índice de cadena compartida se sale de los límites`() {
-        // El índice 99 está fuera del rango de cadenas compartidas(Sólo 1 artículo),La salida debe revertirse. "99"
+    fun `worksheet 共享字符串索引越界时回退原值`() {
+        // 索引 99 超出 sharedStrings 范围(只有 1 项),应回退输出 "99"
         val xml = """
             <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
             <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
@@ -200,14 +200,14 @@ class DocumentParserXlsxTest {
             </worksheet>
         """.trimIndent()
         val sb = StringBuilder()
-        parser.parseWorksheet(xml, sharedStrings = listOf("artículo único"), sb = sb)
-        // Índice 0 acierto,Índice 99 Retroceso transfronterizo "99"
-        assertEquals("artículo único\t99", sb.toString().trim())
+        parser.parseWorksheet(xml, sharedStrings = listOf("唯一项"), sb = sb)
+        // 索引 0 命中,索引 99 越界回退 "99"
+        assertEquals("唯一项\t99", sb.toString().trim())
     }
 
     @Test
-    fun `worksheet Se omiten las celdas vacías`() {
-        // <c> Ninguno <v>,cellBuffer esta vacio,display es una cadena vacía pero aún se agrega rowCells
+    fun `worksheet 空单元格被跳过`() {
+        // <c> 无 <v>,cellBuffer 为空,display 为空串但仍加入 rowCells
         val xml = """
             <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
             <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
@@ -222,7 +222,7 @@ class DocumentParserXlsxTest {
         """.trimIndent()
         val sb = StringBuilder()
         parser.parseWorksheet(xml, sharedStrings = emptyList(), sb = sb)
-        // Las celdas vacías se conservan como cadenas vacías,tab La separación aún mantiene su posición
+        // 空单元格保留为空串,tab 分隔仍保留位置
         assertEquals("1\t\t3", sb.toString().trim())
     }
 }

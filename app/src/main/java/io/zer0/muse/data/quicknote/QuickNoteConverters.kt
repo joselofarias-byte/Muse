@@ -3,13 +3,13 @@ package io.zer0.muse.data.quicknote
 import androidx.room.TypeConverter
 
 /**
- * v1.0.17: Etiqueta de registro rápido TypeConverter.
+ * v1.0.17: 快速记录标签 TypeConverter。
  *
- * poner List<String> Serializar en almacenamiento de cadenas separadas por comas(tags columna),Facilita la recuperación de etiquetas SQL LIKE.
- * Dividir por coma y fusionar al deserializar trim,La cadena vacía devuelve una lista vacía.
+ * 把 List<String> 序列化为逗号分隔字符串存储(tags 列),便于 SQL LIKE 标签检索。
+ * 反序列化时按逗号切分并 trim,空字符串返回 emptyList。
  *
- * Nota:El valor de la etiqueta en sí no debe contener comas.(QuickNotesScreen UI Utilice únicamente la sintaxis #tag,sin coma),
- * Así que no es necesario escapar. Si necesita admitir etiquetas que contengan comas en el futuro,Utilice la serialización JSON en su lugar(prensa assistants.tagsJson).
+ * 注意:标签值本身不应包含逗号(QuickNotesScreen UI 仅用 #标签 语法,无逗号),
+ * 因此无需转义。若未来需要支持含逗号的标签,改用 JSON 序列化(按 assistants.tagsJson)。
  */
 class QuickNoteConverters {
     @TypeConverter

@@ -3,16 +3,16 @@ package io.zer0.ai.core
 import io.zer0.ai.util.KeyRoulette
 
 /**
- * T1.2: Lógica de rotación multiclave reutilizable.
+ * T1.2: 可复用的多 Key 轮换逻辑。
  *
- * con [ProviderHttpSupport] Los métodos integrados con el mismo nombre son lógicamente consistentes.,Pero sepárelos en categorías.,
- * Si heredar o no [ProviderHttpSupport] de Provider(Como la familia ImageProvider)Reutilizar,
- * hacer effectiveApiKey / switchToNextKey / markKeyFailed La verificación se puede construir directamente en la prueba.
+ * 与 [ProviderHttpSupport] 内嵌的同名方法逻辑一致,但独立成类,
+ * 供不继承 [ProviderHttpSupport] 的 Provider(如 ImageProvider 家族)复用,
+ * 使 effectiveApiKey / switchToNextKey / markKeyFailed 可在测试中直接构造验证。
  *
- * Cada instancia tiene un independiente [KeyRoulette],Evite la interferencia de estados entre proveedores.
+ * 每个实例持有独立的 [KeyRoulette],避免跨 Provider 状态串扰。
  *
- * @param config Configuración del proveedor(Contiene posibles comas./Muchas separaciones de nueva línea key apiKey)
- * @param keyRoulette Inyección opcional,Autoconstruido por defecto(Las pruebas pueden inyectar instancias compartidas.)
+ * @param config 供应商配置(含可能逗号/换行分隔的多 key apiKey)
+ * @param keyRoulette 可选注入,默认自建(测试可注入共享实例)
  */
 open class ProviderKeyRotation(
     val config: ProviderConfig,
@@ -24,13 +24,13 @@ open class ProviderKeyRotation(
         private set
 
     /**
-     * Obtenga la clave API actual que se debe utilizar.
+     * 取当前应使用的 API key。
      *
-     * Escenario clave única(config.apiKey sin coma/nueva línea)Devuelve directamente el valor original después de recortar key,Omita la lógica LRU.
+     * 单 key 场景(config.apiKey 不含逗号/换行)直接返回 trim 后的原 key,跳过 LRU 逻辑。
      *
-     * T1.2 Reparación:Los escenarios de múltiples claves se vuelven a ejecutar cada vez que se llaman. LRU pick,No más golpes"caché"La sucursal regresa directamente
-     * [currentApiKey] —— De lo contrario quedará bloqueado [switchToNextKey] / [markKeyFailed] rotado solo
-     * key en,Se pierde el significado de rotación de LRU y omisión de listas negras.
+     * T1.2 修复:多 key 场景每次调用都重新走 LRU pick,不再命中"缓存"分支直接返回
+     * [currentApiKey] —— 否则会锁死在 [switchToNextKey] / [markKeyFailed] 轮换出的单个
+     * key 上,失去 LRU 轮换与黑名单跳过的意义。
      */
     open fun effectiveApiKey(): String {
         if (!hasMultipleKeys()) {
@@ -41,13 +41,13 @@ open class ProviderKeyRotation(
     }
 
     /**
-     * 429 Cambie a la siguiente tecla cuando la corriente sea limitada.
+     * 429 限流时切换到下一个 key。
      *
-     * Agregue la clave actual a la lista negra suave(60s),Luego seleccione la siguiente clave.
-     * si solo hay uno key,Regresar false(Provider Debería utilizar un retroceso exponencial y volver a intentarlo.).
+     * 把当前 key 加入软黑名单(60s),然后选取下一个 key。
+     * 如果只有一个 key,返回 false(Provider 应走指数退避重试)。
      *
-     * @return true Indica un cambio exitoso al nuevo key(Debería intentarlo de nuevo inmediatamente.);
-     *         false Indica que solo hay una clave o que sigue siendo la misma después del cambio. key
+     * @return true 表示成功切换到新 key(应立即重试);
+     *         false 表示只有一个 key 或切换后仍是同一 key
      */
     open fun switchToNextKey(): Boolean {
         if (!hasMultipleKeys()) {
@@ -59,10 +59,10 @@ open class ProviderKeyRotation(
     }
 
     /**
-     * Error al marcar la clave actual(Como la autenticación 401 falló),5 excluir completamente el key,y elige el siguiente.
+     * 标记当前 key 失败(如 401 鉴权失败),5 分钟内完全排除该 key,并选下一个。
      *
-     * @return true Indica que hay otras claves disponibles.(Inténtalo de nuevo después de cambiar);
-     *         false Indica que solo una clave o todas las claves han fallado
+     * @return true 表示还有其他 key 可用(切换后重试);
+     *         false 表示只有一个 key 或所有 key 都已失败
      */
     fun markKeyFailed(hardBlock: Boolean = true): Boolean {
         if (!hasMultipleKeys()) {

@@ -20,45 +20,45 @@ import androidx.compose.ui.unit.dp
 import io.zer0.muse.R
 import io.zer0.muse.ui.common.media.LifecycleAwareWebViewContainer
 
-/** M8 Reparación: Longitud máxima del código fuente de la fórmula,Si se excede, se reducirá a texto sin formato.,Evite la presión de la memoria de WebView. */
+/** M8 修复: 公式源码长度上限,超过则降级为纯文本,避免 WebView 内存压力。 */
 private const val MAX_LATEX_LENGTH = 5000
 
 /**
- * Phase 8.6: LaTeX representación de fórmula(WebView + KaTeX).
+ * Phase 8.6: LaTeX 公式渲染(WebView + KaTeX)。
  *
- * darse cuenta:
- *  - Insertar con AndroidView WebView
- *  - Cargar KaTeX CSS+JS(Carga sin conexión desde activos/proveedores locales/,v1.97 Transformación)
- *  - llamar katex.render(latex, element, {displayMode: true}) renderizado
- *  - fondo transparente,color del texto MaterialTheme.onBackground
+ * 实现:
+ *  - 用 AndroidView 嵌入 WebView
+ *  - 加载 KaTeX CSS+JS(从本地 assets/vendor/ 离线加载,v1.97 改造)
+ *  - 调用 katex.render(latex, element, {displayMode: true}) 渲染
+ *  - 背景透明,文字色用 MaterialTheme.onBackground
  *
- * Comparación de volumen:
- *  - JLatexMath: ~2MB(Pero requiere la versión de implementación de Android.,La versión oficial usa java.awt y no está disponible.)
- *  - KaTeX via WebView: ~305KB APK Volumen(katex.min.js ~280KB + katex.min.css ~25KB,empacado en assets/vendor/)
+ * 体积对比:
+ *  - JLatexMath: ~2MB(但需要 Android 实现版,官方版用 java.awt 不可用)
+ *  - KaTeX via WebView: ~305KB APK 体积(katex.min.js ~280KB + katex.min.css ~25KB,打包在 assets/vendor/)
  *
- * limitaciones:
- *  - WebView Empezar con ~50ms gastos generales
- *  - No todos los entornos AMS son compatibles(Pero KaTeX ya cubre el 95% de la sintaxis LaTeX más utilizada.)
+ * 局限:
+ *  - WebView 启动有 ~50ms 开销
+ *  - 不支持 AMS 全部环境(但 KaTeX 已覆盖 95% 常用 LaTeX 语法)
  *
- * Instrucciones de seguridad: v1.97 Dado que los recursos de KaTeX se han cargado desde activos locales(base URL para file:///android_asset/),
- * Ya no depende de ningún control remoto CDN,Sin riesgo de secuestro o SRI.RichContentWebViewClient Intercepta toda la navegación de nivel superior.
+ * 安全说明: v1.97 起 KaTeX 资源已从本地 assets 加载(base URL 为 file:///android_asset/),
+ * 不再依赖任何远程 CDN,无 SRI/劫持风险。RichContentWebViewClient 拦截所有顶层导航。
  *
- * M8 Instrucciones de optimización de memoria: Cada bloque de fórmula se crea de forma independiente. WebView,Hay mucha presión en la memoria cuando hay mensajes largos y múltiples fórmulas.;
- * Cuando la longitud del látex excede [MAX_LATEX_LENGTH] bajar a renderizado de solo texto,WebView ya no se crea.
+ * M8 内存优化说明: 每个公式块创建独立 WebView,长消息多公式时内存压力大;
+ * 当 latex 长度超过 [MAX_LATEX_LENGTH] 时降级为纯文本渲染,不再创建 WebView。
  *
- * @param latex LaTeX Código fuente de la fórmula(no contiene $$ delimitador)
- * @param modifier Modificaciones de diseño externo(M-MD7 Nuevo)
+ * @param latex LaTeX 公式源码(不含 $$ 定界符)
+ * @param modifier 外部布局修饰(M-MD7 新增)
  */
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
 fun FormulaView(latex: String, modifier: Modifier = Modifier) {
     val onBackgroundColor = MaterialTheme.colorScheme.onBackground
     val textColorHex = String.format("#%06X", 0xFFFFFF and onBackgroundColor.toArgb())
-    // L-MD14 Reparación: Utilice MaterialTheme.error para los colores de error en lugar de codificar #B00020
+    // L-MD14 修复: 错误色用 MaterialTheme.error 而非硬编码 #B00020
     val errorColorHex = String.format("#%06X", 0xFFFFFF and MaterialTheme.colorScheme.error.toArgb())
 
-    // M8 Reparación: Las fórmulas demasiado largas se degradan al texto original,Evite la presión de la memoria causada por la creación de WebView para cada bloque de fórmulas
-    // Limitaciones conocidas: Los gráficos de fórmula no se representan después de degradar,Mostrar solo el código fuente original de LaTeX;Los escenarios con mensajes largos y múltiples fórmulas se guardan primero en la memoria.
+    // M8 修复: 超长公式降级为源码文本,避免每个公式块创建 WebView 造成内存压力
+    // 已知限制: 降级后不渲染公式图形,仅显示原始 LaTeX 源码;长消息多公式场景优先保内存。
     if (latex.length > MAX_LATEX_LENGTH) {
         Spacer(Modifier.height(6.dp))
         Text(
@@ -73,28 +73,28 @@ fun FormulaView(latex: String, modifier: Modifier = Modifier) {
         return
     }
 
-    // Almacenamiento en caché de plantillas HTML:latex O se regenerará cuando cambie el color.
+    // 缓存 HTML 模板:latex 或颜色变化时才重新生成
     val html = remember(latex, textColorHex, errorColorHex) {
         buildHtml(latex, textColorHex, errorColorHex)
     }
 
     Spacer(Modifier.height(6.dp))
-    // stringResource Debe extraerse en la ubicación de llamada directa de @Composable,no puedo estar ahí semantics{} Para uso interno.
+    // stringResource 需在 @Composable 直接调用位置提取,不能在 semantics{} 内使用。
     val formulaCd = stringResource(R.string.markdown_formula_cd, latex)
-    // v1.88 Reparación: Usar en su lugar LifecycleAwareWebViewContainer,Procesamiento automático ON_PAUSE/ON_RESUME/ON_DESTROY,
-    // Resuelva el temporizador JS relacionado con el renderizado KaTeX cuando la actividad está en segundo plano/La animación continúa funcionando y consume energía.
-    // Se han eliminado las limitaciones conocidas del L9 original.;La lógica de lanzamiento original v0.53 onRelease está unificada por el contenedor.
-    // v1.97: base URL para file:///android_asset/ para cargar local KaTeX
+    // v1.88 修复: 改用 LifecycleAwareWebViewContainer,自动处理 ON_PAUSE/ON_RESUME/ON_DESTROY,
+    // 解决 Activity 后台时 KaTeX 渲染相关 JS 定时器/动画继续运行耗电的问题。
+    // 原 L9 已知限制已消除;原 v0.53 的 onRelease 释放逻辑由容器统一兜底。
+    // v1.97: base URL 为 file:///android_asset/ 以加载本地 KaTeX
     LifecycleAwareWebViewContainer(
         htmlContent = html,
         baseUrl = "file:///android_asset/",
         javaScriptEnabled = true,
-        // L11 Reparación: KaTeX No se requiere almacenamiento DOM,mantener predeterminado false
+        // L11 修复: KaTeX 不需要 DOM 存储,保持默认 false
         domStorageEnabled = false,
-        // Intercepta toda la navegación de nivel superior,Los recursos utilizan activos locales y no requieren listas blancas remotas.
+        // 拦截所有顶层导航,资源走本地 assets 不需远程白名单
         webViewClient = RichContentWebViewClient(),
-        // M-MD7 Reparación: aceptar el exterior modifier;M-MD8 Reparación: height(80.dp) Cambiar a heightIn(min=80.dp)
-        // M5 Reparación: Agregue descripción de contenido para una lectura sin barreras
+        // M-MD7 修复: 接受外部 modifier;M-MD8 修复: height(80.dp) 改为 heightIn(min=80.dp)
+        // M5 修复: 加 contentDescription 供无障碍朗读
         modifier = modifier
             .fillMaxWidth()
             .heightIn(min = 80.dp)
@@ -104,33 +104,33 @@ fun FormulaView(latex: String, modifier: Modifier = Modifier) {
 }
 
 /**
- * Construya HTML que contenga un script de renderizado KaTeX.
+ * 构造包含 KaTeX 渲染脚本的 HTML。
  *
- * - KaTeX CSS+JS Carga desde activos locales/proveedor/(v1.97 Transformación,Sin dependencia de CDN)
- * - Llamado automáticamente después de cargar la página. katex.render()
- * - displayMode: true corresponder $$...$$ fórmula a nivel de bloque
- * - throwOnError: false Deje que se muestre el texto de látex original en lugar de fallar cuando falla el análisis
+ * - KaTeX CSS+JS 从本地 assets/vendor/ 加载(v1.97 改造,免 CDN 依赖)
+ * - 页面加载完成后自动调用 katex.render()
+ * - displayMode: true 对应 $$...$$ 块级公式
+ * - throwOnError: false 让解析失败时显示原 latex 文本而非崩溃
  *
- * @param latex LaTeX código fuente
- * @param textColorHex Color del texto(ARGB girar #RRGGBB)
- * @param errorColorHex Color del mensaje de error(L-MD14: La persona que llama pasa el color del error del tema)
+ * @param latex LaTeX 源码
+ * @param textColorHex 正文颜色(ARGB 转 #RRGGBB)
+ * @param errorColorHex 错误提示颜色(L-MD14: 由调用方传入主题 error 色)
  */
 private fun buildHtml(latex: String, textColorHex: String, errorColorHex: String): String {
-    // Escapar de personajes especiales en látex.,Evite romper cadenas JS
+    // 转义 latex 中的特殊字符,避免破坏 JS 字符串
     val escaped = latex
         .replace("\\", "\\\\")
         .replace("\"", "\\\"")
         .replace("\n", "\\n")
         .replace("\r", "")
-        .replace("</", "<\\/") // protegerse contra </script> inyectar
+        .replace("</", "<\\/") // 防 </script> 注入
     return """
 <!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
-<!-- M-MD11 Reparación: Quitar user-scalable=no,Permitir a los usuarios acercar y alejar para ver los detalles de la fórmula;maximum-scale=5.0 Limitar el zoom máximo -->
+<!-- M-MD11 修复: 移除 user-scalable=no,允许用户缩放查看公式细节;maximum-scale=5.0 限制最大缩放 -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
-<!-- v1.97: KaTeX CSS+JS En su lugar, cargue desde activos locales,Resuelva el problema de que CDN no esté disponible en China. Las fuentes recurren a las fuentes del sistema. -->
+<!-- v1.97: KaTeX CSS+JS 改为从本地 assets 加载,解决 CDN 在中国不可用的问题。字体回退到系统字体。 -->
 <link rel="stylesheet" href="vendor/katex.min.css">
 <script defer src="vendor/katex.min.js"></script>
 <style>
@@ -170,8 +170,8 @@ private fun buildHtml(latex: String, textColorHex: String, errorColorHex: String
         output: "htmlAndMathml"
       });
     } catch (e) {
-      // L5 Reparación: Utilice contenido de texto en su lugar innerHTML,Evitar que e.message se analice en HTML y provoque inyección
-      document.getElementById("formula").textContent = 'Error de fórmula: ' + e.message;
+      // L5 修复: 用 textContent 替代 innerHTML,避免 e.message 被解析为 HTML 造成注入
+      document.getElementById("formula").textContent = '公式错误: ' + e.message;
     }
   };
 </script>

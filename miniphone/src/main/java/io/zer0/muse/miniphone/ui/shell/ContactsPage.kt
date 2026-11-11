@@ -25,20 +25,22 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import io.zer0.muse.miniphone.R
 import io.zer0.muse.miniphone.api.MpCharacter
 import io.zer0.muse.miniphone.ui.theme.MiniPhoneTheme
 import kotlinx.coroutines.launch
 
 /**
- * Página de la libreta de direcciones:Agrupar por letra inicial,Índice alfabético a la derecha.
+ * 通讯录页:按首字母分组,右侧字母索引。
  *
- * La barra de índice salta directamente según la posición del título del grupo en la lista.(Sin techo de letras),La posición de salto es la primera línea del grupo.,
- * Con un nivel menos de estado, no existe el "clic pero no movido".
+ * 索引条按分组标题在列表里的位置直接跳转(不做字母吸顶),跳转位置就是该组第一行,
+ * 少一层状态也就不存在「点了但没动」的情况。
  *
- * @param onOpenContact Devolución de llamada al hacer clic en una línea determinada:Los parámetros son para el rol. id,El shell decide a qué sesión ingresar
+ * @param onOpenContact 点某一行的回调:参数是该角色的 id,由外壳决定进哪条会话
  */
 @Composable
 internal fun ContactsPage(sections: List<MiniPhoneContactSection>, modifier: Modifier = Modifier, onOpenContact: (String) -> Unit = {}) {
@@ -93,7 +95,7 @@ internal fun ContactsPage(sections: List<MiniPhoneContactSection>, modifier: Mod
     }
 }
 
-/** Título del grupo:una línea de letra pequeña,El color de fondo es el mismo que el de la página.,No robes los nombres de las personas. */
+/** 分组标题:一行小字,底色与页面同色,不抢人名。 */
 @Composable
 private fun ContactHeaderRow(key: String) {
     val colors = MiniPhoneTheme.colors
@@ -110,7 +112,7 @@ private fun ContactHeaderRow(key: String) {
     )
 }
 
-/** Una línea en la libreta de direcciones:avatar + nombre,Cuando haya una oración sobre diseño de personajes, agregue una línea de caracteres pequeños. Comienza a chatear con solo un clic. */
+/** 通讯录的一行:头像 + 名字,有句话人设时补一行小字。点一下就开始聊天。 */
 @Composable
 private fun ContactPersonRow(character: MpCharacter, onClick: () -> Unit) {
     val colors = MiniPhoneTheme.colors
@@ -147,7 +149,7 @@ private fun ContactPersonRow(character: MpCharacter, onClick: () -> Unit) {
     }
 }
 
-/** Libreta de direcciones vacía. */
+/** 空通讯录。 */
 @Composable
 private fun ContactsEmptyState(modifier: Modifier = Modifier) {
     val colors = MiniPhoneTheme.colors
@@ -161,18 +163,18 @@ private fun ContactsEmptyState(modifier: Modifier = Modifier) {
         verticalArrangement = Arrangement.Center,
     ) {
         Text(
-            text = "La libreta de direcciones todavía está vacía.",
+            text = stringResource(R.string.mp_contacts_empty_title),
             style = typography.title.copy(color = colors.textPrimary),
         )
         Spacer(Modifier.height(6.dp))
         Text(
-            text = "Los contactos de su teléfono se pondrán en cola aquí por letra inicial.",
+            text = stringResource(R.string.mp_contacts_empty_hint),
             style = typography.caption.copy(color = colors.textSecondary),
         )
     }
 }
 
-/** El subíndice del título de cada grupo en LazyColumn.:El título ocupa una línea.,Seguido por miembros del grupo. */
+/** 每个分组的标题在 LazyColumn 里的下标:标题占一行,后面跟着该组成员。 */
 internal fun contactHeaderIndices(sections: List<MiniPhoneContactSection>): Map<String, Int> {
     val indices = mutableMapOf<String, Int>()
     var cursor = 0

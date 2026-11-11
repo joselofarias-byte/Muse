@@ -1,198 +1,198 @@
 # Muse v2.6.10
 
-> En el pasado, la tarjeta sólo podía dibujarse hasta un tercio de su altura y las llamadas a herramientas se atascaban al aprobarse y nunca se ejecutaban;
-> Los mensajes activos tienen una nueva notación, los recuerdos se pueden eliminar en lotes y la página de configuración se reorganiza según "¿Para qué estás aquí?"
+> 卡片以前只画得出三分之一高度、工具调用会卡在审批上永远不执行；
+> 主动消息换了一套记法，记忆能批量删了，设置页按「你来干什么」重排。
 
 ---
 
-## chino
+## 中文
 
-### La tarjeta sólo muestra la mitad de su contenido (P0)
+### 卡片只显示一半内容（P0）
 
-Tarjetas de altura automática utilizadas para revelar solo la sección del título.WebView Las dimensiones devueltas son píxeles CSS,
-El código los trata como píxeles físicos, excepto por la densidad de la pantalla (2.625), dejando cada tarjeta con solo un 38% de altura.
+自动高度的卡片以前只能露出标题那一截。WebView 返回的尺寸是 CSS 像素，
+代码当成物理像素，又除了一次屏幕密度（2.625），每张卡只剩 38% 高度。
 
-Ahora presione los píxeles CSS directamente para usarlos. Además, el modelo puede ser `show_card` Declare la altura de la tarjeta aquí
-(`auto`, dp fijo,`16:9`), el diseño de varias líneas lo declara uno mismo, lo que evita que el anfitrión adivine y las tarjetas largas ya no serán interceptadas.
+现在按 CSS 像素直接用。另外模型可以在 `show_card` 里声明卡片高度
+（`auto`、固定 dp、`16:9`），多行布局自己声明，不让宿主猜，长卡片不会再被截。
 
-**Un cambio que sentirás inmediatamente**: "Salida de tarjeta de preferencias" se vuelve a abrir de forma predeterminada.
-(2.6.6 lo había apagado). Después de la actualización, el asistente será más proactivo a la hora de convertir tablas, comparaciones y opciones en tarjetas.
-Si no lo quieres, ve a Configuración → Charla fuera.
+**一个你会马上感知到的变化**：「偏好卡片输出」重新默认打开了
+（2.6.6 曾把它关掉）。升级后助手会更主动地把表格、对比、选项做成卡片。
+不想要就去 设置 → 聊天 关。
 
-Esta versión de las palabras clave para la generación de tarjetas también ha cambiado a un conjunto de vocabulario de diseño: diseños ya preparados, como conchas, indicadores, tablas y etiquetas simples.
-Un conjunto de escalas de color de datos, una entrada de gráfico y devoluciones de llamada declarativas. En el pasado, el modelo utilizaba código fuente de estilo escrito a mano en una pantalla.
-Ahora hay formatos disponibles. Hay mas productos `table` Escriba, las tablas ya no están amontonadas en los documentos y se convierten en un montón de líneas verticales.
+卡片生成用的提示词这版也换了一套设计词汇表：外壳、指标、表格、徒标这些现成版式，
+一套数据色阶，一个图表入口，还有声明式回传。以前模型是在一屏里手写样式源码，
+现在是有版式可套。产物也多了 `table` 类型，表格不再被塞进文档里变成一堆竖线。
 
-### Llamada de herramienta: atascada en la aprobación, nombre contaminado (P0)
+### 工具调用：卡在审批、名字被污染（P0）
 
-Se superponen tres lugares. Mientras pises un lugar, una llamada a la herramienta será en vano:
+三处叠加，只要踩到一处，一次工具调用就白跑：
 
-- **Tiempo de espera de aprobación**: En modo estricto, cada tarjeta y cada actualización pendiente deben ser aprobadas para su aprobación.30 Rechazado automáticamente en segundos,
-  La tarjeta desaparece inmediatamente. Las tarjetas y las tareas pendientes son exclusivamente para mostrar, no se escriben archivos y no se toca ningún equipo.
-  Del mismo calibre que "renderizar datos", ahora ya no requiere aprobación.
-- **El nombre de la herramienta está contaminado por texto**: El modelo ocasionalmente envía líneas y nombres de funciones juntos.
-  (`…espera un momento.show_card`). Los nombres que no coincidan resultarán en el fracaso de toda la ronda. Ahora solo puedo igualar
-  Se restituirán los nombres de las herramientas expuestas en esta ronda. Si no hay una lista, no hay que adivinar.
-- **El parámetro es una oración humana completa.**: En este caso, antes se informó "Excepción de formato de parámetro". Ahora se entrega como texto principal.
+- **审批超时**：严格模式下每张卡片、每次待办更新都要弹审批，30 秒不点自动拒绝，
+  卡片直接消失。卡片和待办都是纯展示，不写文件、不碰设备，
+  与「渲染数据」同口径，现在不再需要审批。
+- **工具名被正文污染**：模型偶尔把台词和函数名连在一起提交
+  （`…等一下.show_card`）。名字对不上会导致整轮失败。现在只在能对上
+  本轮暴露的工具名时还原，没有名单不猜。
+- **参数是一整句人话**：这种情况以前报「参数格式异常」。现在当成正文交付。
 
-Una cosa más: para las respuestas que ya se han escrito, no intente nuevamente simplemente "afirmar que desea ajustar la herramienta pero no puede llamarla".
-Nunca tirarás por la borda lo que ya has escrito.
+还有一条：已经写出正文的回复，不再为了「声称要调工具却给不出调用」而重试，
+不会再把已经写好的内容丢掉。
 
-### Mensajería proactiva: pasar del sondeo basado en puntos a la contabilidad
+### 主动消息：从按点轮询换成记账本
 
-El antiguo mecanismo realiza encuestas a intervalos fijos y se agrega un motor de puntuación para decidir si se abre la boca. Omitir cosas, repetir cosas, decir cosas que no se deberían decir,
-Todo se reduce a esta estructura. Ahora cambie a un libro mayor:
+旧机制是固定间隔轮询，加一个评分引擎决定要不要开口。漏掉的、重复的、说不该说的，
+都出在这个结构上。现在换成记账本：
 
-- **Preocupado por el libro mayor**: El asistente escribe "cosas que quiere preguntarle en el futuro" y elige una para decirla cuando llegue el momento, en lugar de encontrar palabras de la nada.
-- **cuenta de resultados**: Escriba si se hizo clic en él, si se respondió, si se tachó después de decirlo.
-- **intimidad**: aprenda de estos comentarios y decida cuántas veces más puede hablar hoy.
+- **牵挂账本**：助手把「以后想问他的事」记下来，到时机挑一条说，而不是凭空找话
+- **结果账**：说了之后有没有被点开、有没有被回复、有没有被划掉，都记下来
+- **亲密度**：从这些反馈里学出来，决定今天还能说几次
 
-Se han cambiado varias cosas en el paquete:
+配套改了几件事：
 
-- Cinco niveles de reordenamiento del peso: Silencioso 3 / Restricción 6 / Estándar 15 / Activo 24 / Sin límite superior de apego
-- En el panel del libro mayor, puede ver en qué ha estado pensando recientemente y cuántas veces puede hablar de ello hoy.
-- Hay un "reinicio" adicional: volver al nivel estándar y borrar la cuota de hoy a cero.
-- El período de silencio está vigente y no sonará cuando llegue la hora de dormir.
-- Tres mesas están respaldadas y no se perderán al cambiar de máquina.
+- 五档量级重排：安静 3 / 克制 6 / 标准 15 / 主动 24 / 黏人不设上限
+- 账本面板能看到它最近在惦记什么、今天还能说几次
+- 多了「重置」：回到标准档，并把今天的额度一起清零
+- 安静时段生效，该睡的时候不会响
+- 三张表进备份，换机不丢
 
-### Los recuerdos se pueden eliminar en lotes
+### 记忆能批量删了
 
-Es inevitable que los recuerdos se confundan y se repitan. En el pasado, sólo podía eliminar elementos uno por uno. Después de eliminar un elemento de la lista, volvía a la parte superior.
+记忆难免会乱记、重复记，以前只能一条条删，删一条列表就跳回顶部。
 
-Ahora mantenga presionado cualquier elemento para ingresar a la selección múltiple. El punto de la izquierda se convierte en un círculo de selección y solo queda "Cancelar/Eliminar" en la parte superior.
-El círculo de nodos en la vista de línea de tiempo se sincroniza con un círculo seleccionado. Solo se actualizará una vez después de la eliminación y no volverá a la parte superior.
+现在长按任意一条进入多选，左侧圆点变成选中圈，顶部只剩「取消 / 删除」。
+时间轴视图的节点圈同步变成选中圈。删完只刷新一次，不再跳回顶部。
 
-### El proceso es visible.
+### 过程看得见了
 
-- Una barra plana encima del campo de entrada: lo que estás haciendo en este momento, varias subtareas y dónde se ha ido la herramienta. Haz clic para ver los detalles de esta ronda y desaparecerá automáticamente cuando finalice.
-- Hay una tarjeta de proceso permanente al final del flujo de mensajes: qué se está haciendo, cuántos pasos y cuánto tiempo llevó. Girarlo hacia arriba no se reciclará.
-- Cada paso se puede plegar de forma independiente, el paso fallido se marca en rojo y se proporciona un fragmento del resultado.
-- Las estadísticas de cabeza cambiaron a "N herramientas · N pensamientos · N falló
-- Las herramientas individuales también comenzaron a doblarse en tarjetas. En el pasado, se necesitaban más de 2 para recogerlos.
-- Hay demasiados "Cerrar temas" atrapados en las subtareas en segundo plano. Los subprocesos que no hayan terminado de ejecutarse se pueden finalizar.
+- 输入栏上方一条扁条：此刻在干什么、几个子任务、工具走到哪一步。点开看本轮明细，结束自动消失
+- 消息流末尾一张常驻过程卡：在做什么、几步、用了多久。向上翻不会被回收
+- 每一步独立可折叠，失败的那步标红并给出结果片段
+- 头部统计改成「N 个工具 · N 次思考 · N 次未成功」
+- 单个工具也开始折叠成卡，以前要 2 个以上才收
+- 后台子任务卡多了「关闭线程」，跑完没收尾的线程可以了结
 
-### La página de configuración se reorganiza en "¿Qué estás haciendo aquí?"
+### 设置页按「你来干什么」重排
 
-El nivel 1 se amplió de 7 grupos a 11 grupos: Asistentes y Personajes/Diálogo y Expresión/Interfaz y Visualización/Modelos e Inferencia /
-Capacidades y Herramientas / Voz y Multimedia / Memoria y Conocimiento / Iniciativa y Automatización / Cuentas Conectadas y Seguridad /
-Almacenamiento y espacio / Copia de seguridad y migración / Acerca de y diagnóstico.
+一级从 7 组扩到 11 组：助手与人设 / 对话与表达 / 界面与显示 / 模型与推理 /
+能力与工具 / 语音与多媒体 / 记忆与知识 / 主动与自动化 / 连接账号与安全 /
+存储与空间 / 备份与迁移 / 关于与诊断。
 
-- Las estrategias de aprobación de herramientas regresan a la página de herramientas; las restricciones de piso y las bases de datos de experiencias se colocan en la página de memoria; Los valores predeterminados de pensamiento profundo y los modelos de compresión se colocan en la página de enrutamiento de tareas.
-- El subtítulo de cada entrada dice claramente "¿Qué puedes hacer si entras?"
-- El paquete de emoticones se actualizó desde la parte inferior de la página "Medios" a una página separada.
-- El backend permanente solía estar bajo la configuración "Teléfono pequeño", por lo que nadie podía encontrarlo. Ahora tiene entrada independiente.
-- Se corrigió el bloqueo de inicio causado por la falta de canales de notificación para el servicio Keep-Alive.
+- 工具审批策略归到工具页；楼层限制、经验库归到记忆页；深度思考默认值、压缩模型归到任务路由页
+- 每个入口的副标题写清「进去能干什么」
+- 表情包从「媒体」页最底部升为独立页
+- 常驻后台以前挂在「小手机」设置下面，实际没人找得到，现在有独立入口
+- 修了保活服务缺通知渠道导致的启动崩溃
 
-### Canal: ahora puedo publicar fotos y también he editado mucho.
+### 渠道：能发图了，也修了一堆
 
-Telegram / Feishu / QQ / DingTalk tienen cada uno la implementación de medios salientes y todos usan una entrada.
-En el pasado, los canales sólo podían enviar mensajes de texto.
+Telegram / 飞书 / QQ / 钉钉 各自有了出站媒体的实现，统一走一个入口。
+以前渠道只能发文字。
 
-El problema del cierre lateral está más oculto: DingTalk, Feishu,Telegram El mensaje con imagen anteriormente solo producía un literal "[fotos]",
-La imagen no se descargó en absoluto y el enlace para identificar la imagen estaba completamente deshabilitado. Ahora los tres lo han descargado. Si falla, se degradará a un marcador de posición y se registrará.
+收侧的问题更隐蔽：钉钉、飞书、Telegram 的图片消息以前只产出一个字面量「[图片]」，
+图片根本没下载下来，识图那条链路等于完全失效。现在三家都真的下载了，失败会降级成占位并记日志。
 
-QQ También pisé un montón:
+QQ 还踩了一串：
 
-- **Reanudar la carga después de la desconexión**: ID de sesión de persistencia y último número de secuencia; la reconexión devolverá el evento de desconexión. En el pasado, cuando se desconectaba la conexión, se abría una nueva sesión y los mensajes del medio se perdían inmediatamente.
-- **Las ventanas de respuesta pasiva se calculan por separado**: El límite oficial es de 5 minutos para el chat grupal, 60 minutos para el chat individual y la frecuencia es 5/4. Solía ​​ser 60 minutos en ambos lados;
-  El chat grupal utilizará la ID del mensaje caducado para enviar, y el chat individual caducará el tema al que se podría haber respondido dentro de una hora.
-- **Devuelve una cadena vacía después de la expiración**: Esta cadena vacía simplemente omite la identificación del mensaje disponible en el caché, cámbiela nuevamente null
-- **Los mensajes grupales no se repiten**:@ El robot alcanzará dos eventos y el mismo evento solo se procesará una vez; si no hay @, solo dejará rastros y no regresará.
-- **No recibí el mensaje en 5 minutos. id**: Déjelo claro en el acto y ya no se verá obligado a decir "no me responderá"
+- **断线续传**：持久化会话 id 和最后一个序号，重连带回断档事件。以前断线就开新会话，中间的消息直接丢
+- **被动回复窗口分开算**：官方是群聊 5 分钟、单聊 60 分钟，次数 5 / 4。以前两边都按 60 分钟，
+  群聊会拿失效的消息 id 去发，单聊又会把本来能回一小时的对话题早判过期
+- **过期返回空串**：这个空串刚好绕开了缓存里可用的消息 id，改回 null
+- **群消息不重复**：@ 机器人会命中两个事件，同一条只处理一次；没 @ 的只留痕不回
+- **没拿到 5 分钟内的消息 id**：当场就说清楚，不再硬发然后被抛成「它不回我」
 
-Además, cuando haces clic en la lista de contactos, puedes ver toda la conversación en forma de burbuja, en lugar de mensajes en mosaico uno por uno;
-El código de error de transmisión fallida se muestra en la parte superior de la lista, por lo que no es necesario volver a examinar el registro.
+另外联系人列表点进去能看整段气泡对话，不再一条消息一行平铺；
+发送失败的错误码显示在列表顶部，不用再翻日志。
 
-### Reelaboración del presupuesto contextual
+### 上下文预算重做
 
-En el pasado, los presupuestos históricos se daban en función de una proporción fija de la ventana, y las indicaciones del sistema, las definiciones de herramientas, las reservas de salida y los márgenes de seguridad se trataban como constantes.
-Con una herramienta y varias herramientas, se puede encontrar el mismo fragmento de la historia en la sesión A,B La sesión no excede, y el ratio fijo no tiene conciencia de ello.
+以前按窗口固定比例给历史预算，把系统提示、工具定义、输出预留、安全余量当常数。
+工具一多，同一条历史在 A 会话超窗、B 会话不超，而固定比例对此毫无感知。
 
-Ahora estos cuatro bloques se descuentan según la ocupación real, dejando un margen de seguridad real:8000 La ventana ya no da historial 4800,
-Pero 2880, porque el modelo primero debe terminar de escribir esta respuesta. El juicio de superación de límites sólo mira la parte histórica.
-Las indicaciones del sistema y los resultados de la búsqueda ya no se incluyen en el presupuesto comprimible.
+现在这四块按实际占用扣减，留出真实的安全余量：8000 的窗口不再给历史 4800，
+而是 2880，因为模型得先把这条回复写完。超限判断也只看历史部分，
+不再把系统提示、检索结果算进可压缩预算。
 
-La compresión en sí ha solucionado dos errores de larga data: el resumen ahora viene con "Qué archivos se han modificado en esta sección", que se extrae de la llamada a la herramienta de escritura.
-No se basa en la representación del modelo; la versión anterior del resumen retroalimentará el modelo para solicitar la fusión y no es necesario aclarar el contenido inicial una capa a la vez.
+压缩本身修了两处积病：摘要现在附带「这一段改过哪些文件」，从写类工具调用里抽，
+不靠模型转述；上一版摘要会哺回模型要求合并，不再每次压缩把早期内容淡一层。
 
-### La ronda en la que la herramienta devuelve resultados debe fallar (P0)
+### 工具回传结果那一轮必然失败（P0）
 
-Responses API El campo de resultado de la herramienta se escribe como `content`, lo que quiere el servidor es `output`,
-directo 422 `missing field 'output'`. El rendimiento es que la ronda en la que se ejecuta la herramienta y se devuelven los resultados debe fallar.
-No importa cuánta razón tengas en el pasado, todo fue en vano. Cambiado.
+Responses API 里工具结果字段写成了 `content`，服务端要的是 `output`，
+直接 422 `missing field 'output'`。表现是工具执行完、把结果回传的那一轮必定失败，
+前面做得再对也白搭。已改。
 
-### El asistente empezó a tomar notas.
+### 助手开始记事了
 
-- **`note_thought`**: Escribir "cosas que quiero preguntarte en el futuro" en el libro de preocupaciones es el combustible para los mensajes proactivos.
-- **`remember_preference`**: Precipite "No hagas esto en el futuro" en una restricción estricta e inyéctelo en la palabra inicial
-- **`tool_status`**: Informe "registrado" y "realmente utilizable ahora" a la vez y agrúpelos según el canal que falta.
-  Las herramientas que no están listas le indicarán claramente que no las acepte todavía.
-- **verificación previa del canal**: Las herramientas que están condenadas a fallar se bloquean antes de ser llamadas y se proporciona una ruta para abrirlas. Ya no es necesario ponerse de acuerdo primero y luego chocar contra la pared.
-- **`read_user_file`**: Lea el archivo que seleccionó a través del selector del sistema. Para tipos que no son de texto, explique directamente por qué no funciona.
-- **`workspace_grep`**: busca recursivamente por texto o expresión regular en el espacio de trabajo, devuelve la ruta, el número de línea y el contenido. Deténgase cuando se alcancen 100 elementos y marque la marca de truncamiento.
-- **`memory_config_get` / `memory_config_set`**: Antes, los parámetros de la memoria solo se podían arrastrar manualmente a la página de configuración, pero ahora el modelo también se puede leer y escribir.
+- **`note_thought`**：把「以后要问你的事」写进牵挂账本，是主动消息的燃料
+- **`remember_preference`**：把「以后别这样」沉淀成硬约束，注入到提示词里
+- **`tool_status`**：一次报清「已注册的」和「现在真能用的」，按缺哪条通道分组。
+  没就绪的工具会明确说先别答应你
+- **通道预检**：注定失败的工具在调用前就拦下，并给出开通路径，不再先答应再撞墙
+- **`read_user_file`**：经系统选择器读你亲手选的文件，非文本类型直接说明为什么不行
+- **`workspace_grep`**：在工作区里按文本或正则递归搜，返回路径、行号、内容，命中 100 条就停并标明截断
+- **`memory_config_get` / `memory_config_set`**：记忆参数以前只能在设置页手拖，现在模型也能读写
 
-### Mensaje activo: Prefiero no enviarlo
+### 主动消息：宁可不发
 
-Se han agregado varias restricciones estrictas: no enviar mensajes dentro de las 3 horas posteriores a la última vez; no habrá mensajes dentro de los 10 minutos posteriores a lo que acabas de decir;
-Se está generando y no se emitirá; si el cupo es insuficiente, no se emitirá. Deje que el modelo determine si se puede atender la llamada. Si no, omítelo.
-No más calificaciones ganadas con tanto esfuerzo.
+加了几条硬约束：距上次 3 小时以内不发；你刚说过话 10 分钟内不发；
+正在生成不发；额度不足不发。能不能接上话交给模型判断，接不上就 skip，
+不再用评分硬凑一条出来。
 
-### Otros
+### 其它
 
-- **Conexión entre sesiones**: Al abrir una nueva conversación, se recuperarán las últimas rondas de la conversación anterior (4~40 barra (ajustable), cerrada por defecto
-- **motor de búsqueda personalizado**: Conecte su propio servicio de búsqueda al frente de la cadena Auto
-- **DeepSeek Buscar**Conectarse a la cadena automática
-- **Mostrar nombre del asistente**Activar, activado de forma predeterminada, desacoplado de la marca de tiempo
-- **La tarea pendiente de la sesión está realmente almacenada.**, no se perderá al cambiar de sesión o reiniciar; la lista principal también indicará "Todavía hay N sesiones con asuntos pendientes"
-- El receptor del canal solía estar "permanentemente muerto": si se desactivaba y se reactivaba, ya no se recibían mensajes. Ahora se ha cambiado a reintento retrasado.
-- El estado de la tarjeta JSON solía estar separado en un solo lugar. Verá la cola al copiar, compartir, exportar, leer en voz alta y buscar en el índice. Ahora está condensado en tres salidas.
-- Las configuraciones de la colección de cadenas (colección de momentos, colección de álbumes de fotos) no se incluyeron en la copia de seguridad y se perdieron sin ningún aviso al cambiarlas. Por favor agréguelos ahora.
-- La posición de desplazamiento de la sesión se restablece y sigue en la misma posición después de eliminar el fondo.
-- El umbral de compresión se unifica a 20/15 (memoria larga 10/8). Cambiar un punto ya no tendrá ruta y no tendrá efecto.
-- avatar 28→36dp, el color de fondo de la burbuja sigue el color del tema.
-- Problemas blancos sucios y superpuestos en las cápsulas del navegador, máscaras modales y barras de búsqueda en el techo bajo temas oscuros
-- El botón "Desplazarse hacia abajo" se coloca de acuerdo con la altura real de la barra inferior y la nueva barra plana de proceso ya no lo mantiene presionado.
-- El número de días de compañía se calcula en función del tiempo de creación del asistente y se restablecerá a cero si no se crea una nueva sesión.
-- La ventana emergente de selección de modelo ya no solo tiene botones sino tampoco una lista.
-- El error de importación de la copia de seguridad y el error de conexión de la página de inicio se han cambiado a una frase que se puede seguir, y el nombre de la tabla de la base de datos y el código de estado ya no se desechan.
-- El visor de productos reconoce Markdown/Table/JSON/CSV y exporta extensiones por tipo.
-- La llamada a la herramienta en medio de una ronda de respuesta ya no repetirá el avatar y el nombre.
-- Los mensajes privados en teléfonos celulares pequeños ya no son accesibles a todos. Se calculan en función de la intimidad de la relación y el nivel de disposición, y se adhieren al límite superior diario y al período sin molestias.
-- El proveedor preestablecido ha añadido el modelo:Agnes 2.0→2.5(contexto 131072→262144), varias estaciones de transferencia ya no son listas vacías
-- La lista de modelos incorporados se actualizó hasta el 26 de octubre y se agregaron varias familias de modelos nuevos; la longitud del archivo ha aumentado de 137 KB a 184KB
-- El tiempo de ejecución del nodo incorporado aumentó de 24 a 26 (npm 11.21.1),MCP Servicios, scripts de habilidades y terminales se ejecutan en él.
-- Los paquetes de diagnóstico suelen venir con registros de archivos completos (1MB desplazarse). En el pasado, solo había 1000 elementos más recientes en la memoria y los problemas del canal a menudo solo necesitaban ser examinados después de eliminarlos.
-- Se corrigió "La copia de seguridad que exportaste no se puede volver a importar": los documentos integrados se excluyeron durante la conciliación, el cálculo en el nuevo dispositivo fue 0 y la cantidad no coincidió.
-- Se solucionó el problema de "reiniciar la computadora cada vez que falla una restauración": cuando falla la reversión, el libro mayor se cierra y se deja una copia para diagnóstico.
-- Se solucionó el problema de incluirse en la lista de delegación; Se solucionó el conflicto entre "nombre escrito en el perfil de usuario" y ancla de identidad.
-  Si cambia un nombre, habrá un problema con dos nombres.
-- Si el moderador del chat grupal se deja en blanco, la plantilla dejará de ser válida. Ahora es compatible; Después de crear un grupo, ya no aparece "El moderador que configuré no tiene efecto".
-- Termux El comando fue exitoso pero se informó el "código de error -1": el código de éxito originalmente era -1, que se ha corregido
-- Los modelos de imagen y video ya no se consideran contextos 131072 según los valores predeterminados de la marca, lo que evita que se coloquen en largas colas de contexto.
+- **跨会话衔接**：新开对话时带回上一条对话的最后几轮（4~40 条可调），默认关闭
+- **自定义搜索引擎**：把你自己的检索服务接进 Auto 链最前面
+- **DeepSeek 搜索**接进 Auto 链
+- **显示助手名字**开关，默认开，与时间戳解耦
+- **会话待办真正落库**，切会话、重启都不丢；主列表还会提示「还有 N 个会话留着没做完的事」
+- 渠道接收器以前会「永久死亡」：停用再启用就再也收不到消息，现在改为延时重试
+- 卡片状态 JSON 以前只在一处剥离，复制、分享、导出、朗读、搜索索引都会看到那截尾巴，现在收敛成三个出口
+- 备份漏了字符串集合类设置（朋友圈收藏、相册收藏），换机会丢且没有任何提示，现在补上
+- 会话滚动位置落盘，杀后台回来还在原处
+- 压缩阈值统一到 20/15（长记忆 10/8），改一处不再有路径不生效
+- 头像 28→36dp，气泡底色跟随主题色
+- 深色主题下浏览器胶囊、模态遮罩、吸顶搜索栏的脏白和叠影问题
+- 「滚到底」按钮按实际底栏高度定位，不再被新的过程扁条压住
+- 陪伴天数按助手创建时间算，不再新建会话就归零
+- 模型选择弹窗不再只有按钮没有列表
+- 备份导入失败、引导页连接失败都改成一句能照做的话，不再抛库表名和状态码
+- 产物查看器认 markdown / 表格 / JSON / CSV，导出按类型给扩展名
+- 一轮回复中途的工具调用不再重复画头像和名字
+- 小手机私信不再对谁都一样粘人，按关系亲密度和意愿档位算，并遵守每日上限与免打扰时段
+- 预置供应商补了模型：Agnes 2.0→2.5（上下文 131072→262144），几个中转站不再是空列表
+- 内置模型清单翻新到 10 月 26 日，多了几个新模型家族；文件从 137KB 长到 184KB
+- 内置 Node 运行时从 24 升到 26（npm 11.21.1），MCP 服务、技能脚本、终端都跑在它上面
+- 诊断包多带完整文件日志（1MB 滚动）。以前只有内存里最近 1000 条，渠道类问题往往在被冲掉之后才需要看
+- 修了「自己导出的备份导不回去」：对账时把内建文档排除了，新设备上算出来是 0，数量对不上
+- 修了「恢复失败后每次开机都重来一遍」：回滚本身也失败时把账本了结，副本留给诊断
+- 修了委派清单把自己列进去的问题；修了「用户档案里写的名字」与身份锚点打架、
+  改一个就出现两个名字的问题
+- 群聊主持人留空会让模板失效，现在兼容；建群后不再发现「我设的主持人没生效」
+- Termux 命令成功却报「错误码 -1」：成功码本来就是 -1，已改正
+- 图像和视频模型不再被品牌默认值当成 131072 上下文，免得把它们排进长上下文队列
 
-### Instalación
+### 安装
 
-- Simplemente sobrescriba e instale.**No es necesario desinstalar**, retención de datos
-- base de datos **111 → 119**, que abarca 8 versiones, se inicia por primera vez la migración automática (incluidas tres nuevas tablas de mensajes activos)
-- La firma es la misma que todas las versiones posteriores a la 2.6.1.
-- esta edición**Desactivada la optimización R8 pass**, la ofuscación y el recorte de recursos todavía están habilitados.
-  La razón es que la burbuja del mensaje es una sola línea de más de 2000,70+ Componible de parámetros, el uso de registros supera las 200 ranuras,
-  R8 La optimización en este tamaño producirá dex con tipos inconsistentes, que serán rechazados por el validador de Android 14+.
-  Se manifiesta como un bloqueo directo al abrir la conversación. El precio es que el cuerpo del paquete será más grande que la versión anterior.
+- 覆盖安装即可，**无需卸载**，数据保留
+- 数据库 **111 → 119**，跨了 8 个版本，首次启动自动迁移（含主动消息三张新表）
+- 签名与 2.6.1 之后各版相同
+- 这一版**关掉了 R8 的优化 pass**，混淆与资源裁剪仍然开启。
+  原因是消息气泡是单个 2000+ 行、70+ 参数的 Composable，寄存器用量超过 200 个槽，
+  R8 在这个体量上优化会产出类型不一致的 dex，被 Android 14+ 的校验器拒收，
+  表现为点开对话直接崩溃。代价是包体会比上一版大一些
 
-### cosas conocidas
+### 已知事项
 
-- Los antiguos parámetros de los mensajes activos (intervalo, probabilidad de envío, límite superior diario) no tienen equivalente en el nuevo modelo y ya no funcionan.
-  El ritmo está determinado por el libro de atención y el nivel de iniciativa. Después de la actualización, el libro mayor estará vacío y permanecerá en silencio durante unos días. Esta es la intención del diseño.
-- El alcance visible predeterminado de la herramienta ha cambiado: autoverificación, memoria, tarjeta, lectura de archivos, así como autoverificación de estado, notificación, organización de tareas y entrada de delegación.
-  De "opcional" a "estándar", el asistente no es confiable `find_tools` También puedes verlo directamente.
-- Esta versión de la descripción de la herramienta se cambió a chino en lotes y el idioma de descripción leído por el modelo cambió. Estas descripciones no cambian en la interfaz en inglés.
-- El sistema indica que se ha agregado una nueva "Orden de efectividad": comando de ronda actual > Requisitos para este modo de sesión > Configuración de personalidad > Memoria, libro mundial, base de conocimientos.
-  El tono de voz del personaje ya no domina tus solicitudes específicas para la ronda.
-- La cuota de nivel activo se ha cambiado a un nuevo nivel. Después de actualizar desde la versión anterior, los tiempos restantes del día se volverán a calcular según el nuevo algoritmo.
-- La mensajería activa ahora depende del asistente para hacer su propia contabilidad. Si el asistente nunca recuerda nada de lo que quería decir en una conversación,
-  No tomará la iniciativa de hablar. Esto es por diseño, no roto.
+- 主动消息的旧参数（间隔、发送概率、每日上限）在新模型里没有对应物，不再起作用，
+  节奏改由牵挂账本和主动等级决定。升级后账本是空的，会先安静几天，这是设计意图
+- 工具默认可见范围变了：自检、记忆、卡片、读文件，以及状态自查、通知、任务组织、委派入口，
+  从「可选」提到「标准」，助手不靠 `find_tools` 也能直接看到
+- 工具描述这一版整批改成了中文，模型读到的说明语言变了。英文界面下这些描述不跟着变
+- 系统提示新增了「效力顺序」：当轮指令 > 本会话模式要求 > 人格设定 > 记忆、世界书、知识库。
+  角色口吻不再压过你这一轮的具体要求
+- 主动等级的额度换了新量级，从旧版本升级后当天剩余次数会按新算法重算一次
+- 主动消息现在依赖助手自己记账。如果助手在一段对话里从没记过任何想说的话，
+  它就不会主动开口，这是设计如此，不是坏了
 
 ---
 

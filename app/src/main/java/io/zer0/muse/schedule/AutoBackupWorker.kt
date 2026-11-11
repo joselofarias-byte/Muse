@@ -9,22 +9,22 @@ import kotlinx.coroutines.flow.first
 import org.koin.core.context.GlobalContext
 
 /**
- * v1.134: Trabajador de copia de seguridad automática de la base de datos local.
+ * v1.134: 自动本地数据库备份 Worker。
  *
- * [AutoBackupHelper] La clase ya existe(v1.107)Pero nunca se ha conectado al sistema de despacho.(Componente huérfano).
- * Este trabajador se inicia a través de la tarea periódica diaria de WorkManager.,ejecutar:
- *  1. [AutoBackupHelper.backupNow] — WAL checkpoint + Copie muse.db a backups/
- *  2. [AutoBackupHelper.trimOldBackups] — Conserva las últimas 7 copias.,limpiar mayores
+ * [AutoBackupHelper] 类已存在(v1.107)但从未接入调度系统(孤儿组件)。
+ * 本 Worker 通过 WorkManager 每日周期任务拉起,执行:
+ *  1. [AutoBackupHelper.backupNow] — WAL checkpoint + 复制 muse.db 到 backups/
+ *  2. [AutoBackupHelper.trimOldBackups] — 保留最近 7 份,清理更旧的
  *
- * Compensaciones de diseño(con [ScheduledTaskWorker] consistente):
- *  - Periodo 24 horas(1 vez por día,Cumplir con las convenciones de anotación de la clase AutoBackupHelper)
- *  - No utilice setExpedited: copia de seguridad no urgente
- *  - No se requieren restricciones de red:operación local,No se requiere internet
- *  - La copia de seguridad falla y regresa Result.retry(),Haga que WorkManager vuelva a intentarlo en caso de una falla temporal de E/S/base de datos; limpiar copias de seguridad antiguas después del éxito
+ * 设计取舍(与 [ScheduledTaskWorker] 一致):
+ *  - 周期 24 小时(每日 1 次,符合 AutoBackupHelper 类注释约定)
+ *  - 不使用 setExpedited:备份非紧急
+ *  - 不要求网络约束:本地操作,无需网络
+ *  - 备份失败返回 Result.retry(),让 WorkManager 对临时 I/O/数据库故障退避重试；成功后再清理旧备份
  *
- * Koin obtener dependencia:WorkManager Se ejecuta en el proceso principal de forma predeterminada.,Worker MuseApp.onCreate se ha ejecutado al inicio,
- * Koin Inicializado. si en Safe Mode(startKoin falló),GlobalContext esta vacio,
- * La excepción detectada aquí devuelve el éxito y esta vez se salta.,Espere a que se restablezca el próximo inicio.
+ * Koin 拿依赖:WorkManager 默认跑在主进程,Worker 启动时 MuseApp.onCreate 已执行,
+ * Koin 已初始化。若处于 Safe Mode(startKoin 失败),GlobalContext 为空,
+ * 这里捕获异常返回 success 跳过本次,等下次启动恢复。
  */
 class AutoBackupWorker(
     appContext: Context,
@@ -34,29 +34,29 @@ class AutoBackupWorker(
     override suspend fun doWork(): Result {
         val koin = resultOf { GlobalContext.get() }.getOrNull()
         if (koin == null) {
-            Logger.w(TAG, "Koin no inicializado(Safe Mode?),Omitir la ejecución de este trabajador")
+            Logger.w(TAG, "Koin 未初始化(Safe Mode?),跳过本次 Worker 执行")
             return Result.success()
         }
-        // v1.xxx: Control maestro de programación backend — Omitir el cuerpo ejecutable al apagar,El calendario periódico en sí sigue siendo,Reabrir para restaurar
+        // v1.xxx: 后台调度总控 — 关闭时跳过执行体,周期调度本身仍保留,重新打开即恢复
         val workEnabled =
             scheduleWorkEnabledOrFalse(
                 resultOf { koin.get<io.zer0.muse.data.SettingsRepository>()?.scheduleWorkEnabledFlow?.first() }
                     .getOrNull(),
             )
         if (!workEnabled) {
-            Logger.i(TAG, "Se ha cerrado el control maestro de programación en segundo plano.,Saltar esta ejecución")
+            Logger.i(TAG, "后台调度总控已关闭,跳过本次执行")
             return Result.success()
         }
         val helper = resultOf { koin.get<io.zer0.muse.data.stats.AutoBackupHelper>() }.getOrNull()
         if (helper == null) {
-            Logger.w(TAG, "AutoBackupHelper El análisis falló,Omitir la ejecución de este trabajador")
+            Logger.w(TAG, "AutoBackupHelper 解析失败,跳过本次 Worker 执行")
             return Result.success()
         }
         val ok = resultOf { helper.backupNow() }
             .onError { msg, t -> Logger.w(TAG, "backupNow failed: ${t?.message ?: msg}") }
             .getOrNull() ?: false
         if (!ok) {
-            // El motivo del error se registra, pero WorkManager aún debe volver a intentarlo con una recuperación temporal de E/S/base de datos.
+            // 日志已记录失败原因，但 WorkManager 仍需对临时 I/O/数据库故障退避重试。
             return Result.retry()
         }
         helper.trimOldBackups()

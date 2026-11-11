@@ -9,15 +9,15 @@ import org.junit.Before
 import org.junit.Test
 
 /**
- * R-TEST-23: knowledge_chunks_fts Pruebas de regresión de autocuración.
+ * R-TEST-23: knowledge_chunks_fts 自愈回归测试。
  *
- * Simule dos tipos de fallas directas del R-DB-02:
- *  - la tabla no existe(no such table)
- *  - La tabla principal se elimina pero la tabla sombra permanece.(vtable constructor failed residuos comunes de)
+ * 模拟 R-DB-02 的两类前置故障:
+ *  - 表不存在(no such table)
+ *  - 主表被删但影子表残留(vtable constructor failed 的常见残留)
  *
- * La verificación se logra a través del contenedor de recuperación automática predeterminado de la interfaz DAO real + raw falso:Activar en el primer fallo
- * [KnowledgeChunkFtsSelfHealer.repair],Los reintentos posteriores tuvieron éxito.
- * Nota:app El módulo Robolectric no es compatible con SQLite FTS4 vtable,Por lo tanto, no depende de la creación de tablas reales.
+ * 通过真实 DAO 接口的默认自愈包装 + fake raw 实现验证:首次失败触发
+ * [KnowledgeChunkFtsSelfHealer.repair],随后重试成功。
+ * 注:app 模块 Robolectric 的 SQLite 不支持 FTS4 vtable,因此不依赖真实建表。
  */
 class KnowledgeChunkFtsSelfHealTest {
 
@@ -38,10 +38,10 @@ class KnowledgeChunkFtsSelfHealTest {
     fun insert_repairsMissingTableAndRetries() = runTest {
         dao.failInsert = true
 
-        dao.insert("chunk-1", "doc-1", "Lista completa de razas de gatos")
+        dao.insert("chunk-1", "doc-1", "猫咪品种大全")
 
-        assertEquals("La autocuración solo debe activarse una vez después de que desaparezca la mesa.", 1, dao.repairCount)
-        assertTrue("Volver a intentarlo después de la autocuración debería tener éxito", dao.inserted)
+        assertEquals("表缺失后应只触发一次自愈", 1, dao.repairCount)
+        assertTrue("自愈后重试应成功", dao.inserted)
     }
 
     @Test
@@ -51,9 +51,9 @@ class KnowledgeChunkFtsSelfHealTest {
 
         dao.deleteByDoc("doc-1")
 
-        assertEquals("Los residuos de la mesa de sombra deberían desencadenar una autocuración", 1, dao.repairCount)
-        assertTrue("Volver a intentarlo después de la autocuración debería tener éxito", dao.deleted)
-        assertFalse("La autocuración debería eliminar los residuos de la mesa de sombra", dao.shadowPresent)
+        assertEquals("影子表残留应触发一次自愈", 1, dao.repairCount)
+        assertTrue("自愈后重试应成功", dao.deleted)
+        assertFalse("自愈应清除影子表残留", dao.shadowPresent)
     }
 
     private class FakeFtsDao : KnowledgeChunkFtsDao {

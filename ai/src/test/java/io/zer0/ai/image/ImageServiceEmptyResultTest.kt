@@ -15,18 +15,18 @@ import org.junit.Before
 import org.junit.Test
 
 /**
- * F-03 punto de anclaje de retorno: Accidente histórico "imagen real nula imagen falsa".
+ * F-03 回归锚点: 历史事故「生图 null 假图」。
  *
- * accidente: La versión anterior continuó en silencio cuando el proveedor de imágenes arrojó resultados vacíos., UI La capa representa el resultado vacío en
- * Marcador de posición de "imagen falsa", El usuario ve una imagen que no existe en ningún Proveedor.
+ * 事故: 旧版在图片 Provider 返回空结果时静默继续, UI 层把空结果渲染成
+ * 「假图」占位, 用户看到一张不存在于任何 Provider 的图片。
  *
- * cadena protectora(Ya existe, Esta prueba está bloqueada):
- *  1. [ImageService.generate] en `finalImages.isEmpty()` lanzamiento de tiempo
- *     [ErrorCode.IMAGE_NO_RESULTS] error de negocio(ImageService.kt:107);
- *  2. [convertToOutputStrings] Utilice mapNotNull para filtrar base64/url todo vacío
- *     [GeneratedImage], Asegúrese de que no se pierdan imágenes nulas UI(ImageService.kt:219);
- *  3. llamador [io.zer0.muse.ui.chat.ImageGenCoordinator] Mostrar resultados vacíos
- *     Aviso de falla y parada de generación., Nunca dejes una foto falsa.
+ * 防护链(已存在, 本测试锁定):
+ *  1. [ImageService.generate] 在 `finalImages.isEmpty()` 时抛
+ *     [ErrorCode.IMAGE_NO_RESULTS] 业务错误(ImageService.kt:107);
+ *  2. [convertToOutputStrings] 用 mapNotNull 过滤 base64/url 全空的
+ *     [GeneratedImage], 保证 null 图不会漏到 UI(ImageService.kt:219);
+ *  3. 调用方 [io.zer0.muse.ui.chat.ImageGenCoordinator] 对空结果展示
+ *     失败提示并停止生成, 绝不落一张假图。
  */
 class ImageServiceEmptyResultTest {
 
@@ -38,9 +38,9 @@ class ImageServiceEmptyResultTest {
         override suspend fun poll(taskId: String): ImagePollResult = ImagePollResult(PollStatus.PENDING)
     }
 
-    // Nota: ImageProviderRegistry.register Ajuste interno Logger.i(ImageProviderRegistry.kt:32),
-    // Debe establecerse @Antes Logger.enabled=false Regístrate más tarde, De lo contrario, se activa el período de inicialización del campo.
-    // android.util.Log not mocked.
+    // 注意: ImageProviderRegistry.register 内部会调 Logger.i(ImageProviderRegistry.kt:32),
+    // 必须在 @Before 置 Logger.enabled=false 之后注册, 否则字段初始化期即触发
+    // android.util.Log not mocked。
     private val registry = ImageProviderRegistry()
 
     private val configStore = object : ProviderConfigStore {
@@ -53,7 +53,7 @@ class ImageServiceEmptyResultTest {
         type = ProviderType.OPENAI,
         baseUrl = "https://example.com",
         apiKey = "k",
-        // selectFor Coincidencia exacta por specId provider, puntero explícito emptyProvider
+        // selectFor 按 specId 精确匹配 provider, 显式指向 emptyProvider
         specId = "empty-provider",
     )
 
@@ -73,12 +73,12 @@ class ImageServiceEmptyResultTest {
         val service = ImageService(configStore, registry)
         runBlocking {
             try {
-                service.generate(prompt = "un gato", providerConfig = config)
-                fail("Se deben arrojar resultados vacíos. IMAGE_NO_RESULTS, en lugar de devolver una lista vacía/foto falsa")
+                service.generate(prompt = "一只猫", providerConfig = config)
+                fail("空结果必须抛 IMAGE_NO_RESULTS, 而非返回空列表/假图")
             } catch (e: IllegalStateException) {
-                // error(ErrorCode...) Lanzar Kotlin IllegalStateException
+                // error(ErrorCode...) 在 Kotlin 中抛 IllegalStateException
                 assertTrue(
-                    "El mensaje de error debe identificar IMAGE_NO_RESULTS, real: ${e.message}",
+                    "错误消息应标识 IMAGE_NO_RESULTS, 实际: ${e.message}",
                     e.message?.contains(ErrorCode.IMAGE_NO_RESULTS.toMessage()) == true,
                 )
             }
@@ -93,7 +93,7 @@ class ImageServiceEmptyResultTest {
             GeneratedImage(base64 = null, url = "https://example.com/a.png"),
         )
         val out = ImageService(configStore, registry).convertToOutputStrings(images)
-        // mapNotNull: null La imagen esta filtrada, URL válida/base64 reservada(El orden es estable.)
+        // mapNotNull: null 图被过滤, 有效 url/base64 保留(顺序稳定)
         assertEquals(2, out.size)
         assertEquals("data:image/png;base64,YmFzZTY0", out[0])
         assertEquals("https://example.com/a.png", out[1])
@@ -112,7 +112,7 @@ class ImageServiceEmptyResultTest {
         val reg = ImageProviderRegistry().apply { register(oneImageProvider) }
         val service = ImageService(configStore, reg)
         val oneConfig = config.copy(specId = "one-image-provider")
-        val urls = runBlocking { service.generate(prompt = "un gato", providerConfig = oneConfig) }
+        val urls = runBlocking { service.generate(prompt = "一只猫", providerConfig = oneConfig) }
         assertEquals(listOf("https://example.com/a.png"), urls)
     }
 }

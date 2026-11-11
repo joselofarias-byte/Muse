@@ -1,4 +1,4 @@
-@file:Suppress("FunctionNaming") // Compose Los nombres de los componentes comienzan con una letra mayúscula por convención (consistente con otros archivos de UI en el proyecto)
+@file:Suppress("FunctionNaming") // Compose 组件名按惯例大写开头（与项目内其它 UI 文件一致）
 
 package io.zer0.muse.ui.memory
 
@@ -14,7 +14,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.zer0.muse.R
@@ -25,18 +24,18 @@ import io.zer0.muse.ui.common.icons.MuseIcons
 import io.zer0.muse.ui.common.settings.ConfirmDeleteDialog
 
 /**
- * El panel de acción y confirmación de eliminación después de presionar prolongadamente en la tarjeta de línea de tiempo.
+ * 时间轴卡片长按后的动作面板与删除二次确认。
  *
- * La tarjeta de la línea de tiempo anteriormente tenía solo una entrada: "Haga clic para expandir el texto completo".,La memoria no se puede borrar —— El modo lista ya existe
- * "Más → Eliminar → Segunda confirmación",La pulsación prolongada en la línea de tiempo también está ocupada por la selección múltiple,Los usuarios solo pueden volver a la vista de lista para eliminar elementos uno por uno.
+ * 时间轴卡片此前只有「点击展开全文」一个入口,记忆删不掉 —— 列表模式早就有了
+ * 「更多 → 删除 → 二次确认」,时间轴这边长按还被多选占用,用户只能切回列表视图逐条删。
  *
- * El panel en sí tiene sólo dos acciones.:Ingrese múltiples selecciones(solo hechos), borrar. La eliminación no cae directamente en la base de datos.,En su lugar, reemplácelo primero con
- * [ConfirmDeleteDialog] Confirmación secundaria —— La eliminación es irreversible,Si hace clic en el botón incorrecto, no podrá recuperarlo.
+ * 面板本身只有两个动作:进多选(仅事实)、删除。删除不直接落库,而是先换成
+ * [ConfirmDeleteDialog] 的二次确认 —— 删完不可撤销,点错一下就没法找回来。
  *
- * @param target La tarjeta que presionaste durante mucho tiempo
- * @param onDelete Devolución de llamada después de que el usuario confirme en el cuadro de confirmación.(Pasar entradas que se han restaurado al formato enrutable)
- * @param onSelectMultiple Sólo tarjetas informativas disponibles;Después de la devolución de llamada, la persona que llama cierra el panel y entra en el estado de selección múltiple.
- * @param onDismiss Cancelar/Haga clic afuera para cerrar
+ * @param target 长按的那张卡片
+ * @param onDelete 用户在确认框里确认后回调(传入已还原成可路由形态的条目)
+ * @param onSelectMultiple 仅事实卡片提供;回调后由调用方关闭面板并进入多选态
+ * @param onDismiss 取消/点外部关闭
  */
 @Composable
 internal fun TimelineItemActions(
@@ -46,7 +45,7 @@ internal fun TimelineItemActions(
     onSelectMultiple: ((MemoryItem) -> Unit)? = null,
 ) {
     var confirming by remember(target.id) { mutableStateOf(false) }
-    // El objetivo de eliminación con la misma pulsación larga permanece sin cambios.,El cuadro de confirmación y el panel comparten el mismo resultado de restauración
+    // 同一次长按里的删除目标固定不变,确认框与面板共用同一份还原结果
     val routable = remember(target) { target.toMemoryItem() }
     if (confirming) {
         ConfirmDeleteDialog(
@@ -65,7 +64,7 @@ internal fun TimelineItemActions(
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
                 text = memoryItemNameHint(target.content),
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -89,11 +88,11 @@ internal fun TimelineItemActions(
 }
 
 /**
- * tarjeta de línea de tiempo → Elementos que pueden consumirse mediante el envío de la acción RememberItem.
+ * 时间轴卡片 → 可被记忆条目动作分派消费的条目。
  *
- * La tarjeta solo sale del campo de visualización para el diseño.,Eliminar para volver a [TimelineItem.itemId] + [TimelineItem.scope];
- * El itemId de la entrada de resumen es la sesión. id,Entonces se elimina la que estuvo presionada durante mucho tiempo en lugar de otras conversaciones.
- * La tarjeta no muestra el título.,El nombre del cuadro de confirmación utiliza el nombre corto después de truncar la primera línea del texto.
+ * 卡片为了布局只留了展示字段,删除要回到 [TimelineItem.itemId] + [TimelineItem.scope];
+ * 摘要条目的 itemId 就是会话 id,所以删的是长按的那一条而不是别的会话。
+ * 卡片不展示标题,确认框点名用正文首行截断后的短名。
  */
 internal fun TimelineItem.toMemoryItem(): MemoryItem = MemoryItem(
     id = itemId,
@@ -108,7 +107,7 @@ internal fun TimelineItem.toMemoryItem(): MemoryItem = MemoryItem(
     scope = scope,
 )
 
-/** La primera línea del texto de memoria larga se trunca en un nombre legible(Título del panel/cuadro de confirmación para compartir lista). */
+/** 长记忆的正文首行截断成一句可读的名字(面板标题 / 确认框点名共用)。 */
 internal fun memoryItemNameHint(content: String): String =
     content.lineSequence().firstOrNull { it.isNotBlank() }?.take(TIMELINE_ACTION_NAME_MAX).orEmpty()
 

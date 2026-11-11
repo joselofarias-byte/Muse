@@ -42,6 +42,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import io.zer0.muse.R
 import io.zer0.muse.tools.DelegationPauseManager
+import io.zer0.muse.tools.delegationModifySeed
 import io.zer0.muse.ui.common.form.MuseTactileButton
 import io.zer0.muse.ui.common.form.MuseTextField
 import io.zer0.muse.ui.common.icons.MuseIcons
@@ -57,28 +58,28 @@ import io.zer0.muse.ui.theme.MuseShapes
 import io.zer0.muse.ui.theme.huge
 import io.zer0.muse.ui.theme.semiLarge
 
-// CMP-08: Los márgenes internos de la ventana emergente, el espaciado entre elementos y el ancho máximo están unificados con tokens de tema.(Mismo origen que MuseDialog),
-// Sólo la altura máxima del área de contenido es mayor que la de MuseDialog debido a la vista previa del resultado intermedio.,Mantenga los archivos locales de este archivo.
-/** Altura máxima del área de contenido de la ventana emergente(que [MuseDialogSizes.contentMaxHeight] grado superior,Acomodar vistas previas de resultados intermedios). */
+// CMP-08: 弹窗内边距 / 元素间距 / 最大宽度统一走主题令牌(与 MuseDialog 同源),
+// 仅内容区最大高度因含中间结果预览而比 MuseDialog 更高,保留本文件局部档位。
+/** 弹窗内容区最大高度(比 [MuseDialogSizes.contentMaxHeight] 高一档,容纳中间结果预览)。 */
 private val DialogContentMaxHeight = 460.dp
 
-/** Límite máximo de caracteres para la vista previa de resultados intermedios(Más allá del botón contraer + expandir). */
+/** 中间结果预览字数上限(超出折叠 + 展开按钮)。 */
 private const val INTERMEDIATE_PREVIEW_CHARS = 500
 
 /**
- * v1.201: Ventana emergente de confirmación de suspensión de delegación.
+ * v1.201: 委派暂停确认弹窗。
  *
- * cuando [DelegationPauseManager.activePauses] Cuando hay solicitudes activas en,Este componente se representa al final de ChatScreen.
- * Los usuarios pueden:
- *  - Aprobado para continuar(APPROVE)
- *  - rechazar(REJECT)
- *  - Cancelar toda la delegación(CANCEL)
- *  - Continuar después de la modificación(MODIFY)— Cambiar al modo de edición,Ingrese las instrucciones modificadas y confirme nuevamente.
+ * 当 [DelegationPauseManager.activePauses] 中有活跃请求时,由 ChatScreen 末尾渲染本组件。
+ * 用户可:
+ *  - 批准继续(APPROVE)
+ *  - 拒绝(REJECT)
+ *  - 取消整个委派(CANCEL)
+ *  - 修改后继续(MODIFY)— 切换到编辑模式,输入修改后的指令后再次确认
  *
- * La X en la esquina superior derecha se trata como CANCELAR.
+ * 右上角 X 视为 CANCEL。
  *
- * @param pauseRequest Solicitudes de pausa actualmente activas;null No renderices nada
- * @param onSubmit Devolución de llamada de decisión del usuario,llevar [DelegationPauseManager.PauseResponse]
+ * @param pauseRequest 当前活跃的暂停请求;null 时不渲染任何内容
+ * @param onSubmit 用户决策回调,携带 [DelegationPauseManager.PauseResponse]
  */
 @Composable
 fun DelegationConfirmDialog(pauseRequest: DelegationPauseManager.PauseRequest?, onSubmit: (DelegationPauseManager.PauseResponse) -> Unit) {
@@ -86,7 +87,7 @@ fun DelegationConfirmDialog(pauseRequest: DelegationPauseManager.PauseRequest?, 
 
     Dialog(
         onDismissRequest = {
-            // Haga clic en la tecla exterior/retorno para cancelar
+            // 点外部 / 返回键 视为取消
             onSubmit(DelegationPauseManager.PauseResponse(DelegationPauseManager.PauseDecision.CANCEL))
         },
         properties = DialogProperties(
@@ -96,7 +97,7 @@ fun DelegationConfirmDialog(pauseRequest: DelegationPauseManager.PauseRequest?, 
             usePlatformDefaultWidth = false,
         ),
     ) {
-        // v1.0.92: Aprende con MuseDialog — forceFullScreen Deje que la tela cubra completamente la barra de estado.
+        // v1.0.92: 与 MuseDialog 同修 — forceFullScreen 让 scrim 完整覆盖状态栏。
         MuseDialogWindowEffect(forceFullScreen = true)
         Box(
             modifier = Modifier
@@ -142,10 +143,11 @@ private fun DelegationConfirmDialogContent(
     onSubmit: (DelegationPauseManager.PauseResponse) -> Unit,
     onCancel: () -> Unit,
 ) {
-    // MODIFY Estado del modo de edición
+    // MODIFY 编辑模式状态
     var modifyMode by remember(pauseRequest.requestId) { mutableStateOf(false) }
-    var modifiedInput by remember(pauseRequest.requestId) { mutableStateOf("") }
-    // Estado de expansión de resultados intermedios
+    // 预填要改的那段原文（任务或中间结果）：从空串开始等于让用户从零重打一整段
+    var modifiedInput by remember(pauseRequest.requestId) { mutableStateOf(delegationModifySeed(pauseRequest)) }
+    // 中间结果展开状态
     var intermediateExpanded by remember(pauseRequest.requestId) { mutableStateOf(false) }
 
     Column(
@@ -156,13 +158,13 @@ private fun DelegationConfirmDialogContent(
             .padding(MuseDialogSizes.contentPadding),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        // barra de título:Título centrado + botón X derecho
+        // 标题栏:标题居中 + 右侧 X 按钮
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            // marcador de posición a la izquierda,Centrar visualmente el título
+            // 占位左侧,使标题视觉居中
             Spacer(Modifier.size(MuseIconSizes.iconMedium))
             Text(
                 text = stringResource(R.string.delegation_confirm_title),
@@ -184,7 +186,7 @@ private fun DelegationConfirmDialogContent(
         }
         Spacer(Modifier.height(MusePaddings.auxGap))
 
-        // área de contenido(desplazable,Evite que el contenido extenso se desborde)
+        // 内容区(可滚动,防长内容溢出)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -195,7 +197,7 @@ private fun DelegationConfirmDialogContent(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(MusePaddings.auxGap),
             ) {
-                // Título de la tarea
+                // 任务标题
                 Text(
                     text = pauseRequest.taskTitle.ifBlank { pauseRequest.taskId },
                     style = MaterialTheme.typography.titleMedium.copy(
@@ -206,7 +208,7 @@ private fun DelegationConfirmDialogContent(
                     modifier = Modifier.fillMaxWidth(),
                 )
 
-                // Descripción de la tarea
+                // 任务描述
                 if (pauseRequest.taskDescription.isNotBlank()) {
                     InfoLabelBlock(
                         label = stringResource(R.string.delegation_confirm_task),
@@ -214,19 +216,19 @@ private fun DelegationConfirmDialogContent(
                     )
                 }
 
-                // objetivo
+                // 目标
                 InfoLabelBlock(
                     label = stringResource(R.string.delegation_confirm_target),
                     value = "[${pauseRequest.targetType}] ${pauseRequest.targetName}",
                 )
 
-                // Motivo de la suspensión
+                // 暂停原因
                 InfoLabelBlock(
                     label = stringResource(R.string.delegation_confirm_reason),
                     value = pauseRequest.reason,
                 )
 
-                // resultado intermedio(plegable)
+                // 中间结果(可折叠)
                 pauseRequest.intermediateResult?.let { intermediate ->
                     Column(verticalArrangement = Arrangement.spacedBy(MusePaddings.tightGap)) {
                         Text(
@@ -273,9 +275,9 @@ private fun DelegationConfirmDialogContent(
 
         Spacer(Modifier.height(MuseDialogSizes.contentPadding))
 
-        // área del botón de opción
+        // 选项按钮区
         if (modifyMode) {
-            // MODIFY modo de edición:Cuadro de entrada de varias líneas + botón de confirmación
+            // MODIFY 编辑模式:多行输入框 + 确认按钮
             Column(verticalArrangement = Arrangement.spacedBy(MusePaddings.auxGap)) {
                 MuseTextField(
                     value = modifiedInput,
@@ -289,6 +291,8 @@ private fun DelegationConfirmDialogContent(
                     text = stringResource(R.string.delegation_option_approve),
                     backgroundColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary,
+                    // 空内容时按不动并且看得出来（原来是点了静默不提交）
+                    enabled = modifiedInput.isNotBlank(),
                     onClick = {
                         val input = modifiedInput.trim()
                         if (input.isNotEmpty()) {
@@ -326,7 +330,7 @@ private fun DelegationConfirmDialogContent(
                         contentColor = contentColor,
                         onClick = {
                             if (option.decision == DelegationPauseManager.PauseDecision.MODIFY) {
-                                // Cambiar al modo de edición,No enviar inmediatamente
+                                // 切换到编辑模式,不立即提交
                                 modifyMode = true
                             } else {
                                 onSubmit(
@@ -342,7 +346,7 @@ private fun DelegationConfirmDialogContent(
 }
 
 /**
- * Bloque de etiquetas de información:label(pequeñas letras grises) + value(onSurface Texto),Alinear a la izquierda.
+ * 信息标签块:label(灰小字) + value(onSurface 正文),左对齐。
  */
 @Composable
 private fun InfoLabelBlock(label: String, value: String) {
@@ -361,10 +365,16 @@ private fun InfoLabelBlock(label: String, value: String) {
 }
 
 /**
- * Botón de cápsula de ancho completo(Reutilizar el estilo visual del botón MuseDialog:48dp Alto + esquinas redondeadas de 24 dp + cambio de transparencia de prensa).
+ * 全宽胶囊按钮(复用 MuseDialog 按钮视觉风格:48dp 高 + 24dp 圆角 + 按压透明度变化)。
  */
 @Composable
-private fun DelegationDialogButton(text: String, backgroundColor: Color, contentColor: Color, onClick: () -> Unit) {
+private fun DelegationDialogButton(
+    text: String,
+    backgroundColor: Color,
+    contentColor: Color,
+    enabled: Boolean = true,
+    onClick: () -> Unit,
+) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
@@ -383,12 +393,15 @@ private fun DelegationDialogButton(text: String, backgroundColor: Color, content
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
+                enabled = enabled,
                 role = Role.Button,
                 onClick = onClick,
             )
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
+                // 被按住时也要看得出来：原先内容清空后点按钮是静默什么都不做
+                alpha = if (enabled) 1f else DISABLED_ALPHA
             },
         contentAlignment = Alignment.Center,
     ) {
@@ -402,3 +415,6 @@ private fun DelegationDialogButton(text: String, backgroundColor: Color, content
         )
     }
 }
+
+/** 不可点状态的透明度：让"这颗现在按不动"是看得见的，而不是按了没反应。 */
+private const val DISABLED_ALPHA: Float = 0.38f

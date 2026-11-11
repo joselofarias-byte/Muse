@@ -14,30 +14,30 @@ import java.util.concurrent.TimeUnit
 import kotlin.math.sqrt
 
 /**
- * v1.134: locales ONNX Embedding Provider(Implementación completa).
+ * v1.134: 本地 ONNX Embedding Provider(完整实现)。
  *
- * Reemplaza el esqueleto de marcador de posición v1.54,Proporcionar incrustaciones semánticas de redes neuronales verdaderamente locales.
+ * 取代 v1.54 的占位骨架,提供真正的本地神经网络语义嵌入。
  *
- * Flujo de trabajo:
- *  1. Carga diferida [OrtSession] + vocab.txt(de [modelPath] / [vocabPath])
- *  2. WordPiece participio → input_ids / attention_mask / token_type_ids
- *  3. ONNX razonamiento → last_hidden_state(o pooler_output)
- *  4. Mean Pooling(Ponderado por atención_máscara)+ L2 normalización
+ * 工作流程:
+ *  1. 懒加载 [OrtSession] + vocab.txt(从 [modelPath] / [vocabPath])
+ *  2. WordPiece 分词 → input_ids / attention_mask / token_type_ids
+ *  3. ONNX 推理 → last_hidden_state(或 pooler_output)
+ *  4. Mean Pooling(按 attention_mask 加权)+ L2 归一化
  *
- * Convenciones de archivos de modelo:
- *  - [modelPath]:Ruta absoluta o ruta relativa a filesDir,señalar a `.onnx` Archivo
- *  - [vocabPath]:BERT estilo `vocab.txt`(uno por línea token),Pruebe con una cadena vacía `[modelPath].vocab.txt`
- *  - El modelo no está configurado o falta el archivo → [embed] tirar [IllegalStateException],
- *    [EmbeddingService] será capturado y degradado a [LocalKeywordEmbeddingProvider]
+ * 模型文件约定:
+ *  - [modelPath]:绝对路径或 filesDir 相对路径,指向 `.onnx` 文件
+ *  - [vocabPath]:BERT 风格 `vocab.txt`(每行一个 token),空串时尝试 `[modelPath].vocab.txt`
+ *  - 模型未配置或文件缺失 → [embed] 抛 [IllegalStateException],
+ *    [EmbeddingService] 会捕获并降级到 [LocalKeywordEmbeddingProvider]
  *
- * Modelo recomendado(Los usuarios pueden descargar el filesDir/muse_onnx/):
- *  - `bge-small-zh-v1.5`(512 dimensión,optimización china,~95MB)
- *  - `all-MiniLM-L6-v2`(384 dimensión,multilingüe,~23MB)
- *  - `mteb-chinese-tiny`(768 dimensión,chino,~25MB)
+ * 推荐模型(用户自行下载到 filesDir/muse_onnx/):
+ *  - `bge-small-zh-v1.5`(512 维,中文优化,~95MB)
+ *  - `all-MiniLM-L6-v2`(384 维,多语言,~23MB)
+ *  - `mteb-chinese-tiny`(768 维,中文,~25MB)
  *
- * @param modelPath ONNX Ruta del archivo del modelo
- * @param vocabPath BERT vocab.txt camino(cadena vacía=inferencia automática)
- * @param seqLen Longitud máxima de secuencia(Predeterminado 512,Truncamiento de texto largo)
+ * @param modelPath ONNX 模型文件路径
+ * @param vocabPath BERT vocab.txt 路径(空串=自动推断)
+ * @param seqLen 最大序列长度(默认 512,长文本截断)
  */
 class OnnxEmbeddingProvider(
     private val modelPath: String,
@@ -53,7 +53,7 @@ class OnnxEmbeddingProvider(
         File(modelPath).nameWithoutExtension
     }
 
-    /** dimensiones inferidas:Haga coincidir las dimensiones comunes del modelo según las palabras clave del nombre del archivo del modelo. */
+    /** 推断维度:根据模型文件名关键词匹配常见模型维度。 */
     override val dimension: Int by lazy {
         val name = modelPath.lowercase()
         when {
@@ -98,7 +98,7 @@ class OnnxEmbeddingProvider(
         }
     }
 
-    /** Incrustación de texto único: segmentación de palabras → padding → ONNX razonamiento → mean pool + L2 Normalizar. */
+    /** 单条文本 embedding:分词 → padding → ONNX 推理 → mean pool + L2 归一化。 */
     private fun embedSingle(
         env: OrtEnvironment,
         session: OrtSession,
@@ -107,15 +107,15 @@ class OnnxEmbeddingProvider(
         outputNames: List<String>,
         text: String,
     ): FloatArray {
-        // 1. participio → token ids(agregar [CLS] / [SEP])
+        // 1. 分词 → token ids(加 [CLS] / [SEP])
         val tokenIds = encode(text, vocab)
-        // 2. truncar / rellenar a seqLen
+        // 2. 截断 / padding 到 seqLen
         val padded = padOrTruncate(tokenIds, seqLen)
         val inputIds = padded.first
         val attentionMask = padded.second
         val tokenTypeIds = LongArray(seqLen) { 0 }
 
-        // 3. Construir tensor de entrada ONNX(shape: [1, seqLen])
+        // 3. 构造 ONNX 输入张量(shape: [1, seqLen])
         val inputs = mutableMapOf<String, OnnxTensor>()
         var inputIdsTensor: OnnxTensor? = null
         var attnMaskTensor: OnnxTensor? = null
@@ -125,18 +125,18 @@ class OnnxEmbeddingProvider(
             attnMaskTensor = OnnxTensor.createTensor(env, arrayOf(attentionMask))
             tokenTypeTensor = OnnxTensor.createTensor(env, arrayOf(tokenTypeIds))
 
-            // Asignado según el nombre de entrada real del modelo.(compatibles input_ids / input_ids.1 / ids esperando el nombre)
+            // 按模型实际输入名分配(兼容 input_ids / input_ids.1 / ids 等命名)
             assignInput(inputNames, "input_ids", inputIdsTensor, inputs)
             assignInput(inputNames, "attention_mask", attnMaskTensor, inputs)
             assignInput(inputNames, "token_type_ids", tokenTypeTensor, inputs)
             assignInput(inputNames, "token_type_ids.1", tokenTypeTensor, inputs)
 
-            // 4. Ejecutar inferencia
+            // 4. 运行推理
             val result = session.run(inputs)
             try {
-                // 5. Extraer salida — Prioridad pooler_output([1, hidden])De lo contrario last_hidden_state([1, seq, hidden])
+                // 5. 提取输出 — 优先 pooler_output([1, hidden])否则 last_hidden_state([1, seq, hidden])
                 val pooled = extractPooledOutput(result, outputNames, attentionMask)
-                // 6. L2 normalización(Requisito de similitud del coseno)
+                // 6. L2 归一化(余弦相似度要求)
                 return l2Normalize(pooled)
             } finally {
                 result.close()
@@ -148,7 +148,7 @@ class OnnxEmbeddingProvider(
         }
     }
 
-    /** Sesión de carga diferida + vocabulario. Hilo seguro. */
+    /** 懒加载 session + vocab。线程安全。 */
     private suspend fun ensureInitialized() {
         if (session != null && vocab != null) return
         mutex.withLock {
@@ -158,7 +158,7 @@ class OnnxEmbeddingProvider(
                 setIntraOpNumThreads(2)
                 setOptimizationLevel(OrtSession.SessionOptions.OptLevel.ALL_OPT)
             }
-            // Cargar modelo(Puede tardar cientos de milisegundos,Pero seguro en Dispatchers.Default)
+            // 加载模型(可能耗时数百毫秒,但在 Dispatchers.Default 中安全)
             val newSession = ortEnv.createSession(modelPath, opts)
             val newVocab = loadVocab(resolveVocabPath())
 
@@ -169,13 +169,13 @@ class OnnxEmbeddingProvider(
             cachedOutputNames = newSession.outputNames.toList()
             Logger.i(
                 "OnnxEmbeddingProvider",
-                "ONNX session cargado: model=${File(modelPath).name}, vocab=${newVocab.size} tokens, " +
+                "ONNX session 已加载: model=${File(modelPath).name}, vocab=${newVocab.size} tokens, " +
                     "inputs=${newSession.inputNames}, outputs=${newSession.outputNames}",
             )
         }
     }
 
-    /** Cargar estilo BERT vocab.txt(uno por línea token,El número de línea es token id). */
+    /** 加载 BERT 风格 vocab.txt(每行一个 token,行号即 token id)。 */
     private fun loadVocab(path: String): Map<String, Int> {
         val file = File(path)
         if (!file.exists()) {
@@ -190,7 +190,7 @@ class OnnxEmbeddingProvider(
         return map
     }
 
-    /** Inferir la ruta vocab.txt:Específicamente especificado → Mismo nombre que el directorio .vocab.txt → Mismo directorio que vocab.txt. */
+    /** 推断 vocab.txt 路径:显式指定 → 同目录同名 .vocab.txt → 同目录 vocab.txt。 */
     private fun resolveVocabPath(): String {
         if (vocabPath.isNotBlank()) return vocabPath
         if (modelPath.isBlank()) return ""
@@ -199,12 +199,12 @@ class OnnxEmbeddingProvider(
         if (sameNameVocab.exists()) return sameNameVocab.absolutePath
         val defaultVocab = File(modelFile.parentFile, "vocab.txt")
         if (defaultVocab.exists()) return defaultVocab.absolutePath
-        return sameNameVocab.absolutePath // Volver a la ruta predeterminada,loadVocab Lanzará una excepción
+        return sameNameVocab.absolutePath // 返回默认路径,loadVocab 会抛异常
     }
 
     /**
-     * texto → BERT token ids.
-     * agregar [CLS] = 101 / [SEP] = 102 Marcadores de límites.
+     * 文本 → BERT token ids。
+     * 加 [CLS] = 101 / [SEP] = 102 边界标记。
      */
     private fun encode(text: String, vocab: Map<String, Int>): List<Long> {
         val tokens = WordPieceTokenizer.tokenize(text, vocab)
@@ -217,7 +217,7 @@ class OnnxEmbeddingProvider(
         return ids
     }
 
-    /** Truncar/rellenar a longitud fija,Regresar (inputIds, attentionMask). */
+    /** 截断 / padding 到固定长度,返回 (inputIds, attentionMask)。 */
     private fun padOrTruncate(tokenIds: List<Long>, maxLen: Int): Pair<LongArray, LongArray> {
         val inputIds = LongArray(maxLen) { 0 }
         val attentionMask = LongArray(maxLen) { 0 }
@@ -231,7 +231,7 @@ class OnnxEmbeddingProvider(
 
     private fun List<Long>.coerceAtMost(maxLen: Int): Int = minOf(size, maxLen)
 
-    /** Encuentre nombres de campos coincidentes por inputNames,Agregue el tensor al mapa de entradas. */
+    /** 按 inputNames 查找匹配的字段名,把张量加入 inputs map。 */
     private fun assignInput(inputNames: List<String>, candidate: String, tensor: OnnxTensor, inputs: MutableMap<String, OnnxTensor>) {
         if (inputNames.contains(candidate)) {
             inputs[candidate] = tensor
@@ -239,14 +239,14 @@ class OnnxEmbeddingProvider(
     }
 
     /**
-     * Extraiga la incrustación después de la agrupación de OrtSession.Result.
+     * 从 OrtSession.Result 提取 pooling 后的 embedding。
      *
-     * estrategia prioritaria:
-     *  1. El nombre de salida contiene "pooler_output" / "pooled" → Regresar directamente [hidden]
-     *  2. De lo contrario toma last_hidden_state([1, seq, hidden]),Hazlo por atención_mask mean pool
+     * 优先策略:
+     *  1. 输出名含 "pooler_output" / "pooled" → 直接返回 [hidden]
+     *  2. 否则取 last_hidden_state([1, seq, hidden]),按 attention_mask 做 mean pool
      */
     private fun extractPooledOutput(result: OrtSession.Result, outputNames: List<String>, attentionMask: LongArray): FloatArray {
-        // Prioridad pooler_output
+        // 优先 pooler_output
         val pooledName = outputNames.firstOrNull { name ->
             name.contains("pooler", ignoreCase = true) ||
                 name.contains("pooled", ignoreCase = true) ||
@@ -263,7 +263,7 @@ class OnnxEmbeddingProvider(
             }
         }
 
-        // revertir:last_hidden_state mean pool
+        // 回退:last_hidden_state mean pool
         val hiddenName = outputNames.firstOrNull { name ->
             name.contains("last_hidden_state", ignoreCase = true) ||
                 name == "hidden_states" || name == "encoder_outputs"
@@ -283,7 +283,7 @@ class OnnxEmbeddingProvider(
         return meanPool(hiddenStates, attentionMask)
     }
 
-    /** Mean Pooling:Promedio ponderado por atencion_mask,Sólo estadísticas mask=1 ubicación. */
+    /** Mean Pooling:按 attention_mask 加权求平均,只统计 mask=1 的位置。 */
     private fun meanPool(hiddenStates: Array<FloatArray>, attentionMask: LongArray): FloatArray {
         val hiddenSize = hiddenStates.firstOrNull()?.size ?: return FloatArray(0)
         val sum = FloatArray(hiddenSize)
@@ -308,7 +308,7 @@ class OnnxEmbeddingProvider(
         return FloatArray(vec.size) { i -> vec[i] / norm }
     }
 
-    /** cerrar session,Liberar recursos nativos. */
+    /** 关闭 session,释放 native 资源。 */
     fun close() {
         resultOf {
             session?.close()
@@ -316,12 +316,12 @@ class OnnxEmbeddingProvider(
             vocab = null
             cachedInputNames = null
             cachedOutputNames = null
-            // env se comparte globalmente,no cerrado
-            TimeUnit.MILLISECONDS.sleep(50) // Dar tiempo para el reciclaje de recursos nativos
-        }.onError { msg, e -> Logger.w("OnnxEmbeddingProvider", "close falló: $msg", e) }
+            // env 是全局共享的,不关闭
+            TimeUnit.MILLISECONDS.sleep(50) // 给 native 资源回收留时间
+        }.onError { msg, e -> Logger.w("OnnxEmbeddingProvider", "close 失败: $msg", e) }
     }
 
-    /** Compruebe si ONNX local está disponible(El archivo de modelo + vocabulario están configurados y existen.). */
+    /** 检查本地 ONNX 是否可用(模型文件 + vocab 都已配置且存在)。 */
     fun isAvailable(): Boolean {
         if (modelPath.isBlank() || !File(modelPath).exists()) return false
         val vPath = resolveVocabPath()
@@ -329,7 +329,7 @@ class OnnxEmbeddingProvider(
     }
 
     companion object {
-        /** Longitud máxima de secuencia predeterminada(BERT Estándar 512). */
+        /** 默认最大序列长度(BERT 标准 512)。 */
         const val MAX_SEQ_LEN = 512
     }
 }

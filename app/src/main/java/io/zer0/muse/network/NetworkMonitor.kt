@@ -14,18 +14,18 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 /**
- * v1.0.15: Oyente de estado de la red.
+ * v1.0.15: 网络状态监听器。
  *
- * Basado en [ConnectivityManager.NetworkCallback] Supervise los cambios en la disponibilidad de la red en tiempo real,Utilizado para transmisiones SSE
- * [io.zer0.ai.core.ChatStreamEvent.StreamInterrupted] después de la interrupción,La reconexión automática se activa cuando la red se recupera.
+ * 基于 [ConnectivityManager.NetworkCallback] 实时监听网络可用性变化,用于 SSE 流被
+ * [io.zer0.ai.core.ChatStreamEvent.StreamInterrupted] 中断后,网络恢复时触发自动重连。
  *
- * diseño:
- *  - [isOnline]: Exponer el estado actual de la red [StateFlow],UI visualización observable"Corte de red"Consejos
- *  - [onlineEvents]: La red está desconectada de → Dispara una vez en recuperación Unit,ChatViewModel recoge esto Flow
- *    Espere a que la recuperación de la red se regenere automáticamente después de recibir StreamInterrupted
- *  - Registro global a través de Koin single,App Regístrese solo una vez durante el ciclo de vida callback
+ * 设计:
+ *  - [isOnline]: 暴露当前网络状态的 [StateFlow],UI 可观察显示"网络中断"提示
+ *  - [onlineEvents]: 网络从断开 → 恢复时发射一次 Unit,ChatViewModel 收集此 Flow
+ *    在收到 StreamInterrupted 后等待网络恢复自动重新生成
+ *  - 通过 Koin single 全局注册,App 生命周期内只注册一次 callback
  *
- * Nota: NetworkMonitor Es un singleton a nivel de aplicación,No se requiere manual unregister(App El sistema se limpia automáticamente cuando se destruye el proceso.).
+ * 注意: NetworkMonitor 是应用级单例,无需手动 unregister(App 进程销毁时系统自动清理)。
  */
 class NetworkMonitor(context: Context) {
 
@@ -34,21 +34,21 @@ class NetworkMonitor(context: Context) {
 
     private val _isOnline = MutableStateFlow(checkOnline())
 
-    /** ¿Está disponible la red actual?(Con capacidad INTERNET + VALIDADO) */
+    /** 当前网络是否可用(含 INTERNET + VALIDATED 能力) */
     val isOnline: StateFlow<Boolean> = _isOnline.asStateFlow()
 
     private val _onlineEvents = MutableSharedFlow<Unit>(extraBufferCapacity = 4)
 
-    /** La red está desconectada de → Dispara una vez en recuperación Unit(Filtrar inicial en línea y en línea→Eventos redundantes en línea) */
+    /** 网络从断开 → 恢复时发射一次 Unit(过滤初始在线和在线→在线的冗余事件) */
     val onlineEvents: SharedFlow<Unit> = _onlineEvents.asSharedFlow()
 
     private val callback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
-            // Red desde cero,Notificar a la parte que espera
+            // 网络从无到有,通知等待方
             if (!_isOnline.value) {
                 _isOnline.value = true
                 _onlineEvents.tryEmit(Unit)
-                Logger.i("NetworkMonitor", "La red ha sido restaurada.")
+                Logger.i("NetworkMonitor", "网络已恢复")
             }
         }
 
@@ -56,7 +56,7 @@ class NetworkMonitor(context: Context) {
             val online = checkOnline()
             if (_isOnline.value && !online) {
                 _isOnline.value = false
-                Logger.w("NetworkMonitor", "La red está desconectada")
+                Logger.w("NetworkMonitor", "网络已断开")
             }
         }
 
@@ -66,10 +66,10 @@ class NetworkMonitor(context: Context) {
             if (online && !_isOnline.value) {
                 _isOnline.value = true
                 _onlineEvents.tryEmit(Unit)
-                Logger.i("NetworkMonitor", "Restauración de la capacidad de la red(VALIDATED)")
+                Logger.i("NetworkMonitor", "网络能力恢复(VALIDATED)")
             } else if (!online && _isOnline.value) {
                 _isOnline.value = false
-                Logger.w("NetworkMonitor", "Capacidad de red perdida(VALIDATED)")
+                Logger.w("NetworkMonitor", "网络能力丢失(VALIDATED)")
             }
         }
     }
@@ -81,7 +81,7 @@ class NetworkMonitor(context: Context) {
                 .build()
             connectivityManager?.registerNetworkCallback(request, callback)
         }.onFailure {
-            Logger.w("NetworkMonitor", "registerNetworkCallback falló", it)
+            Logger.w("NetworkMonitor", "registerNetworkCallback 失败", it)
         }
     }
 

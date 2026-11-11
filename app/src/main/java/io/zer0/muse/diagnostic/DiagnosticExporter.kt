@@ -22,57 +22,57 @@ import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
 /**
- * v2.x(Proyecto de exportación de diagnóstico A): empaquete la información de diagnóstico en un zip y active el uso compartido del sistema.
+ * v2.x（诊断导出项目 A）：把诊断信息打包成 zip 并调起系统分享。
  *
- * Qué incluye (todo insensibilizado):
- *  - generation-trace.jsonl: Vincula trayectorias generadas en las últimas 20 rondas (estadísticas, sin texto)
- *  - device-info.txt:Dispositivo/Android versión/ABI/app versión
- *  - debug-log.txt:DebugLogStore búfer de registro existente (si lo hubiera)
- *  - background-work.txt:WorkManager El estado de las tareas en segundo plano registradas en la cola (la única respuesta es cuando la tarea programada "no se está ejecutando")
- *    Para obtener evidencia de "si el sistema se ha despertado", consulte [BackgroundWakeDiagnostics])
+ * 包含内容（全部脱敏）：
+ *  - generation-trace.jsonl：最近 20 轮生成链路轨迹（统计量，无正文）
+ *  - device-info.txt：设备/Android 版本/ABI/app 版本
+ *  - debug-log.txt：DebugLogStore 的现有日志缓冲（若有）
+ *  - background-work.txt：WorkManager 队列里在册的后台任务状态（定时任务「没跑」时唯一能回答
+ *    「系统到底有没有唤醒」的证据，见 [BackgroundWakeDiagnostics]）
  *
- * **linea roja**: No contiene texto de mensaje,prompt,API key Texto original.
+ * **红线**：不含消息正文、prompt、API key 原文。
  */
 object DiagnosticExporter {
 
     private val exportDateFormat = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US)
 
     /**
-     * Empaqueta el zip de diagnóstico en cacheDir y devuelve un URI de FileProvider (para uso compartido).
-     * Devuelve nulo en caso de error.
+     * 打包诊断 zip 到 cacheDir，返回 FileProvider URI（供分享 Intent 使用）。
+     * 失败返回 null。
      *
-     * Todo el proceso está en el hilo IO:zip La escritura, la lectura de archivos de registro y las consultas de WorkManager no deberían sobrecargar el hilo de la persona que llama.
+     * 全程在 IO 线程：zip 写入、日志文件读取和 WorkManager 查询都不应该压在调用方线程上。
      */
     suspend fun exportZip(context: Context): android.net.Uri? = withContext(Dispatchers.IO) {
         val zipFile = buildDiagnosticZip(context) ?: return@withContext null
         runCatching {
             FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", zipFile)
-        }.onFailure { Logger.w("DiagnosticExporter", "Exportación fallida: ${it.message}") }.getOrNull()
+        }.onFailure { Logger.w("DiagnosticExporter", "导出失败: ${it.message}") }.getOrNull()
     }
 
     /**
-     * Solo es responsable de escribir el contenido en el zip y no toca el FileProvider.
+     * 只负责把内容写进 zip，不碰 FileProvider。
      *
-     * El propósito de dividirlo en funciones independientes es hacer afirmaciones directamente sobre el contenido zip (sin depender de la declaración del proveedor ni de la intención de compartir).
-     * Cuando cualquier enlace genera una excepción, todo el paquete falla y se devuelve un valor nulo.
+     * 拆成独立函数是为了能直接对 zip 内容做断言（不依赖 provider 声明与分享 Intent）。
+     * 任一环节抛异常时整包失败，返回 null。
      */
     internal suspend fun buildDiagnosticZip(context: Context): File? = withContext(Dispatchers.IO) {
-        // No recopilar el estado de activación no afecta la exportación del paquete completo:Otra información de diagnóstico sigue siendo valiosa.
+        // 唤醒状态采集失败不影响整包导出:其它诊断信息仍然有价值。
         val backgroundWork = resultOf {
             BackgroundWakeDiagnostics.formatSnapshot(BackgroundWakeDiagnostics.collectWithSettings(context))
         }.onError { message, throwable ->
-            Logger.w("DiagnosticExporter", "Falló la recopilación del estado de activación en segundo plano: $message", throwable)
+            Logger.w("DiagnosticExporter", "后台唤醒状态采集失败: $message", throwable)
         }.getOrNull()
         runCatching {
             val zipFile = File(context.cacheDir, "muse_diagnostic_${exportDateFormat.format(Date())}.zip")
             ZipOutputStream(BufferedOutputStream(zipFile.outputStream())).use { zos ->
-                // 1. Generar seguimientos de enlaces
+                // 1. 生成链路轨迹
                 GenerationTrace.traceFileOrNull()?.let { traceFile ->
                     zos.putNextEntry(ZipEntry("generation-trace.jsonl"))
                     traceFile.inputStream().use { it.copyTo(zos) }
                     zos.closeEntry()
                 } ?: run {
-                    // Almacenamiento en memoria intermedia cuando no hay ningún archivo (la ronda en la que el proceso acaba de iniciarse y aún no se ha descargado)
+                    // 无文件时导内存缓冲（进程刚启动还没落盘的轮次）
                     val records = GenerationTrace.snapshot()
                     if (records.isNotEmpty()) {
                         zos.putNextEntry(ZipEntry("generation-trace.jsonl"))
@@ -84,27 +84,27 @@ object DiagnosticExporter {
                     }
                 }
 
-                // 2. Información del dispositivo
+                // 2. 设备信息
                 zos.putNextEntry(ZipEntry("device-info.txt"))
                 zos.write(buildDeviceInfo().toByteArray())
                 zos.closeEntry()
 
-                // 3. Registros de depuración existentes (búfer circular de memoria, solo las últimas 1000 entradas)
+                // 3. 现有调试日志（内存环形缓冲，只有最近 1000 条）
                 DebugLogStore.exportToFile()?.let { debugFile ->
                     zos.putNextEntry(ZipEntry("debug-log.txt"))
                     debugFile.inputStream().use { it.copyTo(zos) }
                     zos.closeEntry()
                 }
 
-                // 4. registro de archivos (cacheDir/logs/muse.log,1MB desplazarse)
-                // Los problemas de enlace de canal a menudo ocurren antes de que se registren miles de registros y el búfer de memoria se haya vaciado durante mucho tiempo.
+                // 4. 文件日志（cacheDir/logs/muse.log，1MB 滚动）
+                // 渠道链路的问题经常发生在几千条日志之前，内存缓冲里早被冲掉了。
                 Logger.getLogFile()?.let { logFile ->
                     zos.putNextEntry(ZipEntry("muse.log"))
                     logFile.inputStream().use { it.copyTo(zos) }
                     zos.closeEntry()
                 }
 
-                // 5. Estado de activación en segundo plano (WorkManager Tareas registradas y estado de la cola)
+                // 5. 后台唤醒状态（WorkManager 队列的在册任务与状态）
                 if (backgroundWork != null) {
                     zos.putNextEntry(ZipEntry("background-work.txt"))
                     zos.write(backgroundWork.toByteArray())
@@ -112,10 +112,10 @@ object DiagnosticExporter {
                 }
             }
             zipFile
-        }.onFailure { Logger.w("DiagnosticExporter", "Exportación fallida: ${it.message}") }.getOrNull()
+        }.onFailure { Logger.w("DiagnosticExporter", "导出失败: ${it.message}") }.getOrNull()
     }
 
-    /** Habilite el uso compartido del sistema. */
+    /** 调起系统分享。 */
     suspend fun share(context: Context) {
         val uri = exportZip(context) ?: return
         val intent = Intent(Intent.ACTION_SEND).apply {

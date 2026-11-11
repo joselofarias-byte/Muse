@@ -1,6 +1,6 @@
 package io.zer0.muse.web
 
-/** Estado final de la solicitud de búsqueda. */
+/** 搜索请求终态。 */
 enum class WebSearchStatus {
     RESULTS,
     EMPTY,

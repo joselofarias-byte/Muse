@@ -21,15 +21,15 @@ import kotlinx.coroutines.withContext
 import java.io.File
 
 /**
- * Comando de solo lectura del estado del sistema(`system.status`)proyección de carga.
+ * 系统状态只读命令(`system.status`)的载荷投影。
  *
- * El recibo es sólo para "fuente de datos → Transferencia de Protocolo DTO":Sin medición, sin detección,Las partes inalcanzables conservan el valor predeterminado del DTO.
+ * 回执只做「数据源 → 协议 DTO」的搬运:没有测量、没有探测,拿不到的部分保持 DTO 的默认值。
  */
 internal object HostSystemStatusReads {
 
     const val TYPE = "system.status"
 
-    /** `system.status` Acuse de recibo. */
+    /** `system.status` 回执。 */
     fun event(status: HostSystemStatus, requestId: String?): HostEvent = HostEvent(
         type = TYPE,
         requestId = requestId,
@@ -38,38 +38,38 @@ internal object HostSystemStatusReads {
 }
 
 /**
- * Fuente de datos para comandos de solo lectura del estado del sistema.
+ * 系统状态只读命令的数据源。
  *
- * La interfaz de comisión permite que la puerta de enlace se ejecute sin Android.(Pruebas, montaje mínimo.)También puedes recibir el recibo como es habitual en el escenario.:
- * Ofrece un estado predeterminado completo cuando no está ensamblado,En lugar de permitir que el comando informe un error.
+ * 抽成接口是为了让网关在没有 Android 运行时(测试、最小装配)的场景下也能照常回执:
+ * 未装配时下发一份全默认的状态,而不是让命令报错。
  */
 interface HostSystemStatusSource {
 
-    /** Cuando resulte la próxima medición. */
+    /** 当下一次测量结果。 */
     suspend fun status(): HostSystemStatus
 
-    /** Implementación vacía cuando no está ensamblada:versión/Volumen/copia de seguridad/Todos los bits de habilidad son valores predeterminados.,La batería es nula. */
+    /** 未装配时的空实现:版本/体积/备份/能力位全为默认值,电量 null。 */
     object Empty : HostSystemStatusSource {
         override suspend fun status(): HostSystemStatus = HostSystemStatus()
     }
 }
 
 /**
- * Estadísticas de bytes ocupados por directorio.
+ * 按目录统计占用字节数。
  *
- * ## Calibre
+ * ## 口径
  *
- * solo cuenta [databaseDir] / [mediaDir] / [voiceDir] / [workspaceDir] / [cacheDir] Estos cinco directorios,
- * Sumar cada uno recursivamente;`totalAppBytes` Es la suma de estos cinco elementos. No atravesar toda la zona de pruebas:Registros, volcados de memoria, archivos temporales
- * El total suele ser menos de una fracción de estos directorios.,Pero se necesitan miles de entradas de directorio más,No sirve de nada "ver cuánto está ocupado".
- * Un directorio no existe(Recién instalado y limpiado)Contado como 0.
+ * 只算 [databaseDir] / [mediaDir] / [voiceDir] / [workspaceDir] / [cacheDir] 这五个目录,
+ * 各自递归求和;`totalAppBytes` 是这五项之和。不遍历整个沙盒:日志、崩溃转储、临时文件
+ * 加起来通常不到这些目录的零头,却要多走几千个目录项,对「看一眼占了多少」没有帮助。
+ * 某个目录不存在(新装、被清理过)按 0 计。
  *
- * ## hilo
+ * ## 线程
  *
- * El resumen es un recorrido completo por el directorio.,En dispositivos con muchos archivos, puede tardar entre decenas y cientos de milisegundos.,Por lo tanto [measure] fijo en
- * [Dispatchers.IO] correr hasta,No ocupa la corrutina de llamada.(WebSocket Corrutina de conexión)hilo.
+ * 求和是一次完整目录遍历,文件多的设备上可能几十毫秒到几百毫秒,因此 [measure] 固定在
+ * [Dispatchers.IO] 上跑,不占调用方协程(WebSocket 连接协程)的线程。
  *
- * Se pueden inyectar todos los directorios raíz.:La producción y el montaje van [of],Pruebe al directorio temporal.
+ * 根目录全部可注入:生产装配走 [of],测试给临时目录。
  */
 internal class HostStorageUsage(
     private val databaseDir: File?,
@@ -79,7 +79,7 @@ internal class HostStorageUsage(
     private val cacheDir: File?,
 ) {
 
-    /** contar una vez;Si algún elemento no se puede leer, se contará como 0.,No se lanza ninguna excepción. */
+    /** 统计一次;任一项读不到按 0 计,不抛异常。 */
     suspend fun measure(): HostStorageBytes = withContext(Dispatchers.IO) {
         val database = sizeOf(databaseDir)
         val media = sizeOf(mediaDir)
@@ -97,19 +97,19 @@ internal class HostStorageUsage(
     }
 
     companion object {
-        /** Nombre del directorio de imágenes del mensaje,con [WebServer] Los directorios utilizados para registrar rutas de medios son consistentes. */
+        /** 消息图片目录名,与 [WebServer] 登记媒体路由用的目录一致。 */
         private const val IMAGE_MEDIA_DIR = "muse_images"
 
-        /** Nombre del directorio del archivo de voz,con [WebServer] Los directorios utilizados para registrar rutas de medios son consistentes. */
+        /** 语音存档目录名,与 [WebServer] 登记媒体路由用的目录一致。 */
         private const val VOICE_MEDIA_DIR = "voice_messages"
 
-        /** nombre del directorio del espacio de trabajo,con [io.zer0.muse.workspace.WorkspaceManager] El directorio de montaje predeterminado es el mismo. */
+        /** 工作区目录名,与 [io.zer0.muse.workspace.WorkspaceManager] 的默认挂载目录一致。 */
         private const val WORKSPACE_DIR = "workspace"
 
-        /** Nombre del archivo de base de datos principal,Sólo se utiliza para razonamiento inverso. `databases/` Directorio. */
+        /** 主数据库文件名,只用来反推 `databases/` 目录。 */
         private const val MAIN_DB_NAME = "muse.db"
 
-        /** Producción y montaje:El directorio se toma del entorno limitado de la aplicación. */
+        /** 生产装配:目录取自应用沙盒。 */
         fun of(context: Context): HostStorageUsage = HostStorageUsage(
             databaseDir = context.getDatabasePath(MAIN_DB_NAME).parentFile,
             mediaDir = File(context.filesDir, IMAGE_MEDIA_DIR),
@@ -119,7 +119,7 @@ internal class HostStorageUsage(
         )
     }
 
-    /** Número de bytes recursivos para un solo directorio;Los directorios que no existen o no son legibles se cuentan como 0. */
+    /** 单个目录的递归字节数;目录不存在或不可读按 0 计。 */
     private fun sizeOf(dir: File?): Long {
         val root = dir?.takeIf { it.isDirectory } ?: return 0L
         return runCatching { root.walkTopDown().filter { it.isFile }.sumOf { it.length() } }.getOrDefault(0L)
@@ -127,10 +127,10 @@ internal class HostStorageUsage(
 }
 
 /**
- * Mapeo del estado de la copia de seguridad.
+ * 备份状态映射。
  *
- * [latest] si `auto_backup_log` El último récord exitoso en;Dos veces cuando no hay registro/El campo de volumen da null ——
- * Dar 0 hará que la página web muestre "Nunca se realizó una copia de seguridad" como "1970 Realizado una copia de seguridad una vez al año,Tamaño 0".
+ * [latest] 是 `auto_backup_log` 里最近一条成功记录;没有记录时两个时间/体积字段给 null ——
+ * 给 0 会让网页端把「从没备份过」显示成「1970 年备份过一次,大小 0」。
  */
 internal fun backupStatusOf(
     latest: AutoBackupLogEntity?,
@@ -145,20 +145,20 @@ internal fun backupStatusOf(
 )
 
 /**
- * Lea directamente la fuente de datos de estado del sistema del tiempo de ejecución de Android.
+ * 直接读 Android 运行时的系统状态数据源。
  *
- * - Volumen:ver [HostStorageUsage] calibre;
- * - copia de seguridad:Control maestro de programación backend + configuración de respaldo en la nube + `auto_backup_log` El último récord exitoso;
- * - Posición de habilidad:La misma entrada que la herramienta de verificación previa interna de la aplicación.([AutomationManager.liveSnapshot]) —— es solo tiempo real
- *   Accesibilidad con una sobrecarga de actualización mínima,Shell/Root Utilice los últimos resultados de detección,No se ejecuta en una solicitud de página web `su` sonda;
- * - poder:[BatteryManager] capacidad restante + transmisión del estado de carga,Si alguno no se puede leer, devuelve nulo.
+ * - 体积:见 [HostStorageUsage] 的口径;
+ * - 备份:后台调度总控 + 云备份配置 + `auto_backup_log` 最近一条成功记录;
+ * - 能力位:与 App 内部工具预检同一个入口([AutomationManager.liveSnapshot]) —— 它只实时
+ *   刷新开销极小的无障碍通道,Shell/Root 沿用最近一次探测结果,不在一次网页请求里跑 `su` 探针;
+ * - 电量:[BatteryManager] 的剩余容量 + 充电状态广播,任一读不到就给 null。
  */
 internal class AndroidHostSystemStatusSource(
     private val context: Context,
     private val settings: SettingsRepository,
     private val autoBackupLogDao: AutoBackupLogDao,
     private val storage: HostStorageUsage = HostStorageUsage.of(context),
-    /** Gerente de Automatización;App Cuando el módulo de automatización no está inicializado, es null,En este momento, los seis bits de habilidad son falsos. */
+    /** 自动化管理器;App 未初始化自动化模块时为 null,此时六项能力位一律 false。 */
     private val automation: () -> AutomationManager? = {
         if (AutomationInitializer.isInitialized) AutomationInitializer.manager else null
     },
@@ -174,7 +174,7 @@ internal class AndroidHostSystemStatusSource(
         battery = batteryStatus(),
     )
 
-    /** El tiempo que este proceso ha estado ejecutándose.;Si no se puede obtener se contará como 0. */
+    /** 本次进程已运行的时长;取不到按 0 计。 */
     private fun processUptimeMs(): Long = runCatching {
         (SystemClock.elapsedRealtime() - Process.getStartElapsedRealtime()).coerceAtLeast(0L)
     }.getOrDefault(0L)
@@ -200,18 +200,18 @@ internal class AndroidHostSystemStatusSource(
             shell = shell,
             root = root,
             shizuku = state?.shizukuState == ShizukuAuthorizer.ShizukuState.READY,
-            // La puerta de permiso de la pantalla virtual tiene el mismo origen que Shell/Root:Se puede construir una pantalla con uno de estos canales.
+            // 虚拟屏的权限门与 Shell/Root 同源:有其中一条通道就能建屏。
             virtualDisplay = shell || root,
             notificationListener = notificationListenerEnabled(),
         )
     }
 
-    /** Aviso de derechos de uso:El servicio de escucha está conectado.,O esta aplicación ha sido marcada en la lista del sistema.(El período de ventana durante el cual el servicio no ha estado vinculado). */
+    /** 通知使用权:监听服务已连上,或系统列表里已勾选本应用(服务尚未绑定的窗口期)。 */
     private fun notificationListenerEnabled(): Boolean = runCatching {
         MuseNotificationListenerService.isConnected() || MuseNotificationListenerService.hasListenerAccess(context)
     }.getOrDefault(false)
 
-    /** poder;Si no se puede leer ni la capacidad ni el estado de carga, todo el bloque será nulo. */
+    /** 电量;容量与充电状态都读不到时整块给 null。 */
     private fun batteryStatus(): HostBatteryStatus? {
         val manager = runCatching {
             context.getSystemService(Context.BATTERY_SERVICE) as? BatteryManager
@@ -225,10 +225,10 @@ internal class AndroidHostSystemStatusSource(
         return HostBatteryStatus(level = level, charging = charging)
     }
 
-    /** de `ACTION_BATTERY_CHANGED` La transmisión fija lee el estado de carga.;El estado desconocido se devuelve como nulo. */
+    /** 从 `ACTION_BATTERY_CHANGED` 的粘性广播读充电状态;状态不明给 null。 */
     private fun chargingState(): Boolean? {
-        // Al pasar nulo, el receptor simplemente consulta al sistema el valor actual de las transmisiones fijas.,No hay remitentes de terceros involucrados,Fijo NOT_EXPORTED;
-        // Pero el logo no se puede omitir.:ContextCompat Cuando vea 0, se lanzará una excepción directamente.
+        // 传 null 接收器只是查询系统粘性广播的当前值,没有第三方发送者参与,固定 NOT_EXPORTED;
+        // 但标志不能省:ContextCompat 见到 0 会直接抛异常。
         val intent = runCatching {
             ContextCompat.registerReceiver(
                 context,

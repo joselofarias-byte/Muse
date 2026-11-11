@@ -29,22 +29,22 @@ async function createQueue(): Promise<ClosableQueue> {
 }
 
 function skip(job: { id: string; type: string }): void {
-  // F-42: Implementación de marcador de posición — Requiere que el proveedor de servicios backend lo implemente;Manténgase libre de efectos secundarios,Simplemente inicia sesión y salta,Evite completar por error/Falló por error.
+  // F-42: 占位实现 — 需后端服务提供方实现;保持无副作用,仅记日志后跳过,避免误完成/误失败。
   console.warn(`[muse-worker] ${job.type} handler is a no-op placeholder; job ${job.id} skipped (requires backend service provider)`);
 }
 
 const queue = await createQueue();
 
 const worker = new JobWorker(queue, {
-  // F-42: memory_extract / rag_index Cuando se ejecuta en Android(Host modo)Implementado por la aplicación muse en bucle cerrado.;
-  // web worker Actualmente no existe ningún servicio backend correspondiente.,Se omite el marcador de posición.TODO(backend): Acceda a los servicios de extracción de memoria/indexación RAG.
+  // F-42: memory_extract / rag_index 在 Android 运行时(Host 模式)由 muse App 闭环实现;
+  // web worker 侧暂无对应后端服务,占位跳过。TODO(backend): 接入记忆抽取 / RAG 索引服务。
   memory_extract: async (job) => skip(job),
   rag_index: async (job) => skip(job),
-  // TODO(backend): Acceder al servicio de análisis de documentos(subir → Extraer texto).
+  // TODO(backend): 接入文档解析服务(上传 → 提取正文)。
   document_parse: async (job) => skip(job),
-  // TODO(backend): Accede al servicio de encuestas de medios.
+  // TODO(backend): 接入媒体轮询服务。
   media_poll: async (job) => skip(job),
-  // TODO(backend): Acceda al servicio de entrega de notificaciones.
+  // TODO(backend): 接入通知投递服务。
   notification: async (job) => skip(job),
 });
 console.log(`Muse worker started; poll interval=${intervalMs}ms; id=${workerId}; queue=${process.env.REDIS_URL ? "redis" : process.env.DATABASE_URL ? "postgres" : "memory"}`);

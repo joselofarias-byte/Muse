@@ -3,7 +3,7 @@ package io.zer0.muse.data.chat.rewrite
 import io.zer0.muse.data.session.MessageEntity
 import io.zer0.muse.data.session.MessagePartEntity
 
-/** UI Muestra el uso de piezas estructuradas. */
+/** UI 展示使用的结构化 part。 */
 data class MessageDisplayPart(
     val kind: String,
     val text: String,
@@ -25,8 +25,8 @@ data class ProjectedMessage(
 )
 
 /**
- * Proyector de mensajes reproducible.
- * Los mensajes nuevos leen primero message_parts; Los mensajes antiguos sin partes se derivan del campo heredado.
+ * 可重复执行的消息投影器。
+ * 新消息优先读取 message_parts；没有 parts 的旧消息由 legacy 字段派生。
  */
 object MessageProjector {
     fun project(message: MessageEntity, storedParts: List<MessagePartEntity>): ProjectedMessage {
@@ -35,8 +35,8 @@ object MessageProjector {
         } else {
             buildLegacyParts(message)
         }
-        // Algunas versiones antiguas escribirán primero la parte de razonamiento/herramienta y luego complementarán de forma asincrónica la parte de texto; en este momento
-        // legacy content Sigue siendo el único cuerpo completo, y no se puede proyectar que la parte estructurada esté vacía simplemente porque no lo está.
+        // 部分旧版本会先写入 reasoning/tool part，再异步补 text part；此时
+        // legacy content 仍是唯一完整正文，不能因为结构化 part 非空就将其投影为空。
         val visibleContent = parts.filter { it.kind == "text" }.joinToString("") { it.text }
             .ifBlank { message.content }
         val reasoning = parts.filter { it.kind == "reasoning" }.joinToString("") { it.text }.ifBlank { message.reasoning }
@@ -81,7 +81,7 @@ data class ConversationProjection(
     val contentHash: String,
 )
 
-/** Proyección de funciones puras a nivel de sesión para la conciliación entre la IU antigua y la nueva. */
+/** 会话级纯函数投影，供旧 UI 与新 UI 对账。 */
 object ConversationProjector {
     fun project(
         messages: List<MessageEntity>,

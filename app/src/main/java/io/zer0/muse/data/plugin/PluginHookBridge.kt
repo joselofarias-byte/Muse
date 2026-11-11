@@ -8,19 +8,19 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
 /**
- * v2.x(Sistema de gancho enchufable MVP): Poner**Complemento habilitado**El gancho declarado está enganchado en [HookRegistry].
+ * v2.x（插件 Hook 体系 MVP）：把**已启用插件**声明的 Hook 挂进 [HookRegistry]。
  *
- * Diseño:
- *  - Suscríbete [PluginManager.revisionFlow], instalación de complementos/Desinstalar/Iniciar y detener/Recarga completa cuando cambie la versión;
- *  - Sólo reenganche los anzuelos registrados por este puente (id prefijo [HOOK_ID_PREFIX]), no toca el gancho Kotlin incorporado;
- *  - MVP Sólo acceso `prompt_finalize` Un punto de enlace (reescribe el historial antes de que finalice la palabra indicada)——
- *    Este es el punto de entrada mínimo para que el complemento afecte el contenido generado. Los puntos de enganche se ampliarán según sea necesario en el futuro;
- *  - No cargar un solo complemento no afectará a otros complementos;
- *  - El código de entrada se pasa cada vez. [PluginManager.loadVerifiedFunction] Vuelva a verificar (no confíe en el caché del registro).
+ * 设计：
+ *  - 订阅 [PluginManager.revisionFlow]，插件安装/卸载/启停/版本变化时全量重挂；
+ *  - 只重挂本桥注册的 hook（id 前缀 [HOOK_ID_PREFIX]），不碰内置 Kotlin hook；
+ *  - MVP 只接入 `prompt_finalize` 一个 Hook 点（提示词定稿前改写历史）——
+ *    这是插件影响生成内容的最小切入点，后续按需扩 Hook 点；
+ *  - 单个插件加载失败不影响其他插件；
+ *  - 入口代码每次都经 [PluginManager.loadVerifiedFunction] 重新校验（不信任注册表缓存）。
  *
- * ¿Por qué utilizar un puente en lugar de permitir que PluginManager mantenga HookRegistry directamente?
- *  HookRegistry Es un registro puramente lógico,PluginManager es almacenamiento/Dominio de seguridad; los dos se desacoplan a través de este puente,
- *  Evitar inyectar funciones de ejecución en PluginManager también facilita las pruebas.
+ * 为什么用桥而不是让 PluginManager 直接持有 HookRegistry：
+ *  HookRegistry 是纯逻辑注册表，PluginManager 是存储/安全域；二者通过本桥解耦，
+ *  避免在 PluginManager 里注入执行设施，也让测试更容易。
  */
 class PluginHookBridge(
     private val context: android.content.Context,
@@ -32,16 +32,16 @@ class PluginHookBridge(
     private val registered = HashSet<String>()
 
     /**
-     * El último valor del interruptor maestro enchufable.
+     * 插件总开关的最新值。
      *
-     * [sync] Es una función de sincronización (llamada directamente por revisionFlow) y no puede bloquear temporalmente el flujo de lectura en ella.
-     * Por lo tanto, la rutina de suscripción vacía el valor en el campo. Valor predeterminado verdadero: presione abrir procesamiento cuando el interruptor no se pueda leer.
-     * Todos los complementos instalados por el usuario no se pueden detener silenciosamente debido a un solo error de lectura.
+     * [sync] 是同步函数（被 revisionFlow 直接调），不能在里面临时阻塞读 Flow，
+     * 所以由订阅协程把值刷到字段上。默认 true：开关读不到时按开启处理，
+     * 不能因为一次读取失败把用户装的插件全部静默停掉。
      */
     @Volatile
     private var globallyEnabled = true
 
-    /** Iniciar la suscripción (convocada una vez por la asamblea). */
+    /** 启动订阅（由装配处调用一次）。 */
     fun start() {
         appScope.launch {
             settings.pluginsGloballyEnabledFlow.collect { enabled ->
@@ -52,13 +52,13 @@ class PluginHookBridge(
         appScope.launch {
             pluginManager.revisionFlow.collect { sync() }
         }
-        // Primera sincronización (revisionFlow Puede que no haya un lanzamiento inicial)
+        // 首次同步（revisionFlow 可能没有初始发射）
         appScope.launch { sync() }
     }
 
-    /** Vuelva a instalar todos los ganchos de complementos (idempotentes: primero elimine los antiguos y luego instale los nuevos). */
+    /** 全量重挂插件 hook（幂等：先摘旧再挂新）。 */
     fun sync() {
-        // Primero elimine todos los registros anteriores de este puente. hook
+        // 先摘掉本桥之前注册的全部 hook
         synchronized(registered) {
             registered.forEach { id ->
                 runCatching { hookRegistry.unregister(PromptFinalizeHook::class, id) }
@@ -66,17 +66,17 @@ class PluginHookBridge(
             registered.clear()
         }
 
-        // Nadie se cuelga cuando el interruptor principal está apagado: el código del complemento no debería tener la oportunidad de ejecutarse, incluidos los Hooks.
+        // 总开关关闭时一个都不挂：插件代码不该有机会跑，包括 Hook。
         if (!globallyEnabled) {
-            Logger.i(TAG, "El interruptor principal del complemento está apagado y no hay nada instalado. hook")
+            Logger.i(TAG, "插件总开关关闭，不挂任何 hook")
             return
         }
 
         pluginManager.list().filter { it.enabled && it.kind == "tool" }.forEach { plugin ->
-            // La función de entrada debe estar verdaderamente definida (loadVerifiedFunction Leerá el disco nuevamente y pasará por la puerta de seguridad)
+            // 入口函数必须真实定义（loadVerifiedFunction 会重新读盘并过安全门）
             val verified =
                 resultOf { pluginManager.loadVerifiedFunction(plugin.id, HOOK_FUNCTION_NAME) }.getOrNull() ?: run {
-                    Logger.d(TAG, "Gancho de complemento omitido(indefinido ${HOOK_FUNCTION_NAME} O la verificación de entrada falló): ${plugin.id}")
+                    Logger.d(TAG, "插件 hook 跳过(未定义 ${HOOK_FUNCTION_NAME} 或入口校验失败): ${plugin.id}")
                     return@forEach
                 }
             if (HOOK_PROMPT_FINALIZE !in verified.manifest.hooks) return@forEach
@@ -90,20 +90,20 @@ class PluginHookBridge(
             )
             hookRegistry.register(hook)
             synchronized(registered) { registered.add(hook.id) }
-            Logger.i(TAG, "Gancho de complemento registrado: ${plugin.id} → ${hook.id}")
+            Logger.i(TAG, "插件 hook 已注册: ${plugin.id} → ${hook.id}")
         }
     }
 
     companion object {
         private const val TAG = "PluginHookBridge"
 
-        /** El prefijo de identificación del gancho registrado por este puente (elija solo el suyo cuando vuelva a colgar). */
+        /** 本桥注册的 hook id 前缀（重挂时只摘自己的）。 */
         const val HOOK_ID_PREFIX = "plugin:"
 
-        /** MVP Puntos de gancho soportados. */
+        /** MVP 支持的 Hook 点。 */
         const val HOOK_PROMPT_FINALIZE = "prompt_finalize"
 
-        /** El nombre de la función de enlace debe exportarse mediante la entrada del complemento. */
+        /** 插件入口需要导出的 hook 函数名。 */
         const val HOOK_FUNCTION_NAME = "onPromptFinalize"
     }
 }

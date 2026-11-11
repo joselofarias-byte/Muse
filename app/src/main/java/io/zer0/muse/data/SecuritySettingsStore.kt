@@ -10,12 +10,12 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 
 /**
- * P2-2 División: segura/Subrepositorio de cambio de comportamiento.
+ * P2-2 拆分：安全/行为开关子仓库。
  *
- * Compartido con el repositorio de configuración `muse_settings` DataStore, llevando:
- * - Política de notificación/detección de ANR/mantener despierto/inicio automático al encender
+ * 与 SettingsRepository 共用 `muse_settings` DataStore，承载：
+ * - 通知策略 / ANR 检测 / 保持唤醒 / 开机自启
  */
-/** Derivar la deduplicación del flujo de configuración:DataStore.data Elimine únicamente los duplicados de todas las Preferencias.map Luego, cada uno se deduplica para suprimir la emisión repetida del mismo valor provocada por claves irrelevantes. */
+/** 派生配置流去重：DataStore.data 只对整份 Preferences 去重，map 后各自去重以抑制无关 key 触发的相同值重复发射。 */
 private fun <T> Flow<Preferences>.mapDistinct(transform: suspend (Preferences) -> T): Flow<T> = map(transform).distinctUntilChanged()
 
 class SecuritySettingsStore(

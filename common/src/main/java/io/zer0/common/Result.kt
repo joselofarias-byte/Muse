@@ -1,9 +1,9 @@
 package io.zer0.common
 
 /**
- * Envoltorio de resultados genérico,Se utiliza para reemplazar la propagación de errores del estilo de lanzamiento de excepciones.
+ * 通用结果封装,用于替代抛异常风格的错误传播。
  *
- * Success llevar datos,Error Llevar mensajes legibles y excepciones opcionales.
+ * Success 携带数据,Error 携带可读消息与可选异常。
  */
 sealed class Result<out T> {
     data class Success<T>(val data: T) : Result<T>()
@@ -43,7 +43,7 @@ sealed class Result<out T> {
     }
 }
 
-/** Envolver bloques que pueden generar excepciones [Result]. */
+/** 把可能抛异常的块包装成 [Result]。 */
 inline fun <T> resultOf(block: () -> T): Result<T> = try {
     Result.Success(block())
 } catch (t: Throwable) {

@@ -1,16 +1,16 @@
 /**
- * Establecer la afirmación de representación de la página de inicio: texto de la interfaz**solo**Leer campos de protocolo.
+ * 设置主页的渲染断言：界面文本**只**读协议字段。
  *
- * `settings.snapshot` Ahora entregue directamente el localizado `title` / `desc` / `groupTitle`,
- * Web El cliente ya no guarda ninguna tabla de copia (`host/settings-copy.ts` eliminado). Este guión toma lo real.
- * `HostSettings` Los componentes se representan en HTML, con una copia falsa reconocible al instante (PROTO-…) Verificación:
- *  · El título del grupo/título de entrada/descripción provienen del campo de protocolo, no del nombre del recurso ni de la tabla local;
- *  · `titleKey` / `key` Sólo se utiliza como marca y no se filtrará a la interfaz;
- *  · kind → controlar(link/action flecha derecha,switch interruptor),iconKey icono, cargando/El estado de fracaso sigue ahí.
+ * `settings.snapshot` 现在直接下发已本地化的 `title` / `desc` / `groupTitle`，
+ * Web 端不再保存任何文案表（`host/settings-copy.ts` 已删除）。这个脚本把真实的
+ * `HostSettings` 组件渲染成 HTML，用一眼就能认出来的假文案（PROTO-…）验证：
+ *  · 分组标题 / 条目标题 / 说明都来自协议字段，不是资源名，也不是本地表；
+ *  · `titleKey` / `key` 只作标识，不会漏到界面上；
+ *  · kind → 控件（link/action 右箭头、switch 开关）、iconKey 图标、加载/失败态都还在。
  *
- * Uso:npm --workspace @muse/client run test
- * Nota: Confíe en el esbuild que viene con vite para convertir los componentes en ESM temporal y luego importarlos sin agregar nuevas dependencias;
- *      Los archivos temporales se eliminan finalmente.
+ * 用法：npm --workspace @muse/client run test
+ * 说明：靠 vite 自带的 esbuild 把组件打成临时 ESM 再 import，不新增依赖；
+ *      临时文件在 finally 里删掉。
  */
 import { build } from "esbuild";
 import { rm } from "node:fs/promises";
@@ -37,12 +37,12 @@ const assert = (condition, message) => {
   return true;
 };
 
-/** Texto que solo existe en los campos del protocolo: ningún nombre de tabla/recurso local puede crear estas cadenas. */
-const groupTitle = "PROTO-GROUP-Modelos y Proveedores";
-const linkTitle = "PROTO-ENTRY-proveedor";
-const linkDesc = "PROTO-DESC-Proveedor de Modelos de Gestión";
+/** 只存在于协议字段的文案：任何本地表 / 资源名都没法造出这些串。 */
+const groupTitle = "PROTO-GROUP-模型与供应商";
+const linkTitle = "PROTO-ENTRY-供应商";
+const linkDesc = "PROTO-DESC-管理模型供应商";
 const switchTitle = "PROTO-ENTRY-PII";
-const bareTitle = "PROTO-ENTRY-proxy de red";
+const bareTitle = "PROTO-ENTRY-网络代理";
 
 const snapshot = {
   groups: [
@@ -65,7 +65,7 @@ const snapshot = {
     },
     {
       key: "settings_screen_group_privacy",
-      groupTitle: "PROTO-GROUP-Privacidad",
+      groupTitle: "PROTO-GROUP-隐私",
       entries: [
         {
           id: "pii_guard",
@@ -91,7 +91,7 @@ const snapshot = {
     },
   ],
   toggles: [{ key: "piiGuardEnabled", enabled: true }],
-  display: { language: "es", themeMode: "system", fontSizeScale: "1", themeId: "default" },
+  display: { language: "zh", themeMode: "system", fontSizeScale: "1", themeId: "default" },
   writableKeys: ["piiGuardEnabled"],
 };
 
@@ -103,7 +103,7 @@ async function render() {
     platform: "node",
     jsx: "automatic",
     loader: { ".css": "empty" },
-    // react / react-dom Permanece externo y Node lo resuelve desde el espacio de trabajo node_modules.
+    // react / react-dom 留在外部，由 Node 从工作区 node_modules 解析。
     external: ["react", "react-dom", "react-dom/server"],
     outfile: TEMP,
     logLevel: "warning",
@@ -164,33 +164,33 @@ const renderSettings = await render();
 try {
   const html = renderSettings({ snapshot, loading: false });
 
-  assert(html.includes(groupTitle), "El encabezado del grupo proviene del protocolo. groupTitle");
-  assert(html.includes(linkTitle) && html.includes(linkDesc), "Título de la entrada/Descripción del protocolo title/desc");
-  assert(html.includes(switchTitle) && html.includes(bareTitle), "El título de cada entrada proviene del campo del protocolo.");
-  assert(!html.includes("settings_screen_provider"), "Los nombres de los recursos no se filtrarán en la interfaz.");
-  assert(!html.includes("settings_screen_group_models"), "Los nombres de recursos agrupados no se filtrarán a la interfaz");
-  assert(!html.includes("settings_screen_pii_guard"), "El nombre del recurso de la entrada del conmutador no se filtrará a la interfaz");
+  assert(html.includes(groupTitle), "分组标题来自协议 groupTitle");
+  assert(html.includes(linkTitle) && html.includes(linkDesc), "条目标题/说明来自协议 title/desc");
+  assert(html.includes(switchTitle) && html.includes(bareTitle), "每条条目的标题都来自协议字段");
+  assert(!html.includes("settings_screen_provider"), "资源名不会漏进界面");
+  assert(!html.includes("settings_screen_group_models"), "分组资源名不会漏进界面");
+  assert(!html.includes("settings_screen_pii_guard"), "开关条目的资源名不会漏进界面");
 
-  assert((html.match(/role="switch"/g) ?? []).length === 1, "kind=switch Representado como interruptor");
-  assert(html.includes('aria-checked="true"'), "El valor inicial del interruptor es checked");
-  assert((html.match(/muse-listrow-chevron/g) ?? []).length === 2, "link/action Renderizar flecha derecha");
-  assert((html.match(/class="muse-settings-icon"/g) ?? []).length === 3, "Hay un ícono iconKey en el lado izquierdo de cada fila");
-  assert(html.includes('class="muse-listrow-title">' + bareTitle), "Los elementos sin descripción solo muestran el título.");
-  assert(!html.includes(">undefined<"), "La copia opcional no se renderizará cuando falte undefined");
-  assert(html.includes("muse-section-label"), "Para títulos de grupo SectionLabel");
+  assert((html.match(/role="switch"/g) ?? []).length === 1, "kind=switch 渲染成开关");
+  assert(html.includes('aria-checked="true"'), "开关初值取 checked");
+  assert((html.match(/muse-listrow-chevron/g) ?? []).length === 2, "link/action 渲染右箭头");
+  assert((html.match(/class="muse-settings-icon"/g) ?? []).length === 3, "每行左侧都有 iconKey 图标");
+  assert(html.includes('class="muse-listrow-title">' + bareTitle), "无说明的条目只渲染标题");
+  assert(!html.includes(">undefined<"), "可选文案缺失时不会渲染出 undefined");
+  assert(html.includes("muse-section-label"), "分组标题用 SectionLabel");
 
   const loading = renderSettings({ loading: true });
-  // Retraso del esqueleto 300 ms: cuando se ingresa a la página por primera vez, solo se proporciona un espacio en blanco que el lector de pantalla puede leer e informar, y el esqueleto no se muestra.
+  // 骨架延迟 300ms：刚进页时只给一个可被读屏播报的空白占位，不闪骨架
   assert(
     loading.includes('role="status"') && !loading.includes("muse-skeleton"),
-    "Primero dé un espacio tranquilo durante la carga (el esqueleto se retrasará 300 ms antes de ser liberado)",
+    "加载中先给安静的占位（骨架延迟 300ms 才出）",
   );
 
-  const failed = renderSettings({ loading: false, error: "PROTO-ERROR-Error de lectura" });
-  assert(failed.includes("PROTO-ERROR-Error de lectura") && failed.includes(">Inténtalo de nuevo<"), "Mostrar barra de error reintentable en caso de falla");
+  const failed = renderSettings({ loading: false, error: "PROTO-ERROR-读取失败" });
+  assert(failed.includes("PROTO-ERROR-读取失败") && failed.includes(">重试<"), "失败显示可重试错误条");
 
-  if (failures > 0) throw new Error(`Error al establecer la aserción de representación (${failures} artículo)`);
-  console.log("\nEstablezca las afirmaciones de representación en todas las pasadas (campo de protocolo de solo lectura del texto de la interfaz).");
+  if (failures > 0) throw new Error(`设置渲染断言未通过（${failures} 条）`);
+  console.log("\n设置渲染断言全部通过（界面文本只读协议字段）。");
 } finally {
   await rm(TEMP, { force: true });
 }

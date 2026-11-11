@@ -11,6 +11,7 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpRect
+import io.zer0.muse.miniphone.R
 import io.zer0.muse.miniphone.data.db.MpActorType
 import io.zer0.muse.miniphone.data.db.MpMessageType
 import io.zer0.muse.miniphone.ui.theme.MiniPhoneTheme
@@ -28,10 +29,10 @@ import java.io.File
 import java.nio.file.Files
 
 /**
- * Mensajes con imágenes con tu propio avatar:Rama de renderizado, devolución de llamada de imagen rota, apertura y cierre de visualización de imagen en pantalla completa, devolución de llamada de entrada de imagen.
+ * 图片消息与自己的头像:渲染分支、破图回落、全屏看图的开合、图片入口的回调。
  *
- * El estado se envía directamente a componentes sin estado.,no pasar ViewModel;Si el selector del sistema se puede levantar o no es una cuestión de la capa superior.,
- * Aquí sólo marcamos "Presione para enviar la solicitud".
+ * 状态直接喂给无状态组件,不经过 ViewModel;能不能拉起系统选择器属于上层的事,
+ * 这里只验「按下去把请求交出去了」。
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -52,20 +53,23 @@ class MiniPhoneChatImageUiTest {
         directory.deleteRecursively()
     }
 
+    private fun res(@androidx.annotation.StringRes id: Int): String =
+        androidx.test.core.app.ApplicationProvider.getApplicationContext<android.content.Context>().getString(id)
+
     @Test
     fun imageMessageRendersAnImageNodeInsteadOfATextBubble() {
         render(
             chatState(
-                message("m1", MpActorType.CHARACTER, "mira esto"),
+                message("m1", MpActorType.CHARACTER, "看这个"),
                 imageMessage("m2", MpActorType.USER, imageFile().absolutePath),
             ),
         )
 
         compose.onNodeWithTag(MiniPhoneChatTags.image("m2")).assertExists()
         compose.onNodeWithTag(MiniPhoneChatTags.bubble("m2")).assertDoesNotExist()
-        // Las burbujas de texto en la misma pantalla no se ven afectadas.
+        // 同一屏里的文本气泡不受影响
         compose.onNodeWithTag(MiniPhoneChatTags.bubble("m1")).assertExists()
-        compose.onNodeWithText("mira esto").assertExists()
+        compose.onNodeWithText("看这个").assertExists()
     }
 
     @Test
@@ -73,7 +77,7 @@ class MiniPhoneChatImageUiTest {
         render(chatState(imageMessage("m1", MpActorType.USER, "/no/such/dir/photo.jpg")))
 
         compose.onNodeWithTag(MiniPhoneChatTags.imageBroken("m1"), useUnmergedTree = true).assertExists()
-        compose.onNodeWithText("La imagen no se puede mostrar").assertExists()
+        compose.onNodeWithText(res(R.string.mp_image_broken)).assertExists()
     }
 
     @Test
@@ -91,22 +95,22 @@ class MiniPhoneChatImageUiTest {
     @Test
     fun ownBubbleShowsTheProfileAvatarOnTheRightWhenThereIsOne() {
         render(
-            chatState(message("m1", MpActorType.USER, "¿Está ahí?"))
-                .copy(selfName = "Ziqi", selfAvatarUri = "https://example.com/avatar.png"),
+            chatState(message("m1", MpActorType.USER, "在吗"))
+                .copy(selfName = "子奇", selfAvatarUri = "https://example.com/avatar.png"),
         )
 
         compose.onNodeWithTag(MiniPhoneChatTags.SELF_AVATAR).assertExists()
         val rootWidth = widthOf(compose.onRoot().getBoundsInRoot())
         val avatar = compose.onNodeWithTag(MiniPhoneChatTags.SELF_AVATAR).getBoundsInRoot()
-        assertTrue("Tu avatar está en el lado derecho de la burbuja.", avatar.left > rootWidth / 2f)
+        assertTrue("自己的头像在气泡右侧", avatar.left > rootWidth / 2f)
     }
 
     @Test
     fun ownBubbleFallsBackToTheNicknameInitialWhenThereIsNoAvatar() {
-        render(chatState(message("m1", MpActorType.USER, "¿Está ahí?")).copy(selfName = "Ziqi", selfAvatarUri = null))
+        render(chatState(message("m1", MpActorType.USER, "在吗")).copy(selfName = "子奇", selfAvatarUri = null))
 
         compose.onNodeWithTag(MiniPhoneChatTags.SELF_AVATAR).assertExists()
-        compose.onNodeWithText("hijo").assertExists()
+        compose.onNodeWithText("子").assertExists()
     }
 
     @Test
@@ -125,8 +129,8 @@ class MiniPhoneChatImageUiTest {
 
         compose.onNodeWithTag(MiniPhoneChatTags.PICK_IMAGE).performClick()
 
-        assertEquals("Simplemente haga clic y envíe la solicitud.", 1, picks)
-        // La entrada de imágenes no debería afectar la tecla de envío: aún no se puede presionar la entrada vacía
+        assertEquals("按一下就把请求交出去", 1, picks)
+        // 图片入口不该影响发送键：空输入仍然按不动
         compose.onNodeWithTag(MiniPhoneChatTags.SEND_BUTTON).assertIsNotEnabled()
     }
 
@@ -143,7 +147,7 @@ class MiniPhoneChatImageUiTest {
         }
     }
 
-    /** PNG verdadero colocado en el directorio temporal:La prensa de burbujas determina si el archivo existe o no para dibujar o romper la imagen. */
+    /** 真 PNG 落到临时目录:气泡按文件是否存在决定画图还是画破图。 */
     private fun imageFile(): File {
         val bitmap = Bitmap.createBitmap(60, 40, Bitmap.Config.ARGB_8888)
         bitmap.eraseColor(Color.RED)
@@ -159,7 +163,7 @@ class MiniPhoneChatImageUiTest {
     private fun chatState(vararg messages: ChatMessageUi): ChatUiState = ChatUiState(
         threadId = "t1",
         characterId = "c1",
-        peerName = "ali",
+        peerName = "阿离",
         messages = messages.toList(),
     )
 
@@ -175,7 +179,7 @@ class MiniPhoneChatImageUiTest {
         id = id,
         sender = sender,
         type = MpMessageType.IMAGE,
-        content = "[fotos]",
+        content = MpSentinel.IMAGE,
         mediaUri = path,
         createdAt = createdAt,
     )

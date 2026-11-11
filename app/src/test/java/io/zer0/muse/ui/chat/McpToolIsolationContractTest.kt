@@ -5,8 +5,8 @@ import org.junit.Test
 import java.io.File
 
 /**
- * MCP Las herramientas exponen los contratos de límites:
- * Una lista de enlaces de MCP auxiliar vacía no puede incorporar todas las herramientas de servidor externo conectadas.
+ * MCP 工具暴露边界契约：
+ * 空的助手 MCP 绑定列表不能把所有已连接的外部 server 工具带进来。
  */
 class McpToolIsolationContractTest {
 
@@ -14,7 +14,7 @@ class McpToolIsolationContractTest {
     fun `empty assistant MCP binding must not mean every server`() {
         val source = File("src/main/java/io/zer0/muse/ui/chat/ChatStreamCoordinator.kt").readText()
         assertFalse(
-            "MCP Las herramientas deben requerir un enlace explícito al servidor y no pueden usar una lista vacía para permitir todos server",
+            "MCP 工具必须要求显式 server 绑定，不能用空列表放行全部 server",
             source.contains("!isMcpTool || configuredMcpServerIds.isEmpty()"),
         )
     }

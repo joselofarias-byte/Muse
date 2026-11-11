@@ -13,30 +13,30 @@ class ConversationRecallFormatterTest {
             SearchResult(
                 messageId = "m1",
                 sessionId = "s1",
-                sessionTitle = "sesión actual",
-                contentSnippet = "El usuario mencionó antes que quería conservar el texto original.",
+                sessionTitle = "当前会话",
+                contentSnippet = "用户之前提到要保留原文",
                 role = "USER",
                 createdAt = 1L,
-                content = "Los usuarios han mencionado antes que quieren conservar el texto original, especialmente después de comprimirlo, y aún quieren poder rastrear los detalles.",
+                content = "用户之前提到要保留原文，尤其是压缩后仍希望能够回溯细节。",
             ),
             SearchResult(
                 messageId = "m2",
                 sessionId = "s1",
-                sessionTitle = "sesión actual",
-                contentSnippet = "La confirmación del asistente agregará seguimiento",
+                sessionTitle = "当前会话",
+                contentSnippet = "助手确认会补充回溯",
                 role = "ASSISTANT",
                 createdAt = 2L,
-                content = "Mantendré esta historia como referencia para recuperarla cuando sea necesario, en lugar de meterla permanentemente en cada ronda de contexto.",
+                content = "我会把这段历史作为参考资料，在需要时检索，而不是把它永久塞进每一轮上下文。",
             ),
         )
 
-        val section = ConversationRecallFormatter.build("Mantener el texto original.", results, maxTokens = 200)
+        val section = ConversationRecallFormatter.build("保留原文", results, maxTokens = 200)
 
-        assertTrue(section.contains("Rastreo del texto de la conversación"))
-        assertTrue(section.contains("Usuario"))
-        assertTrue(section.contains("asistente"))
-        assertTrue(section.contains("especialmente después de comprimirlo, y aún quieren poder rastrear los detalles."))
-        assertTrue(section.contains("Sólo se utiliza como referencia histórica"))
+        assertTrue(section.contains("会话原文回溯"))
+        assertTrue(section.contains("用户"))
+        assertTrue(section.contains("助手"))
+        assertTrue(section.contains("尤其是压缩后仍希望能够回溯细节"))
+        assertTrue(section.contains("仅作为历史参考资料"))
     }
 
     @Test
@@ -44,7 +44,7 @@ class ConversationRecallFormatterTest {
         val toolResult = SearchResult(
             messageId = "tool",
             sessionId = "s1",
-            sessionTitle = "sesión actual",
+            sessionTitle = "当前会话",
             contentSnippet = "internal tool output",
             role = "TOOL",
             createdAt = 1L,
@@ -58,14 +58,14 @@ class ConversationRecallFormatterTest {
     @Test
     fun `does not expose system or tool roles even when search results contain them`() {
         val results = listOf(
-            SearchResult("s", "s1", "sesión", "system", "SYSTEM", 1L, "system secret"),
-            SearchResult("t", "s1", "sesión", "tool", "TOOL", 2L, "tool secret"),
-            SearchResult("u", "s1", "sesión", "user", "USER", 3L, "Contenido público del usuario"),
+            SearchResult("s", "s1", "会话", "system", "SYSTEM", 1L, "system secret"),
+            SearchResult("t", "s1", "会话", "tool", "TOOL", 2L, "tool secret"),
+            SearchResult("u", "s1", "会话", "user", "USER", 3L, "用户公开内容"),
         )
 
-        val section = ConversationRecallFormatter.build("contenido", results, maxTokens = 200)
+        val section = ConversationRecallFormatter.build("内容", results, maxTokens = 200)
 
-        assertTrue(section.contains("Contenido público del usuario"))
+        assertTrue(section.contains("用户公开内容"))
         assertFalse(section.contains("system secret"))
         assertFalse(section.contains("tool secret"))
     }

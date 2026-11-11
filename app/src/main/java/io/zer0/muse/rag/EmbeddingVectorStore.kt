@@ -3,24 +3,24 @@ package io.zer0.muse.rag
 import io.zer0.common.resultOf
 
 /**
- * "Obtención de vectores por lotes con caché"——poner [EmbeddingVectorCache] Combinado con codificación por lotes de una sola vez.
+ * 「带缓存的批量取向量」——把 [EmbeddingVectorCache] 与一次批量编码拼起来。
  *
- * Hay dos razones para categorías separadas:
- *  1. Sólo hay tres cosas en esta lógica (verificar caché → Complete los elementos faltantes en lotes → fusionar por posición), con análisis de configuración,
- *     Provider Construir irrelevante, mezclado [EmbeddingService] lo empujará al umbral del número de función;
- *  2. Se puede probar directamente utilizando el proveedor suplente. —— En realidad, no es necesario crear un proveedor de nube.
+ * 单独成类有两个原因：
+ *  1. 这段逻辑只有三件事（查缓存 → 批量补缺失 → 按位置合并），与配置解析、
+ *     Provider 构建无关，混在 [EmbeddingService] 里会把它推到函数数量阈值；
+ *  2. 它能直接用替身 Provider 测 —— 不需要真的建一个云端 Provider。
  *
- * Convención semántica:**Si falta uno, todo fracasará.**(devuelve nulo). Asigne el vector desalineado a otro texto,
- * sólo aparecerá como"AI Recordé lo equivocado", no se informan errores, no vale la pena correr el riesgo.
+ * 语义约定：**缺一条就整体失败**（返回 null）。把错位的向量配给别的文本，
+ * 只会表现为"AI 记错了事"，没有任何报错，不值得冒这个风险。
  */
 internal class EmbeddingVectorStore(
     private val cache: EmbeddingVectorCache = EmbeddingVectorCache(),
 ) {
 
-    /** Número de aciertos (con fines de diagnóstico). */
+    /** 命中次数（诊断用）。 */
     val hits: Int get() = cache.hits
 
-    /** El número de errores es igual al número de textos realmente enviados para codificación (para diagnóstico). */
+    /** 未命中次数，等于真正送去编码的文本条数（诊断用）。 */
     val misses: Int get() = cache.misses
 
     suspend fun embed(provider: EmbeddingProvider, fingerprint: String, texts: List<String>): List<FloatArray>? {
@@ -40,19 +40,19 @@ internal class EmbeddingVectorStore(
     }
 
     /**
-     * Solo se verifica el caché, no se activa la codificación y no se modifican las estadísticas de visitas.
+     * 只查缓存，不触发编码、也不改命中统计。
      *
-     * Dar "Hay un tiempo de espera/Uso de la "semántica del disyuntor" por parte de la persona que llama (como la incrustación de consultas de RAG):
-     * Si se alcanza el caché, no debería ingresar a la ventana de tiempo de espera de la red. Si el caché no se alcanza, la persona que llama decide cómo recuperarlo y cómo interrumpir el circuito si no se puede recuperar.
+     * 给「有超时/熔断语义」的调用方使用（例如 RAG 的 query embedding）：
+     * 命中缓存就不该再进网络超时窗口，未命中则由调用方自己决定怎么取、取不到怎么熔断。
      */
     fun peek(fingerprint: String, text: String): FloatArray? = cache.peek(cache.key(fingerprint, text))
 
-    /** Escribe un vector por separado (con [peek] Uso, la persona que llama es responsable del tiempo de espera y la semántica de falla al recuperar el número). */
+    /** 单独写入一条向量（配合 [peek] 使用，调用方自己负责取数的超时与失败语义）。 */
     fun store(fingerprint: String, text: String, vector: FloatArray) {
         cache.put(cache.key(fingerprint, text), vector)
     }
 
-    /** Solo el texto faltante se envía a codificación y luego se vuelve a fusionar según la posición [results]. */
+    /** 只把未命中的文本送去编码，再按位置合并回 [results]。 */
     private suspend fun fetchMissing(
         provider: EmbeddingProvider,
         texts: List<String>,
@@ -69,7 +69,7 @@ internal class EmbeddingVectorStore(
         return results.takeIfComplete()
     }
 
-    /** Regrese solo después de que se hayan cubierto todos los puestos. */
+    /** 全部位置都填上了才返回。 */
     private fun Array<FloatArray?>.takeIfComplete(): List<FloatArray>? {
         val collected = ArrayList<FloatArray>(size)
         for (item in this) collected += item ?: return null

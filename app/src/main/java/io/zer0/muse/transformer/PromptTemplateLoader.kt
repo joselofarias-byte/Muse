@@ -4,35 +4,35 @@ import android.content.Context
 import io.zer0.common.Logger
 
 /**
- * Phase 12: Cargador rápido de plantillas de Word.
+ * Phase 12: 提示词模板加载器。
  *
- * Extraiga las palabras de aviso grandes codificadas en SystemPromptAssembler al directorio activos/prompt_templates/,
- * Renderizado a través de soportes de PebbleTemplateEngine {{variable}} interpolación.
+ * 将 SystemPromptAssembler 中的硬编码大段提示词抽取到 assets/prompt_templates/ 目录，
+ * 通过 PebbleTemplateEngine 渲染，支持 {{变量}} 插值。
  *
- * estrategia de carga:
- * 1. Primero cargue el archivo .prompt desde activos/prompt_templates/
- * 2. Devuelve el valor predeterminado alternativo cuando falta el archivo o no se carga.(Manténgase compatible con versiones anteriores)
+ * 加载策略:
+ * 1. 先从 assets/prompt_templates/ 加载 .prompt 文件
+ * 2. 文件缺失或加载失败时返回 fallback 默认值(保持向后兼容)
  *
- * v1.0.51: Admite respaldo local. orden de carga:
- * 1. {name}_{locale}.prompt (Como por ejemplo decision_tree_es.prompt)
- * 2. {name}.prompt (Sin sufijo local,como recurso universal)
- * 3. fallback parámetros
+ * v1.0.51: 支持 locale 回落。加载顺序:
+ * 1. {name}_{locale}.prompt (如 decision_tree_zh.prompt)
+ * 2. {name}.prompt (无 locale 后缀,作为通用回落)
+ * 3. fallback 参数
  *
- * locale valor: zh / en / ja / ko / ru / system(Sigue el sistema,Analizado por la persona que llama y pasado en el formato real locale)
+ * locale 取值: zh / en / ja / ko / ru / system(跟随系统,由调用方解析后传入实际 locale)
  */
 class PromptTemplateLoader(private val context: Context) {
 
     private val engine = PebbleTemplateEngine()
 
-    // M-TPL6: Acceso simultáneo a múltiples corrutinas(Como varias veces dentro de buildStaticSnapshot render),Utilice ConcurrentHashMap para garantizar la seguridad de los subprocesos
-    // v1.0.51: cache key Cambiar a "{name}_{locale}" Para admitir el almacenamiento en caché de dimensiones locales
+    // M-TPL6: 多协程并发访问(如 buildStaticSnapshot 内多次 render),用 ConcurrentHashMap 保证线程安全
+    // v1.0.51: cache key 改为 "{name}_{locale}" 以支持 locale 维度缓存
     private val cache = java.util.concurrent.ConcurrentHashMap<String, String>()
 
     companion object {
         private const val TAG = "PromptTemplateLoader"
         private const val TEMPLATE_DIR = "prompt_templates"
 
-        // Lista de archivos de plantilla conocidos(Sin sufijo .prompt)
+        // 已知模板文件清单(不含 .prompt 后缀)
         val TEMPLATE_NAMES = listOf(
             "decision_tree",
             "mood_format",
@@ -40,12 +40,12 @@ class PromptTemplateLoader(private val context: Context) {
             "self_reflection",
             "tool_discipline",
             "operation_safety",
-            // v2.5.3: Disciplina de Acción + Contrato de Entrega
+            // v2.5.3: 行动纪律 + 交付契约
             "action_discipline",
             "delivery_contract",
-            // v2.6.6: Interfaz generativa (guía al modelo para generar tarjetas interactivas en la conversación)
+            // v2.6.6: 生成式界面（引导模型在对话里生成可交互卡片）
             "generative_ui",
-            // v1.0.51: Se agregó plantilla de personalidad predeterminada + reglas de memoria + declaración de plataforma
+            // v1.0.51: 新增默认人格模板 + 记忆规则 + 平台声明
             "default_persona",
             "memory_rules",
             "platform_decl",
@@ -53,46 +53,46 @@ class PromptTemplateLoader(private val context: Context) {
     }
 
     /**
-     * Cargar y renderizar la plantilla especificada(Ninguno locale,recurrir a la plantilla genérica).
+     * 加载并渲染指定模板(无 locale,回落到通用模板)。
      *
-     * @param name Nombre de la plantilla(corresponder assets/prompt_templates/{name}.prompt)
-     * @param context contexto de variable de plantilla(Opcional)
-     * @param fallback Valor predeterminado cuando falla la carga del archivo
+     * @param name 模板名称(对应 assets/prompt_templates/{name}.prompt)
+     * @param context 模板变量上下文(可选)
+     * @param fallback 文件加载失败时的默认值
      */
     fun render(name: String, context: Map<String, Any?> = emptyMap(), fallback: String = ""): String =
         render(name, locale = null, context, fallback)
 
     /**
-     * v1.0.51: Cargar y renderizar la plantilla especificada(respaldo con la configuración regional).
+     * v1.0.51: 加载并渲染指定模板(带 locale 回落)。
      *
-     * orden de carga:
+     * 加载顺序:
      * 1. assets/prompt_templates/{name}_{locale}.prompt
      * 2. assets/prompt_templates/{name}.prompt
-     * 3. fallback parámetros
+     * 3. fallback 参数
      *
-     * @param name Nombre de la plantilla
-     * @param locale código de idioma(zh/en/ja/ko/ru),null O una cadena vacía significa que no se hace distinción locale
-     * @param context contexto de variable de plantilla(Opcional)
-     * @param fallback Valor predeterminado cuando falla la carga del archivo
+     * @param name 模板名称
+     * @param locale 语言代码(zh/en/ja/ko/ru),null 或空串表示不区分 locale
+     * @param context 模板变量上下文(可选)
+     * @param fallback 文件加载失败时的默认值
      */
     fun render(name: String, locale: String?, context: Map<String, Any?> = emptyMap(), fallback: String = ""): String {
         val templateText = loadTemplate(name, locale) ?: return fallback
         return try {
             engine.render(templateText, context)
         } catch (e: Exception) {
-            Logger.w(TAG, "Error al renderizar la plantilla: $name (locale=$locale)", e)
-            templateText // Devolver el texto original cuando falla la renderización
+            Logger.w(TAG, "模板渲染失败: $name (locale=$locale)", e)
+            templateText // 渲染失败时返回原始文本
         }
     }
 
     /**
-     * Cargar texto de plantilla(Con caché,Caché por dimensión local).
+     * 加载模板文本(带缓存,按 locale 维度缓存)。
      *
-     * cadena de retroceso:
-     *  - chino locale: {name}_{locale}.prompt → {name}.prompt(original chino) → null
-     *  - No chino locale: {name}_{locale}.prompt → {name}_en.prompt(Retroceso internacional)
-     *    → {name}.prompt(el ultimo soldado) → null
-     * Los usuarios internacionales dan prioridad al inglés frente al chino,evitar el día/Corea/Oeste/portugués/Los usuarios rusos recibieron rápidamente palabras en chino.
+     * 回落链:
+     *  - 中文 locale: {name}_{locale}.prompt → {name}.prompt(中文原版) → null
+     *  - 非中文 locale: {name}_{locale}.prompt → {name}_en.prompt(国际回落)
+     *    → {name}.prompt(最后兵底) → null
+     * 国际用户优先拿英文而非中文,避免日/韩/西/葡/俄用户收到中文提示词。
      */
     private fun loadTemplate(name: String, locale: String?): String? {
         val effectiveLocale = locale?.takeIf { it.isNotBlank() && it != "system" }
@@ -100,7 +100,7 @@ class PromptTemplateLoader(private val context: Context) {
 
         cache[cacheKey]?.let { return it }
 
-        // 1. Pruebe primero las plantillas específicas de la configuración regional
+        // 1. 先尝试 locale 专属模板
         if (effectiveLocale != null) {
             readAsset("$TEMPLATE_DIR/${name}_$effectiveLocale.prompt")?.let { text ->
                 cache[cacheKey] = text
@@ -108,8 +108,8 @@ class PromptTemplateLoader(private val context: Context) {
             }
         }
 
-        // 2. Retroceso internacional: Las configuraciones regionales no chinas prefieren la versión en inglés.(Universales {name}.prompt En realidad chino)
-        val isChinese = effectiveLocale == null || effectiveLocale.let { it.startsWith("es", ignoreCase = true) || it.startsWith("zh", ignoreCase = true) }
+        // 2. 国际回落: 非中文 locale 优先英文版(通用 {name}.prompt 实为中文)
+        val isChinese = effectiveLocale == null || effectiveLocale.startsWith("zh", ignoreCase = true)
         if (!isChinese) {
             readAsset("$TEMPLATE_DIR/${name}_en.prompt")?.let { text ->
                 cache[cacheKey] = text
@@ -117,16 +117,16 @@ class PromptTemplateLoader(private val context: Context) {
             }
         }
 
-        // 3. plantilla universal(original chino,Como último recurso)
+        // 3. 通用模板(中文原版,作为最后兵底)
         readAsset("$TEMPLATE_DIR/$name.prompt")?.let { text ->
             cache[cacheKey] = text
             return text
         }
-        Logger.w(TAG, "Error al cargar la plantilla: $name (locale=$locale)")
+        Logger.w(TAG, "模板加载失败: $name (locale=$locale)")
         return null
     }
 
-    /** Lea el archivo de plantilla en activos;no existe/Devuelve nulo si falla la lectura. */
+    /** 读取 assets 下模板文件;不存在/读取失败返回 null。 */
     private fun readAsset(path: String): String? = try {
         context.assets.open(path).bufferedReader().use { it.readText() }
     } catch (e: Exception) {
@@ -134,7 +134,7 @@ class PromptTemplateLoader(private val context: Context) {
     }
 
     /**
-     * Borrar caché de plantilla(Se llama cuando el archivo de plantilla cambia o cambia la configuración regional.).
+     * 清除模板缓存(模板文件变更或 locale 切换时调用)。
      */
     fun clearCache() {
         cache.clear()

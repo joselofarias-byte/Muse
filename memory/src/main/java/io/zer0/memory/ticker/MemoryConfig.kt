@@ -7,9 +7,9 @@ import kotlin.math.exp
 import kotlin.math.ln
 
 /**
- * v0.32: Configuración avanzada del sistema de memoria(memory.* Configuración).
+ * v0.32: 记忆系统高级配置(memory.* 配置)。
  *
- * Diseño de elementos de configuración:
+ * 配置项设计:
  *   memory:
  *     enabled: true
  *     token_budget: 2500
@@ -19,68 +19,68 @@ import kotlin.math.ln
  *     compile_threshold: 4.5
  *     forget_speed: 1.0
  *
- * Muse Promocione este conjunto de parámetros numéricos de codificados a configurables,Permitir a los usuarios:
- *  - Ajustar el presupuesto del token de memoria.md(Afecta la cantidad de memoria inyectada en el indicador del sistema.)
- *  - Controla la velocidad del olvido(decay_per_day λ,Cuanto más grande te haces, más rápido te olvidas)
- *  - Bonificación de golpe ajustada(hit_bonus,Los recuerdos que se mencionan a menudo no son fáciles de desaparecer.)
- *  - Establecer umbral de compilación(compile_threshold,No se ingresarán memorias con puntuaciones inferiores a esta. memory.md)
- *  - Establecer proporción de olvido(forget_speed,1.0 normales,2.0 Olvídate el doble de rápido)
+ * Muse 把这套数值参数从硬编码提升为可配置项,让用户能:
+ *  - 调整 memory.md 的 token 预算(影响注入到 system prompt 的记忆量)
+ *  - 控制遗忘速度(decay_per_day λ,越大忘得越快)
+ *  - 调整命中加成(hit_bonus,常提起的记忆不易消失)
+ *  - 设置编译阈值(compile_threshold,低于此分的记忆不进入 memory.md)
+ *  - 设置遗忘倍率(forget_speed,1.0 正常,2.0 忘得快一倍)
  *
- * ubicación de almacenamiento:DataStore de memory_config_json(Persistente por el repositorio de configuración).
- * Leído por MemoryTicker en cada envío,Afecta la caída de la partitura y las opciones de compilación.
+ * 存储位置:DataStore 的 memory_config_json(由 SettingsRepository 持久化)。
+ * 由 MemoryTicker 在每次调度时读取,影响 score 衰减与编译选择。
  */
 @Serializable
 data class MemoryConfig(
-    /** memory.md presupuesto de token objetivo(Afecta la longitud inyectada en el indicador del sistema.). */
+    /** memory.md 的目标 token 预算(影响注入到 system prompt 的长度)。 */
     val tokenBudget: Int = 2500,
     /**
-     * Si se deben permitir canalizaciones de memoria en resúmenes/Vuelva a leer el texto completo de la conversación antes de extraer los hechos.
+     * 是否允许记忆管线在摘要/事实提取前回读会话完整原文。
      *
-     * Los mensajes originales se conservan cuando se cierra.,Pero la memoria en segundo plano solo usa la ventana actualmente cargada.;Sólo después de encenderlo
-     * Leer la historia completa desde Room,Haga que los detalles anteriores estén disponibles para resumen y extracción de hechos.
+     * 关闭时仍保留 messages 原文,但后台记忆只使用当前已加载窗口;开启后才会
+     * 从 Room 读取完整历史,让较早细节可进入摘要与事实抽取。
      */
     val conversationRecallEnabled: Boolean = true,
     /**
-     * coeficiente de caída exponencial λ(days^-1), para el cálculo ver [Companion.factScore].
+     * 指数衰减系数 λ(days^-1)，计算见 [Companion.factScore]。
      *
-     * El número de días entre paréntesis a continuación se refiere a la "caída de [compileThreshold] tiempo requerido", es decir ln([baseImportance]/[compileThreshold])/λ:
-     * - 0.01 → Aproximadamente 80 días (memoria lenta y larga)
-     * - 0.02 → Aproximadamente 40 días (predeterminado)
-     * - 0.04 → Unos 20 días (rápido, centrándose en el futuro próximo)
+     * 下面括弧里的天数指「衰减到 [compileThreshold] 所需时间」，即 ln([baseImportance]/[compileThreshold])/λ：
+     * - 0.01 → 约 80 天（慢，记忆广）
+     * - 0.02 → 约 40 天（默认）
+     * - 0.04 → 约 20 天（快，聚焦近期）
      *
-     * El hecho de que hayas acertado contará la bonificación de acierto en la puntuación base, que en realidad se conservará por más tiempo;
-     * [Companion.cutoffDays] Este es el criterio para esta conversión. Al cambiar el coeficiente, ambos puntos deben ser correctos al mismo tiempo.
+     * 命中过的 fact 会把 hitBonus 计入基础分，实际保留更久；
+     * [Companion.cutoffDays] 是这一换算的准绳，改系数时两处要一起对。
      */
     val decayPerDay: Float = 0.02f,
     /**
-     * ¿Cuántos puntos se suman por cada acierto?(Los recuerdos que han sido golpeados restablecen el punto de inicio de la decadencia.).
+     * 每次命中加多少分(被 hit 过的记忆重置衰减起点)。
      *
-     * v7: Ya conectado [factScore] / [cutoffDays] con [FactStore.applyDecay].
-     * citado/Los hechos fusionados se actualizan. last_hit_at,y con (baseImportance + hitBonus) como punto base válido,
-     * Como resultado, se descompone más lentamente y es más difícil de eliminar.
+     * v7: 已接入 [factScore] / [cutoffDays] 与 [FactStore.applyDecay]。
+     * 被引用/合并的事实会更新 last_hit_at,并以 (baseImportance + hitBonus) 作为有效基础分,
+     * 从而衰减更慢、更难被淘汰。
      */
     val hitBonus: Float = 5f,
-    /** La puntuación inicial predeterminada para nuevos recuerdos. */
+    /** 新记忆的默认初始分。 */
     val baseImportance: Float = 10f,
-    /** Los recuerdos con puntuaciones inferiores a este valor no entran en Memory.md. */
+    /** 分数低于此值的记忆不进入 memory.md。 */
     val compileThreshold: Float = 4.5f,
-    /** factor de olvido(1.0 = normales,2.0 = Olvídate el doble de rápido). */
+    /** 遗忘倍率(1.0 = 正常,2.0 = 忘得快一倍)。 */
     val forgetSpeed: Float = 1.0f,
 ) {
 
     companion object {
 
         /**
-         * Calcula la fracción de desintegración de un hecho a una edad determinada.
+         * 计算一条 fact 在给定年龄下的衰减分数。
          *
-         * modelo de decadencia(Versión simplificada,Misma dirección que la semántica de configuración propia.):
+         * 衰减模型(简化版,与自有配置语义同向):
          *  score = effectiveBase * exp(-λ * ageDays)
-         *  entre ellos λ = decayPerDay * forgetSpeed
+         *  其中 λ = decayPerDay * forgetSpeed
          *  effectiveBase = baseImportance + (hit ? hitBonus : 0)
          *
-         * @param ageDays fact autocreado/Número de días transcurridos desde el impacto(>=0)
-         * @param config configuración de memoria
-         * @param hit Si ha sido golpeado(La base efectiva es mayor después del golpe.)
+         * @param ageDays fact 自创建/命中后过去的天数(>=0)
+         * @param config 记忆配置
+         * @param hit 是否已命中(命中后 effectiveBase 更高)
          */
         fun factScore(ageDays: Float, config: MemoryConfig, hit: Boolean = false): Float {
             val lambda = (config.decayPerDay * config.forgetSpeed).toDouble()
@@ -89,33 +89,33 @@ data class MemoryConfig(
         }
 
         /**
-         * Calcular la decadencia de hechos para [compileThreshold] número de días requeridos.
-         * Utilizado por FactStore.applyDecay para decidir cuándo eliminar un hecho.
+         * 计算 fact 衰减到 [compileThreshold] 所需的天数。
+         * 用于 FactStore.applyDecay 决定何时删除一条 fact。
          *
-         * Derivación:score = compileThreshold
+         * 推导:score = compileThreshold
          *  effectiveBase * exp(-λ * d) = compileThreshold
          *  d = ln(effectiveBase / compileThreshold) / λ
          *
-         * al valor predeterminado (10/4.5, 0.02, 1.0) unos 40 días;decayPerDay=0.04 → 20 dia;
-         * forgetSpeed=2.0 → 20 Días. La base efectiva se hace más grande después del golpe.,Días de retención más largos.
+         * 对默认值 (10/4.5, 0.02, 1.0) 约 40 天;decayPerDay=0.04 → 20 天;
+         * forgetSpeed=2.0 → 20 天。命中后 effectiveBase 变大,保留天数更长。
          *
-         * @param hit Si ha sido golpeado
+         * @param hit 是否已命中
          */
         fun cutoffDays(config: MemoryConfig, hit: Boolean = false): Float {
             val lambda = (config.decayPerDay * config.forgetSpeed).toDouble()
             if (lambda <= 0.0) return Float.MAX_VALUE
             val base = (config.baseImportance + if (hit) config.hitBonus else 0f).toDouble()
             val thr = config.compileThreshold.toDouble()
-            if (base <= thr) return 0f // base ha caído por debajo del umbral,Elimínalos a todos inmediatamente.
+            if (base <= thr) return 0f // base 已低于阈值,立即全部淘汰
             return (ln(base / thr) / lambda).toFloat()
         }
 
         /**
-         * v1.78: versión segura cutoffDays,Se utiliza para cálculos de decadencia de hechos reales.
+         * v1.78: 安全版本的 cutoffDays,用于实际 fact 衰减计算。
          *
-         * `cutoffDays` en lambda<=0 regresar cuando `Float.MAX_VALUE`,Pasar directamente a
-         * `Instant.now().minus(cutoff.toLong(), DAYS)` debido a `Long.MAX_VALUE` tiro de desbordamiento
-         * `DateTimeException`. Devuelve aquí un límite limitado de 36500 días.(100 año),Semánticamente equivalente a"Sin atenuación".
+         * `cutoffDays` 在 lambda<=0 时返回 `Float.MAX_VALUE`,直接传给
+         * `Instant.now().minus(cutoff.toLong(), DAYS)` 会因 `Long.MAX_VALUE` 溢出抛
+         * `DateTimeException`。这里返回有限上限 36500 天(100 年),语义等价于"不衰减"。
          */
         fun safeCutoffDays(config: MemoryConfig, hit: Boolean = false): Float {
             val c = cutoffDays(config, hit)
@@ -127,8 +127,8 @@ data class MemoryConfig(
         }
 
         /**
-         * v1.78: Verificar si el valor de configuración es legal,prevenir threshold>=base Configuraciones peligrosas como provocar que se aclaren todos los hechos.
-         * Devuelve nulo para indicar legal,De lo contrario, se devuelve una descripción de error.
+         * v1.78: 校验配置数值是否合法,防止 threshold>=base 导致全部 fact 被清空等危险配置。
+         * 返回 null 表示合法,否则返回错误描述。
          */
         fun validate(config: MemoryConfig): String? {
             if (config.tokenBudget < 0) return ErrorCode.MEMORY_TOKEN_BUDGET_INVALID.toMessage("negative", config.tokenBudget)
@@ -154,7 +154,7 @@ data class MemoryConfig(
             return null
         }
 
-        /** Determine si la puntuación actual de un determinado hecho es lo suficientemente alta como para ingresar a memoria.md. */
+        /** 判断某条 fact 的当前 score 是否高到足以进入 memory.md。 */
         fun shouldCompile(score: Float, config: MemoryConfig): Boolean = score >= config.compileThreshold
     }
 }

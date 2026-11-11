@@ -1,384 +1,399 @@
 package io.zer0.muse.data
 
 /**
- * v0.34: Configuración de parámetros predeterminados de generación de imágenes.
+ * v0.34: 图片生成默认参数配置。
  *
- * El usuario está en"ajustes→Modelos y Servicios"Establecer el valor predeterminado en,InputBar Se puede sobrescribir temporalmente en modo de dibujo.,
- * Finalmente pasó a ImageService.generate().
+ * 用户在"设置→模型与服务"中设定默认值,InputBar 绘图模式下可临时覆盖,
+ * 最终透传给 ImageService.generate()。
  */
 @kotlinx.serialization.Serializable
 data class ImageGenConfig(
-    /** Proveedores utilizados en los dibujos. ID(Déjelo en blanco para usar el actual Provider). */
+    /** 绘图使用的供应商 ID(留空则使用当前 Provider)。 */
     val providerId: String = "",
-    /** modelo de dibujo ID(Déjelo en blanco para utilizar el modelo predeterminado del proveedor actual.). */
+    /** 绘图模型 ID(留空则使用当前 Provider 的默认模型)。 */
     val modelId: String = "",
-    /** Tamaño de imagen,OpenAI DALL-E 3 apoyo 1024x1024 / 1792x1024 / 1024x1792. */
+    /** 图片尺寸,OpenAI DALL-E 3 支持 1024x1024 / 1792x1024 / 1024x1792。 */
     val size: String = "1024x1024",
-    /** Calidad de imagen:standard / hd(DALL-E 3). */
+    /** 图片质量:standard / hd(DALL-E 3)。 */
     val quality: String = "standard",
-    /** Estilo de imagen:vivid / natural(DALL-E 3). */
+    /** 图片风格:vivid / natural(DALL-E 3)。 */
     val style: String = "vivid",
-    /** Formato de devolución:url / b64_json. */
+    /** 返回格式:url / b64_json。 */
     val responseFormat: String = "url",
-    /** Generar cantidad,Generalmente 1. */
+    /** 生成数量,通常 1。 */
     val n: Int = 1,
 )
 
 /**
- * Configuración de parámetros predeterminados para la generación de video.
+ * 视频生成默认参数配置。
  *
- * El usuario está en"ajustes→generación de vídeo"Establecer proveedor predeterminado en/modelo,
- * ChatViewModel.execGenerateVideo Prefiero esta configuración;
- * Volver a la selección automática cuando se deja vacío(El primer proveedor que admite salida de vídeo).
+ * 用户在"设置→视频生成"中设定默认供应商/模型,
+ * ChatViewModel.execGenerateVideo 优先使用此配置;
+ * 留空时回退到自动选择(第一个支持视频输出的供应商)。
  */
 @kotlinx.serialization.Serializable
 data class VideoGenConfig(
-    /** Proveedor utilizado para la generación de videos. ID(Déjelo en blanco para seleccionar automáticamente un proveedor que admita salida de video.). */
+    /** 视频生成使用的供应商 ID(留空则自动选择支持视频输出的供应商)。 */
     val providerId: String = "",
-    /** modelo de vídeo ID(Déjelo en blanco para usar el modelo de video predeterminado del proveedor.). */
+    /** 视频模型 ID(留空则使用供应商的默认视频模型)。 */
     val modelId: String = "",
-    /** Duración del vídeo predeterminada(segundos),Generalmente 5 o 10. */
+    /** 默认视频时长(秒),通常 5 或 10。 */
     val duration: Int = 5,
-    /** Resolución predeterminada,Como 720p/1080p. */
+    /** 默认分辨率,如 720p / 1080p。 */
     val resolution: String = "720p",
 )
 
 /**
- * v0.30-a: Clase de datos de retrato de usuario.
+ * v0.30-a: 用户画像数据类。
  *
- * Todos los campos pueden estar vacíos(El usuario no necesita completar).SystemPromptAssembler Ensamble la sección 3 en consecuencia.
- * Más adelante, se puede agregar una interfaz de usuario a la página de configuración para que los usuarios la completen.
+ * 所有字段均可空(用户可不填)。SystemPromptAssembler 据此组装第 3 个 section。
+ * 后续可在设置页加 UI 让用户填写。
  */
 @kotlinx.serialization.Serializable
 data class UserProfile(
-    /** v1.76: ¿Cómo se dirige el asistente al usuario?(Como por ejemplo"Xiaoming"/"jefe"),Inyecte el mensaje del sistema para permitir que la IA personalice el saludo. */
+    /** v1.76: 助手怎么称呼用户(如"小明"/"老板"),注入 system prompt 让 AI 个性化称呼。 */
     val userNickName: String? = null,
-    /** B0-09: avatar de usuario URI(null significa no establecido,Utilice iniciales de marcador de posición). */
+    /** B0-09: 用户头像 URI(null 表示未设置,使用首字母占位)。 */
     val avatarUri: String? = null,
-    /** v1.76: El nombre dado al asistente por el usuario.(Como por ejemplo"Xiao Miao"/"JARVIS"),Inyecte el mensaje del sistema para permitir que la IA se llame a sí misma. */
+    /** v1.76: 用户给助手起的名字(如"小缪"/"JARVIS"),注入 system prompt 让 AI 自称。 */
     val assistantName: String? = null,
     val age: String? = null,
     val city: String? = null,
-    /** v1.98: Eliminar campo mbti(El usuario no necesita). Si hay alguno en el JSON antiguo mbti,Ignorado al deserializar(Serializable Comportamiento predeterminado). */
+    /** v1.98: 移除 mbti 字段(用户不需要)。旧 JSON 中若有 mbti,反序列化时被忽略(Serializable 默认行为)。 */
     val occupation: String? = null,
-    /** v1.98: Campos profesionales(Como por ejemplo"desarrollo de software"/"Finanzas"/"medico"),AI Ajuste la profundidad de la terminología en consecuencia. No obligatorio. */
+    /** v1.98: 专业领域(如"软件开发"/"金融"/"医疗"),AI 据此调整术语深度。不强制设置。 */
     val professionField: String? = null,
     val interests: String? = null,
-    // ── v1.133: Reescribir retratos de usuarios,Inyectar todos los campos nuevos system prompt,Haz que el modelo sea realmente"saber"Usuario ──
-    /** v1.133: Perfil(Un párrafo de introducción gratuita.,Deje que el modelo tenga una comprensión general del usuario.) */
+    // ── v1.133: 重写用户画像,新增字段全部注入 system prompt,让模型真正"知道"用户 ──
+    /** v1.133: 个人简介(一段话自由介绍,让模型对用户有整体认知) */
     val bio: String? = null,
-    /** v1.133: Antecedentes educativos(Como por ejemplo"Licenciatura en Ciencias de la Computación"/"MaestríaIngeniería financiera") */
+    /** v1.133: 教育背景(如"本科 计算机科学"/"硕士 金融工程") */
     val educationBackground: String? = null,
-    /** v1.133: Experiencia en habilidades(Como por ejemplo"Python, aprendizaje automático, diseño de producto") */
+    /** v1.133: 技能专长(如"Python, 机器学习, 产品设计") */
     val skills: String? = null,
-    /** v1.133: estilo de comunicación(conciso/Detallado/animado/serio/Neutro,texto libre) */
+    /** v1.133: 沟通风格(简洁/详细/活泼/严肃/中立,自由文本) */
     val communicationStyle: String? = null,
-    /** v1.133: Preferencia de longitud de respuesta(corto/en/largo) */
+    /** v1.133: 回复长度偏好(短/中/长) */
     val responseLength: String? = null,
-    /** v1.133: tono preferido(amigable/Profesional/humor/riguroso,texto libre) */
+    /** v1.133: 偏好语气(友好/专业/幽默/严谨,自由文本) */
     val preferredTone: String? = null,
-    /** v1.133: Idioma de respuesta preferido(chino/ingles/Mezclado de chino e inglés.) */
+    /** v1.133: 偏好回复语言(中文/英文/中英混合) */
     val preferredLanguage: String? = null,
-    /** v1.133: Temas tabú(separados por comas,AI Evitará activamente) */
+    /** v1.133: 忌讳话题(逗号分隔,AI 会主动避开) */
     val avoidTopics: String? = null,
-    /** v1.134: zona horaria(Como por ejemplo"Asia/Shanghai"/"UTC+8") */
+    /** v1.134: 时区(如"Asia/Shanghai"/"UTC+8") */
     val timezone: String? = null,
 )
 
 /**
- * v0.31: Preferencias de comportamiento en el chat(Dar a los usuarios más control).
+ * v0.31: 聊天行为偏好(给用户更多控制权)。
  *
- * Todos los campos tienen valores predeterminados(Listo para usar),Los usuarios pueden"ajustes→charlar"Ajuste en la página de segundo nivel.
- * MessageBubble / ChatScreen / InputBar La lectura de estos interruptores determina el comportamiento de renderizado e interacción.
+ * 所有字段都有默认值(开箱即用),用户可在"设置→聊天"二级页里调整。
+ * MessageBubble / ChatScreen / InputBar 读取这些开关决定渲染与交互行为。
  *
- * grupo:
- *  - visualización de mensajes:showMoodBlock / showReasoning / showTokenEstimate / showModelName / showTimestamp
- *  - Estado expandido predeterminado:moodExpandedByDefault / reasoningExpandedByDefault
- *  - comportamiento interactivo:streamResponse / autoScrollToBottom / volumeKeyScroll / enterToSend / hapticFeedback / predictiveBackEnabled
- *  - Avanzado:longMessageThreshold / showToolCallDetails / use24Hour
+ * 分组:
+ *  - 消息显示:showMoodBlock / showReasoning / showTokenEstimate / showModelName / showTimestamp
+ *  - 默认展开状态:moodExpandedByDefault / reasoningExpandedByDefault
+ *  - 交互行为:streamResponse / autoScrollToBottom / volumeKeyScroll / enterToSend / hapticFeedback / predictiveBackEnabled
+ *  - 高级:longMessageThreshold / showToolCallDetails / use24Hour
  */
 @kotlinx.serialization.Serializable
 data class ChatPreferences(
-    // ── visualización de mensajes ──
-    /** Si mostrar bloques MOOD para IA(6 Paso Flujo de trabajo Paso 2). */
+    // ── 消息显示 ──
+    /** 是否显示 AI 的 MOOD 块(6 步工作流第 2 步)。 */
     val showMoodBlock: Boolean = true,
     /**
-     * Conexión entre sesiones: al abrir una nueva conversación, los últimos mensajes de la conversación anterior también se leen en el contexto.
+     * 实机走查 实-W3-04：英文界面用 "hola" 提问，助手回了一句中文。
+     * 语言规则当时只挂在「思考语言」段尾，模型把它当成对推理过程的约束，
+     * 而提示词本身固定是中文，于是正文也被带跑。这里把正文语言立成独立一段，
+     * 并留一个开关：确实要固定用某一种语言的人可以关掉。
+     */
+    val replyInUserLanguageEnabled: Boolean = true,
+    /**
+     * 跨会话衔接：开新对话时，把上一个会话的最后若干条消息也读进上下文。
      *
-     * El escenario es que el usuario cierra una ventana e inmediatamente abre una nueva para seguir hablando de lo mismo. Está desactivado por defecto porque ocupará
-     * Ingrese el token; después de encenderlo, [carryOverMessageCount] Controla el número de barras.
+     * 场景是用户关掉一个窗口、马上开新的继续说同一件事。默认关闭，因为会占用
+     * 输入 token；开启后由 [carryOverMessageCount] 控制条数。
      *
-     * con nivel asistente `enableRecentChatsReference` División del trabajo:
-     *  - Este último sólo ofrece "título + vista previa de 80 palabras", lo cual es una pista superficial;
-     *  - Este elemento da giros de diálogo reales y se utiliza para abordar un contexto específico.
+     * 与助手级 `enableRecentChatsReference` 的分工：
+     *  - 后者只给「标题 + 80 字预览」，是浅层线索；
+     *  - 本项给真实对话轮次，用于承接具体上下文。
      */
     val carryOverEnabled: Boolean = false,
-    /** La cantidad de mensajes traídos por conexiones entre sesiones (usuario + asistente cuentan como uno). Rango 4..40. */
+    /** 跨会话衔接带入的消息条数（用户 + 助手各算一条）。范围 4..40。 */
     val carryOverMessageCount: Int = 20,
     /**
-     * issue #3.5: Modo de respuesta rápida.
+     * issue #3.5: 快速回复模式。
      *
-     * Después de encenderlo, se omitirá el conjunto de palabras del mensaje del sistema "Recuperación de memoria relacionada". —— Ejecuta una consulta FTS en cada ronda.,
-     * La mala suerte también puede provocar la incorporación de llamadas de red. La medición real muestra que el segmento de memoria a largo plazo se puede ocupar en una máquina real.
-     * 500ms+(Iniciar sesión: sys-prompt-static-detail: 564ms [long_term_memory=552ms]),
-     * Levante directamente el retraso de la primera palabra.
+     * 开启后跳过「相关记忆检索」这一段系统提示词组装 —— 它每轮都要跑一次 FTS 查询,
+     * 运气不好还会触发 embedding 网络调用。实测在真机上 long_term_memory 段可占
+     * 500ms+(日志: sys-prompt-static-detail: 564ms [long_term_memory=552ms]),
+     * 直接抬高首字延迟。
      *
-     * memoria a largo plazo(<long_term_memory>)no afectado,todavía inyectar;Omita solo los que se basan en la pregunta actual.
-     * Recuerdo de relevancia. Desactivado predeterminado(mantener el comportamiento existente).
+     * 长期记忆(<long_term_memory>)不受影响,仍然注入;只跳过按当前问题做的
+     * 相关性召回。默认关(保持现有行为)。
      */
     val fastReplyMode: Boolean = false,
-    /** Ya sea para mostrar el proceso de pensamiento de la IA(reasoning). */
+    /** 是否显示 AI 的思考过程(reasoning)。 */
     val showReasoning: Boolean = true,
     /**
-     * v2.6.1(comentarios de los usuarios): Obliga al modelo a volver a pensar.
+     * v2.6.1（用户反馈）: 强制模型返回思考。
      *
-     * Después de abrir,Los asistentes ya no aceptan solicitudes de chat reasoningLevel=OFF/AUTO restricción ——
-     * Siempre que el modelo actual admita capacidades de inferencia,Sólo presione [forceReasoningLevel] Enviar parámetros de pensamiento,
-     * dejar“Sin módulo de pensamiento”El asistente predeterminado también puede comprender el proceso de pensamiento.
-     * Desactivado predeterminado(No cambia el comportamiento existente.);Cuando el modelo en sí no admite la inferencia, aún así se degrada a AUTO,No cotizaré 400.
+     * 开启后,聊天请求不再受助手级 reasoningLevel=OFF/AUTO 约束 ——
+     * 只要当前模型支持推理能力,就按 [forceReasoningLevel] 发思考参数,
+     * 让“没思考模块”的默认助手也能出思考过程。
+     * 默认关(不改变现有行为);模型本身不支持推理时仍降级为 AUTO,不会报 400。
      */
     val forceReasoning: Boolean = false,
-    /** v2.6.1: Fuerza del razonamiento utilizado por el pensamiento forzado.(solo [forceReasoning]=true eficaz cuando). Valor predeterminado ALTO. */
+    /** v2.6.1: 强制思考使用的推理强度(仅 [forceReasoning]=true 时生效)。默认 HIGH。 */
     val forceReasoningLevel: io.zer0.ai.core.ReasoningLevel = io.zer0.ai.core.ReasoningLevel.HIGH,
-    /** v1.64: Ya sea para mostrar el bloque de reflexión de IA(reflection,precisión de la autoevaluación/integridad/tono). */
+    /** v1.64: 是否显示 AI 的反思块(reflection,自我评估准确性/完整性/语气)。 */
     val showReflectionBlock: Boolean = true,
-    /** Si se muestran estimaciones de tokens en la parte inferior de los mensajes de IA. */
+    /** 是否在 AI 消息底部显示 token 估算。 */
     val showTokenEstimate: Boolean = true,
-    /** Si se muestra el nombre del modelo en la parte inferior de los mensajes de AI. */
+    /** 是否在 AI 消息底部显示模型名。 */
     val showModelName: Boolean = true,
-    /** Si se muestra la marca de tiempo de cada mensaje. */
+    /** 是否显示每条消息的时间戳。 */
     val showTimestamp: Boolean = false,
     /**
-     * Visualización de la barra de burbujas: el mensaje cubre todo el ancho de la página, eliminando el ancho máximo y la sangría horizontal de la burbuja.
-     * Está desactivado de forma predeterminada (para mantener la apariencia de la burbuja); cuando está activado, los mensajes de usuario y asistente se organizan según el ancho completo de la página.
+     * 气泡通栏显示：消息铺满整页宽度，去掉气泡的最大宽度与水平内缩。
+     * 默认关闭（保持气泡观感）；开启后用户与助手消息都按整页宽度排布。
      */
     val bubbleFullWidth: Boolean = false,
     val showUserAvatar: Boolean = true,
 
     /**
-     * v2.6.10: Si se muestra el nombre del asistente en la parte superior de los mensajes del asistente.
+     * v2.6.10: 是否在助手消息顶部显示助手名字。
      *
-     * Habilitado por defecto —— El nombre es un ancla de identidad y puedes saber quién está hablando en un escenario con múltiples asistentes.
-     * con [showTimestamp] Independiente: desactivar las marcas de tiempo no debería ocultar los nombres junto con ellas.
+     * 默认开启 —— 名字是身份锚点，多助手场景下能分清谁在说话。
+     * 与 [showTimestamp] 独立：关闭时间戳不应连带隐藏名字。
      */
     val showAssistantName: Boolean = true,
-    // ── v2.x(comentarios de los usuarios): El botón de acceso directo debajo del mensaje se muestra y se oculta ──
-    /** asistente/Botones de acción rápida debajo de los mensajes de usuario —— Los usuarios pueden decidir cuáles mostrar, evitando filas de botones abarrotadas. */
+    // ── v2.x（用户反馈）: 消息下方快捷按钮显隐 ──
+    /** 助手/用户消息下方的快捷操作按钮 —— 用户可自行决定显示哪些，避免按钮行拥挤。 */
     val quickActionCopy: Boolean = true,
-    /** Copie el proceso de pensamiento (predeterminado desactivado: igual que el ícono de copia de texto, y aparecerán dos teclas de copia durante la reunión). */
+    /** 复制思考过程（默认关：与正文复制图标相同，同时开会出现两个复制键）。 */
     val quickActionReasoning: Boolean = false,
     val quickActionTranslate: Boolean = true,
     val quickActionShare: Boolean = true,
     val quickActionRegenerate: Boolean = true,
-    /** Eliminar mensajes (desactivado por defecto: operación destructiva, no ocupa la cola de accesos directos de forma predeterminada, los usuarios pueden activarla ellos mismos). */
+    /** 删除消息（默认关：破坏性操作，默认不占快捷排，用户可自行开启）。 */
     val quickActionDelete: Boolean = false,
     /**
-     * v2.6.0: Lista de activación ordenada de botones de acceso directo (Via Menú personalizado estilo navegador).
-     * El elemento es la identificación de la acción (consulte el grupo completo de ui/chat/QuickActions.kt) y el orden es el orden de visualización debajo del mensaje.
-     * lista vacía = No configurado, recurra a los seis interruptores anteriores anteriores (compatible con la configuración de usuario existente, escriba este campo después del primer uso).
+     * v2.6.0: 快捷按钮有序启用列表（Via 浏览器式定制菜单）。
+     * 元素为动作 id（见 ui/chat/QuickActions.kt 的全量池），顺序即消息下方展示顺序。
+     * 空列表 = 未配置，回退到上方旧六开关（兼容存量用户设置，首次使用后写入此字段）。
      */
     val quickActionOrder: List<String> = emptyList(),
 
-    /** v2.0: Diseño de texto — Escala del tamaño del texto del mensaje(1.0 = Predeterminado)y espaciado de palabras(em). */
+    /** v2.0: 正文排版 — 消息正文字号缩放(1.0 = 默认)与字间距(em)。 */
     val messageFontScale: Float = 1.0f,
     val messageLetterSpacingEm: Float = 0f,
-    // ── Estado expandido predeterminado ──
-    /** MOOD Si los bloques se expanden o contraen de forma predeterminada. */
+    // ── 默认展开状态 ──
+    /** MOOD 块默认展开还是折叠。 */
     val moodExpandedByDefault: Boolean = false,
-    /** El proceso de pensamiento por defecto se expande o colapsa. */
+    /** 思考过程默认展开还是折叠。 */
     val reasoningExpandedByDefault: Boolean = false,
-    /** v1.0.30: Si el campo de entrada muestra un botón de edición en pantalla completa. */
+    /** v1.0.30: 输入栏是否显示全屏编辑按钮。 */
     val showExpandButton: Boolean = false,
-    /** v1.64: Los bloques de reflexión se expanden o contraen de forma predeterminada. */
+    /** v1.64: 反思块默认展开还是折叠。 */
     val reflectionExpandedByDefault: Boolean = false,
-    // ── comportamiento interactivo ──
-    /** Ya sea para transmitir respuestas de salida(Toda la salida después del cierre.). */
+    // ── 交互行为 ──
+    /** 是否流式输出响应(关闭后整段输出)。 */
     val streamResponse: Boolean = true,
-    /** Si se desplaza automáticamente hacia abajo cuando llegan nuevos mensajes. */
+    /** 新消息到来时是否自动滚动到底部。 */
     val autoScrollToBottom: Boolean = true,
-    /** Si se deben habilitar las teclas de volumen para desplazarse por la lista de chat. */
+    /** 是否启用音量键滚动聊天列表。 */
     val volumeKeyScroll: Boolean = true,
-    /** Si la tecla Enter envía un mensaje directamente(Cerrar, luego ingresar y avanzar línea). */
+    /** 回车键是否直接发送消息(关闭则回车换行)。 */
     val enterToSend: Boolean = false,
-    /** Ya sea para habilitar la retroalimentación táctil. */
+    /** 是否启用触感反馈。 */
     val hapticFeedback: Boolean = true,
-    // ── Avanzado ──
-    /** Umbral de plegado de mensajes largos(recuento de palabras),Cuando se excede esta longitud, se colapsa automáticamente y se expande gradualmente. */
+    // ── 高级 ──
+    /** 长消息折叠阈值(字数),超过此长度自动折叠 + 渐变展开。 */
     val longMessageThreshold: Int = 200,
-    /** Si se muestran mensajes de proceso intermedios de llamadas a herramientas. */
+    /** 是否显示工具调用的中间过程消息。 */
     val showToolCallDetails: Boolean = true,
     /**
-     * v2.6.6: Si se deben permitir interfaces generativas —— Los modelos pueden usar show_card para generar tarjetas interactivas en conversaciones.
-     * Después del cierre, las palabras clave ya no guiarán la generación; Las tarjetas existentes seguirán mostrándose normalmente.
+     * v2.6.6: 是否允许生成式界面 —— 模型可在对话里用 show_card 生成可交互卡片。
+     * 关闭后提示词不再引导生成；已有卡片仍正常渲染。
      */
     val generativeUiEnabled: Boolean = true,
     /**
-     * v2.6.7: Salida de tarjeta de preferencia —— ¿Debería el modelo ser más proactivo a la hora de llevar información estructurada con tarjetas?
+     * v2.6.7: 偏好卡片输出 —— 模型是否应更主动地用卡片承载结构化信息。
      *
-     * con [generativeUiEnabled] Capas:[generativeUiEnabled] decidir“Permitido o no permitido”,
-     * esta decisión“¿Debería usarse primero?”. Válido sólo si está permitido.
+     * 与 [generativeUiEnabled] 分层：[generativeUiEnabled] 决定“允许不允许用”，
+     * 本项决定“该不该优先用”。仅在允许的前提下生效。
      *
-     * v2.6.13: **Desactivado de forma predeterminada**. El enlace de representación de la tarjeta aún se está rehaciendo (la altura y la interacción son inestables).
-     * Activarlo de forma predeterminada significa colocar cosas no confiables donde los usuarios puedan verlas a primera vista.
-     * Quienes quieran utilizarlo pueden activarlo en la configuración; Los valores antiguos de los usuarios existentes se desactivan mediante una migración única de ChatSettingsStore.
+     * v2.6.13: **默认关闭**。卡片渲染链路还在重做（高度、交互都不稳定），
+     * 默认开启等于把不可靠的东西摆在用户第一眼能看到的位置。
+     * 想用的人可以在设置里打开；存量用户的旧值由 ChatSettingsStore 的一次性迁移关掉。
      */
     val preferCardOutput: Boolean = true,
-    /** Si se debe pausar la ejecución de la herramienta real para esta ronda y las siguientes(Los pensamientos y las respuestas finales aún pueden continuar.). */
+    /** 是否暂停本轮及后续回合的真实工具执行(思考与最终回复仍可继续)。 */
     val pauseToolExecution: Boolean = false,
-    /** Si la marca de tiempo utiliza el reloj de 24 horas. */
+    /** 时间戳是否使用 24 小时制。 */
     val use24Hour: Boolean = true,
     /**
-     * F-41: Esquinas redondeadas de la burbuja del mensaje(0-28dp,engranaje entero).
+     * F-41: 消息气泡圆角(0-28dp,整型档位)。
      *
-     * engranaje:0=cuadrado,8=esquinas redondeadas,20=Grandes esquinas redondeadas,28=Cápsulas.
-     * Sólo funciona en burbujas de mensajes de usuario.(Como mensaje izquierdo arriba),El valor puede ser determinado por la página de configuración."mensaje esquinas redondeadas"Las opciones están escritas.
+     * 档位:0=方形,8=圆角,20=大圆角,28=胶囊。
+     * 仅作用于用户消息气泡(如左消息顶部),取值可由设置页的"消息圆角"选项写入。
      */
     val bubbleRadius: Int = 20,
-    // ── Generar comportamiento(situación general) ──
-    /** temperatura global(0-2),El asistente vuelve a este valor cuando la temperatura no se ajusta por separado. */
+    // ── 生成行为(全局) ──
+    /** 全局温度(0-2),助手未单独设 temperature 时回退到此值。 */
     val globalTemperature: Float = 0.8f,
-    /** estilo de tono:concise(conciso)/balanced(equilibrio)/detailed(Detallado). */
+    /** 语气风格:concise(简洁)/balanced(平衡)/detailed(详细)。 */
     val responseStyle: String = "balanced",
-    /** tono:neutral(Neutro)/friendly(cordial)/formal(formales)/humorous(humor). */
+    /** 语气:neutral(中性)/friendly(亲切)/formal(正式)/humorous(幽默)。 */
     val responseTone: String = "neutral",
-    /** v1.110: Si habilitar el pensamiento profundo de forma predeterminada(Nuevo/Valor inicial al cambiar de sesión,Evite tener que presionar botones manualmente cada vez). */
+    /** v1.110: 默认是否启用深度思考(新建/切换会话时的初始值,避免每次都要手动按按钮)。 */
     val defaultDeepThinking: Boolean = false,
     /**
-     * v1.0.4 (P3-4): Modo de rendimiento — Las sesiones muy largas solo muestran los últimos N mensajes,Desliza hacia arriba para cargar más,Reducir el retraso de la lista.
+     * v1.0.4 (P3-4): 性能模式 — 超长会话仅渲染最近 N 条消息,上滑加载更多,降低列表卡顿。
      *
-     * Después de abrir pases ChatScreen [io.zer0.muse.perf.MessagePaginator] Realizar paginación a nivel de memoria en state.messages,
-     * LazyColumn Solo renderiza lo más reciente [io.zer0.muse.perf.MessagePaginator.DEFAULT_PAGE_SIZE] * pageCount Artículo,
-     * Expandir automáticamente la página siguiente al desplazarse hacia arriba(Paginación de memoria local pura,no comprobar DB);Expanda todo y luego deslícese hacia arriba para activar DB loadMoreHistory.
-     * Mantener el comportamiento existente cuando está cerrado(Renderizar todo directamente state.messages).
+     * 开启后 ChatScreen 通过 [io.zer0.muse.perf.MessagePaginator] 对 state.messages 做内存级分页,
+     * LazyColumn 只渲染最近 [io.zer0.muse.perf.MessagePaginator.DEFAULT_PAGE_SIZE] * pageCount 条,
+     * 滚到顶部时自动扩展下一页(纯本地内存分页,不查 DB);全部展开后再上滑才触发 DB loadMoreHistory。
+     * 关闭时维持现有行为(直接渲染全部 state.messages)。
      */
     val performanceMode: Boolean = false,
-    /** v1.0.83: Si se debe utilizar el retorno predictivo de Android; realice un popBackStack normal inmediatamente después de cerrar la navegación. */
+    /** v1.0.83: 是否使用 Android 预测性返回；关闭后导航立即执行普通 popBackStack。 */
     val predictiveBackEnabled: Boolean = true,
     /**
-     * U-6: Si se ha mostrado el mensaje de operación de gestos(v2.x abandonado — Se han eliminado la barra de mensajes y la referencia de deslizamiento hacia la izquierda.).
+     * U-6: 手势操作提示是否已展示过(v2.x 起废弃 — 提示条与左滑引用已移除)。
      *
-     * Los campos están reservados únicamente por compatibilidad con versiones anteriores de datos JSON persistentes.,El nuevo código ya no se lee ni se escribe.
+     * 字段保留仅为兼容旧版本已持久化的 JSON 数据,新代码不再读写。
      */
     val chatGesturesHintShown: Boolean = false,
+    /**
+     * v2.6.23(M3): 画像自动更新 —— 从事实账本定期生成「画像快照」并注入系统提示词。
+     *
+     * 手填的 [UserProfile] 字段永远优先;本开关只控制系统**提炼**的那部分是否注入。
+     * 默认开:提炼规则是确定性的(分组+截断),不经后台 LLM,不额外耗电;
+     * 用户可在「设置 → 用户画像」里关掉,关掉后注入立即回到仅手填字段。
+     */
+    val profileSnapshotEnabled: Boolean = true,
 )
 
 /**
- * v0.32: Cambios de funciones experimentales.
+ * v0.32: 实验性功能开关。
  *
- * De forma predeterminada, algunos elementos experimentales están habilitados según la estrategia de escala de grises.(Compresión de memoria larga, paralelismo de herramientas de solo lectura),El resto están desactivados por defecto.,
- * Los usuarios pueden realizar ajustes activamente.
+ * 默认按灰度策略开启部分实验项(长记忆压缩、只读工具并行),其余默认关闭,
+ * 用户可主动调整。
  */
 @kotlinx.serialization.Serializable
 data class ExperimentsConfig(
-    /** Experimental:Habilitar salida forzada del bloque MOOD(Intentaré solicitarlo incluso si el modelo no lo admite.). */
+    /** 实验性:启用 MOOD 块强制输出(即使模型不支持也会尝试要求)。 */
     val forceMoodBlock: Boolean = false,
-    /** Experimental:modo de depuración,Mostrar más estados internos(MOOD/llamada de herramienta/Token Estadísticas). */
+    /** 实验性:调试模式,显示更多内部状态(MOOD/工具调用/Token 统计)。 */
     val debugMode: Boolean = false,
-    /** Experimental:Permitir la autorreflexión(Verifique automáticamente la calidad después de la respuesta). */
+    /** 实验性:启用自我反思(回复后自动检查质量)。 */
     val selfReflection: Boolean = false,
-    /** v1.55: La compresión de memoria larga está habilitada de forma predeterminada(Resumen automático de conversaciones muy largas,Reduzca el umbral de compilación a 3.0 para que la compilación de hechos sea más agresiva). */
+    /** v1.55: 长记忆压缩默认启用(超长对话自动摘要,降低 compileThreshold 到 3.0 让 fact 更激进编译)。 */
     val longMemoryCompression: Boolean = true,
     /**
-     * Escala de grises:Las herramientas de solo lectura se ejecutan en paralelo(Habilitado por defecto,Se puede cerrar con un clic).
+     * 灰度:只读工具并行执行(默认开启,可一键关闭)。
      *
-     * Solo cuando todas las herramientas en la misma ronda son herramientas de la lista blanca de solo lectura, la concurrencia está sujeta al límite superior.,Los resultados se reponen en el orden de llamada original;
-     * escribir/Herramienta de efectos secundarios para la serialización en cualquier caso. Vuelve a la semántica serial completa del B-38 después del apagado.
+     * 仅当同一轮全部为只读白名单工具时按上限并发,结果按原始调用顺序回填;
+     * 写入/副作用工具任何情况下串行。关闭后回到 B-38 全串行语义。
      */
     val parallelReadOnlyTools: Boolean = true,
 
     /**
-     * Experimental:Recuperación de archivos adjuntos de sesión.
+     * 实验性:会话附件检索。
      *
-     * Después de abrir,Los documentos cargados en la sesión se analizarán e indexarán en la base de datos de búsqueda.(kb_search Su contenido puede ser afectado.),
-     * Sesión de enlace del ciclo de vida del índice,Se eliminará cuando se limpie la sesión. Desactivado de forma predeterminada(Funciones experimentales).
+     * 开启后,会话里上传的文档会被解析并索引进检索库(kb_search 可命中其内容),
+     * 索引生命周期绑定会话,会话清理时一并删除。默认关闭(实验功能)。
      */
     val sessionAttachmentRag: Boolean = false,
 
 )
 
 /**
- * v0.32: Compartir configuración de plantilla.
+ * v0.32: 分享模板配置。
  *
- * Controlar la exportación/Formato y contenido al compartir conversaciones.
+ * 控制导出/分享对话时的格式和内容。
  */
 @kotlinx.serialization.Serializable
 data class ShareTemplateConfig(
-    /** Si se debe incluir una marca de tiempo al compartir. */
+    /** 分享时是否包含时间戳。 */
     val includeTimestamp: Boolean = true,
-    /** Si se debe incluir el nombre del modelo al compartir. */
+    /** 分享时是否包含模型名。 */
     val includeModelName: Boolean = false,
-    /** Si se debe incluir el número de token al compartir. */
+    /** 分享时是否包含 token 数。 */
     val includeTokenCount: Boolean = false,
-    /** Si incluir bloques MOOD al compartir. */
+    /** 分享时是否包含 MOOD 块。 */
     val includeMoodBlock: Boolean = false,
-    /** ¿Incluye un proceso de pensamiento al compartir? */
+    /** 分享时是否包含思考过程。 */
     val includeReasoning: Boolean = false,
-    /** Formato de compartir:markdown / plain_text / html. */
+    /** 分享格式:markdown / plain_text / html。 */
     val format: String = "markdown",
-    /** Título personalizado(Si está vacío, utilice el título de la sesión.). */
+    /** 自定义标题(空则用会话标题)。 */
     val customTitle: String = "",
 )
 
 /**
- * v0.32: Configuración de medios.
+ * v0.32: 媒体配置。
  *
- * Parámetros que controlan los anuncios TTS y la salida de audio.
+ * 控制 TTS 播报和音频输出的参数。
  */
 @kotlinx.serialization.Serializable
 data class MediaConfig(
-    /** TTS Velocidad de transmisión de voz(0.5-2.0,1.0 para normales). */
+    /** TTS 播报语速(0.5-2.0,1.0 为正常)。 */
     val ttsSpeechRate: Float = 1.0f,
-    /** TTS tono de transmisión(0.5-2.0,1.0 para normales). */
+    /** TTS 播报音高(0.5-2.0,1.0 为正常)。 */
     val ttsPitch: Float = 1.0f,
-    /** TTS Idioma de transmisión(null Indica seguir el sistema.). */
+    /** TTS 播报语言(null 表示跟随系统)。 */
     val ttsLanguage: String? = null,
-    /** Modo de salida de audio:speaker / earpiece / bluetooth. */
+    /** 音频输出方式:speaker / earpiece / bluetooth。 */
     val audioOutput: String = "speaker",
-    /** v1.97: TTS tipo de motor:"system"(sistema TTS) / "openai"(OpenAI TTS) / "minimax"(MiniMax TTS) / "edge"(Edge TTS). */
+    /** v1.97: TTS 引擎类型:"system"(系统 TTS) / "openai"(OpenAI TTS) / "minimax"(MiniMax TTS) / "edge"(Edge TTS)。 */
     val ttsEngine: String = "system",
-    /** v1.97: nube TTS API Key(Almacenamiento cifrado). */
+    /** v1.97: 云端 TTS API Key(加密存储)。 */
     val ttsApiKey: String = "",
-    /** v1.97: Nombre del modelo de TTS en la nube(Como por ejemplo openai: gpt-4o-mini-tts, minimax: speech-2.6-turbo). */
+    /** v1.97: 云端 TTS 模型名(如 openai: gpt-4o-mini-tts, minimax: speech-2.6-turbo)。 */
     val ttsModel: String = "",
-    /** v1.97: Sonidos TTS en la nube(Como por ejemplo openai: alloy/echo/fable/onyx/nova/shimmer). */
+    /** v1.97: 云端 TTS 音色(如 openai: alloy/echo/fable/onyx/nova/shimmer)。 */
     val ttsVoice: String = "",
-    /** v1.97: Personalización de TTS en la nube endpoint(Déjelo en blanco para usar el valor predeterminado). */
+    /** v1.97: 云端 TTS 自定义 endpoint(留空用默认)。 */
     val ttsEndpoint: String = "",
-    /** Nombre del sonido TTS del sistema(Una cadena vacía significa usar el sonido predeterminado.). */
+    /** 系统 TTS 声音名称(空字符串表示使用默认声音)。 */
     val ttsVoiceName: String = "",
-    /** v1.99(4.8): ElevenLabs stability(0-1,Predeterminado 0.5). */
+    /** v1.99(4.8): ElevenLabs stability(0-1,默认 0.5)。 */
     val ttsStability: Float = 0.5f,
-    /** v1.99(4.8): ElevenLabs similarity_boost(0-1,Predeterminado 0.75). */
+    /** v1.99(4.8): ElevenLabs similarity_boost(0-1,默认 0.75)。 */
     val ttsSimilarityBoost: Float = 0.75f,
-    /** v1.99(4.8): MiniMax emoción(happy/sad/angry/neutral espera,Vacío significa predeterminado). */
+    /** v1.99(4.8): MiniMax 情感(happy/sad/angry/neutral 等,空表示默认)。 */
     val ttsEmotion: String = "",
-    /** v1.99(4.8): Multiplicador de velocidad de voz sintética Cloud TTS(0.25-4.0,1.0 para normales). */
+    /** v1.99(4.8): 云端 TTS 合成语速倍率(0.25-4.0,1.0 为正常)。 */
     val ttsCloudSpeed: Float = 1.0f,
-    /** v1.99(4.8): Formato de audio TTS en la nube(mp3/opus/aac/flac/wav,Predeterminado mp3). */
+    /** v1.99(4.8): 云端 TTS 音频格式(mp3/opus/aac/flac/wav,默认 mp3)。 */
     val ttsResponseFormat: String = "mp3",
     /**
-     * ¿El TTS en la nube sigue la configuración del proveedor?(Predeterminado false).
+     * 云端 TTS 是否跟随供应商配置(默认 false)。
      *
-     * Después de abrir, se toma baseUrl/apiKey de [ttsProviderId] Proveedor a señalar,Modelo tomado de [ttsModelId];
-     * Utilice siempre la configuración manual al apagar([ttsEndpoint] / [ttsApiKey] / [ttsModel]),El comportamiento es consistente con versiones anteriores.
+     * 开启后 baseUrl / apiKey 取自 [ttsProviderId] 指向的供应商,模型取自 [ttsModelId];
+     * 关闭时一律使用手动配置([ttsEndpoint] / [ttsApiKey] / [ttsModel]),行为与旧版一致。
      */
     val ttsFollowProvider: Boolean = false,
-    /** Proveedor seleccionado en modo seguimiento id(Cadena vacía significa no seleccionado). */
+    /** 跟随模式下所选供应商 id(空串表示未选)。 */
     val ttsProviderId: String = "",
-    /** Modelo seleccionado en modo seguimiento id(Cadena vacía significa no seleccionado). */
+    /** 跟随模式下所选模型 id(空串表示未选)。 */
     val ttsModelId: String = "",
 ) {
     /**
-     * P0-2: Devolver ttsApiKey cifrado(ir [SecureKeyStore.encrypt])copia de,Por llamar antes que la perseverancia.
-     * Los valores nulos se dejan como están.(No cifrar valores nulos);cifrado(Hay enc_v1: prefijo)Déjalo como está. Presione WebSearchConfig.modo cifrado.
+     * P0-2: 返回 ttsApiKey 已加密(走 [SecureKeyStore.encrypt])的副本,供持久化前调用。
+     * 空值原样保留(不加密空值);已加密(有 enc_v1: 前缀)原样保留。按 WebSearchConfig.encrypted 模式。
      */
     suspend fun encrypted(): MediaConfig = copy(
         ttsApiKey = SecureKeyStore.encrypt(ttsApiKey),
     )
 
     /**
-     * P0-2: Devolver ttsApiKey descifrado(ir [SecureKeyStore.decrypt])copia de,Se llama después de leer desde la capa de persistencia.
-     * El antiguo texto sin formato se transmite de forma transparente mediante descifrado.(Compatible con la migración). Presione WebSearchConfig.modo descifrado.
+     * P0-2: 返回 ttsApiKey 已解密(走 [SecureKeyStore.decrypt])的副本,供从持久化层读出后调用。
+     * 旧版明文由 decrypt 透传(迁移兼容)。按 WebSearchConfig.decrypted 模式。
      */
     suspend fun decrypted(): MediaConfig = copy(
         ttsApiKey = SecureKeyStore.decrypt(ttsApiKey),
@@ -386,119 +401,141 @@ data class MediaConfig(
 }
 
 /**
- * Configuración de mensajes activos(El asistente virtual acompañante envía mensajes de forma proactiva a los usuarios como una persona real).
+ * 主动消息配置(虚拟陪伴助手像真人一样主动给用户发消息)。
  *
- * - [enabled] interruptor principal,El programador se salta al apagar
- * - [intervalMinutes] v1.30: Intervalo de activación(minutos),Los usuarios pueden personalizarlo con el control deslizante en la página de configuración.(15 minutos ~ 24 horas,Ajuste continuo)
- * - [lastTriggeredAt] Última marca de tiempo activada,El planificador determina si expirará en función de esto.
- * - [randomOffsetMinutes] v1.30: desplazamiento aleatorio(minutos),intervalo real = intervalMinutes ± randomOffsetMinutes,
- *   Haga que los tiempos de envío sean más naturales,Evite la sensación mecánica de intervalos fijos. Ajuste continuo
- * - [agentId] v1.27: Especificar el asistente del agente que envía mensajes no solicitados id,Una cadena vacía significa usar el asistente predeterminado
- * - [allowedHourStart] v1.95: Horas de inicio de la ventana de envío permitidas(0-23,24reloj de hora),No omitas el envío durante este período para no molestarte por la noche.
- * - [allowedHourEnd] v1.95: Horas de finalización de la ventana de envío permitidas(0-23,24reloj de hora),Soporte nocturno(Como indica 22-822Haga clic para pasar al día siguiente8punto)
- * - [agentOnly] v1.95: soloAgentLas conversaciones pueden enviar mensajes activos.(true=solo enviarAgent Tabsesión,false=sin limite)
- * - [maxDailyMessages] **En desuso**: Una vez se escribió desde el puesto "Ritmo", pero no existe un método de lectura en todo el almacén.
- *   En realidad, nunca entró en vigor. El número diario de artículos es ahora [io.zer0.muse.data.proactive.ProactiveIntensity.cap]
- *   Decisión (Tranquilo 3/Restringido 8/Estándar 15/Activo 30/Apego ilimitado). Los campos están reservados únicamente para la compatibilidad de deserialización con configuraciones antiguas.
- * - [temperature] v2.0 5.9: LLM llamar a la temperatura(Predeterminado 0.8),Para la etapa de toma de decisiones temperature×0.5,Utilice este campo durante la fase de generación.
+ * - [enabled] 总开关,关闭时调度器跳过
+ * - [intervalMinutes] v1.30: 触发间隔(分钟),用户可在设置页用滑动条自定义(15 分钟 ~ 24 小时,无极调节)
+ * - [lastTriggeredAt] 上次触发时间戳,调度器据此判断是否到期
+ * - [randomOffsetMinutes] v1.30: 随机偏移量(分钟),实际间隔 = intervalMinutes ± randomOffsetMinutes,
+ *   让发送时间更自然,避免固定间隔的机械感。无极调节
+ * - [agentId] v1.27: 指定发送主动消息的 Agent 助手 id,空字符串表示用默认助手
+ * - [allowedHourStart] v1.95: 允许发送时段开始小时(0-23,24小时制),不在此时段跳过发送避免夜间打扰
+ * - [allowedHourEnd] v1.95: 允许发送时段结束小时(0-23,24小时制),支持跨夜(如 22-8 表示22点到次日8点)
+ * - [agentOnly] v1.95: 仅Agent会话可发主动消息(true=只发Agent Tab会话,false=不限制)
+ * - [maxDailyMessages] **已废弃**：曾经由「节奏」档位写入，但全仓无任何读取方，
+ *   实际上从未生效。每日条数现在由 [io.zer0.muse.data.proactive.ProactiveIntensity.cap]
+ *   决定（安静 3 / 克制 8 / 标准 15 / 主动 30 / 黏人不限）。字段保留仅为旧配置反序列化兼容。
+ * - [temperature] v2.0 5.9: LLM 调用温度(默认 0.8),决策阶段用 temperature×0.5,生成阶段用本字段
  */
 @kotlinx.serialization.Serializable
 data class ProactiveMessageConfig(
     val enabled: Boolean = false,
     val intervalMinutes: Int = 240,
     val lastTriggeredAt: Long = 0,
-    /** B8-01: Marca de tiempo del siguiente mensaje activo(Restaurar desde la configuración persistente después de reiniciar el proceso,0=Aún no programado). */
+    /** B8-01: 下次主动消息触发时间戳(进程重启后从持久化配置恢复,0=尚未排期)。 */
     val nextTriggerAt: Long = 0,
-    /** v1.30: desplazamiento aleatorio(minutos),intervalo real = intervalMinutes ± randomOffsetMinutes. */
+    /** v1.30: 随机偏移量(分钟),实际间隔 = intervalMinutes ± randomOffsetMinutes。 */
     val randomOffsetMinutes: Int = 60,
-    /** v1.27: Especificar el asistente del agente que envía mensajes no solicitados id,Una cadena vacía significa utilizar el asistente predeterminado. */
+    /** v1.27: 指定发送主动消息的 Agent 助手 id,空字符串表示用默认助手。 */
     val agentId: String = "",
-    /** v1.95: Horas de inicio de la ventana de envío permitidas(0-23,24reloj de hora),Predeterminado8punto,No omitas el envío durante este período para no molestarte por la noche. */
+    /** v1.95: 允许发送时段开始小时(0-23,24小时制),默认8点,不在此时段跳过发送避免夜间打扰。 */
     val allowedHourStart: Int = 8,
-    /** v1.95: Horas de finalización de la ventana de envío permitidas(0-23,24reloj de hora),Predeterminado22punto,Soporte nocturno(Como indica 22-822Haga clic para pasar al día siguiente8punto). */
+    /** v1.95: 允许发送时段结束小时(0-23,24小时制),默认22点,支持跨夜(如 22-8 表示22点到次日8点)。 */
     val allowedHourEnd: Int = 22,
     /**
-     * v2.6.x: Permitir entrega todo el día(true = 24 Las horas están dentro del rango de envío permitido.).
+     * v2.6.x: 全天允许发送(true = 24 小时都在允许发送范围内)。
      *
-     * fondo: [allowedHourStart] / [allowedHourEnd] Sólo puede expresar un intervalo.,
-     * Cerrar a la izquierda y abrir a la derecha(suntil)En ningún caso se podrán recuperar 24 horas completas bajo la semántica de ——
-     * Suponiendo que 23-23 resultará en un intervalo vacío(Ni un solo mensaje),Supongamos que 23-0 tomaría al filial nocturno para cubrir sólo 23 puntos.
-     * No existe ninguna configuración que se pueda expresar cuando el usuario quiere "publicar todo el día",Por lo tanto, este interruptor principal se proporciona por separado.
+     * 背景: [allowedHourStart] / [allowedHourEnd] 只能表达一个区间,
+     * 左闭右开(suntil)的语义下无论如何都凑不出完整的 24 小时 ——
+     * 设 23-23 会得到空区间(一条都不发),设 23-0 会走跨夜分支只覆盖 23 点。
+     * 用户想要「全天都发」时没有可表达的配置,故单独提供这个总开关。
      *
-     * true tiempo: Saltar la verificación de la ventana de hora actual,también omitir [computeNextTriggerTime] adentro
-     * "Aplazado hasta el próximo activo/Permitir paso de ventana(Aún se conservan los intervalos, los límites diarios y las reservas de fallos.).
+     * true 时: 跳过当前小时窗口检查,也跳过 [computeNextTriggerTime] 里的
+     * 「推迟到下一个活跃/允许窗口」这一步(仍然保留间隔、每日上限与失败退避)。
      */
     val allDayAllowed: Boolean = false,
     /**
-     * **En desuso**:v1.95 Interruptor "Sólo sesión de agente". Nunca se ha leído la posición completa (solo se dibuja un interruptor en la página de configuración),
-     * Prueba real del usuario "Abrir/No importa si está cerrado”. Los campos reservados solo son compatibles con la deserialización de la configuración anterior; utilice la lógica [agentSessionEnabled].
+     * **已废弃**：v1.95 的「仅 Agent 会话」开关。全仓从来没有读取方（只在设置页画了个开关），
+     * 用户实测「打开/关闭都没区别」。保留字段只为旧配置反序列化兼容，逻辑请用 [agentSessionEnabled]。
+     * 默认值也从 true 改成 false：它没有任何读取方，留着 true 只会让后来者
+     * 以为「默认只发 Agent 会话」——那正好是这次要消灭的误解。
      */
-    @Deprecated("Sin lector, utilice en su lugar agentSessionEnabled")
-    val agentOnly: Boolean = true,
+    @Deprecated("无读取方，改用 agentSessionEnabled")
+    val agentOnly: Boolean = false,
 
     /**
-     * Agent Tab Si la sesión también recibe mensajes no solicitados.
+     * Agent Tab 会话是否接收主动消息。默认 true：日常问候属于 Agent。
      *
-     * - true(Predeterminado): trátelo igual que una sesión normal;
-     * - false: Mensaje proactivo**Enviar solo sesiones de conversación normales**, nunca cae a la pestaña Agente y no se crea ninguna nueva sesión de Agente para él.
+     * false 时仅阻止 Agent 落点；普通对话仍需 [allowPlainChatSession] 显式允许。
      */
     val agentSessionEnabled: Boolean = true,
     /**
-     * v2.0 5.9: Límite diario de mensajes activos(Predeterminado 3).
+     * 每日保底：距上一条主动消息超过这么多小时就强制发一条（0 = 关闭）。
      *
-     * El límite superior estricto diario se determina mediante información activa y se respeta al deducir el presupuesto.
+     * 只越过「间隔还没到」这一道闸，不越过免打扰、冷却、「用户刚说过话」、
+     * 「上一轮已经尝试过」与当天额度 —— 那些是别打扰人的规矩。
+     */
+    val dailyGuaranteeHours: Int = 22,
+    /**
+     * 普通对话是否接收主动消息。默认 false：日常问候不污染任务对话框。
+     *
+     * 开启后，未单会话静音的普通对话才可成为主动消息落点。
+     */
+    val allowPlainChatSession: Boolean = false,
+    /**
+     * v2.0 5.9: 每日主动消息上限(默认 3)。
+     *
+     * 每日硬上限，由主动消息判定在扣预算时一并遵守。
      */
     val maxDailyMessages: Int = 3,
     /**
-     * v2.0 5.9: LLM llamar a la temperatura(Predeterminado 0.8),Se utiliza tanto en la etapa de toma de decisiones como en la de generación.
+     * v2.0 5.9: LLM 调用温度(默认 0.8),用于决策与生成两阶段。
      *
-     * Uso práctico en la etapa de toma de decisiones. temperature × 0.5(Las decisiones requieren certeza);Este campo se utiliza durante la fase de generación.
+     * 决策阶段实际使用 temperature × 0.5(决策需要确定性);生成阶段使用本字段。
      */
     val temperature: Float = 0.8f,
     /**
-     * v1.0.72: Probabilidad de enviar mensajes activos(0-100,Predeterminado 100).
+     * v1.0.72: 主动消息发送概率(0-100,默认 100)。
      *
-     * etapa de decisión shouldSend=true después,Luego use esta probabilidad para decidir si realmente enviarlo.:
-     *  - 100 = enviar cada vez(Toma de decisiones inmediata)
-     *  - 50 = Media probabilidad
-     *  - 0 = nunca enviar(equivalente a cerrar,Pero mantén un registro de decisiones)
-     * El envío de pruebas no está sujeto a esta restricción.(forceSend pelo liso).
+     * 决策阶段 shouldSend=true 后,再按此概率决定是否实际发送:
+     *  - 100 = 每次都发(决策通过即发)
+     *  - 50 = 一半概率发
+     *  - 0 = 永不发送(等同于关闭,但保留决策日志)
+     * 测试发送不受此限制(forceSend 直发)。
      */
     val sendProbability: Int = 100,
     /**
-     * A-08: Marca de tiempo de falla de la última llamada de LLM(0=Sin fallos).
+     * v2.6.23(P1): 智能时机 —— 掷骰前先按最近反馈折算有效发送概率。
      *
-     * toma de decisiones/Escribir cuando falla la fase de construcción LLM;Habrá al menos un intervalo baseInterval antes de volver a intentarlo.,
-     * Evitar la desconexión de la red/garantizadoEnvíe reintentos de bucle activo cada minuto para quemar la cuota cuando falla el servicio.
-     * Borrado después de una transmisión exitosa.
+     * **默认关**:关闭时行为与 2.6.22 逐字一致(纯掷骰)。开启后只改「概率闸」这一层:
+     * 上一条没人回、消息堆着没读、深夜时段会压低概率,账上有到点的事会回补;
+     * 间隔/额度/免打扰/每日保底等硬闸不受影响,设置页的 [sendProbability] 仍是基准值。
+     */
+    val sendTimingScoringEnabled: Boolean = false,
+    /**
+     * A-08: 最近一次 LLM 调用失败时间戳(0=无失败)。
+     *
+     * 决策/生成阶段 LLM 失败时写入;此后至少间隔一个 baseInterval 才允许再次尝试,
+     * 防止断网/服务故障时 guaranteedSend 每分钟热循环重试烧配额。
+     * 成功发送后清零。
      */
     val lastFailedAt: Long = 0,
     /**
-     * Revisión de corrección (2.0 B-12): Número de fallos consecutivos(0=Sin fallos).
+     * 审查修复 (2.0 B-12): 连续失败次数(0=无失败)。
      *
-     * toma de decisiones/Incrementado cuando falla la compilación,Borrado después de una transmisión exitosa;El intervalo de retroceso crece exponencialmente con el conteo.
-     * (1x/2x/4x/8x/16x baseInterval),Ponle fin a"Reintentos infinitos de intervalo de base fijo"El ciclo de quema de cuotas.
+     * 决策/生成失败时递增,成功发送后清零;退避间隔随计数指数增长
+     * (1x/2x/4x/8x/16x baseInterval),杜绝"固定 baseInterval 无限重试"的烧配额循环。
      */
     val consecutiveFailures: Int = 0,
     /**
-     * v2.6.2(comentarios de los usuarios): **En desuso, sin implementación**.
+     * v2.6.2（用户反馈）: **已废弃，无实现**。
      *
-     * Estaba previsto que el asistente devolviera un `nextIntervalMinutes`, úselo para cubrir intervalos fijos,
-     * Depende del asistente decidir con qué frecuencia vendrá la próxima vez. Sin embargo, no hay ningún lector en todo el almacén y la interfaz ya no escribe este campo:
-     * La programación y el juicio solo ven [intervalMinutes](Incluyendo la inquietud del día).
+     * 曾计划让助手在决策阶段返一个 `nextIntervalMinutes`，用它覆盖固定间隔，
+     * 由助手自己决定下次隔多久来。但全仓没有任何读取方，界面也不再写入本字段：
+     * 调度与判定只看 [intervalMinutes]（含当日抖动）。
      *
-     * Reservado sólo para compatibilidad de deserialización con configuraciones antiguas; El nuevo código no debe leerlo ni escribirlo.
+     * 保留仅为旧配置反序列化兼容；新代码不得读它，也不得写它。
      */
     val aiPaced: Boolean = false,
 )
 
 /**
- * v2.6.2(comentarios de los usuarios): Configuración de la constelación de memoria (gráfico de conocimiento).
+ * v2.6.2（用户反馈）: 记忆星座（知识图谱）配置。
  *
- * - [aiEnhanceEnabled]: AI Profundizar el cambio de correlación. Después de abrir“Vecinos semánticos pero relación poco clara”lado
- *   Utilice modelos de herramientas grandes para determinar tipos de relaciones específicas (causes / contradicts / part_of). Una vez por borde
- *   LLM Llamar es caro y está desactivado de forma predeterminada.
- * - [edgeBuildFrequency]: Frecuencia suplementaria. Controla cuándo completar los bordes con existencias para nuevos hechos.
+ * - [aiEnhanceEnabled]: AI 深化关联开关。开启后对“语义近邻但关系不明”的边
+ *   用大工具模型判定具体关系类型（causes / contradicts / part_of）。每条边一次
+ *   LLM 调用，成本高，默认关。
+ * - [edgeBuildFrequency]: 补边频率。控制何时为新增事实补齐与存量的边。
  */
 @kotlinx.serialization.Serializable
 data class MemoryGraphConfig(
@@ -506,87 +543,87 @@ data class MemoryGraphConfig(
     val edgeBuildFrequency: EdgeBuildFrequency = EdgeBuildFrequency.SESSION_END,
 )
 
-/** Frecuencia suplementaria. */
+/** 补边频率。 */
 @kotlinx.serialization.Serializable
 enum class EdgeBuildFrequency {
-    /** Reponga una vez al final de cada sesión (predeterminado, recomendado). */
+    /** 每次会话结束补一次（默认，推荐）。 */
     SESSION_END,
 
-    /** Rellénelo cada vez que abra la página del signo del zodíaco. */
+    /** 每次打开星座页时补一次。 */
     ON_OPEN,
 
-    /** Sólo manual (punto de usuario“Restablecer asociación”). */
+    /** 仅手动（用户点“重建关联”）。 */
     MANUAL,
 }
 
 /**
- * v1.25: Equipo colaborativo.
+ * v1.25: 协作团队。
  *
- * Los usuarios organizan varios asistentes en un equipo,El asistente principal puede delegar tareas a los miembros del equipo a través de delegado_agente.
+ * 用户把多个 Assistant 编成一个团队,主助手可通过 delegate_agent 把任务派给团队成员。
  */
 @kotlinx.serialization.Serializable
 data class AgentTeam(
-    /** Identificación única del equipo. */
+    /** 团队唯一 id。 */
     val id: String = java.util.UUID.randomUUID().toString(),
-    /** Nombre del equipo,Como \"grupo de redacción\" y \"grupo de investigación\". */
+    /** 团队名称,如「写作小组」「调研小组」。 */
     val name: String = "",
-    /** Descripción del equipo/Consejos de uso. */
+    /** 团队描述/用途提示。 */
     val description: String = "",
-    /** Lista de ID de asistente de miembro del equipo,El orden es el orden de comisión recomendado. */
+    /** 团队成员 assistantId 列表,顺序即推荐委托顺序。 */
     val memberIds: List<String> = emptyList(),
-    /** v1.200: Definición del flujo de trabajo del equipo. Cuando está vacío, se ejecuta en serie en el orden de los miembros. */
+    /** v1.200: 团队工作流定义。为空时按 memberIds 顺序串行执行。 */
     val workflow: io.zer0.muse.tools.DelegationContract.TeamWorkflow? = null,
-    /** Crear marca de tiempo. */
+    /** 创建时间戳。 */
     val createdAt: Long = System.currentTimeMillis(),
-    /** Última marca de tiempo actualizada. */
+    /** 最近更新时间戳。 */
     val updatedAt: Long = System.currentTimeMillis(),
 )
 
 /**
- * v1.25: Configuración global de colaboración multiagente.
+ * v1.25: 多 Agent 协作全局配置。
  */
 @kotlinx.serialization.Serializable
 data class MultiAgentConfig(
-    /** interruptor principal,SystemPromptAssembler inyectará mensajes de colaboración entre múltiples agentes solo después de que esté activado. */
+    /** 总开关,开启后 SystemPromptAssembler 才会注入多 Agent 协作提示。 */
     val enabled: Boolean = true,
-    /** v1.200: Conmutador de enrutamiento automático. Después de activarlo, cuando el mensaje del usuario tiene un grado bajo de coincidencia con el asistente actual, se delegará automáticamente a un Agente/Equipo más adecuado. */
+    /** v1.200: 自动路由开关。开启后，当用户消息与当前助手匹配度低时，自动委派给更合适的 Agent/团队。 */
     val autoRoutingEnabled: Boolean = false,
     /**
-     * v2.x: LLM Conmutador de enrutamiento semántico(Desactivado predeterminado).
+     * v2.x: LLM 语义路由开关(默认关)。
      *
-     * Después de abrir,[io.zer0.muse.tools.AgentRouter.routeWithLlm] Utilizará LLM para determinar el mejor objetivo de ruta,
-     * Enrutamiento de reglas de palabras clave alternativas.LLM Baja automáticamente al enrutamiento de reglas cuando la llamada falla o devuelve una identificación no válida.
-     * cuando está cerrado(Predeterminado)Siga la ruta habitual,El comportamiento es coherente con v1.x.
+     * 开启后,[io.zer0.muse.tools.AgentRouter.routeWithLlm] 会用 LLM 判断最佳路由目标,
+     * 替代关键词规则路由。LLM 调用失败或返回无效 ID 时自动降级到规则路由。
+     * 关闭时(默认)走规则路由,行为与 v1.x 一致。
      *
-     * con [llmReviewEnabled] diferente,Este campo está serializado con MultiAgentConfig JSON,
-     * Porque no existe un método de guardado independiente.,No existe ninguna condición de carrera de doble escritura.
+     * 与 [llmReviewEnabled] 不同,本字段随 MultiAgentConfig JSON 序列化,
+     * 因为没有独立的 save 方法,不存在双写竞态。
      */
     val llmRoutingEnabled: Boolean = false,
-    /** Listado de equipos colaborativos creados por el usuario. */
+    /** 用户创建的协作团队列表。 */
     val teams: List<AgentTeam> = emptyList(),
-    /** Equipo predeterminado id,Si no se especifica, el asistente principal lo elegirá por sí mismo. */
+    /** 默认团队 id,未指定时主助手自行选择。 */
     val defaultTeamId: String? = null,
     /**
-     * v1.201: Estrategia de pausa en la colaboración entre humanos y máquinas(Se mantuvo con MultiAgentConfig para DataStore).
+     * v1.201: 人机协作暂停策略(随 MultiAgentConfig 一起持久化到 DataStore)。
      *
-     * Nota:[DelegationPauseManager.PausePolicy] debe ser @Serializable data class
-     * Para serializar con MultiAgentConfig. actual [DelegationPauseManager.PausePolicy] no traído
-     * @Serializable anotación,Debe agregarse en DelegationPauseManager.kt(Consulte la lista de cambios sugeridos para obtener más detalles.).
+     * 注意:[DelegationPauseManager.PausePolicy] 必须为 @Serializable data class
+     * 才能随 MultiAgentConfig 序列化。当前 [DelegationPauseManager.PausePolicy] 未带
+     * @Serializable 注解,需在 DelegationPauseManager.kt 中补充(详见修改建议清单)。
      */
     val pausePolicy: io.zer0.muse.tools.DelegationPauseManager.PausePolicy = io.zer0.muse.tools.DelegationPauseManager.PausePolicy(),
     /**
-     * v1.201: LLM Modelo utilizado en revisión integral id(situación general,Compartir entre equipos).
-     * Vacío significa usar el modelo predeterminado del proveedor activo.
-     * persistir en independencia DataStore key: multi_agent_review_model(@Transient:No serializado con JSON,
-     * Leer y escribir mediante clave independiente.,Evite condiciones de carrera de doble escritura entre updateMultiAgentConfig y el método de guardado independiente).
+     * v1.201: LLM 综合评审使用的模型 id(全局,跨团队共享)。
+     * 空表示用 active provider 的默认模型。
+     * 持久化到独立 DataStore key: multi_agent_review_model(@Transient:不随 JSON 序列化,
+     * 由独立 key 读写,避免 updateMultiAgentConfig 与独立 save 方法双写竞态)。
      */
     @kotlinx.serialization.Transient
     val reviewModelId: String? = null,
     /**
-     * v1.201: Cambio de revisión integral de Global LLM(Desactivado predeterminado).
-     * Después de abrir,En realidad, se llama a la revisión de LLM cuando el flujo de trabajo del equipo selecciona la estrategia de agregación LLM_REVIEW.;
-     * LLM_REVIEW baja automáticamente a EXPERT_REVIEW al apagar.
-     * Persistir en la clave de DataStore independiente: multi_agent_llm_review_enabled.
+     * v1.201: 全局 LLM 综合评审开关(默认关)。
+     * 开启后,团队工作流选 LLM_REVIEW 聚合策略时才会真正调用 LLM 评审;
+     * 关闭时 LLM_REVIEW 自动降级为 EXPERT_REVIEW。
+     * 持久化到独立 DataStore key: multi_agent_llm_review_enabled。
      */
     @kotlinx.serialization.Transient
     val llmReviewEnabled: Boolean = false,

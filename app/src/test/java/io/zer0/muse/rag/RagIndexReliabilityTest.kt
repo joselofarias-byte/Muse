@@ -57,7 +57,7 @@ class RagIndexReliabilityTest {
     ): RagService {
         val embedding = mockk<EmbeddingService>()
         coEvery { embedding.getProvider(any()) } returns provider
-        // RagService Puede leer el estado del backend y hacer“¿Cuál estás usando realmente ahora? embedding”Para el diagnóstico, el sustituto debe dar un valor.
+        // RagService 会读后端状态做“当前实际在用哪个 embedding”的诊断，替身要给一个值
         every { embedding.activeBackend } returns MutableStateFlow(null)
         return RagService(
             chunkDao = chunkDao,
@@ -98,8 +98,8 @@ class RagIndexReliabilityTest {
         assertTrue("indexing must surface the inserted-chunk failure", failure is IllegalStateException)
         assertTrue("failed replacement must not leave stale or partial chunks", rows.isEmpty())
         coVerify(exactly = 2) { chunkDao.deleteByDoc("new-doc") }
-        // P0-3(informe de auditoría): Una falla a mitad de camino ya no borrará silenciosamente el estado del índice, sino que se marcará como "índice perdido".
-        // El comportamiento anterior hacía que la interfaz de usuario pareciera simplemente "no indexada" y los usuarios no sabían que el documento estaba indexado originalmente y ahora los datos desaparecieron.
+        // P0-3（审计报告）: 中途失败不再静默 clearIndexStatus，而是标记为「索引已丢」。
+        // 旧行为让 UI 看起来只是「未索引」，用户不知道该文档原本建过索引、现在数据没了。
         coVerify(exactly = 1) { docDao.markIndexBroken("new-doc") }
     }
 

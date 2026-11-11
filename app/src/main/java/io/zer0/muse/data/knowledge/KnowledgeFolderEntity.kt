@@ -14,27 +14,27 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.serialization.Serializable
 
 /**
- * v2.4.6: Entidad de carpeta de base de conocimientos — Cree "carpetas" ciudadanas de primera clase que puedan existir de forma independiente (incluidas las carpetas vacías).
+ * v2.4.6: 知识库文件夹实体 — 让「文件夹」成为可独立存在（含空文件夹）的一等公民。
  *
- * fondo:Anteriormente la carpeta era**camino virtual**(existe [KnowledgeDocEntity.metadataJson] de ruta de carpeta),
- * Una carpeta sin ningún documento no tiene ningún contenido, por lo que no se puede implementar "Nueva carpeta".
- * Esta tabla almacena un registro para cada carpeta, de modo que las carpetas vacías también se puedan mostrar en el árbol de archivos.
+ * 背景:此前文件夹是**虚拟路径**（存在 [KnowledgeDocEntity.metadataJson] 的 folderPath 里），
+ * 一个没有任何文档的文件夹没有任何承载物，于是「新建文件夹」无法实现。
+ * 本表为每个文件夹存一条记录，使空文件夹也能在文件树里显示。
  *
- * visión del mundo (v2.4.6 (de):
- *  - base de conocimientos(KB)= raíz;carpeta = Subdirectorios bajo la raíz,El camino parece `contrato` / `contrato/2026`.
- *  - La carpeta también es**Recuperar unidades de cuarentena**:vinculante/Al acceder a una ruta de carpeta,El alcance de la búsqueda se limita a esta ruta.
- *    y todos los documentos bajo sus subrutas,Está separada de otras carpetas.
- *  - [path] es una ruta relativa dentro de KB,raíz(= KB mismo)Representado por una cadena vacía,No dejes de dar en el blanco.
+ * 世界观（v2.4.6 起）:
+ *  - 知识库(KB)= 根;文件夹 = 根下的子目录,路径形如 `合同` / `合同/2026`。
+ *  - 文件夹同时是**检索隔离单位**:绑定/访问某文件夹路径时,检索范围限定为该路径
+ *    及其子路径下的全部文档,与其它文件夹互不串。
+ *  - [path] 为 KB 内相对路径,根(= KB 本身)用空串表示,不落表。
  *
- * Relación con el documento:Los documentos aún conservan la ruta de la carpeta en su propio Json de metadatos (única fuente de verdad),Este reloj sólo es responsable de
- * "Incluso sin documentación,Esta carpeta también existe." Fusione dos fuentes al leer un árbol de carpetas.
+ * 与文档的关系:文档仍在自己的 metadataJson 里保留 folderPath（单一真源）,本表只负责
+ * 「即使没有文档,这个文件夹也存在」。读取文件夹树时合并两处来源。
  *
- * @param id clave primaria,Formato "kbfolder-{kbId}-{path}"(La ruta es única bajo la misma KB.)
- * @param kbId Base de conocimientos de pertenencia id
- * @param path KB ruta relativa interna(Después de la normalización,Sin barras diagonales iniciales y finales),No vacío
- * @param name Nombre para mostrar de la carpeta(final del camino)
- * @param createdAt tiempo de creación
- * @param updatedAt Hora de actualización
+ * @param id 主键,格式 "kbfolder-{kbId}-{path}"(同一 KB 下 path 唯一)
+ * @param kbId 所属知识库 id
+ * @param path KB 内相对路径(归一化后,无首尾斜杠),非空
+ * @param name 文件夹显示名(路径末段)
+ * @param createdAt 创建时间
+ * @param updatedAt 更新时间
  */
 @Serializable
 @Entity(
@@ -55,7 +55,7 @@ data class KnowledgeFolderEntity(
 
 @Dao
 interface KnowledgeFolderDao {
-    /** Listar todas las carpetas explícitas(También se devuelven las carpetas vacías.). */
+    /** 列出全部显式文件夹(空文件夹也会返回)。 */
     @Query("SELECT * FROM knowledge_folders ORDER BY kb_id, path")
     fun observeAll(): Flow<List<KnowledgeFolderEntity>>
 
@@ -65,7 +65,7 @@ interface KnowledgeFolderDao {
     @Query("SELECT * FROM knowledge_folders WHERE kb_id = :kbId ORDER BY path")
     suspend fun getByKb(kbId: String): List<KnowledgeFolderEntity>
 
-    /** Exportación completa(Para respaldo). */
+    /** 全量导出(备份用)。 */
     @Query("SELECT * FROM knowledge_folders ORDER BY kb_id, path")
     suspend fun getAll(): List<KnowledgeFolderEntity>
 
@@ -75,11 +75,11 @@ interface KnowledgeFolderDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(folder: KnowledgeFolderEntity)
 
-    /** Eliminar registros de carpeta de una ruta y todas sus subrutas(Se utiliza para \"Eliminar carpeta con subdirectorios\"). */
+    /** 删除某路径及其全部子路径的文件夹记录(用于「删除文件夹并含子目录」)。 */
     @Query("DELETE FROM knowledge_folders WHERE kb_id = :kbId AND (path = :path OR path LIKE :path || '/%')")
     suspend fun deleteByPathRecursive(kbId: String, path: String)
 
-    /** Obtener todas las carpetas en una ruta y sus subrutas(Cambiar nombre/Vuelva a calcular la ruta y en la memoria al mover el subárbol name). */
+    /** 取某路径及其子路径的全部文件夹(重命名/移动子树时在内存里重算 path 与 name)。 */
     @Query("SELECT * FROM knowledge_folders WHERE kb_id = :kbId AND (path = :path OR path LIKE :path || '/%')")
     suspend fun getByPathRecursive(kbId: String, path: String): List<KnowledgeFolderEntity>
 

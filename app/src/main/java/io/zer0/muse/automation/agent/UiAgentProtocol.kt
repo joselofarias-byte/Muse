@@ -1,10 +1,10 @@
 package io.zer0.muse.automation.agent
 
 /**
- * v2.2.1 GUI Agent anillo:Análisis del protocolo de actuación(pura logica,Se puede probar individualmente).
+ * v2.2.1 GUI Agent 环:动作协议解析(纯逻辑,可单测)。
  *
- * Texto libre de salida del modelo visual,El acuerdo se lleva uno de ellos.**el ultimo** `do(...)` o `finish(...)` expresión
- * (Los modelos suelen proporcionar primero inferencias y luego conclusiones.). Los parámetros están en la forma. key=value,Ticket de soporte de valor/cadena entre comillas dobles(Puede contener comas).
+ * 视觉模型输出自由文本,协议取其中**最后一个** `do(...)` 或 `finish(...)` 表达式
+ * (模型常先给推理再给结论)。参数形如 key=value,值支持单/双引号字符串(可含逗号)。
  */
 object UiAgentProtocol {
 
@@ -33,7 +33,7 @@ object UiAgentProtocol {
 
     private data class Expression(val kind: String, val body: String, val start: Int, val endExclusive: Int)
 
-    /** Salida del modelo analítico;Devuelve nulo si no hay ninguna acción válida. Expresiones entre comillas/escapar de paréntesis conscientes,Admite paréntesis en los parámetros. */
+    /** 解析模型输出;无有效动作返回 null。表达式按引号/转义感知括号,支持参数中出现括号。 */
     fun parse(raw: String): Action? {
         val expressions = findExpressions(raw)
         val last = expressions.lastOrNull() ?: return null
@@ -44,7 +44,7 @@ object UiAgentProtocol {
         }
     }
 
-    /** Encuentra la última expresión completa de hacer/terminar;Al escanear una expresión completa se omiten paréntesis y pseudoacciones entre comillas. */
+    /** 找到最后一个完整的 do/finish 表达式;扫描完整表达式时会跳过引号内的括号与伪动作。 */
     private fun findExpressions(raw: String): List<Expression> {
         val expressions = mutableListOf<Expression>()
         var cursor = 0
@@ -91,17 +91,17 @@ object UiAgentProtocol {
         return null
     }
 
-    /** Una descripción legible por humanos de la acción.(Se utiliza para rellenar el historial de acciones.). */
+    /** 动作的人类可读描述(用于动作史回填)。 */
     fun describe(action: Action): String = when (action) {
-        is Action.Tap -> "Haga clic(${action.x},${action.y})"
-        is Action.TapText -> "clic semántico(desplazamiento limitado ${action.maxSwipes} veces)"
-        is Action.TapId -> "Clic en el ID de control(desplazamiento limitado ${action.maxSwipes} veces)"
-        is Action.Swipe -> "Deslizar(${action.x1},${action.y1})→(${action.x2},${action.y2})"
-        is Action.TextInput -> "Introducir texto(${action.text.length}personaje)"
-        is Action.Key -> "Botón ${action.key}"
-        is Action.Launch -> "empezar ${action.packageName}"
-        is Action.Wait -> "espera ${action.ms}ms"
-        is Action.Finish -> "fin"
+        is Action.Tap -> "点击(${action.x},${action.y})"
+        is Action.TapText -> "语义点击(有界滚动 ${action.maxSwipes} 次)"
+        is Action.TapId -> "控件 ID 点击(有界滚动 ${action.maxSwipes} 次)"
+        is Action.Swipe -> "滑动(${action.x1},${action.y1})→(${action.x2},${action.y2})"
+        is Action.TextInput -> "输入文本(${action.text.length}字符)"
+        is Action.Key -> "按键 ${action.key}"
+        is Action.Launch -> "启动 ${action.packageName}"
+        is Action.Wait -> "等待 ${action.ms}ms"
+        is Action.Finish -> "结束"
     }
 
     private fun parseFinish(args: Map<String, String>): Action.Finish {
@@ -169,7 +169,7 @@ object UiAgentProtocol {
         }
     }
 
-    /** Extracto key=value; Los valores entre comillas admiten comas, paréntesis y comillas de escape.,Valor sin comillas a coma/hasta quedar en blanco. */
+    /** 提取 key=value; 引号值支持逗号、括号和转义引号,无引号值到逗号/空白为止。 */
     private fun parseArgs(body: String): Map<String, String> {
         val args = linkedMapOf<String, String>()
         var index = 0

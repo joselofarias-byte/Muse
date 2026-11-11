@@ -2,8 +2,8 @@ import { DEFAULT_LOCALE, type Locale } from "./locale.js";
 import { translate } from "./translate.js";
 
 /**
- * Localización de hora/número: utilice Intl de manera uniforme, no escriba el mes y la semana usted mismo.
- * Procese únicamente la parte donde "el extremo local puede determinar el formato";Host La copia emitida seguirá mostrándose tal como está.
+ * 时间 / 数字的本地化：统一走 Intl，不自己拼月份和星期。
+ * 只处理「本端能决定格式」的部分；Host 下发的文案仍原样显示。
  */
 const MINUTE = 60_000;
 const HOUR = 60 * MINUTE;
@@ -26,14 +26,14 @@ function sameDay(a: number, b: number): boolean {
   );
 }
 
-/** tiempo:puntos (24 Reloj horario, utilice Intl para seguir la convención de idioma). */
+/** 时:分（24 小时制，跟随语言习惯用 Intl）。 */
 export function formatClock(value: number | Date | undefined, locale: Locale = DEFAULT_LOCALE): string {
   const ms = toMillis(value);
   if (ms === undefined) return "";
   return new Intl.DateTimeFormat(locale, { hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(ms));
 }
 
-/** Mes y día (mismo año); para año nuevo, indique año, mes y día. */
+/** 月日（同年）；跨年给年月日。 */
 export function formatMonthDay(value: number | Date | undefined, locale: Locale = DEFAULT_LOCALE, now = Date.now()): string {
   const ms = toMillis(value);
   if (ms === undefined) return "";
@@ -46,7 +46,7 @@ export function formatMonthDay(value: number | Date | undefined, locale: Locale 
   }).format(date);
 }
 
-/** La hora en la lista de conversaciones: proporcione la hora del mismo día, proporcione el mes y el día del mismo año y proporcione la fecha completa si abarca años nuevos. */
+/** 会话列表里的时间：当天给时刻，同年给月日，跨年给完整日期。 */
 export function formatSessionTime(value: number | undefined, locale: Locale = DEFAULT_LOCALE, now = Date.now()): string {
   const ms = toMillis(value);
   if (ms === undefined) return "";
@@ -55,8 +55,8 @@ export function formatSessionTime(value: number | undefined, locale: Locale = DE
 }
 
 /**
- * Tiempo relativo: Justo ahora / Hace N minutos / Hace N horas / Ayer / Hace N días / Antes indique la fecha.
- * función pura,now y la configuración regional los proporciona la persona que llama y la prueba puede solucionarlos.
+ * 相对时间：刚刚 / N 分钟前 / N 小时前 / 昨天 / N 天前 / 更早给日期。
+ * 纯函数，now 与 locale 都由调用方给，测试可以固定。
  */
 export function formatRelativeTime(
   value: number | Date | undefined,
@@ -66,7 +66,7 @@ export function formatRelativeTime(
   const ms = toMillis(value);
   if (ms === undefined) return "";
   const diff = now - ms;
-  // Hora futura (por ejemplo, próxima ejecución): diga "N "después" en lugar de "justo ahora".
+  // 未来时间（例如下次执行）：说「N 后」而不是「刚刚」。
   if (diff < 0) {
     const ahead = -diff;
     if (ahead < MINUTE) return translate(locale, "time.inMoments");
@@ -87,7 +87,7 @@ export function formatRelativeTime(
   return formatMonthDay(ms, locale, now);
 }
 
-/** La barra separadora de tiempo de la lista de mensajes: hoy/ayer con hora, antes con fecha + hora. */
+/** 消息列表的时间分隔条：今天 / 昨天 带时刻，更早给日期 + 时刻。 */
 export function formatDayLabel(value: number | undefined, now: number = Date.now(), locale: Locale = DEFAULT_LOCALE): string {
   const ms = toMillis(value);
   if (ms === undefined) return "";
@@ -100,7 +100,7 @@ export function formatDayLabel(value: number | undefined, now: number = Date.now
   return `${formatMonthDay(ms, locale, now)} ${clock}`;
 }
 
-/** Duración (tiempo de ejecución, etc.): minutos/horas/días en unidades internacionales. */
+/** 时长（运行时间等）：分钟 / 小时 / 天，走 Intl 单位。 */
 export function formatDuration(ms: number | undefined, locale: Locale = DEFAULT_LOCALE): string {
   if (ms === undefined || !Number.isFinite(ms) || ms < 0) return "";
   const minutes = Math.round(ms / 60_000);
@@ -110,7 +110,7 @@ export function formatDuration(ms: number | undefined, locale: Locale = DEFAULT_
   return new Intl.NumberFormat(locale, { style: "unit", unit: "day", maximumFractionDigits: 1 }).format(hours / 24);
 }
 
-/** Tamaño de archivo: proporcione bytes para menos de 1 KB, KB/MB para el resto (Intl formato de unidad). */
+/** 文件大小：小于 1KB 给字节，其余给 KB / MB（Intl 单位格式化）。 */
 export function formatBytes(bytes: number | undefined, locale: Locale = DEFAULT_LOCALE): string {
   if (bytes === undefined || !Number.isFinite(bytes) || bytes < 0) return "";
   if (bytes < 1024) return new Intl.NumberFormat(locale, { style: "unit", unit: "byte", maximumFractionDigits: 0 }).format(bytes);
@@ -119,7 +119,7 @@ export function formatBytes(bytes: number | undefined, locale: Locale = DEFAULT_
   return new Intl.NumberFormat(locale, { style: "unit", unit: "megabyte", maximumFractionDigits: 1 }).format(kilobytes / 1024);
 }
 
-/** Números: agrupados por idioma (p. ej. 1,234 / 1 234). */
+/** 数字：按语言分组（例如 1,234 / 1 234）。 */
 export function formatNumber(value: number, locale: Locale = DEFAULT_LOCALE, options?: Intl.NumberFormatOptions): string {
   if (!Number.isFinite(value)) return "";
   return new Intl.NumberFormat(locale, options).format(value);

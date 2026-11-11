@@ -6,19 +6,19 @@ import org.junit.Test
 import java.io.File
 
 /**
- * AUD-20261011-NDJSON-FOLDERS: NDJSON Restaurar la guardia de integridad de la distribución.
+ * AUD-20261011-NDJSON-FOLDERS: NDJSON 恢复分发完整性守护。
  *
- * Antecedentes de defectos (.audit REPORT_DATA F1): v2.4.6 Solo se agrega la línea de exportación al conectar la carpeta de la base de conocimientos
- * (writeTypedLines "knowledgeFolder") y meta recuento, falta applyNdJsonStreaming
- * de when(type) Ramas de distribución y buffers de recuperación —— No se puede reponer después de eliminar todo en la fase de compensación.
- * Cada vez que se restaura NDJSON, se borrarán todas las carpetas de la base de conocimientos del usuario y la conciliación B-34 solo cuenta el número de líneas analizadas, no las verifica ni las almacena, y se pierde silenciosamente.
+ * 缺陷背景（.audit REPORT_DATA F1）: v2.4.6 知识库文件夹接线时只加了导出行
+ * （writeTypedLines "knowledgeFolder"）与 meta 计数，漏了 applyNdJsonStreaming
+ * 的 when(type) 分发分支与恢复缓冲 —— 清空阶段 deleteAll 后无法回填，
+ * 每次 NDJSON 恢复都会清空用户全部知识库文件夹，且 B-34 对账只数解析行数、不验入库，静默丢失。
  *
- * Este guardia utiliza la lista de campos de clase de datos Backup.Backup como fuente de verdad, afirmando el tipo de cada fila de exportación NDJSON.
- * Hay casos correspondientes en el distribuidor de recuperación para evitar"Exportado pero no se puede volver a importar"Sucedió de nuevo.
+ * 本守护以 Backup.Backup 数据类字段清单为真源，断言每个有 NDJSON 导出行的类型
+ * 在恢复分发器里都有对应 case，杜绝"导出了但导不回"再次发生。
  */
 class BackupNdJsonFolderRestoreTest {
 
-    /** Exportar tipo de fila lateral → La entidad DAO/ID de búfer que debe aparecer correspondiente a la rama de distribución de recuperación. */
+    /** 导出侧行类型 → 对应恢复分发分支必须出现的实体 DAO/缓冲标识。 */
     private val exportedTypeToRestoreMarker = mapOf(
         "session" to "sessionBuf",
         "message" to "messageBuf",
@@ -40,11 +40,14 @@ class BackupNdJsonFolderRestoreTest {
         "worldBookEntry" to "worldBookBuf",
         "conversationEvent" to "convEventBuf",
         "conversationTurn" to "convTurnBuf",
+        "conversationCommandReceipt" to "conversationCommandReceiptBuf",
+        "conversationSelection" to "conversationSelectionBuf",
+        "conversationDisplaySlot" to "conversationDisplaySlotBuf",
         "messagePart" to "messagePartBuf",
         "messageOutbox" to "messageOutboxBuf",
         "translateHistory" to "translateHistoryBuf",
         "knowledgeBase" to "knowledgeBaseBuf",
-        // AUD-20261011-NDJSON-FOLDERS: Brecha reparada esta vez —— La distribución de recuperación debe tener conocimientoRama de carpetas
+        // AUD-20261011-NDJSON-FOLDERS: 本次修复的缺口 —— 恢复分发必须有 knowledgeFolder 分支
         "knowledgeFolder" to "knowledgeFolderBuf",
         "subagentThread" to "subagentThreadBuf",
         "toolRound" to "toolRoundBuf",
@@ -52,18 +55,21 @@ class BackupNdJsonFolderRestoreTest {
         "groupChatMemory" to "groupChatMemoryBuf",
         "knowledgeChunk" to "knowChunkBuf",
         "knowledgeDoc" to "knowDocBuf",
-        // v2.6.7 fix (AUDIT F1): La rama de recuperación de la relación de tareas pendientes y roles debe tener los buffers correspondientes.
+        // v2.6.7 fix (AUDIT F1): 待办与角色关系的恢复分支必须有对应缓冲。
         "sessionTodo" to "sessionTodoBuf",
         "assistantRelationship" to "assistantRelationshipBuf",
-        // v2.6.8: Entidad de tarjeta. La tarjeta acoplada solo existe en esta tabla después de abandonar el flujo de mensajes.
+        // v2.6.8: 卡片实体。停靠卡离开消息流后只存在这张表里。
         "cardEntity" to "cardEntityBuf",
-        // v2.6.9: Mensaje activo tres tablas. Espero que el libro de contabilidad y la intimidad se conserven después de cambiar de dispositivo.
+        // v2.6.9: 主动消息三表。指望账本与亲密度换机后还能留住。
         "pendingThought" to "pendingThoughtBuf",
         "proactiveOutcome" to "proactiveOutcomeBuf",
         "proactiveRelation" to "proactiveRelationBuf",
+        "sessionProactivePreference" to "sessionProactivePreferenceBuf",
+        // v2.7.x(E2): 术语表。用户的确认不可从历史重新推导，恢复分支必须有对应缓冲。
+        "sessionTerm" to "sessionTermBuf",
     )
 
-    /** Extraiga todos los tipos de línea de writeTypedLines en el lado de exportación del código fuente. */
+    /** 从源码提取导出侧 writeTypedLines 的全部行类型。 */
     private fun exportedTypes(): List<String> {
         val source = File("src/main/java/io/zer0/muse/backup/BackupService.kt").readText()
         return Regex("writeTypedLines\\(\\s*writer,\\s*\"([a-zA-Z]+)\"")
@@ -80,25 +86,44 @@ class BackupNdJsonFolderRestoreTest {
             "private suspend fun applyNdJsonStreamingWithImageCleanup",
             startIndex = start,
         )
-        require(start >= 0 && end > start) { "No se puede localizar el límite del método de restauración NDJSON" }
+        require(start >= 0 && end > start) { "无法定位 NDJSON 恢复方法边界" }
         val dispatch = source.substring(start, end)
 
         val missing = exportedTypes()
             .filter { it != "meta" && it != "settings" && it != "scopedFact" && it != "fileStore" }
             .mapNotNull { type ->
                 val marker = exportedTypeToRestoreMarker[type]
-                    ?: return@mapNotNull "$type(Al mapa de prueba le falta el ID de la rama de recuperación,Por favor complete el formulario)"
+                    ?: return@mapNotNull "$type(测试映射表缺少恢复分支标识,请补表)"
                 if (dispatch.contains("\"$type\" ->") && dispatch.contains(marker)) {
                     null
                 } else {
-                    "$type(Escasez de distribución \" $type\" -> case o buffer $marker)"
+                    "$type(分发缺 \" $type\" -> case 或缓冲 $marker)"
                 }
             }
         assertEquals(
-            "NDJSON Restaurar la distribución de sucursales a las que les faltan tipos de exportación(No se puede reponer después de la limpieza,Recuperar datos perdidos):\n" + missing.joinToString("\n"),
+            "NDJSON 恢复分发缺导出类型的分支(清空后无法回填,恢复即丢数据):\n" + missing.joinToString("\n"),
             emptyList<String>(),
             missing,
         )
+    }
+
+    @Test
+    fun `ndjson meta map covers every individually exported type`() {
+        val source = File("src/main/java/io/zer0/muse/backup/BackupService.kt").readText()
+        val mappingBlock =
+            source.substringAfter("private val ndjsonTypeToMetaKey: Map<String, String> = mapOf(")
+                .substringBefore(")")
+        val mappedTypes =
+            Regex("\"([a-zA-Z]+)\"\\s+to\\s+\"")
+                .findAll(mappingBlock)
+                .map { it.groupValues[1] }
+                .toSet()
+
+        val missing =
+            exportedTypes()
+                .filter { it !in setOf("meta", "settings", "fileStore") }
+                .filterNot { it in mappedTypes }
+        assertEquals("exported NDJSON types missing a meta count key: $missing", emptyList<String>(), missing)
     }
 
     @Test
@@ -111,15 +136,15 @@ class BackupNdJsonFolderRestoreTest {
         )
         val dispatch = source.substring(start, end)
         assertTrue(
-            "knowledgeFolder El búfer debe vaciarse dentro de la transacción de recuperación (knowledgeFolderDao().upsert)",
+            "knowledgeFolder 缓冲必须在恢复事务内 flush 落库（knowledgeFolderDao().upsert）",
             dispatch.contains("knowledgeFolderDao().upsert"),
         )
     }
 
     /**
-     * AUD-20261011-NDJSON-FOLDERS (REPORT_DATA F2): buildBackup() La construcción de respaldo
-     * Se deben pasar DbSnapshot.knowledgeFolders —— Esta función también es la fuente de instantánea del punto de recuperación.
-     * (writeRecoveryPoint → applyBackupInternal ruta de reversión), transmisión perdida=Si la recuperación falla, todas las carpetas se borrarán y se revertirán.
+     * AUD-20261011-NDJSON-FOLDERS (REPORT_DATA F2): buildBackup() 的 Backup 构造
+     * 必须把 DbSnapshot.knowledgeFolders 传入 —— 该函数同时是 recovery point 的快照来源
+     * （writeRecoveryPoint → applyBackupInternal 回滚路径），漏传=恢复失败回滚清空全部文件夹。
      */
     @Test
     fun `buildBackup passes knowledgeFolders from snapshot into Backup`() {
@@ -127,18 +152,18 @@ class BackupNdJsonFolderRestoreTest {
         val start = source
             .indexOf("private suspend fun buildBackup(includeSecrets: Boolean = false): Backup {")
             .let { if (it >= 0) it else source.indexOf("private suspend fun buildBackup(): Backup {") }
-        require(start >= 0) { "No se puede localizar el método buildBackup" }
+        require(start >= 0) { "无法定位 buildBackup 方法" }
         val end = source.indexOf("private suspend fun", startIndex = start + 40)
         val body = source.substring(start, if (end > start) end else source.length)
 
         assertTrue(
-            "buildBackup Se debe leer la instantánea knowledgeFolderDao().getAll()",
+            "buildBackup 快照必须读取 knowledgeFolderDao().getAll()",
             body.contains("knowledgeFolderDao().getAll()"),
         )
-        // La lista de parámetros del constructor debe pasarse explícitamente. knowledgeFolders =(De lo contrario, DbSnapshot no se leerá en la copia de seguridad)
+        // 构造实参列表里必须显式传 knowledgeFolders =（否则 DbSnapshot 读到也没进 Backup）
         assertTrue(
-            "buildBackup de Backup(...) La construcción debe pasar el parámetro KnowledgeFolders." +
-                "(recovery point Rollback depende de él para rellenar la carpeta)",
+            "buildBackup 的 Backup(...) 构造必须传 knowledgeFolders 参数" +
+                "（recovery point 回滚依赖它回填文件夹）",
             Regex("knowledgeFolders\\s*=\\s*snap\\.knowledgeFolders").containsMatchIn(body),
         )
     }

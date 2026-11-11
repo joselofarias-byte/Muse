@@ -6,15 +6,15 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Bloquee la coherencia de las instrucciones para traducción única y por lotes.
+ * 锁定单条与批量翻译的指令一致性。
  *
- * Causa: Al conectar la traducción por lotes al glosario, inicialmente copié la forma antigua de escribir por lotes (estilo incorporado +
- * Superposición de estilo personalizado), mientras que una sola traducción es "sobrescritura de visitas personalizadas incorporada". La misma opción de estilo está disponible en
- * De ambos caminos surgen distintos estilos de traducción —— Este tipo de desacuerdo no provocará que se informe un error de ninguna de las partes y solo puede solucionarse mediante afirmaciones.
+ * 起因：把批量翻译接上术语表时，我一开始照抄了批量的旧写法（内置风格 +
+ * 自定义风格叠加），而单条翻译是「自定义命中则覆盖内置」。同一个风格选项在
+ * 两条路径上产生不同译风 —— 这类分歧不会让任何一侧报错，只能靠断言钉住。
  */
 class TranslatePromptStylePrecedenceTest {
 
-    private val custom = TranslateViewModel.CustomStyle(name = "estilo antiguo", prompt = "Traducir al chino clásico")
+    private val custom = TranslateViewModel.CustomStyle(name = "古风", prompt = "用文言文翻译")
 
     private fun countWhere(prompt: String, needle: String): Int = prompt.lineSequence().count { it.contains(needle) }
 
@@ -22,28 +22,28 @@ class TranslatePromptStylePrecedenceTest {
     fun `custom style overrides builtin style in single prompt`() {
         val prompt = TranslateViewModel.buildTranslationPrompt(
             text = "hello",
-            targetLanguage = "chino",
-            style = "estilo antiguo",
+            targetLanguage = "中文",
+            style = "古风",
             customStyles = listOf(custom),
         )
-        assertTrue(prompt.contains("Traducir al chino clásico"))
-        // Las instrucciones integradas no deben aparecer al mismo tiempo.
-        assertFalse(prompt.contains("Utilice expresiones comunes, precisas y naturales."))
+        assertTrue(prompt.contains("用文言文翻译"))
+        // 内置兜底指令不得同时出现
+        assertFalse(prompt.contains("使用通用、准确、自然的表达方式"))
     }
 
     @Test
     fun `batch prompt obeys custom style the same way as single`() {
         val batch = TranslateViewModel.buildBatchPrompt(
             texts = listOf("hello"),
-            targetLanguage = "chino",
-            sourceLanguage = "ingles",
-            style = "estilo antiguo",
+            targetLanguage = "中文",
+            sourceLanguage = "英语",
+            style = "古风",
             customStyles = listOf(custom),
         )
-        assertTrue("El lote debe usar un estilo personalizado", batch.contains("Traducir al chino clásico"))
+        assertTrue("批量应使用自定义风格", batch.contains("用文言文翻译"))
         assertFalse(
-            "Los estilos integrados y los estilos personalizados no se deben superponer en lotes (se debe mantener la misma prioridad que los elementos individuales)",
-            batch.contains("Utilice expresiones comunes, precisas y naturales."),
+            "批量不得把内置风格与自定义风格叠加（与单条保持同一优先级）",
+            batch.contains("使用通用、准确、自然的表达方式"),
         )
     }
 
@@ -51,38 +51,38 @@ class TranslatePromptStylePrecedenceTest {
     fun `unknown style falls back to builtin in both prompts`() {
         val single = TranslateViewModel.buildTranslationPrompt(
             text = "hello",
-            targetLanguage = "chino",
-            style = "academico",
+            targetLanguage = "中文",
+            style = "学术",
         )
         val batch = TranslateViewModel.buildBatchPrompt(
             texts = listOf("hello"),
-            targetLanguage = "chino",
-            sourceLanguage = "ingles",
-            style = "academico",
+            targetLanguage = "中文",
+            sourceLanguage = "英语",
+            style = "学术",
         )
-        assertTrue(single.contains("Utiliza expresiones académicas, formales y rigurosas."))
-        assertTrue(batch.contains("Utiliza expresiones académicas, formales y rigurosas."))
+        assertTrue(single.contains("使用学术、正式、严谨的表达方式"))
+        assertTrue(batch.contains("使用学术、正式、严谨的表达方式"))
     }
 
     @Test
     fun `glossary line appears exactly once in each prompt`() {
-        val glossary = mapOf("API" to "API")
+        val glossary = mapOf("API" to "应用程序接口")
         val single = TranslateViewModel.buildTranslationPrompt(
             text = "use API",
-            targetLanguage = "chino",
+            targetLanguage = "中文",
             glossary = glossary,
         )
         val batch = TranslateViewModel.buildBatchPrompt(
             texts = listOf("use API"),
-            targetLanguage = "chino",
-            sourceLanguage = "ingles",
-            style = "Universales",
+            targetLanguage = "中文",
+            sourceLanguage = "英语",
+            style = "通用",
             glossary = glossary,
         )
-        // Después de extraer el asistente compartido, las filas del glosario solo pueden provenir de un lugar; Si hay duplicados en el futuro, fallarán aquí primero.
-        assertEquals(1, countWhere(single, "Consulte el siguiente glosario para la traducción."))
-        assertEquals(1, countWhere(batch, "Consulte el siguiente glosario para la traducción."))
-        assertEquals(1, countWhere(single, "API→API"))
-        assertEquals(1, countWhere(batch, "API→API"))
+        // 抽取共享 helper 后，术语表行只可能来自一处；若将来又出现重复，这里先失败
+        assertEquals(1, countWhere(single, "请参考以下术语表"))
+        assertEquals(1, countWhere(batch, "请参考以下术语表"))
+        assertEquals(1, countWhere(single, "API→应用程序接口"))
+        assertEquals(1, countWhere(batch, "API→应用程序接口"))
     }
 }

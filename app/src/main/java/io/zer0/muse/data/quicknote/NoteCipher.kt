@@ -10,10 +10,10 @@ import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 
 /**
- * B3-06: Notas rápidas cifrado AES-GCM real.
+ * B3-06: 快捷笔记真实 AES-GCM 加密。
  *
- * La clave se guarda en Android Keystore,Incluso si se arrastran los datos de la aplicación, el texto sin cifrar no se puede restaurar directamente.
- * Formato de texto cifrado: base64(iv):base64(ciphertext),GCM tag Ya incluido en texto cifrado.
+ * 密钥保存在 Android Keystore,应用数据被拖出也无法直接还原明文。
+ * 密文格式: base64(iv):base64(ciphertext),GCM tag 已包含在 ciphertext 中。
  */
 class NoteCipher {
     private val alias = "muse_quick_notes_aes_gcm"

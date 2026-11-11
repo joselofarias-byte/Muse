@@ -3,17 +3,17 @@ package io.zer0.ai.core
 import io.zer0.ai.anthropic.AnthropicUsage
 import io.zer0.ai.anthropic.anthropicUsageTokens
 import io.zer0.ai.gemini.GeminiUsageMetadata
-import io.zer0.ai.gemini.toUsageTokens as geminiUsageTokens
 import io.zer0.ai.openai.OpenAICompletionPromptTokensDetails
 import io.zer0.ai.openai.OpenAICompletionUsage
-import io.zer0.ai.openai.toUsageTokens as openAIUsageTokens
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import io.zer0.ai.gemini.toUsageTokens as geminiUsageTokens
+import io.zer0.ai.openai.toUsageTokens as openAIUsageTokens
 
 /**
- * El campo de uso de cada proveedor cae en [UsageTokens] De qué subelemento.
+ * 各 provider 的 usage 字段落到 [UsageTokens] 的哪个分项。
  */
 class CacheUsageProviderMappingTest {
 
@@ -30,7 +30,7 @@ class CacheUsageProviderMappingTest {
                 outputTokens = 50,
             )
 
-        // input_tokens No contiene la parte de caché y el calibre sigue siendo el mismo.
+        // input_tokens 本身不含缓存部分，口径保持原样
         assertEquals(100, usage.promptTokens)
         assertEquals(50, usage.completionTokens)
         assertEquals(1_000, usage.cachedTokens)
@@ -38,8 +38,8 @@ class CacheUsageProviderMappingTest {
         assertEquals(200, usage.cacheWriteTokens)
         assertEquals(1_200, usage.cachedTokensTotal)
         assertEquals(150, usage.total)
-        // Anthropic Los input_tokens no contienen caché y el calibre debe declararse al fijar el precio.
-        assertFalse("Anthropic El mensaje no contiene la parte del caché.", usage.promptTokensIncludeCache)
+        // Anthropic 的 input_tokens 不含缓存，计价时要声明口径
+        assertFalse("Anthropic 的 prompt 不含缓存部分", usage.promptTokensIncludeCache)
     }
 
     @Test
@@ -50,7 +50,7 @@ class CacheUsageProviderMappingTest {
         assertEquals(7, usage.completionTokens)
         assertEquals(0, usage.cacheReadTokens)
         assertEquals(0, usage.cacheWriteTokens)
-        assertFalse("Incluso si falta el uso,Anthropic El calibre del aviso todavía está \"sin caché\"", usage.promptTokensIncludeCache)
+        assertFalse("即使 usage 缺失，Anthropic 的 prompt 口径仍是「不含缓存」", usage.promptTokensIncludeCache)
     }
 
     @Test
@@ -65,7 +65,7 @@ class CacheUsageProviderMappingTest {
         assertEquals(800, usage.cachedTokens)
         assertEquals(800, usage.cacheReadTokens)
         assertEquals(0, usage.cacheWriteTokens)
-        // OpenAI Prompt_tokens contiene aciertos de caché y se resta al calcular el precio.
+        // OpenAI 的 prompt_tokens 含缓存命中，计价时相减
         assertTrue(usage.promptTokensIncludeCache)
     }
 
@@ -81,7 +81,7 @@ class CacheUsageProviderMappingTest {
         assertEquals(600, usage.cachedTokens)
         assertEquals(600, usage.cacheReadTokens)
         assertEquals(0, usage.cacheWriteTokens)
-        // Gemini El avisoTokenCount contiene aciertos de caché
+        // Gemini 的 promptTokenCount 含缓存命中
         assertTrue(usage.promptTokensIncludeCache)
     }
 }

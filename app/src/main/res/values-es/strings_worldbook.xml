@@ -1,10 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-  P1-2: Worldbook Cadena de libros del mundo dinámico.
-  con Lorebook(strings_settings_misc.xml)independiente,Worldbook Admite funciones de inyección más avanzadas.
--->
-<resources>
-    <!-- Screen -->
+<resources xmlns:tools="http://schemas.android.com/tools">
     <string name="worldbook_screen_title">Libro del mundo dinámico</string>
     <string name="worldbook_intro">El libro mundial dinámico puede inyectar automáticamente configuraciones de conocimiento relevantes basadas en el contenido de la conversación. Admite activación residente, activación de palabras clave, coincidencia regular e inyección profunda, y es compatible con la importación y exportación del formato SillyTavern World Info.</string>
     <string name="worldbook_new_cd">Crear una nueva entrada de libro mundial</string>
@@ -23,7 +18,7 @@
     <string name="worldbook_delete_cd">Eliminar</string>
     <string name="worldbook_delete_title">eliminar libro mundial</string>
     <string name="worldbook_empty_title">Aún no hay entradas en el Libro Mundial.</string>
-    <string name="worldbook_empty_subtitle">Haga clic en el botón en la esquina inferior derecha para crear su primera entrada.</string>
+    <string name="worldbook_empty_subtitle">Toca en el botón en la esquina inferior derecha para crear su primera entrada.</string>
     <string name="worldbook_keywords_label">Palabras clave: %1$s</string>
     <string name="worldbook_badge_always_active">permanente</string>
     <string name="worldbook_export">Exportar</string>
@@ -31,14 +26,10 @@
     <string name="worldbook_import_success">Importado exitosamente %1$d Artículo</string>
     <string name="worldbook_import_empty">Entrada importable no encontrada</string>
     <string name="worldbook_export_failed">Error al exportar: %1$s</string>
-
-    <!-- Sections -->
     <string name="worldbook_section_basic">Información básica</string>
     <string name="worldbook_section_content">Inyectar contenido</string>
     <string name="worldbook_section_injection">Inyectar configuración</string>
     <string name="worldbook_section_behavior">Comportamiento de coincidencia</string>
-
-    <!-- Fields -->
     <string name="worldbook_field_name">Nombre</string>
     <string name="worldbook_field_keywords">palabras clave</string>
     <string name="worldbook_field_keywords_placeholder">Varias palabras clave separadas por comas</string>
@@ -46,7 +37,6 @@
     <string name="worldbook_field_priority">Prioridad (cuanto mayor sea el valor, primero se inyectará)</string>
     <string name="worldbook_field_inject_target">inyectar objetivo</string>
     <string name="worldbook_field_inject_position">Ubicación de la inyección</string>
-    <!-- v2.0.1: inyectar objetivo/Opciones de ubicación nombre para mostrar localizado -->
     <string name="worldbook_inject_target_system">sistema</string>
     <string name="worldbook_inject_target_user">Usuario</string>
     <string name="worldbook_inject_target_assistant">asistente</string>
@@ -65,11 +55,7 @@
     <string name="worldbook_field_always_active_desc">No se requieren coincidencias de palabras clave, siempre se inyectan en las indicaciones del sistema.</string>
     <string name="worldbook_field_enabled">habilitar</string>
     <string name="worldbook_field_enabled_desc">Cuando está deshabilitada, la entrada no se inyectará.</string>
-
-    <!-- Correcciones en la interfaz (i18n-8): Consejos de exportación -->
     <string name="worldbook_exported_to">Exportado a %1$s</string>
-
-    <!-- Settings entry -->
     <string name="settings_assistant_worldbook">Libro del mundo dinámico</string>
     <string name="settings_assistant_worldbook_subtitle">Inyección rápida dinámica avanzada (residente/palabras clave/regular/profundidad)</string>
 </resources>

@@ -14,7 +14,7 @@ import org.junit.Before
 import org.junit.Test
 
 /**
- * R-TEST-20: ConfigImporter La configuración de terceros se importa a la ruta real para realizar pruebas.
+ * R-TEST-20: ConfigImporter 第三方配置导入真实路径测试。
  */
 class ConfigImporterTest {
 

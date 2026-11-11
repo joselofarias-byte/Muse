@@ -8,15 +8,14 @@
     <string name="onboarding_language_subtitle">Интерфейс будет использовать его. Можно сменить в любой момент.</string>
     <string name="onboarding_theme_title">Выберите облик по вкусу.</string>
     <string name="onboarding_theme_subtitle">Тему можно менять в настройках.</string>
-    <string name="onboarding_lang_en">Английский</string>
-    <string name="onboarding_lang_ja">Японский</string>
-    <string name="onboarding_lang_ko">한국어</string>
 
     <!-- Step 2: Your Name -->
     <string name="onboarding_names_title">Давайте познакомимся.</string>
     <string name="onboarding_names_subtitle">Ваше имя и его имя — оба можно изменить позже.</string>
     <string name="onboarding_names_user_label">Как вас называть?</string>
     <string name="onboarding_names_agent_label">Дайте ему имя</string>
+    <string name="onboarding_names_user_placeholder">Например, Алекс</string>
+    <string name="onboarding_names_agent_placeholder">Например, Нова</string>
     <string name="onboarding_names_hint">Применяется к помощнику по умолчанию; изменить можно в любой момент.</string>
     <string name="onboarding_memory_title">Позвольте вас запомнить.</string>
     <string name="onboarding_memory_subtitle">Когда включено, разговоры превращаются в долговременную память. Частые обновления памяти снижают попадания в кэш модели (без неё обычно дешевле), зато долгое общение становится намного лучше.</string>
@@ -32,11 +31,16 @@
     <string name="onboarding_provider_caps">Возможности сопоставлены: зрение %1$d · рассуждение %2$d · инструменты %3$d</string>
     <string name="onboarding_provider_select_label">Выберите поставщика</string>
     <string name="onboarding_provider_apikey_label">API-ключ</string>
-    <string name="onboarding_provider_apikey_input">Введите ключ API</string>
+    <string name="onboarding_provider_apikey_input">Из консоли провайдера; обычно начинается с sk-</string>
     <string name="onboarding_provider_apikey_show">Показать ключ</string>
     <string name="onboarding_provider_apikey_hide">Скрыть ключ</string>
     <string name="onboarding_provider_test_button">Тестовое соединение</string>
-    <string name="onboarding_provider_test_success">Соединение установлено. Доступно моделей: %1$d.</string>
+    <plurals name="onboarding_provider_test_success">
+        <item quantity="one">Соединение установлено. Доступна %1$d модель.</item>
+        <item quantity="few">Соединение установлено. Доступно %1$d модели.</item>
+        <item quantity="other">Соединение установлено. Доступно моделей: %1$d.</item>
+        <item quantity="many">Соединение установлено. Доступно моделей: %1$d.</item>
+    </plurals>
     <string name="onboarding_provider_skip">Настроить позже в настройках</string>
     <string name="onboarding_provider_custom">Пользовательский (совместимый с OpenAI)</string>
     <string name="onboarding_provider_custom_baseurl_label">Пользовательский базовый URL-адрес</string>
@@ -50,7 +54,10 @@
 
     <!-- Step 5: Complete -->
     <string name="onboarding_complete_title">Готово.</string>
+    <string name="onboarding_provider_next_hint">Выберите провайдера, добавьте ключ и пройдите проверку, чтобы продолжить; можно настроить и позже.</string>
+    <string name="onboarding_welcome_greetings_caption">Одно приветствие на семи языках</string>
     <string name="onboarding_complete_subtitle">Вот что можно попробовать дальше</string>
+    <string name="onboarding_restore_from_backup">Восстановить данные из резервной копии</string>
     <string name="onboarding_tutorial_chat_title">Ежедневный чат</string>
     <string name="onboarding_tutorial_chat_desc">Текст, фото и файлы: ответы звучат живо</string>
     <string name="onboarding_tutorial_assistant_title">Помощники &amp; Память</string>
@@ -66,7 +73,4 @@
     <string name="onboarding_button_next">Следующий</string>
     <string name="onboarding_button_finish">Пойдём общаться</string>
     <string name="onboarding_step_progress">Шаг %1$d из %2$d</string>
-    <string name="onboarding_lang_es">Испанский</string>
-    <string name="onboarding_lang_pt">Португальский</string>
-    <string name="onboarding_lang_ru">Русский</string>
 </resources>

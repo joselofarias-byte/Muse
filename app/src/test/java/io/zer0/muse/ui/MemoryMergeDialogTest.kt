@@ -25,10 +25,10 @@ import org.robolectric.annotation.Config
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
- * Restricciones de interacción de la ventana emergente de vista previa de combinación de selección múltiple.
+ * 多选合并预览弹窗的交互约束。
  *
- * La fusión es una operación directa irrevocable y el borrador es el texto que el usuario acaba de modificar.
- * Así que la clave aquí es "bajo qué circunstancias no se debe tirar el borrador" en lugar de componerlo.
+ * 合并是不可撤销的落库操作，草稿又是用户可能刚改过的正文，
+ * 所以这里钉的是「什么情况下不许把草稿丢掉」而不是排版。
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -128,7 +128,7 @@ class MemoryMergeDialogTest {
             }
         }
 
-        // La mitad superior es el texto original fusionado: el usuario debe poder comprobar "qué elementos se han fusionado"
+        // 上半是被合并的原文：用户要能核对「合了哪几条」
         composeTestRule.onNodeWithText(context.getString(R.string.memory_center_merge_sources_title, 2))
             .assertExists()
         composeTestRule.onNodeWithText("User likes green tea").assertExists()

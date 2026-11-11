@@ -14,11 +14,11 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * GenerationTrace Verificación de comportamiento central:
- *  - Límite de capacidad del búfer circular
- *  - sessionId Desensibilización al hash (sin texto original)
- *  - JSONL El formato de colocación es legal.
- *  - Cualquier campo no contiene texto (línea roja)
+ * GenerationTrace 的核心行为验证：
+ *  - 环形缓冲容量上限
+ *  - sessionId 哈希脱敏（不含原文）
+ *  - JSONL 落盘格式合法
+ *  - 任何字段不含正文（红线）
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -80,10 +80,10 @@ class GenerationTraceTest {
         GenerationTrace.record(summary(modelId = "gpt-4", outcome = "failed", reasoningChars = 10))
         val json = AppJson.encodeToString(GenerationTrace.TraceRecord.serializer(), GenerationTrace.snapshot().single())
         val obj = AppJson.parseToJsonElement(json).jsonObject
-        // Aserción de línea roja: no hay texto en el resultado de la serialización/prompt/content campo
+        // 红线断言：序列化结果里没有任何正文/prompt/content 字段
         val forbiddenKeys = setOf("content", "prompt", "message", "text", "body", "apikey")
         obj.keys.forEach { key ->
-            assertTrue("campo '$key' No se permite aparecer en registros de seguimiento", key.lowercase() !in forbiddenKeys)
+            assertTrue("字段 '$key' 不允许出现在 trace 记录中", key.lowercase() !in forbiddenKeys)
         }
     }
 
@@ -91,7 +91,7 @@ class GenerationTraceTest {
     fun `trace file is appended on record`() {
         GenerationTrace.record(summary())
         val file = GenerationTrace.traceFileOrNull()
-        assertTrue("trace El archivo debería haberse colocado en el disco.", file != null && file.length() > 0)
+        assertTrue("trace 文件应已落盘", file != null && file.length() > 0)
         file!!.readLines().forEach { line ->
             if (line.isBlank()) return@forEach
             val parsed = AppJson.parseToJsonElement(line).jsonObject

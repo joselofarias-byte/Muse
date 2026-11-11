@@ -1,10 +1,10 @@
 package io.zer0.muse
 
 /**
- * androidTest Archivo de marcador de posición del directorio.
- * Posteriormente se agregarán pruebas instrumentadas a este directorio.(Instrumented Test),Anular módulos que requieren un entorno Android:
+ * androidTest 目录占位文件。
+ * 后续在此目录添加仪器化测试(Instrumented Test),覆盖需要 Android 环境的模块:
  * - SecureKeyStore (Android Keystore)
- * - WebServer (Ktor servidor integrado)
+ * - WebServer (Ktor 嵌入式服务器)
  * - SettingsRepository (DataStore)
  * - ShareIntentHandler (Intent)
  * - ChatViewModel (Compose/Runtime)

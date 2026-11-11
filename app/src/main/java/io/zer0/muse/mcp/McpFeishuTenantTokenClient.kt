@@ -16,10 +16,10 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import java.util.concurrent.TimeUnit
 
 /**
- * Feishu tenant_access_token(internal) Cliente de intercambio.
+ * 飞书 tenant_access_token(internal) 换取客户端。
  *
- * App Secret Ingrese solo el cuerpo de la solicitud,No se escriben registros ni mensajes de chat; la persona que llama guarda el TAT devuelto en
- * Almacenamiento de tokens MCP cifrados. Vuelve el fallo de red null,Transferencia del cliente MCP al error de conexión/Estado de reconexión.
+ * App Secret 只进入请求体,不写日志、不写聊天消息；返回的 TAT 由调用方保存到
+ * 已加密的 MCP token 存储中。网络失败返回 null,由 MCP 客户端转为连接失败/重连状态。
  */
 internal class McpFeishuTenantTokenClient(
     private val httpClient: OkHttpClient = defaultClient,
@@ -27,11 +27,11 @@ internal class McpFeishuTenantTokenClient(
 ) {
 
     /**
-     * Utilice la identidad de la aplicación Feishu para intercambiar por tenant_access_token.
+     * 使用飞书应用身份换取 tenant_access_token。
      *
-     * @param appId aplicación feishu App ID
-     * @param appSecret aplicación feishu App Secret
-     * @param now hora actual,Se utiliza para pruebas unitarias y calcular tiempos de vencimiento.
+     * @param appId 飞书应用 App ID
+     * @param appSecret 飞书应用 App Secret
+     * @param now 当前时间,用于单元测试和计算过期时间
      */
     suspend fun fetch(appId: String, appSecret: String, now: Long = System.currentTimeMillis()): McpTokenInfo? =
         withContext(Dispatchers.IO) {
@@ -52,7 +52,7 @@ internal class McpFeishuTenantTokenClient(
                 httpClient.newCall(request).execute().use { response ->
                     val responseBody = response.body.string()
                     if (!response.isSuccessful) {
-                        Logger.w(TAG, "La adquisición de Feishu TAT fracasó: HTTP ${response.code}")
+                        Logger.w(TAG, "飞书 TAT 获取失败: HTTP ${response.code}")
                         return@withContext null
                     }
                     parseTokenResponse(responseBody, now)
@@ -60,7 +60,7 @@ internal class McpFeishuTenantTokenClient(
             } catch (ce: kotlinx.coroutines.CancellationException) {
                 throw ce
             } catch (e: Exception) {
-                Logger.w(TAG, "Excepción de adquisición de Feishu TAT: ${e.message}")
+                Logger.w(TAG, "飞书 TAT 获取异常: ${e.message}")
                 null
             }
         }
@@ -76,7 +76,7 @@ internal class McpFeishuTenantTokenClient(
         if (token.isBlank()) {
             val code = json["code"]?.jsonPrimitive?.contentOrNull
             val message = json["msg"]?.jsonPrimitive?.contentOrNull
-            Logger.w(TAG, "Falta la respuesta Feishu TAT token: code=$code, msg=$message")
+            Logger.w(TAG, "飞书 TAT 响应缺少 token: code=$code, msg=$message")
             return null
         }
         val expiresInSeconds = json["expire"]

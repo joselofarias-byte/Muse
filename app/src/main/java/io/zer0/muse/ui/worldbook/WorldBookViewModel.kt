@@ -14,7 +14,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 /**
- * P1-2: Worldbook Administrar el estado de la interfaz de usuario.
+ * P1-2: Worldbook 管理 UI 状态。
  */
 data class WorldBookUiState(
     val entries: List<WorldBookEntryEntity> = emptyList(),
@@ -22,10 +22,10 @@ data class WorldBookUiState(
 )
 
 /**
- * P1-2: Worldbook Administrar modelo de vista.
+ * P1-2: Worldbook 管理 ViewModel。
  *
- * Responsable de la entrada CRUD + SillyTavern World Info JSON Importar y exportar.
- * lista aprobada [WorldBookRepository.observeAll] expuesto como StateFlow,UI Recoger directamente.
+ * 负责条目的 CRUD + SillyTavern World Info JSON 导入导出。
+ * 列表通过 [WorldBookRepository.observeAll] 暴露为 StateFlow,UI 直接收集。
  */
 class WorldBookViewModel(
     private val repository: WorldBookRepository,
@@ -46,14 +46,14 @@ class WorldBookViewModel(
         viewModelScope.launch {
             runCatching {
                 repository.upsert(entry.copy(updatedAt = System.currentTimeMillis()))
-            }.onFailure { Logger.w(TAG, "save falló: ${it.message}", it) }
+            }.onFailure { Logger.w(TAG, "save 失败: ${it.message}", it) }
         }
     }
 
     fun delete(id: String) {
         viewModelScope.launch {
             runCatching { repository.delete(id) }
-                .onFailure { Logger.w(TAG, "delete falló: ${it.message}", it) }
+                .onFailure { Logger.w(TAG, "delete 失败: ${it.message}", it) }
         }
     }
 
@@ -61,7 +61,7 @@ class WorldBookViewModel(
         viewModelScope.launch {
             val count = runCatching { repository.importSillyTavernJson(jsonText) }
                 .getOrElse { e ->
-                    Logger.w(TAG, "importSillyTavern falló: ${e.message}", e)
+                    Logger.w(TAG, "importSillyTavern 失败: ${e.message}", e)
                     _importMessage.value = context.getString(R.string.worldbook_import_failed, e.message ?: "")
                     return@launch
                 }
@@ -73,7 +73,7 @@ class WorldBookViewModel(
         viewModelScope.launch {
             val json = runCatching { repository.exportSillyTavernJson() }
                 .getOrElse { e ->
-                    Logger.w(TAG, "exportSillyTavern falló: ${e.message}", e)
+                    Logger.w(TAG, "exportSillyTavern 失败: ${e.message}", e)
                     _importMessage.value = context.getString(R.string.worldbook_export_failed, e.message ?: "")
                     return@launch
                 }

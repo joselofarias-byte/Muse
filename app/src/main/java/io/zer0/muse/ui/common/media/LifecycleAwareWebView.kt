@@ -7,51 +7,51 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
 
 /**
- * WebView consciente del ciclo de vida.
+ * 生命周期感知 WebView。
  *
- * v1.88 Correcciones de limitaciones conocidas: darse cuenta [LifecycleEventObserver] interfaz,Observa al anfitrión [LifecycleOwner] de
- * ON_PAUSE / ON_RESUME / ON_DESTROY evento,Llamar automáticamente a WebView [onPause] / [onResume] /
- * [pauseTimers] / [resumeTimers] / [destroy],Resuelva el temporizador JS cuando la actividad está en segundo plano/La animación continúa
- * Problemas que provocan consumo de energía durante el funcionamiento.
+ * v1.88 已知限制修复: 实现 [LifecycleEventObserver] 接口,观察宿主 [LifecycleOwner] 的
+ * ON_PAUSE / ON_RESUME / ON_DESTROY 事件,自动调用 WebView 的 [onPause] / [onResume] /
+ * [pauseTimers] / [resumeTimers] / [destroy],解决 Activity 后台时 JS 定时器/动画继续
+ * 运行导致耗电的问题。
  *
- * descripción del comportamiento:
- *  - ON_PAUSE → [onPause] + [pauseTimers]:Pausar todos los temporizadores y animaciones JS en WebView;
- *  - ON_RESUME → [onResume] + [resumeTimers]:Reanudar la ejecución;
- *  - ON_DESTROY → [destroy] + Darse de baja observador:Destruye WebView y desvincula el ciclo de vida.,Evite fugas.
+ * 行为说明:
+ *  - ON_PAUSE → [onPause] + [pauseTimers]:暂停 WebView 内所有 JS 定时器与动画;
+ *  - ON_RESUME → [onResume] + [resumeTimers]:恢复执行;
+ *  - ON_DESTROY → [destroy] + 注销观察者:销毁 WebView 并解除生命周期绑定,避免泄漏。
  *
- * Uso:
- *  - Recomendado:Aprobado en Redactar [LifecycleAwareWebViewContainer] uso,Registro automático/Cerrar sesión;
- *  - manuales:Pase [LifecycleAwareWebViewFactory.create] Crear instancia,se registrará automáticamente en el entrante LifecycleOwner;
- *  - Al salir del grupo(Composable dispose Pero el anfitrión no se destruye.)Necesita ser llamado manualmente [destroy] + removeObserver.
+ * 使用方式:
+ *  - 推荐:在 Compose 中通过 [LifecycleAwareWebViewContainer] 使用,自动注册/注销;
+ *  - 手动:通过 [LifecycleAwareWebViewFactory.create] 创建实例,会自动注册到传入的 LifecycleOwner;
+ *  - 离开组合时(Composable dispose 但宿主未销毁)需手动调用 [destroy] + removeObserver。
  *
- * @param context Android contexto
+ * @param context Android 上下文
  */
 class LifecycleAwareWebView(
     context: Context,
 ) : WebView(context), LifecycleEventObserver {
 
     /**
-     * Devolución de llamada de evento del ciclo de vida del host.
+     * 宿主生命周期事件回调。
      *
-     * Lanza LifecycleOwner ON_PAUSE / ON_RESUME / ON_DESTROY se llama cuando,
-     * Reenviar al método de ciclo de vida correspondiente de WebView.
+     * 在 LifecycleOwner 抛出 ON_PAUSE / ON_RESUME / ON_DESTROY 时被调用,
+     * 转发到 WebView 对应的生命周期方法。
      *
-     * @param source evento desencadenante LifecycleOwner
-     * @param event tipos de eventos del ciclo de vida
+     * @param source 触发事件的 LifecycleOwner
+     * @param event 生命周期事件类型
      */
     override fun onStateChanged(source: LifecycleOwner, event: Lifecycle.Event) {
         when (event) {
-            // Pausar WebView y todos los temporizadores JS cuando esté en segundo plano,Evite el consumo de energía innecesario
+            // 后台时暂停 WebView 与所有 JS 定时器,避免无意义耗电
             Lifecycle.Event.ON_PAUSE -> {
                 onPause()
                 pauseTimers()
             }
-            // Restaurar al volver al primer plano
+            // 回到前台时恢复
             Lifecycle.Event.ON_RESUME -> {
                 onResume()
                 resumeTimers()
             }
-            // Limpiar recursos y desvincular observadores cuando se destruya el host
+            // 宿主销毁时清理资源并解除观察者绑定
             Lifecycle.Event.ON_DESTROY -> {
                 destroy()
                 source.lifecycle.removeObserver(this)
@@ -62,25 +62,25 @@ class LifecycleAwareWebView(
 }
 
 /**
- * [LifecycleAwareWebView] Objeto de fábrica.
+ * [LifecycleAwareWebView] 工厂对象。
  *
- * Proporcionar una entrada de creación unificada,Encapsulación"Crear instancia + registrarse para LifecycleOwner"Dos pasos,
- * Evite que la persona que llama pierda la lógica de registro.
+ * 提供统一的创建入口,封装"创建实例 + 注册到 LifecycleOwner"两步操作,
+ * 避免调用方遗漏注册逻辑。
  */
 object LifecycleAwareWebViewFactory {
 
     /**
-     * crear [LifecycleAwareWebView] y unirse a [lifecycleOwner].
+     * 创建 [LifecycleAwareWebView] 并绑定到 [lifecycleOwner]。
      *
-     * Después de la creación, WebView escuchará automáticamente [lifecycleOwner] de ON_PAUSE / ON_RESUME / ON_DESTROY evento,
-     * Pausar el temporizador JS mientras está en segundo plano/animación,Reanudar mientras está en primer plano.
+     * 创建后 WebView 会自动监听 [lifecycleOwner] 的 ON_PAUSE / ON_RESUME / ON_DESTROY 事件,
+     * 在后台时暂停 JS 定时器/动画,在前台时恢复。
      *
-     * La persona que llama aún necesita llamar al Composable cuando sale de la composición.(Escenario de destrucción sin anfitrión)manuales destroy + removeObserver,
-     * o usar directamente [LifecycleAwareWebViewContainer] Gestionado automáticamente por el contenedor.
+     * 调用方仍需在 Composable 离开组合时(非宿主销毁场景)手动 destroy + removeObserver,
+     * 或直接使用 [LifecycleAwareWebViewContainer] 由容器自动管理。
      *
-     * @param context Android contexto
-     * @param lifecycleOwner Propietario del ciclo de vida del host(Generalmente Activity / Fragment)
-     * @return Registrado para observación del ciclo de vida. [LifecycleAwareWebView] Ejemplo
+     * @param context Android 上下文
+     * @param lifecycleOwner 宿主生命周期所有者(通常为 Activity / Fragment)
+     * @return 已注册生命周期观察的 [LifecycleAwareWebView] 实例
      */
     fun create(context: Context, lifecycleOwner: LifecycleOwner): LifecycleAwareWebView {
         return LifecycleAwareWebView(context).also { webView ->

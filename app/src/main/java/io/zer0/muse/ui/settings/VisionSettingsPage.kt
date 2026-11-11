@@ -44,16 +44,16 @@ import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
 /**
- * Página de configuración de asistencia visual — Pasar un modelo de texto plano a través de un modelo visual"ver"fotos.
+ * 视觉辅助设置页 — 让纯文本模型通过视觉模型"看到"图片。
  *
- * Elementos de configuración:
- *  - habilitar/Desactivar ayudas visuales
- *  - Elegir un modelo para el análisis visual.(Mostrar solo modelos que admitan entrada visual)
+ * 配置项:
+ *  - 启用/禁用视觉辅助
+ *  - 选择用于视觉分析的模型(仅显示支持视觉输入的模型)
  *
- * v1.0.1: Transformación del soporte de la estación de transferencia
- *  - P0: Llamado antes de filtrar [ModelRegistry.enhanceModel] Mejorar la identificación de la capacidad del modelo,Resolver lista de modelos extraída por la estación de transferencia
- *    Sin el camposupportVision/inputModalities, la interfaz de usuario no puede ver el modelo visual.
- *  - P1: Nuevo"Mostrar todos los modelos"cambiar(Modo avanzado de estación de transferencia),Permitir a los usuarios seleccionar manualmente modelos visuales no reconocidos
+ * v1.0.1: 中转站支持改造
+ *  - P0: 过滤前调用 [ModelRegistry.enhanceModel] 增强模型能力识别,解决中转站拉取的模型列表
+ *    不带 supportsVision/inputModalities 字段导致 UI 看不到视觉模型的问题
+ *  - P1: 新增"显示全部模型"开关(中转站高级模式),让用户可手动选择未被识别的视觉模型
  */
 @Composable
 fun VisionSettingsPage(onBack: () -> Unit) {
@@ -66,19 +66,19 @@ fun VisionSettingsPage(onBack: () -> Unit) {
     val providers by settings.providersFlow.collectAsStateWithLifecycle(initialValue = emptyList())
     val scope = rememberCoroutineScope()
 
-    // v1.0.1 (P1): "Mostrar todos los modelos"cambiar — Modo avanzado de estación de transferencia
-    //  Saltar admite el filtrado VisionInput después de habilitarlo,Mostrar todos los modelos,Permitir a los usuarios seleccionar manualmente modelos visuales no reconocidos
+    // v1.0.1 (P1): "显示全部模型"开关 — 中转站高级模式
+    //  开启后跳过 supportsVisionInput 过滤,显示所有模型,让用户手动选择未被识别的视觉模型
     var showAllModels by rememberSaveable { mutableStateOf(false) }
 
-    // v1.0.5: Estado de la prueba de la sonda — Idle / Running / Success / Failed
+    // v1.0.5: 探针测试状态 — Idle / Running / Success / Failed
     var probeState by remember { mutableStateOf<ProbeState>(ProbeState.Idle) }
 
-    // v1.0.1 (P0): Llame a EnhanceModel antes de filtrar para mejorar,Identificar el modelo de estación de transferencia.
-    //  La lista de modelos extraída por la estación de transferencia generalmente no tiene el campo skills/inputModalities.,directo supportsVisionInput() Regresar false
-    //  enhanceModel Haga coincidir reglas preestablecidas a través del token modelId,autocompletar supportsVision=true
+    // v1.0.1 (P0): 过滤前调用 enhanceModel 增强,识别中转站模型
+    //  中转站拉取的模型列表通常不带 abilities/inputModalities 字段,直接 supportsVisionInput() 返回 false
+    //  enhanceModel 通过 modelId token 匹配预设规则,自动补全 supportsVision=true
     val visionModels = providers.flatMap { provider ->
         provider.models.map { model ->
-            // modelo mejorado(Si no coincide con las reglas preestablecidas, se devolverá tal cual.)
+            // 增强后的模型(若未匹配预设规则则原样返回)
             val enhanced = ModelRegistry.enhanceModel(model)
             VisionModelItem(
                 modelId = model.id,
@@ -94,12 +94,12 @@ fun VisionSettingsPage(onBack: () -> Unit) {
         title = stringResource(R.string.settings_vision_title),
         onBack = onBack,
     ) {
-        // Descripción de la función
+        // 功能说明
         item {
             SectionLabel(stringResource(R.string.settings_vision_description))
         }
 
-        // interruptor principal
+        // 总开关
         item {
             SettingsGroup {
                 SettingsSwitchRow(
@@ -114,14 +114,14 @@ fun VisionSettingsPage(onBack: () -> Unit) {
             }
         }
 
-        // Selección de modelo visual(Sólo se muestra cuando está habilitado)
+        // 视觉模型选择(仅在启用时显示)
         if (enabled) {
             item {
                 SectionLabel(stringResource(R.string.settings_vision_model_section))
             }
             item {
                 SettingsGroup {
-                    // v2.x: "Mostrar todos los modelos"Fusionado en la primera fila del grupo de lista de modelos. — Es un control de filtro para la lista.,Ya no en grupos separados
+                    // v2.x: "显示全部模型"并入模型列表组首行 — 它是列表的筛选控制,不再单独成组
                     SettingsSwitchRow(
                         icon = MuseIcons.eye,
                         title = stringResource(R.string.settings_vision_show_all_models),
@@ -131,7 +131,7 @@ fun VisionSettingsPage(onBack: () -> Unit) {
                     )
                     SettingsGroupDivider()
                     if (visionModels.isEmpty()) {
-                        // No hay sugerencias de modelos visuales disponibles
+                        // 无可用的视觉模型提示
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -147,13 +147,13 @@ fun VisionSettingsPage(onBack: () -> Unit) {
                             )
                         }
                     } else {
-                        // Lista de modelos visuales
+                        // 视觉模型列表
                         visionModels.forEachIndexed { index, item ->
                             val isSelected = item.modelId == visionModelId && item.providerId == visionProviderId
                             VisionModelRow(
                                 modelName = item.modelName,
                                 providerName = item.providerName,
-                                // v1.0.1 (P1): Etiqueta de artículo no reconocida como modelo visual"selección manual"Consejos
+                                // v1.0.1 (P1): 未识别为视觉模型的项标记"手动选择"提示
                                 manualSelected = showAllModels && !item.supportsVision,
                                 isSelected = isSelected,
                                 onClick = {
@@ -171,7 +171,7 @@ fun VisionSettingsPage(onBack: () -> Unit) {
                 }
             }
 
-            // v1.0.5: prueba de sonda — Verifique que el modelo de visión seleccionado realmente admita la entrada visual y esté disponible
+            // v1.0.5: 探针测试 — 验证所选视觉模型是否真的支持视觉输入并可用
             item {
                 SectionLabel(stringResource(R.string.settings_vision_probe_section))
             }
@@ -194,7 +194,7 @@ fun VisionSettingsPage(onBack: () -> Unit) {
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
-                            // botón de prueba(Running deshabilitado y mostrado cuando spinner)
+                            // 测试按钮(Running 时禁用并显示 spinner)
                             val isRunning = probeState is ProbeState.Running
                             MuseCapsuleButton(
                                 text = if (isRunning) {
@@ -220,10 +220,10 @@ fun VisionSettingsPage(onBack: () -> Unit) {
                                     scope.launch {
                                         val result = resultOf {
                                             visionBridge.prepare(
-                                                text = "prueba de sonda",
+                                                text = "Prueba de diagnóstico",
                                                 images = listOf(VISION_PROBE_IMAGE_PNG_BASE64),
-                                                userRequest = "prueba de sonda:¿De qué color es esta imagen??",
-                                                sessionId = null, // No utilizar la dimensión de la clave de caché session
+                                                userRequest = "探针测试:这张图是什么颜色?",
+                                                sessionId = null, // 不走缓存 key 维度的 session
                                             )
                                         }
                                         probeState = when {
@@ -239,7 +239,7 @@ fun VisionSettingsPage(onBack: () -> Unit) {
                                             )
                                             else -> ProbeState.Failed(
                                                 result.getOrNull()?.text
-                                                    ?: "El modelo de visión devuelve resultados vacíos o se degrada",
+                                                    ?: "El modelo de visión no devolvió resultados o se utilizó un modo alternativo",
                                             )
                                         }
                                     }
@@ -251,7 +251,7 @@ fun VisionSettingsPage(onBack: () -> Unit) {
                                 fillWidth = false,
                             )
                         }
-                        // Visualización de resultados
+                        // 结果展示
                         when (val s = probeState) {
                             is ProbeState.Idle -> Unit
                             is ProbeState.Running -> Unit
@@ -280,10 +280,10 @@ fun VisionSettingsPage(onBack: () -> Unit) {
 }
 
 /**
- * Fila de selección de modelo visual.
+ * 视觉模型选择行。
  *
- * @param manualSelected v1.0.1 (P1): Si el usuario lo selecciona manualmente"Modelo visual no reconocido"
- *  (Seleccione un modelo que EnhanceModel no reconozca como visual en el modo avanzado de la estación de transferencia).true Al agregar el subtítulo"selección manual"Consejos.
+ * @param manualSelected v1.0.1 (P1): 是否为用户手动选择的"未识别视觉模型"
+ *  (中转站高级模式下选择未被 enhanceModel 识别为视觉的模型)。true 时在副标题加"手动选择"提示。
  */
 @Composable
 private fun VisionModelRow(
@@ -314,7 +314,7 @@ private fun VisionModelRow(
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurface,
             )
-            // v1.0.1 (P1): Se muestra en modo de selección manual."selección manual"Consejos
+            // v1.0.1 (P1): 手动选择模式下显示"手动选择"提示
             val subtitle = if (manualSelected) {
                 "$providerName · ${stringResource(R.string.settings_vision_manual_selected)}"
             } else {
@@ -329,23 +329,23 @@ private fun VisionModelRow(
     }
 }
 
-/** Clase de datos de opciones de modelo visual. */
+/** 视觉模型选项数据类。 */
 private data class VisionModelItem(
     val modelId: String,
     val modelName: String,
     val providerId: String,
     val providerName: String,
-    /** v1.0.1 (P0): Si EnhanceModel lo reconoce como un modelo visual(Se utiliza para decidir si marcar"selección manual") */
+    /** v1.0.1 (P0): 是否被 enhanceModel 识别为视觉模型(用于决定是否标记"手动选择") */
     val supportsVision: Boolean = false,
 )
 
 /**
- * v1.0.5: Máquina de estado de prueba de sonda.
+ * v1.0.5: 探针测试状态机。
  *
- *  - [Idle]: estado inicial,Ninguna prueba activada
- *  - [Running]: Prueba en progreso(botón desactivado + mostrar spinner)
- *  - [Success]: Prueba exitosa,Llevar el número de caracteres de descripción devueltos por el modelo visual.
- *  - [Failed]: prueba fallida,Llevar mensajes de error legibles por humanos(insensibilizado VisionAnalysisException.message)
+ *  - [Idle]: 初始状态,未触发过测试
+ *  - [Running]: 测试进行中(按钮禁用 + 显示 spinner)
+ *  - [Success]: 测试成功,携带视觉模型返回的描述字符数
+ *  - [Failed]: 测试失败,携带人类可读的错误信息(已脱敏的 VisionAnalysisException.message)
  */
 private sealed interface ProbeState {
     data object Idle : ProbeState
@@ -355,10 +355,10 @@ private sealed interface ProbeState {
 }
 
 /**
- * v1.0.5: Rojo 1x1 incorporado para prueba de sonda PNG(Ninguno dato: prefijo).
+ * v1.0.5: 探针测试用的内置 1x1 红色 PNG(无 data: 前缀)。
  *
- * Se eligió 1x1 para minimizar los costos de prueba.(Sólo se envían unas pocas docenas de bytes de imágenes en una sola solicitud),
- * Al mismo tiempo, verifique si el modelo visual realmente puede recibir y devolver descripciones de imágenes.
+ * 选 1x1 是为了最小化测试成本(单次请求只送几十字节图片),
+ * 同时验证视觉模型是否真能接收并返回图片描述。
  */
 private const val VISION_PROBE_IMAGE_PNG_BASE64 =
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="

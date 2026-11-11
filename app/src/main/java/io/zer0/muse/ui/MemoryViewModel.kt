@@ -42,16 +42,16 @@ import java.time.temporal.ChronoUnit
 import java.time.temporal.TemporalAdjusters
 
 /**
- * Etapa 6: Memorizar el modelo de datos de la interfaz de usuario de la página.
+ * 阶段 6: 记忆页 UI 数据模型。
  *
- * 4 sistema de memoria de capas(Fact / Summary / Compile / Deep)Proyección de UI unificada para:
- *  - Fact capa:Lista de metahechos(Buscable)
- *  - Summary capa:Lista de resumen de desplazamiento de sesión
- *  - Compile capa:4 producto de compilación de segmentos(facts/today/week/longterm)
- *  - Deep capa:Sin almacenamiento independiente,mostrar estadísticas(Inferido del número total de hechos + hora de la última actualización)
+ * 4 层记忆系统(Fact / Summary / Compile / Deep)的统一 UI 投影:
+ *  - Fact 层:元事实列表(可搜索)
+ *  - Summary 层:会话滚动摘要列表
+ *  - Compile 层:4 段编译产物(facts/today/week/longterm)
+ *  - Deep 层:无独立存储,展示统计信息(由 Fact 总数 + 最近更新时间推断)
  */
 
-/** F-7: Elementos de filtro de rango de tiempo de memoria(Por creadoEn el número de días desde hoy,ALL significa todo). */
+/** F-7: 记忆时间范围筛选项(按 createdAt 距今天数,ALL 表示全部)。 */
 enum class MemoryTimeRange(val days: Long?) {
     ALL(null),
     LAST_7(7),
@@ -59,76 +59,89 @@ enum class MemoryTimeRange(val days: Long?) {
     LAST_90(90),
 }
 
+/**
+ * v2.6.23(M2): 一对未裁决矛盾(事实级,带双方 id 与所属 scope)。
+ *
+ * 取代旧的纯文本 JSON 清单:文本对无法裁决"哪条是对的",只能"清除"再等下轮重报;
+ * 带 id 后记忆中心可以真正"保留这一句",另一方按 v18 supersedes 让位。
+ */
+data class MemoryConflictUi(
+    val idA: Long,
+    val idB: Long,
+    val a: String,
+    val b: String,
+    val scope: String,
+)
+
 data class MemoryUiState(
     val isLoading: Boolean = true,
     val query: String = "",
     val factItems: List<MemoryItem> = emptyList(),
     val summaryItems: List<MemoryItem> = emptyList(),
     val compileItems: List<MemoryItem> = emptyList(),
-    /** P2-32: Lista de memoria contradictoria para el alcance/espacio actual(Prueba de reflexión diaria,Se puede borrar después de la confirmación del usuario.). */
-    val contradictions: List<io.zer0.memory.reflection.MemoryContradictionStore.ContradictionPair> = emptyList(),
+    val contradictions: List<MemoryConflictUi> = emptyList(),
     val searchResults: List<MemoryItem> = emptyList(),
     val isSearching: Boolean = false,
     val factCount: Int = 0,
     val summaryCount: Int = 0,
     val lastUpdatedAt: String? = null,
-    /** Pila de errores completa(Para visualización desplazable de UI,Conveniente para que los usuarios copien a los desarrolladores para localizar problemas). */
+    /** 完整错误堆栈(供 UI 可滚动展示,方便用户复制给开发者定位问题)。 */
     val errorTrace: String? = null,
     /**
-     * v0.51: Recuerde los campos de descripción general del panel.
+     * v0.51: 记忆 dashboard 概览字段。
      *
-     *  - [compiledMarkdown]:Resumen de memoria.md recientemente compilada(por [MemoryTicker.readCompiledMemoryMarkdown]
-     *    Complete el texto de rebajas después de recortarlo en tokenBudget,suministro"AI comprensión de ti"pantalla plegable de tarjeta).
-     *  - [healthMap]:MemoryTicker Instantáneas de salud de cada paso(rollingSummary/compileDaily/compileToday/
-     *    rollDailyWindow/compileFacts/deepMemory),Se utiliza para mostrar el estado de la memoria en el tablero.
-     *  - [lastCompileTime]:Última hora de compilación exitosa(de [healthMap] El lastSuccessAt toma el valor máximo).
+     *  - [compiledMarkdown]:最近编译的 memory.md 摘要(由 [MemoryTicker.readCompiledMemoryMarkdown]
+     *    裁剪到 tokenBudget 后的完整 markdown 文本,供"AI 对你的理解"卡片折叠展示)。
+     *  - [healthMap]:MemoryTicker 各步骤健康快照(rollingSummary/compileDaily/compileToday/
+     *    rollDailyWindow/compileFacts/deepMemory),用于在 dashboard 展示记忆健康状态。
+     *  - [lastCompileTime]:最近一次成功编译时间(从 [healthMap] 的 lastSuccessAt 取最大值)。
      */
     val compiledMarkdown: String = "",
     val healthMap: Map<String, MemoryTicker.StepHealth> = emptyMap(),
     val lastCompileTime: String? = null,
-    /** v4: Copia de estado de sincronización(Como por ejemplo"Última compilación hace 5 minutos,Es posible que las conversaciones recientes aún no estén en la memoria"). */
+    /** v4: 同步状态文案(如"最近编译 5 分钟前,最近的对话可能还未进入记忆")。 */
     val syncStatus: String = "",
-    /** v4: ¿Está el estado de sincronización en"Puede que no esté en la memoria"estado de caducidad. */
+    /** v4: 同步状态是否处于"可能未进入记忆"的过期状态。 */
     val syncStale: Boolean = false,
-    /** v5: Memorizar campos estadísticos. */
+    /** v5: 记忆统计字段。 */
     val totalFactCount: Int = 0,
     val weekNewCount: Int = 0,
     val monthNewCount: Int = 0,
-    /** v5: distribución de importancia (0/1/2 contar). */
+    /** v5: 重要度分布 (0/1/2 的计数)。 */
     val importanceDistribution: Map<Int, Int> = emptyMap(),
-    /** v5: Sesiones más activas(top 5, sessionId → count). */
+    /** v5: 最活跃会话(top 5, sessionId → count)。 */
     val topSessions: List<Pair<String, Int>> = emptyList(),
-    /** v5: cerca30Número de nuevas incorporaciones por día(Fecha → Número de artículos). */
+    /** v5: 近30天每日新增数(日期 → 条数)。 */
     val dailyTrend: List<Pair<String, Int>> = emptyList(),
     /**
-     * v1.98: Experimente el estado relacionado con la biblioteca.
+     * v1.98: 经验库相关 state。
      *
-     * - [experienceEnabled]:Cambio de biblioteca de experiencias(El usuario cambia a la página de configuración.,reflexión en tiempo real).
-     * - [experienceItems]:Lista de elementos de experiencia(Orden descendente por actualizadoEn,Para visualización y edición de UI).
-     * - [experienceCount]:Número total de entradas(para métricas del panel).
+     * - [experienceEnabled]:经验库开关(用户在设置页切换,实时反映)。
+     * - [experienceItems]:经验条目列表(按 updatedAt 降序,供 UI 展示与编辑)。
+     * - [experienceCount]:条目总数(用于 dashboard 指标)。
      */
     val experienceEnabled: Boolean = false,
     val experienceItems: List<MemoryItem> = emptyList(),
     val experienceCount: Int = 0,
     /**
-     * v1.0.72: Memoria de chat grupal(Independiente del sistema de memoria principal).
+     * v1.0.72: 群聊记忆(独立于主记忆系统)。
      *
-     * visualización en el centro de memoria"chat grupal"Tab,para que los usuarios vean/Eliminar un solo elemento/Borrar con un clic.
-     * Los datos provienen de [io.zer0.muse.data.groupchat.GroupChatMemoryRepository].
+     * 展示在记忆中心"群聊"Tab,供用户查看/单条删除/一键清空。
+     * 数据来自 [io.zer0.muse.data.groupchat.GroupChatMemoryRepository]。
      */
     val groupChatMemories: List<GroupChatMemoryUiItem> = emptyList(),
     val groupChatMemoriesLoading: Boolean = false,
 )
 
 /**
- * Elemento de interfaz de usuario de memoria única — Forma unificada en 4 capas.
+ * 单条记忆 UI 项 — 跨 4 层统一形态。
  *
- * @param id identificador único(factId / sessionId / sectionKey)
- * @param title Título(resumen de hechos/título de la sesión/nombre de la sección compilada)
- * @param content contenido completo(markdown amigable)
- * @param tags etiqueta(Sólo la capa de hechos tiene)
- * @param time copia de marca de tiempo
- * @param source capa fuente("Fact" / "Summary" / "Compile")
+ * @param id 唯一标识(factId / sessionId / sectionKey)
+ * @param title 标题(事实摘要 / 会话标题 / 编译段名)
+ * @param content 完整内容(markdown 友好)
+ * @param tags 标签(仅 Fact 层有)
+ * @param time 时间戳文案
+ * @param source 来源层("Fact" / "Summary" / "Compile")
  */
 data class MemoryItem(
     val id: String,
@@ -137,75 +150,84 @@ data class MemoryItem(
     val tags: List<String> = emptyList(),
     val time: String? = null,
     val source: String,
-    /** v4: importancia(0=ordinario,1=importante,2=clave). Sólo la capa de hechos tiene un valor. */
+    /** v4: 重要程度(0=普通,1=重要,2=关键)。仅 Fact 层有值。 */
     val importance: Int = 0,
-    /** v4: sesión fuente id(Sólo la capa de hechos tiene un valor,usado para mostrar la fuente). */
+    /** v4: 来源会话 id(仅 Fact 层有值,用于显示来源)。 */
     val sessionId: String? = null,
-    /** v4: tiempo de almacenamiento ISO 8601(para exhibición"Xdías de almacenamiento por adelantado"). */
+    /** v4: 入库时间 ISO 8601(用于显示"X天前入库")。 */
     val createdAt: String? = null,
-    /** v1.98: Clasificación(Sólo la capa Experiencia tiene un valor,Rellenar el formulario al editar). */
+    /** v1.98: 分类(仅 Experience 层有值,编辑时回填到表单)。 */
     val category: String? = null,
     /**
-     * v8: alcance de la memoria(Sólo la capa de hechos tiene un valor).
-     *  - "main":alcance de ayuda principal
-     *  - assistantId:sub-asistente/Alcance de los miembros del equipo
-     * Se utiliza para que la interfaz de usuario muestre la insignia de alcance(asistente principal=Color predeterminado,sub-asistente=tertiary Color).
+     * v8: 记忆作用域(仅 Fact 层有值)。
+     *  - "main":主助手作用域
+     *  - assistantId:子助手/团队成员作用域
+     * 用于 UI 显示 scope 徽章(主助手=默认色,子助手=tertiary 色)。
      */
     val scope: String? = null,
-    /** B4-05: Tiempo de fijación manual ISO 8601,null Indica que no está fijado. */
+    /** B4-05: 手动置顶时间 ISO 8601,null 表示未置顶。 */
     val pinnedAt: String? = null,
-    /** confianza(0-1). compilar/Los hechos inferidos pueden ser bajos.,solía juzgar“¿Quieres tomar esto en serio?”. */
+    /** 置信度(0-1)。编译/推断出来的事实可能偏低,用于判断“这条要不要当真”。 */
     val confidence: Float = 1.0f,
-    /** La hora del resultado de búsqueda más reciente ISO 8601,null = Nunca golpees. */
+    /** 最近一次被检索命中的时间 ISO 8601,null = 从未命中。 */
     val lastHitAt: String? = null,
-    /** Número acumulado de visitas(0 = nunca recuperado). */
+    /** 累计命中次数(0 = 从未被检索召回)。 */
     val hitCount: Int = 0,
-    /** El espacio de memoria al que pertenece el resumen de la sesión.;Los elementos de datos los conserva el propio almacén de datos. */
+    /** 会话摘要所属记忆空间;事实项由事实存储自身保留。 */
     val spaceId: String? = null,
-    /** Fusionado en otro recuerdo(No participar en el retiro,La lista aún está visible). */
+    /** 已合并进另一条记忆(不参与召回,列表仍可见)。 */
     val mergedIntoId: Long? = null,
-    /** Salió de la recuperación automática(Decaimiento por debajo del umbral,ok todavía está ahí). */
+    /** 已退出自动召回(衰减到阈值以下,行仍在)。 */
     val suppressed: Boolean = false,
-    /** reemplazado por otros recuerdos(Contenido anulado por nuevos recuerdos.). */
+    /** 被别的记忆取代(内容被新记忆推翻)。 */
     val superseded: Boolean = false,
+    /**
+     * v2.6.23(M1): 证据摘录 —— 该事实出处的用户原话片段。
+     * null/空白 = 没有可回看的出处(早期数据或推断所得),UI 不显示「依据」。
+     */
+    val evidenceQuote: String? = null,
+    /** v2.6.23(M1): 证据所在消息 id;仅用于「跳回原话」,可空。 */
+    val evidenceMessageId: String? = null,
+    /** v2.6.23(M2): 与另一条事实存在未裁决矛盾(UI 显示「两种说法」徽标与裁决入口)。 */
+    val pendingConflictWith: Long? = null,
 ) {
-    /** Proyección estatal compartida por insignias de lista y descripciones detalladas(Los tres estados son independientes entre sí.,Puede golpear simultáneamente). */
+    /** 列表徽章与详情说明共用的状态投影(三种状态互相独立,可同时命中)。 */
     val status: MemoryFactStatus
         get() = MemoryFactStatus(merged = mergedIntoId != null, suppressed = suppressed, superseded = superseded)
 }
 
 /**
- * Proyección del estado de memoria "no en uso normal".
+ * 记忆「不在正常使用中」的状态投影。
  *
- * Los tres estados se determinan de forma independiente. —— Un recuerdo puede aparecer y fusionarse.,Hacer una enumeración mutuamente excluyente haría que la lista
- * Falta una de las verdaderas razones.,La insignia que ve el usuario no es suficiente para explicar por qué no funciona.
+ * 三种状态各自独立判定 —— 一条记忆可能既已出场又被合并,做成互斥枚举会让列表
+ * 漏掉其中一个真实原因,用户看到的徽章就不足以解释它为什么不生效。
  *
- * @param merged Fusionado en otro recuerdo(Apunta a la nueva fila después de la agregación.)
- * @param suppressed Salió de la recuperación automática(Decaimiento por debajo del umbral,ok todavía está ahí)
- * @param superseded reemplazado por otros recuerdos(Contenido anulado por nuevos recuerdos.)
+ * @param merged 已合并进另一条记忆(指向聚合后的新行)
+ * @param suppressed 已退出自动召回(衰减到阈值以下,行仍在)
+ * @param superseded 被别的记忆取代(内容被新记忆推翻)
  */
 data class MemoryFactStatus(
     val merged: Boolean = false,
     val suppressed: Boolean = false,
     val superseded: Boolean = false,
 ) {
-    /** Ninguno de los tres estados afectó = Todavía en el enlace de recuperación normal. */
+    /** 三种状态都没命中 = 仍在正常召回链路里。 */
     val isInactive: Boolean get() = merged || suppressed || superseded
 }
 
 /**
- * La clave de comparación para la colección "reemplazada".
+ * 「被取代」集合的比对键。
  *
- * Si el fact.id de cada base de datos de sucursal se incrementa de forma independiente, entrará en conflicto con el número.,Sólo la ID desnuda reconocerá la memoria del mismo número en la biblioteca del subasistente que la fila actual.
+ * 各分库的 fact.id 独立自增会撞号,只比裸 id 会把子助手库里同号的记忆认成本行。
  */
 internal fun memoryFactKey(scope: String?, id: Long): String = "${scope.orEmpty()}:$id"
 
 /**
- * Determinación del estado de una única fila de hechos(función pura,Conveniente para pruebas individuales).
+ * 单条事实行的状态判定(纯函数,便于单测)。
  *
- * @param mergedIntoId nuestro banco merged_into_id
- * @param suppressedAt nuestro banco suppressed_at(Si no está vacío es que ya apareció.)
- * @param supersededKeys por [memoryFactKey] Una colección de "reemplazados por otras filas"
+ * @param mergedIntoId 本行 merged_into_id
+ * @param suppressedAt 本行 suppressed_at(非空即已出场)
+ * @param supersededKeys 由 [memoryFactKey] 组成的「已被其他行取代」集合
  */
 internal fun memoryFactStatusOf(
     scope: String?,
@@ -220,13 +242,13 @@ internal fun memoryFactStatusOf(
 )
 
 /**
- * v8: Filtros de alcance de memoria(Para renderizar mediante FilterChip encima de la interfaz de usuario).
+ * v8: 记忆作用域筛选项(供 UI 顶部 FilterChip 渲染)。
  *
- *  - [id]:identificador de alcance("main" o assistantId),null expresar"Todos los alcances"(UI marca con todo).
- *    Para facilitar la diferenciación de la interfaz de usuario"Todos"con alcance específico,uso [isAll] marca.
- *  - [displayName]:UI nombre para mostrar("Todos" / "asistente principal" / Nombre del asistente).
- *  - [isMain]:Si es el alcance de ayuda principal(Utilice colores predeterminados frente a colores terciarios para la interfaz de usuario).
- *  - [isAll]:¿Es"Todos"Opciones(para visualización de interfaz de usuario"Todos"y seleccionado por defecto).
+ *  - [id]:作用域标识("main" 或 assistantId),null 表示"全部作用域"(UI 用 all 标记)。
+ *    为方便 UI 区分"全部"与具体作用域,使用 [isAll] 标记。
+ *  - [displayName]:UI 显示名("全部" / "主助手" / 助手名称)。
+ *  - [isMain]:是否为主助手作用域(用于 UI 选用默认色 vs tertiary 色)。
+ *  - [isAll]:是否为"全部"选项(用于 UI 显示"全部"且默认选中)。
  */
 data class ScopeOption(
     val id: String?,
@@ -236,15 +258,15 @@ data class ScopeOption(
 )
 
 /**
- * v1.0.72: Entrada de UI de memoria de chat grupal(centro de memoria"chat grupal"Tab).
+ * v1.0.72: 群聊记忆 UI 条目(记忆中心"群聊"Tab)。
  *
- * @param id Memoria de chat grupal id
- * @param groupChatId chat grupal id
- * @param groupChatName Nombre del chat grupal(Analizado desde GroupChatRepository,Repliegue ante el fracaso "chat grupal")
- * @param assistantName Nombre del asistente de voz(Analizar desde AssistantRepository,Volver al original en caso de error id)
- * @param summary texto resumido
- * @param createdAt Crear marca de tiempo
- * @param timeText Formatear copia de hora
+ * @param id 群聊记忆 id
+ * @param groupChatId 群聊 id
+ * @param groupChatName 群聊名称(从 GroupChatRepository 解析,失败回退 "群聊")
+ * @param assistantName 发言助手名(从 AssistantRepository 解析,失败回退原始 id)
+ * @param summary 摘要文本
+ * @param createdAt 创建时间戳
+ * @param timeText 格式化时间文案
  */
 data class GroupChatMemoryUiItem(
     val id: String,
@@ -257,14 +279,14 @@ data class GroupChatMemoryUiItem(
 )
 
 /**
- * Fusionar manualmente el estado del borrador recordado,null = No hay fusiones en curso.
+ * 手动合并记忆的草稿状态,null = 没有正在进行的合并。
  *
- * Solo lleva los resultados intermedios de una sesión de fusión.:El borrador del modelo no se guardará hasta que el usuario lo confirme.,
- * Entonces el texto([mergedText])es una entrada de interfaz de usuario editable,[sourceItems] Conserve la entrada original para poder recuperar la identificación al confirmar.
+ * 只承载一次合并会话的中间结果:模型出的草稿在用户确认前不落库,
+ * 所以正文([mergedText])是可编辑的 UI 输入,[sourceItems] 保留原始条目以便确认时取 id。
  *
- * @param sources N piezas de texto originales que participan en la fusión(pantalla de solo lectura,Informar a los usuarios qué se ha fusionado)
- * @param mergedText Borrador de fusión generado por el modelo(UI Editable)
- * @param sourceItems La entrada de memoria original seleccionada(Al confirmar la combinación, presione la identificación para colocarla en la biblioteca.)
+ * @param sources 参与合并的原始 N 条正文(只读展示,让用户知道合并了什么)
+ * @param mergedText 模型生成的合并草稿(UI 可编辑)
+ * @param sourceItems 被选中的原始记忆条目(确认合并时按 id 落库)
  */
 data class MemoryMergeDraft(
     val sources: List<String>,
@@ -273,58 +295,56 @@ data class MemoryMergeDraft(
 )
 
 /**
- * Etapa 6: Memorizar la página ViewModel.
+ * 阶段 6: 记忆页 ViewModel。
  *
- * fuente de datos(Todos registrados vía Koin):
- *  - [FactStore]:Fact Búsqueda de capa + ME GUSTA
- *  - [SessionSummaryManager]:Summary capa
- *  - [MemoryCompiler]:Compile capa(Lea 4 secciones de productos compilados.)
+ * 数据来源(全部已通过 Koin 注册):
+ *  - [FactStore]:Fact 层 + LIKE 搜索
+ *  - [SessionSummaryManager]:Summary 层
+ *  - [MemoryCompiler]:Compile 层(读取 4 段编译产物)
  *
- * Deep Capa sin almacenamiento independiente,Inferir impresiones por total de hechos + marca de tiempo.
+ * Deep 层无独立存储,通过 Fact 总数 + 时间戳推断展示。
  *
- * v8: Nuevo [assistantRepository] inyectar,usado para:
- *  - Cargar [availableScopes](Asistente principal + todos los sub-asistentes)
- *  - [selectedScope] Controlar el filtrado de elementos de datos de la página de memoria por alcance
- *  - [addFact] Utilice la corriente al escribir [selectedScope](null predeterminado "main")
+ * v8: 新增 [assistantRepository] 注入,用于:
+ *  - 加载 [availableScopes](主助手 + 所有子助手)
+ *  - [selectedScope] 控制记忆页 factItems 按作用域筛选
+ *  - [addFact] 写入时使用当前 [selectedScope](null 时默认 "main")
  */
 class MemoryViewModel(
     application: Application,
     private val factStore: FactStore,
     private val summaryManager: SessionSummaryManager,
     private val memoryCompiler: MemoryCompiler,
-    /** v0.51: Inyecte MemoryTicker para leer HealthFlow y compilar Markdown recortado. */
+    /** v0.51: 注入 MemoryTicker 用于读取 healthFlow 与裁剪后的 compiledMarkdown。 */
     private val memoryTicker: MemoryTicker,
-    /** v1.98: Inyecte SettingsRepository para leer el cambio de biblioteca de experiencias. */
+    /** v1.98: 注入 SettingsRepository 用于读取经验库开关。 */
     private val settings: SettingsRepository,
-    /** v1.98: Inyecte ExperienceRepository para el repositorio de experiencias CRUD + observeAll. */
+    /** v1.98: 注入 ExperienceRepository 用于经验库 CRUD + observeAll。 */
     private val experienceRepository: ExperienceRepository,
-    /** v8: Inject AssistantRepository para cargar availableScopes(Asistente principal + lista de sub-asistentes). */
+    /** v8: 注入 AssistantRepository 用于加载 availableScopes(主助手 + 子助手列表)。 */
     private val assistantRepository: AssistantRepository,
     private val sessionRepository: SessionRepository,
-    /** v1.0.52 P2-2: Inyecte MemorySpaceRepository para alternar espacio + lista. */
+    /** v1.0.52 P2-2: 注入 MemorySpaceRepository 用于 Space 切换 + 列表。 */
     private val spaceRepository: MemorySpaceRepository,
-    /** v1.0.72: Inyecte GroupChatMemoryRepository para mostrar la memoria del chat grupal/borrar. */
+    /** v1.0.72: 注入 GroupChatMemoryRepository 用于群聊记忆展示/删除。 */
     private val groupChatMemoryRepository: io.zer0.muse.data.groupchat.GroupChatMemoryRepository,
-    /** v1.0.72: Inyecte GroupChatRepository para resolver los nombres de los chats grupales. */
+    /** v1.0.72: 注入 GroupChatRepository 用于解析群聊名。 */
     private val groupChatRepository: io.zer0.muse.data.groupchat.GroupChatRepository,
-    /** v1.0.72: Inyecte ChatService para LLM para fusionar recuerdos duplicados. */
+    /** v1.0.72: 注入 ChatService 用于 LLM 合并重复记忆。 */
     private val chatService: io.zer0.ai.ChatService,
     /**
-     * F-8: Inyectar almacenamiento de memoria superior — El pin de la interfaz de usuario de la página de memoria se escribe en la misma fuente de datos que la herramienta pin_memory
-     * (filesDir/pinned_memory), para garantizar que el contenido fijado en la parte superior de la interfaz de usuario realmente ingrese a la sección de "memoria fija" del indicador del sistema.
+     * F-8: 注入置顶记忆存储 — 记忆页 UI 置顶与 pin_memory 工具写入同一数据源
+     * (filesDir/pinned_memory)，确保 UI 置顶的内容真正进入 system prompt「固定记忆」段。
      */
     private val pinnedMemoryStore: io.zer0.memory.pin.PinnedMemoryStore,
     /**
-     * P0-4: inyectar FactDbProvider — lado de producción(DeepMemoryProcessor / MemoryAutoSaveScheduler /
-     * SystemPromptAssembler)Escribir hechos según la base de datos del asistente.(facts_<id>.db),El centro de la memoria debe seguir el mismo camino. provider
-     * leer/Cambie a la biblioteca que realmente usa la IA. La adición, eliminación y modificación del alcance del subasistente anteriormente se encontraban en la biblioteca predeterminada.,No válido contra IA.
+     * P0-4: 注入 FactDbProvider — 生产侧(DeepMemoryProcessor / MemoryAutoSaveScheduler /
+     * SystemPromptAssembler)按助手分库写事实(facts_<id>.db),记忆中心必须走同一 provider
+     * 才能读到/改到 AI 真正使用的库。子助手 scope 的增删改此前落在默认库,对 AI 无效。
      */
     private val factDbProvider: io.zer0.memory.fact.FactDbProvider,
-    /** P2-32: Almacenamiento de lista de contradicciones(Reflexión diaria sobre los resultados de las pruebas.;null = prueba/Degrada a nulo cuando no está ensamblado). */
-    private val contradictionStore: io.zer0.memory.reflection.MemoryContradictionStore? = null,
     /**
-     * v1.0.92: LLM Consolidador de memoria — manuales"organizar la memoria"Comparte la misma implementación con integración automática diaria.
-     * (Clústeres similares se entregan a grandes modelos para su fusión).null = prueba/Omita la integración de LLM cuando no esté ensamblado.
+     * v1.0.92: LLM 记忆整合器 — 手动"整理记忆"与每日自动整合共用同一实现
+     * (相似簇交给大模型合并)。null = 测试/未装配时跳过 LLM 整合。
      */
     private val factConsolidator: io.zer0.memory.fact.LlmFactConsolidator? = null,
 ) : AndroidViewModel(application) {
@@ -332,30 +352,30 @@ class MemoryViewModel(
     private val _state = MutableStateFlow(MemoryUiState())
     val state: StateFlow<MemoryUiState> = _state.asStateFlow()
 
-    // ── P0-4: Enrutamiento de rama de memoria — con lado de escritura de producción(FactDbProvider)Compartir la misma fuente de datos ──
+    // ── P0-4: 记忆分库路由 — 与生产写入侧(FactDbProvider)共用同一数据源 ──
 
     /**
-     * Analice el uso real en el lado de la producción de acuerdo con el alcance seleccionado actualmente. FactStore:
-     *  - null / "main" → Biblioteca global predeterminada(hechos de ayudante maestro,scope="main")
-     *  - sub-asistente id → FactDbProvider biblioteca sucursal(facts_<id>.db)
+     * 按当前选中 scope 解析生产侧实际使用的 FactStore:
+     *  - null / "main" → 全局默认库(主助手事实,scope="main")
+     *  - 子助手 id → FactDbProvider 分库(facts_<id>.db)
      *
-     * antes de la reparación:UI Utilice siempre la biblioteca predeterminada + la columna de alcance,El hecho de que la base de datos de la sucursal subasistente no se pueda leer,UI Nuevo/La eliminación no tiene ningún efecto sobre la IA.
+     * 修复前:UI 恒用默认库 + scope 列,子助手分库的事实读不到、UI 新增/删除对 AI 无效。
      */
     private fun storeForScope(scope: String?): FactStore = when {
         scope == null || scope == "main" -> factStore
         else -> factDbProvider.getFactStore(scope)
     }
 
-    /** P0-4: seleccionado actualmente store(scope Cuando es nulo, recurre a la biblioteca predeterminada del asistente principal.). */
+    /** P0-4: 当前选中的 store(scope 为 null 时回退主助手默认库)。 */
     private val currentStore: FactStore
         get() = storeForScope(_selectedScope.value)
 
     /**
-     * P0-4/SEC-04: prensa (scope, id) La tienda a la que pertenece el hecho de ubicación.
+     * P0-4/SEC-04: 按 (scope, id) 定位事实所属的 store。
      *
-     * Los ID de aumento automático de cada rama entrarán en conflicto entre sí.——La misma identificación puede ser un registro legal tanto en la base de datos principal como en una base de datos secundaria.
-     * Por lo tanto, la persona que llama debe intentar dar [scope]; Solo cuando no se pueda obtener el alcance, se recurrirá a la tienda seleccionada actualmente.
-     * **No más escaneos mediante ID simple entre fragmentos**: Eso equivale a usar la identificación para adivinar la propiedad, y el editor/Eliminar/El pin recayó en otros asistentes.
+     * 各分库的自增 id 会撞号——同一个 id 在主库与某个子助手库里都可能是合法记录，
+     * 因此调用方必须尽量给出 [scope]；只有拿不到 scope 时才回退到当前选中的 store。
+     * **不再跨分库按裸 id 扫描**：那等于用 id 猜归属，会把编辑/删除/置顶落到别的助手身上。
      */
     private suspend fun storeForFact(id: Long, scope: String? = null): FactStore {
         val scoped = scope?.takeIf { it.isNotBlank() }?.let { storeForScope(it) }
@@ -363,67 +383,67 @@ class MemoryViewModel(
         return scoped ?: currentStore
     }
 
-    /** P0-4: "Todos"ver — Biblioteca predeterminada + unión de subbibliotecas de cada subasistente(filtrar por espacio). */
+    /** P0-4: "全部"视图 — 默认库 + 各子助手分库并集(按空间过滤)。 */
     private suspend fun loadFactsForAllScopes(spaceId: String): List<FactStore.Fact> {
         val main = resultOf { factStore.getBySpace(spaceId) }.getOrNull() ?: emptyList()
         val scoped = subAssistantStores().flatMap { (id, store) ->
             resultOf { store.getBySpace(spaceId) }
-                .onError { msg, t -> Logger.w("MemoryViewModel", "No se pudo leer la biblioteca de memoria del subasistente($id): $msg", t) }
+                .onError { msg, t -> Logger.w("MemoryViewModel", "读取子助手记忆分库失败($id): $msg", t) }
                 .getOrNull() ?: emptyList()
         }
         return (main + scoped).distinctBy { it.scope to it.id }
     }
 
-    /** P0-4: "Todos"ver — Búsqueda de texto completo en bases de datos(filtrar por espacio). */
+    /** P0-4: "全部"视图 — 跨分库全文搜索(按空间过滤)。 */
     private suspend fun searchAllScopes(query: String, spaceId: String): List<FactStore.Fact> {
         val main = resultOf { factStore.searchFullTextBySpace(query, spaceId) }.getOrNull() ?: emptyList()
         val scoped = subAssistantStores().flatMap { (id, store) ->
             resultOf { store.searchFullTextBySpace(query, spaceId) }
-                .onError { msg, t -> Logger.w("MemoryViewModel", "No se pudo buscar la biblioteca de memoria del subasistente($id): $msg", t) }
+                .onError { msg, t -> Logger.w("MemoryViewModel", "搜索子助手记忆分库失败($id): $msg", t) }
                 .getOrNull() ?: emptyList()
         }
         return (main + scoped).distinctBy { it.scope to it.id }
     }
 
-    /** P0-4: Lista de tiendas auxiliares(scope id → store),Sólo asistentes no principales. */
+    /** P0-4: 子助手 store 列表(scope id → store),仅非主助手。 */
     private fun subAssistantStores(): List<Pair<String, FactStore>> = _availableScopes.value
         .mapNotNull { option ->
             val id = option.id
             if (id == null || id == "main" || id.isBlank()) null else id to factDbProvider.getFactStore(id)
         }
 
-    // Reparación de auditoría (3.2): Registre la rutina de loadAll Job,Cancele la rutina anterior antes de cargar la nueva.,Evite que los resultados antiguos sobrescriban el nuevo estado
+    // 审计修复 (3.2): 记录 loadAll 的协程 Job,新加载前取消旧协程,避免旧结果覆盖新状态
     private var loadJob: Job? = null
 
-    // Reparación de auditoría (3.3): Corrutina que registra la búsqueda Job,Cancelar la rutina anterior antes de realizar una nueva búsqueda,Evite que los resultados antiguos sobrescriban el nuevo estado
+    // 审计修复 (3.3): 记录 search 的协程 Job,新搜索前取消旧协程,避免旧结果覆盖新状态
     private var searchJob: Job? = null
 
     /**
-     * v8: El alcance de la memoria actualmente seleccionado.
-     *  - null:Todos los alcances(Predeterminado,UI seleccionado"Todos" chip)
-     *  - "main":Mostrar solo datos sobre el alcance del asistente principal
-     *  - assistantId:Mostrar solo datos sobre el alcance de este subayudante
+     * v8: 当前选中的记忆作用域。
+     *  - null:全部作用域(默认,UI 选中"全部" chip)
+     *  - "main":仅展示主助手作用域的事实
+     *  - assistantId:仅展示该子助手作用域的事实
      *
-     * Se activará después de cambiar de alcance. [loadAll] Extraiga los datos nuevamente.
+     * 切换 scope 后会触发 [loadAll] 重新拉取数据。
      */
     private val _selectedScope = MutableStateFlow<String?>(null)
     val selectedScope: StateFlow<String?> = _selectedScope.asStateFlow()
 
-    /** v1.x: Eliminar completamente el reingreso y evitar el reingreso. */
+    /** v1.x: 全量去重防重入。 */
     private var dedupInFlight = false
 
-    /** v1.x: Compile inmediatamente para evitar el reingreso.(La compilación consume llamadas LLM,Evite la ejecución repetida de puntos conectados). */
+    /** v1.x: 立即编译防重入(编译耗 LLM 调用,避免连点重复执行)。 */
     private var compileInFlight = false
 
-    /** v1.0.90: Estado de compilación en progreso,Proporciona páginas de memoria para mostrar comentarios explícitos. */
+    /** v1.0.90: 编译进行中状态,供记忆页显示明确反馈。 */
     private val _compilingState = MutableStateFlow(false)
     val compilingState: StateFlow<Boolean> = _compilingState.asStateFlow()
 
-    /** v1.0.90: Estado de deduplicación en curso,Para páginas de memoria para desactivar botones y mostrar comentarios. */
+    /** v1.0.90: 去重进行中状态,供记忆页禁用按钮并显示反馈。 */
     private val _dedupState = MutableStateFlow(false)
     val dedupState: StateFlow<Boolean> = _dedupState.asStateFlow()
 
-    /** unificar“organizar la memoria”El estado de la acción evita que los usuarios tengan que comprender varios botones subyacentes. */
+    /** 统一“整理记忆”动作的状态，避免用户需要理解多个底层按钮。 */
     private val _organizeRunning = MutableStateFlow(false)
     val organizeRunning: StateFlow<Boolean> = _organizeRunning.asStateFlow()
     private val _organizeStage = MutableStateFlow<String?>(null)
@@ -431,21 +451,21 @@ class MemoryViewModel(
     private val _organizeResult = MutableStateFlow<String?>(null)
     val organizeResult: StateFlow<String?> = _organizeResult.asStateFlow()
 
-    /** Borradores combinados manualmente;null = No hay fusiones en curso. */
+    /** 手动合并的草稿;null = 没有正在进行的合并。 */
     private val _mergeDraft = MutableStateFlow<MemoryMergeDraft?>(null)
     val mergeDraft: StateFlow<MemoryMergeDraft?> = _mergeDraft.asStateFlow()
 
-    /** Fusión manual en curso(Se configuran las secciones Generar borrador y Drop-in.,Proporciona interfaz de usuario para desactivar botones y evitar puntos de conexión.). */
+    /** 手动合并进行中(生成草稿与落库两段都置位,供 UI 禁按钮防连点)。 */
     private val _mergeRunning = MutableStateFlow(false)
     val mergeRunning: StateFlow<Boolean> = _mergeRunning.asStateFlow()
 
-    /** Mensaje de error de fusión(UI Limpiar después del consumo),null = Sin errores. */
+    /** 合并失败提示(UI 消费后清除),null = 无错误。 */
     private val _mergeError = MutableStateFlow<String?>(null)
     val mergeError: StateFlow<String?> = _mergeError.asStateFlow()
 
     /**
-     * Organización de memoria unificada: realice la deduplicación después de compilar el resumen.
-     * Las dos acciones subyacentes aún mantienen API independientes para compatibilidad con portales antiguos y tareas en segundo plano; la nueva interfaz de usuario solo expone este método.
+     * 统一整理记忆：编译摘要后执行去重。
+     * 两个底层动作仍保持独立 API，供旧入口和后台任务兼容；新 UI 只暴露本方法。
      */
     fun organizeMemory() {
         if (_organizeRunning.value) return
@@ -456,7 +476,7 @@ class MemoryViewModel(
                 _organizeStage.value = "compile"
                 val compileOk = withContext(Dispatchers.IO) {
                     resultOf { memoryTicker.forceCompileNow() }
-                        .onError { msg, t -> Logger.w("MemoryViewModel", "La compilación de la memoria falló: ${t?.message ?: msg}") }
+                        .onError { msg, t -> Logger.w("MemoryViewModel", "整理记忆编译失败: ${t?.message ?: msg}") }
                         .getOrNull() != null
                 }
                 if (!compileOk) {
@@ -474,17 +494,17 @@ class MemoryViewModel(
                         }
                         total
                     }
-                        .onError { msg, t -> Logger.w("MemoryViewModel", "No se pudo organizar la memoria y eliminar duplicados: ${t?.message ?: msg}") }
+                        .onError { msg, t -> Logger.w("MemoryViewModel", "整理记忆去重失败: ${t?.message ?: msg}") }
                         .getOrNull()
                 }
                 if (merged == null) {
                     _organizeResult.value = "failed:dedup"
                 } else {
-                    // v1.0.92: Una vez completada la deduplicación de reglas, se agrega la integración semántica de LLM.(Misma implementación que ruta automática diaria).
-                    // Saltar silenciosamente el fracaso,No afecta los resultados de la deduplicación de reglas.
+                    // v1.0.92: 规则去重完成后追加 LLM 语义整合(与每日自动路径同一实现)。
+                    // 失败静默跳过,不影响规则去重结果。
                     val llmMerged = withContext(Dispatchers.IO) {
                         resultOf { llmMergeDuplicates() }
-                            .onError { msg, t -> Logger.w("MemoryViewModel", "organizar:LLM La integración falló: ${t?.message ?: msg}") }
+                            .onError { msg, t -> Logger.w("MemoryViewModel", "整理:LLM 整合失败: ${t?.message ?: msg}") }
                             .getOrNull() ?: 0
                     }
                     _organizeStage.value = "complete"
@@ -503,26 +523,25 @@ class MemoryViewModel(
         if (!_organizeRunning.value) _organizeStage.value = null
     }
 
-    // ── Fusionar recuerdos manualmente:Hechos seleccionados → borrador del modelo → Después de que el usuario confirma, la transacción se coloca en la base de datos. ──
+    // ── 手动合并记忆:选中的几条事实 → 模型草稿 → 用户确认后一次事务落库 ──
 
     /**
-     * El ámbito al que pertenece el asiento de hecho:Traiga sus propios artículos primero scope,Volver a la selección actual si falta(Mismo calibre que eliminar ruta).
+     * 事实条目所属作用域:优先用条目自带 scope,缺失时回退当前选择(与删除路径同一口径)。
      */
-    private fun mergeScopeOf(item: MemoryItem): String =
-        item.scope?.takeIf { it.isNotBlank() }
-            ?: _selectedScope.value?.takeIf { it.isNotBlank() }
-            ?: "main"
+    private fun mergeScopeOf(item: MemoryItem): String = item.scope?.takeIf { it.isNotBlank() }
+        ?: _selectedScope.value?.takeIf { it.isNotBlank() }
+        ?: "main"
 
-    /** El espacio de memoria al que pertenece la entrada de hechos.:Traiga sus propios artículos primero spaceId,Devuelve la selección actual si falta. */
+    /** 事实条目所属记忆空间:优先用条目自带 spaceId,缺失时回退当前选择。 */
     private fun mergeSpaceOf(item: MemoryItem): String =
         item.spaceId?.takeIf { it.isNotBlank() } ?: _selectedSpaceId.value.ifBlank { "default" }
 
     /**
-     * El primer paso en la fusión manual:Solo permitir que se redacte el modelo.,No cambies la biblioteca.
+     * 手动合并的第一步:只让模型出草稿,不改库。
      *
-     * Solo se aceptan entradas con capa de hechos e identificación resoluble,y debe caer dentro**el mismo FactStore**(mismo alcance + mismo space):
-     * [FactStore.mergeFacts] Inserte nuevas filas en una transacción y escriba la fila de origen merged_into_id,
-     * Las entradas entre bases de datos no pueden estar cubiertas por una sola transacción,Es más seguro detenerse temprano que terminar más tarde.
+     * 只接受 Fact 层且 id 可解析的条目,且必须落在**同一个 FactStore**(同 scope + 同 space):
+     * [FactStore.mergeFacts] 在一个事务里插新行并给源行打 merged_into_id,
+     * 跨库的条目没法一次事务覆盖,提前拦下来比事后半完成更安全。
      */
     fun prepareMerge(items: List<MemoryItem>) {
         _mergeError.value = null
@@ -549,7 +568,7 @@ class MemoryViewModel(
                 val texts = targets.map { it.content }
                 val merged = withContext(Dispatchers.IO) {
                     resultOf { consolidator.synthesize(texts) }
-                        .onError { msg, t -> Logger.w("MemoryViewModel", "Falló la compilación de fusión manual: ${t?.message ?: msg}") }
+                        .onError { msg, t -> Logger.w("MemoryViewModel", "手动合并生成失败: ${t?.message ?: msg}") }
                         .getOrNull()
                 }
                 if (merged.isNullOrBlank()) {
@@ -568,10 +587,10 @@ class MemoryViewModel(
     }
 
     /**
-     * Confirmar fusión:usar(Puede haber sido modificado por el usuario.)[editedText]Hacer texto combinado,Salidas de origen,Inserte un nuevo hecho.
+     * 确认合并:用(可能被用户改过的)[editedText]做合并正文,源行退场,插入一条新事实。
      *
-     * Actualiza silenciosamente la lista después del éxito.:Igual que la eliminación por lotes,Evite reemplazar la vista haciendo que la posición de desplazamiento vuelva a la parte superior.
-     * Mantener borrador en caso de falla,El usuario puede volver a intentarlo después de realizar cambios.
+     * 成功后静默刷新列表:与批量删除一致,避免替换视图导致滚动位置回到顶部。
+     * 失败保留草稿,用户改完可以重试。
      */
     fun confirmMerge(editedText: String) {
         val draft = _mergeDraft.value ?: return
@@ -590,7 +609,7 @@ class MemoryViewModel(
                     resultOf {
                         storeForScope(scope).mergeFacts(ids, editedText, scope = scope, spaceId = spaceId)
                     }
-                        .onError { msg, t -> Logger.w("MemoryViewModel", "Error al fusionar y soltar manualmente: ${t?.message ?: msg}") }
+                        .onError { msg, t -> Logger.w("MemoryViewModel", "手动合并落库失败: ${t?.message ?: msg}") }
                         .getOrNull()
                 }
                 if (newId == null) {
@@ -606,20 +625,20 @@ class MemoryViewModel(
         }
     }
 
-    /** Abandonar esta fusión:Borrar borradores y mensajes de error,Biblioteca sin mover. */
+    /** 放弃本次合并:清掉草稿与错误提示,不动库。 */
     fun cancelMerge() {
         _mergeDraft.value = null
         _mergeError.value = null
     }
 
-    /** UI Se llama después de consumir mensajes de error de combinación,Borre el mensaje. */
+    /** UI 消费合并错误提示后调用,清除提示。 */
     fun consumeMergeError() {
         _mergeError.value = null
     }
 
     /**
-     * F-7: Filtrado de clientes — Importancia + plazo(Basado en el número de días creado desde hoy).
-     * No modificar el enlace de consulta,Filtrar solo a nivel de presentación;Las estadísticas y la deduplicación todavía se basan en datos completos.
+     * F-7: 客户端筛选 — 重要程度 + 时间范围(基于 createdAt 距今天数)。
+     * 不修改查询链路,仅在展示层过滤;统计与去重仍基于全量数据。
      */
     private fun filterFacts(facts: List<FactStore.Fact>): List<FactStore.Fact> {
         val importance = _importanceFilter.value
@@ -633,7 +652,7 @@ class MemoryViewModel(
     }
 
     /**
-     * F-7: Alternar filtro de importancia(null=Todos, 0=ordinario, 1=importante, 2=clave).
+     * F-7: 切换重要程度筛选(null=全部, 0=普通, 1=重要, 2=关键)。
      */
     fun selectImportanceFilter(importance: Int?) {
         if (_importanceFilter.value == importance) return
@@ -642,7 +661,7 @@ class MemoryViewModel(
     }
 
     /**
-     * F-7: Cambiar filtro de rango de tiempo(null/ALL=Todos, cerca7dia/cerca30dia/cerca90dia).
+     * F-7: 切换时间范围筛选(null/ALL=全部, 近7天/近30天/近90天)。
      */
     fun selectTimeRangeFilter(range: MemoryTimeRange?) {
         if (_timeRangeFilter.value == range) return
@@ -651,49 +670,49 @@ class MemoryViewModel(
     }
 
     /**
-     * v8: Lista opcional de ámbitos(Responsivo).
-     * siempre contiene"Todos" + "asistente principal";Los elementos restantes provienen de [assistantRepository.observeAll].
-     * El usuario crea uno nuevo en la página de configuración del asistente./Al eliminar un subasistente,Esta lista se actualiza automáticamente.
+     * v8: 可选的作用域列表(响应式)。
+     * 始终包含"全部" + "主助手";其余项来自 [assistantRepository.observeAll]。
+     * 用户在助手设置页新建/删除子助手时,本列表自动更新。
      */
     private val _availableScopes = MutableStateFlow<List<ScopeOption>>(emptyList())
     val availableScopes: StateFlow<List<ScopeOption>> = _availableScopes.asStateFlow()
 
     /**
-     * v1.0.52 P2-2: El ID del espacio de memoria seleccionado actualmente.
-     * Leer desde SettingsRepository.currentSpaceIdFlow,Escribir después de que el usuario cambie de espacio.
-     * factItems prensa (scope + spaceId) Doble filtrado.
+     * v1.0.52 P2-2: 当前选中的记忆空间 id。
+     * 从 SettingsRepository.currentSpaceIdFlow 读取,用户切换 Space 后写入。
+     * factItems 按 (scope + spaceId) 双重过滤。
      */
     private val _selectedSpaceId = MutableStateFlow(MemorySpaceEntity.DEFAULT_SPACE_ID)
     val selectedSpaceId: StateFlow<String> = _selectedSpaceId.asStateFlow()
 
-    /** F-7: Filtro de importancia(null=Todos, 0/1/2=ordinario/importante/clave). */
+    /** F-7: 重要程度筛选(null=全部, 0/1/2=普通/重要/关键)。 */
     private val _importanceFilter = MutableStateFlow<Int?>(null)
     val importanceFilter: StateFlow<Int?> = _importanceFilter.asStateFlow()
 
-    /** F-7: Filtro de rango de tiempo(null=Todos). */
+    /** F-7: 时间范围筛选(null=全部)。 */
     private val _timeRangeFilter = MutableStateFlow<MemoryTimeRange?>(null)
     val timeRangeFilter: StateFlow<MemoryTimeRange?> = _timeRangeFilter.asStateFlow()
 
     /**
-     * v1.0.52 P2-2: Lista de espacios disponibles(Responsivo).
-     * de [spaceRepository.observeSpaces],Los usuarios se actualizan automáticamente después de CRUD en la página de administración del espacio.
+     * v1.0.52 P2-2: 可用的 Space 列表(响应式)。
+     * 来自 [spaceRepository.observeSpaces],用户在 Space 管理页 CRUD 后自动更新。
      */
     private val _availableSpaces = MutableStateFlow<List<MemorySpaceEntity>>(emptyList())
     val availableSpaces: StateFlow<List<MemorySpaceEntity>> = _availableSpaces.asStateFlow()
 
     /**
-     * v1.0.51: Progreso de la migración de la memoria de stock — Después de la actualización, el resumen de la sesión del historial se reflejará en tiempo real cuando se inicie la ejecución de recuperación por primera vez.
-     * null Indica que no se está migrando;Muestra una barra de progreso en la parte superior de MemoryScreen cuando no es nula.
-     * Reenviar directamente MemoryTicker.backfillProgressFlow,No es necesario que ViewModel pase al estado de transición.
+     * v1.0.51: 存量记忆迁移进度 — 升级后首次启动补跑历史 session 摘要时实时反映。
+     * null 表示未在迁移中;非 null 时 MemoryScreen 顶部显示进度条。
+     * 直接转发 MemoryTicker.backfillProgressFlow,无需 ViewModel 中转状态。
      */
     val backfillProgress: StateFlow<MemoryTicker.BackfillProgress?> = memoryTicker.backfillProgressFlow
 
-    /** v1.0.51: Claro progreso migratorio(Llamado por MemoryScreen después de que el usuario haya visto el mensaje de finalización). */
+    /** v1.0.51: 清除迁移进度(用户已看到完成提示后由 MemoryScreen 调用)。 */
     fun clearBackfillProgress() = memoryTicker.clearBackfillProgress()
 
     init {
-        // v0.51: Recoge MemoryTicker healthFlow,Refleja el estado de salud de la memoria en la interfaz de usuario en tiempo real.
-        // Cada paso es exitoso/El tiempo de falla se mostrará en la tarjeta del tablero.,No se requiere actualización manual por parte del usuario.
+        // v0.51: 收集 MemoryTicker 的 healthFlow,实时反映记忆健康状态到 UI。
+        // 各步骤成功/失败时间会在 dashboard 卡片展示,无需用户手动刷新。
         viewModelScope.launch {
             memoryTicker.healthFlow.collect { health ->
                 val lastCompileTime = health.values
@@ -709,13 +728,13 @@ class MemoryViewModel(
                 }
             }
         }
-        // v1.98: Cambio de biblioteca de experiencia de suscripción,La página de configuración de reflexión en tiempo real cambia a UI(Determina si se mostrarán las tarjetas de la biblioteca de experiencias.).
+        // v1.98: 订阅经验库开关,实时反映设置页切换到 UI(决定是否展示经验库卡片)。
         viewModelScope.launch {
             settings.experienceEnabledFlow.collect { enabled ->
                 _state.update { it.copy(experienceEnabled = enabled) }
             }
         }
-        // v1.98: Suscríbase al flujo de entrada de la base de experiencias,CRUD Actualizar automáticamente después UI(No se requiere manual loadAll).
+        // v1.98: 订阅经验库条目流,CRUD 后自动刷新 UI(无需手动 loadAll)。
         viewModelScope.launch {
             experienceRepository.observeAll().collect { experiences ->
                 val items = experiences.map { it.toMemoryItem() }
@@ -727,16 +746,16 @@ class MemoryViewModel(
                 }
             }
         }
-        // v8: Suscríbete AssistantRepository.observeAll,Actualizar los alcances disponibles en tiempo real.
-        // El usuario crea uno nuevo en la página de configuración del asistente./Al eliminar un subasistente,FilterChip Las listas se sincronizan automáticamente.
-        // Incluido por defecto"Todos" + "asistente principal",Los elementos restantes se representan mediante AssistantEntity.id/name.
+        // v8: 订阅 AssistantRepository.observeAll,实时刷新 availableScopes。
+        // 用户在助手设置页新建/删除子助手时,FilterChip 列表自动同步。
+        // 默认包含"全部" + "主助手",其余项按 AssistantEntity.id/name 渲染。
         viewModelScope.launch {
             assistantRepository.observeAll.collect { assistants ->
                 _availableScopes.value = buildScopes(assistants)
             }
         }
-        // v1.0.52 P2-2: Suscríbete currentSpaceIdFlow,Sincronización en tiempo real después de que el usuario cambia el espacio en la página de memoria o en la página de configuración.
-        // Después de cambiar de espacio, se activa loadAll para filtrar la lista de hechos nuevamente por spaceId.
+        // v1.0.52 P2-2: 订阅 currentSpaceIdFlow,用户在记忆页或设置页切换 Space 后实时同步。
+        // 切换 Space 后触发 loadAll 重新按 spaceId 过滤事实列表。
         viewModelScope.launch {
             settings.currentSpaceIdFlow.collect { spaceId ->
                 val changed = _selectedSpaceId.value != spaceId
@@ -744,7 +763,7 @@ class MemoryViewModel(
                 if (changed) loadAll(silent = true)
             }
         }
-        // v1.0.52 P2-2: Suscríbete a la lista de espacios,El usuario sincroniza automáticamente el menú desplegable del conmutador después de CRUD en la página de administración de espacio.
+        // v1.0.52 P2-2: 订阅 Space 列表,用户在 Space 管理页 CRUD 后自动同步切换器下拉。
         viewModelScope.launch {
             spaceRepository.observeSpaces().collect { spaces ->
                 _availableSpaces.value = spaces
@@ -754,11 +773,11 @@ class MemoryViewModel(
     }
 
     /**
-     * v8: Lista de opciones de alcance de construcción(siempre contiene"Todos" + "asistente principal" + Todos los subayudantes).
+     * v8: 构造作用域选项列表(始终包含"全部" + "主助手" + 所有子助手)。
      *
-     * "default" Los ayudantes son tratados como"Asistente principal predeterminado",Su alcance se asigna a "main"(Consistente con el valor predeterminado de FactEntity),
-     * Evite los datos históricos(default Los hechos escritos por el asistente todavía tienen scope="main")Inconsistente con las opciones de la interfaz de usuario.
-     * Otros ID de asistente usan su ID directamente como alcance.
+     * "default" 助手在 Muse 中视为"默认主助手",其作用域映射到 "main"(与 FactEntity 默认值一致),
+     * 避免历史数据(default 助手写入的 facts 仍带 scope="main")与 UI 选项不一致。
+     * 其他 assistantId 直接使用其 id 作为 scope。
      */
     private fun buildScopes(assistants: List<AssistantEntity>): List<ScopeOption> {
         val all = ScopeOption(
@@ -771,7 +790,7 @@ class MemoryViewModel(
             displayName = getApplication<Application>().getString(R.string.memory_scope_main),
             isMain = true,
         )
-        // excluir "default" asistente — Se ha mapeado en datos históricos a "main",Evite la visualización repetida de la interfaz de usuario.
+        // 排除 "default" 助手 — 它在历史数据中已映射到 "main",避免 UI 重复展示。
         val subScopes = assistants
             .filter { it.id.isNotBlank() && it.id != "default" }
             .map { ScopeOption(id = it.id, displayName = it.name.ifBlank { it.id }) }
@@ -779,8 +798,8 @@ class MemoryViewModel(
     }
 
     /**
-     * v8: Cambia el alcance seleccionado actualmente.null expresar"Todos".
-     * Activado inmediatamente después del cambio [loadAll] Vuelva a recuperar datos filtrados por alcance.
+     * v8: 切换当前选中的作用域。null 表示"全部"。
+     * 切换后立即触发 [loadAll] 重新拉取按 scope 过滤的数据。
      */
     fun selectScope(scope: String?) {
         _selectedScope.value = scope
@@ -788,20 +807,20 @@ class MemoryViewModel(
     }
 
     /**
-     * v1.0.52 P2-2: Cambia el espacio de memoria actualmente seleccionado.
-     * persistir en SettingsRepository,Conservado entre sesiones.
-     * currentSpaceIdFlow Los suscriptores activarán automáticamente loadAll para volver a recuperar los datos.
+     * v1.0.52 P2-2: 切换当前选中的记忆空间。
+     * 持久化到 SettingsRepository,跨会话保留。
+     * currentSpaceIdFlow 订阅者会自动触发 loadAll 重新拉取数据。
      */
     fun selectSpace(spaceId: String) {
         viewModelScope.launch {
             resultOf { settings.saveCurrentSpaceId(spaceId) }
-                .onError { msg, t -> Logger.w("MemoryViewModel", "saveCurrentSpaceId falló: $msg", t) }
+                .onError { msg, t -> Logger.w("MemoryViewModel", "saveCurrentSpaceId 失败: $msg", t) }
         }
     }
 
     /**
-     * v1.78 (#7): Activar manualmente la compilación inmediata(controlar MemoryTicker.forceCompileNow).
-     * El usuario está en el punto de la página de memoria."compilar ahora"Llamado cuando botón,No espere a que el teletipo se programe automáticamente.
+     * v1.78 (#7): 手动触发立即编译(对照 MemoryTicker.forceCompileNow)。
+     * 用户在记忆页点"立即编译"按钮时调用,不等待 ticker 自动调度。
      */
     fun compileNow() {
         if (compileInFlight) return
@@ -809,31 +828,31 @@ class MemoryViewModel(
         _compilingState.value = true
         viewModelScope.launch {
             val success = withContext(Dispatchers.IO) {
-                // v1.78 (H6): La finalización de las llamadas suspendidas debe realizarse con resultOf,evitar tragar CancellationException
+                // v1.78 (H6): 包装 suspend 调用必须用 resultOf,避免吞 CancellationException
                 resultOf { memoryTicker.forceCompileNow() }
-                    .onError { msg, t -> Logger.w("MemoryViewModel", "forceCompileNow falló: $msg", t) }
+                    .onError { msg, t -> Logger.w("MemoryViewModel", "forceCompileNow 失败: $msg", t) }
                     .isSuccess
             }
-            // v1.0.72: Inmediatamente después de completar la compilación, realice la fusión y deduplicación de LLM(Fusionar recuerdos duplicados en uno,
-            //   diferentes hechos no se mueven;El error no afecta los resultados de la compilación.)
+            // v1.0.72: 编译完成后立即执行 LLM 合并去重(重复记忆合并成一条,
+            //   不同事实不动;失败不影响编译结果)
             if (success) {
                 llmMergeDuplicates()
             }
             compileInFlight = false
             _compilingState.value = false
-            // v1.x: Comentarios sobre los resultados de la compilación(éxito/falló),evitar"Se hizo clic pero no hubo respuesta."
+            // v1.x: 编译结果反馈(成功/失败),避免"点了没反应"
             _compileResult.value = if (success) "done" else "failed"
-            // Actualizar silenciosamente después de completar la compilación:No activado isLoading,Evite reemplazar la vista actual(línea de tiempo/lista)causando pantalla de bienvenida
+            // 编译完成后静默刷新:不触发 isLoading,避免替换当前视图(时间轴/列表)导致闪屏
             loadAll(silent = true)
         }
     }
 
     /**
-     * v1.0.72 / v1.0.92: LLM Fusionar recuerdos duplicados — grupos similares(≥2 Artículo)Dale el modelo grande y combínalo en uno.,
-     * Mantenga toda la información crítica;Otros hechos no se ven afectados. Saltar silenciosamente el fracaso(La deduplicación de reglas todavía se realiza mediante tareas diarias).
+     * v1.0.72 / v1.0.92: LLM 合并重复记忆 — 把相似簇(≥2 条)交给大模型合并成一条,
+     * 保留所有关键信息;不同的事实不受影响。失败时静默跳过(规则去重仍由每日任务兜底)。
      *
-     * v1.0.92: Implementación delegada a [io.zer0.memory.fact.LlmFactConsolidator] — Integre con la automatización diaria
-     * compartir la misma implementación;Devuelve el número real de clústeres fusionados.,suministro"organizar la memoria"Estadísticas de redacción de resultados.
+     * v1.0.92: 实现委托给 [io.zer0.memory.fact.LlmFactConsolidator] — 与每日自动整合
+     * 共用同一实现;返回实际合并的簇数,供"整理记忆"结果文案统计。
      */
     private suspend fun llmMergeDuplicates(scope: String? = _selectedScope.value): Int {
         val consolidator = factConsolidator ?: return 0
@@ -844,23 +863,23 @@ class MemoryViewModel(
             merged += resultOf {
                 consolidator.consolidate(storeForScope(target), target, spaceId)
             }
-                .onError { msg, t -> Logger.w("MemoryViewModel", "LLM No se pudieron fusionar recuerdos duplicados($target): $msg", t) }
+                .onError { msg, t -> Logger.w("MemoryViewModel", "LLM 合并重复记忆失败($target): $msg", t) }
                 .getOrNull() ?: 0
         }
         return merged
     }
 
-    /** v1.x: Mensaje de resultado de compilación(UI LaunchedEffect Limpiar después del consumo). */
+    /** v1.x: 编译结果提示(UI LaunchedEffect 消费后清除)。 */
     private val _compileResult = MutableStateFlow<String?>(null)
     val compileResult: StateFlow<String?> = _compileResult.asStateFlow()
 
-    /** UI Se llama después de consumir los resultados de la compilación. */
+    /** UI 消费编译结果后调用。 */
     fun consumeCompileResult() {
         _compileResult.value = null
     }
 
-    /** v1.x: Activar manualmente la deduplicación completa — Fusionar hechos casi duplicados dentro del alcance actual,y actualizar la lista.
-     * Resultado aprobado [dedupResult] Regresar,UI Utilice LaunchedEffect para consumir y avisar.
+    /** v1.x: 手动触发全量去重 — 合并当前作用域内近似重复的事实,并刷新列表。
+     * 结果通过 [dedupResult] 返回,UI 用 LaunchedEffect 消费并提示。
      */
     private val _dedupResult = MutableStateFlow<String?>(null)
     val dedupResult: StateFlow<String?> = _dedupResult.asStateFlow()
@@ -880,7 +899,7 @@ class MemoryViewModel(
                     }
                     total
                 }
-                    .onError { msg, t -> Logger.w("MemoryViewModel", "Falló la deduplicación de memoria: ${t?.message ?: msg}") }
+                    .onError { msg, t -> Logger.w("MemoryViewModel", "记忆去重失败: ${t?.message ?: msg}") }
                     .getOrNull()
             }
             dedupInFlight = false
@@ -890,29 +909,29 @@ class MemoryViewModel(
         }
     }
 
-    /** UI Llamado después de consumir el resultado de la deduplicación.,Borre el mensaje. */
+    /** UI 消费去重结果后调用,清除提示。 */
     fun consumeDedupResult() {
         _dedupResult.value = null
     }
 
     /**
-     * Extraiga las 4 capas de datos(memory La capa del Repositorio del módulo es toda suspend,Ninguno Flow,Necesidad de tomar la iniciativa pull).
-     * Capture la pila de fallos completa para state.errorTrace,Para visualización desplazable de UI(Conveniente para que los usuarios copien a los desarrolladores).
+     * 拉取全部 4 层数据(memory 模块 Repository 层全是 suspend,无 Flow,需主动 pull)。
+     * 捕获完整崩溃堆栈到 state.errorTrace,供 UI 可滚动展示(方便用户复制给开发者)。
      *
-     * v8: Fact Botón de capa [_selectedScope] filtrar:
-     *  - null:Todos los alcances(Compatible con versiones anteriores)
-     *  - "main" / assistantId:Extraiga solo hechos para ese alcance
-     * Summary / Compile Sin distinción entre capas scope(Compilado globalmente por MemoryTicker,No aislado por asistente).
+     * v8: Fact 层按 [_selectedScope] 过滤:
+     *  - null:全部作用域(向后兼容旧版)
+     *  - "main" / assistantId:仅拉取该作用域的事实
+     * Summary / Compile 层不区分 scope(由 MemoryTicker 全局编译,不按助手隔离)。
      *
-     * v1.0.52 P2-2: Fact Presione más capas [_selectedSpaceId] filtrar:
-     *  - scope cuando es nulo:Consulta por spaceId(getBySpace)
-     *  - scope Cuando no es nulo:Consulta doble por alcance + spaceId(getByScopeAndSpace)
-     *  - Al cambiar de espacio de esta manera,factItems Mostrar solo datos sobre el espacio actual
+     * v1.0.52 P2-2: Fact 层进一步按 [_selectedSpaceId] 过滤:
+     *  - scope 为 null 时:按 spaceId 查询(getBySpace)
+     *  - scope 非 null 时:按 scope + spaceId 双重查询(getByScopeAndSpace)
+     *  - 这样切换 Space 时,factItems 仅展示当前 Space 的事实
      */
     fun loadAll(silent: Boolean = false) {
-        // Reparación de auditoría (3.2): Cancelar la última rutina de carga,Al cambiar rápidamente de ámbito, la antigua rutina ya no sobrescribe el nuevo estado.
+        // 审计修复 (3.2): 取消上一次加载协程,快速切换 scope 时旧协程不再覆盖新状态
         loadJob?.cancel()
-        // silent=true no se activa cuando isLoading,Evite reemplazar la vista actual una vez completada la compilación, lo que provocaría una pantalla de presentación
+        // silent=true 时不触发 isLoading,避免编译完成后替换当前视图导致闪屏
         if (!silent) {
             _state.update { it.copy(isLoading = true, errorTrace = null) }
         }
@@ -921,15 +940,15 @@ class MemoryViewModel(
                 val scope = _selectedScope.value
                 val spaceId = _selectedSpaceId.value
                 val facts = withContext(Dispatchers.IO) {
-                    // P0-4: Ruta a la biblioteca del lado de producción según el alcance. —
-                    //  null(Todos)= Biblioteca predeterminada + unión de subbibliotecas de cada subasistente;"main" = Biblioteca predeterminada;"<id>" = facts_<id>.db
+                    // P0-4: 按 scope 路由到生产侧分库 —
+                    //  null(全部)= 默认库 + 各子助手分库并集;"main" = 默认库;"<id>" = facts_<id>.db
                     when {
                         scope == null -> loadFactsForAllScopes(spaceId)
                         scope == "main" -> factStore.getByScopeAndSpace("main", spaceId)
                         else -> factDbProvider.getFactStore(scope).getByScopeAndSpace(scope, spaceId)
                     }
                 }
-                // F-7: Filtrado de clientes(Importancia + plazo);Las estadísticas todavía se basan en el volumen total facts
+                // F-7: 客户端过滤(重要程度 + 时间范围);统计仍基于全量 facts
                 val visibleFacts = filterFacts(facts)
                 val summaries = withContext(Dispatchers.IO) {
                     summaryManager.getAllSummaries().filter { summary ->
@@ -939,60 +958,65 @@ class MemoryViewModel(
                 val sessionsById = withContext(Dispatchers.IO) {
                     sessionRepository.getSessionsByIds(summaries.map { it.sessionId }).associateBy { it.id }
                 }
-                // P2-33: Sección compilada antes de leer y escribir clavada. main/default,Alcance del asistente Kiriko / otro espacio después
-                // 「AI Te entiendo" editó el espacio equivocado(desalineado con la ruta de lectura inyectada). Presione el actual
-                // scope(Todas las vistas regresan al asistente principal)+ space Lectura de ruta.
+                // P2-33: 编译段此前读写钉死 main/default,切子助手 scope / 其他 space 后
+                // 「AI 对你的理解」编辑的是错误槽位(与注入读路径错位)。统一按当前
+                // scope(全部视图回退主助手)+ space 路由读。
                 val sectionScope = scope ?: "main"
                 val compileFacts = withContext(Dispatchers.IO) {
-                    // v1.78 (H6): La finalización de las llamadas suspendidas debe realizarse con resultOf,evitar tragar CancellationException
+                    // v1.78 (H6): 包装 suspend 调用必须用 resultOf,避免吞 CancellationException
                     resultOf { memoryCompiler.readSection(MemoryCompiler.Section.FACTS, sectionScope, spaceId) }
-                        .onError { msg, t -> Logger.w("MemoryViewModel", "readSection(FACTS) falló: $msg", t) }
+                        .onError { msg, t -> Logger.w("MemoryViewModel", "readSection(FACTS) 失败: $msg", t) }
                         .getOrNull() ?: ""
                 }
                 val compileToday = withContext(Dispatchers.IO) {
                     resultOf { memoryCompiler.readSection(MemoryCompiler.Section.TODAY, sectionScope, spaceId) }
-                        .onError { msg, t -> Logger.w("MemoryViewModel", "readSection(TODAY) falló: $msg", t) }
+                        .onError { msg, t -> Logger.w("MemoryViewModel", "readSection(TODAY) 失败: $msg", t) }
                         .getOrNull() ?: ""
                 }
                 val compileWeek = withContext(Dispatchers.IO) {
                     resultOf { memoryCompiler.readSection(MemoryCompiler.Section.WEEK, sectionScope, spaceId) }
-                        .onError { msg, t -> Logger.w("MemoryViewModel", "readSection(WEEK) falló: $msg", t) }
+                        .onError { msg, t -> Logger.w("MemoryViewModel", "readSection(WEEK) 失败: $msg", t) }
                         .getOrNull() ?: ""
                 }
                 val compileLongterm = withContext(Dispatchers.IO) {
                     resultOf { memoryCompiler.readSection(MemoryCompiler.Section.LONGTERM, sectionScope, spaceId) }
-                        .onError { msg, t -> Logger.w("MemoryViewModel", "readSection(LONGTERM) falló: $msg", t) }
+                        .onError { msg, t -> Logger.w("MemoryViewModel", "readSection(LONGTERM) 失败: $msg", t) }
                         .getOrNull() ?: ""
                 }
-                // v0.51: Leer el recorte compiledMarkdown(suministro"AI comprensión de ti"pantalla plegable de tarjeta).
-                // Mismo origen que el mensaje del sistema de inyección ChatService,Reflejando la verdadera naturaleza de la IA"ver"memoria.
-                // P2-33: Lea también según el alcance/espacio actual,Evite mostrar la sección de compilación del asistente principal.
+                // v0.51: 读取裁剪后的 compiledMarkdown(供"AI 对你的理解"卡片折叠展示)。
+                // 与 ChatService 注入 system prompt 同源,反映 AI 真正"看到"的记忆。
+                // P2-33: 同样按当前 scope/space 读取,避免展示主助手编译段。
                 val compiledMarkdown = withContext(Dispatchers.IO) {
                     resultOf {
                         memoryTicker.readCompiledMemoryMarkdown(
-                            locale = "es",
+                            locale = "zh-CN",
                             scope = sectionScope,
                             spaceId = spaceId,
                             assistantId = if (sectionScope == "main") "default" else sectionScope,
                         )
                     }
-                        .onError { msg, t -> Logger.w("MemoryViewModel", "readCompiledMemoryMarkdown falló: $msg", t) }
+                        .onError { msg, t -> Logger.w("MemoryViewModel", "readCompiledMemoryMarkdown 失败: $msg", t) }
                         .getOrNull() ?: ""
                 }
-                // P2-32: Leer la lista de memoria en conflicto del ámbito/espacio actual(Reflexión diaria)
-                val contradictions = withContext(Dispatchers.IO) {
-                    if (contradictionStore == null) {
-                        emptyList<io.zer0.memory.reflection.MemoryContradictionStore.ContradictionPair>()
-                    } else {
-                        resultOf { contradictionStore.list(sectionScope, spaceId) }
-                            .onError { msg, t -> Logger.w("MemoryViewModel", "No se pudo leer la lista de conflictos: $msg", t) }
-                            .getOrNull() ?: emptyList()
-                    }
+                // v2.6.23(M2): 未裁决矛盾改读 facts 行上的 pending 标记(事实级、可裁决)。
+                // 旧 JSON 文本清单(只能"清除")不再读取;反思任务已改走 DB 落库。
+                val pendingConflicts = withContext(Dispatchers.IO) {
+                    val pendingStore = storeForScope(sectionScope)
+                    resultOf { pendingStore.listPendingContradictions(sectionScope, spaceId) }
+                        .onError { msg, t -> Logger.w("MemoryViewModel", "读待裁决矛盾失败: $msg", t) }
+                        .getOrNull() ?: emptyList()
+                }
+                // 每对矛盾在两行上各挂一次 pending;只从 id 小的一方生成一条展示项
+                val contradictions = pendingConflicts.mapNotNull { row ->
+                    val otherId = row.conflictWithId ?: return@mapNotNull null
+                    if (row.id >= otherId) return@mapNotNull null
+                    val other = pendingConflicts.firstOrNull { it.id == otherId } ?: return@mapNotNull null
+                    MemoryConflictUi(row.id, otherId, row.fact, other.fact, row.scope)
                 }
 
-                // insignia de estado: "reemplazado"= Esta fila está apuntada por el id_supersedes de otra fila.,Necesito comprobarlo de nuevo.
-                // Utilice el conjunto completo de hechos en lugar de visibleFacts —— El sustituto podrá ser sustituido por la importancia/bloqueo del filtro de tiempo,
-                // Es un error utilizar su propia visibilidad para determinar si se debe marcar al partido reemplazado.key Con alcance para evitar colisiones de ID entre ramas.
+                // 状态徽章: 「被取代」= 本行被别的行的 supersedes_id 指向,需要反查一次。
+                // 集合用全量 facts 而不是 visibleFacts —— 取代方可能被重要度/时间筛选挡住,
+                // 拿它自己的可见性去决定要不要标出被取代方是错的。key 带 scope 防跨分库 id 撞号。
                 val supersededKeys = facts.mapNotNull { row ->
                     row.supersedesId?.let { memoryFactKey(row.scope, it) }
                 }.toSet()
@@ -1019,18 +1043,22 @@ class MemoryViewModel(
                         lastHitAt = fact.lastHitAt,
                         hitCount = fact.hitCount,
                         createdAt = fact.createdAt,
-                        // v8: paso a través scope,Para que la interfaz de usuario muestre insignias(asistente principal=Color predeterminado,sub-asistente=tertiary Color)
+                        // v8: 透传 scope,供 UI 显示徽章(主助手=默认色,子助手=tertiary 色)
                         scope = fact.scope,
-                        // v2.6.2(auditoría de memoria): paso a través spaceId —— La implementación anterior no estableceUI Información de propiedad perdida del artículo.
+                        // v2.6.2（记忆审计）: 透传 spaceId —— 旧实现不设，UI 项失去归属信息。
                         spaceId = fact.spaceId,
-                        // B4-05: Tiempo de transmisión transparente
+                        // B4-05: 透传置顶时间
                         pinnedAt = fact.pinnedAt,
-                        // v9: paso a través category,Proporciona una nueva interfaz de usuario para filtrar y mostrar por categoría
+                        // v9: 透传 category,供新 UI 按分类筛选与展示
                         category = fact.category,
-                        // insignia de estado: Fusionado/Ya leí este campo de fila,Reemplazado para ver la colección de búsqueda inversa.
+                        // 状态徽章: 已合并/已出场读本行字段,被取代看反查集合
                         mergedIntoId = fact.mergedIntoId,
                         suppressed = status.suppressed,
                         superseded = status.superseded,
+                        // v2.6.23(M1/M2): 证据与未裁决矛盾透传给卡片
+                        evidenceQuote = fact.evidenceQuote,
+                        evidenceMessageId = fact.evidenceMessageId,
+                        pendingConflictWith = fact.conflictWithId.takeIf { fact.conflictStatus == "pending" },
                     )
                 }
                 val summaryItems = projectConversationMemoryItems(
@@ -1043,7 +1071,7 @@ class MemoryViewModel(
                         )
                     },
                 ).map(ConversationMemoryItem::toMemoryItem)
-                // v2.6.7: El producto compilado de cuatro secciones supera los 140 caracteres por línea y se cambia a una estructura basada en tablas.
+                // v2.6.7: 四段编译产物逐行超 140 字符，改为表驱动构造
                 val compileSections = listOf(
                     Triple("facts", R.string.memory_compile_section_facts, compileFacts),
                     Triple("today", R.string.memory_compile_section_today, compileToday),
@@ -1059,7 +1087,7 @@ class MemoryViewModel(
                     }
                 }
 
-                // v5: Estadística computacional
+                // v5: 计算统计
                 val now = Instant.now()
                 val weekAgo = now.minus(7, java.time.temporal.ChronoUnit.DAYS)
                 val monthAgo = now.minus(30, java.time.temporal.ChronoUnit.DAYS)
@@ -1078,7 +1106,7 @@ class MemoryViewModel(
                     .sortedByDescending { it.value }
                     .take(5)
                     .map { it.key to it.value }
-                // cerca30tendencia diaria
+                // 近30天每日趋势
                 val dailyMap = mutableMapOf<String, Int>()
                 facts.forEach { f ->
                     runCatching {
@@ -1113,11 +1141,11 @@ class MemoryViewModel(
                     )
                 }
             } catch (e: CancellationException) {
-                // v1.78 (H1): La señal de cancelación de rutina debe volver a lanzarse.,De lo contrario, se romperá la semántica de cancelación de la rutina.
+                // v1.78 (H1): 必须重抛协程取消信号,否则会破坏协程取消语义
                 throw e
             } catch (t: Throwable) {
-                // Capture información de pila completa(nombre de clase + mensaje + stack trace),
-                // Para que la interfaz de usuario se muestre en un cuadro desplazable,Los usuarios pueden deslizar el dedo hacia arriba y hacia abajo para ver el error completo y copiarlo al desarrollador.
+                // 捕获完整堆栈信息(类名 + 消息 + stack trace),
+                // 供 UI 在可滚动框中展示,用户可上下滑动查看完整错误并复制给开发者
                 val sw = java.io.StringWriter()
                 t.printStackTrace(java.io.PrintWriter(sw))
                 val fullTrace = buildString {
@@ -1146,8 +1174,8 @@ class MemoryViewModel(
     }
 
     /**
-     * consulta de búsqueda(onValueChange La antivibración es manejada por la capa UI,Ejecutar directamente aquí).
-     * La consulta vacía borra los resultados de la búsqueda,Búsqueda LIKE no vacía.
+     * 搜索查询(onValueChange 防抖由 UI 层处理,这里直接执行)。
+     * 空查询清空搜索结果,非空走 LIKE 搜索。
      */
     fun search(query: String) {
         _state.update { it.copy(query = query) }
@@ -1156,27 +1184,27 @@ class MemoryViewModel(
             return
         }
         _state.update { it.copy(isSearching = true) }
-        // Reparación de auditoría (3.3): Cancelar la última rutina de búsqueda,Evite que los resultados de búsqueda antiguos sobrescriban los nuevos
+        // 审计修复 (3.3): 取消上一次搜索协程,避免旧搜索结果覆盖新结果
         searchJob?.cancel()
         searchJob = viewModelScope.launch {
-            // Revisión de corrección (B-19): Búsqueda filtrada por ámbito/espacio actual,Mismo calibre que loadAll —
-            // scope ir no nulo searchFullTextScoped(scope+space doble),scope=null(Todos)
-            // ir searchFullTextBySpace(Aislar solo por espacio),spaceId filtración constante,Evite fugas entre espacios/alcance.
+            // 审查修复 (B-19): 搜索按当前 scope/space 过滤,与 loadAll 口径一致 —
+            // scope 非 null 走 searchFullTextScoped(scope+space 双重),scope=null(全部)
+            // 走 searchFullTextBySpace(仅按 space 隔离),spaceId 恒过滤,避免跨 space/scope 泄漏。
             val scope = _selectedScope.value
             val spaceId = _selectedSpaceId.value
             val results = withContext(Dispatchers.IO) {
-                // v1.78 (H6): La finalización de las llamadas suspendidas debe realizarse con resultOf,evitar tragar CancellationException
+                // v1.78 (H6): 包装 suspend 调用必须用 resultOf,避免吞 CancellationException
                 resultOf {
-                    // P0-4: La búsqueda se dirige a la biblioteca sucursal del lado de producción por alcance.(scope=null Unión entre fragmentos)
+                    // P0-4: 搜索按 scope 路由到生产侧分库(scope=null 跨分库并集)
                     if (scope == null) {
                         searchAllScopes(query, spaceId)
                     } else {
                         storeForScope(scope).searchFullTextScoped(query, scope, spaceId)
                     }
-                }.onError { msg, t -> Logger.w("MemoryViewModel", "searchFullTextScoped falló: $msg", t) }
+                }.onError { msg, t -> Logger.w("MemoryViewModel", "searchFullTextScoped 失败: $msg", t) }
                     .getOrNull() ?: emptyList()
             }
-            // F-7: Los resultados de búsqueda también aplican niveles de importancia./Filtro de rango de tiempo,Mismo calibre que la lista.
+            // F-7: 搜索结果同样应用重要程度/时间范围筛选,与列表口径一致
             val filteredResults = filterFacts(results)
             val items = filteredResults.map { fact ->
                 MemoryItem(
@@ -1193,11 +1221,11 @@ class MemoryViewModel(
                     lastHitAt = fact.lastHitAt,
                     hitCount = fact.hitCount,
                     createdAt = fact.createdAt,
-                    // v8: paso a través scope,Insignias de elementos de la lista de coincidencias de resultados de búsqueda
+                    // v8: 透传 scope,搜索结果与列表项徽章一致
                     scope = fact.scope,
-                    // B4-05: Tiempo de transmisión transparente
+                    // B4-05: 透传置顶时间
                     pinnedAt = fact.pinnedAt,
-                    // v9: paso a través category,Los resultados de la búsqueda también se muestran por categoría.
+                    // v9: 透传 category,搜索结果也按分类展示
                     category = fact.category,
                 )
             }
@@ -1206,17 +1234,17 @@ class MemoryViewModel(
     }
 
     /**
-     * Eliminar un solo elemento Fact(Solo la capa de hechos admite la eliminación).
+     * 删除单条 Fact(仅 Fact 层支持删除)。
      *
-     * S-04: Llamado inmediatamente después de la eliminación. [MemoryCompiler.purgeTombstonedFacts],Pon el contenido de la lápida golpeada.
-     * Excluir de la sección HECHOS compilados — El enlace inyectado entra en vigor inmediatamente.,No esperes a la próxima compilación programada.
+     * S-04: 删除后立即调用 [MemoryCompiler.purgeTombstonedFacts],把命中墓碑的内容
+     * 从已编译的 FACTS 段剔除 — 注入链路即刻生效,不等下次定时编译。
      */
     /**
-     * Eliminar datos de forma masiva.
+     * 批量删除事实。
      *
-     * Borralos uno por uno, pero**Actualizar solo una vez**: Cada vez que se elimina una única ruta, loadAll(), la lista se restablecerá al principio,
-     * Si desea eliminar varios elementos seguidos, debe deslizarlos nuevamente a la posición original repetidamente. Las rutas por lotes se actualizan uniformemente y finalizan en silencio.
-     * No se cargará rápidamente ni retrocederá la posición de desplazamiento.
+     * 逐条删，但**只刷新一次**：单条路径每删一条就 loadAll()，列表会被重置回顶部，
+     * 想连删几条就得反复滑回原位。批量路径统一用 silent 刷新收尾，
+     * 既不会闪一下加载中，也不会把滚动位置拉回去。
      */
     fun deleteFacts(items: List<MemoryItem>) {
         val targets = items.filter { it.source == "Fact" && it.id.toLongOrNull() != null }
@@ -1242,12 +1270,12 @@ class MemoryViewModel(
                             )
                         }
                     }.onError { msg, _ ->
-                        Logger.w("MemoryVM", "Error al eliminar datos por lotes: $msg")
+                        Logger.w("MemoryVM", "批量删除事实失败: $msg")
                     }
                 }
                 purgeTargets.forEach { target ->
                     resultOf { memoryCompiler.purgeTombstonedFacts(target) }
-                        .onError { msg, t -> Logger.w("MemoryVM", "purgeTombstonedFacts falló: $msg", t) }
+                        .onError { msg, t -> Logger.w("MemoryVM", "purgeTombstonedFacts 失败: $msg", t) }
                 }
             }
             loadAll(silent = true)
@@ -1259,8 +1287,8 @@ class MemoryViewModel(
             withContext(Dispatchers.IO) {
                 val id = factId.toLongOrNull()
                 if (id != null) {
-                    // v1.78 (H6): La finalización de las llamadas suspendidas debe realizarse con resultOf,evitar tragar CancellationException
-                    // P0-4: Localice la ubicación real por factId store("Todos"De hecho, el subasistente también se puede eliminar en la vista)
+                    // v1.78 (H6): 包装 suspend 调用必须用 resultOf,避免吞 CancellationException
+                    // P0-4: 按 factId 定位实际所在 store("全部"视图下子助手事实也能删)
                     val requestedScope = scope?.takeIf { it.isNotBlank() } ?: _selectedScope.value ?: "main"
                     val requestedAssistantId = if (requestedScope == "main") "default" else requestedScope
                     val requestedSpaceId = _selectedSpaceId.value.ifBlank { "default" }
@@ -1269,14 +1297,14 @@ class MemoryViewModel(
                         .onError { msg, t -> MuseToast.show(getApplication<Application>().getString(R.string.memory_delete_failed, msg)) }
                         .onSuccess { deleted ->
                             if (deleted) {
-                                // S-04: Eliminar datos eliminados de productos compilados,prevenir"Todavía inyectando después de la eliminación/Resurrección de lo abstracto"
+                                // S-04: 剔除编译产物中已删事实,防止"删除后仍注入/从摘要复活"
                                 val target = io.zer0.memory.compile.MemoryCompileTarget(
                                     assistantId = requestedAssistantId,
                                     scope = requestedScope,
                                     spaceId = requestedSpaceId,
                                 )
                                 resultOf { memoryCompiler.purgeTombstonedFacts(target) }
-                                    .onError { msg, t -> Logger.w("MemoryVM", "purgeTombstonedFacts falló: $msg", t) }
+                                    .onError { msg, t -> Logger.w("MemoryVM", "purgeTombstonedFacts 失败: $msg", t) }
                             }
                         }
                 }
@@ -1286,18 +1314,18 @@ class MemoryViewModel(
     }
 
     /**
-     * P2: Eliminar un solo elemento Summary(Según sessionId).
+     * P2: 删除单条 Summary(根据 sessionId)。
      */
-    /** B4-05: Alterna el estado superior manual de un solo hecho. */
-    /** Historial de revisiones (“toda la historia”El panel muestra el hecho que se está viendo actualmente). */
+    /** B4-05: 切换单条 Fact 的手动置顶状态。 */
+    /** 修订历史（“来龙去脉”面板展示当前查看的那条事实）。 */
     private val _factRevisions = MutableStateFlow<List<io.zer0.memory.fact.FactRevisionEntity>>(emptyList())
     val factRevisions: StateFlow<List<io.zer0.memory.fact.FactRevisionEntity>> = _factRevisions.asStateFlow()
 
     /**
-     * Cargar el historial de revisión de un hecho.
+     * 加载某条事实的修订历史。
      *
-     * Hechos editados/Al fusionar, un registro de revisión (valor anterior/nuevo valor/tiempo/Motivo), aquí simplemente lo leemos en voz alta para que el usuario lo vea. ——
-     * “¿Qué ha cambiado en este recuerdo?”Puede ser auditado a partir de ahora.
+     * 事实被编辑/合并时会留下修订记录（旧值/新值/时间/原因），这里只是把它读出来给用户看 ——
+     * “这条记忆被改过什么”从此可审计。
      */
     fun loadFactRevisions(factId: String, scope: String? = null) {
         viewModelScope.launch {
@@ -1308,9 +1336,9 @@ class MemoryViewModel(
     }
 
     /**
-     * Retroceder a la revisión especificada.
+     * 回滚到指定修订。
      *
-     * La reversión en sí recordará una nueva revisión (tome la ruta de actualización), por lo que aún puede retroceder después de la reversión, que no existe.“no puedo volver”.
+     * 回滚本身会再记一条新修订（走 update 路径），所以回滚之后仍可再次回滚，不存在“退不回来”。
      */
     fun revertFactToRevision(factId: String, revisionId: Long, scope: String? = null) {
         viewModelScope.launch {
@@ -1338,10 +1366,10 @@ class MemoryViewModel(
                     unpinFact(id, fact.fact, scope)
                 }
             } catch (e: CancellationException) {
-                // v1.78 (H3): La señal de cancelación de rutina debe volver a lanzarse.,De lo contrario, se romperá la semántica de cancelación de la rutina.
+                // v1.78 (H3): 必须重抛协程取消信号,否则会破坏协程取消语义
                 throw e
             } catch (t: Throwable) {
-                Logger.w("MemoryViewModel", "toggleFactPinned anormal: ${t.message}", t)
+                Logger.w("MemoryViewModel", "toggleFactPinned 异常: ${t.message}", t)
                 val msg = if (pinned) R.string.memory_pin_failed else R.string.memory_unpin_failed
                 MuseToast.show(getApplication<Application>().getString(msg))
             }
@@ -1350,24 +1378,24 @@ class MemoryViewModel(
     }
 
     /**
-     * Revisión de corrección (B-18): fijar hacia arriba — escribe primero PinnedMemoryStore(add éxito),setFijado de nuevo.
-     * Pedido garantizado: lado de inyección(Segmento de memoria fijo)La coherencia con fact.pinnedAt toma PinnedMemoryStore primero;
-     * Si setPinned falla, la reversión se realiza correctamente add,Evite las inconsistencias de la interfaz de usuario con la inyección.
+     * 审查修复 (B-18): 置顶 — 先写 PinnedMemoryStore(add 成功),再 setPinned。
+     * 顺序保证: 注入侧(固定记忆段)与 facts.pinnedAt 的一致性以 PinnedMemoryStore 为先;
+     * 若 setPinned 失败则回滚已成功的 add,避免 UI 与注入不一致。
      */
     private suspend fun pinFact(id: Long, content: String, scope: String? = null) {
         val pinnedAssistantId = scope?.takeIf { it.isNotBlank() && it != "main" } ?: "default"
-        // escribe primero PinnedMemoryStore(add éxito)otra vez setPinned
+        // 先写 PinnedMemoryStore(add 成功)再 setPinned
         val addResult = resultOf { pinnedMemoryStore.add(content, assistantId = pinnedAssistantId) }
-            .onError { msg, t -> Logger.w("MemoryViewModel", "PinnedMemoryStore.add falló: $msg", t) }
+            .onError { msg, t -> Logger.w("MemoryViewModel", "PinnedMemoryStore.add 失败: $msg", t) }
         if (addResult.isError) {
-            // add falló,No escrito en ninguna fuente.,aviso directo,Estado de publicación poco claro
+            // add 失败,未写入任一来源,直接提示,不清后置状态
             MuseToast.show(getApplication<Application>().getString(R.string.memory_pin_failed))
             return
         }
         val setResult = resultOf { storeForFact(id, scope).setPinned(id, pinned = true) }
-            .onError { msg, t -> Logger.w("MemoryViewModel", "toggleFactPinned.setPinned falló: $msg", t) }
+            .onError { msg, t -> Logger.w("MemoryViewModel", "toggleFactPinned.setPinned 失败: $msg", t) }
         if (setResult.isError) {
-            // Reversión exitosa add,mantener ambos lados consistentes
+            // 回滚已成功的 add,保持两边一致
             resultOf {
                 pinnedMemoryStore.removeByContentFlexibleForAssistant(
                     content = content,
@@ -1375,15 +1403,15 @@ class MemoryViewModel(
                     includeGlobal = false,
                 )
             }
-                .onError { m2, t2 -> Logger.w("MemoryViewModel", "PinnedMemoryStore Error en la reversión fijada: $m2", t2) }
+                .onError { m2, t2 -> Logger.w("MemoryViewModel", "PinnedMemoryStore 置顶回滚失败: $m2", t2) }
             MuseToast.show(getApplication<Application>().getString(R.string.memory_pin_failed))
         }
     }
 
     /**
-     * Revisión de corrección (B-18): Desanclar — Primero asegúrese de que PinnedMemoryStore se haya eliminado correctamente,Luego aclare los hechos.pinnedAt.
-     * emparejar conservadoramente removeByContentFlexible(La precisión primero,Degenera para incluir coincidencia en caso de falla),
-     * Sobrescribir los restos del contenido fijado reescrito;Si setPinned falla, el lado de inyección no se cambiará.,Ambas partes siguen siendo consistentes.
+     * 审查修复 (B-18): 取消置顶 — 先确保 PinnedMemoryStore 移除成功,再清 facts.pinnedAt。
+     * 匹配用保守的 removeByContentFlexible(精确优先,失败后退化为包含匹配),
+     * 覆盖置顶内容被改写的残留;若 setPinned 失败不变更注入侧,两边仍一致。
      */
     private suspend fun unpinFact(id: Long, content: String, scope: String? = null) {
         val pinnedAssistantId = scope?.takeIf { it.isNotBlank() && it != "main" } ?: "default"
@@ -1394,13 +1422,13 @@ class MemoryViewModel(
                 includeGlobal = pinnedAssistantId == "default",
             )
         }
-            .onError { msg, t -> Logger.w("MemoryViewModel", "PinnedMemoryStore.removeByContentFlexible falló: $msg", t) }
+            .onError { msg, t -> Logger.w("MemoryViewModel", "PinnedMemoryStore.removeByContentFlexible 失败: $msg", t) }
         if (removeResult.isError) {
             MuseToast.show(getApplication<Application>().getString(R.string.memory_unpin_failed))
             return
         }
         val setResult = resultOf { storeForFact(id, scope).setPinned(id, pinned = false) }
-            .onError { msg, t -> Logger.w("MemoryViewModel", "toggleFactPinned.setPinned falló: $msg", t) }
+            .onError { msg, t -> Logger.w("MemoryViewModel", "toggleFactPinned.setPinned 失败: $msg", t) }
         if (setResult.isError) {
             MuseToast.show(getApplication<Application>().getString(R.string.memory_unpin_failed))
         }
@@ -1408,7 +1436,7 @@ class MemoryViewModel(
     fun deleteSummary(sessionId: String) {
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
-                // v1.78 (H6): La finalización de las llamadas suspendidas debe realizarse con resultOf,evitar tragar CancellationException
+                // v1.78 (H6): 包装 suspend 调用必须用 resultOf,避免吞 CancellationException
                 resultOf { summaryManager.delete(sessionId) }
                     .onError { msg, t -> MuseToast.show(getApplication<Application>().getString(R.string.memory_delete_failed, msg)) }
             }
@@ -1417,14 +1445,14 @@ class MemoryViewModel(
     }
 
     /**
-     * P2: Borrar segmento único Compilar producto(Según sectionKey:facts/today/week/longterm).
+     * P2: 清空单段 Compile 产物(根据 sectionKey:facts/today/week/longterm)。
      */
     fun deleteCompile(sectionKey: String) {
         val section = MemoryCompiler.Section.ALL.firstOrNull { it.key == sectionKey }
             ?: return
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
-                // v1.78 (H6): La finalización de las llamadas suspendidas debe realizarse con resultOf,evitar tragar CancellationException
+                // v1.78 (H6): 包装 suspend 调用必须用 resultOf,避免吞 CancellationException
                 resultOf { memoryCompiler.clearSection(section) }
                     .onError { msg, t -> MuseToast.show(getApplication<Application>().getString(R.string.memory_delete_failed, msg)) }
             }
@@ -1433,7 +1461,7 @@ class MemoryViewModel(
     }
 
     /**
-     * P2: Editar un único contenido de hecho.
+     * P2: 编辑单条 Fact 内容。
      */
     fun editFact(factId: String, newContent: String, scope: String? = null, onResult: (Boolean) -> Unit = {}) {
         if (newContent.isBlank()) {
@@ -1446,8 +1474,8 @@ class MemoryViewModel(
                 if (id == null) {
                     false
                 } else {
-                    // v1.78 (H6): La finalización de las llamadas suspendidas debe realizarse con resultOf,evitar tragar CancellationException
-                    // P0-4: Localice la ubicación real por factId store
+                    // v1.78 (H6): 包装 suspend 调用必须用 resultOf,避免吞 CancellationException
+                    // P0-4: 按 factId 定位实际所在 store
                     resultOf { storeForFact(id, scope).update(id, newContent) }
                         .onError { msg, t -> MuseToast.show(getApplication<Application>().getString(R.string.memory_edit_failed, msg)) }
                         .getOrNull() == true
@@ -1459,17 +1487,17 @@ class MemoryViewModel(
     }
 
     /**
-     * v4: Actualizar la importancia de un solo hecho.
-     * @param factId fact cadena id
-     * @param importance 0=ordinario,1=importante,2=clave
+     * v4: 更新单条 Fact 的重要程度。
+     * @param factId fact 的字符串 id
+     * @param importance 0=普通,1=重要,2=关键
      */
     fun setFactImportance(factId: String, importance: Int, scope: String? = null) {
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
                 val id = factId.toLongOrNull()
                 if (id != null) {
-                    // v1.78 (H6): La finalización de las llamadas suspendidas debe realizarse con resultOf,evitar tragar CancellationException
-                    // P0-4: Localice la ubicación real por factId store
+                    // v1.78 (H6): 包装 suspend 调用必须用 resultOf,避免吞 CancellationException
+                    // P0-4: 按 factId 定位实际所在 store
                     resultOf { storeForFact(id, scope).setImportance(id, importance) }
                         .onError { msg, t -> MuseToast.show(getApplication<Application>().getString(R.string.memory_set_failed, msg)) }
                 }
@@ -1479,14 +1507,14 @@ class MemoryViewModel(
     }
 
     /**
-     * Agregue manualmente un metadato.
+     * 手动新增一条元事实。
      *
-     * v8: El alcance del hecho nuevo se toma como el actual. [_selectedScope],Si null(Todos)entonces el valor predeterminado "main".
-     * Esto es diferente de cuando el usuario cambia el alcance en la interfaz de usuario y luego"Nuevo"intuición consistente — Después de que el usuario cambia a un ámbito de subasistente,,
-     * Los hechos recién agregados pertenecen al subasistente.;Cortar a"Todos"asistente maestro de propiedad del tiempo(Predeterminado).
+     * v8: 新增事实的 scope 取当前 [_selectedScope],若为 null(全部)则默认 "main"。
+     * 这与用户在 UI 上切换 scope 后再"新增"的直觉一致 — 用户切到某子助手作用域后,
+     * 新增的事实归属该子助手;切到"全部"时归属主助手(默认)。
      *
-     * v1.0.52 P2-2: El spaceId del nuevo hecho es el actual. [_selectedSpaceId],
-     * Los hechos recién agregados pertenecen al espacio seleccionado actualmente.
+     * v1.0.52 P2-2: 新增事实的 spaceId 取当前 [_selectedSpaceId],
+     * 新增的事实归属当前选中的 Space。
      */
     fun addFact(content: String, onResult: (Boolean) -> Unit = {}) {
         if (content.isBlank()) {
@@ -1494,17 +1522,17 @@ class MemoryViewModel(
             return
         }
         viewModelScope.launch {
-            // v1.78 (H6): loadAll mudarse runCatching,Evite cuando la adición se realiza correctamente pero loadAll falla
-            // Mensaje de error mostrado"Error al agregar"(atribución errónea)
+            // v1.78 (H6): loadAll 移出 runCatching,避免 add 成功但 loadAll 失败时
+            // 错误信息显示"添加失败"(错误归因错位)
             val scope = _selectedScope.value ?: "main"
             val spaceId = _selectedSpaceId.value
             val ok = withContext(Dispatchers.IO) {
-                // v1.78 (H6): La finalización de las llamadas suspendidas debe realizarse con resultOf,evitar tragar CancellationException
-                // P0-4: Escribir enrutamiento a la biblioteca sucursal del lado de producción — El alcance del ayudante infantil cae dentro facts_<id>.db,AI leer realmente
+                // v1.78 (H6): 包装 suspend 调用必须用 resultOf,避免吞 CancellationException
+                // P0-4: 写入路由到生产侧分库 — 子助手 scope 落到 facts_<id>.db,AI 才能真正读到
                 resultOf {
                     storeForScope(scope).add(FactStore.Fact(fact = content.trim()), scope = scope, spaceId = spaceId)
                 }.onError { msg, t ->
-                    // v2.6.7: División de línea para hacerla demasiado larga (la línea única original supera los 140 caracteres);trace Debe evaluarse antes de copiar.
+                    // v2.6.7: 拆行修超长（原单行超 140 字符）；trace 必须先于 copy 求值。
                     val trace = getApplication<Application>().getString(R.string.memory_add_failed, msg)
                     _state.update {
                         it.copy(errorTrace = (it.errorTrace ?: "") + "\n" + trace)
@@ -1517,7 +1545,7 @@ class MemoryViewModel(
     }
 
     /**
-     * P2: Edite un único contenido de resumen.
+     * P2: 编辑单条 Summary 内容。
      */
     fun editSummary(sessionId: String, newContent: String, onResult: (Boolean) -> Unit = {}) {
         if (newContent.isBlank()) {
@@ -1526,7 +1554,7 @@ class MemoryViewModel(
         }
         viewModelScope.launch {
             val saved = withContext(Dispatchers.IO) {
-                // v1.78 (H6): La finalización de las llamadas suspendidas debe realizarse con resultOf,evitar tragar CancellationException
+                // v1.78 (H6): 包装 suspend 调用必须用 resultOf,避免吞 CancellationException
                 resultOf {
                     val existing = summaryManager.getSummary(sessionId) ?: return@resultOf false
                     summaryManager.saveSummary(
@@ -1549,8 +1577,8 @@ class MemoryViewModel(
     }
 
     /**
-     * P2: Edite el contenido de un único producto Compile.
-     * P2-33: Cambiar el destino de escritura al seleccionado actualmente scope/space(previamente crucificado main/default,Error de edición del subasistente).
+     * P2: 编辑单段 Compile 产物内容。
+     * P2-33: 写目标改为当前选中 scope/space(此前钉死 main/default,子助手编辑错位)。
      */
     fun editCompile(sectionKey: String, newContent: String) {
         if (newContent.isBlank()) return
@@ -1560,7 +1588,7 @@ class MemoryViewModel(
         val sectionSpace = _selectedSpaceId.value
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
-                // v1.78 (H6): La finalización de las llamadas suspendidas debe realizarse con resultOf,evitar tragar CancellationException
+                // v1.78 (H6): 包装 suspend 调用必须用 resultOf,避免吞 CancellationException
                 resultOf { memoryCompiler.writeSection(section, newContent.trim(), sectionScope, sectionSpace) }
             }
             loadAll()
@@ -1568,25 +1596,47 @@ class MemoryViewModel(
     }
 
     /**
-     * P2-32: Confirmación de usuario/Limpia un par de recuerdos conflictivos.(Eliminar de la lista;Los hechos no se eliminan automáticamente.,Respetar el criterio del usuario).
+     * v2.6.23(M2): 「暂不处理」——清掉双方的 pending,不动内容。
+     * 下一轮反思若仍检测到矛盾会重新登记(数据没变,矛盾确实还在)。
      */
-    fun dismissContradiction(pair: io.zer0.memory.reflection.MemoryContradictionStore.ContradictionPair) {
-        val store = contradictionStore ?: return
+    fun dismissConflict(conflict: MemoryConflictUi) {
         viewModelScope.launch {
-            val scope = _selectedScope.value ?: "main"
             withContext(Dispatchers.IO) {
-                resultOf { store.removePair(scope, _selectedSpaceId.value, pair) }
-                    .onError { msg, t -> Logger.w("MemoryViewModel", "No se pudo borrar la lista de conflictos: $msg", t) }
+                resultOf {
+                    storeForScope(conflict.scope).dismissPendingConflict(conflict.idA, conflict.idB)
+                }
+                    .onError { msg, t -> Logger.w("MemoryViewModel", "矛盾暂不处理失败: $msg", t) }
             }
             loadAll(silent = true)
         }
     }
 
     /**
-     * v4: Según lastCompileTime(ISO 8601)Calcular la copia del estado de sincronización.
-     *  - null: Aún no compilado
-     *  - < 10 minutos: Recuerdos sincronizados
-     *  - >= 10 minutos: Es posible que las conversaciones recientes aún no estén en la memoria
+     * v2.6.23(M2): 用户裁决 —— [keepId] 一句是对的,另一方按 v18 让位(不删行,可回退)。
+     *
+     * scope 由调用方(UI 拿冲突项的 scope)传入,跨分库时定位到正确的 store。
+     */
+    fun resolveConflict(keepId: Long, scope: String) {
+        viewModelScope.launch {
+            val ok = withContext(Dispatchers.IO) {
+                resultOf { storeForScope(scope).resolveContradiction(keepId) }
+                    .onError { msg, t -> Logger.w("MemoryViewModel", "矛盾裁决失败: $msg", t) }
+                    .getOrNull() ?: false
+            }
+            if (!ok) {
+                _state.update {
+                    it.copy(errorTrace = "No se resolvió el conflicto (el registro puede haberse reorganizado o eliminado)")
+                }
+            }
+            loadAll(silent = true)
+        }
+    }
+
+    /**
+     * v4: 根据 lastCompileTime(ISO 8601)计算同步状态文案。
+     *  - null: 尚未编译
+     *  - < 10 分钟: 记忆已同步
+     *  - >= 10 分钟: 最近的对话可能还未进入记忆
      */
     private fun computeSyncStatus(lastCompileTime: String?): String {
         if (lastCompileTime == null) {
@@ -1655,14 +1705,14 @@ class MemoryViewModel(
         }
     }
 
-    // ── v1.98: Biblioteca de experiencias CRUD ──────────────────────────────────────────────
+    // ── v1.98: 经验库 CRUD ──────────────────────────────────────────────
 
     /**
-     * v1.98: Añade una experiencia manualmente.
-     * @param title Título(breve descripción)
-     * @param content Detalles(Texto de experiencia)
-     * @param category Clasificación(Predeterminado"Universales")
-     * @param tags lista de etiquetas(Vacío predeterminado)
+     * v1.98: 手动新增一条经验。
+     * @param title 标题(简短描述)
+     * @param content 详细内容(经验正文)
+     * @param category 分类(默认"通用")
+     * @param tags 标签列表(默认空)
      */
     fun addExperience(title: String, content: String, category: String = DEFAULT_EXPERIENCE_CATEGORY, tags: List<String> = emptyList()) {
         if (title.isBlank() || content.isBlank()) return
@@ -1679,7 +1729,7 @@ class MemoryViewModel(
                     createdAt = now,
                     updatedAt = now,
                 )
-                // v1.78 (H6): La finalización de las llamadas suspendidas debe realizarse con resultOf,evitar tragar CancellationException
+                // v1.78 (H6): 包装 suspend 调用必须用 resultOf,避免吞 CancellationException
                 resultOf { experienceRepository.upsert(entity) }
                     .onError { msg, t ->
                         MuseToast.show(
@@ -1687,12 +1737,12 @@ class MemoryViewModel(
                         )
                     }
             }
-            // observeAll Flow Se actualizará automáticamente UI,No se requiere manual loadAll
+            // observeAll Flow 会自动刷新 UI,无需手动 loadAll
         }
     }
 
     /**
-     * v1.98: Editar entradas de experiencias existentes(Título/contenido/Clasificación/etiqueta).
+     * v1.98: 编辑已有经验条目(标题/内容/分类/标签)。
      */
     fun editExperience(
         id: String,
@@ -1704,7 +1754,7 @@ class MemoryViewModel(
         if (title.isBlank() || content.isBlank()) return
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
-                // v1.78 (H6): La finalización de las llamadas suspendidas debe realizarse con resultOf,evitar tragar CancellationException
+                // v1.78 (H6): 包装 suspend 调用必须用 resultOf,避免吞 CancellationException
                 resultOf {
                     val existing = experienceRepository.getById(id) ?: return@resultOf
                     val updated = existing.copy(
@@ -1721,12 +1771,12 @@ class MemoryViewModel(
     }
 
     /**
-     * v1.98: Eliminar una sola experiencia.
+     * v1.98: 删除单条经验。
      */
     fun deleteExperience(id: String) {
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
-                // v1.78 (H6): La finalización de las llamadas suspendidas debe realizarse con resultOf,evitar tragar CancellationException
+                // v1.78 (H6): 包装 suspend 调用必须用 resultOf,避免吞 CancellationException
                 resultOf { experienceRepository.delete(id) }
                     .onError { msg, t ->
                         MuseToast.show(
@@ -1738,10 +1788,10 @@ class MemoryViewModel(
     }
 
     /**
-     * v1.98: ExperienceEntity → MemoryItem Convertir(Reutilizar el formulario unificado de UI).
+     * v1.98: ExperienceEntity → MemoryItem 转换(复用 UI 统一形态)。
      *
-     * source Los campos están etiquetados "Experience",Para que la capa UI distinga las fuentes.
-     * tags de tagsJson(JSON cadena de matriz)analizado como List<String>.
+     * source 字段标注为 "Experience",供 UI 层区分来源。
+     * tags 从 tagsJson(JSON 数组字符串)解析为 List<String>。
      */
     private fun ExperienceEntity.toMemoryItem(): MemoryItem {
         val parsedTags = runCatching {
@@ -1763,12 +1813,12 @@ class MemoryViewModel(
     }
 
     // ══════════════════════════════════════════════════════════════════════
-    // v1.0.72: Memoria de chat grupal(centro de memoria"chat grupal"Tab)
+    // v1.0.72: 群聊记忆(记忆中心"群聊"Tab)
     // ══════════════════════════════════════════════════════════════════════
 
     /**
-     * v1.0.72: Cargar todos los recuerdos del chat grupal(Orden descendente por tiempo).
-     * visualización en el centro de memoria"chat grupal"Tab,para que los usuarios vean/borrar.
+     * v1.0.72: 加载全部群聊记忆(按时间降序)。
+     * 展示在记忆中心"群聊"Tab,供用户查看/删除。
      */
     fun loadGroupChatMemories() {
         viewModelScope.launch {
@@ -1784,7 +1834,7 @@ class MemoryViewModel(
                 GroupChatMemoryUiItem(
                     id = m.id,
                     groupChatId = m.groupChatId,
-                    groupChatName = groupChatNameById[m.groupChatId] ?: "chat grupal",
+                    groupChatName = groupChatNameById[m.groupChatId] ?: "Conversación de grupo",
                     assistantName = assistantNameById[m.assistantId] ?: m.assistantId.take(8),
                     summary = m.summary,
                     createdAt = m.createdAt,
@@ -1799,33 +1849,33 @@ class MemoryViewModel(
     }
 
     /**
-     * v1.0.72: Eliminar una única memoria de chat grupal.
+     * v1.0.72: 删除单条群聊记忆。
      *
-     * @param id Memoria de chat grupal id
+     * @param id 群聊记忆 id
      */
     fun deleteGroupChatMemory(id: String) {
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
                 resultOf { groupChatMemoryRepository.deleteById(id) }
                     .onError { msg, t ->
-                        Logger.w("MemoryViewModel", "No se pudo eliminar la memoria del chat grupal: $msg", t)
+                        Logger.w("MemoryViewModel", "删除群聊记忆失败: $msg", t)
                         MuseToast.show(getApplication<Application>().getString(R.string.memory_delete_group_chat_failed, msg))
                     }
             }
-            // Actualizar lista después de la eliminación
+            // 删除后刷新列表
             _state.update { it.copy(groupChatMemories = it.groupChatMemories.filterNot { m -> m.id == id }) }
         }
     }
 
     /**
-     * v1.0.72: Borrar todos los recuerdos del chat grupal(Un clic).
+     * v1.0.72: 清空全部群聊记忆(一键)。
      */
     fun clearAllGroupChatMemories() {
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
                 resultOf { groupChatMemoryRepository.deleteAll() }
                     .onError { msg, t ->
-                        Logger.w("MemoryViewModel", "No se pudo borrar la memoria del chat grupal: $msg", t)
+                        Logger.w("MemoryViewModel", "清空群聊记忆失败: $msg", t)
                         MuseToast.show(getApplication<Application>().getString(R.string.memory_clear_group_chat_failed, msg))
                     }
             }

@@ -12,15 +12,15 @@ class SessionAttachmentTest {
             id = "attachment-1",
             sessionId = "session-1",
             docId = SessionAttachment.buildDocId("session-1", "attachment-1"),
-            name = "contrato.txt",
+            name = "合同.txt",
             status = SessionAttachmentStatus.READY,
         )
 
-        val doc = attachment.toKnowledgeDoc("Texto del contrato")
+        val doc = attachment.toKnowledgeDoc("合同正文")
 
         assertEquals(attachment.docId, doc.id)
-        assertEquals("contrato.txt", doc.title)
-        assertEquals("Texto del contrato", doc.content)
+        assertEquals("合同.txt", doc.title)
+        assertEquals("合同正文", doc.content)
         assertEquals("session_attachment", doc.fileType)
         assertFalse(doc.isInternal)
     }

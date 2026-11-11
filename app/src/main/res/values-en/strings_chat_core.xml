@@ -11,7 +11,7 @@
     <string name="moment_add_images_hint">Add images (up to %1$d)</string>
     <!-- ===== Diary (MiniDiaryScreen) ===== -->
     <string name="diary_generate_failed">Diary generation failed, try again later</string>
-    <string name="diary_title">Muse Diary</string>
+    <string name="diary_title">Musa Diary</string>
     <string name="diary_date_title">%1$d/%2$d/%3$s</string>
     <string name="diary_empty_today">No diary for today yet</string>
     <string name="diary_empty_other_day">No diary for this day</string>
@@ -73,7 +73,7 @@
     <string name="moment_comment_cd">Comment</string>
     <string name="moment_favorite">Favorite</string>
     <string name="moment_more_actions">More actions for this moment</string>
-    <string name="moment_sender_muse">Muse</string>
+    <string name="moment_sender_muse">Musa</string>
     <string name="moment_sender_me">Me</string>
     <string name="moment_comment_hint">Post a comment:</string>
     <string name="moment_delete_title">Delete moment</string>
@@ -84,7 +84,7 @@
     <string name="moment_messages_cd">Messages</string>
     <string name="moment_publish_cd">Publish moment (tap for media, long-press for text)</string>
     <string name="moment_empty_feed">No moments yet</string>
-    <string name="moment_empty_hint">Tap + at top right to post your first moment\nMuse and assistants will share their life too</string>
+    <string name="moment_empty_hint">Tap + at top right to post your first moment\nMusa and assistants will share their life too</string>
     <string name="moment_messages_empty">No likes or comments yet</string>
     <string name="moment_notification_liked">%1$s liked your moment</string>
     <string name="moment_notification_commented">%1$s commented on your moment</string>
@@ -130,7 +130,11 @@
     <string name="chat_tool_call_result">Result: %1$s</string>
     <string name="chat_share_failed_no_uri">Share failed: could not get file URI</string>
     <string name="chat_companion_days_zero">Just met today</string>
-    <string name="chat_companion_days">Together for %1$d days</string>
+    <plurals name="chat_companion_days">
+        <item quantity="one">Together for %1$d day</item>
+        <item quantity="other">Together for %1$d days</item>
+    </plurals>
+
     <string name="chat_thinking">Thinking…</string>
 
     <!-- Errors and permissions -->
@@ -182,7 +186,7 @@
 
     <!-- Empty state guide -->
     <string name="chat_avatar_assistant_cd">Assistant avatar</string>
-    <string name="chat_avatar_muse_cd">Muse icon</string>
+    <string name="chat_avatar_muse_cd">Musa icon</string>
     <string name="chat_empty_guide_title">What would you like to chat about today?</string>
 
     <!-- Image generation placeholder -->
@@ -438,15 +442,36 @@
     <string name="settings_sticker_freq_occasional">Occasionally</string>
     <string name="settings_sticker_freq_normal">Normal</string>
     <string name="settings_sticker_freq_frequent">Frequent</string>
-    <string name="settings_sticker_upload_zip">Import ZIP</string>
+    <string name="settings_sticker_upload">Import stickers</string>
+    <string name="settings_sticker_upload_subtitle">Accepts zip, docx/pptx documents and images; one file at a time</string>
+    <string name="settings_sticker_add_from_gallery">Add from gallery</string>
+    <string name="settings_sticker_add_from_gallery_subtitle">Pick several at once; added to the pack you are viewing</string>
+    <string name="settings_sticker_review_title">Review %1$d stickers</string>
+    <string name="settings_sticker_review_hint">Auto-picking and auto-cutting can be wrong; tap to uncheck. Pack: %2$s</string>
+    <string name="settings_sticker_review_import">Import %1$d</string>
+    <string name="settings_sticker_export_pack">Export this pack</string>
+    <string name="settings_sticker_export_done">Exported “%1$s” with %2$d stickers</string>
+    <string name="settings_sticker_download_originals">Fetch originals from links (%1$d)</string>
+    <string name="settings_sticker_download_result">Replaced %1$d, failed %2$d</string>
+    <string name="settings_sticker_rename_pack">Rename this pack</string>
+    <string name="settings_sticker_rename_title">Rename sticker pack</string>
+    <string name="settings_sticker_action_saved">Updated</string>
+    <string name="settings_sticker_action_failed">Not changed: %1$s</string>
+    <string name="settings_sticker_actions_title">This sticker</string>
+    <string name="settings_sticker_actions_hint">Currently in “%1$s”</string>
+    <string name="settings_sticker_caption_label">Caption</string>
+    <string name="settings_sticker_move_target_label">Move to another pack (a new name creates one)</string>
+    <string name="settings_sticker_move_up">Move up</string>
+    <string name="settings_sticker_move_down">Move down</string>
     <string name="settings_sticker_upload_zip_subtitle">Pick a ZIP file; categories are derived from folder structure</string>
     <string name="settings_sticker_imported">Imported %1$d stickers</string>
     <string name="settings_sticker_import_failed">Import failed: %1$s</string>
+    <string name="settings_sticker_export_location_failed">Cannot write to the selected location</string>
     <string name="settings_sticker_empty_title">No stickers yet</string>
-    <string name="settings_sticker_empty_subtitle">Tap \"Import ZIP\" above to add a ZIP file</string>
+    <string name="settings_sticker_empty_subtitle">Tap \"Import stickers\" above — ZIP, DOCX/PPTX and images are supported</string>
     <string name="settings_sticker_delete_confirm">Delete this sticker?</string>
     <string name="settings_sticker_category_all">All</string>
-    <!-- Correcciones en la interfaz (i18n-3.x): Sticker batch delete / clear i18n -->
+    <!-- 前端修复 (i18n-3.x): Sticker batch delete / clear i18n -->
     <string name="settings_sticker_batch_done">Done</string>
     <string name="settings_sticker_batch_delete">Batch delete</string>
     <string name="settings_sticker_delete_selected" tools:ignore="PluralsCandidate">Delete %1$d selected</string>
@@ -486,7 +511,7 @@
     <string name="chat_update_compress">Compress context</string>
     <!-- Empty-state guide / conversation memory -->
     <string name="chat_ignore_memory_option">This conversation will not reference memory</string>
-    <!-- A5: Capa emergente de información del mensaje(modelo/Consume mucho tiempo/Token Dosis) -->
+    <!-- A5: 消息信息弹层(模型/耗时/Token 用量) -->
     <string name="msg_info_title">Message info</string>
     <string name="msg_info_model">Model</string>
     <string name="msg_info_time">Time</string>
@@ -509,7 +534,7 @@
     <string name="chat_debug_chars_label">Characters</string>
     <string name="chat_debug_tool_calls_label">Tool calls</string>
     <string name="chat_debug_round_label">Rounds</string>
-    <!-- A1: Buscar dentro de una sesión(Cuadro de búsqueda local en la página de chat) -->
+    <!-- A1: 会话内查找(聊天页就地查找框) -->
     <string name="chat_find_in_conversation">Find in conversation</string>
     <string name="chat_find_placeholder">Search current conversation</string>
     <string name="chat_find_count">%1$d / %2$d</string>
@@ -517,7 +542,7 @@
     <string name="chat_find_prev">Previous</string>
     <string name="chat_find_next">Next</string>
     <string name="chat_find_close">Close search</string>
-    <!-- C2: Búsqueda instantánea de la lista de conversaciones -->
+    <!-- C2: 会话列表即时搜索 -->
 
     <string name="chat_pending_queue_title">Pending sends</string>
     <string name="chat_pending_count">%1$d items</string>
@@ -583,7 +608,7 @@
     <string name="chat_token_output">Output</string>
     <string name="chat_token_prompt">Prompt</string>
 
-    <!-- Divisor de compresión de contexto (solo se muestra en la interfaz, no se ingresa en el contexto del modelo) -->
+    <!-- 上下文压缩分隔线（仅界面展示，不进模型上下文） -->
     <string name="chat_context_divider_title">Context compressed</string>
     <string name="chat_context_divider_title_count">Context compressed · %1$d messages summarized</string>
     <string name="chat_context_divider_hint_collapsed">Tap to show original messages</string>
@@ -594,7 +619,7 @@
     <string name="moment_visibility_title">Visible to</string>
     <string name="moment_visibility_public">Everyone</string>
     <string name="diary_perspective_character">In-character view: this diary is written by them</string>
-    <!-- v2.6.7: Aviso visible cuando la ejecución de la herramienta se pausa globalmente (de lo contrario, el usuario solo ve"suspendido"Pero no sé por qué) -->
+    <!-- v2.6.7: 工具执行被全局暂停时的可见提示（否则用户只看到"已暂停"却不知为何） -->
     <string name="chat_tool_paused_banner">Tool execution is paused, so tools will not really run.</string>
     <string name="chat_tool_paused_banner_action">Settings</string>
     <string name="settings_chat_show_assistant_name">Show assistant name</string>
@@ -617,4 +642,35 @@
     <string name="chat_process_running_command">Running a command</string>
     <string name="chat_process_subagent_running">%1$d subagent tasks running</string>
     <string name="chat_process_subagent_section">Background subagents</string>
+    <string name="chat_process_running">Running</string>
+    <string name="chat_process_completed">Completed</string>
+    <string name="chat_process_steps_completed">%1$d steps completed</string>
+    <string name="chat_process_steps_progress">%1$d of %2$d steps complete</string>
+    <string name="chat_process_step_fallback">Step</string>
+    <string name="chat_process_running_status">In progress</string>
+    <string name="proactive_ledger_age_now">Just now</string>
+    <string name="proactive_ledger_age_hours">%1$d hours ago</string>
+    <string name="proactive_ledger_age_days">%1$d days ago</string>
+    <string name="search_custom_engine_saved">Saved</string>
+    <string name="search_custom_engine_endpoint_required">Request URL is required</string>
+    <string name="channel_contact_group_label">Group</string>
+    <string name="channel_conversation_attachment_placeholder">[Attachment]</string>
+    <string name="channel_conversation_image_placeholder">[Image]</string>
+    <string name="channel_conversation_empty_placeholder">[Empty message]</string>
+    <string name="plugin_debug_empty">No bridge calls yet. Install a plugin and run it once to see activity here.</string>
+    <string name="backup_import_error_unreadable">The backup file cannot be read. Check that it is complete.</string>
+    <string name="backup_import_error_mismatch">The backup does not match this app version. The previous state was restored.</string>
+    <string name="backup_import_error_password">Extraction failed. Check the backup password.</string>
+    <string name="backup_import_error_version">The backup version is too new or too old for this app.</string>
+    <string name="backup_import_error_missing">The backup file is missing. It may have been moved or deleted.</string>
+    <string name="backup_import_error_space">There is not enough storage. Free some space and try again.</string>
+    <string name="backup_import_error_unknown">The backup is invalid. The previous state was restored.</string>
+    <string name="onboarding_connect_error_unauthorized">The API key is invalid or expired. Enter it again.</string>
+    <string name="onboarding_connect_error_forbidden">Access is denied. Check that this key can use the selected model.</string>
+    <string name="onboarding_connect_error_not_found">The endpoint or model name is incorrect. Check both and try again.</string>
+    <string name="onboarding_connect_error_rate_limit">Too many requests. Try again shortly.</string>
+    <string name="onboarding_connect_error_timeout">The connection timed out. Check the network or endpoint URL.</string>
+    <string name="onboarding_connect_error_server">The provider is unavailable. Try again later; if it continues, the model may be offline.</string>
+    <string name="onboarding_connect_error_no_model">No model is available to test. Fetch the model list first.</string>
+    <string name="sticker_category_default">Default</string>
 </resources>

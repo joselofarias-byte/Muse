@@ -3,10 +3,10 @@ package io.zer0.muse.web
 import io.zer0.muse.feature.FeatureFlags
 
 /**
- * Establecer la constante del nombre de la clave.
+ * 设置键名常量。
  *
- * El nombre de la clave también está en settings.snapshot [HostSettingsEntry.toggleKey] / [HostSettingToggle.key] valor;
- * El conjunto de claves grabables no está aquí, pero está representado por [HostSettingDefinitions] Derivado de la misma definición (el elemento de valor tiene el mismo origen que la lista blanca).
+ * 键名同时是 settings.snapshot 里 [HostSettingsEntry.toggleKey] / [HostSettingToggle.key] 的取值；
+ * 可写键集合不在这里，而是由 [HostSettingDefinitions] 按同一份定义派生（值项与白名单同源）。
  */
 internal object HostSettingKeys {
     const val PII_GUARD = "piiGuardEnabled"
@@ -22,7 +22,7 @@ internal object HostSettingKeys {
     const val CHAT_ENTER_TO_SEND = "chatPreferences.enterToSend"
     const val CHAT_STREAM_RESPONSE = "chatPreferences.streamResponse"
 
-    /** Interruptores de uso común:Configure las claves leídas en el área \"Interruptores de uso común\" de la página de inicio,El orden es el orden de presentación. */
+    /** 常用开关:设置主页「常用开关」区读取的键,顺序即展示顺序。 */
     val readable: List<String> = listOf(
         PII_GUARD,
         PROACTIVE_MESSAGE,
@@ -40,16 +40,16 @@ internal object HostSettingKeys {
 }
 
 /**
- * Establezca la agrupación y la entrada de la lista (lado del protocolo).
+ * 设置清单的分组与入口（协议侧）。
  *
- * El orden y el título de la interfaz y el índice de búsqueda provienen de [io.zer0.muse.ui.settings.SettingsCatalog];
- * Este objeto es una proyección de la misma estructura para uso web. La coherencia entre ambos está determinada por `HostSettingsCatalogTest`
- * Comparación grupo por artículo —— Si se cambia la agrupación, el orden o las entradas en cualquiera de los lados, la prueba fallará.Web No tienes que (y no puedes)
- * Mantenga su propia lista de cosas que cambian con su aplicación.
+ * 界面与搜索索引的顺序、标题都来自 [io.zer0.muse.ui.settings.SettingsCatalog]；
+ * 本对象是同一份结构给 Web 端用的投影。两者的一致性由 `HostSettingsCatalogTest`
+ * 逐组逐项比对 —— 任一侧改了分组、顺序或条目，测试即失败，Web 端不必（也不能）
+ * 自己维护一份会与 App 漂移的清单。
  */
 internal object HostSettingsCatalog {
 
-    /** La clave del grupo es el nombre del recurso de cadena del título del grupo.,Organizado por interfaz de arriba a abajo. */
+    /** 分组 key 是分组标题的字符串资源名,按界面从上到下排列。 */
     val groups: List<HostSettingsGroup> = listOf(
         group(
             "settings_group_assistants",
@@ -92,19 +92,35 @@ internal object HostSettingsCatalog {
             "settings_group_memory",
             link("memory", "settings_screen_memory_notification", "settings_screen_memory_notification_desc", "atom"),
             link("rag", "settings_screen_rag", "settings_screen_rag_desc", "book"),
+            // v2.7.x(E2): 术语页目前只有 App 侧子页(要读写本机 Room)。
+            // 1:1 镜像要求这里同步有条目，但 Web 端补出对应页之前保持 enabled = false，
+            // 不造一个点了没反应的假入口(S4 的 diagnostics 走的正是同一套做法)。
+            link("session_terms", "settings_screen_session_terms", "settings_screen_session_terms_desc", "book", enabled = false),
         ),
         group(
             "settings_group_connection",
             link("connection_center", "connection_center_title", "connection_center_desc", "link"),
             link("channel", "channel_page_title", "settings_screen_desc_channel", "wifi"),
+            // 内置浏览器设置只有 App 侧有页面（WebView 的引擎与 Cookies 行为没法从网页驱动），
+            // 所以这里 enabled = false：Web 端列出但不进子页，不造一个点了没反应的假入口。
+            link("browser", "settings_screen_browser", "settings_screen_browser_desc", "globe", enabled = false),
             link("web_access", "settings_screen_web_access", "settings_screen_web_access_desc", "router"),
             link("mcp", "settings_screen_mcp", "settings_screen_mcp_desc", "plug"),
-            // La descripción de la entrada del agente la escribe el tiempo de ejecución.(No habilitado / type host:port),No hay recursos fijos.
+            // 代理条目的说明由运行时拼(未启用 / type host:port),没有固定资源。
             link("proxy", "proxy_title", null, "proxy"),
         ),
         group(
             "settings_group_automation",
             link("proactive", "settings_agent_proactive_title", "settings_agent_proactive_subtitle", "bell"),
+            // 用户约定只有 App 侧有页面（编辑与注入都在 App 内），Web 端列出但不进子页，
+            // 不留一个点了没反应的死行；理由同步登记在 HostSettingsEntryAvailabilityTest。
+            link(
+                "agent_directives",
+                "settings_screen_agent_directives",
+                "settings_screen_agent_directives_desc",
+                "bell",
+                enabled = false,
+            ),
             link("scheduled_tasks", "schedule_title", "settings_screen_desc_schedule", "clock"),
             link(
                 "notification_listener",
@@ -150,6 +166,10 @@ internal object HostSettingsCatalog {
             link("tutorial", "settings_screen_tutorial", "settings_screen_tutorial_desc", "school"),
             link("about", "settings_screen_about", "settings_screen_about_desc", "info"),
             action("check_update", "settings_screen_check_update", "settings_screen_check_update_desc", "refresh"),
+            // v2.6.23(S4/S5): App 端「运行诊断」子页的 1:1 镜像条目。
+            // S5 已在 Web 端补出「运行」三 Tab 页(runtime.logs / runtime.diagnostics / runtime.stats),
+            // 因此点亮;标题与说明沿用 App 侧同一组字符串,不再造第二个叫法。
+            link("diagnostics", "settings_screen_diagnostics", "settings_screen_diagnostics_desc", "bug"),
         ),
         group(
             "settings_group_developer",
@@ -161,34 +181,24 @@ internal object HostSettingsCatalog {
         ),
     )
 
-    /** Vista plana de todas las entradas.,El orden es coherente con la representación de la interfaz. */
+    /** 全部入口的扁平视图,顺序与界面渲染一致。 */
     val entries: List<HostSettingsEntry> = groups.flatMap { it.entries }
 
     private fun group(key: String, vararg entries: HostSettingsEntry): HostSettingsGroup =
         HostSettingsGroup(key = key, entries = entries.map { it.copy(groupKey = key) })
 
-    private fun link(
-        id: String,
-        titleKey: String,
-        descKey: String?,
-        iconKey: String,
-        enabled: Boolean = true,
-    ): HostSettingsEntry = HostSettingsEntry(
-        id = id,
-        titleKey = titleKey,
-        descKey = descKey,
-        groupKey = "",
-        iconKey = iconKey,
-        kind = KIND_LINK,
-        enabled = enabled,
-    )
+    private fun link(id: String, titleKey: String, descKey: String?, iconKey: String, enabled: Boolean = true): HostSettingsEntry =
+        HostSettingsEntry(
+            id = id,
+            titleKey = titleKey,
+            descKey = descKey,
+            groupKey = "",
+            iconKey = iconKey,
+            kind = KIND_LINK,
+            enabled = enabled,
+        )
 
-    private fun action(
-        id: String,
-        titleKey: String,
-        descKey: String?,
-        iconKey: String,
-    ): HostSettingsEntry = HostSettingsEntry(
+    private fun action(id: String, titleKey: String, descKey: String?, iconKey: String): HostSettingsEntry = HostSettingsEntry(
         id = id,
         titleKey = titleKey,
         descKey = descKey,
@@ -197,21 +207,16 @@ internal object HostSettingsCatalog {
         kind = KIND_ACTION,
     )
 
-    private fun toggle(
-        id: String,
-        titleKey: String,
-        descKey: String?,
-        iconKey: String,
-        settingKey: String,
-    ): HostSettingsEntry = HostSettingsEntry(
-        id = id,
-        titleKey = titleKey,
-        descKey = descKey,
-        groupKey = "",
-        iconKey = iconKey,
-        kind = KIND_SWITCH,
-        toggleKey = settingKey,
-    )
+    private fun toggle(id: String, titleKey: String, descKey: String?, iconKey: String, settingKey: String): HostSettingsEntry =
+        HostSettingsEntry(
+            id = id,
+            titleKey = titleKey,
+            descKey = descKey,
+            groupKey = "",
+            iconKey = iconKey,
+            kind = KIND_SWITCH,
+            toggleKey = settingKey,
+        )
 
     const val KIND_LINK = "link"
     const val KIND_SWITCH = "switch"

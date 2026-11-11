@@ -9,28 +9,28 @@ import java.io.File
 import java.io.IOException
 
 /**
- * v0.25: Almacenamiento de avatar asistente — Copie la imagen seleccionada por el usuario al almacenamiento interno de la aplicación,Devuelve la ruta absoluta.
+ * v0.25: 助手头像存储 — 把用户选的图片复制到 App 内部存储,返回绝对路径。
  *
- * ¿Por qué no guardar directamente? content:// URI:
- *  - SAF El URI devuelto puede no ser válido después de reiniciar la aplicación(Especialmente no llamado takePersistableUriPermission)
- *  - Después de copiar al almacenamiento interno:① persistencia ② No se requiere permiso ③ A continuación se muestran imágenes al realizar copias de seguridad y restaurar.
+ * 为什么不直接存 content:// URI:
+ *  - SAF 返回的 URI 在 App 重启后可能失效(尤其未调用 takePersistableUriPermission)
+ *  - 复制到内部存储后:① 持久化 ② 不需权限 ③ 备份恢复时图片跟着走
  *
- * ubicación del archivo:`filesDir/avatars/assistant_<id>_<timestamp>.<ext>`
+ * 文件位置:`filesDir/avatars/assistant_<id>_<timestamp>.<ext>`
  */
 object AvatarStorage {
 
     private const val TAG = "AvatarStorage"
     private const val DIR = "avatars"
 
-    // H-AV1: Tamaño máximo de avatar(10MB),Rechazo de escrituras excedido,Evite imágenes grandes que causen disco/presión de la memoria
+    // H-AV1: 头像大小上限(10MB),超过拒绝写入,避免大图导致磁盘/内存压力
     private const val MAX_AVATAR_BYTES = 10L * 1024 * 1024
 
     /**
-     * poner [sourceUri] La imagen puntiaguda se copia al almacenamiento interno.,Devuelve la ruta absoluta. Devuelve nulo en caso de error.
+     * 把 [sourceUri] 指向的图片复制到内部存储,返回绝对路径。失败返回 null。
      *
-     * H-AV1: Cambiar para suspender la función,interno `withContext(Dispatchers.IO)`,Evite la E/S del disco del hilo principal.
-     * M-AV1: Captar explícitamente excepciones OOM e IO,Originales `runCatching { ... }.getOrElse` tragará
-     * CancellationException(La corrutina no debe quedar atrapada silenciosamente cuando se cancela)y OOM(JVM estado inestable).
+     * H-AV1: 改为 suspend 函数,内部 `withContext(Dispatchers.IO)`,避免主线程磁盘 IO。
+     * M-AV1: 显式捕获 OOM 和 IO 异常,原 `runCatching { ... }.getOrElse` 会吞掉
+     * CancellationException(协程被取消时不应被静默捕获)和 OOM(JVM 不稳定状态)。
      */
     suspend fun copyToInternal(context: Context, sourceUri: Uri, assistantId: String): String? = withContext(Dispatchers.IO) {
         try {
@@ -38,7 +38,7 @@ object AvatarStorage {
             val ext = guessExtension(context, sourceUri)
             val target = File(dir, "assistant_${assistantId}_${System.currentTimeMillis()}.$ext")
 
-            // M-AV1: Tamaño acumulativo al copiar,Deténgase inmediatamente si se excede el límite superior,Evite leer imágenes grandes a la vez OOM
+            // M-AV1: 边复制边累计大小,超过上限立即中止,避免一次性读入大图导致 OOM
             context.contentResolver.openInputStream(sourceUri)?.use { input ->
                 target.outputStream().use { output ->
                     val buf = ByteArray(8 * 1024)
@@ -48,25 +48,25 @@ object AvatarStorage {
                         total += read
                         if (total > MAX_AVATAR_BYTES) {
                             runCatching { target.delete() }
-                            Logger.w(TAG, "Avatar supera ${MAX_AVATAR_BYTES / 1024 / 1024}MB límite superior,Rechazado")
+                            Logger.w(TAG, "头像超过 ${MAX_AVATAR_BYTES / 1024 / 1024}MB 上限,已拒绝")
                             return@withContext null
                         }
                         output.write(buf, 0, read)
                     }
                 }
             } ?: run {
-                Logger.w(TAG, "openInputStream Regresar null: $sourceUri")
+                Logger.w(TAG, "openInputStream 返回 null: $sourceUri")
                 return@withContext null
             }
 
-            // Limpiar avatares antiguos del mismo asistente.(Solo mantén lo último)
+            // 清理同 assistant 的旧头像(只保留最新的)
             dir.listFiles { f -> f.name.startsWith("assistant_${assistantId}_") }
                 ?.filter { it.absolutePath != target.absolutePath }
                 ?.forEach { runCatching { it.delete() } }
             Logger.i(TAG, "saved avatar → ${target.absolutePath}")
             target.absolutePath
         } catch (e: OutOfMemoryError) {
-            // M-AV1: Si copias una imagen grande OOM,grabar y devolver null,No dejes que la aplicación falle
+            // M-AV1: 大图复制时若 OOM,记录并返回 null,不让 App 崩溃
             Logger.e(TAG, "copy avatar OOM", e)
             null
         } catch (e: IOException) {

@@ -26,11 +26,11 @@ import java.io.File
 import java.nio.file.Files
 
 /**
- * Envío de conocimientos/automatización y comportamiento de enfoque de tres comandos de solo lectura en la puerta de enlace.
+ * 知识 / 自动化三条只读命令在网关里的分派与焦点行为。
  *
- * El token central solo bloquea los comandos de escritura: la conexión conectada primero mantiene el foco y la conexión conectada más tarde no puede obtenerlo, pero el comando de solo lectura aún debe poder recibir un recibo.
- * Aquí están las pruebas en este orden. —— Conexión sin foco `knowledge.list` / `knowledge.documents` /
- * `tasks.list` Todos recibieron recibos normales, enviados en la misma conexión. `session.rename` Acabo de recibirlo `focus_not_held`.
+ * 焦点令牌只拦写命令：先连上的连接持有焦点，后连上的连接拿不到，但只读命令照样要能回执。
+ * 这里就是按这个顺序验的 —— 不持焦点的连接发 `knowledge.list` / `knowledge.documents` /
+ * `tasks.list` 全部拿到正常回执，同一连接发 `session.rename` 才拿到 `focus_not_held`。
  */
 class HostCatalogFocusTest {
 
@@ -58,7 +58,7 @@ class HostCatalogFocusTest {
 
     private class FakeKnowledgeSource : HostKnowledgeSource {
         override suspend fun bases(): List<HostKnowledgeBase> = listOf(
-            HostKnowledgeBase(id = "kb-1", name = "ley", documentCount = 2, chunkCount = 7, embeddingBackend = "local-keyword-v1"),
+            HostKnowledgeBase(id = "kb-1", name = "法律", documentCount = 2, chunkCount = 7, embeddingBackend = "local-keyword-v1"),
         )
 
         override suspend fun documents(kbId: String, cursor: String?, limit: Int): HostKnowledgeReads.DocumentPage? {
@@ -72,7 +72,7 @@ class HostCatalogFocusTest {
 
     private class FakeTaskSource : HostTaskSource {
         override suspend fun tasks(): List<HostScheduledTask> = listOf(
-            HostScheduledTask(id = "task-1", name = "sesión informativa matutina", cron = "0 9 * * *", enabled = true, nextRunAt = 5_000L),
+            HostScheduledTask(id = "task-1", name = "晨间简报", cron = "0 9 * * *", enabled = true, nextRunAt = 5_000L),
         )
     }
 
@@ -108,7 +108,7 @@ class HostCatalogFocusTest {
     @Test
     fun `knowledge and task reads answer without holding the focus lock`() = runTest {
         val gateway = gateway()
-        // La conexión conectada primero mantiene el foco; no se puede acceder a la conexión conectada posteriormente, simulando "otro navegador".
+        // 先连上的连接持焦点；后连上的连接拿不到，模拟「另一个浏览器」。
         val holder = FakeConnection()
         val holderJob = launch { gateway.serve(holder.session) }
         advanceUntilIdle()
@@ -140,7 +140,7 @@ class HostCatalogFocusTest {
         assertEquals("task-1", tasks.tasks.single().id)
         assertEquals(5_000L, tasks.tasks.single().nextRunAt)
 
-        // Los comandos de escritura emitidos en la misma conexión aún están bloqueados por el bloqueo de enfoque. —— Explique que los tres elementos anteriores no son "el bloqueo no es efectivo" sino "el modo de solo lectura no requiere un bloqueo".
+        // 同一连接发写命令仍然被焦点锁挡住 —— 说明上面三条不是「锁没生效」而是「只读不需要锁」。
         other.send("""{"protocolVersion":1,"type":"session.rename","requestId":"req-rename","sessionId":"s-1","title":"x"}""")
         advanceUntilIdle()
         val rejected = other.events.first { it.requestId == "req-rename" }

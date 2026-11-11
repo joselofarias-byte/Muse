@@ -15,10 +15,10 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 /**
- * Reglas de representación para bloques de códigos QR en modo "solo local".
+ * 「仅本机」模式下二维码区块的渲染规则。
  *
- * La dirección de bucle invertido se dibuja como un código QR. Si lo escanea con otros dispositivos, solo se escaneará una vez. Por lo tanto, el bloque completo no se representa en este modo (no queda ningún marco vacío).
- * Pongámoslo en una oración; el código QR solo aparece después de abrir el acceso LAN.
+ * 回环地址画成二维码，别的设备扫了只会白扫一次，因此这个模式下整块不渲染（不留空框），
+ * 换成一句说明；打开局域网访问后才出现二维码。
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -54,7 +54,7 @@ class WebAccessQrBlockTest {
         compose.onNodeWithText(context.getString(R.string.settings_web_access_local_only_hint)).assertDoesNotExist()
     }
 
-    /** El conmutador LAN está encendido pero no se obtiene la IP: no hay una dirección codificable y no se procesa el bloque completo. */
+    /** 局域网开关开着但没拿到 IP：没有可编码的地址，同样整块不渲染。 */
     @Test
     fun missingUrlRendersNoQrCode() {
         compose.setContent {

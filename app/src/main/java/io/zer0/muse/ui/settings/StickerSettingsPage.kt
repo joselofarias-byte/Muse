@@ -18,10 +18,10 @@ import io.zer0.muse.ui.theme.MusePaddings
 import org.koin.compose.koinInject
 
 /**
- * Una página separada para la biblioteca de emoticonos.
+ * 表情包库独立页。
  *
- * El contenido es exactamente el mismo que el párrafo en la parte inferior de la página "Medios" ([StickerLibrarySection]),
- * Aquí simplemente le damos una puerta que se puede encontrar. Las dos entradas conviven sin conflicto.
+ * 内容与「媒体」页底部那一段完全同源（[StickerLibrarySection]），
+ * 这里只是给它一个能找得到的门。两处入口并存不冲突。
  */
 @Composable
 fun StickerSettingsPage(onBack: () -> Unit) {

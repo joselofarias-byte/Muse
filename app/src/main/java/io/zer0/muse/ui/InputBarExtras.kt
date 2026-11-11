@@ -60,8 +60,8 @@ import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
 
 /**
- * Barra de ondas de grabación:Representa el historial de amplitud reciente como barras verticales.
- * v1.91: La amplitud cambió a normalizada. Float(0-1f),Ya no es necesario dividir por 32768.
+ * 录音波形条:把最近振幅历史渲染成竖条。
+ * v1.91: 振幅改为归一化 Float(0-1f),无需再除以 32768。
  */
 @Composable
 internal fun RecordingWaveform(amplitudes: List<Float>) {
@@ -72,9 +72,9 @@ internal fun RecordingWaveform(amplitudes: List<Float>) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         amplitudes.forEach { amp ->
-            // v1.91: amp Ya es un valor normalizado de 0-1f.
-            // defensa contra el colapso: coerceIn No válido para NaN(NaN relativamente constante false),NaN La fuga en fillMaxHeight arrojará
-            // "Expecting fraction between 0 and 1. Got NaN"; Utilice la normalización de SafeFraction en su lugar.
+            // v1.91: amp 已是 0-1f 归一化值。
+            // 崩溃防御: coerceIn 对 NaN 无效(NaN 比较恒 false),NaN 漏进 fillMaxHeight 会抛
+            // "Expecting fraction between 0 and 1. Got NaN"; 改用 safeFraction 归一化。
             val fraction = amp.safeFraction(min = 0.05f, fallback = 0.05f)
             val animatedHeight by animateFloatAsState(
                 targetValue = fraction,
@@ -93,7 +93,7 @@ internal fun RecordingWaveform(amplitudes: List<Float>) {
 }
 
 /**
- * v0.35: Panel de parámetros del modo de dibujo — Tamaño/calidad/Anulación temporal de estilo + imagen de referencia.
+ * v0.35: 绘图模式参数面板 — 尺寸/质量/风格 + 参考图临时覆盖。
  */
 @Composable
 internal fun ImageGenParamsPanel(params: ImageGenParams, onParamsChange: (ImageGenParams) -> Unit) {
@@ -104,22 +104,22 @@ internal fun ImageGenParamsPanel(params: ImageGenParams, onParamsChange: (ImageG
     ) { uri ->
         uri?.let {
             scope.launch {
-                // v1.79 (H-I4): Lectura de imágenes grandes + codificación Base64 movida al hilo IO,Evite bloquear el hilo principal.
-                // v1.140: Comprime automáticamente las imágenes a 1024 px después de la selección + JPEG 85,Después de limitar base64 <= 4MB,
-                //         Evite OOM y solicite tiempo de espera causado por la transferencia directa de la imagen original 10 MB+
+                // v1.79 (H-I4): 大图片读取 + Base64 编码移到 IO 线程,避免阻塞主线程
+                // v1.140: 选图后自动压缩到 1024px 内 + JPEG 85,限制 base64 后 <= 4MB,
+                //         避免原图 10MB+ 直传导致 OOM 和请求超时
                 withContext(Dispatchers.IO) {
                     runCatching {
                         compressReferenceImageToDataUri(uri = it, context = context)
                     }
                 }.onSuccess { result ->
                     onParamsChange(params.copy(referenceImageUri = result.dataUri))
-                    // UI Tamaño comprimido rápido(Experiencia transparente)
+                    // UI 提示压缩后的尺寸(透明体验)
                     MuseToast.show(
                         context.getString(R.string.chat_ref_image_compressed, result.describe()),
                         2500,
                     )
                 }.onFailure { e ->
-                    // v1.79 (H-I4+M-I2): Agregar mensaje de error
+                    // v1.79 (H-I4+M-I2): 加 onFailure 提示
                     MuseToast.show(context.getString(R.string.chat_ref_image_load_failed, e.message ?: ""))
                 }
             }
@@ -143,7 +143,7 @@ internal fun ImageGenParamsPanel(params: ImageGenParams, onParamsChange: (ImageG
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.weight(1f),
-                // LAYOUT-01: Row Ancho del texto interno + límite de línea, evita el ajuste de línea palabra por palabra al ampliar el tamaño de fuente
+                // LAYOUT-01: Row 内文本取宽 + 限行，防放大字号下逐字换行
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -156,7 +156,7 @@ internal fun ImageGenParamsPanel(params: ImageGenParams, onParamsChange: (ImageG
             }
         }
 
-        // Tamaño
+        // 尺寸
         val sizes = model?.supportedSizes
         if (!sizes.isNullOrEmpty()) {
             LazyRow(
@@ -173,7 +173,7 @@ internal fun ImageGenParamsPanel(params: ImageGenParams, onParamsChange: (ImageG
             }
         }
 
-        // calidad
+        // 质量
         val qualities = model?.supportedQualities
         if (!qualities.isNullOrEmpty()) {
             LazyRow(
@@ -199,7 +199,7 @@ internal fun ImageGenParamsPanel(params: ImageGenParams, onParamsChange: (ImageG
             }
         }
 
-        // estilo
+        // 风格
         val styles = model?.supportedStyles
         if (!styles.isNullOrEmpty()) {
             LazyRow(
@@ -221,7 +221,7 @@ internal fun ImageGenParamsPanel(params: ImageGenParams, onParamsChange: (ImageG
             }
         }
 
-        // Imagen de referencia
+        // 参考图
         val supportsRef = model?.supportsReferenceImage == true
         if (params.referenceImageUri.isNullOrBlank()) {
             MuseChip(
@@ -240,7 +240,7 @@ internal fun ImageGenParamsPanel(params: ImageGenParams, onParamsChange: (ImageG
                 leadingIcon = {
                     Icon(
                         imageVector = MuseIcons.image,
-                        // v1.79 (L-I3): Accesibilidad contentDescription
+                        // v1.79 (L-I3): 无障碍 contentDescription
                         contentDescription = stringResource(R.string.chat_ref_image_cd),
                         modifier = Modifier.size(MuseIconSizes.iconSmall),
                     )
@@ -278,12 +278,12 @@ internal fun ImageGenParamsPanel(params: ImageGenParams, onParamsChange: (ImageG
 }
 
 /**
- * v1.140: Resultados de compresión de imágenes de referencia.
+ * v1.140: 参考图压缩结果。
  *
- * @property dataUri en forma de `data:image/jpeg;base64,...` de Data URI,Se puede entregar directamente a ImageProvider
- * @property width ancho después de la compresión
- * @property height Altura después de la compresión
- * @property byteCount Bytes JPEG comprimidos(todavía no base64)
+ * @property dataUri 形如 `data:image/jpeg;base64,...` 的 Data URI,可直接交给 ImageProvider
+ * @property width 压缩后宽度
+ * @property height 压缩后高度
+ * @property byteCount 压缩后 JPEG 字节数(未 base64)
  */
 private data class CompressedReferenceImage(
     val dataUri: String,
@@ -291,7 +291,7 @@ private data class CompressedReferenceImage(
     val height: Int,
     val byteCount: Int,
 ) {
-    /** tamaño legible por humanos/Descripción del volumen,Se utiliza para indicaciones de brindis. */
+    /** 人类可读的尺寸/体积描述,用于 Toast 提示。 */
     fun describe(): String {
         val kb = byteCount / 1024
         return "${width}x$height, ${kb}KB"
@@ -299,16 +299,16 @@ private data class CompressedReferenceImage(
 }
 
 /**
- * v1.140: Comprimir el URI de la imagen de referencia seleccionado por el usuario para que se ajuste al tamaño/URI de datos para la restricción de tamaño.
+ * v1.140: 把用户选中的参考图 URI 压缩为符合体积/尺寸约束的 Data URI。
  *
- * Flujo de procesamiento:
- *  1. Primero decodifica los límites para obtener el tamaño original.(API 28+ usar ImageDecoder,Para versión inferior BitmapFactory)
- *  2. calcular inSampleSize,encoger el lado largo para [maxSide] cerca(2 reducción de resolución a la potencia de)
- *  3. Después de decodificar para obtener el mapa de bits.,Mientras el lado esté quieto > [maxSide],Escalado preciso con Matrix
- *  4. JPEG Calidad de compresión [quality],base64 Si aún excede [maxBase64Bytes],regla
- *     Reducir gradualmente la calidad/tamaño,Hasta que se cumpla la restricción de volumen o se reduzca el límite inferior
+ * 处理流程:
+ *  1. 先解码边界获取原始尺寸(API 28+ 用 ImageDecoder,低版本用 BitmapFactory)
+ *  2. 计算 inSampleSize,使长边缩到 [maxSide] 附近(2 的幂次降采样)
+ *  3. 解码得到 Bitmap 后,如长边仍 > [maxSide],用 Matrix 精确缩放
+ *  4. JPEG 压缩质量 [quality],base64 后如仍超过 [maxBase64Bytes],则
+ *     逐级降质量 / 缩尺寸,直到满足体积约束或降到下限
  *
- * tirar [IllegalStateException] Indica falla de compresión(La imagen original no se puede decodificar o aún es demasiado grande después de la compresión).
+ * 抛出 [IllegalStateException] 表示压缩失败(原图无法解码或压缩后仍过大)。
  */
 private fun compressReferenceImageToDataUri(
     uri: Uri,
@@ -319,34 +319,34 @@ private fun compressReferenceImageToDataUri(
 ): CompressedReferenceImage {
     val resolver = context.contentResolver
 
-    // 1. Decodificar tamaño original
+    // 1. 解码原始尺寸
     val (origW, origH) = decodeImageBounds(resolver, uri)
     if (origW <= 0 || origH <= 0) {
         error("decode bounds failed for $uri")
     }
 
-    // 2. calcular inSampleSize(2 al poder de,Haga que el lado largo después de reducir la resolución esté lo más cerca posible de maxSide, pero no más de 2 veces)
+    // 2. 计算 inSampleSize(2 的幂次,使降采样后长边尽量接近 maxSide 但不超过 2 倍)
     var sample = 1
     while (origW / sample / 2 >= maxSide || origH / sample / 2 >= maxSide) sample *= 2
 
-    // 3. decodificado como Bitmap(Después de reducir la resolución)
+    // 3. 解码为 Bitmap(降采样后)
     var bitmap = decodeSampledBitmap(resolver, uri, sample)
         ?: error("decode bitmap failed for $uri")
 
-    // 4. Escale exactamente dentro de maxSide(Mantener relación de aspecto)
+    // 4. 精确缩放到 maxSide 内(保持宽高比)
     val scaled = scaleBitmapToMaxSide(bitmap, maxSide)
     if (scaled !== bitmap) {
         bitmap.recycle()
         bitmap = scaled
     }
 
-    // 5. Compresión paso a paso,Hasta que el volumen base64 cumpla con las restricciones o caiga al límite inferior
+    // 5. 逐级压缩,直到 base64 体积满足约束或降到下限
     var currentQuality = quality
     var currentBmp = bitmap
     var bytes = compressJpeg(currentBmp, currentQuality)
     var base64Len = base64Length(bytes.size)
 
-    // 5.1 Primero intenta solo reducir la calidad.(75 → 65 → 55)
+    // 5.1 先尝试只降质量(75 → 65 → 55)
     val qualitySteps = listOf(75, 65, 55)
     var stepIndex = 0
     while (base64Len > maxBase64Bytes && stepIndex < qualitySteps.size) {
@@ -355,7 +355,7 @@ private fun compressReferenceImageToDataUri(
         base64Len = base64Length(bytes.size)
     }
 
-    // 5.2 Si todavía está por encima del límite, reduzca el tamaño.(768 → 512 → 384)
+    // 5.2 仍超限则缩小尺寸(768 → 512 → 384)
     val sideSteps = listOf(768, 512, 384)
     var sideIndex = 0
     while (base64Len > maxBase64Bytes && sideIndex < sideSteps.size) {
@@ -374,7 +374,7 @@ private fun compressReferenceImageToDataUri(
     currentBmp.recycle()
 
     if (base64Len > maxBase64Bytes) {
-        // Aún por encima del límite:Negarse a subir,Evite OOM/tiempos de espera
+        // 仍超限:拒绝上传,避免 OOM/超时
         error("image still too large after compression (${width}x$height, ${bytes.size / 1024}KB)")
     }
 
@@ -388,7 +388,7 @@ private fun compressReferenceImageToDataUri(
     )
 }
 
-/** Decodificar los límites de la imagen original(ancho y alto),No carga píxeles en la memoria. */
+/** 解码原图边界(宽高),不将像素加载到内存。 */
 private fun decodeImageBounds(resolver: android.content.ContentResolver, uri: Uri): Pair<Int, Int> {
     val opts = BitmapFactory.Options().apply { inJustDecodeBounds = true }
     resolver.openInputStream(uri)?.use { input ->
@@ -397,7 +397,7 @@ private fun decodeImageBounds(resolver: android.content.ContentResolver, uri: Ur
     return opts.outWidth to opts.outHeight
 }
 
-/** Decodificar mapa de bits mediante inSampleSize. */
+/** 按 inSampleSize 解码 Bitmap。 */
 private fun decodeSampledBitmap(resolver: android.content.ContentResolver, uri: Uri, sampleSize: Int): Bitmap? {
     val opts = BitmapFactory.Options().apply { inSampleSize = sampleSize }
     return resolver.openInputStream(uri)?.use { input ->
@@ -405,7 +405,7 @@ private fun decodeSampledBitmap(resolver: android.content.ContentResolver, uri: 
     }
 }
 
-/** Escale el mapa de bits proporcionalmente al lado largo <= maxSide;Si está satisfecho, devuélvalo tal cual. */
+/** 把 Bitmap 等比缩放到长边 <= maxSide;若已满足则原样返回。 */
 private fun scaleBitmapToMaxSide(src: Bitmap, maxSide: Int): Bitmap {
     val w = src.width
     val h = src.height
@@ -416,15 +416,15 @@ private fun scaleBitmapToMaxSide(src: Bitmap, maxSide: Int): Bitmap {
     return Bitmap.createBitmap(src, 0, 0, w, h, matrix, true)
 }
 
-/** JPEG Comprimido en una matriz de bytes. */
+/** JPEG 压缩为字节数组。 */
 private fun compressJpeg(bmp: Bitmap, quality: Int): ByteArray {
     val out = ByteArrayOutputStream()
     bmp.compress(Bitmap.CompressFormat.JPEG, quality, out)
     return out.toByteArray()
 }
 
-/** base64 El volumen después de la codificación es aproximadamente los bytes originales. * 4/3,Redondeo. */
+/** base64 编码后体积约为原字节 * 4/3,向上取整。 */
 private fun base64Length(byteCount: Int): Int {
-    // cada 3 bytes → 4 personaje;Si es menos de 3, cuente como 3.NO_WRAP No se agregan nuevas líneas.
+    // 每 3 字节 → 4 字符;不足 3 按 3 算。NO_WRAP 不加换行符。
     return ((byteCount + 2) / 3) * 4
 }

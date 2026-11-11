@@ -23,12 +23,12 @@ import org.junit.Before
 import org.junit.Test
 
 /**
- * v2.6.14: Anthropic thinking Bloquear guardias de reproducción.
+ * v2.6.14: Anthropic thinking 块回放守卫。
  *
- * Anthropic Verifique la firma de los bloques de pensamiento, de modo que solo se permitan reproducir bloques de pensamiento con "mismo modelo + firma":
- *  - Sin firma: sin reproducción (el envío solo será considerado como un bloqueo ilegal por parte del upstream);
- *  - Modelo cruzado: el bloque de pensamiento se eliminó en la salida del Proveedor y tampoco se reproduce;
- *  - Después de bajar de categoría, solo queda el bloque de texto en el turno del asistente y la solicitud sigue siendo legal.
+ * Anthropic 对 thinking 块验签，因此只有「同模型 + 带 signature」的思考块才允许回放：
+ *  - 无 signature：不回放（发出去只会被上游判为非法块）；
+ *  - 跨模型：思考块在 Provider 出口已被剥离，同样不回放；
+ *  - 降级后 assistant 回合只剩 text 块，请求仍然合法。
  */
 class AnthropicThinkingReplayGuardTest {
 
@@ -79,7 +79,7 @@ class AnthropicThinkingReplayGuardTest {
         maxTokens = 512,
     )
 
-    /** Saque el bloque de contenido del turno del asistente en el cuerpo de la solicitud. */
+    /** 取出请求体里那条 assistant 回合的 content 块。 */
     private fun capturedAssistantBlocks(): JsonArray {
         val body = server.takeRequest().body.readUtf8()
         val messages: JsonArray = AppJson.parseToJsonElement(body).jsonObject["messages"] as JsonArray
@@ -122,8 +122,8 @@ class AnthropicThinkingReplayGuardTest {
         provider().completeText(request(history, "claude-sonnet-4-5"))
 
         val blocks = capturedAssistantBlocks()
-        assertTrue("No envíes bloques de pensamiento sin firma.", blocks.blocksOfType("thinking").isEmpty())
-        // Sigue siendo una solicitud legítima después de bajar de categoría: el texto se enviará como de costumbre
+        assertTrue("无签名时不得发 thinking 块", blocks.blocksOfType("thinking").isEmpty())
+        // 降级后仍是合法请求：正文照发
         assertEquals(
             "answer",
             blocks.blocksOfType("text").single()["text"]?.jsonPrimitive?.content,
@@ -144,7 +144,7 @@ class AnthropicThinkingReplayGuardTest {
         provider().completeText(request(history, "claude-sonnet-4-5"))
 
         val blocks = capturedAssistantBlocks()
-        assertTrue("No se deben generar bloqueos de pensamiento al cruzar modelos.", blocks.blocksOfType("thinking").isEmpty())
+        assertTrue("跨模型时不得发 thinking 块", blocks.blocksOfType("thinking").isEmpty())
         assertEquals(
             "answer",
             blocks.blocksOfType("text").single()["text"]?.jsonPrimitive?.content,

@@ -11,19 +11,19 @@ import io.zer0.muse.data.SettingsRepository
 import kotlinx.coroutines.withTimeoutOrNull
 
 /**
- * v1.201: LLM Agregador de reseñas completo.
+ * v1.201: LLM 综合评审聚合器。
  *
- * Enviar los resultados de varios subagentes a una convocatoria de LLM independiente para una revisión exhaustiva,
- * Producir el resultado final después de la fusión.(Marcar puntos de conflicto/perspectivas complementarias/respuestas integrales).
+ * 把多个子 Agent 的结果交给一个独立 LLM 调用做综合评审,
+ * 产出融合后的最终输出(标注冲突点 / 互补视角 / 综合答案)。
  *
- * - Inyectar a través de Koin [ChatService] con [SettingsRepository]
- * - El modelo de revisión está tomado de [SettingsRepository.multiAgentConfigCache] de reviewModelId,
- *   Si no está configurado, se utiliza el modelo predeterminado de proveedor activo.
- * - temperature=0.3(La revisión debe ser estable.),maxTokens=2000
- * - tiempo de espera de llamada 30s,Devuelve nulo en el tiempo de espera para permitir que el flujo ascendente baje a EXPERT_REVIEW
- * - usar [resultOf]{} paquete,Lanzamiento correcto CancellationException
+ * - 通过 Koin 注入 [ChatService] 与 [SettingsRepository]
+ * - 评审模型取自 [SettingsRepository.multiAgentConfigCache] 的 reviewModelId,
+ *   未配置则用 active provider 的默认模型
+ * - temperature=0.3(评审要稳定),maxTokens=2000
+ * - 调用超时 30s,超时返回 null 让上游降级为 EXPERT_REVIEW
+ * - 用 [resultOf]{} 包裹,正确重抛 CancellationException
  *
- * Esta clase es apátrida @Single,puede ser [TeamWorkflowExecutor] / [SkillExecutor] Compartir.
+ * 该类是无状态 @Single,可被 [TeamWorkflowExecutor] / [SkillExecutor] 共享。
  */
 class LlmAggregator(
     private val chatService: ChatService,
@@ -31,11 +31,11 @@ class LlmAggregator(
 ) {
 
     /**
-     * Revisión exhaustiva de los resultados de los candidatos de múltiples agentes,Devuelve el texto combinado.
+     * 对多 Agent 候选结果做综合评审,返回融合后的文本。
      *
-     * @param candidates Lista de resultados de candidatos(Contenido vacío filtrado,La persona que llama es responsable.)
-     * @param question tarea original/pregunta,como contexto de revisión;null considerado como "No proporcionado"
-     * @return El texto de salida final después de la fusión.;Llamada fallida/tiempo de espera agotado/respuesta vacía devuelta null,Manejado por degradación ascendente
+     * @param candidates 候选结果列表(已过滤空内容,调用方负责)
+     * @param question 原始任务/问题,作为评审上下文;null 视为 "未提供"
+     * @return 融合后的最终输出文本;调用失败 / 超时 / 空响应返回 null,由上游降级处理
      */
     suspend fun review(candidates: List<AgentResultAggregator.Candidate>, question: String?): String? {
         if (candidates.isEmpty()) return null
@@ -46,8 +46,8 @@ class LlmAggregator(
             UIMessage(role = MessageRole.USER, content = prompt),
         )
 
-        // H-LLM2: resultOf{} Envolver llamada suspendida,Lanzamiento correcto CancellationException;
-        // withTimeoutOrNull Ejecución general del paquete,Regreso del tiempo de espera null
+        // H-LLM2: resultOf{} 包裹 suspend 调用,正确重抛 CancellationException;
+        // withTimeoutOrNull 包裹整体执行,超时返回 null
         val completion = resultOf {
             withTimeoutOrNull(REVIEW_TIMEOUT_MS) {
                 val (model, providerConfig) = resolveReviewModel()
@@ -60,7 +60,7 @@ class LlmAggregator(
                 )
             }
         }.onError { msg, t ->
-            Logger.w("LlmAggregator", "review excepción de llamada: $msg", t)
+            Logger.w("LlmAggregator", "review 调用异常: $msg", t)
         }.getOrNull() ?: return null
 
         val text = completion.text.trim()
@@ -68,11 +68,11 @@ class LlmAggregator(
     }
 
     /**
-     * Modelo de revisión analítica.
+     * 解析评审模型。
      *
-     * - reviewModelId esta vacio:Regresar (null, null),Primer modelo que utiliza el proveedor activo de ChatService
-     * - reviewModelId No vacío:Recorra todos los proveedores para encontrar modelos coincidentes,Devolver si lo encuentra (Model, ProviderConfig)
-     * - No se encontró ningún modelo coincidente:Regresar (null, null),Volver al comportamiento y registro predeterminados
+     * - reviewModelId 为空:返回 (null, null),由 ChatService 用 active provider 的首个模型
+     * - reviewModelId 非空:遍历所有 provider 查找匹配模型,找到则返回 (Model, ProviderConfig)
+     * - 找不到匹配模型:返回 (null, null),回退到默认行为并记录日志
      */
     private suspend fun resolveReviewModel(): Pair<Model?, ProviderConfig?> {
         val modelId = settingsRepository.multiAgentConfigCache.reviewModelId
@@ -84,35 +84,35 @@ class LlmAggregator(
                 return matched to provider
             }
         }
-        Logger.w("LlmAggregator", "reviewModelId=$modelId No encontrado en todos los proveedores,Volver al modelo predeterminado")
+        Logger.w("LlmAggregator", "reviewModelId=$modelId 在所有 Provider 中未找到,回退默认模型")
         return null to null
     }
 
-    /** Revisión de estructura prompt(chino). */
+    /** 构造评审 prompt(中文)。 */
     private fun buildReviewPrompt(candidates: List<AgentResultAggregator.Candidate>, question: String?): String {
         val candidatesBlock = candidates.mapIndexed { i, c ->
             val meta = buildString {
-                append("Fuente: ${c.source}")
-                c.confidence?.let { append(", confianza: $it") }
+                append("来源: ${c.source}")
+                c.confidence?.let { append(", 置信度: $it") }
             }
-            "### candidato ${i + 1} ($meta)\n${c.content}"
+            "### 候选 ${i + 1} ($meta)\n${c.content}"
         }.joinToString("\n\n")
 
         return """
-Usted es un revisor de resultados de múltiples agentes. Aquí están las respuestas de varios asistentes a la misma tarea.,Por favor considere todas las perspectivas,
-Marcar puntos de conflicto,Produce la salida de fusión final.
+你是多 Agent 结果评审员。以下是多个助手对同一任务的回复,请综合所有视角,
+标注冲突点,产出最终融合输出。
 
-## tarea original
-${question ?: "No proporcionado"}
+## 原始任务
+${question ?: "未提供"}
 
-## Resultados de los candidatos
+## 候选结果
 $candidatesBlock
 
-## Requisitos de salida
-1. Si hay un conflicto,Enumere primero los puntos de conflicto(conciso)
-2. Luego dé la respuesta final completa.(Sin títulos de sección,contenido directo)
-3. No repitas el contenido del candidato,Fusión en lugar de empalme
-4. Mantenlo dentro de las 1500 palabras.
+## 输出要求
+1. 若有冲突,先列出冲突点(简洁)
+2. 然后给出综合后的最终答案(不分段标题,直接内容)
+3. 不要复述候选内容,要融合而不是拼接
+4. 控制在 1500 字以内
         """.trimIndent()
     }
 
@@ -121,6 +121,6 @@ $candidatesBlock
         private const val REVIEW_TEMPERATURE = 0.3f
         private const val REVIEW_MAX_TOKENS = 2000
 
-        private const val SYSTEM_PROMPT = "Eres un revisor riguroso de los resultados de múltiples agentes.,Bueno para integrar diferentes perspectivas, resolver conflictos y producir respuestas integrales de alta calidad."
+        private const val SYSTEM_PROMPT = "你是严谨的多 Agent 结果评审员,擅长融合不同视角、消解冲突、产出高质量综合答案。"
     }
 }

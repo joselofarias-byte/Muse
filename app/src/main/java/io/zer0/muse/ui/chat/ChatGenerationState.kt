@@ -5,11 +5,11 @@ import kotlinx.coroutines.channels.Channel
 import kotlin.uuid.Uuid
 
 /**
- * v5: Solicitud de cola de envío de mensajes — Serialización,Evite que el envío rápido y continuo provoque condiciones de carrera.
+ * v5: 消息发送队列请求 — 串行化处理,防止快速连续发送导致竞态。
  *
- * Reversión de actualización optimista:enqueueSend Mensaje de usuario/asistente creado id;P0 Reparación y transporte completo. userMessage
- * (Contiene original id + createdAt),El lado del consumidor reutiliza directamente el disco.,Evite que el consumidor renueve el mensaje UIMessage causado por
- * createdAt Obtener tiempo de consumo(más tarde que assistantMsg.createdAt),La clasificación se desordena después de recargar el corte de página.
+ * 乐观更新回滚用:enqueueSend 创建的 user/assistant 消息 id;P0 修复携带完整 userMessage
+ * (含原始 id + createdAt),消费端直接复用落盘,避免 consumer 重新 new UIMessage 导致
+ * createdAt 取到消费时刻(晚于 assistantMsg.createdAt),切页重载后排序错乱。
  */
 internal data class SendRequest(
     val text: String,
@@ -18,31 +18,31 @@ internal data class SendRequest(
     val retryCount: Int = 0,
     val userMessage: UIMessage,
     val assistantMessageId: Uuid,
-    // v1.0.15: outbox grabar id(Cola de envío persistente,Se utiliza para recuperarse después de que se finaliza el proceso.)
+    // v1.0.15: outbox 记录 id(持久化发送队列,进程被杀后恢复用)
     val outboxId: String,
-    /** Resultados de persistencia antes de unirse a la cola; Las nuevas solicitudes de envío deben llegar primero a la bandeja de salida antes de que se permita al consumidor comenzar la generación. */
+    /** 入队前的持久化结果；新发送请求必须先落 outbox 再允许消费端启动生成。 */
     val outboxReady: kotlinx.coroutines.Deferred<Boolean>? = null,
-    /** Enrutamiento automático de tareas para la solicitud actual;No escribir sobrescritura del modelo permanente de sesión,Evite que los resultados del enrutamiento se ciñan a mensajes posteriores. */
+    /** 当前请求的自动任务路由;不写入会话永久模型覆盖,避免路由结果粘住后续消息。 */
     val taskRouteSelection: io.zer0.muse.data.SettingsRepository.TaskRouteSelection? = null,
 )
 
 /**
- * v1.x: generar/Un contenedor de estado mutable compartido para la canalización de envío.
+ * v1.x: 生成/发送管线的共享可变状态容器。
  *
- * oso sendChannel(Enviar cola),outbox Restauración de conjuntos deduplicados y números de serie intergeneracionales/Token, registro de medios de herramientas,
- * Agent Crear indicador de reingreso a la sesión.ChatViewModel Delegar en este contenedor a través de getter/setter,Mantén lo que tienes
- * Referencia sin cambios,Allanando el camino para que todo el bucle de envío/lanzamiento/consumo se traslade a ChatGenerationController.
+ * 承载 sendChannel(发送队列)、outbox 恢复去重集、代际序号/令牌、工具媒体登记、
+ * Agent 建会话重入标志。ChatViewModel 通过 getter/setter 委托到本容器,保持既有
+ * 引用不变,为把 send/launchStream/消费循环整块迁入 ChatGenerationController 铺路。
  */
 internal class ChatGenerationState {
-    // La capacidad limitada es 8,Evite la acumulación ilimitada de solicitudes que contengan imágenes base64. OOM
+    // 限制容量为 8,防止含 base64 图片的请求无界堆积导致 OOM
     val sendChannel = Channel<SendRequest>(capacity = 8)
     val outboxRecoveryQueuedIds: MutableSet<String> =
         java.util.Collections.newSetFromMap(java.util.concurrent.ConcurrentHashMap())
 
-    // exec* ejecución de herramientas(La generación de imágenes puede tardar decenas de segundos)Durante este período, si el usuario envía un nuevo mensaje/Cambiar de sesión,Los resultados de las herramientas antiguas se escribirán en
-    // mensaje de error(Contaminación de medios entre sesiones);exec* La entrada captura el token actual.,Verifique que el token no haya cambiado antes de escribir a los medios.
-    // L-3: incremento+La lectura requiere atomicidad. Anteriormente no atómico var(Sólo @Volatile garantiza visibilidad),Una vez reestructurado en el futuro
-    // La introducción de incrementos concurrentes perderá actualizaciones;Utilice AtomicLong en su lugar para aclarar la semántica de compareAndIncrement.
+    // exec* 工具执行(图片生成可达数十秒)期间若用户发送新消息/切会话,旧工具结果会写进
+    // 错误消息(跨会话媒体污染);exec* 入口捕获当前令牌,写媒体前校验令牌未变。
+    // L-3: 递增+读取需要原子性。此前是非原子 var(仅 @Volatile 保证可见性),未来重构一旦
+    // 引入并发递增就会丢更新;改用 AtomicLong 让 compareAndIncrement 语义明确。
     private val toolGenerationTokenCounter = java.util.concurrent.atomic.AtomicLong(0L)
 
     var toolGenerationToken: Long
@@ -51,15 +51,15 @@ internal class ChatGenerationState {
             toolGenerationTokenCounter.set(value)
         }
 
-    /** Incremento atómico y devolución de nuevo token.,suministro exec* Se utiliza para el cambio intergeneracional. */
+    /** 原子递增并返回新令牌,供 exec* 代际切换使用。 */
     fun nextToolGenerationToken(): Long = toolGenerationTokenCounter.incrementAndGet()
 
-    // B-24: Número de secuencia de generación de streaming — Cada vez que se incrementa y escribe launchStream StreamRunState.generationSerial,
-    // Refinamiento/Verifique la ruta del error antes de borrar isStreaming"Sigue siendo la última generación.".
+    // B-24: 流式生成序号 — 每次 launchStream 自增并写入 StreamRunState.generationSerial,
+    // 收尾/错误路径清零 isStreaming 前校验"自己仍是最新生成"。
     @Volatile
     var streamGenerationSerial: Long = 0L
 
-    // Los valores predeterminados globales y las anulaciones de sesión se guardan por separado; El cambio de página de chat solo cambia la superposición de la sesión actual y no sobrescribe la configuración global.
+    // 全局默认与会话覆盖分开保存；聊天页切换只改当前 session 的覆盖，不反写全局设置。
     @Volatile
     var globalSelectedModelId: String? = null
 
@@ -72,19 +72,19 @@ internal class ChatGenerationState {
     @Volatile
     var sessionProviderOverrides: Map<String, String> = emptyMap()
 
-    // Mensaje de la rueda de herramientas para los medios adjuntos en esta generación id(Seguridad de concurrencia),runToolLoop Al final, se coloca el fondo del bolsillo sobre la placa.
+    // 本代生成中已附加媒体的工具轮消息 id(并发安全),runToolLoop 收尾兜底落盘。
     val toolMediaMessages: MutableSet<Uuid> =
         java.util.Collections.newSetFromMap(java.util.concurrent.ConcurrentHashMap())
 
-    // v1.135: Mensaje del asistente correspondiente a la ronda de llamada de herramienta actual id,suministro exec* La herramienta multimedia actualiza los campos multimedia del mensaje.
+    // v1.135: 当前工具调用轮次对应的助手消息 id,供 exec* 媒体工具更新消息媒体字段。
     @Volatile
     var toolAssistantId: Uuid? = null
 
-    // Reparación de auditoría (S-01): toolAssistantId Sesión de generación correspondiente id,Mismo ciclo de vida que toolAssistantId.
+    // 审计修复 (S-01): toolAssistantId 对应的生成会话 id,与 toolAssistantId 同生命周期。
     @Volatile
     var activeToolSessionId: String? = null
 
-    // v1.79 (M-CV8): Impedir el reingreso a la sesión de creación del modo agente
+    // v1.79 (M-CV8): 防止 Agent 模式创建会话重入
     @Volatile
     var isCreatingAgentSession: Boolean = false
 }

@@ -20,22 +20,22 @@ import java.io.IOException
 import java.util.concurrent.TimeUnit
 
 /**
- * B6-04: Fish Audio Proveedor de clonación de voz.
+ * B6-04: Fish Audio 语音克隆 Provider。
  *
- * Punto final (predeterminado https://api.fish.audio）：
- * - POST   /model             multipart Cargue muestra + metainformación, devuelva _id (voice id)
- * - GET    /model/{id}        Sondeo del estado del clon (state=trained medios disponibles)
- * - GET    /model?page_size=100 Lista de sonidos clonados
- * - DELETE /model/{id}        borrar sonido
+ * 端点（默认 https://api.fish.audio）：
+ * - POST   /model             multipart 上传样本 + 元信息，返回 _id（voice id）
+ * - GET    /model/{id}        轮询克隆状态（state=trained 表示可用）
+ * - GET    /model?page_size=100 列出已克隆音色
+ * - DELETE /model/{id}        删除音色
  *
- * v2.6.1 (#3): Corregido a puntos finales y campos oficiales reales. ——
- *   La antigua implementación era `/v1/voices`(La ruta no existe) y solo envía `name`/`files` campos,
- *   Como resultado, los usuarios pueden obtener errores estables incluso si obtienen la apiKey correcta. Los modelos creados oficialmente requieren varias partes.
- *   `type=tts` / `title` / `train_mode=fast` / `visibility` / `voices=@file`,
- *   El cuerpo de retorno es el objeto modelo (`_id` es la identificación del timbre,`state` para el estado de entrenamiento).
- *   Nota:TTS El punto final sintético sigue siendo /v1/tts (consulte CloudTtsService), un dominio diferente al clon.
+ * v2.6.1 (#3): 修正为官方实际端点与字段 ——
+ *   旧实现打的是 `/v1/voices`（该路径不存在）且只发 `name`/`files` 字段，
+ *   导致用户拿正确 apiKey 也稳定报错。官方创建模型需 multipart 的
+ *   `type=tts` / `title` / `train_mode=fast` / `visibility` / `voices=@file`，
+ *   返回体为模型对象（`_id` 为音色 id，`state` 为训练状态）。
+ *   注意：TTS 合成端点仍是 /v1/tts（见 CloudTtsService），与克隆不同域。
  *
- * Certificación:`Authorization: Bearer {apiKey}`, con [CloudTtsService.synthesizeFishAudio] coherente.
+ * 认证：`Authorization: Bearer {apiKey}`，与 [CloudTtsService.synthesizeFishAudio] 一致。
  */
 class FishAudioVoiceCloningProvider(
     private val client: OkHttpClient,
@@ -66,8 +66,8 @@ class FishAudioVoiceCloningProvider(
 
                 val multipart = MultipartBody.Builder()
                     .setType(MultipartBody.FORM)
-                    // v2.6.1 (#3): Campos modelo creados oficialmente —— type=tts / title / train_mode=fast
-                    //   / visibility=private / voices=Archivos de muestra.
+                    // v2.6.1 (#3): 官方创建模型字段 —— type=tts / title / train_mode=fast
+                    //   / visibility=private / voices=样本文件。
                     .addFormDataPart("type", "tts")
                     .addFormDataPart("title", name)
                     .addFormDataPart("train_mode", "fast")
@@ -86,14 +86,14 @@ class FishAudioVoiceCloningProvider(
                         throw IOException("Fish Audio cloneVoice failed: HTTP ${resp.code}, body=${resp.body.string()}")
                     }
                     val root = parseJson(resp.body.string())
-                    // Devuelve oficialmente el objeto modelo, la identificación de voz está en _id (compatible con las variantes id/voz_id).
+                    // 官方返回模型对象，音色 id 在 _id（兼容 id / voice_id 变体）。
                     root["_id"]?.jsonPrimitive?.contentOrNull
                         ?: root["id"]?.jsonPrimitive?.contentOrNull
                         ?: root["voice_id"]?.jsonPrimitive?.contentOrNull
                         ?: throw IOException("Fish Audio cloneVoice response missing _id")
                 }
 
-                // Estado de clonación de encuesta, hasta 60s
+                // 轮询克隆状态，最多 60s
                 var ready = false
                 repeat(MAX_POLL_ATTEMPTS) {
                     if (isVoiceReady(voiceId)) {
@@ -122,7 +122,7 @@ class FishAudioVoiceCloningProvider(
                     throw IOException("Fish Audio listVoices failed: HTTP ${resp.code}, body=${resp.body.string()}")
                 }
                 val root = parseJson(resp.body.string())
-                // v2.6.1 (#3): Vuelve la lista oficial {items:[...]}(Compatible con alias de voces).
+                // v2.6.1 (#3): 官方列表返回 {items:[...]}（兼容 voices 别名）。
                 val arr = root["items"] as? JsonArray
                     ?: root["voices"] as? JsonArray
                     ?: throw IOException("Fish Audio listVoices response missing items[]")
@@ -170,9 +170,9 @@ class FishAudioVoiceCloningProvider(
         timedClient.newCall(req).execute().use { resp ->
             if (!resp.isSuccessful) return@use false
             val root = parseJson(resp.body.string())
-            // v2.6.1 (#3): Utiliza oficialmente el estado (estado de formación), que es compatible con el antiguo estado del nombre de campo.
+            // v2.6.1 (#3): 官方用 state（训练状态），兼容旧字段名 status。
             val state = (root["state"] ?: root["status"])?.jsonPrimitive?.contentOrNull?.lowercase()
-            // train_mode=fast Generalmente capacitado directamente;null Se considera disponible (comportamiento antiguo).
+            // train_mode=fast 时通常直接 trained；null 视为可用（旧行为兜底）。
             state == null || state == "trained" || state == "ready" || state == "succeeded"
         }
     }.getOrDefault(false)
@@ -186,16 +186,16 @@ class FishAudioVoiceCloningProvider(
         private const val TAG = "FishAudioVoiceClone"
 
         /**
-         * v2.6.1 (#3): El punto final clonado es de un dominio diferente al del punto final TTS ——
-         * Clon https://api.fish.audio/model（/v1),TTS Ir https://api.fish.audio/v1/tts。
-         * valor antiguo `.../v1` Las /v1/voces detalladas no existen.
+         * v2.6.1 (#3): 克隆端点与 TTS 端点不同域 ——
+         * 克隆走 https://api.fish.audio/model（不带 /v1），TTS 走 https://api.fish.audio/v1/tts。
+         * 旧值 `.../v1` 拼出的 /v1/voices 并不存在。
          */
         const val DEFAULT_ENDPOINT = "https://api.fish.audio"
 
-        /** B8-05: Dirección del servicio Fish Audio normalizado,Conveniente para pruebas individuales puras. */
+        /** B8-05: 归一化 Fish Audio 服务地址,便于纯单测。 */
         internal fun normalizeEndpoint(endpoint: String): String = endpoint.trim().trimEnd('/')
             .ifBlank { DEFAULT_ENDPOINT }
-            // Compatible con usuarios que hacen referencia erróneamente a puntos finales TTS (.../v1) para completar la dirección del clon: elimine el final /v1.
+            // 兼容用户误把 TTS 端点（.../v1）填进克隆地址的情况：剥掉结尾 /v1。
             .removeSuffix("/v1")
         private const val SAMPLE_MIME = "audio/mpeg"
         private const val SAMPLE_FILENAME = "sample.mp3"

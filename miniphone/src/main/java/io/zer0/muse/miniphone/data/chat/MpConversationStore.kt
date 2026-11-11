@@ -7,33 +7,33 @@ import io.zer0.muse.miniphone.data.db.dao.MpThreadDao
 import io.zer0.muse.miniphone.data.db.dao.MpThreadMemberDao
 
 /**
- * Escriba operaciones en la lista de sesiones.
+ * 会话列表上的写操作。
  *
- * El propósito de extraer la interfaz es probar el ViewModel de shell sin tener que abrir una biblioteca Room para recibir una comisión.;
- * comportamiento real en [MpConversationStore] Ejecute una validación SQL real en la prueba de la biblioteca.
+ * 抽成接口是为了外壳 ViewModel 的测试不必为一次委托开一个 Room 库;
+ * 真实行为在 [MpConversationStore] 的库测试里跑真 SQL 验证。
  */
 interface MpConversationActions {
-    /** Anclar/desanclar. */
+    /** 置顶 / 取消置顶。 */
     suspend fun setPinned(threadId: String, pinned: Boolean)
 
-    /** No leído claro. */
+    /** 未读清零。 */
     suspend fun markRead(threadId: String)
 
-    /** Eliminar una conversación y todos sus mensajes. */
+    /** 删一个会话及其全部消息。 */
     suspend fun deleteThread(threadId: String)
 
-    /** Borrar todas las conversaciones y mensajes. */
+    /** 清空全部会话与消息。 */
     suspend fun clearAll()
 }
 
 /**
- * Escribir operaciones en la lista de sesiones:Fijar arriba, borrar no leídos, eliminar conversación, borrar todo a la vez.
+ * 会话列表上的写操作:置顶、清未读、删会话、一次清空。
  *
- * Todas estas acciones tocan dos mesas al mismo tiempo.(Línea de conversación y línea de mensaje.),Ponlo aquí y hazlo en la transacción de la base de datos.:
- * El estado intermedio que se ve en la interfaz no debe ser "la sesión sigue ahí pero el contenido está vacío" o viceversa.
- * Las conversaciones grupales incluyen líneas de miembros adicionales:Seguir cuando se elimine el grupo,De lo contrario, quedarán un montón de registros de miembros que apuntan a sesiones inexistentes.
- * Consulta y devolución del estado de la interfaz. [io.zer0.muse.miniphone.ui.shell.MiniPhoneShellViewModel],
- * Sólo escribe aquí,No mantiene ningún estado de UI.
+ * 这些动作都同时碰两张表(会话行与消息行),放到这里统一在库的事务里做:
+ * 界面看到的中间态不该是「会话还在、内容空了」或者反过来。
+ * 群会话额外带成员行:删群时跟着一起走,不然会留下一堆指向不存在会话的成员记录。
+ * 查询与界面状态归 [io.zer0.muse.miniphone.ui.shell.MiniPhoneShellViewModel],
+ * 这里只管写,不持有任何 UI 状态。
  */
 class MpConversationStore(
     private val db: MiniPhoneDb,
@@ -42,17 +42,17 @@ class MpConversationStore(
     private val memberDao: MpThreadMemberDao,
 ) : MpConversationActions {
 
-    /** Anclar/desanclar. La clasificación de la lista está garantizada por ORDER BY de DAO,Aquí solo se cambian las etiquetas. */
+    /** 置顶 / 取消置顶。列表排序由 DAO 的 ORDER BY 保证,这里只改标记。 */
     override suspend fun setPinned(threadId: String, pinned: Boolean) {
         threadDao.setPinned(threadId, pinned)
     }
 
-    /** No leído claro. Esta frase no cambia nada cuando ya es 0. */
+    /** 未读清零。已经是 0 时这一句什么也不改。 */
     override suspend fun markRead(threadId: String) {
         threadDao.clearUnread(threadId)
     }
 
-    /** Eliminar una conversación,Todos los mensajes a su nombre se eliminarán junto con los miembros del grupo.;Otras conversaciones y mensajes no se ven afectados. */
+    /** 删一个会话,连它名下的全部消息与群成员一起删;别的会话与消息不受影响。 */
     override suspend fun deleteThread(threadId: String) {
         db.withTransaction {
             messageDao.deleteInThread(threadId)
@@ -62,7 +62,7 @@ class MpConversationStore(
     }
 
     /**
-     * Borrar historial de chat:Las tres tablas de conversaciones, mensajes y miembros del grupo se borran juntas. Momentos, información, diarios y álbumes de fotos no están aquí,No será tocado.
+     * 清空聊天记录:会话、消息、群成员三张表一起清空。朋友圈、资料、日记、相册都不在这里,不会被碰到。
      */
     override suspend fun clearAll() {
         db.withTransaction {

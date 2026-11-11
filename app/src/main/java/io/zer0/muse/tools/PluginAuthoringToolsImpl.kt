@@ -15,13 +15,13 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 
 /**
- * Asistente de implementación de herramienta de complemento autoescrita (author_plugin).
+ * 助手自写插件工具实现（author_plugin）。
  *
- * Esta herramienta es el único puente entre el "código de salida del modelo" y la "decisión de confianza del usuario": texto de envío del modelo,
- * El host crea el ZIP y solo descarta la biblioteca como un borrador sin firmar (deshabilitado, no confirmado, no ejecutable); para ser verdaderamente eficaz,
- * El usuario debe configurar→Después de revisar la lista de herramientas en la administración de complementos, haga clic en "Firmar y activar" para firmarla con la clave de autor local.
+ * 该工具是「模型产出代码」与「用户信任决定」之间唯一的桥：模型提交文本，
+ * 宿主构建 ZIP 并只落库为未签名草稿（禁用、未确认、不可执行）；要真正生效，
+ * 用户必须在设置→插件管理中审阅工具清单后点「签名并启用」，由本机作者密钥签名。
  *
- * Siempre regresa en caso de fracaso `{"error": "razón china"}`, no lance excepciones a la capa de orquestación.
+ * 失败一律返回 `{"error": "中文原因"}`，不把异常抛给编排层。
  */
 class PluginAuthoringToolsImpl(
     private val context: Context,
@@ -55,18 +55,18 @@ class PluginAuthoringToolsImpl(
                 )
             },
             onFailure = { error ->
-                Logger.w("PluginAuthoring", "author_plugin Error al crear el borrador: ${error.message}", error)
+                Logger.w("PluginAuthoring", "author_plugin 草稿创建失败: ${error.message}", error)
                 failure(error.message ?: context.getString(R.string.skill_unknown_error))
             },
         )
     }
 
-    /** Analizar la variedad de herramientas enviadas por el modelo; si la forma es ilegal, devuelva nulo (la persona que llama dará un mensaje chino unificado). */
+    /** 解析模型提交的工具数组；形状不合法返回 null（由调用方给出统一中文提示）。 */
     private fun parseTools(raw: String?): List<ToolDeclaration>? {
         if (raw.isNullOrBlank()) return null
         return resultOf {
             AppJson.decodeFromString(JsonArray.serializer(), raw).map { element ->
-                val tool = element as? JsonObject ?: error("El elemento de herramienta debe ser un objeto.")
+                val tool = element as? JsonObject ?: error("工具项必须是对象")
                 ToolDeclaration(
                     name = tool.stringField("name"),
                     description = tool.stringField("description"),
@@ -78,7 +78,7 @@ class PluginAuthoringToolsImpl(
         }.getOrNull()
     }
 
-    /** Una variedad de capacidades de análisis; De forma predeterminada, las capacidades no se declaran y los elementos que no son cadenas se consideran ilegales. */
+    /** 解析能力数组；缺省视为不声明能力，非字符串元素视为非法。 */
     private fun parseCapabilities(raw: String?): List<String>? {
         if (raw.isNullOrBlank()) return emptyList()
         return resultOf {
@@ -88,7 +88,7 @@ class PluginAuthoringToolsImpl(
         }.getOrNull()
     }
 
-    /** Lea el campo de cadena en el objeto; sin cadena/Los valores faltantes se tratarán como cadenas vacías y se entregarán a la capa de reglas para dar una razón legible. */
+    /** 读取对象里的字符串字段；非字符串/缺失一律按空串处理，交给规则层给出可读原因。 */
     private fun JsonObject.stringField(name: String): String = this[name]?.jsonPrimitive?.content.orEmpty()
 
     private fun failure(reason: String): String = buildJsonObject {

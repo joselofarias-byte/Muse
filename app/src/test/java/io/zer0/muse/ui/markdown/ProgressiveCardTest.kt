@@ -5,11 +5,11 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Cálculo de engranajes para instantáneas de renderizado progresivo.
+ * 渐进渲染快照的档位计算。
  *
- * Este conjunto de casos de uso bloquea el "número de recargas de página completa" en lugar de la apariencia: lo que es realmente caro en el lado de la tarjeta son las recargas de página completa de WebView.
- * El número de veces debe ser de O(L/step) hasta O(log), de lo contrario, puedes retrasar docenas de recargas simplemente ajustando el tamaño del paso de una sola vez.
- * Y ninguna otra puerta será roja.
+ * 这组用例锁的是「整页重载次数」而不是观感：卡片侧真正贵的是 WebView 整页重载，
+ * 次数必须从 O(L/step) 降到 O(log)，否则一次「顺手调小步长」就能把几十次重载放回来，
+ * 而没有任何别的门禁会红。
  */
 class ProgressiveCardTest {
 
@@ -22,7 +22,7 @@ class ProgressiveCardTest {
 
     @Test
     fun `snapshot_length_only_moves_on_doubling_steps`() {
-        // Tamaño del paso 24: El engranaje está 24 / 48 / 96 / 192 / 384 / 768 / 1536 / 3072 / 6144 ...
+        // 步长 24：档位是 24 / 48 / 96 / 192 / 384 / 768 / 1536 / 3072 / 6144 ...
         assertEquals(24, ProgressiveCard.snapshotLength(25))
         assertEquals(24, ProgressiveCard.snapshotLength(47))
         assertEquals(48, ProgressiveCard.snapshotLength(48))
@@ -44,7 +44,7 @@ class ProgressiveCardTest {
 
     @Test
     fun `snapshot_count_drops_from_linear_to_logarithmic`() {
-        // 8KB Tarjeta: el tamaño de paso fijo de 120 es 68 recargas de página completa y el engranaje geométrico es 9 veces.
+        // 8KB 卡片：按 120 固定步长是 68 次整页重载，几何档位是 9 次。
         assertEquals(9, ProgressiveCard.snapshotCount(8192))
         assertEquals(68, 8192 / 120)
         assertTrue(ProgressiveCard.snapshotCount(8192) * 7 <= 68)
@@ -52,7 +52,7 @@ class ProgressiveCardTest {
 
     @Test
     fun `streaming_growth_only_triggers_on_boundaries`() {
-        // Simule una transmisión real: agregue 40 caracteres cada vez y cuente cuántas instantáneas han cambiado realmente.
+        // 模拟一次真实流式：每次追加 40 字符，统计真正变过的快照有几个。
         val total = StringBuilder()
         val seen = LinkedHashSet<Int>()
         repeat(300) {
@@ -60,8 +60,8 @@ class ProgressiveCardTest {
             seen.add(ProgressiveCard.snapshotLength(total.length))
         }
         assertEquals(12_000, total.length)
-        // Calibre antiguo con paso fijo:24…12000 Cambiar cada múltiplo de 120 ≈ 99 veces;
-        // El engranaje geométrico es sólo 24/48/…/6144 9 en total.
+        // 固定步长的旧口径：24…12000 之间每个 120 的倍数都换一次 ≈ 99 次；
+        // 几何档位只有 24/48/…/6144 共 9 个。
         assertEquals(9, seen.size)
         assertTrue(seen.size * 10 < 12_000 / 120)
     }
@@ -76,9 +76,9 @@ class ProgressiveCardTest {
 
     @Test
     fun `snapshot_never_splits_a_surrogate_pair`() {
-        // 23 ascii seguido de emoji (UTF-16 dos caracteres): la longitud de la instantánea es exactamente 24,
-        // Está cortado en el proxy alto del emoji, que debe retroceder un espacio hasta 23.
-        val content = "a".repeat(23) + "\uD83D\uDE00" + "cola"
+        // 23 个 ascii 之后是 emoji（UTF-16 两个 char）：快照长度算出来正好是 24，
+        // 恰好切在 emoji 的高位代理上，必须退一格到 23。
+        val content = "a".repeat(23) + "\uD83D\uDE00" + "尾"
         assertEquals(24, ProgressiveCard.snapshotLength(content.length))
         val snap = ProgressiveCard.snapshot(content)
         assertEquals(23, snap.length)

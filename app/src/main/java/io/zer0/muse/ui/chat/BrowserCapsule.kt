@@ -34,7 +34,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
@@ -56,14 +55,14 @@ import io.zer0.muse.ui.theme.MuseIconSizes
 import kotlinx.coroutines.launch
 
 /**
- * Cápsula de estado del navegador + visor de pantalla completa.
+ * 浏览器状态胶囊 + 全屏查看器。
  *
- * Cuando la sesión actual tiene una entrada del navegador,Siempre se muestra una cápsula de estado debajo del título de la página de conversación.(No iniciado/cargando /
- * página actual). Haga clic en la cápsula para ingresar a la vista del navegador en pantalla completa,Vea la página en la que está trabajando la IA en tiempo real.
+ * 当前会话拥有浏览器入口时,对话页标题下方始终显示状态胶囊(未启动 / 加载中 /
+ * 当前页面)。点击胶囊进入全屏浏览器视图,实时看到 AI 正在操作的页面。
  *
- * v1.0.90: El espectador se comporta como un navegador real. —— Barra de direcciones editable(Ingrese la URL/Buscar), adelante y atrás,
- * Actualizar, borrar cookies, abrir el navegador del sistema, copiar enlace. La clave es**Navegación manual del usuario y operaciones de IA.
- * Compartir la misma instancia de WebView**:Una vez que el usuario termina de cambiar la página, la IA puede leerla y continuar la operación.
+ * v1.0.90: 查看器按真正的浏览器做 —— 可编辑地址栏(输网址/搜索)、前进后退、
+ * 刷新、清除 Cookie、系统浏览器打开、复制链接。关键是**用户手动浏览和 AI 操作
+ * 共用同一个 WebView 实例**:用户改完页面后 AI 接着就能读到并继续操作。
  */
 
 internal enum class BrowserDisplayState {
@@ -73,7 +72,7 @@ internal enum class BrowserDisplayState {
     READY,
 }
 
-/** Mapeo de estado lógico puro,Para UI y reutilización de pruebas. */
+/** 纯逻辑状态映射,供 UI 与测试复用。 */
 internal fun browserDisplayState(isActive: Boolean, isLoading: Boolean, url: String): BrowserDisplayState = when {
     isLoading -> BrowserDisplayState.LOADING
     !isActive || url.isBlank() -> BrowserDisplayState.NOT_STARTED
@@ -81,10 +80,10 @@ internal fun browserDisplayState(isActive: Boolean, isLoading: Boolean, url: Str
     else -> BrowserDisplayState.READY
 }
 
-/** La barra de título del chat no está ocupada cuando no se inicia; el portal se muestra sólo después de que el navegador realmente comienza a funcionar. */
+/** 未启动时不占用聊天标题栏；浏览器真正开始工作后才显示入口。 */
 internal fun shouldShowBrowserCapsule(state: BrowserDisplayState): Boolean = state != BrowserDisplayState.NOT_STARTED
 
-/** Cambiar título de página/Las direcciones están normalizadas a etiquetas cortas que la cápsula estatal puede mostrar. */
+/** 将页面标题/地址归一化为状态胶囊可展示的短标签。 */
 internal fun browserPageLabel(title: String, url: String): String {
     title.trim().takeIf { it.isNotBlank() }?.let { return it }
     if (url.isBlank() || url.equals("about:blank", ignoreCase = true)) return ""
@@ -116,9 +115,9 @@ fun BrowserStatusCapsule(manager: BrowserManager?, modifier: Modifier = Modifier
     }.take(28)
     val capsuleDescription = stringResource(R.string.browser_status_cd, label)
 
-    // v2.6.10: Usado originalmente onBackground.copy(alpha=0.9) Cuando el color de fondo —— Eso es "color inverso del texto",
-    // El tema oscuro es como una pieza 90% blanca y, al desplazarse por el mensaje, parece una mancha de color blanco sucio. Cambiar al color de la superficie del tema + trazo fino:
-    // Debe ser un control que flote sobre el contenido, no un bloque de color invertido.
+    // v2.6.10: 原先用 onBackground.copy(alpha=0.9) 当底色 —— 那是「正文反色」，
+    // 深色主题下等于一块 90% 白，滚过消息时像糊了片脏白。改成主题表面色 + 细描边：
+    // 它就该是一枚浮在内容上的控件，而不是一块反色块。
     val capsuleContainer = MaterialTheme.colorScheme.surfaceContainerHigh
     val capsuleBorder = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)
     Surface(
@@ -148,7 +147,7 @@ fun BrowserStatusCapsule(manager: BrowserManager?, modifier: Modifier = Modifier
             }
             Text(
                 text = label,
-                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
+                style = MaterialTheme.typography.labelSmall,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(horizontal = 6.dp),
@@ -169,7 +168,7 @@ fun BrowserStatusCapsule(manager: BrowserManager?, modifier: Modifier = Modifier
     }
 }
 
-/** Visor de navegador de pantalla completa:Barra de herramientas superior del navegador(barra de direcciones/Actualizar/Más) + WebView Imágenes en vivo. */
+/** 全屏浏览器查看器:顶部浏览器工具条(地址栏/刷新/更多) + WebView 实时画面。 */
 @Composable
 fun BrowserViewerDialog(manager: BrowserManager, onDismiss: () -> Unit) {
     val context = LocalContext.current
@@ -182,7 +181,7 @@ fun BrowserViewerDialog(manager: BrowserManager, onDismiss: () -> Unit) {
     val canGoForward by manager.canGoForward.collectAsState()
     val displayState = browserDisplayState(isActive, isLoading, url)
 
-    // barra de direcciones:El usuario no sigue la página actual mientras edita URL;No interrumpa la entrada mientras edita.
+    // 地址栏:用户没在编辑时跟随当前页 URL;编辑时不打断输入。
     var addressInput by remember(manager) { mutableStateOf(url) }
     var addressFocused by remember(manager) { mutableStateOf(false) }
     var showMenu by remember(manager) { mutableStateOf(false) }
@@ -193,14 +192,14 @@ fun BrowserViewerDialog(manager: BrowserManager, onDismiss: () -> Unit) {
     val submitAddress: () -> Unit = {
         val target = addressInput.trim()
         if (target.isNotEmpty()) {
-            // Enfoque claro después del envío,Devuelve la barra de direcciones a"Seguir la página actual"Estado
+            // 提交后清焦点,让地址栏回到"跟随当前页"状态
             addressFocused = false
             scope.launch { manager.navigate(target) }
         }
     }
 
-    // Cree un WebView y prepárese about:blank cuando se abra por primera vez un portal explícito. Si la IA ha empezado a navegar,
-    // showBlankPageIfNeeded Se conservarán las cargas existentes.,No sobrescribe sus páginas ni enlaces de protección SSRF.
+    // 显式入口首次打开时创建 WebView 并准备 about:blank。若 AI 已经开始导航,
+    // showBlankPageIfNeeded 会保留现有加载,不会覆盖其页面或 SSRF 防护链路。
     LaunchedEffect(manager) {
         manager.showBlankPageIfNeeded()
     }
@@ -209,7 +208,7 @@ fun BrowserViewerDialog(manager: BrowserManager, onDismiss: () -> Unit) {
         onDismissRequest = onDismiss,
         properties = DialogProperties(
             usePlatformDefaultWidth = false,
-            // Cubre toda la pantalla(Con barra de estado): De lo contrario, el color de fondo de la capa de pantalla completa del navegador/El enmascaramiento comienza debajo de la barra de estado.
+            // 铺满整屏(含状态栏)：否则浏览器全屏层的底色/遮罩从状态栏下方开始。
             decorFitsSystemWindows = false,
         ),
     ) {
@@ -220,7 +219,7 @@ fun BrowserViewerDialog(manager: BrowserManager, onDismiss: () -> Unit) {
                 .background(MaterialTheme.colorScheme.background),
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
-                // Barra de herramientas
+                // 工具条
                 MuseGlassContainer(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -232,8 +231,8 @@ fun BrowserViewerDialog(manager: BrowserManager, onDismiss: () -> Unit) {
                             .fillMaxWidth()
                             .padding(horizontal = 4.dp, vertical = 4.dp),
                     ) {
-                        // Regresar:Contraer visor,Los navegadores siguen sin cabeza y la IA sigue utilizándolos(retención de cápsulas)
-                        // ST-06: 38dp → MuseIconSizes.touchTarget(48dp,MD3 Toque la línea roja del objetivo)
+                        // 返回:收起查看器,浏览器保持 headless 继续供 AI 使用(胶囊保留)
+                        // ST-06: 38dp → MuseIconSizes.touchTarget(48dp,MD3 触控目标红线)
                         MuseTactileButton(
                             icon = MuseIcons.arrowLeft,
                             onClick = onDismiss,
@@ -241,8 +240,8 @@ fun BrowserViewerDialog(manager: BrowserManager, onDismiss: () -> Unit) {
                             size = MuseIconSizes.touchTarget,
                             iconSize = 20.dp,
                         )
-                        // barra de direcciones:Puede ingresar una URL o un término de búsqueda. Enviar y listo manager.navigate,
-                        // Compartido con IA WebView —— El usuario ha terminado de cambiar la página.,AI Luego podrás leerlo y seguir trabajando.
+                        // 地址栏:可输入网址或搜索词。提交后走 manager.navigate,
+                        // 与 AI 共用同一个 WebView —— 用户改完页面,AI 接着就能读到并继续操作。
                         Surface(
                             shape = RoundedCornerShape(50),
                             color = MaterialTheme.colorScheme.surfaceVariant,
@@ -304,7 +303,7 @@ fun BrowserViewerDialog(manager: BrowserManager, onDismiss: () -> Unit) {
                             size = MuseIconSizes.touchTarget,
                             iconSize = 19.dp,
                         )
-                        // Más:Adelante y atrás/Cerrar/Borrar cookies/Abrir el navegador del sistema/Copiar enlace
+                        // 更多:前进后退 / 关闭 / 清除 Cookie / 系统浏览器打开 / 复制链接
                         Box {
                             MuseTactileButton(
                                 icon = MuseIcons.moreVertical,
@@ -369,7 +368,7 @@ fun BrowserViewerDialog(manager: BrowserManager, onDismiss: () -> Unit) {
                                                 }
                                             },
                                         ),
-                                        // Cerrar el navegador:Destruir WebView + Contraer Visor,Regresar a la entrada de la página de chat"No iniciado"Estado
+                                        // 关闭浏览器:销毁 WebView + 收起查看器,聊天页入口回到"未启动"状态
                                         MuseFloatingActionItem(
                                             key = "close",
                                             icon = MuseIcons.x,
@@ -386,7 +385,7 @@ fun BrowserViewerDialog(manager: BrowserManager, onDismiss: () -> Unit) {
                         }
                     }
                 }
-                // WebView contenido
+                // WebView 内容
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -399,7 +398,7 @@ fun BrowserViewerDialog(manager: BrowserManager, onDismiss: () -> Unit) {
                             }
                         },
                         update = { fl ->
-                            // La instancia de WebView cambia después de que el proceso de renderizado falla y se reconstruye,Volver a montar
+                            // 渲染进程崩溃重建后 WebView 实例变化,重新挂载
                             manager.attachToDisplay(fl)
                         },
                         modifier = Modifier.fillMaxSize(),
@@ -427,7 +426,7 @@ fun BrowserViewerDialog(manager: BrowserManager, onDismiss: () -> Unit) {
                                 )
                                 Text(
                                     text = stringResource(R.string.browser_viewer_blank_title),
-                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                                    style = MaterialTheme.typography.titleMedium,
                                     modifier = Modifier.padding(top = 12.dp),
                                 )
                                 Text(
@@ -446,7 +445,7 @@ fun BrowserViewerDialog(manager: BrowserManager, onDismiss: () -> Unit) {
 
     DisposableEffect(Unit) {
         onDispose {
-            // Volver a headless: la página se conservará,AI Puede continuar la operación
+            // 返回 headless:页面继续保留,AI 可继续操作
             manager.detachFromDisplay()
         }
     }

@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Phase 6-A2: Google Fonts Downloadable Fonts Certificado de proveedor.
-  Fuente: https://developers.google.com/fonts/docs/android (valor estándar público)
-  función: Verificar la identidad del proveedor de fuentes en tiempo de compilación;Recurre automáticamente a FontFamily.Default cuando no hay GMS durante el tiempo de ejecución.
+  Phase 6-A2: Google Fonts Downloadable Fonts 提供者证书。
+  来源: https://developers.google.com/fonts/docs/android (公开标准值)
+  作用: 编译期校验字体提供者身份;运行期无 GMS 时自动回退到 FontFamily.Default。
 -->
 <resources>
     <array name="com_google_android_gms_fonts_certs">

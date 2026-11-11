@@ -13,28 +13,28 @@ import java.util.PriorityQueue
 import kotlin.math.sqrt
 
 /**
- * v1.54: Servicio de recuperación de vectores(recorrido de similitud del coseno).
+ * v1.54: 向量检索服务(余弦相似度遍历)。
  *
- * v1.133 Transformación:
- *  - embedding leer:BLOB Prioridad,Ninguno BLOB fallback JSON(Compatible con datos antiguos)
- *  - [mmrLambda] parámetros:MMR reordenamiento de la diversidad(0=pura diversidad,1=pura similitud)
- *  - [scopeDocIds] parámetros:Limitar el alcance de la búsqueda(@mention Se utiliza para recuperación dirigida/encuadernación asistente KB)
- *  - [metadataFilter] parámetros:Filtrado de metadatos(docIds/Título/Fuente/tag/rango de tiempo),Vector y BM25 dos enlaces comparten la misma decisión
+ * v1.133 改造:
+ *  - embedding 读取:BLOB 优先,无 BLOB fallback JSON(兼容旧数据)
+ *  - [mmrLambda] 参数:MMR 多样性重排(0=纯多样性,1=纯相似度)
+ *  - [scopeDocIds] 参数:限定检索范围(@mention 定向检索 / 助手绑定 KB 时用)
+ *  - [metadataFilter] 参数:元数据过滤(docIds/标题/来源/tag/时间范围),向量与 BM25 两条链路共用同一判定
  *
- * @param chunkPageProvider Carga paginada indexada chunk(por la persona que llama join docTitle)
- * @param chunkCountProvider Número total de fragmentos indexados
+ * @param chunkPageProvider 分页加载已索引 chunk(由调用方 join docTitle)
+ * @param chunkCountProvider 已索引 chunk 总数
  */
 class VectorSearchService(
     private val chunkPageProvider: suspend (limit: Int, offset: Int) -> List<ChunkWithDoc>,
     private val chunkCountProvider: suspend () -> Int,
     /**
-     * v1.133: Paginación filtrada por docIds provider(Se utiliza para @mention de recuperación dirigida/enlace de ayuda KB).
-     * null Indica tomar la cantidad total provider(compatible con versiones anteriores).
+     * v1.133: 按 docIds 过滤的分页 provider(用于 @mention 定向检索 / 助手绑定 KB)。
+     * null 表示走全量 provider(向后兼容)。
      */
     private val chunkPageByDocIdsProvider: (suspend (docIds: List<String>, limit: Int, offset: Int) -> List<ChunkWithDoc>)? = null,
     /**
-     * B4-03: Paginación con filtrado de metadatos. provider(SQL filtrado de capas).
-     * null Si se transmite [MetadataFilter],VectorSearchService se filtrará en la memoria.
+     * B4-03: 带 metadata 过滤的分页 provider(SQL 层过滤)。
+     * null 时若传了 [MetadataFilter],VectorSearchService 会在内存中过滤。
      */
     private val chunkPageByMetadataProvider: (suspend (filter: MetadataFilter, limit: Int, offset: Int) -> List<ChunkWithDoc>)? = null,
 ) {
@@ -44,66 +44,66 @@ class VectorSearchService(
         val chunkContent: String,
         val score: Float,
         val chunkIndex: Int,
-        /** v1.133: chunkId(Se utiliza para hacer referencia al posicionamiento de renderizado.). */
+        /** v1.133: chunkId(用于引用渲染定位)。 */
         val chunkId: String = "",
         /**
-         * v1.133: ¿Es un documento interno?(Documentos de desarrollo preestablecidos devdoc, etc.).
+         * v1.133: 是否为内部文档(预置开发文档 devdoc 等)。
          *
-         * por [io.zer0.muse.rag.RagService.retrieve] Durante la fase de reabastecimiento de resultados de
-         * [io.zer0.muse.data.knowledge.KnowledgeDocEntity.isInternal] Inyección de consultas por lotes,
-         * reemplazo unificado `docId.startsWith("devdoc-")` Codificado.
-         * Predeterminado false(Antes de rellenar/Tomar el valor predeterminado cuando falla la consulta,seguridad conductual).
+         * 由 [io.zer0.muse.rag.RagService.retrieve] 在结果回填阶段从
+         * [io.zer0.muse.data.knowledge.KnowledgeDocEntity.isInternal] 批量查询注入,
+         * 统一替代 `docId.startsWith("devdoc-")` 硬编码。
+         * 默认 false(未回填前/查询失败时取默认值,行为安全)。
          */
         val isInternal: Boolean = false,
     )
 
-    /** chunk + Título del documento(Consulta por unión de la persona que llama). */
+    /** chunk + 所属文档标题(由调用方 join 查询)。 */
     data class ChunkWithDoc(
         val chunkId: String,
         val docId: String,
         val docTitle: String,
         val content: String,
-        /** viejo embedding JSON(Leer compatible). */
+        /** 旧 embedding JSON(兼容读取)。 */
         val embedding: String,
-        /** v1.133: nuevo embedding BLOB(Leer primero). */
+        /** v1.133: 新 embedding BLOB(优先读取)。 */
         val embeddingBlob: ByteArray? = null,
         val chunkIndex: Int,
-        /** B4-03: Metadatos JSON(Filtro de memoria para uso de bolsillo.). */
+        /** B4-03: 元数据 JSON(内存过滤兜底用)。 */
         val metadataJson: String = "{}",
-        /** B4-03: Crear marca de tiempo(Filtro de memoria para uso de bolsillo.). */
+        /** B4-03: 创建时间戳(内存过滤兜底用)。 */
         val createdAt: Long = 0L,
     )
 
     /**
-     * B4-03: Filtros de metadatos(Todo opcional,Todas son relaciones “Y”;Vacío significa que no hay restricciones).
+     * B4-03: 元数据过滤条件(全部可选,均为「与」关系;为空表示不约束)。
      *
-     * Condiciones a nivel de documento([docIds]/[titleKeyword])con condiciones a nivel de bloque([sourceKeyword]/[tag]/[startTime]/[endTime])
-     * Unificado por [matches] juicio,Las búsquedas vectoriales comparten la misma semántica que las búsquedas BM25,Evite la inconsistencia en los resultados del filtrado de los dos enlaces.
+     * 文档级条件([docIds]/[titleKeyword])与分块级条件([sourceKeyword]/[tag]/[startTime]/[endTime])
+     * 统一由 [matches] 判定,向量检索与 BM25 检索共用同一份语义,避免两条链路过滤结果不一致。
      */
     data class MetadataFilter(
-        /** Colección de identificación de documentos calificados(vacío = No filtrar por documento). */
+        /** 限定文档 ID 集合(空 = 不按文档过滤)。 */
         val docIds: List<String> = emptyList(),
-        /** etiquetar etiqueta precisa en metadata_json fragmentado(vacío = No filtrar por etiqueta). */
+        /** 分块 metadata_json 中的 tag 精确标记(空 = 不按 tag 过滤)。 */
         val tag: String = "",
-        /** Límite inferior en el tiempo de creación de fragmentos(0 = sin limite,Contiene límites). */
+        /** 分块创建时间下界(0 = 不限制,含边界)。 */
         val startTime: Long = 0L,
-        /** Límite superior del tiempo de creación del bloque(0 = sin limite,Contiene límites). */
+        /** 分块创建时间上界(0 = 不限制,含边界)。 */
         val endTime: Long = 0L,
-        /** palabra clave del título(Ignorar caso incluye coincidencias,Pulsar título del documento;vacío = No filtrar por título). */
+        /** 标题关键字(忽略大小写包含匹配,命中文档标题;空 = 不按标题过滤)。 */
         val titleKeyword: String = "",
-        /** palabra clave fuente(Ignorar caso incluye coincidencias,Campos de acceso como fuente/archivo de metadata_json fragmentado;vacío = No filtrar por fuente). */
+        /** 来源关键字(忽略大小写包含匹配,命中分块 metadata_json 的 source/file 等字段;空 = 不按来源过滤)。 */
         val sourceKeyword: String = "",
     ) {
         fun isEmpty(): Boolean = docIds.isEmpty() && tag.isBlank() && startTime == 0L && endTime == 0L &&
             titleKeyword.isBlank() && sourceKeyword.isBlank()
 
         /**
-         * B4-03: Determine si un solo bloque cumple con todas las condiciones de filtrado.
+         * B4-03: 判定单条分块是否满足全部过滤条件。
          *
-         * @param docId Documento de pertenencia ID(corresponder [docIds])
-         * @param docTitle Título del documento(corresponder [titleKeyword])
-         * @param metadataJson metadatos fragmentados JSON(corresponder [sourceKeyword]/[tag])
-         * @param createdAt Marca de tiempo de creación de fragmentos(corresponder [startTime]/[endTime])
+         * @param docId 所属文档 ID(对应 [docIds])
+         * @param docTitle 文档标题(对应 [titleKeyword])
+         * @param metadataJson 分块元数据 JSON(对应 [sourceKeyword]/[tag])
+         * @param createdAt 分块创建时间戳(对应 [startTime]/[endTime])
          */
         fun matches(docId: String, docTitle: String, metadataJson: String, createdAt: Long): Boolean {
             if (docIds.isNotEmpty() && docId !in docIds) return false
@@ -127,19 +127,18 @@ class VectorSearchService(
     )
 
     /**
-     * caché vectorial: clave = scope|metadata Condiciones del filtro.
+     * 向量缓存：键 = scope|metadata 过滤条件。
      *
-     * ¿Por qué es**entradas múltiples acotadas**En lugar de una sola entrada: la implementación anterior solo conserva una copia y toda la tabla se recarga tan pronto como cambia la clave.
-     * La combinación más común en el uso real es "sin filtrado" y "filtrado con una etiqueta fija" que aparecen alternativamente
-     * (El diálogo principal recorre toda la base de datos,@mention o recuperación dirigida con filtrado), el caché de entrada única irá y viene entre los dos.
+     * 为什么是**有界多条目**而不是单条目：旧实现只留一份，键一变就整表重载。
+     * 实际使用里最常见的组合是「不带过滤」与「某个固定 tag 过滤」交替出现
+     * （主对话走全库、@mention 或定向检索带过滤），单条目缓存会在这两者之间来回打穿。
      *
-     * ¿Por qué sólo quedarse? [MAX_CACHE_ENTRIES] Tiras: Máximo tira única [CACHE_THRESHOLD] un vector de 768 dimensiones,
-     * Cada artículo tiene texto y aumentar el número de artículos significa aumentar la memoria. Las dos líneas cubren exactamente la alternancia de "biblioteca completa + un filtro",
-     * Habrá que volver a argumentar más en función del presupuesto de memoria real.
+     * 为什么只留 [MAX_CACHE_ENTRIES] 条：单条最多 [CACHE_THRESHOLD] 个 768 维向量，
+     * 每条都带正文，条数放大就是内存放大。两条正好覆盖「全库 + 一个过滤」的交替，
+     * 再多就要按真实内存预算重新论证。
      */
     private val cacheEntries = object : LinkedHashMap<String, List<CachedVector>>(4, 0.75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, List<CachedVector>>): Boolean =
-            size > MAX_CACHE_ENTRIES
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, List<CachedVector>>): Boolean = size > MAX_CACHE_ENTRIES
     }
 
     private val mutex = Mutex()
@@ -150,13 +149,13 @@ class VectorSearchService(
     }
 
     /**
-     * v1.133: Buscar — Admite filtrado MMR/scopeDocIds.
+     * v1.133: 检索 — 支持 MMR / scopeDocIds 过滤。
      *
-     * @param queryVector vector de consulta
-     * @param topK Devolver el número de artículos
-     * @param threshold umbral de similitud
-     * @param mmrLambda MMR peso de la diversidad(1.0=Clasificación de similitud pura,Desactivar MMR;0<λ<1=MMR reorganizar)
-     * @param scopeDocIds Limitar el alcance de la búsqueda(vacío=Base de datos completa,null=Compatible con versiones anteriores de toda la biblioteca)
+     * @param queryVector 查询向量
+     * @param topK 返回条数
+     * @param threshold 相似度阈值
+     * @param mmrLambda MMR 多样性权重(1.0=纯相似度排序,禁用 MMR;0<λ<1=MMR 重排)
+     * @param scopeDocIds 限定检索范围(空=全库,null=向后兼容全库)
      */
     suspend fun search(
         queryVector: FloatArray,
@@ -169,10 +168,10 @@ class VectorSearchService(
         val queryNorm = norm(queryVector)
         if (queryNorm == 0f) return emptyList()
 
-        // B4-03: metadata ruta de filtro — docIds/tag/tiempo empujado hacia abajo SQL provider(Evite el caché completo).
-        // P2-33: Tirar en lotes(La implementación anterior pasó Int.MAX_VALUE,Cargue todos los resultados del filtrado en la memoria a la vez)
-        // Nota:SQL provider Solo cubre docIds/etiqueta/hora,Título/La fuente y otras condiciones aún deben determinarse minuciosamente en la memoria.,
-        //       Por lo tanto applyMetadataInMemory=true(SQL para optimización,Se considera que la memoria es la única fuente verdadera de semántica).
+        // B4-03: metadata 过滤路径 — docIds/tag/时间下推到 SQL provider(避免全量缓存)。
+        // P2-33: 分批拉取(旧实现传 Int.MAX_VALUE,一次性把过滤结果全部载入内存)
+        // 注意:SQL provider 只覆盖 docIds/tag/时间,标题/来源等条件仍需内存兜底判定,
+        //       故 applyMetadataInMemory=true(SQL 为优化,内存判定为语义唯一真源)。
         if (metadataFilter != null && !metadataFilter.isEmpty() && chunkPageByMetadataProvider != null) {
             return scanPagedProvider(
                 queryVector = queryVector,
@@ -185,8 +184,8 @@ class VectorSearchService(
                 pageProvider = { limit, offset -> chunkPageByMetadataProvider(metadataFilter, limit, offset) },
             )
         }
-        // v1.133: scope ruta de filtro — ir docIds provider(No usar caché completo)
-        // P2-33: También extraiga lotes:La búsqueda dirigida ya no cubre todo el alcance de la búsqueda.(dakuko >2000 chunk)carga única
+        // v1.133: scope 过滤路径 — 走 docIds provider(不走全量缓存)
+        // P2-33: 同样分批拉取:定向检索不再把整个检索范围(大库可 >2000 chunk)一次性载入
         if (scopeDocIds != null && scopeDocIds.isNotEmpty() && chunkPageByDocIdsProvider != null) {
             return scanPagedProvider(
                 queryVector = queryVector,
@@ -217,23 +216,23 @@ class VectorSearchService(
             return applyMMR(candidates, topK, mmrLambda)
         }
 
-        Logger.d("VectorSearchService", "Búsqueda de base de datos(total=$total > $CACHE_THRESHOLD),Escaneo por lotes continuo")
-        // P2-30: La ruta de transmisión fue descartada previamente scopeDocIds,daku(>CACHE_THRESHOLD)Al cruzar el límite, busque en toda la base de datos.
+        Logger.d("VectorSearchService", "大库检索(total=$total > $CACHE_THRESHOLD),走流式分批扫描")
+        // P2-30: 流式路径此前丢弃 scopeDocIds,大库(>CACHE_THRESHOLD)时越界到全库检索
         return searchStreamed(queryVector, queryNorm, topK, threshold, mmrLambda, scopeDocIds, metadataFilter)
     }
 
     /**
-     * P2-33: Escaneo por lotes para recuperación dirigida(scope / metadata Compartido por dos rutas de proveedor).
+     * P2-33: 定向检索的分批扫描(scope / metadata 两条 provider 路径共用)。
      *
-     * prensa [BATCH_SIZE] Tirar página por página(Solo se carga una página por llamada al proveedor),Desacoplar las cargas máximas del tamaño de la biblioteca;
-     * Los resultados son estrictamente equivalentes a la antigua "carga completa + puntuación + clasificación única":
-     *  - λ<1.0(MMR):El conjunto de candidatos debe ser visible globalmente.,Por lo tanto, todos los candidatos son retenidos.(La cantidad está limitada por el alcance de la búsqueda y no por toda la base de datos.);
-     *  - λ≥1.0(pura similitud,Con valor predeterminado):usar [BoundedTopK] grupo de candidatos limitado,Solo mantenga el orden topK y empate
-     *    y clasificación estable `sortedByDescending{score}.take(topK)` coherente.
+     * 按 [BATCH_SIZE] 逐页拉取(每次 provider 调用只载入一页),峰值载入量与库大小解耦;
+     * 结果与旧「一次性全量载入 + 打分 + 排序」严格等价:
+     *  - λ<1.0(MMR):候选集必须全局可见,故保留全部候选(数量受检索范围而非全库限制);
+     *  - λ≥1.0(纯相似度,含默认值):用 [BoundedTopK] 有界候选池,只保留 topK 且平局次序
+     *    与稳定排序 `sortedByDescending{score}.take(topK)` 一致。
      *
-     * @param applyMetadataInMemory Si se debe utilizar metadataFilter para determinar la memoria una por una.scope / metadata dos
-     *   provider Es necesario abrir todos los caminos.:provider Sólo responsable de recortar el rango candidato.,La semántica de filtrado está unificada por [MetadataFilter.matches]
-     *   Determinar en la memoria(evitar títulos/Las condiciones no cubiertas por las fuentes y otros proveedores se ignoran silenciosamente).
+     * @param applyMetadataInMemory 是否按 metadataFilter 逐条内存判定。scope / metadata 两条
+     *   provider 路径均需开启:provider 只承担候选范围裁剪,过滤语义统一由 [MetadataFilter.matches]
+     *   在内存中判定(避免标题/来源等 provider 未覆盖的条件被静默忽略)。
      */
     private suspend fun scanPagedProvider(
         queryVector: FloatArray,
@@ -272,10 +271,10 @@ class VectorSearchService(
     }
 
     /**
-     * P2-33: Grupo limitado de candidatos top-K — Con "Candidatos completos + clasificación descendente estable + take(topK)”Los resultados son estrictamente consistentes.
+     * P2-33: 有界 top-K 候选池 — 与「全量候选 + 稳定降序排序 + take(topK)」结果严格一致。
      *
-     * Sólo reemplace el peor elemento si "la nueva puntuación es estrictamente mayor que la peor actual";Un lazo retiene al insertador anterior.,Y la posición de inserción está en
-     * Después de todos los mismos artículos,Por lo tanto, el orden de salida es consistente con la clasificación estable.,El uso de memoria se fija en O(topK).
+     * 只在「新分数严格大于当前最差」时替换最差项;平局保留更早插入者,且插入位置在
+     * 所有同分项之后,因此输出顺序与稳定排序一致,内存占用固定为 O(topK)。
      */
     private class BoundedTopK(private val capacity: Int) {
         private val best = ArrayList<Pair<CachedVector, Float>>(capacity + 1)
@@ -295,10 +294,10 @@ class VectorSearchService(
         fun toList(): List<Pair<CachedVector, Float>> = best
     }
 
-    /** v1.133: Aplicación del reordenamiento de diversidad MMR.candidates Ordenado en orden descendente por puntuación. */
+    /** v1.133: 应用 MMR 多样性重排。candidates 已按 score 降序排好。 */
     private fun applyMMR(candidates: List<Pair<CachedVector, Float>>, topK: Int, mmrLambda: Float): List<SearchResult> {
         if (candidates.isEmpty()) return emptyList()
-        // λ=1.0 Ordenar por similitud(Desactivar MMR)
+        // λ=1.0 时纯按相似度排序(禁用 MMR)
         if (mmrLambda >= 1.0f) {
             return candidates
                 .sortedByDescending { it.second }
@@ -308,7 +307,7 @@ class VectorSearchService(
                 }
         }
 
-        // MMR: Seleccionado S,candidato C,Elige cada vez argmax_{c∈C} [λ·sim(q,c) - (1-λ)·max_{s∈S} sim(c,s)]
+        // MMR: 已选 S,候选 C,每次选 argmax_{c∈C} [λ·sim(q,c) - (1-λ)·max_{s∈S} sim(c,s)]
         val sorted = candidates.sortedByDescending { it.second }.toMutableList()
         val selected = mutableListOf<Pair<CachedVector, Float>>()
         if (sorted.isEmpty()) return emptyList()
@@ -349,11 +348,11 @@ class VectorSearchService(
         topK: Int,
         threshold: Float,
         mmrLambda: Float,
-        // P2-30: Una colección de documentos que limitan el alcance de la búsqueda.;null/vacío = Base de datos completa
+        // P2-30: 限定检索范围的文档集合;null/空 = 全库
         scopeDocIds: List<String>?,
         metadataFilter: MetadataFilter?,
     ): List<SearchResult> {
-        // MMR es difícil de aplicar en escenarios de streaming(Requiere cálculo completo del conjunto de candidatos sim),rebajar a pura similitud + topK×5 Candidato nuevamente MMR
+        // 流式场景下 MMR 难以应用(需全量候选集算 sim),降级为纯相似度 + topK×5 候选再做 MMR
         val candidatePoolSize = if (mmrLambda < 1.0f) topK * 5 else topK
         val scopeSet = scopeDocIds?.toHashSet()?.takeIf { it.isNotEmpty() }
         val heap = PriorityQueue<Pair<CachedVector, Float>>(candidatePoolSize + 1) { a, b ->
@@ -364,7 +363,7 @@ class VectorSearchService(
             val page = resultOf { chunkPageProvider(BATCH_SIZE, offset) }.getOrNull() ?: emptyList()
             if (page.isEmpty()) break
             for (chunk in page) {
-                // P2-30: La paginación de streaming también se filtra por alcance.,Evite la recuperación fuera de los límites
+                // P2-30: 流式分页同样按 scope 过滤,避免越界检索
                 if (scopeSet != null && chunk.docId !in scopeSet) continue
                 if (!chunkMatchesMetadata(chunk, metadataFilter)) continue
                 val vector = parseEmbedding(chunk) ?: continue
@@ -395,12 +394,12 @@ class VectorSearchService(
                 "#${it.titleKeyword}#${it.sourceKeyword}"
         } ?: ""
         val key = (scopeDocIds?.sorted()?.joinToString(",") ?: "ALL") + "|" + filterKey
-        // Acceda a las entradas existentes (incluidas consultas repetidas con el mismo alcance/condiciones de filtro)
+        // 命中已有条目（含 scope/过滤条件都一致的重复查询）
         synchronized(cacheEntries) { cacheEntries[key] }?.let { return it }
         return mutex.withLock {
             synchronized(cacheEntries) { cacheEntries[key] }?.let { return@withLock it }
             val chunks = chunkPageProvider(total, 0)
-            // v1.133: Si es así scope,Filtrar en memoria(Evite que los proveedores tomen el monto total)
+            // v1.133: 若有 scope,在内存中过滤(避免 provider 走全量)
             val filtered = if (scopeDocIds != null && scopeDocIds.isNotEmpty()) {
                 chunks.filter { it.docId in scopeDocIds }
             } else {
@@ -414,31 +413,31 @@ class VectorSearchService(
                 CachedVector(chunk.chunkId, chunk.docId, chunk.docTitle, chunk.content, vector, n, chunk.chunkIndex)
             }
             synchronized(cacheEntries) { cacheEntries[key] = parsed }
-            Logger.d("VectorSearchService", "Cargar ${parsed.size} eliminar vector a caché(scope=$key)")
+            Logger.d("VectorSearchService", "加载 ${parsed.size} 条向量到缓存(scope=$key)")
             parsed
         }
     }
 
     /**
-     * v1.133: analizar embedding — BLOB Prioridad,JSON Llega al fondo de esto.
+     * v1.133: 解析 embedding — BLOB 优先,JSON 兜底。
      */
-    /** B4-03: metadata Filtrado de memoria(SQL provider Cuando los campos no están inyectados o faltan). */
+    /** B4-03: metadata 内存过滤(SQL provider 未注入或缺字段时兜底)。 */
     private fun chunkMatchesMetadata(chunk: ChunkWithDoc, filter: MetadataFilter?): Boolean {
         if (filter == null || filter.isEmpty()) return true
         return filter.matches(chunk.docId, chunk.docTitle, chunk.metadataJson, chunk.createdAt)
     }
     private fun parseEmbedding(chunk: ChunkWithDoc): FloatArray? {
-        // BLOB Prioridad
+        // BLOB 优先
         chunk.embeddingBlob?.let { blob ->
             return resultOf {
                 val arr = FloatArray(blob.size / 4)
                 ByteBuffer.wrap(blob).asFloatBuffer().get(arr)
                 arr
             }.onError { msg, e ->
-                Logger.w("VectorSearchService", "BLOB El análisis falló,intentarlo JSON: $msg", e)
+                Logger.w("VectorSearchService", "BLOB 解析失败,尝试 JSON: $msg", e)
             }.getOrNull()
         }
-        // JSON fallback(datos antiguos)
+        // JSON fallback(旧数据)
         if (chunk.embedding.isBlank()) return null
         return resultOf {
             val arr = json.parseToJsonElement(chunk.embedding).jsonArray
@@ -460,14 +459,14 @@ class VectorSearchService(
     }
 
     companion object {
-        /** P2-33: búsqueda dirigida/Lotes paginados de recuperación de metadatos(El número máximo de fragmentos cargados por llamada al proveedor.). */
+        /** P2-33: 定向检索/元数据检索的分页批量(每次 provider 调用最多载入的 chunk 数)。 */
         internal const val BATCH_SIZE = 500
         private const val CACHE_THRESHOLD = 2000
 
-        /** Límite de entrada de caché de vector (consulte la descripción de compensación de cacheEntries). */
+        /** 向量缓存条目上限（见 cacheEntries 的取舍说明）。 */
         internal const val MAX_CACHE_ENTRIES = 2
 
-        /** v1.133: FloatArray → ByteArray(BLOB almacenamiento). */
+        /** v1.133: FloatArray → ByteArray(BLOB 存储)。 */
         fun floatArrayToBlob(arr: FloatArray): ByteArray {
             val buffer = ByteBuffer.allocate(arr.size * 4)
             buffer.asFloatBuffer().put(arr)

@@ -6,12 +6,12 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Phase 3 (Fiabilidad P1): Verificación de lectura de respaldo en la nube — Estructura NDJSON descifrada/meta Prueba de calibración.
+ * Phase 3 (可靠性 P1): 云备份读回校验 — 解密后 NDJSON 结构/meta 校验测试。
  *
- * Portada [validateCloudReadBackNdjson]:
- *  - legales NDJSON(meta + fila de datos)Pase;
- *  - carga vacía/No JSON/primera línea no meta/recuento no válido/Todo cuenta cero/Ninguna fila de datos rechazada explícitamente;
- *  - Copia de seguridad cifrada: Contraseña correcta pasada,Las contraseñas incorrectas y las faltantes dan razones claras del fracaso.
+ * 覆盖 [validateCloudReadBackNdjson]:
+ *  - 合法 NDJSON(meta + 数据行)通过;
+ *  - 空负载/非 JSON/首行非 meta/计数非法/全零计数/无数据行 明确拒绝;
+ *  - 加密备份: 正确密码通过,错误密码与缺密码给出明确失败原因。
  */
 class CloudBackupReadBackValidationTest {
 
@@ -43,14 +43,14 @@ class CloudBackupReadBackValidationTest {
     fun `non json first line is rejected`() {
         val error = validateCloudReadBackNdjson(ndjson("not-json", validRecord), "")
         assertNotNull(error)
-        assertTrue("El motivo debe indicar que la primera línea es ilegal.: $error", error!!.contains("not a JSON object"))
+        assertTrue("原因应说明首行非法: $error", error!!.contains("not a JSON object"))
     }
 
     @Test
     fun `non meta first line is rejected`() {
         val error = validateCloudReadBackNdjson(ndjson("""{"type":"session"}"""), "")
         assertNotNull(error)
-        assertTrue("La razón debe indicar la falta de meta: $error", error!!.contains("expected 'meta'"))
+        assertTrue("原因应说明缺少 meta: $error", error!!.contains("expected 'meta'"))
     }
 
     @Test
@@ -60,14 +60,14 @@ class CloudBackupReadBackValidationTest {
             "",
         )
         assertNotNull(error)
-        assertTrue("Las copias de seguridad vacías deben rechazarse: $error", error!!.contains("no data"))
+        assertTrue("空备份应被拒绝: $error", error!!.contains("no data"))
     }
 
     @Test
     fun `meta without record lines is rejected`() {
         val error = validateCloudReadBackNdjson(ndjson(validMeta), "")
         assertNotNull(error)
-        assertTrue("Las filas sin datos deben rechazarse: $error", error!!.contains("no record lines"))
+        assertTrue("无数据行应被拒绝: $error", error!!.contains("no record lines"))
     }
 
     @Test
@@ -77,7 +77,7 @@ class CloudBackupReadBackValidationTest {
             "",
         )
         assertNotNull(error)
-        assertTrue("Los recuentos ilegales deben rechazarse: $error", error!!.contains("not an integer"))
+        assertTrue("非法计数应被拒绝: $error", error!!.contains("not an integer"))
     }
 
     @Test
@@ -91,7 +91,7 @@ class CloudBackupReadBackValidationTest {
         val encrypted = BackupCrypto.encrypt(ndjson(validMeta, validRecord), "pass-123")
         val error = validateCloudReadBackNdjson(encrypted, "wrong-password")
         assertNotNull(error)
-        assertTrue("La contraseña incorrecta debería indicar el motivo del error de descifrado: $error", error!!.contains("decrypt failed"))
+        assertTrue("错误密码应给出解密失败原因: $error", error!!.contains("decrypt failed"))
     }
 
     @Test
@@ -99,6 +99,6 @@ class CloudBackupReadBackValidationTest {
         val encrypted = BackupCrypto.encrypt(ndjson(validMeta, validRecord), "pass-123")
         val error = validateCloudReadBackNdjson(encrypted, "")
         assertNotNull(error)
-        assertTrue("La contraseña faltante debería fallar explícitamente: $error", error!!.contains("password is empty"))
+        assertTrue("缺密码应显式失败: $error", error!!.contains("password is empty"))
     }
 }

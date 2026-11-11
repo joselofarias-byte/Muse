@@ -1,51 +1,51 @@
-<!-- devdoc: Documentación de desarrollo interno.,No se muestra a los usuarios,LLM Consulta a través de Knowledge_search -->
-# La guía completa de mensajes proactivos
+<!-- devdoc: 内部开发文档,不向用户展示,LLM 通过 knowledge_search 查询 -->
+# 主动消息完整指南
 
-> escena desencadenante: Usuario preguntó"¿Cómo consigo que la IA me encuentre de forma proactiva?""¿Qué es la mensajería proactiva?""¿Por qué la IA envió mensajes de repente?""Cómo desactivar los mensajes activos"tiempo,Consulte este documento y responda con sinceridad.
-> Este documento se basa en la implementación real del código fuente ProactiveMessageRunner.kt / AppSettingsStore.kt.
+> 触发场景: 用户问"怎么让 AI 主动找我""主动消息是什么""为什么 AI 突然发消息""怎么关掉主动消息"时,参考本文档据实回答。
+> 本文档基于源码 ProactiveMessageRunner.kt / AppSettingsStore.kt 的真实实现。
 
-## 1. Descripción general
+## 一、概述
 
-Asistente de mensajería activa**Envíe mensajes activamente a los usuarios a intervalos fijos y notificaciones emergentes**(Mensaje como WeChat),para interacción con compañeros(Saludos/recordatorio/Compartir). Enviado por ProactiveMessageRunner.
+主动消息让助手**按固定间隔主动给用户发消息并弹通知**(像微信来消息),用于陪伴式互动(问候/提醒/分享)。由 ProactiveMessageRunner 调度。
 
-## 2. Configurar la entrada
+## 二、配置入口
 
-ajustes → charlar → mensajes no solicitados
-- **interruptor principal**: encender/cerrar
-- **intervalo**: 1 / 2 / 4 / 8 / 12 / 24 horas
+设置 → 聊天 → 主动消息
+- **总开关**: 开启/关闭
+- **间隔**: 1 / 2 / 4 / 8 / 12 / 24 小时
 
-## 3. Mecanismo de programación
+## 三、调度机制
 
-- Intervalo base seleccionado por el usuario(1-24 horas)
-- **intervalo real = intervalo base ± desplazamiento aleatorio**(Mínimo 1 hora,evitar con demasiada frecuencia)
-- El desplazamiento aleatorio hace que la sincronización de los mensajes sea más natural,No mecanico
-- evento desencadenante: app_resume(De vuelta a la recepción)¿Es oportuna la inspección oportuna?;El fondo está programado por un temporizador.
-- **Restablecer entre días**: Se ha borrado el recuento diario de mensajes activos,Un nuevo día y un nuevo día
+- 基础间隔由用户选择(1-24 小时)
+- **实际间隔 = 基础间隔 ± 随机偏移**(下限 1 小时,避免过于频繁)
+- 随机偏移让消息时间更自然,不机械
+- 触发事件: app_resume(回到前台)时巡检是否到点;后台由定时器调度
+- **跨日重置**: 每日主动消息计数清零,新一天重新计
 
-## 4. Estilo de notificación
+## 四、通知样式
 
-- Vaya a MuseNotificationManager para que aparezcan notificaciones del sistema
-- La notificación contiene contenido del mensaje del asistente.
-- Haga clic en la notificación para ingresar a la sesión correspondiente
+- 走 MuseNotificationManager 弹系统通知
+- 通知含助手消息内容
+- 点击通知进入对应会话
 
-## 5. Contenido del mensaje activo
+## 五、主动消息内容
 
-- Generado por el asistente en función del contexto actual.(Saludos/Situación actual/recordatorio)
-- Inspección desencadenada por evento(app_resume)puede combinarse con la actividad del usuario
-- El estilo del contenido es coherente con la personalidad del asistente.
+- 由助手基于当前上下文生成(问候/近况/提醒)
+- 事件触发巡检(app_resume)时可能结合用户活跃度
+- 内容风格与助手人格一致
 
-## 6. Preguntas frecuentes Q&A
+## 六、常见问题 Q&A
 
-1. **"¿Cómo consigo que la IA tome la iniciativa de encontrarme todos los días?"**: ajustes → charlar → mensajes no solicitados → Activar + seleccionar intervalo(Como 24 horas).
-2. **"Por qué la IA no se envía a tiempo"**: ①El intervalo es"aprox."No"Preciso"(Hay un desplazamiento aleatorio);②Aplicación eliminada/El límite de fondo puede perder el envío;③Calculado nuevamente después del reinicio entre días.
-3. **"muy a menudo/demasiado ruidoso"**: aumentar el intervalo(8/12/24 horas)O ciérrelo directamente.
-4. **"¿Puedes especificar una hora para enviarlo?"**: Los mensajes activos se basan en intervalos.,No es un sistema de punto fijo;Utilice tareas programadas para requisitos de punto fijo(cron).
-5. **"La diferencia entre mensajes activos y tareas programadas"**: mensajes no solicitados=intervalo fijo+Mensajes complementarios compensados aleatoriamente;tareas programadas=cron Ejecución de tareas desencadenada con precisión.
-6. **"¿El teléfono celular consumirá batería?"**: La programación se basa en eventos+Sincronización ligera,El consumo de energía es insignificante.
+1. **"怎么让 AI 每天主动找我"**: 设置 → 聊天 → 主动消息 → 开启 + 选间隔(如 24 小时)。
+2. **"为什么 AI 不按时发"**: ①间隔是"约"不是"准"(有随机偏移);②应用被杀/后台限制可能错过调度;③跨日重置后重新计。
+3. **"太频繁/太吵"**: 调大间隔(8/12/24 小时)或直接关闭。
+4. **"能指定时间发吗"**: 主动消息是间隔制,不是定点制;定点需求用定时任务(cron)。
+5. **"主动消息和定时任务区别"**: 主动消息=固定间隔+随机偏移的陪伴消息;定时任务=cron 精确触发的任务执行。
+6. **"手机会不会耗电"**: 调度是事件驱动+轻量定时,耗电可忽略。
 
-## 7.LLM Puntos de llamada
+## 七、LLM 调用要点
 
-- Los mensajes activos son programados por el sistema.(No fue iniciado por el propio LLM.);LLM es responsable de generar contenido de mensajería de alta calidad
-- Al recibir una solicitud de mensaje no solicitado,combinado con la hora actual/Estado de usuario/La personalidad genera mensajes naturales
-- No digas lo mismo cada vez(Los saludos necesitan cambiar.)
-- Los usuarios pueden tener una conversación normal al responder a un mensaje no solicitado
+- 主动消息是系统调度的(不是 LLM 自己发起的);LLM 的职责是生成高质量消息内容
+- 收到主动消息请求时,结合当前时间/用户近况/人格生成自然消息
+- 不要每次都说一样的话(问候要有变化)
+- 用户回复主动消息时正常对话即可

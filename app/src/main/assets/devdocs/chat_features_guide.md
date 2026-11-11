@@ -1,92 +1,92 @@
-<!-- devdoc: Documentación de desarrollo interno.,No se muestra a los usuarios,LLM Consulta a través de Knowledge_search -->
-# Guía completa de funciones de chat
+<!-- devdoc: 内部开发文档,不向用户展示,LLM 通过 knowledge_search 查询 -->
+# 聊天功能完整指南
 
-> escena desencadenante: Usuario preguntó"Cómo operar en el chat""¿Qué puede hacer el mensaje?""como regenerarse""como cotizar""como bifurcar""¿Qué es el pensamiento profundo?""Cómo habilitar la búsqueda en Internet"tiempo,Consulte este documento y responda con sinceridad.
-> Este documento está basado en el código fuente. ChatScreen.kt / ChatViewModel.kt / MessageBubble.kt / InputBar.kt / ChatStreamCoordinator.kt verdadera realización.
+> 触发场景: 用户问"聊天里怎么操作""消息能做什么""怎么重新生成""怎么引用""怎么分叉""深度思考是什么""联网搜索怎么开"时,参考本文档据实回答。
+> 本文档基于源码 ChatScreen.kt / ChatViewModel.kt / MessageBubble.kt / InputBar.kt / ChatStreamCoordinator.kt 的真实实现。
 
-## 1. Descripción general
+## 一、概述
 
-El chat es la principal interfaz interactiva de Muse:Salida de streaming Respuesta LLM,Admite entrada multimodal, como texto enriquecido de Markdown, operaciones a nivel de mensaje, cambio de modelo, pensamiento en profundidad, búsqueda en Internet, imágenes de voz, etc. Todos los mensajes se almacenan en una base de datos local.,Admite múltiples rondas de diálogo y bifurcación.(branch), interrumpir la recuperación.
+聊天是 Muse 的主交互界面:流式输出 LLM 回复,支持 Markdown 富文本、消息级操作、模型切换、深度思考、联网搜索、语音图片等多模态输入。所有消息存本地数据库,支持多轮对话、分叉(branch)、中断恢复。
 
-## 2. Entrada
+## 二、入口
 
-- Lista de conversaciones de la página de inicio → Haz clic en la conversación para entrar al chat
-- Se puede crear una lista de conversaciones./fijar hacia arriba/Archivo/Sesión de búsqueda
-- Barra superior de la página de chat: Título de la sesión + Alternar asistente + Más menú(Buscar/Borrar/Exportar, etc.)
+- 首页会话列表 → 点击会话进入聊天
+- 会话列表可新建/置顶/归档/搜索会话
+- 聊天页顶栏: 会话标题 + 助手切换 + 更多菜单(搜索/清空/导出等)
 
-## 3. Operación de burbuja de mensajes(Haga clic/Menú emergente de pulsación larga)
+## 三、消息气泡操作(点击/长按弹出菜单)
 
-por mensaje(Usuario/AI)Todos admiten las siguientes operaciones.:
+每条消息(用户/AI)都支持以下操作:
 
-| Operación | Descripción |
+| 操作 | 说明 |
 |---|---|
-| Copiar | Copia el texto completo del mensaje.(Contiene texto original de Markdown.) |
-| Reenviar/regenerar | Regenerar mensajes de IA(preservar el contexto);Reenviar mensajes de usuario |
-| Eliminar | Eliminar este mensaje(También limpie los índices FTS y genere puntos de control.,Reiniciar no revive) |
-| Editar | Editar el contenido del mensaje del usuario y reenviarlo;AI El mensaje se puede editar como nuevo contexto. |
-| Cotización | Responder citando este mensaje(Mostrar bloque de cotización en la parte superior de la burbuja) |
-| confiar | delegate_agent:Delegar el procesamiento a otros asistentes |
-| Traducción | Llame al traductor para traducir el mensaje. |
-| leer en voz alta | TTS leer en voz alta(sistema/motor de nube) |
-| Colección | Añadir a favoritos(Disponible en todas las sesiones) |
-| bifurcación | Copiar el historial de este mensaje a una nueva conversación(rama) |
-| Compartir | Exporte a Markdown y vaya al panel para compartir del sistema. |
+| 复制 | 复制消息全文(含 Markdown 原文) |
+| 重发/重新生成 | 对 AI 消息重新生成(保留上下文);对用户消息重发 |
+| 删除 | 删除该消息(同时清理 FTS 索引和生成检查点,重启不复活) |
+| 编辑 | 编辑用户消息内容后重发;AI 消息可编辑后作为新上下文 |
+| 引用 | 引用该消息回复(气泡顶部显示引用块) |
+| 委托 | delegate_agent:委托给其他助手处理 |
+| 翻译 | 调用 translate 翻译该消息 |
+| 朗读 | TTS 朗读(系统/云端引擎) |
+| 收藏 | 收藏到收藏夹(跨会话可查) |
+| 分叉 | 从该消息复制历史到新会话(分支) |
+| 分享 | 导出为 Markdown 走系统分享面板 |
 
-## 4. Procesamiento de mensajes largos
+## 四、长消息处理
 
-- Colapsar automáticamente mensajes de IA súper largos,Haga clic"Expandir"Ver texto completo
-- Representación en tiempo real durante la salida de streaming Markdown(resaltado de código/fórmula/mesa)
-- Desplazarse automáticamente hasta el final entre mensajes;Pausa el seguimiento cuando el usuario desliza hacia arriba para ver el historial
+- 超长 AI 消息自动折叠,点击"展开"查看全文
+- 流式输出时实时渲染 Markdown(代码高亮/公式/表格)
+- 消息间自动滚动到底部;用户上滑查看历史时暂停跟随
 
-## 5. Función de campo de entrada
+## 五、输入栏功能
 
-### 5.1 Entrada de texto
-- Múltiples líneas de entrada,Entra para enviar(Configurable)
-- **Detección de pegado**: El contenido pegado reconoce automáticamente los sufijos comunes y los elimina;Convertir archivos que superen los 5000 caracteres
-- Introducir borrador: Guarda automáticamente cada sesión,Volver a la recuperación
+### 5.1 文本输入
+- 多行输入,回车发送(可配置)
+- **粘贴检测**: 粘贴内容自动识别公共前后缀并剥离;超 5000 字符提示转文件
+- 输入草稿: 切会话自动保存,切回恢复
 
-### 5.2 "+"menú(Funcionalidad mejorada)
-| Función | Descripción |
+### 5.2 "+"号菜单(增强功能)
+| 功能 | 说明 |
 |---|---|
-| pensamiento profundo | Esta sesión está abierta. ReasoningLevel.HIGH(8000 tokens presupuesto de inferencia),No persistente |
-| búsqueda en internet | LLM tiende a llamar después de habilitar web_search / web_fetch |
-| Envío de fotos | Seleccionar fotos para enviar(compresión automática/OCR Reconocer texto) |
-| Entrada de voz | Mantenga para hablar,ASR Convertir texto |
-| mensaje rapido | Envía chips preestablecidos con un clic({{input}}/{{clipboard}}/{{date}} Variables renderizadas automáticamente) |
-| cámara | tomar foto y enviar |
+| 深度思考 | 本会话开启 ReasoningLevel.HIGH(8000 tokens 推理预算),不持久化 |
+| 联网搜索 | 开启后 LLM 倾向调用 web_search / web_fetch |
+| 图片发送 | 选图发送(自动压缩/OCR 识别文字) |
+| 语音输入 | 按住说话,ASR 转文字 |
+| 快捷消息 | 预置 chips 一键发送({{input}}/{{clipboard}}/{{date}} 变量自动渲染) |
+| 相机 | 拍照发送 |
 
-### 5.3 Cambio de modelo
-- La cápsula del modelo de campo de entrada puede**Cambiar temporalmente el modelo de sesión actual**(La información histórica se mantiene sin cambios.,Nuevo mensaje con nuevo modelo.)
-- Cuando el asistente configura un modelo dedicado,El cambio manual sobrescribirá el modelo exclusivo.(Consejos"Se han cubierto los modelos específicos de asistente.,Recuperación de sesión de cambio")
+### 5.3 模型切换
+- 输入栏模型胶囊可**临时切换当前会话模型**(历史消息不变,新消息用新模型)
+- 助手配置了专属模型时,手动切换会覆盖专属模型(提示"已覆盖助手专属模型,切会话恢复")
 
-## 6. Salida en streaming y rondas múltiples
+## 六、流式输出与多轮
 
-- Mostrar el estado de espera antes de que llegue el primer token
-- Actualizaciones de transmisión UI(texto/pensar/Estado de llamada de herramienta)
-- pensar en etiquetas(MOOD/Piensa en el contenido)Ampliable y plegable
-- Las rondas de llamadas de herramientas se ejecutan automáticamente,Continuar generando resultados después del reabastecimiento,hasta la respuesta final
-- Gestión automática de contextos de diálogo multiturno.;Compresión automática durante períodos de tiempo extremadamente largos.(Mantener los N elementos más recientes)
+- 首 token 到达前显示等待状态
+- 流式更新 UI(文本/思考/工具调用状态)
+- 思考标签(MOOD/思考内容)可展开折叠
+- 工具调用轮次自动执行,结果回填后继续生成,直到最终答复
+- 多轮对话上下文自动管理;超长时自动压缩(保留最近 N 条)
 
-## 7. Interrupción y recuperación
+## 七、中断与恢复
 
-- dejar de generar: Conserva parte del contenido generado,Los marcadores se pueden regenerar.
-- Reinicio de la aplicación: Las interrupciones se pueden generar mediante"restaurar"continuar;Los mensajes completados no serán mal etiquetados.
-- Generar punto de control: Guarda automáticamente el progreso cuando se interrumpe,Continuar ejecutándose automáticamente después de reiniciar
+- 停止生成: 保留已生成的部分内容,标记可重新生成
+- 应用重启: 中断的生成可通过"恢复"继续;已完成的消息不会被误标
+- 生成检查点: 中断时自动保存进度,重启后自动续跑
 
-## 8. Preguntas frecuentes Q&A
+## 八、常见问题 Q&A
 
-1. **"Cómo regenerar respuestas de IA"**: Pulsación larga/Haga clic en Mensaje AI → Reenviar(regenerar).
-2. **"Cómo borrar mensajes"**: Mensaje de pulsación larga → Borrar. Reiniciar después de la eliminación no lo revivirá.
-3. **"Cómo citar una determinada frase en respuesta"**: Mensaje de pulsación larga → Cotización,Aparece un bloque de referencia en el campo de entrada.,Introduzca una respuesta.
-4. **"que es el tenedor"**: Copie el historial anterior al mensaje actual en una nueva conversación,Continúe charlando en diferentes direcciones sin afectar la conversación original.
-5. **"¿De qué sirve el pensamiento profundo?"**: Darle al modelo un mayor presupuesto de inferencia.,Adecuado para problemas complejos(código/análisis/planificación).
-6. **"Cómo cambiar de modelo"**: Cambie directamente las cápsulas de modelo en el campo de entrada;o establecer→Modelo global por defecto para modelos y servicios.
-7. **"Por qué la IA no busca en Internet"**: Comprobar campo de entrada+menú"búsqueda en internet"Ya sea para encender;Cuando está activada, la IA determinará de forma independiente cuándo buscar.
-8. **"El orden de los mensajes está desordenado./Repetir"**: Por lo general, se debe a un etiquetado incorrecto cuando la versión anterior se interrumpe y se restaura.,Fijo;Actualice la versión y proporcione comentarios si lo encuentra.
+1. **"怎么重新生成 AI 回复"**: 长按/点击 AI 消息 → 重发(重新生成)。
+2. **"怎么删除消息"**: 长按消息 → 删除。删除后重启不会复活。
+3. **"怎么引用某句话回复"**: 长按消息 → 引用,输入栏出现引用块,输入回复。
+4. **"分叉是什么"**: 把当前消息之前的历史复制成新会话,在不影响原会话的情况下继续聊不同方向。
+5. **"深度思考有什么用"**: 给模型更高推理预算,适合复杂问题(代码/分析/规划)。
+6. **"怎么换模型"**: 输入栏模型胶囊直接切换;或设置→模型与服务的全局默认模型。
+7. **"为什么 AI 不联网搜索"**: 检查输入栏+号菜单"联网搜索"是否开启;开启后 AI 自主判断何时搜。
+8. **"消息顺序乱了/重复"**: 通常是旧版本中断恢复误标导致,已修复;遇到请更新版本并反馈。
 
-## 9.LLM Puntos de llamada
+## 九、LLM 调用要点
 
-- Respuestas en streaming renderizadas en tiempo real;Piensa en el contenido reasoning,Pon el texto content
-- Ronda de llamada de herramienta: Después de llamar, espere a que se completen los resultados antes de continuar.,No inventes los resultados de tus propias herramientas
-- Cuando el usuario desliza hacia arriba para ver el historial,Los mensajes nuevos no están obligados a desplazarse hasta el final(Manejado por la interfaz de usuario)
-- Preservar el contenido de salida al generar interrupciones,Continuar después de la recuperación
+- 流式回复实时渲染;思考内容放 reasoning,正文放 content
+- 工具调用轮次: 调用后等结果回填再继续,不要自己编造工具结果
+- 用户上滑查看历史时,新消息不强制滚底(由 UI 处理)
+- 生成中断时保留已产出内容,恢复后继续

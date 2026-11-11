@@ -5,7 +5,7 @@ import kotlinx.coroutines.withContext
 import java.util.UUID
 
 /**
- * Agent DM depósito.
+ * Agent DM 仓库。
  */
 class AgentDmRepository(private val dao: AgentMessageDao) {
 

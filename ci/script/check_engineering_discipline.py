@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
 """
-check_engineering_discipline.py — Inspección de CI de disciplina de ingeniería.
+check_engineering_discipline.py — 工程纪律 CI 检查。
 
-Escanee el código de diferenciación en busca de patrones que violen la especificación AGENTS.md:
-  - conversión de tipo inseguro (as String / as Int / as Any)
-  - Aserción no nula sin comentarios !!
-  - Bloque de captura vacío
-  - nulo incondicional
-  - Valores predeterminados incondicionales
-  - El tipo vuelve a Any (val/var : Any Declaración)
-  - when expresión else -> null cubierta tipo junta
-  - La función devuelve el tipo Cualquiera
-  - TODO/FIXME La cantidad excede el límite
+扫描代码 diff 中的违反 AGENTS.md 规范的模式:
+  - 不安全的类型转换 (as String / as Int / as Any)
+  - 无注释的非空断言 !!
+  - 空 catch 块
+  - 无条件 null 兜底
+  - 无条件默认值兜底
+  - 类型回退成 Any (val/var : Any 声明)
+  - when 表达式 else -> null 联合类型兜底
+  - 函数返回 Any 类型
+  - TODO/FIXME 数量超限
 
-Uso:
+用法:
   py -3 ci/script/check_engineering_discipline.py [--diff] [--base main] [--head HEAD]
 """
 
@@ -25,85 +25,85 @@ import subprocess
 import sys
 from pathlib import Path
 
-# Windows Predeterminado de la consola china GBK,Y este script se imprimirá ⚠/✓/✗(No en el juego de caracteres GBK),
-# La salida directa arrojará UnicodeEncodeError. Cortado uniformemente a UTF-8.
+# Windows 中文控制台默认 GBK,而本脚本会打印 ⚠/✓/✗(不在 GBK 字符集内),
+# 直接输出会抛 UnicodeEncodeError。统一切到 UTF-8。
 try:
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     sys.stderr.reconfigure(encoding="utf-8", errors="replace")
-except Exception:  # noqa: BLE001 - El cheque en sí no debería verse afectado si el entorno no lo soporta.
+except Exception:  # noqa: BLE001 - 环境不支持时不应影响检查本身
     pass
 
-# Directorio raíz del proyecto
+# 项目根目录
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
-# Consultar reglas
+# 检查规则
 RULES = {
     "unsafe_cast": {
         "pattern": re.compile(r"\bas\s+(String|Int|Long|Float|Double|Boolean|Any|JsonObject)\b"),
         "severity": "warning",
-        "message": "Conversión de tipo no segura, utilice una conversión segura (as? + ?: o if-let)",
+        "message": "不安全的类型转换，请使用安全转换 (as? + ?: 或 if-let)",
     },
     "non_null_assertion": {
-        # partido !! Pero a los compañeros se les permite tener // comentarios más tarde
-        # (?![^\n]*//) expresar: si !! Hay un // comentario en la misma línea después,entonces no marques
+        # 匹配 !! 但允许同行后续有 // 注释说明
+        # (?![^\n]*//) 表示: 如果 !! 后面同一行有 // 注释,则不标记
         "pattern": re.compile(r"!!(?![^\n]*//)"),
         "severity": "warning",
-        "message": "Aserción no nula sin comentarios !!, por favor agregue un comentario o use require/check",
+        "message": "无注释的非空断言 !!，请添加注释说明或使用 require/check",
     },
     "empty_catch": {
         "pattern": re.compile(r"catch\s*\([^)]+\)\s*\{\s*\}"),
         "severity": "error",
-        "message": "Bloque de captura vacío, debe registrar o manejar excepciones",
+        "message": "空 catch 块，必须记录日志或处理异常",
     },
     "null_fallback": {
         "pattern": re.compile(r"\?:\s*null(?!\s*//)"),
         "severity": "warning",
-        "message": "Nulo incondicional. Por favor explique el motivo o uso. error()",
+        "message": "无条件 null 兜底，请说明原因或使用 error()",
     },
     "default_fallback": {
         "pattern": re.compile(r'\?:\s*"(?:unknown|default)"'),
         "severity": "warning",
-        "message": "El valor predeterminado incondicional es una obviedad, explique por qué",
+        "message": "无条件默认值兜底，请说明原因",
     },
-    # P3-5: Escriba reglas de seguridad (AGENTS.md §2.1 / §5)
+    # P3-5: 类型安全规则 (AGENTS.md §2.1 / §5)
     "any_type_declaration": {
-        # Coincide con val/var x: Cualquiera o val/var x: Any? Una declaración explícita de cualquier tipo para
-        # excluir Map<String, Any> espera(Ese es un parámetro genérico.,No es un tipo de variable alternativa)
+        # 匹配 val/var x: Any 或 val/var x: Any? 的显式 Any 类型声明
+        # 排除 Map<String, Any> 等(那是泛型参数,不是变量类型回退)
         "pattern": re.compile(r"\b(?:val|var)\s+\w+\s*:\s*Any\b(?!\s*[<,])"),
         "severity": "warning",
-        "message": "El tipo de variable vuelve a ser Cualquiera, utilice un tipo específico o sealed class (AGENTS.md §2.1)",
+        "message": "变量类型回退成 Any，请使用具体类型或 sealed class (AGENTS.md §2.1)",
     },
     "any_return_type": {
-        # partido fun foo(...): Any o fun foo(...): Any? La función regresa Any
+        # 匹配 fun foo(...): Any 或 fun foo(...): Any? 的函数返回 Any
         "pattern": re.compile(r"\bfun\s+\w+\s*\([^)]*\)\s*:\s*Any\b(?!\s*[<,])"),
         "severity": "warning",
-        "message": "La función devuelve el tipo Cualquiera, utilice un tipo concreto o sealed class (AGENTS.md §5)",
+        "message": "函数返回 Any 类型，请使用具体类型或 sealed class (AGENTS.md §5)",
     },
     "when_else_null": {
-        # Coincidencias dentro de un bloque cuando else -> null (cubierta tipo junta)
+        # 匹配 when 块中的 else -> null (联合类型兜底)
         "pattern": re.compile(r"\belse\s*->\s*null\b(?!\s*//)"),
         "severity": "warning",
-        "message": "when expresión else -> null Cubierta tipo junta, utilice error() o sealed class (AGENTS.md §5)",
+        "message": "when 表达式 else -> null 联合类型兜底，请使用 error() 或 sealed class (AGENTS.md §5)",
     },
-    # P3-5: conversión anulable insegura (AGENTS.md §2.2)
+    # P3-5: 不安全的可空转换 (AGENTS.md §2.2)
     "nullable_unsafe_cast": {
-        # partido (value as String) Esta conversión insegura a valores que aceptan valores NULL
+        # 匹配 (value as String) 这种对可空值的不安全转换
         "pattern": re.compile(r"\(\s*\w+\s+as\s+(String|Int|Long|Float|Double|Boolean)\s*\)"),
         "severity": "warning",
-        "message": "Para usar como conversión para valores que aceptan valores NULL, use as? + ?: o if-let (AGENTS.md §2.2)",
+        "message": "对可空值使用 as 转换，请使用 as? + ?: 或 if-let (AGENTS.md §2.2)",
     },
 }
 
-# TODO/FIXME Límite
+# TODO/FIXME 限制
 MAX_TODO_COUNT = 10
 TODO_PATTERN = re.compile(r"\b(?:TODO|FIXME)\b")
 
-# Extensiones de archivos escaneados
+# 扫描的文件扩展名
 SCAN_EXTENSIONS = {".kt", ".java"}
 
 
 def get_diff_files(base: str = "main", head: str = "HEAD") -> list[Path]:
-    """Obtener la lista de archivos modificados en diff"""
+    """获取 diff 中变更的文件列表"""
     try:
         result = subprocess.run(
             ["git", "diff", "--name-only", f"{base}...{head}"],
@@ -113,7 +113,7 @@ def get_diff_files(base: str = "main", head: str = "HEAD") -> list[Path]:
             timeout=30,
         )
         if result.returncode != 0:
-            # revertir: Utilice git diff --cached o git status
+            # 回退: 用 git diff --cached 或 git status
             result = subprocess.run(
                 ["git", "diff", "--name-only", "HEAD"],
                 cwd=PROJECT_ROOT,
@@ -133,7 +133,7 @@ def get_diff_files(base: str = "main", head: str = "HEAD") -> list[Path]:
 
 
 def get_diff_lines(file_path: Path, base: str = "main") -> list[str]:
-    """Obtener nuevas líneas en el archivo diff"""
+    """获取文件 diff 中新增的行"""
     try:
         rel = file_path.relative_to(PROJECT_ROOT).as_posix()
         result = subprocess.run(
@@ -161,14 +161,14 @@ def get_diff_lines(file_path: Path, base: str = "main") -> list[str]:
 
 
 def _raw_string_mask(lines: list[str]) -> list[bool]:
-    """Marque si cada línea se encuentra dentro de la cadena sin formato entre comillas triples de Kotlin (incluidas las líneas inicial y final)."""
+    """标出每一行是否落在 Kotlin 三引号原始字符串内部（含起止行）。"""
     mask: list[bool] = []
     inside = False
     for line in lines:
         starts_inside = inside
-        # Puede aparecer en pares en la misma línea ("""..."""), contando invertidas sucesivamente
+        # 同一行里可能成对出现（"""..."""），逐次翻转计数
         count = line.count('"""')
-        # Eliminar interferencias de los comentarios:`//` Ya no participar en el juicio (procesamiento aproximado)
+        # 去掉注释里的干扰：`//` 之后不再参与判断（近似处理）
         if count % 2 == 1:
             inside = not inside
         mask.append(starts_inside or inside or count > 0)
@@ -176,22 +176,22 @@ def _raw_string_mask(lines: list[str]) -> list[bool]:
 
 
 def scan_file(file_path: Path, added_lines: list[str] | None = None) -> list[dict]:
-    """Escanee archivos individuales en busca de patrones de infracción"""
+    """扫描单个文件中的违规模式"""
     violations = []
     content = file_path.read_text(encoding="utf-8", errors="ignore")
     lines = content.split("\n")
 
-    # Si hay líneas de diferencias, sólo se verifican las líneas nuevas; en caso contrario, se comprueba el texto completo.
+    # 如果有 diff 行，只检查新增行；否则检查全文
     if added_lines is not None:
         check_lines = added_lines
     else:
         check_lines = lines
 
-    # saltar**cadena cruda (Kotlin líneas dentro del bloque de comillas triples)**.
+    # 跳过**原始字符串（Kotlin 三引号块）内部的行**。
     #
-    # El enlace de la tarjeta escribe una sección completa de JS inyectada en WebView directamente en """…""" adentro,
-    # que dentro `try { ... } catch (e) { }` Es un truco vacío en JS, es intencional.
-    # (Una llamada de puente fallida no debería provocar que falle la tarjeta). Son todos falsos positivos según las reglas de Kotlin.
+    # 卡片链路把一整段注入 WebView 的 JS 直接写在 """…""" 里，
+    # 那里面的 `try { ... } catch (e) { }` 是 JS 的空 catch，本来就是刻意的
+    # （桥调用失败不该让卡片挂掉）。按 Kotlin 规则扫它全是误报。
     raw_string_mask = _raw_string_mask(lines)
 
 
@@ -210,7 +210,7 @@ def scan_file(file_path: Path, added_lines: list[str] | None = None) -> list[dic
                     "code": line.strip(),
                 })
 
-    # TODO/FIXME contar(Texto completo)
+    # TODO/FIXME 计数(全文)
     todo_count = len(TODO_PATTERN.findall(content))
     if todo_count > MAX_TODO_COUNT:
         violations.append({
@@ -218,7 +218,7 @@ def scan_file(file_path: Path, added_lines: list[str] | None = None) -> list[dic
             "line": 0,
             "rule": "todo_overflow",
             "severity": "warning",
-            "message": f"TODO/FIXME La cantidad excede el límite ({todo_count} > {MAX_TODO_COUNT})",
+            "message": f"TODO/FIXME 数量超限 ({todo_count} > {MAX_TODO_COUNT})",
             "match": "",
             "code": "",
         })
@@ -227,18 +227,18 @@ def scan_file(file_path: Path, added_lines: list[str] | None = None) -> list[dic
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Muse Inspección de CI de disciplina de ingeniería")
-    parser.add_argument("--diff", action="store_true", help="Verifique solo las líneas nuevas en diff")
-    parser.add_argument("--base", default="main", help="diff rama base(Predeterminado: main)")
-    parser.add_argument("--head", default="HEAD", help="diff objetivo(Predeterminado: HEAD)")
-    parser.add_argument("--path", default=None, help="Escanear solo rutas especificadas")
+    parser = argparse.ArgumentParser(description="Muse 工程纪律 CI 检查")
+    parser.add_argument("--diff", action="store_true", help="只检查 diff 中的新增行")
+    parser.add_argument("--base", default="main", help="diff 基准分支(默认: main)")
+    parser.add_argument("--head", default="HEAD", help="diff 目标(默认: HEAD)")
+    parser.add_argument("--path", default=None, help="只扫描指定路径")
     args = parser.parse_args()
 
     print("=" * 60)
     print("Engineering Discipline Check")
     print("=" * 60)
 
-    # Recopilar archivos para escanear
+    # 收集要扫描的文件
     if args.diff:
         files = get_diff_files(args.base, args.head)
         print(f"Scanning {len(files)} changed files (diff mode)")
@@ -247,7 +247,7 @@ def main():
         files = []
         for ext in SCAN_EXTENSIONS:
             files.extend(scan_path.rglob(f"*{ext}"))
-        # Filtrar el directorio de compilación
+        # 过滤 build 目录
         files = [f for f in files if "build" not in f.parts]
         print(f"Scanning {len(files)} files (full mode)")
 
@@ -260,7 +260,7 @@ def main():
             violations = scan_file(file_path)
         all_violations.extend(violations)
 
-    # Resultados de salida
+    # 输出结果
     errors = [v for v in all_violations if v["severity"] == "error"]
     warnings = [v for v in all_violations if v["severity"] == "warning"]
 
@@ -280,7 +280,7 @@ def main():
     print(f"Summary: {len(errors)} errors, {len(warnings)} warnings")
     print(f"{'=' * 60}")
 
-    # error evitar la fusión, warning solo recuerda
+    # error 阻止合并, warning 只提醒
     return 1 if errors else 0
 
 

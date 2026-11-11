@@ -97,7 +97,7 @@ export function ToolIcon({ size = 14 }: IconProps) {
   );
 }
 
-/** Copiar: dos capas de cuadros redondeados desplazados (App La misma intuición que mantener presionado \"Copiar\" en el menú). */
+/** 复制：两层错位的圆角方框（App 长按菜单里「复制」的同款直觉）。 */
 export function CopyIcon({ size = 16 }: IconProps) {
   return (
     <svg {...base(size)}>
@@ -107,7 +107,7 @@ export function CopyIcon({ size = 16 }: IconProps) {
   );
 }
 
-/** Advertencia de error: un signo de exclamación + un círculo, que se utiliza como mensaje cuando un solo mensaje se muestra de forma anormal. */
+/** 失败兜底：一条感叹号 + 一圈，用于单条消息渲染异常时的提示。 */
 export function AlertIcon({ size = 16 }: IconProps) {
   return (
     <svg {...base(size)}>
@@ -134,7 +134,7 @@ export function PauseIcon({ size = 16 }: IconProps) {
   );
 }
 
-/** Ondas sonoras en el lado izquierdo de la barra de voz: tres líneas verticales de diferentes alturas. */
+/** 语音条左侧的声波：三根不同高度的竖线。 */
 export function VoiceIcon({ size = 18 }: IconProps) {
   return (
     <svg {...base(size)}>

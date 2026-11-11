@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  P1-2: Worldbook Cadena de libros del mundo dinámico.
-  con Lorebook(strings_settings_misc.xml)independiente,Worldbook Admite funciones de inyección más avanzadas.
+  P1-2: Worldbook 动态世界书字符串。
+  与 Lorebook(strings_settings_misc.xml)独立,Worldbook 支持更高级的注入特性。
 -->
 <resources>
     <!-- Screen -->
@@ -23,7 +23,7 @@
     <string name="worldbook_delete_cd">Eliminar</string>
     <string name="worldbook_delete_title">eliminar libro mundial</string>
     <string name="worldbook_empty_title">Aún no hay entradas en el Libro Mundial.</string>
-    <string name="worldbook_empty_subtitle">Haga clic en el botón en la esquina inferior derecha para crear su primera entrada.</string>
+    <string name="worldbook_empty_subtitle">Toca en el botón en la esquina inferior derecha para crear su primera entrada.</string>
     <string name="worldbook_keywords_label">Palabras clave: %1$s</string>
     <string name="worldbook_badge_always_active">permanente</string>
     <string name="worldbook_export">Exportar</string>
@@ -46,7 +46,7 @@
     <string name="worldbook_field_priority">Prioridad (cuanto mayor sea el valor, primero se inyectará)</string>
     <string name="worldbook_field_inject_target">inyectar objetivo</string>
     <string name="worldbook_field_inject_position">Ubicación de la inyección</string>
-    <!-- v2.0.1: inyectar objetivo/Opciones de ubicación nombre para mostrar localizado -->
+    <!-- v2.0.1: 注入目标/位置选项本地化显示名 -->
     <string name="worldbook_inject_target_system">sistema</string>
     <string name="worldbook_inject_target_user">Usuario</string>
     <string name="worldbook_inject_target_assistant">asistente</string>
@@ -66,7 +66,7 @@
     <string name="worldbook_field_enabled">habilitar</string>
     <string name="worldbook_field_enabled_desc">Cuando está deshabilitada, la entrada no se inyectará.</string>
 
-    <!-- Correcciones en la interfaz (i18n-8): Consejos de exportación -->
+    <!-- 前端修复 (i18n-8): 导出提示 -->
     <string name="worldbook_exported_to">Exportado a %1$s</string>
 
     <!-- Settings entry -->

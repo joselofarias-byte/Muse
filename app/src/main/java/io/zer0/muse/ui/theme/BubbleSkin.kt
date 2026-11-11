@@ -60,10 +60,10 @@ object BubbleSkinValidator {
     const val CURRENT_SCHEMA = 1
 
     /**
-     * Contraste WCAG mínimo entre el texto del cuerpo y el color de fondo de la burbuja.
+     * 正文与气泡底色之间的最低 WCAG 对比度。
      *
-     * Las máscaras por debajo de este valor serán ilegales.,por [BubbleSkinResolver] Respaldo incorporado default,
-     * Asegúrese de que el diseño del complemento nunca muestre el cuerpo del mensaje en un color ilegible(AA Texto 4.5:1).
+     * 低于该值的皮肤一律判为非法,由 [BubbleSkinResolver] 回退内置 default,
+     * 保证插件皮肤永远不会把消息正文渲染成不可读的配色(AA 正文 4.5:1)。
      */
     const val MIN_CONTRAST_RATIO = 4.5
     private const val MAX_ID_LENGTH = 64
@@ -99,7 +99,7 @@ object BubbleSkinValidator {
             if (style.maxWidthFraction !in MIN_WIDTH_FRACTION..MAX_WIDTH_FRACTION) errors += "$mode/$role width out of range"
             if (style.fontScale !in MIN_FONT_SCALE..MAX_FONT_SCALE) errors += "$mode/$role font scale out of range"
             if (style.outlineWidthDp !in 0f..8f) errors += "$mode/$role outline width out of range"
-            // Piel con contraste deficiente(Viene con paquete de complementos JSON)rechazado aquí,resolver Volver al valor predeterminado incorporado.
+            // 对比度不达标的皮肤(含插件包自带 JSON)在这里被拒绝,resolver 回退内置 default。
             if (contrastRatio(style.contentArgb, style.surfaceArgb) < MIN_CONTRAST_RATIO) {
                 errors += "$mode/$role contrast out of range"
             }
@@ -107,9 +107,9 @@ object BubbleSkinValidator {
     }
 
     /**
-     * WCAG 2.x Contraste de brillo relativo,La entrada es un entero largo ARGB(Tome solo los 24 bits inferiores RGB).
+     * WCAG 2.x 相对亮度对比度,输入为 ARGB 长整型(只取低 24 位 RGB)。
      *
-     * función pura,No depende de la biblioteca de gráficos de Android,Facilita la reutilización de pruebas únicas y verificación de paquetes de complementos.
+     * 纯函数,不依赖 Android 图形库,便于单测与插件包校验复用。
      */
     fun contrastRatio(foregroundArgb: Long, backgroundArgb: Long): Double {
         val first = relativeLuminance(foregroundArgb)

@@ -10,10 +10,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * TTS / ASRReglas de análisis "Seguir la configuración del proveedor".
+ * TTS / ASR「跟随供应商配置」解析规则。
  *
- * El contrato del analizador es "el comportamiento cuando se apaga el interruptor es exactamente el mismo que en la versión anterior",Entonces cada rama de reversión afirma tanto la fuente,
- * También afirma que lo que se obtiene después de revertir es, de hecho, el valor en la configuración manual. —— Simplemente afirmar que no colapsará significa que no hay prueba.
+ * 解析器的契约是「开关关闭时行为与旧版完全一致」,所以每个回退分支都既断言来源,
+ * 也断言回退后拿到的确实是手动配置里的值 —— 只断言不崩等于没测。
  */
 class SpeechProviderResolverTest {
 
@@ -28,11 +28,7 @@ class SpeechProviderResolverTest {
         ),
     )
 
-    private fun media(
-        follow: Boolean,
-        providerId: String = "p1",
-        modelId: String = "tts-1",
-    ): MediaConfig = MediaConfig(
+    private fun media(follow: Boolean, providerId: String = "p1", modelId: String = "tts-1"): MediaConfig = MediaConfig(
         ttsEngine = "openai",
         ttsApiKey = "sk-manual",
         ttsModel = "manual-model",
@@ -42,11 +38,7 @@ class SpeechProviderResolverTest {
         ttsModelId = modelId,
     )
 
-    private fun asr(
-        follow: Boolean,
-        providerId: String = "p1",
-        modelId: String = "tts-1",
-    ): AsrConfig = AsrConfig(
+    private fun asr(follow: Boolean, providerId: String = "p1", modelId: String = "tts-1"): AsrConfig = AsrConfig(
         provider = io.zer0.muse.asr.AsrProviderType.OPENAI_WHISPER,
         apiKey = "sk-manual",
         model = "manual-model",
@@ -64,7 +56,7 @@ class SpeechProviderResolverTest {
         assertEquals("https://manual.example.com/v1", resolved.baseUrl)
         assertEquals("sk-manual", resolved.apiKey)
         assertEquals("manual-model", resolved.model)
-        assertNull("Apagar el interruptor no es una reversión,No se debe dar ninguna razón", resolved.fallbackReason)
+        assertNull("开关关闭不属于回退,不应带原因", resolved.fallbackReason)
     }
 
     @Test
@@ -128,7 +120,7 @@ class SpeechProviderResolverTest {
         assertEquals("sk-provider", applied.apiKey)
         assertEquals("https://relay.example.com/v1", applied.baseUrl)
         assertEquals("tts-1", applied.model)
-        // Los campos sin credenciales no se ven afectados
+        // 非凭据字段不受影响
         assertEquals(config.sampleRate, applied.sampleRate)
         assertEquals(config.provider, applied.provider)
     }
@@ -140,12 +132,12 @@ class SpeechProviderResolverTest {
         val applied = config.withResolvedEndpoint(resolved)
 
         assertEquals(SpeechProviderResolver.REASON_PROVIDER_MISSING, resolved.fallbackReason)
-        assertEquals("Heredar el objeto de configuración original,Los valores manuales no se sobrescriben", config, applied)
+        assertEquals("沿用原配置对象,手填值不被覆盖", config, applied)
     }
 
     @Test
     fun asrDashScopeIgnoresFollowSwitchEntirely() {
-        // DashScope Vaya al punto final wss incorporado:Incluso si el interruptor está encendido y el proveedor ha sido eliminado,Tampoco puedo solicitar reembolso(De lo contrario, aparecerán falsas alarmas.)
+        // DashScope 走内置 wss 端点:即使开关开着、供应商已被删,也不能报回退(否则会出现假告警)
         val config = AsrConfig(
             provider = io.zer0.muse.asr.AsrProviderType.DASHSCOPE,
             apiKey = "sk-manual",
@@ -180,11 +172,11 @@ class SpeechProviderResolverTest {
         assertEquals(false, decoded.ttsFollowProvider)
         assertEquals("", decoded.ttsProviderId)
         assertEquals("", decoded.ttsModelId)
-        // Los campos antiguos siguen siendo válidos.
+        // 旧字段照旧生效
         assertEquals("sk-legacy", decoded.ttsApiKey)
         assertEquals("https://legacy.example.com/v1", decoded.ttsEndpoint)
         assertEquals(1.2f, decoded.ttsSpeechRate, 0f)
-        // Cuando el interruptor está apagado, los resultados del análisis deben ser consistentes con la versión anterior.
+        // 关着开关时解析结果必须与旧版一致
         val resolved = SpeechProviderResolver.resolveMedia(decoded, listOf(provider))
         assertEquals(SpeechEndpointSource.MANUAL, resolved.source)
         assertEquals("https://legacy.example.com/v1", resolved.baseUrl)

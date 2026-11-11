@@ -7,17 +7,17 @@
    dark palette. No page rule may carry a raw colour value or font size.
    ===================================================================== */
 
-/* Cuatro tamaños de fuente:small / medium / large / xlarge(sin atributos = medium).
-   --text-scale Solo multiplica el token de composición tipográfica (tamaño de fuente/alto de línea) y no escala en general. */
+/* 字号四档：small / medium / large / xlarge（无属性 = medium）。
+   --text-scale 只乘在排版令牌（字号 / 行高）上，不整体缩放。 */
 :root[data-font-scale="small"] { --text-scale: 0.9; }
 :root[data-font-scale="medium"] { --text-scale: 1; }
 :root[data-font-scale="large"] { --text-scale: 1.1; --host-bubble-boost: 1.08; }
 :root[data-font-scale="xlarge"] { --text-scale: 1.2; --host-bubble-boost: 1.16; }
 
 :root {
-  /* Escala del tamaño de fuente: cuatro niveles de ampliación, solo controla el token de composición tipográfica (tamaño de fuente/alto de línea) y no escala en general. */
+  /* 字号缩放：四档倍率，只驱动排版令牌（字号 / 行高），不整体缩放 */
   --text-scale: 1;
-  /* Cuando utilice caracteres grandes, ensanche las burbujas para evitar dejar solo unos pocos caracteres en una línea. */
+  /* 大字时把气泡放宽一点，避免一行只剩几个字 */
   --host-bubble-boost: 1;
   /* surfaces + ink */
   --bg: var(--muse-color-web-light-bg);
@@ -54,8 +54,8 @@
   --radius-md: var(--muse-radius-web-md);
   --radius-lg: var(--muse-radius-web-lg);
   --radius-xl: var(--muse-radius-web-xl);
-  /* type —— El mismo sistema sans-serif que la aplicación celular y solo hay una pila de fuentes en todo el sitio (iOS Arriba está SF Pro,
-     Windows Lo anterior es Segoe UI, el chino recae en PingFang / Microsoft Yahei). Las reglas de página ya no hacen referencia a alias serif. */
+  /* type —— 与手机 App 同一套系统无衬线，全站只有一个字体栈（iOS 上是 SF Pro，
+     Windows 上是 Segoe UI，中文落到 PingFang / 微软雅黑）。页面规则不再引用衬线别名。 */
   --font-ui: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
   color-scheme: light;
@@ -154,7 +154,7 @@ button.quiet:hover { color: var(--accent-strong); background: var(--accent-soft)
 .composer { width: min(960px, 100%); justify-self: center; padding: 12px clamp(20px, 6vw, 82px) max(20px, env(safe-area-inset-bottom)); background: linear-gradient(180deg, transparent, var(--muse-color-web-light-bg-a82) 20%); }
 .provider-row { display: flex; gap: 7px; margin: 0 0 8px; }
 .provider-row select, .provider-row input { flex: 0 1 150px; min-height: 34px; padding: 0 10px; border-radius: var(--radius-xs); font-size: var(--muse-type-web-caption); }
-.provider-row input[aria-label="modelo"] { flex: 0 1 132px; }
+.provider-row input[aria-label="模型"] { flex: 0 1 132px; }
 .provider-row input[aria-label="API Key"] { flex: 1 1 190px; }
 .send-row { display: flex; align-items: flex-end; gap: 8px; padding: 7px; border: 1px solid var(--border-strong); border-radius: var(--radius-lg); background: var(--muse-color-web-light-surface-raised-a88); box-shadow: var(--shadow-sm); }
 .send-row textarea { min-height: 49px; max-height: 180px; flex: 1; padding: 9px 10px; border: 0; border-radius: var(--radius-md); background: transparent; line-height: 1.5; }
@@ -258,30 +258,30 @@ button.quiet:hover { color: var(--accent-strong); background: var(--accent-soft)
 }
 
 /* =====================================================================
-   Host mobile shell (Interfaz LAN celular Muse)
+   Host mobile shell (手机 Muse 的局域网界面)
    ---------------------------------------------------------------------
-   Esta capa debe ser "el mismo producto" que la aplicación celular: la fuente debe ser system sans serif (--font-ui),
-   La combinación de colores sigue la paleta de colores principal de Muse de tokens.json (LaurelGreen + App escala de color de superficie),
-   Geometría usando Compose MusePaddings / MuseCornerRadius / ComponentSizes.
+   这一层要和手机 App 是「同一个产品」：字体走系统无衬线（--font-ui），
+   配色走 tokens.json 的 Muse 主色板（LaurelGreen + App 的 surface 色阶），
+   几何走 Compose 的 MusePaddings / MuseCornerRadius / ComponentSizes。
 
-   Dos conjuntos de temas dependen `.host-scope` Aislamiento de alcance:SaaS cáscara (`.shell` / `.app-layout`
-   Esa sección, beige cálido) permanece tal cual,Host Pon el antiguo alias (--ink / --accent-strong /
-   --border / --shadow-* …) redirecciona a primitivas.css `--ui-*`(scheme → Semántica
-   variable, ha seguido el esquema de color preferido), por lo que no es necesario volver a escribir aquí el valor del color para colores claros y oscuros.
+   两套主题靠 `.host-scope` 作用域隔离：SaaS 外壳（`.shell` / `.app-layout`
+   那一段，暖米色）保持原样，Host 作用域里把旧别名（--ink / --accent-strong /
+   --border / --shadow-* …）重指向 primitives.css 的 `--ui-*`（scheme → 语义
+   变量，已跟随 prefers-color-scheme），因此深浅色不需要在这里再写一遍色值。
    ===================================================================== */
 
 .host-scope {
-  /* Fondo/Superficie/Trazo:App La ranura colorScheme */
+  /* 底色 / 表面 / 描边：App 的 colorScheme 槽位 */
   --bg: var(--ui-surface);
   --surface: var(--ui-surface-card);
-  --surface-raised: var(--ui-surface); /* Sensación del papel: no lo levante nuevamente en la misma capa */
+  --surface-raised: var(--ui-surface); /* 纸面感：不在同一层再抬一次 */
   --surface-muted: var(--ui-surface-variant);
   --ink: var(--ui-on-surface);
   --ink-soft: var(--ui-on-surface-variant);
-  /* App El Secundario (contorno gris medio #8E8E93) sobre una base clara solo tiene ~3.1:1, no puede llegar a AA;
-     El texto secundario utiliza onSurface@80% en su lugar (~9:1). Se utiliza sólo para texto; no dibuje bordes con este alias. */
+  /* App 的 Secondary（中灰 outline #8E8E93）在浅色底上只有 ~3.1:1，达不到 AA；
+     次要文字改用 onSurface@80%（约 9:1）。仅用于文字，不用这个别名画边框。 */
   --ink-muted: var(--ui-label-ink);
-  /* Color principal:LaurelGreen */
+  /* 主色：LaurelGreen */
   --accent: var(--ui-primary);
   --accent-strong: var(--ui-primary);
   --accent-hover: var(--ui-primary);
@@ -290,18 +290,18 @@ button.quiet:hover { color: var(--accent-strong); background: var(--accent-soft)
   --success: var(--ui-primary);
   --danger: var(--ui-error);
   --danger-hover: var(--ui-error);
-  /* App No hay espacio de advertencia: el ámbar solo representa el color de fondo y el trazo (emotion.amberWarmth), para redacción publicitaria onSurface */
+  /* App 没有 warning 槽位：琥珀只做底色与描边（emotion.amberWarmth），文案用 onSurface */
   --warning: var(--muse-color-emotion-amber-warmth);
   --warning-text: var(--ui-on-surface);
   --border: var(--ui-divider);
   --border-strong: var(--ui-outline-variant);
   --code-bg: color-mix(in srgb, var(--ui-on-surface) 6%, transparent);
   --code-ink: var(--ui-on-surface);
-  /* Papel sin elevación: todas las sombras se eliminan y las capas dependen de la diferencia de color entre el fondo y la línea del cabello. */
+  /* 没有 elevation 的纸面：阴影一律收起，层次靠底色差与发丝线 */
   --shadow-sm: none;
   --shadow-md: none;
   --shadow-drawer: none;
-  /* Derivar alias semánticos: ambos de --ui-* Derivado, no se introducen nuevos valores de color */
+  /* 派生语义别名：均从 --ui-* 派生，不引入新色值 */
   --host-veil: color-mix(in srgb, var(--ui-on-surface) 4%, transparent);
   --host-warning-veil: color-mix(in srgb, var(--warning) 14%, transparent);
   --host-warning-line: color-mix(in srgb, var(--warning) 30%, transparent);
@@ -312,15 +312,15 @@ button.quiet:hover { color: var(--accent-strong); background: var(--accent-soft)
   --host-scrim: color-mix(in srgb, var(--ui-on-surface) 38%, transparent);
   --host-toast-bg: var(--ui-on-surface);
   --host-toast-ink: var(--ui-surface);
-  /* Alias de geometría: todos los tokens que apuntan a particiones de componentes (Compose lado homólogo) */
-  --host-page: calc(var(--muse-space-screen) * var(--text-scale)); /* 16 Márgenes, escala con el tamaño de fuente. */
-  --host-hairline: var(--muse-component-card-border-width); /* 0.5 hilo de pelo */
-  --host-card-gap: var(--muse-component-card-group-gap); /* Espaciado del mazo de cartas 20 */
-  --host-touch-min: var(--muse-component-touch-target); /* 48 tocar el objetivo */
-  /* El contenido en formato de pantalla ancha tiene un ancho máximo de: 640 para tableta, 720 para computadora de escritorio (se explica en @media a continuación).
-     640 = Espacio dejado a ambos lados de una columna plana;720 = 16px Aproximadamente 80 caracteres de texto./El límite superior de lectura de filas. */
+  /* 几何别名：全部指向 component 分区的令牌（Compose 侧同源） */
+  --host-page: calc(var(--muse-space-screen) * var(--text-scale)); /* 16 页边距，随字号缩放 */
+  --host-hairline: var(--muse-component-card-border-width); /* 0.5 发丝线 */
+  --host-card-gap: var(--muse-component-card-group-gap); /* 卡片组间距 20 */
+  --host-touch-min: var(--muse-component-touch-target); /* 48 触控目标 */
+  /* 宽屏档的内容最大宽：平板 640、桌面 720（在下面的 @media 里覆盖）。
+     640 = 平板单栏两侧各留出的留白；720 = 16px 正文约 80 字符/行的阅读上限。 */
   --host-content-max: 640px;
-  /* Ancho de la columna izquierda del escritorio: requisitos 280–320, tome el valor mediano de 300; no hay ningún rango de ancho de columna vertical en el token. */
+  /* 桌面档左栏宽度：要求 280–320，取中值 300；令牌里没有竖向栏宽档位。 */
   --host-sidebar-w: 300px;
   color-scheme: light;
   color: var(--ink);
@@ -329,13 +329,13 @@ button.quiet:hover { color: var(--accent-strong); background: var(--accent-soft)
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .host-scope { color-scheme: dark; }
 }
-/* Tema forzado: las propiedades tienen prioridad sobre la configuración del sistema */
+/* 强制主题：属性优先于系统设置 */
 :root[data-theme="dark"] .host-scope { color-scheme: dark; }
 :root[data-theme="light"] .host-scope { color-scheme: light; }
 
-/* El área mínima en la que se puede hacer clic es 44: el tamaño visual puede ser más pequeño (como 36 para el botón de enviar), haga clic en el cuadro para aumentarlo a 44.
-   Botón primitivo (.muse-icon-button / .muse-capsule / .muse-switch) viene con tamaño Compose,
-   No participa en la cobertura de aparición de este botón ordinario. */
+/* 可点区域最小 44：视觉尺寸可以更小（如发送按钮 36），点击盒子补到 44。
+   基元按钮（.muse-icon-button / .muse-capsule / .muse-switch）自带 Compose 尺寸，
+   不参与这条普通按钮的外观覆盖。 */
 .host-scope button { min-height: var(--host-touch-min); }
 .host-scope button:not(.quiet):not(.muse-icon-button):not(.muse-capsule):not(.muse-switch) {
   border-radius: var(--muse-radius-button);
@@ -348,7 +348,7 @@ button.quiet:hover { color: var(--accent-strong); background: var(--accent-soft)
 .host-scope button.quiet { color: var(--ink-soft); font-size: var(--muse-type-scale-label-large-font-size); }
 .host-scope button.quiet:hover { color: var(--accent); background: var(--ui-press-veil); }
 
-/* Página de configuración: título de grupo/600/secundario; Tarjeta eliminar sombra (App Es el papel, no la pila de cartas) */
+/* 设置页：分组标题小号 / 600 / secondary；卡片去阴影（App 是纸面，不是卡片堆叠） */
 .host-scope .muse-section-label {
   padding-bottom: var(--muse-space-label-vertical-gap);
   color: var(--ui-outline);
@@ -389,7 +389,7 @@ body.host-locked { overflow: hidden; overscroll-behavior: none; background: var(
   .host-root { height: var(--host-vvh, 100dvh); }
 }
 
-/* ── top bar(MuseTopBar: altura de línea 44 = titleLarge 26 + Arriba y abajo 8 + en línea 1) ── */
+/* ── top bar（MuseTopBar：行高 44 = titleLarge 26 + 上下 8 + 行内 1） ── */
 .host-topbar {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
@@ -465,8 +465,8 @@ button.host-banner-action { flex: 0 0 auto; color: var(--accent); font-weight: v
 .host-empty p { max-width: 30ch; margin: 0; color: var(--ink-muted); font-size: var(--muse-type-scale-body-medium-font-size); line-height: var(--muse-type-scale-body-medium-line-height); }
 .host-empty button { margin-top: var(--muse-space-tight-gap); }
 
-/* Separación de tiempo:App El mismo separador de fechas——Dos líneas de cabello + texto de fecha centrado,labelSmall / outline.
-   host-thread La brecha es 20, aquí use un margen negativo para recuperarla. contentGap(8) apariencia y sensación, sin la nueva longitud. */
+/* 时间分隔：App 的 DateSeparator 同款——两条发丝线 + 居中日期字，labelSmall / outline。
+   host-thread 的 gap 是 20，这里用负边距把它拉回 contentGap(8) 的观感，不带新长度。 */
 .host-day-sep {
   display: flex;
   align-items: center;
@@ -482,10 +482,10 @@ button.host-banner-action { flex: 0 0 auto; color: var(--accent); font-weight: v
 .host-day-sep-line { flex: 1 1 auto; height: var(--muse-space-divider-width); background: var(--border); }
 .host-day-sep-label { flex: 0 0 auto; font-variant-numeric: tabular-nums; }
 
-/* Burbujas:MuseBubbleStyles —— Relación de ancho máximo, esquinas redondeadas del cuerpo, esquinas finales, relleno y espaciado, todos toman fichas */
+/* 气泡：MuseBubbleStyles —— 最大宽度比、主体圆角、尾角、内边距、间距全部取令牌 */
 .host-bubble {
-  position: relative; /* Copia la entrada y pégala fuera de la burbuja. */
-  /* Las burbujas se relajan cuando los personajes son grandes (--host-bubble-boost), de lo contrario, solo quedan unas pocas palabras en una línea */
+  position: relative; /* 复制入口贴到气泡外侧 */
+  /* 大字时气泡放宽（--host-bubble-boost），否则一行只剩几个字 */
   max-width: calc(100% * var(--muse-component-bubble-max-width-ratio) * var(--host-bubble-boost));
   padding: calc(var(--muse-component-bubble-inner-padding-y) * var(--text-scale)) calc(var(--muse-component-bubble-inner-padding-x) * var(--text-scale));
   border-radius: var(--muse-component-bubble-radius);
@@ -511,8 +511,8 @@ button.host-banner-action { flex: 0 0 auto; color: var(--accent); font-weight: v
 .host-bubble .message-content p:last-child { margin-bottom: 0; }
 .host-scope .message-content pre { border: 0; }
 .host-bubble .message-content pre { margin: var(--muse-space-content-gap) 0; padding: var(--muse-space-input-padding); font-size: var(--muse-type-scale-body-small-font-size); border-radius: var(--muse-radius-small); }
-/* Imagen: El límite de altura para una sola imagen es 42vh (el mismo límite superior que el cuerpo del bloque plegable). Para varias imágenes, hay dos columnas de cuadrículas y cada cuadrícula se corta en un cuadrado;
-   Haga clic para ver en pantalla completa. La dirección ha sido normalizada por messageMedia.ts, simplemente dibújala aquí. */
+/* 图片：单图限高 42vh（与折叠块 body 同一上限），多图两列格子，每格裁成方形；
+   点开是全屏查看。地址已由 messageMedia.ts 归一过，这里只管画。 */
 .host-bubble-images { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--muse-space-tight-gap); margin-top: var(--muse-space-content-gap); }
 .host-bubble-images.is-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 button.quiet.host-bubble-image {
@@ -528,7 +528,7 @@ button.quiet.host-bubble-image {
 }
 .host-bubble-image img { display: block; width: 100%; max-height: 42vh; border-radius: var(--muse-radius-small); object-fit: contain; }
 .host-bubble-images.is-grid .host-bubble-image img { aspect-ratio: 1 / 1; object-fit: cover; }
-/* Host Cuando solo se proporciona la ruta local del teléfono celular o el navegador no se carga: proporcione un cuadro de descripción sin perder una imagen rota. */
+/* Host 只给了手机本地路径、或浏览器加载失败时：给个说明框，不丢一个碎图。 */
 .host-bubble-image-missing {
   display: grid;
   place-items: center;
@@ -543,12 +543,12 @@ button.quiet.host-bubble-image {
   text-align: center;
 }
 
-/* Barra de voz: botón de reproducción + progreso + duración; cuando no haya una dirección reproducible, sólo quedará la "voz" estática. · 12″”. */
+/* 语音条：播放键 + 进度 + 时长；没有可播放地址时只留静态「语音 · 12″」。 */
 .host-voice { display: flex; align-items: center; gap: var(--muse-space-content-gap); margin-top: var(--muse-space-content-gap); }
 .host-voice.is-static { gap: var(--muse-space-tight-gap); }
 .host-voice-icon { display: inline-flex; align-items: center; }
 button.host-voice-button {
-  position: relative; /* Haga clic en el cuadro y use ::after para expandir, ver más abajo */
+  position: relative; /* 点击盒子用 ::after 外扩，见下 */
   display: grid;
   flex: 0 0 auto;
   place-items: center;
@@ -560,7 +560,7 @@ button.host-voice-button {
   color: inherit;
   background: var(--ui-press-veil);
 }
-/* Vision 32, puede hacer clic en el área para completar el objetivo táctil (48); El mismo método que el botón copiar y el botón enviar. */
+/* 视觉 32，可点区域补到触控目标（48）；和复制按钮、发送按钮同一手法。 */
 button.host-voice-button::after {
   position: absolute;
   inset: calc((var(--muse-icons-control-touch) - var(--host-touch-min)) / 2);
@@ -574,7 +574,7 @@ button.quiet.host-voice-button { color: inherit; font-size: var(--muse-type-scal
 .host-voice-note { flex: 0 0 auto; color: var(--ink-muted); font-size: var(--muse-type-scale-label-small-font-size); }
 .host-voice-audio { display: none; }
 
-/* Detalles de llamada de herramienta: dos párrafos: parámetro/resultado; las etiquetas están en labelSmall y el texto tiene una fuente de ancho constante. */
+/* 工具调用明细：参数 / 结果两段；标签走 labelSmall，正文等宽字体。 */
 .host-tool-fields { display: grid; gap: var(--muse-space-content-gap); }
 .host-tool-field { display: grid; gap: var(--muse-space-tiny-gap); }
 .host-tool-field-label {
@@ -593,7 +593,7 @@ button.quiet.host-voice-button { color: inherit; font-size: var(--muse-type-scal
   overflow-wrap: anywhere;
 }
 
-/* Estado a nivel de mensaje: enviar una línea de caracteres pequeños; no dar la razón + intentarlo de nuevo. El botón de reintento es la única operación de escritura nueva en este mensaje. */
+/* 消息级状态：发送中一行小字；失败给原因 + 重试。重试按钮是本条消息里唯一的新增写操作。 */
 .host-msg-status {
   display: flex;
   align-items: center;
@@ -614,7 +614,7 @@ button.quiet.host-voice-button { color: inherit; font-size: var(--muse-type-scal
   border: var(--host-hairline) solid var(--host-danger-line);
   border-radius: var(--muse-radius-small);
   color: var(--danger);
-  /* Parte inferior opaca: las filas fallidas también caerán en la burbuja del usuario (parte inferior del color principal) y será caótica si se ve. */
+  /* 不透明底：失败行也会落在用户气泡（主色底）里，透过去会混沌 */
   background: var(--surface);
   font-size: var(--muse-type-scale-label-medium-font-size);
   line-height: var(--muse-type-scale-label-medium-line-height);
@@ -629,7 +629,7 @@ button.quiet.host-retry {
   font-size: var(--muse-type-scale-label-medium-font-size);
 }
 
-/* Imagen en pantalla completa: máscara + imagen central de relación media; Cierre la tecla para evitar golpes. */
+/* 图片全屏：遮罩 + 居中等比图；关闭键避开刘海。 */
 .host-lightbox {
   position: fixed;
   z-index: 40;
@@ -656,7 +656,7 @@ button.quiet.host-lightbox-close {
   background: var(--surface);
 }
 
-/* ── Subpágina de configuración: valor actual/paso numérico/verificación de enumeración a la derecha ──────────────────────── */
+/* ── 设置子页：右侧当前值 / 数字步进 / 枚举勾选 ──────────────────────── */
 .host-setting-value {
   color: var(--ink-muted);
   font-size: var(--muse-type-scale-label-medium-font-size);
@@ -665,7 +665,7 @@ button.quiet.host-lightbox-close {
 }
 .host-stepper { display: inline-flex; align-items: center; gap: var(--muse-space-tight-gap); }
 button.quiet.host-stepper-button {
-  position: relative; /* Haga clic en el cuadro y use ::after para expandirlo al objetivo táctil, consulte a continuación */
+  position: relative; /* 点击盒子用 ::after 外扩到触控目标，见下 */
   display: grid;
   place-items: center;
   width: var(--muse-icons-control-touch);
@@ -694,8 +694,8 @@ button.quiet.host-stepper-button:hover { color: var(--accent); background: var(-
   text-align: center;
 }
 .host-setting-check { display: inline-flex; color: var(--accent); }
-/* Menú de mensajes (copiar/citar/favorito/eliminar/selección múltiple): haga clic o mantenga presionado el mensaje para visualizarlo.
-   Se organiza debajo del interior de la burbuja y permite ajustar la línea sin sacar la entrada de la pantalla ni empujar otros mensajes. */
+/* 消息菜单（复制 / 引用 / 收藏 / 删除 / 多选）：点开或长按消息后才渲染，
+   排在气泡内部下方并允许换行，不会把入口顶出屏幕，也不推挤其他消息。 */
 .host-bubble-tools {
   display: flex;
   flex-wrap: wrap;
@@ -703,14 +703,14 @@ button.quiet.host-stepper-button:hover { color: var(--accent); background: var(-
   margin-top: var(--muse-space-content-gap);
 }
 button.quiet.host-tool-button {
-  position: relative; /* Haga clic en el cuadro y use ::after para expandir, como se describe a continuación */
+  position: relative; /* 点击盒子用 ::after 外扩，下面说 */
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: var(--muse-space-tiny-gap);
   min-height: var(--muse-icons-control-touch);
   padding: 0 var(--muse-space-content-gap);
-  /* Cápsula pequeña con altura 32: radio 28 ≥ La mitad de la altura, no se convertirá en un óvalo en un 50 %. */
+  /* 高 32 的小胶囊：半径 28 ≥ 半高，不会被 50% 拉成椭圆 */
   border-radius: var(--muse-radius-mega);
   color: var(--ink-soft);
   background: var(--surface);
@@ -718,7 +718,7 @@ button.quiet.host-tool-button {
   font-size: var(--muse-type-scale-label-small-font-size);
   white-space: nowrap;
 }
-/* Vision 32, puede hacer clic en el área para completar el objetivo táctil (48)——El mismo método que el botón de enviar, transparente ::after no participa en el diseño. */
+/* 视觉 32，可点区域补到触控目标（48）——和发送按钮同一手法，透明 ::after 不参与布局。 */
 button.quiet.host-tool-button::after {
   position: absolute;
   inset: calc((var(--muse-icons-control-touch) - var(--host-touch-min)) / 2);
@@ -730,17 +730,17 @@ button.quiet.host-tool-button:hover {
   background: var(--surface);
   box-shadow: 0 0 0 var(--muse-space-divider-width) var(--accent);
 }
-/* La eliminación es una operación destructiva y se colorea por separado. */
+/* 删除是破坏性操作，单独标色 */
 button.quiet.host-tool-button.is-danger { color: var(--danger); }
 button.quiet.host-tool-button.is-danger:hover {
   color: var(--danger);
   background: var(--surface);
   box-shadow: 0 0 0 var(--muse-space-divider-width) var(--host-danger-line);
 }
-/* La burbuja del usuario tiene el color de fondo principal y la cápsula del menú debe cambiar a un color de fondo diferente para verlo claramente. */
+/* 用户气泡是主色底，菜单胶囊要换一套底色才看得清 */
 .host-bubble.is-user button.quiet.host-tool-button { box-shadow: 0 0 0 var(--muse-space-divider-width) var(--ui-on-primary); color: var(--ui-on-primary); }
 
-/* ── Cita: el bloque citado en la burbuja / la barra temporal de referencia sobre el área de entrada ─────────────── */
+/* ── 引用：气泡内的被引用块 / 输入区上方的引用草稿条 ─────────────── */
 .host-quote {
   display: grid;
   gap: var(--muse-space-tiny-gap);
@@ -788,10 +788,10 @@ button.quiet.host-quote-draft-close {
   color: var(--ink-muted);
 }
 
-/* ── Selección múltiple: contenedor de filas + casilla de verificación izquierda (la burbuja en sí no se mueve) + barra superior/Barra de operación de la barra inferior ───── */
+/* ── 多选：行容器 + 左侧勾选框（气泡本身不动） + 顶栏/底栏操作条 ───── */
 .host-msg-row { display: flex; align-items: flex-start; gap: var(--muse-space-content-gap); width: 100%; }
 .host-msg-row.is-user { justify-content: flex-end; }
-/* La alineación automática de la burbuja se usó originalmente para el diseño de columnas del hilo. Al ingresar al contenedor de filas, se debe regresar a la fila. */
+/* 气泡的 align-self 原本是给 thread 的列布局用的，进了行容器要交还给行 */
 .host-msg-row > .host-bubble { align-self: auto; }
 button.host-select {
   display: grid;
@@ -822,7 +822,7 @@ button.quiet.host-selection-all {
   color: var(--accent);
   font-size: var(--muse-type-scale-label-large-font-size);
 }
-/* La barra superior de selección múltiple tiene tres columnas fijas (salir/N elementos seleccionados/seleccionar todo) y no sigue la cuadrícula de dos columnas del archivo de escritorio. */
+/* 多选顶栏固定三列（退出 / 已选 N 条 / 全选），不跟着桌面档的两列网格走 */
 .host-topbar.host-selection-topbar { grid-template-columns: auto minmax(0, 1fr) auto; }
 .host-selection-bar {
   display: flex;
@@ -840,7 +840,7 @@ button.quiet.host-selection-all {
 }
 button.quiet.host-selection-danger { color: var(--danger); }
 .host-selection-bar > button:disabled { opacity: var(--muse-color-alpha-action-disabled); }
-/* La representación de un solo mensaje es anormal: el mensaje del marcador de posición no divide la lista completa. */
+/* 单条消息渲染异常：占位提示不拆整个列表。 */
 .host-msg-error {
   display: flex;
   align-items: center;
@@ -896,7 +896,7 @@ button.quiet.host-selection-danger { color: var(--danger); }
 .host-details[open] .host-details-chevron { transform: rotate(-135deg); }
 .host-details-body { max-height: 42vh; overflow: auto; padding: var(--muse-space-input-padding); color: var(--ink-soft); font-size: var(--muse-type-scale-body-small-font-size); line-height: var(--muse-type-scale-body-small-line-height); white-space: pre-wrap; }
 
-/* Sección de estado para líneas de título de bloques plegables: herramientas e ideas compartidas.accent Hay un pequeño punto de respiración en el equipo, lo que indica que todavía estás corriendo. */
+/* 折叠块标题行的状态段：工具与思考共用。accent 档带一个呼吸小点，说明还在跑。 */
 .host-details-status {
   display: inline-flex;
   flex: 0 0 auto;
@@ -926,7 +926,7 @@ button.host-jump {
   min-height: var(--host-touch-min);
   padding: 0 var(--muse-space-input-padding);
   border: var(--host-hairline) solid var(--border);
-  border-radius: var(--muse-radius-mega); /* 28 ≥ 44/2 ⇒ cápsula (50% se convertirá en una elipse) */
+  border-radius: var(--muse-radius-mega); /* 28 ≥ 44/2 ⇒ 胶囊（50% 会变成椭圆） */
   color: var(--ink-soft);
   background: var(--surface);
   font-size: var(--muse-type-scale-label-medium-font-size);
@@ -943,7 +943,7 @@ button.host-jump {
   border-top: var(--host-hairline) solid var(--border);
   background: var(--bg);
 }
-/* Isla de entrada: True Capsule (esquinas redondeadas = media altura)+ Relleno 6/0, altura de línea determinada por 48 objetivos táctiles */
+/* 输入岛：真胶囊（圆角 = 半高）+ 内边距 6/0，行高由 48 触控目标决定 */
 .host-input-shell {
   display: flex;
   align-items: center;
@@ -962,7 +962,7 @@ textarea.host-input {
   border-radius: 0;
   background: transparent;
   color: var(--ink);
-  font-size: var(--muse-type-scale-body-large-font-size); /* ≥16px:iOS Safari Enfocar sin zoom */
+  font-size: var(--muse-type-scale-body-large-font-size); /* ≥16px：iOS Safari 聚焦不缩放 */
   line-height: var(--muse-type-scale-body-large-line-height);
   letter-spacing: var(--muse-type-scale-body-large-letter-spacing);
   resize: none;
@@ -974,7 +974,7 @@ textarea.host-input:disabled { opacity: var(--muse-color-alpha-action-content-di
   display: grid;
   flex: 0 0 auto;
   place-items: center;
-  width: var(--muse-icons-stop-button); /* 36 redondo */
+  width: var(--muse-icons-stop-button); /* 36 圆形 */
   height: var(--muse-icons-stop-button);
   min-height: var(--muse-icons-stop-button);
   padding: 0;
@@ -983,7 +983,7 @@ textarea.host-input:disabled { opacity: var(--muse-color-alpha-action-content-di
   background: var(--accent);
   transition: background var(--muse-motion-durations-fast) var(--ease), transform var(--muse-motion-durations-fast) var(--ease);
 }
-/* Vision 36, haga clic fuera del cuadro para expandirse al objetivo táctil (48;Transparente ::después no participa en el diseño) */
+/* 视觉 36，点击盒子外扩到触控目标（48；透明 ::after 不参与布局） */
 .host-composer button.host-send::after { position: absolute; inset: calc((var(--muse-icons-stop-button) - var(--host-touch-min)) / 2); border-radius: var(--muse-radius-pill); content: ""; }
 .host-composer button.host-send:hover:not(:disabled) { background: var(--accent); box-shadow: none; transform: none; }
 .host-composer button.host-send:active:not(:disabled) { transform: scale(var(--muse-component-button-capsule-press-scale)); }
@@ -1034,13 +1034,13 @@ button.quiet.host-deny:hover { color: var(--danger); background: var(--host-dang
 .host-drawer-title { display: flex; align-items: center; justify-content: space-between; color: var(--ink); font-family: var(--font-ui); font-size: var(--muse-type-scale-title-large-font-size); font-weight: var(--muse-type-scale-title-large-weight); line-height: var(--muse-type-scale-title-large-line-height); letter-spacing: var(--muse-type-scale-title-large-letter-spacing); }
 button.quiet.host-drawer-close { width: var(--host-touch-min); height: var(--host-touch-min); min-height: var(--host-touch-min); padding: 0; border-radius: var(--muse-radius-button); }
 button.host-new { display: flex; align-items: center; justify-content: center; gap: var(--muse-space-tight-gap); min-height: var(--host-touch-min); border-radius: var(--muse-radius-button); }
-/* La entrada "Configuración" en el lado derecho de la línea de título de la columna izquierda (solo para archivos de escritorio, use la configuración en la parte inferior del cajón celular) */
+/* 左栏标题行右侧的「设置」入口（桌面档专用，手机抽屉里用底部的设置） */
 button.quiet.host-sidebar-settings { padding: 0 var(--muse-space-content-gap); border-radius: var(--muse-radius-button); font-size: var(--muse-type-scale-label-large-font-size); }
 .host-session-list { display: flex; flex: 1 1 auto; flex-direction: column; gap: var(--muse-space-tiny-gap); min-height: 0; overflow-y: auto; padding: 0 var(--muse-space-content-gap) var(--muse-space-aux-gap); }
 .host-drawer-empty { padding: var(--muse-space-large-gap) var(--muse-space-input-padding); color: var(--ink-muted); font-size: var(--muse-type-scale-body-medium-font-size); line-height: var(--muse-type-scale-body-medium-line-height); text-align: center; }
 .host-session-wrap { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) var(--host-touch-min); align-items: start; border-radius: var(--muse-radius-button); }
 .host-session-wrap.is-active { background: var(--accent-soft); }
-/* Fila de lista:MuseListItem —— Altura mínima 60, acolchado. 16/12 */
+/* 列表行：MuseListItem —— 最小高 60、内边距 16/12 */
 button.host-session { display: grid; gap: var(--muse-space-tiny-gap); width: 100%; min-height: var(--muse-component-list-row-min-height); padding: var(--muse-component-list-row-padding-y) var(--muse-component-list-row-padding-x); border-radius: var(--muse-radius-button); color: var(--ink); background: transparent; font-size: var(--muse-type-scale-body-medium-font-size); font-weight: var(--muse-type-scale-body-medium-weight); line-height: var(--muse-type-scale-body-medium-line-height); text-align: left; }
 button.host-session:hover { background: var(--ui-press-veil); }
 button.host-session.active { color: var(--accent); background: transparent; }
@@ -1055,10 +1055,10 @@ button.quiet.host-session-more { width: var(--host-touch-min); height: var(--hos
 button.quiet.host-danger { color: var(--danger); }
 .host-drawer-foot { display: flex; align-items: center; justify-content: space-between; gap: var(--muse-space-aux-gap); padding: var(--muse-space-content-gap) var(--host-page) calc(env(safe-area-inset-bottom, 0px) + var(--muse-space-input-padding)); border-top: var(--host-hairline) solid var(--border); }
 .host-build { color: var(--ink-muted); font-size: var(--muse-type-scale-label-small-font-size); line-height: var(--muse-type-scale-label-small-line-height); letter-spacing: var(--muse-type-scale-label-small-letter-spacing); }
-/* Operaciones inferiores del cajón (configuraciones/conexiones de salida): Los dos botones están uno al lado del otro y no compiten con el número de versión por el ancho de línea. */
+/* 抽屉底部操作（设置 / 退出连接）：两个按钮并排，不跟版本号抢行宽。 */
 .host-drawer-foot-actions { display: flex; flex: 0 0 auto; align-items: center; gap: var(--muse-space-content-gap); }
 
-/* ── toast(App La barra de aviso invertida:onSurface palabra inferior + superficie) ────────────── */
+/* ── toast（App 的反相提示条：onSurface 底 + surface 字） ────────────── */
 .host-toast {
   position: fixed;
   z-index: 30;
@@ -1080,7 +1080,7 @@ button.quiet.host-danger { color: var(--danger); }
 }
 @keyframes toast-in { from { opacity: 0; transform: translate(-50%, var(--muse-space-content-gap)); } to { opacity: 1; transform: translate(-50%, 0); } }
 
-/* ── PIN gate(La página antes de conectarse al teléfono celular también utiliza el alcance del Host) ──────────────── */
+/* ── PIN gate（连接手机前的一页，同样走 Host 作用域） ──────────────── */
 .host-login-screen { padding: max(var(--host-page), env(safe-area-inset-top)) var(--host-page) max(var(--host-page), env(safe-area-inset-bottom)); }
 .host-scope .host-login-screen { background: var(--bg); }
 .host-scope .host-login {
@@ -1099,41 +1099,41 @@ button.quiet.host-danger { color: var(--danger); }
 .host-scope input:focus, .host-scope textarea:focus, .host-scope select:focus { border-color: var(--accent); box-shadow: 0 0 0 var(--muse-space-tight-gap) var(--ui-primary-veil); background: var(--ui-surface-variant); }
 .host-login .host-pin-input { height: var(--muse-space-search-bar-height); font-family: var(--font-mono); font-size: var(--muse-type-scale-headline-medium-font-size); letter-spacing: .45em; text-align: center; text-indent: .45em; }
 
-/* ── Oscuro: no existe un conjunto único de valores de color.--ui-* Ya seguí el esquema de color preferido,
-   alias derivado (--host-veil / --host-danger-* …) son todos color-mix(onSurface|primary|error),
-   Se vuelve más oscuro automáticamente. Sólo hay un trazo oscuro que debe ser un poco más claro. ── */
+/* ── 深色：没有单独一套色值。--ui-* 已跟随 prefers-color-scheme，
+   派生别名（--host-veil / --host-danger-* …）都是 color-mix(onSurface|primary|error)，
+   自动跟着变深。这里只保留一处暗色下需要略向亮的描边。 ── */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .host-scope .host-login { border-color: var(--ui-outline-variant); }
 }
 :root[data-theme="dark"] .host-scope .host-login { border-color: var(--ui-outline-variant); }
 
 /* =====================================================================
-   Adaptación a pantalla ancha (tableta/escritorio)
+   宽屏适配（平板 / 桌面）
    ---------------------------------------------------------------------
-   El tercer nivel solo cambia la geometría y no cambia la estructura de la información:
-     < 600px   celular: mantener el status quo (una sola columna + cajón)
-     600–1023  Tableta: cajón fijo + columna única, burbuja y ancho de campo de entrada limitado a 640 y centrado
-     ≥ 1024    Escritorio: la lista de conversaciones cambia a la columna de la izquierda, el área de chat está a la derecha y el límite de contenido es 720 en el centro.
-   columna izquierda (.host-sidebar) y cajón (.host-drawer / .host-scrim) mutuamente excluyentes:
-   De forma predeterminada, la columna de la izquierda no se muestra y el cajón está disponible; ingrese el archivo del escritorio y gírelo al revés.
+   三档，只改几何，不改信息结构：
+     < 600px   手机：维持现状（单栏 + 抽屉）
+     600–1023  平板：仍是抽屉 + 单栏，气泡与输入栏限宽 640 居中
+     ≥ 1024    桌面：会话列表改常驻左栏，聊天区在右，内容限宽 720 居中
+   左栏（.host-sidebar）与抽屉（.host-drawer / .host-scrim）互斥：
+   默认左栏不显示、抽屉可用；进入桌面档反向翻转。
    ===================================================================== */
 .host-main { display: flex; flex: 1 1 auto; flex-direction: column; min-width: 0; min-height: 0; }
 .host-sidebar { display: none; }
-/* El botón "Expandir columna izquierda" en la barra superior: no aparece de forma predeterminada. Solo se muestra cuando el archivo del escritorio está cerrado y la columna izquierda está contraída (ver más abajo).
-   El selector debe ser anulado. `button.host-icon-button` display: inline-grid, así que trae .quiet. */
+/* 顶栏的「展开左栏」按钮：默认不出现，只在桌面档且左栏收起时显示（见下）。
+   选择器要盖过 `button.host-icon-button` 的 display: inline-grid，所以带上 .quiet。 */
 button.quiet.host-sidebar-toggle { display: none; }
 
-/* ── Tableta: el límite de ancho de una sola columna está centrado (el cajón permanece sin cambios) ──────────────────────────────── */
+/* ── 平板：单栏限宽居中（抽屉不变） ──────────────────────────────── */
 @media (min-width: 600px) {
   .host-thread { width: 100%; max-width: var(--host-content-max); margin-inline: auto; }
-  /* El campo de entrada sigue el ancho de la columna de contenido (en lugar de la pantalla completa): desplazamiento central más relleno de 16 hacia el área del mensaje, alineado en ambos lados */
+  /* 输入栏跟着内容栏宽（而不是整屏）：居中偏移再加回消息区的 16 内边距，两边对齐 */
   .host-composer { padding-inline: max(var(--host-page), calc((100% - var(--host-content-max)) / 2 + var(--host-page))); }
 }
 
-/* ── Escritorio: columna izquierda permanente + área de chat a la derecha ───────────────────────────────── */
+/* ── 桌面：左栏常驻 + 右侧聊天区 ───────────────────────────────── */
 @media (min-width: 1024px) {
   .host-scope { --host-content-max: 720px; }
-  /* Sólo la vista del chat se ha cambiado a dos columnas a la izquierda y a la derecha; la página de configuración sigue siendo una sola columna (el ancho está limitado y centrado por separado debajo) */
+  /* 只有聊天视图改成左右两栏；设置页仍是单栏（下面单独限宽居中） */
   .host-root:not(.is-settings) { flex-direction: row; }
   .host-sidebar {
     display: flex;
@@ -1144,32 +1144,32 @@ button.quiet.host-sidebar-toggle { display: none; }
     border-right: var(--host-hairline) solid var(--border);
     background: var(--bg);
   }
-  /* Los archivos de escritorio ya no usan cajones: se excluyen mutuamente con la columna de la izquierda y la columna superior tampoco es necesaria. ☰ */
+  /* 桌面档不再用抽屉：与左栏互斥，顶栏也不需要 ☰ */
   .host-scrim,
   .host-drawer { display: none; }
-  /* El archivo de escritorio no se utiliza ☰ cajón abierto; cubrir `button.host-icon-button` mostrar, así que trae .quiet */
+  /* 桌面档不用 ☰ 开抽屉；盖过 `button.host-icon-button` 的 display，所以带 .quiet */
   button.quiet.host-menu-button { display: none; }
   .host-topbar { grid-template-columns: minmax(0, 1fr) auto; }
-  /* Contraer la columna izquierda: toda la columna está oculta y aparece un botón de expandir en el lado izquierdo de la columna superior (la cuadrícula da paso a la primera columna). */
+  /* 左栏收起：整栏隐藏，顶栏左侧出现展开按钮（网格让出第一列） */
   .host-sidebar.is-collapsed { display: none; }
   .host-root.is-sidebar-collapsed .host-topbar { grid-template-columns: auto minmax(0, 1fr) auto; }
   .host-root.is-sidebar-collapsed .host-sidebar-toggle { display: inline-grid; }
-  /* Deje al menos 24 (largeGap), si es insuficiente, continúe usando el algoritmo de centrado */
+  /* 消息区与输入栏左右留白至少 24（largeGap），不足则继续用居中算法 */
   .host-scroll { padding-inline: var(--muse-space-large-gap); }
   .host-composer { padding-inline: max(var(--muse-space-large-gap), calc((100% - var(--host-content-max)) / 2 + var(--host-page))); }
-  /* La página de configuración también tiene un ancho limitado y está centrada en el archivo del escritorio, y no ocupa toda la pantalla. */
+  /* 设置页在桌面档同样限宽居中，不拉满整屏 */
   .host-root.is-settings .muse-screen-topbar,
   .host-root.is-settings .muse-screen-body { width: 100%; max-width: var(--host-content-max); margin-inline: auto; }
 }
 
 /* =====================================================================
-   Calidad y tolerancia a fallos: líneas discontinuas/esqueletos/errores de bloque/degradación de tipo desconocido/enfoque visible
+   质量与容错：断线条 / 骨架 / 区块错误 / 未知类型降级 / 焦点可见
    ---------------------------------------------------------------------
-   No hay ningún valor de color nuevo: el alias semántico de advertencia/peligro existente se usa para la desconexión y el esqueleto reutiliza .muse-skeleton.
-   solo color de texto --ink / --ink-soft / --ink-muted(Este último ha sido reemplazado por onSurface@80% sobre AA).
+   没有一条新色值：断线用既有 warning/danger 语义别名，骨架复用 .muse-skeleton，
+   文字颜色只用 --ink / --ink-soft / --ink-muted（后者已换成 onSurface@80% 过 AA）。
    ===================================================================== */
 
-/* Líneas quebradas: Líneas finas permanentes. El tramado se expresa mediante el color de fondo y el trazo, y el texto mantiene el contraste en la superficie. */
+/* 断线条：常驻细条。抖动靠底色与描边表达，文字保持 on-surface 的对比度 */
 .host-banner.is-danger {
   border-bottom-color: var(--host-danger-line);
   background: var(--host-danger-veil);
@@ -1177,7 +1177,7 @@ button.quiet.host-sidebar-toggle { display: none; }
 }
 .host-banner.is-warn { color: var(--ink); }
 
-/* Error de bloque: reemplace solo el bloque quemado y proporcione un "recargar este bloque" real y utilizable */
+/* 区块错误：只替换炸掉的那一块，给一个真实可用的「重新加载这一块」 */
 .host-block-error {
   display: grid;
   justify-items: center;
@@ -1202,7 +1202,7 @@ button.quiet.host-block-retry {
   font-size: var(--muse-type-scale-label-large-font-size);
 }
 
-/* Mensaje para función desconocida: una visualización neutral, sin adivinar qué es, sin excepción */
+/* 未知 role 的消息：一行中性展示，不猜它是什么，也不抛异常 */
 .host-msg-unknown {
   display: grid;
   align-self: stretch;
@@ -1218,7 +1218,7 @@ button.quiet.host-block-retry {
 .host-msg-unknown-label { color: var(--ink-muted); font-size: var(--muse-type-scale-label-small-font-size); }
 .host-msg-unknown-text { overflow-wrap: anywhere; white-space: pre-wrap; }
 
-/* Esqueleto: la lista de conversaciones y chat de la primera pantalla solo aparecerá después de esperar más de 300 ms. */
+/* 骨架：首屏聊天与会话列表，只在等超过 300ms 后才出现 */
 .host-chat-skeleton { display: grid; gap: var(--muse-component-bubble-gap); width: 100%; }
 .host-chat-skeleton-row {
   display: grid;
@@ -1235,10 +1235,10 @@ button.quiet.host-block-retry {
 }
 .host-session-skeleton { display: grid; gap: var(--muse-space-content-gap); padding: var(--muse-space-content-gap); }
 .host-session-skeleton-row { display: grid; gap: var(--muse-space-tight-gap); padding: var(--muse-component-list-row-padding-y) var(--muse-component-list-row-padding-x); }
-/* 300ms El marcador de posición en blanco en el interior: conserva un estado que los lectores de pantalla pueden leer e informar, pero no muestra el esqueleto. */
+/* 300ms 内的空白占位：保留一个可被读屏播报的状态，但不闪骨架 */
 .host-loading-quiet { min-height: var(--muse-space-large-gap); }
 
-/* Instrucciones deshabilitadas encima del área de entrada */
+/* 输入区上方的禁用说明 */
 .host-composer-hint {
   margin: 0;
   padding: 0 var(--muse-space-tight-gap);
@@ -1247,25 +1247,25 @@ button.quiet.host-block-retry {
   line-height: var(--muse-type-scale-label-medium-line-height);
 }
 
-/* Marcador de posición para el botón Atrás en la parte inferior de la página */
+/* 占位页底部的返回按钮 */
 .host-placeholder-actions { display: flex; justify-content: center; padding: 0 var(--host-page); }
 
-/* Enfoque del teclado: use uniformemente el trazo de color principal, sin dependencia outline: none */
+/* 键盘焦点：统一用主色描边，不靠 outline: none */
 .host-scope :focus-visible {
   outline: var(--muse-icons-progress-stroke) solid var(--accent);
   outline-offset: var(--muse-space-tiny-gap);
 }
-/* El cuadro de entrada en sí ya tiene un anillo de color principal de 4px (box-shadow), agregar un contorno lo hará más pesado:
-   Aquí se elimina el marco exterior, pero el foco sigue siendo visible, lo que no ocurre con el contorno: ninguno. */
+/* 输入框自己已经有一圈 4px 主色环（box-shadow），再加 outline 就重了：
+   这里去掉外框但仍然「看得见焦点」，不是 outline: none 了事。 */
 .host-scope input:focus-visible,
 .host-scope textarea:focus-visible,
 .host-scope select:focus-visible { outline: none; box-shadow: 0 0 0 var(--muse-space-tight-gap) var(--ui-primary-veil); }
 
 /* =====================================================================
-   Configurar la búsqueda
+   设置搜索
    ---------------------------------------------------------------------
-   En la parte superior de la página de categorías hay un cuadro de búsqueda montado en el techo. Haga clic en él para abrir una búsqueda en pantalla completa (.host-search). Resultados solo de locales
-   settings.snapshot Filtro, dos líneas dentro de una fila: título + ruta de navegación (categoría › entrada).
+   分类页顶部是一条吸顶搜索框，点开是全屏搜索（.host-search）。结果只从本地
+   settings.snapshot 过滤，行内两行：标题 + 面包屑（分类 › 条目）。
    ===================================================================== */
 .host-settings-search {
   position: sticky;
@@ -1300,7 +1300,7 @@ button.quiet.host-search-trigger {
   line-height: var(--muse-type-scale-label-medium-line-height);
 }
 
-/* Estado de búsqueda en pantalla completa: cubra la página de configuración, con el cuadro de entrada en la parte superior y los resultados desplazándose hacia abajo. */
+/* 全屏搜索态：盖住设置页，输入框在顶部、结果在下面滚 */
 .host-search {
   position: fixed;
   z-index: 25;
@@ -1378,16 +1378,16 @@ button.quiet.host-search-empty-action {
   font-size: var(--muse-type-scale-body-small-font-size);
   line-height: var(--muse-type-scale-body-small-line-height);
 }
-/* Al buscar directamente en una subpágina, marque la fila de destino */
+/* 从搜索直达子页时，把目标行标出来 */
 .host-setting-highlight { border-radius: var(--muse-radius-button); background: var(--host-success-veil); }
 
 /* =====================================================================
-   Disponibilidad de sesiones y asistentes: información del asistente de la barra superior/ventana emergente de selección de asistente/cambio de nombre en línea/cambio de archivo
+   会话与助手的可用性：顶栏助手信息 / 助手选择弹层 / 行内重命名 / 归档开关
    ---------------------------------------------------------------------
-   Toda la geometría reutiliza tokens existentes (lista fila 60, avatar 32/48, entrada 36), sin nuevas dimensiones.
+   几何全部复用既有令牌（列表行 60、头像 32/48、输入 36），没有新尺寸。
    ===================================================================== */
 
-/* Barra superior: avatar + título de la sesión en una línea, nombre del asistente y estado de la conexión en la segunda línea */
+/* 顶栏：头像 + 会话标题一行，助手名与连接状态在第二行 */
 .host-topbar-head { display: flex; align-items: center; gap: var(--muse-space-content-gap); min-width: 0; }
 .host-topbar-head h1 { min-width: 0; }
 
@@ -1412,7 +1412,7 @@ button.quiet.host-search-empty-action {
 }
 .host-avatar img { width: 100%; height: 100%; object-fit: cover; }
 
-/* Cajón de conversación/interruptor "Mostrar archivos" en el encabezado de la columna izquierda */
+/* 会话抽屉 / 左栏头部的「显示归档」开关 */
 .host-archived-toggle {
   display: flex;
   align-items: center;
@@ -1435,7 +1435,7 @@ button.quiet.host-search-empty-action {
   font-weight: var(--muse-type-scale-label-small-weight);
 }
 
-/* Cambio de nombre en línea: "Guardar" está deshabilitado y aparece un mensaje cuando el nombre está vacío. */
+/* 行内重命名：空名时「保存」禁用并给一句提示 */
 .host-session-rename {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
@@ -1467,7 +1467,7 @@ button.quiet.host-session-rename-save:disabled { opacity: var(--muse-color-alpha
   line-height: var(--muse-type-scale-label-small-line-height);
 }
 
-/* Crear una nueva sesión: el Asistente selecciona la capa emergente */
+/* 新建会话：助手选择弹层 */
 .host-picker {
   position: fixed;
   z-index: 35;
@@ -1535,7 +1535,7 @@ button.quiet.host-picker-item:hover { background: var(--ui-press-veil); }
   font-size: var(--muse-type-scale-label-small-font-size);
 }
 
-/* Barra de carga ligera al cambiar de sesión: el contenido antiguo sigue ahí, no hay pantalla blanca */
+/* 切会话的轻量加载条：旧内容仍在，不白屏 */
 .host-switch-loading {
   display: flex;
   align-items: center;
@@ -1550,11 +1550,11 @@ button.quiet.host-picker-item:hover { background: var(--ui-press-veil); }
 }
 
 /* =====================================================================
-   Rendimiento y animación de la lista de mensajes.
+   消息列表性能与动效
    ---------------------------------------------------------------------
-   Los efectos de animación solo se agregan en tres lugares: entrada de mensajes nuevos, cambios de estado de mensajes y apertura y cierre de cajones/capas elásticas.
-   La duración y la relajación siempre toman el signo de la partición del movimiento;prefers-reduced-motion Apágalo la próxima vez.
-   Marcadores de posición con ventana de igual altura: JS calcula la altura en función de la altura promedio de las filas representadas, y la escala no está involucrada aquí.
+   动效只加在三处：新消息进入、消息状态变化、抽屉 / 弹层开合。
+   时长与缓动一律取 motion 分区的令牌；prefers-reduced-motion 下一律关掉。
+   窗口化的等高占位：高度由 JS 按已渲染行平均高度算出来，这里只管不参与伸缩。
    ===================================================================== */
 .host-window-pad { flex: 0 0 auto; width: 100%; }
 
@@ -1562,7 +1562,7 @@ button.quiet.host-picker-item:hover { background: var(--ui-press-veil); }
   from { opacity: 0; transform: translateY(var(--muse-space-tight-gap)); }
   to { opacity: 1; transform: none; }
 }
-/* Ingrese solo la animación "más reciente": al desplazarse en una ventana, las otras filas se montarán repetidamente y la animación completa parpadeará. */
+/* 只给「最新一条」做进入动画：窗口化滚动时其余行会反复挂载，全上动画会闪。 */
 .host-msg-row[data-new="true"] { animation: host-row-in var(--muse-motion-durations-content-enter) var(--muse-motion-easings-emphasized); }
 
 @keyframes host-status-in {
@@ -1572,7 +1572,7 @@ button.quiet.host-picker-item:hover { background: var(--ui-press-veil); }
 .host-msg-status,
 .host-msg-failed { animation: host-status-in var(--muse-motion-durations-fast-normal) var(--muse-motion-easings-standard); }
 
-/* Cajones y Máscaras: Duración/facilidad, ambos usan el token de movimiento (originalmente usando el alias --ease) */
+/* 抽屉与遮罩：时长 / 缓动都走 motion 令牌（原先用的是 --ease 别名） */
 .host-scrim { transition: opacity var(--muse-motion-durations-normal) var(--muse-motion-easings-standard); }
 .host-drawer {
   transition:
@@ -1586,7 +1586,7 @@ button.quiet.host-picker-item:hover { background: var(--ui-press-veil); }
 }
 .host-picker { animation: host-row-in var(--muse-motion-durations-content-enter) var(--muse-motion-easings-emphasized); }
 
-/* Reducir la dinámica: estas tres y otras animaciones autodibujadas están todas detenidas (no más rápidas, pero no en movimiento) */
+/* 减少动态：这三处以及其它自绘动效全部停掉（不是变快，是不动） */
 @media (prefers-reduced-motion: reduce) {
   .host-msg-row,
   .host-msg-status,
@@ -1606,10 +1606,10 @@ button.quiet.host-picker-item:hover { background: var(--ui-press-veil); }
 }
 
 /* =====================================================================
-   Página de asistente y personaje/página de memoria
+   助手与角色页 / 记忆页
    ---------------------------------------------------------------------
-   Ambas páginas reutilizan la geometría de las filas de la lista (60 alto,16/12 Padding), simplemente agregue sus respectivos estilos de contenido:
-   Resumen de caracteres 6 líneas colapsadas, valores de parámetros de solo lectura, entradas de memoria 3 líneas truncadas + línea de metainformación.
+   两页都复用列表行的几何（60 高、16/12 内边距），只加各自的内容样式：
+   人设摘要 6 行折叠、只读参数值、记忆条目 3 行截断 + 元信息行。
    ===================================================================== */
 .host-assistant-head { display: flex; align-items: flex-start; gap: var(--muse-space-content-gap); padding: var(--muse-space-content-gap) var(--muse-space-tight-gap); }
 .host-assistant-head-text { display: grid; gap: var(--muse-space-tiny-gap); min-width: 0; }
@@ -1709,7 +1709,7 @@ button.quiet.host-memory-more { color: var(--accent); font-size: var(--muse-type
 .host-memory-empty p { margin: 0; }
 button.quiet.host-memory-clear { color: var(--accent); font-size: var(--muse-type-scale-label-large-font-size); }
 
-/* ── Tarjeta de tarea programada (solo lectura)───────────────────────────────────────── */
+/* ── 定时任务卡片（只读）───────────────────────────────────────── */
 .host-task-head { display: flex; align-items: baseline; gap: var(--muse-space-content-gap); }
 .host-task-name {
   flex: 1 1 auto;
@@ -1741,7 +1741,7 @@ button.quiet.host-memory-clear { color: var(--accent); font-size: var(--muse-typ
 .host-task-meta-label { flex: 0 0 auto; color: var(--ink-muted); }
 .host-task-meta-value { flex: 1 1 auto; min-width: 0; color: var(--ink-soft); overflow-wrap: anywhere; }
 
-/* ── Datos y privacidad: barra de pila de almacenamiento/punto de estado de capacidad de la plataforma ───────────────────── */
+/* ── 数据与隐私：存储堆叠条 / 平台能力状态点 ───────────────────── */
 .host-storage-bar {
   display: flex;
   width: 100%;
@@ -1761,3 +1761,27 @@ button.quiet.host-memory-clear { color: var(--accent); font-size: var(--muse-typ
 .host-platform-state.is-available { background: var(--accent); }
 .host-platform-state.is-notEnabled { background: var(--warning); }
 .host-platform-state.is-unavailable { background: var(--ui-outline); }
+
+/* ── 运行页：三 Tab / 日志尾部 / 诊断 JSON ─────────────────────
+   高度不设上限，跟着页面一起滚：日志块自己再套一层滚动区，
+   在手机上就是「两指打架」，而且短窗口会把行截成看不全的样子。 */
+.host-runtime-tabs { display: flex; align-items: center; gap: var(--muse-space-tight-gap); }
+.host-runtime-tab { padding: var(--muse-space-tiny-gap) var(--muse-space-aux-gap); border: var(--host-hairline) solid var(--border); border-radius: var(--muse-radius-pill); color: var(--ink-muted); background: transparent; font-family: var(--font-ui); font-size: var(--muse-type-scale-label-medium-font-size); }
+.host-runtime-tab.is-selected { color: var(--ink); border-color: var(--ui-primary); background: var(--host-veil); }
+.host-runtime-action { margin-inline-start: auto; padding: var(--muse-space-tiny-gap) var(--muse-space-aux-gap); border: var(--host-hairline) solid var(--border); border-radius: var(--muse-radius-pill); color: var(--ui-primary); background: transparent; font-family: var(--font-ui); font-size: var(--muse-type-scale-label-medium-font-size); }
+.host-runtime-logs { max-inline-size: 100%; margin: 0; padding: var(--muse-space-aux-gap); border-radius: var(--radius-sm); color: var(--code-ink); background: var(--code-bg); font-family: var(--font-mono); font-size: var(--muse-type-web-caption); line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+.host-runtime-log-line { display: block; }
+/* ── S1：高级设置折叠 / 滑杆 ─────────────────────────────
+   折叠与滑杆都是元数据驱动的渲染结果。宽度用令牌倍数而不是裸 px：
+   滑杆要跟着字号缩放走，写死的轨道在大字号下会溢出成两行。 */
+.host-advanced-toggle { padding: var(--muse-space-tiny-gap) var(--muse-space-aux-gap); border: var(--host-hairline) solid var(--border); border-radius: var(--muse-radius-pill); color: var(--ui-primary); background: transparent; font-family: var(--font-ui); font-size: var(--muse-type-scale-label-medium-font-size); }
+.host-slider-wrap { display: flex; align-items: center; gap: var(--muse-space-tight-gap); }
+.host-slider { inline-size: calc(var(--muse-space-aux-gap) * 9); accent-color: var(--ui-primary); }
+.host-slider-value { min-inline-size: calc(var(--muse-space-aux-gap) * 3); color: var(--ink-soft); font-size: var(--muse-type-scale-label-medium-font-size); text-align: end; }
+
+/* ── S6：网页资源与 App 协议不匹配的提示条 ─────────────────
+   只在真的不匹配时出现（组件层判的），所以这里不准备「隐藏态」样式。
+   边框走 --host-warning-line：与断线条同色系，用户已经认识这个颜色意味着「先看一下」。 */
+.host-version-banner { display: grid; gap: var(--muse-space-tiny-gap); padding: var(--muse-space-aux-gap); border: var(--host-hairline) solid var(--host-warning-line); border-radius: var(--radius-sm); background: var(--host-warning-veil); color: var(--ink); }
+.host-version-title { margin: 0; font-size: var(--muse-type-scale-body-medium-font-size); line-height: var(--muse-type-scale-body-medium-line-height); }
+.host-version-detail { margin: 0; color: var(--ink-muted); font-size: var(--muse-type-scale-label-medium-font-size); }

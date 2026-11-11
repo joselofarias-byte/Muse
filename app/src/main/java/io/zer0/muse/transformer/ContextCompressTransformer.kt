@@ -18,10 +18,10 @@ import kotlin.uuid.Uuid
 internal const val CONTEXT_COMPRESSED_MARKER = "[COMPRESSED]"
 
 /**
- * Mantenga los mensajes recientes y los mensajes prioritarios en el orden histórico original.
+ * 按原始历史顺序保留最近消息与优先级消息。
  *
- * Las llamadas a herramientas y los resultados pueden cruzar el punto de corte de compresión general; primero combine los dos conjuntos de retención y luego regrese al filtro de lista original,
- * Puede conservar la relación adyacente completa y evitar empalmar los resultados de la HERRAMIENTA en assistant(tool_call) frente.
+ * 工具调用和结果可能跨过通用压缩的切点；先合并两个保留集合再回到原列表筛选，
+ * 能保留完整相邻关系，避免把 TOOL 结果拼接到 assistant(tool_call) 前面。
  */
 internal fun retainMessagesInOriginalOrder(
     messages: List<UIMessage>,
@@ -36,60 +36,59 @@ internal fun retainMessagesInOriginalOrder(
 internal fun isOverContextCompressionBudget(messages: List<UIMessage>, tokenBudget: Int): Boolean =
     tokenBudget > 0 && TokenEstimator.estimate(messages) > tokenBudget
 
-/** Igual que el anterior, pero la persona que llama ha calculado la cantidad de tokens (el mismo lote de mensajes en una solicitud solo debe estimarse una vez). */
-internal fun isOverContextCompressionBudget(tokens: Int, tokenBudget: Int): Boolean =
-    tokenBudget > 0 && tokens > tokenBudget
+/** 同上，但 token 数已由调用方算好（一次请求里同一批消息只该估一遍）。 */
+internal fun isOverContextCompressionBudget(tokens: Int, tokenBudget: Int): Boolean = tokenBudget > 0 && tokens > tokenBudget
 
 /**
- * Compresión de contexto Transformer(Phase 8.1 H1).
+ * 上下文压缩 Transformer(Phase 8.1 H1)。
  *
- * Cuando el historial de mensajes supera el umbral,Comprimir el mensaje antiguo anterior en un resumen del SISTEMA,
- * Mantenga los N elementos más recientes como están,Evite la explosión de tokens causada por un contexto demasiado largo.
+ * 当消息历史超过阈值时,把前面的旧消息压缩成一条 SYSTEM 摘要,
+ * 保留最近 N 条原样,避免上下文过长导致 token 爆炸。
  *
- * comportamiento(v2.3.2: Número de artículos y presupuesto simbólico**doble calibre**gatillo,Ver abajo):
- *  - messages.size <= threshold(Predeterminado 20)**y** Número total de fichas <= compress_char_budget(Sin límite por defecto)→ Sin compresión
- *  - excede el umbral:
- *    1. Saltar encabezado de mensajes SISTEMA consecutivos(system prompt / RAG / webSearch / lorebook Esperando inyección dinámica prefix)
- *    2. Tome la parte después del prefijo hasta antes de reciente como la parte a comprimir(Saltar mensajes de resumen comprimidos)
- *    3. Llame a LLM para generar un resumen
- *    4. Reemplazado con un mensaje de SISTEMA("[COMPRESSED] Resumen del diálogo histórico.\n\n...")
- *    5. Deje intacta la última barra KeepRecent
- *    6. v2.3.2: Si el resultado no es más corto que el texto original(Uso intensivo de herramientas/El resumen puede ser más largo si el intervalo compresible es demasiado corto)→ Mantener el texto original.
+ * 行为(v2.3.2: 条数与 token 预算**双口径**触发,见下):
+ *  - messages.size <= threshold(默认 20)**且** 总 token 数 <= compress_char_budget(缺省不限)→ 不压缩
+ *  - 超过阈值:
+ *    1. 跳过头部连续的 SYSTEM 消息(system prompt / RAG / webSearch / lorebook 等动态注入的 prefix)
+ *    2. 取 prefix 之后到 recent 之前的部分作为待压缩(跳过已压缩的摘要消息)
+ *    3. 调用 LLM 生成摘要
+ *    4. 替换为一条 SYSTEM 消息("[COMPRESSED] 历史对话摘要\n\n...")
+ *    5. 保留最后 keepRecent 条原样
+ *    6. v2.3.2: 结果若未比原文更短(工具密集/可压缩区间过短时摘要可能更长)→ 保留原文
  *
- * por [context.extra] parámetros de control:
- *  - "compress_enabled" (Boolean, Predeterminado false): Ya sea para habilitar la compresión
- *  - "compress_threshold" (Int, Predeterminado 20): Umbral de recuento de mensajes que desencadena la compresión
- *  - "compress_keep_recent" (Int, Predeterminado 15): Número de mensajes recientes retenidos después de la compresión
- *  - "compress_char_budget" (Int, Predeterminado 0=Sin límite;Se conservan los nombres clave históricos): El presupuesto simbólico que desencadena la compresión(La persona que llama viene dada por la ventana de contexto del modelo.;
- *    Las sesiones de mensajes largas dependen de que se active con anticipación —— A juzgar sólo por el número de elementos"20 Artículo"Puede haber excedido la ventana)
+ * 由 [context.extra] 控制参数:
+ *  - "compress_enabled" (Boolean, 默认 false): 是否启用压缩
+ *  - "compress_threshold" (Int, 默认 20): 触发压缩的消息数阈值
+ *  - "compress_keep_recent" (Int, 默认 15): 压缩后保留的最近消息数
+ *  - "compress_char_budget" (Int, 默认 0=不限;历史 key 名保留): 触发压缩的 token 预算(调用方按模型上下文窗口给出;
+ *    长消息会话靠它提前触发 —— 只按条数判断时"20 条"可能早已超出窗口)
  *
- * Nota: Este transformador llamará LLM(solicitud de red),Lleva más tiempo.
- *       En caso de fallo, baje a"Truncar"(descartar mensajes antiguos,Insertar etiqueta mensaje SISTEMA informando al modelo que el historial está truncado).
+ * 注意: 此 Transformer 会调用 LLM(网络请求),耗时较长。
+ *       失败时降级为"截断"(丢弃旧消息,插入标记 SYSTEM 消息告知模型历史被截断)。
  */
-/** Si ya existe un resumen comprimido en el historial. */
-/** Representa la lista de archivos modificados como una sección al final del resumen; si no hay cambios, se devuelve una cadena vacía. */
+/** 历史里是否已存在压缩摘要。 */
+/** 把改动文件清单渲染成摘要末尾的一节；没有改动就返回空串。 */
 private fun buildFileSection(messages: List<UIMessage>): String {
     val files = collectTouchedFiles(messages)
-    return if (files.isEmpty()) "" else "\n\narchivos modificados:\n" + files.joinToString("\n") { "- $it" }
+    return if (files.isEmpty()) "" else "\n\n改动过的文件:\n" + files.joinToString("\n") { "- $it" }
 }
 
-/** El parámetro puede llevar el nombre clave de la ruta de destino. Los nombres de las diferentes herramientas no son uniformes y cubren los comunes. */
+/** 参数里可能承载目标路径的键名。不同工具的叫法不统一，覆盖常见的几种。 */
 private val FILE_PATH_PATTERN = Regex("\"(?:path|file_path|filePath|target|file)\"\\s*:\\s*\"([^\"]{1,300})\"")
 
-/** Cambiará las características del nombre de la herramienta del disco. Solo reconózcalos y no recuerde la ruta de la herramienta de lectura. */
+/** 会改动磁盘的工具名特征。只认这些，读类工具的路径不记。 */
 private val MUTATING_TOOL_HINTS = listOf(
     "write", "create", "edit", "delete", "remove", "move", "rename", "mkdir", "copy",
     "apply", "replace", "patch", "save", "upload",
 )
 
-/** Límite de lista. Escribir demasiado estirará el resumen y se perderá el beneficio neto de la compresión. */
+/** 清单上限。写太多会把摘要本身撑大，压缩的净收益就没了。 */
 private const val MAX_LISTED_FILES = 40
 
 /**
- * Extraiga rutas de archivos modificadas de llamadas a herramientas en rangos comprimidos.
+ * 从被压缩区间的工具调用里抽出改动过的文件路径。
  *
- * Sólo se analizan las llamadas con semántica modificada en los nombres de las herramientas y la lectura de archivos no cuenta. —— De lo contrario, la lista se llenará con el historial de navegación,
- * Lo que realmente ha cambiado queda eliminado.
+ * 只看工具名带改动语义的调用，读文件不算 —— 否则清单会被浏览记录灌满，
+ * 真正改过的东西反而被挤掉。
  */
 private fun collectTouchedFiles(messages: List<UIMessage>): List<String> = messages
     .flatMap { it.toolCalls.orEmpty() }
@@ -103,10 +102,10 @@ private fun hasCompressedSummary(messages: List<UIMessage>): Boolean = messages.
 }
 
 /**
- * Compresión repetida de la marca de agua.
+ * 重复压缩的水位线。
  *
- * Se presionó una vez pero aún se juzga de acuerdo con el umbral original, lo que se activará hacia adelante y hacia atrás cerca del valor crítico:
- * Después de presionarlo, simplemente cayó y en la siguiente ronda cruzó la línea nuevamente y fue presionado nuevamente. Entonces levante ambos extremos hasta la mitad.
+ * 已压过一次却仍按原阈值判定，会在临界值附近来回触发：
+ * 压完刚好降下去，下一轮又过线，又压一次。所以两头各抬半档。
  */
 private fun overWatermark(messageCount: Int, historyTokens: Int, threshold: Int, tokenBudget: Int): Boolean {
     val overCount = messageCount > threshold + threshold / 2
@@ -114,14 +113,14 @@ private fun overWatermark(messageCount: Int, historyTokens: Int, threshold: Int,
     return overCount || overBudget
 }
 
-/** El texto resumido comprimido ya existe en el historial; si no hay ninguno, se devuelve nulo. */
+/** 历史里已有的压缩摘要正文；没有则返回 null。 */
 private fun existingSummary(messages: List<UIMessage>): String? = messages
     .firstOrNull { it.role == MessageRole.SYSTEM && it.content.startsWith(CONTEXT_COMPRESSED_MARKER) }
     ?.content
     ?.removePrefix(CONTEXT_COMPRESSED_MARKER)
     ?.trim()
 
-/** La posición final de los mensajes SISTEMA consecutivos del encabezado; devuelve 0 si no hay ningún prefijo SISTEMA. */
+/** 头部连续 SYSTEM 消息的结束位置；没有 SYSTEM 前缀时返回 0。 */
 private fun systemPrefixEnd(messages: List<UIMessage>): Int {
     val first = messages.indexOfFirst { it.role != MessageRole.SYSTEM }
     return if (first >= 0) first else messages.size
@@ -130,25 +129,25 @@ private fun systemPrefixEnd(messages: List<UIMessage>): Int {
 class ContextCompressTransformer(
     private val chatService: ChatService,
     /**
-     * Compresor de diálogo opcional(Paralelismo fragmentado + modelo barato independiente).
-     * - Delegar cuando no es nulo: transformar [compressor] Compresión paralela fragmentada completa(Recomendado)
-     * - null:Retorno a la compresión LLM única de sincronización original(Compatibilidad con versiones anteriores/escenario de prueba)
+     * 可选的对话压缩器(分块并行 + 独立便宜模型)。
+     * - 非 null:transform 时委托 [compressor] 完成分块并行压缩(推荐)
+     * - null:回退到原同步单次 LLM 压缩(向后兼容 / 测试场景)
      */
     private val compressor: ConversationCompressor? = null,
 ) : Transformer {
     override val name: String = "ContextCompress"
 
     /**
-     * v2.x: En la última transformación"Fusionado en resumen"La identificación del mensaje límite de (el último en orden cronológico).
+     * v2.x: 最近一次 transform 中"已并入摘要"的边界消息 id（按时间顺序的最后一条）。
      *
-     * Para que la persona que llama acceda al ingresar al punto de control. —— Los límites sólo pueden ser determinados por**colección comprimida ordenada**De ello se deduce que la inferencia de ordenamiento de ID de mensaje no se puede utilizar.
-     * (La identificación del mensaje es un UUID aleatorio).transform Permanece nulo si no se produce ninguna compresión real.
+     * 供调用方落检查点时取用 —— 边界只能由**有序的压缩集合**得出，不能用消息 id 排序推断
+     * （消息 id 是随机 UUID）。transform 未真正压缩时保持 null。
      */
     var lastCoveredBoundaryId: String? = null
         private set
 
     override suspend fun transform(messages: List<UIMessage>, context: TransformContext): List<UIMessage> {
-        // El último límite no se puede dejar cuando no se realiza más compresión esta vez; de lo contrario, la persona que llama escribirá un límite vencido.
+        // 本次不再压缩时不能留下上一次的边界，否则调用方会写入一个过期的边界
         lastCoveredBoundaryId = null
         val enabled = (context.extra("compress_enabled") as? Boolean) ?: false
         if (!enabled) return messages
@@ -160,33 +159,34 @@ class ContextCompressTransformer(
         // Manual compression is an explicit user request: if the summary model fails or
         // produces no net savings, still shrink the payload with a visible fallback marker.
         val forceFallback = (context.extra("compress_force_fallback") as? Boolean) == true
-        // v2.3.2: La clave histórica se nombra compress_char_budget,La explicación real se basa en el presupuesto simbólico.
-        // TokenEstimator Cuenta para el razonamiento/llamadas a herramientas/imágenes,Evite que la compresión se active demasiado tarde en sesiones con uso intensivo de herramientas o visuales.
+        // v2.3.2: 历史 key 名为 compress_char_budget,实际统一按 token 预算解释。
+        // TokenEstimator 会计入 reasoning/toolCalls/图片,避免压缩在视觉或工具密集会话中触发过晚。
         val tokenBudget = (context.extra("compress_char_budget") as? Int) ?: 0
-        // El mismo lote de mensajes en una transformación se debe estimar varias veces (presupuesto total/presupuesto histórico/juicio por encima del límite). /
-        // ganancias después de la compresión). Se comparte una caché de recuento por instancia y el BPE de cada mensaje solo se ejecuta una vez.
+        // 一次 transform 里同一批消息要被估算好几遍（总预算 / 历史预算 / 超限判断 /
+        // 压缩后收益）。共用一份按实例的计数缓存，每条消息的 BPE 只跑一次。
         val tokenCache = MessageTokenCache()
         val totalTokens = TokenEstimator.estimate(messages, cache = tokenCache)
+
         @Suppress("NAME_SHADOWING")
         val historyTokens = TokenEstimator.estimate(
             messages.dropWhile { it.role == MessageRole.SYSTEM },
             cache = tokenCache,
         )
 
-        // L-COMP6: threshold < keepRecent La semántica de configuración no es válida cuando,alarma
+        // L-COMP6: threshold < keepRecent 时配置语义失效,告警
         if (threshold < keepRecent) {
-            Logger.w(name, "compress_threshold($threshold) < compress_keep_recent($keepRecent), Es posible que la compresión no se active correctamente")
+            Logger.w(name, "compress_threshold($threshold) < compress_keep_recent($keepRecent), 压缩可能无法正常触发")
         }
 
-        // prefix(SISTEMA Continuo al principio) Dibújalo primero: el presupuesto se calcula como "disponibilidad histórica".
-        // Entonces, el juicio por exceso del límite solo puede considerar la parte histórica y las indicaciones del sistema no se pueden volver a calcular.
+        // prefix（头部连续 SYSTEM）先划出来：预算算的是「历史可用」，
+        // 那么超限判断也只能看历史部分，不能把系统提示再算一遍。
         val prefixEnd = systemPrefixEnd(messages)
         val overCount = messages.size > threshold
-        // Sólo es necesario calcular el presupuesto cuando “el número de partidas no exceda”;drop(prefixEnd) es un subconjunto de mensajes,
-        // Y el prefijo también es el mismo lote de instancias, por lo que se puede acceder directamente al caché.
-        // Tenga en cuenta que `!overCount &&`: El juicio presupuestario sólo tiene sentido en la sección "Número de partidas no excedidas" a continuación.
-        // escrito como `overCount &&` "El número de artículos no ha excedido pero el token se ha disparado" se considerará que no excede el presupuesto.
-        // Es decir, la compresión nunca se activa. —— Ese era el propósito original de la explicación del presupuesto simbólico.
+        // 只在「条数没超」时才需要算预算；drop(prefixEnd) 是 messages 的子集，
+        // 且 prefix 也是同一批实例，缓存能直接命中。
+        // 注意是 `!overCount &&`：预算判断只在下方的「条数没超」分支里才有意义。
+        // 写成 `overCount &&` 会让「条数没超但 token 爆了」被判成不超预算，
+        // 也就是压缩永远不触发 —— 那正是按 token 预算解释的最初目的。
         val overBudget = !overCount &&
             isOverContextCompressionBudget(
                 TokenEstimator.estimate(messages.drop(prefixEnd), cache = tokenCache),
@@ -194,53 +194,53 @@ class ContextCompressTransformer(
             )
         if (!overCount && !overBudget) return messages
 
-        // Cuando ya existe un resumen, la línea del nivel del agua se eleva medio nivel: se ha superado una vez y todavía se juzga según el umbral original, que se activará repetidamente.
+        // 已存在摘要时水位线抬半档：已压过一次还按原阈值判，会反复触发。
         if (hasCompressedSummary(messages) && !overWatermark(messages.size, historyTokens, threshold, tokenBudget)) {
             return messages
         }
 
-        // Encabezado de mensajes SISTEMA consecutivos (system prompt / RAG / webSearch / lorebook inyección dinámica) no participa en la compresión:
-        // Son irrecuperables y eliminarlos significa olvidar tanto la configuración de los caracteres como los resultados de la búsqueda.
+        // 头部连续的 SYSTEM 消息（system prompt / RAG / webSearch / lorebook 等动态注入）不参与压缩：
+        // 它们不可恢复，压掉就等于把人物设定和检索结果一起忘了。
         val prefix = messages.subList(0, prefixEnd)
 
-        // v5: Prioridad preservada — Los mensajes de llamada de herramientas y los mensajes que contienen resultados de herramientas deben conservarse,Sin compresión
+        // v5: 优先级保留 — 工具调用消息和包含工具结果的消息应保留,不压缩
         val priorityIds =
             messages.filter { msg ->
                 msg.toolCalls != null || msg.toolCallInfo != null ||
                     msg.role == MessageRole.TOOL || msg.role == MessageRole.SYSTEM
             }.map { it.id.toString() }.toSet()
 
-        // Intervalo compresible = prefix después de reciente antes
+        // 可压缩区间 = prefix 之后到 recent 之前
         val compressibleEnd = messages.size - keepRecent
-        if (prefixEnd >= compressibleEnd) return messages // prefix Ella misma representa la mayoría,intervalo incompresible
+        if (prefixEnd >= compressibleEnd) return messages // prefix 本身就占了大部分,无可压缩区间
 
-        // M-COMP3: Saltar mensajes de resumen del SISTEMA comprimidos,Evite resúmenes que se superpongan a resúmenes
+        // M-COMP3: 跳过已压缩的 SYSTEM 摘要消息,避免摘要叠加摘要
         val toCompress =
             messages.subList(prefixEnd, compressibleEnd).filter {
                 !(it.role == MessageRole.SYSTEM && it.content.startsWith(CONTEXT_COMPRESSED_MARKER))
             }
         val recent = messages.takeLast(keepRecent)
 
-        // v5: enviar mensajes de alta prioridad(Llamadas a herramientas, etc.)Mantener en reciente,Evite ser comprimido.
-        // Debe filtrarse de acuerdo con el orden histórico original y no se puede unir con mensajes de prioridad + recientes: cuando assistant(tool_call)
-        // con TOOL(result) Cuando se cruza el punto tangente, el empalme pondrá el resultado frente al asistente, destruyendo el emparejamiento del proveedor.
+        // v5: 把优先级高的消息(工具调用等)保留到 recent 中,避免被压缩。
+        // 必须按原历史顺序筛选，而不能用 recent + priorityMessages 拼接：当 assistant(tool_call)
+        // 与 TOOL(result) 恰好跨过切点时，拼接会把 result 放到 assistant 前面，破坏 Provider 配对。
         val priorityMessages = toCompress.filter { it.id.toString() in priorityIds }
         val adjustedRecent = retainMessagesInOriginalOrder(messages, recent, priorityMessages)
         val adjustedToCompress = toCompress.filter { it.id.toString() !in priorityIds }
 
-        // Phase 8.5 Reparación: keepRecent >= messages.size cuando toCompress está vacío,Omita para evitar realizar solicitudes de LLM sin sentido
+        // Phase 8.5 修复: keepRecent >= messages.size 时 toCompress 为空,跳过避免发无意义 LLM 请求
         if (adjustedToCompress.isEmpty()) return messages
 
-        // v2.x: grabar esta vez"Fusionado en resumen"mensaje de límites (el último en orden cronológico).
-        // Debe hacer clic aquí**lista ordenada**No se puede adivinar basándose en el UUID: el ID del mensaje es un UUID aleatorio (no ordenado por tiempo).
-        // Una vez que se toma el límite incorrecto, el lado de la asamblea tratará los mensajes descubiertos como cubiertos y los descartará.
+        // v2.x: 记录本次"已并入摘要"的边界消息（按时间顺序的最后一条）。
+        // 必须在这里按**有序列表**取，不能靠 UUID 比较猜：消息 id 是随机 UUID（非时间有序），
+        // 一旦取错边界，组装侧会把尚未覆盖的消息也当成已覆盖而丢掉。
         lastCoveredBoundaryId = adjustedToCompress.last().id.toString()
 
-        // v2.3.2: Los tres resultados de la extracción de resúmenes están unificados por [resolveSummary] dado(Prioriza internamente la reutilización del nivel de agua en proceso —— Ver descripción de C,
-        // tiempo de espera/Allí también convergen caminos de degradación anormales.);Aquí solo somos responsables de ensamblar los resultados según el final.
+        // v2.3.2: 取摘要的三种结局统一由 [resolveSummary] 给出(它内部优先复用进程内水位线 —— 见 C 的说明,
+        // 超时/异常的降级路径也收敛在那里);这里只负责按结局拼装结果。
         val previousSummary = existingSummary(messages)
         val outcome = resolveSummary(adjustedToCompress, instruction, context.sessionId, previousSummary)
-        // tiempo de espera/anormal → degradar a marca de truncamiento(M-COMP4: Informar al modelo que el historial está truncado.,En lugar de descartar silenciosamente toda la historia)
+        // 超时/异常 → 降级为截断标记(M-COMP4: 告知模型历史被截断,而非静默丢弃全部历史)
         if (outcome is SummaryOutcome.DegradeToMarker) {
             return if (forceFallback) {
                 forceFallbackHistory(prefix, adjustedRecent, tokenBudget)
@@ -248,37 +248,37 @@ class ContextCompressTransformer(
                 prefix + listOf(fallbackMessage()) + adjustedRecent
             }
         }
-        // v2.3.2: Error al generar el resumen(Retorno total del compresor null)→ **Mantener el texto original.**,No se realizan sustituciones.
-        // La historia misma todavía está ahí.,Lo que falló es simplemente"Resumen"este paso;Reemplazar el texto original con texto de marcador de posición es una verdadera amnesia.
-        // (transform La persona que llama ha recortado los parámetros de entrada de acuerdo con el presupuesto de contextSize/token.,Mantener el texto original no provocará una expansión ilimitada.)
+        // v2.3.2: 摘要生成失败(压缩器整体返回 null)→ **保留原文**,不做任何替换。
+        // 历史本身还在,失败的只是"摘要"这一步;用占位文本换掉原文才是真正的失忆。
+        // (transform 的入参已由调用方按 contextSize / token 预算裁剪过,保留原文不会无界膨胀。)
         if (outcome !is SummaryOutcome.Ok) {
-            Logger.w(name, "compress Todos los bloques fallaron, Esta ronda conserva el texto original sin compresión.")
+            Logger.w(name, "compress 全部块失败, 本轮保留原文不压缩")
             if (forceFallback) return forceFallbackHistory(prefix, adjustedRecent, tokenBudget)
             return messages
         }
         val summary = outcome.summary
 
-        // El documento modificado no se basa en la representación del modelo: omitirá,El camino tiene el mayor impacto en el trabajo posterior.
+        // 改过的文件不靠模型转述：它会漏,路径又最影响后续工作。
         val fileSection = buildFileSection(adjustedToCompress)
-        // M-COMP3: Resumen comprimido más [COMPRESSED] etiqueta de prefijo,Reconocer y omitir la siguiente compresión.
+        // M-COMP3: 压缩摘要加 [COMPRESSED] 前缀标记,下次压缩时识别并跳过
         val summaryMsg =
             UIMessage(
                 role = MessageRole.SYSTEM,
-                content = "$CONTEXT_COMPRESSED_MARKER Resumen del diálogo histórico.\n\n$summary$fileSection",
+                content = "$CONTEXT_COMPRESSED_MARKER 历史对话摘要\n\n$summary$fileSection",
             )
         val compacted = prefix + listOf(summaryMsg) + adjustedRecent
-        // v2.3.2: Verificación de ingresos netos —— Sesión intensiva de herramientas(Un gran número de reservas)O cuando el intervalo compresible es demasiado corto,El resumen puede ser más pequeño que el que se está reemplazando.
-        // El texto original aún es largo.:La compresión no sólo no salva el contexto,Otra llamada de LLM desperdiciada. Comparar por número de caracteres(indicador proxy barato,
-        // Evite ejecutar codificación BPE en canalizaciones),Si no se reduce, conserva el texto original.
+        // v2.3.2: 净收益校验 —— 工具密集会话(大量保留项)或可压缩区间过短时,摘要可能比被替换掉的
+        // 原文还长:压缩不但没省上下文,还白花一次 LLM 调用。按字符数比较(便宜的代理指标,
+        // 避免在管道里跑 BPE 编码),没变小就保留原文。
         val afterTokens = TokenEstimator.estimate(compacted, cache = tokenCache)
         if (afterTokens >= totalTokens) {
-            Logger.i(name, "compress Sin beneficio neto($totalTokens → $afterTokens token),Mantener el texto original sin comprimir")
+            Logger.i(name, "compress 无净收益($totalTokens → $afterTokens token),保留原文不压缩")
             if (forceFallback) return forceFallbackHistory(prefix, adjustedRecent, tokenBudget)
             return messages
         }
-        // v2.3.2 (C/D): Resumen**de hecho adoptado**Sólo cuando se registra el nivel del agua. —— Registra qué mensajes han sido sobrescritos por él.
-        // Anótelo aquí en lugar de antes.,es para evitar"El cheque de beneficio neto rechazó esta compresión y el texto original permanece en contexto.,
-        // Pero marcó el texto original como resumido."Como resultado, se filtró por error durante la reconstrucción del árbol de diálogo.(perder la historia).
+        // v2.3.2 (C/D): 摘要**确实被采用**时才记水位线 —— 记录哪些消息已被它覆盖。
+        // 记在这里而不是更早,是为了避免"净收益校验否决了这次压缩、原文仍在上下文里,
+        // 却把原文标成已摘要"从而在对话树重建时被误过滤(丢历史)。
         CompressionSummaryStore.remember(
             sessionId = context.sessionId,
             coveredIds = adjustedToCompress.map { it.id.toString() }.toSet(),
@@ -288,8 +288,8 @@ class ContextCompressTransformer(
     }
 
     /**
-     * v2.x: Reúna la entrada necesaria para los puntos de control de la sesión (más de 6 parámetros, utilice clases de datos en lugar de largas listas de parámetros,
-     * También facilita a la persona que llama pasar parámetros por nombre y evitar la transmisión de posición incorrecta).
+     * v2.x: 组装会话检查点所需的输入（参数多于 6 个，用数据类而不是长参数列表，
+     * 也便于调用方按名传参、避免位置传错）。
      */
     data class CheckpointRequest(
         val sessionId: String,
@@ -300,34 +300,34 @@ class ContextCompressTransformer(
         val tokensAfter: Int,
         val reason: String,
         /**
-         * esta vez"Fusionado en resumen"La identificación del mensaje límite de (el último en orden cronológico), dada por [lastCoveredBoundaryId] proporcionó.
+         * 本次"已并入摘要"的边界消息 id（按时间顺序的最后一条），由 [lastCoveredBoundaryId] 提供。
          *
-         * **Debe pasarse explícitamente**: La identificación del mensaje es un UUID aleatorio y no hay forma de inferir quién está limitado por la clasificación.
+         * **必须显式传入**：消息 id 是随机 UUID，无法通过排序推断谁是边界。
          */
         val boundaryMessageId: String? = null,
         /**
-         * El número acumulado de elementos combinados desde el último punto de control. Los nuevos puntos de control reemplazan a los antiguos según la semántica de cobertura continua,
-         * El valor acumulado debe ser traído y acumulado por la persona que llama, de lo contrario el"¿Cuántos elementos se han comprimido?"Se notará cada vez menos.
+         * 上一次检查点的累计并入条数。滚动覆盖语义下新检查点取代旧的，
+         * 累计值必须由调用方带上并累加，否则界面上的"已压缩多少条"会越显示越少。
          */
         val previousTotalCovered: Int = 0,
         /**
-         * El número de resúmenes recién fusionados esta vez (presionados por la persona que llama**Lista de mensajes ordenados**obtenido del último límite).
+         * 本次新并入摘要的条数（由调用方按**有序消息列表**与上次边界求得）。
          *
-         * No utilice la clasificación de ID de mensaje en esta clase para inferir: la ID del mensaje es un UUID aleatorio y la colección no está ordenada.
-         * Adivina clasificando"¿Cuáles son las nuevas coberturas?"Calculará mal con datos reales.
+         * 不在本类里用消息 id 排序推断：消息 id 是随机 UUID、集合无序，
+         * 靠排序猜"哪些是新增覆盖"会在真实数据上算错。
          */
         val newlyCoveredCount: Int = 0,
     )
 
     /**
-     * v2.x: Reúna el resultado de una compresión en**punto de control de sesión**(Para que la persona que llama entre a la biblioteca).
+     * v2.x: 把一次压缩的结果组装成**会话检查点**（供调用方落库）。
      *
-     * Semántica de desplazamiento: alcance cubierto por nuevos puntos de control = Todos los mensajes después del último límite (incluidas las partes cubiertas la última vez,
-     * Debido a que el resumen en sí se reescribe en lugar de agregarse), por lo tanto [ContextCheckpointEntity.coveredCount] recuerda
-     * **Resumen de esta fusión**número de artículos,[ContextCheckpointEntity.tokensBefore] Lo que se registra es el tamaño del contexto antes de la compresión.
-     * Ambos se toman de la instantánea de la ronda actual en poder de la persona que llama y no se vuelven a estimar aquí.
+     * 滚动语义：新检查点覆盖的范围 = 上一次边界之后的所有消息（含上一次已覆盖的部分，
+     * 因为摘要本身也是改写而非追加），因此 [ContextCheckpointEntity.coveredCount] 记的是
+     * **本次并入摘要**的条数、[ContextCheckpointEntity.tokensBefore] 记的是压缩前的上下文规模，
+     * 两者都取自调用方掌握的当轮快照，不在这里二次估算。
      *
-     * @return El puesto de control reunido; devuelve nulo si falta el resumen o no se puede localizar el límite (sería mejor no escribirlo que escribir un límite incorrecto)
+     * @return 组装好的检查点；摘要缺失或边界无法定位时返回 null（宁可不写，也不写一个错边界）
      */
     fun buildCheckpoint(request: CheckpointRequest): io.zer0.memory.summary.ContextCheckpointEntity? {
         val entry = CompressionSummaryStore.entry(request.sessionId)
@@ -354,8 +354,8 @@ class ContextCompressTransformer(
     }
 
     /**
-     * Puntero de límite: dado primero por la persona que llama**ordenado**frontera ([CheckpointRequest.boundaryMessageId],
-     * Obtenido por transformación en el orden cronológico de la colección comprimida); Solo regrese al límite anterior cuando no se pueda obtener y finalmente use el valor generado para cubrir.
+     * 边界指针：优先用调用方给出的**有序**边界（[CheckpointRequest.boundaryMessageId]，
+     * 由 transform 按压缩集合的时间顺序取得）；拿不到时才退回旧边界，最后才用生成值兜底。
      */
     private fun resolveBoundaryUuid(entry: CompressionSummaryStore.Entry, request: CheckpointRequest): Uuid? {
         val explicit = request.boundaryMessageId?.let { runCatching { Uuid.parse(it) }.getOrNull() }
@@ -366,11 +366,11 @@ class ContextCompressTransformer(
     }
 
     /**
-     * v2.x: Entrada para la reconstrucción local de puntos de control (con más de 6 parámetros, use clases de datos en lugar de largas listas de parámetros).
+     * v2.x: 本地重建检查点的输入（参数多于 6 个，用数据类而不是长参数列表）。
      *
-     * @param covered Los mensajes que se cubrirán esta vez (**en orden cronológico**, viejo→nuevo); si está vacío, no se generará ningún punto de control.
-     * @param previousBoundaryId Los límites del último punto de control (null significa primera vez)
-     * @param coveredSeq La secuencia real del nuevo mensaje de límite en la tabla de mensajes (analizada por la biblioteca de la persona que llama; si no se encuentra, pase 0)
+     * @param covered 本次要覆盖的消息（**按时间顺序**，旧→新）；为空则不产出检查点
+     * @param previousBoundaryId 上一次检查点的边界（null 表示首次）
+     * @param coveredSeq 新边界消息在消息表里的真实 seq（由调用方查库解析；查不到传 0）
      */
     data class LocalCheckpointRequest(
         val sessionId: String,
@@ -380,19 +380,19 @@ class ContextCompressTransformer(
         val tokensBefore: Int,
         val tokensAfter: Int,
         val reason: String,
-        /** Presupuesto de caracteres para el cuerpo del extracto (null Utilice el valor predeterminado de ContextHistoryDigest). */
+        /** 摘录正文的字符预算（null 用 ContextHistoryDigest 的默认值）。 */
         val maxChars: Int? = null,
     )
 
     /**
-     * v2.x: construir**reconstrucción local**Puntos de control (cero solicitudes de modelo).
+     * v2.x: 构建**本地重建**检查点（零模型请求）。
      *
-     * Se utiliza cuando el resumen no está disponible (red deficiente, error del modelo de resumen, tiempo de espera):"Mensajes que se sobrescribirán"Hacer extractos de texto deterministas
-     * ([io.zer0.ai.core.ContextHistoryDigest]), todavía escribe un punto de control con un puntero de límite.
+     * 用在摘要不可用时（网络差、摘要模型报错、超时）：把"会被覆盖的消息"做确定性文本摘录
+     * （[io.zer0.ai.core.ContextHistoryDigest]），仍然写出一条带边界指针的检查点。
      *
-     * Por qué este paso es importante: si no se escribe nada después de que falla el resumen, reinicie la aplicación/Al volver a la sesión se vuelve al historial completo.
-     * Tendré que intentarlo de nuevo la próxima vez.——Lo que ve el usuario es"Comprimido pero inútil". Aunque la reconstrucción local no resume los puntos principales,
-     * pero**El límite entra en vigor**: Los mensajes cubiertos ya no entran en el modelo y el historial se reduce de forma determinista a este tamaño.
+     * 为什么这一步重要：摘要失败后如果什么都不写，重开应用/切回会话又回到全量历史，
+     * 下次还得再试一遍摘要——用户看到的是"压缩了但没用"。本地重建虽然不提炼要点，
+     * 但**边界生效**：被覆盖的消息不再进模型，而且历史被确定性收窄到这个规模。
      */
     fun buildLocalCheckpoint(request: LocalCheckpointRequest): io.zer0.memory.summary.ContextCheckpointEntity? {
         val covered = request.covered
@@ -401,9 +401,9 @@ class ContextCompressTransformer(
         } ?: io.zer0.ai.core.ContextHistoryDigest.build(covered)
         val summary = digest?.content?.takeIf { it.isNotBlank() }
         val previous = request.previousBoundaryId?.let { runCatching { Uuid.parse(it) }.getOrNull() }
-        // Toma de límites**El último en orden cronológico.**(covered Presionado por la persona que llama→Recién dado).
-        // No disponible aquí maxOrNull(): Eso supone que la hora UUIDv7 está ordenada y la identificación del mensaje es aleatoria v4 (orden aleatorio),
-        // Una vez que se toma el límite incorrecto, el lado de la asamblea"Aún no cubierto"Los mensajes también se tratan como sobrescritos y descartados.
+        // 边界取**时间顺序上的最后一条**（covered 由调用方按旧→新给出）。
+        // 这里不能用 maxOrNull()：那是假设 UUIDv7 时间有序，而消息 id 是随机 v4（顺序随机），
+        // 一旦取错边界，组装侧就会把"还没被覆盖"的消息也当成已覆盖而丢掉。
         val boundary = covered.lastOrNull()
             ?.let { runCatching { Uuid.parse(it.id.toString()) }.getOrNull() }
             ?: previous
@@ -425,26 +425,26 @@ class ContextCompressTransformer(
         }
     }
 
-    /** Obtener el resultado resumido(v2.3.2: Convergir los rendimientos originalmente dispersos en transformación en tipos explícitos,Longitud de la función fácil de controlar). */
+    /** 取摘要的结局(v2.3.2: 把原先散落在 transform 里的 return 收敛成显式类型,便于控制函数长度)。 */
     private sealed interface SummaryOutcome {
-        /** ponerse abstracto(Posiblemente desde la marca de agua del caché,También puede ser de nueva generación.). */
+        /** 拿到摘要(可能来自缓存水位线,也可能是新生成的)。 */
         data class Ok(val summary: String) : SummaryOutcome
 
-        /** tiempo de espera/anormal → inserción de llamada"El historial aún no está disponible"Marca truncada. */
+        /** 超时/异常 → 调用方插入"历史暂不可用"截断标记。 */
         object DegradeToMarker : SummaryOutcome
 
-        /** El compresor falla en general → La persona que llama conserva el texto original.,No hay compresión en esta ronda. */
+        /** 压缩器整体失败 → 调用方保留原文,本轮不压缩。 */
         object KeepOriginal : SummaryOutcome
     }
 
     /**
-     * Obtenga el resumen de esta compresión.
+     * 取本次压缩的摘要。
      *
-     * v2.3.2 (C): Primero verifique el nivel del agua en el proceso. —— Después del cambio/recarga de sesión desde la base de datos,En realidad, el mismo período de la historia se ha resumido,
-     * Simplemente reutilícelo directamente,Guarde una llamada de LLM(y un retraso en la primera palabra de hasta 20 segundos).
-     * Sólo si el intervalo a comprimir esta vez**Todos**Reutilizar sólo si está dentro de la cobertura de caché;La cobertura parcial perderá la historia.,Dáselo al compresor para que lo rehaga.
+     * v2.3.2 (C): 先查进程内水位线 —— 会话切回 / 从 DB 重载后,同一段历史其实已经被摘要过,
+     * 直接复用即可,省掉一次 LLM 调用(以及最长 20s 的首字延迟)。
+     * 仅当本次待压缩区间**全部**落在缓存覆盖范围内才复用;部分覆盖会丢历史,交给压缩器重做。
      *
-     * tiempo de espera/Ruta de degradación inusual con"El compresor falla en general"La distinción de también se da uniformemente desde aquí.(ver [SummaryOutcome]).
+     * 超时/异常的降级路径与"压缩器整体失败"的区分也从这里统一给出(见 [SummaryOutcome])。
      */
     private suspend fun resolveSummary(
         toCompress: List<UIMessage>,
@@ -454,30 +454,30 @@ class ContextCompressTransformer(
     ): SummaryOutcome {
         val cached = reusableSummary(CompressionSummaryStore.entry(sessionId), toCompress)
         if (cached != null) {
-            Logger.i(name, "Reutilizar resumen de caché(${toCompress.size} Artículo),Saltar llamadas de compresión")
+            Logger.i(name, "复用缓存摘要(${toCompress.size} 条),跳过压缩调用")
             return SummaryOutcome.Ok(cached)
         }
         val generated =
             try {
-                // v2.x: Comprimir llamadas y agregar barreras de tiempo de espera — Ocasionalmente, largos períodos de falta de respuesta del modelo de compresión ralentizarán todo el ciclo de generación.(La medición real tiene ~30s retraso de la primera palabra),
-                // Tome el camino marcado para bajar de categoría después del tiempo de espera,No más esperas interminables.
+                // v2.x: 压缩调用加超时护栏 — 压缩模型偶发长时间无响应会拖慢整轮生成(实测有 ~30s 首字延迟),
+                // 超时后走降级标记路径,不再无限等待。
                 val text =
                     withTimeout(COMPRESS_TIMEOUT_MS) {
                         if (compressor != null) {
-                            // Dar prioridad al paralelismo de bloques + modelo barato independiente
+                            // 优先走分块并行 + 独立便宜模型
                             compressWithCompressor(toCompress, instruction, previousSummary)
                         } else {
-                            // revertir:Compresión LLM de disparo único de sincronización sin procesar
+                            // 回退:原同步单次 LLM 压缩
                             compressMessages(toCompress, instruction)
                         }
                     }
                 text?.let { SummaryOutcome.Ok(it) } ?: SummaryOutcome.KeepOriginal
             } catch (timeout: TimeoutCancellationException) {
-                // El tiempo de espera es un tipo de falla de compresión.:degradar a marca de truncamiento,Sin interrumpir el proceso principal
+                // 超时属于压缩失败的一种:降级为截断标记,不中断主流程
                 Logger.w(name, "compress timeout after ${COMPRESS_TIMEOUT_MS}ms, fallback to marker")
                 SummaryOutcome.DegradeToMarker
             } catch (e: CancellationException) {
-                // H-COMP1: no tragar CancellationException,Volver a lanzar directamente(La cancelación de rutina debe propagarse)
+                // H-COMP1: 不吞 CancellationException,直接重抛(协程取消必须传播)
                 throw e
             } catch (t: Throwable) {
                 Logger.e(name, "compress failed, fallback to truncation", t)
@@ -486,22 +486,22 @@ class ContextCompressTransformer(
         return generated
     }
 
-    /** M-COMP4: mensaje de marca de degradación — Informar al modelo que el historial está truncado.(En lugar de descartar silenciosamente toda la historia). */
+    /** M-COMP4: 降级标记消息 — 告知模型历史被截断(而非静默丢弃全部历史)。 */
     private fun fallbackMessage(): UIMessage = UIMessage(
         role = MessageRole.SYSTEM,
-        content = "(El historial aún no está disponible,Mantener solo mensajes recientes)",
+        content = "(历史暂不可用,仅保留最近消息)",
     )
 
     private fun forceFallbackHistory(prefix: List<UIMessage>, recent: List<UIMessage>, tokenBudget: Int): List<UIMessage> {
         val budget = if (tokenBudget > 0) tokenBudget else WarmupHistory.FALLBACK_BUDGET_TOKENS
         val prefixTokens = TokenEstimator.estimate(prefix)
-        // L3-1: prefix(system prompt + RAG + lorebook) ha superado el presupuesto, sólo deja los recientes 1 token
-        // Seguirá trayendo la cantidad total del prefijo —— La longitud total sigue siendo enorme y casi toda la historia se pierde, lo que es peor que ninguna compresión.
-        // En este momento**Mantener el texto original.**(Preferiría que el contexto fuera más largo que"Truncamiento de shell vacío").
+        // L3-1: prefix（system prompt + RAG + lorebook）本身已超预算时，只给 recent 留 1 token
+        // 仍会把 prefix 全量带上 —— 总长照样爆，且历史几乎全丢，比不压缩还糟。
+        // 此时**保留原文**（宁可上下文长一点，也不要"空壳截断"）。
         if (prefixTokens >= budget) {
             Logger.w(
                 name,
-                "forceFallback Renunciar:prefix Ya por encima del presupuesto(prefix=$prefixTokens budget=$budget), mantenga el texto original sin truncamiento",
+                "forceFallback 放弃：prefix 本身已超预算(prefix=$prefixTokens budget=$budget)，保留原文不截断",
             )
             return prefix + recent
         }
@@ -513,70 +513,70 @@ class ContextCompressTransformer(
         return prefix + retained
     }
 
-    /** Llame a LLM para comprimir mensajes antiguos en resúmenes. */
+    /** 调用 LLM 压缩旧消息为摘要。 */
     private suspend fun compressMessages(oldMessages: List<UIMessage>, instruction: String? = null): String {
         val prompt =
             buildString {
-                appendLine("Condense el historial de conversaciones a continuación en un resumen conciso,Mantener información clave(hechos/toma de decisiones/Preferencias de usuario).")
-                appendLine("- en forma de bala,Una línea por punto")
-                appendLine("- No inventes cosas que no fueron mencionadas.")
-                appendLine("- La extensión total no debe exceder las 800 palabras.")
-                // H10: Instrucciones adicionales de compresión manual(Como por ejemplo"Centrarse en preservar las discusiones presupuestarias"),Comando de compresión de entrada
+                appendLine("请把下面的对话历史压缩成简洁的摘要,保留关键信息(事实/决策/用户偏好)。")
+                appendLine("- 用要点形式,每点一行")
+                appendLine("- 不要编造未提及的内容")
+                appendLine("- 总长度不超过 800 字")
+                // H10: 手动压缩附加指令(如"重点保留预算讨论"),拼进压缩指令
                 if (!instruction.isNullOrBlank()) {
-                    appendLine("- Requisitos adicionales: $instruction")
+                    appendLine("- 附加要求: $instruction")
                 }
                 appendLine()
-                appendLine("Historial de conversaciones:")
+                appendLine("对话历史:")
                 oldMessages.forEach { msg ->
                     val role =
                         when (msg.role) {
-                            MessageRole.USER -> "Usuario"
-                            MessageRole.ASSISTANT -> "asistente"
-                            MessageRole.SYSTEM -> "sistema"
-                            MessageRole.TOOL -> "Herramientas"
+                            MessageRole.USER -> "用户"
+                            MessageRole.ASSISTANT -> "助手"
+                            MessageRole.SYSTEM -> "系统"
+                            MessageRole.TOOL -> "工具"
                         }
-                    // L-COMP5: Agregar en el truncamiento "…" marca(en lugar de truncamiento silencioso)
-                    // v1.116 (C1-5): El umbral de truncamiento de un solo mensaje aumentó de 500 a 1500 caracteres,
-                    // Evite respuestas largas(como bloques de código/Análisis detallado)El truncamiento excesivo hace que el resumen pierda información clave.
+                    // L-COMP5: 截断处加 "…" 标记(而非静默截断)
+                    // v1.116 (C1-5): 单条消息截断阈值从 500 提升到 1500 字符,
+                    // 避免长回复(如代码块/详细分析)被过度截断导致摘要丢失关键信息。
                     val raw = msg.content
-                    // v2.x: Protege la cabeza y la cola en lugar de solo la cabeza. —— Los resultados de la herramienta y las conclusiones de los errores se encuentran al final.
-                    // Dejar solo el encabezado permitirá obtener el resumen"llamada iniciada"Pero no puedo conseguirlo"cual es el resultado".
+                    // v2.x: 保头尾而非只保头 —— 工具结果与报错的结论在尾部，
+                    // 只留头部会让摘要拿到"调用开始了"却拿不到"结果是什么"。
                     val text = io.zer0.common.TextTruncation.headTailText(raw, MAX_COMPRESS_MSG_CHARS)
                     appendLine("[$role] $text")
                 }
             }
 
         val request = listOf(UIMessage(role = MessageRole.USER, content = prompt))
-        // H-COMP2 / L-COMP7: Utilice resultOf en su lugar runCatching.getOrElse
-        //  - resultOf revenderá CancellationException(Cancelar sin tragar la corrutina)
-        //  - Otros errores se convierten en Result.Error,onError Respaldo después de registrar la excepción original streamChat
-        //  - CancellationException no llegará getOrNull(),Entonces no hay ningún error de respaldo
+        // H-COMP2 / L-COMP7: 用 resultOf 替代 runCatching.getOrElse
+        //  - resultOf 会重抛 CancellationException(不吞协程取消)
+        //  - 其他错误转为 Result.Error,onError 记录原始异常后回退 streamChat
+        //  - CancellationException 不会到达 getOrNull(),因此不会错误回退
         val completion: ChatCompletion =
             resultOf {
                 chatService.completeText(messages = request)
             }.onError { msg, t ->
-                Logger.w(name, "completeText falló,revertir streamChat: $msg", t)
+                Logger.w(name, "completeText 失败,回退 streamChat: $msg", t)
             }.getOrNull() ?: run {
-                // Ten todo en cuenta: colección de transmisión(Acceda aquí solo para errores que no sean CancellationException)
+                // 兜底: 流式收集(仅对非 CancellationException 错误到达此处)
                 val sb = StringBuilder()
                 chatService.streamChat(messages = request).collect { ev ->
                     if (ev is ChatStreamEvent.ContentDelta) sb.append(ev.delta)
                 }
                 ChatCompletion(text = sb.toString())
             }
-        // v1.0.74 fix: despegar <think> etiqueta de inferencia,Evite que los pensamientos se mezclen en resúmenes comprimidos
+        // v1.0.74 fix: 剥离 <think> 推理标签,防止思考内容混入压缩摘要
         return io.zer0.muse.transformer.stripThinkTags(completion.text)
-            .ifBlank { "Las conversaciones históricas se han comprimido(El resumen está vacío)" }
+            .ifBlank { "历史对话已压缩(摘要为空)" }
     }
 
     /**
-     * confiar [compressor] Compresión paralela fragmentada completa,Combine varios extractos en un solo texto.
+     * 委托 [compressor] 完成分块并行压缩,把多块摘要合并为单条文本。
      *
-     * - v2.3.2: Compresor**Cualquier pieza falla**Regresar en su totalidad null,por [transform] ir"Mantener el texto original."Rebajar
-     *   (no más"Error al generar el resumen"Marcador de posición como resumen legal —— Eso haría que el modelo pensara que ha visto una historia que no ha visto.)
-     * - Para resúmenes multibloque "[Resumen de la conversación i/N]" Etiquetas de segmento fusionadas en un mensaje de SISTEMA
-     *   (con [ContextCompressTransformer] Originales"Resumen del SISTEMA único"La semántica sigue siendo consistente,
-     *    Evite la fragmentación basada en la lógica de persistencia/transformador aguas abajo)
+     * - v2.3.2: 压缩器**任一块失败**时整体返回 null,由 [transform] 走"保留原文"降级
+     *   (不再把"摘要生成失败"占位当成合法摘要 —— 那会让模型自以为见过一段它没见过的历史)
+     * - 多块摘要用 "[对话摘要 i/N]" 分段标记合并为一条 SYSTEM 消息
+     *   (与 [ContextCompressTransformer] 原"单条 SYSTEM 摘要"语义保持一致,
+     *    避免下游 transformer / 持久化逻辑感知分块)
      */
     private suspend fun compressWithCompressor(
         oldMessages: List<UIMessage>,
@@ -585,12 +585,12 @@ class ContextCompressTransformer(
     ): String? {
         val summaries = compressor!!.compress(oldMessages, instruction, previousSummary) ?: return null
         return when {
-            summaries.isEmpty() -> "Las conversaciones históricas se han comprimido(El resumen está vacío)"
+            summaries.isEmpty() -> "历史对话已压缩(摘要为空)"
             summaries.size == 1 -> summaries.first()
             else ->
                 buildString {
                     summaries.forEachIndexed { idx, s ->
-                        append("[Resumen de la conversación ${idx + 1}/${summaries.size}]\n")
+                        append("[对话摘要 ${idx + 1}/${summaries.size}]\n")
                         append(s)
                         if (idx != summaries.lastIndex) append("\n\n")
                     }
@@ -599,14 +599,14 @@ class ContextCompressTransformer(
     }
 
     private companion object {
-        // X-5: El valor predeterminado se cambia para hacer referencia a la única fuente de verdad de CompressionPolicy (compartida con el lado del ensamblaje del diálogo principal).
+        // X-5: 默认值改为引用 CompressionPolicy 单一真源（与主对话组装侧共用一套）。
         val DEFAULT_THRESHOLD = CompressionPolicy.THRESHOLD_DEFAULT
         val DEFAULT_KEEP_RECENT = CompressionPolicy.KEEP_RECENT_DEFAULT
 
-        // v1.116 (C1-5): Número máximo de caracteres en un solo mensaje enviado a compresión LLM(Originales 500,promovido a 1500)
+        // v1.116 (C1-5): 单条消息送入 LLM 压缩时的最大字符数(原 500,提升到 1500)
         const val MAX_COMPRESS_MSG_CHARS = 1500
 
-        // v2.x: Tiempo de espera de llamada del modelo de compresión(milisegundos);Degradado a marca de truncamiento después del tiempo de espera,Evite ralentizar toda la ronda de generación.
+        // v2.x: 压缩模型调用超时(毫秒);超时后降级为截断标记,避免拖慢整轮生成
         const val COMPRESS_TIMEOUT_MS = 20_000L
     }
 }

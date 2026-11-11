@@ -8,8 +8,8 @@ export interface I18nValue {
 }
 
 /**
- * El valor predeterminado es chino: donde no hay proveedor (el componente se representa directamente en una sola prueba), todavía se representa según zh.
- * No depende del entorno del navegador. HostChat proporciona la interfaz real utilizando el lenguaje analizado y una capa de Proveedor.
+ * 默认值就是中文：没套 Provider 的地方（单测里直接渲染组件）仍然按 zh 渲染，
+ * 不依赖浏览器环境。真实界面由 HostChat 用解析后的语言套一层 Provider。
  */
 const FALLBACK: I18nValue = { locale: DEFAULT_LOCALE, t: createTranslator(DEFAULT_LOCALE) };
 

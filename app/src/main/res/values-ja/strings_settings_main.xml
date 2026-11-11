@@ -19,6 +19,8 @@
     <string name="settings_provider_empty_title">まだプロバイダーがありません</string>
     <string name="settings_provider_empty_subtitle">プロバイダーを追加すると、アシスタントが使い始められます</string>
     <string name="settings_provider_empty_action">プロバイダーの追加</string>
+    <string name="settings_provider_free_ready_title">内蔵の無料モデルが利用できます</string>
+    <string name="settings_provider_free_ready_subtitle">そのまま会話できます。独自プロバイダーの追加は任意で、枠と機能を拡張できます。</string>
     <string name="settings_provider_category_official">正式</string>
     <string name="settings_provider_category_relay">リレー</string>
     <string name="settings_provider_category_custom">カスタム</string>
@@ -44,9 +46,9 @@
     <string name="settings_provider_unable_to_resolve_server">サーバーアドレスを解決できません</string>
     <string name="settings_provider_query_timeout">クエリがタイムアウトしました</string>
     <string name="settings_provider_query_failed">クエリが失敗しました: %1$s</string>
-    <string name="settings_provider_discard_changes_title">変更を破棄しますか?</string>
-    <string name="settings_provider_discard_changes_content">保存されていない変更は失われます。</string>
-    <string name="settings_provider_discard">破棄</string>
+    <string name="settings_unsaved_changes_title">変更を破棄しますか?</string>
+    <string name="settings_unsaved_changes_content">保存されていない変更は失われます。</string>
+    <string name="settings_unsaved_discard">破棄</string>
     <string name="settings_provider_new">新しいプロバイダー</string>
     <!-- v2.4: standalone connection test result messages (short, distinct from fetchModels error grading) -->
     <string name="settings_provider_test_success_count">接続OK・%1$dモデル</string>
@@ -68,6 +70,7 @@
     <string name="settings_provider_tab_models">モデル</string>
     <string name="settings_provider_file_picker_failed">ファイルピッカーを開けません: %1$s</string>
     <string name="settings_provider_delete_title">プロバイダーの削除</string>
+    <string name="settings_provider_delete_consequence">API キーと設定済みのモデル一覧もあわせて削除されます。</string>
     <string name="settings_provider_delete_content">%1$s を削除してもよろしいですか?</string>
     <string name="settings_provider_action_activate">現在に設定</string>
     <string name="settings_model_catalog_refresh">更新を確認</string>
@@ -307,6 +310,8 @@
     <string name="settings_chat_show_timestamp">タイムスタンプを表示</string>
     <string name="settings_chat_show_timestamp_subtitle">各メッセージの送信時間を表示する</string>
     <string name="settings_chat_generation_style">生成スタイル</string>
+    <string name="settings_chat_reply_language">ユーザーの言語で回答</string>
+    <string name="settings_chat_reply_language_subtitle">本文はメッセージの言語に追従し、判断できない場合は界面言語を使います。オフにするとプロンプトの指定に従います</string>
     <string name="settings_chat_randomness">応答のランダム性</string>
     <string name="settings_chat_temp_hint_certain">決定的、安定的、予測可能</string>
     <string name="settings_chat_temp_hint_balanced_low">バランスが取れており、安定していながらも多様性に富んでいる</string>
@@ -382,12 +387,17 @@
     <string name="cloud_backup_backup_now">今すぐバックアップ</string>
     <string name="cloud_backup_backup_success">クラウドにアップロードしました</string>
     <string name="cloud_backup_config_saved">設定を保存しました</string>
+    <string name="cloud_backup_config_save_failed">保存に失敗しました</string>
     <string name="cloud_backup_delete_failed">削除に失敗しました</string>
+    <string name="cloud_backup_delete_consequence">このクラウドバックアップは完全に削除されます。唯一のコピーの場合、クラウド上の退路を失います。</string>
     <string name="cloud_backup_delete_success">削除しました</string>
     <string name="cloud_backup_delete_this">削除</string>
     <string name="cloud_backup_enable">クラウドバックアップを有効化</string>
     <string name="cloud_backup_hide_secret">非表示</string>
     <string name="cloud_backup_interval_hint">間隔が短いほどアップロードが頻繁になり、データ通信量と電池を消費します。大規模ナレッジベースでは ≥ 3 日を推奨</string>
+    <plurals name="cloud_backup_interval_days">
+        <item quantity="other">%1$d 日</item>
+    </plurals>
     <string name="cloud_backup_interval_label">バックアップ間隔(日)</string>
     <string name="cloud_backup_list_empty">リモートにバックアップはまだありません</string>
     <string name="cloud_backup_list_load_failed">読み込み失敗。設定を確認して再試行してください</string>

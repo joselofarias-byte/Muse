@@ -10,15 +10,15 @@ import io.zer0.muse.data.quickmsg.QuickMessageEntity
 import io.zer0.muse.ui.chat.VideoAttachment
 
 /**
- * v1.0.75 fix (Comentarios de los usuarios): Se ha eliminado toda la barra de herramientas de formato de Markdown sobre el campo de entrada.
+ * v1.0.75 fix (用户反馈): 输入栏上方 Markdown 格式工具条整条移除。
  *
- * P2-12 Barra de herramientas de formato de texto enriquecido de Era(Negrita/cursiva/código/Cotización/lista/enlace)Después de múltiples rondas de evaluación
- * Se ha confirmado que no tiene valor de uso real.:Los usuarios nunca confían en él para formatear la entrada.,Y ocupa el espacio sobre el campo de entrada.
- * Usuario claro"esa fila no sirve para nada,borrarlo".
+ * P2-12 时代的富文本格式工具条(粗体/斜体/代码/引用/列表/链接)经多轮评估
+ * 确认无实际使用价值:用户从未依赖它输入格式,且占用输入栏上方空间。
+ * 用户明确"那一排没用,删了吧"。
  *
- * RichInputBar degradar al original [InputBar] capa de transmisión transparente pura(Mantenga los sitios de llamadas compatibles,Se puede reemplazar en su totalidad más tarde. InputBar).
- * Relacionado eliminado:FormatToolbarSurface / FormatButton / LinkInsertDialog / applyMarkdownFormat /
- * MarkdownFormat / formatEnabled Interruptor de parámetro/configuración(richInputEnabled).
+ * RichInputBar 退化为原 [InputBar] 的纯透传层(保持调用点兼容,后续可整体替换回 InputBar)。
+ * 相关已删:FormatToolbarSurface / FormatButton / LinkInsertDialog / applyMarkdownFormat /
+ * MarkdownFormat / formatEnabled 参数 / 设置开关(richInputEnabled)。
  */
 @Composable
 @Suppress("FunctionNaming", "LongParameterList")
@@ -86,13 +86,13 @@ internal fun RichInputBar(
     pasteAsFileEnabled: Boolean = true,
     pasteAsFileThreshold: Int = 2000,
     onAddPastedTextAsDocument: (String) -> Unit = {},
-    /** v2.6: vidrio liquido — true Al entrar a la isla se habilita el cristal. */
+    /** v2.6: 液态玻璃 — true 时输入岛启用玻璃。 */
     glassActive: Boolean = false,
-    /** v2.5.0: Estilo de vidrio y configuración de cubículo. */
+    /** v2.5.0: 玻璃风格与档位配置。 */
     glassConfig: io.zer0.muse.ui.theme.LiquidGlassConfig = io.zer0.muse.ui.theme.LiquidGlassConfig(),
 ) {
-    // v1.0.75 fix: Se ha eliminado la barra de herramientas de formato.,Transmite la barra de entrada original directamente.
-    // Nota:InputBar sí mismo incluido imePadding/navigationBarsPadding,No se repetirá aquí.
+    // v1.0.75 fix: 格式工具条已移除,直接透传原 InputBar。
+    // 注:InputBar 自身已含 imePadding/navigationBarsPadding,此处不再重复施加。
     InputBar(
         state = MuseInputState(
             text = text,

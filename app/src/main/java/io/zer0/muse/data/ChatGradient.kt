@@ -3,11 +3,11 @@ package io.zer0.muse.data
 import kotlinx.serialization.Serializable
 
 /**
- * E3: Configuración de fondo degradado dinámico de chat.
+ * E3: 聊天动态渐变背景配置。
  *
- * Degradado lineal de dos colores(arriba a la izquierda→abajo a la derecha);Long Guardar valores de color ARGB(Como por ejemplo 0xFF1A2980),
- * UI Para capa [Long.toInt] girar [androidx.compose.ui.graphics.Color].
- * null Indica que no se utilizan gradientes(Solo color de fondo predeterminado).
+ * 双色线性渐变(左上→右下);Long 存 ARGB 色值(如 0xFF1A2980),
+ * UI 层用 [Long.toInt] 转 [androidx.compose.ui.graphics.Color]。
+ * null 表示不使用渐变(仅默认背景色)。
  */
 @Serializable
 data class ChatGradient(

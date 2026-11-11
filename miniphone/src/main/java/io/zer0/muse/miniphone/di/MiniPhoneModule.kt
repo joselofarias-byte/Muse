@@ -29,14 +29,14 @@ import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
 
 /**
- * Montaje Koin de pequeño módulo de teléfono celular.
+ * 小手机模块的 Koin 装配。
  *
- * base de datos,DAO, y [MiniPhoneHost] Implementación de marcador de posición. Las aplicaciones de host utilizan capacidades reales del host
- * `override<MiniPhoneHost> { ... }` Anule aquí la definición del marcador de posición.
+ * 数据库、DAO、以及 [MiniPhoneHost] 的占位实现。真实宿主能力由宿主应用用
+ * `override<MiniPhoneHost> { ... }` 覆盖这里的占位定义。
  */
 val miniPhoneModule: Module = module {
 
-    // ── base de datos ──
+    // ── 数据库 ──
     single { MiniPhoneDb.create(androidContext()) }
 
     // ── DAO ──
@@ -50,19 +50,19 @@ val miniPhoneModule: Module = module {
     single { get<MiniPhoneDb>().diaryDao() }
     single { get<MiniPhoneDb>().albumDao() }
 
-    // ── Ubicación de la imagen:Copie la imagen seleccionada en el directorio privado.,Sólo la ruta se almacena en la biblioteca. ──
+    // ── 图片落盘:选中的图复制进私有目录,库里只存路径 ──
     single { miniPhoneImageStore(androidContext()) }
 
-    // ── Reproducción de voz:El único jugador en el módulo.,Común a todas las tiras de voz.(Solo una transmisión al mismo tiempo.) ──
+    // ── 语音播放:模块内唯一一个播放器,所有语音条共用(同一时刻只播一条) ──
     single { MiniPhoneVoicePlaybackController() }
 
-    // ── Momentos:Publique, dé me gusta, comente y elimine todo a través de esta interfaz de lectura y escritura. ──
+    // ── 朋友圈:发布、点赞、评论、删除都走这一个读写口 ──
     single { MpMomentsRepository(momentDao = get(), likeDao = get(), commentDao = get(), imageStore = get()) }
 
-    // ── El cambio para publicar actualizaciones automáticamente en segundo plano y la hora de la última generación(Propio del módulo DataStore,sin moverse Room schema) ──
+    // ── 后台自动发动态的开关与上次生成时间(模块自己的 DataStore,不动 Room schema) ──
     single<MpMomentAutoStore> { miniPhoneMomentAutoStore(androidContext()) }
 
-    // ── Material para contenido generado por personajes.:¿De qué has hablado recientemente, cuál fue tu última publicación, qué hora es ahora?(Compartir actualizaciones y mensajes privados) ──
+    // ── 角色自发内容的素材:最近聊过什么、上一条发过什么、现在几点(动态与私信共用) ──
     single {
         MpCharacterMaterial(
             threadDao = get(),
@@ -71,26 +71,26 @@ val miniPhoneModule: Module = module {
         )
     }
 
-    // ── Publicar actualizaciones automáticamente en segundo plano:Un proceso completo,Worker Sólo responsable de despertarlo. ──
+    // ── 后台自动发动态:一轮的完整流程,Worker 只负责把它叫起来 ──
     single { MpMomentAutoRunner(host = get(), repository = get(), store = get(), material = get()) }
 
-    // ── Rol activo mensaje privado:Un proceso completo(juicio → generar → Cayó en la biblioteca → no leído +1) ──
+    // ── 角色主动私信:一轮的完整流程(判定 → 生成 → 落库 → 未读 +1) ──
     single { MpProactiveChatRunner(host = get(), threadDao = get(), messageDao = get(), store = get(), material = get()) }
 
-    // ── Escritura de lista de sesiones:Fijar arriba/Borrar no leídos/Eliminar conversación/Borrar ──
+    // ── 会话列表的写操作:置顶 / 清未读 / 删会话 / 清空 ──
     single<MpConversationActions> {
         MpConversationStore(db = get(), threadDao = get(), messageDao = get(), memberDao = get())
     }
 
-    // ── Creación de grupos y gestión de miembros del grupo.:Crear un grupo/Cambiar nombre/Agregar personas/patear a alguien/disolver ──
+    // ── 建群与群成员管理:建群/改名/加人/踢人/解散 ──
     single<MpGroupActions> {
         MpGroupChatStore(db = get(), threadDao = get(), memberDao = get(), messageDao = get())
     }
 
-    // ── Habilidad del anfitrión(Marcador de posición,A ser cubierto por el anfitrión) ──
+    // ── 宿主能力(占位,待宿主覆盖) ──
     single<MiniPhoneHost> { PlaceholderMiniPhoneHost() }
 
-    // ── Estado de la interfaz ──
+    // ── 界面状态 ──
     viewModel { MiniPhoneShellViewModel(threadDao = get(), store = get(), groupStore = get(), host = get(), settings = get()) }
     viewModel { params ->
         MiniPhoneMomentsViewModel(
@@ -115,14 +115,14 @@ val miniPhoneModule: Module = module {
 }
 
 /**
- * Marcador de posición antes de que el host implemente el acceso:Siempre "no hay datos",No se lanza ninguna excepción.
+ * 宿主实现接入前的占位:永远「没有数据」,不抛异常。
  */
 private class PlaceholderMiniPhoneHost : MiniPhoneHost {
     override fun observeCharacters(): Flow<List<MpCharacter>> = flowOf(emptyList())
 
     override fun observeProfile(): Flow<MpProfile> = flowOf(MpProfile(nickname = ""))
 
-    /** El host de marcador de posición no tiene ninguna aplicación de host para la cual informar una versión. */
+    /** 占位宿主没有宿主应用可报版本。 */
     override fun appVersionName(): String = ""
 
     override fun respond(characterId: String, history: List<MpChatTurn>): Flow<MpReplyEvent> = flowOf(MpReplyEvent.Failed)
@@ -133,9 +133,9 @@ private class PlaceholderMiniPhoneHost : MiniPhoneHost {
 
     override suspend fun synthesizeVoice(text: String, emotion: String?): Pair<String, Long>? = null
 
-    /** El anfitrión del marcador de posición no tiene capacidad de reconocimiento.:Todas las grabaciones y transcripciones se tratarán como si no se hubieran escuchado con claridad. */
+    /** 占位宿主没有识别能力:录音转写一律当作没听清。 */
     override suspend fun transcribeVoice(wavBytes: ByteArray): String? = null
 
-    /** El anfitrión del marcador de posición no tiene capacidad de reconocimiento.,La interfaz debería atenuar el micrófono. */
+    /** 占位宿主没有识别能力,界面应当把麦克风置灰。 */
     override suspend fun supportsVoiceTranscription(): Boolean = false
 }

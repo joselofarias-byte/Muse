@@ -3,10 +3,10 @@ package io.zer0.muse.workspace
 import kotlinx.serialization.Serializable
 
 /**
- * El tipo de fuente a montar.
+ * 挂载的来源类型。
  *
- * - [LOCAL]: Se puede utilizar directamente [java.io.File] Directorios a los que se accede (directorios privados de aplicaciones, directorios compartidos legibles por aplicaciones).
- * - [SAF]: Directorio autorizado a través del selector de directorios del sistema, al que se accede con un URI persistente, sin pasar por las restricciones de almacenamiento de la partición.
+ * - [LOCAL]：可直接用 [java.io.File] 访问的目录（应用私有目录、应用可读的共享目录）。
+ * - [SAF]：通过系统目录选择器授权的目录，用持久化 URI 访问，绕开分区存储限制。
  */
 @Serializable
 enum class MountProvider {
@@ -15,38 +15,38 @@ enum class MountProvider {
 }
 
 /**
- * Una capacidad de montaje.
+ * 一项挂载能力。
  *
- * La capacidad utiliza enumeración en lugar de un interruptor booleano: el mismo montaje puede ser "legible pero no escribible",
- * También pueden ser "capaces de leer y escribir pero no aparecer en la lista", independientes entre sí.
+ * 能力用枚举而不是布尔开关：同一份挂载可以「可读不可写」，
+ * 也可以「能读能写但不出现在列表里」，互相独立。
  */
 @Serializable
 enum class MountCapability {
-    /** Permite enumerar el contenido del directorio. */
+    /** 允许列出目录内容。 */
     LIST,
 
-    /** Permite leer el contenido de los archivos y realizar búsquedas. */
+    /** 允许读取文件内容与搜索。 */
     READ,
 
-    /** Permite escribir, agregar, eliminar, mover y crear directorios. */
+    /** 允许写入、追加、删除、移动、创建目录。 */
     WRITE,
 }
 
 /**
- * Un directorio autorizado para su uso por la IA.
+ * 一块被授权给 AI 使用的目录。
  *
- * El espacio de trabajo ya no es una caja de arena fija, sino un conjunto de soportes. Cada montura tiene su propio bit de capacidad,
- * utilizado en el camino `id:/ruta relativa` Señala la montura específica; sin prefijo, cae al montaje predeterminado. [MAIN_ID].
+ * 工作区不再是一个固定沙盒，而是一组挂载。每条挂载自带能力位，
+ * 路径里用 `id:/相对路径` 指到具体挂载；不带前缀时落到默认挂载 [MAIN_ID]。
  *
- * @param id El ID de montaje se utiliza como prefijo en herramientas y rutas. Sólo se permiten letras minúsculas, números, guiones bajos y guiones.
- * @param label El nombre para mostrar puede contener caracteres chinos y solo se usa para la interfaz.
- * @param provider Método de acceso, decide utilizar [java.io.File] O un URI persistente.
- * @param rootPath [MountProvider.LOCAL] camino absoluto.
- * @param treeUri [MountProvider.SAF] La cadena URI del directorio de persistencia en ese momento.
- * @param capabilities Una colección de habilidades, el elemento faltante significa rechazo.
- * @param system No se permite eliminar ni cambiar el montaje integrado del sistema (espacio de trabajo predeterminado) a solo lectura.
- * @param createdAt Marca de tiempo de creación (milisegundos).
- * @param lastUsedAt Última marca de tiempo utilizada (milisegundos), utilizada para ordenar la interfaz.
+ * @param id 挂载标识，工具与路径里用它做前缀。只允许小写字母、数字、下划线与连字符。
+ * @param label 展示名，可含中文，仅用于界面。
+ * @param provider 访问方式，决定用 [java.io.File] 还是持久化 URI。
+ * @param rootPath [MountProvider.LOCAL] 时的绝对路径。
+ * @param treeUri [MountProvider.SAF] 时的持久化目录 URI 字符串。
+ * @param capabilities 能力集合，缺项即拒绝。
+ * @param system 系统内置挂载（默认工作区），不允许删除或改成只读。
+ * @param createdAt 创建时间戳（毫秒）。
+ * @param lastUsedAt 最近使用时间戳（毫秒），用于界面排序。
  */
 @Serializable
 data class WorkspaceMount(
@@ -60,32 +60,32 @@ data class WorkspaceMount(
     val createdAt: Long = 0L,
     val lastUsedAt: Long = 0L,
 ) {
-    /** Si se permite la lista de directorios. */
+    /** 是否允许列出目录。 */
     val canList: Boolean get() = MountCapability.LIST in capabilities
 
-    /** Ya sea para permitir la lectura y la búsqueda. */
+    /** 是否允许读取与搜索。 */
     val canRead: Boolean get() = MountCapability.READ in capabilities
 
-    /** Si se permiten operaciones de escritura. */
+    /** 是否允许写入类操作。 */
     val canWrite: Boolean get() = MountCapability.WRITE in capabilities
 
-    /** Montaje de solo lectura: se puede ver pero no modificar. */
+    /** 只读挂载：能看不能改。 */
     val isReadOnly: Boolean get() = !canWrite
 
     companion object {
-        /** El ID fijo del montaje predeterminado. */
+        /** 默认挂载的固定标识。 */
         const val MAIN_ID: String = "main"
 
-        /** Capacidades completas: listables, legibles y grabables. */
+        /** 全能力：可列、可读、可写。 */
         val DEFAULT_CAPABILITIES: Set<MountCapability> = setOf(MountCapability.LIST, MountCapability.READ, MountCapability.WRITE)
 
-        /** Capacidades de solo lectura: enumerables, legibles. */
+        /** 只读能力：可列、可读。 */
         val READ_ONLY_CAPABILITIES: Set<MountCapability> = setOf(MountCapability.LIST, MountCapability.READ)
 
-        /** Legalidad del logotipo: comience con una letra minúscula, permita letras minúsculas, números, guiones bajos y guiones. */
+        /** 标识合法性：小写字母开头，允许小写字母、数字、下划线、连字符。 */
         private val ID_PATTERN = Regex("^[a-z][a-z0-9_-]{0,31}$")
 
-        /** Determinar si un identificador cumple con las reglas de nomenclatura. */
+        /** 判断一个标识是否符合命名规则。 */
         fun isValidId(id: String): Boolean = ID_PATTERN.matches(id)
     }
 }

@@ -14,20 +14,20 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 
 /**
- * Credenciales de canal: clasificadas por plataforma, reemplazando la pila original de [ChannelConfig] campo de azulejos en el interior.
+ * 渠道凭证：按平台分型，取代原来堆在 [ChannelConfig] 里的平铺字段。
  *
- * Pregunta original:`appId` / `appSecret` / `robotCode` / `corpId` / `region` Todo apretado
- * ChannelConfig Por otro lado, cada vez que se agrega una plataforma, se deben agregar campos adicionales y no es posible saber qué plataforma requiere cuál en el momento de la compilación.
+ * 原来的问题：`appId` / `appSecret` / `robotCode` / `corpId` / `region` 全挤在
+ * ChannelConfig 上，每加一个平台就要再加字段，而且编译期看不出哪个平台需要哪些。
  *
- * Ahora cada plataforma solo declara las credenciales que realmente usa y solo agrega una subclase para las nuevas plataformas.
- * `when` El compilador fuerza la finalización de la rama.
+ * 现在每个平台只声明自己真正用到的凭证，新增平台只加一个子类，
+ * `when` 分支由编译器强制补全。
  *
- * Compatible: la configuración anterior es un campo en mosaico,[ChannelCredentialsSerializer] Responsable de la conversión bidireccional,
- * Asegúrese de que el JSON antiguo se pueda leer y escribir sin cambios.
+ * 兼容：老配置是平铺字段，[ChannelCredentialsSerializer] 负责双向转换，
+ * 保证老 JSON 能读、能原样写回。
  */
 @Serializable(with = ChannelCredentialsSerializer::class)
 sealed interface ChannelCredentials {
-    /** Aplicación de creación propia Feishu/Lark. */
+    /** 飞书 / Lark 自建应用。 */
     @Serializable
     data class Feishu(
         val appId: String = "",
@@ -35,14 +35,14 @@ sealed interface ChannelCredentials {
         val region: String = "cn",
     ) : ChannelCredentials
 
-    /** QQ Robot. */
+    /** QQ 机器人。 */
     @Serializable
     data class Qq(
         val appId: String = "",
         val appSecret: String = "",
     ) : ChannelCredentials
 
-    /** Robot Ding Talk. */
+    /** 钉钉机器人。 */
     @Serializable
     data class DingTalk(
         val appId: String = "",
@@ -51,29 +51,29 @@ sealed interface ChannelCredentials {
         val apiBase: String = "",
     ) : ChannelCredentials
 
-    /** puente WeChat,token Existe en el campo appSecret. */
+    /** 微信桥接端，token 存在 appSecret 字段里。 */
     @Serializable
     data class WeClaw(
         val botToken: String = "",
     ) : ChannelCredentials
 
-    /** Telegram Bot API. */
+    /** Telegram Bot API。 */
     @Serializable
     data class Telegram(
         val botToken: String = "",
     ) : ChannelCredentials
 
-    /** Aún no configurado o plataforma desconocida. */
+    /** 尚未配置或平台未知。 */
     @Serializable
     data object None : ChannelCredentials
 
     /**
-     * ¿El bono está lo suficientemente completo como para guardarlo?
+     * 该凭证是否填齐到可以保存。
      *
-     * Originalmente, esta sentencia estaba escrita en la página de configuración. `when (platform)` Aquí, escribe cada rama una vez,
-     * Es muy fácil filtrar nuevas plataformas. Ahora depende de cada tipo de credencial declararla por sí mismo.
+     * 原先这个判断写在设置页的 `when (platform)` 里，每个分支各写一遍，
+     * 新增平台极易漏。现在由各凭证类型自己声明。
      *
-     * @param webhookEnabled Si Webhook está habilitado (se requiere un token de verificación adicional, verificado de forma independiente por la persona que llama)
+     * @param webhookEnabled 是否开了 Webhook（需要额外的验证 token，由调用方单独校验）
      */
     fun isComplete(): Boolean = when (this) {
         is Feishu -> appId.isNotBlank() && appSecret.isNotBlank()
@@ -86,16 +86,16 @@ sealed interface ChannelCredentials {
 }
 
 /**
- * Campos de mosaico ↔ Serialización bidireccional de clases selladas.
+ * 平铺字段 ↔ 密封类的双向序列化。
  *
- * El formato de ubicación sigue siendo un conjunto de campos en mosaico (appId / appSecret / robotCode / corpId / apiBaseUrl /
- * region / dingtalkApiBase), que es completamente igual que antes de la transformación, por lo que no se requiere migración de datos.
+ * 落盘格式仍是一组平铺字段（appId / appSecret / robotCode / corpId / apiBaseUrl /
+ * region / dingtalkApiBase），与改造前完全一致，因此不需要数据迁移。
  */
 internal object ChannelCredentialsSerializer : KSerializer<ChannelCredentials> {
     override val descriptor: SerialDescriptor = buildClassSerialDescriptor("ChannelCredentials")
 
     override fun deserialize(decoder: Decoder): ChannelCredentials {
-        val input = decoder as? JsonDecoder ?: error("ChannelCredentials Solo admite decodificación JSON")
+        val input = decoder as? JsonDecoder ?: error("ChannelCredentials 只支持 JSON 解码")
         val obj = input.decodeJsonElement() as? JsonObject ?: return ChannelCredentials.None
         return fromFlat(
             flat = Flat(
@@ -111,7 +111,7 @@ internal object ChannelCredentialsSerializer : KSerializer<ChannelCredentials> {
     }
 
     override fun serialize(encoder: Encoder, value: ChannelCredentials) {
-        val out = encoder as? JsonEncoder ?: error("ChannelCredentials Solo admite codificación JSON")
+        val out = encoder as? JsonEncoder ?: error("ChannelCredentials 只支持 JSON 编码")
         val flat = toFlat(value)
         val obj = buildJsonObject {
             put("appId", flat.appId)
@@ -125,7 +125,7 @@ internal object ChannelCredentialsSerializer : KSerializer<ChannelCredentials> {
         out.encodeJsonElement(obj)
     }
 
-    /** Representación intermedia de campos en mosaico. */
+    /** 平铺字段的中间表示。 */
     internal data class Flat(
         val appId: String = "",
         val appSecret: String = "",
@@ -136,7 +136,7 @@ internal object ChannelCredentialsSerializer : KSerializer<ChannelCredentials> {
         val dingtalkApiBase: String = "",
     )
 
-    /** Cargue campos en mosaico en los tipos de cupones correspondientes por plataforma. */
+    /** 按平台把平铺字段装进对应凭证类型。 */
 
     internal fun fromFlat(flat: Flat, platform: String): ChannelCredentials = when (platform.uppercase()) {
         "FEISHU" -> ChannelCredentials.Feishu(flat.appId, flat.appSecret, flat.region.ifBlank { "cn" })
@@ -162,7 +162,7 @@ internal object ChannelCredentialsSerializer : KSerializer<ChannelCredentials> {
         else -> ChannelCredentials.None
     }
 
-    /** Extienda el cupón nuevamente en el campo mosaico para colocarlo y leerlo con el código anterior. */
+    /** 把凭证摊回平铺字段，供落盘与老代码读取。 */
     internal fun toFlat(value: ChannelCredentials): Flat = when (value) {
         is ChannelCredentials.Feishu -> Flat(
             appId = value.appId,

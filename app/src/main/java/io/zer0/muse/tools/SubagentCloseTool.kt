@@ -3,23 +3,23 @@ package io.zer0.muse.tools
 import io.zer0.muse.data.subagent.SubagentThreadStore
 
 /**
- * v1.0.53 Phase 1: subagent_close Herramientas — Cierre activamente el hilo del agente secundario.
+ * v1.0.53 Phase 1: subagent_close 工具 — 主动关闭子 agent 线程。
  *
- * Permitir que el agente principal cierre los subprocesos que ya no son necesarios,Libera el libro mayor. Después del cierre, el threadId no se puede continuar.:
- *  - subagent_task La respuesta volverá "thread is closed"
- *  - subagent_run Llevar este thread_id será rechazado y lanzado por runSerialized IllegalStateException
+ * 让主 agent 能关闭不再需要的线程,释放账本。关闭后该 threadId 不可再续接:
+ *  - subagent_task 的 reply 会返回 "thread is closed"
+ *  - subagent_run 携带该 thread_id 会被 runSerialized 拒并抛 IllegalStateException
  *
- * restricciones de seguridad:
- *  - Está prohibido llamar a esta herramienta dentro del subagente.(Anti-autoapagado)— Ya me uní
- *    [SubagentRunner.RECURSIVE_FORBIDDEN_TOOLS](Filtrado de lista blanca de subagentes)
- *  - Nivel de riesgo NORMAL: Cerrar el hilo es una operación no destructiva(Cambiar solo el estado del libro mayor,No borrar datos)
+ * 安全约束:
+ *  - 子 agent 内部禁止调用此工具(防自关)— 已加入
+ *    [SubagentRunner.RECURSIVE_FORBIDDEN_TOOLS](子 agent 白名单过滤)
+ *  - 风险等级 NORMAL:关闭线程是无破坏性操作(仅改账本状态,不删数据)
  */
 object SubagentCloseTool {
 
     fun toolDef() = ToolRegistry.ToolDef(
         name = "subagent_close",
-        description = "Cerrar un hilo de subagente,Liberar su contabilidad de sesión. Este thread_id ya no se puede utilizar para la continuación." +
-            "Se utiliza cuando la sesión del subagente ya no es necesaria.",
+        description = "关闭一个子代理线程,释放它的会话记账。之后这个 thread_id 不能再用于续接。" +
+            "不再需要该子代理会话时使用。",
         parameters = mapOf(
             "thread_id" to "Required. The thread id to close (returned by subagent_task launch or subagent_run).",
             "reason" to "Optional. Reason for closing (recorded in logs).",
@@ -30,11 +30,11 @@ object SubagentCloseTool {
     )
 
     /**
-     * Ejecute la herramienta subagent_close.
+     * 执行 subagent_close 工具。
      *
-     * @param args Parámetros de la herramienta(thread_id Requerido / motivo opcional)
-     * @param threadStore Libro mayor de hilos de subagente(Versión persistente)
-     * @return Cadena de resultado de la operación
+     * @param args 工具参数(thread_id 必填 / reason 可选)
+     * @param threadStore 子 agent 线程账本(持久化版)
+     * @return 操作结果字符串
      */
     suspend fun execute(args: Map<String, String>, threadStore: SubagentThreadStore): String {
         val threadId = args["thread_id"]?.trim()

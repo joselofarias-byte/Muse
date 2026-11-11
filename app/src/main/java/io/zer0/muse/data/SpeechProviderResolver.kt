@@ -5,10 +5,10 @@ import io.zer0.muse.asr.AsrConfig
 import io.zer0.muse.asr.AsrProviderType
 
 /**
- * Fuente de credenciales para las capacidades de habla.
+ * 语音能力的凭据来源。
  *
- * - [MANUAL]: Utilice el llenado manual en la página de configuración TTS/ASR endpoint / apiKey / model
- * - [PROVIDER]: Utilice la configuración del proveedor baseUrl / apiKey,El modelo toma el modelo seleccionado manualmente en modo de seguimiento id
+ * - [MANUAL]: 使用 TTS/ASR 设置页里手填的 endpoint / apiKey / model
+ * - [PROVIDER]: 使用供应商配置里的 baseUrl / apiKey,模型取跟随模式下手选的模型 id
  */
 enum class SpeechEndpointSource {
     PROVIDER,
@@ -16,14 +16,14 @@ enum class SpeechEndpointSource {
 }
 
 /**
- * Los parámetros de conexión finales que entran en vigor para una solicitud de voz.
+ * 一次语音请求最终生效的连接参数。
  *
- * @param baseUrl Dirección de interfaz efectiva real(Puede ser una cadena vacía en modo manual.,Se cuidan los valores predeterminados integrados de cada cliente.)
- * @param apiKey realmente efectivo apiKey(Descifrado)
- * @param model Nombre del modelo real
- * @param source Fuente de parámetros
- * @param fallbackReason Razones por las que el interruptor se enciende pero vuelve a la configuración manual;
- *   null Indica que no se ha producido ninguna reversión(Apagar el interruptor no cuenta como reversión)
+ * @param baseUrl 实际生效的接口地址(手动模式下可能是空串,由各客户端内置默认值兜底)
+ * @param apiKey 实际生效的 apiKey(已解密)
+ * @param model 实际生效的模型名
+ * @param source 参数来源
+ * @param fallbackReason 开关已开但回退到手动配置时的原因;
+ *   null 表示未发生回退(开关关闭不算回退)
  */
 data class ResolvedSpeechEndpoint(
     val baseUrl: String,
@@ -32,52 +32,51 @@ data class ResolvedSpeechEndpoint(
     val source: SpeechEndpointSource,
     val fallbackReason: String? = null,
 ) {
-    /** ¿Se debe a que no se siguió?(La persona que llama llama en consecuencia WARN). */
+    /** 是否是因为跟随失败而回退(调用方据此打 WARN)。 */
     val isProviderFallback: Boolean
         get() = source == SpeechEndpointSource.MANUAL && fallbackReason != null
 }
 
 /**
- * TTS / ASR Analizador "Seguir la configuración del proveedor".
+ * TTS / ASR 的「跟随供应商配置」解析器。
  *
- * función pura:Ingrese la configuración actual + lista de proveedores,Generar la dirección efectiva real/Credenciales/modelo,No se realiza ninguna IO y no se lanzan excepciones.
- * La persona que llama es responsable de [ResolvedSpeechEndpoint.fallbackReason] Iniciar sesión cuando no esté vacío,Fácil de solucionar problemas
- * Este tipo de reversión silenciosa ocurre cuando "el interruptor está encendido pero aún se realiza la configuración manual".
+ * 纯函数:输入当前配置 + 供应商列表,输出实际生效的地址/凭据/模型,不做 IO、不抛异常。
+ * 调用方负责在 [ResolvedSpeechEndpoint.fallbackReason] 非空时记录日志,便于排查
+ * 「开关开着却仍走手动配置」这类静默回退。
  *
- * Prioridad de regla de mayor a menor:
- *  1. apagar → Siempre configurado manualmente([SpeechEndpointSource.MANUAL]);
- *  2. Encendido + Proveedor analizable y habilitado + Modelo seleccionado → Configuración del proveedor([SpeechEndpointSource.PROVIDER]);
- *  3. El interruptor está encendido pero falta el proveedor./Eliminado, proveedor deshabilitado, modelo no seleccionado → Recurrir a la configuración manual con motivos.
+ * 规则优先级从高到低:
+ *  1. 开关关闭 → 一律手动配置([SpeechEndpointSource.MANUAL]);
+ *  2. 开关开启 + 供应商可解析且启用 + 模型已选 → 供应商配置([SpeechEndpointSource.PROVIDER]);
+ *  3. 开关开启但供应商缺失/已删除、供应商被禁用、模型未选 → 回退手动配置并带原因。
  */
 object SpeechProviderResolver {
-    /** El proveedor señalado por el siguiente patrón ya no existe(o ser eliminado). */
+    /** 跟随模式指向的供应商已不存在(或被删除)。 */
     const val REASON_PROVIDER_MISSING = "provider_missing"
 
-    /** El proveedor señalado por el siguiente patrón existe pero está desactivado. */
+    /** 跟随模式指向的供应商存在但已停用。 */
     const val REASON_PROVIDER_DISABLED = "provider_disabled"
 
-    /** No se selecciona ningún modelo en el modo de seguimiento. */
+    /** 跟随模式未选择模型。 */
     const val REASON_MODEL_MISSING = "model_missing"
 
-    /** analizar TTS(motor de nube)parámetros de conexión reales. */
-    fun resolveMedia(config: MediaConfig, providers: List<ProviderConfig>): ResolvedSpeechEndpoint =
-        resolve(
-            follow = config.ttsFollowProvider,
-            providerId = config.ttsProviderId,
-            modelId = config.ttsModelId,
-            manualBaseUrl = config.ttsEndpoint,
-            manualApiKey = config.ttsApiKey,
-            manualModel = config.ttsModel,
-            providers = providers,
-        )
+    /** 解析 TTS(云端引擎)的实际连接参数。 */
+    fun resolveMedia(config: MediaConfig, providers: List<ProviderConfig>): ResolvedSpeechEndpoint = resolve(
+        follow = config.ttsFollowProvider,
+        providerId = config.ttsProviderId,
+        modelId = config.ttsModelId,
+        manualBaseUrl = config.ttsEndpoint,
+        manualApiKey = config.ttsApiKey,
+        manualModel = config.ttsModel,
+        providers = providers,
+    )
 
     /**
-     * Analice los parámetros de conexión reales del ASR.
+     * 解析 ASR 的实际连接参数。
      *
-     * DashScope Identificación en tiempo real de puntos finales wss integrados([AsrConfig.asrEndpoint]),El proveedor baseUrl no participa,
-     * Por lo tanto, el interruptor de seguimiento simplemente se ignora en este motor.(Tratar como configuración manual,sin motivo de devolución):
-     * Cuando el usuario enciende por primera vez, sigue en otro motor y luego cambia a DashScope,Tampoco uso indebido de direcciones de proveedores.,
-     * No se eliminará por culpa de los proveedores./Aparece una falsa alarma de respaldo debido a la desactivación.
+     * DashScope 实时识别走内置 wss 端点([AsrConfig.asrEndpoint]),供应商 baseUrl 不参与,
+     * 因此该引擎下直接忽略跟随开关(视为手动配置,且不带回退原因):
+     * 用户先在别的引擎下开了跟随、再切到 DashScope 时,既不会误用供应商地址,
+     * 也不会因为供应商被删/停用而冒出一条假回退告警。
      */
     fun resolveAsr(config: AsrConfig, providers: List<ProviderConfig>): ResolvedSpeechEndpoint {
         if (config.provider == AsrProviderType.DASHSCOPE) {
@@ -94,13 +93,12 @@ object SpeechProviderResolver {
         )
     }
 
-    private fun manual(baseUrl: String, apiKey: String, model: String): ResolvedSpeechEndpoint =
-        ResolvedSpeechEndpoint(
-            baseUrl = baseUrl,
-            apiKey = apiKey,
-            model = model,
-            source = SpeechEndpointSource.MANUAL,
-        )
+    private fun manual(baseUrl: String, apiKey: String, model: String): ResolvedSpeechEndpoint = ResolvedSpeechEndpoint(
+        baseUrl = baseUrl,
+        apiKey = apiKey,
+        model = model,
+        source = SpeechEndpointSource.MANUAL,
+    )
 
     private fun resolve(
         follow: Boolean,
@@ -112,7 +110,7 @@ object SpeechProviderResolver {
         providers: List<ProviderConfig>,
     ): ResolvedSpeechEndpoint {
         val manualResult = manual(manualBaseUrl, manualApiKey, manualModel)
-        // Regla 1: el interruptor tiene la máxima prioridad cuando está cerrado,La lista de proveedores no participa en absoluto.
+        // 规则 1:开关关闭时开关优先级最高,供应商列表完全不参与
         if (!follow) return manualResult
 
         val provider = providers.firstOrNull { it.id == providerId }
@@ -137,10 +135,10 @@ object SpeechProviderResolver {
 }
 
 /**
- * Caída de los resultados del análisis a la configuración ASR.,Para que cada controlador de transmisión lea directamente.
+ * 把解析结果落到 ASR 配置上,供各流式 Controller 直接读取。
  *
- * Volver al modo manual tal cual(Asegúrese de que los valores completados manualmente no se sobrescriban);Reemplace solo cuando esté seguro de acudir al proveedor.
- * apiKey / baseUrl / model,campos restantes(tasa de muestreo,VAD, palabras calientes, etc.)permanecer sin cambios.
+ * 手动模式原样返回(保证手填值不被覆盖);只有确定走供应商时才替换
+ * apiKey / baseUrl / model,其余字段(采样率、VAD、热词等)保持不变。
  */
 fun AsrConfig.withResolvedEndpoint(resolved: ResolvedSpeechEndpoint): AsrConfig = when (resolved.source) {
     SpeechEndpointSource.MANUAL -> this

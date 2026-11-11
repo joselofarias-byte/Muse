@@ -1,18 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    P3-3: Configuración del servicio de accesibilidad.
-    - accessibilityEventTypes: Escuche todo tipo de eventos(Haga clic/desplazarse/Cambios de ventana, etc.),Para uso de getCurrentActivityName
-    - accessibilityFlags: FLAG_RETRIEVE_INTERACTIVE_WINDOWS Soporta múltiples ventanas;FLAG_REQUEST_FILTER_KEY_EVENTS Opcional
-    - canRetrieveWindowContent: true Permitir la lectura del árbol de la interfaz de usuario(getUiHierarchy/setTextOnNode depender de)
-    - canPerformGestures: true Permitir gestos(performClick/performSwipe depender de)
-    - canTakeScreenshots: Establecer dinámicamente a través de serviceInfo en onServiceConnected(API 34+)
-    - notificationTimeout: limitación de eventos 100ms
-    - packageNames: no declarar = Supervise todas las aplicaciones. Tenga cuidado de no escribir una cadena vacía——La cadena vacía se analizará en“Nombre del paquete vacío”filtrar,
-      Lo que da como resultado que no se entreguen eventos(La caché de la ventana está vacía,getCurrentActivityName espacio constante,rootInActiveWindow para null).
+    P3-3: 无障碍服务配置。
+    - accessibilityEventTypes: 监听全部事件类型(点击/滚动/窗口变化等),供 getCurrentActivityName 使用
+    - accessibilityFlags: FLAG_RETRIEVE_INTERACTIVE_WINDOWS 支持多窗口;FLAG_REQUEST_FILTER_KEY_EVENTS 可选
+    - canRetrieveWindowContent: true 允许读取 UI 树(getUiHierarchy/setTextOnNode 依赖)
+    - canPerformGestures: true 允许手势(performClick/performSwipe 依赖)
+    - canTakeScreenshots: 在 onServiceConnected 中通过 serviceInfo 动态设置(API 34+)
+    - notificationTimeout: 事件节流 100ms
+    - packageNames: 不声明 = 监听所有应用。注意不能写空串——空串会被解析成“空包名”过滤器,
+      导致零事件送达(窗口缓存为空,getCurrentActivityName 恒空、rootInActiveWindow 为 null)。
+
+    v2.6.22: 这份是**两个组件的唯一真源** —— 主应用内的无障碍服务与
+    :accessibility-provider APK 里的服务都指向它。以前主应用另有一份
+    `app/res/xml/muse_accessibility_service.xml`，两边已经漂了：那份多了
+    `flagReportViewIds` 与 `typeViewTextChanged`。
+    漂移目前不至于出事（读 `viewIdResourceName` 的代码只在主应用进程内跑，而它用的是自己那份），
+    但“同一个服务配置写两处”就是下一次漂移的种子，而那种漂移的表现是
+    「provider 授权了、按 resource-id 却点不动」——极难查。
 -->
 <accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
-    android:accessibilityEventTypes="typeWindowStateChanged|typeWindowContentChanged|typeViewClicked|typeViewScrolled"
-    android:accessibilityFlags="flagDefault|flagRetrieveInteractiveWindows"
+    android:accessibilityEventTypes="typeWindowStateChanged|typeWindowContentChanged|typeViewClicked|typeViewScrolled|typeViewTextChanged"
+    android:accessibilityFlags="flagDefault|flagReportViewIds|flagRetrieveInteractiveWindows"
     android:accessibilityFeedbackType="feedbackGeneric"
     android:canRetrieveWindowContent="true"
     android:canPerformGestures="true"

@@ -10,11 +10,11 @@ interface AssistantsPageProps {
   readonly assistants: readonly HostAssistantSummary[];
   readonly providers: readonly HostProviderSummary[];
   readonly details: Readonly<Record<string, HostAssistantDetail>>;
-  /** Host Bits de capacidad declarados (undefined = Anfitrión antiguo, pruébalo primero). */
+  /** Host 声明的能力位（undefined = 老 Host，先试一次）。 */
   readonly flags: readonly string[] | undefined;
-  /** La instantánea de la mitad superior de la página aún no ha llegado. */
+  /** 首屏快照还没到。 */
   readonly loading: boolean;
-  /** Host Respondió claramente \"Detalles no admitidos\". */
+  /** Host 明确回了「不支持详情」。 */
   readonly detailUnsupported: boolean;
   readonly onRequestDetail: (assistantId: string) => void;
   readonly onRequestProviders: () => void;
@@ -22,7 +22,7 @@ interface AssistantsPageProps {
   readonly onBack: () => void;
 }
 
-/** Si el resumen del personaje supera las 6 líneas, dóblelo y expanda el botón.——Aquí sólo se registra el estado expandido. */
+/** 人设摘要超过 6 行折起来，按钮展开——这里只记展开状态。 */
 function PersonaSummary({ text }: { readonly text: string }) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
@@ -43,10 +43,10 @@ function value(value: string | number | undefined, empty: string): string {
 }
 
 /**
- * Página de Asistentes y Personajes: Lista → Detalles.
+ * 助手与角色页：列表 → 详情。
  *
- * Además del resumen del personaje, los detalles./parámetros/Longitud de la palabra del mensaje/Número de herramienta, solo hay una acción "Iniciar sesión con este asistente";
- * El interruptor de habilitación está**solo lectura**de——No hay ningún comando escrito en el protocolo. Hacer un interruptor que no responde cuando se hace clic es peor que no activarlo en absoluto.
+ * 详情里除了人设摘要/参数/提示词长度/工具数，只有一个「用这个助手开始会话」的动作；
+ * 启用开关是**只读**的——协议里没有写回命令，做一个点了没反应的开关比不给更糟。
  */
 export function AssistantsPage(props: AssistantsPageProps) {
   const { t } = useI18n();
@@ -58,7 +58,7 @@ export function AssistantsPage(props: AssistantsPageProps) {
   const requested = useRef(new Set<string>());
   const supportsDetail = supportsFlag(props.flags, ASSISTANT_DETAIL_FLAGS) && !detailUnsupported;
 
-  // Cuando llegue la lista, obtenga los detalles de cada asistente: el nombre del modelo solo está en los detalles. Las solicitudes repetidas se deduplican según lo solicitado.
+  // 列表进来就给每个助手拉一次详情：模型名只有详情里有。重复请求靠 requested 去重。
   useEffect(() => {
     if (!supportsDetail) return;
     onRequestProviders();
@@ -124,7 +124,7 @@ export function AssistantsPage(props: AssistantsPageProps) {
   );
 }
 
-/** Página de detalles (exportada por separado: las afirmaciones se pueden representar directamente sin interacción). */
+/** 详情页（单独导出：没有交互也能直接渲染断言）。 */
 export function AssistantDetailView({
   assistant,
   detail,

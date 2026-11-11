@@ -5,16 +5,16 @@ import io.zer0.muse.data.schedule.ScheduledTaskExecutionDao
 import kotlinx.coroutines.flow.first
 
 /**
- * Comandos automatizados de solo lectura(`tasks.list`)proyección de carga.
+ * 自动化只读命令(`tasks.list`)的载荷投影。
  *
- * Sólo hay una lista de tareas programadas.,La página web y la página de tareas programadas de la aplicación ven el mismo lote de filas y la misma clasificación
- * (ver [ScheduledTaskDao.observeAll]),No se abrirán criterios de consulta adicionales.
+ * 定时任务只有一个列表,网页端与 App 定时任务页看的是同一批行、同一个排序
+ * (见 [ScheduledTaskDao.observeAll]),不另开查询口径。
  */
 internal object HostTaskReads {
 
     const val TYPE_LIST = "tasks.list"
 
-    /** `tasks.list` Acuse de recibo. Se envía una matriz vacía cuando no hay tareas. */
+    /** `tasks.list` 回执。没有任务时下发空数组。 */
     fun listEvent(tasks: List<HostScheduledTask>, requestId: String?): HostEvent = HostEvent(
         type = TYPE_LIST,
         requestId = requestId,
@@ -22,38 +22,38 @@ internal object HostTaskReads {
     )
 
     /**
-     * El próximo tiempo de ejecución de una tarea.
+     * 一条任务的下次执行时间。
      *
-     * Desactivar una tarea no da la próxima vez:curry `next_run_at` es el valor anterior que quedaba antes de la desactivación,Emitido tal cual
-     * La página web muestra "tareas cerradas" como "a qué hora y minutos se ejecutará".
+     * 停用任务不给出下次时间:库里 `next_run_at` 是停用前留下的旧值,原样下发会让
+     * 网页端把「已关掉的任务」显示成「几点几分会跑」。
      */
     fun nextRunAt(enabled: Boolean, nextRunAt: Long): Long? = nextRunAt.takeIf { enabled && it > 0 }
 
-    /** Última hora de ejecución;0 significa que nunca fue ejecutado. */
+    /** 上次执行时间;0 表示从未执行。 */
     fun lastRunAt(lastRunAt: Long): Long? = lastRunAt.takeIf { it > 0 }
 }
 
 /**
- * Fuente de datos para comandos automatizados de solo lectura.
+ * 自动化只读命令的数据源。
  *
- * La interfaz de comisión permite que la puerta de enlace reciba recibos como de costumbre, incluso en escenarios donde no hay un almacenamiento de tareas programado.(lista vacía).
+ * 抽成接口是为了让网关在没有定时任务存储的场景下也能照常回执(空列表)。
  */
 internal interface HostTaskSource {
 
-    /** Lista de tareas programadas. */
+    /** 定时任务一览。 */
     suspend fun tasks(): List<HostScheduledTask>
 
-    /** Implementación vacía cuando no está ensamblada:No hay tareas. */
+    /** 未装配时的空实现:没有任务。 */
     object Empty : HostTaskSource {
         override suspend fun tasks(): List<HostScheduledTask> = emptyList()
     }
 }
 
 /**
- * Lea directamente las fuentes de datos de las dos tablas de tareas programadas.
+ * 直接读定时任务两张表的数据源。
  *
- * Ejecución de tareas [ScheduledTaskDao.observeAll] una instantánea de(La misma consulta y la misma clasificación que la página de tareas programadas de la aplicación);
- * Obtenga el último estado de ejecución [ScheduledTaskExecutionDao.latestStatusByTask],Tome toda la tabla de una vez en lugar de revisarla elemento por elemento.
+ * 任务行取 [ScheduledTaskDao.observeAll] 的一次快照(与 App 定时任务页同一个查询、同一排序);
+ * 最近一次执行状态取 [ScheduledTaskExecutionDao.latestStatusByTask],一次拿全表而不是逐条查。
  */
 internal class DaoHostTaskSource(
     private val taskDao: ScheduledTaskDao,

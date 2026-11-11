@@ -1,5 +1,5 @@
-// v1.205 D2: Representación dedicada de los resultados de las herramientas — árbol recursivo/Las vistas son PascalCase Composable,
-// El archivo contiene 13 funciones.(recipiente+hojas+ver),Las prácticas del proyecto utilizan exenciones a nivel de archivo(MessageBubbleTail precedente).
+// v1.205 D2: 工具结果专用渲染 — 递归树/视图均为 PascalCase Composable,
+// 文件含 13 个函数(容器+叶子+视图),项目惯例用文件级豁免(MessageBubbleTail 先例)。
 @file:Suppress("TooManyFunctions")
 
 package io.zer0.muse.ui.chat
@@ -21,23 +21,23 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.zer0.muse.ui.markdown.DataCardParser
 import io.zer0.muse.ui.markdown.DataCardRenderer
 import io.zer0.muse.ui.theme.MusePaddings
+import io.zer0.muse.ui.theme.bodySmallStrong
 import org.json.JSONArray
 import org.json.JSONObject
 
 /**
- * v1.205 D2: Representación dedicada de los resultados de las herramientas — Reconocer automáticamente tipos de resultados y seleccionar vistas:
- * - JSON(a { / [ Comienzo y analizable)→ Árbol JSON plegable
- * - unified diff(Contiene encabezado de diferencia / @@ hunk / +/- OK)→ Vista de diferencias a nivel de fila
- * - mesa(| separar varias líneas)→ mesa estructurada
- * - Otros → texto plano(Consistente con el viejo comportamiento)
+ * v1.205 D2: 工具结果专用渲染 — 自动识别结果类型并选择视图:
+ * - JSON(以 { / [ 开头且可解析)→ 可折叠 JSON 树
+ * - unified diff(含 diff 头 / @@ hunk / +/- 行)→ 行级 diff 视图
+ * - 表格(| 分隔多行)→ 结构化表格
+ * - 其他 → 纯文本(与旧行为一致)
  *
- * El reconocimiento es heurístico.:Cualquier error de análisis volverá a ser texto sin formato.,No lances excepciones para colapsar las burbujas de mensajes.
+ * 识别是启发式的:任何解析失败都会安全回退到纯文本,不抛异常拖垮消息气泡。
  */
 @Composable
 internal fun ToolResultRenderer(result: String, modifier: Modifier = Modifier) {
@@ -72,7 +72,7 @@ internal fun ToolResultRenderer(result: String, modifier: Modifier = Modifier) {
 
 private enum class ResultKind { PLAIN, DIFF, JSON, TABLE, DATA_CARD }
 
-/** Reconocimiento de tipo heurístico:JSON > diff > table > plain(El texto plano nunca se confundirá con una tabla). */
+/** 启发式类型识别:JSON > diff > table > plain(纯文本永不误判为表格)。 */
 private fun detectResultKind(text: String): ResultKind {
     val trimmed = text.trim()
     if (DataCardParser.parse(trimmed) != null) return ResultKind.DATA_CARD
@@ -87,7 +87,7 @@ private fun detectResultKind(text: String): ResultKind {
     }
 }
 
-/** unified diff Características:tiene encabezado diferente/hunk cabeza,O hay varias líneas + y - al mismo tiempo. */
+/** unified diff 特征:有 diff 头/hunk 头,或同时存在多条 + 与 - 行。 */
 private fun isDiffLike(text: String): Boolean {
     val lines = text.lines()
     if (lines.size < 3) return false
@@ -97,7 +97,7 @@ private fun isDiffLike(text: String): Boolean {
     return hasHeader || hasAdds && hasDels
 }
 
-/** características de la mesa:Al menos 2 líneas que contengan |,y contiene | proporción de fila ≥60%. */
+/** 表格特征:至少 2 行含 |,且含 | 行占比 ≥60%。 */
 private fun isTableLike(text: String): Boolean {
     val lines = text.lines()
     val pipeLines = lines.filter { it.contains("|") }
@@ -117,7 +117,7 @@ private fun parseJsonOrNull(text: String): Any? {
     }
 }
 
-// ── JSON árbol ──────────────────────────────────────────────────────────────
+// ── JSON 树 ──────────────────────────────────────────────────────────────
 
 private const val MAX_JSON_DEPTH = 6
 
@@ -201,7 +201,7 @@ private fun JsonToggleRow(key: String?, preview: String, expanded: Boolean, dept
         if (key != null) {
             Text(
                 text = "\"$key\": ",
-                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                style = MaterialTheme.typography.bodySmallStrong,
                 color = MaterialTheme.colorScheme.onSurface,
             )
         }
@@ -221,7 +221,7 @@ private fun JsonLeafRow(key: String?, value: Any) {
         if (key != null) {
             Text(
                 text = "\"$key\": ",
-                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                style = MaterialTheme.typography.bodySmallStrong,
                 color = MaterialTheme.colorScheme.onSurface,
             )
         }
@@ -242,7 +242,7 @@ private fun formatJsonLeaf(value: Any): String = when (value) {
     else -> value.toString()
 }
 
-// ── diff ver ────────────────────────────────────────────────────────────
+// ── diff 视图 ────────────────────────────────────────────────────────────
 
 private const val STRUCTURED_RENDER_LINE_THRESHOLD = 300
 
@@ -276,7 +276,7 @@ private fun DiffView(diffText: String, modifier: Modifier) {
                 modifier = if (bg != null) {
                     Modifier.fillMaxWidth().background(bg)
                 } else {
-                    // Las líneas de diferencias normales no tienen color de fondo,Renderizar con estilo predeterminado
+                    // 普通 diff 行无背景色,按默认样式渲染
                     Modifier.fillMaxWidth()
                 },
             ) {
@@ -290,7 +290,7 @@ private fun DiffView(diffText: String, modifier: Modifier) {
     }
 }
 
-// ── vista de tabla ─────────────────────────────────────────────────────────────
+// ── 表格视图 ─────────────────────────────────────────────────────────────
 
 @Composable
 private fun TableView(tableText: String, modifier: Modifier) {
@@ -302,7 +302,7 @@ private fun TableView(tableText: String, modifier: Modifier) {
                     Text(
                         text = cell,
                         style = if (index == 0) {
-                            MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold)
+                            MaterialTheme.typography.bodySmallStrong
                         } else {
                             MaterialTheme.typography.bodySmall
                         },
@@ -318,10 +318,10 @@ private fun TableView(tableText: String, modifier: Modifier) {
     }
 }
 
-/** Regularidad de filas separadas de tabla(--- / |---|---| espera),Las constantes a nivel de archivo evitan reconstruir cada análisis. */
+/** 表格分隔行正则(--- / |---|---| 等),文件级常量避免每次解析重建。 */
 private val TABLE_SEPARATOR_REGEX = Regex("^[|:\\-\\s]+$")
 
-/** analizar | mesa separada:eliminar líneas vacías/separador de linea pura,celúla trim,Hay un límite superior en el número de filas y columnas. */
+/** 解析 | 分隔表格:去空行/纯分隔行,单元格 trim,行数与列数均设上限。 */
 internal fun parseTableRows(tableText: String): List<List<String>> {
     val rows = tableText.lines()
         .asSequence()

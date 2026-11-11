@@ -11,29 +11,30 @@ import io.zer0.muse.tools.system.sanitizeShellCommandForLog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.util.concurrent.TimeUnit
 
 /**
- * Shell actuador —— Segunda capa de automatización de la interfaz de usuario.
+ * Shell 执行器 —— 第二层 UI 自动化。
  *
- * Dos modos de trabajo:
- * 1. Dispositivo rooteado: Ejecutar comando a través de su(En este momento por [RootExecutor] Uso heredado)
- * 2. Shizuku/adb: Pase `adb shell` o ejecución del servicio Shizuku
+ * 两种工作模式:
+ * 1. 已 root 设备: 通过 su 执行命令(此时由 [RootExecutor] 继承使用)
+ * 2. Shizuku/adb: 通过 `adb shell` 或 Shizuku 服务执行
  *
- * Todos los comandos devuelven un error cuando no están autorizados,Pero no se estrellará.
+ * 未授权时所有命令返回失败,但不会崩溃。
  *
- * Nota: puro `adb shell` No se puede persistir directamente(App El proceso no puede heredar adb shell uid).
- * Pases de implementación actuales [io.zer0.muse.tools.system.ShizukuAuthorizer] Reutilizar el Servicio de Usuario autorizado de Shizuku;
- * RootExecutor Reutilizar esta clase `su` Primitivo como canal de degradación, aplicación común `sh` Ya no se considera un segundo nivel de autoridad.
+ * 注: 纯 `adb shell` 无法直接持久化(App 进程不能继承 adb shell 的 uid)。
+ * 当前实现通过 [io.zer0.muse.tools.system.ShizukuAuthorizer] 复用已授权的 Shizuku UserService；
+ * RootExecutor 复用本类的 `su` 原语作为降级通道，普通应用 `sh` 不再被当成第二层权限。
  */
 open class ShellExecutor(
     protected val context: Context,
-    /** Shizuku debe ser llevado explícitamente al segundo nivel;null Sólo RootExecutor puede reutilizar la primitiva su de esta clase. */
+    /** 第二层必须显式走 Shizuku；null 仅供 RootExecutor 复用本类的 su 原语。 */
     protected val shizukuAuthorizer: io.zer0.muse.tools.system.ShizukuAuthorizer? = null,
 ) : AutomationExecutor {
 
     override val level = PermissionLevel.SHELL
 
-    /** Utilice únicamente su local cuando reutilice RootExecutor; la segunda capa no pretenderá estar autorizada con pescado ordinario. */
+    /** 仅在 RootExecutor 复用时使用本地 su；第二层不会以普通 sh 冒充授权。 */
     protected open val shellPrefix: List<String> = listOf("sh")
 
     override suspend fun isAvailable(): Boolean = withContext(Dispatchers.IO) {
@@ -42,7 +43,7 @@ open class ShellExecutor(
         result.isSuccess && result.getOrDefault("").isNotBlank()
     }
 
-    // ── lectura de pantalla ──────────────────────────────────────────────
+    // ── 屏幕读取 ──────────────────────────────────────────────
 
     override suspend fun screenshot(): ByteArray? = withContext(Dispatchers.IO) {
         try {
@@ -59,15 +60,15 @@ open class ShellExecutor(
     }
 
     /**
-     * v2.6.13: Shizuku Las capturas de pantalla se toman a través del canal de transmisión en lugar de volver a incluir imágenes en cadenas AIDL.
+     * v2.6.13: Shizuku 截图改走流式管道，不再把图片塞回 AIDL 字符串。
      *
-     * La antigua implementación era `screencap -p | gzip -c | base64` ir [ShizukuAuthorizer.execute](AIDL String).
-     * 1080p Incluso después de gzip, la captura de pantalla base64 a menudo todavía tiene más de 1 MB, lo que excede el búfer de transacción único de la carpeta.
-     * UserService Golpeado directamente hasta la muerte (registro de máquina real:`Transaction failed on small parcel; remote process
-     * probably died` + Cada vez posterior `bindUserService falló: UserService Tiempo de espera de conexión`).
+     * 旧实现是 `screencap -p | gzip -c | base64` 走 [ShizukuAuthorizer.execute]（AIDL String）。
+     * 1080p 截图就算 gzip 后 base64 仍常有 1MB+，超过 binder 单次事务缓冲，
+     * UserService 直接被打死（真机日志：`Transaction failed on small parcel; remote process
+     * probably died` + 后续每次 `bindUserService 失败: UserService 连接超时`）。
      *
-     * Usar ahora [ShizukuAuthorizer.executeToPipe]: El comando se ejecuta en el proceso de shell y los bytes se
-     * ParcelFileDescriptor La tubería regresa a este proceso para escribir archivos, evitando por completo el límite de tamaño de la carpeta.
+     * 现在用 [ShizukuAuthorizer.executeToPipe]：命令在 shell 进程执行，字节经
+     * ParcelFileDescriptor 管道流回本进程写文件，完全绕开 binder 体积上限。
      */
     private suspend fun screenshotViaShizuku(): Result<ByteArray> {
         val file = File(context.cacheDir, "muse_shell_shot_${System.currentTimeMillis()}.png")
@@ -77,10 +78,10 @@ open class ShellExecutor(
             if (!ok) {
                 Logger.w(
                     TAG,
-                    "Shizuku Error en la captura de pantalla exit=${result?.exitCode} size=${if (file.exists()) file.length() else -1}",
+                    "Shizuku 流式截图失败 exit=${result?.exitCode} size=${if (file.exists()) file.length() else -1}",
                 )
                 file.delete()
-                Result.failure(IllegalStateException(result?.stderr?.ifBlank { null } ?: "La captura de pantalla no produjo un archivo válido."))
+                Result.failure(IllegalStateException(result?.stderr?.ifBlank { null } ?: "截图未产生有效文件"))
             } else {
                 val bytes = file.readBytes()
                 file.delete()
@@ -88,22 +89,22 @@ open class ShellExecutor(
             }
         } catch (e: Exception) {
             file.delete()
-            Logger.w(TAG, "Shizuku Excepción de captura de pantalla en streaming: ${e.message}")
+            Logger.w(TAG, "Shizuku 流式截图异常: ${e.message}")
             Result.failure(e)
         }
     }
 
-    /** Las comillas simples envuelven la ruta y las comillas simples internas se escapan de acuerdo con las reglas POSIX. La ruta proviene de cacheDir, no contiene caracteres especiales y todavía se defiende aquí. */
+    /** 单引号包裹路径，内部单引号按 POSIX 规则转义。路径来自 cacheDir，不含特殊字符，这里仍做防御。 */
     private fun shellQuote(raw: String): String = "'" + raw.replace("'", "'\\''") + "'"
 
     override suspend fun readScreen(): ScreenInfo = withContext(Dispatchers.IO) {
         val pkg = currentPackage()
-        // dumpsys window Obtener la ventana de enfoque actual y la información de control(más grueso que sin barreras)
+        // dumpsys window 拿到当前焦点窗口和控件信息(比无障碍粗)
         val dump = exec("dumpsys window displays").getOrDefault("")
         val activityName = Regex("mCurrentFocus=.*?\\s+([\\w.]+/[\\w.$]+)")
             .find(dump)?.groupValues?.get(1)
 
-        // uiautomator dump Puedes obtener el árbol de control completo. XML,pero mas lento(aprox. 200-500ms)
+        // uiautomator dump 可以拿到完整控件树 XML,但较慢(约 200-500ms)
         val nodes = dumpUiAutomator()
 
         val metrics = context.resources.displayMetrics
@@ -118,10 +119,10 @@ open class ShellExecutor(
     }
 
     /**
-     * Lea el árbol de control de la pantalla especificada para que lo utilice el Agente de pantalla virtual.
+     * 读取指定 display 的控件树，供虚拟屏 Agent 使用。
      *
-     * Android El volcado de uiautomator está disponible en sistemas que admiten múltiples pantallas a través de
-     * `--display-id` Selecciona la pantalla de fondo; devuelve un árbol vacío en caso de falla en lugar de informar falsamente la pantalla principal al Agente.
+     * Android 的 uiautomator dump 在支持多 display 的系统上可通过
+     * `--display-id` 选择后台屏幕；失败时返回空树而不是把主屏误报给 Agent。
      */
     @Suppress("TooGenericExceptionCaught") // Shell/uiautomator failures must degrade to an unavailable display tree.
     suspend fun readScreenOnDisplay(displayId: Int): ScreenInfo = withContext(Dispatchers.IO) {
@@ -154,12 +155,12 @@ open class ShellExecutor(
         }
     }
 
-    // ── acción de entrada ──────────────────────────────────────────────
+    // ── 输入动作 ──────────────────────────────────────────────
 
     override suspend fun tap(x: Int, y: Int): Boolean = exec("input tap $x $y").isSuccess
 
     override suspend fun longPress(x: Int, y: Int, durationMs: Long): Boolean = withContext(Dispatchers.IO) {
-        // input swipe Mismas coordenadas + duración simulan una pulsación larga
+        // input swipe 同坐标 + 时长 模拟长按
         exec("input swipe $x $y $x $y $durationMs").isSuccess
     }
 
@@ -167,16 +168,16 @@ open class ShellExecutor(
         exec("input swipe $x1 $y1 $x2 $y2 $durationMs").isSuccess
 
     override suspend fun inputText(text: String): Boolean = withContext(Dispatchers.IO) {
-        // input text El chino no es compatible;Y escribir el texto directamente en sh -c corre el riesgo de inyectar comandos.
-        // Sólo si el texto es ASCII simple y no contiene metacaracteres de shell($, comilla invertida,;,&,|,<,>)solo vete
-        // input text camino rápido;El resto irá al portapapeles. + KEYCODE_PASTE(escritura de texto ClipData,
-        // Sin interpolación de texto de shell,Sin superficie de inyección).
+        // input text 不支持中文;且把文本直接拼进 sh -c 存在命令注入风险。
+        // 仅当文本纯 ASCII 且不含 shell 元字符($、反引号、;、&、|、<、>)时才走
+        // input text 快速路径;其余一律走剪贴板 + KEYCODE_PASTE(文本经 ClipData,
+        // 不经过 shell 文本内插,无注入面)。
         val safeAscii = text.all { it.code < 128 } && !SHELL_META_REGEX.containsMatchIn(text)
         if (safeAscii) {
             val escaped = text.replace(" ", "%s").replace("\"", "\\\"")
             exec("input text \"$escaped\"").isSuccess
         } else {
-            // escribir en el portapapeles + KEYCODE_PASTE
+            // 写剪贴板 + KEYCODE_PASTE
             try {
                 val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
                 cm.setPrimaryClip(android.content.ClipData.newPlainText("auto", text))
@@ -192,14 +193,14 @@ open class ShellExecutor(
     override suspend fun pressKey(keyCode: Int): Boolean = exec("input keyevent $keyCode").isSuccess
 
     override suspend fun launchApp(packageName: String): Boolean = if (!PACKAGE_NAME_REGEX.matches(packageName)) {
-        Logger.w(TAG, "launchApp Rechazar nombres de paquetes ilegales(Puede contener metacaracteres de shell): $packageName")
+        Logger.w(TAG, "launchApp 拒绝非法包名(可能含 shell 元字符): $packageName")
         false
     } else {
         exec("monkey -p $packageName -c android.intent.category.LAUNCHER 1").isSuccess
     }
 
     override suspend fun openNotifications(): Boolean = withContext(Dispatchers.IO) {
-        // Expandir la barra de notificaciones: cmd statusbar expand-notifications (API 24+) o service call
+        // 展开通知栏: cmd statusbar expand-notifications (API 24+) 或 service call
         val result = if (Build.VERSION.SDK_INT >= 24) {
             exec("cmd statusbar expand-notifications")
         } else {
@@ -217,21 +218,70 @@ open class ShellExecutor(
         result.isSuccess
     }
 
-    // ── ejecución de comando ──────────────────────────────────────────────
+    // ── 命令执行 ──────────────────────────────────────────────
 
     data class ExecResult(val exitCode: Int, val stdout: String) {
         fun isSuccess() = exitCode == 0
         fun getOrDefault(default: String) = if (isSuccess()) stdout else default
     }
 
-    /** v2.x: Resultados de ejecución detallados con código de salida(La salida es stdout+stderr combinado,Para uso de los comentarios de device_shell). */
+    /** v2.x: 带退出码的详细执行结果(输出为 stdout+stderr 合并,供 device_shell 反馈使用)。 */
     data class ExecDetail(val exitCode: Int, val output: String)
 
-    /** Ejecutar comando de shell,Devuelve una cadena de salida estándar. */
-    suspend fun exec(command: String): Result<String> = withContext(Dispatchers.IO) {
+    /**
+     * 单条命令的超时。`input` / `screencap` 都是秒级；15s 足够，且能兜住「命令挂死」。
+     * internal 是为了让测试能调小（不用真等 15 秒）。
+     */
+    internal var commandTimeoutMs: Long = 15_000L
+
+    private data class ProcResult(val exit: Int, val output: String, val timedOut: Boolean)
+
+    /**
+     * 执行一条本地命令并**强制超时**。
+     *
+     * 旧实现是 `bufferedReader().readText()` 然后 `waitFor()` —— 两个都是无界阻塞：
+     * 只要子进程不关 stdout（或干脆卡住），自动化那个 `Mutex` 会被永久占住，
+     * 之后所有点击/读屏全部排队等死。这里改为：
+     *  - 读流放在独立线程，主线程 `waitFor(timeout)`；
+     *  - 超时就 `destroyForcibly()`，并把已读到的部分带回去（便于排查）。
+     */
+    private fun runProcess(command: String, redirectErrorStream: Boolean): ProcResult {
+        val proc = ProcessBuilder(shellPrefix + listOf("-c", command))
+            .redirectErrorStream(redirectErrorStream)
+            .start()
+        val buffer = StringBuilder()
+        val reader = Thread {
+            runCatching {
+                proc.inputStream.bufferedReader().use { r ->
+                    val chunk = CharArray(4096)
+                    while (true) {
+                        val n = r.read(chunk)
+                        if (n < 0) break
+                        synchronized(buffer) { buffer.append(chunk, 0, n) }
+                    }
+                }
+            }
+        }.apply {
+            isDaemon = true
+            name = "muse-shell-reader"
+            start()
+        }
+
+        val finished = runCatching { proc.waitFor(commandTimeoutMs, TimeUnit.MILLISECONDS) }.getOrDefault(false)
+        if (!finished) {
+            runCatching { proc.destroyForcibly() }
+            runCatching { reader.join(1_000) }
+            return ProcResult(-1, synchronized(buffer) { buffer.toString() }, timedOut = true)
+        }
+        runCatching { reader.join(2_000) }
+        return ProcResult(proc.exitValue(), synchronized(buffer) { buffer.toString() }, timedOut = false)
+    }
+
+    /** 执行 shell 命令,返回 stdout 字符串。open 供 RootExecutor 覆写为 libsu 持久 shell。 */
+    open suspend fun exec(command: String): Result<String> = withContext(Dispatchers.IO) {
         if (shizukuAuthorizer != null) {
             if (!shizukuAuthorizer.checkPermission()) {
-                return@withContext Result.failure(IllegalStateException("Shizuku No autorizado"))
+                return@withContext Result.failure(IllegalStateException("Shizuku 未授权"))
             }
             val result = shizukuAuthorizer.execute(command)
             return@withContext if (result.isSuccess) {
@@ -241,30 +291,30 @@ open class ShellExecutor(
                     TAG,
                     "Shizuku exec failed (exit=${result.exitCode}, verb=${sanitizeShellCommandForLog(command)})",
                 )
-                Result.failure(IllegalStateException(result.stderr.ifBlank { "Shizuku La ejecución del comando falló" }))
+                Result.failure(IllegalStateException(result.stderr.ifBlank { "Shizuku 命令执行失败" }))
             }
         }
         runCatching {
-            val proc = ProcessBuilder(shellPrefix + listOf("-c", command))
-                .redirectErrorStream(true)
-                .start()
-            val output = proc.inputStream.bufferedReader().use { it.readText() }
-            val exit = proc.waitFor()
-            if (exit != 0) {
-                Logger.w(TAG, "exec failed (exit=$exit, verb=${sanitizeShellCommandForLog(command)})")
+            val result = runProcess(command, redirectErrorStream = true)
+            if (result.timedOut) {
+                Logger.w(TAG, "exec 超时(${commandTimeoutMs}ms, verb=${sanitizeShellCommandForLog(command)})")
+                error("命令超时(${commandTimeoutMs}ms)：${sanitizeShellCommandForLog(command)}")
             }
-            output
+            if (result.exit != 0) {
+                Logger.w(TAG, "exec failed (exit=${result.exit}, verb=${sanitizeShellCommandForLog(command)})")
+            }
+            result.output
         }.onFailure { Logger.w(TAG, "exec error: ${it.message}") }
     }
 
     /**
-     * v2.x Automatización Fase I:Ejecución detallada con código de salida. —— suministro [io.zer0.muse.automation.core.AutomationManager.execTiered]
-     * Usado con dispositivo_shell.Shizuku El modo conserva la fragmentación stdout/stderr;locales( su )El modo fusiona flujos de salida.
+     * v2.x 自动化一期:带退出码的详细执行 —— 供 [io.zer0.muse.automation.core.AutomationManager.execTiered]
+     * 与 device_shell 使用。Shizuku 模式保留 stdout/stderr 分块;本地( su )模式合并输出流。
      */
-    suspend fun execDetailed(command: String): ExecDetail = withContext(Dispatchers.IO) {
+    open suspend fun execDetailed(command: String): ExecDetail = withContext(Dispatchers.IO) {
         if (shizukuAuthorizer != null) {
             if (!shizukuAuthorizer.checkPermission()) {
-                return@withContext ExecDetail(-1, "Shizuku No autorizado")
+                return@withContext ExecDetail(-1, "Shizuku 未授权")
             }
             val result = shizukuAuthorizer.executeForTool(command)
             val merged = buildString {
@@ -277,15 +327,17 @@ open class ShellExecutor(
             return@withContext ExecDetail(result.exitCode, merged)
         }
         runCatching {
-            val proc = ProcessBuilder(shellPrefix + listOf("-c", command))
-                .redirectErrorStream(true)
-                .start()
-            val output = proc.inputStream.bufferedReader().use { it.readText() }
-            val exit = proc.waitFor()
-            ExecDetail(exit, output)
+            val result = runProcess(command, redirectErrorStream = true)
+            if (result.timedOut) {
+                Logger.w(TAG, "execDetailed 超时(${commandTimeoutMs}ms, verb=${sanitizeShellCommandForLog(command)})")
+            }
+            ExecDetail(
+                if (result.timedOut) -1 else result.exit,
+                if (result.timedOut) "命令超时(${commandTimeoutMs}ms)" else result.output,
+            )
         }.getOrElse { e ->
             Logger.w(TAG, "execDetailed error: ${e.message}")
-            ExecDetail(-1, e.message ?: "La ejecución falló")
+            ExecDetail(-1, e.message ?: "执行失败")
         }
     }
 
@@ -294,9 +346,32 @@ open class ShellExecutor(
             val proc = ProcessBuilder(shellPrefix + listOf("-c", command))
                 .redirectErrorStream(false)
                 .start()
-            val out = proc.inputStream.readBytes()
-            proc.waitFor()
-            out
+            // 二进制输出（截图）同样不能无界等待：读流放线程，主线程带超时 waitFor。
+            val out = java.io.ByteArrayOutputStream()
+            val reader = Thread {
+                runCatching {
+                    proc.inputStream.use { input ->
+                        val chunk = ByteArray(8192)
+                        while (true) {
+                            val n = input.read(chunk)
+                            if (n < 0) break
+                            synchronized(out) { out.write(chunk, 0, n) }
+                        }
+                    }
+                }
+            }.apply {
+                isDaemon = true
+                name = "muse-shell-binary-reader"
+                start()
+            }
+
+            val finished = runCatching { proc.waitFor(commandTimeoutMs, TimeUnit.MILLISECONDS) }.getOrDefault(false)
+            if (!finished) {
+                runCatching { proc.destroyForcibly() }
+                error("命令超时(${commandTimeoutMs}ms)：${sanitizeShellCommandForLog(command)}")
+            }
+            runCatching { reader.join(2_000) }
+            synchronized(out) { out.toByteArray() }
         }
     }
 
@@ -304,11 +379,11 @@ open class ShellExecutor(
 
     private suspend fun dumpUiAutomator(): List<UiNode> = withContext(Dispatchers.IO) {
         try {
-            // uiautomator dump Escribir XML en un archivo,Léelo y analízalo.
+            // uiautomator dump 把 XML 写到文件,再读出来解析
             val dumpPath = "/sdcard/window_dump_${System.currentTimeMillis()}.xml"
             exec("uiautomator dump --compressed $dumpPath")
             val xml = exec("cat $dumpPath").getOrDefault("")
-            exec("rm $dumpPath") // limpiar
+            exec("rm $dumpPath") // 清理
             parseUiAutomatorXml(xml)
         } catch (e: Exception) {
             Logger.w(TAG, "uiautomator dump failed: ${e.message}")
@@ -319,7 +394,7 @@ open class ShellExecutor(
     private fun parseUiAutomatorXml(xml: String): List<UiNode> {
         if (xml.isBlank()) return emptyList()
         val nodes = mutableListOf<UiNode>()
-        // Análisis regular ligero(Sin hacer referencia al analizador XML): Extracto <node ... />
+        // 轻量正则解析(不引 XML 解析器): 提取 <node ... />
         val nodeRegex = Regex("<node\\b([^>]*?)/?>")
         for (match in nodeRegex.findAll(xml)) {
             val attrs = match.groupValues[1]
@@ -348,7 +423,7 @@ open class ShellExecutor(
                 }
             }
 
-            // Siempre que haya información sobre el nodo.
+            // 只要有信息的节点
             if (text != null || desc != null || clickable || editable) {
                 nodes.add(
                     UiNode(
@@ -375,10 +450,10 @@ open class ShellExecutor(
     companion object {
         private const val TAG = "ShellExec"
 
-        /** shell Metacaracteres:Aparecer en texto interpolado se considera un riesgo de inyección de comandos,Utilice rutas del portapapeles en su lugar para evitar la interpolación. */
+        /** shell 元字符:出现在插值文本中即视为命令注入风险,改用剪贴板路径绕过内插。 */
         private val SHELL_META_REGEX = Regex("[\$`;&|<>]")
 
-        /** Lista blanca de nombres de paquetes legales(Sólo puntos alfanuméricos y guiones bajos),Denegar la inyección de nombres de paquetes que contengan metacaracteres de shell. */
+        /** 合法包名白名单(仅字母数字点下划线),拒绝含 shell 元字符的包名注入。 */
         private val PACKAGE_NAME_REGEX = Regex("^[a-zA-Z][a-zA-Z0-9_.]*\$")
     }
 }

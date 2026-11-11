@@ -8,8 +8,8 @@ class ToolArgsParserTest {
 
     @Test
     fun `normal json parses all fields`() {
-        val args = ToolArgsParser.parse("""{"query":"clima","max_results":5}""", "web_search")
-        assertEquals("clima", args["query"])
+        val args = ToolArgsParser.parse("""{"query":"天气","max_results":5}""", "web_search")
+        assertEquals("天气", args["query"])
         assertEquals("5", args["max_results"])
     }
 
@@ -17,7 +17,7 @@ class ToolArgsParserTest {
     fun `nested object value is serialized to string`() {
         val args = ToolArgsParser.parse("""{"opts":{"a":1},"query":"x"}""")
         assertEquals("x", args["query"])
-        // Los objetos anidados se serializan en cadenas JSON (solo es necesario que no estén vacíos y la capa de ejecución los consume como cadenas)
+        // 嵌套对象序列化为 JSON 字符串（非空即可，执行层按字符串消费）
         assertTrue(args["opts"]?.contains("a") == true)
     }
 
@@ -36,25 +36,25 @@ class ToolArgsParserTest {
 
     @Test
     fun `non-object input returns empty map`() {
-        // cuerda/matriz/Los valores desnudos no son objetos y se devuelve un mapa vacío (no se genera ninguna excepción)
+        // 字符串/数组/裸值都不是对象，返回空 map（不抛异常）
         assertTrue(ToolArgsParser.parse(""""hello"""").isEmpty())
         assertTrue(ToolArgsParser.parse("[1,2,3]").isEmpty())
     }
 
     @Test
     fun `truncated unclosed json returns empty map instead of dropping fields`() {
-        // Fragmento no cerrado:{"query":"xxx Falta corchete de cierre
-        // La antigua segmentación y fusión devolverá silenciosamente algunos campos, pero ahora una falla de análisis estricta devolverá un mapa vacío.
-        // Deje que execWebSearch regrese"desaparecido query"Consejo: activa LLM para regenerar parámetros completos.
-        val args = ToolArgsParser.parse("""{"query":"El tiempo en Pekín""")
+        // 未闭合片段：{"query":"xxx 缺右括号
+        // 旧的拆段合并会静默返回部分字段，现在严格解析失败返回空 map，
+        // 让 execWebSearch 返回"缺少 query"提示，触发 LLM 重新生成完整参数。
+        val args = ToolArgsParser.parse("""{"query":"北京天气""")
         assertTrue("truncated JSON must not return partial fields, got $args", args.isEmpty())
     }
 
     @Test
     fun `concatenated json objects are not silently merged`() {
-        // {"limit":20}{"query":"x"} Esta cadena concatenada devolverá un mapa vacío si se analiza estrictamente.
-        // La causa raíz del empalme se ha solucionado en OpenAIProvider.ToolCallArgsAccumulator.
-        // Los argumentos que lleguen aquí ya deberían ser un solo objeto; Aquí sólo se realiza la validación defensiva.
+        // {"limit":20}{"query":"x"} 这种拼接串，严格解析返回空 map。
+        // 拼接的根因已在 OpenAIProvider.ToolCallArgsAccumulator 修复，
+        // 到达这里的 arguments 应该已是单个对象；这里只做防御性验证。
         val args = ToolArgsParser.parse("""{"limit":20}{"query":"x"}""")
         assertTrue(args.isEmpty())
     }
@@ -63,7 +63,7 @@ class ToolArgsParserTest {
     fun `boolean and null values handled`() {
         val args = ToolArgsParser.parse("""{"flag":true,"missing":null}""")
         assertEquals("true", args["flag"])
-        // JsonNull.content es una cuerda "null"
+        // JsonNull.content 是字符串 "null"
         assertEquals("null", args["missing"])
     }
 }

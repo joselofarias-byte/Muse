@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 """
-dedup_strings.py — Detectar y eliminar strings_*.xml Duplicar claves entre archivos.
+dedup_strings.py — 检测并移除 strings_*.xml 文件间的重复 key。
 
-pregunta: strings.xml y strings_features.xml pueden definir lo mismo key,
-Hace que el compilador de Android informe "Duplicate resources" Error.
+问题: strings.xml 和 strings_features.xml 可能定义了相同的 key,
+导致 Android 编译报 "Duplicate resources" 错误。
 
-Estrategia:
-  1. strings.xml máxima prioridad(archivo maestro)
-  2. el resto strings_*.xml En orden alfabético por nombre de archivo,El primero en llegar es la primera prioridad
-  3. Se eliminan las claves duplicadas en archivos posteriores.
+策略:
+  1. strings.xml 优先级最高(主文件)
+  2. 其余 strings_*.xml 按文件名字母序,先出现者优先
+  3. 后续文件中的重复 key 被移除
 
-Uso: py -3 ci/script/dedup_strings.py [--res-dir app/src/main/res] [--dry-run]
+用法: py -3 ci/script/dedup_strings.py [--res-dir app/src/main/res] [--dry-run]
 """
 
 from __future__ import annotations
@@ -24,13 +24,13 @@ STRING_TAG_PATTERN = re.compile(r'<string\s+name="([^"]+)"\s*(?:[^>]*?)>(.*?)</s
 
 
 def extract_string_names(xml_content: str) -> list[str]:
-    """Extraer todo el XML string name"""
+    """提取 XML 中所有 string name"""
     return [m.group(1) for m in STRING_TAG_PATTERN.finditer(xml_content)]
 
 
 def remove_string_tag(xml_content: str, name: str) -> tuple[str, bool]:
-    """Elimina el nombre especificado del XML. <string> etiqueta(Eliminar toda la fila)"""
-    # coincidir con toda la línea(Incluir espacios en blanco iniciales y nuevas líneas)
+    """从 XML 中移除指定 name 的 <string> 标签(整行移除)"""
+    # 匹配整行(包括前导空白和换行符)
     pattern = re.compile(
         r'\s*<string\s+name="' + re.escape(name) + r'"\s*(?:[^>]*?)>.*?</string>\s*\n?',
         re.DOTALL,
@@ -41,10 +41,10 @@ def remove_string_tag(xml_content: str, name: str) -> tuple[str, bool]:
 
 def dedup_locale(locale_dir: Path, dry_run: bool = False) -> int:
     """
-    Deduplicar un único directorio local.
-    Devuelve el número total de claves duplicadas eliminadas.
+    对单个 locale 目录去重。
+    返回移除的重复 key 总数。
     """
-    # prioridad de archivo: strings.xml más alto,El resto está ordenado por nombre de archivo.
+    # 文件优先级: strings.xml 最高,其余按文件名排序
     files = sorted(locale_dir.glob("strings_*.xml"))
     main_strings = locale_dir / "strings.xml"
     if main_strings.exists():
@@ -65,7 +65,7 @@ def dedup_locale(locale_dir: Path, dry_run: bool = False) -> int:
             seen_keys.update(names)
             continue
 
-        # Eliminar duplicados key
+        # 移除重复 key
         new_content = content
         for dup_name in duplicates:
             new_content, removed = remove_string_tag(new_content, dup_name)
@@ -78,16 +78,16 @@ def dedup_locale(locale_dir: Path, dry_run: bool = False) -> int:
         status = "[DRY]" if dry_run else "[FIXED]"
         print(f"  {status} {file_path.name}: removed {len(duplicates)} duplicates: {', '.join(duplicates[:5])}{'...' if len(duplicates) > 5 else ''}")
 
-        # Actualizar la colección de claves vistas(Solo agregue no duplicados)
+        # 更新已见 key 集合(只添加非重复的)
         seen_keys.update(n for n in names if n not in duplicates)
 
     return total_removed
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Android strings_*.xml Repetir la deduplicación de claves")
-    parser.add_argument("--res-dir", default="app/src/main/res", help="Android res ruta del directorio")
-    parser.add_argument("--dry-run", action="store_true", help="Sólo detectar pero no modificar")
+    parser = argparse.ArgumentParser(description="Android strings_*.xml 重复 key 去重")
+    parser.add_argument("--res-dir", default="app/src/main/res", help="Android res 目录路径")
+    parser.add_argument("--dry-run", action="store_true", help="仅检测不修改")
     args = parser.parse_args()
 
     res_dir = Path(args.res_dir)
@@ -95,7 +95,7 @@ def main():
         print(f"ERROR: res directory not found: {res_dir}")
         return 1
 
-    # Buscar todos los directorios locales
+    # 查找所有 locale 目录
     locale_dirs = sorted([d for d in res_dir.iterdir() if d.is_dir() and d.name.startswith("values")])
 
     print(f"Found {len(locale_dirs)} locale directories")

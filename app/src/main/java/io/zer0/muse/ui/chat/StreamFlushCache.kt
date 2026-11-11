@@ -3,41 +3,41 @@ package io.zer0.muse.ui.chat
 import io.zer0.muse.transformer.InternalMarkupSanitizer
 
 /**
- * Actualización de caché de transmisión.
+ * 流式刷新缓存。
  *
- * Durante la transmisión, el contenido/razonamiento solo se agregará al revés y no se reescribirá en su totalidad. En base a esto,
- * Hay algunas cosas que no cambian después del primer cálculo, por lo que no es necesario volver a calcular cada cuadro:
+ * 流式期间 content / reasoning 只会向后追加，不会整体改写。基于这一点，
+ * 有几件事在第一次算出结果后就不会再变，没必要每帧重算：
  *
- *  1. ¿Existe la etiqueta etiqueta? —— Las etiquetas que han aparecido en el prefijo no desaparecerán sin importar cuánto texto se agregue;
- *  2. mood contenido —— mood El bloque está ubicado al principio y el texto agregado después del cierre ya no afectará los resultados de la extracción;
- *  3. reasoning Resultados de extracción de etiquetas para —— El hecho de que la longitud no haya cambiado significa que no se agrega y se reutiliza directamente.
+ *  1. 标签标记是否存在 —— 前缀里出现过的标记，追加再多正文也不会消失；
+ *  2. mood 内容 —— mood 块位于开头，闭合之后追加的正文不会再影响提取结果；
+ *  3. reasoning 的标签剥离结果 —— 长度没变说明没追加，直接复用。
  *
- * Estas tres cosas ejecutarán originalmente la regularización en el texto completo de cada cuadro, que es la principal sobrecarga durante las respuestas largas.
- * Si alguno de ellos no se establece (el contenido se acorta, el mensaje cambia, la transmisión finaliza), se devuelve la ruta de cálculo original.
+ * 这三件事原本每帧都会对全文跑一次正则，长回复时是主要开销。
+ * 任何一条不成立（内容变短、换了消息、流式结束）都退回原始计算路径。
  *
- * Restricciones de subprocesos: solo se usa en el mismo subproceso de la devolución de llamada de transmisión, no se realiza ningún procesamiento de seguridad de subprocesos.
+ * 线程约束：只在流式回调的同一线程内使用，不做线程安全处理。
  */
 internal class StreamFlushCache {
     private var currentId: String? = null
 
-    /** Si la marca de la etiqueta se ha visto en este mensaje (una vez que sea verdadera, no habrá ninguna alternativa). */
+    /** 是否已在本条消息里见过标签标记（一旦为 true 不再回退）。 */
     private var tagMarkerSeen = false
 
-    /** mood Resultados extraídos;null Indica que la extracción no ha sido exitosa. */
+    /** mood 已提取出的结果；null 表示尚未成功提取。 */
     private var moodResult: String? = null
 
-    /** mood La longitud del contenido cuando se confirma que el resultado está bloqueado. */
+    /** mood 结果被确认锁定时 content 的长度。 */
     private var moodSealedLength = -1
 
-    /** reasoning Elimina las longitudes de entrada almacenadas en caché de los resultados. */
+    /** reasoning 剥离缓存的输入长度与结果。 */
     private var reasoningLength = -1
     private var reasoningStripped: String? = null
 
-    /** La longitud del último contenido visto, utilizada para identificar casos en los que el contenido ha sido reemplazado (acortado) en su totalidad. */
+    /** 上一次见到的内容长度，用于识别内容被整体替换（变短）的情况。 */
     private var lastContentLength = -1
 
     /**
-     * Restablecer al cambiar de mensaje. Es seguro llamarlo repetidamente dentro del mismo mensaje.
+     * 切换消息时重置。同一条消息内反复调用是安全的。
      */
     fun begin(messageId: String, contentLength: Int) {
         if (currentId != messageId) {
@@ -49,7 +49,7 @@ internal class StreamFlushCache {
             reasoningStripped = null
             lastContentLength = -1
         } else if (contentLength < lastContentLength) {
-            // El contenido se vuelve más corto. = Al sobrescribirse (editarse/regenerarse/limpiarse y reescribirse), todos los cachés quedan invalidados.
+            // 内容变短 = 被改写（编辑 / 重新生成 / 清洗回写），缓存全部作废。
             tagMarkerSeen = false
             moodResult = null
             moodSealedLength = -1
@@ -58,9 +58,9 @@ internal class StreamFlushCache {
     }
 
     /**
-     * Si el contenido contiene etiquetas internas.
+     * 内容里是否含内部标签标记。
      *
-     * Si se presiona una vez, siempre será cierto: cuando el texto solo se agrega, la marca existente no desaparecerá.
+     * 命中过一次就恒为 true：正文只追加时，已有的标记不会消失。
      */
     fun hasTagMarker(text: String): Boolean {
         if (tagMarkerSeen) return true
@@ -70,11 +70,11 @@ internal class StreamFlushCache {
     }
 
     /**
-     * Extraiga el estado de ánimo y reutilice el último resultado directamente después de cerrar el bloque.
+     * 提取 mood，闭块之后直接复用上次结果。
      *
-     * Se deben cumplir dos condiciones de reutilización al mismo tiempo:
-     *  - La longitud actual no es menor que la longitud cuando está bloqueado (sin reversión);
-     *  - No hay nuevas etiquetas abiertas después del punto de bloqueo (de lo contrario, significa que el modelo ha escrito otro bloque de estado de ánimo).
+     * 复用条件两个同时满足：
+     *  - 当前长度不小于锁定时的长度（没有回退）；
+     *  - 锁定点之后没有新的开标签（否则说明模型又写了一个 mood 块）。
      */
     fun mood(content: String, extract: (String) -> String?): String? {
         val cached = moodResult
@@ -83,15 +83,15 @@ internal class StreamFlushCache {
         }
         val fresh = extract(content)
         moodResult = fresh
-        // Bloquee solo cuando el contenido realmente se obtenga: un resultado vacío puede ser simplemente que el bloque aún no se ha escrito.
+        // 只有在确实提取到内容时才锁定：空结果可能只是块还没写完。
         moodSealedLength = if (fresh != null) content.length else -1
         return fresh
     }
 
     /**
-     * reasoning La cubierta de la etiqueta se retira y se reutiliza cuando la longitud permanece sin cambios.
+     * reasoning 的标签外壳剥离，长度不变时复用。
      *
-     * El razonamiento solo se adjunta durante la transmisión. La misma longitud significa el mismo contenido.
+     * 流式期间 reasoning 也只追加，长度相同即代表内容相同。
      */
     fun strippedReasoning(raw: String, strip: (String) -> String): String {
         val cached = reasoningStripped
@@ -102,7 +102,7 @@ internal class StreamFlushCache {
         return result
     }
 
-    /** Borre la caché de derivación (conservando los ID de los mensajes) cuando finalice la transmisión o cuando sea necesario un recálculo forzado. */
+    /** 流式结束或需要强制重算时清空派生缓存（保留消息 id）。 */
     fun invalidateDerived() {
         moodResult = null
         moodSealedLength = -1
@@ -111,7 +111,7 @@ internal class StreamFlushCache {
     }
 
     private fun hasNewOpeningMarker(content: String, fromLength: Int): Boolean {
-        // La etiqueta abierta más larga "<moodfx>"(8 caracteres), el respaldo 8 garantiza que las etiquetas que cruzan un límite no se cortan.
+        // 开标签最长 "<moodfx>"（8 字符），回退 8 保证不切断恰好跨越边界的标签。
         val from = (fromLength - 8).coerceAtLeast(0)
         if (from >= content.length) return false
         val tail = content.substring(from).lowercase()

@@ -6,14 +6,14 @@ import java.nio.file.Files
 import java.nio.file.Path
 
 /**
- * contrato de cableado:Cuando se inicia el anfitrión, debe registrar el fondo del pequeño teléfono celular para publicar automáticamente en Momentos.
+ * 接线契约:宿主启动时必须注册小手机的后台自动发朋友圈。
  *
- * ¿Por qué utilizar la afirmación del código fuente en lugar de ejecutar la aplicación: las tareas periódicas de WorkManager solo están programadas en máquinas reales?,
- * En realidad, ninguno de los dos aparecerá en la prueba unitaria.,No puedo detectar "olvidé ajustar"—— Y este es exactamente el error del que hay que protegerse.:
- * Hay un conjunto completo de programación en el módulo.,El anfitrión no respondió.,La función no existe.
+ * 为什么用源码断言而不是真跑一遍 Application:WorkManager 的周期任务只在真机上排期,
+ * 单元测试里既不会真的排上,也验不出「忘了调」—— 而这正是要防的错:
+ * 模块里有一套完整调度,宿主却没接,功能等于不存在。
  *
- * Para leer el código fuente `Files.newBufferedReader`(El almacén ya sabe cómo escribir pruebas de cableado.),No hay necesidad `Files.readString`.
- * Las tres rutas candidatas se deben a que el directorio de trabajo de prueba puede ser el directorio del módulo.,También podría ser la raíz del repositorio.
+ * 读源码用 `Files.newBufferedReader`(仓库既有 wiring 测试的写法),不用 `Files.readString`。
+ * 三个候选路径是因为测试工作目录可能是模块目录,也可能是仓库根。
  */
 class MiniPhoneMomentSchedulerWiringTest {
 
@@ -25,18 +25,18 @@ class MiniPhoneMomentSchedulerWiringTest {
             ?: error("MuseApp.kt not found")
 
         assertTrue(
-            "MuseApp El planificador del módulo debe importarse.",
+            "MuseApp 必须 import 模块里的调度器",
             source.contains("import io.zer0.muse.miniphone.work.MiniPhoneMomentScheduler"),
         )
 
         val onCreateAt = source.indexOf("override fun onCreate()")
         val callAt = source.indexOf("MiniPhoneMomentScheduler.start(this)")
-        assertTrue("MuseApp.kt no puedo encontrarlo override fun onCreate()", onCreateAt >= 0)
-        assertTrue("MuseApp.onCreate No se registraron tareas en segundo plano para teléfonos celulares pequeños", callAt > onCreateAt)
+        assertTrue("MuseApp.kt 里找不到 override fun onCreate()", onCreateAt >= 0)
+        assertTrue("MuseApp.onCreate 没有注册小手机后台任务", callAt > onCreateAt)
 
-        // El registro solo ocurre una vez al inicio;stop No lo ajuste aquí(Apagar el interruptor solo permite al trabajador saltarse rondas inactivas.)
+        // 注册只在启动时发生一次;stop 不在这里调(开关关掉只让 Worker 空轮跳过)
         assertTrue(
-            "La ruta de inicio no debería cancelar la tarea sin problemas",
+            "启动路径不该顺手取消任务",
             !source.substringAfter("override fun onCreate()").contains("MiniPhoneMomentScheduler.stop"),
         )
     }

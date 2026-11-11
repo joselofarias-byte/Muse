@@ -4,10 +4,10 @@ import android.content.Context
 import io.zer0.muse.tools.resource.ResourceLibraryStore
 
 /**
- * P1-3b Desdominio: Registrador de herramientas del repositorio.
+ * P1-3b 拆域：资源库工具注册器。
  *
- * Registrarse resource_add / resource_list / resource_search / resource_get / resource_delete.
- * La implementación está ubicada en [ResourceToolsImpl.kt].
+ * 注册 resource_add / resource_list / resource_search / resource_get / resource_delete。
+ * 实现位于 [ResourceToolsImpl.kt]。
  */
 class ResourceToolsRegistrar(
     private val context: Context,
@@ -24,11 +24,11 @@ class ResourceToolsRegistrar(
         toolRegistry.register(
             ToolRegistry.ToolDef(
                 name = "resource_add",
-                description = "Agregar un recurso a la biblioteca de recursos(Notas/palabra rápida/Contenido de referencia, etc.).",
+                description = "向资源库添加一条资源(笔记/提示词/参考内容等)。",
                 parameters = mapOf(
-                    "title" to "Requerido,Título del recurso",
-                    "content" to "Requerido,Texto de recurso",
-                    "tags" to "Opcional,etiqueta,Múltiples separados por comas",
+                    "title" to "必填,资源标题",
+                    "content" to "必填,资源正文",
+                    "tags" to "可选,标签,多个用逗号分隔",
                 ),
                 required = setOf("title", "content"),
                 category = "built-in",
@@ -39,10 +39,10 @@ class ResourceToolsRegistrar(
         toolRegistry.register(
             ToolRegistry.ToolDef(
                 name = "resource_list",
-                description = "Listar recursos en la biblioteca de recursos,Se puede filtrar por palabra clave.",
+                description = "列出资源库中的资源,可按关键字过滤。",
                 parameters = mapOf(
-                    "keyword" to "Opcional,Título/Texto/Palabras clave de filtro de etiquetas",
-                    "limit" to "Opcional,Número máximo de devoluciones,Predeterminado 20",
+                    "keyword" to "可选,标题/正文/标签过滤关键字",
+                    "limit" to "可选,最多返回数量,默认 20",
                 ),
                 required = emptySet(),
                 category = "built-in",
@@ -54,10 +54,10 @@ class ResourceToolsRegistrar(
         toolRegistry.register(
             ToolRegistry.ToolDef(
                 name = "resource_search",
-                description = "buscar en la biblioteca(Consistente con el comportamiento de filtrado de palabras clave de Resource_list).",
+                description = "搜索资源库(与 resource_list 关键字过滤行为一致)。",
                 parameters = mapOf(
-                    "keyword" to "Opcional,Buscar palabras clave",
-                    "limit" to "Opcional,Número máximo de devoluciones,Predeterminado 20",
+                    "keyword" to "可选,搜索关键字",
+                    "limit" to "可选,最多返回数量,默认 20",
                 ),
                 required = emptySet(),
                 category = "built-in",
@@ -69,8 +69,8 @@ class ResourceToolsRegistrar(
         toolRegistry.register(
             ToolRegistry.ToolDef(
                 name = "resource_get",
-                description = "Obtenga un único recurso en la biblioteca de recursos según la identificación.",
-                parameters = mapOf("id" to "Requerido,Recursos id"),
+                description = "根据 id 获取资源库中的单条资源。",
+                parameters = mapOf("id" to "必填,资源 id"),
                 required = setOf("id"),
                 category = "built-in",
                 riskLevel = ToolRiskLevel.SAFE,
@@ -80,8 +80,8 @@ class ResourceToolsRegistrar(
         toolRegistry.register(
             ToolRegistry.ToolDef(
                 name = "resource_delete",
-                description = "Elimine recursos en la biblioteca de recursos según la identificación.",
-                parameters = mapOf("id" to "Requerido,Recursos id"),
+                description = "根据 id 删除资源库中的资源。",
+                parameters = mapOf("id" to "必填,资源 id"),
                 required = setOf("id"),
                 category = "built-in",
                 riskLevel = ToolRiskLevel.HIGH,

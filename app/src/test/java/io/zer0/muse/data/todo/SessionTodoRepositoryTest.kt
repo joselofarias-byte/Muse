@@ -18,12 +18,12 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * Prueba de persistencia de tareas pendientes de la sesión.
+ * 会话待办持久化的测试。
  *
- * Autoexamen auxiliar 2.17 Artículo: "No existe un mecanismo de circuito cerrado para las tareas pendientes entre sesiones…Falta un "Libro mayor de temas sin terminar".
- * Anteriormente, la lista de tareas pendientes solo estaba en `TodoTool.sessionTodos` En la memoria, la sesión se borrará cuando se corte y se perderá cuando se reinicie.
+ * 助手自审第 2、17 条：「跨会话的待办没有闭环机制…缺一个『未完成话题台账』」。
+ * 此前待办只在 `TodoTool.sessionTodos` 内存里，切会话即清、重启即丢。
  *
- * Aquí se destacan tres cosas: la escritura se puede volver a leer, las sesiones cruzadas no interfieren entre sí,hasOpenItems Cambios con el estado.
+ * 这里钉住三件事：写入能读回、跨会话互不干扰、hasOpenItems 随状态变化。
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -35,7 +35,13 @@ class SessionTodoRepositoryTest {
     @Before
     fun setUp() {
         val context = ApplicationProvider.getApplicationContext<Context>()
-        database = Room.inMemoryDatabaseBuilder(context, MuseDb::class.java).build()
+        // 用同步执行器：默认的 arch_disk_io 线程会在 @After 关库后继续跑 InvalidationTracker，
+        // Robolectric 的 SQLite shadow 会抛 "Illegal connection pointer"（未捕获异常会泄漏到下一个测试）。
+        database = Room.inMemoryDatabaseBuilder(context, MuseDb::class.java)
+            .setQueryExecutor(java.util.concurrent.Executor { it.run() })
+            .setTransactionExecutor(java.util.concurrent.Executor { it.run() })
+            .allowMainThreadQueries()
+            .build()
         repository = SessionTodoRepository(database.sessionTodoDao())
     }
 
@@ -50,22 +56,22 @@ class SessionTodoRepositoryTest {
 
     @Test
     fun `saved list can be read back`() = runTest {
-        repository.save("s1", list(item("escribir plan", "pending"), item("Enviar correo electrónico", "completed")))
+        repository.save("s1", list(item("写方案", "pending"), item("发邮件", "completed")))
 
         val loaded = repository.load("s1")
 
         assertEquals(2, loaded.todos.size)
-        assertEquals("escribir plan", loaded.todos[0].content)
+        assertEquals("写方案", loaded.todos[0].content)
         assertEquals("completed", loaded.todos[1].status)
     }
 
     @Test
     fun `sessions do not see each other's todos`() = runTest {
-        repository.save("s1", list(item("A cosa", "pending")))
-        repository.save("s2", list(item("B cosa", "pending")))
+        repository.save("s1", list(item("A 的事", "pending")))
+        repository.save("s2", list(item("B 的事", "pending")))
 
-        assertEquals("A cosa", repository.load("s1").todos.single().content)
-        assertEquals("B cosa", repository.load("s2").todos.single().content)
+        assertEquals("A 的事", repository.load("s1").todos.single().content)
+        assertEquals("B 的事", repository.load("s2").todos.single().content)
     }
 
     @Test
@@ -75,8 +81,8 @@ class SessionTodoRepositoryTest {
 
     @Test
     fun `open items are reported across sessions`() = runTest {
-        repository.save("s1", list(item("No terminado", "pending")))
-        repository.save("s2", list(item("hecho", "completed")))
+        repository.save("s1", list(item("没做完", "pending")))
+        repository.save("s2", list(item("做完了", "completed")))
 
         val open = repository.sessionsWithOpenItems()
 
@@ -86,47 +92,47 @@ class SessionTodoRepositoryTest {
 
     @Test
     fun `in progress counts as open`() = runTest {
-        repository.save("s1", list(item("haciendo", "in_progress")))
+        repository.save("s1", list(item("正在做", "in_progress")))
 
         assertEquals(1, repository.countSessionsWithOpenItems())
     }
 
     @Test
     fun `completing everything clears the open flag`() = runTest {
-        repository.save("s1", list(item("hecho", "completed")))
+        repository.save("s1", list(item("做完了", "completed")))
 
         assertEquals(0, repository.countSessionsWithOpenItems())
     }
 
     @Test
     fun `saving replaces the whole list`() = runTest {
-        repository.save("s1", list(item("viejo", "pending")))
-        repository.save("s1", list(item("nuevo", "pending")))
+        repository.save("s1", list(item("旧的", "pending")))
+        repository.save("s1", list(item("新的", "pending")))
 
         val loaded = repository.load("s1")
 
         assertEquals(1, loaded.todos.size)
-        assertEquals("nuevo", loaded.todos.single().content)
+        assertEquals("新的", loaded.todos.single().content)
     }
 
     @Test
     fun `saving keeps the original createdAt`() = runTest {
         repository.save("s1", list(item("a", "pending")))
         val first = database.sessionTodoDao().getBySession("s1")!!
-        // Haga que la segunda escritura sea significativamente más tarde que la primera.
+        // 让第二次写入的时间明显晚于第一次
         Thread.sleep(5)
         repository.save("s1", list(item("b", "pending")))
         val second = database.sessionTodoDao().getBySession("s1")!!
 
-        assertEquals("La recreación de una tarea pendiente de la misma sesión no debería actualizar el tiempo de creación", first.createdAt, second.createdAt)
+        assertEquals("重建同一会话的待办不该刷新创建时间", first.createdAt, second.createdAt)
         assertTrue(second.updatedAt >= first.updatedAt)
     }
 
     @Test
     fun `unknown status is treated as open`() = runTest {
-        repository.save("s1", list(item("El estado está mal escrito.", "done")))
+        repository.save("s1", list(item("状态拼错了", "done")))
 
-        assertEquals("El estado desconocido no puede considerarse completado", 1, repository.countSessionsWithOpenItems())
+        assertEquals("未知状态不能当成已完成", 1, repository.countSessionsWithOpenItems())
     }
 
     @Test
@@ -160,7 +166,7 @@ class SessionTodoRepositoryTest {
 
         val loaded = repository.load("s-bad")
 
-        assertTrue("Los fallos de análisis deberían volver a una lista vacía en lugar de bloquearse", loaded.todos.isEmpty())
-        assertTrue("El registro original no se puede eliminar debido a un error de análisis.", database.sessionTodoDao().getBySession("s-bad") != null)
+        assertTrue("解析失败应回退空清单而不是崩溃", loaded.todos.isEmpty())
+        assertTrue("原记录不能因为解析失败被删", database.sessionTodoDao().getBySession("s-bad") != null)
     }
 }

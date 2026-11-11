@@ -73,7 +73,7 @@
     <string name="lorebook_section_behavior">Поведение</string>
     <string name="lorebook_field_priority">Приоритет (большее число = вводится первым)</string>
     <string name="lorebook_field_insertion_position">Положение вставки</string>
-    <!-- ST-04: Inyecte opciones de ubicación con una copia legible por el usuario -->
+    <!-- ST-04: 注入位置选项用户可读文案 -->
     <string name="lorebook_insertion_before_system">Перед системным промптом</string>
     <string name="lorebook_insertion_after_system">После системного промпта</string>
     <string name="lorebook_insertion_before_last">Перед последним сообщением</string>
@@ -162,14 +162,16 @@
     <string name="assistant_import_sillytavern">Импортировать карту персонажа SillyTavern</string>
     <!-- Assistant detail: character card sharing section -->
     <string name="assistant_detail_share_section">Обмен картами персонажей</string>
+    <string name="assistant_summary_empty">Описания пока нет; персона — в разделе «Промпты»</string>
+    <string name="assistant_detail_export_section">Экспорт файлов карточки</string>
     <string name="assistant_detail_export_png">Экспортировать как карточку персонажа PNG</string>
     <string name="assistant_detail_export_png_desc">Формат SillyTavern (с метаданными)</string>
     <string name="assistant_detail_export_json">Экспортировать как карточку персонажа JSON</string>
     <string name="assistant_detail_export_json_desc">SillyTavern V2 JSON</string>
-    <string name="assistant_detail_share_muse_card">Поделиться карточкой персонажа Muse</string>
+    <string name="assistant_detail_share_muse_card">Поделиться карточкой персонажа Musa</string>
     <string name="assistant_detail_share_muse_card_desc">Создайте визуальную карту и поделитесь ею через систему</string>
-    <string name="assistant_detail_share_muse_json">Поделиться Muse в формате JSON</string>
-    <string name="assistant_detail_share_muse_json_desc">Поделитесь JSON Muse через систему</string>
+    <string name="assistant_detail_share_muse_json">Поделиться Musa в формате JSON</string>
+    <string name="assistant_detail_share_muse_json_desc">Поделитесь JSON Musa через систему</string>
     <string name="assistant_detail_share_pack">Отправить карточку персонажа</string>
     <string name="assistant_detail_share_pack_desc">Отправьте полную карточку (с аватаром) через любое приложение — получатель сможет сразу импортировать</string>
     <string name="assistant_import_preview_title">Импорт карточки персонажа</string>
@@ -184,4 +186,24 @@
     <string name="assistant_disable_cd">Отключить ассистента</string>
     <string name="assistant_enable">Включить</string>
     <string name="assistant_enable_cd">Включить ассистента</string>
+    <string name="assistant_diff_name">Имя</string>
+    <string name="assistant_diff_summary">Описание</string>
+    <string name="assistant_diff_system_prompt">Системный промпт</string>
+    <string name="assistant_diff_persona_definition">Персона</string>
+    <string name="assistant_diff_thinking_chain">Цепочка размышлений</string>
+    <string name="assistant_diff_message_template">Шаблон сообщения</string>
+    <string name="assistant_diff_preset_messages">Приветствие</string>
+    <string name="assistant_diff_temperature">Температура</string>
+    <string name="assistant_diff_top_p">Top P</string>
+    <string name="assistant_diff_max_tokens">Макс. токенов</string>
+    <string name="assistant_diff_context_size">Сообщений в контексте</string>
+    <string name="assistant_diff_reasoning_level">Уровень размышлений</string>
+    <string name="assistant_diff_memory_enabled">Память</string>
+    <string name="assistant_diff_use_global_memory">Глобальная память</string>
+    <string name="assistant_diff_allow_group_chat">Групповой чат</string>
+    <string name="assistant_diff_will_create">Будет создан новый ассистент (текущий не изменится)</string>
+    <string name="assistant_diff_will_change">По сравнению с ассистентом с таким же именем меняется полей: %1$d</string>
+    <string name="assistant_diff_legacy_pack">Старая карта: берётся только персона — ключи, привязки моделей и статистика не переносятся</string>
+    <string name="assistant_diff_no_switch">Импорт не переключает текущего ассистента и не переносит чаты</string>
+    <string name="assistant_diff_more">…и ещё %1$d</string>
 </resources>

@@ -14,29 +14,29 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * mejoras de rendimiento**micropunto de referencia**(JVM lado, solo impresión sin afirmación).
+ * 性能整改的**微基准**（JVM 侧，只打印不断言）。
  *
- * ## ¿Por qué tenerlo?
+ * ## 为什么要有它
  *
- * La mayoría de los beneficios de esta serie de cambios son"conteo determinista"(número de recargas, número de escrituras en disco, número de asignaciones),
- * Pero nadie sabe la magnitud relativa de cuánto tiempo se traducen estos recuentos. Cuando la máquina real no está disponible, al menos se puede hacer en la JVM
- * poner**misma entrada**en"Cambiar el método de escritura anterior."con"Método de escritura cambiado"El consumo de tiempo a continuación se escribe uno al lado del otro. —— no representa ART
- * rendimiento absoluto activado, pero puede responder"¿Vale la pena mantener esta optimización?".
+ * 这一系列改动的收益大多是"确定性计数"（重载次数、写盘次数、分配次数），
+ * 但没人知道这些计数折算成多长时间的相对量级。真机不可用时，至少可以在 JVM 上
+ * 把**同一份输入**在"改前写法"与"改后写法"下的耗时并排打出来 —— 它不代表 ART
+ * 上的绝对性能，但能回答"这条优化值不值得留着"。
  *
- * ## disciplina
+ * ## 纪律
  *
- * - **No hagas afirmaciones**(La máquina requiere mucho tiempo y fluctuaciones aleatorias, la afirmación debe ser inconsistente); solo imprima la tabla en stdout.
- * - Calienta todo primero para evitar contar la carga JIT/clase.
- * - Los números son sólo para comparación horizontal (antes de la modificación versus después de la modificación, almacenamiento en caché activado versus almacenamiento en caché desactivado) y no se pueden usar como"La máquina real lleva tiempo"Cita.
+ * - **不做断言**（耗时随机器波动，断言必 flake）；只在 stdout 打印表格。
+ * - 每项都先预热，避免把 JIT/类加载算进去。
+ * - 数字只用于横向对比（改前 vs 改后、开缓存 vs 关缓存），不能当"真机耗时"引用。
  *
- * Ejecutar:`:app:testDebugUnitTest --tests "io.zer0.muse.perf.PerfMicroBenchmarkTest"`
+ * 运行：`:app:testDebugUnitTest --tests "io.zer0.muse.perf.PerfMicroBenchmarkTest"`
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
 class PerfMicroBenchmarkTest {
 
     private inline fun measureMillis(rounds: Int, block: () -> Unit): Double {
-        // precalentar
+        // 预热
         repeat(3) { block() }
         val start = System.nanoTime()
         repeat(rounds) { block() }
@@ -45,7 +45,7 @@ class PerfMicroBenchmarkTest {
 
     private fun row(name: String, before: Double, after: Double) {
         println(
-            "[perf] %-46s antes del cambio %8.3f ms | Después de la modificación %8.3f ms | aumento %5.1fx".format(
+            "[perf] %-46s 改前 %8.3f ms | 改后 %8.3f ms | 倍率 %5.1fx".format(
                 name,
                 before,
                 after,
@@ -54,55 +54,55 @@ class PerfMicroBenchmarkTest {
         )
     }
 
-    /** Desglose de costos de los enlaces de registro (P22/P23 Comparación antes y después). */
-    private fun probeLoggingCosts() {        // 6) El costo total de un tronco (PII Desensibilización + archivo adjunto), consulte la implementación de Logger.d
+    /** 日志链路的成本分解（P22/P23 前后对比）。 */
+    private fun probeLoggingCosts() { // 6) 一条日志的完整代价（PII 脱敏 + 文件追加），见 Logger.d 的实现
         val logDir = java.nio.file.Files.createTempDirectory("muse-log-bench").toFile()
         io.zer0.common.Logger.initFileLog(
             androidx.test.core.app.ApplicationProvider.getApplicationContext(),
         )
-        io.zer0.common.Logger.d("bench", "precalentar")
+        io.zer0.common.Logger.d("bench", "预热")
         val perLog = measureMillis(50) {
-            repeat(100) { index -> io.zer0.common.Logger.d("bench", "No. $index Registros: una vez que se completa la llamada a la herramienta, lleva tiempo 12ms") }
+            repeat(100) { index -> io.zer0.common.Logger.d("bench", "第 $index 条日志：一次工具调用完成，耗时 12ms") }
         }
-        // Luego ponga el fregadero (DebugLogStore) conectado——En producción, MuseApp configura Logger.sink.
-        // DebugLogStore ajustará el búfer circular cada vez que escriba un registro (en la ronda 21, se cambia a un recuento de incremento automático, ya no O(n)).
+        // 再把 sink（DebugLogStore）接上——生产里 Logger.sink 由 MuseApp 设置，
+        // 而 DebugLogStore 每次写日志都会调整环形缓冲（第 21 轮改成自增计数，不再 O(n)）。
         io.zer0.muse.debug.DebugLogStore.clear()
         io.zer0.common.Logger.sink = { level, tag, msg, thr ->
             io.zer0.muse.debug.DebugLogStore.log(level, tag, msg, thr)
         }
-        repeat(2_000) { index -> io.zer0.common.Logger.d("bench", "Llene el primero $index log, usado para llenar el buffer") }
+        repeat(2_000) { index -> io.zer0.common.Logger.d("bench", "填充第 $index 条日志，用于把缓冲区打满") }
         val perLogWithSink = measureMillis(50) {
-            repeat(100) { index -> io.zer0.common.Logger.d("bench", "No. $index Registros: una vez que se completa la llamada a la herramienta, lleva tiempo 12ms") }
+            repeat(100) { index -> io.zer0.common.Logger.d("bench", "第 $index 条日志：一次工具调用完成，耗时 12ms") }
         }
-        row("Registro único (incluido el receptor DebugLogStore, el búfer está lleno)", 0.0, perLogWithSink / 100.0)
+        row("单条日志（含 DebugLogStore sink，缓冲已满）", 0.0, perLogWithSink / 100.0)
         io.zer0.common.Logger.sink = null
         io.zer0.muse.debug.DebugLogStore.clear()
 
-        // Mantenga solo la PII insensibilizada: aumente el nivel del archivo a WARN (D (no escriba el archivo),sink Déjelo en blanco para aislar el costo de la desensibilización en sí.
+        // 只留 PII 脱敏：把文件等级抬到 WARN（D 行不写文件）、sink 置空，隔离出脱敏本身的成本。
         io.zer0.common.Logger.fileLogLevel = io.zer0.common.Logger.Level.WARN
         val sanitizeOnly = measureMillis(50) {
-            repeat(100) { index -> io.zer0.common.Logger.d("bench", "No. $index Registros: una vez que se completa la llamada a la herramienta, lleva tiempo 12ms") }
+            repeat(100) { index -> io.zer0.common.Logger.d("bench", "第 $index 条日志：一次工具调用完成，耗时 12ms") }
         }
-        row("Registro único (solo desensibilización de PII, sin escritura de archivos)", 0.0, sanitizeOnly / 100.0)
+        row("单条日志（仅 PII 脱敏，不写文件）", 0.0, sanitizeOnly / 100.0)
         io.zer0.common.Logger.fileLogLevel = io.zer0.common.Logger.Level.DEBUG
-        // La línea base antes del cambio es 0,246 ms en la misma máquina."por línea open + append + close"valor medido real (20.ª ronda).
-        row("Registro único (desensibilización + anexar,100 Media de barra; antes del cambio=cambiar archivo por línea)", 0.246, perLog / 100.0)
+        // 改前基线 0.246ms 是同一台机器上"每行 open + append + close"时的实测值（第 20 轮）。
+        row("单条日志（脱敏 + 追加，100 条均值；改前=每行开关文件）", 0.246, perLog / 100.0)
         logDir.deleteRecursively()
     }
 
-    /** Estimaciones históricas de ocupación una vez por ronda en el ciclo de la herramienta:5 ¿Cuánto puedes guardar compartiendo caché por ronda (Ronda 38)? */
+    /** 工具循环里每轮一次的历史占用估算：5 轮共用缓存能省多少（第 38 轮）。 */
     private fun probeToolLoopTokens() {
         val base = (0 until 100).map { index ->
             UIMessage(
                 role = if (index % 2 == 0) MessageRole.USER else MessageRole.ASSISTANT,
-                content = "No. $index Mensaje histórico, la longitud del texto es media.".repeat(4),
+                content = "第 $index 条历史消息，正文长度中等。".repeat(4),
             )
         }
-        // Simular 5 rondas: adicionales cada ronda assistant(tool_calls) + tool(result) dos
+        // 模拟 5 轮：每轮追加 assistant(tool_calls) + tool(result) 两条
         val rounds = (1..5).map { round ->
             listOf(
-                UIMessage(role = MessageRole.ASSISTANT, content = "No. $round El texto antes de la herramienta rueda se llama".repeat(10)),
-                UIMessage(role = MessageRole.TOOL, content = "No. $round salida de herramienta de rueda".repeat(40)),
+                UIMessage(role = MessageRole.ASSISTANT, content = "第 $round 轮工具调用前的正文".repeat(10)),
+                UIMessage(role = MessageRole.TOOL, content = "第 $round 轮工具输出".repeat(40)),
             )
         }
         val plain = measureMillis(30) {
@@ -120,22 +120,22 @@ class PerfMicroBenchmarkTest {
                 TokenEstimator.estimate(history, cache = cache)
             }
         }
-        row("Estimaciones históricas de ocupación para 5 rondas del ciclo de la herramienta (recalculadas individualmente)", 0.0, plain)
-        row("Igual que arriba,5 caché de recuento compartido redondo (P27)", plain, cached)
+        row("工具循环 5 轮的历史占用估算（各自重算）", 0.0, plain)
+        row("同上，5 轮共用计数缓存（P27）", plain, cached)
     }
 
-    /** Revisión de desbordamiento antes de enviar: calcule la misma carga útil dos veces y cuánto se puede guardar almacenando en búfer la segunda vez (ronda 37). */
+    /** 发送前溢出复核：同一份 payload 估两遍，第二遍接缓存能省多少（第 37 轮）。 */
     private fun probePreSendOverflow() {
         val prefix = (0 until 2).map { index ->
-            UIMessage(role = MessageRole.SYSTEM, content = "Prefijo del sistema $index ".repeat(400))
+            UIMessage(role = MessageRole.SYSTEM, content = "系统前缀 $index ".repeat(400))
         }
         val history = (0 until 200).map { index ->
             UIMessage(
                 role = if (index % 2 == 0) MessageRole.USER else MessageRole.ASSISTANT,
-                content = "No. $index Un mensaje histórico con longitud de texto media, utilizado para simular una sesión cercana al límite superior de la ventana.".repeat(4),
+                content = "第 $index 条历史消息，正文长度中等，用来模拟接近窗口上限的会话。".repeat(4),
             )
         }
-        val compressed = listOf(UIMessage(role = MessageRole.SYSTEM, content = "Un resumen condensado de esta ronda.".repeat(60))) +
+        val compressed = listOf(UIMessage(role = MessageRole.SYSTEM, content = "这一轮的压缩摘要。".repeat(60))) +
             history.takeLast(20)
 
         val cold = measureMillis(30) {
@@ -147,36 +147,37 @@ class PerfMicroBenchmarkTest {
             TokenEstimator.estimate(prefix + history, cache = cache)
             TokenEstimator.estimate(prefix + compressed, cache = cache)
         }
-        row("Revisión de desbordamiento antes del envío: estimación de dos pasadas original + comprimida", 0.0, cold)
-        row("Igual que arriba, dos pases comparten el caché de recuento (P26)", cold, warm)
+        row("发送前溢出复核：原始 + 压缩后 两遍估算", 0.0, cold)
+        row("同上，两遍共用计数缓存（P26）", cold, warm)
     }
 
-    /** tres elementos"Siempre ha sido reconocido por los comentarios como O(n), pero nunca lo midió"de costos residuales (Ronda 36). */
-    private fun probeResidualCosts() {        val longHistory = (0 until 200).map { index ->
+    /** 三项"一直被注释承认为 O(n)、但从没量过"的残余成本（第 36 轮）。 */
+    private fun probeResidualCosts() {
+        val longHistory = (0 until 200).map { index ->
             UIMessage(
                 role = if (index % 2 == 0) MessageRole.USER else MessageRole.ASSISTANT,
-                content = "No. $index El texto del mensaje, que tiene una duración cercana a la de una conversación real, se utiliza para estimar el coste de replicar toda la tabla.".repeat(3),
+                content = "第 $index 条消息正文，长度接近真实对话，用来估量整表复制的成本。".repeat(3),
             )
         }
-        // ① Transmisión por fragmento"Copiar toda la tabla + cambiar una"
+        // ① 流式每 chunk 的"整表复制 + 换一条"
         val listCopy = measureMillis(200) {
             val copy = longHistory.toMutableList()
             copy[longHistory.size - 1] = longHistory.last().copy(content = longHistory.last().content + "x")
         }
-        row("Transmisión por fragmento:200 Copie toda la tabla de mensajes y reemplácela por una", 0.0, listCopy)
+        row("流式每 chunk：200 条消息整表复制换一条", 0.0, listCopy)
 
-        // ② La cantidad total ocupada por lo anterior se revaloriza una vez por ronda.
-        val sysPrompt = "Palabra de aviso del sistema".repeat(400)
+        // ② 每轮一次的上文占用全量重估
+        val sysPrompt = "系统提示词".repeat(400)
         io.zer0.muse.ui.chat.ContextTokenUsage.estimate(longHistory, sysPrompt)
         val usageCost = measureMillis(50) { io.zer0.muse.ui.chat.ContextTokenUsage.estimate(longHistory, sysPrompt) }
-        row("Una vez por ronda:200 historial + sistema solicita una reevaluación de ocupación", 0.0, usageCost)
+        row("每轮一次：200 条历史 + 系统提示的占用率重估", 0.0, usageCost)
 
-        // ③ La transmisión se recalcula cada vez que cambia el estado."agrupación de procesos"
+        // ③ 流式每次状态变化都重算的"过程分组"
         val displayMessages = (0 until 100).map { index ->
             UIMessage(
                 role = MessageRole.ASSISTANT,
-                content = if (index % 3 == 0) "Capítulo con texto principal. $index Artículo" else "",
-                reasoning = if (index % 3 == 0) null else "pieza de pensamiento $index",
+                content = if (index % 3 == 0) "有正文的第 $index 条" else "",
+                reasoning = if (index % 3 == 0) null else "思考片段 $index",
             )
         }
         io.zer0.muse.ui.chat.ChatDisplayGrouper.group(displayMessages, { it.content.isBlank() && it.reasoning != null })
@@ -186,14 +187,14 @@ class PerfMicroBenchmarkTest {
                 { it.content.isBlank() && it.reasoning != null },
             )
         }
-        row("Cada cambio de estado:100 procesar agrupación de mensajes", 0.0, groupCost)
+        row("每次状态变化：100 条消息的过程分组", 0.0, groupCost)
     }
 
     @Test
     fun report() {
-        println("[perf] ===== JVM Micro-benchmark (no representa el consumo de tiempo real de la máquina, solo una comparación relativa)=====")
+        println("[perf] ===== JVM 微基准（不代表真机耗时，只做相对比较）=====")
 
-        // 1) Limpieza de HTML de tarjeta: por ensamblaje versus caché de visitas (P5)
+        // 1) 卡片 HTML 清洗：每次装配 vs 命中缓存（P5）
         val svg = buildString {
             append("<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 800 400\">")
             repeat(200) { index ->
@@ -208,25 +209,25 @@ class PerfMicroBenchmarkTest {
             SanitizedHtmlCache.get(cardCode)
         }
         val warmSanitize = measureMillis(2_000) { SanitizedHtmlCache.get(cardCode) }
-        row("Tarjeta HTML limpia (${cardCode.length / 1024}KB)", coldSanitize, warmSanitize)
+        row("卡片 HTML 清洗（${cardCode.length / 1024}KB）", coldSanitize, warmSanitize)
 
-        // 2) token Estimación:50 historial, volumen completo secuencial versus caché compartido (P11)
+        // 2) token 估算：50 条历史，逐次全量 vs 共用缓存（P11）
         val history = (0 until 50).map { index ->
             UIMessage(
                 role = if (index % 2 == 0) MessageRole.USER else MessageRole.ASSISTANT,
-                content = "No. $index Un mensaje histórico con longitud de texto media, utilizado para simular una conversación real.".repeat(6),
+                content = "第 $index 条历史消息，正文长度中等，用来模拟真实对话。".repeat(6),
             )
         }
-        TokenEstimator.estimate(history) // Activar la inicialización de jtokkit
+        TokenEstimator.estimate(history) // 触发 jtokkit 初始化
         val noCache = measureMillis(20) { TokenEstimator.estimate(history.take(25)) }
         val cache = MessageTokenCache()
         TokenEstimator.estimate(history.take(25), cache = cache)
         val withCache = measureMillis(200) { TokenEstimator.estimate(history, cache = cache) }
-        row("token estimación (25 mensaje, ejecución repetida de BPE pura)", noCache, withCache)
+        row("token 估算（25 条消息，纯 BPE 重复跑）", noCache, withCache)
 
-        // 3) Puntuación de la base de datos de experiencias:200 Copia en minúscula de la experiencia, recalculada o almacenada en caché (P13)
+        // 3) 经验库打分：200 条经验的小写副本，逐次重算 vs 缓存（P13）
         val experiences = (0 until 200).map { index ->
-            Triple("exp-$index", 1L, ("título de experiencia $index " + "El texto más extenso se utiliza para simular escenarios reales.".repeat(8)))
+            Triple("exp-$index", 1L, ("经验标题 $index " + "正文内容较长用于模拟真实场景。".repeat(8)))
         }
         val expCache = ExperienceTextCache()
         val expCold = measureMillis(20) {
@@ -240,9 +241,9 @@ class PerfMicroBenchmarkTest {
         val expWarm = measureMillis(500) {
             experiences.forEach { (id, updatedAt, _) -> expCache.get(expCache.key(id, updatedAt)) }
         }
-        row("Texto de puntuación de la base de datos de experiencias (200 minúscula)", expCold, expWarm)
+        row("经验库打分文本（200 条 lowercase）", expCold, expWarm)
 
-        // 4) Codificación de datos de tarjetas: tabla completa frente a fragmentación de una sola tarjeta (P18)
+        // 4) 卡片数据落盘编码：整表 vs 单卡分片（P18）
         val cards = (0 until 50).associate { index ->
             "card-$index" to ("[" + "{\"k\":\"v\"},".repeat(400) + "{}]")
         }
@@ -260,38 +261,36 @@ class PerfMicroBenchmarkTest {
         val oneShard = measureMillis(500) {
             io.zer0.muse.data.card.CardDataFiles.encode("card-7", cards.getValue("card-7"))
         }
-        row("Codificación de ubicación de datos de la tarjeta (50 tarjeta)", fullTable, oneShard)
+        row("卡片数据落盘编码（50 张卡）", fullTable, oneShard)
 
-        // 5) Estimación de la barra de token por cuadro durante la transmisión (P21): Estimación de salida para un solo mensaje de 5 KB
+        // 5) 流式期间每帧的 token 条估算（P21）：单条 5KB 消息的输出估算
         val streamed = UIMessage(
             role = MessageRole.ASSISTANT,
-            content = "El texto generado por el asistente contiene fragmentos del código fuente de la tarjeta.".repeat(180),
+            content = "助手正在生成的正文，包含卡片源码片段。".repeat(180),
         )
         TokenEstimator.estimate(streamed.content)
         val perFrameEstimate = measureMillis(100) { TokenEstimator.estimate(listOf(streamed)) }
-        row("Estimación del token de salida para un único mensaje de 5 KB (transmisión por cuadro)", perFrameEstimate, 0.0)
+        row("单条 5KB 消息的输出 token 估算（流式每帧）", perFrameEstimate, 0.0)
 
         probeLoggingCosts()
 
-
-
-        // 7) en arranque en frio"Registro de herramientas"¿Qué tan caro es (esto es lo que se hace simultáneamente durante el período de inicio)?
+        // 7) 冷启动里的"工具注册"到底多贵（启动期同步做的就是这件事）
         val ctx = androidx.test.core.app.ApplicationProvider.getApplicationContext<android.content.Context>()
-        io.zer0.muse.tools.ToolRegistry(ctx) // precalentar
+        io.zer0.muse.tools.ToolRegistry(ctx) // 预热
         val registryOnly = measureMillis(20) { io.zer0.muse.tools.ToolRegistry(ctx) }
         val withOneRegistrar = measureMillis(20) {
             val r = io.zer0.muse.tools.ToolRegistry(ctx)
             io.zer0.muse.tools.CoreToolsRegistrar(ctx, r)
         }
-        row("ToolRegistry Construir (registro incorporado)", registryOnly, 0.0)
-        row("+1 registrador (CoreToolsRegistrar,3 herramientas)", withOneRegistrar - registryOnly, 0.0)
+        row("ToolRegistry 构造（内置注册）", registryOnly, 0.0)
+        row("+1 个 registrar（CoreToolsRegistrar，3 个工具）", withOneRegistrar - registryOnly, 0.0)
 
-        // 8) Recuperación del historial de notificaciones realizada por el hilo principal durante el arranque en frío:SharedPreferences El costo de análisis del JSON aquí.
+        // 8) 冷启动时主线程做的通知历史恢复：SharedPreferences 里那份 JSON 的解析成本
         val records = (0 until 200).map { index ->
             io.zer0.muse.notification.NotificationRecord(
                 packageName = "com.example.app$index",
-                title = "Título $index",
-                text = "Se trata de un texto de notificación, de longitud cercana a una notificación real, que se utiliza para estimar los costos de análisis.".repeat(2),
+                title = "标题 $index",
+                text = "这是一条通知正文，长度接近真实通知，用于估算解析成本。".repeat(2),
                 timestamp = 1_800_000_000_000L + index,
             )
         }
@@ -306,14 +305,14 @@ class PerfMicroBenchmarkTest {
             io.zer0.common.AppJson.decodeFromString(recordSerializer, recordsJson)
         }
         println(
-            "[perf] Recuperación del historial de notificaciones del período de inicio (200 artículo,${recordsJson.length} Carácter JSON) análisis %8.3f ms".format(restoreCost),
+            "[perf] 启动期通知历史恢复（200 条，${recordsJson.length} 字符 JSON）  解析 %8.3f ms".format(restoreCost),
         )
 
         probeResidualCosts()
         probePreSendOverflow()
         probeToolLoopTokens()
 
-        println("[perf] ===== Nota: Lo anterior es la magnitud relativa de JVM; la máquina real requiere equipo adb que requiere mucho tiempo =====")
-        assertTrue("Los microbenchmarks no hacen afirmaciones, solo se utilizan para imprimir", true)
+        println("[perf] ===== 说明：以上为 JVM 相对量级；真机耗时需 adb 设备 =====")
+        assertTrue("微基准不做断言，仅用于打印", true)
     }
 }

@@ -18,75 +18,87 @@ import java.util.zip.ZipOutputStream
 import kotlin.uuid.Uuid
 
 /**
- * Importación de tarjeta de personaje/Exportar/Compartir.
+ * 角色卡导入/导出/分享。
  *
- * poner [AssistantEntity](y foto de avatar opcional)empaquetado en zip(.muse-assistant Archivo),
- * Conveniente en todos los dispositivos/Comparta configuraciones de roles entre instalaciones. Sólo uso java.util.zip,No se introducen nuevas dependencias.
+ * 把 [AssistantEntity](及可选头像图片)打包成 zip(.muse-assistant 文件),
+ * 便于跨设备/跨安装分享角色配置。仅用 java.util.zip,不引入新依赖。
  *
- * zip estructura:
- *  - assistant.json      serializado AssistantEntity(Borrar la identificación al exportar,Regenerar al importar)
- *  - avatar.<ext>        Opcional,Bytes de imagen de avatar(Inferir la extensión de la ruta del avatar)
+ * zip 结构:
+ *  - assistant.json      序列化的 AssistantEntity(导出时 id 清空,导入时重新生成)
+ *  - avatar.<ext>        可选,头像图片字节(从头像路径推断扩展名)
  *
- * v2.x: Agregar uso compartido con un solo clic([share],El panel de uso compartido del sistema envía directamente el paquete de personajes)con vista previa de importación
- * ([parse] analizar → Confirmación de usuario → [commitParsed] escribir).
+ * v2.x: 新增一键分享([share],系统分享面板直发角色包)与导入预览
+ * ([parse] 解析 → 用户确认 → [commitParsed] 写入)。
  */
 object AssistantCardExporter {
 
     private const val TAG = "AssistantCardExporter"
     private const val ENTRY_JSON = "assistant.json"
+
+    /**
+     * E3:人设卡条目。导出只写这一份(严格 schema、不含凭据与本地绑定);
+     * `assistant.json` 保留为**只读**的历史条目。
+     */
+    private const val ENTRY_PERSONA = "persona.json"
     private const val ENTRY_AVATAR_PREFIX = "avatar."
 
-    /** v2.x: paquete de personajes MIME — Alineado con el filtro de intención VIEW de AndroidManifest(Compartir/Recibir identificador único). */
+    /** v2.x: 角色包 MIME — 与 AndroidManifest 的 VIEW intent-filter 对齐(分享/接收唯一标识)。 */
     const val MIME_TYPE = "application/x-muse-assistant"
 
-    /** v2.x: Extensión de archivo del paquete de caracteres. */
+    /** v2.x: 角色包文件扩展名。 */
     const val FILE_EXTENSION = "muse-assistant"
 
-    // M-EXP1: Lista blanca de extensiones de avatar(Sólo se permiten formatos de imagen comunes),Evite que tarjetas maliciosas escriban extensiones ejecutables como .exe
+    // M-EXP1: 头像扩展名白名单(只允许常见图片格式),防止恶意卡片写入 .exe 等可执行扩展名
     private val ALLOWED_AVATAR_EXTS = setOf("jpg", "jpeg", "png", "webp")
 
-    // v1.113: Limitar la entrada única al máximo 10MB,Bomba anti-ZIP
+    // v1.113: 限制单条目最大 10MB,防 ZIP 炸弹
     private const val MAX_ENTRY_BYTES = 10L * 1024 * 1024
 
-    /** M-EXP1: Verifique que la extensión esté en la lista blanca,Reserva si no está presente "jpg". */
+    /** M-EXP1: 校验扩展名是否在白名单内,不在则回退 "jpg"。 */
     private fun sanitizeAvatarExt(raw: String): String {
         val lower = raw.lowercase().trim()
         return if (lower in ALLOWED_AVATAR_EXTS) lower else "jpg"
     }
 
     /**
-     * v2.x: Contenido de la tarjeta de personaje analizado(Aún no escrito en el disco/base de datos).
+     * v2.x: 解析出的角色卡内容(尚未写入磁盘/数据库)。
      *
-     * Para uso de confirmación de vista previa de importación:Después de que el usuario confirme el [commitParsed] Guarde la bandeja.
+     * 供导入预览确认使用:用户确认后由 [commitParsed] 落盘入库。
      */
     class ParsedCard(
+        /** 已经是「可入库」的形状:凭据、模型绑定、使用统计都是空的,不是原样搬过来的实体。 */
         val entity: AssistantEntity,
         val avatarBytes: ByteArray?,
         val avatarExt: String?,
+        /** 解析出来的人设(差分预览要用)。 */
+        val persona: PersonaCard,
+        /** true = 旧版整份实体包;导入时只取人设,并要在预览里说清楚。 */
+        val legacy: Boolean,
     )
 
-    // ── paquete(Exporta y comparte con un clic) ─────────────────────────────────────────
+    // ── 打包(导出与一键分享共用) ─────────────────────────────────────────
 
-    /** poner [assistant] Empaquetado como paquete de caracteres de escritura zip [os](Exportar una copia:id Borrar;Paquete de bytes de avatar). */
+    /** 把 [assistant] 打包为角色包 zip 写入 [os](导出副本:id 清空;头像字节随包)。 */
     private fun writeZip(os: OutputStream, assistant: AssistantEntity) {
-        // Exportar una copia:Borrar id
-        val exportEntity = assistant.copy(id = "")
-        val json = AppJson.encodeToString(AssistantEntity.serializer(), exportEntity)
+        // E3:导出的是人设卡,不是实体副本。id / providerId / modelId / toolModelId /
+        // customHeadersJson(常见放法是 Authorization)/ 使用统计都不再进入包 ——
+        // 角色卡会被转发到群聊,以前"敏感字段不清除"的注释等于在教人泄漏。
+        val json = PersonaCardCodec.encode(PersonaCardCodec.fromEntity(assistant))
 
-        // byte de avatar(Opcional):Empaquetar sólo si avatarImageUrl apunta a un archivo local existente
+        // 头像字节(可选):仅当 avatarImageUrl 指向存在的本地文件时打包
         var avatarExt: String? = null
         var avatarBytes: ByteArray? = null
         if (assistant.avatarImageUrl.isNotBlank()) {
             val avatarFile = File(assistant.avatarImageUrl)
             if (avatarFile.exists()) {
-                // M-EXP1: Extensión incluida en la lista blanca,Evite que los datos locales sean manipulados y escriban extensiones sospechosas
+                // M-EXP1: 扩展名经白名单清洗,防御本地数据被篡改后写出可疑扩展名
                 avatarExt = sanitizeAvatarExt(avatarFile.extension.ifBlank { "jpg" })
                 avatarBytes = avatarFile.readBytes()
             }
         }
 
         ZipOutputStream(os).use { zos ->
-            zos.putNextEntry(ZipEntry(ENTRY_JSON))
+            zos.putNextEntry(ZipEntry(ENTRY_PERSONA))
             zos.write(json.toByteArray(Charsets.UTF_8))
             zos.closeEntry()
             val bytes = avatarBytes
@@ -99,16 +111,16 @@ object AssistantCardExporter {
         }
     }
 
-    /** v2.x: Seguridad del nombre del archivo del paquete de caracteres(Eliminar separación de caminos/personajes reservados/en blanco). */
+    /** v2.x: 角色包文件名安全化(去除路径分隔/保留字符/空白)。 */
     private fun safePackName(name: String): String = name.ifBlank { "assistant" }
         .replace(Regex("[\\\\/:*?\"<>|\\s]+"), "_")
         .take(60)
 
     /**
-     * Exportar tarjeta de personaje a [outputUri](SAF guardar).
+     * 导出角色卡到 [outputUri](SAF 保存)。
      *
-     * - id Claro para ""(Regenerar al importar),Deje los campos restantes como están(tarjeta local,Los campos sensibles no se borran)
-     * - si [AssistantEntity.avatarImageUrl] Apuntar a un archivo local existente,Empaque los bytes del avatar juntos
+     * - id 清空为 ""(导入时重新生成),其余字段原样保留(本地卡片,敏感字段不清除)
+     * - 若 [AssistantEntity.avatarImageUrl] 指向存在的本地文件,把头像字节一并打包
      */
     suspend fun export(context: Context, assistant: AssistantEntity, outputUri: Uri) = withContext(Dispatchers.IO) {
         context.contentResolver.openOutputStream(outputUri)?.use { os ->
@@ -117,11 +129,11 @@ object AssistantCardExporter {
     }
 
     /**
-     * v2.x: Comparte con un clic — Empaque el paquete de caracteres en cacheDir y envíelo a través del panel para compartir del sistema(ACTION_SEND).
+     * v2.x: 一键分享 — 打包角色包到 cacheDir 并经系统分享面板发送(ACTION_SEND)。
      *
-     * Receptor(Dispositivos con Muse instalado)Haga clic en el archivo para ingresar directamente a la importación por MIME;Otros canales se entregan como archivos normales.
+     * 接收方(装了 Muse 的设备)点开文件可按 MIME 直接进入导入;其他渠道作为普通文件传递。
      *
-     * @return Si el intercambio se inició exitosamente(paquete/Regresar si no se detuvo false)
+     * @return 是否成功发起分享(打包/拉起失败返回 false)
      */
     suspend fun share(context: Context, assistant: AssistantEntity): Boolean = withContext(Dispatchers.IO) {
         try {
@@ -148,17 +160,18 @@ object AssistantCardExporter {
         }
     }
 
-    // ── analizar/enviar(Confirmación de vista previa de importación) ───────────────────────────────────────
+    // ── 解析 / 提交(导入预览确认) ───────────────────────────────────────
 
     /**
-     * v2.x: Analiza la tarjeta de personaje pero no escribas. — Para confirmación de vista previa de importación.
+     * v2.x: 解析角色卡但不写入 — 供导入预览确认。
      *
-     * Lea los bytes de asistente.json y avatar en zip;Sin escritura en disco, sin almacenamiento.
+     * 读取 zip 中的 assistant.json 与头像字节;不写磁盘、不入库。
      *
-     * @return Analizar resultados;El formato no es válido o el análisis falla. null
+     * @return 解析结果;格式无效或解析失败返回 null
      */
     suspend fun parse(context: Context, inputUri: Uri): ParsedCard? = withContext(Dispatchers.IO) {
-        var jsonStr: String? = null
+        var personaStr: String? = null
+        var legacyStr: String? = null
         var avatarExt: String? = null
         var avatarBytes: ByteArray? = null
 
@@ -168,11 +181,15 @@ object AssistantCardExporter {
                 while (entry != null) {
                     val name = entry.name
                     when {
+                        name == ENTRY_PERSONA -> {
+                            personaStr = readZipEntryWithLimit(zis, MAX_ENTRY_BYTES, name).toString(Charsets.UTF_8)
+                        }
+                        // 历史包:仍然能导入,但只取人设字段
                         name == ENTRY_JSON -> {
-                            jsonStr = readZipEntryWithLimit(zis, MAX_ENTRY_BYTES, name).toString(Charsets.UTF_8)
+                            legacyStr = readZipEntryWithLimit(zis, MAX_ENTRY_BYTES, name).toString(Charsets.UTF_8)
                         }
                         name.startsWith(ENTRY_AVATAR_PREFIX) -> {
-                            // M-EXP1: Las tarjetas maliciosas pueden contener entradas como avatar.exe,Las extensiones se incluyen en la lista blanca antes de escribirse en el disco.
+                            // M-EXP1: 恶意卡片可能塞 avatar.exe 等条目,扩展名经白名单清洗后再写盘
                             avatarExt = sanitizeAvatarExt(name.removePrefix(ENTRY_AVATAR_PREFIX))
                             avatarBytes = readZipEntryWithLimit(zis, MAX_ENTRY_BYTES, name)
                         }
@@ -183,33 +200,58 @@ object AssistantCardExporter {
             }
         } ?: return@withContext null
 
-        val json = jsonStr ?: run {
-            Logger.w(TAG, "no assistant.json in $inputUri")
+        // 新卡优先:严格 schema 解析,失败就拒绝,不退回"尽力解释"。
+        personaStr?.let { text ->
+            return@withContext when (val outcome = PersonaCardCodec.decode(text)) {
+                is PersonaParse.Ok -> ParsedCard(
+                    entity = PersonaCardCodec.toNewEntity(outcome.card),
+                    avatarBytes = avatarBytes,
+                    avatarExt = avatarExt,
+                    persona = outcome.card,
+                    legacy = false,
+                )
+
+                is PersonaParse.Invalid -> {
+                    Logger.w(TAG, "persona.json 被拒绝 ${outcome.reason} (field=${outcome.field})")
+                    null
+                }
+            }
+        }
+
+        val json = legacyStr ?: run {
+            Logger.w(TAG, "neither persona.json nor assistant.json in $inputUri")
             return@withContext null
         }
 
-        val parsed = runCatching {
+        val legacyEntity = runCatching {
             AppJson.decodeFromString(AssistantEntity.serializer(), json)
         }.getOrElse {
             Logger.w(TAG, "parse assistant.json failed: ${it.message}")
             return@withContext null
         }
-
-        ParsedCard(entity = parsed, avatarBytes = avatarBytes, avatarExt = avatarExt)
+        // 旧包同样只取人设:凭据与本地绑定不会被一次导入带进来。
+        val card = PersonaCardCodec.fromEntity(legacyEntity)
+        ParsedCard(
+            entity = PersonaCardCodec.toNewEntity(card),
+            avatarBytes = avatarBytes,
+            avatarExt = avatarExt,
+            persona = card,
+            legacy = true,
+        )
     }
 
     /**
-     * v2.x: Escriba tarjetas de personajes analizadas en el disco y la base de datos.(Llamado después de la confirmación de la vista previa).
+     * v2.x: 把已解析的角色卡写入磁盘与数据库(预览确认后调用)。
      *
-     * - regenerar id([Uuid.random]),Deje que createAt/updatedAt sea la hora actual
-     * - Bytes de avatar escritos nuevamente en filesDir/avatars/ y actualizados avatarImageUrl
-     * - usar [repo].upsert Guardar en base de datos
+     * - 重新生成 id([Uuid.random]),设 createdAt/updatedAt 为当前时间
+     * - 头像字节写回 filesDir/avatars/ 并更新 avatarImageUrl
+     * - 用 [repo].upsert 存入数据库
      */
     suspend fun commitParsed(context: Context, repo: AssistantRepository, card: ParsedCard): AssistantEntity = withContext(Dispatchers.IO) {
         val newId = Uuid.random().toString()
         val now = System.currentTimeMillis()
 
-        // El avatar se vuelve a escribir en el almacenamiento interno.(Si es así)
+        // 头像写回内部存储(若有)
         val newAvatarUrl = run {
             val bytes = card.avatarBytes ?: return@run null
             val ext = card.avatarExt?.takeIf { it.isNotBlank() } ?: "jpg"
@@ -230,11 +272,11 @@ object AssistantCardExporter {
     }
 
     /**
-     * de [inputUri] Importar cartas de personajes(analizar + confirmar,un paso).
+     * 从 [inputUri] 导入角色卡(解析 + 提交,一步到位)。
      *
-     * Reservado para personas que llaman sin confirmación previa;Utilice la importación con vista previa [parse] + [commitParsed].
+     * 保留给不经过预览确认的调用方;带预览的导入请用 [parse] + [commitParsed]。
      *
-     * @return Después de importar [AssistantEntity];Si el formato del archivo no es válido o el análisis falla, devuelva null
+     * @return 导入后的 [AssistantEntity];若文件格式无效或解析失败返回 null
      */
     suspend fun import(context: Context, repo: AssistantRepository, inputUri: Uri): AssistantEntity? {
         val card = parse(context, inputUri) ?: return null

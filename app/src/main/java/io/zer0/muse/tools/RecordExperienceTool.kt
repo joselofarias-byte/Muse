@@ -5,17 +5,17 @@ import io.zer0.muse.data.experience.ExperienceRepository
 import java.util.UUID
 
 /**
- * record_experience Herramientas.
+ * record_experience 工具。
  *
- * Registre la experiencia aprendida en la biblioteca de experiencias.
+ * 将学到的经验记录到经验库中。
  */
 object RecordExperienceTool {
 
     fun toolDef() = ToolRegistry.ToolDef(
         name = "record_experience",
-        description = "Registre una experiencia en la base de datos de experiencias. Situaciones aplicables:Los usuarios señalan tus errores, muestran descontento o reiteran algo.;" +
-            "Pruebas muchos métodos y encuentras lo que funciona.;Los usuarios dicen \"haz esto la próxima vez\" o \"no hagas aquello\"." +
-            "Una frase por elemento,Sea específico.",
+        description = "把一条经验记进经验库。适用情形:用户指出你的错误、表现出不满或反复强调某事;" +
+            "你试了多种方法后找到有效做法;用户说「以后就这么做」或「别这么做」。" +
+            "每条一句话,写具体。",
         parameters = mapOf(
             "category" to "Required. Category, 2-4 words, e.g. 'tool usage', 'search tips', 'response style'.",
             "content" to "Required. The experience content, concise and direct, one sentence.",
@@ -33,8 +33,8 @@ object RecordExperienceTool {
         if (category.isEmpty() || content.isEmpty()) {
             return "Error: category and content cannot be empty."
         }
-        // La herramienta de memoria ya se está ejecutando en la cadena de herramientas para colgar.,Llame a Room para suspender DAO directamente.
-        // RunBlocking anidado bloqueará el hilo de ejecución,Realizado antes de rellenar los resultados de la herramienta“Escrito pero aún ejecutándose”espejismo.
+        // 记忆工具本身已经运行在挂起工具链中,直接调用 Room suspend DAO。
+        // 嵌套 runBlocking 会阻塞执行线程,在工具结果回填前制造“已写入但一直执行中”的假象。
         val existing = repo.getAll()
         if (existing.any { it.content == content && it.category.equals(category, ignoreCase = true) }) {
             return "Duplicate: this experience is already recorded."

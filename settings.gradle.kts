@@ -26,28 +26,29 @@ dependencyResolutionManagement {
 
 rootProject.name = "muse"
 
-// Lista de módulos(Implementado desde cero módulo por módulo)
-// Phase 1: Habilite solo los módulos necesarios para el cierre del diálogo.,El resto se activará según sea necesario en la Fase 5.
-include(":app")          // Módulo de aplicación principal(UI/ViewModel/lógica central)
-include(":ai")           // AI SDK capa de abstracción(Provider/Model/Tool/UIMessage)
-include(":memory")       // sistema de memoria
-include(":common")       // Herramientas y extensiones comunes
-// v1.97 gap7: Habilitar módulo:material3 — Montar el código fuente de material-color-utilities,
-// proporcionar DynamicScheme.toColorScheme() Expandir,Para que CustomTheme se genere en función del color de la semilla ColorScheme
-include(":material3")    // Material extensión de color(color de semilla → ColorScheme generador)
-// Pequeño módulo independiente para teléfono celular.:Viene con biblioteca de sala e interfaz de host,no depende de :app
+// 模块清单(逐模块从零实现)
+// Phase 1: 仅启用对话闭环所需模块,其余在 Phase 5 按需开启
+include(":app")          // 主应用模块(UI/ViewModel/核心逻辑)
+include(":ai")           // AI SDK 抽象层(Provider/Model/Tool/UIMessage)
+include(":memory")       // 记忆系统
+include(":common")       // 通用工具与扩展
+include(":conversation-core") // 平台无关的对话身份、命令、投影与运行合同
+// v1.97 gap7: 启用 :material3 模块 — 挂载 material-color-utilities 源码,
+// 提供 DynamicScheme.toColorScheme() 扩展,供 CustomTheme 基于种子色生成 ColorScheme
+include(":material3")    // Material 颜色扩展(种子色 → ColorScheme 生成器)
+// 小手机独立模块:自带 Room 库与宿主接口,不依赖 :app
 include(":miniphone")
-// P3-3: Módulo independiente del servicio de accesibilidad — MuseAccessibilityService + AIDL interfaz,
-// Como una biblioteca dependía de: aplicación,Los servicios se compilan directamente en el archivo principal. APK(Misma aplicación bindService,No es necesario instalar entre APK)
-include(":accessibility")  // Servicios de accesibilidad(UI Base de capacidad de automatización)
-// v2.2.1: Accesible e independiente Provider APK —— Actualización de la aplicación principal/La reinstalación no interrumpe los servicios de accesibilidad.
+// P3-3: 无障碍服务独立模块 — MuseAccessibilityService + AIDL 接口,
+// 作为 library 被 :app 依赖,服务直接编译进主 APK(同应用 bindService,无需跨 APK 安装)
+include(":accessibility")  // 无障碍服务(UI 自动化能力底座)
+// v2.2.1: 无障碍独立 Provider APK —— 主应用更新/重装不打断无障碍服务
 include(":accessibility-provider")
-// v2.2.1: pantalla virtual(shell uid proceso independiente) —— Módulo de contrato + módulo de servidor
+// v2.2.1: 虚拟屏(shell uid 独立进程) —— 契约模块 + 服务端模块
 include(":virtual-display-protocol")
 include(":virtual-display-server")
-// include(":search")       // Función de búsqueda SDK(Exa/Tavily/Zhipu/Bing espera)        — Phase 5
-// include(":speech")       // Voz TTS/ASR                                   — Phase 5
-// include(":document")     // Análisis de documentos(PDF/DOCX/PPTX/EPUB)                  — Phase 5
-// include(":highlight")    // Resaltado de sintaxis de código                                   — Phase 5
-// include(":workspace")    // proot Linux entorno de caja de arena                           — Phase 5
-// include(":web")          // Servidor web integrado                              — Phase 5
+// include(":search")       // 搜索功能 SDK(Exa/Tavily/Zhipu/Bing 等)        — Phase 5
+// include(":speech")       // 语音 TTS/ASR                                   — Phase 5
+// include(":document")     // 文档解析(PDF/DOCX/PPTX/EPUB)                  — Phase 5
+// include(":highlight")    // 代码语法高亮                                   — Phase 5
+// include(":workspace")    // proot Linux 沙盒环境                           — Phase 5
+// include(":web")          // 嵌入式 Web 服务器                              — Phase 5

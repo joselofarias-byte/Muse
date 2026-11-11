@@ -7,10 +7,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * ChatStreamEvent Pruebas unitarias.
+ * ChatStreamEvent 单元测试。
  *
- * Anular subclases de clases selladas(ContentDelta / ReasoningDelta / ImageDelta /
- * ToolCallDelta / Done / Error)Campos, valores predeterminados e identificadores de tipo polimórfico.
+ * 覆盖 sealed class 各子类(ContentDelta / ReasoningDelta / ImageDelta /
+ * ToolCallDelta / Done / Error)的字段、默认值与多态类型标识。
  */
 class ChatStreamEventTest {
 

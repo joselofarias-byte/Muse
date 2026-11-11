@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- F-25: Diseño del widget de inicio de escritorio — RemoteViews Subconjunto mínimo admitido(LinearLayout + TextView + Button). -->
+<!-- F-25: 桌面启动小部件布局 — RemoteViews 支持的最小子集(LinearLayout + TextView + Button)。 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_muse_root"
     android:layout_width="match_parent"

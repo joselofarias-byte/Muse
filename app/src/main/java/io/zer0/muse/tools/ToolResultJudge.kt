@@ -1,63 +1,63 @@
 package io.zer0.muse.tools
 
 /**
- * Determinante del éxito o fracaso de la ejecución de la herramienta(P2-22).
+ * 工具执行成败判定器(P2-22)。
  *
- * Extraído de ChatTaskCardCoordinator,Proporciona tarjetas de tareas, subagentes, tareas programadas y pruebas.**compartir la misma implementación**:
- * Cada ruta de ejecución proporciona exactamente la misma conclusión de éxito o fracaso para la misma cadena de retorno de herramienta.,evitar
- * "El subagente utiliza un conjunto de subcadenas chinas y la tarjeta de tareas utiliza otro conjunto", lo que provoca una desviación de juicio.
+ * 从 ChatTaskCardCoordinator 抽出,供任务卡、子代理、定时任务与测试**共用同一实现**:
+ * 各执行路径对同一份工具返回字符串给出完全一致的成败结论,避免
+ * 「子代理用一套中文子串、任务卡用另一套」造成判定漂移。
  *
- * Acuerdo:Cuando la herramienta falla, las devoluciones comienzan con una descripción del error(o Error:/[tiempo de espera] etc. prefijo del paquete)cadena;
- * El fracaso estructurado es {"error": "..."} JSON(stdout paso a través).
+ * 约定:工具失败时返回以错误描述开头(或 Error:/[超时] 等封装前缀)的字符串;
+ * 结构化失败为 {"error": "..."} JSON(stdout 透传)。
  *
- * v2.6.2 Corrección(Auditoría de usuario):Implementación original"error/falló/incapaz/esta vacio/No disponible"Espere la coincidencia incondicional de prefijos de palabras desnudas en chino,
- * voluntad**contenido normal**mal juzgado como fracaso —— read_file documentos leídos,web_fetch Artículos capturados, fragmentos de resultados de búsqueda
- * Simplemente comienza con estas palabras.(Como "Guía de manejo de errores" y "Aprendizaje fallido".),será sentenciado FAILED,La tarjeta de tarea muestra el fracaso y da
- * Inyección de modelo"[La llamada a la herramienta no pudo iniciar] Por favor corrígelo y vuelve a intentarlo.",Provoca reintentos innecesarios.
+ * v2.6.2 修正(用户审计):原实现对"错误/失败/无法/为空/不可用"等中文裸词做无条件前缀匹配,
+ * 会把**正常内容**误判为失败 —— read_file 读到的文档、web_fetch 抓到的文章、搜索结果片段
+ * 只要以这些词开头(如《错误处理指南》《失败学》),就会被判 FAILED,任务卡显示失败并给
+ * 模型注入"[工具调用失败引导] 请修正后重试",引发无谓重试。
  *
- * Ahora estratificado por confiabilidad:
- *  - **fuerte señal de falla**(marca del paquete `[error]/[tiempo de espera]`,`error:`,y mensajes de error dedicados para la síntesis de varias palabras)Fracaso incondicional;
- *  - **palabras débiles de fracaso**(error/falló/incapaz/esta vacio/No configurado/Palabras habladas de un carácter como no disponible):Sólo si la devolución es**etiqueta corta**
- *    (longitud ≤ [WEAK_PREFIX_MAX_CHARS])o la palabra va seguida de un separador(dos puntos/paréntesis/coma, etc.)El fracaso se juzga sólo cuando;
- *    texto largo(Texto del documento/texto de la página web)Incluso si comienza con estas palabras,También manéjelo como contenido normal.
+ * 现按可靠性分层:
+ *  - **强失败信号**(封装标记 `[错误]/[超时]`、`error:`,以及多词合成的专用错误消息)无条件判失败;
+ *  - **弱失败词**(错误/失败/无法/为空/未配置/不可用等单字口语词):仅当返回是**短标签**
+ *    (长度 ≤ [WEAK_PREFIX_MAX_CHARS])或该词后紧跟分隔符(冒号/括号/逗号等)时才判失败;
+ *    长文本(文件正文 / 网页正文)即使以这些词开头,也按正常内容处理。
  */
 internal object ToolResultJudge {
 
     private val BRACKET_FAILURE_MARKERS = listOf(
-        "[tiempo de espera]",
-        "[interrumpir]",
-        "[La salida de la herramienta está truncada",
-        "[error]",
-        "[falló]",
-        "[Cancelar]",
+        "[超时]",
+        "[中断]",
+        "[工具输出已截断",
+        "[错误]",
+        "[失败]",
+        "[取消]",
     )
     private val STRUCTURED_ERROR_PATTERN = Regex("\"error\"\\s*:\\s*\"[^\"]")
 
     /**
-     * palabras débiles de fracaso:Gran ambigüedad al aparecer solo(Probablemente solo el comienzo del texto normal.),Necesidad de cooperar"texto corto"o"seguido por separador"Se consideró un fracaso.
+     * 弱失败词:单独出现时歧义大(可能只是正常正文的开头),需配合"短文本"或"后跟分隔符"才判失败。
      */
     private val WEAK_FAILURE_PREFIXES = listOf(
-        "error", "falló", "anormal", "tiempo de espera", "Cancelar", "No configurado", "esta vacio", "No disponible", "incapaz", "No se puede", "No compatible",
+        "错误", "失败", "异常", "超时", "取消", "未配置", "为空", "不可用", "无法", "不支持",
     )
 
     /**
-     * Prefijo de error fuerte:Mensaje de error especial para síntesis de varias palabras,Semántica clara,Es casi imposible iniciar un texto normal.
+     * 强失败前缀:多词合成的专用错误消息,语义明确,几乎不可能是正常正文的开头。
      */
     private val STRONG_FAILURE_PREFIXES = listOf(
-        "La herramienta no existe", "Excepción de ejecución de herramienta", "Falló el análisis de parámetros", "skill excepción de ejecución",
-        "Anulación de ruta", "Parámetro faltante", "Archivo demasiado grande", "El archivo no existe", "desconocido skill",
-        "URL debe", "Sesión no encontrada", "sub-asistente",
+        "工具不存在", "工具执行异常", "参数解析失败", "skill 执行异常",
+        "路径越权", "缺少参数", "文件过大", "文件不存在", "未知 skill",
+        "URL 必须", "未找到 id 为", "子助手",
     )
 
-    /** Las palabras de error débiles van seguidas inmediatamente de estos delimitadores.,Explique que es una etiqueta y no parte del texto. */
+    /** 弱失败词之后紧跟这些分隔符,说明它是标签而非正文的一部分。 */
     private val WEAK_DELIMITERS = setOf(
-        ':', ':', '(', '(', '[', '【', ',', ',', ',', '.', '!', '!', '?', '?',
+        ':', '：', '(', '（', '[', '【', ',', '，', '、', '。', '!', '！', '?', '？',
     )
 
-    /** Umbral de etiqueta corta:Sólo las devoluciones que no excedan esta longitud podrán ser juzgadas con un prefijo de palabra de error débil. */
+    /** 短标签阈值:不超过该长度的返回才允许用弱失败词前缀判定。 */
     private const val WEAK_PREFIX_MAX_CHARS = 120
 
-    /** Determine si el resultado de la ejecución de la herramienta es exitoso. */
+    /** 判定工具执行结果是否为成功。 */
     fun isSuccess(result: String): Boolean {
         val text = result.trimStart()
         if (text.startsWith("error:", ignoreCase = true)) return false
@@ -74,9 +74,9 @@ internal object ToolResultJudge {
     }
 
     /**
-     * Determinación de palabras de fracaso débil:palabra al principio,y(El todo es una etiqueta corta o una palabra seguida de un separador.).
+     * 弱失败词判定:词在开头,且(整体是短标签 或 词后紧跟分隔符)。
      *
-     * Devuelto cuando un texto largo comienza con una palabra de error débil false,Regrese al procesamiento normal de contenido.
+     * 长正文以弱失败词开头时返回 false,交回正常内容处理。
      */
     private fun startsWithWeakFailure(text: String): Boolean = WEAK_FAILURE_PREFIXES.any { prefix ->
         if (!text.startsWith(prefix)) return@any false

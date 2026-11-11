@@ -2,11 +2,11 @@ import type { MessageKey } from "../i18n/messages.js";
 import type { Translate } from "../i18n/translate.js";
 
 /**
- * Host código de error → entrada.
+ * Host 错误码 → 词条。
  *
- * `session.*` El fallo más común de este tipo de comando de escritura es que otro dispositivo le quita el foco (Host volver `focus_not_held`):
- * Si arroja esta cadena de inglés directamente al usuario, él solo pensará que la función no funciona. Los códigos reconocidos se reemplazan por guías de acción,
- * Los que no se conocen se quedan como están.——Host Las razones dadas normalmente ya son legibles y no deben tragarse.
+ * `session.*` 这类写命令最常见的失败是焦点被别的设备抢走（Host 回 `focus_not_held`）：
+ * 直接把这串英文丢给用户，他只会以为功能坏了。认识的码换成动作指引，
+ * 不认识的保持原样——Host 给的原因通常已经可读，不要吞掉。
  */
 export const HOST_ERROR_KEYS: Readonly<Record<string, MessageKey>> = {
   focus_not_held: "error.focusNotHeld",

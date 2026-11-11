@@ -28,16 +28,16 @@ class EncodingToolsRegistrarTest {
     fun execute_urlEncodeWorks() = runBlocking {
         val registry = ToolRegistry(context)
         EncodingToolsRegistrar(context, registry)
-        val outcome = registry.execute("url_encode", mapOf("text" to "Hola world"))
+        val outcome = registry.execute("url_encode", mapOf("text" to "你好 world"))
         assertTrue(!outcome.isError)
-        assertTrue(outcome.content.contains("Hola+world"))
+        assertTrue(outcome.content.contains("%E4%BD%A0%E5%A5%BD"))
     }
 
     @Test
     fun execute_randomNumberCoercesIntegerArgs() = runBlocking {
         val registry = ToolRegistry(context)
         EncodingToolsRegistrar(context, registry)
-        // cuerda "1" / "3" Aún se puede ejecutar después de que ToolArgValidator lo fuerce.,El resultado está en [1,3]
+        // 字符串 "1" / "3" 经 ToolArgValidator 强转后仍可执行,结果在 [1,3]
         val outcome = registry.execute("random_number", mapOf("min" to "1", "max" to "3"))
         assertTrue(!outcome.isError)
         assertTrue(outcome.content.contains(":"))

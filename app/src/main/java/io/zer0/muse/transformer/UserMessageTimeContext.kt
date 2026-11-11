@@ -17,8 +17,8 @@ internal object UserMessageTimeContext {
         val currentTimestamp = formatTimestamp(current.createdAt, zoneId)
         val previous = userMessages.getOrNull(userMessages.lastIndex - 1)
         return if (previous == null) {
-            "Ancla horaria del mensaje del usuario (zona horaria del dispositivo) ${zoneId.id}): El mensaje del usuario actual se envía a $currentTimestamp;" +
-                "No hay ningún mensaje de usuario anterior con el que comparar, por lo tanto, no extrapole los intervalos de mensajes según el pensamiento del asistente, la ejecución de la herramienta o el tiempo de llamada a la API."
+            "用户消息时间锚点（设备时区 ${zoneId.id}）：当前用户消息发送于 $currentTimestamp；" +
+                "没有可比较的上一条用户消息，不要根据助手思考、工具执行或 API 调用耗时推算消息间隔。"
         } else {
             val previousTimestamp = formatTimestamp(previous.createdAt, zoneId)
             val elapsedMs = if (current.createdAt >= previous.createdAt) {
@@ -27,9 +27,9 @@ internal object UserMessageTimeContext {
                 previous.createdAt - current.createdAt
             }
             val elapsed = formatElapsed(elapsedMs)
-            "Ancla horaria del mensaje del usuario (zona horaria del dispositivo) ${zoneId.id}): El último mensaje de usuario se envió el $previousTimestamp;" +
-                "El mensaje del usuario actual se envía a $currentTimestamp;El intervalo entre dos mensajes de usuario:$elapsed." +
-                "Este intervalo se debe utilizar al responder la pregunta sobre el intervalo del mensaje y no se puede sustituir por el pensamiento del asistente, la ejecución de la herramienta o el tiempo transcurrido de la solicitud API."
+            "用户消息时间锚点（设备时区 ${zoneId.id}）：上一条用户消息发送于 $previousTimestamp；" +
+                "当前用户消息发送于 $currentTimestamp；两条用户消息间隔：$elapsed。" +
+                "回答消息间隔问题时必须使用该间隔，不能用助手思考、工具执行或 API 请求耗时替代。"
         }
     }
 
@@ -37,17 +37,17 @@ internal object UserMessageTimeContext {
         Instant.ofEpochMilli(timestamp).atZone(zoneId).format(timestampFormatter)
 
     private fun formatElapsed(elapsedMs: Long): String {
-        if (elapsedMs < 1_000L) return "$elapsedMs milisegundos"
+        if (elapsedMs < 1_000L) return "$elapsedMs 毫秒"
         val totalSeconds = elapsedMs / 1_000L
         val days = totalSeconds / 86_400L
         val hours = totalSeconds % 86_400L / 3_600L
         val minutes = totalSeconds % 3_600L / 60L
         val seconds = totalSeconds % 60L
         return buildList {
-            if (days > 0) add("$days dia")
-            if (hours > 0) add("$hours horas")
-            if (minutes > 0) add("$minutes puntos")
-            if (seconds > 0) add("$seconds segundos")
-        }.joinToString(" ").ifBlank { "0 segundos" }
+            if (days > 0) add("$days 天")
+            if (hours > 0) add("$hours 小时")
+            if (minutes > 0) add("$minutes 分")
+            if (seconds > 0) add("$seconds 秒")
+        }.joinToString(" ").ifBlank { "0 秒" }
     }
 }

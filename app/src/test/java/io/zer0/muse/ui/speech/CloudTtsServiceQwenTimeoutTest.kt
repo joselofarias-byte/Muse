@@ -14,12 +14,12 @@ import java.net.InetAddress
 import java.util.concurrent.TimeUnit
 
 /**
- * Phase 3 (Fiabilidad P1): Qwen Prueba de tiempo de espera de descarga de audio secundario.
+ * Phase 3 (可靠性 P1): Qwen 二次音频下载超时兜底测试。
  *
- * Qwen(DashScope Interfaz nativa)POST primero para sintetizar output.audio.url,OBTÉN nuevamente para descargar el audio.
- * Solucione el problema de que no hay tiempo de espera de rutina en las dos primeras descargas.,Chat reutilizado OkHttpClient readTimeout más largo 300s —— Audio URL
- * La corrutina sintética se bloquea durante mucho tiempo mientras está suspendida. Después de la reparación, utilice withTimeoutOrNull para averiguarlo.(Predeterminado 30s,Inyectable),
- * Esta prueba inyecta 300 ms + MockWebServer retrasa el cuerpo de respuesta de 10 segundos,Las llamadas de autenticación fallan rápidamente en lugar de esperar una respuesta.
+ * Qwen(DashScope 原生接口)合成先 POST 拿 output.audio.url,再二次 GET 下载音频。
+ * 修复前二次下载无协程超时,复用的 chat OkHttpClient readTimeout 最长 300s —— 音频 URL
+ * 挂起时合成协程被长期阻塞。修复后用 withTimeoutOrNull 兜底(默认 30s,可注入),
+ * 本测试注入 300ms + MockWebServer 延迟 10s 响应体,验证调用快速失败而不是等待响应。
  */
 class CloudTtsServiceQwenTimeoutTest {
 
@@ -44,12 +44,12 @@ class CloudTtsServiceQwenTimeoutTest {
     @Test
     fun `qwen second audio download is bounded by timeout`() = runBlocking {
         val audioUrl = server.url("/slow-audio.mp3")
-        // primera solicitud: Volver a la dirección de descarga secundaria
+        // 第一次请求: 返回二次下载地址
         server.enqueue(
             MockResponse().setResponseCode(200)
                 .setBody("""{"output":{"audio":{"url":"$audioUrl"}}}"""),
         )
-        // segunda solicitud: El cuerpo de respuesta se retrasa 10 segundos antes de regresar,Mucho más de 300 ms de tiempo de espera
+        // 第二次请求: 响应体延迟 10s 才返回,远超 300ms 兜底超时
         server.enqueue(
             MockResponse().setResponseCode(200)
                 .setBody("mp3-bytes")
@@ -61,7 +61,7 @@ class CloudTtsServiceQwenTimeoutTest {
         try {
             val start = System.nanoTime()
             val ok = service.synthesizeToFile(
-                text = "Hola",
+                text = "你好",
                 engine = "qwen",
                 apiKey = "test-key",
                 model = "",
@@ -70,9 +70,9 @@ class CloudTtsServiceQwenTimeoutTest {
                 outputFile = out,
             )
             val elapsedMs = (System.nanoTime() - start) / 1_000_000
-            assertFalse("El segundo tiempo de espera de descarga debería devolver un error,en lugar de obtener audio vacío/Esperando indefinidamente", ok)
+            assertFalse("二次下载超时应返回失败,而不是拿到空音频/无限等待", ok)
             assertTrue(
-                "El tiempo de espera debe realizarse en la parte inferior del bolsillo.(300ms)Regreso cercano,real ${elapsedMs}ms",
+                "应在兜底超时(300ms)附近返回,实际 ${elapsedMs}ms",
                 elapsedMs < 5_000,
             )
         } finally {

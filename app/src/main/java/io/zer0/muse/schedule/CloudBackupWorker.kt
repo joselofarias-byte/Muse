@@ -9,26 +9,26 @@ import kotlinx.coroutines.flow.first
 import org.koin.core.context.GlobalContext
 
 /**
- * v1.132: WorkManager de respaldo en la nube cubre a todos los trabajadores.
+ * v1.132: 云备份的 WorkManager 兜底 Worker。
  *
- * [CloudBackupScheduler] El sondeo de rutina solo es efectivo cuando el proceso de la aplicación está activo,App La copia de seguridad programada no se puede activar después de ser eliminada.
- * Este trabajador se programa periódicamente a través de WorkManager(Android Periodo mínimo 15 minutos),El sistema también puede eliminar un proceso.
- * levantar la ejecución,completo"App Copia de seguridad automática después de ser asesinado"brecha de confiabilidad.
+ * [CloudBackupScheduler] 的协程轮询仅在 App 进程存活时有效,App 被杀后定时备份无法触发。
+ * 本 Worker 通过 WorkManager 周期性调度(Android 最小周期 15 分钟),进程被杀也能由系统
+ * 拉起执行,补齐"App 被杀后自动备份"的可靠性缺口。
  *
- * doWork llamar [CloudBackupScheduler.checkAndSyncForWorker] Verificación única de vencimiento:
- *  - autoSync=false o isConfigured=false saltar directamente
- *  - desde la última sincronización < intervalHours salto de tiempo(No caducado)
- *  - Se activa cuando expira [BackupService.exportToCloud] subir
+ * doWork 调用 [CloudBackupScheduler.checkAndSyncForWorker] 一次性检查是否到期:
+ *  - autoSync=false 或 isConfigured=false 时直接跳过
+ *  - 距上次同步 < intervalHours 时跳过(未到期)
+ *  - 到期则触发 [BackupService.exportToCloud] 上传
  *
- * Compensaciones de diseño(con [ScheduledTaskWorker] Alineación):
- *  - Sin setExpedited: Doze puede posponer las tareas de respaldo,conformarse a"Ahorra energía"objetivo
- *  - No se requieren restricciones de red:Cuando no hay red, se registra el fallo interno de exportToCloud.,La próxima vez que se active el Trabajador, se intentará nuevamente.
- *  - Regresar Result.success() En lugar de reintentar: devolver el reintento hará que WorkManager lo vuelva a intentar repetidamente en un corto período de tiempo.
- *    (Predeterminado 30 segundos)Un problema de red inherentemente irresoluble,Al contrario, consume más electricidad.
+ * 设计取舍(与 [ScheduledTaskWorker] 对齐):
+ *  - 不使用 setExpedited:备份任务可被 Doze 推迟,符合"省电"目标
+ *  - 不要求网络约束:无网时 exportToCloud 内部失败被记录,下次 Worker 触发会重试
+ *  - 返回 Result.success() 而非 retry:返回 retry 会让 WorkManager 短时间内反复重试
+ *    (默认 30 秒)一个本就无解的网络问题,反而更费电
  *
- * Koin obtener dependencia:WorkManager Se ejecuta en el proceso principal de forma predeterminada.,Worker MuseApp.onCreate se ha ejecutado al inicio,
- * Koin Inicializado. si en Safe Mode(startKoin falló),GlobalContext esta vacio,
- * La excepción detectada aquí devuelve el éxito y esta vez se salta.,Espere a que se restablezca el próximo inicio.
+ * Koin 拿依赖:WorkManager 默认跑在主进程,Worker 启动时 MuseApp.onCreate 已执行,
+ * Koin 已初始化。若处于 Safe Mode(startKoin 失败),GlobalContext 为空,
+ * 这里捕获异常返回 success 跳过本次,等下次启动恢复。
  */
 class CloudBackupWorker(
     appContext: Context,
@@ -38,30 +38,30 @@ class CloudBackupWorker(
     override suspend fun doWork(): Result {
         val koin = resultOf { GlobalContext.get() }.getOrNull()
         if (koin == null) {
-            // H-SCHED-4: Alineado con ScheduledTaskWorker,Safe Mode Devolver el éxito en lugar de retry,
-            // Evite que WorkManager desperdicie energía reintentando infinitamente dentro de un intervalo de 30 segundos
-            Logger.w(TAG, "Koin no inicializado(Safe Mode?),Omitir la ejecución de este trabajador")
+            // H-SCHED-4: 与 ScheduledTaskWorker 对齐,Safe Mode 返回 success 而非 retry,
+            // 避免 WorkManager 30 秒间隔内无限重试浪费电量
+            Logger.w(TAG, "Koin 未初始化(Safe Mode?),跳过本次 Worker 执行")
             return Result.success()
         }
-        // v1.xxx: Control maestro de programación backend — Omitir el cuerpo ejecutable al apagar,El calendario periódico en sí sigue siendo,Reabrir para restaurar
+        // v1.xxx: 后台调度总控 — 关闭时跳过执行体,周期调度本身仍保留,重新打开即恢复
         val workEnabled =
             scheduleWorkEnabledOrFalse(
                 resultOf { koin.get<io.zer0.muse.data.SettingsRepository>()?.scheduleWorkEnabledFlow?.first() }
                     .getOrNull(),
             )
         if (!workEnabled) {
-            Logger.i(TAG, "Se ha cerrado el control maestro de programación en segundo plano.,Saltar esta ejecución")
+            Logger.i(TAG, "后台调度总控已关闭,跳过本次执行")
             return Result.success()
         }
         val scheduler = resultOf { koin.get<CloudBackupScheduler>() }.getOrNull()
         if (scheduler == null) {
-            Logger.w(TAG, "CloudBackupScheduler El análisis falló,Omitir la ejecución de este trabajador")
+            Logger.w(TAG, "CloudBackupScheduler 解析失败,跳过本次 Worker 执行")
             return Result.success()
         }
         resultOf { scheduler.checkAndSyncForWorker() }
             .onError { msg, t -> Logger.w(TAG, "checkAndSyncForWorker failed: ${t?.message ?: msg}") }
-        // independientemente del éxito interno,Ambos devuelven éxito: la verificación de sincronización automática + el juicio de vencimiento están todos en checkAndSync,
-        // Devolver el reintento hará que WorkManager lo vuelva a intentar con frecuencia(Predeterminado 30 segundos),Al contrario, consume más electricidad.
+        // 不论内部是否成功,都返回 success:autoSync 检查 + 到期判断都在 checkAndSync 内,
+        // 返回 retry 会让 WorkManager 频繁重试(默认 30 秒),反而更费电
         return Result.success()
     }
 

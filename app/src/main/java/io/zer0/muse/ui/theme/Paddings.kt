@@ -4,154 +4,162 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.ui.unit.dp
 
 /**
- * Phase 12: muse ficha de espaciado(MusePaddings).
+ * Phase 12: muse 间距令牌(MusePaddings)。
  *
- * curar"padding 8/12/14/16/24 Mezclar"problemas de inconsistencia.
- * Referencia unificada para todo el proyecto. [MusePaddings] Simbólico.
+ * 根治"padding 8/12/14/16/24 混用"的不一致问题。
+ * 全项目统一引用 [MusePaddings] 令牌。
  *
- * Jerarquía de tokens(ritmo del espacio en blanco):
- *  - [screen]:         16.dp — márgenes horizontales de la pantalla(Scaffold padding)
- *  - [cardInner]:      horizontal=16, vertical=12 — relleno de tarjeta
- *  - [cardInnerLoose]: horizontal=16, vertical=14 — Acolchado de tarjeta ligeramente suelto.
- *  - [sectionGap]:     16.dp — section espaciado entre
- *  - [itemGap]:        16.dp — espaciado entre elementos de la lista(LazyColumn spacedBy;v2.0.1 Levantado de 12)
- *  - [cardGap]:        20.dp — espacio entre barajas de cartas(Página de clase de configuración;v2.0.1 Nuevo)
- *  - [contentGap]:     8.dp — Espaciado entre componentes dentro de la tarjeta.
- *  - [tightGap]:       4.dp — Espacio reducido(icono + texto)
- *  - [tinyGap]:        2.dp — Logotipo / espacio muy reducido entre líneas
- *  - [labelVerticalGap]: 6.dp — Logotipo pequeño/espacio entre líneas ajustado
- *  - [auxGap]:         10.dp — Logotipo medio/espaciado secundario en la tarjeta
- *  - [largeGap]:       24.dp — BottomSheet Espacio grande interno/estado vacío
- *  - [emptyStateGap]:  32.dp — Estado vacío/gran espacio en blanco
- *  v1.0.17 Expandir(Token compuesto de PaddingValues,Modo de combinación convergente de alta frecuencia):
- *  - [cardInnerSpaced]: horizontal=16, vertical=8 — ancho de pantalla + contenidoGap vertical
- *  - [bubbleInner]:     horizontal=12, vertical=8 — Burbujas/Acolchado de tarjeta ajustado
- *  CMP-02: Otras combinaciones de compuestos(cardInnerTight / cardInnerMedium / cardInnerAux / chipInner)
- *  Duplicar con posición del documento,Ya**Eliminar**;Los pulsadores siempre se combinan explícitamente con el engranaje de valor único anterior.,El segundo conjunto de fichas combinadas no se conserva.
+ * 令牌层级(留白节奏):
+ *  - [screen]:         16.dp — 屏幕水平边距(Scaffold padding)
+ *  - [pageMargin]:     20.dp — 设置类页面水平外边距(比 screen 宽一档,只用于设置族)
+ *  - [cardInner]:      horizontal=16, vertical=12 — 卡片内边距
+ *  - [cardInnerLoose]: horizontal=16, vertical=14 — 略松的卡片内边距
+ *  - [sectionGap]:     16.dp — section 之间间距
+ *  - [itemGap]:        16.dp — 列表项之间间距(LazyColumn spacedBy;v2.0.1 由 12 上调)
+ *  - [cardGap]:        24.dp — 卡片组之间的间距(设置类页面;双平面翻新由 20 上调)
+ *  - [contentGap]:     8.dp — 卡片内组件之间间距
+ *  - [tightGap]:       4.dp — 紧凑间距(图标 + 文字)
+ *  - [tinyGap]:        2.dp — 徽标 / 行间极紧间距
+ *  - [labelVerticalGap]: 6.dp — 小徽标 / 紧凑行间距
+ *  - [auxGap]:         10.dp — 中等徽标 / 卡片内辅助间距
+ *  - [largeGap]:       24.dp — BottomSheet 内部 / 空状态大间距
+ *  - [emptyStateGap]:  32.dp — 空状态 / 大留白
+ *  v1.0.17 扩展(复合 PaddingValues 令牌,收敛高频组合模式):
+ *  - [cardInnerSpaced]: horizontal=16, vertical=8 — 屏幕宽 + contentGap 垂直
+ *  - [bubbleInner]:     horizontal=12, vertical=8 — 气泡/紧凑卡片内边距
+ *  CMP-02: 其余复合组合(cardInnerTight / cardInnerMedium / cardInnerAux / chipInner)
+ *  与文档档位重复,已**删除**;调用点一律由上方单值档位显式组合,不保留第二套组合令牌。
  */
 object MusePaddings {
-    /** márgenes horizontales de la pantalla(Scaffold padding). */
+    /** 屏幕水平边距(Scaffold padding)。 */
     val screen = 16.dp
 
-    /** relleno de tarjeta(Unifica todas las Tarjetas padding). */
+    /**
+     * 设置类页面水平外边距(卡片/搜索栏/账户卡左右留白)。
+     * 比通用 [screen] 宽一档(20dp),对齐系统级设置页的卡片外边距节奏;
+     * 只用于设置族页面,聊天/首页等仍用 [screen],避免全站节奏被一处改动波及。
+     */
+    val pageMargin = 20.dp
+
+    /** 卡片内边距(统一所有 Card 的 padding)。 */
     val cardInner = PaddingValues(horizontal = 16.dp, vertical = 12.dp)
 
-    /** Acolchado de tarjeta ligeramente suelto.(Escena con un gran espacio en blanco para los elementos de la lista.). */
+    /** 略松的卡片内边距(列表项大留白场景)。 */
     val cardInnerLoose = PaddingValues(horizontal = 16.dp, vertical = 14.dp)
 
-    /** section espaciamiento entre ellos. */
+    /** section 之间间距。 */
     val sectionGap = 16.dp
 
-    /** v2.0.1: El espacio entre grupos de tarjetas (página de configuración, medido 20 dp). */
-    val cardGap = 20.dp
+    /** 卡片组之间的间距（设置类页面，双平面翻新上调到 24dp，组间距明显大于组内行距）。 */
+    val cardGap = 24.dp
 
-    /** Altura de la cápsula de la barra de búsqueda. La página de techo necesita compensar el espacio superior de la lista con el mismo valor, por lo que comparte este token con el componente. */
+    /** 搜索栏胶囊高度。吸顶页需按同值给列表补偿顶部空间，故与组件共享此令牌。 */
     val searchBarHeight = 48.dp
 
-    /** espaciado entre elementos de la lista(LazyColumn spacedBy).v2.0.1: 12 → 16("más flojo"dirección estructural). */
+    /** 列表项之间间距(LazyColumn spacedBy)。v2.0.1: 12 → 16（"松一点"结构方向）。 */
     val itemGap = 16.dp
 
-    /** El espacio entre los componentes dentro de la tarjeta. */
+    /** 卡片内组件之间间距。 */
     val contentGap = 8.dp
 
-    /** Espacio reducido(icono + texto). */
+    /** 紧凑间距(图标 + 文字)。 */
     val tightGap = 4.dp
 
-    /** v1.0.15: Logotipo / espacio entre líneas muy ajustado. */
+    /** v1.0.15: 徽标 / 行间极紧间距。 */
     val tinyGap = 2.dp
 
-    /** v1.0.15: Logotipo pequeño/espacio entre líneas ajustado. */
+    /** v1.0.15: 小徽标 / 紧凑行间距。 */
     val labelVerticalGap = 6.dp
 
-    /** v1.0.15: Logotipo medio/espaciado secundario en la tarjeta. */
+    /** v1.0.15: 中等徽标 / 卡片内辅助间距。 */
     val auxGap = 10.dp
 
-    /** v1.0.15: BottomSheet Espaciado grande interno/estado nulo. */
+    /** v1.0.15: BottomSheet 内部 / 空状态大间距。 */
     val largeGap = 24.dp
 
-    /** v1.0.15: Estado vacío/gran espacio en blanco. */
+    /** v1.0.15: 空状态 / 大留白。 */
     val emptyStateGap = 32.dp
 
     /**
-     * Toque el tamaño del objetivo(MD3 linea roja,IconButton / Altura mínima de fila).
-     * L-PD1: unificado con [MuseIconSizes.touchTarget] como única fuente de datos,Referencia del delegado aquí,
-     * Evite definir 48.dp en dos lugares para provocar una doble deriva en la fuente de datos.
+     * 触摸目标尺寸(MD3 红线,IconButton / 行高最小值)。
+     * L-PD1: 统一以 [MuseIconSizes.touchTarget] 为唯一数据源,此处委托引用,
+     * 避免两处分别定义 48.dp 造成双数据源漂移。
      */
     val touchTarget: androidx.compose.ui.unit.Dp get() = MuseIconSizes.touchTarget
 
-    /** Relleno del cuadro de entrada. */
+    /** 输入框内边距。 */
     val inputPadding = 12.dp
 
-    /** B7-07: Paisaje del campo de entrada/Márgenes verticales. */
+    /** B7-07: 输入栏横向/纵向外边距。 */
     val inputHorizontal = 24.dp
     val inputVertical = 2.dp
 
-    /** B7-07: Espacio reducido dentro de los campos de entrada(Entrada rápida/Documentación/Vista previa del vídeo). */
+    /** B7-07: 输入栏内部紧凑行距(快捷入口/文档/视频预览)。 */
     val inputStackGap = 6.dp
 
-    /** B7-07: El tamaño de la miniatura de vista previa que se enviará. */
+    /** B7-07: 待发送预览缩略图尺寸。 */
     val previewThumb = 72.dp
 
-    /** B7-07: Pequeños puntos eliminan el acolchado de los botones. */
+    /** B7-07: 小圆点移除按钮内边距。 */
     val removeDotPadding = 3.dp
 
-    /** B7-07: Ancho máximo de vista previa en línea. */
+    /** B7-07: 内联预览最大宽度。 */
     val maxInlineWidth = 120.dp
 
-    /** B7-07: Acolchado vertical de chip compacto. */
+    /** B7-07: 紧凑 chip 垂直内边距。 */
     val compactChipVertical = 1.dp
 
-    /** v2.4.5: Márgenes de la isla de entrada de chat,Hace que la cápsula sea más ligera y ligeramente elevada. */
+    /** v2.4.5: 聊天输入岛外边距,让胶囊更轻量且略抬高。 */
     val inputIslandHorizontal = 12.dp
     val inputIslandVertical = 2.dp
 
-    /** v2.4.5 (Alineación de la imagen de referencia): Ingrese el espacio flotante en la parte inferior de la isla.(Levantar isla de entrada,No unido al borde inferior). */
+    /** v2.4.5 (参考图对齐): 输入岛底部悬浮间距(抬高输入岛,不贴底边)。 */
     val inputIslandBottomGap = 10.dp
 
-    /** v2.4.5 (Alineación de la imagen de referencia): Ingrese el relleno izquierdo y derecho dentro de la fila de la isla(Más estrecho que contentGap). */
+    /** v2.4.5 (参考图对齐): 输入岛行内左右内边距(比 contentGap 更紧)。 */
     val inputIslandInnerHorizontal = 6.dp
 
-    /** v2.4.5: Espaciado vertical de la fila interior de la isla de entrada;Los objetivos táctiles todavía están garantizados por IconSizes.touchTarget. */
+    /** v2.4.5: 输入岛内部行垂直间距;触控目标仍由 IconSizes.touchTarget 保证。 */
     val inputIslandRowVertical = 0.dp
 
-    /** B7-07: La altura máxima del cuadro de entrada del mensaje. */
+    /** B7-07: 消息输入框最大高度。 */
     val maxMessageFieldHeight = 160.dp
 
-    /** B7-07: Ancho del divisor del panel de herramientas/Espesor. */
+    /** B7-07: 工具面板分隔线宽度/厚度。 */
     val dividerWidth = 1.dp
     val dividerThickness = 0.5.dp
 
-    /** B7-07: Además, el panel de herramientas enumera la altura máxima. */
+    /** B7-07: 加号工具面板列表最大高度。 */
     val maxToolSheetListHeight = 360.dp
 
-    /** B7-07: Relleno vertical de fila de lista de herramientas. */
+    /** B7-07: 工具列表行垂直内边距。 */
     val listRowVertical = 14.dp
 
-    /** relleno de iconos(Espaciado entre icono y texto adyacente). */
+    /** 图标内边距(图标与相邻文字间距)。 */
     val iconPadding = 8.dp
 
-    /** M-CS5: espaciado de mensajes(lista de chat LazyColumn spacedBy,sensación de respiración). */
+    /** M-CS5: 消息间距(聊天列表 LazyColumn spacedBy,呼吸感)。 */
     val messageGap = 20.dp
 
-    /** v1.0.17: ancho de pantalla + contenidoGap vertical(Burbujas/tarjeta). */
+    /** v1.0.17: 屏幕宽 + contentGap 垂直(气泡/卡片)。 */
     val cardInnerSpaced = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
 
-    /** v1.0.17: Burbujas/Acolchado de tarjetas ajustado. */
+    /** v1.0.17: 气泡/紧凑卡片内边距。 */
     val bubbleInner = PaddingValues(horizontal = 10.dp, vertical = 8.dp)
     /**
-     * CMP-02: alias de combinación compuesta(cardInnerTight / cardInnerMedium / cardInnerAux / chipInner)
-     * Todo eliminado — El pulsador se cambia a una combinación explícita de engranajes de valor único arriba
-     * (Ejemplo:`padding(horizontal = itemGap, vertical = auxGap)`),El segundo conjunto de fichas combinadas ya no se conserva.
+     * CMP-02: 复合组合别名(cardInnerTight / cardInnerMedium / cardInnerAux / chipInner)
+     * 已全部删除 — 调用点改为由上方单值档位显式组合
+     * (例:`padding(horizontal = itemGap, vertical = auxGap)`),不再保留第二套组合令牌。
      */
-    /** acolchado de virutas más suelto(Con iconos+etiqueta compuesta para texto,como ayudas visuales/Etiqueta de velocidad de voz). */
+    /** 较宽松的 Chip 内边距(含图标+文本的复合标签,如视觉辅助/语速标签)。 */
     val chipInnerLoose = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
 
-    /** Acolchado de virutas más ajustado(Como el margen en línea de TopBar). */
+    /** 较紧凑的 Chip 内边距(如 TopBar 行内边距)。 */
     val chipInnerTight = PaddingValues(horizontal = 4.dp, vertical = 1.dp)
 
-    /** CHAT-18: Deje el final de la lista en blanco(FAB / El campo de entrada cede). */
+    /** CHAT-18: 列表底部留白(FAB / 输入栏让位)。 */
     val listBottomClearance = 88.dp
 
-    /** CHAT-18: section Sangría inicial del título — Alinear las columnas de texto del título de la fila de la sesión(Margen en línea 16dp + columna de icono 26dp = 42dp). */
+    /** CHAT-18: section 标题起始缩进 — 对齐会话行标题文字列(行内边距 16dp + 图标列 26dp = 42dp)。 */
     val sectionTitleIndent = 42.dp
 }

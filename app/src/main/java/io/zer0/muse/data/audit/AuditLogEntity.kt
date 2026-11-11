@@ -5,16 +5,16 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 
 /**
- * P2-4 Entidad de registro de auditoría.
+ * P2-4 审计日志实体。
  *
- * Registrar operaciones clave dentro de la aplicación.(API Llamada/Acción del usuario/Autenticación/Sistema)Se utiliza para auditorías de seguridad y seguimiento de problemas.
+ * 记录应用内关键操作(API 调用 / 用户动作 / 认证 / 系统)用于安全审计与问题回溯。
  *  - [category]: "api_call" / "user_action" / "auth" / "system"
- *  - [action]: nombre de acción específica,Como por ejemplo "send_message" / "delete_chat" / "login"
- *  - [target]: Identificador de objetivo de operación(chatId / providerId espera,Disponible)
- *  - [detail]: JSON cuerda,Almacenar campos adicionales(model / tokens / latency_ms espera)
- *  - [success]: ¿La operación es exitosa?(Registrar fallos para una fácil resolución de problemas)
+ *  - [action]: 具体动作名,如 "send_message" / "delete_chat" / "login"
+ *  - [target]: 操作目标标识(chatId / providerId 等,可空)
+ *  - [detail]: JSON 字符串,存储额外字段(model / tokens / latency_ms 等)
+ *  - [success]: 操作是否成功(失败时记录便于排查)
  *
- * La estructura de la tabla solo agrega,No modifique las tablas existentes. La estrategia de almacenamiento en búfer en anillo consiste en [AuditLogger] Mantenimiento.
+ * 表结构只新增,不修改既有表。环形缓冲策略由 [AuditLogger] 维护。
  */
 @Entity(tableName = "audit_log")
 data class AuditLogEntity(

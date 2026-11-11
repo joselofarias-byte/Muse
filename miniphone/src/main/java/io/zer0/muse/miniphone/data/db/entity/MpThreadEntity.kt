@@ -6,19 +6,19 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 
 /**
- * una conversación:Mensaje privado o chat grupal.
+ * 一条会话:私信或群聊。
  *
- * [characterId] Al personaje cuyo mensaje privado es la conversación.;Sí al chat grupal**primer miembro**de id —— Cuando buscas alguien con quien hablar en el grupo.
- * Eso es todo,La lista completa de miembros está en [MpThreadMemberEntity].
+ * [characterId] 对私信是对话的那个角色;对群聊是**第一个成员**的 id —— 群里要找人开口时
+ * 用的就是它,成员全表在 [MpThreadMemberEntity]。
  *
- * [lastMessageAt] Sólo se utiliza para ordenar y mostrar listas.,No participa en la determinación no leída.[pinned] luo kuwei 0/1,
- * La columna tiene un valor predeterminado de 0: tanto las actualizaciones a la base de datos anterior como las escrituras sin esta columna quedarán "no fijadas".
+ * [lastMessageAt] 只用于列表排序与展示,不参与未读判定。[pinned] 落库为 0/1,
+ * 列上带默认值 0:老库升级与不带这一列的写入都得到「未置顶」。
  *
- * [isGroup] con [title] Estas son las dos columnas que trae el chat grupal,mensaje privado ok `false` con cadena vacía:Todas las sesiones existentes después de actualizar la base de datos anterior
- * Todos caen en el lado de los "mensajes privados".,Las interfaces y consultas no necesitan tener una rama separada para ellas.
- * [title] Sólo leer en el grupo. —— El nombre del grupo no cambia en tiempo real con los nombres de los miembros.,Se finalizó en el momento en que se formó el grupo.
- * [titleCustomized] Nota "¿El usuario ha cambiado manualmente el nombre del grupo?":Para los grupos que no se han modificado, el nombre del grupo se volverá a calcular en función de los miembros después de agregar personas.,
- * Todo lo que haya cambiado seguirá igual. —— El nombre dado especialmente por el usuario no se puede utilizar como empalme de nombres.
+ * [isGroup] 与 [title] 是群聊带来的两列,私信行一律 `false` 与空串:老库升级后所有存量会话
+ * 都落在「私信」这一侧,界面与查询不需要为它们另走一条分支。
+ * [title] 只在群里被读 —— 群名不跟着成员名字实时变,建群那一刻拼接好就定下来。
+ * [titleCustomized] 记「用户手动改过群名没有」:没改过的群在加人后按成员重算群名,
+ * 改过的就一律保持原样 —— 不能把用户特意起的名子盖成名字拼接。
  */
 @Entity(
     tableName = "mp_thread",

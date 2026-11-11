@@ -3,18 +3,18 @@ import { useI18n } from "../i18n/I18nProvider.js";
 import type { MessageImage } from "./messageMedia.js";
 
 interface MessageImagesProps {
-  /** Dirección de imagen normalizada (ver messageMedia.ts). */
+  /** 已归一过的图片地址（见 messageMedia.ts）。 */
   readonly images: readonly MessageImage[];
-  /** Haga clic en una imagen para verla en pantalla completa. */
+  /** 点击某张图打开全屏查看。 */
   readonly onOpen?: ((src: string) => void) | undefined;
 }
 
 /**
- * Imágenes en burbujas.
+ * 气泡里的图片。
  *
- * - Límite de altura de una sola imagen (`42vh`, consistente con el límite superior del cuerpo del bloque plegado), moverse a través de dos columnas de cuadrículas en múltiples imágenes;
- * - Haga clic para ver en pantalla completa;
- * - Cuando la carga falla o la dirección no está disponible, se proporcionará un bloque de marcador de posición y el navegador nunca podrá dibujar un icono de imagen rota.
+ * - 单图限高（`42vh`，和折叠块 body 的上限一致），多图走两列格子；
+ * - 点开是全屏查看；
+ * - 加载失败或地址不可取时给占位块，绝不让浏览器画一个破图图标。
  */
 export function MessageImages({ images, onOpen }: MessageImagesProps) {
   const { t } = useI18n();

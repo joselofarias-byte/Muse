@@ -5,9 +5,9 @@ import io.zer0.ai.core.UIMessage
 import io.zer0.muse.R
 
 /**
- * Resumen de trayectorias de herramientas a nivel de tarea agregadas por nombre de herramienta.
+ * 按工具名聚合的任务级工具轨迹摘要。
  *
- * [records] Se conservan todos los registros originales del grupo; La agregación solo cambia el modo de visualización del panel de historial y no elimina ni reescribe mensajes.
+ * [records] 保留该组的全部原始记录；聚合只改变历史面板的展示方式，不删除或改写消息。
  */
 internal data class ToolTraceSummary(
     val toolName: String,
@@ -20,25 +20,25 @@ internal data class ToolTraceSummary(
     val totalCount: Int
         get() = records.size
 
-    /** Los grupos de herramientas que han fallado o que se están ejecutando se expanden de forma predeterminada, lo que permite a los usuarios encontrar elementos que necesitan atención de manera oportuna. */
+    /** 失败或执行中的工具组默认展开，便于用户及时发现需要关注的项。 */
     val shouldExpandByDefault: Boolean
         get() = failureCount > 0 || runningCount > 0
 
-    /** Un resumen silencioso del resultado más reciente para una vista previa directa del estado plegado.res para null(Vista previa/Escenario de función pura)Devuelve una cadena vacía. */
+    /** 最近一次结果的低噪摘要，供折叠态直接预览。res 为 null(预览/纯函数场景)时回退空串。 */
     val latestSummary: String
         get() = toolTraceRecordSummary(latestRecord)
 }
 
-/** Registros de herramientas y [ToolCallCard] Sea coherente: los resultados vacíos y los resultados fallidos significan que la ejecución está en curso. */
+/** 工具记录与 [ToolCallCard] 保持一致：空结果且未成功表示执行中。 */
 internal fun ToolCallRecord.isRunningToolTrace(): Boolean = !isSuccess && result.isBlank()
 
-/** Hay un resultado pero ningún éxito indica fracaso; Los registros fallidos con resultados vacíos no se contarán repetidamente como fallidos. */
+/** 有结果但未成功表示失败；空结果的未成功记录不重复计入失败。 */
 internal fun ToolCallRecord.isFailedToolTrace(): Boolean = !isSuccess && result.isNotBlank()
 
 /**
- * Agregue el historial de herramientas por nombre de herramienta conservando el orden de primera aparición de la herramienta y todos los registros originales de cada grupo.
+ * 将工具历史按工具名聚合，同时保留首次出现的工具顺序和每组的全部原始记录。
  *
- * El registro más reciente se selecciona mediante marca de tiempo; si la marca de tiempo es la misma, se conserva el registro más atrás en la lista de entrada.
+ * 最近一次记录按 timestamp 选择；相同 timestamp 时保留输入列表中更靠后的记录。
  */
 internal fun summarizeToolTrace(records: List<ToolCallRecord>): List<ToolTraceSummary> {
     if (records.isEmpty()) return emptyList()
@@ -96,7 +96,7 @@ internal fun mergeToolCallRecords(records: List<ToolCallRecord>, messages: List<
 
 private const val TOOL_TRACE_PREVIEW_LIMIT = 120
 
-/** Copia abstracta plegada:El estado es lo primero en recursos.(res),null(Vista previa/función pura)Devuelve una cadena vacía. */
+/** 折叠态摘要文案:状态先走资源(res),null(预览/纯函数)时回退空串。 */
 internal fun toolTraceRecordSummary(record: ToolCallRecord, res: Resources? = null): String {
     val normalized = record.result.replace(Regex("\\s+"), " ").trim()
     return when {

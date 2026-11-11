@@ -93,7 +93,7 @@
     <string name="memory_stats_top_sessions">Самые активные сессии</string>
     <string name="memory_stats_session_count">%1$d записи</string>
     <string name="memory_stats_trend_30_days">Тенденция за последние 30 дней</string>
-    <!-- Correcciones en la interfaz (i18n-3.x): Pestaña de memoria de chat grupal + filtro de línea de tiempo i18n(Copiar temporalmente chino,Traducción posterior) -->
+    <!-- 前端修复 (i18n-3.x): 群聊记忆 Tab + 时间轴筛选 i18n(临时复制中文,后续补译) -->
     <string name="memory_timeline_filter_all">Все</string>
     <string name="memory_timeline_filter_fact">Факты</string>
     <string name="memory_timeline_filter_summary">Сводка</string>
@@ -119,7 +119,7 @@
     <string name="memory_menu_delete">Удалить</string>
     <string name="memory_center_fact_count">фактов</string>
     <string name="memory_center_empty_title">Пока нет воспоминаний</string>
-    <string name="memory_center_empty_subtitle">Продолжайте общаться с Muse или скажите «запомни это», чтобы добавить факт.</string>
+    <string name="memory_center_empty_subtitle">Продолжайте общаться с Musa или скажите «запомни это», чтобы добавить факт.</string>
     <string name="memory_center_open_facts">Открыть библиотеку фактов</string>
     <string name="memory_center_tab_stream">Поток памяти</string>
     <string name="memory_center_tab_constellation">Созвездие памяти</string>
@@ -150,7 +150,10 @@
     <string name="memory_center_filter_time_7">Последние 7 дней</string>
     <string name="memory_center_filter_time_90">Последние 90 дней</string>
     <string name="memory_center_filter_time_all">За всё время</string>
-    <string name="memory_contradictions_dismiss_cd">Подтвердить и удалить</string>
+    <string name="memory_contradictions_dismiss_cd">Не сейчас</string>
+    <string name="memory_contradictions_keep_a">Оставить первую</string>
+    <string name="memory_contradictions_keep_b">Оставить вторую</string>
+    <string name="memory_evidence_line">Основание: %1$s</string>
     <string name="memory_contradictions_title">Противоречивые воспоминания, ожидающие подтверждения</string>
     <string name="memory_delete_confirm_title">Удалить воспоминание</string>
     <string name="memory_menu_multi_select">Выбрать несколько</string>
@@ -208,4 +211,5 @@
     <string name="memory_merge_error_generate_failed">Не удалось объединить эти воспоминания</string>
     <string name="memory_merge_error_empty_result">Результат объединения не может быть пустым</string>
     <string name="memory_merge_error_commit_failed">Объединение не удалось, воспоминания не изменены</string>
+    <string name="memory_space_default_name">По умолчанию</string>
 </resources>

@@ -16,41 +16,41 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 
 /**
- * OpenAI Chat Completions API solicitud/Responder a DTO.
+ * OpenAI Chat Completions API 的请求/响应 DTO。
  *
- * Phase 7 Expandir:tool_calls / tool_call_id / tools campo(function calling).
- * Phase 8.6 Expandir:content Cambiar a JsonElement,Soporte multimodal(string o conjunto de piezas).
- * La denominación de los campos se alinea estrictamente con la documentación oficial de OpenAI.
+ * Phase 7 扩展:tool_calls / tool_call_id / tools 字段(function calling)。
+ * Phase 8.6 扩展:content 改为 JsonElement,支持多模态(string 或 parts 数组)。
+ * 字段命名严格对齐 OpenAI 官方文档。
  */
 
 // ════════════════════════════════════════════════════════════════════════════
-// v1.0.7: OpenAI Responses API DTO(/v1/responses punto final)
+// v1.0.7: OpenAI Responses API DTO(/v1/responses 端点)
 //
-// Corresponde al protocolo openai-responses/openai-codex-responses.
-// Diferencias clave con la API de finalización de chat:
-//  - Cuerpo de la solicitud:messages → input;system role → instructions Campos de nivel superior;
-//    max_tokens → max_output_tokens;Nuevo reasoning: {effort, summary}
-//  - Respuesta de transmisión:event: response.output_text.delta + data: {delta: "..."},
-//    etiqueta final response.completed(concurrencia data: [DONE])
-//  - respuesta sin transmisión:choices[0].message.content → output[] matriz,
-//    reasoning / function_call Todos ellos son salidas de alto nivel. sibling(no en el mensaje)
+// 对应 openai-responses / openai-codex-responses 协议。
+// 与 Chat Completions API 的关键差异:
+//  - 请求体:messages → input;system role → instructions 顶层字段;
+//    max_tokens → max_output_tokens;新增 reasoning: {effort, summary}
+//  - 流式响应:event: response.output_text.delta + data: {delta: "..."},
+//    结束标记 response.completed(并发 data: [DONE])
+//  - 非流式响应:choices[0].message.content → output[] 数组,
+//    reasoning / function_call 都是 output 顶层 sibling(不在 message 内)
 // ════════════════════════════════════════════════════════════════════════════
 
 /**
- * v1.0.7: Responses API Cuerpo de solicitud.
+ * v1.0.7: Responses API 请求体。
  *
- * @param model modelo id
- * @param input matriz de entrada(Reemplazo para finalizar el chat messages)
- * @param instructions Comandos del sistema(sustituto system role,Campos de nivel superior)
- * @param stream Ya sea para transmitir(Codex aplicación del protocolo true)
- * @param max_output_tokens Límite superior de salida(sustituto max_tokens)
- * @param temperature Temperatura de muestreo
- * @param tools Definición de herramienta(Igual que la estructura de finalización del chat.,Pero puede contener tipos extendidos como image_generation)
- * @param reasoning Configuración de inferencia(effort + summary)
- * @param store Si persistir(Codex aplicación del protocolo false)
- * @param include Elementos de salida adicionales.B5-03 pasar ["reasoning.encrypted_content"],El servidor estará ahí.
- *   reasoning item Regresar en encrypted_content(El único portador para la reproducción de cadenas de pensamiento de múltiples rondas);
- *   Cuando no se pasa, encrypted_content siempre es null,La repetición no se puede activar.
+ * @param model 模型 id
+ * @param input 输入数组(替代 Chat Completions 的 messages)
+ * @param instructions 系统指令(替代 system role,顶层字段)
+ * @param stream 是否流式(Codex 协议强制 true)
+ * @param max_output_tokens 输出上限(替代 max_tokens)
+ * @param temperature 采样温度
+ * @param tools 工具定义(同 Chat Completions 结构,但可含 image_generation 等扩展类型)
+ * @param reasoning 推理配置(effort + summary)
+ * @param store 是否持久化(Codex 协议强制 false)
+ * @param include 附加输出项。B5-03 传 ["reasoning.encrypted_content"],服务端才会在
+ *   reasoning item 上返回 encrypted_content(多轮思考链回放的唯一载体);
+ *   不传时 encrypted_content 恒为 null,回放无从触发。
  */
 @Serializable
 internal data class ResponsesRequest(
@@ -68,10 +68,10 @@ internal data class ResponsesRequest(
 )
 
 /**
- * v1.0.7: Responses API Configuración de inferencia.
+ * v1.0.7: Responses API 推理配置。
  *
- * @param effort fuerza de razonamiento:"minimal" / "low" / "medium" / "high"
- * @param summary tipo de resumen:"auto" / "concise" / "detailed" / "none"(Opcional)
+ * @param effort 推理强度:"minimal" / "low" / "medium" / "high"
+ * @param summary 摘要类型:"auto" / "concise" / "detailed" / "none"(可选)
  */
 @Serializable
 internal data class ResponsesReasoningConfig(
@@ -80,21 +80,21 @@ internal data class ResponsesReasoningConfig(
 )
 
 /**
- * v1.0.7: Responses API input Elementos de matriz.
+ * v1.0.7: Responses API input 数组项。
  *
- * @param role papel:"user" / "assistant" / "system" / "developer"
- * @param content contenido(string o matriz ContentBlock,Preserve la flexibilidad con JsonElement).
- *   solo `type="message"` Usar.
- * @param output Texto del resultado de la herramienta.**solo `type="function_call_output"` uso**.
- *   Responses API La especificación requiere que este artículo se utilice `output` Lleva el resultado; si se usa incorrectamente `content`,
- *   El servidor responderá 422 `input: missing field 'output'`(v2.6.7 reparar).
- * @param type item Tipo;null=ordinario message;"reasoning"=Reproducción de inferencia item;"function_call"=Reproducción de llamadas de herramientas
- * @param id reasoning item de id(para reproducción);function_call de id
- * @param call_id function_call de call_id(corresponder tool_call_id)
- * @param name function_call nombre de la función
- * @param arguments function_call Cadena JSON de parámetro
- * @param summary reasoning item conjunto resumido de(Transmisión transparente tal como es durante la reproducción.)
- * @param encrypted_content reasoning item carga útil cifrada(Tecla de reproducción)
+ * @param role 角色:"user" / "assistant" / "system" / "developer"
+ * @param content 内容(string 或 ContentBlock 数组,用 JsonElement 保留灵活性)。
+ *   仅 `type="message"` 使用。
+ * @param output 工具结果文本。**仅 `type="function_call_output"` 使用**。
+ *   Responses API 规范要求该 item 用 `output` 承载结果；若错用 `content`，
+ *   服务端会回 422 `input: missing field 'output'`（v2.6.7 修复）。
+ * @param type item 类型;null=普通 message;"reasoning"=推理回放 item;"function_call"=工具调用回放
+ * @param id reasoning item 的 id(用于回放);function_call 的 id
+ * @param call_id function_call 的 call_id(对应 tool_call_id)
+ * @param name function_call 的函数名
+ * @param arguments function_call 的参数 JSON 字符串
+ * @param summary reasoning item 的摘要数组(回放时原样透传)
+ * @param encrypted_content reasoning item 的加密负载(回放关键)
  */
 @Serializable
 internal data class ResponsesInputItem(
@@ -111,14 +111,14 @@ internal data class ResponsesInputItem(
 )
 
 /**
- * v1.0.7: Responses API Respuesta sin transmisión.
+ * v1.0.7: Responses API 非流式响应。
  *
- * @param id response id(Como por ejemplo "resp_xxx")
- * @param status Estado(Como por ejemplo "completed",equivalente a finish_reason)
- * @param model modelo id
- * @param output Matriz de salida(message / reasoning / function_call esperando la cima sibling)
- * @param output_text Texto de acceso directo de nivel superior(Si existe, úselo directamente.,Equivalente a empalmar message.content.output_text)
- * @param usage token Dosis
+ * @param id response id(如 "resp_xxx")
+ * @param status 状态(如 "completed",等价于 finish_reason)
+ * @param model 模型 id
+ * @param output 输出数组(message / reasoning / function_call 等顶层 sibling)
+ * @param output_text 顶层快捷文本(若存在直接用,等价于拼接 message.content.output_text)
+ * @param usage token 用量
  */
 @Serializable
 internal data class ResponsesResult(
@@ -129,7 +129,7 @@ internal data class ResponsesResult(
     @SerialName("output_text")
     val outputText: String? = null,
     val usage: ResponsesUsage? = null,
-    /** Responses API en status=incomplete razones específicas dadas en ese momento. */
+    /** Responses API 在 status=incomplete 时给出的具体原因。 */
     @SerialName("incomplete_details")
     val incompleteDetails: ResponsesIncompleteDetails? = null,
 )
@@ -153,7 +153,7 @@ internal data class ResponsesOutputItem(
     val summary: JsonElement? = null,
     @SerialName("encrypted_content")
     val encryptedContent: String? = null,
-    val result: String? = null, // image_generation_call El resultado base64 de
+    val result: String? = null, // image_generation_call 的 base64 结果
 )
 
 @Serializable
@@ -179,18 +179,18 @@ internal data class ResponsesUsage(
 )
 
 /**
- * v1.0.7: Responses API Transmisión de eventos de ESS.
+ * v1.0.7: Responses API 流式 SSE 事件。
  *
- * tipo de evento crítico:
- *  - response.output_text.delta:Incremento de texto(delta campo)
- *  - response.output_text.done:Fin del texto(text campo,Texto completo de la portada.)
- *  - response.reasoning_summary_text.delta:Delta de resumen de razonamiento(delta campo)
- *  - response.reasoning_summary_text.done:Resumen final del razonamiento(text campo)
- *  - response.function_call_arguments.delta:Incremento del parámetro de llamada de herramienta(item_id + delta)
- *  - response.output_item.added:Nuevo output item(item campo,Como se inicia function_call)
- *  - response.completed:final de la corriente(response campo,Contiene la matriz de salida final.)
+ * 关键事件类型:
+ *  - response.output_text.delta:正文增量(delta 字段)
+ *  - response.output_text.done:正文结束(text 字段,兜底完整文本)
+ *  - response.reasoning_summary_text.delta:推理摘要增量(delta 字段)
+ *  - response.reasoning_summary_text.done:推理摘要结束(text 字段)
+ *  - response.function_call_arguments.delta:工具调用参数增量(item_id + delta)
+ *  - response.output_item.added:新增 output item(item 字段,如 function_call 起始)
+ *  - response.completed:流结束(response 字段,含最终 output 数组)
  *
- * Todos los campos son opcionales,Diferentes tipos de eventos utilizan diferentes campos;type Es el campo discriminante.
+ * 字段全部可选,不同事件类型用不同字段;type 是判别字段。
  */
 @Serializable
 internal data class ResponsesStreamEvent(
@@ -212,68 +212,68 @@ internal data class OpenAIRequest(
     val top_p: Float? = null,
     val max_tokens: Int? = null,
     val stream: Boolean = true,
-    /** Phase 7: lista de definición de herramientas,Habilitar la llamada a funciones. */
+    /** Phase 7: 工具定义列表,启用 function calling。 */
     val tools: List<OpenAITool>? = null,
-    /** v1.0.40: Estrategias de selección de herramientas.tools=null obligatorio "none" Evite la llamada a la herramienta de alucinación modelo. */
+    /** v1.0.40: 工具选择策略。tools=null 时强制 "none" 防止模型幻觉 tool call。 */
     val tool_choice: String? = null,
     /**
-     * Phase 8.5 Reparación: nivel de razonamiento(o1/gpt-5 Campo de razonamiento_esfuerzo de serie).
-     * solo si reasoningLevel != OFF/AUTO Enviado cuando el esfuerzo no está vacío.,valor "minimal"/"low"/"medium"/"high".
+     * Phase 8.5 修复: 推理等级(o1/gpt-5 系列的 reasoning_effort 字段)。
+     * 仅当 reasoningLevel != OFF/AUTO 且 effort 非空时发送,值 "minimal"/"low"/"medium"/"high"。
      */
     val reasoning_effort: String? = null,
-    // v1.80 (L-OAI10): Elimine el código inactivo de Response_Format/OpenAIResponseFormat.
-    //   Al campo original nunca se le ha asignado un valor(siempre null),Y el modo OpenAI JSON debe coincidir con la descripción del esquema.,
-    //   No existe ningún requisito de modo JSON para el negocio actual.,Si está habilitado, la entrada debe diseñarse por separado en lugar de conservar campos muertos.
+    // v1.80 (L-OAI10): 删除 response_format/OpenAIResponseFormat 死代码。
+    //   原字段从未被赋值(始终 null),且 OpenAI JSON mode 需配合 schema 说明,
+    //   当前业务无 JSON mode 需求,如需启用应单独设计入口而非保留死字段。
 )
 
 /**
- * OpenAI cuerpo del mensaje.
+ * OpenAI 消息体。
  *
- * - role=assistant Y cuando la decisión de LLM llama a la herramienta,[toolCalls] No vacío,[content] Puede ser una cadena vacía
- * - role=tool tiempo(Resultados de la herramienta de relleno),[toolCallId] Requerido,[content] ¿Es el texto del resultado de la ejecución de la herramienta?
+ * - role=assistant 且 LLM 决策调用工具时,[toolCalls] 非空,[content] 可为空串
+ * - role=tool 时(回填工具结果),[toolCallId] 必填,[content] 是工具执行结果文本
  *
- * Phase 8.6: [content] Cambiar a [JsonElement] para apoyar la multimodalidad:
- *  - texto plano: `JsonPrimitive("text")`
- *  - multimodal: `JsonArray([{type:"text", text:"..."}, {type:"image_url", image_url:{url:"data:..."}}])`
+ * Phase 8.6: [content] 改为 [JsonElement] 以支持多模态:
+ *  - 纯文本: `JsonPrimitive("text")`
+ *  - 多模态: `JsonArray([{type:"text", text:"..."}, {type:"image_url", image_url:{url:"data:..."}}])`
  */
 @Serializable
 internal data class OpenAIMessage(
     val role: String,
     val content: JsonElement,
-    /** assistant La solicitud de llamada de herramienta transportada por el mensaje. */
+    /** assistant 消息携带的工具调用请求。 */
     @SerialName("tool_calls")
     val toolCalls: List<OpenAIToolCall>? = null,
-    /** tool El correspondiente tool_call_id cuando se repone el mensaje. */
+    /** tool 消息回填时对应的 tool_call_id。 */
     @SerialName("tool_call_id")
     val toolCallId: String? = null,
     /**
-     * v1.0.7: Reproducción de contenidos de razonamiento histórico.
+     * v1.0.7: 历史推理内容回放。
      *
-     * Solo se utiliza para transmitir el proceso de razonamiento de la ronda anterior de mensajes del asistente tal como está. API,Haz múltiples rondas de diálogo.
-     * modelo puede"ver"Mi cadena de pensamientos anterior.carrier=REASONING_CONTENT de fabricantes
-     * (Kimi / DeepSeek / MiMo / Zhipu Chat Completions)en assistant + tool_calls
-     * escena**Requisitos obligatorios**volver reasoning_content,De lo contrario, se devuelve un error 400 de cierre fallido.
-     * (Estos proveedores utilizan Reasoning_content para verificar la integridad de la cadena de pensamiento.,Si falta, se considera que la solicitud ha sido manipulada.).
+     * 仅用于把上一轮 assistant 消息的推理过程原样回传给 API,使多轮对话中
+     * 模型能"看见"自己之前的思考链。carrier=REASONING_CONTENT 的厂商
+     * (Kimi / DeepSeek / MiMo / Zhipu Chat Completions)在 assistant + tool_calls
+     * 场景**强制要求**回传 reasoning_content,否则返回 400 fail-closed 错误
+     * (这些厂商用 reasoning_content 验证思考链完整性,缺失则认为请求被篡改)。
      *
-     * - null:no escribas JSON(explicitNulls=false La serialización del tiempo ignora)
-     * - no nulo: escribir `"reasoning_content": "..."` campo
+     * - null:不写入 JSON(explicitNulls=false 时序列化忽略)
+     * - 非 null:写入 `"reasoning_content": "..."` 字段
      *
-     * Nota:Este campo es el mismo que streaming delta.reasoning_content/non-streaming message.reasoning_content
-     *   es el mismo campo de alambre,Pero la semántica es diferente. — transmisión/La no transmisión es un campo de respuesta API(Salida del modelo),
-     *   Aquí están los campos de solicitud.(Historial de repetición). El nombre del cable compartido por ambos es una convención de protocolo compatible con OpenAI.
+     * 注:此字段与流式 delta.reasoning_content / 非流式 message.reasoning_content
+     *   是同一 wire 字段,但语义不同 — 流式/非流式是 API 响应字段(模型输出),
+     *   此处是请求字段(回放历史)。两者共用 wire 名是 OpenAI 兼容协议约定。
      */
     @SerialName("reasoning_content")
     val reasoningContent: String? = null,
 )
 
-/** OpenAI Definición de herramienta(type=function). */
+/** OpenAI 工具定义(type=function)。 */
 @Serializable
 internal data class OpenAITool(
     val type: String = "function",
     val function: OpenAIToolFunction,
 )
 
-/** Responses API Herramientas: admite herramientas funcionales y herramientas integradas como web_search_preview. */
+/** Responses API 工具：既支持函数工具，也支持 web_search_preview 等内置工具。 */
 @Serializable
 internal data class ResponsesTool(
     val type: String,
@@ -286,11 +286,11 @@ internal data class ResponsesTool(
 internal data class OpenAIToolFunction(
     val name: String,
     val description: String,
-    /** parámetros JSON Schema(originales JSON,Utilizado por el proveedor Json.decodeFromString(JsonElement.serializer()) analizar). */
+    /** 参数 JSON Schema(原始 JSON,由 Provider 用 Json.decodeFromString(JsonElement.serializer()) 解析)。 */
     val parameters: JsonElement,
 )
 
-/** assistant Solicitud de llamada de herramienta en el mensaje. */
+/** assistant 消息中的工具调用请求。 */
 @Serializable
 internal data class OpenAIToolCall(
     val id: String,
@@ -308,8 +308,8 @@ internal data class OpenAIToolCallFunction(
 internal data class OpenAIStreamChunk(
     val choices: List<OpenAIChoice> = emptyList(),
     /**
-     * A5: transmisión usage — Al solicitar la inyección de stream_options.include_usage,último trozo transportado usage
-     * (choices es una matriz vacía). Algunas puertas de enlace volverán sin inyección,Los campos que aceptan valores NULL son compatibles con ambos comportamientos.
+     * A5: 流式 usage — 请求注入 stream_options.include_usage 时,末 chunk 携带 usage
+     * (choices 为空数组)。部分网关不注入也会返回,字段可空兼容两种行为。
      */
     val usage: OpenAICompletionUsage? = null,
 )
@@ -323,10 +323,10 @@ internal data class OpenAIChoice(
 )
 
 /**
- * Incremento de transmisión.
+ * 流式增量。
  *
- * Phase 7: [toolCalls] Es la herramienta de streaming que llama al array incremental.,Cada elemento tiene index/id/function{name/arguments}.
- * arguments es una cadena fragmentada,Necesidad de acumular empalmes según índice.
+ * Phase 7: [toolCalls] 是流式工具调用增量数组,每个元素有 index/id/function{name/arguments}。
+ * arguments 是分片字符串,需按 index 累积拼接。
  */
 @Serializable
 internal data class OpenAIDelta(
@@ -338,7 +338,7 @@ internal data class OpenAIDelta(
     val toolCalls: List<OpenAIDeltaToolCall>? = null,
 )
 
-/** Fragmento incremental de streaming tool_call. */
+/** 流式 tool_call 增量片段。 */
 @Serializable
 internal data class OpenAIDeltaToolCall(
     val index: Int = 0,
@@ -353,18 +353,18 @@ internal data class OpenAIDeltaToolCallFunction(
     val arguments: String? = null,
 )
 
-/** respuesta sin transmisión(stream=false regresar cuando). */
+/** 非流式响应(stream=false 时返回)。 */
 @Serializable
 internal data class OpenAICompletionResponse(
     val choices: List<OpenAICompletionChoice> = emptyList(),
-    /** v1.0.53 Phase 3: token Dosis(Chat Completions API Regresar). */
+    /** v1.0.53 Phase 3: token 用量(Chat Completions API 返回)。 */
     val usage: OpenAICompletionUsage? = null,
 )
 
 /**
- * v1.0.53 Phase 3: Chat Completions API uso de tokens(Alinear los campos de uso de OpenAI).
+ * v1.0.53 Phase 3: Chat Completions API 的 token 用量(对齐 OpenAI usage 字段)。
  *
- * Algunos modelos se devuelven por separado en complete_tokens_details reasoning_tokens(Como por ejemplo o1).
+ * 部分模型在 completion_tokens_details 里单独返回 reasoning_tokens(如 o1)。
  */
 @Serializable
 internal data class OpenAICompletionUsage(
@@ -372,7 +372,7 @@ internal data class OpenAICompletionUsage(
     @SerialName("completion_tokens") val completionTokens: Int = 0,
     @SerialName("total_tokens") val totalTokens: Int = 0,
     @SerialName("completion_tokens_details") val completionTokensDetails: OpenAICompletionTokensDetails? = null,
-    /** A5: prompt golpe de caché token(OpenAI Regresar prompt_tokens_details.cached_tokens). */
+    /** A5: prompt 缓存命中 token(OpenAI 返回 prompt_tokens_details.cached_tokens)。 */
     @SerialName("prompt_tokens_details") val promptTokensDetails: OpenAICompletionPromptTokensDetails? = null,
 )
 
@@ -381,7 +381,7 @@ internal data class OpenAICompletionTokensDetails(
     @SerialName("reasoning_tokens") val reasoningTokens: Int = 0,
 )
 
-/** A5: prompt Detalles — cached_tokens(Aciertos de caché de contexto,solo mostrar,No participa en el consumo total.). */
+/** A5: prompt 明细 — cached_tokens(上下文缓存命中数,仅展示,不参与消耗合计)。 */
 @Serializable
 internal data class OpenAICompletionPromptTokensDetails(
     @SerialName("cached_tokens") val cachedTokens: Int = 0,
@@ -405,7 +405,7 @@ internal data class OpenAICompletionMessage(
     val toolCalls: List<OpenAIToolCall>? = null,
 )
 
-/** Respuesta de error sin transmisión(Solo se usa al incorporar cuerpos de error HTTP en transmisiones SSE). */
+/** 非流式错误响应(仅在 SSE 流里夹带 HTTP 错误体时用到)。 */
 @Serializable
 internal data class OpenAIErrorBody(
     val error: OpenAIErrorDetail? = null,
@@ -419,11 +419,11 @@ internal data class OpenAIErrorDetail(
 )
 
 /**
- * Deserializador de lista de cadenas permisivo.
+ * 宽容的字符串列表反序列化器。
  *
- * Algunas aguas arriba (plan de codificación de volcanes, etc.) devuelven capacidades/modalidades a
- * cadena separada por comas ("code,chat") en lugar de una matriz JSON (["code","chat"]),
- * También hay casos en los que se devuelve nulo. Aquí son todos compatibles: matrices, cadenas separadas por comas,null.
+ * 部分上游（火山 coding plan 等）把 capabilities/modalities 返回成
+ * 逗号分隔字符串（"code,chat"）而非 JSON 数组（["code","chat"]），
+ * 也有返回 null 的情况。这里统一兼容：数组、逗号分隔字符串、null。
  */
 private object FlexibleStringListSerializer : kotlinx.serialization.KSerializer<List<String>?> {
     private val listSerializer = ListSerializer(String.serializer())
@@ -454,27 +454,27 @@ private object FlexibleStringListSerializer : kotlinx.serialization.KSerializer<
     }
 }
 
-/** GET /models respuesta.data[].id es la identificación del modelo. */
+/** GET /models 响应。data[].id 为模型 id。 */
 @Serializable
 internal data class OpenAIModelsResponse(
     val data: List<OpenAIModelInfo>? = null,
 )
 
 /**
- * Upstream /models Información de modelo único.
+ * 上游 /models 单条模型信息。
  *
- * v1.132 (H-OAI3): Campos extendidos para soportar OpenRouter / Together / DeepInfra espera
- * Servicio compatible con OpenAI que devuelve metadatos enriquecidos. Todos los campos de extensión tienen valores predeterminados,Estándar OpenAI
- * /models Volver al valor predeterminado cuando la interfaz no regresa(compatible con versiones anteriores).
+ * v1.132 (H-OAI3): 扩展字段以支持 OpenRouter / Together / DeepInfra 等
+ * 返回丰富元数据的 OpenAI 兼容服务。所有扩展字段均带默认值,标准 OpenAI
+ * /models 接口未返回时回退到默认值(向后兼容)。
  *
- * - [id]: modelo id(debe tener)
- * - [context_length]: OpenRouter/Together Espere la ventana de contexto devuelta(token numero)
- * - [top_provider]: OpenRouter información del proveedor(Contiene max_completion_tokens)
- * - [pricing]: OpenRouter información de precios(prompt/completion per token)
- * - [capabilities]: P2-3 Nuevo,Lista de capacidades del modelo declaradas por el servidor.(Como por ejemplo ["vision","tools"]).
- *   Ollama Devuelto en /api/show desde 0.4.0 capabilities,Algunos servicios de agregación también estarán disponibles en
- *   /models llevado en respuesta;Prefiere la inferencia local cuando hay un valor.(ver [io.zer0.ai.ollama.OllamaVisionInferrer]).
- *   Cuando no se devuelve el servicio estándar, es null,No afecta la compatibilidad con versiones anteriores.
+ * - [id]: 模型 id(必有)
+ * - [context_length]: OpenRouter/Together 等返回的上下文窗口(token 数)
+ * - [top_provider]: OpenRouter 的 provider 信息(含 max_completion_tokens)
+ * - [pricing]: OpenRouter 的定价信息(prompt/completion per token)
+ * - [capabilities]: P2-3 新增,服务端声明的模型能力列表(如 ["vision","tools"])。
+ *   Ollama 自 0.4.0 起在 /api/show 返回 capabilities,部分聚合服务也会在
+ *   /models 响应中携带;有值时优先于本地推断(见 [io.zer0.ai.ollama.OllamaVisionInferrer])。
+ *   标准服务未返回时为 null,不影响向后兼容。
  */
 @Serializable
 internal data class OpenAIModelInfo(
@@ -486,8 +486,8 @@ internal data class OpenAIModelInfo(
     @Serializable(with = FlexibleStringListSerializer::class)
     val capabilities: List<String>? = null,
     /**
-     * v1.0.8: Parcialmente aguas arriba(OpenRouter / Algunas estaciones de transferencia compatibles con OpenAI)Devuelve la declaración modal.
-     * Valores comunes: "text" / "image" / "audio" / "video";Complementario a las capacidades.
+     * v1.0.8: 部分上游(OpenRouter / 部分 OpenAI 兼容中转站)返回的模态声明。
+     * 常见值: "text" / "image" / "audio" / "video";与 capabilities 互补。
      */
     @Serializable(with = FlexibleStringListSerializer::class)
     val modalities: List<String>? = null,
@@ -500,13 +500,13 @@ internal data class OpenAIModelTopProvider(
 
 @Serializable
 internal data class OpenAIModelPricing(
-    /** prompt precio(per token,La forma de cadena evita la pérdida de precisión.). */
+    /** prompt 价格(per token,字符串形式避免精度丢失)。 */
     val prompt: String? = null,
-    /** completion precio(per token). */
+    /** completion 价格(per token)。 */
     val completion: String? = null,
 )
 
-/** v1.0.53 Phase 3: Chat Completions usage -> [io.zer0.ai.core.UsageTokens]. */
+/** v1.0.53 Phase 3: Chat Completions usage -> [io.zer0.ai.core.UsageTokens]。 */
 internal fun OpenAICompletionUsage.toUsageTokens(): io.zer0.ai.core.UsageTokens = io.zer0.ai.core.UsageTokens(
     promptTokens = promptTokens,
     completionTokens = completionTokens,
@@ -514,7 +514,7 @@ internal fun OpenAICompletionUsage.toUsageTokens(): io.zer0.ai.core.UsageTokens 
     cachedTokens = promptTokensDetails?.cachedTokens ?: 0,
 )
 
-/** v1.0.53 Phase 3: Responses API usage -> [io.zer0.ai.core.UsageTokens]. */
+/** v1.0.53 Phase 3: Responses API usage -> [io.zer0.ai.core.UsageTokens]。 */
 internal fun ResponsesUsage.toUsageTokens(): io.zer0.ai.core.UsageTokens = io.zer0.ai.core.UsageTokens(
     promptTokens = input_tokens ?: 0,
     completionTokens = output_tokens ?: 0,

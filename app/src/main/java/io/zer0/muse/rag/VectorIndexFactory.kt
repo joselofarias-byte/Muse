@@ -1,50 +1,50 @@
 package io.zer0.muse.rag
 
 /**
- * v1.55: Fábrica de índices vectoriales.
+ * v1.55: 向量索引工厂。
  *
- * Seleccione automáticamente una estrategia de indexación adecuada según el tamaño de los datos:
- *  - [IndexStrategy.BRUTE_FORCE]:pequeña escala(<5000 chunk),Reutilizar existente [VectorSearchService] recorrido violento
- *  - [IndexStrategy.HNSW]:gran escala(>=5000 chunk),uso [HnswVectorIndex] vecino más cercano aproximado
+ * 根据数据规模自动选择合适的索引策略:
+ *  - [IndexStrategy.BRUTE_FORCE]:小规模(<5000 chunk),复用现有 [VectorSearchService] 暴力遍历
+ *  - [IndexStrategy.HNSW]:大规模(>=5000 chunk),使用 [HnswVectorIndex] 近似最近邻
  *
- * La fábrica en sí no crea un índice transversal de fuerza bruta.(consiste en [RagService] sostenido directamente [VectorSearchService] darse cuenta);
- * Aquí sólo somos responsables de crear [VectorIndex] darse cuenta(Actualmente solo hay HNSW).
+ * 工厂本身不创建暴力遍历索引(它由 [RagService] 直接持有 [VectorSearchService] 实现);
+ * 此处仅负责创建 [VectorIndex] 实现(目前只有 HNSW)。
  */
 object VectorIndexFactory {
 
-    /** Enumeración de estrategias de índice. */
+    /** 索引策略枚举。 */
     enum class IndexStrategy {
-        /** recorrido violento(pequeña escala,<5000 chunk):de existente [VectorSearchService] darse cuenta,RagService celebrado directamente. */
+        /** 暴力遍历(小规模,<5000 chunk):由现有 [VectorSearchService] 实现,RagService 直接持有。 */
         BRUTE_FORCE,
 
-        /** HNSW vecino más cercano aproximado(gran escala,>=5000 chunk):por [HnswVectorIndex] Darse cuenta. */
+        /** HNSW 近似最近邻(大规模,>=5000 chunk):由 [HnswVectorIndex] 实现。 */
         HNSW,
     }
 
-    /** Seleccionar umbral automáticamente:chunk numero >= Este valor se utiliza cuando HNSW,De lo contrario, utilice el recorrido por fuerza bruta. */
+    /** 自动选择阈值:chunk 数 >= 此值时使用 HNSW,否则使用暴力遍历。 */
     const val AUTO_THRESHOLD = 5000
 
     /**
-     * Crear una política específica [VectorIndex].
+     * 创建指定策略的 [VectorIndex]。
      *
-     * - [IndexStrategy.BRUTE_FORCE] Regresar null(por [RagService] ir [VectorSearchService] camino)
-     * - [IndexStrategy.HNSW] Regresar [HnswVectorIndex](Usar parámetros predeterminados M=16/efC=200/efS=50)
+     * - [IndexStrategy.BRUTE_FORCE] 返回 null(由 [RagService] 走 [VectorSearchService] 路径)
+     * - [IndexStrategy.HNSW] 返回 [HnswVectorIndex](使用默认参数 M=16/efC=200/efS=50)
      *
-     * @return [VectorIndex] Ejemplo;BRUTE_FORCE Retorno de la estrategia null
+     * @return [VectorIndex] 实例;BRUTE_FORCE 策略返回 null
      */
     fun createIndex(strategy: IndexStrategy): VectorIndex? = when (strategy) {
-        IndexStrategy.BRUTE_FORCE -> null // El recorrido de fuerza bruta se implementa mediante el vectorSearch existente de RagService
+        IndexStrategy.BRUTE_FORCE -> null // 暴力遍历由 RagService 现有 vectorSearch 实现
         IndexStrategy.HNSW -> HnswVectorIndex()
     }
 
     /**
-     * Seleccione automáticamente una estrategia y cree un índice basado en la cantidad de fragmentos.
+     * 根据 chunk 数量自动选择策略并创建索引。
      *
-     * @param chunkCount El número actual de fragmentos indexados.
-     * @return [VectorIndex] Ejemplo;chunk numero < [AUTO_THRESHOLD] regresar cuando null(Caminar a través de la violencia)
+     * @param chunkCount 当前已索引 chunk 数
+     * @return [VectorIndex] 实例;chunk 数 < [AUTO_THRESHOLD] 时返回 null(走暴力遍历)
      */
     fun createAutoIndex(chunkCount: Int): VectorIndex? = createIndex(autoStrategy(chunkCount))
 
-    /** Elija una estrategia basada en la cantidad de fragmentos(>=5000 usar HNSW,De lo contrario BRUTE_FORCE). */
+    /** 根据 chunk 数量选择策略(>=5000 用 HNSW,否则 BRUTE_FORCE)。 */
     fun autoStrategy(chunkCount: Int): IndexStrategy = if (chunkCount >= AUTO_THRESHOLD) IndexStrategy.HNSW else IndexStrategy.BRUTE_FORCE
 }

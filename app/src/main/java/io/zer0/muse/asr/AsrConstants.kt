@@ -1,30 +1,30 @@
 package io.zer0.muse.asr
 
 /**
- * v1.73: ASR Constantes compartidas por el cliente — Tres clientes ASR(StepAsrClient / DashScopeAsrClient /
- * DashScopeFileAsrClient)Originalmente, el tiempo de espera de OkHttp y el tiempo de espera de identificación estaban codificados por separado.,Los valores se repiten y las modificaciones deben sincronizarse en varios lugares.
+ * v1.73: ASR 客户端共享常量 — 三个 ASR 客户端(StepAsrClient / DashScopeAsrClient /
+ * DashScopeFileAsrClient)原先各自硬编码 OkHttp 超时与识别超时,数值重复且修改需同步多处。
  *
- * Centralice aquí para una sintonización unificada.
+ * 集中此处便于统一调优。
  */
 object AsrConstants {
-    /** OkHttp Tiempo de espera de conexión(segundos). */
+    /** OkHttp 连接超时(秒)。 */
     const val CONNECT_TIMEOUT_SEC = 15L
 
-    /** OkHttp Tiempo de espera de lectura(segundos). */
+    /** OkHttp 读取超时(秒)。 */
     const val READ_TIMEOUT_SEC = 60L
 
-    /** Se agotó el tiempo de espera del proceso de reconocimiento general(milisegundos)— Evite que el ASR se congele. */
+    /** 整体识别流程超时(毫秒)— 防止 ASR 卡死。 */
     const val RECOGNIZE_TIMEOUT_MS = 60_000L
 
-    /** Número máximo de intentos cuando falla HTTP de segmentación de audio breve. */
+    /** 短音频分段 HTTP 失败时的最大尝试次数。 */
     const val MAX_HTTP_ATTEMPTS = 2
 
-    /** HTTP Reintentar la base de retroceso(milisegundos). */
+    /** HTTP 重试退避基数(毫秒)。 */
     const val HTTP_RETRY_BACKOFF_MS = 350L
 
     /**
-     * F-34: Número máximo de intentos de desconexión y reconexión(Límite de reintentos fallidos de solicitudes HTTP para el cliente por lotes Paso/Susurro).
-     * Presiona cada vez que falle. [HTTP_RETRY_BACKOFF_MS] Retransmita el mismo segmento de audio después de un retroceso lineal.
+     * F-34: 断线重连最大尝试次数(分批量客户端 Step/Whisper 的 HTTP 请求失败重试上限)。
+     * 每次失败按 [HTTP_RETRY_BACKOFF_MS] 线性退避后补发同一段音频。
      */
     const val RECONNECT_MAX_ATTEMPTS = 3
 }

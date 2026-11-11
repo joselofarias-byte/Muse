@@ -9,13 +9,13 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * C-11 / C-12: Pruebas unitarias de funciones puras de deduplicación de reanudación de puntos de interrupción y enrutamiento de modelos de herramientas.
+ * C-11 / C-12: 断点续传去重与工具模型路由的纯函数单元测试。
  *
- * función pura anulada:
- *  - [longestCommonPrefix]: Transferencia reanudada para eliminar duplicados(Omita el prefijo común más largo que se superponga al contenido mostrado).
- *  - [canUseToolModelForRound]: ¿Está disponible la rueda de herramientas? toolModel(Cuando el historial contiene imágenes pero el modelo de herramienta no tiene visión, recurra al modelo principal.).
+ * 覆盖的纯函数:
+ *  - [longestCommonPrefix]: 续传去重(跳过与已显示内容重叠的最长公共前缀)。
+ *  - [canUseToolModelForRound]: 工具轮是否可用 toolModel(历史含图而 toolModel 无视觉时回退主模型)。
  *
- * Todos son pura lógica de Kotlin sin dependencias del tiempo de ejecución de Android.(JUnit4).
+ * 均为无 Android runtime 依赖的纯 Kotlin 逻辑(JUnit4)。
  */
 class ChatResumeLcpTest {
 
@@ -28,7 +28,7 @@ class ChatResumeLcpTest {
 
     @Test
     fun `prefix differs returns common prefix length`() {
-        // "hello " 6 personajes en total(h/e/l/l/o/espacio)superponerse,Después de que w vs t se bifurque
+        // "hello " 共 6 字符(h/e/l/l/o/空格)重合,之后 w vs t 分叉
         assertEquals(6, longestCommonPrefix("hello world", "hello there"))
     }
 
@@ -52,26 +52,26 @@ class ChatResumeLcpTest {
 
     @Test
     fun `chinese text overlapped prefix measured in code units`() {
-        // "Hoy " = 4 unidades UTF-16, luego "llueve" y "nieva" divergen
-        assertEquals(4, longestCommonPrefix("Hoy llueve", "Hoy nieva"))
+        // "今天天" = 3 个字符,后续 "气" 与 "雨" 不同 → 公共前缀取到索引 3
+        assertEquals(3, longestCommonPrefix("今天天气很好", "今天天下雨"))
     }
 
     @Test
     fun `chinese identical shares full length`() {
-        val phrase = "Hola mundo Hola mundo"
-        assertEquals(phrase.length, longestCommonPrefix(phrase, phrase))
+        // "你好世界你好世界哈" = 9 个汉字,相同字符串公共前缀为全长
+        assertEquals(9, longestCommonPrefix("你好世界你好世界哈", "你好世界你好世界哈"))
     }
 
     @Test
     fun `rewritten prefix after overlap returns divergence point`() {
-        // "abcdefgh" fue reescrito como "abcdXefgh":Los primeros 4 caracteres todavía se superponen.,5to (e vs X) empezar a bifurcar
+        // "abcdefgh" 被改写为 "abcdXefgh":前 4 个字符仍重合,第 5 个 (e vs X) 开始分叉
         assertEquals(4, longestCommonPrefix("abcdefgh", "abcdXefgh"))
     }
 
     @Test
     fun `mixed replay and new text never drops the new prefix`() {
-        // Resta contenido antiguo "abcdef", provider Regresar "abcXYZ".
-        // "abc" Es sólo una coincidencia,XYZ Podría ser la verdadera novedad en esta ronda, no puedo tragarme el abc de LCP.
+        // 旧内容剩余 "abcdef", provider 返回 "abcXYZ"。
+        // "abc" 只是巧合重合，XYZ 可能就是本轮真正的新内容，不能按 LCP 吞掉 abc。
         assertEquals(0, resumeOverlapToDrop("abcdef", "abcXYZ"))
     }
 
@@ -96,11 +96,11 @@ class ChatResumeLcpTest {
         assertEquals(0, resumeOverlapToDrop("hello", "he"))
     }
 
-    // ── Reanudar el juicio de reescritura(v2.0 Corrección de respuestas duplicadas)──────────────────────────────────
+    // ── 续传重写判定(v2.0 重复回复修复)──────────────────────────────────
 
     @Test
     fun `large overlap consumed marks a rewrite`() {
-        // Texto original 33 palabras,Bifurcado después de consumir 18 palabras → Juzgado como reescritura,El contenido antiguo debe ser reemplazado.
+        // 原文 33 字,已消费 18 字后分叉 → 判定为重写,应替换旧内容
         assertTrue(shouldReplaceOnResumeRewrite(duplicateTotal = 33, consumedChars = 18))
         assertTrue(shouldReplaceOnResumeRewrite(duplicateTotal = 20, consumedChars = 10))
         assertTrue(shouldReplaceOnResumeRewrite(duplicateTotal = 8, consumedChars = 6))
@@ -115,24 +115,24 @@ class ChatResumeLcpTest {
 
     @Test
     fun `attempt containing original head supersedes partial content`() {
-        val original = "Puedo charlar contigo. ¿Cómo puedo ayudarte hoy?"
-        val attempt = "Puedo ayudarte con lo que necesites hoy"
+        val original = "能和你聊天。今天有什么可以帮助你的吗?"
+        val attempt = "你好！我是 Muse，很高兴能和你聊天。有什么我可以帮助你的吗?"
         val current = original + attempt
         assertTrue(shouldReplaceOnResumeSupersede(original, attempt, current))
     }
 
     @Test
     fun `genuine continuation does not supersede`() {
-        val original = "El clima de hoy"
-        val continuation = "No está mal, apto para pasear."
+        val original = "今天天气"
+        val continuation = "不错，适合出门散步"
         val current = original + continuation
         assertFalse(shouldReplaceOnResumeSupersede(original, continuation, current))
     }
 
     @Test
     fun `identical attempt is already current content`() {
-        val original = "¡Hola! Soy Muse y es genial charlar contigo."
-        val attempt = "¡Hola! Soy Muse y es genial charlar contigo. ¿Hay algo que pueda hacer para ayudarte??"
+        val original = "你好！我是 Muse，很高兴能和你聊天。"
+        val attempt = "你好！我是 Muse，很高兴能和你聊天。有什么我可以帮助你的吗?"
         assertFalse(shouldReplaceOnResumeSupersede(original, attempt, attempt))
         assertFalse(shouldReplaceOnResumeSupersede(null, attempt, attempt))
         assertFalse(shouldReplaceOnResumeSupersede(original, null, original))
@@ -143,7 +143,7 @@ class ChatResumeLcpTest {
     private fun model(supportsVision: Boolean): Model =
         Model(id = "m-" + (if (supportsVision) "vision" else "text"), providerId = "p1", supportsVision = supportsVision)
 
-    private fun userMsgWithImage(content: String = "mira la foto"): UIMessage =
+    private fun userMsgWithImage(content: String = "看图"): UIMessage =
         UIMessage(role = MessageRole.USER, content = content, imageBase64List = listOf("aGVsbG8="))
 
     @Test
@@ -155,7 +155,7 @@ class ChatResumeLcpTest {
     @Test
     fun `text-only tool model is usable when history has no images`() {
         val history = listOf(
-            UIMessage(role = MessageRole.USER, content = "Ayúdame a calcularlo"),
+            UIMessage(role = MessageRole.USER, content = "帮我计算下"),
         )
         assertTrue(canUseToolModelForRound(history, model(supportsVision = false)))
     }

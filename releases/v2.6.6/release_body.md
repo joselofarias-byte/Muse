@@ -1,83 +1,83 @@
 # Muse v2.6.6
 
-> Se han solucionado varios aspectos de la interacción con tarjetas y los agentes ya no están bloqueados. Además, algunas funciones solían tener solo entradas y estaban vacías al hacer clic.
+> 卡片交互修了几处、代理不再半通不通，另外有些功能以前只有入口、点进去是空的。
 
 ---
 
-## chino
+## 中文
 
-### tarjeta
+### 卡片
 
-Al hacer clic en el botón de la tarjeta se responde. En el pasado, varios caminos no estaban conectados en absoluto, los controles estaban dibujados y no pasaba nada cuando hacía clic en ellos.
+点卡片里的按钮有反应了。之前有几条路径根本没接通，控件画出来了，点下去什么都不发生。
 
-Hay dos cosas más: ya no aparece inexplicablemente una barra de desplazamiento en la tarjeta; la tarjeta aparecerá primero durante el proceso de generación, sin esperar a que se escriba todo el párrafo.
+还有两件事：卡片里不再莫名其妙出现一条滚动条；生成过程中卡片会先出现，不用等整段写完。
 
-La tarjeta ahora sabe quién es, puede volver a leer los datos vinculados y puede saber de qué tarjeta proviene al transmitir.
+卡片现在知道自己是谁，能读回绑定的数据，回传时也能说清来自哪张卡。
 
-**Un cambio que puedes notar**: "Salida de tarjeta de preferencia" en la configuración está desactivada de forma predeterminada. Cuando está desactivado, el modelo no convertirá activamente tablas, comparaciones y cuadros de opciones en tarjetas, y simplemente escribirá normalmente. Si quieres que se use como tarjeta, ve a Configuración → Charla abierta.
+**一个变化你可能会注意到**：设置里的「偏好卡片输出」默认关掉了。关着的时候，模型不会主动把表格、对比、选项框做成卡片，就正常写字。想让它做卡片的，去 设置 → 聊天 打开。
 
-La tarjeta en sí todavía se está modificando y esta versión no es su aspecto final.
+卡片本身还在改，这版不是它的最终样子。
 
-### agente
+### 代理
 
-En el pasado, cuando se configuraba un proxy, algunas solicitudes se procesaban y otras se omitían; Una vez realizados los cambios, fue necesario reiniciarlos para que surtieran efecto.
+以前配了代理，有些请求走、有些绕过去；改完还得重启一次才生效。
 
-Ahora todas las solicitudes salientes siguen al proxy. Si cambia la conexión, la siguiente conexión será nueva y no será necesario reiniciar. Puede especificar qué direcciones no utilizan proxies. La "Conexión de prueba" en la página del proveedor puede indicarle directamente si el agente se puede conectar.
+现在所有出网请求都跟着代理走，改了下一次连接就是新的，不用重启。可以指定哪些地址不走代理。供应商页的「测试连接」能直接告诉你代理通不通。
 
-### Algunos lugares en los que se hizo clic anteriormente estaban vacíos.
+### 一些以前点进去是空的地方
 
-- **biblioteca de experiencias,AI Tarjetas de comprensión, memoria de chat grupal.** Las tres pestañas solían tener solo implementación y sin entrada, pero ahora se puede ingresar a ellas.
-- **Archivos adjuntos para notas rápidas**: La luz indicadora nunca se enciende porque las dos acciones de agregar y eliminar no se han conectado antes.
-- **widget de escritorio**: No importa qué asistente elijas, siempre se utilizará el predeterminado; ahora se usará el que elijas
-- **Widget "Entrada rápida de voz"**: Al hacer clic antes solo se crearía una nueva sesión y no se abriría el micrófono.
-- **relación de rol**: Al realizar una copia de seguridad, solo se guarda pero no se restaura. Ahora puede ir y venir.
-- **Condiciones para tareas programadas.**: Las condiciones están establecidas pero no son realmente efectivas.
+- **经验库、AI 理解卡、群聊记忆** 三个页签以前只有实现、没有入口，现在能进去了
+- **快速笔记的附件**：指示灯从来不亮，因为添加和删除这两个动作之前没接上
+- **桌面小组件**：选哪个助手都没用，一直用默认的；现在会用你选的那个
+- **「快速语音输入」小组件**：以前点它只新建一个会话，不会开麦
+- **角色关系**：备份时只存不还原，现在能来回
+- **定时任务的条件**：设了条件但实际没生效
 
-### llamada de herramienta
+### 工具调用
 
-Cuando el modelo encontró un problema con la herramienta, solo pude ver un error incomprensible en el pasado.
+模型碰到工具不通时，以前只能看到一个看不懂的报错。
 
-- Antes de ejecutar la herramienta, primero comprobará si el canal está abierto. Si no, te dirá directamente cómo abrirlo.
-- Cuando falla, indicará si es un problema de red o de parámetros, y si se puede volver a intentar.
-- También traerá "cuántas veces, cuántas veces quedan y si se debe continuar" para evitar que se estanque o se dé por vencido prematuramente.
-- La cantidad de herramientas escritas en la palabra clave es consistente con la cantidad real. En el pasado escribía un número incorrecto.
-- Puede consultar el mapa de herramientas en la interfaz para saber cuáles están disponibles actualmente.
+- 工具执行前会先看通道通不通，不通就直接说要怎么开通
+- 失败时会说明是网络问题还是参数问题、能不能重试
+- 还会带上「第几次、还剩几次、该不该继续」，避免它死磕或者过早放弃
+- 提示词里写的工具数量跟实际一致了，以前会写一个对不上的数
+- 界面里能查工具地图，知道现在有哪些能用
 
-### memoria
+### 记忆
 
-Ahora es posible buscar texto original histórico entre sesiones, separados por asistente.
+跨会话能搜历史原文了，按助手分开。
 
-Las nuevas sesiones solían recibir un mensaje vacío que decía "los cuatro párrafos no están disponibles", pero ahora ya no está bloqueado.
+新会话以前会收到一段「四段全是暂无」的空壳，现在不塞了。
 
-Lo que le digas, "No vuelvas a hacer eso", será recordado como una regla estricta, no solo por un turno.
+你对它说的「以后别这样」会记成硬规矩，不只是当轮管用。
 
-### Otros
+### 其他
 
-- La colección admite selección múltiple en lotes
-- En el pasado, es posible que no haya enviado ningún mensaje proactivo.
-- La copia de seguridad omitió un tipo de datos; la relación de rol fue restablecida
-- Saldo insuficiente (402) se informará correctamente como un problema de saldo y ya no se tratará como un error de red ni se reintentará repetidamente.
-- La traducción por lotes cumplirá con el glosario y el estilo personalizado, consistente con el calibre de una sola traducción.
-- Se han unificado los mensajes de error de voz. Hasta ahora existían cuatro variantes de una función.
-- En el chat grupal, los parámetros de la herramienta se unieron repetidamente, lo que provocó que el personaje permaneciera en silencio.
-- Cuando no se configura ningún canal, ya no se generará un registro cada 5 segundos.
-- Las tareas pendientes de la sesión se guardarán y la sesión no se perderá al cambiar.
-- El modelo ahora puede leer archivos de su elección.
-- Se pueden pegar secciones grandes en archivos; Los álbumes de fotos admiten la selección por lotes.
+- 收藏支持多选批量
+- 主动消息以前可能一条都不发
+- 备份漏了一种数据类型；角色关系补上还原
+- 余额不足（402）会正确说成余额问题，不再当成网络错误反复重试
+- 批量翻译会遵守术语表和自定义风格，跟单条翻译口径一致
+- 语音的错误提示统一了，以前一个功能四种说法
+- 群聊里工具参数被重复拼接，导致角色不吭声
+- 没配渠道时不再每 5 秒打一条日志
+- 会话待办会存下来，切会话不会丢
+- 模型能读你亲手选的文件了
+- 大段粘贴可以变成文件；相册支持批量选
 
-### espera animación
+### 等待动画
 
-El indicador de espera se sustituye por un gráfico deformable de color tinta (hoja → estrella → anillo), todas las posiciones tienen el mismo aspecto.
+等待时的指示器换成一个会变形的墨色图形（叶 → 星 → 环），各个位置长得一样。
 
-El primer mensaje de una nueva conversación tiene una animación de envío.
+新会话第一条消息有发送动效。
 
-### Estabilidad
+### 稳定性
 
-- Las capturas de pantalla accesibles siempre han fallado antes, pero ahora funcionan.
-- Shizuku Tomar capturas de pantalla solía colgar el servicio en segundo plano, pero ahora no es así.
-- Termux El canal solía ser "inutilizable incluso si estaba autorizado", pero ahora puede devolver resultados.
-- Los informes de fallos recibirán un botón y se enviarán a una dirección fija; si no se puede enviar, se enviará automáticamente por correo electrónico.
-- Una vez completada la inspección estándar del código y solucionados los problemas existentes, la inspección realmente lo bloqueará.
+- 无障碍截图以前一直失败，现在能用了
+- Shizuku 截图以前会把后台服务搞挂，现在不会
+- Termux 通道以前「授权了也用不了」，现在能返回结果
+- 崩溃上报收成一个按钮，发到固定地址；发不出去会自动改用邮件
+- 代码规范检查修完了存量问题，检查真的会拦了
 
 ---
 

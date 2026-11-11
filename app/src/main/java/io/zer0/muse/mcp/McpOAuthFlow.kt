@@ -17,34 +17,34 @@ import java.security.SecureRandom
 import java.util.concurrent.TimeUnit
 
 /**
- * Phase 10.4 (M3): MCP OAuth 2.1 PKCE Implementación de procesos.
+ * Phase 10.4 (M3): MCP OAuth 2.1 PKCE 流程实现。
  *
- * Implementar el proceso del código de autorización OAuth 2.1 + PKCE(RFC 7636),Cumplir con los requisitos de autorización de la especificación MCP.:
+ * 实现 OAuth 2.1 授权码流程 + PKCE(RFC 7636),符合 MCP 规范的 Authorization 要求:
  *
- * 1. [generatePkcePair]: generar code_verifier + code_challenge(S256)
- * 2. [buildAuthorizationUrl]: Autorización de construcción URL(Abra el navegador con Intent.ACTION_VIEW desde la interfaz de usuario)
- * 3. [exchangeCodeForToken]: Reemplazar con código de autorización + code_verifier access_token
- * 4. [refreshAccessToken]: Renovar con refresco_token access_token
+ * 1. [generatePkcePair]: 生成 code_verifier + code_challenge(S256)
+ * 2. [buildAuthorizationUrl]: 构造授权 URL(由 UI 用 Intent.ACTION_VIEW 打开浏览器)
+ * 3. [exchangeCodeForToken]: 用授权码 + code_verifier 换 access_token
+ * 4. [refreshAccessToken]: 用 refresh_token 续期 access_token
  *
- * PKCE algoritmo(RFC 7636 §4.2):
- * - code_verifier: 43-128 personaje,conjunto de caracteres [A-Z][a-z][0-9]-._~
- * - code_challenge = BASE64URL(SHA256(code_verifier)),eliminar = relleno
+ * PKCE 算法(RFC 7636 §4.2):
+ * - code_verifier: 43-128 字符,字符集 [A-Z][a-z][0-9]-._~
+ * - code_challenge = BASE64URL(SHA256(code_verifier)),去掉 = 填充
  * - code_challenge_method = "S256"
  *
- * Modelo de roscado:Todas las IO de la red en Dispatchers.IO.
+ * 线程模型:所有网络 IO 在 Dispatchers.IO。
  *
- * Escrito de forma independiente(prensa RFC 7636 + RFC 6749 + MCP normativo),Apache 2.0.
+ * 独立编写(按 RFC 7636 + RFC 6749 + MCP 规范),Apache 2.0。
  */
 object McpOAuthFlow {
 
     private const val TAG = "McpOAuthFlow"
-    private const val VERIFIER_LENGTH = 64 // RFC 7636 Recomendado 43-128,Toma el valor medio 64
+    private const val VERIFIER_LENGTH = 64 // RFC 7636 推荐 43-128,取中间值 64
     private val VERIFIER_CHARS: CharArray = (
         ('A'..'Z').toList() + ('a'..'z').toList() + ('0'..'9').toList() +
             listOf('-', '.', '_', '~')
         ).toCharArray()
 
-    /** token para intercambio OkHttp client(breve tiempo de espera,OAuth Los procesos no deben bloquearse durante largos períodos de tiempo.). */
+    /** token 交换用的 OkHttp client(短超时,OAuth 流程不应长时间阻塞)。 */
     private val httpClient: OkHttpClient by lazy {
         io.zer0.ai.core.ProxyProvider.applyTo(OkHttpClient.Builder())
             .connectTimeout(15, TimeUnit.SECONDS)
@@ -53,11 +53,11 @@ object McpOAuthFlow {
     }
 
     /**
-     * PKCE Par de códigos de verificación.
+     * PKCE 验证码对。
      *
-     * @param verifier code_verifier(valor original,token Enviado durante el intercambio)
-     * @param challenge code_challenge(SHA256 + BASE64URL,Enviar URL de autorización)
-     * @param state CSRF Proteger cadena aleatoria(Verificación al devolver la llamada)
+     * @param verifier code_verifier(原值,token 交换时发送)
+     * @param challenge code_challenge(SHA256 + BASE64URL,授权 URL 里发送)
+     * @param state CSRF 防护随机串(回调时校验)
      */
     data class PkcePair(
         val verifier: String,
@@ -66,7 +66,7 @@ object McpOAuthFlow {
     )
 
     /**
-     * Token respuesta del punto final(Estándar OAuth 2.0 token response).
+     * Token 端点响应(标准 OAuth 2.0 token response)。
      */
     @Serializable
     private data class TokenResponse(
@@ -79,26 +79,26 @@ object McpOAuthFlow {
         val error_description: String? = null,
     )
 
-    /** Generar par de códigos de verificación PKCE(code_verifier + code_challenge + state). */
+    /** 生成 PKCE 验证码对(code_verifier + code_challenge + state)。 */
     fun generatePkcePair(): PkcePair {
         val verifier = generateCodeVerifier()
         val challenge = computeCodeChallenge(verifier)
         val state = generateRandomString(32)
-        // L-MCP5: Desensibilización en el diario state,Sólo se registran los primeros 4 dígitos
+        // L-MCP5: 日志中脱敏 state,仅记录前 4 位
         Logger.d(TAG, "PKCE pair generated: verifier length=${verifier.length}, state=${state.take(4)}***")
         return PkcePair(verifier, challenge, state)
     }
 
     /**
-     * Autorización de construcción URL(Abra el navegador con Intent.ACTION_VIEW desde la interfaz de usuario).
+     * 构造授权 URL(由 UI 用 Intent.ACTION_VIEW 打开浏览器)。
      *
-     * El orden de los parámetros sigue la especificación OAuth 2.1,contiene:
+     * 参数顺序遵循 OAuth 2.1 规范,包含:
      * - response_type=code
      * - client_id
      * - redirect_uri
      * - code_challenge + code_challenge_method=S256
-     * - state(CSRF protección)
-     * - scope(Opcional)
+     * - state(CSRF 防护)
+     * - scope(可选)
      */
     fun buildAuthorizationUrl(config: McpOAuthConfig, pkce: PkcePair): String {
         val params = buildList {
@@ -111,38 +111,38 @@ object McpOAuthFlow {
             if (config.scopes.isNotBlank()) add("scope" to config.scopes)
         }
         val query = params.joinToString("&") { (k, v) -> "$k=${urlEncode(v)}" }
-        // El primer parámetro utiliza ? comienzo(Si se incluye el punto final ?,usar & conectar)
+        // 第一个参数用 ? 开头(若 endpoint 已含 ?,用 & 衔接)
         return buildString {
             append(config.authorizationEndpoint.trimEnd('?', '&'))
             append(if (config.authorizationEndpoint.contains("?")) "&" else "?")
             append(query)
         }.also {
-            // L-MCP5: Parámetros de estado insensibilizado en registros,Sólo se registran los primeros 4 dígitos
+            // L-MCP5: 日志中脱敏 state 参数,仅记录前 4 位
             val maskedUrl = it.replace("state=${pkce.state}", "state=${pkce.state.take(4)}***")
             Logger.d(TAG, "Authorization URL: $maskedUrl")
         }
     }
 
     /**
-     * Cambie el código de autorización por access_token.
+     * 用授权码换 access_token。
      *
-     * Enviar como aplicación POST/x-www-form-urlencoded:
+     * 以 POST application/x-www-form-urlencoded 方式发送:
      * - grant_type=authorization_code
      * - code=...
-     * - redirect_uri=...(Debe ser consistente con la solicitud de autorización.)
+     * - redirect_uri=...(必须与授权请求一致)
      * - client_id=...
-     * - code_verifier=...(PKCE verificar)
+     * - code_verifier=...(PKCE 校验)
      *
-     * @return Regresar exitosamente [McpTokenInfo],Retorno del fracaso null(error registrado)
+     * @return 成功返回 [McpTokenInfo],失败返回 null(error 已记录日志)
      */
     suspend fun exchangeCodeForToken(config: McpOAuthConfig, code: String, verifier: String): McpTokenInfo? = withContext(Dispatchers.IO) {
         if (config.tokenEndpoint.isBlank()) {
             Logger.w(TAG, "tokenEndpoint is blank, cannot exchange code")
             return@withContext null
         }
-        // M-OAUTH1: Verificar el uso del tokenEndpoint HTTPS,Evitar la transmisión de texto claro de tokens
+        // M-OAUTH1: 校验 tokenEndpoint 使用 HTTPS,防止 token 明文传输
         if (!config.tokenEndpoint.startsWith("https://")) {
-            Logger.w(TAG, "tokenEndpoint No HTTPS,intercambio de basura token: ${config.tokenEndpoint}")
+            Logger.w(TAG, "tokenEndpoint 不是 HTTPS,拒绝交换 token: ${config.tokenEndpoint}")
             return@withContext null
         }
         val form = FormBody.Builder()
@@ -174,23 +174,23 @@ object McpOAuthFlow {
     }
 
     /**
-     * Renovar access_token con refresco_token.
+     * 用 refresh_token 续期 access_token。
      *
-     * Enviar como aplicación POST/x-www-form-urlencoded:
+     * 以 POST application/x-www-form-urlencoded 方式发送:
      * - grant_type=refresh_token
      * - refresh_token=...
      * - client_id=...
      *
-     * @return Devolver nuevo exitosamente [McpTokenInfo](refresh_token puede permanecer sin cambios,Mantener el valor anterior),Retorno del fracaso null
+     * @return 成功返回新的 [McpTokenInfo](refresh_token 可能不变,沿用旧值),失败返回 null
      */
     suspend fun refreshAccessToken(config: McpOAuthConfig, refreshToken: String): McpTokenInfo? = withContext(Dispatchers.IO) {
         if (config.tokenEndpoint.isBlank()) {
             Logger.w(TAG, "tokenEndpoint is blank, cannot refresh")
             return@withContext null
         }
-        // M-OAUTH1: Verificar el uso del tokenEndpoint HTTPS,Evitar la transmisión de texto claro de tokens
+        // M-OAUTH1: 校验 tokenEndpoint 使用 HTTPS,防止 token 明文传输
         if (!config.tokenEndpoint.startsWith("https://")) {
-            Logger.w(TAG, "tokenEndpoint No HTTPS,rechazar refresh token: ${config.tokenEndpoint}")
+            Logger.w(TAG, "tokenEndpoint 不是 HTTPS,拒绝 refresh token: ${config.tokenEndpoint}")
             return@withContext null
         }
         val form = FormBody.Builder()
@@ -212,7 +212,7 @@ object McpOAuthFlow {
                     Logger.w(TAG, "Token refresh failed: HTTP ${resp.code}")
                     return@resultOf null
                 }
-                // refresh La respuesta no puede contener información nueva. refresh_token,Mantén el viejo;server Utilice uno nuevo al rotar el refresco_token
+                // refresh 响应可能不含新 refresh_token,沿用旧的;server 轮换 refresh_token 时用新的
                 parseTokenResponse(body)?.let { token ->
                     token.copy(
                         refreshToken = token.refreshToken.ifBlank { refreshToken },
@@ -225,17 +225,17 @@ object McpOAuthFlow {
     }
 
     /**
-     * Analizar el parámetro de consulta de la devolución de llamada de redirección_uri,Extraer código y estado.
+     * 解析 redirect_uri 回调的 query 参数,提取 code 和 state。
      *
-     * La devolución de llamada parece:io.zer0.muse://oauth/callback?code=xxx&state=yyy
-     * en el fracaso(Como por ejemplo error=access_denied)Devuelve nulo.
+     * 回调形如:io.zer0.muse://oauth/callback?code=xxx&state=yyy
+     * 失败时(如 error=access_denied)返回 null。
      */
     fun parseRedirectCallback(redirectUri: String, expectedPrefix: String? = null): Pair<String, String>? {
-        // L-OAUTH1: Prefijo de URI de devolución de llamada de validación(Eliminar la parte de consulta),Evite devoluciones de llamadas maliciosas
+        // L-OAUTH1: 校验回调 URI 前缀(去掉 query 部分),防止恶意回调
         if (expectedPrefix != null) {
             val prefix = expectedPrefix.substringBefore('?')
             if (!redirectUri.startsWith(prefix)) {
-                Logger.w(TAG, "OAuth El prefijo del URI de devolución de llamada no coincide: expected=$prefix, got=${redirectUri.substringBefore('?')}")
+                Logger.w(TAG, "OAuth 回调 URI 前缀不匹配: expected=$prefix, got=${redirectUri.substringBefore('?')}")
                 return null
             }
         }
@@ -246,7 +246,7 @@ object McpOAuthFlow {
             if (idx < 0) null else it.substring(0, idx) to urlDecode(it.substring(idx + 1))
         }.toMap()
 
-        // OAuth 2.1 respuesta de error:error=...&error_description=...
+        // OAuth 2.1 错误响应:error=...&error_description=...
         params["error"]?.let { err ->
             Logger.w(TAG, "OAuth callback error: $err, desc=${params["error_description"]}")
             return null
@@ -257,9 +257,9 @@ object McpOAuthFlow {
         return code to state
     }
 
-    // ── herramientas internas ──────────────────────────────────────────────────────────────
+    // ── 内部工具 ──────────────────────────────────────────────────────────────
 
-    /** generar code_verifier(43-128 personaje,[A-Z][a-z][0-9]-._~). */
+    /** 生成 code_verifier(43-128 字符,[A-Z][a-z][0-9]-._~)。 */
     private fun generateCodeVerifier(): String {
         val random = SecureRandom()
         val sb = StringBuilder(VERIFIER_LENGTH)
@@ -270,15 +270,15 @@ object McpOAuthFlow {
     }
 
     /**
-     * calcular code_challenge = BASE64URL(SHA256(verifier)).
-     * BASE64URL: Estándar BASE64 + → -,/ → _,eliminar = Llenar.
+     * 计算 code_challenge = BASE64URL(SHA256(verifier))。
+     * BASE64URL: 标准 BASE64 的 + → -,/ → _,去掉 = 填充。
      */
     private fun computeCodeChallenge(verifier: String): String {
         val digest = MessageDigest.getInstance("SHA-256").digest(verifier.toByteArray(Charsets.UTF_8))
         return Base64.encodeToString(digest, Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP)
     }
 
-    /** Generar cadena aleatoria(state / nonce usar). */
+    /** 生成随机字符串(state / nonce 用)。 */
     private fun generateRandomString(length: Int): String {
         val random = SecureRandom()
         val sb = StringBuilder(length)
@@ -288,16 +288,16 @@ object McpOAuthFlow {
         return sb.toString()
     }
 
-    /** El análisis de la respuesta JSON del punto final del token es [McpTokenInfo]. */
+    /** 解析 token 端点 JSON 响应为 [McpTokenInfo]。 */
     private fun parseTokenResponse(body: String): McpTokenInfo? {
         val resp = runCatching {
             AppJson.decodeFromString(TokenResponse.serializer(), body)
         }.getOrNull() ?: run {
-            // Algunos servidores devuelven datos no estándar JSON,Intenta usar JsonObject para analizar
+            // 某些 server 返回非标 JSON,尝试用 JsonObject 兜底解析
             tryParseLooseTokenResponse(body)
         }
         if (resp == null) {
-            // v1.114 seguro:El cuerpo que no se pudo analizar puede contener credenciales,Truncar los primeros 200 caracteres;Logger.w automáticamente sanitizePii
+            // v1.114 安全:解析失败的 body 可能含凭据,截断前 200 字符;Logger.w 会自动 sanitizePii
             Logger.w(TAG, "Failed to parse token response (body omitted for security)")
             return null
         }
@@ -322,7 +322,7 @@ object McpOAuthFlow {
         )
     }
 
-    /** Análisis ascendente:Algunos nombres de campos del servidor no están estandarizados(Como token de acceso en lugar de access_token). */
+    /** 兜底解析:某些 server 字段名不规范(如 access-token 而非 access_token)。 */
     private fun tryParseLooseTokenResponse(body: String): TokenResponse? {
         val obj = runCatching {
             AppJson.decodeFromString(JsonObject.serializer(), body)
@@ -340,9 +340,9 @@ object McpOAuthFlow {
         )
     }
 
-    /** URL codificación(usar java.net.URLEncoder,UTF-8). */
+    /** URL 编码(用 java.net.URLEncoder,UTF-8)。 */
     private fun urlEncode(s: String): String = java.net.URLEncoder.encode(s, "UTF-8")
 
-    /** URL Descodificar. */
+    /** URL 解码。 */
     private fun urlDecode(s: String): String = java.net.URLDecoder.decode(s, "UTF-8")
 }

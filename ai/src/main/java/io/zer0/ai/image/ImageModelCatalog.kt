@@ -1,69 +1,69 @@
 package io.zer0.ai.image
 
 /**
- * v0.36: Metadatos del modelo de dibujo.
+ * v0.36: 绘图模型元数据。
  *
- * Describe el tamaño, la calidad, el estilo, el dibujo y las capacidades de dibujo admitidas por un modelo de dibujo.,
- * Se utiliza para el filtrado de opciones de la interfaz de usuario y la verificación de parámetros de la capa de servicio.
+ * 描述一个绘图模型支持的尺寸、质量、风格、图生图等能力,
+ * 用于 UI 选项过滤与服务层参数校验。
  */
 data class ImageModel(
-    /** modelo ID,Como por ejemplo dall-e-2 / dall-e-3 / gpt-image-1. */
+    /** 模型 ID,如 dall-e-2 / dall-e-3 / gpt-image-1。 */
     val id: String,
-    /** Nombre para mostrar. */
+    /** 显示名称。 */
     val displayName: String,
-    /** proveedor,Como por ejemplo OpenAI / DashScope / MiniMax. */
+    /** 提供商,如 OpenAI / DashScope / MiniMax。 */
     val provider: String,
-    /** Lista de tamaños admitidos. */
+    /** 支持的尺寸列表。 */
     val supportedSizes: List<String>,
-    /** Opciones de calidad admitidas. */
+    /** 支持的质量选项。 */
     val supportedQualities: List<String> = emptyList(),
-    /** Opciones de estilo admitidas. */
+    /** 支持的风格选项。 */
     val supportedStyles: List<String> = emptyList(),
-    /** Ya sea para apoyar a Tushengtu(/images/edits). */
+    /** 是否支持图生图(/images/edits)。 */
     val supportsReferenceImage: Boolean = false,
-    /** Número máximo de desoves n. */
+    /** 最大生成数量 n。 */
     val maxN: Int = 1,
-    /** Tamaño predeterminado. */
+    /** 默认尺寸。 */
     val defaultSize: String = supportedSizes.firstOrNull() ?: "1024x1024",
-    /** Calidad predeterminada. */
+    /** 默认质量。 */
     val defaultQuality: String = supportedQualities.firstOrNull() ?: "",
-    /** Estilo predeterminado. */
+    /** 默认风格。 */
     val defaultStyle: String = supportedStyles.firstOrNull() ?: "",
-    /** Ya sea para apoyar response_format=b64_json. */
+    /** 是否支持 response_format=b64_json。 */
     val supportsB64Json: Boolean = true,
     /**
-     * H-IMG2: Si se admite el parámetro Response_format.
-     * dall-e-2 / dall-e-3 = true;gpt-image-1 = false(Este parámetro será rechazado por el servidor.).
+     * H-IMG2: 是否支持 response_format 参数。
+     * dall-e-2 / dall-e-3 = true;gpt-image-1 = false(该参数会被服务端拒绝)。
      */
     val supportsResponseFormatParam: Boolean = true,
     /**
-     * M-IMG8: Imagen de salida tipo MIME(Usado para la ortografía b64_json data URI).
-     * La salida actual de los modelos de dibujo de la serie OpenAI es PNG.
+     * M-IMG8: 输出图片 MIME 类型(用于 b64_json 拼 data URI)。
+     * 当前 OpenAI 系列绘图模型输出均为 PNG。
      */
     val outputMime: String = "image/png",
 )
 
 /**
- * v0.36: Directorio de modelo de dibujo preestablecido.
+ * v0.36: 预设绘图模型目录。
  *
- * Mantener una lista de modelos de dibujo comúnmente utilizados.,UI Mostrar opciones en consecuencia,
- * Evite que los usuarios ingresen manualmente los ID de los modelos.
+ * 维护一份常用绘图模型清单,UI 据此展示可选项,
+ * 避免用户手动输入模型 ID。
  */
 object ImageModelCatalog {
     /**
-     * v1.136: ID de modelo de dibujo predeterminado.
+     * v1.136: 默认绘图模型 ID。
      *
-     * Cuando la persona que llama no pasa un modelo y ProviderSpecificConfig.OpenAI.imageModel no está configurado,
-     * Recurrir a este modelo,Asegúrese de que el cuerpo de la solicitud siempre lleve el campo modelo.
+     * 当调用方未传 model、且 ProviderSpecificConfig.OpenAI.imageModel 也未配置时,
+     * 回退到此模型,保证请求体始终携带 model 字段。
      */
     const val DEFAULT_MODEL_ID = "dall-e-3"
 
-    /** Metadatos del modelo de dibujo predeterminado. */
+    /** 默认绘图模型元数据。 */
     fun defaultModel(): ImageModel = findById(DEFAULT_MODEL_ID) ?: models.first()
 
-    // Nota:wanx-v1(Tongyi Wanxiang)y minimax-image-01 han sido eliminados —
-    // Los dos protocolos son incompatibles. OpenAI /images/generations,Requiere adaptador independiente.
-    // v1.0.18: agnes-image-2.1-flash Acceso AgnesImageProvider,Ya no tomaremos el camino de compatibilidad con OpenAI.
+    // 注:wanx-v1(通义万相)与 minimax-image-01 已移除 —
+    // 二者协议不兼容 OpenAI /images/generations,需独立 Adapter。
+    // v1.0.18: agnes-image-2.1-flash 接入 AgnesImageProvider,不再走 OpenAI 兼容路径。
     private val models = listOf(
         ImageModel(
             id = "dall-e-2",
@@ -76,7 +76,7 @@ object ImageModelCatalog {
             maxN = 10,
             supportsB64Json = true,
             supportsResponseFormatParam = true,
-            // L-IMG3: El tamaño predeterminado cambió a 1024x1024(Originalmente, volvió al primer 256x256, que era demasiado pequeño.)
+            // L-IMG3: 默认尺寸改为 1024x1024(原先回退到首个 256x256 偏小)
             defaultSize = "1024x1024",
         ),
         ImageModel(
@@ -103,17 +103,17 @@ object ImageModelCatalog {
             ),
             supportedQualities = listOf("high", "medium", "low", "auto"),
             supportedStyles = emptyList(),
-            // M-IMG4: gpt-image-1 Imágenes de referencia de soporte(/images/edits)
+            // M-IMG4: gpt-image-1 支持参考图(/images/edits)
             supportsReferenceImage = true,
             maxN = 1,
             supportsB64Json = true,
-            // H-IMG2: gpt-image-1 El parámetro Response_Format no es compatible.
+            // H-IMG2: gpt-image-1 不支持 response_format 参数
             supportsResponseFormatParam = false,
         ),
         ImageModel(
-            // v1.0.18: Agnes AI modelo de imagen,ir AgnesImageProvider(Adaptador independiente,No compatible con OpenAI).
-            // Dimensiones expresadas como proporciones.(AgnesImageProvider.SIZE_RATIOS se asignará a valores de píxeles);
-            // Imágenes de referencia de soporte(Pase en extra_body.image);Retorno sincrónico;B64_json predeterminado.
+            // v1.0.18: Agnes AI 图片模型,走 AgnesImageProvider(独立适配器,非 OpenAI 兼容)。
+            // 尺寸用比例表示(AgnesImageProvider.SIZE_RATIOS 会映射为像素值);
+            // 支持参考图(通过 extra_body.image 传入);同步返回;默认 b64_json。
             id = "agnes-image-2.1-flash",
             displayName = "Agnes Image 2.1 Flash",
             provider = "Agnes",
@@ -124,15 +124,15 @@ object ImageModelCatalog {
             maxN = 1,
             supportsB64Json = true,
             supportsResponseFormatParam = true,
-            // Predeterminado 3:2
+            // 默认 3:2
             defaultSize = "3:2",
-            // Agnes salida PNG
+            // Agnes 输出 PNG
             outputMime = "image/png",
         ),
         ImageModel(
-            // v1.0.18 Seguimiento (B14-2): Gemini 2.5 Flash Image(Nano Banana),
-            // ir GeminiImageProvider(Generar contenido nativo + respuestaModalidades salida de imagen).
-            // Imágenes de referencia de soporte(entrada como parte inlineData);Retorno sincrónico;response_format El parámetro no es aplicable.
+            // v1.0.18 后续 (B14-2): Gemini 2.5 Flash Image(Nano Banana),
+            // 走 GeminiImageProvider(原生 generateContent + responseModalities 图片输出)。
+            // 支持参考图(作为 inlineData part 输入);同步返回;response_format 参数不适用。
             id = "gemini-2.5-flash-image",
             displayName = "Gemini 2.5 Flash Image",
             provider = "Google",
@@ -147,26 +147,26 @@ object ImageModelCatalog {
         ),
     )
 
-    /** Todos los modelos preestablecidos. */
+    /** 所有预设模型。 */
     fun all(): List<ImageModel> = models
 
-    /** Encuentra modelos por ID. */
+    /** 按 ID 查找模型。 */
     fun findById(id: String?): ImageModel? = models.find { it.id == id }
 
-    /** Determine si hay un ID de modelo en el directorio. */
+    /** 判断某个模型 ID 是否在目录中。 */
     fun contains(id: String?): Boolean = id != null && models.any { it.id == id }
 
-    /** Obtener el tamaño predeterminado del modelo.;Si no lo encuentra, recurra. */
+    /** 取模型默认尺寸;找不到则回退。 */
     fun defaultSizeFor(id: String?, fallback: String = "1024x1024"): String {
         return findById(id)?.defaultSize ?: fallback
     }
 
     /**
-     * v0.36-fix: Analizar los metadatos del modelo de dibujo.
+     * v0.36-fix: 解析绘图模型元数据。
      *
-     * Para modelos conocidos en el catálogo.(Como por ejemplo dall-e-3 / gpt-image-1)Devolver datos del directorio;
-     * Para modelos definidos por el usuario o no recopilados,Devuelve un conjunto de valores predeterminados relajados,
-     * para que aún pueda mostrar el tamaño normal/calidad/opciones de estilo y vaya a Image API.
+     * 对于目录中的已知模型(如 dall-e-3 / gpt-image-1)返回目录数据;
+     * 对于用户自定义或未收录的模型,返回一组宽松默认值,
+     * 使其仍能正常展示尺寸/质量/风格选项并走 Image API。
      */
     fun resolveById(id: String?): ImageModel? {
         if (id.isNullOrBlank()) return null
@@ -185,7 +185,7 @@ object ImageModelCatalog {
             supportedQualities = listOf("standard", "hd", "high", "medium", "low", "auto"),
             supportedStyles = listOf("vivid", "natural"),
             supportsReferenceImage = false,
-            // L-IMG10: El modelo desconocido maxN toma un valor conservador 1(Originalmente 10 excedentes de pago por evento fáciles de activar)
+            // L-IMG10: 未知模型 maxN 取保守值 1(原先 10 易触发按次计费超额)
             maxN = 1,
             supportsB64Json = true,
             supportsResponseFormatParam = true,

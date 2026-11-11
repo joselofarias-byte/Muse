@@ -11,17 +11,17 @@ import java.security.spec.X509EncodedKeySpec
 import java.util.Base64
 
 /**
- * Autoprueba incorporada para constantes del directorio oficial.
+ * 内置官方目录常量的自检。
  *
- * El síntoma de valores integrados escritos incorrectamente es "se rechazan todos los directorios del cliente" y este tipo de error no se puede ver durante la compilación.
- * Por tanto, aquí se fija la legalidad, forma canónica y huella digital de la clave pública: cualquier modificación manual debe hacer que esta prueba falle.
+ * 内置值写错的表现是「用户端目录一律被拒绝」，而这类错误在编译期看不出来，
+ * 因此这里把公钥的合法性、规范形式与指纹都固定下来：任何手改都必须让本测试失败。
  */
 class PluginMarketDefaultsTest {
 
     @Test
     fun builtInCatalogUrlIsHttpsOnOfficialHost() {
         val url = PluginMarketDefaults.CATALOG_URL
-        assertTrue("debe ser https", url.startsWith("https://"))
+        assertTrue("必须是 https", url.startsWith("https://"))
         assertEquals("https://museai.ltd/muse-market/signed-catalog.json", url)
     }
 
@@ -36,14 +36,14 @@ class PluginMarketDefaultsTest {
     @Test
     fun builtInRootKeyIsCanonicalP256PublicKeyWithExpectedFingerprint() {
         val encoded = PluginMarketDefaults.CATALOG_ROOT_PUBLIC_KEY
-        // App escribir/Se requiere Canonical Base64 al comparar raíces de confianza; los valores integrados ya deben estar en forma canónica; de lo contrario, la canonicalización produce cadenas diferentes.
+        // App 写入/比较信任根时要求标准 Base64；内置值必须已经是规范形式，否则规范化解出不同字符串。
         val canonical = PluginSecurityGate.canonicalPublicKey(encoded).getOrThrow()
-        assertEquals("La clave pública incorporada debe ser un estándar canónico. Base64", encoded, canonical)
+        assertEquals("内置公钥必须是规范的标准 Base64", encoded, canonical)
 
         val der = Base64.getDecoder().decode(canonical)
         val key = KeyFactory.getInstance("EC").generatePublic(X509EncodedKeySpec(der))
-        val ecKey = key as? ECPublicKey ?: error("La clave pública incorporada no es una clave pública EC")
-        assertEquals("debe ser P-256", 256, ecKey.params.curve.field.fieldSize)
+        val ecKey = key as? ECPublicKey ?: error("内置公钥不是 EC 公钥")
+        assertEquals("必须是 P-256", 256, ecKey.params.curve.field.fieldSize)
 
         val fingerprint = MessageDigest.getInstance("SHA-256")
             .digest(der)

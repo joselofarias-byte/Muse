@@ -62,7 +62,7 @@
     <string name="memory_summary_title">Sessão %1$s</string>
 
     <!-- v6: Error trace labels -->
-    <string name="memory_error_trace_header">== Erro de memória do Muse ==</string>
+    <string name="memory_error_trace_header">== Erro de memória do Musa ==</string>
     <string name="memory_error_trace_time">Tempo:</string>
     <string name="memory_error_trace_exception">Exceção:</string>
     <string name="memory_error_trace_message">Mensagem:</string>
@@ -93,7 +93,7 @@
     <string name="memory_stats_top_sessions">Sessões mais ativas</string>
     <string name="memory_stats_session_count">%1$d entradas</string>
     <string name="memory_stats_trend_30_days">Tendência dos últimos 30 dias</string>
-    <!-- Correcciones en la interfaz (i18n-3.x): Pestaña de memoria de chat grupal + filtro de línea de tiempo i18n(Copiar temporalmente chino,Traducción posterior) -->
+    <!-- 前端修复 (i18n-3.x): 群聊记忆 Tab + 时间轴筛选 i18n(临时复制中文,后续补译) -->
     <string name="memory_timeline_filter_all">Todos</string>
     <string name="memory_timeline_filter_fact">Fatos</string>
     <string name="memory_timeline_filter_summary">Resumo</string>
@@ -119,7 +119,7 @@
     <string name="memory_menu_delete">Excluir</string>
     <string name="memory_center_fact_count">fatos</string>
     <string name="memory_center_empty_title">Ainda não há memórias</string>
-    <string name="memory_center_empty_subtitle">Continue conversando com Muse ou diga “lembre disso” para adicionar um fato.</string>
+    <string name="memory_center_empty_subtitle">Continue conversando com Musa ou diga “lembre disso” para adicionar um fato.</string>
     <string name="memory_center_open_facts">Abrir biblioteca de fatos</string>
     <string name="memory_center_tab_stream">Fluxo de memória</string>
     <string name="memory_center_tab_constellation">Constelação</string>
@@ -150,7 +150,10 @@
     <string name="memory_center_filter_time_7">Últimos 7 dias</string>
     <string name="memory_center_filter_time_90">Últimos 90 dias</string>
     <string name="memory_center_filter_time_all">Todo o período</string>
-    <string name="memory_contradictions_dismiss_cd">Confirmar e limpar</string>
+    <string name="memory_contradictions_dismiss_cd">Agora não</string>
+    <string name="memory_contradictions_keep_a">Manter a primeira</string>
+    <string name="memory_contradictions_keep_b">Manter a segunda</string>
+    <string name="memory_evidence_line">Base: %1$s</string>
     <string name="memory_contradictions_title">Memórias contraditórias aguardando confirmação</string>
     <string name="memory_delete_confirm_title">Excluir memória</string>
     <string name="memory_menu_multi_select">Selecionar vários</string>
@@ -208,4 +211,5 @@
     <string name="memory_merge_error_generate_failed">Não foi possível mesclar estas memórias</string>
     <string name="memory_merge_error_empty_result">O resultado da mesclagem não pode ficar vazio</string>
     <string name="memory_merge_error_commit_failed">A mesclagem falhou, as memórias não mudaram</string>
+    <string name="memory_space_default_name">Padrão</string>
 </resources>

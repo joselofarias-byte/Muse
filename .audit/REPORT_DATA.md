@@ -1,146 +1,146 @@
-# Informe de revisión de migración/nivel de datos/recuperación de copia de seguridad
+# 数据层 / 备份恢复 / 迁移 审查报告
 
-## Resumen
+## 摘要
 
-Este informe cubre el repositorio de Muse (E:\1Project\Muse\1muse) Enlace completo de la capa de datos:MuseDb v110 Cadena migratoria completa (énfasis v107→v110), exportación de respaldo/Importación (JSON único/NDJSON/copia de seguridad en la nube/punto de recuperación persistente), copia de seguridad automática VACUUM INTO instantánea,memory módulo FactDb v15 / MemoryDb v5,A2A El diálogo con la nueva entrada de Tasker se registra en la base de datos.diagnostic Exportación, persistencia del enlace del complemento y reparación"partial-page fusionar"Límites de paginación similares. Método:Glob/Grep/Read Verifique archivo por archivo, verifique el SQL del objeto de migración y la declaración del esquema de entidad/habitación por versión, y compare con `.audit/DEDUPE_DATA.md` Compare con artículos conocidos globalmente artículo por artículo. Conclusión general:v107→v110 Tres nuevas columnas (knowledge_folders mesa / knowledgeFolderScopesJson / translationsJson / configSnapshotJson) El SQL de migración es coherente con la declaración de entidad y el registro de la cadena de migración está completo, pero**copia de seguridad/Recovery Links tiene dos omisiones sistemáticas en la tabla de carpetas de la base de conocimientos v2.4.6 (NDJSON Falta la rama de importación + faltan campos del punto de recuperación)**;A2A/Tasker Hay fallas en la atribución de sesiones y en el acceso a la puerta de recuperación de las dos nuevas entradas. Sin P0.
-
----
-
-## lista de descubrimiento
-
-### F1. NDJSON Rama de recuperación perdida `knowledge_folders` Todos los datos, y la falla de conciliación B-34 cubre la pérdida (P1, credibilidad: alta)
-
-- Ubicación:app/src/main/java/io/zer0/muse/backup/BackupService.kt:1015-1384(`applyNdJsonStreaming` de `when(type)` distribución),BackupService.kt:988(claro),BackupService.kt:719-724 con 2782 (lado de exportación con meta clave presente)
-- Evidencia:NDJSON Sucursal de importación procesada `knowledgeBase`(:1317),`knowledgeDoc`(:1161),`knowledgeChunk`(:1171),**No `"knowledgeFolder" ->` rama**, y no hay un búfer ni un enjuague de cola correspondientes (:1406-1439 No hay ninguna carpeta de conocimiento en la lista de descarga). Se ejecuta la fase de compensación. `db.knowledgeFolderDao().deleteAll()`(:988). El lado de exportación escribe la línea normalmente (:721-722) e incluido en meta(:588 `"knowledgeFolders"` contar;typeToMetaKey Contiene `"knowledgeFolder" to "knowledgeFolders"` :2782).
-- Amplificadores clave:B-34 Contando la conciliación (:1007-1014 Primero a la derecha `typeToMetaKey` hacer en `actualCounts[key]++`, luego verifique con :1388-1393 `actual == expected`)**Solo cuenta el número de filas y no verifica si los datos están realmente almacenados en la base de datos.**——`knowledgeFolder` las filas se contarían pero `when` Descartada, la reconciliación pasó y la pérdida quedó completamente en silencio.
-- Escenario de impacto: todo listo `applyNdJsonStreaming` camino de recuperación——Exportación e importación de streaming local (`exportStreaming`→`import`,BackupSection.kt:139 Es la única entrada de exportación de la interfaz de usuario), copia de seguridad y recuperación en la nube (`applyCloudBackupData` NDJSON Sucursal:2121-2133),NDJSON recovery point Reversión y recuperación de inicio (:1509-1548,:2496-2542). Una vez completada la recuperación, las nuevas carpetas de la base de conocimientos (incluidas las carpetas vacías y los árboles de carpetas) agregadas en la versión 2.4.6 se borran y no se reconstruyen; las carpetas son"Recuperar unidades de cuarentena"(KnowledgeFolderEntity.kt:17-37), el árbol de alcance de la KB auxiliar muestra un error después de perderse.
-- Sugerencia: en `applyNdJsonStreaming` aumentar `"knowledgeFolder"` rama + buffer + cola de descarga, y cambiado a"Número real de inserciones"en vez de"Número de líneas analizadas"(Al menos agregue una afirmación de número de inserción o una prueba de contrato para el nuevo tipo).
-
-### F2. `buildBackup()`(Ruta JSON única) Falta transmisión `knowledgeFolders`, lo que hace que el punto de recuperación se revierta y vacíe la carpeta de la base de conocimientos (P1, credibilidad: alta)
-
-- Ubicación:app/src/main/java/io/zer0/muse/backup/BackupService.kt:2268(Leer dentro de la transacción `db.knowledgeFolderDao().getAll()`) y :2326-2372(`Backup(...)` llamada al constructor**No transmitido `knowledgeFolders`**, el campo predeterminado `emptyList()`)
-- Evidencia:`DbSnapshot` declarado `knowledgeFolders` campo (:2203) y la asignación es correcta, pero la lista se extrae parcialmente (:2312-2316 área) faltante `val knowledgeFolders = snap.knowledgeFolders`,`Backup(...)` Lista de parámetros reales (sessions/messages/.../fileStores Ninguno de los 40 artículos) `knowledgeFolders = ...`(Compárese: 2365 tienen `knowledgeBases = knowledgeBases`).
-- Escenarios de impacto (dos):
-  1. **recovery point Contaminado (principalmente)**:`applyBackup` Ejecutar antes de importar `val preImportSnapshot = buildBackup()` Escriba un punto de recuperación persistente (:2403,`RestoreStagingStore.writeRecoveryPoint`). Cuando la recuperación falla y retrocede `applyBackupInternal(recovery)`(:2464) será ejecutado `db.knowledgeFolderDao().deleteAll()`(:2622) insertado después `recovery.knowledgeFolders`(:2663, lista vacía)——**Una reversión fallida borrará todas las carpetas de la base de conocimientos del usuario**.
-  2. Exportación local JSON única (`export()` :250-271) el producto carece de este campo; aunque la interfaz de usuario actual solo llama `exportStreaming`(BackupSection.kt:139),`export()` todavía estando `applyBackup` Dependiendo del productor del punto de recuperación, el riesgo lo asume la Ruta 1.
-- Relación con F1: lado de importación JSON único (`applyBackupInternal` :2663) Manejar correctamente KnowledgeFolders, el defecto solo está en exportar/Lado de producción de instantáneas;NDJSON Lo contrario ocurre con el lado (la exportación es correcta, falta la importación). Dos instrucciones fusionadas v2.4.6 cableado en cuatro rutas de respaldo (NDJSON Exportar/NDJSON importar/JSON Exportar/JSON importar) está sólo a la mitad×Medio.
-- Sugerencias:`buildBackup()` pase suplementario `knowledgeFolders = snap.knowledgeFolders`;Añadir uno"Backup Construya una participación real en correspondencia uno a uno con los campos de DbSnapshot"Prueba de contrato de código fuente (el BackupEntityCoverageTest existente solo verifica la existencia de campos y no verifica los parámetros de construcción).
-
-### F3. Copia de seguridad automática VACUUM INTO enlace de instantánea falta biblioteca de asistente secundario `facts_<id>.db`, inconsistente con el calibre de respaldo JSON/NDJSON (P1, credibilidad: alta)
-
-- Ubicación:app/src/main/java/io/zer0/muse/data/stats/AutoBackupHelper.kt:83(`val dbNames = listOf(ENTITY_MUSE_DB, ENTITY_MEMORY_DB, ENTITY_FACTS_DB)`),:262-295(vacuumInto); comparar BackupService.kt:1582-1591 (`listScopedFactDbIds` enumeración `facts_` subbiblioteca de prefijos),:730-744/:2318-2320(NDJSON/La exportación JSON única contiene ScopedFacts)
-- Evidencia: Copias de seguridad automáticas diarias (AutoBackupWorker.kt:55-63 → backupNow) solo se realiza para las tres bibliotecas predeterminadas `VACUUM INTO` embalar; embalar;`restoreFromAutoBackup`(BackupService.kt:1928-2028) también solo reemplaza estos tres archivos. Biblioteca subasistente facts_&lt;assistantId&gt;.db(v8 scope aislamiento,FactDb.kt:25-27;P0-10 Complementar especialmente el sistema de copia de seguridad JSON) no está incluido en la instantánea ni en el alcance de la recuperación y el reemplazo.
-- Escenario de Impacto: Dependencia"Restaurar desde copia de seguridad automática"(BackupSection Recuperación con un clic,BackupSection.kt:464) hacer la reversión completa de la base de datos/Al migrar a un nuevo entorno, la memoria de hechos del subasistente permanece en el estado actual del disco: si se eliminó la subbase de datos anterior/El daño no se puede restaurar; si el usuario espera"restaurar=Volver al tiempo de respaldo", los datos de la subbase de datos violan esta expectativa (el punto temporal está desalineado). Las tres bibliotecas predeterminadas y las bibliotecas sucursales son inconsistentes en el momento de la recuperación, lo que es un problema de coherencia de la instantánea más que de pérdida de archivos.
-- Sugerencias:`AutoBackupHelper.backupNow` enumeración `facts_*.db` También VACUUM INTO en el ZIP (el nombre de la entrada es el nombre del archivo, restaure la existencia y reemplácela presionando el botón lateral), o explícitamente en el documento./UI Declare que la copia de seguridad automática no incluye fragmentos e incluya los fragmentos en la ruta de recuperación única de la copia de seguridad JSON.
-
-### F4. A2A Reutilice ChatViewModel de instancia única a nivel de aplicación para forzar el cambio de sesión global: preferencia de estado, supresión mutua concurrente y sin marca de aislamiento de sesión (P1, credibilidad: alta)
-
-- Ubicación:app/src/main/java/io/zer0/muse/AppChatModule.kt:46-89(`single { ChatViewModel(...) }`, la anotación es clara"Singleton de nivel de aplicación…Todas las páginas comparten la misma instancia.");app/src/main/java/io/zer0/muse/web/a2a/A2aHandler.kt:70-88(`chatViewModel.switchSession(requested)` / `createNewSession` / `updateInput(text); send()`)
-- Evidencia:A2A `SendMessage` Impulsar directamente ChatViewModel compartido:
-  - Especificar sessionId → `switchSession` Forzar el cambio de la sesión actual global (ChatSessionController.kt:540-660 Puede desconectar la transmisión, borrar borradores, borrar el caché de aprobación y publicar/obtener referencia de sesión);
-  - no especificado → `createNewSession`(ChatSessionController.kt:147-206) Crear una nueva sesión de tarea (ninguna `isAgentSession`/`isMiniPhone` marca),A2A Las rondas se mezclan en la lista de sesiones principal del usuario, con el enlace principal/Aislamiento cero de las sesiones del canal;
-  - `handleA2aJsonRpc`(WebServer.kt:648-679) No hay serialización para SendMessage simultáneo y las dos llamadas A2A se llaman entre sí `detachStreaming`/Interrumpir la generación de la otra parte; compartir la misma operación con el usuario de primer plano `currentSessionId`, cuadro de entrada, cola de aprobación.
-- Escenario de impacto: el usuario recibe una solicitud A2A durante una conversación en primer plano → La sesión actual se corta, la transmisión en curso se desconecta y el borrador de entrada se sobrescribe y se envía con texto A2A;A2A Las sesiones descartadas aparecen en la lista de tareas y no se distinguen de las sesiones de usuario; cuando se especifica sessionId, los agentes externos pueden insertar rondas de diálogo en cualquier sesión (incluidas las sesiones de Agente/teléfono pequeño).
-- Sugerencias:A2A Cambie a canales de sesión independientes (como `isAgentSession` una etiqueta privada o una sesión privada nombrada por el prefijo de la persona que llama), o construir una ruta de compilación sin estado de UI para A2A; al menos para `sendMessage` Agregue exclusión mutua y niegue la simultaneidad con la transmisión frontend.
-
-### F5. Tasker Activación de la puerta de escritura de recuperación desplegable: las escrituras dentro de la ventana de recuperación se borran y son absorbidas por la transacción de recuperación (P1, Credibilidad: inferencia media y estática+Código de evidencia directa)
-
-- Ubicación:app/src/main/java/io/zer0/muse/intent/TaskerTriggerReceiver.kt:84-100(`sessionRepo.appendMessage(...)` Directamente al almacén);grep Verifique que el directorio intent/ no contenga ningún `ProcessWriteGate` Cotización
-- Evidencia:AUD-20261006 La serie conecta todos los puntos de escritura de fondo. `ProcessWriteGate.restoring` comprobar——ScheduledTaskRunner.kt:470/509,ProactiveMessageRunner.kt:265/1119,MomentScheduler.kt:90/99,GroupChatScheduler.kt:229/440,ChatStreamCoordinator.kt:373/423,ChannelInbox.kt:426/458 Espere más de 30 puntos de control.Tasker Sí, v2.5.8 agrega un nuevo punto de escritura,`runTrigger` en `appendMessage`(USER + ASSISTANT dos) sin ningún precedente `restoring` comprobar,`SessionRepository.appendMessage`(SessionRepository.kt:716-725) tampoco se comprueba internamente.
-- Escenarios de impacto:JSON/NDJSON Dentro de la gran transacción restaurada (`applyNdJsonStreaming` :955-1440 primero `clearConversationStateForRestore` + `deleteAll` insertar de nuevo)Tasker Llegada del desencadenador: su transacción de escritura independiente se pone en cola y se envía, y posteriormente se borra la escritura del mensaje./Reemplazar anulaciones o reemplazar a nivel de archivo (`restoreFromAutoBackup` close→swap ventana); el resultado es que la ronda de Tasker se pierde silenciosamente o la ventana se escribe mal. Diferencia con el artículo 2 conocido globalmente: el artículo conocido es"Condición de carrera estrecha marcada pero volátil no es mutuamente excluyente", este artículo es una entrada nueva**No se conectó a la puerta en absoluto**(brecha de cobertura, límite no racial).
-- Sugerencias:`runTrigger` antes de la llamada LLM con dos `appendMessage` inspección previa `ProcessWriteGate.restoring`, salta y regresa cuando sea verdadero (mismo modo que otros Runners).
-
-### F6. Tasker Botón de sesión dedicada"Las cadenas de título son iguales"Reutilizar, pertenece a un contrato débil y puede verse afectado accidentalmente por los datos del usuario (P2, credibilidad: alta)
-
-- Ubicación:app/src/main/java/io/zer0/muse/intent/TaskerTriggerReceiver.kt:84-94(`observeSessions().first().firstOrNull { it.title == TASKER_SESSION_TITLE }`)
-- Evidencia: El título de la sesión es un campo libre editable por el usuario (SessionDao.updateTitle :118-119;El primer mensaje de usuario también recibirá automáticamente un nombre según los primeros 20 caracteres del contenido.SessionDao.updatePreviewAndTitle :134-146). Comparando la misma implementación fuente de ScheduledTaskRunner usando persistencia `dedicated_session_id` Columna para atribución (ScheduledTaskEntity.kt:35,ScheduledTaskRunner.kt:472-483),Tasker Este patrón no se reutiliza.
-- Escenario de impacto: el usuario cambia el nombre de cualquier sesión/nombrado automáticamente"Tasker gatillo"→ Tasker Los resultados se adjuntan a la sesión (diafonía); el usuario cambia el nombre de la sesión de Tasker → La próxima vez que se active una nueva sesión con el mismo nombre, el historial se bifurcará; Después de la copia de seguridad y restauración, la coincidencia con el mismo nombre aún se establecerá pero no será la sesión original.`observeTaskSessions`(SessionDao.kt:25-28) no filtra isMiniPhone, la coincidencia puede afectar a pequeñas sesiones telefónicas.
-- Sugerencia: imitar la persistencia dedicada_session_id"Tasker sesión id"(DataStore clave o reutilizar el mecanismo ScheduledTaskEntity), el título es solo para visualización.
-
-### F7. El enlace de paginación del mensaje eliminado en calibre es inconsistente (el mismo defecto en el límite de paginación que la combinación de página parcial reparada, actualmente un defecto latente) (P2, credibilidad: media)
-
-- Ubicación:
-  - app/src/main/java/io/zer0/muse/data/session/MessageDao.kt:86-87(`countBySession` Ninguno `deletedAt IS NULL`)
-  - MessageDao.kt:77-83(`getOlderBySession` Deslizando paginación hacia arriba sin filtrar)
-  - MessageDao.kt:185-186(`getLastBySession` sin filtrado)
-  - Correcta implementación de la comparación:MessageDao.kt:46,:57(`observeRecentBySession`/`getRecentBySession` cinturón uniforme `deletedAt IS NULL`)
-  - Consumidor:ChatMessageController.kt:40-45(`loadMessagesPaged` usar `countBySession` juez `hasMoreHistory`),SessionRepository.kt:651-653(`getOlderMessages`),SessionRepository.kt:1244-1250(`truncateFromInternal` usar `getLastBySession`+`countBySession` Vista previa del recálculo/contar)
-- Evidencia: código base actual**No hay ruta de escritura `messages.deletedAt` establecido en no null**(grep `deletedAt = ` Solo accesos QuickNote/ScheduledTask/softDelete a nivel de sesión; la eliminación a nivel de mensaje se realiza físicamente `deleteMessageRow` :584-608), por lo que no existe una diferencia real entre las tres diferencias de calibre. Pero una vez habilitada la eliminación temporal a nivel de mensaje (las rutas de columna y UI están reservadas),`countBySession` Contener una eliminación suave causará `hasMoreHistory` Falsamente alto,`getOlderBySession` Recuperar filas eliminadas temporalmente y luego eliminarlas `projectMessagesForRead`(MessageProjection.kt:60) filtro → `older.size < pageSize` → `hasMoreHistory = older.size >= messagePageSize`(ChatMessageController.kt:106) error de juicio y rescisión anticipada,**No se puede cargar la historia anterior real.**——En comparación con los modificados en la línea base de deduplicación"partial-page fusionar"isomorfismo.
-- Sugerencia: complete las tres consultas juntas `deletedAt IS NULL`(o comentar explícitamente"La eliminación temporal a nivel de mensaje no está habilitada y es necesario unificar calibre.") y convertir este artículo en un cambio obligatorio en el PR que permita la eliminación temporal a nivel de mensaje.
-
-### F8. par de recuperación de respaldo `scheduled_task_executions` Usar desnudo `@Insert`(ABORT), repetir la fila de identificación revertirá toda la restauración (P2, credibilidad: alta)
-
-- Ubicación:app/src/main/java/io/zer0/muse/backup/BackupService.kt:2638(`db.scheduledTaskExecutionDao().insert(it)`),:1151-1160(NDJSON Las ramas también son una a una. `insert`);ScheduledTaskExecutionDao de `@Insert` Ninguno OnConflictStrategy (ABORTAR por defecto)
-- Evidencia: ConversationEvents en el mismo método usa IGNORE + para verificar el valor de retorno uno por uno (:2651-2656, correspondiente a la línea base de deduplicación"Sala de verificación de recuperación por lotes IGNORAR valor de retorno"), y las ejecuciones no están alineadas con ese paradigma. Edición manual de archivos de respaldo./Los ID de ejecución duplicados generados por errores de fusión o exportación de historial harán que grandes transacciones de MuseDb se agrupen en el medio SQLiteConstraintException → Reversión completa → La recuperación falló (hay un punto de recuperación pero el lado del usuario se comporta como"La recuperación sigue fallando"y sin mensajes de línea específicos).
-- Impacto: El diagnóstico es de baja probabilidad pero el fracaso de la recuperación es costoso; inconsistente con el paradigma de reparación idempotente existente.
-- Sugerencia: cambie IGNORE + verificación de conflictos (mismo paradigma que conversation_events) o elimine la duplicación de la identificación de ejecución en la copia de seguridad antes de restaurar.
-
-### F9. degradar archivo `.bak` Sobrescribe directamente el archivo antiguo: dos destructivos consecutivos solo conservan el último (P2, credibilidad: alta)
-
-- Ubicación:app/src/main/java/io/zer0/muse/data/session/MuseDb.kt:3104-3126(`onDestructiveMigration` en `runCatching { if (bak.exists()) bak.delete() }` después `dbFile.copyTo(bak, overwrite = true)`)
-- Evidencia: nombre de archivo fijo `muse.db.pre-destructive.bak`, cada vez que archives, elimina los antiguos y luego escríbelos.FactDb Se han utilizado implementaciones similares en el lateral. `nextBackupFile` Incremente el número de secuencia para evitar sobrescribir (FactDb.kt:498-508),MuseDb Los lados no están alineados.
-- Escenario de impacto: la versión beta se revierte repetidamente/Cuando hay múltiples rondas destructivas, solo permanece el estado anterior a la última degradación; Los datos destruidos por primera vez no se pueden recuperar.
-- Sugerencia: reutilizar `nextBackupFile` El esquema conserva varios archivos numerados (o al menos nombrados por marca de tiempo).
-
-### F10. A2A `CancelTask` Detiene la compilación actual sin verificar la existencia de la tarea, lo que finaliza la transmisión de la sesión en primer plano del usuario (P2, credibilidad: alta)
-
-- Ubicación:app/src/main/java/io/zer0/muse/web/a2a/A2aHandler.kt:130-139(`fun cancelTask(taskId: String)` directo `chatViewModel.stop()` y regreso CANCELADO)
-- Evidencia:`stop()` Actúa sobre la generación actual del ChatViewModel compartido (misma raíz que F4);`recentTasks` Sin verificación, cualquier cliente que tenga JWT puede activar la detención con cualquier ID de tarea.Web El punto final tiene autenticación JWT (WebServer.kt:613-618), es un riesgo dentro de la autorización, pero no está relacionado con GetTask `TASK_NOT_FOUND` Semántica (:662-667) es inconsistente.
-- Sugerencias:`cancelTask` comprobar primero `recentTasks`, la identificación desconocida devuelve TASK_NOT_FOUND; La identificación conocida solo se detiene si la tarea aún se está ejecutando.
-
-### F11. artifact / Las consultas de la interfaz de usuario, como la navegación por la memoria o los momentos, están completamente cargadas, sin límite de paginación (P2, credibilidad: alta, deuda de desempeño)
-
-- Ubicación:app/src/main/java/io/zer0/muse/data/artifact/ArtifactDao.kt:37-42(`getAll`,`observeAll` importe total);memory/src/main/java/io/zer0/memory/fact/FactDao.kt:34-35(`getAll` importe total),:393-401(`observeBySpace`/`getBySpace` importe total);MomentEntity.kt:125-133 Con TranslateHistoryDao.kt:11,QuickNoteDao.kt:24(sólo `LIMIT :limit` Sin página de continuación desplazada)
-- Evidencia: el enlace del mensaje principal ya tiene una ventana de 50 páginas + paginación de anclaje secuencial (MessageDao.kt:46-83), mientras que el Centro de productos, el Centro de memoria, los Momentos, el Historial de traducción y los Registros rápidos siguen cargando todas las filas a la vez; no hay eliminación temporal en estas tablas, el número de filas aumenta monótonamente con el uso y el primer cuadro de la interfaz de usuario en dispositivos de larga duración se deteriora linealmente con la biblioteca de memoria. con línea base de deduplicación"partial-page fusionar"Conclusión de la auditoría de otros puntos de localización del mismo tipo que el punto de reparación:GroupChatMessageDao Paginación de anclaje (:58) y AuditLogPage tiene más determinación (AuditLogPage.kt:117-130) es correcto, sin errores de límites similares.
-- Sugerencia: para artefacto/memoria/Agregue paginación compensada o de conjunto de claves en Momentos (se puede programar con baja prioridad).
-
-### F12. diagnostic El registro de depuración exportado puede llevar la estructura de la tabla./SQL texto y pila,sanitizePii No sobrescribe la información del esquema (P2, credibilidad: media, hipótesis por verificar)
-
-- Ubicación:app/src/main/java/io/zer0/muse/diagnostic/DiagnosticExporter.kt:65-70(Empaquetado como está `DebugLogStore.exportToFile()`);common/src/main/java/io/zer0/common/Logger.kt:142-153(sanitizePii Solo filtre formatos de credenciales y PII, no nombres de tablas/Lista/SQL);common/Logger.kt:226(throwable El texto completo de la pila está escrito sin sanitizePii)
-- Evidencia: El diagnóstico deriva en afirmaciones de línea roja"No incluye texto del mensaje y API key"(DiagnosticExporter.kt:28). Excepción de base de datos (Room "Migration didn't properly handle",SQLiteException) el mensaje/pila de irá a DebugLogStore(Logger.sink → DebugLogStore.log :81-95), que contiene el nombre de la tabla, el nombre de la columna y el fragmento SQL para crear la tabla; el valor del parámetro de enlace no suele estar en el texto SQL.**No se ha observado la posibilidad de que el cuerpo del mensaje ingrese un texto anormal a través de la ruta de verificación puntual de la caché (como el contenido de la sonda FTS).**, por lo que tiene una clasificación P2.
-- Método de verificación: cree una falla de migración de Room para capturar el contenido de DebugLogStore y verifique si contiene la cadena de esquema; si es necesario, apriete el `messageDao`/`MuseDb` tag La pila se insensibiliza o se trunca a nivel de tabla antes de exportar.
-- Conclusión: no se encontró ninguna base de datos**Valor del parámetro/Texto**Ruta de fuga; la línea roja es"información estructural"La dimensión no declara fronteras. Se recomienda complementar el documento o filtrar.
-
-### F13. GenerationTrace El truncamiento continuo corta el byte a la mitad, lo que puede dar como resultado una primera línea rota de JSONL (P2, credibilidad: alta)
-
-- Ubicación:app/src/main/java/io/zer0/muse/diagnostic/GenerationTrace.kt:180-185(`file.length() > MAX_FILE_BYTES` tiempo `bytes.copyOfRange(bytes.size / 2, ...)` escrito más tarde)
-- Evidencia: el punto de truncamiento es el punto medio del archivo, que se encuentra en el medio de una determinada línea de JSON → Exportado `generation-trace.jsonl` La primera línea es JSON incompleta; el script de análisis fuera de línea debe ser tolerante a fallas línea por línea.
-- Sugerencia: comience a escribir desde la primera nueva línea después del punto de truncamiento.
-
-### F14. Matriz de prueba de migración Ninguna v107→v110 aserción_especial(observación_elemento,P2, credibilidad: alta)
-
-- Ubicación:app/src/test/java/io/zer0/muse/data/session/MuseDbMigrationTest.kt:40(matriz de versiones `availableSchemaVersions() + (55..68) + 74`),:171-230(`migrate105ToLatest` Afirmar solo useGlobalMemory)
-- Evidencia:schema JSON Exportado 107/108/109/110 (app/schemas/.../MuseDb/{107..110}.json existen),105→latest La ruta cubre toda la cadena 105_106..109_110 y la verificación de Habitación cubrirá las columnas que faltan.**Aún no hay lagunas en la precisión**; pero la tabla de carpetas de conocimiento/índice único,translationsJson Valor predeterminado '{}',configSnapshotJson El valor predeterminado NULL no tiene ninguna afirmación explícita,v2.4.6/v2.5.3 La verificación de la sala de dependencia de regresión falló (es decir, la máquina real falló) y quedó expuesta.
-- Recomendación: para 105→110 Aserción de PRAGMA que agrega tres columnas y una tabla (mismo estilo que la prueba especial 68/74/105 existente).
-
-### F15. `restoreFromAutoBackup` La copia de reversión solo copia los archivos de la biblioteca principal, sin -wal/-shm (P2, credibilidad: riesgo teórico bajo)
-
-- Ubicación:app/src/main/java/io/zer0/muse/backup/BackupService.kt:1969-1973(`copyToDir` solo `src.copyTo`),:2049-2053
-- Evidencia: la copia del directorio de reversión está en `db.close()` Luego crea (:1964),SQLite El cierre final de la conexión generalmente realiza automáticamente los puntos de control WAL y el archivo principal debe estar intacto; pero se basa en este comportamiento implícito, si la ROM personaliza SQLite para retener WAL (PERSIST_WAL), la copia revertida pierde fotogramas no fusionados. Verifique que la ruta del archivo FactDb sea explícita `wal_checkpoint(TRUNCATE)` Sidecar de posprocesamiento (FactDb.kt:389-416).
-- Sugerencia: ejecutar en la biblioteca actual antes de revertir la copia `PRAGMA wal_checkpoint(TRUNCATE)`, alineado con el archivo FactDb.
+本报告覆盖 Muse 仓库（E:\1Project\Muse\1muse）数据层全链路：MuseDb v110 全迁移链（重点 v107→v110）、备份导出/导入（单 JSON / NDJSON / 云备份 / 持久化 recovery point）、自动备份 VACUUM INTO 快照、memory 模块 FactDb v15 / MemoryDb v5、A2A 与 Tasker 新入口的对话落库归属、diagnostic 导出、插件 Hook 持久化、以及与已修"partial-page 合并"同类的分页边界。方法：Glob/Grep/Read 逐文件验证，逐版本核对 Migration 对象 SQL 与 Entity/Room schema 声明，并与 `.audit/DEDUPE_DATA.md` 与全局已知项逐条对照。总体结论：v107→v110 三个新列（knowledge_folders 表 / knowledgeFolderScopesJson / translationsJson / configSnapshotJson）迁移 SQL 与实体声明一致、迁移链注册完整，但**备份/恢复链路对 v2.4.6 知识库文件夹表存在两处系统性遗漏（NDJSON 导入分支缺失 + recovery point 缺字段）**；A2A/Tasker 两个新入口的会话归属与恢复闸门接入存在缺陷。无 P0。
 
 ---
 
-## Verifique los elementos conocidos (confirme que no se informen repetidamente)
+## 发现清单
 
-- **Eliminar atomicidad de hechos/la memoria guarda automáticamente las huellas digitales/eventos_conversación ID de evento estable idempotente/invariante de recuperación de envío de conversación/serializador de eventos ocultos/transacción de tareas programadas**:FactStore.applyDecay→FactDao cadena de gatillo,recoverInterruptedGenerations(SessionRepository.kt:1072-1100),`upsertGenerationCheckpointAndDeleteOutbox`(:992-1017) Revisaron punto por punto y no encontraron recurrencia;conversationEvents La verificación de conflictos de recuperación aún está vigente (BackupService.kt:2651-2656).
-- **MemoryDb Archivo de degradación de versión alta (#10/#12 (Revisado)**:MemoryModule.kt:35-51(guard Presentar primero + `fallbackToDestructiveMigrationOnDowngrade(dropAllTables=true)`) se ajusta a la semántica revisada y no se informa.
-- **FactDb Error en el historial de protección de versiones**:`archiveUnknownVersionDatabase` Usado `FACT_DB_VERSION=15` constante (FactDb.kt:378), recuperación archivada por error (:430-477) está en funciones y no ha sido denunciado.
-- **Juicio de copia de seguridad vacío v4/disco de transmisión de punto de recuperación (revisado)**:`hasAnyData` Cubrir todas las mesas (BackupService.kt:229-244),`writeRecoveryNdJson` transmisión + fsync(RestoreStagingStore.kt:45-64),NDJSON revertir permitirEmptyBackup(:1556) están todos en funciones y no han presentado informes.
-- **RAG Seis rondas de reparación**:chunk Paginación push down SQL(KnowledgeChunkDao.kt:63-115),VectorSearchService Límite de escaneo de paginación `page.size < BATCH_SIZE` terminar (:241-258) La revisión fue correcta y no fue reportada (OFFSET La deriva de la paginación bajo concurrencia de reindexación es un término teórico y no satisface"hallazgos verificados"Umbral, no listado).
-- **Conocido mundialmente 1/2/3**(Canal al menos una vez,ProcessWriteGate volatile Semántica, falta la aceptación del dispositivo):F5 Se ha distinguido claramente de éste (cubriendo la brecha y el límite de no competencia); no se ha reportado ninguna otra información.
-- **Conocido mundialmente 8**(MemoryDb No hay entrada de navegación en la aplicación para archivos de versión alta): No se encontró evidencia nueva y no se informará.
-- **La seguridad ha sido arreglada. 11/12**(La copia de seguridad en la nube se niega expresamente,A2A Punto final JWT):`shouldRejectPlaintextCloudBackup`(BackupService.kt:2852-2854) y A2A `authenticate(AUTH_JWT_NAME)`(WebServer.kt:613) están en su lugar;AgentCard Diseño sin autenticación para declaración de página (:606-611), no informado.
-- **HANDOFF P1 #20-31 Elementos no revisados relacionados con la capa de datos**: Sólo se informa cuando se encuentran nuevas pruebas; No se encontraron nuevas pruebas en esta ronda.
-- **Se lanzó la zona de pruebas del complemento (v2.5.8 decisiones de producto)**:PluginHookBridge/PluginManifest Durante la revisión no se encontró ninguna extralimitación de autoridad por parte del nivel de implementación;hooks campo `@EncodeDefault(NEVER)` firma compatible (PluginManifest.kt:106-114) y `minAppVersion` Sin bloqueo forzado (:89-90) son compensaciones de diseño declaradas en los comentarios y no se enumeran como hallazgos (solo registros de observación: el nuevo campo de manifiesto se basa en el análisis flexible de Kotlinx para compatibilidad con versiones anteriores en aplicaciones antiguas. Se recomienda usar la regla NUNCA al agregar nuevos campos en el futuro).
+### F1. NDJSON 恢复分支丢失 `knowledge_folders` 全部数据，且 B-34 对账失效掩盖丢失（P1，可信度：高）
+
+- 位置：app/src/main/java/io/zer0/muse/backup/BackupService.kt:1015-1384（`applyNdJsonStreaming` 的 `when(type)` 分发）、BackupService.kt:988（清空）、BackupService.kt:719-724 与 2782（导出侧与 meta 键存在）
+- 证据：NDJSON 导入分支处理了 `knowledgeBase`（:1317）、`knowledgeDoc`（:1161）、`knowledgeChunk`（:1171），**没有 `"knowledgeFolder" ->` 分支**，也没有对应 buffer 与尾部 flush（:1406-1439 的 flush 列表中无 knowledgeFolder）。而清空阶段执行 `db.knowledgeFolderDao().deleteAll()`（:988）。导出侧正常写出行（:721-722）并计入 meta（:588 `"knowledgeFolders"` 计数；typeToMetaKey 含 `"knowledgeFolder" to "knowledgeFolders"` :2782）。
+- 关键放大器：B-34 计数对账（:1007-1014 先对 `typeToMetaKey` 中的行做 `actualCounts[key]++`，再 :1388-1393 校验 `actual == expected`）**只统计行数、不校验数据是否真正入库**——`knowledgeFolder` 行会被计数但被 `when` 丢弃，对账通过，丢失完全静默。
+- 影响场景：所有走 `applyNdJsonStreaming` 的恢复路径——本地流式导出导入（`exportStreaming`→`import`，BackupSection.kt:139 是 UI 唯一导出入口）、云备份恢复（`applyCloudBackupData` NDJSON 分支 :2121-2133）、NDJSON recovery point 回滚与启动续恢复（:1509-1548、:2496-2542）。恢复完成后 v2.4.6 新增的知识库文件夹（含空文件夹与文件夹树）被清空且不重建；文件夹作为"检索隔离单位"（KnowledgeFolderEntity.kt:17-37），丢失后助手 KB 作用域树显示错误。
+- 建议：在 `applyNdJsonStreaming` 增加 `"knowledgeFolder"` 分支 + buffer + 尾部 flush，并在 B-34 对账中改为"实际插入数"而非"解析行数"（至少对新增类型补一条插入数断言或契约测试）。
+
+### F2. `buildBackup()`（单 JSON 路径）漏传 `knowledgeFolders`，导致 recovery point 回滚清空知识库文件夹（P1，可信度：高）
+
+- 位置：app/src/main/java/io/zer0/muse/backup/BackupService.kt:2268（事务内读取了 `db.knowledgeFolderDao().getAll()`）与 :2326-2372（`Backup(...)` 构造调用**未传 `knowledgeFolders`**，字段落默认 `emptyList()`）
+- 证据：`DbSnapshot` 声明了 `knowledgeFolders` 字段（:2203）且赋值正确，但局部提取列表（:2312-2316 一带）缺 `val knowledgeFolders = snap.knowledgeFolders`，`Backup(...)` 实参列表（sessions/messages/.../fileStores 共 40 项）中没有 `knowledgeFolders = ...`（对比 :2365 有 `knowledgeBases = knowledgeBases`）。
+- 影响场景（两条）：
+  1. **recovery point 被污染（主要）**：`applyBackup` 在导入前执行 `val preImportSnapshot = buildBackup()` 写入持久化恢复点（:2403，`RestoreStagingStore.writeRecoveryPoint`）。恢复失败回滚时 `applyBackupInternal(recovery)`（:2464）会执行 `db.knowledgeFolderDao().deleteAll()`（:2622）后插入 `recovery.knowledgeFolders`（:2663，空列表）——**一次失败回滚即清空用户全部知识库文件夹**。
+  2. 单 JSON 本地导出（`export()` :250-271）产物缺该字段；虽然当前 UI 只调用 `exportStreaming`（BackupSection.kt:139），`export()` 仍是被 `applyBackup` 依赖的恢复点生产者，风险由路径 1 承接。
+- 与 F1 的关系：单 JSON 导入侧（`applyBackupInternal` :2663）正确处理 knowledgeFolders，缺陷只在导出/快照生产侧；NDJSON 侧则相反（导出正确、导入缺失）。两处合并说明 v2.4.6 接线在备份四条路径（NDJSON 导出/NDJSON 导入/JSON 导出/JSON 导入）中只完成了一半×一半。
+- 建议：`buildBackup()` 补传 `knowledgeFolders = snap.knowledgeFolders`；补一条"Backup 构造实参与 DbSnapshot 字段一一对应"的源码契约测试（现有 BackupEntityCoverageTest 只校验字段存在，不校验构造传参）。
+
+### F3. 自动备份 VACUUM INTO 快照链路遗漏子助手分库 `facts_<id>.db`，与 JSON/NDJSON 备份口径不一致（P1，可信度：高）
+
+- 位置：app/src/main/java/io/zer0/muse/data/stats/AutoBackupHelper.kt:83（`val dbNames = listOf(ENTITY_MUSE_DB, ENTITY_MEMORY_DB, ENTITY_FACTS_DB)`）、:262-295（vacuumInto）；对照 BackupService.kt:1582-1591（`listScopedFactDbIds` 枚举 `facts_` 前缀分库）、:730-744/:2318-2320（NDJSON/单 JSON 导出均含 scopedFacts）
+- 证据：每日自动备份（AutoBackupWorker.kt:55-63 → backupNow）只对三个默认库做 `VACUUM INTO` 打包；`restoreFromAutoBackup`（BackupService.kt:1928-2028）也只替换这三个文件。子助手分库 facts_&lt;assistantId&gt;.db（v8 scope 隔离，FactDb.kt:25-27；P0-10 专门补进 JSON 备份体系）完全不在快照内，也不在恢复替换范围内。
+- 影响场景：依赖"从自动备份恢复"（BackupSection 一键恢复，BackupSection.kt:464）做整库回退/迁移到新环境时，子助手事实记忆停留在当前磁盘状态：若此前分库被删/损坏则无法恢复；若用户预期"恢复=回到备份时点"，分库数据违反该预期（时间点错位）。三个默认库与分库在恢复时点不一致，属于快照一致性问题而非丢文件。
+- 建议：`AutoBackupHelper.backupNow` 枚举 `facts_*.db` 一并 VACUUM INTO 进 ZIP（条目名即文件名，恢复侧按存在性替换），或明确在文档/UI 声明自动备份不含分库并把分库纳入 JSON 备份唯一恢复路径。
+
+### F4. A2A 复用应用级单例 ChatViewModel 强制切换全局会话：状态抢占、并发互踩、无会话隔离标记（P1，可信度：高）
+
+- 位置：app/src/main/java/io/zer0/muse/AppChatModule.kt:46-89（`single { ChatViewModel(...) }`，注释明言"应用级单例…所有页面共享同一实例"）；app/src/main/java/io/zer0/muse/web/a2a/A2aHandler.kt:70-88（`chatViewModel.switchSession(requested)` / `createNewSession` / `updateInput(text); send()`）
+- 证据：A2A `SendMessage` 直接驱动共享 ChatViewModel：
+  - 指定 sessionId → `switchSession` 强制切换全局当前会话（ChatSessionController.kt:540-660 会 detach 流式、清草稿、清审批缓存、释放/获取会话引用）；
+  - 未指定 → `createNewSession`（ChatSessionController.kt:147-206）新建任务会话（无 `isAgentSession`/`isMiniPhone` 标记），A2A 轮次混入用户主会话列表，与主链路/渠道会话零隔离；
+  - `handleA2aJsonRpc`（WebServer.kt:648-679）对并发 SendMessage 无串行化，两次 A2A 调用互相 `detachStreaming`/打断对方生成；与前台用户操作共享同一 `currentSessionId`、输入框、审批队列。
+- 影响场景：用户在前台对话时收到 A2A 请求 → 当前会话被切走、正在进行的流式被 detach、输入草稿被 A2A 文本覆盖发送；A2A 落库会话出现在任务列表中与用户会话不可区分；指定 sessionId 时外部 agent 可向任意会话（含 Agent/小手机会话）插入对话轮次。
+- 建议：A2A 改走独立会话通道（如 `isAgentSession` 专用标记或按调用方前缀命名的专用会话），或为 A2A 构造无 UI 状态的生成路径；至少对 `sendMessage` 加互斥并拒绝与前台流式并发。
+
+### F5. Tasker 触发落库未接恢复写闸门：恢复窗口内的写入被恢复事务清空吞掉（P1，可信度：中，静态推断+代码直接证据）
+
+- 位置：app/src/main/java/io/zer0/muse/intent/TaskerTriggerReceiver.kt:84-100（`sessionRepo.appendMessage(...)` 直接落库）；grep 证实 intent/ 目录无任何 `ProcessWriteGate` 引用
+- 证据：AUD-20261006 系列把全部后台写点接入 `ProcessWriteGate.restoring` 检查——ScheduledTaskRunner.kt:470/509、ProactiveMessageRunner.kt:265/1119、MomentScheduler.kt:90/99、GroupChatScheduler.kt:229/440、ChatStreamCoordinator.kt:373/423、ChannelInbox.kt:426/458 等 30+ 检查点。Tasker 是 v2.5.8 新增写点，`runTrigger` 中 `appendMessage`（USER + ASSISTANT 两条）前无任何 `restoring` 检查，`SessionRepository.appendMessage`（SessionRepository.kt:716-725）内部也不检查。
+- 影响场景：JSON/NDJSON 恢复的大事务内（`applyNdJsonStreaming` :955-1440 先 `clearConversationStateForRestore` + `deleteAll` 再插入）Tasker 触发到达：其独立写事务排队后提交，消息写入被随后的清空/替换覆盖，或在文件级替换（`restoreFromAutoBackup` close→swap 窗口）中写到旧连接；结果为 Tasker 轮次静默丢失或写坏窗口。与全局已知项 2 的区别：已知项是"检查了但 volatile 非互斥的窄竞态"，本条是新入口**根本未接闸门**（覆盖缺口，非竞态边界）。
+- 建议：`runTrigger` 在 LLM 调用前与两次 `appendMessage` 前检查 `ProcessWriteGate.restoring`，为 true 时跳过并返回（与其他 Runner 同模式）。
+
+### F6. Tasker 专用会话按"标题字符串相等"复用，归属弱约定且可被用户数据意外命中（P2，可信度：高）
+
+- 位置：app/src/main/java/io/zer0/muse/intent/TaskerTriggerReceiver.kt:84-94（`observeSessions().first().firstOrNull { it.title == TASKER_SESSION_TITLE }`）
+- 证据：会话标题是用户可编辑自由字段（SessionDao.updateTitle :118-119；首条 user 消息还会自动按内容前 20 字命名，SessionDao.updatePreviewAndTitle :134-146）。对比同源实现 ScheduledTaskRunner 用持久化 `dedicated_session_id` 列做归属（ScheduledTaskEntity.kt:35、ScheduledTaskRunner.kt:472-483），Tasker 未复用该模式。
+- 影响场景：用户把任意会话改名/自动命名为"Tasker 触发"→ Tasker 结果追加进该会话（串话）；用户重命名 Tasker 会话 → 下次触发新建第二个同名会话，历史分叉；备份恢复后同名匹配仍成立但非原会话。`observeTaskSessions`（SessionDao.kt:25-28）不过滤 isMiniPhone，匹配可命中小手机会话。
+- 建议：仿照 dedicated_session_id 持久化"Tasker 会话 id"（DataStore 键或复用 ScheduledTaskEntity 机制），标题仅作展示。
+
+### F7. 消息分页链路 deletedAt 口径不一致（与已修 partial-page 合并同类的分页边界缺陷，当前为潜伏缺陷）（P2，可信度：中）
+
+- 位置：
+  - app/src/main/java/io/zer0/muse/data/session/MessageDao.kt:86-87（`countBySession` 无 `deletedAt IS NULL`）
+  - MessageDao.kt:77-83（`getOlderBySession` 上滑分页无过滤）
+  - MessageDao.kt:185-186（`getLastBySession` 无过滤）
+  - 对照正确实现：MessageDao.kt:46、:57（`observeRecentBySession`/`getRecentBySession` 均带 `deletedAt IS NULL`）
+  - 消费方：ChatMessageController.kt:40-45（`loadMessagesPaged` 用 `countBySession` 判 `hasMoreHistory`）、SessionRepository.kt:651-653（`getOlderMessages`）、SessionRepository.kt:1244-1250（`truncateFromInternal` 用 `getLastBySession`+`countBySession` 重算预览/计数）
+- 证据：当前代码库**没有任何写路径把 `messages.deletedAt` 置为非 null**（grep `deletedAt = ` 仅 QuickNote/ScheduledTask/会话级 softDelete 命中；消息级删除走物理 `deleteMessageRow` :584-608），所以三条口径差暂无实际差异。但一旦消息级软删除启用（列与 UI 通路已预留），`countBySession` 含软删会使 `hasMoreHistory` 虚高，`getOlderBySession` 捞回软删行再被 `projectMessagesForRead`（MessageProjection.kt:60）过滤 → `older.size < pageSize` → `hasMoreHistory = older.size >= messagePageSize`（ChatMessageController.kt:106）误判提前终止，**真实更早历史加载不到**——与去重基线中已修的"partial-page 合并"同构。
+- 建议：三个查询统一补 `deletedAt IS NULL`（或显式注释"消息级软删未启用，口径待统一"），并在启用消息级软删的 PR 中将本条转为必改项。
+
+### F8. 备份恢复对 `scheduled_task_executions` 用裸 `@Insert`（ABORT），重复 id 行会让整次恢复回滚（P2，可信度：高）
+
+- 位置：app/src/main/java/io/zer0/muse/backup/BackupService.kt:2638（`db.scheduledTaskExecutionDao().insert(it)`）、:1151-1160（NDJSON 分支同样逐条 `insert`）；ScheduledTaskExecutionDao 的 `@Insert` 无 OnConflictStrategy（默认 ABORT）
+- 证据：同方法内 conversationEvents 用 IGNORE + 逐条校验返回值（:2651-2656，对应去重基线"批量恢复检查 Room IGNORE 返回值"），而 executions 未对齐该范式。备份文件手工编辑/合并或历史导出 bug 产生的重复 execution id，会使 MuseDb 大事务在中间批抛 SQLiteConstraintException → 整体回滚 → 恢复失败（有 recovery point 兜底但用户侧表现为"恢复一直失败"且无具体行提示）。
+- 影响：低概率但恢复失败的诊断成本高；与既有幂等修复范式不一致。
+- 建议：改 IGNORE + 冲突校验（与 conversation_events 同范式），或恢复前对备份内 execution id 去重。
+
+### F9. 降级归档 `.bak` 直接覆盖旧归档：连续两次 destructive 只保留最后一次（P2，可信度：高）
+
+- 位置：app/src/main/java/io/zer0/muse/data/session/MuseDb.kt:3104-3126（`onDestructiveMigration` 中 `runCatching { if (bak.exists()) bak.delete() }` 后 `dbFile.copyTo(bak, overwrite = true)`）
+- 证据：固定文件名 `muse.db.pre-destructive.bak`，每次归档先删旧再写。FactDb 侧的同类实现已用 `nextBackupFile` 递增序号避免覆盖（FactDb.kt:498-508），MuseDb 侧未对齐。
+- 影响场景：测试版反复回滚/多轮 destructive 时，只剩最后一次降级前状态；第一次被销毁的数据不可追回。
+- 建议：复用 `nextBackupFile` 模式保留带序号的多份归档（或至少按时间戳命名）。
+
+### F10. A2A `CancelTask` 不校验任务存在即停止当前生成，可终止用户前台会话的流式（P2，可信度：高）
+
+- 位置：app/src/main/java/io/zer0/muse/web/a2a/A2aHandler.kt:130-139（`fun cancelTask(taskId: String)` 直接 `chatViewModel.stop()` 并返回 CANCELED）
+- 证据：`stop()` 作用于共享 ChatViewModel 的当前生成（与 F4 同根）；`recentTasks` 校验缺失，任何持 JWT 的客户端用任意 taskId 都能触发 stop。Web 端点有 JWT 鉴权（WebServer.kt:613-618）故为授权内风险，但与 GetTask 的 `TASK_NOT_FOUND` 语义（:662-667）不一致。
+- 建议：`cancelTask` 先查 `recentTasks`，未知 id 返回 TASK_NOT_FOUND；已知 id 仅在任务仍在执行时才 stop。
+
+### F11. artifact / 记忆浏览 / 朋友圈等 UI 查询全量加载，无分页上限（P2，可信度：高，性能债）
+
+- 位置：app/src/main/java/io/zer0/muse/data/artifact/ArtifactDao.kt:37-42（`getAll`、`observeAll` 全量）；memory/src/main/java/io/zer0/memory/fact/FactDao.kt:34-35（`getAll` 全量）、:393-401（`observeBySpace`/`getBySpace` 全量）；MomentEntity.kt:125-133 与 TranslateHistoryDao.kt:11、QuickNoteDao.kt:24（仅 `LIMIT :limit` 无 offset 续页）
+- 证据：主消息链路已有 50/页窗口 + seq 锚点分页（MessageDao.kt:46-83），而产物中心、记忆中心、朋友圈、翻译历史、快捷记录仍一次性加载全部行；这些表无软删、行数随使用单调增长，长周期设备上 UI 首帧与内存随库线性劣化。与去重基线"partial-page 合并"修复点同类的其余分页点审计结论：GroupChatMessageDao 锚点分页（:58）与 AuditLogPage hasMore 判定（AuditLogPage.kt:117-130）正确，无同类边界错误。
+- 建议：对 artifact/记忆/朋友圈补 offset 或 keyset 分页（可低优先级排期）。
+
+### F12. diagnostic 导出的 debug-log 可能携带表结构/SQL 文本与堆栈，sanitizePii 不覆盖 schema 信息（P2，可信度：中，待验证假设）
+
+- 位置：app/src/main/java/io/zer0/muse/diagnostic/DiagnosticExporter.kt:65-70（原样打包 `DebugLogStore.exportToFile()`）；common/src/main/java/io/zer0/common/Logger.kt:142-153（sanitizePii 只过滤 PII 与凭据格式，不过滤表名/列名/SQL）；common/Logger.kt:226（throwable 堆栈全文写入且不过 sanitizePii）
+- 证据：诊断导出红线声明"不含消息正文与 API key"（DiagnosticExporter.kt:28）。数据库异常（Room "Migration didn't properly handle"、SQLiteException）的 message/堆栈会进 DebugLogStore（Logger.sink → DebugLogStore.log :81-95），其中含表名、列名、建表 SQL 片段；绑定参数值通常不在 SQL 文本内，**消息正文经缓存抽查路径（如 FTS probe 内容）进入异常文本的可能性未观察到**，故定级 P2。
+- 验证方法：构造一次 Room 迁移失败捕获 DebugLogStore 内容，检查是否含 schema 字符串；如需收紧，对 `messageDao`/`MuseDb` tag 的堆栈在导出前做表名级脱敏或截断。
+- 结论：未发现数据库**参数值/正文**泄露路径；红线在"结构信息"维度未声明边界，建议补文档或过滤。
+
+### F13. GenerationTrace 滚动截断按字节切半，可能产生残缺 JSONL 首行（P2，可信度：高）
+
+- 位置：app/src/main/java/io/zer0/muse/diagnostic/GenerationTrace.kt:180-185（`file.length() > MAX_FILE_BYTES` 时 `bytes.copyOfRange(bytes.size / 2, ...)` 后整写）
+- 证据：截断点为文件中点，落在某行 JSON 中间 → 导出的 `generation-trace.jsonl` 首行为残缺 JSON；离线分析脚本需逐行容错。
+- 建议：从截断点后第一个换行处起写。
+
+### F14. 迁移测试矩阵无 v107→v110 专项断言（观察项，P2，可信度：高）
+
+- 位置：app/src/test/java/io/zer0/muse/data/session/MuseDbMigrationTest.kt:40（版本矩阵 `availableSchemaVersions() + (55..68) + 74`）、:171-230（`migrate105ToLatest` 只断言 useGlobalMemory）
+- 证据：schema JSON 已导出 107/108/109/110（app/schemas/.../MuseDb/{107..110}.json 存在），105→latest 路径覆盖 105_106..109_110 全链且 Room 校验会兜住列缺失，**正确性暂无缺口**；但 knowledge_folders 表/唯一索引、translationsJson 默认值 '{}'、configSnapshotJson 默认值 NULL 均无显式断言，v2.4.6/v2.5.3 回归依赖 Room 校验失败（即真机崩溃）才暴露。
+- 建议：为 105→110 补三列一表的 PRAGMA 断言（与既有 68/74/105 专项测试同风格）。
+
+### F15. `restoreFromAutoBackup` 回滚副本只拷主库文件，不含 -wal/-shm（P2，可信度：低，理论风险）
+
+- 位置：app/src/main/java/io/zer0/muse/backup/BackupService.kt:1969-1973（`copyToDir` 仅 `src.copyTo`）、:2049-2053
+- 证据：回滚目录副本在 `db.close()` 之后创建（:1964），SQLite 最后连接关闭通常自动 checkpoint WAL，主文件应完整；但依赖该隐式行为，若 ROM 定制 SQLite 保留 WAL（PERSIST_WAL），回滚副本丢未合并帧。对照 FactDb 归档路径已显式 `wal_checkpoint(TRUNCATE)` 后处理 sidecar（FactDb.kt:389-416）。
+- 建议：回滚副本前对当前库执行 `PRAGMA wal_checkpoint(TRUNCATE)`，与 FactDb 归档对齐。
 
 ---
 
-## Una descripción general rápida de las direcciones y conclusiones clave de la exploración
+## 已知项核对（确认未重复上报）
 
-1. **v107→v107 cadena migratoria**:MIGRATION_107_108(knowledge_folders Crear tabla + índice único + columna de asistentes),108_109(translationsJson DEFAULT '{}'),109_110(configSnapshotJson DEFAULT NULL) es consistente con la entidad @ColumnInfo una por una; el registro está completo (MuseDb.kt:3029-3031);105→110 La prueba de migración de cadena completa está implementada pero carece de aserción especial v107+ (F14).
-2. **A2A/Tasker Atribución de inventario**:A2A Apropiarse de la sesión global a través de ChatViewModel compartido (F4);Tasker Caído de forma independiente en la biblioteca pero el título no coincide débilmente (F6) y no conectado a la puerta de recuperación (F5).
-3. **Fragmento de base de datos de exportación de diagnóstico**: No se encontró texto/Fuga del valor del parámetro;schema/SQL El texto ha sido portado a través del registro de depuración (F12).
-4. **Persistencia del gancho del complemento**:hooks La declaración solo existe en el manifiesto (no en Room),registry/config Tome el archivo JSON y colóquelo en la lista blanca de fileStores (BackupService.kt:1640-1649); las reglas de compatibilidad de firmas son claras; no hay nuevos defectos.
-5. **límite de página**: La paginación del punto de anclaje del enlace del mensaje principal está en buen estado; las tres diferencias de calibre eliminadas son defectos potenciales (F7);artifact/memoria/Momentos está completamente cargado (F11);GroupChat/AuditLog La paginación es correcta.
-6. **Copia de seguridad automática VACUUM INTO**: Las instantáneas de las tres bases de datos son correctas y la revisión de la puerta de escritura está completa; la subbiblioteca del Asistente Quezi (F3).
+- **删除事实原子性 / 记忆自动保存指纹 / conversation_events 稳定 eventId 幂等 / 对话发送恢复不变量 / shadow 事件串行器 / 定时任务事务**：FactStore.applyDecay→FactDao 触发器链、recoverInterruptedGenerations（SessionRepository.kt:1072-1100）、`upsertGenerationCheckpointAndDeleteOutbox`（:992-1017）逐条复核，未发现复发；conversationEvents 恢复冲突校验仍在（BackupService.kt:2651-2656）。
+- **MemoryDb 高版本降级归档（#10/#12 已修）**：MemoryModule.kt:35-51（guard 先归档 + `fallbackToDestructiveMigrationOnDowngrade(dropAllTables=true)`）符合已修语义，未报。
+- **FactDb 版本守卫历史缺陷**：`archiveUnknownVersionDatabase` 已用 `FACT_DB_VERSION=15` 常量（FactDb.kt:378），误归档恢复（:430-477）在位，未报。
+- **空备份判断 v4 / 恢复点流式落盘（已修）**：`hasAnyData` 覆盖全部表（BackupService.kt:229-244）、`writeRecoveryNdJson` 流式 + fsync（RestoreStagingStore.kt:45-64）、NDJSON 回滚 allowEmptyBackup（:1556）均在位，未报。
+- **RAG 六轮修复**：chunk 分页下推 SQL（KnowledgeChunkDao.kt:63-115）、VectorSearchService 分页扫描边界 `page.size < BATCH_SIZE` 终止（:241-258）复核无误，未报（OFFSET 分页在 reindex 并发下的漂移为理论项，不满足"验证过的发现"门槛，不列）。
+- **全局已知 1/2/3**（渠道 at-least-once、ProcessWriteGate volatile 语义、设备验收缺失）：F5 已明确与之区分（覆盖缺口非竞态边界）；未报其他。
+- **全局已知 8**（MemoryDb 高版本归档无应用内浏览入口）：未发现新证据，不报。
+- **安全已修项 11/12**（云备份明文拒绝、A2A 端点 JWT）：`shouldRejectPlaintextCloudBackup`（BackupService.kt:2852-2854）与 A2A `authenticate(AUTH_JWT_NAME)`（WebServer.kt:613）均在位；AgentCard 无鉴权为页面声明的设计（:606-611），未报。
+- **HANDOFF P1 #20-31 数据层相关未修项**：仅当发现新证据时报；本轮未发现新增证据。
+- **插件沙盒放开（v2.5.8 产品决策）**：PluginHookBridge/PluginManifest 复核中未发现实现层越权；hooks 字段 `@EncodeDefault(NEVER)` 签名兼容（PluginManifest.kt:106-114）与 `minAppVersion` 不强制阻断（:89-90）均为注释声明的设计取舍，未列为发现（仅作观察记录：新 manifest 字段在旧 app 的向前兼容依赖 kotlinx 宽松解析，建议未来新增字段时沿用 NEVER 规则）。
+
+---
+
+## 重点探查方向结论速览
+
+1. **v107→v107 迁移链**：MIGRATION_107_108（knowledge_folders 建表 + 唯一索引 + assistants 列）、108_109（translationsJson DEFAULT '{}'）、109_110（configSnapshotJson DEFAULT NULL）与实体 @ColumnInfo 逐一比对一致；注册完整（MuseDb.kt:3029-3031）；105→110 全链迁移测试在位但缺 v107+ 专项断言（F14）。
+2. **A2A/Tasker 落库归属**：A2A 经共享 ChatViewModel 抢占全局会话（F4）；Tasker 独立落库但标题弱匹配（F6）且未接恢复闸门（F5）。
+3. **诊断导出数据库片段**：未发现正文/参数值泄露；schema/SQL 文本经 debug-log 有携带可能（F12）。
+4. **插件 Hook 持久化**：hooks 声明仅存于 manifest（不落 Room），registry/config 走 JSON 文件并纳入 fileStores 白名单（BackupService.kt:1640-1649）；签名兼容规则明确；无新缺陷。
+5. **分页边界**：主消息链路锚点分页健康；三处 deletedAt 口径差为潜伏缺陷（F7）；artifact/记忆/朋友圈为全量加载（F11）；GroupChat/AuditLog 分页正确。
+6. **自动备份 VACUUM INTO**：三库快照正确、写闸门复查齐全；缺子助手分库（F3）。

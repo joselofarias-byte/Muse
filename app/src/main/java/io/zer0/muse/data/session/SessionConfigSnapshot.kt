@@ -4,37 +4,37 @@ import io.zer0.common.AppJson
 import kotlinx.serialization.Serializable
 
 /**
- * v2.5.3 (P3-2): Instantánea de configuración a nivel de sesión.
+ * v2.5.3 (P3-2): 会话级配置快照。
  *
- * Problema: La sesión anteriormente solo estaba vinculada al asistente, modelo/Pensar globalmente; Si el usuario corta el modelo global, no se puede recuperar la "configuración actual" de la sesión anterior.
- * Se utilizará el nuevo modelo al reenviar y la respuesta no será coherente con la de entonces.
+ * 问题：会话此前只绑助手，模型/思考级别走全局；用户切了全局模型，旧会话「当时的配置」就找不回了，
+ * 重发时会用新模型，得不到与当时一致的回复。
  *
- * Solución: cuando se genera la sesión por primera vez, tome una instantánea de la configuración actual y guárdela en la base de datos ([SessionEntity.configSnapshotJson]).
- * "Asistente de sobrescritura de instantáneas de sesión" al leer/"Campo global"; Si se elimina el modelo fijado en la instantánea, se revertirá el valor actual del asistente (sin falla grave).
+ * 方案：会话首次生成时把当时的配置拍一份快照落库（[SessionEntity.configSnapshotJson]）。
+ * 读取时「会话快照覆盖助手/全局字段」；若快照里固定的模型已被删除，则回退助手当前值（不硬失败）。
  *
- * Las instantáneas mantienen los campos necesarios al mínimo y cubren solo los elementos que afectan el resultado generado:provider, modelo, nivel de pensamiento, temperatura, rendimiento máximo.
+ * 快照保持最小必要字段，仅覆盖影响生成结果的项：provider、模型、思考级别、温度、最大输出。
  */
 @Serializable
 data class SessionConfigSnapshot(
     val providerId: String? = null,
     val modelId: String? = null,
-    /** nivel de pensamiento (OFF/AUTO/LOW/MEDIUM/HIGH/XHIGH…),null = No arreglado. */
+    /** 思考级别（OFF/AUTO/LOW/MEDIUM/HIGH/XHIGH…），null = 未固定。 */
     val reasoningLevel: String? = null,
     val temperature: Float? = null,
     val maxTokens: Int? = null,
 ) {
-    /** Si la instantánea está vacía (sin campos fijos). */
+    /** 是否为空快照（没有任何被固定的字段）。 */
     fun isEmpty(): Boolean = providerId == null && modelId == null && reasoningLevel == null &&
         temperature == null && maxTokens == null
 
     companion object {
-        /** Serializado a cadena JSON; la instantánea vacía devuelve nulo (sin base de datos, sin valor de columna). */
+        /** 序列化为 JSON 字符串；空快照返回 null（不落库、不加列值）。 */
         fun encode(snapshot: SessionConfigSnapshot?): String? {
             if (snapshot == null || snapshot.isEmpty()) return null
             return runCatching { AppJson.encodeToString(serializer(), snapshot) }.getOrNull()
         }
 
-        /** deserialización;null/en blanco/El JSON incorrecto siempre devuelve nulo (como si no se hubiera tomado ninguna instantánea). */
+        /** 反序列化；null/空白/坏 JSON 一律返回 null（视为未拍摄快照）。 */
         fun decode(raw: String?): SessionConfigSnapshot? {
             if (raw.isNullOrBlank()) return null
             return runCatching { AppJson.decodeFromString(serializer(), raw) }.getOrNull()

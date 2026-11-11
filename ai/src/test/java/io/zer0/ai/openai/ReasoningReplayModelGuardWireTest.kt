@@ -26,12 +26,12 @@ import org.junit.Before
 import org.junit.Test
 
 /**
- * v2.6.14: `reasoning_content` Guardia de fuente para reproducción (tomando el enlace de ensamblaje de solicitud real).
+ * v2.6.14: `reasoning_content` 回放的来源守卫（走真实请求组装链路）。
  *
- * Utilice MockWebServer para capturar el cuerpo de la solicitud real y bloquearlo:
- *  - El bloque de pensamiento histórico entre modelos no aparece en la solicitud (además: solo se dejan marcadores de posición de cadena vacía cuando el protocolo requiere que el campo debe existir);
- *  - Los bloques de pensamiento histórico del mismo modelo se reproducen con normalidad;
- *  - Los bloques de pensamiento producidos por el protocolo firmado (con firma/contenido_encriptado) no son reproducidos por contenido_razonamiento.
+ * 用 MockWebServer 捕获实际请求体，锁定：
+ *  - 跨模型历史思考块不出现在请求里（外加：协议要求字段必存在时只留空串占位）；
+ *  - 同模型历史思考块正常回放；
+ *  - 签名型协议产出的思考块（带 signature / encrypted_content）不经 reasoning_content 回放。
  */
 class ReasoningReplayModelGuardWireTest {
 
@@ -52,7 +52,7 @@ class ReasoningReplayModelGuardWireTest {
 
     private val tool = ToolDefinition(
         name = "getWeather",
-        description = "comprobar el clima",
+        description = "查询天气",
         parametersJsonSchema = """{"type":"object","properties":{"city":{"type":"string"}}}""",
     )
 
@@ -75,11 +75,7 @@ class ReasoningReplayModelGuardWireTest {
         )
     }
 
-    private fun request(
-        history: UIMessage,
-        modelId: String,
-        withTools: Boolean,
-    ): ChatRequest = ChatRequest(
+    private fun request(history: UIMessage, modelId: String, withTools: Boolean): ChatRequest = ChatRequest(
         messages = listOf(
             UIMessage(role = MessageRole.SYSTEM, content = "system prompt"),
             UIMessage(role = MessageRole.USER, content = "hello"),
@@ -127,7 +123,7 @@ class ReasoningReplayModelGuardWireTest {
         provider().completeText(request(history, "deepseek-v4", withTools = true))
 
         val message = capturedAssistantMessage()
-        // El contenido no será publicado;DeepSeek El protocolo requiere que el campo exista cuando se incluyen herramientas, por lo que solo se permite la ocupación de cadenas vacías.
+        // 内容不外发；DeepSeek 协议要求带 tools 时字段必须存在，故只允许空串占位。
         assertEquals("", message["reasoning_content"]?.jsonPrimitive?.content)
         assertFalse(message.toString().contains("foreign thinking"))
     }
@@ -145,14 +141,14 @@ class ReasoningReplayModelGuardWireTest {
         provider().completeText(request(history, "deepseek-v4", withTools = false))
 
         val message = capturedAssistantMessage()
-        assertNull("No se envía cuando no hay herramientas. reasoning_content", message["reasoning_content"])
+        assertNull("无 tools 时不发 reasoning_content", message["reasoning_content"])
         assertFalse(message.toString().contains("foreign thinking"))
     }
 
     @Test
     fun `signature borne thinking is not replayed through reasoning content`() = runTest {
         enqueueOk()
-        // El historial no registra el modelo de salida (datos antiguos), pero el patrón de carga útil ha revelado que provino de un protocolo de tipo firma.
+        // 历史未记录产出模型（旧数据），但载荷形态已经暴露它来自签名型协议。
         val history = UIMessage(
             role = MessageRole.ASSISTANT,
             content = "answer",
@@ -166,6 +162,6 @@ class ReasoningReplayModelGuardWireTest {
         val message = capturedAssistantMessage()
         assertEquals("", message["reasoning_content"]?.jsonPrimitive?.content)
         assertFalse(message.toString().contains("responses reasoning"))
-        assertTrue("La solicitud sigue siendo legal después de bajar de categoría (el texto se enviará como de costumbre)", message["content"]?.jsonPrimitive?.content == "answer")
+        assertTrue("降级后请求仍合法（正文照发）", message["content"]?.jsonPrimitive?.content == "answer")
     }
 }

@@ -7,7 +7,7 @@ import java.math.BigDecimal
 import java.security.MessageDigest
 import java.time.OffsetDateTime
 
-/** Webhook Límites puramente lógicos para la autenticación,Se utiliza para pruebas de enrutamiento y regresión. */
+/** Webhook 鉴权的纯逻辑边界,供路由与回归测试共用。 */
 internal object WebhookAuthPolicy {
 
     fun verifyFeishu(config: ChannelConfig?, presentedToken: String?): Boolean {

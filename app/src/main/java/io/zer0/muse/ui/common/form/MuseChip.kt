@@ -34,17 +34,17 @@ import io.zer0.muse.ui.theme.MuseShapes
 import io.zer0.muse.ui.theme.semiLarge
 
 /**
- * Seleccionar componentes de la cápsula — Reemplaza Material3 FilterChip / AssistChip.
+ * 选择胶囊组件 — 替代 Material3 FilterChip / AssistChip。
  *
- * características visuales:
- *  - Estado seleccionado:primary Color de fondo + texto onPrimary + peso de fuente seminegrita
- *  - No seleccionado:surfaceVariant translúcido(0.5 alpha)+ onSurfaceVariant Texto + Peso de fuente medio
- *  - esquinas redondeadas [MuseShapes.semiLarge],Ninguno ripple(Surface onClick Predeterminado Ninguno ripple)
- *  - Opcional leadingIcon / trailingIcon(como el botón de cerrar X)
- *  - Estado no disponible:alpha 0.38 + Deshabilitar clics(Surface enabled=false)
- *  - CMP-04: Semántica de las elecciones parciales(role=Checkbox + selected)con toque mínimo de 48dp
+ * 视觉特征:
+ *  - 选中态:primary 色背景 + onPrimary 文本 + SemiBold 字重
+ *  - 未选中:surfaceVariant 半透明(0.5 alpha)+ onSurfaceVariant 文本 + Medium 字重
+ *  - 圆角 [MuseShapes.semiLarge],无 ripple(Surface onClick 默认无 ripple)
+ *  - 可选 leadingIcon / trailingIcon(如关闭按钮 X)
+ *  - 不可用状态:alpha 0.38 + 禁用点击(Surface enabled=false)
+ *  - CMP-04: 补选中语义(role=Checkbox + selected)与 48dp 最小触控
  *
- * usado para:Filtrado de etiquetas, cambio de categorías, etiquetas que se pueden cerrar, selección rápida de plantillas de palabras y otros escenarios.
+ * 用于:标签筛选、类别切换、可关闭的标签、提示词模板选择等场景。
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -57,9 +57,9 @@ fun MuseChip(
     trailingIcon: @Composable (() -> Unit)? = null,
     enabled: Boolean = true,
 ) {
-    // UI-FIX A: seleccionado=Texto blanco sobre fondo negro sólido; sin marcar=Base neutra opaca.
-    // La implementación anterior usaba SurfaceVariant@50% de translucidez cuando no estaba marcada, presionando el contenido como una máscara, que ha sido cancelada.
-    // v2.x: efectos interactivos — Presione para comprimir y expandir + transición elástica del color del estado seleccionado(Comentarios de autodibujo,sin ondulaciones)
+    // UI-FIX A: 选中=实心黑底白字；未选中=不透明中性底。
+    // 旧实现未选中用 surfaceVariant@50% 半透明，压在内容上像一层遮罩，已取消。
+    // v2.x: 交互动效 — 按压缩放 + 选中态颜色弹性过渡(自绘反馈,无涟漪)
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
     val pressScale by animateFloatAsState(
@@ -87,7 +87,7 @@ fun MuseChip(
                 scaleY = pressScale
             }
             .alpha(if (enabled) 1f else 0.38f)
-            // CMP-04/A11Y-01: Seleccionar Semántica + Toque Mínimo 48dp(TalkBack legible"seleccionado")
+            // CMP-04/A11Y-01: 选中语义 + 48dp 最小触控(TalkBack 可读"已选中")
             .heightIn(min = 48.dp)
             .semantics {
                 this.selected = selected

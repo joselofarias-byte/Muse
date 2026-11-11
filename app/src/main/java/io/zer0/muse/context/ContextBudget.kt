@@ -1,59 +1,59 @@
 package io.zer0.muse.context
 
 /**
- * M4.3: Partición presupuestaria contextual.
+ * M4.3: 上下文预算分区。
  *
- * Una partición por fuente de inyección para solicitudes LLM entrantes,Configuración de límite superior independiente y observación independiente.,
- * evitar una sola fuente(Accesorios grandes/memoria súper larga/herramienta gigante schema)Ocupa toda la ventana de contexto.
+ * 每个进入 LLM 请求的注入源一个分区,上限独立配置、独立观测,
+ * 避免单一来源(大附件/超长记忆/巨型工具 schema)挤占整个上下文窗口。
  */
 enum class ContextSection {
-    /** Accesorios/Texto del documento(Empalmado en el cuerpo del mensaje a través de buildSendText). */
+    /** 附件/文档正文(经 buildSendText 拼接进消息正文)。 */
     ATTACHMENT_TEXT,
 
-    /** Resumen de compilación de memoria a largo plazo(<long_term_memory>). */
+    /** 长期记忆编译摘要(<long_term_memory>)。 */
     LONG_TERM_MEMORY,
 
-    /** FTS Datos relevantes sobre el retiro(<relevant_memory>). */
+    /** FTS 召回的相关事实(<relevant_memory>)。 */
     RELEVANT_MEMORY,
 
-    /** RAG Recupera el fragmento del documento inyectado. */
+    /** RAG 检索注入的文档片段。 */
     RAG_CITATION,
 
-    /** Inyección de descripción de imágenes para generación de modelos visuales. */
+    /** 视觉模型生成的图片描述注入。 */
     VISION_DESCRIPTION,
 
-    /** Esquema de función total de la herramienta. */
+    /** 工具 function schema 总量。 */
     TOOL_SCHEMA,
 
     /**
-     * L1-4: La cantidad total de mensajes completos del sistema (instantánea estática + segmento dinámico + memoria relacionada + revisión de sesión después del empalme).
-     * Cada subsegmento tiene su propio presupuesto, pero el número total después del empalme no tiene límite superior antes; esta partición sirve como la última puerta total.
+     * L1-4: 完整 system prompt 总量（静态快照 + 动态段 + 相关记忆 + 会话回顾拼接后）。
+     * 各子段单独有预算，但拼接后的总数此前无上限；此分区做最后一道总量闸门。
      */
     SYSTEM_PROMPT,
 }
 
 /**
- * M4.3: Presupuesto contextual unificado.
+ * M4.3: 统一上下文预算。
  *
- * Establecer límite de caracteres para todas las fuentes de inyección excepto los mensajes históricos;La estrategia de truncamiento es mantener el encabezado. +
- * Truncar explícitamente la anotación(El hecho del truncamiento debe ser diagnosticable aguas abajo.,No se permite el descarte silencioso).
+ * 为历史消息之外的所有注入源设置字符上限;截断策略为保留头部 +
+ * 显式截断注记(截断事实必须对下游可诊断,不允许静默丢弃)。
  *
- * La cantidad de mensajes históricos aún la administra Assistant.contextMessageSize / limitContextWithContext,
- * No repetir restricciones dentro de este presupuesto.(responsabilidad única,evitar el doble truncamiento).
+ * 历史消息条数仍由 Assistant.contextMessageSize / limitContextWithContext 管理,
+ * 不在本预算内重复限制(单一职责,避免双重截断)。
  *
- * @param limits Límite de partición(personaje);Construcciones de valor personalizadas disponibles para pruebas
+ * @param limits 分区上限(字符);可用自定义值构造用于测试
  */
 class ContextBudget(private val limits: Map<ContextSection, Int> = DEFAULT_LIMITS) {
 
-    /** Resultados del truncamiento de una sola partición. */
+    /** 单分区截断结果。 */
     data class Clamped(val text: String, val truncated: Boolean, val originalChars: Int)
 
     /**
-     * Truncar texto por límite de partición.
+     * 按分区上限截断文本。
      *
-     * El texto en blanco se devuelve sin cambios.;Devolver como está sin exceder el límite;Si se excede el límite, se conservará el encabezado y se agregará una nota.
-     * Revisión de corrección(P2): Longitud de la nota desde [limit] reservado dentro,Longitud del resultado garantizada ≤ límite superior,
-     * En lugar de interceptar el límite y luego agregar anotaciones, lo que inevitablemente excederá el presupuesto.
+     * 空白文本原样返回;未超限原样返回;超限保留头部并附注记。
+     * 审查修复(P2): 注记长度从 [limit] 内预留,保证结果总长 ≤ 上限,
+     * 而不是截取 limit 后再追加注记导致必然超预算。
      */
     fun clamp(section: ContextSection, text: String): Clamped {
         val limit = limits[section]
@@ -61,23 +61,23 @@ class ContextBudget(private val limits: Map<ContextSection, Int> = DEFAULT_LIMIT
         return when {
             limit == null || originalChars <= limit -> Clamped(text, false, originalChars)
             else -> {
-                val notice = "\n\n[El contenido ha sido truncado por el presupuesto contextual.: Partición=$section originales $originalChars límite superior de caracteres $limit personaje]"
-                // Nota incluida en el presupuesto:Cabecera reservada = tapa - longitud de la anotación(límite inferior 0)
+                val notice = "\n\n[内容已按上下文预算截断: 分区=$section 原始 $originalChars 字符 上限 $limit 字符]"
+                // 注记计入预算:头部预留 = 上限 - 注记长度(下限 0)
                 val headLength = (limit - notice.length).coerceAtLeast(0)
                 Clamped(text.take(headLength) + notice, true, originalChars)
             }
         }
     }
 
-    /** Entrada conveniente:Obtenga solo el texto truncado. */
+    /** 便捷入口:只取截断后文本。 */
     fun clampText(section: ContextSection, text: String): String = clamp(section, text).text
 
     companion object {
         /**
-         * Límite de partición predeterminado(personaje). Mezclado de chino e inglés. 1 token ≈ 2-3 estimación de carácter:
-         * - Resumen de memoria 24k caracteres ≈ 8-12k token,No desplaza el texto de la conversación
-         * - Adjunto 60k caracteres ≈ Límite superior práctico para la inyección de texto completo en un solo archivo
-         * - Esquema de herramienta 400k caracteres ≈ 100+ Margen de seguridad para visualización completa de herramientas.
+         * 默认分区上限(字符)。以中英混合 1 token ≈ 2-3 字符估算:
+         * - 记忆摘要 24k 字符 ≈ 8-12k token,不会挤占对话正文
+         * - 附件 60k 字符 ≈ 单文件全文注入的实际上限
+         * - 工具 schema 400k 字符 ≈ 100+ 工具全量展示的安全余量
          */
         val DEFAULT_LIMITS: Map<ContextSection, Int> = mapOf(
             ContextSection.ATTACHMENT_TEXT to 60_000,
@@ -86,9 +86,9 @@ class ContextBudget(private val limits: Map<ContextSection, Int> = DEFAULT_LIMIT
             ContextSection.RAG_CITATION to 8_000,
             ContextSection.VISION_DESCRIPTION to 12_000,
             ContextSection.TOOL_SCHEMA to 400_000,
-            // L1-4: system prompt Límite superior total (personalidad estática/Reglas + tiempo dinámico + memoria/Revisión de empalmes).
-            // 80k Caracteres (mezcla de chino e inglés). ≈ 27-40k token) es suficiente para adaptarse a la personalidad normal+reglas+inyección de memoria,
-            // Exceder el límite indica que una sección de la inyección está fuera de control (como una imagen súper larga no truncada)/memoria).
+            // L1-4: system prompt 总量上限（静态人格/规则 + 动态时间 + 记忆/回顾拼接）。
+            // 80k 字符（中英混合 ≈ 27-40k token）足以容纳正常人格+规则+记忆注入，
+            // 超过说明某段注入失控（如未截断的超长画像/记忆）。
             ContextSection.SYSTEM_PROMPT to 80_000,
         )
     }

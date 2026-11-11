@@ -68,7 +68,7 @@ export const migrations: readonly Migration[] = [
         id uuid primary key,
         user_id uuid not null references user_accounts(id) on delete cascade,
         assistant_id uuid references assistants(id) on delete set null,
-        title text not null default 'nueva conversación',
+        title text not null default '新对话',
         archived boolean not null default false,
         created_at timestamptz not null default now(),
         updated_at timestamptz not null default now()
@@ -180,7 +180,7 @@ export const migrations: readonly Migration[] = [
       on conflict (id) do nothing;
       insert into plans(id, name, currency, included_credits, byok_allowed, hosted_models_allowed, limits_json, archived)
       values
-        ('free', 'gratis BYOK', 'CNY', 0, true, false, '{"storageBytes":104857600,"mcpServers":2,"agentRuns":20}'::jsonb, false),
+        ('free', '免费 BYOK', 'CNY', 0, true, false, '{"storageBytes":104857600,"mcpServers":2,"agentRuns":20}'::jsonb, false),
         ('pro', 'Muse Pro', 'CNY', 1000, true, true, '{"storageBytes":5368709120,"mcpServers":10,"agentRuns":500}'::jsonb, false)
       on conflict (id) do nothing;
       insert into plan_prices(id, plan_id, monthly_price_fen, annual_price_fen, effective_at, created_by)
@@ -298,6 +298,15 @@ export const migrations: readonly Migration[] = [
       );
       create index if not exists jobs_claim_idx on jobs(status, run_after, created_at);
       create index if not exists jobs_user_idx on jobs(user_id, created_at desc);
+    `,
+  },
+  {
+    version: 10,
+    name: "musa_spanish_defaults",
+    upSql: `
+      alter table sessions alter column title set default 'Nueva conversación';
+      update plans set name = 'BYOK gratuito' where id = 'free' and name = '免费 BYOK';
+      update plans set name = 'Musa Pro' where id = 'pro' and name = 'Muse Pro';
     `,
   },
 ];

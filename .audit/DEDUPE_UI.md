@@ -1,25 +1,25 @@
-# Enlace 5:UI / Sistemas de Diseño/Accesibilidad — Línea base de deduplicación
+# 链路 5：UI / 设计系统 / 可访问性 — 去重基线
 
-## Solución confirmada/Decisión de diseño (no más presentación)
-- LAYOUT-01 Ancho del texto en línea+Restricción de fila: guardarrail check_row_text_width.py línea base de tolerancia cero (línea base vacía);MarkdownText La exención es la intención del diseño; Los componentes de fila compartida vienen en dos juegos.
-- CMP-11 La barandilla de convergencia de componentes entra en vigor;M3 La cotización directa sólo baja pero no aumenta.
-- visualización del razonamiento del mensaje de la herramienta,ToolRunCard No se incluye la copia completa del pensamiento dentro del grupo, el razonamiento puro."N operaciones realizadas", Se ha solucionado la supresión de la tarjeta dual PlanCard del estado de recuperación.
-- TaskCard Pausa de un solo paso/restaurar (toolCallId vinculante,PENDING hacer una pausa,RUNNING No obligado a matar).
-- La interfaz de usuario de tabla/diferencia de resultados de la herramienta ya no descarta silenciosamente las colas.
-- MessageBubble Se agregó LongParameterList de showToolCallDetails por @Suppress (calibre de punto de ensamblaje a nivel de pantalla).
-- AssistantAvatar Decodificar por tamaño de visualización (OOM reparación,AssistantAvatarMemoryWiringTest).
-- ChatListScreen Retirar vista previa MuseIcons.chat + MuseIconSizes.iconTiny.
-- TerminalScreen 5 en M3 IconButton → MuseTopBarIconButton;OnboardingScreen M3 Switch → MuseSwitch.
-- El banner de actualización es texto sin formato, como está diseñado para ser Surface (no una regresión).
-- MuseDialog El área de contenido se ha desplazado (no más contenedores de desplazamiento anidados)——Trampas conocidas.
-- MuMu emulador insets≈0 Utilice museSafeTopInsetPadding para descubrirlo——conocido.
-- Rediseño de la barra de entrada + textura de vidrio + barra de salto de MessageMapBar + reparación de salto de arrastre de la barra de navegación (v2.5.x lote) se ha implementado.
-- TalkBack/El contraste requiere verificación del dispositivo (conocido); A cada uno de los cinco paquetes de idiomas le faltan 101 traducciones (conocidas).
+## 已确认修复/设计决策（不得再报）
+- LAYOUT-01 行内文本取宽+限行：护栏 check_row_text_width.py 零容忍基线（空基线）；MarkdownText 豁免是设计意图；共享行组件两件套齐。
+- CMP-11 组件收敛护栏生效；M3 直接引用只降不升。
+- 工具消息 reasoning 显示、ToolRunCard 组内思考完整复制、纯 reasoning 不计"执行了 N 个操作"、恢复态 PlanCard 双卡抑制已修。
+- TaskCard 单步暂停/恢复（toolCallId 绑定、PENDING 才可暂停、RUNNING 不强杀）。
+- 工具结果 diff/table UI 不再静默丢尾部。
+- MessageBubble 新增 showToolCallDetails 的 LongParameterList 按点 @Suppress（屏幕级组装点口径）。
+- AssistantAvatar 按显示尺寸解码（OOM 修复，AssistantAvatarMemoryWiringTest）。
+- ChatListScreen 撤回预览 MuseIcons.chat + MuseIconSizes.iconTiny。
+- TerminalScreen 5 处 M3 IconButton → MuseTopBarIconButton；OnboardingScreen M3 Switch → MuseSwitch。
+- 更新横幅是纯文字 Surface 是设计如此（非回归）。
+- MuseDialog 内容区已滚动（勿再嵌套滚动容器）——已知陷阱。
+- MuMu 模拟器 insets≈0 用 museSafeTopInsetPadding 兜底——已知。
+- 输入栏重设计 + 玻璃质感 + MessageMapBar 跳转条 + 导航条拖动跳位修复（v2.5.x 批次）已落地。
+- TalkBack/对比度需设备验证（已知）；五个语言包各缺 101 翻译（已知）。
 
-## La dirección de exploración clave de este enlace.
-1. **2026-10 Coherencia del estado de la interfaz de usuario después de dividir y refactorizar**:ChatViewModel Después de retirar el coordinador/transformador,UI flujo de estado (StateFlow/LiveData) ¿Hay inicios repetidos, actualizaciones perdidas o estados de cadena entre sesiones (anteriormente, el error de sesión de cadena se ha reparado durante muchas rondas?——Compruebe si el código recién extraído reproduce patrones similares).
-2. v2.5.x Nueva interfaz (rediseño del campo de entrada,MessageMapBar, panel de textura de vidrio, entrada de exportación de diagnóstico,A2A página de configuración?): Si se debe cumplir con LAYOUT-01 (ancho+restringido),7 cadena de idioma,MuseIcons,Muse Componente, alcance el objetivo 48 dp.
-3. Compose Rendimiento: Nueva interfaz en la larga lista/Puntos calientes de reorganización bajo el texto grande;stable/immutable Recombinación excesiva debido a anotaciones faltantes.
-4. tema oscuro/El token de color de los nuevos componentes bajo la selección dinámica de colores cumple (check_design_tokens Solo busca colores nude——Buscar archivos nuevos).
-5. teclado/Interacción del método de entrada: recuadro de IME y panel de emoticones después del rediseño de la barra de entrada/La lista de chat salta cuando se cambia el panel de herramientas.
-6. Semántica de accesibilidad: descripción del contenido/descripción del estado de nuevos componentes interactivos (solo se verifican las barreras de seguridad)"desaparecido", comprobar"error semántico"requiere trabajo manual).
+## 本链路重点探查方向
+1. **2026-10 拆分重构后的 UI 状态一致性**：ChatViewModel 拆出 coordinator/transformer 后，UI 状态流（StateFlow/LiveData）有没有重复发射、丢失更新、跨会话串状态（此前串会话类 bug 修过多轮——查新提取代码是否复现同类模式）。
+2. v2.5.x 新界面（输入栏重设计、MessageMapBar、玻璃质感面板、诊断导出入口、A2A 设置页?）：是否遵守 LAYOUT-01（取宽+限行）、7 语言字符串、MuseIcons、Muse 组件、触达目标 48dp。
+3. Compose 性能：新界面在长列表/大文本下的重组热点；stable/immutable 标注缺失导致的过度重组。
+4. 深色主题/动态取色下新组件的颜色 token 合规（check_design_tokens 只查裸色——查新文件）。
+5. 键盘/输入法交互：输入栏重设计后的 IME inset、表情面板/工具面板切换时聊天列表跳变。
+6. 无障碍语义：新交互组件的 contentDescription/stateDescription（护栏只查"缺失"，查"语义错误"需要人工）。

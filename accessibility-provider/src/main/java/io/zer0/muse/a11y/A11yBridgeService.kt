@@ -7,15 +7,15 @@ import io.zer0.muse.accessibility.IAccessibilityProvider
 import io.zer0.muse.accessibility.MuseAccessibilityService
 
 /**
- * v2.2.1: AIDL Servicio de puente.
+ * v2.2.1: AIDL 桥接服务。
  *
- * Pon el mismo proceso [MuseAccessibilityService.instance](Ejemplos de servicios de accesibilidad)Pase
- * [IAccessibilityProvider] Expuesto a la aplicación principal de Muse con la misma firma.:
- *  - manifest Con permisos a nivel de firma [io.zer0.muse.permission.A11Y_BRIDGE] barandilla;
- *  - Cuando los servicios de accesibilidad no están conectados,La clase de consulta devuelve un valor nulo/No habilitado,Devoluciones de clase de operación false(Misma semántica que la implementación integrada de la aplicación principal.).
+ * 把同进程的 [MuseAccessibilityService.instance](无障碍服务实例)通过
+ * [IAccessibilityProvider] 暴露给同签名的 Muse 主应用:
+ *  - manifest 以 signature 级权限 [io.zer0.muse.permission.A11Y_BRIDGE] 护栏;
+ *  - 无障碍服务未连接时,查询类返回空值/未启用,操作类返回 false(与主应用内置实现同语义)。
  *
- * Descripción del mapeo del método:AIDL performGlobalAction corresponde a la clase base execGlobalAction
- * (Anotación de clase base:AccessibilityService.performGlobalAction para final,No se puede sobrescribir).
+ * 方法映射说明:AIDL 的 performGlobalAction 对应基类 execGlobalAction
+ * (基类注释:AccessibilityService.performGlobalAction 为 final,不可覆写)。
  */
 class A11yBridgeService : Service() {
     private val binder =

@@ -7,24 +7,24 @@ import androidx.room.PrimaryKey
 import kotlinx.serialization.Serializable
 
 /**
- * Entidad de mensaje de chat grupal.
+ * 群聊消息实体。
  *
- * Graba cada mensaje en el chat grupal(El usuario habla/el agente habla).
- * - [senderType] Tipo de remitente: "user" o "assistant"
- * - [senderId] remitente id(userId o assistantId)
- * - [senderName] Nombre para mostrar del remitente(caché,Evite volver a consultar cada vez AssistantRepository)
- * - [mood] Agent emociones(Opcional,Déjelo para la siguiente visualización de la interfaz de usuario.)
+ * 记录群聊中的每一条消息(用户发言 / Agent 发言)。
+ * - [senderType] 发送者类型: "user" 或 "assistant"
+ * - [senderId] 发送者 id(userId 或 assistantId)
+ * - [senderName] 发送者显示名(缓存,避免每次反查 AssistantRepository)
+ * - [mood] Agent 情绪(可选,留给后续 UI 展示)
  *
- * @param id el unico mensaje id
- * @param chatId Pertenece al chat grupal id
- * @param senderType Tipo de remitente: "user" / "assistant"
- * @param senderId remitente id
- * @param senderName Nombre para mostrar del remitente
- * @param body Texto del mensaje
- * @param imageBase64Json Lista base64 de archivos adjuntos de imágenes(JSON cuerda,Predeterminado "[]")
- * @param timestamp Enviar marca de tiempo
- * @param mood Agent emociones(Opcional)
- * @param reasoning Agent proceso de pensamiento(Opcional)
+ * @param id 消息唯一 id
+ * @param chatId 所属群聊 id
+ * @param senderType 发送者类型: "user" / "assistant"
+ * @param senderId 发送者 id
+ * @param senderName 发送者显示名
+ * @param body 消息正文
+ * @param imageBase64Json 图片附件 base64 列表(JSON 字符串,默认 "[]")
+ * @param timestamp 发送时间戳
+ * @param mood Agent 情绪(可选)
+ * @param reasoning Agent 思考过程(可选)
  */
 @Entity(
     tableName = "group_chat_messages",
@@ -40,37 +40,37 @@ data class GroupChatMessageEntity(
     val body: String,
     @ColumnInfo(defaultValue = "[]") val imageBase64Json: String = "[]",
     /**
-     * Dirección de resultados de generación de video(assistant noticias,generate_video escribir).
+     * 视频生成结果地址(assistant 消息,generate_video 写入)。
      *
-     * Chatea con Dan [io.zer0.muse.data.session.MessageEntity.videoFileUri] Alineación:Antes no había ninguna columna de vídeo en el chat grupal.,
-     * generate_video Sólo se puede bloquear en chats grupales. Después de la lista complementaria, el vídeo generado en el chat grupal se guardará con el mensaje y se
-     * [io.zer0.muse.ui.MessageBubbleTail.AssistantVideoCard] Renderiza, haz clic para reproducir.
-     * Predeterminado NULL(null = Sin vídeo),Compatible con datos antiguos.
+     * 与单聊 [io.zer0.muse.data.session.MessageEntity.videoFileUri] 对齐:群聊此前没有视频列,
+     * generate_video 只能在群聊被屏蔽。补列后群聊内的生成视频随消息落库并由
+     * [io.zer0.muse.ui.MessageBubbleTail.AssistantVideoCard] 渲染、点击播放。
+     * 默认 NULL(null = 无视频),兼容旧数据。
      */
     @ColumnInfo(defaultValue = "NULL") val videoFileUri: String? = null,
     @ColumnInfo(defaultValue = "0") val timestamp: Long = System.currentTimeMillis(),
     val mood: String? = null,
     val reasoning: String? = null,
-    // ── v2.x Mejoras en el chat grupal ──
+    // ── v2.x 群聊增强功能 ──
     /**
-     * objetivo susurro AI id(null = información pública;no null = Mensajes privados visibles solo para la IA objetivo).
+     * 悄悄话目标 AI id(null = 公开消息;非 null = 仅目标 AI 可见的私信)。
      *
-     * - Mensajes privados enviados por los usuarios.:[senderType]="user", [whisperTargetId]=objetivo assistantId
-     * - AI al recibir,Anotación en el mensaje del sistema"Este es un mensaje privado.";Otras IA no pueden ver este mensaje body
-     * - UI El icono de candado que se muestra en está etiquetado"susurrar"
+     * - 用户发的悄悄话:[senderType]="user", [whisperTargetId]=目标 assistantId
+     * - AI 收到时,系统 prompt 中标注"这是私信";其他 AI 看不到这条消息的 body
+     * - UI 中显示锁图标标注为"悄悄话"
      */
     @ColumnInfo(name = "whisper_target_id", defaultValue = "NULL") val whisperTargetId: String? = null,
     /**
-     * Citando el mensaje objetivo de la respuesta. id(null = noticias generales;no null = Cita el mensaje especificado.).
-     * UI Mostrar bloque de vista previa de referencia en,Haga clic para saltar al mensaje original.
+     * 引用回复的目标消息 id(null = 普通消息;非 null = 引用了指定消息)。
+     * UI 中显示引用预览块,点击可跳转到原消息。
      */
     @ColumnInfo(name = "reply_to_id", defaultValue = "NULL") val replyToId: String? = null,
     /**
-     * etiqueta de tipo de mensaje:
-     * - "normal": noticias generales(Predeterminado)
-     * - "vote": votar votar(Cada IA vota según su personalidad,body para votar contenido)
-     * - "summary": Resumen de conclusiones(generado por resumidor)
-     * - "system": Aviso del sistema(Como por ejemplo"XXX inició una votación")
+     * 消息类型标记:
+     * - "normal": 普通消息(默认)
+     * - "vote": 表决投票(各 AI 按人设投票,body 为投票内容)
+     * - "summary": 结论总结(由总结器生成)
+     * - "system": 系统提示(如"XXX 发起了表决")
      */
     @ColumnInfo(defaultValue = "normal") val messageType: String = "normal",
     @ColumnInfo(defaultValue = "[]") val fileAttachmentsJson: String = "[]",

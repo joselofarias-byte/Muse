@@ -13,7 +13,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * R-TEST-20: Prueba de campo dorado DTO del cuerpo de solicitud del proveedor de video.
+ * R-TEST-20: 视频 Provider 请求体 DTO 黄金字段测试。
  */
 class VideoProviderRequestTest {
 

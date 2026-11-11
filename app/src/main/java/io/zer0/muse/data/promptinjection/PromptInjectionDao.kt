@@ -9,7 +9,7 @@ import androidx.room.Upsert
 import kotlinx.coroutines.flow.Flow
 
 /**
- * PromptInjection DAO — Phase 8.5.
+ * PromptInjection DAO — Phase 8.5。
  */
 @Dao
 interface PromptInjectionDao {
@@ -23,8 +23,8 @@ interface PromptInjectionDao {
     suspend fun queryByIdsEnabled(ids: List<String>): List<PromptInjectionEntity>
 
     /**
-     * Obtenga entradas habilitadas en lotes por identificación. El cortocircuito de la lista vacía vuelve vacío,evitar `IN ()` SQL error de sintaxis(L-PID6).
-     * Repository Las capas también tienen protección de lista vacía.,Aquí está la parte inferior de la capa DAO.(defense in depth).
+     * 按 id 批量取启用条目。空列表短路返回空,避免 `IN ()` SQL 语法错误(L-PID6)。
+     * Repository 层亦有空列表防护,此处为 DAO 层兜底(defense in depth)。
      */
     suspend fun getByIdsEnabled(ids: List<String>): List<PromptInjectionEntity> = if (ids.isEmpty()) emptyList() else queryByIdsEnabled(ids)
 

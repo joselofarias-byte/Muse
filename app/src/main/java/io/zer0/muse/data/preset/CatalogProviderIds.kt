@@ -1,48 +1,48 @@
 package io.zer0.muse.data.preset
 
 /**
- * De forma predeterminada, el ID de especificación tiene el mismo nombre que el ID de proveedor del directorio del modelo de nube.
+ * 预设 specId 与云端模型目录 providerId 的命名归一。
  *
- * fondo (v2.6.0):
- *  - El specId del proveedor de aprovisionamiento viene dado por `id.removePrefix("preset_")` derivación, utilizada históricamente**subrayado**Nombre
- *    (como `openai_codex`,`baidu_cloud`,`dashscope_coding`).
- *  - Directorio de modelos en la nube `model-catalog.json` Se utiliza la sección de proveedores.**guión**Nombre
- *    (como `openai-codex-oauth`,`baidu-cloud`,`dashscope-coding`).
+ * 背景（v2.6.0）：
+ *  - 预置供应商的 specId 由 `id.removePrefix("preset_")` 推导，历史上用**下划线**命名
+ *    （如 `openai_codex`、`baidu_cloud`、`dashscope_coding`）。
+ *  - 云端模型目录 `model-catalog.json` 的 providers 段用**连字符**命名
+ *    （如 `openai-codex-oauth`、`baidu-cloud`、`dashscope-coding`）。
  *
- * [ModelCatalogStore.mergeIntoModels],[ModelCatalogStore.entries] espera providerId
- * Coincide exactamente (ignorando mayúsculas y minúsculas) con las entradas del directorio. En caso de denominación inconsistente**La partida silenciosa falló** —— Representado como una lista modelo.
- * Los nuevos modelos (como la serie GPT-6 de Codex) que permanecen en los directorios de datos antiguos y en la nube predeterminados y codificados no surten efecto.
+ * [ModelCatalogStore.mergeIntoModels]、[ModelCatalogStore.entries] 等按 providerId
+ * 精确（忽略大小写）匹配目录条目，命名不一致时会**静默匹配失败** —— 表现为模型清单
+ * 停留在预设硬编码的旧数据、云端目录的新模型（如 Codex 的 GPT-6 系列）不生效。
  *
- * Este objeto sólo está disponible en**capa lógica de código**Realice la normalización de identificación y no preestablezca ningún dato de modelo: la lista de modelos siempre proviene del directorio de la nube.
+ * 本对象只在**代码逻辑层**做 id 归一，不预置任何模型数据：模型清单始终来自云端目录。
  */
 object CatalogProviderIds {
 
     /**
-     * Alias explícito:specId → Id. del proveedor del catálogo.
+     * 显式别名：specId → 目录 providerId。
      *
-     * Sólo sobrescribir no se puede utilizar "subrayado"→Algunos casos de derivación de las reglas generales del guión;
-     * El resto de la denominación es inconsistente (como `baidu_cloud` → `baidu-cloud`) por [toCatalogId] Procesamiento de reglas generales.
+     * 仅覆盖无法用「下划线→连字符」通用规则推导的少数情况；
+     * 其余命名不一致（如 `baidu_cloud` → `baidu-cloud`）由 [toCatalogId] 通用规则处理。
      */
     private val aliases: Map<String, String> = mapOf(
-        // Codex Suscríbase a la autenticación oficial del dispositivo y la clave del directorio tiene el sufijo -oauth.
+        // Codex 订阅走官方 device-auth，目录键带后缀 -oauth。
         "openai_codex" to "openai-codex-oauth",
-        // La puerta de enlace OpenCode Go en el directorio utiliza opencode-go.
+        // 目录里 OpenCode Go 网关用 opencode-go。
         "opencode" to "opencode-go",
-        // xAI de suscripciones/OAuth Las variantes comparten la misma entrada de catálogo.
+        // xAI 的订阅/OAuth 变体共用同一份目录条目。
         "xai_oauth" to "xai",
     )
 
     /**
-     * Normalice el specId predeterminado al proveedorId del directorio de la nube.
+     * 把预设 specId 归一成云端目录的 providerId。
      *
-     * Idempotente: si la clave del directorio correspondiente ya está en la tabla de alias (o no está en la tabla de alias y no está subrayada), se devuelve tal cual.
-     * Por lo tanto, es seguro llamar al proveedor desde cualquier fuente.
+     * 幂等：已经是对应目录键（或本就不在别名表、且无下划线）时原样返回，
+     * 因此可安全地对任意来源的 providerId 调用。
      */
     fun toCatalogId(specId: String): String {
         val raw = specId.trim()
         if (raw.isEmpty()) return raw
-        // Los alias explícitos tienen prioridad; de lo contrario, los guiones bajos se normalizan a guiones según las reglas generales
-        // (No tiene ningún efecto secundario en las claves con guiones o en los identificadores personalizados que no están en el directorio).
+        // 显式别名优先；否则按通用规则把下划线归一为连字符
+        // （对已含连字符的键、或不在目录里的自定义 id 均无副作用）。
         return aliases[raw.lowercase()] ?: raw.replace('_', '-')
     }
 }

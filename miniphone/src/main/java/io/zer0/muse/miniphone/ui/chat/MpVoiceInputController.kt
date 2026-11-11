@@ -1,55 +1,58 @@
 package io.zer0.muse.miniphone.ui.chat
 
 import io.zer0.muse.miniphone.data.voice.MpVoiceCapture
+import io.zer0.muse.miniphone.ui.launchGuarded
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
 
 /**
- * Tres estados de entrada de voz.
+ * 语音输入的三个状态。
  *
- * "Detener la grabación" y "Comenzar a transcribir" son dos caras de la misma acción.:En el momento en que el usuario hace clic en el final, debería ver el mensaje de transliteración.,
- * En lugar de esperar hasta que la colección esté realmente completa antes de cambiar —— entonces [Transcribing] Ponte en posición antes de detener la minería.
+ * 「停止录音」与「开始转写」是同一个动作的两面:用户点结束的那一刻就该看见转写提示,
+ * 而不是等采集真的收完线才变 —— 所以 [Transcribing] 在停采之前就落位。
  */
 internal sealed interface MpVoiceInputState {
 
-    /** No grabando,Tampoco se está realizando ninguna transcripción. */
+    /** 没在录音,也没有转写在进行。 */
     data object Idle : MpVoiceInputState
 
-    /** Grabación;[elapsedSeconds] Comenzando desde 0 y aumentando en uno cada segundo. */
+    /** 正在录;[elapsedSeconds] 从 0 开始每秒加一。 */
     data class Recording(val elapsedSeconds: Int) : MpVoiceInputState
 
-    /** Recogida terminada,Espere a que el anfitrión convierta la grabación en texto. */
+    /** 采完了,等宿主把录音转成文字。 */
     data object Transcribing : MpVoiceInputState
 }
 
 /**
- * Máquina de estado de entrada de voz para el campo de entrada de la página de chat.
+ * 聊天页输入栏的语音输入状态机。
  *
  * ```
  * Idle → Recording(elapsedSeconds) → Transcribing → Idle
- *              ↓ Cancelar
+ *              ↓ 取消
  *            Idle
  * ```
  *
- * tres reglas:
- *  - La transcripción no está terminada y no se aceptarán nuevas grabaciones.([start] solo ignora),En caso contrario, los archivos temporales del párrafo anterior quedarán no reclamados.;
- *  - Cancelar solo pierde audio,transliteración sin ajuste —— Cuando el usuario presiona cancelar, significa "Ya no quiero esta oración".;
- *  - grabado [MAX_RECORDING_SECONDS] Pase automáticamente por "Detener y transcribir" en segundos,No confíe en que el usuario recuerde el punto final.
+ * 三条规矩:
+ *  - 转写没结束不接受新的录音([start] 直接忽略),否则前一段的临时文件会没人认领;
+ *  - 取消只丢音频,不调转写 —— 用户按取消就是「这句话不要了」;
+ *  - 录到 [MAX_RECORDING_SECONDS] 秒自动走一遍「停止并转写」,不靠用户记得端点。
  *
- * El texto reconocido se entrega a [onTranscript];no puedo reconocer(cadena vacía,null, no se recopiló ningún audio)entregar
- * [onEmptyTranscript],Cómo decir "no escuché con claridad" está determinado por la interfaz—— Esta categoría no toca la redacción publicitaria.,Tampoco tostadas.
- * Darte el micrófono cuando no puedas levantarlo. [onStartFailed]:El usuario hizo clic pero no pasó nada.,Es más incómodo que informar un error.
+ * 识别出的文字交给 [onTranscript];识别不出来(空串、null、没采到音频)交给
+ * [onEmptyTranscript],由界面决定怎么说「没听清」—— 本类不碰文案,也不碰 toast。
+ * 麦克风起不来时交给 [onStartFailed]:用户点了一下却什么都没发生,比一句报错更难受。
  *
- * @param recorder grabadora;Cuando está parado, entrega toda la sección. WAV
- * @param transcribe Una entrada única para convertir WAV a texto,Retorno del fracaso null
- * @param canRecord ¿Se pueden utilizar los ajustes actuales para grabar?;cuando no es posible [start] No mueva la grabadora directamente
- * @param scope Las tareas de cronometraje y transcripción cuelgan aquí,Terminar con la pagina
+ * @param recorder 录音器;停止时由它交出整段 WAV
+ * @param transcribe 把 WAV 转成文字的一次性入口,失败返回 null
+ * @param canRecord 当前设置能不能录音;不能时 [start] 直接不动录音器
+ * @param scope 计时与转写作业挂在这里,随页面一起结束
  */
+// 日志里区分是哪个用户动作失败了（动作名写在调用处）。
+private const val TAG_VOICE_INPUT = "MiniPhoneVoiceInput"
+
 internal class MpVoiceInputController(
     private val recorder: MpVoiceCapture,
     private val transcribe: suspend (ByteArray) -> String?,
@@ -64,14 +67,14 @@ internal class MpVoiceInputController(
 
     val state: StateFlow<MpVoiceInputState> = mutableState.asStateFlow()
 
-    /** Cronómetro corriendo;Cancele cuando salga del estado de grabación. */
+    /** 正在跑的秒表;离开录音状态就取消。 */
     private var ticker: Job? = null
 
     /**
-     * Comience a grabar. solo en [MpVoiceInputState.Idle] Y entrará en vigor cuando la configuración actual admita la grabación.
+     * 开始录音。只在 [MpVoiceInputState.Idle] 且当前设置支持录音时生效。
      *
-     * Cuando no se puede obtener el micrófono, el estado permanece sin cambios y se envía una vez al mismo tiempo. [onStartFailed] —— Las dos situaciones de colocar cenizas y no colocar cenizas se manejan por separado.:
-     * La configuración no es compatible porque "la función no está activada",Error de recopilación significa "no funcionó esta vez",Lo que el usuario quiere leer no es la misma frase.
+     * 拿不到麦克风时状态不变并发一次 [onStartFailed] —— 置灰与不是置灰两种情形分开处理:
+     * 设置不支持是「功能没开」,采集失败是「这次没成」,用户要看的不是同一句话。
      */
     fun start() {
         if (mutableState.value != MpVoiceInputState.Idle) return
@@ -81,19 +84,19 @@ internal class MpVoiceInputController(
             return
         }
         mutableState.value = MpVoiceInputState.Recording(elapsedSeconds = 0)
-        ticker = scope.launch { tick() }
+        ticker = scope.launchGuarded(TAG_VOICE_INPUT, "语音录制计时") { tick() }
     }
 
-    /** Detén la grabación y transcribe. solo en [MpVoiceInputState.Recording] Tener un efecto. */
+    /** 停止录音并转写。只在 [MpVoiceInputState.Recording] 生效。 */
     fun stop() {
         if (mutableState.value !is MpVoiceInputState.Recording) return
         ticker?.cancel()
         ticker = null
         mutableState.value = MpVoiceInputState.Transcribing
-        scope.launch { finishTranscription() }
+        scope.launchGuarded(TAG_VOICE_INPUT, "结束录音并转写") { finishTranscription() }
     }
 
-    /** Cancelar esta grabación:audio perdido,No transcrito. */
+    /** 取消这一次录音:音频丢掉,不转写。 */
     fun cancel() {
         if (mutableState.value !is MpVoiceInputState.Recording) return
         ticker?.cancel()
@@ -102,7 +105,7 @@ internal class MpVoiceInputController(
         mutableState.value = MpVoiceInputState.Idle
     }
 
-    /** Finalizar al salir de la página.:Ya sea grabando o transcribiendo,Vuelva al modo inactivo y asegúrese de que se eliminen los archivos temporales. */
+    /** 页面离开时收尾:不管在录音还是转写,都回到空闲并确保临时文件被删。 */
     fun release() {
         ticker?.cancel()
         ticker = null
@@ -110,7 +113,7 @@ internal class MpVoiceInputController(
         mutableState.value = MpVoiceInputState.Idle
     }
 
-    /** Dejar de minar → Transcribir → Enviar texto. El resultado vacío también va de esta manera.,Sólo dáselo a [onEmptyTranscript]. */
+    /** 停采 → 转写 → 交文字。空结果也走这条路,只是交给 [onEmptyTranscript]。 */
     private suspend fun finishTranscription() {
         val wav = recorder.stop()
         val text = if (wav == null) null else transcribe(wav)
@@ -119,7 +122,7 @@ internal class MpVoiceInputController(
         mutableState.value = MpVoiceInputState.Idle
     }
 
-    /** Cronómetro:Un segundo salto,Salta al límite superior y presiona \"Finalizar\" tú mismo. */
+    /** 秒表:一秒一跳,跳到上限就自己按「结束」。 */
     private suspend fun tick() {
         while (true) {
             delay(TICK_INTERVAL_MS)
@@ -134,14 +137,14 @@ internal class MpVoiceInputController(
     }
 
     companion object {
-        /** Límite de grabación única:Consistente con el límite de escritura propio de la grabadora. */
+        /** 单次录音上限:与录音器自己的写入上限一致。 */
         const val MAX_RECORDING_SECONDS: Int = 60
     }
 }
 
 private const val TICK_INTERVAL_MS: Long = 1_000L
 
-/** Duración de la grabación en el campo de entrada:`0:07`. */
+/** 输入栏上的录音时长:`0:07`。 */
 internal fun voiceElapsedLabel(seconds: Int): String {
     val safe = seconds.coerceAtLeast(0)
     return "${safe / 60}:${(safe % 60).toString().padStart(2, '0')}"

@@ -20,14 +20,14 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import java.util.concurrent.TimeUnit
 
 /**
- * v2.0: Cliente robot DingTalk — Stream Recepción de conexión larga + envío de webhook de sesión/openapi.
+ * v2.0: 钉钉机器人客户端 — Stream 长连接接收 + sessionWebhook / OpenAPI 发送。
  *
- * recibir:Stream modo(POST /v1.0/gateway/connections/open Obtener endpoint + ticket,
- * crear WebSocket;Conexión saliente,Red pública gratuita). enviar de dos maneras:
- *  1. sessionWebhook — Enviar el mensaje cuando sea recibido.,Válido por aproximadamente 2 horas.,No se requiere autenticación;
- *  2. OpenAPI — oauth2/accessToken + Interfaz de mensajes del robot(Toma la iniciativa de enviar los detalles.).
+ * 接收:Stream 模式(POST /v1.0/gateway/connections/open 获取 endpoint + ticket,
+ * 建立 WebSocket;出站连接,免公网)。发送两条路:
+ *  1. sessionWebhook — 收到消息时随消息下发,约 2 小时内有效,无需鉴权;
+ *  2. OpenAPI — oauth2/accessToken + 机器人消息接口(主动发送兜底)。
  *
- * Nota sobre el protocolo:Stream El canal en sí no puede responder directamente a los mensajes IM.(solo puedo ACK),La respuesta debe tomar los dos caminos mencionados anteriormente.
+ * 协议注意:Stream 通道本身不能直接回复 IM 消息(只能 ACK),回复必须走上述两条路。
  */
 internal object DingtalkClient {
 
@@ -38,7 +38,7 @@ internal object DingtalkClient {
             .build()
     }
 
-    /** WebSocket cliente dedicado(mantener vivo el latido del corazón). */
+    /** WebSocket 专用客户端(保活心跳)。 */
     val WEB_SOCKET: OkHttpClient by lazy {
         io.zer0.ai.core.ProxyProvider.applyTo(OkHttpClient.Builder())
             .connectTimeout(15, TimeUnit.SECONDS)
@@ -49,13 +49,13 @@ internal object DingtalkClient {
 
     private val JSON_MEDIA = "application/json; charset=utf-8".toMediaType()
 
-    /** Stream Credenciales de conexión. */
+    /** Stream 连接凭据。 */
     data class StreamConnection(val endpoint: String, val ticket: String)
 
-    /** Aplicar credenciales de acceso. */
+    /** 应用访问凭据。 */
     data class TokenInfo(val accessToken: String, val expireInSeconds: Long)
 
-    /** Registrar credenciales de conexión de Stream(Suscríbete solo a devoluciones de llamadas de mensajes de bot). */
+    /** 注册 Stream 连接凭证(仅订阅机器人消息回调)。 */
     suspend fun openStreamConnection(
         clientId: String,
         clientSecret: String,
@@ -81,18 +81,18 @@ internal object DingtalkClient {
             val obj = AppJson.parseToJsonElement(resp).jsonObject
             StreamConnection(
                 endpoint = obj["endpoint"]?.jsonPrimitive?.contentOrNull
-                    ?: error("Stream Falta respuesta endpoint: ${resp.take(200)}"),
+                    ?: error("Stream 响应缺少 endpoint: ${resp.take(200)}"),
                 ticket = obj["ticket"]?.jsonPrimitive?.contentOrNull
-                    ?: error("Stream Falta respuesta ticket: ${resp.take(200)}"),
+                    ?: error("Stream 响应缺少 ticket: ${resp.take(200)}"),
             )
         }
     }
 
-    /** WebSocket conectar URL(endpoint + ticket;ticket Válido por 90 segundos y solo se puede usar una vez). */
+    /** WebSocket 连接 URL(endpoint + ticket;ticket 有效期 90 秒且仅可用一次)。 */
     fun streamUrl(connection: StreamConnection): String =
         "${connection.endpoint}?ticket=${java.net.URLEncoder.encode(connection.ticket, "UTF-8")}"
 
-    /** Responder con sesiónWebhook(La dirección temporal viene con las credenciales de sesión.,No se requiere autenticación). */
+    /** 用 sessionWebhook 回复(临时地址自带会话凭据,无需鉴权)。 */
     suspend fun sendViaSessionWebhook(webhookUrl: String, text: String): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
             val body = buildJsonObject {
@@ -103,12 +103,12 @@ internal object DingtalkClient {
             val obj = runCatching { AppJson.parseToJsonElement(resp).jsonObject }.getOrNull()
             val errcode = obj?.get("errcode")?.jsonPrimitive?.contentOrNull?.toIntOrNull()
             if (errcode != null && errcode != 0) {
-                error("La devolución de datos de DingTalk falló: errcode=$errcode ${obj["errmsg"]?.jsonPrimitive?.contentOrNull.orEmpty()}")
+                error("钉钉回发失败: errcode=$errcode ${obj["errmsg"]?.jsonPrimitive?.contentOrNull.orEmpty()}")
             }
         }
     }
 
-    /** Obtenga el token de acceso de la aplicación interna. */
+    /** 获取企业内部应用 access_token。 */
     suspend fun fetchAccessToken(appKey: String, appSecret: String, apiBase: String = DINGTALK_DEFAULT_API_BASE): Result<TokenInfo> =
         withContext(Dispatchers.IO) {
             runCatching {
@@ -124,13 +124,13 @@ internal object DingtalkClient {
                 val obj = AppJson.parseToJsonElement(resp).jsonObject
                 TokenInfo(
                     accessToken = obj["accessToken"]?.jsonPrimitive?.contentOrNull
-                        ?: error("Falta la respuesta del token de DingTalk accessToken: ${resp.take(200)}"),
+                        ?: error("钉钉 token 响应缺 accessToken: ${resp.take(200)}"),
                     expireInSeconds = obj["expireIn"]?.jsonPrimitive?.contentOrNull?.toLongOrNull() ?: 7200L,
                 )
             }
         }
 
-    /** Enviar proactivamente:charla privada(Conversación humano-robot;userId Obtener del senderStaffId de la devolución de llamada del mensaje). */
+    /** 主动发送:单聊(人与机器人会话;userId 从消息回调的 senderStaffId 获取)。 */
     suspend fun sendToUser(
         accessToken: String,
         robotCode: String,
@@ -154,7 +154,7 @@ internal object DingtalkClient {
         }
     }
 
-    /** Enviar proactivamente:chat grupal(openConversationId Obtener del ID de conversación de la devolución de llamada del mensaje). */
+    /** 主动发送:群聊(openConversationId 从消息回调的 conversationId 获取)。 */
     suspend fun sendToGroup(
         accessToken: String,
         robotCode: String,
@@ -178,12 +178,12 @@ internal object DingtalkClient {
         }
     }
 
-    /** Comprobación de errores de la interfaz de envío del robot DingTalk(Ningún código de error/procesoQueryKey regresa normalmente cuando tiene éxito). */
+    /** 钉钉机器人发送接口错误校验(成功时无 errcode / processQueryKey 正常返回)。 */
     private fun validateRobotResponse(resp: String) {
         val obj = runCatching { AppJson.parseToJsonElement(resp).jsonObject }.getOrNull() ?: return
         val code = obj["code"]?.jsonPrimitive?.contentOrNull
         if (!code.isNullOrBlank() && code != "0") {
-            error("DingTalk no pudo enviar: code=$code ${obj["message"]?.jsonPrimitive?.contentOrNull.orEmpty()}")
+            error("钉钉发送失败: code=$code ${obj["message"]?.jsonPrimitive?.contentOrNull.orEmpty()}")
         }
     }
 
@@ -197,7 +197,7 @@ internal object DingtalkClient {
         }
     }
 
-    /** Stream Respuesta ACK para marco de inserción(Devolver ID de mensaje y data). */
+    /** Stream 推送帧的 ACK 应答(按协议回传 messageId 与 data)。 */
     fun ackFrame(messageId: String, data: String): String = buildJsonObject {
         put("code", 200)
         put("message", "OK")
@@ -220,10 +220,10 @@ internal suspend fun restoreDingtalkReplyContextToken(encryptedToken: String): S
     ?.takeIf { it.isNotBlank() }
 
 /**
- * v2.0: Caché de webhook de sesión de DingTalk — Registrar cuando se recibe el mensaje sessionWebhook,Tenga prioridad al publicar.
+ * v2.0: 钉钉会话 Webhook 缓存 — 收到消息时记录 sessionWebhook,回发时优先使用。
  *
- * El chat grupal usa conversationId como clave y el chat individual usa senderStaffId como clave.(Doble escritura al mismo tiempo.,No es necesario distinguir en el lado de la respuesta.);
- * El tiempo de vencimiento se toma del sessionWebhookExpiredTime del cuerpo del mensaje.
+ * 群聊以 conversationId 为键、单聊以 senderStaffId 为键(同时双写,回复侧无需区分);
+ * 过期时间取自消息体的 sessionWebhookExpiredTime。
  */
 internal object DingtalkSessionCache {
     private data class Entry(val webhookUrl: String, val expireAt: Long)
@@ -236,6 +236,6 @@ internal object DingtalkSessionCache {
         keys.filter { it.isNotBlank() }.forEach { entries[it] = entry }
     }
 
-    /** Devolución vigente sessionWebhook;Devuelve nulo si no hay ningún valor disponible. */
+    /** 返回未过期的 sessionWebhook;无可用值返回 null。 */
     fun get(key: String): String? = entries[key]?.takeIf { it.expireAt > System.currentTimeMillis() }?.webhookUrl
 }

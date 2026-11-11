@@ -3,48 +3,48 @@ package io.zer0.muse.ui.chat
 import io.zer0.ai.core.UIMessage
 
 /**
- * La unidad de visualización de la capa de representación de la lista de chat.
+ * 聊天列表的渲染层展示单元。
  *
- * poner"Un elemento de lista por mensaje"refinado a"Una única/grupo de llamadas de herramientas consecutivas",
- * Para convertir operaciones de herramientas con múltiples ruedas de"Una larga lista de cartas scatter"converge a"Una tarjeta de grupo de operaciones".
+ * 把"每条消息一个列表项"细化为"单条 / 一组连续工具调用"，
+ * 用于把多轮工具操作从"一长串分散卡片"收敛为"一张操作组卡"。
  *
- * Nota:esto es solo**capa de renderizado**grupo,Los datos del mensaje en sí no se modifican.
- * [messageIds] Grabe el mensaje cubierto por esta unidad de visualización. id,para posicionamiento de desplazamiento/Resaltado de búsqueda"noticias → elemento de la lista"Mapeo de índices.
+ * 注意:这只是**渲染层**分组,不改变消息数据本身。
+ * [messageIds] 记录该展示单元覆盖的消息 id,供滚动定位/搜索高亮做"消息 → 列表项"索引映射。
  */
 sealed interface ChatDisplayItem {
-    /** Mensajes cubiertos por esta unidad de visualización id(en orden original). */
+    /** 该展示单元覆盖的消息 id(按原顺序)。 */
     val messageIds: List<String>
 
-    /** Mensaje único. */
+    /** 单条消息。 */
     data class Single(val msg: UIMessage) : ChatDisplayItem {
         override val messageIds: List<String> get() = listOf(msg.id.toString())
     }
 
-    /** un grupo**continuo**mensajes agregables(como llamadas continuas a herramientas). Condiciones de establecimiento:Cantidad >= [ChatDisplayGrouper.MIN_RUN_SIZE]. */
+    /** 一组**连续**的可聚合消息(如连续的工具调用)。成立条件:数量 >= [ChatDisplayGrouper.MIN_RUN_SIZE]。 */
     data class Grouped(val msgs: List<UIMessage>) : ChatDisplayItem {
         override val messageIds: List<String> get() = msgs.map { it.id.toString() }
     }
 }
 
 /**
- * Presione la lista de mensajes"segmento polimerizable continuo"Grupo.
+ * 把消息列表按"连续可聚合段"分组。
  *
- * reglas:
- *  - continuo >= [MIN_RUN_SIZE] satisfacer [isGroupable] noticias → uno [ChatDisplayItem.Grouped];
- *  - El resto de novedades son aparte. [ChatDisplayItem.Single];
- *  - Mensaje único agregable**No**en grupos(Una sola llamada a la herramienta se convierte en"grupo"Al contrario, es aún más extraño.,Mantener una sola tarjeta).
+ * 规则:
+ *  - 连续 >= [MIN_RUN_SIZE] 条满足 [isGroupable] 的消息 → 一个 [ChatDisplayItem.Grouped];
+ *  - 其余消息各自成 [ChatDisplayItem.Single];
+ *  - 单条可聚合消息**不**成组(一条工具调用单独成"组"反而更怪,保持单卡)。
  *
- * La condición de juicio la determina la persona que llama con [isGroupable] entrante(por ejemplo"Hay toolCallInfo y no hay tarjeta de tarea"),
- * De esta manera, el estado de la interfaz de usuario, como taskCard, no tiene por qué filtrarse a esta función. —— Mantenga las funciones puras y comprobables.
+ * 判定条件由调用方以 [isGroupable] 传入(例如"有 toolCallInfo 且没有任务卡"),
+ * 这样 taskCard 之类的 UI 状态不必泄漏进本函数 —— 保持纯函数、可单测。
  */
 object ChatDisplayGrouper {
 
     /**
-     * El número mínimo de elementos consecutivos necesarios para formar un grupo.
+     * 成组所需的最少连续条数。
      *
-     * Toma 1: Un único mensaje de proceso puro (solo se ajusta una herramienta en una ronda, o solo un período de reflexión)
-     * También debería integrarse en tarjetas de proceso en lugar de herramientas separadas./Aparecen tarjetas de pensamiento.
-     * El valor original de 2 hará que el escenario normal de "una herramienta por ronda" no se doble en absoluto.
+     * 取 1：单条纯过程消息（一轮只调了一个工具，或只是一段思考）
+     * 也应收敛进过程卡，而不是以独立的工具/思考卡出现。
+     * 原值 2 会导致「一轮一个工具」的常规场景完全不走折叠。
      */
     const val MIN_RUN_SIZE = 1
 
@@ -52,10 +52,10 @@ object ChatDisplayGrouper {
         messages: List<UIMessage>,
         isGroupable: (UIMessage) -> Boolean,
         /**
-         * Juicio de transmisión transparente: este tipo de noticias**No participar en el grupo.**, pero tampoco trunca la agrupación.
+         * 透传判定：这类消息**不参与组**，但也不截断分组。
          *
-         * El mensaje típico es el mensaje de "tarjeta de tareas". —— La tarjeta de tarea debe renderizarse sola (la tarjeta de grupo no la reconoce),
-         * Pero pertenece a la misma corriente y no deberíamos pensar en ello antes y después./Las herramientas se dividen en dos grupos.
+         * 典型是「挂任务卡」的那条消息 —— 任务卡必须自己渲染（组卡不认识它），
+         * 但它属于同一条流水，不该把前后的思考/工具劈成两组。
          */
         isTransparent: (UIMessage) -> Boolean = { false },
     ): List<ChatDisplayItem> {
@@ -69,7 +69,7 @@ object ChatDisplayGrouper {
                 index++
                 continue
             }
-            // Recopilar segmentos agregables continuos; cuando encuentre un mensaje transparente, omítalo y continúe, pero no lo combine con el grupo.
+            // 收集连续可聚合段；遇到透传消息时跳过它继续往后，但不把它并入组内。
             var end = index
             val run = ArrayList<UIMessage>()
             val transparentInRun = ArrayList<UIMessage>()
@@ -80,7 +80,7 @@ object ChatDisplayGrouper {
                         run += current
                         end++
                     }
-                    // Mensaje transparente: permitido cruzar, seguir buscando; se renderiza de forma independiente
+                    // 透传消息：允许跨过，继续往后找；它自己单独渲染
                     isTransparent(current) -> {
                         transparentInRun += current
                         end++
@@ -89,11 +89,11 @@ object ChatDisplayGrouper {
                 }
             }
             if (run.isEmpty()) {
-                // No hay elementos agregables en este párrafo: salida uno por uno en el orden original
+                // 这一段里没有可聚合项：逐个按原顺序输出
                 messages.subList(index, end).forEach { result += ChatDisplayItem.Single(it) }
             } else {
                 result += ChatDisplayItem.Grouped(run)
-                // Los mensajes de paso se clasifican según el grupo, manteniendo su orden relativo original.
+                // 透传消息排在组之后，保持它们原本的相对顺序
                 transparentInRun.forEach { result += ChatDisplayItem.Single(it) }
             }
             index = end
@@ -102,9 +102,9 @@ object ChatDisplayGrouper {
     }
 
     /**
-     * crear"noticias id → Subíndice de unidad de visualización"índice de,para posicionamiento de desplazamiento/Los aspectos destacados de la búsqueda aún se pueden ubicar después de la agrupación.
+     * 建立"消息 id → 展示单元下标"的索引,供滚动定位/搜索高亮在分组后仍能定位。
      *
-     * Si el objetivo del salto de búsqueda es un mensaje del grupo,Debería saltar al índice de elementos de la lista del grupo.
+     * 搜索跳转的目标若是组内某条消息,应跳到该组的列表项下标。
      */
     fun indexByMessageId(items: List<ChatDisplayItem>): Map<String, Int> {
         val map = HashMap<String, Int>()
@@ -116,21 +116,21 @@ object ChatDisplayGrouper {
 }
 
 /**
- * Busque el ID del mensaje en pantalla de la herramienta "El producto ha sido extraído mediante la tarjeta de tarea".
+ * 找出「产物已经由任务卡画过」的工具展示消息 id。
  *
- * Aparecerán dos mensajes en la rueda de herramientas.:un mensaje de asistente(Colgar tarjeta de tarea)+ Un mensaje en pantalla por herramienta.
- * Cada paso de la tarjeta de tareas representará directamente el producto.(Imágenes y archivos generados…),
- * La información de visualización de la herramienta en sí también utilizará el mismo conjunto de productos para renderizarse directamente. —— Entonces la misma tarjeta aparece dos veces en la pantalla.
- * (Comentarios de los usuarios "Se muestran dos tarjetas en una tarjeta y en ese lugar").
+ * 工具轮会落两条消息:一条助手消息(挂任务卡)+ 每个工具一条展示消息。
+ * 任务卡的每个步骤都会直接渲染产物(生成的图片、文件…),
+ * 而工具展示消息自身也会走同一套产物直出渲染 —— 于是同一张卡在屏幕上出现两遍
+ * (用户反馈「一个卡里面和那个地方展示两个卡片」)。
  *
- * Determinación basada en la asociación de padres.:mensaje en pantalla de herramienta [UIMessage.parentMessageId] Señalar el mensaje del asistente correspondiente.,
- * Este último está en [taskCardOwnerIds] Significa que los productos de esta ronda han sido sorteados.
+ * 判定依据是父关联:工具展示消息的 [UIMessage.parentMessageId] 指向所属助手消息,
+ * 后者在 [taskCardOwnerIds] 里就说明这一轮的产物已经画过了。
  *
- * Nota:Herramientas entregables(show_card)La exención no está en esta función. —— Esta es una función pura, una estrategia de renderizado inconsciente.;
- * llamador(ChatScreen)Elimine los entregables del conjunto de resultados. Ver
- * [io.zer0.muse.ui.isInlineDeliverableTool].
+ * 注意:交付物工具(show_card)的豁免不在本函数 —— 这是纯函数、不感知渲染策略;
+ * 调用方(ChatScreen)把交付物从结果集合里摘出去。参见
+ * [io.zer0.muse.ui.isInlineDeliverableTool]。
  *
- * función pura,Conveniente para pruebas individuales.
+ * 纯函数,便于单测。
  */
 internal fun toolMessageIdsCoveredByTaskCards(messages: List<UIMessage>, taskCardOwnerIds: Set<String>): Set<String> {
     if (taskCardOwnerIds.isEmpty()) return emptySet()

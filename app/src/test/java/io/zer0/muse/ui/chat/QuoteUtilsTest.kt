@@ -8,28 +8,28 @@ class QuoteUtilsTest {
 
     @Test
     fun buildQuotedContent_roundTripsThroughParser() {
-        val content = buildQuotedContent("Noticia original citada", "esta es mi respuesta")
+        val content = buildQuotedContent("被引用的原消息", "这是我的回复")
 
         val (quote, body) = parseQuotedContent(content)
 
-        assertEquals("Noticia original citada", quote)
-        assertEquals("esta es mi respuesta", body)
-        assertNull(parseQuotedContent("noticias generales").first)
-        assertEquals("noticias generales", parseQuotedContent("noticias generales").second)
+        assertEquals("被引用的原消息", quote)
+        assertEquals("这是我的回复", body)
+        assertNull(parseQuotedContent("普通消息").first)
+        assertEquals("普通消息", parseQuotedContent("普通消息").second)
     }
 
     @Test
     fun buildQuotedContent_multilineQuoteKeepsAllLines() {
-        val content = buildQuotedContent("primera linea\nsegunda linea", "Texto")
+        val content = buildQuotedContent("第一行\n第二行", "正文")
 
         val (quote, body) = parseQuotedContent(content)
 
-        assertEquals("primera linea\nsegunda linea", quote)
-        assertEquals("Texto", body)
+        assertEquals("第一行\n第二行", quote)
+        assertEquals("正文", body)
     }
 
     @Test
     fun buildQuotedContent_emptyQuoteReturnsBodyOnly() {
-        assertEquals("Sólo texto", buildQuotedContent("", "Sólo texto"))
+        assertEquals("只有正文", buildQuotedContent("", "只有正文"))
     }
 }

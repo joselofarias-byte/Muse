@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-test_font_scale_clipping.py — check_font_scale_clipping.py pruebas unitarias.
+test_font_scale_clipping.py — check_font_scale_clipping.py 的单元测试。
 
-correr: py -3 ci/test/test_font_scale_clipping.py
+运行: py -3 ci/test/test_font_scale_clipping.py
 """
 
 import json
@@ -22,27 +22,27 @@ from check_font_scale_clipping import (  # noqa: E402
 
 UI_REL = "app/src/main/java/io/zer0/muse/ui"
 
-# El método de escritura para cortar palabras: altura fija + cuerpo del contenedor. Text
+# 会裁字的写法：固定高度 + 容器体内有 Text
 RISKY = """
 @Composable
 fun Card() {
     Box(modifier = Modifier.fillMaxWidth().height(56.dp)) {
-        Text("Título")
+        Text("标题")
     }
 }
 """
 
-# Modificado:heightIn(min=) La altura garantizada permanece sin cambios pero aumenta con el tamaño de la fuente.
+# 已改造：heightIn(min=) 保底高度不变但随字号增长
 SAFE_HEIGHT_IN = """
 @Composable
 fun Card() {
     Box(modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)) {
-        Text("Título")
+        Text("标题")
     }
 }
 """
 
-# Altura fija de tamaño pequeño:icono/Nivel de punto, no lleva texto
+# 小尺寸固定高度：图标/圆点级，不承载文本
 SAFE_SMALL = """
 @Composable
 fun Dot() {
@@ -50,25 +50,25 @@ fun Dot() {
 }
 """
 
-# Spacer:el espaciado no lleva texto
+# Spacer：间距不承载文本
 SAFE_SPACER = """
 @Composable
 fun Gap() {
     Spacer(Modifier.height(48.dp))
-    Text("A continuación se muestra el texto del componente adyacente.")
+    Text("下面是相邻组件的文字")
 }
 """
 
-# Divisor de línea delgada: 0,5 dp de ancho + alto fijo, no lleva texto
+# 细线分隔条：宽 0.5dp + 固定高度，不承载文本
 SAFE_DIVIDER = """
 @Composable
 fun Hairline() {
     Box(modifier = Modifier.width(0.5.dp).height(40.dp).background(Color.Gray))
-    Text("texto de componentes adyacentes")
+    Text("相邻组件的文字")
 }
 """
 
-# Contenedor de medios: la altura la determina Canvas y no aumenta con el tamaño de fuente.
+# 媒体容器：高度由 Canvas 决定，不随字号撑高
 SAFE_MEDIA = """
 @Composable
 fun Chart() {
@@ -81,7 +81,7 @@ fun Chart() {
 }
 """
 
-# El texto de los componentes adyacentes no está incluido en el texto del cuerpo del contenedor (el texto está detrás de la ventana multimedia y a una altura fija). >12 bien)
+# 相邻组件的文字不算容器体内文本（文本在媒体窗口之后、距固定高度 >12 行）
 SAFE_NEIGHBOUR_TEXT = """
 @Composable
 fun Slider() {
@@ -89,12 +89,12 @@ fun Slider() {
         detectHorizontalDragGestures(onDragStart = { }, onDragEnd = { }, onDragCancel = { }, onHorizontalDrag = { _, _ -> })
     }
     Canvas(modifier = Modifier.fillMaxSize()) { drawCircle(Color.Red) }
-    Text("Descripción del control deslizante")
+    Text("滑块说明")
 }
 """
 
 
-# Altura ilimitadaIn + fillMaxSize niño: el niño solicitará la altura máxima de los padres(1.3x Un recorrido por el incidente real en la barandilla superior de la isla.)
+# 无界 heightIn + fillMaxSize 子项：子项会请求父级最大高度(1.3x 走查实测的顶栏中岛事故)
 RISKY_UNBOUNDED = """
 @Composable
 fun Island() {
@@ -104,7 +104,7 @@ fun Island() {
 }
 """
 
-# Hay un límite superior para la altura In: no crecerá indefinidamente.,forma correcta de escribir
+# 有上界的 heightIn：不会无限长高,属正确写法
 SAFE_BOUNDED = """
 @Composable
 fun Capsule() {
@@ -175,21 +175,21 @@ def test_missing_ui_dir_fails_closed():
         scan_roots(root)
     except FileNotFoundError:
         return
-    raise AssertionError("UI Debe lanzarse cuando falta el directorio FileNotFoundError(No hay paso en silencio)")
+    raise AssertionError("UI 目录缺失时必须抛 FileNotFoundError(不得静默通过)")
 
 
 def test_evaluate_flags_new_file_and_total_increase():
     root = make_root({"Card.kt": RISKY})
     current = [s for s in scan_roots(root) if s.occurrences]
     failures, _ = evaluate(current, {"files": {}, "totals": {"occurrences": 0}, "min_risk_dp": MIN_RISK_DP})
-    assert any("Agregar nuevo archivo" in f for f in failures), failures
+    assert any("新增文件" in f for f in failures), failures
 
 
 def test_evaluate_detects_rule_drift():
     root = make_root({"Card.kt": RISKY})
     current = [s for s in scan_roots(root) if s.occurrences]
     failures, _ = evaluate(current, {"files": {}, "totals": {"occurrences": 0}, "min_risk_dp": 99})
-    assert any("El calibre de identificación ha cambiado." in f for f in failures), failures
+    assert any("识别口径已变化" in f for f in failures), failures
 
 
 def test_update_baseline_refuses_increase():
@@ -198,8 +198,8 @@ def test_update_baseline_refuses_increase():
     path = Path(tempfile.mkdtemp()) / "baseline.json"
     path.write_text(json.dumps({"files": {}, "totals": {"occurrences": 0}}), encoding="utf-8")
     rc = update_baseline(path, current, allow_increase=False)
-    assert rc == 1, "Se debe rechazar el aumento de la línea de base"
-    assert json.loads(path.read_text(encoding="utf-8"))["files"] == {}, "La línea de base no debe reescribirse en caso de rechazo"
+    assert rc == 1, "基线上升必须被拒绝"
+    assert json.loads(path.read_text(encoding="utf-8"))["files"] == {}, "拒绝时不得改写基线"
 
 
 def test_update_baseline_writes_and_round_trips():

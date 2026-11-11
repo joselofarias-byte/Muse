@@ -3,34 +3,34 @@ package io.zer0.memory.prompt
 import io.zer0.memory.ai.ParsedAnalysis
 
 /**
- * v2.x: Consejos de ejemplos de palabras para la prevención de fugas.
+ * v2.x: 提示词示例泄漏防护。
  *
- * fondo: Extraer palabras clave([io.zer0.memory.ai.MemoryExtractPrompt] / [FactExtractionPrompt])de
- * Ejemplo de demostración de zona de formato de salida(Como por ejemplo"alérgico a la penicilina"),Los modelos débiles a veces copian contenido de ejemplo en la salida.,haciendo que el ejemplo sea tratado como
- * La memoria real del usuario almacenada en la base de datos.(Comentarios de los usuarios:"penicilina"Espere a que aparezcan ejemplos en la memoria.).
+ * 背景: 提取类提示词([io.zer0.memory.ai.MemoryExtractPrompt] / [FactExtractionPrompt])的
+ * 输出格式区带演示样例(如"对青霉素过敏"),弱模型有时会把示例内容照抄进输出,导致示例被当成
+ * 用户真实记忆入库(用户反馈:"青霉素"等示例出现在记忆里)。
  *
- * Reglas de decisión(Cubierta a nivel de texto):
- *  - Lista de palabras de ejemplo de resultados de entrada,pero"Introduce el texto original esta vez.(dialogo/Resumen)"la palabra nunca se menciona → Ejemplo considerado copiado,descartar;
- *  - De hecho, se mencionó en la conversación. → tratado como un recuerdo real,mantener como de costumbre(Sin lesiones accidentales).
+ * 判定规则(文本级兜底):
+ *  - 条目命中了示例词表,但"本次输入原文(对话/摘要)"从未提及该词 → 判定为照抄示例,丢弃;
+ *  - 对话里真的提到过 → 视为真实记忆,照常保留(不误伤)。
  *
- * La lista de vocabulario solo cubre las palabras patentadas que aparecen en cada ejemplo de palabra clave.,Evite afectar el contenido normal.
+ * 词表只覆盖各提示词示例里出现过的专有词,避免影响正常内容。
  */
 object PromptExampleGuard {
 
-    /** Vocabulario de ejemplo:Palabras adecuadas que aparecen en cada palabra del mensaje Ejemplo de formato de salida(comparación de minúsculas). */
+    /** 示例词表:各提示词 Output Format 示例里出现过的专有词(小写比较)。 */
     private val EXAMPLE_TERMS: List<String> = listOf(
-        // MemoryExtractPrompt(zh / en)Ejemplo de salida
-        "penicilina", "amoxicilina", "americano", "Sr. Zhang", "Zhang San",
+        // MemoryExtractPrompt(zh / en)输出示例
+        "青霉素", "阿莫西林", "美式咖啡", "张先生", "张三",
         "penicillin", "amoxicillin", "american coffee", "mr. zhang", "zhang san",
-        // FactExtractionPrompt(zh / en)Ejemplo de salida
-        "Preparándose para mudarse", "Primer borrador del artículo.", "preparing to move", "thesis draft",
+        // FactExtractionPrompt(zh / en)输出示例
+        "筹备搬家", "论文初稿", "preparing to move", "thesis draft",
     )
 
     /**
-     * es el texto"Copié el ejemplo de la palabra clave."(Presione la palabra de ejemplo y el texto ingresado nunca la mencionó).
+     * 文本是否"照抄了提示词示例"(命中示例词且输入原文从未提及)。
      *
-     * @param text Texto a comprobar(Cuerpo del hecho/título/punto final del enlace, etc.)
-     * @param conversationText El texto original de entrada extraído esta vez.(Historial/resumen de la conversación+Instantánea)
+     * @param text 待检文本(事实正文 / 标题 / 链接端点等)
+     * @param conversationText 本次提取的输入原文(对话历史 / 摘要+快照)
      */
     fun isUngroundedExample(text: String, conversationText: String): Boolean {
         val t = text.trim().lowercase()
@@ -40,7 +40,7 @@ object PromptExampleGuard {
     }
 
     /**
-     * Limpiar todo el resultado de la extracción.:Eliminar entradas que copien ejemplos.(Entidad/Actualizar/Fusionar/Enlace/Fila de imagen).
+     * 清洗整份提取结果:剔除照抄示例的条目(实体 / 更新 / 合并 / 链接 / 画像行)。
      */
     fun sanitize(analysis: ParsedAnalysis, conversationText: String): ParsedAnalysis {
         fun leaked(vararg parts: String?): Boolean = parts.any { p -> !p.isNullOrBlank() && isUngroundedExample(p, conversationText) }
@@ -60,7 +60,7 @@ object PromptExampleGuard {
         )
     }
 
-    /** Limpieza línea por línea de Image Markdown:Elimina toda la línea copiada del ejemplo. */
+    /** 画像 Markdown 逐行清洗:照抄示例的行整行剔除。 */
     private fun scrubMarkdown(markdown: String?, conversationText: String): String? {
         if (markdown.isNullOrBlank()) return markdown
         val kept = markdown.lines().filterNot { line -> isUngroundedExample(line, conversationText) }

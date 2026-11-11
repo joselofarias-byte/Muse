@@ -19,15 +19,15 @@ import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * P1-2: Worldbook depósito.
+ * P1-2: Worldbook 仓库。
  *
- * Responsable de la consulta de concordancia de palabras clave CRUD + + SillyTavern World Info JSON Importar y exportar.
+ * 负责 CRUD + 关键词匹配查询 + SillyTavern World Info JSON 导入导出。
  *
- * Palabra clave que coincide con dos modos:
- *  - isRegex=false: coincidencia de subcadenas(contains),mayúsculas y minúsculas por [WorldBookEntryEntity.caseSensitive] controlar
- *  - isRegex=true:  Partido normal,Palabras clave como cadenas de origen normales;caseSensitive controlar RegexOption.IGNORE_CASE
+ * 关键词匹配两种模式:
+ *  - isRegex=false: 子串匹配(contains),大小写由 [WorldBookEntryEntity.caseSensitive] 控制
+ *  - isRegex=true:  正则匹配,关键词作为正则源串;caseSensitive 控制 RegexOption.IGNORE_CASE
  *
- * Los resultados de la compilación regular se almacenan en caché en [regexCache],Evite la compilación repetida para cada escaneo(La sobrecarga de compilación regular es mucho mayor que la coincidencia de subcadenas).
+ * 正则编译结果缓存在 [regexCache],避免每次扫描重复编译(正则编译开销远大于子串匹配)。
  */
 class WorldBookRepository(
     private val dao: WorldBookDao,
@@ -47,16 +47,16 @@ class WorldBookRepository(
     suspend fun delete(id: String) = dao.deleteById(id)
 
     /**
-     * Coincide con las entradas del Worldbook en el texto dado.
-     * Cualquier acierto de palabra clave se considera una coincidencia.;Devolver todas las entradas coincidentes(prensa priority DESC, name ASC).
+     * 在给定文本中匹配 Worldbook 条目。
+     * 任一关键词命中即视为匹配;返回所有匹配的条目(按 priority DESC, name ASC)。
      *
-     * @param entries Entrada de candidato(debe ser filtrado enabled)
-     * @param text Texto a coincidir
+     * @param entries 候选条目(应已过滤 enabled)
+     * @param text 待匹配文本
      */
     fun matchAgainst(entries: List<WorldBookEntryEntity>, text: String): List<WorldBookEntryEntity> {
         if (entries.isEmpty() || text.isBlank()) return emptyList()
         return entries
-            .filter { it.enabled && !it.alwaysActive } // Las entradas de residentes son manejadas por la ruta siempre activa
+            .filter { it.enabled && !it.alwaysActive } // 常驻条目由 alwaysActive 路径处理
             .filter { entry ->
                 val keywords = parseKeywords(entry.keywordsJson)
                 if (keywords.isEmpty()) return@filter false
@@ -72,17 +72,17 @@ class WorldBookRepository(
     }
 
     /**
-     * Escanear reciente [scanDepth] Mensaje de USUARIO de capa,Devuelve la entrada de hit.
-     * scanDepth Controlado por cada entrada.;Aquí, la profundidad de escaneo máxima de todas las entradas candidatas se toma como ventana de escaneo.,
-     * Luego, solo escanee los mensajes dentro de su propio rango de profundidad de escaneo para cada entrada.
+     * 扫描最近 [scanDepth] 层 USER 消息,返回命中的条目。
+     * scanDepth 由每条 entry 自身控制;此处取全部候选条目的最大 scanDepth 作为扫描窗口,
+     * 然后对每条 entry 仅扫描其自身 scanDepth 范围内的消息。
      *
-     * @param userMessages Todos los mensajes de USUARIO(en orden cronológico)
-     * @param assistantId asistente actual id(Se utiliza para filtrar entradas vinculantes.)
-     * @return lista de resultados(Ordenado, deduplicado)
+     * @param userMessages 全部 USER 消息(按时间正序)
+     * @param assistantId 当前助手 id(用于过滤绑定条目)
+     * @return 命中条目列表(已排序、去重)
      */
     suspend fun getKeywordEntries(userMessages: List<UIMessage>, assistantId: String?): List<WorldBookEntryEntity> {
         val candidates = dao.getEnabled()
-            .filter { it.alwaysActive.not() } // La residencia se maneja mediante la ruta siempre activa.
+            .filter { it.alwaysActive.not() } // 常驻由 alwaysActive 路径处理
             .filter { it.assistantId == null || it.assistantId == assistantId }
         if (candidates.isEmpty() || userMessages.isEmpty()) return emptyList()
 
@@ -98,11 +98,11 @@ class WorldBookRepository(
     }
 
     /**
-     * Lógica central de coincidencia de palabras clave.
+     * 关键词匹配核心逻辑。
      *
-     * patrón regular:Palabras clave como cadenas de origen normales,caseSensitive=false Agregue IGNORE_CASE cuando sea necesario.
-     * Registrar y regresar cuando falla la compilación regular false(Evite que una sola regla incorrecta bloquee todo el análisis).
-     * Prensa regular de resultados de compilación "cadena fuente|ignoreCase" Cache.
+     * 正则模式:关键词作为正则源串,caseSensitive=false 时加 IGNORE_CASE。
+     * 正则编译失败时记日志并返回 false(避免单条坏正则阻塞整个扫描)。
+     * 正则编译结果按 "源串|ignoreCase" 缓存。
      */
     private fun matchKeyword(text: String, keyword: String, caseSensitive: Boolean, isRegex: Boolean, wholeWord: Boolean): Boolean {
         return if (isRegex) {
@@ -112,21 +112,21 @@ class WorldBookRepository(
                     val opts = if (caseSensitive) emptySet() else setOf(kotlin.text.RegexOption.IGNORE_CASE)
                     Regex(keyword, opts)
                 }.getOrElse { e ->
-                    Logger.w(TAG, "La compilación regular falló: ${e.message}, keyword=$keyword")
+                    Logger.w(TAG, "正则编译失败: ${e.message}, keyword=$keyword")
                     null
                 }
             } ?: return false
             pattern.containsMatchIn(text)
         } else if (wholeWord && keyword.none { it.code > 0x2E80 }) {
-            // v2.x: coincidencia de palabras completas(ingles/escena digital,Las palabras clave antes y después son \b frontera);
-            // Las palabras clave que contienen CJK no tienen concepto de límite de palabras,Degenera automáticamente a la subcadena que coincide a continuación.
+            // v2.x: 全词匹配(英文/数字场景,关键词前后为 \b 边界);
+            // 含 CJK 的关键词无单词边界概念,自动退化为下方子串匹配。
             val cacheKey = "ww|$keyword|$caseSensitive"
             val pattern = regexCache.computeIfAbsent(cacheKey) {
                 runCatching {
                     val opts = if (caseSensitive) emptySet() else setOf(kotlin.text.RegexOption.IGNORE_CASE)
                     Regex("\\b" + Regex.escape(keyword) + "\\b", opts)
                 }.getOrElse { e ->
-                    Logger.w(TAG, "Falló la compilación regular de palabras completas: ${e.message}, keyword=$keyword")
+                    Logger.w(TAG, "全词正则编译失败: ${e.message}, keyword=$keyword")
                     null
                 }
             } ?: return false
@@ -140,18 +140,18 @@ class WorldBookRepository(
         }
     }
 
-    // ── SillyTavern World Info JSON Importar y exportar ──
+    // ── SillyTavern World Info JSON 导入导出 ──
 
     /**
-     * Exportar al formato JSON de SillyTavern World Info(Compatible con la importación de SillyTavern).
+     * 导出为 SillyTavern World Info JSON 格式(兼容 SillyTavern 导入)。
      *
-     * Mapeo de campo(Muse → SillyTavern):
+     * 字段映射(Muse → SillyTavern):
      *  - name → comment
-     *  - keywordsJson → key (matriz)
+     *  - keywordsJson → key (数组)
      *  - content → content
      *  - alwaysActive → constant
      *  - priority → order
-     *  - enabled → disable (negar)
+     *  - enabled → disable (取反)
      *  - caseSensitive → caseSensitive
      *  - scanDepth → scanDepth
      *  - injectTarget → role (0=system/1=user/2=assistant)
@@ -172,15 +172,15 @@ class WorldBookRepository(
     }
 
     /**
-     * Importar desde SillyTavern World Info JSON.
-     * Se sobrescribirán las entradas existentes con la misma identificación.(id regenerarse en nuevo UUID,Evite conflictos con los existentes.).
+     * 从 SillyTavern World Info JSON 导入。
+     * 已有同 id 条目会被覆盖(id 重新生成为新 UUID,避免与现有冲突)。
      *
-     * @return Número de artículos importados correctamente
+     * @return 成功导入的条目数
      */
     suspend fun importSillyTavernJson(jsonText: String): Int {
         val root = runCatching { json.parseToJsonElement(jsonText).jsonObject }
             .getOrElse { e ->
-                Logger.w(TAG, "SillyTavern JSON El análisis falló: ${e.message}")
+                Logger.w(TAG, "SillyTavern JSON 解析失败: ${e.message}")
                 return 0
             }
         val entriesObj = root["entries"]?.jsonObject ?: return 0
@@ -193,7 +193,7 @@ class WorldBookRepository(
         }
         if (toInsert.isEmpty()) return 0
         dao.insertAll(toInsert)
-        Logger.i(TAG, "SillyTavern Importación completada: ${toInsert.size} Artículo")
+        Logger.i(TAG, "SillyTavern 导入完成: ${toInsert.size} 条")
         return toInsert.size
     }
 
@@ -249,7 +249,7 @@ class WorldBookRepository(
             val keys = obj["key"]?.jsonArray?.mapNotNull { (it as? JsonPrimitive)?.contentOrNull } ?: emptyList()
             val comment = (obj["comment"] as? JsonPrimitive)?.contentOrNull
             val title = (obj["title"] as? JsonPrimitive)?.contentOrNull
-            val name = comment?.ifBlank { title } ?: title ?: "Sin nombre"
+            val name = comment?.ifBlank { title } ?: title ?: "未命名"
             val content = (obj["content"] as? JsonPrimitive)?.contentOrNull ?: ""
             val alwaysActive = (obj["constant"] as? JsonPrimitive)?.contentOrNull?.toBooleanStrictOrNull() ?: false
             val priority = (obj["order"] as? JsonPrimitive)?.intOrNull ?: 50
@@ -286,7 +286,7 @@ class WorldBookRepository(
                 updatedAt = now,
             )
         }.getOrElse { e ->
-            Logger.w(TAG, "SillyTavern Error al analizar la entrada: ${e.message}")
+            Logger.w(TAG, "SillyTavern 条目解析失败: ${e.message}")
             null
         }
     }
@@ -300,16 +300,16 @@ class WorldBookRepository(
         }
         private val stringListSerializer = ListSerializer(String.serializer())
 
-        /** Caché de compilación regular:key = "cadena fuente|caseSensitive". */
+        /** 正则编译缓存:key = "源串|caseSensitive"。 */
         private val regexCache = ConcurrentHashMap<String, Regex?>()
 
-        /** keywordsJson Analizar caché. */
+        /** keywordsJson 解析缓存。 */
         private val keywordsCache = ConcurrentHashMap<String, List<String>>()
 
         fun parseKeywords(keywordsJson: String): List<String> = keywordsCache.computeIfAbsent(keywordsJson) {
             runCatching { json.decodeFromString(stringListSerializer, it) }
                 .getOrElse { e ->
-                    Logger.w(TAG, "keywordsJson El análisis falló: ${e.message}, raw=$keywordsJson")
+                    Logger.w(TAG, "keywordsJson 解析失败: ${e.message}, raw=$keywordsJson")
                     emptyList()
                 }
         }

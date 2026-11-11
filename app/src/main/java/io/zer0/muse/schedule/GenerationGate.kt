@@ -4,30 +4,30 @@ import kotlinx.coroutines.runInterruptible
 import java.util.concurrent.Semaphore
 
 /**
- * B-22: Puerta de limitación de simultaneidad compartida en proceso generada por mensajes activos/chats grupales.
+ * B-22: 主动消息 / 群聊生成的进程内共享并发限流闸。
  *
- * fondo: mensajes no solicitados(ProactiveMessageRunner)chatear con grupo(GroupChatScheduler)Iniciar individualmente LLM
- * llamar,Sin límite actual para compartir,El disparador 429 puede superponerse, provocando que el discurso del chat grupal se pierda en el silencio.
+ * 背景: 主动消息(ProactiveMessageRunner)与群聊(GroupChatScheduler)各自发起 LLM
+ * 调用,无共享限流,可叠加触发 429 导致群聊发言静默丢失。
  *
- * Semáforo en proceso,Simultaneidad máxima [MAX_CONCURRENT_LLM] camino;Proceso cruzado(Worker)No cubierto,
- * La ventana de tiempo de cada corredor se encarga de ello. Puede registrarlo en Koin como singleton o utilizar el objeto directamente.
- * (object Singleton natural en proceso,Evite perder el cableado Koin).
+ * 进程内信号量,最大并发 [MAX_CONCURRENT_LLM] 路;跨进程(Worker)不覆盖,
+ * 由各 Runner 自身的时间窗口兜底。注册到 Koin 为单例或直接用 object 均可
+ * (object 天然进程内单例,避免 Koin 接线遗漏)。
  */
 object GenerationGate {
 
-    /** Número máximo de rutas de generación de LLM simultáneas(Mensajería proactiva + intercambio de chat grupal). */
+    /** 最大并发 LLM 生成路数(主动消息 + 群聊共享)。 */
     private const val MAX_CONCURRENT_LLM = 2
 
     private val semaphore = Semaphore(MAX_CONCURRENT_LLM)
 
     /**
-     * Ejecutar dentro del permiso del semáforo [block].
-     * No se mantienen bloqueos mientras se bloquea en espera de permiso.,No bloquea la programación de otras corrutinas.
+     * 在信号量许可内执行 [block]。
+     * 阻塞等待许可时不持有任何锁,不阻塞其他协程调度。
      *
-     * Revisión de corrección (2.0 A-12): acquire usar [runInterruptible] paquete — Java Semaphore.acquire()
-     * es una llamada de bloqueo,La cancelación de rutina no puede interrumpir el hilo de bloqueo;llamador(ProactiveMessageRunner)usar
-     * withTimeoutOrNull envolver este método,Cuando se sature el límite actual, la implementación original permanecerá estancada hasta que se libere la licencia.,
-     * tiempo de espera/La parada no es válida.runInterruptible Deje que la cancelación salga de la espera inmediatamente mediante la interrupción del hilo.
+     * 审查修复 (2.0 A-12): acquire 用 [runInterruptible] 包裹 — Java Semaphore.acquire()
+     * 是阻塞调用,协程取消无法中断阻塞线程;调用方(ProactiveMessageRunner)用
+     * withTimeoutOrNull 包裹本方法,限流饱和时原实现会一直卡到许可释放,
+     * 超时/停止均失效。runInterruptible 让取消通过线程中断立即退出等待。
      */
     suspend fun <T> withPermit(block: suspend () -> T): T {
         runInterruptible { semaphore.acquire() }

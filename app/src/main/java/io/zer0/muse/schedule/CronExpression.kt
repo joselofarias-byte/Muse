@@ -3,19 +3,19 @@ package io.zer0.muse.schedule
 import java.util.Calendar
 
 /**
- * Analizador de expresiones cron ligero de 5 campos(No depende de bibliotecas externas).
+ * 轻量级 5 字段 Cron 表达式解析器(不依赖外部库)。
  *
- * 5 Orden de campo:minute(0-59) hour(0-23) day-of-month(1-31) month(1-12) day-of-week(0-6,0=domingo).
+ * 5 字段顺序:minute(0-59) hour(0-23) day-of-month(1-31) month(1-12) day-of-week(0-6,0=周日)。
  *
- * Sintaxis de soporte:
- *  - Conceptos básicos:cualquier valor(*), valor exacto(N), paso(*\/N), rango(N-M), lista(N,M,...)
- *  - v1.134 P3 Sintaxis avanzada:
- *    - `L`:último día(day-of-month:último día del mes;day-of-week:última semana de esta semanaX,Como por ejemplo `5L`=el viernes pasado)
- *    - `LW`:último día laborable(day-of-month)
- *    - `W`:último día laborable(day-of-month,Como por ejemplo `15W`=El día laborable más cercano al día 15.)
- *    - `#`:enésima semanaX(day-of-week,Como por ejemplo `2#3`=3er lunes)
+ * 支持语法:
+ *  - 基础:任意值(*)、精确值(N)、步进(*\/N)、范围(N-M)、列表(N,M,...)
+ *  - v1.134 P3 高级语法:
+ *    - `L`:最后一天(day-of-month:当月最后一天;day-of-week:本周最后一个周X,如 `5L`=最后一个周五)
+ *    - `LW`:最后一个工作日(day-of-month)
+ *    - `W`:最近工作日(day-of-month,如 `15W`=离 15 号最近的工作日)
+ *    - `#`:第 N 个周X(day-of-week,如 `2#3`=第 3 个周一)
  *
- * @see <a href="https://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/crontrigger.html">Quartz Cron normativo</a>
+ * @see <a href="https://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/crontrigger.html">Quartz Cron 规范</a>
  */
 class CronExpression internal constructor(
     private val minutes: Set<Int>,
@@ -24,45 +24,45 @@ class CronExpression internal constructor(
     private val months: Set<Int>,
     private val daysOfWeek: Set<Int>,
     /**
-     * v1.134 P3: day-of-month Modificadores avanzados para campos(con [daysOfMonth] mutuamente excluyentes,mayor prioridad).
+     * v1.134 P3: day-of-month 字段的高级修饰符(与 [daysOfMonth] 互斥,优先级更高)。
      *
-     * - [DayModifier.Last] → último día del mes(corresponder `L`)
-     * - [DayModifier.LastWeekday] → El último día hábil del mes.(corresponder `LW`)
-     * - [DayModifier.Weekday](N) → El día laborable más cercano a N(corresponder `NW`,N Ya incluido en [daysOfMonth] en)
+     * - [DayModifier.Last] → 当月最后一天(对应 `L`)
+     * - [DayModifier.LastWeekday] → 当月最后一个工作日(对应 `LW`)
+     * - [DayModifier.Weekday](N) → 离 N 号最近的工作日(对应 `NW`,N 已含在 [daysOfMonth] 中)
      */
     private val dayOfMonthModifier: DayModifier = DayModifier.None,
-    /** v1.134 P3: day-of-week Modificadores avanzados para campos. */
+    /** v1.134 P3: day-of-week 字段的高级修饰符。 */
     private val dayOfWeekModifier: DayOfWeekModifier = DayOfWeekModifier.None,
 ) {
     /**
-     * Calcular la marca de tiempo dada [timestamp] después(no contiene)La marca de tiempo del próximo partido.(alineación minuto).
+     * 计算给定时间戳 [timestamp] 之后(不含)下一次匹配的时间戳(分钟对齐)。
      *
-     * Usando el método transversal minuto a minuto,Recorrido del límite superior [MAX_SCAN_DAYS] Dios evita un ciclo infinito;No se devolvió ninguna coincidencia [NO_MATCH].
+     * 采用逐分钟遍历法,上限遍历 [MAX_SCAN_DAYS] 天避免死循环;无匹配返回 [NO_MATCH]。
      *
-     * Revisión de corrección (2.0 C-06): En su lugar no se utilizó ningún centinela coincidente [Long.MAX_VALUE] - 1 —
-     * ScheduledTaskRunner El centinela receptor es exactamente [Long.MAX_VALUE](B-12 CLAIM_NEXT_RUN_SENTINEL),
-     * Mezclar los dos valores hará"cron No hay coincidencia"mal juzgado como"ha sido recogido",Las tareas nunca se vuelven a ejecutar y los diagnósticos son confusos.
+     * 审查修复 (2.0 C-06): 无匹配哨兵改用 [Long.MAX_VALUE] - 1 —
+     * ScheduledTaskRunner 的领取哨兵恰为 [Long.MAX_VALUE](B-12 CLAIM_NEXT_RUN_SENTINEL),
+     * 两值混用会让"cron 无匹配"被误判为"已被领取",任务永不再跑且诊断混淆。
      */
     fun nextRunAfter(timestamp: Long): Long {
         val cal = Calendar.getInstance()
-        // Alinear con el inicio del minuto actual,+1 minuto más,Asegúrese de que el resultado llegue estrictamente después de la marca de tiempo.(no contiene)
+        // 对齐到当前分钟起点,再 +1 分钟,确保结果严格在 timestamp 之后(不含)
         cal.timeInMillis = timestamp
         cal.set(Calendar.SECOND, 0)
         cal.set(Calendar.MILLISECOND, 0)
         cal.add(Calendar.MINUTE, 1)
 
-        // límite superior:MAX_SCAN_DAYS días desde la marca de tiempo original
+        // 上限:从原时间戳起 MAX_SCAN_DAYS 天
         val maxMs = timestamp + MAX_SCAN_DAYS * 24 * 60 * 60 * 1000
 
         while (cal.timeInMillis <= maxMs) {
             val minute = cal.get(Calendar.MINUTE)
             val hour = cal.get(Calendar.HOUR_OF_DAY)
             val dayOfMonth = cal.get(Calendar.DAY_OF_MONTH)
-            val month = cal.get(Calendar.MONTH) + 1 // Calendar.MONTH para 0-11,convertir a 1-12
-            val dayOfWeek = cal.get(Calendar.DAY_OF_WEEK) - 1 // Calendar domingo=1,convertir a 0=domingo
+            val month = cal.get(Calendar.MONTH) + 1 // Calendar.MONTH 为 0-11,转为 1-12
+            val dayOfWeek = cal.get(Calendar.DAY_OF_WEEK) - 1 // Calendar 周日=1,转为 0=周日
 
-            // B-13: Quartz normativo — day-of-month Restringido al mismo tiempo que el día de la semana(no *)Utilice O al hacer coincidir
-            // (Como por ejemplo "0 0 1 * 1" = 1 de cada mes o cada lunes);Sólo un lado está limitado o ambos lo están * Utilice únicamente Y.
+            // B-13: Quartz 规范 — day-of-month 与 day-of-week 同时受限(非 *)时用 OR 匹配
+            // (如 "0 0 1 * 1" = 每月 1 号 或 每周一);仅一边受限或都为 * 时才用 AND。
             val domRestricted = dayOfMonthModifier != DayModifier.None || daysOfMonth.size < 31
             val dowRestricted = dayOfWeekModifier != DayOfWeekModifier.None || daysOfWeek.size < 7
             val dayMatch = if (domRestricted && dowRestricted) {
@@ -84,31 +84,31 @@ class CronExpression internal constructor(
     }
 
     /**
-     * v1.134 P3: Coincide con el campo del día del mes(considerar L / LW / NW modificador).
+     * v1.134 P3: 匹配 day-of-month 字段(考虑 L / LW / NW 修饰符)。
      *
-     * Cuando el modificador existe, el modificador se usa primero para hacer coincidir.;De lo contrario, se utiliza la coincidencia de conjuntos normal.
+     * 修饰符存在时优先用修饰符匹配;否则用普通集合匹配。
      */
     private fun matchDayOfMonth(cal: Calendar, dayOfMonth: Int): Boolean {
         return when (dayOfMonthModifier) {
             is DayModifier.Last -> {
-                // L:último día del mes
+                // L:当月最后一天
                 val lastDay = cal.getActualMaximum(Calendar.DAY_OF_MONTH)
                 dayOfMonth == lastDay
             }
             is DayModifier.LastWeekday -> {
-                // LW:El último día hábil del mes.(lunes a viernes)
+                // LW:当月最后一个工作日(周一到周五)
                 val lastDay = cal.getActualMaximum(Calendar.DAY_OF_MONTH)
                 if (dayOfMonth == lastDay) {
                     val dow = cal.get(Calendar.DAY_OF_WEEK) - 1
-                    dow in 1..5 // lunes a viernes
+                    dow in 1..5 // 周一到周五
                 } else {
-                    // Si el último día es fin de semana,ver si es"el viernes pasado"
+                    // 如果最后一天是周末,看是不是"最后一个周五"
                     val dow = cal.get(Calendar.DAY_OF_WEEK) - 1
                     if (dow == 6) {
-                        // Sábado:El último día laborable es el viernes.(dayOfMonth - 1)
+                        // 周六:最后一个工作日是周五(dayOfMonth - 1)
                         dayOfMonth == lastDay - 1
                     } else if (dow == 0) {
-                        // domingo:El último día laborable es el viernes.(dayOfMonth - 2)
+                        // 周日:最后一个工作日是周五(dayOfMonth - 2)
                         dayOfMonth == lastDay - 2
                     } else {
                         false
@@ -116,17 +116,17 @@ class CronExpression internal constructor(
                 }
             }
             is DayModifier.Weekday -> {
-                // NW:El día laborable más cercano a N(No durante todo el mes)
+                // NW:离 N 号最近的工作日(不跨月)
                 val target = dayOfMonthModifier.day
                 if (dayOfMonth == target) {
                     val dow = cal.get(Calendar.DAY_OF_WEEK) - 1
-                    dow in 1..5 // El día objetivo en sí es un día laborable.
+                    dow in 1..5 // 目标日本身是工作日
                 } else {
                     val dow = cal.get(Calendar.DAY_OF_WEEK) - 1
-                    // El día objetivo es el sábado.(N):El último día hábil fue N-1(viernes)
+                    // 目标日是周六(N):最近工作日是 N-1(周五)
                     if (dow == 6 && dayOfMonth == target - 1 && target - 1 >= 1) {
                         true
-                    } // El día objetivo es el domingo.(N):El último día hábil fue N+1(lunes)
+                    } // 目标日是周日(N):最近工作日是 N+1(周一)
                     else if (dow == 1 && dayOfMonth == target + 1) {
                         true
                     } else {
@@ -139,83 +139,83 @@ class CronExpression internal constructor(
     }
 
     /**
-     * v1.134 P3: Coincide con el campo del día de la semana(considerar `5L` / `2#3` modificador).
+     * v1.134 P3: 匹配 day-of-week 字段(考虑 `5L` / `2#3` 修饰符)。
      *
-     * Cuando el modificador existe, el modificador se usa primero para hacer coincidir.;De lo contrario, se utiliza la coincidencia de conjuntos normal.
+     * 修饰符存在时优先用修饰符匹配;否则用普通集合匹配。
      */
     private fun matchDayOfWeek(cal: Calendar, dayOfWeek: Int): Boolean {
         return when (dayOfWeekModifier) {
             is DayOfWeekModifier.Last -> {
-                // `5L`:el viernes pasado — Compruebe si la fecha actual es la última de este mes. dayOfWeek
+                // `5L`:最后一个周五 — 检查当前日期是否是本月最后一个 dayOfWeek
                 val targetDow = dayOfWeekModifier.dayOfWeek
                 if (dayOfWeek != targetDow) return false
                 val currentDay = cal.get(Calendar.DAY_OF_MONTH)
                 val lastDayOfMonth = cal.getActualMaximum(Calendar.DAY_OF_MONTH)
-                currentDay + 7 > lastDayOfMonth // Fecha actual + 7 más allá de fin de mes,Indica que este es el último día de la semana del mes.
+                currentDay + 7 > lastDayOfMonth // 当前日期 + 7 超出月末,说明这是本月最后一个该周几
             }
             is DayOfWeekModifier.Nth -> {
-                // `2#3`:3er lunes — Consulta el día actual de la semana.
+                // `2#3`:第 3 个周一 — 检查当前是第几个该周几
                 if (dayOfWeek != dayOfWeekModifier.dayOfWeek) return false
                 val currentDay = cal.get(Calendar.DAY_OF_MONTH)
-                val occurrence = (currentDay - 1) / 7 + 1 // cual numero(empezar desde 1)
+                val occurrence = (currentDay - 1) / 7 + 1 // 第几个(从 1 开始)
                 occurrence == dayOfWeekModifier.occurrence
             }
             DayOfWeekModifier.None -> dayOfWeek in daysOfWeek
         }
     }
 
-    /** v1.134 P3: day-of-month Modificadores para el campo. */
+    /** v1.134 P3: day-of-month 字段的修饰符。 */
     sealed class DayModifier {
-        /** Sin modificadores. */
+        /** 无修饰符。 */
         object None : DayModifier()
 
-        /** `L`:El último día del mes. */
+        /** `L`:当月最后一天。 */
         object Last : DayModifier()
 
-        /** `LW`:El último día hábil del mes. */
+        /** `LW`:当月最后一个工作日。 */
         object LastWeekday : DayModifier()
 
-        /** `NW`:El día laborable más cercano a N(N Ya incluido en [daysOfMonth] en). */
+        /** `NW`:离 N 号最近的工作日(N 已含在 [daysOfMonth] 中)。 */
         data class Weekday(val day: Int) : DayModifier()
     }
 
-    /** v1.134 P3: day-of-week Modificadores para el campo. */
+    /** v1.134 P3: day-of-week 字段的修饰符。 */
     sealed class DayOfWeekModifier {
-        /** Sin modificadores. */
+        /** 无修饰符。 */
         object None : DayOfWeekModifier()
 
-        /** `5L`:Viernes pasado. */
+        /** `5L`:最后一个周五。 */
         data class Last(val dayOfWeek: Int) : DayOfWeekModifier()
 
-        /** `2#3`:Lunes 3. */
+        /** `2#3`:第 3 个周一。 */
         data class Nth(val dayOfWeek: Int, val occurrence: Int) : DayOfWeekModifier()
     }
 
     companion object {
-        /** L-004: El límite superior de días para recorrer minuto a minuto.(Cubre años bisiestos + redundancia,Evite bucles interminables). */
+        /** L-004: 逐分钟遍历的上限天数(覆盖闰年 + 冗余,避免死循环)。 */
         private const val MAX_SCAN_DAYS = 366L
 
         /**
-         * Revisión de corrección (2.0 C-06): "No hay coincidencias dentro de la ventana de escaneo"centinela — con ScheduledTaskRunner
-         * Consigue el centinela(CLAIM_NEXT_RUN_SENTINEL = Long.MAX_VALUE)distinguir,prevenir
-         * "cron No hay coincidencia"mal juzgado como"ha sido recogido"(La tarea nunca más se ejecutará).
+         * 审查修复 (2.0 C-06): "扫描窗口内无匹配"哨兵 — 与 ScheduledTaskRunner 的
+         * 领取哨兵(CLAIM_NEXT_RUN_SENTINEL = Long.MAX_VALUE)区分开,防止
+         * "cron 无匹配"被误判为"已被领取"(任务永不再跑)。
          */
         const val NO_MATCH = Long.MAX_VALUE - 1
 
         /**
-         * Analizar expresiones cron,lanzamiento ilegal [IllegalArgumentException].
-         * Los mensajes de excepción están en inglés.(Analizador puro sin dependencia del contexto),La persona que llama usa context.getString para localizar después de la captura.
+         * 解析 Cron 表达式,非法时抛 [IllegalArgumentException]。
+         * 异常消息使用英文(纯解析器无 Context 依赖),调用方捕获后用 context.getString 本地化。
          */
         fun parse(expr: String): CronExpression {
             val fields = expr.trim().split(Regex("\\s+"))
             if (fields.size != 5) {
                 throw IllegalArgumentException("cron expression must have 5 fields: $expr")
             }
-            // v1.0.17: Quartz `?` expresar"No especificado"(Se utiliza para exclusión mutua de día del mes/día de la semana.),
-            // Reemplazar uniformemente con `*` Coincide con cualquier valor,Evite errores de análisis posteriores.
+            // v1.0.17: Quartz `?` 表示"不指定"(用于 day-of-month/day-of-week 互斥),
+            // 统一替换为 `*` 匹配任意值,避免下游解析报错。
             val domField = if (fields[2] == "?") "*" else fields[2]
             val dowField = if (fields[4] == "?") "*" else fields[4]
-            // v1.134 P3: Primero analice los modificadores avanzados de día del mes y día de la semana.
+            // v1.134 P3: 先解析 day-of-month 和 day-of-week 的高级修饰符
             val (domSet, domMod) = parseDayOfMonthField(domField)
             val (dowSet, dowMod) = parseDayOfWeekField(dowField)
             return CronExpression(
@@ -230,10 +230,10 @@ class CronExpression internal constructor(
         }
 
         /**
-         * v1.134 P3: Analizar el campo del día del mes,Extracto L / LW / NW modificador.
+         * v1.134 P3: 解析 day-of-month 字段,提取 L / LW / NW 修饰符。
          *
-         * Regresar (colección base, modificador). Prioridad del modificador:LW > L > NW > None.
-         * La colección subyacente está vacía cuando el modificador está presente(matchDayOfMonth Ver sólo modificadores).
+         * 返回 (基础集合, 修饰符)。修饰符优先级:LW > L > NW > None。
+         * 修饰符存在时基础集合为空(matchDayOfMonth 只看修饰符)。
          */
         private fun parseDayOfMonthField(field: String): Pair<Set<Int>, DayModifier> {
             val trimmed = field.trim().uppercase()
@@ -254,13 +254,13 @@ class CronExpression internal constructor(
         }
 
         /**
-         * v1.134 P3: Analizar el campo del día de la semana,Extracto `5L` / `2#3` modificador.
+         * v1.134 P3: 解析 day-of-week 字段,提取 `5L` / `2#3` 修饰符。
          *
-         * Regresar (colección base, modificador). Prioridad del modificador:# > L > None.
+         * 返回 (基础集合, 修饰符)。修饰符优先级:# > L > None。
          */
         private fun parseDayOfWeekField(field: String): Pair<Set<Int>, DayOfWeekModifier> {
             val trimmed = field.trim().uppercase()
-            // `5L`:el viernes pasado
+            // `5L`:最后一个周五
             if (trimmed.endsWith("L")) {
                 val numStr = trimmed.dropLast(1)
                 val n = numStr.toIntOrNull()
@@ -268,11 +268,11 @@ class CronExpression internal constructor(
                 if (n !in 0..7) {
                     throw IllegalArgumentException("L modifier dayOfWeek out of bounds: $n (allowed 0-7, 7 also=0=Sunday)")
                 }
-                // 7 equivalente a 0(domingo)
+                // 7 等价于 0(周日)
                 val normalized = if (n == 7) 0 else n
                 return emptySet<Int>() to DayOfWeekModifier.Last(normalized)
             }
-            // `2#3`:3er lunes
+            // `2#3`:第 3 个周一
             if (trimmed.contains("#")) {
                 val parts = trimmed.split("#")
                 if (parts.size != 2) {
@@ -294,7 +294,7 @@ class CronExpression internal constructor(
             return parseField(field, 0, 6) to DayOfWeekModifier.None
         }
 
-        /** Analizar un solo campo(Admite listas de comas,Cada párrafo puede ser *,N,* /N,N-M). */
+        /** 解析单个字段(支持逗号列表,每段可为 *、N、* /N、N-M)。 */
         private fun parseField(field: String, min: Int, max: Int): Set<Int> {
             if (field.isEmpty()) {
                 throw IllegalArgumentException("cron field is empty")
@@ -309,9 +309,9 @@ class CronExpression internal constructor(
             return result
         }
 
-        /** Analizar un solo segmento:cualquier valor *, paso * /N, valor exacto N, rango N-M. */
+        /** 解析单段:任意值 *、步进 * /N、精确值 N、范围 N-M。 */
         private fun parseSegment(segment: String, min: Int, max: Int): Set<Int> {
-            // v1.0.17: Quartz `?` expresar"No especificado",considerado como `*` Coincide con cualquier valor.
+            // v1.0.17: Quartz `?` 表示"不指定",视为 `*` 匹配任意值。
             if (segment == "*" || segment == "?") {
                 return (min..max).toSet()
             }

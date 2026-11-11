@@ -5,14 +5,14 @@ import io.zer0.ai.core.UIMessage
 import io.zer0.ai.core.splitContextWindow
 
 /**
- * montar"Ventana contextual + extracto del historial fuera de la ventana".
+ * 组装"上下文窗口 + 窗口外历史摘录"。
  *
- * Los mensajes fuera de la ventana ya no se descartan silenciosamente:Primero haga extractos deterministas de ellos.([ContextHistoryDigest],
- * retener usuario/Fragmentos de lenguaje natural del asistente y resúmenes de llamadas de herramientas),El mensaje extraído se inserta antes de la ventana.
- * De esta manera, incluso si una sesión que utiliza muchas herramientas llena la ventana,La modelo aún puede ver la esencia de la conversación anterior.,
- * no aparecerá"El contexto se pierde, como la amnesia."actuación.
+ * 窗口外的消息不再被静默丢弃:先对它们做确定性摘录([ContextHistoryDigest],
+ * 保留用户/助手自然语言片段与工具调用摘要),摘录消息插在窗口之前。
+ * 这样即使工具密集会话把窗口占满,模型依然能看到更早对话的要点,
+ * 不会出现"上下文断了、像失忆一样"的表现。
  *
- * suministro resolveHistory(Genera cada ronda)Truncado con advertencia previa al envío(Cerca del límite superior del token)compartido.
+ * 供 resolveHistory(每轮生成)与 pre-send 预警截断(近 token 上限时)共用。
  */
 internal fun buildContextWindow(history: List<UIMessage>, maxSize: Int): List<UIMessage> {
     val (dropped, kept) = history.splitContextWindow(maxSize)

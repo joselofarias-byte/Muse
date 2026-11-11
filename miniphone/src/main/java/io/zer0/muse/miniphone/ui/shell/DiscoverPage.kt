@@ -19,15 +19,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import io.zer0.muse.miniphone.R
 import io.zer0.muse.miniphone.ui.icons.MiniPhoneIcons
 import io.zer0.muse.miniphone.ui.theme.MiniPhoneTheme
 
 /**
- * Página de descubrimiento.
+ * 发现页。
  *
- * En este momento solo hay una entrada a "Momentos",Haga clic para dejar que la persona que llama decida(Realmente abre el flujo dinámico en la siguiente etapa.);
- * Todavía se producen ondas de agua al hacer clic durante la implementación vacía,No finjas no responder.
+ * 本阶段只有一条「朋友圈」入口,点击交给调用方决定(真正打开动态流在下一阶段接);
+ * 空实现期间点击仍有水波纹,不装作点了没反应。
  */
 @Composable
 internal fun DiscoverPage(modifier: Modifier = Modifier, onOpenMoments: () -> Unit = {}) {
@@ -59,7 +61,7 @@ internal fun DiscoverPage(modifier: Modifier = Modifier, onOpenMoments: () -> Un
             )
             Spacer(Modifier.width(12.dp))
             Text(
-                text = "Momentos",
+                text = stringResource(R.string.mp_discover_moments),
                 style = typography.body.copy(color = colors.textPrimary),
             )
             Spacer(Modifier.weight(1f))

@@ -1,52 +1,52 @@
 package io.zer0.muse.common.markdown
 
 /**
- * v1.0.53: Markdown frontmatter analizador(Cubrir la capacidad previa del flujo de trabajo).
+ * v1.0.53: Markdown frontmatter 解析器(封面工作流前置能力)。
  *
- * apoyo `---` Pares clave-valor simples envueltos(No importar la biblioteca YAML,Análisis de escritura a mano):
+ * 支持 `---` 包裹的简单键值对(不引入 YAML 库,手写解析):
  * ```
  * ---
- * title: Mis documentos
+ * title: 我的文档
  * cover: covers/xxx.jpg
- * description: Descripción de una frase
+ * description: 一句话描述
  * ---
  * ```
  *
- * Devuelto cuando falla el análisis null(La persona que llama cambia a renderizado sin metadatos),No afecta la representación del texto.
- * Analizar solo pares clave-valor de mosaicos,Matrices no compatibles/estructura anidada(Ignora este tipo de línea).
+ * 解析失败时返回 null(调用方降级为无元数据渲染),不影响正文渲染。
+ * 仅解析平铺键值对,不支持数组/嵌套结构(忽略该类行)。
  */
 data class Frontmatter(
-    /** Título del documento. */
+    /** 文档标题。 */
     val title: String?,
-    /** cita de portada(ruta relativa o file:// URI). */
+    /** 封面引用(相对路径或 file:// URI)。 */
     val cover: String?,
-    /** Descripción de una frase. */
+    /** 一句话描述。 */
     val description: String?,
-    /** valor clave completo(minúscula key → valor original,para una futura expansión). */
+    /** 完整键值(小写 key → 原值,供未来扩展)。 */
     val raw: Map<String, String>,
 )
 
 /**
- * frontmatter analizador(función pura,apátrida,Se puede probar individualmente).
+ * frontmatter 解析器(纯函数,无状态,可单测)。
  */
 object FrontmatterParser {
 
     private const val DELIMITER = "---"
 
     /**
-     * Analizar la cuestión frontal.
+     * 解析 frontmatter。
      *
-     * @return Analizar resultados;No se devolvió ninguna portada ni formato ilegal. null
+     * @return 解析结果;无 frontmatter 或格式非法返回 null
      */
     fun parse(markdown: String): Frontmatter? {
         val body = stripBom(markdown)
         if (!body.startsWith("$DELIMITER\n") && !body.startsWith("$DELIMITER\r\n")) return null
 
-        // Coloque el final de la primera línea.
+        // 定位第一个行尾
         val firstLineEnd = body.indexOf('\n')
         if (firstLineEnd < 0) return null
 
-        // Encuentra el segundo --- OK(Principio de línea --- y ningún otro carácter al final de línea)
+        // 找第二个 --- 行(行首 --- 且行尾无其他字符)
         val rest = body.substring(firstLineEnd + 1)
         val lines = rest.split('\n')
         val kv = LinkedHashMap<String, String>()
@@ -58,20 +58,20 @@ object FrontmatterParser {
                 closingIdx = idx
                 break
             }
-            // analizar key: value
+            // 解析 key: value
             val colonIdx = trimmed.indexOf(':')
             if (colonIdx > 0) {
                 val key = trimmed.substring(0, colonIdx).trim().lowercase()
                 var value = trimmed.substring(colonIdx + 1).trim()
-                // Eliminar las primeras y últimas comillas coincidentes
+                // 去掉匹配的首尾引号
                 value = stripQuotes(value)
-                // fila de valor nulo(Como por ejemplo "tags:" etiqueta de matriz)ignorar,No permitido raw
+                // 空值行(如 "tags:" 数组标记)忽略,不入 raw
                 if (key.isNotBlank() && value.isNotEmpty()) kv[key] = value
             }
-            // Otras lineas(matriz/anidado/Comentario)ignorar
+            // 其他行(数组/嵌套/注释)忽略
         }
 
-        // El segundo --- falta → Regresar en su totalidad null(análisis no parcial)
+        // 第二个 --- 缺失 → 整体返回 null(不是部分解析)
         if (closingIdx < 0) return null
 
         return Frontmatter(
@@ -83,7 +83,7 @@ object FrontmatterParser {
     }
 
     /**
-     * Volver al texto después de quitar la portada.(Regresar como está cuando no hay ningún frente.).
+     * 剥离 frontmatter 后返回正文(无 frontmatter 时原样返回)。
      */
     fun strip(markdown: String): String {
         val body = stripBom(markdown)
@@ -97,7 +97,7 @@ object FrontmatterParser {
         for ((idx, line) in lines.withIndex()) {
             val trimmed = line.trimEnd('\r')
             if (trimmed.trim() == DELIMITER) {
-                // Devuelve el contenido después de la línea de cierre.(Conservar la semántica del prefijo de lista de materiales original:Devolución después de eliminar la lista de materiales,La persona que llama se encarga él mismo)
+                // 返回关闭行之后的内容(保留原 BOM 前缀语义:剥离 BOM 后返回,调用方自行处理)
                 return lines.drop(idx + 1).joinToString("\n").trimStart('\n')
             }
         }
@@ -105,18 +105,18 @@ object FrontmatterParser {
     }
 
     /**
-     * Establecer campo de portada y volver a serializar frontmatter;Cree uno nuevo si no hay ningún tema inicial.
+     * 设置 cover 字段并序列化回 frontmatter;无 frontmatter 时新建。
      *
-     * Se utiliza para reescribir el documento después de la generación de la portada AI.(Phase 3).
+     * 用于 AI 封面生成后写回文档(Phase 3)。
      *
-     * @param markdown documento original
-     * @param coverPath cubrir camino(Sugerencias "covers/xxx.jpg" ruta relativa)
-     * @return Completar después de escribir markdown
+     * @param markdown 原文档
+     * @param coverPath 封面路径(建议 "covers/xxx.jpg" 相对路径)
+     * @return 写回后的完整 markdown
      */
     fun withCover(markdown: String, coverPath: String): String {
         val existing = parse(markdown)
         if (existing == null) {
-            // Ninguno frontmatter: Nuevo,title Extracto del primer # título del texto(Si no, omitir)
+            // 无 frontmatter:新建,title 从正文首个 # 标题提取(无则省略)
             val body = stripBom(markdown)
             val title = body.lineSequence()
                 .map { it.trim() }
@@ -131,7 +131,7 @@ object FrontmatterParser {
             return sb.toString()
         }
 
-        // Frontmatter existente: reemplazo/Insertar fila de portada
+        // 已有 frontmatter:替换/插入 cover 行
         val body = stripBom(markdown)
         val firstLineEnd = body.indexOf('\n')
         val rest = body.substring(firstLineEnd + 1)
@@ -158,16 +158,16 @@ object FrontmatterParser {
                 out.add(trimmed)
             }
         }
-        if (!inserted) out.add("cover: $coverPath") // defensa:Línea de cierre no encontrada
-        // Mantener el texto después de cerrar la línea
+        if (!inserted) out.add("cover: $coverPath") // 防御:未找到关闭行
+        // 保留关闭行之后的正文
         return out.joinToString("\n") + "\n" + lines.dropWhile { it.trimEnd('\r').trim() != DELIMITER }.drop(1).joinToString("\n")
     }
 
-    // ── herramientas internas ─────────────────────────────────────────────────────────
+    // ── 内部工具 ─────────────────────────────────────────────────────────
 
     private fun stripBom(text: String): String = if (text.startsWith('\uFEFF')) text.substring(1) else text
 
-    /** Eliminar las primeras y últimas comillas coincidentes("xxx" / 'xxx'),Si no hay coincidencia, se devuelve sin cambios. */
+    /** 去掉匹配的首尾引号("xxx" / 'xxx'),不匹配则原样返回。 */
     private fun stripQuotes(value: String): String {
         if (value.length >= 2) {
             val first = value.first()
@@ -179,6 +179,6 @@ object FrontmatterParser {
         return value
     }
 
-    /** Escape cuando el valor contiene comillas(Se utiliza al responder). */
+    /** 值中含引号时转义(写回时用)。 */
     private fun escapeValue(value: String): String = value.replace("\"", "\\\"")
 }

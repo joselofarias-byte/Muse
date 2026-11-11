@@ -8,8 +8,8 @@ class MemoryGraphSelectionTest {
     @Test
     fun ordinaryFactsRemainVisibleBeforeRelationshipRefresh() {
         val facts = listOf(
-            FactStore.Fact(id = 1, fact = "hechos ordinarios", importance = 0, confidence = 1f),
-            FactStore.Fact(id = 2, fact = "hechos importantes", importance = 2, confidence = 1f),
+            FactStore.Fact(id = 1, fact = "普通事实", importance = 0, confidence = 1f),
+            FactStore.Fact(id = 2, fact = "重要事实", importance = 2, confidence = 1f),
         )
 
         val selected = selectGraphFacts(facts, linkedFactIds = emptySet(), maxNodes = 500)
@@ -20,7 +20,7 @@ class MemoryGraphSelectionTest {
     @Test
     fun linkedFactsArePrioritizedButUnlinkedFactsAreKept() {
         val facts = (1L..3L).map { id ->
-            FactStore.Fact(id = id, fact = "hechos$id", importance = 0, confidence = 1f)
+            FactStore.Fact(id = id, fact = "事实$id", importance = 0, confidence = 1f)
         }
 
         val selected = selectGraphFacts(facts, linkedFactIds = setOf(1L), maxNodes = 2)

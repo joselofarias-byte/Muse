@@ -7,16 +7,16 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Phase 3: SessionExecutionRegistry activo/Separación de historia y pruebas de poda de estado final.
+ * Phase 3: SessionExecutionRegistry 活跃/历史分离与终态裁剪测试。
  *
- * Portada:
- *  - Una vez que el estado final se migra a la tabla de historial, la semántica de instantánea/estado permanece sin cambios.;
- *  - TTL cosecha caducada(inyectar reloj,certeza);
- *  - El límite de capacidad se elimina del antiguo al nuevo al terminar en;
- *  - Los registros activos nunca se recortan;
- *  - register/start/finish/fail/markCancelled Se mantiene la semántica existente.(Repetir estado final, llegada tardía tras cancelación.).
+ * 覆盖:
+ *  - 终态迁移到历史表后 snapshot/state 语义不变;
+ *  - TTL 过期裁剪(注入时钟,确定性);
+ *  - 容量上限按 finishedAt 由旧到新淘汰;
+ *  - 活跃记录永不裁剪;
+ *  - register/start/finish/fail/markCancelled 既有语义保持(重复终态、取消后晚到)。
  *
- * correr: ./gradlew :app:testDebugUnitTest --tests "*SessionExecutionRegistryPruningTest*"
+ * 运行: ./gradlew :app:testDebugUnitTest --tests "*SessionExecutionRegistryPruningTest*"
  */
 class SessionExecutionRegistryPruningTest {
 
@@ -44,13 +44,13 @@ class SessionExecutionRegistryPruningTest {
 
         assertTrue(registry.finish(id))
 
-        // Tabla activa borrada,La tabla histórica conserva los registros estatales finales.(Compatible con diagnóstico)
+        // 活跃表已清空,历史表保留终态记录(诊断兼容)
         assertTrue(registry.activeSnapshot("session-1").isEmpty())
         assertEquals(1, registry.historySnapshot("session-1").size)
         assertEquals(1, registry.snapshot("session-1").size)
         assertEquals(ExecutionState.COMPLETED, registry.state(id))
         assertFalse(registry.isCurrent(identity("g1")))
-        // El valor iniciado/terminado del registro de estado final proviene del reloj inyectado.
+        // 终态记录的 startedAt/finishedAt 来自注入时钟
         val record = registry.historySnapshot().single()
         assertEquals(1_000L, record.startedAt)
         assertEquals(2_000L, record.finishedAt)
@@ -62,7 +62,7 @@ class SessionExecutionRegistryPruningTest {
         val id = registry.register(identity("g1"), ExecutionKind.TOOL)
         registry.start(id)
         assertTrue(registry.finish(id))
-        // Terminar/fallar nuevamente en la historia del estado final para mantener la idempotencia,Estado sin cambios
+        // 终态历史中再次 finish/fail 保持幂等,状态不变
         assertTrue(registry.finish(id))
         assertTrue(registry.fail(id))
         assertTrue(registry.markCancelled(id))
@@ -92,12 +92,12 @@ class SessionExecutionRegistryPruningTest {
         registry.start(id)
         assertTrue(registry.finish(id))
 
-        // No caducado:Sin recortar
+        // 未过期:不裁剪
         now = 1_500L
         assertEquals(0, registry.prune())
         assertEquals(ExecutionState.COMPLETED, registry.state(id))
 
-        // TTL excedido: el estado/instantánea ya no es visible después del recorte
+        // 超过 TTL:裁剪后 state/snapshot 不再可见
         now = 3_000L
         assertEquals(1, registry.prune())
         assertNull(registry.state(id))
@@ -116,7 +116,7 @@ class SessionExecutionRegistryPruningTest {
             ids += id
         }
 
-        // Recorta automáticamente cada transición de estado final:Capacidad 2,El g1 más antiguo ha sido retirado.
+        // 每次终态迁移自动裁剪:容量 2,最旧的 g1 已被淘汰
         assertEquals(2, registry.historySnapshot().size)
         assertNull(registry.state(ids[0]))
         assertEquals(ExecutionState.COMPLETED, registry.state(ids[1]))
@@ -130,7 +130,7 @@ class SessionExecutionRegistryPruningTest {
         val registry = registry(retentionMs = 0L, maxHistory = 1)
         val id = registry.register(identity("g1"), ExecutionKind.BROWSER)
         registry.start(id)
-        // Otro registro de estado final activa el recorte automático,Pero se deben conservar los registros activos
+        // 另一个终态记录触发自动裁剪,但活跃记录必须保留
         val finished = registry.register(identity("g2"), ExecutionKind.TOOL)
         registry.finish(finished)
 
@@ -151,7 +151,7 @@ class SessionExecutionRegistryPruningTest {
         registry.start(second)
         assertTrue(registry.finish(second))
 
-        // El registro de la primera llegada se ha recortado automáticamente.,Sólo conserva el último
+        // 第一次 finish 的记录已被自动裁剪,只留最近一条
         assertNull(registry.state(first))
         assertEquals(ExecutionState.COMPLETED, registry.state(second))
         assertEquals(1, registry.historySnapshot().size)

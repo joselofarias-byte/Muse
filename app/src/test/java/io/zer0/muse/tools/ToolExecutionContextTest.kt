@@ -23,7 +23,7 @@ class ToolExecutionContextTest {
                 name = "context_probe",
                 description = "test",
                 parameters = mapOf("value" to "value"),
-                // La herramienta de sonda solo reproduce parámetros y no tiene efectos secundarios.
+                // 探针工具只回显参数，无副作用。
                 riskLevel = ToolRiskLevel.SAFE,
             ),
         ) { args, executionContext ->
@@ -32,7 +32,7 @@ class ToolExecutionContextTest {
 
         val denied = registry.execute("context_probe", mapOf("value" to "x"))
         assertTrue(denied.isError)
-        assertTrue(denied.content.contains("contexto de ejecución"))
+        assertTrue(denied.content.contains("执行上下文"))
 
         val allowed = registry.execute(
             "context_probe",

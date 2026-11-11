@@ -19,7 +19,7 @@ class ChatMessageMapWiringTest {
         val source = locateChatScreenSource()
         val forwardStart = source.indexOf("forwardText?.let { text ->")
         val mapStart = source.indexOf("MessageMapBar(")
-        val forwardEnd = source.indexOf("// A6: mapa de mensajes", forwardStart)
+        val forwardEnd = source.indexOf("// A6: 消息地图", forwardStart)
 
         assertTrue("forward dialog scope should exist", forwardStart >= 0)
         assertTrue("message map should exist", mapStart >= 0)
@@ -29,6 +29,22 @@ class ChatMessageMapWiringTest {
             "message map must not be nested in forwardText?.let",
             mapStart in forwardStart until forwardEnd,
         )
+    }
+
+    @Test
+    fun `message map resolves lazy rows back to their owning message`() {
+        val source = locateChatScreenSource()
+        val mapCall =
+            source.substringAfter("MessageMapBar(")
+                .substringBefore("modifier =")
+
+        assertTrue(
+            "a split long message occupies multiple lazy rows, so map previews need the owning message index",
+            mapCall.contains("messageIndexForListIndex"),
+        )
+        assertTrue(mapCall.contains("messageAtRow("))
+        assertTrue(mapCall.contains("renderRows"))
+        assertTrue(mapCall.contains("rowIndex - messageStartIndex"))
     }
 
     private fun locateChatScreenSource(): String {

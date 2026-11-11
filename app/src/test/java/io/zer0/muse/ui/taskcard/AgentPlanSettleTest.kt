@@ -8,15 +8,15 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * v2.6.4: El estado final de la tarjeta del plan. —— Los pasos no completados deben CANCELARSE; de lo contrario, la tarjeta girará para siempre.
+ * v2.6.4: 计划卡终态收尾 —— 未结束步骤必须落成 CANCELLED，否则卡片永远转圈。
  */
 class AgentPlanSettleTest {
 
     private fun planOf(vararg statuses: AgentPlanStepStatus): AgentPlan = AgentPlan(
         id = "plan-1",
-        title = "plan de prueba",
+        title = "测试计划",
         steps = statuses.mapIndexed { index, status ->
-            AgentPlanStep(id = "step-$index", title = "pasos $index", status = status)
+            AgentPlanStep(id = "step-$index", title = "步骤 $index", status = status)
         },
     )
 
@@ -33,7 +33,7 @@ class AgentPlanSettleTest {
         assertEquals(AgentPlanStepStatus.CANCELLED, settled.steps[1].status)
         assertEquals(AgentPlanStepStatus.CANCELLED, settled.steps[2].status)
         assertEquals(AgentPlanStepStatus.FAILED, settled.steps[3].status)
-        assertTrue("Después del cierre, todo debe estar terminado.", settled.isAllSettled)
+        assertTrue("收尾后必须已全部终结", settled.isAllSettled)
     }
 
     @Test
@@ -63,18 +63,18 @@ class AgentPlanSettleTest {
         val planMessage = toolMessage(
             at = 100L,
             name = "task_plan",
-            arguments = """{"title":"proyecto historico","steps":[{"title":"primer paso"},{"title":"Paso 2"}]}""",
-            result = "Plan creado.planId: plan-h1",
+            arguments = """{"title":"历史计划","steps":[{"title":"第一步"},{"title":"第二步"}]}""",
+            result = "计划已创建。planId: plan-h1",
         )
         val updateMessage = toolMessage(
             at = 200L,
             name = "update_plan_step",
             arguments = """{"planId":"plan-h1","stepIndex":0,"status":"done"}""",
-            result = "Paso 0 actualizado",
+            result = "步骤 0 已更新",
         )
 
         val plan = restoreAgentPlansFromHistory(listOf(planMessage, updateMessage)).getValue("plan-h1")
-        // El primer paso se completa y se retiene, el segundo paso (nunca actualizado, aún PENDIENTE) se finaliza como CANCELLED
+        // 第一步已完成保留，第二步（从未更新，仍是 PENDING）被收尾为 CANCELLED
         assertEquals(AgentPlanStepStatus.DONE, plan.steps[0].status)
         assertEquals(AgentPlanStepStatus.CANCELLED, plan.steps[1].status)
         assertTrue(plan.isAllSettled)
@@ -85,8 +85,8 @@ class AgentPlanSettleTest {
         val planMessage = toolMessage(
             at = 100L,
             name = "task_plan",
-            arguments = """{"title":"proyecto historico","steps":[{"title":"primer paso"},{"title":"Paso 2"}]}""",
-            result = "Plan creado.planId: plan-h2",
+            arguments = """{"title":"历史计划","steps":[{"title":"第一步"},{"title":"第二步"}]}""",
+            result = "计划已创建。planId: plan-h2",
         )
 
         val plan = restoreAgentPlansFromHistory(listOf(planMessage), settleUnfinished = false).getValue("plan-h2")

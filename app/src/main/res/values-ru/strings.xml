@@ -4,7 +4,7 @@
     <!-- Splash -->
 
     <!-- Widget -->
-    <string name="widget_description">Быстрый запуск чата Muse</string>
+    <string name="widget_description">Быстрый запуск чата Musa</string>
     <string name="widget_new_session">Новый чат</string>
     <string name="widget_recent_sessions">Недавние чаты</string>
     <!-- P3-16: 4x2 chat widget -->
@@ -77,7 +77,7 @@
 <!-- Task 1: ASR reconnecting status (WebSocket dropped, exponential backoff reconnect, audio buffered meanwhile) -->
 <string name="voice_reconnecting">Ошибка сети, повторное подключение…</string>
 
-<!-- Correcciones en la interfaz (i18n-6): stop button a11y label on voice message bar -->
+<!-- 前端修复 (i18n-6): stop button a11y label on voice message bar -->
 <string name="voice_stop_recording">Stop recording</string>
     <string name="voice_conversation_cd_idle">Нажмите, чтобы начать разговор</string>
     <string name="voice_conversation_cd_listening">Идет запись, нажмите, чтобы прервать</string>
@@ -155,7 +155,7 @@
 
     <string name="chat_draft_label">Черновик</string>
     <string name="chat_list_status_in_progress">В ходе выполнения</string>
-    <string name="chat_list_status_pending">В ожидании</string>
+    <string name="chat_list_status_pending">Не начато</string>
     <string name="chat_list_status_completed">Завершенный</string>
     <string name="chat_list_time_just_now">Прямо сейчас</string>
     <string name="chat_list_time_minutes_ago">%1$d мин. назад</string>
@@ -212,7 +212,7 @@
     <string name="chat_delete_selected_title">Удалить выбранные сообщения</string>
     <string name="chat_delete_selected_message">Вы уверены, что хотите удалить %1$d выбранных сообщений? Это действие нельзя отменить.</string>
     <string name="settings_agent_night_patrol_subtitle">Вне разрешённого времени: тихо писать дневник/ночные заметки, без уведомлений</string>
-    <!-- v1.0.75: AI Interacción en momentos -->
+    <!-- v1.0.75: AI 朋友圈互动 -->
     <string name="moment_sender_user">Я</string>
     <string name="moment_banner_liked_by">%1$s лайкнул(а) вашу публикацию</string>
     <string name="moment_banner_commented_by">%1$s прокомментировал(а) вашу публикацию</string>
@@ -228,7 +228,7 @@
     <string name="proxy_bypass_hint">Через запятую. Поддерживаются .суффикс, шаблоны *. и префиксы IP. Локальные модели и службы LAN добавьте сюда.</string>
     <string name="proxy_test_action">Проверить соединение</string>
     <string name="proxy_test_running">Проверка…</string>
-    <string name="launcher_alias_muse">Muse</string>
+    <string name="launcher_alias_muse">Musa</string>
     <string name="proxy_test_invalid_config">Сначала укажите корректный адрес и порт прокси</string>
     <string name="proxy_test_connected">Прокси доступен, </string>
     <string name="proxy_test_need_auth">Прокси требует авторизации; проверьте логин и пароль</string>
@@ -271,4 +271,12 @@
     <string name="proactive_kind_care">Забота</string>
     <string name="proactive_kind_share">Поделиться</string>
     <string name="proactive_kind_milestone">Веха</string>
+    <string name="migration_running">Обновление данных %1$d/%2$d</string>
+    <string name="migration_step">схема v%1$d → v%2$d</string>
+    <string name="migration_failed">При обновлении данных возникла проблема; система обрабатывает её, попробуйте перезапуск</string>
+    <string name="settings_diagnostics_migration">Последнее обновление данных</string>
+    <string name="settings_diagnostics_migration_none">На этом устройстве записи о миграции нет</string>
+    <string name="settings_diagnostics_migration_summary">%1$d шагов · %2$d мс всего · самый медленный %3$d мс</string>
+    <string name="settings_diagnostics_migration_failed">Шаг %1$d завершился ошибкой</string>
+    <string name="msg_interrupted_note">[Прервано]</string>
 </resources>

@@ -5,15 +5,15 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 
 /**
- * v1.107 Registro de verificación de integridad de la base de datos.
+ * v1.107 数据库完整性校验日志。
  *
- * Ejecutado en cada inicio PRAGMA integrity_check,Registre los resultados en esta tabla.
+ * 每次启动时执行 PRAGMA integrity_check,记录结果到本表。
  *  - status: "ok" / "error"
- *  - details: Comprobar salida(ok el tiempo es "ok",error es el mensaje de error completo)
- *  - dbSizeBytes: Tamaño del archivo de base de datos al inicio(Se utiliza para rastrear las tendencias de crecimiento.)
- *  - checkedAt: Comprobar marca de tiempo
+ *  - details: 校验输出(ok 时为 "ok",error 时为完整错误信息)
+ *  - dbSizeBytes: 启动时数据库文件大小(用于追踪增长趋势)
+ *  - checkedAt: 校验时间戳
  *
- * Si se encuentra error,UI La capa puede solicitar al usuario que restaure desde una copia de seguridad automática.
+ * 若发现 error,UI 层可提示用户从自动备份恢复。
  */
 @Entity(tableName = "db_integrity_log")
 data class DbIntegrityLogEntity(

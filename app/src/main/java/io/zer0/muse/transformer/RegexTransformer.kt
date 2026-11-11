@@ -8,62 +8,62 @@ import kotlinx.serialization.builtins.ListSerializer
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * v1.97: Reemplazo regular Transformer — Aplique reglas regulares a nivel de asistente al texto del mensaje.
+ * v1.97: 正则替换 Transformer — 对消息文本应用助手级正则规则。
  *
- * Ejecutar en canalización de mensajes,Colocado después de PlaceholderTransformer y antes de enviarlo a LLM.
- * Reemplazar solo contenido de texto,No afecta la estructura del mensaje.
+ * 在消息管道中执行,位于 PlaceholderTransformer 之后、发送给 LLM 之前。
+ * 仅对文本内容做替换,不影响消息结构。
  *
- * Nota:Este objeto es una clase de herramienta.,Implementación de interfaz sin transformador. Consulte RegexMessageTransformer para conocer la implementación real de Transformer.
+ * 注意:本 object 是工具类,非 Transformer 接口实现。实际 Transformer 实现见 RegexMessageTransformer。
  */
 object RegexTransformer {
 
     private const val TAG = "RegexTransformer"
 
-    /** JSON Serializador. */
+    /** JSON 序列化器。 */
     private val serializer = ListSerializer(AssistantRegex.serializer())
 
     /**
-     * M-REG1: Caché de compilación regular,Utilice una cadena de regla como clave.
-     * Los conjuntos de reglas son generalmente estables(Múltiples rondas de reutilización después de la configuración del usuario),El almacenamiento en caché de los resultados de la compilación evita volver a compilar la expresión regular de cada mensaje.
-     * Utilice ConcurrentHashMap para garantizar la seguridad del acceso simultáneo a múltiples corrutinas.
+     * M-REG1: 正则编译缓存,以规则字符串为 key。
+     * 规则集通常稳定(用户配置后多轮复用),缓存编译结果避免每条消息都重新编译 Regex。
+     * 用 ConcurrentHashMap 保证多协程并发访问安全。
      */
     private val regexCache = ConcurrentHashMap<String, Regex>()
 
     /**
-     * Analiza una lista de reglas regulares de AssistantEntity.
+     * 从 AssistantEntity 解析正则规则列表。
      */
     fun parseRules(assistant: AssistantEntity): List<AssistantRegex> {
         return parseRulesFromJson(assistant.regexRulesJson)
     }
 
     /**
-     * Analizar una lista de reglas regulares de una cadena JSON(Para que UI llame directamente,No es necesario construir un completo AssistantEntity).
+     * 从 JSON 字符串解析正则规则列表(供 UI 直接调用,无需构造完整 AssistantEntity)。
      */
     fun parseRulesFromJson(json: String): List<AssistantRegex> {
         if (json.isBlank() || json == "[]") return emptyList()
         return try {
             AppJson.decodeFromString(serializer, json)
         } catch (e: Exception) {
-            Logger.w(TAG, "No se pudieron analizar las reglas regulares", e)
+            Logger.w(TAG, "解析正则规则失败", e)
             emptyList()
         }
     }
 
     /**
-     * Serializar la lista de reglas regulares en una cadena JSON(por la persistencia).
+     * 序列化正则规则列表为 JSON 字符串(供持久化)。
      */
     fun serializeRules(rules: List<AssistantRegex>): String {
         return AppJson.encodeToString(serializer, rules)
     }
 
     /**
-     * Aplique reglas de reemplazo regulares al texto.
+     * 对文本应用正则替换规则。
      *
-     * @param text texto original
-     * @param rules Lista de reglas regulares
-     * @param scope Alcance del mensaje actual:"user" o "assistant"
-     * @param visualOnly true=Filtrar solo reglas de solo visual;false=Filtrar solo reglas no visuales
-     * @return Texto reemplazado
+     * @param text 原始文本
+     * @param rules 正则规则列表
+     * @param scope 当前消息范围:"user" 或 "assistant"
+     * @param visualOnly true=仅过滤 visualOnly 规则;false=仅过滤非 visualOnly 规则
+     * @return 替换后的文本
      */
     fun applyRules(text: String, rules: List<AssistantRegex>, scope: String, visualOnly: Boolean = false): String {
         if (rules.isEmpty() || text.isEmpty()) return text
@@ -72,22 +72,22 @@ object RegexTransformer {
         for (rule in rules) {
             if (!rule.enabled) continue
             if (rule.findRegex.isBlank()) continue
-            // Comprobar coincidencia de rango
+            // 检查范围匹配
             val scopeMatch = when (rule.affectingScope) {
                 "both" -> true
                 scope -> true
                 else -> false
             }
             if (!scopeMatch) continue
-            // Comprobar coincidencias solo visuales
+            // 检查 visualOnly 匹配
             if (rule.visualOnly != visualOnly) continue
 
             result = try {
-                // M-REG1: Reutilizar instancias Regex almacenadas en caché,Evite recompilar cada mensaje(rule.findRegex generalmente estable)
+                // M-REG1: 复用缓存的 Regex 实例,避免每条消息都重新编译(rule.findRegex 通常稳定)
                 val regex = regexCache.getOrPut(rule.findRegex) { Regex(rule.findRegex) }
                 regex.replace(result, rule.replaceString)
             } catch (e: Exception) {
-                Logger.w(TAG, "El reemplazo regular falló: ${rule.name}(${rule.findRegex})", e)
+                Logger.w(TAG, "正则替换失败: ${rule.name}(${rule.findRegex})", e)
                 result
             }
         }

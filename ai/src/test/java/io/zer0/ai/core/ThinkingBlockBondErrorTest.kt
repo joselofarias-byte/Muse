@@ -5,9 +5,9 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * v2.5.3 (P2-3): Prueba de reconocimiento para la clase 400 "Bloques de pensamiento ligados a diferentes sesiones".
+ * v2.5.3 (P2-3): 「思考块绑定到不同会话」类 400 的识别测试。
  *
- * Sólo este diagnóstico debe ser alcanzado exactamente, los otros 400 (parámetro/Autenticación/Nombre del modelo) no debe juzgarse mal.
+ * 只应精确命中这一种诊断，其他 400（参数/鉴权/模型名）不应误判。
  */
 class ThinkingBlockBondErrorTest {
 

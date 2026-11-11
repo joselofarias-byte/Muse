@@ -1,21 +1,21 @@
-Muse v2.5.7 (versionCode 257) Liberar registros de verificación
+Muse v2.5.7 (versionCode 257) 发布校验记录
 ------------------------------------------------
 
 sourceCommit: e07ffb3b
-versionName/versionCode: 2.5.7 / 257(inyección explícita)
+versionName/versionCode: 2.5.7 / 257（显式注入）
 compileSdk / targetSdk: 36 / 36
-Versión de la base de datos: 110(Igual que v2.5.6, no se perderán datos durante la actualización)
-Descripción: El número de versión se retiró del temporal local 2.6.x a 2.5.7, lo cual es consistente con la línea de lanzamiento remoto (v2.5.6 después) alineación.
+数据库版本: 110（与 v2.5.6 相同，升级不丢数据）
+说明: 版本号从本地临时的 2.6.x 收回为 2.5.7，与远端发布线（v2.5.6 之后）对齐。
 
-control de acceso
+门禁
 ----
 - :app:compileDebugKotlin          PASS
 - :app:detekt                      PASS
 - :app:ktlintKotlinSourceCheck     PASS
-- :app:testDebugUnitTest           PASS(Volumen completo, código de salida real 0)
-- :app:assembleRelease             PASS(4m15s,R8 + release firma)
+- :app:testDebugUnitTest           PASS（全量，真实退出码 0）
+- :app:assembleRelease             PASS（4m15s，R8 + release 签名）
 
-Distribuir (E:\1Project\Muse\releases\v2.5.7\)
+分发 (E:\1Project\Muse\releases\v2.5.7\)
 ----------------------
 Muse_v2.5.7_arm64-v8a.apk
   size=85866926
@@ -27,19 +27,19 @@ Muse_v2.5.7_universal.apk
   size=161053791
   sha256=6784e33426c1f39d9cb1379e5da674e1bc8599f58d5c7036e4292fd6e08c7650
 
-Contenido de esta ronda
+本轮内容
 --------
-- Se agregó browser_screenshot(AI Ver representación de la página).
-- Se corrigió la falla del interruptor multimodal después de guardar (userEdited modelo mejorado de cortocircuito).
-- Corrija el botón de saltar al final para colocarlo debajo del campo de entrada (levantar el archivo InnerPadding.bottom).
-- Resistencia del vidrio: tres niveles fijos + parámetros de conducción reales + aumento en gran medida del límite superior de desenfoque + rango medio predeterminado.
+- 新增 browser_screenshot（AI 可看页面渲染图）。
+- 修多模态开关保存后失效（userEdited 短路 enhanceModel）。
+- 修跳到底部按钮卡到输入栏下面（抬高 innerPadding.bottom）。
+- 玻璃强度：固定三档 + 真正驱动参数 + 大幅拉高模糊上限 + 默认中档。
 
-Esperando confirmación de la máquina real
+待真机确认
 ----------
-- ¿Se pueden exportar capturas de pantalla de WebView sin cabeza?
-- La apariencia real de tres niveles de intensidad.
-- Interfaz generativa (v2.5.6 Introducido) apariencia y sensación de renderizado progresivo.
+- 无头 WebView 截图能否出图。
+- 三档强度的实际观感。
+- 生成式界面（v2.5.6 引入）的渐进渲染观感。
 
-Descripción
+说明
 ----
-- Este paquete solo se crea localmente y no se publica en GitHub Release.
+- 本包仅本地构建，未发布 GitHub Release。

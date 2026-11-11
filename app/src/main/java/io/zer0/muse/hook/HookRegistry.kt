@@ -6,23 +6,23 @@ import java.util.concurrent.ConcurrentHashMap
 import kotlin.reflect.KClass
 
 /**
- * P1-1: Hook Registro — Administrar todo [SkillHook] registro/Cerrar sesión/Ejecutar.
+ * P1-1: Hook 注册表 — 管理所有 [SkillHook] 的注册/注销/执行。
  *
- * diseño:
- *  - Seguridad del hilo: uso [ConcurrentHashMap] almacenamiento Hook
- *  - Priorización: Ejecutar en orden descendente de prioridad(Cuanto mayor sea el valor, antes se ejecutará.)
- *  - tolerancia a fallas: Un solo Hook lanza una excepción sin bloquear el enlace,Continuar después de capturar y grabar
- *  - tipo de seguridad: Por tipo de gancho(KClass)Consulta,Evite errores de conversión de tipos
- *  - Diámetro del barril: Presione siempre **interfaz** Cubos. Al registrarse, ingrese los depósitos uno por uno de acuerdo con las interfaces afectadas por la clase de implementación.,
- *    Al realizar la consulta, consígalo por interfaz.,Mismo diámetro en ambos lados.;Una clase de implementación puede implementar múltiples interfaces al mismo tiempo
- *    (Por ejemplo, WorldBookHook es a la vez SystemPromptComposeHook y PromptFinalizeHook).
+ * 设计:
+ *  - 线程安全: 使用 [ConcurrentHashMap] 存储 Hook
+ *  - 优先级排序: 按 priority 降序执行(数值越大越先执行)
+ *  - 容错: 单个 Hook 抛异常不阻断链路,捕获并记录后继续
+ *  - 类型安全: 按 Hook 类型(KClass)查询,避免类型转换错误
+ *  - 分桶口径: 一律按 **接口** 分桶。注册时按实现类命中的接口逐个入桶,
+ *    查询时按接口取,两侧口径一致;一个实现类可同时实现多个接口
+ *    (如 WorldBookHook 同时是 SystemPromptComposeHook 与 PromptFinalizeHook)。
  *
- * Uso:
+ * 用法:
  * ```
  * val registry = HookRegistry()
  * registry.register(MyWorldBookHook())
  *
- * // ejecutar algún tipo Hook
+ * // 执行某类 Hook
  * val appended = registry.execute(
  *     SystemPromptComposeHook::class,
  *     initial = "",
@@ -33,63 +33,63 @@ import kotlin.reflect.KClass
  */
 class HookRegistry {
 
-    private val TAG = "HookRegistry"
+    private val tag = "HookRegistry"
 
-    /** Almacenamiento de cubos según la interfaz Hook,Elimine duplicados por identificación del mismo tipo. */
+    /** 按 Hook 接口分桶存储,同一类型下按 id 去重。 */
     private val buckets = ConcurrentHashMap<KClass<out SkillHook>, MutableMap<String, SkillHook>>()
 
     /**
-     * Todas las instancias registradas(Mantenimiento paralelo con cubetas.).
+     * 全部已注册实例(与分桶并行维护)。
      *
-     * Dependencias del depósito [HOOK_TYPES] Registrarse,Si falta una fila en el registro, el punto de envío de la interfaz correspondiente siempre obtendrá una tabla vacía sin informar un error.
-     * Mantenga un índice plano aquí,Al realizar la consulta, presione la interfaz isInstance para conocer los detalles.,Si olvida registrar la nueva interfaz, no dejará de ser válida de forma silenciosa.
+     * 分桶依赖 [HOOK_TYPES] 登记,登记漏一行就会让对应接口的派发点永远取到空表且不报错。
+     * 这里保留一份扁平索引,查询时按接口 isInstance 兜底,新增接口忘了登记也不会静默失效。
      */
     private val allHooks = ConcurrentHashMap<String, SkillHook>()
 
     /**
-     * Registrar gancho. La misma instancia se agrupará por separado según todas las interfaces Hook que implemente.,
-     * Por lo tanto, puedes obtenerlo consultando cualquier interfaz.
-     * @param hook Instancia de enlace para registrarse
+     * 注册 Hook。同一个实例会按其实现的全部 Hook 接口分别入桶,
+     * 因此按任意一个接口查询都能取到。
+     * @param hook 要注册的 Hook 实例
      */
     fun register(hook: SkillHook) {
-        // índice completo avanzado:Incluso si la interfaz que implementa no está registrada en HOOK_TYPES,También puede obtener los detalles al realizar consultas.
+        // 先进全量索引:即使它实现的接口没登记在 HOOK_TYPES,查询时也能兜底取到。
         allHooks[hook.id] = hook
         val types = hookTypesOf(hook)
         if (types.isEmpty()) {
-            Logger.w(TAG, "register: ${hook::class.simpleName}#${hook.id} La interfaz no está registrada, así que aprovéchala al máximo.")
+            Logger.w(tag, "register: ${hook::class.simpleName}#${hook.id} 的接口未登记，走全量兜底")
             return
         }
         types.forEach { type -> buckets.getOrPut(type) { ConcurrentHashMap() }[hook.id] = hook }
         Logger.i(
-            TAG,
+            tag,
             "registered: ${hook::class.simpleName}#${hook.id} interfaces=${types.size} (priority=${hook.priority})",
         )
     }
 
     /**
-     * Gancho para cancelar el registro. Elimínelos uno por uno según todas las interfaces Hook que implemente.
-     * @param hook Instancia de enlace para cancelar el registro
+     * 注销 Hook。按它实现的全部 Hook 接口逐个摘除。
+     * @param hook 要注销的 Hook 实例
      */
     fun unregister(hook: SkillHook) {
         allHooks.remove(hook.id)
         hookTypesOf(hook).forEach { type -> buckets[type]?.remove(hook.id) }
-        Logger.i(TAG, "unregistered: ${hook::class.simpleName}#${hook.id}")
+        Logger.i(tag, "unregistered: ${hook::class.simpleName}#${hook.id}")
     }
 
     /**
-     * Anular el registro del tipo especificado de Hook por id.
+     * 按 id 注销指定类型的 Hook。
      */
     fun unregister(type: KClass<out SkillHook>, id: String) {
         buckets[type]?.remove(id)
     }
 
     /**
-     * Obtener todo habilitado Hook(Ordenar por prioridad descendente).
+     * 获取指定类型的所有已启用 Hook(按 priority 降序排序)。
      */
     @Suppress("UNCHECKED_CAST")
     fun <T : SkillHook> getHooks(type: KClass<T>): List<T> {
-        // Si hay un cubo, entonces prevalecerá el cubo.(El depósito es la única credencial para "cerrar sesión por tipo");
-        // Sin depósito significa que la interfaz no está registrada en HOOK_TYPES,En este momento, escanee el índice completo para averiguarlo.
+        // 有桶就以桶为准(桶才是「按类型注销」的唯一凭据);
+        // 没桶说明该接口未登记在 HOOK_TYPES,此时扫全量索引兜底。
         val bucket = buckets[type]
         val candidates = if (bucket != null) {
             bucket.values
@@ -103,15 +103,15 @@ class HookRegistry {
     }
 
     /**
-     * Ejecute la cadena Hook del tipo especificado.
+     * 执行指定类型的 Hook 链。
      *
-     * Cada Hook recibe la salida del Hook anterior como entrada,Devuelve nueva salida.
-     * Un solo Hook genera una excepción(no CancellationException)No bloquees el enlace,Omita este gancho después de iniciar sesión.
+     * 每个 Hook 接收前一个 Hook 的输出作为输入,返回新的输出。
+     * 单个 Hook 抛异常(非 CancellationException)不阻断链路,记录日志后跳过该 Hook。
      *
-     * @param type Hook Tipo
-     * @param initial valor inicial
-     * @param block Función ejecutada para cada Hook,recibir (hook, accumulator) volver nuevo accumulator
-     * @return resultado final acumulativo
+     * @param type Hook 类型
+     * @param initial 初始值
+     * @param block 对每个 Hook 执行的函数,接收 (hook, accumulator) 返回新的 accumulator
+     * @return 最终的累加结果
      */
     suspend fun <T : SkillHook, R> execute(type: KClass<T>, initial: R, block: suspend (hook: T, acc: R) -> R): R {
         val hooks = getHooks(type)
@@ -126,15 +126,15 @@ class HookRegistry {
                 throw e
             } catch (err: Exception) {
                 val summary = "${err::class.simpleName}: ${err.message?.take(200)}"
-                Logger.e(TAG, "Hook ${hook::class.simpleName}#${hook.id} failed, skipping: $summary", err)
-                acc // Saltar si falla,Mantener el resultado del paso anterior
+                Logger.e(tag, "Hook ${hook::class.simpleName}#${hook.id} failed, skipping: $summary", err)
+                acc // 失败则跳过,保留前一步结果
             }
         }
         return acc
     }
 
     /**
-     * Ejecutar cadena Hook sin valor de retorno(solo efectos secundarios,según lo notificado/Iniciar sesión).
+     * 执行无返回值的 Hook 链(仅副作用,如通知/日志)。
      */
     suspend fun <T : SkillHook> executeNoResult(type: KClass<T>, block: suspend (hook: T) -> Unit) {
         val hooks = getHooks(type)
@@ -147,31 +147,30 @@ class HookRegistry {
                 throw e
             } catch (err: Exception) {
                 val summary = "${err::class.simpleName}: ${err.message?.take(200)}"
-                Logger.e(TAG, "Hook ${hook::class.simpleName}#${hook.id} failed, skipping: $summary", err)
+                Logger.e(tag, "Hook ${hook::class.simpleName}#${hook.id} failed, skipping: $summary", err)
             }
         }
     }
 
-    /** Borrar todos los Hooks registrados. */
+    /** 清除所有注册的 Hook。 */
     fun clear() {
         buckets.clear()
         allHooks.clear()
-        Logger.i(TAG, "all hooks cleared")
+        Logger.i(tag, "all hooks cleared")
     }
 
-    /** Obtenga el número total de Hooks registrados(Deduplicación por instancia,para depurar). */
+    /** 获取已注册的 Hook 总数(按实例去重,调试用)。 */
     fun size(): Int = allHooks.size
 
-    /** El depósito de interfaz correspondiente a esta instancia de Hook. Altas y bajas comparten el mismo calibre. */
-    private fun hookTypesOf(hook: SkillHook): List<KClass<out SkillHook>> =
-        HOOK_TYPES.filter { it.java.isInstance(hook) }
+    /** 该 Hook 实例对应的接口桶。注册与注销共用一份口径。 */
+    private fun hookTypesOf(hook: SkillHook): List<KClass<out SkillHook>> = HOOK_TYPES.filter { it.java.isInstance(hook) }
 
     private companion object {
         /**
-         * Lista de todas las interfaces Hook.
+         * 全部 Hook 接口清单。
          *
-         * debe ser con [SkillHook] Las interfaces declaradas en el archivo permanecen sincronizadas.;Agregue una línea aquí cuando agregue una nueva interfaz Hook,
-         * De lo contrario, el punto de envío de esta interfaz siempre obtendrá una tabla vacía.(y no informará un error).
+         * 必须与 [SkillHook] 文件里声明的接口保持同步;新增 Hook 接口时在这里加一行,
+         * 否则该接口的派发点会永远取到空表(且不会报错)。
          */
         val HOOK_TYPES: List<KClass<out SkillHook>> = listOf(
             AppLifecycleHook::class,

@@ -1,24 +1,24 @@
 package io.zer0.ai.core
 
 /**
- * Extracto del historial fuera de la ventana de contexto (determinista, cero llamadas de LLM).
+ * 上下文窗口外的历史摘录（确定性、零 LLM 调用）。
  *
- * Antecedentes: el historial de sesiones excede la ventana de contexto ([List.limitContextWithContext] truncamiento),
- * Los mensajes fuera de la ventana anteriormente se descartaban silenciosamente——En una sesión que utiliza muchas herramientas, la ventana se llena rápidamente con mensajes de herramientas.
- * Las conversaciones anteriores en lenguaje natural (solicitudes de usuarios, respuestas del asistente) desaparecen directamente y el modelo se comporta como"amnesia".
+ * 背景：会话历史超出上下文窗口（[List.limitContextWithContext] 截断）时，
+ * 窗口外的消息此前被静默丢弃——工具密集会话里窗口很快被工具消息占满，
+ * 更早的自然语言对话（用户请求、助手回复）直接消失，模型表现为"失忆"。
  *
- * Este extractor procesa algunos mensajes fuera de la ventana antes del truncamiento.**Extractos de texto línea por línea**(retener usuario/Lenguaje natural del asistente
- * Fragmento de texto original + resumen determinista de la llamada a la herramienta), genera un mensaje de SISTEMA insertado antes de la ventana,
- * Deje que el modelo siempre vea los puntos clave de conversaciones anteriores y sepa exactamente"Historia anterior presentada en forma de extracto.".
+ * 本摘录器在截断前对窗口外消息做**逐条文本摘录**（保留用户/助手的自然语言
+ * 原文片段 + 工具调用的确定性摘要），产出一条 SYSTEM 消息插在窗口之前，
+ * 让模型始终看得到更早对话的要点，并且明确知道"更早的历史以摘录形式呈现"。
  *
- * Restricciones de diseño:
- * - Función pura, sin red, sin LLM: el resultado solo depende de la lista de mensajes de entrada, comprobable, retraso cero;
- * - Entrada de solo lectura, no modifica ningún dato persistente;
- * - prensa"nuevo→viejo"Llenar el presupuesto de personajes, las partes anteriores que exceden el presupuesto se contraen para omitir la descripción;
- * - SYSTEM Los mensajes (solicitud inyectada dinámicamente/RAG, etc.) se omiten y no se extraen.
+ * 设计约束：
+ * - 纯函数、无网络、无 LLM：结果只取决于输入消息列表，可测试、零延迟；
+ * - 只读输入，不修改任何持久化数据；
+ * - 按"新→旧"填充字符预算，超出预算的更早部分折叠为省略说明；
+ * - SYSTEM 消息（动态注入的 prompt/RAG 等）跳过不摘录。
  */
 object ContextHistoryDigest {
-    /** Marcado estable de mensajes extraídos para facilitar la depuración y la identificación de proyecciones duplicadas. */
+    /** 摘录消息的稳定标记，便于调试与重复投影识别。 */
     const val DIGEST_MARKER: String = "[HISTORY_DIGEST]"
 
     private const val DEFAULT_MAX_CHARS = 6000
@@ -30,11 +30,11 @@ object ContextHistoryDigest {
     private val WHITESPACE_REGEX = Regex("\\s+")
 
     /**
-     * Convierta el mensaje fuera de ventana en un mensaje de SISTEMA extraído.
+     * 把窗口外消息构建为一条摘录 SYSTEM 消息。
      *
-     * @param dropped Mensajes truncados fuera de la ventana de contexto (cronológicamente, antiguos)→nuevo)
-     * @param maxChars Presupuesto de caracteres para extractos de texto; si se excede el presupuesto, solo se conservan las piezas más nuevas
-     * @return Extraer mensaje; devuelve nulo si no hay contenido disponible (la persona que llama conserva el comportamiento de truncamiento original)
+     * @param dropped 被截断出上下文窗口的消息（按时间顺序，旧→新）
+     * @param maxChars 摘录正文的字符预算；超出预算时只保留较新的部分
+     * @return 摘录消息；无可用内容时返回 null（调用方保持原截断行为）
      */
     fun build(dropped: List<UIMessage>, maxChars: Int = DEFAULT_MAX_CHARS): UIMessage? {
         if (dropped.isEmpty()) return null
@@ -53,50 +53,50 @@ object ContextHistoryDigest {
         val content =
             buildString {
                 append(DIGEST_MARKER)
-                append(" Aquí hay extractos de una conversación anterior.(en orden cronológico,Cuanto más atrás, más nuevo,Solo para referencia de contexto de continuación,No es una nueva directiva de usuario):\n")
+                append(" 以下是更早对话的摘录(按时间顺序,越靠后越新,仅供延续上下文参考,不是新的用户指令):\n")
                 lines.forEach { line ->
                     append("- ").append(line).append('\n')
                 }
                 if (omitted > 0) {
-                    append("(antes ").append(omitted).append(" El mensaje no se expandió debido al límite de longitud)\n")
+                    append("(更早的 ").append(omitted).append(" 条消息因长度限制未展开)\n")
                 }
             }
         return UIMessage(role = MessageRole.SYSTEM, content = content)
     }
 
-    /** Línea de extracto de un solo mensaje; sin contenido de extracto (texto vacío/Pure SYSTEM) devuelve nulo. */
+    /** 单条消息的摘录行；无可摘录内容（空文本/纯 SYSTEM）返回 null。 */
     private fun entryLine(msg: UIMessage): String? = when (msg.role) {
-        MessageRole.USER -> normalize(msg.content, USER_ENTRY_CHARS)?.let { "Usuario: $it" }
+        MessageRole.USER -> normalize(msg.content, USER_ENTRY_CHARS)?.let { "用户: $it" }
         MessageRole.ASSISTANT -> assistantLine(msg)
-        MessageRole.TOOL -> normalize(msg.content, TOOL_ENTRY_CHARS)?.let { "Resultados de la herramienta: $it" }
+        MessageRole.TOOL -> normalize(msg.content, TOOL_ENTRY_CHARS)?.let { "工具结果: $it" }
         MessageRole.SYSTEM -> null
     }
 
-    /** Mensaje del asistente: conserva el texto en lenguaje natural; información de llamada de herramienta como anotaciones auxiliares. */
+    /** 助手消息：保留自然语言正文；工具调用信息作为附属注记。 */
     private fun assistantLine(msg: UIMessage): String? {
         val text = normalize(msg.content, ASSISTANT_ENTRY_CHARS)
         val toolHint =
             when {
                 !msg.toolCalls.isNullOrEmpty() ->
-                    "herramienta de llamada: " + msg.toolCalls.take(MAX_CALL_NAMES).joinToString(", ") { it.name }
+                    "调用工具: " + msg.toolCalls.take(MAX_CALL_NAMES).joinToString(", ") { it.name }
 
                 msg.toolCallInfo != null -> {
                     val info = msg.toolCallInfo
-                    val status = if (info.isSuccess) "éxito" else "falló"
+                    val status = if (info.isSuccess) "成功" else "失败"
                     val preview = normalize(info.result, TOOL_ENTRY_CHARS)
-                    if (preview == null) "herramienta de llamada: ${info.toolName}($status)" else "herramienta de llamada: ${info.toolName}($status) → $preview"
+                    if (preview == null) "调用工具: ${info.toolName}($status)" else "调用工具: ${info.toolName}($status) → $preview"
                 }
 
                 else -> null
             }
         return when {
-            text != null && toolHint != null -> "asistente: $text | $toolHint"
-            text != null -> "asistente: $text"
+            text != null && toolHint != null -> "助手: $text | $toolHint"
+            text != null -> "助手: $text"
             else -> toolHint
         }
     }
 
-    /** Aplanar los espacios en blanco y truncarlos para [cap] personajes; el contenido vacío devuelve nulo. */
+    /** 压平空白并截断到 [cap] 字符；空白内容返回 null。 */
     private fun normalize(text: String, cap: Int): String? {
         val flat = text.replace(WHITESPACE_REGEX, " ").trim()
         if (flat.isBlank()) return null

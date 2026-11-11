@@ -3,23 +3,23 @@ package io.zer0.muse.tools
 import io.zer0.memory.pin.PinnedMemoryStore
 
 /**
- * pin_memory Herramientas.
+ * pin_memory 工具。
  *
- * Permita que la IA fije información importante en la parte superior,Guárdelo en la palabra de aviso del sistema.
- * Regístrese dinámicamente en ToolRegistry a través de AgentToolsRegistrar.
+ * 允许 AI 置顶重要信息,使其保留在系统提示词中。
+ * 通过 AgentToolsRegistrar 动态注册到 ToolRegistry。
  */
 object PinMemoryTool {
 
     fun toolDef() = ToolRegistry.ToolDef(
         name = "pin_memory",
-        description = "Fijar información importante en la parte superior,Mantenlo en la conversación." +
-            "Cuando el usuario pide explícitamente recordar algo de forma permanente,o cuando no se debe olvidar un hecho clave.",
+        description = "把重要信息置顶,使其始终出现在对话中。" +
+            "当用户明确要求永久记住某事,或某个关键事实绝不能被遗忘时使用。",
         parameters = mapOf(
             "content" to "Required. The content to pin (concise, one sentence).",
         ),
         required = setOf("content"),
         category = "built-in",
-        // P0-3: Consistente con la tabla explícita ToolPermissionResolver(HIGH)— escritura de memoria a largo plazo,sensible a la privacidad
+        // P0-3: 与 ToolPermissionResolver 显式表一致(HIGH)— 长期记忆写入,隐私敏感
         riskLevel = ToolRiskLevel.HIGH,
     )
 

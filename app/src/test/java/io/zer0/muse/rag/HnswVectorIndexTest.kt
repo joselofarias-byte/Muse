@@ -15,13 +15,13 @@ import kotlin.math.sqrt
 import kotlin.random.Random
 
 /**
- * v1.55: HNSW Pruebas unitarias de indexación de vectores.
+ * v1.55: HNSW 向量索引单元测试。
  *
- * Portada:
- *  - add + search corrección(Tasa de recuperación superior en comparación con los resultados del recorrido de fuerza bruta)
- *  - save + load consistencia(serialización/Los resultados de la búsqueda son consistentes después de la deserialización.)
- *  - remove(Después de la eliminación, la identificación ya no aparecerá en los resultados de búsqueda.,size reducción sincrónica)
- *  - condiciones de contorno(índice vacío,k=0,k Excede el tamaño, índice de un solo elemento)
+ * 覆盖:
+ *  - add + search 正确性(与暴力遍历结果对比 top-1 召回率)
+ *  - save + load 一致性(序列化/反序列化后检索结果一致)
+ *  - remove(删除后该 id 不再出现在搜索结果中,size 同步减少)
+ *  - 边界条件(空索引、k=0、k 超过 size、单元素索引)
  */
 class HnswVectorIndexTest {
 
@@ -39,7 +39,7 @@ class HnswVectorIndexTest {
         tempDir.delete()
     }
 
-    /** Construya un índice con alta efSearch(Garantizar un alto nivel de recuperación en escenarios de prueba,Evite errores de aproximación que interfieran con las afirmaciones.). */
+    /** 构造一个高 efSearch 的索引(测试场景下确保高召回,避免近似误差干扰断言)。 */
     private fun newTestIndex(m: Int = 16, efConstruction: Int = 200, efSearch: Int = 100): HnswVectorIndex = HnswVectorIndex(
         M = m,
         efConstruction = efConstruction,
@@ -47,7 +47,7 @@ class HnswVectorIndexTest {
         seed = 42L,
     )
 
-    /** Generar n vectores aleatorios de dimensiones tenues(semilla fija,reproducible). */
+    /** 生成 n 个 dim 维随机向量(固定种子,可复现)。 */
     private fun genVectors(n: Int, dim: Int, seed: Long = 42L): List<Pair<String, FloatArray>> {
         val rng = Random(seed)
         return (0 until n).map { i ->
@@ -56,7 +56,7 @@ class HnswVectorIndexTest {
         }
     }
 
-    /** recorrido violento top-k(Instrucciones de implementación,Se utiliza para verificar los resultados de HNSW.). */
+    /** 暴力遍历 top-k(实现说明,用于验证 HNSW 结果)。 */
     private fun bruteForceSearch(query: FloatArray, vectors: List<Pair<String, FloatArray>>, k: Int): List<Pair<String, Float>> {
         return vectors
             .map { (id, vec) -> id to cosineSim(query, vec) }
@@ -64,7 +64,7 @@ class HnswVectorIndexTest {
             .take(k)
     }
 
-    /** similitud coseno(Inversa de la distancia interna HNSW:score = 1 - distance). */
+    /** 余弦相似度(与 HNSW 内部 distance 互逆:score = 1 - distance)。 */
     private fun cosineSim(a: FloatArray, b: FloatArray): Float {
         val n = minOf(a.size, b.size)
         if (n == 0) return 0f
@@ -87,7 +87,7 @@ class HnswVectorIndexTest {
         val connections: List<List<Int>> = listOf(emptyList()),
     )
 
-    /** Escriba un archivo HNSW legal mínimo por corrupción/Prueba de regresión de cargas multidimensionales. */
+    /** 写入最小合法 HNSW 文件，用于损坏/混维载荷回归测试。 */
     private fun writePersistedIndex(file: File, nodes: List<PersistedNode>, fingerprint: String = "") {
         val maxLayer = nodes.maxOfOrNull { it.level } ?: -1
         DataOutputStream(FileOutputStream(file)).use { out ->
@@ -119,18 +119,18 @@ class HnswVectorIndexTest {
         }
     }
 
-    // ── add + search corrección ──
+    // ── add + search 正确性 ──
 
     @Test
-    fun `La búsqueda de índice vacío devuelve una lista vacía`() {
+    fun `空索引 search 返回空列表`() {
         val index = newTestIndex()
         assertTrue(index.size == 0)
         val results = index.search(FloatArray(64), k = 5)
-        assertTrue("Una búsqueda de índice vacía debería devolver una lista vacía", results.isEmpty())
+        assertTrue("空索引搜索应返回空列表", results.isEmpty())
     }
 
     @Test
-    fun `k Menor o igual a 0 devuelve una lista vacía`() {
+    fun `k 小于等于 0 返回空列表`() {
         val index = newTestIndex()
         val vectors = genVectors(n = 10, dim = 32)
         vectors.forEach { (id, vec) -> index.add(id, vec) }
@@ -139,19 +139,19 @@ class HnswVectorIndexTest {
     }
 
     @Test
-    fun `k Devuelve todos los resultados disponibles cuando se excede el tamaño`() {
+    fun `k 超过 size 时返回全部可用结果`() {
         val index = newTestIndex()
         val vectors = genVectors(n = 5, dim = 32)
         vectors.forEach { (id, vec) -> index.add(id, vec) }
 
         val results = index.search(vectors[0].second, k = 100)
-        assertTrue("k > size Los resultados de tamaño deben devolverse cuando", results.size <= 5)
-        // No obligado a igualar 5(HNSW Puede ser un poco menor porque el gráfico no atraviesa todos los nodos.),Pero al menos se debe devolver el vector de consulta en sí.
-        assertTrue("Se debe devolver al menos 1 resultado.", results.isNotEmpty())
+        assertTrue("k > size 时应返回 size 条结果", results.size <= 5)
+        // 不强制等于 5(HNSW 可能因图遍历不到所有节点而略少),但至少应返回查询向量自身
+        assertTrue("至少应返回 1 条结果", results.isNotEmpty())
     }
 
     @Test
-    fun `La búsqueda de índice de un solo elemento devuelve el elemento`() {
+    fun `单元素索引 search 返回该元素`() {
         val index = newTestIndex()
         val vec = FloatArray(16) { it.toFloat() }
         index.add("only", vec)
@@ -159,13 +159,13 @@ class HnswVectorIndexTest {
         val results = index.search(vec, k = 1)
         assertEquals(1, results.size)
         assertEquals("only", results[0].id)
-        // La autosimilitud debe ser 1.0(distancia coseno 0)
+        // 自相似度应为 1.0(余弦距离 0)
         assertEquals(1.0f, results[0].score, 1e-4f)
         assertEquals(0.0f, results[0].distance, 1e-4f)
     }
 
     @Test
-    fun `add Después de que el tamaño aumenta sincrónicamente`() {
+    fun `add 后 size 同步增加`() {
         val index = newTestIndex()
         val vectors = genVectors(n = 50, dim = 32)
         for ((i, pair) in vectors.withIndex()) {
@@ -175,16 +175,16 @@ class HnswVectorIndexTest {
     }
 
     @Test
-    fun `add Sobrescribe el vector antiguo con la misma identificación y mantén el tamaño sin cambios`() {
+    fun `add 同 id 覆盖旧向量 size 不变`() {
         val index = newTestIndex()
         val vec1 = FloatArray(16) { 1f }
         val vec2 = FloatArray(16) { 2f }
         index.add("dup", vec1)
         assertEquals(1, index.size)
         index.add("dup", vec2)
-        assertEquals("el tamaño no debe aumentar después de sobrescribir con la misma identificación", 1, index.size)
+        assertEquals("同 id 覆盖后 size 不应增加", 1, index.size)
 
-        // Después de verificar la cobertura, use vec2 para consultar los resultados. score=1(vec1 ha sido reemplazado)
+        // 验证覆盖后用 vec2 查询应得 score=1(vec1 已被替换)
         val results = index.search(vec2, k = 1)
         assertEquals(1, results.size)
         assertEquals("dup", results[0].id)
@@ -192,7 +192,7 @@ class HnswVectorIndexTest {
     }
 
     @Test
-    fun `La adición de vectores extradimensionales se rechaza sin destruir los índices existentes`() {
+    fun `异维向量 add 被拒绝且不破坏现有索引`() {
         val index = newTestIndex()
         val original = FloatArray(8) { it.toFloat() + 1f }
         index.add("original", original)
@@ -203,11 +203,11 @@ class HnswVectorIndexTest {
 
         assertEquals(1, index.size)
         assertEquals("original", index.search(original, k = 1).single().id)
-        assertTrue("No se puede acceder a una consulta de dimensión diferente HNSW", index.search(FloatArray(9) { 1f }, k = 1).isEmpty())
+        assertTrue("异维查询不得命中 HNSW", index.search(FloatArray(9) { 1f }, k = 1).isEmpty())
     }
 
     @Test
-    fun `El reemplazo de diferentes dimensiones con el mismo ID se rechaza cuando existen otros nodos`() {
+    fun `同 id 异维替换在存在其他节点时被拒绝`() {
         val index = newTestIndex()
         val first = FloatArray(8) { 1f }
         val second = FloatArray(8) { 2f }
@@ -223,15 +223,15 @@ class HnswVectorIndexTest {
     }
 
     @Test
-    fun `search top-1 Consistente con el recorrido de fuerza bruta 100 vectores a pequeña escala`() {
+    fun `search top-1 与暴力遍历一致 - 小规模 100 向量`() {
         val n = 100
         val dim = 64
         val vectors = genVectors(n = n, dim = dim)
-        val index = newTestIndex(efSearch = 200) // Un alto nivel de efSearch garantiza un alto nivel de recuperación
+        val index = newTestIndex(efSearch = 200) // 高 efSearch 确保高召回
         vectors.forEach { (id, vec) -> index.add(id, vec) }
         assertEquals(n, index.size)
 
-        // Utilice los primeros 20 vectores como consulta(debe ser suyo top-1,similitud coseno = 1.0)
+        // 用前 20 个向量作为查询(应为自身的 top-1,余弦相似度 = 1.0)
         var matched = 0
         val total = 20
         for (i in 0 until total) {
@@ -240,12 +240,12 @@ class HnswVectorIndexTest {
             val actual = index.search(query, k = 1).firstOrNull() ?: continue
             if (actual.id == expected.first) matched++
         }
-        // Al menos el 90% del retiro(HNSW es un algoritmo aproximado,Permitir una pequeña probabilidad miss)
-        assertTrue("top-1 recordar ${matched.toDouble() / total} debería >= 0.9", matched.toDouble() / total >= 0.9)
+        // 至少 90% 召回(HNSW 是近似算法,允许小概率 miss)
+        assertTrue("top-1 召回率 ${matched.toDouble() / total} 应 >= 0.9", matched.toDouble() / total >= 0.9)
     }
 
     @Test
-    fun `search top-1 Consistente con el recorrido de fuerza bruta 500 vectores de escala media`() {
+    fun `search top-1 与暴力遍历一致 - 中规模 500 向量`() {
         val n = 500
         val dim = 64
         val vectors = genVectors(n = n, dim = dim)
@@ -253,7 +253,7 @@ class HnswVectorIndexTest {
         vectors.forEach { (id, vec) -> index.add(id, vec) }
         assertEquals(n, index.size)
 
-        // Recuperación de prueba con 50 vectores de consulta aleatorios
+        // 用 50 个随机查询向量测试召回率
         val rng = Random(123L)
         var matched = 0
         val total = 50
@@ -263,12 +263,12 @@ class HnswVectorIndexTest {
             val actual = index.search(query, k = 1).firstOrNull() ?: return@repeat
             if (actual.id == expected.first) matched++
         }
-        // Retirada a mediana escala de al menos el 85%
-        assertTrue("500 Recuperación del top 1 del vector ${matched.toDouble() / total} debería >= 0.85", matched.toDouble() / total >= 0.85)
+        // 中规模至少 85% 召回
+        assertTrue("500 向量 top-1 召回率 ${matched.toDouble() / total} 应 >= 0.85", matched.toDouble() / total >= 0.85)
     }
 
     @Test
-    fun `search Devolver resultados en orden descendente de similitud`() {
+    fun `search 返回结果按相似度降序`() {
         val index = newTestIndex()
         val vectors = genVectors(n = 30, dim = 32)
         vectors.forEach { (id, vec) -> index.add(id, vec) }
@@ -279,62 +279,62 @@ class HnswVectorIndexTest {
 
         for (i in 1 until results.size) {
             assertTrue(
-                "Los resultados deben estar en orden descendente por puntuación.:results[${i - 1}].score=${results[i - 1].score} >= results[$i].score=${results[i].score}",
+                "结果应按 score 降序:results[${i - 1}].score=${results[i - 1].score} >= results[$i].score=${results[i].score}",
                 results[i - 1].score >= results[i].score,
             )
         }
     }
 
     @Test
-    fun `score Complementario a la distancia 1`() {
+    fun `score 与 distance 互为 1 互补`() {
         val index = newTestIndex()
         val vectors = genVectors(n = 10, dim = 32)
         vectors.forEach { (id, vec) -> index.add(id, vec) }
 
         val results = index.search(vectors[0].second, k = 5)
         for (r in results) {
-            assertEquals("score + distance debería = 1", 1.0f, r.score + r.distance, 1e-4f)
+            assertEquals("score + distance 应 = 1", 1.0f, r.score + r.distance, 1e-4f)
         }
     }
 
-    // ── save + load consistencia ──
+    // ── save + load 一致性 ──
 
     @Test
-    fun `save Los resultados de la búsqueda después de la carga son consistentes`() {
+    fun `save 后 load 检索结果一致`() {
         val vectors = genVectors(n = 80, dim = 32)
         val index1 = newTestIndex(efSearch = 200)
         vectors.forEach { (id, vec) -> index1.add(id, vec) }
         assertEquals(80, index1.size)
 
-        // guardar
+        // 保存
         val file = File(tempDir, "save_load_test.bin")
         index1.save(file)
-        assertTrue("El archivo de índice debería haber sido creado.", file.exists())
-        assertTrue("El archivo de índice no debe estar vacío", file.length() > 0)
+        assertTrue("索引文件应已创建", file.exists())
+        assertTrue("索引文件不应为空", file.length() > 0)
 
-        // Cargar en un nuevo índice
+        // 加载到新索引
         val index2 = newTestIndex(efSearch = 200)
         assertEquals(0, index2.size)
         index2.load(file)
-        assertEquals("load El último tamaño debe ser consistente con el índice original.", index1.size, index2.size)
+        assertEquals("load 后 size 应与原索引一致", index1.size, index2.size)
 
-        // Comparar resultados de búsqueda(Utilice 10 vectores de consulta)
+        // 对比检索结果(用 10 个查询向量)
         val rng = Random(456L)
         repeat(10) {
             val query = FloatArray(32) { rng.nextFloat() * 2f - 1f }
             val r1 = index1.search(query, k = 5)
             val r2 = index2.search(query, k = 5)
-            assertEquals("load Los números de resultados deben ser consistentes después", r1.size, r2.size)
+            assertEquals("load 后结果数应一致", r1.size, r2.size)
             for ((a, b) in r1.zip(r2)) {
-                assertEquals("load La última identificación debe ser consistente.", a.id, b.id)
-                assertEquals("load Después de la puntuación debe ser consistente.", a.score, b.score, 1e-4f)
-                assertEquals("load La distancia debe ser constante después", a.distance, b.distance, 1e-4f)
+                assertEquals("load 后 id 应一致", a.id, b.id)
+                assertEquals("load 后 score 应一致", a.score, b.score, 1e-4f)
+                assertEquals("load 后 distance 应一致", a.distance, b.distance, 1e-4f)
             }
         }
     }
 
     @Test
-    fun `save Sólo se conservará el índice más reciente después de sobrescribir los archivos existentes`() {
+    fun `save 覆盖已有文件后只保留最新索引`() {
         val file = File(tempDir, "replace.bin")
         val first = newTestIndex().apply { add("old", FloatArray(8) { 1f }) }
         first.save(file)
@@ -350,7 +350,7 @@ class HnswVectorIndexTest {
     }
 
     @Test
-    fun `embedding Negarse a cargar cuando las huellas dactilares no coincidan y conservar el índice actual`() {
+    fun `embedding 指纹不匹配时拒绝加载且保留当前索引`() {
         val file = File(tempDir, "fingerprint.bin")
         newTestIndex().apply {
             add("saved", FloatArray(4) { 1f })
@@ -367,7 +367,7 @@ class HnswVectorIndexTest {
     }
 
     @Test
-    fun `La carga de índices de dimensiones mixtas falla y no sobrescribe los índices existentes`() {
+    fun `混维索引加载失败且不覆盖已有索引`() {
         val file = File(tempDir, "mixed-dimension.bin")
         writePersistedIndex(
             file,
@@ -385,7 +385,7 @@ class HnswVectorIndexTest {
     }
 
     @Test
-    fun `La carga del índice truncado falla y no sobrescribe los índices existentes`() {
+    fun `截断索引加载失败且不覆盖已有索引`() {
         val validFile = File(tempDir, "valid.bin")
         newTestIndex().apply {
             add("a", FloatArray(4) { 1f })
@@ -402,7 +402,7 @@ class HnswVectorIndexTest {
     }
 
     @Test
-    fun `Después de eliminar todos los nodos, guardar y cargar estarán vacíos y se podrán crear nuevas dimensiones`() {
+    fun `删除全部节点后保存并加载为空且可建立新维度`() {
         val file = File(tempDir, "empty-rebuild.bin")
         val index = newTestIndex().apply {
             add("old", FloatArray(4) { 1f })
@@ -418,60 +418,60 @@ class HnswVectorIndexTest {
     }
 
     @Test
-    fun `load Los archivos que no existen no lanzan una excepción y el índice permanece vacío`() {
+    fun `load 不存在的文件不抛异常且索引保持空`() {
         val index = newTestIndex()
         val nonexistent = File(tempDir, "does_not_exist.bin")
-        // No se debe lanzar ninguna excepción
+        // 不应抛异常
         index.load(nonexistent)
         assertEquals(0, index.size)
     }
 
     @Test
-    fun `load magic Los archivos no coincidentes se rechazan y los índices existentes no se sobrescriben`() {
+    fun `load magic 不匹配的文件被拒绝且不覆盖现有索引`() {
         val index = newTestIndex()
         index.add("kept", FloatArray(4) { 1f })
         val badFile = File(tempDir, "bad_magic.bin")
-        // Escritura incorrecta magic header
+        // 写入错误的 magic header
         badFile.writeBytes("BADMAG".toByteArray(Charsets.US_ASCII) + ByteArray(20))
 
         assertThrows(IllegalArgumentException::class.java) { index.load(badFile) }
 
-        assertEquals("Los encabezados no válidos no deben sobrescribir los índices existentes", 1, index.size)
+        assertEquals("无效 header 不得覆盖现有索引", 1, index.size)
         assertEquals("kept", index.search(FloatArray(4) { 1f }, 1).single().id)
     }
 
     @Test
-    fun `save Contiene nodos eliminados tamaño consistente después de la carga`() {
+    fun `save 包含已删除节点 - load 后 size 一致`() {
         val vectors = genVectors(n = 50, dim = 32)
         val index = newTestIndex()
         vectors.forEach { (id, vec) -> index.add(id, vec) }
         assertEquals(50, index.size)
 
-        // eliminar 10
+        // 删除 10 个
         for (i in 0 until 10) {
             index.remove("vec-$i")
         }
         assertEquals(40, index.size)
 
-        // guardar → Cargar
+        // 保存 → 加载
         val file = File(tempDir, "with_deletes.bin")
         index.save(file)
         val loaded = newTestIndex()
         loaded.load(file)
-        // load Los nodos eliminados deben eliminarse después,size Debe ser igual al número de nodos supervivientes.
-        assertEquals("save/load Los nodos eliminados deben comprimirse y eliminarse", 40, loaded.size)
+        // load 后应剔除已删除节点,size 应等于存活节点数
+        assertEquals("save/load 应压缩剔除已删除节点", 40, loaded.size)
 
-        // Los identificadores eliminados no deberían aparecer en los resultados de búsqueda.
+        // 已删除的 id 不应出现在 search 结果中
         for (i in 0 until 10) {
             val results = loaded.search(vectors[i].second, k = 5)
-            assertFalse("eliminado vec-$i no debería aparecer", results.any { it.id == "vec-$i" })
+            assertFalse("已删除的 vec-$i 不应出现", results.any { it.id == "vec-$i" })
         }
     }
 
     // ── remove ──
 
     @Test
-    fun `remove El tamaño se reduce después de la identificación existente`() {
+    fun `remove 已存在的 id 后 size 减少`() {
         val index = newTestIndex()
         val vectors = genVectors(n = 20, dim = 32)
         vectors.forEach { (id, vec) -> index.add(id, vec) }
@@ -484,50 +484,50 @@ class HnswVectorIndexTest {
     }
 
     @Test
-    fun `remove Si la identificación no existe, no se generará ninguna excepción y el tamaño permanecerá sin cambios`() {
+    fun `remove 不存在的 id 不抛异常 size 不变`() {
         val index = newTestIndex()
         val vectors = genVectors(n = 5, dim = 32)
         vectors.forEach { (id, vec) -> index.add(id, vec) }
         assertEquals(5, index.size)
 
-        // No lanzar excepción,size sin cambios
+        // 不抛异常,size 不变
         index.remove("nonexistent")
         assertEquals(5, index.size)
     }
 
     @Test
-    fun `remove Después de eso, la identificación ya no aparece en los resultados de búsqueda`() {
+    fun `remove 后该 id 不再出现在 search 结果中`() {
         val index = newTestIndex(efSearch = 200)
         val vectors = genVectors(n = 30, dim = 32)
         vectors.forEach { (id, vec) -> index.add(id, vec) }
 
-        // Primero verifique que vec-0 sea suyo top-1
+        // 先验证 vec-0 是其自身的 top-1
         val beforeRemove = index.search(vectors[0].second, k = 1)
-        assertTrue("Antes de la eliminación, vec-0 debe estar en top-1", beforeRemove.any { it.id == "vec-0" })
+        assertTrue("删除前 vec-0 应在 top-1", beforeRemove.any { it.id == "vec-0" })
 
-        // Eliminar vec-0
+        // 删除 vec-0
         index.remove("vec-0")
         assertEquals(29, index.size)
 
-        // Después de eliminar vec-0 ya no debería aparecer en los resultados.
+        // 删除后 vec-0 不应再出现在结果中
         val afterRemove = index.search(vectors[0].second, k = 10)
-        assertFalse("vec-0 no debería aparecer después de la eliminación", afterRemove.any { it.id == "vec-0" })
-        assertTrue("Los resultados aún deben devolverse después de la eliminación.(otros vectores)", afterRemove.isNotEmpty())
+        assertFalse("删除后 vec-0 不应出现", afterRemove.any { it.id == "vec-0" })
+        assertTrue("删除后仍应返回结果(其他向量)", afterRemove.isNotEmpty())
     }
 
     @Test
-    fun `remove Todavía funciona bien después del punto de entrada search`() {
+    fun `remove 入口点后仍可正常 search`() {
         val index = newTestIndex(efSearch = 200)
         val vectors = genVectors(n = 50, dim = 32)
         vectors.forEach { (id, vec) -> index.add(id, vec) }
 
-        // Eliminar repetidamente varios nodos(Puede llegar al punto de entrada),Verificar que la búsqueda siga funcionando
+        // 反复删除多个节点(可能命中入口点),验证 search 仍可正常工作
         for (i in 0 until 20) {
             index.remove("vec-$i")
         }
         assertEquals(30, index.size)
 
-        // search No se debe lanzar ninguna excepción,debería devolver resultados
+        // search 不应抛异常,应返回结果
         val rng = Random(789L)
         repeat(5) {
             val query = FloatArray(32) { rng.nextFloat() * 2f - 1f }
@@ -540,20 +540,20 @@ class HnswVectorIndexTest {
     // ── VectorIndexFactory ──
 
     @Test
-    fun `Factory createIndex BRUTE_FORCE Regresar null`() {
+    fun `Factory createIndex BRUTE_FORCE 返回 null`() {
         val index = VectorIndexFactory.createIndex(VectorIndexFactory.IndexStrategy.BRUTE_FORCE)
         assertEquals(null, index)
     }
 
     @Test
-    fun `Factory createIndex HNSW Devolver instancia de HnswVectorIndex`() {
+    fun `Factory createIndex HNSW 返回 HnswVectorIndex 实例`() {
         val index = VectorIndexFactory.createIndex(VectorIndexFactory.IndexStrategy.HNSW)
         assertNotNull(index)
-        assertTrue("Se esperaba una instancia de HnswVectorIndex", index is HnswVectorIndex)
+        assertTrue("应为 HnswVectorIndex 实例", index is HnswVectorIndex)
     }
 
     @Test
-    fun `Factory autoStrategy Umbral correcto`() {
+    fun `Factory autoStrategy 阈值正确`() {
         assertEquals(
             VectorIndexFactory.IndexStrategy.BRUTE_FORCE,
             VectorIndexFactory.autoStrategy(0),
@@ -573,14 +573,14 @@ class HnswVectorIndexTest {
     }
 
     @Test
-    fun `Factory createAutoIndex Devolución de instancias HNSW a escala`() {
+    fun `Factory createAutoIndex 大规模返回 HNSW 实例`() {
         val index = VectorIndexFactory.createAutoIndex(50_000)
         assertNotNull(index)
         assertTrue(index is HnswVectorIndex)
     }
 
     @Test
-    fun `Factory createAutoIndex retorno a pequeña escala null`() {
+    fun `Factory createAutoIndex 小规模返回 null`() {
         val index = VectorIndexFactory.createAutoIndex(100)
         assertEquals(null, index)
     }

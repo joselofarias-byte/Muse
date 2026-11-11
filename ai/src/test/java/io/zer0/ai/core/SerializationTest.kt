@@ -10,19 +10,19 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * kotlinx.serialization serialización/Prueba de deserialización.
+ * kotlinx.serialization 序列化/反序列化测试。
  *
- * Anular las clases de datos principales anotadas con @Serializable:
+ * 覆盖带 @Serializable 注解的核心数据类:
  *  - UIMessage / ToolCall / MessageRole
  *  - ProviderConfig / ProviderType / Model
- *  - ProviderSpecificConfig sealed class(Distinguir campos con tipo)
+ *  - ProviderSpecificConfig sealed class(带 type 区分字段)
  *
- * ChatCompletion / ChatRequest / ToolDefinition / AbortSignal No etiquetado @Serializable,
- * Por lo tanto, se omite la prueba de serialización correspondiente.(Ver requisitos de la misión).
+ * ChatCompletion / ChatRequest / ToolDefinition / AbortSignal 未标注 @Serializable,
+ * 故跳过对应序列化测试(见任务要求)。
  */
 class SerializationTest {
 
-    /** Alineado con el comportamiento común del módulo AppJson:Análisis relajado + valores predeterminados de codificación. */
+    /** 与 common 模块 AppJson 行为对齐:宽松解析 + 编码默认值。 */
     private val json = Json {
         ignoreUnknownKeys = true
         isLenient = true
@@ -52,7 +52,7 @@ class SerializationTest {
 
     @Test
     fun `should round-trip ToolCall when serializing`() {
-        val tc = ToolCall(id = "call_1", name = "getWeather", arguments = "{\"city\":\"Pekín\"}")
+        val tc = ToolCall(id = "call_1", name = "getWeather", arguments = "{\"city\":\"北京\"}")
         val s = json.encodeToString(ToolCall.serializer(), tc)
         val back = json.decodeFromString(ToolCall.serializer(), s)
         assertEquals(tc, back)
@@ -292,9 +292,9 @@ class SerializationTest {
             }
         """.trimIndent()
         val back = json.decodeFromString(ProviderConfig.serializer(), jsonStr)
-        // explicitNulls=false + Campo predeterminado → Deserializado para obtener null
+        // explicitNulls=false + 缺省字段 → 反序列化得到 null
         assertEquals(null, back.specific)
-        // resolvedSpecific Aún puedes ceñirte a la configuración predeterminada de OpenAI
+        // resolvedSpecific 仍可兜底为 OpenAI 默认配置
         assertTrue(back.resolvedSpecific() is ProviderSpecificConfig.OpenAI)
     }
 }

@@ -36,23 +36,27 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import io.zer0.muse.miniphone.R
+import io.zer0.muse.miniphone.ui.chat.sentinelText
 import io.zer0.muse.miniphone.ui.theme.MiniPhoneTheme
 
 /**
- * pagina de mensaje:Lista de sesiones.
+ * 消息页:会话列表。
  *
- * La estructura de filas se fija como "avatar/nombre/último mensaje/hora/no leído",El orden y la posición se derivan de la escala de tamaños de este módulo.,
- * No sigue el componente de lista del host. Pedido garantizado por DAO(traer al frente,El resto están en orden descendente de últimas noticias.),Aquí sólo soy responsable de pintar.
+ * 行结构固定为「头像 / 名字 / 最后一条消息 / 时间 / 未读」,顺序和位置都来自本模块的尺寸阶梯,
+ * 不跟着宿主的列表组件走。排序由 DAO 保证(置顶在前,其余按最后消息倒序),这里只负责画。
  *
- * Haga clic para ingresar a la conversación.,Mantenga presionado para reproducir [ThreadRowMenu]:Anclar/desanclar, marcar como leído(Listar solo si hay elementos no leídos), elimina la sesión.
- * El menú y la confirmación de eliminación solo utilizan el estado de esta página.,No afecta los datos de la lista.
+ * 点击进会话,长按弹 [ThreadRowMenu]:置顶 / 取消置顶、标记已读(有未读时才列)、删除会话。
+ * 菜单与删除确认都只用本页自己的状态,不影响列表数据。
  *
- * @param onGoContacts Cuando no hay conversación,Utilice el botón en el estado vacío para enviar al usuario a la libreta de direcciones
- * @param actions Tres acciones en líneas de conversación(Anclar/Marcar como leído/Eliminar),Recibido del caparazón ViewModel
+ * @param onGoContacts 一条会话都没有时,空态里的按钮用它把用户送进通讯录
+ * @param actions 会话行上的三个动作(置顶 / 标记已读 / 删除),由外壳接到 ViewModel
  */
 @Composable
 internal fun MessagesPage(
@@ -62,7 +66,7 @@ internal fun MessagesPage(
     onGoContacts: () -> Unit = {},
     actions: ThreadMenuActions = ThreadMenuActions(),
 ) {
-    // La sesión en la que aparece el menú y la sesión que espera confirmación de eliminación:Solo hay uno a la vez
+    // 正在弹菜单的会话与等待删除确认的会话:一个时间点只有一个
     var menuThreadId by remember { mutableStateOf<String?>(null) }
     var pendingDeleteId by remember { mutableStateOf<String?>(null) }
     if (threads.isEmpty()) {
@@ -115,12 +119,26 @@ internal fun MessagesPage(
     }
 }
 
-/** Sesión de una línea. */
+/** 一行会话。 */
 @Composable
 private fun ThreadRow(thread: MiniPhoneThreadUi, onOpen: () -> Unit, onLongPress: () -> Unit) {
     val colors = MiniPhoneTheme.colors
     val dimens = MiniPhoneTheme.dimens
     val typography = MiniPhoneTheme.typography
+    // 名字与预览行都可能是空的(没起名的群 / 已删的角色 / 还没有消息)。
+    // 状态里只留空,那三句话在这里按当前语言取——切语言后这一行立刻跟着变。
+    val nameText = thread.name.ifBlank {
+        stringResource(
+            if (thread.isGroup) R.string.mp_shell_untitled_group else R.string.mp_shell_unknown_character,
+        )
+    }
+    val groupMark = if (thread.isGroup) stringResource(R.string.mp_shell_group_preview_mark) else ""
+    val body = sentinelText(thread.preview)
+    val previewText = if (groupMark.isEmpty()) {
+        body
+    } else {
+        groupMark + if (body.isBlank()) "" else " " + body.trim()
+    }.ifBlank { stringResource(EMPTY_PREVIEW_TEXT_RES) }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -130,7 +148,7 @@ private fun ThreadRow(thread: MiniPhoneThreadUi, onOpen: () -> Unit, onLongPress
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box {
-            MiniPhoneAvatar(name = thread.name, size = dimens.avatarList)
+            MiniPhoneAvatar(name = nameText, size = dimens.avatarList)
             if (thread.unreadCount > 0) {
                 UnreadBadge(
                     count = thread.unreadCount,
@@ -145,7 +163,7 @@ private fun ThreadRow(thread: MiniPhoneThreadUi, onOpen: () -> Unit, onLongPress
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = thread.name,
+                    text = nameText,
                     style = typography.body.copy(color = colors.textPrimary, fontWeight = FontWeight.Medium),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -153,14 +171,14 @@ private fun ThreadRow(thread: MiniPhoneThreadUi, onOpen: () -> Unit, onLongPress
                 )
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    text = relativeTimeOf(thread.lastMessageAt),
+                    text = relativeTimeOf(LocalContext.current, thread.lastMessageAt),
                     style = typography.timestamp.copy(color = colors.textSecondary),
                     maxLines = 1,
                 )
             }
             Spacer(Modifier.height(3.dp))
             Text(
-                text = thread.preview.ifBlank { EMPTY_PREVIEW_TEXT },
+                text = previewText,
                 style = typography.caption.copy(color = colors.textSecondary),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -169,7 +187,7 @@ private fun ThreadRow(thread: MiniPhoneThreadUi, onOpen: () -> Unit, onLongPress
     }
 }
 
-/** Subíndice no leído. Si el número excede los dos dígitos, presione 99+.,No dejes que deforme el avatar. */
+/** 未读角标。超过两位数的按 99+ 收口,不让它把头像挤变形。 */
 @Composable
 private fun UnreadBadge(count: Int, threadId: String, modifier: Modifier = Modifier) {
     val colors = MiniPhoneTheme.colors
@@ -192,9 +210,9 @@ private fun UnreadBadge(count: Int, threadId: String, modifier: Modifier = Modif
 }
 
 /**
- * Lista de sesiones vacía:Un bocadillo dibujado por uno mismo y dos líneas de explicación.,Agregue un botón para ir directamente a la libreta de direcciones.
+ * 空会话列表:一枚自己画的气泡、两行说明,加一个直接去通讯录的按钮。
  *
- * Escribir solo una línea de texto gris equivale a dejar que el usuario adivine "cómo empezar". —— Los botones convierten este paso en un solo clic.
+ * 只写一行灰字等于把「怎么开始」交给用户自己猜 —— 按钮把这一步变成一次点击。
  */
 @Composable
 private fun ThreadsEmptyState(onGoContacts: () -> Unit, modifier: Modifier = Modifier) {
@@ -213,17 +231,17 @@ private fun ThreadsEmptyState(onGoContacts: () -> Unit, modifier: Modifier = Mod
         EmptyBubble()
         Spacer(Modifier.height(16.dp))
         Text(
-            text = "Aún no hay chat",
+            text = stringResource(R.string.mp_msgs_empty_title),
             style = typography.title.copy(color = colors.textPrimary),
         )
         Spacer(Modifier.height(6.dp))
         Text(
-            text = "Ve a la libreta de direcciones y busca un personaje para comenzar.",
+            text = stringResource(R.string.mp_msgs_empty_hint),
             style = typography.caption.copy(color = colors.textSecondary),
         )
         Spacer(Modifier.height(18.dp))
         Text(
-            text = GO_CONTACTS_LABEL,
+            text = stringResource(GO_CONTACTS_LABEL_RES),
             style = typography.caption.copy(color = colors.accent, fontWeight = FontWeight.Medium),
             modifier = Modifier
                 .testTag(MiniPhoneTags.EMPTY_THREADS_ACTION)
@@ -236,7 +254,7 @@ private fun ThreadsEmptyState(onGoContacts: () -> Unit, modifier: Modifier = Mod
     }
 }
 
-/** Ilustración vacía:Una burbuja hueca más tres puntos.,El color toma la baja opacidad del color de acento. */
+/** 空态插画:一个空心气泡加三个点,颜色取强调色的低透明度。 */
 @Composable
 private fun EmptyBubble() {
     val ink = MiniPhoneTheme.colors.accent.copy(alpha = 0.4f)
@@ -270,10 +288,10 @@ private fun EmptyBubble() {
     }
 }
 
-/** Se corrigió el espacio entre avatar y texto. */
+/** 头像与文字之间的固定间距。 */
 private val ThreadTextGap = 12.dp
 
 private const val MAX_BADGE_COUNT: Int = 99
 private const val FULL_BADGE_TEXT: String = "99+"
-private const val EMPTY_PREVIEW_TEXT: String = "Aún no hay noticias"
-private const val GO_CONTACTS_LABEL: String = "Ir a la libreta de direcciones"
+private val EMPTY_PREVIEW_TEXT_RES: Int = R.string.mp_msgs_empty_preview
+private val GO_CONTACTS_LABEL_RES: Int = R.string.mp_msgs_go_contacts

@@ -6,6 +6,7 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
 import io.zer0.muse.tools.BrowserManager
+import io.zer0.muse.tools.ToolExecutionContext
 import io.zer0.muse.tools.ToolRegistry
 import io.zer0.muse.tools.ToolResultJudge
 import kotlinx.coroutines.runBlocking
@@ -32,15 +33,15 @@ class UiAgentToolTest {
 
         val description = registry.listTools().first { it.name == "ui_agent" }.description
 
-        assertTrue(description.contains("información confidencial como chat o cuenta"))
-        assertTrue(description.contains("enviará al modelo visual seleccionado para su análisis"))
+        assertTrue(description.contains("截图可能包含聊天或账号等敏感信息"))
+        assertTrue(description.contains("发送到所选视觉模型分析"))
     }
 
     @Test
     fun `runner failure is an error outcome for the outer Agent loop`() = runBlocking {
         val runner = mockk<UiAgentRunner>()
         coEvery { runner.run(any(), any(), any(), any(), any()) } returns
-            UiAgentRunner.RunResult(false, "La ayuda visual no está habilitada")
+            UiAgentRunner.RunResult(false, "视觉辅助未启用")
         val registry = registry()
         UiAgentTool(runner).register(registry)
 
@@ -51,7 +52,7 @@ class UiAgentToolTest {
         )
 
         assertTrue(outcome.isError)
-        assertTrue(outcome.content.contains("Tarea no completada"))
+        assertTrue(outcome.content.contains("任务未完成"))
         assertEquals(false, outcome.details["finished"])
         assertTrue(orchestratorText.startsWith("Error:"))
         assertFalse(ToolResultJudge.isSuccess(orchestratorText))
@@ -62,7 +63,7 @@ class UiAgentToolTest {
     fun `finished Agent interaction remains a successful outcome`() = runBlocking {
         val runner = mockk<UiAgentRunner>()
         coEvery { runner.run(any(), any(), any(), any(), any()) } returns
-            UiAgentRunner.RunResult(true, "observado y reportado")
+            UiAgentRunner.RunResult(true, "已观察并报告")
         val registry = registry()
         UiAgentTool(runner).register(registry)
 
@@ -73,7 +74,7 @@ class UiAgentToolTest {
         )
 
         assertFalse(outcome.isError)
-        assertTrue(outcome.content.contains("Misión terminada"))
+        assertTrue(outcome.content.contains("任务结束"))
         assertEquals(true, outcome.details["finished"])
         assertTrue(ToolResultJudge.isSuccess(orchestratorText))
     }
@@ -89,5 +90,28 @@ class UiAgentToolTest {
         assertTrue(outcome.isError)
         assertTrue(outcome.content.contains("display"))
         coVerify(exactly = 0) { runner.run(any(), any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `progress from the runner reaches the execution context`() = runBlocking {
+        // 15 步的 ui_agent 跑起来要好几分钟，中途没有任何反馈时用户只能看到转圈。
+        // 这条钉住：runner 的 onProgress 必须一路传到 ToolExecutionContext.onProgress。
+        val runner = mockk<UiAgentRunner>()
+        coEvery { runner.run(any(), any(), any(), any(), any()) } coAnswers {
+            val onProgress = arg<(String) -> Unit>(2)
+            onProgress("第 1 步:tap -> ok")
+            UiAgentRunner.RunResult(true, "done")
+        }
+        val registry = registry()
+        UiAgentTool(runner).register(registry)
+        val seen = mutableListOf<String>()
+
+        registry.executeFromJson(
+            "ui_agent",
+            """{"task":"打开设置"}""",
+            ToolExecutionContext(scope = "main", spaceId = "default", onProgress = { seen += it }),
+        )
+
+        assertTrue("进度应流到上下文，实际: $seen", seen.contains("第 1 步:tap -> ok"))
     }
 }

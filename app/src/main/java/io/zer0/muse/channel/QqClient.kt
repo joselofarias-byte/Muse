@@ -16,17 +16,17 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 
 /**
- * v2.0.1: QQ cliente robot — access_token / WSS Gateway / Almacenamiento en caché de respuestas pasivas.
+ * v2.0.1: QQ 机器人客户端 — access_token / WSS Gateway / 被动回复缓存。
  *
- * recibir:WebSocket Gateway conexión larga(Red pública gratuita,ver [QqReceiver]);
- * enviar:v2 HTTP API(ver QqChannelSender;La respuesta pasiva lleva msg_id + incremento msg_seq).
+ * 接收:WebSocket Gateway 长连接(免公网,见 [QqReceiver]);
+ * 发送:v2 HTTP API(见 QqChannelSender;被动回复携带 msg_id + 递增 msg_seq)。
  */
 internal object QqClient {
 
-    /** v2 API dirección base. */
+    /** v2 API 基址。 */
     const val API_BASE = "https://api.sgroup.qq.com"
 
-    /** access_token Obtenga el punto final. */
+    /** access_token 获取端点。 */
     private const val TOKEN_URL = "https://bots.qq.com/app/getAppAccessToken"
 
     private val HTTP: OkHttpClient by lazy {
@@ -36,7 +36,7 @@ internal object QqClient {
             .build()
     }
 
-    /** WebSocket cliente dedicado(La larga conexión se mantiene viva.). */
+    /** WebSocket 专用客户端(长连接保活)。 */
     val WEB_SOCKET: OkHttpClient by lazy {
         io.zer0.ai.core.ProxyProvider.applyTo(OkHttpClient.Builder())
             .connectTimeout(15, TimeUnit.SECONDS)
@@ -49,7 +49,7 @@ internal object QqClient {
 
     data class TokenInfo(val accessToken: String, val expiresInSeconds: Long)
 
-    /** Obtener access_token(QQBot Para autenticación). */
+    /** 获取 access_token(QQBot 鉴权用)。 */
     suspend fun fetchAccessToken(appId: String, appSecret: String): Result<TokenInfo> = withContext(Dispatchers.IO) {
         runCatching {
             val body = buildJsonObject {
@@ -60,25 +60,25 @@ internal object QqClient {
             val obj = AppJson.parseToJsonElement(resp).jsonObject
             TokenInfo(
                 accessToken = obj["access_token"]?.jsonPrimitive?.contentOrNull
-                    ?: error("QQ token Faltan campos de respuesta: ${resp.take(200)}"),
+                    ?: error("QQ token 响应缺字段: ${resp.take(200)}"),
                 expiresInSeconds = obj["expires_in"]?.jsonPrimitive?.contentOrNull
                     ?.toLongOrNull() ?: 7200L,
             )
         }
     }
 
-    /** Obtenga un punto de acceso WSS genérico(AUTHORIZATION: QQBot {access_token}). */
+    /** 获取通用 WSS 接入点(AUTHORIZATION: QQBot {access_token})。 */
     suspend fun getGateway(accessToken: String): Result<String> = withContext(Dispatchers.IO) {
         runCatching {
-            // Nota:Aquí está la melodía REST `/gateway` Obtener dirección wss;`/websocket/` es el punto final de WS en sí
-            // (Se devolverá un GET HTTP directo 426 Upgrade Required).
+            // 注意:此处是 REST 调 `/gateway` 取 wss 地址;`/websocket/` 是 WS 端点本身
+            // (直接 HTTP GET 会被返回 426 Upgrade Required)。
             val resp = getJson(
                 "$API_BASE/gateway",
                 mapOf("Authorization" to "QQBot $accessToken"),
             ).getOrThrow()
             val obj = AppJson.parseToJsonElement(resp).jsonObject
             obj["url"]?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() }
-                ?: error("QQ gateway Falta de respuesta url: ${resp.take(200)}")
+                ?: error("QQ gateway 响应缺 url: ${resp.take(200)}")
         }
     }
 
@@ -103,32 +103,32 @@ internal object QqClient {
 }
 
 /**
- * v2.0.1: QQ Almacenamiento en caché de respuestas pasivas — El ID del mensaje entrante más reciente y el número de secuencia de respuesta.
+ * v2.0.1: QQ 被动回复缓存 — 最近一条入站消息 ID 与回复序号。
  *
- * msg_id Ventana de respuesta pasiva 60 minutos;Varias respuestas con el mismo msg_id deben incrementar msg_seq para eliminar duplicados.
- * (La plataforma rechazará el envío repetido del mismo msg_id + msg_seq).
+ * msg_id 被动回复窗口 60 分钟;同一 msg_id 的多次回复需递增 msg_seq 去重
+ * (相同 msg_id + msg_seq 重复发送会被平台拒绝)。
  */
 internal object QqMsgIdCache {
 
     /**
-     * Ventana de respuesta pasiva (tabla original de la "Descripción general de envío y recepción de mensajes" oficial).
+     * 被动回复窗口（官方「消息收发概述」原表）。
      *
-     *   Escenario Periodo de validez Número de respuestas por mensaje
-     *   4 chats privados durante 60 minutos
-     *   Chat grupal 5 veces en 5 minutos
+     *   场景   有效期     每条消息可回复次数
+     *   单聊   60 分钟    4 次
+     *   群聊   5 分钟     5 次
      *
-     * Si la ventana de chat grupal está escrita como 60 minutos, 5~60 Los minutos se envían con el msg_id vencido.
-     * La respuesta oficial fue 40034128; a su vez, el chat único se redujo a 5 minutos, lo que podría haber sido una conversación de una hora.
-     * Expiró a los cinco minutos. Los dos escenarios deben contarse por separado.
+     * 群聊窗口写成 60 分钟会让 5~60 分钟那段带着已失效的 msg_id 去发，
+     * 官方回 40034128；反过来把单聊也压成 5 分钟，本来能回一小时的对话
+     * 五分钟后就被判过期。两个场景必须分开算。
      */
     internal const val GROUP_WINDOW_MS = 5 * 60 * 1000L
     internal const val C2C_WINDOW_MS = 60 * 60 * 1000L
 
-    /** El número máximo de respuestas pasivas por mensaje entrante (5 para chats grupales / 4 para chats individuales). */
+    /** 每条入站消息最多可被动回复的次数（群聊 5 / 单聊 4）。 */
     internal const val GROUP_MAX_REPLIES = 5
     internal const val C2C_MAX_REPLIES = 4
 
-    /** Banda objetivo del chat grupal `group:` prefijo (ver QqReceiver.handleGroupMessage). */
+    /** 群聊目标带 `group:` 前缀（见 QqReceiver.handleGroupMessage）。 */
     internal fun isGroupTarget(target: String): Boolean = target.startsWith("group:")
 
     internal fun windowFor(target: String): Long = if (isGroupTarget(target)) GROUP_WINDOW_MS else C2C_WINDOW_MS
@@ -148,20 +148,20 @@ internal object QqMsgIdCache {
         seqs.remove(target)
     }
 
-    /** Respuesta pasiva válida dentro de la ventana msg_id;Devuelve nulo cuando caduca. Chat grupal por ventana/Los chats individuales se calculan por separado. */
+    /** 窗口内有效的被动回复 msg_id;过期返回 null。窗口按群聊/单聊分别计算。 */
     fun get(target: String): String? {
         val entry = entries[target] ?: return null
         if (System.currentTimeMillis() - entry.at > windowFor(target)) return null
         return entry.msgId
     }
 
-    /** Obtenga el siguiente número de secuencia de respuesta(Se incrementan varias respuestas con el mismo msg_id). */
+    /** 取下一个回复序号(同一 msg_id 的多次回复递增)。 */
     fun nextSeq(target: String): Int = seqs.getOrPut(target) { AtomicInteger(0) }.incrementAndGet()
 
     /**
-     * Cuando la respuesta automática tiene una identidad de evento, vincule el evento y corrija el número de secuencia de reintento;needs Pase nulo cuando se almacenó en caché recientemente.
+     * 自动回复有事件身份时绑定该事件并固定重试序号;needs 最近缓存时传 null。
      *
-     * Las cadenas vacías se tratan como nulas:No es una identidad de evento válida.,Las rutas de respaldo de la caché tampoco deben truncarse.
+     * 空串按 null 处理:它既不是有效事件身份,也不该截断缓存回退路径。
      */
     fun replyContext(target: String, sourceEventId: String?, sequenceOverride: Int? = null): ReplyContext? {
         val eventId = sourceEventId?.takeIf { it.isNotBlank() }

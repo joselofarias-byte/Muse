@@ -4,11 +4,11 @@ import io.zer0.muse.data.SettingsRepository
 import kotlinx.coroutines.flow.first
 
 /**
- * [HostSettingsAccess] La implementación del repositorio de configuración.
+ * [HostSettingsAccess] 的 SettingsRepository 实现。
  *
- * Leer el valor actual de cada flujo.;Las claves de escritura se distribuyen al método de guardado correspondiente. El mapeo de claves para setters se concentra aquí.,
- * Nuevo [HostSettingDefinitions] Los elementos grabables también deben proporcionar el método de aterrizaje aquí.,
- * De lo contrario, escribir arrojará [IllegalArgumentException](Prefiero informar un error,Tampoco descarte silenciosamente una escritura aceptada).
+ * 读取用各 flow 的当前值;写入按键分发到对应的 save 方法。键到 setter 的映射集中在这里,
+ * 新增 [HostSettingDefinitions] 里的可写项必须同时在这里给出落地方式,
+ * 否则写入会抛 [IllegalArgumentException]（宁可报错,也不要静默丢弃一次已受理的写）。
  */
 internal class RepositorySettingsAccess(private val settings: SettingsRepository) : HostSettingsAccess {
 
@@ -76,14 +76,20 @@ internal class RepositorySettingsAccess(private val settings: SettingsRepository
         }
     }
 
-    /** Términos escalares como Apariencia/General/Memoria/Privacidad. */
+    /** 外观 / 通用 / 记忆 / 隐私这类标量项。 */
     private suspend fun writeScalar(key: String, value: String) {
         val flag = value == "true"
         when (key) {
             "themeMode" -> settings.saveThemeMode(value)
             "fontSizeScale" -> settings.saveFontSizeScale(value)
             "liquidGlassMode" -> settings.saveLiquidGlassMode(value)
-            "liquidGlassStrength" -> value.toIntOrNull()?.let { settings.saveLiquidGlassStrength(it) }
+            // S2:类型校验放行的小数(如 0.5)在这里以前会静默什么都不做,
+            // 而调用方已经回执 Applied —— 那是「以为存上了结果没存」。现在必须说出来。
+            "liquidGlassStrength" -> settings.saveLiquidGlassStrength(
+                value.toIntOrNull() ?: throw SettingsWriteReject(
+                    "settings.update rejected: 'liquidGlassStrength' expects a whole number",
+                ),
+            )
             "dynamicColor" -> settings.saveDynamicColor(flag)
             "highContrast" -> settings.saveHighContrast(flag)
             HostSettingKeys.PII_GUARD -> settings.savePiiGuardEnabled(flag)
@@ -93,11 +99,11 @@ internal class RepositorySettingsAccess(private val settings: SettingsRepository
             HostSettingKeys.MEMORY -> settings.saveMemoryEnabled(flag)
             "notificationMemoryEnabled" -> settings.saveNotificationMemoryEnabled(flag)
             "language" -> settings.saveLanguage(value)
-            else -> throw IllegalArgumentException("setting '$key' has no repository writer")
+            else -> throw SettingsWriteReject("setting '$key' has no repository writer")
         }
     }
 
-    /** chatPreferences.* —— Una actualización funcional solo cambia un campo,Evite la reescritura completa sobrescribiendo modificaciones simultáneas. */
+    /** chatPreferences.* —— 一次函数式更新只改一个字段,避免整份回写覆盖并发修改。 */
     private suspend fun writeChatPreference(key: String, value: String) {
         settings.updateChatPreferences { prefs ->
             when (key) {
@@ -114,15 +120,19 @@ internal class RepositorySettingsAccess(private val settings: SettingsRepository
         }
     }
 
-    /** mediaConfig.* —— La configuración de medios es el objeto completo.,Lea el valor actual, cambie un campo y vuelva a escribirlo. */
+    /** mediaConfig.* —— 媒体配置是整份对象,读当前值改一个字段再写回。 */
     private suspend fun writeMediaConfig(key: String, value: String) {
         val current = settings.mediaConfigFlow.first()
         val updated = when (key) {
             "mediaConfig.ttsEngine" -> current.copy(ttsEngine = value)
-            "mediaConfig.ttsSpeechRate" -> value.toFloatOrNull()?.let { current.copy(ttsSpeechRate = it) }
-            else -> throw IllegalArgumentException("setting '$key' has no repository writer")
+            "mediaConfig.ttsSpeechRate" -> current.copy(
+                ttsSpeechRate = value.toFloatOrNull() ?: throw SettingsWriteReject(
+                    "settings.update rejected: 'mediaConfig.ttsSpeechRate' expects a number",
+                ),
+            )
+            else -> throw SettingsWriteReject("setting '$key' has no repository writer")
         }
-        updated?.let { settings.saveMediaConfig(it) }
+        settings.saveMediaConfig(updated)
     }
 
     private companion object {

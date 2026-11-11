@@ -18,42 +18,42 @@ import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.coroutines.resume
 
 /**
- * v1.0.81: Búsqueda de Bing basada en WebView de Android sin cabeza.
+ * v1.0.81: 基于 headless Android WebView 的必应搜索兜底。
  *
- * por qué es necesario:
- *  Cargue la página de resultados de Bing usando un navegador real,
- *  Espere a que JS se procese antes de inyectar el script de extracción,En lugar de utilizar OkHttp para capturar HTML estático. Este último está en la red doméstica./Subir hacia atrás/
- *  Desempeño inestable bajo la redirección regional(bueno y malo"dibujar cartas"fenómeno).
+ * 为什么需要它:
+ *  用真实浏览器加载必应结果页,
+ *  等待 JS 渲染后注入提取脚本,而不是用 OkHttp 抓静态 HTML。后者在国内网络/反爬/
+ *  地区重定向下表现不稳定(时好时坏的"抽卡"现象)。
  *
- *  Esta categoría es [BingProvider] Error de rastreo HTTP/Qué hacer cuando te interceptan,Sin reemplazo HTTP(HTTP Rápido).
- *  Utiliza applicationContext para crear una interfaz sin interfaz. WebView,Carga fuera de pantalla cn.bing.com,
- *  Inyectar en la página y extraer JS,Obtenga resultados estructurados.
+ *  本类是 [BingProvider] 的 HTTP 抓取失败/被拦截时的兜底,不替代 HTTP(HTTP 快)。
+ *  它用 applicationContext 创建一个无界面 WebView,离屏加载 cn.bing.com,
+ *  注入页面内提取 JS,拿到结构化结果。
  *
- * Puntos de diseño:
- *  - Instancia de WebView independiente,no con [io.zer0.muse.tools.BrowserManager](Herramientas de automatización del navegador)Compartir,
- *    Evitar que los usuarios utilicen las herramientas del navegador simultáneamente/cookie interferir el uno con el otro;
- *  - WebView Debe crearse en el hilo principal./visita,Todas las operaciones están cortadas. [Dispatchers.Main];
- *  - Reutilizar el mismo para cada búsqueda WebView(Elimine la sobrecarga de inicializar Chromium repetidamente),Pero usa la independencia WebViewClient
- *    Bloquear carga única,Restaurar después de completar;
- *  - Detectar código de verificación/Página de consentimiento(captcha/verify/consent),Hit regresa vacío y deja que el nivel superior pase al siguiente motor.;
- *  - tiempo de espera fijo,Evite que WebView se atasque y ralentice las búsquedas.
+ * 设计要点:
+ *  - 独立 WebView 实例,不与 [io.zer0.muse.tools.BrowserManager](浏览器自动化工具)共享,
+ *    避免用户同时用浏览器工具时会话/cookie 互相干扰;
+ *  - WebView 必须在主线程创建/访问,所有操作切 [Dispatchers.Main];
+ *  - 每次搜索复用同一个 WebView(省去反复初始化 Chromium 的开销),但用独立 WebViewClient
+ *    拦截单次加载,完成后恢复;
+ *  - 检测验证码/同意页(captcha/verify/consent),命中返回空让上层走下一个引擎;
+ *  - 固定超时,避免 WebView 卡死拖慢搜索。
  *
- * Seguridad del hilo:Todos los métodos públicos cambian al hilo principal internamente.;Se puede llamar externamente desde cualquier hilo.
+ * 线程安全:所有公开方法内部切主线程;外部从任意线程调用均可。
  */
 class BingWebViewSearcher(private val appContext: Context) {
 
     companion object {
         private const val TAG = "BingWebView"
 
-        /** Tiempo de espera de búsqueda única(Contiene carga de página + renderizado JS + extracción). */
+        /** 单次搜索超时(含页面加载 + JS 渲染 + 提取)。 */
         private const val SEARCH_TIMEOUT_MS = 20_000L
 
-        /** Escritorio Chrome UA,Obtenga la estructura li.b_algo del escritorio. */
+        /** 桌面 Chrome UA,拿到桌面版 li.b_algo 结构。 */
         private const val DESKTOP_UA =
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
                 "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
 
-        /** Bing Cookie de resultados en chino de escritorio. */
+        /** Bing 桌面中文结果 cookie。 */
         private const val BING_COOKIE =
             "SRCHHPGUSR=NRSLT=10;SRCHLANG=zh-CN;HIDTTONS=1;ADLT=MODERATE; SRCHLANG=zh-CN; _SS=mlock=1"
     }
@@ -62,11 +62,11 @@ class BingWebViewSearcher(private val appContext: Context) {
     private var webViewRef: WebView? = null
 
     /**
-     * Utilice WebView para cargar la página de búsqueda de Bing y extraer los resultados.
+     * 用 WebView 加载必应搜索页并提取结果。
      *
-     * @param query palabra de consulta(texto original,Codificación de URL interna)
-     * @param maxResults Número máximo de artículos devueltos
-     * @return Resultados de la búsqueda;interceptado/tiempo de espera/El error de análisis devuelve una lista vacía(No lanzar excepción,desde arriba fallback)
+     * @param query 查询词(原始文本,内部 URL 编码)
+     * @param maxResults 最多返回条数
+     * @return 搜索结果;被拦截/超时/解析失败返回空列表(不抛异常,由上层 fallback)
      */
     suspend fun search(query: String, maxResults: Int): List<WebSearchResult> = withContext(Dispatchers.Main) {
         val wv = ensureWebView()
@@ -81,23 +81,23 @@ class BingWebViewSearcher(private val appContext: Context) {
         }
         when {
             outcome == null -> {
-                Logger.w(TAG, "search tiempo de espera(${SEARCH_TIMEOUT_MS}ms): $query")
+                Logger.w(TAG, "search 超时(${SEARCH_TIMEOUT_MS}ms): $query")
                 emptyList()
             }
             outcome.blocked -> {
-                Logger.w(TAG, "Bing devuelve el código de verificación/Bloquear página,Renunciar a WebView: $query")
+                Logger.w(TAG, "必应返回验证码/拦截页,放弃 WebView 兜底: $query")
                 emptyList()
             }
             else -> outcome.results
         }
     }
 
-    /** Cargar [url] e inyectar la extracción después de renderizar la página JS,Devolver resultados estructurados. */
+    /** 加载 [url] 并在页面渲染后注入提取 JS,返回结构化结果。 */
     private suspend fun loadAndExtract(wv: WebView, url: String, maxResults: Int): ExtractOutcome = suspendCancellableCoroutine { cont ->
         val previousClient = wv.webViewClient
         var resumed = false
-        // Número de intentos de sondeo e intervalo:Algunos resultados de Bing son renderizado asincrónico JS,Una espera fija de 600 ms a veces no es suficiente.
-        // onPageFinished Luego intenta extraer cada 250 ms.,conseguir ≥1 Los resultados pueden alcanzar el límite superior(aprox. 3s)Ese es el final.
+        // 轮询尝试次数与间隔:必应部分结果是 JS 异步渲染,固定等 600ms 有时不够。
+        // onPageFinished 后每 250ms 试一次提取,拿到 ≥1 条结果或达上限(约 3s)即结束。
         val maxAttempts = 12
         var attempt = 0
         val pollIntervalMs = 250L
@@ -130,7 +130,7 @@ class BingWebViewSearcher(private val appContext: Context) {
                     val outcome = parseExtraction(raw)
                     Logger.i(TAG, "extract attempt=${attempt + 1}: url=${wv.url ?: ""}, blocked=${outcome.blocked}, results=${outcome.results.size}, raw=${raw?.take(180)}")
                     attempt++
-                    // Finaliza cuando se obtiene el resultado, se intercepta o se alcanza el número máximo de intentos.;De lo contrario, continúe con la encuesta.
+                    // 拿到结果、被拦截、或达到最大尝试次数时结束;否则继续轮询。
                     if (outcome.blocked || outcome.results.isNotEmpty() || attempt >= maxAttempts) {
                         finishOnce(outcome)
                     } else {
@@ -138,13 +138,13 @@ class BingWebViewSearcher(private val appContext: Context) {
                     }
                 }
             } catch (e: Exception) {
-                Logger.w(TAG, "evaluateJavascript anormal: ${e.message}")
+                Logger.w(TAG, "evaluateJavascript 异常: ${e.message}")
                 finishOnce(ExtractOutcome(false, emptyList()))
             }
         }
 
-        // algunos emuladores/La página del entorno web nunca activa onPageFinished, pero el DOM ya es legible.
-        // watchdog Ejecutar la extracción directamente en el punto sin“Evento de carga de página completa”como única condición de éxito.
+        // 某些模拟器/网络环境页面永远不触发 onPageFinished，但 DOM 已经可以读取。
+        // watchdog 到点直接执行提取，不把“页面加载完成事件”当成唯一成功条件。
         watchdogRunnable = Runnable { startPolling("watchdog-${watchdogDelayMs}ms") }
 
         wv.webViewClient = object : WebViewClient() {
@@ -153,17 +153,17 @@ class BingWebViewSearcher(private val appContext: Context) {
             override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
                 super.onPageStarted(view, url, favicon)
                 Logger.i(TAG, "onPageStarted: ${url ?: ""}")
-                // Bing Es común completar la página una vez y luego pasarla. rdr=1 Redirigir. La primera versión estará en la página del medio.
-                // EvaluarJavascript se inicia, lo que provoca que los subprocesos de procesamiento posteriores se bloqueen y, finalmente, se agoten durante 20 segundos.
-                // Después de descubrir el nuevo documento principal, cancele el sondeo anterior y espere a que onPageFinished de la página final antes de recuperarlo.
+                // Bing 常见先完成一次页面、随后通过 rdr=1 重定向。第一版会在中间页
+                // 上启动 evaluateJavascript，导致后续渲染线程卡住并最终 20 秒超时。
+                // 发现新主文档后取消旧轮询，等最终页面的 onPageFinished 再提取。
                 if (finished && !resumed) {
                     finished = false
-                    // Clave: pollingStarted se ha establecido en verdadero en la primera página; debe restablecerse después de la redirección.
-                    // De lo contrario, onPageFinished eventualmente será bloqueado por la protección idempotente de startPolling, y toda la búsqueda tendrá que esperar hasta 20 segundos para que expire el tiempo de espera.
+                    // 关键：第一次页面已经把 pollingStarted 置 true；重定向后必须复位，
+                    // 否则最终 onPageFinished 会被 startPolling 的幂等保护拦掉，整次搜索只能等到 20s 超时。
                     pollingStarted = false
                     wv.removeCallbacks(pollRunnable)
                     wv.removeCallbacks(watchdogRunnable)
-                    Logger.i(TAG, "Se redirige el documento principal, se restablece el estado de extracción y se espera la página final antes de la extracción.")
+                    Logger.i(TAG, "主文档发生重定向，重置提取状态，等待最终页面后再提取")
                 }
             }
 
@@ -172,15 +172,15 @@ class BingWebViewSearcher(private val appContext: Context) {
                 Logger.i(TAG, "onPageFinished: ${view?.url ?: url ?: ""}")
                 if (finished) return
                 finished = true
-                // Deje de cargar los recursos restantes una vez completada la página para evitar la redirección continua de evaluaJavascript/subrecurso
-                // Ocupa el hilo de renderizado. El documento principal DOM ya es legible y no es necesario seguir esperando imágenes y scripts de seguimiento para extraer los resultados de la búsqueda.
+                // 页面完成后停止剩余资源加载，避免 evaluateJavascript 被持续的重定向/子资源
+                // 占住渲染线程。主文档 DOM 已经可读，搜索结果提取不需要继续等图片和追踪脚本。
                 view?.stopLoading()
                 startPolling("page-finished")
             }
 
             @Deprecated("Deprecated in API 23")
             override fun onReceivedError(view: WebView?, errorCode: Int, description: String?, failingUrl: String?) {
-                // API antigua: solo falla en errores del marco principal,Errores de subrecurso ignorados
+                // 旧 API:仅主框架错误才失败,子资源错误忽略
                 Logger.w(TAG, "onReceivedError(legacy): code=$errorCode desc=$description url=$failingUrl")
                 if (!resumed) {
                     finishOnce(ExtractOutcome(false, emptyList()))
@@ -189,7 +189,7 @@ class BingWebViewSearcher(private val appContext: Context) {
 
             override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
                 if (request?.isForMainFrame == true) {
-                    Logger.w(TAG, "Error al cargar la página: code=${error?.errorCode} desc=${error?.description} url=${request.url}")
+                    Logger.w(TAG, "页面加载错误: code=${error?.errorCode} desc=${error?.description} url=${request.url}")
                 }
                 if (request?.isForMainFrame == true && !resumed) {
                     finishOnce(ExtractOutcome(false, emptyList()))
@@ -198,7 +198,7 @@ class BingWebViewSearcher(private val appContext: Context) {
 
             override fun onReceivedHttpError(view: WebView?, request: WebResourceRequest?, errorResponse: WebResourceResponse?) {
                 if (request?.isForMainFrame == true) {
-                    Logger.w(TAG, "HTTP error: code=${errorResponse?.statusCode} reason=${errorResponse?.reasonPhrase} url=${request.url}")
+                    Logger.w(TAG, "HTTP 错误: code=${errorResponse?.statusCode} reason=${errorResponse?.reasonPhrase} url=${request.url}")
                 }
                 if (request?.isForMainFrame == true && !resumed) {
                     finishOnce(ExtractOutcome(false, emptyList()))
@@ -213,22 +213,22 @@ class BingWebViewSearcher(private val appContext: Context) {
         }
 
         Logger.i(TAG, "loadUrl: $url")
-        // No depende de onPageStarted: no se devolverá la llamada a ningún evento de página cuando fallen algunas redes MuMu/WebView.
-        // Pero evaluarJavascript aún puede leer una página de error o parte del DOM. Reserve una cita con el perro guardián ahora,
-        // Extraiga activamente cuando se alcance el punto para evitar esperar un tiempo de espera total de 20 segundos.
+        // 不依赖 onPageStarted：部分 MuMu/WebView 网络失败时不会回调任何页面事件，
+        // 但 evaluateJavascript 仍可能读取到错误页或部分 DOM。立即预约 watchdog，
+        // 到点主动提取，避免一直等到 20 秒总超时。
         wv.postDelayed(watchdogRunnable, watchdogDelayMs)
         wv.loadUrl(url)
     }
 
     /**
-     * Construir extracción de página JS,Analizando la estructura de los resultados de Bing en el escritorio:
-     *  - elegir li.b_algo,Consigue el título de h2 a/enlace,.b_caption p Resumen de etc
-     *  - Limpiar saltos de rastreo de bing /ck/a
-     *  - Detectar código de verificación/Página de consentimiento
-     * Devuelve una cadena JSON: {blocked: bool, results: [{title,url,snippet}]}
+     * 构造页面内提取 JS,解析桌面版必应结果结构:
+     *  - 选择 li.b_algo,取 h2 a 的标题/链接,.b_caption p 等的摘要
+     *  - 清理 bing /ck/a 跟踪跳转
+     *  - 检测验证码/同意页
+     * 返回一个 JSON 字符串: {blocked: bool, results: [{title,url,snippet}]}
      */
     private fun buildExtractionScript(max: Int): String {
-        // JS Ejecutar en el contexto de la página,Devolver cadena JSON(evaluateJavascript Estará codificado en JSON.)
+        // JS 在页面上下文执行,返回 JSON 字符串(evaluateJavascript 会再 JSON 编码一层)
         return """
         (function(){
           function textOf(el){ return (el && (el.innerText || el.textContent) || '').replace(/\s+/g,' ').trim(); }
@@ -295,13 +295,13 @@ class BingWebViewSearcher(private val appContext: Context) {
         """.trimIndent()
     }
 
-    /** Analizar evaluar el valor de retorno de Javascript(Es una cadena codificada en JSON.). */
+    /** 解析 evaluateJavascript 返回值(它是 JSON-encoded 字符串)。 */
     private fun parseExtraction(raw: String?): ExtractOutcome {
         if (raw.isNullOrBlank() || raw == "null") {
             return ExtractOutcome(false, emptyList())
         }
         return try {
-            // evaluateJavascript Devuelve un valor codificado en JSON,Las cadenas tendrán comillas externas.,Analizado dos veces aquí
+            // evaluateJavascript 返回的是 JSON 编码值,字符串会带外层引号,这里两次解析
             val outer = AppJsonLenient.parseToJsonElement(raw)
             val inner = if (outer is kotlinx.serialization.json.JsonPrimitive) {
                 AppJsonLenient.parseToJsonElement(outer.content)
@@ -326,7 +326,7 @@ class BingWebViewSearcher(private val appContext: Context) {
             }
             ExtractOutcome(blocked, results)
         } catch (e: Exception) {
-            Logger.w(TAG, "No se pudieron analizar los resultados de la extracción: ${e.message}; raw=${raw.take(200)}")
+            Logger.w(TAG, "解析提取结果失败: ${e.message}; raw=${raw.take(200)}")
             ExtractOutcome(false, emptyList())
         }
     }
@@ -334,7 +334,7 @@ class BingWebViewSearcher(private val appContext: Context) {
     @SuppressLint("SetJavaScriptEnabled")
     private fun ensureWebView(): WebView {
         check(Looper.myLooper() == Looper.getMainLooper()) {
-            "BingWebViewSearcher WebView Se debe acceder desde el hilo principal."
+            "BingWebViewSearcher WebView 必须在主线程访问"
         }
         webViewRef?.let { return it }
 
@@ -348,16 +348,16 @@ class BingWebViewSearcher(private val appContext: Context) {
             settings.userAgentString = DESKTOP_UA
             settings.javaScriptCanOpenWindowsAutomatically = false
             settings.mediaPlaybackRequiresUserGesture = true
-            // restricciones de seguridad
+            // 安全限制
             settings.allowFileAccess = false
             settings.allowContentAccess = false
             settings.allowFileAccessFromFileURLs = false
             settings.allowUniversalAccessFromFileURLs = false
 
             webViewClient = object : WebViewClient() {
-                /** ROM compatibles:Destruido cuando el proceso de renderizado falla,La siguiente búsqueda se reconstruirá automáticamente. */
+                /** ROM 兼容:渲染进程崩溃时销毁,下次搜索自动重建。 */
                 override fun onRenderProcessGone(view: WebView?, detail: android.webkit.RenderProcessGoneDetail?): Boolean {
-                    Logger.e(TAG, "WebView El proceso de renderizado falla: ${detail?.didCrash()},Destruir y reconstruir")
+                    Logger.e(TAG, "WebView 渲染进程崩溃: ${detail?.didCrash()},销毁重建")
                     webViewRef = null
                     view?.let { v ->
                         runCatching { (v.parent as? android.view.ViewGroup)?.removeView(v) }
@@ -367,7 +367,7 @@ class BingWebViewSearcher(private val appContext: Context) {
                 }
             }
         }
-        // Configurar Bing cookie(Idioma/Búsqueda Segura/Número de resultados)
+        // 设置必应 cookie(语言/安全搜索/结果数)
         runCatching {
             val cookieManager = CookieManager.getInstance()
             cookieManager.setAcceptCookie(true)
@@ -378,14 +378,14 @@ class BingWebViewSearcher(private val appContext: Context) {
                 }
             }
             CookieManager.getInstance().flush()
-        }.onFailure { Logger.w(TAG, "No se pudo configurar la cookie: ${it.message}") }
+        }.onFailure { Logger.w(TAG, "设置 cookie 失败: ${it.message}") }
 
         webViewRef = wv
-        Logger.i(TAG, "headless WebView Inicializado")
+        Logger.i(TAG, "headless WebView 已初始化")
         return wv
     }
 
-    /** Liberar recursos de WebView(Se puede cambiar en la configuración/Se llama cuando hay poca memoria.). */
+    /** 释放 WebView 资源(可在设置切换/低内存时调用)。 */
     fun destroy() {
         if (Looper.myLooper() != Looper.getMainLooper()) return
         webViewRef?.let { wv ->
@@ -402,7 +402,7 @@ class BingWebViewSearcher(private val appContext: Context) {
 
     private data class ExtractOutcome(val blocked: Boolean, val results: List<WebSearchResult>)
 
-    // Instancia Json independiente(Ignorar claves desconocidas,análisis relajado)
+    // 独立 Json 实例(忽略未知键,宽松解析)
     private val AppJsonLenient = kotlinx.serialization.json.Json {
         ignoreUnknownKeys = true
         isLenient = true

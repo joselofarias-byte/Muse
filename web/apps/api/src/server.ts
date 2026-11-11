@@ -171,7 +171,7 @@ function hostedProviderConfig(): ProviderConfig {
   return {
     id: "hosted-default",
     type: type as ProviderConfig["type"],
-    displayName: "Muse Hosted Provider",
+    displayName: "Proveedor alojado de Musa",
     baseUrl,
     modelIds: (process.env.HOSTED_PROVIDER_MODELS ?? "gpt-4o-mini").split(",").map((model) => model.trim()).filter(Boolean),
     supportsStreaming: true,
@@ -492,7 +492,7 @@ const server = createServer(async (request, response) => {
           if (args === null || typeof args !== "object" || Array.isArray(args)) throw new Error(`tool arguments must be an object: ${call.name}`);
           const output = await domains.tools.execute(call.name, args as Record<string, unknown>, createToolContext(user.id, session.id, session.assistantId, abortController.signal));
           loopRequest = { ...loopRequest, messages: [...loopRequest.messages, { id: randomUUID(), role: "tool", content: output.slice(0, 32_000), toolCallId: call.id, toolName: call.name, createdAt: new Date().toISOString() }] };
-          writeSseEvent(response, { type: "fallback_notice", message: `Herramientas ejecutadas:${definition.name}` });
+          writeSseEvent(response, { type: "fallback_notice", message: `Herramienta ejecutada: ${definition.name}` });
         }
       }
       if (!response.destroyed && (finalResult.text.length > 0 || finalResult.reasoning !== null)) {

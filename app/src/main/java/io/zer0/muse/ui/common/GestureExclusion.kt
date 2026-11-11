@@ -12,22 +12,22 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 /**
- * P2-9(informe de auditoría): Hacer desplazamiento horizontal/La superficie de paso de página exime el gesto de retorno del sistema.
+ * P2-9（审计报告）: 让横向滚动/翻页表面豁免系统返回手势。
  *
- * Problemas señalados en el informe:
- *  - Almacén lleno 0 plazas `systemGestureExclusionRects`
- *  - `MusePaddings.screen = 16.dp`, el contenido está a solo 16 dp del borde de la pantalla,
- *    El sistema vuelve al área de gestos, normalmente a la izquierda y a la derecha. 20dp → Al deslizar el dedo desde el borde, se activará el retorno primero
- *  - Afectados: Inicio HorizontalPager, lista de conversaciones SwipeToDismiss, control de borde de captura rápida, varios LazyRow
+ * 报告指出的问题：
+ *  - 全仓 0 处 `systemGestureExclusionRects`
+ *  - `MusePaddings.screen = 16.dp`，内容距屏幕边缘仅 16dp，
+ *    而系统返回手势区通常是左右各 20dp → 从边缘起手的横滑会先触发返回
+ *  - 受影响：首页 HorizontalPager、对话列表 SwipeToDismiss、快捷捕获边缘手柄、各类 LazyRow
  *
- * Uso (agregado a**Horizontales**Superficie de gesto):
+ * 用法（加在**横向**手势表面上）：
  * ```
  * LazyRow(modifier = Modifier.horizontalGestureExclusion())
  * ```
  *
- * Puntos de implementación:`systemGestureExclusionRects` si**Compartiendo toda la vista**lista de
- * Las respectivas asignaciones de múltiples componentes se sobrescribirán entre sí. Aquí, el acumulador se utiliza para consolidar y reescribir.
- * Tenga en cuenta que acepta [android.graphics.Rect], no un Rect de Compose.
+ * 实现要点：`systemGestureExclusionRects` 是**整个 View 共享**的列表，
+ * 多个组件各自赋值会互相覆盖。这里用累积器统一合并后写回。
+ * 注意它接受的是 [android.graphics.Rect]，不是 Compose 的 Rect。
  */
 @Composable
 fun Modifier.horizontalGestureExclusion(width: Dp = 24.dp): Modifier {
@@ -66,7 +66,7 @@ fun Modifier.horizontalGestureExclusion(width: Dp = 24.dp): Modifier {
 }
 
 /**
- * Acumulador de área de exclusión de gestos: varios componentes comparten una lista de exclusión en una Vista.
+ * 手势排除区累积器：多组件共享一个 View 上的排除列表。
  */
 private class GestureExclusionRegistry(private val view: android.view.View) {
     private val regions = mutableMapOf<Int, List<android.graphics.Rect>>()

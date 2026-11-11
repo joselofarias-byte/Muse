@@ -39,9 +39,9 @@ import io.zer0.muse.ui.theme.MuseShapes
 import kotlinx.coroutines.launch
 
 /**
- * Archivar la página de lista de chat.
+ * 归档聊天列表页。
  *
- * Los datos provienen de ChatViewModel.archivedSessions; admite la apertura de sesiones y la desarchivación.
+ * 数据来自 ChatViewModel.archivedSessions；支持打开会话与取消归档。
  */
 @Composable
 fun ArchivedChatsScreen(
@@ -49,10 +49,10 @@ fun ArchivedChatsScreen(
     onBack: () -> Unit,
     onUnarchive: (String) -> Unit,
     onOpenSession: (String) -> Unit,
-    // ST-01: Estado de error de carga de sesión de archivo(Transmitir de forma transparente el estado ChatViewModel por parte de la persona que llama)
+    // ST-01: 归档会话加载错误态(由调用方透传 ChatViewModel 状态)
     error: String? = null,
     onRetry: () -> Unit = {},
-    // ST-02: Deshacer el archivo es reversible — Volver a archivar al deshacer
+    // ST-02: 取消归档可撤销 — 撤销时重新归档
     onUnarchiveUndo: (String) -> Unit = {},
 ) {
     val context = LocalContext.current
@@ -107,7 +107,7 @@ fun ArchivedChatsScreen(
                     onOpen = { onOpenSession(session.id) },
                     onUnarchive = {
                         onUnarchive(session.id)
-                        // ST-02: Deshacer el archivo es reversible — Snackbar Proporcionar volver a archivar "deshacer"
+                        // ST-02: 取消归档可撤销 — Snackbar 提供「撤销」重新归档
                         scope.launch {
                             val result = snackbarHostState.showSnackbar(
                                 message = context.getString(R.string.chat_unarchived),
@@ -163,7 +163,4 @@ private fun ArchivedChatRow(session: SessionEntity, onOpen: () -> Unit, onUnarch
     }
 }
 
-private fun formatTime(timestamp: Long): String = java.text.SimpleDateFormat(
-    io.zer0.muse.ui.theme.MuseDateFormats.DATE_TIME_SHORT,
-    java.util.Locale.getDefault(),
-).format(java.util.Date(timestamp))
+private fun formatTime(timestamp: Long): String = io.zer0.muse.ui.theme.MuseDateFormats.dateTimeShort().format(java.util.Date(timestamp))

@@ -26,7 +26,7 @@ class MuseQuickWidgetConfigureActivity : ComponentActivity() {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     WidgetAssistantPicker(
                         title = stringResource(R.string.widget_quick_pick_assistant),
-                        // v2.6.7 fix (AUDIT F12): Lea el valor almacenado para la selección inicial.
+                        // v2.6.7 fix (AUDIT F12): 读已存值作初始选中。
                         initialSelectedId = WidgetPrefs.getQuickWidgetAssistant(this, appWidgetId),
                         onAssistantSelected = { assistantId ->
                             WidgetPrefs.saveQuickWidgetAssistant(this, appWidgetId, assistantId)

@@ -4,32 +4,32 @@ import io.zer0.muse.data.knowledge.KnowledgeDocDao
 import kotlinx.coroutines.runBlocking
 
 /**
- * v2.6.2: Lea el texto completo del documento de la base de conocimientos por docId.
+ * v2.6.2: 按 docId 读取知识库文档全文。
  *
- * Anteriormente, el asistente solo tenía Knowledge_search (búsqueda vectorial, que devolvía fragmentos topK) para la base de conocimientos y para un artículo.
- * 195 Sólo puede ver fragmentos dispersos de páginas PDF, lo que hace imposible comprender completamente la estructura del documento o leer el texto completo a pedido.
+ * 此前助手对知识库只有 knowledge_search（向量检索，返回 topK 片段），对一篇
+ * 195 页的 PDF 只能看到零散碎片，无法完整理解文档结构或按需阅读全文。
  *
- * Uso: primero use Knowledge_list_docs para confirmar la ID del documento y luego use esta herramienta para leer el texto completo.
- * Los documentos muy largos se leen en segmentos mediante desplazamiento (hasta [MAX_CHARS_PER_READ] personajes), evitar
- * Abarrotar 195 páginas en la ventana contextual a la vez.
+ * 用法：先用 knowledge_list_docs 确认文档 id，再用本工具读全文。
+ * 超长文档按 offset 分段读取（每次最多 [MAX_CHARS_PER_READ] 字符），避免
+ * 一次性把 195 页塞进上下文窗口。
  *
- * Documentación interna (is_internal=1) no se permite leer a través de esta herramienta——Eso es devdoc, aislado de la base de conocimientos del usuario.
+ * 内部文档（is_internal=1）不允许通过本工具读取——那是 devdoc，与用户知识库隔离。
  */
 object KnowledgeReadTool {
 
     const val TOOL_NAME = "knowledge_read_doc"
 
-    /** Límite de lectura única.195 página PDF ≈ 50 Esvástica, leída varias veces. */
+    /** 单次读取上限。195 页 PDF ≈ 50 万字符，分多次读。 */
     private const val MAX_CHARS_PER_READ = 30_000
 
     fun toolDef() = ToolRegistry.ToolDef(
         name = TOOL_NAME,
-        description = "Lea el texto completo del documento de la base de conocimientos. Los documentos muy largos se segmentan por desplazamiento (hasta 30.000 caracteres cada vez)," +
-            "Lea el primer párrafo sin pasar el desplazamiento. El número restante de caracteres y el siguiente desplazamiento se proporcionarán al final de la devolución." +
-            "La identificación del documento se puede obtener con Knowledge_list_docs.",
+        description = "读取知识库文档的全文内容。超长文档按 offset 分段（每次最多 30000 字符），" +
+            "先不传 offset 读第一段，返回末尾会给出剩余字符数和下一次 offset。" +
+            "文档 id 可用 knowledge_list_docs 获取。",
         parameters = mapOf(
-            "doc_id" to "Requerido, identificación del documento (se puede obtener con Knowledge_list_docs)",
-            "offset" to "Opcional, desplazamiento de carácter inicial; comienza en 0 cuando se omite",
+            "doc_id" to "必填，文档 id（可用 knowledge_list_docs 获取）",
+            "offset" to "可选，起始字符偏移；省略时从 0 开始",
         ),
         required = setOf("doc_id"),
         category = "built-in",
@@ -44,24 +44,24 @@ object KnowledgeReadTool {
         return runBlocking {
             val doc = docDao.getById(docId)
             when {
-                doc == null -> "Error: Documento no encontrado $docId. Utilice Knowledge_list_docs para ver la lista de documentación."
-                doc.isInternal -> "Error: Documentación $docId Es un documento de desarrollo interno y no se permite su lectura a través de esta herramienta."
-                doc.content.isBlank() -> "Documentación ${doc.title}($docId) el texto está vacío."
+                doc == null -> "Error: 未找到文档 $docId。可用 knowledge_list_docs 查看文档清单。"
+                doc.isInternal -> "Error: 文档 $docId 是内部开发文档，不允许通过本工具读取。"
+                doc.content.isBlank() -> "文档 ${doc.title}（$docId）正文为空。"
                 else -> {
                     val content = doc.content
                     val total = content.length
                     if (offset >= total) {
-                        "ha excedido el final del documento (longitud total $total personajes,solicitud offset=$offset)."
+                        "已超出文档末尾（总长 $total 字符，请求 offset=$offset）。"
                     } else {
                         val end = minOf(offset + MAX_CHARS_PER_READ, total)
                         val chunk = content.substring(offset, end)
                         val remaining = total - end
                         buildString {
-                            appendLine("「${doc.title}\"($docId)— No. ${offset + 1}-$end / $total personaje")
+                            appendLine("「${doc.title}」（$docId）— 第 ${offset + 1}-$end / $total 字符")
                             if (remaining > 0) {
-                                appendLine("[también $remaining personajes, uso offset=$end Continuar leyendo]")
+                                appendLine("[还有 $remaining 字符，用 offset=$end 继续读取]")
                             } else {
-                                appendLine("[Texto completo]")
+                                appendLine("[全文完]")
                             }
                             appendLine("---")
                             append(chunk)
@@ -73,7 +73,7 @@ object KnowledgeReadTool {
     }
 }
 
-/** Registrador: Inyección de Koin, guiada uniformemente por AutomationInitializer. */
+/** 注册器：走 Koin 注入，由 AutomationInitializer 统一引导。 */
 class KnowledgeReadToolRegistrar(
     private val toolRegistry: ToolRegistry,
     private val docDao: KnowledgeDocDao,

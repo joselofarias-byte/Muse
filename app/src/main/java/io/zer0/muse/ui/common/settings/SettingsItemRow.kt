@@ -33,16 +33,16 @@ import io.zer0.muse.ui.theme.MusePaddings
 import io.zer0.muse.ui.theme.MuseShapes
 
 /**
- * Línea de configuración común — Icono izquierdo + título + subtítulo,Contenido final a la derecha.
+ * 通用设置项行 — 左侧图标 + 标题 + 副标题,右侧 trailing 内容。
  *
- * Alinee visualmente los elementos de la lista de configuraciones del sistema.
+ * 对齐系统设置列表项的视觉。
  *
- * @param icon icono izquierdo(null no se mostrará)
- * @param title título principal
- * @param subtitle subtítulo(null no se mostrará,pequeñas letras grises)
- * @param onClick Haga clic en devolución de llamada(null no se puede hacer clic)
- * @param enabled Ya sea para habilitar el clic(Predeterminado true;false El objeto visual permanece sin cambios pero el clic no es válido.)
- * @param trailing Contenido final a la derecha(Vacío predeterminado,Puede contener flechas/valores/interruptores, etc.)
+ * @param icon 左侧图标(null 则不显示)
+ * @param title 主标题
+ * @param subtitle 副标题(null 则不显示,灰色小字)
+ * @param onClick 点击回调(null 则不可点击)
+ * @param enabled 是否启用点击(默认 true;false 时视觉不变但点击无效)
+ * @param trailing 右侧 trailing 内容(默认空,可放箭头 / 数值 / 开关等)
  */
 @Deprecated(
     "CMP-06: co-exists with MuseListItem; consolidate to MuseListItem",
@@ -59,7 +59,7 @@ fun SettingsItemRow(
 ) {
     val rowInteractionSource = remember { MutableInteractionSource() }
     val isRowPressed by rowInteractionSource.collectIsPressedAsState()
-    // prensa: blanco/desplazamiento negro 55%, 220ms easeOutCubic
+    // 按压: 白/黑偏移 55%, 220ms easeOutCubic
     val colorScheme = MaterialTheme.colorScheme
     val isLight = colorScheme.surface.luminance() > 0.5f
     val pressColor = if (isLight) Color.Black.copy(alpha = 0.06f) else Color.White.copy(alpha = 0.08f)
@@ -88,7 +88,7 @@ fun SettingsItemRow(
         horizontalArrangement = Arrangement.spacedBy(MusePaddings.itemGap),
     ) {
         if (icon != null) {
-            // 36dp ranura de icono(Bloque de color de fondo redondeado de 8 dp)
+            // 36dp 图标槽(圆角 8dp 背景色块)
             Surface(
                 modifier = Modifier.size(36.dp),
                 shape = MuseShapes.small,
@@ -116,7 +116,7 @@ fun SettingsItemRow(
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }

@@ -47,10 +47,12 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import io.zer0.muse.miniphone.R
 import io.zer0.muse.miniphone.ui.chat.MiniPhoneChatAvatar
 import io.zer0.muse.miniphone.ui.chat.MiniPhoneGalleryViewer
 import io.zer0.muse.miniphone.ui.icons.MiniPhoneIcons
@@ -61,12 +63,12 @@ import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
 
 /**
- * Entrada a la página de momentos:toma el tuyo ViewModel,Entregue la clave de devolución al sistema.
+ * 朋友圈页入口:取自己的 ViewModel,把返回键交给系统。
  *
- * Cada uno de los dos modos utiliza su propio ViewModel:[onlyMine] Verifique solo las actualizaciones de los usuarios locales.("Mis Momentos" en mi página),
- * De lo contrario ver todos. Usar el modo como clave ViewModel —— Dos entradas no pueden compartir la misma ventana de línea de tiempo.
+ * 两种模式各用各的 ViewModel:[onlyMine] 只查本机用户的动态(我页的「我的朋友圈」),
+ * 否则看全部。以模式作 ViewModel 键 —— 从两个入口分别进来不能共用一份时间线窗口。
  *
- * El estado de la página solo se recopila aquí,Los siguientes son todos componentes sin estado. —— Pruebe una porción [MomentsUiState] representará la página completa.
+ * 页面状态只在这一处被收集,下面全是无状态组件 —— 测试喂一份 [MomentsUiState] 就能渲染整页。
  */
 @Composable
 internal fun MiniPhoneMomentsRoute(onlyMine: Boolean = false, onBack: () -> Unit, modifier: Modifier = Modifier) {
@@ -91,10 +93,10 @@ internal fun MiniPhoneMomentsRoute(onlyMine: Boolean = false, onBack: () -> Unit
 }
 
 /**
- * Todas las devoluciones de llamada en la página.
+ * 页面上的全部回调。
  *
- * Reúnalos en lugar de usarlos como parámetros uno por uno.:Hay seis acciones en esta página.,La transmisión dispersa hará que la lista de parámetros sea más larga que el contenido.,
- * agregar una acción(Cambiar rango visible, adelante)Ya no tienes que tocar a todas las personas que llaman.
+ * 聚成一份而不是逐个当参数:这一页的动作有六个,散着传会把参数表撑得比内容还长,
+ * 加一个动作(改可见范围、转发)时也不必再动所有调用方。
  */
 @Immutable
 internal class MomentActions(
@@ -108,13 +110,13 @@ internal class MomentActions(
 )
 
 /**
- * Página de momentos:Barra superior + portada + línea de tiempo,En la parte superior se encuentran la página de publicación y la página de visualización de imágenes.
+ * 朋友圈页:顶栏 + 封面 + 时间线,最上面压着发布页与看图页。
  *
- * apátrida:Los estados y las devoluciones de llamadas provienen del exterior.[composing] con [viewingUri] Es estado de vista pura
- * (¿La página de publicación está abierta o no? ¿Qué foto estás mirando?),Descartar después de cerrar la página,No entrar [MomentsUiState].
+ * 无状态:状态与回调都从外面来。[composing] 与 [viewingUri] 是纯视图状态
+ * (发布页开没开、在看哪张图),关页即弃,不进 [MomentsUiState]。
  *
- * @param onlyMine Modo "Mis Momentos":Cambie el título por el suyo propio y cambie el mensaje vacío a alguien que pueda enviar uno.
- *   Las actualizaciones de otras personas han sido bloqueadas en la capa de consulta.,Aquí no se realiza más filtrado de memoria.
+ * @param onlyMine 「我的朋友圈」模式:标题换成自己的、空态提示改成让人发一条。
+ *   别人的动态已经在查询层就拦掉了,这里不再做一次内存过滤。
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -127,11 +129,11 @@ internal fun MiniPhoneMomentsScreen(
 ) {
     val colors = MiniPhoneTheme.colors
     var composing by rememberSaveable { mutableStateOf(false) }
-    // Vista de galería:¿Qué grupo de imágenes comienza con qué imagen?(base cero). Almacene los dos valores por separado.,saveable Se puede llevar directamente contigo.
+    // 图集查看:那一组图与从第几张开始(零基)。两个值分开存,saveable 能直接带着走
     var viewingImages by rememberSaveable { mutableStateOf(listOf<String>()) }
     var viewingIndex by rememberSaveable { mutableIntStateOf(0) }
     val viewing = viewingImages.isNotEmpty()
-    // Cuando la página de la imagen está cubierta en la parte superior,Presione la tecla de retorno para cerrarlo primero.
+    // 看图页盖在最上层时,返回键先关它
     BackHandler(enabled = viewing) { viewingImages = emptyList() }
     Box(
         modifier = modifier
@@ -143,7 +145,9 @@ internal fun MiniPhoneMomentsScreen(
                 .fillMaxSize()
                 .background(colors.background),
         ) {
-            MomentsTopBar(onBack = onBack, title = if (onlyMine) MINE_PAGE_TITLE else PAGE_TITLE, onCompose = { composing = true })
+            MomentsTopBar(onBack = onBack, title = stringResource(if (onlyMine) MINE_PAGE_TITLE_RES else PAGE_TITLE_RES), onCompose = {
+                composing = true
+            })
             PullToRefreshBox(
                 isRefreshing = state.isRefreshing,
                 onRefresh = actions.onRefresh,
@@ -181,7 +185,7 @@ internal fun MiniPhoneMomentsScreen(
     }
 }
 
-/** barra superior:Retorno, título, entrada editorial en la esquina superior derecha. */
+/** 顶栏:返回、标题、右上角的发布入口。 */
 @Composable
 private fun MomentsTopBar(onBack: () -> Unit, title: String, onCompose: () -> Unit) {
     val colors = MiniPhoneTheme.colors
@@ -205,7 +209,8 @@ private fun MomentsTopBar(onBack: () -> Unit, title: String, onCompose: () -> Un
             ) {
                 Icon(
                     imageVector = MiniPhoneIcons.Back,
-                    contentDescription = BACK_DESCRIPTION,
+                    contentDescription = stringResource(BACK_DESCRIPTION_RES),
+
                     tint = colors.textPrimary,
                     modifier = Modifier.size(TopBarIconSize),
                 )
@@ -227,7 +232,8 @@ private fun MomentsTopBar(onBack: () -> Unit, title: String, onCompose: () -> Un
             ) {
                 Icon(
                     imageVector = MiniPhoneIcons.Pen,
-                    contentDescription = COMPOSE_DESCRIPTION,
+                    contentDescription = stringResource(COMPOSE_DESCRIPTION_RES),
+
                     tint = colors.textPrimary,
                     modifier = Modifier.size(TopBarIconSize),
                 )
@@ -238,9 +244,9 @@ private fun MomentsTopBar(onBack: () -> Unit, title: String, onCompose: () -> Un
 }
 
 /**
- * línea de tiempo:Empezando por la portada,A continuación se muestran tarjetas dinámicas.
+ * 时间线:封面打头,下面是动态卡片。
  *
- * La portada se coloca en la lista en lugar de fijarse en la parte superior.:Cuando te desplazas hacia abajo, sigue,El área de contenido no está devorada permanentemente en más de cien píxeles.
+ * 封面放在列表里而不是固定在上方:往下翻时它跟着走,内容区不被永久吃掉一百多像素。
  */
 @Composable
 private fun MomentsTimeline(state: MomentsUiState, actions: MomentActions, onlyMine: Boolean, onOpenImage: (List<String>, Int) -> Unit) {
@@ -277,13 +283,13 @@ private fun MomentsTimeline(state: MomentsUiState, actions: MomentActions, onlyM
             )
         }
         if (state.isLoadingMore) {
-            item(key = LOADING_KEY, contentType = LOADING_KEY) { ListFootNote(text = LOADING_TEXT) }
+            item(key = LOADING_KEY, contentType = LOADING_KEY) { ListFootNote(text = stringResource(LOADING_TEXT_RES)) }
         }
     }
     LoadMoreEffect(listState = listState, hasMore = state.hasMore, onLoadMore = actions.onLoadMore)
 }
 
-/** Al desplazarse cerca del final de la lista,A la página siguiente. */
+/** 滚到列表末尾附近时,要下一页。 */
 @Composable
 private fun LoadMoreEffect(listState: LazyListState, hasMore: Boolean, onLoadMore: () -> Unit) {
     val loadMore by rememberUpdatedState(onLoadMore)
@@ -301,13 +307,14 @@ private fun LoadMoreEffect(listState: LazyListState, hasMore: Boolean, onLoadMor
 }
 
 /**
- * cubrir:Usa imágenes si tienes fotos.,No hay ninguna imagen que utilice el degradado de este módulo.
+ * 封面:有图用图,没图用本模块的渐变。
  *
- * El avatar y el apodo se presionan en el lado derecho del borde inferior. —— La tarjeta de identificación de Moments no está en la parte superior de la pantalla.,Y en su propio territorio.
- * La altura se toma como altura de la cubierta en la escalera de tamaño del módulo.,No escribas un número aquí.
+ * 头像与昵称压在下沿右侧 —— 朋友圈的身份牌不在屏幕顶上,而在自己的地盘上。
+ * 高度取模块尺寸阶梯里的封面高度,不在这里写一个数。
  */
 @Composable
 private fun MomentsCover(coverImageUri: String?, selfName: String, selfAvatarUri: String?) {
+    val selfLabel = stringResource(DEFAULT_SELF_NAME_RES)
     val colors = MiniPhoneTheme.colors
     val dimens = MiniPhoneTheme.dimens
     val typography = MiniPhoneTheme.typography
@@ -339,7 +346,7 @@ private fun MomentsCover(coverImageUri: String?, selfName: String, selfAvatarUri
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = selfName.ifBlank { DEFAULT_SELF_NAME },
+                text = selfName.ifBlank { selfLabel },
                 style = typography.title.copy(color = colors.textPrimary),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -357,10 +364,10 @@ private fun MomentsCover(coverImageUri: String?, selfName: String, selfAvatarUri
 }
 
 /**
- * Estado vacío:"Varias cartas apiladas" que saqué yo mismo.
+ * 空态:自己画的「几张卡片叠在一起」。
  *
- * "Debería haber un montón de animaciones aquí" se crea apilando tres rectángulos redondeados con trazos.,Ven con un consejo que puedas seguir. ——
- * Una página en blanco que simplemente dice "aún no hay contenido" significa no decir nada.
+ * 由三块描边圆角矩形叠出「这里本该有一摞动态」,配一句能照做的提示 ——
+ * 空白页只写「暂无内容」等于什么都没说。
  */
 @Composable
 private fun MomentsEmptyState(isLoaded: Boolean, onlyMine: Boolean) {
@@ -403,20 +410,20 @@ private fun MomentsEmptyState(isLoaded: Boolean, onlyMine: Boolean) {
         }
         Spacer(Modifier.height(12.dp))
         Text(
-            text = if (onlyMine) MINE_EMPTY_TITLE else EMPTY_TITLE,
+            text = stringResource(if (onlyMine) MINE_EMPTY_TITLE_RES else EMPTY_TITLE_RES),
             style = typography.body.copy(color = colors.textPrimary),
             textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(4.dp))
         Text(
-            text = if (onlyMine) MINE_EMPTY_HINT else EMPTY_HINT,
+            text = stringResource(if (onlyMine) MINE_EMPTY_HINT_RES else EMPTY_HINT_RES),
             style = typography.timestamp.copy(color = colors.textSecondary),
             textAlign = TextAlign.Center,
         )
     }
 }
 
-/** Una nota sobre los pies de lista(Cargando). */
+/** 列表页脚的一句提示(载入中)。 */
 @Composable
 private fun ListFootNote(text: String) {
     val colors = MiniPhoneTheme.colors
@@ -451,20 +458,20 @@ private const val EMPTY_CARD_STEP_RATIO: Float = 0.62f
 private const val EMPTY_DOT_INSET_RATIO: Float = 0.18f
 private const val EMPTY_DOT_TOP_RATIO: Float = 0.28f
 
-private const val PAGE_TITLE: String = "Momentos"
-private const val MINE_PAGE_TITLE: String = "mi circulo de amigos"
+private val PAGE_TITLE_RES: Int = R.string.mp_moments_title
+private val MINE_PAGE_TITLE_RES: Int = R.string.mp_moments_mine_title
 private const val ALL_KEY: String = "mp-moments-all"
 private const val MINE_KEY: String = "mp-moments-mine"
-private const val BACK_DESCRIPTION: String = "Regresar"
-private const val COMPOSE_DESCRIPTION: String = "escribe un mensaje"
-private const val DEFAULT_SELF_NAME: String = "yo"
-private const val EMPTY_TITLE: String = "Aún no hay actualizaciones"
-private const val EMPTY_HINT: String = "Tira hacia abajo para actualizar y espera a que el personaje diga algo."
-private const val MINE_EMPTY_TITLE: String = "Aún no hay actualizaciones propias"
-private const val MINE_EMPTY_HINT: String = "Haga clic en la esquina superior derecha para escribir una nota y recuérdela ahora"
-private const val LOADING_TEXT: String = "Cargando……"
+private val BACK_DESCRIPTION_RES: Int = R.string.mp_back_cd
+private val COMPOSE_DESCRIPTION_RES: Int = R.string.mp_moments_compose_cd
+private val DEFAULT_SELF_NAME_RES: Int = R.string.mp_moments_self_name
+private val EMPTY_TITLE_RES: Int = R.string.mp_moments_empty_title
+private val EMPTY_HINT_RES: Int = R.string.mp_moments_empty_hint
+private val MINE_EMPTY_TITLE_RES: Int = R.string.mp_moments_mine_empty_title
+private val MINE_EMPTY_HINT_RES: Int = R.string.mp_moments_mine_empty_hint
+private val LOADING_TEXT_RES: Int = R.string.mp_loading
 
-/** Cuando queden algunos elementos al final de la lista, comience a preguntar por la página siguiente. */
+/** 离列表末端还剩几条时开始要下一页。 */
 private const val LOAD_MORE_THRESHOLD: Int = 2
 
 private const val COVER_KEY: String = "mp-moments-cover-item"

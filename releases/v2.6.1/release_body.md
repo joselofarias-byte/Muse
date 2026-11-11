@@ -1,43 +1,43 @@
-Muse v2.6.1.
+Muse v2.6.1。
 
-> Esta versión cubre todos los cambios desde el lanzamiento de v2.6.0, enfocándose en reparaciones y agregando un tiempo de ejecución de Python integrado.
+> 本版覆盖自 v2.6.0 发布以来的全部改动，以修复为主，并新增内置 Python 运行时。
 
-## nuevas características
+## 新功能
 
-- **Tiempo de ejecución de Python incorporado**: Ejecute Python 3.14 directamente dentro de la aplicación (biblioteca estándar completa:ssl/sqlite3/zlib/hashlib/json/re etc.; lectura y escritura de archivos, red), no es necesario instalar Termux ni ninguna aplicación externa. Nuevas herramientas disponibles para asistentes `execute_python_script` Ejecute directamente scripts de Python y admita pip para instalar paquetes de terceros puros de Python; Los complementos también se pueden escribir en Python (manifest de `runtime` campo).
-- **Cambio global de "retorno forzado al pensamiento"**(ajustes → Chat): una vez activado, ya no está limitado por la configuración predeterminada del asistente. Mientras el modelo admita el razonamiento, volverá al proceso de pensamiento.
-- **Mensajería activa "abierta todo el día"**(ajustes → mensajes no solicitados → Período de no molestar): interruptor agregado. Anteriormente, solo se podían usar las horas de inicio y finalización para expresar el rango de envío permitido, que no podía completar 24 horas (si se establecían 23-23, no se enviaría nada). No había opción cuando querías "recibirlo en cualquier momento". Puede recibir mensajes no solicitados durante las 24 horas posteriores a la apertura.
+- **内置 Python 运行时**：应用内直接运行 Python 3.14（完整标准库：ssl/sqlite3/zlib/hashlib/json/re 等；文件读写、网络），无需安装 Termux 或任何外部应用。助手可用新工具 `execute_python_script` 直接执行 Python 脚本，支持 pip 安装纯 Python 第三方包；插件也可选择用 Python 编写（manifest 的 `runtime` 字段）。
+- **全局「强制返回思考」开关**（设置 → 聊天）：开启后不再受助手默认设置约束，只要模型支持推理就返回思考过程。
+- **主动消息「全天开放」**（设置 → 主动消息 → 免打扰时段）：新增开关。此前只能用起止小时表达允许发送的区间，凑不出完整的 24 小时（设 23-23 反而一条都不发），想要「随时都能收到」时没有可选项。打开后 24 小时都可能收到主动消息。
 
-## Correcciones importantes
+## 重要修复
 
-- **El proceso de pensamiento se filtró al texto.**: Se solucionó el problema por el cual algunos modelos de inferencia (como la serie DeepSeek) muestran la cadena de pensamiento como texto en escenarios de llamada de herramientas y el interruptor "Mostrar proceso de pensamiento" no se puede desactivar. Mantenga la línea final de "sin respuestas en blanco".
-- **Accesibilidad falso positivo**: Corregido "El sistema ha activado la accesibilidad y el asistente de permisos muestra que está activado, pero cuando el asistente llama a la herramienta, informa que los permisos no están activados".——El estado del permiso cambia a actualización en tiempo real y el caché anterior al inicio ya no se lee.
-- **Fallo al seleccionar texto**: Se solucionó el problema de fallas al seleccionar texto en cualquier interfaz y hacer clic en "Procesar texto" en el menú flotante del sistema.
-- **El resumen diario de la página de inicio está truncado**: El resumen ya no se comprime en dos líneas y se omite, sino que se muestra completamente con saltos de línea naturales; la longitud está controlada por el lado de la generación.
-- **No se puede obtener una vista previa del texto largo del flujo de memoria**: Ahora se puede hacer clic directamente en recuerdos largos en la línea de tiempo de la memoria para ver el texto completo sin tener que ingresar a la página de edición.
-- **Fish Audio Clonación de voz**: Corregido a puntos finales y campos oficiales. Anteriormente, los errores se informaban de manera estable incluso si la clave API era correcta.
-- **Plataforma de edición de proveedores**: Se solucionó el problema por el cual la clave API y otros estados de la anterior se trasladaban al siguiente al editar diferentes proveedores continuamente.
-- **API Key Pegar verificación**: Proporciona un mensaje legible cuando se mezclan caracteres no válidos, como el chino, en la clave, reemplazando el incomprensible mensaje de error original.
-- **Codex Iniciar sesión**: Complete la identificación del encabezado de la solicitud y el análisis de la lista de modelos.
-- **Fallo al ver la biblioteca de memoria**: Se corrigió un fallo ocasional al explorar la memoria en el ámbito "Todos"——Las memorias del asistente principal y de cada subasistente se almacenan por separado y están numeradas respectivamente. Las entradas con el mismo número colisionarán y la lista no se podrá representar.
-- **Ocasionalmente falla al abrir la aplicación.**:Sistema fijo "apagar animación" (opciones de desarrollador/Cuando la duración de la animación se establece en 0 en el modo de ahorro de energía, la página ocasionalmente fallará durante el cambio de página.——Reducir la duración de la animación a 0 provocará valores ilegales en el cálculo del progreso del cambio.
-- **Barra flotante de registro rápido**: soluciona el problema de que el cuadro de entrada a veces no puede recibir el foco y el teclado virtual no aparece después de expandir la barra flotante.
-- **La copia de seguridad automática ahora incluye configuraciones**:Anteriormente, solo sesiones empaquetadas de copia de seguridad automática diaria/memoria/Para los datos de la base de conocimientos, la configuración se perderá después de la restauración con un solo clic desde el "Registro de copia de seguridad reciente"; ahora es consistente con la exportación manual y la copia de seguridad en la nube, y los elementos de configuración también se respaldan y restauran juntos (las credenciales confidenciales, como las claves del proveedor, aún no se incluyen).
+- **思考过程泄漏到正文**：修复部分推理模型（如 DeepSeek 系）在工具调用场景下把思考链当正文显示、且「显示思考过程」开关关不掉的问题。保留「不产生空白回复」的底线。
+- **无障碍权限误报**：修复「系统已开启无障碍、权限向导显示已开启，但助手调用工具时却报权限未打开」——权限状态改为实时刷新，不再读启动时的旧缓存。
+- **选中文字崩溃**：修复在任意界面选中文字、点系统浮动菜单「处理文字」时闪退的问题。
+- **首页每日总结被截断**：总结不再被压缩成两行省略，改为完整展示、自然换行；长度由生成侧控制。
+- **记忆流长文无法预览**：记忆时间轴里的长记忆现在可以直接点开查看全文，不必进编辑页。
+- **Fish Audio 语音克隆**：修正为官方端点与字段，此前即便 API Key 正确也稳定报错。
+- **供应商编辑串台**：修复连续编辑不同供应商时，上一个的 API Key 等状态被带到下一个。
+- **API Key 粘贴校验**：密钥里混入中文等非法字符时给出可读提示，替代原先难懂的报错。
+- **Codex 登录**：补全请求头标识与模型清单解析。
+- **看记忆库时闪退**：修复在「全部」作用域浏览记忆时偶发闪退——主助手与各子助手的记忆分别存放、各自编号，同编号的条目会撞车导致列表无法渲染。
+- **打开应用时偶发闪退**：修复系统「关闭动画」（开发者选项/省电模式把动画时长设为 0）时，页面切换过程中偶发闪退——动画时长被压到 0 会让切换进度计算出现非法值。
+- **快捷记录悬浮条**：修复悬浮条展开后输入框有时收不到焦点、软键盘不弹出的问题。
+- **自动备份现在包含设置**：此前每日自动备份只打包会话/记忆/知识库数据，从「最近备份记录」一键恢复后会丢设置；现在与手动导出、云备份一致，设置项也一并备份、一并恢复（仍不含供应商密钥等敏感凭据）。
 
-## Interfaz y experiencia
+## 界面与体验
 
-- Los componentes públicos, como ventanas emergentes, capas emergentes inferiores, títulos de grupos, filas de listas y cuadrículas de múltiples imágenes, están unificados y organizados: las ventanas emergentes son más compactas, las máscaras ya no oscurecen el área de navegación, la alineación de los títulos de grupos se corrige, los títulos largos ya no abarrotan el diseño y varias imágenes se cambian a cuadrículas de miniaturas cuadradas.
-- Los botones de eliminación de imágenes están unificados en componentes compartidos (reservando suficiente área táctil).
-- **Los mensajes que envías se pueden eliminar directamente**: Se ha agregado un botón de eliminar a la barra de acceso directo de los mensajes del usuario (anteriormente, solo copiar/Inténtalo de nuevo/Editar, eliminar (oculto en el menú de pulsación larga). Al eliminarlo, se procesará junto con su respuesta y se proporcionarán las opciones "solo este artículo/junto con los siguientes".
-- **El asistente usa la forma incorrecta de ejecutar Python**: Cuando le pide al asistente que use Python, se ejecutará en la línea de comando para buscar `python` Intérprete, hojeando directorios y holgazaneando una y otra vez. El punto de entrada correcto para el tiempo de ejecución integrado es una herramienta especial. La entrada anterior no fue enviada al modelo con la solicitud, por lo que no se pudo ajustar en absoluto. Ahora se ha solucionado y codificado para arrancar (este es el único punto de entrada para ejecutar Python, no busque el intérprete nuevamente).
-- **Un fragmento de JavaScript no debe ejecutarse**: Una tabla de estado del entorno limitado de JS integrado utiliza nulo como clave (no permitido por algunas estructuras de datos), lo que hace que todas las llamadas de ejecución de JS integrado informen errores estables. Fijado.
-- **La herramienta aún no se puede cargar después de recuperarla.**: Después de recuperar una herramienta usando la biblioteca de herramientas, dirá“Próxima ronda disponible”, pero cuando realmente se llama, informa "no expuesto en esta ronda". La razón es que el alcance de la búsqueda no considera la configuración de la herramienta del asistente, por lo que hace promesas vacías a herramientas fuera de la configuración. Ahora la búsqueda sólo arroja las herramientas que realmente están disponibles en este asistente. Si no se encuentran las herramientas, se le informará directamente para habilitarlas en la configuración del asistente.
-- **Aparece un botón de acceso directo debajo de la tarjeta de plan/tarjeta de ejecución**: Las acciones personalizadas agregadas en el "Botón de acceso directo a mensajes" aparecían anteriormente debajo de la tarjeta de tarea (tarjeta de plan/tarjeta de ejecución). Estas ubicaciones no deberían tener botones de acceso directo a mensajes y ahora están excluidas.
+- 弹窗、底部弹层、分组标题、列表行、多图网格等公共组件统一整理：弹窗更紧凑、遮罩不再压暗导航区域、分组标题对齐修正、长标题不再挤爆布局、多图改为方形缩略网格。
+- 图片移除按钮统一为共享组件（保留足够的触摸区域）。
+- **自己发的消息可以直接删**：用户消息的快捷栏补上删除按钮（此前只有复制/重试/编辑，删除藏在长按菜单里），删除时会连同它的回复一并处理，并提供「仅此条 / 连同后续」选择。
+- **助手跑 Python 用错了路子**：让助手用 Python 时，它会跑去命令行里找 `python` 解释器、翻目录，反复空转。内置运行时的正确入口是专用工具，之前那一入口没有随请求发送给模型，导致它根本调不到；现已修好并写死引导（这是运行 Python 的唯一入口，不要再去找解释器）。
+- **一段 JavaScript 执行必失败**：内置 JS 沙盒的一个状态表用 null 作键（部分数据结构不允许），导致所有内置 JS 执行调用稳定报错。已修复。
+- **工具检索后仍调不到**：用工具库检索到一个工具后，它会说“下一轮可用”，但真调用时却报「未在本轮暴露」。原因是检索范围没考虑助手自身的工具配置，于是对配置外的工具空头承诺。现在检索只返回本助手真正可用的工具，命中不到时直接告知去助手设置里启用。
+- **计划卡 / 执行卡下方冒出快捷按钮**：在「消息快捷按钮」里新增的自定义动作，之前会出现在任务卡（计划卡 / 执行卡）下方。这些位置本就不该有消息快捷按钮，现在已排除。
 
-## Descripción
+## 说明
 
-- Esta versión se centra en reparaciones y estabilidad, y se recomienda actualizarla.
-- Al mismo tiempo, se borró un lote de recursos integrados que ya no se utilizan y, en consecuencia, se redujo el tamaño del paquete de instalación.
+- 本版以修复和稳定性为主，建议升级。
+- 同时清掉了一批不再使用的内置资源，安装包体积相应减小。
 
 ---
 

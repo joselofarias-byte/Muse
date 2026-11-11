@@ -8,16 +8,16 @@ import okhttp3.MultipartBody
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 
-/** Telegram Envío de medios:sendPhoto / sendVideo / sendAudio / sendDocument. */
+/** Telegram 媒体发送：sendPhoto / sendVideo / sendAudio / sendDocument。 */
 internal object TelegramMediaSender {
     private const val TAG = "TelegramMedia"
 
     suspend fun send(config: ChannelConfig, media: OutboundMedia, targetOverride: String?): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
             val token = config.appSecret.trim()
-            require(token.isNotBlank()) { "Telegram Bot Token No configurado" }
+            require(token.isNotBlank()) { "Telegram Bot Token 未配置" }
             val chatId = targetOverride?.takeIf { it.isNotBlank() } ?: config.targetId
-            require(chatId.isNotBlank()) { "desaparecido chat_id" }
+            require(chatId.isNotBlank()) { "缺少 chat_id" }
             val (method, field) = methodOf(media.kind)
             val body = MultipartBody.Builder()
                 .setType(MultipartBody.FORM)
@@ -25,7 +25,7 @@ internal object TelegramMediaSender {
             if (media is OutboundMedia.RemoteUrl) {
                 body.addFormDataPart(field, media.url)
             } else {
-                val payload = MediaPayload.from(media) ?: error("No se puede leer el contenido multimedia")
+                val payload = MediaPayload.from(media) ?: error("无法读取媒体内容")
                 body.addFormDataPart(
                     field,
                     payload.fileName,
@@ -37,7 +37,7 @@ internal object TelegramMediaSender {
                 .post(body.build())
                 .build()
             MediaHttp.postAndCheck(req, "Telegram")
-        }.onFailure { e -> Logger.w(TAG, "Telegram Error al enviar medios: ${e.message}") }
+        }.onFailure { e -> Logger.w(TAG, "Telegram 媒体发送失败: ${e.message}") }
     }
 
     private fun methodOf(kind: MediaKind): Pair<String, String> = when (kind) {

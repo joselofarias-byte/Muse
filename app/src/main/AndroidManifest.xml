@@ -5,87 +5,104 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <!-- v0.32: keepAwake ajustes(Mantenga la CPU activa mientras se ejecuta la aplicación) -->
+    <!-- v0.32: keepAwake 设置(应用运行时保持 CPU 唤醒) -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
-    <!-- v0.32: autoLaunch ajustes(Iniciar automáticamente después del encendido muse) -->
+    <!-- v0.32: autoLaunch 设置(开机后自动启动 muse) -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-    <!-- Función1: Desbloqueo biométrico -->
+    <!-- 功能1: 生物识别解锁 -->
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
-    <!-- Phase 5-D: Entrada de voz(ACTION_RECOGNIZE_SPEECH El sistema solicitará automáticamente) -->
+    <!-- Phase 5-D: 语音输入(ACTION_RECOGNIZE_SPEECH 系统会自动请求) -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
-    <!-- Phase 8.10: Leer eventos del calendario(calendar_today Herramientas necesarias) -->
+    <!-- Phase 8.10: 读取日历事件(calendar_today 工具需要) -->
     <uses-permission android:name="android.permission.READ_CALENDAR" />
-    <!-- Phase 8.10: Escribir evento del calendario(add_calendar_event Herramientas necesarias) -->
+    <!-- Phase 8.10: 写入日历事件(add_calendar_event 工具需要) -->
     <uses-permission android:name="android.permission.WRITE_CALENDAR" />
-    <!-- Phase 8.10: Estadísticas de tiempo frente a la pantalla(screen_time Herramientas necesarias) -->
+    <!-- Phase 8.10: 屏幕使用时间统计(screen_time 工具需要) -->
     <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS"
         tools:ignore="ProtectedPermissions" />
-    <!-- Herramientas celulares:get_location ubicación difícil(permisos de tiempo de ejecución,Autoprueba en la herramienta) -->
+    <!-- 手机端工具:get_location 粗略位置(运行时权限,工具内自检) -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-    <!-- Herramientas celulares:get_contacts_count Número de contactos(permisos de tiempo de ejecución,Autoprueba en la herramienta) -->
+    <!-- 手机端工具:get_contacts_count 联系人数量(运行时权限,工具内自检) -->
     <uses-permission android:name="android.permission.READ_CONTACTS" />
-    <!-- Herramientas celulares:send_sms Enviar SMS(permisos de tiempo de ejecución,Autoprueba en la herramienta) -->
+    <!-- 手机端工具:send_sms 发送短信(运行时权限,工具内自检) -->
     <uses-feature android:name="android.hardware.telephony" android:required="false" />
     <uses-permission android:name="android.permission.SEND_SMS" />
-    <!-- Herramientas de control del sistema:toggle_wifi Leer el estado de WiFi(Permisos normales,concedido automáticamente) -->
+    <!-- 系统控制工具:toggle_wifi 读 WiFi 状态(普通权限,自动授予) -->
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
-    <!-- Herramientas de control del sistema:toggle_bluetooth Leer el estado de Bluetooth -->
+    <!-- 系统控制工具:toggle_bluetooth 读蓝牙状态 -->
     <uses-permission android:name="android.permission.BLUETOOTH" />
-    <!-- Herramientas de control del sistema:toggle_bluetooth Apagar Bluetooth(API 31+ Obsoleto pero compatible con versiones anteriores) -->
+    <!-- 系统控制工具:toggle_bluetooth 关闭蓝牙(API 31+ 已废弃但向后兼容) -->
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
-    <!-- v1.136: linterna/control de flash(toggle_flashlight) -->
+    <!-- v1.136: 手电筒/闪光灯控制(toggle_flashlight) -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
-    <!-- v1.136: retroalimentación de vibración(vibrate) -->
+    <!-- v1.136: 振动反馈(vibrate) -->
     <uses-permission android:name="android.permission.VIBRATE" />
-    <!-- v1.136: Modificar el brillo de la pantalla(set_brightness) -->
+    <!-- v1.136: 修改屏幕亮度(set_brightness) -->
     <uses-permission android:name="android.permission.WRITE_SETTINGS"
         tools:ignore="ProtectedPermissions" />
-    <!-- v1.136: Android 12+ Obtener dispositivos Bluetooth emparejados(get_bluetooth_devices) -->
+    <!-- v1.136: Android 12+ 获取已配对蓝牙设备(get_bluetooth_devices) -->
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
-    <!-- v1.136: Recordatorio regular(schedule_reminder)Establecer alarmas precisas -->
+    <!-- v1.136: 定时提醒(schedule_reminder)设置精确闹钟 -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
-    <!-- v2.x: AlarmClock.ACTION_SET_ALARM / ACTION_SET_TIMER Requerido para iniciar la aplicación del reloj del sistema(normal Permisos,Sin ventanas emergentes en tiempo de ejecución);
-         La falta anterior provocó que set_alarm/set_timer fuera interceptado por el sistema.(Permission Denial) -->
+    <!-- v2.x: AlarmClock.ACTION_SET_ALARM / ACTION_SET_TIMER 启动系统时钟应用所需(normal 权限,无运行时弹窗);
+         此前缺失导致 set_alarm/set_timer 被系统拦截(Permission Denial) -->
     <uses-permission android:name="com.android.alarm.permission.SET_ALARM" />
-    <!-- v1.27: Acceso al álbum de fotos(InputBar Se requiere autorización para acceder al álbum.) -->
+    <!-- v1.27: 相册访问权限(InputBar 授权访问相册需要) -->
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
-    <!-- v1.43: El servicio de recepción se mantiene vivo.(Mantenga la IA generada al cambiar al fondo) -->
+    <!-- v1.43: 前台服务保活(切后台时保持 AI 生成) -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
-    <!-- Ventana flotante del sistema de grabación rápida.(Utilizado después de la autorización activa del usuario.) -->
+    <!-- 快速记录系统悬浮窗(用户主动授权后使用) -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />
-    <!-- v2.2.1 Termux canal:Ejecute comandos a través del protocolo Termux RUN_COMMAND(El usuario otorga permisos adicionales en Termux) -->
+    <!-- 工作区放到公共下载目录时需要（用户主动开启才生效，默认不申请）。
+         Android 10 起写公共目录只能走这项特殊权限，没有替代方案。 -->
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
+    <!-- v2.2.1 Termux 通道:经由 Termux RUN_COMMAND 协议执行命令(用户在 Termux 附加权限中授予) -->
     <uses-permission android:name="com.termux.permission.RUN_COMMAND" />
-    <!-- v2.2.1 Proveedor independiente de accesibilidad: vincula su servicio puente AIDL(Permisos a nivel de firma,Sólo se pueden vincular solicitudes con la misma firma) -->
+    <!-- v2.2.1 无障碍独立 Provider:绑定其 AIDL 桥接服务(签名级权限,仅同签名应用可绑定) -->
     <uses-permission android:name="io.zer0.muse.permission.A11Y_BRIDGE" />
-    <!-- v2.2.1 Proveedor independiente accesible: instalador de APK desplegable en la aplicación(guía de instalación,Confirmación realizada por el instalador del sistema.) -->
+    <!-- v2.2.1 无障碍独立 Provider:应用内拉起 APK 安装器(安装引导,由系统安装器完成确认) -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
-    <!-- Phase 5-I: Exportación de copia de seguridad/importar(SAF No se requiere permiso,Pero leer documentos externos requiere) -->
+    <!-- Phase 5-I: 备份导出/导入(SAF 不需要权限,但读取外部文档需要) -->
     <queries>
-        <!-- v2.2.1 Termux canal:visibilidad del paquete(Android 11+ De lo contrario no podrás verlo Termux) -->
+        <!-- v2.2.1 Termux 通道:包可见性(Android 11+ 否则看不到 Termux) -->
         <package android:name="com.termux" />
-        <!-- v2.2.1 Proveedor independiente de accesibilidad: Visibilidad del paquete(Detección de instalación y unión de puentes.) -->
+        <!-- 权限体系重设计: Shizuku/Sui 显式包可见性。
+             此前靠 MAIN/LAUNCHER intent query 碰巧覆盖(带图标的应用可见),
+             属隐式依赖;isInstalled/isSuiBackendAvailable 改为显式声明兜底。 -->
+        <package android:name="moe.shizuku.privileged.api" />
+        <package android:name="moe.shizuku.privileged.sui" />
+        <!-- 权限体系重设计: Root 管理器包可见性。用于区分「设备无 root 方案」与
+             「有方案但管理器未安装」(KernelSU/APatch 无管理器时 su 静默拒绝),给定向指引。 -->
+        <package android:name="com.topjohnwu.magisk" />
+        <package android:name="io.github.huskydg.magisk" />
+        <package android:name="me.weishu.kernelsu" />
+        <package android:name="com.rifsxd.ksunext" />
+        <package android:name="com.sukisu.ultra" />
+        <package android:name="me.bmax.apatch" />
+        <!-- v2.2.1 无障碍独立 Provider:包可见性(安装检测与桥接绑定) -->
         <package android:name="io.zer0.muse.a11y" />
         <intent>
             <action android:name="android.intent.action.RECOGNIZE_SPEECH" />
         </intent>
         <!--
-            TTS visibilidad del motor (Android 11+ visibilidad del paquete).
-            Cuando falta este elemento, bindService de TextToSpeech no puede conectarse al motor: la devolución de llamada de inicialización no regresará.
-            Se muestra como "TTS Siempre atascado en la inicialización" (lo mismo ocurre incluso si el dispositivo está realmente equipado con un motor).
+            TTS 引擎可见性（Android 11+ 包可见性）。
+            缺这一条时 TextToSpeech 的 bindService 连不上引擎：初始化回调不会返回，
+            表现为「TTS 永远停在初始化中」（设备实际装了引擎也一样）。
         -->
         <intent>
             <action android:name="android.intent.action.TTS_SERVICE" />
         </intent>
-        <!-- Enumeración del servicio de reconocimiento de voz (incluido el reconocimiento del lado del dispositivo), junto con RECOGNIZE_SPEECH arriba. -->
+        <!-- 语音识别服务枚举（含设备端识别），与上面 RECOGNIZE_SPEECH 配对使用。 -->
         <intent>
             <action android:name="android.speech.RecognitionService" />
         </intent>
-        <!-- v1.52: open_app La herramienta necesita consultar otras aplicaciones. launcher intent(Android 11+ visibilidad del paquete) -->
+        <!-- v1.52: open_app 工具需要查询其他应用的 launcher intent(Android 11+ 包可见性) -->
         <intent>
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
@@ -104,7 +121,7 @@
         android:networkSecurityConfig="@xml/network_security_config"
         android:localeConfig="@xml/locales_config">
 
-        <!-- Página de vista previa de desarrollo: sin exportación, sin entrada de escritorio, solo adb puede abrirla directamente. -->
+        <!-- 开发预览页：不导出、无桌面入口，只能由 adb 直接拉起。 -->
 
         <activity
 
@@ -121,13 +138,13 @@
             android:windowSoftInputMode="adjustResize"
             android:supportsPictureInPicture="false"
             android:theme="@style/Theme.Muse.Starting">
-            <!-- Iniciar la entrada:activity-alias La solución ha sido abandonada y regresa a la Actividad principal. -->
+            <!-- 启动入口：activity-alias 方案已废弃，回到主 Activity。 -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
             <!-- Phase 8.10: Deep Link muse:// scheme -->
-            <!-- M-06/M-8: Limitar el host a valores conocidos,Evite que cualquier aplicación se inicie a través de hosts no autorizados DeepLink -->
+            <!-- M-06/M-8: 限制 host 为已知值,防止任意应用通过未授权 host 调起 DeepLink -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -136,6 +153,7 @@
                 <data android:scheme="muse" android:host="new" />
                 <data android:scheme="muse" android:host="assistants" />
                 <data android:scheme="muse" android:host="settings" />
+                <data android:scheme="muse" android:host="plugin" />
                  <data android:scheme="muse" android:host="scheduled-tasks" />
                  <data android:scheme="muse" android:host="scheduled-task" />
                  <data android:scheme="muse" android:host="quick-notes" />
@@ -151,49 +169,49 @@
                  <data android:scheme="muse" android:host="knowledge" />
                  <data android:scheme="muse" android:host="knowledge-bases" />
             </intent-filter>
-            <!-- P1-6: OAuth La devolución de llamada io.zer0.muse://oauth/callback se ha migrado a OAuthCallbackActivity -->
-            <!-- (Fase original 10.4 pathPrefix="/callback" filter Eliminado,Evite conflictos con OAuthCallbackActivity) -->
-            <!-- Phase 8.10: Recibir sistema compartido(texto plano) -->
+            <!-- P1-6: OAuth 回调 io.zer0.muse://oauth/callback 已迁移到 OAuthCallbackActivity -->
+            <!-- (原 Phase 10.4 的 pathPrefix="/callback" filter 已移除,避免与 OAuthCallbackActivity 冲突) -->
+            <!-- Phase 8.10: 接收系统分享(纯文本) -->
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="text/*" />
             </intent-filter>
-            <!-- Phase 8.10: Mantenga presionado para seleccionar texto → "enviado en musa" -->
+            <!-- Phase 8.10: 长按选中文本 → "在 muse 中发送" -->
             <intent-filter>
                 <action android:name="android.intent.action.PROCESS_TEXT" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="text/plain" />
             </intent-filter>
-            <!-- v2.x: Recibir paquete de personajes(.muse-assistant) — Desde la gestión de archivos/Cuando se abre la aplicación de chat, ingresará directamente a la importación. -->
+            <!-- v2.x: 接收角色包(.muse-assistant) — 从文件管理/聊天应用点开时直接进入导入 -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="application/x-muse-assistant" />
             </intent-filter>
-            <!-- Launcher Atajo de pulsación larga:Registro de atajos estáticos(debe ser <activity> elemento hijo directo) -->
+            <!-- Launcher 长按快捷方式:静态 shortcuts 注册(必须为 <activity> 直接子元素) -->
             <meta-data
                 android:name="android.app.shortcuts"
                 android:resource="@xml/shortcuts" />
         </activity>
 
         <!--
-            v2.6.9: Alias de actividad del iniciador — Admite el cambio de nombre y icono para mostrar de "personalización de apariencia".
+            v2.6.9: 启动器活动别名 — 支撑「外观自定义」的显示名与图标切换。
 
-            Cada alias apunta a la misma MainActivity, pero la etiqueta/icono es diferente; por
-            LauncherAppearanceManager Habilite uno de ellos a través de setComponentEnabledSetting.
-            Android Es necesario que solo se pueda habilitar un alias PRINCIPAL/LANZADOR al mismo tiempo; de lo contrario, aparecerán varios íconos en el escritorio.
+            每个别名指向同一个 MainActivity，只是 label/icon 不同；由
+            LauncherAppearanceManager 通过 setComponentEnabledSetting 启用其中一个。
+            Android 要求同一时刻只能有一个 MAIN/LAUNCHER 别名被启用，否则桌面会出现多个图标。
 
-            Estos son nombres neutrales (no se hacen pasar por aplicaciones de terceros):
-              .LauncherDefault  → Muse(predeterminado)
-              .LauncherNotes    → Notas
-              .LauncherMemo     → nota
-              .LauncherStudy    → Registro de aprendizaje
+            这些都是中性名称（不仿冒任何第三方应用）：
+              .LauncherDefault  → Muse（默认）
+              .LauncherNotes    → 笔记
+              .LauncherMemo     → 备忘录
+              .LauncherStudy    → 学习记录
         -->
 
-        <!-- P1-6: OAuth devolución de llamada vacía Activity — recibir io.zer0.muse://oauth/callback Deep Link -->
-        <!-- exported=true Requerido por enlace profundo(Navegador/llamada al sistema) -->
-        <!-- El tema transparente evita la pantalla de presentación cuando se inicia sin actividad de la interfaz de usuario -->
+        <!-- P1-6: OAuth 回调空 Activity — 接收 io.zer0.muse://oauth/callback Deep Link -->
+        <!-- exported=true 是 Deep Link 必需(浏览器/系统调起) -->
+        <!-- 透明主题避免无 UI Activity 启动时闪屏 -->
         <activity
             android:name=".auth.OAuthCallbackActivity"
             android:exported="true"
@@ -211,7 +229,7 @@
             </intent-filter>
         </activity>
 
-        <!-- Phase 12: Glance Compose widgets de escritorio(Inicie rápidamente conversaciones recientes) -->
+        <!-- Phase 12: Glance Compose 桌面小部件(快捷启动到最近会话) -->
         <receiver
             android:name=".widget.MuseQuickWidgetReceiver"
             android:exported="false">
@@ -231,7 +249,7 @@
             </intent-filter>
         </activity>
 
-        <!-- P3-16: Glance Compose Widget de conversación 4x2 de escritorio(Mostrar respuestas recientes de IA) -->
+        <!-- P3-16: Glance Compose 桌面 4x2 对话小部件(显示最近 AI 回复) -->
         <receiver
             android:name=".widget.MuseChatWidgetReceiver"
             android:exported="false">
@@ -251,7 +269,7 @@
             </intent-filter>
         </activity>
 
-        <!-- F-25: Widget de inicio de escritorio(RemoteViews implementación mínima,directo muse://chat) -->
+        <!-- F-25: 桌面启动小部件(RemoteViews 最小实现,直达 muse://chat) -->
         <receiver
             android:name=".widget.MuseLauncherWidget"
             android:exported="false">
@@ -263,7 +281,7 @@
                 android:resource="@xml/muse_launcher_widget_info" />
         </receiver>
 
-        <!-- v2.2.1 pantalla virtual:shell Carpeta del lado del servidor de la mano(El servidor dirige la transmisión a este paquete a través de AMS) -->
+        <!-- v2.2.1 虚拟屏:shell 服务端 Binder 手递手(服务端经 AMS 定向广播到本包) -->
         <receiver
             android:name=".automation.vdisplay.VirtualDisplayBinderReceiver"
             android:exported="true">
@@ -272,7 +290,7 @@
             </intent-filter>
         </receiver>
 
-        <!-- v0.32: Iniciar automáticamente al arrancar receiver(autoLaunch Establecer el estado habilitado del control del interruptor) -->
+        <!-- v0.32: 开机自启动 receiver(autoLaunch 设置开关控制 enabled 状态) -->
         <receiver
             android:name=".boot.BootReceiver"
             android:enabled="false"
@@ -283,9 +301,9 @@
             </intent-filter>
         </receiver>
 
-        <!-- v2.x: Tasker vinculación — La transmisión de una plataforma de automatización externa desencadena una ronda de diálogo.
-             exported=true Es una condición necesaria para que Tasker envíe transmisiones entre aplicaciones; el prefijo privado del paquete de nombre de acción evita la activación accidental.
-             Y la finalización solo se ejecuta una vez (no se concede la ejecución a la herramienta) y los activadores externos no pueden operar indirectamente el dispositivo. -->
+        <!-- v2.x: Tasker 联动 — 外部自动化平台广播触发一轮对话。
+             exported=true 是 Tasker 跨应用发送广播的必要条件；动作名包私有前缀避免误触，
+             且只跑一次 completion（不授予工具执行），外部触发无法间接操作设备。 -->
         <receiver
             android:name=".intent.TaskerTriggerReceiver"
             android:exported="true">
@@ -294,7 +312,7 @@
             </intent-filter>
         </receiver>
 
-        <!-- v1.43: Servicio front-end de generación de chat(Mantenga la generación de IA ininterrumpida cuando pase al fondo) -->
+        <!-- v1.43: 聊天生成前台服务(切后台时保持 AI 生成不中断) -->
         <service
             android:name=".schedule.ChatGenerationService"
             android:enabled="true"
@@ -302,9 +320,9 @@
             android:foregroundServiceType="dataSync" />
 
         <!--
-            v2.6.9: Servicio residente keep-alive (activado explícitamente por el usuario).
-            Utilice specialUse en lugar de dataSync: no realiza sincronización de datos, pero mantiene canales de programación y mensajes.
-            pertenece semánticamente a“Aplicar tareas personalizadas de larga duración”,Android 14+ Es este tipo el que requiere una declaración explícita.
+            v2.6.9: 常驻保活服务（用户显式开启）。
+            用 specialUse 而非 dataSync：它不在执行数据同步，而是在维持调度与消息通道，
+            语义上属于“应用自定义的长时任务”，Android 14+ 要求显式声明的就是这个类型。
         -->
         <service
             android:name=".schedule.KeepAliveService"
@@ -316,7 +334,7 @@
                 android:value="Keeps scheduled tasks and proactive messages alive while the user has opted in" />
         </service>
 
-        <!-- Ventana flotante de registro rápido:Cápsula plegable + tarjeta de entrada compacta -->
+        <!-- 快速记录悬浮窗:折叠胶囊 + 紧凑输入卡 -->
         <service
             android:name=".ui.quicknotes.QuickCaptureOverlayService"
             android:enabled="true"
@@ -327,10 +345,10 @@
                 android:value="quick_capture_overlay" />
         </service>
 
-        <!-- P2: Servicio de escucha de notificaciones(Los usuarios deben configurar en el sistema.→Notificación de autorización en derechos de uso) -->
+        <!-- P2: 通知监听服务(用户需在系统设置→通知使用权中授权) -->
         <service
             android:name=".notification.MuseNotificationListenerService"
-            android:label="Muse escucha de notificaciones"
+            android:label="Muse 通知监听"
             android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
             android:exported="true">
             <intent-filter>
@@ -338,13 +356,13 @@
             </intent-filter>
         </service>
 
-        <!-- v1.136: Receptor de despertador con recordatorio regular -->
+        <!-- v1.136: 定时提醒闹钟接收器 -->
         <receiver
             android:name=".tools.reminder.ReminderAlarmReceiver"
             android:exported="false" />
 
-        <!-- Restablecer la alarma recordatoria después de reiniciar/actualizar la aplicación. Está habilitado de forma predeterminada y no sigue el interruptor "Inicio automático al arrancar":
-             Los recordatorios establecidos por los usuarios no deben perderse después del reinicio. Solo reorganice, no reproduzca Actividad. -->
+        <!-- 重启 / 应用更新后重排提醒闹钟。默认启用，且不跟随「开机自启动」开关：
+             用户设的提醒在重启后不该丢失。只做重排，不弹 Activity。 -->
         <receiver
             android:name=".tools.reminder.ReminderBootReceiver"
             android:enabled="true"
@@ -356,7 +374,7 @@
         </receiver>
 
 
-        <!-- archivo adjunto:Se utiliza para compartir archivos en el entorno limitado con otras aplicaciones para abrirlos a través de ACTION_VIEW -->
+        <!-- 文件附件:用于把沙盒内文件通过 ACTION_VIEW 分享给其它应用打开 -->
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
@@ -367,8 +385,8 @@
                 android:resource="@xml/file_paths" />
         </provider>
 
-        <!-- P3-3: Shizuku Provider — Shizuku SDK Declaración de requisitos,utilizado para la comunicación de carpetas -->
-        <!-- authorities=${applicationId}.shizuku,Shizuku Las solicitudes se autorizan a través de este proveedor. -->
+        <!-- P3-3: Shizuku Provider — Shizuku SDK 要求声明,用于 binder 通信 -->
+        <!-- authorities=${applicationId}.shizuku,Shizuku 应用通过此 provider 授权 -->
         <provider
             android:name="rikka.shizuku.ShizukuProvider"
             android:authorities="${applicationId}.shizuku"
@@ -377,9 +395,9 @@
             android:exported="true"
             android:permission="android.permission.INTERACT_ACROSS_USERS_FULL" />
 
-        <!-- v1.0.80: UI Servicios automatizados de accesibilidad.
-             exported=true ¿Es AccessibilityManager una condición necesaria para que el servicio esté vinculado al sistema?;
-             BIND_ACCESSIBILITY_SERVICE Las aplicaciones ordinarias todavía tienen restringida la vinculación directa. -->
+        <!-- v1.0.80: UI 自动化无障碍服务。
+             exported=true 是 AccessibilityManager 由系统绑定该服务的必要条件;
+             BIND_ACCESSIBILITY_SERVICE 仍限制普通应用直接绑定。 -->
         <service
             android:name=".automation.executors.MuseAccessibilityService"
             android:exported="true"
@@ -390,8 +408,66 @@
             </intent-filter>
             <meta-data
                 android:name="android.accessibilityservice"
-                android:resource="@xml/muse_accessibility_service" />
+                android:resource="@xml/accessibility_service_config" />
         </service>
+        <!-- 系统数字助理入口（P1-04）：用户在系统设置里把 Muse 设为默认助理后，
+             长按 Home/电源键会走这里。BIND_VOICE_INTERACTION 由系统持有，普通应用绑不上。 -->
+        <service
+            android:name=".ui.assist.MuseVoiceInteractionService"
+            android:exported="true"
+            android:label="@string/assist_service_label"
+            android:permission="android.permission.BIND_VOICE_INTERACTION">
+            <meta-data
+                android:name="android.voice_interaction"
+                android:resource="@xml/voice_interaction_service" />
+            <intent-filter>
+                <action android:name="android.service.voice.VoiceInteractionService" />
+            </intent-filter>
+        </service>
+
+        <service
+            android:name=".ui.assist.MuseVoiceInteractionSessionService"
+            android:exported="true"
+            android:permission="android.permission.BIND_VOICE_INTERACTION" />
+
+        <!-- 朗读前台服务（P1-10）：退到后台/锁屏时保住进程，并接管音频焦点（来电即停） -->
+        <service
+            android:name=".ui.speech.ReadAloudPlaybackService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
+
+        <!-- 前台服务型插件（runtime.service）：一个服务承载所有服务型插件，
+             一条常驻通知说清"有几个插件在跑"。默认关，用户逐插件授权后才进来。 -->
+        <service
+            android:name=".data.plugin.PluginServiceHostService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Runs user-installed plugins that were explicitly granted the service capability" />
+        </service>
+
+        <!-- P2-03: 通知栏"停止"动作 → 生成链路（不导出，只有本应用能发） -->
+        <receiver
+            android:name=".notification.TaskStageActionReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="io.zer0.muse.action.STOP_TASK_STAGE" />
+            </intent-filter>
+        </receiver>
+
+        <!-- 主动消息通知「这次不用」按钮。
+             必须是清单注册：通知是后台 Worker 发的，发完进程随时可能被杀，
+             动态注册的接收器那时已经不存在，用户点按钮会毫无反应。
+             exported=false：只有本应用自己的 PendingIntent 发得动。 -->
+        <receiver
+            android:name=".proactive.ProactiveDismissReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="io.zer0.muse.action.PROACTIVE_DISMISS" />
+            </intent-filter>
+        </receiver>
+
     </application>
 
 </manifest>

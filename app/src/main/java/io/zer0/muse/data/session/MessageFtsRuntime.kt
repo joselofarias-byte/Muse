@@ -1,11 +1,11 @@
 package io.zer0.muse.data.session
 
 /**
- * R-DB-05: Bandera de modo FTS de mensaje en proceso.
+ * R-DB-05: 进程内消息 FTS 模式标记。
  *
- * por [io.zer0.muse.data.session.MuseDb] Migrar/Crear tabla/onOpen Posteriormente basado en
- * `sqlite_master.sql` Escribir resultados reales de creación de tablas;SessionRepository Elija en consecuencia
- * FTS5 Índice de texto original o ruta alternativa de ngram FTS4.
+ * 由 [io.zer0.muse.data.session.MuseDb] 在迁移/建表/onOpen 后根据
+ * `sqlite_master.sql` 实际建表结果写入;SessionRepository 据此选择
+ * FTS5 原文索引或 FTS4 ngram 回退路径。
  */
 object MessageFtsRuntime {
     @Volatile

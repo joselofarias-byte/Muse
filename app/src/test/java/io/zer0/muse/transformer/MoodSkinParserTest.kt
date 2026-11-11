@@ -10,10 +10,10 @@ class MoodSkinParserTest {
     fun extract_moodfxDoesNotTouchMood() {
         val input = """
             <mood>
-            Vibe: calma
+            Vibe: 冷静
             </mood>
             <moodfx>rage</moodfx>
-            Contenido del texto [glow]centrarse[/glow]
+            正文内容 [glow]重点[/glow]
         """.trimIndent()
 
         val (skin, content) = MoodSkinParser.extract(input)
@@ -21,21 +21,21 @@ class MoodSkinParserTest {
         assertEquals("rage", skin)
         assertEquals(false, content.contains("<moodfx>"))
         assertEquals(true, content.contains("<mood>"))
-        assertEquals("centrarse", MoodSkinParser.stripInlineEffects(content).substringAfter("Contenido del texto ").trim())
+        assertEquals("重点", MoodSkinParser.stripInlineEffects(content).substringAfter("正文内容 ").trim())
     }
 
     @Test
     fun cleanForExport_removesAllProtocolTags() {
-        val input = "<moodfx>desire</moodfx> Hola [huge]mundo[/huge] [red]peligro[/red]"
+        val input = "<moodfx>desire</moodfx> 你好 [huge]世界[/huge] [red]危险[/red]"
         val cleaned = MoodSkinParser.cleanForExport(input)
-        assertEquals(" Hola mundo peligro", cleaned)
+        assertEquals(" 你好 世界 危险", cleaned)
     }
 
     @Test
     fun extract_ignoresUnknownSkin() {
-        val input = "<moodfx>nope</moodfx>Texto"
+        val input = "<moodfx>nope</moodfx>正文"
         val (skin, content) = MoodSkinParser.extract(input)
         assertNull(skin)
-        assertEquals("Texto", content.trim())
+        assertEquals("正文", content.trim())
     }
 }

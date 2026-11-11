@@ -5,7 +5,7 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 /**
- * v2.5.3 (P3-2): Codificación y decodificación de instantáneas de configuración a nivel de sesión.
+ * v2.5.3 (P3-2): 会话级配置快照的编解码。
  */
 class SessionConfigSnapshotTest {
 

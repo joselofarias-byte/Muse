@@ -12,6 +12,7 @@ import io.zer0.muse.data.assistant.AssistantRepository
 import io.zer0.muse.data.session.SessionRepository
 import io.zer0.muse.notification.MuseNotificationManager
 import io.zer0.muse.notification.MuseNotificationTarget
+import io.zer0.muse.util.GlobalCoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -21,21 +22,21 @@ import kotlinx.coroutines.withTimeoutOrNull
 import org.koin.java.KoinJavaComponent
 
 /**
- * v2.x: Tasker Receptor vinculado.
+ * v2.x: Tasker 联动接收器。
  *
- * Se agregó recientemente la evaluación comparativa de capacidades del proyecto de referencia: Permitir la plataforma de automatización de Android (Tasker / MacroDroid etc.) vía transmisión
- * Active Muse para que ejecute una ronda de diálogo y los resultados se devolverán como notificaciones. llenar"Orquestación de automatización externa Muse"brecha.
+ * 允许 Android 自动化平台（Tasker / MacroDroid 等）通过广播
+ * 触发 Muse 跑一轮对话，结果以通知返回，用于"外部自动化编排 Muse"的场景。
  *
- * Uso (Tasker Acción "Enviar intención"):
- *  - Acción:`io.zer0.muse.action.TASKER_TRIGGER`
- *  - Nombre del paquete:`io.zer0.muse`
- *  - Parámetros adicionales:`prompt` = Texto para enviar a AI (obligatorio)
+ * 用法（Tasker 的「发送意图」动作）：
+ *  - 动作：`io.zer0.muse.action.TASKER_TRIGGER`
+ *  - 包名：`io.zer0.muse`
+ *  - 额外参数：`prompt` = 要发送给 AI 的文本（必填）
  *
- * Modelo de ejecución: ronda única en segundo plano (sin interfaz de usuario), reutilización [ChatService] El mismo conjunto de análisis de modelos que el enlace principal.
- * Sesión de redacción de resultados (nueva sesión dedicada)+ Enviar notificación, que tiene el mismo origen que la acción de IA de las tareas programadas.
+ * 执行模型：后台单轮（不经 UI），复用 [ChatService] 与主链路同一套模型解析。
+ * 结果写入会话（新建专用会话）+ 发通知，与定时任务的 AI 动作同源。
  *
- * Seguridad: solo responda a acciones explícitas de este paquete (no exporte ninguna recepción de Intent); la palabra rápida se completa una vez,
- * No otorgue permiso de ejecución a la herramienta (para evitar transmisiones externas que activen indirectamente las operaciones del dispositivo). Si necesita capacidades de herramientas, utilice tareas programadas en la aplicación.
+ * 安全：仅响应本包显式动作（不导出任意 Intent 接收）；提示词走一次 completion，
+ * 不授予工具执行权限（避免外部广播间接触发设备操作）。如需工具能力，请用应用内定时任务。
  */
 class TaskerTriggerReceiver : BroadcastReceiver() {
 
@@ -43,18 +44,18 @@ class TaskerTriggerReceiver : BroadcastReceiver() {
         if (intent.action != ACTION_TASKER_TRIGGER) return
         val prompt = intent.getStringExtra(EXTRA_PROMPT)?.trim().orEmpty()
         if (prompt.isEmpty()) {
-            Logger.w(TAG, "Tasker Activador que falta mensaje, ignorar")
+            Logger.w(TAG, "Tasker 触发缺少 prompt，忽略")
             return
         }
         val pendingResult = goAsync()
         @Suppress("TooGenericExceptionCaught")
-        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+        CoroutineScope(SupervisorJob() + Dispatchers.IO + GlobalCoroutineExceptionHandler).launch {
             try {
-                // v2.6.7 fix (AUDIT F22): La base de datos no se eliminará dentro de la ventana de recuperación.
-                // La antigua implementación appendMessage restaura directamente la transacción clearConversationStateForRestore
-                // Esta ronda de escritura se sobrescribirá. —— Se muestra como "Tasker Se activa pero no queda ningún diálogo."
+                // v2.6.7 fix (AUDIT F22): 恢复窗口内不落库。
+                // 旧实现直接 appendMessage，恢复事务的 clearConversationStateForRestore
+                // 会把这轮写入覆盖掉 —— 表现为「Tasker 触发了但对话没留下」。
                 if (io.zer0.common.ProcessWriteGate.restoring) {
-                    Logger.w(TAG, "Recuperación de copia de seguridad en progreso, omitiendo el activador de Tasker")
+                    Logger.w(TAG, "备份恢复进行中，跳过 Tasker 触发")
                     return@launch
                 }
                 val settings = runCatching {
@@ -62,9 +63,9 @@ class TaskerTriggerReceiver : BroadcastReceiver() {
                         io.zer0.muse.data.SettingsRepository::class.java,
                     )
                 }.getOrNull()
-                // AUD-20261011-TASKER-ABUSE: tres líneas de defensa —— El interruptor está apagado por defecto + longitud máxima + límite de frecuencia.
-                // Este receptor es una entrada exportada sin permiso.,Se puede enviar cualquier solicitud.;
-                // La facturación se puede activar cíclicamente sin defensa LLM(Se ha verificado que la ejecución de la herramienta no se puede activar indirectamente.,Por lo tanto, la brecha es un abuso de costos.).
+                // AUD-20261011-TASKER-ABUSE: 三道防线 —— 开关默认关闭 + 长度上限 + 限频。
+                // 本 Receiver 是 exported 且无 permission 的入口,任意应用都能发;
+                // 不设防即可循环触发计费 LLM(已验证无法间接触发工具执行,故缺口是成本滥用)。
                 val decision = TaskerTriggerGuard.evaluate(
                     enabled = settings?.taskerTriggerEnabledFlow?.first() ?: false,
                     promptLength = prompt.length,
@@ -72,13 +73,13 @@ class TaskerTriggerReceiver : BroadcastReceiver() {
                     lastAcceptedAtMs = lastAcceptedAt,
                 )
                 if (decision != TaskerTriggerGuard.Decision.ACCEPTED) {
-                    Logger.w(TAG, "Tasker Disparador denegado: $decision")
+                    Logger.w(TAG, "Tasker 触发被拒绝: $decision")
                     return@launch
                 }
                 lastAcceptedAt = System.currentTimeMillis()
                 runTrigger(context.applicationContext, prompt)
             } catch (e: Exception) {
-                Logger.e(TAG, "Tasker La ejecución del disparador falló: ${e.message}", e)
+                Logger.e(TAG, "Tasker 触发执行失败: ${e.message}", e)
             } finally {
                 pendingResult.finish()
             }
@@ -100,12 +101,12 @@ class TaskerTriggerReceiver : BroadcastReceiver() {
                 maxTokens = assistant?.maxTokens,
             )
         } ?: run {
-            Logger.w(TAG, "Tasker Activar el tiempo de espera de la IA")
+            Logger.w(TAG, "Tasker 触发 AI 超时")
             return
         }
-        val reply = io.zer0.muse.transformer.stripThinkTags(completion.text).ifBlank { "(respuesta vacía)" }
+        val reply = io.zer0.muse.transformer.stripThinkTags(completion.text).ifBlank { "(空回复)" }
 
-        // Coloque la base de datos en una sesión dedicada (creada por primera vez y reutilizada en sesiones posteriores con el mismo nombre), que tiene el mismo origen que la tarea programada.
+        // 落库到专用会话（首次创建，后续复用同名会话），与定时任务同源
         val sessionId = resultOf {
             val existing =
                 sessionRepo.observeSessions().first().firstOrNull { it.title == TASKER_SESSION_TITLE }
@@ -121,12 +122,12 @@ class TaskerTriggerReceiver : BroadcastReceiver() {
             resultOf {
                 sessionRepo.appendMessage(sessionId, UIMessage(role = MessageRole.USER, content = prompt))
                 sessionRepo.appendMessage(sessionId, UIMessage(role = MessageRole.ASSISTANT, content = reply))
-            }.onError { msg, _ -> Logger.w(TAG, "Tasker La sesión no pudo iniciar sesión en la base de datos: $msg") }
+            }.onError { msg, _ -> Logger.w(TAG, "Tasker 会话落库失败: $msg") }
         }
 
-        // Resultado de devolución de notificación
-        // v2.6.0 (AUD-CHANNEL-F10): Cambiar la política de notificación global del usuario —— La implementación original estaba codificada
-        // policy = "always",Incluso si el usuario selecciona“nunca notificar”,La notificación seguirá apareciendo cada vez que se active Tasker.
+        // 通知回传结果
+        // v2.6.0 (AUD-CHANNEL-F10): 改读用户全局通知策略 —— 原实现硬编码
+        // policy = "always",用户即使选了“从不通知”,每次 Tasker 触发仍会弹通知。
         resultOf {
             val settings = runCatching {
                 KoinJavaComponent.get<io.zer0.muse.data.SettingsRepository>(
@@ -136,33 +137,33 @@ class TaskerTriggerReceiver : BroadcastReceiver() {
             val policy = settings?.notificationPolicyFlow?.first() ?: "when_unfocused"
             MuseNotificationManager(app).notifyChatCompletedWithPolicy(
                 policy = policy,
-                sessionTitle = "Tasker gatillo",
+                sessionTitle = "Tasker 触发",
                 preview = reply,
                 target = if (sessionId != null) MuseNotificationTarget.Session(sessionId) else MuseNotificationTarget.Home,
             )
-        }.onError { msg, _ -> Logger.w(TAG, "Tasker Notificación fallida: $msg") }
+        }.onError { msg, _ -> Logger.w(TAG, "Tasker 通知失败: $msg") }
     }
 
     companion object {
         private const val TAG = "TaskerTriggerReceiver"
 
-        /** Tasker Acción explícita que se debe enviar. */
+        /** Tasker 应发送的显式动作。 */
         const val ACTION_TASKER_TRIGGER = "io.zer0.muse.action.TASKER_TRIGGER"
 
-        /** Tasker La clave adicional de la palabra de aviso entrante. */
+        /** Tasker 传入的提示词 extra key。 */
         const val EXTRA_PROMPT = "prompt"
 
-        /** Tasker Título de sesión privada activada (reutilización del mismo nombre). */
-        const val TASKER_SESSION_TITLE = "Tasker gatillo"
+        /** Tasker 触发的专用会话标题（同名复用）。 */
+        const val TASKER_SESSION_TITLE = "Tasker 触发"
 
         private const val LLM_TIMEOUT_MS = 120_000L
 
         /**
-         * AUD-20261011-TASKER-ABUSE: Última hora de lanzamiento(Punto de referencia de limitación de frecuencia en el proceso).
+         * AUD-20261011-TASKER-ABUSE: 上次放行时刻(进程内限频基准)。
          *
-         * Receiver Cada onReceive puede ser una nueva instancia(manifest registro estático),
-         * Por lo tanto, el estado límite de frecuencia se coloca en companion;El calibre aceptable se restablece después de reiniciar el proceso.
-         * (Con el interruptor de persistencia desactivado de forma predeterminada,no constituye un bypass).
+         * Receiver 每次 onReceive 都可能是新实例(manifest 静态注册),
+         * 因此限频状态放在 companion;进程重启后重置属可接受口径
+         * (配合默认关闭的持久化开关,不构成绕过)。
          */
         @Volatile
         private var lastAcceptedAt: Long? = null

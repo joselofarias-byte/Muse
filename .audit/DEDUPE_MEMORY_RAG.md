@@ -1,23 +1,23 @@
-# Enlace 7: Memoria y Base de Conocimientos (RAG) — Línea base de deduplicación
+# 链路 7：记忆与知识库（RAG） — 去重基线
 
-## Confirmado para ser reparado (no hay más informes)
-- Memoria:FactDb Eliminación atómica (facts+FTS+links Misma transacción); guardar automáticamente las huellas digitales (sin escritura en caso de falla, ventana consistente con MAX_MESSAGE_CHARS, clave idempotente que incluye asistente/alcance/espacio, volver a ejecutar en caso de falla);FACTS Conciliación incremental y limpieza de mesas vacías;scoped La compilación de memoria no escribe archivos raíz compartidos.
-- Puerta de recuperación de memoria:MemoryTicker forceCompileNow/daily pipeline/writeDailyState Fallo cerrado antes de escribir.
-- RAG Seis rondas de reparaciones: aislamiento de documentos internos cerrado por error; la falla del índice de transmisión limpia el fragmento/FTS/HNSW y borra el estado del índice del documento; el primer lote de fallas de incrustación/dimensión conserva el índice anterior;contentHash Escritura completa de entradas de importación (cálculo incremental de transmisión); las palabras clave se agotan en fragmentos FTS BM25 + tabla faltante de recuperación automática + alcance de alcanceDocIds no está ampliado; inyección de presupuesto=Fragmento real de 200 caracteres.
-- devdocs:BuiltInKnowledgeDocSeeder Unificar semilla + asegurar índice de vector incremental indexado (is_internal, degradación silenciosa);search_conversation SAFE Herramientas (sessionId desde el contexto del host falló cerrado); conversación de seguimiento de sesiónRecallEnabled(messages_fts/LIKE, el texto original se inyecta dentro del presupuesto).
-- HNSW:embedding Retorno de cambio de dimensiones y huellas dactilares; Los protectores de apertura importados están unificados (a603c4f7).
-- resumen diario/La programación de momentos y el mapeo de roles de memoria han regresado y se han completado.
+## 已确认修复（不得再报）
+- 记忆：FactDb 原子删除（facts+FTS+links 同事务）；自动保存指纹（失败不写、窗口与 MAX_MESSAGE_CHARS 一致、幂等键含 assistant/scope/space、失败补跑）；FACTS 增量对账与空表清空；scoped 记忆编译不写共享根文件。
+- 记忆恢复闸门：MemoryTicker forceCompileNow/daily pipeline/writeDailyState 写前 fail-closed。
+- RAG 六轮修复：内部文档隔离 fail-closed；流式索引失败清理 chunk/FTS/HNSW 并清零文档索引状态；首批 embedding/维度失败保留旧索引；contentHash 全导入入口写入（流式增量计算）；关键词兜底走 chunks FTS BM25 + 缺表自愈 + scopeDocIds 范围不扩大；注入预算=实际 200 字符 snippet。
+- devdocs：BuiltInKnowledgeDocSeeder 统一 seed + ensureIndexed 增量向量索引（is_internal，静默降级）；search_conversation SAFE 工具（sessionId 来自宿主上下文 fail-closed）；会话回溯 conversationRecallEnabled（messages_fts/LIKE，预算内原文注入）。
+- HNSW：embedding 指纹与维度切换回归；导入口径守卫统一（a603c4f7）。
+- 每日总结/朋友圈调度、记忆角色映射回归补齐。
 
-## Se sabe que no está resuelto (se pueden agregar nuevas pruebas citando el número)
-- La página principal de la base de conocimientos no coincide con el diámetro de importación del F-31 y no se ha realizado la integración en la importación en streaming (se sabe).
-- DocumentParser Grandes limitaciones de protección de documentos estructurados (conocidas).
-- P1 #20-31 Residuos medios relacionados con RAG (MMR Brecha sólo en parte del camino HNSW,metadataFilter El retroceso de la ruta del filtro se ha solucionado parcialmente——Verificar situación actual).
-- MemoryDb No existe una interfaz de recuperación en la aplicación para archivos de versión alta (conocido).
+## 已知未解决（可引用编号补充新证据）
+- 主知识库页与 F-31 导入口径不一致、并入流式导入未做（已知）。
+- DocumentParser 大结构化文档保护限制（已知）。
+- P1 #20-31 中 RAG 相关残余（MMR 缺口只在部分 HNSW 路径、metadataFilter 过滤路径回退已部分修复——核实现状）。
+- MemoryDb 高版本归档无应用内恢复界面（已知）。
 
-## La dirección de exploración clave de este enlace.
-1. **ensureIndexed Nuevos riesgos de la indexación incremental**: Inicia la simultaneidad del índice en segundo plano y la importación de usuarios al mismo tiempo;embedding La configuración cambió a mitad de camino (modelo/Manejo de vectores antiguos de documentos is_internal cuando se cambia de dimensión); si la degradación silenciosa puede engañar a los usuarios haciéndoles pensar que los devdocs se pueden buscar semánticamente (descubrimiento).
-2. Rastreo de sesión + conversación_búsqueda + búsqueda_conocimiento Superposición presupuestaria de tres entradas de búsqueda: control de cantidad total de tres inyecciones en una ronda de generación.
-3. FactDb v14→v15 migración; constelación de memoria/Compatibilidad de entidades v15 para canalización de reflexión.
-4. RAG Semántica fragmentada: chino/Calidad de fragmentación del texto sin espacios en blanco (manejo de fragmentación de CJK);FTS tokenizer La situación actual de la segmentación de palabras chinas (BM25 Historia de la sucursal china"fracaso silencioso"——Verificar el estado actual, calcular la cuenta antigua como nueva evidencia si ha caducado, marcarla si ha sido revisada).
-5. Uso y limpieza del disco de índice vectorial: eliminación de documentos/Reciclaje de archivos HNSW posteriores al repositorio; Diseño de almacenamiento HNSW para múltiples repositorios.
-6. knowledge_search include_internal Lado expuesto: qué asistentes/Los canales pueden ver documentos internos (consistencia de configuración).
+## 本链路重点探查方向
+1. **ensureIndexed 增量索引的新风险**：启动后台索引与用户同时导入的并发；embedding 配置中途变更（模型/维度切换）时 is_internal 文档的旧向量处理；静默降级是否会让用户误以为 devdocs 可语义检索（可发现性）。
+2. 会话回溯 + search_conversation + knowledge_search 三个检索入口的预算叠加：一轮生成里三路注入的总量控制。
+3. FactDb v14→v15 迁移；记忆星座/反思管线的 v15 实体兼容。
+4. RAG 分块语义：中文/无空格文本的分块质量（分块器对 CJK 的处理）；FTS tokenizer 对中文的分词现状（BM25 中文支路历史上"静默失效"——核实现状，若已失效算旧账新证据，若已修标注）。
+5. 向量索引磁盘占用与清理：删除文档/知识库后 HNSW 文件回收；多知识库的 HNSW 存储布局。
+6. knowledge_search include_internal 的暴露面：哪些助手/渠道能看到 internal 文档（配置一致性）。

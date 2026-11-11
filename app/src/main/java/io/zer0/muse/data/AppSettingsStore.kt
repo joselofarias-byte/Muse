@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import io.zer0.common.Logger
+import io.zer0.muse.util.GlobalCoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -13,50 +14,58 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /**
- * P2-2 Dividir: configure subalmacenes a nivel de aplicación.
+ * P2-2 拆分：应用级设置子仓库。
  *
- * Compartido con SettingsRepository/AppearanceSettingsStore `muse_settings` DataStore,
- * Actualmente aloja idiomas de interfaz y caché rápido de SharedPreferences; idiomas posteriores, semillas de temas, accesos directos de escritorio, etc.
- * Los campos a nivel de aplicación continúan convergiendo aquí.
+ * 与 SettingsRepository / AppearanceSettingsStore 共用 `muse_settings` DataStore，
+ * 目前承载界面语言与 SharedPreferences 快速缓存；后续语言、主题种子、桌面快捷键等
+ * 应用级字段继续收敛到这里。
  */
-/** Derivar la deduplicación del flujo de configuración:DataStore.data Elimine únicamente los duplicados de todas las Preferencias.map Luego, cada uno se deduplica para suprimir la emisión repetida del mismo valor provocada por claves irrelevantes. */
+/** 派生配置流去重：DataStore.data 只对整份 Preferences 去重，map 后各自去重以抑制无关 key 触发的相同值重复发射。 */
 private fun <T> Flow<Preferences>.mapDistinct(transform: suspend (Preferences) -> T): Flow<T> = map(transform).distinctUntilChanged()
 
 class AppSettingsStore(private val context: Context) {
 
     private val store get() = context.museSettingsDataStore
 
-    /** v1.131: Caché de sincronización rápida del idioma, para que el hilo principal adjuntoBaseContext lea sincrónicamente. */
+    /** v1.131: 语言快速同步缓存，供主线程 attachBaseContext 同步读取。 */
     private val languageSyncCache = context.getSharedPreferences("muse_language_cache", Context.MODE_PRIVATE)
-    private val cacheScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val cacheScope = CoroutineScope(SupervisorJob() + Dispatchers.IO + GlobalCoroutineExceptionHandler)
 
-    val languageFlow: Flow<String> = store.data.mapDistinct { prefs -> prefs[KEY_LANGUAGE] ?: "system" }
+    val languageFlow: Flow<String> = store.data.mapDistinct { prefs -> prefs[KEY_LANGUAGE] ?: "es" }
 
     init {
-        // Cuando los usuarios históricos actualizan a v1.131+, el SP está vacío y debe copiarse del DataStore; La ejecución asincrónica no bloquea el inicio.
+        // 历史用户升级到 v1.131+ 时 SP 为空，需从 DataStore 拷贝一次；异步执行不阻塞启动。
         cacheScope.launch {
             try {
-                val dsLang = store.data.mapDistinct { prefs -> prefs[KEY_LANGUAGE] ?: "system" }.first()
-                if (languageSyncCache.getString(KEY_LANGUAGE_SP, null) == null) {
-                    languageSyncCache.edit().putString(KEY_LANGUAGE_SP, dsLang).apply()
-                }
+                migrateLanguageCache()
             } catch (e: Exception) {
                 Logger.w("AppSettingsStore", "language SP cache migration failed: ${e.message}", e)
             }
         }
     }
 
-    suspend fun saveLanguage(lang: String) {
+    internal suspend fun migrateLanguageCache() = languageMutex.withLock {
+        val dsLang = store.data.first()[KEY_LANGUAGE]
+        // An old implicit system cache must not override the new default.
+        if (dsLang == null || languageSyncCache.getString(KEY_LANGUAGE_SP, null) == null) {
+            languageSyncCache.edit().putString(KEY_LANGUAGE_SP, dsLang ?: "es").apply()
+        }
+    }
+
+    suspend fun saveLanguage(lang: String) = languageMutex.withLock {
         store.edit { it[KEY_LANGUAGE] = lang }
         languageSyncCache.edit().putString(KEY_LANGUAGE_SP, lang).apply()
     }
 
-    /** Lea la configuración de idioma de forma sincrónica para evitar que el subproceso principal lea DataStore durante el inicio en frío. */
-    fun getLanguageSync(): String = languageSyncCache.getString(KEY_LANGUAGE_SP, "system") ?: "system"
+    /** 同步读取语言设置，避免冷启动时主线程阻塞读 DataStore。 */
+    fun getLanguageSync(): String = languageSyncCache.getString(KEY_LANGUAGE_SP, "es") ?: "es"
 
     private companion object {
+        private val languageMutex = Mutex()
         private val KEY_LANGUAGE = stringPreferencesKey("language")
         private const val KEY_LANGUAGE_SP = "language"
     }

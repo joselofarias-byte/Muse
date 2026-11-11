@@ -4,32 +4,32 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**
- * Phase 2: El producto se guarda como un nombre de archivo para generar pruebas.
+ * Phase 2: 产物另存文件名生成测试。
  */
 class ArtifactExportFileNameTest {
 
     @Test
-    fun `El título normal genera el nombre del archivo txt`() {
+    fun `普通标题生成 txt 文件名`() {
         assertEquals("report.txt", artifactExportFileName("report"))
     }
 
     @Test
-    fun `Los caracteres ilegales se reemplazan con guiones bajos`() {
+    fun `非法字符替换为下划线`() {
         assertEquals("My_Doc_2024.txt", artifactExportFileName("My Doc/2024"))
     }
 
     @Test
-    fun `título chino reservado`() {
-        assertEquals("análisis_de_datos.txt", artifactExportFileName("análisis de datos"))
+    fun `中文标题保留`() {
+        assertEquals("数据分析.txt", artifactExportFileName("数据分析"))
     }
 
     @Test
-    fun `El título vacío vuelve al nombre de archivo predeterminado`() {
+    fun `空标题回退默认文件名`() {
         assertEquals("$DEFAULT_ARTIFACT_FILE_NAME.txt", artifactExportFileName("   "))
     }
 
     @Test
-    fun `Títulos muy largos truncados a 40 caracteres`() {
+    fun `超长标题截断到 40 字符`() {
         assertEquals("a".repeat(40) + ".txt", artifactExportFileName("a".repeat(100)))
     }
 }

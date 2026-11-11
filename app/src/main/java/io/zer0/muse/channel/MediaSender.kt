@@ -1,14 +1,14 @@
 package io.zer0.muse.channel
 
 /**
- * Portal unificado para la entrega de medios salientes.
+ * 出站媒体发送的统一入口。
  *
- * Solo se encarga de la distribución según la plataforma, y ​​la implementación específica está en los archivos independientes de cada plataforma.
- * De esta forma, cada archivo tiene una única responsabilidad y al agregar la plataforma no es necesario tocar otros lugares.
+ * 只负责按平台分发，具体实现在各平台的独立文件里。
+ * 这样每个文件职责单一，加平台不用动这里之外的地方。
  */
 internal object MediaSender {
     /**
-     * Enviar medios. Se debe pasar antes de llamar. [ChannelPlatform.checkMediaSendable], lo comprobaré nuevamente aquí.
+     * 发送媒体。调用前应先过 [ChannelPlatform.checkMediaSendable]，这里会再查一次。
      */
     suspend fun send(config: ChannelConfig, media: OutboundMedia, targetOverride: String? = null): Result<Unit> {
         config.platform.checkMediaSendable(media)?.let {
@@ -21,7 +21,7 @@ internal object MediaSender {
             ChannelPlatform.DINGTALK -> DingtalkMediaSender.send(config, media, targetOverride)
             ChannelPlatform.WECLAW -> Result.failure(
                 UnsupportedOperationException(
-                    "El canal WeChat actualmente no admite el envío${media.kind.name.lowercase()}, actualmente solo puedo enviar y recibir mensajes de texto",
+                    "微信渠道暂不支持发送${media.kind.name.lowercase()}，目前只能收发文字",
                 ),
             )
         }

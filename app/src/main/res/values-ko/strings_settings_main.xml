@@ -19,6 +19,8 @@
     <string name="settings_provider_empty_title">아직 제공업체가 없습니다.</string>
     <string name="settings_provider_empty_subtitle">공급자를 추가하면 어시스턴트가 작동하기 시작합니다</string>
     <string name="settings_provider_empty_action">공급자 추가</string>
+    <string name="settings_provider_free_ready_title">내장 무료 모델이 준비됨</string>
+    <string name="settings_provider_free_ready_subtitle">지금 바로 대화할 수 있습니다. 자체 제공자 추가는 선택이며 용량과 기능이 늘어납니다.</string>
     <string name="settings_provider_category_official">공식적인</string>
     <string name="settings_provider_category_relay">계전기</string>
     <string name="settings_provider_category_custom">관습</string>
@@ -44,9 +46,9 @@
     <string name="settings_provider_unable_to_resolve_server">서버 주소를 확인할 수 없습니다.</string>
     <string name="settings_provider_query_timeout">쿼리 시간이 초과되었습니다.</string>
     <string name="settings_provider_query_failed">쿼리 실패: %1$s</string>
-    <string name="settings_provider_discard_changes_title">변경사항을 취소하시겠습니까?</string>
-    <string name="settings_provider_discard_changes_content">저장되지 않은 변경사항은 손실됩니다.</string>
-    <string name="settings_provider_discard">버리다</string>
+    <string name="settings_unsaved_changes_title">변경사항을 취소하시겠습니까?</string>
+    <string name="settings_unsaved_changes_content">저장되지 않은 변경사항은 손실됩니다.</string>
+    <string name="settings_unsaved_discard">버리다</string>
     <string name="settings_provider_new">새로운 제공자</string>
     <!-- v2.4: standalone connection test result messages (short, distinct from fetchModels error grading) -->
     <string name="settings_provider_test_success_count">연결 OK · %1$d 모델</string>
@@ -68,6 +70,7 @@
     <string name="settings_provider_tab_models">모델</string>
     <string name="settings_provider_file_picker_failed">파일 선택기를 열 수 없습니다: %1$s</string>
     <string name="settings_provider_delete_title">공급자 삭제</string>
+    <string name="settings_provider_delete_consequence">API 키와 설정된 모델 목록도 함께 삭제됩니다.</string>
     <string name="settings_provider_delete_content">%1$s을 삭제하시겠습니까?</string>
     <string name="settings_provider_action_activate">현재로 설정</string>
     <string name="settings_model_catalog_refresh">업데이트 확인</string>
@@ -307,6 +310,8 @@
     <string name="settings_chat_show_timestamp">타임스탬프 표시</string>
     <string name="settings_chat_show_timestamp_subtitle">각 메시지의 전송 시간 표시</string>
     <string name="settings_chat_generation_style">세대 스타일</string>
+    <string name="settings_chat_reply_language">사용자 언어로 답변</string>
+    <string name="settings_chat_reply_language_subtitle">답변은 사용자 메시지의 언어를 따르고, 판단이 어려우면 인터페이스 언어를 사용합니다. 끄면 프롬프트가 정합니다</string>
     <string name="settings_chat_randomness">응답 무작위성</string>
     <string name="settings_chat_temp_hint_certain">결정적이고 안정적이며 예측 가능합니다.</string>
     <string name="settings_chat_temp_hint_balanced_low">균형이 잡혀 있고 안정적이면서도 다양함</string>
@@ -382,12 +387,17 @@
     <string name="cloud_backup_backup_now">지금 백업</string>
     <string name="cloud_backup_backup_success">클라우드에 업로드됨</string>
     <string name="cloud_backup_config_saved">구성이 저장되었습니다</string>
+    <string name="cloud_backup_config_save_failed">저장에 실패했습니다</string>
     <string name="cloud_backup_delete_failed">삭제 실패</string>
+    <string name="cloud_backup_delete_consequence">이 클라우드 백업은 완전히 삭제됩니다. 유일한 사본이면 클라우드 복구 수단을 잃게 됩니다.</string>
     <string name="cloud_backup_delete_success">삭제됨</string>
     <string name="cloud_backup_delete_this">삭제</string>
     <string name="cloud_backup_enable">클라우드 백업 활성화</string>
     <string name="cloud_backup_hide_secret">숨기기</string>
     <string name="cloud_backup_interval_hint">간격이 짧을수록 업로드가 잦아져 데이터와 배터리를 더 소모합니다. 대규모 지식 기반은 ≥ 3일 권장</string>
+    <plurals name="cloud_backup_interval_days">
+        <item quantity="other">%1$d일</item>
+    </plurals>
     <string name="cloud_backup_interval_label">백업 간격(일)</string>
     <string name="cloud_backup_list_empty">원격 백업이 없습니다</string>
     <string name="cloud_backup_list_load_failed">불러오기 실패. 구성을 확인한 후 다시 시도하세요</string>
@@ -413,7 +423,7 @@
     <string name="cloud_backup_type_webdav">웹DAV</string>
     <string name="settings_chat_expand_button">전체 화면 편집 버튼 표시</string>
     <string name="settings_chat_expand_button_subtitle">입력란 오른쪽에 전체 화면 편집 버튼 표시</string>
-    <!-- Correcciones en la interfaz (i18n-3.x): restricciones de contexto del piso i18n(Copiar temporalmente chino,Traducción posterior) -->
+    <!-- 前端修复 (i18n-3.x): 楼层式上下文限制 i18n(临时复制中文,后续补译) -->
     <string name="settings_chat_floor_limiter">층 기반 컨텍스트 제한</string>
     <string name="settings_chat_floor_limiter_subtitle">사용자 메시지를 층으로 간주하고 최근 N층 전체를 유지하여 대화 중간에 잘리는 것을 방지</string>
     <string name="settings_chat_tool_rounds">도구 라운드 상한</string>
@@ -423,7 +433,7 @@
     <string name="settings_chat_floor_keep">유지할 층 수</string>
     <string name="settings_chat_floor_keep_subtitle">이 층수를 초과하는 이전 메시지는 잘립니다</string>
 
-    <!-- Correcciones en la interfaz (i18n-3.x): Copia de compensación pública(Emoticones/Compartir memoria de chat grupal) -->
+    <!-- 前端修复 (i18n-3.x): 公共清空文案(表情包/群聊记忆共用) -->
     <string name="settings_common_clear_all">모두 비우기</string>
     <string name="settings_common_clear">비우기</string>
     <string name="settings_chat_background_section">모양</string>

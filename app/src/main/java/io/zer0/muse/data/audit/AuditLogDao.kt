@@ -6,15 +6,15 @@ import androidx.room.Query
 import androidx.room.Transaction
 
 /**
- * P2-4 Registro de auditoría DAO.
+ * P2-4 审计日志 DAO。
  *
- * - [insert]: Escribir un registro de auditoría
- * - [query]: Consulta por página en orden cronológico inverso
- * - [count]: Número total de artículos(para comprobar el búfer circular)
- * - [deleteOldest]: Eliminar los n elementos más antiguos(Se llama cuando el búfer circular excede el límite.)
- * - [deleteOlderThan]: Eliminar registros antes de la marca de tiempo especificada(Limpieza por período de retención al inicio)
- * - [deleteAll]: Borrar todos los registros(El usuario hace clic en la página de registro de auditoría."Borrar"llamado cuando)
- * - [insertWithCleanup]: átomo insert + count + trim,Evite las ventanas de carrera
+ * - [insert]: 写入一条审计日志
+ * - [query]: 按时间倒序分页查询
+ * - [count]: 总条数(用于环形缓冲检查)
+ * - [deleteOldest]: 删除最旧的 n 条(环形缓冲超限时调用)
+ * - [deleteOlderThan]: 删除指定时间戳之前的日志(启动时按保留期清理)
+ * - [deleteAll]: 清空全部日志(用户在审计日志页点击"清空"时调用)
+ * - [insertWithCleanup]: 原子 insert + count + trim,避免竞态窗口
  */
 @Dao
 interface AuditLogDao {
@@ -37,7 +37,7 @@ interface AuditLogDao {
     @Query("DELETE FROM audit_log")
     suspend fun deleteAll()
 
-    /** M-DB-4: átomo insert + count + trim — Evite correr ventanas entre el conteo y la inserción durante la escritura simultánea. */
+    /** M-DB-4: 原子 insert + count + trim — 避免并发写入时 count 与 insert 之间出现竞态窗口。 */
     @Transaction
     suspend fun insertWithCleanup(
         timestamp: Long,

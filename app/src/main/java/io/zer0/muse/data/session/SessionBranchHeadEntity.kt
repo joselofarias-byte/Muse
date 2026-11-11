@@ -9,7 +9,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.PrimaryKey
 import androidx.room.Query
 
-/** El encabezado de la rama de la sesión actual y el cursor persistente en el nuevo orden de confirmación. */
+/** 当前会话分支头和新提交序的持久化游标。 */
 @kotlinx.serialization.Serializable
 @Entity(
     tableName = "session_branch_heads",
@@ -47,11 +47,11 @@ interface SessionBranchHeadDao {
     @Query("DELETE FROM session_branch_heads WHERE sessionId = :sessionId")
     suspend fun deleteBySession(sessionId: String)
 
-    /** P0-10: Para copia de seguridad y exportación — Leer completo. */
+    /** P0-10: 备份导出用 — 全量读取。 */
     @Query("SELECT * FROM session_branch_heads")
     suspend fun getAll(): List<SessionBranchHeadEntity>
 
-    /** P0-10: Para respaldo y recuperación — Borrar todo. */
+    /** P0-10: 备份恢复用 — 全量清空。 */
     @Query("DELETE FROM session_branch_heads")
     suspend fun deleteAll()
 }

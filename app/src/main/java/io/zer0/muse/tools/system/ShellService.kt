@@ -21,24 +21,24 @@ internal fun sanitizeShellCommandForLog(command: String): String {
 }
 
 /**
- * P3-3: Shizuku UserService — Un servicio que ejecuta comandos con privilegios de shell.
+ * P3-3: Shizuku UserService — 以 shell 权限执行命令的服务。
  *
- * El servicio pasa [Shizuku.bindUserService] Comenzó en un proceso separado gestionado por Shizuku.,
- * Heredado de Shizuku shell (ADB) permisos. El proceso principal se llama a través de AIDL IPC [execute].
+ * 该服务通过 [Shizuku.bindUserService] 在 Shizuku 管理的独立进程中启动,
+ * 继承 Shizuku 的 shell (ADB) 权限。主进程通过 AIDL IPC 调用 [execute]。
  *
- * Nota:Shizuku UserService No Android [android.app.Service]. La propia clase de servicio debe
- * darse cuenta [android.os.IBinder], el AIDL Stub generado se hereda directamente aquí; de lo contrario bindUserService
- * No se obtendrá ninguna carpeta disponible y la persona que llama continuará esperando a que se agote el tiempo de espera de la conexión.
+ * 注意：Shizuku UserService 不是 Android [android.app.Service]。服务类本身必须
+ * 实现 [android.os.IBinder]，这里直接继承生成的 AIDL Stub；否则 bindUserService
+ * 不会得到可用的 binder，调用方会持续等待连接超时。
  *
- * ciclo de vida:
- *  - por [ShizukuAuthorizer] Vincular en la primera ejecución(bindUserService)
- *  - El servicio se ejecuta en un proceso separado.,Aislado del proceso principal,El bloqueo no afecta el proceso principal.
- *  - Shizuku Cuando se detiene el servicio,El proceso también se dará por terminado.
+ * 生命周期:
+ *  - 由 [ShizukuAuthorizer] 在首次执行时绑定(bindUserService)
+ *  - 服务在独立进程运行,与主进程隔离,崩溃不影响主进程
+ *  - Shizuku 服务停止时,该进程也会被终止
  *
- * seguro:
- *  - Sólo responde a llamadas de comando AIDL Shell,No procesado Intent
- *  - Ejecución de comandos sin filtrado de lista blanca(por la persona que llama [ToolPermissionResolver] Responsable de la verificación de límites estrictos.)
- *  - El servicio se ejecuta en el proceso Shizuku.,Incluso si se llama maliciosamente, solo puede realizar operaciones a nivel de shell.(no root)
+ * 安全:
+ *  - 仅响应 AIDL Shell 命令调用,不处理 Intent
+ *  - 命令执行无白名单过滤(由调用方 [ToolPermissionResolver] 负责硬边界校验)
+ *  - 服务运行在 Shizuku 进程中,即使被恶意调用也仅能执行 shell 级操作(非 root)
  */
 @Keep
 class ShellService : IShellService.Stub() {
@@ -46,10 +46,10 @@ class ShellService : IShellService.Stub() {
     companion object {
         private const val TAG = "ShellService"
 
-        /** AIDL Separador de campo para valor de retorno(null char,shell no aparece en la salida). */
+        /** AIDL 返回值的字段分隔符(null char,shell 输出中不会出现)。 */
         private const val FIELD_SEPARATOR = '\u0000'
 
-        /** Tiempo de espera de ejecución del comando ms. */
+        /** 命令执行超时 ms。 */
         private const val TIMEOUT_MS = 10_000L
         private const val OUTPUT_DRAIN_TIMEOUT_MS = 30_000L
 
@@ -61,10 +61,10 @@ class ShellService : IShellService.Stub() {
 
     override fun execute(command: String): String {
         return try {
-            Logger.d(TAG, "ejecutar comando verb=${sanitizeShellCommandForLog(command)}")
+            Logger.d(TAG, "执行命令 verb=${sanitizeShellCommandForLog(command)}")
             val proc = Runtime.getRuntime().exec(arrayOf("sh", "-c", command))
-            // stdout/stderr El drenaje debe continuar mientras se espera; de lo contrario uiautomator/screencap
-            // Esperar un comando con una salida ligeramente mayor llenará la tubería y el proceso hijo nunca podrá esperar a salir y se considerará erróneamente que se ha agotado el tiempo de espera.
+            // stdout/stderr 必须在 waitFor 的同时持续排空；否则 uiautomator/screencap
+            // 等输出稍大的命令会把管道写满，子进程永远等不到退出而被误判超时。
             val stdout: Future<String> = streamExecutor.submit(Callable { readStream(proc.inputStream) })
             val stderr: Future<String> = streamExecutor.submit(Callable { readStream(proc.errorStream) })
             val finished = proc.waitFor(TIMEOUT_MS, TimeUnit.MILLISECONDS)
@@ -72,7 +72,7 @@ class ShellService : IShellService.Stub() {
                 proc.destroyForcibly()
                 stdout.cancel(true)
                 stderr.cancel(true)
-                return "-1${FIELD_SEPARATOR}${FIELD_SEPARATOR}Tiempo de espera de ejecución(${TIMEOUT_MS / 1000}s)"
+                return "-1${FIELD_SEPARATOR}${FIELD_SEPARATOR}执行超时(${TIMEOUT_MS / 1000}s)"
             }
             val out = stdout.get(1, TimeUnit.SECONDS)
             val err = stderr.get(1, TimeUnit.SECONDS)
@@ -86,17 +86,17 @@ class ShellService : IShellService.Stub() {
             }
         } catch (e: InterruptedException) {
             Thread.currentThread().interrupt()
-            Logger.e(TAG, "Shell La ejecución fue interrumpida: ${e.message}", e)
-            "-1${FIELD_SEPARATOR}${FIELD_SEPARATOR}${e.message ?: "La ejecución fue interrumpida"}"
+            Logger.e(TAG, "Shell 执行被中断: ${e.message}", e)
+            "-1${FIELD_SEPARATOR}${FIELD_SEPARATOR}${e.message ?: "执行被中断"}"
         } catch (e: IOException) {
-            Logger.e(TAG, "Shell Ejecutar excepción IO: ${e.message}", e)
-            "-1${FIELD_SEPARATOR}${FIELD_SEPARATOR}${e.message ?: "IO anormal"}"
+            Logger.e(TAG, "Shell 执行 IO 异常: ${e.message}", e)
+            "-1${FIELD_SEPARATOR}${FIELD_SEPARATOR}${e.message ?: "IO 异常"}"
         } catch (e: SecurityException) {
-            Logger.e(TAG, "Shell Excepción de permiso de ejecución: ${e.message}", e)
-            "-1${FIELD_SEPARATOR}${FIELD_SEPARATOR}${e.message ?: "Excepción de permiso de ejecución"}"
+            Logger.e(TAG, "Shell 执行权限异常: ${e.message}", e)
+            "-1${FIELD_SEPARATOR}${FIELD_SEPARATOR}${e.message ?: "执行权限异常"}"
         } catch (e: IllegalArgumentException) {
-            Logger.e(TAG, "Shell excepción de ejecución: ${e.message}", e)
-            "-1${FIELD_SEPARATOR}${FIELD_SEPARATOR}${e.message ?: "excepción de ejecución"}"
+            Logger.e(TAG, "Shell 执行异常: ${e.message}", e)
+            "-1${FIELD_SEPARATOR}${FIELD_SEPARATOR}${e.message ?: "执行异常"}"
         }
     }
 
@@ -109,7 +109,7 @@ class ShellService : IShellService.Stub() {
             var process: Process? = null
             var outputCopy: Future<*>? = null
             return try {
-                Logger.d(TAG, "Ejecución de comandos de transmisión verb=${sanitizeShellCommandForLog(command)}")
+                Logger.d(TAG, "流式执行命令 verb=${sanitizeShellCommandForLog(command)}")
                 val running = ProcessBuilder("sh", "-c", command)
                     .redirectErrorStream(true)
                     .start()
@@ -128,10 +128,10 @@ class ShellService : IShellService.Stub() {
                 val drained = runCatching { copy.get(OUTPUT_DRAIN_TIMEOUT_MS, TimeUnit.MILLISECONDS) }.isSuccess
                 if (!drained) {
                     copy.cancel(true)
-                    sink.write("\n[El flujo de salida no pudo cerrarse, la lectura finalizó; la salida actual puede estar incompleta]".toByteArray(Charsets.UTF_8))
+                    sink.write("\n[输出流未能关闭，已终止读取；当前输出可能不完整]".toByteArray(Charsets.UTF_8))
                     -1
                 } else if (!finished) {
-                    sink.write("\n[tiempo de espera] Tiempo de espera de ejecución de comando(${TIMEOUT_MS / 1000}s),terminado".toByteArray(Charsets.UTF_8))
+                    sink.write("\n[超时] 命令执行超时(${TIMEOUT_MS / 1000}s),已终止".toByteArray(Charsets.UTF_8))
                     -1
                 } else {
                     running.exitValue()
@@ -144,18 +144,18 @@ class ShellService : IShellService.Stub() {
             } catch (error: Exception) {
                 process?.destroyForcibly()
                 outputCopy?.cancel(true)
-                Logger.w(TAG, "Shell pipe La ejecución falló: ${error.javaClass.simpleName}")
+                Logger.w(TAG, "Shell pipe 执行失败: ${error.javaClass.simpleName}")
                 -1
             }
         }
     }
 
     /**
-     * Leer un flujo de salida de comando, reteniendo como máximo [MAX_OUTPUT_BYTES] Bytes.
+     * 读取一条命令输出流，最多保留 [MAX_OUTPUT_BYTES] 字节。
      *
-     * Nota: Este método está reservado por bytes.**cabeza**, la cola que supere el límite será descartada. Salida del comando (informes de error, casos de prueba fallidos,
-     * El estado de salida está en las últimas líneas) Por favor vaya `ToolOutputCapture`, que conserva la cola por caracteres y puede dar referencias para lectura segmentada;
-     * No utilice este método para recibir la salida del comando; de lo contrario, la conclusión se cortará aquí primero.
+     * 注意：本方法按字节保留**头部**，超限时的尾部会被丢掉。命令类输出（报错、失败用例、
+     * 退出状态都在最后几行）请走 `ToolOutputCapture`，它按字符保留尾部并能给出分段读取的引用；
+     * 不要拿本方法去接命令输出，否则结论会先在这里被截掉。
      */
     private fun readStream(input: java.io.InputStream): String {
         val output = ByteArrayOutputStream()
@@ -171,17 +171,17 @@ class ShellService : IShellService.Stub() {
             }
         }
         val text = output.toString(Charsets.UTF_8.name())
-        return if (retained >= MAX_OUTPUT_BYTES) "$text\n[La salida está truncada]" else text
+        return if (retained >= MAX_OUTPUT_BYTES) "$text\n[输出已截断]" else text
     }
 
-    /** Shizuku desagregar/La transacción retenida llamada durante el reemplazo de la versión debe finalizar el proceso de Servicio de Usuario. */
+    /** Shizuku 解绑/版本替换时调用的保留事务，必须结束 UserService 进程。 */
     override fun destroy() {
         Logger.i(TAG, "Shell UserService destroy")
         streamExecutor.shutdownNow()
         System.exit(0)
     }
 
-    /** Salida activa opcional de la transacción en el lado de la aplicación. */
+    /** 应用侧可选的主动退出事务。 */
     override fun exit() = destroy()
 }
 

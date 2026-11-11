@@ -4,54 +4,54 @@ import io.zer0.ai.core.Model
 import io.zer0.ai.core.ProviderConfig
 
 /**
- * Solicita el resultado de la determinación de tres estados de la vinculación del modelo.
+ * 请求模型绑定的三态判定结果。
  *
- * fondo:sentencia original `provider.models.none { it.id == modelId }` en `models` Cuando la lista está vacía
- * **hengwei true**(en el conjunto vacío none{} Regresar true),Entonces "La lista de modelos aún no se ha extraído/La extracción falló"
- * Error de juicio como "el modelo realmente no existe" y desencadenante de una rebaja —— La sesión se cambia a un modelo encubierto menos capaz.
- * (Rendimiento real de la máquina:GLM-4-9B Malformación de llamada de herramienta,La generación de la tarjeta falla directamente).
+ * 背景:原判定 `provider.models.none { it.id == modelId }` 在 `models` 为空列表时
+ * **恒为 true**(空集上的 none{} 返回 true),于是把「模型列表还没拉过 / 拉取失败」
+ * 误判成「模型真的不存在」并触发降级 —— 会话被换到能力更差的兜底模型
+ * (真机表现:GLM-4-9B 工具调用畸形,卡片生成直接失败)。
  *
- * Los tres estados deben estar separados,este es el unico calibre:
- *  - [providerMissing]:Provider La configuración realmente ha desaparecido. → Bajar de categoría + alarma de nivel W(comportamiento original)
- *  - [modelMissing]:Provider Existencia, lista de modelos.**No vacío**, pero realmente no existe esto id → Bajar de categoría + alarma de nivel W
- *  - [listNotReady]:Provider Existencia, lista de modelos.**esta vacio**(Nunca jalé/no pude jalar)→ Sin degradación, sin advertencia,
- *    La vinculación solicitada por el usuario se conserva y se entrega al upstream para su determinación.;Solo queda un registro de información para solucionar problemas
+ * 三种状态必须分开,口径只此一处:
+ *  - [providerMissing]:Provider 配置真的没了 → 降级 + W 级告警(原有行为)
+ *  - [modelMissing]:Provider 存在、模型列表**非空**、但确实没有这个 id → 降级 + W 级告警
+ *  - [listNotReady]:Provider 存在、模型列表**为空**(从未拉取 / 拉取失败)→ 不降级、不告警,
+ *    保留用户请求的绑定交给上游判定;只留一条可排查的 info 日志
  *
- * lista vacía ≠ No incluido.
+ * 空列表 ≠ 不含。
  */
 internal data class RequestedModelBinding(
-    /** Provider La configuración no existe. */
+    /** Provider 配置不存在。 */
     val providerMissing: Boolean,
-    /** Provider Existe y la lista de modelos no está vacía.,Pero de hecho no hay ninguna identificación solicitada en la lista. */
+    /** Provider 存在且模型列表非空,但列表里确实没有请求的 id。 */
     val modelMissing: Boolean,
-    /** Provider Existe pero la lista de modelos está vacía. —— Lista no lista,No se puede considerar desaparecido basándose en esto. */
+    /** Provider 存在但模型列表为空 —— 列表未就绪,不能据此判定缺失。 */
     val listNotReady: Boolean,
-    /** Fijaciones disponibles:golpe preciso,O un enlace de marcador de posición construido por ID de solicitud cuando la lista no está lista;Si es verdadero, es nulo. */
+    /** 可用绑定:精确命中,或列表未就绪时按请求 id 构造的占位绑定;真缺失时为 null。 */
     val model: Model?,
 ) {
-    /** Sólo es necesario rebajar las \"verdaderas deficiencias\" y emitir una alarma de nivel W. */
+    /** 只有「真缺失」才需要降级并打 W 级告警。 */
     val missing: Boolean get() = providerMissing || modelMissing
 }
 
 /**
- * Analice el par vinculante "proveedor solicitado + modelo".
+ * 解析「请求的 provider + model」这一对绑定。
  *
- * Cómo escribir una única expresión de exportación:Tres estados son enumeraciones mutuamente excluyentes en lugar de cuatro estados booleanos independientes.,Utilice cuando de forma exhaustiva,
- * Evite que falten campos al ensamblar clases de datos con múltiples ramas de retorno.(También permite leer la sentencia de un vistazo.).
+ * 单一出口表达式写法:三态是互斥枚举而非四个独立布尔,用 when 一次穷举,
+ * 避免多 return 分支各自拼装 data class 时漏字段(也让判定可一眼读完)。
  *
- * @param providers Instantánea de todas las configuraciones actuales del proveedor
- * @param providerId Solicitado Provider id(null Indica que la persona que llama no ha especificado,Sin juicio)
- * @param modelId modelo solicitado id(null Indica que la persona que llama no ha especificado,Sin juicio)
+ * @param providers 当前全部 Provider 配置快照
+ * @param providerId 请求的 Provider id(null 表示调用方未指定,不做判定)
+ * @param modelId 请求的模型 id(null 表示调用方未指定,不做判定)
  */
 internal fun resolveRequestedModelBinding(providers: List<ProviderConfig>, providerId: String?, modelId: String?): RequestedModelBinding {
     val provider = providerId?.let { pid -> providers.firstOrNull { it.id == pid } }
     return when {
-        // La persona que llama no especifica un proveedor: no se toma ninguna determinación.
+        // 调用方没指定 provider:不做任何判定。
         providerId == null -> NO_BINDING
-        // Provider Falta tiene prioridad sobre modelId vacío —— Consistente con el comportamiento original.(Si se pierde la configuración, se emitirá una alarma.).
+        // Provider 缺失优先于 modelId 为空 —— 与原有行为一致(配置没了就得告警)。
         provider == null -> MISSING_PROVIDER
         modelId == null -> NO_BINDING
-        // golpe preciso → Usa la verdad de la lista. Model(Con declaración de competencia completa.)
+        // 精确命中 → 用列表里的真实 Model(带完整能力声明)
         else -> {
             val exact = provider.models.firstOrNull { it.id == modelId }
             when {
@@ -62,7 +62,7 @@ internal fun resolveRequestedModelBinding(providers: List<ProviderConfig>, provi
                         listNotReady = false,
                         model = exact,
                     )
-                // La lista está vacía → No estoy listo. Preservar el enlace de la solicitud(Las capacidades son deducidas por ModelRegistry por id.),Sin degradación.
+                // 列表为空 → 未就绪。保留请求绑定(能力由 ModelRegistry 按 id 推导),不降级。
                 provider.models.isEmpty() ->
                     RequestedModelBinding(
                         providerMissing = false,
@@ -70,7 +70,7 @@ internal fun resolveRequestedModelBinding(providers: List<ProviderConfig>, provi
                         listNotReady = true,
                         model = Model(id = modelId, name = modelId, providerId = provider.id),
                     )
-                // Realmente desaparecido:La lista no está vacía y no contiene el id → La persona que llama se procesa según la ruta original.
+                // 真缺失:列表非空且不含该 id → 调用方按原兜底路径处理。
                 else -> MISSING_MODEL
             }
         }

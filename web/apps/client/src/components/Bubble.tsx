@@ -4,21 +4,21 @@ import "./primitives.css";
 export type BubbleRole = "user" | "assistant";
 
 export interface BubbleProps {
-  /** user Lado derecho (color de la marca),assistant Izquierda (gris cálido). */
+  /** user 右侧（品牌色），assistant 左侧（暖灰底）。 */
   readonly role: BubbleRole;
   readonly children: ReactNode;
-  /** Marca de tiempo/nombre del modelo y otros caracteres pequeños. */
+  /** 时间戳 / 模型名等小字。 */
   readonly meta?: ReactNode;
-  /** Barra de acción inferior (regenerar/continuar). */
+  /** 底部操作条（重新生成 / 继续）。 */
   readonly actions?: ReactNode;
 }
 
 /**
- * Burbuja de mensaje: usuario a la derecha, asistente a la izquierda.
+ * 消息气泡：用户右、助手左。
  *
- * Especificaciones tomadas de MuseBubbleStyles / MuseShapes.userBubble / assistantBubble ——
- * Esquina redondeada del cuerpo principal 20 dp, esquina trasera lateral de dirección 6 dp, ancho máximo 70 % del ancho de la pantalla, acolchado bubbleInner(10/8),
- * cuerpo cuerpoGrande(1.6 el doble de la altura de la fila).
+ * 规格取自 MuseBubbleStyles / MuseShapes.userBubble / assistantBubble ——
+ * 主体圆角 20dp、方向侧尾巴角 6dp、最大宽度 70% 屏宽、内边距 bubbleInner(10/8)、
+ * 正文 bodyLarge（1.6 倍行高）。
  */
 export function Bubble({ role, children, meta, actions }: BubbleProps) {
   return (

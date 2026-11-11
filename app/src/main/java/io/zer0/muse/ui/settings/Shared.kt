@@ -22,7 +22,7 @@ import io.zer0.muse.ui.common.form.MuseTextField
 import io.zer0.muse.ui.theme.MuseShapes
 
 /**
- * Caja de entrada universal(Compartido por ProviderEditDialog / McpServerAddDialog).
+ * 通用输入框(被 ProviderEditDialog / McpServerAddDialog 共用)。
  */
 @Composable
 internal fun SettingField(
@@ -45,7 +45,7 @@ internal fun SettingField(
     )
 }
 
-/** P6-C: Opciones del modo tema(Botón de radio de la cápsula,Debe usarse dentro de la fila). */
+/** P6-C: 主题模式选项(胶囊式单选按钮,需在 Row 内使用)。 */
 @Composable
 internal fun RowScope.ThemeModeOption(label: String, selected: Boolean, onClick: () -> Unit) {
     val selectedSuffix = stringResource(R.string.settings_selected_suffix)

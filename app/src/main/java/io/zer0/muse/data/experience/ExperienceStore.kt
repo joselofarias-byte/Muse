@@ -7,14 +7,14 @@ import kotlinx.coroutines.withContext
 import java.io.File
 
 /**
- * Almacenamiento de experiencias basado en archivos.
+ * 基于文件的体验存储。
  *
- * Modelo de divulgación progresiva:
+ * 渐进式披露模式:
  *  - experience.md = index (category + description + path)
  *  - experience/{category}.md = category files (numbered list)
  *
- * Indexado por rebuildIndex() Generado automáticamente,No es necesario escribir a mano.
- * Funciona con ExperienceRepository basado en salas,Implementar almacenamiento dual.
+ * 索引由 rebuildIndex() 自动生成,无需手写。
+ * 与基于 Room 的 ExperienceRepository 协同工作,实现双重存储。
  */
 class ExperienceStore(private val context: Context) {
 
@@ -27,7 +27,7 @@ class ExperienceStore(private val context: Context) {
     private val experienceDir: File get() = File(context.filesDir, EXPERIENCE_DIR).also { it.mkdirs() }
     private val indexPath: File get() = File(context.filesDir, INDEX_FILE)
 
-    /** Escanee el directorio de experiencias para reconstruir los archivos de índice. */
+    /** 扫描 experience 目录重建索引文件。 */
     suspend fun rebuildIndex() = withContext(Dispatchers.IO) {
         val dir = experienceDir
         val docs = listExperienceDocuments(dir)
@@ -52,7 +52,7 @@ class ExperienceStore(private val context: Context) {
         AtomicFileStore.writeText(indexPath, blocks.joinToString("\n\n") + "\n")
     }
 
-    /** Registre las entradas en el archivo de clasificación y reconstruya el índice. */
+    /** 向分类文件记录条目并重建索引。 */
     suspend fun recordEntry(category: String, content: String): RecordResult = withContext(Dispatchers.IO) {
         val safeCategory = normalizeCategory(category)
             ?: return@withContext RecordResult(false, "invalid category")
@@ -64,7 +64,7 @@ class ExperienceStore(private val context: Context) {
         val file = existingDoc?.let { File(dir, it.file) } ?: File(dir, buildFileName(safeCategory))
         val existing = if (file.exists()) file.readText() else ""
 
-        // Eliminar duplicados
+        // 去重
         if (existing.contains(trimmed)) {
             return@withContext RecordResult(false, "duplicate")
         }
@@ -85,12 +85,12 @@ class ExperienceStore(private val context: Context) {
         RecordResult(true, category = safeCategory)
     }
 
-    /** Obtener contenido del índice(Para uso mediante llamada sin parámetros de recuerda_experiencia). */
+    /** 获取索引内容(供 recall_experience 无参调用使用)。 */
     suspend fun getIndex(): String = withContext(Dispatchers.IO) {
         if (indexPath.exists()) indexPath.readText() else ""
     }
 
-    /** Obtenga el contenido de la categoría especificada. */
+    /** 获取指定分类的内容。 */
     suspend fun getCategory(category: String): CategoryContent? = withContext(Dispatchers.IO) {
         val doc = findDocument(experienceDir, category)
         if (doc != null) CategoryContent(doc.title, doc.body) else null
@@ -140,9 +140,9 @@ class ExperienceStore(private val context: Context) {
             content.trimEnd()
         }
         return ExperienceDoc(
-            // Reparación de auditoría (5.4): file Generar con buildFileName(slug-hash.md),
-            // Consistente con el nombre del archivo escrito por recordEntry. La implementación original es pura. slug,ruta en el índice
-            // No coincide con el nombre del archivo del disco,rebuildIndex Todas las entradas posteriores apuntan a archivos que no existen.
+            // 审计修复 (5.4): file 用 buildFileName 生成(slug-hash.md),
+            // 与 recordEntry 写入的文件名一致。原实现用纯 slug,索引里的路径
+            // 与磁盘文件名不匹配,rebuildIndex 后所有条目指向不存在的文件。
             file = buildFileName(title),
             title = title,
             body = body,

@@ -12,27 +12,27 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * v2.x(Elemento de exportación de diagnóstico A): genere un registrador de seguimiento de eventos de enlace.
+ * v2.x（诊断导出项目 A）：生成链路事件轨迹记录仪。
  *
- * Propósito: encuentro de los usuarios"Transmisión truncada/atascada/se agotó el tiempo de espera"Al resolver problemas, puede exportar una copia de**Sin contenido sensible**de
- * Con trayectorias estructuradas, los desarrolladores ya no necesitan adivinar a ciegas después de obtenerlo.
+ * 目的：用户遇到"流截断 / 卡住 / 超时"类问题时，能导出一份**无敏感内容**的
+ * 结构化轨迹，开发者拿到后不再盲猜。
  *
- * Diseño:
- *  - buffer de anillo de memoria reciente [RING_CAPACITY] ronda (nivel de proceso), agregue una línea inmediatamente después de que se complete la generación JSONL
- *    Colocación (filesDir/diagnostics/generation-trace.jsonl, límite superior rodante [MAX_FILE_BYTES]);
- *  - **Línea roja: no grabar ningún texto de mensaje,prompt,API key**. Solo recuerda las estadísticas, el cronograma del evento,
- *    ID de configuración (modelId/providerType/host).sessionId Desensibilice con los primeros 8 bits del hash SHA-256;
- *  - Observador puro: cualquier excepción de escritura de seguimiento será absorbida y advertida, y nunca afectará la generación del enlace principal;
- *  - No tiene nada que ver con el modo de depuración.——Los usuarios normales también lo graban (el contenido en sí ha sido insensibilizado) y sólo lo leen después de exportarlo.
+ * 设计：
+ *  - 内存环形缓冲最近 [RING_CAPACITY] 轮（进程级），生成结束即时追加一行 JSONL
+ *    落盘（filesDir/diagnostics/generation-trace.jsonl，滚动上限 [MAX_FILE_BYTES]）；
+ *  - **红线：不记录任何消息正文、prompt、API key**。只记统计量、事件时间线、
+ *    配置标识（modelId/providerType/host）。sessionId 以 SHA-256 前 8 位哈希脱敏；
+ *  - 纯观察者：任何 trace 写入异常一律吞掉打 warn，绝不影响生成主链路；
+ *  - 与 debugMode 无关——普通用户也记录（内容本身已脱敏），导出时才读取。
  *
- * Punto de entierro:ChatGenerationController.recordDebugSummary(Resumen de estado final, punto de suspensión natural).
+ * 埋点：ChatGenerationController.recordDebugSummary（终态汇总，天然挂点）。
  */
 object GenerationTrace {
 
-    /** Capacidad del buffer anular (rueda). */
+    /** 环形缓冲容量（轮）。 */
     const val RING_CAPACITY = 20
 
-    /** JSONL Límite de desplazamiento de archivos. Tras superarlo, se corta en la segunda mitad. */
+    /** JSONL 文件滚动上限。超过后截断为后半段。 */
     const val MAX_FILE_BYTES = 2L * 1024 * 1024
 
     private const val TRACE_FILE_NAME = "generation-trace.jsonl"
@@ -45,44 +45,44 @@ object GenerationTrace {
 
     private val tsFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.US)
 
-    /** Una trayectoria estructurada generada en una ronda (todos los campos son estadísticas/Identidad, sin texto y sin clave). */
+    /** 一轮生成的结构化轨迹（全部字段都是统计量/标识，无正文无密钥）。 */
     @Serializable
     data class TraceRecord(
-        /** SHA-256 primeros 8 dígitos del ID de sesión (insensibilizado, usado solo para distinguir sesiones). */
+        /** 会话 ID 的 SHA-256 前 8 位（脱敏，仅用于区分会话）。 */
         val sessionHash: String,
         val modelId: String,
         val providerType: String,
-        /** Estado final:completed / failed / cancelled / context_overflow Esperar. */
+        /** 终态：completed / failed / cancelled / context_overflow 等。 */
         val outcome: String,
         val elapsedMs: Long,
-        /** Retraso del primer token;-1 Indica que no se ha recibido el primer token. */
+        /** 首 token 延迟；-1 表示未收到首 token。 */
         val ttftMs: Long,
         val contentChars: Int,
         val reasoningChars: Int,
         val toolCallCount: Int,
         val round: Int,
         val uiFlushCount: Int,
-        /** Provider Interrupción de flujo reportada/Clasificación de cierre (por [noteStreamEnd] escribir). */
+        /** Provider 上报的流中断/收尾分类（由 [noteStreamEnd] 写入）。 */
         val streamEndKind: String = "",
-        /** finish_reason(null→cadena vacía). */
+        /** finish_reason（null→空串）。 */
         val finishReason: String = "",
-        /** Si la compresión se activa en esta ronda (determinada por [noteCompression] escribir). */
+        /** 压缩是否在本轮触发（由 [noteCompression] 写入）。 */
         val compressionTriggered: Boolean = false,
         val ts: String,
     )
 
-    /** Inicializado cuando se inicia la aplicación (MuseApp.onCreate). Idempotente. */
+    /** 应用启动时初始化（MuseApp.onCreate）。幂等。 */
     fun init(context: Context) {
         runCatching {
             val dir = context.getExternalFilesDir("diagnostics") ?: File(context.filesDir, "diagnostics")
             dir.mkdirs()
             traceFile = File(dir, TRACE_FILE_NAME)
-        }.onFailure { Logger.w("GenerationTrace", "init falló: ${it.message}") }
+        }.onFailure { Logger.w("GenerationTrace", "init 失败: ${it.message}") }
     }
 
     /**
-     * Registre el resumen del estado final generado en una ronda. Llamado por ChatGenerationController en cada ruta de estado final.
-     * Cualquier excepción se traga internamente.——trace Es un observador puro y no debe afectar a la generación.
+     * 记录一轮生成的终态汇总。由 ChatGenerationController 在每个终态路径调用。
+     * 任何异常内部吞掉——trace 是纯观察者，不得影响生成。
      */
     fun record(summary: GenerationSummary) {
         runCatching {
@@ -108,10 +108,10 @@ object GenerationTrace {
                 while (ring.size > RING_CAPACITY) ring.removeFirst()
             }
             appendToFile(rec)
-        }.onFailure { Logger.w("GenerationTrace", "record falló(tragado): ${it.message}") }
+        }.onFailure { Logger.w("GenerationTrace", "record 失败(已吞): ${it.message}") }
     }
 
-    /** Resumen de estados finales generados en una ronda (record Agregación de parámetros de entrada, evite LongParameterList). */
+    /** 一轮生成的终态汇总（record 的入参聚合，避免 LongParameterList）。 */
     data class GenerationSummary(
         val sessionId: String,
         val modelId: String,
@@ -126,18 +126,18 @@ object GenerationTrace {
         val uiFlushCount: Int,
     )
 
-    // ── Anotación de clasificación antes del estado final (escrita primero por Proveedor/ruta de compresión,record (cuando se graban juntos)──
+    // ── 终态前的分类注记（由 Provider/压缩路径先行写入，record 时一并落入记录）──
 
     private val pendingStreamEndKind = ThreadLocal.withInitial { "" }
     private val pendingFinishReason = ThreadLocal.withInitial { "" }
     private val pendingCompression = ThreadLocal.withInitial { false }
 
     /**
-     * Clasificación final del flujo de registros (llamada por la ruta del estado final de OpenAIProvider):
-     *  - "done"          Recibido normalmente [DONE]/finishReason
-     *  - "closed_no_finish" La conexión se cerró pero no se recibió el motivo final (se sospecha de truncamiento silencioso por parte de la estación de tránsito)
-     *  - "failure"       onFailure(Error de red/tiempo de espera)
-     *  - "fallback"      stream-guard Activar respaldo sin transmisión
+     * 记录流的收尾分类（由 OpenAIProvider 的终态路径调用）：
+     *  - "done"          正常收到 [DONE]/finishReason
+     *  - "closed_no_finish" 连接关闭但未收到 finishReason（疑似中转站静默截断）
+     *  - "failure"       onFailure（网络错误/超时）
+     *  - "fallback"      stream-guard 触发非流式回退
      */
     fun noteStreamEnd(kind: String, finishReason: String? = null) {
         runCatching {
@@ -146,18 +146,18 @@ object GenerationTrace {
         }
     }
 
-    /** La grabación de esta ronda activa la compresión de contexto (llamada por la ruta de orquestación de compresión). */
+    /** 记录本轮触发了上下文压缩（由压缩编排路径调用）。 */
     fun noteCompression() {
         runCatching { pendingCompression.set(true) }
     }
 
-    /** Contenido actual del búfer (para exportación y prueba). */
+    /** 当前缓冲内容（供导出与测试）。 */
     fun snapshot(): List<TraceRecord> = synchronized(lock) { ring.toList() }
 
-    /** trace Archivo (para embalaje de exportación). Puede ser nulo (no inicial). */
+    /** trace 文件（供导出打包）。可能为 null（未 init）。 */
     fun traceFileOrNull(): File? = traceFile?.takeIf { it.exists() }
 
-    /** Borre el búfer y los archivos (para probar). */
+    /** 清空缓冲与文件（测试用）。 */
     internal fun clearForTest() {
         synchronized(lock) { ring.clear() }
         runCatching { traceFile?.delete() }
@@ -178,7 +178,7 @@ object GenerationTrace {
         val file = traceFile ?: return
         synchronized(lock) {
             if (file.exists() && file.length() > MAX_FILE_BYTES) {
-                // Rolling: conservar la segunda mitad (estrategia de truncamiento simple para evitar reescrituras completas)
+                // 滚动：保留后半段（简单截断策略，避免完整重写）
                 val bytes = file.readBytes()
                 val half = bytes.copyOfRange(bytes.size / 2, bytes.size)
                 file.writeBytes(half)

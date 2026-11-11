@@ -37,27 +37,27 @@ import io.zer0.muse.ui.theme.MusePaddings
 import io.zer0.muse.ui.theme.MuseShapes
 
 /**
- * v1.51: selector desplegable — sustituto Material3 [androidx.compose.material3.ExposedDropdownMenuBox].
+ * v1.51: 下拉选择器 — 替代 Material3 [androidx.compose.material3.ExposedDropdownMenuBox]。
  *
- * diferencias visuales:
- *  - Haga clic en OutlinedTextField para que aparezca MuseDialog(Lista de esquinas redondeadas)En lugar del menú Bloque de material
- *  - Lista de opciones de esquinas redondeadas con Surface + MuseShapes.large
- *  - Los elementos seleccionados se resaltan con color primario.
+ * 视觉差异:
+ *  - 点击 OutlinedTextField 弹出 MuseDialog(圆角列表)而非 Material 方块菜单
+ *  - 选项列表用 Surface + MuseShapes.large 圆角
+ *  - 选中项用 primary 色高亮
  *
- * Uso:
+ * 用法:
  * ```
  * MuseDropdown(
  *     value = mode,
  *     onValueChange = { mode = it },
- *     label = "modo",
+ *     label = "模式",
  *     options = PromptInjectionRepository.PRESET_MODES.entries.map { (id, label) -> id to "$label ($id)" },
  * )
  * ```
  *
- * @param value Valor seleccionado actualmente(Corresponde a las opciones en first)
- * @param onValueChange Seleccionar devolución de llamada(Opciones de devolución en first)
- * @param label Etiqueta del cuadro de entrada
- * @param options Lista de opciones,List<Pair<value, displayText>>
+ * @param value 当前选中值(对应 options 中的 first)
+ * @param onValueChange 选中回调(返回 options 中的 first)
+ * @param label 输入框标签
+ * @param options 选项列表,List<Pair<value, displayText>>
  * @param modifier Modifier
  */
 @Composable
@@ -65,18 +65,18 @@ fun MuseDropdown(
     value: String,
     onValueChange: (String) -> Unit,
     label: String,
-    // L-DD3: options usar Pair<value, displayText> oso,falta de nombre,Mala legibilidad.
-    // Las sugerencias de refactorización futuras deben cambiarse a data class DropdownOption(val value: String, val displayText: String),
-    // El par se mantiene actualmente para compatibilidad con personas que llaman existentes(PromptInjectionRepository.PRESET_MODES espera).
+    // L-DD3: options 用 Pair<value, displayText> 承载,缺乏命名,可读性差。
+    // 未来重构建议改为 data class DropdownOption(val value: String, val displayText: String),
+    // 当前保持 Pair 以兼容现有调用方(PromptInjectionRepository.PRESET_MODES 等)。
     options: List<Pair<String, String>>,
     modifier: Modifier = Modifier,
 ) {
-    // M-DD1: expanded Utilice RememberSaveable para persistir,Cambios de configuración(rotar/alternar oscuro)sin perder el estado expandido.
+    // M-DD1: expanded 用 rememberSaveable 持久化,配置变更(旋转/暗色切换)时不丢失展开状态。
     var expanded by rememberSaveable { mutableStateOf(false) }
     val selectedDisplay = options.firstOrNull { it.first == value }?.second ?: value
 
-    // L-DD5: Utilice InteractionSource propio de TextField para escuchar prensas,Evite la colcha en la que se puede hacer clic en la caja principal
-    // OutlinedTextField centrarse/Intercepción del procesamiento de entrada,Como resultado, no hay respuesta al hacer clic en el cuadro desplegable.
+    // L-DD5: 用 TextField 自己的 InteractionSource 监听按压,避免父 Box clickable 被子
+    // OutlinedTextField 的焦点/输入处理拦截,导致点击下拉框无反应。
     val interactionSource = remember { MutableInteractionSource() }
     LaunchedEffect(interactionSource) {
         interactionSource.interactions.collect { interaction ->
@@ -90,9 +90,9 @@ fun MuseDropdown(
         modifier = modifier
             .fillMaxWidth()
             .clickable { expanded = true },
-        // v1.0.74 fix (Auditoría inicial 3.6): Quitar cajas role/contentDescription,
-        // Evite la duplicación con los nodos semánticos del campo de texto interno readOnly(TalkBack leer dos enfoques).
-        // La interacción todavía se maneja mediante clics.,La semántica se deja en manos de TextField.
+        // v1.0.74 fix (前端审计 3.6): 移除 Box 的 role/contentDescription,
+        // 避免与内层 readOnly TextField 的语义节点重复(TalkBack 读到两个焦点)。
+        // 交互仍由 clickable 处理,语义交给 TextField。
     ) {
         OutlinedTextField(
             value = selectedDisplay,
@@ -121,8 +121,8 @@ fun MuseDropdown(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            // v2.0.1 fix(La máquina real falla): heightIn debe estar en verticalScroll **antes** —
-                            // Cuando se invierte el orden, el nodo de desplazamiento todavía tiene la restricción de altura infinita (OPPO borde a borde), colapsado directamente.
+                            // v2.0.1 fix（真机崩溃）: heightIn 必须在 verticalScroll **之前** —
+                            // 顺序颠倒时滚动节点自身仍拿到无限高约束（OPPO 边到边），直接崩。
                             .heightIn(max = DropdownListMaxHeight)
                             .verticalScroll(rememberScrollState()),
                         verticalArrangement = Arrangement.spacedBy(MusePaddings.tinyGap),
@@ -136,7 +136,7 @@ fun MuseDropdown(
                                         onValueChange(optionValue)
                                         expanded = false
                                     }
-                                    // L-DD4: desnudo 12/8dp → MusePaddings Simbólico.
+                                    // L-DD4: 裸 12/8dp → MusePaddings 令牌。
                                     .padding(
                                         vertical = MusePaddings.inputPadding,
                                         horizontal = MusePaddings.iconPadding,
@@ -152,8 +152,8 @@ fun MuseDropdown(
                                         MaterialTheme.colorScheme.onSurface
                                     },
                                     modifier = Modifier.weight(1f),
-                                    // LAYOUT-01: Componente compartido ancho de texto en línea + límite de línea (reserva hasta 2 líneas,
-                                    // proveedor/No trunque agresivamente el nombre del modelo cuando sea largo), evite el ajuste de línea palabra por palabra al ampliar el tamaño de fuente
+                                    // LAYOUT-01: 共享组件行内文本取宽 + 限行（保留最多 2 行，
+                                    // 供应商/模型名较长时不激进截断），防放大字号下逐字换行
                                     maxLines = 2,
                                     overflow = TextOverflow.Ellipsis,
                                 )
@@ -163,7 +163,7 @@ fun MuseDropdown(
                                         imageVector = MuseIcons.check,
                                         contentDescription = null,
                                         tint = MaterialTheme.colorScheme.primary,
-                                        // L-DD4: 20.dp → MuseIconSizes.iconMedium Simbólico.
+                                        // L-DD4: 20.dp → MuseIconSizes.iconMedium 令牌。
                                         modifier = Modifier.size(MuseIconSizes.iconMedium),
                                     )
                                 }
@@ -176,5 +176,5 @@ fun MuseDropdown(
     }
 }
 
-/** L-DD4: Altura máxima de la lista de opciones desplegable,Evite abrumar la pantalla con demasiadas opciones. */
+/** L-DD4: 下拉选项列表最大高度,避免选项过多撑满屏幕。 */
 private val DropdownListMaxHeight = 360.dp

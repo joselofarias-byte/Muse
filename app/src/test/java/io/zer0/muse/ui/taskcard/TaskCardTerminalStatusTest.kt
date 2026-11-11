@@ -6,19 +6,19 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Phase 3: Estado final agregado a la tarjeta de tarea.(CANCELLED / TIMED_OUT)Prueba de orientación.
+ * Phase 3: 任务卡新增终态(CANCELLED / TIMED_OUT)的定向测试。
  *
- * Bloquear:
- *  - El nuevo estado es el estado final.,Permite que finalice la tarjeta de tareas.;
- *  - Puede volver a intentarlo después del tiempo de espera. Si cancela, no se le pedirá que vuelva a intentarlo.;
- *  - El progreso todavía sólo se cuenta SUCCESS(La semántica existente permanece sin cambios.).
+ * 锁定:
+ *  - 新状态是终态,能让任务卡结束;
+ *  - 超时可重试、取消不主动提示重试;
+ *  - 进度仍只统计 SUCCESS(既有语义不变)。
  */
 class TaskCardTerminalStatusTest {
 
     private fun step(id: String, status: TaskStepStatus) = TaskStep(id = id, title = id, status = status)
 
     @Test
-    fun `TIMED_OUT y CANCELADO son ambos estados finales`() {
+    fun `TIMED_OUT 与 CANCELLED 都是终态`() {
         assertTrue(TaskStepStatus.SUCCESS.isTerminal)
         assertTrue(TaskStepStatus.FAILED.isTerminal)
         assertTrue(TaskStepStatus.TIMED_OUT.isTerminal)
@@ -28,7 +28,7 @@ class TaskCardTerminalStatusTest {
     }
 
     @Test
-    fun `TIMED_OUT Se puede volver a intentar, pero CANCELADO no solicita activamente volver a intentarlo`() {
+    fun `TIMED_OUT 可重试而 CANCELLED 不主动提示重试`() {
         assertTrue(TaskStepStatus.FAILED.isRetryable)
         assertTrue(TaskStepStatus.TIMED_OUT.isRetryable)
         assertFalse(TaskStepStatus.CANCELLED.isRetryable)
@@ -37,7 +37,7 @@ class TaskCardTerminalStatusTest {
     }
 
     @Test
-    fun `La tarjeta de tarea con el paso de tiempo de espera alcanza el estado final,Los tiempos de espera no están incluidos en el progreso`() {
+    fun `含超时步骤的任务卡到达终态,超时不计入进度`() {
         val card = TaskCardData(
             id = "c1",
             title = "t",
@@ -54,7 +54,7 @@ class TaskCardTerminalStatusTest {
     }
 
     @Test
-    fun `Una tarjeta de tarea con un paso de cancelación llega al estado final y no tiene pasos de reintento`() {
+    fun `含取消步骤的任务卡到达终态且无可重试步骤`() {
         val card = TaskCardData(
             id = "c2",
             title = "t",
@@ -71,7 +71,7 @@ class TaskCardTerminalStatusTest {
     }
 
     @Test
-    fun `Los pasos en ejecución no son estados finales`() {
+    fun `运行中步骤不算终态`() {
         val card = TaskCardData(
             id = "c3",
             title = "t",
@@ -84,8 +84,8 @@ class TaskCardTerminalStatusTest {
     }
 
     @Test
-    fun `Agregar nuevos valores a una enumeración no cambia el número de secuencia de los valores existentes`() {
-        // persistencia/Barandilla de compatibilidad:El orden de los valores de enumeración existentes debe permanecer sin cambios.,Sólo se pueden agregar nuevos valores.
+    fun `枚举追加新值不改变既有值的序号`() {
+        // 持久化/兼容性护栏:既有枚举值顺序必须保持不变,新值只能追加。
         assertEquals(0, TaskStepStatus.PENDING.ordinal)
         assertEquals(1, TaskStepStatus.RUNNING.ordinal)
         assertEquals(2, TaskStepStatus.SUCCESS.ordinal)

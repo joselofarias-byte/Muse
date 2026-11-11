@@ -34,11 +34,11 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * Montaje de módulos Koin.:Se obtienen ambos ViewModels de interfaz.,Y el de "Mis Momentos" realmente obtuvo los parámetros del modo.
+ * 模块的 Koin 装配:两个界面 ViewModel 都取得出来,且「我的朋友圈」那个真的拿到了模式参数。
  *
- * Los errores de ensamblaje en esta capa no se expondrán en el momento de la compilación. —— Al shell le falta una dependencia y los parámetros de Moments ViewModel tienen subíndices incorrectos.,
- * Sólo explotan cuando se hace clic en ellos durante el tiempo de ejecución. Aquí lo analizamos directamente según el método de Koin.,Y de hecho publicó dos actualizaciones de Curry.,
- * Fíjate en el ejemplo de “Mírate sólo a ti mismo” para ver si es el que sólo lee sobre ti.
+ * 装配错在这一层不会在编译期暴露 —— 外壳少一个依赖、朋友圈 ViewModel 的参数取错下标,
+ * 都只在运行时点进去才炸。这里直接按 Koin 的方式解析一遍,并真往库里塞两条动态,
+ * 看「只看自己」那个实例是不是只读到自己的那条。
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
@@ -68,34 +68,34 @@ class MiniPhoneModuleWiringTest {
 
         assertNotNull(viewModel)
         assertTrue(
-            "Las operaciones de escritura en líneas de sesión están conectadas a la implementación real.",
+            "会话行上的写操作要接到真实现上",
             koin.get<MpConversationActions>() is MpConversationStore,
         )
-        assertNotNull("La capacidad de anfitrión se realiza ocupando lugares.", koin.get<MiniPhoneHost>())
+        assertNotNull("宿主能力由占位实现兜底", koin.get<MiniPhoneHost>())
     }
 
     @Test
     fun myMomentsViewModelReadsTheOnlyMineFlagFromItsParameters() = runBlocking {
         val db = koin.get<MiniPhoneDb>()
-        db.momentDao().insert(moment(id = "mine", authorId = MP_LOCAL_ACTOR_ID, content = "propio", at = 20L))
-        db.momentDao().insert(moment(id = "other", authorId = "c1", content = "el de otra persona", at = 30L))
+        db.momentDao().insert(moment(id = "mine", authorId = MP_LOCAL_ACTOR_ID, content = "自己的", at = 20L))
+        db.momentDao().insert(moment(id = "other", authorId = "c1", content = "别人的", at = 30L))
 
         val mine = koin.get<MiniPhoneMomentsViewModel> { parametersOf(true) }
 
         val state = withTimeout(TIMEOUT_MS) { mine.uiState.first { it.isLoaded } }
-        assertEquals("Solo el que te enviaste", listOf("mine"), state.moments.map { it.id })
+        assertEquals("只要自己发的那条", listOf("mine"), state.moments.map { it.id })
     }
 
     @Test
     fun momentsViewModelWithoutTheFlagReadsTheWholeTimeline() = runBlocking {
         val db = koin.get<MiniPhoneDb>()
-        db.momentDao().insert(moment(id = "mine", authorId = MP_LOCAL_ACTOR_ID, content = "propio", at = 20L))
-        db.momentDao().insert(moment(id = "other", authorId = "c1", content = "el de otra persona", at = 30L))
+        db.momentDao().insert(moment(id = "mine", authorId = MP_LOCAL_ACTOR_ID, content = "自己的", at = 20L))
+        db.momentDao().insert(moment(id = "other", authorId = "c1", content = "别人的", at = 30L))
 
         val all = koin.get<MiniPhoneMomentsViewModel> { parametersOf(false) }
 
         val state = withTimeout(TIMEOUT_MS) { all.uiState.first { it.isLoaded } }
-        assertEquals("Todas las actualizaciones en orden cronológico inverso.", listOf("other", "mine"), state.moments.map { it.id })
+        assertEquals("全部动态按时间倒序", listOf("other", "mine"), state.moments.map { it.id })
     }
 
     private fun moment(id: String, authorId: String, content: String, at: Long): MpMomentEntity = MpMomentEntity(

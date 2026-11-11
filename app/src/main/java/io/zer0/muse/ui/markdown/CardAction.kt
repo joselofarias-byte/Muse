@@ -3,37 +3,39 @@ package io.zer0.muse.ui.markdown
 import android.os.Handler
 import android.os.Looper
 import android.webkit.JavascriptInterface
+import android.webkit.WebView
+import io.zer0.common.Logger
 import org.json.JSONObject
 
 /**
- * v1.0.92: Acción de devolución de tarjeta — Tarjeta de contenido enriquecido(HTML/SVG)El contrato mínimo con el anfitrión.
- * v2.6.7: Complemente la identidad de la tarjeta y el estado estructurado y solucione la "desconexión de circuito cerrado de la tarjeta".
+ * v1.0.92: 卡片回传动作 — 富内容卡片(HTML/SVG)与宿主之间的最小契约。
+ * v2.6.7: 补卡片身份与结构化状态，修「卡片闭环断开」。
  *
- * ## ¿Por qué deberíamos cambiar esta vez?
+ * ## 为什么这次要改
  *
- * El puente originalmente sólo tenía `send(text)`: La tarjeta primero debe comprimir la operación del usuario en un lenguaje natural antes de poder devolver la conversación.
- * Las cosas que no se pueden presionar (arrastrar valores intermedios, elementos seleccionados, resultados de cálculo) se pierden y el anfitrión no lo sabe.
- * ¿De qué tarjeta proviene este mensaje y a qué interacción corresponde? —— Se expresa como "la tarjeta termina en la tarjeta y la conversación termina en la conversación".
+ * 桥原先只有 `send(text)`：卡片必须先把用户的操作压成一句自然语言，才能传回对话。
+ * 压不进去的东西（拖动的中间值、选中的条目、计算结果）全部丢失，且宿主不知道
+ * 这条消息来自哪张卡、对应哪次交互 —— 表现为「卡片在卡片里结束，对话在对话里结束」。
  *
- * Contrato actual:
- *  - [Send.cardId]:Tarjeta de identidad. Inyectado por el anfitrión (usando la identificación del mensaje, naturalmente vinculado a la ubicación de la conversación),
- *    Se aprobó el guión de la tarjeta `window.muse.cardId` Lea directamente, ya no es necesario modelar una sola vez `c_xxx`
- *    Codificado en HTML (esa ruta se interrumpirá tan pronto como se cambie el cardId).
- *  - [Send.data]: El estado estructurado devuelto por la tarjeta (JSON texto). El anfitrión lo trata como invisible.
- *    `<card_state>` La cola está adjunta al mensaje del usuario y el modelo puede leerla, pero la burbuja no se muestra.
- *  - [Send.text]: Un resumen de una frase para usuarios y modelos. Puede ser muy burdo, la precisión viene dada por [Send.data] oso.
+ * 现在的契约：
+ *  - [Send.cardId]：卡片身份。由宿主注入（用消息 id，天然绑定对话位置），
+ *    卡片脚本通过 `window.muse.cardId` 直接读，不再需要模型把一次性 `c_xxx`
+ *    写死进 HTML（那条路一换 cardId 就断）。
+ *  - [Send.data]：卡片回传的结构化状态（JSON 文本）。宿主把它作为不可见的
+ *    `<card_state>` 尾巴附在用户消息后，模型读得到，气泡不显示。
+ *  - [Send.text]：面向用户与模型的一句话摘要。可以很粗，精度由 [Send.data] 承担。
  *
- * ruta de activación:
- *  - [Send]:  Llamada de guión en tarjeta window.muse.send(...)(después [MuseCardBridge] Retorno del puente);
- *  - [Save]:  El usuario hace clic en el encabezado de la tarjeta."guardar"botón(Guardado como un artefacto por la persona que llama).
+ * 触发路径:
+ *  - [Send]:  卡片内脚本调用 window.muse.send(...)（经 [MuseCardBridge] 桥回传）;
+ *  - [Save]:  用户点击卡片头部"保存"按钮(由调用方保存为工件)。
  */
 sealed interface CardAction {
     /**
-     * El script de la tarjeta solicita el envío de un mensaje de usuario.
+     * 卡片内脚本请求发送一段用户消息。
      *
-     * @param text Una oración para leer (la burbuja muestra esta oración, que también es el texto visto por el modelo)
-     * @param cardId tarjeta de identidad;null Indica que el host no está inyectado (tarjeta antigua/Escenario sin chat)
-     * @param data estado estructurado (JSON texto);null Indica que la tarjeta no tiene estatus adicional
+     * @param text 面向阅读的一句话（气泡显示这一句，也是模型看到的正文）
+     * @param cardId 卡片身份；null 表示宿主未注入（旧卡片/非聊天场景）
+     * @param data 结构化状态（JSON 文本）；null 表示卡片没有额外状态
      */
     data class Send(
         val text: String,
@@ -41,55 +43,57 @@ sealed interface CardAction {
         val data: String? = null,
     ) : CardAction
 
-    /** El usuario solicitó que la tarjeta se guardara como un artefacto. */
+    /** 用户请求把卡片保存为工件。 */
     data class Save(val language: String, val content: String) : CardAction
 
     /**
-     * v2.6.13: El usuario solicitó agregar la tarjeta a favoritos.
+     * v2.6.13: 用户请求把卡片收进收藏夹。
      *
-     * Las tarjetas no son mensajes y los favoritos sólo reconocen la tabla de mensajes; entonces la forma en que se implementa esta acción es "en una sesión de recolección dedicada
-     * "Deje un mensaje que pueda recopilarse", el texto es el código fuente de la tarjeta (encerrado por una valla, haga clic en la página de recopilación para ver el código fuente).
+     * 卡片不是消息，收藏夹只认 messages 表；所以这条动作的落地方式是「在专用收藏会话里
+     * 落一条可收藏的消息」，正文是卡片源码（围栏包住，收藏页点开能看源码）。
      *
-     * @param language idioma de la tarjeta (html/svg/chart/mermaid), determina la marca de valla de la entrada de colección
-     * @param content Código fuente de la tarjeta
-     * @param title Título del elemento de la colección (obtenga la etiqueta de idioma en el menú)
+     * @param language 卡片语言（html/svg/chart/mermaid），决定收藏条目的围栏标记
+     * @param content 卡片源码
+     * @param title 收藏条目标题（菜单里取语言标签）
      */
     data class Favorite(
         val language: String,
         val content: String,
         val title: String,
-        /** Identidad de la tarjeta (identificación del mensaje en el escenario del chat);null Depende de la persona que llama utilizar la identificación del mensaje para averiguarlo. */
+        /** 卡片身份（聊天场景为消息 id）；null 时由调用方用消息 id 兜底。 */
         val cardId: String? = null,
     ) : CardAction
 }
 
 /**
- * v1.0.92: Tarjetas JS Puente — Inyectar como objeto global [BRIDGE_NAME],Se aprobó el guión de la tarjeta
- * `window.muse.send(text)`(Empaquetado de script de arranque,ver [CARD_BRIDGE_BOOTSTRAP_JS])Acción de devolución.
+ * v1.0.92: 卡片 JS 桥 — 注入为全局对象 [BRIDGE_NAME],卡片脚本通过
+ * `window.muse.send(text)`(引导脚本封装,见 [CARD_BRIDGE_BOOTSTRAP_JS])回传动作。
  *
- * límite de seguridad:
- *  - exponer solo [send] / [getData] dos metodos,No permita que los scripts lean ningún dato del host;
- *    Las tarjetas solo se pueden obtener si el anfitrión las inyecta activamente. [cardId];
- *  - La devolución de llamada vuelve a la ejecución del hilo principal;Texto vacío descartado;
- *  - El puente solo se inyecta en tarjetas donde la persona que llama proporciona una devolución de llamada(Escenario de mensaje de chat),escenas restantes(Ver como artefacto)
- *    Mantenga una representación pura sin puentes ni secuencias de comandos.
+ * 安全边界:
+ *  - 只暴露 [send] / [sendWithData] / [getData] 与**只写不读**的 [reportError]；
+ *    脚本读不到任何宿主数据，也拿不走任何回调 —— [reportError] 唯一的作用是
+ *    把卡片内部的失败写进宿主日志（长度截断，防止刷日志）;
+ *    卡片只能拿到宿主主动注入的 [cardId];
+ *  - 回调切回主线程执行;空文本丢弃;
+ *  - 桥仅在调用方提供回传回调的卡片上注入(聊天消息场景),其余场景(如工件查看)
+ *    保持无桥、无脚本的纯渲染。
  */
 internal class MuseCardBridge(
     private val onAction: (CardAction) -> Unit,
-    /** v2.0: Lectura de datos de tarjeta(cardId → JSON texto);null Indica que el escenario no proporciona datos. */
+    /** v2.0: 卡片数据读取(cardId → JSON 文本);null 表示该场景不提供数据。 */
     private val readCardData: ((String) -> String?)? = null,
-    /** v2.6.7: tarjeta de identidad(inyección de huésped);null Indica que no hay inyección,El ID de tarjeta del lado de la tarjeta es nulo. */
+    /** v2.6.7: 卡片身份(宿主注入);null 表示不注入,卡片端 cardId 为 null。 */
     private val cardId: String? = null,
 ) {
 
     private val mainHandler = Handler(Looper.getMainLooper())
 
     /**
-     * v2.6.7: Devolución de tarjeta.
+     * v2.6.7: 卡片回传。
      *
-     * Compatible con dos formas de llamada:
-     *  - `send("una palabra")`                → Texto sin formato (no es necesario modificar las tarjetas antiguas)
-     *  - `send("una palabra", {json-ready})`   → Viene con estado estructurado.
+     * 兼容两种调用形态：
+     *  - `send("一句话")`                → 纯文本（旧卡片不用改）
+     *  - `send("一句话", {json-ready})`   → 附带结构化状态
      */
     @JavascriptInterface
     fun send(text: String) {
@@ -99,25 +103,40 @@ internal class MuseCardBridge(
     }
 
     /**
-     * v2.6.7: Devolución de datos con estado.data Es texto JSON y el host lo transmite de forma transparente al modelo tal como está.
+     * v2.6.7: 带状态回传。data 为 JSON 文本，宿主原样透传给模型。
      *
-     * Abra un método separado en lugar de sobrecargarlo [send], porque la sobrecarga del método de @JavascriptInterface está en
-     * WebView El orden de envío bajo el puente no está garantizado y las tarjetas más antiguas dependen de firmas de un solo parámetro.
+     * 单独开一个方法而不是重载 [send]，是因为 @JavascriptInterface 的方法重载在
+     * WebView 桥下的派发顺序不保证，且旧卡片依赖单参数签名。
      */
     @JavascriptInterface
     fun sendWithData(text: String, data: String?) {
         val trimmed = text.trim().take(MAX_ACTION_TEXT_LENGTH)
         val payload = data?.trim()?.take(MAX_ACTION_DATA_LENGTH)?.takeIf { it.isNotEmpty() }
         if (trimmed.isEmpty() && payload == null) return
-        // Si hay un estado puro y no hay resumen, deje una cadena vacía y ViewModel completará la copia localizada.
+        // 纯状态、无摘要时留空串，由 ViewModel 侧补本地化文案。
         mainHandler.post { onAction(CardAction.Send(trimmed, cardId, payload)) }
     }
 
     /**
-     * El script de la tarjeta lee los datos vinculantes mediante cardId (JSON texto); ningún dato devuelve nulo.
+     * 卡片内部失败的唯一出口：把异常文本写进宿主日志。
      *
-     * esto es**Sincronizar instantánea**: la escritura ocurre en el otro lado (herramienta/host), si la tarjeta solo se lee una vez durante el montaje,
-     * Será invisible después de actualizaciones posteriores. Por lo tanto, el lado de la tarjeta debe coincidir. `window.muse.data.onChange(cb)` Usar.
+     * 为什么需要它：桥是**单向**的 —— JS 调宿主失败时（桥被回收、参数不合法、
+     * WebView 正在销毁），卡片脚本只能 `catch` 住然后什么都不做。
+     * 用户看到的就是"点了卡片上的按钮没反应"，而宿主这边**一行日志都没有**。
+     *
+     * 这里只记日志、不改变任何行为，也不回任何东西给脚本（所以不构成新的读取面）。
+     */
+    @JavascriptInterface
+    fun reportError(message: String) {
+        val detail = message.trim().take(MAX_REPORT_LENGTH).ifBlank { "card reported no reason" }
+        Logger.w(TAG, "卡片内部报错 cardId=${cardId ?: "无"} | $detail")
+    }
+
+    /**
+     * 卡片脚本按 cardId 读取绑定数据（JSON 文本）；无数据返回 null。
+     *
+     * 这是**同步快照**：写入发生在另一侧（工具/宿主），卡片如果只在挂载时读一次，
+     * 后续更新它就看不见了。因此卡片侧应配合 `window.muse.data.onChange(cb)` 使用。
      */
     @JavascriptInterface
     fun getData(cardId: String): String? {
@@ -127,29 +146,29 @@ internal class MuseCardBridge(
     }
 
     /**
-     * Cambios en los datos de suscripción de la tarjeta.
+     * 卡片订阅数据变更。
      *
-     * ¿Por qué encuestar en lugar de presionar?JS Los puentes sólo se pueden introducir mediante tarjetas (`@JavascriptInterface`),
-     * El host no puede llamar activamente a funciones en la tarjeta. querer“empujar”Sólo puedo confiar en WebView.evaluateJavascript para ajustar
-     * función global en el lado de la tarjeta, y esa ruta está sobrecargada en la tarjeta/Poco confiable después de la reconstrucción.
-     * Seleccione el sondeo aquí: comience solo cuando la tarjeta declare una suscripción,_interval Predeterminado 800 ms, solo compara referencias de cadenas,
-     * Los gastos generales pueden ignorarse; cuando se descarga la tarjeta, desaparece junto con la página, sin perder el cronómetro.
+     * 为什么是轮询而不是推送：JS 桥只能被卡片调进来（`@JavascriptInterface`），
+     * 宿主无法主动调用卡片里的函数。要“推送”只能靠 WebView.evaluateJavascript 去调
+     * 卡片侧的全局函数，而那条路径在卡片重载/重建后不可靠。
+     * 这里选轮询：只在卡片声明了订阅时启动，_interval 默认 800ms，只比较字符串引用，
+     * 开销可以忽略；卡片卸载时随页面一起消失，不漏定时器。
      *
-     * @return Devuelve verdadero si el inicio es exitoso (los datos son proporcionados por `window.muse.data.onChange` extracción de encuestas)
+     * @return 启动成功返回 true（数据由 `window.muse.data.onChange` 轮询拉取）
      */
     @JavascriptInterface
     fun subscribeData(): Boolean = readCardData != null
 
     /**
-     * v2.6.7: negociación de competencias —— La tarjeta primero pregunta al host qué admite y luego decide qué controles mostrar.
+     * v2.6.7: 能力协商 —— 卡片先问宿主支持什么，再决定显示哪些控件。
      *
-     * negociación de competencias —— La tarjeta primero pregunta al host qué admite y luego decide qué controles mostrar.
+     * 能力协商 —— 卡片先问宿主支持什么，再决定显示哪些控件。
      *
-     * Sin un puente negociado, la tarjeta sólo puede escribir controles a ciegas. Después de escribir, se descubre que el puente no está disponible y falla silenciosamente. ——
-     * Lo que el usuario ve es "no hay respuesta después de hacer clic". Con la negociación, las cosas que no son compatibles se pueden ocultar o degradar por adelantado.
+     * 没有协商的桥，卡片只能盲目写控件，写完才发现桥不可用，静默失败 ——
+     * 用户看到的就是「点了没反应」。有协商就能提前把不支持的东西隐藏或降级。
      *
-     * Devuelve texto sin formato en lugar de un objeto JSON, porque @JavascriptInterface solo puede devolver String;
-     * El script de arranque lo envolverá como un objeto y lo expondrá a la tarjeta.
+     * 返回纯文本而非 JSON 对象，因为 @JavascriptInterface 只能回 String；
+     * 引导脚本会把它包成对象暴露给卡片。
      */
     @JavascriptInterface
     fun capabilities(): String {
@@ -161,17 +180,17 @@ internal class MuseCardBridge(
             """"height":"available","cardId":${if (cardId == null) "null" else "\"$cardId\""}}"""
     }
 
-    /** v2.6.7: La tarjeta lee su propia identidad (equivalente a la fuente del lado del puente de window.muse.cardId). */
+    /** v2.6.7: 卡片读取自己的身份（等价于 window.muse.cardId 的桥侧来源）。 */
     @JavascriptInterface
     fun getCardId(): String? = cardId
 
     /**
-     * v2.6.7: La tarjeta informa su propia altura de contenido (CSS px).
+     * v2.6.7: 卡片上报自己的内容高度（CSS px）。
      *
-     * Se corrigió "La tarjeta grande está apretada": resulta que la altura del desplazamiento solo se mide una vez en onPageFinished.
-     * Representación asincrónica en la tarjeta (gráficos, imágenes, plegado y expansión) o la altura cambia después de que el usuario arrastra el panel.
-     * El anfitrión todavía usa el antiguo recorte de altura y el contenido es invisible.
-     * Impulsado por ResizeObserver en la página, aumenta cada vez/Si se acorta, informará al anfitrión nuevamente.
+     * 修「大卡片被挤压」：原来只在 onPageFinished 量一次 scrollHeight，
+     * 卡片内异步渲染（图表、图片、折叠展开）或用户拖开面板后高度变了，
+     * 宿主仍用旧高度裁切，内容就看不见了。
+     * 由页面内 ResizeObserver 驱动，每次变高/变矮都重新告知宿主。
      */
     @JavascriptInterface
     fun reportHeight(px: Int) {
@@ -179,40 +198,45 @@ internal class MuseCardBridge(
         mainHandler.post { onHeightChanged?.invoke(px) }
     }
 
-    /** v2.6.7: Devolución de llamada de altura (no @JavascriptInterface, solo para uso interno). */
+    /** v2.6.7: 高度回调（非 @JavascriptInterface，仅内部使用）。 */
     internal var onHeightChanged: ((Int) -> Unit)? = null
 
     companion object {
-        /** addJavascriptInterface El nombre del objeto global que se utilizará. */
+        /** addJavascriptInterface 使用的全局对象名。 */
         const val BRIDGE_NAME = "MuseCardBridge"
 
-        /** El límite superior de devolución de texto único.(personaje),Evite que el abuso de secuencias de comandos inyecte mensajes muy largos. */
+        /** 单次回传文本上限(字符),防止脚本滥用注入超长消息。 */
+        private const val TAG = "MuseCardBridge"
         private const val MAX_ACTION_TEXT_LENGTH = 4000
 
-        /** El límite superior del estado de devolución única(personaje). Los estados son datos estructurados y se les permite ser más largos que los resúmenes, pero aún tienen un límite. */
+        // 上报文本的上限：桥的方法可以被卡片脚本任意次调用，
+        // 不限长度就等于让一张写坏的卡把日志刷满。
+        private const val MAX_REPORT_LENGTH = 500
+
+        /** 单次回传状态上限(字符)。状态是结构化数据，比摘要允许更长，但仍需设上限。 */
         private const val MAX_ACTION_DATA_LENGTH = 16_000
 
         /**
-         * Texto de marcador de posición cuando la tarjeta solo devuelve el estado y no ofrece un resumen.
+         * 卡片只回状态、没给摘要时的占位文本。
          *
-         * Aquí se deja intencionalmente una cadena vacía: el puente es un entorno no componible y no se puede obtener stringResource;
-         * La copia real visible para el usuario se completa con recursos en el lado ChatViewModel para evitar la codificación en chino.
+         * 这里故意留空串：桥是非 Composable 环境，拿不到 stringResource；
+         * 真正的用户可见文案在 ChatViewModel 侧用资源填充，避免硬编码中文。
          */
         const val EMPTY_SUMMARY = ""
     }
 }
 
 /**
- * v1.0.92: script de arranque — Inyectado junto con la tarjeta HTML.(Empalme después de la limpieza,No afectado por las reglas de limpieza.),
- * Proporcionado para scripts de tarjetas. `window.muse` Fachada.
+ * v1.0.92: 引导脚本 — 与卡片 HTML 一起注入(在清洗之后拼接,不受清洗正则影响),
+ * 为卡片脚本提供 `window.muse` 门面。
  *
- * v2.6.7 Nuevo:
- *   window.muse.cardId                       // Identidad de tarjeta de solo lectura (host inyectado con ID de mensaje)
- *   window.muse.send("Resumen", { ...state })    // Con devolución de datos de estado estructurado
+ * v2.6.7 新增：
+ *   window.muse.cardId                       // 只读，卡片身份（宿主用消息 id 注入）
+ *   window.muse.send("摘要", { ...state })    // 带结构化状态回传
  *
- * Uso en la tarjeta:
- *   if (!window.muse) return;                 // Escena sin puente (renderizado de solo lectura)
- *   window.muse.send("Configurar el sueño en 6 horas", { hours: 6 });
+ * 卡片内用法:
+ *   if (!window.muse) return;                 // 无桥场景（只读渲染）
+ *   window.muse.send("把睡眠调到 6 小时", { hours: 6 });
  */
 internal const val CARD_BRIDGE_BOOTSTRAP_JS: String = """
 (function(){
@@ -222,24 +246,32 @@ internal const val CARD_BRIDGE_BOOTSTRAP_JS: String = """
   var __museLastTap = 0;
   document.addEventListener('click', function(){ __museLastTap = Date.now(); }, true);
   document.addEventListener('touchend', function(){ __museLastTap = Date.now(); }, true);
-  // v2.6.7: Tarjeta de identidad. Inyección de host, solo lectura; nulo si no hay puente o no hay inyección.
+  // v2.6.7: 卡片身份。宿主注入，只读；无桥或未注入时为 null。
   try { window.muse.cardId = MuseCardBridge.getCardId(); } catch (e) { window.muse.cardId = null; }
+  // 桥调用失败不是“可以忽略”：用户看到的“点了没反应”只有这一层能报出来。
+  // 再套一层 try：桥本身都没了的时候，报错这件事也不能把脚本带崩。
+  function reportBridgeFailure(where, err){
+    try {
+      MuseCardBridge.reportError(where + ': ' + ((err && err.message) ? err.message : String(err)));
+    } catch (ignored) {}
+  }
+  
   window.muse.send = function(text, state){
-    // guardia de seguridad:Solo permitido en el clic más reciente del usuario/Devolución de datos dentro de una ventana corta después del toque,
-    // Evite que los scripts de tarjetas inserten mensajes silenciosamente durante la carga.
+    // 安全守卫:仅允许在用户最近一次点击/触摸后的短暂窗口内回传,
+    // 防止卡片脚本在加载时静默注入消息。
     if (Date.now() - __museLastTap > 1500) return;
     var body = String(text == null ? '' : text);
     if (state === undefined || state === null) {
-      try { MuseCardBridge.send(body); } catch (e) { /* bridge send failures are non-fatal */ }
+      try { MuseCardBridge.send(body); } catch (e) { reportBridgeFailure('send', e); }
       return;
     }
     var payload;
     try { payload = typeof state === 'string' ? state : JSON.stringify(state); }
     catch (e) { payload = null; }
-    try { MuseCardBridge.sendWithData(body, payload); } catch (e) { /* non-fatal */ }
+    try { MuseCardBridge.sendWithData(body, payload); } catch (e) { reportBridgeFailure('sendWithData', e); }
   };
-  // v2.0: Enlace de datos de tarjeta — Leer datos JSON vinculados al host por cardId
-  // Si no se pasan parámetros, la tarjeta se leerá de forma predeterminada.
+  // v2.0: 卡片数据绑定 — 按 cardId 读取宿主绑定的 JSON 数据
+  // 不传参时默认读自己这张卡。
   window.muse.getData = function(cardId){
     try {
       var id = (cardId == null || cardId === '') ? window.muse.cardId : String(cardId);
@@ -247,21 +279,21 @@ internal const val CARD_BRIDGE_BOOTSTRAP_JS: String = """
       return MuseCardBridge.getData(id);
     } catch (e) { return null; }
   };
-  // fácil de leer —— Analiza en un objeto; devuelve nulo si falla el análisis.
+  // 便捷读取 —— 解析成对象；解析失败返回 null。
   window.muse.getJSON = function(cardId){
     try {
       var raw = window.muse.getData(cardId);
       return raw ? JSON.parse(raw) : null;
     } catch (e) { return null; }
   };
-  // Suscríbete a los cambios de datos.
+  // 订阅数据变更。
   //
-  // El host no puede llamar activamente a la tarjeta, por lo que aquí se utiliza el sondeo: solo se inicia cuando se llama y solo compara cadenas.
-  // No haga nada si el contenido no ha cambiado. La devolución de llamada recibida es**objeto analizado**(Igual que getJSON),
-  // Cuando falla el análisis, se devuelve la cadena original.
+  // 宿主无法主动调进卡片，所以这里用轮询：只在调用时启动，只比较字符串，
+  // 内容没变就什么也不做。回调收到的是**解析后的对象**（与 getJSON 一致），
+  // 解析失败时退回原文字符串。
   //
-  // Uso:
-  //   window.muse.data.onChange(function (data) { /* pantalla pesada */ });
+  // 用法：
+  //   window.muse.data.onChange(function (data) { /* 重画面 */ });
   window.muse.data = window.muse.data || {};
   window.muse.data.onChange = function(cb){
     if (typeof cb !== 'function') return function(){};
@@ -277,11 +309,11 @@ internal const val CARD_BRIDGE_BOOTSTRAP_JS: String = """
     }, 800);
     return function(){ clearInterval(timer); };
   };
-  // v2.6.7: negociación de competencias —— La tarjeta primero pregunta al host qué admite y luego decide qué controles mostrar.
-  // Uso:
+  // v2.6.7: 能力协商 —— 卡片先问宿主支持什么，再决定显示哪些控件。
+  // 用法：
   //   var cap = window.muse.capabilities();
-  //   if (cap.emit === 'available') { Representar un control sometible }
-  // Los objetos devueltos nunca generan excepciones; todos están marcados como require_host cuando el puente no está disponible.
+  //   if (cap.emit === 'available') { 渲染可提交控件 }
+  // 返回对象永不抛异常；桥不可用时全部标为 requires_host。
   window.muse.capabilities = function(){
     try {
       var raw = MuseCardBridge.capabilities();
@@ -290,11 +322,11 @@ internal const val CARD_BRIDGE_BOOTSTRAP_JS: String = """
       return { emit: 'requires_host', state: 'requires_host', data: 'requires_host', height: 'requires_host', cardId: null };
     }
   };
-  // v2.6.7: Altamente adaptativo —— El contenido se vuelve más alto para indicarle al anfitrión que evite que las tarjetas grandes queden exprimidas por la altura anterior.
-  // Dos restricciones evitan que el diseño se deteriore:
-  //  1) 80ms Anti-vibración: cuando el contenido cambia intensamente, solo se informa la última vez y no se llama en todos los procesos cuadro por cuadro;
-  //  2) Solo aumenta pero no disminuye: el contenido se acorta sin encogerse y evita saltos hacia arriba y hacia abajo (el panel plegable no necesita encogerse cuando se retrae).
-  //     Excepción: el primer informe siempre se acepta (de lo contrario, un aumento desde 0 se considerará como“sin disminuir”).
+  // v2.6.7: 高度自适应 —— 内容变高告诉宿主，避免大卡片被旧高度挤压。
+  // 两个约束防止布局抖动：
+  //  1) 80ms 防抖：内容变化密集时只报最后一次，不逐帧跨进程调用；
+  //  2) 只增不减：内容变矮不回缩，避免上下跳（折叠面板收起时不需要缩）。
+  //     例外：首次上报总是接受（否则从 0 开始涨会被当成“不减”）。
   (function(){
     if (typeof ResizeObserver === 'undefined') return;
     var reported = 0;
@@ -318,7 +350,7 @@ internal const val CARD_BRIDGE_BOOTSTRAP_JS: String = """
     }
     start();
     window.addEventListener('load', schedule);
-    // fotos/Después de cargar recursos asincrónicos, como fuentes, la altura seguirá cambiando, por lo que deberá agregarla dos veces.
+    // 图片/字体等异步资源加载完后高度还会变，补两次。
     setTimeout(schedule, 120);
     setTimeout(schedule, 480);
   })();
@@ -326,19 +358,19 @@ internal const val CARD_BRIDGE_BOOTSTRAP_JS: String = """
 """
 
 /**
- * v2.6.7: Adjunte el estado devuelto por la tarjeta al final del cuerpo del mensaje del usuario para que el modelo lo lea.
+ * v2.6.7: 把卡片回传的状态附加到用户消息正文末尾，供模型读取。
  *
- * Envolver con caracteres invisibles del área privada (U+2063 INVISIBLE SEPARATOR), la burbuja de diálogo se elimina al renderizar,
- * No afecta la lectura del usuario; lo que ve en el lado del modelo es un segmento claro de "estado de la tarjeta".
+ * 用不可见的私有区字符包裹（U+2063 INVISIBLE SEPARATOR），对话气泡渲染时剥离，
+ * 不影响用户阅读；模型侧看到的是明确的「卡片状态」段。
  *
- * ¿Por qué no insertar una nueva columna en MessageEntity? La tabla de mensajes ya es DB 116 y se actualiza otra versión para los metadatos de una oración.
- * La migración, los riesgos y los beneficios son desproporcionados. La cola del texto es completamente suficiente para el modelo y, naturalmente, se respalda junto con el mensaje.
- * Exporta y participa en el recorte contextual.
+ * 为什么不塞进 MessageEntity 新列：消息表已是 DB 116，为一句话的元数据再升一版
+ * 迁移，风险和收益不成比例。文本尾巴对模型完全够用，且天然跟着消息一起备份、
+ * 导出、参与上下文裁剪。
  */
 internal fun appendCardStateToMessage(text: String, cardId: String?, data: String?): String {
     if (data.isNullOrBlank()) return text
     val id = cardId?.takeIf { it.isNotBlank() } ?: "unknown"
-    // Verifique una vez para evitar insertar JSON ilegal directamente en el modelo como estado estructurado (el script de la tarjeta puede estar mal escrito).
+    // 校验一次，避免把非法 JSON 直接当结构化状态塞给模型（卡片脚本可能拼错）。
     val normalized = runCatching { JSONObject(data) }.getOrNull()?.toString() ?: data
     return buildString {
         append(text)
@@ -354,39 +386,44 @@ internal fun appendCardStateToMessage(text: String, cardId: String?, data: Strin
 }
 
 /**
- * v2.6.7: Retire la cola del estado de la tarjeta del cuerpo del mensaje (para fines de representación).
+ * v2.6.7: 从消息正文里剥掉卡片状态尾巴（渲染用）。
  *
- * v2.6.8: La implementación se ha mencionado anteriormente. [io.zer0.muse.transformer.InternalMarkupSanitizer], esta función sólo es compatible con alias.
- * No agregue lógica de eliminación en el lado de llamada —— Exportación unificada en desinfectante: para exhibición `displayContent`,
- * Para exportar `exportContent`, índice/para buscar `searchableContent`.
+ * v2.6.8: 实现已上提到 [io.zer0.muse.transformer.InternalMarkupSanitizer]，本函数只做兼容别名。
+ * 别在调用侧新增剥离逻辑 —— 统一出口在 sanitizer：展示用 `displayContent`、
+ * 导出用 `exportContent`、索引/检索用 `searchableContent`。
  */
 internal fun stripCardStateFromMessage(text: String): String = io.zer0.muse.transformer.InternalMarkupSanitizer.stripCardState(text)
 
 /**
- * Las marcas de inicio y fin del segmento de estado de la tarjeta (incluidos separadores invisibles para reducir la probabilidad de colisión con el texto normal).
+ * 卡片状态段的起止标记（含不可见分隔符，降低与正常文本碰撞的概率）。
  *
- * v2.6.8: Definir migración [io.zer0.muse.transformer.InternalMarkupSanitizer](autoridad de limpieza),
- * Las constantes con el mismo nombre están reservadas aquí para los llamantes existentes./Referencia de prueba. El formato de escritura permanece sin cambios y los mensajes históricos que se han incluido en la base de datos aún son legibles.
+ * v2.6.8: 定义迁到 [io.zer0.muse.transformer.InternalMarkupSanitizer]（清洗权威），
+ * 这里保留同名常量供既有调用方/测试引用。写入格式不变，已落库的历史消息照旧可读。
  */
 internal const val CARD_STATE_OPEN: String = io.zer0.muse.transformer.InternalMarkupSanitizer.CARD_STATE_OPEN
 internal const val CARD_STATE_CLOSE: String = io.zer0.muse.transformer.InternalMarkupSanitizer.CARD_STATE_CLOSE
 
 /**
- * v2.6.9: Interfaz JS dedicada para informes de altura —— con puente interactivo [MuseCardBridge] Completamente desacoplado.
+ * v2.6.9: 高度上报专用 JS 接口 —— 与交互桥 [MuseCardBridge] 彻底解耦。
  *
- * El callejón sin salida de la antigua implementación: el guión de observación de altitud (ResizeObserver) sólo puede pasar `MuseCardBridge.reportHeight`
- * Devolución de datos, pero la ruta de representación sin devolución de llamada (producto de paso de tarjeta de tareas, vista previa de pantalla completa, vista de artefactos) no registra el puente en absoluto.
- * Las llamadas en el script son absorbidas silenciosamente por try/catch, por lo que la altura siempre se detiene en la primera prueba de onPageFinished.
- * Si la tarjeta crea DOM (gráficos, listas, paneles plegables) de forma asincrónica en el script, el contenido no crecerá durante la primera prueba.
- * Lo que se midió fue un valor pequeño y nadie lo corrigió después. —— Lo que ve el usuario es "la tarjeta está presionada en una caja fija".
+ * 旧实现的死结：高度观测脚本（ResizeObserver）只能通过 `MuseCardBridge.reportHeight`
+ * 回传，而没有回传回调的渲染路径（任务卡步骤产物、全屏预览、工件查看）压根不注册桥，
+ * 脚本里的调用被 try/catch 静默吞掉，于是高度永远停在 onPageFinished 的那一次首测。
+ * 卡片若在脚本里异步建 DOM（图表、列表、折叠面板），首测时内容还没长出来，
+ * 量到的就是一个小值，之后没人纠正 —— 用户看到的就是「卡片被压成一个固定小盒」。
  *
- * Ahora esta interfaz se registrará mientras exista un WebView y existirá para siempre, independientemente de "si se puede devolver".
+ * 现在这个接口只要有 WebView 就注册，永远存在，与「能不能回传」无关。
  */
 internal class CardHeightSink {
-    /** Devolución de llamada del hilo principal; montado y eliminado por RichContentCard. */
+    /** 主线程回调；由 RichContentCard 挂载与摘除。 */
     internal var onHeightChanged: ((Int) -> Unit)? = null
 
     private val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
+
+    // Keep registration on the concrete receiver: Lint resolves Compose remember values as T.
+    internal fun registerWith(webView: WebView) {
+        webView.addJavascriptInterface(this, NAME)
+    }
 
     @android.webkit.JavascriptInterface
     fun reportHeight(px: Int) {
@@ -396,29 +433,29 @@ internal class CardHeightSink {
     }
 
     companion object {
-        /** addJavascriptInterface El nombre del objeto global que se utilizará. */
+        /** addJavascriptInterface 使用的全局对象名。 */
         const val NAME = "MuseHeightSink"
     }
 }
 
 /**
- * La altura de la tarjeta sigue el contenido: la tarjeta es tan alta como el contenido, sin truncamiento ni desplazamiento dentro de la tarjeta.
+ * 卡片高度跟随内容：内容长多高卡片就多高，不截断、不卡内滚动。
  *
- * ## por qué no“Solo reporta una vez”
+ * ## 为什么不是“只报一次”
  *
- * lo he probado“Congelación del primer cuadro + desplazamiento en la tarjeta”. Dos problemas fatales:
- *  1. En el primer cuadro, el contenido a menudo aún no ha crecido (fuentes, imágenes, DOM creado por scripts modelo) y se establece un valor pequeño.
- *     Desde entonces, la tarjeta ha sido aplastada;
- *  2. Lo que quieren los usuarios es“Ver la tarjeta completa de un vistazo”, el desplazamiento dentro de la tarjeta va en contra de esto.
+ * 曾试过“首帧定格 + 卡内滚动”。两个致命问题：
+ *  1. 首帧时内容往往还没长出来（字体、图片、模型脚本建的 DOM），定到的是个小值，
+ *     卡片从此被压扁；
+ *  2. 用户要的是“一眼看完整张卡”，卡内滚动恰恰违背这一点。
  *
- * Así que volvamos a“La altura es función del contenido.”. De lo que realmente debemos protegernos no es“Cambios de altitud”, pero**enseñar de nuevo**:
- * Altura del dispositivo host → Cambios en la ventana gráfica → cambio de medida → Vuelva a establecer la altura. La clave para cortarlo no es bloquear la altura, sino:
- *  - cantidad [body] cuadro de borde (cuando no se establece la altura, solo está determinada por el contenido y no tiene ningún efecto causal en la ventana gráfica);
- *  - **Nunca escriba altura o overflow**(Una vez escrito, se convierte en influencia propia);
- *  - Utilice un umbral de cambio más grande + ventana de estabilidad para filtrar estados intermedios y fluctuaciones de subpíxeles.
+ * 所以回到“高度是内容的函数”。真正要防的不是“高度变化”，而是**回授**：
+ * 宿主设高度 → 视口变 → 测量变 → 再设高度。切断它的关键不是锁死高度，而是：
+ *  - 量 [body] 的 border-box（它没设 height 时只由内容决定，与视口无因果）；
+ *  - **绝不向 body 写入高度或 overflow**（一旦写，就变成自己影响自己）；
+ *  - 用较大的变化阈值 + 稳定窗口，滤掉中间态与亚像素抖动。
  *
- * También debería seguir si el contenido se acorta (la altura debería volver después de plegar el panel plegable), pero requiere dos mediciones consecutivas para ser consistentes;
- * Si se hace más alto, lo seguirá inmediatamente, porque hacerlo más alto no hará que se recorte el contenido.
+ * 内容变矮也要跟随（折叠面板收起后高度应该回去），但要求连续两次测量一致才信；
+ * 变高则即时跟随，因为变高不会导致内容被裁。
  */
 internal val HEIGHT_OBSERVER_SCRIPT: String = """
 (function(){
@@ -432,8 +469,8 @@ internal val HEIGHT_OBSERVER_SCRIPT: String = """
   var pendingCount = 0;
   var timer = null;
 
-  // Mide el borde del cuerpo.body No se establece ninguna altura, por lo que está determinada únicamente por el contenido y no tiene ninguna relación causal con la ventana gráfica.
-  // No utilice documentElement.scrollHeight: cuando el contenido es más corto que la ventana gráfica, es igual a la altura de la ventana gráfica y la altura se elevará a la ventana gráfica.
+  // 量 body 的 border-box。body 不设 height，所以它只由内容决定，与视口无因果关系。
+  // 不用 documentElement.scrollHeight：内容比视口矮时它等于视口高，会把高度抬到视口。
   function measure(){
     var b = document.body;
     if (!b) return 0;
@@ -454,17 +491,17 @@ internal val HEIGHT_OBSERVER_SCRIPT: String = """
     var h = measure();
     if (h <= 0) return;
 
-    // La primera presentación surtirá efecto directamente.
+    // 首次上报直接生效。
     if (reported === 0) { push(h); return; }
 
     var delta = h - reported;
-    // No se informan pequeñas diferencias: el redondeo de subpíxeles y las sugerencias de fuente pueden provocar cambios falsos de 1 a 3 píxeles.
+    // 微小差异不上报：亚像素舍入与字体 hinting 会造成 1-3px 的假变化。
     if (Math.abs(delta) < 8) return;
 
-    // Vuélvete más alto: sigue de inmediato (hacerte más alto no interrumpirá el contenido y informar antes brindará una mejor experiencia).
+    // 变高：立即跟随（变高不会把内容裁掉，早一点上报体验更好）。
     if (delta > 0) { push(h); return; }
 
-    // Acortamiento: Sólo dos medidas consecutivas deben ser consistentes para creerlo, para evitar el problema causado por el estado intermedio de la animación de plegado.“Primero bajo y luego alto.”.
+    // 变矮：要连续两次测量一致才相信，避开折叠动画中间态造成的“先矮后高”。
     if (pending === h) { pendingCount += 1 } else { pending = h; pendingCount = 1 }
     if (pendingCount >= 2) push(h);
   }
@@ -480,7 +517,7 @@ internal val HEIGHT_OBSERVER_SCRIPT: String = """
     if (ro) ro.observe(document.body);
     schedule();
     window.addEventListener('load', schedule);
-    // Contenido asincrónico (imagen/fuente/Guión del gráfico) La altura seguirá cambiando una vez completada; complétela varias veces.
+    // 异步内容（图片/字体/图表脚本）到齐后高度还会变，补几次。
     setTimeout(schedule, 150);
     setTimeout(schedule, 400);
     setTimeout(schedule, 900);

@@ -7,11 +7,11 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**
- * v2.x Solución de problemas de registro: Responses API Pruebas de regresión del manejo de mensajes de contenido vacío.
+ * v2.x 日志排障: Responses API 空 content 消息的处置判定回归测试。
  *
- * fondo: Responses API Rechazar mensajes con contenido vacío (HTTP 400 `Message content cannot be empty`).
- * Una vez que el mensaje del asistente vacío (la rueda de herramientas o el remanente del último fallo) ingresa al historial, causará 400 en cada ronda posterior.
- * Formando un ciclo autorrecurrente. Esta prueba bloquea la decisión de clasificación para evitar la regresión.
+ * 背景: Responses API 拒绝 content 为空的消息（HTTP 400 `Message content cannot be empty`）。
+ * 空 assistant 消息（工具轮或上次失败残留）一旦进入历史，会让之后每一轮都 400，
+ * 形成自我复现的死循环。本测试锁定分类判定，防止回归。
  */
 class ResponsesEmptyMessageDispositionTest {
 

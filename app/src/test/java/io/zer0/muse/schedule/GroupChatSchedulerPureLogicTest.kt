@@ -5,7 +5,7 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 /**
- * R-TEST-15: El análisis del libro mayor de rotación del chat grupal y la asignación de roles de debate son puramente lógicos.
+ * R-TEST-15: 群聊轮转账本解析与辩论角色分配纯逻辑。
  */
 class GroupChatSchedulerPureLogicTest {
 
@@ -31,13 +31,13 @@ class GroupChatSchedulerPureLogicTest {
 
     @Test
     fun `debate roles cover two three and more members`() {
-        assertEquals(listOf("proponer un plan", "desafío de preguntas"), GroupChatScheduler.generateDebateRoles(2))
+        assertEquals(listOf("提出方案", "质疑挑战"), GroupChatScheduler.generateDebateRoles(2))
         assertEquals(
-            listOf("proponer un plan", "desafío de preguntas", "Mejorar la optimización"),
+            listOf("提出方案", "质疑挑战", "改进优化"),
             GroupChatScheduler.generateDebateRoles(3),
         )
         assertEquals(
-            listOf("proponer un plan", "desafío de preguntas", "Mejorar la optimización", "Prórroga suplementaria", "proponer un plan"),
+            listOf("提出方案", "质疑挑战", "改进优化", "补充扩展", "提出方案"),
             GroupChatScheduler.generateDebateRoles(5),
         )
     }

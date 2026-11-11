@@ -5,11 +5,11 @@ import io.zer0.common.resultOf
 import kotlinx.coroutines.flow.Flow
 
 /**
- * Almacén de estado de relación de roles (P1-1).
+ * 角色关系状态仓库（P1-1）。
  *
- * Sólo expuesto al mundo exterior."semántico"operación, evitando que la persona que llama toque el DAO directamente:
- * La probabilidad de mensajes privados, la ponderación de la interacción del círculo de amigos y la inyección rápida se basan en esto.
- * Esto evita la inconsistencia en el comportamiento causada por el cálculo de coeficientes en cada uno de los tres lugares.
+ * 对外只暴露"语义化"操作，不让调用方直接碰 DAO：
+ * 私信概率、朋友圈互动加权、提示注入都从这里取口径，
+ * 避免三个地方各自算一遍系数而导致行为不一致。
  */
 class AssistantRelationshipRepository(
     private val dao: AssistantRelationshipDao,
@@ -17,13 +17,13 @@ class AssistantRelationshipRepository(
     fun observeAll(): Flow<List<AssistantRelationshipEntity>> = dao.observeAll()
 
     suspend fun getAll(): List<AssistantRelationshipEntity> = resultOf { dao.getAll() }
-        .onError { msg, t -> Logger.w(TAG, "No se pudo leer la lista de relaciones: ${t?.message ?: msg}") }
+        .onError { msg, t -> Logger.w(TAG, "读取关系列表失败: ${t?.message ?: msg}") }
         .getOrNull() ?: emptyList()
 
     /**
-     * Obtener el estado civil de un determinado rol; devolver si no hay registro**Valor predeterminado**en lugar de nulo.
+     * 取某角色的关系状态；没有记录时返回**默认值**而不是 null。
      *
-     * No escriba bibliotecas: evite escribir líneas vacías para cada ayudante. Sólo cuando la interacción ocurre realmente se abandona.
+     * 不写库：避免为每个助手写入空行。真正发生互动时才落库。
      */
     suspend fun getOrDefault(assistantId: String): AssistantRelationshipEntity = resultOf { dao.get(assistantId) }.getOrNull()
         ?: AssistantRelationshipEntity(assistantId = assistantId)
@@ -36,14 +36,14 @@ class AssistantRelationshipRepository(
             updatedAt = now,
         )
         resultOf { dao.upsert(normalized) }
-            .onError { msg, t -> Logger.w(TAG, "No se pudo guardar la relación: ${t?.message ?: msg}") }
+            .onError { msg, t -> Logger.w(TAG, "保存关系失败: ${t?.message ?: msg}") }
     }
 
     /**
-     * Documente una interacción real y aumente la intimidad de una manera diminuta.
+     * 记录一次真实互动并微量提升亲密度。
      *
-     * Cuando el registro no existe, primero construye el banco y luego súmalo. —— Utilice upsert para garantizar"primera interacción"También se puede almacenar en almacenamiento,
-     * De lo contrario, la ACTUALIZACIÓN de knockAffinity llegará a la fila 0 y fallará silenciosamente.
+     * 记录不存在时先建行再累加 —— 用 upsert 保证"第一次互动"也能落库，
+     * 否则 bumpAffinity 的 UPDATE 会命中 0 行且静默失败。
      */
     suspend fun recordInteraction(assistantId: String, affinityDelta: Int = AFFINITY_PER_INTERACTION) {
         val now = System.currentTimeMillis()
@@ -59,25 +59,25 @@ class AssistantRelationshipRepository(
                         updatedAt = now,
                     ),
                 )
-            }.onError { msg, t -> Logger.w(TAG, "No se pudo inicializar la relación: ${t?.message ?: msg}") }
+            }.onError { msg, t -> Logger.w(TAG, "初始化关系失败: ${t?.message ?: msg}") }
             return
         }
         resultOf { dao.bumpAffinity(assistantId, affinityDelta, now) }
-            .onError { msg, t -> Logger.w(TAG, "No se pudo actualizar la intimidad: ${t?.message ?: msg}") }
+            .onError { msg, t -> Logger.w(TAG, "更新亲密度失败: ${t?.message ?: msg}") }
     }
 
     suspend fun delete(assistantId: String) {
         resultOf { dao.delete(assistantId) }
-            .onError { msg, t -> Logger.w(TAG, "No se pudo eliminar la relación: ${t?.message ?: msg}") }
+            .onError { msg, t -> Logger.w(TAG, "删除关系失败: ${t?.message ?: msg}") }
     }
 
     /**
-     * Calcula la probabilidad de que un personaje tome la iniciativa de enviar un mensaje privado.
+     * 计算某角色主动私信的概率。
      *
-     * La implementación anterior estaba codificada en un 40% y no tenía absolutamente nada que ver con las relaciones de los personajes. —— Los extraños pueden ser tan pegajosos como las novias.
-     * Ahora: probabilidad base × coeficiente de intimidad × coeficiente de engranaje deseado y sujetado [MIN_PROBABILITY, MAX_PROBABILITY].
+     * 旧实现是写死 40%，与角色关系完全无关 —— 陌生人跟女朋友一样粘人。
+     * 现在：基础概率 × 亲密度系数 × 意愿档位系数，并夹在 [MIN_PROBABILITY, MAX_PROBABILITY]。
      *
-     * @param baseProbability La probabilidad básica dada por la persona que llama (manteniendo la magnitud del comportamiento existente)
+     * @param baseProbability 调用方给的基础概率（保持既有行为量级）
      */
     fun proactiveProbability(relationship: AssistantRelationshipEntity, baseProbability: Float = BASE_PROBABILITY): Float {
         if (!relationship.proactiveEnabled) return 0f
@@ -86,10 +86,10 @@ class AssistantRelationshipRepository(
     }
 
     /**
-     * Selección ponderada de asistentes en función de la intimidad.
+     * 按亲密度给助手加权挑选。
      *
-     * La interacción de momentos era anteriormente `Random.nextInt(size)` Puramente aleatorio, lo que resulta en"Alguien con quien nunca he hablado"y
-     * "Personas que chatean todos los días."Me gusta con la mayor frecuencia posible. Aquí, la intimidad se utiliza como peso, y el límite inferior del peso garantiza que también tengan la oportunidad de aparecer nuevos personajes.
+     * 朋友圈互动此前是 `Random.nextInt(size)` 纯随机，导致"从没聊过的人"和
+     * "天天聊的人"一样频繁来点赞。这里用亲密度做权重，权重下限保证新角色也有机会出现。
      */
     fun pickWeighted(
         candidates: List<String>,
@@ -115,16 +115,16 @@ class AssistantRelationshipRepository(
     companion object {
         private const val TAG = "AssistantRelation"
 
-        /** Intimidad incremental con cada interacción real. Unas 50 interacciones para llegar al máximo. */
+        /** 每次真实互动的亲密度增量。约 50 次互动到满。 */
         const val AFFINITY_PER_INTERACTION = 2
 
-        /** La probabilidad fija de mensajes privados de la implementación anterior permanece sin cambios en magnitud como probabilidad base. */
+        /** 旧实现的固定私信概率，作为基础概率保持量级不变。 */
         const val BASE_PROBABILITY = 0.4f
 
         const val MIN_PROBABILITY = 0.02f
         const val MAX_PROBABILITY = 0.9f
 
-        /** Peso mínimo para ponderación de interacción: asegúrese de que un personaje con nivel de intimidad 0 todavía tenga aproximadamente 1/(n*~1.0) oportunidad. */
+        /** 互动加权的最小权重：保证亲密度 0 的角色仍有约 1/(n*~1.0) 的机会。 */
         const val MIN_PICK_WEIGHT = 0.15f
     }
 }

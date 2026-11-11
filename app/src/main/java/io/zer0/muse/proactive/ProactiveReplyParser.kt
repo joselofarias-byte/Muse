@@ -3,74 +3,74 @@ package io.zer0.muse.proactive
 import io.zer0.common.Logger
 
 /**
- * Analiza la respuesta del modelo a una solicitud de mensaje no solicitado.
+ * 解析模型对主动消息请求的回复。
  *
- * Está separado en archivos porque la estrategia de tolerancia a fallas aquí se ajustará repetidamente (la forma en que los diferentes modelos escupen formatos es muy diferente),
- * Y no tiene nada que ver con "cómo construir palabras clave". Cambiar uno no debería cambiar el otro.
+ * 单独成文件是因为这里的容错策略会反复调整（不同模型吐格式的方式差别极大），
+ * 而它跟「怎么构造提示词」没有任何关系，改一个不该动另一个。
  *
- * Prioridad de tolerancia a fallos: si puede reconocer JSON, utilice JSON; si no puede reconocer JSON pero hay texto, acéptelo fácilmente;
- * Simplemente trátelo como si no se pareciera a nada.**falló**en lugar de saltar —— Los dos deben estar separados,
- * Porque los tratamientos de "modelo que se escapa" y "modelo que decide no contarlo" son completamente opuestos:
- * Vale la pena volver a intentar lo primero, pero volver a intentar lo segundo solo lo obligará a forzarlo.
+ * 容错优先级：能认出 JSON 就用 JSON；认不出但有正文就宽松接受；
+ * 什么都不像就当成**失败**而不是跳过 —— 两者要分开，
+ * 因为「模型跑飞」和「模型决定不说」的处置完全相反：
+ * 前者值得重试，后者重试只会逼它硬凑。
  */
 object ProactiveReplyParser {
 
     private const val TAG = "ProactiveReply"
 
-    /** Límite superior estricto para texto (palabras). Si excede esta longitud, se debe cortar, de acuerdo con \"una a tres oraciones\" en las palabras clave. */
+    /** 正文硬上限（字）。超过这个长度一定要截，与提示词里的「一到三句话」一致。 */
     const val MAX_CONTENT_CHARS = 200
 
-    /** El texto principal debe tener al menos esta cantidad de palabras (la puntuación y los espacios en blanco no cuentan), de lo contrario equivale a no decir nada. */
+    /** 正文至少要这么多个字（标点、空白不算），否则等同于没说。 */
     const val MIN_CONTENT_CHARS = 2
 
-    /** Puntuación al final de las frases. La prioridad de truncamiento queda detrás de estos caracteres y no corta media palabra. */
-    private const val SENTENCE_ENDS = ". ! ?!?…;;\n"
+    /** 句末标点。截断优先落在这些字符后面，不硬切半个词。 */
+    private const val SENTENCE_ENDS = "。！？!?…；;\n"
 
-    /** Analiza los resultados. */
+    /** 解析结果。 */
     sealed interface Result {
-        /** No es momento de decirlo ahora. El motivo solo se ingresa en el registro y no se muestra al usuario. */
+        /** 现在不该说。理由只进日志，不给用户看。 */
         data class Skip(val reason: String) : Result
 
-        /** Digamos que el texto es [content]. */
+        /** 说，正文在 [content]。 */
         data class Message(val thoughtId: String?, val content: String, val tone: String) : Result
 
-        /** La salida no está disponible. con [Skip] Deben separarse: el primero debe volver a juzgarse y el segundo es una decisión normal. */
+        /** 输出不可用。与 [Skip] 必须分开：前者要重试，后者是正常决策。 */
         data class Failed(val reason: String) : Result
     }
 
     fun parse(raw: String): Result {
         val text = stripFences(raw).trim()
         val parsed = when {
-            text.isEmpty() -> Result.Failed("El modelo devuelve contenido vacío")
+            text.isEmpty() -> Result.Failed("模型返回空内容")
             else -> extractJsonObject(text)?.let { parseJson(it) } ?: fallbackToProse(text)
         }
         return if (parsed is Result.Message) validate(parsed) else parsed
     }
 
     /**
-     * Verificación física por mensaje de texto.
+     * 正文硬校验。
      *
-     * La capa de análisis es el único lugar que puede impedir que "el modelo escriba una composición breve": escribir "de una a tres oraciones" en la palabra clave es solo una sugerencia.
-     * Los usuarios de mensajes de texto largos enviados solo pueden ver las primeras docenas de palabras en la barra de notificaciones, por lo que también podrían suprimirlo aquí.
-     * Demasiado corto por la misma razón. —— Una palabra o signo de puntuación no es "discurso" y se trata como un salto (no es un error y no se debe volver a intentar).
+     * 解析层是唯一能拦住「模型写小作文」的地方：提示词里写「一到三句话」只是建议，
+     * 而发出去的长文用户只能在通知栏看到前几十个字，还不如在这里压住。
+     * 太短同理 —— 一个字或一个标点不是「说话」，按 skip 处理（不是失败，不该重试）。
      */
     private fun validate(message: Result.Message): Result {
         val content = message.content.trim()
         if (content.count { it.isLetterOrDigit() } < MIN_CONTENT_CHARS) {
-            Logger.w(TAG, "El texto es demasiado corto, haga clic en Saltar | len=${content.length}")
-            return Result.Skip("El texto es demasiado corto (${content.length} palabras)")
+            Logger.w(TAG, "正文过短，按跳过处理 | len=${content.length}")
+            return Result.Skip("正文过短（${content.length} 字）")
         }
         if (content.length <= MAX_CONTENT_CHARS) return message.copy(content = content)
         val truncated = truncateToSentence(content)
-        Logger.i(TAG, "El texto es demasiado largo y ha sido truncado. | from=${content.length} | to=${truncated.length}")
+        Logger.i(TAG, "正文超长已截断 | from=${content.length} | to=${truncated.length}")
         return message.copy(content = truncated)
     }
 
     /**
-     * Censurado en los límites de la oración. [MAX_CONTENT_CHARS] Dentro de.
+     * 按句子边界截到 [MAX_CONTENT_CHARS] 以内。
      *
-     * Busque primero el último signo de puntuación al final de la oración; si es demasiado pronto (menos de la mitad del límite superior), recurra a la siguiente mejor opción.
-     * Cortar en el último espacio en blanco (el texto en inglés se basa en esto para no cortar palabras); Si no funciona, córtalo con fuerza.
+     * 先找最后一个句末标点；它太靠前（不到上限一半）时退而求其次，
+     * 在最后一个空白处断开（英文正文靠这个不切断单词）；再不行才硬切。
      */
     private fun truncateToSentence(text: String): String {
         val head = text.take(MAX_CONTENT_CHARS)
@@ -81,7 +81,7 @@ object ProactiveReplyParser {
         return head.trim()
     }
 
-    /** Ya es un caso JSON puro. */
+    /** 已经是纯 JSON 的情况。 */
     private fun parseJson(json: String): Result {
         val skipValue = Regex("\"skip\"\\s*:\\s*(true|false)")
             .find(json)?.groupValues?.get(1)?.toBooleanStrictOrNull()
@@ -96,7 +96,7 @@ object ProactiveReplyParser {
             .orEmpty()
 
         return when {
-            skipValue == true -> Result.Skip(reason.ifBlank { "No es adecuado hablar del juicio modelo ahora" })
+            skipValue == true -> Result.Skip(reason.ifBlank { "模型判断现在不适合说" })
             content.isNotBlank() -> {
                 val thoughtId = Regex("\"thought_id\"\\s*:\\s*\"([^\"]*)\"").find(json)
                     ?.groupValues?.get(1)
@@ -105,22 +105,21 @@ object ProactiveReplyParser {
                     ?.groupValues?.get(1).orEmpty()
                 Result.Message(thoughtId, content, tone)
             }
-            // JSON No hay ninguno skip=true No hay contenido: trátelo como un fracaso y deje que la capa superior lo intente nuevamente.
-            else -> Result.Failed("JSON Campo de contenido faltante")
+            // JSON 里既没 skip=true 也没 content：当成失败，让上层重试
+            else -> Result.Failed("JSON 缺 content 字段")
         }
     }
 
     private fun fallbackToProse(text: String): Result {
-        if (!looksLikeProse(text)) return Result.Failed("La salida no se puede analizar")
-        Logger.w(TAG, "Modelo no devuelto como JSON, aceptado como cuerpo de texto sin formato")
+        if (!looksLikeProse(text)) return Result.Failed("输出无法解析")
+        Logger.w(TAG, "模型未按 JSON 返回，按纯文本正文接受")
         return Result.Message(null, text, "")
     }
 
-    private fun stripFences(raw: String): String =
-        raw.replace(Regex("^```(?:json)?\\s*", RegexOption.MULTILINE), "")
-            .replace(Regex("\\s*```$", RegexOption.MULTILINE), "")
+    private fun stripFences(raw: String): String = raw.replace(Regex("^```(?:json)?\\s*", RegexOption.MULTILINE), "")
+        .replace(Regex("\\s*```$", RegexOption.MULTILINE), "")
 
-    /** Extraiga el primer objeto JSON equilibrado de la salida, que puede mezclarse con texto explicativo. */
+    /** 从可能混着说明文字的输出里抠出第一个平衡的 JSON 对象。 */
     private fun extractJsonObject(text: String): String? {
         val start = text.indexOf('{')
         var depth = 0
@@ -146,7 +145,7 @@ object ProactiveReplyParser {
         return if (start >= 0 && stop > start) text.substring(start, stop + 1) else null
     }
 
-    /** JSON Se restauran los escapes comunes en las cuerdas. */
+    /** JSON 字符串里的常见转义还原。 */
     private fun unescape(s: String): String = s
         .replace("\\n", "\n")
         .replace("\\t", "\t")
@@ -154,11 +153,11 @@ object ProactiveReplyParser {
         .replace("\\\\", "\\")
 
     /**
-     * Determine si el resultado parece un párrafo normal.
+     * 判断输出是否像一段正常的话。
      *
-     * Umbral: longitud razonable, sin código obvio/Estructura clave-valor.
-     * Esta cobertura existe porque algunos modelos pequeños simplemente se niegan a devolver JSON.
-     * Y a menudo está disponible cuando está escrito. —— Tirarlo a la basura sería un fracaso en vano.
+     * 门槛：长度合理、不含明显的代码/键值结构。
+     * 这个兜底存在是因为有些小模型就是不肯返回 JSON，
+     * 而它写出来的话往往是可用的 —— 扔掉它等于白白失败一次。
      */
     private fun looksLikeProse(text: String): Boolean {
         val structural = text.count { it == '{' || it == '}' || it == ':' }

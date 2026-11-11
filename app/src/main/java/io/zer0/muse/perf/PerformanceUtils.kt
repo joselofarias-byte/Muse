@@ -5,14 +5,14 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 
 /**
- * Phase 6 6B: Paginación de la lista de mensajes — 50Artículo/página,Desplácese hacia arriba para cargar más.
+ * Phase 6 6B: 消息列表分页 — 50条/页,滚动到顶部加载更多。
  *
- * Características:
- * - uso stable key (messageId) Rendimiento garantizado de Compose LazyList
- * - Markdown analizar caché: remember(messageId + contentHash)
- * - Limitación de la transmisión de animación: intervalo de actualización 50ms
+ * 特性:
+ * - 使用 stable key (messageId) 保证 Compose LazyList 性能
+ * - Markdown 解析缓存: remember(messageId + contentHash)
+ * - 流式动画节流: 更新间隔 50ms
  *
- * Uso:
+ * 用法:
  * ```
  * val pagedMessages = MessagePaginator.createFlow(allMessages, pageSize = 50)
  * ```
@@ -23,11 +23,11 @@ object MessagePaginator {
     const val DEFAULT_PAGE_SIZE = 50
 
     /**
-     * Cree un flujo paginado a partir de la lista completa de mensajes.
+     * 从全量消息列表中创建分页 Flow。
      *
-     * @param allMessages Lista completa de ID de mensajes(en orden cronológico)
-     * @param pageSize tamaño de página
-     * @return Lista paginada de ID de mensajes Flow(Acumular en orden de carga)
+     * @param allMessages 全量消息 ID 列表(按时间正序)
+     * @param pageSize 每页大小
+     * @return 分页后的消息 ID 列表 Flow(按加载顺序累加)
      */
     fun createFlow(allMessages: List<String>, pageSize: Int = DEFAULT_PAGE_SIZE): Flow<List<String>> = flow {
         if (allMessages.isEmpty()) {
@@ -38,10 +38,10 @@ object MessagePaginator {
         val total = allMessages.size
         var loaded = pageSize.coerceAtMost(total)
 
-        // de la cola(últimas noticias)Empezar a cargar
+        // 从尾部(最新消息)开始加载
         emit(allMessages.subList(total - loaded, total))
 
-        // cargar más(Agregar cada vez pageSize)
+        // 加载更多(每次加 pageSize)
         while (loaded < total) {
             loaded = (loaded + pageSize).coerceAtMost(total)
             emit(allMessages.subList(total - loaded, total))
@@ -50,11 +50,11 @@ object MessagePaginator {
     }
 
     /**
-     * Calcular contenido hash(para el almacenamiento en caché de Markdown key).
+     * 计算内容 hash(用于 Markdown 缓存 key)。
      *
-     * @param messageId noticias ID
-     * @param content Contenido del mensaje
-     * @return caché key
+     * @param messageId 消息 ID
+     * @param content 消息内容
+     * @return 缓存 key
      */
     fun contentCacheKey(messageId: String, content: String): String {
         return "$messageId:${content.hashCode()}"
@@ -62,9 +62,9 @@ object MessagePaginator {
 }
 
 /**
- * Phase 6 6B: Limitación de la transmisión de animación — Limite la frecuencia de actualización a cada 50 ms.
+ * Phase 6 6B: 流式动画节流 — 限制更新频率为每 50ms 一次。
  *
- * Uso:
+ * 用法:
  * ```
  * val throttledText = streamText.throttle(50)
  * ```
@@ -78,5 +78,5 @@ fun <T> Flow<T>.throttle(intervalMs: Long = 50): Flow<T> = flow {
             emit(value)
         }
     }
-    // Asegúrese de que también se envíe el último valor
+    // 确保最后一个值也被发送
 }

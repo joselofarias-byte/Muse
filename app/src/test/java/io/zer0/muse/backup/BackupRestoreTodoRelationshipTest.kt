@@ -18,12 +18,12 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * v2.6.7: Copia de seguridad y restauración**Cayó en la biblioteca**verificar.
+ * v2.6.7: 备份恢复的**落库**验证。
  *
- * La prueba de ida y vuelta de serialización solo puede demostrar que "los campos no se pierden", pero no puede demostrar que "realmente se escribe en la base de datos durante la recuperación".
- * Esto último es lo que los usuarios pueden percibir: si la intimidad sigue ahí después de reemplazar y restaurar la máquina, y si la tarea pendiente sigue ahí.
+ * 序列化往返测试只能证明「字段没丢」，证明不了「恢复时真的写进库了」。
+ * 后者才是用户能感知的：换机恢复后亲密度还在不在、待办还在不在。
  *
- * Esta prueba opera directamente el DAO real y replica la ruta de escritura en las dos tablas en applyBackupInternal.
+ * 这条测试直接操作真实 DAO，复刻 applyBackupInternal 里对这两张表的写库路径。
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(application = android.app.Application::class, sdk = [33])
@@ -53,7 +53,7 @@ class BackupRestoreTodoRelationshipTest {
 
     private fun relationship(assistantId: String, affinity: Int) = AssistantRelationshipEntity(
         assistantId = assistantId,
-        relationLabel = "amigos",
+        relationLabel = "朋友",
         affinity = affinity,
         lastInteractionAt = 300L,
         proactiveLevel = "normal",
@@ -63,62 +63,62 @@ class BackupRestoreTodoRelationshipTest {
 
     @Test
     fun `todos are restored into the database`() = runTest {
-        val rows = listOf(todo("s1", """[{"content":"escribir plan","status":"pending"}]"""), todo("s2", """[]"""))
+        val rows = listOf(todo("s1", """[{"content":"写方案","status":"pending"}]"""), todo("s2", """[]"""))
 
-        // Copie la ruta de la biblioteca de escritura de applyBackupInternal
+        // 复刻 applyBackupInternal 的写库路径
         rows.forEach { database.sessionTodoDao().upsert(it) }
 
         assertEquals(2, database.sessionTodoDao().getAll().size)
         assertEquals("s1", database.sessionTodoDao().getBySession("s1")?.sessionId)
-        assertTrue(database.sessionTodoDao().getAll().any { it.todosJson.contains("escribir plan") })
+        assertTrue(database.sessionTodoDao().getAll().any { it.todosJson.contains("写方案") })
     }
 
     @Test
     fun `relationships are restored into the database`() = runTest {
-        // Este es el vacío que hay que llenar esta vez: antes, solo se exportaba pero no se restauraba, y toda la intimidad se perdía después de cambiar de dispositivo.
+        // 这是本次补的缺口：此前只导出不恢复，换机后亲密度全丢
         val rows = listOf(relationship("a1", 42), relationship("a2", 88))
 
         rows.forEach { database.assistantRelationshipDao().upsert(it) }
 
         assertEquals(2, database.assistantRelationshipDao().getAll().size)
-        assertEquals("La intimidad debe restaurarse con respaldo", 42, database.assistantRelationshipDao().get("a1")?.affinity)
-        assertEquals("amigos", database.assistantRelationshipDao().get("a1")?.relationLabel)
+        assertEquals("亲密度必须随备份恢复", 42, database.assistantRelationshipDao().get("a1")?.affinity)
+        assertEquals("朋友", database.assistantRelationshipDao().get("a1")?.relationLabel)
     }
 
     @Test
     fun `restore clears stale rows before writing`() = runTest {
-        // Primero coloque "datos antiguos" para simular el estado de la biblioteca antes de la recuperación.
+        // 先放一条「旧数据」，模拟恢复前的库状态
         database.assistantRelationshipDao().upsert(relationship("stale", 99))
         database.sessionTodoDao().upsert(todo("stale", """[]"""))
 
-        // Borrar + escribir para recuperación de réplica
+        // 复刻恢复的清空 + 写入
         database.assistantRelationshipDao().deleteAll()
         database.sessionTodoDao().deleteAll()
         database.assistantRelationshipDao().upsert(relationship("a1", 42))
         database.sessionTodoDao().upsert(todo("s1", """[]"""))
 
-        assertNull("Las relaciones de sesiones antiguas no deben permanecer después de la recuperación", database.assistantRelationshipDao().get("stale"))
-        assertNull("Las tareas pendientes antiguas no deberían permanecer después de la recuperación", database.sessionTodoDao().getBySession("stale"))
+        assertNull("恢复后不该残留旧会话关系", database.assistantRelationshipDao().get("stale"))
+        assertNull("恢复后不该残留旧待办", database.sessionTodoDao().getBySession("stale"))
         assertEquals(1, database.assistantRelationshipDao().getAll().size)
         assertEquals(1, database.sessionTodoDao().getAll().size)
     }
 
     @Test
     fun `backup service actually writes both tables on restore`() {
-        // Ajustar directamente DAO solo puede demostrar que "DAO "Sabe escribir" no puede demostrar que "el proceso de recuperación realmente lo ajustó"——
-        // assistantRelationships Al principio, se exportó pero no se restauró, y al eliminar esa línea no se compilaría ni se informaría un error.
-        // Por lo tanto, aquí se afirma que el código fuente de la ruta de recuperación contiene estas dos escrituras.
+        // 直接调 DAO 只能证明「DAO 能写」，证明不了「恢复流程真的调了它」——
+        // assistantRelationships 当初就是导出有、恢复没有，而且删掉那行不会编译报错。
+        // 所以这里断言恢复路径的源码里确实有这两次写入。
         val source =
             java.io.File("src/main/java/io/zer0/muse/backup/BackupService.kt")
                 .takeIf { it.exists() }
                 ?.readText()
                 ?: return
         assertTrue(
-            "La ruta de recuperación debe estar escrita. session_todos",
+            "恢复路径必须写 session_todos",
             source.contains("backup.sessionTodos.forEach"),
         )
         assertTrue(
-            "La ruta de recuperación debe escribirse como asistente_relación (anteriormente solo se exportaba pero no se restauraba)",
+            "恢复路径必须写 assistant_relationship（此前只导出不恢复）",
             source.contains("backup.assistantRelationships.forEach"),
         )
     }
@@ -128,7 +128,7 @@ class BackupRestoreTodoRelationshipTest {
         database.assistantRelationshipDao().upsert(relationship("a1", 42))
         database.assistantRelationshipDao().upsert(relationship("a1", 55))
 
-        assertEquals("La clave principal es AssistantId, la recuperación duplicada debe sobrescribir en lugar de agregar nueva", 1, database.assistantRelationshipDao().getAll().size)
+        assertEquals("主键是 assistantId，重复恢复应覆盖而不是新增", 1, database.assistantRelationshipDao().getAll().size)
         assertEquals(55, database.assistantRelationshipDao().get("a1")?.affinity)
     }
 }

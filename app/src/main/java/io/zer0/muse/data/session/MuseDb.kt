@@ -17,6 +17,12 @@ import io.zer0.muse.data.assistant.AssistantDao
 import io.zer0.muse.data.assistant.AssistantEntity
 import io.zer0.muse.data.audit.AuditLogDao
 import io.zer0.muse.data.audit.AuditLogEntity
+import io.zer0.muse.data.conversation.ConversationCommandReceiptDao
+import io.zer0.muse.data.conversation.ConversationCommandReceiptEntity
+import io.zer0.muse.data.conversation.ConversationDisplaySlotDao
+import io.zer0.muse.data.conversation.ConversationDisplaySlotEntity
+import io.zer0.muse.data.conversation.ConversationSelectionDao
+import io.zer0.muse.data.conversation.ConversationSelectionEntity
 import io.zer0.muse.data.experience.ExperienceDao
 import io.zer0.muse.data.experience.ExperienceEntity
 import io.zer0.muse.data.groupchat.GroupChatDao
@@ -64,57 +70,57 @@ import kotlinx.serialization.builtins.serializer
 import java.io.File
 
 /**
- * muse app Base de datos de Layer Room.
+ * muse app 层 Room 数据库。
  *
- * Contiene conversaciones + mensajes. + Assistant + Lorebook + QuickMessage + PromptInjection seis mesas
- * (Independiente de :memory.db del módulo de memoria,Segregación de funciones).
- * - sessions: metadatos de sesión(Título/Marca de tiempo/Vista previa/atado Assistant)
- * - messages: Mensajes de chat persistentes(Asociar por ID de sesión)
- * - assistants: Assistant Configuración de personalidad múltiple(Phase 8.2)
- * - lorebooks: Entradas en libros mundiales activadas por palabras clave(Phase 8.5)
- * - quick_messages: Plantilla de mensaje rápido(Phase 8.5)
- * - prompt_injections: Palabra de solicitud de inyección de patrón(Phase 8.5)
+ * 包含会话 + 消息 + Assistant + Lorebook + QuickMessage + PromptInjection 六张表
+ * (与 :memory 模块的 memory.db 独立,职责分离)。
+ * - sessions: 会话元数据(标题/时间戳/预览/绑定的 Assistant)
+ * - messages: 持久化的聊天消息(按 sessionId 关联)
+ * - assistants: Assistant 多人格配置(Phase 8.2)
+ * - lorebooks: 关键词触发的世界书条目(Phase 8.5)
+ * - quick_messages: 快捷消息模板(Phase 8.5)
+ * - prompt_injections: 模式注入提示词(Phase 8.5)
  *
- * Phase 8.2: versión 1 → 2,Agregue la tabla de asistentes + sesiones.assistantId + sesiones.pinned.
- * Phase 8.3: versión 2 → 3,messages Agregar campo favorito(Predeterminado 0).
- * Phase 8.4: versión 3 → 4,messages Agregar el campo citationUrlsJson(Predeterminado "[]").
- * Phase 8.5: versión 4 → 5,Nuevo lorebooks / quick_messages / prompt_injections Tres mesas.
- * Phase 8.6: versión 5 → 6,messages Agregar campo imageBase64Json(Predeterminado "[]",multimodal).
- * Phase 8.8: versión 6 → 7,Agregar tabla de habilidades(Kotlin Realización directa skill,No hay necesidad QuickJS).
- * Phase 9.1: versión 7 → 8,Agregar tabla de carpetas + campo session.folderId(M13 Agrupación de carpetas).
- * Phase 10.3: versión 8 → 9,Se agregó la tabla virtual message_fts FTS4.(Índice de texto completo de ngram chino).
- *   - La migración solo crea tablas vacías,Comenzado por primera vez por SessionRepository.ensureFtsIndexConsistent cantidad total rebuild
- *   - El contenido del índice es preprocesado por MessageFtsManager.toNgram(CJK 2-gram Ventana deslizante + palabra ASCII minúscula)
- *   - MessageFtsManager.toMatchQuery se convierte en expresión MATCH al buscar(Escape de cita + semántica Y)
- * P1-7: versión 10 → 11,Agregar tabla de ejecuciones_tareas programadas(Historial de ejecución de tareas programadas).
- *   - La cadena de migración ha cubierto la ruta de actualización estándar.;Las versiones desconocidas o degradaciones son manejadas por el proceso de recuperación de respaldo y no se ejecutan destructive migration
- * v0.45: versión 11 → 12,sessions Agregar campo archivado(Función de archivo).
- * v1.43: versión 15 → 16,Tabla de artefactos agregada + campo message.artifactIdsJson(artefacto de conversación).
- * v1.0.23 hotfix: versión 41 → 42,Reparación"falso v41"Fallo en la verificación de integridad de la base de datos(Campos de complemento defensivo,Sin cambios de esquema).
- * v1.0.17: versión 43 → 44,Se agregó la tabla Translate_history.(Persistencia del historial de traducción).
- * v1.0.17: versión 44 → 45,Se agregó la tabla Quick_notes.(Registre rápidamente la persistencia de la habitación + papelera de reciclaje).
- *   Almacenamiento de archivos JSON que reemplaza el QuickNoteStore original;QuickNoteStore Mantener como fuente de migración + formato compatible.
- *   tags Las columnas se manejan a través de QuickNoteConverters separados por comas TypeConverter List<String>.
- * v1.0.17: versión 45 → 46,scheduled_tasks Agregar columnas retry_count + max_retries(Estrategia de reintento de fallo de ejecución).
- * v1.0.18: versión 47 → 48,quick_notes agregar folder/content_type/attachments_json/reminder_at/
- *   encrypted/encrypted_content 6 columna(Notas rápidas sobre 9 mejoras:Clasificación/texto enriquecido/Accesorios/recordatorio/Cifrado/Paginación, etc.).
- * v1.0.30 gap4.3: versión 46 → 47,translate_history Agregar columna favorita(Favoritos de traducción).
- * v1.0.19: versión 48 → 49,assistants Agregar resumen/useAssistantName/allowGroupChat 3 columnas
- *   (Assistant Finalización del campo;tags La agrupación ha sido realizada por tagsJson).
- * v2.x: versión 49 → 50,Crea una nueva tabla group_chat_memories(Aislamiento de memoria de chat grupal).
- * v1.0.x: versión 97 → 98,assistants Eliminar 3 columnas muertas backgroundUrl/backgroundOpacity/
- *   useGradientBackground(La función de imagen de fondo del asistente se ha eliminado por completo.,Sin lado del consumidor).
- *   v2.6.9: versión 118 → 119,Se agregaron tres tablas de mensajes activos.(pending_thought / proactive_outcome / proactive_relation).
- *   Mesa puramente nueva,El antiguo ProactiveMessageConfig permanece y no se migra.
- *   v2.6.8: versión 117 → 118,Tabla card_entities agregada(Conexión de tarjeta/portador de identidad y estado flotante entre aplicaciones).
- *   Mesa puramente nueva,No te muevas y ten cuidado;La tarjeta se actualiza de "message tail + card_data.json" a una entidad de primera clase(UUID clave primaria).
- *   Nota:SQLite 3.35 Solo admite DROP COLUMN,minSdk 26 El dispositivo antiguo no lo admite, así que ve"Crear nueva tabla → Mover datos →
- *   Cambiar nombre"camino (con MIGRATION_*_* consistente con la práctica histórica de group_chat_messages/skills en group_chat_messages/skills).
- *   v2.6.16: versión 120 → 121,messages Agregue voiceUri / voiceDurationMs dos columnas (mensajes de voz).
- *   Columna puramente nueva, la fila anterior voiceUri es NULL,voiceDurationMs es 0, se lee como"mensajes no de voz";
- *   La nueva versión del código no lee la semántica de las columnas antiguas y los datos antiguos permanecen sin cambios.
- *   versión 121 → 122, borra las cuatro mesas que dejó el viejo teléfono celular (momentos/diario) y isMiniPhone=1 conversaciones y sus mensajes.
- *   Esta función no está abierta a usuarios reales y no se conservan datos comerciales en la biblioteca;isMiniPhone Preservación de columnas (el antiguo SQLite no admite DROP COLUMN).
+ * Phase 8.2: 版本 1 → 2,新增 assistants 表 + sessions.assistantId + sessions.pinned。
+ * Phase 8.3: 版本 2 → 3,messages 加 favorite 字段(默认 0)。
+ * Phase 8.4: 版本 3 → 4,messages 加 citationUrlsJson 字段(默认 "[]")。
+ * Phase 8.5: 版本 4 → 5,新增 lorebooks / quick_messages / prompt_injections 三张表。
+ * Phase 8.6: 版本 5 → 6,messages 加 imageBase64Json 字段(默认 "[]",多模态)。
+ * Phase 8.8: 版本 6 → 7,新增 skills 表(Kotlin 直实现 skill,不用 QuickJS)。
+ * Phase 9.1: 版本 7 → 8,新增 folders 表 + sessions.folderId 字段(M13 文件夹分组)。
+ * Phase 10.3: 版本 8 → 9,新增 messages_fts FTS4 虚拟表(中文 ngram 全文索引)。
+ *   - 迁移只建空表,首次启动由 SessionRepository.ensureFtsIndexConsistent 全量 rebuild
+ *   - 索引内容由 MessageFtsManager.toNgram 预处理(CJK 2-gram 滑窗 + ASCII 小写词)
+ *   - 搜索时 MessageFtsManager.toMatchQuery 转 MATCH 表达式(引号转义 + AND 语义)
+ * P1-7: 版本 10 → 11,新增 scheduled_task_executions 表(定时任务执行历史)。
+ *   - 迁移链已覆盖标准升级路径;未知版本或降级由备份恢复流程处理，不执行 destructive migration
+ * v0.45: 版本 11 → 12,sessions 加 archived 字段(归档功能)。
+ * v1.43: 版本 15 → 16,新增 artifacts 表 + messages.artifactIdsJson 字段(会话产物)。
+ * v1.0.23 hotfix: 版本 41 → 42,修复"假 v41"数据库 integrity check 崩溃(防御性补字段,无 schema 变更)。
+ * v1.0.17: 版本 43 → 44,新增 translate_history 表(翻译历史持久化)。
+ * v1.0.17: 版本 44 → 45,新增 quick_notes 表(快速记录 Room 持久化 + 回收站)。
+ *   替代原 QuickNoteStore 的 JSON 文件存储;QuickNoteStore 保留作为迁移源 + 兼容格式化。
+ *   tags 列通过 QuickNoteConverters 逗号分隔 TypeConverter 处理 List<String>。
+ * v1.0.17: 版本 45 → 46,scheduled_tasks 加 retry_count + max_retries 列(执行失败重试策略)。
+ * v1.0.18: 版本 47 → 48,quick_notes 加 folder/content_type/attachments_json/reminder_at/
+ *   encrypted/encrypted_content 6 列(快速记录 9 项增强:分类/富文本/附件/提醒/加密/分页等)。
+ * v1.0.30 gap4.3: 版本 46 → 47,translate_history 加 favorite 列(翻译收藏夹)。
+ * v1.0.19: 版本 48 → 49,assistants 加 summary/useAssistantName/allowGroupChat 3 列
+ *   (Assistant 字段补齐;tags 分组已由 tagsJson 承载)。
+ * v2.x: 版本 49 → 50,新建 group_chat_memories 表(群聊记忆隔离)。
+ * v1.0.x: 版本 97 → 98,assistants 删除 3 个死列 backgroundUrl/backgroundOpacity/
+ *   useGradientBackground(助手背景图功能已整体撤掉,无消费端)。
+ *   v2.6.9: 版本 118 → 119,新增主动消息三表(pending_thought / proactive_outcome / proactive_relation)。
+ *   纯新增表,旧 ProactiveMessageConfig 保留不迁移。
+ *   v2.6.8: 版本 117 → 118,新增 card_entities 表(卡片停靠 / 跨应用悬浮的身份与状态载体)。
+ *   纯新增表,不动既有表;卡片从「消息尾巴 + card_data.json」升为一等实体(UUID 主键)。
+ *   注：SQLite 3.35 才支持 DROP COLUMN，minSdk 26 的旧设备不支持，故走"建新表 → 搬数据 →
+ *   换名"路径（与 MIGRATION_*_* 中 group_chat_messages/skills 的历史做法一致）。
+ *   v2.6.16: 版本 120 → 121，messages 加 voiceUri / voiceDurationMs 两列（语音消息）。
+ *   纯新增列，旧行 voiceUri 为 NULL、voiceDurationMs 为 0，读出来就是"非语音消息"；
+ *   新版本代码不读旧列语义，旧数据一字未改。
+ *   版本 121 → 122，删除旧小手机遗留的四张表（朋友圈/日记）与 isMiniPhone=1 的会话及其消息。
+ *   该功能未对真实用户开放，库内无可保留业务数据；isMiniPhone 列保留（旧 SQLite 不支持 DROP COLUMN）。
  */
 @Database(
     entities = [
@@ -133,57 +139,62 @@ import java.io.File
         ScheduledTaskExecutionEntity::class,
         GroupChatEntity::class,
         GroupChatMessageEntity::class,
-        // v2.x: Aislamiento de memoria de chat grupal(independiente fact store,No contamina la memoria principal)
+        // v2.x: 群聊记忆隔离(独立 fact store,不污染主记忆)
         GroupChatMemoryEntity::class,
-        // v1.0.74: Registro de inspección activo
+        // v1.0.74: 主动巡检日志
         io.zer0.muse.data.patrol.PatrolLogEntity::class,
         io.zer0.muse.data.stats.UsageRecordEntity::class,
         ExperienceEntity::class,
-        // v1.107 Diseño redundante: Caché de estadísticas/registro de integridad/registro de copia de seguridad automática
+        // v1.107 冗余设计: 统计缓存 / 完整性日志 / 自动备份日志
         StatsCacheEntity::class,
         DbIntegrityLogEntity::class,
         AutoBackupLogEntity::class,
-        // Phase 2 2B: tabla de hitos
+        // Phase 2 2B: 里程碑表
         MilestoneEntity::class,
         AgentMessageEntity::class,
-        // P2-4: tabla de registro de auditoría
+        // P2-4: 审计日志表
         AuditLogEntity::class,
-        // v1.133: Base de conocimiento múltiple + búsqueda híbrida FTS4
-        // Nota:KnowledgeChunkFtsEntity No en esta lista — FTS4 vtable Creado por MIGRATION_38_39 SQL sin formato,
-        // DAO Todos @SkipQueryVerification,Room No tengo conocimiento de la existencia de la mesa virtual.(Evite los informes de validación del esquema KSP vtable constructor failed)
+        // v1.133: 多知识库 + FTS4 混合检索
+        // 注:KnowledgeChunkFtsEntity 不在此列表 — FTS4 vtable 由 MIGRATION_38_39 raw SQL 创建,
+        // DAO 全部 @SkipQueryVerification,Room 不感知该虚拟表存在(避免 KSP schema 验证报 vtable constructor failed)
         KnowledgeBaseEntity::class,
-        // v2.4.6: Carpeta de la base de conocimientos(Contiene carpetas vacías) — Las carpetas se convierten en ciudadanos de primera clase que pueden existir de forma independiente.,Al mismo tiempo, también es una búsqueda de unidades de aislamiento.
+        // v2.4.6: 知识库文件夹(含空文件夹) — 文件夹成为可独立存在的一等公民,同时是检索隔离单位
         io.zer0.muse.data.knowledge.KnowledgeFolderEntity::class,
-        // v1.0.15: envío de mensajes outbox(Cola de envío persistente,Recuperar mensajes no enviados después de que se finaliza el proceso)
+        // v1.0.15: 消息发送 outbox(持久化发送队列,进程被杀后恢复未发送消息)
         MessageOutboxEntity::class,
-        // v1.0.17: Persistencia del historial de traducción
+        // v1.0.17: 翻译历史持久化
         TranslateHistoryEntity::class,
-        // v1.0.17: registro rápido(Almacenamiento de archivos JSON alternativo + papelera de reciclaje)
+        // v1.0.17: 快速记录(替代 JSON 文件存储 + 回收站)
         QuickNoteEntity::class,
-        // P1-2: Worldbook Libro del mundo dinámico(permanente/palabras clave/regular/inyección profunda,independiente de Lorebook)
+        // P1-2: Worldbook 动态世界书(常驻/关键词/正则/深度注入,独立于 Lorebook)
         io.zer0.muse.worldbook.WorldBookEntryEntity::class,
-        // v1.0.53 Phase 1: Libro mayor de hilos de subagente(Versión persistente,Reemplazar la versión de memoria anterior SubagentThreadStore)
+        // v1.0.53 Phase 1: 子 agent 线程账本(持久化版,替代旧内存版 SubagentThreadStore)
         io.zer0.muse.data.subagent.SubagentThreadEntity::class,
-        // B5-01: Generación de puntos de control de streaming(Restaurar mensajes de interrupción después de que se finaliza el proceso)
+        // B5-01: 流式生成检查点(进程被杀后恢复中断消息)
         GenerationCheckpointEntity::class,
-        // B5-02: El chat grupal genera un libro mayor(Una vez finalizado el proceso, presione el punto de interrupción para reproducir)
+        // B5-02: 群聊生成账本(进程被杀后按断点重放)
         GroupChatGenerationLedgerEntity::class,
-        // Overnight rebuild: eventos de diálogo, giros, ruedas de herramientas,parts y cabeza de rama
+        // Overnight rebuild: 对话事件、回合、工具轮、parts 和分支头
         ConversationEventEntity::class,
         ConversationTurnEntity::class,
         ToolRoundEntity::class,
         MessagePartEntity::class,
         SessionBranchHeadEntity::class,
+        ConversationCommandReceiptEntity::class,
+        ConversationSelectionEntity::class,
+        ConversationDisplaySlotEntity::class,
         io.zer0.muse.data.relationship.AssistantRelationshipEntity::class,
         io.zer0.muse.data.todo.SessionTodoEntity::class,
-        // v2.6.8: entidad de tarjeta(Conexión de tarjeta/portador de identidad y estado flotante entre aplicaciones)
+        // v2.6.8: 卡片实体(卡片停靠 / 跨应用悬浮的身份与状态载体)
         io.zer0.muse.data.card.CardEntity::class,
-        // v2.6.9: Reconstrucción activa de mensajes — Libro mayor de preocupaciones/libro mayor de resultados/intimidad en las relaciones
+        // v2.6.9: 主动消息重建 — 牵挂账本 / 结果账 / 关系亲密度
         io.zer0.muse.data.proactive.PendingThoughtEntity::class,
         io.zer0.muse.data.proactive.ProactiveOutcomeEntity::class,
         io.zer0.muse.data.proactive.ProactiveRelationEntity::class,
+        io.zer0.muse.proactive.SessionProactivePreferenceEntity::class,
+        io.zer0.muse.data.terms.SessionTermEntity::class,
     ],
-    version = 122,
+    version = MuseDb.LATEST_SCHEMA_VERSION,
     exportSchema = true,
 )
 @TypeConverters(QuickNoteConverters::class)
@@ -192,6 +203,7 @@ abstract class MuseDb : RoomDatabase() {
     abstract fun messageDao(): MessageDao
     abstract fun messageFtsDao(): MessageFtsDao
     abstract fun artifactDao(): ArtifactDao
+    abstract fun sessionProactivePreferenceDao(): io.zer0.muse.proactive.SessionProactivePreferenceDao
     abstract fun assistantDao(): AssistantDao
     abstract fun lorebookDao(): LorebookDao
     abstract fun quickMessageDao(): QuickMessageDao
@@ -202,109 +214,118 @@ abstract class MuseDb : RoomDatabase() {
     abstract fun knowledgeDocDao(): KnowledgeDocDao
     abstract fun knowledgeChunkDao(): KnowledgeChunkDao
 
-    // v1.133: Múltiples bases de conocimiento + FTS4
+    // v1.133: 多知识库 + FTS4
     abstract fun knowledgeBaseDao(): KnowledgeBaseDao
 
-    // v2.4.6: Carpeta de la base de conocimientos
+    // v2.4.6: 知识库文件夹
     abstract fun knowledgeFolderDao(): io.zer0.muse.data.knowledge.KnowledgeFolderDao
     abstract fun knowledgeChunkFtsDao(): KnowledgeChunkFtsDao
     abstract fun scheduledTaskExecutionDao(): ScheduledTaskExecutionDao
     abstract fun groupChatDao(): GroupChatDao
     abstract fun groupChatMessageDao(): GroupChatMessageDao
 
-    // v2.x: Aislamiento de memoria de chat grupal(independiente fact store,No contamina la memoria principal)
+    // v2.x: 群聊记忆隔离(独立 fact store,不污染主记忆)
     abstract fun groupChatMemoryDao(): GroupChatMemoryDao
 
     abstract fun patrolLogDao(): io.zer0.muse.data.patrol.PatrolLogDao
 
-    /** Canalización de uso (una fila por solicitud de modelo). */
+    /** 用量流水（每次模型请求一行）。 */
     abstract fun usageRecordDao(): io.zer0.muse.data.stats.UsageRecordDao
 
-    // v1.98: Biblioteca de experiencias
+    // v1.98: 经验库
     abstract fun experienceDao(): ExperienceDao
 
-    // Phase 2 2B: hito
+    // Phase 2 2B: 里程碑
     abstract fun milestoneDao(): MilestoneDao
     abstract fun agentMessageDao(): AgentMessageDao
 
-    // P2-4: Registro de auditoría
+    // P2-4: 审计日志
     abstract fun auditLogDao(): AuditLogDao
 
-    // v1.134 P1-1/P1-2: Requerido para acceder a componentes huérfanos DAO
+    // v1.134 P1-1/P1-2: 孤儿组件接入所需 DAO
     abstract fun autoBackupLogDao(): AutoBackupLogDao
     abstract fun statsCacheDao(): StatsCacheDao
 
-    // P3-3: Verificación de integridad de la base de datos DAO(IntegrityChecker uso)
+    // P3-3: 数据库完整性校验 DAO(IntegrityChecker 使用)
     abstract fun integrityLogDao(): DbIntegrityLogDao
 
-    // v1.0.15: envío de mensajes outbox DAO
+    // v1.0.15: 消息发送 outbox DAO
     abstract fun messageOutboxDao(): MessageOutboxDao
 
-    // v1.0.17: Historial de traducción DAO
+    // v1.0.17: 翻译历史 DAO
     abstract fun translateHistoryDao(): TranslateHistoryDao
 
-    // v1.0.17: registro rápido DAO(Almacenamiento de archivos JSON alternativo + papelera de reciclaje)
+    // v1.0.17: 快速记录 DAO(替代 JSON 文件存储 + 回收站)
     abstract fun quickNoteDao(): QuickNoteDao
 
-    // P1-2: Worldbook Libro del mundo dinámico DAO
+    // P1-2: Worldbook 动态世界书 DAO
     abstract fun worldBookDao(): io.zer0.muse.worldbook.WorldBookDao
 
-    // v1.0.53 Phase 1: hilo de agente secundario DAO(Versión persistente)
+    // v1.0.53 Phase 1: 子 agent 线程 DAO(持久化版)
     abstract fun subagentThreadDao(): io.zer0.muse.data.subagent.SubagentThreadDao
 
-    // B5-01: Generación de puntos de control de streaming DAO
+    // B5-01: 流式生成检查点 DAO
     abstract fun generationCheckpointDao(): GenerationCheckpointDao
 
-    // B5-02: El chat grupal genera un libro mayor DAO
+    // B5-02: 群聊生成账本 DAO
     abstract fun groupChatGenerationLedgerDao(): io.zer0.muse.data.groupchat.GroupChatGenerationLedgerDao
 
-    // Overnight rebuild: Eventos ocultos de diálogo y nuevo almacenamiento oculto
+    // Overnight rebuild: 对话影子事件与新投影存储
     abstract fun conversationEventDao(): ConversationEventDao
     abstract fun conversationTurnDao(): ConversationTurnDao
     abstract fun toolRoundDao(): ToolRoundDao
     abstract fun messagePartDao(): MessagePartDao
     abstract fun sessionBranchHeadDao(): SessionBranchHeadDao
+    abstract fun conversationCommandReceiptDao(): ConversationCommandReceiptDao
+    abstract fun conversationSelectionDao(): ConversationSelectionDao
+    abstract fun conversationDisplaySlotDao(): ConversationDisplaySlotDao
 
-    /** v2.6.7(P1-1): Estado de la relación del personaje (intimidad/nivel de deseo/interacciones recientes). */
+    /** v2.6.7（P1-1）: 角色关系状态（亲密度 / 意愿档位 / 最近互动）。 */
     abstract fun assistantRelationshipDao(): io.zer0.muse.data.relationship.AssistantRelationshipDao
 
-    /** v2.6.7: Persistencia de tareas pendientes de sesión (libro mayor entre sesiones). */
+    /** v2.6.7: 会话待办持久化（跨会话台账）。 */
     abstract fun sessionTodoDao(): io.zer0.muse.data.todo.SessionTodoDao
 
-    /** v2.6.8: Entidad de tarjeta (identidad y contenido compartido por Dock/Hover). */
+    /** v2.6.8: 卡片实体（停靠 / 悬浮共用的身份与内容）。 */
     abstract fun cardEntityDao(): io.zer0.muse.data.card.CardEntityDao
 
-    /** v2.6.9: Preocuparse por el libro de contabilidad (“Tengo algo que decirle a esta persona”). */
+    /** v2.6.9: 牵挂账本（「我有什么事想跟这个人说」）。 */
     abstract fun pendingThoughtDao(): io.zer0.muse.data.proactive.PendingThoughtDao
 
-    /** v2.6.9: Preocupado por el puerto de transferencia de estado del libro mayor (ya dicho/Caducado/rendirse). */
+    /** v2.6.9: 牵挂账本的状态流转口（已说/过期/放弃）。 */
     abstract fun pendingThoughtWriteDao(): io.zer0.muse.data.proactive.PendingThoughtWriteDao
 
-    /** v2.6.9: Cuenta de resultados de mensajes activa (hacer clic/responder/tachar). */
+    /** v2.6.9: 主动消息结果账（点开 / 回复 / 划掉）。 */
     abstract fun proactiveOutcomeDao(): io.zer0.muse.data.proactive.ProactiveOutcomeDao
 
-    /** v2.6.9: Intimidad de la relación y presupuesto del día. */
+    /** v2.6.9: 关系亲密度与当日预算。 */
     abstract fun proactiveRelationDao(): io.zer0.muse.data.proactive.ProactiveRelationDao
 
+    /** v2.7.x(E2): 会话术语表。 */
+    abstract fun sessionTermDao(): io.zer0.muse.data.terms.SessionTermDao
+
     companion object {
+        /** Single schema-version source; must match the latest exported JSON. */
+        const val LATEST_SCHEMA_VERSION = 125
+
         @Volatile
         private var dbInstance: MuseDb? = null
 
-        /** v1.0.53: FTS Crea un bloqueo global bajo el capó — La conexión múltiple onOpen serializa la creación de tablas cuando es simultánea. */
+        /** v1.0.53: FTS 兜底创建全局锁 — 多连接 onOpen 并发时串行化建表。 */
         private val FTS_CREATE_LOCK = Any()
 
-        /** R-DB-02: Indicador de error de FTS en proceso,Establecer después de que falla la creación de la tabla,para la autocuración/UI Controlar. */
+        /** R-DB-02: 进程内 FTS 故障标志,建表失败后置位,供自愈/UI 排查。 */
         @Volatile
         private var knowledgeFtsBroken = false
 
-        /** R-DB-02: Borrar tabla de sombra residual/Reconstruya Knowledge_chunks_fts después de la tabla principal. */
+        /** R-DB-02: 清掉残留影子表/主表后重建 knowledge_chunks_fts。 */
         fun repairKnowledgeChunkFtsTable() {
             synchronized(FTS_CREATE_LOCK) {
                 val db = dbInstance?.openHelper?.writableDatabase
                     ?: error("MuseDb not initialized")
                 rebuildKnowledgeChunkFtsTable(db)
                 knowledgeFtsBroken = false
-                io.zer0.common.Logger.i("MuseDb", "knowledge_chunks_fts reconstruido")
+                io.zer0.common.Logger.i("MuseDb", "knowledge_chunks_fts 已重建")
             }
         }
 
@@ -327,10 +348,10 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * Reconstruya la base de conocimientos FTS4 y presione [MessageFtsManager] Rellenar ngram.
+         * 重建知识库 FTS4 并按 [MessageFtsManager] 回填 ngram。
          *
-         * FTS4 El tokenizador predeterminado tratará los caracteres chinos consecutivos como uno solo. token,Escribir el texto original directamente hará que los chinos
-         * Error en la búsqueda de subcadenas;La reconstrucción debe utilizar el mismo texto normalizado que la escritura del nuevo índice.
+         * FTS4 默认 tokenizer 会把连续中文当成一个 token,直接写原文会让中文
+         * 子串检索失效;重建必须与新增索引写入使用同一规范化文本。
          */
         private fun rebuildKnowledgeChunkFtsTable(db: SupportSQLiteDatabase) {
             db.beginTransaction()
@@ -355,8 +376,34 @@ abstract class MuseDb : RoomDatabase() {
             }
         }
 
-        /** R-DB-05: Detectar si el SQLite actual es compatible FTS5(temp sonda de mesa). */
-        private fun fts5Available(db: SupportSQLiteDatabase): Boolean {
+        /**
+         * R-DB-05: 探测当前 SQLite 是否支持 FTS5。
+         *
+         * 先读 `PRAGMA compile_options`：这条路**不建虚表**，因此不会触发
+         * Robolectric 旧版 SQLite shadow 在后台线程释放语句缓存时抛
+         * `no such module: fts5` —— 那条异常没人捕获，会毒化同一个测试 JVM 里
+         * 下一个用 `runTest` 的类（`UncaughtExceptionsBeforeTest`，随机红且单跑必绿）。
+         *
+         * 顺序是刻意的，不降级：
+         *  - 读到内容但不含 `ENABLE_FTS5` ⇒ 明确不支持（Robolectric 下正是这种，实测 8 行里没有它）；
+         *  - 一行都没读到（老版本 Android 未实现该 PRAGMA）⇒ **退回原来的建表探针**，
+         *    所以真机行为与改动前一致，不会因这个改动把支持的机型误判成不支持。
+         * 注：`SELECT * FROM pragma_compile_options` 这种表函数形式在旧实现里不存在，
+         *    实测会 `no such table`，所以只能用 PRAGMA 形式。
+         */
+        // internal 而非 private：两阶语义（先读编译选项、读不到才建表探针）需要被回归测试钉住 ——
+        // 谁把它退回单步建表探针，那条随机红就会回来，而这个后果在测试里看不见（见 Fts5ProbeTest）。
+        internal fun fts5Available(db: SupportSQLiteDatabase): Boolean {
+            val options = runCatching {
+                db.query("PRAGMA compile_options").use { cursor ->
+                    buildList {
+                        while (cursor.moveToNext()) add(cursor.getString(0))
+                    }
+                }
+            }.getOrNull().orEmpty()
+            if (options.isNotEmpty()) {
+                return options.any { it.contains("ENABLE_FTS5", ignoreCase = true) }
+            }
             val ok = runCatching {
                 db.execSQL("DROP TABLE IF EXISTS temp.muse_fts5_probe")
                 db.execSQL("CREATE VIRTUAL TABLE temp.muse_fts5_probe USING fts5(x)")
@@ -392,7 +439,7 @@ abstract class MuseDb : RoomDatabase() {
             return sql.contains("fts5", ignoreCase = true)
         }
 
-        /** R-DB-05: 76→77 Migrar — reconstruir messages_fts,Prioridad FTS5,Recurrir a FTS4 en caso de error. */
+        /** R-DB-05: 76→77 迁移 — 重建 messages_fts,优先 FTS5,失败回退 FTS4。 */
         fun migrate76To77(): Migration = object : Migration(76, 77) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 val useFts5 = fts5Available(db)
@@ -401,23 +448,23 @@ abstract class MuseDb : RoomDatabase() {
             }
         }
 
-        /** v1.0.72: messages Agregar la columna tool_call_info_json(Persistencia de la tarjeta de llamada de herramientas). */
+        /** v1.0.72: messages 加 tool_call_info_json 列(工具调用卡片持久化)。 */
         val MIGRATION_77_78 = object : Migration(77, 78) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE messages ADD COLUMN toolCallInfoJson TEXT DEFAULT NULL")
             }
         }
 
-        /** v1.0.72: sessions Agregar columna ignore_memory(Esta sesión no se refiere a la memoria.). */
+        /** v1.0.72: sessions 加 ignore_memory 列(本会话不参考记忆)。 */
         val MIGRATION_78_79 = object : Migration(78, 79) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE sessions ADD COLUMN ignoreMemory INTEGER NOT NULL DEFAULT 0")
             }
         }
 
-        /** v1.0.72: AI Lista de momentos(Actualizaciones + Comentarios).
-         * Nota: El SQL para crear la tabla debe ser exactamente igual a la tabla generada por Room(mood sin valor predeterminado,No crear índices adicionales),
-         * De lo contrario, la verificación de la migración en la máquina real falla y falla. */
+        /** v1.0.72: AI 朋友圈表(动态 + 评论)。
+         * 注意: 建表 SQL 必须与 Room 生成的表完全一致(mood 无默认值,不建额外索引),
+         * 否则真机上迁移校验失败崩溃。 */
         val MIGRATION_79_80 = object : Migration(79, 80) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL(
@@ -444,10 +491,10 @@ abstract class MuseDb : RoomDatabase() {
             }
         }
 
-        /** v1.0.73: Reparar el historial de tablas malas. Versión publicada(72/Versión intermedia)Hay dos tipos de diferencias en los ai_moments creados.:
-         * 1) índice residual idx_moments_created / idx_moment_comments_moment
-         * 2) mood Los valores predeterminados de las columnas no son uniformes(Algunos no tienen valor predeterminado 'undefined',Algunos DEFAULT NULL se leen como 'NULL')
-         * Planificar: Reconstruir la tabla ai_moments,Unificado para ser completamente consistente con la Entidad schema(Sin estado de ánimo Predeterminado, sin índice),Todos los datos se conservan. */
+        /** v1.0.73: 兜底修复历史坏表。已发布版本(72/中间版)建出的 ai_moments 存在两类差异:
+         * 1) 残留索引 idx_moments_created / idx_moment_comments_moment
+         * 2) mood 列默认值不统一(有的无默认 'undefined',有的 DEFAULT NULL 读为 'NULL')
+         * 方案: 重建 ai_moments 表,统一为与 Entity 完全一致的 schema(无 mood 默认、无索引),数据全部保留。 */
         val MIGRATION_80_81 = object : Migration(80, 81) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("DROP INDEX IF EXISTS idx_moments_created")
@@ -473,8 +520,8 @@ abstract class MuseDb : RoomDatabase() {
             }
         }
 
-        /** v1.0.73: Moments admite la publicación de usuarios + coincidencia de imágenes por IA — ai_moments Agregue la columna remitente/imageUrl.
-         * Nota: ponerse 80→81 Después de la reconstrucción,unificar ADD COLUMN,Asegúrese de que el esquema final de cualquier ruta de migración sea coherente. */
+        /** v1.0.73: 朋友圈支持用户发布 + AI 配图 — ai_moments 加 sender/imageUrl 列。
+         * 注意: 放在 80→81 重建之后,统一 ADD COLUMN,保证任何迁移路径最终 schema 一致。 */
         val MIGRATION_81_82 = object : Migration(81, 82) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE ai_moments ADD COLUMN senderType TEXT NOT NULL DEFAULT 'assistant'")
@@ -484,8 +531,8 @@ abstract class MuseDb : RoomDatabase() {
             }
         }
 
-        /** v1.0.73: Círculo de amigos multiasistente — ai_moments agregar senderId;Comentario más identidad del remitente;
-         * Crea una nueva tabla ai_moment_likes(Usuario + asistente como el uno al otro). */
+        /** v1.0.73: 多助手朋友圈 — ai_moments 加 senderId;评论加发送者身份;
+         * 新建 ai_moment_likes 表(用户 + 助手互赞)。 */
         val MIGRATION_82_83 = object : Migration(82, 83) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE ai_moments ADD COLUMN senderId TEXT")
@@ -504,14 +551,14 @@ abstract class MuseDb : RoomDatabase() {
             }
         }
 
-        /** v1.0.73: 9 Gonggeduotu — ai_moments agregar imagesJson(JSON matriz). */
+        /** v1.0.73: 9 宫格多图 — ai_moments 加 imagesJson(JSON 数组)。 */
         val MIGRATION_83_84 = object : Migration(83, 84) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE ai_moments ADD COLUMN imagesJson TEXT NOT NULL DEFAULT '[]'")
             }
         }
 
-        /** v1.0.74: AI diario — Crear una nueva tabla ai_diaries(Fecha clave principal). */
+        /** v1.0.74: AI 日记本 — 新建 ai_diaries 表(日期主键)。 */
         val MIGRATION_84_85 = object : Migration(84, 85) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL(
@@ -524,7 +571,7 @@ abstract class MuseDb : RoomDatabase() {
             }
         }
 
-        /** v1.0.74: Registro de inspección activo — Cree una nueva tabla Patrol_logs. */
+        /** v1.0.74: 主动巡检日志 — 新建 patrol_logs 表。 */
         val MIGRATION_85_86 = object : Migration(85, 86) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL(
@@ -539,15 +586,15 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * v1.0.74 fix (auditoría CRITICAL-0.1): assistants Capacidades faltantes en la tabla Migración de columnas Json.
-         * AssistantEntity Nuevo capabilitiesJson(v1.200) Ya entré Room schema,
-         * Pero la cadena migratoria no corresponde a ALTER,La verificación del esquema de sala colapsará cuando los usuarios antiguos actualicen
-         * "Migration didn't properly handle: assistants".
+         * v1.0.74 fix (审计 CRITICAL-0.1): assistants 表缺 capabilitiesJson 列迁移。
+         * AssistantEntity 新增 capabilitiesJson(v1.200) 已进 Room schema,
+         * 但迁移链没有对应 ALTER,老用户升级时 Room schema 校验必崩
+         * "Migration didn't properly handle: assistants"。
          */
         val MIGRATION_86_87 = object : Migration(86, 87) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                // schema 86.json La tabla de asistentes ya contiene capabilitiesJson(Exportar desde entidad),
-                // Sin embargo, la antigua base de datos actualizada a través de la cadena de migración real no;Primero verifique si la columna existe.,Evite caídas de columnas duplicadas.
+                // schema 86.json 的 assistants 表已含 capabilitiesJson(从 Entity 导出),
+                // 但经真实迁移链升级上来的老库没有;先查列是否存在,避免重复列崩溃。
                 var hasCapabilities = false
                 db.query("PRAGMA table_info(assistants)").use { cursor ->
                     while (cursor.moveToNext()) {
@@ -564,10 +611,10 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * Reparación de auditoría (S-02): messages Columna videoFileUri del complemento de tabla(Persistencia de resultados de generación de video).
+         * 审计修复 (S-02): messages 表补 videoFileUri 列(视频生成结果持久化)。
          *
-         * Anteriormente, el videoFileUri de generate_video solo existía en la memoria. UIMessage,
-         * Reiniciar/El vídeo se pierde permanentemente después de cambiar de página.;MessageEntity Agregue nuevos campos y luego migrelos.
+         * 此前 generate_video 的 videoFileUri 只存在于内存 UIMessage,
+         * 重启/切页后视频永久丢失;MessageEntity 新增字段后补迁移。
          */
         val MIGRATION_87_88 = object : Migration(87, 88) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -587,40 +634,40 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * Revisión de corrección (2.0 B-27): MIGRATION_88_89 — Corregir dos tipos de deriva del esquema histórico.
+         * 审查修复 (2.0 B-27): MIGRATION_88_89 — 修正两类历史 schema 漂移。
          *
-         * 1. index_scheduled_tasks_enabled_next_run_at Solo creado el 21_22,Tablas actualizadas desde v22+
-         *    El índice nunca se obtuvo(getDueTasks No hay índice para consultar.),Prueba de migración 22..54 Exposición a la matriz.
-         *    Reconstrucción incondicional(IF NOT EXISTS idempotente,Los usuarios de v21 actualizados con 21_22 no se ven afectados).
-         * 2. messages.imageUrlsJson Deriva de la declaración del valor predeterminado: v55(1.0.30) La era Entidad se agrega a esta columna.
-         *    @ColumnInfo(defaultValue="[]"),Pero SQLite ALTER no puede cambiar el valor predeterminado de la columna y la tabla no se reconstruye en ese momento. →
-         *    de <55 La columna de la tabla actualizada siempre ha estado vacía. DEFAULT '[]'(Pruebas de migración "Migration didn't properly
-         *    handle: messages"). No hay problema al correr(Room El SQL generado siempre escribe columnas explícitamente),Sin embargo, las declaraciones inconsistentes
-         *    Activando continuamente el error de verificación de MigrationTestHelper,e impactar las herramientas futuras que dependen de la coherencia del esquema.
-         *    Sólo si falta la columna DEFAULT '[]' Reconstruir la tabla de mensajes cuando(55+ El punto de partida es consistente.,saltar directamente,
-         *    Evite la duplicación innecesaria de bibliotecas grandes);Reconstruir las definiciones de columnas exactamente iguales a las de la Entidad actual(Con FK y 4 índices).
-         * MIGRATION_29_30 Ya sincronizado DEFAULT '[]'(futuro <30 La ruta de actualización es directamente consistente).
+         * 1. index_scheduled_tasks_enabled_next_run_at 只在 21_22 创建,从 v22+ 升级的表
+         *    从未获得该索引(getDueTasks 查询无索引可走),迁移测试 22..54 矩阵暴露。
+         *    无条件重建(IF NOT EXISTS 幂等,经 21_22 升级的 v21 用户不受影响)。
+         * 2. messages.imageUrlsJson 默认值声明漂移: v55(1.0.30) 时代 Entity 给该列补了
+         *    @ColumnInfo(defaultValue="[]"),但 SQLite ALTER 无法改列默认值且当时未重建表 →
+         *    从 <55 升级的表该列一直无 DEFAULT '[]'(迁移测试 "Migration didn't properly
+         *    handle: messages")。运行时无碍(Room 生成的 SQL 总是显式写列),但声明不一致会
+         *    持续触发 MigrationTestHelper 校验失败,并影响未来依赖 schema 一致性的工具。
+         *    仅当该列缺失 DEFAULT '[]' 时重建 messages 表(55+ 起点已一致,直接跳过,
+         *    避免大库无谓复制);重建列定义与当前 Entity 完全一致(含 FK 与 4 个索引)。
+         * MIGRATION_29_30 已同步补 DEFAULT '[]'(未来 <30 升级路径直接一致)。
          */
         val MIGRATION_88_89 = object : Migration(88, 89) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                // 1. Índice de tareas programadas incondicionalmente completo(idempotente)
+                // 1. 无条件补齐 scheduled_tasks 索引(幂等)
                 db.execSQL(
                     "CREATE INDEX IF NOT EXISTS `index_scheduled_tasks_enabled_next_run_at` " +
                         "ON `scheduled_tasks` (`enabled`, `next_run_at`)",
                 )
-                // 2. Reconstrucción condicional messages(imageUrlsJson desaparecido DEFAULT '[]' tiempo)
+                // 2. 条件重建 messages(imageUrlsJson 缺 DEFAULT '[]' 时)
                 var imageUrlsDefault = ""
                 db.query("PRAGMA table_info(messages)").use { cursor ->
                     while (cursor.moveToNext()) {
                         if (cursor.getString(1) == "imageUrlsJson") {
-                            // SQLite dflt_value Devolver literal SQL(con comillas,Como por ejemplo '[]')
+                            // SQLite dflt_value 返回 SQL 字面量(带引号,如 '[]')
                             imageUrlsDefault = cursor.getString(4)?.trim('\'') ?: ""
                             break
                         }
                     }
                 }
                 if (imageUrlsDefault == "[]") return
-                // Reconstruir mesa: Las definiciones de columnas son exactamente las mismas que las de Entidad.(30 columna + FK),Luego reconstruya 4 índices
+                // 重建表: 列定义与 Entity 完全一致(30 列 + FK),随后重建 4 个索引
                 db.execSQL(
                     """
                     CREATE TABLE IF NOT EXISTS `messages_new` (
@@ -680,7 +727,7 @@ abstract class MuseDb : RoomDatabase() {
                 )
                 db.execSQL("DROP TABLE `messages`")
                 db.execSQL("ALTER TABLE `messages_new` RENAME TO `messages`")
-                // Índice de reconstrucción(DROP TABLE Todos los índices serán eliminados.)
+                // 重建索引(DROP TABLE 会删除所有索引)
                 db.execSQL("CREATE INDEX IF NOT EXISTS `index_messages_sessionId` ON `messages` (`sessionId`)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS `index_messages_role` ON `messages` (`role`)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS `index_messages_sessionId_createdAt` ON `messages` (`sessionId`, `createdAt`)")
@@ -691,12 +738,12 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * A5: MIGRATION_89_90 — messages El complemento de tabla genera columnas de metadatos.
+         * A5: MIGRATION_89_90 — messages 表补生成元数据列。
          *
-         * Capa emergente de información del mensaje(modelo/Consume mucho tiempo/ficha)Requiere un uso medido del proveedor de persistencia y requiere mucho tiempo:
-         * durationMs(Tiempo total necesario para generar)/promptTokens/completionTokens/reasoningTokens/cachedTokens.
-         * Utilice sureMessageColumns para finalización idempotente(Mismo asistente que 60_61/63_64,Se omiten las columnas existentes),
-         * Compatible con la ruta de la tabla de reconstrucción 88_89(Columna perdida después de la reconstrucción,Vuelva a agregar aquí).
+         * 消息信息弹层(模型/耗时/令牌)需要持久化 provider 实测用量与耗时:
+         * durationMs(生成总耗时)/promptTokens/completionTokens/reasoningTokens/cachedTokens。
+         * 走 ensureMessageColumns 幂等补齐(与 60_61/63_64 等同一助手,已存在的列跳过),
+         * 兼容 88_89 重建表路径(重建后列丢失,此处重新补上)。
          */
         val MIGRATION_89_90 = object : Migration(89, 90) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -705,10 +752,10 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * H11: MIGRATION_90_91 — messages La tabla complementa la columna del mensaje de origen de la traducción.
+         * H11: MIGRATION_90_91 — messages 表补翻译源消息列。
          *
-         * mensaje de traducción(Mensaje de ASISTENTE independiente)Apunte al mensaje fuente traducido a través de TranslationSourceId,
-         * UI proporcionar"Ver texto original"Control de plegado. Utilice sureMessageColumns para la finalización idempotente.
+         * 译文消息(独立 ASSISTANT 消息)通过 translationSourceId 指向被翻译的源消息,
+         * UI 提供"查看原文"折叠对照。走 ensureMessageColumns 幂等补齐。
          */
         val MIGRATION_90_91 = object : Migration(90, 91) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -717,11 +764,11 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * v92: MIGRATION_91_92 — messages Tabla más columna de secuencia monótona seq(Clave primaria estable de clasificación de mensajes).
+         * v92: MIGRATION_91_92 — messages 表加 seq 单调序列列(消息排序稳定主键)。
          *
-         * - ADD COLUMN seq INTEGER NOT NULL DEFAULT 0(SQLite O(1) Operaciones de metadatos,sin reescribir)
-         * - Rellenar datos antiguos seq = rowid: rowid es una secuencia estable de orden de inserción,Después del reabastecimiento, los mensajes antiguos se organizan en su orden original.
-         * - El índice idx_messages_sessionId_seq acelera la clasificación por secuencia dentro de una sesión
+         * - ADD COLUMN seq INTEGER NOT NULL DEFAULT 0(SQLite O(1) 元数据操作,无重写)
+         * - 回填旧数据 seq = rowid: rowid 是插入顺序的稳定序列,回填后旧消息按原序排列
+         * - 索引 idx_messages_sessionId_seq 加速会话内按 seq 排序
          */
         val MIGRATION_91_92 = object : Migration(91, 92) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -731,7 +778,7 @@ abstract class MuseDb : RoomDatabase() {
             }
         }
 
-        /** v92→v93: Cree nuevos eventos de diálogo, giros y ruedas de herramientas sin sobrescribir mensajes antiguos. */
+        /** v92→v93: 新建对话事件、回合和工具轮表，不改写旧消息。 */
         val MIGRATION_92_93 = object : Migration(92, 93) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL(
@@ -807,7 +854,7 @@ abstract class MuseDb : RoomDatabase() {
             }
         }
 
-        /** v93→v94: Agregue un orden de confirmación compatible y una referencia explícita al mensaje principal, y establezca una tabla de encabezados de rama. */
+        /** v93→v94: 增加兼容提交序和显式父消息引用，建立分支头表。 */
         val MIGRATION_93_94 = object : Migration(93, 94) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE messages ADD COLUMN commitSeq INTEGER NOT NULL DEFAULT 0")
@@ -829,7 +876,7 @@ abstract class MuseDb : RoomDatabase() {
             }
         }
 
-        /** v94→v95: Cree nuevas partes de mensajes estructurados y no rellene los mensajes existentes. */
+        /** v94→v95: 新建结构化 message parts，不回填既有消息。 */
         val MIGRATION_94_95 = object : Migration(94, 95) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL(
@@ -851,7 +898,7 @@ abstract class MuseDb : RoomDatabase() {
             }
         }
 
-        /** v95→v96: sessions/Índice de complemento de eliminación de cascada de mensajes(auditoría D-P2,Eliminar el escaneo completo de la tabla). */
+        /** v95→v96: sessions/消息级联删除补索引(审计 D-P2,消除全表扫描)。 */
         val MIGRATION_95_96 = object : Migration(95, 96) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("CREATE INDEX IF NOT EXISTS idx_messages_parentGroupId ON messages(parentGroupId)")
@@ -867,22 +914,22 @@ abstract class MuseDb : RoomDatabase() {
             }
         }
 
-        /** v96→v97: U-26 Asistente habilitado/desactivar — assistants Agregar columna habilitada a la tabla(Habilitado por defecto). */
+        /** v96→v97: U-26 助手启用/停用 — assistants 表新增 enabled 列(默认启用)。 */
         val MIGRATION_96_97 = object : Migration(96, 97) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE assistants ADD COLUMN enabled INTEGER NOT NULL DEFAULT 1")
             }
         }
 
-        /** v97→v98: v1.138 Pequeño espacio para mensajes privados en teléfonos celulares. — sessions Agregue la columna isMiniPhone.
+        /** v97→v98: v1.138 小手机私信空间 — sessions 加 isMiniPhone 列。
          *
-         * La primera página del pequeño teléfono celular se cambia a"Espacio de mensajes privados",Mostrar solo isMiniPhone=true conversación(AI Mensaje privado activo + crea una nueva conversación en tu teléfono celular).
-         * Las sesiones existentes no se ven afectadas.(isMiniPhone Predeterminado 0).
+         * 小手机第一页改为"私信空间",只展示 isMiniPhone=true 的会话(AI 主动私信 + 小手机内新建对话)。
+         * 已有会话不受影响(isMiniPhone 默认 0)。
          */
         val MIGRATION_97_98 = object : Migration(97, 98) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                // idempotente:64→72 La migración de segmentos se completará con anticipación a través de asegurarSessionColumns isMiniPhone(La lista de columnas ya contiene esta columna.),
-                // Si no hay ningún ALTER condicional aquí, la columna duplicada fallará. —— Solo se agrega si falta.
+                // 幂等:64→72 段的迁移会经 ensureSessionColumns 提前补上 isMiniPhone(其列清单已含该列),
+                // 若这里再无条件 ALTER 会 duplicate column 崩溃 —— 仅在缺列时添加。
                 val existing = mutableSetOf<String>()
                 db.query("PRAGMA table_info(sessions)").use { cursor ->
                     while (cursor.moveToNext()) existing.add(cursor.getString(1))
@@ -894,14 +941,14 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * v98→v99: Complete la columna programada_tasks.created_by.
+         * v98→v99: 补 scheduled_tasks.created_by 列。
          *
-         * Esta columna ha estado disponible desde la v1.0.18. @Entity(defaultValue "user"),Pero construye una mesa(9→10)con todos los posteriores
-         * ALTER Ni siquiera lo traje —— La base de datos antigua real migrada desde la creación de tablas manuscritas v9 carece de esta columna.,Room Verificación del esquema después de la migración
-         * ("Migration didn't properly handle: scheduled_tasks") chocará.
-         * Después de una instalación nueva, ejecute createAllTables y funcionará normalmente.,Por lo tanto, solo se expone en la ruta de actualización.
-         * Actualice la versión a 99 en lugar de migrar desde la versión anterior:Las bibliotecas que se detuvieron en la versión 98 ya no se ejecutarán v97→98,Sólo puedo confiar en los nuevos. v98→99 Constituir.
-         * idempotente:PRAGMA juzgado que existe más tarde ADD,Evite columnas duplicadas.
+         * 该列从 v1.0.18 起就在 @Entity(defaultValue "user"),但建表(9→10)与后续所有
+         * ALTER 都没带它 —— 从 v9 手写建表迁移上来的真实旧库缺此列,Room 迁移后 schema 校验
+         * ("Migration didn't properly handle: scheduled_tasks") 会崩溃。
+         * 全新安装走 createAllTables 反而正常,所以只在升级路径暴露。
+         * 升版本到 99 而不是改旧迁移:已停在 v98 的库不会再跑 v97→98,只能靠新的 v98→99 补上。
+         * 幂等:PRAGMA 判存在后再 ADD,避免重复列。
          */
         val MIGRATION_98_99 = object : Migration(98, 99) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -916,10 +963,10 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * v99→v100: Archivo de chat grupal — group_chats Agregue la columna isArchived a la tabla(Predeterminado 0).
+         * v99→v100: 群聊归档 — group_chats 表新增 isArchived 列(默认 0)。
          *
-         * El chat grupal se oculta de la lista principal después de archivarse,Se puede ver en la lista de archivos./restaurar;Los datos antiguos no se archivan de forma predeterminada.
-         * idempotente:PRAGMA juzgado que existe más tarde ADD,Evite columnas duplicadas.
+         * 归档后群聊从主列表隐藏,可在归档列表查看/恢复;旧数据默认未归档。
+         * 幂等:PRAGMA 判存在后再 ADD,避免重复列。
          */
         val MIGRATION_99_100 = object : Migration(99, 100) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -934,10 +981,10 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * v100→v101: Rango de duración del discurso de chat grupal — group_chats Agregar la columna de respuestaLongitudMode a la tabla(Predeterminado 'standard').
+         * v100→v101: 群聊发言长度档位 — group_chats 表新增 replyLengthMode 列(默认 'standard')。
          *
-         * brief/standard/detailed Tres niveles para controlar la duración de los discursos de los miembros;El antiguo chat grupal tiene como valor predeterminado el archivo estándar.
-         * idempotente:PRAGMA juzgado que existe más tarde ADD,Evite columnas duplicadas.
+         * brief/standard/detailed 三档控制成员发言长度;旧群聊默认标准档。
+         * 幂等:PRAGMA 判存在后再 ADD,避免重复列。
          */
         val MIGRATION_100_101 = object : Migration(100, 101) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -952,10 +999,10 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * v101→v102: Miembro observador del chat grupal — group_chats Agregar la columna observer_ids_json a la tabla(Predeterminado '[]').
+         * v101→v102: 群聊观察者成员 — group_chats 表新增 observer_ids_json 列(默认 '[]')。
          *
-         * Los observadores no participan en la rotación predeterminada.(Mirar y discutir en silencio.),Pero permanezca en la lista de miembros.
-         * idempotente:PRAGMA juzgado que existe más tarde ADD,Evite columnas duplicadas.
+         * 观察者不参与默认轮转发言(静观讨论),但保留在成员列表中。
+         * 幂等:PRAGMA 判存在后再 ADD,避免重复列。
          */
         val MIGRATION_101_102 = object : Migration(101, 102) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -970,8 +1017,8 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * v2.x: worldbook_entries Agregar columna de palabra completa(coincidencia de palabras completas,Predeterminado false).
-         * idempotente:PRAGMA AGREGAR después de comprobar que existe.
+         * v2.x: worldbook_entries 加 wholeWord 列(全词匹配,默认 false)。
+         * 幂等:PRAGMA 判存在后再 ADD。
          */
         val MIGRATION_102_103 = object : Migration(102, 103) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -986,11 +1033,11 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * v103→v104: group_chat_messages Agregar la columna videoFileUri(Los resultados de la generación de videos del chat grupal se conservan).
+         * v103→v104: group_chat_messages 加 videoFileUri 列(群聊视频生成结果持久化)。
          *
-         * Chatea con Dan messages.videoFileUri(Migrar 87→88)Alineación. Antes no había ninguna columna de vídeo en el chat grupal.,
-         * generate_video Solo se puede bloquear mediante la política de la herramienta de chat grupal;Una vez agregada la cola, el video generado en el chat grupal se puede guardar y renderizar junto con el mensaje.
-         * idempotente:PRAGMA juzgado que existe más tarde ADD,Evite columnas duplicadas.
+         * 与单聊 messages.videoFileUri(迁移 87→88)对齐。此前群聊无视频列,
+         * generate_video 只能被群聊工具策略屏蔽;补列后群聊内生成的视频可随消息落库并渲染。
+         * 幂等:PRAGMA 判存在后再 ADD,避免重复列。
          */
         val MIGRATION_103_104 = object : Migration(103, 104) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -1005,10 +1052,10 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * v104→v105: sessions Agregar columna pendiente de calentamiento(Importar etiquetas de calentamiento,Predeterminado 0).
+         * v104→v105: sessions 加 warmupPending 列(导入预热标记,默认 0)。
          *
-         * Configuración de sesión de recuperación de copia de seguridad/importación externa: 1: la primera ronda de diálogo utiliza el historial completo + presupuesto de token para construir el contexto una vez
-         * (ver WarmupHistory),Borrado por el repositorio de sesiones después de una respuesta exitosa. idempotente:PRAGMA AGREGAR después de comprobar que existe.
+         * 外部导入 / 备份恢复的会话置 1:首轮对话以全量历史 + token 预算构建上下文一次
+         * (见 WarmupHistory),成功回复后由会话仓储清除。幂等:PRAGMA 判存在后再 ADD。
          */
         val MIGRATION_104_105 = object : Migration(104, 105) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -1023,11 +1070,11 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * v105→v106: El asistente predeterminado conserva la memoria global; otros asistentes están aislados de forma predeterminada.
+         * v105→v106: 默认助手保留全局记忆；其他助手默认隔离。
          *
-         * En la versión anterior, useGlobalMemory está habilitado de forma predeterminada para todos los asistentes. Al actualizar, el uso compartido global para asistentes no predeterminados está desactivado.
-         * Evite los retratos globales/El recuerdo fijado se vinculó accidentalmente con otros asistentes. Se conservan los datos propios de cada asistente y las conversaciones recientes.
-         * Utilice compileStatement para ejecutar DML, compatible con las restricciones de Android 16 en execSQL DML.
+         * 旧版 useGlobalMemory 对所有助手默认开启，升级时关闭非 default 助手的全局共享，
+         * 避免全局画像/置顶记忆意外串入其他助手。各助手自己的 facts 和近期会话仍保留。
+         * 使用 compileStatement 执行 DML，兼容 Android 16 对 execSQL DML 的限制。
          */
         val MIGRATION_105_106 = object : Migration(105, 106) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -1039,7 +1086,7 @@ abstract class MuseDb : RoomDatabase() {
             }
         }
 
-        /** v106→v107: Unifique el formato de índice ngram chino de la base de conocimientos FTS4 y rellene los fragmentos existentes. */
+        /** v106→v107: 统一知识库 FTS4 的中文 ngram 索引格式并回填既有分块。 */
         val MIGRATION_106_107 = object : Migration(106, 107) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 rebuildKnowledgeChunkFtsTable(db)
@@ -1047,14 +1094,14 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * v107→v108: Tabla de carpetas de la base de conocimientos — dejar carpeta(Contiene carpetas vacías)Puede existir de forma independiente.
+         * v107→v108: 知识库文件夹表 — 让文件夹(含空文件夹)可独立存在。
          *
-         * Crear solo tablas nuevas,No muevas datos existentes:La ruta de la carpeta del documento existente todavía está en metadataJson(única fuente de verdad),
-         * El árbol de carpetas se obtiene fusionando "metadatos del documento + esta tabla".
+         * 仅新建表,不动既有数据:既有文档的 folderPath 仍在 metadataJson 里(单一真源),
+         * 文件夹树由「文档 metadata + 本表」合并得出。
          */
         val MIGRATION_107_108 = object : Migration(107, 108) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                // v2.4.6: Tabla de carpetas de la base de conocimientos + asistente "KB+Columna de alcance de carpeta
+                // v2.4.6: 知识库文件夹表 + 助手「KB+文件夹」作用域列
                 db.execSQL(
                     """
                     CREATE TABLE IF NOT EXISTS knowledge_folders (
@@ -1071,7 +1118,7 @@ abstract class MuseDb : RoomDatabase() {
                 db.execSQL(
                     "CREATE UNIQUE INDEX IF NOT EXISTS index_knowledge_folders_kb_id_path ON knowledge_folders (kb_id, path)",
                 )
-                // v2.4.6: El ayudante está obligado desde "KB id"Actualizado a"KB+Alcance de la "ruta de la carpeta"(Migración cero de datos antiguos,Matriz vacía predeterminada)
+                // v2.4.6: 助手绑定从「KB id」升级为「KB+文件夹路径」作用域(旧数据零迁移,默认空数组)
                 db.execSQL(
                     "ALTER TABLE assistants ADD COLUMN knowledgeFolderScopesJson TEXT NOT NULL DEFAULT '[]'",
                 )
@@ -1079,10 +1126,10 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * v108→v109: Tabla de mensajes más columna de asignación de traducción.
+         * v108→v109: 消息表加译文映射列。
          *
-         * v2.4.6: La traducción se cambió de "abrir un nuevo mensaje del asistente" a "un bloque expandible colgado en el mensaje fuente".,
-         * El nombre del idioma debe almacenarse en la tabla de mensajes. → JSON de la traducción. Solo agrega columnas,Los datos existentes no se mueven.
+         * v2.4.6: 译文从「另开一条助手消息」改为「挂在源消息上的可展开块」,
+         * 需要在 messages 表存语言名 → 译文的 JSON。仅新增列,不动既有数据。
          */
         val MIGRATION_108_109 = object : Migration(108, 109) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -1091,9 +1138,9 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * v2.5.3 (P3-2): Instantánea de configuración a nivel de sesión.
+         * v2.5.3 (P3-2): 会话级配置快照。
          *
-         * sessions Agregue configSnapshotJson (puede estar vacío, la sesión anterior es NULL = No tomado, se devuelve el valor actual del asistente al leer).
+         * sessions 加 configSnapshotJson（可空，旧会话为 NULL = 未拍摄，读取时回退助手当前值）。
          */
         val MIGRATION_109_110 = object : Migration(109, 110) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -1102,9 +1149,9 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * v2.6.2(comentarios de los usuarios): Definición de personalidad del asistente + limitaciones de la cadena de pensamiento.
-         * - personaDefinition: Sección de definición de personalidad editable
-         * - thinkingChain: Restricciones del proceso de pensamiento personalizado
+         * v2.6.2（用户反馈）: 助手人格定义 + 思考链约束。
+         * - personaDefinition: 可编辑的人格定义段
+         * - thinkingChain: 自定义思考过程约束
          */
         val MIGRATION_110_111 = object : Migration(110, 111) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -1114,11 +1161,11 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * v2.6.4 P2-2(informe de auditoría): per-KB Recuperar anulaciones de parámetros.
+         * v2.6.4 P2-2（审计报告）: per-KB 检索参数覆盖。
          *
-         * La implementación anterior tiene una copia global de la configuración RAG y diferentes bibliotecas no pueden tener diferentes valores de fragmento/topK/umbral.
-         * Tampoco es posible configurar diferentes modelos de incrustación para diferentes bibliotecas. Se agregaron 5 nuevas columnas de anulación anulables,
-         * Cuando se utilizan todas las cadenas NULL/vacías, la configuración global se hereda por completo (el comportamiento de los datos existentes permanece sin cambios).
+         * 旧实现 RAG 配置全局一份，不同库不能有不同 chunk/topK/阈值，
+         * 也不能给不同库配不同 embedding 模型。新增 5 个可空覆盖列，
+         * 全部 NULL / 空串时完全继承全局配置（存量数据行为不变）。
          */
         val MIGRATION_111_112 = object : Migration(111, 112) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -1133,13 +1180,13 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * v2.6.6: Medidor de uso + borrador de entrada de sesión.
+         * v2.6.6: 用量流水表 + 会话输入草稿。
          *
-         * 1) Cree nuevos registros de uso: cada vez que el modelo solicite una fila, la página de estadísticas se cambiará para agregar directamente esta tabla.
-         *    No más iteraciones a través de mensajes para decodificar JSON; solicitudes no conversacionales (comprimidas/Título/Traducción/memoria/OCR) también es visible por primera vez.
-         * 2) Utilice el campo de token existente en los mensajes para rellenar el historial de conversaciones, de modo que no se pierdan los datos antiguos del usuario.
-         *    messages El campo del token puede ser NULL, usar COALESCE para rellenar y solo rellenar filas con uso real.
-         * 3) sessions Se agregó input_draft: cada uno retiene la entrada no enviada al cambiar de sesión.
+         * 1) 新建 usage_records：每次模型请求一行，统计页改为直接聚合本表，
+         *    不再遍历消息解 JSON；非对话类请求（压缩/标题/翻译/记忆/OCR）的用量也首次可见。
+         * 2) 用 messages 上已有的 token 字段回填对话类历史记录，老用户数据不丢。
+         *    messages 的 token 字段可能为 NULL，用 COALESCE 兜底，且只回填有实际用量的行。
+         * 3) sessions 加 input_draft：切换会话时各自保留未发送的输入。
          */
         val MIGRATION_112_113 = object : Migration(112, 113) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -1170,7 +1217,7 @@ abstract class MuseDb : RoomDatabase() {
                         "ON usage_records(model_id, created_at)",
                 )
 
-                // Relleno: solo rellene los mensajes del asistente que sean realmente útiles para evitar generar una gran cantidad de filas de valor cero.
+                // 回填：只回填确实有用量的 assistant 消息，避免产生大量零值行。
                 db.execSQL(
                     """
                     INSERT INTO usage_records (
@@ -1191,13 +1238,13 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * v2.6.7(P1-1): 113 → 114 Cree una tabla de relaciones de roles.
+         * v2.6.7（P1-1）: 113 → 114 建角色关系表。
          *
-         * no ir `assistants` Agregar columnas: la tabla tiene más de 50 columnas y está“Configuración de roles”,
-         * Las relaciones son un estado que evoluciona en tiempo de ejecución (el grado de intimidad cambiará) y mezclarlas ensuciará las copias de seguridad y las comparaciones de configuración.
+         * 不往 `assistants` 加列：该表已 50+ 列且属“角色配置”，
+         * 关系是运行时演化的状态（亲密度会变），混进去会让备份与配置对比变脏。
          *
-         * No rellene filas aquí: no hay registros de relación = Valor predeterminado (nivel de intimidad 0 / nivel normal),
-         * Inicialice en el sitio cuando la capa empresarial no pueda leerlo para evitar escribir líneas en blanco para cada asistente.
+         * 不在这里預填行：没有关系记录 = 默认值（亲密度 0 / normal 档），
+         * 业务层读不到时现场初始化，避免为每个助手写入空行。
          */
         val MIGRATION_113_114 = object : Migration(113, 114) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -1220,9 +1267,9 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * v2.6.9: 115 → 116 Moments admite el rango de visibilidad.
+         * v2.6.9: 115 → 116 朋友圈支持可见范围。
          *
-         * Cadena vacía predeterminada = Los datos públicos antiguos se comportan sin cambios (no es necesario completarlos).
+         * 默认空串 = 公开，旧数据行为不变（不需要回填）。
          */
         val MIGRATION_115_116 = object : Migration(115, 116) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -1231,13 +1278,13 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * v2.6.7: 116 → 117 Persistencia de tareas pendientes de la sesión.
+         * v2.6.7: 116 → 117 会话待办持久化。
          *
-         * nueva mesa `session_todos`: Anteriormente, la tarea pendiente solo se almacenaba en la memoria de proceso y se perdía cuando se cambiaba de sesión.
-         * Simplemente agregue una nueva tabla, sin modificar la estructura de la tabla existente; no es necesario reponer los datos antiguos (el estado de la memoria no se ha colocado en el disco).
+         * 新表 `session_todos`：此前待办只存进程内存，切会话即丢。
+         * 纯新增表，不动既有表结构；旧数据无待办可回填（内存态本就未落盘）。
          *
-         * Las definiciones de las columnas deben coincidir [io.zer0.muse.data.todo.SessionTodoEntity] exactamente lo mismo,
-         * De lo contrario, la verificación del esquema de la sala de máquinas real arrojará "Migration didn't properly handle".
+         * 列定义必须与 [io.zer0.muse.data.todo.SessionTodoEntity] 完全一致，
+         * 否则真机 Room schema 校验会抛 "Migration didn't properly handle"。
          */
         val MIGRATION_116_117 = object : Migration(116, 117) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -1259,32 +1306,32 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * v2.6.8: 117 → 118 Tabla de entidades de tarjetas.
+         * v2.6.8: 117 → 118 卡片实体表。
          *
-         * Anteriormente, las tarjetas se almacenaban solo en dos lugares: "cola de texto del mensaje + card_data.json", y no había ningún lugar para almacenarlas después de que se separaron del flujo de mensajes.
-         * La identidad está sólo dentro del proceso. `c_xxx`. La nueva tabla promociona tarjetas a entidades de primer nivel:UUID La clave principal, el contenido y el estado acoplado están todos en línea.
+         * 卡片此前只有「消息文本尾巴 + card_data.json」两处存放，脱离消息流后无处安放，
+         * 身份也只是进程内的 `c_xxx`。新表把卡片升为一等实体：UUID 主键、内容、停靠状态全在行内。
          *
-         * Simplemente agregue una nueva tabla, sin modificar la estructura de la tabla existente; las tarjetas existentes se completan mediante el proceso de reposición de nivel superior. [CardEntity.legacyCardId] partido,
-         * Si el reabastecimiento falla, el "flujo de mensajes solamente" permanece y la migración en sí no adivina los datos.
+         * 纯新增表，不动既有表结构；存量卡片由上层回填流程按 [CardEntity.legacyCardId] 匹配，
+         * 回填失败就保持「仅消息流」，迁移本身不猜数据。
          *
-         * Las definiciones de columnas y los nombres de índice deben coincidir [io.zer0.muse.data.card.CardEntity] exactamente lo mismo,
-         * De lo contrario, la verificación del esquema de la sala de máquinas real arrojará "Migration didn't properly handle: card_entities".
+         * 列定义与索引名必须与 [io.zer0.muse.data.card.CardEntity] 完全一致，
+         * 否则真机 Room schema 校验会抛 "Migration didn't properly handle: card_entities"。
          *
-         * dockSlot El índice único trata a NULL como desigual, por lo que "múltiples tarjetas desacopladas" no entran en conflicto;
-         * Sólo se rechazarán dos espacios idénticos que no sean NULL.
+         * dockSlot 的唯一索引把 NULL 当作互不相等，因此「多张未停靠卡」不冲突；
+         * 只有两个相同的非 NULL 槽位才会被拒。
          */
         /**
-         * v2.6.9: 118 → 119 Reconstrucción activa de mensajes.
+         * v2.6.9: 118 → 119 主动消息重建。
          *
-         * Se agregan exclusivamente tres tablas nuevas y las tablas existentes no se modifican, por lo que no hay riesgo para los datos existentes:
-         *  - pending_thought     Preocuparse por el libro mayor (“Tengo algo que decirle a esta persona”)
-         *  - proactive_outcome   Cuenta de resultados (haga clic para abrir/Responder/Tachar, impulsar el aprendizaje a largo plazo)
-         *  - proactive_relation  Intimidad de la relación y presupuesto diario.
+         * 三张纯新增表，不动既有表，因此对存量数据零风险：
+         *  - pending_thought     牵挂账本（「我有什么事想跟这个人说」）
+         *  - proactive_outcome   结果账（点开/回复/划掉，驱动长期学习）
+         *  - proactive_relation  关系亲密度与当日预算
          *
-         * El antiguo ProactiveMessageConfig continúa en el DataStore sin migración:
-         * El nuevo enlace solo lee el ID habilitado/período/asistente y los demás parámetros (intervalo, probabilidad,
-         * Límite diario) no tiene contrapartida en el nuevo modelo, y forzar el mapeo sólo traerá viejos problemas.
-         * Después de que el usuario anterior actualice, el libro de cuentas estará vacío y permanecerá en silencio durante unos días. —— Esta es una intención de diseño, no un problema técnico.
+         * 旧的 ProactiveMessageConfig 继续留在 DataStore 里不做迁移：
+         * 新链路只读其中的 enabled / 时段 / 助手 id，其余参数（间隔、概率、
+         * 每日上限）在新模型里没有对应物，强行映射只会把旧毛病带进来。
+         * 老用户升级后账本是空的，会先安静几天 —— 这是设计意图，不是故障。
          */
         val MIGRATION_118_119 = object : Migration(118, 119) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -1355,45 +1402,45 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * v2.6.15: 119 → 120 lectura de caché/Escribe columnas.
+         * v2.6.15: 119 → 120 缓存读/写分列。
          *
-         * Antecedentes: antes de dividir, message.cachedTokens / use_records.cached_tokens contenía dos cantidades en una columna.
-         * (lectura en caché + escritura en caché), mientras que el precio unitario de la escritura en caché es mayor (Anthropic es 1,25 veces el precio del insumo),
-         * En conjunto no pueden valorarse individualmente.
+         * 背景：拆分前 messages.cachedTokens / usage_records.cached_tokens 一个列装两种量
+         * （缓存读 + 缓存写），而缓存写入单价更高（Anthropic 为输入价的 1.25 倍），
+         * 合在一起就无法单独计价。
          *
-         * Esta migración**Solo agregue columnas, no cambie ni rellene valores antiguos**:
-         *  - messages.cacheWriteTokens INTEGER DEFAULT NULL(NULL = Desconocido, las filas antiguas siempre son NULL)
+         * 本迁移**只加列，不改也不回填旧值**：
+         *  - messages.cacheWriteTokens INTEGER DEFAULT NULL（NULL = 未知，旧行永远为 NULL）
          *  - usage_records.cache_write_tokens INTEGER NOT NULL DEFAULT 0
-         * El valor de inventario de cachedTokens/cached_tokens en la fila anterior permanece sin cambios y se interpreta como "leído" al leer (sin reabastecimiento ni recálculo).
+         * 旧行里 cachedTokens / cached_tokens 的存量值保持原样，读取时按「读」解释（不回填、不重算）。
          *
-         * Escenario alternativo (degradación): ambas columnas son puramente nuevas y el código de la versión anterior no las lee, por lo que los datos en sí no están dañados.
-         * Para degradar la biblioteca a v119 para usarla en versiones anteriores:
-         *  1) Primero haga una copia de seguridad de muse.db (establezca → Gestión de datos → Exportar copia de seguridad o copiar archivos directamente);
-         *  2) SQLite 3.35+:`ALTER TABLE messages DROP COLUMN cacheWriteTokens`,
-         *     `ALTER TABLE usage_records DROP COLUMN cache_write_tokens`;
-         *     Si es inferior a 3,35, "Crear una nueva tabla → copiar datos → Cambiar nombre" para reconstruir estas dos tablas (messages El índice debe reconstruirse juntos);
-         *  3) `PRAGMA user_version = 119`.
-         * Instale únicamente la versión anterior y no realice el segundo paso.3 Room rechazará el paso al inicio porque "la versión de la biblioteca es más reciente que el código"——
-         * Esto es verificación de versión, no corrupción de datos.
+         * 回退（降级）方案：两列均为纯新增，旧版本代码不读它们，因此数据本身不会损坏。
+         * 若要把库降回 v119 交给旧版本使用：
+         *  1) 先备份 muse.db（设置 → 数据管理 → 导出备份，或直接拷文件）；
+         *  2) SQLite 3.35+：`ALTER TABLE messages DROP COLUMN cacheWriteTokens`、
+         *     `ALTER TABLE usage_records DROP COLUMN cache_write_tokens`；
+         *     低于 3.35 则「建新表 → 拷数据 → 改名」重建这两张表（messages 上的索引需一并重建）；
+         *  3) `PRAGMA user_version = 119`。
+         * 只装旧版本、不做第 2、3 步会因「库版本比代码新」在启动时被 Room 拒绝——
+         * 这是版本校验，不是数据损坏。
          */
         val MIGRATION_119_120 = object : Migration(119, 120) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                // Completación idempotente:88_89 Las columnas se perderán cuando se reconstruya la ruta de la tabla, así que rellénelas aquí.
+                // 幂等补齐：88_89 等重建表路径会丢列，这里重新补上
                 ensureMessageColumns(db)
                 ensureUsageRecordColumns(db)
             }
         }
 
         /**
-         * v2.6.16: 120 → 121 Mensajes de voz.
+         * v2.6.16: 120 → 121 语音消息。
          *
-         * messages Agregue dos columnas:
-         *  - voiceUri TEXT, puede estar vacío —— Referencia del archivo de audio (VoiceMessageStore archivo:// ruta),
-         *    NULL Indica mensaje sin voz
-         *  - voiceDurationMs INTEGER NOT NULL DEFAULT 0 —— duración (milisegundos),0 Indica desconocido
+         * messages 加两列：
+         *  - voiceUri TEXT，可空 —— 音频文件引用（VoiceMessageStore 的 file:// 路径），
+         *    NULL 表示非语音消息
+         *  - voiceDurationMs INTEGER NOT NULL DEFAULT 0 —— 时长（毫秒），0 表示未知
          *
-         * Ambas columnas son puramente nuevas y no es necesario rellenar las filas antiguas:NULL / 0 ha sido interpretado por la ruta de lectura como"mensajes no de voz".
-         * Idempotente:ensureMessageColumns El juicio existe según PRAGMA,88_89 También se puede recuperar cuando se pierden columnas en la ruta de la tabla de reconstrucción.
+         * 两列均为纯新增，旧行不需要回填：NULL / 0 已被读取路径解释为"非语音消息"。
+         * 幂等：ensureMessageColumns 已按 PRAGMA 判存在，88_89 等重建表路径丢列时同样能补上。
          */
         val MIGRATION_120_121 = object : Migration(120, 121) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -1402,22 +1449,22 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * versión 121 → 122: Limpia los datos sobrantes en teléfonos pequeños y antiguos.
+         * 版本 121 → 122：清理旧小手机遗留数据。
          *
-         * La interfaz de usuario y la cadena de programación del antiguo teléfono celular se eliminaron por completo. Todavía quedan dos tipos de rastros en la capa de datos. Se eliminan aquí:
-         *  - Cuatro mesas para círculo de amigos/diario (`ai_moments` / `ai_moment_comments` / `ai_moment_likes` / `ai_diaries`)
-         *  - `sessions.isMiniPhone = 1` conversaciones de mensajes privados y los mensajes que cuelgan debajo de ellas
+         * 旧小手机的 UI 与调度链已整体移除，数据层还留着两类痕迹，这里一次删干净：
+         *  - 朋友圈 / 日记四张表（`ai_moments` / `ai_moment_comments` / `ai_moment_likes` / `ai_diaries`）
+         *  - `sessions.isMiniPhone = 1` 的私信会话，以及挂在它们下面的消息
          *
-         * Esta función nunca ha estado abierta a usuarios reales. No hay datos comerciales que deban conservarse en la biblioteca, por lo que se eliminan en lugar de archivarse.
+         * 该功能从未对真实用户开放，库里不存在需要保留的业务数据，因此是删除而非归档。
          *
-         * No eliminar columnas:SQLite 3.35 solo apoyo `DROP COLUMN`,minSdk 26 Los dispositivos más antiguos no tienen esta capacidad.
-         * `sessions.isMiniPhone` Conservar como columna compatible con el historial (NOT NULL DEFAULT 0, no hay parte que escriba),
-         * Se eliminará junto con el próximo cambio estructural.
+         * 列不删：SQLite 3.35 才支持 `DROP COLUMN`，minSdk 26 的旧设备没有这个能力。
+         * `sessions.isMiniPhone` 保留为历史兼容列（NOT NULL DEFAULT 0，已无写入方），
+         * 下次结构变更时一并移除。
          *
-         * messages No hay ninguna columna isMiniPhone en la tabla. Sólo puedes consultarlo por la sesión a la que pertenece; borre el mensaje primero y luego borre la sesión.
-         * Evite dejar un lote de mensajes sin propietario después de que desaparezca la sesión (copia de seguridad/Las estadísticas seguirán escaneando toda la tabla de mensajes).
+         * messages 表没有 isMiniPhone 列，只能按所属会话反查；先删消息再删会话，
+         * 避免会话行没了之后留一批无主消息（备份/统计仍会扫 messages 全表）。
          *
-         * Idempotente:`DROP TABLE IF EXISTS` + Eliminación condicional, ejecución repetida sin error.
+         * 幂等：`DROP TABLE IF EXISTS` + 条件删除，重复执行不报错。
          */
         val MIGRATION_121_122 = object : Migration(121, 122) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -1430,6 +1477,88 @@ abstract class MuseDb : RoomDatabase() {
                         "(SELECT `id` FROM `sessions` WHERE `isMiniPhone` = 1)",
                 )
                 db.execSQL("DELETE FROM `sessions` WHERE `isMiniPhone` = 1")
+            }
+        }
+
+        val MIGRATION_122_123 = object : Migration(122, 123) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `conversation_command_receipts` (" +
+                        "`commandId` TEXT NOT NULL, `fingerprint` TEXT NOT NULL, " +
+                        "`payloadJson` TEXT NOT NULL, `sessionId` TEXT NOT NULL, " +
+                        "`messageId` TEXT NOT NULL, `turnId` TEXT DEFAULT NULL, " +
+                        "`acceptedAt` INTEGER NOT NULL, `resultJson` TEXT NOT NULL, " +
+                        "PRIMARY KEY(`commandId`))",
+                )
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `conversation_selections` (" +
+                        "`selectionSetId` TEXT NOT NULL, `sessionId` TEXT NOT NULL, " +
+                        "`revision` INTEGER NOT NULL, `userSelectionJson` TEXT NOT NULL, " +
+                        "`assistantSelectionJson` TEXT NOT NULL, PRIMARY KEY(`selectionSetId`))",
+                )
+                db.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS `index_conversation_selections_sessionId_revision` " +
+                        "ON `conversation_selections` (`sessionId`, `revision`)",
+                )
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `conversation_display_slots` (" +
+                        "`slotId` TEXT NOT NULL, `sessionId` TEXT NOT NULL, `kind` TEXT NOT NULL, " +
+                        "`parentSlotId` TEXT DEFAULT NULL, `logicalPosition` INTEGER NOT NULL, " +
+                        "`messageId` TEXT NOT NULL, PRIMARY KEY(`slotId`), " +
+                        "FOREIGN KEY(`sessionId`) REFERENCES `sessions`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE)",
+                )
+                db.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS `index_conversation_display_slots_sessionId_logicalPosition` " +
+                        "ON `conversation_display_slots` (`sessionId`, `logicalPosition`)",
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_conversation_display_slots_parentSlotId` " +
+                        "ON `conversation_display_slots` (`parentSlotId`)",
+                )
+            }
+        }
+
+        val MIGRATION_123_124 = object : Migration(123, 124) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `session_proactive_preferences` (" +
+                        "`sessionId` TEXT NOT NULL, `muted` INTEGER NOT NULL DEFAULT 0, " +
+                        "PRIMARY KEY(`sessionId`), " +
+                        "FOREIGN KEY(`sessionId`) REFERENCES `sessions`(`id`) " +
+                        "ON UPDATE NO ACTION ON DELETE CASCADE)",
+                )
+                db.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS " +
+                        "`index_session_proactive_preferences_sessionId` " +
+                        "ON `session_proactive_preferences` (`sessionId`)",
+                )
+            }
+        }
+
+        /**
+         * v2.7.x(E2): 会话术语表。
+         *
+         * 只建表,不动任何既有行。列名与默认值逐项对齐 `SessionTermEntity`,
+         * 索引名沿用 Room 的命名规则(`index_<表>_<列...>`)—— 名字不一致时
+         * Room 会在升级后校验阶段报"unexpected index",而不是安静通过。
+         */
+        val MIGRATION_124_125 = object : Migration(124, 125) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `session_terms` (" +
+                        "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                        "`term` TEXT NOT NULL, `meaning` TEXT, " +
+                        "`session_id` TEXT NOT NULL, `assistant_id` TEXT NOT NULL, " +
+                        "`scope` TEXT NOT NULL DEFAULT 'session', " +
+                        "`occurrences` INTEGER NOT NULL DEFAULT 1, " +
+                        "`confirmed` INTEGER NOT NULL DEFAULT 0, " +
+                        "`first_seen_at` INTEGER NOT NULL, `last_seen_at` INTEGER NOT NULL)",
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_session_terms_assistant_id` ON `session_terms` (`assistant_id`)")
+                db.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS `index_session_terms_scope_session_id_term` " +
+                        "ON `session_terms` (`scope`, `session_id`, `term`)",
+                )
             }
         }
 
@@ -1463,9 +1592,9 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * v2.6.7(P2-4): 114 → 115 Los comentarios admiten respuestas anidadas.
+         * v2.6.7（P2-4）: 114 → 115 评论支持嵌套回复。
          *
-         * Los datos antiguos son todos NULL y tienen la misma semántica.“Comentarios principales”, no es necesario rellenar.
+         * 旧数据全为 NULL，语义等同“顶层评论”，无需回填。
          */
         val MIGRATION_114_115 = object : Migration(114, 115) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -1474,14 +1603,14 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * Phase 8.2: v1 → v2 Migrar.
-         * - Crear una nueva mesa de asistentes
-         * - sessions agregar assistantId(Predeterminado 'default') + pinned(Predeterminado 0)campo
-         * - Insertar valor predeterminado Assistant(id='default')
+         * Phase 8.2: v1 → v2 迁移.
+         * - 新建 assistants 表
+         * - sessions 加 assistantId(默认 'default') + pinned(默认 0)字段
+         * - 插入默认 Assistant(id='default')
          */
         val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                // Crear una nueva mesa de asistentes
+                // 新建 assistants 表
                 db.execSQL(
                     """
                     CREATE TABLE IF NOT EXISTS assistants (
@@ -1522,24 +1651,24 @@ abstract class MuseDb : RoomDatabase() {
                     )
                     """.trimIndent(),
                 )
-                // Insertar valor predeterminado Assistant
-                // Android 16 (SDK 36) Deshabilite la ejecución de SQLiteDatabase.execSQL a partir de ahora DML,solo permitido DDL;
-                // Usar en su lugar compileStatement + executeInsert(SQLiteStatement método,Android 16 todavía permitido)
+                // 插入默认 Assistant
+                // Android 16 (SDK 36) 起禁止 SQLiteDatabase.execSQL 执行 DML,只允许 DDL;
+                // 改用 compileStatement + executeInsert(SQLiteStatement 方法,Android 16 仍允许)
                 db.compileStatement(
                     """
                     INSERT OR IGNORE INTO assistants (id, name, sortIndex, createdAt, updatedAt)
-                    VALUES ('default', 'Asistente predeterminado', 0, 0, 0)
+                    VALUES ('default', '默认助手', 0, 0, 0)
                     """.trimIndent(),
                 ).use { it.executeInsert() }
-                // sessions Agregar campo
+                // sessions 加字段
                 db.execSQL("ALTER TABLE sessions ADD COLUMN assistantId TEXT NOT NULL DEFAULT 'default'")
                 db.execSQL("ALTER TABLE sessions ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0")
             }
         }
 
         /**
-         * Phase 8.3: v2 → v3 migración.
-         * - messages Agregar campo favorito(Predeterminado 0)
+         * Phase 8.3: v2 → v3 迁移。
+         * - messages 加 favorite 字段(默认 0)
          */
         val MIGRATION_2_3 = object : Migration(2, 3) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -1548,8 +1677,8 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * Phase 8.4: v3 → v4 migración.
-         * - messages Agregar el campo citationUrlsJson(Predeterminado "[]",JSON cuerda)
+         * Phase 8.4: v3 → v4 迁移。
+         * - messages 加 citationUrlsJson 字段(默认 "[]",JSON 字符串)
          */
         val MIGRATION_3_4 = object : Migration(3, 4) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -1558,10 +1687,10 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * Phase 8.5: v4 → v5 migración.
-         * - Crear una nueva tabla de libros de historia(Libro mundial activado por palabra clave)
-         * - Crear una nueva tabla de mensajes rápidos(Plantilla de mensaje rápido)
-         * - Crear una nueva tabla Prompt_injections(Palabra de solicitud de inyección de patrón)
+         * Phase 8.5: v4 → v5 迁移。
+         * - 新建 lorebooks 表(关键词触发的世界书)
+         * - 新建 quick_messages 表(快捷消息模板)
+         * - 新建 prompt_injections 表(模式注入提示词)
          */
         val MIGRATION_4_5 = object : Migration(4, 5) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -1616,9 +1745,9 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * Phase 8.6: v5 → v6 migración.
-         * - messages Agregar campo imageBase64Json(Predeterminado "[]",JSON cuerda)
-         *   para multimodalidad:USER Publicar fotos(fotos locales base64)/ Gemini salida de la trama(ASSISTANT)
+         * Phase 8.6: v5 → v6 迁移。
+         * - messages 加 imageBase64Json 字段(默认 "[]",JSON 字符串)
+         *   用于多模态:USER 发图(本地图片 base64)/ Gemini 绘图输出(ASSISTANT)
          */
         val MIGRATION_5_6 = object : Migration(5, 6) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -1627,8 +1756,8 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * Phase 8.8: v6 → v7 migración.
-         * - Crear una nueva tabla de habilidades(Kotlin Realización directa skill,No hay necesidad QuickJS)
+         * Phase 8.8: v6 → v7 迁移。
+         * - 新建 skills 表(Kotlin 直实现 skill,不用 QuickJS)
          */
         val MIGRATION_6_7 = object : Migration(6, 7) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -1652,9 +1781,9 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * Phase 9.1 (M13): v7 → v8 migración.
-         * - Crear una nueva tabla de carpetas(Agrupación de carpetas de sesión)
-         * - sessions Agregar campo de ID de carpeta(Predeterminado '',con SessionEntity @ColumnInfo(defaultValue="") Alineación)
+         * Phase 9.1 (M13): v7 → v8 迁移。
+         * - 新建 folders 表(会话文件夹分组)
+         * - sessions 加 folderId 字段(默认 '',与 SessionEntity @ColumnInfo(defaultValue="") 对齐)
          */
         val MIGRATION_7_8 = object : Migration(7, 8) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -1670,21 +1799,21 @@ abstract class MuseDb : RoomDatabase() {
                     )
                     """.trimIndent(),
                 )
-                // sessions Agregar campo de ID de carpeta(Predeterminado '',con SessionEntity @ColumnInfo(defaultValue="") Alineación)
+                // sessions 加 folderId 字段(默认 '',与 SessionEntity @ColumnInfo(defaultValue="") 对齐)
                 db.execSQL("ALTER TABLE sessions ADD COLUMN folderId TEXT DEFAULT ''")
             }
         }
 
         /**
-         * Phase 10.3: v8 → v9 migración.
-         * - Cree una nueva tabla virtual message_fts FTS4(Índice de texto completo de ngram chino)
+         * Phase 10.3: v8 → v9 迁移。
+         * - 新建 messages_fts FTS4 虚拟表(中文 ngram 全文索引)
          *
-         * Nota:
-         * - SQL Debe ser exactamente igual al generado por la anotación @Fts4(Con acento grave + orden de columnas),De lo contrario, la verificación del esquema de la sala falla.
-         * - La migración solo crea tablas vacías,No dejes ningún dato en blanco. Comenzado por primera vez por SessionRepository.ensureFtsIndexConsistent
-         *   Compare el recuento de las dos tablas y luego la cantidad total rebuild(Convertir usando MessageFtsManager.toNgram).
-         * - No en migración INSERT SELECT: SQL no puede llamar a la función ngram de Kotlin,Insertar directamente el texto original dará lugar a
-         *   índice/La consulta es inconsistente(MATCH menos que).rebuild Debe hacerse en la capa de Kotlin.
+         * 注意:
+         * - SQL 必须与 @Fts4 注解生成的完全一致(含反引号 + 列顺序),否则 Room schema 校验失败。
+         * - 迁移只建空表,不填数据。首次启动由 SessionRepository.ensureFtsIndexConsistent
+         *   比较两表 count 后全量 rebuild(用 MessageFtsManager.toNgram 转换)。
+         * - 不在迁移里 INSERT SELECT: SQL 无法调用 Kotlin ngram 函数,直接塞原文会导致
+         *   索引/查询不一致(MATCH 不到)。rebuild 必须在 Kotlin 层做。
          */
         val MIGRATION_8_9 = object : Migration(8, 9) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -1697,15 +1826,15 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * v9 → v10 migración.
-         * - Crear una nueva tabla de tareas_programadas(tareas programadas)
-         * - Crear una nueva tabla Knowledge_docs(Documentación de la base de conocimientos)
+         * v9 → v10 迁移。
+         * - 新建 scheduled_tasks 表(定时任务)
+         * - 新建 knowledge_docs 表(知识库文档)
          *
-         * Nota: skills La mesa ya esta en v6→v7 Creado durante la migración,No se repite aquí.
+         * 注意: skills 表已在 v6→v7 迁移中创建,此处不重复。
          */
         val MIGRATION_9_10 = object : Migration(9, 10) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                // scheduled_tasks mesa(SQL Debe ser exactamente igual a lo que genera la anotación ScheduledTaskEntity @Entity.)
+                // scheduled_tasks 表(SQL 必须与 ScheduledTaskEntity @Entity 注解生成的完全一致)
                 db.execSQL(
                     """
                     CREATE TABLE IF NOT EXISTS scheduled_tasks (
@@ -1723,7 +1852,7 @@ abstract class MuseDb : RoomDatabase() {
                     )
                     """.trimIndent(),
                 )
-                // knowledge_docs mesa
+                // knowledge_docs 表
                 db.execSQL(
                     """
                     CREATE TABLE IF NOT EXISTS knowledge_docs (
@@ -1741,15 +1870,15 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * P1-7: v10 → v11 migración.
-         * - Crear una nueva tabla programada_task_executions(Historial de ejecución de tareas programadas)
+         * P1-7: v10 → v11 迁移。
+         * - 新建 scheduled_task_executions 表(定时任务执行历史)
          *
-         * Nota: La cadena de migración ha cubierto la ruta de actualización estándar.;Las versiones desconocidas o degradaciones son manejadas por el proceso de recuperación de respaldo y no se realiza ninguna migración destructiva.
-         * Esta migración es sólo para v10 → v11 ruta de actualización estándar,DDL usar execSQL(Room Prácticas estándar de migración).
+         * 注意: 迁移链已覆盖标准升级路径;未知版本或降级由备份恢复流程处理，不执行 destructive migration。
+         * 此迁移仅用于 v10 → v11 的标准升级路径,DDL 用 execSQL(Room 迁移标准做法)。
          */
         val MIGRATION_10_11 = object : Migration(10, 11) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                // scheduled_task_executions mesa(SQL Debe ser exactamente igual a lo que genera la anotación ScheduledTaskExecutionEntity @Entity.)
+                // scheduled_task_executions 表(SQL 必须与 ScheduledTaskExecutionEntity @Entity 注解生成的完全一致)
                 db.execSQL(
                     """
                     CREATE TABLE IF NOT EXISTS scheduled_task_executions (
@@ -1762,14 +1891,14 @@ abstract class MuseDb : RoomDatabase() {
                     )
                     """.trimIndent(),
                 )
-                // índice: Historial de ejecución de consultas por task_id(Corresponde a la anotación @Index)
+                // 索引: 按 task_id 查询执行历史(对应 @Index 注解)
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_scheduled_task_executions_task_id ON scheduled_task_executions(task_id)")
             }
         }
 
         /**
-         * v0.45: v11 → v12 migración.
-         * - sessions Agregar campo archivado(Predeterminado 0,Función de archivo)
+         * v0.45: v11 → v12 迁移。
+         * - sessions 加 archived 字段(默认 0,归档功能)
          */
         val MIGRATION_11_12 = object : Migration(11, 12) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -1778,8 +1907,8 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * v1.28: v12 → v13 migración.
-         * - sessions Agregar el campo isAgentSession(Predeterminado 0,Distinguir entre sesiones de la pestaña Agente y sesiones de tareas)
+         * v1.28: v12 → v13 迁移。
+         * - sessions 加 isAgentSession 字段(默认 0,区分 Agent Tab 会话与任务会话)
          */
         val MIGRATION_12_13 = object : Migration(12, 13) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -1788,16 +1917,16 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * v1.30: v13 → v14 migración.
-         * - Crear una nueva tabla group_chats(Metadatos del chat grupal de múltiples agentes)
-         * - Crea una nueva tabla group_chat_messages(Mensajes de chat grupal)
+         * v1.30: v13 → v14 迁移。
+         * - 新建 group_chats 表(多 Agent 群聊元数据)
+         * - 新建 group_chat_messages 表(群聊消息)
          *
-         * Función de chat grupal:Después de que un usuario publica un mensaje en un chat grupal,GroupChatScheduler Serial hace que cada miembro del Agente se turne para hablar.
-         * La cadena de migración ha cubierto la ruta de actualización estándar.;Las versiones desconocidas o degradaciones son manejadas por el proceso de recuperación de respaldo y no se realiza ninguna migración destructiva.
+         * 群聊功能:用户在群聊中发消息后,GroupChatScheduler 串行触发各 Agent 成员轮转发言。
+         * 迁移链已覆盖标准升级路径;未知版本或降级由备份恢复流程处理，不执行 destructive migration。
          */
         val MIGRATION_13_14 = object : Migration(13, 14) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                // group_chats mesa(SQL Debe ser exactamente igual al generado por la anotación @Entity GroupChatEntity)
+                // group_chats 表(SQL 必须与 GroupChatEntity @Entity 注解生成的完全一致)
                 db.execSQL(
                     """
                     CREATE TABLE IF NOT EXISTS group_chats (
@@ -1811,7 +1940,7 @@ abstract class MuseDb : RoomDatabase() {
                     )
                     """.trimIndent(),
                 )
-                // group_chat_messages mesa(SQL Debe ser exactamente igual al generado por la anotación GroupChatMessageEntity @Entity)
+                // group_chat_messages 表(SQL 必须与 GroupChatMessageEntity @Entity 注解生成的完全一致)
                 db.execSQL(
                     """
                     CREATE TABLE IF NOT EXISTS group_chat_messages (
@@ -1826,15 +1955,15 @@ abstract class MuseDb : RoomDatabase() {
                     )
                     """.trimIndent(),
                 )
-                // índice: Consultar mensajes por chatId(Corresponde a la anotación @Index)
+                // 索引: 按 chatId 查询消息(对应 @Index 注解)
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_group_chat_messages_chatId ON group_chat_messages(chatId)")
             }
         }
 
         /**
-         * v1.41: v14 → v15 migración.
-         * - group_chat_messages Agregar campo imageBase64Json(Predeterminado "[]",JSON cuerda)
-         *   Utilizado para la multimodalidad de chat grupal.:Los usuarios envían imágenes adjuntas.
+         * v1.41: v14 → v15 迁移。
+         * - group_chat_messages 加 imageBase64Json 字段(默认 "[]",JSON 字符串)
+         *   用于群聊多模态:用户发送图片附件。
          */
         val MIGRATION_14_15 = object : Migration(14, 15) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -1843,9 +1972,9 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * v1.43: v15 → v16 migración.
-         * - Crear una nueva tabla de artefactos(artefacto de conversación:código/Documentación/HTML/SVG/Imágenes, etc.)
-         * - messages Agregar el campo artefactoIdsJson(Predeterminado "[]",JSON cuerda)
+         * v1.43: v15 → v16 迁移。
+         * - 新建 artifacts 表(会话产物:代码/文档/HTML/SVG/图片等)
+         * - messages 加 artifactIdsJson 字段(默认 "[]",JSON 字符串)
          */
         val MIGRATION_15_16 = object : Migration(15, 16) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -1872,11 +2001,11 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * v1.44: v16 → v17 migración.
-         * - group_chats Agregar campo fijado(Predeterminado 0),Chat del grupo de soporte fijado
+         * v1.44: v16 → v17 迁移。
+         * - group_chats 加 pinned 字段(默认 0),支持群聊置顶
          *
-         * v1.46: v17 → v18 migración.
-         * - group_chat_messages Agregar campo de razonamiento(Opcional),Visualización del proceso de pensamiento de mensajes de chat de grupo de soporte
+         * v1.46: v17 → v18 迁移。
+         * - group_chat_messages 加 reasoning 字段(可选),支持群聊消息思考过程展示
          */
         val MIGRATION_16_17 = object : Migration(16, 17) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -1885,8 +2014,8 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * v1.46: v17 → v18 migración.
-         * - group_chat_messages Agregar campo de razonamiento(Opcional),Visualización del proceso de pensamiento de mensajes de chat de grupo de soporte
+         * v1.46: v17 → v18 迁移。
+         * - group_chat_messages 加 reasoning 字段(可选),支持群聊消息思考过程展示
          */
         val MIGRATION_17_18 = object : Migration(17, 18) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -1895,24 +2024,24 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * v1.49: v18 → v19 migración.
+         * v1.49: v18 → v19 迁移。
          *
-         * Reparación:La versión anterior de la declaración de creación de tabla MIGRATION_6_7 puede ser inconsistente con el esquema actual de SkillEntity
-         * (category Falta columna o el valor predeterminado no coincide),Provoca que la validación del esquema de la sala falle
-         * "Migration didn't properly handle: skills".
+         * 修复:旧版 MIGRATION_6_7 建表语句可能与当前 SkillEntity schema 不一致
+         * (category 列缺失或 defaultValue 不匹配),导致 Room schema 校验崩溃
+         * "Migration didn't properly handle: skills"。
          *
-         * Planificar:Reconstruir tabla de habilidades,Asegúrese de que el esquema sea exactamente el mismo que el de SkillEntity actual.
-         * - CREATE TABLE skills_new(completo schema)
-         * - INSERT INTO skills_new SELECT ... FROM skills(Utilice COALESCE para completar las columnas que faltan)
+         * 方案:重建 skills 表,确保 schema 与当前 SkillEntity 完全一致。
+         * - CREATE TABLE skills_new(完整 schema)
+         * - INSERT INTO skills_new SELECT ... FROM skills(用 COALESCE 补缺失列)
          * - DROP TABLE skills
          * - ALTER TABLE skills_new RENAME TO skills
          *
-         * Android 16 (SDK 36) Límite:execSQL prohibido DML(INSERT/UPDATE/DELETE),
-         * Para la migración de datos db.query() ejecutar INSERT INTO ... SELECT(DDL usar execSQL).
+         * Android 16 (SDK 36) 限制:execSQL 禁止 DML(INSERT/UPDATE/DELETE),
+         * 数据迁移用 db.query() 执行 INSERT INTO ... SELECT(DDL 用 execSQL)。
          */
         val MIGRATION_18_19 = object : Migration(18, 19) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                // 1. Crear nueva tabla(DDL,execSQL Disponible)
+                // 1. 建新表(DDL,execSQL 可用)
                 db.execSQL(
                     """
                     CREATE TABLE IF NOT EXISTS skills_new (
@@ -1929,11 +2058,11 @@ abstract class MuseDb : RoomDatabase() {
                     )
                     """.trimIndent(),
                 )
-                // 2. Migración de datos(DML,Android 16 Debe usar query() en vez de execSQL)
-                //    MIGRATION_6_7 La columna categoría/creadoEn/actualizadoEn se ha incluido al crear la tabla,Simplemente INSERTAR directamente.
-                //    Si a la tabla anterior le faltan columnas de forma anormal,Abandonar la migración(Las habilidades se pueden volver a importar).
-                //    (La rama de captura original que usa COALESCE para completar las columnas que faltan es un código inactivo:SQLite Analizando columnas inexistentes
-                //    Se informa un error en la etapa.,COALESCE irremediable,Por lo tanto eliminado.)
+                // 2. 数据迁移(DML,Android 16 必须用 query() 而非 execSQL)
+                //    MIGRATION_6_7 建表时已包含 category/createdAt/updatedAt 列,直接 INSERT 即可。
+                //    若旧表异常缺列,放弃迁移(技能可重新导入)。
+                //    (原 catch 分支用 COALESCE 补缺列是死代码:SQLite 对不存在的列在解析
+                //    阶段即报错,COALESCE 无法补救,故移除。)
                 try {
                     db.query(
                         """
@@ -1945,28 +2074,28 @@ abstract class MuseDb : RoomDatabase() {
                             implementationKotlin, enabled, category, createdAt, updatedAt
                         FROM skills
                         """.trimIndent(),
-                    ).use { /* ejecutar INSERT,cerrar Cursor */ }
+                    ).use { /* 执行 INSERT,关闭 Cursor */ }
                 } catch (e: Exception) {
-                    // Excepción de tabla antigua:Abandonar la migración de datos,skills La mesa se reconstruirá vacía.(Las habilidades integradas se reescribirán al inicio)
-                    // v1.71: registrando,Facilita la resolución de problemas de pérdida de habilidades del usuario.
-                    Logger.w("MuseDb", "skills La migración de la tabla falló,Se perderán las habilidades definidas por el usuario.", e)
+                    // 旧表异常:放弃数据迁移,skills 表将重建为空(内置 skill 会在启动时重新写入)
+                    // v1.71: 记录日志,便于排查用户 skill 丢失问题
+                    Logger.w("MuseDb", "skills 表迁移失败,用户自定义 skill 将丢失", e)
                 }
-                // 3. Reemplazar mesa vieja(DDL)
+                // 3. 替换旧表(DDL)
                 db.execSQL("DROP TABLE skills")
                 db.execSQL("ALTER TABLE skills_new RENAME TO skills")
             }
         }
 
         /**
-         * v1.53: MIGRATION_19_20 — Agregar índice a la tabla de mensajes,Optimice el rendimiento de las consultas de sesiones largas.
+         * v1.53: MIGRATION_19_20 — 为 messages 表补索引,优化长会话查询性能。
          *
-         * Agregue dos nuevos índices compuestos(DDL,execSQL Disponible):
-         *  - index_messages_sessionId_createdAt:Portada observeBySession(ORDER BY createdAt)
+         * 新增两个复合索引(DDL,execSQL 可用):
+         *  - index_messages_sessionId_createdAt:覆盖 observeBySession(ORDER BY createdAt)
          *    + deleteFromCreatedAt(WHERE sessionId AND createdAt >= ?)
-         *  - index_messages_sessionId_createdAt_role:Cubriendo consultas con la decoración de roles.
+         *  - index_messages_sessionId_createdAt_role:覆盖带 role 过饰的查询
          *
-         * La v19 original solo tiene índice de columna única index_messages_sessionId,larga sesión(Miles)abajo
-         * ORDER BY createdAt necesidad filesort,Después de completar el índice compuesto, se puede realizar un escaneo secuencial del índice.
+         * 原 v19 仅有 index_messages_sessionId 单列索引,长会话(几千条)下
+         * ORDER BY createdAt 需 filesort,补复合索引后可走索引顺序扫描。
          */
         val MIGRATION_19_20 = object : Migration(19, 20) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -1976,17 +2105,17 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * v1.54: MIGRATION_20_21 — RAG Sistematización:Tabla fragmentada de la base de conocimientos + campo de seguimiento del índice de documentos.
+         * v1.54: MIGRATION_20_21 — RAG 体系化:知识库分块表 + 文档索引追踪字段。
          *
-         * 1. Crear una nueva tabla de conocimientos_chunks(Almacenar texto fragmentado + vector de incrustación JSON)
-         * 2. knowledge_docs Agregar campo chunk_count + embedding_model(ALTER TABLE ADD COLUMN,DDL)
+         * 1. 新建 knowledge_chunks 表(存分块文本 + embedding 向量 JSON)
+         * 2. knowledge_docs 加 chunk_count + embedding_model 字段(ALTER TABLE ADD COLUMN,DDL)
          *
-         * embedding Almacenado como cadena de matriz flotante JSON(Como por ejemplo "[0.012, -0.034, ...]"),
-         * Cárguelo en la memoria al mismo tiempo durante la recuperación para el recorrido de similitud del coseno(escala <1 El rendimiento de 10.000 fragmentos es suficiente.).
+         * embedding 以 JSON 浮点数组字符串存储(如 "[0.012, -0.034, ...]"),
+         * 检索时一次性加载到内存做余弦相似度遍历(规模 <1 万 chunk 性能足够)。
          */
         val MIGRATION_20_21 = object : Migration(20, 21) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                // 1. Crear una nueva tabla de conocimientos_chunks
+                // 1. 新建 knowledge_chunks 表
                 db.execSQL(
                     """
                     CREATE TABLE IF NOT EXISTS knowledge_chunks (
@@ -2004,20 +2133,20 @@ abstract class MuseDb : RoomDatabase() {
                 db.execSQL(
                     "CREATE UNIQUE INDEX IF NOT EXISTS index_knowledge_chunks_doc_id_chunk_index ON knowledge_chunks(doc_id, chunk_index)",
                 )
-                // 2. knowledge_docs Agregar campos de seguimiento de índice(ALTER TABLE ADD COLUMN si DDL,execSQL Disponible)
+                // 2. knowledge_docs 加索引追踪字段(ALTER TABLE ADD COLUMN 是 DDL,execSQL 可用)
                 db.execSQL("ALTER TABLE knowledge_docs ADD COLUMN chunk_count INTEGER NOT NULL DEFAULT 0")
                 db.execSQL("ALTER TABLE knowledge_docs ADD COLUMN embedding_model TEXT NOT NULL DEFAULT ''")
             }
         }
 
         /**
-         * v1.81: MIGRATION_21_22 — para mensajes.rol y scheduled_tasks(enabled, next_run_at) Índice complementario.
+         * v1.81: MIGRATION_21_22 — 为 messages.role 和 scheduled_tasks(enabled, next_run_at) 补索引。
          *
-         * Etapa correspondiente3(M-SESS5)y escenario4(M-SC1)Nueva anotación @Index:
-         *  - index_messages_role: acelerar WHERE role=? Consulta sin prefijo sessionId
-         *  - index_scheduled_tasks_enabled_next_run_at: Anular getDueTasks WHERE enabled AND next_run_at <= ? Consulta
+         * 对应阶段3(M-SESS5)和阶段4(M-SC1)新增的 @Index 注解:
+         *  - index_messages_role: 加速 WHERE role=? 无 sessionId 前缀的查询
+         *  - index_scheduled_tasks_enabled_next_run_at: 覆盖 getDueTasks 的 WHERE enabled AND next_run_at <= ? 查询
          *
-         * DDL(CREATE INDEX),Android 16 Permita que execSQL se ejecute.
+         * DDL(CREATE INDEX),Android 16 允许 execSQL 执行。
          */
         val MIGRATION_21_22 = object : Migration(21, 22) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -2027,14 +2156,14 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * v1.82: MIGRATION_22_23 — Índice de almohadilla para Prompt_injections y Quick_Messages.
+         * v1.82: MIGRATION_22_23 — 为 prompt_injections 和 quick_messages 补索引。
          *
-         * Etapa correspondiente4(M-PID1/M-QM1)Nueva anotación @Index:
-         *  - index_prompt_injections_mode_enabled: acelerar getEnabledByMode(WHERE mode=? AND enabled=1)
-         *  - index_quick_messages_scope_assistantId_enabled: acelerar observeForAssistant
+         * 对应阶段4(M-PID1/M-QM1)新增的 @Index 注解:
+         *  - index_prompt_injections_mode_enabled: 加速 getEnabledByMode(WHERE mode=? AND enabled=1)
+         *  - index_quick_messages_scope_assistantId_enabled: 加速 observeForAssistant
          *    (WHERE scope='global' OR (scope='assistant' AND assistantId=?)) AND enabled=1)
          *
-         * DDL(CREATE INDEX),Android 16 Permita que execSQL se ejecute.
+         * DDL(CREATE INDEX),Android 16 允许 execSQL 执行。
          */
         val MIGRATION_22_23 = object : Migration(22, 23) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -2048,12 +2177,12 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * v1.83: MIGRATION_23_24 — Indexación complementaria para habilidades y conocimientos_docs.
+         * v1.83: MIGRATION_23_24 — 为 skills 和 knowledge_docs 补索引。
          *
-         * Correspondiente a la5paso(M-SD1/L-KE1)Nueva anotación @Index:
-         *  - index_skills_enabled: acelerar listEnabled(WHERE enabled=1)
-         *  - index_skills_category: acelerar observeAll(ORDER BY category ASC)
-         *  - index_knowledge_docs_updated_at: acelerar observeAll(ORDER BY updated_at DESC)
+         * 对应第5步(M-SD1/L-KE1)新增的 @Index 注解:
+         *  - index_skills_enabled: 加速 listEnabled(WHERE enabled=1)
+         *  - index_skills_category: 加速 observeAll(ORDER BY category ASC)
+         *  - index_knowledge_docs_updated_at: 加速 observeAll(ORDER BY updated_at DESC)
          */
         val MIGRATION_23_24 = object : Migration(23, 24) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -2064,23 +2193,23 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * v1.85: MIGRATION_24_25 — Se corrigió la columna de implementación faltante de Kotlin en la tabla de habilidades DEFAULT ''.
+         * v1.85: MIGRATION_24_25 — 修复 skills 表 implementationKotlin 列缺失 DEFAULT ''。
          *
-         * pregunta:No.5paso(v1.83)Se agregó SkillEntity.implementationKotlin @ColumnInfo(defaultValue = ""),
-         * Pero al crear la tabla en MIGRATION_6_7/MIGRATION_18_19, la implementaciónKotlin TEXT NOT NULL no está disponible. DEFAULT,
-         * MIGRATION_23_24 Solo agregar índices sin reconstruir la tabla,Provoca que la validación del esquema de la sala falle
-         * "Migration didn't properly handle: skills".
+         * 问题:第5步(v1.83)给 SkillEntity.implementationKotlin 加了 @ColumnInfo(defaultValue = ""),
+         * 但 MIGRATION_6_7 / MIGRATION_18_19 建表时 implementationKotlin TEXT NOT NULL 无 DEFAULT,
+         * MIGRATION_23_24 只加索引未重建表,导致 Room schema 校验崩溃
+         * "Migration didn't properly handle: skills"。
          *
-         * Planificar:Reconstruir tabla de habilidades,Agregar implementaciónKotlin DEFAULT ''.
-         * - CREATE TABLE skills_new(completo schema,implementationKotlin agregar DEFAULT '')
+         * 方案:重建 skills 表,给 implementationKotlin 加 DEFAULT ''。
+         * - CREATE TABLE skills_new(完整 schema,implementationKotlin 加 DEFAULT '')
          * - INSERT INTO skills_new SELECT ... FROM skills
-         * - DROP TABLE skills(El índice se elimina junto con la tabla.)
+         * - DROP TABLE skills(索引随表一起删除)
          * - ALTER TABLE skills_new RENAME TO skills
-         * - Índice de reconstrucción(index_skills_enabled, index_skills_category)
+         * - 重建索引(index_skills_enabled, index_skills_category)
          */
         val MIGRATION_24_25 = object : Migration(24, 25) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                // 1. Crear nueva tabla(DDL,implementationKotlin agregar DEFAULT '')
+                // 1. 建新表(DDL,implementationKotlin 加 DEFAULT '')
                 db.execSQL(
                     """
                     CREATE TABLE IF NOT EXISTS skills_new (
@@ -2097,7 +2226,7 @@ abstract class MuseDb : RoomDatabase() {
                     )
                     """.trimIndent(),
                 )
-                // 2. Migración de datos(DML,Android 16 Debe usar query() en vez de execSQL)
+                // 2. 数据迁移(DML,Android 16 必须用 query() 而非 execSQL)
                 try {
                     db.query(
                         """
@@ -2109,25 +2238,25 @@ abstract class MuseDb : RoomDatabase() {
                             implementationKotlin, enabled, category, createdAt, updatedAt
                         FROM skills
                         """.trimIndent(),
-                    ).use { /* ejecutar INSERT,cerrar Cursor */ }
+                    ).use { /* 执行 INSERT,关闭 Cursor */ }
                 } catch (e: Exception) {
-                    // Excepción de tabla antigua:Abandonar la migración de datos,skills La mesa se reconstruirá vacía.(Las habilidades integradas se reescribirán al inicio)
-                    Logger.w("MuseDb", "skills La migración de la tabla falló,Se perderán las habilidades definidas por el usuario.", e)
+                    // 旧表异常:放弃数据迁移,skills 表将重建为空(内置 skill 会在启动时重新写入)
+                    Logger.w("MuseDb", "skills 表迁移失败,用户自定义 skill 将丢失", e)
                 }
-                // 3. Reemplazar mesa vieja(DDL)
+                // 3. 替换旧表(DDL)
                 db.execSQL("DROP TABLE skills")
                 db.execSQL("ALTER TABLE skills_new RENAME TO skills")
-                // 4. Índice de reconstrucción(MIGRATION_23_24 El índice agregado se elimina junto con DROP TABLE)
+                // 4. 重建索引(MIGRATION_23_24 加的索引随 DROP TABLE 一起删除了)
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_skills_enabled ON skills(enabled)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_skills_category ON skills(category)")
             }
         }
 
         /**
-         * v1.97: MIGRATION_25_26 — Agregue el campo regexRulesJson a la tabla de asistentes(Reglas de reemplazo regulares).
+         * v1.97: MIGRATION_25_26 — 为 assistants 表加 regexRulesJson 字段(正则替换规则)。
          *
-         * Nuevo valor predeterminado del campo '[]'(Matriz JSON vacía),con AssistantEntity.regexRulesJson @ColumnInfo(defaultValue) Alineación.
-         * No hay reglas después de migrar la versión anterior del Asistente,El comportamiento es consistente con la versión original.(Sin reemplazo).
+         * 新字段默认值 '[]'(空 JSON 数组),与 AssistantEntity.regexRulesJson 的 @ColumnInfo(defaultValue) 对齐。
+         * 旧版助手迁移后无规则,行为与原版一致(无替换)。
          */
         val MIGRATION_25_26 = object : Migration(25, 26) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -2138,11 +2267,11 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * v1.98: MIGRATION_26_27 — Agregar nueva tabla de experiencias(Biblioteca de experiencias).
+         * v1.98: MIGRATION_26_27 — 新增 experiences 表(经验库)。
          *
-         * Almacena el conocimiento experiencial acumulado por los usuarios en las conversaciones.(mejores practicas/Aprende de las trampas/Flujo de trabajo),
-         * y la memoria ordinaria(fact)distinguir:fact grabar"¿Quién es el usuario?",experience grabar"como hacer algo".
-         * cuando experienceEnabled=true Inyectado en el sistema solicita referencia de IA.
+         * 存储用户在对话中积累的经验性知识(最佳实践/踩坑教训/工作流),
+         * 与普通记忆(fact)区分:fact 记录"用户是谁",experience 记录"如何做某事"。
+         * 当 experienceEnabled=true 时注入到 system prompt 供 AI 参考。
          */
         val MIGRATION_26_27 = object : Migration(26, 27) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -2152,7 +2281,7 @@ abstract class MuseDb : RoomDatabase() {
                         id TEXT NOT NULL PRIMARY KEY,
                         title TEXT NOT NULL,
                         content TEXT NOT NULL,
-                        category TEXT NOT NULL DEFAULT 'Universales',
+                        category TEXT NOT NULL DEFAULT '通用',
                         tagsJson TEXT NOT NULL DEFAULT '[]',
                         source TEXT NOT NULL DEFAULT 'manual',
                         sessionId TEXT,
@@ -2165,52 +2294,52 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * v1.103: MIGRATION_27_28 — Complete la columna de estado de ánimo/reflexión de la tabla de mensajes.
+         * v1.103: MIGRATION_27_28 — 为 messages 表补齐 mood / reflection 列。
          *
-         * Anteriormente, MessageEntity carecía de estos dos campos.,sesión de tarea/Agent charlar(Usar tabla de mensajes)
-         * El estado de ánimo/reflexión se descarta al realizar el pedido.,Cortar páginas/Las tarjetas MOOD desaparecen después de recargarlas.
-         * mesa de chat grupal(group_chat_messages)La columna de estado de ánimo se incluyó al crear la tabla en MIGRATION_13_14,
-         * Esta vez solo se agregará la tabla de mensajes.reflection Antes no había dos listas.,Inventadlo juntos.
+         * 之前 MessageEntity 缺这两个字段,任务会话/Agent 聊天(用 messages 表)
+         * 落盘时 mood/reflection 被丢弃,切页/重载后 MOOD 卡片消失。
+         * 群聊表(group_chat_messages)在 MIGRATION_13_14 建表时已含 mood 列,
+         * 本次只补 messages 表。reflection 列两表此前都没有,一并补上。
          */
         val MIGRATION_27_28 = object : Migration(27, 28) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                // v1.105 Reparación:agregar DEFAULT NULL,con Entity @ColumnInfo(defaultValue="NULL") Alineación
-                // (Originales "ALTER TABLE ADD COLUMN mood TEXT" Ninguno DEFAULT,SQLite dflt_value=null,
-                //  Room Expectativa "NULL",Fallo por falta de coincidencia de autenticación)
+                // v1.105 修复:加 DEFAULT NULL,与 Entity @ColumnInfo(defaultValue="NULL") 对齐
+                // (原 "ALTER TABLE ADD COLUMN mood TEXT" 无 DEFAULT,SQLite dflt_value=null,
+                //  Room 期望 "NULL",验证不匹配崩溃)
                 db.execSQL("ALTER TABLE messages ADD COLUMN mood TEXT DEFAULT NULL")
                 db.execSQL("ALTER TABLE messages ADD COLUMN reflection TEXT DEFAULT NULL")
             }
         }
 
         /**
-         * v1.104 U7: MIGRATION_28_29 — Agregar la columna de etiqueta favorita a la tabla de mensajes(Etiquetas de grupos favoritos).
+         * v1.104 U7: MIGRATION_28_29 — 为 messages 表加 favoriteTag 列(收藏分组标签)。
          *
-         * NULL Indica desagrupado;Después de las actualizaciones del usuario anterior, la etiqueta favorita de todas las colecciones existentes será NULL,
-         * UI clasificado arriba"Todos"y"No agrupado"Se pueden ver ambos chips.
+         * NULL 表示未分组;旧用户升级后所有现有收藏的 favoriteTag 都为 NULL,
+         * UI 上归入"全部"和"未分组"两个 chip 都能看到。
          */
         val MIGRATION_28_29 = object : Migration(28, 29) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                // v1.105 Reparación:agregar DEFAULT NULL,con Entity @ColumnInfo(defaultValue="NULL") Alineación
+                // v1.105 修复:加 DEFAULT NULL,与 Entity @ColumnInfo(defaultValue="NULL") 对齐
                 db.execSQL("ALTER TABLE messages ADD COLUMN favoriteTag TEXT DEFAULT NULL")
             }
         }
 
         /**
-         * v1.106: MIGRATION_29_30 — Reconstruir la tabla de mensajes.,Historial de reparaciones ALTER TABLE no traído DEFAULT NULL
-         * Provocó que la validación del esquema fallara.
+         * v1.106: MIGRATION_29_30 — 重建 messages 表,修复历史 ALTER TABLE 未带 DEFAULT NULL
+         * 导致的 schema 验证崩溃。
          *
-         * fondo:MIGRATION_27_28(mood/reflection)y MIGRATION_28_29(favoriteTag)uso original
-         * "ALTER TABLE ADD COLUMN x TEXT" Sin cláusula DEFAULT,SQLite de PRAGMA table_info
-         * Devoluciones para estas columnas dflt_value=null;Y la entidad declara @ColumnInfo(defaultValue="NULL"),
-         * Room Expectativa dflt_value="NULL". los dos no coinciden → IllegalStateException colapsar.
+         * 背景:MIGRATION_27_28(mood/reflection)和 MIGRATION_28_29(favoriteTag)原用
+         * "ALTER TABLE ADD COLUMN x TEXT" 无 DEFAULT 子句,SQLite 的 PRAGMA table_info
+         * 对这些列返回 dflt_value=null;而 Entity 声明 @ColumnInfo(defaultValue="NULL"),
+         * Room 期望 dflt_value="NULL"。两者不匹配 → IllegalStateException 崩溃。
          *
-         * Esta migración utiliza"Crear nueva tabla + copiar datos + reemplazar"Reconstruir la tabla de mensajes.,Asegúrese de que las tres columnas estén presentes
-         * DEFAULT NULL. Esta migración soluciona un bloqueo para los usuarios que actualizaron a la versión 29.
-         * MIGRATION_27_28/28_29 Ya sincronizado DEFAULT NULL,Los usuarios que actualicen en el futuro no necesitan ir a 29_30.
+         * 本 migration 用"建新表 + 复制数据 + 替换"重建 messages 表,确保三列都有
+         * DEFAULT NULL。已升级到 v29 的崩溃用户走此 migration 修复。
+         * MIGRATION_27_28/28_29 已同步加 DEFAULT NULL,未来升级用户无需走 29_30。
          */
         val MIGRATION_29_30 = object : Migration(29, 30) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                // 1. Crear nueva tabla(Las definiciones de columnas son exactamente las mismas que en onCreate,Contiene DEFAULT NULL)
+                // 1. 建新表(列定义与 onCreate 完全一致,含 DEFAULT NULL)
                 db.execSQL(
                     """
                     CREATE TABLE IF NOT EXISTS `messages_new` (
@@ -2234,7 +2363,7 @@ abstract class MuseDb : RoomDatabase() {
                     )
                     """.trimIndent(),
                 )
-                // 2. Copiar datos(El orden de las columnas es coherente con la creación de la tabla.)
+                // 2. 复制数据(列顺序与建表一致)
                 db.execSQL(
                     """
                     INSERT INTO `messages_new` (
@@ -2251,10 +2380,10 @@ abstract class MuseDb : RoomDatabase() {
                     FROM `messages`
                     """.trimIndent(),
                 )
-                // 3. Reemplazar mesa vieja
+                // 3. 替换旧表
                 db.execSQL("DROP TABLE `messages`")
                 db.execSQL("ALTER TABLE `messages_new` RENAME TO `messages`")
-                // 4. Índice de reconstrucción(DROP TABLE Todos los índices serán eliminados.)
+                // 4. 重建索引(DROP TABLE 会删除所有索引)
                 db.execSQL("CREATE INDEX IF NOT EXISTS `index_messages_sessionId` ON `messages` (`sessionId`)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS `index_messages_role` ON `messages` (`role`)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS `index_messages_sessionId_createdAt` ON `messages` (`sessionId`, `createdAt`)")
@@ -2265,20 +2394,20 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * v1.107: MIGRATION_30_31 — Diseño completo de redundancia de base de datos.
+         * v1.107: MIGRATION_30_31 — 全库冗余设计。
          *
-         * cuatro direcciones:
-         *  1. Desnormalizar campos redundantes: sessions/assistants/folders/group_chats/messages Agregar columnas redundantes
-         *  2. Tabla de caché de agregación de estadísticas: Nuevo stats_cache
-         *  3. Redundancia de integridad de datos: messages.contentLength + Nuevo db_integrity_log
-         *  4. Redundancia de recuperación ante desastres de respaldo: Nuevo auto_backup_log
+         * 四个方向:
+         *  1. 反规范化冗余字段: sessions/assistants/folders/group_chats/messages 加冗余列
+         *  2. 统计聚合缓存表: 新建 stats_cache
+         *  3. 数据完整性冗余: messages.contentLength + 新建 db_integrity_log
+         *  4. 备份容灾冗余: 新建 auto_backup_log
          *
-         * Todos los campos redundantes más DEFAULT,Alineado con la entidad @ColumnInfo,Evite fallas en la validación del esquema.
-         * Relleno con subconsultas correlacionadas,Calcule los valores iniciales a partir de datos existentes de una sola vez.
+         * 所有冗余字段加 DEFAULT,与 Entity @ColumnInfo 对齐,避免 schema 验证崩溃。
+         * 回填用关联子查询,一次性从现有数据计算出初始值。
          */
         val MIGRATION_30_31 = object : Migration(30, 31) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                // ── 1. desnormalización: ALTER TABLE Agregar campos redundantes ──
+                // ── 1. 反规范化: ALTER TABLE 加冗余字段 ──
                 db.execSQL("ALTER TABLE sessions ADD COLUMN messageCount INTEGER NOT NULL DEFAULT 0")
                 db.execSQL("ALTER TABLE assistants ADD COLUMN messageCount INTEGER NOT NULL DEFAULT 0")
                 db.execSQL("ALTER TABLE assistants ADD COLUMN lastUsedAt INTEGER NOT NULL DEFAULT 0")
@@ -2288,10 +2417,10 @@ abstract class MuseDb : RoomDatabase() {
                 db.execSQL("ALTER TABLE group_chats ADD COLUMN lastActivityAt INTEGER NOT NULL DEFAULT 0")
                 db.execSQL("ALTER TABLE messages ADD COLUMN contentLength INTEGER NOT NULL DEFAULT 0")
 
-                // ── 2. Rellenar el valor inicial del campo redundante(Subconsulta correlacionada) ──
+                // ── 2. 回填冗余字段初始值(关联子查询) ──
                 // sessions.messageCount
                 db.execSQL("UPDATE sessions SET messageCount = (SELECT COUNT(*) FROM messages WHERE sessionId = sessions.id)")
-                // assistants.messageCount (La cantidad de mensajes de ASISTENTE en esta sesión de asociación de Asistente)
+                // assistants.messageCount (该 Assistant 关联会话中的 ASSISTANT 消息数)
                 db.execSQL(
                     """
                     UPDATE assistants SET messageCount = (
@@ -2301,7 +2430,7 @@ abstract class MuseDb : RoomDatabase() {
                     )
                     """.trimIndent(),
                 )
-                // assistants.lastUsedAt (El número máximo de sesiones asociadas. updatedAt)
+                // assistants.lastUsedAt (关联会话的最大 updatedAt)
                 db.execSQL(
                     "UPDATE assistants SET lastUsedAt = " +
                         "COALESCE((SELECT MAX(updatedAt) FROM sessions " +
@@ -2317,8 +2446,8 @@ abstract class MuseDb : RoomDatabase() {
                         "COALESCE((SELECT MAX(timestamp) FROM group_chat_messages " +
                         "WHERE chatId = group_chats.id), 0)",
                 )
-                // group_chats.lastMessagePreview (Contenido del último mensaje,Truncado a 50 palabras)
-                // Nota: group_chat_messages La columna de contenido de la tabla es cuerpo, no content
+                // group_chats.lastMessagePreview (最后一条消息内容,截断到 50 字)
+                // 注意: group_chat_messages 表的内容列是 body 不是 content
                 db.execSQL(
                     """
                     UPDATE group_chats SET lastMessagePreview = COALESCE(
@@ -2331,7 +2460,7 @@ abstract class MuseDb : RoomDatabase() {
                 // messages.contentLength
                 db.execSQL("UPDATE messages SET contentLength = length(content)")
 
-                // ── 3. Crear una nueva tabla de caché de estadísticas ──
+                // ── 3. 新建统计缓存表 ──
                 db.execSQL(
                     """
                     CREATE TABLE IF NOT EXISTS `stats_cache` (
@@ -2343,7 +2472,7 @@ abstract class MuseDb : RoomDatabase() {
                     """.trimIndent(),
                 )
 
-                // ── 4. Crear una nueva tabla de registro de verificación de integridad ──
+                // ── 4. 新建完整性校验日志表 ──
                 db.execSQL(
                     """
                     CREATE TABLE IF NOT EXISTS `db_integrity_log` (
@@ -2356,7 +2485,7 @@ abstract class MuseDb : RoomDatabase() {
                     """.trimIndent(),
                 )
 
-                // ── 5. Crear una nueva tabla de registro de copia de seguridad automática ──
+                // ── 5. 新建自动备份日志表 ──
                 db.execSQL(
                     """
                     CREATE TABLE IF NOT EXISTS `auto_backup_log` (
@@ -2374,8 +2503,8 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * v2.0: MIGRATION_31_32 — eliminación suave(deletedAt columna).
-         * sessions y los mensajes agregan la columna eliminadoEn,Admite la función de papelera de reciclaje.
+         * v2.0: MIGRATION_31_32 — 软删除(deletedAt 列)。
+         * sessions 和 messages 添加 deletedAt 列,支持回收站功能。
          */
         val MIGRATION_31_32 = object : Migration(31, 32) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -2385,8 +2514,8 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * Función1: MIGRATION_32_33 — Mensaje de respuesta de emoticono(reaction columna).
-         * messages Agregar campo de reacción(null = Sin respuesta).
+         * 功能1: MIGRATION_32_33 — 消息表情回应(reaction 列)。
+         * messages 加 reaction 字段(null = 无回应)。
          */
         val MIGRATION_32_33 = object : Migration(32, 33) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -2395,8 +2524,8 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * Función2: MIGRATION_33_34 — assistants Agregue el campo ProviderId a la tabla.
-         * Se utiliza para especificar el modelo al que pertenece cada asistente al vincular modelos independientes. Provider,Evite conflictos de nombres de modelos entre proveedores.
+         * 功能2: MIGRATION_33_34 — assistants 表加 providerId 字段。
+         * 用于每助手独立模型绑定时指定模型所属的 Provider,避免跨 Provider 模型名冲突。
          */
         val MIGRATION_33_34 = object : Migration(33, 34) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -2405,12 +2534,12 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * v1.122: MIGRATION_34_35 — Complete las columnas parentSessionId + childCount de la tabla de sesiones.
-         * MIGRATION_31_32 se perdió la adición parentSessionId(sesión principal de rama)y childCount(recuento de sucursales),Agregado aquí.
+         * v1.122: MIGRATION_34_35 — 补齐 sessions 表 parentSessionId + childCount 列。
+         * MIGRATION_31_32 漏加了 parentSessionId(分支父会话)和 childCount(分支计数),此处补加。
          *
-         * Revisión de corrección (2.0 B-27): idempotente — Instantánea estándar v34(Entity Se han declarado dos columnas.)no contiene"31_32 Adición faltante"Defectos,
-         * Actualización desde duplicados del punto de partida estándar v34 ALTER → duplicate column colapsar(Prueba de migración 22..54 Matriz expuesta);
-         * cierto"Equipo faltante"(31_32 En realidad no se ejecutó exitosamente)De hecho falta la columna,Complete aquí como de costumbre. Ambos son compatibles.
+         * 审查修复 (2.0 B-27): 幂等化 — 标准 v34 快照(Entity 已声明两列)不含"31_32 漏加"缺陷,
+         * 从标准 v34 起点升级会重复 ALTER → duplicate column 崩溃(迁移测试 22..54 矩阵暴露);
+         * 真实"漏加设备"(31_32 实际未执行成功)列确实缺失,此处照常补齐。两者兼容。
          */
         val MIGRATION_34_35 = object : Migration(34, 35) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -2428,7 +2557,7 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * Phase 2 2B: MIGRATION_35_36 — Crear una nueva tabla de hitos(hitos de la relación).
+         * Phase 2 2B: MIGRATION_35_36 — 新建 milestones 表(关系里程碑)。
          */
         val MIGRATION_35_36 = object : Migration(35, 36) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -2452,7 +2581,7 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * Sistema de herramientas existente port: MIGRATION_36_37 — agent_messages table (DM system).
+         * 既有工具系统 port: MIGRATION_36_37 — agent_messages table (DM system).
          */
         val MIGRATION_36_37 = object : Migration(36, 37) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -2473,9 +2602,9 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * P2-4: MIGRATION_37_38 — Crear una nueva tabla audit_log(Registro de auditoría).
+         * P2-4: MIGRATION_37_38 — 新建 audit_log 表(审计日志)。
          *
-         * solo createTable,La estructura de la tabla existente no se modifica. AuditLogger mantiene la política de búfer circular.
+         * 仅 createTable,不修改既有表结构。环形缓冲策略由 AuditLogger 维护。
          */
         val MIGRATION_37_38 = object : Migration(37, 38) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -2496,25 +2625,25 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * v1.133: MIGRATION_38_39 — RAG Actualización sistemática(Múltiples bases de conocimiento + BLOB embedding + FTS4 + Actualizaciones incrementales + metadatos).
+         * v1.133: MIGRATION_38_39 — RAG 体系化升级(多知识库 + BLOB embedding + FTS4 + 增量更新 + 元数据)。
          *
-         * Cambiar:
-         *  1. Crear una nueva tabla de bases de conocimiento
-         *  2. knowledge_docs Añadir 4 columnas:kb_id / is_internal / content_hash / metadata_json
-         *  3. knowledge_chunks Añadir 2 columnas:embedding_blob / metadata_json
-         *  4. Cree una nueva tabla virtual Knowledge_chunks_fts(FTS4)
-         *  5. assistants Añadir 2 columnas:knowledgeBaseIdsJson / ragConfigOverride
-         *  6. Insertar valor predeterminado KB(id="default")
-         *  7. Establecer el documento existente kb_id en "default",is_internal prensa fileType="devdoc" / id.startsWith("devdoc-") marca
-         *  8. Crear sincrónicamente un índice FTS para fragmentos existentes
-         *  9. Actualizar la KB predeterminada de doc_count
-         * 10. messages Agregar la columna ragCitationsJson(Lista de referencias RAG persistentes)
+         * 改动:
+         *  1. 新建 knowledge_bases 表
+         *  2. knowledge_docs 加 4 列:kb_id / is_internal / content_hash / metadata_json
+         *  3. knowledge_chunks 加 2 列:embedding_blob / metadata_json
+         *  4. 新建 knowledge_chunks_fts 虚拟表(FTS4)
+         *  5. assistants 加 2 列:knowledgeBaseIdsJson / ragConfigOverride
+         *  6. 插入默认 KB(id="default")
+         *  7. 把现存文档 kb_id 设为 "default",is_internal 按 fileType="devdoc" / id.startsWith("devdoc-") 标记
+         *  8. 为现存 chunk 同步建立 FTS 索引
+         *  9. 更新默认 KB 的 doc_count
+         * 10. messages 加 ragCitationsJson 列(持久化 RAG 引用列表)
          *
-         * Sin migración de datos:Se conservan las antiguas columnas JSON incrustadas,El nuevo código lee el primer JSON alternativo de BLOB.
+         * 不做数据迁移:旧 embedding JSON 列保留,新代码读取时 BLOB 优先 fallback JSON。
          */
         val MIGRATION_38_39 = object : Migration(38, 39) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                // 1. Crear una nueva tabla de bases de conocimiento
+                // 1. 新建 knowledge_bases 表
                 db.execSQL(
                     """
                     CREATE TABLE IF NOT EXISTS knowledge_bases (
@@ -2529,7 +2658,7 @@ abstract class MuseDb : RoomDatabase() {
                 )
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_knowledge_bases_updated_at ON knowledge_bases(updated_at)")
 
-                // 2. knowledge_docs Añadir 4 columnas(ALTER TABLE ADD COLUMN si DDL,SQLite apoyo)
+                // 2. knowledge_docs 加 4 列(ALTER TABLE ADD COLUMN 是 DDL,SQLite 支持)
                 db.execSQL("ALTER TABLE knowledge_docs ADD COLUMN kb_id TEXT NOT NULL DEFAULT 'default'")
                 db.execSQL("ALTER TABLE knowledge_docs ADD COLUMN is_internal INTEGER NOT NULL DEFAULT 0")
                 db.execSQL("ALTER TABLE knowledge_docs ADD COLUMN content_hash TEXT NOT NULL DEFAULT ''")
@@ -2537,14 +2666,14 @@ abstract class MuseDb : RoomDatabase() {
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_knowledge_docs_kb_id ON knowledge_docs(kb_id)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_knowledge_docs_content_hash ON knowledge_docs(content_hash)")
 
-                // 3. knowledge_chunks Añadir 2 columnas
+                // 3. knowledge_chunks 加 2 列
                 db.execSQL("ALTER TABLE knowledge_chunks ADD COLUMN embedding_blob BLOB DEFAULT NULL")
                 db.execSQL("ALTER TABLE knowledge_chunks ADD COLUMN metadata_json TEXT NOT NULL DEFAULT '{}'")
 
-                // 4. Crear una nueva mesa virtual FTS4
-                // Utilice text_content en lugar de nombres de columnas content,Evite conflictos de marcadores de posición de columnas de contenido interno de FTS4
-                // Los nombres de las columnas usan doc_id en lugar de docId: columnas reservadas FTS4 docid(rowid Alias,No distingue entre mayúsculas y minúsculas),docId conducirá a vtable constructor failed
-                // Sin especificar el tokenizador: la persona que llama realiza la recuperación del chino después del preprocesamiento de ngram y luego la escribe.(Por el modo MessageFtsManager)
+                // 4. 新建 FTS4 虚拟表
+                // 列名用 text_content 而非 content,避开 FTS4 内部 content 列占位符冲突
+                // 列名用 doc_id 而非 docId:FTS4 保留列 docid(rowid 别名,大小写不敏感),docId 会导致 vtable constructor failed
+                // 不指定 tokenizer:中文检索由调用方做 ngram 预处理后再写入(按 MessageFtsManager 模式)
                 db.execSQL(
                     """
                     CREATE VIRTUAL TABLE IF NOT EXISTS knowledge_chunks_fts
@@ -2552,24 +2681,24 @@ abstract class MuseDb : RoomDatabase() {
                     """.trimIndent(),
                 )
 
-                // 5. assistants Añadir 2 columnas
+                // 5. assistants 加 2 列
                 db.execSQL("ALTER TABLE assistants ADD COLUMN knowledgeBaseIdsJson TEXT NOT NULL DEFAULT '[]'")
                 db.execSQL("ALTER TABLE assistants ADD COLUMN ragConfigOverride TEXT DEFAULT NULL")
 
-                // 6. Insertar valor predeterminado KB
+                // 6. 插入默认 KB
                 db.compileStatement(
                     """
                     INSERT OR IGNORE INTO knowledge_bases (id, name, description, created_at, updated_at, doc_count)
-                    VALUES ('default', 'Base de conocimientos predeterminada', 'Todos los documentos que no especifican una base de conocimientos se colocan aquí de forma predeterminada.', 0, 0, 0)
+                    VALUES ('default', '默认知识库', '所有未指定知识库的文档默认归入此处', 0, 0, 0)
                     """.trimIndent(),
                 ).use { it.executeInsert() }
 
-                // 7. Marcar documentos internos(sustituto original fileType="devdoc" + id.startsWith("devdoc-") Doble codificación)
+                // 7. 标记 internal 文档(替代原 fileType="devdoc" + id.startsWith("devdoc-") 双重硬编码)
                 db.execSQL("UPDATE knowledge_docs SET is_internal = 1 WHERE file_type = 'devdoc' OR id LIKE 'devdoc-%'")
 
-                // 8. Crear sincrónicamente un índice FTS para fragmentos existentes(usar INSERT INTO ... SELECT)
-                // Android 16 (SDK 36) Deshabilite la ejecución de execSQL a partir de ahora DML,El uso de compileStatement en su lugar no funciona con combinaciones SELECT INSERT,
-                // Usado aquí SupportSQLiteDatabase.execSQL(originales SQL) — Room SupportSQLiteDatabase.execSQL sigue siendo compatible con INSERT.
+                // 8. 为现存 chunk 同步建立 FTS 索引(用 INSERT INTO ... SELECT)
+                // Android 16 (SDK 36) 起禁止 execSQL 执行 DML,改用 compileStatement 不适用于 SELECT INSERT 组合,
+                // 这里用 SupportSQLiteDatabase.execSQL(原始 SQL) — Room 的 SupportSQLiteDatabase.execSQL 对 INSERT 仍兼容。
                 try {
                     db.execSQL(
                         """
@@ -2579,11 +2708,11 @@ abstract class MuseDb : RoomDatabase() {
                         """.trimIndent(),
                     )
                 } catch (e: Exception) {
-                    // FTS El error de sincronización no bloquea la migración,La reindexación posterior completará el proceso.
-                    io.zer0.common.Logger.w("MuseDb", "FTS Error de sincronización,Vuelva a indexar más tarde para completar el proceso.", e)
+                    // FTS 同步失败不阻塞迁移,后续重索引会补齐
+                    io.zer0.common.Logger.w("MuseDb", "FTS 同步失败,稍后重索引补齐", e)
                 }
 
-                // 9. Actualizar la KB predeterminada de doc_count(campos redundantes)
+                // 9. 更新默认 KB 的 doc_count(冗余字段)
                 db.execSQL(
                     """
                     UPDATE knowledge_bases
@@ -2592,19 +2721,19 @@ abstract class MuseDb : RoomDatabase() {
                     """.trimIndent(),
                 )
 
-                // 10. messages Agregar la columna ragCitationsJson(Lista de referencias RAG persistentes)
+                // 10. messages 加 ragCitationsJson 列(持久化 RAG 引用列表)
                 db.execSQL("ALTER TABLE messages ADD COLUMN ragCitationsJson TEXT NOT NULL DEFAULT '[]'")
             }
         }
 
         /**
-         * v1.134 P2-1: MIGRATION_39_40 — Agregue la columna dedicada_session_id a tareas_programadas.
+         * v1.134 P2-1: MIGRATION_39_40 — 为 scheduled_tasks 加 dedicated_session_id 列。
          *
-         * fondo:El ScheduledTaskRunner.executeTask original crea una nueva sesión cada vez que se ejecuta.,de larga duración daily
-         * Las tareas generan una gran cantidad de sesiones dispersas. Se agregó el campo dedicado_session_id,Crea un dedicado
-         * sesión y escribir en este campo,Reutilizar la misma sesión para ejecuciones posteriores.(Modo de agregación de sesiones).
+         * 背景:原 ScheduledTaskRunner.executeTask 每次执行都新建会话,长期运行的 daily
+         * 任务会产生大量分散会话。新增 dedicated_session_id 字段,首次执行时创建专用
+         * 会话并写入此字段,后续执行复用同一会话(会话聚合模式)。
          *
-         * Una cadena vacía en el campo indica que la agregación no está habilitada.(compatible con versiones anteriores,Las tareas antiguas no se completarán hasta que se ejecuten por primera vez.).
+         * 字段为空串表示未启用聚合(向后兼容,旧任务首次执行后才会填充)。
          */
         val MIGRATION_39_40 = object : Migration(39, 40) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -2615,13 +2744,13 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * v1.137: MIGRATION_40_41 — Agregue campos de automatización complejos a tareas_programadas.
+         * v1.137: MIGRATION_40_41 — 为 scheduled_tasks 增加复杂自动化字段。
          *
-         * Nuevo:
-         *  - condition_json: Configuración de disparador condicional
-         *  - action_type / action_config_json: Tipos de acción y configuraciones.
-         *  - next_task_ids_json: Lista de ID de tareas encadenadas
-         *  - parent_task_id: tarea de los padres ID(Trazabilidad de la cadena)
+         * 新增:
+         *  - condition_json: 条件触发配置
+         *  - action_type / action_config_json: 动作类型与配置
+         *  - next_task_ids_json: 链式任务 ID 列表
+         *  - parent_task_id: 父任务 ID(链式溯源)
          */
         val MIGRATION_40_41 = object : Migration(40, 41) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -2634,27 +2763,27 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * v1.0.23 hotfix: MIGRATION_41_42 — Reparación"falso v41"La verificación de integridad de la base de datos falló.
+         * v1.0.23 hotfix: MIGRATION_41_42 — 修复"假 v41"数据库 integrity check 崩溃。
          *
-         * causa raíz del problema:
-         *  Una versión de desarrollo intermedia cambió ScheduledTaskEntity pero no se actualizó. MuseDb version(Todavía marcado 41),
-         *  Como resultado, el hash de esquema de la base de datos del dispositivo instalado con esta versión intermedia es f651a76c...(v41 no estándar 8edc5eb8...),
-         *  Después de actualizar al APK v41 correcto, se omitió Room debido a la misma versión. migration,La verificación de integridad directa falla y falla.
+         * 问题根因:
+         *  某个中间开发版本改了 ScheduledTaskEntity 但未升 MuseDb version(仍标 41),
+         *  导致装过该中间版的设备数据库 schema hash 为 f651a76c...(非标准 v41 的 8edc5eb8...),
+         *  升级到正确 v41 APK 后 Room 因 version 相同跳过 migration,直接 integrity check 失败崩溃。
          *
-         * Estrategia de reparación:
-         *  Promocionar la versión a 42,Forzar a Room a seguir el camino de la migración(Omitir v41 integrity check).
-         *  migration Verifique de manera defensiva la integridad del campo de la tabla de tareas programadas en — Comprobación PRAGMA table_info columna por columna,
-         *  Si falta, se utilizará ALTER TABLE ADD COLUMN para completarlo.
-         *  De esta manera, no importa cuál sea el dispositivo"Verdadero v41"(Campos completos,No es necesario ALTER)Aún así"falso v41"(Falta campo,componer uno por uno),
-         *  migration Este último esquema está relacionado con v42(= Correcto v41)consistente,integrity check aprobar.
+         * 修复策略:
+         *  提升 version 到 42,强制 Room 走 migration 路径(绕过 v41 的 integrity check)。
+         *  migration 中防御性检测 scheduled_tasks 表的字段完整性 — 逐列 PRAGMA table_info 检查,
+         *  缺失则 ALTER TABLE ADD COLUMN 补上。
+         *  这样无论设备上是"真 v41"(字段齐全,无需 ALTER)还是"假 v41"(字段缺失,逐个补上),
+         *  migration 后 schema 都与 v42(= 正确 v41)一致,integrity check 通过。
          *
-         * Seguridad de datos:
-         *  - "Verdadero v41"Usuario:Todos los campos existen,migration Corriendo en vacío,Pérdida de datos cero
-         *  - "falso v41"Usuario:Complete los campos faltantes(Relleno de valor predeterminado),Se conservan los datos existentes
+         * 数据安全:
+         *  - "真 v41"用户:所有字段存在,migration 空跑,数据零丢失
+         *  - "假 v41"用户:补上缺失字段(默认值填充),现有数据保留
          */
         val MIGRATION_41_42 = object : Migration(41, 42) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                // reparación defensiva:Verifique la integridad del campo de la tabla Scheduled_tasks,Complete las posibles columnas que faltan
+                // 防御性修复:检测 scheduled_tasks 表字段完整性,补上可能缺失的列
                 val existingColumns = mutableSetOf<String>()
                 db.query("PRAGMA table_info(scheduled_tasks)").use { cursor ->
                     val nameIndex = cursor.getColumnIndexOrThrow("name")
@@ -2666,7 +2795,7 @@ abstract class MuseDb : RoomDatabase() {
                 if ("dedicated_session_id" !in existingColumns) {
                     db.execSQL("ALTER TABLE scheduled_tasks ADD COLUMN dedicated_session_id TEXT NOT NULL DEFAULT ''")
                 }
-                // v1.137: 5 campos automatizados
+                // v1.137: 5 个自动化字段
                 if ("condition_json" !in existingColumns) {
                     db.execSQL("ALTER TABLE scheduled_tasks ADD COLUMN condition_json TEXT NOT NULL DEFAULT ''")
                 }
@@ -2687,7 +2816,7 @@ abstract class MuseDb : RoomDatabase() {
 
         val MIGRATION_42_43 = object : Migration(42, 43) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                // v1.0.15: Mensaje enviado a la tabla de bandeja de salida(Cola de envío persistente)
+                // v1.0.15: 消息发送 outbox 表(持久化发送队列)
                 db.execSQL(
                     """
                     CREATE TABLE IF NOT EXISTS message_outbox (
@@ -2708,14 +2837,14 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * v1.0.17: MIGRATION_43_44 — Se agregó la tabla Translate_history.(Persistencia del historial de traducción).
+         * v1.0.17: MIGRATION_43_44 — 新增 translate_history 表(翻译历史持久化)。
          *
-         * Anteriormente, el historial de traducción solo se conservaba en la memoria.(MAX_HISTORY=50),El proceso se pierde cuando se mata.
-         * Migrar solo crear tablas + índices,Sin migración de datos(Las viejas versiones de la historia no son persistentes.).
+         * 翻译历史此前仅内存保留(MAX_HISTORY=50),进程被杀即丢失。
+         * 迁移仅建表 + 索引,无数据迁移(旧版历史本就不持久化)。
          */
         val MIGRATION_43_44 = object : Migration(43, 44) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                // translate_history mesa(SQL Debe ser exactamente igual al generado por la anotación TranslateHistoryEntity @Entity)
+                // translate_history 表(SQL 必须与 TranslateHistoryEntity @Entity 注解生成的完全一致)
                 db.execSQL(
                     """
                     CREATE TABLE IF NOT EXISTS translate_history (
@@ -2729,9 +2858,9 @@ abstract class MuseDb : RoomDatabase() {
                     )
                     """.trimIndent(),
                 )
-                // índice: Historial de consultas en orden cronológico inverso(Corresponde a la anotación @Index)
+                // 索引: 按时间倒序查询历史(对应 @Index 注解)
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_translate_history_created_at ON translate_history(created_at)")
-                // índice: Consulta por par de idiomas(Corresponde a la anotación @Index)
+                // 索引: 按语言对查询(对应 @Index 注解)
                 db.execSQL(
                     "CREATE INDEX IF NOT EXISTS " +
                         "index_translate_history_source_language_target_language " +
@@ -2741,16 +2870,16 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * v1.0.17: MIGRATION_44_45 — Se agregó la tabla Quick_notes.(Registre rápidamente la persistencia de la habitación + papelera de reciclaje).
+         * v1.0.17: MIGRATION_44_45 — 新增 quick_notes 表(快速记录 Room 持久化 + 回收站)。
          *
-         * Alternativa de almacenamiento de archivos JSON a QuickNoteStore;App Iniciado por QuickNoteStore.migrateToRoom
-         * Importar datos antiguos Room(Idempotencia garantizada a través del indicador SharedPreferences quick_notes_migrad).
+         * 替代 QuickNoteStore 的 JSON 文件存储;App 启动时由 QuickNoteStore.migrateToRoom
+         * 把旧数据导入 Room(通过 SharedPreferences 标志 quick_notes_migrated 保证幂等)。
          *
-         * tags Cadena separada por comas de almacenamiento de columnas(Manejado por QuickNoteConverters TypeConverter List<String> ↔ String).
+         * tags 列存逗号分隔字符串(由 QuickNoteConverters TypeConverter 处理 List<String> ↔ String)。
          */
         val MIGRATION_44_45 = object : Migration(44, 45) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                // quick_notes mesa(SQL Debe ser exactamente igual al generado por la anotación QuickNoteEntity @Entity)
+                // quick_notes 表(SQL 必须与 QuickNoteEntity @Entity 注解生成的完全一致)
                 db.execSQL(
                     """
                     CREATE TABLE IF NOT EXISTS quick_notes (
@@ -2766,21 +2895,21 @@ abstract class MuseDb : RoomDatabase() {
                     )
                     """.trimIndent(),
                 )
-                // índice: Anular observeActive/observeTrash WHERE + ORDER BY
+                // 索引: 覆盖 observeActive / observeTrash 的 WHERE + ORDER BY
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_quick_notes_deleted_updated_at ON quick_notes(deleted, updated_at)")
-                // índice: Portada ORDER BY pinned DESC, updated_at DESC
+                // 索引: 覆盖 ORDER BY pinned DESC, updated_at DESC
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_quick_notes_pinned_updated_at ON quick_notes(pinned, updated_at)")
             }
         }
 
         /**
-         * v1.0.17: MIGRATION_45_46 — Agregue el campo de reintento a tareas_programadas.
+         * v1.0.17: MIGRATION_45_46 — 为 scheduled_tasks 增加重试字段。
          *
-         * Nuevo:
-         *  - retry_count: Número actual de reintentos(Predeterminado 0,Incremento en caso de falla,éxito/Restablecer cuando se alcanza el límite superior)
-         *  - max_retries: Número máximo de reintentos(Predeterminado 3)
+         * 新增:
+         *  - retry_count: 当前重试次数(默认 0,失败递增,成功/达上限重置)
+         *  - max_retries: 最大重试次数(默认 3)
          *
-         * Estrategia de reintento de retroceso exponencial utilizada en ejecutarTask.
+         * 用于 executeTask 中的指数退避重试策略。
          */
         val MIGRATION_45_46 = object : Migration(45, 46) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -2790,14 +2919,14 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * v1.0.30 gap4.3: MIGRATION_46_47 — translate_history Agregar columna favorita(Favoritos de traducción).
+         * v1.0.30 gap4.3: MIGRATION_46_47 — translate_history 加 favorite 列(翻译收藏夹)。
          *
-         * Nuevo campo predeterminado 0(No favorito),Los usuarios pueden hacer clic en la estrella en el historial de traducción para recopilar traducciones utilizadas con frecuencia.
-         * El índice index_translate_history_favorite anula la consulta observeFavorites
-         * (WHERE favorite=1 ORDER BY created_at DESC).
+         * 新字段默认 0(未收藏),用户可在翻译历史中点击星标收藏常用翻译。
+         * 索引 index_translate_history_favorite 覆盖 observeFavorites 查询
+         * (WHERE favorite=1 ORDER BY created_at DESC)。
          *
-         * Nota: v1.0.17 Reintentar el campo tareas_programadas con MIGRATION_45_46,
-         * Por lo tanto, los usos favoritos de esta traducción 46 → 47.
+         * 注: v1.0.17 已用 MIGRATION_45_46 为 scheduled_tasks 加重试字段,
+         * 故本次翻译收藏夹采用 46 → 47。
          */
         val MIGRATION_46_47 = object : Migration(46, 47) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -2807,17 +2936,17 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * v1.0.18: MIGRATION_47_48 — Mejora rápida del registro(9 artículo).
+         * v1.0.18: MIGRATION_47_48 — 快速记录增强(9 项)。
          *
-         * Agregue 6 columnas a la tabla Quick_notes:
-         *  - folder: Clasificación/carpeta(Predeterminado '')
-         *  - content_type: tipo de contenido plain/markdown(Predeterminado 'plain')
-         *  - attachments_json: Matriz JSON de ruta de archivo adjunto de imagen(Predeterminado '')
-         *  - reminder_at: marca de tiempo de recordatorio(Predeterminado 0 = Sin recordatorio)
-         *  - encrypted: token cifrado(Predeterminado 0)
-         *  - encrypted_content: Texto cifrado de contenido cifrado(Predeterminado '')
+         * 为 quick_notes 表添加 6 列:
+         *  - folder: 分类/文件夹(默认 '')
+         *  - content_type: 内容类型 plain/markdown(默认 'plain')
+         *  - attachments_json: 图片附件路径 JSON 数组(默认 '')
+         *  - reminder_at: 提醒时间戳(默认 0 = 无提醒)
+         *  - encrypted: 加密标记(默认 0)
+         *  - encrypted_content: 加密内容密文(默认 '')
          *
-         * Agregar índice de columna de carpeta,Anule la consulta observeByFolder.
+         * 新增 folder 列索引,覆盖 observeByFolder 查询。
          */
         val MIGRATION_47_48 = object : Migration(47, 48) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -2827,22 +2956,22 @@ abstract class MuseDb : RoomDatabase() {
                 db.execSQL("ALTER TABLE quick_notes ADD COLUMN reminder_at INTEGER NOT NULL DEFAULT 0")
                 db.execSQL("ALTER TABLE quick_notes ADD COLUMN encrypted INTEGER NOT NULL DEFAULT 0")
                 db.execSQL("ALTER TABLE quick_notes ADD COLUMN encrypted_content TEXT NOT NULL DEFAULT ''")
-                // índice: Portada observeByFolder(WHERE folder = ?) + observeFolders(DISTINCT folder)
+                // 索引: 覆盖 observeByFolder(WHERE folder = ?) + observeFolders(DISTINCT folder)
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_quick_notes_folder ON quick_notes(folder)")
             }
         }
 
         /**
-         * v2.x: MIGRATION_49_50 — Crea una nueva tabla group_chat_memories(Aislamiento de memoria de chat grupal).
+         * v2.x: MIGRATION_49_50 — 新建 group_chat_memories 表(群聊记忆隔离)。
          *
-         * fondo:El mensaje de chat grupal contiene varios agentes hablando,Escribir directamente en la memoria principal del asistente contamina el contexto principal de la conversación.
-         * Esta tabla almacena el resumen de los mensajes del chat grupal.,con [io.zer0.memory] El sistema de memoria principal del módulo está completamente aislado.
-         * SystemPromptAssembler Se utiliza al inyectar `<group_chat_memory>` Etiquetas y memoria principal `<long_term_memory>` Distinguir.
+         * 背景:群聊消息含多个 Agent 发言,直接写入助手主记忆会污染主对话上下文。
+         * 本表存储群聊消息摘要,与 [io.zer0.memory] 模块的主记忆系统完全隔离。
+         * SystemPromptAssembler 注入时用 `<group_chat_memory>` 标签与主记忆 `<long_term_memory>` 区分。
          *
-         * índice:
-         *  - assistantId:Portada [GroupChatMemoryDao.getByAssistant] Consulta(SystemPromptAssembler inyectar)
-         *  - groupChatId:Portada [GroupChatMemoryDao.getByGroupChat] Consulta + Eliminación en cascada
-         *  - createdAt:Portada [GroupChatMemoryDao.deleteOlderThan] limpiar
+         * 索引:
+         *  - assistantId:覆盖 [GroupChatMemoryDao.getByAssistant] 查询(SystemPromptAssembler 注入)
+         *  - groupChatId:覆盖 [GroupChatMemoryDao.getByGroupChat] 查询 + 级联删除
+         *  - createdAt:覆盖 [GroupChatMemoryDao.deleteOlderThan] 清理
          */
         val MIGRATION_49_50 = object : Migration(49, 50) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -2865,14 +2994,14 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * v2.x: MIGRATION_50_51 — Campo del modo de discusión de chat grupal.
+         * v2.x: MIGRATION_50_51 — 群聊讨论模式字段。
          *
-         * Agregue 3 columnas a la tabla group_chats:
-         *  - discussion_mode: modo de discusión(round_robin/auto/debate/host,Predeterminado round_robin)
-         *  - auto_max_rounds: Auto Número máximo de rondas de diálogo consecutivas en el modo.(Predeterminado 5)
-         *  - host_id: modo anfitrión AI id(Predeterminado NULL)
+         * 为 group_chats 表添加 3 列:
+         *  - discussion_mode: 讨论模式(round_robin/auto/debate/host,默认 round_robin)
+         *  - auto_max_rounds: Auto 模式最大连续对话轮数(默认 5)
+         *  - host_id: 主持人模式的 AI id(默认 NULL)
          *
-         * Todas las columnas nuevas tienen valores predeterminados,Manténgase compatible con versiones anteriores;Los chats grupales existentes obtienen automáticamente el modo round_robin.
+         * 所有新列均带默认值,保持向后兼容;现有群聊自动获得 round_robin 模式。
          */
         val MIGRATION_50_51 = object : Migration(50, 51) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -2883,7 +3012,7 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * v2.x: MIGRATION_51_52 — Campos mejorados para mensajes de chat grupal(Susurro / Respuesta de cotización / Tipo de mensaje).
+         * v2.x: MIGRATION_51_52 — 群聊消息增强字段(悄悄话 / 引用回复 / 消息类型)。
          */
         val MIGRATION_51_52 = object : Migration(51, 52) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -2894,13 +3023,13 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * v2.x: MIGRATION_52_53 — Campos de gestión del contexto del chat grupal(Documentos compartidos en grupo + contexto exclusivo de IA).
+         * v2.x: MIGRATION_52_53 — 群聊上下文管理字段(群共享文档 + AI 专属上下文)。
          *
-         * Agregue 2 columnas a la tabla group_chats:
-         *  - shared_docs_json: Lista de documentos compartidos en grupo JSON(Predeterminado "[]"),Visible para todos los miembros
-         *  - member_private_context_json: contexto específico del miembro Map JSON(Predeterminado "{}"),Cuarentena por ID de asistente
+         * 为 group_chats 表添加 2 列:
+         *  - shared_docs_json: 群共享文档列表 JSON(默认 "[]"),所有成员可见
+         *  - member_private_context_json: 成员专属上下文 Map JSON(默认 "{}"),按 assistantId 隔离
          *
-         * Todas las columnas nuevas tienen valores predeterminados,Manténgase compatible con versiones anteriores;Los chats grupales existentes obtienen automáticamente una lista vacía/Mapa vacío.
+         * 所有新列均带默认值,保持向后兼容;现有群聊自动获得空列表/空映射。
          */
         val MIGRATION_52_53 = object : Migration(52, 53) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -2910,24 +3039,24 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * v1.0.24: MIGRATION_53_54 — Se corrigió el valor predeterminado de la columna de la lista de chat grupal.
+         * v1.0.24: MIGRATION_53_54 — 修正群聊表列默认值。
          *
-         * migración temprana(50_51 / 51_52)Se perdió cuando ALTER TABLE ADD COLUMN DEFAULT NULL,
-         * dando como resultado una base de datos migrada host_id / whisper_target_id / reply_to_id El valor predeterminado es
-         * 'undefined'(Room representación interna),declarado con entidad defaultValue = "NULL" no hay coincidencia,
-         * Se genera una excepción IllegalStateException al inicio.
+         * 早期迁移(50_51 / 51_52)在 ALTER TABLE ADD COLUMN 时遗漏了 DEFAULT NULL,
+         * 导致已迁移数据库中 host_id / whisper_target_id / reply_to_id 的默认值为
+         * 'undefined'(Room 内部表示),与实体声明的 defaultValue = "NULL" 不匹配,
+         * 启动时抛出 IllegalStateException。
          *
-         * SQLite No compatible ALTER COLUMN,La mesa debe ser reconstruida:
-         *  1. Crear tabla temporal(Cinturón correctamente DEFAULT NULL)
-         *  2. Copiar todos los datos
-         *  3. DROP reloj viejo
-         *  4. RENAME La tabla temporal es el nombre oficial de la tabla.
+         * SQLite 不支持 ALTER COLUMN,必须重建表:
+         *  1. 创建临时表(带正确 DEFAULT NULL)
+         *  2. 复制全部数据
+         *  3. DROP 旧表
+         *  4. RENAME 临时表为正式表名
          *
-         * Reconstruya las tablas group_chats y group_chat_messages al mismo tiempo.
+         * 同时重建 group_chats 与 group_chat_messages 两张表。
          */
         val MIGRATION_53_54 = object : Migration(53, 54) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                // ── reconstruir group_chats(host_id Valor predeterminado NULL) ──
+                // ── 重建 group_chats(host_id 默认值 NULL) ──
                 db.execSQL(
                     """
                     CREATE TABLE IF NOT EXISTS group_chats_new (
@@ -2964,7 +3093,7 @@ abstract class MuseDb : RoomDatabase() {
                 db.execSQL("DROP TABLE group_chats")
                 db.execSQL("ALTER TABLE group_chats_new RENAME TO group_chats")
 
-                // ── reconstruir group_chat_messages(whisper_target_id / reply_to_id Valor predeterminado NULL) ──
+                // ── 重建 group_chat_messages(whisper_target_id / reply_to_id 默认值 NULL) ──
                 db.execSQL(
                     """
                     CREATE TABLE IF NOT EXISTS group_chat_messages_new (
@@ -2998,21 +3127,21 @@ abstract class MuseDb : RoomDatabase() {
                 db.execSQL("DROP TABLE group_chat_messages")
                 db.execSQL("ALTER TABLE group_chat_messages_new RENAME TO group_chat_messages")
 
-                // Índice de reconstrucción(Desaparece con la tabla DROP)
+                // 重建索引(随表 DROP 一起消失)
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_group_chat_messages_chatId ON group_chat_messages(chatId)")
             }
         }
 
         /**
-         * v1.0.19: MIGRATION_48_49 — Assistant Finalización del campo.
+         * v1.0.19: MIGRATION_48_49 — Assistant 字段补齐。
          *
-         * Agregue 3 columnas a la tabla de asistentes:
-         *  - summary: Introducción de una frase(Predeterminado '',Usado para listas de chat grupal/subtítulo de la tarjeta)
-         *  - useAssistantName: Reemplace el nombre del modelo con el nombre del asistente en la interfaz de chat(Predeterminado 0 = false)
-         *  - allowGroupChat: Si permitir unirse al chat grupal(Predeterminado 1 = true)
+         * 为 assistants 表添加 3 列:
+         *  - summary: 一句话简介(默认 '',用于群聊花名册/卡片副标题)
+         *  - useAssistantName: 聊天界面用助手名替换模型名(默认 0 = false)
+         *  - allowGroupChat: 是否允许加入群聊(默认 1 = true)
          *
-         * Nota: tags La función de agrupación ya la realiza el campo tagsJson,Sin adiciones repetidas.
-         * Todas las columnas nuevas tienen valores predeterminados,Manténgase compatible con versiones anteriores;Las líneas del Asistente existentes obtienen automáticamente los valores predeterminados.
+         * 注: tags 分组功能已由 tagsJson 字段承载,不重复添加。
+         * 所有新列均带默认值,保持向后兼容;现有 Assistant 行自动获得默认值。
          */
         val MIGRATION_48_49 = object : Migration(48, 49) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -3023,10 +3152,10 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * v1.0.30: MIGRATION_54_55 — Tabla de mensajes más campo variante(variantGroupId/variantIndex/variantCount).
+         * v1.0.30: MIGRATION_54_55 — 消息表加变体字段(variantGroupId/variantIndex/variantCount)。
          *
-         * por la persistencia"regenerar"Respuesta del asistente de múltiples versiones generada.
-         * ALTER TABLE ADD COLUMN Utilice valores predeterminados NULL/0/1 en todo momento,Compatible con datos existentes.
+         * 用于持久化"重新生成"产生的多版本 assistant 回复。
+         * ALTER TABLE ADD COLUMN 全用 NULL/0/1 默认值,兼容已有数据。
          */
         val MIGRATION_54_55 = object : Migration(54, 55) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -3037,26 +3166,26 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * v1.0.47: MIGRATION_55_56 — Tabla de mensajes más campo para archivos adjuntos(attachmentsJson).
+         * v1.0.47: MIGRATION_55_56 — 消息表加附件字段(attachmentsJson)。
          *
-         * Para una persistencia estructurada de metadatos de archivos sin formato(nombre de archivo/MIME/tamaño/Extraer texto),
-         * Reemplaza el método anterior de fusionar el documento con el contenido y descartar los metadatos del archivo original después de analizarlo.
-         * Predeterminado '[]'(matriz vacía),Compatible con datos existentes.
+         * 用于结构化持久化原始文件元数据(文件名/MIME/大小/提取文本),
+         * 替代之前文档解析后合并进 content、原始文件元数据丢弃的方式。
+         * 默认 '[]'(空数组),兼容已有数据。
          */
         val MIGRATION_55_56 = object : Migration(55, 56) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE messages ADD COLUMN attachmentsJson TEXT NOT NULL DEFAULT '[]'")
-                // v1.0.47: lorebooks Tabla más columna WholeWord(patrón de coincidencia de palabras completas,Predeterminado false)
+                // v1.0.47: lorebooks 表加 wholeWord 列(全词匹配模式,默认 false)
                 db.execSQL("ALTER TABLE lorebooks ADD COLUMN wholeWord INTEGER NOT NULL DEFAULT 0")
             }
         }
 
         /**
-         * v1.0.47 P3: MIGRATION_56_57 — sessions Tabla más columna SkillIdsJson(Cobertura de habilidades a nivel de sesión).
+         * v1.0.47 P3: MIGRATION_56_57 — sessions 表加 skillIdsJson 列(会话级 skill 覆盖)。
          *
-         * "[]" Indica heredar el Asistente skillIdsJson(Comportamiento predeterminado sin cambios);
-         * Una matriz no vacía representa la cobertura. Assistant,Solo está habilitada la habilidad especificada.
-         * Predeterminado '[]' Compatible con datos existentes.
+         * "[]" 表示继承 Assistant 的 skillIdsJson(默认行为不变);
+         * 非空数组表示覆盖 Assistant,仅启用指定 skill。
+         * 默认 '[]' 兼容已有数据。
          */
         val MIGRATION_56_57 = object : Migration(56, 57) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -3065,15 +3194,15 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * P1-2: MIGRATION_57_58 — Crear una nueva tabla worldbook_entries(Libro del mundo dinámico).
+         * P1-2: MIGRATION_57_58 — 新建 worldbook_entries 表(动态世界书)。
          *
-         * Independiente de la tabla de libros de historia existentes,Admite funciones avanzadas no disponibles en Lorebook:
-         *  - alwaysActive Activación residente/escaneo multicapa scanDepth/palabra clave regular isRegex
+         * 与现有 lorebooks 表独立,支持 Lorebook 不具备的高级特性:
+         *  - alwaysActive 常驻激活 / scanDepth 多层扫描 / isRegex 正则关键词
          *  - injectTarget(system/user/assistant) + injectPosition(prepend/append/at_depth) + insertionDepth
-         *  - assistantId Vincular un ayudante específico(NULL = situación general)
+         *  - assistantId 绑定特定助手(NULL = 全局)
          *
-         * Todas las columnas DEFAULT,con [io.zer0.muse.worldbook.WorldBookEntryEntity] de @ColumnInfo(defaultValue=...) Alineación.
-         * assistantId uso de columna DEFAULT NULL(sqlite El valor predeterminado de la columna TEXTO en el medio puede ser NULL).
+         * 所有列带 DEFAULT,与 [io.zer0.muse.worldbook.WorldBookEntryEntity] 的 @ColumnInfo(defaultValue=...) 对齐。
+         * assistantId 列用 DEFAULT NULL(sqlite 中 TEXT 列默认可为 NULL)。
          */
         val MIGRATION_57_58 = object : Migration(57, 58) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -3103,19 +3232,19 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * v1.0.53 Phase 1: MIGRATION_58_59 — Crear una nueva tabla subagent_threads(Persistencia del libro mayor de subagentes).
+         * v1.0.53 Phase 1: MIGRATION_58_59 — 新建 subagent_threads 表(子 agent 线程账本持久化)。
          *
-         * Implementado por la persistencia del libro mayor de subprocesos del subagente,reemplazar viejo tools/SubagentThreadStore.kt(Versión de memoria).
-         * Dos rutas de subagente compartidas:
-         *  - camino A: SubagentTool + SkillExecutor.delegateAgent nonBlocking(Delegación Subasistente)
-         *  - camino B: SubagentRunSkill + SubagentRunner(Pasivo agent)
+         * 由子 agent 线程账本持久化实现,替代旧 tools/SubagentThreadStore.kt(内存版)。
+         * 两条 subagent 路径共享:
+         *  - 路径 A: SubagentTool + SkillExecutor.delegateAgent nonBlocking(子助手委派)
+         *  - 路径 B: SubagentRunSkill + SubagentRunner(被动子 agent)
          *
-         * Para obtener descripciones de las columnas, consulte [io.zer0.muse.data.subagent.SubagentThreadEntity];Historial de subsesiones(noticias)
-         * Ir al archivo JSONL filesDir/subagent_sessions/<threadId>.jsonl(Gestionado por SubagentSessionStore),
-         * No permitido Room(Evite escribir los resultados de cada ronda de herramientas en una tabla.,y aislado de la lista principal de conversaciones).
+         * 列说明见 [io.zer0.muse.data.subagent.SubagentThreadEntity];子会话历史(消息)
+         * 走 JSONL 文件 filesDir/subagent_sessions/<threadId>.jsonl(由 SubagentSessionStore 管理),
+         * 不入 Room(避免每轮工具结果都写表,且与主会话列表隔离)。
          *
-         * Todas las columnas DEFAULT,con entidad @ColumnInfo(defaultValue=...) / Kotlin Alineación de valores predeterminados.
-         * childSessionId / label / lastRunStatus / lastSummary Se permite NULO.
+         * 所有列带 DEFAULT,与 Entity 的 @ColumnInfo(defaultValue=...) / Kotlin 默认值对齐。
+         * childSessionId / label / lastRunStatus / lastSummary 允许 NULL。
          */
         val MIGRATION_58_59 = object : Migration(58, 59) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -3148,8 +3277,8 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * v1.0.53: MIGRATION_59_60 — assistants Tabla más columna toolModelId(per-assistant modelo de herramienta).
-         * En la ronda de llamada de herramientas, se utilizará primero el modelo de herramienta propio del asistente.,Reserva global si no se establece.
+         * v1.0.53: MIGRATION_59_60 — assistants 表加 toolModelId 列(per-assistant 工具模型)。
+         * 工具调用轮次优先用助手自己的工具模型,未设置时回退全局。
          */
         val MIGRATION_59_60 = object : Migration(59, 60) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -3158,7 +3287,7 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * B5-03: MIGRATION_60_61 — messages Agregue think_signature/thinking_encrypted_content.
+         * B5-03: MIGRATION_60_61 — messages 加 thinking_signature / thinking_encrypted_content。
          */
         val MIGRATION_60_61 = object : Migration(60, 61) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -3167,7 +3296,7 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * B5-01: MIGRATION_61_62 — Se agregó la tabla generate_checkpoints.
+         * B5-01: MIGRATION_61_62 — 新增 generation_checkpoints 表。
          */
         val MIGRATION_61_62 = object : Migration(61, 62) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -3186,7 +3315,7 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * B5-02: MIGRATION_62_63 — Se agregó la tabla group_chat_generation_ledger.
+         * B5-02: MIGRATION_62_63 — 新增 group_chat_generation_ledger 表。
          */
         val MIGRATION_62_63 = object : Migration(62, 63) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -3212,7 +3341,7 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * B6-03: MIGRATION_63_64 — messages Agregar columna mood_skin(Logotipo de piel emocional).
+         * B6-03: MIGRATION_63_64 — messages 加 mood_skin 列(情绪皮肤标识)。
          */
         val MIGRATION_63_64 = object : Migration(63, 64) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -3221,7 +3350,7 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * B7-03/B7-05: MIGRATION_64_65 — sessions Agregue lastReadMessageId/sortOrder.
+         * B7-03/B7-05: MIGRATION_64_65 — sessions 加 lastReadMessageId / sortOrder。
          */
         val MIGRATION_64_65 = object : Migration(64, 65) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -3230,7 +3359,7 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * B7-03: MIGRATION_65_66 — sessions agregar lastReadCount,Logotipo no leído para la lista de sesiones.
+         * B7-03: MIGRATION_65_66 — sessions 加 lastReadCount,用于会话列表未读数徽标。
          */
         val MIGRATION_65_66 = object : Migration(65, 66) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -3239,7 +3368,7 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * B8-01: MIGRATION_66_67 — sessions agregar proactiveNextTriggerAt,Admite la programación de mensajes activos a nivel de sesión.
+         * B8-01: MIGRATION_66_67 — sessions 加 proactiveNextTriggerAt,支持会话级主动消息排期。
          */
         val MIGRATION_66_67 = object : Migration(66, 67) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -3248,11 +3377,11 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * B8-06: MIGRATION_67_68 — Se solucionó el problema de la falta de mensajes/sesiones en la base de datos del historial.
+         * B8-06: MIGRATION_67_68 — 修复历史库 messages/sessions 缺列问题。
          *
-         * Si la versión anterior falla durante la migración o se usa de manera inconsistente schema,Room Informe
-         * "Migration didn't properly handle: messages". Esta migración se compara con PRAGMA.,
-         * Complete solo las columnas que faltan,Las columnas existentes permanecen sin cambios.
+         * 旧版本若曾在迁移中途失败或使用不一致 schema,Room 会报
+         * "Migration didn't properly handle: messages"。本迁移按 PRAGMA 检查,
+         * 只补缺失列,已存在的列保持不动。
          */
         val MIGRATION_67_68 = object : Migration(67, 68) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -3263,8 +3392,8 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * v1.0.62 fix: Compatible desde v1.0.60 (DB version 73)Escenario de actualización:
-         * Asegúrese de que existan las tablas generate_checkpoints y group_chat_generation_ledger.
+         * v1.0.62 fix: 兼容从 v1.0.60（DB version 73）升级的场景：
+         * 确保 generation_checkpoints 和 group_chat_generation_ledger 表存在。
          */
         val MIGRATION_68_74 = object : Migration(68, 74) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -3275,7 +3404,7 @@ abstract class MuseDb : RoomDatabase() {
             }
         }
 
-        /** v1.0.74: 68→69 cadena complementaria(68_74 Queda el salto recto,Suministrar equipos viejos). */
+        /** v1.0.74: 68→69 补链(68_74 直跳仍保留,供老设备)。 */
         val MIGRATION_68_69 = object : Migration(68, 69) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 ensureSessionColumns(db)
@@ -3283,8 +3412,8 @@ abstract class MuseDb : RoomDatabase() {
             }
         }
 
-        /** v1.0.74: Llene los vacíos en las versiones 69-72 — Si estas versiones alguna vez se lanzaran(Escala de grises/prueba),Al actualizar, Room fallará si no puede encontrar la migración.
-         *  Migración vacía + asegurar complemento idempotente,Comparte la lógica de defensa con 68_74. */
+        /** v1.0.74: 补齐 69-72 版本缺口 — 若这些版本曾发布(灰度/测试),升级时 Room 找不到迁移会启动崩溃。
+         *  空迁移 + ensure 幂等补列,与 68_74 共用防御逻辑。 */
         val MIGRATION_69_70 = object : Migration(69, 70) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 ensureSessionColumns(db)
@@ -3311,8 +3440,8 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * P0 árbol de diálogo: messages Tabla más parentGroupId(El grupo de variantes de preguntas del usuario al que pertenece la variante del asistente.).
-         * Al actualizar la biblioteca anterior, asegúrese de que se utilice MessageColumns para complementar las columnas idempotentes.,No afecta los datos existentes.
+         * P0 对话树: messages 表加 parentGroupId(助手变体所属的用户提问变体组)。
+         * 旧库升级时通过 ensureMessageColumns 幂等补列,不影响存量数据。
          */
         val MIGRATION_74_75 = object : Migration(74, 75) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -3328,9 +3457,9 @@ abstract class MuseDb : RoomDatabase() {
         }
 
         /**
-         * R-DB-04: 75→76 — messages La tabla almacena imágenes base64 externamente en filesDir/muse_images/.
-         * Reutilice MessageImageStore.toPersistable: base64 larga y cámbielo a file:// referencia,
-         * Base64 corta se mantiene en línea(Consistente con el nuevo comportamiento de escritura v1.134);Regresar al valor original en caso de falla,Idempotente y reentrante.
+         * R-DB-04: 75→76 — messages 表存量 base64 图片外置到 filesDir/muse_images/。
+         * 复用 MessageImageStore.toPersistable:长 base64 落盘并改为 file:// 引用,
+         * 短 base64 保持内联(与 v1.134 新写入行为一致);失败时回退原值,幂等可重入。
          */
         fun migrate75To76(storageDir: File): Migration = object : Migration(75, 76) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -3362,6 +3491,120 @@ abstract class MuseDb : RoomDatabase() {
             }
         }
 
+        /**
+         * S3:整条迁移链的唯一注册表。
+         *
+         * 顺序即执行顺序。链的连续性、本次要跑几步、以及「旧迁移冻结、新版本只追加」这条规矩
+         * 都以这里为唯一真源(见 `MuseDbMigrationChainTest`),所以不要再在别处直接 `addMigrations`。
+         */
+        internal fun migrations(context: Context): List<Migration> = listOf(
+            MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5,
+            MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9,
+            MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13,
+            MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17,
+            MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21,
+            MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24,
+            MIGRATION_24_25, MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28,
+            MIGRATION_28_29, MIGRATION_29_30, MIGRATION_30_31,
+            MIGRATION_31_32,
+            MIGRATION_32_33,
+            MIGRATION_33_34,
+            MIGRATION_34_35,
+            MIGRATION_35_36,
+            MIGRATION_36_37,
+            MIGRATION_37_38,
+            MIGRATION_38_39,
+            MIGRATION_39_40,
+            MIGRATION_40_41,
+            MIGRATION_41_42,
+            MIGRATION_42_43,
+            MIGRATION_43_44,
+            MIGRATION_44_45,
+            MIGRATION_45_46,
+            MIGRATION_46_47,
+            MIGRATION_47_48,
+            MIGRATION_48_49,
+            MIGRATION_49_50,
+            MIGRATION_50_51,
+            MIGRATION_51_52,
+            MIGRATION_52_53,
+            MIGRATION_53_54,
+            MIGRATION_54_55,
+            MIGRATION_55_56,
+            MIGRATION_56_57,
+            MIGRATION_57_58,
+            MIGRATION_58_59,
+            MIGRATION_59_60,
+            MIGRATION_60_61,
+            MIGRATION_61_62,
+            MIGRATION_62_63,
+            MIGRATION_63_64,
+            MIGRATION_64_65,
+            MIGRATION_65_66,
+            MIGRATION_66_67,
+            MIGRATION_67_68,
+            MIGRATION_68_69,
+            // MIGRATION_68_74 为死代码(68→69 先匹配),保留注释供历史追溯,不删除避免迁移冲突
+            // MIGRATION_68_74,
+            MIGRATION_69_70,
+            MIGRATION_70_71,
+            MIGRATION_71_72,
+            MIGRATION_72_73,
+            MIGRATION_73_74,
+            MIGRATION_74_75,
+            migrate75To76(File(context.applicationContext.filesDir, "muse_images")),
+            migrate76To77(),
+            MIGRATION_77_78,
+            MIGRATION_78_79,
+            MIGRATION_79_80,
+            MIGRATION_80_81,
+            MIGRATION_81_82,
+            MIGRATION_82_83,
+            MIGRATION_83_84,
+            MIGRATION_84_85,
+            MIGRATION_85_86,
+            MIGRATION_86_87,
+            MIGRATION_87_88,
+            MIGRATION_88_89,
+            MIGRATION_89_90,
+            MIGRATION_90_91,
+            MIGRATION_91_92,
+            MIGRATION_92_93,
+            MIGRATION_93_94,
+            MIGRATION_94_95,
+            MIGRATION_95_96,
+            MIGRATION_96_97,
+            MIGRATION_97_98,
+            MIGRATION_98_99,
+            MIGRATION_99_100,
+            MIGRATION_100_101,
+            MIGRATION_101_102,
+            MIGRATION_102_103,
+            MIGRATION_103_104,
+            MIGRATION_104_105,
+            MIGRATION_105_106,
+            MIGRATION_106_107,
+            MIGRATION_107_108,
+            MIGRATION_108_109,
+            MIGRATION_109_110,
+            MIGRATION_110_111,
+            MIGRATION_111_112,
+            MIGRATION_112_113,
+            MIGRATION_113_114,
+            MIGRATION_114_115,
+            MIGRATION_115_116, MIGRATION_116_117, MIGRATION_117_118, MIGRATION_118_119,
+            MIGRATION_119_120,
+            MIGRATION_120_121,
+            MIGRATION_121_122,
+            MIGRATION_122_123,
+            MIGRATION_123_124,
+            MIGRATION_124_125,
+        )
+
+        // SpreadOperator:展开 126 个已包装的迁移对象。这里必须用 vararg 形式交给 Room 的
+        // addMigrations,复制发生在本函数每次调用时(每个进程一次),代价是 126 个指针,
+        // 比为此另写一套注册接口划算。
+        @Suppress("SpreadOperator")
         fun get(context: Context): MuseDb {
             return dbInstance ?: synchronized(this) {
                 dbInstance ?: Room.databaseBuilder(
@@ -3369,130 +3612,38 @@ abstract class MuseDb : RoomDatabase() {
                     MuseDb::class.java,
                     "muse.db",
                 )
+                    // S3:每一步都过一层旁路观察(进度发布 + 上次结果落盘)。
+                    // 包装层原样调用被包装的迁移、异常原样抛出 —— 观察不许影响迁移本身。
                     .addMigrations(
-                        MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5,
-                        MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9,
-                        MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13,
-                        MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17,
-                        MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21,
-                        MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24,
-                        MIGRATION_24_25, MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28,
-                        MIGRATION_28_29, MIGRATION_29_30, MIGRATION_30_31,
-                        MIGRATION_31_32,
-                        MIGRATION_32_33,
-                        MIGRATION_33_34,
-                        MIGRATION_34_35,
-                        MIGRATION_35_36,
-                        MIGRATION_36_37,
-                        MIGRATION_37_38,
-                        MIGRATION_38_39,
-                        MIGRATION_39_40,
-                        MIGRATION_40_41,
-                        MIGRATION_41_42,
-                        MIGRATION_42_43,
-                        MIGRATION_43_44,
-                        MIGRATION_44_45,
-                        MIGRATION_45_46,
-                        MIGRATION_46_47,
-                        MIGRATION_47_48,
-                        MIGRATION_48_49,
-                        MIGRATION_49_50,
-                        MIGRATION_50_51,
-                        MIGRATION_51_52,
-                        MIGRATION_52_53,
-                        MIGRATION_53_54,
-                        MIGRATION_54_55,
-                        MIGRATION_55_56,
-                        MIGRATION_56_57,
-                        MIGRATION_57_58,
-                        MIGRATION_58_59,
-                        MIGRATION_59_60,
-                        MIGRATION_60_61,
-                        MIGRATION_61_62,
-                        MIGRATION_62_63,
-                        MIGRATION_63_64,
-                        MIGRATION_64_65,
-                        MIGRATION_65_66,
-                        MIGRATION_66_67,
-                        MIGRATION_67_68,
-                        MIGRATION_68_69,
-                        // MIGRATION_68_74 código hasta la muerte(68→69 Partido primero),Mantenga notas para el seguimiento histórico,No eliminar para evitar conflictos de migración
-                        // MIGRATION_68_74,
-                        MIGRATION_69_70,
-                        MIGRATION_70_71,
-                        MIGRATION_71_72,
-                        MIGRATION_72_73,
-                        MIGRATION_73_74,
-                        MIGRATION_74_75,
-                        migrate75To76(File(context.applicationContext.filesDir, "muse_images")),
-                        migrate76To77(),
-                        MIGRATION_77_78,
-                        MIGRATION_78_79,
-                        MIGRATION_79_80,
-                        MIGRATION_80_81,
-                        MIGRATION_81_82,
-                        MIGRATION_82_83,
-                        MIGRATION_83_84,
-                        MIGRATION_84_85,
-                        MIGRATION_85_86,
-                        MIGRATION_86_87,
-                        MIGRATION_87_88,
-                        MIGRATION_88_89,
-                        MIGRATION_89_90,
-                        MIGRATION_90_91,
-                        MIGRATION_91_92,
-                        MIGRATION_92_93,
-                        MIGRATION_93_94,
-                        MIGRATION_94_95,
-                        MIGRATION_95_96,
-                        MIGRATION_96_97,
-                        MIGRATION_97_98,
-                        MIGRATION_98_99,
-                        MIGRATION_99_100,
-                        MIGRATION_100_101,
-                        MIGRATION_101_102,
-                        MIGRATION_102_103,
-                        MIGRATION_103_104,
-                        MIGRATION_104_105,
-                        MIGRATION_105_106,
-                        MIGRATION_106_107,
-                        MIGRATION_107_108,
-                        MIGRATION_108_109,
-                        MIGRATION_109_110,
-                        MIGRATION_110_111,
-                        MIGRATION_111_112,
-                        MIGRATION_112_113,
-                        MIGRATION_113_114,
-                        MIGRATION_114_115,
-                        MIGRATION_115_116, MIGRATION_116_117, MIGRATION_117_118, MIGRATION_118_119,
-                        MIGRATION_119_120,
-                        MIGRATION_120_121,
-                        MIGRATION_121_122,
+                        *MigrationRegistry(
+                            all = migrations(context),
+                            onRecord = { MigrationRunStore.record(context, it) },
+                        ).timed(),
                     )
-                    // Habilitar restricciones de clave externa(artifacts ON DELETE CASCADE para tablas depende de esta configuración)
-                    // onOpen No dentro de la transacción onCreate,Estos comandos se pueden ejecutar;onCreate prohibido dentro PRAGMA
+                    // 启用外键约束(artifacts 表的 ON DELETE CASCADE 依赖此设置)
+                    // onOpen 不在 onCreate 事务内,可以执行此类命令;onCreate 内禁止 PRAGMA
                     .addCallback(object : RoomDatabase.Callback() {
                         override fun onCreate(db: SupportSQLiteDatabase) {
-                            // R-DB-02: La nueva instalación crea explícitamente una tabla FTS(El primer nivel de doble seguro.).
+                            // R-DB-02: 全新安装显式建 FTS 表(双保险第一层)。
                             synchronized(FTS_CREATE_LOCK) {
                                 try {
                                     createKnowledgeChunkFtsTable(db)
-                                    // R-DB-05: Nueva construcción de instalación messages_fts(FTS5 Prioridad,FTS4 revertir).
+                                    // R-DB-05: 全新安装建 messages_fts(FTS5 优先,FTS4 回退)。
                                     try {
                                         createMessageFtsTable(db, fts5Available(db))
                                     } catch (e: Exception) {
-                                        io.zer0.common.Logger.e("MuseDb", "No se pudo crear mensajes_fts: ${e.message}", e)
+                                        io.zer0.common.Logger.e("MuseDb", "创建 messages_fts 失败: ${e.message}", e)
                                     }
                                 } catch (e: Exception) {
                                     knowledgeFtsBroken = true
-                                    io.zer0.common.Logger.e("MuseDb", "Falló la creación de Knowledge_chunks_fts: ${e.message}", e)
+                                    io.zer0.common.Logger.e("MuseDb", "创建 knowledge_chunks_fts 失败: ${e.message}", e)
                                 }
                             }
                         }
 
                         override fun onOpen(db: SupportSQLiteDatabase) {
                             db.setForeignKeyConstraintsEnabled(true)
-                            // R-DB-02: onOpen solo haz la verificación;Limpiar la tabla de sombra y reconstruirla si falta,El error establece el indicador en proceso.
+                            // R-DB-02: onOpen 仅做校验;缺失时清影子表并重建,失败置进程内标志。
                             try {
                                 synchronized(FTS_CREATE_LOCK) {
                                     val exists = db.query(
@@ -3503,18 +3654,18 @@ abstract class MuseDb : RoomDatabase() {
                                         try {
                                             createKnowledgeChunkFtsTable(db)
                                             knowledgeFtsBroken = false
-                                            io.zer0.common.Logger.i("MuseDb", "knowledge_chunks_fts Autocuración y reconstrucción exitosas")
+                                            io.zer0.common.Logger.i("MuseDb", "knowledge_chunks_fts 自愈重建成功")
                                         } catch (e2: Exception) {
                                             knowledgeFtsBroken = true
-                                            io.zer0.common.Logger.e("MuseDb", "knowledge_chunks_fts La reconstrucción falló: ${e2.message}", e2)
+                                            io.zer0.common.Logger.e("MuseDb", "knowledge_chunks_fts 重建失败: ${e2.message}", e2)
                                         }
                                     }
                                 }
                             } catch (e: Exception) {
                                 knowledgeFtsBroken = true
-                                io.zer0.common.Logger.e("MuseDb", "knowledge_chunks_fts La verificación falló: ${e.message}", e)
+                                io.zer0.common.Logger.e("MuseDb", "knowledge_chunks_fts 校验失败: ${e.message}", e)
                             }
-                            // R-DB-05: verificar messages_fts;Reconstruir según la capacidad cuando falta,FTS5 Prioridad.
+                            // R-DB-05: 校验 messages_fts;缺失时按能力重建,FTS5 优先。
                             try {
                                 synchronized(FTS_CREATE_LOCK) {
                                     val messageFtsExists = db.query(
@@ -3528,18 +3679,18 @@ abstract class MuseDb : RoomDatabase() {
                                     }
                                 }
                             } catch (e: Exception) {
-                                io.zer0.common.Logger.e("MuseDb", "messages_fts La verificación falló: ${e.message}", e)
+                                io.zer0.common.Logger.e("MuseDb", "messages_fts 校验失败: ${e.message}", e)
                             }
-                            // v1.107: WAL El patrón consta de setJournalMode(WRITE_AHEAD_LOGGING) habilitar,No hay configuraciones repetidas aquí
-                            // v1.107: Pasivo checkpoint,Fusionar registros WAL en la base de datos principal
-                            //   Nota: PRAGMA wal_checkpoint Conjunto de resultados de retorno,Debe utilizar consulta en lugar de execSQL
+                            // v1.107: WAL 模式由 setJournalMode(WRITE_AHEAD_LOGGING) 启用,这里不重复设置
+                            // v1.107: 被动 checkpoint,合并 WAL 日志到主数据库
+                            //   注意: PRAGMA wal_checkpoint 返回结果集,必须用 query 而非 execSQL
                             db.query("PRAGMA wal_checkpoint(PASSIVE)").use { it.moveToFirst() }
                         }
                     })
-                    // v1.107: Establecer explícitamente el modo de registro WAL(Recuperación ante desastres redundante:Simultaneidad de lectura y escritura + recuperación ante fallos)
+                    // v1.107: 显式设置 WAL 日志模式(冗余容灾:读写并发 + 崩溃恢复)
                     .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
-                    // Reparación de auditoría (0.3): Archive el repositorio antiguo antes de degradar la migración destructiva(.bak),Evite las reversiones beta/Cuando el canal retrocede
-                    // Toda la base de datos se destruye silenciosamente y las conversaciones y los recuerdos no se pueden restaurar.onDestructiveMigration Devolución de llamada a la antigua biblioteca antes de la destrucción.
+                    // 审计修复 (0.3): 降级破坏性迁移前归档旧库(.bak),避免测试版回滚/渠道回退时
+                    // 整库静默销毁、对话与记忆不可恢复。onDestructiveMigration 在破坏前于旧库上回调。
                     .addCallback(object : RoomDatabase.Callback() {
                         override fun onDestructiveMigration(db: androidx.sqlite.db.SupportSQLiteDatabase) {
                             super.onDestructiveMigration(db)
@@ -3552,7 +3703,7 @@ abstract class MuseDb : RoomDatabase() {
                                     runCatching {
                                         val wal = java.io.File(dbFile.parentFile, "muse.db-wal")
                                         val shm = java.io.File(dbFile.parentFile, "muse.db-shm")
-                                        // Combinación de puntos de control primero WAL,Copia la biblioteca principal nuevamente.
+                                        // 先 checkpoint 合并 WAL,再复制主库
                                         runCatching { db.query("PRAGMA wal_checkpoint(PASSIVE)").use { it.moveToFirst() } }
                                         dbFile.copyTo(bak, overwrite = true)
                                         runCatching { if (wal.exists()) wal.delete() }
@@ -3560,11 +3711,11 @@ abstract class MuseDb : RoomDatabase() {
                                     }
                                 }
                             } catch (e: Exception) {
-                                io.zer0.common.Logger.w("MuseDb", "Error al degradar el archivo(No afecta la reconstrucción.): ${e.message}")
+                                io.zer0.common.Logger.w("MuseDb", "降级归档失败(不影响重建): ${e.message}")
                             }
                         }
                     })
-                    // La migración destructiva está prohibida: las degradaciones deben restaurarse mediante copias de seguridad durante el proceso de lanzamiento y las bibliotecas de los usuarios no se pueden borrar de forma silenciosa.
+                    // 禁止 destructive migration：降级必须在发布流程中使用备份恢复，不能静默清空用户库。
                     .build()
                     .also { dbInstance = it }
                     .also {
@@ -3577,7 +3728,7 @@ abstract class MuseDb : RoomDatabase() {
     }
 }
 
-/** B8-06: Complete las columnas de mensajes que faltan según el esquema actual(idempotente,Se omiten las columnas existentes). */
+/** B8-06: 按当前 schema 补齐 messages 缺失列(幂等,已存在的列跳过)。 */
 private fun ensureMessageColumns(db: androidx.sqlite.db.SupportSQLiteDatabase) {
     val existing = mutableSetOf<String>()
     db.query("PRAGMA table_info(messages)").use { cursor ->
@@ -3605,17 +3756,17 @@ private fun ensureMessageColumns(db: androidx.sqlite.db.SupportSQLiteDatabase) {
         "citationUrlsJson TEXT NOT NULL DEFAULT '[]'",
         "imageUrlsJson TEXT NOT NULL DEFAULT '[]'",
         "favoriteTag TEXT DEFAULT NULL",
-        // A5: Generar columnas de metadatos(Capa emergente de información del mensaje:modelo/Consume mucho tiempo/ficha)
+        // A5: 生成元数据列(消息信息弹层:模型/耗时/令牌)
         "durationMs INTEGER DEFAULT NULL",
         "promptTokens INTEGER DEFAULT NULL",
         "completionTokens INTEGER DEFAULT NULL",
         "reasoningTokens INTEGER DEFAULT NULL",
         "cachedTokens INTEGER DEFAULT NULL",
-        // H11: El mensaje fuente del mensaje de traducción. id(Comparación y plegado de texto original.)
+        // H11: 译文消息的源消息 id(原文对照折叠)
         "translationSourceId TEXT DEFAULT NULL",
-                        // v2.6.15: Tokens de escritura en caché (separados de cachedTokens; comportamiento anterior NULL = desconocido)
+        // v2.6.15: 缓存写入 token（与 cachedTokens 分列；旧行为 NULL = 未知）
         "cacheWriteTokens INTEGER DEFAULT NULL",
-        // v2.6.16: Cita de audio del mensaje de voz + duración (línea antigua NULL / 0 = mensajes no de voz)
+        // v2.6.16: 语音消息音频引用 + 时长（旧行 NULL / 0 = 非语音消息）
         "voiceUri TEXT DEFAULT NULL",
         "voiceDurationMs INTEGER NOT NULL DEFAULT 0",
     )
@@ -3627,7 +3778,7 @@ private fun ensureMessageColumns(db: androidx.sqlite.db.SupportSQLiteDatabase) {
     }
 }
 
-/** B8-06: Complete las columnas que faltan de use_records según el esquema actual(idempotente,Se omiten las columnas existentes). */
+/** B8-06: 按当前 schema 补齐 usage_records 缺失列(幂等,已存在的列跳过)。 */
 private fun ensureUsageRecordColumns(db: androidx.sqlite.db.SupportSQLiteDatabase) {
     val existing = mutableSetOf<String>()
     db.query("PRAGMA table_info(usage_records)").use { cursor ->
@@ -3636,7 +3787,7 @@ private fun ensureUsageRecordColumns(db: androidx.sqlite.db.SupportSQLiteDatabas
         }
     }
     val columns = listOf(
-        // v2.6.15: escrituras en caché token(Separar con cached_tokens;viejo comportamiento 0)
+        // v2.6.15: 缓存写入 token(与 cached_tokens 分列;旧行为 0)
         "cache_write_tokens INTEGER NOT NULL DEFAULT 0",
     )
     columns.forEach { spec ->
@@ -3647,7 +3798,7 @@ private fun ensureUsageRecordColumns(db: androidx.sqlite.db.SupportSQLiteDatabas
     }
 }
 
-/** B8-06: Complete las columnas faltantes de sesiones según el esquema actual(idempotente,Se omiten las columnas existentes). */
+/** B8-06: 按当前 schema 补齐 sessions 缺失列(幂等,已存在的列跳过)。 */
 private fun ensureSessionColumns(db: androidx.sqlite.db.SupportSQLiteDatabase) {
     val existing = mutableSetOf<String>()
     db.query("PRAGMA table_info(sessions)").use { cursor ->
@@ -3682,11 +3833,11 @@ private fun ensureSessionColumns(db: androidx.sqlite.db.SupportSQLiteDatabase) {
 }
 
 /**
- * Complete las columnas que faltan de group_chat_messages según el esquema actual.
+ * 按当前 schema 补齐 group_chat_messages 缺失列。
  *
- * La cadena de actualización de versiones antiguas puede omitir la migración mejorada de mensajes de chat grupal(susurrar/Cotización Responder/Tipo de mensaje/Accesorios),
- * Causa Suma de comprobación de la habitación "Migration didn't properly handle: group_chat_messages".
- * Reconstruya la tabla y copie los datos cuando falten columnas o los valores predeterminados clave no coincidan,Si se cumple el esquema actual, omítalo directamente.
+ * 旧版本升级链可能跳过群聊消息增强迁移(悄悄话/引用回复/消息类型/附件),
+ * 导致 Room 校验报 "Migration didn't properly handle: group_chat_messages"。
+ * 缺列或关键默认值不符时重建表并复制数据,已满足当前 schema 时直接跳过。
  */
 private fun ensureGroupChatMessageColumns(db: androidx.sqlite.db.SupportSQLiteDatabase) {
     val tableExists = db.query(
@@ -3778,8 +3929,8 @@ private fun ensureGroupChatMessageColumns(db: androidx.sqlite.db.SupportSQLiteDa
 }
 
 /**
- * v1.0.62 fix: Asegúrese de que existan las tablas generate_checkpoints y group_chat_generation_ledger.
- * Compatible desde v1.0.60 (DB version 73) escenario de actualización, estas tablas no existen en el esquema v1.0.60.
+ * v1.0.62 fix: 确保 generation_checkpoints 和 group_chat_generation_ledger 表存在。
+ * 兼容从 v1.0.60（DB version 73）升级的场景，这些表在 v1.0.60 的 schema 中不存在。
  */
 private fun ensureGenerationTables(db: androidx.sqlite.db.SupportSQLiteDatabase) {
     db.execSQL(

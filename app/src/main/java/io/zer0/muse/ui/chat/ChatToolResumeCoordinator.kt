@@ -19,12 +19,12 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 
 /**
- * v2.x Refactor S5: orquestación de llamadas a herramientas que se restaurarán extraídas de ChatViewModel.
+ * v2.x 重构 S5: 从 ChatViewModel 提取的待恢复工具调用编排。
  *
- * Ubicación original:ChatViewModel.resumePendingToolCalls.
+ * 原位置:ChatViewModel.resumePendingToolCalls。
  *
- * Propiedades de migración:**extracción pura**——Mueve el código tal como está.,No hay cambios en ninguna lógica./orden/Semántica de excepción.
- * ChatViewModel Mantenga la llamada del delegado en su posición original.
+ * 迁移性质:**纯抽取**——代码原样搬入,不改动任何逻辑/顺序/异常语义。
+ * ChatViewModel 原位置保留委托调用。
  */
 @Suppress(
     "LongParameterList",
@@ -40,12 +40,12 @@ internal class ChatToolResumeCoordinator(
     private val host: ChatToolApprovalHostBridge,
 ) {
 
-    /** Constantes migradas desde ChatViewModel(Referencia directa al enlace de recuperación original.). */
+    /** 从 ChatViewModel 随迁的常量(原恢复链直接引用)。 */
     private companion object {
         const val TOOL_TIMEOUT_MS = 120_000L
     }
     fun resumePendingToolCalls(chatId: String) {
-        // Evite conflictos con compilaciones de transmisión en curso
+        // 防止与正在进行的流式生成冲突
         if (host.stateStore.state.value.isStreaming) {
             host.addError(ChatErrorType.UNKNOWN, host.appContext.getString(R.string.err_chat_resume_busy))
             return
@@ -54,7 +54,7 @@ internal class ChatToolResumeCoordinator(
             val pendings =
                 resultOf { PendingToolCallStore.getForChat(chatId) }
                     .onError { msg, t ->
-                        Logger.e("ChatVM", "resumePendingToolCalls getForChat falló: $msg", t)
+                        Logger.e("ChatVM", "resumePendingToolCalls getForChat 失败: $msg", t)
                         host.addError(
                             ChatErrorType.UNKNOWN,
                             host.appContext.getString(R.string.err_chat_resume_read_failed, t?.message ?: msg),
@@ -64,8 +64,8 @@ internal class ChatToolResumeCoordinator(
                 host.stateStore.state.update { it.copy(pendingToolCallCount = 0) }
                 return@launch
             }
-            // La espera de aprobación no se puede falsificar ni liberar automáticamente después de reiniciar; el usuario debe descartarlo explícitamente.
-            // o por posteriores especialistas“Solicitar aprobación”El proceso recrea el contexto de aprobación de la generación actual.
+            // 审批等待不能在重启后伪造 Deferred 或自动放行；要求用户显式丢弃，
+            // 或由后续专门的“重新请求审批”流程重新创建当前代的审批上下文。
             val approvalPending =
                 pendings.filter {
                     it.executionState == PendingToolCallStore.APPROVAL_PENDING
@@ -74,18 +74,19 @@ internal class ChatToolResumeCoordinator(
                 host.stateStore.state.update { it.copy(pendingToolCallCount = pendings.size) }
                 host.addError(
                     ChatErrorType.TOOL_ERROR,
-                    "si ${approvalPending.size} Una llamada de herramienta está esperando aprobación antes de finalizar el proceso y la recuperación automática ha sido bloqueada; descarte y reinicie la solicitud.",
+                    "Hay ${approvalPending.size} llamadas pendientes de aprobación desde que terminó el proceso. " +
+                        "Se bloqueó su recuperación automática; descártalas y vuelve a enviar la solicitud.",
                     true,
                 )
                 Logger.w(
                     "ChatVM",
-                    "Denegar la herramienta pendiente de aprobación de recuperación automática: count=${approvalPending.size}, sessionId=$chatId",
+                    "拒绝自动恢复审批挂起工具: count=${approvalPending.size}, sessionId=$chatId",
                 )
                 return@launch
             }
-            // Cargar la lista de habilidades habilitadas,construir id → SkillEntity mapeo(Consistente con la lógica dentro de launchStream)
-            // v1.0.47 P3: Cobertura de habilidades a nivel de sesión — prioridad session.skillIdsJson(no"[]"y no vacio),
-            // De lo contrario, recurra a assistant.skillIdsJson(Comportamiento predeterminado sin cambios)
+            // 加载启用的 skill 列表,构建 id → SkillEntity 映射(与 launchStream 内的逻辑一致)
+            // v1.0.47 P3: 会话级 skill 覆盖 — 优先用 session.skillIdsJson(非"[]"且非空),
+            // 否则回退到 assistant.skillIdsJson(默认行为不变)
             val sessionSkillIdsJson =
                 host.stateStore.state.value.sessions
                     .firstOrNull { it.id == chatId }?.skillIdsJson
@@ -99,9 +100,9 @@ internal class ChatToolResumeCoordinator(
                 effectiveSkillIdsJson?.let { json ->
                     runCatching { host.idListJson.decodeFromString<List<String>>(json) }.getOrNull()
                 }
-            // Reparación de auditoría (A-04/A-05/A-06): con ChatStreamCoordinator.resolveToolsAndModel
-            // mismo conjunto de filtros — La herramienta local tiene el mismo nombre que habilidad y channel_* No se puede ingresar la habilidad de chat grupal skillMap,
-            // La definición y ejecución están unificadas e implementadas localmente.,La sesión principal no puede pretender ser un agente para hablar en el chat grupal.
+            // 审计修复 (A-04/A-05/A-06): 与 ChatStreamCoordinator.resolveToolsAndModel
+            // 同一套过滤 — 本地工具同名 skill 与 channel_* 群聊 skill 不进 skillMap,
+            // 定义与执行统一走本地实现,主会话不可冒充 agent 群聊发言。
             val localToolNames = host.toolRegistry.listTools().map { it.name }.toSet()
             val skillMap =
                 resultOf { host.skillRepository.listEnabledByIds(enabledSkillIds) }
@@ -109,9 +110,9 @@ internal class ChatToolResumeCoordinator(
                     ?.filterNot { it.id in localToolNames || it.id.startsWith("channel_") }
                     ?.associateBy { it.id } ?: emptyMap()
 
-            // v1.0.4 (P0): entrar"Esperando el primero token"Etapa + Establecer texto de progreso de recuperación de herramientas,
-            // Hacer que ThinkingBubble aparezca durante la ejecución de la herramienta"ejecutando web_search (1/3)…"
-            // (Resulta que esta etapa isStreaming=false,ThinkingBubble no mostrar,El usuario ve en blanco)
+            // v1.0.4 (P0): 进入"等待首 token"阶段 + 设置工具恢复进度文本,
+            // 让 ThinkingBubble 在工具执行期间显示"正在执行 web_search (1/3)…"
+            // (原来此阶段 isStreaming=false,ThinkingBubble 不显示,用户看到空白)
             host.stateStore.state.update {
                 it.copy(
                     isStreaming = true,
@@ -121,10 +122,10 @@ internal class ChatToolResumeCoordinator(
                 )
             }
 
-            // Ejecutar herramientas pendientes una por una,Construir mensaje HERRAMIENTA
+            // 逐个执行 pending 工具,构造 TOOL 消息
             val now = System.currentTimeMillis()
             for ((stepIndex, pending) in pendings.withIndex()) {
-                // Actualizar el texto de progreso en cada paso.(skill El onProgress interno será anulado aún más como"Buscando..."Esperando redacción publicitaria específica)
+                // 每步更新进度文本(skill 内部的 onProgress 会进一步覆盖为"正在搜索..."等具体文案)
                 host.stateStore.state.update {
                     it.copy(
                         toolProgressMessage =
@@ -136,19 +137,19 @@ internal class ChatToolResumeCoordinator(
                         ),
                     )
                 }
-                // P0-6: Vuelva a ejecutar la aprobación antes de la recuperación — protegerse contra"Después de guardar y antes de escribir el estado de aprobación"Las llamadas de alto riesgo que fueron eliminadas se ejecutaron sin aprobación.
-                // Cuando la sentencia esté Pendiente, se volverá a abrir la tarjeta de aprobación para esperar la decisión del usuario.;Deseche el registro y omítalo cuando se considere denegado/respondido.
+                // P0-6: 恢复前重跑审批 — 防"保存后、写审批态前"被杀的高危调用被免审批执行。
+                // 判 Pending 时重新弹审批卡 await 用户决策;判 Denied/Answered 时丢弃记录并跳过。
                 val recheck = host.recheckApprovalForResume(chatId, pending)
                 if (recheck is ToolApprovalState.Denied) {
                     resultOf { PendingToolCallStore.remove(pending.toolCallId) }
-                        .onError { msg, t -> Logger.w("ChatVM", "No se pudieron descartar las herramientas rechazadas en la restauración: $msg", t) }
-                    Logger.w("ChatVM", "Herramienta rechazada y descartada al restaurar: tool=${pending.toolName}, sessionId=$chatId")
+                        .onError { msg, t -> Logger.w("ChatVM", "恢复时丢弃被拒工具失败: $msg", t) }
+                    Logger.w("ChatVM", "恢复时工具被拒绝并丢弃: tool=${pending.toolName}, sessionId=$chatId")
                     continue
                 }
                 if (recheck is ToolApprovalState.Answered) {
                     resultOf { PendingToolCallStore.remove(pending.toolCallId) }
-                        .onError { msg, t -> Logger.w("ChatVM", "No se pudieron descartar las herramientas respondidas durante la recuperación: $msg", t) }
-                    Logger.w("ChatVM", "La herramienta recibe una respuesta personalizada al restaurar,descartar: tool=${pending.toolName}, sessionId=$chatId")
+                        .onError { msg, t -> Logger.w("ChatVM", "恢复时丢弃已答工具失败: $msg", t) }
+                    Logger.w("ChatVM", "恢复时工具收到自定义答案,丢弃: tool=${pending.toolName}, sessionId=$chatId")
                     continue
                 }
                 val toolResult =
@@ -156,8 +157,8 @@ internal class ChatToolResumeCoordinator(
                         withTimeoutOrNull(TOOL_TIMEOUT_MS) {
                             val skill = skillMap[pending.toolName]
                             if (skill != null) {
-                                // v1.0.4 (P0): Pasar devolución de llamada de progreso,SkillExecutor Al llamar a web_search, etc.
-                                // Las herramientas que consumen mucho tiempo serán devueltas antes"Buscando..."Esperar texto localizado,Anular el valor predeterminado"ejecutando xxx"
+                                // v1.0.4 (P0): 传 onProgress 回调,SkillExecutor 在调用 web_search 等
+                                // 耗时工具前会回调"正在搜索..."等本地化文本,覆盖默认的"正在执行 xxx"
                                 host.skillExecutor.execute(
                                     skill = skill,
                                     argumentsJson = pending.arguments,
@@ -183,25 +184,25 @@ internal class ChatToolResumeCoordinator(
                         filePrefix = "resumed_${pending.toolCallId}",
                         output = toolResult,
                     )
-                // Construir mensaje HERRAMIENTA:mantener original toolCallId,Que LLM pueda corresponder al emitido anteriormente. tool_calls
+                // 构造 TOOL 消息:保留原始 toolCallId,让 LLM 能对应上之前发出的 tool_calls
                 val toolMsg =
                     UIMessage(
                         role = MessageRole.TOOL,
                         content = finalResult,
                         toolCallId = pending.toolCallId,
                     )
-                // Agregue a través del descriptor de acceso CAS para evitar que las actualizaciones de transmisión simultáneas sobrescriban los mensajes de HERRAMIENTA con instantáneas antiguas.
+                // 通过 CAS accessor 追加，避免并发流式更新用旧快照覆盖 TOOL 消息。
                 host.stateAccessor.updateMessages { messages -> messages + toolMsg }
-                // persistir en DB(para que LLM pueda seguir viendo los resultados de la herramienta la próxima vez que se inicie)
+                // 持久化到 DB(供下次启动时 LLM 仍能看到工具结果)
                 resultOf { host.sessionRepository.upsertMessage(chatId, toolMsg) }
                     .onError { msg, t ->
-                        Logger.e("ChatVM", "resumePendingToolCalls upsertMessage falló: $msg", t)
+                        Logger.e("ChatVM", "resumePendingToolCalls upsertMessage 失败: $msg", t)
                         host.addError(
                             ChatErrorType.UNKNOWN,
                             host.appContext.getString(R.string.err_chat_tool_result_save_failed, t?.message ?: msg),
                         )
                     }
-                // Sincronizar registros con toolCallHistory(InputBar Pantalla dinámica de cápsula)
+                // 同步记录到 toolCallHistory(InputBar 动态胶囊展示)
                 val isSuccess = host.isToolResultSuccess(finalResult)
                 host.stateStore.state.update {
                     it.copy(
@@ -216,13 +217,13 @@ internal class ChatToolResumeCoordinator(
                             ),
                     )
                 }
-                // Quitar de la tienda pendiente(Ejecución completada)
+                // 从 pending store 移除(已执行完成)
                 resultOf { PendingToolCallStore.remove(pending.toolCallId) }
-                    .onError { msg, t -> Logger.w("ChatVM", "resumePendingToolCalls remove falló: $msg", t) }
+                    .onError { msg, t -> Logger.w("ChatVM", "resumePendingToolCalls remove 失败: $msg", t) }
             }
 
-            // Borrar recuento pendiente(Banner ocultar)+ Borrar texto de progreso de recuperación de herramienta
-            // (ThinkingBubble volverá al valor predeterminado"Pensando",Hasta que llegue el primer token de launchStream)
+            // 清空 pending 计数(Banner 隐藏)+ 清空工具恢复进度文本
+            // (ThinkingBubble 将回退到默认"思考中",直到 launchStream 首 token 到达)
             host.stateStore.state.update {
                 it.copy(
                     pendingToolCallCount = 0,
@@ -230,13 +231,13 @@ internal class ChatToolResumeCoordinator(
                 )
             }
 
-            // Agregar mensaje de marcador de posición de ASISTENTE vacío,Active launchStream para permitir que LLM continúe respondiendo según los resultados de la herramienta.
+            // 追加空 ASSISTANT 占位消息,触发 launchStream 让 LLM 基于工具结果继续回复
             val assistantMsg = UIMessage(role = MessageRole.ASSISTANT, content = "")
             host.stateAccessor.updateMessages { messages -> messages + assistantMsg }
             host.stateStore.state.update {
                 it.copy(
                     isStreaming = true,
-                    // v1.0.3: También entra la transferencia de currículum de punto de interrupción"Esperando el primero token"escenario
+                    // v1.0.3: 断点续传也进入"等待首 token"阶段
                     isWaitingFirstToken = true,
                     errors = emptyList(),
                 )

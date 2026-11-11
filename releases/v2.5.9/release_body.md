@@ -1,17 +1,17 @@
-Muse v2.5.9 Versión de parche.
+Muse v2.5.9 补丁版。
 
-## Correcciones importantes
+## 重要修复
 
-- **La copia de seguridad y la recuperación son más completas**: Se corrigió la omisión de la carpeta de conocimiento en la recuperación de la copia de seguridad de NDJSON y la reversión del punto de recuperación, lo que reduce la pérdida de datos de conocimiento después de la recuperación.
-- **Las conversaciones remotas son más seguras**:A2A La solicitud remota se cambia a una ruta de diálogo de texto aislada y la sesión de primer plano ya no se cambia, se modifica el cuadro de entrada o se llama a la herramienta del dispositivo local; La cancelación de la tarea solo afecta su propia solicitud.
-- **Los protocolos de tareas son más confiables**: Corregir consulta de tarea A2A/Cancele el análisis de la identificación de la tarea y limite la escala de tareas, sesiones y solicitudes para evitar que solicitudes anormales contaminen el estado de la tarea.
-- **Tasker Desactivado de forma predeterminada**: Las transmisiones automatizadas externas no responden de forma predeterminada; Se agregan interruptores explícitos a la página de configuración y se conservan las protecciones de longitud, frecuencia y aislamiento de herramientas de alto riesgo.
+- **备份恢复更完整**：修复知识文件夹在 NDJSON 备份恢复和恢复点回滚中的遗漏，减少恢复后知识数据缺失。
+- **远程对话更安全**：A2A 远程请求改为隔离的文本对话路径，不再切换前台会话、修改输入框或调用本地设备工具；任务取消只影响自己的请求。
+- **任务协议更可靠**：修复 A2A 任务查询/取消对 task id 的解析，并限制任务、会话和请求规模，避免异常请求污染任务状态。
+- **Tasker 默认关闭**：外部自动化广播默认不响应；设置页新增显式开关，并保留长度、频率和高风险工具隔离保护。
 
-## Mejoras en la experiencia
+## 体验改进
 
-- Las operaciones de acceso directo a mensajes admiten la configuración según las preferencias, y las operaciones de eliminación se mueven al área de operaciones de acceso directo y se conserva la confirmación secundaria.
-- Cuando hay una imagen de fondo, el texto conserva el color de fondo de las burbujas y mejora el contraste del texto principal, mejorando la visibilidad de lectura.
-- Complete los recursos en chino, inglés, español, japonés, coreano, portugués brasileño y ruso para la copia de configuración recién agregada en esta ronda.
+- 消息快捷操作支持按偏好配置，删除操作移动到快捷操作区并保留二次确认。
+- 有背景图片时长文本保留气泡底色并改善正文对比度，提升阅读可见性。
+- 补齐本轮新增设置文案的中文、英文、西班牙文、日文、韩文、巴西葡萄牙文和俄文资源。
 
 ---
 

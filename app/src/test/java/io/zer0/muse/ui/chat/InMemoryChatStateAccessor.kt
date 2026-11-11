@@ -6,11 +6,11 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 
 /**
- * Phase 3 dispositivo de prueba:implementado en la memoria [ChatStateAccessor].
+ * Phase 3 测试夹具:内存实现的 [ChatStateAccessor]。
  *
- * Equivalente a un FakeAccessor privado dentro de cada prueba de Controlador,pero:
- *  - `update` Cerrar,Permitir la lectura y escritura simultáneas de rutinas de reintento y subprocesos de prueba.;
- *  - Personalización inyectable [CoroutineScope],Las pruebas se pueden cancelar de forma proactiva para verificar la propagación de la cancelación.
+ * 与各 Controller 测试内的私有 FakeAccessor 等价,但:
+ *  - `update` 加锁,允许重试协程与测试线程并发读写;
+ *  - 可注入自定义 [CoroutineScope],测试可主动取消以验证取消传播。
  */
 class InMemoryChatStateAccessor(
     initial: ChatUiState = ChatUiState(),

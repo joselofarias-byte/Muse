@@ -31,48 +31,53 @@ import io.zer0.muse.ui.theme.MusePaddings
 import io.zer0.muse.ui.theme.MuseShapes
 
 /**
- * A6: Posicionamiento rápido de sesiones largas. — Área activa en el lado derecho del área de chat.
+ * A6: 长会话快速定位 — 聊天区右侧热区。
  *
- * Sesión larga (número de mensajes ≥ [MESSAGE_MAP_MIN_MESSAGES]) al conservar la zona caliente transparente del borde derecho:
- * - Generalmente completamente invisible;
- * - **Pulsación larga**Después de la activación (vibración ligera), deslice hacia arriba y hacia abajo para desplazarse linealmente (v2.5.9 No se dibujarán más pistas visuales,
- *   ver la razón [LinearScrollGesture] descripción de mapeo incremental);
- * - Aparecerá una vista previa del mensaje de ubicación durante el deslizamiento para ayudar con el posicionamiento.
+ * 长会话（消息数 ≥ [MESSAGE_MAP_MIN_MESSAGES]）时保留右缘透明热区：
+ * - 平时完全不可见；
+ * - **长按**激活（轻震动）后上下滑动即可线性滚动（v2.5.9 起不再画可视轨道，
+ *   理由见 [LinearScrollGesture] 的增量映射说明）；
+ * - 滑动中浮出该位置消息的预览，帮助定位。
  *
- * Oclusión: el área caliente es una tira delgada adherida al borde derecho, que no cubre la línea de operación en la parte inferior del mensaje; la propia línea de operación también cede hacia adentro.
- * La preservación de la posición de desplazamiento entre sesiones está a cargo del caché listState de ChatViewModel. Este componente solo maneja la navegación.
+ * 遮挡：热区为贴右缘细条，不覆盖消息底部操作行；操作行自身也向内让位。
+ * 跨会话滚动位置保留由 ChatViewModel 的 listState 缓存负责，本组件只管导航。
  */
 internal const val MESSAGE_MAP_MIN_MESSAGES = 5
 
 /**
- * Toque el ancho de la zona activa (= El espacio de la derecha ocupado por la barra de navegación).
+ * 触摸热区宽度（= 导航条占用的右侧空间）。
  *
- * v2.5.0:24dp Si se pega al borde derecho de la pantalla, el gesto de retorno del sistema de Android 10+, que se amplió a 40 dp en ese momento, se comerá.
- * v2.6.10(comentarios de los usuarios):40dp Deje una gran franja de espacio en blanco en el lado derecho del área del mensaje, que obviamente es diferente del diseño sin mapa.
- * recibido 26dp —— Ligeramente más ancha que la banda de gestos de retorno (alrededor de 20 dp), una pulsación larga todavía es suficiente para sentir, pero ya no ocupa la mitad del espacio de la pantalla.
+ * v2.5.0：24dp 贴死屏幕右缘会被 Android 10+ 的系统返回手势吃掉，当时加宽到 40dp。
+ * v2.6.10（用户反馈）：40dp 让消息区右侧空出一大条白，与无地图时排版明显不同。
+ * 收到 26dp —— 比返回手势带（约 20dp）略宽，长按仍够手感，但不再吃掉半屏留白。
  */
 internal val MESSAGE_MAP_TOUCH_WIDTH: Dp = 26.dp
 
-/** El lado derecho de la lista de mensajes es el ancho total reservado para la zona activa (zona activa + espacio para respirar). */
+/** 消息列表右侧为热区预留的总宽度（热区 + 呼吸间隙）。 */
 internal val MESSAGE_MAP_RESERVED_WIDTH = MESSAGE_MAP_TOUCH_WIDTH + 2.dp
 
 @Composable
-internal fun MessageMapBar(messages: List<UIMessage>, listState: LazyListState, messageStartIndex: Int, modifier: Modifier = Modifier) {
+internal fun MessageMapBar(
+    messages: List<UIMessage>,
+    listState: LazyListState,
+    messageIndexForListIndex: (Int) -> Int?,
+    modifier: Modifier = Modifier,
+) {
     val total = messages.size
     if (total == 0) return
 
     var activeIndex by remember { mutableStateOf<Int?>(null) }
-    // Comentarios de los usuarios: La línea de aviso solo aparece durante la navegación deslizante y normalmente está completamente oculta.
+    // 用户反馈: 提示线只在滑动导航时出现，平时完全隐藏。
     var gestureActive by remember { mutableStateOf(false) }
 
     Box(modifier = modifier) {
-        // Comentarios de los usuarios: "La función de navegación con pulsación larga de la barra lateral desapareció"—— La función es siempre
-        // (e56b1920 Para arreglar el "control deslizante visual que flota aleatoriamente", eliminé la pista y la cambié para presionar prolongadamente + arriba y abajo).
-        // Pero ser completamente invisible hace que sea imposible descubrirlo.
+        // 用户反馈: 「侧栏长按导航功能没了」—— 功能一直在
+        // （e56b1920 为修「可视滑块乱飘」把轨道删了，改为长按 + 上下滑），
+        // 但完全不可见导致无从发现。
         //
-        // Aquí hay uno más**Aparece sólo durante la operación**La línea de aviso: generalmente invisible, no interfiere con la lectura;
-        // Después de presionar prolongadamente para activarlo, aparecerá instantáneamente y pasará al estado activado, y desaparecerá después de soltarlo.
-        // No hay mapeo de posición, por lo que no se reproducirá el problema de flotación.
+        // 这里再加一条**仅操作时出现**的提示线：平时不可见，不干扰阅读；
+        // 长按激活后瞬间浮现并带到激活状态，松手后回隐。
+        // 不做位置映射，所以不会重现乱飘问题。
         androidx.compose.animation.AnimatedVisibility(
             visible = gestureActive,
             enter = androidx.compose.animation.fadeIn(
@@ -95,7 +100,11 @@ internal fun MessageMapBar(messages: List<UIMessage>, listState: LazyListState, 
         LinearScrollGesture(
             listState = listState,
             onActiveIndexChange = { listIndex ->
-                activeIndex = listIndex?.let { (it - messageStartIndex).takeIf { rel -> rel in 0 until total } }
+                activeIndex =
+                    listIndex?.let { absoluteListIndex ->
+                        messageIndexForListIndex(absoluteListIndex)
+                            ?.takeIf { it in 0 until total }
+                    }
             },
             onActiveChange = { gestureActive = it },
         )
@@ -114,11 +123,11 @@ internal fun MessageMapBar(messages: List<UIMessage>, listState: LazyListState, 
     }
 }
 
-/** A6: Mapa de mensajes vista previa deslizante capa flotante — Muestra los primeros 40 caracteres del mensaje de ubicación. */
+/** A6: 消息地图滑动预览浮层 — 显示该位置消息前 40 字符。 */
 @Composable
 private fun MessageMapTooltip(msg: UIMessage, modifier: Modifier = Modifier) {
-    // v2.6.8: La capa flotante es texto visible para el usuario y la cola del estado de la tarjeta debe retirarse primero y luego truncarse. ——
-    // De lo contrario take(40) Lo más probable es que sólo haya sido interceptado. cardId= Fragmento JSON al principio.
+    // v2.6.8: 浮层是用户可见文本，必须先剥卡片状态尾巴再截断 ——
+    // 否则 take(40) 很可能只截到 cardId= 开头的 JSON 片段。
     val previewText =
         io.zer0.muse.transformer.InternalMarkupSanitizer.displayContent(msg.content)
             .replace('\n', ' ')

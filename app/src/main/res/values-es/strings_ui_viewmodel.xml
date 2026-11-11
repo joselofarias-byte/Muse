@@ -1,30 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation">
-    <!-- ===== QuickMessageScreen página de mensaje rápido ===== -->
-    <!-- barra superior -->
-    <string name="quick_msg_screen_title">mensaje rapido QuickMessage</string>
-    <string name="quick_msg_new_cd">Nuevo QuickMessage</string>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <string name="quick_msg_screen_title">Mensajes rápidos</string>
+    <string name="quick_msg_new_cd">Nuevo mensaje rápido</string>
     <string name="quick_msg_intro">Plantillas de mensajes preestablecidos. Variables admitidas: {{input}}(entrada actual) / {{clipboard}}(portapapeles) / {{date}}(fecha).</string>
-    <string name="quick_msg_empty_title">todavía no QuickMessage</string>
-    <string name="quick_msg_empty_subtitle">Haga clic en la esquina inferior derecha + Nuevo</string>
-    <string name="quick_msg_delete_title">Eliminar QuickMessage</string>
-    <!-- tarjeta -->
+    <string name="quick_msg_empty_title">Todavía no hay mensajes rápidos</string>
+    <string name="quick_msg_empty_subtitle">Toca en la esquina inferior derecha + Nuevo</string>
+    <string name="quick_msg_delete_title">Eliminar mensaje rápido</string>
     <string name="quick_msg_new_default_name">Nuevo mensaje rápido</string>
     <string name="quick_msg_unnamed">(sin nombre)</string>
     <string name="quick_msg_disabled">Desactivado</string>
-    <string name="quick_msg_scope_global">situación general</string>
-    <string name="quick_msg_scope_assistant">Assistant: %1$s</string>
+    <string name="quick_msg_scope_global">Global</string>
+    <string name="quick_msg_scope_assistant">Asistente: %1$s</string>
     <string name="quick_msg_scope_label">Alcance: %1$s</string>
     <string name="quick_msg_enabled_cd">Habilitado</string>
     <string name="quick_msg_disabled_cd">Desactivado</string>
     <string name="quick_msg_edit_cd">Editar</string>
     <string name="quick_msg_delete_cd">Eliminar</string>
-    <!-- editar página -->
     <string name="quick_msg_unsaved_title">Hay cambios no guardados</string>
-    <string name="quick_msg_unsaved_content">Al salir se perderán las ediciones actuales. ¿Estás seguro de que quieres rendirte?</string>
+    <string name="quick_msg_unsaved_content">Al salir se perderán los cambios actuales. ¿Quieres descartarlos?</string>
     <string name="quick_msg_discard">Descartar</string>
-    <string name="quick_msg_new_title">Nuevo QuickMessage</string>
-    <string name="quick_msg_edit_title">Editar QuickMessage</string>
+    <string name="quick_msg_new_title">Nuevo mensaje rápido</string>
+    <string name="quick_msg_edit_title">Editar mensaje rápido</string>
     <string name="quick_msg_save">Guardar</string>
     <string name="quick_msg_section_basic">Conceptos básicos</string>
     <string name="quick_msg_field_name">Nombre</string>
@@ -33,22 +29,18 @@
     <string name="quick_msg_section_scope">Alcance</string>
     <string name="quick_msg_field_scope">Alcance</string>
     <string name="quick_msg_scope_global_opt">Global (compartido por todos los asistentes)</string>
-    <string name="quick_msg_scope_assistant_opt">Assistant Encuadernación (mostrada únicamente por el asistente designado)</string>
-    <string name="quick_msg_field_bind_assistant">vinculante Assistant</string>
+    <string name="quick_msg_scope_assistant_opt">Vinculado a un asistente (solo se muestra para el asistente designado)</string>
+    <string name="quick_msg_field_bind_assistant">Asistente vinculado</string>
     <string name="quick_msg_section_behavior">comportamiento</string>
     <string name="quick_msg_field_sort_index">Número de clasificación (cuanto menor es el número, mayor es)</string>
     <string name="quick_msg_field_enabled">habilitar</string>
-    <string name="quick_msg_field_enabled_desc">Esta entrada no aparece en la fila del chip InputBar después del cierre.</string>
-
-    <!-- ===== LorebookScreen páginas de libros del mundo ===== -->
-    <!-- barra superior -->
-    <string name="lorebook_screen_title">libro mundial Lorebook</string>
-    <string name="lorebook_new_cd">Nuevo Lorebook</string>
+    <string name="quick_msg_field_enabled_desc">Al desactivarlo, este mensaje no aparece entre los accesos rápidos de la barra de entrada.</string>
+    <string name="lorebook_screen_title">Libro del mundo</string>
+    <string name="lorebook_new_cd">Nueva entrada del libro del mundo</string>
     <string name="lorebook_intro">Inyección de contexto activada por palabras clave. Cuando el mensaje del usuario llega a una palabra clave, la configuración correspondiente se inyecta como contexto del SISTEMA.</string>
-    <string name="lorebook_empty_title">todavía no Lorebook</string>
-    <string name="lorebook_empty_subtitle">Haga clic en la esquina inferior derecha + Nuevo</string>
-    <string name="lorebook_delete_title">Eliminar Lorebook</string>
-    <!-- tarjeta -->
+    <string name="lorebook_empty_title">Todavía no hay entradas en el libro del mundo</string>
+    <string name="lorebook_empty_subtitle">Toca en la esquina inferior derecha + Nuevo</string>
+    <string name="lorebook_delete_title">Eliminar entrada del libro del mundo</string>
     <string name="lorebook_new_default_name">nueva entrada</string>
     <string name="lorebook_unnamed">(sin nombre)</string>
     <string name="lorebook_disabled">Desactivado</string>
@@ -57,12 +49,11 @@
     <string name="lorebook_disabled_cd">Desactivado</string>
     <string name="lorebook_edit_cd">Editar</string>
     <string name="lorebook_delete_cd">Eliminar</string>
-    <!-- editar página -->
     <string name="lorebook_unsaved_title">Hay cambios no guardados</string>
-    <string name="lorebook_unsaved_content">Al salir se perderán las ediciones actuales. ¿Estás seguro de que quieres rendirte?</string>
+    <string name="lorebook_unsaved_content">Al salir se perderán los cambios actuales. ¿Quieres descartarlos?</string>
     <string name="lorebook_discard">Descartar</string>
-    <string name="lorebook_new_title">Nuevo Lorebook</string>
-    <string name="lorebook_edit_title">Editar Lorebook</string>
+    <string name="lorebook_new_title">Nueva entrada del libro del mundo</string>
+    <string name="lorebook_edit_title">Editar entrada del libro del mundo</string>
     <string name="lorebook_save">Guardar</string>
     <string name="lorebook_section_basic">Conceptos básicos</string>
     <string name="lorebook_field_name">Nombre</string>
@@ -73,7 +64,6 @@
     <string name="lorebook_section_behavior">comportamiento</string>
     <string name="lorebook_field_priority">Prioridad (cuanto mayor sea el número, primero se inyectará)</string>
     <string name="lorebook_field_insertion_position">Ubicación de la inyección</string>
-    <!-- ST-04: Inyecte opciones de ubicación con una copia legible por el usuario -->
     <string name="lorebook_insertion_before_system">Antes de las instrucciones del sistema</string>
     <string name="lorebook_insertion_after_system">Después de las instrucciones del sistema</string>
     <string name="lorebook_insertion_before_last">antes del último mensaje</string>
@@ -82,17 +72,13 @@
     <string name="lorebook_field_whole_word">coincidencia de palabras completas</string>
     <string name="lorebook_field_whole_word_desc">Las palabras clave deben estar completamente formadas antes de activarse (aplicable al inglés; las palabras clave chinas se degradarán automáticamente)</string>
     <string name="lorebook_field_enabled">habilitar</string>
-    <string name="lorebook_field_enabled_desc">Esta entrada ya no activa la inyección después del cierre.</string>
-
-    <!-- ===== PromptInjectionScreen Página de inyección de esquema ===== -->
-    <!-- barra superior -->
+    <string name="lorebook_field_enabled_desc">Si lo desactivas, esta entrada dejará de incluirse en el contexto.</string>
     <string name="prompt_injection_screen_title">inyección de patrón PromptInjection</string>
     <string name="prompt_injection_new_cd">Nuevo PromptInjection</string>
     <string name="prompt_injection_intro">Inyección de contexto activada por modo. El usuario cambia de modo a mitad de sesión (creativo/Programación/juegos de rol, etc.), la inyección correspondiente surte efecto inmediatamente.</string>
     <string name="prompt_injection_empty_title">todavía no PromptInjection</string>
-    <string name="prompt_injection_empty_subtitle">Haga clic en la esquina inferior derecha + Nuevo</string>
+    <string name="prompt_injection_empty_subtitle">Toca en la esquina inferior derecha + Nuevo</string>
     <string name="prompt_injection_delete_title">Eliminar PromptInjection</string>
-    <!-- tarjeta -->
     <string name="prompt_injection_new_default_name">Nueva inyección</string>
     <string name="prompt_injection_unnamed">(sin nombre)</string>
     <string name="prompt_injection_disabled">Desactivado</string>
@@ -101,7 +87,6 @@
     <string name="prompt_injection_disabled_cd">Desactivado</string>
     <string name="prompt_injection_edit_cd">Editar</string>
     <string name="prompt_injection_delete_cd">Eliminar</string>
-    <!-- editar página -->
     <string name="prompt_injection_unsaved_title">Hay cambios no guardados</string>
     <string name="prompt_injection_unsaved_content">Al salir se perderán las ediciones actuales. ¿Estás seguro de que quieres rendirte?</string>
     <string name="prompt_injection_discard">Descartar</string>
@@ -111,17 +96,14 @@
     <string name="prompt_injection_section_basic">Conceptos básicos</string>
     <string name="prompt_injection_field_name">Nombre</string>
     <string name="prompt_injection_field_mode">modo</string>
-    <string name="prompt_injection_field_display_name">nombre para mostrar (UI se muestra en , déjelo en blanco para usar el nombre predeterminado del esquema)</string>
+    <string name="prompt_injection_field_display_name">Nombre que se muestra en la interfaz (déjalo vacío para usar el nombre predeterminado del esquema)</string>
     <string name="prompt_injection_section_content">Inyectar contenido</string>
     <string name="prompt_injection_field_content">Contenido (inyectado como contexto del SISTEMA al cambiar a este modo)</string>
     <string name="prompt_injection_section_behavior">comportamiento</string>
     <string name="prompt_injection_field_priority">Prioridad (ordenada cuando se realizan múltiples inyecciones en el mismo modo, cuanto mayor sea el número, se inyectará primero)</string>
     <string name="prompt_injection_field_insertion_position">Ubicación de la inyección</string>
     <string name="prompt_injection_field_enabled">habilitar</string>
-    <string name="prompt_injection_field_enabled_desc">Esta entrada ya no activa la inyección después del cierre.</string>
-
-    <!-- ===== AssistantScreen Página del asistente ===== -->
-    <!-- barra superior -->
+    <string name="prompt_injection_field_enabled_desc">Si lo desactivas, esta entrada dejará de incluirse en el contexto.</string>
     <string name="assistant_screen_title">asistente</string>
     <string name="assistant_import_card_cd">Importar cartas de personajes</string>
     <string name="assistant_section_my_assistants">mi asistente</string>
@@ -129,21 +111,19 @@
     <string name="assistant_default_picker_title">Elige un asistente predeterminado</string>
     <string name="assistant_default_hint">Asistente utilizado por defecto para nuevas tareas</string>
     <string name="assistant_section_actions">Agregar o importar</string>
-    <string name="assistant_empty_create">El asistente aún no ha sido creado, haga clic en Nuevo</string>
+    <string name="assistant_empty_create">El asistente aún no ha sido creado, toca en Nuevo</string>
     <string name="assistant_unnamed">(sin nombre)</string>
     <string name="assistant_current">actual</string>
     <string name="assistant_more_cd">Más acciones</string>
     <string name="assistant_new_action">Crear nuevo asistente</string>
     <string name="assistant_new_default_name">nuevo asistente</string>
     <string name="assistant_clone_name">%1$s copiar</string>
-    <!-- Menú de operación -->
     <string name="assistant_move_up_cd">subir</string>
     <string name="assistant_move_up">subir</string>
     <string name="assistant_move_down_cd">bajar</string>
     <string name="assistant_move_down">bajar</string>
     <string name="assistant_clone_cd">clonar</string>
     <string name="assistant_clone">clonar</string>
-    <!-- U-26: Asistente habilitado/desactivar -->
     <string name="assistant_enable">habilitar</string>
     <string name="assistant_disable">desactivar</string>
     <string name="assistant_enable_cd">Habilitar asistente</string>
@@ -154,36 +134,51 @@
     <string name="assistant_delete">Eliminar</string>
     <string name="assistant_close">Cerrar</string>
     <string name="assistant_delete_title">Eliminar asistente</string>
-    <!-- Toast -->
     <string name="assistant_toast_exported">Tarjeta de personaje exportada: %1$s</string>
     <string name="assistant_toast_export_failed">Error al exportar: %1$s</string>
     <string name="assistant_toast_imported">Tarjetas de personajes importadas: %1$s</string>
     <string name="assistant_toast_import_invalid">Error de importación: formato de archivo no válido</string>
     <string name="assistant_toast_import_failed">Error de importación: %1$s</string>
-
-    <!-- ===== SillyTavern tarjeta de personaje (PNG/JSON formato común) ===== -->
-    <!-- Página de lista de asistentes: Entrada de importación (elemento de la lista, Ubicado debajo + Nuevo Asistente) -->
     <string name="assistant_import_sillytavern_cd">Importar tarjetas de personajes de SillyTavern</string>
     <string name="assistant_import_sillytavern">Importar tarjetas de personajes de SillyTavern</string>
-    <!-- Página de detalles del asistente: Bloque para compartir tarjetas de personaje -->
     <string name="assistant_detail_share_section">Compartir tarjeta de personaje</string>
+    <string name="assistant_summary_empty">Sin descripción; el personaje está en el apartado Prompts</string>
+    <string name="assistant_detail_export_section">Exportar archivos de tarjeta</string>
     <string name="assistant_detail_export_png">Exportar como tarjeta de personaje PNG</string>
     <string name="assistant_detail_export_png_desc">SillyTavern Formato (incluidos metadatos)</string>
     <string name="assistant_detail_export_json">Exportar como tarjeta de personaje JSON</string>
     <string name="assistant_detail_export_json_desc">SillyTavern V2 JSON</string>
-    <!-- Página de detalles del asistente: Muse Compartir tarjeta de personaje(Compartir sistema) -->
     <string name="assistant_detail_share_muse_card">Compartir tarjeta de personaje de Muse</string>
     <string name="assistant_detail_share_muse_card_desc">Genera tarjetas visuales y compártelas a través del sistema.</string>
-    <string name="assistant_detail_share_muse_json">Compartir Muse JSON</string>
-    <string name="assistant_detail_share_muse_json_desc">Comparte el formato Muse a través del sistema. JSON</string>
+    <string name="assistant_detail_share_muse_json">Compartir JSON de Muse</string>
+    <string name="assistant_detail_share_muse_json_desc">Comparte el archivo en formato JSON de Muse mediante el sistema.</string>
     <string name="assistant_detail_share_pack">enviar paquete de personajes</string>
-    <string name="assistant_detail_share_pack_desc">Envíe un paquete de personajes completo (incluido el avatar) a través de cualquier aplicación y la otra parte podrá importarlo directamente</string>
+    <string name="assistant_detail_share_pack_desc">Envía un paquete de personajes completo (incluido el avatar) a través de cualquier aplicación y la otra parte podrá importarlo directamente</string>
     <string name="assistant_import_preview_title">Importar cartas de personajes</string>
     <string name="assistant_import_preview_confirm">importar</string>
     <string name="assistant_detail_share_muse_failed">Error al compartir:%1$s</string>
-    <!-- Toast -->
     <string name="assistant_toast_sillytavern_imported">Tarjetas de personajes de SillyTavern importadas: %1$s</string>
     <string name="assistant_toast_sillytavern_import_failed">SillyTavern Error al importar la tarjeta de personaje: %1$s</string>
     <string name="assistant_toast_sillytavern_exported">Tarjeta de personaje de SillyTavern exportada</string>
     <string name="assistant_toast_sillytavern_export_failed">SillyTavern Error al exportar la tarjeta de personaje: %1$s</string>
+    <string name="assistant_diff_name">Nombre</string>
+    <string name="assistant_diff_summary">Resumen</string>
+    <string name="assistant_diff_system_prompt">Instrucciones del sistema</string>
+    <string name="assistant_diff_persona_definition">Persona</string>
+    <string name="assistant_diff_thinking_chain">Cadena de razonamiento</string>
+    <string name="assistant_diff_message_template">Plantilla de mensaje</string>
+    <string name="assistant_diff_preset_messages">Saludo</string>
+    <string name="assistant_diff_temperature">Temperatura</string>
+    <string name="assistant_diff_top_p">Top P</string>
+    <string name="assistant_diff_max_tokens">Tokens max.</string>
+    <string name="assistant_diff_context_size">Mensajes de contexto</string>
+    <string name="assistant_diff_reasoning_level">Nivel de razonamiento</string>
+    <string name="assistant_diff_memory_enabled">Memoria</string>
+    <string name="assistant_diff_use_global_memory">Memoria global</string>
+    <string name="assistant_diff_allow_group_chat">Chat grupal</string>
+    <string name="assistant_diff_will_create">Se creara un asistente nuevo (el actual no cambia)</string>
+    <string name="assistant_diff_will_change">Frente al asistente con el mismo nombre, cambian %1$d campos</string>
+    <string name="assistant_diff_legacy_pack">Tarjeta antigua: solo se toma la persona; claves, modelos y estadisticas no se transfieren</string>
+    <string name="assistant_diff_no_switch">Importar no cambia el asistente actual ni reasigna chats</string>
+    <string name="assistant_diff_more">...y %1$d mas</string>
 </resources>

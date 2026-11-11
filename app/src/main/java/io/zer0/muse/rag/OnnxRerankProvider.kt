@@ -13,25 +13,25 @@ import java.io.File
 import kotlin.math.exp
 
 /**
- * v1.134: Proveedor local de reclasificación de codificador cruzado ONNX.
+ * v1.134: 本地 ONNX Cross-Encoder Rerank Provider。
  *
- * Realización de reordenamiento de codificadores cruzados con el tiempo de ejecución de ONNX(bge-reranker-base / ms-marco-MiniLM espera),
- * entrada `[CLS] query [SEP] candidate [SEP]`,correlación de salida logit,Normalizado por sigmoide a una puntuación de 0-1.
+ * 用 ONNX 运行时执行 cross-encoder 重排序(bge-reranker-base / ms-marco-MiniLM 等),
+ * 输入 `[CLS] query [SEP] candidate [SEP]`,输出相关性 logit,经 sigmoid 归一化为 0-1 分数。
  *
- * Convenciones de archivos de modelo:
- *  - [modelPath]:Ruta absoluta o ruta relativa a filesDir,señalar a `.onnx` rerank modelo
- *  - [vocabPath]:BERT estilo vocab.txt(cadena vacía=inferencia automática)
- *  - Modelo no configurado → [rerank] tirar [IllegalStateException],
- *    [RagService] será capturado y degradado a [LocalRerankProvider](Mantener el orden original)
+ * 模型文件约定:
+ *  - [modelPath]:绝对路径或 filesDir 相对路径,指向 `.onnx` rerank 模型
+ *  - [vocabPath]:BERT 风格 vocab.txt(空串=自动推断)
+ *  - 模型未配置 → [rerank] 抛 [IllegalStateException],
+ *    [RagService] 会捕获并降级到 [LocalRerankProvider](维持原序)
  *
- * Modelo recomendado(Los usuarios pueden descargar el filesDir/muse_onnx/):
- *  - `bge-reranker-base`(768 dimensión,chino e ingles,~1.1GB,mejor calidad)
- *  - `bge-reranker-small`(Opcional,tamaño más pequeño)
- *  - `ms-marco-MiniLM-L-12-v2`(ingles,~420MB)
+ * 推荐模型(用户自行下载到 filesDir/muse_onnx/):
+ *  - `bge-reranker-base`(768 维,中英文,~1.1GB,质量最好)
+ *  - `bge-reranker-small`(可选,体积更小)
+ *  - `ms-marco-MiniLM-L-12-v2`(英文,~420MB)
  *
- * @param modelPath ONNX rerank ruta del modelo
- * @param vocabPath BERT vocab.txt camino(cadena vacía=inferencia automática)
- * @param seqLen Longitud máxima de secuencia(Predeterminado 512,query+candidate Truncar)
+ * @param modelPath ONNX rerank 模型路径
+ * @param vocabPath BERT vocab.txt 路径(空串=自动推断)
+ * @param seqLen 最大序列长度(默认 512,query+candidate 截断)
  */
 class OnnxRerankProvider(
     private val modelPath: String,
@@ -68,7 +68,7 @@ class OnnxRerankProvider(
             val inputNames = cachedInputNames ?: throw IllegalStateException("input names not cached")
             val outputNames = cachedOutputNames ?: throw IllegalStateException("output names not cached")
 
-            // Puntuación por lotes
+            // 批量评分
             val scored = candidates.map { c ->
                 val score = scoreSingle(activeEnv, activeSession, activeVocab, inputNames, outputNames, query, c.content)
                 RerankResult(c.chunkId, c.docId, c.docTitle, c.content, c.chunkIndex, score)
@@ -76,7 +76,7 @@ class OnnxRerankProvider(
             scored.sortedByDescending { it.score }.take(topK)
         }
 
-    /** soltero (query, candidate) Calificación:empalme → participio → ONNX razonamiento → sigmoid Normalizar. */
+    /** 单个 (query, candidate) 评分:拼接 → 分词 → ONNX 推理 → sigmoid 归一化。 */
     private fun scoreSingle(
         env: OrtEnvironment,
         session: OrtSession,
@@ -86,16 +86,16 @@ class OnnxRerankProvider(
         query: String,
         candidate: String,
     ): Float {
-        // 1. Empalmado en la entrada del codificador cruzado BERT:[CLS] query [SEP] candidate [SEP]
+        // 1. 拼接为 BERT cross-encoder 输入:[CLS] query [SEP] candidate [SEP]
         val tokenIds = encodePair(query, candidate, vocab)
-        // 2. Truncar / padding
+        // 2. 截断 / padding
         val padded = padOrTruncate(tokenIds, seqLen)
         val inputIds = padded.first
         val attentionMask = padded.second
-        // token_type_ids:sección frontal(query)para 0,sección trasera(candidate)para 1
+        // token_type_ids:前段(query)为 0,后段(candidate)为 1
         val tokenTypeIds = buildTokenTypeIds(tokenIds, seqLen)
 
-        // 3. ONNX razonamiento
+        // 3. ONNX 推理
         val inputs = mutableMapOf<String, OnnxTensor>()
         var inputIdsTensor: OnnxTensor? = null
         var attnMaskTensor: OnnxTensor? = null
@@ -113,7 +113,7 @@ class OnnxRerankProvider(
             val result = session.run(inputs)
             try {
                 val logit = extractLogit(result, outputNames)
-                // 4. sigmoid normalizado a [0, 1]
+                // 4. sigmoid 归一化到 [0, 1]
                 return sigmoid(logit)
             } finally {
                 result.close()
@@ -144,7 +144,7 @@ class OnnxRerankProvider(
             cachedOutputNames = newSession.outputNames.toList()
             Logger.i(
                 "OnnxRerankProvider",
-                "ONNX rerank session cargado: model=${File(modelPath).name}, vocab=${newVocab.size} tokens",
+                "ONNX rerank session 已加载: model=${File(modelPath).name}, vocab=${newVocab.size} tokens",
             )
         }
     }
@@ -172,11 +172,11 @@ class OnnxRerankProvider(
         return sameNameVocab.absolutePath
     }
 
-    /** empalme query + candidate → token ids:[CLS] q_tokens [SEP] c_tokens [SEP]. */
+    /** 拼接 query + candidate → token ids:[CLS] q_tokens [SEP] c_tokens [SEP]。 */
     private fun encodePair(query: String, candidate: String, vocab: Map<String, Int>): List<Long> {
         val queryTokens = WordPieceTokenizer.tokenize(query, vocab)
         val candidateTokens = WordPieceTokenizer.tokenize(candidate, vocab)
-        // Truncar:dejar de lado [CLS] [SEP] [SEP] 3 poco especial
+        // 截断:留出 [CLS] [SEP] [SEP] 3 个特殊位
         val maxEach = (seqLen - 3) / 2
         val qTrunc = queryTokens.take(maxEach)
         val cTrunc = candidateTokens.take(maxEach)
@@ -190,17 +190,17 @@ class OnnxRerankProvider(
         return ids
     }
 
-    /** token_type_ids:query Duan Wei 0,candidate El segmento es 1. */
+    /** token_type_ids:query 段为 0,candidate 段为 1。 */
     private fun buildTokenTypeIds(tokenIds: List<Long>, maxLen: Int): LongArray {
         val typeIds = LongArray(maxLen) { 0 }
-        // Encuentra el segundo [SEP](=102)ubicación,El token siguiente se cambia a 1
+        // 找到第二个 [SEP](=102)的位置,之后的 token 改为 1
         var sepCount = 0
         for (i in tokenIds.indices) {
             if (i >= maxLen) break
             if (tokenIds[i] == 102L) {
                 sepCount++
                 if (sepCount == 1) {
-                    // El siguiente token comienza con el segmento candidato.
+                    // 下一个 token 开始是 candidate 段
                     for (j in (i + 1) until minOf(tokenIds.size, maxLen)) {
                         typeIds[j] = 1
                     }
@@ -226,7 +226,7 @@ class OnnxRerankProvider(
         if (inputNames.contains(candidate)) inputs[candidate] = tensor
     }
 
-    /** Extracto de resultados logit(típico shape [1, 2] o [1, 1]). */
+    /** 从结果中提取 logit(典型 shape [1, 2] 或 [1, 1])。 */
     private fun extractLogit(result: OrtSession.Result, outputNames: List<String>): Float {
         val name = outputNames.firstOrNull { it.contains("logits", ignoreCase = true) }
             ?: outputNames.first()
@@ -235,11 +235,11 @@ class OnnxRerankProvider(
         val value = onnxValue.value
         return when (value) {
             is FloatArray -> {
-                // [2] → tomar [1](true puntuación de clase);[1] → Tómalo directamente
+                // [2] → 取 [1](true 类分数);[1] → 直接取
                 if (value.size >= 2) value[1] else value[0]
             }
             is Array<*> -> {
-                // [1, 2] o [1, 1]
+                // [1, 2] 或 [1, 1]
                 val row = value[0]
                 when (row) {
                     is FloatArray -> if (row.size >= 2) row[1] else row[0]
@@ -251,10 +251,10 @@ class OnnxRerankProvider(
         }
     }
 
-    /** sigmoid:1 / (1 + e^-x),Comprimir logit a [0, 1]. */
+    /** sigmoid:1 / (1 + e^-x),把 logit 压缩到 [0, 1]。 */
     private fun sigmoid(x: Float): Float = (1f / (1f + exp(-x))).coerceIn(0f, 1f)
 
-    /** cerrar session,Liberar recursos nativos. */
+    /** 关闭 session,释放 native 资源。 */
     fun close() {
         resultOf {
             session?.close()
@@ -262,10 +262,10 @@ class OnnxRerankProvider(
             vocab = null
             cachedInputNames = null
             cachedOutputNames = null
-        }.onError { msg, e -> Logger.w("OnnxRerankProvider", "close falló: $msg", e) }
+        }.onError { msg, e -> Logger.w("OnnxRerankProvider", "close 失败: $msg", e) }
     }
 
-    /** Compruebe si la reclasificación de ONNX local está disponible. */
+    /** 检查本地 ONNX rerank 是否可用。 */
     fun isAvailable(): Boolean {
         if (modelPath.isBlank() || !File(modelPath).exists()) return false
         val vPath = resolveVocabPath()

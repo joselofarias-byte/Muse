@@ -1,5 +1,5 @@
-// La detección de habilidades es"haz tu mejor esfuerzo"Semántica: cualquier excepción debe degradarse a"Este artículo no está disponible", en lugar de dejar que todo el párrafo system prompt
-// La inyección falla (en cuyo caso el modelo pierde por completo el reconocimiento del dispositivo).detekt Las alarmas de captura generales se seleccionan deliberadamente aquí y los motivos se registran junto con la pila.
+// 能力探测是"尽力而为"语义：任何异常都必须降级为"该项不可用"，而不是让整段 system prompt
+// 注入失败（那样模型会完全失去设备认知）。detekt 的通用捕获告警在此为刻意选择，原因随栈入日志。
 @file:Suppress("TooGenericExceptionCaught")
 
 package io.zer0.muse.automation.capability
@@ -11,37 +11,45 @@ import io.zer0.muse.hook.SystemPromptComposeHook
 import kotlinx.coroutines.CancellationException
 
 /**
- * Gancho de inyección de archivos de capacidad del dispositivo.
+ * 设备能力档案注入 Hook。
  *
- * Después de que el sistema indique que el ensamblaje está completo, coloque [DeviceCapabilityProfile](canales actualmente disponibles + límites de capacidad)
- * Agregue el procedimiento de decisión de operación al final del mensaje del sistema.
+ * 在系统提示组装完成后，把 [DeviceCapabilityProfile]（当前真实可用通道 + 能力边界）
+ * 与操作决策规程追加到 system prompt 末尾。
  *
- * ## Puntos de diseño
+ * ## 设计要点
  *
- * - **Prioridad de detección, almacenamiento en caché**: Intente actualizar el estado del canal cada vez que reúna la palabra de aviso (`refreshPermissions()`
- *   Si tiene Mutex y cada canal no se detecta, se degradará a no disponible y el enlace de diálogo principal no se descompondrá). Volver cuando falla la actualización
- *   [AutomationManager.permissionState] El último resultado nunca perderá el archivo completo debido a una detección fallida.
- * - **Cualquier detección es un mejor esfuerzo.**: Si la detección de una sola habilidad genera una excepción, solo el elemento se registrará como no disponible y los demás elementos no se verán afectados.
- *   ni tirarlo hacia arriba (ver [probe]). Las excepciones de cancelación se lanzan como de costumbre y la cancelación de rutina no se acepta.
- * - **El subagente no se inyecta.**:subagent Es una subsesión aislada y no es necesario repetir todo el procedimiento del dispositivo (guardar tokens y evitar
- *   El subagente cree erróneamente que puede operar el dispositivo a voluntad).
+ * - **探测优先、缓存兜底**：每次组装提示词时尝试刷新一次通道状态（`refreshPermissions()`
+ *   本身带 Mutex 且各通道探测失败会降级为不可用，不会击穿对话主链路）。刷新失败时退回
+ *   [AutomationManager.permissionState] 的最近一次结果，绝不因为探测失败而丢失整段档案。
+ * - **任何探测都是尽力而为**：单个能力探测抛异常只把该项记为不可用，不影响其余项，
+ *   也不向上抛（见 [probe]）。取消异常照常抛出，不吞协程取消。
+ * - **子代理不注入**：subagent 是隔离子会话，不需要重复背负整份设备规程（省 token，也避免
+ *   子代理误以为可以随意操作设备）。
  */
 class DeviceCapabilityHook(
     private val automationManager: AutomationManager,
     /**
-     * Detección de disponibilidad de pantalla virtual. No disponible de forma predeterminada; Las sondas reales se inyectan mediante el método de ensamblaje (evitando dependencias inversas del paquete de capacidades).
-     * vdisplay realizado). Cuando es nulo, el archivo se marca como no disponible.
+     * 虚拟屏可用性探测。默认不可用；由装配方注入真实探测（避免 capability 包反向依赖
+     * vdisplay 实现）。为 null 时档案里记为不可用。
      */
     private val virtualDisplayProbe: suspend () -> Boolean = { false },
-    /** Detección de disponibilidad del tiempo de ejecución del nodo incorporada ([io.zer0.muse.runtime.MuseRuntime.isReady]). */
+    /**
+     * 自动化总闸探测（设置里的「允许屏幕自动化」）。
+     *
+     * 为 null 时按开处理：这个档案的价值在于**提前告诉模型别白试**，
+     * 所以闸关时必须让它在第一句就看见，而不是等工具调用失败才发现。
+     */
+    private val automationEnabledProbe: (suspend () -> Boolean)? = null,
+
+    /** 内置 Node 运行时可用性探测（[io.zer0.muse.runtime.MuseRuntime.isReady]）。 */
     private val nodeRuntimeProbe: (() -> Boolean)? = null,
 ) : SystemPromptComposeHook {
 
     override val id: String = "device_capability_profile"
 
     /**
-     * priority=80: mayor que WorldBookHook(60), coloque el archivo del dispositivo lo más cerca posible del comienzo de las indicaciones del sistema,
-     * Y la inyección se completa antes de la clase de truncamiento del piso Hook.
+     * priority=80：高于 WorldBookHook(60)，让设备档案尽量靠近系统提示开头，
+     * 且先于楼层截断类 Hook 完成注入。
      */
     override val priority: Int = 80
 
@@ -58,15 +66,15 @@ class DeviceCapabilityHook(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            Logger.w(TAG, "Falló la inyección del archivo de capacidad: ${e.message}", e)
+            Logger.w(TAG, "能力档案注入失败: ${e.message}", e)
             ""
         }
     }
 
     /**
-     * Detecte el archivo de habilidad actual: primero actualice el estado del canal de tres capas y luego superponga la pantalla virtual/Node Dos habilidades independientes.
+     * 探测当前能力档案：先刷新三层通道状态，再叠加虚拟屏/Node 两项独立能力。
      *
-     * Utilice el estado en caché cuando falle la actualización (`permissionState.value`) para garantizar que el archivo siempre tenga una instantánea utilizable.
+     * 刷新失败时使用缓存状态（`permissionState.value`），保证档案始终有一份可用快照。
      */
     private suspend fun detectProfile(): DeviceCapabilityProfile {
         val state = try {
@@ -74,7 +82,7 @@ class DeviceCapabilityHook(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            Logger.w(TAG, "Error al actualizar el permiso, usando el estado en caché: ${e.message}")
+            Logger.w(TAG, "权限刷新失败，使用缓存状态: ${e.message}")
             automationManager.permissionState.value
         }
 
@@ -84,6 +92,9 @@ class DeviceCapabilityHook(
             root = state.rootEnabled,
             virtualDisplay = probe("virtualDisplay", false) { virtualDisplayProbe() },
             nodeRuntime = probe("nodeRuntime", false) { nodeRuntimeProbe?.invoke() ?: false },
+            automationEnabled = probe("automationEnabled", true) {
+                automationEnabledProbe?.invoke() ?: true
+            },
             details = mapOf(
                 "shizukuState" to state.shizukuState.name,
                 "shizukuMessage" to state.shizukuMessage,
@@ -92,10 +103,10 @@ class DeviceCapabilityHook(
     }
 
     /**
-     * Detección de mejor esfuerzo: las excepciones solo se degradan a [fallback], sin interrumpir el montaje de todo el expediente.
+     * 尽力探测：异常只降级为 [fallback]，不中断整份档案的组装。
      *
-     * La excepción de tragar es**deliberadamente**——El comportamiento correcto del fallo de detección de capacidad es"Este artículo está marcado como no disponible.", en lugar de dejar que todo el párrafo
-     * system prompt La inyección falla (en cuyo caso el modelo pierde por completo el reconocimiento del dispositivo). El motivo se ha escrito en el registro con una pila.
+     * 吞异常是**刻意的**——能力探测失败的正确表现是"这一项记为不可用"，而不是让整段
+     * system prompt 注入失败（那样模型会完全失去设备认知）。原因已带栈写入日志。
      */
     @Suppress("TooGenericExceptionCaught", "SwallowedException")
     private suspend fun probe(name: String, fallback: Boolean, block: suspend () -> Boolean): Boolean = try {
@@ -103,7 +114,7 @@ class DeviceCapabilityHook(
     } catch (e: CancellationException) {
         throw e
     } catch (e: Exception) {
-        Logger.w(TAG, "$name Si la detección falla, se registrará como no disponible.: ${e.message}", e)
+        Logger.w(TAG, "$name 探测失败，记为不可用: ${e.message}", e)
         fallback
     }
 

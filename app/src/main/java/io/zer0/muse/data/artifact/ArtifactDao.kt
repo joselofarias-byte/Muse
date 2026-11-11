@@ -8,14 +8,14 @@ import androidx.room.Transaction
 import kotlinx.coroutines.flow.Flow
 
 /**
- * Artifact DAO.
+ * Artifact DAO。
  */
 @Dao
 interface ArtifactDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(entity: ArtifactEntity)
 
-    // L12 Reparación: Transacciones de inserción por lotes,Asegúrese de que varios productos se escriban de forma atómica,Evite la inconsistencia de datos causada por fallas de escritura parcial
+    // L12 修复: 批量 upsert 事务,保证多条产物原子写入,避免部分写入失败导致数据不一致
     @Transaction
     suspend fun upsertAll(list: List<ArtifactEntity>) = list.forEach { upsert(it) }
 
@@ -31,13 +31,16 @@ interface ArtifactDao {
     @Query("SELECT * FROM artifacts WHERE messageId = :messageId ORDER BY createdAt ASC")
     fun observeByMessage(messageId: String): Flow<List<ArtifactEntity>>
 
+    @Query("SELECT * FROM artifacts WHERE messageId IN (:messageIds) ORDER BY createdAt ASC")
+    fun observeByMessages(messageIds: List<String>): Flow<List<ArtifactEntity>>
+
     @Query("SELECT * FROM artifacts WHERE id = :id")
     suspend fun getById(id: String): ArtifactEntity?
 
     @Query("SELECT * FROM artifacts")
     suspend fun getAll(): List<ArtifactEntity>
 
-    // v2.0.1: Centro de productos — Flujo completo de productos (en orden cronológico inverso)
+    // v2.0.1: 产物中心 — 全量产物流（按时间倒序）
     @Query("SELECT * FROM artifacts ORDER BY createdAt DESC")
     fun observeAll(): Flow<List<ArtifactEntity>>
 

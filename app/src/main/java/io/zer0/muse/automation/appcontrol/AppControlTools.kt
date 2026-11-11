@@ -6,19 +6,19 @@ import io.zer0.muse.tools.ToolRegistry
 import io.zer0.muse.tools.ToolRiskLevel
 
 /**
- * Conjunto de herramientas de control de aplicaciones —— poner [AndroidAppController] Expuesto como una herramienta invocable por IA.
+ * 应用控制工具集 —— 把 [AndroidAppController] 暴露为 AI 可调用的工具。
  *
- * Prefijo de nomenclatura unificado `app_`, con `screen_*`(UI automatización),`device_*`(comando del dispositivo) paralelo:
- *  - `app_list`        Lista de aplicaciones ejecutables (no se requiere autorización)
- *  - `app_launch`      Inicie la aplicación (no se requiere autorización)
- *  - `app_settings`    Abra la página de configuración del sistema de la aplicación (no se requiere autorización, los usuarios pueden cambiar los permisos por sí mismos)/borrar datos)
- *  - `app_force_stop`  Forzar detención (requiere Shizuku/adb o Root)
- *  - `app_clear_data`  Borrar datos (se requiere Shizuku/adb o Root)
- *  - `app_uninstall`   Desinstalar (requiere Shizuku/adb o Root)
+ * 命名前缀统一 `app_`，与 `screen_*`（UI 自动化）、`device_*`（设备命令）并列：
+ *  - `app_list`        列出可启动应用（无授权要求）
+ *  - `app_launch`      启动应用（无授权要求）
+ *  - `app_settings`    打开应用系统设置页（无授权要求，用户可自行改权限/清数据）
+ *  - `app_force_stop`  强行停止（需 Shizuku/adb 或 Root）
+ *  - `app_clear_data`  清空数据（需 Shizuku/adb 或 Root）
+ *  - `app_uninstall`   卸载（需 Shizuku/adb 或 Root）
  *
- * La inscripción se divide en dos grupos:**Percepción/Capa de aplicación**(NORMAL, no se requiere autorización) y**destructivo**(HIGH, pasar por aprobación)——
- * La agrupación no es sólo para la duración de la función, sino también para"¿Qué herramientas no deberían aprobarse y cuáles sí?"Reconocible a simple vista.
- * Cuando falta canal**regresar sinceramente"¿Qué habilidad se necesita?"**, no mientas sobre el éxito——Este es el requisito previo para la credibilidad del Agente.
+ * 注册分两组：**感知/应用层**（NORMAL，无需授权）与**破坏性**（HIGH，走审批）——
+ * 分组不只是为了函数长度，更让"哪些工具不该走审批、哪些必须走"一眼可辨。
+ * 缺通道时**如实返回"需要哪一项能力"**，不谎报成功——这是 Agent 可信度的前提。
  */
 class AppControlTools(
     private val context: Context,
@@ -29,15 +29,15 @@ class AppControlTools(
         registerDestructiveTools(registry)
     }
 
-    /** Acciones de capa de percepción y aplicación: solo se requieren los permisos propios de la aplicación, no se requiere autorización automatizada. */
+    /** 感知与应用层动作：只需应用自身权限，不需要任何自动化授权。 */
     private fun registerInspectionTools(registry: ToolRegistry) {
         registry.register(
             ToolRegistry.ToolDef(
                 name = "app_list",
-                description = "Enumere las aplicaciones que se pueden iniciar en esta máquina (nombre + nombre del paquete). Cuando un usuario menciona una aplicación por su nombre chino," +
-                    "Cuando no esté seguro del nombre del paquete, primero use esta herramienta para buscar el nombre del paquete y luego llame a app_launch y otras operaciones.",
+                description = "列出本机可启动的应用（名称 + 包名）。当用户用中文名提到某个应用、" +
+                    "而你不确定它的包名时，先用本工具查到包名，再调用 app_launch 等操作。",
                 parameters = mapOf(
-                    "query" to "Opcional, filtre por nombre o nombre del paquete, como \"WeChat\"",
+                    "query" to "可选，按名称或包名过滤，如「微信」",
                 ),
                 required = emptySet(),
                 riskLevel = ToolRiskLevel.NORMAL,
@@ -59,8 +59,8 @@ class AppControlTools(
         registry.register(
             ToolRegistry.ToolDef(
                 name = "app_launch",
-                description = "Inicie una aplicación (por nombre de paquete o nombre chino). Después de un inicio exitoso, se debe llamar a screen_read para confirmar que la interfaz está lista.",
-                parameters = mapOf("app" to "Obligatorio, nombre del paquete o nombre de la aplicación, como com.tencent.mm o \"WeChat\""),
+                description = "启动一个应用（按包名或中文名）。启动成功后应调用 screen_read 确认界面已就绪。",
+                parameters = mapOf("app" to "必填，包名或应用名，如 com.tencent.mm 或「微信」"),
                 required = setOf("app"),
                 riskLevel = ToolRiskLevel.NORMAL,
             ),
@@ -71,9 +71,9 @@ class AppControlTools(
         registry.register(
             ToolRegistry.ToolDef(
                 name = "app_settings",
-                description = "Abra la página de detalles de configuración del sistema de una aplicación (puede ver/Modificar permisos, notificaciones, uso de almacenamiento)." +
-                    "Este tipo de operación es adecuado para que los usuarios lo confirmen por sí mismos, lo cual es más seguro que borrar los datos directamente.",
-                parameters = mapOf("app" to "Requerido, nombre del paquete o nombre de la aplicación"),
+                description = "打开某个应用的系统设置详情页（可查看/修改权限、通知、存储占用）。" +
+                    "此类操作适合让用户自己确认，比直接清数据更安全。",
+                parameters = mapOf("app" to "必填，包名或应用名"),
                 required = setOf("app"),
                 riskLevel = ToolRiskLevel.NORMAL,
             ),
@@ -82,14 +82,14 @@ class AppControlTools(
         }
     }
 
-    /** Acciones destructivas: Requiere Shizuku/adb o Root, riesgo ALTO (tomar aprobación). */
+    /** 破坏性动作：需要 Shizuku/adb 或 Root，风险 HIGH（走审批）。 */
     private fun registerDestructiveTools(registry: ToolRegistry) {
         registry.register(
             ToolRegistry.ToolDef(
                 name = "app_force_stop",
-                description = "Detener con fuerza una aplicación (equivalente a \"Forzar detención\" en la configuración). Requiere Shizuku/adb o Root;" +
-                    "Si no tienes estos permisos, esta herramienta te informará claramente y no volverás a intentarlo.",
-                parameters = mapOf("app" to "Requerido, nombre del paquete o nombre de la aplicación"),
+                description = "强行停止一个应用（等价于设置里的「强行停止」）。需要 Shizuku/adb 或 Root；" +
+                    "没有这些权限时本工具会明确告知，不要反复重试。",
+                parameters = mapOf("app" to "必填，包名或应用名"),
                 required = setOf("app"),
                 riskLevel = ToolRiskLevel.HIGH,
             ),
@@ -100,8 +100,8 @@ class AppControlTools(
         registry.register(
             ToolRegistry.ToolDef(
                 name = "app_clear_data",
-                description = "Borrar todos los datos de una aplicación (irreversible). Requiere Shizuku/adb o Root. Debe confirmarse con el usuario antes de la ejecución.",
-                parameters = mapOf("app" to "Requerido, nombre del paquete o nombre de la aplicación"),
+                description = "清空一个应用的全部数据（不可撤销）。需要 Shizuku/adb 或 Root。执行前必须向用户确认。",
+                parameters = mapOf("app" to "必填，包名或应用名"),
                 required = setOf("app"),
                 riskLevel = ToolRiskLevel.HIGH,
             ),
@@ -112,8 +112,8 @@ class AppControlTools(
         registry.register(
             ToolRegistry.ToolDef(
                 name = "app_uninstall",
-                description = "Desinstalar una aplicación. Requiere Shizuku/adb o Root; Se rechazarán las aplicaciones del sistema. Debe confirmarse con el usuario antes de la ejecución.",
-                parameters = mapOf("app" to "Requerido, nombre del paquete o nombre de la aplicación"),
+                description = "卸载一个应用。需要 Shizuku/adb 或 Root；系统应用会被拒绝。执行前必须向用户确认。",
+                parameters = mapOf("app" to "必填，包名或应用名"),
                 required = setOf("app"),
                 riskLevel = ToolRiskLevel.HIGH,
             ),
@@ -122,7 +122,7 @@ class AppControlTools(
         }
     }
 
-    /** unificado"Ejecutar + Traducir"Entrada: El procesamiento de parámetros de entrada vacíos solo se escribe aquí una vez. */
+    /** 统一的"执行 + 翻译"入口：入参为空的处理也只在这里写一次。 */
     private suspend fun runAction(action: AppControlAction, actionLabelRes: Int, rawApp: String?): String {
         val app = rawApp?.trim().orEmpty()
         return if (app.isEmpty()) {
@@ -132,7 +132,7 @@ class AppControlTools(
         }
     }
 
-    /** poner [AppActionResult] Tradúcelo en una oración para el modelo; Si no se puede hacer, explique qué habilidad falta. */
+    /** 把 [AppActionResult] 翻成给模型看的一句话；做不到时说明缺哪一项能力。 */
     private fun describe(action: String, target: String, result: AppActionResult): String = when (result) {
         is AppActionResult.Success -> context.getString(
             R.string.app_control_ok,
@@ -171,10 +171,10 @@ class AppControlTools(
     }
 
     /**
-     * Represente el parámetro de entrada de la herramienta (que puede ser un nombre de paquete o un nombre chino) en"Nombre(nombre del paquete)"Muéstralo a los demás.
+     * 把工具入参（可能是包名、也可能是中文名）渲染成"名称(包名)"给人看。
      *
-     * Si no se puede encontrar la etiqueta, devuelva los parámetros de entrada tal como están.——Prefiero mostrarlo claramente que dejarlo pasar porque PackageManager genera una excepción.
-     * Toda la herramienta resultó ser un fracaso (eso fue"La operación fue exitosa pero reportó un fracaso."accidente típico).
+     * 查不到标签时原样返回入参——宁可显示得朴素，也不能因为 PackageManager 抛异常而让
+     * 整条工具结果失败（那是"操作已成功但报告失败"的典型事故）。
      */
     private fun readableTarget(raw: String): String {
         if (!AppControlCore.isValidPackageName(raw)) return raw

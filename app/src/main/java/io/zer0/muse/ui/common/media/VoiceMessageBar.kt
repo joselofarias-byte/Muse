@@ -37,12 +37,12 @@ import io.zer0.muse.ui.theme.MusePaddings
 import io.zer0.muse.ui.theme.MuseShapes
 
 /**
- * Phase 3 3B: Tira de grabación de mensajes de voz. — Mantenga presionado para grabar + animación de forma de onda.
+ * Phase 3 3B: 语音消息录制条 — 长按录音 + 波形动画。
  *
- * @param isRecording ¿Se está grabando?
- * @param durationSeconds tiempo de grabación(segundos)
- * @param onCancel Cancelar grabación
- * @param onStop Dejar de grabar y enviar
+ * @param isRecording 是否正在录音
+ * @param durationSeconds 已录音时长(秒)
+ * @param onCancel 取消录音
+ * @param onStop 停止录音并发送
  */
 @Composable
 fun VoiceMessageBar(
@@ -55,7 +55,7 @@ fun VoiceMessageBar(
     if (!isRecording) return
 
     val reducedMotion = MuseMotion.isReducedMotion()
-    // reduced-motion La indicación del estado de grabación permanece,Pero no inicia la animación infinita.
+    // reduced-motion 下仍保留录音状态指示,但不启动无限动画。
     val recordingTransition = if (reducedMotion) {
         null
     } else {
@@ -88,7 +88,7 @@ fun VoiceMessageBar(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(MusePaddings.itemGap),
         ) {
-            // indicador de pulso de grabación
+            // 录音脉冲指示器
             Box(
                 modifier = Modifier
                     .size(12.dp)
@@ -97,14 +97,14 @@ fun VoiceMessageBar(
                         CircleShape,
                     ),
             )
-            // Duración de la grabación
+            // 录音时长
             Text(
                 text = formatDuration(durationSeconds),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Spacer(Modifier.weight(1f))
-            // Marcador de posición de forma de onda (Animación de barra sencilla)
+            // 波形占位 (简单条形动画)
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(MusePaddings.tinyGap),
@@ -139,14 +139,14 @@ fun VoiceMessageBar(
                 }
             }
             Spacer(Modifier.width(MusePaddings.contentGap))
-            // botón de parada
+            // 停止按钮
             IconButton(
                 onClick = onStop,
                 modifier = Modifier.size(MuseIconSizes.touchTarget),
             ) {
                 Icon(
                     imageVector = MuseIcons.stop,
-                    contentDescription = stringResource(R.string.voice_stop_recording), // Correcciones en la interfaz (i18n-6)
+                    contentDescription = stringResource(R.string.voice_stop_recording), // 前端修复 (i18n-6)
                     tint = CoralWhisper,
                 )
             }

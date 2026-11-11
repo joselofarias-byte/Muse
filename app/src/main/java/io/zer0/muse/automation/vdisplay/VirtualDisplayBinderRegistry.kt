@@ -3,11 +3,11 @@ package io.zer0.muse.automation.vdisplay
 import android.os.IBinder
 
 /**
- * v2.2.1 pantalla virtual:Registro de Binder del lado del servidor.
+ * v2.2.1 虚拟屏:服务端 Binder 注册表。
  *
- * Servidor(shell uid proceso)Enviar la carpeta a la aplicación principal mediante transmisión
- * [VirtualDisplayBinderReceiver],El extremo receptor escribe este registro.;
- * [VirtualDisplayServerManager] Obtenga carpeta desde aquí para determinar la supervivencia y la reutilización.
+ * 服务端(shell uid 进程)经广播把 binder 递交给主应用的
+ * [VirtualDisplayBinderReceiver],接收端写入本注册表;
+ * [VirtualDisplayServerManager] 从这里取 binder 判断存活与复用。
  */
 object VirtualDisplayBinderRegistry {
     @Volatile
@@ -16,7 +16,7 @@ object VirtualDisplayBinderRegistry {
     @Volatile
     private var expectedHandoffToken: String? = null
 
-    /** Recibe nuevo de la mano binder(O borrar cuando haya caducado). */
+    /** 收到新的手递手 binder(或失效时清空)。 */
     fun update(value: IBinder?) {
         binder = value
     }
@@ -37,7 +37,7 @@ object VirtualDisplayBinderRegistry {
         return true
     }
 
-    /** actual binder(binder Devuelve nulo cuando está muerto y lo borra convenientemente). */
+    /** 当前 binder(binder 已死时返回 null 并顺手清空)。 */
     fun current(): IBinder? {
         val value = binder ?: return null
         if (!value.isBinderAlive) {

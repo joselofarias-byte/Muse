@@ -11,15 +11,15 @@ import io.zer0.muse.notification.MuseNotificationManager
 import io.zer0.muse.schedule.ChatGenerationManager
 
 /**
- * Agregación de dependencias de capas de mensajes activos.
+ * 主动消息各层的依赖聚合。
  *
- * La razón para dividirlo en tres paquetes pequeños en lugar de uno grande es porque las razones del cambio de estos tres grupos de cosas son completamente diferentes:
- *  - [ProactiveStores]  La capa de almacenamiento se activa cuando se cambia la estructura de la tabla.
- *  - [ProactiveSources] Fuente de combustible, solo se activa al agregar una nueva derivación de fuente de preocupación
- *  - [ProactiveRuntime] Entorno de host, activado al cambiar el modelo de sesión o el método de notificación
+ * 拆成三个小包而不是一个大包，是因为这三组东西的变化原因完全不同：
+ *  - [ProactiveStores]  存储层，换表结构时才动
+ *  - [ProactiveSources] 燃料来源，加新的牵挂推导来源时才动
+ *  - [ProactiveRuntime] 宿主环境，换会话模型或通知方式时才动
  *
- * Por cierto, el número de parámetros de cada constructor vuelve a estar dentro de un rango legible. —— Constructor con una docena de parámetros.
- * La posición debe contarse cada vez que se llama y es posible que el compilador no informe si es incorrecta.
+ * 顺带让每个构造函数的参数数量都落回可读范围 —— 十来个参数的构造函数
+ * 每次调用都得数位置，错了编译器还不一定报。
  */
 class ProactiveStores(
     val thoughts: ProactiveThoughtRepository,
@@ -38,4 +38,5 @@ class ProactiveRuntime(
     val assistants: AssistantRepository,
     val notifier: MuseNotificationManager,
     val generations: ChatGenerationManager,
+    val proactiveSessionPreferences: ProactiveSessionPreferenceRepository,
 )

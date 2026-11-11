@@ -21,10 +21,10 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * Escribir operaciones en la lista de sesiones:Fijar arriba, marcar como leído, eliminar conversación, borrar.
+ * 会话列表上的写操作:置顶、标记已读、删会话、清空。
  *
- * el curry es realmente bueno Room(banco de memoria):Ninguna de estas cosas son funciones puras.,Si la escritura es correcta o no, solo se puede ver ejecutando SQL. ——
- * Ordenar por ORDER BY, eliminación por DELETE y transacciones,La base de datos suplente no demuestra nada de eso.
+ * 库里跑真 Room(内存库):这几件事都不是纯函数,写得对不对只有真跑一遍 SQL 才看得出来 ——
+ * 排序靠 ORDER BY、删除靠 DELETE 与事务,替身数据库证明不了任何一项。
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -46,7 +46,7 @@ class MpConversationStoreTest {
 
     @Test
     fun pinnedThreadSortsAboveTheNewerOne() = runBlocking {
-        // El "viejo" es anterior.,Pero después de ser fijado en la cima, abrumará a los "nuevos" más recientes.
+        // 「旧」这条更早,但置顶之后要压过更近的「新」
         db.threadDao().upsert(thread(id = "old", characterId = "c1", lastMessageAt = 1_000L))
         db.threadDao().upsert(thread(id = "new", characterId = "c2", lastMessageAt = 5_000L))
         assertEquals(listOf("new", "old"), db.threadDao().observeThreads().first().map { it.id })
@@ -54,13 +54,13 @@ class MpConversationStoreTest {
         store.setPinned("old", true)
 
         val ordered = db.threadDao().observeThreads().first()
-        assertEquals("Primera fila superior,En el área fijada, presione el último mensaje en orden inverso", listOf("old", "new"), ordered.map { it.id })
+        assertEquals("置顶的排最前,置顶区内再按最后消息倒序", listOf("old", "new"), ordered.map { it.id })
         assertEquals(true, ordered.first().pinned)
         assertEquals(false, ordered.last().pinned)
 
         store.setPinned("old", false)
 
-        assertEquals("Volver al orden cronológico después de desanclar", listOf("new", "old"), db.threadDao().observeThreads().first().map { it.id })
+        assertEquals("取消置顶后回到时间顺序", listOf("new", "old"), db.threadDao().observeThreads().first().map { it.id })
     }
 
     @Test
@@ -79,11 +79,11 @@ class MpConversationStoreTest {
 
         store.deleteThread("t1")
 
-        assertNull("La sesión en sí fue eliminada.", db.threadDao().getThread("t1"))
-        assertEquals("No queda ni un solo mensaje a su nombre.", 0, db.messageDao().countInThread("t1"))
-        assertEquals("Los miembros bajo su nombre tampoco se conservan.", 0, db.threadMemberDao().countInThread("t1"))
-        assertEquals("Otras conversaciones siguen ahí", "t2", db.threadDao().observeThreads().first().single().id)
-        assertEquals("Los mensajes de otras conversaciones siguen ahí.", 1, db.messageDao().countInThread("t2"))
+        assertNull("会话本身被删掉", db.threadDao().getThread("t1"))
+        assertEquals("它名下的消息一条不剩", 0, db.messageDao().countInThread("t1"))
+        assertEquals("它名下的成员行也不留", 0, db.threadMemberDao().countInThread("t1"))
+        assertEquals("别的会话还在", "t2", db.threadDao().observeThreads().first().single().id)
+        assertEquals("别的会话的消息还在", 1, db.messageDao().countInThread("t2"))
     }
 
     @Test
@@ -109,8 +109,8 @@ class MpConversationStoreTest {
             MpMomentEntity(
                 id = "moment-1",
                 authorId = "c1",
-                authorName = "ali",
-                content = "mantener las noticias",
+                authorName = "阿离",
+                content = "留着的动态",
                 createdAt = 500L,
                 source = MpMomentSource.AI,
             ),
@@ -118,12 +118,12 @@ class MpConversationStoreTest {
 
         store.clearAll()
 
-        assertEquals("Borrar tabla de sesiones", emptyList<MpThreadEntity>(), db.threadDao().observeThreads().first())
+        assertEquals("会话表清空", emptyList<MpThreadEntity>(), db.threadDao().observeThreads().first())
         assertEquals(0, db.messageDao().countInThread("t1"))
         assertEquals(0, db.messageDao().countInThread("t2"))
-        assertEquals("La lista de miembros también se borra.", 0, db.threadMemberDao().countInThread("t1"))
-        assertEquals("El círculo de amigos no se mueve.", 1, db.momentDao().count())
-        assertEquals("El contenido dinámico todavía está ahí", "mantener las noticias", db.momentDao().getMoment("moment-1")?.content)
+        assertEquals("成员表也跟着清空", 0, db.threadMemberDao().countInThread("t1"))
+        assertEquals("朋友圈不动", 1, db.momentDao().count())
+        assertEquals("动态内容也还在", "留着的动态", db.momentDao().getMoment("moment-1")?.content)
     }
 
     private fun thread(id: String, characterId: String, lastMessageAt: Long, unread: Int = 0): MpThreadEntity = MpThreadEntity(

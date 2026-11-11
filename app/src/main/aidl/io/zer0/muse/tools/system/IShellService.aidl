@@ -4,16 +4,16 @@ package io.zer0.muse.tools.system;
 import android.os.ParcelFileDescriptor;
 
 /**
- * P3-3: Shizuku UserService Interfaz de ejecución de shell.
+ * P3-3: Shizuku UserService 的 Shell 执行接口。
  *
- * Esta interfaz consta de [ShellService] darse cuenta,Pase Shizuku.bindUserService() Se ejecuta en un proceso con privilegios de shell.
- * La persona que llama es [ShizukuAuthorizer],Llamadas entre procesos vía AIDL IPC.
+ * 该接口由 [ShellService] 实现,通过 Shizuku.bindUserService() 在 shell 权限进程中运行。
+ * 调用方为 [ShizukuAuthorizer],通过 AIDL IPC 跨进程调用。
  *
- * Formato del valor de retorno: "<exitCode>\u0000<stdout>\u0000<stderr>"
- *  - uso \u0000 (null char) como delimitador,shell no aparece en la salida
- *  - exitCode: código de salida del comando(0=éxito,no0=falló,-1=excepción de ejecución)
- *  - stdout: comando de salida estándar
- *  - stderr: error estándar de comando
+ * 返回值格式: "<exitCode>\u0000<stdout>\u0000<stderr>"
+ *  - 使用 \u0000 (null char) 作为分隔符,shell 输出中不会出现
+ *  - exitCode: 命令退出码(0=成功,非0=失败,-1=执行异常)
+ *  - stdout: 命令标准输出
+ *  - stderr: 命令标准错误
  *
  * Large interactive tool results use executeToPipe so payload bytes do not cross Binder as a String.
  */

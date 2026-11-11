@@ -9,37 +9,37 @@ import kotlin.math.max
 import kotlin.math.min
 
 /**
- * v2.6.2(comentarios de los usuarios): Constructor de "borde complementario" de constelaciones de memoria.
+ * v2.6.2（用户反馈）: 记忆星座「补边」构建器。
  *
- * Antecedentes: Los mapas de constelaciones apenas estaban conectados antes. —— Los únicos puntos marginales son los extraídos por LLM al final de la sesión. `links`,
- * Requiere que los títulos de origen/destino coincidan con precisión con las entidades sorteadas en la misma ronda. El umbral es demasiado alto y la mayoría de los recuerdos son puntos aislados.
+ * 背景：星座图此前几乎连不成线 —— 唯一的产边点是会话结束时 LLM 抽出的 `links`，
+ * 它要求 source/target 标题精确匹配同轮抽出的实体，门槛过高，绝大多数记忆是孤立点。
  *
- * Este constructor utiliza**Algoritmo determinista fuera de línea**Complete los bordes para conectar las constelaciones en una red (se prioriza la densidad visual, se permiten bordes débiles):
+ * 本构建器用**离线确定性算法**补齐边，让星座连成网络（视觉密度优先，允许弱边）：
  *
- *  1. **Misma clave de entidad**(Fuerte): Los hechos con la misma clave de entidad son consecutivos. `related_to`(weight alto)
- *  2. **Misma sesión**(Débil): Los hechos extraídos con el mismo ID de sesión están conectados (weight bajo)
- *  3. **Misma categoría + cierre en el tiempo**(Débil): Bordes conectados con la misma categoría y tiempo de creación cercano (weight bajo)
- *  4. **vecino semántico**(Centro): use la incrustación para buscar vecinos más cercanos existentes para obtener nuevos datos (se puede desactivar, depende de la calidad de la incrustación)
+ *  1. **同实体键**（强）：同 entityKey 的事实两两连 `related_to`（weight 高）
+ *  2. **同会话**（弱）：同一 sessionId 抽出的事实连边（weight 低）
+ *  3. **同分类 + 时间接近**（弱）：同 category 且创建时间接近的连边（weight 低）
+ *  4. **语义近邻**（中）：对新增事实用 embedding 找存量近邻（可关，依赖 embedding 质量）
  *
- * Puntos de diseño:
- *  - **incremento**:Sólo para "Agregar datos" × Los "datos bursátiles" se calculan como márgenes, sin volver a calcular el importe total, y se pueden controlar miles de recuerdos.
- *  - **idempotente**: Saltar cuando el mismo par de hechos ya tenga aristas (sin inserción repetida).
- *  - **Eliminar duplicados**: Deduplicación no dirigida (A-B Tratado igual que B-A).
- *  - **Se puede apagar**: El vecino semántico se basa en la incrustación. La incrustación de palabras clave locales tiene un efecto limitado y se puede desactivar.
+ * 设计要点：
+ *  - **增量**：只对「新增事实 × 存量事实」算边，不重算全量，几千条记忆也可控。
+ *  - **幂等**：同一对事实已有边时跳过（不重复插入）。
+ *  - **去重**：无向去重（A-B 与 B-A 视为同一条）。
+ *  - **可关**：语义近邻依赖 embedding，本地关键词 embedding 效果有限，允许关闭。
  */
 @Suppress("LongParameterList", "ReturnCount", "LoopWithTooManyJumpStatements")
 class MemoryEdgeBuilder(
     private val linkDao: MemoryLinkDao,
     /**
-     * v2.6.2(comentarios de los usuarios): LLM Profundizar las conexiones (opcional).
+     * v2.6.2（用户反馈）: LLM 深化关联（可选）。
      *
-     * Después de encenderlo, el“Vecinos semánticos pero relación poco clara”borde, utilice un modelo de herramienta grande para determinar el tipo de relación específica
-     * (causes / contradicts / part_of). Una llamada LLM por borde, costosa, controlada por conmutadores.
+     * 开启后，对“语义近邻但关系不明”的边，用大工具模型判定具体关系类型
+     * （causes / contradicts / part_of）。每条边一次 LLM 调用，成本高，由开关控制。
      */
     private val llmClient: io.zer0.memory.llm.MemoryLlmClient? = null,
 ) {
 
-    /** Resultados de ventaja complementarios. */
+    /** 补边结果。 */
     data class BuildResult(
         val entityEdges: Int = 0,
         val sessionEdges: Int = 0,
@@ -49,7 +49,7 @@ class MemoryEdgeBuilder(
         val total: Int get() = entityEdges + sessionEdges + categoryEdges + semanticEdges
     }
 
-    /** Parámetros de solicitud de relleno de bordes (parámetros convergentes de buildEdges para facilitar la lectura y la evolución). */
+    /** 补边请求参数（收敛 buildEdges 的参数，便于阅读与演进）。 */
     data class BuildRequest(
         val newFacts: List<FactStore.Fact>,
         val existingFacts: List<FactStore.Fact>,
@@ -58,12 +58,12 @@ class MemoryEdgeBuilder(
         val semanticProvider: SemanticProvider? = null,
         val semanticThreshold: Float = DEFAULT_SEMANTIC_THRESHOLD,
         val semanticTopK: Int = DEFAULT_SEMANTIC_TOPK,
-        /** Si se debe utilizar LLM para profundizar el tipo de relación específica de los bordes débiles (requiere que llmClient no sea nulo). */
+        /** 是否用 LLM 深化弱边的具体关系类型（需 llmClient 非空）。 */
         val llmEnhance: Boolean = false,
         val model: io.zer0.ai.core.Model? = null,
     )
 
-    /** Entrada cómoda compatible con firmas antiguas. */
+    /** 兼容旧签名的便捷入口。 */
     suspend fun buildEdges(
         newFacts: List<FactStore.Fact>,
         existingFacts: List<FactStore.Fact>,
@@ -89,20 +89,20 @@ class MemoryEdgeBuilder(
     )
 
     /**
-     * Complete los límites entre un lote de "hechos nuevos" y hechos existentes.
+     * 为一批「新增事实」补齐与存量事实之间的边。
      *
-     * Sólo incremental: nuevos hechos × Stock (incluidos otros hechos nuevos). Se omiten los bordes existentes (no dirigidos), lo que garantiza la idempotencia.
+     * 只做增量：新事实 × 存量（含其他新事实）。已有边（无向）跳过，保证幂等。
      */
     @Suppress("CyclomaticComplexMethod")
     suspend fun buildEdges(req: BuildRequest): BuildResult = withContext(Dispatchers.IO) {
         if (req.newFacts.isEmpty() || req.existingFacts.size < 2) return@withContext BuildResult()
 
-        // Conjunto de bordes existente (deduplicación no dirigida)—— evitar la inserción duplicada
+        // 已有边集合（无向去重）—— 避免重复插入
         val existingPairs = linkDao.listBySpaceAndScope(req.spaceId, req.scope)
             .mapTo(mutableSetOf()) { pairKey(it.sourceFactId, it.targetFactId) }
         val ctx = MutableBuildContext(req, existingPairs)
 
-        // 1) Misma clave de entidad (fuerte)
+        // 1) 同实体键（强）
         val byEntity = req.existingFacts.filter { !it.entityKey.isNullOrBlank() }.groupBy { it.entityKey!! }
         for (newFact in req.newFacts) {
             val key = newFact.entityKey?.takeIf { it.isNotBlank() } ?: continue
@@ -111,7 +111,7 @@ class MemoryEdgeBuilder(
             }
         }
 
-        // 2) Misma sesión (débil)
+        // 2) 同会话（弱）
         val bySession = req.existingFacts.filter { !it.sessionId.isNullOrBlank() }.groupBy { it.sessionId!! }
         for (newFact in req.newFacts) {
             val sid = newFact.sessionId?.takeIf { it.isNotBlank() } ?: continue
@@ -120,7 +120,7 @@ class MemoryEdgeBuilder(
             }
         }
 
-        // 3) Misma categoría + cierre en el tiempo (débil)
+        // 3) 同分类 + 时间接近（弱）
         val byCategory = req.existingFacts.groupBy { it.category }
         for (newFact in req.newFacts) {
             byCategory[newFact.category]?.forEach { other ->
@@ -131,27 +131,27 @@ class MemoryEdgeBuilder(
             }
         }
 
-        // 4) Vecinos semánticos (medio)—— Depende de la incrustación, puede fallar, omitir si falla
+        // 4) 语义近邻（中）—— 依赖 embedding，可能失败，失败即跳过
         val semanticCount = if (req.semanticProvider != null) {
             runCatching { ctx.buildSemanticEdges() }
-                .onFailure { Logger.w(TAG, "El complemento de borde semántico falló(saltar): ${it.message}") }
+                .onFailure { Logger.w(TAG, "语义补边失败(跳过): ${it.message}") }
                 .getOrDefault(0)
         } else {
             0
         }
 
         if (ctx.pending.isNotEmpty()) {
-            // v2.6.2: LLM profundizar —— Determine el tipo de relación específico para el borde débil. Las fallas se degradarán una por una, sin afectar el cuerpo principal del suplemento de borde.
+            // v2.6.2: LLM 深化 —— 对弱边判定具体关系类型。失败逐条降级，不影响补边主体。
             if (req.llmEnhance && llmClient != null) {
                 enhanceWithLlm(ctx.pending, req.model)
             }
             runCatching { linkDao.insertBatch(ctx.pending) }
-                .onFailure { Logger.w(TAG, "No se pudo agregar el lado al inventario: ${it.message}") }
+                .onFailure { Logger.w(TAG, "补边落库失败: ${it.message}") }
         }
         Logger.i(
             TAG,
-            "Borde complementario completado: entidad=${ctx.counts[Kind.ENTITY]} sesión=${ctx.counts[Kind.SESSION]} " +
-                "Clasificación=${ctx.counts[Kind.CATEGORY]} Semántica=$semanticCount",
+            "补边完成: 实体=${ctx.counts[Kind.ENTITY]} 会话=${ctx.counts[Kind.SESSION]} " +
+                "分类=${ctx.counts[Kind.CATEGORY]} 语义=$semanticCount",
         )
         BuildResult(
             entityEdges = ctx.counts[Kind.ENTITY] ?: 0,
@@ -161,10 +161,10 @@ class MemoryEdgeBuilder(
         )
     }
 
-    /** Categoría de borde (para estadísticas). */
+    /** 边类别（用于统计）。 */
     private enum class Kind { ENTITY, SESSION, CATEGORY }
 
-    /** El estado mutable de un side-fill. */
+    /** 一次补边的可变状态。 */
     private inner class MutableBuildContext(
         private val req: BuildRequest,
         private val existingPairs: MutableSet<Long>,
@@ -222,15 +222,15 @@ class MemoryEdgeBuilder(
         }
     }
 
-    /** Abstracción del proveedor de vectores semánticos (evita que el módulo de memoria dependa del EmbeddingService de la aplicación). */
+    /** 语义向量提供者抽象（避免 memory 模块依赖 app 的 EmbeddingService）。 */
     fun interface SemanticProvider {
         suspend fun embed(texts: List<String>): List<FloatArray>
     }
 
     /**
-     * v2.6.2: Profundización en tipos de relación específicos de aristas débiles con LLM.
+     * v2.6.2: 用 LLM 深化弱边的具体关系类型。
      *
-     * solo manejar linkType==related_to El borde de (clave de entidad/Los tipos existentes no se mueven). Llamado uno por uno, si falla, se conservará el tipo original.
+     * 只处理 linkType==related_to 的边（实体键/已有类型不动）。逐条调用，失败降级保留原类型。
      */
     private suspend fun enhanceWithLlm(pending: MutableList<MemoryLinkEntity>, model: io.zer0.ai.core.Model?) {
         val client = llmClient ?: return
@@ -254,14 +254,14 @@ class MemoryEdgeBuilder(
         }
     }
 
-    /** Resolver el tipo de relación a partir del resultado de LLM; devuelve nulo si no se reconoce. */
+    /** 从 LLM 输出中解析关系类型；识别不到返回 null。 */
     private fun parseLinkType(raw: String): String? {
         val lower = raw.lowercase()
         return when {
             "contradict" in lower -> "contradicts"
-            "causes" in lower || "causa y efecto" in raw || "because" in lower -> "causes"
-            "part_of" in lower || "part of" in lower || "contiene" in raw || "pertenecer a" in raw -> "part_of"
-            "related" in lower || "asociación" in raw -> "related_to"
+            "causes" in lower || "因果" in raw || "because" in lower -> "causes"
+            "part_of" in lower || "part of" in lower || "包含" in raw || "属于" in raw -> "part_of"
+            "related" in lower || "关联" in raw -> "related_to"
             else -> null
         }
     }
@@ -269,7 +269,7 @@ class MemoryEdgeBuilder(
     private fun pairKey(a: Long, b: Long): Long {
         val lo = min(a, b)
         val hi = max(a, b)
-        // Combinado en una clave única: use 64 bits;id Es un número positivo que aumenta automáticamente y la probabilidad de conflicto es insignificante.
+        // 组合成唯一键：用 64 位；id 为自增正数，冲突概率可忽略。
         return (lo shl 32) or (hi and 0xFFFFFFFFL)
     }
 
@@ -297,28 +297,28 @@ class MemoryEdgeBuilder(
         private const val TAG = "MemoryEdgeBuilder"
         private const val TITLE_MAX = 60
 
-        /** Misma clave de entidad: relación sólida. */
+        /** 同实体键：强关系。 */
         const val ENTITY_WEIGHT = 0.85f
 
-        /** Misma sesión: Media a débil. */
+        /** 同会话：中弱。 */
         const val SESSION_WEIGHT = 0.45f
 
-        /** Misma categoría + cierre en el tiempo: débil. */
+        /** 同分类 + 时间接近：弱。 */
         const val CATEGORY_WEIGHT = 0.3f
 
-        /** Umbral predeterminado del vecino semántico (suelto, persiguiendo la densidad visual B). */
+        /** 语义近邻默认阈值（偏松，追求 B 视觉密度）。 */
         const val DEFAULT_SEMANTIC_THRESHOLD = 0.55f
 
-        /** Cada nuevo hecho tiene como máximo varios vecinos semánticos. */
+        /** 每条新事实最多连几个语义近邻。 */
         const val DEFAULT_SEMANTIC_TOPK = 5
 
-        /** Misma categoría + ventana de tiempo (24 horas). */
+        /** 同分类 + 时间窗口（24 小时）。 */
         private const val CATEGORY_TIME_WINDOW_MS = 24 * 60 * 60 * 1000L
 
-        /** v2.6.2: LLM Aviso del sistema para profundizar los tipos de relaciones. */
+        /** v2.6.2: LLM 深化关系类型的 system prompt。 */
         private const val EDGE_ENHANCE_SYSTEM_PROMPT =
-            "Eres el analizador de relaciones de memoria. Dados dos hechos A y B, determine su tipo de relación." +
-                "Solo responde con una palabra:causes(A conducir a B)/ contradicts(Contradictorio)/ " +
-                "part_of(B es parte de A o viceversa)/ related_to(asociación ordinaria). No expliques."
+            "你是记忆关系分析器。给定两条事实 A 与 B，判断它们的关系类型。" +
+                "只回复一个词：causes（A 导致 B）/ contradicts（互相矛盾）/ " +
+                "part_of（B 是 A 的一部分或反之）/ related_to（普通关联）。不要解释。"
     }
 }

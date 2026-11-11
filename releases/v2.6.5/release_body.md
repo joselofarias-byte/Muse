@@ -1,130 +1,130 @@
 # Muse v2.6.5
 
-> Solución completa para informes de auditoría en profundidad de terceros (27 18 de los artículos se pueden implementar)+ Tres problemas de chat reportados por los usuarios.
+> 第三方深度审计报告的完整修复（27 条中可落地的 18 条）+ 用户反馈的三个聊天问题。
 
 ---
 
-## Agradecimientos
+## 致谢
 
-Una gran cantidad de correcciones en esta versión provienen de amigos del grupo QQ. **Atri アトリ** Informe de auditoría de terceros proporcionado.
+本版大量修复来自 QQ 群友 **Atri アトリ** 提供的第三方审计报告。
 
-Ese informe no era general."si bug", pero proporciona la ubicación del archivo, el número de línea, el análisis de la causa raíz, la ruta de recurrencia y el método de verificación uno por uno.——
-27 En esta edición se implementan 18 de los artículos, incluidas varias cuestiones que son difíciles de comprobar por uno mismo:
+那份报告不是泛泛的"有 bug"，而是逐条给出文件位置、行号、根因分析、复现路径和验证方法——
+27 条里有 18 条在这一版落地，包括几个很难自查的问题：
 
-- búsqueda mixta"Concurrencia de rutinas"De hecho, se ejecuta secuencialmente.
-- La superposición de bloques nunca tuvo efecto porque el orden se escribió en orden inverso.
-- reindexPlan Lea toda la biblioteca incrustada en la memoria para calcular un valor booleano
-- Si no se reconstruye el índice, se borrará silenciosamente el índice de todo el documento.
+- 混合检索的"协程并发"实际是顺序执行
+- 分块重叠因为顺序写反，从未生效过
+- reindexPlan 为算一个布尔值把全库 embedding 读进内存
+- 重建索引中途失败会静默清空整篇文档的索引
 
-Sin este informe, estos problemas probablemente habrían estado acechando aguas arriba durante mucho tiempo. Gracias.
-
----
-
-## chino
-
-### Corrección de comentarios de los usuarios
-
-#### El chat eliminado volvió por sí solo y comenzó a generarse automáticamente.
-
-Se deja un punto de control (ancla de recuperación) cuando se interrumpe una compilación. Al eliminar un mensaje, se borrará con precisión mediante identificación, pero la identificación generada previamente cuando se interrumpe la transmisión puede ser diferente de la ubicación real.**No está bien**, así queda.
-
-La próxima vez que ingrese a la sesión, la lógica de recuperación reconstruye los puntos de control restantes en un nuevo mensaje y los clasifica por la marca de tiempo de los puntos de control, de modo que llegue al final de la lista.——parece"Eliminado y reaparecido".
-
-Ahora, al eliminar un mensaje, los puntos de control restantes de la sesión se limpiarán en un tiempo adicional. Conservar mensajes anteriores a los mensajes eliminados.
-
-#### Las respuestas que se hayan generado desaparecerán si vuelves a ingresar.
-
-El mensaje que ingresa a la biblioteca tiene la semántica REEMPLAZAR. Si hay una respuesta completa y luego vuelve**El contenido está vacío.**Si la escritura (restablecimiento del estado de transmisión, transmisión de la ruta de recuperación está vacía, falta el campo de reconstrucción de la rueda de herramientas), la respuesta completa se vaciará.
-
-Ahora se agrega protección de regresión de contenido: cuando el contenido anterior no está vacío y el nuevo valor está vacío, el contenido anterior se conserva.
-
-#### Navegación con pulsación larga en la barra lateral"ido"
-
-**La funcionalidad siempre está ahí, pero es invisible.**
-
-10-09 cambios para reparar"Control deslizante visual flotando en sesiones largas", elimina toda la pista y cámbiala a una zona activa invisible con una pulsación larga a la derecha + deslizando hacia arriba y hacia abajo. La razón es cierta:LazyColumn La altura total no está expuesta y sólo se puede extrapolar en base a la altura promedio. Al encontrar imágenes/Los elementos largos, como los bloques de código, son extremadamente propensos a errores y el control deslizante saltará aleatoriamente.
-
-Pero ser completamente invisible no es nada. Ahora agrega uno**Aparece solo al deslizar**La línea de aviso:
-
-- Generalmente completamente oculto
-- Pulsación larga en el borde derecho → Vibración de luz + aparición gradual (120ms)
-- Manténgase visible mientras desliza el dedo, mientras aparece la vista previa del mensaje
-- Déjalo ir y desvanecete (220ms)
-
-No se realiza ningún mapeo de posición, por lo que no volverá a ocurrir una flotación aleatoria.
-
-Al mismo tiempo, cambie el umbral de visualización de **25 los mensajes cayeron a 5**.
+没有这份报告，这些问题大概还会在上游潜伏很久。谢谢你。
 
 ---
 
-### Reparación de informe de auditoría
+## 中文
 
-#### La recuperación híbrida finalmente es verdaderamente paralela
-La anotación dice"Concurrencia de rutinas", en realidad se ejecutan dos líneas secuencialmente (`resultOf` Sólo intenta/atrapa el envoltorio, no `async`). La tediosa búsqueda vectorial de grandes bases de datos y BM25 se superponen por completo. Usar en su lugar `coroutineScope + async`, el consumo total de tiempo cambia de "la suma de los dos" a "el mayor de los dos".
+### 用户反馈修复
 
-#### El tamaño del fragmento ya no es un valor establecido × 2
-`plainChunkLimit = targetSize * 2` Permite insertar un solo fragmento por completo cuando el búfer está vacío. Digamos 400 y es posible que obtenga casi 800. Ahora presione estrictamente `targetSize` Rebanada.
+#### 删掉的聊天又自己回来了，还自动开始生成
 
-#### La superposición de bloques finalmente entra en vigor
-`markdownAware` Está habilitado de forma predeterminada, pero el orden en esta rama se invierte: primero `flush()` Limpia el buffer, luego toma la cola y toma la superposición.——Obtenga siempre una cadena vacía.**La superposición de configuraciones para todos los usuarios nunca tuvo efecto**.
+生成被中断时会留下一条 checkpoint（恢复锚点）。删除消息时按 id 精确清理，但流式中断时预生成的 id 可能与实际落盘行**对不上**，于是残留。
 
-#### Límite de inyección por bloque aumentado de 200 palabras 1200
-Implementación antigua codificada `take(200)`, después de ajustar el tamaño del fragmento a 500, el 60 % nunca entrará en el contexto.——Gaste más dinero en integración y obtenga menos información.
+下次进会话，恢复逻辑把残留 checkpoint 重建成一条新消息，按 checkpoint 的时间戳排序，所以跑到列表末尾——看起来就是"删了又出现"。
 
-#### RAG Ya no es posible recuperarlo si se queda atascado durante 5 minutos.
-query embedding No hay tiempo de espera y el OkHttpClient utilizado para el chat se reutiliza (`readTimeout = 300s`). El usuario tiene que esperar 5 minutos cuando el terminal "acepta la conexión pero no responde". Ahora agregue un tiempo de espera estricto de 10 segundos y, cuando expire, se reducirá a la recuperación de palabras clave locales.
+现在删消息时会额外按时间兜底清理该会话的残留 checkpoint。比被删消息更早的保留。
 
-#### La reconstrucción del índice ya no lee toda la base de datos en la memoria
-Para calcular un valor booleano `getAllWithEmbedding()`, lea el fragmento completo de la biblioteca junto con incrustarlo en la memoria (1024 Dimensiones: aproximadamente 4 KB/bloque,1 10.000 yuanes (40 MB+). Utilice recuentos de SQL en su lugar.
+#### 已经生成的回复，重进就消失
 
-#### La reconstrucción de índices ya no los borra silenciosamente
-Cuando falló a mitad de camino, el índice anterior se eliminó y el nuevo índice quedó incompleto. Los documentos todavía estaban en la lista y parecían normales, pero nunca se pudo recuperar la búsqueda. Ahora está marcado como "Índice perdido" y se muestra un mensaje de texto rojo debajo de la tarjeta del documento.
+消息落库是 REPLACE 语义。如果已有完整回复，而后又来了一次**内容为空**的写入（流式状态重置、恢复路径传空、工具轮重建漏字段），完整回复就被冲成空。
 
-#### El número "similitud 0,83" es falso
-La búsqueda híbrida devuelve la relación de la "puntuación relativa más alta" (la más alta es uniformemente 1,0), no la similitud del coseno. El resultado ahora conserva el verdadero `rawScore`.
+现在加了内容回归保护：旧内容非空而新值为空时，保留旧内容。
 
-#### Las visitas débiles a las palabras clave ya no se incluyen en los resultados.
-`threshold` Anteriormente solo funcionaba en rutas vectoriales,BM25 Los golpes participan en la fusión por muy débiles que sean. Los umbrales de las postales ahora también están normalizados por la fuerza relativa.
+#### 侧栏长按导航"没了"
 
-#### InicioDos saludos de tiempo contradictorios
-El resumen escribe saludos de la hora del día en el texto. Los saludos en la página de inicio son en tiempo real. "Buenas noches" y "Buenos mediodía" aparecerán al mismo tiempo por la noche. El resumen ya no incluye información sobre el período de tiempo.
+**功能一直在，但看不见。**
 
-#### 30 Reconstrucción del punto del documento del artículo pero genera 46 artículos
-Lo que es adicional es la documentación de desarrollo incorporada. Es necesario reconstruirlos juntos, pero no deben incluirse en los números que ven los usuarios. Ahora presione incorporado/Separación de documentos de usuario.
+10-09 的改动为了修"可视滑块在长会话里到处飘"，把轨道整个删掉，改成右侧长按 + 上下滑动的隐形热区。理由是真的：LazyColumn 不暴露总高度，只能按平均高外推，遇到图片/代码块这类长条目误差极大，滑块就会乱跳。
 
-#### 8 Los elementos numéricos ahora se pueden ingresar manualmente
-Anteriormente, solo podía arrastrar el control deslizante, que estaba limitado por el tamaño del paso: el tamaño del bloque era 100 (**380 No puedo configurarlo**), el número máximo de búsquedas es 10,Token Presupuesto limitado a 8.000. Ahora haga clic en el área de valor para ingresar y se recortará automáticamente al rango legal.
+但完全不可见等于没有。现在加了一条**仅滑动时浮现**的提示线：
 
-#### Se agregó el botón "Probar incrustación"
-Falta de coincidencia (nombre de modelo incorrecto, saldo insuficiente,Provider No compatible) Anteriormente, solo podía averiguarlo después de reconstruir el índice y el error solo se informaba en el registro. Ahora inserte una oración con un clic `ping`, haga eco de las dimensiones y el tiempo necesario, o proporcione un motivo de error legible.
+- 平时完全隐藏
+- 长按右侧边缘 → 轻震动 + 淡入（120ms）
+- 滑动中保持可见，同时浮出消息预览
+- 松手淡出（220ms）
 
-#### Reindexar falló y finalmente hablar palabras humanas
-El antiguo mensaje simplemente decía "46 "Error", los errores reales (como HTTP 402 Saldo insuficiente) solo están en logcat. Ahora muestre las dos primeras razones específicas.
+不做位置映射，所以不会重现乱飘。
 
-#### Agregar nueva nube Rerank
-El informe dice que esta es la mayor brecha de capacidad en comparación con herramientas similares. Se agregó compatibilidad con OpenAI `POST {baseUrl}/rerank`,SiliconFlow / Jina / Cohere Se puede reutilizar. La reclasificación local está básicamente inactiva para los chinos (trate toda la oración china como un token) y ahora existe una solución en la nube.
+同时把显示门槛从 **25 条消息降到 5 条**。
 
-#### Cubrir los parámetros de búsqueda por base de datos de puntos de conocimiento (DB 111→112)
-La implementación anterior tiene una configuración RAG global y diferentes bibliotecas no pueden tener diferentes valores de fragmento/topK/umbral. Cada biblioteca ahora puede anular `chunkSize` / `chunkOverlap` / `topK` / `threshold` / `embeddingModel`, déjelo en blanco para heredar el valor global.
+---
 
-#### El modelo ONNX local tiene una entrada
-`localModelPath` No ha habido ningún acceso a la capa de interfaz de usuario y los usuarios normales nunca podrán igualar el modelo ONNX.LOCAL El modo siempre se degrada a búsqueda de palabras clave. Ahora puede seleccionar archivos .onnx en la página de configuración y copiarlos automáticamente al directorio privado de la aplicación.
+### 审计报告修复
 
-#### Gesto de retorno a pantalla completa tocado accidentalmente
-0 posiciones antes de la posición completa `systemGestureExclusionRects`y el contenido está a solo 16 dp del borde de la pantalla. Al deslizar el dedo horizontalmente desde el borde, el sistema regresará primero. Se agregaron exclusiones de gestos para pasar la página horizontal en la página de inicio y deslizar el dedo hacia la izquierda para eliminar la lista de conversaciones.
+#### 混合检索终于真的并行了
+注释写着"协程并发"，实际是两行顺序执行（`resultOf` 只是 try/catch 包装，没有 `async`）。大库时向量检索与 BM25 耗时全额叠加。改用 `coroutineScope + async`，总耗时从「两者之和」变成「两者较大值」。
 
-#### La entrada de la página de enlace profundo no tiene efecto
-`onNewIntent` no llamado `setIntent()`, dando lugar a posteriores `getIntent()` Siempre devuelve la intención anterior al inicio.
+#### 分块大小不再是设定值 × 2
+`plainChunkLimit = targetSize * 2` 允许单个片段在缓冲为空时整段塞入。设 400 可能得到近 800。现在严格按 `targetSize` 切分。
 
-#### Otros
-- El problema de enviar borradores de pensamiento en inglés al chat grupal (v2.6.4 Volver) Corregido: ya no se rescata el contenido del discurso del razonamiento
-- Mensaje activo OOC: el carácter ya no se corta en 500 palabras, se agregan definiciones de personalidad y restricciones de idioma, y el contexto es de 5 elementos. → 12 Artículo
-- El modelo multimodal de la estación de transferencia ya no se elimina por error en la tabla de capacidades incorporada.
-- Se ha solucionado la falsa alarma del botón "Test" del proveedor (maxTokens 16 → 256)
-- Los detalles del error ya no se truncan a 80 caracteres.
-- Termux Suplemento guía de autorización `termux-reload-settings`
-- Se agregó un interruptor de "modo de respuesta rápida" para omitir la recuperación de memoria relevante de aproximadamente 500 ms por ronda.
-- 4 en `!!` convergencia,`GlobalScope` Convergencia al alcance a nivel de módulo
+#### 分块重叠终于生效
+`markdownAware` 默认开启，而该分支里写反了顺序：先 `flush()` 清空 buffer，再取尾部取重叠——永远拿到空串。**所有用户的重叠设置从未生效过**。
+
+#### 每块注入上限从 200 字提到 1200
+旧实现硬编码 `take(200)`，你把 chunkSize 调到 500 时后 60% 永远进不了上下文——多花 embedding 钱，少拿信息。
+
+#### RAG 检索不再可能卡 5 分钟
+query embedding 没有任何超时，且复用了聊天用的 OkHttpClient（`readTimeout = 300s`）。端点「接受连接但不响应」时用户要等 5 分钟。现在加 10 秒硬超时，超时即熔断降级到本地关键词检索。
+
+#### 重建索引不再把全库读进内存
+为算一个布尔值调 `getAllWithEmbedding()`，把全库 chunk 连同 embedding 读进内存（1024 维约 4KB/块，1 万块 40MB+）。改用 SQL 计数。
+
+#### 重建索引不再静默清空
+中途失败时旧索引已删、新索引不完整，文档还在列表里看起来正常，但检索永远召不到。现在标记为「索引已丢失」，文档卡下方显示红字提示。
+
+#### 「相似度 0.83」那个数字是假的
+混合检索返回的是「相对最高分」的比值（最高一律 1.0），不是余弦相似度。现在结果同时保留真实的 `rawScore`。
+
+#### 关键词弱命中不再混进结果
+`threshold` 此前只作用于向量路，BM25 命中无论多弱都参与融合。现在也按相对强度归一化后卡阈值。
+
+#### 首页两个矛盾的时间问候
+摘要把时段问候写死进文本，首页问候是实时的，晚上会同时出现「晚上好」和「中午好」。摘要不再携带时段信息。
+
+#### 30 篇文档点重建却提示 46 篇
+多出来的是内建开发文档。它们确实需要一起重建，但不该计入用户看到的数字。现在按内建/用户文档分离。
+
+#### 8 个数值项现在能手动输入
+此前只能拖滑块，受步长限制：分块大小步长 100（**380 设不了**）、检索数量上限 10、Token 预算上限 8000。现在点数值区即可输入，自动夹到合法区间。
+
+#### 新增「测试 Embedding」按钮
+配错（模型名错、余额不足、Provider 不支持）此前只能等重建索引才发现，报错只在日志里。现在一键 embed 一句 `ping`，回显维度与耗时，或给出可读的失败原因。
+
+#### 重索引失败终于说人话
+旧提示只说「46 篇失败」，真实错误（如 HTTP 402 余额不足）只在 logcat。现在展示前两条具体原因。
+
+#### 新增云端 Rerank
+报告称这是与同类工具最大的能力差距。新增 OpenAI 兼容的 `POST {baseUrl}/rerank`，SiliconFlow / Jina / Cohere 都能复用。本地 rerank 对中文基本空转（把整句中文当一个 token），现在有了云端方案。
+
+#### 按知识点库覆盖检索参数（DB 111→112）
+旧实现 RAG 配置全局一份，不同库不能有不同 chunk/topK/阈值。现在每个库可以覆盖 `chunkSize` / `chunkOverlap` / `topK` / `threshold` / `embeddingModel`，留空则继承全局。
+
+#### 本地 ONNX 模型有入口了
+`localModelPath` 在 UI 层此前零命中，普通用户永远配不了 ONNX 模型，LOCAL 模式恒降级到关键词检索。现在设置页可以选 .onnx 文件，自动复制到应用私有目录。
+
+#### 全面屏返回手势误触
+全仓此前 0 处 `systemGestureExclusionRects`，而内容距屏幕边缘仅 16dp，从边缘起手的横滑会先触发系统返回。已给首页横向翻页、对话列表左滑删除加上手势排除。
+
+#### 深链页面输入不生效
+`onNewIntent` 未调用 `setIntent()`，导致后续 `getIntent()` 一直返回启动时的旧 intent。
+
+#### 其它
+- 群聊把英文思考草稿发进群的问题（v2.6.4 回归）已修：不再从 reasoning 抢救发言内容
+- 主动消息 OOC：人设不再截断 500 字，补上人格定义与语言约束，上下文 5 条 → 12 条
+- 中转站多模态模型不再被内置能力表错杀
+- 供应商「测试」按钮误报修掉（maxTokens 16 → 256）
+- 错误详情不再截断 80 字
+- Termux 授权引导补上 `termux-reload-settings`
+- 新增「快速回复模式」开关，跳过每轮约 500ms 的相关记忆检索
+- 4 处 `!!` 收敛，`GlobalScope` 收敛为模块级作用域
 
 ---
 
@@ -189,16 +189,16 @@ Thank you.
 
 ---
 
-## Instalación
+## 安装
 
-- Simplemente sobrescriba e instale.**No es necesario desinstalar**, retención de datos
-- **base de datos 111 → 112**: Se agregó una columna de cobertura de parámetros de búsqueda a nivel de base de conocimientos (todos pueden estar en blanco; dejarlo en blanco heredará el global)
-- Firmado con 2.6.1 ~ 2.6.4 Lo mismo
+- 覆盖安装即可，**无需卸载**，数据保留
+- **数据库 111 → 112**：新增知识库级检索参数覆盖列（全部可空，留空即继承全局）
+- 签名与 2.6.1 ~ 2.6.4 相同
 
-> ⚠️ Esta versión incluye migración de base de datos. La actualización desde cualquier versión 2.6.x requerirá 5 pasos `ALTER TABLE ADD COLUMN`, todos admiten valores NULL y tienen valores predeterminados. El riesgo es bajo, pero se recomienda realizar una copia de seguridad antes de actualizar por primera vez.
+> ⚠️ 本版含数据库迁移。从 2.6.x 任何版本升级都会走一次 5 条 `ALTER TABLE ADD COLUMN`，均为可空且有默认值，风险低，但建议首次升级前先备份。
 
-## cosas conocidas
+## 已知事项
 
-- "El borde derecho del cuadro de mensaje se desborda" no se puede reproducir ni localizar, y el usuario debe proporcionar una sesión específica/Comprobar después de configurar
-- #5 reasoning Las fugas se manejan según el plan C (inténtelo de nuevo la primera vez y solo asuma toda la responsabilidad si falla nuevamente), lo cual es un compromiso con el principio existente de "vomitar está bien pero no estar vacío".
-- La línea base de migración histórica no está fusionada (esto invalidará la ruta de actualización para los usuarios de versiones muy antiguas y los riesgos superarán los beneficios)
+- 「消息框右边缘溢出」未能复现和定位，需用户提供具体会话/设置后再排查
+- #5 reasoning 泄漏按方案 C 处理（首次重试、再失败才兜底），与「吐可以空不行」的既有原则折中
+- 历史迁移 baseline 未合并（会让很老版本的用户升级路径失效，风险大于收益）

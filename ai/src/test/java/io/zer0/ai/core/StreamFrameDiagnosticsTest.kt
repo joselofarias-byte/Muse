@@ -16,7 +16,7 @@ class StreamFrameDiagnosticsTest {
         assertEquals(cause, event.throwable)
         assertTrue(event.message.contains("OpenAI"))
         assertTrue(event.message.contains("frameLength=${payload.length}"))
-        assertTrue(event.message.contains("inténtelo de nuevo"))
+        assertTrue(event.message.contains("请重试"))
         assertFalse(event.message.contains("user message"))
         assertFalse(event.message.contains("secret"))
     }

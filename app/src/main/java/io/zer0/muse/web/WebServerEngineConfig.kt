@@ -5,12 +5,12 @@ import io.ktor.server.engine.connector
 import io.ktor.server.engine.sslConnector
 
 /**
- * Web La configuración del conector para el servicio.
+ * Web 服务的连接器配置。
  *
- * Utilice el motor CIO en lugar de Netty:Netty Hay muchos lugares que dependen de la reflexión (`ReflectiveChannelFactory` construir canal,
- * `ResourceLeakDetector` La inicialización estática busca métodos por nombre),R8 Al confundir los paquetes de lanzamiento, se eliminarán uno por uno.
- * Aparece como inicio `NoClassDefFoundError` / `does not have a public non-arg constructor`.
- * CIO Es una implementación pura de Kotlin, sin estas rutas de reflexión, y no introduce muchas dependencias adicionales en Netty.
+ * 用 CIO 引擎而不是 Netty：Netty 有多处依赖反射（`ReflectiveChannelFactory` 建 Channel、
+ * `ResourceLeakDetector` 静态初始化按名字找方法），R8 混淆 release 包时会逐个把它们掐掉，
+ * 表现为启动时 `NoClassDefFoundError` / `does not have a public non-arg constructor`。
+ * CIO 是纯 Kotlin 实现，没有这些反射路径，也不额外引入 Netty 那一大坨依赖。
  */
 internal fun webServerEngineConfiguration(
     tls: WebServerTls.TlsMaterial?,

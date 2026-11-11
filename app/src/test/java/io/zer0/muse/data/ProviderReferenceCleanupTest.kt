@@ -8,7 +8,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 
-/** Provider Prueba de limpieza de referencia del modelo global y de sesión después de la eliminación. */
+/** Provider 删除后全局与会话模型引用清理测试。 */
 class ProviderReferenceCleanupTest {
 
     @Test
@@ -57,7 +57,7 @@ class ProviderReferenceCleanupTest {
         assertNull(result.compressModelId)
         assertNull(result.visionModelId)
         assertNull(result.visionProviderId)
-        // v2.x: Los enlaces de modelo auxiliar del Proveedor eliminado se dejan en blanco; Se conservan las obligaciones de otros proveedores.
+        // v2.x: 被删 Provider 的辅助模型绑定置空；其他 Provider 的绑定保留
         assertNull(result.utilityModelBinding)
         assertEquals(
             io.zer0.muse.data.routing.UtilityModelBinding(providerId = "remaining", modelId = "shared-model"),
@@ -74,12 +74,12 @@ class ProviderReferenceCleanupTest {
         assertEquals("remaining", result.taskRoutingConfig.codeProviderId)
         assertEquals(mapOf("s2" to "shared-model"), result.sessionModelOverrides)
         assertEquals(mapOf("s2" to "remaining"), result.sessionProviderOverrides)
-        // Al eliminar un proveedor, también debe borrar la referencia de incrustación en la nube de RAG.,De lo contrario, cloudProviderId quedará permanentemente vacante.
+        // 删供应商时必须同时清掉 RAG 的云端 embedding 引用,否则 cloudProviderId 永久悬空
         assertEquals("", result.ragConfig.cloudProviderId)
         assertEquals("", result.ragConfig.cloudModel)
     }
 
-    // ── Eliminar un solo modelo:Sólo referencias claras a modelos eliminados. ──
+    // ── 删单个模型:只清指向被删模型的引用 ──
 
     @Test
     fun cleanupRemovedModelReferences_clearsEveryModelReference() {
@@ -132,7 +132,7 @@ class ProviderReferenceCleanupTest {
         assertNull(result.taskRoutingConfig.codeModelId)
         assertNull(result.taskRoutingConfig.creativeModelId)
         assertNull(result.taskRoutingConfig.analysisModelId)
-        // Enlace con ID de proveedor: solo los enlaces que pertenecen a este proveedor se dejan en blanco,p2 La vinculación de
+        // 绑定带 providerId:只有属于该 Provider 的绑定被置空,p2 的绑定原样保留
         assertNull(result.utilityModelBinding)
         assertEquals(UtilityModelBinding(providerId = "p2", modelId = "removed-large"), result.utilityLargeModelBinding)
         assertEquals("", result.ragConfig.cloudModel)

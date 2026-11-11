@@ -26,23 +26,23 @@ class ToolExposurePolicyTest {
 
     @Test
     fun `simple tool request can disable repeated reasoning`() {
-        assertTrue(ToolExposurePolicy.isSimpleToolRequest("Ayúdame a hacer los cálculos. 1+2"))
-        assertTrue(ToolExposurePolicy.isSimpleToolRequest("Llama a echo para grabarlo."))
-        assertFalse(ToolExposurePolicy.isSimpleToolRequest("Por favor analice por qué falló este plan."))
+        assertTrue(ToolExposurePolicy.isSimpleToolRequest("帮我算一下 1+2"))
+        assertTrue(ToolExposurePolicy.isSimpleToolRequest("调用 echo 记录一下"))
+        assertFalse(ToolExposurePolicy.isSimpleToolRequest("请分析这个方案为什么失败"))
     }
 
     @Test
     fun `explicit no-tool request disables provider tool calls`() {
-        assertTrue(ToolExposurePolicy.shouldDisableTools("Enumere todas las herramientas, no llame a ninguna"))
+        assertTrue(ToolExposurePolicy.shouldDisableTools("列出所有工具，不要调用任何工具"))
         assertTrue(ToolExposurePolicy.shouldDisableTools("list all tools, do not call any tools"))
-        assertFalse(ToolExposurePolicy.shouldRequireTool("Enumere todas las herramientas, no llame a ninguna", allTools))
+        assertFalse(ToolExposurePolicy.shouldRequireTool("列出所有工具，不要调用任何工具", allTools))
     }
 
     @Test
     fun `explicit action requires tool choice`() {
         assertTrue(
             ToolExposurePolicy.shouldRequireTool(
-                "Ayúdame a buscar las noticias de hoy.",
+                "帮我搜索一下今天的新闻",
                 allTools,
             ),
         )
@@ -54,7 +54,7 @@ class ToolExposurePolicyTest {
         )
         assertFalse(
             ToolExposurePolicy.shouldRequireTool(
-                "Estoy de buen humor hoy",
+                "今天心情不错",
                 allTools,
             ),
         )
@@ -64,19 +64,19 @@ class ToolExposurePolicyTest {
     fun `MCP action can require a tool without explicitly saying MCP`() {
         assertTrue(
             ToolExposurePolicy.shouldRequireTool(
-                "ayudame a crear uno issue",
+                "帮我创建一个 issue",
                 allTools + tool("mcp_github__create_issue"),
             ),
         )
         assertTrue(
             ToolExposurePolicy.shouldRequireTool(
-                "Ayúdame a encontrar esto issue",
+                "帮我查找这个 issue",
                 allTools + tool("mcp_github__search_issues"),
             ),
         )
     }
 
-    /** Construir un"Muchas herramientas"lista de,Anula el umbral de activación para la lógica de restricción. */
+    /** 构造一个"工具很多"的列表,覆盖收窄逻辑的触发阈值。 */
     private val manyTools = allTools + listOf(
         tool("set_alarm"), tool("toggle_flashlight"), tool("quick_note_add"), tool("translate"),
         tool("get_weather"), tool("open_app"), tool("clipboard_read"), tool("search_memory"),
@@ -89,45 +89,45 @@ class ToolExposurePolicyTest {
 
     @Test
     fun `session keywords expose the session family`() {
-        // v2.6.2(comentarios de los usuarios): El asistente hojea otras conversaciones —— “sesión”La palabra clave class debería mostrar session_read.
-        val filtered = ToolExposurePolicy.filterToolsForRequest("Ayúdame a ver lo que se discutió en conversaciones anteriores.", manyTools)
+        // v2.6.2（用户反馈）: 助手翻看其他会话 —— “会话”类关键词应带出 session_read。
+        val filtered = ToolExposurePolicy.filterToolsForRequest("帮我看看之前的会话都聊了什么", manyTools)
         val names = filtered.map { it.name }.toSet()
-        assertTrue("session_read Debe exponerse con la familia de sesión.", "session_read" in names)
-        assertTrue("session_list Debe exponerse con la familia de sesión.", "session_list" in names)
-        assertFalse("Las herramientas opcionales irrelevantes deben limitarse", "generate_video" in names)
+        assertTrue("session_read 应随会话族暴露", "session_read" in names)
+        assertTrue("session_list 应随会话族暴露", "session_list" in names)
+        assertFalse("无关可选工具应被收窄", "generate_video" in names)
     }
 
     @Test
     fun `require tool needs a matching exposed tool`() {
-        // v2.6.2(Auditoría de herramientas): Cuando se accede a la palabra clave pero no hay una herramienta de coincidencia, no se fuerza la opción requerida.
-        assertTrue("Solicite herramientas cuando haya herramientas compatibles disponibles", ToolExposurePolicy.shouldRequireTool("Ayúdame a buscar las noticias de hoy.", listOf(tool("web_search"))))
-        assertFalse("No se debe forzar cuando no existe una herramienta coincidente. required", ToolExposurePolicy.shouldRequireTool("Ayúdame a buscar las noticias de hoy.", listOf(tool("calculator"))))
+        // v2.6.2（工具审计）: 命中关键词但没有匹配工具时不强发 required。
+        assertTrue("有匹配工具时应要求工具", ToolExposurePolicy.shouldRequireTool("帮我搜索一下今天的新闻", listOf(tool("web_search"))))
+        assertFalse("无匹配工具时不应强发 required", ToolExposurePolicy.shouldRequireTool("帮我搜索一下今天的新闻", listOf(tool("calculator"))))
     }
 
     @Test
     fun `simple matched request keeps only family core standard and mcp`() {
-        val filtered = ToolExposurePolicy.filterToolsForRequest("Pon una alarma para mañana a las ocho en punto", manyTools)
+        val filtered = ToolExposurePolicy.filterToolsForRequest("设个明天早上八点的闹钟", manyTools)
         val names = filtered.map { it.name }.toSet()
-        assertTrue("Las herramientas de la familia Hit deberían permanecer", "set_alarm" in names)
-        assertTrue("Las herramientas básicas deben permanecer", "calculator" in names)
-        assertTrue("Las herramientas normalmente abiertas deben conservarse", "web_search" in names)
-        assertTrue("MCP Se deben conservar las herramientas.", "mcp_github__create_issue" in names)
-        assertFalse("Las herramientas opcionales irrelevantes deben limitarse", "generate_image" in names)
-        assertFalse("Se deben reducir las herramientas globales irrelevantes", "workspace_write" in names)
+        assertTrue("命中族工具应保留", "set_alarm" in names)
+        assertTrue("核心工具应保留", "calculator" in names)
+        assertTrue("常开工具应保留", "web_search" in names)
+        assertTrue("MCP 工具应保留", "mcp_github__create_issue" in names)
+        assertFalse("无关可选工具应被收窄", "generate_image" in names)
+        assertFalse("无关全局工具应被收窄", "workspace_write" in names)
     }
 
     @Test
     fun `unmatched simple request narrows to core and standard`() {
-        val filtered = ToolExposurePolicy.filterToolsForRequest("hola,Estoy de buen humor hoy", manyTools)
+        val filtered = ToolExposurePolicy.filterToolsForRequest("你好呀,今天心情不错", manyTools)
         val names = filtered.map { it.name }.toSet()
-        assertTrue("Las herramientas normalmente abiertas deben conservarse", "web_search" in names)
-        assertFalse("Las herramientas opcionales irrelevantes deben limitarse", "echo" in names)
-        assertFalse("Se deben reducir las herramientas globales irrelevantes", "browser_navigate" in names)
+        assertTrue("常开工具应保留", "web_search" in names)
+        assertFalse("无关可选工具应被收窄", "echo" in names)
+        assertFalse("无关全局工具应被收窄", "browser_navigate" in names)
     }
 
     @Test
     fun `complex request without action keywords also narrows`() {
-        val filtered = ToolExposurePolicy.filterToolsForRequest("Por favor analice por qué falló este plan.", manyTools)
+        val filtered = ToolExposurePolicy.filterToolsForRequest("请分析这个方案为什么失败", manyTools)
         assertTrue(filtered.size < manyTools.size)
         assertFalse(filtered.map { it.name }.contains("echo"))
     }
@@ -135,67 +135,67 @@ class ToolExposurePolicyTest {
     @Test
     fun `complex direct request relaxes optional but not global`() {
         val filtered = ToolExposurePolicy.filterToolsForRequest(
-            "Hazlo por mí: analiza estos datos,Luego organízalo en notas y envíalas al equipo.",
+            "帮我执行一下：分析这份数据,然后整理成笔记发给团队",
             manyTools,
         )
         val names = filtered.map { it.name }.toSet()
-        assertTrue("Las solicitudes de acción explícitas deberían liberar herramientas opcionales", "echo" in names)
-        assertFalse("Las herramientas globales todavía necesitan ser atacadas o autorizadas", "workspace_write" in names)
+        assertTrue("明确动作请求应放开可选工具", "echo" in names)
+        assertFalse("全局工具仍需命中或授权", "workspace_write" in names)
     }
 
     @Test
     fun `global tools need family hit sticky or authorization`() {
-        val hit = ToolExposurePolicy.filterToolsForRequest("Ayúdame a cambiar el código en el espacio de trabajo.", manyTools)
-        assertTrue("Los éxitos familiares deberían liberar herramientas en el espacio de trabajo", "workspace_write" in hit.map { it.name })
+        val hit = ToolExposurePolicy.filterToolsForRequest("帮我改一下工作区里的代码", manyTools)
+        assertTrue("族命中应放开工作区工具", "workspace_write" in hit.map { it.name })
         val sticky = ToolExposurePolicy.filterToolsForRequest(
-            "continuar",
+            "继续",
             manyTools,
             stickyToolNames = setOf("browser_navigate"),
         )
-        assertTrue("La permanencia de la sesión debe preservar las herramientas usadas", "browser_navigate" in sticky.map { it.name })
+        assertTrue("会话粘性应保留用过的工具", "browser_navigate" in sticky.map { it.name })
         val authorized = ToolExposurePolicy.filterToolsForRequest(
-            "continuar",
+            "继续",
             manyTools,
             authorizedToolNames = setOf("plugin_market_install"),
         )
-        assertTrue("La autorización de sesión debe conservarse en las herramientas.", "plugin_market_install" in authorized.map { it.name })
+        assertTrue("会话授权应保留工具", "plugin_market_install" in authorized.map { it.name })
         val loaded = ToolExposurePolicy.filterToolsForRequest(
-            "continuar",
+            "继续",
             manyTools,
             loadedToolNames = setOf("workspace_write"),
         )
-        assertTrue("find_tools Las herramientas cargadas deben permanecer visibles", "workspace_write" in loaded.map { it.name })
+        assertTrue("find_tools 装载的工具应持续可见", "workspace_write" in loaded.map { it.name })
     }
 
     @Test
     fun `small tool face is untouched by tiering`() {
         val small = allTools.take(8)
-        val filtered = ToolExposurePolicy.filterToolsForRequest("Hola", small)
+        val filtered = ToolExposurePolicy.filterToolsForRequest("你好", small)
         assertTrue(filtered.size == small.size)
     }
 
     @Test
     fun `greeting is not a direct tool request`() {
-        // v2.0 Regresar:Los saludos breves no deben utilizarse con intención instrumental.,De lo contrario, el pensamiento profundo se degradará por error y el proceso de pensamiento no será visible.
-        assertFalse(ToolExposurePolicy.isDirectToolRequest("Hola"))
-        assertFalse(ToolExposurePolicy.isDirectToolRequest("Hola", allTools))
-        assertFalse(ToolExposurePolicy.isDirectToolRequest("Estoy de buen humor hoy", allTools))
+        // v2.0 回归:短句问候不应被当成工具意图,否则深度思考会被误降级而看不到思考过程
+        assertFalse(ToolExposurePolicy.isDirectToolRequest("你好"))
+        assertFalse(ToolExposurePolicy.isDirectToolRequest("你好", allTools))
+        assertFalse(ToolExposurePolicy.isDirectToolRequest("今天心情不错", allTools))
     }
 
     @Test
     fun `explicit action is a direct tool request`() {
-        assertTrue(ToolExposurePolicy.isDirectToolRequest("Ayúdame a buscar las noticias de hoy.", allTools))
-        assertTrue(ToolExposurePolicy.isDirectToolRequest("Establece un recordatorio para mí: llámame mañana por la mañana a las ocho en punto", allTools))
+        assertTrue(ToolExposurePolicy.isDirectToolRequest("帮我搜索一下今天的新闻", allTools))
+        assertTrue(ToolExposurePolicy.isDirectToolRequest("帮我设置提醒：明天早上八点叫我", allTools))
         assertTrue(
             ToolExposurePolicy.isDirectToolRequest(
-                "ayudame a crear uno issue",
+                "帮我创建一个 issue",
                 allTools + tool("mcp_github__create_issue"),
             ),
         )
-        // Las palabras de operación de MCP de estilo pregunta no se cuentan como solicitudes de acción
+        // 问句式 MCP 操作词不算动作请求
         assertFalse(
             ToolExposurePolicy.isDirectToolRequest(
-                "que es MCP",
+                "什么是 MCP",
                 allTools + tool("mcp_github__create_issue"),
             ),
         )
@@ -203,121 +203,121 @@ class ToolExposurePolicyTest {
 
     @Test
     fun `python request exposes the builtin python script tool`() {
-        // v2.6.1 Regresar: Las herramientas integradas de Python pertenecen a la categoría GLOBAL,Es necesario pulsar la familia de palabras clave para que emita un sonido.
-        // Anteriormente, la familia de scripts solo enumeraba js/node,No incluido python → Los usuarios dicen"Ejecutar con Python"La herramienta no se envía en absoluto.,
-        // El modelo solo puede ir al shell para encontrar al intérprete.(Ralentí repetido medido por los usuarios).
+        // v2.6.1 回归: 内置 Python 工具属 GLOBAL 分类,需命中关键词族才发声。
+        // 此前脚本族只列了 js/node,未含 python → 用户说"用 python 跑"时工具根本不发出去,
+        // 模型只能去 shell 找解释器(用户实测反复空转)。
         val scriptTools = padding + listOf(
             tool("execute_javascript"), tool("execute_node_script"),
             tool("execute_python_script"), tool("execute_shell"),
             tool("calculator"),
         )
-        val zhAsks = ToolExposurePolicy.filterToolsForRequest("Ayúdame a ejecutar un script en Python para procesar los datos.", scriptTools)
+        val zhAsks = ToolExposurePolicy.filterToolsForRequest("帮我用 python 跑个脚本处理数据", scriptTools)
             .map { it.name }.toSet()
-        assertTrue("Las solicitudes de Python chino deberían mostrar las herramientas integradas de Python", "execute_python_script" in zhAsks)
-        assertTrue("También mantenga las herramientas de Node", "execute_node_script" in zhAsks)
+        assertTrue("中文 python 请求应带出内置 Python 工具", "execute_python_script" in zhAsks)
+        assertTrue("同时保留 Node 工具", "execute_node_script" in zhAsks)
 
         val enAsks = ToolExposurePolicy.filterToolsForRequest("run a python3 script to parse this csv", scriptTools)
             .map { it.name }.toSet()
-        assertTrue("Las solicitudes de Python3 en inglés deberían mostrar las herramientas integradas de Python", "execute_python_script" in enAsks)
+        assertTrue("英文 python3 请求应带出内置 Python 工具", "execute_python_script" in enAsks)
     }
 
     @Test
     fun `unrelated chat still narrows the python tool`() {
-        // Regresión hacia atrás: python La familia no debe ampliar el área afectada.,Al chatear, todavía se reduce.
+        // 反向回归: python 族不应扩大命中面,闲聊时照旧收窄。
         val scriptTools = padding + listOf(
             tool("execute_python_script"), tool("execute_node_script"), tool("calculator"),
         )
-        val idle = ToolExposurePolicy.filterToolsForRequest("hola,Estoy de buen humor hoy", scriptTools)
+        val idle = ToolExposurePolicy.filterToolsForRequest("你好呀,今天心情不错", scriptTools)
             .map { it.name }.toSet()
-        assertFalse("Una pequeña charla no debería conducir a las herramientas de Python", "execute_python_script" in idle)
+        assertFalse("闲聊不应带出 Python 工具", "execute_python_script" in idle)
     }
 
     @Test
     fun `skill tools are narrowed by default and released when matched or loaded`() {
-        // Regresar(Etapa de adelgazamiento de herramientas.4):Las habilidades no están clasificadas en ToolCategories,Antes de que se reduzca, se enviará completo con la solicitud.,
-        // Es la mayor fuente de marcadores de posición de esquemas de herramientas. Ahora reducido en el mismo calibre que OPCIONAL.
+        // 回归(工具瘦身阶段4):技能在 ToolCategories 里无分类,未收窄前会随请求全量发出,
+        // 是工具 schema 占位的最大来源。现与 OPTIONAL 同口径收窄。
         val withSkills = manyTools + listOf(
             tool("skill_weekly_report"),
             tool("skill_translate_doc"),
         )
         val skillNames = setOf("skill_weekly_report", "skill_translate_doc")
 
-        // chat irrelevante:Se deben reducir las habilidades.
+        // 无关闲聊:技能应被收窄。
         val idle = ToolExposurePolicy.filterToolsForRequest(
-            "hola",
+            "你好呀",
             withSkills,
             skillToolNames = skillNames,
         ).map { it.name }.toSet()
-        assertFalse("Las habilidades irrelevantes deben reducirse", "skill_weekly_report" in idle)
-        assertFalse("Las habilidades irrelevantes deben reducirse", "skill_translate_doc" in idle)
+        assertFalse("无关技能应被收窄", "skill_weekly_report" in idle)
+        assertFalse("无关技能应被收窄", "skill_translate_doc" in idle)
 
-        // find_tools Después de cargar:Las habilidades deben permanecer visibles.
+        // find_tools 装载后:技能应持续可见。
         val loaded = ToolExposurePolicy.filterToolsForRequest(
-            "continuar",
+            "继续",
             withSkills,
             loadedToolNames = setOf("skill_weekly_report"),
             skillToolNames = skillNames,
         ).map { it.name }.toSet()
-        assertTrue("Las habilidades cargadas deben ser visibles", "skill_weekly_report" in loaded)
-        assertFalse("Las habilidades descargadas aún deberían reducirse", "skill_translate_doc" in loaded)
+        assertTrue("已装载技能应可见", "skill_weekly_report" in loaded)
+        assertFalse("未装载技能仍应收窄", "skill_translate_doc" in loaded)
 
-        // No transmitido skillToolNames(viejo comportamiento)tiempo,Las categorías no registradas siguen siendo tan visibles como son.
+        // 未传 skillToolNames(旧行为)时,未登记分类仍按既有可见性。
         val legacy = ToolExposurePolicy.filterToolsForRequest(
-            "hola",
+            "你好呀",
             withSkills,
         ).map { it.name }.toSet()
-        assertTrue("Mantener la visibilidad existente cuando no se declara como una habilidad", "skill_weekly_report" in legacy)
+        assertTrue("未声明为技能时保持既有可见性", "skill_weekly_report" in legacy)
     }
 
     @Test
-    fun `La familia del espacio de trabajo puede aparecer cuando se golpea workspace_edit`() {
-        // Si la herramienta existe pero no se puede enviar, significa que no existe: los nombres de herramientas de la familia del espacio de trabajo deben contener workspace_edit.
-        // De lo contrario el usuario dice“Cambiar el código en el espacio de trabajo.”Esta herramienta no quedará expuesta cuandofind_tools No hay forma de hablar de eso.
+    fun `工作区族命中时能带出 workspace_edit`() {
+        // 工具存在但发不出去等于不存在：工作区族的 toolNames 必须含 workspace_edit，
+        // 否则用户说“改一下工作区里的代码”时这个工具不会被露出，find_tools 也无从谈起。
         val workspaceTools = padding + listOf(
             tool("workspace_read"), tool("workspace_write"), tool("workspace_edit"), tool("calculator"),
         )
 
-        val hit = ToolExposurePolicy.filterToolsForRequest("Ayúdame a cambiar el código en el espacio de trabajo.", workspaceTools)
+        val hit = ToolExposurePolicy.filterToolsForRequest("帮我改一下工作区里的代码", workspaceTools)
             .map { it.name }
             .toSet()
-        assertTrue("Los éxitos familiares del espacio de trabajo deberían sacarse a la luz workspace_edit", "workspace_edit" in hit)
-        assertTrue("El comportamiento de otras herramientas de la misma familia se mantiene sin cambios.", "workspace_write" in hit)
+        assertTrue("工作区族命中应带出 workspace_edit", "workspace_edit" in hit)
+        assertTrue("同族其他工具行为不变", "workspace_write" in hit)
     }
 
-    /** Rellenar hasta reducir el umbral(20)arriba, de lo contrario la lógica jerárquica no tendrá efecto. */
+    /** 填充到收窄阈值(20)以上，否则分层逻辑不生效。 */
     private val padding = (1..22).map { tool("pad_tool_$it") }
 
     @Test
     fun `device family narrowing splits cold params from hot toggles`() {
-        // escenario4:Desglose de la familia de información del dispositivo — Los parámetros de dispositivos impopulares solo se publican según las coincidencias de palabras clave del dispositivo.
+        // 阶段4:设备信息族拆细 — 冷门设备参数按设备关键词命中才发。
         val deviceTools = padding + listOf(
             tool("get_battery_info"), tool("get_memory_info"), tool("get_cpu_info"), tool("get_sensors_list"),
             tool("toggle_flashlight"), tool("vibrate"), tool("toggle_wifi"),
             tool("browser_navigate"), tool("calculator"),
         )
-        val batteryOnly = ToolExposurePolicy.filterToolsForRequest("¿Cuánta potencia tiene el teléfono?", deviceTools)
+        val batteryOnly = ToolExposurePolicy.filterToolsForRequest("手机还有多少电量", deviceTools)
             .map { it.name }.toSet()
-        assertTrue("La familia de baterías debería plantear la consulta sobre la batería.", "get_battery_info" in batteryOnly)
-        assertFalse("No se debe emitir una consulta de memoria cuando se omite la familia de parámetros del dispositivo", "get_memory_info" in batteryOnly)
-        assertFalse("No se deben emitir consultas de sensores cuando no se alcanza la familia de parámetros del dispositivo.", "get_sensors_list" in batteryOnly)
+        assertTrue("电量族应带出电池查询", "get_battery_info" in batteryOnly)
+        assertFalse("未命中设备参数族时不应发内存查询", "get_memory_info" in batteryOnly)
+        assertFalse("未命中设备参数族时不应发传感器查询", "get_sensors_list" in batteryOnly)
 
-        val cpuAsked = ToolExposurePolicy.filterToolsForRequest("Dime el modelo de CPU", deviceTools)
+        val cpuAsked = ToolExposurePolicy.filterToolsForRequest("帮我看看 CPU 型号", deviceTools)
             .map { it.name }.toSet()
-        assertTrue("La familia de parámetros del dispositivo afectado debería emitir una consulta de CPU", "get_cpu_info" in cpuAsked)
+        assertTrue("命中设备参数族应发 CPU 查询", "get_cpu_info" in cpuAsked)
     }
 
     @Test
     fun `accessibility family splits read from action`() {
-        // escenario4:Desglose de grupos de accesibilidad — Mirar la pantalla versus operar la pantalla ya no resalta mutuamente.
+        // 阶段4:无障碍族拆细 — 看屏幕 vs 屏幕操作 不再互相带出。
         val autoTools = padding + listOf(
             tool("screen_read"), tool("ui_click"), tool("screen_tap"),
             tool("automation_workflow"), tool("ui_agent"),
             tool("calculator"),
         )
-        val looksAtScreen = ToolExposurePolicy.filterToolsForRequest("mira lo que hay en la pantalla", autoTools)
+        val looksAtScreen = ToolExposurePolicy.filterToolsForRequest("看看屏幕上是什么", autoTools)
             .map { it.name }.toSet()
-        assertTrue("Mirar la pantalla debería conducir a la lectura de la pantalla.", "screen_read" in looksAtScreen)
-        assertFalse("Al mirar la pantalla no debería aparecer el tipo de clic.", "ui_click" in looksAtScreen)
-        assertFalse("La visualización de la pantalla no debe conducir a GUI Agent", "ui_agent" in looksAtScreen)
+        assertTrue("看屏幕应带出读屏", "screen_read" in looksAtScreen)
+        assertFalse("看屏幕不应带出点击类", "ui_click" in looksAtScreen)
+        assertFalse("看屏幕不应带出 GUI Agent", "ui_agent" in looksAtScreen)
     }
 }

@@ -35,10 +35,10 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * TEST-03: chat grupal ViewModel — state Ruta crítica de distribución de compilación y renderizado(Carga de página/cambiar chat grupal/envío optimista)Prueba única de JVM.
+ * TEST-03: 群聊 ViewModel — state 生成 + 渲染分发关键路径(分页加载 / 切换群聊 / 乐观发送)的 JVM 单测。
  *
- * Toda la inyección de dependencia MockK mock;GroupChatViewModel no tocar Koin/GlobalContext,Puedes burlarte y ejecutar directamente.
- * Robolectric proporcionar Context;StandardTestDispatcher Controla el envío principal de viewModelScope.
+ * 全部依赖注入用 MockK mock;GroupChatViewModel 不触碰 Koin/GlobalContext,可直接 mock 跑通。
+ * Robolectric 提供 Context;StandardTestDispatcher 控制 viewModelScope 的 Main 调度。
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
@@ -67,7 +67,7 @@ class GroupChatViewModelTest {
         chatId = chatId,
         senderType = "assistant",
         senderId = "assistant-a",
-        senderName = "asistenteA",
+        senderName = "助手A",
         body = body,
         timestamp = ts,
     )
@@ -99,10 +99,10 @@ class GroupChatViewModelTest {
         every { settings.multiAgentConfigFlow } returns MutableStateFlow(MultiAgentConfig())
         every { settings.chatPreferencesFlow } returns MutableStateFlow(ChatPreferences())
 
-        // GroupChatActivityHub Es una capa de transmisión de memoria pura.(Sin dependencias de Android),Utilice simplemente ejemplos reales.
+        // GroupChatActivityHub 是纯内存广播层(无 Android 依赖),用真实实例即可。
         activityHub = GroupChatActivityHub()
 
-        // init Cada flujo de observación en el valor predeterminado está vacío.,Evite el bloqueo de recopilación a nulo;Se cubrirán casos de uso específicos según sea necesario.
+        // init 里各观察流默认给空值,避免 collect 到 null 崩溃;具体用例再按需覆盖。
         every { repository.observeChats() } returns MutableStateFlow(emptyList())
         every { assistantRepository.observeAll } returns MutableStateFlow(emptyList())
         every { repository.observeChat(any()) } returns MutableStateFlow<GroupChatEntity?>(null)
@@ -115,11 +115,11 @@ class GroupChatViewModelTest {
         unmockkAll()
     }
 
-    /** selectChat Cambiar chat grupal → currentChat Actualizado para seleccionar chat grupal(Núcleo de distribución de renderizado). */
+    /** selectChat 切换群聊 → currentChat 更新为选中群聊(渲染分发核心)。 */
     @Test
     fun `selectChat switches current chat and clears old messages`() {
-        val chat1 = chat("chat1", "grupo uno")
-        val chat2 = chat("chat2", "grupo 2")
+        val chat1 = chat("chat1", "群一")
+        val chat2 = chat("chat2", "群二")
         every { repository.observeChats() } returns MutableStateFlow(listOf(chat1, chat2))
         every { repository.observeChat("chat2") } returns MutableStateFlow(chat2)
         buildViewModel()
@@ -132,12 +132,12 @@ class GroupChatViewModelTest {
         assertTrue(viewModel.state.value.currentMessages.isEmpty())
     }
 
-    /** Cargando lista de chat grupal:observeChats Los datos devueltos están correctamente asignados a state.chats(Cantidad/preservar el orden). */
+    /** 群聊列表加载:observeChats 返回的数据正确映射进 state.chats(数量/保序)。 */
     @Test
     fun `observeChats maps repository list into state`() {
-        val chatNew = chat("chat2", "nuevo grupo", updatedAt = 200L)
-        val chatOld = chat("chat1", "viejo grupo", updatedAt = 100L)
-        // El almacén ha sido devuelto en orden descendente por actualizadoEn,VM Debe pasarse tal cual.
+        val chatNew = chat("chat2", "新群", updatedAt = 200L)
+        val chatOld = chat("chat1", "旧群", updatedAt = 100L)
+        // 仓库已按 updatedAt 降序返回,VM 应原样透传。
         every { repository.observeChats() } returns MutableStateFlow(listOf(chatNew, chatOld))
         buildViewModel()
 
@@ -145,18 +145,18 @@ class GroupChatViewModelTest {
         assertFalse(viewModel.state.value.isChatsLoading)
     }
 
-    /** loadMoreHistory Paginación:Primera pantalla N elementos → Desliza hacia arriba para cargar el historial anterior,El número de elementos aumenta sin necesidad de insertarlos repetidamente. */
+    /** loadMoreHistory 分页:首屏 N 条 → 上滑加载更早历史,条数增加且无重复插入。 */
     @Test
     fun `loadMoreHistory prepends older messages without duplicates`() {
         val chatId = "chat2"
-        every { repository.observeChats() } returns MutableStateFlow(listOf(chat("chat2", "grupo 2")))
+        every { repository.observeChats() } returns MutableStateFlow(listOf(chat("chat2", "群二")))
         every { repository.observeChat(any()) } returns MutableStateFlow<GroupChatEntity?>(null)
 
         coEvery { repository.countMessages(chatId) } returns 5
-        // En la mitad superior de la página: últimos 4 elementos(orden ascendente del tiempo ts=1..4),total=5 Por lo tanto hasMoreHistory=true
+        // 首屏：最近 4 条(时间升序 ts=1..4),total=5 故 hasMoreHistory=true
         val recent = (1L..4L).map { msg("m$it", chatId, "body$it", it) }
         coEvery { repository.getRecentMessagesPaged(chatId, any()) } returns recent
-        // 2 antes(ts 0,1),Mucho menos que el tamaño de la página. → Después de cargar hasMoreHistory regresa false
+        // 更早 2 条(ts 0、1),远少于页大小 → 加载后 hasMoreHistory 归 false
         val older = listOf(
             msg("m-1", chatId, "older-1", 0L),
             msg("m0", chatId, "older0", 1L),
@@ -174,16 +174,16 @@ class GroupChatViewModelTest {
 
         val messages = viewModel.state.value.currentMessages
         assertEquals(6, messages.size)
-        assertEquals(messages.size, messages.map { it.id }.toSet().size) // Sin inserción duplicada
+        assertEquals(messages.size, messages.map { it.id }.toSet().size) // 无重复插入
         assertEquals(2, viewModel.state.value.lastHistoryLoadCount)
         assertFalse(viewModel.state.value.hasMoreHistory)
     }
 
-    /** reinicio de estado:Los mensajes antiguos del chat grupal se borran después de cambiar de chat grupal(Evite las conversaciones cruzadas en los chats grupales). */
+    /** 状态重置:切换群聊后旧群聊消息被清空(防跨群聊串扰)。 */
     @Test
     fun `switching chat resets previous chat messages`() {
-        val chat2 = chat("chat2", "grupo 2")
-        val chat3 = chat("chat3", "grupo tres")
+        val chat2 = chat("chat2", "群二")
+        val chat3 = chat("chat3", "群三")
         every { repository.observeChats() } returns MutableStateFlow(listOf(chat2, chat3))
         every { repository.observeChat(any()) } returns MutableStateFlow<GroupChatEntity?>(null)
 
@@ -203,26 +203,26 @@ class GroupChatViewModelTest {
         assertFalse(viewModel.state.value.hasMoreHistory)
     }
 
-    /** enviar mensaje:Borre el cuadro de entrada + agregue un mensaje optimista + delegue el programador para activar la rotación(sendMessage Comportamiento comprobable de JVM). */
+    /** 发送消息:清空输入框 + 追加乐观消息 + 委托调度器触发轮转(sendMessage 的 JVM 可测行为)。 */
     @Test
     fun `sendMessage clears input and appends optimistic message`() {
         val chatId = "chat2"
-        every { repository.observeChats() } returns MutableStateFlow(listOf(chat("chat2", "grupo 2")))
+        every { repository.observeChats() } returns MutableStateFlow(listOf(chat("chat2", "群二")))
         coEvery { repository.countMessages(chatId) } returns 0
 
         buildViewModel()
         viewModel.selectChat(chatId)
         testScheduler.advanceUntilIdle()
 
-        viewModel.updateInput("  hola  ")
-        viewModel.sendMessage("  hola  ")
+        viewModel.updateInput("  你好呀  ")
+        viewModel.sendMessage("  你好呀  ")
         testScheduler.advanceUntilIdle()
 
         val state = viewModel.state.value
         assertEquals("", state.inputText)
         assertEquals(1, state.currentMessages.size)
         assertTrue(state.currentMessages.first().id.startsWith("optimistic-"))
-        // El programador delegado activa la rotación de agentes(Renderizar la ruta crítica distribuida a los trabajadores.).
-        verify { scheduler.launchRoundRobin(chatId, "  hola  ", emptyList(), emptyList()) }
+        // 委托调度器触发 Agent 轮转(渲染分发给 worker 的关键路径)。
+        verify { scheduler.launchRoundRobin(chatId, "  你好呀  ", emptyList(), emptyList()) }
     }
 }

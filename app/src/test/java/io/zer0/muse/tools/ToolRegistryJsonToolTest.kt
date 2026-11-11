@@ -50,9 +50,9 @@ class ToolRegistryJsonToolTest {
 
     @Test
     fun `nested object passed as escaped JSON string is decoded for the tool`() = runBlocking {
-        // Retorno:render_data Estas herramientas requieren parámetros de objetos anidados, pero el modelo suele pasar el esquema como una cadena.
-        // Escapar de JSON ("{\"labels\":[\"a\"]}"). Para implementación anterior toString().trim('"') Quite solo las comillas más externas,
-        // capa interna \" El residuo de escape provoca un error en el análisis (informe“data Debe ser un objeto JSON”).
+        // 回归：render_data 这类工具需要嵌套对象参数，但 schema 常被模型按 string 传成
+        // 转义 JSON（"{\"labels\":[\"a\"]}"）。旧实现用 toString().trim('"') 只剥最外层引号，
+        // 内层 \" 转义残留导致解析失败（报“data 必须是 JSON 对象”）。
         val registry = ToolRegistry(ApplicationProvider.getApplicationContext<Context>())
         registry.register(
             ToolRegistry.ToolDef(
@@ -64,7 +64,7 @@ class ToolRegistryJsonToolTest {
                 riskLevel = ToolRiskLevel.SAFE,
             ),
         ) { args ->
-            // La herramienta analiza internamente datos como JSON como render_data y devuelve la cantidad de etiquetas resueltas si tiene éxito.
+            // 工具内部像 render_data 那样把 data 当 JSON 解析，成功即返回解出的 labels 数量。
             val parsed = io.zer0.common.AppJson.parseToJsonElement(args["data"].orEmpty())
             val labels = (parsed as? kotlinx.serialization.json.JsonObject)?.get("labels")
             val count = (labels as? kotlinx.serialization.json.JsonArray)?.size ?: -1
@@ -74,7 +74,7 @@ class ToolRegistryJsonToolTest {
         val escaped = """{"data":"{\"labels\":[\"a\",\"b\",\"c\"],\"values\":[1,2,3]}"}"""
         assertEquals("ok:3", registry.executeFromJson("nested_object_probe", escaped))
 
-        // También está disponible pasar objetos directamente.
+        // 直接传对象也照样可用。
         val direct = """{"data":{"labels":["x"],"values":[1]}}"""
         assertEquals("ok:1", registry.executeFromJson("nested_object_probe", direct))
     }

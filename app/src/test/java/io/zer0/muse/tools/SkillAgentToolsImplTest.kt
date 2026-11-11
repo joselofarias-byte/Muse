@@ -28,7 +28,7 @@ class SkillAgentToolsImplTest {
 
         val summary = tools.execTaskPlan(
             mapOf(
-                "title" to "Plan de investigación",
+                "title" to "调研计划",
                 "steps" to """[{"title":"Step A"},{"title":"Step B"}]""",
             ),
         )
@@ -45,7 +45,7 @@ class SkillAgentToolsImplTest {
                 "status" to "done",
             ),
         )
-        assertTrue(updated.contains("actualizado"))
+        assertTrue(updated.contains("已更新"))
         assertEquals(
             AgentPlanStepStatus.DONE,
             tools.getActivePlans()[planId]?.steps?.first()?.status,
@@ -79,7 +79,7 @@ class SkillAgentToolsImplTest {
             tools.execUpdatePlanStep(
                 mapOf("planId" to "plan-a", "stepIndex" to "0", "status" to "done"),
                 sessionA,
-            ).contains("actualizado"),
+            ).contains("已更新"),
         )
         assertEquals(
             AgentPlanStepStatus.DONE,
@@ -93,7 +93,7 @@ class SkillAgentToolsImplTest {
             tools.execUpdatePlanStep(
                 mapOf("planId" to "plan-a", "stepIndex" to "0", "status" to "done"),
                 sessionB,
-            ).contains("actualizado"),
+            ).contains("已更新"),
         )
     }
 }

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-/** `navigator.onLine` El valor en tiempo real (el navegador tiene la última palabra). */
+/** `navigator.onLine` 的实时值（浏览器说了算）。 */
 export function useOnline(): boolean {
   const [online, setOnline] = useState(readOnline);
 

@@ -8,59 +8,59 @@ import androidx.room.Upsert
 import kotlinx.coroutines.flow.Flow
 
 /**
- * Objeto de acceso a datos de chat grupal.
+ * 群聊数据访问对象。
  *
- * Responsable de CRUD + Observación de flujo de entidades de chat grupal,y consultas de agregación entre tablas
- * (Vista previa de las últimas noticias, recuento de mensajes),Para uso en páginas de lista de chat grupal.
+ * 负责群聊实体的 CRUD + Flow 观察,以及跨表的聚合查询
+ * (最新消息预览、消息计数),供群聊列表页使用。
  */
 @Dao
 interface GroupChatDao {
 
-    /** Mira todos los chats grupales(traer al frente,Ordenar por actualizado en orden descendente con estado fijado,Excluir archivo) */
+    /** 观察全部群聊(置顶在前,同置顶状态按 updatedAt 降序,排除归档) */
     @Query("SELECT * FROM group_chats WHERE isArchived = 0 ORDER BY pinned DESC, updatedAt DESC")
     fun observeAll(): Flow<List<GroupChatEntity>>
 
-    /** Observar chats grupales archivados */
+    /** 观察已归档群聊 */
     @Query("SELECT * FROM group_chats WHERE isArchived = 1 ORDER BY updatedAt DESC")
     fun observeArchived(): Flow<List<GroupChatEntity>>
 
-    /** Observar un chat de un solo grupo(Se utiliza para actualizar metadatos en tiempo real en la página de detalles). */
+    /** 观察单个群聊(用于详情页实时刷新元数据)。 */
     @Query("SELECT * FROM group_chats WHERE id = :id")
     fun observeById(id: String): Flow<GroupChatEntity?>
 
-    /** Obtenga un chat grupal único por identificación(Desechable). */
+    /** 按 id 取单个群聊(一次性)。 */
     @Query("SELECT * FROM group_chats WHERE id = :id")
     suspend fun getById(id: String): GroupChatEntity?
 
-    /** Insertar o actualizar un chat grupal(Reemplazar en caso de conflicto). */
+    /** 插入或更新群聊(冲突时替换)。 */
     @Upsert
     suspend fun upsert(chat: GroupChatEntity)
 
-    /** Insertar nuevo chat grupal(Ignorar en caso de conflicto). */
+    /** 插入新群聊(冲突时忽略)。 */
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insert(chat: GroupChatEntity)
 
-    /** Eliminar chat grupal por identificación. */
+    /** 按 id 删除群聊。 */
     @Query("DELETE FROM group_chats WHERE id = :id")
     suspend fun deleteById(id: String)
 
-    /** Actualice la marca de tiempo actualizada en el chat grupal(Llaman cada vez que hay un mensaje nuevo.). */
+    /** 更新群聊的 updatedAt 时间戳(每次有新消息时调用)。 */
     @Query("UPDATE group_chats SET updatedAt = :timestamp WHERE id = :id")
     suspend fun touchUpdatedAt(id: String, timestamp: Long = System.currentTimeMillis())
 
-    // ── Consulta de agregación entre tablas(Consulta la tabla group_chat_messages)──
+    // ── 跨表聚合查询(查 group_chat_messages 表)──
 
-    /** Obtenga el último mensaje del chat grupal especificado(Para obtener una vista previa de la página de lista). */
+    /** 取指定群聊的最新一条消息(用于列表页预览)。 */
     @Query("SELECT * FROM group_chat_messages WHERE chatId = :chatId ORDER BY timestamp DESC LIMIT 1")
     suspend fun getLatestMessage(chatId: String): GroupChatMessageEntity?
 
-    /** Cuente la cantidad de mensajes en el chat grupal especificado. */
+    /** 统计指定群聊的消息数。 */
     @Query("SELECT COUNT(*) FROM group_chat_messages WHERE chatId = :chatId")
     suspend fun countMessages(chatId: String): Int
 
-    // ── v1.107 Método de mantenimiento de campo redundante ──
+    // ── v1.107 冗余字段维护方法 ──
 
-    /** v1.107: Actualización atómica de campos redundantes en el chat grupal.(Vista previa del último mensaje + recuento + tiempo de la última actividad). */
+    /** v1.107: 原子更新群聊冗余字段(最后消息预览 + 计数 + 最后活动时间)。 */
     @Query(
         "UPDATE group_chats SET lastMessagePreview = :preview, messageCount = messageCount + :delta, lastActivityAt = :timestamp, updatedAt = :timestamp WHERE id = :id",
     )
@@ -72,7 +72,7 @@ interface GroupChatDao {
     @Query("DELETE FROM group_chats")
     suspend fun deleteAll()
 
-    /** v2.x: Actualizar el estado del archivo del chat grupal */
+    /** v2.x: 更新群聊归档状态 */
     @Query("UPDATE group_chats SET isArchived = :archived WHERE id = :id")
     suspend fun setArchived(id: String, archived: Boolean)
 }

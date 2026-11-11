@@ -1,10 +1,10 @@
-# Web límite de seguridad
+# Web 安全边界
 
-- Provider API Key Sin acceso a registros, seguimiento de errores o artefactos de compilación del cliente.
-- BYOK La prioridad predeterminada es la conexión directa al navegador; El cifrado KMS/sobre se utiliza cuando se requiere el proxy del servidor y el descifrado solo se realiza en la memoria de solicitud.
-- Los mensajes de usuario, los archivos adjuntos, los parámetros de herramientas y las respuestas de MCP se consideran entradas no confiables.
-- MCP/HTTP/El rastreo del navegador debe realizar SSRF,DNS Rebinding, Dirección de intranet y verificación de redirecciones.
-- La herramienta utiliza niveles de riesgo, aprobaciones y cuotas explícitos; el servidor no ejecuta código de host arbitrario.
-- El backend de gestión requiere MFA,RBAC, auditoría y confirmación secundaria obligatoria.
-- Tamaño de ejecución de carga de archivos,MIME, comprobaciones de aislamiento de almacenamiento de objetos, extensiones y contenidos.
-- Operaciones como eliminación, reembolso, prohibición y liberación de precios deben ser idempotentes y dejar registros de auditoría.
+- Provider API Key 不进入日志、错误追踪或客户端构建产物。
+- BYOK 默认优先浏览器直连；必须服务端代理时采用 KMS/信封加密，解密仅在请求内存中进行。
+- 用户消息、附件、工具参数和 MCP 响应均视为不可信输入。
+- MCP/HTTP/浏览器抓取必须执行 SSRF、DNS Rebinding、内网地址和重定向检查。
+- 工具使用显式风险等级、审批和配额；服务端不执行任意宿主代码。
+- 管理后台必须 MFA、RBAC、审计和强制二次确认。
+- 文件上传执行大小、MIME、扩展名、内容和对象存储隔离检查。
+- 删除、退款、封禁、价格发布等操作必须幂等并留审计记录。

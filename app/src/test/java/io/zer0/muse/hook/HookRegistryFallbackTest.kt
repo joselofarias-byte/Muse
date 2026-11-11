@@ -5,15 +5,15 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**
- * Pruebas de despacho de interfaces no registradas.
+ * 未登记接口的派发兜底测试。
  *
- * [HookRegistry] prensa [HookRegistry.HOOK_TYPES] Al agrupar, faltar una fila en el registro hará que el punto de distribución de una determinada interfaz
- * Las tablas vacías siempre se recuperan y no se informan errores ni se dejan registros. Aquí, se utiliza una interfaz deliberadamente no registrada para verificar la ruta oculta:
- * Siempre que la instancia implemente la interfaz, el despacho debe poder obtenerla.
+ * [HookRegistry] 按 [HookRegistry.HOOK_TYPES] 分桶，登记漏一行就会让某个接口的派发点
+ * 永远取到空表，而且不报错、不留日志。这里用一个故意不登记的接口验证兜底路径：
+ * 只要实例实现了该接口，派发就必须能取到它。
  */
 class HookRegistryFallbackTest {
 
-    /** Interfaz específica de prueba, no en HOOK_TYPES. */
+    /** 测试专用接口，不在 HOOK_TYPES 里。 */
     private interface UnregisteredHook : SkillHook {
         fun tag(): String
     }
@@ -23,7 +23,7 @@ class HookRegistryFallbackTest {
     }
 
     @Test
-    fun `Las interfaces no registradas en HOOK_TYPES también se pueden enviar a instancias`() = runTest {
+    fun `未登记在 HOOK_TYPES 的接口也能派发到实例`() = runTest {
         val registry = HookRegistry()
         registry.register(SampleHook())
 
@@ -33,7 +33,7 @@ class HookRegistryFallbackTest {
     }
 
     @Test
-    fun `No más distribución después de la cancelación`() = runTest {
+    fun `注销后不再派发`() = runTest {
         val registry = HookRegistry()
         val hook = SampleHook()
         registry.register(hook)
@@ -46,7 +46,7 @@ class HookRegistryFallbackTest {
     }
 
     @Test
-    fun `Las interfaces registradas todavía se ejecutan en orden de prioridad descendente`() = runTest {
+    fun `已登记接口仍按 priority 降序执行`() = runTest {
         val registry = HookRegistry()
         registry.register(SampleHook("low"))
         registry.register(

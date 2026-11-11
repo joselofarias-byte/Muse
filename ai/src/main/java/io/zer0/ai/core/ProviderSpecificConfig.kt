@@ -5,34 +5,34 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
 
 /**
- * Provider configuración específica(sealed class).
+ * Provider 特定配置(sealed class)。
  *
- * Phase 8.1 introducir: Encapsule los campos de configuración únicos del proveedor en subclases de clase selladas,
- * Deje que el compilador garantice la seguridad de tipos(when coincidencia exhaustiva de ramas).
+ * Phase 8.1 引入: 把 Provider 独有的配置字段封装到 sealed class 子类,
+ * 让编译器保证类型安全(when 分支穷尽匹配)。
  *
- * Estrategia de serialización: Serialización polimórfica utilizando la clase sellada de kotlinx.serialization,
- * Predeterminado con "type" distinguir campo(OpenAI/Anthropic/Gemini).
- * viejo [ProviderConfig] JSON Cuando los datos no tienen este campo,[ProviderConfig.fallbackSpecific]
- * presionará [ProviderType] Crear configuración predeterminada,Garantizar la compatibilidad con versiones anteriores.
+ * 序列化策略: 用 kotlinx.serialization 的 sealed class 多态序列化,
+ * 默认带 "type" 区分字段(OpenAI/Anthropic/Gemini)。
+ * 旧 [ProviderConfig] JSON 数据无此字段时,[ProviderConfig.fallbackSpecific]
+ * 会按 [ProviderType] 创建默认配置,确保向后兼容。
  *
- * Escrito de forma independiente.
+ * 独立编写。
  */
 @Serializable
 sealed class ProviderSpecificConfig {
 
     /**
-     * OpenAI Compatible con la configuración específica del proveedor.
+     * OpenAI 兼容 Provider 特定配置。
      *
-     * @param chatCompletionsPath Ruta del punto final de finalización del chat(Predeterminado /chat/completions);
-     *   Azure Es posible que sea necesario cambiarlo mientras espera la transferencia. /openai/deployments/{id}/chat/completions
-     * @param useResponseApi Si se debe utilizar la nueva versión Responses API(/v1/responses);
-     *   false=ir Chat Completions(Predeterminado,Mejor compatibilidad)
-     * @param responsesPath Responses API ruta del punto final(Predeterminado /responses);
-     *   v1.0.7 Nuevo.Codex OAuth Necesita ser cambiado /codex/responses
-     * @param includeHistoryReasoning Si los mensajes históricos contienen contenido de inferencia;
-     *   true=Devolver la última ronda de razonamiento como parte del contenido del mensaje del asistente.(Predeterminado true)
-     * @param embeddingsPath Embeddings ruta del punto final(Predeterminado /embeddings)
-     * @param imagesPath Ruta del punto final de generación de imágenes(Predeterminado /images/generations)
+     * @param chatCompletionsPath 聊天补全端点路径(默认 /chat/completions);
+     *   Azure 等中转可能需改 /openai/deployments/{id}/chat/completions
+     * @param useResponseApi 是否走新版 Responses API(/v1/responses);
+     *   false=走 Chat Completions(默认,兼容性最好)
+     * @param responsesPath Responses API 端点路径(默认 /responses);
+     *   v1.0.7 新增。Codex OAuth 等需改 /codex/responses
+     * @param includeHistoryReasoning 历史消息是否包含推理内容;
+     *   true=把上轮 reasoning 作为 assistant 消息 content 一部分回传(默认 true)
+     * @param embeddingsPath Embeddings 端点路径(默认 /embeddings)
+     * @param imagesPath 图片生成端点路径(默认 /images/generations)
      */
     @Serializable
     @SerialName("OpenAI")
@@ -40,57 +40,57 @@ sealed class ProviderSpecificConfig {
         val chatCompletionsPath: String = "/chat/completions",
         val useResponseApi: Boolean = false,
         /**
-         * v1.0.7: Responses API Ruta del punto final.
+         * v1.0.7: Responses API 端点路径。
          *
-         * - Predeterminado "/responses":OpenAI oficial / xAI Grok OAuth / Otros compatibles con OpenAI
-         * - "/codex/responses":OpenAI Codex OAuth(ir chatgpt.com/backend-api)
-         * - Otras rutas personalizadas:Configurado por el usuario
+         * - 默认 "/responses":OpenAI 官方 / xAI Grok OAuth / 其他 OpenAI 兼容
+         * - "/codex/responses":OpenAI Codex OAuth(走 chatgpt.com/backend-api)
+         * - 其他自定义路径:由用户配置
          *
-         * solo si [useResponseApi]=true eficaz cuando.
+         * 仅当 [useResponseApi]=true 时生效。
          */
         val responsesPath: String = "/responses",
         val includeHistoryReasoning: Boolean = true,
         val embeddingsPath: String = "/embeddings",
         val imagesPath: String = "/images/generations",
         /**
-         * v1.136: ID de modelo de dibujo predeterminado.
+         * v1.136: 默认绘图模型 ID。
          *
-         * Cuando la persona que llama no pasa explícitamente el modelo,ImageService Este campo se utilizará primero.,
-         * En segundo lugar, recurra al modelo predeterminado de ImageModelCatalog.(Como por ejemplo dall-e-3).
-         * Este par de costumbre/Transit OpenAI compatible con proveedores,Evite el 404 causado por la falta de modelo en el cuerpo de la solicitud.
+         * 当调用方未显式传入 model 时,ImageService 会优先使用本字段,
+         * 其次回退到 ImageModelCatalog 的默认模型(如 dall-e-3)。
+         * 这对自定义/中转 OpenAI 兼容供应商友好,避免请求体缺少 model 导致 404。
          */
         val imageModel: String = "",
         /**
-         * v1.136: Ruta del punto final de generación de vídeo(Predeterminado /videos/generations).
+         * v1.136: 视频生成端点路径(默认 /videos/generations)。
          *
-         * Uso general del proveedor de generación de vídeo compatible con OpenAI;Kling Los proveedores especiales no utilizan este campo.
+         * 通用 OpenAI 兼容视频生成 Provider 使用;Kling 等专用 Provider 不走此字段。
          */
         val videoGenerationsPath: String = "/videos/generations",
         /**
-         * Eliminación del prefijo de identificación del modelo.
-         * Transferencia parcial/La plataforma de agregación utiliza el prefijo de proveedor en la lista de modelos locales.(Como por ejemplo opencode-go/glm-5.2),
-         * Pero las solicitudes de API reales solo aceptan glm-5.2. Después de configurar esto, OpenAIProvider
-         * Elimine este prefijo de model.id. Déjelo en blanco para que no se pele.
+         * 模型 ID 前缀剥离。
+         * 部分中转/聚合平台在本地模型列表中使用 provider 前缀(如 opencode-go/glm-5.2),
+         * 但实际 API 请求只接受 glm-5.2。配置此项后 OpenAIProvider 会在发送请求前
+         * 从 model.id 中移除该前缀。留空则不剥离。
          */
         val stripModelPrefix: String = "",
         /**
-         * v1.0.6: ¿Es un proveedor de planes de codificación?(*-coding Valores predeterminados de la serie).
+         * v1.0.6: 是否为 Coding Plan 供应商(*-coding 系列预设)。
          *
-         * Coding Plan Características del proveedor:
-         *  - baseUrl Utilice un punto final de codificación dedicado(Como por ejemplo https://api.kimi.com/coding/v1)
-         *  - apiKey Generalmente con prefijo exclusivo(Como por ejemplo sk-sp- / sk-coding-)
-         *  - Programación enfocada en listas de modelos(Como por ejemplo qwen3-coder-plus / kimi-for-coding)
-         *  - Algunas partes requieren finalización del tiempo de ejecución headers/reasoning
+         * Coding Plan 供应商特点:
+         *  - baseUrl 走专属 coding 端点(如 https://api.kimi.com/coding/v1)
+         *  - apiKey 通常带专属前缀(如 sk-sp- / sk-coding-)
+         *  - 模型列表聚焦编程(如 qwen3-coder-plus / kimi-for-coding)
+         *  - 部分需要运行时补全 headers/reasoning
          *
-         * Actualmente solo está disponible como campo de etiqueta,ProviderCompat/ProviderPayloadNormalizer consume diferencias de comportamiento específicas.
+         * 当前仅作为标记字段,具体行为差异由 ProviderCompat / ProviderPayloadNormalizer 消费。
          */
         val codingPlan: Boolean = false,
-        /** Complemento de nivel de asistente HTTP headers,Fusionado por la capa de aplicación en la tarea de compilación. */
+        /** 助手级附加 HTTP headers,由 app 层在生成任务中合并。 */
         val customHeaders: Map<String, String> = emptyMap(),
-        /** Campos adicionales del cuerpo de solicitud a nivel de asistente,Fusionado por la capa de aplicación en la tarea de compilación. */
+        /** 助手级附加请求体字段,由 app 层在生成任务中合并。 */
         val customBody: Map<String, JsonElement> = emptyMap(),
     ) : ProviderSpecificConfig() {
-        /** No escriba encabezados/valores de cuerpo personalizados en los registros,Sólo se conservan los nombres de las claves con fines de diagnóstico. */
+        /** 不把自定义 headers/body 的值写入日志,只保留键名便于诊断。 */
         override fun toString(): String = "OpenAI(chatCompletionsPath=$chatCompletionsPath, useResponseApi=$useResponseApi, " +
             "responsesPath=$responsesPath, includeHistoryReasoning=$includeHistoryReasoning, " +
             "embeddingsPath=$embeddingsPath, imagesPath=$imagesPath, imageModel=$imageModel, " +
@@ -100,17 +100,17 @@ sealed class ProviderSpecificConfig {
     }
 
     /**
-     * Anthropic Claude Provider configuración específica.
+     * Anthropic Claude Provider 特定配置。
      *
-     * Phase 8.1 (M9): Unirse [promptCaching] + [promptCacheTtl] campo,
-     * Habilite el almacenamiento en caché rápido de Claude para guardar en costos de solicitudes duplicadas.
+     * Phase 8.1 (M9): 加入 [promptCaching] + [promptCacheTtl] 字段,
+     * 启用 Claude 的 Prompt Caching 以节省重复请求成本。
      *
-     * @param promptCaching Ya sea para habilitar Prompt Caching(Predeterminado false,compatible con versiones anteriores)
-     * @param promptCacheTtl caché TTL: "5m"(5 minutos,Predeterminado)o "1h"(1 horas,Se requiere la versión empresarial).
-     *   v1.80 (L-CORE18): Anthropic Sólo se acepta oficialmente "5m" / "1h" dos valores,
-     *   Los valores ilegales vuelven a caer "5m" y registrar advertencias(Evite enviar solicitudes al servidor. 400).
-     * @param messagesPath Messages API ruta del punto final(Predeterminado /messages)
-     * @param modelsPath Ruta del punto final de la lista de modelos(Predeterminado /models)
+     * @param promptCaching 是否启用 Prompt Caching(默认 false,向后兼容)
+     * @param promptCacheTtl 缓存 TTL: "5m"(5 分钟,默认)或 "1h"(1 小时,需企业版)。
+     *   v1.80 (L-CORE18): Anthropic 官方仅接受 "5m" / "1h" 两个值,
+     *   非法值在 init 块中回退到 "5m" 并记录警告(避免发请求被服务端 400)。
+     * @param messagesPath Messages API 端点路径(默认 /messages)
+     * @param modelsPath 模型列表端点路径(默认 /models)
      */
     @Serializable
     @SerialName("Anthropic")
@@ -121,33 +121,33 @@ sealed class ProviderSpecificConfig {
         val modelsPath: String = "/models",
     ) : ProviderSpecificConfig() {
         init {
-            // L-CORE18: Verifique el avisoCacheTtl solo acepta valores de documentos oficiales,Los valores ilegales vuelven a caer "5m"
+            // L-CORE18: 校验 promptCacheTtl 仅接受官方文档值,非法值回退到 "5m"
             if (promptCacheTtl != "5m" && promptCacheTtl != "1h") {
                 io.zer0.common.Logger.w(
                     "ProviderSpecificConfig",
-                    "Anthropic.promptCacheTtl valor ilegal '$promptCacheTtl',debería ser '5m' o '1h'." +
-                        "El valor no se puede cambiar durante la deserialización.(immutable),La persona que llama debe corregirlo por sí misma.",
+                    "Anthropic.promptCacheTtl 非法值 '$promptCacheTtl',应为 '5m' 或 '1h'。" +
+                        "反序列化时无法改值(immutable),调用方应自行修正。",
                 )
             }
         }
     }
 
     /**
-     * Google Gemini Provider configuración específica.
+     * Google Gemini Provider 特定配置。
      *
-     * Vertex AI Se han implementado dos modos de autenticación.(Phase 9.4 cuenta de servicio / B14-3 Express Mode):
-     *  - [useServiceAccount]=true: Punto final regional + cuenta de servicio JWT→OAuth Bearer(necesidad [projectId]);
-     *  - [useVertexAI]=true y [useServiceAccount]=false: Express Mode punto final global + API Key,
-     *    No se requiere proyecto GCP/OAuth(BYOK Ruta de bajo coste en el escenario.).
+     * Vertex AI 已实现两种认证模式(Phase 9.4 服务账号 / B14-3 Express Mode):
+     *  - [useServiceAccount]=true: 区域端点 + 服务账号 JWT→OAuth Bearer(需 [projectId]);
+     *  - [useVertexAI]=true 且 [useServiceAccount]=false: Express Mode 全局端点 + API Key,
+     *    无需 GCP 项目/OAuth(BYOK 场景下的低成本路径)。
      *
-     * @param useVertexAI Si se debe utilizar el punto final Vertex AI(Predeterminado false,ir generativelanguage API)
-     * @param useServiceAccount Si se debe utilizar la autenticación de cuenta de servicio(Predeterminado false,usar API Key / Express Mode)
-     * @param serviceAccountEmail Correo electrónico de la cuenta de servicio(Vertex AI usar)
-     * @param privateKey Clave privada de la cuenta de servicio(Vertex AI usar,PEM Formato)
-     * @param location Vertex AI área(Como por ejemplo us-central1)
-     * @param projectId GCP Proyecto id(Vertex AI usar)
-     * @param streamPath Ruta del punto final de transmisión(Predeterminado :streamGenerateContent)
-     * @param generatePath Ruta de punto final sin transmisión(Predeterminado :generateContent)
+     * @param useVertexAI 是否走 Vertex AI 端点(默认 false,走 generativelanguage API)
+     * @param useServiceAccount 是否用服务账号认证(默认 false,用 API Key / Express Mode)
+     * @param serviceAccountEmail 服务账号邮箱(Vertex AI 用)
+     * @param privateKey 服务账号私钥(Vertex AI 用,PEM 格式)
+     * @param location Vertex AI 区域(如 us-central1)
+     * @param projectId GCP 项目 id(Vertex AI 用)
+     * @param streamPath 流式端点路径(默认 :streamGenerateContent)
+     * @param generatePath 非流式端点路径(默认 :generateContent)
      */
     @Serializable
     @SerialName("Gemini")
@@ -162,8 +162,8 @@ sealed class ProviderSpecificConfig {
         val generatePath: String = ":generateContent",
     ) : ProviderSpecificConfig() {
         /**
-         * v1.80 (H-CORE2): Personalice toString para evitar que se filtre texto sin cifrar de clave privada.
-         * Se filtró la clave privada de la cuenta de servicio = GCP El proyecto colapsó por completo.,Más dañino que la clave API.
+         * v1.80 (H-CORE2): 自定义 toString 防止 privateKey 明文泄露。
+         * 服务账号私钥泄露 = GCP 项目完全沦陷,比 API Key 危害更大。
          */
         override fun toString(): String {
             val maskedKey = if (privateKey.isNotEmpty()) "***(${privateKey.length} chars)" else ""
@@ -174,31 +174,31 @@ sealed class ProviderSpecificConfig {
     }
 
     /**
-     * Configuración personalizada específica del proveedor(usado para"custom"Opciones de proveedores/estaciones de tránsito).
+     * 自定义 Provider 特定配置(用于"custom"供应商选项 / 中转站)。
      *
-     * restricción: "Provider addition must include a 'custom' option to use the original
-     * blank form". estación de transferencia(preset categoría de relevos en)y los proveedores definidos por el usuario utilizan esta configuración,
-     * Permite a los usuarios anular chatCompletionsPath, agregar encabezados de solicitud personalizados y campos del cuerpo de la solicitud.
+     * 约束: "Provider addition must include a 'custom' option to use the original
+     * blank form"。中转站(preset 中的 relay 类别)及用户自定义供应商使用此配置,
+     * 允许用户覆盖 chatCompletionsPath、附加自定义请求头与请求体字段。
      *
-     * Nota:ai modulares [io.zer0.ai.openai.OpenAIProvider] Pase `resolvedSpecific()
-     * as? OpenAI ?: OpenAI()` Ten todo en cuenta,Custom Actualmente, los campos no influyen directamente en el comportamiento del proveedor.
-     * (Mapeo bajo demanda por parte de la capa de aplicación antes de llamar);Este tipo está reservado para que la capa de aplicación UI(ProviderEditDialog)
-     * Utilice PresetProviders para conservar estos parámetros personalizados.
+     * 注:ai 模块的 [io.zer0.ai.openai.OpenAIProvider] 通过 `resolvedSpecific()
+     * as? OpenAI ?: OpenAI()` 兜底,Custom 的字段当前不直接驱动 Provider 行为
+     * (由 app 层在调用前按需映射);保留此类型是为了让 app 层 UI(ProviderEditDialog)
+     * 与 PresetProviders 能持久化这些自定义参数。
      *
-     * v1.134 P2-2: Nuevo [requestTemplate] / [responsePath] / [streamResponsePath] campo,
-     * por [io.zer0.ai.plugin.ProviderPluginRegistry.toProviderConfig] Pasado de forma transparente desde el complemento JSON.
-     * La implementación actual del proveedor del módulo ai aún no consume estos campos,El soporte de OpenAIProvider se puede ampliar en el futuro
-     * Personalice la plantilla de solicitud y la ruta de respuesta.
+     * v1.134 P2-2: 新增 [requestTemplate] / [responsePath] / [streamResponsePath] 字段,
+     * 由 [io.zer0.ai.plugin.ProviderPluginRegistry.toProviderConfig] 从插件 JSON 透传过来。
+     * 当前 ai 模块的 Provider 实现尚未消费这些字段,后续可扩展 OpenAIProvider 支持
+     * 自定义请求模板与响应路径。
      *
-     * @param chatCompletionsPath Ruta del punto final de finalización del chat(Predeterminado /chat/completions)
-     * @param customHeaders Agregar encabezados de solicitud HTTP(key→value)
-     * @param customBody Campos adicionales del cuerpo de la solicitud(key→JsonElement,Fusionar en solicitud de nivel superior JSON)
-     * @param requestTemplate Plantilla JSON del cuerpo completo de la solicitud(marcador de posición {{prompt}} {{model}} espera);
-     *   Déjelo en blanco para usar la plantilla predeterminada de Finalizaciones de chat de OpenAI.
-     * @param responsePath Ruta de extracción JSON de respuesta sin transmisión(Como por ejemplo $.choices[0].message.content);
-     *   Si se deja en blanco, tome la ruta predeterminada.
-     * @param streamResponsePath Ruta de extracción JSON de respuesta de transmisión(Como por ejemplo $.choices[0].delta.content);
-     *   Si se deja en blanco, tome la ruta predeterminada.
+     * @param chatCompletionsPath 聊天补全端点路径(默认 /chat/completions)
+     * @param customHeaders 附加 HTTP 请求头(key→value)
+     * @param customBody 附加请求体字段(key→JsonElement,合并到请求 JSON 顶层)
+     * @param requestTemplate 完整请求体 JSON 模板(占位符 {{prompt}} {{model}} 等);
+     *   留空时走默认 OpenAI Chat Completions 模板
+     * @param responsePath 非流式响应 JSON 提取路径(如 $.choices[0].message.content);
+     *   留空时走默认路径
+     * @param streamResponsePath 流式响应 JSON 提取路径(如 $.choices[0].delta.content);
+     *   留空时走默认路径
      */
     @Serializable
     @SerialName("Custom")
@@ -210,7 +210,7 @@ sealed class ProviderSpecificConfig {
         val responsePath: String = "",
         val streamResponsePath: String = "",
     ) : ProviderSpecificConfig() {
-        /** No escriba encabezados/valores de cuerpo personalizados en los registros,Sólo se conservan los nombres de las claves con fines de diagnóstico. */
+        /** 不把自定义 headers/body 的值写入日志,只保留键名便于诊断。 */
         override fun toString(): String =
             "Custom(chatCompletionsPath=$chatCompletionsPath, requestTemplateLength=${requestTemplate.length}, " +
                 "responsePath=$responsePath, streamResponsePath=$streamResponsePath, " +
@@ -218,7 +218,7 @@ sealed class ProviderSpecificConfig {
     }
 
     companion object {
-        /** prensa [ProviderType] Tome la configuración específica predeterminada. */
+        /** 按 [ProviderType] 取默认特定配置。 */
         fun defaultFor(type: ProviderType): ProviderSpecificConfig = when (type) {
             ProviderType.OPENAI -> OpenAI()
             ProviderType.ANTHROPIC -> Anthropic()

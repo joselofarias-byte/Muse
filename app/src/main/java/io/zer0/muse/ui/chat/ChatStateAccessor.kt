@@ -6,36 +6,36 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
 
 /**
- * v1.105 ChatViewModel dividir: Una interfaz estrecha que permite al Coordinador leer y escribir el estado.
+ * v1.105 ChatViewModel 拆分: 让 Coordinator 能读写 state 的窄接口。
  *
- * No transfiera directamente todo el ChatViewModel,Evite la dependencia inversa del Coordinador del anfitrión.
- * Coordinator solo necesito:
- *  - Leer la instantánea del estado actual [snapshot]
- *  - Actualizaciones atómicas state [update]
- *  - alcance de rutina [coroutineScope](proporcionado por el implementador viewModelScope)
+ * 不直接传整个 ChatViewModel,避免 Coordinator 反向依赖宿主。
+ * Coordinator 只需要:
+ *  - 读当前 state 快照 [snapshot]
+ *  - 原子更新 state [update]
+ *  - 协程作用域 [coroutineScope](由实现方提供 viewModelScope)
  *
- * implementador(ChatViewModel)mantener [MutableStateFlow] e implementar esta interfaz;
- * Cada Coordinador recibe esta interfaz en el constructor.,No sostiene ViewModel directamente.
+ * 实现方(ChatViewModel)持有 [MutableStateFlow] 并实现本接口;
+ * 各 Coordinator 在构造函数接收本接口,不直接持有 ViewModel。
  */
 interface ChatStateAccessor {
-    /** Instantánea del estado actual(solo lectura). */
+    /** 当前 state 快照(只读)。 */
     val snapshot: ChatUiState
 
-    /** Actualizaciones atómicas state(entrante transform,volver nuevo state). */
+    /** 原子更新 state(传入 transform,返回新 state)。 */
     fun update(transform: (ChatUiState) -> ChatUiState)
 
-    /** B2-01: Instantánea de la lista de mensajes actual(solo lectura). */
+    /** B2-01: 当前消息列表快照(只读)。 */
     val messagesSnapshot: List<UIMessage>
 
-    /** B2-01: Lista de mensajes de actualización atómica. */
+    /** B2-01: 原子更新消息列表。 */
     fun updateMessages(transform: (List<UIMessage>) -> List<UIMessage>)
 
-    /** alcance de rutina(launch usar),ViewModelScope lo proporciona la implementación. */
+    /** 协程作用域(launch 用),由实现方提供 viewModelScope。 */
     val coroutineScope: kotlinx.coroutines.CoroutineScope
 }
 
 /**
- * Adjuntar texto de entrada atómico para evitar ventanas emergentes asincrónicas/OCR/ASR La devolución de llamada sobrescribe lo que el usuario acaba de ingresar con la instantánea anterior.
+ * 原子追加输入文本，避免异步弹窗/OCR/ASR 回调使用旧快照覆盖用户刚输入的内容。
  */
 fun ChatStateAccessor.appendInputAtomically(insertion: String, separator: String = "\n\n") {
     if (insertion.isEmpty()) return

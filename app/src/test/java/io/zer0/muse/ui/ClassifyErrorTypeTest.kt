@@ -6,19 +6,19 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**
- * B4 Pruebas complementarias de recuperación de errores:classifyErrorType Rama completa.
+ * B4 错误恢复补测：classifyErrorType 全分支。
  *
- * Semántica de prioridad (anotaciones de funciones):
- *  1. throwable si ProviderException → Obtenga el error del proveedor (escriba la ruta) directamente
- *  2. De lo contrario, inferencia de cadenas (inferFromMessage,Deprecated ruta compatible)
- *  3. Ninguno acertó → UNKNOWN
+ * 优先级语义（函数注释）：
+ *  1. throwable 是 ProviderException → 直接取 providerError（类型路径）
+ *  2. 否则字符串推断（inferFromMessage，Deprecated 兼容路径）
+ *  3. 都不命中 → UNKNOWN
  */
 class ClassifyErrorTypeTest {
 
     private fun classify(message: String, throwable: Throwable? = null): ChatErrorType =
         ChatViewModel.classifyErrorTypeStatic(message, throwable)
 
-    // ── escriba la ruta ──
+    // ── 类型路径 ──
 
     @Test
     fun `provider exception network maps to NETWORK`() {
@@ -34,7 +34,7 @@ class ClassifyErrorTypeTest {
 
     @Test
     fun `provider exception server error maps to NETWORK`() {
-        // v1.0.1 (P4): 5xx incorporar NETWORK(Se puede volver a intentar)
+        // v1.0.1 (P4): 5xx 纳入 NETWORK(可重试)
         val t = ProviderException(ProviderError.ServerError(httpCode = 500, displayMessage = "boom"))
         assertEquals(ChatErrorType.NETWORK, classify("ignored", t))
     }
@@ -57,7 +57,7 @@ class ClassifyErrorTypeTest {
         assertEquals(ChatErrorType.UNKNOWN, classify("ignored", t))
     }
 
-    // ── Ruta de cadena inferida (sin ProviderException)──
+    // ── 字符串推断路径（无 ProviderException）──
 
     @Test
     fun `timeout message maps to NETWORK`() {

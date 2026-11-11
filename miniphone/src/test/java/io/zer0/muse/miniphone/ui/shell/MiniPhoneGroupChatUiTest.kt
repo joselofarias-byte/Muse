@@ -11,6 +11,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import io.zer0.muse.miniphone.R
 import io.zer0.muse.miniphone.api.MpCharacter
 import io.zer0.muse.miniphone.api.MpProfile
 import io.zer0.muse.miniphone.data.db.MiniPhoneDb
@@ -28,10 +29,10 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * Cree una entrada grupal y una conversación grupal en la página de mensajes.
+ * 建群入口与消息页上的群会话。
  *
- * Pruebe dos cosas por separado:¿Se pueden separar grupos y mensajes privados de un vistazo en la lista?(Nombre y etiqueta de vista previa),
- * y "+"Después de ingresar, seleccionar personas y completar esta cadena, regresará con la identificación seleccionada para crear un grupo y unirse al grupo.
+ * 两件事分开验:列表里群与私信能不能一眼分开(名字与预览标记),
+ * 以及「+」进来之后选人、完成这一串真的会带着选中的 id 回去建群并进群。
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -47,14 +48,17 @@ class MiniPhoneGroupChatUiTest {
         db?.close()
     }
 
+    private fun res(@androidx.annotation.StringRes id: Int): String =
+        androidx.test.core.app.ApplicationProvider.getApplicationContext<android.content.Context>().getString(id)
+
     @Test
     fun groupThreadSitsInTheListWithItsTitleAndAPreviewMark() {
         val state = loadState(
             threads = listOf(
-                thread(id = "t-group", characterId = "c1", at = NOW, preview = "Nos vemos por la tarde", isGroup = true, title = "Ayuan, Xiaoman, yo"),
-                thread(id = "t-dm", characterId = "c1", at = NOW - 60_000L, preview = "¿Está ahí?"),
+                thread(id = "t-group", characterId = "c1", at = NOW, preview = "晚上见", isGroup = true, title = "阿远、小满、我"),
+                thread(id = "t-dm", characterId = "c1", at = NOW - 60_000L, preview = "在吗"),
             ),
-            characters = listOf(MpCharacter(id = "c1", name = "Ayuan")),
+            characters = listOf(MpCharacter(id = "c1", name = "阿远")),
         )
         compose.setContent {
             MiniPhoneTheme(darkTheme = false) {
@@ -65,11 +69,27 @@ class MiniPhoneGroupChatUiTest {
 
         compose.onNodeWithTag(MiniPhoneTags.thread("t-group")).assertIsDisplayed()
         compose.onNodeWithTag(MiniPhoneTags.thread("t-dm")).assertIsDisplayed()
-        compose.onNodeWithText("Ayuan, Xiaoman, yo").assertIsDisplayed()
-        compose.onNodeWithText("[grupo] Nos vemos por la tarde").assertIsDisplayed()
-        compose.onNodeWithText("¿Está ahí?").assertIsDisplayed()
-        assertEquals("[grupo] ¿Está ahí?", groupPreviewOf("¿Está ahí?"))
-        assertEquals("Debería poder identificar el grupo incluso si no hay un último mensaje.", "[grupo]", groupPreviewOf(null))
+        compose.onNodeWithText("阿远、小满、我").assertIsDisplayed()
+        val mark = res(R.string.mp_shell_group_preview_mark)
+        compose.onNodeWithText("$mark 晚上见").assertIsDisplayed()
+        compose.onNodeWithText("在吗").assertIsDisplayed()
+        // 标记不再烘进状态里的字符串:它按界面语言取,也只盖在群那一行上
+        compose.onNodeWithText("$mark 在吗").assertDoesNotExist()
+    }
+
+    @Test
+    fun groupRowWithoutLastMessageStillReadsAsAGroup() {
+        val state = loadState(
+            threads = listOf(thread(id = "t-group", characterId = "c1", at = NOW, preview = "", isGroup = true, title = "阿远、小满、我")),
+            characters = listOf(MpCharacter(id = "c1", name = "阿远")),
+        )
+        compose.setContent {
+            MiniPhoneTheme(darkTheme = false) {
+                MiniPhoneShell(state = state)
+            }
+        }
+        compose.onNodeWithTag(MiniPhoneTags.tab(MiniPhoneTab.MESSAGES)).performClick()
+        compose.onNodeWithText(res(R.string.mp_shell_group_preview_mark)).assertIsDisplayed()
     }
 
     @Test
@@ -77,9 +97,9 @@ class MiniPhoneGroupChatUiTest {
         var created: List<String>? = null
         val sections = contactSectionsOf(
             listOf(
-                MpCharacter(id = "c1", name = "Ayuan"),
-                MpCharacter(id = "c2", name = "Xiaoman"),
-                MpCharacter(id = "c3", name = "Awu"),
+                MpCharacter(id = "c1", name = "阿远"),
+                MpCharacter(id = "c2", name = "小满"),
+                MpCharacter(id = "c3", name = "阿吾"),
             ),
         )
         compose.setContent {
@@ -103,19 +123,19 @@ class MiniPhoneGroupChatUiTest {
         compose.onNodeWithTag(MiniPhoneTags.GROUP_CREATE_ENTRY).performClick()
 
         compose.onNodeWithTag(MiniPhoneTags.GROUP_CREATE_PAGE).assertIsDisplayed()
-        // no elijas a nadie:No puedo presionar Listo,No podré crear un grupo incluso si hago clic en él.
+        // 一个人都不选:完成按不动,点了也不会建群
         compose.onNodeWithTag(MiniPhoneTags.GROUP_CREATE_DONE).assertIsNotEnabled()
         compose.onNodeWithTag(MiniPhoneTags.GROUP_CREATE_DONE).performClick()
         compose.waitForIdle()
-        assertEquals("No puedes crear un grupo sin seleccionar personas", null, created)
+        assertEquals("没选人不能建群", null, created)
 
-        // Elige solo uno:Todavía no puedo presionarlo
+        // 只选一个:还是按不动
         compose.onNodeWithTag(MiniPhoneTags.groupPick("c1")).performClick()
         compose.waitForIdle()
-        compose.onNodeWithTag(MiniPhoneTags.GROUP_CREATE_COUNT).assertTextEquals("1 persona seleccionada,Elige al menos 2 personas")
+        compose.onNodeWithTag(MiniPhoneTags.GROUP_CREATE_COUNT).assertTextEquals(res(R.string.mp_group_selected_min).format(1, 2))
         compose.onNodeWithTag(MiniPhoneTags.GROUP_CREATE_DONE).assertIsNotEnabled()
 
-        // Elige dos:Completo disponible,Haga clic para crear un grupo con estos dos ID y únase al grupo directamente
+        // 选到两个:完成可用,点下去带着这两个 id 建群并直接进群
         compose.onNodeWithTag(MiniPhoneTags.groupPick("c2")).performClick()
         compose.waitForIdle()
         compose.onNodeWithTag(MiniPhoneTags.GROUP_CREATE_DONE).assertIsEnabled()
@@ -128,7 +148,7 @@ class MiniPhoneGroupChatUiTest {
 
     @Test
     fun pickedRowsShowTheirCheckMarkAndCanBeUnpicked() {
-        val sections = contactSectionsOf(listOf(MpCharacter(id = "c1", name = "Ayuan"), MpCharacter(id = "c2", name = "Xiaoman")))
+        val sections = contactSectionsOf(listOf(MpCharacter(id = "c1", name = "阿远"), MpCharacter(id = "c2", name = "小满")))
         compose.setContent {
             MiniPhoneTheme(darkTheme = false) {
                 GroupCreatePage(
@@ -142,10 +162,10 @@ class MiniPhoneGroupChatUiTest {
         }
 
         compose.onNodeWithTag(MiniPhoneTags.groupPickMark("c1"), useUnmergedTree = true).assertExists()
-        compose.onNodeWithTag(MiniPhoneTags.GROUP_CREATE_COUNT).assertTextEquals("1 persona seleccionada,Elige al menos 2 personas")
+        compose.onNodeWithTag(MiniPhoneTags.GROUP_CREATE_COUNT).assertTextEquals(res(R.string.mp_group_selected_min).format(1, 2))
     }
 
-    /** Léelo de nuevo,Por cierto, verifique que el nombre del grupo y la etiqueta de vista previa hayan pasado de la entidad a la lista. */
+    /** 真落库再读回来,顺带验证群名与预览标记确实从实体走到了列表。 */
     private fun loadState(threads: List<MpThreadEntity>, characters: List<MpCharacter>): ShellUiState {
         val database = newInMemoryMiniPhoneDb()
         db = database
@@ -154,7 +174,7 @@ class MiniPhoneGroupChatUiTest {
             assembleShellState(
                 threads = database.threadDao().observeThreads().first(),
                 characters = characters,
-                profile = MpProfile(nickname = "Ziqi"),
+                profile = MpProfile(nickname = "子奇"),
             )
         }
     }

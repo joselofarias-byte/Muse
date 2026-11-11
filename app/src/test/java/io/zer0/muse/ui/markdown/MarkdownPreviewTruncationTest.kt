@@ -6,10 +6,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Truncamiento consciente de la estructura de las vistas previas de tarjetas de colección (auditoría §11-9).
+ * 收藏卡片预览的结构感知截断（审计 §11-9）。
  *
- * La implementación original fue `body.take(280)`, cortar la valla de código abierta hará que todo el contenido posterior
- * se representan en bloques de código; cortar `**` / `[N]` La mitad de la marca se escapará por el medio.
+ * 原来的实现是 `body.take(280)`，切在未闭合代码围栏里会让之后的全部内容
+ * 都渲染成代码块；切在 `**` / `[N]` 中间会漏出半截标记。
  */
 class MarkdownPreviewTruncationTest {
 
@@ -17,75 +17,75 @@ class MarkdownPreviewTruncationTest {
 
     @Test
     fun `short text is returned untouched without ellipsis`() {
-        val body = "una frase muy corta"
+        val body = "一句很短的话"
 
         assertEquals(body, MarkdownPreviewTruncation.preview(body))
     }
 
     @Test
     fun `long text ends with ellipsis and stays within limit plus ellipsis`() {
-        val body = (1..80).joinToString(" ") { "No.${it}Todo el contenido está aquí." }
+        val body = (1..80).joinToString(" ") { "第${it}段内容都在这里" }
 
         val preview = MarkdownPreviewTruncation.preview(body, limit = 120)
 
-        assertTrue("El texto extra largo debe tener puntos suspensivos.", preview.endsWith(MarkdownPreviewTruncation.ELLIPSIS))
+        assertTrue("超长文本必须带省略号", preview.endsWith(MarkdownPreviewTruncation.ELLIPSIS))
         assertTrue(
-            "La duración de la vista previa no puede exceder significativamente el límite superior: ${preview.length}",
+            "预览长度不能明显超出上限: ${preview.length}",
             preview.length <= 120 + MarkdownPreviewTruncation.ELLIPSIS.length,
         )
     }
 
     @Test
     fun `unclosed code fence is dropped instead of leaking into following text`() {
-        // La valla se abre dentro de los 280 caracteres y se cierra más allá de los 280 caracteres. —— El antiguo truncamiento a nivel de personaje dejaría a un jugador solitario ```
+        // 围栏开在 280 字符以内、闭合在 280 字符以外 —— 旧的字符级截断会留下一个孤零零的 ```
         val filler = "a".repeat(200)
         val body = "$filler\n\n```kotlin\n" + "val x = 1\n".repeat(40) + "```\n"
 
         val preview = MarkdownPreviewTruncation.preview(body, limit = 280)
 
-        assertEquals("Las vallas sin cerrar no se pueden dejar en la vista previa", 0, fences(preview))
+        assertEquals("预览里不能残留未闭合围栏", 0, fences(preview))
     }
 
     @Test
     fun `closed code fence inside the window is preserved as a whole block`() {
         val code = "```\ncode line\n```"
-        // Todo el bloque de código está dentro de la ventana y el texto largo que sigue excede la ventana y se descarta. —— Como resultado, las vallas deben estar emparejadas.
-        val body = "$code\n\n" + "Hay mucho más por venir".repeat(40)
+        // 代码块整块在窗口内，后面的长文超出窗口被舍 —— 结果里围栏必须成对。
+        val body = "$code\n\n" + "后面还有很多很多内容".repeat(40)
 
         val preview = MarkdownPreviewTruncation.preview(body, limit = 200)
 
-        assertEquals("Las vallas emparejadas deben conservarse enteras.", 2, fences(preview))
-        assertTrue("El contenido del bloque de código debe mantenerse intacto.", preview.contains("code line"))
+        assertEquals("成对围栏必须整体保留", 2, fences(preview))
+        assertTrue("代码块内容应完整保留", preview.contains("code line"))
     }
 
     @Test
     fun `truncation does not split a bold marker`() {
-        val body = "x".repeat(276) + "**centrarse**"
+        val body = "x".repeat(276) + "**重点**"
 
         val preview = MarkdownPreviewTruncation.preview(body, limit = 280)
 
-        assertFalse("no puedo poner ** Cortar y permanecer en el texto.", preview.dropLast(1).endsWith("*"))
+        assertFalse("不能把 ** 切开后留在文本里", preview.dropLast(1).endsWith("*"))
     }
 
     @Test
     fun `truncation does not split a citation bracket`() {
-        val body = "x".repeat(278) + "[12] finalizando"
+        val body = "x".repeat(278) + "[12] 结尾"
 
         val preview = MarkdownPreviewTruncation.preview(body, limit = 280)
 
-        assertFalse("no puedo poner [N] Cortar por la mitad y dejarlo en el texto.", preview.contains("[1" + MarkdownPreviewTruncation.ELLIPSIS))
+        assertFalse("不能把 [N] 切一半留在文本里", preview.contains("[1" + MarkdownPreviewTruncation.ELLIPSIS))
     }
 
     @Test
     fun `truncates on block boundary instead of mid paragraph`() {
-        val blockOne = "primer párrafo".repeat(5) // 70 caracteres, dentro del límite de 80
-        val blockTwo = "Segundo párrafo".repeat(20)
+        val blockOne = "第一段".repeat(20) // 60 字
+        val blockTwo = "第二段".repeat(20)
         val body = "$blockOne\n\n$blockTwo"
 
         val preview = MarkdownPreviewTruncation.preview(body, limit = 80)
 
-        assertTrue("El primer párrafo debe dejarse intacto.", preview.startsWith(blockOne))
-        assertFalse("La segunda sección no debe cortarse por la mitad y rellenarse por dentro.", preview.contains(blockTwo.take(5)))
+        assertTrue("应完整保留第一段", preview.startsWith(blockOne))
+        assertFalse("不应把第二段切一半塞进来", preview.contains(blockTwo.take(5)))
     }
 
     @Test

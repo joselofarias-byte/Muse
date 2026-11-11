@@ -27,11 +27,11 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * Representación de filas de categorías de la página de inicio y filas de entrada de páginas de categorías/Haga clic en Volver.
+ * 首页分类行与分类页条目行的渲染/点击回归。
  *
- * Afirme dos cosas a las que es fácil recurrir: la página de categoría muestra todas las entradas declaradas en la categoría (ni más ni menos),
- * Al hacer clic en una entrada se activa su propia ruta; la página de inicio solo tiene 14 filas de categorías y elementos específicos de la subpágina (asistente de permisos, registro de auditoría, etc.)
- * No permitido en este nivel.
+ * 断言两件容易回退的事：分类页渲染的是该分类声明的全部条目（不多不少），
+ * 点条目触发它自己的路由；首页只有 14 个分类行，子页专有项（权限向导、审计日志等）
+ * 不许出现在这一层。
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], qualifiers = "w411dp-h891dp-xhdpi")
@@ -48,7 +48,7 @@ class SettingsGroupScreenTest {
     fun `home shows fourteen category rows`() {
         composeTestRule.setContent {
             MaterialTheme {
-                SettingsGroupCards(onOpenGroup = {})
+                SettingsGroupCards(onOpenGroup = { _, _ -> })
             }
         }
 
@@ -62,11 +62,11 @@ class SettingsGroupScreenTest {
     fun `home keeps sub page entries inside their category`() {
         composeTestRule.setContent {
             MaterialTheme {
-                SettingsGroupCards(onOpenGroup = {})
+                SettingsGroupCards(onOpenGroup = { _, _ -> })
             }
         }
 
-        // Estos son elementos en la página de categorías y no deben aparecer como líneas de categoría de primer nivel.
+        // 这些是分类页里的条目，不该作为一级分类行出现。
         listOf(
             R.string.permission_wizard_title,
             R.string.settings_audit_log,
@@ -84,7 +84,7 @@ class SettingsGroupScreenTest {
         var opened: SettingsGroupKind? = null
         composeTestRule.setContent {
             MaterialTheme {
-                SettingsGroupCards(onOpenGroup = { opened = it })
+                SettingsGroupCards(onOpenGroup = { kind, _ -> opened = kind })
             }
         }
 
@@ -102,8 +102,8 @@ class SettingsGroupScreenTest {
             }
         }
 
-        composeTestRule.onAllNodesWithTag(SETTINGS_ENTRY_ROW_TAG).assertCountEquals(2)
-        listOf(SettingsEntryId.MEMORY, SettingsEntryId.RAG).forEach { id ->
+        composeTestRule.onAllNodesWithTag(SETTINGS_ENTRY_ROW_TAG).assertCountEquals(3)
+        listOf(SettingsEntryId.MEMORY, SettingsEntryId.RAG, SettingsEntryId.SESSION_TERMS).forEach { id ->
             val title = string(SettingsCatalog.entries.first { it.id == id }.titleRes)
             composeTestRule.onNode(hasTestTag(SETTINGS_ENTRY_ROW_TAG) and hasText(title)).assertIsDisplayed()
         }
@@ -169,7 +169,7 @@ class SettingsGroupScreenTest {
 
     @Test
     fun `assistant category declares the assistants entry route`() {
-        // La gestión de asistentes apunta a la lista de asistentes y este elemento pertenece a "Asistentes y funciones" de la lista.
+        // 助手管理指向助手列表，且这一项在清单里属于「助手与角色」。
         val entry = SettingsCatalog.entries.first { it.id == SettingsEntryId.ASSISTANTS }
         assertEquals(SettingsEntryAction.Navigate(AssistantsRoute), entry.action)
     }

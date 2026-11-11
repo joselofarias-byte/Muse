@@ -17,7 +17,7 @@ class SaveMemoryToolTest {
         } throws IllegalStateException("fts insert failed")
 
         val result = SaveMemoryTool.execute(
-            args = mapOf("content" to "a los usuarios les gusta Kotlin"),
+            args = mapOf("content" to "用户喜欢 Kotlin"),
             factStore = store,
             executionContext = ToolExecutionContext(scope = "main", spaceId = "default"),
         )

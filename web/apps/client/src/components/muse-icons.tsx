@@ -1,17 +1,17 @@
 /**
- * Muse Conjunto mínimo de iconos —— SVG en línea,pathData copiar
- * `app/src/main/java/io/zer0/muse/ui/common/icons/MuseIcons.kt`(misma copia 24×24 ventana gráfica,
- * Cabeza redondeada y esquinas redondeadas). El ancho y el tamaño de la línea provienen de tokens.json:`.muse-icon` usar
- * `--muse-icons-stroke-width`(1.7) y `--muse-icons-icon`(24), si necesitas otro equipo, envíalo `size`.
+ * Muse 图标最小集 —— 内联 SVG，pathData 照搬
+ * `app/src/main/java/io/zer0/muse/ui/common/icons/MuseIcons.kt`（同一份 24×24 视口、
+ * 圆头圆角描边）。线宽与尺寸来自 tokens.json：`.muse-icon` 用
+ * `--muse-icons-stroke-width`（1.7）与 `--muse-icons-icon`（24），需要别的档位就传 `size`。
  *
- * Estos iconos están relacionados con `icons.tsx`(Host Un conjunto que viene con la funda del teléfono) Coexistencia: hay una apariencia y sensación realizadas,
- * Cambiarlo hará que la interfaz existente regrese, por lo que las nuevas primitivas tomarán esta parte.
+ * 这些图标与 `icons.tsx`（Host 手机壳自带的一套）并存：那边是既有实现的观感，
+ * 改它会让现有界面回归，因此新基元统一走这一份。
  */
 import type { SVGProps } from "react";
 import "./primitives.css";
 
 type MuseIconProps = {
-  /** Anule el tamaño visual predeterminado (el valor predeterminado es el token --muse-icons-icon). */
+  /** 覆盖默认视觉尺寸（默认取 --muse-icons-icon 令牌）。 */
   readonly size?: number;
   readonly className?: string;
 };
@@ -32,7 +32,7 @@ function iconProps(size: number | undefined, className: string | undefined): SVG
   return props;
 }
 
-/** Retorno:arrow-left(Dos trazos, línea horizontal y esquina doblada). */
+/** 返回：arrow-left（两条描边，横线与折角）。 */
 export function IconBack({ size, className }: MuseIconProps) {
   return (
     <svg {...iconProps(size, className)}>
@@ -42,7 +42,7 @@ export function IconBack({ size, className }: MuseIconProps) {
   );
 }
 
-/** Más:more-horizontal(tres puntos). */
+/** 更多：more-horizontal（三点）。 */
 export function IconMore({ size, className }: MuseIconProps) {
   return (
     <svg {...iconProps(size, className)}>
@@ -51,7 +51,7 @@ export function IconMore({ size, className }: MuseIconProps) {
   );
 }
 
-/** Enviar:send(Avión de papel macizo,MuseIcons.send Simplemente llene en lugar de trazo). */
+/** 发送：send（实心纸飞机，MuseIcons.send 就是 fill 而非描边）。 */
 export function IconSend({ size, className }: MuseIconProps) {
   const props = iconProps(size, className);
   return (
@@ -61,7 +61,7 @@ export function IconSend({ size, className }: MuseIconProps) {
   );
 }
 
-/** Adjuntos:paperclip. */
+/** 附件：paperclip。 */
 export function IconAttach({ size, className }: MuseIconProps) {
   return (
     <svg {...iconProps(size, className)}>
@@ -70,7 +70,7 @@ export function IconAttach({ size, className }: MuseIconProps) {
   );
 }
 
-/** Micrófono:microphone(Cápsula + arco de stent + columna). */
+/** 麦克风：microphone（胶囊 + 支架弧 + 立柱）。 */
 export function IconMic({ size, className }: MuseIconProps) {
   return (
     <svg {...iconProps(size, className)}>
@@ -81,7 +81,7 @@ export function IconMic({ size, className }: MuseIconProps) {
   );
 }
 
-/** Cerrar:x. */
+/** 关闭：x。 */
 export function IconClose({ size, className }: MuseIconProps) {
   return (
     <svg {...iconProps(size, className)}>
@@ -90,7 +90,7 @@ export function IconClose({ size, className }: MuseIconProps) {
   );
 }
 
-/** Mensaje de error:alert-circle(círculo + línea vertical + punto). */
+/** 错误提示：alert-circle（圆 + 竖线 + 点）。 */
 export function IconAlertCircle({ size, className }: MuseIconProps) {
   return (
     <svg {...iconProps(size, className)}>
@@ -101,7 +101,7 @@ export function IconAlertCircle({ size, className }: MuseIconProps) {
   );
 }
 
-/** Flecha derecha:chevron-right. */
+/** 右箭头：chevron-right。 */
 export function IconChevronRight({ size, className }: MuseIconProps) {
   return (
     <svg {...iconProps(size, className)}>

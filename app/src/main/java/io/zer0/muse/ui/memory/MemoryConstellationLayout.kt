@@ -6,17 +6,17 @@ import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
 
-/** Coordenadas de nodos de constelación memorizadas de manera determinista para usar con pruebas de regresión de diseño y de interfaz de usuario. */
+/** 确定性的记忆星座节点坐标，供 UI 和布局回归测试共同使用。 */
 data class ConstellationPoint(val x: Dp, val y: Dp)
 
-/** v2.0 constelación de cúmulos:centro de nodo(dp valor numérico)con puntos de anclaje del racimo. */
+/** v2.0 聚簇星座:节点中心(dp 数值)与簇锚点。 */
 data class ConstellationCenter(val x: Float, val y: Float)
 
 data class ClusterAnchor(
     val category: String,
     val x: Float,
     val y: Float,
-    /** Radio del anillo de nodos dentro del grupo(dp),Se utiliza para dibujar fondos con luz suave. */
+    /** 簇内节点环半径(dp),用于画柔光背景。 */
     val spread: Float,
 )
 
@@ -25,9 +25,9 @@ data class ClusterConstellation(
     val clusters: List<ClusterAnchor>,
 )
 
-private const val GOLDEN_ANGLE = 2.399963f // esquina dorada(radianes)
+private const val GOLDEN_ANGLE = 2.399963f // 黄金角(弧度)
 
-/** Orden de visualización de categorías(Consistente con las etiquetas de categoría de la página de memoria.),La categoría desconocida ocupa el último lugar. */
+/** 类别展示顺序(与记忆页面分类标签一致),未知类别排最后。 */
 private val CATEGORY_ORDER = listOf(
     "identity",
     "preference",
@@ -38,11 +38,11 @@ private val CATEGORY_ORDER = listOf(
 )
 
 /**
- * v2.0 Diseño de constelación de memoria:Agrupar primero por categoría,Luego se distribuyen en círculo dentro del grupo.
+ * v2.0 记忆星座布局:先按类别聚簇,再在簇内环形分布。
  *
- * En comparación con el antiguo esparcidor en espiral simple,Los recuerdos de un mismo tema se reúnen para formar"grupo de constelaciones",Repartido entre racimos con cuernos dorados.,
- * En general más legible;El diseño está completamente determinado por la colección de nodos.,La misma entrada siempre da como resultado la misma imagen.
- * Coordenadas de retorno como centro del nodo(dp valor numérico),Utilizado directamente para dibujar en Canvas.
+ * 相比旧的单螺旋铺开,同主题记忆聚在一起形成"星座群",簇间用黄金角散布,
+ * 整体更可读;布局完全由节点集合决定,同样输入永远得到同一张图。
+ * 返回坐标为节点中心(dp 数值),直接供 Canvas 绘制使用。
  */
 internal fun buildClusterConstellation(nodes: List<MemoryGraphNode>, sizeDp: Float): ClusterConstellation {
     if (nodes.isEmpty()) return ClusterConstellation(emptyMap(), emptyList())
@@ -55,7 +55,7 @@ internal fun buildClusterConstellation(nodes: List<MemoryGraphNode>, sizeDp: Flo
         )
     val center = sizeDp / 2f
     val clusterCount = groups.size
-    val spread = sizeDp * 0.29f // v2.0 Ajustes de lanzamiento:0.26→0.29,Más espacio entre clusters
+    val spread = sizeDp * 0.29f // v2.0 发布微调:0.26→0.29,簇间更舒展
     val anchors = mutableListOf<ClusterAnchor>()
     val nodeCenters = mutableMapOf<Long, ConstellationCenter>()
 
@@ -73,7 +73,7 @@ internal fun buildClusterConstellation(nodes: List<MemoryGraphNode>, sizeDp: Flo
         val nodeRing = clusterNodeRing(count)
         members.forEachIndexed { ni, node ->
             val a = ni * GOLDEN_ANGLE
-            // Jitter fijo:Deje que los nodos del grupo no caigan completamente sobre el círculo geométrico.,Mantenga el diseño correcto
+            // 固定抖动:让簇内节点不完全落在几何圆上,又保持布局确定
             val jitter = 1f - (node.factId % 5) * 0.05f
             val nx = cx + cos(a) * nodeRing * jitter
             val ny = cy + sin(a) * nodeRing * jitter
@@ -84,9 +84,9 @@ internal fun buildClusterConstellation(nodes: List<MemoryGraphNode>, sizeDp: Flo
     return ClusterConstellation(nodeCenters, anchors)
 }
 
-/** Radio del anillo de nodos dentro del grupo(dp),Se utiliza para estimar el tamaño del lienzo y dibujar. */
+/** 簇内节点环半径(dp),供画布尺寸估算与绘制共用。 */
 internal fun clusterNodeRing(count: Int): Float =
-    if (count <= 1) 0f else 28f + sqrt(count.toDouble()).toFloat() * 25f // v2.0 Ajustes de lanzamiento:26/22→28/25,Más dispersos
+    if (count <= 1) 0f else 28f + sqrt(count.toDouble()).toFloat() * 25f // v2.0 发布微调:26/22→28/25,点更散
 
 internal fun buildConstellationCoordinates(
     nodes: List<MemoryGraphNode>,
@@ -112,8 +112,8 @@ internal fun buildConstellationCoordinates(
 }
 
 /**
- * Las etiquetas de categoría son independientes del diseño del nodo y tienen/Otras etiquetas detectan colisiones.
- * La implementación anterior toma directamente el punto promedio de los nodos de clasificación. Cuando haya más nodos, las etiquetas se presionarán en la tarjeta, que parece nodos superpuestos.
+ * 分类标签独立于节点布局，并对节点/其他标签做碰撞检测。
+ * 旧实现直接取分类节点平均点，节点一多时标签会压在卡片上，看起来像重叠节点。
  */
 internal fun buildCategoryCoordinates(
     groups: Map<String, List<MemoryGraphNode>>,

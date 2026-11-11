@@ -30,12 +30,12 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
 /**
- * P2-33: Las herramientas de bloqueo deben cortar la reescritura después del tiempo de espera.
+ * P2-33: 阻塞型工具超时后必须切断回写。
  *
- * escena:El cuerpo de ejecución de la herramienta ignora las interrupciones del subproceso y retrasa el retorno.(WebView / Comportamiento real del bloqueo de IO).
- * La implementación anterior solo hizo `future.cancel(true)`,El resultado es "ilegible" pero aún accesible.;El resultado después de la reparación.
- * [ToolResultGate] publicar,No válido antes del tiempo de espera,Se descartan los resultados tardíos,TaskCard / noticias / toolCallHistory
- * No debe haber rastro de resultados tardíos.,El estado permanece TIMED_OUT y no se sobrescribe por finalizaciones tardías.
+ * 场景:工具执行体忽略线程中断并延迟返回(WebView / 阻塞 IO 的真实行为)。
+ * 旧实现只做 `future.cancel(true)`,结果「无人读取」但仍可达;修复后结果经
+ * [ToolResultGate] 发布,超时先行作废,迟到结果被丢弃,TaskCard / 消息 / toolCallHistory
+ * 都不得留下迟到结果的痕迹,状态保持 TIMED_OUT 不被迟到完成覆盖。
  */
 class ToolOrchestratorTimeoutAbandonTest {
 
@@ -56,7 +56,7 @@ class ToolOrchestratorTimeoutAbandonTest {
         context = mockk(relaxed = true)
     }
 
-    /** Accesores compatibles con ChatUiState real: tarjeta de herramientas/toolCallHistory/legibilidad y aserción de mensajes. */
+    /** 真实 ChatUiState 支撑的 accessor:工具卡 / toolCallHistory / 消息可读可断言。 */
     private class RecordingAccessor : ChatStateAccessor {
         @Volatile
         private var state: ChatUiState = ChatUiState(
@@ -107,7 +107,7 @@ class ToolOrchestratorTimeoutAbandonTest {
 
     private fun params() = ToolLoopParams(
         sessionId = "session-1",
-        // turnId No vacío → Registro estructurado de rueda de herramientas(toolCallRecord / ToolRoundEntity)Sólo así quedará en el inventario.
+        // turnId 非空 → 工具轮结构化记录(toolCallRecord / ToolRoundEntity)才会落库
         turnId = "turn-1",
         initialAssistantId = kotlin.uuid.Uuid.random(),
         baseHistorySize = 0,
@@ -141,14 +141,14 @@ class ToolOrchestratorTimeoutAbandonTest {
         val toolCallId = "t-late-1"
         val returned = CountDownLatch(1)
 
-        // Ignorar interrupciones y retrasar la devolución del cuerpo de ejecución:Simule llamadas de bloqueo ininterrumpidas como WebView
+        // 忽略中断、延迟返回的执行体:模拟 WebView 等不可中断的阻塞调用
         coEvery { registry.executeFromJson("calculator", any()) } coAnswers {
             val deadline = System.currentTimeMillis() + 600
             while (System.currentTimeMillis() < deadline) {
                 try {
                     Thread.sleep(20)
                 } catch (_: InterruptedException) {
-                    // clave:tragar interrumpir,Continuar la ejecución —— cancel(true) inválido para ello
+                    // 关键:吞掉中断,继续执行 —— cancel(true) 对它无效
                 }
             }
             returned.countDown()
@@ -166,7 +166,7 @@ class ToolOrchestratorTimeoutAbandonTest {
         val accessor = RecordingAccessor()
         val coordinator = ChatTaskCardCoordinator(accessor, registry)
         val orchestrator = orchestrator(timeoutMs = 60L)
-        // Registro estructurado de rueda de herramientas(ToolRoundEntity)Soltar captura de biblioteca → Afirmar que toolCallRecord no se ve afectado por resultados tardíos
+        // 工具轮结构化记录(ToolRoundEntity)落库捕获 → 断言 toolCallRecord 不被迟到结果污染
         val persistedRounds = java.util.Collections.synchronizedList(
             mutableListOf<io.zer0.muse.data.session.ToolRoundEntity>(),
         )
@@ -175,51 +175,51 @@ class ToolOrchestratorTimeoutAbandonTest {
         val history = mutableListOf<UIMessage>()
         val result = orchestrator.runLoop(params(), history, host, accessor, coordinator)
 
-        // 1) La semántica del tiempo de espera persiste:Para LLM/UI es [tiempo de espera] estado final
+        // 1) 超时语义保持:给 LLM/UI 的是 [超时] 终态
         val toolMessage = history.first { it.role == MessageRole.TOOL }
-        assertTrue(toolMessage.content.startsWith("[tiempo de espera]"))
+        assertTrue(toolMessage.content.startsWith("[超时]"))
         assertEquals(ToolOrchestrator.ToolExecStatus.TIMED_OUT.name, result.toolRounds.single().status)
         val cardAtTimeout = accessor.snapshot.taskCards.values.single()
         assertEquals(TaskStepStatus.TIMED_OUT, cardAtTimeout.steps.single().status)
 
-        // 2) La ejecución tardía se agota(ignorar la interrupción),El resultado fue descartado por la puerta.
-        assertTrue("Las herramientas de bloqueo aún deberían terminar de ejecutarse después del tiempo de espera", returned.await(5, TimeUnit.SECONDS))
+        // 2) 迟到执行确实跑完了(忽略中断),结果被闸门丢弃
+        assertTrue("阻塞工具应在超时后仍然跑完", returned.await(5, TimeUnit.SECONDS))
         withTimeout(5_000) {
             while (orchestrator.droppedLateResultCount() == 0) delay(10)
         }
         assertEquals(1, orchestrator.droppedLateResultCount())
-        assertTrue("Después del tiempo de espera, el toolCallId", orchestrator.isToolCallAbandoned(toolCallId))
+        assertTrue("超时后应登记该 toolCallId", orchestrator.isToolCallAbandoned(toolCallId))
 
-        // 3) Los resultados tardíos no deben escribirse en ningún estado.:Historia / Noticias / toolCallHistory / TaskCard
-        assertFalse("Es posible que los resultados tardíos no se ingresen en el historial de conversaciones.", history.any { it.content.contains(latePayload) })
+        // 3) 迟到结果不得写入任何状态:历史 / 消息 / toolCallHistory / TaskCard
+        assertFalse("迟到结果不得进入对话历史", history.any { it.content.contains(latePayload) })
         assertFalse(
-            "Los resultados tardíos no deben ingresar al mensaje de la interfaz de usuario",
+            "迟到结果不得进入 UI 消息",
             accessor.messages.any { msg ->
                 msg.content.contains(latePayload) || msg.toolCallInfo?.result?.contains(latePayload) == true
             },
         )
         assertFalse(
-            "No se pueden escribir resultados tardíos. toolCallRecord",
+            "迟到结果不得写入 toolCallRecord",
             accessor.snapshot.toolCallHistory.any { it.result.contains(latePayload) },
         )
-        assertTrue("Las rondas de tiempo de espera deben colocarse en el inventario.", persistedRounds.isNotEmpty())
+        assertTrue("超时轮次应落库", persistedRounds.isNotEmpty())
         assertFalse(
-            "Los resultados tardíos no se deben escribir en registros estructurados de rueda de herramientas",
+            "迟到结果不得写入工具轮结构化记录",
             persistedRounds.any { it.resultJson?.contains(latePayload) == true },
         )
         assertTrue(
-            "El estado final al ingresar a la biblioteca debe ser TIMED_OUT",
+            "落库终态应为 TIMED_OUT",
             persistedRounds.any { it.status == ToolOrchestrator.ToolExecStatus.TIMED_OUT.name },
         )
         val cardAfterLate = accessor.snapshot.taskCards.values.single()
-        assertEquals("La finalización tardía no debe anular el estado final TIMED_OUT", TaskStepStatus.TIMED_OUT, cardAfterLate.steps.single().status)
+        assertEquals("迟到完成不得覆盖 TIMED_OUT 终态", TaskStepStatus.TIMED_OUT, cardAfterLate.steps.single().status)
         assertFalse(cardAfterLate.steps.single().result.contains(latePayload))
-        assertTrue(cardAfterLate.steps.single().result.contains("tiempo de espera"))
+        assertTrue(cardAfterLate.steps.single().result.contains("超时"))
     }
 
     @Test
     fun `timeout before completion still returns the gate value when tool finishes in time`() = runBlocking {
-        // control inverso:No agotado(Ventana de tiempo de espera suficiente)Los resultados se publicarán como de costumbre.,La puerta no mata por error.
+        // 反向对照:未超时(足够的超时窗口)时结果照常发布,闸门不误杀
         coEvery { registry.executeFromJson("calculator", any()) } coAnswers { "3" }
 
         val host = FakeToolLoopHost(

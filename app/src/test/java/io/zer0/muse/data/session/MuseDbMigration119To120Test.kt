@@ -13,14 +13,14 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * v2.6.15: 119 → 120 lectura de caché/Escribir migración de columnas.
+ * v2.6.15: 119 → 120 缓存读/写分列迁移。
  *
- * Llame directamente al entorno de producción. [MuseDb.MIGRATION_119_120](no una copia del DDL), afirme:
- *  - Se han agregado ambas columnas y el tipo y el valor predeterminado son consistentes con la declaración de entidad (de lo contrario, la verificación real de la sala de máquinas arrojará
- *    "Migration didn't properly handle");
- *  - No se ha reescrito ni un solo campo de la fila anterior:`cachedTokens` / `cached_tokens` Déjelo como está (sin rellenar ni volver a calcular),
- *    La nueva columna es NULL/0 en la fila anterior;
- *  - Después de seguir los pasos para revertir el documento (eliminación de dos columnas + revertir la versión a 119), los datos antiguos aún están completos y legibles.
+ * 直接调用生产环境的 [MuseDb.MIGRATION_119_120]（不是复制一份 DDL），断言：
+ *  - 两列都补上了，类型与默认值跟实体声明一致（否则真机 Room 校验会抛
+ *    "Migration didn't properly handle"）；
+ *  - 旧行一个字段都没被改写：`cachedTokens` / `cached_tokens` 原样保留（不回填、不重算），
+ *    新列在旧行为 NULL / 0；
+ *  - 按文档的回退步骤（删两列 + 版本退回 119）后，旧数据仍然完整可读。
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -36,7 +36,7 @@ class MuseDbMigration119To120Test {
                 .callback(
                     object : SupportSQLiteOpenHelper.Callback(119) {
                         override fun onCreate(db: SupportSQLiteDatabase) {
-                            // v119 Las columnas clave de mensajes/uso_registros (excluyendo esta nueva columna)
+                            // v119 的 messages / usage_records 关键列（不含本次新增列）
                             db.execSQL(
                                 "CREATE TABLE `messages` (" +
                                     "`id` TEXT NOT NULL, `sessionId` TEXT NOT NULL DEFAULT '', " +
@@ -90,7 +90,7 @@ class MuseDbMigration119To120Test {
         db.execSQL(
             "INSERT INTO messages (id, sessionId, role, content, createdAt, promptTokens, " +
                 "completionTokens, reasoningTokens, cachedTokens) " +
-                "VALUES ('m1', 's1', 'ASSISTANT', 'Antigua respuesta', 1000, 300, 50, 0, 700)",
+                "VALUES ('m1', 's1', 'ASSISTANT', '旧回复', 1000, 300, 50, 0, 700)",
         )
         db.execSQL(
             "INSERT INTO usage_records (created_at, source, model_id, provider_id, prompt_tokens, " +
@@ -105,34 +105,34 @@ class MuseDbMigration119To120Test {
         try {
             seed(db)
 
-            // Realizar migración de producción
+            // 执行生产迁移
             MuseDb.MIGRATION_119_120.migrate(db)
 
             val messageColumns = columnInfo(db, "messages")
-            assertTrue("messages deberia estar compuesto cacheWriteTokens", messageColumns.containsKey("cacheWriteTokens"))
+            assertTrue("messages 应补上 cacheWriteTokens", messageColumns.containsKey("cacheWriteTokens"))
             assertTrue(
-                "messages.cacheWriteTokens Debe ser anulable y el valor predeterminado es NULL (las filas antiguas no tienen registros escritos)",
+                "messages.cacheWriteTokens 必须可空且默认 NULL（旧行没有写入量记录）",
                 messageColumns.getValue("cacheWriteTokens").contains("notnull=0"),
             )
 
             val usageColumns = columnInfo(db, "usage_records")
-            assertTrue("usage_records deberia estar compuesto cache_write_tokens", usageColumns.containsKey("cache_write_tokens"))
+            assertTrue("usage_records 应补上 cache_write_tokens", usageColumns.containsKey("cache_write_tokens"))
             assertEquals(
-                "usage_records.cache_write_tokens Debe ser coherente con la entidad:NOT NULL DEFAULT 0",
+                "usage_records.cache_write_tokens 应与实体一致：NOT NULL DEFAULT 0",
                 "INTEGER|notnull=1|default=0",
                 usageColumns.getValue("cache_write_tokens"),
             )
 
-            // Los valores antiguos se conservan tal cual y las nuevas columnas se NULL / 0
+            // 旧值原样保留，新列为 NULL / 0
             db.query("SELECT cachedTokens, cacheWriteTokens FROM messages WHERE id = 'm1'").use { cursor ->
                 assertTrue(cursor.moveToFirst())
-                assertEquals("Los tokens en caché de la fila anterior no se reponen", 700, cursor.getInt(0))
-                assertTrue("La cantidad de escritura de la fila anterior debe ser NULL (desconocida) y no se puede compilar 0", cursor.isNull(1))
+                assertEquals("旧行 cachedTokens 不回填", 700, cursor.getInt(0))
+                assertTrue("旧行写入量应为 NULL（未知），不能编成 0", cursor.isNull(1))
             }
             db.query("SELECT cached_tokens, cache_write_tokens FROM usage_records").use { cursor ->
                 assertTrue(cursor.moveToFirst())
-                assertEquals("Los cached_tokens de transacciones antiguas no se reponen", 700, cursor.getInt(0))
-                assertEquals("La cantidad predeterminada de escritura en el canal antiguo 0", 0, cursor.getInt(1))
+                assertEquals("旧流水 cached_tokens 不回填", 700, cursor.getInt(0))
+                assertEquals("旧流水写入量默认 0", 0, cursor.getInt(1))
             }
         } finally {
             db.close()
@@ -146,9 +146,9 @@ class MuseDbMigration119To120Test {
             seed(db)
             MuseDb.MIGRATION_119_120.migrate(db)
 
-            // Siga los pasos de reversión en las notas de migración: elimine dos columnas + regrese a la versión 119.
-            // Vaya aquí para "Crear una nueva tabla" → copiar datos → Ruta portátil para "cambiar nombre":DROP COLUMN Requiere SQLite 3.35+,
-            // Android No hay garantía (esta prueba informará directamente un error de sintaxis cuando se ejecute en el SQLite anterior de Robolectric).
+            // 按迁移注释里的回退步骤：去掉两列 + 版本退回 119。
+            // 这里走「建新表 → 拷数据 → 改名」的可移植路径：DROP COLUMN 需要 SQLite 3.35+，
+            // Android 侧并不保证（本测试跑在 Robolectric 的较旧 SQLite 上就会直接报语法错）。
             db.execSQL(
                 "CREATE TABLE `messages_rollback` (" +
                     "`id` TEXT NOT NULL, `sessionId` TEXT NOT NULL DEFAULT '', " +
@@ -196,19 +196,19 @@ class MuseDbMigration119To120Test {
 
             db.version = 119
 
-            assertEquals("Después de revertir, la versión debería volver a 119", 119, db.version)
-            assertTrue("Se deberían haber eliminado las columnas nuevas.", !columnInfo(db, "messages").containsKey("cacheWriteTokens"))
-            assertTrue("Se deberían haber eliminado las columnas nuevas.", !columnInfo(db, "usage_records").containsKey("cache_write_tokens"))
+            assertEquals("回退后版本应回到 119", 119, db.version)
+            assertTrue("新增列应已移除", !columnInfo(db, "messages").containsKey("cacheWriteTokens"))
+            assertTrue("新增列应已移除", !columnInfo(db, "usage_records").containsKey("cache_write_tokens"))
 
             db.query("SELECT content, promptTokens, completionTokens, cachedTokens FROM messages").use { cursor ->
-                assertTrue("Las viejas noticias aún deben estar ahí.", cursor.moveToFirst())
-                assertEquals("Antigua respuesta", cursor.getString(0))
+                assertTrue("旧消息必须还在", cursor.moveToFirst())
+                assertEquals("旧回复", cursor.getString(0))
                 assertEquals(300, cursor.getInt(1))
                 assertEquals(50, cursor.getInt(2))
-                assertEquals("Retroceder sin perder los valores fusionados", 700, cursor.getInt(3))
+                assertEquals("回退不丢合并值", 700, cursor.getInt(3))
             }
             db.query("SELECT prompt_tokens, completion_tokens, cached_tokens FROM usage_records").use { cursor ->
-                assertTrue("El antiguo agua corriente todavía debe estar ahí.", cursor.moveToFirst())
+                assertTrue("旧流水必须还在", cursor.moveToFirst())
                 assertEquals(300, cursor.getInt(0))
                 assertEquals(50, cursor.getInt(1))
                 assertEquals(700, cursor.getInt(2))

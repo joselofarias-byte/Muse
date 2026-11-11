@@ -7,113 +7,136 @@ import org.junit.Test
 import java.io.File
 
 /**
- * Mensaje activo cuatro tableros de clavos de cableado de circuito cerrado.
+ * 主动消息四条闭环的接线钉板。
  *
- * Casi todas estas rutas se basan en "cómo cambia el estado en la biblioteca" y "dónde se ajustará cuando se haga clic en un determinado botón".
- * La prueba única puede cubrir la primera, pero "si el receptor está registrado o no / si hay un botón para colgar en la notificación". /
- * "¿La inspección ha ajustado realmente la fecha de caducidad?" Este tipo de cosas solo se pueden ver en el código fuente. Este tipo de omisión se puede compilar,
- * La prueba única también es toda verde. Solo me enteré cuando no hubo respuesta cuando hice clic en el dispositivo real, así que lo fijé con un escaneo.
+ * 这些路径几乎都靠「状态在库里怎么变」和「某个按钮点下去会调到哪」成立，
+ * 单测能覆盖前者，但「接收器到底注册了没有 / 通知上到底有没有挂按钮 /
+ * 巡检有没有真的调过期收尾」这类事只能从源码上看。这类遗漏编译得过、
+ * 单测也全绿，只有在真机上点了没反应才发现，所以用扫描钉住。
  */
 class ProactiveDismissWiringTest {
 
     @Test
-    fun `Sólo se reclamarán las acciones contenidas en este acuerdo`() {
+    fun `只有本协议的动作才会被认领`() {
         assertEquals(
             "o1",
             ProactiveDismissProtocol.dismissedOutcomeId(ProactiveDismissProtocol.ACTION_DISMISS, "o1"),
         )
         assertNull(
-            "Otras acciones no deben reclamarse",
+            "别的 action 不该被认领",
             ProactiveDismissProtocol.dismissedOutcomeId("io.zer0.muse.action.OTHER", "o1"),
         )
         assertNull(
-            "Las retransmisiones sin acción no se cuentan",
+            "没带 action 的广播不算",
             ProactiveDismissProtocol.dismissedOutcomeId(null, "o1"),
         )
         assertNull(
-            "La transmisión con identificación vacía no tiene ningún objeto marcable",
+            "带空 id 的广播没有可标记的对象",
             ProactiveDismissProtocol.dismissedOutcomeId(ProactiveDismissProtocol.ACTION_DISMISS, "  "),
         )
     }
 
     @Test
-    fun `Los receptores de acciones de notificación están registrados con el indicador de no exportación`() {
-        val app = source("io/zer0/muse/MuseApp.kt")
-        val call = callSite(app, "ContextCompat.registerReceiver(")
-        assertTrue("El registrado debe ser un receptor activo de acciones de mensajes:$call", call.contains("ProactiveDismissReceiver()"))
-        assertTrue("La condición del filtro debe ser una acción de este protocolo:$call", call.contains("ProactiveDismissProtocol.ACTION_DISMISS"))
+    fun `通知动作接收器声明在清单里且不导出`() {
+        // 必须是清单注册：通知由后台 Worker 发出，发完进程随时可能被杀；
+        // 动态注册的接收器那时已经不存在，用户点「这次不用」会毫无反应。
+        val manifest = manifestSource()
+        val block = callSite(manifest, "\".proactive.ProactiveDismissReceiver\"")
+        assertTrue("清单里要声明接收器：$block", block.contains("ProactiveDismissReceiver"))
+        assertTrue("必须不导出：只有本应用自己的 PendingIntent 该发得动它：$block", block.contains("android:exported=\"false\""))
         assertTrue(
-            "RECEIVER_NOT_EXPORTED debe declararse explícitamente: esta transmisión solo debe ser enviada por la propia aplicación:$call",
-            call.contains("ContextCompat.RECEIVER_NOT_EXPORTED"),
-        )
-        assertTrue(
-            "Basta con no exportar y no se debe cambiar a RECEIVER_EXPORTED:$call",
-            !call.contains("ContextCompat.RECEIVER_EXPORTED"),
+            "过滤条件必须是本协议的动作：$block",
+            block.contains("io.zer0.muse.action.PROACTIVE_DISMISS"),
         )
     }
 
     @Test
-    fun `La notificación de mensaje activo se cuelga y esta vez no se utiliza ningún botón`() {
+    fun `不再用动态注册重复接管同一个广播`() {
+        val app = source("io/zer0/muse/MuseApp.kt")
+        assertTrue(
+            "清单注册已经能收到，动态注册会让同一次点击被处理两遍",
+            !app.contains("registerProactiveDismissReceiver"),
+        )
+    }
+
+    @Test
+    fun `主动消息通知挂上了这次不用按钮`() {
         val notifier = source("io/zer0/muse/notification/MuseNotificationManager.kt")
         assertTrue(
-            "Debe haber un botón de acción en la notificación; de lo contrario, el usuario no tendrá forma de \"no usarlo esta vez\".",
+            "通知上要有动作按钮，否则用户没有「这次不用」的入口",
             notifier.contains("builder.addAction("),
         )
         assertTrue(
-            "El destino del clic del botón debe ser la misma transmisión de acción.",
+            "按钮的点击目标必须是同一个动作广播",
             notifier.contains("buildDismissIntent(") &&
                 callSite(notifier, "private fun buildDismissIntent(").contains("ProactiveDismissReceiver"),
         )
         assertTrue(
-            "Utilice recursos de cadena independientes para la copia del botón, no los reutilice con el título",
+            "按钮文案用独立的字符串资源，不要和标题复用",
             notifier.contains("R.string.notif_proactive_action_dismiss"),
         )
         assertTrue(
-            "Broadcast PendingIntent debe ser inmutable,Android 12+ Existe el riesgo de sobrescritura cuando el sistema emite una variable PendingIntent.",
+            "广播 PendingIntent 必须不可变，Android 12+ 上可变 PendingIntent 由系统发出时有被改写的风险",
             callSite(notifier, "private fun buildDismissIntent(").contains("PendingIntent.FLAG_IMMUTABLE"),
         )
     }
 
     @Test
-    fun `Durante la inspección se realizó cierre de vencimientos y filtrado de candidatos`() {
+    fun `巡检里做了过期收尾与候选过滤`() {
         val runner = source("io/zer0/muse/proactive/ProactiveCycleRunner.kt")
-        assertTrue("El cierre vencido debe quedar colgado en la inspección, no configurar cronómetro", runner.contains("expireOverdue(now)"))
-        assertTrue("El filtrado de candidatos utiliza conclusiones aprendidas", runner.contains("unpopularKinds("))
+        assertTrue("过期收尾要挂在巡检里，别再起一个定时器", runner.contains("expireOverdue(now)"))
+        assertTrue("候选过滤要用学到的结论", runner.contains("unpopularKinds("))
         assertTrue(
-            "La identificación de la cuenta resultante debe transmitirse de forma transparente a la notificación; de lo contrario, el botón no sabrá en qué elemento se hizo clic.",
+            "结果账 id 要透传到通知，否则按钮不知道点的是哪条",
             runner.contains("outcomeId = outcomeId"),
         )
     }
 
     @Test
-    fun `Marcar mensajes activos como leídos al cambiar de sesión`() {
+    fun `切换会话时标记主动消息已读`() {
         val controller = source("io/zer0/muse/ui/chat/ChatSessionController.kt")
         assertTrue(
-            "Los enlaces profundos de notificación, los teléfonos celulares pequeños y los chats principales convergen para cambiar de sesión, por lo que debe marcarlo como leído aquí.",
+            "通知深链、小手机、主聊天都收敛到会话切换，就得在这儿标记已读",
             controller.contains(".onSessionOpened(sessionId)"),
+        )
+    }
+
+    @Test
+    fun `主动消息通知深链携带精确结果账 id`() {
+        val runner = source("io/zer0/muse/proactive/ProactiveCycleRunner.kt")
+        assertTrue(
+            runner.contains("ProactiveOutcome(ready.sessionId, outcomeId)"),
         )
     }
 
     // ══════════════════════════════════════════════════════════════
 
-    /** Tome una pequeña sección del código fuente después de un determinado punto de llamada para limitar el alcance de la aserción y evitar ambigüedades con cadenas del mismo nombre en otras partes de todo el archivo. */
+    /** 取某个调用点之后一小段源码，用来限定断言范围，避免整文件里别处的同名字符串蒙对。 */
     private fun callSite(text: String, marker: String): String {
         val start = text.indexOf(marker)
-        if (start < 0) fail("No puedo encontrarlo en el código fuente. $marker")
+        if (start < 0) fail("源码里找不到 $marker")
         return text.substring(start, minOf(text.length, start + WINDOW))
+    }
+
+    /** 清单不在源码树里，单独找一次。 */
+    private fun manifestSource(): String {
+        val roots = listOf("app/src/main", "src/main", "../app/src/main")
+        val file = roots.map { File(it, "AndroidManifest.xml") }.firstOrNull { it.isFile }
+            ?: fail("找不到 AndroidManifest.xml（工作目录 ${File(".").absolutePath}）")
+        return file.readText()
     }
 
     private fun source(relative: String): String {
         val roots = listOf("app/src/main/java", "src/main/java", "../app/src/main/java")
         val file = roots.map { File(it, relative) }.firstOrNull { it.isFile }
-            ?: fail("Código fuente no encontrado $relative(directorio de trabajo ${File(".").absolutePath})")
+            ?: fail("找不到源码 $relative（工作目录 ${File(".").absolutePath}）")
         return file.readText()
     }
 
     private fun fail(message: String): Nothing = throw AssertionError(message)
 
     private companion object {
-        /** ¿A qué distancia del punto de llamada? suficiente para ajustarse a la lista de argumentos de una llamada de varias líneas. */
+        /** 从调用点往后看多远；够包住一次多行调用的实参表。 */
         const val WINDOW = 700
     }
 }

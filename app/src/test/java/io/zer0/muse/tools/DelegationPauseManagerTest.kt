@@ -76,7 +76,7 @@ class DelegationPauseManagerTest {
 
         assertEquals(DelegationPauseManager.PauseDecision.REJECT, response.decision)
         assertEquals(DelegationPauseManager.PauseOutcome.TIMED_OUT, response.outcome)
-        assertTrue(response.reason.orEmpty().contains("tiempo de espera"))
+        assertTrue(response.reason.orEmpty().contains("超时"))
         assertTrue(manager.activePauses.value.isEmpty())
     }
 

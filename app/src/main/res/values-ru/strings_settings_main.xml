@@ -19,6 +19,8 @@
     <string name="settings_provider_empty_title">Пока нет поставщиков</string>
     <string name="settings_provider_empty_subtitle">Добавьте поставщика, чтобы ассистент мог начать работу</string>
     <string name="settings_provider_empty_action">Добавить поставщика</string>
+    <string name="settings_provider_free_ready_title">Встроенные бесплатные модели готовы</string>
+    <string name="settings_provider_free_ready_subtitle">Уже можно общаться. Свой провайдер необязателен, но даёт больше лимитов и возможностей.</string>
     <string name="settings_provider_category_official">Официальный</string>
     <string name="settings_provider_category_relay">Реле</string>
     <string name="settings_provider_category_custom">Обычай</string>
@@ -44,9 +46,9 @@
     <string name="settings_provider_unable_to_resolve_server">Невозможно определить адрес сервера</string>
     <string name="settings_provider_query_timeout">Время запроса истекло</string>
     <string name="settings_provider_query_failed">Не удалось выполнить запрос: %1$s</string>
-    <string name="settings_provider_discard_changes_title">Отменить изменения?</string>
-    <string name="settings_provider_discard_changes_content">У вас есть несохраненные изменения, которые будут потеряны.</string>
-    <string name="settings_provider_discard">Отказаться</string>
+    <string name="settings_unsaved_changes_title">Отменить изменения?</string>
+    <string name="settings_unsaved_changes_content">У вас есть несохраненные изменения, которые будут потеряны.</string>
+    <string name="settings_unsaved_discard">Отказаться</string>
     <string name="settings_provider_new">Новый провайдер</string>
     <!-- v2.4: standalone connection test result messages (short, distinct from fetchModels error grading) -->
     <string name="settings_provider_test_success_count">Соединение в порядке · Модели %1$d</string>
@@ -68,6 +70,7 @@
     <string name="settings_provider_tab_models">Модели</string>
     <string name="settings_provider_file_picker_failed">Невозможно открыть средство выбора файлов: %1$s</string>
     <string name="settings_provider_delete_title">Удалить поставщика</string>
+    <string name="settings_provider_delete_consequence">Ключ API и настроенный список моделей также будут удалены.</string>
     <string name="settings_provider_delete_content">Вы уверены, что хотите удалить %1$s?</string>
     <string name="settings_provider_action_activate">Сделать текущим</string>
     <string name="settings_model_catalog_refresh">Проверить обновления</string>
@@ -307,6 +310,8 @@
     <string name="settings_chat_show_timestamp">Показать временную метку</string>
     <string name="settings_chat_show_timestamp_subtitle">Показывать время отправки для каждого сообщения</string>
     <string name="settings_chat_generation_style">Стиль генерации</string>
+    <string name="settings_chat_reply_language">Отвечать на языке пользователя</string>
+    <string name="settings_chat_reply_language_subtitle">Ответы следуют языку вашего сообщения, а при неопределённости — языку интерфейса. Отключите, чтобы решали промпты</string>
     <string name="settings_chat_randomness">Случайность ответа</string>
     <string name="settings_chat_temp_hint_certain">Детерминированный, стабильный и предсказуемый</string>
     <string name="settings_chat_temp_hint_balanced_low">Сбалансированный, стабильный, но разнообразный</string>
@@ -382,12 +387,20 @@
     <string name="cloud_backup_backup_now">Создать копию сейчас</string>
     <string name="cloud_backup_backup_success">Загружено в облако</string>
     <string name="cloud_backup_config_saved">Конфигурация сохранена</string>
+    <string name="cloud_backup_config_save_failed">Не удалось сохранить</string>
     <string name="cloud_backup_delete_failed">Ошибка удаления</string>
+    <string name="cloud_backup_delete_consequence">Эта облачная версия будет удалена безвозвратно. Если она единственная, вы потеряете облачный запасной вариант.</string>
     <string name="cloud_backup_delete_success">Удалено</string>
     <string name="cloud_backup_delete_this">Удалить</string>
     <string name="cloud_backup_enable">Включить облачное резервное копирование</string>
     <string name="cloud_backup_hide_secret">Скрыть</string>
     <string name="cloud_backup_interval_hint">Чем короче интервал, тем чаще загрузки и больше расход трафика и батареи; для больших баз знаний рекомендуется ≥ 3 дней</string>
+    <plurals name="cloud_backup_interval_days">
+        <item quantity="other">%1$d дн.</item>
+        <item quantity="one">%1$d дн.</item>
+        <item quantity="few">%1$d дн.</item>
+        <item quantity="many">%1$d дн.</item>
+    </plurals>
     <string name="cloud_backup_interval_label">Интервал резервного копирования (дней)</string>
     <string name="cloud_backup_list_empty">Нет удаленных резервных копий</string>
     <string name="cloud_backup_list_load_failed">Ошибка загрузки; проверьте конфигурацию и повторите</string>
@@ -413,7 +426,7 @@
     <string name="cloud_backup_type_webdav">ВебДАВ</string>
     <string name="settings_chat_expand_button">Показывать кнопку полноэкранного редактирования</string>
     <string name="settings_chat_expand_button_subtitle">Показывать кнопку полноэкранного редактирования справа от поля ввода</string>
-    <!-- Correcciones en la interfaz (i18n-3.x): restricciones de contexto del piso i18n(Copiar temporalmente chino,Traducción posterior) -->
+    <!-- 前端修复 (i18n-3.x): 楼层式上下文限制 i18n(临时复制中文,后续补译) -->
     <string name="settings_chat_floor_limiter">Ограничение контекста по этажам</string>
     <string name="settings_chat_floor_limiter_subtitle">Считает сообщения пользователя этажами, сохраняет последние N полных этажей, чтобы не обрезать диалог посередине</string>
     <string name="settings_chat_tool_rounds">Лимит раундов инструментов</string>
@@ -423,7 +436,7 @@
     <string name="settings_chat_floor_keep">Сколько этажей сохранять</string>
     <string name="settings_chat_floor_keep_subtitle">Старые сообщения сверх этого числа этажей обрезаются</string>
 
-    <!-- Correcciones en la interfaz (i18n-3.x): Copia de compensación pública(Emoticones/Compartir memoria de chat grupal) -->
+    <!-- 前端修复 (i18n-3.x): 公共清空文案(表情包/群聊记忆共用) -->
     <string name="settings_common_clear_all">Очистить все</string>
     <string name="settings_common_clear">Очистить</string>
     <string name="settings_chat_background_section">Внешний вид</string>

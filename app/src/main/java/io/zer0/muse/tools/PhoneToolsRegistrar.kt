@@ -1,12 +1,12 @@
 package io.zer0.muse.tools
 
 /**
- * P1-3b Desdominio: registrador de herramientas celulares.
+ * P1-3b 拆域：手机端工具注册器。
  *
- * Registrarse set_alarm / set_timer / open_app / share_text / get_location /
+ * 注册 set_alarm / set_timer / open_app / share_text / get_location /
  * get_device_info / get_contacts_count / get_contacts_list / send_sms /
- * add_contact / make_phone_call / open_maps.
- * La implementación está ubicada en [PhoneToolsImpl.kt](La función de nivel superior se migra sin cambios).
+ * add_contact / make_phone_call / open_maps。
+ * 实现位于 [PhoneToolsImpl.kt]（原样迁移的顶层函数）。
  */
 class PhoneToolsRegistrar(
     private val context: android.content.Context,
@@ -22,18 +22,18 @@ class PhoneToolsRegistrar(
         toolRegistry.register(
             ToolRegistry.ToolDef(
                 name = "set_alarm",
-                description = "Configurar la alarma del sistema(Pase AlarmClock.ACTION_SET_ALARM,Emprendimiento de la aplicación del reloj del sistema).",
+                description = "设置系统闹钟(通过 AlarmClock.ACTION_SET_ALARM,系统时钟应用承接)。",
                 parameters = mapOf(
-                    "hour" to "Requerido,hora del despertador(0-23)",
-                    "minute" to "Requerido,Minutos de alarma(0-59)",
-                    "label" to "Opcional,etiquetas de despertador,Predeterminado 'muse despertador'",
-                    "days_of_week" to "Opcional,Repetir cada semana,Como por ejemplo MON,TUE,WED,THU,FRI",
-                    "weekdays" to "Opcional,Establezca rápidamente los días laborables para repetir(lunes a viernes),Pasar verdadero se expande a MON-FRI,tener prioridad sobre days_of_week",
-                    "weekends" to "Opcional,Establecer rápidamente la repetición del fin de semana(sábado domingo),Pasar verdadero se expande a SAT,SUN,tener prioridad sobre days_of_week",
+                    "hour" to "必填,闹钟小时(0-23)",
+                    "minute" to "必填,闹钟分钟(0-59)",
+                    "label" to "可选,闹钟标签,默认 'muse 闹钟'",
+                    "days_of_week" to "可选,每周重复,如 MON,TUE,WED,THU,FRI",
+                    "weekdays" to "可选,快捷设工作日重复(周一至周五),传 true 即展开为 MON-FRI,优先于 days_of_week",
+                    "weekends" to "可选,快捷设周末重复(周六周日),传 true 即展开为 SAT,SUN,优先于 days_of_week",
                 ),
                 required = setOf("hour", "minute"),
                 category = "built-in",
-                // P0-3: Consistente con la tabla explícita ToolPermissionResolver(HIGH)— Los cambios del despertador del sistema son irreversibles
+                // P0-3: 与 ToolPermissionResolver 显式表一致(HIGH)— 系统闹钟变更不可逆
                 riskLevel = ToolRiskLevel.HIGH,
             ),
         ) { args -> impl.execSetAlarm(args) }
@@ -41,14 +41,14 @@ class PhoneToolsRegistrar(
         toolRegistry.register(
             ToolRegistry.ToolDef(
                 name = "set_timer",
-                description = "Configurar la cuenta regresiva del sistema(Pase AlarmClock.ACTION_SET_TIMER,Emprendimiento de la aplicación del reloj del sistema).",
+                description = "设置系统倒计时(通过 AlarmClock.ACTION_SET_TIMER,系统时钟应用承接)。",
                 parameters = mapOf(
-                    "seconds" to "Requerido,Segundos de cuenta regresiva",
-                    "label" to "Opcional,etiqueta de cuenta regresiva,Predeterminado 'muse cuenta regresiva'",
+                    "seconds" to "必填,倒计时秒数",
+                    "label" to "可选,倒计时标签,默认 'muse 倒计时'",
                 ),
                 required = setOf("seconds"),
                 category = "built-in",
-                // P0-3: Consistente con la tabla explícita ToolPermissionResolver(HIGH)— Los cambios de cuenta regresiva del sistema son irreversibles
+                // P0-3: 与 ToolPermissionResolver 显式表一致(HIGH)— 系统倒计时变更不可逆
                 riskLevel = ToolRiskLevel.HIGH,
             ),
         ) { args -> impl.execSetTimer(args) }
@@ -56,11 +56,11 @@ class PhoneToolsRegistrar(
         toolRegistry.register(
             ToolRegistry.ToolDef(
                 name = "open_app",
-                description = "Abra la aplicación especificada(Inicie su main por nombre de paquete Activity),O salta a través de Deep Link/acción personalizada.",
+                description = "打开指定应用(通过包名启动其主 Activity),或通过 Deep Link/自定义 action 跳转。",
                 parameters = mapOf(
-                    "packageName" to "Opcional,Nombre del paquete de la aplicación,Como por ejemplo com.tencent.mm(WeChat)/com.tencent.mobileqq(QQ)",
-                    "action" to "Opcional,Personalizar action(Como por ejemplo com.example.MY_ACTION)",
-                    "data_uri" to "Opcional,Deep Link URI,Como por ejemplo myapp://page/123",
+                    "packageName" to "可选,应用包名,如 com.tencent.mm(微信)/com.tencent.mobileqq(QQ)",
+                    "action" to "可选,自定义 action(如 com.example.MY_ACTION)",
+                    "data_uri" to "可选,Deep Link URI,如 myapp://page/123",
                 ),
                 required = emptySet(),
                 category = "built-in",
@@ -71,10 +71,10 @@ class PhoneToolsRegistrar(
         toolRegistry.register(
             ToolRegistry.ToolDef(
                 name = "share_text",
-                description = "Comparta texto a través del panel para compartir del sistema(selector emergente).",
+                description = "通过系统分享面板分享文本(弹出选择器)。",
                 parameters = mapOf(
-                    "text" to "Requerido,texto para compartir",
-                    "title" to "Opcional,Compartir título del panel",
+                    "text" to "必填,要分享的文本",
+                    "title" to "可选,分享面板标题",
                 ),
                 required = setOf("text"),
                 category = "built-in",
@@ -85,10 +85,10 @@ class PhoneToolsRegistrar(
         toolRegistry.register(
             ToolRegistry.ToolDef(
                 name = "get_location",
-                description = "Obtener la ubicación actual del dispositivo(Latitud y longitud). Se requiere permiso de ubicación.",
+                description = "获取设备当前位置(经纬度)。需要定位权限。",
                 parameters = mapOf(
-                    "provider" to "Opcional,gps/network/passive,Automático predeterminado",
-                    "timeout" to "Opcional,Tiempo de espera en milisegundos,Predeterminado 5000",
+                    "provider" to "可选,gps/network/passive,默认自动",
+                    "timeout" to "可选,超时毫秒数,默认 5000",
                 ),
                 required = emptySet(),
                 category = "built-in",
@@ -99,7 +99,7 @@ class PhoneToolsRegistrar(
         toolRegistry.register(
             ToolRegistry.ToolDef(
                 name = "get_device_info",
-                description = "Obtener información del dispositivo:marca/modelo/Android versión/resolución de pantalla/fuerza.",
+                description = "获取设备信息:品牌/型号/Android 版本/屏幕分辨率/电量。",
                 parameters = emptyMap(),
                 required = emptySet(),
                 category = "built-in",
@@ -110,7 +110,7 @@ class PhoneToolsRegistrar(
         toolRegistry.registerOutcome(
             ToolRegistry.ToolDef(
                 name = "get_device_info",
-                description = "Obtener información del dispositivo(versión estructurada).",
+                description = "获取设备信息(结构化版本)。",
                 parameters = emptyMap(),
                 required = emptySet(),
                 category = "built-in",
@@ -121,8 +121,8 @@ class PhoneToolsRegistrar(
         toolRegistry.register(
             ToolRegistry.ToolDef(
                 name = "get_contacts_count",
-                description = "Obtenga el número de contactos en la libreta de direcciones. Requiere permiso READ_CONTACTS.",
-                parameters = mapOf("filter" to "Opcional,Filtrar por nombre"),
+                description = "获取通讯录联系人数量。需要 READ_CONTACTS 权限。",
+                parameters = mapOf("filter" to "可选,按名称过滤"),
                 required = emptySet(),
                 category = "built-in",
                 riskLevel = ToolRiskLevel.NORMAL,
@@ -132,10 +132,10 @@ class PhoneToolsRegistrar(
         toolRegistry.register(
             ToolRegistry.ToolDef(
                 name = "get_contacts_list",
-                description = "Obtenga la lista de contactos de la libreta de direcciones. Requiere permiso READ_CONTACTS.",
+                description = "获取通讯录联系人列表。需要 READ_CONTACTS 权限。",
                 parameters = mapOf(
-                    "limit" to "Opcional,Cantidad de devolución,Predeterminado 20",
-                    "filter" to "Opcional,Filtrar por nombre",
+                    "limit" to "可选,返回数量,默认 20",
+                    "filter" to "可选,按名称过滤",
                 ),
                 required = emptySet(),
                 category = "built-in",
@@ -146,10 +146,10 @@ class PhoneToolsRegistrar(
         toolRegistry.register(
             ToolRegistry.ToolDef(
                 name = "send_sms",
-                description = "Envía un mensaje de texto. Requiere permiso SEND_SMS.",
+                description = "发送短信。需要 SEND_SMS 权限。",
                 parameters = mapOf(
-                    "phone" to "Requerido,Número de teléfono celular de destino",
-                    "message" to "Requerido,Contenido SMS",
+                    "phone" to "必填,目标手机号",
+                    "message" to "必填,短信内容",
                 ),
                 required = setOf("phone", "message"),
                 category = "built-in",
@@ -160,11 +160,11 @@ class PhoneToolsRegistrar(
         toolRegistry.register(
             ToolRegistry.ToolDef(
                 name = "add_contact",
-                description = "Añade un contacto. Requiere permiso WRITE_CONTACTS.",
+                description = "添加一个联系人。需要 WRITE_CONTACTS 权限。",
                 parameters = mapOf(
-                    "name" to "Requerido,Nombre de contacto",
-                    "phone" to "Opcional,Número de teléfono celular",
-                    "email" to "Opcional,Correo electrónico",
+                    "name" to "必填,联系人姓名",
+                    "phone" to "可选,手机号",
+                    "email" to "可选,邮箱",
                 ),
                 required = setOf("name"),
                 category = "built-in",
@@ -175,12 +175,12 @@ class PhoneToolsRegistrar(
         toolRegistry.register(
             ToolRegistry.ToolDef(
                 name = "make_phone_call",
-                description = "Abra la interfaz de marcación del sistema y complete previamente el número de teléfono celular(No se marcará directamente).",
-                parameters = mapOf("phone" to "Requerido,Número de teléfono celular de destino"),
+                description = "打开系统拨号界面并预填手机号(不会直接拨出)。",
+                parameters = mapOf("phone" to "必填,目标手机号"),
                 required = setOf("phone"),
                 category = "built-in",
-                // Efectos secundarios del teléfono etiquetados HIGH,Hacer que el modo PREGUNTAR/ESTRICT requiera aprobación;
-                // TRUSTED El modo se ejecuta en función de la configuración sin confirmación para todas las herramientas seleccionadas explícitamente por el usuario.
+                // 电话副作用标记为 HIGH,让 ASK / STRICT 模式要求审批；
+                // TRUSTED 模式依用户明确选择的全工具免确认设置执行。
                 riskLevel = ToolRiskLevel.HIGH,
             ),
         ) { args -> impl.execMakePhoneCall(args) }
@@ -188,15 +188,15 @@ class PhoneToolsRegistrar(
         toolRegistry.register(
             ToolRegistry.ToolDef(
                 name = "open_maps",
-                description = "Abra la aplicación Mapas para buscar un lugar o navegar a una latitud y longitud específicas.",
+                description = "打开地图应用搜索地点或导航到指定经纬度。",
                 parameters = mapOf(
-                    "query" to "Opcional,Buscar palabras clave,Como el Museo del Palacio",
-                    "lat" to "Opcional,Latitud",
-                    "lng" to "Opcional,longitud",
+                    "query" to "可选,搜索关键词,如 故宫博物院",
+                    "lat" to "可选,纬度",
+                    "lng" to "可选,经度",
                 ),
                 required = emptySet(),
                 category = "built-in",
-                // P0-3: Consistente con la tabla explícita ToolPermissionResolver(HIGH)— Riesgos de privacidad de los mapas de enlaces externos
+                // P0-3: 与 ToolPermissionResolver 显式表一致(HIGH)— 外链地图隐私风险
                 riskLevel = ToolRiskLevel.HIGH,
             ),
         ) { args -> impl.execOpenMaps(args) }

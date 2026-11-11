@@ -58,45 +58,45 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-// P1-4:Panel de registro de fallos — Coloque el registro de fallos que MuseCrashHandler ya tiene pero que solo usa SafeMode
-//       Lista/empaquetado ZIP/capacidad de uso compartido único,También expuesto al usuario en modo normal.
+// P1-4:崩溃日志面板 — 把 MuseCrashHandler 已有但仅 SafeMode 使用的崩溃日志
+//       列表 / ZIP 打包 / 单条分享能力,在正常模式下也透出给用户。
 //
-//  fuente de datos:MuseCrashHandler.listCrashLogs(context) → List<File>
-//  paquete  :MuseCrashHandler.packageCrashLogsToZip(context) → File?(cacheDir/zip)
-//  Compartir  :FileProvider + ACTION_SEND(Vaya a lo que se ha declarado en file_paths.xml files-path / cache-path)
+//  数据源:MuseCrashHandler.listCrashLogs(context) → List<File>
+//  打包  :MuseCrashHandler.packageCrashLogsToZip(context) → File?(cacheDir/zip)
+//  分享  :FileProvider + ACTION_SEND(走 file_paths.xml 中已声明的 files-path / cache-path)
 // ════════════════════════════════════════════════════════════════════════════
 
 /**
- * Panel inferior del registro de accidentes.
+ * 崩溃日志底部面板。
  *
- * comportamiento:
- *  - Tirón asíncrono al abrir [MuseCrashHandler.listCrashLogs],Mostrar en orden descendente por mtime
- *  - Se puede hacer clic en cada registro de fallos para expandirlo.,Antes de la vista previa en línea [CRASH_PREVIEW_CHARS] personaje
- *  - arriba"Exportar ZIP y compartir"llamada de botón [MuseCrashHandler.packageCrashLogsToZip]
- *    Empaquetar todos los registros de fallos + información del dispositivo,Compartir mediante ACTION_SEND
- *  - Lado derecho de cada tronco"Compartir"botón para compartir el archivo .txt individualmente
+ * 行为:
+ *  - 打开时异步拉取 [MuseCrashHandler.listCrashLogs],按 mtime 降序展示
+ *  - 每条崩溃日志可点击展开,内联预览前 [CRASH_PREVIEW_CHARS] 字符
+ *  - 顶部"导出 ZIP 并分享"按钮调用 [MuseCrashHandler.packageCrashLogsToZip]
+ *    打包全部崩溃日志 + 设备信息,通过 ACTION_SEND 分享
+ *  - 每条日志右侧"分享"按钮单独分享该 .txt 文件
  *
- * descripción del diseño:SafeModeScreen existente shareCrashLog,Aquí se reutiliza la misma habilidad en modo normal.
+ * 设计说明:SafeModeScreen 已有的 shareCrashLog,这里把同一能力在正常模式下复用。
  */
 @Composable
 internal fun CrashLogSheet(onDismiss: () -> Unit) {
     val context = LocalContext.current
 
-    // ── Estado de los datos ─────────────────────────────────────────────────────────
+    // ── 数据状态 ─────────────────────────────────────────────────────────
     var logs by remember { mutableStateOf<List<File>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
-    // El nombre del archivo de registro de fallos actualmente expandido.(null = Contraer todo)
+    // 当前展开的崩溃日志文件名(null = 全部折叠)
     var expandedFile by remember { mutableStateOf<String?>(null) }
-    // Contenido del archivo cargado de forma diferida después de la expansión(Evite leer todos los registros en la memoria a la vez)
+    // 展开后懒加载的文件内容(避免一次性把所有日志读入内存)
     var expandedContent by remember { mutableStateOf<String?>(null) }
 
-    // Extraiga la lista de registro de fallos una vez al abrir(Leer archivosDir es IO,poner Dispatchers.IO)
+    // 打开时拉一次崩溃日志列表(读 filesDir 是 IO,放 Dispatchers.IO)
     LaunchedEffect(Unit) {
         logs = withContext(Dispatchers.IO) { MuseCrashHandler.listCrashLogs(context) }
         loading = false
     }
 
-    // expandedFile Al cambiar,Leer el contenido del archivo correspondiente de forma asincrónica(Truncar para obtener una vista previa de la longitud,Evite archivos grandes OOM)
+    // expandedFile 变化时,异步读取对应文件内容(截断到预览长度,避免大文件 OOM)
     LaunchedEffect(expandedFile) {
         val name = expandedFile
         if (name == null) {
@@ -114,7 +114,7 @@ internal fun CrashLogSheet(onDismiss: () -> Unit) {
     }
 
     MuseBottomSheet(onDismissRequest = onDismiss) {
-        // ── Fila de título + botón de exportación ZIP ────────────────────────────────────────
+        // ── 标题行 + ZIP 导出按钮 ────────────────────────────────────────
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -125,11 +125,11 @@ internal fun CrashLogSheet(onDismiss: () -> Unit) {
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.weight(1f),
-                // LAYOUT-01: Row Ancho del texto interno + límite de línea, evita el ajuste de línea palabra por palabra al ampliar el tamaño de fuente
+                // LAYOUT-01: Row 内文本取宽 + 限行，防放大字号下逐字换行
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            // ZIP Empaquetar y compartir:Tome la ruta zip incluso si solo hay 1 registro de fallos,cinturón unificado device_info
+            // ZIP 打包分享:即使只有 1 条崩溃日志也走 zip 路径,统一带 device_info
             MuseCapsuleButton(
                 text = stringResource(R.string.debug_export_zip_and_share),
                 onClick = { shareCrashZip(context) },
@@ -140,7 +140,7 @@ internal fun CrashLogSheet(onDismiss: () -> Unit) {
 
         Spacer(Modifier.height(MusePaddings.contentGap))
 
-        // ── contar + rama estatal ──────────────────────────────────────────────
+        // ── 计数 + 状态分支 ──────────────────────────────────────────────
         when {
             loading -> {
                 Text(
@@ -165,7 +165,7 @@ internal fun CrashLogSheet(onDismiss: () -> Unit) {
                     color = MaterialTheme.colorScheme.outline,
                 )
                 Spacer(Modifier.height(MusePaddings.tightGap))
-                // Limitar la altura máxima,Evite listas demasiado largas BottomSheet
+                // 限制最大高度,避免列表过长撑爆 BottomSheet
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -193,14 +193,14 @@ internal fun CrashLogSheet(onDismiss: () -> Unit) {
 }
 
 /**
- * Una única entrada del registro de fallos.
+ * 单条崩溃日志条目。
  *
- * Cuando está plegado:Nombre del archivo + tamaño + hora de modificación + botón compartir
- * Cuando se expande:Agregar vista previa en línea debajo de la información contraída(fuente monoespaciada,Se puede desplazar verticalmente)
+ * 折叠时:文件名 + 大小 + 修改时间 + 分享按钮
+ * 展开时:在折叠信息下方追加内联预览(等宽字体,可垂直滚动)
  */
 @Composable
 private fun CrashLogItem(file: File, expanded: Boolean, expandedContent: String?, onToggleExpand: () -> Unit, onShare: () -> Unit) {
-    // El nombre del archivo tiene el formato crash-20260721-153012.txt;Mostrar el nombre del archivo original directamente,Manténgalo consistente con el disco para una fácil solución de problemas
+    // 文件名形如 crash-20260721-153012.txt;直接展示原文件名,保持与磁盘一致便于排查
     val sizeStr = remember(file.length()) { DebugFormatters.formatFileSize(file.length()) }
     val timeStr = remember(file.lastModified()) {
         SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date(file.lastModified()))
@@ -246,7 +246,7 @@ private fun CrashLogItem(file: File, expanded: Boolean, expandedContent: String?
                 )
             }
 
-            // Después de desplegar:Vista previa en línea(Fuente monoespaciada + desplazamiento vertical)
+            // 展开后:内联预览(等宽字体 + 垂直滚动)
             AnimatedVisibility(
                 visible = expanded,
                 enter = MuseMotion.expandFadeEnter(),
@@ -286,10 +286,10 @@ private fun CrashLogItem(file: File, expanded: Boolean, expandedContent: String?
 }
 
 /**
- * Empaqueta todos los registros de fallos en un ZIP y compártelos mediante ACTION_SEND.
+ * 打包全部崩溃日志为 ZIP 并通过 ACTION_SEND 分享。
  *
- * ZIP Contenido proporcionado por [MuseCrashHandler.packageCrashLogsToZip] decidir:device_info.txt + cada uno crash-*.txt.
- * El archivo se encuentra en cacheDir(Expuesto a través de la ruta de caché en file_paths.xml FileProvider).
+ * ZIP 内容由 [MuseCrashHandler.packageCrashLogsToZip] 决定:device_info.txt + 各 crash-*.txt。
+ * 文件位于 cacheDir(已在 file_paths.xml 中通过 cache-path 暴露给 FileProvider)。
  */
 private fun shareCrashZip(context: Context) {
     val zipFile = MuseCrashHandler.packageCrashLogsToZip(context)
@@ -320,9 +320,9 @@ private fun shareCrashZip(context: Context) {
 }
 
 /**
- * Compartir un único archivo de registro de fallos(.txt).
+ * 分享单条崩溃日志文件(.txt)。
  *
- * El archivo se encuentra en filesDir/crash/(Expuesto a través de la ruta de archivos en file_paths.xml FileProvider).
+ * 文件位于 filesDir/crash/(已在 file_paths.xml 中通过 files-path 暴露给 FileProvider)。
  */
 private fun shareCrashFile(context: Context, file: File) {
     runCatching {
@@ -347,5 +347,5 @@ private fun shareCrashFile(context: Context, file: File) {
     }
 }
 
-/** Número máximo de caracteres para la vista previa en línea del registro de fallos,Evite leer una pila muy grande en estado Redactar a la vez. */
+/** 崩溃日志内联预览的最大字符数,避免一次性把超大堆栈读入 Compose 状态。 */
 private const val CRASH_PREVIEW_CHARS = 2000

@@ -6,12 +6,12 @@ import io.zer0.muse.ui.ChatUiState
 import kotlinx.coroutines.flow.MutableStateFlow
 
 /**
- * v1.x: ChatViewModel contenedor de estado compartido.
+ * v1.x: ChatViewModel 的共享状态容器。
  *
- * oso _state / _messages / _conversationTree tres porciones StateFlow,hacer cada uno controller
- * No es necesario tener un ChatViewModel para leer y escribir la misma fuente de verdad.ChatViewModel Aún vía solo lectura
- * StateFlow expuesto al mundo exterior,Y delegarlo a este contenedor a través de getter MutableStateFlow,mantener
- * existente `_state.xxx` / `_messages.xxx` / `_conversationTree.xxx` La referencia se mantiene sin cambios.
+ * 承载 _state / _messages / _conversationTree 三份 StateFlow,使各 controller
+ * 不必持有 ChatViewModel 也能读写同一份事实源。ChatViewModel 仍通过只读
+ * StateFlow 对外暴露,并通过 getter 委托到本容器的 MutableStateFlow,保持
+ * 既有 `_state.xxx` / `_messages.xxx` / `_conversationTree.xxx` 引用不变。
  */
 class ChatStateStore {
     val state = MutableStateFlow(ChatUiState())

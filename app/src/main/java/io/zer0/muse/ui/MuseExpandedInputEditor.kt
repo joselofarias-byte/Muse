@@ -34,7 +34,7 @@ import io.zer0.muse.ui.theme.MusePaddings
 import io.zer0.muse.ui.theme.MuseShapes
 import io.zer0.muse.ui.theme.pill
 
-/** B7-07: Página de edición de pantalla completa del campo de entrada,de [InputBar] Separe para reducir el número de líneas del archivo principal. */
+/** B7-07: 输入栏全屏编辑页,从 [InputBar] 拆出以降低主文件行数。 */
 @Composable
 internal fun MuseExpandedInputEditor(
     text: String,
@@ -47,9 +47,9 @@ internal fun MuseExpandedInputEditor(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.97f))
-            // v2.6.0 (AUD-UI-F14): suplemento imePadding —— Esta página está compuesta directamente desde la barra de entrada.
-            // (Ventana independiente sin diálogo),edge-to-edge El teclado en pantalla insertado no subirá automáticamente el contenido,
-            // Cuadro de entrada cuando aparece el teclado/El botón de enviar quedará oculto.
+            // v2.6.0 (AUD-UI-F14): 补 imePadding —— 本页由 InputBar 内直接组合
+            // (非 Dialog 独立窗口),edge-to-edge 下软键盘 inset 不会自动顶起内容,
+            // 键盘弹出时输入框/发送按钮会被遮住。
             .systemBarsPadding()
             .imePadding()
             .clickable(

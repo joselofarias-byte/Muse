@@ -7,15 +7,15 @@ import androidx.room.PrimaryKey
 import kotlinx.serialization.Serializable
 
 /**
- * P1-7: Entidad del historial de ejecución de tareas programadas.
+ * P1-7: 定时任务执行历史实体。
  *
- * Insertar un registro después de cada ejecución de tarea programada,Se utiliza para mostrar el historial de ejecución y los motivos de falla en la interfaz de usuario.
- * - [id] clave primaria,cuerda(UUID),Ejecuciones múltiples garantizadas(Incluso el mismo milisegundo)Sin conflicto
- * - [taskId] Tareas programadas asociadas id(corresponder scheduled_tasks.id)
- * - [executedAt] Marca de tiempo de ejecución
- * - [status] Estado de ejecución: "success" / "failed"
- * - [replySummary] AI Responder contenido(la mayoría 10,000 palabra),Cadena vacía en caso de error
- * - [errorMessage] Mensaje de error en caso de falla(Cadena vacía en caso de éxito)
+ * 每次定时任务执行后插入一条记录,用于在 UI 展示执行历史与失败原因。
+ * - [id] 主键,字符串(UUID),保证多次执行(即使同一毫秒)不冲突
+ * - [taskId] 关联的定时任务 id(对应 scheduled_tasks.id)
+ * - [executedAt] 执行时间戳
+ * - [status] 执行状态: "success" / "failed"
+ * - [replySummary] AI 回复内容(最多 10,000 字),失败时为空串
+ * - [errorMessage] 失败时的错误信息(成功时为空串)
  */
 @Entity(
     tableName = "scheduled_task_executions",

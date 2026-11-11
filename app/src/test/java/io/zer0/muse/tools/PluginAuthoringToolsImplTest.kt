@@ -19,10 +19,10 @@ import org.robolectric.annotation.Config
 import java.io.File
 
 /**
- * author_plugin Pruebas de capa de herramientas: análisis de parámetros, falla estructurada, borrador de semántica y niveles de aprobación.
+ * author_plugin 工具层测试：参数解析、结构化失败、草稿语义与审批等级。
  *
- * límite de la capa de datos ver `data/plugin/PluginAuthoringTest`; Aquí sólo se bloquea el "texto de retorno que el modelo puede ver".
- * y "La herramienta entra en aprobación con ALTO riesgo".
+ * 数据层边界见 `data/plugin/PluginAuthoringTest`；这里只锁「模型能看到的返回文本」
+ * 与「工具确实以 HIGH 风险进入审批」。
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -35,14 +35,14 @@ class PluginAuthoringToolsImplTest {
         val skills = SkillExecutor.BUILT_IN_SKILLS
         val definition = skills.firstOrNull { it.id == "author_plugin" }
 
-        assertTrue("author_plugin Debe estar incorporado skill", definition != null)
+        assertTrue("author_plugin 必须是内置 skill", definition != null)
         assertEquals("author_plugin", definition?.implementationKotlin)
-        assertTrue("author_plugin Debe ser enrutable por SkillExecutor", "author_plugin" in SkillExecutor.ROUTABLE_SKILL_IMPL)
+        assertTrue("author_plugin 必须可被 SkillExecutor 路由", "author_plugin" in SkillExecutor.ROUTABLE_SKILL_IMPL)
     }
 
     @Test
     fun authorPluginRequiresApprovalInAskAndStrictModes() {
-        // El borrador en sí no es ejecutable, pero el usuario debe aprobar primero "permitir que el modelo escriba el código que será firmado por el usuario".
+        // 草稿本身不可执行，但「让模型写将被用户签名的代码」必须先经过用户审批。
         assertEquals(
             ToolApprovalState.Pending,
             ToolPermissionResolver.resolve("author_plugin", null, SessionPermissionMode.ASK, null),
@@ -60,14 +60,14 @@ class PluginAuthoringToolsImplTest {
         val result = impl.authorPlugin(
             mapOf(
                 "id" to "authored-tool",
-                "name" to "herramienta asistente",
+                "name" to "助手工具",
                 "version" to "1.0.0",
                 "code" to "function hello() { return 'hi'; }",
                 "tools" to "not-json",
             ),
         )
 
-        assertTrue("El fracaso debe regresar estructurado. JSON: $result", result.contains("\"error\""))
+        assertTrue("失败必须返回结构化 JSON: $result", result.contains("\"error\""))
     }
 
     @Test
@@ -77,15 +77,15 @@ class PluginAuthoringToolsImplTest {
         val result = impl.authorPlugin(
             mapOf(
                 "id" to "authored-tool",
-                "name" to "herramienta asistente",
+                "name" to "助手工具",
                 "version" to "not-semver",
                 "code" to "function hello() { return 'hi'; }",
                 "tools" to TOOLS_JSON,
             ),
         )
 
-        assertTrue("El fracaso debe regresar estructurado. JSON: $result", result.contains("\"error\""))
-        assertTrue("El motivo debe explicar el problema del número de versión.: $result", result.contains("versión semántica"))
+        assertTrue("失败必须返回结构化 JSON: $result", result.contains("\"error\""))
+        assertTrue("原因应说明版本号问题: $result", result.contains("语义化版本"))
     }
 
     @Test
@@ -96,21 +96,21 @@ class PluginAuthoringToolsImplTest {
         val result = impl.authorPlugin(
             mapOf(
                 "id" to "authored-tool",
-                "name" to "herramienta asistente",
-                "description" to "redactado por asistente",
+                "name" to "助手工具",
+                "description" to "由助手起草",
                 "version" to "1.0.0",
                 "code" to "function hello() { return 'hi'; }",
                 "tools" to TOOLS_JSON,
             ),
         )
 
-        // El texto devuelto al modelo debe indicar: borrador sin firmar, deshabilitado, que requiere firma del usuario y activación en la gestión de complementos.
-        // Assert acepta redacción publicitaria tanto en chino como en inglés (Robolectric Zona predeterminada).
+        // 返回给模型的文本必须点明：未签名草稿、已禁用、需用户在插件管理里签名并启用。
+        // 断言同时接受中英文文案（Robolectric 默认 en 区域）。
         assertTrue(result.contains("authored-tool"))
-        assertTrue("Cabe señalar que el proyecto no está firmado.: $result", result.contains("sin firmar") || result.contains("Unsigned"))
+        assertTrue("应说明草稿未签名: $result", result.contains("未签名") || result.contains("Unsigned"))
         assertTrue(
-            "Se debe pedir a los usuarios que firmen y se les debe habilitar: $result",
-            result.contains("Firmar y habilitar") || result.contains("Sign and enable"),
+            "应要求用户签名并启用: $result",
+            result.contains("签名并启用") || result.contains("Sign and enable"),
         )
         val draft = requireNotNull(manager.findPlugin("authored-tool"))
         assertFalse(draft.enabled)
@@ -139,6 +139,6 @@ class PluginAuthoringToolsImplTest {
 
     private companion object {
         const val TOOLS_JSON =
-            """[{"name":"hello","description":"saluda","parametersJson":"{}","requiredJson":"[]","functionName":"hello"}]"""
+            """[{"name":"hello","description":"打招呼","parametersJson":"{}","requiredJson":"[]","functionName":"hello"}]"""
     }
 }

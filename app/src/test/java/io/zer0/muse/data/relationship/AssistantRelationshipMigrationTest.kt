@@ -14,20 +14,20 @@ import org.robolectric.annotation.Config
 import java.io.File
 
 /**
- * v2.6.7(P1-1): 113 → 114 Pruebas de contrato migratorio.
+ * v2.6.7（P1-1）: 113 → 114 迁移契约测试。
  *
- * Verificar solo"La nueva tabla se crea correctamente y las definiciones de las columnas son consistentes con la entidad"Este mínimo invariante.
- * Abrir la base de datos sin pasar por Room —— Room Se realizará una verificación de estructura completa en todas las tablas de entidades.
- * Aquí sólo se necesita una biblioteca básica mínima para ejecutar la migración SQL.
+ * 只验证"新表被正确创建且列定义与实体一致"这条最小不变量。
+ * 不经 Room 打开数据库 —— Room 会对全部实体表做完整结构校验，
+ * 而这里只需要一张最小骨架库来执行迁移 SQL。
  *
- * Respecto a la cobertura (una nota anterior afirmaba"La cadena completa de actualización entre versiones está cubierta por la matriz de reflexión de MuseDbMigrationTest",
- * No coincide con la situación real y ha sido corregido):
- *  - Esta categoría cubre 113→114 Colección de columnas para DDL de una sola pieza/Valor predeterminado/Idempotencia, sin verificación de habitación;
- *  - Lo que realmente abre Room y se verifica a nivel de entidad es
+ * 关于覆盖范围（此前的注释声称"完整跨版本升级链由 MuseDbMigrationTest 的反射矩阵覆盖"，
+ * 与实际不符，现已改正）：
+ *  - 本类覆盖的是 113→114 单段 DDL 的列集合/默认值/幂等性，不经过 Room 校验；
+ *  - 真正经过 Room 打开并做实体级校验的，是
  *    [io.zer0.muse.data.session.MuseDbMigrationTest.migrateV113To116Starts_validateThroughRoom]
- *    con [io.zer0.muse.data.session.MuseDbMigrationTest.migrateV112To117_backfillsUsageRecordsAndKeepsMessages];
- *  - 22..54 Punto de partida desviado debido a un artefacto de doble conexión de Robolectric
- *    [io.zer0.muse.data.session.MuseDbManualChainMigrationTest] Realizar manualmente el cubrimiento de cadena paso a paso, también sin verificación de Sala.
+ *    与 [io.zer0.muse.data.session.MuseDbMigrationTest.migrateV112To117_backfillsUsageRecordsAndKeepsMessages]；
+ *  - 22..54 起点因 Robolectric 双连接伪影改由
+ *    [io.zer0.muse.data.session.MuseDbManualChainMigrationTest] 手动逐步执行链覆盖，同样不经 Room 校验。
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -49,7 +49,7 @@ class AssistantRelationshipMigrationTest {
                     .callback(
                         object : SupportSQLiteOpenHelper.Callback(113) {
                             override fun onCreate(db: SupportSQLiteDatabase) {
-                                // Esqueleto mínimo: tanto como pueda 113→114 Simplemente ejecuta la migración
+                                // 最小骨架：只要能让 113→114 迁移执行即可
                                 db.execSQL("CREATE TABLE IF NOT EXISTS sessions (id TEXT NOT NULL PRIMARY KEY)")
                             }
 
@@ -60,7 +60,7 @@ class AssistantRelationshipMigrationTest {
             )
 
         helper.writableDatabase.use { db ->
-            // Realice la migración directamente sin pasar por la verificación de entidad de Room
+            // 直接执行迁移，不经 Room 的实体校验
             MuseDb.MIGRATION_113_114.migrate(db)
 
             val columns = mutableMapOf<String, String?>()
@@ -71,7 +71,7 @@ class AssistantRelationshipMigrationTest {
             }
 
             assertTrue(
-                "La tabla Assistant_Relationship debería existir después de la migración.\ncolumna real: $columns",
+                "迁移后应存在 assistant_relationship 表\n实际列: $columns",
                 columns.isNotEmpty(),
             )
             listOf(
@@ -85,14 +85,14 @@ class AssistantRelationshipMigrationTest {
                 "createdAt",
                 "updatedAt",
             ).forEach { expected ->
-                assertTrue("columna faltante $expected\ncolumna real: $columns", columns.containsKey(expected))
+                assertTrue("缺少列 $expected\n实际列: $columns", columns.containsKey(expected))
             }
-            // El valor predeterminado de la clave debe ser coherente con la entidad; de lo contrario, la verificación de la habitación informará una discrepancia en la estructura.
+            // 关键默认值必须与实体一致，否则 Room 校验会报结构不匹配
             assertEquals("normal", columns["proactiveLevel"]?.trim('\'', '"'))
             assertEquals("1", columns["proactiveEnabled"])
             assertEquals("0", columns["affinity"])
 
-            // Idempotente: la ejecución repetida no debería informar un error (la migración puede volver a ejecutarse debido a una interrupción)
+            // 幂等：重复执行不应报错（迁移可能因中断被重跑）
             MuseDb.MIGRATION_113_114.migrate(db)
         }
 

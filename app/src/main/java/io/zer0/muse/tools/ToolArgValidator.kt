@@ -1,15 +1,15 @@
 package io.zer0.muse.tools
 
 /**
- * P1 Verificación del esquema de parámetros de la herramienta.
+ * P1 工具参数 schema 校验。
  *
- * Verificar antes de ejecutar la herramienta:
- * - Faltan parámetros requeridos
- * - Tipo de parámetro y [ToolRegistry.ToolDef.parameterTypes] La declaración es inconsistente (si se puede forzar su transferencia, se obligará a transferirla)
- * - Valor de parámetro JSON ilegal
+ * 在工具执行前校验：
+ * - 必填参数缺失
+ * - 参数类型与 [ToolRegistry.ToolDef.parameterTypes] 声明不一致（可强转则强转）
+ * - 非法 JSON 参数值
  *
- * Objetivo: evitar“El modelo pierde la consulta/pasa el número a una cadena”Provoca que el 400 o la herramienta aguas arriba fallen silenciosamente,
- * Deje que LLM reciba mensajes de error estructurados y legibles (details.errorType = INVALID_ARGUMENTS).
+ * 目标：避免“模型漏传 query / 把数字传成字符串”导致上游 400 或工具静默失败，
+ * 让 LLM 拿到结构化、可读的错误信息（details.errorType = INVALID_ARGUMENTS）。
  */
 object ToolArgValidator {
 
@@ -36,26 +36,26 @@ object ToolArgValidator {
     }
 
     /**
-     * @param def definición de herramienta;null Indica que no está registrado y es manejado por la persona que llama. Extraviado.
+     * @param def 工具定义；null 表示未注册，由调用方自行处理 not-found。
      */
     fun validate(name: String, args: Map<String, String>, def: ToolRegistry.ToolDef?): ValidationResult {
         if (def == null) {
-            return ValidationResult.invalid(listOf("herramienta desconocida: $name"), args)
+            return ValidationResult.invalid(listOf("未知工具: $name"), args)
         }
         val errors = mutableListOf<String>()
         val coerced = LinkedHashMap<String, String>()
 
-        // Parámetros requeridos
+        // 必填参数
         def.required.forEach { required ->
             val value = args[required]
             if (value.isNullOrBlank()) {
-                errors += "Falta el parámetro requerido: $required"
+                errors += "缺少必填参数: $required"
             } else {
                 coerced[required] = value
             }
         }
 
-        // Verificación de declaración de tipo (opcional, pero también se debe verificar el valor pasado)
+        // 类型声明校验（非必填但传了值也要校验）
         def.parameterTypes.forEach { (param, typeName) ->
             val raw = args[param] ?: return@forEach
             if (raw.isBlank()) return@forEach
@@ -63,7 +63,7 @@ object ToolArgValidator {
                 "integer", "int", "long" -> {
                     val normalized = raw.trim().trim('"')
                     if (normalized.toLongOrNull() == null) {
-                        errors += "parámetros $param debería ser $typeName,valor real: $raw"
+                        errors += "参数 $param 应为 $typeName,实际值: $raw"
                     } else {
                         coerced[param] = normalized
                     }
@@ -71,25 +71,25 @@ object ToolArgValidator {
                 "number", "float", "double" -> {
                     val normalized = raw.trim().trim('"')
                     if (normalized.toDoubleOrNull() == null) {
-                        errors += "parámetros $param debería ser $typeName,valor real: $raw"
+                        errors += "参数 $param 应为 $typeName,实际值: $raw"
                     } else {
                         coerced[param] = normalized
                     }
                 }
                 "boolean", "bool" -> {
                     val normalized = raw.trim().trim('"')
-                    if (normalized !in setOf("true", "false", "1", "0", "si", "No", "yes", "no")) {
-                        errors += "parámetros $param debería ser boolean,valor real: $raw"
+                    if (normalized !in setOf("true", "false", "1", "0", "是", "否", "yes", "no")) {
+                        errors += "参数 $param 应为 boolean,实际值: $raw"
                     } else {
                         coerced[param] = when (normalized) {
-                            "1", "si", "yes" -> "true"
-                            "0", "No", "no" -> "false"
+                            "1", "是", "yes" -> "true"
+                            "0", "否", "no" -> "false"
                             else -> normalized
                         }
                     }
                 }
                 "array", "object", "json" -> {
-                    // Déjelo como está (análisis interno del ejecutor); solo haga verificación nula.
+                    // 保持原样（执行器内部解析）；只做空值检查。
                     coerced[param] = raw
                 }
                 else -> {
@@ -98,7 +98,7 @@ object ToolArgValidator {
             }
         }
 
-        // tipo no declarado/Los parámetros no necesarios se transmiten de forma transparente tal como están
+        // 未声明类型/非必填参数原样透传
         args.forEach { (k, v) ->
             if (!coerced.containsKey(k)) {
                 coerced[k] = v

@@ -16,16 +16,16 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import java.util.concurrent.TimeUnit
 
 /**
- * CLOUD / MinerU Cliente de análisis de documentos en la nube.
+ * CLOUD / MinerU 云端文档解析客户端。
  *
- * Acuerdo(Compatible con implementaciones comunes):
- *  - subir:POST multipart/form-data,Nombre del campo `file`
- *  - Retorno sincrónico:El cuerpo de la respuesta es directamente texto.,o contenido en JSON `text/content/markdown/full_ocr` campos de texto equisemánticos
- *  - Regresar asincrónicamente:La respuesta JSON contiene `task_id/taskId` etc. campos,Luego sondee el estado de la tarea hasta que tenga éxito/falló/tiempo de espera
- *  - MinerU modo:endpoint no con `/file_parse`,`/parse`,`/upload` Completar automáticamente al final `/file_parse`;
- *    El sondeo tiene prioridad utilizando el result_url,De lo contrario presione `/get_task_results/{taskId}` inferencia
+ * 协议约定(兼容常见实现):
+ *  - 上传:POST multipart/form-data,字段名为 `file`
+ *  - 同步返回:响应体直接是文本,或 JSON 中包含 `text/content/markdown/full_ocr` 等语义文本字段
+ *  - 异步返回:响应 JSON 包含 `task_id/taskId` 等字段,随后轮询任务状态直到成功/失败/超时
+ *  - MinerU 模式:endpoint 未以 `/file_parse`、`/parse`、`/upload` 结尾时自动补 `/file_parse`;
+ *    轮询优先使用响应中的 result_url,否则按 `/get_task_results/{taskId}` 推断
  *
- * Extraiga solo campos de texto semánticos,El contenido no semántico, como coordenadas y estilos, se descarta directamente.
+ * 只提取语义文本字段,坐标、样式等非语义内容直接丢弃。
  */
 internal class CloudDocumentParser(
     private val httpClient: OkHttpClient = defaultHttpClient(),
@@ -34,17 +34,17 @@ internal class CloudDocumentParser(
 ) {
 
     /**
-     * Cargue y analice el flujo de bytes del documento.
+     * 上传并解析文档字节流。
      *
-     * @param bytes Archivo de bytes completos(La persona que llama es responsable de las lecturas y los límites de tamaño.)
-     * @param fileName Subir nombre de archivo,para nombres de archivos multiparte e inferencia MIME
-     * @param endpoint nube endpoint
-     * @param token Opcional Token,MinerU El patrón servirá como token al portador y `token` form campo
-     * @param mineruMode Si es el modo exclusivo de MinerU
+     * @param bytes 文件完整字节(调用方负责读取与大小限制)
+     * @param fileName 上传文件名,用于 multipart 文件名与 MIME 推断
+     * @param endpoint 云端 endpoint
+     * @param token 可选 Token,MinerU 模式会同时作为 Bearer Token 与 `token` form 字段
+     * @param mineruMode 是否为 MinerU 专用模式
      */
     fun parse(bytes: ByteArray, fileName: String, endpoint: String, token: String = "", mineruMode: Boolean = false): Result<String> {
-        if (endpoint.isBlank()) return Result.Error("El punto final de análisis de la nube no está configurado")
-        if (bytes.isEmpty()) return Result.Error("El contenido del archivo a analizar está vacío.")
+        if (endpoint.isBlank()) return Result.Error("云端解析 endpoint 未配置")
+        if (bytes.isEmpty()) return Result.Error("待解析文件内容为空")
         return resultOf {
             val uploadUrl = resolveUploadUrl(endpoint, mineruMode)
             val multipart = MultipartBody.Builder()
@@ -64,14 +64,14 @@ internal class CloudDocumentParser(
             httpClient.newCall(request).execute().use { response ->
                 val body = response.body?.string().orEmpty()
                 if (!response.isSuccessful) {
-                    error("Error en la solicitud de análisis de la nube(HTTP ${response.code}): ${response.message} ${body.take(200)}")
+                    error("云端解析请求失败(HTTP ${response.code}): ${response.message} ${body.take(200)}")
                 }
                 val taskId = extractTaskId(body)
                 if (taskId != null) {
                     pollResult(taskId, endpoint, body, token, mineruMode)
                 } else {
                     extractResultText(body)
-                        ?: error("El análisis de la nube fue exitoso, pero no se encontró ningún texto legible en la respuesta: ${body.take(200)}")
+                        ?: error("云端解析成功，但响应中未找到可读文本: ${body.take(200)}")
                 }
             }
         }
@@ -92,13 +92,13 @@ internal class CloudDocumentParser(
             ).execute().use { response ->
                 val body = response.body?.string().orEmpty()
                 if (!response.isSuccessful) {
-                    error("Error en el sondeo de análisis de la nube(HTTP ${response.code}): ${response.message} ${body.take(200)}")
+                    error("云端解析轮询失败(HTTP ${response.code}): ${response.message} ${body.take(200)}")
                 }
                 when (classifyStatus(extractStatus(body))) {
-                    CloudTaskStatus.FAILED -> error("Error en la tarea de análisis de la nube: ${extractError(body)}")
+                    CloudTaskStatus.FAILED -> error("云端解析任务失败: ${extractError(body)}")
                     CloudTaskStatus.DONE -> {
                         extractResultText(body)
-                            ?: error("La tarea de análisis de la nube se completó, pero el resultado está vacío")
+                            ?: error("云端解析任务已完成，但结果为空")
                     }
                     CloudTaskStatus.RUNNING, CloudTaskStatus.UNKNOWN -> {
                         extractResultUrl(body)?.let { pollUrl = it }
@@ -108,7 +108,7 @@ internal class CloudDocumentParser(
             }
             if (text != null) return text
         }
-        error("Tiempo de espera del análisis de la nube(Ya esperando ${maxPollAttempts * pollIntervalMs / 1000} segundos)")
+        error("云端解析超时(已等待 ${maxPollAttempts * pollIntervalMs / 1000} 秒)")
     }
 
     internal fun resolveUploadUrl(endpoint: String, mineruMode: Boolean): String {

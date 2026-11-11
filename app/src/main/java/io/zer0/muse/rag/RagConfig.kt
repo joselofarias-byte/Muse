@@ -4,100 +4,100 @@ import io.zer0.muse.data.knowledge.KnowledgeBaseEntity
 import kotlinx.serialization.Serializable
 
 /**
- * v1.54: RAG configuración.
+ * v1.54: RAG 配置。
  *
- * v1.133 Expandir:
- *  - [mmrLambda]:MMR Reponderación de la diversidad(0=pura diversidad,1=pura similitud,Predeterminado 0.5)
- *  - [hybridEnabled]:Si se debe habilitar la recuperación híbrida vectorial BM25+(RRF Fusión)
- *  - [rerankEnabled]:Si se debe habilitar el reordenamiento entre codificadores
- *  - [rerankProvider]:Reordenar tipos de proveedores(cohere/jina/local)
- *  - [tokenBudget]:Inyectar presupuesto de token(0 = sin limite;>0 = Acumular en orden descendente de similitud,Detener si se excede el presupuesto)
- *  - [markdownAware]:Si se debe detectar la estructura Markdown al fragmentar(bloque de código/Título/mesa)
- *  - [chunkByToken]:Ya sea para dividir en trozos por número simbólico(true=prensa [chunkSize] token,false=por personaje)
+ * v1.133 扩展:
+ *  - [mmrLambda]:MMR 多样性重排权重(0=纯多样性,1=纯相似度,默认 0.5)
+ *  - [hybridEnabled]:是否启用 BM25+向量 混合检索(RRF 融合)
+ *  - [rerankEnabled]:是否启用 cross-encoder 重排序
+ *  - [rerankProvider]:重排序 Provider 类型(cohere/jina/local)
+ *  - [tokenBudget]:注入 token 预算(0 = 不限制;>0 = 按相似度降序累加,超预算即停)
+ *  - [markdownAware]:分块时是否感知 Markdown 结构(代码块/标题/表格)
+ *  - [chunkByToken]:是否按 token 数分块(true=按 [chunkSize] token,false=按字符)
  *
- * persistir en DataStore(rag_config_json key),Gestionado por SettingsRepository.
+ * 持久化在 DataStore(rag_config_json key),由 SettingsRepository 管理。
  */
 @Serializable
 data class RagConfig(
-    /** RAG interruptor principal(inyección automática). Después del cierre, la herramienta Knowledge_search aún se puede buscar manualmente en la base de conocimientos. */
+    /** RAG 总开关(自动注入)。关闭后知识库仍可被 knowledge_search 工具手动检索。 */
     val enabled: Boolean = true,
     /**
-     * v1.0.92: Recuperación de archivos adjuntos de sesión(De experimental a regular,Activado de forma predeterminada).
+     * v1.0.92: 会话附件检索(从实验性转正,默认开)。
      *
-     * Después de abrir,Los documentos cargados en la sesión se analizarán e indexarán en la base de datos de búsqueda.(knowledge_search Su contenido puede ser afectado.);
-     * Sesión de enlace del ciclo de vida del índice,Se eliminará cuando se limpie la sesión.
+     * 开启后,会话里上传的文档会被解析并索引进检索库(knowledge_search 可命中其内容);
+     * 索引生命周期绑定会话,会话清理时一并删除。
      */
     val sessionAttachmentEnabled: Boolean = true,
     /**
-     * Embedding Fuente.
+     * Embedding 来源。
      *
-     * v1.0.53: El valor predeterminado se cambia a [EmbeddingSource.LOCAL_KEYWORD] — Utilice la búsqueda de palabras clave locales al abrir la aplicación por primera vez,
-     * Evite proveedores agregados por usuarios que no proporcionen modelos integrados(Como por ejemplo tokenrhythm.studio)
-     * Como resultado, se sigue informando el error MODEL_NOT_AVAILABLE cuando se inyecta RAG.
+     * v1.0.53: 默认改为 [EmbeddingSource.LOCAL_KEYWORD] — 首次开启应用时使用本地关键词检索,
+     * 避免用户添加的 Provider 不提供 embedding 模型(如 tokenrhythm.studio)
+     * 导致 RAG 注入时持续报错 MODEL_NOT_AVAILABLE。
      *
-     * Después de agregar la API, los usuarios pueden cambiar manualmente a CLOUD,UI No ocultes esta opción.
+     * 用户添加 API 后可在设置里手动切换到 CLOUD,UI 不隐藏该选项。
      */
     val embeddingSource: EmbeddingSource = EmbeddingSource.LOCAL_KEYWORD,
     /**
-     * Utilizado por la incrustación en la nube Provider ID(Corresponde al repositorio de configuración ProviderConfig.id).
-     * Una cadena vacía indica que se utiliza el proveedor de chat actualmente activado.
+     * 云端 embedding 使用的 Provider ID(对应 SettingsRepository 里的 ProviderConfig.id)。
+     * 空串表示用当前激活的 chat Provider。
      */
     val cloudProviderId: String = "",
-    /** Nombre del modelo de incrustación en la nube(Una cadena vacía indica que se utiliza el modelo de incrustación predeterminado del proveedor.). */
+    /** 云端 embedding 模型名(空串表示用 Provider 默认 embedding 模型)。 */
     val cloudModel: String = "",
-    /** Ruta del archivo del modelo ONNX local(filesDir ruta relativa bajo). */
+    /** 本地 ONNX 模型文件路径(filesDir 下的相对路径)。 */
     val localModelPath: String = "",
-    /** Inyecte automáticamente los números top-k recuperados. */
+    /** 自动注入检索的 top-k 数量。 */
     val topK: Int = 3,
-    /** Umbral de similitud para inyección automática(0-1,Ninguna inyección por debajo de este valor). */
+    /** 自动注入的相似度阈值(0-1,低于此值不注入)。 */
     val threshold: Float = 0.35f,
-    /** tamaño objetivo del fragmento([chunkByToken]=true el tiempo es el número de fichas,false el tiempo es el número de caracteres). */
+    /** 分块目标大小([chunkByToken]=true 时为 token 数,false 时为字符数)。 */
     val chunkSize: Int = 500,
-    /** Trozos superpuestos(Lo mismo [chunkSize] unidad). */
+    /** 分块重叠(同 [chunkSize] 单位)。 */
     val chunkOverlap: Int = 50,
 
-    // ── v1.133 Nuevo ──
-    /** MMR Reponderación de la diversidad(0=pura diversidad,1=pura similitud,Predeterminado 0.5). */
+    // ── v1.133 新增 ──
+    /** MMR 多样性重排权重(0=纯多样性,1=纯相似度,默认 0.5)。 */
     val mmrLambda: Float = 0.5f,
-    /** Si se debe habilitar la recuperación híbrida vectorial BM25+(RRF Fusión). */
+    /** 是否启用 BM25+向量 混合检索(RRF 融合)。 */
     val hybridEnabled: Boolean = false,
-    /** Búsqueda híbrida BM25 peso de vía(RRF Para fusión,Predeterminado 1.0). */
+    /** 混合检索 BM25 路权重(RRF 融合用,默认 1.0)。 */
     val hybridBm25Weight: Float = 1.0f,
-    /** Pesos de ruta de vector de recuperación híbrida(RRF Para fusión,Predeterminado 1.0). */
+    /** 混合检索向量路权重(RRF 融合用,默认 1.0)。 */
     val hybridVectorWeight: Float = 1.0f,
-    /** Ya sea para habilitar el reordenamiento entre codificadores. */
+    /** 是否启用 cross-encoder 重排序。 */
     val rerankEnabled: Boolean = false,
-    /** Reordenar tipos de proveedores(cohere/jina/local,Una cadena vacía indica presionar LocalRerankProvider). */
+    /** 重排序 Provider 类型(cohere/jina/local,空串表示按 LocalRerankProvider)。 */
     val rerankProvider: String = "",
     /**
-     * P2-6(informe de auditoría): Configuración de reordenamiento en la nube.
+     * P2-6（审计报告）: 云端 rerank 配置。
      *
-     * cuando [rerankProvider] para "remote" activado. El protocolo es compatible con OpenAI.
-     * `POST {baseUrl}/rerank`,SiliconFlow / Jina / Cohere Todo se puede reutilizar.
+     * 当 [rerankProvider] 为 "remote" 时启用。协议为 OpenAI 兼容的
+     * `POST {baseUrl}/rerank`，SiliconFlow / Jina / Cohere 均可复用。
      */
     val rerankBaseUrl: String = "",
-    /** Nombre del modelo de reordenación de la nube (como BAAI/bge-reranker-v2-m3). */
+    /** 云端 rerank 模型名（如 BAAI/bge-reranker-v2-m3）。 */
     val rerankModel: String = "",
-    /** Clave API para reclasificación en la nube (si la cadena está vacía, no se enviará la autorización). */
+    /** 云端 rerank 的 API Key（空串则不发 Authorization）。 */
     val rerankApiKey: String = "",
     /**
-     * Inyectar presupuesto de token(0 = sin limite;>0 = Acumular en orden descendente de similitud,Detener si se excede el presupuesto).
-     * Recomendado = modelo actual contextWindow × 0.3.
+     * 注入 token 预算(0 = 不限制;>0 = 按相似度降序累加,超预算即停)。
+     * 推荐 = 当前模型 contextWindow × 0.3。
      */
     val tokenBudget: Int = 0,
-    /** Si se debe detectar la estructura Markdown al fragmentar(bloque de código/Título/Mantener la mesa entera.). */
+    /** 分块时是否感知 Markdown 结构(代码块/标题/表格整体保留)。 */
     val markdownAware: Boolean = true,
-    /** Ya sea para dividir en trozos por número simbólico(true=prensa [chunkSize] token,false=por personaje). */
+    /** 是否按 token 数分块(true=按 [chunkSize] token,false=按字符)。 */
     val chunkByToken: Boolean = false,
 
-    // ── v1.0.47 P7-1 Nuevo ──
-    /** Tipo de analizador de documentos. Predeterminado LOCAL(análisis local),Opcional CLOUD/MINERU(Necesidad de configurar endpoint). */
+    // ── v1.0.47 P7-1 新增 ──
+    /** 文档解析器类型。默认 LOCAL(本地解析),可选 CLOUD/MINERU(需配置 endpoint)。 */
     val documentParserType: ParserType = ParserType.LOCAL,
-    /** analizador de nubes endpoint(CLOUD Para tipo,Cadena vacía significa no configurado). */
+    /** 云端解析器 endpoint(CLOUD 类型用,空串表示未配置)。 */
     val cloudParserEndpoint: String = "",
-    /** MinerU analizador endpoint(MINERU Para tipo,Cadena vacía significa no configurado). */
+    /** MinerU 解析器 endpoint(MINERU 类型用,空串表示未配置)。 */
     val mineruEndpoint: String = "",
-    /** MinerU analizador Token(MINERU Para tipo,Una cadena vacía significa que no se requiere autenticación). */
+    /** MinerU 解析器 Token(MINERU 类型用,空串表示无需鉴权)。 */
     val mineruToken: String = "",
 ) {
     init {
@@ -112,28 +112,28 @@ data class RagConfig(
         require(hybridVectorWeight >= 0f) { "hybridVectorWeight cannot be negative, current: $hybridVectorWeight" }
     }
 
-    /** Embedding Enumeración de fuentes. */
+    /** Embedding 来源枚举。 */
     @Serializable
     enum class EmbeddingSource {
-        /** nube API(Calidad primero,Requiere conexión a internet). */
+        /** 云端 API(质量优先,需联网)。 */
         CLOUD,
 
         /**
-         * v1.133: locales ONNX(Incrustación semántica de redes neuronales,Necesita descargar el archivo del modelo).
-         * Si no se introduce la dependencia onnxruntime-android,RagService Se degradará a LOCAL_KEYWORD.
+         * v1.133: 本地 ONNX(神经网络语义嵌入,需下载模型文件)。
+         * 若 onnxruntime-android 依赖未引入,RagService 会降级到 LOCAL_KEYWORD。
          */
         LOCAL,
 
-        /** v1.133: hash de palabras clave locales(Escenario de degradación sin conexión sin ONNX,no es realmente semántico). */
+        /** v1.133: 本地关键词哈希(无 ONNX 时的离线降级方案,非真正语义)。 */
         LOCAL_KEYWORD,
     }
 
     /**
-     * v1.0.47 P7-1: Tipo de analizador de documentos.
+     * v1.0.47 P7-1: 文档解析器类型。
      *
-     * - LOCAL: análisis local(Predeterminado,DocumentParser autoimplementable,apoyo txt/pdf/docx/pptx/xlsx/epub)
-     * - CLOUD: Análisis de la nube API(Necesidad de configurar endpoint,Adecuado para diseños complejos/copia escaneada,Bajar a cuando no esté configurado LOCAL)
-     * - MINERU: MinerU API(Necesidad de configurar endpoint,Bueno en PDF/fórmula académica/mesa,Bajar a cuando no esté configurado LOCAL)
+     * - LOCAL: 本地解析(默认,DocumentParser 自实现,支持 txt/pdf/docx/pptx/xlsx/epub)
+     * - CLOUD: 云端解析 API(需配置 endpoint,适合复杂版式/扫描件,未配置时降级到 LOCAL)
+     * - MINERU: MinerU API(需配置 endpoint,擅长学术 PDF/公式/表格,未配置时降级到 LOCAL)
      */
     @Serializable
     enum class ParserType {
@@ -144,11 +144,11 @@ data class RagConfig(
 
     companion object {
         /**
-         * F-33: Calcule el indicador de estabilidad de la configuración de incrustación actual,para la detección"Ya sea para cambiar el modelo integrado".
+         * F-33: 计算当前 embedding 配置的稳定标识,用于检测"嵌入模型是否切换"。
          *
-         * embedding Configurado por [embeddingSource] + Provider/modelo de decisión conjunta,Cualquier cambio conducirá a
-         * Dimensiones de índice vectorial existentes/desajuste semántico,Buscar"Parece que hay un índice pero no se puede encontrar.". Esta clave es para las páginas de la base de conocimientos.
-         * con"El índice más reciente utilizado key"Comparar,Solicita al usuario que vuelva a indexar cuando se producen cambios.
+         * embedding 配置由 [embeddingSource] + Provider/模型 共同决定,任一变化都会导致
+         * 既有向量索引维度/语义不匹配,检索"看起来有索引却搜不到"。本 key 供知识库页
+         * 与"最近一次索引所用 key"比对,变化时提示用户重新索引。
          */
         fun embeddingModelKey(config: RagConfig): String = when (config.embeddingSource) {
             EmbeddingSource.LOCAL_KEYWORD -> "embed:local_keyword"
@@ -159,10 +159,10 @@ data class RagConfig(
 }
 
 /**
- * P2-2(informe de auditoría): Fusione los campos de cobertura de una determinada KB en la configuración global de RAG.
+ * P2-2（审计报告）: 把某个 KB 的覆盖字段合并到全局 RAG 配置上。
  *
- * Todos los campos de cobertura están vacíos/NULL La configuración global se devuelve tal cual y el comportamiento existente permanece sin cambios.
- * Persona que llama: si se conoce la identificación de KB antes de la recuperación, combínela primero y luego pásela a RagService.
+ * 所有覆盖字段为空/NULL 时原样返回全局配置，存量行为完全不变。
+ * 调用方：检索前若已知 KB id，先合并再传给 RagService。
  */
 fun RagConfig.withKbOverrides(kb: KnowledgeBaseEntity?): RagConfig {
     if (kb == null) return this

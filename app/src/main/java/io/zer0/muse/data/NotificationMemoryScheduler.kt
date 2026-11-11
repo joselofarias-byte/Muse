@@ -13,20 +13,20 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 /**
- * v2.6.2(comentarios de los usuarios): Notificación → Clasificación y programación del fondo de la memoria.
+ * v2.6.2（用户反馈）: 通知 → 记忆 后台梳理调度。
  *
- * Los usuarios esperan que el asistente “conozca” las notificaciones recibidas y las mencione de forma natural en los mensajes activos. Este planificador es responsable de:
- *  1. Periódicamente (siguiendo el ritmo del ticker de la memoria) extrae notificaciones recopiladas por el servicio de escucha de notificaciones que aún no se han resuelto.
- *  2. entregar [NotificationMemoryDigest](Vaya al modelo de herramienta grande) Peinar/integrar/Eliminar duplicados
- *  3. Después de colocarse en la biblioteca, los datos de la clase de notificación se inyectan en el contexto del mensaje activo con memoria (consulte ProactiveMessageRunner).
+ * 用户希望助手「自己知道」收到的通知，并在主动消息里自然提起。本调度器负责：
+ *  1. 周期性（跟随记忆 ticker 节奏）拉取通知监听服务采集到的、尚未梳理的通知
+ *  2. 交给 [NotificationMemoryDigest]（走大工具模型）梳理/整合/去重
+ *  3. 落库后，通知类事实即随记忆注入主动消息上下文（见 ProactiveMessageRunner）
  *
- * ritmo:Alinear con la compilación de memoria —— Predeterminado cada [POLL_INTERVAL_MS] Verifique una vez; solo si es nuevo,
- * Solo las notificaciones dentro de la ventana de antigüedad ajustarán el LLM para evitar que los tokens estén inactivos y quemados.
+ * 节奏:与记忆编译对齐 —— 默认每 [POLL_INTERVAL_MS] 检查一次；只有出现新的、
+ * 在时效窗口内的通知才会真正调 LLM，避免空转烧 token。
  *
- * Condiciones previas:
- *  - El usuario tiene derechos de notificación autorizados ([MuseNotificationListenerService.isConnected])
- *  - La función de memoria está activada ([SettingsRepository.isMemoryEnabled])
- *  - interruptor principal [SettingsRepository.notificationMemoryEnabledFlow](Desactivado de forma predeterminada, habilitado explícitamente por el usuario)
+ * 前置条件:
+ *  - 用户已授权通知使用权（[MuseNotificationListenerService.isConnected]）
+ *  - 记忆功能开启（[SettingsRepository.isMemoryEnabled]）
+ *  - 总开关 [SettingsRepository.notificationMemoryEnabledFlow]（默认关，用户显式开启）
  */
 class NotificationMemoryScheduler(
     private val settings: SettingsRepository,
@@ -37,7 +37,7 @@ class NotificationMemoryScheduler(
 
     private var job: kotlinx.coroutines.Job? = null
 
-    /** La última marca de tiempo de notificación procesada la última vez para evitar clasificar repetidamente las notificaciones antiguas. */
+    /** 上次处理到的最新通知时间戳，避免重复梳理旧通知。 */
     @Volatile
     private var lastProcessedAt: Long = 0L
 
@@ -45,11 +45,11 @@ class NotificationMemoryScheduler(
         if (job?.isActive == true) return
         job = scope.launch {
             Logger.i(TAG, "NotificationMemoryScheduler started")
-            // Inicializar el cursor al iniciar:Solo se procesan las notificaciones recibidas después del inicio (las notificaciones históricas no se rastrean para evitar una inyección única).
+            // 启动时初始化游标:只处理启动之后收到的通知（历史通知不回溯，避免一次性灌入）。
             lastProcessedAt = System.currentTimeMillis()
             while (isActive) {
                 runCatching { tickOnce() }
-                    .onFailure { if (it is kotlinx.coroutines.CancellationException) throw it else Logger.w(TAG, "tick falló: ${it.message}") }
+                    .onFailure { if (it is kotlinx.coroutines.CancellationException) throw it else Logger.w(TAG, "tick 失败: ${it.message}") }
                 delay(POLL_INTERVAL_MS)
             }
         }
@@ -60,13 +60,13 @@ class NotificationMemoryScheduler(
         job = null
     }
 
-    /** Cardado único (para pruebas/gatillo manual). */
+    /** 单次梳理（供测试/手动触发）。 */
     suspend fun tickOnce(): NotificationMemoryDigest.DigestResult? {
         val fresh = collectFresh() ?: return null
         return runDigest(fresh)
     }
 
-    /** Recopile notificaciones nuevas después del cursor; Devuelve nulo si no hay nuevas notificaciones o no se cumplen las condiciones previas. */
+    /** 收集游标之后的新鲜通知；无新通知或前置条件不满足时返回 null。 */
     private suspend fun collectFresh(): List<NotificationRecord>? {
         if (!shouldRun()) return null
         val windowStart = System.currentTimeMillis() - WINDOW_MS
@@ -77,12 +77,12 @@ class NotificationMemoryScheduler(
             .takeIf { it.isNotEmpty() }
     }
 
-    /** Condiciones previas:El interruptor de memoria de notificación + función de memoria + autorización de notificación están todos listos. */
+    /** 前置条件:通知记忆开关 + 记忆功能 + 通知授权三者均就绪。 */
     private suspend fun shouldRun(): Boolean = settings.notificationMemoryEnabledFlow.first() &&
         settings.isMemoryEnabled() &&
         MuseNotificationListenerService.isConnected()
 
-    /** Envíe un lote de notificaciones nuevas al modelo de herramienta grande para que las clasifique y almacene. */
+    /** 把一批新鲜通知交给大工具模型梳理并落库。 */
     private suspend fun runDigest(fresh: List<NotificationRecord>): NotificationMemoryDigest.DigestResult {
         val assistantId = settings.getDefaultAssistantId().ifBlank { "main" }
         val scopeId = if (assistantId == "default") "main" else assistantId
@@ -92,15 +92,15 @@ class NotificationMemoryScheduler(
             scope = scopeId,
             spaceId = spaceId,
             model = null,
-            // Enrutamiento desde MemoryLlmClient a un archivo de herramienta grande
-            locale = settings.getLanguageSync().let { if (it == "system" || it.isBlank()) "es" else it },
+            // 由 MemoryLlmClient 路由到大工具档
+            locale = settings.getLanguageSync().let { if (it == "system" || it.isBlank()) "zh-CN" else it },
         )
-        // Independientemente de si se coloca en la base de datos o no, el cursor avanza para evitar enviar el mismo lote de notificaciones a LLM repetidamente.
+        // 无论是否落库，都推进游标，避免同一批通知反复送 LLM。
         lastProcessedAt = fresh.maxOf { it.timestamp }
         if (result.extracted > 0) {
-            // Activa una compilación de memoria para permitir que nuevos hechos ingresen a memoria.md (consistente con la migración de reabastecimiento).
+            // 触发一次记忆编译，让新事实进入 memory.md（与 backfill 迁移后的做法一致）。
             resultOf { memoryTicker.tick() }
-                .onError { msg, t -> Logger.w(TAG, "Después de la notificación de abandono tick() falló: $msg", t) }
+                .onError { msg, t -> Logger.w(TAG, "通知落库后 tick() 失败: $msg", t) }
         }
         return result
     }
@@ -115,10 +115,10 @@ class NotificationMemoryScheduler(
     companion object {
         private const val TAG = "NotifMemorySched"
 
-        /** intervalo de verificación (10 minutos)——La clasificación de notificaciones no es un requisito en tiempo real; la baja frecuencia es suficiente. */
+        /** 检查间隔（10 分钟）——通知梳理不是实时需求，低频即可。 */
         private const val POLL_INTERVAL_MS = 10 * 60 * 1000L
 
-        /** Solo se ordenarán las notificaciones dentro de las últimas 24 horas (ventana de puntualidad). */
+        /** 只梳理最近 24 小时内的通知（时效窗口）。 */
         private const val WINDOW_MS = 24 * 60 * 60 * 1000L
     }
 }

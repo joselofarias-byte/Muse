@@ -16,11 +16,11 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * get_token_usage Calibre de consulta dependiente (habitación real, sin sustituto).
+ * get_token_usage 依赖的查询口径（真 Room，不用替身）。
  *
- * Dos cosas para clavar por separado:
- *  - usage_records agregación existente de (totalsSince / bySourceSince / topModelsSince) filtra por ventana de tiempo;
- *  - messages La agregación de uso de la sesión solo cuenta los "mensajes del asistente con tokens medidos", excluyendo las filas eliminadas y de ceros.
+ * 两件事分开钉：
+ *  - usage_records 的既有聚合（totalsSince / bySourceSince / topModelsSince）确实按时间窗口过滤；
+ *  - messages 的会话用量聚合只数「有实测 token 的助手消息」，剔除已删除与全零行。
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -98,13 +98,13 @@ class TokenUsageDaoTest {
         )
         message("a-1", "s-1", prompt = 1_000, completion = 100)
         message("a-2", "s-1", prompt = 2_000, completion = 200)
-        // Las filas con todos ceros no deben contarse (usage_records El lado tampoco recuerda todos los ceros)
+        // 全零行不该计入（usage_records 侧同样不记全零）
         message("a-zero", "s-1", prompt = 0, completion = 0)
-        // Los mensajes eliminados no se cuentan
+        // 已删除消息不计入
         message("a-del", "s-1", prompt = 9_999, completion = 9_999, deletedAt = base + 10)
-        // Otras sesiones no se cuentan
+        // 其他会话不计入
         message("a-other", "s-2", prompt = 5_000, completion = 500)
-        // Los mensajes de usuario no tienen uso medido
+        // 用户消息没有实测用量
         database.messageDao().upsert(
             MessageEntity(id = "u-1", sessionId = "s-1", role = "USER", content = "hi", createdAt = base),
         )
@@ -129,13 +129,7 @@ class TokenUsageDaoTest {
         assertEquals(0L, usage.completionTokens)
     }
 
-    private suspend fun message(
-        id: String,
-        sessionId: String,
-        prompt: Int,
-        completion: Int,
-        deletedAt: Long? = null,
-    ) {
+    private suspend fun message(id: String, sessionId: String, prompt: Int, completion: Int, deletedAt: Long? = null) {
         database.messageDao().upsert(
             MessageEntity(
                 id = id,

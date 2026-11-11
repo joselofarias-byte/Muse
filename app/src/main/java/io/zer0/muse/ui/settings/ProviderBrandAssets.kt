@@ -28,16 +28,16 @@ import io.zer0.muse.ui.theme.BrandGemini
 import io.zer0.muse.ui.theme.BrandOpenAI
 
 /**
- * Provider Mapeo de recursos de marca.
+ * Provider 品牌资源映射。
  *
- * v2.0 Revisión:
- *  - Avatar de"Círculo degradado + icono abstracto"Cambiar a"Ladrillos con logo cuadrado redondeado en tonos de marca":
- *    Iconos lineales para fabricantes conocidos.(Tabler line estilo),Marca denominativa de las iniciales del fabricante desconocido,
- *    esquinas redondeadas uniformes/color de fondo/Tamaño del trazo,Evite los problemas anteriores de estilo de círculo degradado desordenado y bajo reconocimiento.
- *  - Los colores de la marca aún provienen de theme/StatusColors.kt Colores de marca fijos,El fabricante desconocido revierte el color principal del tema.
+ * v2.0 改版:
+ *  - 头像从"渐变圆 + 抽象图标"改为"品牌色调的圆角方形 logo 砖":
+ *    已知厂商用线性图标(Tabler line 风格),未知厂商用名称首字符字标,
+ *    统一圆角/底色/描边口径,避免之前渐变圆风格杂乱、辨识度低的问题。
+ *  - 品牌色仍来自 theme/StatusColors.kt 固定品牌色,未知厂商回退主题主色。
  */
 
-/** Volver al icono de marca del proveedor(Fabricantes conocidos);Regreso desconocido null,por [ProviderLogo] Representa la marca denominativa. */
+/** 返回 Provider 品牌图标(已知厂商);未知返回 null,由 [ProviderLogo] 渲染字标。 */
 @Composable
 fun providerBrandIconOrNull(type: ProviderType, name: String): ImageVector? {
     val lower = name.lowercase()
@@ -49,17 +49,17 @@ fun providerBrandIconOrNull(type: ProviderType, name: String): ImageVector? {
         lower.contains("deepseek") -> MuseIcons.waveSine
         lower.contains("anthropic") || lower.contains("claude") -> MuseIcons.feather
         lower.contains("openai") || lower.contains("gpt") || lower.contains("codex") -> MuseIcons.star
-        lower.contains("qwen") || lower.contains("significado general") -> MuseIcons.globe
-        lower.contains("zhipu") || lower.contains("glm") || lower.contains("espectro de sabiduría") -> MuseIcons.hexagon
+        lower.contains("qwen") || lower.contains("通义") -> MuseIcons.globe
+        lower.contains("zhipu") || lower.contains("glm") || lower.contains("智谱") -> MuseIcons.hexagon
         lower.contains("kimi") || lower.contains("moonshot") -> MuseIcons.moonStars
-        lower.contains("doubao") || lower.contains("volc") || lower.contains("bolsa de frijol") -> MuseIcons.flame
-        lower.contains("step") || lower.contains("paso") -> MuseIcons.wind
-        lower.contains("silicon") || lower.contains("A base de silicio") -> MuseIcons.stack
-        lower.contains("hunyuan") || lower.contains("Hunyuan") -> MuseIcons.atom
-        lower.contains("baidu") || lower.contains("Baidu") || lower.contains("Qianfan") -> MuseIcons.compass
-        lower.contains("modelscope") || lower.contains("Magia") -> MuseIcons.box
-        lower.contains("infini") || lower.contains("No hay duda") -> MuseIcons.infinity
-        lower.contains("mimo") || lower.contains("xiaomi") || lower.contains("Xiaomi") -> MuseIcons.brandAndroid
+        lower.contains("doubao") || lower.contains("volc") || lower.contains("豆包") -> MuseIcons.flame
+        lower.contains("step") || lower.contains("阶跃") -> MuseIcons.wind
+        lower.contains("silicon") || lower.contains("硅基") -> MuseIcons.stack
+        lower.contains("hunyuan") || lower.contains("混元") -> MuseIcons.atom
+        lower.contains("baidu") || lower.contains("百度") || lower.contains("千帆") -> MuseIcons.compass
+        lower.contains("modelscope") || lower.contains("魔搭") -> MuseIcons.box
+        lower.contains("infini") || lower.contains("无问") -> MuseIcons.infinity
+        lower.contains("mimo") || lower.contains("xiaomi") || lower.contains("小米") -> MuseIcons.brandAndroid
         lower.contains("agnes") -> MuseIcons.wind
         lower.contains("minimax") -> MuseIcons.stack
         lower.contains("ollama") -> MuseIcons.server
@@ -71,7 +71,7 @@ fun providerBrandIconOrNull(type: ProviderType, name: String): ImageVector? {
         lower.contains("perplexity") -> MuseIcons.compass
         lower.contains("deepinfra") -> MuseIcons.server
         lower.contains("xai") || lower.contains("grok") -> MuseIcons.planet
-        lower.contains("relay") || lower.contains("tránsito") || lower.contains("oneapi") ||
+        lower.contains("relay") || lower.contains("中转") || lower.contains("oneapi") ||
             lower.contains("newapi") || lower.contains("aihubmix") || lower.contains("api2d") ||
             lower.contains("deepbricks") || lower.contains("opencode") -> MuseIcons.hierarchy
         type == ProviderType.ANTHROPIC -> MuseIcons.feather
@@ -80,7 +80,7 @@ fun providerBrandIconOrNull(type: ProviderType, name: String): ImageVector? {
     }
 }
 
-/** Volver al color de la marca del proveedor(Color de marca fijo,No cambia con el tema.,definido en theme/StatusColors.kt). */
+/** 返回 Provider 品牌色(固定品牌色,不随主题切换,定义在 theme/StatusColors.kt)。 */
 @Composable
 fun providerBrandColor(type: ProviderType, name: String): Color {
     val lower = name.lowercase()
@@ -93,7 +93,7 @@ fun providerBrandColor(type: ProviderType, name: String): Color {
     }
 }
 
-/** Convierta ProviderType a nombre para mostrar en chino. */
+/** 把 ProviderType 转成中文显示名。 */
 @Composable
 fun providerDisplayTypeName(type: ProviderType): String = when (type) {
     ProviderType.OPENAI -> stringResource(R.string.settings_provider_type_openai)
@@ -103,10 +103,10 @@ fun providerDisplayTypeName(type: ProviderType): String = when (type) {
 }
 
 /**
- * Provider logo Ladrillo — Cuadrado redondeado + base luminosa en tono de marca + ícono lineal/Marca denominativa del primer carácter.
+ * Provider logo 砖 — 圆角方形 + 品牌色调浅底 + 线性图标/首字符字标。
  *
- * Fabricantes conocidos(tabler Icono lineal):Color de marca de icono para colorear;Fabricante desconocido:Mostrar la primera letra del nombre./Marca de carácter chino.
- * color de fondo = Color de la marca 10% de transparencia.;Accidente cerebrovascular = Color de la marca 18% de transparencia.;Las esquinas redondeadas tienen por defecto 12 dp.
+ * 已知厂商(tabler 线性图标):图标着色品牌色;未知厂商:显示名称首个字母/汉字字标。
+ * 底色 = 品牌色 10% 透明度;描边 = 品牌色 18% 透明度;圆角默认 12dp。
  */
 @Composable
 fun ProviderLogo(type: ProviderType, name: String, modifier: Modifier = Modifier, size: Dp = 40.dp, cornerRadius: Dp = 12.dp) {
@@ -126,7 +126,7 @@ fun ProviderLogo(type: ProviderType, name: String, modifier: Modifier = Modifier
                 imageVector = icon,
                 contentDescription = null,
                 tint = tint,
-                // El tamaño del icono se redondea al 52 % del ladrillo.,Garantizar proporciones consistentes en diferentes tamaños.
+                // 图标尺寸按砖块 52% 取整,保证不同尺寸下比例一致
                 modifier = Modifier.size(size * 0.52f),
             )
         } else {
@@ -134,14 +134,14 @@ fun ProviderLogo(type: ProviderType, name: String, modifier: Modifier = Modifier
                 text = providerMonogram(name),
                 color = tint,
                 fontWeight = FontWeight.SemiBold,
-                // Calcule el tamaño de la marca denominativa en un 42% del tamaño del ladrillo(Visualmente proporcional al icono)
+                // 按砖块尺寸的 42% 估算字标字号(视觉上与图标同比例)
                 fontSize = (size.value * 0.42f).sp,
             )
         }
     }
 }
 
-/** Toma la primera letra del nombre./Caracteres chinos como marcas denominativas;Omita símbolos como paréntesis. */
+/** 取名称首个字母/汉字作为字标;跳过括号等符号。 */
 internal fun providerMonogram(displayName: String): String {
     val trimmed = displayName.trim()
     if (trimmed.isEmpty()) return "?"

@@ -33,18 +33,20 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import io.zer0.muse.miniphone.R
 import io.zer0.muse.miniphone.data.moment.MOMENT_MAX_IMAGES
 import io.zer0.muse.miniphone.ui.icons.MiniPhoneIcons
 import io.zer0.muse.miniphone.ui.theme.MiniPhoneTheme
 
 /**
- * Página de lanzamiento:Toma el control de toda el área de contenido de la pantalla,Escribe el texto principal en la primera mitad.,La mitad inferior es una cuadrícula de nueve cuadrados de la imagen seleccionada.
+ * 发布页:整屏接管内容区,上半写正文,下半是已选图片的九宫格。
  *
- * Selecciona imagen y ve al selector de sistema.,Hasta nueve a la vez;No se puede hacer clic en "Publicar" cuando ambos elementos están vacíos —— Las dinámicas vacías no tienen sentido.
- * seleccionado [Uri] Sólo vivo en la página de publicación.:Una vez que el lanzamiento se realiza correctamente, ViewModel se copia en el directorio privado y se coloca en la biblioteca.,
- * falló(nada escrito)Esta página no se quedará a medio borrador.
+ * 选图走系统选择器,一次最多九张;「发布」在两样都空时点不动 —— 空白动态没有意义。
+ * 选中的 [Uri] 只在发布页活着:发布成功由 ViewModel 复制进私有目录并落库,
+ * 失败(什么都没写)时这一页也不会留下半截草稿。
  */
 @Composable
 internal fun MomentPublishScreen(onClose: () -> Unit, onPublish: (String, List<Uri>, Boolean) -> Unit, modifier: Modifier = Modifier) {
@@ -95,7 +97,7 @@ internal fun MomentPublishScreen(onClose: () -> Unit, onPublish: (String, List<U
     }
 }
 
-/** barra superior:Izquierda para cerrar, título central, derecha para publicar. */
+/** 顶栏:左关闭、中间标题、右发布。 */
 @Composable
 private fun PublishTopBar(canPublish: Boolean, onClose: () -> Unit, onConfirm: () -> Unit) {
     val colors = MiniPhoneTheme.colors
@@ -117,10 +119,14 @@ private fun PublishTopBar(canPublish: Boolean, onClose: () -> Unit, onConfirm: (
                     .testTag(MiniPhoneMomentsTags.PUBLISH_CLOSE),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(text = CLOSE_LABEL, style = typography.caption.copy(color = colors.textSecondary))
+                Text(
+                    text = stringResource(CLOSE_LABEL_RES),
+                    style = typography.caption.copy(color = colors.textSecondary),
+                )
             }
             Text(
-                text = TITLE,
+                text = stringResource(TITLE_RES),
+
                 style = typography.title.copy(color = colors.textPrimary),
                 modifier = Modifier
                     .weight(1f)
@@ -134,7 +140,8 @@ private fun PublishTopBar(canPublish: Boolean, onClose: () -> Unit, onConfirm: (
                     .padding(horizontal = 10.dp, vertical = 6.dp),
             ) {
                 Text(
-                    text = CONFIRM_LABEL,
+                    text = stringResource(CONFIRM_LABEL_RES),
+
                     style = typography.caption.copy(
                         color = if (canPublish) colors.accent else colors.textSecondary,
                     ),
@@ -145,7 +152,7 @@ private fun PublishTopBar(canPublish: Boolean, onClose: () -> Unit, onConfirm: (
     }
 }
 
-/** Entrada de texto:Altura mínima: un cuarto de la pantalla,No importa cuánto escriba, no me molestaré en el área de las imágenes. */
+/** 正文输入:最小高度一屏四分之一,写完再多也不顶着图片区。 */
 @Composable
 private fun PublishTextField(text: String, onTextChange: (String) -> Unit) {
     val colors = MiniPhoneTheme.colors
@@ -161,7 +168,8 @@ private fun PublishTextField(text: String, onTextChange: (String) -> Unit) {
     ) {
         if (text.isEmpty()) {
             Text(
-                text = PLACEHOLDER,
+                text = stringResource(PLACEHOLDER_RES),
+
                 style = typography.body.copy(color = colors.textSecondary),
             )
         }
@@ -177,7 +185,7 @@ private fun PublishTextField(text: String, onTextChange: (String) -> Unit) {
     }
 }
 
-/** Imagen seleccionada:Tres columnas de cuadrados,El último cuadro es la entrada de selección de imágenes.,Ya no se mostrará después de seleccionar nueve imágenes. */
+/** 已选图片:三列方格,末尾一格是选图入口,选满九张后不再显示。 */
 @Composable
 private fun PickedImageGrid(picked: List<Uri>, onPick: () -> Unit) {
     val cellCount = picked.size + if (picked.size < MOMENT_MAX_IMAGES) 1 else 0
@@ -193,7 +201,7 @@ private fun PickedImageGrid(picked: List<Uri>, onPick: () -> Unit) {
     }
 }
 
-/** Se ha seleccionado una imagen. */
+/** 已选的一张图。 */
 @Composable
 private fun PickedThumb(uri: Uri) {
     val colors = MiniPhoneTheme.colors
@@ -212,7 +220,7 @@ private fun PickedThumb(uri: Uri) {
     }
 }
 
-/** Entrada de selección de imágenes.:Un icono de marco ocupa un espacio. */
+/** 选图入口:一枚相框图标占一格。 */
 @Composable
 private fun PickerTile(onPick: () -> Unit) {
     val colors = MiniPhoneTheme.colors
@@ -228,7 +236,8 @@ private fun PickerTile(onPick: () -> Unit) {
     ) {
         Icon(
             imageVector = MiniPhoneIcons.Image,
-            contentDescription = PICK_LABEL,
+            contentDescription = stringResource(PICK_LABEL_RES),
+
             tint = colors.textSecondary,
             modifier = Modifier.size(PickIconSize),
         )
@@ -236,9 +245,9 @@ private fun PickerTile(onPick: () -> Unit) {
 }
 
 /**
- * interruptor de rango visible:Sólo da la opción "Visible sólo para mí",Desactivado predeterminado(cadena vacía = Visible para todos).
+ * 可见范围开关:只给「仅自己可见」一个选项,默认关(空串 = 所有人可见)。
  *
- * Dejar la lista blanca de roles para más tarde,Los objetos visibles no se fotografían en una lista de selección múltiple en esta etapa.
+ * 角色白名单留到以后,本阶段不把可见对象拍成一个多选列表。
  */
 @Composable
 private fun VisibilitySwitch(onlySelf: Boolean, onToggle: () -> Unit) {
@@ -255,7 +264,8 @@ private fun VisibilitySwitch(onlySelf: Boolean, onToggle: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            text = ONLY_SELF_LABEL,
+            text = stringResource(ONLY_SELF_LABEL_RES),
+
             style = typography.caption.copy(color = colors.textPrimary),
             modifier = Modifier.weight(1f),
         )
@@ -263,7 +273,7 @@ private fun VisibilitySwitch(onlySelf: Boolean, onToggle: () -> Unit) {
     }
 }
 
-/** cambiar de canal clave:Cuando está abierto, los puntos se mueven hacia la derecha y el color de fondo cambia al color de acento. */
+/** 开关键道:开时圆点靠右、底色换强调色。 */
 @Composable
 private fun VisibilityTrack(on: Boolean) {
     val colors = MiniPhoneTheme.colors
@@ -294,12 +304,12 @@ private val TrackHeight = 22.dp
 private val TrackPadding = 3.dp
 private val TrackKnob = 16.dp
 
-private const val TITLE: String = "Escribir actualizaciones"
-private const val CLOSE_LABEL: String = "Cancelar"
-private const val CONFIRM_LABEL: String = "publicar"
-private const val PLACEHOLDER: String = "pensamientos en este momento……"
-private const val PICK_LABEL: String = "Seleccionar imagen"
-private const val ONLY_SELF_LABEL: String = "Visible solo para ti"
+private val TITLE_RES: Int = R.string.mp_publish_title
+private val CLOSE_LABEL_RES: Int = R.string.mp_cancel
+private val CONFIRM_LABEL_RES: Int = R.string.mp_publish_confirm
+private val PLACEHOLDER_RES: Int = R.string.mp_publish_placeholder
+private val PICK_LABEL_RES: Int = R.string.mp_chat_pick_image_cd
+private val ONLY_SELF_LABEL_RES: Int = R.string.mp_moment_only_self
 
-/** Número de columnas en la cuadrícula de selección. */
+/** 选图网格的列数。 */
 private const val PICKED_COLUMNS: Int = 3

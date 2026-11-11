@@ -6,9 +6,9 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**
- * Reglas de visibilidad para el menú de pulsación larga:¿Quién puede copiar y redistribuir?
+ * 长按菜单的可见规则:谁能复制、谁能重发。
  *
- * Las reglas son funciones puras.,Clavarlo aquí;Con una sola pulsación larga realmente puede aparecer, y estos son los elementos que aparecen.,Responsable de las pruebas de UI.
+ * 规则是纯函数,这里把它钉死;单次长按真的能弹出来、弹出来的是这几项,由 UI 测试负责。
  */
 class ChatMenuActionsTest {
 
@@ -49,7 +49,7 @@ class ChatMenuActionsTest {
         id = "m1",
         sender = sender,
         type = type,
-        content = "contenido",
+        content = "内容",
         createdAt = 1_000L,
     )
 }

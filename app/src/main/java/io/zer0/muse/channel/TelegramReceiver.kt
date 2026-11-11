@@ -14,11 +14,11 @@ import java.io.File
 import java.security.MessageDigest
 
 /**
- * v2.0: Telegram receptor — Ciclo de votación largo.
+ * v2.0: Telegram 接收器 — 长轮询循环。
  *
- * Llamado cíclicamente cuando hay un canal TELEGRAM habilitado getUpdates(encuesta larga 30s):
- * Escritura de mensajes de usuario [ChannelInbox](Activar enlace de respuesta automática). Conexión saliente,Libre de red pública.
- * Guardar configuración/Llamado por la interfaz de usuario o cuando la aplicación se inicia después de la eliminación [restart].
+ * 存在启用中的 TELEGRAM 渠道时循环调用 getUpdates(长轮询约 30s):
+ * 用户消息写入 [ChannelInbox](触发自动回复链路)。出站连接,免公网。
+ * 配置保存/删除后由 UI 或应用启动时调用 [restart]。
  */
 class TelegramReceiver(
     private val channelManager: ChannelManager,
@@ -27,7 +27,7 @@ class TelegramReceiver(
 ) {
     private var job: Job? = null
 
-    /** Empezar a sondear(idempotente;Existe un ciclo de detenerse y luego comenzar de nuevo.). */
+    /** 启动轮询(幂等;已有循环先停再起)。 */
     fun restart() {
         job?.cancel()
         job = appScope.launch {
@@ -36,7 +36,7 @@ class TelegramReceiver(
         }
     }
 
-    /** Deja de votar. */
+    /** 停止轮询。 */
     fun stop() {
         job?.cancel()
         job = null
@@ -52,35 +52,35 @@ class TelegramReceiver(
                 it.enabled && it.platform == ChannelPlatform.TELEGRAM && it.appSecret.isNotBlank()
             }
             if (config == null) {
-                // Registre solo una vez cuando "no ingrese al estado de ningún canal"; luego use un retroceso largo para esperar.
+                // 只在「进入无渠道状态」时记一次日志；之后用长退避等待。
                 //
-                // La implementación anterior se repite cada 5 segundos en esta rama y registra una línea: los usuarios que no configuren canales verán
-                // 12 líneas por minuto de la misma "salida del bucle de recepción" mientras se activan hilos innecesariamente.
+                // 旧实现在这个分支上每 5 秒循环一轮并打一行日志：没有配置渠道的用户会看到
+                // 每分钟 12 行同样的「接收循环退出」，同时无谓地唤醒线程。
                 if (!reportedEmpty) {
-                    Logger.i(TAG, "No hay canales activos de Telegram,El bucle de recepción se bloquea esperando la configuración")
+                    Logger.i(TAG, "无启用中的 Telegram 渠道,接收循环挂起等待配置")
                     reportedEmpty = true
                 }
                 delay(NO_CHANNEL_BACKOFF_MS)
                 continue
             }
             if (reportedEmpty) {
-                Logger.i(TAG, "Telegram El canal está habilitado.,Reanudar recepción")
+                Logger.i(TAG, "Telegram 渠道已启用,恢复接收")
                 reportedEmpty = false
             }
-            // v2.6.0 (AUD-CHANNEL-F2): Función de sondeo de ronda única —— Cursor fallido/Anormalidad de la red/
-            // Las excepciones de escritura se devuelven uniformemente“tiempo de espera”,Los bucles ya no acumulan declaraciones de salto.
+            // v2.6.0 (AUD-CHANNEL-F2): 单轮轮询抽成函数 —— 游标失败/网络异常/
+            // 写入异常统一返回“等待时长”,循环不再堆跳转语句。
             cursor = pollOnce(config, cursor)
             delay(RETRY_DELAY_MS)
         }
     }
 
     /**
-     * realizar una encuesta,Devuelve el cursor que debe usarse para la siguiente ronda.
+     * 执行一次轮询,返回下一轮应使用的游标。
      *
-     * cualquier local/Las excepciones de red se registran en la función.,No afecta la continuación del ciclo. —— Este es el núcleo de F2:
-     * El bucle de recepción no debe salir permanentemente debido a una excepción.
+     * 任何本地/网络异常都已在函数内记日志,不影响循环继续 —— 这是 F2 的核心:
+     * 接收循环不得因为一次异常而永久退出。
      */
-    /** Un mensaje entrante se registra en la base de datos; Las imágenes se pueden descargar en dos pasos. */
+    /** 落库一条入站消息；图片走两步下载。 */
 
     private suspend fun recordInbound(config: ChannelConfig, msg: TelegramClient.InboundMsg) {
         val source = ChannelInbox.Source(
@@ -98,7 +98,7 @@ class TelegramReceiver(
             return
         }
 
-        // Descarga de imágenes en dos pasos —— getFile Reemplace file_path y luego obtenga bytes según la ruta.
+        // 图片两步下载 —— getFile 换 file_path，再按路径取字节。
 
         val base64 = TelegramClient.getFile(config.appSecret, fileId)
             .getOrNull()
@@ -110,21 +110,26 @@ class TelegramReceiver(
         if (base64 != null) {
             ChannelInbox.record(
                 source = source,
-                text = msg.text.ifBlank { "[fotos]" },
+                text = msg.text.ifBlank { "[图片]" },
                 rawPayload = "",
                 media = ChannelInbox.Media(kind = "image", base64 = base64),
             )
         } else {
-            Logger.w(TAG, "Telegram Error en la adquisición de imágenes(chat=${msg.chatId})")
+            Logger.w(TAG, "Telegram 图片获取失败(chat=${msg.chatId})")
 
-            ChannelInbox.record(source, msg.text.ifBlank { "[fotos(No se pudo obtener)]" }, "")
+            ChannelInbox.record(source, msg.text.ifBlank { "[图片(未能获取)]" }, "")
         }
     }
 
     @Suppress("TooGenericExceptionCaught", "ReturnCount")
     private suspend fun pollOnce(config: ChannelConfig, cursor: TelegramCursor): TelegramCursor {
         val next = nextCursorFor(config, cursor) ?: return cursor
-        val updates = TelegramClient.getUpdates(config.appSecret, next.offset).getOrNull()
+        // 以前是 `.getOrNull() ?: return next`：拉取失败被当成"这轮没有新消息"，
+        // 一句日志都不留。同函数里图片失败、写库失败都有日志，只有这条最要命的没有 ——
+        // 它坏了的表现是"用户从 Telegram 发消息永远没反应"，而日志查不到任何线索。
+        val updates = TelegramClient.getUpdates(config.appSecret, next.offset)
+            .onFailure { e -> Logger.w(TAG, telegramPollIssue(config.id, e), e) }
+            .getOrNull()
             ?: return next
         return try {
             updates.messages.forEach { msg -> recordInbound(config, msg) }
@@ -136,47 +141,47 @@ class TelegramReceiver(
         } catch (error: CancellationException) {
             throw error
         } catch (error: Exception) {
-            Logger.w(TAG, "Telegram La actualización no pudo escribir en la bandeja de entrada local,Mantener el cursor de sondeo: ${error.message}")
+            Logger.w(TAG, "Telegram 更新未能写入本地收件箱,保留轮询游标: ${error.message}")
             next
         }
     }
 
     /**
-     * v2.6.0 (AUD-CHANNEL-F2): offset Ya no arroja un error cuando el archivo está dañado.
+     * v2.6.0 (AUD-CHANNEL-F2): offset 文件损坏时不再抛错。
      *
-     * Implementación original error(...) Lanzarlo fuera del bucle finalizará todo el trabajo de recepción y nadie lo reiniciará. ——
-     * Los usuarios solo pueden finalizar el proceso o ingresar a la página de configuración para activarlo manualmente, que aparece como "Telegram No más mensajes."
-     * considerado dañado“Sin cursor”Devuelve nulo (comienza desde el último) y puede consumir hasta varios elementos repetidamente.
-     * Mejor que estar desconectado permanentemente.
+     * 原实现 error(...) 在循环外抛出，会让整个接收 job 终结且无人重启 ——
+     * 用户只能杀进程或进设置页手动触发，表现为「Telegram 再也收不到消息」。
+     * 损坏时视为“无游标”返回 null（从最新一条开始拉），最多重复消费几条，
+     * 好过永久失联。
      */
     /**
-     * v2.6.0 (AUD-CHANNEL-F2): Resuelva el siguiente cursor de encuesta.
+     * v2.6.0 (AUD-CHANNEL-F2): 解析下一次轮询游标。
      *
-     * Devolver nulo indica que la lectura del cursor local falló.(registrado),Reintento de retroceso por parte de la persona que llama ——
-     * La implementación original lee directamente dentro del bucle y arroja un error,Hará que el trabajo receptor salga permanentemente.
+     * 返回 null 表示本地游标读取失败(已记日志),由调用方退避重试 ——
+     * 原实现在循环内直接读取并抛错,会让接收 job 永久退出。
      */
     private fun nextCursorFor(config: ChannelConfig, cursor: TelegramCursor): TelegramCursor? {
         if (cursor.channelId == config.id) return cursor
         return runCatching { TelegramCursor(config.id, loadOffset(config.id)) }
             .onFailure { error ->
-                Logger.w(TAG, "Telegram Falló la inicialización del cursor: ${error.message}")
+                Logger.w(TAG, "Telegram 游标初始化失败: ${error.message}")
             }
             .getOrNull()
     }
 
     /**
-     * v2.6.0 (AUD-CHANNEL-F2): offset Ya no arroja un error cuando el archivo está dañado.
+     * v2.6.0 (AUD-CHANNEL-F2): offset 文件损坏时不再抛错。
      *
-     * considerado dañado“Sin cursor”Devuelve nulo (comienza desde el último) y puede consumir hasta varios elementos repetidamente.
-     * Mejor que estar desconectado permanentemente.
+     * 损坏时视为“无游标”返回 null（从最新一条开始拉），最多重复消费几条，
+     * 好过永久失联。
      */
     private fun loadOffset(channelId: String): Long? {
         val target = telegramOffsetFile(context, channelId)
         if (!target.exists()) return null
         val parsed = target.readText().trim().toLongOrNull()
         if (parsed == null) {
-            Logger.w(TAG, "Telegram offset Archivo corrupto(El contenido no es numérico.),Descarta el cursor y tira de él nuevamente.")
-            // Borrar archivos malos,Evita alarmas repetidas cada vez que empiezas
+            Logger.w(TAG, "Telegram offset 文件损坏(内容非数字),丢弃游标重新拉取")
+            // 清掉坏文件,避免每次启动都重复告警
             runCatching { target.delete() }
         }
         return parsed
@@ -190,10 +195,10 @@ class TelegramReceiver(
     companion object {
         private const val TAG = "TelegramReceiver"
 
-        /** Error al volver a intentar retroceder(milisegundos). */
+        /** 出错重试退避(毫秒)。 */
         private const val RETRY_DELAY_MS = 5_000L
 
-        /** Retroceda cuando no haya canales configurados. No participa en la encuesta, solo espera a que aparezca la configuración para poder estirarla. */
+        /** 没有配置渠道时的退避。不参与轮询，只等配置出现，所以可以拉长。 */
         private const val NO_CHANNEL_BACKOFF_MS = 60_000L
     }
 }

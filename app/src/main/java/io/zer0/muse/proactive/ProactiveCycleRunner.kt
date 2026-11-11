@@ -15,19 +15,19 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeoutOrNull
 
 /**
- * Ejecute una ronda de inspección proactiva de mensajes.
+ * 跑一轮主动消息巡检。
  *
- * La forma es "preparación". → juicio → generar → Liberar", cada uno de los cuatro pasos se convierte en una función:
+ * 形状是「准备 → 判定 → 生成 → 发布」，四步各自成函数：
  *
  * ```
- * prepare  Control Maestro/Interruptor/Asistente/Relación/Limpieza/Contabilidad   —— Todo local, costo cero
- * decide   Juicio de cuatro preguntas (ver ProactiveTimingEngine)
- * produce  Una convocatoria de LLM, que permite skip
- * publish  Cayó en la biblioteca → marca → Monto de la deducción → registrar el resultado → Notificación
+ * prepare  总控 / 开关 / 助手 / 关系 / 清理 / 记账   —— 全本地，零成本
+ * decide   四问判定（见 ProactiveTimingEngine）
+ * produce  一次 LLM 调用，允许 skip
+ * publish  落库 → 标记 → 扣额度 → 记结果 → 通知
  * ```
  *
- * Sólo producir cuesta dinero. Por tanto, el coste de una inspección cuando "el libro mayor está vacío" es cercano a cero. ——
- * Esta es la mayor diferencia con la implementación anterior: la implementación anterior podría desencadenar dos llamadas de LLM por encuesta.
+ * 只有 produce 花钱。所以「账本为空」时一次巡检的成本接近为零 ——
+ * 这是与旧实现最大的差别：旧实现每次轮询都可能触发两次 LLM 调用。
  */
 class ProactiveCycleRunner(
     private val stores: ProactiveStores,
@@ -36,10 +36,10 @@ class ProactiveCycleRunner(
     private val composer: ProactiveComposer,
     private val guard: ProactiveCycleGuard,
     /**
-     * Envíe la fuente aleatoria de la puerta de probabilidad y regrese `0..99`.
+     * 发送概率闸的随机源，返回 `0..99`。
      *
-     * El valor predeterminado es verdaderamente aleatorio, y la inyección es para hacer que la "probabilidad" sea mensurable: si a la prueba se le da un valor fijo, se puede determinar de manera determinista.
-     * ve a enviar/En lugar de enviar dos ramas, no es necesario realizar una afirmación estadísticamente falsa.
+     * 默认真随机，注入是为了让「概率」这件事可测：测试给固定值就能确定性地
+     * 走发送/不发送两条分支，而不必去追求一个统计上的伪断言。
      */
     private val rollPercent: () -> Int = { kotlin.random.Random.nextInt(ProactiveSendProbability.ROLL_BOUND) },
 ) {
@@ -47,30 +47,33 @@ class ProactiveCycleRunner(
     companion object {
         private const val TAG = "ProactiveCycle"
 
-        /** El tiempo de espera máximo para llamadas de generación. */
+        /** 生成调用的超时上限。 */
         private const val COMPOSE_TIMEOUT_MS = 60_000L
     }
 
-    /** La conclusión de una ronda de inspecciones. */
+    /** 一轮巡检的结论。 */
     data class Outcome(
         val verdict: ProactiveTimingEngine.Verdict?,
         val sent: Boolean,
-        /** Si hay asuntos sin procesar en el libro mayor determina el intervalo para la siguiente revisión. */
+        /** 账本里是否还有未处理的事，决定下次复查的间隔。 */
         val ledgerNotEmpty: Boolean,
         val detail: String,
         /**
-         * Si este activador se omitirá directamente porque "ya hay una ronda en ejecución".
+         * 本次触发是否因为「已经有一轮在跑」而直接跳过。
          *
-         * Separe campos en lugar de permitir que la persona que llama compare [detail]: Lo que se mostrará en la interfaz es redacción publicitaria localizada.
-         * y [detail] Es una frase china para el tronco. Los dos no deberían compartir una cuerda.
+         * 单独成字段而不是让调用方去比对 [detail]：界面上要显示的是本地化文案，
+         * 而 [detail] 是给日志看的中文短语，两者不该共用一份字符串。
          */
         val alreadyRunning: Boolean = false,
     )
 
-    /** ¿Se está realizando ya una ronda de inspecciones en este momento? Proporciona a los programadores y trabajadores predicciones económicas. */
+    /** 此刻是否已经有一轮巡检在跑。供调度器与 Worker 做廉价预判。 */
     val isInFlight: Boolean get() = guard.isInFlight
 
-    /** producto de la fase de preparación. Si cualquiera de ellos es nulo, la ronda no debería continuar. */
+    /** v2.6.23(P2): 连续被模型 Skip 的轮数，供调度器拉长复查间隔（见 [ProactiveScheduler]）。 */
+    val consecutiveSkips: Int get() = guard.consecutiveSkips
+
+    /** 准备阶段的产物。任一为 null 说明这轮不该继续。 */
     private data class Prepared(
         val config: ProactiveMessageConfig,
         val assistant: AssistantEntity,
@@ -78,23 +81,23 @@ class ProactiveCycleRunner(
         val context: ProactiveContextLoader.SessionContext,
         val decision: ProactiveTimingEngine.Decision,
         /**
-         * estado civil. El nivel de iniciativa y la cuota están en él, lo que determina el calibre de la apertura durante la fase de generación.
+         * 关系状态。主动等级与额度都在里面，生成阶段靠它决定这次开口的口径。
          *
-         * No puedo simplemente pasar [decision]: El resultado del juicio es sólo "si se puede enviar", pero "qué se puede decir si se puede enviar"
-         * Es otra cuestión, determinada por el nivel seleccionado por el usuario.
+         * 不能只传 [decision]：判定结果里只有「能不能发」，而「能发的话能说什么」
+         * 是另一个问题，由用户选的等级决定。
          */
         val relation: ProactiveRelationEntity,
     )
 
     /**
-     * Realiza una ronda.
+     * 执行一轮。
      *
-     * Todas las fuentes de activación deben ingresar desde aquí —— Las puertas volantes individuales se encuentran en este piso, no en sus respectivos puntos de llamada.
-     * Ponerlo en el punto de llamada significa que cada vez que agrega un disparador, debe recordar emitir un juicio y el que se perdió.
-     * Se agregó más tarde. Para cuando alguien descubriera el envío repetido, sería difícil rastrear quién había pasado por alto la puerta.
+     * 所有触发源都必须从这里进 —— 单飞闸在这一层，不在各自的调用点上。
+     * 放在调用点上意味着每加一路触发就要记得补一次判断，而漏掉的那一路
+     * 恰恰是以后加的，等到有人发现重复发送时已经很难回溯是谁绕过了闸。
      *
-     * @param force Prueba manual: omita las restricciones de tiempo del interruptor principal y cuatro preguntas, pero**No cruces el libro mayor** ——
-     *              Sin preocupación, no se generará contenido y la publicación forzada solo generará palabras vacías.
+     * @param force 手动测试：跳过总开关与四问里的时机限制，但**不越过账本** ——
+     *              没有牵挂就没有内容可生成，强行发只会生成空洞的话。
      */
     suspend fun execute(trigger: String, force: Boolean): Outcome {
         val entry = guard.tryEnter(System.currentTimeMillis())
@@ -107,9 +110,9 @@ class ProactiveCycleRunner(
         }
     }
 
-    /** Adónde va esta ronda cuando ya hay una ronda en ejecución. Mantenga un registro explicando por qué no hizo nada en el camino. */
+    /** 已有一轮在跑时本轮的去向。记一条日志，说明为什么这一路什么都没做。 */
     private fun skipped(trigger: String): Outcome {
-        val detail = "La última ronda de inspecciones aún está en curso ($trigger), salta esta vez"
+        val detail = "上一轮巡检还在进行（$trigger），本次跳过"
         Logger.i(TAG, detail)
         return Outcome(
             verdict = null,
@@ -126,94 +129,137 @@ class ProactiveCycleRunner(
             is Preparation.Ready -> runPrepared(trigger, prepared.value, force)
         }
 
-    /** Después de obtener los materiales preparados, decida si hablará o no. */
+    /** 拿到准备好的材料后，决定说还是不说。 */
     private suspend fun runPrepared(trigger: String, ready: Prepared, force: Boolean): Outcome {
         val decision = ready.decision
         if (!decision.shouldSend) {
             val detail = ProactiveTimingEngine.describe(decision)
             Logger.i(
                 TAG,
-                "La inspección no se envía ($trigger): $detail | verdict=${decision.verdict} | " +
+                "巡检不发送（$trigger）: $detail | verdict=${decision.verdict} | " +
                     "interval=${decision.effectiveIntervalMinutes}min | ${skipContext(ready)}",
             )
             return Outcome(decision.verdict, false, hasOpenThoughts(ready), detail)
         }
-        // Probabilidad de envío: tira los dados después de haber pasado todas las puertas difíciles. colocado antes de la generación,
-        // La ronda que fue abandonada probabilísticamente no debería costar otra llamada modelo.
-        // Pruebas manuales (force) No vayas aquí: es una herramienta de resolución de problemas, no una rutina diaria.
-        if (!force && !ProactiveSendProbability.allows(ready.config.sendProbability, rollPercent())) {
-            val detail = "Saltar según la probabilidad de envío (${ready.config.sendProbability}%)"
-            Logger.i(TAG, "La inspección no se envía ($trigger): $detail | verdict=${decision.verdict}")
-            return Outcome(decision.verdict, false, hasOpenThoughts(ready), detail)
+        // 发送概率：所有硬闸都过了才掷骰子。放在生成之前，
+        // 被概率放弃的这一轮就不该再花一次模型调用。
+        // 手动测试（force）不走这里：那是排查工具，不是日常节奏。
+        // v2.6.23(P1): 「智能时机」开关决定掷骰前是否先按最近反馈折算有效概率;
+        // 关闭时与 2.6.22 逐字同路径(纯 [ProactiveSendProbability])。
+        if (!force) {
+            if (ready.config.sendTimingScoringEnabled) {
+                val signals = collectScoringSignals(ready, decision)
+                val scored = ProactiveSendScoring.evaluate(signals, rollPercent())
+                if (!scored.send) {
+                    val detail = buildString {
+                        append("按智能时机跳过（${signals.configuredPercent}%→${scored.effectivePercent}%")
+                        if (scored.reasons.isNotEmpty()) {
+                            append("；${scored.reasons.joinToString("；")}")
+                        }
+                        append("）")
+                    }
+                    Logger.i(TAG, "巡检不发送（$trigger）: $detail | verdict=${decision.verdict}")
+                    return Outcome(decision.verdict, false, hasOpenThoughts(ready), detail)
+                }
+                if (scored.reasons.isNotEmpty()) {
+                    Logger.i(TAG, "智能时机放行（$trigger）: ${scored.effectivePercent}% ← ${scored.reasons.joinToString("；")}")
+                }
+            } else if (!ProactiveSendProbability.allows(ready.config.sendProbability, rollPercent())) {
+                val detail = "按发送概率跳过（${ready.config.sendProbability}%）"
+                Logger.i(TAG, "巡检不发送（$trigger）: $detail | verdict=${decision.verdict}")
+                return Outcome(decision.verdict, false, hasOpenThoughts(ready), detail)
+            }
         }
         return publishResult(trigger, decision, ready)
     }
 
     /**
-     * Omita un sitio estructurado durante una inspección.
+     * 采集 [ProactiveSendScoring] 的现场信号。
      *
-     * Simplemente decir "el modelo cree que no hay nada que recoger" no puede explicar el problema. —— No se puede ver lo que es.
-     * "Acabo de publicarlo, así que no tengo nada que decir" o "Nadie prestó atención al último post que envié y la modelo seguía hablando al aire".
-     * Por lo tanto, anote los dos hechos externos que tenga a mano cuando el modelo emita un juicio: ¿cuánto tiempo ha pasado desde el último mensaje activo?
-     * ¿Dónde leyó el usuario? Ambos están alineados con el último estado del lado de la sesión y no participan en ninguna determinación.
+     * 全部是只读旁路：任何一项读失败按「无该信号」处理（不加修正、不误杀发送），
+     * 与 [skipContext] 同源。hourOfDay 用系统本地钟点——判定「深夜」看的就是用户的表。
+     */
+    private suspend fun collectScoringSignals(ready: Prepared, decision: ProactiveTimingEngine.Decision): ProactiveSendScoring.Signals {
+        val now = System.currentTimeMillis()
+        val lastOutcome = runCatching { stores.outcomes.getRecent(ready.assistant.id, 1).firstOrNull() }.getOrNull()
+        val unread = runCatching { runtime.sessions.getSessionById(ready.sessionId) }
+            .getOrNull()
+            ?.let { (it.messageCount - it.lastReadCount).coerceAtLeast(0) }
+            ?: 0
+        val openThoughts = runCatching { stores.thoughts.getOpen(ready.assistant.id).isNotEmpty() }.getOrDefault(false)
+        return ProactiveSendScoring.Signals(
+            configuredPercent = ready.config.sendProbability,
+            lastOutcomeState = lastOutcome?.stateEnum(),
+            minutesSinceLastProactive = lastOutcome?.let { (now - it.sentAt).coerceAtLeast(0L) / 60_000L },
+            userUnreadCount = unread,
+            hasOpenThoughts = openThoughts || decision.dailyGuarantee,
+            hourOfDay = decision.hourOfDay,
+        )
+    }
+
+    /**
+     * 跳过一次巡检时的结构化现场。
+     *
+     * 光有一句「模型觉得没什么可接的」说明不了问题 —— 它看不出来到底是
+     * 「刚发过所以没话说」还是「上一条发出去根本没人理，模型还在对着空气接话」。
+     * 所以把模型做判断时手上的两个外部事实一并记下来：上一条主动消息距今多久、
+     * 用户读到哪了。两者都与会话侧的最新状态对齐，不参与任何判定。
      */
     private suspend fun skipContext(ready: Prepared): String {
         val now = System.currentTimeMillis()
         val lastOutcome = runCatching { stores.outcomes.getRecent(ready.assistant.id, 1).firstOrNull() }
             .getOrNull()
         val minutes = lastOutcome?.let { (now - it.sentAt).coerceAtLeast(0L) / 60_000L }
-            ?.toString() ?: "Ninguno"
+            ?.toString() ?: "无"
         val readState = runCatching { runtime.sessions.getSessionById(ready.sessionId) }
             .getOrNull()
             ?.let { session ->
                 val unread = (session.messageCount - session.lastReadCount).coerceAtLeast(0)
                 "unread=$unread,lastRead=${session.lastReadCount}/${session.messageCount}"
-            } ?: "Error de lectura"
-        val outcomeState = lastOutcome?.state ?: "Ninguno"
-        return "Desde el último mensaje activo=${minutes}minutos | Estado de lectura del usuario=$readState | Último mensaje activo=$outcomeState"
+            } ?: "读取失败"
+        val outcomeState = lastOutcome?.state ?: "无"
+        return "距上条主动消息=${minutes}分钟 | 用户已读状态=$readState | 上一条主动消息=$outcomeState"
     }
 
-    /** ¿Queda algo sin decir en el libro mayor? Solo afecta el intervalo de la próxima revisión y ya no es un requisito previo para poder decirlo. */
-    private suspend fun hasOpenThoughts(ready: Prepared): Boolean =
-        stores.thoughts.getOpen(ready.assistant.id).isNotEmpty()
+    /** 账本里还有没有没说的。只影响下次复查的间隔，不再是能不能说的前提。 */
+    private suspend fun hasOpenThoughts(ready: Prepared): Boolean = stores.thoughts.getOpen(ready.assistant.id).isNotEmpty()
 
-    private suspend fun publishResult(
-        trigger: String,
-        decision: ProactiveTimingEngine.Decision,
-        ready: Prepared,
-    ): Outcome = when (val produced = produce(ready)) {
-        is ProactiveReplyParser.Result.Failed -> {
-            Logger.w(TAG, "Error de compilación: ${produced.reason}")
-            Outcome(decision.verdict, false, hasOpenThoughts(ready), "Error de compilación:${produced.reason}")
+    private suspend fun publishResult(trigger: String, decision: ProactiveTimingEngine.Decision, ready: Prepared): Outcome =
+        when (val produced = produce(ready)) {
+            is ProactiveReplyParser.Result.Failed -> {
+                Logger.w(TAG, "生成失败: ${produced.reason}")
+                Outcome(decision.verdict, false, hasOpenThoughts(ready), "生成失败：${produced.reason}")
+            }
+            is ProactiveReplyParser.Result.Skip -> {
+                // 这是模型自己的判断，它看到的是对话，看不到自己上一条有没有被读。
+                // 把外部事实一起记上，才能分清「没东西可说」和「说了没人应」。
+                Logger.i(TAG, "判定跳过 | reason=${produced.reason} | ${skipContext(ready)}")
+                guard.recordSkip()
+                Outcome(
+                    decision.verdict,
+                    false,
+                    hasOpenThoughts(ready),
+                    "它觉得这会儿没什么可接的（${produced.reason}）",
+                )
+            }
+            is ProactiveReplyParser.Result.Message -> {
+                Logger.i(
+                    TAG,
+                    "主动消息候选生成 | assistantId=${ready.assistant.id} | len=${produced.content.length} | trigger=$trigger",
+                )
+                val ok = publish(trigger, ready, produced)
+                if (ok) guard.recordSent()
+                Outcome(
+                    decision.verdict,
+                    ok,
+                    hasOpenThoughts(ready),
+                    if (ok) "已发送" else "落库失败，下次再试",
+                )
+            }
         }
-        is ProactiveReplyParser.Result.Skip -> {
-            // Este es el criterio del propio modelo. Ve la conversación y no puede ver si se ha leído el mensaje anterior.
-            // Al registrar los hechos externos juntos, puedes distinguir entre "nada que decir" y "nadie responderá a lo que dices".
-            Logger.i(TAG, "Saltar juicio | reason=${produced.reason} | ${skipContext(ready)}")
-            Outcome(
-                decision.verdict,
-                false,
-                hasOpenThoughts(ready),
-                "Parece que no hay nada que recoger en este momento (${produced.reason})",
-            )
-        }
-        is ProactiveReplyParser.Result.Message -> {
-            Logger.i(
-                TAG,
-                "Generación de candidatos de mensajes activos | assistantId=${ready.assistant.id} | len=${produced.content.length} | trigger=$trigger",
-            )
-            val ok = publish(trigger, ready, produced)
-            Outcome(
-                decision.verdict,
-                ok,
-                hasOpenThoughts(ready),
-                if (ok) "Enviado" else "No se pudo iniciar sesión, inténtalo de nuevo la próxima vez.",
-            )
-        }
-    }
 
     // ══════════════════════════════════════════════════════════════
-    // preparar
+    // 准备
     // ══════════════════════════════════════════════════════════════
 
     private sealed interface Preparation {
@@ -221,50 +267,51 @@ class ProactiveCycleRunner(
         data class Blocked(val outcome: Outcome) : Preparation
     }
 
-    private suspend fun prepare(
-        trigger: String,
-        force: Boolean,
-        entry: ProactiveCycleGuard.Entry,
-    ): Preparation {
+    private suspend fun prepare(trigger: String, force: Boolean, entry: ProactiveCycleGuard.Entry): Preparation {
         val gate = gateBlock(force)
         return gate ?: assemble(trigger, entry)
     }
 
     /**
-     * Las primeras tres puertas: Recuperando/El control maestro está cerrado/Los mensajes activos no están habilitados.
+     * 前三道闸：恢复中 / 总控关闭 / 主动消息未开启。
      *
-     * Es una función separada porque estas tres son condiciones difíciles para "no bajar en absoluto".
-     * La lógica de ensamblaje a continuación es "bajar pero es posible que no consigas los materiales". Los dos tipos de fallos se mezclan y no se pueden leer con claridad.
+     * 单独成函数是因为这三条都是「根本不往下走」的硬条件，
+     * 而下面的组装逻辑是「往下走但可能拿不到材料」，两类失败混在一起读不清。
      */
     private suspend fun gateBlock(force: Boolean): Preparation? = when {
-        ProcessWriteGate.restoring -> blocked("Copia de seguridad y restauración en curso, omitir")
+        ProcessWriteGate.restoring -> blocked("备份恢复中，跳过")
         !readScheduleWorkEnabledOrFalse { runtime.settings.scheduleWorkEnabledFlow.first() } ->
-            blocked("Se ha cerrado el control maestro de programación en segundo plano.")
+            blocked("后台调度总控已关闭")
         !force && !runtime.settings.proactiveMessageConfigFlow.first().enabled ->
-            blocked("La mensajería activa no está habilitada")
+            blocked("主动消息未开启")
         else -> null
     }
 
-    /** Reúna los materiales necesarios para una ronda de inspección. Si no puede obtenerlo, se bajará a Bloqueado una vez. */
+    /** 把一轮巡检要的材料凑齐。拿不到的就降级为一次 Blocked。 */
     private suspend fun assemble(trigger: String, entry: ProactiveCycleGuard.Entry): Preparation {
         val config = runtime.settings.proactiveMessageConfigFlow.first()
         val now = System.currentTimeMillis()
 
-        // El asistente es el requisito previo para todos los pasos siguientes. Si no puede conseguirlo, no es necesario que siga reuniendo materiales.
-        val assistant = loader.loadAssistant(config.agentId) ?: return blocked("No hay ayudante disponible")
+        // 助手是后面所有步骤的前提，拿不到就没必要继续凑材料
+        val assistant = loader.loadAssistant(config.agentId) ?: return blocked("没有可用助手")
 
-        // Limpieza de rutina + derivación de nuevas inquietudes, todas las operaciones locales, sin costo.
-        // Haga esto incluso cuando los mensajes activos estén desactivados: el libro de contabilidad se acumula como de costumbre y los usuarios tienen algo que decir cuando lo abren.
+        // 例行清理 + 推导新牵挂，全是本地操作，不花钱。
+        // 主动消息关着的时候也做：账本照常积累，用户打开时才有东西可说。
         stores.thoughts.maintenance(now)
-        // Si a nadie le importa después de un día de enviarlo, terminará EXPIRADO en esta ronda. Póngalo en la inspección en lugar de iniciar un nuevo temporizador:
-        // La inspección es el único trabajo local que se realiza periódicamente en este enlace. Un Trabajador más significa una tarea más.
-        // Es necesario mantener "cuándo ejecutar y en qué proceso".
+        // 发出去一天还没人理的，就在这轮收尾成 EXPIRED。放在巡检里而不是新起定时器：
+        // 巡检本来就是这条链路上唯一会定期跑的本地活儿，多一个 Worker 就多一处
+        // 「什么时候跑、跑在哪个进程」要维护。
         val expired = stores.outcomes.expireOverdue(now)
-        if (expired > 0) Logger.i(TAG, "Los mensajes activos caducan y finalizan | Número de artículos=$expired")
+        if (expired > 0) Logger.i(TAG, "主动消息过期收尾 | 条数=$expired")
         loader.deriveThoughts(assistant.id, now)
 
         val relation = stores.relations.getOrCreate(assistant.id, now)
-        val sessionId = loader.resolveSession(assistant)
+        val sessionId =
+            if (trigger == ProactiveScheduler.TRIGGER_MANUAL) {
+                loader.resolveManualTestRoute(assistant)?.sessionId
+            } else {
+                loader.resolveSession(assistant)
+            }
         val context = sessionId?.let { loader.loadSessionContext(it, assistant.id) }
         val decision = context?.let {
             ProactiveTimingEngine.evaluate(
@@ -277,29 +324,34 @@ class ProactiveCycleRunner(
                     lastUserMessageAt = it.lastUserMessageAt,
                     isGenerating = runtime.generations.activeGenerations.value.isNotEmpty(),
                     lastProactiveSentAt = loader.lastSentAt(assistant.id),
-                    // El tiempo de prueba de esta ronda ha sido registrado en la puerta, pero la decisión es preguntar cuándo se corrió la "última ronda":
-                    // Si usa su propia marca de tiempo en esta ronda para juzgar, usted mismo lo detendrá en cada ronda.
+                    // 本轮的尝试时间已经登记在闸上，但判定要问的是「上一轮」什么时候跑的：
+                    // 拿本轮自己的时间戳去判，每一轮都会被自己拦下。
                     lastProactiveAttemptAt = entry.previousAttemptAt,
-                    // Tanto el intervalo como la fluctuación provienen de la configuración del usuario; la identificación del asistente participa en el hashing,
-                    // No permita que los desplazamientos de diferentes asistentes se superpongan en la misma dirección.
+                    // 间隔与抖动都来自用户设置；助手 id 参与哈希，
+                    // 让不同助手的偏移不在同一个方向上叠加。
                     pacing = ProactiveTimingEngine.Pacing(
                         intervalMinutes = config.intervalMinutes,
                         randomOffsetMinutes = config.randomOffsetMinutes,
                         assistantId = assistant.id,
                     ),
+                    // 日保底由用户设置，0 = 关闭。
+                    dailyGuaranteeMs = config.dailyGuaranteeHours.coerceIn(0, 72) * 3_600_000L,
                 ),
             ).also { d ->
                 Logger.d(
                     TAG,
-                    "juicio[$trigger]: ${d.verdict} interval=${d.effectiveIntervalMinutes}min " +
-                        "budget=${d.remainingBudget}",
+                    "判定[$trigger]: ${d.verdict} interval=${d.effectiveIntervalMinutes}min " +
+                        "guarantee=${d.dailyGuarantee} budget=${d.remainingBudget}",
                 )
             }
         }
 
         return when {
-            // Ya no se bloquea cuando el libro mayor está vacío: el material es la conversación más reciente y aún puedes responder la llamada si no tienes preocupaciones.
-            sessionId == null || context == null || decision == null -> blocked("No hay sesiones disponibles")
+            // 账本为空不再阻断：素材是最近对话，没有牵挂照样能接话。
+            sessionId == null && trigger == ProactiveScheduler.TRIGGER_MANUAL &&
+                !config.agentSessionEnabled && !config.allowPlainChatSession ->
+                blocked("没有可用落点:Agent 会话与普通对话都关着")
+            sessionId == null || context == null || decision == null -> blocked("没有可用会话")
             else -> Preparation.Ready(
                 Prepared(
                     config = config,
@@ -313,23 +365,20 @@ class ProactiveCycleRunner(
         }
     }
 
-    private fun blocked(
-        detail: String,
-        verdict: ProactiveTimingEngine.Verdict? = null,
-        ledgerNotEmpty: Boolean = false,
-    ): Preparation = Preparation.Blocked(Outcome(verdict, false, ledgerNotEmpty, detail))
+    private fun blocked(detail: String, verdict: ProactiveTimingEngine.Verdict? = null, ledgerNotEmpty: Boolean = false): Preparation =
+        Preparation.Blocked(Outcome(verdict, false, ledgerNotEmpty, detail))
 
     // ══════════════════════════════════════════════════════════════
-    // generar
+    // 生成
     // ══════════════════════════════════════════════════════════════
 
     private suspend fun produce(ready: Prepared): ProactiveReplyParser.Result {
         val intensity = ready.relation.intensityEnum()
 
-        // Los candidatos se filtran por nivel activo en lugar de entregárselos todos al modelo: el archivo silencioso sólo permite "cosas que hay que decir",
-        // De vez en cuando, se me recuerda que no se me permite compartir mis propios asuntos y nodos de relación. Enumere los tipos de palabras que no se deben decir en este engranaje como palabras clave.
-        // Equivale a darle al modelo una mala opción. —— Puede usarse y luego el usuario descubre que "seleccioné silencio y sigo charlando".
-        // Lo mismo se aplica a los tipos que los usuarios tachan repetidamente: la base del juicio es la cuenta de resultados y el umbral de muestra es [ProactiveLearning].
+        // 候选按主动等级过滤，而不是全部给模型：安静档只允许「该说的事」，
+        // 偶尔被想到不允许分享自己的事与关系节点。把本档位不该说的类型列进提示词，
+        // 等于给模型递了一个犯规的选项 —— 它可能就用了，然后用户发现「选了安静还在闲聊」。
+        // 用户反复划掉的类型同理：判定依据是结果账，样本门槛在 [ProactiveLearning]。
         val ledger = stores.thoughts.getOpen(ready.assistant.id)
         val banned = stores.outcomes.unpopularKinds(
             ready.assistant.id,
@@ -337,19 +386,27 @@ class ProactiveCycleRunner(
         )
         val candidates = ProactiveCandidateFilter.select(ledger, intensity, banned)
         if (banned.isNotEmpty()) {
-            Logger.i(TAG, "Filtrado de candidatos | Tipos que ya no son interesantes=${banned.joinToString { it.name }} | izquierda=${candidates.size}")
+            Logger.i(TAG, "候选过滤 | 已不感兴趣的类型=${banned.joinToString { it.name }} | 剩=${candidates.size}")
         }
 
-        // Modo silencioso: no hables sin un motivo específico. Incluso el modelo no está ajustado.
-        // Esto no sólo ahorra una llamada, sino que también evita que envíe un saludo bajo la restricción de "sólo hablar de cosas".
-        if (intensity.onlyWhenNeeded && candidates.isEmpty()) {
-            return ProactiveReplyParser.Result.Skip("Archivo silencioso: no hay cosas específicas en el libro mayor")
+        // 安静档：没有具体事由就不开口。连模型都不调，
+        // 既省一次调用，也避免它在「只允许说事」的约束下硬凑出一句寒暄。
+        // 日保底这一轮例外：用户明确要「每天都收到」，这时候宁可寒暄也不能哑着。
+        if (intensity.onlyWhenNeeded && candidates.isEmpty() && !ready.decision.dailyGuarantee) {
+            return ProactiveReplyParser.Result.Skip("安静档：账本里没有具体的事")
         }
 
         val route = ProactiveModelPicker.pick(runtime.settings, ready.assistant)
-        // Regístrese primero y luego ajuste el modelo: la cuenta de resultados no se escribirá hasta que el mensaje se introduzca en la base de datos, y esta llamada tardará hasta decenas de segundos.
-        // Si no se registra, la inspección parecerá "no pasó nada" en la capa de datos durante este período.
+        // 先登记再调模型：结果账要等消息落库才写，而这次调用最长要几十秒。
+        // 不登记的话，这段时间里巡检在数据层看起来「什么都没发生过」。
         guard.markAttempt(System.currentTimeMillis())
+        // v2.6.23(P3): 时间跨度事实。读不到一律传 null,提示词回到改动前的措辞。
+        val nowForFacts = System.currentTimeMillis()
+        val minutesSinceChat = ready.context.recentMessages.maxOfOrNull { it.createdAt }
+            ?.let { (nowForFacts - it).coerceAtLeast(0L) / 60_000L }
+        val minutesSinceProactive = runCatching {
+            stores.outcomes.getRecent(ready.assistant.id, 1).firstOrNull()
+        }.getOrNull()?.let { (nowForFacts - it.sentAt).coerceAtLeast(0L) / 60_000L }
         return withTimeoutOrNull(COMPOSE_TIMEOUT_MS) {
             GenerationGate.withPermit {
                 composer.compose(
@@ -359,7 +416,9 @@ class ProactiveCycleRunner(
                         sessionId = ready.sessionId,
                         recentMessages = ready.context.recentMessages,
                         recentProactiveMessages = ready.context.recentProactiveTexts,
-                        now = System.currentTimeMillis(),
+                        now = nowForFacts,
+                        minutesSinceLastChat = minutesSinceChat,
+                        minutesSinceLastProactive = minutesSinceProactive,
                         intensity = intensity,
                     ),
                     model = route?.second,
@@ -367,25 +426,21 @@ class ProactiveCycleRunner(
                     temperature = ready.config.temperature,
                 )
             }
-        } ?: ProactiveReplyParser.Result.Failed("Generar tiempo de espera")
+        } ?: ProactiveReplyParser.Result.Failed("生成超时")
     }
 
     // ══════════════════════════════════════════════════════════════
-    // publicar
+    // 发布
     // ══════════════════════════════════════════════════════════════
 
     /**
-     * Registro + contabilidad + notificación.
+     * 落库 + 记账 + 通知。
      *
-     * El orden es importante:**Primero déjelo en el almacén y luego, si tiene éxito, se deducirá la cuota. La marca ha sido declarada.**.
-     * Cuando falla la deserción, no pasa nada. Esta ronda se trata como si no hubiera sucedido. Inténtalo de nuevo la próxima vez. ——
-     * Preferiría volver a intentarlo antes que perder el mensaje, y prefiero que me deduzcan el crédito pero no enviarlo.
+     * 顺序有讲究：**先落库，成功了才扣额度、标记已说**。
+     * 落库失败时什么都不动，这轮当作没发生，下次重试 ——
+     * 宁可重试也不丢消息，更不能扣了额度却没发出去。
      */
-    private suspend fun publish(
-        trigger: String,
-        ready: Prepared,
-        message: ProactiveReplyParser.Result.Message,
-    ): Boolean {
+    private suspend fun publish(trigger: String, ready: Prepared, message: ProactiveReplyParser.Result.Message): Boolean {
         val now = System.currentTimeMillis()
         val written = runCatching {
             runtime.sessions.appendMessage(
@@ -396,31 +451,31 @@ class ProactiveCycleRunner(
                     createdAt = now,
                 ),
             )
-        }.onFailure { e -> Logger.e(TAG, "No se pudo iniciar sesión, ríndete esta vez: ${e.message}", e) }.getOrNull()
+        }.onFailure { e -> Logger.e(TAG, "落库失败，本次放弃: ${e.message}", e) }.getOrNull()
 
         if (written == null) {
-            Logger.i(TAG, "Entrega de mensajes activos | sessionId=${ready.sessionId} | messageId=null(Error de escritura) | trigger=$trigger")
+            Logger.i(TAG, "主动消息落库 | sessionId=${ready.sessionId} | messageId=null(写入失败) | trigger=$trigger")
             return false
         }
 
-        // El mensaje activo dice "la conversación más reciente del asistente" y es posible que el usuario esté viendo otra conversación.
-        // Registre ambos ID al mismo tiempo para distinguir cuando el usuario dice "Hay un mensaje en el registro pero no lo vi"
-        // "Habitación equivocada" y "Escrito correctamente pero la página actual no es esa habitación".
+        // 主动消息写的是「该助手最近的会话」，而用户可能正看着另一个会话。
+        // 两个 id 同时记上，才能在用户说「日志里有消息但我没看到」时区分
+        // 「写错了房间」和「写对了但当前页面不是那个房间」。
         val currentSessionId = runCatching { runtime.settings.getViewedSessionId() }.getOrNull()
         Logger.i(
             TAG,
-            "Entrega de mensajes activos | sessionId=${ready.sessionId} | messageId=$written | " +
-                "targetSessionId=${ready.sessionId} | currentSessionId=${currentSessionId ?: "Ninguno"}",
+            "主动消息落库 | sessionId=${ready.sessionId} | messageId=$written | " +
+                "targetSessionId=${ready.sessionId} | currentSessionId=${currentSessionId ?: "无"}",
         )
 
-        // Esta apertura puede surgir de una determinada preocupación o puede simplemente seguir la conversación.
-        // Si es así, márquelo. En caso contrario, no afectará a la contabilidad. —— La preocupación es sólo un acompañamiento.
+        // 这次开口可能来自某条牵挂，也可能单纯是接着对话说的。
+        // 有就标记，没有也不影响记账 —— 牵挂只是配菜。
         val actual = message.thoughtId
             ?.let { id -> stores.thoughts.getOpen(ready.assistant.id).firstOrNull { it.id == id } }
         actual?.let { stores.thoughts.markSurfaced(it.id, now) }
 
         stores.relations.consume(ready.assistant.id)
-        // El ID de la cuenta de resultados siempre debe aparecer en la notificación: el botón "Esta vez no" se basa en él para volver al mismo registro.
+        // 结果账的 id 要一直带到通知上：「这次不用」按钮靠它回到同一条记录。
         val outcomeId = stores.outcomes.recordSent(
             thought = actual,
             sessionId = ready.sessionId,
@@ -430,16 +485,16 @@ class ProactiveCycleRunner(
         )
 
         notifyProactive(trigger, ready, message, currentSessionId, outcomeId)
-        Logger.i(TAG, "Enviado: thought=${actual?.id ?: "Ninguno(responder la llamada)"} tone=${message.tone}")
+        Logger.i(TAG, "已发送: thought=${actual?.id ?: "无(接话)"} tone=${message.tone}")
         return true
     }
 
     /**
-     * Envía una notificación y escribe "¿se ha enviado?" en el registro.
+     * 发通知，并把「到底送出去了没有」写进日志。
      *
-     * La implementación anterior solo llama sin ningún recibo:[MuseNotificationManager.notifyProactiveMessage]
-     * La excepción se traga internamente, por lo que "el mensaje se descarta pero no hay nada en la barra de notificaciones" y no hay rastro en el registro.
-     * Dos cosas para agregar aquí: si la llamada en sí se lanza y si el nivel del sistema bloqueará esto (permisos/el canal está cerrado).
+     * 旧实现这里只有调用、没有任何回执：[MuseNotificationManager.notifyProactiveMessage]
+     * 内部把异常吞了，所以「消息落库了但通知栏什么都没有」在日志里看不到任何痕迹。
+     * 这里补两件事：调用本身有没有抛，以及系统层面会不会把这条拦下来（权限/渠道被关）。
      */
     private suspend fun notifyProactive(
         trigger: String,
@@ -453,7 +508,7 @@ class ProactiveCycleRunner(
             runtime.notifier.notifyProactiveMessage(
                 assistant = ready.assistant,
                 preview = message.content,
-                target = MuseNotificationTarget.Session(ready.sessionId),
+                target = MuseNotificationTarget.ProactiveOutcome(ready.sessionId, outcomeId),
                 outcomeId = outcomeId,
             )
         }.exceptionOrNull()
@@ -461,12 +516,12 @@ class ProactiveCycleRunner(
         val reason = when {
             failure != null -> failure.message ?: failure::class.java.simpleName
             blocker != null -> blocker
-            else -> "Ninguno"
+            else -> "无"
         }
         Logger.i(
             TAG,
-            "Notificación de mensajes proactiva | posted=$posted | reason=$reason | targetSessionId=${ready.sessionId} | " +
-                "currentSessionId=${currentSessionId ?: "Ninguno"} | trigger=$trigger",
+            "主动消息通知 | posted=$posted | reason=$reason | targetSessionId=${ready.sessionId} | " +
+                "currentSessionId=${currentSessionId ?: "无"} | trigger=$trigger",
         )
     }
 }

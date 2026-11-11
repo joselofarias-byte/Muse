@@ -6,10 +6,10 @@ import android.util.Base64
 import java.io.ByteArrayOutputStream
 
 /**
- * v2.0.1: Herramientas de medios de canal — Compresión de imágenes entrantes y codificación base64.
+ * v2.0.1: 渠道媒体工具 — 入站图片压缩与 base64 编码。
  *
- * objetivo:Controlar el tamaño de almacenamiento de conversaciones(destino de una sola imagen ≤ [TARGET_MAX_BYTES]),manteniendo al mismo tiempo una claridad visualmente utilizable;
- * Volver si falla la decodificación null,Degradado por la persona que llama mediante texto de marcador de posición.
+ * 目标:控制对话存储体积(单图目标 ≤ [TARGET_MAX_BYTES]),同时保持视觉可用的清晰度;
+ * 解码失败返回 null,由调用方按占位文本降级。
  */
 object ChannelMediaUtils {
 
@@ -18,9 +18,9 @@ object ChannelMediaUtils {
     private const val FALLBACK_QUALITY = 62
     private const val TARGET_MAX_BYTES = 320 * 1024
 
-    /** Decodifica y comprime los bytes de la imagen original en JPEG base64(Ninguno dato: prefijo);Devuelve nulo en caso de error. */
+    /** 把原始图片字节解码并压缩为 JPEG base64(无 data: 前缀);失败返回 null。 */
     fun toCompactImageBase64(bytes: ByteArray): String? = runCatching {
-        // 1. muestreo de límites:Cuando el borde largo excede el límite superior, reduzca la resolución en la potencia de 2
+        // 1. 边界采样:长边超过上限时按 2 的幂降采样
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
         if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return@runCatching null
@@ -31,7 +31,7 @@ object ChannelMediaUtils {
         val options = BitmapFactory.Options().apply { inSampleSize = sample }
         val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
             ?: return@runCatching null
-        // 2. compresión de calidad(Cuando se supere el presupuesto, la calidad se reducirá una vez más.)
+        // 2. 质量压缩(超预算时降质重压一次)
         var encoded = compressJpeg(bitmap, PRIMARY_QUALITY)
         if (encoded != null && encoded.size > TARGET_MAX_BYTES) {
             encoded = compressJpeg(bitmap, FALLBACK_QUALITY)

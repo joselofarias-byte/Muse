@@ -29,10 +29,10 @@ import io.zer0.muse.ui.theme.MuseIconSizes
 import io.zer0.muse.ui.theme.MusePaddings
 
 /**
- * v1.205 B2: Barra de cola de mensajes a enviar — Una vista previa uno por uno de los mensajes en cola durante la generación.
+ * v1.205 B2: 待发送消息队列条 — 生成期间排队的消息逐条预览。
  *
- * Cada chip: haga clic en texto=Editar cuadro de entrada de relleno,Pequeño botón de envío a la izquierda=Enviar por separado,lado derecho X=Quitar;
- * Mostrar título al principio de la cola+contar,Botón borrar al final. solo en [queue] Representado por ChatScreen cuando no es nulo.
+ * 每条 chip:点击文本=编辑回填输入框,左侧小发送按钮=单独发送,右侧 X=移除;
+ * 队列头部显示标题+计数,尾部清空按钮。仅在 [queue] 非空时由 ChatScreen 渲染。
  */
 @Composable
 internal fun PendingQueueBar(
@@ -55,8 +55,8 @@ internal fun PendingQueueBar(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(MusePaddings.tightGap),
         ) {
-            // LAYOUT-01: Los títulos y recuentos son etiquetas cortas de ancho fijo al principio de la línea.(El ancho restante pertenece a LazyRow. weight),
-            // No se puede tomar el ancho(Competirá con el chip de mensajes por el ancho.),Limitarlo a 1 línea evitará el ajuste de línea palabra por palabra cuando se amplíe el tamaño de fuente.
+            // LAYOUT-01: 标题与计数是行首的定宽短标注(剩余宽度归 LazyRow 的 weight),
+            // 不能取宽(会与消息 chip 抢宽度),限 1 行兜底即可防放大字号下逐字换行。
             Text(
                 text = stringResource(R.string.chat_pending_queue_title),
                 style = MaterialTheme.typography.labelMedium,
@@ -96,10 +96,10 @@ internal fun PendingQueueBar(
 }
 
 /**
- * v1.205 B2: Ponga en cola un solo chip.
+ * v1.205 B2: 队列单条 chip。
  *
- * Diseño:boton enviar(Enviar por separado) | Vista previa del texto(Haga clic=Editar relleno) | Quitar botón.
- * Las entradas de imágenes puras tienen texto vacío,Copia de marcador de posición para vista previa [R.string.chat_pending_image_only].
+ * 布局:发送按钮(单独发送) | 文本预览(点击=编辑回填) | 移除按钮。
+ * 纯图片条目文本为空,预览用占位文案 [R.string.chat_pending_image_only]。
  */
 @Composable
 private fun PendingQueueChip(item: PendingMessage, onSend: () -> Unit, onEdit: () -> Unit, onRemove: () -> Unit) {

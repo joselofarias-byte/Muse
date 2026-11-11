@@ -2,18 +2,18 @@ import { useState } from "react";
 import { resolveAvatarUrl } from "./messageMedia.js";
 
 interface HostAvatarProps {
-  /** Nombre del asistente: Tome la primera letra si no hay ningún avatar disponible. */
+  /** 助手名：没有可用头像时取首字。 */
   readonly name: string;
   readonly uri?: string | undefined;
   readonly size?: "small" | "large";
 }
 
 /**
- * Avatar asistente.
+ * 助手头像。
  *
- * El uri del avatar puede ser la ruta local del teléfono celular (el navegador no puede obtenerlo) o puede ser `/api/` camino de origen o http(s);
- * Si no se puede recuperar o la imagen no se carga, se devolverá la primera letra del nombre.——No quedan marcos vacíos ni imágenes rotas.
- * El nombre siempre viene dado por el texto al lado, que aquí está oculto a los lectores de pantalla para evitar leerlo dos veces.
+ * 头像 uri 可能是手机本地路径（浏览器取不到），也可能是 `/api/` 同源路径或 http(s)；
+ * 取不到、或者图片加载失败，就退回名字首字——不留空框也不留碎图。
+ * 名字始终由旁边的文字给出，这里对读屏隐藏，避免念两遍。
  */
 export function HostAvatar({ name, uri, size = "small" }: HostAvatarProps) {
   const [failed, setFailed] = useState(false);

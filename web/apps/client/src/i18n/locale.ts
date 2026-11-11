@@ -1,22 +1,22 @@
-/** Idiomas admitidos y reglas de análisis (funciones puras, fáciles para afirmaciones). */
-export type Locale = "es" | "en" | "ja" | "ko" | "ru";
+/** 支持的语言与解析规则（纯函数，便于断言）。 */
+export type Locale = "es" | "zh" | "en" | "ja" | "ko" | "ru";
 
-export const LOCALES: readonly Locale[] = ["es", "en", "ja", "ko", "ru"];
+export const LOCALES: readonly Locale[] = ["es", "zh", "en", "ja", "ko", "ru"];
 
-/**
- * Idioma cuando el navegador no coincide con ninguno admitido (por ejemplo fr): español.
- * No es lo mismo que la falta de una entrada: ahí translate() cae a en y después al idioma por defecto.
- */
+/** Idioma de Muse cuando el navegador no coincide con un idioma disponible. */
 export const FALLBACK_LOCALE: Locale = "es";
 
-/** Idioma de referencia sin Provider (pruebas y el chat antes de leer ajustes). */
-export const DEFAULT_LOCALE: Locale = "es";
+/**
+ * 没套 Provider 时的基准语言（组件单测、HostChat 拿到设置之前）：zh 是词条基准，
+ * 断言按它写。真实界面一律由 Provider 按解析后的语言接管，不走这个值。
+ */
+export const DEFAULT_LOCALE: Locale = "zh";
 
 export function isLocale(value: unknown): value is Locale {
   return typeof value === "string" && (LOCALES as readonly string[]).includes(value);
 }
 
-/** "en-US" / "en_US" → "en";Devuelve indefinido si no se reconoce. */
+/** "en-US" / "en_US" → "en"；不认识返回 undefined。 */
 export function matchLocale(tag: string | undefined): Locale | undefined {
   if (tag === undefined) return undefined;
   const base = tag.trim().toLowerCase().split(/[-_]/)[0] ?? "";
@@ -24,10 +24,10 @@ export function matchLocale(tag: string | undefined): Locale | undefined {
 }
 
 /**
- * Idioma de la interfaz de análisis:
- *  - un idioma concreto (es/en/ja/ko/ru) se usa tal cual;
- *  - `system` (o un valor desconocido) recorre navigator.language;
- *  - si nada coincide, se usa FALLBACK_LOCALE (es).
+ * 解析界面语言：
+ *  - 设置里给了具体语言（es/zh/en/ja/ko/ru）就用它；
+ *  - `system`（或没给 / 不认识的值）按 navigator.language 列表逐个匹配；
+ *  - 都匹配不到回落 es（FALLBACK_LOCALE）。
  */
 export function resolveLocale(value: unknown, languages: readonly string[]): Locale {
   if (typeof value === "string") {
@@ -41,7 +41,7 @@ export function resolveLocale(value: unknown, languages: readonly string[]): Loc
   return FALLBACK_LOCALE;
 }
 
-/** Lea la lista de idiomas del navegador (Node entorno devuelve una matriz vacía). */
+/** 读取浏览器语言列表（Node 环境返回空数组）。 */
 export function navigatorLanguages(): readonly string[] {
   if (typeof navigator === "undefined") return [];
   const list = navigator.languages;

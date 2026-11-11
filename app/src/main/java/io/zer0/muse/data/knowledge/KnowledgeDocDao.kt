@@ -9,10 +9,10 @@ import androidx.room.Transaction
 import kotlinx.coroutines.flow.Flow
 
 /**
- * v2.6.x: Una proyección ligera para mapeo de títulos de documentos.
+ * v2.6.x: 文档标题映射用的轻量投影。
  *
- * Recuperar enlace solamente id→title,usar [KnowledgeDocDao.observeAll] voluntad content(Texto completo)leer juntos en la memoria,
- * Y esta lectura ocurrirá una vez por cada página en el bucle de paginación.
+ * 检索链路只要 id→title,用 [KnowledgeDocDao.observeAll] 会把 content(整篇正文)一并读进内存,
+ * 且该读取在分页循环里每页都会发生一次。
  */
 data class KnowledgeDocTitleRow(
     val id: String,
@@ -20,10 +20,10 @@ data class KnowledgeDocTitleRow(
 )
 
 /**
- * Proyección ligera para listas de documentos.:No leas el texto,Solo se incluye el número de bytes y el estado del índice.
+ * 文档列表用的轻量投影:不读正文,只带字节数与索引状态。
  *
- * [sizeBytes] Calculado por SQL `LENGTH(CAST(content AS BLOB))`;Leer el texto completo nuevamente en la memoria solo para medirlo.
- * tamaño,Se queda atascado en la primera pantalla de la página de la base de conocimientos.
+ * [sizeBytes] 由 SQL 现算 `LENGTH(CAST(content AS BLOB))`;把整篇正文读回内存只为量一下
+ * 大小,在知识库页第一屏就要卡住。
  */
 data class KnowledgeDocListRow(
     val id: String,
@@ -40,33 +40,33 @@ interface KnowledgeDocDao {
     fun observeAll(): Flow<List<KnowledgeDocEntity>>
 
     /**
-     * v2.6.x: id→title Una sola instantánea de(Proyecte solo las dos columnas id/title,no leer content).
+     * v2.6.x: id→title 的单次快照(只投影 id/title 两列,不读 content)。
      *
-     * ordenar con [observeAll] consistente(updated_at orden descendente),llamador `associate` El contenido y el orden del mapeo resultante permanecen sin cambios.;
-     * La semántica sigue siendo "tomar una vez".,No hay retorno al Flujo, no hay observación continua.
+     * 排序与 [observeAll] 一致(updated_at 降序),调用方 `associate` 后得到的映射内容与顺序不变;
+     * 语义仍是「取一次」,不返回 Flow、不持续观察。
      */
     @Query("SELECT id, title FROM knowledge_docs ORDER BY updated_at DESC")
     suspend fun getDocTitles(): List<KnowledgeDocTitleRow>
 
     /**
-     * v1.133: Enumerar documentos por ID de base de conocimientos(Los documentos internos están excluidos por defecto.).
-     * kbId para "default" Esta es la base de datos principal del usuario.
+     * v1.133: 按知识库 ID 列出文档(默认排除 internal 文档)。
+     * kbId 为 "default" 时即用户主库。
      */
     @Query(
         "SELECT * FROM knowledge_docs WHERE kb_id = :kbId AND is_internal = 0 ORDER BY updated_at DESC",
     )
     fun observeByKb(kbId: String): Flow<List<KnowledgeDocEntity>>
 
-    /** v1.133: Listar todos los documentos no internos(Filtrado de conjuntos de candidatos para búsquedas entre KB). */
+    /** v1.133: 列出所有非 internal 文档(用于跨 KB 检索时的候选集筛选)。 */
     @Query("SELECT * FROM knowledge_docs WHERE is_internal = 0 ORDER BY updated_at DESC")
     fun observeAllUser(): Flow<List<KnowledgeDocEntity>>
 
     /**
-     * Listar documentos paginados por base de conocimientos(Sin documentación interna),ordenar con [observeByKb] coherente.
+     * 按知识库分页列出文档(不含 internal 文档),排序与 [observeByKb] 一致。
      *
-     * keyset Paginación:`cursor` Sube el último elemento de la página anterior. id,Toma solo las filas que le siguen.
-     * (`updated_at` antes,Para la misma marca de tiempo, la identificación es menor.).`cursor` no encontrado(El documento ha sido eliminado y la biblioteca ha sido cambiada.)
-     * Cuando la subconsulta devuelve NULL, la comparación no se mantiene.,Esta pagina esta vacia —— Preferiría volver a una página vacía que volver silenciosamente a la primera página.
+     * keyset 分页:`cursor` 传上一页最后一条的 id,只取排在它后面的行
+     * (`updated_at` 更早,同一时间戳则 id 更小)。`cursor` 找不到(文档已删、库被换过)
+     * 时子查询给 NULL、比较不成立,本页为空 —— 宁可回空页也不静默跳回第一页。
      */
     @Query(
         """
@@ -90,11 +90,11 @@ interface KnowledgeDocDao {
     suspend fun getPageByKb(kbId: String, cursor: String?, limit: Int): List<KnowledgeDocListRow>
 
     /**
-     * v0.23: Búsqueda de texto completo — El título o contenido contiene query(No distingue entre mayúsculas y minúsculas).
+     * v0.23: 全文搜索 — 标题或内容包含 query(大小写不敏感)。
      *
-     * M-KB1/M-KB2: uso ESCAPE '\' cláusula,La persona que llama debe usar primero [escapeLikeQuery] Escape en consulta
-     * LIKE comodín(% _ \),De lo contrario, el %_ ingresado por el usuario se tratará como un carácter comodín.
-     * La base de conocimientos tiene una pequeña cantidad de datos.,LIKE aceptable;Si necesitas un seguimiento real FTS,Se puede introducir KnowledgeFtsEntity + MATCH.
+     * M-KB1/M-KB2: 使用 ESCAPE '\' 子句,调用方需先用 [escapeLikeQuery] 转义 query 中的
+     * LIKE 通配符(% _ \),否则用户输入的 % _ 会被当作通配符。
+     * 知识库数据量小,LIKE 可接受;若后续需要真正的 FTS,可引入 KnowledgeFtsEntity + MATCH。
      */
     @Query(
         """
@@ -110,28 +110,28 @@ interface KnowledgeDocDao {
     suspend fun getById(id: String): KnowledgeDocEntity?
 
     /**
-     * v1.133: Consultar documentos en lotes por ID(Contiene campos internos).
+     * v1.133: 按 id 批量查询文档(含 internal 字段)。
      *
-     * usado para [io.zer0.muse.rag.RagService.retrieve] El relleno es una etiqueta interna en los resultados de recuperación de vectores,
-     * sustituto original `docId.startsWith("devdoc-")` Codificado.
-     * ids Devuelve una lista vacía si está vacía(Evite escanear por error toda la tabla).
+     * 用于 [io.zer0.muse.rag.RagService.retrieve] 在向量检索结果回填 isInternal 标记,
+     * 替代原 `docId.startsWith("devdoc-")` 硬编码。
+     * ids 为空时返回空列表(避免误全表扫)。
      */
     @Query("SELECT * FROM knowledge_docs WHERE id IN (:ids)")
     suspend fun getByIds(ids: List<String>): List<KnowledgeDocEntity>
 
-    /** v1.133: Consulta por lotes por kb_id(Resumen de la documentación de KB para el asistente de encuadernación). */
+    /** v1.133: 按 kb_id 批量查询(用于助手绑定的 KB 文档汇总)。 */
     @Query("SELECT * FROM knowledge_docs WHERE kb_id IN (:kbIds) AND is_internal = 0")
     suspend fun getByKbIds(kbIds: List<String>): List<KnowledgeDocEntity>
 
-    /** v2.4.x: Listar todos los documentos internos(devdoc), para que Seeder cree índices de forma incremental. */
+    /** v2.4.x: 列出全部内部文档(devdoc)，供 seeder 增量建索引。 */
     @Query("SELECT * FROM knowledge_docs WHERE is_internal = 1")
     suspend fun getInternalDocs(): List<KnowledgeDocEntity>
 
-    /** v1.133: Consulta por content_hash(Juicio de actualización incremental). */
+    /** v1.133: 按 content_hash 查询(增量更新判断)。 */
     @Query("SELECT * FROM knowledge_docs WHERE content_hash = :hash LIMIT 1")
     suspend fun findByContentHash(hash: String): KnowledgeDocEntity?
 
-    /** v1.133: Coincidencia difusa por título(@mention Se utiliza para analizar docId). */
+    /** v1.133: 按 title 模糊匹配(@mention 解析 docId 用)。 */
     @Query(
         "SELECT * FROM knowledge_docs WHERE title LIKE '%' || :titleKeyword || '%' ESCAPE '\\' AND is_internal = 0 LIMIT 5",
     )
@@ -145,13 +145,13 @@ interface KnowledgeDocDao {
     suspend fun clearIndexStatus(id: String)
 
     /**
-     * P0-3(informe de auditoría): Si el reemplazo del índice falla, se marcará como "Índice perdido y es necesario reconstruirlo".
+     * P0-3（审计报告）: 索引替换中途失败后标记为「索引已丢，需重建」。
      *
-     * Ajuste después del fracaso de la implementación anterior [clearIndexStatus] Borre el recuento de fragmentos a cero,embedding_model claro,
-     * UI Parece "no indexado" y el usuario no sabe que el documento se indexó originalmente, pero ahora los datos desaparecieron.
+     * 旧实现失败后调 [clearIndexStatus] 把 chunk_count 清零、embedding_model 清空，
+     * UI 看起来只是「未索引」，用户并不知道该文档原本建过索引、现在数据没了。
      *
-     * Aquí, el campo embedding_model se reutiliza para escribir el valor centinela (sin columnas nuevas, migración cero):
-     *  UI reconocimiento lateral [INDEX_BROKEN_SENTINEL] Luego se muestra un mensaje procesable que dice "se requiere reindexación".
+     * 这里复用 embedding_model 字段写入哨兵值（不新增列，零迁移）：
+     *  UI 侧识别 [INDEX_BROKEN_SENTINEL] 后显示可操作的「需重新索引」提示。
      */
     @Query("UPDATE knowledge_docs SET chunk_count = 0, embedding_model = :sentinel WHERE id = :id")
     suspend fun markIndexBroken(id: String, sentinel: String = INDEX_BROKEN_SENTINEL)
@@ -160,8 +160,8 @@ interface KnowledgeDocDao {
     suspend fun delete(id: String)
 
     /**
-     * v1.133: Eliminar todos los documentos bajo la KB especificada(Los fragmentos asociados se limpian mediante una clave externa AL ELIMINAR CASCADA o la capa de aplicación).
-     * Asegúrese de que se hayan eliminado todos los fragmentos relevantes antes de llamar.
+     * v1.133: 删除指定 KB 下所有文档(连带 chunks 通过外键 ON DELETE CASCADE 或应用层清理)。
+     * 调用前应确保已删除所有相关 chunks。
      */
     @Query("DELETE FROM knowledge_docs WHERE kb_id = :kbId")
     suspend fun deleteByKb(kbId: String)
@@ -178,11 +178,11 @@ interface KnowledgeDocDao {
     @Query("SELECT COUNT(*) FROM knowledge_docs")
     suspend fun count(): Int
 
-    /** Cuente el número de documentos visibles para los usuarios(excluir is_internal=true documentación de desarrollo interno). */
+    /** 统计用户可见文档数(排除 is_internal=true 的内部开发文档)。 */
     @Query("SELECT COUNT(*) FROM knowledge_docs WHERE is_internal = 0")
     suspend fun countUserVisible(): Int
 
-    /** v1.133: Cuente el número de documentos en KB(Para visualización de lista de KB). */
+    /** v1.133: 统计 KB 下文档数(用于 KB 列表显示)。 */
     @Query("SELECT COUNT(*) FROM knowledge_docs WHERE kb_id = :kbId AND is_internal = 0")
     suspend fun countByKb(kbId: String): Int
 
@@ -193,7 +193,7 @@ interface KnowledgeDocDao {
     suspend fun deleteAll()
 
     companion object {
-        /** Valor centinela de error de índice (escrito en embedding_model). No puede ser una clave de modelo real y no fallará. */
+        /** 索引失败哨兵值（写入 embedding_model）。不可能是真实模型 key，不会撞车。 */
         const val INDEX_BROKEN_SENTINEL = "__index_broken__"
 
         fun escapeLikeQuery(query: String): String = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")

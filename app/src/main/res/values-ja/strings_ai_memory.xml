@@ -119,7 +119,7 @@
     <string name="memory_menu_delete">削除</string>
     <string name="memory_center_fact_count">件の事実</string>
     <string name="memory_center_empty_title">まだ記憶はありません</string>
-    <string name="memory_center_empty_subtitle">Muse と話し続けるか、「これを覚えて」と伝えてください。</string>
+    <string name="memory_center_empty_subtitle">Musa と話し続けるか、「これを覚えて」と伝えてください。</string>
     <string name="memory_center_open_facts">事実ライブラリを開く</string>
     <string name="memory_center_tab_stream">記憶の流れ</string>
     <string name="memory_center_tab_constellation">記憶の星座</string>
@@ -150,7 +150,10 @@
     <string name="memory_center_filter_time_7">最近7日</string>
     <string name="memory_center_filter_time_90">最近90日</string>
     <string name="memory_center_filter_time_all">すべての期間</string>
-    <string name="memory_contradictions_dismiss_cd">確認して削除</string>
+    <string name="memory_contradictions_dismiss_cd">あとで考える</string>
+    <string name="memory_contradictions_keep_a">上を保持</string>
+    <string name="memory_contradictions_keep_b">下を保持</string>
+    <string name="memory_evidence_line">根拠：%1$s</string>
     <string name="memory_contradictions_title">確認待ちの矛盾する記憶</string>
     <string name="memory_delete_confirm_title">記憶を削除</string>
     <string name="memory_menu_multi_select">複数選択</string>
@@ -208,4 +211,5 @@
     <string name="memory_merge_error_generate_failed">これらの記憶を統合できませんでした</string>
     <string name="memory_merge_error_empty_result">統合結果を空にはできません</string>
     <string name="memory_merge_error_commit_failed">統合に失敗しました。記憶は変わっていません</string>
+    <string name="memory_space_default_name">既定</string>
 </resources>

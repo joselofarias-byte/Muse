@@ -40,11 +40,11 @@ import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
 
 /**
- * La protección en el lado de la recuperación y en el lado de la migración tiene el mismo calibre: las conversaciones de mensajes privados en teléfonos celulares antiguos no se ingresan en la base de datos.
+ * 恢复侧与迁移侧口径一致的守护：旧小手机的私信会话不进库。
  *
- * 121→122 La migración ya ha movido la biblioteca `isMiniPhone = 1` Las conversaciones se eliminan junto con los mensajes y la lista principal ya no los filtra;
- * Si la ruta de recuperación vuelve a escribir estas líneas en la copia de seguridad anterior, el usuario verá un montón de"Conversaciones que aparecen de la nada".
- * Aquí se utilizan dos rutas de recuperación reales (NDJSON Verificación de Streaming/JSON único): filtrado antes de escribir, las sesiones ordinarias no se ven afectadas.
+ * 121→122 迁移已经把库里的 `isMiniPhone = 1` 会话连同消息删掉，主列表也不再过滤它们；
+ * 若恢复路径把旧备份里的这些行原样写回，用户会看到一堆"凭空冒出来的会话"。
+ * 这里用两条真实恢复路径（NDJSON 流式 / 单 JSON）验证：写入前就被过滤，普通会话不受影响。
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -57,10 +57,10 @@ class BackupRestoreSkipsMiniPhoneTest {
     private lateinit var imageStore: MessageImageStore
     private lateinit var tempDir: File
 
-    private val normalSession = SessionEntity(id = "s-normal", title = "conversación normal", createdAt = 1L, updatedAt = 1L)
+    private val normalSession = SessionEntity(id = "s-normal", title = "普通会话", createdAt = 1L, updatedAt = 1L)
     private val miniSession = SessionEntity(
         id = "s-mini",
-        title = "Mensaje privado del viejo celular pequeño",
+        title = "旧小手机私信",
         createdAt = 1L,
         updatedAt = 1L,
         isMiniPhone = true,
@@ -69,14 +69,14 @@ class BackupRestoreSkipsMiniPhoneTest {
         id = "m-normal",
         sessionId = "s-normal",
         role = "USER",
-        content = "Mensajes de conversación generales",
+        content = "普通会话的消息",
         createdAt = 1L,
     )
     private val miniMessage = MessageEntity(
         id = "m-mini",
         sessionId = "s-mini",
         role = "USER",
-        content = "Mensajes de mensajes privados en teléfonos celulares pequeños y antiguos.",
+        content = "旧小手机私信的消息",
         createdAt = 1L,
     )
 
@@ -109,13 +109,13 @@ class BackupRestoreSkipsMiniPhoneTest {
     }
 
     @Test
-    fun `NDJSON La recuperación omite pequeñas conversaciones telefónicas antiguas y sus mensajes`() = runBlocking {
+    fun `NDJSON 恢复跳过旧小手机会话与其消息`() = runBlocking {
         val service = newService()
 
         invokeNdJsonRecovery(
             service,
             sequenceOf(
-                // meta Lo que se declara es el número original de entradas en la copia de seguridad.(2/2), el almacenamiento real después de la recuperación debe ser 1/1
+                // meta 声明的是备份里的原始条数(2/2)，恢复后实际入库应为 1/1
                 metaLine(sessions = 2, messages = 2),
                 dataLine("session", SessionEntity.serializer(), normalSession),
                 dataLine("session", SessionEntity.serializer(), miniSession),
@@ -128,7 +128,7 @@ class BackupRestoreSkipsMiniPhoneTest {
     }
 
     @Test
-    fun `La restauración de la copia de seguridad JSON única omite las pequeñas sesiones telefónicas antiguas con sus mensajes`() = runBlocking {
+    fun `单 JSON 备份恢复跳过旧小手机会话与其消息`() = runBlocking {
         val service = newService()
         val backup = BackupService.Backup(
             exportedAt = 1L,
@@ -143,22 +143,22 @@ class BackupRestoreSkipsMiniPhoneTest {
 
     private suspend fun assertOnlyNormalSessionRestored() {
         assertEquals(
-            "Solo se deben restaurar las conversaciones normales, no se permite ingresar a la base de datos conversaciones de mensajes privados en teléfonos celulares antiguos.",
+            "只应恢复普通会话，旧小手机私信会话不得进库",
             listOf("s-normal"),
             museDb.sessionDao().observeAll().first().map { it.id },
         )
         assertEquals(
-            "Los mensajes de sesiones normales deben restaurarse intactos.",
-            "Mensajes de conversación generales",
+            "普通会话的消息必须原样恢复",
+            "普通会话的消息",
             museDb.messageDao().getByMessageId("m-normal")?.content,
         )
         assertNull(
-            "No se permite ingresar a la base de datos mensajes de pequeñas conversaciones antiguas por teléfono celular",
+            "旧小手机会话的消息不得进库",
             museDb.messageDao().getByMessageId("m-mini"),
         )
     }
 
-    // ── accesorio ────────────────────────────────────────────────────────────
+    // ── 夹具 ────────────────────────────────────────────────────────────
 
     private fun newService(): BackupService {
         val settings = mockk<SettingsRepository>(relaxed = true)
@@ -190,13 +190,12 @@ class BackupRestoreSkipsMiniPhoneTest {
 
     private val backupJson = Json { encodeDefaults = true }
 
-    private fun <T> dataLine(type: String, serializer: kotlinx.serialization.KSerializer<T>, value: T): String =
-        buildJsonObject {
-            put("type", type)
-            put("data", backupJson.encodeToJsonElement(serializer, value))
-        }.toString()
+    private fun <T> dataLine(type: String, serializer: kotlinx.serialization.KSerializer<T>, value: T): String = buildJsonObject {
+        put("type", type)
+        put("data", backupJson.encodeToJsonElement(serializer, value))
+    }.toString()
 
-    /** Tome la entrada de recuperación real de NDJSON (incluido el libro de recuperación y el paquete de reversión). */
+    /** 走真实的 NDJSON 恢复入口（含恢复账本与回滚包装）。 */
     private suspend fun invokeNdJsonRecovery(service: BackupService, lines: Sequence<String>): Pair<Int, Int> =
         suspendCoroutine { continuation ->
             val method = BackupService::class.java.getDeclaredMethod(
@@ -217,7 +216,7 @@ class BackupRestoreSkipsMiniPhoneTest {
             }
         }
 
-    /** Tome la ruta de recuperación JSON única y real. */
+    /** 走真实的单 JSON 恢复落库路径。 */
     private suspend fun invokeApplyBackupInternal(service: BackupService, backup: BackupService.Backup): Pair<Int, Int> =
         suspendCoroutine { continuation ->
             val method = BackupService::class.java.getDeclaredMethod(

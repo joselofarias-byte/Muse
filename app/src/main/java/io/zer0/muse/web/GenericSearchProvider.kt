@@ -18,16 +18,16 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 
 /**
- * Motor de búsqueda HTTP universal —— Envía solicitudes según la plantilla rellenada por el usuario y obtén resultados según la ruta.
+ * 通用 HTTP 搜索引擎 —— 按用户填的模板发请求、按路径取结果。
  *
- * El objetivo del diseño es "conectar un servicio de búsqueda sin cambiar el código", abarcando tres tipos comunes:
- *  1. GET Parámetros de consulta:`https://host/search?q=...`(Categoría SearXNG autohospedada)
- *  2. POST Cuerpo JSON fijo:`{"query":"...","count":5}`(Tavily / Exa Clase I)
- *  3. El resultado está envuelto en un objeto:`{"data":{"results":[...]}}`, usar [CustomSearchEngine.resultsPath] Especificar
+ * 设计目标是「不改代码就能接一个检索服务」，覆盖三类常见形态：
+ *  1. GET 查询参数：`https://host/search?q=...`（自托管 SearXNG 一类）
+ *  2. POST 固定 JSON 体：`{"query":"...","count":5}`（Tavily / Exa 一类）
+ *  3. 结果包在对象里：`{"data":{"results":[...]}}`，用 [CustomSearchEngine.resultsPath] 指定
  *
- * Cosas que deliberadamente no haces:
- *  - No adivine el encabezado de autenticación. Solo se inyecta cuando apiKey no está vacía `Authorization: Bearer`, otros métodos utilizan una puerta de enlace construida por usted mismo para realizar la transferencia.
- *  - No se realiza ningún análisis de HTML. Para capturar la página de resultados HTML, debe escribir un selector para cada sitio, lo cual depende del proveedor integrado.
+ * 刻意不做的事：
+ *  - 不猜认证头。只有 apiKey 非空时注入 `Authorization: Bearer`，其他方式用自建网关自己转。
+ *  - 不做 HTML 解析。抓 HTML 结果页需要针对每个站点写选择器，那是内置 Provider 的事。
  */
 internal class GenericSearchProvider(
     private val client: OkHttpClient,
@@ -42,7 +42,7 @@ internal class GenericSearchProvider(
 
     override suspend fun search(query: String, maxResults: Int): List<WebSearchResult> = withContext(AppDispatchers.io) {
         resultOf { requestOnce(query, maxResults) }
-            .onError { msg, t -> Logger.w(TAG, "$name La búsqueda falló: $msg", t) }
+            .onError { msg, t -> Logger.w(TAG, "$name 搜索失败: $msg", t) }
             .getOrNull()
             ?: emptyList()
     }
@@ -50,7 +50,7 @@ internal class GenericSearchProvider(
     private fun requestOnce(query: String, maxResults: Int): List<WebSearchResult> {
         val endpoint = engine.endpoint.trim()
         if (endpoint.isEmpty()) {
-            Logger.w(TAG, "$name El punto final no está configurado, omitir")
+            Logger.w(TAG, "$name 未配置 endpoint，跳过")
             return emptyList()
         }
 
@@ -96,7 +96,7 @@ internal class GenericSearchProvider(
         }
     }
 
-    /** poner {query} / {count} Reemplace la plantilla del cuerpo de la solicitud escrita por el usuario. */
+    /** 把 {query} / {count} 替换进用户写的请求体模板。 */
     private fun buildBody(query: String, maxResults: Int): String {
         val template = engine.bodyTemplate.trim()
         if (template.isEmpty()) {
@@ -111,15 +111,15 @@ internal class GenericSearchProvider(
     }
 
     /**
-     * Obtenga la matriz de resultados por resultsPath.
+     * 按 resultsPath 取结果数组。
      *
-     * resultsPath Capas de números de puntos de soporte (data.results), también admite subíndices de matriz (data.0.items).
-     * Cuando se deja en blanco, el nodo raíz se trata como una matriz.
+     * resultsPath 支持点号分层（data.results），也支持数组下标（data.0.items）。
+     * 留空时把根节点当数组处理。
      */
     private fun parseResults(raw: String, maxResults: Int): List<WebSearchResult> {
         val root = json.parseToJsonElement(raw)
         val array = locateArray(root) ?: run {
-            Logger.w(TAG, "$name Matriz de resultados no encontrada en la respuesta (resultsPath='${engine.resultsPath}')")
+            Logger.w(TAG, "$name 响应里找不到结果数组（resultsPath='${engine.resultsPath}'）")
             return emptyList()
         }
         return array.mapNotNull { element ->
@@ -142,7 +142,7 @@ internal class GenericSearchProvider(
         return descend(root, path.split('.'), 0) as? JsonArray
     }
 
-    /** Desciende capa por capa a lo largo del camino del punto; si falta alguna capa, se devuelve nulo. */
+    /** 沿点号路径逐层下降；任一层缺失返回 null。 */
     private fun descend(node: JsonElement, segments: List<String>, index: Int): JsonElement? {
         if (index >= segments.size) return node
         val next =
@@ -166,7 +166,7 @@ internal class GenericSearchProvider(
 
     private fun encode(value: String): String = java.net.URLEncoder.encode(value, "UTF-8")
 
-    /** JSON Escape de cadena: solo procese caracteres que deban escaparse para evitar dañar la estructura en la plantilla de usuario. */
+    /** JSON 字符串转义：只处理必须转义的字符，避免破坏用户模板里的结构。 */
     private fun escapeJsonString(value: String): String = value
         .replace("\\", "\\\\")
         .replace("\"", "\\\"")

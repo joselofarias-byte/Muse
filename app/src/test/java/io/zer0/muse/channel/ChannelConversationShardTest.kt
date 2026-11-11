@@ -20,12 +20,12 @@ import org.robolectric.annotation.Config
 import java.io.File
 
 /**
- * Almacenamiento de fragmentos de sesión: volumen de escritura, eliminación, borrado, nombre de archivo y códec.
+ * 会话分片存储：写入量、淘汰、清空、文件名与编解码。
  *
- * Este grupo bloquea los comportamientos centrales de rectificación del rendimiento el 2026-11-01 —— **append Escriba solo archivos para esta sesión**.
- * La implementación anterior reescribía toda la tabla cada vez que se agregaba una ronda (hasta 50 sesiones × 200 ronda), cada vez que llega un mensaje del canal, al menos
- * Se agregaron dos veces (rueda de usuario + rueda de asistente), todas con el mismo bloqueo de objeto. Si alguien cambia la escritura en toda la tabla,
- * "La cantidad de bytes de archivos en el directorio de fragmentos no aumenta después de agregarlos" se volverá rojo inmediatamente.
+ * 这一组锁的是 2026-11-01 性能整改的核心行为 —— **append 只写这一条会话的文件**。
+ * 旧实现每追加一条轮次都重写整张表（最多 50 个会话 × 200 轮），渠道每来一条消息至少
+ * 追加两次（用户轮 + 助手轮），全部持同一把对象锁。若有人把写入改回整表，
+ * 「追加后分片目录里的文件字节数不增长」这条会立刻红。
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -50,34 +50,33 @@ class ChannelConversationShardTest {
         ChannelConversationStore.clear(channelB, "peer-2")
     }
 
-    private fun shardFiles(): List<File> =
-        shardDir.listFiles().orEmpty().filter { it.isFile && it.name.endsWith(".json") }
+    private fun shardFiles(): List<File> = shardDir.listFiles().orEmpty().filter { it.isFile && it.name.endsWith(".json") }
 
     private fun bytesOf(key: String): Long =
         File(shardDir, ChannelConversationFiles.shardName(key)).let { if (it.exists()) it.length() else 0L }
 
     @Test
     fun `append writes only the touched conversation`() {
-        ChannelConversationStore.append(channelA, "peer-1", "user", "Hola")
+        ChannelConversationStore.append(channelA, "peer-1", "user", "你好")
         val afterFirst = shardFiles().size
         val bytesA = bytesOf(ChannelConversationStore.key(channelA, "peer-1"))
 
-        ChannelConversationStore.append(channelB, "peer-2", "user", "otra conversación")
+        ChannelConversationStore.append(channelB, "peer-2", "user", "另一条会话")
         val afterSecond = shardFiles().size
-        // B El anexo no debe cambiar el archivo de A (la longitud y el contenido permanecen sin cambios).
-        assertEquals("A Los fragmentos de no deberían cambiar debido a la adición de B", bytesA, bytesOf(ChannelConversationStore.key(channelA, "peer-1")))
-        assertTrue("Se debe escribir un fragmento para cada una de las dos sesiones.", afterSecond == afterFirst + 1)
-        assertTrue("La cantidad de archivos fragmentados no debe exceder la cantidad de sesiones.", shardFiles().size <= ChannelConversationStore.conversations.value.size)
+        // B 的追加不应改动 A 的文件（长度与内容都不变）。
+        assertEquals("A 的分片不应因 B 的追加而变化", bytesA, bytesOf(ChannelConversationStore.key(channelA, "peer-1")))
+        assertTrue("应当为两条会话各写一个分片", afterSecond == afterFirst + 1)
+        assertTrue("分片文件数不应超过会话数", shardFiles().size <= ChannelConversationStore.conversations.value.size)
     }
 
     @Test
     fun `one_append_payload_is_a_single_conversation_not_the_whole_table`() {
-        // Crea 20 sesiones, cada una con 30 rondas; compare el tamaño de bytes de "codificación de tabla completa" y "codificación de sesión única".
+        // 造 20 条会话，每条 30 轮；对比「整表编码」与「单条会话编码」的字节量。
         repeat(20) { index ->
             val channelId = "bulk-$index"
             ChannelConversationStore.clear(channelId, "peer")
             repeat(30) { turnIndex ->
-                ChannelConversationStore.append(channelId, "peer", "user", "Contenido del mensaje $index-$turnIndex")
+                ChannelConversationStore.append(channelId, "peer", "user", "消息内容 $index-$turnIndex")
             }
         }
         val all = ChannelConversationStore.conversations.value
@@ -91,13 +90,13 @@ class ChannelConversationShardTest {
             .encode(oneKey, oneConversation)
             .toByteArray(Charsets.UTF_8).size
 
-        // Agregue la cantidad de colocación real requerida para una ronda = Una sola sesión; la implementación anterior era la tabla completa.
+        // 追加一条轮次真正需要的落盘量 = 单条会话；旧实现是整表。
         println(
             "[shard] full_table=$fullTableBytes B, single_conversation=$singleBytes B, " +
                 "ratio=${fullTableBytes.toLong() / singleBytes}",
         )
         assertTrue(
-            "Codificación de sesión única($singleBytes B) Debe ser mucho más pequeño que la codificación completa de la tabla.($fullTableBytes B)",
+            "单条会话编码($singleBytes B) 应远小于整表编码($fullTableBytes B)",
             singleBytes * 5 < fullTableBytes,
         )
         repeat(20) { index -> ChannelConversationStore.clear("bulk-$index", "peer") }
@@ -105,26 +104,26 @@ class ChannelConversationShardTest {
 
     @Test
     fun `clear removes the shard file`() {
-        ChannelConversationStore.append(channelA, "peer-1", "user", "Para ser aclarado")
+        ChannelConversationStore.append(channelA, "peer-1", "user", "要清掉的")
         val key = ChannelConversationStore.key(channelA, "peer-1")
         val file = File(shardDir, ChannelConversationFiles.shardName(key))
-        assertTrue("Debería haber fragmentos después de agregarlos.", file.exists())
+        assertTrue("追加后应存在分片", file.exists())
 
         ChannelConversationStore.clear(channelA, "peer-1")
-        assertTrue("clear Se deben eliminar los fragmentos posteriores.", !file.exists())
+        assertTrue("clear 后分片应被删除", !file.exists())
         assertNull(ChannelConversationStore.conversation(channelA, "peer-1"))
     }
 
     @Test
     fun `conversation_survives_as_single_shard_across_restore_format`() {
-        ChannelConversationStore.append(channelA, "peer-1", "user", "Todavía debe estar allí después de reiniciar.")
+        ChannelConversationStore.append(channelA, "peer-1", "user", "重启后要还在")
         val key = ChannelConversationStore.key(channelA, "peer-1")
         val text = File(shardDir, ChannelConversationFiles.shardName(key)).readText()
 
         val decoded = ChannelConversationFiles.decode(text)
-        assertNotNull("Los fragmentos deben ser decodificables.", decoded)
+        assertNotNull("分片必须能解码", decoded)
         assertEquals(key, decoded!!.first)
-        assertEquals("Todavía debe estar allí después de reiniciar.", decoded.second.turns.first().text)
+        assertEquals("重启后要还在", decoded.second.turns.first().text)
     }
 
     @Test
@@ -132,9 +131,9 @@ class ChannelConversationShardTest {
         val key = ChannelConversationStore.key("telegram|weird/../id", "peer\u0000x")
         val name = ChannelConversationFiles.shardName(key)
         assertEquals(name, ChannelConversationFiles.shardName(key))
-        assertTrue("Los nombres de archivos no deben contener separadores de ruta", !name.contains("/") && !name.contains("\\"))
-        assertTrue("Sufijo de nombre de archivo fijo", name.endsWith(".json"))
-        assertEquals("sha256 Hexadecimal 64 bits + sufijo", 64 + 5, name.length)
+        assertTrue("文件名不得含路径分隔符", !name.contains("/") && !name.contains("\\"))
+        assertTrue("文件名后缀固定", name.endsWith(".json"))
+        assertEquals("sha256 十六进制 64 位 + 后缀", 64 + 5, name.length)
     }
 
     @Test
@@ -146,7 +145,7 @@ class ChannelConversationShardTest {
     @Test
     fun `turn round trip keeps media fields`() {
         val conversation = Conversation(
-            summary = "Resumen",
+            summary = "摘要",
             turns = listOf(
                 Turn(
                     role = "user",
@@ -154,7 +153,7 @@ class ChannelConversationShardTest {
                     mediaKind = "image",
                     mediaBase64 = "AAAA",
                     mediaPath = "/tmp/x.jpg",
-                    mediaDescription = "Descripción",
+                    mediaDescription = "描述",
                     dispatchId = "d-1",
                 ),
             ),

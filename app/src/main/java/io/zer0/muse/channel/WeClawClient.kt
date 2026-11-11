@@ -24,36 +24,36 @@ import java.util.concurrent.TimeUnit
 import kotlin.coroutines.coroutineContext
 
 /**
- * v2.0: WeChat ClawBot(iLink)cliente de protocolo — puro HTTP/JSON,4 punto final.
+ * v2.0: 微信 ClawBot(iLink)协议客户端 — 纯 HTTP/JSON,4 个端点。
  *
- * proceso:Escanea el código QR para registrarte(get_bot_qrcode + sondeo get_qrcode_status)→ Sondeo largo para recibir mensajes(getupdates)
- * → devolución de datos(sendmessage). El protocolo no está acoplado al marco específico.,Se puede conectar cualquier programa que pueda realizar solicitudes HTTP.
+ * 流程:扫码注册(get_bot_qrcode + 轮询 get_qrcode_status)→ 长轮询收消息(getupdates)
+ * → 回发(sendmessage)。协议与具体框架无耦合,任何能发 HTTP 请求的程序都可对接。
  *
- * Mapa de credenciales a [ChannelConfig]:appId=ilink_bot_id,appSecret=bot_token,targetId=ilink_user_id.
- * La respuesta debe contener el mensaje fuente. context_token(ver [WeClawContextCache]).
+ * 凭据映射到 [ChannelConfig]:appId=ilink_bot_id,appSecret=bot_token,targetId=ilink_user_id。
+ * 回复必须携带来源消息的 context_token(见 [WeClawContextCache])。
  */
 internal object WeClawClient {
 
-    /** Nombre de dominio de acceso predeterminado(La respuesta de confirmación del código de escaneo puede recuperar el valor de anulación de la URL base.). */
+    /** 默认接入域名(扫码确认响应可能带回 baseurl 覆盖值)。 */
     const val DEFAULT_BASE_URL = "https://ilinkai.weixin.qq.com"
 
-    /** v2.x cierre del legado:Transmisión del tamaño del bloque de descarga al disco(64KB). */
+    /** v2.x 遗留收尾:流式下载写盘的块大小(64KB)。 */
     private const val COPY_BUFFER_BYTES = 64 * 1024
 
     private val HTTP: OkHttpClient by lazy {
         io.zer0.ai.core.ProxyProvider.applyTo(OkHttpClient.Builder())
             .connectTimeout(15, TimeUnit.SECONDS)
-            // El servidor de votación prolongado retiene aproximadamente 30s,El tiempo de espera de lectura debe ser mayor que este valor.
+            // 长轮询服务端 hold 约 30s,读超时需大于该值
             .readTimeout(45, TimeUnit.SECONDS)
             .build()
     }
 
     private val JSON_MEDIA = "application/json; charset=utf-8".toMediaType()
 
-    /** Vincular información del código QR. */
+    /** 绑定二维码信息。 */
     data class QrCodeInfo(val qrcode: String, val imgContent: String)
 
-    /** Estado del código de escaneo.status: wait / scaned / confirmed / expired. */
+    /** 扫码状态。status: wait / scaned / confirmed / expired。 */
     data class QrStatus(
         val status: String,
         val botToken: String = "",
@@ -62,20 +62,20 @@ internal object WeClawClient {
         val baseUrl: String = "",
     )
 
-    /** Un mensaje de usuario entrante. */
+    /** 一条入站用户消息。 */
     data class InboundMsg(
         val fromUserId: String,
         val text: String,
         val contextToken: String,
-        /** v2.0.1: carga útil de medios(fotos/Voz/vídeo/Archivo);El mensaje de texto es nulo. */
+        /** v2.0.1: 媒体载荷(图片/语音/视频/文件);文本消息为 null。 */
         val media: MediaRef? = null,
     )
 
     /**
-     * v2.0.1: carga útil de medios — Parámetros de descarga de CDN entrante.
+     * v2.0.1: 媒体载荷 — 入站 CDN 下载参数。
      *
-     * Descargar:full_url Prioridad,De lo contrario `{baseUrl}/download?encrypted_query_param=...`;
-     * Descifrar:AES-128-ECB + PKCS7(aes_key para base64(16 raw bytes) o base64(hex 32 chars)).
+     * 下载:full_url 优先,否则 `{baseUrl}/download?encrypted_query_param=...`;
+     * 解密:AES-128-ECB + PKCS7(aes_key 为 base64(16 raw bytes) 或 base64(hex 32 chars))。
      */
     data class MediaRef(
         /** "image" / "voice" / "video" / "file" */
@@ -87,10 +87,10 @@ internal object WeClawClient {
         val durationMs: Long = 0L,
     )
 
-    /** getupdates resultados.buffer El cursor de sincronización llevado para la siguiente solicitud. */
+    /** getupdates 结果。buffer 为下次请求携带的同步游标。 */
     data class Updates(val messages: List<InboundMsg>, val buffer: String)
 
-    /** 1. Obtenga el código QR vinculante(bot_type=3 es el tipo público actual). */
+    /** 1. 获取绑定二维码(bot_type=3 为当前公开类型)。 */
     suspend fun getQrCode(baseUrl: String = DEFAULT_BASE_URL): Result<QrCodeInfo> = withContext(Dispatchers.IO) {
         runCatching {
             val url = "${baseUrl.trimEnd('/')}/ilink/bot/get_bot_qrcode?bot_type=3"
@@ -98,13 +98,13 @@ internal object WeClawClient {
             val obj = AppJson.parseToJsonElement(resp).jsonObject
             QrCodeInfo(
                 qrcode = obj["qrcode"]?.jsonPrimitive?.contentOrNull
-                    ?: error("A la respuesta del código QR le falta el campo qrcode"),
+                    ?: error("二维码响应缺少 qrcode 字段"),
                 imgContent = obj["qrcode_img_content"]?.jsonPrimitive?.contentOrNull.orEmpty(),
             )
         }
     }
 
-    /** 2. Estado del código de escaneo de encuesta;confirmed Traiga sus credenciales con usted. */
+    /** 2. 轮询扫码状态;confirmed 时携带凭据。 */
     suspend fun getQrStatus(qrcode: String, baseUrl: String = DEFAULT_BASE_URL): Result<QrStatus> = withContext(Dispatchers.IO) {
         runCatching {
             val url = "${baseUrl.trimEnd('/')}/ilink/bot/get_qrcode_status" +
@@ -125,7 +125,7 @@ internal object WeClawClient {
         }
     }
 
-    /** 3. Sondeo largo para recibir mensajes(El servidor tiene aproximadamente 30s,Ningún mensaje devuelve una lista vacía). */
+    /** 3. 长轮询收消息(服务端 hold 约 30s,无消息返回空列表)。 */
     suspend fun getUpdates(botToken: String, buffer: String, baseUrl: String = DEFAULT_BASE_URL): Result<Updates> =
         withContext(Dispatchers.IO) {
             runCatching {
@@ -155,7 +155,7 @@ internal object WeClawClient {
             }
         }
 
-    /** 4. enviar mensaje(message_type=2 / message_state=2 Mensaje de bot que indica finalización). */
+    /** 4. 发送消息(message_type=2 / message_state=2 表示完成的 Bot 消息)。 */
     suspend fun sendMessage(
         botToken: String,
         toUserId: String,
@@ -195,10 +195,10 @@ internal object WeClawClient {
     }
 
     /**
-     * Analizar matriz de mensajes(solo message_type=1 mensajes de usuario).
+     * 解析 msgs 数组(仅 message_type=1 的用户消息)。
      *
-     * v2.0.1: Dividir por artículo — texto/Entrada de voz a texto,fotos/vídeo/Archivo adjunto [MediaRef] disponible para descargar;
-     * La transcripción de voz proviene del servidor iLink(voice_item.text),No se requiere ASR local.
+     * v2.0.1: 按 item 拆分 — 文本/语音转写为文本条目,图片/视频/文件附带 [MediaRef] 供下载;
+     * 语音转写来自 iLink 服务端(voice_item.text),无需本地 ASR。
      */
     private fun parseMessages(array: JsonArray): List<InboundMsg> {
         val result = mutableListOf<InboundMsg>()
@@ -225,12 +225,12 @@ internal object WeClawClient {
                             )
                         }
                     }
-                    3 -> { // VOICE — El servidor viene con transcodificación ASR
+                    3 -> { // VOICE — 服务端自带 ASR 转写
                         val asr = itemObj["voice_item"]?.jsonObject
                             ?.get("text")?.jsonPrimitive?.contentOrNull.orEmpty()
                         result += InboundMsg(
                             fromUserId = from,
-                            text = asr.ifBlank { "[Voz]" },
+                            text = asr.ifBlank { "[语音]" },
                             contextToken = contextToken,
                         )
                     }
@@ -242,7 +242,7 @@ internal object WeClawClient {
                         }
                         val sub = itemObj["${kind}_item"]?.jsonObject
                         val media = sub?.get("media")?.jsonObject
-                        // IMAGE La aes_key se puede colocar en image_item.aeskey en formato hexadecimal sin formato.
+                        // IMAGE 的 aes_key 可能以原始 hex 放在 image_item.aeskey。
                         val aesKey = media?.get("aes_key")?.jsonPrimitive?.contentOrNull.orEmpty()
                             .ifBlank {
                                 sub?.get("aeskey")?.jsonPrimitive?.contentOrNull
@@ -275,14 +275,14 @@ internal object WeClawClient {
     }
 
     /**
-     * v2.0.1: Descargar y descifrar la carga útil de los medios(IMAGE/VOICE/VIDEO/FILE).
+     * v2.0.1: 下载并解密媒体载荷(IMAGE/VOICE/VIDEO/FILE)。
      *
-     * full_url Prioridad,De lo contrario vete `{baseUrl}/download?encrypted_query_param=...`(CDN El enlace viene con parámetros de autenticación.).
-     * Leer en la memoria de una vez,Sólo apto para medios pequeños.(fotos/Voz);Úselo para archivos grandes [downloadMediaToFile].
+     * full_url 优先,否则走 `{baseUrl}/download?encrypted_query_param=...`(CDN 链接自带鉴权参数)。
+     * 一次性读入内存,仅适用于小体积媒体(图片/语音);大文件请用 [downloadMediaToFile]。
      */
     suspend fun downloadMedia(media: MediaRef, baseUrl: String = DEFAULT_BASE_URL): Result<ByteArray> = withContext(Dispatchers.IO) {
         runCatching {
-            require(media.aesKeyBase64.isNotBlank()) { "falta de medios aes_key" }
+            require(media.aesKeyBase64.isNotBlank()) { "媒体缺少 aes_key" }
             val url = mediaUrl(media, baseUrl)
             val ciphertext = requestBytes(url).getOrThrow()
             decryptAesEcb(ciphertext, media.aesKeyBase64)
@@ -290,21 +290,21 @@ internal object WeClawClient {
     }
 
     /**
-     * v2.x cierre del legado:Transmita descargas y descifre medios en archivos(Escribe sobre la marcha,No acumule todo el archivo en la memoria).
+     * v2.x 遗留收尾:流式下载并解密媒体到文件(边下边写,不在内存中堆积整个文件)。
      *
-     * con [downloadMedia](Desechable readBytes)diferente:Ajustar el flujo de bytes de respuesta en CipherInputStream,
-     * Descifrar y escribir disco por bloque;El número de bytes de texto plano escritos excede [maxBytes] Cancele inmediatamente y elimine el archivo de trabajo en progreso.
-     * Vídeo adecuado para WeChat entrante/Archivos y otros medios de gran volumen.
+     * 与 [downloadMedia](一次性 readBytes)不同:以 CipherInputStream 包装响应字节流,
+     * 按块边解密边写盘;写入明文字节数超过 [maxBytes] 立即中止并删除半成品文件。
+     * 适用于微信入站的视频/文件等大体积媒体。
      *
-     * Cancelación de rutina(Como withTimeoutOrNull timeout)será retirado en el bucle de bloque,Y lanza CancellationException hacia arriba.
+     * 协程取消(如 withTimeoutOrNull 超时)会在块循环中被检出,并向上抛 CancellationException。
      *
-     * @return éxito:Número de bytes de texto plano escritos;falló:Result.failure(exceder el límite para [MediaTooLargeException])
+     * @return 成功:写入的明文字节数;失败:Result.failure(超限为 [MediaTooLargeException])
      */
     suspend fun downloadMediaToFile(media: MediaRef, targetFile: File, maxBytes: Long, baseUrl: String = DEFAULT_BASE_URL): Result<Long> =
         withContext(Dispatchers.IO) {
             val ctx = coroutineContext
             try {
-                require(media.aesKeyBase64.isNotBlank()) { "falta de medios aes_key" }
+                require(media.aesKeyBase64.isNotBlank()) { "媒体缺少 aes_key" }
                 val url = mediaUrl(media, baseUrl)
                 val key = parseAesKey(media.aesKeyBase64)
                 val cipher = javax.crypto.Cipher.getInstance("AES/ECB/PKCS5Padding").apply {
@@ -317,7 +317,7 @@ internal object WeClawClient {
                 val request = Request.Builder().url(url).get().build()
                 val total = HTTP.newCall(request).execute().use { resp ->
                     if (!resp.isSuccessful) error("HTTP ${resp.code}")
-                    val body = resp.body ?: error("El cuerpo de la respuesta está vacío.")
+                    val body = resp.body ?: error("响应体为空")
                     body.byteStream().use { raw ->
                         javax.crypto.CipherInputStream(raw, cipher).use { decrypted ->
                             targetFile.outputStream().buffered().use { out ->
@@ -330,7 +330,7 @@ internal object WeClawClient {
                                     written += read
                                     if (written > maxBytes) {
                                         throw MediaTooLargeException(
-                                            "Los medios exceden el límite de tamaño(${maxBytes / 1024 / 1024}MB)",
+                                            "媒体超出大小上限(${maxBytes / 1024 / 1024}MB)",
                                         )
                                     }
                                     out.write(buffer, 0, read)
@@ -351,16 +351,16 @@ internal object WeClawClient {
             }
         }
 
-    /** URL de descarga de medios de construcción: full_url tiene prioridad,De lo contrario, vaya al punto final de descarga de CDN. */
+    /** 构造媒体下载 URL:full_url 优先,否则走 CDN download 端点。 */
     private fun mediaUrl(media: MediaRef, baseUrl: String): String {
         val full = media.fullUrl.trim()
         if (full.isNotBlank()) return full
-        require(media.encryptedQueryParam.isNotBlank()) { "A los medios les faltan parámetros de descarga" }
+        require(media.encryptedQueryParam.isNotBlank()) { "媒体缺少下载参数" }
         return "${baseUrl.trimEnd('/')}/download?encrypted_query_param=" +
             java.net.URLEncoder.encode(media.encryptedQueryParam, "UTF-8")
     }
 
-    /** Descarga binaria(GET,Sin encabezado de autenticación adicional — CDN Los parámetros vienen con autenticación.). */
+    /** 二进制下载(GET,无额外鉴权头 — CDN 参数自带鉴权)。 */
     private fun requestBytes(url: String): Result<ByteArray> = runCatching {
         val request = Request.Builder().url(url).get().build()
         HTTP.newCall(request).execute().use { resp ->
@@ -369,7 +369,7 @@ internal object WeClawClient {
         }
     }
 
-    /** AES-128-ECB + PKCS7 Descifrar(aes_key apoyo base64(16 raw bytes) con base64(hex 32 chars) Dos codificaciones). */
+    /** AES-128-ECB + PKCS7 解密(aes_key 支持 base64(16 raw bytes) 与 base64(hex 32 chars) 两种编码)。 */
     private fun decryptAesEcb(ciphertext: ByteArray, aesKeyBase64: String): ByteArray {
         val key = parseAesKey(aesKeyBase64)
         val cipher = javax.crypto.Cipher.getInstance("AES/ECB/PKCS5Padding")
@@ -384,23 +384,23 @@ internal object WeClawClient {
         val decoded = android.util.Base64.decode(aesKeyBase64, android.util.Base64.DEFAULT)
         if (decoded.size == 16) return decoded
         if (decoded.size == 32) return hexToBytes(String(decoded, Charsets.US_ASCII))
-        error("aes_key longitud anormal: ${decoded.size} bytes")
+        error("aes_key 长度异常: ${decoded.size} bytes")
     }
 
-    /** originales hex(32 personaje) → base64(16 raw bytes);Conversión compatible para image_item.aeskey. */
+    /** 原始 hex(32 字符) → base64(16 raw bytes);用于 image_item.aeskey 的兼容转换。 */
     private fun hexToBase64Key(hex: String): String {
         val bytes = hexToBytes(hex)
         return android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
     }
 
     private fun hexToBytes(hex: String): ByteArray {
-        require(hex.length % 2 == 0) { "hex longitud ilegal: ${hex.length}" }
+        require(hex.length % 2 == 0) { "hex 长度非法: ${hex.length}" }
         return ByteArray(hex.length / 2) { i ->
             hex.substring(i * 2, i * 2 + 2).toInt(16).toByte()
         }
     }
 
-    /** Realizar una solicitud HTTP;Excepciones de lanzamiento que no son 2xx con fragmentos de respuesta. */
+    /** 发起 HTTP 请求;非 2xx 抛带响应片段的异常。 */
     private fun request(method: String, url: String, body: String? = null, headers: Map<String, String> = emptyMap()): Result<String> =
         runCatching {
             val builder = Request.Builder().url(url)
@@ -416,7 +416,7 @@ internal object WeClawClient {
             }
         }
 
-    /** ID de dispositivo generado aleatoriamente para cada solicitud(Requisitos del acuerdo,base64). */
+    /** 每次请求随机生成的设备标识(协议要求,base64)。 */
     private fun randomUin(): String {
         val bytes = ByteArray(12).also { java.util.Random().nextBytes(it) }
         return android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
@@ -424,18 +424,18 @@ internal object WeClawClient {
 }
 
 /**
- * v2.x cierre del legado:Se lanza cuando la descarga de transmisión de medios excede el límite de tamaño máximo.
+ * v2.x 遗留收尾:媒体流式下载超出大小上限时抛出。
  *
- * suministro [WeClawClient.downloadMediaToFile] distinción de la persona que llama"por encima del límite"con"red/El análisis falló",
- * El primero solo registra texto de marcador de posición.,No se conservan documentos de trabajo en curso.
+ * 供 [WeClawClient.downloadMediaToFile] 调用方区分"超限"与"网络/解析失败",
+ * 前者只记录占位文本,不保留半成品文件。
  */
 internal class MediaTooLargeException(message: String) : Exception(message)
 
 /**
- * v2.0: La caché context_token del mensaje entrante más reciente.
+ * v2.0: 最近一条入站消息的 context_token 缓存。
  *
- * iLink El protocolo requiere que el mensaje enviado de vuelta contenga el mensaje fuente. context_token;
- * El receptor escribe cuando se recibe un mensaje.,El remitente lee la devolución de datos.
+ * iLink 协议要求回发消息必须携带来源消息的 context_token;
+ * 接收器在收到消息时写入,发送器在回发时读取。
  */
 internal object WeClawContextCache {
     private val tokens = java.util.concurrent.ConcurrentHashMap<String, String>()

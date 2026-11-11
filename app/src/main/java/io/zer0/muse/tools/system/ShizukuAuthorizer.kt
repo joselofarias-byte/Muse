@@ -27,34 +27,34 @@ import java.util.concurrent.atomic.AtomicReference
 import kotlin.coroutines.resume
 
 /**
- * P3-3: Shizuku Autorizador — Integre rikk.shizuku:api SDK.
+ * P3-3: Shizuku 授权器 — 集成 rikk.shizuku:api SDK。
  *
- * Shizuku con privilegios de shell(ADB nivel)ejecutar comando,No es necesario root,Es un enrutador de tres canales.
- * El equilibrio entre seguridad y permisos(Más seguro que root,Mejor que una ejecución sin barreras shell).
+ * Shizuku 以 shell 权限(ADB 级别)执行命令,无需 root,是三通道路由中
+ * 安全性与权限的平衡点(比 root 安全,比无障碍能执行 shell)。
  *
- * La ejecución del comando adopta el modo UserService(Shizuku v13 Plan recomendado):
- *  1. definición [IShellService] AIDL interfaz
- *  2. [ShellService] Se ejecuta en un proceso separado administrado por Shizuku.,Heredar permisos de shell
- *  3. [Shizuku.bindUserService] Servicios de encuadernación,Ejecutar comandos a través de AIDL IPC
+ * 命令执行采用 UserService 模式(Shizuku v13 推荐方案):
+ *  1. 定义 [IShellService] AIDL 接口
+ *  2. [ShellService] 在 Shizuku 管理的独立进程中运行,继承 shell 权限
+ *  3. [Shizuku.bindUserService] 绑定服务,通过 AIDL IPC 执行命令
  *
- * Responsabilidades:
- *  1. [isAvailable]: Shizuku ¿Está funcionando el servicio?(pingBinder)
- *  2. [checkPermission]: Si la solicitud está autorizada por Shizuku
- *  3. [requestPermission]: Aparece la solicitud de autorización de Shizuku(suspend,Esperar la acción del usuario)
- *  4. [isSuiBackendAvailable]: Sui Compatible con el servidor(root Los usuarios no necesitan instalar Shizuku,Sui Proporcionar la interfaz Shizuku como root)
- *  5. [execute]: Ejecutar comandos con privilegios de shell(Pase UserService)
+ * 职责:
+ *  1. [isAvailable]: Shizuku 服务是否运行(pingBinder)
+ *  2. [checkPermission]: 应用是否已获 Shizuku 授权
+ *  3. [requestPermission]: 弹出 Shizuku 授权请求(suspend,等待用户操作)
+ *  4. [isSuiBackendAvailable]: Sui 后端兼容(root 用户无需装 Shizuku,Sui 以 root 提供 Shizuku 接口)
+ *  5. [execute]: 以 shell 权限执行命令(通过 UserService)
  *
- * ciclo de vida:
- *  - Shizuku El usuario puede detener el servicio mientras se está ejecutando.,Antes de cada ejecución, debes [checkPermission] Vuelva a comprobar
- *  - UserService por primera vez [execute] Encuadernación perezosa,Reconectarse automáticamente después de la desconexión
- *  - Los oyentes de autorización se eliminan automáticamente una vez completada la solicitud.,evitar fugas
+ * 生命周期:
+ *  - Shizuku 服务可能在运行中被用户停止,每次执行前应 [checkPermission] 重新校验
+ *  - UserService 在首次 [execute] 时惰性绑定,断开后自动重连
+ *  - 授权监听器在请求完成后自动移除,避免泄漏
  */
 class ShizukuAuthorizer(
     private val context: Context,
     /**
-     * Sonda de bit de autorización inyectable(Ir por defecto Shizuku SDK checkSelfPermission).
-     * Los puntos de inyección se proporcionan en pruebas individuales.,Fácil de bloquear "no autorizado" → execute Nunca active el servicio Shell"
-     * camino de cortocircuito,No se requiere servicio Robolectric/Shizuku real.
+     * 可注入的授权位探针(默认走 Shizuku SDK checkSelfPermission)。
+     * 注入点在单测中提供,便于锁定「未授权 → execute 绝不触发 shell service」的
+     * 短路路径,无需 Robolectric/真实 Shizuku 服务。
      */
     private val checkPermissionProbe: (() -> Boolean)? = null,
 ) {
@@ -62,49 +62,87 @@ class ShizukuAuthorizer(
     companion object {
         private const val TAG = "ShizukuAuthorizer"
 
-        /** Código de solicitud de autorización(arbitrario,Para la coincidencia de devolución de llamada de OnRequestPermissionResultListener). */
+        /** 授权请求码(任意,用于 OnRequestPermissionResultListener 回调匹配)。 */
         private const val PERMISSION_REQUEST_CODE = 0xC3A3
 
-        /** Sui(Magisk módulo)nombre del paquete,Proporciona una interfaz compatible con Shizuku. */
+        /** Sui(Magisk 模块)的包名,提供 Shizuku 兼容接口。 */
         private const val SUI_PACKAGE = "moe.shizuku.privileged.sui"
 
-        /** UserService Tiempo de espera de enlace(milisegundos). */
+        /** UserService 绑定超时(毫秒)。 */
         private const val SERVICE_BIND_TIMEOUT_MS = 3000L
 
-        /** UserService Vincular el intervalo de sondeo(milisegundos). */
+        /** UserService 绑定轮询间隔(毫秒)。 */
         private const val SERVICE_BIND_POLL_MS = 50L
 
-        /** UserService Identificación estable para evitar errores de valoración de la identidad del servicio por nombre de clase después de R8/ofuscación. */
+        /** UserService 稳定标识，避免 R8/混淆后以类名误判服务身份。 */
         private const val SHELL_SERVICE_TAG = "muse_shell"
 
-        /** UserService versión del protocolo;AIDL/Forzar el reemplazo de procesos antiguos cuando cambia la implementación del servicio. */
-        private const val SHELL_SERVICE_VERSION = 4
-
-        /** R-SVC-03: La ventana emergente de autorización ha expirado.(milisegundos). */
+        /** R-SVC-03: 授权弹窗等待超时(毫秒)。 */
         private const val PERMISSION_TIMEOUT_MS = 60_000L
 
-        /** UserService Breve ventana de retroceso después de un fallo de encuadernación. */
+        /** UserService 绑定失败后的短退避窗口。 */
         private const val BIND_FAILURE_BACKOFF_MS = 5_000L
     }
 
-    /** Vincular agente de servicio de shell(puede ser null,significa no obligado). */
+    /** 已绑定的 shell 服务代理(可能为 null,表示未绑定)。 */
     @Volatile
     private var shellService: IShellService? = null
 
-    /** R-SVC-03: Actualmente vinculado UserServiceArgs(unbind cuando sea necesario). */
+    /** R-SVC-03: 当前绑定的 UserServiceArgs(unbind 时需要)。 */
     @Volatile
     private var boundArgs: Shizuku.UserServiceArgs? = null
 
-    /** UserService Estado vinculante. */
+    /** UserService 绑定状态。 */
     @Volatile
     private var serviceBound = false
 
-    /** Serialice la vinculación/desvinculación para evitar que múltiples llamadas automáticas creen múltiples servicios de usuario al mismo tiempo. */
+    /** 串行化 bind/unbind，避免多个自动化调用同时创建多个 UserService。 */
     private val serviceMutex = Mutex()
 
-    // Realice un breve retroceso cuando el enlace falle para evitar reorganizar la página de configuración cada vez/La recuperación se bloqueará repetidamente durante 3 segundos y actualizará la pantalla.
+    // 绑定失败时做短暂退避，避免设置页每次重组/恢复都重复阻塞 3 秒并刷屏。
     @Volatile
     private var lastBindFailureAt = 0L
+
+    /** Shizuku binder 是否存活（由 sticky received / dead 监听维护，事件驱动刷新用）。 */
+    @Volatile
+    var binderAlive: Boolean = false
+        private set
+
+    private val binderStateListeners = java.util.concurrent.CopyOnWriteArrayList<(alive: Boolean) -> Unit>()
+
+    /** 注册 binder 存活状态监听（幂等）；协调层据此在 Shizuku 启动/停止时自动刷新权限快照。 */
+    fun addBinderStateListener(listener: (alive: Boolean) -> Unit) {
+        binderStateListeners.addIfAbsent(listener)
+    }
+
+    fun removeBinderStateListener(listener: (alive: Boolean) -> Unit) {
+        binderStateListeners.remove(listener)
+    }
+
+    init {
+        // 官方要求的生命周期跟踪：不注册监听时，Shizuku 中途启动/被杀后探测结果会一直停在旧值。
+        // sticky 变体保证注册前 binder 已到达也会立即回调一次。
+        runCatching {
+            Shizuku.addBinderReceivedListenerSticky(
+                Shizuku.OnBinderReceivedListener {
+                    binderAlive = true
+                    // 新的服务进程：清掉绑定失败退避，允许立即重绑 UserService。
+                    lastBindFailureAt = 0L
+                    binderStateListeners.forEach { runCatching { it(true) } }
+                },
+            )
+            Shizuku.addBinderDeadListener(
+                Shizuku.OnBinderDeadListener {
+                    binderAlive = false
+                    // binder 死亡意味着 UserService 进程也已终止，清掉失效引用。
+                    shellService = null
+                    serviceBound = false
+                    boundArgs = null
+                    binderStateListeners.forEach { runCatching { it(false) } }
+                },
+            )
+        }.onFailure { Logger.w(TAG, "注册 Shizuku binder 监听失败: ${it.message}") }
+    }
 
     private val serviceConnection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
@@ -112,53 +150,59 @@ class ShizukuAuthorizer(
             if (proxy == null) {
                 shellService = null
                 serviceBound = false
-                Logger.e(TAG, "Shell UserService La devolución de llamada de conexión no devolvió un mensaje válido binder")
+                Logger.e(TAG, "Shell UserService 连接回调没有返回有效 binder")
                 return
             }
             shellService = proxy
             serviceBound = true
             lastBindFailureAt = 0L
-            Logger.i(TAG, "Shell UserService Conectado")
+            Logger.i(TAG, "Shell UserService 已连接")
         }
 
         override fun onServiceDisconnected(name: ComponentName?) {
             shellService = null
             serviceBound = false
             boundArgs = null
-            Logger.w(TAG, "Shell UserService Conexión perdida")
+            Logger.w(TAG, "Shell UserService 连接断开")
         }
     }
 
-    /** Shizuku ¿Está funcionando el servicio?(Proceso iniciado + carpeta accesible). */
+    /** Shizuku 服务是否运行(进程已启动 + binder 可达)。 */
     fun isAvailable(): Boolean {
         return try {
             !Shizuku.isPreV11() && Shizuku.pingBinder()
         } catch (e: Throwable) {
-            // Tolerancia a fallos necesaria:Shizuku Llamar al SDK cuando no está instalado puede generar una excepción.
-            Logger.w(TAG, "Shizuku.pingBinder falló: ${e.message}")
+            // 必要容错:Shizuku 未安装时调用 SDK 可能抛异常
+            Logger.w(TAG, "Shizuku.pingBinder 失败: ${e.message}")
             false
         }
     }
 
-    /** Si la solicitud está autorizada por Shizuku(Necesito primero [isAvailable]). */
+    /** 应用是否已获 Shizuku 授权(需先 [isAvailable])。 */
     fun checkPermission(): Boolean {
         checkPermissionProbe?.let { return it() }
         if (!isAvailable()) return false
         return try {
             Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED
         } catch (e: Throwable) {
-            Logger.w(TAG, "Shizuku.checkSelfPermission falló: ${e.message}")
+            Logger.w(TAG, "Shizuku.checkSelfPermission 失败: ${e.message}")
             false
         }
     }
 
     /**
-     * Solicitar autorización de Shizuku(suspend,Espere a que el usuario opere en la ventana emergente de autorización).
-     * @return true Autorizado;false Servicio denegado o no disponible
+     * 请求 Shizuku 授权(suspend,等待用户在授权弹窗操作)。
+     *
+     * 返回细分结果而非 Boolean：用户勾过「拒绝且不再询问」后 [Shizuku.requestPermission]
+     * 静默无效（官方语义），干等只会超时；调用方收到 [PermissionRequestResult.PermanentlyDenied]
+     * 应直开 Shizuku 应用内的授权管理页让用户手动允许（AutoJs6 同口径）。
      */
-    suspend fun requestPermission(): Boolean {
-        if (!isAvailable()) return false
-        if (checkPermission()) return true
+    suspend fun requestPermission(): PermissionRequestResult {
+        if (!isAvailable()) return PermissionRequestResult.Unavailable
+        if (checkPermission()) return PermissionRequestResult.Granted
+        if (runCatching { Shizuku.shouldShowRequestPermissionRationale() }.getOrDefault(false)) {
+            return PermissionRequestResult.PermanentlyDenied
+        }
         return try {
             withTimeout(PERMISSION_TIMEOUT_MS) {
                 suspendCancellableCoroutine { cont ->
@@ -166,9 +210,13 @@ class ShizukuAuthorizer(
                         override fun onRequestPermissionResult(requestCode: Int, grantResult: Int) {
                             if (requestCode == PERMISSION_REQUEST_CODE) {
                                 val granted = grantResult == PackageManager.PERMISSION_GRANTED
-                                // El oyente debe ser eliminado,Evite filtraciones y devoluciones de llamadas duplicadas
+                                // 必须移除监听器,避免泄漏与重复回调
                                 Shizuku.removeRequestPermissionResultListener(this)
-                                if (cont.isActive) cont.resume(granted)
+                                if (cont.isActive) {
+                                    cont.resume(
+                                        if (granted) PermissionRequestResult.Granted else PermissionRequestResult.Denied,
+                                    )
+                                }
                             }
                         }
                     }
@@ -180,22 +228,37 @@ class ShizukuAuthorizer(
                         Shizuku.requestPermission(PERMISSION_REQUEST_CODE)
                     } catch (e: Throwable) {
                         Shizuku.removeRequestPermissionResultListener(listener)
-                        Logger.w(TAG, "Shizuku.requestPermission falló: ${e.message}")
-                        if (cont.isActive) cont.resume(false)
+                        Logger.w(TAG, "Shizuku.requestPermission 失败: ${e.message}")
+                        if (cont.isActive) cont.resume(PermissionRequestResult.Unavailable)
                     }
                 }
             }
         } catch (e: TimeoutCancellationException) {
-            Logger.w(TAG, "Shizuku Tiempo de espera de autorización")
-            false
+            Logger.w(TAG, "Shizuku 授权等待超时")
+            PermissionRequestResult.Timeout
         }
     }
 
+    /** Shizuku 授权请求的细分结果。 */
+    sealed interface PermissionRequestResult {
+        data object Granted : PermissionRequestResult
+
+        data object Denied : PermissionRequestResult
+
+        /** 用户曾「拒绝且不再询问」：系统弹窗不会再出现，需去 Shizuku 应用内手动授权。 */
+        data object PermanentlyDenied : PermissionRequestResult
+
+        /** Shizuku 服务不可用（未安装/未启动/版本过旧）。 */
+        data object Unavailable : PermissionRequestResult
+
+        data object Timeout : PermissionRequestResult
+    }
+
     /**
-     * Sui Detección de compatibilidad de backend.
+     * Sui 后端兼容检测。
      *
-     * Sui es un módulo Magisk,Proporciona una interfaz compatible con Shizuku como root,root Los usuarios no necesitan instalar Shizuku APK.
-     * Método de detección:Sui Paquete instalado && root Disponible(Descripción Sui se ejecuta como root).
+     * Sui 是 Magisk 模块,以 root 身份提供 Shizuku 兼容接口,root 用户无需安装 Shizuku APK。
+     * 检测方式:Sui 包已安装 && root 可用(说明 Sui 以 root 运行)。
      */
     fun isSuiBackendAvailable(): Boolean {
         val suiInstalled = try {
@@ -203,72 +266,78 @@ class ShizukuAuthorizer(
         } catch (e: PackageManager.NameNotFoundException) {
             false
         }
-        // Sui Requiere root para funcionar
-        return suiInstalled && RootAuthorizer().checkPermission()
+        // Sui 需要 root 才能工作（被动检测,不弹窗、不阻塞）
+        return suiInstalled && RootAuthorizer(context).checkPermission()
     }
 
     /**
-     * Devuelve el verdadero estado de la habilidad de Shizuku que se puede mostrar en la página de configuración.
-     * “Autorizado”Esto no significa que el UserService de Muse ya esté disponible, por lo que los resultados vinculantes se verifican por separado aquí.
+     * 返回可供设置页展示的真实 Shizuku 能力状态。
+     * “已授权”并不等于 Muse 的 UserService 已经可用，因此这里单独验证绑定结果。
      */
     suspend fun diagnose(): ShizukuStatus {
         val installed = ShizukuInstaller(context).isInstalled()
         val suiAvailable = if (!installed) isSuiBackendAvailable() else false
         if (!installed && !suiAvailable) {
-            return ShizukuStatus(ShizukuState.NOT_INSTALLED, "No instalado Shizuku")
+            return ShizukuStatus(ShizukuState.NOT_INSTALLED, "未安装 Shizuku")
         }
         if (!isAvailable()) {
+            // binder 活着但 isAvailable=false：pre-v11 旧版（UserService 自 v11 起才有），
+            // 与「服务未运行」是两种修法，不能混报。
+            val tooOld = binderAlive && runCatching { Shizuku.isPreV11() }.getOrDefault(false)
+            if (tooOld) {
+                return ShizukuStatus(ShizukuState.VERSION_TOO_OLD, "Shizuku 版本过旧,请更新到 v13+")
+            }
             return ShizukuStatus(
                 ShizukuState.NOT_RUNNING,
-                if (suiAvailable) "Sui Instalado,Pero el servicio Shizuku no está funcionando." else "Shizuku El servicio no está funcionando",
+                if (suiAvailable) "Sui 已安装,但 Shizuku 服务未运行" else "Shizuku 服务未运行",
             )
         }
-        if (!checkPermission()) return ShizukuStatus(ShizukuState.NOT_AUTHORIZED, "Aún no autorizado Muse")
+        if (!checkPermission()) return ShizukuStatus(ShizukuState.NOT_AUTHORIZED, "尚未授权 Muse")
         if (!ensureServiceBound()) {
-            return ShizukuStatus(ShizukuState.USER_SERVICE_UNAVAILABLE, "Muse Shell El servicio no está disponible temporalmente")
+            return ShizukuStatus(ShizukuState.USER_SERVICE_UNAVAILABLE, "Muse Shell 服务暂不可用")
         }
-        return ShizukuStatus(ShizukuState.READY, "Shizuku Shell Listo")
+        return ShizukuStatus(ShizukuState.READY, "Shizuku Shell 已就绪")
     }
 
     /**
-     * Ejecutar comandos con privilegios de shell(Necesita estar autorizado).
+     * 以 shell 权限执行命令(需已授权)。
      *
-     * darse cuenta:Vincular a través de Shizuku.bindUserService [ShellService],Ejecutado en un proceso con privilegios de shell.
-     * Encuadernación diferida en la primera llamada,Reutilización posterior de servicios vinculados.
+     * 实现:通过 Shizuku.bindUserService 绑定 [ShellService],在 shell 权限进程中执行。
+     * 首次调用时惰性绑定,后续复用已绑定的服务。
      *
-     * @return [ShizukuExecResult] Contiene código de salida y resultados.
+     * @return [ShizukuExecResult] 包含退出码与输出
      */
     suspend fun execute(command: String): ShizukuExecResult {
         return withContext(Dispatchers.IO) {
-            if (!checkPermission()) return@withContext ShizukuExecResult(-1, "", "Shizuku No autorizado")
-            if (!ensureServiceBound()) return@withContext ShizukuExecResult(-1, "", "Shizuku shell service Error al vincular")
-            val service = shellService ?: return@withContext ShizukuExecResult(-1, "", "Shizuku shell service No disponible")
+            if (!checkPermission()) return@withContext ShizukuExecResult(-1, "", "Shizuku 未授权")
+            if (!ensureServiceBound()) return@withContext ShizukuExecResult(-1, "", "Shizuku shell service 绑定失败")
+            val service = shellService ?: return@withContext ShizukuExecResult(-1, "", "Shizuku shell service 不可用")
             try {
                 val raw = service.execute(command)
                 parseExecResult(raw)
             } catch (e: android.os.RemoteException) {
-                Logger.e(TAG, "Shizuku Falló la llamada remota: ${e.message}", e)
-                // La falla de la llamada remota puede deberse a la falla del proceso de servicio.,Borra la referencia para que puedas volver a conectarte la próxima vez.
+                Logger.e(TAG, "Shizuku 远程调用失败: ${e.message}", e)
+                // 远程调用失败可能是因为服务进程崩溃,清除引用以便下次重连
                 release()
-                ShizukuExecResult(-1, "", e.message ?: "Excepción de llamada remota")
+                ShizukuExecResult(-1, "", e.message ?: "远程调用异常")
             } catch (e: Throwable) {
-                Logger.e(TAG, "Shizuku excepción de ejecución: ${e.message}", e)
-                ShizukuExecResult(-1, "", e.message ?: "excepción de ejecución")
+                Logger.e(TAG, "Shizuku 执行异常: ${e.message}", e)
+                ShizukuExecResult(-1, "", e.message ?: "执行异常")
             }
         }
     }
 
     /** Stream device-tool output through a pipe into app-private storage, avoiding Binder String caps. */
     suspend fun executeForTool(command: String): ShizukuExecResult = withContext(Dispatchers.IO) {
-        if (!checkPermission()) return@withContext ShizukuExecResult(-1, "", "Shizuku No autorizado")
+        if (!checkPermission()) return@withContext ShizukuExecResult(-1, "", "Shizuku 未授权")
         if (!ensureServiceBound()) {
-            return@withContext ShizukuExecResult(-1, "", "Shizuku shell service Error al vincular")
+            return@withContext ShizukuExecResult(-1, "", "Shizuku shell service 绑定失败")
         }
-        val service = shellService ?: return@withContext ShizukuExecResult(-1, "", "Shizuku shell service No disponible")
+        val service = shellService ?: return@withContext ShizukuExecResult(-1, "", "Shizuku shell service 不可用")
         val pipe = try {
             ParcelFileDescriptor.createPipe()
         } catch (error: Exception) {
-            return@withContext ShizukuExecResult(-1, "", "No se pudo crear la tubería de salida del shell: ${error.message}")
+            return@withContext ShizukuExecResult(-1, "", "创建 Shell 输出管道失败: ${error.message}")
         }
         val readEnd = pipe[0]
         val writeEnd = pipe[1]
@@ -301,11 +370,11 @@ class ShizukuAuthorizer(
         try {
             exitCode = service.executeToPipe(command, writeEnd)
         } catch (error: android.os.RemoteException) {
-            Logger.e(TAG, "Shizuku Error en la transmisión de llamada remota: ${error.message}", error)
+            Logger.e(TAG, "Shizuku 流式远程调用失败: ${error.message}", error)
             remoteFailure = error
             release()
         } catch (error: Throwable) {
-            Logger.e(TAG, "Shizuku Excepción de ejecución de transmisión: ${error.message}", error)
+            Logger.e(TAG, "Shizuku 流式执行异常: ${error.message}", error)
             remoteFailure = error
         } finally {
             runCatching { writeEnd.close() }
@@ -317,7 +386,7 @@ class ShizukuAuthorizer(
             remoteFailure = remoteFailure ?: failure
         }
         if (exitCode < 0 && remoteFailure == null) {
-            remoteFailure = IllegalStateException("Shizuku Se agotó el tiempo de espera del comando o no se pudo ejecutar")
+            remoteFailure = IllegalStateException("Shizuku 命令超时或执行失败")
         }
         val output = if (reader.isAlive) {
             capture.close()
@@ -326,11 +395,11 @@ class ShizukuAuthorizer(
             runCatching {
                 capture.finish(
                     header = if (remoteFailure != null) {
-                        "Shizuku El resultado no se pudo recibir en su totalidad; el siguiente contenido puede estar incompleto"
+                        "Shizuku 输出未能完整接收，以下内容可能不完整"
                     } else {
                         ""
                     },
-                    emptyMessage = "(Sin salida)",
+                    emptyMessage = "(无输出)",
                 )
             }
                 .getOrElse {
@@ -346,16 +415,16 @@ class ShizukuAuthorizer(
         )
     }
 
-    // ── herramientas internas ──────────────────────────────────────────────────────────────
+    // ── 内部工具 ──────────────────────────────────────────────────────────────
 
-    /** R-SVC-03: Desvincular UserService y limpiar referencias(App Salir/Llamado cuando el canal está cerrado.). */
+    /** R-SVC-03: 解绑 UserService 并清理引用(App 退出/通道关闭时调用)。 */
     fun release() {
         val args = boundArgs
         if (args != null) {
             try {
                 Shizuku.unbindUserService(args, serviceConnection, true)
             } catch (e: Throwable) {
-                Logger.w(TAG, "unbindUserService falló: ${e.message}")
+                Logger.w(TAG, "unbindUserService 失败: ${e.message}")
             }
         }
         shellService = null
@@ -364,9 +433,9 @@ class ShizukuAuthorizer(
     }
 
     /**
-     * Asegúrese de que UserService esté vinculado.
-     * - Atado:Regresar directamente true
-     * - no obligado:llamar [Shizuku.bindUserService],Sondeo esperando conexión(hasta 3 segundos)
+     * 确保 UserService 已绑定。
+     * - 已绑定:直接返回 true
+     * - 未绑定:调用 [Shizuku.bindUserService],轮询等待连接(最多 3 秒)
      */
     private suspend fun ensureServiceBound(): Boolean = serviceMutex.withLock {
         if (shellService != null && serviceBound) return@withLock true
@@ -379,17 +448,19 @@ class ShizukuAuthorizer(
                 ComponentName(context.packageName, ShellService::class.java.name),
             ).processNameSuffix("shell")
                 .tag(SHELL_SERVICE_TAG)
-                .version(SHELL_SERVICE_VERSION)
+                // 随 app 版本强制替换旧 UserService 进程（AutoJs6 同口径）；
+                // 固定版本号会让升级后的设备复用旧 AIDL 实现。
+                .version(BuildConfig.VERSION_CODE)
                 .debuggable(BuildConfig.DEBUG)
-                // No retener a los residentes desvinculados de las ataduras actuales UserService,Evite reutilizar procesos AIDL antiguos después de la actualización.
+                // 不保留脱离当前绑定的常驻 UserService,避免升级后复用旧 AIDL 进程。
                 .daemon(false)
             boundArgs = args
-            // Shizuku La devolución de llamada de conexión y Android ServiceConnection se registran en el hilo principal.,
-            // Evite que ciertas ROM no se envíen onServiceConnected cuando se vinculan desde el subproceso IO.
+            // Shizuku 的连接回调与 Android ServiceConnection 统一在主线程注册,
+            // 避免某些 ROM 从 IO 线程绑定时不派发 onServiceConnected。
             withContext(Dispatchers.Main.immediate) {
                 Shizuku.bindUserService(args, serviceConnection)
             }
-            // R-SVC-03: Reemplazar con sondeo de tiempo de espera de rutina Thread.sleep,Evite bloquear el hilo de llamadas.
+            // R-SVC-03: 用协程超时轮询替代 Thread.sleep,避免阻塞调用线程。
             val connected = withTimeoutOrNull(SERVICE_BIND_TIMEOUT_MS) {
                 while (shellService == null) {
                     delay(SERVICE_BIND_POLL_MS)
@@ -397,7 +468,7 @@ class ShizukuAuthorizer(
                 true
             } == true
             if (!connected || shellService == null) {
-                Logger.e(TAG, "bindUserService falló: UserService Tiempo de espera de conexión")
+                Logger.e(TAG, "bindUserService 失败: UserService 连接超时")
                 lastBindFailureAt = System.currentTimeMillis()
                 clearFailedBinding(args)
                 false
@@ -407,7 +478,7 @@ class ShizukuAuthorizer(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Throwable) {
-            Logger.e(TAG, "bindUserService falló: ${e.message}", e)
+            Logger.e(TAG, "bindUserService 失败: ${e.message}", e)
             lastBindFailureAt = System.currentTimeMillis()
             boundArgs?.let(::clearFailedBinding)
             false
@@ -415,20 +486,20 @@ class ShizukuAuthorizer(
     }
 
     /**
-     * Compruebe si Shell UserService está realmente disponible.
+     * 检查 Shell UserService 是否真正可用。
      *
-     * `checkPermission()` Sólo significa que el bit de autorización de Shizuku está CONCEDIDO; el nuevo registro ha demostrado que el bit de autorización es true
-     * Todavía es posible que se agote el tiempo de espera durante la fase bindUserService, por lo que la página de configuración y el estado de la capacidad no pueden simplemente mirar el bit de autorización.
+     * `checkPermission()` 只代表 Shizuku 授权位为 GRANTED；新日志已证明授权位为 true
+     * 仍可能在 bindUserService 阶段超时，因此设置页和能力状态不能只看授权位。
      */
     suspend fun checkReady(): Boolean {
         if (!checkPermission()) return false
         return ensureServiceBound()
     }
 
-    /** Cancele la conexión pendiente cuando el enlace falle para evitar la superposición de devoluciones de llamada antiguas en la siguiente ejecución. */
+    /** 绑定失败时撤销待处理连接，避免下一次执行叠加旧 callback。 */
     private fun clearFailedBinding(args: Shizuku.UserServiceArgs) {
         runCatching { Shizuku.unbindUserService(args, serviceConnection, true) }
-            .onFailure { Logger.w(TAG, "Error en la limpieza Error en el enlace del servicio de usuario: ${it.message}") }
+            .onFailure { Logger.w(TAG, "清理失败的 UserService 绑定失败: ${it.message}") }
         if (boundArgs === args) {
             boundArgs = null
             shellService = null
@@ -436,7 +507,7 @@ class ShizukuAuthorizer(
         }
     }
 
-    /** Analizar lo que devuelve UserService "exitCode\u0000stdout\u0000stderr" Cadena de formato. */
+    /** 解析 UserService 返回的 "exitCode\u0000stdout\u0000stderr" 格式字符串。 */
     private fun parseExecResult(raw: String): ShizukuExecResult {
         val parts = raw.split('\u0000', limit = 3)
         val exitCode = parts.getOrNull(0)?.toIntOrNull() ?: -1
@@ -445,10 +516,11 @@ class ShizukuAuthorizer(
         return ShizukuExecResult(exitCode, stdout, stderr)
     }
 
-    /** Shizuku La fase de disponibilidad real del servicio. */
+    /** Shizuku 服务的真实可用阶段。 */
     enum class ShizukuState {
         NOT_INSTALLED,
         NOT_RUNNING,
+        VERSION_TOO_OLD,
         NOT_AUTHORIZED,
         USER_SERVICE_UNAVAILABLE,
         READY,
@@ -461,7 +533,7 @@ class ShizukuAuthorizer(
         val isReady: Boolean get() = state == ShizukuState.READY
     }
 
-    /** Shizuku Resultado de la ejecución del comando. */
+    /** Shizuku 命令执行结果。 */
     data class ShizukuExecResult(
         val exitCode: Int,
         val stdout: String,

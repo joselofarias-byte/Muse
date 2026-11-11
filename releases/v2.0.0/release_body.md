@@ -1,20 +1,20 @@
 # Muse v2.0.0
 
-Actualización de versión importante.v2.0 Los enlaces de diálogo, el sistema de memoria y la automatización del extremo se han reconstruido sistemáticamente y se ha incorporado una serie de nuevas capacidades de conexión e interacción. Se recomienda a todos los usuarios actualizar.
+重大版本更新。v2.0 对对话链路、记忆系统与端侧自动化做了系统性重构，并带来一批新的连接与交互能力。建议所有用户升级。
 
-## Lo más destacado
+## 亮点
 
-- **Reconstrucción del vínculo de diálogo**: Enrutamiento de modelos de tareas (cambio automático de modelos según el tipo de tarea), constelación de memoria, tareas programadas y reconocimiento de voz (ASR) ha sido completamente renovado; el ritmo de transmisión de respuestas largas es más estable y la cadena de pensamiento profundo ya no se ve interrumpida por mensajes cortos.
-- **constelación de memoria**: Vista de mapa estelar recién agregada en el centro de memoria —— Los hechos y las relaciones se muestran agrupados por tema, con recuerdos importantes cerca del centro y soporte para hacer clic, editar, fijar y confirmar relaciones.
-- **Capacidades del agente Android**: Después de la autorización, puede leer el contenido de la pantalla y realizar operaciones como hacer clic e ingresar; Se agrega un nuevo lote de herramientas a nivel del sistema (configuraciones para lectura y escritura, inicio de aplicaciones, administración de paquetes, lectura de registros, inyección de entradas, etc.), todas las cuales pasan por el enlace de aprobación y auditoría. (Se requiere autorización de Shizuku o Root)
-- **Conéctate y expande**: Channel Bridge (recepción de mensajes Feishu/QQ/webhook), tarjetas interactivas, operaciones de páginas web, paneles de interfaz de usuario complementarios,OAuth Conector, importación de paquetes de habilidades, anotación de mensajes, autorización de puente de notificación, ventana flotante de subagente.
+- **对话链路重构**：任务模型路由（按任务类型自动切换模型）、记忆星座、定时任务与语音识别（ASR）全面重做；长回复流式节拍更稳，深度思考链不再被短消息打断。
+- **记忆星座**：记忆中心新增星图视图 —— 按主题聚簇展示事实与关系，重要记忆靠近中心，支持点选、编辑、置顶与关系确认。
+- **安卓 Agent 能力**：授权后可读取屏幕内容并执行点击、输入等操作；新增一批系统级工具（设置读写、启动应用、包管理、日志读取、输入注入等），全部走审批与审计链路。（需要 Shizuku 或 Root 授权）
+- **连接与扩展**：渠道桥（飞书 / QQ / webhook 消息接收）、交互式卡片、网页操作、插件 UI 面板、OAuth 连接器、技能包导入、消息批注、通知桥授权、子代理浮窗。
 
-## Experiencia y pulido.
+## 体验与打磨
 
-- v2.0 Retrabajo visual: sistema de burbujas de mensajes (usuario/Diferenciación de asistente, cola, cursor de transmisión), la animación de bucle global se ralentizó a un engranaje más cómodo, memoria/tarea/proveedor y otros rediseños importantes de la página.
-- Concéntrese en pulir antes del lanzamiento: estado vacío y corrección de contraste, jerarquía de interruptores y botones, accesibilidad al cuadro de búsqueda, comentarios sobre guardar/importar/selección de imágenes y otras operaciones.7 Sincronización de copia de idioma.
+- v2.0 视觉重做：消息气泡体系（用户/助手差异化、尾部、流式光标）、全局循环动效放慢至更舒适的档位、记忆 / 任务 / 供应商等主要页面重设计。
+- 发布前集中打磨：空态与对比度修正、开关与按钮层级、搜索框无障碍、保存 / 导入 / 选图等操作的反馈补齐、7 语言文案同步。
 
-## Descripción
+## 说明
 
-- Tiene la misma firma que v1.0.x y se puede sobrescribir e instalar directamente; la base de datos se migra automáticamente durante la actualización y los datos originales no se ven afectados.
-- Si tiene algún problema, utilice la "Configuración" de la aplicación → Acerca de → Comentarios" enviados.
+- 与 v1.0.x 同签名，可直接覆盖安装；升级时数据库自动迁移，原有数据不受影响。
+- 如遇问题请通过应用内「设置 → 关于 → 反馈」提交。

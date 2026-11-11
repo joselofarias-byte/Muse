@@ -6,28 +6,28 @@ import java.net.InetAddress
 import java.net.NetworkInterface
 
 /**
- * Los resultados del análisis de la "dirección de acceso" de la versión web.
+ * 网页版「访问地址」的解析结果。
  *
- * Sólo se describen la dirección y el rango visible, no el estado de ejecución. —— La persona que llama determina si el servicio se está ejecutando
- * `WebServer.isRunning` Obtener, en la configuración `enabled` No basta con representar el estado operativo real.
+ * 只描述地址与可见范围，不含运行状态 —— 服务是否在跑由调用方从
+ * `WebServer.isRunning` 取，配置里的 `enabled` 不足以代表真实运行状态。
  */
 internal data class WebAccessAddress(
-    /** Direcciones de acceso disponibles;null Significa que el acceso a la LAN está habilitado pero no se obtiene la IP de la LAN. La persona que llama debería preguntar en lugar de dejarlo en blanco. */
+    /** 可用的访问地址；null 表示开了局域网访问但没拿到局域网 IP，调用方要提示而不是留空。 */
     val url: String?,
-    /** true Indica que actualmente solo es accesible para esta máquina ([WebServerConfig.allowLan] cerrar). */
+    /** true 表示当前仅本机可访问（[WebServerConfig.allowLan] 关闭）。 */
     val localOnly: Boolean,
 )
 
-/** La dirección de bucle invertido utilizada para el acceso solo local. */
+/** 仅本机访问时使用的回环地址。 */
 private const val LOOPBACK_HOST = "127.0.0.1"
 
-/** Preferencia de nombre de tarjeta de red: tome el primer prefijo seleccionado en orden, primero el inalámbrico y el resto (incluidas las tarjetas de red virtuales) al final. */
+/** 网卡名偏好：按顺序取第一个命中的前缀，无线优先，其余（含虚拟网卡）垫底。 */
 private val LAN_INTERFACE_PREFIXES = listOf("wlan", "ap", "eth")
 
 /**
- * Dirección de acceso a la asamblea:`http://<ip>:<port>`;[ip] Devuelve nulo si está vacío.
+ * 组装访问地址：`http://<ip>:<port>`；[ip] 为空时返回 null。
  *
- * Es una función pura, compartida por la página y la prueba única, y no lee el estado del sistema.
+ * 纯函数，供页面与单测共用，不读系统状态。
  */
 internal fun buildWebAccessUrl(ip: String?, port: Int, https: Boolean = false): String? {
     val host = ip?.trim().orEmpty()
@@ -37,40 +37,36 @@ internal fun buildWebAccessUrl(ip: String?, port: Int, https: Boolean = false): 
 }
 
 /**
- * Presione "Si abrir la LAN" para calcular la dirección de acceso que se mostrará en la página.
+ * 按「是否开放局域网」折算页面要展示的访问地址。
  *
- * - El acceso LAN está cerrado: la dirección de bucle invertido está fijada y marcada [WebAccessAddress.localOnly]
- * - El acceso LAN está habilitado: use IP LAN; cuando no se obtiene IP [WebAccessAddress.url] para null
+ * - 局域网访问关闭：固定回环地址，并标记 [WebAccessAddress.localOnly]
+ * - 局域网访问开启：用局域网 IP；没拿到 IP 时 [WebAccessAddress.url] 为 null
  */
-internal fun resolveWebAccessAddress(
-    allowLan: Boolean,
-    lanIp: String?,
-    port: Int,
-    https: Boolean = false,
-): WebAccessAddress = if (allowLan) {
-    WebAccessAddress(url = buildWebAccessUrl(lanIp, port, https), localOnly = false)
-} else {
-    WebAccessAddress(url = buildWebAccessUrl(LOOPBACK_HOST, port, https), localOnly = true)
-}
+internal fun resolveWebAccessAddress(allowLan: Boolean, lanIp: String?, port: Int, https: Boolean = false): WebAccessAddress =
+    if (allowLan) {
+        WebAccessAddress(url = buildWebAccessUrl(lanIp, port, https), localOnly = false)
+    } else {
+        WebAccessAddress(url = buildWebAccessUrl(LOOPBACK_HOST, port, https), localOnly = true)
+    }
 
-/** Una dirección de candidato en una tarjeta de red. */
+/** 一张网卡上的一个候选地址。 */
 internal data class LanIpCandidate(
-    /** Nombre de la tarjeta de red, como `wlan0`. */
+    /** 网卡名，如 `wlan0`。 */
     val interfaceName: String,
-    /** Dirección IPv4 decimal con puntos. */
+    /** 点分十进制 IPv4 地址。 */
     val address: String,
-    /** Si pertenece a un segmento de red privada (`siteLocal`). */
+    /** 是否属于私有网段（`siteLocal`）。 */
     val siteLocal: Boolean,
-    /** Ya sea para hacer un bucle invertido en la dirección. */
+    /** 是否回环地址。 */
     val loopback: Boolean,
 )
 
 /**
- * Elija un IPv4 que pueda usarse para el acceso LAN desde las direcciones candidatas.
+ * 从候选地址里挑一个可用于局域网访问的 IPv4。
  *
- * Reglas: excluir direcciones de bucle invertido, direcciones de segmentos de red no privadas y direcciones vacías; visitas al nombre de la tarjeta de red [LAN_INTERFACE_PREFIXES]
- * delante de la fila (`wlan` → `ap` → `eth`, una tarjeta de red virtual como `docker0` clasificado en último lugar);
- * Se mantiene el orden de enumeración del mismo archivo y se toma el primero disponible.
+ * 规则：排除回环地址、非私有网段地址与空地址；网卡名命中 [LAN_INTERFACE_PREFIXES]
+ * 的排前面（`wlan` → `ap` → `eth`，虚拟网卡如 `docker0` 排最后）；
+ * 同档保持枚举顺序，取第一个可用的。
  */
 internal fun pickLanIpAddress(candidates: List<LanIpCandidate>): String? {
     var best: LanIpCandidate? = null
@@ -86,17 +82,16 @@ internal fun pickLanIpAddress(candidates: List<LanIpCandidate>): String? {
     return best?.address
 }
 
-/** El orden de preferencia de los nombres de las tarjetas de red; devuelto cuando no se alcanza la lista de preferencias. [Int.MAX_VALUE]. */
+/** 网卡名的偏好次序；未命中偏好表时返回 [Int.MAX_VALUE]。 */
 private fun interfaceRank(interfaceName: String): Int {
     val index = LAN_INTERFACE_PREFIXES.indexOfFirst { interfaceName.startsWith(it) }
     return if (index < 0) Int.MAX_VALUE else index
 }
 
-/** Enumere la dirección LAN IPv4 del dispositivo actual; devuelve nulo si no se puede obtener. */
-internal fun resolveLanIpAddress(): String? =
-    runCatching { pickLanIpAddress(collectLanIpCandidates()) }.getOrNull()
+/** 枚举当前设备的局域网 IPv4 地址；取不到时返回 null。 */
+internal fun resolveLanIpAddress(): String? = runCatching { pickLanIpAddress(collectLanIpCandidates()) }.getOrNull()
 
-/** Recorra todas las tarjetas de red y recopile candidatos IPv4 sin bucle invertido(Se eliminará el sufijo de identificación de zona en la dirección.). */
+/** 遍历所有网卡，收集非回环 IPv4 候选(地址里的 zone id 后缀会被去掉)。 */
 private fun collectLanIpCandidates(): List<LanIpCandidate> {
     val result = mutableListOf<LanIpCandidate>()
     for (nic in NetworkInterface.getNetworkInterfaces().toList()) {
@@ -109,7 +104,7 @@ private fun collectLanIpCandidates(): List<LanIpCandidate> {
     return result
 }
 
-/** Convertir una dirección en la tarjeta de red en una candidata; devuelve nulo si no es IPv4 o no puede obtener una dirección con puntos. */
+/** 把网卡上的一个地址折算成候选；非 IPv4 或拿不到点分地址时返回 null。 */
 private fun ipv4CandidateOf(nic: NetworkInterface, address: InetAddress): LanIpCandidate? {
     val ipv4 = address as? Inet4Address ?: return null
     val host = ipv4.hostAddress?.substringBefore('%') ?: return null
@@ -122,34 +117,29 @@ private fun ipv4CandidateOf(nic: NetworkInterface, address: InetAddress): LanIpC
 }
 
 /**
- * El límite del efecto secundario del cambio de versión web: escribir configuración + iniciar y detener servicios.
+ * 网页版开关的副作用边界：写配置 + 启停服务。
  *
- * El propósito de la interfaz de extracción es permitir que la lógica del conmutador realice afirmaciones sin Android/Ktor (consulte WebAccessToggleTest).
+ * 抽成接口是为了让开关逻辑可以脱离 Android / Ktor 做断言（见 WebAccessToggleTest）。
  */
 internal interface WebAccessHost {
-    /** Escribir configuración de persistencia. */
+    /** 写入持久化配置。 */
     suspend fun saveConfig(config: WebServerConfig)
 
-    /** Inicie el servicio y regrese si tuvo éxito. */
+    /** 启动服务，返回是否成功。 */
     suspend fun startServer(): Boolean
 
-    /** Detenga el servicio y libere el puerto. */
+    /** 停止服务并释放端口。 */
     suspend fun stopServer()
 }
 
 /**
- * Cambie a "Habilitar versión web": primero establezca la configuración y luego inicie o detenga el servicio según sea necesario.
+ * 切换「启用网页版」：先落配置，再按需启动或停止服务。
  *
- * El servicio no se reiniciará si ya se está ejecutando; cuando el interruptor esté apagado, solo se detendrá cuando esté realmente en funcionamiento para evitar paradas innecesarias.
+ * 服务已经跑着就不重复启动；关掉开关时只在确实运行时才停，避免多余的 stop。
  *
- * @return El estado de ejecución real del servicio después del cambio.
+ * @return 切换后服务的实际运行状态
  */
-internal suspend fun applyWebAccessEnabled(
-    host: WebAccessHost,
-    current: WebServerConfig,
-    enabled: Boolean,
-    running: Boolean,
-): Boolean {
+internal suspend fun applyWebAccessEnabled(host: WebAccessHost, current: WebServerConfig, enabled: Boolean, running: Boolean): Boolean {
     host.saveConfig(current.copy(enabled = enabled))
     if (!enabled) {
         if (running) host.stopServer()

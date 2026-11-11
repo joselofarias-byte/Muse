@@ -6,17 +6,17 @@ import java.time.Instant
 import java.time.ZoneId
 
 /**
- * get_token_usage Herramienta: El modelo autoverifica su propio consumo de tokens y ocupación de contexto.
+ * get_token_usage 工具：模型自查自己的 token 消耗与上下文占用。
  *
- * Los datos están en capas, cada una de las cuales proviene del lugar donde realmente se recuerdan:
- *  - cantidad total/Hoy:`usage_records` Canalización (una línea por solicitud de modelo, incluidas solicitudes que no son de diálogo, como compresión y creación de títulos),
- *    Reutilización directa [UsageRecordDao] La consulta de agregación existente no introduce un segundo conjunto de calibres.
- *  - Esta sesión:`usage_records` No hay dimensión de sesión. El número de esta sesión se toma de la medición real del proveedor en mensajes.
- *    Campo de uso (inyectado en el lector por el host). La identificación de la sesión está dada por [ToolExecutionContext] Siempre que el modelo no pueda ser falsificado,
- *    Si no puede obtenerlo, simplemente informe la situación general y no adivine según la ventana de tiempo.
- *  - Ocupación de contexto: pertenece al estado de memoria de ViewModel y el host la inyecta en el proveedor; si no se inyecta, se omite toda la línea.
+ * 数据分层，各自来自真正记着它的地方：
+ *  - 全量/今日：`usage_records` 流水（每次模型请求一行，含压缩、起标题等非对话请求），
+ *    直接复用 [UsageRecordDao] 已有的聚合查询，不引入第二套口径。
+ *  - 本会话：`usage_records` 没有会话维度，本会话的数字取自 messages 上 provider 实测的
+ *    用量字段（由宿主注入读取器）。会话 id 由 [ToolExecutionContext] 提供，模型无法伪造，
+ *    拿不到就只报全局，不按时间窗口猜。
+ *  - 上下文占用：属于 ViewModel 内存态，由宿主注入供应商；未注入则整行省略。
  *
- * La salida se fija en unas pocas líneas de texto breve y los números se abrevian como k/M, que se pueden leer en una pantalla.
+ * 输出固定为几行短文本，数字按 k/M 简写，一屏内看完。
  */
 object TokenUsageTool {
 
@@ -29,7 +29,7 @@ object TokenUsageTool {
     private const val TOP_MODEL_LIMIT = 5
     private const val TOP_SOURCE_LIMIT = 4
 
-    /** Uso acumulativo de esta sesión (requests / entrada/salida). */
+    /** 本会话累计用量（requests / 输入 / 输出）。 */
     data class SessionUsage(
         val requests: Int,
         val promptTokens: Long,
@@ -38,9 +38,9 @@ object TokenUsageTool {
 
     fun toolDef() = ToolRegistry.ToolDef(
         name = NAME,
-        description = "Consumo de token de consulta y ocupación de contexto: acumulado en esta sesión, hoy/Total acumulado de todas las fuentes, distribución por modelo," +
-            "Ocupación del contexto actual y límite superior. Los usuarios preguntan \"¿Cuántos tokens se han utilizado?\" \"¿Cuánto se ha gastado hoy?\" \"¿Cuánto contexto queda?\"" +
-            "O llámelo cuando necesite autoverificar los costos. Lectura pura, sin parámetros requeridos.",
+        description = "查询 token 消耗和上下文占用：本会话累计、今日/累计全来源合计、按模型分布、" +
+            "当前上下文占用量与上限。用户问「用了多少 token」「今天花了多少」「上下文还剩多少」" +
+            "或需要自查成本时调用。纯读取，无必填参数。",
         parameters = mapOf(
             "scope" to
                 "Optional. 'today' (default) = all sources since local midnight; " +
@@ -52,13 +52,13 @@ object TokenUsageTool {
     )
 
     /**
-     * Ejecute la consulta.
+     * 执行查询。
      *
-     * @param dao El registro de uso es de sólo lectura; cuando es nulo, informará claramente que no está disponible y no se utilizarán datos vacíos para fingir que tiene éxito.
-     * @param sessionUsage Este lector de uso de sesión (el parámetro de entrada es la identificación de sesión inyectada por el host).
-     * @param contextOccupancy proveedor de ocupación de contexto (ocupación actual, Límite superior); si no está disponible, devuelve nulo.
-     * @param now La hora actual, se puede inyectar la prueba.
-     * @param zone zona horaria,"hoy"Comienza a las 00:00 en esta zona horaria.
+     * @param dao 用量流水只读口；为 null 时明确报不可用，不用空数据假装成功。
+     * @param sessionUsage 本会话用量读取器（入参为宿主注入的会话 id）。
+     * @param contextOccupancy 上下文占用供应商（当前占用, 上限）；拿不到返回 null。
+     * @param now 当前时间，测试可注入。
+     * @param zone 时区，"今日"按此时区的 00:00 起算。
      */
     @Suppress("LongParameterList")
     suspend fun execute(
@@ -98,17 +98,14 @@ object TokenUsageTool {
         return if (lines.isEmpty()) "No token usage recorded yet." else lines.joinToString("\n")
     }
 
-    // ── Lectura de datos ──
+    // ── 数据读取 ──
 
-    private suspend fun readSessionUsage(
-        sessionId: String,
-        reader: (suspend (String) -> SessionUsage?)?,
-    ): SessionUsage? {
+    private suspend fun readSessionUsage(sessionId: String, reader: (suspend (String) -> SessionUsage?)?): SessionUsage? {
         if (sessionId.isEmpty() || reader == null) return null
         return runCatching { reader(sessionId) }.getOrNull()
     }
 
-    /** Tres líneas de total/fuente/modelo dentro de la ventana de tiempo; si no hay registro, dé una explicación clara. */
+    /** 时间窗口内的合计 / 来源 / 模型三行；没有任何记录时给一句明确说明。 */
     private suspend fun windowLines(dao: UsageRecordDao, sinceMs: Long): String {
         val totals: UsageTotals? = runCatching { dao.totalsSince(sinceMs) }.getOrNull()
         if (totals == null || totals.requests <= 0) return "  total: no requests recorded in this window"
@@ -137,7 +134,7 @@ object TokenUsageTool {
         }.trimEnd('\n')
     }
 
-    /** línea para esta sesión. Cuando no se pueda obtener el ID de la sesión, o no haya un uso medido real, se darán instrucciones claras sin omisiones ni conjeturas. */
+    /** 本会话那一行。会话 id 拿不到、或没有任何实测用量时都给出明确说明，不省略也不瞎猜。 */
     private fun sessionLine(sessionId: String, usage: SessionUsage?): String = when {
         sessionId.isEmpty() -> "  session: unavailable (current session id is unknown)"
         usage == null -> "  session: no measured usage yet in this conversation"
@@ -148,7 +145,7 @@ object TokenUsageTool {
                 " · all ${formatTokens(usage.promptTokens + usage.completionTokens)}"
     }
 
-    /** El contexto ocupa esa fila; falta el proveedor o se desconoce el límite superior (0) devuelve nulo y se omite toda la línea. */
+    /** 上下文占用那一行；供应商缺失或上限未知（0）时返回 null，整行省略。 */
     private fun contextLine(provider: (() -> Pair<Int, Int>?)?): String? {
         val pair = runCatching { provider?.invoke() }.getOrNull() ?: return null
         val used = pair.first.coerceAtLeast(0)
@@ -157,13 +154,13 @@ object TokenUsageTool {
         return "  context: ${formatTokens(used.toLong())} / ${formatTokens(max.toLong())} (${used * 100 / max}%)"
     }
 
-    // ── Función pura (para probar el calibre)──
+    // ── 纯函数（供测试钉住口径）──
 
-    /** La marca de tiempo de milisegundos de las 00:00 de hoy en la zona horaria local. */
+    /** 本地时区当天 00:00 的毫秒时间戳。 */
     internal fun startOfLocalDay(nowMs: Long, zone: ZoneId): Long =
         Instant.ofEpochMilli(nowMs).atZone(zone).toLocalDate().atStartOfDay(zone).toInstant().toEpochMilli()
 
-    /** Abreviatura numérica:<1k tal cual, de lo contrario presione k / M / B Abreviaturas, los decimales se conservan sólo cuando sea necesario (12.3k / 21k). */
+    /** 数字简写：<1k 原样，否则按 k / M / B 缩写，小数位仅在需要时保留（12.3k / 21k）。 */
     internal fun formatTokens(value: Long): String {
         val v = value.coerceAtLeast(0)
         return when {

@@ -1,5 +1,0 @@
-Contrato de entrega(restricciones internas,No se muestra a los usuarios):
-- No se limite a escribir una ruta de archivo en el texto y se entregará.;Entregar el archivo en sí como resultado.,Los métodos de visualización y envío son manejados por el consumidor.
-- No decidas cómo mostrarlo al consumidor.(¿Debería haber una ventana emergente, debería descargarse y en qué forma debería presentarse?);Eres responsable de producir resultados.,La visualización se deja en manos del anfitrión y la plataforma.
-- Al realizar la entrega, utilice un lenguaje natural para explicar claramente qué se hizo y dónde están los resultados.;No enumere detalles de implementación interna ni trate los procesos como entregables.
-- No afirmes que se hizo sin pruebas.;distinguir"salvado"con"Ya efectivo".

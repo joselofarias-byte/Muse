@@ -4,18 +4,18 @@ import { DEFAULT_LOCALE, type Locale } from "../i18n/locale.js";
 import { dayKey, formatDaySeparator } from "./format.js";
 
 /**
- * Lista de representación del flujo de mensajes: inserte una separación de tiempo delante de los mensajes transfronterizos por día.
+ * 消息流的渲染清单：按天在跨界的消息前面插入一条时间分隔。
  *
- * Reglas (alineadas con el DateSeparator de la aplicación, más tres restricciones en la página web):
- *  - Las barras separadoras se insertan por día: dos mensajes adyacentes se interrumpen sólo si pertenecen a días calendario diferentes;
- *  - Los mensajes continuos dentro del mismo minuto nunca serán interrumpidos repetidamente.——El mismo minuto debe ser el mismo día, y el agrupamiento por días lo ha garantizado;
- *    Cuando el texto de la copia es el mismo que el separador anterior, ya no se insertará repetidamente y el desorden de la marca de tiempo/datos degenerados duplicados no estampará la lista en una barra separadora;
- *  - Los mensajes con marcas de tiempo faltantes o ilegales no participarán en el agrupamiento y solo se procesarán como de costumbre sin generar separadores;
- *  - Agregue un elemento más al principio de la lista: no hay una fecha de encabezado de sesión de la aplicación en la que confiar en la página web. Al abrir una sesión histórica
- *    Debes saber a primera vista de qué fecha proviene esta tanda de noticias.
+ * 规则（和 App 的 DateSeparator 对齐，再加网页端的三条约束）：
+ *  - 分隔条按天插：相邻两条消息分属不同日历日才打断；
+ *  - 同一分钟内的连续消息绝不重复打断——同分钟必然同一天，按天分桶已经保证了这一点；
+ *    文案与上一条分隔相同时也不再重复插，时间戳乱序 / 重复的退化数据不会把列表戳成一片分隔条；
+ *  - 时间戳缺失 / 非法的消息不参与分桶，只照常渲染，不产生分隔条；
+ *  - 列表最上方补一条：网页端没有 App 的会话头部日期可依赖，打开一个历史会话时
+ *    必须第一眼知道这批消息是哪天的。
  *
- * key La unicidad se maneja por separado:Host La identificación es un UUID que, en teoría, no se repite en la instantánea, pero puede colisionar después de paginar y fusionar.
- * El número de secuencia se complementa cuando se repite para evitar que React reutilice el nodo incorrecto.
+ * key 的唯一性单独处理：Host 的 id 是 UUID，快照里理论上不重复，但分页合并后可能撞上，
+ * 重复时补序号，避免 React 复用错节点。
  */
 
 export type StreamItem =
@@ -62,9 +62,9 @@ export function buildStreamItems(
 }
 
 /**
- * El estado del bloque de llamada de herramienta. No hay ningún campo de estado a nivel de mensaje en el protocolo. Aquí solo utilizamos los campos existentes para inferir y no hacemos conjeturas infundadas:
- * Hay el mismo en la lista de aprobación. toolCallId → Pendiente de confirmación; toda la conversación todavía se está generando y es la última entrada en esta conversación → En ejecución;
- * De lo contrario role=tool significa que se ha completado y se ha iniciado la llamada iniciada por el asistente (el resultado aún no se ha devuelto o está doblado en el texto).
+ * 工具调用块的状态。协议里没有消息级 status 字段，这里只用现有字段推断，不做无根据的猜测：
+ * 审批表里有同一个 toolCallId → 待确认；整会话仍在生成且是本会话最后一条 → 执行中；
+ * 否则 role=tool 的是已完成，助手侧发起的调用是已发起（结果还没回来，或就折在正文里）。
  */
 export type ToolStatus = "awaiting" | "running" | "done" | "requested";
 

@@ -9,40 +9,40 @@ import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.serializer
 import java.io.File
 
-/** Una instantánea de los directorios disponibles actualmente;[signedCatalog] cuando es nulo [entries] Debe estar vacío. */
+/** 当前可用目录快照；[signedCatalog] 为 null 时 [entries] 必为空。 */
 internal data class CatalogSnapshot(
     val signedCatalog: SignedPluginCatalog?,
     val entries: List<PluginCatalogEntry>,
-    /** El caché existe pero no está disponible (caducado)./Error en la verificación de firma/dañado) para la visualización de la interfaz de usuario. */
+    /** 缓存存在但不可用（过期/验签失败/损坏）时的原因，供 UI 展示。 */
     val error: String? = null,
 )
 
-/** Secuencia grabada:[byCatalog] Para registros de subdirectorio,[legacy] Es un valor global heredado (su propiedad aún está por determinarse). */
+/** 已记录的 sequence：[byCatalog] 为分目录记录，[legacy] 为旧版全局值（归属待定）。 */
 internal data class RecordedSequences(
     val byCatalog: Map<String, Long>,
     val legacy: Long?,
 )
 
-/** actualizar resultados;[Rejected] El caché no se modificará,UI Se debe conservar la última entrada disponible y mostrar el motivo. */
+/** 刷新结果；[Rejected] 不会改动缓存，UI 应保留上一次可用条目并展示原因。 */
 internal sealed class CatalogRefreshResult {
-    /** URL del directorio no configurada. */
+    /** 目录 URL 未配置。 */
     data object NotConfigured : CatalogRefreshResult()
 
-    /** Después de extraer y pasar la verificación de la firma, el caché ha avanzado;sequence Ni la reversión ni el vencimiento pueden llegar aquí. */
+    /** 拉取并通过验签，缓存已推进；sequence 回退与过期都到不了这里。 */
     data class Updated(val signedCatalog: SignedPluginCatalog) : CatalogRefreshResult()
 
-    /** Si la extracción o la verificación fallan, la caché y la secuencia aceptada permanecen sin cambios. */
+    /** 拉取或校验失败，缓存与已接受 sequence 保持不变。 */
     data class Rejected(val reason: String) : CatalogRefreshResult()
 }
 
 /**
- * Almacén de directorios de complementos: responsable del almacenamiento en caché del directorio, los registros de secuencia aceptados y la caducidad/Rechazo rechazado.
+ * 插件目录仓库：负责目录缓存、已接受 sequence 记录与过期/回退拒绝。
  *
- * Límite de seguridad:
- *  - Todas las entradas provienen únicamente de [PluginCatalogVerifier] Directorio de firmas verificadas;
- *  - La secuencia ha sido aceptada y persistida en el directorio privado de Android junto con el directorio, pero aún se niega a retroceder después de reiniciar;
- *  - Error al actualizar/El último caché verificado nunca se sobrescribirá cuando se rechace (se cerrará en caso de error, en lugar de borrarse o degradarse);
- *  - La raíz de la clave pública de confianza está dada por [trustRootKeys] Proporcionar (aplicar/Configurado explícitamente por el usuario) y nunca leído desde el directorio mismo.
+ * 安全边界：
+ *  - 所有条目只来自 [PluginCatalogVerifier] 验证通过的签名目录；
+ *  - 已接受 sequence 与目录一起持久化在 Android 私有目录，重启后仍拒绝回退；
+ *  - 刷新失败/被拒时绝不覆盖上一份已验证缓存（失败关闭，而不是清空或降级）；
+ *  - 信任根公钥由 [trustRootKeys] 提供（应用/用户显式配置），绝不从目录自身读取。
  */
 internal class PluginCatalogRepository(
     private val client: PluginCatalogClient,
@@ -58,26 +58,26 @@ internal class PluginCatalogRepository(
     @Volatile
     private var cacheLoaded = false
 
-    /** null Indica que no hay directorios autenticados (no configurados/caché no está disponible). */
+    /** null 表示无任何已验证目录（未配置/缓存不可用）。 */
     private var verifiedCatalog: SignedPluginCatalog? = null
 
-    /** La secuencia más grande aceptada para cada ID de directorio; faltante significa que el directorio aún no ha sido aceptado. */
+    /** 每个目录 id 已接受的最大 sequence；缺失表示该目录尚未接受过。 */
     private val acceptedSequences = mutableMapOf<String, Long>()
 
-    /** Razón por la cual el último caché no estaba disponible, para explicación de la interfaz de usuario“¿Por qué el mercado está vacío?”. */
+    /** 上次缓存不可用的原因，用于 UI 解释“为什么市场是空的”。 */
     private var cacheError: String? = null
 
-    /** Lee el caché local (idempotente); devuelve una entrada disponible en la caché o el motivo de la indisponibilidad. */
+    /** 读取本地缓存（幂等）；返回缓存中的可用条目或不可用原因。 */
     suspend fun loadCache(): CatalogSnapshot = withContext(Dispatchers.IO) {
         ensureCacheLoaded()
         synchronized(lock) { snapshotLocked() }
     }
 
     /**
-     * Extraiga y verifique el directorio.
+     * 拉取并校验目录。
      *
-     * En caso de éxito, se escribe la memoria caché y se avanza la secuencia aceptada; en caso de error, el caché y la secuencia permanecen sin cambios.
-     * La persona que llama debe asegurarse de que [catalogUrl] desde el elemento de configuración.
+     * 成功后写入缓存并推进已接受 sequence；失败时缓存与 sequence 保持不变。
+     * 调用方需自行保证 [catalogUrl] 来自设置项。
      */
     suspend fun refresh(catalogUrl: String): CatalogRefreshResult = withContext(Dispatchers.IO) {
         val url = catalogUrl.trim()
@@ -89,12 +89,12 @@ internal class PluginCatalogRepository(
         }
         val fetched = client.fetch(url)
         val signed = fetched.signedCatalog
-            ?: return@withContext CatalogRefreshResult.Rejected(fetched.error ?: "Error al extraer el directorio")
-        // P2-25: La verificación y el compromiso deben ser atómicos.(en la misma cerradura) —
-        //  La implementación original bloquea la lectura interna primero. sequence → Verificación de desbloqueo → Escribe de nuevo dentro de la cerradura otra vez.,Cuando dos actualizaciones simultáneas,
-        //  La parte que presente la solicitud más tarde puede rebobinar la secuencia desde un valor alto hasta un valor bajo.(La validación se basa en caducados. lastAccepted).
-        //  Aquí, "leer la última aceptación + verificación + escribir caché + secuencia avanzada" se coloca en la cerradura en su conjunto:
-        //  Dos serializaciones de actualización simultáneas,sequence Estrictamente monótono sin regresión.
+            ?: return@withContext CatalogRefreshResult.Rejected(fetched.error ?: "目录拉取失败")
+        // P2-25: 校验与提交必须原子(同一锁内) —
+        //  原实现先锁内读 sequence → 锁外校验 → 再锁内写回,两个并发 refresh 时,
+        //  后提交的一方可能把 sequence 从高值倒回低值(校验基于已过期的 lastAccepted)。
+        //  这里把「读最新 accepted + 校验 + 写缓存 + 推进 sequence」整体放进锁内:
+        //  两个并发 refresh 串行化,sequence 严格单调不回退。
         val outcome = synchronized(lock) {
             val catalogId = signed.payload.catalogId
             val lastAccepted = acceptedSequences[catalogId]
@@ -106,16 +106,16 @@ internal class PluginCatalogRepository(
             )
             if (!verification.valid) {
                 val reason = translateReason(verification.reason)
-                Logger.w(TAG, "Verificación del directorio rechazada: ${verification.reason}")
+                Logger.w(TAG, "目录校验被拒绝: ${verification.reason}")
                 return@synchronized CatalogRefreshResult.Rejected(reason)
             }
             val updated = acceptedSequences.toMutableMap().apply { this[catalogId] = signed.payload.sequence }
             try {
                 persist(signed, updated)
             } catch (error: Exception) {
-                Logger.e(TAG, "Error al escribir en la caché del directorio", error)
+                Logger.e(TAG, "目录缓存写入失败", error)
                 return@synchronized CatalogRefreshResult.Rejected(
-                    "Error al escribir en la caché del directorio: ${error.message ?: "unknown"}",
+                    "目录缓存写入失败: ${error.message ?: "unknown"}",
                 )
             }
             verifiedCatalog = signed
@@ -127,24 +127,24 @@ internal class PluginCatalogRepository(
         return@withContext outcome
     }
 
-    /** El directorio que pasó la verificación de firma más reciente;[loadCache]/[refresh] Anteriormente devuelto nulo. */
+    /** 最近一次通过验签的目录；[loadCache]/[refresh] 之前返回 null。 */
     fun currentCatalog(): SignedPluginCatalog? = synchronized(lock) { verifiedCatalog }
 
-    /** Especifica la secuencia aceptada por el directorio;null Indica que el directorio aún no ha sido aceptado. */
+    /** 指定目录已接受的 sequence；null 表示该目录尚未接受过。 */
     fun lastAcceptedSequence(catalogId: String): Long? = synchronized(lock) { acceptedSequences[catalogId] }
 
     /**
-     * P0-9: Borre las entradas de la caché del mercado con secuencias aceptadas.
+     * P0-9: 清空市场缓存条目与已接受 sequence。
      *
-     * Se llama después de revocar el directorio raíz de confianza.:El caché antiguo se verificó con una raíz de confianza que se eliminó,Continuar manteniéndolo engañará a los usuarios.
-     * (La interfaz todavía muestra entradas antiguas.). La próxima vez después de limpiar [refresh] Volver a autenticarse con la raíz de confianza actual,El rechazo da como resultado la no entrada.
+     * 撤销目录信任根后调用:旧缓存是依据已被移除的信任根验证的,继续保留会误导用户
+     * (界面仍显示旧条目)。清空后下次 [refresh] 用当前信任根重新验证,拒绝则无条目。
      */
     suspend fun clearCache() = withContext(Dispatchers.IO) {
         synchronized(lock) {
             runCatching {
                 catalogFile.delete()
                 sequenceFile.delete()
-            }.onFailure { error -> Logger.w(TAG, "Error en la limpieza de la caché del mercado(ignorar)", error) }
+            }.onFailure { error -> Logger.w(TAG, "市场缓存清理失败(忽略)", error) }
             verifiedCatalog = null
             acceptedSequences.clear()
             cacheError = null
@@ -171,13 +171,13 @@ internal class PluginCatalogRepository(
         val signed = try {
             AppJson.decodeFromString(SignedPluginCatalog.serializer(), catalogFile.readText())
         } catch (error: Exception) {
-            Logger.w(TAG, "Error en el análisis de la caché del directorio, archivo corrupto en cuarentena", error)
+            Logger.w(TAG, "目录缓存解析失败，已隔离损坏文件", error)
             AtomicFileStore.quarantine(catalogFile, "plugin_catalog_parse")
-            cacheError = "La caché del directorio está dañada. Actualice el directorio."
+            cacheError = "目录缓存已损坏，请刷新目录"
             return
         }
         val catalogId = signed.payload.catalogId
-        // El formato antiguo solo registra una única secuencia global (en ese momento solo había un directorio posible), que pertenece a la identificación del directorio en el caché.
+        // 旧格式只记录单个全局 sequence（当时只可能有一个目录），归属到缓存里那一个目录 id。
         recorded.legacy?.let { legacy ->
             if (!acceptedSequences.containsKey(catalogId)) acceptedSequences[catalogId] = legacy
         }
@@ -188,7 +188,7 @@ internal class PluginCatalogRepository(
             lastAcceptedSequence = acceptedSequences[catalogId],
         )
         if (!verification.valid) {
-            // Caducidad de la caché/La secuencia del directorio se conserva cuando se cambia la clave (continúa rechazando el respaldo), pero las entradas ya no están disponibles para el mundo exterior.
+            // 缓存过期/密钥变更时保留该目录的 sequence（继续拒绝回退），但不再对外提供条目。
             cacheError = translateReason(verification.reason)
             return
         }
@@ -197,7 +197,7 @@ internal class PluginCatalogRepository(
     }
 
     private fun snapshotLocked(): CatalogSnapshot {
-        // Vuelva a presionar la hora actual al tomar una instantánea/La verificación de la firma de raíz de confianza evita que el directorio permanezca disponible después de la expiración mientras el proceso está activo.
+        // 快照时重新按当前时间/信任根验签，避免进程存活期间目录过期仍继续可用。
         val signed = verifiedCatalog
         if (signed != null) {
             val verification = PluginCatalogVerifier.verify(
@@ -224,10 +224,10 @@ internal class PluginCatalogRepository(
     }
 
     /**
-     * Leer las secuencias aceptadas de cada directorio.
+     * 读取各目录已接受的 sequence。
      *
-     * La versión anterior solo registra una única secuencia global (en ese momento solo había un directorio) y el valor no se puede autocertificar.
-     * Archivado por la persona que llama según la identificación del directorio en el caché (consulte [loadCacheLocked]); Los formatos desconocidos se tratan como no grabados.
+     * 旧版本只记录单个全局 sequence（当时只有一个目录），该值无法自证归属，
+     * 由调用方按缓存里的目录 id 归档（见 [loadCacheLocked]）；未知格式按未记录处理。
      */
     private fun readRecordedSequences(): RecordedSequences {
         val text = runCatching { sequenceFile.takeIf { it.isFile }?.readText()?.trim() }
@@ -239,7 +239,7 @@ internal class PluginCatalogRepository(
         }
         val byCatalog = runCatching { AppJson.decodeFromString(SEQUENCE_SERIALIZER, text) }
             .getOrElse { error ->
-                Logger.w(TAG, "El análisis del registro de secuencia del directorio falló y se trata como no registrado", error)
+                Logger.w(TAG, "目录 sequence 记录解析失败，按未记录处理", error)
                 emptyMap()
             }
             .filterValues { it >= 0 }
@@ -247,7 +247,7 @@ internal class PluginCatalogRepository(
     }
 
     private fun persist(signed: SignedPluginCatalog, sequences: Map<String, Long>) {
-        // Escribe primero el directorio y luego la secuencia: un bloqueo en el medio solo guardará un avance y no ocurrirá.“Aceptado arriba del caché”punto muerto.
+        // 先写目录再写 sequence：中途崩溃只会少记一次推进，不会出现“已接受高于缓存”的死锁。
         AtomicFileStore.writeText(
             catalogFile,
             AppJson.encodeToString(SignedPluginCatalog.serializer(), signed),
@@ -256,15 +256,15 @@ internal class PluginCatalogRepository(
     }
 
     private fun translateReason(reason: String?): String = when (reason) {
-        null -> "Error en la verificación del directorio"
-        "catalog too large" -> "El tamaño del directorio excede el límite"
-        "unknown catalog key" -> "Clave de firma de catálogo desconocida"
-        "unsupported catalog metadata" -> "Formato de directorio no admitido"
-        "catalog expired" -> "El directorio ha caducado, actualice"
-        "catalog sequence rollback" -> "Reversión de la versión del directorio, rechazada"
-        "invalid catalog entry" -> "El directorio contiene entradas ilegales."
-        "catalog signature mismatch" -> "La firma del directorio no coincide"
-        "catalog signature could not be verified" -> "No se puede verificar la firma del directorio"
+        null -> "目录校验失败"
+        "catalog too large" -> "目录体积超过限制"
+        "unknown catalog key" -> "未知的目录签名密钥"
+        "unsupported catalog metadata" -> "不支持的目录格式"
+        "catalog expired" -> "目录已过期，请刷新"
+        "catalog sequence rollback" -> "目录版本回退，已拒绝"
+        "invalid catalog entry" -> "目录包含非法条目"
+        "catalog signature mismatch" -> "目录签名不匹配"
+        "catalog signature could not be verified" -> "目录签名无法验证"
         else -> reason
     }
 
@@ -274,8 +274,8 @@ internal class PluginCatalogRepository(
         internal const val CATALOG_FILE_NAME = "catalog.json"
         internal const val SEQUENCE_FILE_NAME = "catalog_sequence"
 
-        /** Se corrigió el motivo de rechazo cuando el directorio raíz de confianza no está configurado.UI Según este mensaje“Configurar la raíz de confianza”. */
-        internal const val REASON_NO_TRUST_ROOT = "La clave pública raíz de confianza del directorio no está configurada"
+        /** 未配置目录信任根时的固定拒绝原因，UI 据此提示“配置信任根”。 */
+        internal const val REASON_NO_TRUST_ROOT = "未配置目录信任根公钥"
 
         private val SEQUENCE_SERIALIZER = MapSerializer(String.serializer(), Long.serializer())
     }

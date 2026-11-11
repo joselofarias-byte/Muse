@@ -10,8 +10,10 @@ import androidx.test.core.app.ApplicationProvider
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import io.zer0.muse.R
 import io.zer0.muse.automation.core.AutomationManager
+import io.zer0.muse.data.SettingsRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -24,10 +26,10 @@ import org.robolectric.annotation.GraphicsMode
 import java.io.File
 
 /**
- * UI Prueba automatizada de la barra superior de la página de permisos.
+ * UI 自动化权限页顶栏测试。
  *
- * volver al encierro:La página debe mostrar una barra superior de página secundaria con una clave de retorno.,Y la tecla de retorno realmente llama [AutomationSettingsPage] de
- * `onBack`(Anteriormente, la imagen de navegación se pasaba a onBack pero la página no se usaba.).
+ * 回归锁定:页面必须渲染带返回键的二级页顶栏,且返回键真的调用 [AutomationSettingsPage] 的
+ * `onBack`(此前导航图传了 onBack 但页面没有使用)。
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33], qualifiers = "zh-rCN")
@@ -39,9 +41,10 @@ class AutomationSettingsPageTest {
 
     private val context: Context get() = ApplicationProvider.getApplicationContext()
 
-    private fun managerMock(): AutomationManager = mockk<AutomationManager>(relaxed = true).apply {
-        every { permissionState } returns MutableStateFlow(AutomationManager.PermissionState())
-        coEvery { refreshPermissions() } returns AutomationManager.PermissionState()
+    private fun managerMock(accessibilityEnabled: Boolean = false): AutomationManager = mockk<AutomationManager>(relaxed = true).apply {
+        val state = AutomationManager.PermissionState(accessibilityEnabled = accessibilityEnabled)
+        every { permissionState } returns MutableStateFlow(state)
+        coEvery { refreshPermissions() } returns state
     }
 
     @Test
@@ -85,11 +88,115 @@ class AutomationSettingsPageTest {
             }
         }
 
-        // v2.x: Las tarjetas de permiso de tres canales han convergido en la página del asistente. — Esta página reserva una línea de entrada.,Y haga clic en Real para abrir el asistente.
+        // v2.x: 三通道权限卡已收敛到向导页 — 本页保留一行入口,且点击真的打开向导
         composeTestRule
             .onNodeWithText(context.getString(R.string.permission_wizard_title))
             .performClick()
 
         assertEquals(1, wizardCount)
+    }
+
+    private fun settingsMock(automationEnabled: Boolean): SettingsRepository = mockk<SettingsRepository>(relaxed = true).apply {
+        every { automationEnabledFlow } returns MutableStateFlow(automationEnabled)
+        every { taskerTriggerEnabledFlow } returns MutableStateFlow(false)
+    }
+
+    @Test
+    fun `master switch off shows the disabled banner`() {
+        composeTestRule.setContent {
+            MaterialTheme {
+                AutomationSettingsPage(
+                    manager = managerMock(),
+                    onBack = {},
+                    settings = settingsMock(automationEnabled = false),
+                )
+            }
+        }
+        composeTestRule
+            .onNodeWithText(context.getString(R.string.automation_master_off_banner))
+            .assertExists()
+    }
+
+    @Test
+    fun `master switch on hides the disabled banner`() {
+        composeTestRule.setContent {
+            MaterialTheme {
+                AutomationSettingsPage(
+                    manager = managerMock(),
+                    onBack = {},
+                    settings = settingsMock(automationEnabled = true),
+                )
+            }
+        }
+        composeTestRule
+            .onNodeWithText(context.getString(R.string.automation_master_off_banner))
+            .assertDoesNotExist()
+    }
+
+    @Test
+    fun `a11y off banner shows when automation is on but service is disconnected`() {
+        composeTestRule.setContent {
+            MaterialTheme {
+                AutomationSettingsPage(manager = managerMock(accessibilityEnabled = false), onBack = {})
+            }
+        }
+        composeTestRule
+            .onNodeWithText(context.getString(R.string.automation_a11y_off_banner))
+            .assertExists()
+    }
+
+    @Test
+    fun `a11y off banner is hidden when accessibility is connected`() {
+        composeTestRule.setContent {
+            MaterialTheme {
+                AutomationSettingsPage(manager = managerMock(accessibilityEnabled = true), onBack = {})
+            }
+        }
+        composeTestRule
+            .onNodeWithText(context.getString(R.string.automation_a11y_off_banner))
+            .assertDoesNotExist()
+    }
+
+    /**
+     * 两条横幅**不能同时出现**。
+     *
+     * 各自单独存在都有测试了，但"总闸关着 + 服务也断了"这一格才是互斥规则真正管的情形：
+     * 这时候只该说「总闸关着，所以现在什么都不跑」，
+     * 不该同时催用户去开无障碍（两句放一起只会让人以为开了无障碍就能用）。
+     */
+    @Test
+    fun `master off and a11y off never light up together`() {
+        composeTestRule.setContent {
+            MaterialTheme {
+                AutomationSettingsPage(
+                    manager = managerMock(accessibilityEnabled = false),
+                    onBack = {},
+                    settings = settingsMock(automationEnabled = false),
+                )
+            }
+        }
+
+        composeTestRule
+            .onNodeWithText(context.getString(R.string.automation_master_off_banner))
+            .assertExists()
+        composeTestRule
+            .onNodeWithText(context.getString(R.string.automation_a11y_off_banner))
+            .assertDoesNotExist()
+    }
+
+    @Test
+    fun `a11y off banner action opens system accessibility settings`() {
+        val manager = managerMock(accessibilityEnabled = false)
+        composeTestRule.setContent {
+            MaterialTheme {
+                AutomationSettingsPage(manager = manager, onBack = {})
+            }
+        }
+        composeTestRule
+            .onNodeWithText(context.getString(R.string.automation_a11y_off_action))
+            .performClick()
+        verify {
+            manager.openSystemSettings(AutomationManager.SystemSettingsTarget.ACCESSIBILITY)
+        }
     }
 }

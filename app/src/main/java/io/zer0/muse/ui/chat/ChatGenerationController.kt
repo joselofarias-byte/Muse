@@ -18,6 +18,9 @@ import io.zer0.muse.data.chat.rewrite.ConversationEventType
 import io.zer0.muse.data.chat.rewrite.ConversationRebuildFlagStore
 import io.zer0.muse.data.chat.rewrite.sha256
 import io.zer0.muse.data.session.MessageOutboxEntity
+import io.zer0.muse.data.session.MuseDb
+import io.zer0.muse.data.terms.SessionTermStore
+import io.zer0.muse.data.terms.SessionTerms
 import io.zer0.muse.notification.MuseNotificationManager
 import io.zer0.muse.notification.MuseNotificationTarget
 import io.zer0.muse.schedule.ChatGenerationManager
@@ -41,6 +44,7 @@ import io.zer0.muse.ui.buildSendText
 import io.zer0.muse.ui.canContinueGeneration
 import io.zer0.muse.ui.canRegenerate
 import io.zer0.muse.ui.canStartGeneration
+import io.zer0.muse.ui.common.feedback.MuseToast
 import io.zer0.muse.ui.resumeFromInterrupted
 import io.zer0.muse.util.ErrorMessages
 import io.zer0.muse.util.MessageTokenCache
@@ -57,14 +61,14 @@ import kotlinx.serialization.encodeToString
 import kotlin.uuid.Uuid
 
 /**
- * v1.x: Generar controlador abstraído de ChatViewModel.
+ * v1.x: 从 ChatViewModel 抽离的生成控制 Controller。
  *
- * Responsabilidades(Crear control del ciclo de vida + enviar productor de canalización;launchStream/El ciclo de consumo sigue):
- *  - [stop] Detener la generación de la sesión actual(nivel de aplicación+Cancelación de nivel de sesión, estado de transmisión claro, imagen de cancelación/Traducción y pendiente de aprobación).
- *  - [enqueueSend] Poner en cola de forma optimista un mensaje de usuario(Actividades/auditoría/enrutamiento/outbox/cola,Revertir en caso de falla).
+ * 职责(生成生命周期控制 + 发送管线生产者;launchStream/消费循环后续随迁):
+ *  - [stop] 停止当前会话生成(应用级+会话级取消、清流式状态、取消图片/翻译与待审批)。
+ *  - [enqueueSend] 乐观入队一条用户消息(活动/审计/路由/outbox/队列,失败回滚)。
  *
- * Cancelación de tareas subsidiarias de responsabilidad cruzada(fotos/Traducción),pendiente de autorización,addError/generateImage Inyectado mediante devolución de llamada,
- * No hay dependencia inversa de ChatViewModel.
+ * 跨职责的附属任务取消(图片/翻译)、待审批清理、addError/generateImage 经回调注入,
+ * 不反向依赖 ChatViewModel。
  */
 internal fun composeSystemPromptMessages(staticPrompt: String, dynamicPrompt: String): List<UIMessage> = listOfNotNull(
     staticPrompt.takeIf { it.isNotBlank() }?.let { UIMessage(role = MessageRole.SYSTEM, content = it) },
@@ -75,46 +79,46 @@ internal fun composeSystemPromptMessages(staticPrompt: String, dynamicPrompt: St
 internal fun effectiveGenerationSessionId(state: ChatUiState): String? =
     if (state.isAgentMode) state.agentSessionId else state.currentSessionId
 
-/** Proporción de alertas de contexto antes del envío (el historial se trunca agresivamente cuando la ocupación alcanza esta proporción de la ventana). */
+/** 发送前上下文预警比例（占用达到窗口的这个比例时激进截断历史）。 */
 internal const val PRESEND_TOKEN_WARNING_RATIO = 0.9f
 
 /**
- * La cantidad de mensajes finales retenidos después de la compresión de autorrescate antes del envío.
+ * 发送前自救压缩后保留的尾部消息条数。
  *
- * que la compresión normal ([CompressionPolicy.KEEP_RECENT_DEFAULT]) es más corto, porque entrar aquí es“Ya superé la ventana”.
- * Con la recuperación en ejecución (ChatToolLoopRunner.OVERFLOW_RECOVERY_KEEP_RECENT) toma el mismo valor:
- * par de dos caminos“¿Hasta qué punto”Cada uno no puede tener su propio calibre.
+ * 比常规压缩（[CompressionPolicy.KEEP_RECENT_DEFAULT]）更短，因为进到这里就是“已经超窗”。
+ * 与运行中那条恢复（ChatToolLoopRunner.OVERFLOW_RECOVERY_KEEP_RECENT）取同一个值：
+ * 两条路径对“压到什么程度”不能各有一套口径。
  */
 private const val PRESEND_OVERFLOW_KEEP_RECENT = 4
 
 /**
- * Enviar proporción de límite máximo de carga útil — Negarse a enviar cuando lo alcancen (comprimido/El límite aún se excede después del truncamiento).
+ * 发送 payload 硬上限比例 — 达到即拒绝发送（压缩/截断后仍超限的兜底）。
  *
- * v2.5.7 Reparación: Original 0,98 Demasiado agresivo —— Las estimaciones de BPE del cliente son aproximadas (≠ Recuento real del lado del servidor),
- * 0.98 muy fácil de poner“En realidad no más”La solicitud fue bloqueada por error (prueba de usuario)“La compresión es inútil”).
- * En su lugar, deje un margen para el error de estimación: Estimar > Deténgase en 1,35 veces la ventana real;
- * El rango se entrega al proveedor para una verificación verdadera (se devolverá 400 si es verdadero y excede el límite, que se maneja mediante mapeo de errores).
+ * v2.5.7 修复: 原 0.98 过激进 —— 客户端 BPE 估算是近似值（≠ 服务端真实计数），
+ * 0.98 很容易把“实际没超”的请求误拦（用户实测“压缩也没用”）。
+ * 改为留出估算误差余量：估算 > 真实窗口的 1.35 倍才拦；
+ * 区间内交给 provider 真实校验（真超限时会返回 400，由错误映射处理）。
  */
 internal const val CONTEXT_HARD_LIMIT_RATIO = 1.35f
 
 /**
- * Cree los resultados de la instantánea del mensaje del sistema estático.
+ * 静态 system prompt 快照的构建结果。
  *
- * Cadenas vacías y excepciones de compilación**Ninguno está disponible**: Al continuar generando con palabras vacías, el modelo perderá personalidad, descripción de la herramienta,
- * limitaciones de memoria y formato, pero todavía produce un“parece normal”Responder —— Es más engañoso para los usuarios que informar un error directamente.
+ * 空串与构建异常**都不可用**：用空提示词继续生成时，模型会丢掉人格、工具说明、
+ * 记忆与格式约束，却仍然产出一条“看起来正常”的回复 —— 对用户比直接报错更具误导性。
  */
 internal sealed interface StaticPromptOutcome {
-    /** Instantánea disponible. */
+    /** 可用快照。 */
     data class Ready(val prompt: String) : StaticPromptOutcome
 
-    /** Error de compilación (con motivo diagnosticable). */
+    /** 构建抛错（带可诊断原因）。 */
     data class Failed(val reason: String) : StaticPromptOutcome
 
-    /** La compilación se realizó correctamente pero el resultado está vacío. */
+    /** 构建成功但结果为空。 */
     data object Empty : StaticPromptOutcome
 }
 
-/** Determine si el resultado de la construcción de palabras del mensaje estático está disponible (fuente única de verdad, conveniente para pruebas únicas). */
+/** 判定一次静态提示词构建结果是否可用（单一真源，便于单测）。 */
 internal fun staticPromptBuildOutcome(result: Result<String>): StaticPromptOutcome = when {
     result is Result.Error -> StaticPromptOutcome.Failed(result.message)
     result.getOrNull().isNullOrBlank() -> StaticPromptOutcome.Empty
@@ -122,32 +126,32 @@ internal fun staticPromptBuildOutcome(result: Result<String>): StaticPromptOutco
 }
 
 /**
- * Si se alcanzó la línea de advertencia de contexto antes del envío.
+ * 发送前是否已达上下文预警线。
  *
- * [windowTokens] debe ser**Modelo real de esta ronda.**ventana (ver [effectiveContextWindowTokens]):
- * El cálculo de acuerdo con el modelo global pasará las solicitudes del modelo de ventana pequeña (por encima del límite 400) y también pasará las solicitudes del modelo de ventana grande.
- * Compresión innecesaria (contexto perdido).
+ * [windowTokens] 必须是**本轮实际模型**的窗口（见 [effectiveContextWindowTokens]）：
+ * 按全局模型算会把小窗口模型的请求放过去（超限 400），也会把大窗口模型的请求
+ * 无谓压缩（白丢上下文）。
  */
 internal fun isNearContextLimit(currentTokens: Int, windowTokens: Int): Boolean = windowTokens > 0 && currentTokens > 0 &&
     currentTokens.toFloat() / windowTokens >= PRESEND_TOKEN_WARNING_RATIO
 
-/** Si la carga útil de envío excede la línea de intercepción estricta (ventana × [CONTEXT_HARD_LIMIT_RATIO]). */
+/** 发送 payload 是否超过硬拦截线（窗口 × [CONTEXT_HARD_LIMIT_RATIO]）。 */
 internal fun exceedsHardContextLimit(payloadTokens: Int, windowTokens: Int): Boolean =
     windowTokens > 0 && payloadTokens >= (windowTokens * CONTEXT_HARD_LIMIT_RATIO).toInt()
 
 /**
- * Auto-rescate por desbordamiento antes de enviar: presione primero una ronda del historial, luego evalúe nuevamente después de presionar.
+ * 发送前溢出自救：先压一轮历史，压完再估一次。
  *
- * El bloqueo no se elimina, solo se agrega un autorrescate delante: el bloqueo es la red de seguridad final (para evitar las inevitables llamadas 400),
- * y muchos“hiperventana”De hecho, se puede enviar comprimiéndolo.
+ * 拦戴不移除，只在它前面加一次自救：拦戴是最后的安全网（避免必然 400 的调用），
+ * 而很多“超窗”其实压缩一下就能发。
  *
- * Presione solo una vez: esta función solo se llama una vez y se ajusta solo una vez [compress]; no se puede presionar (null / No acortado)
- * Simplemente ríndete sin reevaluarlo por segunda vez o intentarlo de nuevo. —— La represión repetida sólo suprimirá cada vez más la verdadera historia.
+ * 只压一次：本函数只被调用一次、也只调一次 [compress]；压不动（null / 没压短）
+ * 直接放弃，不再估第二次，也不重试 —— 反复压只会把真实历史越压越少。
  *
- * @param history Historial a enviar (recortado por número de artículos/presupuesto)
- * @param compress acción de compresión;null Indica que no se puede crear espacio (muy pocos mensajes/ningún beneficio neto/la compresión no está disponible)
- * @param stillOverflows Utilice el historial comprimido para volver a calcular la carga útil y ver si aún excede la ventana.
- * @return Cuando se completa la compresión y ya no se excede la ventana, se devolverá el historial comprimido;null Indica que el autorrescate falló y la persona que llama sigue interceptando e informa el error original.
+ * @param history 待发送的历史（已按条数 / 预算裁剪过）
+ * @param compress 压缩动作；null 表示腾不出空间（消息太少 / 无净收益 / 压缩不可用）
+ * @param stillOverflows 拿压缩后的历史重算 payload，是否仍超窗
+ * @return 压完确实不再超窗时返回压缩后的历史；null 表示自救失败，调用方保持拦截、报原错误
  */
 internal suspend fun recoverPreSendOverflow(
     history: List<UIMessage>,
@@ -155,13 +159,22 @@ internal suspend fun recoverPreSendOverflow(
     stillOverflows: suspend (List<UIMessage>) -> Boolean,
 ): List<UIMessage>? {
     val compressed = compress() ?: return null
-    // No es corto: la revalorización tendrá el mismo resultado, no es necesario volver a calcularla. BPE
+    // 没压短：重估也会是同一个结果，没必要白算一次 BPE
     if (compressed.size >= history.size) return null
     return compressed.takeIf { !stillOverflows(it) }
 }
 
 internal fun shouldRollbackOptimisticSend(state: ChatUiState, requestSessionId: String): Boolean =
     effectiveGenerationSessionId(state) == requestSessionId
+
+/**
+ * 是否存在可用模型服务:启用,且要么填了密钥、要么该供应商本就允许无密钥(如免费端点)。
+ *
+ * 判定单独成函数并被单测钉住 —— 发送闸门与将来的可用性提示都读它,
+ * 两处各写一套条件迟早漂移成"这里能发、那里不能发"。
+ */
+internal fun usableProviderPresent(providers: List<io.zer0.ai.core.ProviderConfig>): Boolean =
+    providers.any { it.enabled && (it.apiKey.isNotBlank() || it.allowMissingApiKey) }
 
 @Suppress("LongParameterList", "TooManyFunctions", "LargeClass")
 internal class ChatGenerationController(
@@ -178,16 +191,16 @@ internal class ChatGenerationController(
     private val shadowEventSequencer = ConversationShadowEventSequencer()
 
     /**
-     * Compresor para autorrescate de desbordamiento antes del envío.
+     * 发送前溢出自救用的压缩器。
      *
-     * Utilice el contenedor global para analizar según demanda, sin cambiar la capacidad de omisión. [GenerationDeps] Toda la cadena de construcción de
-     * (La misma opción que ChatToolLoopRunner y UsageRecorder). Devuelve nulo si no está disponible:
-     * El autorrescate no se produce y el comportamiento es exactamente el mismo que antes de agregar este elemento. —— Informar de un error si se detiene.
+     * 走全局容器按需解析，不为一个旁路能力改动 [GenerationDeps] 的整条构造链
+     * （与 ChatToolLoopRunner 取 UsageRecorder 同一取舍）。取不到时返回 null：
+     * 自救不发生，行为与加这条之前完全一致 —— 拦下就报错。
      *
-     * NOTA: Esto es**segundo** [ContextCompressTransformer] ejemplo, el que tiene ChatViewModel
-     * Comparte el panorama general `CompressionSummaryStore`. Esta ruta no es legible `lastCoveredBoundaryId`, ni escribir
-     * checkpoint, por lo que las dos instancias actuales se comportan de manera equivalente y no tienen bifurcación de estado. Si desea marcar este camino en el futuro (escriba
-     * ContextCheckpoint), primero debes regresar y evaluar esta diferencia de instancia —— en ese momento“Dos instancias son intercambiables.”ya no es cierto.
+     * 注意：这是**第二个** [ContextCompressTransformer] 实例，与 ChatViewModel 持有的那个
+     * 共享全局 `CompressionSummaryStore`。本路径不读 `lastCoveredBoundaryId`、也不写
+     * checkpoint，所以当前两个实例行为等价、无状态分叉。若将来要给本路径接检查点（写
+     * ContextCheckpoint），必须先回头评估这个实例差异 —— 那时候“两个实例可互换”就不再成立。
      */
     private val overflowCompressor: ContextCompressTransformer? by lazy {
         runCatching {
@@ -201,18 +214,18 @@ internal class ChatGenerationController(
     }
 
     /**
-     * Compresión de autorrescate antes del envío: utilice un compresor ya preparado para comprimir una ronda del historial y devuelva nulo si no está comprimido.
+     * 发送前自救的压缩：用现成压缩器压一轮历史，没压短就返回 null。
      *
-     * Parámetros y el que está en funcionamiento (ChatToolLoopRunner.compressForOverflowRecovery) toma el mismo conjunto:
-     * Aplique un umbral de activación, una cola de retención más corta y permita el truncamiento de marcas visibles cuando falla el resumen. El comportamiento del compresor en sí es similar al
-     * La semántica del umbral no cambia, solo se lee su valor de retorno.
+     * 参数与运行中那条（ChatToolLoopRunner.compressForOverflowRecovery）取同一套：
+     * 强制触发阈值、更短的保留尾部、摘要失败时允许可见标记截断兜底。压缩器本身的行为与
+     * 阈值语义不改，只读它的返回值。
      *
-     * @return historia comprimida;null Indica que no se puede crear espacio (muy pocos mensajes/sin rango de compresión/sin ganancia neta/compresor no disponible).
+     * @return 压缩后的历史；null 表示腾不出空间（消息太少 / 无可压缩区间 / 无净收益 / 压缩器不可用）。
      */
     private suspend fun compressHistoryForOverflow(history: List<UIMessage>, sessionId: String): List<UIMessage>? {
         val transformer = overflowCompressor ?: return null
         if (history.size < 2) return null
-        // Intervalo compresible = SYSTEM Después del prefijo y antes del último mensaje keepRecent, la cola no puede ocupar todos los mensajes.
+        // 可压缩区间 = SYSTEM 前缀之后到最近 keepRecent 条之前，尾巴不能把所有消息占满
         val keepRecent = minOf(PRESEND_OVERFLOW_KEEP_RECENT, history.size - 1).coerceAtLeast(1)
         val context =
             TransformContext(
@@ -237,47 +250,47 @@ internal class ChatGenerationController(
         return compressed.takeIf { it.size < history.size }
     }
 
-    // B-1: Conjunto de supresión de escritura para eliminación de sesión — Registrarse al eliminar mensajes de conversación,Hacer que todas las sesiones de esta sesión estén disponibles para transmisión
-    // (persistCurrentAssistant / persistInterruptedAssistant / Refinamiento upsertMessage)
-    // saltar,Evitar la eliminación después"resurrección". Nuevo lanzamiento de transmisiónTransmisión borrada al inicio,Permite la regeneración después de la eliminación.
+    // B-1: 会话删除写抑制集 — 删除会话消息时登记,令该会话全部在途流式落盘
+    // (persistCurrentAssistant / persistInterruptedAssistant / 收尾 upsertMessage)
+    // 跳过,防止删除后"复活"。新流式 launchStream 启动时清除,允许删除后重新生成。
     private val sessionWritesSuppressed: MutableSet<String> =
         java.util.Collections.newSetFromMap(java.util.concurrent.ConcurrentHashMap<String, Boolean>())
 
-    /** La generación de chat no debe continuar realizando nuevas escrituras mientras una restauración de copia de seguridad reemplaza el archivo de base de datos. */
+    /** 备份恢复替换数据库文件期间，聊天生成不得继续制造新写入。 */
     private fun restoreBlocksChatWrites(operation: String): Boolean {
         if (!ProcessWriteGate.restoring) return false
-        Logger.w("ChatVM", "Restauración de copia de seguridad en curso, se omitió la escritura del chat: $operation")
+        Logger.w("ChatVM", "备份恢复进行中，跳过聊天写入: $operation")
         return true
     }
 
-    /** B-1: Marcar esta sesión como eliminada — Los pedidos de transmisión en tránsito posteriores se omitirán en consecuencia. */
+    /** B-1: 标记该会话本次删除已发生 — 后续在途流式落盘据此跳过。 */
     fun suppressSessionWrites(sessionId: String?) {
         if (sessionId != null) sessionWritesSuppressed.add(sessionId)
     }
 
-    /** B-1: ¿La sesión está en"Supresión de escritura después de la eliminación"estado. */
+    /** B-1: 该会话是否处于"删除后写抑制"状态。 */
     fun isSessionWritesSuppressed(sessionId: String): Boolean = sessionId in sessionWritesSuppressed
 
-    /** B-1: Detenga toda generación de mensajes de conversación durante el vuelo al eliminarlos(Nivel de aplicación + cancelación de nivel de sesión). */
+    /** B-1: 删除会话消息时停止其全部在途生成(应用级 + 会话级取消)。 */
     fun stopGenerationForSession(sessionId: String?) {
         sessionId?.let { executionRegistry?.requestCancelForSession(it, "delete_message") }
         chatGenerationManager.stop(sessionId)
         sessionId?.let { sessionManager.cancelGeneration(it) }
     }
 
-    /** punto de usuario"detenerse". */
+    /** 用户点"停止"。 */
     fun stop() {
-        // Detener únicamente la generación de chats individuales,No afecta el chat grupal
+        // 只停止单聊的生成,不影响群聊
         val sid = effectiveGenerationSessionId(accessor.snapshot)
         sid?.let { executionRegistry?.requestCancelForSession(it, "user_stop") }
         chatGenerationManager.stop(sid)
-        // Indicador de cancelación del tiempo de ejecución del registro,distinguir"usuario detenido"falla con excepción;Job Tiene la misma instancia que chatGenerationManager,Repetir cancelar es idempotente.
+        // 记录运行时取消标志,区分"用户停止"与异常失败;Job 与 chatGenerationManager 持有同一实例,重复 cancel 幂等。
         sid?.let { sessionManager.cancelGeneration(it) }
-        // Borra el foco de generación de la sesión después de que el usuario se detiene.
+        // 用户停止后清除该会话的生成焦点。
         accessor.coroutineScope.launch {
             if (resultOf { settings.getGeneratingSessionId() }.getOrNull() == sid) {
                 resultOf { settings.saveGeneratingSessionId(null) }
-                    .onError { msg, _ -> Logger.w("ChatVM", "saveGeneratingSessionId Error de limpieza: $msg") }
+                    .onError { msg, _ -> Logger.w("ChatVM", "saveGeneratingSessionId 清理失败: $msg") }
             }
         }
         onCancelAncillaryJobs()
@@ -290,28 +303,67 @@ internal class ChatGenerationController(
                 translatingMessageId = null,
                 pendingToolApprovals = emptyList(),
                 toolProgressMessage = null,
-                // v2.6.4: Finalizar planes inacabados cuando el usuario se detiene —— Convierta el paso PENDIENTE/EN_PROGRESO en CANCELADO.
-                // De lo contrario, la tarjeta del plan permanecerá en estado giratorio para siempre (stop Nadie llamará a update_plan_step para avanzarlo).
+                // v2.6.4: 用户停止时收尾未结束的计划 —— 把 PENDING / IN_PROGRESS 步骤落成 CANCELLED。
+                // 否则计划卡会永远停在转圈态（stop 后没人再调 update_plan_step 推进它）。
                 agentPlans = it.agentPlans.mapValues { (_, plan) -> plan.settleAsCancelled() },
             )
         }
-        // Cancelar todas las llamadas de herramientas pendientes(Evite que la tarjeta de aprobación fantasma + la rutina requestToolApproval se cuelgue después de la detención)
+        // 取消所有待审批的工具调用(防止 stop 后幽灵审批卡片 + requestToolApproval 协程挂起)
         onCancelPendingApprovals(sid)
-        // Notificación:Cancelar la notificación de progreso cuando el usuario se detiene
+        // 通知:用户停止时取消进度通知
         runCatching {
             notificationManager.updateLiveProgress("", 0, false)
-        }.onFailure { Logger.w("ChatVM", "No se pudo cancelar la notificación de progreso: ${it.message}") }
+        }.onFailure { Logger.w("ChatVM", "取消进度通知失败: ${it.message}") }
     }
 
-    /** Enviar la entrada actual. texto vacío(y sin fotos)o ignorar durante la transmisión;isDrawMode Ir a generación de imágenes. */
+    /**
+     * 发送前的三道闸门:安全过滤、模型服务可用性。
+     *
+     * 抽出来不只是为降 send 的复杂度 —— 这三条都会"拦下这次发送并告知用户",
+     * 放在一起才看得清"什么情况下按发送不会有反应"。
+     */
+    private fun passesSendGuards(text: String): Boolean {
+        // 输入内容安全过滤(此前 SafetyPolicy 定义完整却全仓零调用 —— 安全网没插电)。
+        // 命中明确违规词时中止发送并提示,不写入会话。
+        val safety = io.zer0.muse.privacy.SafetyPolicy.checkInput(text)
+        if (!safety.safe) {
+            Logger.w("ChatVM", "输入被安全策略拦截: ${safety.reason}")
+            deps.addError(ChatErrorType.UNKNOWN, safety.suggestion ?: "", false)
+            return false
+        }
+        // 没有可用模型服务时,这一轮注定空转:此前消息照样入队,"正在思考"挂到超时才消失,
+        // 界面上既没有回复也没有原因。改为发送前就告知,并且不清空输入框(用户敲的字不能丢)。
+        if (!hasUsableProvider()) {
+            deps.addError(
+                ChatErrorType.API_KEY,
+                deps.appContext.getString(R.string.err_chat_no_provider),
+                false,
+            )
+            return false
+        }
+        return true
+    }
+
+    /**
+     * 是否有可用模型服务:启用,且要么填了密钥、要么该供应商本就允许无密钥(如免费端点)。
+     *
+     * 判定只在这一处;发送闸门与将来的可用性提示都读它,免得两处各写一套条件后漂移。
+     */
+    private fun hasUsableProvider(): Boolean = usableProviderPresent(accessor.snapshot.providers)
+
+    /** 发送当前输入。空文本(且无图片)或正在流式时忽略;isDrawMode 走图片生成。 */
     @Suppress("ReturnCount")
     fun send() {
         val rawText = accessor.snapshot.input.trim()
+        // 插件 onMessage 事件：观察型，投出去就不管（未授权/未声明时桥内部自己跳过）
+        if (rawText.isNotEmpty()) {
+            io.zer0.muse.data.plugin.PluginActivationBridge.dispatchMessageGlobal(rawText)
+        }
         val images = accessor.snapshot.pendingImages
         val docs = accessor.snapshot.pendingDocuments
-        // Los metadatos estructurados del archivo adjunto se almacenan con el mensaje. La línea "El archivo adjunto se guardó en el espacio de trabajo" en el texto es para el modelo.
-        // No es adecuado para la visualización de la interfaz: no puede ver cuántos archivos hay y no puede hacer clic en ellos.
-        // Aquí solo se incluyen metadatos y no se almacenan. extractedText —— El texto se ha escrito en el contenido y al guardar otra copia se expandirá la tabla de mensajes.
+        // 附件的结构化元数据跟着消息一起存。正文里那行「附件已存入工作区」是给模型看的，
+        // 它不适合当界面展示：既看不出有几个文件，也没法点开。
+        // 这里只带元数据，不存 extractedText —— 正文已经拼进 content，再存一份会让消息表膨胀。
         val attachments = docs.map { doc ->
             io.zer0.ai.core.AttachmentRef(
                 name = doc.name,
@@ -321,7 +373,7 @@ internal class ChatGenerationController(
                 workspacePath = doc.workspacePath,
             )
         }
-        // v1.136 T10: Fusionar el contenido del documento que se enviará en el texto del mensaje(Texto del documento + entrada del usuario)
+        // v1.136 T10: 合并待发送文档内容到消息文本(文档文本 + 用户输入)
         var text = buildSendText(rawText, docs.map { it.content })
         val canStart =
             canStartGeneration(
@@ -333,15 +385,10 @@ internal class ChatGenerationController(
         if (!canStart) {
             return
         }
-        // Filtrado de seguridad de contenido de entrada(Anteriormente, SafetyPolicy estaba completamente definida pero no tenía ninguna llamada en todas las posiciones. —— Red de seguridad desconectada).
-        // Deje de enviar y avise cuando se encuentre una palabra ilegal clara,La sesión no está escrita.
-        val safety = io.zer0.muse.privacy.SafetyPolicy.checkInput(text)
-        if (!safety.safe) {
-            Logger.w("ChatVM", "Entrada bloqueada por política de seguridad: ${safety.reason}")
-            deps.addError(ChatErrorType.UNKNOWN, safety.suggestion ?: "", false)
+        if (!passesSendGuards(text)) {
             return
         }
-        // v1.68: Las respuestas a las citas deben deletrear el contenido citado en el cuerpo del mensaje.,LLM Puedes leer la cita original.
+        // v1.68: 引用回复必须把被引用内容拼进消息体,LLM 才能读到引用原文。
         val replyingToLatest =
             accessor.snapshot.replyingTo?.let { r ->
                 deps.stateStore.messages.value.find { it.id == r.id } ?: r
@@ -353,8 +400,8 @@ internal class ChatGenerationController(
             text = buildQuotedContent(quoteText, text)
         }
 
-        // v1.28: Agent modo usando independiente agentSessionId,Creado automáticamente cuando no hay sesión
-        // v1.79 (M-CV8): Utilice el indicador isCreatingAgentSession para evitar el reingreso,Evite crear dos sesiones con un doble clic rápido
+        // v1.28: Agent 模式用独立的 agentSessionId,无会话时自动创建
+        // v1.79 (M-CV8): 用 isCreatingAgentSession 标志防止重入,避免快速双击创建两个会话
         val sessionId =
             if (accessor.snapshot.isAgentMode) {
                 accessor.snapshot.agentSessionId ?: run {
@@ -365,13 +412,33 @@ internal class ChatGenerationController(
                             val assistantId = accessor.snapshot.currentAssistant?.id ?: "default"
                             val id = deps.sessionRepository.createAgentSession(assistantId)
                             accessor.update { it.copy(agentSessionId = id) }
-                            // v1.53-A1: Cargar mensajes de sesión del Agente en páginas(La nueva sesión está vacía,Restablecer al mismo tiempo hasMoreHistory)
+                            // v1.53-A1: 分页加载 Agent 会话消息(新会话为空,同时重置 hasMoreHistory)
                             val (msgs, hasMore) = deps.messageController.loadMessagesPaged(id)
                             deps.stateStore.messages.value = msgs
                             accessor.update {
                                 it.copy(hasMoreHistory = hasMore, isLoadingMore = false, lastHistoryLoadCount = 0)
                             }
                             enqueueSend(text, images, id, attachments)
+                        } catch (c: kotlinx.coroutines.CancellationException) {
+                            // 取消是正常控制流，原样抛回，不该被当成"发送失败"报给用户
+                            throw c
+                        } catch (@Suppress("TooGenericExceptionCaught") e: Exception) {
+                            // 这里有意兜住任意 Exception，理由：
+                            // 建会话（Room/SQLite）、分页载入（还带 JSON 解析）、入队（队列满时抛
+                            // IllegalStateException）三段的失败类型是开放的，列不全；
+                            // 而列不全的代价不是"少记一条日志"，是**用户按了发送却什么都没发生**。
+                            // 规则想防的是"用宽 catch 掩盖本该分开处理的问题"，
+                            // 这里唯一的处理就是：留痕 + 告知用户 + 不假装发送成功。
+                            // 仓库里同样取舍的先例：DeviceCapabilityHook、ShellExecutor、BackupService。
+                            // 这段以前只有 finally：建会话 / 载入历史 / 入队任一环节抛异常，
+                            // 都会冒到 coroutineScope（崩或无声丢弃）。
+                            // 现在：原因进日志 + 界面如实告知，并且不假装发送成功。
+                            Logger.w(
+                                "ChatVM",
+                                "Agent 会话创建失败，本次发送已取消: ${e.message ?: e.javaClass.simpleName}",
+                                e,
+                            )
+                            MuseToast.show(deps.appContext.getString(R.string.err_chat_agent_session_failed))
                         } finally {
                             deps.generationState.isCreatingAgentSession = false
                         }
@@ -389,7 +456,7 @@ internal class ChatGenerationController(
         enqueueSend(text, images, sessionId, attachments)
     }
 
-    /** B7-04: Continuar la generación después de la interrupción de la transmisión,Reutilizar la última tira [interrumpido] Continuación del mensaje del asistente marcado. */
+    /** B7-04: 流式打断后继续生成,复用最后一条带 [已中断] 标记的 assistant 消息续写。 */
     @Suppress("ReturnCount")
     fun continueGeneration() {
         if (accessor.snapshot.isStreaming) return
@@ -408,7 +475,7 @@ internal class ChatGenerationController(
         launchStream(last.id, sessionId, false, resumed)
     }
 
-    /** Regenerar la última respuesta del asistente bajo la variante de usuario actual:Mantener las respuestas antiguas como variaciones.,Cree una nueva variante y solicite nuevamente. */
+    /** 重生成当前用户变体下的最后一条 assistant 回复:保留旧回复为变体,新建变体并重新请求。 */
     @Suppress("ReturnCount")
     fun regenerateLastAssistant() {
         if (restoreBlocksChatWrites("regenerate")) {
@@ -446,7 +513,7 @@ internal class ChatGenerationController(
             it.copy(isStreaming = true, isWaitingFirstToken = true, errors = emptyList())
         }
         deps.sessionMemoryCache.remove(sessionId)
-        // Primero complete el despliegue de la nueva variante de asistente.,Reiniciar generación,Evite las condiciones de carrera de la base de datos de sucursales.
+        // 先完成新 assistant variant 的落库,再启动生成,避免分支数据库竞态。
         accessor.coroutineScope.launch {
             val persisted =
                 withContext(Dispatchers.IO) {
@@ -475,7 +542,7 @@ internal class ChatGenerationController(
         )
     }
 
-    /** v5: Actualización optimista — Los mensajes de usuario se muestran inmediatamente.,No espere a que se escriba la base de datos;La puesta en cola posterior se procesa en serie mediante el bucle de consumo. */
+    /** v5: 乐观更新 — 用户消息立即显示,不等待 DB 写入;随后入队由消费循环串行处理。 */
     @Suppress("LongMethod")
     fun enqueueSend(
         text: String,
@@ -491,7 +558,7 @@ internal class ChatGenerationController(
             )
             return
         }
-        // v2.1: Registre las actividades de los usuarios en retratos de actividades,y actualizar el tipo de final de la conversación(Impulsar la programación de mensajes proactiva y adaptativa)
+        // v2.1: 记录用户活动到活跃度画像,并更新对话结束类型(驱动自适应主动消息调度)
         deps.activityProfile.recordActivity()
         deps.activityProfile.setConversationEndType(
             if (UserActivityProfile.containsEndKeyword(text)) {
@@ -500,10 +567,10 @@ internal class ChatGenerationController(
                 ConversationEndType.NATURAL_FADE
             },
         )
-        // v2.6.9: Omitir notificación de programador de mensajes activos —— Si esto es en respuesta a un mensaje no solicitado,
-        // Escribe de nuevo RESPONDIDO y repone el cupo. No bloquea la ruta de transmisión y no afecta su éxito o fracaso.
+        // v2.6.9: 旁路通知主动消息调度器 —— 如果这条是在回应某条主动消息，
+        // 回写 REPLIED 并回补额度。不阻塞发送路径，也不影响其成败。
         deps.onUserSpoke(sessionId)
-        // P2-4: Registro de auditoría — enviar mensaje
+        // P2-4: 审计日志 — 发送消息
         deps.auditLogger.log(
             category = "user_action",
             action = "send_message",
@@ -515,8 +582,8 @@ internal class ChatGenerationController(
                 "assistant_id" to (accessor.snapshot.currentAssistant?.id ?: "default"),
             ),
         )
-        // v2.3: El enrutamiento del modelo de tarea solo está vinculado a la solicitud de envío actual,Una evaluación automática no se puede escribir permanentemente como una sobrescritura manual de sesión.
-        // De lo contrario, envía uno primero.“escribir codigo”después,El resto de la charla general se atendrá al modelo de código.
+        // v2.3: 任务模型路由只绑定到当前发送请求,不能把一次自动判断永久写成会话手动覆盖。
+        // 否则先发一条“写代码”后,后续普通闲聊会一直粘在代码模型上。
         val selectedModel =
             sessionId.let { deps.generationState.sessionModelOverrides[it] }
                 ?: deps.generationState.globalSelectedModelId
@@ -525,7 +592,7 @@ internal class ChatGenerationController(
                 ?: deps.generationState.globalActiveProviderId
         val routed = deps.settings.recommendTaskRoute(text, selectedModel, selectedProvider)
         if (routed != null) {
-            // Solo actualiza la instantánea de la interfaz de usuario actual visible para el usuario;Restaurar el manual real una vez completada la generación./Selección global.
+            // 仅更新当前 UI 快照给用户可见;生成结束后恢复真实的手动/全局选择。
             accessor.update {
                 it.copy(
                     selectedModelId = routed.modelId ?: it.selectedModelId,
@@ -533,15 +600,30 @@ internal class ChatGenerationController(
                 )
             }
         }
-        // v1.0.47 P5: Registro de historial de entrada(nuevo→viejo,Eliminar duplicados,Truncado a MAX_INPUT_HISTORY)
+        // v1.0.47 P5: 记录输入历史(新→旧,去重,截断到 MAX_INPUT_HISTORY)
         val newHistory = (listOf(text) + accessor.snapshot.inputHistory.filter { it != text }).take(MAX_INPUT_HISTORY)
         val userMsg =
             UIMessage(role = MessageRole.USER, content = text, imageBase64List = images, attachments = attachments)
-        // P0 Reparación: Forzar asistenteMsg.createdAt para que sea estrictamente posterior a userMsg.createdAt(+1ms),Evite la inestabilidad de la clasificación de bases de datos.
-        // v2.6.15: Escriba el modelo de salida. —— El mismo modelo de guardia utilizado por think block replays lo utiliza para determinar la fuente (ver ProviderPayloadNormalizer
-        // stripCrossModelReasoning). Lo que se utiliza aquí es el modelo que realmente se utilizará para esta transmisión (el enrutamiento de tareas se ha vuelto a escribir en la instantánea);
-        // Si otros modelos (modelos específicos del asistente/modelos de rueda de herramientas/cambio de respaldo) se analizan después de que realmente comienza la transmisión,
-        // por [ChatToolLoopRunner] Al final, se reescribe según el modelo real de esta ronda.
+
+        // v2.7.x(E2): 记录术语候选。放在发送侧而不是提示词装配侧 ——
+        // 装配会被重试与 outbox 回放重复执行，而次数正好决定"要不要打扰用户确认"，
+        // 被重复计一次就会把没怎么用过的词推去确认，或反过来把该问的一直压着。
+        // 失败只丢日志：术语是增强，不该决定这条消息能不能发出去。
+        accessor.coroutineScope.launch(Dispatchers.IO) {
+            runCatching {
+                val hits = SessionTerms.extract(text)
+                if (hits.isEmpty()) return@runCatching
+                val assistantId =
+                    deps.sessionRepository.getSessionById(sessionId)?.assistantId?.takeIf { it.isNotBlank() } ?: "default"
+                SessionTermStore(MuseDb.get(deps.appContext).sessionTermDao())
+                    .recordObserved(sessionId = sessionId, assistantId = assistantId, hits = hits)
+            }.onFailure { Logger.w("ChatVM", "术语候选记录失败(不影响发送)", it) }
+        }
+        // P0 修复: 强制 assistantMsg.createdAt 严格晚于 userMsg.createdAt(+1ms),避免 DB 排序不稳定。
+        // v2.6.15: 记下产出模型 —— 思考块回放的同模型守卫以它判定来源（见 ProviderPayloadNormalizer
+        // 里的 stripCrossModelReasoning）。这里用的是本次发送实际会走的模型（任务路由已写回快照）；
+        // 真正开始流式后若解析出别的模型（助手专属模型 / 工具轮模型 / 兜底切换），
+        // 由 [ChatToolLoopRunner] 收尾时按本轮实际模型改写。
         val assistantMsg =
             UIMessage(
                 role = MessageRole.ASSISTANT,
@@ -549,7 +631,7 @@ internal class ChatGenerationController(
                 createdAt = userMsg.createdAt + 1,
                 modelId = accessor.snapshot.selectedModelId,
             )
-        // v1.0.15: Escritura asincrónica outbox(garantia"Salga tan pronto como haga clic en enviar"Los mensajes no se pierden cuando)
+        // v1.0.15: 异步写入 outbox(保证"刚点击发送就退出"时消息不丢失)
         val outboxId = Uuid.random().toString()
         val outboxReady =
             accessor.coroutineScope.async(Dispatchers.IO) {
@@ -566,7 +648,7 @@ internal class ChatGenerationController(
                                 createdAt = System.currentTimeMillis(),
                             ),
                         )
-                    }.onError { _, t -> Logger.w("ChatVM", "outbox Error de escritura,Esta entrega será bloqueada", t) }.isSuccess
+                    }.onError { _, t -> Logger.w("ChatVM", "outbox 写入失败,本次发送将被阻止", t) }.isSuccess
                 }
             }
         deps.stateStore.messages.value = deps.stateStore.messages.value + userMsg + assistantMsg
@@ -578,13 +660,13 @@ internal class ChatGenerationController(
                 pendingDocuments = emptyList(),
                 replyingTo = null,
                 replyQuoteOverride = null,
-                // F-10: enviar para entrar CONNECTING(Esperando el primero token)
+                // F-10: 发送即进入 CONNECTING(等待首 token)
                 streamState = it.streamState.copy(phase = ChatStreamPhase.CONNECTING),
                 isStreaming = true,
-                // v1.0.3: entrar"Esperando el primero token"escenario,UI mostrar ThinkingBubble
+                // v1.0.3: 进入"等待首 token"阶段,UI 显示 ThinkingBubble
                 isWaitingFirstToken = true,
                 errors = emptyList(),
-                // v1.0.47 P5: Registro de historial de entrada,Restablecer índice de navegación(Salir de la navegación histórica después de enviar)
+                // v1.0.47 P5: 记录输入历史,重置导航索引(发送后退出历史导航)
                 inputHistory = newHistory,
                 inputHistoryIndex = null,
             )
@@ -603,7 +685,7 @@ internal class ChatGenerationController(
                 ),
             )
         if (sendResult.isFailure) {
-            // La cola está llena,Revertir actualización optimista + eliminar outbox(Mensaje no en cola,outbox Inútil)
+            // 队列已满,回滚乐观更新 + 删除 outbox(消息未入队,outbox 无用)
             accessor.coroutineScope.launch(Dispatchers.IO) {
                 val persisted = runCatching { outboxReady.await() }.getOrDefault(false)
                 if (persisted) {
@@ -624,7 +706,7 @@ internal class ChatGenerationController(
         deps.messageController.rebuildConversationTree()
     }
 
-    /** Revertir una actualización optimista de una solicitud cuando falla el consumo de la cola(user/assistant Mensaje de marcador de posición). */
+    /** 队列消费失败时回滚某条请求的乐观更新(user/assistant 占位消息)。 */
     fun rollbackOptimisticSend(req: SendRequest) {
         if (!shouldRollbackOptimisticSend(accessor.snapshot, req.sessionId)) return
         deps.stateStore.messages.value =
@@ -633,11 +715,11 @@ internal class ChatGenerationController(
             }
     }
 
-    /** Consumir una sola solicitud de envío:Verificación de coincidencia de sesión → Mensaje de usuario de ubicación → Iniciar la construcción → Limpiar la bandeja de salida. */
+    /** 消费单条发送请求:会话匹配校验 → 落盘 user 消息 → 启动生成 → 清理 outbox。 */
     @Suppress("TooGenericExceptionCaught")
     suspend fun consumeSendRequest(req: SendRequest) {
         deps.generationState.outboxRecoveryQueuedIds.remove(req.outboxId)
-        // Las nuevas solicitudes primero deben confirmar que se ha colocado la bandeja de salida; de lo contrario, eliminar la bandeja de salida inmediatamente después de launchStream dejará una ventana irrecuperable.
+        // 新请求必须先确认 outbox 已落盘；否则 launchStream 后立即删除 outbox 会留下不可恢复窗口。
         if (req.outboxReady != null && !req.outboxReady.await()) {
             rollbackOptimisticSend(req)
             accessor.update { it.copy(isStreaming = false, isWaitingFirstToken = false) }
@@ -661,9 +743,9 @@ internal class ChatGenerationController(
                 state.currentSessionId ?: req.sessionId
             }
         if (currentSid != req.sessionId) {
-            // Sesión cambiada,La solicitud se omite — Solo revertir actualizaciones optimistas(Mensaje de marcador de posición),Reserve la bandeja de salida para el proceso de recuperación después de volver a cambiar.
-            // B-14: No está clara la situación general isStreaming —— Las solicitudes de sesiones antiguas no deben ocultar las animaciones de transmisión de la sesión actual.;
-            // Sólo si la sesión actual(List actual)El indicador se reinicia sólo cuando en realidad no hay nada en progreso.
+            // 会话已切换,该 req 被跳过 — 仅回滚乐观更新(占位消息),保留 outbox 给切回后的恢复流程。
+            // B-14: 不清全局 isStreaming —— 旧会话请求不得隐藏当前会话的流式动画;
+            // 仅当当前会话(List 当前)确无在途生成时才复位指示器。
             val currentGenerating = chatGenerationManager.activeGenerations.value.containsKey(currentSid)
             accessor.update { st ->
                 val filtered =
@@ -673,7 +755,7 @@ internal class ChatGenerationController(
                 deps.stateStore.messages.value = filtered
                 if (currentGenerating) st else st.copy(isStreaming = false, isWaitingFirstToken = false)
             }
-            Logger.i("ChatVM", "Omitir solicitudes de la bandeja de salida fuera de la sesión actual: ${req.outboxId}")
+            Logger.i("ChatVM", "跳过当前会话外的 outbox 请求: ${req.outboxId}")
             return
         }
         try {
@@ -682,15 +764,15 @@ internal class ChatGenerationController(
                 accessor.update { it.copy(isStreaming = false, isWaitingFirstToken = false) }
                 return
             }
-            // P0 Reparación: Reutilizar directamente los creados por enqueueSend userMessage,Asegúrese de que el orden de createAt sea coherente con id.
+            // P0 修复: 直接复用 enqueueSend 创建的 userMessage,保证 createdAt 顺序与 id 一致。
             deps.sessionRepository.appendMessage(currentSid, req.userMessage)
         } catch (e: Exception) {
             Logger.e("ChatVM", "appendMessage failed", e)
             if (req.retryCount < 1) {
-                Logger.i("ChatVM", "Reintentar envío (attempt ${req.retryCount + 1})")
+                Logger.i("ChatVM", "重试发送 (attempt ${req.retryCount + 1})")
                 val retryResult = deps.generationState.sendChannel.trySend(req.copy(retryCount = req.retryCount + 1))
                 if (retryResult.isFailure) {
-                    Logger.w("ChatVM", "Error al intentar unirse a la cola(La cola está llena)")
+                    Logger.w("ChatVM", "重试入队失败(队列已满)")
                     deps.addError(
                         ChatErrorType.UNKNOWN,
                         deps.appContext.getString(
@@ -728,7 +810,7 @@ internal class ChatGenerationController(
         val delegated = deps.maybeAutoRoute(req.text, req.assistantMessageId, currentSid)
         if (delegated) {
             restoreSelectionForSession(currentSid)
-            // delegated La ruta la toma el ejecutor delegado y no pasa por el punto de control de generación local.
+            // delegated 路径由委派执行器接管，不会经过本地 generation checkpoint。
             if (!restoreBlocksChatWrites("clearDelegatedOutbox")) {
                 resultOf { deps.sessionRepository.deleteOutbox(req.outboxId) }
             }
@@ -742,13 +824,13 @@ internal class ChatGenerationController(
                 outboxId = req.outboxId,
             )
         }
-        // La ruta no delegada elimina la bandeja de salida después de que el punto de control de primera generación tiene éxito, conservando la ventana de recuperación antes del inicio.
+        // 非 delegated 路径由首个 generation checkpoint 成功后删除 outbox，保留启动前的恢复窗口。
     }
 
     /**
-     * v2.2.1 Reparación: outbox Restaurando la ruta de desvío(Reenvío después de la reversión de la sesión)Inserción optimista sin enqueueSend.
-     * Si el marcador de posición no está en la lista,El guardia independiente de updateAssistant omitirá por completo las actualizaciones de transmisión ——
-     * Se muestra como"El backend ha regresado y el frontend no se procesa.,Solo aparecerá después de volver a intentar o volver a ingresar a la sesión.". Aquí el marcador de posición se completa cuando se muestra la sesión actual.
+     * v2.2.1 修复: outbox 恢复重投路径(切会话回退后重新投递)不经过 enqueueSend 的乐观插入。
+     * 若占位不在列表,流式更新会被 updateAssistant 的 detached 守卫整段跳过 ——
+     * 表现为"后端已回、前端不渲染,重试或重进会话才出现"。这里在当前会话被显示时补回占位。
      */
     private fun rehydrateOptimisticPlaceholders(sessionId: String, req: SendRequest) {
         val shown =
@@ -779,17 +861,17 @@ internal class ChatGenerationController(
         if (additions.isEmpty()) return
         deps.stateStore.messages.value = messages + additions
         deps.messageController.rebuildConversationTree()
-        // v2.3.1: converger en una sola línea —— La escritura de varias líneas hará que el registro chino caiga en "líneas que no son de Logger",
-        // Juzgado erróneamente como copia codificada de la interfaz de usuario por check_hardcoded_cjk(Esta verificación solo identifica las llamadas de registro por la misma línea)
+        // v2.3.1: 收敛为单行 —— 多行写法会把日志中文落到「非 Logger 行」,
+        // 被 check_hardcoded_cjk 误判为 UI 硬编码文案(该检查只按同一行识别日志调用)
         val userShort = req.userMessage.id.toString().take(8)
         val assistantShort = req.assistantMessageId.toString().take(8)
-        Logger.i("ChatVM", "outbox restaurar: Complete el mensaje del marcador de posición user=$userShort, assistant=$assistantShort")
+        Logger.i("ChatVM", "outbox 恢复: 补回占位消息 user=$userShort, assistant=$assistantShort")
     }
 
     /**
-     * v2.2.1: Limpiar anulaciones de proveedor/modelo pendientes en la sesión especificada(Provider no existe,O el modelo no esta
-     * Provider abajo). Solo proceso"anulación explícita de sesión",No toques al asistente/Configuración global;providers Cuando la carga no está completa
-     * saltar,Evite malentendidos. Después de borrar, la generación actual se generará presionando el asistente./Análisis de respaldo global,Al mismo tiempo, se desactivan las actualizaciones posteriores de la pantalla de advertencia.
+     * v2.2.1: 清理指定会话中悬空的 Provider/模型覆盖(Provider 不存在,或模型不在该
+     * Provider 下)。仅处理"会话显式覆盖",不触碰助手/全局配置;providers 未加载完成时
+     * 跳过,避免误清。清掉后本代生成即按助手/全局回退解析,同时停用后续警告刷屏。
      */
     private suspend fun healStaleSessionOverride(sessionId: String) {
         val providers = accessor.snapshot.providers
@@ -798,22 +880,22 @@ internal class ChatGenerationController(
         val providerId = state.sessionProviderOverrides[sessionId]
         var changed = false
         if (providerId != null && providers.none { it.id == providerId }) {
-            // Provider ha desaparecido:Borrar anulaciones de proveedor + modelo en pares(Configuración anti-medio set,
-            // Misma semántica que la limpieza de eliminación de ProviderReferenceCleanup)
+            // Provider 已消失:成对清掉 provider + model 覆盖(防半套配置,
+            // 与 ProviderReferenceCleanup 的删除清理同语义)
             state.sessionProviderOverrides = state.sessionProviderOverrides - sessionId
             state.sessionModelOverrides = state.sessionModelOverrides - sessionId
             runCatching { deps.settings.saveSessionProviderOverride(sessionId, null) }
-                .onFailure { e -> Logger.w("ChatVM", "Error al limpiar la cobertura del proveedor pendiente: ${e.message}", e) }
+                .onFailure { e -> Logger.w("ChatVM", "清理悬空 Provider 覆盖失败: ${e.message}", e) }
             runCatching { deps.settings.saveSessionModelOverride(sessionId, null) }
-                .onFailure { e -> Logger.w("ChatVM", "No se pudo borrar la cobertura del modelo colgante: ${e.message}", e) }
+                .onFailure { e -> Logger.w("ChatVM", "清理悬空模型覆盖失败: ${e.message}", e) }
             changed = true
         } else if (providerId != null) {
             val modelId = state.sessionModelOverrides[sessionId]
-            // v2.6.7 fix: Lista de modelos**esta vacio**(Nunca se sacó/no se pudo sacar) no significa que el modelo no exista.
-            // antigua forma de escribir `models.none { it.id == modelId }` Siempre cierto en una lista vacía,
-            // Entonces, en el arranque en frío, en la ventana donde aún no se ha extraído la lista, se sobrescribe el modelo establecido por el usuario por sesión.
-            // **eliminarlo directamente**(La limpieza destructiva es más grave que la degradación por errores de juicio).
-            // Aquí se utiliza un juicio de tres estados: sólo está claro "la lista no está vacía y no contiene la identificación".
+            // v2.6.7 fix: 模型列表**为空**（从未拉取 / 拉取失败）不等于模型不存在。
+            // 旧写法 `models.none { it.id == modelId }` 在空列表上恒为 true，
+            // 于是在冷启动、列表尚未拉到的窗口里，把用户按会话设置的模型覆盖
+            // **直接删掉**（破坏性清理，比误判降级更严重）。
+            // 这里改用三态判定：只有「列表非空且确实不含该 id」才清。
             val binding =
                 if (modelId != null) {
                     resolveRequestedModelBinding(providers, providerId, modelId)
@@ -823,25 +905,25 @@ internal class ChatGenerationController(
             if (binding?.modelMissing == true) {
                 state.sessionModelOverrides = state.sessionModelOverrides - sessionId
                 runCatching { deps.settings.saveSessionModelOverride(sessionId, null) }
-                    .onFailure { e -> Logger.w("ChatVM", "No se pudo borrar la cobertura del modelo colgante: ${e.message}", e) }
+                    .onFailure { e -> Logger.w("ChatVM", "清理悬空模型覆盖失败: ${e.message}", e) }
                 changed = true
             }
         }
         if (changed) {
-            Logger.i("ChatVM", "Sesión borrada $sessionId modelo suspendido/Provider Portada")
+            Logger.i("ChatVM", "已清除会话 $sessionId 的悬空模型/Provider 覆盖")
         }
     }
 
     /**
-     * v2.5.3 (P3-2): Tome una instantánea de la configuración a nivel de sesión cuando se genere por primera vez.
+     * v2.5.3 (P3-2): 首次生成时拍摄会话级配置快照。
      *
-     * Poner el proveedor/modelo/nivel de pensamiento en el momento de la puesta en marcha./Una vez fijada la temperatura, escriba sesiones.configSnapshotJson.
-     * - Instantánea existente: no sobrescribir (conservar“La configuración en ese momento.”).
-     * - instantánea vacía/Fallo de escritura: salte en silencio y no bloquee la generación.
+     * 把启动这一刻的 provider/model/思考级别/温度固定下来，写入 sessions.configSnapshotJson。
+     * - 已有快照：不覆盖（保持“当时的配置”）。
+     * - 空快照/写入失败：静默跳过，不阻断生成。
      */
     private suspend fun captureConfigSnapshotIfAbsent(sessionId: String) {
         val st = accessor.snapshot
-        // Las anulaciones a nivel de sesión tienen prioridad (especificadas explícitamente por el usuario) y recurren a la selección actual global si no hay ninguna anulación.
+        // 会话级覆盖优先（用户显式指定），无覆盖时回退全局当前选择。
         val modelId = deps.generationState.sessionModelOverrides[sessionId] ?: st.selectedModelId
         val providerId = deps.generationState.sessionProviderOverrides[sessionId] ?: st.activeProviderId
         val snapshot =
@@ -851,19 +933,19 @@ internal class ChatGenerationController(
             )
         runCatching {
             deps.sessionRepository.saveConfigSnapshotIfAbsent(sessionId, snapshot)
-        }.onFailure { e -> Logger.w("ChatVM", "No se pudo tomar la instantánea de configuración de la sesión: ${e.message}", e) }
+        }.onFailure { e -> Logger.w("ChatVM", "拍摄会话配置快照失败: ${e.message}", e) }
     }
 
-    /** Actualizar rápidamente el recuento de tokens(Llamado cada 200 caracteres o 1000 ms durante la transmisión,evitar reconstruir cada vez system prompt). */
+    /** 快速更新 token 计数(流式过程中每 200 字符或 1000ms 调用,避免每次重建 system prompt)。 */
     /**
-     * Actualizar las estimaciones de ocupación del contexto.
+     * 刷新上下文占用估算。
      *
-     * v2.x: [excludedMessageIds] excluir"Se ha incorporado al punto de control de la sesión y no se volverá a enviar al modelo."noticias.
-     * La ocupación debe reflejar**Lo que realmente verá el modelo**: De lo contrario, la tasa de ocupación después de la compresión aún se detendrá en el nivel del agua antes de la compresión.
-     * La compresión del mismo período de la historia se activará repetidamente en cada ronda (lo cual es costoso y también hará que los usuarios vean el extraño fenómeno de la compresión repetida).
+     * v2.x: [excludedMessageIds] 排除"已并入会话检查点、不会再发给模型"的消息。
+     * 占用率必须反映**模型实际会看到的内容**：否则压缩之后占用率仍停在压缩前的水位，
+     * 会每轮重复触发压缩同一段历史（既费钱，也会让用户看到反复压缩的怪现象）。
      *
-     * v2.x: calibre cambiado a"provider Medición real primero + estimación local de cola"(Ver [ContextTokenUsage]).
-     * Cuando no hay ningún mensaje con uso en la sesión, el resultado es el mismo que antes. [TokenEstimator] Estimar.
+     * v2.x: 口径改为"provider 实测优先 + 尾部本地估算"（见 [ContextTokenUsage]）。
+     * 会话里没有任何带 usage 的消息时，结果与原来一样是纯 [TokenEstimator] 估算。
      */
     suspend fun updateContextTokenCount(excludedMessageIds: Set<String> = emptySet()) {
         val msgsSnapshot = deps.stateStore.messages.value
@@ -883,14 +965,14 @@ internal class ChatGenerationController(
         accessor.update { it.copy(contextTokenCount = tokenCount) }
     }
 
-    /** Invalidación de la instantánea del mensaje del sistema estático key(assistant/settings/Lista de herramientas/Los cambios en las preferencias desencadenan reconstrucciones). */
+    /** 静态 system prompt 快照的失效 key(assistant/settings/工具清单/偏好等变化触发重建)。 */
     /**
-     * X-5/L1-5: Contiene alcance/dimensión espacial**completo**La instantánea caduca key —— Fuente única de verdad.
+     * X-5/L1-5: 含作用域/空间维度的**完整**快照失效 key —— 单一真源。
      *
-     * anteriormente [computeStaticSnapshotKey] La persona que llama de (ChatViewModel.refreshContextInfo con
-     * Los buildSystemPromptForStream de esta clase) están escritos a mano. `+ "|global=...|scope=...|space=..."`,
-     * Las dos concatenaciones literales se repiten por completo. En el futuro, si se agrega una nueva dimensión y solo se realiza un cambio, las dos cachés no estarán sincronizadas.
-     * Después de converger aquí, los dos lugares comparten el mismo empalme.
+     * 此前 [computeStaticSnapshotKey] 的调用方（ChatViewModel.refreshContextInfo 与
+     * 本类的 buildSystemPromptForStream）各自手写 `+ "|global=...|scope=...|space=..."`，
+     * 两处字面量拼接完全重复。将来新增一个维度而只改一处，就会出现两份缓存不同步。
+     * 收敛到这里后，两处共用同一拼接。
      */
     internal fun computeFullSnapshotKey(
         assistant: AssistantEntity?,
@@ -898,7 +980,7 @@ internal class ChatGenerationController(
         useGlobalMemory: Boolean,
         memoryScope: String,
         memorySpaceId: String,
-        // La conexión entre sesiones se basa en "qué sesión es la actual" para seleccionar la anterior, y la instantánea debe reconstruirse al cambiar de sesión.
+        // 跨会话衔接依赖「当前是哪个会话」来挑上一条，切换会话必须重建快照。
         sessionId: String? = null,
     ): String = computeStaticSnapshotKey(assistant, memoryEnabled) +
         "|global=$useGlobalMemory|scope=$memoryScope|space=$memorySpaceId|session=${sessionId.orEmpty()}"
@@ -917,7 +999,7 @@ internal class ChatGenerationController(
         val sessionSkillHash =
             state.sessions
                 .firstOrNull { it.id == effectiveSessionId }?.skillIdsJson?.hashCode() ?: 0
-        // v1.0.72: Esta sesión no hace referencia a la marca de memoria para agregar claves de caché.
+        // v1.0.72: 本会话不参考记忆标志加入缓存键
         val sessionIgnoreMemory =
             state.sessions
                 .firstOrNull { it.id == effectiveSessionId }?.ignoreMemory ?: false
@@ -956,21 +1038,21 @@ internal class ChatGenerationController(
         }
     }
 
-    /** montar system prompt(9 un section)+ Recuperación de memoria relevante + inyección automática de RAG + verificación de truncamiento de contexto previo al envío.
+    /** 组装 system prompt(9 个 section)+ 相关记忆检索 + RAG 自动注入 + 发送前上下文截断检查。
      *
-     * @return true = La palabra indicada está disponible y la ronda continúa;false = Las palabras estáticas no están disponibles, la persona que llama debe**Abortar esta ronda**
-     *   (No está permitido continuar generando con palabras de aviso vacías. Por el motivo, consulte [StaticPromptOutcome]).
+     * @return true = 提示词可用，本轮继续；false = 静态提示词不可用，调用方必须**中止本轮**
+     *   （不得带着空提示词继续生成，理由见 [StaticPromptOutcome]）。
      */
     @Suppress("LongMethod", "CyclomaticComplexMethod", "NestedBlockDepth", "ReturnCount")
     suspend fun buildSystemPromptForStream(state: StreamRunState): Boolean {
         with(state) {
-            // El cambio de contexto compartido solo controla el retrato global/fijar hacia arriba/Experiencia; Los propios hechos del asistente siguen siendo independientes de las sesiones recientes.
+            // 共享上下文开关只控制全局画像/置顶/经验；助手自己的 facts 与近期会话保持独立。
             val memoryEnabled = assistant?.memoryEnabled ?: true
             val useGlobalMemory = assistant?.useGlobalMemory ?: false
             val timeReminderEnabled = assistant?.enableTimeReminder ?: true
             val assistantId = assistant?.id?.takeIf { it.isNotBlank() }
             val effectiveMemoryEnabled = memoryEnabled && deps.settings.isMemoryEnabled()
-            // v1.0.72: Esta sesión no se refiere a indicadores de memoria.
+            // v1.0.72: 本会话不参考记忆标志
             val effSid =
                 if (accessor.snapshot.isAgentMode) {
                     accessor.snapshot.agentSessionId
@@ -992,9 +1074,9 @@ internal class ChatGenerationController(
                 }
             val memoryScope = assistantId?.takeIf { it != "default" } ?: "main"
             val memorySpaceId = deps.settings.currentSpaceIdFlow.firstOrNull().orEmpty().ifBlank { "default" }
-            // Reutilizar instantáneas estáticas del mensaje del sistema,Solo agregar actualizaciones"hora actual". Alcance/El espacio también pertenece a la identidad instantánea.,
-            // De lo contrario, el último mensaje de memoria se reutilizará después de cambiar de Asistente o Espacio.
-            // L1-5: La clave completa requiere una única función de fuente de verdad (compartida con ChatViewModel.refreshContextInfo).
+            // 复用静态 system prompt 快照,只追加动态"当前时间"。作用域/空间也属于快照身份,
+            // 否则切换 Assistant 或 Space 后会复用上一份记忆 prompt。
+            // L1-5: 完整 key 走单一真源函数（与 ChatViewModel.refreshContextInfo 共用）。
             val currentKey =
                 computeFullSnapshotKey(
                     assistant = assistant,
@@ -1002,8 +1084,8 @@ internal class ChatGenerationController(
                     useGlobalMemory = useGlobalMemory,
                     memoryScope = memoryScope,
                     memorySpaceId = memorySpaceId,
-                    // Se debe pasar la misma identidad como ChatViewModel.refreshContextInfo; de lo contrario, las claves en ambos lados de la lectura y la escritura nunca serán iguales.
-                    // El primer mensaje después de ingresar a cada sesión reconstruirá completamente la instantánea estática.
+                    // 必须与 ChatViewModel.refreshContextInfo 传入同一身份，否则读写两侧 key 永不相等，
+                    // 每次进会话后的首条消息都会整份重建静态快照。
                     sessionId = effSid,
                 )
             val staticSnapshot =
@@ -1012,10 +1094,10 @@ internal class ChatGenerationController(
                 ) {
                     deps.systemPromptCache.cachedStaticSystemPrompt
                 } else {
-                    // v2.6.x: Falló la construcción de la palabra de aviso estático**No debe degradarse silenciosamente a nulo**(Escritura original `getOrNull() ?: ""`).
-                    // El modelo pierde personalidad ante palabras vacías./Descripción de la herramienta/La memoria todavía producirá un“parece normal”responder,
-                    // Los usuarios sólo sentirán“AI De repente ya no lo parece”. Se considera no disponible aquí. → Cancelar la ronda actual + error visible.
-                    // No usarlo deliberadamente“Última ronda de palabras de aviso de caché”En pocas palabras: ese es un estado implícito y la antigua personalidad se asignará por error al nuevo asistente.
+                    // v2.6.x: 静态提示词构建失败**不得静默降级为空**（原写法 `getOrNull() ?: ""`）。
+                    // 空提示词下模型丢掉人格/工具说明/记忆，仍会产出一条“看起来正常”的回复，
+                    // 用户只会觉得“AI 忽然不像它”。这里判定为不可用 → 中止本轮 + 可见错误。
+                    // 刻意不用“上一轮缓存提示词”兜底：那是隐式状态，会把旧人格错接给新助手。
                     when (
                         val outcome =
                             staticPromptBuildOutcome(
@@ -1027,7 +1109,7 @@ internal class ChatGenerationController(
                                         useGlobalMemory = useGlobalMemory,
                                         memoryScope = memoryScope,
                                         memorySpaceId = memorySpaceId,
-                                        // La conexión entre sesiones depende de ella para excluir "la sesión actual en sí"; de lo contrario, el final de la ronda de diálogo actual se inyectará en la sesión anterior.
+                                        // 跨会话衔接靠它排除「当前会话自己」，不传会把本轮对话尾巴当上一会话注入。
                                         sessionId = effSid,
                                     )
                                 },
@@ -1059,15 +1141,15 @@ internal class ChatGenerationController(
             val dynamicSection = if (timeReminderEnabled) deps.systemPromptAssembler.buildDynamicSection() else ""
             val userMessageTimeContext = UserMessageTimeContext.build(rawHistory)
             val lastUserInputForPrompt = rawHistory.lastOrNull { it.role == MessageRole.USER }?.content
-            // v2.x: Guía de uso de emoticonos(lectura dinámica;La biblioteca esta vacia/Cadena vacía cuando el interruptor está apagado)
+            // v2.x: 表情包使用指南(动态读取;库为空/开关关闭时为空串)
             val stickerGuide = resultOf { deps.systemPromptAssembler.buildStickerGuideSection() }.getOrNull().orEmpty()
-            // v2.6.8: Segmento de estado civil. Anteriormente, sólo se utilizaba la generación de bypass. build() Lo inyectará, cadena principal de Danchao.
-            // El enfoque es buildStaticSnapshot + ensamblaje dinámico, que nunca se ha incluido. Las relaciones cambian con el tiempo de interacción,
-            // No se pueden tomar instantáneas estáticas; de lo contrario, cada cambio en la intimidad invalidará todo el caché, por lo que será un segmento dinámico.
+            // v2.6.8: 关系状态段。此前只有旁路生成走的 build() 会注入它，单聊主链
+            // 走的是 buildStaticSnapshot + 动态拼装，从未包含。关系随互动时效变化，
+            // 不能进静态快照，否则每次亲密度变动都会让整份缓存失效，故归动态段。
             val relationshipSection =
                 resultOf { deps.systemPromptAssembler.buildRelationshipSection(assistant) }
                     .onError { msg, throwable ->
-                        Logger.w("ChatVM", "buildRelationshipSection falló: $msg", throwable)
+                        Logger.w("ChatVM", "buildRelationshipSection 失败: $msg", throwable)
                     }
                     .getOrNull()
                     .orEmpty()
@@ -1090,10 +1172,10 @@ internal class ChatGenerationController(
                         if (isNotEmpty()) append("\n\n---\n\n")
                         append(stickerGuide)
                     }
-                    // Recuperación de memoria relevante(Sólo si la memoria está activada y no es un subasistente;La recuperación falló y se omitió silenciosamente).
+                    // 相关记忆检索(仅当记忆开启且非子助手;检索失败静默跳过)。
                     if (relevantMemoryAssistantId != null) {
-                        // buildSystemPrompt Ejecutado antes de aplicarTransformers,En este momento transformedMessages
-                        // todavía vacío;Utilice lo que se ha preparado en esta ronda. rawHistory,De lo contrario, la memoria relevante nunca se inyecta.
+                        // buildSystemPrompt 在 applyTransformers 之前执行,此时 transformedMessages
+                        // 仍为空;使用本轮已准备好的 rawHistory,否则相关记忆永远不会注入。
                         val lastUserInput = lastUserInputForPrompt
                         if (!lastUserInput.isNullOrBlank()) {
                             val relevant =
@@ -1106,7 +1188,7 @@ internal class ChatGenerationController(
                                         assistantId = relevantMemoryAssistantId,
                                     )
                                 }
-                                    .onError { msg, _ -> Logger.w("ChatVM", "buildRelevantMemorySection falló: $msg") }
+                                    .onError { msg, _ -> Logger.w("ChatVM", "buildRelevantMemorySection 失败: $msg") }
                                     .getOrNull() ?: ""
                             if (relevant.isNotBlank()) {
                                 if (isNotEmpty()) append("\n\n---\n\n")
@@ -1114,8 +1196,8 @@ internal class ChatGenerationController(
                             }
                         }
                     }
-                    // Rastreo del texto de la conversación:Reutilizar la recuperación del alcance de la sesión actual de message_fts,No copiar mensajes a la base de conocimientos.,
-                    // Tampoco inyecta contenido interno del SISTEMA/HERRAMIENTA en el modelo. Los usuarios pueden desactivar esta capacidad en la configuración de la memoria.
+                    // 会话原文回溯:复用 messages_fts 的当前会话范围检索,不复制消息到知识库,
+                    // 也不把 SYSTEM/TOOL 内部内容注入模型。用户可在记忆设置中关闭此能力。
                     if (
                         effectiveMemoryEnabled &&
                         !sessionIgnoreMem &&
@@ -1131,7 +1213,7 @@ internal class ChatGenerationController(
                                     limit = 8,
                                 )
                             }.onError { msg, throwable ->
-                                Logger.w("ChatVM", "Error en el rastreo del texto original de la sesión: $msg", throwable)
+                                Logger.w("ChatVM", "会话原文回溯失败: $msg", throwable)
                             }.getOrNull().orEmpty()
                         val recallSection =
                             ConversationRecallFormatter.build(
@@ -1150,9 +1232,9 @@ internal class ChatGenerationController(
                         )
                     }
                 }
-            // L1-4: system prompt puerta total —— Cada sección tiene su propio presupuesto (memoria relacionada/Revisar la abrazadera respectiva),
-            // Pero después de empalmar system prompt **Sin límite superior de longitud total**(Retrato largo + memoria larga + reseña larga se expandirán cuando se superpongan).
-            // Aquí, ContextBudget.SYSTEM_PROMPT se utiliza para realizar una abrazadera total: la cola se trunca más allá del límite y se adjunta con notas de diagnóstico.
+            // L1-4: system prompt 总量闸门 —— 各 section 单独有预算（相关记忆/回顾各自 clamp），
+            // 但拼接后的 system prompt **总长无上限**（长画像 + 长记忆 + 长回顾叠加时会膨胀）。
+            // 这里用 ContextBudget.SYSTEM_PROMPT 做一次总量 clamp：超限截断尾部并附可诊断注记。
             val limitedSystemPrompt =
                 io.zer0.muse.context.ContextBudget()
                     .clampText(io.zer0.muse.context.ContextSection.SYSTEM_PROMPT, combinedSystemPrompt)
@@ -1175,12 +1257,12 @@ internal class ChatGenerationController(
             deps.systemPromptCache.cachedSystemPrompt = limitedSystemPrompt
             updateContextTokenCount()
 
-            // Verificación exhaustiva de la longitud del contexto antes de enviar:token Truncar agresivamente el historial cuando la ocupación exceda el índice de advertencia.
-            // P3-10: Al mismo tiempo, registre si esta ronda está cerca del límite superior. — Solo envíe la carga útil que exceda el límite cuando esté cerca del límite superior.,
-            // Evite pagar un presupuesto BPE adicional por envío normal.
-            // v2.6.x: Prensa de tamaño de ventana**Modelo real de esta ronda.**(effectiveModel), si no puedes conseguirlo, devuélvelo.
-            // UI Calculado presionando el modelo global. contextMaxTokens —— La implementación original solo usa este último,
-            // anulación de sesión/Cuando el asistente vincula otro modelo, todos los umbrales están desalineados.
+            // 发送前上下文长度硬检查:token 占用超过预警比例时激进截断历史。
+            // P3-10: 同时记录本轮是否已近上限 — 仅近上限时才做发送 payload 超限复核,
+            // 避免正常发送多付一次 BPE 估算开销。
+            // v2.6.x: 窗口口径按**本轮实际模型**（effectiveModel）算，取不到才回退
+            // UI 侧按全局模型算出的 contextMaxTokens —— 原实现只用后者，
+            // 会话覆盖/助手绑定了另一个模型时阈值全部错位。
             val windowTokens = effectiveContextWindowTokens(effectiveModel, accessor.snapshot.contextMaxTokens)
             var nearContextLimit = false
             run {
@@ -1189,7 +1271,7 @@ internal class ChatGenerationController(
                 if (isNearContextLimit(currentTokens, maxTokens)) {
                     val ratio = currentTokens.toFloat() / maxTokens
                     nearContextLimit = true
-                    // v2.x Importar calentamiento:El recorte presupuestario está en vigor,Saltar la reducción a la mitad por número de artículos(De lo contrario destruirá toda la intención.)
+                    // v2.x 导入预热:预算截断已生效,跳过按条数折半(否则会毁掉全量意图)
                     if (rawHistory.size > 5 && !warmupActive) {
                         val newSize = (contextSize / 2).coerceAtLeast(2)
                         if (newSize < contextSize) {
@@ -1209,14 +1291,14 @@ internal class ChatGenerationController(
             prefixMessages =
                 buildList<UIMessage> {
                     addAll(systemMessages)
-                    // presetMessages(Diálogo predeterminado)
+                    // presetMessages(预设对话)
                     assistant?.let { deps.assistantRepository.parsePresetMessages(it) }?.forEach { add(it) }
-                    // v1.54: RAG inyección automática(El fallo no bloquea el proceso principal.).
+                    // v1.54: RAG 自动注入(失败不阻断主流程)。
                     val ragConfig = resultOf { deps.settings.getRagConfig() }.getOrNull() ?: io.zer0.muse.rag.RagConfig()
                     val effectiveRagConfig =
                         assistant?.let {
                             runCatching { deps.assistantRepository.mergeRagConfigOverride(it, ragConfig) }
-                                .onFailure { e -> Logger.w("ChatViewModel", "mergeRagConfigOverride falló: ${e.message}") }
+                                .onFailure { e -> Logger.w("ChatViewModel", "mergeRagConfigOverride 失败: ${e.message}") }
                                 .getOrDefault(ragConfig)
                         } ?: ragConfig
                     if (effectiveRagConfig.enabled) {
@@ -1225,16 +1307,16 @@ internal class ChatGenerationController(
                         if (ragQuery != null) {
                             val mentionDocIds =
                                 resultOf { deps.ragService.resolveMentionToDocIds(ragQuery) }
-                                    .onError { msg, t -> Logger.w("ChatViewModel", "@mention El análisis falló: $msg", t) }
+                                    .onError { msg, t -> Logger.w("ChatViewModel", "@mention 解析失败: $msg", t) }
                                     .getOrNull()
-                            // Cuando el asistente une KB,Las consultas sin @mención explícita recuperan solo estos KB;
-                            // Las menciones explícitas tienen prioridad,Se puede dirigir temporalmente a un documento especificado por el usuario.
+                            // 助手绑定 KB 时,未显式 @mention 的查询只检索这些 KB;
+                            // 显式 mention 优先,可临时定向到用户指定的文档。
                             val boundKnowledgeBaseIds =
                                 assistant
                                     ?.let { deps.assistantRepository.parseKnowledgeBaseIds(it) }
                                     .orEmpty()
-                            // v2.4.6: Priorizar el uso de "KB+Alcance de la "carpeta"(carpeta = dominio de búsqueda independiente);
-                            // Recurra al antiguo enlace de toda la biblioteca cuando no se establece ningún alcance de carpeta.
+                            // v2.4.6: 优先用「KB+文件夹」作用域(文件夹 = 独立检索域);
+                            // 未设文件夹作用域时回退到旧的整库绑定。
                             val boundFolderScopes =
                                 assistant
                                     ?.let { deps.assistantRepository.parseKnowledgeFolderScopes(it) }
@@ -1248,7 +1330,7 @@ internal class ChatGenerationController(
                                             deps.ragService.resolveKnowledgeBaseDocIds(boundKnowledgeBaseIds)
                                         }
                                     }.onError { msg, t ->
-                                        Logger.w("ChatViewModel", "No se pudo expandir el asistente vinculado a la base de conocimientos: $msg", t)
+                                        Logger.w("ChatViewModel", "助手绑定知识库展开失败: $msg", t)
                                     }.getOrNull()
                                 } else {
                                     emptyList()
@@ -1285,32 +1367,32 @@ internal class ChatGenerationController(
                     }
                 }
 
-            // P3-10: Desbordamiento del contexto — Revisa la verdad de esta ronda cerca del límite superior de tiempo. payload(system + preset + RAG
-            // + Historia truncada)estimación token;Aún alcanza el límite máximo(CONTEXT_HARD_LIMIT_RATIO)Entonces sálvate a ti mismo primero
-            // (Revisar una ronda de historia y reestimar),Si falla el autorrescate, configure el bit y rechace enviar.,Revertir el marcador de posición vacío mediante launchStream
-            // Y brinde al usuario indicaciones visibles.
+            // P3-10: 上下文超限兜底 — 近上限时复核本轮真实 payload(system + preset + RAG
+            // + 截断后历史)的估算 token;仍达到硬上限(CONTEXT_HARD_LIMIT_RATIO)则先自救
+            // (压一轮历史再重新估算),自救不成就置位拒绝发送,由 launchStream 回滚空占位
+            // 并给出用户可见提示。
             //
-            // La semántica de la puerta es la misma que la de operación (ChatToolLoopRunner la rama de recuperación de desbordamiento)**independiente**,
-            // Cada ronda de solicitudes se presiona como máximo una vez, en lugar de compartir una bandera:
-            //  - aquí está“ventana adicional de estimación local”, puede ser un error (la estimación no incluye la definición de la herramienta) / cache write / reasoning),
-            //    Es posible que la compresión no sea realmente necesaria;
-            //  - De hecho, el proveedor lo rechazó, lo que supone un verdadero conflicto.
-            // Compartir un logotipo hará“error de cálculo”La única posibilidad real de comerse al proveedor es en vano.
-            // El costo es el peor de los casos: dos rondas de compresión (aún excediendo -> Aún rechazado por el proveedor -> Presione nuevamente),
-            // ambas veces“Mantener resumen + elementos recientes”La compresión no dejará la historia vacía;
-            // A cada lado sólo se le permite una vez y eso es todo.
+            // 闸门语义与运行中那条（ChatToolLoopRunner 的溢出恢复分支）**各自独立**，
+            // 一轮请求最多各压一次，而不是共享一个标志：
+            //  - 这里是“本地估算超窗”，可能误判（估算不含工具定义 / cache write / reasoning），
+            //    压缩未必真的需要；
+            //  - 那边是 provider 真实拒了，属于确凿冲突。
+            // 共用一个标志会让“估算误判”白白吃掉 provider 那条唯一的确凿机会。
+            // 代价也就是最坏情况两轮压缩（估算后仍超 -> 仍被 provider 拒 -> 再压一次），
+            // 两次都是“保留摘要 + 最近若干条”的压缩，不会把历史压空；
+            // 而两边各自只允许一次，也就到此为止。
             if (nearContextLimit) {
-                // La carga útil de una solicitud debe evaluarse dos veces (original/después de la compresión). El mensaje retenido después de la compresión es**El mismo lote de instancias.**,
-                // Compartir una caché de recuento por instancia permite que el segundo paso"porción entera BPE"hasta"Sólo se cuentan los resúmenes nuevos.".
+                // 一次请求里 payload 要估两遍（原始 / 压缩后）。压缩后保留下来的消息是**同一批实例**，
+                // 共用一份按实例的计数缓存能把第二遍从"整份 BPE"降到"只算新增的摘要"。
                 val payloadTokenCache = MessageTokenCache()
                 var payloadTokens =
                     withContext(Dispatchers.Default) {
                         TokenEstimator.estimate(prefixMessages + truncatedHistory, cache = payloadTokenCache)
                     }
-                // v2.6.x: La intercepción dura también se basa en la ventana del modelo real de esta ronda (la fuente de la ventana es la misma que la de los windowTokens anteriores).
+                // v2.6.x: 硬拦截同样按本轮实际模型窗口（窗口来源同上方 windowTokens）。
                 val hardMaxTokens = windowTokens
                 if (exceedsHardContextLimit(payloadTokens, hardMaxTokens)) {
-                    // Sálvate a ti primero: vuelve a contar después de presionar. Si realmente no se supera, no se realizarán más interceptaciones.
+                    // 先自救一次：压完再算一遍，真不超了就不再拦截
                     val compressedHistory =
                         recoverPreSendOverflow(
                             history = truncatedHistory,
@@ -1330,8 +1412,8 @@ internal class ChatGenerationController(
                         truncatedHistory = compressedHistory
                         Logger.w(
                             "ChatVM",
-                            "pre-send context overflow: Revalorización después de la compresión. payload=$payloadTokens/$hardMaxTokens " +
-                                "(${payloadTokens * 100 / hardMaxTokens}%), continuar enviando | sessionId=$sessionId",
+                            "pre-send context overflow: 压缩后重估 payload=$payloadTokens/$hardMaxTokens " +
+                                "(${payloadTokens * 100 / hardMaxTokens}%), 继续发送 | sessionId=$sessionId",
                         )
                     } else {
                         contextOverflowBlocked = true
@@ -1347,7 +1429,7 @@ internal class ChatGenerationController(
         return true
     }
 
-    /** Grabar eventos de sombra de conversación(ConversationRebuild Saltar silenciosamente al cerrar). */
+    /** 记录对话 shadow 事件(ConversationRebuild 关闭时静默跳过)。 */
     @Suppress("TooGenericExceptionCaught")
     suspend fun recordConversationShadow(event: ConversationEventDraft) {
         if (!ConversationRebuildFlagStore.current.shadowEventsEnabled) return
@@ -1363,7 +1445,7 @@ internal class ChatGenerationController(
         }
     }
 
-    /** La reenvío de la solicitud de la bandeja de salida generada al volver a la sesión aún no ha comenzado. */
+    /** 切回会话时重新投递仍未启动生成的 outbox 请求。 */
     suspend fun requeueOutboxForSession(sessionId: String) {
         if (restoreBlocksChatWrites("requeueOutbox")) return
         val pending = resultOf { deps.sessionRepository.getPendingOutbox(sessionId) }.getOrNull().orEmpty()
@@ -1395,12 +1477,12 @@ internal class ChatGenerationController(
                 )
             if (result.isFailure) {
                 deps.generationState.outboxRecoveryQueuedIds.remove(req.id)
-                Logger.w("ChatVM", "La puesta en cola de la bandeja de salida falla al volver a la sesión: ${req.id}")
+                Logger.w("ChatVM", "切回会话时 outbox 入队失败: ${req.id}")
             }
         }
     }
 
-    /** El enrutamiento automático de tareas solo muestra el modelo solicitado actualmente,Restaura la verdadera elección del usuario al final. */
+    /** 自动任务路由只展示当前请求的模型,收尾时恢复用户真实选择。 */
     private fun restoreSelectionAfterTaskRoute(state: StreamRunState) {
         if (state.taskRouteSelection == null) return
         restoreSelectionForSession(state.sessionId)
@@ -1421,8 +1503,8 @@ internal class ChatGenerationController(
 
     /** Keep one diagnostic summary on every debug-mode terminal path. */
     suspend fun recordDebugSummary(state: StreamRunState, outcome: String) {
-        // v2.x(Artículo de exportación de diagnóstico A): El rastro final ingresa incondicionalmente a GenerationTrace (el contenido en sí ha sido insensibilizado,
-        // No tiene nada que ver con el modo de depuración.——Los usuarios comunes también pueden exportar cuando tienen problemas). Cualquier excepción se acepta internamente.
+        // v2.x（诊断导出项目 A）: 终态轨迹无条件入 GenerationTrace（内容本身已脱敏，
+        // 与 debugMode 无关——普通用户出问题时也能导出）。任何异常内部吞掉。
         runCatching {
             val selectedModel = resultOf { deps.settings.getSelectedModel() }.getOrNull()
             io.zer0.muse.diagnostic.GenerationTrace.record(
@@ -1480,7 +1562,7 @@ internal class ChatGenerationController(
         Logger.d("ChatVM-Debug", "launchStream terminal | outcome=$outcome | $debugInfo")
     }
 
-    /** Solo borre el estado de transmisión si aún es la última versión(Al disparar en rápida sucesión, no se debe borrar el final de gen-1. gen-2). */
+    /** 仅当自己仍是最新生成时才清零流式状态(快速连发时 gen-1 收尾不得清掉 gen-2)。 */
     fun clearStreamingStateIfLatest(state: StreamRunState, finalPhase: ChatStreamPhase = ChatStreamPhase.IDLE): Boolean {
         if (state.generationSerial != deps.generationState.streamGenerationSerial) return false
         accessor.update {
@@ -1495,7 +1577,7 @@ internal class ChatGenerationController(
         return true
     }
 
-    /** Iniciar generación de streaming:montar StreamRunState → 6 preparación del paso → ciclo de herramienta → Refinamiento/interrumpir/Persistencia excepcional. */
+    /** 启动流式生成:组装 StreamRunState → 6 步准备 → 工具循环 → 收尾/中断/异常持久化。 */
     @Suppress("LongMethod", "CyclomaticComplexMethod", "NestedBlockDepth", "TooGenericExceptionCaught")
     fun launchStream(
         assistantId: Uuid,
@@ -1509,18 +1591,18 @@ internal class ChatGenerationController(
             accessor.update { it.copy(isStreaming = false, isWaitingFirstToken = false) }
             return
         }
-        // v1.94: Borrar el historial de llamadas de herramientas antes de cada inicio de generación de transmisión(InputBar El recuento dinámico de cápsulas se restablece a cero)
+        // v1.94: 每次启动流式生成前清空工具调用历史(InputBar 动态胶囊计数归零)
         accessor.update { it.copy(toolCallHistory = emptyList()) }
-        // B-1: Borrar la sesión"Eliminar la inhibición de escritura",Permite regenerar el disco después de su eliminación.
+        // B-1: 新流式启动时清除该会话的"删除写抑制",允许删除后重新生成落盘。
         sessionWritesSuppressed.remove(sessionId)
-        // R-UI-02: Generar persistencia de sesión solo,Evite superponer el enfoque de visualización del usuario.
+        // R-UI-02: 生成会话单独持久化,避免与用户查看焦点互相覆盖。
         accessor.coroutineScope.launch {
             resultOf { settings.saveGeneratingSessionId(sessionId) }
-                .onError { msg, _ -> Logger.w("ChatVM", "saveGeneratingSessionId falló: $msg") }
+                .onError { msg, _ -> Logger.w("ChatVM", "saveGeneratingSessionId 失败: $msg") }
         }
-        // La identidad de la nueva generación se asigna antes de que el planificador espere a que finalmente termine la generación anterior. La finalización de la generación anterior no puede borrar la interfaz de usuario de la nueva generación a partir de este momento.
+        // 在调度器等待旧代 finally 之前就分配新代身份，旧代收尾从此刻起不能清零新代 UI。
         val generationSerial = ++deps.generationState.streamGenerationSerial
-        // Primero cree el estado de flujo y luego proporcione el mismo ID de generación al programador; estado activo,LLM, herramientas y aprobaciones comparten así una identidad generacional.
+        // 先创建流状态，再把同一 generationId 交给调度器；活跃状态、LLM、工具和审批因此共享代际身份。
         val state = StreamRunState(sessionId = sessionId, assistantId = assistantId, isNewBranch = isNewBranch)
         state.outboxId = outboxId
         chatGenerationManager.launchGeneration(
@@ -1543,33 +1625,33 @@ internal class ChatGenerationController(
                     cancel = { generationJob?.cancel() },
                 )
             generationExecutionId?.let { id -> executionRegistry?.start(id) }
-            // v2.2.1: Superposición a nivel de sesión que cuelga con autocuración — Cuando el proveedor/modelo señalado ya no existe,Borre esta sesión primero
-            // cobertura flotante(Memoria + persistencia),Evita volver atrás y cepillarte cada vez que generas "requested model binding
-            // unavailable" advertencia;asistente/Los enlaces globales no se ven afectados.
+            // v2.2.1: 会话级覆盖悬空自愈 — 指向的 provider/model 已不存在时,先清掉本会话的
+            // 悬空覆盖(内存 + 持久化),避免每次生成都走回退并刷 "requested model binding
+            // unavailable" 警告;助手/全局绑定不受影响。
             healStaleSessionOverride(sessionId)
-            // v2.5.3 (P3-2): Tome una instantánea de la configuración a nivel de sesión en la primera compilación —— Ponga el proveedor/modelo/nivel de pensamiento actual/temperatura
-            // Se corrigió que incluso si se cambia el modelo global, la sesión anterior aún presiona“La configuración en ese momento.”Reenviar.
-            // Sólo se escribe cuando aún no se ha tomado y no sobrescribe las instantáneas existentes; el fracaso no bloquea la generación.
+            // v2.5.3 (P3-2): 首次生成时拍摄会话级配置快照 —— 把当时的 provider/model/思考级别/温度
+            // 固定下来，之后即使全局模型被切换，旧会话仍按“当时的配置”重发。
+            // 仅在尚未拍摄时写入，不覆盖既有快照；失败不阻断生成。
             captureConfigSnapshotIfAbsent(sessionId)
-            // Ayudante de anulación explícita de selección de sesión/Incumplimiento global; la tarea generada captura la configuración al inicio y no se producirá cambio de página durante el proceso.
+            // 会话选择显式覆盖助手/全局默认；生成任务捕获启动时的配置，期间切页不会串台。
             state.sessionModelOverride = deps.generationState.sessionModelOverrides[sessionId]
             state.sessionProviderOverride = deps.generationState.sessionProviderOverrides[sessionId]
             state.taskRouteSelection = taskRouteSelection
             state.fallbackModelId = deps.generationState.globalSelectedModelId
             state.fallbackProviderId = deps.generationState.globalActiveProviderId
-            // B-24: Utilice el número de secuencia de generación actual asignado en la entrada; Evite las condiciones de carrera cuando espere a que finalmente se complete la generación anterior.
+            // B-24: 使用入口处已分配的本代序号；避免等待旧代 finally 时产生竞态。
             state.generationSerial = generationSerial
-            // M1.1: Iniciar un punto de control de turno en tiempo de ejecución de sesión(NOT_STARTED -> GENERATING).
+            // M1.1: 开启会话运行时 turn 检查点(NOT_STARTED -> GENERATING)。
             sessionManager.beginTurn(sessionId, state.turnId)
             chatGenerationManager.setTurnId(
                 sessionId = sessionId,
                 generationId = state.generationIdentity.generationId,
                 turnId = state.generationIdentity.turnId,
             )
-            // B7-04: Preestablezca el contenido generado cuando continúe generando
+            // B7-04: 继续生成时预置已产出内容
             continueFrom?.let { state.builder.append(it.content) }
-            // P3-9: Etapas que requieren mucho tiempo — preparar/palabra inicial/cada ronda/Cronograma del segmento de cierre,Un registro de depuración puede localizar la sección lenta.
-            // (palabra inicial/Cada ronda se complementa con los puntos enterrados Perf de ChatViewModel/ToolOrchestrator)
+            // P3-9: 阶段耗时埋点 — 准备/首字/每轮/收尾分段计时,一次 debug 日志可定位慢在哪一段。
+            // (首字/每轮由 ChatViewModel / ToolOrchestrator 的 Perf 埋点补充)
             val stageTimer = Perf.start("chat-turn")
             try {
                 deps.streamCoordinator.prepareHistory(state)
@@ -1585,12 +1667,12 @@ internal class ChatGenerationController(
                         Logger.w("ChatVM", "MCP tools not ready before stream: $mcpServerIds")
                     }
                 }
-                // v2.6.x: Cuando la palabra del mensaje estático no está disponible (error de compilación/el resultado está vacío)**Abortar esta ronda**,
-                // En lugar de seguir generando con palabras vacías. Las respuestas con palabras vacías perderán tu personalidad./Descripción de la herramienta/memoria,
-                // El usuario recibió un“respuesta normal”, que es mucho más engañoso que informar errores directamente.
-                // elegir“abortar”en lugar de“Continuar + Consejos”razón: No se ha enviado ninguna solicitud en esta ronda y el usuario no ha esperado.
-                // El primer token (ocurre en la fase de preparación/aviso), el costo de cancelación es mínimo; Deje que el modelo no genere palabras clave.
-                // Contaminará el historial de conversaciones (esta respuesta se considerará su propia declaración en rondas posteriores).
+                // v2.6.x: 静态提示词不可用（构建抛错 / 结果为空）时**中止本轮**，
+                // 而不是带着空提示词继续生成。空提示词下的回复会丢掉人格/工具说明/记忆，
+                // 用户却收到一条“正常回复”，比直接报错误导得多。
+                // 选“中止”而不是“继续 + 提示”的原因: 本轮尚未发出任何请求、用户也没等到
+                // 首 token（发生在 prepare/prompt 阶段），中止代价极小; 而让模型无提示词生成
+                // 会污染会话历史（这条回复会被后续轮次当成自己的发言）。
                 if (!buildSystemPromptForStream(state)) {
                     deps.addError(
                         ChatErrorType.UNKNOWN,
@@ -1603,12 +1685,12 @@ internal class ChatGenerationController(
                     sessionManager.runtime(sessionId)?.markFinished(TurnPhase.FAILED, state.turnId)
                     runCatching {
                         notificationManager.updateLiveProgress("", 0, false)
-                    }.onFailure { Logger.w("ChatVM", "No se pudo cancelar la notificación de progreso: ${it.message}") }
+                    }.onFailure { Logger.w("ChatVM", "取消进度通知失败: ${it.message}") }
                     return@launchGeneration
                 }
                 stageTimer.split("prompt")
-                // P3-10: Desbordamiento del contexto — precompresión(80%)+ truncamiento radical(90%)Cuando la ventana del modelo todavía se excede después,
-                // Negarse a enviar esta ronda de solicitudes(Evite las inevitables 400 llamadas no válidas),Haga retroceder el marcador de posición vacío y proporcione un mensaje visible.
+                // P3-10: 上下文超限兜底 — 预压缩(80%)+ 激进截断(90%)之后仍超出模型窗口时,
+                // 拒绝发送本轮请求(避免必然 400 的无效调用),回滚空占位并给出可见提示。
                 if (state.contextOverflowBlocked) {
                     deps.addError(
                         ChatErrorType.UNKNOWN,
@@ -1637,6 +1719,15 @@ internal class ChatGenerationController(
                     sessionManager.runtime(sessionId)?.markFinished(TurnPhase.COMPLETED, state.turnId)
                 } else {
                     recordDebugSummary(state, "failed")
+                    // 工具轮说"这一轮没成"而界面什么都不说,用户看到的就是"发了没人理"。
+                    // 已经吐出半句时不报:那时界面上有内容,报错反而像把话说断了。
+                    if (state.builder.isEmpty() && state.reasoningBuilder.isEmpty()) {
+                        deps.addError(
+                            ChatErrorType.UNKNOWN,
+                            deps.appContext.getString(R.string.err_chat_no_reply),
+                            true,
+                        )
+                    }
                     sessionManager.runtime(sessionId)?.markFinished(TurnPhase.FAILED, state.turnId)
                 }
             } catch (ce: kotlinx.coroutines.CancellationException) {
@@ -1660,7 +1751,7 @@ internal class ChatGenerationController(
                     }
                 accessor.update { it.copy(streamState = it.streamState.copy(phase = ChatStreamPhase.INTERRUPTED)) }
                 sessionManager.runtime(sessionId)?.markFinished(TurnPhase.CANCELLED, state.turnId)
-                // B-1: Si se elimina la sesión, se omitirá la interrupción.,Prevenir la eliminación"resurrección".
+                // B-1: 会话已删除则跳过中断落盘,防止删后"复活"。
                 if (!isSessionWritesSuppressed(sessionId)) {
                     deps.persistInterruptedAssistant(
                         sessionId,
@@ -1672,7 +1763,7 @@ internal class ChatGenerationController(
                 withContext(NonCancellable) {
                     runCatching {
                         deps.sessionRepository.deleteGenerationCheckpoints(sessionId, state.streamStartedAt)
-                    }.onFailure { Logger.w("ChatVM", "Falló la interrupción de la limpieza de los puntos de control de generación: ${it.message}") }
+                    }.onFailure { Logger.w("ChatVM", "中断清理 generation checkpoints 失败: ${it.message}") }
                 }
                 if (ConversationRebuildFlagStore.current.shadowEventsEnabled) {
                     withContext(NonCancellable) {
@@ -1716,7 +1807,7 @@ internal class ChatGenerationController(
                             }.getOrNull()
                         }
                     }
-                // B-1: Si la sesión se ha eliminado, se omitirá la ubicación anormal.,Prevenir la eliminación"resurrección".
+                // B-1: 会话已删除则跳过异常落盘,防止删后"复活"。
                 if (!isSessionWritesSuppressed(sessionId)) {
                     deps.persistInterruptedAssistant(
                         sessionId,
@@ -1728,7 +1819,7 @@ internal class ChatGenerationController(
                 withContext(NonCancellable) {
                     runCatching {
                         deps.sessionRepository.deleteGenerationCheckpoints(sessionId, state.streamStartedAt)
-                    }.onFailure { Logger.w("ChatVM", "Error en los puntos de control de generación de limpieza de excepciones: ${it.message}") }
+                    }.onFailure { Logger.w("ChatVM", "异常清理 generation checkpoints 失败: ${it.message}") }
                 }
                 deps.generationState.nextToolGenerationToken()
                 deps.generationState.toolAssistantId = null
@@ -1741,15 +1832,15 @@ internal class ChatGenerationController(
                 sessionManager.runtime(sessionId)?.markFinished(TurnPhase.FAILED, state.turnId)
                 runCatching {
                     notificationManager.updateLiveProgress("", 0, false)
-                }.onFailure { Logger.w("ChatVM", "No se pudo cancelar la notificación de progreso: ${it.message}") }
+                }.onFailure { Logger.w("ChatVM", "取消进度通知失败: ${it.message}") }
             } finally {
-                // P3-9: sincronización de fase final(Incluyendo preparación/palabra inicial/cada ronda/segmento de cierre;También se registran rutas anormales)
+                // P3-9: 结束阶段计时(含准备/首字/每轮/收尾分段;异常路径同样落日志)
                 //
-                // Dos notas adicionales: retraso de la primera palabra y tiempos de actualización de la interfaz de usuario de transmisión.
-                // Ellos mismos toman Perf.log, pero Perf solo registra ≥500ms escrito en el archivo de registro (chat-first-token normalmente más rápido),
-                // Entonces no puedo encontrarlo en el registro en absoluto. Sólo colgándonos de esta línea de chat-turno, que habría sido colocada, podremos tener observabilidad.
-                // Los nombres clave se evitan deliberadamente token / key / secret Otras palabras:Logger La desensibilización de la PII
-                // `xxx=N` Este tipo de valor clave se reemplaza cuando las credenciales son [Insensibilizado](Primera edición firstToken=… Así se perdió).
+                // 附注两项：首字延迟与流式 UI 刷新次数。
+                // 它们本身走 Perf.log，但 Perf 只把 ≥500ms 的写进日志文件（chat-first-token 通常更快），
+                // 于是日志里根本查不到。挂到这条本来就会落盘的 chat-turn 行上，才有可观测性。
+                // 键名刻意避开 token / key / secret 等字样：Logger 的 PII 脱敏会把
+                // `xxx=N` 这类键值当凭据替换成 [已脱敏]（第一版 firstToken=… 就是这样丢的）。
                 stageTimer.annotate(
                     "ttftMs",
                     if (state.firstTokenTime > 0L) state.firstTokenTime - state.streamStartedAt else -1L,
@@ -1767,12 +1858,12 @@ internal class ChatGenerationController(
     }
 
     /**
-     * v2.6.x: El final cuando la palabra clave no está disponible provoca que se cancele la ronda.
+     * v2.6.x: 提示词不可用导致本轮中止时的收尾。
      *
-     * La misma semántica que el camino más allá del contexto.:Revierta el marcador de posición del asistente vacío que aún no se ha generado y reconstruya el árbol de sesión.
-     * No dejes respuestas vacías en la lista.**no borrar outbox**(Consistente con la ruta contextOverflowBlocked):
-     * El fallo puede ser instantáneo (DB Jitter), conserva la bandeja de salida para permitir que el usuario vuelva a intentarlo automáticamente al volver a la sesión;
-     * Si falla, se informará nuevamente un error visible y no se silenciará.
+     * 与上下文超限那条路径同语义:回滚尚未产出的空 assistant 占位并重建会话树，
+     * 不把空回复留在列表里。**不删 outbox**（与 contextOverflowBlocked 路径保持一致）:
+     * 失败可能是瞬时的（DB 抖动），保留 outbox 让用户切回会话时自动重试一次；
+     * 真失败时会再次报出可见错误，不会静默。
      */
     private fun rollbackPromptFailurePlaceholder(state: StreamRunState) {
         accessor.updateMessages { list ->
@@ -1781,14 +1872,14 @@ internal class ChatGenerationController(
         deps.messageController.rebuildConversationTree()
     }
 
-    /** Refinamiento:shadow TURN_FINISHED + onGenerationFinish Hooks + persistencia de metadatos + notificaciones + puntos de control limpios. */
+    /** 收尾:shadow TURN_FINISHED + onGenerationFinish 钩子 + 元数据持久化 + 通知 + 清理检查点。 */
     @Suppress("LongMethod", "CyclomaticComplexMethod")
     suspend fun finalizeResponse(state: StreamRunState) {
         val experiments = state.experiments
         val sessionId = state.sessionId
         val sessionTitle = state.sessionTitle
         val streamStartedAt = state.streamStartedAt
-        // v2.x Importar calentamiento:Borre la marca después de la primera ronda de respuestas exitosas.(Todo el historial solo se puede reponer una vez.;idempotente)
+        // v2.x 导入预热:首轮成功完成响应后清除标记(全量历史只补一次;幂等)
         if (!restoreBlocksChatWrites("finalizeClearWarmup")) {
             resultOf { deps.sessionRepository.clearWarmupPending(sessionId) }
                 .onError { msg, _ -> Logger.w("ChatVM", "clearWarmupPending failed: $msg") }
@@ -1816,7 +1907,7 @@ internal class ChatGenerationController(
 
         clearStreamingStateIfLatest(state, ChatStreamPhase.FINISHED)
 
-        // triple gancho:Llamado después de que la generación esté completa. applyOnGenerationFinish,Si se cambia el mensaje final del asistente, se vuelve a escribir en la base de datos.
+        // 三钩子:生成完成后调用 applyOnGenerationFinish,若最终 assistant 消息被改变则写回 DB。
         resultOf {
             val ctx = state.transformContext ?: return@resultOf
             val currentAssistantId = state.currentAssistantId
@@ -1826,9 +1917,9 @@ internal class ChatGenerationController(
             val transformed = deps.transformerPipeline.applyOnGenerationFinish(listOf(finalAssistant), ctx)
             val newAssistant = transformed.firstOrNull()
             if (newAssistant != null && newAssistant != finalAssistant) {
-                // P2-5: transformer será reconstruido UIMessage,Falta el campo de identidad variante(dependencia de implementación original
-                // Siempre nulo _pendingVariantInfo escrito de nuevo,es un camino muerto). Aquí directamente al reemplazar.
-                // Mantener campos variantes de finalAssistant,Retire el mecanismo de camino muerto.
+                // P2-5: transformer 会重建 UIMessage,丢失变体身份字段(原实现依赖
+                // 恒为 null 的 _pendingVariantInfo 写回,是死路径)。这里直接在替换时
+                // 保留 finalAssistant 的变体字段,删除死路径机制。
                 val preservedAssistant =
                     newAssistant.copy(
                         variantGroupId = newAssistant.variantGroupId ?: finalAssistant.variantGroupId,
@@ -1836,9 +1927,9 @@ internal class ChatGenerationController(
                         variantCount = if (newAssistant.variantCount > 0) newAssistant.variantCount else finalAssistant.variantCount,
                         parentGroupId = newAssistant.parentGroupId ?: finalAssistant.parentGroupId,
                     )
-                // A9: Cubra únicamente los campos realmente producidos por el transformador.(content/mood/reflection/moodSkin),
-                // Los campos restantes estarán sujetos a los elementos más recientes de los parámetros de entrada de CAS. Está prohibido reemplazar el conjunto. preservedAssistant,
-                // De lo contrario, las instantáneas antiguas sobrescribirán las URL de medios, los metadatos, etc. escritos simultáneamente dentro de la ventana.
+                // A9: 只覆盖 transformer 真正产出的字段(content/mood/reflection/moodSkin),
+                // 其余字段一律以 CAS 入参的最新元素为准。禁止整体替换成 preservedAssistant,
+                // 否则窗口内并发写入的媒体 URL、元数据等会被旧快照盖掉。
                 accessor.updateMessages { list ->
                     list.map {
                         if (it.id == currentAssistantId) {
@@ -1868,7 +1959,7 @@ internal class ChatGenerationController(
             }
         }.onError { msg, _ -> Logger.w("ChatVM", "applyOnGenerationFinish failed: $msg") }
 
-        // A5: Generar persistencia de metadatos(provider Uso de token medido + tiempo total invertido),No se bloquea en caso de fallo.
+        // A5: 生成元数据持久化(provider 实测 token 用量 + 总耗时),失败不阻塞。
         resultOf {
             if (restoreBlocksChatWrites("finalizeWriteAssistantMeta")) return@resultOf
             val entity = deps.sessionRepository.getMessageById(state.currentAssistantId.toString()) ?: return@resultOf
@@ -1902,17 +1993,17 @@ internal class ChatGenerationController(
             }
         }.onError { msg, _ -> Logger.w("ChatVM", "persist A5 message metadata failed: $msg") }
 
-        // Actualice la ocupación del token de contexto una vez finalizada la transmisión.
+        // 流式结束后刷新上下文 token 占用。
         deps.refreshContextInfo()
 
-        // Protección contra desbordamiento de contexto:token Compresión automática en segundo plano cuando la ocupación supera el 80%.
+        // 上下文溢出保护:token 占用超过 80% 时后台自动压缩。
         if (!restoreBlocksChatWrites("finalizeAutoCompress")) {
             resultOf { deps.triggerAutoCompress(sessionId) }
         }
 
         recordDebugSummary(state, "completed")
 
-        // Notificación:Transmisión completada — enviar"Respuesta completada"Notificación.
+        // 通知:流式完成 — 发"回复完成"通知。
         resultOf {
             notificationManager.updateLiveProgress(sessionTitle, 0, false)
             val finalText =
@@ -1926,11 +2017,11 @@ internal class ChatGenerationController(
                 preview = preview,
                 target = MuseNotificationTarget.Session(sessionId),
             )
-        }.onError { msg, t -> Logger.w("ChatVM", "Error en la notificación de finalización de la transmisión: $msg", t) }
+        }.onError { msg, t -> Logger.w("ChatVM", "流式完成通知失败: $msg", t) }
 
-        // Notificación memory ticker(detrás del escenario rollingSummary + daily check).
-        // La interfaz de usuario del chat solo puede conservar la página de mensajes más reciente;La canalización de memoria debe leer la sesión completa de la base de datos.,
-        // Luego agregue los mensajes de la interfaz de usuario que no se han eliminado en esta ronda.,Evite los hechos iniciales que nunca llegan a ser abstractos./Extracción.
+        // 通知 memory ticker(后台 rollingSummary + daily check)。
+        // 聊天 UI 可能只保留最近一页消息;记忆管线必须从 DB 读取完整会话,
+        // 再补上本轮尚未落库的 UI 消息,避免早期事实永远进不了摘要/抽取。
         val uiConversationMessages = deps.stateStore.messages.value
         val dbConversationMessages =
             if (deps.settings.memoryConfigCache.conversationRecallEnabled) {
@@ -1966,26 +2057,26 @@ internal class ChatGenerationController(
             }.onFailure { Logger.w("ChatVM", "notifyTurn failed: ${it.message}") }
         }
 
-        // B5-01/B-23: La construcción termina normalmente.,prensa (sessionId, streamStartedAt) Limpieza precisa de los puntos de control de la generación actual.
+        // B5-01/B-23: 生成正常结束,按 (sessionId, streamStartedAt) 精确清理本代检查点。
         if (!restoreBlocksChatWrites("finalizeClearCheckpoints")) {
             resultOf { deps.sessionRepository.deleteGenerationCheckpoints(sessionId, streamStartedAt) }
-                .onError { msg, _ -> Logger.w("ChatVM", "generation checkpoints Error de limpieza: $msg") }
+                .onError { msg, _ -> Logger.w("ChatVM", "generation checkpoints 清理失败: $msg") }
         }
-        // R-UI-02: Borre el foco de generación después de la ronda de generación actual.
+        // R-UI-02: 本轮生成结束后清除生成焦点。
         if (!restoreBlocksChatWrites("finalizeClearGenerationFocus") &&
             resultOf { deps.settings.getGeneratingSessionId() }.getOrNull() == sessionId
         ) {
             resultOf { deps.settings.saveGeneratingSessionId(null) }
-                .onError { msg, _ -> Logger.w("ChatVM", "saveGeneratingSessionId Error de limpieza: $msg") }
+                .onError { msg, _ -> Logger.w("ChatVM", "saveGeneratingSessionId 清理失败: $msg") }
         }
-        // v2.5.9: Borre el directorio de habilidades registrado en esta sesión para evitar que permanezca después de que finalice la sesión (igual que SessionToolLoadRegistry).
+        // v2.5.9: 清除本会话登记的技能目录，防会话结束后残留（同 SessionToolLoadRegistry）。
         runCatching { deps.toolRegistry.clearSearchableSkills(sessionId) }
-            .onFailure { Logger.w("ChatVM", "clearSearchableSkills falló: ${it.message}") }
-        // v2.6.7 fix (AUDIT F12): Notifica al widget de escritorio que se actualice.
-        // La implementación anterior solo agrega/Se envió una transmisión durante la configuración y la vista previa del componente permaneció en ese momento durante mucho tiempo.
-        // Porque provideGlance de Glance no se volverá a ejecutar.
+            .onFailure { Logger.w("ChatVM", "clearSearchableSkills 失败: ${it.message}") }
+        // v2.6.7 fix (AUDIT F12): 通知桌面小组件刷新。
+        // 旧实现只在添加/配置时发过一次广播，组件预览长期停在那一刻的内容，
+        // 因为 Glance 的 provideGlance 不会自己重跑。
         runCatching { io.zer0.muse.widget.MuseWidgetRefresher.refreshAll(deps.appContext) }
-            .onFailure { Logger.w("ChatVM", "No se pudieron actualizar los widgets del escritorio: ${it.message}") }
+            .onFailure { Logger.w("ChatVM", "刷新桌面小组件失败: ${it.message}") }
     }
 
     companion object {

@@ -1,32 +1,32 @@
 #!/usr/bin/env bash
 # =============================================================================
-# Muse Runtime Pack Script de compilación (ejecutado en entorno WSL/Linux)
+# Muse Runtime Pack 构建脚本（在 WSL / Linux 环境运行）
 # -----------------------------------------------------------------------------
-# Función: descargue el tiempo de ejecución de Node.js desde el repositorio oficial de Termux (node Programa principal + bibliotecas compartidas dependientes + npm),
-#       Normalizado por patchelf (renombrado / SONAME / DT_NEEDED / RPATH=$ORIGIN) y salida:
+# 作用：从 Termux 官方仓库下载 Node.js 运行时（node 主程序 + 依赖共享库 + npm），
+#       经 patchelf 规范化（改名 / SONAME / DT_NEEDED / RPATH=$ORIGIN）后输出：
 #
-#   app/src/main/jniLibs/<abi>/          ← Parte ejecutable (node + 9 bibliotecas dependientes)
-#   app/src/main/assets/muse-runtime-assets.zip ← parte de datos (npm, JS puro)
+#   app/src/main/jniLibs/<abi>/          ← 可执行部分（node + 9 个依赖库）
+#   app/src/main/assets/muse-runtime-assets.zip ← 数据部分（npm，纯 JS）
 #
-# Uso:
-#   bash tools/runtime-pack/build-runtime-pack.sh both     # arm64 + x86_64(predeterminado)
+# 用法：
+#   bash tools/runtime-pack/build-runtime-pack.sh both     # arm64 + x86_64（默认）
 #   bash tools/runtime-pack/build-runtime-pack.sh arm64
 #
-# dependencia del medio ambiente (WSL Ubuntu Ejemplo):
+# 环境依赖（WSL Ubuntu 示例）：
 #   sudo apt-get install -y curl ca-certificates patchelf
 #
-# Proceso de actualización (sincronice elemento por elemento al cambiar las versiones de nodo/dependencia):
-#   1. Modifique la constante "bloqueo de versión" a continuación
-#   2. Actualice RUNTIME_DATA_VERSION en app/.../runtime/MuseRuntime.kt (npm (cuando cambia la versión)
-#   3. Si agrega una nueva biblioteca dependiente, agregue la lista jniLibs.keepDebugSymbols en app/build.gradle.kts
-#   4. Después de la reconstrucción, ejecute RuntimeSelfCheckTest(connected prueba) verificación
+# 升级流程（换 Node / 依赖版本时逐项同步）：
+#   1. 修改下方「版本锁定」常量
+#   2. 更新 app/.../runtime/MuseRuntime.kt 的 RUNTIME_DATA_VERSION（npm 版本变化时）
+#   3. 若新增依赖库，补充 app/build.gradle.kts 的 jniLibs.keepDebugSymbols 列表
+#   4. 重新构建后，跑 RuntimeSelfCheckTest（connected 测试）验证
 #
-# ⚠️ Trampas importantes (lecciones aprendidas con sangre y lágrimas, no las cambies):
-#   AGP La tarea stripDebugDebugSymbols (llvm-strip) para ELF procesado por patchelf
-#   Reorganiza el diseño de la sección, corrompe el encabezado del programa y la asignación de contenido y provoca SIGSEGV en tiempo de ejecución. Por lo tanto, todas las bibliotecas en tiempo de ejecución
-#   Debe incluirse en keepDebugSymbols de build.gradle.kts para omitir tiras.
-#   Método de verificación: comparación posterior a la construcción app/build/intermediates/stripped_native_libs/.../lib*.so
-#   con app/src/main/jniLibs/.../lib*.so md5, debe ser consistente.
+# ⚠️ 重要陷阱（血泪教训，勿改）：
+#   AGP 的 stripDebugDebugSymbols 任务（llvm-strip）对 patchelf 处理过的 ELF 会
+#   重排段布局、破坏程序头与内容映射，导致运行时 SIGSEGV。因此所有运行时库都
+#   必须列入 build.gradle.kts 的 keepDebugSymbols 以跳过 strip。
+#   验证方法：构建后对比 app/build/intermediates/stripped_native_libs/.../lib*.so
+#   与 app/src/main/jniLibs/.../lib*.so 的 md5，必须一致。
 # =============================================================================
 set -euo pipefail
 
@@ -36,18 +36,18 @@ WORK="${MUSE_RUNTIME_WORK:-/tmp/muse-runtime-pack}"
 
 TERMUX_BASE="https://packages.termux.dev/apt/termux-main/pool/main"
 
-# ─── versión bloqueada ───────────────────────────────────────────────────────────────
+# ─── 版本锁定 ───────────────────────────────────────────────────────────────
 NODE_VER="26.13.0"
 LIBCXX_VER="30"
-OPENSSL_VER="1%3A3.6.5"   # URL en ':' Necesito escapar como %3A
+OPENSSL_VER="1%3A3.6.5"   # URL 中 ':' 需转义为 %3A
 CARES_VER="1.34.9"
 ICU_VER="78.3"
 SQLITE_VER="3.54.1-1"
-ZLIB_VER="1.3.2"
-NPM_VER="12.2.1"
+ZLIB_VER="1.4"
+NPM_VER="12.2.2"
 LIBFFI_VER="3.8.0"
 
-# ─── Mapeo de archivos: nombre del archivo de la entidad de origen -> nombre de salida (jniLibs solo aceptar lib*.so nombrar) ────────
+# ─── 文件映射：源实体文件名 -> 输出名（jniLibs 只接受 lib*.so 命名） ────────
 declare -A FILEMAP=(
   ["libc++_shared.so"]="libc++_shared.so"
   ["libssl.so.3"]="libssl.so"
@@ -58,13 +58,13 @@ declare -A FILEMAP=(
   ["libicudata.so.78.3"]="libicudata.so"
   ["libffi.so"]="libffi.so"
   ["libsqlite3.54.1.so"]="libsqlite3.so"
-  ["libz.so.1.3.2"]="libz.so"
+  ["libz.so.1.4"]="libz.so"
 )
 
-# ─── DT_NEEDED Mapeo: cadena original -> Nuevo nombre (incluido el nombre del enlace y el nombre de la entidad) ───────────
+# ─── DT_NEEDED 映射：原字符串 -> 新名（含链接名与实体名两种形态） ───────────
 declare -A NEEDMAP=(
   ["libz.so.1"]="libz.so"
-  ["libz.so.1.3.2"]="libz.so"
+  ["libz.so.1.4"]="libz.so"
   ["libcrypto.so.3"]="libcrypto.so"
   ["libssl.so.3"]="libssl.so"
   ["libicui18n.so.78"]="libicui18n.so"
@@ -73,13 +73,13 @@ declare -A NEEDMAP=(
   ["libicuuc.so.78.3"]="libicuuc.so"
   ["libicudata.so.78"]="libicudata.so"
   ["libicudata.so.78.3"]="libicudata.so"
-  ["libsqlite3.so.3.53.4"]="libsqlite3.so"
+  ["libsqlite3.54.1.so"]="libsqlite3.so"
 )
 
-# ─── Termux Análisis de URL del paquete ─────────────────────────────────────────────────────
-pkg_url() { # $1=paquete key  $2=abi(arm64|x86_64|all)
+# ─── Termux 包 URL 解析 ─────────────────────────────────────────────────────
+pkg_url() { # $1=包 key  $2=abi(arm64|x86_64|all)
   local key="$1" abi="$2"
-  # Este script se llama internamente arm64.Termux El almacén se llama aarch64;x86_64 Ambas partes están de acuerdo.
+  # 本脚本内部叫 arm64，Termux 仓库叫 aarch64；x86_64 两边一致。
   [ "$abi" = "arm64" ] && abi="aarch64"
   case "$key" in
     nodejs)    echo "$TERMUX_BASE/n/nodejs/nodejs_${NODE_VER}_${abi}.deb" ;;
@@ -91,65 +91,94 @@ pkg_url() { # $1=paquete key  $2=abi(arm64|x86_64|all)
     libsqlite)  echo "$TERMUX_BASE/libs/libsqlite/libsqlite_${SQLITE_VER}_${abi}.deb" ;;
     zlib)       echo "$TERMUX_BASE/z/zlib/zlib_${ZLIB_VER}_${abi}.deb" ;;
     npm)        echo "$TERMUX_BASE/n/npm/npm_${NPM_VER}_all.deb" ;;
-    *) echo "!! Paquete desconocido: $key" >&2; exit 1 ;;
+    *) echo "!! 未知包: $key" >&2; exit 1 ;;
   esac
 }
 
 fetch_deb() { # $1=paquete key $2=abi $3=archivo objeto
-  if [ ! -f "$3" ]; then
-    echo "  Descargar $1 ($2) ..."
-    curl -sSL --retry 3 --connect-timeout 20 -o "$3" "$(pkg_url "$1" "$2")"
+  local url filename expected out="$3"
+  url="$(pkg_url "$1" "$2")"
+  filename="${url##*/}"
+  filename="${filename//%3A/:}"
+  filename="${filename//%2B/+}"
+  expected=$(awk -v name="$filename" '$2 == name {print $1}' "$SCRIPT_DIR/SHA256SUMS")
+  [ -n "$expected" ] || { echo "!! Falta SHA-256 para $filename" >&2; return 1; }
+  if [ -f "$out" ] && printf '%s  %s\n' "$expected" "$out" | sha256sum --check --status; then
+    return
   fi
+  echo "  Descargar $1 ($2) ..."
+  rm -f "$out" "$out.part"
+  if ! curl --fail --silent --show-error --location --retry 3 --connect-timeout 20 -o "$out.part" "$url"; then
+    rm -f "$out.part"
+    # Recovery transports must still match the original pinned hash.
+    case "$1" in
+      libicu) url="https://archive.org/download/termux_pkgs_archive_libi/libicu/$filename" ;;
+      nodejs) url="https://github.com/joselofarias-byte/Muse/releases/download/runtime-pack-nodejs-26.13.0/$filename" ;;
+      *) return 1 ;;
+    esac
+    echo "  Recuperar $filename del archivo (SHA-256 fijado) ..."
+    if ! curl --fail --silent --show-error --location --retry 3 --retry-all-errors --connect-timeout 20 --max-time 300 --proto '=https' --proto-redir '=https' -o "$out.part" "$url"; then
+      rm -f "$out.part"
+      return 1
+    fi
+  fi
+  if ! printf '%s  %s\n' "$expected" "$out.part" | sha256sum --check --status ||
+     ! ar t "$out.part" | grep -q '^data\.tar\.'; then
+    echo "!! Paquete inválido o SHA-256 incorrecto: $filename" >&2
+    rm -f "$out.part"
+    return 1
+  fi
+  mv "$out.part" "$out"
 }
 
-unpack_deb() { # $1=deb Archivo $2=Directorio de salida
+unpack_deb() { # $1=deb 文件 $2=输出目录
   local deb="$1" out="$2"
   rm -rf "$out"; mkdir -p "$out"
   (cd "$out" && ar x "$deb")
   local dt
   dt=$(cd "$out" && ls data.tar.* 2>/dev/null | head -1)
-  [ -n "$dt" ] || { echo "!! $deb Ninguno data.tar"; exit 1; }
+  [ -n "$dt" ] || { echo "!! $deb 无 data.tar"; exit 1; }
   (cd "$out" && mkdir -p data && tar xf "$dt" -C data)
 }
 
-# ─── Conjunto ABI único ────────────────────────────────────────────────────────────
+# ─── 单 ABI 组装 ────────────────────────────────────────────────────────────
 build_abi() { # $1=arm64|x86_64
   local abi="$1"
   local base="$WORK/$abi"
   local debs="$base/debs"
   local work="$base/pack"
-  # Android El nombre del directorio jniLibs no coincide con el nombre ABI de Termux
+  # Android 的 jniLibs 目录名与 Termux 的 ABI 名不一致
   local outabi="$abi"
   [ "$abi" = "arm64" ] && outabi="arm64-v8a"
   local outdir="$PROJ_ROOT/app/src/main/jniLibs/$outabi"
 
-  echo "== [$abi] Descargar =="
+  echo "== [$abi] 下载 =="
   mkdir -p "$debs"
   for key in nodejs libcxx openssl cares libicu libsqlite zlib libffi; do
     fetch_deb "$key" "$abi" "$debs/$key.deb"
   done
 
-  echo "== [$abi] Desempacar =="
+  echo "== [$abi] 解包 =="
   for key in nodejs libcxx openssl cares libicu libsqlite zlib libffi; do
-    [ -d "$base/unpacked/$key" ] || unpack_deb "$debs/$key.deb" "$base/unpacked/$key"
+    unpack_deb "$debs/$key.deb" "$base/unpacked/$key"
   done
 
-  echo "== [$abi] Recopilar archivos fuente =="
+  echo "== [$abi] 收集源文件 =="
   rm -rf "$work"; mkdir -p "$work"
   local missing=0
   for f in "${!FILEMAP[@]}"; do
     local src
     src=$(find "$base/unpacked" -name "$f" -type f | head -1 || true)
-    if [ -z "$src" ]; then echo "  !! no encontrado $f"; missing=1; continue; fi
+    if [ -z "$src" ]; then echo "  !! 未找到 $f"; missing=1; continue; fi
     cp "$src" "$work/$f"
   done
-  [ "$missing" = 1 ] && { echo "!! [$abi] Faltan dependencias, terminadas"; exit 1; }
+  [ "$missing" = 1 ] && { echo "!! [$abi] 依赖缺失，终止"; exit 1; }
 
   local node_src
   node_src=$(find "$base/unpacked/nodejs" -type f -name node | head -1)
   cp "$node_src" "$work/libmuse_node.so"
 
-  echo "== [$abi] patchelf Proceso =="
+  echo "== [$abi] patchelf 处理 =="
   (cd "$work"
     for f in "${!FILEMAP[@]}"; do
       patchelf --set-soname "${FILEMAP[$f]}" "$f"
@@ -169,32 +198,32 @@ build_abi() { # $1=arm64|x86_64
     done
   )
 
-  echo "== [$abi] 16KB verificación de alineación de página =="
+  echo "== [$abi] 16KB 页对齐校验 =="
   local fail=0
   for f in "$work"/*; do
     local al
     al=$(readelf -lW "$f" | awk '/LOAD/{print $NF; exit}')
     [ "$al" = "0x4000" ] || { echo "  !! $(basename "$f") align=$al"; fail=1; }
   done
-  [ "$fail" = 1 ] && { echo "!! [$abi] Existe un archivo alineado que no es de 16 KB"; exit 1; }
-  echo "  Todos los 16 KB alineados ✓"
+  [ "$fail" = 1 ] && { echo "!! [$abi] 存在非 16KB 对齐文件"; exit 1; }
+  echo "  全部 16KB 对齐 ✓"
 
-  echo "== [$abi] salida -> $outdir =="
+  echo "== [$abi] 输出 -> $outdir =="
   mkdir -p "$outdir"
   cp "$work"/* "$outdir/"
   ls -lh "$outdir"
 }
 
-# ─── npm paquete (assets, una sola vez) ────────────────────────────────────────────
+# ─── npm 数据包（assets，一次性） ────────────────────────────────────────────
 build_npm_assets() {
   local base="$WORK/npm"
   local stage="$base/stage"
   local outzip="$PROJ_ROOT/app/src/main/assets/muse-runtime-assets.zip"
 
-  echo "== [npm] Descargar y descomprimir =="
+  echo "== [npm] 下载并解包 =="
   mkdir -p "$base/debs"
   fetch_deb npm all "$base/debs/npm.deb"
-  [ -d "$base/unpacked" ] || unpack_deb "$base/debs/npm.deb" "$base/unpacked"
+  unpack_deb "$base/debs/npm.deb" "$base/unpacked"
 
   rm -rf "$stage"; mkdir -p "$stage"
   local npm_dir
@@ -202,7 +231,7 @@ build_npm_assets() {
   cp -r "$npm_dir" "$stage/npm"
   echo "npm $(grep -m1 '"version"' "$stage/npm/package.json" | sed 's/.*: *"\([^"]*\)".*/\1/')" > "$stage/VERSION.txt"
 
-  echo "== [npm] paquete -> $outzip =="
+  echo "== [npm] 打包 -> $outzip =="
   [ -f "$outzip" ] && rm -f "$outzip"
   python3 - "$stage" "$outzip" <<'PYEOF'
 import sys, zipfile, os
@@ -214,17 +243,17 @@ with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED, compresslevel=6) as z:
             full = os.path.join(dirpath, fn)
             z.write(full, os.path.relpath(full, root))
             count += 1
-print(f"  zip Completo: {count} archivos, {os.path.getsize(out)/1e6:.2f}MB")
+print(f"  zip 完成: {count} 个文件, {os.path.getsize(out)/1e6:.2f}MB")
 PYEOF
 }
 
-# ─── Proceso principal ─────────────────────────────────────────────────────────────────
+# ─── 主流程 ─────────────────────────────────────────────────────────────────
 TARGETS="${1:-both}"
 case "$TARGETS" in
   both)  TARGET_LIST=(arm64 x86_64) ;;
   arm64) TARGET_LIST=(arm64) ;;
   x86_64) TARGET_LIST=(x86_64) ;;
-  *) echo "Uso: $0 [both|arm64|x86_64]"; exit 1 ;;
+  *) echo "用法: $0 [both|arm64|x86_64]"; exit 1 ;;
 esac
 
 mkdir -p "$WORK"
@@ -233,7 +262,7 @@ build_npm_assets
 
 echo
 echo "============================================================"
-echo "La construcción está completa. Productos:"
-echo "  app/src/main/jniLibs/{arm64-v8a,x86_64}/  (parte ejecutable)"
-echo "  app/src/main/assets/muse-runtime-assets.zip (npm datos)"
-echo "Recordatorio: ejecutar :app:connectedDebugAndroidTest -P...class=...RuntimeSelfCheckTest Hacer verificación."
+echo "构建完成。产物："
+echo "  app/src/main/jniLibs/{arm64-v8a,x86_64}/  （可执行部分）"
+echo "  app/src/main/assets/muse-runtime-assets.zip （npm 数据）"
+echo "提醒：跑 :app:connectedDebugAndroidTest -P...class=...RuntimeSelfCheckTest 做验证。"

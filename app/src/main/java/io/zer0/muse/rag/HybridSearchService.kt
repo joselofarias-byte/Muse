@@ -8,78 +8,78 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 
 /**
- * v1.133: Servicio de búsqueda híbrido — BM25(FTS4) + Fusión RRF de coseno vectorial.
+ * v1.133: 混合检索服务 — BM25(FTS4) + 向量余弦 RRF 融合。
  *
- * algoritmo:
- *  1. Ejecución de recuperaciones de BM25 FTS en paralelo(top-K1)y búsqueda de vectores(top-K2)
- *  2. usar RRF(Reciprocal Rank Fusion)fusionar:
+ * 算法:
+ *  1. 并行执行 BM25 FTS 检索(top-K1)和向量检索(top-K2)
+ *  2. 用 RRF(Reciprocal Rank Fusion)合并:
  *     score = Σ 1/(rank_i + RRF_K)
- *     entre ellos RRF_K=60 es una constante empírica
- *  3. Tome en orden descendente de puntuación RRF top-K
+ *     其中 RRF_K=60 是经验常数
+ *  3. 按 RRF 分数降序取 top-K
  *
- * Ventajas:
- *  - Los vectores son buenos en similitud semántica.(sinónimo/contexto)
- *  - BM25 Bueno en coincidencia exacta(nombre propio/identificador de código)
- *  - RRF No se basa en la comparabilidad de la puntuación bruta,Robusto
+ * 优势:
+ *  - 向量擅长语义相似(同义/上下文)
+ *  - BM25 擅长精确匹配(专有名词/代码标识符)
+ *  - RRF 不依赖原始分数可比性,鲁棒
  */
 class HybridSearchService(
     private val ftsDao: KnowledgeChunkFtsDao,
     private val vectorSearch: VectorSearchService,
     /**
-     * P2-31: BM25-only Análisis de contenido de éxito(chunkId → Metadatos).
-     * FTS La línea de golpe sólo toma chunkId+score,Las visitas anteriores exclusivas de BM25 se descartaron en su totalidad porque no se pudo obtener el contenido.;
-     * Estos resultados también se pueden devolver después de inyectar el análisis DAO.null = prueba/Mantener el comportamiento anterior cuando no se inyecta(saltar).
+     * P2-31: BM25-only 命中的内容解析(chunkId → 元数据)。
+     * FTS 命中行只带 chunkId+score,此前 BM25-only 命中因取不到内容被整体丢弃;
+     * 注入 DAO 解析后这些命中也能返回。null = 测试/未注入时保持旧行为(跳过)。
      */
     private val bm25MetaResolver: (suspend (List<String>) -> Map<String, ChunkMeta>)? = null,
 ) {
-    /** P2-31: BM25 completar el contenido/Metadatos necesarios para el filtrado de decisiones. */
+    /** P2-31: BM25 命中补齐内容/过滤判定所需的元数据。 */
     data class ChunkMeta(
         val docId: String,
         val docTitle: String,
         val content: String,
         val chunkIndex: Int,
-        /** B4-03: metadatos fragmentados JSON(Fuente/tag Para fines de filtrado). */
+        /** B4-03: 分块元数据 JSON(来源/tag 等过滤判定用)。 */
         val metadataJson: String = "",
-        /** B4-03: Marca de tiempo de creación de fragmentos(Para filtrado y determinación de rangos de tiempo). */
+        /** B4-03: 分块创建时间戳(时间范围过滤判定用)。 */
         val createdAt: Long = 0L,
     )
 
-    /** Resultados de búsqueda mixtos — Reemplace la similitud bruta con la puntuación RRF. */
+    /** 混合检索结果 — 用 RRF 分数替代原始相似度。 */
     data class HybridResult(
         val docId: String,
         val docTitle: String,
         val chunkContent: String,
         val chunkIndex: Int,
         val chunkId: String,
-        /** RRF puntuación de fusión(0-1 entre,Cuanto más alto, más relevante). NOTA: Esto es**puntuación relativamente más alta**La proporción, no la similitud. */
+        /** RRF 融合分数(0-1 之间,越高越相关)。注意：这是**相对最高分**的比值，不是相似度。 */
         val rrfScore: Float,
         /**
-         * P1-6: Puntuación bruta (similitud de coseno vectorial).BM25-only 0 aciertos.
+         * P1-6: 原始分数（向量余弦相似度）。BM25-only 命中为 0。
          *
-         * UI Este campo debe usarse cuando se muestra "similitud" en lugar de [rrfScore] —— Este último siempre es hasta 1,0,
-         * No es una verdadera similitud.
+         * UI 展示「相似度」时应使用本字段，而不是 [rrfScore] —— 后者最高一律为 1.0，
+         * 不是真实相似度。
          */
         val rawScore: Float = 0f,
-        /** Ya sea golpeado por BM25 y vector al mismo tiempo(true = doble golpe,Alta credibilidad). */
+        /** 是否同时被 BM25 和向量命中(true = 双路命中,可信度高)。 */
         val bothHit: Boolean,
     )
 
     /**
-     * Realizar una búsqueda híbrida.
+     * 执行混合检索。
      *
-     * @param query Consulta original del usuario(Usado después del participio FTS MATCH)
-     * @param queryVector vector de consulta
-     * @param topK El número final de artículos devueltos.
-     * @param threshold Umbral de similitud para la recuperación de vectores
-     * @param mmrLambda MMR peso(Pasar a búsqueda de vectores)
-     * @param bm25Weight BM25 Peso RRF en carretera(Predeterminado 1.0)
-     * @param vectorWeight Peso RRF de ruta vectorial(Predeterminado 1.0)
-     * @param scopeDocIds Limitar el alcance de la búsqueda(Opcional)
-     * @param metadataFilter Filtros de metadatos(Opcional,null/vacío = Sin filtrado).docIds/Título/Fuente/tag/tiempo
-     *   Actúa simultáneamente en enlaces vectoriales y BM25:Vector al lado de [VectorSearchService.search] filtrar,
-     *   BM25 Prensa lateral en este método [bm25MetaResolver] Filtrado de metadatos de documentos analizados,Asegúrese de que los resultados en ambos lados sean consistentes.
-     * @param vectorCandidateK Número de candidatos a vectores(Predeterminado topK×3,Ampliar el grupo de candidatos del FRR)
-     * @param bm25CandidateK BM25 número de candidatos(Predeterminado topK×3)
+     * @param query 用户原始查询(分词后用于 FTS MATCH)
+     * @param queryVector 查询向量
+     * @param topK 最终返回条数
+     * @param threshold 向量检索的相似度阈值
+     * @param mmrLambda MMR 权重(传给向量检索)
+     * @param bm25Weight BM25 路 RRF 权重(默认 1.0)
+     * @param vectorWeight 向量路 RRF 权重(默认 1.0)
+     * @param scopeDocIds 限定检索范围(可选)
+     * @param metadataFilter 元数据过滤条件(可选,null/空 = 不过滤)。docIds/标题/来源/tag/时间
+     *   同时作用于向量与 BM25 两条链路:向量侧由 [VectorSearchService.search] 过滤,
+     *   BM25 侧在本方法内按 [bm25MetaResolver] 解析出的文档元数据过滤,保证两边结果一致。
+     * @param vectorCandidateK 向量候选数(默认 topK×3,扩大 RRF 候选池)
+     * @param bm25CandidateK BM25 候选数(默认 topK×3)
      */
     suspend fun hybridSearch(
         query: String,
@@ -94,11 +94,11 @@ class HybridSearchService(
         vectorCandidateK: Int = topK * 3,
         bm25CandidateK: Int = topK * 3,
     ): List<HybridResult> {
-        // 1. Recuperación paralela (simultaneidad de rutina real)
+        // 1. 并行检索（真正的协程并发）
         //
-        // P1-4 Reparación (informe de auditoría): La antigua anotación decía“búsqueda paralela(Concurrencia de rutinas)”, pero resultOf es solo
-        // try/catch embalaje (ver common/Result.kt),**sin ningún async**, las dos líneas se ejecutan secuencialmente.
-        // Cuando la base de datos es grande, el tiempo de búsqueda del vector se superpone completamente al tiempo del BM25.
+        // P1-4 修复（审计报告）: 旧注释写着“并行检索(协程并发)”，但 resultOf 只是
+        // try/catch 包装（见 common/Result.kt），**没有任何 async**，两行是顺序执行的。
+        // 大库时向量检索耗时与 BM25 耗时全额叠加。
         val (vectorResults, bm25Hits) = coroutineScope {
             val vectorDeferred = async {
                 resultOf {
@@ -113,25 +113,25 @@ class HybridSearchService(
 
         Logger.d(
             "HybridSearchService",
-            "Búsqueda híbrida:vector=${vectorResults.size}, bm25=${bm25Hits.size}, query=$query",
+            "混合检索:vector=${vectorResults.size}, bm25=${bm25Hits.size}, query=$query",
         )
 
         if (vectorResults.isEmpty() && bm25Hits.isEmpty()) return emptyList()
 
-        // B4-03: El filtrado de metadatos solo está habilitado cuando no es nulo(null / vacío filter = Sin filtrado,compatible con versiones anteriores).
+        // B4-03: 元数据过滤只在非空时启用(null / 空 filter = 不过滤,向后兼容)。
         val filter = metadataFilter?.takeIf { !it.isEmpty() }
 
-        // 2. RRF Fusión
-        // camino vectorial:Ordenar por puntuación en orden descendente(Ya clasificado en la búsqueda,Pero solo para estar seguro, organícelo nuevamente.)
-        //   El filtrado lateral del vector ha sido implementado por VectorSearchService.search(metadataFilter) Hecho dentro del enlace.
+        // 2. RRF 融合
+        // 向量路径:按 score 降序排(已在 search 内排过,但保险起见再排一次)
+        //   向量侧过滤已由 VectorSearchService.search(metadataFilter) 在链路内完成。
         val vectorRanked = vectorResults.sortedByDescending { it.score }
         val vectorChunkIds = vectorRanked.map { it.chunkId }.toHashSet()
-        // BM25 camino:score orden ascendente(SQLite bm25 Devolver valor negativo,Cuanto más pequeño, más relevante),negar como adelante
+        // BM25 路径:score 升序(SQLite bm25 返回负值,越小越相关),取反作为正向
         val bm25Sorted = bm25Hits.sortedBy { it.score }
 
-        // P2-31/B4-03: Análisis de metadatos de documentos para visitas de BM25(resolver Al inyectar).
-        //  - sin filtro:Complete solo el contenido alcanzado por bm25-only(viejo comportamiento);
-        //  - hay filtrado:Todos los hits de BM25 deben obtener el docId/título/Metadatos,Los talentos se filtran de la misma forma que los enlaces vectoriales.
+        // P2-31/B4-03: 解析 BM25 命中的文档元数据(resolver 注入时)。
+        //  - 无过滤:仅补齐 bm25-only 命中的内容(旧行为);
+        //  - 有过滤:全部 BM25 命中都要拿到 docId/标题/元数据,才能与向量链路同样被过滤。
         val bm25MetaById: Map<String, ChunkMeta> = if (bm25MetaResolver != null) {
             val needIds = if (filter != null) {
                 bm25Sorted.map { it.chunkId }
@@ -147,8 +147,8 @@ class HybridSearchService(
             emptyMap()
         }
 
-        // B4-03: BM25 El filtrado debe realizarse antes de la fusión RRF. — Los aciertos que se filtran no deben contribuir a la puntuación del RRF.
-        // Las visitas cuyos metadatos no se pueden analizar se tratan como "Error" cuando el filtrado está activado.,Evite publicar documentos no verificados(lado seguro).
+        // B4-03: BM25 过滤必须在 RRF 融合前完成 — 被过滤掉的命中不得贡献 RRF 分数。
+        // 无法解析元数据的命中在过滤开启时按「不通过」处理,避免放行未校验文档(安全侧)。
         val bm25Ranked = if (filter == null) {
             bm25Sorted
         } else {
@@ -163,30 +163,30 @@ class HybridSearchService(
         val metaMap = mutableMapOf<String, VectorSearchService.SearchResult>()
         val bm25ChunkIds = mutableSetOf<String>()
 
-        // Contribución del vector FRR
+        // 向量 RRF 贡献
         vectorRanked.forEachIndexed { rank, r ->
             val contribution = vectorWeight * (1.0f / (rank + 1 + RRF_K))
             rrfScores[r.chunkId] = (rrfScores[r.chunkId] ?: 0f) + contribution
             metaMap[r.chunkId] = r
         }
 
-        // BM25 RRF Contribuir(Sólo aporta puntos,El contenido todavía está sujeto a los resultados del vector.;Si se golpea solo en BM25, construye la entrada por separado.)
-        // P1-7 Reparación (informe de auditoría): threshold Anteriormente solo funcionaba en rutas vectoriales,BM25 Los hits participan en RRF sin importar cuán débiles sean,
-        // BM25 puede introducir un bloque que contiene palabras clave pero que tiene una semántica irrelevante hasta topK.
-        // SQLite bm25() Devuelve un valor negativo y cuanto menor es el valor, más relevante es; aquí está normalizado a 0~1 La fuerza relativa del umbral post-atascado.
+        // BM25 RRF 贡献(只贡献分数,内容仍以向量结果为准;若仅在 BM25 命中则单独构造条目)
+        // P1-7 修复（审计报告）: threshold 之前只作用于向量路，BM25 命中无论多弱都参与 RRF，
+        // 一个恰好含关键词但语义无关的块可能靠 BM25 一路混进 topK。
+        // SQLite bm25() 返回负值且越小越相关；这里归一化为 0~1 的相对强度后卡阈值。
         val bm25RawRange = if (bm25Ranked.isEmpty()) {
             0.0
         } else {
             (bm25Ranked.last().score - bm25Ranked.first().score).takeIf { it > 0.0 } ?: 0.0
         }
         bm25Ranked.forEachIndexed { rank, hit ->
-            // Fuerza relativa: el golpe clasificado en el puesto 0 es 1,0, el más débil es 0,0 (todos 1,0 cuando no hay diferencia de puntos)
+            // 相对强度：排名第 0 的命中为 1.0，最弱的为 0.0（无分差时全部为 1.0）
             val strength = if (bm25RawRange <= 0.0) {
                 1f
             } else {
                 (1.0 - (hit.score - bm25Ranked.first().score) / bm25RawRange).toFloat().coerceIn(0f, 1f)
             }
-            // threshold <= 0 Indica que el filtrado no está habilitado (consistente con la semántica de ruta vectorial)
+            // threshold <= 0 表示不启用过滤（与向量路语义一致）
             if (threshold > 0f && strength < threshold) {
                 return@forEachIndexed
             }
@@ -195,10 +195,10 @@ class HybridSearchService(
             bm25ChunkIds.add(hit.chunkId)
         }
 
-        // 3. Resultado de la construcción(Priorizar el contenido del resultado vectorial.)
-        // P2-31: anteriormente `filter { metaMap[it.key] != null }` Descartar los impactos exclusivos del BM25 en su totalidad —
-        // golpe preciso(nombre propio/identificador de código)Exactamente el punto fuerte del BM25,No debería desecharse. inyectar resolver
-        // Luego complete los metadatos de contenido para visitas exclusivas de BM25;No analizable(Eliminado de la biblioteca)Todavía saltando según el antiguo comportamiento.
+        // 3. 构造结果(优先用向量结果的内容)
+        // P2-31: 此前 `filter { metaMap[it.key] != null }` 把 BM25-only 命中整体丢弃 —
+        // 精确命中(专有名词/代码标识符)恰好是 BM25 的强项,不该丢。注入 resolver
+        // 后为 BM25-only 命中补齐内容元数据;无法解析的(库中已删除)仍按旧行为跳过。
         val bm25OnlyIds = rrfScores.keys.filter { it !in metaMap }
         for (chunkId in bm25OnlyIds) {
             val m = bm25MetaById[chunkId] ?: continue
@@ -213,7 +213,7 @@ class HybridSearchService(
         }
         val maxScore = rrfScores.values.maxOrNull() ?: 0f
         return rrfScores.entries
-            .filter { metaMap[it.key] != null } // Mantenga solo los resultados con contenido(Salto irresoluble solo para BM25)
+            .filter { metaMap[it.key] != null } // 只保留有内容的结果(无法解析的 BM25-only 跳过)
             .map { (chunkId, score) ->
                 val r = metaMap[chunkId]!!
                 HybridResult(
@@ -222,9 +222,9 @@ class HybridSearchService(
                     chunkContent = r.chunkContent,
                     chunkIndex = r.chunkIndex,
                     chunkId = chunkId,
-                    // P1-6 Reparación (informe de auditoría): rrfScore es la relación entre "relativo al puntaje más alto" (el más alto es siempre 1,0),
-                    // No semejanza coseno.UI Pero dice "similitud 0,83"—— Ese número es falso.
-                    // Al mismo tiempo, rawScore (coseno vectorial / BM25 Ninguno) se conserva para que la interfaz de usuario muestre valores reales y creíbles.
+                    // P1-6 修复（审计报告）: rrfScore 是「相对最高分」的比值（最高一律 1.0），
+                    // 不是余弦相似度。UI 上却写成「相似度 0.83」—— 那个数字是假的。
+                    // 同时保留 rawScore（向量余弦 / BM25 无），供 UI 展示真实可信的数值。
                     rrfScore = if (maxScore > 0) score / maxScore else 0f,
                     rawScore = r.score.toFloat(),
                     bothHit = chunkId in bm25ChunkIds,
@@ -235,13 +235,13 @@ class HybridSearchService(
     }
 
     companion object {
-        /** RRF constante empírica(Valor estándar 60). */
+        /** RRF 经验常数(标准值 60)。 */
         private const val RRF_K = 60
 
         /**
-         * Convierta la consulta original del usuario a la sintaxis FTS4 MATCH.
-         * estrategia simple:espacio de prensa/Palabras de segmentación de caracteres chinos.,Conecta con espacios(FTS4 Predeterminado AND).
-         * consulta larga(>10 palabra)Utilice OR para evitar resultados nulos.
+         * 把用户原始查询转为 FTS4 MATCH 语法。
+         * 简单策略:按空格/中文字符切分单词,用空格连接(FTS4 默认 AND)。
+         * 长查询(>10 词)用 OR 避免空命中。
          */
         fun buildFtsQuery(query: String): String {
             val filtered = MessageFtsManager.toNgram(query)
@@ -250,13 +250,13 @@ class HybridSearchService(
                 .distinct()
                 .take(10)
             if (filtered.isEmpty()) {
-                return "\"${query.take(50).replace("\"", " ")}\"" // fallback frase
+                return "\"${query.take(50).replace("\"", " ")}\"" // fallback 短语
             }
-            // El ngram chino debe citarse según el límite simbólico;ingles/Los números conservan palabras simples para compatibilidad con la sintaxis FTS4 existente.
+            // 中文 ngram 需要按 token 边界引用;英文/数字保留裸词以兼容既有 FTS4 语法。
             val rendered = filtered.map { token ->
                 if (token.any { it.code > 127 }) "\"$token\"" else token
             }
-            // Múltiples tokens separados por espacios(FTS4 Predeterminado AND);Si hay demasiados tokens, se degradará a OR.
+            // 多 token 用空格分隔(FTS4 默认 AND);若 token 太多降级为 OR。
             return if (rendered.size <= 5) {
                 rendered.joinToString(" ")
             } else {

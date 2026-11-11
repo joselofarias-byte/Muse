@@ -10,10 +10,10 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * Prueba de análisis de la acción de hacer clic en el widget de escritorio.
+ * 桌面小组件点击动作的解析测试。
  *
- * Este enlace estaba roto anteriormente en "El widget guarda el asistente seleccionado.,Pero nadie lo lee,Solo puedes encontrarlo haciendo clic en el teléfono real.,
- * Así que fija la capa de análisis aquí.:La nueva sesión debe traer la identificación del asistente pasada por el widget.
+ * 这条链路此前断在「小组件存了所选助手,但没人读」上,只靠真机点一下才能发现,
+ * 所以这里把解析层钉住:新建会话必须带上小组件传来的助手 id。
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -58,7 +58,7 @@ class ShareIntentHandlerWidgetActionTest {
         )
 
         val session = result as ShareIntentHandler.ShareResult.NewSession
-        assertFalse("\"Nuevo Diálogo\" no debe encender el micrófono, de lo contrario no habrá diferencia si enciende el micrófono en ambos puntos", session.startVoice)
+        assertFalse("「新对话」不该开麦，否则两点都开麦就没区别了", session.startVoice)
     }
 
     @Test

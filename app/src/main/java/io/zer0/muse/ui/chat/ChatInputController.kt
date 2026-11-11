@@ -5,16 +5,16 @@ import io.zer0.muse.R
 import io.zer0.muse.ui.PendingMessage
 import io.zer0.muse.ui.common.feedback.MuseToast
 
-/** v1.205 B2: El límite superior de la cola que se enviará. */
+/** v1.205 B2: 待发送队列上限。 */
 internal const val MAX_PENDING_SEND_QUEUE = 8
 
 /**
- * v1.x: Entrada extraída de ChatViewModel/borrador/Cola para enviar/Ingrese al controlador de historial.
+ * v1.x: 从 ChatViewModel 抽离的输入/草稿/待发送队列/输入历史 Controller。
  *
- * Límites de responsabilidad:
- *  - Texto del cuadro de entrada, marca de borrador, cola de envío(Únete al equipo/quitar la cola/Editar/Borrar/enviar), ingrese a la navegación histórica.
- *  - Todo pasó [ChatStateAccessor] compartir lectura-escritura state,No mantiene el estado por sí mismo.
- *  - "enviar"Pases de acción [onEnqueueSend] Devolución de llamada al anfitrión(Tome el canal de envío),Esta clase no tiene lógica generacional.
+ * 职责边界:
+ *  - 输入框文本、草稿标记、待发送队列(入队/出队/编辑/清空/发送)、输入历史导航。
+ *  - 全部通过 [ChatStateAccessor] 读写共享 state,自身不持有 state。
+ *  - "发送"动作通过 [onEnqueueSend] 回调交给宿主(走发送管道),本类不持有生成逻辑。
  */
 class ChatInputController(
     private val accessor: ChatStateAccessor,
@@ -23,15 +23,15 @@ class ChatInputController(
 ) {
 
     fun updateInput(text: String) {
-        // v1.0.47 P5: Salir de la navegación del historial cuando el usuario edita manualmente la entrada,restablecer inputHistoryIndex
-        // v2.6.7: hasDraft devolver“Borrador guardado”significado original —— Solo el contenido restaurado a partir de la persistencia se considera borrador.
-        //         La versión anterior fue cambiada a text.isNotBlank() está mal: cualquier carácter escrito de esa manera se iluminará
-        //         Pestaña "Borrador" y ventana emergente“El borrador ha sido restaurado.”Consejo, lo que ve el usuario es“Todo lo que escribo es un borrador.”.
-        //         La entrada es entrada, no estado.
+        // v1.0.47 P5: 用户手动编辑输入时退出历史导航,重置 inputHistoryIndex
+        // v2.6.7: hasDraft 退回“已存草稿”的原义 —— 只有从持久化恢复的内容才算草稿。
+        //         上一版改成 text.isNotBlank() 是错的：那样键入任何字符都会点亮
+        //         「草稿」标签并弹“草稿已恢复”提示，用户看到的是“我打什么都是草稿”。
+        //         输入就是输入，不是状态。
         accessor.update { it.copy(input = text, inputHistoryIndex = null) }
     }
 
-    /** v1.205 B2: Agregue la entrada actual a la cola para enviar(En cola durante la compilación,No interrumpas la generación actual.). */
+    /** v1.205 B2: 把当前输入加入待发送队列(生成期间排队,不打断当前生成)。 */
     fun enqueuePendingSend() {
         val st = accessor.snapshot
         val text = st.input.trim()
@@ -40,8 +40,8 @@ class ChatInputController(
             MuseToast.show(appContext.getString(R.string.chat_pending_queue_full))
             return
         }
-        // Anota la conversación al unirte a la cola.:El canal de interrupción depende de él para confirmar a qué conversación pertenece este mensaje.,Si no puedes conseguirlo, guárdalo. null
-        // (Las entradas que no se puedan recuperar de la conversación no se eliminarán mediante interrupción.,Todavía sigue la cola original./Enviar ruta individualmente).
+        // 记下入队时的会话:插话通道靠它确认这条消息属于哪段对话,拿不到就留 null
+        // (拿不到会话的条目不会被插话取走,仍走原有排队/单独发送路径)。
         val sessionId = if (st.isAgentMode) st.agentSessionId else st.currentSessionId
         accessor.update {
             it.copy(
@@ -52,20 +52,20 @@ class ChatInputController(
         }
     }
 
-    /** v1.205 B2: Eliminar el artículo de la cola [index] artículo. */
+    /** v1.205 B2: 移除队列中第 [index] 条。 */
     fun removePendingSend(index: Int) {
         accessor.update { it.copy(sendQueue = it.sendQueue.filterIndexed { i, _ -> i != index }) }
     }
 
-    /** v1.205 B2: Envía el primero en la cola por separado. [index] Artículo;Quitar la cola primero y luego enviar,Evite el reingreso y el envío repetido. */
+    /** v1.205 B2: 单独发送队列中第 [index] 条;先出队再发送,避免重入重复发送。 */
     fun sendPendingSend(index: Int) {
         val st = accessor.snapshot
         val item = st.sendQueue.getOrNull(index) ?: return
-        // P0-7: El ID de sesión se utiliza de manera uniforme effectiveSessionId(Agent modo tomar agentSessionId)——
-        // Para implementación anterior currentSessionId,Agent En modo, los mensajes se enviarán a la sesión de tareas.,Mensajes de cadena.
+        // P0-7: 会话 id 统一用 effectiveSessionId(Agent 模式取 agentSessionId)——
+        // 旧实现用 currentSessionId,Agent 模式下会把消息发到任务会话,串消息。
         val sessionId = (if (st.isAgentMode) st.agentSessionId else st.currentSessionId) ?: return
-        // P0-7: Transmisión"Enviar por separado"Cancelará la generación actual en serie a través de launchGeneration(interrumpir al usuario
-        // Ver respuestas). barandilla:Está prohibido enviar por separado durante la generación.,Solicitar detenerse primero;El mensaje permanece en la cola.
+        // P0-7: 流式中"单独发送"会经 launchGeneration 串行取消当前代生成(打断用户
+        // 正在看的回复)。护栏:生成中禁止单独发送,提示先停止;消息保留在队列中。
         if (st.isStreaming) {
             MuseToast.show(appContext.getString(R.string.chat_pending_send_busy))
             return
@@ -74,7 +74,7 @@ class ChatInputController(
         onEnqueueSend(item.text, item.images, sessionId)
     }
 
-    /** v1.205 B2: Pon el primero en la cola. [index] Complete el cuadro de entrada(Poner en cola después de editar/enviar),Y sal del equipo. */
+    /** v1.205 B2: 把队列中第 [index] 条回填到输入框(编辑后重新入队/发送),并出队。 */
     fun editPendingSend(index: Int) {
         val st = accessor.snapshot
         val item = st.sendQueue.getOrNull(index) ?: return
@@ -87,14 +87,14 @@ class ChatInputController(
         }
     }
 
-    /** v1.205 B2: Borre toda la cola de envíos. */
+    /** v1.205 B2: 清空整个待发送队列。 */
     fun clearPendingQueue() {
         accessor.update { it.copy(sendQueue = emptyList()) }
     }
 
     /**
-     * v1.0.47 P5: en el cuadro de entrada/Devolución de llamada de flecha hacia abajo,Recorra el historial de entrada de esta sesión.
-     * Acuerdo:inputHistory prensa"nuevo→viejo"almacenamiento(index 0 = último).
+     * v1.0.47 P5: 输入框上/下箭头回调,遍历本会话输入历史。
+     * 约定:inputHistory 按"新→旧"存储(index 0 = 最近一条)。
      */
     fun navigateInputHistory(direction: Int) {
         val st = accessor.snapshot
@@ -107,19 +107,19 @@ class ChatInputController(
     }
 
     /**
-     * Calcular los objetivos de navegación históricos de entrada. Entrada a la convenciónHistoria de la prensa"nuevo→viejo"almacenamiento(index 0 = último).
+     * 计算输入历史导航目标。约定 inputHistory 按"新→旧"存储(index 0 = 最近一条)。
      *
-     * @return índice objetivo(>=0);-1 expresar"Salir de la navegación,Borrar entrada";null Indica que no hay operación.
+     * @return 目标索引(>=0);-1 表示"退出导航,清空输入";null 表示无操作。
      */
     private fun historyNavigationTarget(direction: Int, history: List<String>, current: Int?): Int? {
         if (history.isEmpty() || direction == 0) return null
         return when {
-            // flecha arriba:a mayor
+            // 上箭头:向更旧
             direction < 0 -> {
                 val candidate = (current ?: -1) + 1
                 if (candidate >= history.size) null else candidate
             }
-            // flecha hacia abajo:actualizar;No moverse en la navegación,Ya en la parte más antigua, sal de navegación.
+            // 下箭头:向更新;未在导航中不动,已在最旧则退出导航
             current == null -> null
             current <= 0 -> -1
             else -> current - 1

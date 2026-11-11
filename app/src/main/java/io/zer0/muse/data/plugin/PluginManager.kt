@@ -30,10 +30,10 @@ import java.io.InputStream
 import java.util.Base64
 
 /**
- * Almacenamiento de configuración del complemento: almacene los valores de configuración definidos por el usuario por identificación del complemento.
+ * 插件配置存储：按插件 id 存储用户自定义配置值。
  *
- * almacenado en `filesDir/plugin_configs.json`, el formato es `{"pluginId": {"key": value}}`.
- * Utilice AtomicFileStore para garantizar la atomicidad de escritura y evitar que el proceso finalice dejando la mitad de JSON.
+ * 存储在 `filesDir/plugin_configs.json`，格式为 `{"pluginId": {"key": value}}`。
+ * 使用 AtomicFileStore 保证写入原子性，避免进程被杀留下半个 JSON。
  */
 @Serializable
 data class PluginConfigStore(val configs: Map<String, Map<String, JsonElement>> = emptyMap()) {
@@ -50,30 +50,30 @@ data class PluginConfigStore(val configs: Map<String, Map<String, JsonElement>> 
 }
 
 /**
- * B6-01: Administrador de complementos externo.
+ * B6-01: 外部插件管理器。
  *
- * El paquete de complemento se instala en `filesDir/plugins/<id>/`, el registro se guarda en `filesDir/plugin_registry.json`;
- * La herramienta complementaria es `plugin_<pluginId>_<toolName>` Escrito en la tabla de habilidades, ejecutado por SkillExecutor
- * prensa `plugin:<pluginId>:<functionName>` Ruta al entorno limitado de JS.
+ * 插件包安装到 `filesDir/plugins/<id>/`，注册表保存在 `filesDir/plugin_registry.json`；
+ * 插件工具以 `plugin_<pluginId>_<toolName>` 写入 skills 表，执行时由 SkillExecutor
+ * 按 `plugin:<pluginId>:<functionName>` 路由到 JS 沙盒。
  *
- * al mismo tiempo que [PluginSkinSource] expuesto `kind == "ui-skin"` Piel declarativa; reutilización de lectura de piel
- * Ruta de reverificación de los paquetes instalados sin ejecutar ningún código de complemento.
+ * 同时作为 [PluginSkinSource] 暴露 `kind == "ui-skin"` 的声明式皮肤；皮肤读取复用
+ * 已安装包的重新校验路径，不执行任何插件代码。
  */
 @Suppress("TooGenericExceptionCaught", "FunctionParameterNaming")
 class PluginManager(
     private val context: Context,
     private val skillRepository: SkillRepository,
-    /** La raíz de confianza del editor solo se permite desde el almacenamiento privado de Android; Las pruebas pueden inyectar implementaciones de archivos temporales. */
+    /** 发行者信任根只允许来自 Android 私有存储；测试可注入临时文件实现。 */
     private val trustStore: PluginTrustStore = PluginTrustStore(context),
-    /** Biblioteca de versiones históricas: conserva varias versiones verificadas recientes para que los usuarios las reviertan activamente; colocado deliberadamente fuera del directorio del complemento. */
+    /** 历史版本库：保留最近若干已校验版本，供用户主动回滚；刻意放在插件目录之外。 */
     private val versionStore: PluginVersionStore =
         PluginVersionStore(File(context.filesDir, "plugin_versions")),
-    /** Versión actual de la aplicación, minAppVersion utilizada para aplicar el manifiesto. */
+    /** 当前 App 版本，用于强制 manifest 的 minAppVersion。 */
     private val appVersionName: String = BuildConfig.VERSION_NAME,
     /**
-     * Clave de autor nativo: los complementos redactados por el asistente son firmados y habilitados por este solo después de la confirmación explícita por parte del usuario.
+     * 本机作者密钥：助手起草的插件只有在用户明确确认后，才由它签名并启用。
      *
-     * Colocado en el almacenamiento privado de Android como la raíz de confianza; Las pruebas pueden inyectar implementaciones de archivos temporales.
+     * 与信任根一样放在 Android 私有存储；测试可注入临时文件实现。
      */
     private val localAuthorKeyStore: LocalAuthorKeyStore = LocalAuthorKeyStore(context),
 ) : PluginSkinSource {
@@ -92,39 +92,39 @@ class PluginManager(
         val permissions: List<String> = emptyList(),
         val tools: List<ToolDeclaration> = emptyList(),
         /**
-         * Ya sea para habilitar. Los complementos externos se fijan en falso para la primera instalación y deben habilitarse explícitamente después de la confirmación del usuario.
-         * Mantenga el valor anterior verdadero cuando este campo falte en el registro anterior, para evitar romper la compatibilidad de importación existente.
+         * 是否启用。外部插件首次安装固定为 false，必须由用户确认后显式启用。
+         * 旧注册表缺少该字段时保持旧值 true，避免破坏既有导入兼容性。
          */
         val enabled: Boolean = true,
-        /** SHA-256 del contenido del complemento instalado, utilizado para detectar el reemplazo de archivos de complemento. Vacíe si falta el registro anterior. */
+        /** 已安装插件内容的 SHA-256，用于检测插件文件被替换。旧注册表缺失时为空。 */
         val contentSha256: String = "",
         val installedAt: Long = System.currentTimeMillis(),
         /**
-         * ¿Ha completado la confirmación explícita de instalación del contenido del complemento?
-         * Al registro antiguo le falta este campo“No confirmado”Procesamiento para evitar la ejecución silenciosa cuando no se puede probar la confirmación del usuario;
-         * El paquete antiguo aún se conservará en el registro y los usuarios podrán volver a ver el resumen y confirmarlo sin destruir la compatibilidad de los datos importados.
-         * Colocado después de los parámetros existentes para mantener la compatibilidad con llamadas de construcción posicionales antiguas.
+         * 是否完成过本次插件内容的明确安装确认。
+         * 缺失该字段的旧注册表按“未确认”处理，避免在无法证明用户确认时静默执行；
+         * 旧包仍会保留在注册表中，用户可重新查看摘要后确认，不破坏导入数据兼容性。
+         * 放在已有参数之后，保持旧的按位置构造调用兼容。
          */
         val installationConfirmed: Boolean = false,
-        /** última instalación/Revisar el estado de la firma resultante; aún se revalidará antes de la ejecución y no se confiará en este campo almacenado en caché. */
+        /** 最近一次安装/审查得到的签名状态；执行前仍会重新验证，不信任此缓存字段。 */
         val signatureStatus: PluginSecurityGate.SignatureStatus =
             PluginSecurityGate.SignatureStatus.UNSIGNED,
         val publisherId: String = "",
         val publisherKeyFingerprint: String = "",
         /**
-         * Instalaciones anteriores de este complemento/Confirme el conjunto completo de ID de habilidades registradas (incluido el ID de formato anterior antes de la codificación del prefijo de longitud).
+         * 本插件历次安装/确认注册过的 skill id 全集（含长度前缀编码前的旧格式 id）。
          *
-         * Desinstalar/Al actualizar, limpie de acuerdo con esta colección para evitar depender únicamente del manifiesto actual y dejar las habilidades de la versión anterior.
-         * Cuando al registro anterior le falta este campo, será una lista vacía y recurrirá al manifiesto actual para derivar el objetivo de limpieza.
+         * 卸载/更新时按该集合清理，避免只依赖当前 manifest 而残留旧版本 skill。
+         * 旧注册表缺失该字段时为空列表，此时回退到当前 manifest 推导清理目标。
          */
         val registeredSkillIds: List<String> = emptyList(),
     )
 
     /**
-     * Vista de ejecución del complemento después de la revalidación.
+     * 重新验证后的插件运行视图。
      *
-     * [capabilities]/[tools]/[entryCode] Todo releído desde el disco y revisado a través de puertas de seguridad.
-     * manifest, en lugar de [InstalledPlugin] Campo de caché del registro; la ruta de ejecución debe utilizar esta vista.
+     * [capabilities]/[tools]/[entryCode] 全部来自磁盘上重新读取并通过安全门复核的
+     * manifest，而不是 [InstalledPlugin] 的注册表缓存字段；执行路径必须使用本视图。
      */
     data class VerifiedPlugin(
         val id: String,
@@ -145,23 +145,23 @@ class PluginManager(
     @Volatile
     private var cached: List<InstalledPlugin> = loadRegistry()
 
-    /** R-SVC-07: registry leermodificarmutex,Evite instalaciones simultáneas/Desinstale la mala escritura JSON. */
+    /** R-SVC-07: registry 读改写互斥,避免并发安装/卸载写坏 JSON。 */
     private val registryMutex = Mutex()
 
-    /** P2-26: Enviar exclusión mutua por ID de complemento — Instalación simultánea del mismo complemento/Descargar serialización,Eliminar la puesta en escena de coberturas escalonadas. */
+    /** P2-26: 按插件 id 的提交互斥 — 同插件并发安装/卸载串行化,消除 staging 交错覆盖。 */
     private val installLocks = java.util.concurrent.ConcurrentHashMap<String, Mutex>()
 
     /**
-     * Lea y revise paquetes de complementos externos, devolviendo decisiones de seguridad y vistas previas de instalación sin código fuente.
+     * 读取并审查外部插件包，返回不含源码的安全决策和安装预览。
      */
     suspend fun reviewFromUri(uri: Uri): Result<PluginSecurityGate.Decision> =
         withTempPluginFile(uri, "muse-plugin") { file -> reviewFromFile(file) }
 
     /**
-     * Guarde el paquete sin firmar encuadernado en vista previa como un borrador deshabilitado.
+     * 将预览绑定的无签名包保存为禁用草稿。
      *
-     * Esta ruta no se escribirá en la raíz de confianza, no se registrará como un complemento ejecutable y volverá a comparar el resumen de contenido para evitar la confirmación del usuario.
-     * Después de obtener una vista previa, el URI se reemplaza con otro paquete. Un paquete de firma válido debe utilizar [installConfirmedFromUri].
+     * 该路径不会写入信任根、不会注册为可执行插件，并会重新比较内容摘要，避免用户确认
+     * 预览后 URI 被替换成另一份包。有效签名包应使用 [installConfirmedFromUri]。
      */
     suspend fun installDraftFromUri(uri: Uri, expectedPreview: PluginSecurityGate.InstallPreview): Result<InstalledPlugin> =
         withTempPluginFile(uri, "muse-plugin") { file ->
@@ -175,12 +175,12 @@ class PluginManager(
             val decision = PluginSecurityGate.review(loaded, trustedPublisherKeys())
             if (!decision.allowed) {
                 return@withContext Result.failure(
-                    IllegalStateException(decision.reason ?: "Error en la revisión de seguridad del complemento"),
+                    IllegalStateException(decision.reason ?: "插件安全审查未通过"),
                 )
             }
             if (!PluginSecurityGate.hasSameContentIdentity(expectedPreview, decision.preview)) {
                 return@withContext Result.failure(
-                    IllegalStateException("El contenido del complemento ha cambiado después de la confirmación; obtenga una vista previa nuevamente"),
+                    IllegalStateException("插件内容在确认后发生变化，请重新预览"),
                 )
             }
             commitInstall(
@@ -190,21 +190,21 @@ class PluginManager(
             )
         }
 
-    /** Lee un archivo y devuelve una decisión de puerta de seguridad puramente lógica para su uso en la interfaz de usuario de validación y las pruebas unitarias. */
+    /** 读取文件并返回纯逻辑安全门的决策，供确认 UI 和单测使用。 */
     suspend fun reviewFromFile(file: File): Result<PluginSecurityGate.Decision> = withContext(Dispatchers.IO) {
         val loaded = loadPackage(file)
             .getOrElse { error -> return@withContext Result.failure(error) }
         Result.success(PluginSecurityGate.review(loaded, trustedPublisherKeys()))
     }
 
-    /** Una asignación de clave pública de solo lectura de la raíz de confianza privada actual de Android; no expone la clave privada o la ruta de almacenamiento a la persona que llama. */
+    /** 当前 Android 私有信任根的只读公钥映射；不把私钥或存储路径暴露给调用方。 */
     private fun trustedPublisherKeys(): Map<String, String> = trustStore.list().associate { it.publisherId to it.publicKey }
 
     /**
-     * Visto por el usuario [expectedPreview] Luego confirme e instale el complemento externo.
+     * 在用户已查看 [expectedPreview] 后确认并安装外部插件。
      *
-     * El paquete relee, analiza y recalcula el resumen; Si el URI/archivo se reemplaza después de la vista previa, la validación falla sin
-     * Escriba en el directorio o registro del complemento para evitar“Vista previa A. Ejecutar B”El bypass TOCTOU.
+     * 包会重新读取、解析并重新计算摘要；如果 URI/文件在预览后被替换，确认会失败而不会
+     * 写入插件目录或注册表，避免“预览 A、执行 B”的 TOCTOU 绕过。
      */
     suspend fun installConfirmedFromUri(
         uri: Uri,
@@ -215,11 +215,11 @@ class PluginManager(
     }
 
     /**
-     * Confirme e instale un archivo de complemento externo que coincida con el resumen de la vista previa.
+     * 确认并安装一个与预览摘要一致的外部插件文件。
      *
-     * [trustPublisher] Sólo cuando el usuario hace clic explícitamente“Confía en el editor e instala”Cuando pasó a ser verdadero; de editor desconocido
-     * La clave pública primero se firmará y verificará, luego se escribirá atómicamente en la raíz de confianza privada de Android y luego se volverá a verificar utilizando el mismo paquete cargado.
-     * sin firmar/Los paquetes firmados de forma no válida nunca podrán convertirse en complementos ejecutables a través de esta ruta.
+     * [trustPublisher] 只在用户明确点击“信任发行者并安装”时传 true；未知发行者的
+     * 公钥会先经过签名校验，再原子写入 Android 私有信任根，随后用同一份已加载包重新验签。
+     * 未签名/无效签名包永远不能通过此路径成为可执行插件。
      */
     suspend fun installConfirmedFromFile(
         file: File,
@@ -231,30 +231,30 @@ class PluginManager(
         var decision = PluginSecurityGate.review(loaded, trustedPublisherKeys())
         if (!decision.allowed) {
             return@withContext Result.failure(
-                IllegalStateException(decision.reason ?: "Error en la revisión de seguridad del complemento"),
+                IllegalStateException(decision.reason ?: "插件安全审查未通过"),
             )
         }
         if (!PluginSecurityGate.hasSameContentIdentity(expectedPreview, decision.preview)) {
             return@withContext Result.failure(
-                IllegalStateException("El contenido del complemento ha cambiado después de la confirmación; obtenga una vista previa nuevamente"),
+                IllegalStateException("插件内容在确认后发生变化，请重新预览"),
             )
         }
         if (decision.requiresPublisherTrust) {
             if (!trustPublisher) {
                 return@withContext Result.failure(
-                    IllegalStateException("Aún no se confía en el editor. Elija explícitamente confiar en el editor antes de realizar la instalación."),
+                    IllegalStateException("发行者尚未受信，请明确选择信任发行者后再安装"),
                 )
             }
             val signature = loaded.manifest.signature
-                ?: return@withContext Result.failure(IllegalStateException("Al complemento le falta la firma del editor"))
+                ?: return@withContext Result.failure(IllegalStateException("插件缺少发行者签名"))
             trustStore.trust(signature.publisherId, signature.publicKey)
                 .getOrElse { error -> return@withContext Result.failure(error) }
-            // Una vez escrita correctamente la raíz de confianza, se utiliza el mismo paquete para recalcular la decisión; no se puede publicar basándose únicamente en el estado de vista previa de la interfaz de usuario.
+            // 信任根写入成功后，用同一份包重新计算决策；不能仅凭 UI 的 preview 状态放行。
             decision = PluginSecurityGate.review(loaded, trustedPublisherKeys())
         }
         if (!decision.isInstallable) {
             return@withContext Result.failure(
-                IllegalStateException(decision.reason ?: "Los complementos deben tener una firma válida en la que confíe la raíz de confianza local"),
+                IllegalStateException(decision.reason ?: "插件必须具有受本机信任根信任的有效签名"),
             )
         }
         commitInstall(
@@ -265,46 +265,46 @@ class PluginManager(
     }
 
     /**
-     * Confirme explícitamente los borradores de complementos instalados.
+     * 显式确认已安装的草稿插件。
      *
-     * [trustPublisher] Solo pasa verdadero si el usuario confirma explícitamente el emisor. Vuelva a leer el paquete completo y verifique antes de confirmar.
-     * manifest estrategia,ECDSA Firma, raíz de confianza nativa y resumen de contenido; sin firmar/Editor desconocido/Los paquetes de manipulación siempre son
-     * No puede convertirse en un complemento ejecutable.
+     * [trustPublisher] 只在用户明确确认发行者时传 true。确认前重新读取完整包、验证
+     * manifest 策略、ECDSA 签名、本机信任根和内容摘要；未签名/未知发行者/篡改包一律
+     * 不能变成可执行插件。
      */
     suspend fun confirmInstallation(id: String, trustPublisher: Boolean = false): Result<InstalledPlugin> = withContext(Dispatchers.IO) {
         val plugin = findPlugin(id)
-            ?: return@withContext Result.failure(IllegalStateException("Complemento no instalado: $id"))
+            ?: return@withContext Result.failure(IllegalStateException("插件未安装: $id"))
         if (plugin.contentSha256.isBlank()) {
-            return@withContext Result.failure(IllegalStateException("Al complemento le falta un resumen de contenido y no se puede confirmar"))
+            return@withContext Result.failure(IllegalStateException("插件缺少内容摘要，无法确认"))
         }
         val directory = File(pluginsDir, plugin.id)
         val loaded = loadInstalledPackage(directory)
-            ?: return@withContext Result.failure(IllegalStateException("El contenido del complemento no se puede leer en su totalidad ni se puede confirmar."))
+            ?: return@withContext Result.failure(IllegalStateException("插件内容无法完整读取，无法确认"))
         var decision = PluginSecurityGate.review(loaded, trustedPublisherKeys())
         if (!decision.allowed) {
             return@withContext Result.failure(
-                IllegalStateException(decision.reason ?: "Error en la revisión de seguridad del complemento"),
+                IllegalStateException(decision.reason ?: "插件安全审查未通过"),
             )
         }
         val actual = PluginSecurityGate.contentSha256(loaded)
         if (actual != plugin.contentSha256) {
-            return@withContext Result.failure(IllegalStateException("El resumen del contenido del complemento no coincide; vuelva a importarlo"))
+            return@withContext Result.failure(IllegalStateException("插件内容摘要不匹配，请重新导入"))
         }
         if (decision.requiresPublisherTrust) {
             if (!trustPublisher) {
                 return@withContext Result.failure(
-                    IllegalStateException("Aún no se confía en el editor. Elija explícitamente confiar en el editor antes de realizar la instalación."),
+                    IllegalStateException("发行者尚未受信，请明确选择信任发行者后再安装"),
                 )
             }
             val signature = loaded.manifest.signature
-                ?: return@withContext Result.failure(IllegalStateException("Al complemento le falta la firma del editor"))
+                ?: return@withContext Result.failure(IllegalStateException("插件缺少发行者签名"))
             trustStore.trust(signature.publisherId, signature.publicKey)
                 .getOrElse { error -> return@withContext Result.failure(error) }
             decision = PluginSecurityGate.review(loaded, trustedPublisherKeys())
         }
         if (!decision.isInstallable) {
             return@withContext Result.failure(
-                IllegalStateException(decision.reason ?: "Los complementos deben tener una firma válida en la que confíe la raíz de confianza local"),
+                IllegalStateException(decision.reason ?: "插件必须具有受本机信任根信任的有效签名"),
             )
         }
         val confirmed = plugin.copy(
@@ -313,14 +313,14 @@ class PluginManager(
             enabled = if (plugin.installationConfirmed) {
                 plugin.enabled
             } else {
-                // P2-29: Respeto al confirmar manifest.enabled — Los paquetes declarados deshabilitados permanecen deshabilitados después de la confirmación,
-                // Habilitado manualmente por el usuario,Ya no es obligatorio habilitar
+                // P2-29: 确认时尊重 manifest.enabled — 声明禁用的包确认后仍保持禁用,
+                // 由用户手动启用,不再一律强制启用
                 loaded.manifest.enabled
             },
             signatureStatus = decision.signature.status,
             publisherId = decision.signature.publisherId,
             publisherKeyFingerprint = decision.signature.fingerprint,
-            // Activación tras la confirmación: registre sincrónicamente la identificación de habilidad del manifiesto actual y limpie el formato anterior/Habilidad eliminada.
+            // 确认即激活：同步记录当前 manifest 的 skill id，并清理旧格式/已移除的 skill。
             registeredSkillIds = collectRegisteredSkillIds(plugin, loaded.manifest),
         )
         try {
@@ -329,29 +329,29 @@ class PluginManager(
                 persistRegistryOrThrow()
             }
         } catch (error: Exception) {
-            Logger.e(TAG, "Error al escribir la confirmación del complemento: $id", error)
+            Logger.e(TAG, "插件确认写入失败: $id", error)
             return@withContext Result.failure(error)
         }
-        // upsert Presionará confirmado. habilitado para iniciar sesión y evitar“Complemento confirmado pero habilidad aún deshabilitada”o
-        // “Complemento deshabilitado pero confirma la llamada para volver a habilitar la habilidad”El Estado está desgarrado.
+        // upsert 会按 confirmed.enabled 落库，避免“插件已确认但 skill 仍禁用”或
+        // “插件禁用但确认调用把 skill 重新启用”的状态撕裂。
         syncSkills(plugin, confirmed)
         markRegistryChanged()
         Result.success(confirmed)
     }
 
     /**
-     * Construya el ZIP con el host y escriba un**borrador sin firmar**.
+     * 用宿主构建 ZIP，写出一份**未签名草稿**。
      *
-     * El asistente (modelo grande) sólo puede llegar hasta cierto punto:manifest Presionado por el anfitrión [PluginAuthoringRules] generar,
-     * Almacenamiento de tiro fijo `installationConfirmed=false`,`enabled=false`,[loadVerifiedPlugin]
-     * Siempre devuelve nulo, por lo que este código no se puede ejecutar hasta que el usuario asienta.
+     * 助手（大模型）只能走到这里：manifest 由宿主按 [PluginAuthoringRules] 生成，
+     * 草稿入库固定 `installationConfirmed=false`、`enabled=false`，[loadVerifiedPlugin]
+     * 对其始终返回 null，因此这份代码在用户点头之前不可能被执行。
      *
-     * La verificación precede a la escritura en el disco:id/Nombre/versión/tamaño del código/forma de herramienta/¿Existe la función?/Cualquier elemento en la lista blanca de capacidades
-     * Si no se aprueba, devolverá directamente el motivo chino y no quedará ningún producto semiacabado en el directorio o registro del complemento.
+     * 校验先于写盘：id/名称/版本/代码大小/工具形状/函数是否存在/能力白名单任何一条
+     * 不通过都直接返回中文原因，不在插件目录或注册表留下半成品。
      */
     suspend fun createAuthoredDraft(request: AuthoredPluginRequest): Result<InstalledPlugin> = withContext(Dispatchers.IO) {
         PluginAuthoringRules.validate(request)?.let { reason ->
-            Logger.w(TAG, "Borrador del complemento asistente rechazado: ${request.id} ($reason)")
+            Logger.w(TAG, "助手插件草稿被拒: ${request.id} ($reason)")
             return@withContext Result.failure(IllegalArgumentException(reason))
         }
         val manifest = PluginAuthoringRules.manifestOf(request)
@@ -359,7 +359,7 @@ class PluginManager(
             PluginAuthoringRules.buildZip(manifest, request.code)
         }.getOrElse { error ->
             return@withContext Result.failure(
-                IllegalStateException("Falló la compilación del paquete de complementos: ${error.message}", error),
+                IllegalStateException("插件包构建失败: ${error.message}", error),
             )
         }
         val temp = File(context.cacheDir, "authored_draft_${System.nanoTime()}.muse-plugin")
@@ -369,15 +369,15 @@ class PluginManager(
                 .getOrElse { error -> return@withContext Result.failure(error) }
             if (!decision.allowed) {
                 return@withContext Result.failure(
-                    IllegalStateException(decision.reason ?: "Error en la revisión de seguridad del complemento"),
+                    IllegalStateException(decision.reason ?: "插件安全审查未通过"),
                 )
             }
-            // Reutilice la ruta de la biblioteca borrador existente: el resumen de contenido está vinculado a la vista previa y la raíz de confianza no está escrita ni habilitada.
+            // 复用既有草稿落库路径：内容摘要与预览绑定，且不写信任根、不启用。
             installDraftFromFile(temp, decision.preview)
         } catch (cancellation: kotlinx.coroutines.CancellationException) {
             throw cancellation
         } catch (error: Exception) {
-            Logger.e(TAG, "Error al redactar el borrador del complemento del asistente: ${request.id}", error)
+            Logger.e(TAG, "助手插件草稿写入失败: ${request.id}", error)
             Result.failure(error)
         } finally {
             runCatching { if (temp.exists()) temp.delete() }
@@ -385,37 +385,37 @@ class PluginManager(
     }
 
     /**
-     * Firme y habilite un borrador instalado sin firmar con la clave de autor nativa.
+     * 用本机作者密钥签名并启用一份已安装的未签名草稿。
      *
-     * La persona que llama debe haber obtenido el consentimiento explícito del usuario (UI El cuadro de diálogo de confirmación muestra el nombre del complemento/id/versión/lista de herramientas),
-     * Por lo tanto, la clave pública del autor local se escribirá en la raíz de confianza según sea necesario. [PluginTrustStore.trust];Escribir en la raíz de la confianza misma.
-     * No significa liberación——El paquete de firma aún debe volver a aprobarse. [PluginSecurityGate.review] y
-     * `isInstallable == true` será presentado.
+     * 调用方必须已经拿到用户的明确同意（UI 确认对话框展示插件名/id/版本/工具清单），
+     * 因此这里会按需把本机作者公钥写入信任根 [PluginTrustStore.trust]；写入信任根本身
+     * 不代表放行——签名包仍要重新经过 [PluginSecurityGate.review] 且
+     * `isInstallable == true` 才会提交。
      *
-     * El orden es parte del límite de seguridad: primero revise el borrador del resumen de identidad y contenido, y regrese antes de escribir en el disco si falla algún paso.
-     * Las instalaciones existentes (con versiones firmadas confirmadas) permanecen sin cambios. La política de versiones no se omite: reinstalar la misma versión mediante
-     * [PluginVersionPolicy] Si se libera, la degradación seguirá bloqueada.
+     * 顺序是安全边界的一部分：先复核草稿身份与内容摘要，任何一步失败都在写盘之前返回，
+     * 现有安装（含已确认的签名版本）保持不变。版本策略不绕过：同版本重装由
+     * [PluginVersionPolicy] 放行，降级仍会被它拦下。
      */
     suspend fun signAndEnableDraft(id: String): Result<InstalledPlugin> = withContext(Dispatchers.IO) {
         val plugin = findPlugin(id)
-            ?: return@withContext Result.failure(IllegalStateException("Complemento no instalado: $id"))
+            ?: return@withContext Result.failure(IllegalStateException("插件未安装: $id"))
         if (plugin.installationConfirmed || plugin.signatureStatus != PluginSecurityGate.SignatureStatus.UNSIGNED) {
             return@withContext Result.failure(
-                IllegalStateException("Solo los borradores deshabilitados sin firmar se pueden firmar habilitados: $id"),
+                IllegalStateException("只有未签名的禁用草稿可以签名启用: $id"),
             )
         }
         if (plugin.contentSha256.isBlank()) {
-            return@withContext Result.failure(IllegalStateException("Al complemento le falta un resumen de contenido y no se puede firmar"))
+            return@withContext Result.failure(IllegalStateException("插件缺少内容摘要，无法签名"))
         }
         val loaded = loadInstalledPackage(File(pluginsDir, plugin.id))
-            ?: return@withContext Result.failure(IllegalStateException("El contenido del complemento no se puede leer por completo ni firmar."))
+            ?: return@withContext Result.failure(IllegalStateException("插件内容无法完整读取，无法签名"))
         if (loaded.manifest.id != plugin.id) {
-            return@withContext Result.failure(IllegalStateException("El directorio del complemento no coincide con la identificación del registro y se rechaza la firma."))
+            return@withContext Result.failure(IllegalStateException("插件目录与注册表 id 不一致，拒绝签名"))
         }
-        // Es posible que el borrador haya sido modificado después de su generación: los resúmenes inconsistentes indican que el código ya no es el que se revisó.
+        // 草稿可能在生成后被改动：内容摘要不一致说明这份代码不再是被审阅的那份。
         if (PluginSecurityGate.contentSha256(loaded) != plugin.contentSha256) {
             return@withContext Result.failure(
-                IllegalStateException("El contenido del complemento se modificó antes de firmar; vuelva a generar el borrador."),
+                IllegalStateException("插件内容在签名前已被修改，请重新生成草稿"),
             )
         }
         val publicKey = localAuthorKeyStore.publicKeyBase64()
@@ -435,7 +435,7 @@ class PluginManager(
         val zipBytes = runCatching {
             PluginAuthoringRules.buildZip(signedManifest, packageForSigning.entryCode, packageForSigning.extraFiles)
         }.getOrElse { error ->
-            return@withContext Result.failure(IllegalStateException("Falló la compilación del paquete firmado: ${error.message}", error))
+            return@withContext Result.failure(IllegalStateException("签名包构建失败: ${error.message}", error))
         }
         val temp = File(context.cacheDir, "authored_signed_${System.nanoTime()}.muse-plugin")
         try {
@@ -443,25 +443,25 @@ class PluginManager(
             var decision = reviewFromFile(temp).getOrElse { error -> return@withContext Result.failure(error) }
             if (!decision.allowed) {
                 return@withContext Result.failure(
-                    IllegalStateException(decision.reason ?: "La revisión de seguridad del complemento firmado falló"),
+                    IllegalStateException(decision.reason ?: "签名后的插件安全审查未通过"),
                 )
             }
             if (decision.signature.status == PluginSecurityGate.SignatureStatus.VALID_UNTRUSTED) {
-                // El usuario ha aceptado explícitamente confiar en la clave del autor local en el cuadro de diálogo de confirmación; No se permite el reemplazo de claves para el mismo ID de emisor.
+                // 用户已在确认对话框明确同意信任本机作者密钥；同一个发行者 id 不允许换钥。
                 trustStore.trust(localAuthorKeyStore.publisherId, publicKey)
                     .getOrElse { error -> return@withContext Result.failure(error) }
                 decision = reviewFromFile(temp).getOrElse { error -> return@withContext Result.failure(error) }
             }
             if (!decision.isInstallable) {
                 return@withContext Result.failure(
-                    IllegalStateException(decision.reason ?: "La firma del autor nativo no es de confianza y se niega a habilitarse"),
+                    IllegalStateException(decision.reason ?: "本机作者签名未受信任，拒绝启用"),
                 )
             }
             installConfirmedFromFile(temp, decision.preview, trustPublisher = true)
         } catch (cancellation: kotlinx.coroutines.CancellationException) {
             throw cancellation
         } catch (error: Exception) {
-            Logger.e(TAG, "No se pudo habilitar la firma del borrador del complemento del asistente: $id", error)
+            Logger.e(TAG, "助手插件草稿签名启用失败: $id", error)
             Result.failure(error)
         } finally {
             runCatching { if (temp.exists()) temp.delete() }
@@ -474,7 +474,7 @@ class PluginManager(
             try {
                 context.contentResolver.openInputStream(uri)?.use { input ->
                     temp.outputStream().use { output -> copyLimited(input, output, MAX_PLUGIN_PACKAGE_BYTES) }
-                } ?: return@withContext Result.failure(IllegalStateException("El archivo seleccionado no se puede abrir"))
+                } ?: return@withContext Result.failure(IllegalStateException("无法打开所选文件"))
                 operation(temp)
             } catch (ce: kotlinx.coroutines.CancellationException) {
                 throw ce
@@ -494,8 +494,8 @@ class PluginManager(
     }
 
     /**
-     * P2-26: Serializar confirmaciones por ID de complemento — Instalación simultánea del mismo complemento.(Actualización del mercado + importación manual activadas simultáneamente)tiempo,
-     * staging/Cambio de directorio/Los registros no están entrelazados entre sí.,El fallo ya no deja un estado a medio instalar.
+     * P2-26: 按插件 id 串行化提交 — 并发安装同一插件(市场刷新 + 手动导入同时触发)时,
+     * staging/目录切换/注册表互不交错,失败不再遗留半安装状态。
      */
     private suspend fun commitInstall(
         loaded: PluginPackageLoader.LoadedPluginPackage,
@@ -504,7 +504,7 @@ class PluginManager(
             PluginSecurityGate.SignatureVerification(
                 status = PluginSecurityGate.SignatureStatus.UNSIGNED,
             ),
-        /** Solo la entrada de reversión es verdadera: la degradación se permite cuando el usuario regresa activamente a la versión histórica. */
+        /** 仅回滚入口传 true：用户主动回退到历史版本时放行降级。 */
         allowDowngrade: Boolean = false,
     ): Result<InstalledPlugin> {
         val lockId = loaded.manifest.id
@@ -520,14 +520,14 @@ class PluginManager(
             PluginSecurityGate.SignatureVerification(
                 status = PluginSecurityGate.SignatureStatus.UNSIGNED,
             ),
-        /** Solo la entrada de reversión es verdadera: la degradación se permite cuando el usuario regresa activamente a la versión histórica. */
+        /** 仅回滚入口传 true：用户主动回退到历史版本时放行降级。 */
         allowDowngrade: Boolean = false,
     ): Result<InstalledPlugin> {
         val manifest = loaded.manifest
         val contentSha256 = PluginSecurityGate.contentSha256(loaded)
         val previous = cached.firstOrNull { it.id == manifest.id }
-        // Estrategia de versión: instalación degradada, reemplazo del editor, el paquete sin firmar sobrescribe la instalación firmada,minAppVersion más alto que el actual App
-        // Todos se detuvieron antes de escribir. Poner aquí porque es la ruta para todas las instalaciones (borrador/importar/mercado/reversión).
+        // 版本策略：降级安装、发行者换人、未签名包覆盖已签名安装、minAppVersion 高于当前 App
+        // 都在写盘之前拦下。放在这里是因为它是所有安装路径（草稿/导入/市场/回滚）的唯一收口。
         val versionDecision = PluginVersionPolicy.evaluate(
             candidate = PluginInstallCandidate(
                 id = manifest.id,
@@ -547,30 +547,30 @@ class PluginManager(
             },
             appVersion = appVersionName,
             allowDowngrade = allowDowngrade,
-            // Los complementos firmados por el autor nativo pueden sobrescribirse con nuevos borradores, de modo que el asistente pueda iterar los complementos escritos por él mismo.
+            // 本机作者签名的插件允许被新草稿覆盖，助手才能迭代自己写的插件。
             localAuthorPublisherId = localAuthorKeyStore.publisherId,
         )
         if (versionDecision is PluginVersionDecision.Reject) {
-            Logger.w(TAG, "La instalación del complemento es rechazada por la política de versión: ${manifest.id} (${versionDecision.reason})")
+            Logger.w(TAG, "插件安装被版本策略拒绝: ${manifest.id} (${versionDecision.reason})")
             return Result.failure(IllegalStateException(versionDecision.reason))
         }
-        // P0: Detectar conflictos de identificación de habilidades antes de la instalación (usuario/La habilidad incorporada está ocupada o el nombre de la herramienta se repite en el manifiesto),
-        // Rechace en lugar de sobrescribir silenciosamente las habilidades existentes que no pertenecen a este complemento.
+        // P0: 安装前先检测 skill id 冲突（用户/内置 skill 占用，或 manifest 内工具名重复），
+        // 拒绝而不是静默覆盖不属于本插件的既有 skill。
         val conflict = runCatching { findSkillConflict(manifest) }.getOrElse { error ->
             return Result.failure(
-                IllegalStateException("Error en la detección de conflictos de habilidades del complemento: ${error.message}", error),
+                IllegalStateException("插件 skill 冲突检测失败: ${error.message}", error),
             )
         }
         if (conflict != null) {
-            Logger.w(TAG, "Instalación del complemento denegada: ${manifest.id} ($conflict)")
+            Logger.w(TAG, "插件安装被拒绝: ${manifest.id} ($conflict)")
             return Result.failure(IllegalStateException(conflict))
         }
         val targetDir = File(pluginsDir, manifest.id)
         val stagingDir = File(pluginsDir, ".staging_${manifest.id}_${System.nanoTime()}")
         val previousCached = cached
         var backupDir: File? = null
-        // Antes de reemplazar, conserve una copia histórica de la versión vigente actualmente: los usuarios aún pueden volver a ella después de la actualización.
-        // Solo se mantendrán registros de fallas y la instalación nunca se bloqueará (las copias históricas son una capacidad conveniente, no un requisito previo para la instalación).
+        // 替换前先把当前生效版本留一份历史副本：升级后用户仍能回退到它。
+        // 保留失败只记日志，绝不阻断安装（历史副本是便利能力，不是安装前置条件）。
         previous?.let { installed ->
             if (targetDir.isDirectory) {
                 versionStore.retain(
@@ -585,23 +585,23 @@ class PluginManager(
                         retainedAtEpochMs = 0L,
                     ),
                 ).onFailure { error ->
-                    Logger.w(TAG, "No se pudieron conservar las versiones históricas(No afecta la instalación): ${installed.id}@${installed.version}", error)
+                    Logger.w(TAG, "保留历史版本失败(不影响安装): ${installed.id}@${installed.version}", error)
                 }
             }
         }
         val installResult = runCatching {
-            // Primero escriba completamente en el directorio provisional bajo el mismo sistema de archivos y luego cambie al directorio activo.
-            // La versión anterior se conserva en una copia de seguridad temporal y se restaura cuando el conmutador falla para evitar interrupciones en la instalación y dejar complementos a medio instalar.
+            // 先完整写入同一文件系统下的 staging 目录，再切换 active 目录。
+            // 旧版本保留到临时备份，切换失败时恢复，避免安装中断留下半安装插件。
             writePluginDirectory(stagingDir, manifest, loaded)
             backupDir = replacePluginDirectory(stagingDir, targetDir)
         }
         if (installResult.isFailure) {
             if (stagingDir.exists()) stagingDir.deleteRecursively()
             installResult.exceptionOrNull()?.let { error ->
-                Logger.e(TAG, "Error al enviar la instalación del complemento: ${manifest.id}", error)
+                Logger.e(TAG, "插件安装提交失败: ${manifest.id}", error)
             }
             return Result.failure(
-                installResult.exceptionOrNull() ?: IllegalStateException("Error al enviar la instalación del complemento"),
+                installResult.exceptionOrNull() ?: IllegalStateException("插件安装提交失败"),
             )
         }
 
@@ -617,7 +617,7 @@ class PluginManager(
             capabilities = manifest.capabilities,
             permissions = manifest.permissions,
             tools = manifest.tools,
-            // Los paquetes externos no confirmados están permanentemente deshabilitados;manifest.enabled Sólo entrará en vigor tras una confirmación explícita.
+            // 未确认的外部包永远禁用；manifest.enabled 只有在明确确认后才可生效。
             enabled = installationConfirmed && manifest.enabled,
             installationConfirmed = installationConfirmed,
             signatureStatus = signature.status,
@@ -625,8 +625,8 @@ class PluginManager(
             publisherKeyFingerprint = signature.fingerprint,
             contentSha256 = contentSha256,
             installedAt = System.currentTimeMillis(),
-            // Acumule registros de ID de habilidades registradas previamente (incluidos ID de formato antiguo). Al desinstalar, elimine todos los ID de habilidades que pertenecen a este complemento en consecuencia.
-            // skill, en lugar de simplemente confiar en el manifiesto actual.
+            // 累积记录历次注册过的 skill id（含旧格式 id），卸载时据此删除全部属于本插件的
+            // skill，而不只依赖当前 manifest。
             registeredSkillIds = collectRegisteredSkillIds(previous, manifest),
         )
         try {
@@ -641,11 +641,11 @@ class PluginManager(
                 }
             }
         } catch (error: Exception) {
-            Logger.e(TAG, "Error al enviar el registro del complemento, se ha restaurado la versión anterior: ${manifest.id}", error)
+            Logger.e(TAG, "插件注册表提交失败，已恢复旧版本: ${manifest.id}", error)
             return Result.failure(error)
         }
         backupDir?.deleteRecursively()
-        // Mantenga la versión recién instalada: la dirección de reversión es reversible (puede retroceder después de revertir).
+        // 保留刚装好的版本：回滚方向是可逆的（回退后还能再切回来）。
         versionStore.retain(
             pluginId = installed.id,
             version = installed.version,
@@ -658,14 +658,14 @@ class PluginManager(
                 retainedAtEpochMs = 0L,
             ),
         ).onFailure { error ->
-            Logger.w(TAG, "No se pudo conservar la versión instalada(No afecta la instalación): ${installed.id}@${installed.version}", error)
+            Logger.w(TAG, "保留已安装版本失败(不影响安装): ${installed.id}@${installed.version}", error)
         }
-        // P0: Al actualizar, elimine la habilidad anterior que el nuevo manifiesto eliminó y luego registre la habilidad declarada actualmente.
+        // P0: 更新时删除新 manifest 已移除的旧 skill，再注册当前声明的 skill。
         syncSkills(previous, installed)
         markRegistryChanged()
         Logger.i(
             TAG,
-            "Complemento instalado: ${installed.id} v${installed.version}, " +
+            "插件已安装: ${installed.id} v${installed.version}, " +
                 "confirmed=${installed.installationConfirmed} enabled=${installed.enabled}",
         )
         return Result.success(installed)
@@ -674,34 +674,34 @@ class PluginManager(
     suspend fun uninstall(id: String) {
         withContext(Dispatchers.IO) {
             val plugin = findPlugin(id) ?: return@withContext
-            // P2-26: Bloqueado con instalación,evitar la instalación/Descarga escalonada
+            // P2-26: 与安装同锁,避免安装/卸载交错
             installLocks.getOrPut(id) { Mutex() }.withLock {
-                // P2-27: Primero escriba el registro y luego elimine el directorio. —
-                //  Orden original "Eliminar directorio→"Escribir registro" aparece cuando falla la escritura en el registro."El directorio se ha eliminado pero todavía aparece en el registro."estado de desgarro.
-                //  nuevo orden:Si la actualización del registro falla, todo permanece sin cambios.(sin lágrimas);Error al eliminar el directorio y solo quedan archivos huérfanos(Mensaje de registro).
+                // P2-27: 先写注册表、后删目录 —
+                //  原顺序「删目录→写注册表」在注册表写失败时出现"目录已删但注册表仍列出"的撕裂态。
+                //  新顺序:注册表更新失败则整体不变(无撕裂);目录删除失败仅遗留孤儿文件(日志提示)。
                 val previousEntry = cached
                 registryMutex.withLock {
                     cached = cached.filterNot { it.id == id }
                     val persisted = runCatching { persistRegistryOrThrow() }
                     if (persisted.isFailure) {
                         cached = previousEntry
-                        Logger.e(TAG, "Error al eliminar el registro del complemento,Desinstalación cancelada(Estado sin cambios): $id", persisted.exceptionOrNull())
+                        Logger.e(TAG, "插件注册表移除失败,卸载中止(状态未变): $id", persisted.exceptionOrNull())
                         return@withLock
                     }
                 }
                 val deleteResult = resultOf { File(pluginsDir, id).deleteRecursively() }
-                    .onError { msg, t -> Logger.e(TAG, "Error al eliminar el directorio de complementos: $id ($msg)", t) }
+                    .onError { msg, t -> Logger.e(TAG, "插件目录删除失败: $id ($msg)", t) }
                 if (deleteResult.isError || deleteResult.getOrNull() == false) {
-                    // Registro eliminado,Error al eliminar el directorio y solo quedan archivos huérfanos,No afecta la semántica de desinstalación.
-                    Logger.w(TAG, "Error al eliminar el directorio del complemento, pero se eliminó el registro(archivos huérfanos heredados,Se puede limpiar manualmente): $id")
+                    // 注册表已移除,目录删除失败只遗留孤儿文件,不影响卸载语义
+                    Logger.w(TAG, "插件目录删除失败但注册表已移除(遗留孤儿文件,可手动清理): $id")
                 }
-                // P0: El alcance de la eliminación son todas las habilidades registradas en el registro + habilidades derivadas del manifiesto actual (incluidos los formatos antiguos).
-                // Ya no confiar únicamente en el manifiesto actual para evitar los restos de versiones históricas.
+                // P0: 删除范围为注册表记录的全部 skill + 当前 manifest 推导的 skill（含旧格式），
+                // 不再只依赖当前 manifest，避免历史版本残留。
                 skillIdsOwnedBy(plugin).forEach { skillId -> deleteSkillIfOwned(id, skillId) }
-                // Desinstalar significa perder el objetivo de reversión: las copias históricas no se conservan (para evitar poder recuperar el código que el usuario pensó que se había eliminado después de la desinstalación).
+                // 卸载即失去回滚目标：历史副本不保留（避免卸载后仍能恢复出用户以为已删除的代码）。
                 versionStore.deleteAll(id)
                 markRegistryChanged()
-                Logger.i(TAG, "El complemento ha sido desinstalado: $id")
+                Logger.i(TAG, "插件已卸载: $id")
             }
         }
     }
@@ -710,8 +710,8 @@ class PluginManager(
         withContext(Dispatchers.IO) {
             val plugin = findPlugin(id) ?: return@withContext
             if (enabled && !plugin.installationConfirmed) {
-                // El código externo primero debe someterse a una confirmación de instalación explícita; se conserva la antigua API de la Unidad, pero se rechaza la habilitación silenciosa.
-                Logger.w(TAG, "Denegar la habilitación de complementos externos no confirmados: $id")
+                // 外部代码必须先经过明确的安装确认；保留旧 Unit API，但拒绝静默启用。
+                Logger.w(TAG, "拒绝启用未经确认的外部插件: $id")
                 return@withContext
             }
             registryMutex.withLock {
@@ -729,65 +729,65 @@ class PluginManager(
 
     fun findPlugin(id: String): InstalledPlugin? = cached.firstOrNull { it.id == id }
 
-    /** P0-9: Lista de editores de confianza actualmente(Comparte la misma instancia del almacén de confianza que la verificación de la instalación.). */
+    /** P0-9: 当前信任的发行者列表(与安装校验共用同一 trust store 实例)。 */
     fun trustedPublishers(): List<PluginTrustStore.TrustedPublisher> = trustStore.list()
 
     /**
-     * P0-9: Revocar la raíz de confianza de un emisor.
+     * P0-9: 撤销一个发行者的信任根。
      *
-     * Después de la revocación, los complementos firmados por el editor ya no podrán pasar la verificación.(Ejecutar la próxima vez/Vuelva a verificar antes de actualizar),y deshabilitado sincrónicamente
-     * Todos los complementos instalados y habilitados de este editor,evitar"El complemento se ejecuta normalmente pero la confianza se ha reciclado"la ilusión.
+     * 撤销后该发行者签名的插件不再可通过校验(下次执行/更新前重新验证),并同步禁用
+     * 该发行者所有已安装且处于启用状态的插件,避免"插件执行正常但信任已回收"的错觉。
      *
-     * @return emisor revocado id;Emisor no existe Volver null
+     * @return 被撤销的发行者 id;发行者不存在返回 null
      */
     suspend fun revokePublisher(publisherId: String): String? {
         val revoked = trustStore.revoke(publisherId)
         if (!revoked) return null
         cached.filter { it.publisherId == publisherId && it.enabled }.forEach { plugin ->
             setEnabled(plugin.id, false)
-            Logger.w(TAG, "Emisor $publisherId confianza revocada,Desactivar complementos automáticamente ${plugin.id}")
+            Logger.w(TAG, "发行者 $publisherId 信任已撤销,自动禁用插件 ${plugin.id}")
         }
         return publisherId
     }
 
-    /** Señal de cambio de registro:Instalación/Desinstalar/Confirmar/Incrementa automáticamente después de un inicio y una parada exitosos.,Lista de aspectos del controlador recargada. */
+    /** 注册表变更信号:安装/卸载/确认/启停成功后自增,驱动皮肤列表重新读取。 */
     private val revision = MutableStateFlow(0)
     override val revisionFlow: StateFlow<Int> = revision.asStateFlow()
 
-    /** Las versiones históricas que se han conservado (incluidas las versiones actualmente vigentes), tienen prioridad las nuevas versiones. */
+    /** 已保留的历史版本（含当前生效版本），新版本优先。 */
     fun listRetainedVersions(id: String): List<RetainedPluginVersion> = versionStore.list(id)
 
     /**
-     * Retroceder a una versión histórica conservada.
+     * 回滚到已保留的历史版本。
      *
-     * Revertir no es "confiar en el archivo antiguo": la copia histórica pasará nuevamente por la lectura del paquete, la política de inventario, la confianza del emisor y la verificación de firma.
-     * Y compárelo con el resumen de contenido registrado durante la retención. Si no se pasa algún paso, no se escribirá en el disco. Después de pasar la verificación, reutilice la ruta de envío de instalación
-     * (Las degradaciones están explícitamente permitidas), por lo que el registro de habilidades, el cambio de directorio activo y la recuperación de fallas son todos idénticos a una instalación normal.
+     * 回滚不是「信任旧文件」：历史副本会重新走一遍包读取、清单策略、发行者信任与签名校验，
+     * 并比对保留时记录的内容摘要，任何一步不通过都不会写盘。校验通过后复用安装提交路径
+     * （显式允许降级），因此技能注册、活跃目录切换与失败恢复都与正常安装完全一致。
      */
     suspend fun rollbackTo(id: String, version: String): Result<InstalledPlugin> = withContext(Dispatchers.IO) {
         val retained = versionStore.find(id, version)
             ?: return@withContext Result.failure(
-                IllegalStateException("Sin versión revertida: $id@$version"),
+                IllegalStateException("没有可回滚的版本: $id@$version"),
             )
         val loaded = loadInstalledPackage(retained.directory)
-            ?: return@withContext Result.failure(IllegalStateException("El contenido de la versión histórica es ilegible."))
+            ?: return@withContext Result.failure(IllegalStateException("历史版本内容不可读"))
         if (loaded.manifest.id != id) {
-            return@withContext Result.failure(IllegalStateException("La identificación del complemento de la versión histórica no coincide con el objetivo"))
+            return@withContext Result.failure(IllegalStateException("历史版本插件 id 与目标不一致"))
         }
         if (PluginSecurityGate.contentSha256(loaded) != retained.record.contentSha256) {
-            return@withContext Result.failure(IllegalStateException("Se ha modificado el contenido de la versión histórica y se rechaza la reversión."))
+            return@withContext Result.failure(IllegalStateException("历史版本内容已被改动，拒绝回滚"))
         }
         val decision = PluginSecurityGate.review(loaded, trustedPublisherKeys())
         if (!decision.isInstallable) {
             return@withContext Result.failure(
-                IllegalStateException(decision.reason ?: "La verificación de la firma de la versión histórica falló y se rechazó la reversión"),
+                IllegalStateException(decision.reason ?: "历史版本签名校验失败，拒绝回滚"),
             )
         }
         val signature = decision.signature
         if (signature.publisherId != retained.record.publisherId ||
             !signature.fingerprint.equals(retained.record.publisherKeyFingerprint, ignoreCase = true)
         ) {
-            return@withContext Result.failure(IllegalStateException("La versión histórica del emisor es inconsistente con el registro de retención."))
+            return@withContext Result.failure(IllegalStateException("历史版本发行者与保留记录不一致"))
         }
         commitInstall(
             loaded,
@@ -798,41 +798,41 @@ class PluginManager(
     }
 
     /**
-     * Máscara de burbuja declarativa proporcionada por el complemento instalado.
+     * 已安装插件提供的声明式气泡皮肤。
      *
-     * con [loadVerifiedPlugin] Camino seguro al mismo nivel.:Reconstruya el paquete desde el directorio de complementos cada vez, revise la política de manifiesto y
-     * Resumen de contenido de comparación y confianza del editor,y solo aceptar `kind == "ui-skin"` paquete;La piel misma todavía tiene que pasar
-     * [BubbleSkinValidator] Es legal. Si algún paso falla, no se devolverán entradas disponibles.,Por lo tanto, el lado del consumidor vuelve a recurrir a la
-     * default;Las máscaras son siempre solo datos declarativos.,Es imposible que el código del complemento ingrese a Compose.
+     * 与 [loadVerifiedPlugin] 同级的安全路径:每次都重新从插件目录重建包、复核清单策略与
+     * 发行者信任、比对内容摘要,并且只接受 `kind == "ui-skin"` 的包;皮肤本身还要通过
+     * [BubbleSkinValidator] 才算合法。任一环节失败都不会返回可用条目,消费侧因此回退内置
+     * default;皮肤始终只是声明式数据,插件代码不可能进入 Compose。
      *
-     * @param includeDisabled true También devuelve Instalado pero actualmente no disponible(No confirmado/Discapacitado/fracaso de confianza)piel,
-     * es [InstalledSkin.enabled] para false;Las rutas de renderizado deben usar valores predeterminados,Consuma únicamente las máscaras disponibles.
+     * @param includeDisabled true 时同时返回已安装但当前不可用(未确认/已禁用/信任失效)的皮肤,
+     * 其 [InstalledSkin.enabled] 为 false;渲染路径必须使用默认值,只消费可用皮肤。
      */
     override fun listInstalledSkins(includeDisabled: Boolean): List<InstalledSkin> = cached.asSequence()
         .filter { it.kind == PluginSecurityGate.UI_SKIN_KIND }
         .mapNotNull { plugin -> skinEntry(plugin, includeDisabled) }
-        // La identificación de la máscara es la única clave para la selección y el retorno.:Solo se conserva una fuente para la misma identificación.,Evite la ambigüedad semántica de elección.
+        // 皮肤 id 是选择与回退的唯一键:同一 id 只保留一个来源,避免选择语义歧义。
         .distinctBy { it.skin.id }
         .toList()
 
     /**
-     * Lea la entrada del skin para un solo complemento.
+     * 读取单个插件的皮肤条目。
      *
-     * solo leer ir [loadInstalledPackage] restricciones de ruta(Lista de verificación/Todos los recursos están en el directorio de complementos.,Negarse a cruzar la línea con
-     * Tipos de archivos no compatibles);[includeDisabled] Sólo afecta a los indicadores de disponibilidad.,No afecta el formato ni el rigor de la verificación.
+     * 读取只走 [loadInstalledPackage] 的路径约束(清单/资源都在插件目录内,拒绝越界与
+     * 不支持的文件类型);[includeDisabled] 只影响可用性标记,不影响格式与校验严格度。
      */
     private fun skinEntry(plugin: InstalledPlugin, includeDisabled: Boolean): InstalledSkin? {
         val loaded = loadInstalledPackage(File(pluginsDir, plugin.id)) ?: run {
-            Logger.w(TAG, "No se pudo leer la máscara del complemento,No se puede reconstruir el paquete de complementos: ${plugin.id}")
+            Logger.w(TAG, "插件皮肤读取失败,无法重建插件包: ${plugin.id}")
             return null
         }
         if (loaded.manifest.id != plugin.id) {
-            Logger.w(TAG, "El directorio del complemento no coincide con la identificación del registro,rechazar la piel: ${plugin.id}")
+            Logger.w(TAG, "插件目录与注册表 id 不一致,拒绝皮肤: ${plugin.id}")
             return null
         }
         val skin = PluginPackageLoader.extractUiSkin(loaded) ?: return null
         if (!BubbleSkinValidator.isValid(skin)) {
-            Logger.w(TAG, "Verificación fallida del skin del complemento,ignorado: ${plugin.id}/${skin.id}")
+            Logger.w(TAG, "插件皮肤未通过校验,已忽略: ${plugin.id}/${skin.id}")
             return null
         }
         val usable = plugin.installationConfirmed && plugin.enabled && verifyInstalledPackage(plugin, loaded)
@@ -847,21 +847,21 @@ class PluginManager(
     }
 
     /**
-     * Revise la cadena de confianza y el resumen de contenido de los complementos instalados.,con [loadVerifiedPlugin] Utilice el mismo conjunto de juicios.
+     * 复核已安装插件的信任链与内容摘要,与 [loadVerifiedPlugin] 使用同一套判定。
      *
-     * No comprobando aquí [InstalledPlugin.enabled]/[InstalledPlugin.installationConfirmed],
-     * Depende de la persona que llama distinguir entre "no disponible pero aún visible" y "rechazado para cargar".
+     * 不在这里检查 [InstalledPlugin.enabled]/[InstalledPlugin.installationConfirmed],
+     * 由调用方区分「不可用但仍可展示」与「拒绝加载」。
      */
     private fun verifyInstalledPackage(plugin: InstalledPlugin, loaded: PluginPackageLoader.LoadedPluginPackage): Boolean = runCatching {
         val decision = PluginSecurityGate.review(loaded, trustedPublisherKeys())
         check(decision.isInstallable) {
-            decision.reason ?: "Los complementos deben tener una firma válida en la que confíe la raíz de confianza local"
+            decision.reason ?: "插件必须具有受本机信任根信任的有效签名"
         }
         check(PluginSecurityGate.contentSha256(loaded) == plugin.contentSha256) {
-            "El resumen del contenido del complemento no coincide"
+            "插件内容摘要不匹配"
         }
     }.onFailure { error ->
-        Logger.w(TAG, "Error en la revisión del paquete de máscara del complemento,Marcado como no disponible: ${plugin.id}", error)
+        Logger.w(TAG, "插件皮肤包复核失败,已标记为不可用: ${plugin.id}", error)
     }.isSuccess
 
     private fun markRegistryChanged() {
@@ -869,36 +869,36 @@ class PluginManager(
     }
 
     /**
-     * Envoltura delgada compatible con personas que llaman antiguas: equivalente a [loadVerifiedPlugin] código de entrada.
+     * 兼容旧调用方的薄包装：等价于 [loadVerifiedPlugin] 的入口代码。
      *
-     * La nueva ruta de ejecución debe usarse directamente [loadVerifiedPlugin]/[loadVerifiedFunction], para obtener al mismo tiempo
-     * Capacidades revalidadas y declaraciones de herramientas.
+     * 新的执行路径应直接使用 [loadVerifiedPlugin]/[loadVerifiedFunction]，以便同时拿到
+     * 重新验证后的 capabilities 与工具声明。
      */
     fun loadEntryCode(id: String): String? = loadVerifiedPlugin(id)?.entryCode
 
     /**
-     * P0: Vuelva a validar el complemento y vuelva a la vista ejecutable.
+     * P0: 重新验证插件并返回可执行视图。
      *
-     * Cada llamada relee el paquete completo en el disco, comprueba la puerta de seguridad (firma/raíz de confianza/estrategia de lista de verificación) y resumen de contenido;
-     * regresó [VerifiedPlugin.capabilities] con [VerifiedPlugin.tools] de esta revisión
-     * manifest, en lugar de [InstalledPlugin.capabilities] Espere los campos de caché del registro.
+     * 每次调用都重新读取磁盘上的完整包、复核安全门（签名/信任根/清单策略）和内容摘要；
+     * 返回的 [VerifiedPlugin.capabilities] 与 [VerifiedPlugin.tools] 来自该次复核的
+     * manifest，而不是 [InstalledPlugin.capabilities] 等注册表缓存字段。
      */
     fun loadVerifiedPlugin(id: String): VerifiedPlugin? {
         val plugin = findPlugin(id) ?: return null
         if (!plugin.installationConfirmed || !plugin.enabled) {
-            Logger.w(TAG, "Negarse a cargar complementos externos no confirmados o deshabilitados: $id")
+            Logger.w(TAG, "拒绝加载未确认或已禁用的外部插件: $id")
             return null
         }
         val directory = File(pluginsDir, plugin.id)
         return runCatching {
             val loaded = loadInstalledPackage(directory)
-                ?: error("El contenido del complemento no se puede leer completamente")
+                ?: error("插件内容无法完整读取")
             val decision = PluginSecurityGate.review(loaded, trustedPublisherKeys())
             check(decision.isInstallable) {
-                decision.reason ?: "Los complementos deben tener una firma válida en la que confíe la raíz de confianza local"
+                decision.reason ?: "插件必须具有受本机信任根信任的有效签名"
             }
             val actual = PluginSecurityGate.contentSha256(loaded)
-            check(actual == plugin.contentSha256) { "El resumen del contenido del complemento no coincide" }
+            check(actual == plugin.contentSha256) { "插件内容摘要不匹配" }
             VerifiedPlugin(
                 id = plugin.id,
                 manifest = loaded.manifest,
@@ -907,40 +907,40 @@ class PluginManager(
                 entryCode = loaded.entryCode,
             )
         }.onFailure { error ->
-            Logger.e(TAG, "La firma del complemento o la verificación de integridad fallaron y se rechazó la carga.: ${plugin.id}", error)
+            Logger.e(TAG, "插件签名或完整性校验失败，拒绝加载: ${plugin.id}", error)
         }.getOrNull()
     }
 
     /**
-     * P0: Se llama a la verificación antes de ejecutar [functionName] Todavía existe en el manifiesto del disco actual.
+     * P0: 执行前验证被调用的 [functionName] 仍存在于当前磁盘 manifest。
      *
-     * Es posible que se hayan eliminado registros de habilidades antiguos después de una actualización del complemento/Las funciones renombradas deben rechazarse antes de ingresar al entorno limitado de JS.
+     * 旧 skill 记录可能在插件更新后指向已被移除/改名的函数，必须在进入 JS 沙盒前拒绝。
      */
     fun loadVerifiedFunction(id: String, functionName: String): VerifiedPlugin? {
         val verified = loadVerifiedPlugin(id) ?: return null
         if (verified.tools.none { it.functionName == functionName }) {
-            Logger.w(TAG, "Negarse a ejecutar funciones no declaradas en el manifiesto.: $id/$functionName")
+            Logger.w(TAG, "拒绝执行 manifest 未声明的函数: $id/$functionName")
             return null
         }
         return verified
     }
 
-    /** Reconstruya el paquete completo desde el directorio instalado, leyendo solo las rutas relativas seguras admitidas por el cargador. */
+    /** 从已安装目录重建完整包，仅读取 loader 支持的安全相对路径。 */
     private fun loadInstalledPackage(directory: File): PluginPackageLoader.LoadedPluginPackage? = runCatching {
-        require(directory.isDirectory) { "El directorio de complementos no existe" }
+        require(directory.isDirectory) { "插件目录不存在" }
         val canonicalRoot = directory.canonicalFile
         val manifestFile = File(canonicalRoot, "manifest.json").canonicalFile
-        require(manifestFile.parentFile == canonicalRoot) { "La ruta del manifiesto del complemento es ilegal" }
+        require(manifestFile.parentFile == canonicalRoot) { "插件清单路径非法" }
         val manifest = AppJson.decodeFromString<PluginManifest>(manifestFile.readText())
         val entryFile = File(canonicalRoot, manifest.entry).canonicalFile
-        require(isWithin(canonicalRoot, entryFile)) { "Ruta de entrada del complemento fuera de los límites" }
-        // ui-skin El paquete skin no tiene entrada JS.(El paquete no debe contener ningún .js,Distribuir solo skin.json),
-        // El contenido de la entrada es el mismo que cuando se carga zip y se fija en una cadena vacía.;Los archivos de entrada que faltan para otros tipos siguen siendo errores,No se puede liberar.
+        require(isWithin(canonicalRoot, entryFile)) { "插件入口路径越界" }
+        // ui-skin 皮肤包没有 JS 入口(包内不得包含任何 .js,只分发 skin.json),
+        // 入口内容与 zip 载入时一致固定为空串;其它类型缺少入口文件仍是错误,不能放行。
         val entryCode = if (entryFile.isFile) {
             entryFile.readText()
         } else {
             require(manifest.kind == PluginSecurityGate.UI_SKIN_KIND) {
-                "Al complemento le falta el archivo de entrada: ${manifest.entry}"
+                "插件缺少入口文件: ${manifest.entry}"
             }
             ""
         }
@@ -949,17 +949,17 @@ class PluginManager(
             .filter { it.isFile }
             .forEach { file ->
                 val canonicalFile = file.canonicalFile
-                require(isWithin(canonicalRoot, canonicalFile)) { "Ruta del archivo de complemento fuera de límites" }
+                require(isWithin(canonicalRoot, canonicalFile)) { "插件文件路径越界" }
                 if (canonicalFile == manifestFile || canonicalFile == entryFile) return@forEach
                 val relative = canonicalFile.relativeTo(canonicalRoot).invariantSeparatorsPath
                 require(relative.isNotBlank() && !relative.contains("..") && !relative.contains('\\')) {
-                    "Ruta de archivo adicional del complemento ilegal"
+                    "插件额外文件路径非法"
                 }
                 require(
                     relative.endsWith(".js") || relative.endsWith(".json") ||
                         relative.endsWith(".md") || relative.endsWith(".py"),
                 ) {
-                    "El complemento contiene un tipo de archivo no compatible"
+                    "插件包含不支持的文件类型"
                 }
                 extraFiles[relative] = canonicalFile.readText()
             }
@@ -985,14 +985,14 @@ class PluginManager(
                 category = "plugin",
             )
             runCatching { skillRepository.upsert(entity) }
-                .onFailure { e -> Logger.w(TAG, "Error en el registro de la herramienta de complemento: ${entity.id}", e) }
+                .onFailure { e -> Logger.w(TAG, "插件工具注册失败: ${entity.id}", e) }
         }
     }
 
     /**
-     * P0 Instalación/Actualizar la conciliación de habilidades:
-     * 1. Eliminar habilidades registradas en la versión anterior pero eliminadas por el nuevo manifiesto (incluida la identificación del formato anterior antes de la codificación del prefijo de longitud);
-     * 2. Vuelva a registrar la habilidad declarada en el manifiesto actual.
+     * P0 安装/更新 skill 对账：
+     * 1. 删除旧版本注册过、但新 manifest 已移除的 skill（含长度前缀编码前的旧格式 id）；
+     * 2. 重新注册当前 manifest 声明的 skill。
      */
     private suspend fun syncSkills(previous: InstalledPlugin?, installed: InstalledPlugin) {
         val currentIds = installed.tools.map { skillId(installed.id, it.name) }.toSet()
@@ -1003,8 +1003,8 @@ class PluginManager(
     }
 
     /**
-     * Deducir todos los identificadores de habilidades que pudo haber tenido un complemento: registros de registro ∪ actual/Herramienta de manifiesto de historial
-     * (con ID de formato antiguo). La desinstalación y el cambio de estado sobrescribirán los restos de las versiones históricas en consecuencia.
+     * 推导某个插件可能拥有过的全部 skill id：注册表记录 ∪ 当前/历史 manifest 工具
+     * （含旧格式 id）。卸载与状态切换据此覆盖历史版本残留。
      */
     private fun skillIdsOwnedBy(plugin: InstalledPlugin?): Set<String> {
         if (plugin == null) return emptySet()
@@ -1018,24 +1018,24 @@ class PluginManager(
     }
 
     /**
-     * Elimine únicamente las habilidades que pertenecen al complemento: la ruta de implementación debe apuntar a `plugin:<pluginId>:`.
+     * 只删除确属该插件的 skill：实现路由必须指向 `plugin:<pluginId>:`。
      *
-     * La codificación de prefijo de longitud ha eliminado las colisiones de ID entre complementos, pero los usuarios/Es posible que una habilidad incorporada aún ocupe la misma identificación;
-     * La verificación de propiedad garantiza que la desinstalación no eliminará accidentalmente datos que no sean complementos.
+     * 长度前缀编码已消除跨插件 id 碰撞，但用户/内置 skill 仍可能恰好占用同一 id；
+     * 所有权校验保证卸载不会误删非本插件数据。
      */
     private suspend fun deleteSkillIfOwned(pluginId: String, skillId: String) {
         runCatching {
             val existing = skillRepository.getById(skillId) ?: return@runCatching
             if (!existing.implementationKotlin.startsWith("plugin:$pluginId:")) {
-                Logger.w(TAG, "Saltar la limpieza de habilidades que no son complementos: $skillId")
+                Logger.w(TAG, "跳过非本插件 skill 清理: $skillId")
                 return@runCatching
             }
             skillRepository.delete(skillId)
-        }.onFailure { error -> Logger.w(TAG, "Error al limpiar la habilidad del complemento: $skillId", error) }
+        }.onFailure { error -> Logger.w(TAG, "插件 skill 清理失败: $skillId", error) }
     }
 
     /**
-     * Calcule el conjunto de identificadores de habilidades que deben registrarse en el registro después de esta instalación (historial acumulado de desinstalación y limpieza).
+     * 计算本次安装后注册表应记录的 skill id 集合（累积历史，供卸载兜底清理）。
      */
     private fun collectRegisteredSkillIds(previous: InstalledPlugin?, manifest: PluginManifest): List<String> = buildList {
         if (previous != null) {
@@ -1049,39 +1049,39 @@ class PluginManager(
     }.distinct()
 
     /**
-     * Detecte conflictos de identificación de habilidades antes de la instalación.
+     * 安装前检测 skill id 冲突。
      *
-     * Devolver el motivo del rechazo;null No indica ningún conflicto. Contiene dos categorías:
-     * 1. Nombres de herramientas duplicados en el mismo manifiesto (se asignarán a la misma identificación de habilidad);
-     * 2. La habilidad existente ocupa la misma identificación y no pertenece a este complemento (usuario/Habilidad incorporada o datos corruptos).
+     * 返回拒绝原因；null 表示无冲突。包含两类：
+     * 1. 同一 manifest 内工具名重复（会映射到同一 skill id）；
+     * 2. 既有 skill 占用了同一 id 且不属于本插件（用户/内置 skill 或损坏数据）。
      */
     private suspend fun findSkillConflict(manifest: PluginManifest): String? {
         val ids = manifest.tools.map { skillId(manifest.id, it.name) }
         if (ids.size != ids.toSet().size) {
-            return "El nombre de la herramienta de complemento está duplicado y no se puede asignar de forma única skill id: ${manifest.id}"
+            return "插件工具名重复，无法映射唯一 skill id: ${manifest.id}"
         }
         ids.forEach { id ->
             val existing = skillRepository.getById(id) ?: return@forEach
             if (!existing.implementationKotlin.startsWith("plugin:${manifest.id}:")) {
-                return "La identificación de la habilidad del complemento entra en conflicto con la habilidad existente: $id"
+                return "插件 skill id 与既有 skill 冲突: $id"
             }
         }
         return null
     }
 
     private fun writePluginDirectory(directory: File, manifest: PluginManifest, pluginPackage: PluginPackageLoader.LoadedPluginPackage) {
-        check(directory.mkdirs() || directory.isDirectory) { "No se puede crear el directorio provisional del complemento" }
+        check(directory.mkdirs() || directory.isDirectory) { "无法创建插件 staging 目录" }
         File(directory, "manifest.json").writeText(
             AppJson.encodeToString(PluginManifest.serializer(), manifest),
         )
         val canonicalRoot = directory.canonicalFile
         val entryFile = File(directory, manifest.entry).canonicalFile
-        require(isWithin(canonicalRoot, entryFile)) { "Ruta de entrada del complemento fuera de los límites" }
+        require(isWithin(canonicalRoot, entryFile)) { "插件入口路径越界" }
         entryFile.parentFile?.mkdirs()
         entryFile.writeText(pluginPackage.entryCode)
         pluginPackage.extraFiles.forEach { (relative, content) ->
             val out = File(directory, relative).canonicalFile
-            require(isWithin(canonicalRoot, out)) { "Ruta de archivo adicional del complemento fuera de límites" }
+            require(isWithin(canonicalRoot, out)) { "插件额外文件路径越界" }
             out.parentFile?.mkdirs()
             out.writeText(content)
         }
@@ -1093,11 +1093,11 @@ class PluginManager(
         var oldMoved = false
         try {
             if (targetDir.exists()) {
-                check(targetDir.renameTo(backupDir)) { "No se pueden conservar las versiones antiguas del complemento" }
+                check(targetDir.renameTo(backupDir)) { "无法保留旧插件版本" }
                 oldMoved = true
             }
-            check(stagingDir.renameTo(targetDir)) { "No se puede activar el directorio de preparación del complemento" }
-            // El directorio antiguo se conserva hasta que la confirmación atómica del registro se realice correctamente y la persona que llama realice la limpieza final.
+            check(stagingDir.renameTo(targetDir)) { "无法激活插件 staging 目录" }
+            // 保留旧目录直到注册表原子提交成功，由调用方完成最终清理。
             return backupDir.takeIf { oldMoved }
         } catch (error: Exception) {
             if (targetDir.exists()) targetDir.deleteRecursively()
@@ -1112,21 +1112,21 @@ class PluginManager(
     private fun rollbackActivatedPlugin(targetDir: File, backupDir: File?) {
         if (targetDir.exists()) targetDir.deleteRecursively()
         if (backupDir != null && backupDir.exists()) {
-            check(backupDir.renameTo(targetDir)) { "No se puede restaurar la versión anterior del complemento" }
+            check(backupDir.renameTo(targetDir)) { "无法恢复旧插件版本" }
         }
     }
 
     private fun persistRegistryOrThrow() {
         val json = AppJson.encodeToString(PluginRegistry.serializer(), PluginRegistry(cached))
-        // El registro se encuentra en estado recuperable: escritura,flush,fsync, Reemplazo atómico del mismo directorio para evitar que el proceso finalice y deje la mitad de JSON.
+        // 注册表属于可恢复状态：写入、flush、fsync、同目录原子替换，避免进程被杀留下半个 JSON。
         AtomicFileStore.writeText(registryFile, json)
-        // Vuelva a leer la verificación después del reemplazo y permita que la persona que llama ejecute el directorio si falla./Reversión de memoria.
+        // 替换后回读验证，失败时让调用方执行目录/内存回滚。
         AppJson.decodeFromString<PluginRegistry>(registryFile.readText())
     }
 
     private fun persistRegistry() {
         runCatching { persistRegistryOrThrow() }
-            .onFailure { e -> Logger.w(TAG, "Error al escribir el registro del complemento", e) }
+            .onFailure { e -> Logger.w(TAG, "插件注册表写入失败", e) }
     }
 
     @Suppress("TooGenericExceptionCaught")
@@ -1135,17 +1135,17 @@ class PluginManager(
         return runCatching {
             AppJson.decodeFromString<PluginRegistry>(registryFile.readText()).plugins
         }.getOrElse { e ->
-            // Aísle el registro dañado para evitar volver a analizar el mismo archivo defectuoso en cada inicio; el directorio de complementos aún se conserva para el diagnóstico/Recuperación manual.
+            // 隔离损坏注册表，避免每次启动重复解析同一坏文件；插件目录仍保留供诊断/人工恢复。
             AtomicFileStore.quarantine(registryFile, "plugin_registry_parse")
-            Logger.w(TAG, "Error al analizar el registro del complemento,Archivo corrupto en cuarentena", e)
+            Logger.w(TAG, "插件注册表解析失败,已隔离损坏文件", e)
             emptyList()
         }
     }
 
     private fun readPluginPackage(file: File): Result<ByteArray> = runCatching {
-        require(file.isFile) { "Los paquetes de complementos no son archivos comunes" }
+        require(file.isFile) { "插件包不是普通文件" }
         require(file.length() <= MAX_PLUGIN_PACKAGE_BYTES) {
-            "El tamaño comprimido del paquete del complemento excede el límite(${MAX_PLUGIN_PACKAGE_BYTES / 1024 / 1024}MB)"
+            "插件包压缩后大小超过限制(${MAX_PLUGIN_PACKAGE_BYTES / 1024 / 1024}MB)"
         }
         file.readBytes()
     }
@@ -1158,7 +1158,7 @@ class PluginManager(
             if (read < 0) break
             copied += read
             require(copied <= maxBytes) {
-                "El tamaño comprimido del paquete del complemento excede el límite(${maxBytes / 1024 / 1024}MB)"
+                "插件包压缩后大小超过限制(${maxBytes / 1024 / 1024}MB)"
             }
             output.write(buffer, 0, read)
         }
@@ -1167,29 +1167,29 @@ class PluginManager(
     companion object {
         private const val TAG = "PluginManager"
 
-        /** El límite superior del tamaño original del paquete comprimido; coopera con el límite superior del cargador después de la descompresión para evitar el crecimiento ilimitado de readBytes/copyTo. */
+        /** 压缩包原始大小上限；与 loader 的解压后上限配合，防止 readBytes/copyTo 无界增长。 */
         internal const val MAX_PLUGIN_PACKAGE_BYTES = 20L * 1024 * 1024
 
         /**
-         * P0: Generar ID de habilidad del complemento.
+         * P0: 生成插件 skill id。
          *
-         * Utilice el prefijo de longitud en lugar del empalme de guión bajo:`pluginId` con `toolName` Se permiten guiones bajos,
-         * viejo `plugin_<id>_<tool>` hará una diferencia (pluginId, toolName) Colisiones combinadas (p. ej.
-         * `a_b`+`c` con `a`+`b_c`). El prefijo de longitud permite que la identificación se decodifique sin ambigüedades y ninguna combinación colisionará.
+         * 使用长度前缀而不是裸下划线拼接：`pluginId` 与 `toolName` 都允许包含下划线，
+         * 旧的 `plugin_<id>_<tool>` 会让不同 (pluginId, toolName) 组合碰撞（例如
+         * `a_b`+`c` 与 `a`+`b_c`）。长度前缀让 id 可无歧义解码，任何组合都不会碰撞。
          */
         internal fun skillId(pluginId: String, toolName: String): String = "plugin_${pluginId.length}_${pluginId}_$toolName"
 
         /**
-         * Se introdujo la identificación de formato anterior antes de que se introdujera la codificación de prefijo de longitud.
+         * 长度前缀编码引入前的旧格式 id。
          *
-         * Solo se utiliza para migrar y limpiar habilidades sobrantes de instalaciones históricas y ya no se usa para registrar nuevas habilidades.
+         * 仅用于迁移清理历史安装留下的 skill，不再用于注册新 skill。
          */
         internal fun legacySkillId(pluginId: String, toolName: String): String = "plugin_${pluginId}_$toolName"
 
         /**
-         * v2.0: complemento de análisis skill id(`plugin_<len>_<pluginId>_<toolName>`).
+         * v2.0: 解析插件 skill id(`plugin_<len>_<pluginId>_<toolName>`)。
          *
-         * con [skillId] Las codificaciones son operaciones inversas entre sí.;Herramientas no complementarias(sin prefijo/Segmento de longitud ilegal)Devuelve nulo.
+         * 与 [skillId] 的编码互为逆操作;非插件工具(不含前缀/长度段非法)返回 null。
          */
         internal fun parsePluginToolId(id: String): Pair<String, String>? {
             if (!id.startsWith("plugin_")) return null
@@ -1207,9 +1207,9 @@ class PluginManager(
     }
 
     /**
-     * v1.0.92: Lea el panel UI declarado por el complemento(manifest.uiPanel Archivo HTML apuntado).
+     * v1.0.92: 读取插件声明的 UI 面板(manifest.uiPanel 指向的 HTML 文件)。
      *
-     * El camino está verificado por fuera de límites canónico.;Instalación no confirmada/No habilitado/Sin declaración/Devuelve nulo si falta el archivo.
+     * 路径经 canonical 越界校验;未确认安装/未启用/无声明/文件缺失均返回 null。
      */
     fun loadPluginPanel(pluginId: String): String? {
         val plugin = findPlugin(pluginId) ?: return null
@@ -1225,16 +1225,93 @@ class PluginManager(
             if (!isWithin(root, panelFile) || !panelFile.isFile) return null
             panelFile.readText()
         }.onFailure { error ->
-            Logger.w(TAG, "No se pudo leer el panel de complementos: $pluginId — ${error.message}")
+            Logger.w(TAG, "读取插件面板失败: $pluginId — ${error.message}")
         }.getOrNull()
     }
 
     /**
-     * v2.0: Leer tarjeta de herramientas enchufables HTML(Nombre de la herramienta → manifest.toolCards Declaración).
+     * 插件包目录。**只用来定位包内资源**（声明式界面里的 `assetImage`）。
      *
-     * [toolNameOrSkillId] Soporta dos formas:complemento skill id(`plugin_<len>_<id>_<tool>`,
-     * ver [skillId])o nombre de herramienta simple(Recorrer todas las coincidencias de complementos habilitados).
-     * El camino está verificado por fuera de límites canónico.;Instalación no confirmada/No habilitado/Sin declaración/Devuelve nulo si falta el archivo.
+     * 返回的目录不做写操作；调用方拼相对路径时必须再过 [io.zer0.muse.util.SafePaths]，
+     * 因为那串路径来自插件 JSON，属于外部输入。
+     */
+    fun pluginDirFor(pluginId: String): File = File(pluginsDir, pluginId)
+
+    /**
+     * 读取插件声明的**声明式界面**（`manifest.uiView` 指向的 JSON）。
+     *
+     * 这是插件 UI 的默认形态（D4）；[loadPluginPanel] 的 HTML 面板仍是逃生口。
+     * 路径同样过 canonical 越界校验，字节上限由 [PluginUiTree.parse] 自己把关。
+     * 解析失败时把原因一起返回 —— 作者要能在页面上看到"为什么没渲染出来"。
+     */
+    fun loadUiView(pluginId: String): PluginUiTree.Parsed? {
+        val plugin = findPlugin(pluginId)?.takeIf { it.installationConfirmed && it.enabled } ?: return null
+        val source = runCatching { declaredViewSource(pluginId) }
+            .onFailure { error -> Logger.w(TAG, "读取声明式界面失败: $pluginId — ${error.message}") }
+            .getOrNull() ?: return null
+        return PluginUiTree.parse(source)
+    }
+
+    /** 槽位里要渲染的一段界面：哪个插件提供的、叫什么、界面树是什么。 */
+    data class SlotView(
+        val pluginId: String,
+        val pluginName: String,
+        val tree: PluginUiTree.Parsed,
+    )
+
+    /**
+     * 收集某个槽位里所有插件的界面片段。
+     *
+     * 三道过滤，缺一不可：插件已启用且安装已确认、声明了该槽位、**拿到了 `ui.slot` 授权**。
+     * 授权判定放在这里而不是渲染层：渲染层只该关心"画什么"，不该再判一次权限 ——
+     * 两处各判一次，迟早有一处先松动。
+     */
+    fun loadSlotViews(slot: PluginSlot.Id, isAuthorized: (String) -> Boolean): List<SlotView> = list().asSequence()
+        .filter { it.enabled && it.installationConfirmed }
+        .filter { isAuthorized(it.id) }
+        .mapNotNull { plugin -> slotViewOf(plugin, slot) }
+        .take(PluginSlot.MAX_SLOT_PLUGINS)
+        .toList()
+
+    /** 单个插件在某槽位的片段；没有贡献、文件缺失、解析失败都返回 null（不抛）。 */
+    private fun slotViewOf(plugin: InstalledPlugin, slot: PluginSlot.Id): SlotView? {
+        val root = File(pluginsDir, plugin.id).canonicalFile
+        val manifest = runCatching {
+            AppJson.decodeFromString<PluginManifest>(File(root, "manifest.json").readText())
+        }.getOrNull()
+        val relative = manifest?.contributes?.slots
+            ?.firstOrNull { it.slot.trim() == slot.wire }
+            ?.view
+            ?.trim()
+        val file = relative
+            ?.takeIf { it.isNotBlank() }
+            ?.let { File(root, it).canonicalFile }
+            ?.takeIf { candidate ->
+                val ok = isWithin(root, candidate) && candidate.isFile
+                if (!ok) Logger.w(TAG, "槽位界面文件不存在或越界: ${plugin.id} — $relative")
+                ok
+            }
+        return file
+            ?.let { runCatching { PluginUiTree.parse(it.readText()) }.getOrNull() }
+            ?.let { tree -> SlotView(pluginId = plugin.id, pluginName = plugin.name, tree = tree) }
+    }
+
+    /** 越界与存在性检查都收在这一步；null 表示"没有可渲染的声明式界面"。 */
+    private fun declaredViewSource(pluginId: String): String? {
+        val root = File(pluginsDir, pluginId).canonicalFile
+        val manifest = AppJson.decodeFromString<PluginManifest>(File(root, "manifest.json").readText())
+        val rel = manifest.uiView?.trim().orEmpty()
+        if (rel.isBlank()) return null
+        val viewFile = File(root, rel).canonicalFile
+        return if (isWithin(root, viewFile) && viewFile.isFile) viewFile.readText() else null
+    }
+
+    /**
+     * v2.0: 读取插件工具卡 HTML(工具名 → manifest.toolCards 声明)。
+     *
+     * [toolNameOrSkillId] 支持两种形式:插件 skill id(`plugin_<len>_<id>_<tool>`,
+     * 见 [skillId])或裸工具名(遍历全部已启用插件匹配)。
+     * 路径经 canonical 越界校验;未确认安装/未启用/无声明/文件缺失均返回 null。
      */
     fun loadToolCardHtml(toolNameOrSkillId: String): String? {
         val key = toolNameOrSkillId.trim()
@@ -1259,22 +1336,22 @@ class PluginManager(
                 if (!isWithin(root, cardFile) || !cardFile.isFile) return@runCatching null
                 cardFile.readText()
             }.onFailure { error ->
-                Logger.w(TAG, "No se pudo leer la tarjeta de herramientas complementarias: ${plugin.id}/$toolName — ${error.message}")
+                Logger.w(TAG, "读取插件工具卡失败: ${plugin.id}/$toolName — ${error.message}")
             }.getOrNull()
             if (html != null) return html
         }
         return null
     }
 
-    // ── Configuración del complemento API ──────────────────────────────────────────────────
+    // ── 插件配置 API ──────────────────────────────────────────────────
 
     /**
-     * Lea el valor del elemento de configuración del complemento.
+     * 读取插件配置项的值。
      *
-     * @param pluginId complemento id
-     * @param key      Elementos de configuración key
-     * @param defaultVal Valor predeterminado (de la declaración del manifiesto)
-     * @return Valor configurado por el usuario o valor predeterminado
+     * @param pluginId 插件 id
+     * @param key      配置项 key
+     * @param defaultVal 默认值（来自 manifest 声明）
+     * @return 用户配置值或默认值
      */
     fun getPluginConfig(pluginId: String, key: String, defaultVal: JsonElement? = null): JsonElement? {
         val pluginConfigs = configStore.configs[pluginId] ?: return defaultVal
@@ -1282,11 +1359,11 @@ class PluginManager(
     }
 
     /**
-     * Guarde el valor del elemento de configuración del complemento.
+     * 保存插件配置项的值。
      *
-     * @param pluginId complemento id
-     * @param key      Elementos de configuración key
-     * @param value    Valor de configuración del usuario
+     * @param pluginId 插件 id
+     * @param key      配置项 key
+     * @param value    用户配置值
      */
     suspend fun setPluginConfig(pluginId: String, key: String, value: JsonElement?) = withContext(Dispatchers.IO) {
         val current = configStore.configs.toMutableMap()
@@ -1302,10 +1379,10 @@ class PluginManager(
     }
 
     /**
-     * Obtenga todos los elementos de configuración del complemento (incluidos los valores predeterminados).
+     * 获取插件的所有配置项（含默认值）。
      *
-     * Se utiliza para el formulario de configuración de representación de la interfaz de usuario: recorra la lista de configuración en el manifiesto,
-     * Llamado para cada clave [getPluginConfig] Obtenga el valor actual.
+     * 用于 UI 渲染配置表单：遍历 manifest 中的 configuration 列表，
+     * 对每个 key 调用 [getPluginConfig] 得到当前值。
      */
     fun getPluginConfigsWithDefaults(manifest: PluginManifest): List<Pair<ConfigItem, JsonElement?>> {
         val configList = manifest.contributes?.configuration ?: return emptyList()
@@ -1315,9 +1392,9 @@ class PluginManager(
     }
 
     /**
-     * Obtenga la configuración completa del complemento (incluido el esquema y los valores actuales) para que lo utilice el puente JS.
+     * 获取插件的完整配置（含 schema 和当前值），供 JS 桥接使用。
      *
-     * Devuelve una cadena JSON, formato:{"key": value, ...}
+     * 返回 JSON 字符串，格式：{"key": value, ...}
      */
     fun getPluginConfigJson(manifest: PluginManifest): String {
         val configList = manifest.contributes?.configuration ?: return "{}"

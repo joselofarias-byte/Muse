@@ -6,127 +6,127 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * v1.79 (B-20): Pruebas recortadas por prioridad de segmento.
+ * v1.79 (B-20): 按段优先级裁剪的测试。
  *
- * Tres determinaciones que cubren la auditoría B-20:
- *  ① Cuando el presupuesto total sea suficiente, se mantendrán las cuatro secciones.(Volver al texto original)
- *  ② a largo plazo/hechos reservados cuando el presupuesto es insuficiente,today/week recortado
- *  ③ Generar registros cuando hay truncamiento(Logger.w)sin lanzar una excepción
+ * 覆盖审计 B-20 的三个判定:
+ *  ① 总预算充足时四段全保留(返回原文)
+ *  ② 预算不足时 longterm/facts 保留、today/week 被裁剪
+ *  ③ 有截断时产生日志(Logger.w)且不抛异常
  *
- * El formato de rebajas de muestra es coherente con MemoryCompiler.assembleCompiledMarkdown:
- * Secuencia de cuatro párrafos facts → today → week → longterm,línea en blanco entre párrafos,Todo termina con un salto de línea.
+ * 样本 markdown 格式与 MemoryCompiler.assembleCompiledMarkdown 一致:
+ * 四段顺序 facts → today → week → longterm,段间空行,整体以换行收尾。
  *
- * Solidez de las opciones presupuestarias:high segmento(facts/longterm)texto muy corto,El costo es muy pequeño.;
- * today/week Utilice una gran cantidad de líneas para soportar grandes costos.,hacer"high costo < presupuesto < Costo del texto completo"La gama es muy amplia,
- * Incluso si el BPE difiere ligeramente de la estimación heurística de caracteres,Los trazados de recorte por segmentos también pueden activarse de forma estable.
+ * 预算选择的稳健性:high 段(facts/longterm)正文极短,成本很小;
+ * today/week 用大量行撑大成本,使得"high 成本 < 预算 < 全文成本"区间很宽,
+ * 即便 BPE 与字符启发式估算略有出入,按段裁剪路径也能稳定触发。
  */
 class LlmBudgetSegmentTest {
 
-    private fun factsBody() = "Hecho A:a los usuarios les gusta Kotlin\nHecho B:Desarrollo de usuarios Android"
+    private fun factsBody() = "事实甲:用户喜欢 Kotlin\n事实乙:用户开发 Android"
 
-    private fun longtermBody() = "Es muy importante conservar la memoria A a largo plazo por completo.\nLa memoria a largo plazo B es igualmente importante"
+    private fun longtermBody() = "长期记忆 A 非常重要完全保留\n长期记忆 B 同样重要"
 
-    private fun hugeBody(prefix: String, lines: Int = 80): String = (1..lines).joinToString("\n") { "$prefix llenar fila $it Se utiliza para ampliar este párrafo mucho más allá del presupuesto." }
+    private fun hugeBody(prefix: String, lines: Int = 80): String = (1..lines).joinToString("\n") { "$prefix 填充行 $it 用于把本段撑大远超预算" }
 
-    /** Construya una rebaja de 4 segmentos que sea coherente con el formato de salida de ensamblarCompiledMarkdown. */
+    /** 构造一段与 assembleCompiledMarkdown 输出格式一致的 4 段 markdown。 */
     private fun sampleMarkdown(): String = listOf(
-        "## hechos importantes",
+        "## 重要事实",
         factsBody(),
-        "## hoy",
-        hugeBody("hoy"),
-        "## a principios de esta semana",
-        hugeBody("esta semana"),
-        "## situación a largo plazo",
+        "## 今天",
+        hugeBody("今天"),
+        "## 本周早些时候",
+        hugeBody("本周"),
+        "## 长期情况",
         longtermBody(),
     ).joinToString("\n\n") + "\n"
 
-    // ── ① Presupuesto suficiente:Las cuatro secciones están reservadas. ───────────────────────────────────────────
+    // ── ① 预算充足:四段全保留 ───────────────────────────────────────────
 
     @Test
-    fun `Volver al texto original cuando el presupuesto sea suficiente`() {
+    fun `预算充足时返回原文`() {
         val md = sampleMarkdown()
         val result = LlmBudget.truncateToTokenBudget(md, 2_000_000)
-        // El presupuesto es mucho mayor que el texto.,debe devolverse sin cambios(sin marca de truncamiento,El orden es consistente)
+        // 预算远大于文本,应原样返回(不带截断标记,顺序一致)
         assertEquals(md, result)
-        assertFalse("No debe haber ninguna marca de truncamiento cuando el presupuesto es suficiente", result.contains("(memory truncated)"))
+        assertFalse("预算充足时不应出现截断标记", result.contains("(memory truncated)"))
     }
 
     @Test
-    fun `Los cuatro títulos se conservan cuando el presupuesto esté disponible`() {
+    fun `预算充足时全部四个标题均保留`() {
         val result = LlmBudget.truncateToTokenBudget(sampleMarkdown(), 2_000_000)
-        listOf("## hechos importantes", "## hoy", "## a principios de esta semana", "## situación a largo plazo").forEach { heading ->
-            assertTrue("Se debe conservar un presupuesto suficiente $heading: $result", result.contains(heading))
+        listOf("## 重要事实", "## 今天", "## 本周早些时候", "## 长期情况").forEach { heading ->
+            assertTrue("预算充足应保留 $heading: $result", result.contains(heading))
         }
     }
 
-    // ── ② Presupuesto insuficiente:longterm/facts reserva,today/week recortado ────────────────
+    // ── ② 预算不足:longterm/facts 保留、today/week 被裁剪 ────────────────
 
     @Test
-    fun `Mantenga los datos completos a largo plazo cuando el presupuesto sea bajo`() {
-        // Es necesario cumplir el presupuesto: high(facts+longterm) < budget < Costo del texto completo
+    fun `预算不足时保留 longterm 与 facts 完整内容`() {
+        // 预算需满足: high(facts+longterm) < budget < 全文成本
         val result = LlmBudget.truncateToTokenBudget(sampleMarkdown(), 300)
-        // longterm es la ultima seccion(memoria a largo plazo),Debe mantenerse intacto
-        assertTrue("La memoria a largo plazo debe conservarse intacta: $result", result.contains(longtermBody()))
-        // facts es el primer parrafo,alta prioridad,también debe mantenerse intacto
-        assertTrue("facts debe conservarse intacto: $result", result.contains(factsBody()))
+        // longterm 是末段(最长期记忆),必须完整保留
+        assertTrue("长期记忆应被完整保留: $result", result.contains(longtermBody()))
+        // facts 是首段,高优先级,也应完整保留
+        assertTrue("facts 应被完整保留: $result", result.contains(factsBody()))
     }
 
     @Test
-    fun `Cuando el presupuesto es insuficiente, hoy al menos se recorta y se mantiene longterm`() {
+    fun `预算不足时 today 至少被裁剪且保留 longterm`() {
         val result = LlmBudget.truncateToTokenBudget(sampleMarkdown(), 300)
-        // today Es la sección del medio la que ha sido estirada.(baja prioridad),Se le debe cortar la cola
-        assertTrue("Después de estirar la sección media, se debe activar la marca de truncamiento.: $result", result.contains("(memory truncated)"))
-        // longterm El título se mantiene estable en
-        assertTrue("longterm El título aún debería ser: $result", result.contains("## situación a largo plazo"))
-        // longterm El texto esta completo.,No truncado por la cola y descartado.
-        assertTrue("longterm El texto debe estar completo.: $result", result.contains(longtermBody()))
+        // today 是被撑大的中段(低优先级),其尾部应被裁剪
+        assertTrue("中间段被撑大后应触发截断标记: $result", result.contains("(memory truncated)"))
+        // longterm 标题稳定在
+        assertTrue("longterm 标题应仍在: $result", result.contains("## 长期情况"))
+        // longterm 正文完整,不被尾部截断丢弃
+        assertTrue("longterm 正文应完整: $result", result.contains(longtermBody()))
     }
 
     @Test
-    fun `Cuando el presupuesto es insuficiente, el largo plazo no se quedará en cola hasta el primero y se descartará`() {
-        // retorno del núcleo:B-20 Anteriormente, si la cola se truncaba, se descartaba primero. longterm;Ahora el plazo final debería estar todavía al final del texto.
+    fun `预算不足时不把 longterm 排到最早丢弃`() {
+        // 核心回归:B-20 之前尾部截断会先丢 longterm;现在末段 longterm 应仍在文本末尾
         val result = LlmBudget.truncateToTokenBudget(sampleMarkdown(), 300)
-        val longtermIdx = result.indexOf("## situación a largo plazo")
-        assertTrue("longterm El titulo debe existir: $result", longtermIdx >= 0)
-        // longterm El titulo no debe faltar,Y el contenido está completo.(en lugar de solo un título vacío)
+        val longtermIdx = result.indexOf("## 长期情况")
+        assertTrue("longterm 标题应存在: $result", longtermIdx >= 0)
+        // longterm 标题不应缺失,且内容完整(而非仅剩空标题)
         assertTrue(result.contains(longtermBody()))
     }
 
-    // ── ③ Genere registros cuando se produzca un truncamiento y no arroje excepciones ────────────────────────────────────
+    // ── ③ 有截断时产生日志且不抛异常 ────────────────────────────────────
 
     @Test
-    fun `Si el presupuesto excede el presupuesto, el resultado se truncará sin generar una excepción`() {
-        // Por pequeño que sea el presupuesto,debería devolver de forma segura resultados que no estén en blanco,No lanzar excepción
+    fun `超预算截断出结果且不抛异常`() {
+        // 无论预算多小,都应安全返回非空白结果,不抛异常
         val result = LlmBudget.truncateToTokenBudget(sampleMarkdown(), 3)
-        assertTrue("El resultado no puede ser una cadena vacía.", result.isNotBlank())
+        assertTrue("结果不能为空字符串", result.isNotBlank())
     }
 
     @Test
-    fun `El texto vacío y un presupuesto de 0 mantienen el comportamiento original`() {
+    fun `空文本与预算为 0 保持原行为`() {
         assertEquals("", LlmBudget.truncateToTokenBudget("", 100))
         val md = sampleMarkdown()
-        // budget=0 Tratado como sin restricciones,Volver al texto original
+        // budget=0 视为不限制,返回原文
         assertEquals(md, LlmBudget.truncateToTokenBudget(md, 0))
     }
 
-    // ── Lógica de corte/segmentación de funciones puras ────────────────────────────────────────────
+    // ── 纯函数拆段 / 裁剪逻辑 ────────────────────────────────────────────
 
     @Test
-    fun `splitSegments Las funciones puras se dividen correctamente en cuatro segmentos`() {
+    fun `splitSegments 纯函数正确切分四段`() {
         val segments = LlmBudget.splitSegments(sampleMarkdown())
         assertEquals(4, segments.size)
-        assertEquals("## hechos importantes", segments[0].heading)
-        assertEquals("## situación a largo plazo", segments[3].heading)
-        assertTrue("El último párrafo debe ser un texto de larga duración.", segments[3].body.contains("memoria A a largo plazo"))
+        assertEquals("## 重要事实", segments[0].heading)
+        assertEquals("## 长期情况", segments[3].heading)
+        assertTrue("末段应为 longterm 正文", segments[3].body.contains("长期记忆 A"))
     }
 
     @Test
-    fun `truncateBySegments La función pura solo corta la sección intermedia y deja la sección de alta prioridad sin cambios`() {
+    fun `truncateBySegments 纯函数只裁剪中段不动高优先级段`() {
         val segments = LlmBudget.splitSegments(sampleMarkdown())
         val result = LlmBudget.truncateBySegments(segments, budget = 300)
-        // La primera sección de hechos y la última sección de largo plazo se mantienen intactas con alta prioridad.
-        assertEquals("## hechos importantes", result.first().heading)
-        assertEquals("## situación a largo plazo", result.last().heading)
+        // 首段 facts 与末段 longterm 高优先级完整保留
+        assertEquals("## 重要事实", result.first().heading)
+        assertEquals("## 长期情况", result.last().heading)
         assertEquals(longtermBody(), result.last().body)
     }
 }

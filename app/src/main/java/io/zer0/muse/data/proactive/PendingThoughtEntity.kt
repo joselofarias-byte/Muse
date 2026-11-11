@@ -9,14 +9,14 @@ import androidx.room.Query
 import androidx.room.Upsert
 
 /**
- * Preocupado por el libro mayor —— "Tengo algo que decirle a esta persona".
+ * 牵挂账本 —— 「我有什么事想跟这个人说」。
  *
- * Esta tabla es la base del mecanismo de mensajería proactiva. La implementación anterior determina "debe enviarse ahora" desde cero cada vez.
- * El orden correcto de las preguntas es "¿Hay algo de qué hablar en la cuenta?" No existe tal mesa
- * "Nada que decir" no es un estado expresable, y el sistema sólo puede confiar en la puntuación y la probabilidad para forzar "nada".
+ * 这张表是主动消息机制的地基。旧实现每次从头判断「现在该不该发」，
+ * 而正确的问题顺序是「账上有没有东西可说」。没有这张表，
+ * 「无事可说」就不是一个可表达的状态，系统只能靠评分和概率硬凑出「不发」。
  *
- * La contabilidad en sí no genera costos de LLM: las fuentes son parásitas en las llamadas a herramientas en conversaciones normales,
- * O es pura derivación de reglas locales.
+ * 记账本身不产生 LLM 成本：来源要么寄生在正常对话的工具调用里，
+ * 要么是纯本地规则推导。
  */
 @kotlinx.serialization.Serializable
 @Entity(
@@ -28,28 +28,28 @@ import androidx.room.Upsert
 )
 data class PendingThoughtEntity(
     @PrimaryKey val id: String,
-    /** ¿A qué asistente pertenece? Cada uno de los asistentes tiene sus propias cuentas y no se visitan entre sí. */
+    /** 属于哪个助手。多助手各有各的账，互不串门。 */
     @ColumnInfo(defaultValue = "") val assistantId: String = "",
-    /** [ThoughtKind] nombre. */
+    /** [ThoughtKind] 的 name。 */
     @ColumnInfo(defaultValue = "FOLLOW_UP") val kind: String = ThoughtKind.FOLLOW_UP.name,
-    /** El texto original del asunto, una frase. Escriba para el asistente, no para el usuario. */
+    /** 事由原文，一句话。写给助手看，不是写给用户看。 */
     @ColumnInfo(defaultValue = "") val seed: String = "",
-    /** [ThoughtSource] nombre. */
+    /** [ThoughtSource] 的 name。 */
     @ColumnInfo(defaultValue = "CONVERSATION") val source: String = ThoughtSource.CONVERSATION.name,
-    /** ID del objeto de origen (ID de memoria/ID de hito/ID de mensaje), utilizado para el seguimiento y la deduplicación. */
+    /** 来源对象 id（记忆 id / 里程碑 id / 消息 id），用于回溯与去重。 */
     @ColumnInfo(defaultValue = "NULL") val sourceRef: String? = null,
     @ColumnInfo(defaultValue = "0") val createdAt: Long = 0L,
-    /** Marca de tiempo de vencimiento.NULL = Nunca caduca. */
+    /** 过期时间戳。NULL = 永不过期。 */
     @ColumnInfo(defaultValue = "NULL") val expiresAt: Long? = null,
-    /** [ThoughtUrgency] nombre. */
+    /** [ThoughtUrgency] 的 name。 */
     @ColumnInfo(defaultValue = "WINDOW") val urgency: String = ThoughtUrgency.WINDOW.name,
-    /** Cuanto me importa este asunto,0..1. */
+    /** 我多在意这件事，0..1。 */
     @ColumnInfo(defaultValue = "0.5") val weight: Float = 0.5f,
-    /** La última vez que te hablé de salir,NULL = Nunca dije eso. */
+    /** 上次说出去的时间，NULL = 从没说过。 */
     @ColumnInfo(defaultValue = "NULL") val lastSurfacedAt: Long? = null,
-    /** Lo dijo varias veces. Se utiliza para evitar repetir lo mismo una y otra vez. */
+    /** 说过几次。用来抑制反复念叨同一件事。 */
     @ColumnInfo(defaultValue = "0") val surfaceCount: Int = 0,
-    /** [ThoughtStatus] nombre. */
+    /** [ThoughtStatus] 的 name。 */
     @ColumnInfo(defaultValue = "OPEN") val status: String = ThoughtStatus.OPEN.name,
 ) {
     fun kindEnum(): ThoughtKind = enumOr(ThoughtKind.entries, kind, ThoughtKind.FOLLOW_UP)
@@ -61,25 +61,24 @@ data class PendingThoughtEntity(
     fun sourceEnum(): ThoughtSource = enumOr(ThoughtSource.entries, source, ThoughtSource.CONVERSATION)
 
     /**
-     * Restaurar la enumeración por nombre, los valores ilegales vuelven a [fallback].
+     * 按 name 还原枚举，非法值回落到 [fallback]。
      *
-     * No hay necesidad `enumValueOf` Análisis directo: puede haber versiones antiguas escritas en la biblioteca,
-     * Ahora que se ha eliminado el nombre de la enumeración, el análisis directo generará una excepción e interrumpirá toda la programación.
+     * 不用 `enumValueOf` 直接解析：库里可能存着旧版本写过、
+     * 现在已删掉的枚举名，直接 parse 会抛异常把整个调度打断。
      */
-    private fun <T : Enum<T>> enumOr(values: List<T>, raw: String, fallback: T): T =
-        values.firstOrNull { it.name == raw } ?: fallback
+    private fun <T : Enum<T>> enumOr(values: List<T>, raw: String, fallback: T): T = values.firstOrNull { it.name == raw } ?: fallback
 }
 
 /**
- * El puerto de lectura del libro mayor.
+ * 牵挂账本的读取口。
  *
- * con [PendingThoughtWriteDao] Están separados porque los escenarios en los que se convocan son completamente diferentes:
- * La lectura se realiza en cada ronda de inspección (ruta caliente) y la escritura se realiza en contabilidad./Ejecutar durante el mantenimiento (vía fría).
- * Dividirlo también hace que la cantidad de funciones en ambos lados esté dentro del rango legible. —— Una persona con más de veinte métodos. DAO
- * Nadie puede decir de qué es responsable.
+ * 与 [PendingThoughtWriteDao] 分开是因为两者被调用的场景完全不同：
+ * 读在每轮巡检里跑（热路径），写在记账/维护时跑（冷路径）。
+ * 拆开也让两边的函数数都落在可读范围内 —— 一个二十来个方法的 DAO
+ * 谁也说不清它到底负责什么。
  *
- * Esta interfaz solo realiza acceso y no emite juicios comerciales:fitness Cómo calcular, si enviarlo, cuándo enviarlo,
- * Todos están determinados por el motor de decisiones de nivel superior. La fila original se devuelve aquí.
+ * 本接口只做存取，不做业务判断：fitness 怎么算、要不要发、什么时候发，
+ * 都由上层判定引擎决定。这里返回原始行。
  */
 @Dao
 interface PendingThoughtDao {
@@ -91,36 +90,36 @@ interface PendingThoughtDao {
     suspend fun getById(id: String): PendingThoughtEntity?
 
     /**
-     * Obtenga todas las inquietudes no dichas sobre un asistente.
+     * 取某个助手所有还没说出去的牵挂。
      *
-     * Sin clasificación:fitness Depende del momento actual (freshness / windowFit Todo relacionado con el ahora),
-     * La clasificación debe realizarse en la memoria.SQL No se puede dar de alta.
+     * 不做排序：fitness 依赖当前时刻（freshness / windowFit 都跟 now 有关），
+     * 排序必须拿到内存里算，SQL 排不出来。
      */
     @Query("SELECT * FROM pending_thought WHERE assistantId = :assistantId AND status = 'OPEN'")
     suspend fun getOpen(assistantId: String): List<PendingThoughtEntity>
 
-    /** Todo ABIERTO (asistente cruzado) para que la página de configuración muestre el libro mayor. */
+    /** 全部 OPEN（跨助手），供设置页展示账本。 */
     @Query("SELECT * FROM pending_thought WHERE status = 'OPEN' ORDER BY createdAt DESC")
     suspend fun getAllOpen(): List<PendingThoughtEntity>
 
-    /** Varios elementos anotados recientemente se muestran en la página de configuración. */
+    /** 最近记下的若干条，供设置页展示。 */
     @Query("SELECT * FROM pending_thought ORDER BY createdAt DESC LIMIT :limit")
     suspend fun getRecent(limit: Int): List<PendingThoughtEntity>
 
     /**
-     * Deduplicación del mismo origen: solo se registra un objeto del mismo origen.
+     * 同源去重：同一来源对象只记一条。
      *
-     * Sin esto, el mismo recuerdo volverá a derivarse a una nueva preocupación en cada ronda de inspección.
-     * El libro mayor se expandirá a un ritmo de una entrada por hora.
+     * 没有这条，同一条记忆每轮巡检都会被重新推导成一条新牵挂，
+     * 账本会以每小时一条的速度膨胀。
      */
     @Query("SELECT COUNT(*) FROM pending_thought WHERE sourceRef = :sourceRef AND status = 'OPEN'")
     suspend fun countOpenBySourceRef(sourceRef: String): Int
 
     /**
-     * Obtenga todos los ID de origen contabilizados para la deduplicación por lotes durante la derivación.
+     * 取全部已记账的来源 id，供推导时批量去重。
      *
-     * Que sintonizar uno por uno [countOpenBySourceRef] Bien: puedo memorizar docenas de elementos a la vez.
-     * Una consulta por entrada convierte la derivación en viajes de ida y vuelta de N DB (y eso está en la ruta de sondeo).
+     * 比逐条调 [countOpenBySourceRef] 好：记忆一次可能几十条，
+     * 每条一次查询会把推导变成 N 次 DB 往返（而且这是在轮询路径上）。
      */
     @Query(
         "SELECT sourceRef FROM pending_thought WHERE assistantId = :assistantId " +
@@ -131,17 +130,17 @@ interface PendingThoughtDao {
     @Query("SELECT COUNT(*) FROM pending_thought WHERE assistantId = :assistantId AND status = 'OPEN'")
     suspend fun countOpen(assistantId: String): Int
 
-    /** Volumen completo (incluido el finalizado), para copia de seguridad y exportación. */
+    /** 全量（含已结束），备份导出用。 */
     @Query("SELECT * FROM pending_thought")
     suspend fun getAll(): List<PendingThoughtEntity>
 }
 
 /**
- * Preocupado por el puerto de escritura y mantenimiento del libro mayor.
+ * 牵挂账本的写入与维护口。
  *
- * Sólo hay una dirección del flujo de estado:OPEN → DONE / EXPIRED / DROPPED.
- * No hay camino de regreso a OPEN —— Revelando las cosas a las que te has rendido otra vez,
- * Peor que no tener ningún demérito en primer lugar.
+ * 状态流转只有一个方向：OPEN → DONE / EXPIRED / DROPPED。
+ * 没有「回到 OPEN」的路径 —— 已经放弃的事再翻出来说，
+ * 比一开始就没记过更糟。
  */
 @Dao
 interface PendingThoughtWriteDao {
@@ -149,21 +148,21 @@ interface PendingThoughtWriteDao {
     @Query("UPDATE pending_thought SET status = :status WHERE id = :id")
     suspend fun updateStatus(id: String, status: String)
 
-    /** Marcar como hablado y hacer +1 en el número de recordatorios. */
+    /** 标记已说出口，并把提醒次数 +1。 */
     @Query(
         "UPDATE pending_thought SET lastSurfacedAt = :at, surfaceCount = surfaceCount + 1 " +
             "WHERE id = :id",
     )
     suspend fun markSurfaced(id: String, at: Long)
 
-    /** Limpia las filas que han caducado pero que todavía están en estado ABIERTO. */
+    /** 清理已过期但状态还停在 OPEN 的行。 */
     @Query(
         "UPDATE pending_thought SET status = 'EXPIRED' " +
             "WHERE status = 'OPEN' AND expiresAt IS NOT NULL AND expiresAt <= :now",
     )
     suspend fun expireOverdue(now: Long): Int
 
-    /** Si no hay respuesta después de que lo mencionen repetidamente, abandone automáticamente y evite pensar en ello todo el tiempo. */
+    /** 被反复提起仍无反应的牵挂自动放弃，避免一直念叨。 */
     @Query(
         "UPDATE pending_thought SET status = 'DROPPED' " +
             "WHERE status = 'OPEN' AND surfaceCount >= :maxSurface",
@@ -176,7 +175,7 @@ interface PendingThoughtWriteDao {
     @Query("DELETE FROM pending_thought WHERE id = :id")
     suspend fun delete(id: String)
 
-    /** Borre la copia de seguridad antes de restaurar. */
+    /** 备份恢复前清空。 */
     @Query("DELETE FROM pending_thought")
     suspend fun deleteAll()
 }

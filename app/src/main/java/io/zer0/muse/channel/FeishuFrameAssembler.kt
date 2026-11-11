@@ -4,10 +4,10 @@ import java.io.ByteArrayOutputStream
 import java.util.LinkedHashMap
 
 /**
- * Ensamblador acotado de conexión larga Feishu para marcos fragmentados.
+ * 飞书长连接分片帧的有界拼装器。
  *
- * Cuando hay demasiados mensajes sin terminar al mismo tiempo, solo se eliminará el más antiguo y los demás mensajes que aún se puedan ensamblar no se podrán borrar.
- * WebSocket Las devoluciones de llamada se pueden ingresar simultáneamente, por lo que las transiciones de estado se completan dentro del mismo bloqueo.
+ * 同时存在过多未完成消息时只淘汰最旧的一条，不能清空其他仍可拼装的消息。
+ * WebSocket 回调可能并发进入，因此状态转换在同一把锁内完成。
  */
 internal class FeishuFrameAssembler(
     private val maxPendingMessages: Int = DEFAULT_MAX_PENDING_MESSAGES,

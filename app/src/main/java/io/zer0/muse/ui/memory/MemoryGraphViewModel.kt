@@ -16,20 +16,20 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * Modelo de vista de constelación de memoria.
+ * 记忆星座 ViewModel。
  *
- * Fase 2: leer datos de relaciones de memoria reales de FactStore y MemoryLinkDao.
- * Etapa 3: Admitir edición, eliminación y fijación de nodos;Confirmar y eliminar relaciones.
- * Etapa 4: Apoyar la generación y el ahorro de candidatos de agrupación.
+ * 阶段 2: 从 FactStore 和 MemoryLinkDao 读取真实记忆关系数据。
+ * 阶段 3: 支持节点编辑、删除、置顶;关系确认、删除。
+ * 阶段 4: 支持聚类候选生成和保存。
  */
 class MemoryGraphViewModel(
     application: Application,
     private val factStore: FactStore,
     private val memoryLinkDao: MemoryLinkDao,
     private val factDbProvider: FactDbProvider? = null,
-    /** v2.6.2(comentarios de los usuarios): Generador de bordes complementario (para la reconstrucción manual de asociaciones). */
+    /** v2.6.2（用户反馈）: 补边构建器（手动重建关联用）。 */
     private val edgeBuilder: io.zer0.memory.ai.MemoryEdgeBuilder? = null,
-    /** v2.6.2: Proveedor de vectores vecinos semánticos. */
+    /** v2.6.2: 语义近邻向量提供者。 */
     private val semanticProvider: io.zer0.memory.ai.MemoryEdgeBuilder.SemanticProvider? = null,
 ) : AndroidViewModel(application) {
 
@@ -69,7 +69,7 @@ class MemoryGraphViewModel(
                     if (scope == null) scopedLinks.listBySpace(spaceId) else scopedLinks.listBySpaceAndScope(spaceId, scope)
                 }
                 val factIdsInLinks = links.flatMapTo(mutableSetOf()) { setOf(it.sourceFactId, it.targetFactId) }
-                // Los hechos ordinarios también deben ser visibles; relaciones/importancia/Quedarse en la cima solo se utiliza para priorizar.
+                // 普通事实也必须可见；关系/重要度/置顶只用于排序优先级。
                 val nodeFacts = selectGraphFacts(facts, factIdsInLinks, MAX_NODES)
                 val nodeIdSet = nodeFacts.map { it.id }.toSet()
                 val nodeEdges = links.filter { it.sourceFactId in nodeIdSet && it.targetFactId in nodeIdSet }.take(MAX_EDGES)
@@ -96,18 +96,18 @@ class MemoryGraphViewModel(
                         targetTitle = link.targetTitle,
                     )
                 }
-                // Etapa 4: agrupación automática(Agrupación preliminar por categoría)
+                // 阶段 4: 自动聚类(按 category 初步分组)
                 val clusters = generateClusters(nodes)
                 _state.value = GraphState(nodes = nodes, edges = edges, clusters = clusters, isLoading = false)
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (e: Exception) {
-                _state.value = GraphState(isLoading = false, error = e.message ?: "load failed")
+                _state.value = GraphState(isLoading = false, error = e.message ?: "No se pudo cargar el grafo de memoria")
             }
         }
     }
 
-    // ── Fase 3: Operaciones de nodo ──
+    // ── 阶段 3: 节点操作 ──
     fun deleteNode(factId: Long, scope: String?, spaceId: String) {
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
@@ -123,8 +123,8 @@ class MemoryGraphViewModel(
     }
 
     /**
-     * v2.6.11: Obtenga el texto completo de los hechos. Nodos de constelación con títulos solo truncados ([NODE_TITLE_MAX_LENGTH]),
-     * Debe obtener el texto completo antes de editarlo; de lo contrario, al guardarlo, se escribirán permanentemente los datos extensos en las docenas de palabras del título.
+     * v2.6.11: 取事实全文。星座节点只带截断标题（[NODE_TITLE_MAX_LENGTH]），
+     * 编辑前必须先拿全文，否则保存会把长事实永久写回成标题那几十个字。
      */
     fun loadFactContent(factId: Long, scope: String?, onLoaded: (String?) -> Unit) {
         viewModelScope.launch {
@@ -138,8 +138,8 @@ class MemoryGraphViewModel(
             val saved = withContext(Dispatchers.IO) {
                 val store = storeForScope(scope)
                 val current = store.getById(factId)?.fact
-                // v2.6.11: Barandilla inferior —— Si el contenido entrante resulta ser el título truncado del texto completo existente, significa que la persona que llama
-                // Se muestra el título en lugar del texto completo. Si se deja caer en la biblioteca, los hechos extensos se truncarán, por lo que simplemente me niego a escribirlos aquí.
+                // v2.6.11: 兜底护栏 —— 传入内容若正好是现存全文的截断标题，说明调用方
+                // 拿的是显示用标题而不是全文，落库会把长事实截断，这里直接拒写。
                 val looksTruncated =
                     current != null &&
                         current.length > NODE_TITLE_MAX_LENGTH &&
@@ -156,8 +156,8 @@ class MemoryGraphViewModel(
             withContext(Dispatchers.IO) {
                 val scopedStore = storeForScope(scope)
                 val fact = scopedStore.getById(factId) ?: return@withContext
-                // v2.6.2(auditoría de memoria): Ruta según alcance/Espacio actual —— De lo contrario, la página de constelación muestra el subasistente/
-                // Cuando se utilizan otros nodos espaciales, la parte superior se cambiará al hecho con la misma ID en la biblioteca predeterminada.
+                // v2.6.2（记忆审计）: 按当前 scope/Space 路由 —— 否则星座页展示子助手/
+                // 其他 Space 的节点时，置顶会改到默认库中同 ID 的事实。
                 if (fact.scope != (scope ?: "main") || fact.spaceId != spaceId) return@withContext
                 scopedStore.setPinned(factId, fact.pinnedAt == null)
             }
@@ -167,7 +167,7 @@ class MemoryGraphViewModel(
         }
     }
 
-    // ── Etapa 3: Operaciones de relación ──
+    // ── 阶段 3: 关系操作 ──
     fun deleteEdge(edgeId: Long, scope: String?, spaceId: String) {
         viewModelScope.launch {
             withContext(Dispatchers.IO) { linksForScope(scope).deleteById(edgeId) }
@@ -176,18 +176,18 @@ class MemoryGraphViewModel(
     }
 
     /**
-     * v2.6.2(comentarios de los usuarios): Cree manualmente un borde (el usuario hace clic en la página de la constelación para conectar dos nodos).
+     * v2.6.2（用户反馈）: 手动建立一条边（用户在星座页点两个节点连起来）。
      *
-     * @param sourceFactId hechos del punto de partida
-     * @param targetFactId hecho del punto final
-     * @param relationType tipo de relación (related_to / causes / part_of / contradicts)
+     * @param sourceFactId 起点事实
+     * @param targetFactId 终点事实
+     * @param relationType 关系类型（related_to / causes / part_of / contradicts）
      */
     fun addManualEdge(sourceFactId: Long, targetFactId: Long, relationType: String, scope: String?, spaceId: String) {
         if (sourceFactId == targetFactId) return
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
                 val scopedLinks = linksForScope(scope)
-                // Deduplicación no dirigida: omita si ya existe el mismo borde opuesto
+                // 无向去重：已有同对边时跳过
                 val existing = scopedLinks.listBySpaceAndScope(spaceId, scope ?: "main")
                 val dup = existing.any {
                     (it.sourceFactId == sourceFactId && it.targetFactId == targetFactId) ||
@@ -216,8 +216,8 @@ class MemoryGraphViewModel(
     }
 
     /**
-     * v2.6.2(comentarios de los usuarios): Reconstruir manualmente la asociación —— Ejecute un relleno para todos los hechos en el alcance+espacio actual.
-     * Para panel de configuración de constelaciones“Restablecer la asociación ahora”llamada de botón.
+     * v2.6.2（用户反馈）: 手动重建关联 —— 对当前 scope+space 的全部事实跑一次补边。
+     * 供星座设置面板的“立即重建关联”按钮调用。
      */
     fun rebuildEdges(scope: String?, spaceId: String) {
         viewModelScope.launch {
@@ -225,7 +225,7 @@ class MemoryGraphViewModel(
                 val scopedStore = storeForScope(scope)
                 val all = if (scope == null) scopedStore.getBySpace(spaceId) else scopedStore.getByScopeAndSpace(scope, spaceId)
                 if (all.isEmpty()) return@withContext
-                // todos los hechos como“nuevos hechos”Ejecute una vez para complementar los bordes (se omitirán los bordes existentes).
+                // 全部事实当作“新事实”跑一遍补边（已有边会去重跳过）。
                 edgeBuilder?.buildEdges(
                     newFacts = all,
                     existingFacts = all,
@@ -240,24 +240,24 @@ class MemoryGraphViewModel(
 
     fun confirmEdge(edgeId: Long, scope: String? = null, spaceId: String = "default") {
         viewModelScope.launch {
-            // Actualmente MemoryLinkEntity no tiene ningún campo confirmado por el usuario,Utilice temporalmente el peso para aumentar la confirmación de la simulación
-            // v2.6.2(auditoría de memoria): Ruta según alcance/Espacio actual —— De lo contrario, cuando otro espacio haga clic para confirmar
-            // Si no se puede encontrar el borde, o el ID de borde es el mismo, el mapa predeterminado se cambiará por error.
+            // 当前 MemoryLinkEntity 没有 userConfirmed 字段,暂时用 weight 提升模拟确认
+            // v2.6.2（记忆审计）: 按当前 scope/Space 路由 —— 否则其他 Space 点击确认时
+            // 找不到边，或 edgeId 相同就误改默认图谱。
             val scopedLinks = linksForScope(scope)
             val edges = scopedLinks.listBySpaceAndScope(spaceId, scope ?: "main")
             val edge = edges.find { it.id == edgeId } ?: return@launch
             val updated = edge.copy(weight = (edge.weight + 0.2f).coerceAtMost(1.0f))
             withContext(Dispatchers.IO) { scopedLinks.insert(updated) }
-            // Actualización parcial
+            // 局部刷新
             _state.value = _state.value.copy(
                 edges = _state.value.edges.map { if (it.id == edgeId) it.copy(weight = updated.weight) else it },
             )
         }
     }
 
-    // ── Etapa 4: agrupación ──
+    // ── 阶段 4: 聚类 ──
     private fun generateClusters(nodes: List<MemoryGraphNode>): List<MemoryGraphCluster> {
-        // primera edición:Agrupar por categoría,Mismo grupo >=2 nodos cluster
+        // 第一版:按 category 分组,同组 >=2 个节点才成 cluster
         return nodes.groupBy { it.category }
             .filter { it.value.size >= 2 }
             .map { (category, groupNodes) ->
@@ -297,7 +297,7 @@ data class MemoryGraphEdge(
 )
 
 /**
- * Etapa 4: agrupación de memoria(constelación).
+ * 阶段 4: 记忆聚类(星座)。
  */
 data class MemoryGraphCluster(
     val id: String,

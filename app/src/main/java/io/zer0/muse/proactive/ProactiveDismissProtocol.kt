@@ -1,27 +1,27 @@
 package io.zer0.muse.proactive
 
 /**
- * Protocolo para el botón "Esta vez no" en notificaciones de mensajes proactivos.
+ * 主动消息通知上「这次不用」按钮的协议。
  *
- * Las constantes y el análisis se colocan aquí en lugar de estar metidos en el receptor: el receptor es un shell de Android,
- * Cuando quiera poner a prueba el juicio de que "si cambia la acción, no debería haber contabilidad", no debe crear primero una [android.content.Intent].
+ * 常量与解析放在这里而不是塞进接收器：接收器是个 Android 壳子，
+ * 要测「换个 action 就不该记账」这种判断时，不该先造一个 [android.content.Intent]。
  */
 object ProactiveDismissProtocol {
 
-    /** Solo se puede acceder dentro de la aplicación: la transmisión la envía el PendingIntent de la aplicación. */
+    /** 只能在应用内触达：广播由本应用的 PendingIntent 发出。 */
     const val ACTION_DISMISS = "io.zer0.muse.action.PROACTIVE_DISMISS"
 
-    /** La identificación de la cuenta de resultados que se va a marcar. */
+    /** 要标记的结果账 id。 */
     const val EXTRA_OUTCOME_ID = "extra_outcome_id"
 
-    /** La identificación de la notificación se descartará fácilmente (0 Indica que no hay procesamiento). */
+    /** 要顺手收起的通知 id（0 表示不处理）。 */
     const val EXTRA_NOTIFICATION_ID = "extra_notification_id"
 
     /**
-     * Obtenga la identificación del registro que se marcará en la transmisión; devuelve nulo si no está en este protocolo o no tiene una identificación.
+     * 从广播里取出要标记的记录 id；不是本协议或没带 id 时返回 null。
      *
-     * action Debe coincidir: los receptores se registran mediante el filtro de acción, pero siempre que alguien lo especifique explícitamente
-     * La transmisión aún se puede transmitir, por lo que se vuelve a juzgar aquí para evitar recibir accidentalmente transmisiones de otras personas.
+     * action 必须对得上：接收器按 action 过滤注册，但只要有人显式指定，
+     * 广播仍然能被递进来，所以这里再判一次，避免误收别人的广播。
      */
     fun dismissedOutcomeId(action: String?, extra: String?): String? {
         if (action != ACTION_DISMISS) return null

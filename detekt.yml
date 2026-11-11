@@ -1,23 +1,27 @@
-# detekt Configuración de análisis estático
+# detekt 静态分析配置
 build:
   maxIssues: 0
 
 complexity:
-  # El umbral se establece en función de la "legibilidad" y no de "números pequeños".
-  # Una función Redactar contenido es naturalmente larga: describe la estructura de la interfaz y solo se puede dividir en siete u ocho partes.
-  # Después de una subfunción, el lector tiene que saltar repetidamente para deletrear el árbol completo, lo cual es más difícil de entender que una función larga.
+  # 阈值按「读得懂」而不是「数字小」来定。
+  # 一个 Compose 内容函数天然就长：它描述的是界面结构，拆成七八个只有
+  # 一处的子函数之后，读的人得反复跳转才能拼出整棵树，比长函数更难懂。
   LongMethod:
     active: true
     threshold: 120
 
-  # Las áreas más afectadas con muchos parámetros son las clases de datos y los constructores, que originalmente describen "qué campos hay".
-  # 8 Puedes recordar el orden por nombre si tienes menos de uno. Si hay más de uno, debe cambiar a objetos con nombre.
+  # 参数多的重灾区是数据类和构造函数，它们本来就是在描述「有哪些字段」。
+  # 8 个以内还能靠名字记住顺序，再多就该换成具名对象了。
   LongParameterList:
     active: true
     functionThreshold: 8
     constructorThreshold: 10
+    # @Composable 的参数表就是它的 API：modifier、回调、展示数据各占一项。
+    # 为了凑阈值把参数塞进一个数据袋，只会让调用方看不出这张卡需要什么 —— 那是把
+    # lint 的偏好当设计。故规则级豁免 Compose，非 Composable 的长参数表照常报。
+    ignoreAnnotated: ['Composable']
 
-  # Las ramas que caben en una pantalla son más fáciles de leer que la extracción forzada de funciones. Más de 20 normalmente indica que se debe romper la lógica.
+  # 一屏放得下的分支比强行抽函数好读。超过 20 通常说明这段逻辑确实该拆了。
   CyclomaticComplexMethod:
     active: true
     threshold: 20
@@ -30,7 +34,7 @@ complexity:
     active: true
     threshold: 5
 
-  # Los archivos grandes en este proyecto son principalmente ViewModel y el ensamblaje del sistema, que son todos "una responsabilidad, muchos detalles".
+  # 大文件在这个项目里主要是 ViewModel 和系统提示组装，都是「一个职责、很多细节」。
   LargeClass:
     active: true
     threshold: 900
@@ -43,8 +47,8 @@ complexity:
     thresholdInFiles: 30
 
 style:
-  # Regresar temprano es una forma de aplanar el código, no un mal olor. El verdadero problema es el anidamiento,
-  # NestedBlockDepth gestiona por separado el anidamiento de este almacén.
+  # 早返回是让代码变平的手段，不是坏味道。真正的问题是嵌套，
+  # 而这个仓库的嵌套由 NestedBlockDepth 单独管。
   ReturnCount:
     active: true
     max: 4
@@ -52,10 +56,9 @@ style:
     active: false
   MaxLineLength:
     active: true
-    # El español ocupa más que el chino. 140 corta miles de comentarios y literales ya traducidos.
-    # Se mantiene el tope alto para no reintroducir esa deuda, y los comentarios no cuentan.
-    maxLineLength: 4000
-    excludeCommentStatements: true
+    # 与根 .editorconfig 的 max_line_length 对齐。detekt 默认 120 会把 121–140 字符
+    # 的行记成另一套债务；项目明确采用 140 后，>140 的行仍由该规则真实拦截。
+    maxLineLength: 140
   UnusedImports:
     active: true
   TrailingWhitespace:
@@ -71,15 +74,15 @@ performance:
 
 naming:
   active: true
-  # v2.6.7: Informe también a detekt sobre la convención de nomenclatura de Compose.
+  # v2.6.7: 让 detekt 也认识 Compose 命名约定。
   #
-  # Antecedentes: se ha configurado root .editorconfig `ktlint_function_naming_ignore_when_annotated_with = Composable`,
-  # Pero eso sólo funciona para ktlint. —— detekt Esta clave de .editorconfig no se lee.
-  # El resultado es que FunctionNaming descubrió que PascalCase de 600 funciones @Composable infringía el código.
-  # Se queda en la línea de base durante mucho tiempo y actúa como ruido (no es un problema real y encubre el problema real).
+  # 背景：根 .editorconfig 已设 `ktlint_function_naming_ignore_when_annotated_with = Composable`，
+  # 但那只对 ktlint 生效 —— detekt 不读 .editorconfig 的这条键。
+  # 结果就是 600 条 @Composable 函数的 PascalCase 被 FunctionNaming 判违规，
+  # 长期挂在基线里当噪音（既不是真问题，又掩盖了真问题）。
   #
-  # Esta es la coherencia de la cadena de herramientas de finalización, no una relajación de las reglas: las funciones normales aún requieren una pequeña carcasa de camello,
-  # Solo las funciones de composición anotadas con @Composable permiten PascalCase mediante la convención Compose.
+  # 这是补全工具链一致性，不是放宽规则：普通函数仍要求小驼峰，
+  # 只有带 @Composable 注解的组合函数按 Compose 约定允许 PascalCase。
   FunctionNaming:
     active: true
     ignoreAnnotated:

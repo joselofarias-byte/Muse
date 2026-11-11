@@ -2,20 +2,20 @@ import { CapsuleButton, CardGroup, ListRow, Screen, TopBar } from "../components
 import { useI18n } from "../i18n/I18nProvider.js";
 
 interface HostPlaceholderProps {
-  /** Título de la página:Host Título del artículo localizado. */
+  /** 页面标题：Host 已本地化的条目标题。 */
   readonly title: string;
-  /** Qué hace esta función: Priorizar utilizando la descripción de entrada emitida por el Anfitrión; si no, utilice una frase neutral del extremo local. */
+  /** 这个功能是做什么的：优先用 Host 下发的条目说明；没有就用本端的一句中性话。 */
   readonly description?: string | undefined;
   readonly onBack: () => void;
 }
 
 /**
- * Página de marcador de posición unificada.
+ * 统一占位页。
  *
- * Aquí se incluyen dos tipos de páginas: la subpágina de configuración que no se ha migrado a la página web y la capacidad de operar solo en teléfonos celulares.
- * (Accesibilidad, pantalla virtual, terminal, seguimiento de notificaciones,UI Automatización……). solo di tres cosas——
- * "Esta función debe operarse en un teléfono celular", qué hace esta función y cómo regresar.
- * No pongas ningún botón falso: no pretendas poder hacer clic si no hay una entrada implementada.
+ * 两种页面落到这里：还没迁移到网页端的设置子页，以及只能在手机上操作的能力
+ * （无障碍、虚拟屏、终端、通知监听、UI 自动化……）。只说三件事——
+ * 「这个功能需要在手机上操作」、这个功能是做什么的、怎么返回。
+ * 不放任何假按钮：没有实现的入口就不假装能点。
  */
 export function HostPlaceholder({ title, description, onBack }: HostPlaceholderProps) {
   const { t } = useI18n();

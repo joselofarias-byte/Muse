@@ -4,31 +4,31 @@ import io.zer0.muse.data.card.CardEntity
 import kotlinx.serialization.Serializable
 
 /**
- * entidad de tarjeta (`card_entities`) formato de línea de respaldo.
+ * 卡片实体（`card_entities`）的备份线格式。
  *
- * ¿Por qué no simplemente poner [CardEntity] relleno [BackupService.Backup]:Room La entidad es propiedad del dominio de la tarjeta,
- * Ninguno per se `@Serializable`. El lado de respaldo utiliza duplicación proporcional + mapeo bidireccional. La ventaja es que el formato de la copia de seguridad no va acompañado de anotaciones de entidades.
- * Al agregar entidades, solo necesita agregar valores predeterminados a la imagen para continuar leyendo copias de seguridad antiguas.
+ * 为什么不直接把 [CardEntity] 塞进 [BackupService.Backup]：Room 实体归卡片域所有，
+ * 本身没有 `@Serializable`。备份侧用等比镜像 + 双向映射，好处是备份格式不和实体注解耦合，
+ * 实体加列只要给镜像补默认值就能继续读旧备份。
  *
- * Nombre del campo y `CardEntity` Los nombres de las propiedades de Kotlin corresponden uno a uno (no nombres de columnas), por lo que al leer la copia de seguridad
- * Tiene el mismo aspecto que la entidad en el código. La asignación de nombres de columnas es generada por Room por anotación de entidad (v2.6.9 Leer y escribir desde la copia de seguridad
- * Utilice CardEntityDao, ya no mantiene listas escritas a mano).
+ * 字段名与 `CardEntity` 的 Kotlin 属性名一一对应（不是列名），这样读备份时
+ * 和代码里的实体长得一样。列名映射由 Room 按实体注解生成（v2.6.9 起备份读写
+ * 走 CardEntityDao，不再维护手写列清单）。
  */
 @Serializable
 data class CardEntityRecord(
-    /** UUID Clave principal, identidad de tarjeta estable durante los reinicios. */
+    /** UUID 主键，跨重启稳定的卡片身份。 */
     val id: String,
-    /** viejo `c_xxx` Identificación de la tarjeta, solo se usa para rellenar. */
+    /** 旧 `c_xxx` 卡片 id，仅存量回填用。 */
     val legacyCardId: String? = null,
     val originSessionId: String? = null,
     val originMessageId: String? = null,
     val title: String = "",
-    /** HTML / SVG fuente. */
+    /** HTML / SVG 源。 */
     val code: String = "",
     val isSvg: Boolean = false,
-    /** Vincular datos (texto JSON en card_data.json original). */
+    /** 绑定数据（原 card_data.json 里的 JSON 文本）。 */
     val dataJson: String? = null,
-    /** null = Sólo en el flujo de mensajes;>= 0 = secuencia de atraque. */
+    /** null = 仅在消息流；>= 0 = 停靠顺序。 */
     val dockSlot: Int? = null,
     val dockedAt: Long? = null,
     val createdAt: Long = 0L,
@@ -66,11 +66,11 @@ internal fun CardEntityRecord.toEntity(): CardEntity = CardEntity(
 )
 
 /**
- * El orden de las tarjetas en la copia de seguridad: las tarjetas acopladas van primero en orden ascendente de ranuras y las tarjetas desacopladas van al final en orden ascendente de tiempo de creación.
+ * 备份内的卡片顺序：停靠卡按槽位升序在前，未停靠卡按创建时间在后。
  *
- * ¿Por qué realizar pedidos en el lado de exportación en lugar de depender del orden físico de la mesa?`dockSlot` Tiene un índice único y la recuperación se reescribe una por una.
- * El orden se fija para que los archivos de respaldo se puedan comparar y restaurar de manera reproducible; la tarjeta en el flujo de mensajes (`dockSlot` es nulo)
- * El comportamiento de clasificación no está definido en SQLite, use `createdAt` + `id` Asegúrese de que los dos resultados de exportación sean consistentes.
+ * 为什么在导出侧定序而不是靠表的物理顺序：`dockSlot` 上有唯一索引，恢复是逐条写回，
+ * 顺序固定让备份文件可比对、恢复可复现；消息流内的卡（`dockSlot` 为 null）
+ * 在 SQLite 里排序行为未定义，用 `createdAt` + `id` 兜底保证两次导出结果一致。
  */
 internal fun List<CardEntityRecord>.inDockOrder(): List<CardEntityRecord> = sortedWith(
     compareBy<CardEntityRecord>(
@@ -82,9 +82,9 @@ internal fun List<CardEntityRecord>.inDockOrder(): List<CardEntityRecord> = sort
 )
 
 /**
- * Verificación de la unicidad de la ranura del muelle: si dos tarjetas ocupan la misma ranura, se generará un error de restricción en la capa SQLite.
- * Pero ese error solo escribe "UNIQUE constraint failed", al solucionar problemas, no es obvio que los datos de la copia de seguridad estén dañados.
- * Las razones legibles se dan aquí de antemano; la recuperación sigue siendo rápida y la reversión completa (del mismo calibre que la entidad existente, no se abren casos especiales).
+ * 停靠槽位唯一性校验：两张卡抢同一个槽位会在 SQLite 层抛约束错误，
+ * 但那条错误只写 "UNIQUE constraint failed"，排障时看不出是备份数据坏了。
+ * 这里提前给出可读原因；恢复仍然 fail-fast 整体回滚（与既有实体同口径，不开特例）。
  */
 internal fun requireNoDuplicateDockSlots(cards: List<CardEntity>) {
     val duplicates = cards
@@ -94,6 +94,6 @@ internal fun requireNoDuplicateDockSlots(cards: List<CardEntity>) {
         .filterValues { it > 1 }
         .keys
     check(duplicates.isEmpty()) {
-        "Ranuras de acoplamiento para tarjetas duplicadas en respaldo: ${duplicates.sorted()},Negarse a restaurar(La ranura sólo puede pertenecer a una tarjeta al mismo tiempo.)"
+        "备份中的卡片停靠槽位重复: ${duplicates.sorted()},拒绝恢复(槽位在同一时刻只能属于一张卡)"
     }
 }

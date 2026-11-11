@@ -105,13 +105,13 @@ def test_over_baseline_fails():
     )
     found = scan_res(root)
     failures, _ = evaluate(found, {"locales": {"en": 0}})
-    assert any("en" in f and "> línea de base" in f for f in failures), failures
+    assert any("en" in f and "> 基线" in f for f in failures), failures
 
 
 def test_new_locale_over_zero_baseline_fails():
     root = make_root({"values-fr/strings.xml": strings('<string name="x">中文</string>')})
     failures, _ = evaluate(scan_res(root), {"locales": {"en": 0}})
-    assert any("Paquetes de idiomas no básicos" in f for f in failures), failures
+    assert any("基线外语言包" in f for f in failures), failures
 
 
 def test_update_baseline_refuses_increase():
@@ -133,7 +133,7 @@ def test_broken_xml_fails_closed():
         scan_res(root)
     except ValueError:
         return
-    raise AssertionError("un XML roto debe lanzar ValueError")
+    raise AssertionError("XML 解析失败时应抛 ValueError,不能静默跳过")
 
 
 if __name__ == "__main__":

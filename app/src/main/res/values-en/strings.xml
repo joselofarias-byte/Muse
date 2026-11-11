@@ -1,10 +1,10 @@
 <resources>
     <!-- App -->
-    <string name="app_name">Muse</string>
+    <string name="app_name">Musa</string>
     <!-- Splash -->
 
     <!-- Widget -->
-    <string name="widget_description">Quick launch Muse chat</string>
+    <string name="widget_description">Quick launch Musa chat</string>
     <string name="widget_new_session">New Chat</string>
     <string name="widget_recent_sessions">Recent Chats</string>
     <!-- P3-16: 4x2 chat widget -->
@@ -14,8 +14,8 @@
     <string name="widget_chat_pick_assistant">Choose the assistant to display</string>
     <string name="widget_quick_pick_assistant">Choose the assistant for shortcuts</string>
     <!-- F-26: Launcher widget -->
-    <string name="widget_launcher_title">Muse</string>
-    <string name="widget_launcher_open">Open Muse</string>
+    <string name="widget_launcher_title">Musa</string>
+    <string name="widget_launcher_open">Open Musa</string>
 
     <!-- Bottom navigation -->
 
@@ -77,7 +77,7 @@
 <string name="voice_recognizing">Recognizing…</string>
 <!-- Task 1: ASR reconnecting status (WebSocket dropped, exponential backoff reconnect, audio buffered meanwhile) -->
 <string name="voice_reconnecting">Network error, reconnecting…</string>
-<!-- Correcciones en la interfaz (i18n-6): stop button a11y label on voice message bar -->
+<!-- 前端修复 (i18n-6): stop button a11y label on voice message bar -->
 <string name="voice_stop_recording">Stop recording</string>
     <string name="voice_conversation_cd_idle">Tap to start conversation</string>
     <string name="voice_conversation_cd_listening">Recording, tap to finish and send</string>
@@ -156,7 +156,7 @@
 
     <string name="chat_draft_label">Draft</string>
     <string name="chat_list_status_in_progress">In Progress</string>
-    <string name="chat_list_status_pending">Pending</string>
+    <string name="chat_list_status_pending">Not started</string>
     <string name="chat_list_status_completed">Completed</string>
     <string name="chat_list_time_just_now">Just now</string>
     <string name="chat_list_time_minutes_ago">%1$d min ago</string>
@@ -215,7 +215,7 @@
     <string name="action_retry">Retry</string>
     <string name="common_load_failed">Failed to load</string>
     <string name="action_undo">Undo</string>
-    <!-- v1.0.75: AI Interacción en momentos -->
+    <!-- v1.0.75: AI 朋友圈互动 -->
     <string name="moment_sender_user">Me</string>
     <string name="moment_banner_liked_by">%1$s liked your post</string>
     <string name="moment_banner_commented_by">%1$s commented on your post</string>
@@ -276,7 +276,7 @@
     <string name="proxy_bypass_hint">Comma separated. Supports .suffix, *. wildcards and IP prefixes. Add local models and LAN services here.</string>
     <string name="proxy_test_action">Test connection</string>
     <string name="proxy_test_running">Testing…</string>
-    <string name="launcher_alias_muse">Muse</string>
+    <string name="launcher_alias_muse">Musa</string>
     <string name="proxy_test_invalid_config">Fill in a valid proxy address and port first</string>
     <string name="proxy_test_connected">Proxy reachable, </string>
     <string name="proxy_test_need_auth">Proxy requires authentication; check username and password</string>
@@ -319,4 +319,12 @@
     <string name="proactive_kind_care">Care</string>
     <string name="proactive_kind_share">Share</string>
     <string name="proactive_kind_milestone">Milestone</string>
+    <string name="migration_running">Upgrading data %1$d/%2$d</string>
+    <string name="migration_step">schema v%1$d → v%2$d</string>
+    <string name="migration_failed">The data upgrade hit a problem and is being handled by the system; try restarting</string>
+    <string name="settings_diagnostics_migration">Last data upgrade</string>
+    <string name="settings_diagnostics_migration_none">No migration recorded on this device</string>
+    <string name="settings_diagnostics_migration_summary">%1$d steps · %2$d ms total · slowest %3$d ms</string>
+    <string name="settings_diagnostics_migration_failed">Step %1$d failed</string>
+    <string name="msg_interrupted_note">[Interrupted]</string>
 </resources>

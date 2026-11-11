@@ -1,122 +1,122 @@
 # Muse v2.5.0
 
-Esta versión es la versión oficial posterior a la v2.4.6 y cubre todas las actualizaciones acumulativas desde la v2.4.2:AI Genere refuerzo de enlaces, actualización del sistema de herramientas, rediseño de la interfaz y el campo de entrada, carpeta de la base de conocimientos, extensión de importación de terceros y un lote de correcciones de estabilidad.
+本版为 v2.4.6 之后的正式版本，覆盖 v2.4.2 以来的全部累积更新：AI 生成链路加固、工具系统升级、输入栏与界面重设计、知识库文件夹、第三方导入扩展，以及一批稳定性修复。
 
-## nuevas características
+## 新功能
 
-### 1. Carpeta de la base de conocimientos
+### 1. 知识库文件夹
 
-La base de conocimientos ahora es compatible**carpeta independiente**: Puede crear, cambiar el nombre y eliminar carpetas (incluidas las carpetas vacías), los documentos se pueden clasificar en carpetas y el alcance se puede delimitar por carpetas durante la recuperación.
+知识库现在支持**独立文件夹**：可以新建、重命名、删除文件夹（含空文件夹），文档可归入文件夹，检索时可按文件夹圈定范围。
 
-- Las carpetas pueden existir de forma independiente y ya no están adjuntas a la ruta del documento.
-- Cuando el asistente vincula la base de conocimientos, además de toda la base de datos, también puede**Vincular a una carpeta específica**, varias carpetas se convierten cada una en dominios de búsqueda independientes sin interferencias.
-- Cuando no se selecciona ninguna carpeta, se mantiene el comportamiento de enlace original de toda la biblioteca y los usuarios antiguos no se darán cuenta.
+- 文件夹可独立存在，不再依附于文档路径。
+- 助手绑定知识库时，除整库外还可以**绑定到具体文件夹**，多个文件夹各自成为独立检索域，互不串扰。
+- 未选任何文件夹时保持原有整库绑定行为，老用户无感知。
 
-### 2. Extensión de importación de terceros
+### 2. 第三方导入扩展
 
-- **Nueva versión de exportación de fragmentos ChatGPT**(`chat.json` + Se pueden importar varios archivos de fragmentos directamente, los fragmentos se fusionarán automáticamente y se reconstruirá el orden de la sesión.
-- importar par**Chat grupal, asistente, configuración de proveedores.**La cobertura de campo es más completa y se dan razones específicas cuando falla.
+- **新版 ChatGPT 分片导出**（`chat.json` + 多个分片文件）可直接导入，自动合并分片、重建会话顺序。
+- 导入对**群聊、助手、提供商配置**的字段覆盖更全，失败时给出具体原因。
 
-### 3. Actualización del sistema de herramientas
+### 3. 工具系统升级
 
-- Salida larga de la herramienta (lectura de archivos,Shell, rastreo web, etc.) soporte**Captura y paginación**, el contenido muy largo se trunca con fidelidad y ya no actualiza la pantalla.
-- Nuevo**Herramienta de recuperación de sesiones**, el asistente puede buscar contenido histórico de conversaciones.
-- Los permisos de herramientas, los niveles de riesgo y las políticas de privacidad de datos se endurecen simultáneamente.
+- 工具长输出（文件读取、Shell、网页抓取等）支持**捕获与分页**，超长内容截断保真，不再刷屏。
+- 新增**会话检索工具**，助手可以搜索历史会话内容。
+- 工具权限、风险等级与数据隐私策略同步收紧。
 
-### 4. Refinamiento de consultas de búsqueda en Internet
+### 4. 联网搜索查询提炼
 
-Haz la entrada coloquial antes de buscar.**Conservador y refinado**:Quitar"ayudame""gracias"Como los clichés y las partículas modales, las consultas muy largas se truncan por palabra; Las palabras clave cortas y las consultas con patrones de oraciones claros se transmiten tal como están para evitar la eliminación accidental de información válida.
+搜索前对口语化输入做**保守提炼**：去掉"帮我""谢谢"等套话与语气词，超长查询按词截断；短关键词与带明确句式的查询原样透传，避免误删有效信息。
 
-### 5. Rediseño del campo de entrada
+### 5. 输入栏重设计
 
-- La isla de entrada se cambia a**Cápsula real**La forma se levanta en su totalidad y ya no se pega al borde inferior.
-- Cambie la clave de envío a**avión de papel sólido**El ícono (el único ícono sólido en todo el conjunto de íconos que se enfatiza deliberadamente, haciendo que la operación principal sea identificable de un vistazo) se adapta automáticamente a colores claros y oscuros según el tema.
-- Soporte de mensajes de usuario**Edición en línea**Botón de acceso directo.
-- comando de barra diagonal**finalización en línea**.
-- Varias operaciones dentro de una fila convergen en el menú "Más" y las burbujas están más limpias.
-- Mapa de mensajes, soporte de índice alfabético**Arrastrar posicionamiento continuo**.
+- 输入岛改为**真胶囊**造型并整体抬高，不再贴底边。
+- 发送键改为**实心纸飞机**图标（全图标集中唯一刻意加重的实心图标，主操作一眼可辨），随主题自动适配深浅色。
+- 用户消息支持**行内编辑**快捷按钮。
+- 斜杠命令**内联补全**。
+- 行内多个操作收敛进「更多」菜单，气泡更干净。
+- 消息地图、字母索引支持**拖动连续定位**。
 
-### 6. Mejoras en la página de traducción
+### 6. 翻译页改进
 
-- Reparar área de resultados de traducción**bloque vacío gris**.
-- Soporte de historial de traducción**Mantenga presionado para copiar**, la traducción y el texto original se copian juntos en un formato fijo.
+- 修复翻译结果区**灰色空块**。
+- 翻译历史支持**长按复制**，译文与原文按固定格式一并复制。
 
-### 7. Panel de vista previa del diseño de configuración de chat
+### 7. 聊天设置排版预览面板
 
-ajustes → Se ha agregado el área "Diseño de texto" del chat.**Vista previa en vivo**:Dos burbujas simuladas (usuario/AI) junto con el tamaño de fuente, el espaciado entre caracteres, las esquinas redondeadas, el banner, la marca de tiempo, el nombre del modelo,MOOD/Piensa que los interruptores de la pantalla cambian instantáneamente, lo que ves es lo que obtienes.
+设置 → 聊天的「正文排版」区新增**实时预览**：两个模拟气泡（用户/AI）随字号、字间距、气泡圆角、通栏、时间戳、模型名、MOOD/思考显示开关即时变化，所见即所得。
 
-### 8. efecto de vidrio líquido
+### 8. 液态玻璃效果
 
-Se agregó el modo visual "Vidrio líquido" (Configuración → Apariencia): barra superior, campo de entrada y**burbuja de mensaje**Cambiado a una textura de vidrio, el mensaje aparece suavemente en perspectiva mientras rueda debajo del vidrio.
+新增「液态玻璃」视觉模式（设置 → 外观）：顶栏、输入栏与**消息气泡**改为玻璃质感，消息从玻璃下方滚过时呈现柔和透视。
 
-En referencia a la solución de estilo dual de Operit AI, proporciona dos texturas de vidrio y tres niveles de intensidad, que los usuarios pueden elegir según el rendimiento del dispositivo:
+参考 Operit AI 的双风格方案，提供两种玻璃质感与三档强度，由用户按设备性能自选：
 
-- **vaso de agua**: Delgado y translúcido, con una gran cantidad de contenido revelado, adecuado para usuarios a quienes les gusta una apariencia y sensación claras.
-- **vidrio esmerilado**: Blanco lechoso espeso (predeterminado), textura clásica de vidrio esmerilado
-- **nivel de fuerza**: Bajo/Medio/Alto —— Para dispositivos de gama baja, se recomienda seleccionar "Bajo" o apagarlo directamente para obtener la mejor suavidad.
+- **水玻璃**：轻薄透亮，透出内容多，适合喜欢清透观感的用户
+- **磨砂玻璃**：厚重乳白（默认），经典毛玻璃质感
+- **强度档位**：低 / 中 / 高 —— 低端设备建议选「低」或直接关闭，以获得最佳流畅度
 
-Android 10+ Disponible; Los dispositivos más antiguos cambian automáticamente a sombreado translúcido. Migración automática de conmutadores booleanos antiguos (en→helado, apagado→cerrar).
+Android 10+ 可用；旧设备自动降级为半透明着色。旧版布尔开关自动迁移（开→磨砂，关→关闭）。
 
-## Correcciones de estabilidad
+## 稳定性修复
 
-### 1. Interrupción de la transmisión y reintento de endurecimiento del enlace
+### 1. 流式中断与重试链路加固
 
-- Nuevo**Vigilancia del primer evento**: Cuando el primer evento no se recibe durante mucho tiempo después de enviar la solicitud, se interrumpirá y avisará activamente y ya no girará infinitamente.
-- Provider La clasificación de errores es más detallada y se manejan la cancelación de carrera, el reintento de generación y la continuación y reubicación de llamadas de herramientas; "Desactivar el pensamiento profundo" ya no se disfraza como el razonamiento de nivel más bajo.
+- 新增**首事件看门狗**：请求发出后长时间收不到第一个事件时主动中断并提示，不再无限转圈。
+- Provider 错误分类更细，取消竞态、重试代际、工具调用续片归位均有处理；「关闭深度思考」不再伪装成最低档推理。
 
-### 2. Programación en segundo plano y coherencia de escritura de canales
+### 2. 后台调度与渠道写入一致性
 
-- Agregado antes de que finalice el servicio de recepción.**puerta de consistencia**: Espere hasta que se complete la escritura antes de detenerse para evitar perder mensajes.
-- Alineación de rutas de escritura para respaldo, resumen diario, mensajes activos, tareas programadas y programación de chat grupal.inbox Restaurar los límites es más estable.
+- 前台服务停止前增加**一致性门**：待写入完成才停止，避免丢消息。
+- 备份、每日总结、主动消息、定时任务、群聊调度的写入路径对齐，inbox 恢复边界更稳。
 
-### 3. Temperatura de muestreo y salida del presupuesto de salida
+### 3. 采样温度与输出预算出口兜底
 
-- Algunos proveedores `temperature` Con un rango abierto (como SenseTime 2.0 es ilegal), si el control deslizante está lleno o el cartucho de caracteres tiene alguna temperatura, se emitirá HTTP 400. Ahora la exportación está sujeta de manera uniforme.
-- Cuando el modelo no declara un límite superior de salida, todo el contexto ya no se considera como `max_tokens`, devuelve el valor predeterminado del proveedor, corrige `max_tokens exceeds the limit`.
+- 部分供应商对 `temperature` 用开区间（如商汤 2.0 非法），滑块拉满或角色卡带任意温度会 HTTP 400，现在出口统一夹取。
+- 模型未声明输出上限时不再把整段上下文当 `max_tokens`，交回 Provider 默认值，修复 `max_tokens exceeds the limit`。
 
-### 4. Las respuestas siguen automáticamente el desplazamiento
+### 4. 回复自动跟随滚动
 
-Siga automáticamente los que antes habrían estado al final del área de mensajes."Pensando/Marcador de posición/tarjeta de tarea"El artículo se interrumpe y no sigue durante todo el período de respuesta. Llega ahora/Después de cruzar el final del área de mensajes, se contará hasta el final y se seguirá automáticamente, y el usuario se detendrá inmediatamente al deslizar el dedo hacia arriba.
+自动跟随此前会被消息区尾部的"思考中/占位/任务卡"项打断，整段回复期间不跟随。现在到/越过消息区末尾即算到底并主动跟随，用户上滑仍立即停止。
 
-### 5. Fantasma en blanco después del cierre del proceso de herramienta
+### 5. 工具过程关闭后的幽灵空白
 
-Después de desactivar "Mostrar proceso de llamada de herramienta", solo los mensajes de carga de herramienta se ocultan en la capa de renderizado, pero aún ocupan los elementos de la lista. Cada rueda de herramientas continua acumula un espacio entre mensajes, dejando un gran espacio entre los bloques de pensamiento. Ahora estos mensajes no se ingresan en la lista de renderizado y el espacio en blanco desaparece por completo.
+关闭「显示工具调用过程」后，只有工具载荷的消息在渲染层被隐藏但仍占据列表项，连续工具轮每条叠一份消息间距，在思考块之间叠出大段空白。现在这些消息直接不进渲染列表，空白彻底消失。
 
-### 6. Gesto de retorno del sistema de base de conocimientos
+### 6. 知识库系统返回手势
 
-Utilizar el gesto de retroceso del sistema en una carpeta o en la vista de la base de conocimientos antes salía directamente de toda la página de la base de conocimientos. Ahora salga en el mismo nivel que la tecla de retorno en la barra superior: primero borre la búsqueda → Volver a la carpeta anterior → Volver a la lista de la base de conocimientos → Salida.
+在文件夹或知识库视图中使用系统返回手势，此前会直接退出整个知识库页面。现在与顶栏返回键同层退出：先清搜索 → 返回上一级文件夹 → 返回知识库列表 → 退出。
 
-### 7. Los temas oscuros y claros cambian instantáneamente con el sistema.
+### 7. 深浅色主题跟随系统即时切换
 
-Cuando la aplicación está configurada en "Seguir el sistema", el sistema debe salir y volver a ingresar antes de que el cambio entre colores oscuros y claros surta efecto (Manifest Declarar el manejo de cambios de configuración de uiMode hace que la actividad no se reconstruya). El cambio ahora entra en vigor inmediatamente y no es necesario reiniciar.
+应用设为「跟随系统」时，系统切换深浅色此前需要退出重进才能生效（Manifest 声明了 uiMode 配置变更处理导致 Activity 不重建）。现在切换立即生效，无需重启。
 
-### 8. No se puede acceder al control deslizante del mapa de mensajes
+### 8. 消息地图滑条无法唤出
 
-El punto de acceso táctil del mapa de mensajes se redujo de 36 dp a 24 dp y se pegó al borde derecho de la pantalla. Estaba cubierto por la banda de gestos de retorno del sistema Android 10+ (aproximadamente 20 dp). El área táctil real era insuficiente, lo que provocaba que no se pudiera activar el control deslizante durante conversaciones largas. Ahora el punto de acceso se amplía a 40 dp y se retrae para evitar la banda de gestos del sistema. Se puede acceder arrastrándolo normalmente; los clics en la fila de operación en la parte inferior del mensaje no se ven afectados.
+消息地图的触摸热区从 36dp 收窄到 24dp 且贴死屏幕右缘后，被 Android 10+ 的系统返回手势带（约 20dp）覆盖，实际可触面积不足，导致长会话中滑条完全唤不出来。现在热区加宽到 40dp 并内缩避开系统手势带，正常拖动即可唤出；消息底部操作行的点击不受影响。
 
-### 9. Generar excepción de notificación de progreso
+### 9. 生成进度通知异常
 
-Solucione tres tipos de problemas de notificación:
+修复三类通知问题：
 
-- **El número de palabras no cambia.**: Cuando el servicio de primer plano actualiza la notificación, siempre se transmiten 0 caracteres, lo que cubre la cantidad real de caracteres en la capa de la interfaz de usuario. El servicio ahora muestra la cantidad real de palabras generadas y el progreso es visible dinámicamente.
-- **residuo de notificación**: Una vez completada la generación, la barra de progreso dinámica con la misma cantidad de palabras restantes en la barra de notificaciones permanece sin cambios (incluso cuando se cierra la aplicación). El motivo es que la notificación del servicio de recepción no se puede cancelar individualmente y debe enviarse primero a la recepción y luego borrarse. Ahora el servicio se limpia sincrónicamente cuando se detiene y también se limpia cuando el sistema lo cierra a la fuerza.
-- **Las notificaciones se acumulan**: El problema de la coexistencia de múltiples notificaciones se eliminará con la solución anterior.
+- **字数不变化**：前台服务更新通知时恒传 0 字符，覆盖了 UI 层的真实字数。现在服务展示真实的已生成字数，进度动态可见。
+- **通知残留**：生成结束后通知栏残留字数不变的动态进度条（应用退出也在）。原因是前台服务的通知无法被单独取消，必须先退前台再清理。现在服务停止时同步清理，服务被系统强杀时也兼底清理。
+- **通知堆积**：多条通知并存的问题随上述修复一并消除。
 
-### 10. Interrupción de generación de fondo
+### 10. 后台生成中断
 
-El enlace keepalive en segundo plano (servicio en primer plano + wakelock + rutina de nivel de aplicación) está completo. Algunas ROM radicales (Xiaomi/Huawei, etc.) aún pueden restringir la red en segundo plano y causar interrupciones en la transmisión. Se recomienda agregar Muse a la lista blanca de optimización de batería./Permitir la ejecución en segundo plano. El contenido después de la interrupción se conserva automáticamente a través del punto de control y se puede reanudar al regresar a la recepción.
+后台保活链路（前台服务 + wakelock + 应用级协程）已经完整。部分激进 ROM（小米/华为等）仍可能限制后台网络导致流式中断，建议将 Muse 加入电池优化白名单/允许后台运行。中断后的内容已通过检查点自动保留，回前台可续传。
 
-### 11. Otros
+### 11. 其他
 
-- Corrección de atribución de altavoz para análisis de memoria, alineación de puerta de escritura de memoria.
-- El tiempo de entrega de Binder de la pantalla virtual está alineado con los campos del protocolo; el Agente del teléfono celular realiza una reversión jerárquica (Root/Shell degradar) y mostrar falla en la actualización.
-- Complete y corrija 7 cadenas de idiomas; documentación de conocimientos integrada y actualizaciones del catálogo de modelos (2026-09-30 versión,35 provider / 1024 modelo).
+- 记忆解析的说话人归属修正，记忆写入门禁对齐。
+- 虚拟屏 Binder 交接时序与协议字段对齐；手机 Agent 执行分级回退（Root/Shell 降级）与 display 失效刷新。
+- 补齐并修正 7 语言字符串；内置知识文档与模型目录更新（2026-09-30 版，35 provider / 1024 模型）。
 
-## Información de construcción
+## 构建信息
 
-- Versión:2.5.0 (250)
-- Versión de la base de datos:109
-- Distribución:arm64-v8a / armeabi-v7a / universal
+- 版本：2.5.0 (250)
+- 数据库版本：109
+- 分发：arm64-v8a / armeabi-v7a / universal
 
 ---
 # Muse v2.5.0 (English)

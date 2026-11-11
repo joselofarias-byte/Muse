@@ -3,9 +3,9 @@ package io.zer0.muse.channel
 import java.io.ByteArrayOutputStream
 
 /**
- * v2.0.1: Códec de cuadro pbbp2 de conexión larga Feishu — Formato de línea protobuf manuscrita(Sólo se cubren los campos utilizados).
+ * v2.0.1: 飞书长连接 pbbp2 帧编解码 — 手写 protobuf 线格式(仅覆盖所用字段)。
  *
- * estructura del marco(protobuf definición):
+ * 帧结构(protobuf 定义):
  * ```
  * message Frame {
  *   uint64 SeqID = 1;      uint64 LogID = 2;
@@ -15,14 +15,14 @@ import java.io.ByteArrayOutputStream
  *   bytes payload = 8;
  * }
  * ```
- * comportamiento de acuerdo:@larksuiteoapi/node-sdk(WSClient).
+ * 协议行为:@larksuiteoapi/node-sdk(WSClient)。
  */
 internal object FeishuPbbp2 {
 
-    /** marco de control(ping/pong). */
+    /** 控制帧(ping/pong)。 */
     const val METHOD_CONTROL = 0
 
-    /** marco de datos(evento). */
+    /** 数据帧(事件)。 */
     const val METHOD_DATA = 1
 
     data class Header(val key: String, val value: String)
@@ -40,7 +40,7 @@ internal object FeishuPbbp2 {
         fun header(key: String): String? = headers.firstOrNull { it.key == key }?.value
     }
 
-    /** Decodificar un marco(tolerancia a fallas:Los campos desconocidos se omiten por tipo de cable). */
+    /** 解码一帧(容错:未知字段按 wire type 跳过)。 */
     fun decode(bytes: ByteArray): Frame {
         var pos = 0
         var seqId = 0L
@@ -116,7 +116,7 @@ internal object FeishuPbbp2 {
         )
     }
 
-    /** codificar un cuadro(Se utiliza para el paquete de devolución de acuse de recibo.:Mantener los campos del marco original + reemplazar payload). */
+    /** 编码一帧(用于 ack 回包:保留原帧字段 + 替换 payload)。 */
     fun encode(frame: Frame): ByteArray {
         val out = ByteArrayOutputStream()
         writeVarintField(out, 1, frame.seqId)
@@ -171,7 +171,7 @@ internal object FeishuPbbp2 {
         return Header(key, value)
     }
 
-    // ---- protobuf lectura y escritura de bajo nivel ----
+    // ---- protobuf 低层读写 ----
 
     private fun readVarint(bytes: ByteArray, start: Int): Pair<Long, Int> {
         var result = 0L

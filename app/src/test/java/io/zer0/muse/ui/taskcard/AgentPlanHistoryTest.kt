@@ -14,23 +14,23 @@ class AgentPlanHistoryTest {
         val created = toolMessage(
             at = 100L,
             name = "task_plan",
-            arguments = """{"title":"versión de lanzamiento","steps":[{"title":"implementar reparación","description":"código completo"}]}""",
-            result = "Plan creado, planId: plan-1",
+            arguments = """{"title":"发布版本","steps":[{"title":"实现修复","description":"完成代码"}]}""",
+            result = "计划已创建, planId: plan-1",
         )
         val updated = toolMessage(
             at = 300L,
             name = "update_plan_step",
-            arguments = """{"planId":"plan-1","stepIndex":0,"status":"done","result":"Completado"}""",
-            result = "Pasos actualizados",
+            arguments = """{"planId":"plan-1","stepIndex":0,"status":"done","result":"已完成"}""",
+            result = "步骤已更新",
         )
 
         val plans = restoreAgentPlansFromHistory(listOf(created, updated))
         val plan = plans.getValue("plan-1")
 
-        assertEquals("versión de lanzamiento", plan.title)
+        assertEquals("发布版本", plan.title)
         assertEquals(created.id.toString(), plan.messageId)
         assertEquals(AgentPlanStepStatus.DONE, plan.steps.single().status)
-        assertEquals("Completado", plan.steps.single().result)
+        assertEquals("已完成", plan.steps.single().result)
         assertEquals(300L, plan.steps.single().finishedAt)
     }
 
@@ -39,7 +39,7 @@ class AgentPlanHistoryTest {
         val emptyPlan = toolMessage(
             at = 100L,
             name = "task_plan",
-            arguments = """{"title":"plano vacio","steps":[]}""",
+            arguments = """{"title":"空计划","steps":[]}""",
             result = "planId: empty-plan",
         )
 

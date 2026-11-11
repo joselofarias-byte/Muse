@@ -4,41 +4,41 @@ import io.zer0.muse.data.SecureKeyStore
 import kotlinx.serialization.Serializable
 
 /**
- * Phase 8.9: Configuración de copia de seguridad en la nube(S3 + WebDAV Elige uno).
+ * Phase 8.9: 云备份配置(S3 + WebDAV 二选一)。
  *
- * Almacenado en KEY_CLOUD_BACKUP_CONFIG en el repositorio de configuración,JSON formato.
- * type=none Indica que la copia de seguridad en la nube no está configurada;type=s3 usar S3Client;type=webdav Utilice WebDavClient.
+ * 存储在 SettingsRepository 的 KEY_CLOUD_BACKUP_CONFIG 中,JSON 格式。
+ * type=none 表示未配置云备份;type=s3 用 S3Client;type=webdav 用 WebDavClient。
  *
- * H-001: s3SecretKey / webdavPassword Credenciales sensibles involucradas,Serializado por SettingsRepository para JSON
- * Deberías ir antes de realizar un pedido. [SecureKeyStore] cifrado. Esta clase de datos solo lleva definiciones de campos.,Pase de cifrado y descifrado [encrypted] /
- * [decrypted] Los métodos de miembros se completan en los límites de serialización.:Antes de escribir en DataStore `encrypted()`,despues de leer `decrypted()`.
+ * H-001: s3SecretKey / webdavPassword 涉及敏感凭据,经 SettingsRepository 序列化为 JSON
+ * 落盘前应走 [SecureKeyStore] 加密。本数据类只承载字段定义,加解密通过 [encrypted] /
+ * [decrypted] 成员方法在序列化边界完成:写入 DataStore 前 `encrypted()`,读出后 `decrypted()`。
  */
 @Serializable
 data class CloudBackupConfig(
     val type: String = "none", // none / s3 / webdav
-    // S3 Configuración
+    // S3 配置
     val s3Endpoint: String = "",
     val s3Region: String = "",
     val s3Bucket: String = "",
     val s3AccessKey: String = "",
     val s3SecretKey: String = "",
-    val s3KeyPrefix: String = "muse/", // Prefijo de clave de objeto(Directorio)
-    // WebDAV Configuración
+    val s3KeyPrefix: String = "muse/", // 对象 key 前缀(目录)
+    // WebDAV 配置
     val webdavUrl: String = "",
     val webdavUsername: String = "",
     val webdavPassword: String = "",
-    val webdavPath: String = "/muse/", // directorio remoto
-    // Universales
-    val autoSync: Boolean = false, // Ya sea para sincronizar automáticamente(Carga programada)
-    /** v1.98: Intervalo de sincronización automática(horas). El valor predeterminado es 24 horas. solo si autoSync=true eficaz cuando. */
+    val webdavPath: String = "/muse/", // 远程目录
+    // 通用
+    val autoSync: Boolean = false, // 是否自动同步(定时上传)
+    /** v1.98: 自动同步间隔(小时)。默认 24 小时。仅当 autoSync=true 时生效。 */
     val autoSyncIntervalHours: Int = 24,
-    val lastSyncAt: Long = 0, // Marca de tiempo de la última sincronización
-    /** v1.120: Contraseña de cifrado de copia de seguridad en la nube(El usuario puede configurar). Las copias de seguridad en la nube que no son del espacio-tiempo están cifradas con AES-256-GCM(PBKDF2 clave derivada),Esta contraseña se puede descifrar en todos los dispositivos. */
+    val lastSyncAt: Long = 0, // 上次同步时间戳
+    /** v1.120: 云备份加密密码(用户可设)。非空时云备份用 AES-256-GCM 加密(PBKDF2 派生密钥),跨设备可用此密码解密。 */
     val backupPassword: String = "",
     /**
-     * B-9: ¿El usuario alguna vez estableció una contraseña de respaldo?(Desacoplamiento del texto sin formato de contraseña).
-     * La capa de persistencia se establece al escribir backupPassword.isNotEmpty();Si se pierde la clave del almacén de claves, el
-     * decrypt Volver vacío,Todavía se puede identificar con esta marca."Contraseña no válida",Rechazando así las cargas de degradación de texto claro.
+     * B-9: 用户是否曾设置过备份密码(与密码明文解耦)。
+     * 持久化层写入时置为 backupPassword.isNotEmpty();若 Keystore 密钥丢失导致
+     * decrypt 返回空,仍能通过本标志识别"密码失效",从而拒绝明文降级上传。
      */
     val backupPasswordSet: Boolean = false,
 ) {
@@ -49,8 +49,8 @@ data class CloudBackupConfig(
     }
 
     /**
-     * H-001: Devuelve s3SecretKey/webdavPassword cifrada(ir [SecureKeyStore.encrypt])copia de,
-     * Por llamar antes que la perseverancia. Los valores nulos se dejan como están.(No cifrar valores nulos);cifrado(Hay enc_v1: prefijo)Déjalo como está.
+     * H-001: 返回 s3SecretKey / webdavPassword 已加密(走 [SecureKeyStore.encrypt])的副本,
+     * 供持久化前调用。空值原样保留(不加密空值);已加密(有 enc_v1: 前缀)原样保留。
      */
     suspend fun encrypted(): CloudBackupConfig = copy(
         s3SecretKey = SecureKeyStore.encrypt(s3SecretKey),
@@ -59,8 +59,8 @@ data class CloudBackupConfig(
     )
 
     /**
-     * H-001: Devuelve s3SecretKey / webdavPassword descifrado(ir [SecureKeyStore.decrypt])copia de,
-     * Se llama después de leer desde la capa de persistencia. Los antiguos campos de texto sin formato se transmiten de forma transparente mediante descifrado.(Compatible con la migración).
+     * H-001: 返回 s3SecretKey / webdavPassword 已解密(走 [SecureKeyStore.decrypt])的副本,
+     * 供从持久化层读出后调用。旧版明文字段由 decrypt 透传(迁移兼容)。
      */
     suspend fun decrypted(): CloudBackupConfig = copy(
         s3SecretKey = SecureKeyStore.decrypt(s3SecretKey),

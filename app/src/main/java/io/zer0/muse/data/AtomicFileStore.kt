@@ -8,25 +8,25 @@ import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 
 /**
- * Escrituras atómicas y herramientas de aislamiento de corrupción para archivos pequeños en tiempo de ejecución.
+ * 运行时小型文件的原子写入和损坏隔离工具。
  *
- * Primero escriba un archivo temporal que se encuentre en el mismo directorio que el archivo de destino y sincronice el contenido del archivo antes de reemplazarlo;
- * El archivo oficial no se sobrescribirá directamente cuando falle el reemplazo. Funciona con instantáneas de sesión, índices, registros, etc.
- * Estado recuperable, no reemplaza el flujo de exportación SAF ni el descargador de archivos grandes.
+ * 写入先落到目标文件同目录的临时文件，并在替换前同步文件内容；
+ * 替换失败时不会直接覆盖正式文件。适用于会话快照、索引和注册表等
+ * 可恢复状态，不替代 SAF 导出流或大文件下载器。
  */
 object AtomicFileStore {
 
     private const val TAG = "AtomicFileStore"
 
-    /** Escritura atómica de texto UTF-8 sin sobrescritura directa en el archivo de destino. */
+    /** 原子写入 UTF-8 文本，不在目标文件上做直接覆盖写。 */
     fun writeText(target: File, text: String) {
         writeBytes(target, text.toByteArray(Charsets.UTF_8))
     }
 
-    /** Para escribir bytes de forma atómica, el archivo temporal y el archivo de destino deben estar en el mismo directorio. */
+    /** 原子写入字节，临时文件和目标文件必须位于同一目录。 */
     fun writeBytes(target: File, bytes: ByteArray) {
         val parent = target.parentFile ?: error("atomic file target must have a parent")
-        check(parent.exists() || parent.mkdirs()) { "No se puede crear el directorio de archivos atómicos: ${parent.absolutePath}" }
+        check(parent.exists() || parent.mkdirs()) { "无法创建原子文件目录: ${parent.absolutePath}" }
         val temp = File(parent, ".${target.name}.${System.nanoTime()}.tmp")
         try {
             FileOutputStream(temp).use { output ->
@@ -41,8 +41,8 @@ object AtomicFileStore {
     }
 
     /**
-     * Saque los archivos no resueltos de las rutas oficiales y conserve el contenido original para su diagnóstico o recuperación manual.
-     * @return El expediente en cuarentena; devuelve nulo si el objetivo no existe.
+     * 将无法解析的文件移出正式路径，保留原始内容供诊断或人工恢复。
+     * @return 隔离后的文件；目标不存在时返回 null。
      */
     @Suppress("TooGenericExceptionCaught")
     fun quarantine(file: File, reason: String): File? {
@@ -53,13 +53,13 @@ object AtomicFileStore {
             if (file.renameTo(quarantined)) {
                 quarantined
             } else {
-                // Algunos sistemas de archivos Android/Robolectric no admiten renameTo; elimine los archivos oficiales después de copiarlos en el mismo directorio.
+                // 某些 Android/Robolectric 文件系统不支持 renameTo；同目录复制后删除正式文件。
                 file.copyTo(quarantined, overwrite = false)
-                check(file.delete()) { "No se pueden eliminar archivos para poner en cuarentena: ${file.absolutePath}" }
+                check(file.delete()) { "无法删除待隔离文件: ${file.absolutePath}" }
                 quarantined
             }
         } catch (error: Exception) {
-            Logger.w(TAG, "Falló la cuarentena del archivo corrupto: ${file.name}", error)
+            Logger.w(TAG, "隔离损坏文件失败: ${file.name}", error)
             null
         }
     }
@@ -73,9 +73,9 @@ object AtomicFileStore {
                 StandardCopyOption.REPLACE_EXISTING,
             )
         } catch (unsupported: AtomicMoveNotSupportedException) {
-            // Algunos sistemas de archivos de Android no son compatibles con ATOMIC_MOVE; todavía uso el mismo reemplazo de directorio,
-            // Nunca recurra a writeText directamente para evitar dejar contenido a medio escribir en el archivo de destino.
-            Logger.w(TAG, "El sistema de archivos no admite el movimiento atómico, utilice el mismo reemplazo de directorio: ${target.name}", unsupported)
+            // 某些 Android 文件系统不支持 ATOMIC_MOVE；仍使用同目录替换，
+            // 绝不退回到直接 writeText，避免目标文件留下半写内容。
+            Logger.w(TAG, "文件系统不支持原子移动，使用同目录替换: ${target.name}", unsupported)
             Files.move(temp.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING)
         }
     }

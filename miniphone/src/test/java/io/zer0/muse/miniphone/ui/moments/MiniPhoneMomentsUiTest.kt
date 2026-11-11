@@ -15,6 +15,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeRight
+import io.zer0.muse.miniphone.R
 import io.zer0.muse.miniphone.ui.chat.MiniPhoneChatTags
 import io.zer0.muse.miniphone.ui.chat.MiniPhoneGalleryViewer
 import io.zer0.muse.miniphone.ui.chat.galleryCounterOf
@@ -29,16 +30,22 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * Representación de la verificación de la página del círculo de amigos:El estado vacío, cómo organizar la cuadrícula de nueve cuadrados y similares cambian con los clics.
+ * 朋友圈页的渲染验证:空态、九宫格怎么排、点赞计数随点击变化。
  *
- * La afirmación sólo se reduce a "¿no puedes verlo/dónde está colocado/si el número es correcto?",No mires los colores y los píxeles.
+ * 断言只落在「看不看得见 / 摆在哪个位置 / 数字对不对」上,不看颜色与像素。
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
 class MiniPhoneMomentsUiTest {
 
+    private val context: android.content.Context
+        get() = androidx.test.core.app.ApplicationProvider.getApplicationContext()
+
     @get:Rule
     val compose = createComposeRule()
+
+    private fun res(@androidx.annotation.StringRes id: Int): String =
+        androidx.test.core.app.ApplicationProvider.getApplicationContext<android.content.Context>().getString(id)
 
     @Test
     fun emptyTimelineShowsEmptyStateUnderTheCover() {
@@ -46,7 +53,7 @@ class MiniPhoneMomentsUiTest {
 
         compose.onNodeWithTag(MiniPhoneMomentsTags.COVER).assertExists()
         compose.onNodeWithTag(MiniPhoneMomentsTags.EMPTY).assertIsDisplayed()
-        compose.onNodeWithText("Aún no hay actualizaciones").assertIsDisplayed()
+        compose.onNodeWithText(res(R.string.mp_moments_empty_title)).assertIsDisplayed()
         compose.onNodeWithTag(MiniPhoneMomentsTags.commentInput("m1")).assertDoesNotExist()
     }
 
@@ -54,14 +61,14 @@ class MiniPhoneMomentsUiTest {
     fun cardRendersAuthorContentAndImages() {
         render(
             MomentsUiState(
-                moments = listOf(momentUi(content = "Las nubes están muy bajas hoy.", images = listOf("content://img/0"))),
+                moments = listOf(momentUi(content = "今天的云很低", images = listOf("content://img/0"))),
                 isLoaded = true,
             ),
         )
 
         compose.onNodeWithTag(MiniPhoneMomentsTags.moment("m1")).assertExists()
         compose.onNodeWithTag(MiniPhoneMomentsTags.content("m1"), useUnmergedTree = true)
-            .assertTextEquals("Las nubes están muy bajas hoy.")
+            .assertTextEquals("今天的云很低")
         compose.onNodeWithTag(MiniPhoneMomentsTags.image("m1", 0)).assertExists()
     }
 
@@ -77,7 +84,7 @@ class MiniPhoneMomentsUiTest {
                         onToggleLike = { id ->
                             state = state.copy(
                                 moments = state.moments.map { row ->
-                                    if (row.id == id) row.copy(likes = listOf("Ziqi"), likedByMe = true) else row
+                                    if (row.id == id) row.copy(likes = listOf("子奇"), likedByMe = true) else row
                                 },
                             )
                         },
@@ -89,7 +96,7 @@ class MiniPhoneMomentsUiTest {
         compose.onNodeWithTag(MiniPhoneMomentsTags.likeCount("m1"), useUnmergedTree = true).assertTextEquals("0")
         compose.onNodeWithTag(MiniPhoneMomentsTags.likeButton("m1")).performClick()
         compose.onNodeWithTag(MiniPhoneMomentsTags.likeCount("m1"), useUnmergedTree = true).assertTextEquals("1")
-        compose.onNodeWithTag(MiniPhoneMomentsTags.likers("m1"), useUnmergedTree = true).assertTextEquals("❤️ Ziqi")
+        compose.onNodeWithTag(MiniPhoneMomentsTags.likers("m1"), useUnmergedTree = true).assertTextEquals("❤️ 子奇")
     }
 
     @Test
@@ -100,13 +107,13 @@ class MiniPhoneMomentsUiTest {
             compose.onNodeWithTag(MiniPhoneMomentsTags.image("m1", index)).getBoundsInRoot()
         }
 
-        // Tres imágenes en la primera fila.:mismo top,left a la derecha
+        // 第一行三张:同一 top,left 依次向右
         assertEquals(bounds[0].top.value, bounds[1].top.value, TOLERANCE)
         assertEquals(bounds[1].top.value, bounds[2].top.value, TOLERANCE)
-        assertTrue("El segundo debe estar a la derecha del primero.", bounds[1].left > bounds[0].left)
-        assertTrue("El tercero debe estar a la derecha del segundo.", bounds[2].left > bounds[1].left)
-        // El cuarto se mueve a la siguiente línea.,Y se fue alineado con el primero.
-        assertTrue("El cuarto debe cambiarse a una nueva línea.", bounds[3].top > bounds[0].top)
+        assertTrue("第二张应当在第一张右边", bounds[1].left > bounds[0].left)
+        assertTrue("第三张应当在第二张右边", bounds[2].left > bounds[1].left)
+        // 第四张换到下一行,并与第一张左对齐
+        assertTrue("第四张应当换行", bounds[3].top > bounds[0].top)
         assertEquals(bounds[0].left.value, bounds[3].left.value, TOLERANCE)
     }
 
@@ -143,38 +150,47 @@ class MiniPhoneMomentsUiTest {
         compose.onNodeWithTag(MiniPhoneMomentsTags.COMPOSE_ENTRY).performClick()
         compose.onNodeWithTag(MiniPhoneMomentsTags.PUBLISH_SCREEN).assertExists()
         compose.onNodeWithTag(MiniPhoneMomentsTags.PUBLISH_VISIBLE_SELF).performClick()
-        compose.onNodeWithTag(MiniPhoneMomentsTags.PUBLISH_INPUT).performTextInput("solo para ti")
+        compose.onNodeWithTag(MiniPhoneMomentsTags.PUBLISH_INPUT).performTextInput("只给自己看")
         compose.onNodeWithTag(MiniPhoneMomentsTags.PUBLISH_CONFIRM).performClick()
 
-        assertEquals(Triple("solo para ti", 0, true), published)
+        assertEquals(Triple("只给自己看", 0, true), published)
     }
 
     @Test
     fun gridColumnsFollowTheLayoutRule() {
-        assertEquals("Dar una imagen grande uno por uno", 1, momentGridColumns(1))
-        assertEquals("Dos hojas y dos columnas.", 2, momentGridColumns(2))
-        assertEquals("Tres cartas por línea", 3, momentGridColumns(3))
-        assertEquals("cuatro 2×2", 2, momentGridColumns(4))
-        assertEquals("Nueve cartas en tres columnas.", 3, momentGridColumns(9))
+        assertEquals("一张给一张大图", 1, momentGridColumns(1))
+        assertEquals("两张两列", 2, momentGridColumns(2))
+        assertEquals("三张一行", 3, momentGridColumns(3))
+        assertEquals("四张 2×2", 2, momentGridColumns(4))
+        assertEquals("九张三列", 3, momentGridColumns(9))
     }
 
     @Test
     fun likersLineFoldsLongLists() {
-        assertEquals("❤️ A Yuan, Xiao Man, Lao Chen", likersLineOf(listOf("Ayuan", "Xiaoman", "Lao Chen")))
-        assertEquals("solo hay uno a quien le importa", "❤️ Ayuan", likersLineOf(listOf("Ayuan")))
-        assertEquals("Si a nadie le gusta esta línea, no existirá tal cosa.", "", likersLineOf(emptyList()))
+        val sep = context.getString(R.string.mp_likers_separator)
+        val mark = "\u2764\ufe0f "
+        assertEquals(mark + listOf("阿远", "小满", "老陈").joinToString(sep), likersLineOf(context, listOf("阿远", "小满", "老陈")))
+        assertEquals("只有一个也带心", mark + "阿远", likersLineOf(context, listOf("阿远")))
+        assertEquals("没人点赞就没有这一行", "", likersLineOf(context, emptyList()))
 
-        val twelve = (1..12).map { index -> "gente$index" }
-        assertEquals("más de diez personas:Primeros nueve + 12 más", "❤️ " + twelve.take(9).joinToString(",") + ", esperando a 12 personas", likersLineOf(twelve))
-        assertFalse("La décima persona no debería aparecer.", likersLineOf(twelve).contains("gente10"))
+        val twelve = (1..12).map { index -> "人$index" }
+        val line = likersLineOf(context, twelve)
+        assertEquals(
+            "超过上限:前九个 + 总人数",
+            mark + twelve.take(9).joinToString(sep) + sep + context.getString(R.string.mp_likers_fold, 12),
+            line,
+        )
+        assertFalse("第十个人不该出现", line.contains("人10"))
     }
 
     @Test
     fun likersRendersAsOneLine() {
-        render(MomentsUiState(moments = listOf(momentUi(likes = listOf("Ayuan", "Xiaoman", "Lao Chen"))), isLoaded = true))
+        render(MomentsUiState(moments = listOf(momentUi(likes = listOf("阿远", "小满", "老陈"))), isLoaded = true))
 
         compose.onNodeWithTag(MiniPhoneMomentsTags.likers("m1"), useUnmergedTree = true)
-            .assertTextEquals("❤️ A Yuan, Xiao Man, Lao Chen")
+            .assertTextEquals(
+                "❤️ " + listOf("阿远", "小满", "老陈").joinToString(context.getString(R.string.mp_likers_separator)),
+            )
     }
 
     @Test
@@ -193,8 +209,8 @@ class MiniPhoneMomentsUiTest {
         compose.waitForIdle()
 
         compose.onNodeWithTag(MiniPhoneMomentsTags.COMMENT_DELETE_DIALOG).assertIsDisplayed()
-        compose.onNodeWithText("Este comentario y las respuestas a continuación serán eliminados.").assertIsDisplayed()
-        assertEquals("No borrar antes de confirmar", null, deleted)
+        compose.onNodeWithText(res(R.string.mp_moment_delete_comment_hint)).assertIsDisplayed()
+        assertEquals("确认之前不删", null, deleted)
 
         compose.onNodeWithTag(MiniPhoneMomentsTags.COMMENT_DELETE_CONFIRM).performClick()
         compose.waitForIdle()
@@ -216,7 +232,7 @@ class MiniPhoneMomentsUiTest {
         compose.onNodeWithTag(MiniPhoneMomentsTags.COMMENT_MENU_ACTION).assertDoesNotExist()
         compose.onNodeWithTag(MiniPhoneMomentsTags.replyRow("k2")).performTouchInput { longClick() }
         compose.waitForIdle()
-        assertEquals("No hay ninguna acción de eliminación para los comentarios de otras personas.", 0, deletes)
+        assertEquals("别人的评论没有任何删除动作", 0, deletes)
     }
 
     @Test
@@ -243,24 +259,24 @@ class MiniPhoneMomentsUiTest {
 
     @Test
     fun coverCarriesSelfAvatarAndNickname() {
-        render(MomentsUiState(selfName = "Ziqi", selfAvatarUri = "content://avatar/me", isLoaded = true))
+        render(MomentsUiState(selfName = "子奇", selfAvatarUri = "content://avatar/me", isLoaded = true))
 
-        compose.onNodeWithTag(MiniPhoneMomentsTags.SELF_NAME, useUnmergedTree = true).assertTextEquals("Ziqi")
+        compose.onNodeWithTag(MiniPhoneMomentsTags.SELF_NAME, useUnmergedTree = true).assertTextEquals("子奇")
         compose.onNodeWithTag(MiniPhoneMomentsTags.SELF_AVATAR).assertExists()
     }
 
     private fun commentUi(id: String, mine: Boolean): MomentCommentUi = MomentCommentUi(
         id = id,
-        senderName = if (mine) "Ziqi" else "ali",
-        content = if (mine) "dije" else "lo que dijo",
+        senderName = if (mine) "子奇" else "阿离",
+        content = if (mine) "我说的" else "他说的",
         createdAt = CREATED_AT,
         isMine = mine,
         replies = listOf(
             MomentReplyUi(
                 id = "k2",
-                senderName = "ali",
+                senderName = "阿离",
                 replyToName = null,
-                content = "decirte algo",
+                content = "回你一句",
                 createdAt = CREATED_AT,
                 isMine = false,
             ),
@@ -282,10 +298,10 @@ class MiniPhoneMomentsUiTest {
     }
 }
 
-/** Una animación para renderizar. */
+/** 一条用来渲染的动态。 */
 internal fun momentUi(
     id: String = "m1",
-    content: String = "Las nubes están muy bajas hoy.",
+    content: String = "今天的云很低",
     images: List<String> = emptyList(),
     likes: List<String> = emptyList(),
     likedByMe: Boolean = false,
@@ -294,7 +310,7 @@ internal fun momentUi(
 ) = MomentUi(
     id = id,
     authorId = "c1",
-    authorName = "ali",
+    authorName = "阿离",
     authorAvatarUri = null,
     content = content,
     images = images,

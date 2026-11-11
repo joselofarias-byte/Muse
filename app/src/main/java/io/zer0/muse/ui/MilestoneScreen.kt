@@ -46,10 +46,10 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * Página de gestión de hitos — Muestra una lista de hitos en la relación del usuario con el socio de IA.
+ * 里程碑管理页 — 展示用户与 AI 伙伴的关系里程碑列表。
  *
- * fuente de datos: [MilestoneDao.observeAll()].
- * apoyo: Ver lista/Cerrar(dismiss) / borrar.
+ * 数据来源: [MilestoneDao.observeAll()]。
+ * 支持: 查看列表 / 关闭(dismiss) / 删除。
  */
 @Composable
 fun MilestoneScreen(onBack: () -> Unit) {
@@ -81,7 +81,7 @@ fun MilestoneScreen(onBack: () -> Unit) {
         },
     ) { paddingValues ->
         if (milestones.isEmpty()) {
-            // Estado vacío
+            // 空态
             Column(
                 modifier = Modifier
                     .fillMaxSize()

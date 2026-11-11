@@ -30,11 +30,11 @@ import java.time.LocalDateTime
 import java.time.ZoneId
 
 /**
- * Un proceso completo de mensajería privada proactiva:juicio → encontrar conversación → generación de host → Cayó en la biblioteca → no leído +1 → Lleve un registro del tiempo.
+ * 主动私信的一轮完整流程:判定 → 找会话 → 宿主生成 → 落库 → 未读 +1 → 记时间。
  *
- * el curry es realmente bueno Room(banco de memoria),Alias de host y configuración:De esta manera, "realmente lo escribí" y "no escribí nada cuando fallé".
- * Es una afirmación más que una evidencia. La sentencia misma es [MpProactiveChatPlanTest] lo clavó uno por uno,
- * La preocupación aquí es lo que se hace después de la sentencia.
+ * 库里跑真 Room(内存库),宿主与设置用替身:这样「真的写进去了」「失败时一条也没写」
+ * 是断言而不是自证。判定本身在 [MpProactiveChatPlanTest] 里逐条钉过,
+ * 这里关心的是判定之后做了什么。
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -68,7 +68,7 @@ class MpProactiveChatRunnerTest {
         assertEquals(MpMessageType.TEXT, messages[0].type)
         assertEquals(COMPOSED_TEXT, messages[0].content)
         assertEquals(NOW, messages[0].createdAt)
-        // Tanto las actualizaciones de +1 no leídas como las de vista previa se encuentran en la línea de conversación.:Esa fila de la lista parece "acaba de llegar un mensaje".
+        // 未读 +1 与预览更新都要落到会话行上:列表里那一行看起来才像「刚来过消息」
         assertEquals(1, db.threadDao().unreadCount(THREAD_ID))
         assertEquals(COMPOSED_TEXT, db.threadDao().getThread(THREAD_ID)?.lastMessagePreview)
         assertEquals(NOW, store.markedAt)
@@ -84,13 +84,13 @@ class MpProactiveChatRunnerTest {
         assertEquals(MpProactiveChatOutcome.Skipped(MpProactiveChatSkipReason.NO_CONTENT), outcome)
         assertEquals(0, db.messageDao().countInThread(THREAD_ID))
         assertEquals(0, db.threadDao().unreadCount(THREAD_ID))
-        // La marca de tiempo no se registrará si la base de datos no está en uso.,De lo contrario, la siguiente ronda quedará bloqueada por su propio intervalo de 4 horas.
+        // 没落库就不记时间戳,否则下一轮会被自己的 4 小时间隔挡住
         assertNull(store.markedAt)
     }
 
     @Test
     fun noHistorySkipsWithoutCallingHost() = runBlocking {
-        // Una conversación sin un solo mensaje no se considera "conversable":Si un personaje habla de la nada, sonará como acoso.
+        // 一条消息都没有的会话不算「能搭话」:角色凭空开口会像骚扰
         db.threadDao().upsert(thread(lastMessageAt = 0L))
         val host = FakeChatHost(content = COMPOSED_TEXT)
 
@@ -116,7 +116,7 @@ class MpProactiveChatRunnerTest {
     @Test
     fun userJustTalkedSkipsWithoutCallingHost() = runBlocking {
         db.threadDao().upsert(thread(lastMessageAt = LAST_USER_AT))
-        // El usuario acaba de hablar hace 3 minutos.:Interrumpir en este momento sería interrumpir.
+        // 用户 3 分钟前刚说过话:此刻插一句就是打断
         db.messageDao().insert(
             MpMessageEntity(
                 id = "recent-user",
@@ -124,7 +124,7 @@ class MpProactiveChatRunnerTest {
                 characterId = CHARACTER_ID,
                 sender = MpActorType.USER,
                 type = MpMessageType.TEXT,
-                content = "acabo de regresar",
+                content = "我刚回来",
                 createdAt = NOW - THREE_MINUTES_MS,
             ),
         )
@@ -134,7 +134,7 @@ class MpProactiveChatRunnerTest {
 
         assertEquals(MpProactiveChatOutcome.Skipped(MpProactiveChatSkipReason.USER_JUST_ACTIVE), outcome)
         assertEquals(0, host.composeCalls)
-        // Solo ese mensaje de usuario,Nada nuevo escrito
+        // 只有那条用户消息,没有新写的
         assertEquals(1, db.messageDao().countInThread(THREAD_ID))
     }
 
@@ -166,17 +166,17 @@ class MpProactiveChatRunnerTest {
 
     @Test
     fun groupThreadsAreNeverPickedForAProactiveMessage() = runBlocking {
-        // Actualización de la sesión grupal:Tampoco puede utilizarse como un lugar para "encontrar a alguien con quien hablar".
+        // 群会话更新:也不能拿它当「找一个人开口」的地方
         db.threadDao().upsert(
             thread(id = GROUP_THREAD_ID, characterId = CHARACTER_ID, lastMessageAt = LAST_USER_AT + 5_000L)
-                .copy(isGroup = true, title = "Ayuan, Xiaoman"),
+                .copy(isGroup = true, title = "阿远、小满"),
         )
         db.threadDao().upsert(thread(id = THREAD_ID, characterId = CHARACTER_ID, lastMessageAt = LAST_USER_AT))
         val host = FakeChatHost(content = COMPOSED_TEXT)
 
         val outcome = runner(host = host, store = FakeChatStore(enabled = true)).run()
 
-        assertEquals("Cayó en el mensaje privado", MpProactiveChatOutcome.Sent(threadId = THREAD_ID, characterId = CHARACTER_ID), outcome)
+        assertEquals("落到了私信上", MpProactiveChatOutcome.Sent(threadId = THREAD_ID, characterId = CHARACTER_ID), outcome)
         assertEquals(0, db.messageDao().countInThread(GROUP_THREAD_ID))
         assertEquals(1, db.messageDao().countInThread(THREAD_ID))
     }
@@ -184,13 +184,13 @@ class MpProactiveChatRunnerTest {
     @Test
     fun aGroupWithoutADirectMessageSkipsInsteadOfTalkingInTheGroup() = runBlocking {
         db.threadDao().upsert(
-            thread(lastMessageAt = LAST_USER_AT).copy(isGroup = true, title = "Ayuan, Xiaoman"),
+            thread(lastMessageAt = LAST_USER_AT).copy(isGroup = true, title = "阿远、小满"),
         )
         val host = FakeChatHost(content = COMPOSED_TEXT)
 
         val outcome = runner(host = host, store = FakeChatStore(enabled = true)).run()
 
-        assertEquals("Cuando sólo hay una conversación grupal, no hay nadie con quien hablar a solas.", MpProactiveChatOutcome.Skipped(MpProactiveChatSkipReason.NO_HISTORY), outcome)
+        assertEquals("只有群会话时就没有能单独搭话的人", MpProactiveChatOutcome.Skipped(MpProactiveChatSkipReason.NO_HISTORY), outcome)
         assertEquals(0, host.composeCalls)
         assertEquals(0, db.messageDao().countInThread(THREAD_ID))
     }
@@ -198,17 +198,17 @@ class MpProactiveChatRunnerTest {
     @Test
     fun sendsWithRecentChatContextAndTimeThenTheFocus() = runBlocking {
         db.threadDao().upsert(thread(lastMessageAt = LAST_USER_AT))
-        db.messageDao().insert(message(id = "m1", sender = MpActorType.USER, content = "Trabajé hasta tarde hoy", at = LAST_USER_AT))
-        db.messageDao().insert(message(id = "m2", sender = MpActorType.CHARACTER, content = "¿Ya estás en casa?", at = LAST_USER_AT + 1L))
+        db.messageDao().insert(message(id = "m1", sender = MpActorType.USER, content = "今天加班到好晚", at = LAST_USER_AT))
+        db.messageDao().insert(message(id = "m2", sender = MpActorType.CHARACTER, content = "到家了吗", at = LAST_USER_AT + 1L))
         val host = FakeChatHost(content = COMPOSED_TEXT)
 
         runner(host = host, store = FakeChatStore(enabled = true)).run()
 
         val hint = host.lastHint.orEmpty()
-        assertTrue("Los materiales deben incluir conversaciones recientes.: $hint", hint.contains("Usuario: hoy trabajé horas extras muy tarde"))
-        assertTrue("El material debe contener palabras dichas por el propio personaje.: $hint", hint.contains("Yo: ¿Estás en casa?"))
-        assertTrue("El material debe tener la hora actual.: $hint", hint.contains("Son las dos de la tarde del martes."))
-        assertTrue("Ponlo desde el principio hasta la última frase.: $hint", hint.lines().last().startsWith("El motivo de este momento:"))
+        assertTrue("素材应带最近对话: $hint", hint.contains("用户：今天加班到好晚"))
+        assertTrue("素材应带角色自己说过的话: $hint", hint.contains("我：到家了吗"))
+        assertTrue("素材应带当前时间: $hint", hint.contains("现在是周二下午两点"))
+        assertTrue("由头放在最后一句: $hint", hint.lines().last().startsWith("此刻的由头："))
     }
 
     private fun runner(host: MiniPhoneHost, store: MpMomentAutoStore): MpProactiveChatRunner = MpProactiveChatRunner(
@@ -243,7 +243,7 @@ class MpProactiveChatRunnerTest {
         return MpThreadEntity(
             id = id,
             characterId = characterId,
-            lastMessagePreview = "¿Está ahí?",
+            lastMessagePreview = "在吗",
             lastMessageAt = lastMessageAt,
         )
     }
@@ -251,7 +251,7 @@ class MpProactiveChatRunnerTest {
     private companion object {
         val ZONE: ZoneId = ZoneId.of("Asia/Shanghai")
 
-        /** Durante el día 14:00: no durante las horas tranquilas. */
+        /** 白天 14:00:不在安静时段。 */
         val NOW: Long = LocalDateTime.of(2026, 5, 12, 14, 0).atZone(ZONE).toInstant().toEpochMilli()
 
         const val THREE_HOURS_MS: Long = 3L * 60L * 60L * 1000L
@@ -268,14 +268,14 @@ class MpProactiveChatRunnerTest {
 
         const val MESSAGE_ID: String = "proactive-1"
 
-        const val COMPOSED_TEXT: String = "Acabo de pasar por la tienda que mencionaste y había bastante gente."
+        const val COMPOSED_TEXT: String = "刚才路过你说的那家店，人还挺多。"
     }
 }
 
-/** anfitrión falso:El resultado generado es fijo.,Por cierto, toma nota de cuántas veces fuiste transferido y por quién. */
+/** 假宿主:生成结果固定,顺带记下被调了几次、调的是谁。 */
 private class FakeChatHost(
     private val content: String?,
-    private val characters: List<MpCharacter> = listOf(MpCharacter(id = "c1", name = "ali")),
+    private val characters: List<MpCharacter> = listOf(MpCharacter(id = "c1", name = "阿离")),
 ) : MiniPhoneHost {
 
     var composeCalls: Int = 0
@@ -289,7 +289,7 @@ private class FakeChatHost(
 
     override fun observeCharacters(): Flow<List<MpCharacter>> = flowOf(characters)
 
-    override fun observeProfile(): Flow<MpProfile> = flowOf(MpProfile(nickname = "Ziqi"))
+    override fun observeProfile(): Flow<MpProfile> = flowOf(MpProfile(nickname = "子奇"))
 
     override fun respond(characterId: String, history: List<MpChatTurn>): Flow<MpReplyEvent> = flowOf(MpReplyEvent.Failed)
 
@@ -309,7 +309,7 @@ private class FakeChatHost(
     override suspend fun supportsVoiceTranscription(): Boolean = false
 }
 
-/** Asumir la configuración:Cambio de mensaje privado activo y sustituto variable para la última vez,El valor escrito se deja en el campo para la afirmación. */
+/** 假设置:主动私信开关与上次时间的可变替身,写进来的值留在字段上供断言。 */
 private class FakeChatStore(
     enabled: Boolean = false,
     lastProactiveAt: Long? = null,

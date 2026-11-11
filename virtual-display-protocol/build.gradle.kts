@@ -2,9 +2,9 @@ plugins {
     alias(libs.plugins.android.library)
 }
 
-// v2.2.1 pantalla virtual:módulo de contrato(AIDL + constante).
-// Utilice Java deliberadamente por completo: no se puede incluir el dex del módulo del servidor kotlin-stdlib(Límite de clases individuales.dex),
-// El código Java del lado del servidor hará referencia directa a la clase de contrato.,Mantenga cero dependencias.
+// v2.2.1 虚拟屏:契约模块(AIDL + 常量)。
+// 故意全部用 Java:服务端模块的 dex 不能带 kotlin-stdlib(单 classes.dex 限制),
+// 契约类会被服务端 Java 代码直接引用,保持零依赖。
 android {
     namespace = "io.zer0.muse.vdproto"
     compileSdk = 36

@@ -14,10 +14,10 @@ function describe(call: HostToolCall, t: Translate): { readonly label: string; r
 }
 
 /**
- * Detalles de llamadas de herramientas en un mensaje (posiblemente varios).
+ * 一条消息上的工具调用明细（可能是多个）。
  *
- * Cada llamada está colapsada: la línea de título es el nombre de la herramienta + éxito o fracaso + consumo de tiempo, y la expansión es la vista previa de parámetros y la vista previa de resultados.
- * Host dado explícitamente `success` / `durationMs` Simplemente utilícelo y ya no dependa del estado del mensaje para adivinar.
+ * 每个调用一块折叠：标题行是工具名 + 成功与否 + 耗时，展开是参数预览和结果预览。
+ * Host 显式给了 `success` / `durationMs` 就用它，不再靠消息级状态去猜。
  */
 export function ToolCallBlocks({ calls }: { readonly calls: readonly HostToolCall[] }) {
   const { t } = useI18n();

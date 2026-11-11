@@ -1,18 +1,18 @@
 /**
- * Muse Complemento: Caja de herramientas normal
+ * Muse 插件：正则工具箱
  *
- * Ejecute el contrato (alojado por WebViewSkillEngine/JsSandbox):
- *  - El host evalúa el archivo completo en el V8 de WebView y luego lo ejecuta.
- *    `JSON.stringify(<functionName>.apply(null, [objeto de parámetro]))`;
- *  - cada herramienta = Una función de nivel superior que solo recibe un objeto de parámetro y devuelve un objeto normal (no utilice JSON.stringify usted mismo);
- *  - Retorno del fracaso { error: "razón china" }(El anfitrión marcará dichos resultados como fracasos);
- *  - Sólo utiliza la sintaxis de ES5, no se conecta a Internet, no lee ni escribe archivos y no lanza excepciones bajo ninguna circunstancia.
+ * 运行契约（宿主 WebViewSkillEngine / JsSandbox）：
+ *  - 宿主把本文件整体 eval 进 WebView 的 V8，再执行
+ *    `JSON.stringify(<functionName>.apply(null, [参数对象]))`；
+ *  - 每个工具 = 一个顶层函数，只接收一个参数对象，返回普通对象（不要自己 JSON.stringify）；
+ *  - 失败返回 { error: "中文原因" }（宿主会把这类结果标记为失败）；
+ *  - 只用 ES5 语法，不联网、不读写文件，任何情况下都不向外抛异常。
  *
- * Diseño seguro:
- *  - Las reglas de usuario son uniformes. new RegExp(pattern, flags) Compilar y probar/capturar;
- *  - Rechazar cuantificadores anidados (como (a+)+ / (a*)* / (\d+){2,} este tipo"altura de la estrella >= 2"modo),
- *    Pueden provocar un retroceso catastrófico (ReDoS);
- *  - Límite inferior: texto <= 100000 personajes, patrones <= 1000 personajes, y se puede recopilar un máximo de 1000 coincidencias a la vez.
+ * 安全设计：
+ *  - 用户正则一律 new RegExp(pattern, flags) 编译并 try/catch；
+ *  - 拒绝嵌套量词（如 (a+)+ / (a*)* / (\d+){2,} 这类"星高度 >= 2"的模式），
+ *    它们会造成灾难性回溯（ReDoS）；
+ *  - 兜底上限：文本 <= 100000 字符、模式 <= 1000 字符、单次最多收集 1000 个匹配。
  */
 
 var REGEX_MAX_TEXT = 100000;
@@ -22,18 +22,18 @@ var REGEX_LIMIT_DEFAULT = 20;
 var REGEX_LIMIT_MAX = 100;
 var REGEX_ALLOWED_FLAGS = "gimsuy";
 
-/** El objeto de parámetro se utiliza para evitar generar excepciones cuando args es nulo/indefinido. */
+/** 参数对象兜底，避免 args 为 null/undefined 时抛异常。 */
 function regexArgsObject(args) {
     return args !== null && typeof args === "object" && !Array.isArray(args) ? args : {};
 }
 
-/** Las excepciones se convierten uniformemente en texto. */
+/** 异常统一转文本。 */
 function regexMessage(e) {
     if (e && e.message) return String(e.message);
     return String(e);
 }
 
-/** Lectura booleana relajada: acepta verdadero/falso y "true"/"false"/1/0. */
+/** 宽松布尔读取：接受 true/false 与 "true"/"false"/1/0。 */
 function regexBool(value, def) {
     if (value === undefined || value === null) return def;
     if (typeof value === "string") {
@@ -44,23 +44,23 @@ function regexBool(value, def) {
     return !!value;
 }
 
-/** flags Normalización: solo permitida g i m s u y, los caracteres duplicados se eliminan automáticamente. */
+/** flags 规范化：仅允许 g i m s u y，重复字符自动去重。 */
 function regexNormalizeFlags(flagsValue) {
     if (flagsValue === undefined || flagsValue === null) return { flags: "" };
-    if (typeof flagsValue !== "string") return { error: "flags debe ser una cuerda" };
+    if (typeof flagsValue !== "string") return { error: "flags 必须是字符串" };
     var raw = flagsValue.replace(/\s+/g, "");
     var out = "";
     for (var i = 0; i < raw.length; i++) {
         var ch = raw.charAt(i);
         if (REGEX_ALLOWED_FLAGS.indexOf(ch) < 0) {
-            return { error: "Carácter de banderas no admitidas: " + ch + "(solo permitido g i m s u y)" };
+            return { error: "不支持的 flags 字符: " + ch + "（仅允许 g i m s u y）" };
         }
         if (out.indexOf(ch) < 0) out += ch;
     }
     return { flags: out };
 }
 
-/** Lea el cuantificador inmediatamente después del átomo y regrese { unbounded, end } o nulo (no cuantificador). */
+/** 读取紧跟在原子之后的量词，返回 { unbounded, end } 或 null（非量词）。 */
 function regexReadQuantifier(pattern, start) {
     var ch = pattern.charAt(start);
     var end;
@@ -89,7 +89,7 @@ function regexReadQuantifier(pattern, start) {
     return null;
 }
 
-/** Encuentra la ubicación con inicio '(' emparejar ')' El subíndice, si no se encuentra, devuelve -1. */
+/** 找到与 start 处 '(' 匹配的 ')' 下标，找不到返回 -1。 */
 function regexFindGroupEnd(text, start) {
     var depth = 0;
     var inClass = false;
@@ -119,7 +119,7 @@ function regexFindGroupEnd(text, start) {
     return -1;
 }
 
-/** Botón superior | Dividir ramas (ignorando escapes, clases de personajes y grupos anidados). */
+/** 顶层按 | 切分分支（忽略转义、字符类与嵌套组）。 */
 function regexSplitBranches(body) {
     var parts = [];
     var depth = 0;
@@ -163,7 +163,7 @@ function regexSplitBranches(body) {
     return parts;
 }
 
-/** Eliminar el prefijo de grupo (?: / ?= / ?! / ?<name>) para facilitar el análisis de grupos. */
+/** 去掉组前缀（?: / ?= / ?! / ?<name>），便于分析组体。 */
 function regexStripGroupPrefix(body) {
     if (body.charAt(0) !== "?") return body;
     var ch = body.charAt(1);
@@ -175,7 +175,7 @@ function regexStripGroupPrefix(body) {
     return body;
 }
 
-/** Cuando las ramas tienen un prefijo entre sí (como a y ab), el cuantificador ilimitado retrocederá exponencialmente. */
+/** 分支之间互为前缀（如 a 与 ab）时，配无界量词会指数级回溯。 */
 function regexBranchesConflict(branches) {
     for (var i = 0; i < branches.length; i++) {
         for (var j = i + 1; j < branches.length; j++) {
@@ -190,7 +190,7 @@ function regexBranchesConflict(branches) {
     return false;
 }
 
-/** Busque ramas que sean prefijos entre sí dentro de un grupo (incluidos los grupos anidados). */
+/** 在组体内（含嵌套组）查找互为前缀的分支。 */
 function regexBodyHasPrefixConflict(body) {
     var content = regexStripGroupPrefix(body);
     if (regexBranchesConflict(regexSplitBranches(content))) return true;
@@ -220,9 +220,9 @@ function regexBodyHasPrefixConflict(body) {
 }
 
 /**
- * Detección de riesgos catastróficos de retroceso:(1) Cuantificador anidado (altura de estrella >= 2);
- * (2) Un grupo modificado por un cuantificador ilimitado contiene ramas que son prefijos entre sí (p. ej. (a|ab)+).
- * Dichos patrones retrocederán exponencialmente en entradas no coincidentes y deben rechazarse antes de la ejecución.
+ * 检测灾难性回溯风险：(1) 嵌套量词（星高度 >= 2）；
+ * (2) 被无界量词修饰的组里含互为前缀的分支（如 (a|ab)+）。
+ * 这类模式在失配输入上会指数级回溯，必须在执行前拒绝。
  */
 function regexHasNestedQuantifier(pattern) {
     var stack = [{ unbounded: false, start: 0 }];
@@ -275,7 +275,7 @@ function regexHasNestedQuantifier(pattern) {
     return false;
 }
 
-/** Cuente el número de grupos de captura (solo se usa para dar pistas al modelo). */
+/** 统计捕获组数量（仅用于给模型提示）。 */
 function regexCountGroups(pattern) {
     var count = 0;
     var i = 0;
@@ -314,7 +314,7 @@ function regexCountGroups(pattern) {
     return count;
 }
 
-/** Extraer el nombre del grupo de captura con nombre ((?<name>...)). */
+/** 提取命名捕获组名称（(?<name>...)）。 */
 function regexNamedGroups(pattern) {
     var names = [];
     var re = /\(\?<([A-Za-z_$][A-Za-z0-9_$]*)>/g;
@@ -326,59 +326,59 @@ function regexNamedGroups(pattern) {
     return names;
 }
 
-/** Compilar usuario regular: longitud,flags, los cuantificadores anidados y los errores gramaticales se unifican en { error }. */
+/** 编译用户正则：长度、flags、嵌套量词与语法错误统一转成 { error }。 */
 function regexCompile(pattern, flags) {
-    if (typeof pattern !== "string") return { error: "pattern debe ser una cuerda" };
-    if (pattern.length === 0) return { error: "pattern no puede estar vacío" };
+    if (typeof pattern !== "string") return { error: "pattern 必须是字符串" };
+    if (pattern.length === 0) return { error: "pattern 不能为空" };
     if (pattern.length > REGEX_MAX_PATTERN) {
-        return { error: "pattern Demasiado largo (límite superior " + REGEX_MAX_PATTERN + " personaje, actual " + pattern.length + ")" };
+        return { error: "pattern 过长（上限 " + REGEX_MAX_PATTERN + " 字符，当前 " + pattern.length + "）" };
     }
     var normalized = regexNormalizeFlags(flags);
     if (normalized.error) return normalized;
     if (regexHasNestedQuantifier(pattern)) {
         return {
-            error: "Detección de patrones que podrían desencadenar un retroceso catastrófico (cuantificadores anidados como (a+)+, o ramas que son prefijos entre sí, como (a|ab)+);" +
-                "Vuelva a escribir el patrón: elimine la duplicación exterior o escriba las ramas como mutuamente excluyentes"
+            error: "检测到可能触发灾难性回溯的模式（嵌套量词如 (a+)+，或互为前缀的分支如 (a|ab)+）；" +
+                "请改写模式：去掉外层重复，或把分支写成互不包含的形式"
         };
     }
     try {
         return { re: new RegExp(pattern, normalized.flags), flags: normalized.flags };
     } catch (e) {
-        return { error: "La compilación regular falló: " + regexMessage(e) };
+        return { error: "正则编译失败: " + regexMessage(e) };
     }
 }
 
-/** Verifique la longitud del texto que se está probando. */
+/** 校验被测文本长度。 */
 function regexCheckText(text) {
-    if (typeof text !== "string") return { error: "text debe ser una cuerda" };
+    if (typeof text !== "string") return { error: "text 必须是字符串" };
     if (text.length > REGEX_MAX_TEXT) {
-        return { error: "text Demasiado largo (límite superior " + REGEX_MAX_TEXT + " personaje, actual " + text.length + ")" };
+        return { error: "text 过长（上限 " + REGEX_MAX_TEXT + " 字符，当前 " + text.length + "）" };
     }
     return { ok: true };
 }
 
-/** Lea el parámetro de límite (se utiliza el valor predeterminado si falta, converge al límite superior cuando se excede el límite superior). */
+/** 读取 limit 参数（缺失取默认值，超上限收敛到上限）。 */
 function regexReadLimit(value, def, max) {
     if (value === undefined || value === null || value === "") return { value: def };
     var num = typeof value === "number" ? value : parseInt(String(value), 10);
-    if (isNaN(num) || num < 1) return { error: "limit debe ser 1-" + max + " número entero entre" };
+    if (isNaN(num) || num < 1) return { error: "limit 必须是 1-" + max + " 之间的整数" };
     if (num > max) return { value: max };
     return { value: Math.floor(num) };
 }
 
-/** Asegúrese de que la expresión regular tenga el indicador g (requerido para la coincidencia de enumeraciones), devuelva una nueva RegExp o { error }. */
+/** 保证正则有 g 标志（枚举匹配需要），返回新的 RegExp 或 { error }。 */
 function regexGlobalCopy(pattern, flags) {
     var finalFlags = flags.indexOf("g") >= 0 ? flags : flags + "g";
     try {
         return { re: new RegExp(pattern, finalFlags), flags: finalFlags };
     } catch (e) {
-        return { error: "La compilación regular falló: " + regexMessage(e) };
+        return { error: "正则编译失败: " + regexMessage(e) };
     }
 }
 
 /**
- * Las coincidencias se realizan de forma secuencial, recopilando hasta un máximo de elementos.
- * El script en lastIndex avanza manualmente las coincidencias de longitud cero para evitar bucles infinitos; Hay un límite superior estricto en el número de iteraciones.
+ * 依次执行匹配，最多收集 max 条。
+ * 零长度匹配由脚本手动推进 lastIndex，避免死循环；迭代次数有硬上限。
  */
 function regexCollect(re, text, max) {
     var matches = [];
@@ -403,7 +403,7 @@ function regexCollect(re, text, max) {
     return { matches: matches, truncated: truncated };
 }
 
-/** Convierta los resultados de coincidencias nativas en objetos normales que puedan serializarse en JSON. */
+/** 把原生匹配结果转成可 JSON 序列化的普通对象。 */
 function regexMatchInfo(m) {
     var groups = [];
     for (var i = 1; i < m.length; i++) {
@@ -420,15 +420,15 @@ function regexMatchInfo(m) {
     return { index: m.index, text: m[0], groups: groups, namedGroups: named };
 }
 
-/** Analice el parámetro del grupo: déjelo en blanco para devolver la coincidencia completa, complete el número para obtener el número de secuencia, complete el nombre para obtener el grupo nombrado. */
+/** 解析 group 参数：不填返回整段匹配，填数字取序号，填名称取命名组。 */
 function regexResolveGroup(group, groupCount, groupNames) {
     if (group === undefined || group === null || group === "") return { mode: "full", echo: null };
     if (typeof group === "number") {
         if (isNaN(group) || group < 1 || group !== Math.floor(group)) {
-            return { error: "group debe ser >=1 un número entero o el nombre de un grupo de captura con nombre" };
+            return { error: "group 必须是 >=1 的整数，或命名捕获组的名称" };
         }
         if (group > groupCount) {
-            return { error: "group Fuera de alcance: este modo sólo tiene " + groupCount + " grupos de captura" };
+            return { error: "group 超出范围：该模式只有 " + groupCount + " 个捕获组" };
         }
         return { mode: "index", index: group, echo: group };
     }
@@ -437,7 +437,7 @@ function regexResolveGroup(group, groupCount, groupNames) {
         if (/^\d+$/.test(text)) {
             var index = parseInt(text, 10);
             if (index < 1 || index > groupCount) {
-                return { error: "group Fuera de alcance: este modo sólo tiene " + groupCount + " grupos de captura" };
+                return { error: "group 超出范围：该模式只有 " + groupCount + " 个捕获组" };
             }
             return { mode: "index", index: index, echo: index };
         }
@@ -447,16 +447,16 @@ function regexResolveGroup(group, groupCount, groupNames) {
         }
         if (!found) {
             return {
-                error: "No se encontró el grupo de captura con nombre " + text +
-                    (groupNames.length > 0 ? "(disponible: " + groupNames.join(", ") + ")" : "(Este patrón no tiene grupos de captura con nombre)")
+                error: "未找到命名捕获组 " + text +
+                    (groupNames.length > 0 ? "（可用: " + groupNames.join(", ") + "）" : "（该模式没有命名捕获组）")
             };
         }
         return { mode: "named", name: text, echo: text };
     }
-    return { error: "group Debe ser un número entero basado en 1 o un nombre de grupo con nombre" };
+    return { error: "group 必须是从 1 开始的整数或命名组名称" };
 }
 
-/** Herramienta regex_test: prueba una coincidencia y devuelve el primer detalle de la coincidencia con un límite de coincidencias. */
+/** 工具 regex_test：测试是否匹配并返回第一个匹配详情与最多 limit 条匹配。 */
 function regexTest(args) {
     args = regexArgsObject(args);
     var textCheck = regexCheckText(args.text);
@@ -484,12 +484,12 @@ function regexTest(args) {
         limit: limit.value,
         truncated: collected.truncated,
         flags: globalCopy.flags,
-        note: "tapa de texto " + REGEX_MAX_TEXT + " personaje;matches la mayoría " + limit.value +
-            " artículo,truncated Es cierto para indicar que hay más coincidencias que no han sido devueltas."
+        note: "文本上限 " + REGEX_MAX_TEXT + " 字符；matches 最多 " + limit.value +
+            " 条，truncated 为 true 表示还有更多匹配未返回。"
     };
 }
 
-/** Herramienta regex_extract: extrae coincidencias en lotes (se pueden especificar grupos de captura y se pueden eliminar duplicados). */
+/** 工具 regex_extract：批量提取匹配（可指定捕获组、可去重）。 */
 function regexExtract(args) {
     args = regexArgsObject(args);
     var textCheck = regexCheckText(args.text);
@@ -546,21 +546,21 @@ function regexExtract(args) {
         truncated: collected.truncated,
         limit: limit.value,
         flags: globalCopy.flags,
-        note: "Los grupos de captura no coincidentes se registran como nulos;truncated Si es verdadero, significa que se alcanzó el límite superior;" +
-            "tapa de texto " + REGEX_MAX_TEXT + " personajes."
+        note: "未匹配到的捕获组记为 null；truncated 为 true 表示达到 limit 上限；" +
+            "文本上限 " + REGEX_MAX_TEXT + " 字符。"
     };
 }
 
-/** Herramienta regex_replace: reemplazar por patrón, soporte $1..$9 Referencias retrospectivas y cambios globales. */
+/** 工具 regex_replace：按模式替换，支持 $1..$9 反向引用与 global 开关。 */
 function regexReplace(args) {
     args = regexArgsObject(args);
     var textCheck = regexCheckText(args.text);
     if (textCheck.error) return textCheck;
     var replacement = args.replacement;
     if (typeof replacement === "number" || typeof replacement === "boolean") replacement = String(replacement);
-    if (typeof replacement !== "string") return { error: "replacement debe ser una cuerda" };
+    if (typeof replacement !== "string") return { error: "replacement 必须是字符串" };
     if (replacement.length > REGEX_MAX_PATTERN * 10) {
-        return { error: "replacement Demasiado largo (límite superior " + (REGEX_MAX_PATTERN * 10) + " personajes)" };
+        return { error: "replacement 过长（上限 " + (REGEX_MAX_PATTERN * 10) + " 字符）" };
     }
     var compiled = regexCompile(args.pattern, args.flags);
     if (compiled.error) return compiled;
@@ -575,7 +575,7 @@ function regexReplace(args) {
     try {
         re = new RegExp(args.pattern, flags);
     } catch (e) {
-        return { error: "La compilación regular falló: " + regexMessage(e) };
+        return { error: "正则编译失败: " + regexMessage(e) };
     }
     var count = 0;
     var truncated = false;
@@ -592,7 +592,7 @@ function regexReplace(args) {
     try {
         replaced = args.text.replace(re, replacement);
     } catch (e) {
-        return { error: "Reemplazo fallido: " + regexMessage(e) };
+        return { error: "替换失败: " + regexMessage(e) };
     }
     return {
         result: replaced,
@@ -600,7 +600,7 @@ function regexReplace(args) {
         global: global,
         flags: flags,
         truncated: truncated,
-        note: "replacement apoyo $1..$9 referencia retrospectiva,$& representa todo el partido,$$ Representa un signo de dólar literal;" +
-            "Estadísticas de más sustituciones en modo global " + REGEX_MAX_MATCHES + " veces."
+        note: "replacement 支持 $1..$9 反向引用、$& 表示整个匹配、$$ 表示字面美元符；" +
+            "全局模式下替换次数最多统计 " + REGEX_MAX_MATCHES + " 次。"
     };
 }

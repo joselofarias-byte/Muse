@@ -3,10 +3,10 @@ package io.zer0.muse.notification
 import android.net.Uri
 
 /**
- * Muse Haga clic en el objetivo para recibir su propia notificación.
+ * Muse 自有通知的点击目标。
  *
- * Las notificaciones solo pueden llevar un PendingIntent; concentrar los objetivos en cadenas profundas controladas para evitar ataques individuales.
- * Worker/Service Deletrear la intención de regreso a la página de inicio usted mismo resulta en la pérdida de contexto después de hacer clic.
+ * 通知只能携带一个 PendingIntent；把目标集中成受控的深链，避免各个
+ * Worker/Service 自己拼回首页 Intent，导致点击后丢失上下文。
  */
 sealed interface MuseNotificationTarget {
     val deepLink: Uri
@@ -25,6 +25,15 @@ sealed interface MuseNotificationTarget {
     data class Session(val sessionId: String) : MuseNotificationTarget {
         override val deepLink: Uri = Uri.parse("muse://session/${Uri.encode(sessionId)}")
         override val requestKey: String = "session:$sessionId"
+    }
+
+    data class ProactiveOutcome(val sessionId: String, val outcomeId: String) : MuseNotificationTarget {
+        override val deepLink: Uri =
+            Uri.parse("muse://session/${Uri.encode(sessionId)}")
+                .buildUpon()
+                .appendQueryParameter("proactiveOutcomeId", outcomeId)
+                .build()
+        override val requestKey: String = "proactive:$sessionId:$outcomeId"
     }
 
     data object ScheduledTasks : MuseNotificationTarget {

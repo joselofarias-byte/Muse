@@ -1,97 +1,97 @@
 # Muse v2.6.18
 
-> Esta versión reorganiza la configuración en 14 categorías según "¿Qué estás haciendo aquí?" y realmente conecta las cuatro configuraciones en el mensaje activo que nunca han tenido efecto.
-> Deje que los sonidos clonados finalmente suenen y haga que las cosas que se pueden leer en el resumen de la memoria se puedan buscar;
-> Al mismo tiempo, limpiaremos algunos defectos que fueron descubiertos por la autoinspección antes de la publicación.
+> 这一版把设置按「你来干什么」重排到 14 类，把主动消息里四个从来没生效的配置真正接上，
+> 让克隆过的音色终于能发出声，让记忆摘要里读得到的东西变得搜得到；
+> 同时清掉几处发版前自检挖出来的硬伤。
 
-Esta versión incorpora todos los cambios desde la v2.6.10 hasta la actualidad.
+本版合并了 v2.6.10 之后到现在的全部改动。
 
 ---
 
-## chino
+## 中文
 
-### La página de configuración se reorganiza en 14 categorías según "¿Qué estás aquí para hacer?"
+### 设置页按「你来干什么」重排到 14 类
 
-La versión anterior tenía 12 categorías. Esta versión ha sido reclasificada según los elementos de configuración más detallados y ampliada a 14 categorías.48 Artículo:
+上一版是 12 类，这一版按最细设置项重新分了一遍，扩到 14 类、48 项：
 
-- Se agregó "Privacidad y seguridad" para separar el intercambio y la seguridad de los datos.
-- Los agentes se fusionan en "conexiones" y ya no ocupan una categoría separada
-- Los "Datos y Privacidad" originales se dividieron en "Datos y Copia de Seguridad" y "Privacidad y Seguridad".
-- No más de 5 elementos por categoría, las opciones de desarrollador no colapsan
+- 新增「隐私与安全」，把分享与安全从数据里拆出来
+- 代理并入「连接」，不再单独占一类
+- 原「数据与隐私」拆成「数据与备份」和「隐私与安全」
+- 每个分类不超过 5 项，开发者选项不折叠
 
-### Noticias activas: las cuatro configuraciones están realmente conectadas esta vez
+### 主动消息：四个配置这次真的接上了
 
-Ajustar el intervalo, el desplazamiento aleatorio, enviar probabilidad y dejar que la IA decida el ritmo. Estos cuatro elementos se podían cambiar previamente en la interfaz.
-Pero el despacho no lee nada. Ahora conectado, la interfaz es consistente con el comportamiento:
+调节间隔、随机偏移、发送概率、让 AI 决定节奏，这四项以前在界面上能改，
+但调度根本不读。现在接了，界面与行为一致：
 
-- El intervalo predeterminado es 240 minutos, que está alineado con "aproximadamente 4 horas" escrito en la interfaz.
-- El presupuesto total de material es de 6.000 palabras y el resultado se reduce a 200 palabras.
-- "Dejemos que la IA determine el ritmo" se eliminó de la interfaz y las capacidades que describía no se implementaron.
-- Bucle cerrado que no responde: al hacer clic en "Esta vez no" en la notificación se marcará como no interesado, y abrir la conversación se marcará como vista.
-  24 Ninguna respuesta durante una hora se registrará como vencida y nadie participará en la siguiente ronda de juicio.
-- Los tipos que son repetidamente impopulares ya no son candidatos.
+- 默认间隔 240 分钟，与界面写的「约 4 小时」对齐
+- 素材总预算 6000 字，输出硬截断 200 字
+- 「让 AI 决定节奏」从界面移除，它描述的能力没有实现
+- 未响应闭环：通知里点「这次不用」记为不感兴趣，打开会话记为已查看，
+  24 小时未响应记为过期，都不再参与下一轮判断
+- 多次不受欢迎的类型不再进入候选
 
-### Voz: Enviar después de hacer coincidir
+### 语音：配好就能发
 
-Hubo varias razones por las que "la voz fue clonada y el personaje todavía no hablaba". Arreglemoslos uno por uno:
+之前「克隆了音色、角色还是不发语音」有几个原因叠在一起，逐条修掉：
 
-- La página de clonación de voz ahora guarda la clave API completada manualmente. En el pasado sólo se conservaban los motores y los sonidos.
-  La síntesis en la nube debe fallar por falta de credenciales
-- Las fallas en la nube ya no vuelven silenciosamente al tono del sistema e informan sobre el éxito. Los resultados de la herramienta se escribirán.
-  "Se ha enviado un mensaje de voz, pero actualmente se utiliza el tono integrado del teléfono" y se proporciona el motivo del fallo de la nube.
-- Al cambiar de motor TTS, los sonidos que no pertenecen al nuevo motor se borrarán y se le pedirá que vuelva a seleccionarlo.
-- TTS Los modelos relacionados con ASR se modifican para seleccionarse de la lista de modelos de proveedores en lugar de completarse manualmente.
-- El habla se convierte en una herramienta permanente. En el pasado, era un cargador bajo demanda. Si no usaras palabras como "voz" en tu discurso, no aparecería.
-  Cuando el asistente personalizado ha configurado una lista blanca de herramientas, ni siquiera se puede buscar.
+- 语音克隆页现在会把手填的 API Key 一起保存。以前只存引擎和音色，
+  云端合成必然因为缺少凭据失败
+- 云端失败不再静默回落到系统音色还报成功。工具结果会写明
+  「已发出语音消息，但当前用的是手机自带音色」，并带上云端失败的原因
+- 切换 TTS 引擎时，不属于新引擎的音色会被清掉并提示重选
+- TTS 与 ASR 的模型改成从供应商模型列表里挑，不再手填
+- 发语音成为常驻工具。以前它属于按需装载，说话里不带「语音」这类词就不会出现，
+  自定义助手设过工具白名单时更是连检索都搜不到
 
-### Memoria: Lo que se puede leer en el resumen ahora se puede buscar
+### 记忆：摘要里读得到的，现在搜得到
 
-Después de inyectar las palabras clave en el resumen de la memoria a largo plazo, utilice `search_memory` La búsqueda de "Ziqi Developer Assistant" no arrojó ningún resultado.
-La razón es que la capa de búsqueda coincide con el texto completo a nivel de línea. Las palabras chinas se segmentan en palabras binarias y luego se conectan con espacios, lo que equivale a requerir que todas las palabras aparezcan al mismo tiempo.
-En la misma línea de hechos; y el resumen es prosa con múltiples líneas de hechos más adaptación del modelo.
+长期记忆摘要注入提示词之后，用 `search_memory` 搜「子奇 开发者 助手」是零命中。
+原因是检索层是行级全文匹配，中文按二元切词后用空格连接，等于要求所有词同时出现在
+同一行事实里；而摘要是多行事实加上模型改写的散文。
 
-- La consulta de varias palabras se cambia a una forma de dos etapas: primero, busque según una semántica precisa y luego relájese y combine según los resultados si los resultados son insuficientes.
-- En el lado de la consulta, elimine las últimas palabras que solo agregan restricciones pero no recuerdan.
-- El respaldo difuso divide la coincidencia por palabras y ya no trata la cadena completa como una subcadena.
-- Cuando la tabla de hechos no tiene resultados, recurre al resumen compilado para el escaneo de subcadenas. La fuente de anotación del elemento de impacto es "resumen compilado"
+- 多词查询改成两段式：先按精确语义检索，结果不足再按任一命中放宽合并
+- 查询侧去掉只增加约束、不增加召回的尾单字
+- 模糊回退按词拆开匹配，不再拿整串当子串
+- 事实表没有结果时回落到编译摘要做子串扫描，命中项标注来源是「编译摘要」
 
-### Superficie de la herramienta
+### 工具面
 
-- **JS El enlace completo en el sandbox no está disponible**: Hay un script de autocomprobación del entorno menos antes de iniciar el entorno sandbox. `return`,
-  La devolución de llamada obtiene un valor nulo, por lo que la autoprueba siempre falla. No es sólo el `execute_javascript`,
-  La activación de complementos está obsoleta junto con la evaluación de habilidades JS. Después de la reparación, también se separaron las categorías de errores:
-  Cuando el entorno no esté disponible, dirá claramente "Volver a intentar el mismo código no tendrá éxito" y el modelo ya no pensará que los parámetros están escritos incorrectamente.
-- **Se puede encontrar una salida larga.**:`tool_outputs` El directorio está registrado como un montaje de solo lectura,`workspace_list` Se puede enumerar,
-  La ruta escrita en el recibo se cambia al método de montaje. En el pasado, el nombre del archivo contenía una cadena aleatoria y, una vez que se perdía el recibo, sólo se podía adivinar.
-- **Recuento de herramientas unificado**: La palabra que aparece es "240 registrados",`find_tools` Informe 231, iniciar informe de registro 172,
-  Los tres números provienen de tres conjuntos diferentes. Ahora ha convergido en una definición y la palabra indicadora se cambia a "Se pueden realizar N números de llamadas en esta ronda".
-- **Node tiempo de ejecución**:`os.cpus()` Devuelve una matriz vacía en algunos sistemas, paquete npm para determinar la simultaneidad por número de núcleos
-  obtendrá 0. Ahora el número de CPU se inyecta y sintetiza cuando no se puede obtener. Esta detección también se suma a la autocomprobación en ejecución.
+- **JS 沙盒整条链路不可用**：沙盒启动前的环境自检脚本少了一个 `return`，
+  回调拿到的是空值，于是自检永远判失败。受影响的不只是 `execute_javascript`，
+  插件激活与 JS 技能求值一起废掉。修好后错误分类也分开了：
+  环境不可用时会明说「重试同一段代码不会成功」，不再让模型以为是参数写错
+- **长输出能找了**：`tool_outputs` 目录登记成只读挂载，`workspace_list` 能列出来，
+  回执里写的路径改成挂载写法。以前文件名带随机串，回执一丢就只能猜
+- **工具计数统一**：提示词写「已注册 240 个」、`find_tools` 报 231、启动日志报 172，
+  三个数来自三个不同集合。现在收敛到一处定义，提示词改成「本轮可调用 N 个」
+- **Node 运行时**：`os.cpus()` 在某些系统上返回空数组，按核数决定并发的 npm 包
+  会拿到 0。现在注入 CPU 数并在取不到时合成，运行自检也加了这一项探测
 
-### Problema por solucionar
+### 修掉的问题
 
-- **Fallo al iniciar**: configura la página del grupo para usar la enumeración como parámetros de navegación.R8 Después de cambiar el nombre, tírelo tan pronto como se construya la ruta.
-  `Cannot find class with name`. Cámbielo a una identificación de cadena y luego asigne la página de destino
-- **Ocasionalmente se pierde la recuperación del enfoque**: La protección del cambio de sesión es un singleton a nivel de proceso, un cambio tardío de una instancia de interfaz
-  El cambio que acaba de iniciar otra instancia se considerará caducado. Cambiar a nivel de instancia
-- **No se puede instalar el complemento**: El umbral de versión durante la instalación lee los parámetros de compilación y la compilación local no incluye un número de versión.
-  Es el valor centinela, que es menor que la versión requerida por el complemento. La versión Sentinel ahora salta este umbral y toma nota de la advertencia,
-  Los paquetes formales se verifican como de costumbre y las comprobaciones de firma y degradación no se ven afectadas.
+- **启动崩溃**：设置分组页把枚举当导航参数，R8 改名之后一构造路由就抛
+  `Cannot find class with name`。改成字符串 id，目标页再映射
+- **焦点恢复偶发丢失**：会话切换守卫是进程级单例，一个界面实例的迟到切换
+  会把另一个实例刚发起的切换判成过期。改成实例级
+- **插件装不上**：安装时的版本门槛读的是构建参数，本地构建不带版本号时
+  是哨兵值，比插件要求的版本小。现在哨兵版本跳过这道门槛并记警告，
+  正式包照旧校验，降级与签名检查不受影响
 
-### Instalación
+### 安装
 
-- `arm64-v8a`: La mayoría de los teléfonos celulares
-- `armeabi-v7a`:Equipo viejo
-- `x86_64`: emulador
-- `universal`: No estoy seguro del modelo de este modelo.
+- `arm64-v8a`：绝大多数手机
+- `armeabi-v7a`：老设备
+- `x86_64`：模拟器
+- `universal`：不确定机型时装这个
 
-Simplemente sobrescriba la instalación, el número de versión se incrementará y no se activará el rechazo de la degradación.
+覆盖安装即可，版本号递增，不会触发降级拒绝。
 
-### cosas conocidas
+### 已知事项
 
-- Cuando el TTS en la nube vuelve al sonido del sistema, el sonido viene con el teléfono y los resultados de la herramienta explicarán el motivo.
-- El mp3 devuelto por la síntesis en la nube se almacena en `.wav` sufijo, la reproducción es normal
-- Después de eliminar un mensaje, el archivo de voz no se reciclará inmediatamente y se borrará junto con el caché.
+- 云端 TTS 回落到系统音色时，声音是手机自带的，工具结果里会说明原因
+- 云端合成返回的 mp3 存放在 `.wav` 后缀下，播放正常
+- 删除消息后语音文件不会立刻回收，随缓存清理
 
 ---
 

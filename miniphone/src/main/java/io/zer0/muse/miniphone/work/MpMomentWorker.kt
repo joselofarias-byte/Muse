@@ -9,15 +9,15 @@ import io.zer0.muse.miniphone.data.moment.auto.MpMomentAutoRunner
 import org.koin.core.context.GlobalContext
 
 /**
- * Trabajador que genera periódicamente actualizaciones de Momentos en segundo plano.
+ * 后台定时生成朋友圈动态的 Worker。
  *
- * La ontología sólo hace tres cosas.:Tomado de Koin [MpMomentAutoRunner], corre durante una ronda y regresa con éxito independientemente del resultado.
- * El juicio de "fuego o no" está todo en el corredor.(Función pura + registro),No hay negocios involucrados aquí.
+ * 本体只做三件事:从 Koin 取 [MpMomentAutoRunner]、跑一轮、无论结果都返回 success。
+ * 「发不发」的判断全在 runner 里(纯函数 + 日志),这里不掺业务。
  *
- * nunca regresar `retry`:Momentos no es una tarea que deba entregarse,Si fallas, espera al siguiente ciclo. —— Devolver el reintento sólo hará que el sistema
- * Vuelva a conectarse a la red 30 segundos después con el mismo contexto a prueba de fallos.
+ * 永不返回 `retry`:朋友圈不是必须送达的任务,失败就等下个周期 —— 返回 retry 只会让系统
+ * 在 30 秒后用同一个必然失败的上下文再打一次网络。
  *
- * Koin no puedo conseguirlo(modo seguro/módulo no ensamblado)También devuelve éxito: no podrás conseguirlo aunque lo intentes de nuevo.
+ * Koin 取不到(安全模式 / 模块未装配)时同样返回 success:重试也取不到。
  */
 class MpMomentWorker(
     appContext: Context,
@@ -26,11 +26,11 @@ class MpMomentWorker(
 
     override suspend fun doWork(): Result {
         val runner = resultOf { GlobalContext.get().get<MpMomentAutoRunner>() }
-            .onError { msg, t -> Logger.w(TAG, "Falló el tiempo de los momentos | reason=koin_missing | ${t?.message ?: msg}", t) }
+            .onError { msg, t -> Logger.w(TAG, "朋友圈定时失败 | reason=koin_missing | ${t?.message ?: msg}", t) }
             .getOrNull()
         if (runner == null) return Result.success()
         resultOf { runner.run() }
-            .onError { msg, t -> Logger.w(TAG, "Falló el tiempo de los momentos | reason=runner_error | ${t?.message ?: msg}", t) }
+            .onError { msg, t -> Logger.w(TAG, "朋友圈定时失败 | reason=runner_error | ${t?.message ?: msg}", t) }
         return Result.success()
     }
 

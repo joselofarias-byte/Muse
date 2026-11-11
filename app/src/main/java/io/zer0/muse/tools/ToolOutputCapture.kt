@@ -13,12 +13,12 @@ import java.io.Reader
 import java.util.UUID
 
 /**
- * Fuente de salida de la clase de comando: mantenga la cola al truncar.
+ * 命令类输出源：截断时保留尾部。
  *
- * El criterio es la semántica ("La conclusión está en las últimas líneas.": Errores de compilación, fallas de prueba, códigos de salida), no volumen de salida.
- * Ya hay nombres de herramientas en la colección (terminal_exec / execute_shell / termux_exec / device_shell),
- * También hay prefijos cuando la herramienta recopila internamente flujos de salida (python_stdout / node_stdout / shizuku_command):
- * Los dos comparten una tabla para evitar que el mismo canal de comando juzgue la dirección una vez en la capa de adquisición y la capa de orquestación.
+ * 判据是语义（"结论在最后几行"：编译错误、测试失败、退出码），不是输出体积。
+ * 集合里既有工具名（terminal_exec / execute_shell / termux_exec / device_shell），
+ * 也有工具内部采集输出流时的前缀（python_stdout / node_stdout / shizuku_command）：
+ * 两者共用一张表，免得同一个命令通道在采集层和编排层各自判一次方向。
  */
 private val TAIL_KEEPING_OUTPUT_SOURCES = setOf(
     "terminal_exec",
@@ -30,21 +30,21 @@ private val TAIL_KEEPING_OUTPUT_SOURCES = setOf(
     "python_stderr",
     "node_stdout",
     "node_stderr",
-    // La salida estándar/stderr ejecutada por el script tiene la semántica final cubierta por el prefijo anterior; aquí hay otra capa basada en el nombre de la herramienta,
-    // Esto es para que cuando se reescriba la ruta de adquisición o se utilice otro método de llamada en el futuro, la dirección no degenere en la cabeza. La redundancia es inofensiva, pero la omisión es perjudicial.
+    // 脚本执行的 stdout/stderr 已由上面的前缀覆盖尾部语义；这里再按工具名兜一层，
+    // 是为了将来采集路径改写或另起调用方式时，方向仍不会退化成头部。冗余无害，漏了才有害。
     "execute_python_script",
     "execute_node_script",
 )
 
-/** Si la fuente de salida trunca la vista previa para mantener la cola (clase de comando) o el encabezado (archivo, clase de resultado de búsqueda). */
+/** 该输出源截断预览时保留尾部（命令类）还是保留头部（文件、搜索结果类）。 */
 internal fun keepsOutputTail(sourceName: String?): Boolean =
     sourceName != null && sourceName.trim().lowercase() in TAIL_KEEPING_OUTPUT_SOURCES
 
 /**
  * Keeps short command output inline and spills larger output to a file that read_file can page.
  *
- * El segmento que se retiene cuando se trunca la salida está determinado por [keepsOutputTail] Determinado por la semántica de la herramienta: dejar la cola de la salida del comando,
- * Los archivos y los resultados de la búsqueda se dejan en el encabezado. El umbral permanece sin cambios, solo se toma el segmento.
+ * 输出被截断时保留哪一段由 [keepsOutputTail] 按工具语义决定：命令类输出留尾部，
+ * 文件与搜索结果类留头部。阈值不变，变的只是取哪一段。
  */
 internal class ToolOutputCapture(
     private val outputDirectory: File,
@@ -57,7 +57,7 @@ internal class ToolOutputCapture(
     private val inlineContent = StringBuilder()
     private val headPreview = StringBuilder()
 
-    /** Ventana de desplazamiento para vista previa de la cola (solo en [keepTail] ): conserva solo el último [previewLimitChars] palabras. */
+    /** 尾部预览的滚动窗口（仅在 [keepTail] 时使用）：只保留最后 [previewLimitChars] 字。 */
     private val tailPreview = StringBuilder()
     private var totalChars = 0L
     private var outputFile: File? = null
@@ -67,6 +67,8 @@ internal class ToolOutputCapture(
     val savedFile: File? get() = outputFile
 
     init {
+        // P2-05: 每次进程里第一次落盘时顺手清理过期输出（尽力而为，失败不影响本次执行）
+        io.zer0.muse.data.policy.ToolOutputRetention.purgeOnce(outputDirectory, System.currentTimeMillis())
         require(inlineLimitChars >= 0)
         require(previewLimitChars >= 0)
     }
@@ -99,15 +101,15 @@ internal class ToolOutputCapture(
             append(inlineContent.ifEmpty { StringBuilder(emptyMessage) })
         }
         val mountPath = "$TOOL_OUTPUTS_DIR:/$fileName"
-        // Primero obtenga la vista previa renderizada y luego informe su longitud real: ambas provienen de la misma cadena.
-        // No habrá ningún error de "mostrar más que mensajes"/Desalineación "falta una palabra".
+        // 先取渲染后的预览，再拿它的实际长度报数：两者出自同一个字符串，
+        // 不会出现「显示比提示多/少一个字」的错位。
         val previewText = renderPreview()
         return buildString {
             if (header.isNotBlank()) append(header).append('\n')
-            append("[El resultado completo se ha guardado en: ").append(file.absolutePath).append("]\n")
+            append("[完整输出已保存到: ").append(file.absolutePath).append("]\n")
             append(
-                "[Utilice workspace_read para leer segmentadamente cuando se requiera contenido completo.: path=$mountPath, " +
-                    "offset_chars=0, length_chars=$TOOL_OUTPUT_READ_PAGE_CHARS;También puedes usar read_file para leer (path=$TOOL_OUTPUTS_DIR/$fileName)]\n\n",
+                "[需要完整内容时用 workspace_read 分段读取: path=$mountPath, " +
+                    "offset_chars=0, length_chars=$TOOL_OUTPUT_READ_PAGE_CHARS；也可用 read_file 读取（path=$TOOL_OUTPUTS_DIR/$fileName）]\n\n",
             )
             append(previewText)
             append("\n\n")
@@ -116,10 +118,10 @@ internal class ToolOutputCapture(
     }
 
     /**
-     * Obtenga una vista previa del texto sin dejar medio par sustituto.
+     * 预览文本，且不留下半个代理对。
      *
-     * El modo de cola descarta el agente bajo aislado al principio y el modo principal descarta el agente alto aislado al final:
-     * En ambos casos, solo aparecerá uno en el límite de truncamiento. Después de descartar [previewNotice] Recuento según la longitud real.
+     * 尾部模式丢掉开头那个孤立的低代理，头部模式丢掉结尾那个孤立的高代理：
+     * 两种情况都只会在截断边界上出现一个，丢掉后 [previewNotice] 按实际长度重新报数。
      */
     private fun renderPreview(): String {
         if (!keepTail) {
@@ -134,15 +136,15 @@ internal class ToolOutputCapture(
         return tailPreview.toString()
     }
 
-    /** Consejo de paginación: indique de qué extremo se toma la vista previa, la cantidad total del texto original y la cantidad de caracteres no mostrados, para que el modelo pueda determinar si continúa leyendo. */
+    /** 分页提示：写明预览取自哪一端、原文总量与未显示的字符数，模型才能判断要不要继续读。 */
     private fun previewNotice(shownChars: Int): String {
         val omitted = (totalChars - shownChars).coerceAtLeast(0L)
         return if (keepTail) {
-            "[Lo anterior es el final de la salida. $shownChars Vista previa de palabras; total del texto original $totalChars palabra, comienzo $omitted Las palabras no se muestran;" +
-                "Utilice read_file si es necesario desde offset_chars=0 leer]"
+            "[以上是输出末尾 $shownChars 字的预览；原文共 $totalChars 字，开头 $omitted 字未显示；" +
+                "需要时用 read_file 从 offset_chars=0 读取]"
         } else {
-            "[Lo anterior es el comienzo de la salida. $shownChars Vista previa de palabras; total del texto original $totalChars palabras, el resto $omitted Las palabras no se muestran;" +
-                "Utilice read_file para continuar leyendo mediante el cursor del carácter si es necesario]"
+            "[以上是输出开头 $shownChars 字的预览；原文共 $totalChars 字，其余 $omitted 字未显示；" +
+                "需要时用 read_file 按字符游标继续读取]"
         }
     }
 
@@ -160,14 +162,14 @@ internal class ToolOutputCapture(
             return
         }
         tailPreview.append(text)
-        // Si se excede el límite superior, el primer párrafo se descarta: solo las últimas líneas del resultado del comando tienen significado.
+        // 超出上限就丢掉最前面的一段：命令类输出只留最后几行才有意义。
         val overflow = tailPreview.length - previewLimitChars
         if (overflow > 0) tailPreview.delete(0, overflow)
     }
 
     private fun startFile() {
         if (!outputDirectory.isDirectory && !outputDirectory.mkdirs() && !outputDirectory.isDirectory) {
-            throw IOException("No se puede crear el directorio de salida de la herramienta: ${outputDirectory.absolutePath}")
+            throw IOException("无法创建工具输出目录: ${outputDirectory.absolutePath}")
         }
         val file = File(outputDirectory, fileName)
         val newWriter = BufferedWriter(OutputStreamWriter(FileOutputStream(file), Charsets.UTF_8))
@@ -199,8 +201,8 @@ internal fun captureTextStream(
 ): ToolTextStreamCaptureResult {
     require(previewLimitChars >= 0)
     val capture = ToolOutputCapture(outputDirectory, filePrefix)
-    // aquí está"Para análisis"vista previa del prefijo (HTML análisis, muestreo del primer párrafo), por lo que siempre tome el comienzo;
-    // La vista previa paginada del modelo la genera capture.finish en la dirección de la fuente de salida.
+    // 这里是"解析用"的前缀预览（HTML 解析、首段取样），所以总是取开头；
+    // 给模型看的分页预览由 capture.finish 按输出源方向生成。
     val preview = StringBuilder(minOf(previewLimitChars, TOOL_RESULT_PREVIEW_CHARS))
     var totalChars = 0L
     reader.use {
@@ -230,6 +232,6 @@ internal suspend fun captureLargeToolOutput(context: Context, filePrefix: String
     } catch (error: kotlinx.coroutines.CancellationException) {
         throw error
     } catch (error: Exception) {
-        output + "\n\n[La salida completa falló; el texto original completo de este mensaje permanece: ${error.message ?: "Error de almacenamiento"}]"
+        output + "\n\n[完整输出落盘失败；本次消息仍保留完整原文: ${error.message ?: "存储失败"}]"
     }
 }

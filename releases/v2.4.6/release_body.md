@@ -1,32 +1,32 @@
 # Muse v2.4.6
 
-Esta versión es una versión de corrección de errores posterior a la v2.4.5. Se centra en "las restricciones del proveedor de servicios ascendentes están localizadas" y soluciona tres tipos de problemas que harán que las solicitudes sean rechazadas por el proveedor de servicios ascendentes o dañen la experiencia interactiva.
+本版为 v2.4.5 之后的缺陷修复版本，聚焦「上游服务商约束在本地兜住」，修掉三类会导致请求被上游拒绝或交互体验受损的问题。
 
-## Reparación
+## 修复
 
-### 1. La temperatura de muestreo fuera de los límites da como resultado HTTP 400 (el asistente de reemplazo no puede enviar el primer mensaje)
+### 1. 采样温度越界导致 HTTP 400（换助手发第一条消息即失败）
 
-Algunos proveedores `temperature` adoptar**intervalo abierto**Restricciones (como las de SenseNova `[0.0, 2.0)`,2.0 en sí es ilegal), y el límite superior del control deslizante "Aleatoriedad de respuesta" en la aplicación es exactamente 2,0. La temperatura importada por la tarjeta de personaje de terceros puede tener cualquier valor. Previamente, estos valores se transmitirán al upstream tal cual, provocando `field Temperature invalid` E interrumpir esta ronda de generación.
+部分供应商对 `temperature` 采用**开区间**约束（如商汤 SenseNova 为 `[0.0, 2.0)`，2.0 本身非法），而应用内「回答随机性」滑块上限恰为 2.0、第三方角色卡导入的温度可任意取值，此前这些值会原样透传给上游，触发 `field Temperature invalid` 并中断本轮生成。
 
-Ahora al solicitar exportaciones, la temperatura se ajustará uniformemente según la declaración de capacidad del proveedor: Nuevo `ProviderCompat.maxTemperatureExclusive`, el límite superior de la declaración del punto final de SenseTime es 2,0;`ChatService` Fije la temperatura en un rango legal antes de construir la solicitud (en comparación con el existente `topP` Sujete la misma posición). Tirar del control deslizante a 2.0 ya no provocará un error.
+现在在请求出口按供应商能力声明统一收紧温度：新增 `ProviderCompat.maxTemperatureExclusive`，商汤端点声明上限 2.0；`ChatService` 在构造请求前把温度夹进合法区间（与既有的 `topP` 夹取同位置）。滑块拉到 2.0 也不会再报错。
 
-### 2. Presupuesto de salida fuera de límites, lo que da como resultado HTTP 400 (max_tokens exceeds the limit)
+### 2. 输出预算越界导致 HTTP 400（max_tokens exceeds the limit）
 
-Modelo no declarado `maxOutputTokens` Cuando , "toda la ventana de contexto restante" se consideraba anteriormente como el presupuesto de salida actual y se calculaba un valor cercano a la longitud total del contexto. `max_tokens`, estaba aguas arriba como `max_tokens exceeds the limit of 65536` Rechazar.
+模型未声明 `maxOutputTokens` 时，此前会把「整段剩余上下文窗口」当成本次输出预算，算出接近上下文全长的 `max_tokens`，被上游以 `max_tokens exceeds the limit of 65536` 拒绝。
 
-ahora `ModelOutputPolicy` Cuando "el modelo no declara un límite superior y la persona que llama no proporciona un presupuesto", se devuelve el valor predeterminado del proveedor y ya no se amplifica de la nada.
+现在 `ModelOutputPolicy` 在「模型未声明上限且调用方未给预算」时交回 Provider 自身默认值，不再凭空放大。
 
-### 3. No sigue automáticamente el desplazamiento durante el proceso de respuesta
+### 3. 回复过程中不自动跟随滚动
 
-Anteriormente, el seguimiento automático requería "El último elemento visible resulta ser el último mensaje", pero se insertará "Pensando" al final del área de mensajes./Indicaciones de ejecución de herramientas, marcadores de posición de imágenes y videos, tarjetas de tareas de subagente y otros elementos de condición——Estos elementos quedarán invalidados tan pronto como sean juzgados, lo que provocará que la lista no siga durante todo el período de respuesta. Tienes que desplazarte manualmente hasta la parte inferior para ver el texto completo, y el estado "deslizado hacia arriba" se bloquea accidentalmente.
+此前自动跟随要求「最后可见项恰好是最后一条消息」，但消息区尾部会插入「思考中/工具执行」提示、图片与视频占位、子代理任务卡等条件项——这些项一出现判定即失效，导致整段回复期间列表不跟随，必须手动滑到底才能看到全文，且「已上滑」状态被误锁。
 
-Ahora se cambia a "se alcanzó o pasó el final del área de mensajes", y la lista se desplazará automáticamente hacia adelante una pantalla cuando el elemento final esté en la parte inferior, pero la lista aún se puede desplazar hacia adelante. Los usuarios que deslicen activamente el dedo hacia arriba dejarán de seguirnos inmediatamente (el diseño permanece sin cambios).
+现在改为「已到达或越过消息区末尾即视为到底」，并在尾随项贴底但列表仍可前滚时主动前滚一屏。用户主动上滑仍会立即停止跟随（设计不变）。
 
-## Información de construcción
+## 构建信息
 
-- Versión:2.4.6 (246)
-- Versión de la base de datos:107
-- Distribución:arm64-v8a / armeabi-v7a / universal
+- 版本：2.4.6 (246)
+- 数据库版本：107
+- 分发：arm64-v8a / armeabi-v7a / universal
 
 ---
 # Muse v2.4.6 (English)

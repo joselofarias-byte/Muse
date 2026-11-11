@@ -12,23 +12,23 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
 /**
- * P2-6 BrowserAutomationTool:Conjunto de herramientas de automatización del navegador(AI invocable).
+ * P2-6 BrowserAutomationTool:浏览器自动化工具集(AI 可调用)。
  *
- * poner [BrowserManager] capacidades empaquetadas en 6 herramientas independientes,Regístrese para [ToolRegistry]:
- *  1. [TOOL_NAVIGATE]   — browser_navigate(url)        Navegar a URL
- *  2. [TOOL_CLICK]      — browser_click(selector)       elemento de clic
- *  3. [TOOL_TYPE]       — browser_type(selector, text)  Introducir texto
- *  4. [TOOL_EXTRACT]    — browser_extract(selector)     Extraer texto
- *  5. [TOOL_SCROLL_BOTTOM] — browser_scroll_bottom()    desplazarse hacia abajo
- *  6. [TOOL_GET_HTML]   — browser_get_html()            Obtener página actual HTML(Truncar)
+ * 把 [BrowserManager] 的能力封装为 6 个独立工具,注册到 [ToolRegistry]:
+ *  1. [TOOL_NAVIGATE]   — browser_navigate(url)        导航到 URL
+ *  2. [TOOL_CLICK]      — browser_click(selector)       点击元素
+ *  3. [TOOL_TYPE]       — browser_type(selector, text)  输入文本
+ *  4. [TOOL_EXTRACT]    — browser_extract(selector)     提取文本
+ *  5. [TOOL_SCROLL_BOTTOM] — browser_scroll_bottom()    滚动到底部
+ *  6. [TOOL_GET_HTML]   — browser_get_html()            获取当前页 HTML(截断)
  *
- * Instrucciones de puente(Lo mismo [CodeExecutionTool]):
- *  - [executeFromArgs] es una función sincrónica,Adaptar la firma ToolFn de ToolRegistry `(Map<String,String>) -> String`
- *  - Para uso interno [runBlocking] puente hacia [BrowserManager] La función de suspensión — porque [ToolRouteExecutionGuard.executeFromJson]
- *    Llamado en rutina IO,Bloquear el hilo IO esperando el hilo principal
- *    WebView devolución de llamada,El hilo principal no está bloqueado.,Sin riesgo de estancamiento
+ * 桥接说明(同 [CodeExecutionTool]):
+ *  - [executeFromArgs] 是同步函数,适配 ToolRegistry 的 ToolFn 签名 `(Map<String,String>) -> String`
+ *  - 内部用 [runBlocking] 桥接到 [BrowserManager] 的 suspend 函数 — 因 [ToolRouteExecutionGuard.executeFromJson]
+ *    在 IO 协程中调用,阻塞 IO 线程等待主线程
+ *    WebView 回调,主线程未被阻塞,无死锁风险
  *
- * Método de registro(prensa [ToolRegistry.init] Registro de CodeExecutionTool en):
+ * 注册方式(按 [ToolRegistry.init] 中的 CodeExecutionTool 注册):
  * ```kotlin
  * BrowserAutomationTool.toolDefs().forEach { def ->
  *     toolRegistry.register(def) { args ->
@@ -41,7 +41,7 @@ object BrowserAutomationTool {
 
     private const val TAG = "BrowserAutomationTool"
 
-    /** Constante de nombre de herramienta(Registrado en ToolRegistry id). */
+    /** 工具名常量(注册到 ToolRegistry 的 id)。 */
     const val TOOL_NAVIGATE = "browser_navigate"
     const val TOOL_CLICK = "browser_click"
     const val TOOL_TYPE = "browser_type"
@@ -52,18 +52,18 @@ object BrowserAutomationTool {
     const val TOOL_SCREENSHOT = "browser_screenshot"
 
     /**
-     * Lista de todas las definiciones de herramientas(suministro [ToolRegistry.register] Registro por lotes).
+     * 全部工具定义列表(供 [ToolRegistry.register] 批量注册)。
      *
-     * @return 6 un [ToolRegistry.ToolDef] lista de
+     * @return 6 个 [ToolRegistry.ToolDef] 的列表
      */
     fun toolDefs(): List<ToolRegistry.ToolDef> = listOf(
         ToolRegistry.ToolDef(
             name = TOOL_NAVIGATE,
-            // v1.0.75 fix (Revisión de herramientas 02): Declaración complementaria de dependencia temporal
-            description = "automatización del navegador:Navegue hasta la URL especificada. Esta herramienta debe llamarse primero para completar la navegación.,reutilizar browser_click/browser_type/browser_extract Página de operación. Todas las herramientas del navegador regresan JSON,Contiene éxito y datos/error." +
-                "URL Se puede omitir scheme(Por ejemplo, example.com agrega automáticamente https://). El tiempo de espera es de 10 segundos.",
+            // v1.0.75 fix (工具审查 02): 补时序依赖声明
+            description = "浏览器自动化:导航到指定 URL。必须先调用本工具完成导航,再使用 browser_click/browser_type/browser_extract 操作页面。所有浏览器工具返回 JSON,含 success 与 data/error。" +
+                "URL 可省略 scheme(如 example.com 自动补 https://)。超时 10 秒。",
             parameters = mapOf(
-                "url" to "Requerido,objetivo URL,Como https://example.com o example.com",
+                "url" to "必填,目标 URL,如 https://example.com 或 example.com",
             ),
             required = setOf("url"),
             category = "built-in",
@@ -71,12 +71,12 @@ object BrowserAutomationTool {
         ),
         ToolRegistry.ToolDef(
             name = TOOL_CLICK,
-            description = "automatización del navegador:Haga clic en el elemento de destino. Elija uno de los dos métodos de posicionamiento:" +
-                "① selector(CSS seleccionador,La gramática es la misma que document.querySelector);" +
-                "② numberId(browser_snapshot Número de elemento devuelto,Recomendado——No es necesario conocer la estructura de la página.).",
+            description = "浏览器自动化:点击目标元素。两种定位方式二选一:" +
+                "① selector(CSS 选择器,语法同 document.querySelector);" +
+                "② numberId(browser_snapshot 返回的元素编号,推荐——无需了解页面结构)。",
             parameters = mapOf(
-                "selector" to "Opcional,CSS seleccionador,Como por ejemplo '#login-btn' o 'button.submit'",
-                "numberId" to "Opcional,Número de elemento de instantánea(Elige uno de los dos con selector,Prioridad proporcionada)",
+                "selector" to "可选,CSS 选择器,如 '#login-btn' 或 'button.submit'",
+                "numberId" to "可选,快照元素编号(与 selector 二选一,提供时优先)",
             ),
             required = emptySet(),
             category = "built-in",
@@ -84,13 +84,13 @@ object BrowserAutomationTool {
         ),
         ToolRegistry.ToolDef(
             name = TOOL_TYPE,
-            description = "automatización del navegador:Ingrese texto en el área de entrada/texto de destino." +
-                "Elija uno de los dos métodos de posicionamiento:selector(CSS seleccionador)o numberId(número de instantánea,Recomendado)." +
-                "Activa automáticamente eventos de entrada + cambio para que sean compatibles con marcos como React/Vue.",
+            description = "浏览器自动化:向目标 input/textarea 输入文本。" +
+                "定位方式二选一:selector(CSS 选择器)或 numberId(快照编号,推荐)。" +
+                "自动触发 input + change 事件以兼容 React/Vue 等框架。",
             parameters = mapOf(
-                "selector" to "Opcional,CSS seleccionador,Como por ejemplo '#search-input'",
-                "numberId" to "Opcional,Número de elemento de instantánea(Elige uno de los dos con selector,Prioridad proporcionada)",
-                "text" to "Requerido,El contenido del texto a ingresar.",
+                "selector" to "可选,CSS 选择器,如 '#search-input'",
+                "numberId" to "可选,快照元素编号(与 selector 二选一,提供时优先)",
+                "text" to "必填,要输入的文本内容",
             ),
             required = setOf("text"),
             category = "built-in",
@@ -98,12 +98,12 @@ object BrowserAutomationTool {
         ),
         ToolRegistry.ToolDef(
             name = TOOL_EXTRACT,
-            // v1.0.75 fix (Revisión de herramientas 02): Diferenciar de parse_link
-            description = "automatización del navegador:Extrae el contenido de texto del elemento afectado por un selector CSS." +
-                "Si falla, se devuelve una cadena vacía. Se puede utilizar para capturar precios de productos, texto de artículos, listas de artículos, etc." +
-                "Diferente de parse_link: esta herramienta lee la página actualmente cargada por el navegador,parse_link Obtenga páginas individuales de las URL.",
+            // v1.0.75 fix (工具审查 02): 与 parse_link 区分
+            description = "浏览器自动化:提取 CSS 选择器命中元素的 textContent。" +
+                "未命中返回空串。可用于抓取商品价格、文章正文、列表项等。" +
+                "区别于 parse_link: 本工具读浏览器当前已加载页面,parse_link 从 URL 抓取独立页面。",
             parameters = mapOf(
-                "selector" to "Requerido,CSS seleccionador,Como por ejemplo '.price' o 'article h1'",
+                "selector" to "必填,CSS 选择器,如 '.price' 或 'article h1'",
             ),
             required = setOf("selector"),
             category = "built-in",
@@ -111,7 +111,7 @@ object BrowserAutomationTool {
         ),
         ToolRegistry.ToolDef(
             name = TOOL_SCROLL_BOTTOM,
-            description = "automatización del navegador:Desplácese hasta el final de la página. Comúnmente utilizado en escenarios de desplazamiento infinito para cargar más contenido.(Como lista de productos, flujo dinámico.).",
+            description = "浏览器自动化:滚动到页面底部。常用于无限滚动场景加载更多内容(如商品列表、动态流)。",
             parameters = emptyMap(),
             required = emptySet(),
             category = "built-in",
@@ -119,8 +119,8 @@ object BrowserAutomationTool {
         ),
         ToolRegistry.ToolDef(
             name = TOOL_GET_HTML,
-            description = "automatización del navegador:Obtenga el código fuente HTML completo de la página actual." +
-                "Se puede utilizar para analizar la estructura de la página, extraer campos de formulario, etc.;Los resultados largos proporcionarán entradas de lectura segmentadas.",
+            description = "浏览器自动化:获取当前页面的完整 HTML 源码。" +
+                "可用于分析页面结构、提取表单字段等;长结果会提供分段读取入口。",
             parameters = emptyMap(),
             required = emptySet(),
             category = "built-in",
@@ -130,12 +130,12 @@ object BrowserAutomationTool {
         screenshotToolDef(),
     )
 
-    /** Definición de la herramienta de instantáneas de la estructura de la página. */
+    /** 页面结构快照工具定义。 */
     private fun snapshotToolDef() = ToolRegistry.ToolDef(
         name = TOOL_SNAPSHOT,
-        description = "automatización del navegador:Extraer una instantánea estructurada de la página actual — Título/URL/Elementos interactivos" +
-            "(enlace/botón/Cuadro de entrada,con números consecutivos)/Vista previa del texto. Úselo para comprender la estructura de la página.,reutilizar " +
-            "browser_click/browser_type El numberId opera por número.",
+        description = "浏览器自动化:提取当前页面的结构化快照 — 标题/URL/可交互元素" +
+            "(链接/按钮/输入框,带连续编号)/正文预览。用它了解页面结构,再用 " +
+            "browser_click/browser_type 的 numberId 按编号操作。",
         parameters = emptyMap(),
         required = emptySet(),
         category = "built-in",
@@ -143,14 +143,14 @@ object BrowserAutomationTool {
     )
 
     /**
-     * v2.6.0: Definición de la herramienta de captura de pantalla de representación de página(extraído por separado,evitar [toolDefs] demasiado tiempo).
-     * para que el modelo pueda realmente“mira”a píxeles de página,Y no sólo HTML/texto.
+     * v2.6.0: 页面渲染图截图工具定义(单独抽出,避免 [toolDefs] 过长)。
+     * 让模型能真正“看”到页面像素,而不只是 HTML/文本。
      */
     private fun screenshotToolDef() = ToolRegistry.ToolDef(
         name = TOOL_SCREENSHOT,
-        description = "automatización del navegador:Capture una representación visual de la página actual.(píxeles reales,Con fotos/CSS Diseño)," +
-            "Páselo de nuevo al modelo en forma de imagen. Cuando el contenido de la página requiere“mira”(Como imágenes, gráficos, códigos de verificación, efectos tipográficos," +
-            "canvas/mapa/fotograma de vídeo)No sólo cuando se mira la estructura HTML.",
+        description = "浏览器自动化:截取当前页面的可视渲染图(真实像素,含图片/CSS 布局)," +
+            "以图片形式回传给模型。当页面内容需要“看”(如图片、图表、验证码、排版效果、" +
+            "canvas/地图/视频帧)而不只是看 HTML 结构时使用。",
         parameters = emptyMap(),
         required = emptySet(),
         category = "built-in",
@@ -158,26 +158,26 @@ object BrowserAutomationTool {
     )
 
     /**
-     * Puente sincrónico:Adapte la firma ToolFn de ToolRegistry.
+     * 同步桥接:适配 ToolRegistry 的 ToolFn 签名。
      *
-     * Para uso interno [runBlocking] llamar [BrowserManager] La función de suspensión:
-     *  - [ToolRouteExecutionGuard.executeFromJson] Llamado en rutina IO,
-     *    El hilo actual es un hilo IO,El hilo principal está inactivo cuando se bloquea esperando la devolución de llamada de WebView del hilo principal,Sin riesgo de estancamiento
+     * 内部用 [runBlocking] 调用 [BrowserManager] 的 suspend 函数:
+     *  - [ToolRouteExecutionGuard.executeFromJson] 在 IO 协程中调用,
+     *    当前线程为 IO 线程,阻塞等待主线程 WebView 回调时主线程空闲,无死锁风险
      *
-     * @param toolName Nombre de la herramienta(para su distribución al correspondiente BrowserManager API)
-     * @param args parámetros map
-     * @param browserManager Administrador del navegador Singleton
-     * @return JSON cuerda,Contiene campo de éxito(true/false)con campo de datos/error
+     * @param toolName 工具名(用于分发到对应 BrowserManager API)
+     * @param args 参数 map
+     * @param browserManager 浏览器管理器单例
+     * @return JSON 字符串,包含 success 字段(true/false)与 data/error 字段
      */
     fun executeFromArgs(toolName: String, args: Map<String, String>, browserManager: BrowserManager): String = runBlocking {
         try {
             when (toolName) {
                 TOOL_NAVIGATE -> {
                     val url = args["url"]?.takeIf { it.isNotBlank() }
-                        ?: return@runBlocking buildResult(success = false, error = "Falta la URL del parámetro o está vacía")
+                        ?: return@runBlocking buildResult(success = false, error = "参数 url 缺失或为空")
                     browserManager.navigate(url).fold(
-                        onSuccess = { buildResult(success = true, data = "Navegado a: $url") },
-                        onFailure = { e -> buildResult(success = false, error = e.message ?: "Error de navegación") },
+                        onSuccess = { buildResult(success = true, data = "已导航到: $url") },
+                        onFailure = { e -> buildResult(success = false, error = e.message ?: "导航失败") },
                     )
                 }
                 TOOL_CLICK -> {
@@ -186,108 +186,182 @@ object BrowserAutomationTool {
                     when {
                         numberId != null -> browserManager.evaluateJs(buildNumberedClickJs(numberId)).fold(
                             onSuccess = { raw ->
-                                val ok = raw.contains("OK")
-                                buildResult(
-                                    success = true,
-                                    data = if (ok) "Número en el que se hizo clic $numberId elemento" else "No. $numberId no encontrado(Es posible que la página se haya actualizado.,Por favor inténtalo de nuevo browser_snapshot)",
-                                )
+                                if (raw.contains("OK")) {
+                                    buildResult(
+                                        success = true,
+                                        data = "已点击编号 $numberId 元素（页面变化未验证）",
+                                        verified = false,
+                                    )
+                                } else {
+                                    buildResult(
+                                        success = false,
+                                        error = "编号 $numberId 未找到：页面可能已刷新，请重新 browser_snapshot 取新编号",
+                                    )
+                                }
                             },
-                            onFailure = { e -> buildResult(success = false, error = e.message ?: "Error al hacer clic") },
+                            onFailure = { e -> buildResult(success = false, error = e.message ?: "点击失败") },
                         )
                         selector != null -> browserManager.click(selector).fold(
-                            onSuccess = { hit -> buildResult(success = true, data = if (hit) "Elemento hecho clic: $selector" else "elemento perdido: $selector") },
-                            onFailure = { e -> buildResult(success = false, error = e.message ?: "Error al hacer clic") },
+                            onSuccess = { hit ->
+                                if (hit) {
+                                    buildResult(
+                                        success = true,
+                                        data = "已点击元素: $selector（页面变化未验证）",
+                                        verified = false,
+                                    )
+                                } else {
+                                    buildResult(
+                                        success = false,
+                                        error = "未命中元素: $selector —— 选择器可能已失效，请先 browser_snapshot 再确认",
+                                    )
+                                }
+                            },
+                            onFailure = { e -> buildResult(success = false, error = e.message ?: "点击失败") },
                         )
-                        else -> buildResult(success = false, error = "El selector de parámetros o numberId requiere al menos uno")
+                        else -> buildResult(success = false, error = "参数 selector 或 numberId 至少需要一个")
                     }
                 }
                 TOOL_TYPE -> {
                     val numberId = args["numberId"]?.trim()?.toIntOrNull()
                     val selector = args["selector"]?.takeIf { it.isNotBlank() }
-                    val text = args["text"] ?: return@runBlocking buildResult(success = false, error = "Falta el texto del parámetro")
+                    val text = args["text"] ?: return@runBlocking buildResult(success = false, error = "参数 text 缺失")
                     when {
                         numberId != null -> browserManager.evaluateJs(buildNumberedTypeJs(numberId, text)).fold(
                             onSuccess = { raw ->
-                                val ok = raw.contains("OK")
-                                buildResult(
-                                    success = true,
-                                    data = if (ok) "ya numerado $numberId texto de entrada del elemento" else "No. $numberId no encontrado(Es posible que la página se haya actualizado.,Por favor inténtalo de nuevo browser_snapshot)",
-                                )
+                                when {
+                                    raw.contains("OK") -> buildResult(
+                                        success = true,
+                                        data = "已向编号 $numberId 元素输入文本（页面变化未验证）",
+                                        verified = false,
+                                    )
+                                    raw.contains("NOT_EDITABLE") -> buildResult(
+                                        success = false,
+                                        error = "编号 $numberId 元素不可编辑：它可能不是输入框，请换一个可编辑元素",
+                                    )
+                                    else -> buildResult(
+                                        success = false,
+                                        error = "编号 $numberId 未找到：页面可能已刷新，请重新 browser_snapshot 取新编号",
+                                    )
+                                }
                             },
-                            onFailure = { e -> buildResult(success = false, error = e.message ?: "Error de entrada") },
+                            onFailure = { e -> buildResult(success = false, error = e.message ?: "输入失败") },
                         )
                         selector != null -> browserManager.type(selector, text).fold(
-                            onSuccess = { hit -> buildResult(success = true, data = if (hit) "Texto ingresado en: $selector" else "elemento perdido: $selector") },
-                            onFailure = { e -> buildResult(success = false, error = e.message ?: "Error de entrada") },
+                            onSuccess = { hit ->
+                                if (hit) {
+                                    buildResult(
+                                        success = true,
+                                        data = "已输入文本到: $selector（页面变化未验证）",
+                                        verified = false,
+                                    )
+                                } else {
+                                    buildResult(
+                                        success = false,
+                                        error = "未命中元素: $selector —— 选择器可能已失效，请先 browser_snapshot 再确认",
+                                    )
+                                }
+                            },
+                            onFailure = { e -> buildResult(success = false, error = e.message ?: "输入失败") },
                         )
-                        else -> buildResult(success = false, error = "El selector de parámetros o numberId requiere al menos uno")
+                        else -> buildResult(success = false, error = "参数 selector 或 numberId 至少需要一个")
                     }
                 }
                 TOOL_EXTRACT -> {
                     val selector = args["selector"]?.takeIf { it.isNotBlank() }
-                        ?: return@runBlocking buildResult(success = false, error = "Falta el selector de parámetros o está vacío")
+                        ?: return@runBlocking buildResult(success = false, error = "参数 selector 缺失或为空")
                     browserManager.extractText(selector).fold(
-                        onSuccess = { text -> buildResult(success = true, data = text) },
+                        onSuccess = { text ->
+                            buildResult(
+                                success = true,
+                                data = io.zer0.muse.web.WebSnapshotContract.render(
+                                    url = browserManager.currentUrl.value,
+                                    fetchedAtMillis = System.currentTimeMillis(),
+                                    body = text,
+                                ),
+                                verified = true,
+                            )
+                        },
                         onFailure = { e ->
-                            Logger.w(TAG, "extractText falló: selector=$selector | url=${browserManager.currentUrl.value} | err=${e.message}")
-                            buildResult(success = false, error = e.message ?: "No se pudo extraer")
+                            Logger.w(TAG, "extractText 失败: selector=$selector | url=${browserManager.currentUrl.value} | err=${e.message}")
+                            buildResult(success = false, error = e.message ?: "提取失败")
                         },
                     )
                 }
                 TOOL_SCROLL_BOTTOM -> {
                     browserManager.scrollToBottom().fold(
-                        onSuccess = { buildResult(success = true, data = "Desplazado hasta el final") },
-                        onFailure = { e -> buildResult(success = false, error = e.message ?: "desplazamiento fallido") },
+                        onSuccess = { buildResult(success = true, data = "已滚动到底部") },
+                        onFailure = { e -> buildResult(success = false, error = e.message ?: "滚动失败") },
                     )
                 }
                 TOOL_SNAPSHOT -> {
                     browserManager.evaluateJs(SNAPSHOT_JS).fold(
                         onSuccess = { json -> buildResult(success = true, data = json) },
-                        onFailure = { e -> buildResult(success = false, error = e.message ?: "Error al extraer la instantánea") },
+                        onFailure = { e -> buildResult(success = false, error = e.message ?: "快照提取失败") },
                     )
                 }
                 TOOL_GET_HTML -> {
                     val html = browserManager.currentHtml.value
-                    buildResult(success = true, data = html)
+                    // 快照头：正文是某一刻抓的，不标时间模型会把它当"当前页面"
+                    buildResult(
+                        success = true,
+                        data = io.zer0.muse.web.WebSnapshotContract.render(
+                            url = browserManager.currentUrl.value,
+                            fetchedAtMillis = System.currentTimeMillis(),
+                            body = html,
+                        ),
+                        verified = true,
+                    )
                 }
                 TOOL_SCREENSHOT -> {
                     browserManager.captureScreenshot().fold(
                         onSuccess = { base64 ->
                             if (base64.isBlank()) {
-                                buildResult(success = false, error = "El contenido de la captura de pantalla está vacío (es posible que la página aún no se haya mostrado)")
+                                buildResult(success = false, error = "截图内容为空（页面可能尚未渲染完成）")
                             } else {
-                                // v2.6.0: Los resultados de la captura de pantalla se guardan en campos especiales y el organizador añade una imagen con un
-                                // Mensaje de usuario (los resultados de la herramienta en sí no pueden transportar imágenes al modelo, consulte ToolOrchestrator).
-                                // data Solo proporcione al modelo un mensaje de marcador de posición y use el campo de captura de pantalla para la imagen real.
+                                // v2.6.0: 截图 results 以特殊字段承载，编排器据此追加一条带图的
+                                // 用户消息（工具结果本身无法携带图片给模型，见 ToolOrchestrator）。
+                                // data 只给模型一个占位提示，实际图片走 screenshot 字段。
                                 val sizeKb = base64.length / 1024
                                 buildScreenshotResult(
-                                    data = "Se ha capturado la página actual (aprox. ${sizeKb}KB, foto adjunta)",
+                                    data = "已截取当前页面（约 ${sizeKb}KB，图片已随附）",
                                     screenshotBase64 = base64,
                                 )
                             }
                         },
-                        onFailure = { e -> buildResult(success = false, error = e.message ?: "Error en la captura de pantalla") },
+                        onFailure = { e -> buildResult(success = false, error = e.message ?: "截图失败") },
                     )
                 }
-                else -> buildResult(success = false, error = "herramienta desconocida: $toolName")
+                else -> buildResult(success = false, error = "未知工具: $toolName")
             }
         } catch (e: Exception) {
-            Logger.e(TAG, "executeFromArgs anormal: toolName=$toolName, msg=${e.message}", e)
-            buildResult(success = false, error = e.message ?: "excepción de ejecución")
+            Logger.e(TAG, "executeFromArgs 异常: toolName=$toolName, msg=${e.message}", e)
+            buildResult(success = false, error = e.message ?: "执行异常")
         }
     }
 
     /**
-     * Construya el resultado de la ejecución JsonObject y serialícelo en una cadena.
+     * 构造执行结果 JsonObject 并序列化为字符串。
      *
-     * convención de campo:
-     *  - success: Boolean — Si la ejecución fue exitosa
-     *  - data: String? — Valor de retorno en caso de éxito(Navegación/Haga clic/Ingrese como texto de solicitud;Extraer como contenido;get_html como código fuente HTML)
-     *  - error: String? — Mensaje de error en caso de falla
+     * 字段约定:
+     *  - success: Boolean — 执行是否成功
+     *  - data: String? — 成功时的返回值(导航/点击/输入为提示文本;提取为内容;get_html 为 HTML 源码)
+     *  - error: String? — 失败时的错误信息
      */
-    private fun buildResult(success: Boolean, data: String? = null, error: String? = null): String {
+    private fun buildResult(
+        success: Boolean,
+        data: String? = null,
+        error: String? = null,
+        /**
+         * 效果是否已被观察到。
+         *
+         * `success` 只表示"这一步按请求完成了"；点一下按钮到底有没有改变页面，
+         * 浏览器这边**看不到**。把两者混成一个 success，模型就会把"已发出"当成"已完成"。
+         */
+        verified: Boolean? = null,
+    ): String {
         val obj: JsonObject = buildJsonObject {
             put("success", JsonPrimitive(success))
+            if (verified != null) put("verified", JsonPrimitive(verified))
             if (data != null) {
                 put("data", JsonPrimitive(data))
             } else {
@@ -303,38 +377,38 @@ object BrowserAutomationTool {
     }
 
     /**
-     * v2.6.0: Resultados exclusivos de captura de pantalla —— Agregar a resultados estándar `screenshot` campo(Base64 PNG).
+     * v2.6.0: 截图专用结果 —— 在标准结果上附加 `screenshot` 字段(Base64 PNG)。
      *
-     * Los resultados de la herramienta solo pueden contener texto cuando se rellenan en el modelo a través de la API.(function_call_output Cadena limitada),
-     * Entonces el editor reconocerá este campo.,Agregue la imagen a la conversación como un mensaje de usuario separado con la imagen.
+     * 工具结果通过 API 回填给模型时只能带文本(function_call_output 限字符串),
+     * 所以编排器会识别本字段,把图片作为一条独立的带图用户消息追加到对话。
      *
-     * convención de campo:
+     * 字段约定:
      *  - success: Boolean
-     *  - data: String — Indicaciones de texto para el modelo.(Como por ejemplo“La página actual ha sido capturada.”)
-     *  - screenshot: String — Base64 PNG(Ninguno dato: prefijo)
+     *  - data: String — 给模型的文本提示(如“已截取当前页面”)
+     *  - screenshot: String — Base64 PNG(无 data: 前缀)
      */
     private fun buildScreenshotResult(data: String, screenshotBase64: String): String {
         val obj: JsonObject = buildJsonObject {
             put("success", JsonPrimitive(true))
             put("data", JsonPrimitive(data))
             put("error", JsonNull)
-            // Los nombres de los campos de etiqueta son consistentes con la convención del organizador.(Vea el procesamiento de resultados de captura de pantalla de ToolOrchestrator).
+            // 标记字段名与编排器约定一致(见 ToolOrchestrator 的截图结果处理)。
             put(SCREENSHOT_RESULT_FIELD, JsonPrimitive(screenshotBase64))
         }
         return obj.toString()
     }
 
     /**
-     * v2.6.0: El resultado de la captura de pantalla es el nombre del campo en el JSON devuelto por la herramienta.
-     * Cuando el orquestador lee este campo, agrega la imagen a la conversación como un mensaje de usuario con imagen.
+     * v2.6.0: 截图结果在工具返回 JSON 中的字段名。
+     * 编排器读到该字段就把图片作为带图用户消息追加到对话。
      */
     const val SCREENSHOT_RESULT_FIELD = "screenshot"
 
     /**
-     * v1.0.92: Script de instantánea estructurada de página — Extraiga elementos interactivos y guárdelos en caché window.__museEls,
-     * Proporciona operación de tipo click/type en modo numberId por número(La caché se invalida después de actualizar la página,Necesito volver a tomar la instantánea).
+     * v1.0.92: 页面结构化快照脚本 — 提取可交互元素并缓存到 window.__museEls,
+     * 供 numberId 模式的 click/type 按编号操作(页面刷新后缓存失效,需重新快照)。
      *
-     * presupuesto: enlace≤40 / botón≤30 / Cuadro de entrada≤20,Vista previa del texto≤3000 personajes.
+     * 预算: 链接≤40 / 按钮≤30 / 输入框≤20,正文预览≤3000 字符。
      */
     private const val SNAPSHOT_JS = """(function(){
   try {
@@ -372,17 +446,22 @@ object BrowserAutomationTool {
   } catch (e) { return {error: String((e && e.message) || e)}; }
 })()"""
 
-    /** v1.0.92: numberId Script de clic modal. */
+    /** v1.0.92: numberId 模式点击脚本。 */
     private fun buildNumberedClickJs(index: Int): String = "(function(){var el=(window.__museEls||[])[$index];" +
         "if(!el){return 'MISS';}" +
         "try{el.scrollIntoView({block:'center'});}catch(e){/* scroll is best-effort */}" +
         "el.click();return 'OK';})()"
 
-    /** v1.0.92: numberId Script de entrada de modo(text Antiinyección mediante codificación JSON). */
+    /** v1.0.92: numberId 模式输入脚本(text 经 JSON 编码防注入)。 */
+    /** 仅测试用：暴露 numberId 输入脚本，用来验证可编辑性检查真的写进了注入的 JS。 */
+    internal fun debugNumberedTypeScript(index: Int, text: String): String = buildNumberedTypeJs(index, text)
+
     private fun buildNumberedTypeJs(index: Int, text: String): String {
         val encoded = AppJson.encodeToString(String.serializer(), text)
         return "(function(){var el=(window.__museEls||[])[$index];" +
             "if(!el){return 'MISS';}" +
+            "var editable=el.tagName==='INPUT'||el.tagName==='TEXTAREA'||el.isContentEditable;" +
+            "if(!editable){return 'NOT_EDITABLE';}" +
             "el.focus();el.value=$encoded;" +
             "el.dispatchEvent(new Event('input',{bubbles:true}));" +
             "el.dispatchEvent(new Event('change',{bubbles:true}));return 'OK';})()"

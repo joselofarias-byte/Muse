@@ -4,10 +4,10 @@ import android.content.Context
 import io.zer0.muse.R
 
 /**
- * P1-3b Desdominio: registrador de herramientas del portapapeles.
+ * P1-3b 拆域：剪贴板工具注册器。
  *
- * clipboard_read / clipboard_write extraído de ToolRegistry.kt,
- * Solo depende del contexto y de los servicios del portapapeles del sistema.
+ * 从 ToolRegistry.kt 抽出的 clipboard_read / clipboard_write，
+ * 只依赖 Context 与系统剪贴板服务。
  */
 class ClipboardToolsRegistrar(
     private val context: Context,
@@ -21,7 +21,7 @@ class ClipboardToolsRegistrar(
         toolRegistry.register(
             ToolRegistry.ToolDef(
                 name = "clipboard_read",
-                description = "Lea el contenido de texto del portapapeles del sistema.",
+                description = "读取系统剪贴板文本内容。",
                 parameters = emptyMap(),
                 required = emptySet(),
                 category = "built-in",
@@ -30,11 +30,11 @@ class ClipboardToolsRegistrar(
         ) {
             readClipboard().content
         }
-        // Se prefiere la versión de resultados estructurados (registerOutcome los canales tienen prioridad sobre los canales de cadena)
+        // 结构化结果版优先（registerOutcome 通道优先于 String 通道）
         toolRegistry.registerOutcome(
             ToolRegistry.ToolDef(
                 name = "clipboard_read",
-                description = "Lea el contenido de texto del portapapeles del sistema.",
+                description = "读取系统剪贴板文本内容。",
                 parameters = emptyMap(),
                 required = emptySet(),
                 category = "built-in",
@@ -46,10 +46,10 @@ class ClipboardToolsRegistrar(
         toolRegistry.register(
             ToolRegistry.ToolDef(
                 name = "clipboard_write",
-                description = "Escriba texto en el portapapeles del sistema.",
+                description = "写入文本到系统剪贴板。",
                 parameters = mapOf(
-                    "text" to "Requerido,Texto que se escribirá en el portapapeles.",
-                    "label" to "Opcional,etiqueta del portapapeles,Como por ejemplo muse_copy",
+                    "text" to "必填,要写入剪贴板的文本",
+                    "label" to "可选,剪贴板标签,如 muse_copy",
                 ),
                 required = setOf("text"),
                 category = "built-in",

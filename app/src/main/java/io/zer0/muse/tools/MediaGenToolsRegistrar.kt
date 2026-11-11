@@ -1,17 +1,17 @@
 package io.zer0.muse.tools
 
 /**
- * P2-23: Registrador de herramientas de generación de medios(Imágenes / Vídeos / Códigos QR).
+ * P2-23: 媒体生成工具注册器(图片 / 视频 / 二维码)。
  *
- * de ChatViewModel.registerMediaTools() Múdate como está —— ToolDef(name / description /
- * parameters / required / riskLevel / parameterTypes)Ni una palabra cambió,Nivel de riesgo mantenido
- * generate_image / generate_video = HIGH,generate_qr_code = SAFE.
+ * 从 ChatViewModel.registerMediaTools() 原样迁出 —— ToolDef(name / description /
+ * parameters / required / riskLevel / parameterTypes)一字未改,风险等级保持
+ * generate_image / generate_video = HIGH、generate_qr_code = SAFE。
  *
- * En cambio, cuando se inicia la aplicación, [ToolRegistrarBootstrapper] Forzar registro de instanciación,Por lo tanto
- * Las tareas programadas/chats grupales/subagentes, etc. también se pueden usar sin enlaces de UI. [ToolRegistry] Encuentre y ejecute estas herramientas en,
- * Ya no depende de"El usuario ha abierto la página de chat.". Ver la implementación [MediaGenToolsImpl].
+ * 改为在 App 启动时由 [ToolRegistrarBootstrapper] 强制实例化注册,因此
+ * 定时任务 / 群聊 / 子代理等无 UI 链路也能在 [ToolRegistry] 中查到并执行这些工具,
+ * 不再依赖"用户打开过聊天页"。实现见 [MediaGenToolsImpl]。
  *
- * [impl] Inyectado por Koin(Es la misma instancia donde ChatViewModel instala el host de entrega.).
+ * [impl] 由 Koin 注入(与 ChatViewModel 安装投递宿主的是同一实例)。
  */
 class MediaGenToolsRegistrar(
     private val toolRegistry: ToolRegistry,
@@ -26,15 +26,15 @@ class MediaGenToolsRegistrar(
         toolRegistry.register(
             ToolRegistry.ToolDef(
                 name = "generate_image",
-                description = "Genera imágenes basadas en descripciones de usuarios. Solo se llama cuando el usuario solicita explícitamente dibujos, diseños, avatares, carteles, etc. Se consumirán créditos de API de dibujo.",
+                description = "根据用户描述生成图片。仅在用户明确要求画图、设计、头像、海报等场景调用。会消耗绘图 API 额度。",
                 parameters = mapOf(
-                    "prompt" to "Requerido. Escribe el tema claramente/estilo/composición,el ingles es mejor,Como por ejemplo 'a cute cat on a sofa, watercolor style'",
-                    "model" to "Opcional,modelo de dibujo ID(Como por ejemplo dall-e-3 / gpt-image-1);Utilice el modelo predeterminado del proveedor de forma predeterminada",
-                    "size" to "Opcional,Tamaño,Como por ejemplo 1024x1024 / 1792x1024 / 1024x1792;Agnes Relación de soporte 1:1 / 16:9 / 3:2",
-                    "quality" to "Opcional,Como por ejemplo standard / hd",
-                    "style" to "Opcional,Como por ejemplo vivid / natural",
-                    "n" to "Opcional,Generar cantidad,Predeterminado 1",
-                    "reference_image" to "Opcional,URL de la imagen de referencia o base64(Tu Sheng Tu/Editar). El mapa de referencia local es inyectado por el usuario después de seleccionarlo en la tarjeta de aprobación.,LLM No es necesario completar",
+                    "prompt" to "必填。写清主体/风格/构图,英文效果更佳,如 'a cute cat on a sofa, watercolor style'",
+                    "model" to "可选,绘图模型 ID(如 dall-e-3 / gpt-image-1);默认用供应商默认模型",
+                    "size" to "可选,尺寸,如 1024x1024 / 1792x1024 / 1024x1792;Agnes 支持比例 1:1 / 16:9 / 3:2",
+                    "quality" to "可选,如 standard / hd",
+                    "style" to "可选,如 vivid / natural",
+                    "n" to "可选,生成数量,默认 1",
+                    "reference_image" to "可选,参考图 URL 或 base64(图生图/编辑)。本地参考图由用户在审批卡片中选择后注入,LLM 无需填写",
                 ),
                 required = setOf("prompt"),
                 riskLevel = ToolRiskLevel.HIGH,
@@ -45,14 +45,14 @@ class MediaGenToolsRegistrar(
         toolRegistry.register(
             ToolRegistry.ToolDef(
                 name = "generate_video",
-                // v1.0.75 fix (Revisión de herramientas 02): Ejemplos de indicaciones complementarias e instrucciones de devolución
-                description = "Genere videos cortos basados ​​en descripciones de usuarios. Sólo si el usuario solicita explícitamente el vídeo./Llamado durante la animación. Selección automática de proveedores que admiten salida de vídeo./modelo,Devuelve la URL del vídeo.",
+                // v1.0.75 fix (工具审查 02): 补 prompt 示例与返回说明
+                description = "根据用户描述生成短视频。仅在用户明确要求视频/动画时调用。自动选择支持视频输出的供应商/模型,返回视频 URL。",
                 parameters = mapOf(
-                    "prompt" to "Requerido,Descripción del contenido del vídeo,Tanto el inglés como el chino están disponibles.",
-                    "model" to "Opcional,modelo de vídeo ID;Selecciona automáticamente el primer modelo que admite salida de vídeo cuando no se especifica",
-                    "provider_id" to "Opcional,proveedor ID;Selecciona automáticamente el primer proveedor que admite salida de video cuando no se especifica",
-                    "duration" to "Opcional,Duración del vídeo(segundos),Sólo admite 5 o 10,Predeterminado 5",
-                    "resolution" to "Opcional,resolución,Como por ejemplo 720p / 1080p,Predeterminado 720p",
+                    "prompt" to "必填,视频内容描述,英文或中文均可",
+                    "model" to "可选,视频模型 ID;未指定时自动选择第一个支持视频输出的模型",
+                    "provider_id" to "可选,供应商 ID;未指定时自动选择第一个支持视频输出的供应商",
+                    "duration" to "可选,视频时长(秒),仅支持 5 或 10,默认 5",
+                    "resolution" to "可选,分辨率,如 720p / 1080p,默认 720p",
                 ),
                 required = setOf("prompt"),
                 riskLevel = ToolRiskLevel.HIGH,
@@ -63,10 +63,10 @@ class MediaGenToolsRegistrar(
         toolRegistry.register(
             ToolRegistry.ToolDef(
                 name = "generate_qr_code",
-                description = "poner cualquier texto(Como enlaces,WiFi Contraseña, información de contacto)Convertir a imagen de código QR,Y muéstralo en la conversación.",
+                description = "把任意文本(如链接、WiFi 密码、联系方式)转换为二维码图片,并在对话中展示。",
                 parameters = mapOf(
-                    "content" to "Requerido,El texto que se codificará en un código QR.",
-                    "size" to "Opcional,Longitud del lado del código QR en píxeles,Predeterminado 400,alcance 128-1024",
+                    "content" to "必填,要编码成二维码的文本",
+                    "size" to "可选,二维码边长像素,默认 400,范围 128-1024",
                 ),
                 required = setOf("content"),
                 riskLevel = ToolRiskLevel.SAFE,
@@ -74,23 +74,23 @@ class MediaGenToolsRegistrar(
             ),
         ) { args -> impl.execGenerateQrCode(args) }
 
-        // Mensajes de voz: síntesis local → Guardar audio local → Espera los propios mensajes del asistente.
-        // Riesgo: NORMAL en lugar de ALTO: No hay transmisión externa, no se escribe ningún directorio de usuario. Si configura ALTO, la tarjeta de aprobación aparecerá cada vez que envíe un mensaje de voz.
-        // Utilice el método de registro con contexto: el límite superior de la cantidad de mensajes de voz en esta ronda debe calcularse por "ronda" y la identificación de la ronda (identificación del mensaje del asistente)
-        // Solo se puede obtener del ToolExecutionContext inyectado por el host y el modelo no se puede falsificar.
+        // 语音消息：本地合成 → 存成本地音频 → 挂到助手自己的消息上。
+        // 风险 NORMAL 而不是 HIGH：不外发、不写用户目录，给 HIGH 会让每次发语音都弹审批卡。
+        // 用带上下文的注册方式：本回合语音条数上限要按「回合」计，回合标识（助手消息 id）
+        // 只能从宿主注入的 ToolExecutionContext 拿，模型不可伪造。
         toolRegistry.registerWithContext(
             ToolRegistry.ToolDef(
                 name = "send_voice",
-                // "Habla/voz/lectura/voz" en la descripción son todos términos de búsqueda de find_tools, no los elimines casualmente
+                // 描述里的「发语音 / 语音 / 朗读 / voice」都是 find_tools 的搜索词，别随便删
                 description =
-                "Enviar voz: sintetice un fragmento de texto en un mensaje de voz (envíe voz/léalo en voz alta al usuario) y envíelo directamente en la conversación." +
-                    "Sólo se debe poner un párrafo en cada mensaje de voz; una respuesta se puede llamar varias veces y debe enviarse párrafo por párrafo en orden. No abarrotes todo el artículo de una vez." +
-                    "Incluya únicamente líneas que deban leerse en voz alta. No incluya narración, descripción de la acción, texto original en inglés ni Markdown." +
-                    "Adecuado para tono, emoción y contenido que lo acompaña; Las descripciones, códigos y textos largos todavía se responden en texto." +
-                    "Se consumirá el crédito TTS; Los párrafos sin caracteres chinos no generarán voz y se pueden realizar un máximo de 5 respuestas a la vez.",
+                "发语音：把一段文字合成为语音消息（发语音 / 朗读给用户听），直接在对话里发出。" +
+                    "每条语音只放一段话；一次回复可以调用多次，按顺序逐段发出，不要一次塞整篇。" +
+                    "只放需要朗读的台词，不要放旁白、动作描写、英文原文或 Markdown。" +
+                    "适合语气、情绪、陪伴性内容；描述、代码、长文本仍用文字回答。" +
+                    "会消耗 TTS 额度；没有中文的段落不会生成语音，单次回复最多 5 条。",
                 parameters = mapOf(
-                    "text" to "Requerido,texto plano para ser leído(un párrafo,coloquial,Sin Markdown / bloques de código / enlaces)",
-                    "emotion" to "Opcional,tono emocional,Como por ejemplo happy / sad / calm / excited;Déjelo en blanco para usar el estado de ánimo predeterminado en la configuración",
+                    "text" to "必填,要念出来的纯文本(一段话,口语化,不要 Markdown / 代码块 / 链接)",
+                    "emotion" to "可选,情绪语气,如 happy / sad / calm / excited;留空用设置里的默认情绪",
                 ),
                 required = setOf("text"),
                 riskLevel = ToolRiskLevel.NORMAL,

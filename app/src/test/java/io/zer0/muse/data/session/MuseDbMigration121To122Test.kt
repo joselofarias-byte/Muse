@@ -14,14 +14,14 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * versión 121 → 122: Limpia los datos sobrantes en teléfonos pequeños y antiguos.
+ * 版本 121 → 122：清理旧小手机遗留数据。
  *
- * Llame directamente al entorno de producción. [MuseDb.MIGRATION_121_122](No es una copia de SQL), afirma:
- *  - Momentos/Se eliminaron cuatro tablas del diario y se podían eliminar (existían en la base de datos anterior);
- *  - `sessions.isMiniPhone = 1` La conversación y los mensajes que aparecen debajo de ella se eliminan;
- *  - Hay muchas conversaciones y mensajes normales y los campos no se han modificado (esta migración solo borra pequeños datos del teléfono celular);
- *  - `isMiniPhone` columna misma**Reservar**(El antiguo SQLite no admite DROP COLUMN, la columna todavía está ahí pero no hay escritor);
- *  - La migración se puede ejecutar repetidamente (idempotente) y no se informará ningún error porque la tabla se ha eliminado.
+ * 直接调用生产环境的 [MuseDb.MIGRATION_121_122]（不是复制一份 SQL），断言：
+ *  - 朋友圈/日记四张表被删除，且删得掉（旧库上确实存在过）；
+ *  - `sessions.isMiniPhone = 1` 的会话与挂在它下面的消息被删；
+ *  - 普通会话与消息一条不少、字段一字未改（这次迁移只清小手机数据）；
+ *  - `isMiniPhone` 列本身**保留**（旧 SQLite 不支持 DROP COLUMN，列还在但已无写入方）；
+ *  - 迁移可重复执行（幂等），不会因表已删而报错。
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -29,7 +29,7 @@ class MuseDbMigration121To122Test {
 
     private val context: Context get() = ApplicationProvider.getApplicationContext()
 
-    /** Construya la biblioteca de acuerdo con la estructura clave de v121:sessions / messages + Se eliminarán cuatro tablas. */
+    /** 按 v121 的关键结构建库：sessions / messages + 待删除的四张表。 */
     private fun openAt121(name: String): SupportSQLiteDatabase {
         context.deleteDatabase(name)
         val helper = FrameworkSQLiteOpenHelperFactory().create(
@@ -99,20 +99,20 @@ class MuseDbMigration121To122Test {
     private fun seed(db: SupportSQLiteDatabase) {
         db.execSQL(
             "INSERT INTO sessions (id, title, assistantId, isMiniPhone) " +
-                "VALUES ('s-main', 'sesión principal', 'assistant-a', 0)",
+                "VALUES ('s-main', '主会话', 'assistant-a', 0)",
         )
         db.execSQL(
             "INSERT INTO sessions (id, title, assistantId, isMiniPhone) " +
-                "VALUES ('s-mini', 'Pequeño mensaje privado de teléfono celular.', 'assistant-a', 1)",
+                "VALUES ('s-mini', '小手机私信', 'assistant-a', 1)",
         )
-        db.execSQL("INSERT INTO messages (id, sessionId, role, content) VALUES ('m-main', 's-main', 'USER', 'Mensaje de sesión principal')")
-        db.execSQL("INSERT INTO messages (id, sessionId, role, content) VALUES ('m-mini', 's-mini', 'USER', 'mensaje privado')")
-        db.execSQL("INSERT INTO ai_moments (id, content) VALUES ('mo1', 'viejas noticias')")
+        db.execSQL("INSERT INTO messages (id, sessionId, role, content) VALUES ('m-main', 's-main', 'USER', '主会话消息')")
+        db.execSQL("INSERT INTO messages (id, sessionId, role, content) VALUES ('m-mini', 's-mini', 'USER', '私信消息')")
+        db.execSQL("INSERT INTO ai_moments (id, content) VALUES ('mo1', '旧动态')")
         db.execSQL("INSERT INTO ai_moment_comments (id, momentId) VALUES ('c1', 'mo1')")
         db.execSQL(
             "INSERT INTO ai_moment_likes (momentId, likerType, likerId) VALUES ('mo1', 'user', 'user')",
         )
-        db.execSQL("INSERT INTO ai_diaries (date, content) VALUES ('2026-09-20', 'viejo diario')")
+        db.execSQL("INSERT INTO ai_diaries (date, content) VALUES ('2026-09-20', '旧日记')")
     }
 
     @Test
@@ -120,31 +120,31 @@ class MuseDbMigration121To122Test {
         val db = openAt121("migration_121_122.db")
         try {
             seed(db)
-            // Premisa:Estas tablas en la base de datos antigua./La fila existe; de ​​lo contrario, la aserción "eliminada" posterior es igual a una aserción vacía.
-            assertTrue("Condiciones previas:Debería haber cuatro círculos de amigos en la antigua biblioteca./hoja de diario", tableNames(db).containsAll(LEGACY_TABLES))
+            // 前提:旧库上这些表/行确实存在，否则后面的「已删除」断言等于空断言
+            assertTrue("前置条件:旧库应有四张朋友圈/日记表", tableNames(db).containsAll(LEGACY_TABLES))
 
             MuseDb.MIGRATION_121_122.migrate(db)
 
             val tables = tableNames(db)
             LEGACY_TABLES.forEach { table ->
-                assertFalse("$table debería estar en 121→122 Eliminado durante la migración", table in tables)
+                assertFalse("$table 应在 121→122 迁移中被删除", table in tables)
             }
-            assertTrue("sessions La mesa aún debe estar ahí.", "sessions" in tables)
-            assertTrue("messages La mesa aún debe estar ahí.", "messages" in tables)
+            assertTrue("sessions 表必须还在", "sessions" in tables)
+            assertTrue("messages 表必须还在", "messages" in tables)
 
             db.query("SELECT id FROM sessions ORDER BY id").use { cursor ->
                 val ids = mutableListOf<String>()
                 while (cursor.moveToNext()) ids += cursor.getString(0)
-                assertEquals("simplemente eliminar isMiniPhone = 1 conversación", listOf("s-main"), ids)
+                assertEquals("只删 isMiniPhone = 1 的会话", listOf("s-main"), ids)
             }
             db.query("SELECT id, content FROM messages ORDER BY id").use { cursor ->
-                assertTrue("Se deben conservar los mensajes de conversaciones normales.", cursor.moveToFirst())
+                assertTrue("普通会话的消息必须保留", cursor.moveToFirst())
                 assertEquals("m-main", cursor.getString(0))
-                assertEquals("El texto normal del mensaje no debe reescribirse", "Mensaje de sesión principal", cursor.getString(1))
-                assertFalse("Los mensajes de conversaciones en teléfonos celulares pequeños deben eliminarse juntos", cursor.moveToNext())
+                assertEquals("普通消息正文不应被改写", "主会话消息", cursor.getString(1))
+                assertFalse("小手机会话的消息应一并删除", cursor.moveToNext())
             }
             assertTrue(
-                "isMiniPhone Se debe conservar la columna(El antiguo SQLite no admite DROP COLUMN, solo deja de escribir pero no elimina columnas.)",
+                "isMiniPhone 列必须保留(旧 SQLite 不支持 DROP COLUMN，只停写不删列)",
                 "isMiniPhone" in columnNames(db, "sessions"),
             )
         } finally {
@@ -159,25 +159,25 @@ class MuseDbMigration121To122Test {
             seed(db)
 
             MuseDb.MIGRATION_121_122.migrate(db)
-            // correr de nuevo:La mesa ya no existeDROP TABLE IF EXISTS No se debe informar ningún error con la eliminación condicional.
+            // 再跑一遍:表已不存在，DROP TABLE IF EXISTS 与条件删除都不应报错
             MuseDb.MIGRATION_121_122.migrate(db)
 
             db.query("SELECT COUNT(*) FROM sessions").use { cursor ->
                 assertTrue(cursor.moveToFirst())
-                assertEquals("Las migraciones repetidas no deberían eliminar sesiones ordinarias por error", 1, cursor.getInt(0))
+                assertEquals("重复迁移不应误删普通会话", 1, cursor.getInt(0))
             }
             db.query("SELECT COUNT(*) FROM messages").use { cursor ->
                 assertTrue(cursor.moveToFirst())
-                assertEquals("Las migraciones repetidas no deberían eliminar mensajes normales por error", 1, cursor.getInt(0))
+                assertEquals("重复迁移不应误删普通消息", 1, cursor.getInt(0))
             }
-            assertFalse("ai_diaries todavía no debería existir", tableNames(db).contains("ai_diaries"))
+            assertFalse("ai_diaries 仍应不存在", tableNames(db).contains("ai_diaries"))
         } finally {
             db.close()
         }
     }
 
     private companion object {
-        /** Cuatro mesas dejadas por un viejo teléfono celular (los nombres de las mesas están tomados del archivo de cada Entidad) @Entity(tableName=...)). */
+        /** 旧小手机留下的四张表（表名取自各 Entity 的 @Entity(tableName=...)）。 */
         val LEGACY_TABLES = setOf("ai_moments", "ai_moment_comments", "ai_moment_likes", "ai_diaries")
     }
 }

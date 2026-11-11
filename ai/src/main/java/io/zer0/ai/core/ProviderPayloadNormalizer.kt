@@ -3,54 +3,54 @@ package io.zer0.ai.core
 import io.zer0.common.Logger
 
 /**
- * v1.0.5: Provider La capa inferior de la bolsa de exportación está unificada.
+ * v1.0.5: Provider 出口统一兜底层。
  *
- * En proveedor poner [UIMessage] Antes de que la lista se traduzca a un cuerpo de solicitud de protocolo específico,Haga una ronda de análisis independiente del proveedor
- * limpieza general,eliminar"HERRAMIENTA huérfana/marca de imagen redundante restante en mensajes históricos"etc. hará que la estación de transferencia devuelva 400.
+ * 在 Provider 把 [UIMessage] 列表翻译成具体协议请求体之前,做一轮与 Provider 无关的
+ * 通用清理,消除"历史消息中残留的孤儿 TOOL / 冗余图片标记"等会导致中转站返回 400 的问题。
  *
- * Responsabilidades:
- *  1. [stripOrphanToolMessages] — Eliminar mensajes de HERRAMIENTA huérfanos que no tengan un predecesor ASSISTANT tool_calls coincidente
- *  2. [stripNativeMediaAttachmentMarkers] — Cuando los mensajes llevan imágenes reales/vídeo,Limpiar del contenido
- *     `[attached_image:...]` / `[attached_video:...]` / `[attached_audio:...]` marca
- *  3. [stripCrossModelReasoning] — El bloque de pensamiento histórico solo se reproduce cuando el modelo de salida es consistente con el modelo de solicitud actual.(v2.6.14)
- *  4. [ToolTraceProjection] — Solo comprima los giros de herramientas antiguos, completos y exitosos en las proyecciones enviadas al modelo;
- *     Rondas recientes, rondas fallidas e incompletas/Las rondas escalonadas permanecen como están para evitar romper el emparejamiento llamada_herramienta/resultado.
+ * 职责:
+ *  1. [stripOrphanToolMessages] — 删除没有前驱 ASSISTANT tool_calls 匹配的孤儿 TOOL 消息
+ *  2. [stripNativeMediaAttachmentMarkers] — 当消息携带真实图片/视频时,从 content 中清理
+ *     `[attached_image:...]` / `[attached_video:...]` / `[attached_audio:...]` 标记
+ *  3. [stripCrossModelReasoning] — 历史思考块只在产出模型与当前请求模型一致时回放(v2.6.14)
+ *  4. [ToolTraceProjection] — 只在发往模型的投影中压缩旧的、已完成且成功的工具回合；
+ *     最近回合、失败回合以及不完整/交错回合保持原样，防止破坏 tool_call/result 配对。
  *
- * La proyección de seguimiento de la herramienta no tiene efectos secundarios: el historial de la base de datos original y la lista de mensajes de la interfaz de usuario no se sobrescriben.
+ * 工具轨迹投影是无副作用的：数据库原始历史和 UI 消息列表不会被改写。
  *
- * No procesado en este nivel(Lo determina directamente cada Proveedor al construir el DTO.):
- *  - stripEmptyTools: OpenAIProvider/AnthropicProvider en construccion OpenAIRequest/AnthropicRequest
- *    el tiempo esta vacio `tools` La lista cambia a null(evitar serializar `"tools": []` Rechazado por estricta estación de tránsito)
- *  - stripDisabledReasoningEffort: OpenAIProvider Al construir OpenAIRequest, establezca el valor en
- *    false/none/off El esfuerzo_razonamiento se cambia a null
- *  - stripIncompatibleThinking: v1.0.7 Después de presionar OpenAIProvider.injectThinkingFormat
- *    [ThinkingFormat] Inyecte activamente los campos de extensión del fabricante correspondientes(thinking / enable_thinking /
- *    chat_template_kwargs / reasoning),No se generarán campos incompatibles;ANTHROPIC El formato es no-op
- *    (AnthropicProvider Vuélvete nativo Messages API,Sin pasar por la ruta OpenAIProvider).
- *    Por lo tanto, 1muse actualmente no necesita la cubierta general stripIncompatibleThinking.
- *    Si el futuro se hace realidad ProviderSpecificConfig.Custom.requestTemplate camino(Plantilla de solicitud definida por el usuario
- *    Posiblemente inyectar campo de pensamiento),Debe agregarse después de injectThinkingFormat stripIncompatibleThinking
- *    Ten todo en cuenta,Elimina los campos de pensamiento que no coinciden con el formato de pensamiento.
+ * 不在本层处理(由各 Provider 在构造 DTO 时直接判断):
+ *  - stripEmptyTools: OpenAIProvider/AnthropicProvider 在构造 OpenAIRequest/AnthropicRequest
+ *    时把空 `tools` 列表改为 null(避免序列化出 `"tools": []` 被严格中转站拒绝)
+ *  - stripDisabledReasoningEffort: OpenAIProvider 在构造 OpenAIRequest 时把值为
+ *    false/none/off 的 reasoning_effort 改为 null
+ *  - stripIncompatibleThinking: v1.0.7 后 OpenAIProvider.injectThinkingFormat 按
+ *    [ThinkingFormat] 主动注入对应厂商扩展字段(thinking / enable_thinking /
+ *    chat_template_kwargs / reasoning),不会产生不兼容字段;ANTHROPIC 格式为 no-op
+ *    (AnthropicProvider 走原生 Messages API,不经过 OpenAIProvider 路径)。
+ *    故 1muse 当前无需通用的 stripIncompatibleThinking 兜底。
+ *    未来若实现 ProviderSpecificConfig.Custom.requestTemplate 路径(用户自定义请求模板
+ *    可能注入 thinking 字段),需在 injectThinkingFormat 之后加 stripIncompatibleThinking
+ *    兜底,剥离与 thinkingFormat 不匹配的 thinking 字段。
  *
- * tiempo de llamada:OpenAIProvider.buildRequestBody / AnthropicProvider.splitSystem antes,
- * Provider poner `request.messages` Revísalo primero [normalizeMessages],Luego haz la traducción del protocolo.
+ * 调用时机:OpenAIProvider.buildRequestBody / AnthropicProvider.splitSystem 之前,
+ * Provider 把 `request.messages` 先过一遍 [normalizeMessages],再做协议翻译。
  */
 object ProviderPayloadNormalizer {
     private const val TAG = "ProviderPayloadNormalizer"
 
-    // ── Reglas de etiquetado de archivos adjuntos de medios ──
-    // partido [attached_image: cualquier personaje] + nueva línea opcional,global reemplazar
+    // ── 媒体附件标记正则 ──
+    // 匹配 [attached_image: 任意字符] + 可选换行,global 替换
     private val ATTACHED_IMAGE_MARKER_RE = Regex("""\[attached_image:\s*[^\]]+\]\n?""")
     private val ATTACHED_VIDEO_MARKER_RE = Regex("""\[attached_video:\s*[^\]]+\]\n?""")
     private val ATTACHED_AUDIO_MARKER_RE = Regex("""\[attached_audio:\s*[^\]]+\]\n?""")
     private val MULTIPLE_BLANK_LINES_RE = Regex("""\n{3,}""")
 
     /**
-     * si [UIMessage] Las listas realizan una limpieza general independiente del proveedor.
+     * 对 [UIMessage] 列表做 Provider 无关的通用清理。
      *
-     * @param messages Historial de conversación original(Contiene system / user / assistant / tool)
-     * @param model modelo objetivo(Actualmente no en uso,Reservado para una limpieza futura basada en la diferenciación de capacidades del modelo)
-     * @return Lista de mensajes limpia(Puede ser más corta que la lista original.)
+     * @param messages 原始对话历史(含 system / user / assistant / tool)
+     * @param model 目标模型(当前未使用,预留用于未来按模型能力差异化清理)
+     * @return 清理后的消息列表(可能比原列表短)
      */
     fun normalizeMessages(messages: List<UIMessage>, model: Model): List<UIMessage> {
         if (messages.isEmpty()) return messages
@@ -59,21 +59,21 @@ object ProviderPayloadNormalizer {
         result = stripOrphanToolMessages(result)
         result = stripNativeMediaAttachmentMarkers(result)
         result = stripArtifactMarkers(result)
-        // v2.5.3 (P2-2): Desnudo uniformemente antes de enviar —— razonamiento/La firma es una carga útil opaca y solo debe estar presente en los mensajes del asistente;
-        // Los mensajes que no son del asistente llevan estos campos (importar/Migrar/Estructuras anormales) deben limpiarse para evitar que se filtren en línea.
+        // v2.5.3 (P2-2): 发送前统一剥离 —— 推理/签名是不透明载荷，只应存在于 assistant 消息上；
+        // 非 assistant 消息携带这些字段（导入/迁移/异常构造）一律清理，避免泄漏到线上。
         result = stripReasoningFromNonAssistant(result)
-        // v2.6.14: mismo modelo de guardia —— El bloque de pensamiento histórico solo se reproduce cuando el modelo de salida es consistente con el modelo de solicitud actual.
+        // v2.6.14: 同模型守卫 —— 历史思考块只在产出模型与当前请求模型一致时回放。
         result = stripCrossModelReasoning(result, model)
-        // La compresión de la trayectoria de la herramienta solo ocurre en las proyecciones de solicitudes del proveedor;UI/El historial de la base de datos permanece sin cambios.
+        // 工具轨迹压缩只发生在 Provider 请求投影中；UI/数据库历史保持不变。
         result = ToolTraceProjection.project(result)
         return result
     }
 
     /**
-     * v2.5.3 (P2-2): Los mensajes que no sean del asistente no deben contener ningún razonamiento./Campo de firma.
+     * v2.5.3 (P2-2): 非 assistant 消息不应携带任何推理/签名字段。
      *
-     * Razonamiento (reasoning) y firma (thinkingSignature / thinkingEncryptedContent) es turno de asistente
-     * Carga útil opaca exclusiva; una vez que aparece en los mensajes del usuario/herramienta/sistema, no tiene sentido y es engañoso para los usuarios, y debe eliminarse.
+     * 推理（reasoning）与签名（thinkingSignature / thinkingEncryptedContent）是 assistant 回合
+     * 专属的不透明载荷；一旦出现在 user/tool/system 消息上，既无意义又会误导上游，必须剔除。
      */
     private fun stripReasoningFromNonAssistant(messages: List<UIMessage>): List<UIMessage> {
         var changed = false
@@ -91,30 +91,30 @@ object ProviderPayloadNormalizer {
                 }
             }
         if (changed) {
-            Logger.w(TAG, "stripReasoningFromNonAssistant: Se aclararon razonamientos incorrectos en mensajes que no eran del asistente./campo de firma")
+            Logger.w(TAG, "stripReasoningFromNonAssistant: 清除了非 assistant 消息上误带的推理/签名字段")
         }
         return if (changed) result else messages
     }
 
     /**
-     * v2.6.14: Mismo modelo de guardia para la repetición del bloque de pensamiento.
+     * v2.6.14: 思考块回放的同模型守卫。
      *
-     * Antecedentes: razonamiento/Las firmas son cargas útiles opacas que sólo tienen significado para el modelo que las produce. Después de que el usuario cambia de modelo a mitad de sesión,
-     * Los bloques de pensamiento producidos por el modelo anterior en la historia aún se enviarán al nuevo modelo junto con el enlace de reproducción: al menos se incluirá contenido de razonamiento irrelevante en él.
-     * El contexto del nuevo modelo (respuesta contaminada), especialmente porque la firma no pertenece al modelo./La sesión fue sentenciada a 400 por el upstream.
+     * 背景：推理/签名是不透明载荷，只对产出它的模型有意义。用户在会话中途切换模型后，
+     * 历史里上一模型产出的思考块仍会随回放链路发给新模型：轻则把无关的推理内容塞进
+     * 新模型的上下文（污染回答），重则因签名不属于该模型/该会话而被上游判 400。
      *
-     * Juicio: comparar [UIMessage.modelId](Modelo de salida de mensaje histórico) y el modelo de destino de esta solicitud [Model.id].
-     *  - Consistente: retenido, reproducción normal;
-     *  - Inconsistente: degradado a 'Descartar'—— Borrar reasoning / thinkingSignature / thinkingEncryptedContent,
-     *    El contenido del texto se deja tal cual.
-     *  - Modelos de salida históricamente no documentados (datos antiguos, escrituras de enlaces que no son de conversación): no se pueden probar en todos los modelos, permanecen como están.
-     *    Aquí no se utilizan deliberadamente fuentes desconocidas. Fallo cerrado: quitar todos los bloques de pensamiento de fuentes desconocidas a la vez destruirá los que aún se utilizan
-     *    Piense en sesiones existentes reproducidas (Anthropic El bloque de pensamiento característico de Toolwheel) se elimina en conjunto, en lugar de hacer 400.
+     * 判定：比较 [UIMessage.modelId]（历史消息的产出模型）与本次请求的目标模型 [Model.id]。
+     *  - 一致：保留，正常回放；
+     *  - 不一致：降级为「丢弃」—— 清空 reasoning / thinkingSignature / thinkingEncryptedContent，
+     *    正文 content 原样保留。
+     *  - 历史未记录产出模型（旧数据、非对话链路写入）：无法证明跨模型，保持原样。
+     *    这里刻意不对未知来源 fail closed：一次性剥掉全部来源未知的思考块，会把仍在使用
+     *    思考回放的存量会话（Anthropic 工具轮的签名 thinking 块）一并清空，反而制造 400。
      *
-     * ¿Por qué degradar para descartar en lugar de incorporar el contenido de pensamiento en el texto principal? El bloque de pensamiento es una carga útil opaca con una firma, y la firma es solo para la salida.
-     * El modelo es válido; incorporar el texto pensante al contenido del asistente equivale a forjar una ronda de "el modelo dijo esto", que contaminará
-     * Los hechos históricos, los resúmenes y el caché de mensajes posteriores siguen siendo ilegales para los protocolos que requieren verificación de firma. El descarte se realiza por cada protocolo.
-     * La acción más pequeña aceptable (Anthropic También hay 400 bolsillos de autorreparación y sin firma en el lateral).
+     * 为什么降级成丢弃而不是把思考内容并入正文：思考块是带签名的不透明载荷，签名只对产出
+     * 模型有效；把思考文本并进 assistant 的 content 等于伪造一轮「模型这样说过」，会污染
+     * 历史事实、摘要与后续 prompt cache，且对需要签名校验的协议仍然非法。丢弃是各协议都
+     * 能接受的最小动作（Anthropic 侧另有 400 自愈与无签名不回放兜底）。
      */
     private fun stripCrossModelReasoning(messages: List<UIMessage>, model: Model): List<UIMessage> {
         val target = replayModelKey(model.id)
@@ -131,7 +131,7 @@ object ProviderPayloadNormalizer {
                 changed = true
                 Logger.w(
                     TAG,
-                    "stripCrossModelReasoning: Bloques de pensamiento histórico a partir de modelos ${msg.modelId},con modelo actual ${model.id} inconsistente,despojado",
+                    "stripCrossModelReasoning: 历史思考块来自模型 ${msg.modelId},与当前模型 ${model.id} 不一致,已剥离",
                 )
                 msg.copy(reasoning = null, thinkingSignature = null, thinkingEncryptedContent = null)
             }
@@ -139,10 +139,10 @@ object ProviderPayloadNormalizer {
     }
 
     /**
-     * Normalice las ID de modelo utilizadas para determinar el mismo modelo: elimine etiquetas de agrupación de canales, elimine prefijos de estaciones de agregación e ignore mayúsculas y minúsculas.
+     * 同模型判定用的模型 id 归一化：去渠道分组标签、去聚合站前缀、忽略大小写。
      *
-     * Los registros históricos y las selecciones actuales a menudo provienen de diferentes formatos de visualización (`[ais]gemini-3.8-flash` / `openrouter/x/y` /
-     * Diferencias de casos), solo pueden juzgarse como el mismo modelo después de la normalización; si siguen siendo diferentes después de la normalización, se tratarán como modelos cruzados.
+     * 历史记录与当前选择常来自不同的展示形态（`[ais]gemini-3.8-flash` / `openrouter/x/y` /
+     * 大小写差异），归一后才能判定为同一模型；归一后仍不同则按跨模型处理。
      */
     private fun replayModelKey(modelId: String): String {
         val stripped = stripChannelGroupLabels(modelId).trim().lowercase()
@@ -150,11 +150,11 @@ object ProviderPayloadNormalizer {
     }
 
     /**
-     * v1.x: Quitar etiquetas de marcador de posición de artefactos de los mensajes del asistente `[artifact:uuid]`.
+     * v1.x: 剥离 assistant 消息中的产物占位符标记 `[artifact:uuid]`。
      *
-     * El modelo puede aprender del historial para generar directamente este marcador de posición.(en lugar de en parejas `<artifact>` etiqueta),
-     * Pero la entidad correspondiente al marcador de posición no existe. Después de pelar:El usuario no ve el texto claro del UUID,
-     * El historial del modelo también está limpio.,Evite seguir imitando el formato. Los productos reales se generan a partir de rutas de etiquetas por pares.
+     * 模型可能从历史中学会直接输出该占位符(而非成对 `<artifact>` 标签),
+     * 但占位符对应的实体并不存在。剥离后:用户不看到 UUID 明文,
+     * 模型历史也干净,避免继续模仿该格式。真实产物由成对标签路径生成。
      */
     private fun stripArtifactMarkers(messages: List<UIMessage>): List<UIMessage> {
         return messages.map { msg ->
@@ -169,8 +169,8 @@ object ProviderPayloadNormalizer {
     private val ARTIFACT_MARKER_RE = Regex("""\[artifact:[0-9a-fA-F-]{36}\]""")
 
     /**
-     * v1.0.62: Eliminar mensajes ilegales del ASISTENTE tool call(name o los argumentos están vacíos).
-     * antes [stripOrphanToolMessages] Ejecutar, para que los mensajes de HERRAMIENTA correspondientes a las llamadas eliminadas se borren juntos.
+     * v1.0.62: 删除 ASSISTANT 消息中的非法 tool call(name 或 arguments 为空)。
+     * 先于 [stripOrphanToolMessages] 执行，使被删除调用对应的 TOOL 消息一并被清理。
      */
     private fun stripInvalidToolCalls(messages: List<UIMessage>): List<UIMessage> {
         var changed = false
@@ -190,26 +190,26 @@ object ProviderPayloadNormalizer {
         return if (changed) result else messages
     }
 
-    // ── 1. Limpieza de mensajes de HERRAMIENTA huérfana ──
+    // ── 1. 孤儿 TOOL 消息清理 ──
 
     /**
-     * Elimine los mensajes de HERRAMIENTA huérfanos que no tengan un predecesor ASSISTANT tool_calls coincidente.
+     * 删除没有前驱 ASSISTANT tool_calls 匹配的孤儿 TOOL 消息。
      *
-     * escena:
-     *  - Historial de edición del manual de usuario,Se eliminó un mensaje de ASISTENTE pero se retuvo el mensaje de reposición de HERRAMIENTA correspondiente
-     *  - El mensaje ASISTENTE fue interrumpido anormalmente en el bucle de llamada de herramienta.,Pero el mensaje HERRAMIENTA se ha agregado al historial.
-     *  - La lógica de transformación de mensajes del SDK ascendente descarta el campo tool_calls de ASSISTANT
+     * 场景:
+     *  - 用户手动编辑历史,删除了某个 ASSISTANT 消息但保留了对应的 TOOL 回填消息
+     *  - 工具调用循环中 ASSISTANT 消息被异常中断,但 TOOL 消息已追加到历史
+     *  - 上游 SDK 的 transform-messages 逻辑丢弃了 ASSISTANT 的 tool_calls 字段
      *
-     * OpenAI Protocolo compatible(Estación de transferencia especialmente estricta)solicitar cada uno `role: tool` Todos los mensajes tienen precursores que coinciden
-     * `tool_calls` mensaje del asistente,De lo contrario regresar 400 invalid_request_error:
+     * OpenAI 兼容协议(尤其严格的中转站)要求每个 `role: tool` 消息都有前驱带匹配
+     * `tool_calls` 的 assistant 消息,否则返回 400 invalid_request_error:
      * `An assistant message with 'tool_calls' must be turned before ...`
      *
-     * Instrucciones de implementación:Recoge todos los mensajes del ASISTENTE llevados por tool_calls id,entonces mantén toolCallId
-     * Mensajes de HERRAMIENTA en la colección. Esto es equivalente a"hay una coincidencia"——en el flujo normal de conversación,ASSISTANT de
-     * tool_calls Aparece siempre antes del mensaje HERRAMIENTA correspondiente,Por lo tanto"hay una coincidencia"con"Coincidencia de ruedas delanteras"Equivalente.
+     * 实现说明:收集所有 ASSISTANT 消息携带的 tool_calls id,然后保留 toolCallId
+     * 在集合中的 TOOL 消息。这等价于"存在匹配"——在正常对话流中,ASSISTANT 的
+     * tool_calls 总是出现在对应的 TOOL 消息之前,因此"存在匹配"与"前驱匹配"等价。
      */
     private fun stripOrphanToolMessages(messages: List<UIMessage>): List<UIMessage> {
-        // Recoge todos los mensajes del ASISTENTE llevados por tool_calls id
+        // 收集所有 ASSISTANT 消息携带的 tool_calls id
         val parentToolCallIds = HashSet<String>()
         messages.forEach { msg ->
             if (msg.role == MessageRole.ASSISTANT && !msg.toolCalls.isNullOrEmpty()) {
@@ -223,13 +223,13 @@ object ProviderPayloadNormalizer {
         if (!hasToolMsg) return messages
 
         if (parentToolCallIds.isEmpty()) {
-            // sin ningún ASSISTANT tool_calls,Todos los mensajes de HERRAMIENTA son huérfanos
+            // 没有任何 ASSISTANT tool_calls,所有 TOOL 消息都是孤儿
             val removed = messages.count { it.role == MessageRole.TOOL }
-            Logger.w(TAG, "stripOrphanToolMessages: Ninguno ASSISTANT tool_calls,Eliminar $removed Mensajes de HERRAMIENTA huérfana")
+            Logger.w(TAG, "stripOrphanToolMessages: 无 ASSISTANT tool_calls,删除 $removed 条孤儿 TOOL 消息")
             return messages.filter { it.role != MessageRole.TOOL }
         }
 
-        // Mantenga los mensajes que no sean de HERRAMIENTA + toolCallId en parentToolCallIds para los mensajes de HERRAMIENTA
+        // 保留非 TOOL 消息 + toolCallId 在 parentToolCallIds 中的 TOOL 消息
         var removed = 0
         val filtered = messages.filter { msg ->
             if (msg.role != MessageRole.TOOL) {
@@ -240,7 +240,7 @@ object ProviderPayloadNormalizer {
                     removed++
                     Logger.w(
                         TAG,
-                        "stripOrphanToolMessages: Eliminar mensajes de HERRAMIENTA huérfanos toolCallId=${msg.toolCallId}",
+                        "stripOrphanToolMessages: 删除孤儿 TOOL 消息 toolCallId=${msg.toolCallId}",
                     )
                 }
                 matched
@@ -249,19 +249,19 @@ object ProviderPayloadNormalizer {
         return if (removed == 0) messages else filtered
     }
 
-    // ── 2. Limpieza de marcado de archivos adjuntos de medios nativos ──
+    // ── 2. 原生媒体附件标记清理 ──
 
     /**
-     * Cuando los mensajes llevan imágenes reales([UIMessage.imageBase64List])o vídeo([UIMessage.videoFileUri])tiempo,
-     * Limpiar del contenido `[attached_image:...]` / `[attached_video:...]` / `[attached_audio:...]` marca.
+     * 当消息携带真实图片([UIMessage.imageBase64List])或视频([UIMessage.videoFileUri])时,
+     * 从 content 中清理 `[attached_image:...]` / `[attached_video:...]` / `[attached_audio:...]` 标记。
      *
-     * escena:
-     *  - llamador ascendente(Como referencias de archivos/resultados de herramientas.)insertado en el contenido `[attached_image: path]`
-     *    como marcador de posición,Al mismo tiempo, imageBase64List incluye imágenes reales. base64
-     *  - Provider traducirá imágenes reales a `image_url` / `source.base64` Enviar al modelo
-     *  - Si no limpias la marca,El modelo ve tanto texto etiquetado como imágenes reales.,causar confusión
+     * 场景:
+     *  - 上游调用方(如文件引用 / 工具结果)在 content 里插入了 `[attached_image: path]`
+     *    作为占位符,同时 imageBase64List 携带了真实图片 base64
+     *  - Provider 会把真实图片翻译成 `image_url` / `source.base64` 发给模型
+     *  - 如果不清理标记,模型会同时看到标记文本和真实图片,造成混淆
      *
-     * Cuando un mensaje no tiene una imagen real/vídeo,mantener la marca(Hazle saber al modelo al menos que hay una referencia de imagen.,Incluso si no puedes ver la imagen original).
+     * 当消息没有真实图片/视频时,保留标记(让模型至少知道有图片引用,即使看不到原图)。
      */
     private fun stripNativeMediaAttachmentMarkers(messages: List<UIMessage>): List<UIMessage> {
         var changed = false
@@ -278,7 +278,7 @@ object ProviderPayloadNormalizer {
     }
 
     /**
-     * Eliminar etiquetas de archivos adjuntos multimedia del texto,Y recorte las líneas en blanco redundantes.
+     * 从文本中删除媒体附件标记,并规整多余空行。
      */
     private fun stripMediaMarkers(text: String, stripImage: Boolean, stripVideo: Boolean): String {
         if (text.isEmpty()) return text
@@ -286,10 +286,10 @@ object ProviderPayloadNormalizer {
         if (stripImage) result = result.replace(ATTACHED_IMAGE_MARKER_RE, "")
         if (stripVideo) {
             result = result.replace(ATTACHED_VIDEO_MARKER_RE, "")
-            // Las escenas de vídeo suelen ir acompañadas también de pistas de audio.,limpiar juntos
+            // 视频场景通常也伴随音频轨道,一并清理
             result = result.replace(ATTACHED_AUDIO_MARKER_RE, "")
         }
-        // Regular 3+ Cambiar filas a 2 consecutivamente,Y recorte los espacios en blanco iniciales y finales.
+        // 规整 3+ 连续换行为 2 个,并 trim 首尾空白
         result = result.replace(MULTIPLE_BLANK_LINES_RE, "\n\n").trim()
         return result
     }

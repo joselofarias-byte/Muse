@@ -7,15 +7,15 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Root Solicitud de autorización prueba de lógica pura —— No se inicia ningún proceso hijo y no se ejecuta su.
+ * Root 授权请求纯逻辑测试 —— 不启动任何子进程、不执行 su。
  *
- * Portada:estructura de mando,`uid=0` Sentencia, código de salida/Salida al mapeo de motivos de falla, tiempo de espera y mapeo de excepciones.
- * root La ventana emergente del administrador no se puede reproducir en el entorno de prueba.,La orquestación del proceso es proporcionada por [RootExecutor.requestRootAccess] responsable;
- * Lo que está bloqueado aquí es la semántica resultante de las dependencias de la interfaz de usuario.
+ * 覆盖:命令构造、`uid=0` 判定、退出码/输出到失败原因的映射、超时与异常映射。
+ * root 管理器弹窗无法在测试环境复现,进程编排由 [RootExecutor.requestRootAccess] 负责;
+ * 这里锁定的正是 UI 依赖的结果语义。
  */
 class RootRequestLogicTest {
 
-    // ── Construcción de comando ─────────────────────────────────────────────────────────
+    // ── 命令构造 ─────────────────────────────────────────────────────────
 
     @Test
     fun `probe args reuse su prefix with fixed id command`() {
@@ -27,7 +27,7 @@ class RootRequestLogicTest {
         assertEquals(listOf("su", "--mount-master", "-c", "id"), rootProbeArgs(listOf("su", "--mount-master")))
     }
 
-    // ── Juicio de salida ─────────────────────────────────────────────────────────
+    // ── 输出判定 ─────────────────────────────────────────────────────────
 
     @Test
     fun `uid 0 output counts as granted`() {
@@ -42,7 +42,7 @@ class RootRequestLogicTest {
         assertFalse(isRootGranted(null))
     }
 
-    // ── Sentencia estatal final ─────────────────────────────────────────────────────────
+    // ── 终态判定 ─────────────────────────────────────────────────────────
 
     @Test
     fun `exit code 0 with uid 0 is granted`() {
@@ -76,7 +76,7 @@ class RootRequestLogicTest {
         assertEquals(RootRequestFailure.NO_SU_BINARY, result.failure)
     }
 
-    // ── Asignación de tiempo de espera/excepción ──────────────────────────────────────────────────
+    // ── 超时 / 异常映射 ──────────────────────────────────────────────────
 
     @Test
     fun `timeout maps to timeout failure`() {

@@ -82,16 +82,16 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 /**
- * v1.0.80: Tarjetas de llamadas de herramientas (reescritura moderna).
+ * v1.0.80: 工具调用卡片（现代化重写）。
  *
- * Objetivos de diseño:
- *  - unificado"seguimiento de procesos"Idioma: línea del cabello + superficie inferior, sin relleno de bloque de color
- *  - Un icono semántico por herramienta ([ToolCallVisuals]), puedes saber de un vistazo qué está haciendo la IA en el estado plegado
- *  - El estado plegado muestra un resumen en chino ("Busqué en la web xxx"), ya no el nombre simple de la herramienta + las primeras 40 palabras de resultados
- *  - Estado expandido: etiqueta de herramienta + par clave-valor de parámetro + partición de resultados (la fuente monoespaciada solo está reservada para el código/JSON)
- *  - El estado de falla está delineado con error + cruz roja; ejecutando (result Vacío y sin éxito) muestra el progreso de la rotación.
+ * 设计目标：
+ *  - 统一的"过程追踪"语言：发丝边 + surface 底，不用色块填充
+ *  - 每种工具一个语义图标（[ToolCallVisuals]），折叠态一眼知道 AI 在干嘛
+ *  - 折叠态显示一句中文摘要（"搜索了网页 xxx"），不再是裸工具名 + 前 40 字结果
+ *  - 展开态：工具标签 + 参数键值对 + 结果分区（等宽字体仅留给代码/JSON）
+ *  - 失败态用 error 描边 + 红叉；执行中（result 空且未成功）显示旋转进度
  *
- * Si el texto del resultado contiene la ruta del archivo en la zona de pruebas,Se representará como un chip adjunto en el que se puede hacer clic.(ver [AttachmentChip]).
+ * 结果文本中若包含沙盒内文件路径,会渲染为可点击的附件芯片(见 [AttachmentChip])。
  */
 @Suppress("LongParameterList")
 @Composable
@@ -101,46 +101,46 @@ internal fun ToolCallCard(
     result: String,
     isSuccess: Boolean,
     modifier: Modifier = Modifier,
-    /** Tiempo de ejecución local (milisegundos);null Indica desconocido o aún en ejecución. */
+    /** 本地执行耗时（毫秒）；null 表示未知或尚在执行。 */
     durationMs: Long? = null,
-    /** v2.6.0: devolución de tarjeta(show_card Reenviar \"guardar\" y otras acciones después de renderizar);null El puente de la tarjeta no se representa. */
+    /** v2.6.0: 卡片回传(show_card 渲染后转发「保存」等动作);null 时不渲染卡桥。 */
     onCardAction: ((io.zer0.muse.ui.markdown.CardAction) -> Unit)? = null,
-    /** v2.6.7: tarjeta de identidad(Enviar mensajes en la escena del chat. id),Inyectado como window.muse.cardId. */
+    /** v2.6.7: 卡片身份(聊天场景传消息 id),注入为 window.muse.cardId。 */
     cardId: String? = null,
 ) {
     var expanded by rememberSaveable { mutableStateOf(false) }
 
-    // v2.6.0: show_card Representación dedicada —— Parámetros de la herramienta(title/code/data)Renderizar directamente como una tarjeta en línea,
-    // Los pares clave-valor de parámetro originales ya no se muestran. El análisis falló(Parámetros incompletos)Cuando se muestre la tarjeta de herramientas normal, retrocederá.
+    // v2.6.0: show_card 专用渲染 —— 工具参数(title/code/data)直接渲染为内联卡片,
+    // 不再展示原始参数键值对。解析失败(参数残缺)时回落普通工具卡展示。
     val showCardSpec = remember(toolName, arguments) {
         if (toolName == SHOW_CARD_TOOL_NAME) parseShowCardArgs(arguments) else null
     }
 
-    // v2.0: Tarjeta de herramientas enchufable — Los complementos brindan acceso de visualización al declarar tarjetas HTML personalizadas para la herramienta
+    // v2.0: 插件工具卡 — 插件为该工具声明自定义 HTML 卡片时提供查看入口
     var showPluginCard by rememberSaveable { mutableStateOf(false) }
     val pluginManager: io.zer0.muse.data.plugin.PluginManager = org.koin.compose.koinInject()
     val pluginCardHtml = remember(toolName) {
         runCatching { pluginManager.loadToolCardHtml(toolName) }.getOrNull()
     }
 
-    // isSuccess=false y el resultado está vacío → Se considera en ejecución (la herramienta acaba de ser lanzada y aún no hay resultados)
+    // isSuccess=false 且 result 空 → 视为执行中（工具刚下发、尚无结果）
     val isRunning = !isSuccess && result.isBlank()
     val hasFailed = !isSuccess && result.isNotBlank()
 
-    // Las etiquetas que se utilizan en la exportación directa de productos y las tarjetas de herramientas generales se pueden resolver con antelación.
+    // 产物直出与普通工具卡都要用到的标签，提前解出来。
     val labelResources = LocalContext.current.resources
     val label = remember(toolName) { ToolCallVisuals.labelFor(toolName, labelResources) }
 
-    // ── Producto directo ──────────────────────────────────────────────────────────
+    // ── 产物直出 ──────────────────────────────────────────────────────────
     //
-    // Comentarios de los usuarios: tarjeta generada/La imagen en sí no debe contraerse en una "llamada a herramienta".
+    // 用户反馈: 生成出来的卡片/图片本身不该被折叠在一个「工具调用」里。
     //
-    // La mente de la tarjeta de herramientas es "proceso" (lo que se llama parámetros, consumo de tiempo),
-    // Y fotos/tarjeta/El archivo descargado es el "resultado"——El resultado es lo que ve el usuario, no el registro de ejecución.
-    // Después de insertar el producto en la tarjeta plegable, el usuario primero debe expandir la "tarjeta de visualización" para ver el producto, lo cual es otra operación sin sentido.
+    // 工具卡的心智是「过程」（调用了什么、参数、耗时），
+    // 而图片/卡片/下载文件是「结果」——结果是给用户看的内容，不是执行日志。
+    // 产物塞进折叠卡后，用户必须先展开「展示卡片」才能看到东西，多一步无意义操作。
     //
-    // Regla: cuando la ejecución es exitosa y hay un producto visualizable, el producto se representará directamente (con una línea muy clara de identificación de origen),
-    // Ya no se coloca la carcasa de la tarjeta de herramientas; falló/ejecutando/Cuando no haya ningún producto para mostrar, conserve la tarjeta de herramientas original (para facilitar la resolución de problemas).
+    // 规则：执行成功且有可展示产物时，直接渲染产物（带一行极淡的来源标识），
+    // 不再套工具卡外壳；失败/执行中/无可展示产物时，保持原有工具卡（便于排查）。
     if (!isRunning && !hasFailed) {
         val directOutput = remember(toolName, arguments, result) {
             resolveDirectOutput(toolName, arguments, result)
@@ -157,27 +157,27 @@ internal fun ToolCallCard(
         }
     }
 
-    // v1.79: extractFilePaths Contiene file.exists() disco IO,Movido al hilo LaunchedEffect + IO
+    // v1.79: extractFilePaths 含 file.exists() 磁盘 IO,移到 LaunchedEffect + IO 线程
     var attachments by remember(result) { mutableStateOf(emptyList<Pair<String, Long?>>()) }
     LaunchedEffect(result) {
         attachments = withContext(Dispatchers.IO) { extractFilePaths(result) }
     }
-    // Expandir de forma predeterminada cuando hay archivos adjuntos,Permitir a los usuarios ver directamente chips de archivos descargables
+    // 有附件时默认展开,让用户直接看到可下载的文件芯片
     LaunchedEffect(attachments.isNotEmpty()) {
         if (attachments.isNotEmpty()) expanded = true
     }
 
-    // I18N-01: Resumen de herramientas/Etiquetas analizadas por recursos(zh+en Ya entré strings_tools)
+    // I18N-01: 工具摘要/标签经资源解析(zh+en 已入 strings_tools)
     val resources = LocalContext.current.resources
     val icon = remember(toolName) { ToolCallVisuals.iconFor(toolName) }
-    // label Ya resuelto al comienzo de la función (la rama directa del producto debe usarse con anticipación)
-    // F-19: Generar imágenes/vídeo/Una herramienta de código QR que muestra miniaturas de AsyncImage si el resultado contiene fuentes de imágenes.
+    // label 已在函数开头解出（产物直出分支需要提前使用）
+    // F-19: 生成图片/视频/二维码类工具，若结果含图片源则渲染 AsyncImage 缩略图
     val imageSources = remember(toolName, result) {
         if (toolName in IMAGE_PREVIEW_TOOL_NAMES) extractImageSources(result) else emptyList()
     }
     val summary = remember(toolName, arguments, result, isSuccess) {
         when {
-            isRunning -> "ejecutando…"
+            isRunning -> "En ejecución…"
             else -> ToolCallVisuals.terminalSummaryFor(result, resources)
                 ?: ToolCallVisuals.summaryFor(toolName, arguments, result, isSuccess, resources)
         }
@@ -188,8 +188,8 @@ internal fun ToolCallCard(
         isRunning -> MaterialTheme.colorScheme.primary
         else -> MaterialTheme.colorScheme.primary
     }
-    // v1.0.80: Cambie el color de fondo de la tarjeta a surfaceVariant(gris claro)/errorContainer(rojo claro),Elimina el trazo de 1dp.
-    //   fondo blanco+Cuando el trazo se redondea y se suaviza, el color de las cuatro esquinas se vuelve más claro y parece una línea discontinua.,con tarjetas de planificación(Fondo gris claro sin trazos.)El estilo tampoco es uniforme.
+    // v1.0.80: 卡片底色改用 surfaceVariant(浅灰)/errorContainer(浅红),去掉 1dp 描边。
+    //   白底+描边在圆角抗锯齿下四角颜色发淡像断线,与计划卡片(浅灰底无描边)风格也不统一。
     val cardBg = when {
         hasFailed -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f)
         else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
@@ -207,7 +207,7 @@ internal fun ToolCallCard(
         modifier = modifier.fillMaxWidth(),
     ) {
         Column(modifier = Modifier.padding(MusePaddings.bubbleInner)) {
-            // ── Encabezado: insignia de icono + etiqueta + resumen + flecha de expansión ──
+            // ── 头部：图标徽章 + 标签 + 摘要 + 展开箭头 ──
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -215,7 +215,7 @@ internal fun ToolCallCard(
                     .padding(vertical = MusePaddings.tightGap),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                // Insignia de icono: base de luz redonda + icono semántico
+                // 图标徽章：圆形浅色底 + 语义图标
                 Box(
                     modifier = Modifier
                         .size(28.dp)
@@ -259,8 +259,8 @@ internal fun ToolCallCard(
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
-                // Tiempo de ejecución: permitir a los usuarios distinguir“Lento en el modelo”con“Lento en las herramientas”.
-                // No se muestra durante la ejecución (durationMs es nulo), se muestra una vez finalizado.
+                // 执行耗时：让用户能区分“慢在模型”与“慢在工具”。
+                // 执行中不展示（durationMs 为 null），完成后显示。
                 if (durationMs != null && durationMs > 0) {
                     Text(
                         text = formatToolDuration(durationMs),
@@ -270,7 +270,7 @@ internal fun ToolCallCard(
                     )
                     Spacer(Modifier.width(4.dp))
                 }
-                // Flecha de expansión (con animación de rotación)
+                // 展开箭头（带旋转动画）
                 val rotation by animateFloatAsState(
                     targetValue = if (expanded) 180f else 0f,
                     animationSpec = MuseMotion.tween(MuseAnimation.FAST_NORMAL_MS),
@@ -290,7 +290,7 @@ internal fun ToolCallCard(
                 )
             }
 
-            // ── Ampliar contenido ──
+            // ── 展开内容 ──
             AnimatedVisibility(
                 visible = expanded,
                 enter = MuseMotion.expandFadeEnter(),
@@ -300,8 +300,8 @@ internal fun ToolCallCard(
                     modifier = Modifier.padding(top = MusePaddings.contentGap),
                     verticalArrangement = Arrangement.spacedBy(MusePaddings.tightGap),
                 ) {
-                    // v2.6.0: show_card Cuerpo de la tarjeta —— Renderizar tarjetas HTML/SVG directamente,
-                    // Los pares clave-valor del parámetro original y los resultados de texto ya no se muestran.
+                    // v2.6.0: show_card 卡片本体 —— 直接渲染 HTML/SVG 卡片,
+                    // 不再展示原始参数键值对与文本结果。
                     if (showCardSpec != null) {
                         io.zer0.muse.ui.markdown.RichContentCard(
                             language = if (showCardSpec.isSvg) "svg" else "html",
@@ -314,17 +314,17 @@ internal fun ToolCallCard(
                             modifier = Modifier.fillMaxWidth(),
                         )
                     } else {
-                        // Parámetros: visualización del par clave-valor (ya no está desnudo) {"k":"v"})
+                        // 参数：键值对展示（不再裸 {"k":"v"}）
                         val paramRows = remember(arguments) { parseParamRows(arguments) }
                         if (paramRows.isNotEmpty()) {
                             ParamSection(rows = paramRows)
                         }
-                        // Resultado: cuadro de salida con título,JSON/diff/Representación dedicada para tablas
+                        // 结果：带标题的输出框，JSON/diff/表格走专用渲染
                         if (result.isNotBlank()) {
                             ResultSection(result = result, hasFailed = hasFailed)
                         }
                     }
-                    // Chip accesorio
+                    // 附件芯片
                     if (attachments.isNotEmpty()) {
                         LazyRow(
                             modifier = Modifier.fillMaxWidth(),
@@ -336,7 +336,7 @@ internal fun ToolCallCard(
                             }
                         }
                     }
-                    // F-19: Generar imágenes/vídeo/Vista previa integrada de la tarjeta de producto con código QR (AsyncImage Miniatura, haga clic para ampliar (desde la simplicidad (no hecho))
+                    // F-19: 生成图片/视频/二维码的内嵌预览产物卡（AsyncImage 缩略图，点击放大从简未做）
                     if (imageSources.isNotEmpty()) {
                         LazyRow(
                             modifier = Modifier.fillMaxWidth(),
@@ -355,7 +355,7 @@ internal fun ToolCallCard(
                             }
                         }
                     }
-                    // v2.0: Entrada de tarjeta de herramientas personalizada enchufable(Herramienta complementaria que declara toolCards)
+                    // v2.0: 插件自定义工具卡入口(声明 toolCards 的插件工具)
                     if (pluginCardHtml != null) {
                         Row(
                             modifier = Modifier
@@ -376,7 +376,7 @@ internal fun ToolCallCard(
         }
     }
 
-    // v2.0: Ventana emergente de tarjeta de herramientas complementarias — Complemento de renderizado de solo lectura HTML,Los datos se inyectan a través de la ventana.__TOOL_CARD__
+    // v2.0: 插件工具卡弹窗 — 只读渲染插件 HTML,数据经 window.__TOOL_CARD__ 注入
     if (showPluginCard && pluginCardHtml != null) {
         MuseDialog(
             onDismissRequest = { showPluginCard = false },
@@ -394,7 +394,7 @@ internal fun ToolCallCard(
     }
 }
 
-/** v2.0: Inyectar datos de llamadas de herramientas en tarjetas enchufables HTML(Pre-guion,solo lectura). */
+/** v2.0: 把工具调用数据注入插件卡片 HTML(前置脚本,只读)。 */
 private fun buildToolCardHtml(html: String, toolName: String, arguments: String, result: String, isSuccess: Boolean): String {
     val argsElement = runCatching {
         io.zer0.common.AppJson.parseToJsonElement(arguments)
@@ -409,9 +409,9 @@ private fun buildToolCardHtml(html: String, toolName: String, arguments: String,
 }
 
 /**
- * Partición de parámetros de estado expandido: título "parámetros" + Fila de pares clave-valor.
+ * 展开态的参数分区：标题 "参数" + 键值对行。
  *
- * Truncar a una línea si el valor es demasiado largo; Booleano/Los números se resaltan con el color primario y las cadenas se resaltan con onSurfaceVariant.
+ * 值过长时截断到一行；布尔/数字用 primary 色强调，字符串用 onSurfaceVariant。
  */
 @Composable
 private fun ParamSection(rows: List<Pair<String, String>>) {
@@ -429,7 +429,7 @@ private fun ParamSection(rows: List<Pair<String, String>>) {
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Medium,
-                    // LAYOUT-01: El nombre del parámetro se fija en un ancho de columna de 84.dp y se agregan líneas para evitar que los nombres de clave largos se ajusten palabra por palabra en columnas estrechas.
+                    // LAYOUT-01: 参数名固定 84.dp 列宽，补限行以免长键名在窄列里逐字换行
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.width(84.dp),
@@ -448,15 +448,15 @@ private fun ParamSection(rows: List<Pair<String, String>>) {
 }
 
 /**
- * Partición de resultados ampliada: título "resultado" + Caja de salida de color claro.
+ * 展开态的结果分区：标题 "结果" + 浅色输出框。
  *
- * truncar (>500 caracteres) para evitar representar la mitad de un JSON/diff; el resultado completo es [ToolResultRenderer].
+ * 截断（>500 字符）时保持纯文本，避免渲染半个 JSON/diff；完整结果走 [ToolResultRenderer]。
  */
 @Composable
 private fun ResultSection(result: String, hasFailed: Boolean) {
     val context = LocalContext.current
     val resultLabel = stringResource(R.string.chat_tool_result)
-    // Long results keep a bounded preview soRepresentación inteligente stays cheap, but the user can
+    // Long results keep a bounded preview so智能渲染 stays cheap, but the user can
     // still expand the full text and copy it without leaving the message.
     var showFullResult by rememberSaveable(result) { mutableStateOf(false) }
     val isTruncated = result.length > RESULT_PREVIEW_CHARS
@@ -467,12 +467,12 @@ private fun ResultSection(result: String, hasFailed: Boolean) {
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontWeight = FontWeight.SemiBold,
-                // LAYOUT-01: La etiqueta de resultado que se ha ampliado se agregará al límite de línea. Si el ancho restante es extremadamente pequeño, ya no se ajustará palabra por palabra.
+                // LAYOUT-01: 已取宽的结果标签补限行，剩余宽度极小时不再逐字换行
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
             )
-            // LAYOUT-01: La etiqueta de acción al final de la línea solo se limita a la línea y no toma el ancho (izquierda"resultado"Ya weight(1f), tomar el ancho lo apretará hacia el medio)
+            // LAYOUT-01: 行尾动作标签只限行、不取宽（左侧"结果"已 weight(1f)，取宽会把它挤到中间）
             Text(
                 text = stringResource(R.string.chat_tool_copy),
                 style = MaterialTheme.typography.labelSmall,
@@ -546,11 +546,11 @@ private fun ResultSection(result: String, hasFailed: Boolean) {
 /** Bounded preview shown before the user expands a long tool result. */
 private const val RESULT_PREVIEW_CHARS = 500
 
-// ── Análisis de parámetros ────────────────────────────────────────────────────────────
+// ── 参数解析 ────────────────────────────────────────────────────────────
 
 private data class ParamRow(val key: String, val value: String)
 
-/** Analiza los argumentos JSON en filas de pares clave-valor; devuelve una lista vacía si no es JSON o está vacía (UI El área de parámetros no se muestra). */
+/** 把 arguments JSON 解析成键值对行；非 JSON 或空时返回空列表（UI 不显示参数区）。 */
 private fun parseParamRows(arguments: String): List<Pair<String, String>> {
     val t = arguments.trim()
     if (t.isEmpty() || !t.startsWith("{")) return emptyList()
@@ -563,57 +563,57 @@ private fun parseParamRows(arguments: String): List<Pair<String, String>> {
         val display: String = when (v) {
             is String -> v
             is Boolean, is Number -> v.toString()
-            is JSONArray -> "[${v.length()} artículo]"
+            is JSONArray -> "[${v.length()} elementos]"
             is JSONObject -> "{…}"
             else -> v.toString()
         }
         if (display.isNotBlank()) rows += k to display
     }
-    return rows.take(8) // Truncar la visualización cuando hay demasiados parámetros
+    return rows.take(8) // 参数过多时截断展示
 }
 
-// ── v2.6.0: show_card Análisis de parámetros y representación de tarjetas en línea ───────────────────────────
+// ── v2.6.0: show_card 参数解析与内联卡片渲染 ───────────────────────────
 
-/** show_card Nombre de la herramienta. */
+/** show_card 工具名。 */
 internal const val SHOW_CARD_TOOL_NAME = "show_card"
 
 /**
- * Contenido de la tarjeta en línea extraído del argumento de la herramienta para show_card.
+ * 从 show_card 的工具参数中提取的内联卡片内容。
  *
- * @param code HTML/SVG fragmento(renderizar el cuerpo)
- * @param data Datos de enlace opcionales(Script en línea para tarjeta;null significa ninguno)
- * @param isSvg Si el fragmento es SVG(Determinar la ruta de renderizado)
+ * @param code HTML/SVG 片段(渲染主体)
+ * @param data 可选绑定数据(内联给卡片脚本;null 表示无)
+ * @param isSvg 片段是否为 SVG(决定渲染路径)
  */
 internal data class ShowCardSpec(
     val code: String,
     val data: String?,
     val isSvg: Boolean,
-    /** El tamaño de la tarjeta declarado por el modelo (dejado como está, interpretado por la capa de renderizado);null No indica ninguna declaración. */
+    /** 模型声明的卡片尺寸（原样保留，由渲染层解释）；null 表示没声明。 */
     val height: String? = null,
 )
 
 /**
- * Parámetro de herramienta de análisis JSON para show_card.
+ * 解析 show_card 的工具参数 JSON。
  *
- * Devolver nulo indica que el parámetro está incompleto(code Desaparecido o ilegal JSON),En este momento, la tarjeta de herramientas vuelve a su visualización normal.
- * Los valores de los parámetros pueden ser objetos anidados.(El modelo pasa datos/código como cadena u objeto.),Unidad aquí
- * Utilice la tolerancia a errores para obtener caracteres.:Las primitivas de cadena eliminan el texto escapado,El resto toma texto JSON.
+ * 返回 null 表示参数残缺(code 缺失或非法 JSON),此时工具卡回落普通展示。
+ * 参数值可能是嵌套对象(模型把 data/code 按 string 或 object 传入),这里统一
+ * 用容错取字符:字符串基元取去转义后的文本,其余取 JSON 文本。
  *
- * v2.6.7: apoyo**Transmisión de productos semiacabados**——Los parámetros de la herramienta se detallan pieza por pieza. Se requiere el JSON completo.
- * Se establece al final. La implementación anterior siempre devolvía nulo durante la transmisión, por lo que primero se mostraba como una tarjeta de herramientas (parámetro
- * Pares clave-valor), solo después de salir y volver a ingresar se pueden obtener los parámetros completos de la base de datos y convertirlos en tarjetas. La apariencia y la sensación son
- * “No se mostrará cuando se cree y aparecerá solo después de volver a ingresar.”.
- * Ahora, cuando falla el análisis estricto, se agregará una "extracción progresiva": intente extraer el contenido existente del campo de código.
- * Deja que la tarjeta crezca a medida que fluye.
+ * v2.6.7: 支持**流式半成品**——工具参数是一段段拼出来的，完整 JSON 要到
+ * 结束时才成立。旧实现在流式期间永远返回 null，于是先显示成工具卡（参数
+ * 键值对），退出重进后才从数据库拿到完整参数变成卡片，观感上就是
+ * “刚生成不显示、重进才出现”。
+ * 现在严格解析失败时，会补一个「渐进抽取」：尽量把 code 字段已有的内容取出来，
+ * 让卡片边流边长。
  */
 internal fun parseShowCardArgs(arguments: String): ShowCardSpec? {
     val t = arguments.trim()
     if (t.isEmpty()) return null
-    // Se da prioridad al JSON completo; si no se puede obtener el código, se recurrirá a la extracción progresiva.
+    // 完整 JSON 优先；拿不到 code 时再退回渐进抽取。
     return parseComplete(t) ?: parsePartial(t)
 }
 
-/** Análisis completo de parámetros JSON; devuelve nulo si no hay ningún código válido. */
+/** 完整 JSON 参数解析；无有效 code 时返回 null。 */
 private fun parseComplete(t: String): ShowCardSpec? {
     val obj = t.takeIf { it.startsWith("{") }
         ?.let { runCatching { JSONObject(it) }.getOrNull() }
@@ -623,7 +623,7 @@ private fun parseComplete(t: String): ShowCardSpec? {
     return code?.let { buildSpec(it, data, height) }
 }
 
-/** Transmisión de producto semiacabado: haga todo lo posible para extraer el valor actual del código de un JSON incompleto. */
+/** 流式半成品：从残缺 JSON 里尽力抽出 code 当前值。 */
 private fun parsePartial(t: String): ShowCardSpec? {
     val code = partialJsonStringField(t, "code")?.takeIf { it.isNotBlank() } ?: return null
     return buildSpec(
@@ -639,18 +639,18 @@ private fun buildSpec(code: String, data: String?, height: String? = null): Show
 }
 
 /**
- * v2.6.7: Extraiga el valor actual de un campo de cadena de texto JSON incompleto.
+ * v2.6.7: 从残缺 JSON 文本中抽取某个字符串字段的当前值。
  *
- * No buscar la integridad y la corrección: encontrar `"key"` mas tarde `"` punto de partida, luego deslice el dedo hacia atrás hasta la cita de cierre
- * O el final del texto (el final cuando la transmisión no finaliza) y luego restaurar los caracteres escapados a caracteres reales.
- * Solo admite valores de cadena —— show_card El código/datos es inherentemente una cadena.
+ * 不追求完整正确：找到 `"key"` 后的 `"` 起点，然后往后扫到结束引号
+ * 或文本末尾（流式未写完时就是末尾），再把转义字符还原成真实字符。
+ * 只支持字符串值 —— show_card 的 code/data 本来就是字符串。
  */
 internal fun partialJsonStringField(raw: String, key: String): String? {
     val start = findStringValueStart(raw, "\"$key\"") ?: return null
     return readJsonStringFrom(raw, start)
 }
 
-/** encontró `"key"` La posición inicial de las comillas del valor de cadena que sigue (se omite la comilla). */
+/** 找到 `"key"` 后紧跟的字符串值起始引号位置（已跳过该引号）。 */
 private fun findStringValueStart(raw: String, keyToken: String): Int? {
     var result: Int? = null
     var searchFrom = 0
@@ -671,10 +671,10 @@ private fun findStringValueStart(raw: String, keyToken: String): Int? {
     return result
 }
 
-/** El valor de retorno indica“Esta clave no es un campo de cadena, sigue buscando.”. */
+/** 返回值表示“这个 key 不是字符串字段，继续找”。 */
 private const val VALUE_NOT_FOUND = Int.MIN_VALUE
 
-/** de [from] Omita los espacios en blanco y los dos puntos y devuelva el punto inicial del cuerpo de la cadena; devolver si no es un campo de cadena. [VALUE_NOT_FOUND]. */
+/** 从 [from] 起跳过空白与冒号，返回字符串体起点；不是字符串字段时返回 [VALUE_NOT_FOUND]。 */
 private fun stringValueStartAfter(raw: String, from: Int): Int {
     var i = from
     while (i < raw.length && raw[i].isWhitespace()) i++
@@ -684,7 +684,7 @@ private fun stringValueStartAfter(raw: String, from: Int): Int {
     return if (i < raw.length && raw[i] == '"') i + 1 else -1
 }
 
-/** de [from] Comience a leer el cuerpo de una cadena JSON (tolera sin cerrar, lea hasta el final durante la transmisión). */
+/** 从 [from] 开始读一个 JSON 字符串体（容忍未闭合，流式时就是读到末尾）。 */
 private fun readJsonStringFrom(raw: String, from: Int): String {
     val sb = StringBuilder()
     var i = from
@@ -702,7 +702,7 @@ private fun readJsonStringFrom(raw: String, from: Int): String {
     return sb.toString()
 }
 
-/** Procesa una secuencia de escape y devuelve el número de caracteres consumidos. */
+/** 处理一个转义序列，返回消耗的字符数。 */
 private fun appendEscape(raw: String, at: Int, sb: StringBuilder): Int {
     val esc = if (at + 1 < raw.length) raw[at + 1] else null
     val simple = when (esc) {
@@ -732,7 +732,7 @@ private fun appendEscape(raw: String, at: Int, sb: StringBuilder): Int {
     return consumed
 }
 
-/** Obtener el texto de un valor JSON:Usar cadena directamente,GSON de objetos anidados/Las matrices utilizan texto JSON. */
+/** 取一个 JSON 值的文本:字符串直接用,GSON 的嵌套对象/数组用 JSON 文本。 */
 private fun jsonArgText(value: Any?): String? = when (value) {
     null, JSONObject.NULL -> null
     is String -> value
@@ -740,10 +740,10 @@ private fun jsonArgText(value: Any?): String? = when (value) {
 }
 
 /**
- * Extraiga rutas de archivos dentro de la zona de pruebas a partir del texto del resultado de la herramienta.
+ * 从工具结果文本中提取沙盒内文件路径。
  *
- * Encuentra archivos con extensiones en rutas absolutas como /data/.../files/ o /data/.../cache/,
- * Sólo devuelve archivos que realmente existen en el disco,Deduplicación por ruta.
+ * 匹配 /data/.../files/ 或 /data/.../cache/ 等绝对路径下、带扩展名的文件,
+ * 只返回磁盘中真实存在的文件,按路径去重。
  */
 private val PATH_PATTERN = Regex("""(/data/[^\s,)]+\.[a-zA-Z0-9]+)""")
 
@@ -759,26 +759,26 @@ private fun extractFilePaths(text: String): List<Pair<String, Long?>> {
     return results.distinctBy { it.first }
 }
 
-// ── F-19: Generar imágenes/vídeo/Vista previa del código QR ──────────────────────────────────────
+// ── F-19: 生成图片/视频/二维码预览 ──────────────────────────────────────
 
-/** F-19: El nombre de la herramienta que necesita representar el producto de vista previa de la imagen. */
+/** F-19: 需要渲染图片预览产物的工具名。 */
 private val IMAGE_PREVIEW_TOOL_NAMES: Set<String> = setOf("generate_image", "generate_video", "generate_qrcode")
 
-/** F-19: de resultados de herramientas coincidentes http(s) URL de la imagen. */
+/** F-19: 匹配工具结果中的 http(s) 图片 URL。 */
 private val IMAGE_URL_PATTERN = Regex("""https?://[^\s)\]},，。；;]+""")
 
-/** F-19: Archivos de imagen locales que coinciden con rutas absolutas dentro del entorno sandbox (generate_qrcode etc. para devolver la ruta del archivo cacheDir). */
+/** F-19: 匹配沙盒内绝对路径的本地图片文件（generate_qrcode 等返回 cacheDir 文件路径）。 */
 private val IMAGE_LOCAL_PATH_PATTERN = Regex("""(/data/[^\s,)]+\.(?:png|jpe?g|gif|webp|bmp))""", RegexOption.IGNORE_CASE)
 
 /**
- * F-19: Extrae fuentes de imágenes incrustadas (URL de red o rutas de archivos de imágenes locales) del texto del resultado de la herramienta.
+ * F-19: 从工具结果文本中提取内嵌图片源（网络 URL 或本地图片文件路径）。
  *
- * Regresar List<Any>:El elemento es String(URL) o java.io.File(mapa local), para que Coil AsyncImage se cargue directamente.
+ * 返回 List<Any>：元素为 String(URL) 或 java.io.File(本地图)，供 Coil AsyncImage 直接加载。
  */
 private fun extractImageSources(text: String): List<Any> {
     val sources = mutableListOf<Any>()
     IMAGE_URL_PATTERN.findAll(text).forEach { match ->
-        sources.add(match.value.trimEnd('.', ',', '.', ';', ';', ',', ')', ']', '}'))
+        sources.add(match.value.trimEnd('.', '，', '。', '；', ';', ',', ')', ']', '}'))
     }
     IMAGE_LOCAL_PATH_PATTERN.findAll(text).forEach { match ->
         sources.add(java.io.File(match.value))
@@ -787,7 +787,7 @@ private fun extractImageSources(text: String): List<Any> {
 }
 
 /**
- * v1.95: Regularidad de la ruta del paquete de expresiones — Coincide con rutas absolutas que contienen /stickers/.
+ * v1.95: 表情包路径正则 — 匹配包含 /stickers/ 的绝对路径。
  */
 internal val STICKER_PATH_PATTERN =
     Regex("""(/[^\s\]]*?/stickers/[^\s\]]+\.(?:png|jpg|jpeg|gif|webp|bmp))""", RegexOption.IGNORE_CASE)
@@ -800,33 +800,32 @@ internal fun extractStickerPaths(text: String): List<String> {
 }
 
 /**
- * Markdown Gramática de imágenes `![alt](url)` La dirección es regular.
+ * Markdown 图片语法 `![alt](url)` 的地址正则。
  */
 internal val MARKDOWN_IMAGE_PATTERN = Regex("""!\[[^\]]*]\((\S+?)\)""")
 
 /**
- * Tome la dirección de la imagen de Markdown del texto.
+ * 从正文里取出 Markdown 图片地址。
  *
- * Markdown El analizador `![alt](url)` Bórralo del texto (para evitar duplicaciones con el área de la imagen),
- * Pero no había lugar para sacarlos y renderizarlos antes, y toda la línea de la imagen del modelo escrita en Markdown desapareció.
- * Sólo se aceptan direcciones absolutas y URI de datos que se puedan cargar directamente; las rutas relativas no se procesan y se dejan en el texto.
+ * Markdown 解析器会把 `![alt](url)` 从文字里抹掉（避免与图片区重复），
+ * 但此前没有任何地方把它们取出来渲染，模型用 Markdown 写的图就整行消失。
+ * 只接受能直接加载的绝对地址与 data URI；相对路径不处理，留在正文里。
  */
-internal fun extractMarkdownImageUrls(text: String): List<String> =
-    MARKDOWN_IMAGE_PATTERN.findAll(text)
-        .map { it.groupValues[1].trim() }
-        .filter { it.startsWith("http://") || it.startsWith("https://") || it.startsWith("data:image/") }
-        .distinct()
-        .toList()
+internal fun extractMarkdownImageUrls(text: String): List<String> = MARKDOWN_IMAGE_PATTERN.findAll(text)
+    .map { it.groupValues[1].trim() }
+    .filter { it.startsWith("http://") || it.startsWith("https://") || it.startsWith("data:image/") }
+    .distinct()
+    .toList()
 
 /**
- * v2.x: Juicio de mensaje largo — Contenido estructurado o texto muy largo.,AI noticias"Sin tarjeta de crédito"
- * (El contenido extenso cae directamente en el borde de respiración, diseño de ancho completo,No encerrado en contenedores de burbujas.).
+ * v2.x: 长文消息判定 — 结构型内容或超长正文时,AI 消息"不进卡"
+ * (长内容直接落在呼吸边上全宽排版,不被气泡容器包住)。
  *
- * Señal de decisión(cualquier golpe):
- *  - valla de bloque de código ```
- *  - Markdown línea de título(comienzo de linea #~###### + espacio)
- *  - Markdown fila separadora de tabla |---
- *  - El texto es demasiado largo.(> 500 personaje)
+ * 判定信号(任一命中):
+ *  - 代码块围栏 ```
+ *  - Markdown 标题行(行首 #~###### + 空格)
+ *  - Markdown 表格分隔行 |---
+ *  - 正文超长(> 500 字符)
  */
 internal fun isLongFormContent(content: String): Boolean {
     if (content.length > 500) return true
@@ -835,16 +834,16 @@ internal fun isLongFormContent(content: String): Boolean {
     return LONG_FORM_HEADING_REGEX.containsMatchIn(content)
 }
 
-/** v2.x: Markdown línea de título(1-6 # + espacios al principio de la línea). */
+/** v2.x: Markdown 标题行(行首 1-6 个 # + 空格)。 */
 private val LONG_FORM_HEADING_REGEX = Regex("(?m)^#{1,6}\\s")
 
 /**
- * v1.133: RAG Lista de chips de referencia — Representación de referencias de búsqueda de la base de conocimientos,Haga clic para expandir la vista previa del fragmento.
+ * v1.133: RAG 引用 chip 列表 — 渲染知识库检索引用,点击展开 snippet 预览。
  *
- * Phase 2 completo:
- *  - index Como tecla LazyRow, presione primero el índice para eliminar duplicados.,Los datos duplicados anormales ya no provocan fallos de conflictos clave;
- *  - chip aumentar contentDescription(Número de referencia + nombre del documento + ampliar/Ocultar recordatorio);
- *  - Agregue "Abrir documento" al área de expansión(Pasado de forma transparente por la persona que llama [onOpenDocument],No mostrar si no se proporciona)con la acción "Copiar resumen".
+ * Phase 2 补齐:
+ *  - index 作为 LazyRow key 先按 index 去重,异常重复数据不再触发 key 冲突崩溃;
+ *  - chip 增加 contentDescription(引用编号 + 文档名 + 展开/收起提示);
+ *  - 展开区增加「打开文档」(由调用方透传 [onOpenDocument],未提供时不显示)与「复制摘要」动作。
  */
 @Composable
 internal fun RagCitationChips(
@@ -852,7 +851,7 @@ internal fun RagCitationChips(
     modifier: Modifier = Modifier,
     onOpenDocument: ((RagCitation) -> Unit)? = null,
 ) {
-    // Si hay duplicados en el mismo mensaje index(anomalía de datos/Repetir inyección),distinctBy Evite conflictos de claves de LazyRow
+    // 同一消息内若出现重复 index(数据异常/重复注入),distinctBy 兜底避免 LazyRow key 冲突
     val uniqueCitations = remember(citations) { citations.distinctBy { it.index } }
     var expandedIndex by rememberSaveable { mutableStateOf(-1) }
     Column(modifier = modifier.fillMaxWidth()) {
@@ -881,7 +880,7 @@ internal fun RagCitationChips(
     }
 }
 
-/** Detalles de cita ampliados:Título del fragmento + resumen + puntuación + línea de acción(Abrir documento/copiar resumen). */
+/** 展开的引用详情:片段标题 + 摘要 + 分数 + 动作行(打开文档 / 复制摘要)。 */
 @Composable
 private fun RagCitationDetail(citation: RagCitation, onOpenDocument: ((RagCitation) -> Unit)?) {
     val context = LocalContext.current
@@ -918,7 +917,7 @@ private fun RagCitationDetail(citation: RagCitation, onOpenDocument: ((RagCitati
                 color = MaterialTheme.colorScheme.outline,
                 modifier = Modifier.padding(top = MusePaddings.tightGap),
             )
-            // Phase 2: Acción de referencia — Abrir documento(devolución de llamada opcional)/ Copiar resumen(portapapeles)
+            // Phase 2: 引用动作 — 打开文档(可选回调)/ 复制摘要(剪贴板)
             Row(
                 modifier = Modifier.padding(top = MusePaddings.tightGap),
                 horizontalArrangement = Arrangement.spacedBy(MusePaddings.contentGap),
@@ -946,7 +945,7 @@ private fun RagCitationDetail(citation: RagCitation, onOpenDocument: ((RagCitati
     }
 }
 
-/** Botón de acción de texto dentro de los detalles de la cotización. */
+/** 引用详情内的文本动作按钮。 */
 @Composable
 private fun RagCitationAction(text: String, onClick: () -> Unit) {
     Text(
@@ -989,7 +988,7 @@ private fun RagCitationChip(citation: RagCitation, isExpanded: Boolean, onClick:
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(MusePaddings.tightGap),
         ) {
-            // LAYOUT-01: La marca del número de serie es la cantidad del encabezado de línea, que solo se limita a la línea y no toma el ancho (el texto docTitle ya es la opción de ancho)
+            // LAYOUT-01: 序号标记是行首定量，只限行、不取宽（正文 docTitle 已是取宽项）
             Text(
                 text = "[${citation.index}]",
                 style = MaterialTheme.typography.labelSmall,
@@ -1011,15 +1010,15 @@ private fun RagCitationChip(citation: RagCitation, isExpanded: Boolean, onClick:
     }
 }
 
-// Los efectos especiales emocionales utilizan tamaños de fuente fijos, son estilos decorativos en línea y no ingresan al nivel de diseño del texto.
+// 情绪特效使用固定字号，属装饰性内联样式，不进入正文排版层级
 private fun moodSkinEffectStyle(effect: String): androidx.compose.ui.text.SpanStyle = when (effect) {
     "glow" -> androidx.compose.ui.text.SpanStyle(
         color = io.zer0.muse.ui.theme.MoodSkinColors.glow,
         fontWeight = FontWeight.SemiBold,
     )
-    "big" -> androidx.compose.ui.text.SpanStyle(fontSize = 20.sp, fontWeight = FontWeight.SemiBold) // Tamaño de fuente decorativa de efectos especiales emocionales.
-    "huge" -> androidx.compose.ui.text.SpanStyle(fontSize = 26.sp, fontWeight = FontWeight.Bold) // Tamaño de fuente decorativa de efectos especiales emocionales.
-    "whisper" -> androidx.compose.ui.text.SpanStyle(fontSize = 13.sp, color = io.zer0.muse.ui.theme.MoodSkinColors.whisper) // Tamaño de fuente decorativa de efectos especiales emocionales.
+    "big" -> androidx.compose.ui.text.SpanStyle(fontSize = 20.sp, fontWeight = FontWeight.SemiBold) // 情绪特效装饰字号
+    "huge" -> androidx.compose.ui.text.SpanStyle(fontSize = 26.sp, fontWeight = FontWeight.Bold) // 情绪特效装饰字号
+    "whisper" -> androidx.compose.ui.text.SpanStyle(fontSize = 13.sp, color = io.zer0.muse.ui.theme.MoodSkinColors.whisper) // 情绪特效装饰字号
     "red" -> androidx.compose.ui.text.SpanStyle(color = io.zer0.muse.ui.theme.MoodSkinColors.red, fontWeight = FontWeight.Bold)
     "shake" -> androidx.compose.ui.text.SpanStyle(color = io.zer0.muse.ui.theme.MoodSkinColors.shake, letterSpacing = 1.sp)
     "blur" -> androidx.compose.ui.text.SpanStyle(color = io.zer0.muse.ui.theme.MoodSkinColors.blur)
@@ -1052,7 +1051,7 @@ private fun buildHighlightedText(text: String, query: String): androidx.compose.
 }
 
 /**
- * v1.98 (T5): Cápsula de tareas pendientes — tarea larga(≥2 llamada de herramienta de paso)tiempo,Se muestra a la izquierda de la tarjeta de llamada de herramienta.
+ * v1.98 (T5): 任务待办胶囊 — 长任务(≥2 步工具调用)时,显示在工具调用卡片左边。
  */
 @Composable
 private fun TaskProgressBadge(
@@ -1102,56 +1101,56 @@ private fun TaskProgressBadge(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Producto directo
+// 产物直出
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Contenido exportable producido por la herramienta.
+ * 工具产出的可直出内容。
  *
- * Distinga conceptualmente entre "proceso" y "resultado": la tarjeta de herramientas registra el proceso de ejecución,
- * Lo que se lleva aquí es lo que el usuario realmente quiere ver (tarjetas, imágenes, archivos) y no debe doblarse ni ocultarse.
+ * 概念上区分「过程」与「结果」：工具卡记录执行过程，
+ * 而这里承载的是用户真正想看的东西（卡片、图片、文件），不该被折叠隐藏。
  */
 internal sealed interface DirectOutput {
-    /** Tarjetas interactivas (HTML/SVG). */
+    /** 交互式卡片（HTML/SVG）。 */
     data class Card(
         val code: String,
         val isSvg: Boolean,
         val data: String?,
-        /** Modelo dimensiones declaradas (show_card altura),null Indica adaptativo. */
+        /** 模型声明的尺寸（show_card 的 height），null 表示自适应。 */
         val height: String? = null,
     ) : DirectOutput
 
-    /** Medios generados (fuente de vista previa de imagen/vídeo/código QR). */
+    /** 生成的媒体（图片 / 视频 / 二维码预览源）。 */
     data class Media(val sources: List<Any>) : DirectOutput
 
-    /** Archivos que se han colocado en el disco (descargar/exportación). */
+    /** 已落盘的文件（下载/导出）。 */
     data class File(val paths: List<String>) : DirectOutput
 }
 
-/** Herramienta directa → Tipo de producto. Cuando la ejecución es exitosa, se omite la cubierta de la tarjeta de herramientas y el producto se presenta directamente al usuario. */
+/** 直出型工具 → 产物类型。执行成功时跳过工具卡外壳，直接把产物呈现给用户。 */
 private val CARD_OUTPUT_TOOLS: Set<String> = setOf(SHOW_CARD_TOOL_NAME, "render_data")
 
 /**
- * v2.6.8: El producto de esta herramienta es un "entregable", no un "proceso".
+ * v2.6.8: 该工具的产物是「交付物」，而不是「过程」。
  *
- * show_card La tarjeta generada es lo que el usuario quiere (se puede hacer clic, enviar y guardar).
- * No "AI Registro "Ajustado una herramienta". El proceso se puede dividir en los pasos de la tarjeta de tareas, pero los entregables no ——
- * Los usuarios no deben expandir un plan de ejecución solo para ver la tarjeta que acaban de generar.
+ * show_card 生成的那张卡是用户要的东西本身（可以点、可以提交、可以保存），
+ * 不是「AI 调了个工具」的日志。过程可以折叠进任务卡的步骤里，交付物不行 ——
+ * 用户不该为了看见自己刚生成的卡片去展开一张执行计划。
  *
- * Este juicio es utilizado por tres lugares al mismo tiempo, asegurando que los tres lugares tengan el mismo calibre:
- *  - Paso de la tarjeta de tareas: deje solo una línea de referencia, ya no presione la tarjeta en el paso;
- *  - Deduplicación de flujo de mensajes: no ocultar los mensajes de herramientas de show_card como "representados por tarjeta de tarea";
- *  - Agrupación de procesos: no combine show_card con la tarjeta de grupo "llamada continua a herramientas" (de lo contrario, deberá expandirla para verla).
+ * 这条判定同时被三处使用，保证三处口径一致：
+ *  - 任务卡步骤：只留一行引用，不再把卡片压在步骤里；
+ *  - 消息流去重：不把 show_card 的工具消息当作「已由任务卡渲染」而隐藏；
+ *  - 过程分组：不把 show_card 并进「连续工具调用」组卡（否则又得展开才能看）。
  *
- * Función pura, conveniente para pruebas individuales.
+ * 纯函数，便于单测。
  */
 internal fun isInlineDeliverableTool(toolName: String?): Boolean = toolName == SHOW_CARD_TOOL_NAME
 
 /**
- * v2.6.8: La identificación del mensaje de la herramienta que pertenece al "entregable" en la lista de mensajes (actualmente show_card).
+ * v2.6.8: 消息列表里属于「交付物」的工具消息 id（目前即 show_card）。
  *
- * La persona que llama lo utiliza para extraer estos mensajes del conjunto de deduplicación de "La tarjeta de tareas ha generado el producto".
- * Deje que la tarjeta permanezca en el flujo del mensaje como una tarjeta en línea de primera clase.
+ * 调用方用它把这些消息从「产物已由任务卡渲染」的去重集合里摘出去，
+ * 让卡片以一等内联卡的形式留在消息流里。
  */
 internal fun inlineDeliverableMessageIds(messages: List<io.zer0.ai.core.UIMessage>): Set<String> = messages.asSequence()
     .filter { isInlineDeliverableTool(it.toolCallInfo?.toolName) }
@@ -1163,10 +1162,10 @@ private val MEDIA_OUTPUT_TOOLS: Set<String> = setOf("generate_image", "generate_
 private val FILE_OUTPUT_TOOLS: Set<String> = setOf("create_download")
 
 /**
- * Determine si una llamada de herramienta exitosa tiene productos de salida directos.
+ * 判断一次成功的工具调用是否有可直出的产物。
  *
- * Devolver nulo significa "esto es un proceso, no un resultado"——La persona que llama debería recurrir a la tarjeta de herramientas normal.
- * Función pura, conveniente para pruebas individuales; no se requiere IO de disco (la extracción de ruta la maneja el lado de renderizado).
+ * 返回 null 表示「这是过程，不是结果」——调用方应回落到普通工具卡。
+ * 纯函数，便于单测；不做磁盘 IO（路径提取由渲染侧处理）。
  */
 internal fun resolveDirectOutput(toolName: String, arguments: String, result: String): DirectOutput? {
     if (result.isBlank()) return null
@@ -1191,7 +1190,7 @@ internal fun resolveDirectOutput(toolName: String, arguments: String, result: St
     }
 }
 
-/** Versión síncrona de extracción de ruta (solo coincidencia regular, sin verificación del sistema de archivos), utilizada para la determinación y representación de funciones puras. */
+/** 同步版路径提取（只做正则匹配，不查文件系统），用于纯函数判定与渲染。 */
 private fun extractFilePathsSync(result: String): List<String> =
     runCatching { FILE_PATH_REGEX.findAll(result).map { it.value }.distinct().toList() }
         .getOrDefault(emptyList())
@@ -1199,24 +1198,24 @@ private fun extractFilePathsSync(result: String): List<String> =
 private val FILE_PATH_REGEX = Regex("""/[\w\-./]+\.(md|txt|json|csv|pdf|zip|png|jpg|jpeg|webp|mp4)\b""")
 
 /**
- * Renderice directamente desde el producto: logotipo de fuente muy luminosa + cuerpo del producto.
+ * 渲染直出产物：极淡的来源标识 + 产物本体。
  *
- * El propósito de conservar el logotipo es que los usuarios sepan que "esto es algo que acaba de generar la IA".
- * Pero sin usar el estuche plegable——El producto en sí es visible en la primera pantalla.
+ * 保留标识是为了让用户知道「这是 AI 刚生成的东西」，
+ * 但不使用可折叠外壳——产物本身就在首屏可见。
  */
 /**
- * v2.6.7: Entrada de renderizado de productos —— tarjeta de plan/Aquí también van los pasos y resultados de la tarjeta de tareas.
+ * v2.6.7: 产物渲染入口 —— 计划卡/任务卡的步骤结果也走这里。
  *
- * Motivo de la separación: Resulta que el producto solo se puede renderizar desde la tarjeta de herramientas aislada. Una vez incluida la llamada de herramienta en la tarjeta de diseño
- * “pasos”Aquí, el producto degenera en un texto truncado que los usuarios no pueden ver.
+ * 拆出来的原因：原来产物只能从孤立工具卡渲染，一旦工具调用被收进计划卡的
+ * “步骤”里，产物就退化成一段被截断的文本，用户看不到。
  *
- * v2.6.8: Conforma el puente de devolución de la tarjeta. La implementación anterior está codificada aquí. `onCardAction = null`, entonces
- * La misma tarjeta show_card: se puede hacer clic cuando aparece sola. Una vez que se incluya en el paso de la tarjeta de tareas, el puente se romperá. ——
- * El HTML renderizado se puede ver, pero todos los controles no responden cuando se hace clic (la fuente directa de retroalimentación real de la máquina).
- * El puente debe pasarse con el artefacto y la posición de renderizado no debe cambiar las capacidades de la tarjeta.
+ * v2.6.8: 补上卡片回传桥。旧实现在这里硬编码 `onCardAction = null`，于是
+ * 同一张 show_card 卡：单独出现时能点，一旦被收进任务卡的步骤里，桥就断了 ——
+ * 渲染出来的 HTML 能看，但所有控件点了没反应（真机反馈的直接来源）。
+ * 桥必须和产物一起传进来，渲染位置不该改变卡片的能力。
  *
- * @param label Identificación de fuente (pase el nombre de la herramienta); si la cadena está vacía, la línea de identificación no se mostrará.
- * @param onCardAction Puente de devolución de tarjeta;null La tarjeta solo se muestra sin interacción (escenario sin chat)
+ * @param label 来源标识（传工具名）；空串时不显示标识行
+ * @param onCardAction 卡片回传桥；null 时卡片只渲染不交互（非聊天场景）
  */
 @Composable
 internal fun DirectToolOutputInline(
@@ -1243,11 +1242,11 @@ private fun DirectToolOutput(
     onCardAction: ((io.zer0.muse.ui.markdown.CardAction) -> Unit)?,
     cardId: String? = null,
     modifier: Modifier = Modifier,
-    /** v2.6.7: Los productos de la tarjeta del plan no son obligatorios.“Identificación de fuente”Bien, el espacio es precioso. */
+    /** v2.6.7: 计划卡内的产物不需要“来源标识”行，空间宝贵。 */
     showLabel: Boolean = true,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
-        // Identificación de fuente de luz muy
+        // 极淡来源标识
         if (showLabel) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -1283,7 +1282,7 @@ private fun DirectToolOutput(
                 )
             }
             is DirectOutput.Media -> {
-                // Los medios generados se muestran directamente (no se incluyen tarjetas de herramientas) y los usuarios pueden ver el producto terminado en la primera pantalla.
+                // 直接展示生成的媒体（不再套工具卡），用户首屏即可看到成品。
                 LazyRow(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(MusePaddings.contentGap),
@@ -1312,16 +1311,13 @@ private fun DirectToolOutput(
 }
 
 /**
- * v2.6.13: Chip adjunto en mensaje.
+ * v2.6.13: 消息里的附件芯片。
  *
- * Al enviar, el texto del archivo adjunto se comprime en una línea de texto "guardado en el espacio de trabajo" y se inserta en el cuerpo del mensaje. Esa es una referencia para el modelo.
- * No es adecuado para usarlo como interfaz: no puede ver cuántos archivos hay, qué tamaño tienen y no puede hacer clic en ellos. Aquí los chips se representan según metadatos estructurados.
+ * 附件正文在发送时被压成一行「已存入工作区」的文本塞进消息体，那是给模型看的引用，
+ * 不适合当界面：看不出有几个文件、多大，也点不开。这里按结构化元数据渲染成芯片。
  */
 @Composable
-internal fun MessageAttachmentChips(
-    attachments: List<AttachmentRef>,
-    onOpen: (AttachmentRef) -> Unit,
-) {
+internal fun MessageAttachmentChips(attachments: List<AttachmentRef>, onOpen: (AttachmentRef) -> Unit) {
     Column(
         verticalArrangement = Arrangement.spacedBy(MusePaddings.tinyGap),
         modifier = Modifier.fillMaxWidth(),
@@ -1365,17 +1361,13 @@ internal fun MessageAttachmentChips(
 }
 
 /**
- * v2.6.13: Vista previa del archivo adjunto.
+ * v2.6.13: 附件预览。
  *
- * PDF Utilice el visor pdf.js existente; las clases de texto se muestran en línea; el resto (docx/xlsx/Paquete comprimido) solo muestra dónde está el original.
- * No "deje que una aplicación externa lo abra": SAF puede montar el espacio de trabajo y no se puede obtener la ruta del archivo que se puede compartir.
+ * PDF 走已有的 pdf.js 查看器；文本类内联显示；其余（docx/xlsx/压缩包）只说明原件在哪。
+ * 不做「交给外部应用打开」：工作区可能是 SAF 挂载，拿不到可共享的 File 路径。
  */
 @Composable
-internal fun AttachmentPreviewDialog(
-    attachment: AttachmentRef,
-    loadBytes: suspend () -> ByteArray?,
-    onDismiss: () -> Unit,
-) {
+internal fun AttachmentPreviewDialog(attachment: AttachmentRef, loadBytes: suspend () -> ByteArray?, onDismiss: () -> Unit) {
     if (isPdfAttachment(attachment)) {
         io.zer0.muse.ui.artifact.DocPreviewDialog(
             fileName = attachment.name,
@@ -1426,7 +1418,7 @@ internal fun AttachmentPreviewDialog(
     )
 }
 
-/** Seleccione un icono semántico por MIME y extensión. */
+/** 按 MIME 与扩展名选一个语义图标。 */
 private fun attachmentIcon(attachment: AttachmentRef): androidx.compose.ui.graphics.vector.ImageVector {
     val mime = attachment.mimeType.lowercase()
     val ext = attachment.name.substringAfterLast('.', "").lowercase()
@@ -1439,9 +1431,8 @@ private fun attachmentIcon(attachment: AttachmentRef): androidx.compose.ui.graph
     }
 }
 
-private fun isPdfAttachment(attachment: AttachmentRef): Boolean =
-    attachment.mimeType.equals("application/pdf", ignoreCase = true) ||
-        attachment.name.endsWith(".pdf", ignoreCase = true)
+private fun isPdfAttachment(attachment: AttachmentRef): Boolean = attachment.mimeType.equals("application/pdf", ignoreCase = true) ||
+    attachment.name.endsWith(".pdf", ignoreCase = true)
 
 private fun isTextAttachment(attachment: AttachmentRef): Boolean {
     val mime = attachment.mimeType.lowercase()
@@ -1451,9 +1442,9 @@ private fun isTextAttachment(attachment: AttachmentRef): Boolean {
         ext in TEXT_ATTACHMENT_EXTENSIONS
 }
 
-/** Extensiones que se pueden previsualizar en línea. */
+/** 可内联预览的扩展名。 */
 private val TEXT_ATTACHMENT_EXTENSIONS =
     setOf("txt", "md", "json", "xml", "csv", "log", "yaml", "yml", "html", "htm")
 
-/** El límite superior de bytes de vista previa en línea: si excede el límite, no se insertará en Compose para evitar que un fragmento de registro bloquee la interfaz. */
+/** 内联预览的字节上限：超过就不往 Compose 里塞，避免一段日志把界面卡住。 */
 private const val MAX_INLINE_PREVIEW_BYTES = 512 * 1024

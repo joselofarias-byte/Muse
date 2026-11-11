@@ -7,7 +7,7 @@ import java.time.LocalDateTime
 import java.time.ZoneId
 
 /**
- * R-TEST-11: La siguiente hora de activación de la tarea programada + la prueba de lógica pura del mensaje activo no molesta la ventana.
+ * R-TEST-11: 定时任务下次触发时间 + 主动消息免打扰窗口纯逻辑测试。
  */
 class ScheduledTaskRunnerScheduleTest {
 
@@ -20,31 +20,31 @@ class ScheduledTaskRunnerScheduleTest {
         assertEquals(0L, ScheduledTaskRunner.computeNextRun("once", "", now))
     }
 
-    // ── once Semántica ─────────────────────────────────────────────────────
-    // La "próxima ejecución" y el "primer tiempo de ejecución" son dos cuestiones,Compartiendo la misma implementación de intervalo:
-    //   computeNextRun   = ¿Hay una próxima vez después de esta ejecución? → once para 0(No la próxima vez)
-    //   initialNextRunAt = Recién construido/¿Cuándo se realizará la primera ejecución después de cambiar el intervalo? → once ahora es + un ciclo de votación
-    // 0 No "ejecutar de nuevo ahora mismo",ScheduledTaskDao.recordExecutionAndScheduleNext ver <=0 voluntad
-    // setEnabled(false),Entonces, una vez que se ejecuta la tarea, sale del cronograma.,No será descontado para la segunda ejecución.
+    // ── once 语义 ─────────────────────────────────────────────────────
+    // 「下一次执行」与「首跑时间」是两个问题,共用同一个间隔实现:
+    //   computeNextRun   = 这次执行完之后还有没有下一次 → once 为 0(无下次)
+    //   initialNextRunAt = 刚建出来/刚改完间隔后什么时候首跑 → once 为 now + 一个轮询周期
+    // 0 不是「马上再跑一次」,ScheduledTaskDao.recordExecutionAndScheduleNext 见 <=0 会
+    // setEnabled(false),所以 once 任务执行完就退出调度,不会被算出第二次执行。
 
     @Test
     fun `once has no next run after it executes`() {
         val now = 1_700_000_000_000L
-        // No tiene ningún efecto ya sea con o sin expresión cron.:once no mires cron
-        assertEquals("once No hay próxima ejecución", 0L, ScheduledTaskRunner.computeNextRun("once", "", now))
-        assertEquals("once No hay próxima ejecución", 0L, ScheduledTaskRunner.computeNextRun("once", "0 9 * * *", now))
-        // El intervalo desconocido tiene el mismo calibre que una vez:No hay próxima ejecución(No más retorno "+1 día" o "+1 minutos)
+        // 带不带 cron 表达式都不影响:once 不看 cron
+        assertEquals("once 无下次执行", 0L, ScheduledTaskRunner.computeNextRun("once", "", now))
+        assertEquals("once 无下次执行", 0L, ScheduledTaskRunner.computeNextRun("once", "0 9 * * *", now))
+        // 未知 interval 与 once 同口径:无下次执行(不再退回「+1 天」或「+1 分钟」)
         assertEquals(0L, ScheduledTaskRunner.computeNextRun("every-other-day", "", now))
     }
 
     @Test
     fun `once first run waits one poll interval`() {
         val now = 1_700_000_000_000L
-        // No te pierdas la primera carrera 0(0 ¿Está la marca deshabilitada después de la ejecución?),Tampoco puedo caer now —— Dejar caer ahora provocará el siguiente análisis.
-        // (0–60s,Lo peor es el salto inmediatamente después.)fue recibido,Después de que el usuario haga clic en "Crear", verá que la tarea se ha completado.
-        // Dejar un ciclo de sondeo para almacenamiento en búfer,Mismo origen que POLL_INTERVAL_MS del programador.
+        // 首跑不能落 0(0 是执行后的禁用标记),也不能落 now —— 落 now 会在下一次扫描
+        // (0–60s,最坏是紧接着的那一跳)就被领取,用户点完「创建」就看到任务已跑完。
+        // 留一个轮询周期作缓冲,与调度器的 POLL_INTERVAL_MS 同源。
         assertEquals(now + 60_000L, ScheduledTaskRunner.initialNextRunAt("once", "", now))
-        assertTrue("El tiempo de la primera ejecución debe ser positivo.,entrar getDueTasks(next_run_at <= now)", ScheduledTaskRunner.initialNextRunAt("once", "", now) > 0)
+        assertTrue("首跑时间必须为正,才能进入 getDueTasks(next_run_at <= now)", ScheduledTaskRunner.initialNextRunAt("once", "", now) > 0)
     }
 
     @Test
@@ -92,9 +92,9 @@ class ScheduledTaskRunnerScheduleTest {
 
     @Test
     fun `cron dom and dow both restricted use OR semantics`() {
-        // B-13: Quartz normativo — "0 0 1 * 1" = 1 de cada mes o cada lunes(OR),
-        // La antigua implementación de AND resultó en sólo"Es tanto el 1 como el lunes."desencadenar.
-        // 2026-08-06 es jueves,El próximo lunes es 08-10;El siguiente numero 1 es 09-01 → Expectativas 08-10.
+        // B-13: Quartz 规范 — "0 0 1 * 1" = 每月 1 号 或 每周一(OR),
+        // 旧实现 AND 导致只在"既是 1 号又是周一"触发。
+        // 2026-08-06 是周四,下个周一是 08-10;下个 1 号是 09-01 → 期望 08-10。
         val base = LocalDateTime.of(2026, 8, 6, 0, 0)
             .atZone(ZoneId.systemDefault())
             .toInstant()
@@ -104,12 +104,12 @@ class ScheduledTaskRunnerScheduleTest {
             .atZone(ZoneId.systemDefault())
             .toInstant()
             .toEpochMilli()
-        assertEquals("dom+dow La doble calificación debe O igualar", expected, next)
+        assertEquals("dom+dow 双限定应 OR 匹配", expected, next)
     }
 
     @Test
     fun `cron dom restricted only uses AND with wildcard dow`() {
-        // "0 0 1 * *" = 1 de cada mes(dow para * No participa en el cambio Y/O)
+        // "0 0 1 * *" = 每月 1 号(dow 为 * 不参与 AND/OR 切换)
         val base = LocalDateTime.of(2026, 8, 6, 0, 0)
             .atZone(ZoneId.systemDefault())
             .toInstant()
@@ -124,27 +124,27 @@ class ScheduledTaskRunnerScheduleTest {
 
     @Test
     fun `cron impossible expression returns NO_MATCH not claim sentinel`() {
-        // Revisión de corrección (2.0 C-06): No hay ninguna coincidencia en la ventana de escaneo. cron(Al 30 de febrero)debe regresar
-        // CronExpression.NO_MATCH(= Long.MAX_VALUE - 1),no debe usarse con ScheduledTaskRunner
-        // Obtener centinela(CLAIM_NEXT_RUN_SENTINEL = Long.MAX_VALUE)Mezclar —
-        // El uso mixto será"cron No hay coincidencia"Mal juzgado como"La tarea ha sido recibida.",La tarea nunca se vuelve a ejecutar.
+        // 审查修复 (2.0 C-06): 扫描窗口内无匹配的 cron(如 2 月 30 日)必须返回
+        // CronExpression.NO_MATCH(= Long.MAX_VALUE - 1),不得与 ScheduledTaskRunner
+        // 的领取哨兵(CLAIM_NEXT_RUN_SENTINEL = Long.MAX_VALUE)混用 —
+        // 混用会把"cron 无匹配"误判为"任务已被领取",任务永不再跑。
         val base = LocalDateTime.of(2026, 1, 1, 0, 0)
             .atZone(ZoneId.systemDefault())
             .toInstant()
             .toEpochMilli()
         val next = CronExpression.parse("0 0 30 2 *").nextRunAfter(base)
-        assertEquals("No se debe devolver ninguna coincidencia NO_MATCH", CronExpression.NO_MATCH, next)
+        assertEquals("无匹配应返回 NO_MATCH", CronExpression.NO_MATCH, next)
         assertTrue(
-            "NO_MATCH Debe distinguirse de recibir centinela.,De lo contrario, se considerará erróneamente que el programa de tareas se ha recibido.",
+            "NO_MATCH 必须区别于领取哨兵,否则任务调度被误判为已领取",
             next != Long.MAX_VALUE,
         )
     }
 
-    // ── B-12: Cobro preventivo(CAS)juicio ───────────────────────────────────────
-    // Si el reclamo tiene éxito o no está determinado por la cantidad de filas afectadas por una única ACTUALIZACIÓN atómica de ScheduledTaskDao.claimTask:
-    //   1 = Este ejecutor recibió exitosamente(WHERE El next_run_at de la condición sigue siendo igual a la instantánea.);
-    //   0 = Ya recogido por otros ejecutores primero.(El perdedor en encuestas/trabajador/manual/concurrencia encadenada).
-    // Aquí solo probamos la función de juicio puro ClaimTaskSucceeded,Portada"El perdedor no repetirá la ejecución."La lógica central de las fronteras.
+    // ── B-12: 抢占式领取(CAS)判定 ───────────────────────────────────────
+    // 领取成功与否由 ScheduledTaskDao.claimTask 的单条原子 UPDATE 影响行数决定:
+    //   1 = 本执行者领取成功(WHERE 条件的 next_run_at 仍等于快照);
+    //   0 = 已被其他执行者抢先领取(轮询 / Worker / 手动 / 链式并发时的败者)。
+    // 此处单测 claimTaskSucceeded 这一纯判定函数,覆盖"败者不重复执行"边界的核心逻辑。
 
     @Test
     fun `claim succeeds when DAO returns affected row`() {
@@ -153,13 +153,13 @@ class ScheduledTaskRunnerScheduleTest {
 
     @Test
     fun `claim fails when already claimed by another executer`() {
-        // 0 influencia de fila = Otros ejecutores lo reciben primero.(sondeo/Worker concurrencia),El perdedor debe saltar,Evite llamadas duplicadas de IA/Notificación
+        // 0 行影响 = 其他执行者抢先领取(轮询/Worker 并发),败者应跳过,防止重复 AI 调用/通知
         assertEquals(false, ScheduledTaskRunner.claimTaskSucceeded(0))
     }
 
     @Test
     fun `claim fails on abnormal row count conservative skip`() {
-        // numero negativo/El valor inesperado es una excepción de base de datos o un valor predeterminado,Manejado como fallido(Saltar de forma conservadora,Evite la duplicación)
+        // 负数/意外值为 DB 异常或缺省,按失败处理(保守跳过,杜绝重复执行)
         assertEquals(false, ScheduledTaskRunner.claimTaskSucceeded(-1))
         assertEquals(false, ScheduledTaskRunner.claimTaskSucceeded(-3))
     }

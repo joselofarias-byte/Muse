@@ -7,15 +7,15 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * M2.6: SSE fixture replay — Texto vacío/solo razonamiento/repetición de cuadros/Marcos fuera de servicio/fotograma tras error/
- * finish continuación delta/herramienta posterior/Prueba de corte de comportamiento normalizado para cada escenario.
+ * M2.6: SSE fixture replay — 空正文/仅 reasoning/重复帧/乱序帧/错误后帧/
+ * finish 后 delta/工具续接/断流 各场景的归一化行为测试。
  *
- * También cubre el núcleo de aceptación M2.:Agregación de eventos de transmisión y no transmisión para la misma respuesta lógica
- * [ChatCompletion.toEventSequence] Convertir,eventualmente [NormalizedChatResult] Equivalente.
+ * 同时覆盖 M2 验收核心:同一逻辑响应的流式事件聚合与非流式
+ * [ChatCompletion.toEventSequence] 转换,最终 [NormalizedChatResult] 等价。
  */
 class ChatEventNormalizationTest {
 
-    // ── toEventSequence:sin transmisión → secuencia de eventos ───────────────────────────
+    // ── toEventSequence:非流式 → 事件序列 ───────────────────────────
 
     @Test
     fun `empty text with reasoning only still yields valid event sequence`() {
@@ -26,7 +26,7 @@ class ChatEventNormalizationTest {
         val events = completion.toEventSequence()
         assertTrue(events.first() is ChatStreamEvent.ReasoningDelta)
         assertTrue(events.last() is ChatStreamEvent.Done)
-        // Sólo el razonamiento produce también resultados agregados válidos.(No informar falsamente texto vacío)
+        // 仅 reasoning 也产生有效聚合结果(不误报空文本)
         val result = events.normalize()
         assertEquals("", result.text)
         assertEquals("internal scratchpad", result.reasoning)
@@ -63,7 +63,7 @@ class ChatEventNormalizationTest {
         assertEquals(listOf("Done"), events.map { it::class.simpleName })
     }
 
-    // ── Reglas de agregación de transmisión ──────────────────────────────────────────────────
+    // ── 流式聚合规则 ──────────────────────────────────────────────────
 
     @Test
     fun `content and reasoning deltas accumulate in arrival order`() {
@@ -90,7 +90,7 @@ class ChatEventNormalizationTest {
             isSnapshot = true,
         )
         reducer.reduce(snapshot)
-        // Reproducir el mismo cuadro de instantánea(Repetir escena de fotograma):La semántica de reemplazo elimina naturalmente la duplicación
+        // 重放同一快照帧(重复 frame 场景):替换语义天然去重
         reducer.reduce(snapshot)
         val result = reducer.toResult()
         assertEquals(1, result.toolCalls.size)
@@ -121,7 +121,7 @@ class ChatEventNormalizationTest {
         assertEquals(listOf("a", "b", "c"), result.toolCalls.map { it.id })
     }
 
-    /** Asistencia para pruebas fuera de servicio:Construya un marco de instantánea completo. */
+    /** 乱序测试辅助:构造完整快照帧。 */
     private fun tc(index: Int, id: String, name: String): ChatStreamEvent.ToolCallDelta =
         ChatStreamEvent.ToolCallDelta(index = index, id = id, name = name, argumentsDelta = "{}", isSnapshot = true)
 
@@ -130,7 +130,7 @@ class ChatEventNormalizationTest {
         val result = listOf<ChatStreamEvent>(
             ChatStreamEvent.ContentDelta("final"),
             ChatStreamEvent.Done("stop"),
-            // finish después delta(Excepción de protocolo):No se permite agregarlo al texto.
+            // finish 后 delta(协议异常):不得追加进正文
             ChatStreamEvent.ContentDelta("GHOST"),
             ChatStreamEvent.ReasoningDelta("GHOST"),
             ChatStreamEvent.ToolCallDelta(index = 0, id = "x", name = "y", argumentsDelta = "{}", isSnapshot = true),
@@ -143,7 +143,7 @@ class ChatEventNormalizationTest {
 
     @Test
     fun `deltas after done with null finish reason are dropped too`() {
-        // Revisión de corrección(P2)Regresar:Done(null) El mismo es el estado final.,Los fotogramas incrementales posteriores deben descartarse
+        // 审查修复(P2)回归:Done(null) 同样是终态,后续增量帧必须丢弃
         val result = listOf<ChatStreamEvent>(
             ChatStreamEvent.ContentDelta("final"),
             ChatStreamEvent.Done(null),
@@ -195,7 +195,7 @@ class ChatEventNormalizationTest {
 
     @Test
     fun `tool continuation frames across rounds aggregate into one call`() {
-        // Continuación de la herramienta:La fragmentación de parámetros abarca múltiples SSE chunk,Y la identificación/nombre solo aparece en el primer cuadro.
+        // 工具续接:参数分片跨多个 SSE chunk,且 id/name 只在首帧出现
         val result = listOf<ChatStreamEvent>(
             ChatStreamEvent.ToolCallDelta(index = 0, id = "call_9", name = "run_sql", argumentsDelta = "{\"sql\":\"SE"),
             ChatStreamEvent.ToolCallDelta(index = 0, argumentsDelta = "LECT 1\"}"),
@@ -208,28 +208,28 @@ class ChatEventNormalizationTest {
         assertEquals("tool_calls", result.finishReason)
     }
 
-    // ── Equivalente de proyección final en streaming/no streaming(M2 Aceptación) ──────────────────
+    // ── 流式 / 非流式最终 projection 等价(M2 验收) ──────────────────
 
     @Test
     fun `streaming aggregation equals non-streaming normalization for the same logical response`() {
-        // sin transmisión:Resultados completos de una sola vez
+        // 非流式:一次性完整结果
         val completion = ChatCompletion(
-            text = "respuesta final",
+            text = "最终答案",
             finishReason = "stop",
             toolCalls = listOf(ToolCall(id = "call_1", name = "lookup", arguments = "{\"q\":\"muse\"}")),
-            reasoningContent = "proceso de pensamiento",
+            reasoningContent = "思考过程",
             usageTokens = UsageTokens(promptTokens = 10, completionTokens = 20),
             citationUrls = listOf("https://a.example"),
             thinkingSignature = "sig-1",
             thinkingEncryptedContent = "enc-1",
         )
 
-        // transmisión:La misma respuesta lógica llega fragmentada(Índice desordenado + deduplicación de referencia;Las firmas vienen con marcos de razonamiento.)
+        // 流式:同一逻辑响应按分片到达(乱序 index + 引用去重;签名随 reasoning 帧)
         val streamed = listOf<ChatStreamEvent>(
-            ChatStreamEvent.ReasoningDelta("proceso de ", signature = "sig-1", encryptedContent = "enc-1"),
-            ChatStreamEvent.ReasoningDelta("pensamiento"),
-            ChatStreamEvent.ContentDelta("respuesta "),
-            ChatStreamEvent.ContentDelta("final"),
+            ChatStreamEvent.ReasoningDelta("思考", signature = "sig-1", encryptedContent = "enc-1"),
+            ChatStreamEvent.ReasoningDelta("过程"),
+            ChatStreamEvent.ContentDelta("最终"),
+            ChatStreamEvent.ContentDelta("答案"),
             ChatStreamEvent.ToolCallDelta(
                 index = 0,
                 id = "call_1",
@@ -245,7 +245,7 @@ class ChatEventNormalizationTest {
         val fromNonStreaming = completion.toEventSequence().normalize()
         val fromStreaming = streamed.normalize()
 
-        // texto/pensar/Herramientas/equivalencia de referencia;finishReason equivalente
+        // 文本/思考/工具/引用等价;finishReason 等价
         assertEquals(fromStreaming.text, fromNonStreaming.text)
         assertEquals(fromStreaming.reasoning, fromNonStreaming.reasoning)
         assertEquals(fromStreaming.toolCalls, fromNonStreaming.toolCalls)
@@ -254,7 +254,7 @@ class ChatEventNormalizationTest {
         assertEquals(fromStreaming.citationUrls, fromNonStreaming.citationUrls)
         assertEquals(fromStreaming.thinkingSignature, fromNonStreaming.thinkingSignature)
         assertEquals(fromStreaming.thinkingEncryptedContent, fromNonStreaming.thinkingEncryptedContent)
-        // Streaming sin errores/interrumpir/Excepción de protocolo
+        // 流式没有错误/中断/协议异常
         assertNull(fromStreaming.error)
         assertFalse(fromStreaming.interrupted)
         assertEquals(0, fromStreaming.postFinishFramesDropped)

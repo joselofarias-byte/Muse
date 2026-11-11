@@ -5,9 +5,9 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 /**
- * v2.6.2(comentarios de los usuarios): El fondo del chat de tres capas vuelve a tener prioridad.
+ * v2.6.2（用户反馈）: 三层聊天背景回落优先级。
  *
- * Prioridad: nivel de sesión > nivel asistente > Incumplimiento global.
+ * 优先级：会话级 > 助手级 > 全局默认。
  */
 class ChatBackgroundResolverTest {
 

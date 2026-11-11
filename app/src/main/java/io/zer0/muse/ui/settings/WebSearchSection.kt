@@ -28,9 +28,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.zer0.muse.R
@@ -54,6 +57,8 @@ import io.zer0.muse.web.CompositeWebSearchService
 import io.zer0.muse.web.WebSearchConfig
 import io.zer0.muse.web.WebSearchCoordinator
 import io.zer0.muse.web.WebSearchMode
+import io.zer0.muse.web.WebSearchProbeReason
+import io.zer0.muse.web.probeSearchProvider
 import kotlinx.coroutines.launch
 import org.koin.core.context.GlobalContext
 
@@ -62,8 +67,14 @@ import org.koin.core.context.GlobalContext
 internal fun WebSearchSection(webSearchConfig: WebSearchConfig, settings: SettingsRepository) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val resources = LocalResources.current
     val savedText = stringResource(R.string.settings_saved)
     val coordinator: WebSearchCoordinator = org.koin.compose.koinInject()
+    // 验证单个引擎要用搜索侧那个独立 OkHttpClient（Koin 里以 named("webSearch") 绑定，
+    // 与 SSE 长连接分开）；在 UI 里自己新建会白占一套连接池。
+    val webSearchClient: okhttp3.OkHttpClient = org.koin.compose.koinInject(
+        org.koin.core.qualifier.named("webSearch"),
+    )
     val lastSearch by coordinator.lastResponse.collectAsStateWithLifecycle()
     var wsProviderExpanded by remember { mutableStateOf(false) }
     var apiKeyText by remember(webSearchConfig.providerName) {
@@ -77,7 +88,7 @@ internal fun WebSearchSection(webSearchConfig: WebSearchConfig, settings: Settin
     SectionLabel(stringResource(R.string.settings_web_search_section))
     SettingsGroup(modifier = Modifier.padding(top = 8.dp)) {
         SettingsSwitchRow(
-            // v2.x: El icono de búsqueda en Internet se ha corregido para globe(Los idiomas originales son semántica de traducción.)
+            // v2.x: 联网搜索图标修正为 globe(原 languages 是翻译语义)
             icon = MuseIcons.globe,
             title = stringResource(R.string.settings_web_search_enable),
             subtitle = stringResource(R.string.settings_web_search_enable_subtitle),
@@ -99,8 +110,8 @@ internal fun WebSearchSection(webSearchConfig: WebSearchConfig, settings: Settin
         )
     }
 
-    // ST-10 (A11Y-03): El espacio entre particiones cambió de altura fija a heightIn(min = …) — El espaciado puro no recorta el texto,
-    // Sin embargo, existe un límite de altura para garantizar que el tamaño de fuente no se sobrescriba cuando el tamaño de fuente se amplíe 1,3x.
+    // ST-10 (A11Y-03): 分区间距由固定高度改为 heightIn(min = …) — 纯间距不裁剪文本,
+    // 但保证字号放大 1.3x 时不会被写死的高度限制。
     Spacer(Modifier.heightIn(min = 12.dp))
     SectionLabel(stringResource(R.string.settings_web_search_mode))
     SettingsGroup {
@@ -111,15 +122,15 @@ internal fun WebSearchSection(webSearchConfig: WebSearchConfig, settings: Settin
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Spacer(Modifier.height(10.dp))
-            // Debe utilizar FlowRow, que puede ajustar líneas: cuatro etiquetas de modo no pueden caber en una línea en una pantalla estrecha.,Row Pondré el último
-            // chip Presiónelo en texto vertical o incluso exprímalo fuera de la pantalla.(Capturas de pantalla de prueba reales del usuario).
-            // ST-07: FilterChip(M3) → Propiedad del proyecto MuseChip(Se ha admitido el toque seleccionado/rol/48dp)
+            // 必须用会换行的 FlowRow:四个模式标签在窄屏一行放不下,Row 会把最后一个
+            // chip 压成竖排文字甚至挤出屏幕(用户实测截图)。
+            // ST-07: FilterChip(M3) → 项目自有 MuseChip(已支持 selected/Role/48dp 触控)
             FlowRow(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                // v2.x: Originalmente "cerrado"chip Eliminado — El mismo estado que el control del interruptor principal superior.,El interruptor es el único que cierra la entrada.
+                // v2.x: 原「关闭」chip 已删 — 与上方总开关控同一状态,开关是唯一关闭入口。
                 MuseChip(
                     selected = webSearchConfig.mode == WebSearchMode.AUTO && webSearchConfig.enabled,
                     onClick = {
@@ -174,7 +185,7 @@ internal fun WebSearchSection(webSearchConfig: WebSearchConfig, settings: Settin
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(MusePaddings.cardInner),
         )
-        // v2.3.1: El nombre de ruta toma un recurso de cadena(Consistente con la línea HTTP de Bing),No más etiquetas chinas codificadas en la capa de la interfaz de usuario
+        // v2.3.1: 路径名走字符串资源(与 Bing HTTP 行一致),不再把中文标签硬编码在 UI 层
         PathRow(MuseIcons.brandBing, "Bing HTTP", stringResource(R.string.settings_web_search_provider_status_bing), true)
         HorizontalDivider(modifier = Modifier.padding(start = 52.dp))
         PathRow(
@@ -198,8 +209,8 @@ internal fun WebSearchSection(webSearchConfig: WebSearchConfig, settings: Settin
         Column(Modifier.padding(MusePaddings.cardInner)) {
             Text(stringResource(R.string.settings_web_search_budget), style = MaterialTheme.typography.bodyMedium)
             Spacer(Modifier.heightIn(min = 8.dp))
-            // ST-07: También se utilizan chips numéricos. FlowRow — MuseChip Objetivo táctil 48 dp, relleno más grande,
-            // Pantalla estrecha + tamaño de fuente grande, no caben 4 chips en una línea,Row apretará(MuseChip El ancho mínimo no es comprimible.).
+            // ST-07: 数值 chip 也用 FlowRow — MuseChip 触控目标 48dp、内边距更大,
+            // 窄屏 + 大字号下 4 个 chip 一行放不下,Row 会挤压(MuseChip 最小宽度不可压)。
             FlowRow(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -257,14 +268,14 @@ internal fun WebSearchSection(webSearchConfig: WebSearchConfig, settings: Settin
             )
         } else {
             Column(Modifier.padding(MusePaddings.cardInner)) {
-                Text("Consulta:${response.normalizedQuery}", style = MaterialTheme.typography.bodySmall)
+                Text("Consulta: ${response.normalizedQuery}", style = MaterialTheme.typography.bodySmall)
                 Text(
-                    "Estado:${response.status}   Fuente:${response.provider ?: "desconocido"}",
+                    "Estado: ${response.status}   Proveedor: ${response.provider ?: "Desconocido"}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(
-                    "Resultado:${response.results.size} Artículo",
+                    "Resultados: ${response.results.size}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -312,7 +323,11 @@ internal fun WebSearchSection(webSearchConfig: WebSearchConfig, settings: Settin
                         ) {
                             Text(
                                 p,
-                                color = if (p == webSearchConfig.providerName) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                                color = if (p == webSearchConfig.providerName) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurface
+                                },
                                 fontWeight = if (p == webSearchConfig.providerName) FontWeight.SemiBold else FontWeight.Normal,
                             )
                         }
@@ -325,8 +340,8 @@ internal fun WebSearchSection(webSearchConfig: WebSearchConfig, settings: Settin
         )
     }
 
-    // Clave API multimotor: todos los motores de búsqueda que requieren una clave tienen sus propias claves.(Mapeo de apiKeys de escritura subyacente;
-    // Auto Los modos retroceden en secuencia). Anteriormente, la interfaz de usuario solo se mostraba“Motor seleccionado actualmente”cuadro de entrada,Hace que la gente piense erróneamente que sólo pueden igualar uno.
+    // 多引擎 API Key:所有需要 key 的搜索引擎各配各的(底层写入 apiKeys 映射;
+    // Auto 模式按顺序回退)。此前 UI 只显示“当前选中引擎”的输入框,让人误以为只能配一个。
     SettingsGroup(modifier = Modifier.padding(top = 8.dp)) {
         Column(Modifier.padding(MusePaddings.cardInner)) {
             Text(
@@ -341,42 +356,135 @@ internal fun WebSearchSection(webSearchConfig: WebSearchConfig, settings: Settin
                 modifier = Modifier.padding(top = 2.dp),
             )
             WebSearchConfig.PROVIDERS_NEEDING_API_KEY
-                // v2.x: Eliminar duplicados — La API personalizada no participa en la cadena de respaldo automático,Su clave y dirección de interfaz se configuran de manera uniforme en el grupo "Motor actual" a continuación.;
-                // Aquí se excluyen dos formas de escritura.,Ya no hay dos entradas de entrada para la misma clave.
+                // v2.x: 去重 — 自定义 API 不参与 Auto 回退链,其 Key 与接口地址在下方「当前引擎」组统一配置;
+                // 此处排除两种写法,同一 Key 不再出现两个输入入口。
                 .filter { it !in WebSearchConfig.CUSTOM_PROVIDER_NAMES }
                 .forEach { provider ->
-                    var keyDraft by remember(provider, webSearchConfig.apiKeys[provider]) {
-                        mutableStateOf(webSearchConfig.apiKeys[provider].orEmpty())
-                    }
+                    val savedKey = webSearchConfig.apiKeys[provider].orEmpty()
+                    // 草稿与「有没有动过」分开记：动过才可能删除。
+                    // 以前这里直接把已保存的 Key 回填进输入框，一打开设置页每个引擎的
+                    // 密钥都明文摆在屏幕上；改成默认掩码后，"留空"就再也不能被读成"清空"，
+                    // 否则用户什么都没做、只按一次保存就会把密钥删掉。
+                    var keyDraft by remember(provider) { mutableStateOf("") }
+                    var keyEdited by remember(provider) { mutableStateOf(false) }
+                    var keyRevealed by remember(provider) { mutableStateOf(false) }
+                    var verifying by remember(provider) { mutableStateOf(false) }
+                    var verifyText by remember(provider) { mutableStateOf<String?>(null) }
                     Spacer(Modifier.height(10.dp))
                     SettingField(
                         label = provider,
-                        value = keyDraft,
-                        onValueChange = { keyDraft = it },
+                        value = WebSearchKeyFieldState.displayValue(savedKey, keyDraft, keyEdited),
+                        onValueChange = {
+                            keyDraft = it
+                            keyEdited = true
+                        },
+                        visualTransformation =
+                        if (WebSearchKeyFieldState.shouldMask(savedKey, keyRevealed)) {
+                            PasswordVisualTransformation()
+                        } else {
+                            VisualTransformation.None
+                        },
                     )
-                    SavePill(stringResource(R.string.settings_web_search_save_api_key)) {
-                        scope.launch {
-                            val key = keyDraft.trim()
-                            val keys = webSearchConfig.apiKeys.toMutableMap().apply {
-                                if (key.isNotEmpty()) put(provider, key) else remove(provider)
-                            }
-                            settings.saveWebSearchConfig(webSearchConfig.copy(apiKeys = keys))
-                            MuseToast.show(savedText)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        if (WebSearchKeyFieldState.canToggleVisibility(savedKey)) {
+                            SavePill(
+                                stringResource(
+                                    if (keyRevealed) R.string.channel_secret_hide else R.string.channel_secret_show,
+                                ),
+                            ) { keyRevealed = !keyRevealed }
                         }
+                        SavePill(
+                            stringResource(
+                                if (verifying) {
+                                    R.string.settings_web_search_testing
+                                } else {
+                                    R.string.settings_web_search_key_verify
+                                },
+                            ),
+                        ) {
+                            if (verifying) return@SavePill
+                            verifying = true
+                            // 清掉上一次的结论：留着它会让人以为这次也还没点
+                            verifyText = null
+                            scope.launch {
+                                val outcome = probeSearchProvider(
+                                    client = webSearchClient,
+                                    cfg = webSearchConfig,
+                                    providerKey = provider,
+                                    apiKeyDraft =
+                                    if (keyEdited) {
+                                        keyDraft
+                                    } else {
+                                        savedKey
+                                        // 没编辑就用已存的那把 Key 去验，不误用空串
+                                    },
+                                )
+                                verifyText = when {
+                                    outcome.ok -> context.getString(
+                                        R.string.settings_web_search_key_verify_ok,
+                                        outcome.results,
+                                    )
+
+                                    outcome.reason == WebSearchProbeReason.NOT_USABLE ->
+                                        context.getString(R.string.settings_web_search_key_verify_no_key)
+
+                                    outcome.reason == WebSearchProbeReason.EMPTY ->
+                                        context.getString(R.string.settings_web_search_key_verify_empty)
+
+                                    else -> context.getString(
+                                        R.string.settings_web_search_key_verify_failed,
+                                        outcome.detail ?: "",
+                                    )
+                                }
+                                verifying = false
+                            }
+                        }
+                        SavePill(stringResource(R.string.settings_web_search_save_api_key)) {
+                            scope.launch {
+                                val value = WebSearchKeyFieldState.valueToSave(savedKey, keyDraft, keyEdited)
+                                val keys = webSearchConfig.apiKeys.toMutableMap().apply {
+                                    if (value.isNullOrEmpty()) remove(provider) else put(provider, value)
+                                }
+                                settings.saveWebSearchConfig(webSearchConfig.copy(apiKeys = keys))
+                                keyDraft = ""
+                                keyEdited = false
+                                MuseToast.show(savedText)
+                            }
+                        }
+                    }
+                    verifyText?.let { text ->
+                        Text(
+                            text = text,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 2.dp),
+                        )
                     }
                 }
         }
     }
 
-    // v2.6.10: motor de búsqueda personalizado —— El servicio de búsqueda propio del usuario está conectado al frente del enlace Auto.
+    // 「搜索顺序」：Auto 回退链的尝试顺序可调，且与链构造共用同一份顺序表
+    // （AUTO_CHAIN_PROVIDER_KEYS）—— 界面自己抄一份顺序的话，用户拖完看到的是假顺序。
+    Spacer(Modifier.height(12.dp))
+    WebSearchOrderSection(
+        webSearchConfig = webSearchConfig,
+        onSave = { order ->
+            scope.launch {
+                settings.saveWebSearchConfig(webSearchConfig.copy(providerOrder = order))
+            }
+        },
+    )
+
+    // v2.6.10: 自定义搜索引擎 —— 用户自己的检索服务，接进 Auto 链路最前面。
     CustomSearchEnginesSection(
         webSearchConfig = webSearchConfig,
         settings = settings,
     )
 
     val needsApiConfig = webSearchConfig.providerName in WebSearchConfig.PROVIDERS_NEEDING_API_KEY
-    // v2.x: Eliminar duplicados — En el motor que requiere llave,Sólo "API personalizada"(No en la cadena de reserva automática)Configurar cerca en este grupo Key;
-    // Las claves de otros motores están unificadas en la lista anterior "Clave API multimotor" para su edición.,Este grupo solo reserva direcciones y pruebas de interfaz.
+    // v2.x: 去重 — 需 Key 的引擎中,只有「自定义 API」(不在 Auto 回退链)在本组就近配置 Key;
+    // 其余引擎的 Key 统一在上方「多引擎 API Key」列表编辑,本组仅保留接口地址与测试。
     val isCustomApi = webSearchConfig.providerName.equals("Custom API", ignoreCase = true) ||
         webSearchConfig.providerName == WebSearchConfig.CUSTOM_PROVIDER_NAME
     if (needsApiConfig) {
@@ -448,9 +556,9 @@ internal fun WebSearchSection(webSearchConfig: WebSearchConfig, settings: Settin
                                 testResult = formatTestResult(context, results)
                             } catch (e: Exception) {
                                 testResult =
-                                    context.getString(
+                                    resources.getString(
                                         R.string.settings_web_search_test_failed,
-                                        e.message ?: context.getString(R.string.settings_web_search_test_failed_unknown),
+                                        e.message ?: resources.getString(R.string.settings_web_search_test_failed_unknown),
                                     )
                             } finally {
                                 testing = false
@@ -519,10 +627,10 @@ private fun SavePill(text: String, onClick: () -> Unit) {
 }
 
 /**
- * Pruebe la copia del resultado para su búsqueda.
+ * 测试搜索的结果文案。
  *
- * Se extrae porque el método de escritura en línea requiere dos niveles de getString anidado y una sola línea tiene cerca de 200 caracteres:
- * No puede pasar la verificación del ancho de línea y no se puede ver la intención de "agregar los primeros tres títulos cuando sea exitoso".
+ * 抽出来是因为内联写法需要两层嵌套 getString，单行接近 200 字符：
+ * 既过不了行宽检查，也看不出「成功时带前三条标题」这层意图。
  */
 private fun formatTestResult(context: android.content.Context, results: List<io.zer0.muse.web.WebSearchResult>): String {
     if (results.isEmpty()) {

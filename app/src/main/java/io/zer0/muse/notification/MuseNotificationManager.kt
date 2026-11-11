@@ -23,6 +23,7 @@ import io.zer0.muse.data.assistant.AssistantEntity
 import io.zer0.muse.proactive.ProactiveDismissProtocol
 import io.zer0.muse.proactive.ProactiveDismissReceiver
 import io.zer0.muse.ui.theme.presets.WarmPaperTheme
+import io.zer0.muse.util.GlobalCoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -33,30 +34,30 @@ import kotlinx.coroutines.launch
 internal fun isMuseProactiveNotificationId(id: Int): Boolean = id in 0x1000_0000..0x1000_0FFF
 
 /**
- * Phase 8.10: Gestor de notificaciones de generación de mensajes.
+ * Phase 8.10: 消息生成通知管理器。
  *
- * 3 canales de notificacion:
- *  - [CHANNEL_CHAT_COMPLETED]: Aparece cuando se completa la generación de transmisión en segundo plano(Aplicación en segundo plano)
- *  - [CHANNEL_CHAT_LIVE_UPDATE]: Notificaciones de actualización en tiempo real en compilaciones de transmisión(Barra de progreso en primer plano/Visible en el fondo)
- *  - [CHANNEL_WEB_SERVER]: Phase 8.11 Web Notificación de estado de ejecución del servidor(permanente)
+ * 3 个通知渠道:
+ *  - [CHANNEL_CHAT_COMPLETED]: 后台流式生成完成时弹出(应用在后台)
+ *  - [CHANNEL_CHAT_LIVE_UPDATE]: 流式生成中的实时更新通知(前台进度条/后台可见)
+ *  - [CHANNEL_WEB_SERVER]: Phase 8.11 Web 服务器运行状态通知(常驻)
  *
- * diseño:
- *  - Todos los canales LOW importance(silencioso,Barra de estado + banner solamente)
- *  - El canal es [MuseApp.onCreate] Pase [ensureChannels] Crear una vez
- *  - PendingIntent siempre apunta a [MainActivity],Presione el objetivo de notificación nuevamente para ingresar a la función correspondiente.
- *  - No enviar notificación chat_completed cuando esté en primer plano(evitar distracciones),Emitido solo después de que se completa la generación de fondo
+ * 设计:
+ *  - 所有渠道 LOW importance(不发声,仅状态栏 + 横幅)
+ *  - 渠道在 [MuseApp.onCreate] 通过 [ensureChannels] 一次性创建
+ *  - PendingIntent 始终指向 [MainActivity],再按通知目标进入对应功能
+ *  - 前台时不发 chat_completed 通知(避免干扰),仅后台生成完成才发
  *
- * Permisos:
- *  - Android 13+ Requiere permiso de tiempo de ejecución POST_NOTIFICATIONS(Aplicado por la persona que llama en la capa de UI)
- *  - Android 12- No se requieren permisos de tiempo de ejecución,notificación directa
+ * 权限:
+ *  - Android 13+ 需 POST_NOTIFICATIONS 运行时权限(由调用方在 UI 层申请)
+ *  - Android 12- 不需要运行时权限,直接通知
  */
 class MuseNotificationManager(private val context: Context) {
 
     private val nm: NotificationManager =
         context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
-    // v2.0: Limitación de notificaciones de progreso de transmisión — El hilo principal solo escribe la última solicitud.,La notificación real está en la rutina IO.
-    // Envío combinado(Máximo 1 vez/segundos),Evite ralentizar la página de chat con actualizaciones frecuentes de notificaciones.
+    // v2.0: 流式进度通知节流 — 主线程只写入最新请求,真正的 notify 在 IO 协程里
+    // 合并发送(最多 1 次/秒),避免高频通知更新拖慢聊天页。
     private data class LiveProgressRequest(
         val sessionTitle: String,
         val currentChars: Int,
@@ -65,7 +66,7 @@ class MuseNotificationManager(private val context: Context) {
     )
 
     private val liveProgressRequests = MutableStateFlow<LiveProgressRequest?>(null)
-    private val liveProgressScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val liveProgressScope = CoroutineScope(SupervisorJob() + Dispatchers.IO + GlobalCoroutineExceptionHandler)
     private var lastLiveProgressSentAt = 0L
 
     init {
@@ -77,7 +78,7 @@ class MuseNotificationManager(private val context: Context) {
                     resultOf { nm.cancel(NOTIF_ID_LIVE_UPDATE) }
                     return@collect
                 }
-                // acelerador:Espere hasta que termine el intervalo;El nuevo estado se sobrescribirá durante el período de espera.,Enviar siempre el último valor
+                // 节流:未到间隔先等待;等待期间新状态会覆盖,始终发送最新值
                 val elapsed = SystemClock.elapsedRealtime() - lastLiveProgressSentAt
                 if (elapsed < LIVE_PROGRESS_MIN_INTERVAL_MS) {
                     delay(LIVE_PROGRESS_MIN_INTERVAL_MS - elapsed)
@@ -91,16 +92,20 @@ class MuseNotificationManager(private val context: Context) {
                 lastLiveProgressSentAt = SystemClock.elapsedRealtime()
                 val notif = buildGenerationNotification(latest.sessionTitle, latest.currentChars, latest.target)
                 resultOf { nm.notify(NOTIF_ID_LIVE_UPDATE, notif) }
-                    .onError { msg, _ -> Logger.w(TAG, "updateLiveProgress failed: $msg") }
+                    .onError { msg, t ->
+                        Logger.w(TAG, "updateLiveProgress failed: $msg")
+                        // 权限被拒不是普通失败:记下来,让前台界面在合适的时机提出授权请求
+                        if (t is SecurityException) NotificationPermissionBus.needed.value = true
+                    }
             }
         }
     }
 
-    // pregunta6.4: Secuencia de incremento automático de ID de notificación de mensaje activo,Asegúrese de que a cada mensaje activo se le asigne un nombre único ID(No sobrescribas notificaciones antiguas).
-    // Realice la operación OR con NOTIF_ID_PROACTIVE_MESSAGE_BASE para generar el resultado final ID,Tome los 12 bits inferiores para evitar desbordar el rango.
+    // 问题6.4: 主动消息通知 ID 自增序列,保证每条主动消息分配唯一 ID(不覆盖旧通知)。
+    // 与 NOTIF_ID_PROACTIVE_MESSAGE_BASE 做 OR 运算生成最终 ID,取低 12 位避免溢出范围。
     private val proactiveNotifIdSeq = java.util.concurrent.atomic.AtomicInteger(0)
 
-    /** Crea todos los canales a la vez(idempotente,Android 8.0+ requerido). */
+    /** 一次性创建全部渠道(幂等,Android 8.0+ 必需)。 */
     fun ensureChannels() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val channels = listOf(
@@ -128,7 +133,7 @@ class MuseNotificationManager(private val context: Context) {
                 description = context.getString(R.string.notif_channel_web_server_desc)
                 setShowBadge(false)
             },
-            // mensajes no solicitados:IMPORTANCE_HIGH,hay sonido,porque esto es"El asistente contacta proactivamente con el usuario.",Llama la atención como un mensaje instantáneo
+            // 主动消息:IMPORTANCE_HIGH,有声音,因为这是"助手主动联系用户",要像收到即时消息一样吸引注意
             NotificationChannel(
                 CHANNEL_PROACTIVE_MESSAGE,
                 context.getString(R.string.notif_channel_proactive_message_name),
@@ -137,8 +142,8 @@ class MuseNotificationManager(private val context: Context) {
                 description = context.getString(R.string.notif_channel_proactive_message_desc)
                 setShowBadge(true)
             },
-            // El canal de notificación de recepción para servicios de mantenimiento de vida para residentes. El servicio de recepción debe publicar una notificación válida.
-            // Cuando falta el canal, el sistema descartará directamente la notificación y arrojará CannotPostForegroundServiceNotificationException.
+            // 常驻保活服务的前台通知渠道。前台服务必须挂一条有效通知，
+            // 渠道缺失时系统会直接丢弃通知并抛 CannotPostForegroundServiceNotificationException。
             NotificationChannel(
                 CHANNEL_KEEP_ALIVE,
                 context.getString(R.string.keep_alive_notification_title),
@@ -153,9 +158,9 @@ class MuseNotificationManager(private val context: Context) {
     }
 
     /**
-     * mostrar"Generación de mensajes completada"Notificación(Se llama cuando la aplicación está en segundo plano.).
-     * @param sessionTitle Título de la sesión
-     * @param preview Vista previa del texto(Primeras 50 palabras del mensaje)
+     * 显示"消息生成完成"通知(应用在后台时调用)。
+     * @param sessionTitle 会话标题
+     * @param preview 预览文本(消息前 50 字)
      */
     fun notifyChatCompleted(sessionTitle: String, preview: String, target: MuseNotificationTarget = MuseNotificationTarget.Chat) {
         val notif = NotificationCompat.Builder(context, CHANNEL_CHAT_COMPLETED)
@@ -167,14 +172,18 @@ class MuseNotificationManager(private val context: Context) {
             .setAutoCancel(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .build()
-        // M2-1: Usar en su lugar resultOf{}
+        // M2-1: 改用 resultOf{}
         resultOf { nm.notify(NOTIF_ID_CHAT_COMPLETED, notif) }
-            .onError { msg, _ -> Logger.w(TAG, "notifyChatCompleted failed: $msg") }
+            .onError { msg, t ->
+                Logger.w(TAG, "notifyChatCompleted failed: $msg")
+                // 权限被拒不是普通失败:记下来,让前台界面在合适的时机提出授权请求
+                if (t is SecurityException) NotificationPermissionBus.needed.value = true
+            }
     }
 
     /**
-     * v2.0.1: "Esperando aprobación"Notificación — Alertar a los usuarios cuando hay una solicitud de aprobación pendiente y la aplicación no está en primer plano
-     * (Alinear Meta Muse"Volver contigo cuando necesite aprobación"; Silencio cuando esté en primer plano para evitar interrupciones).
+     * v2.0.1: "等待批准"通知 — 审批请求挂起且应用不在前台时提醒用户
+     * （对齐 Meta Muse 的"需要批准时回来找你"；前台时静默，避免打扰）。
      */
     fun notifyChatPendingApproval(toolLabel: String) {
         if (isAppInForeground()) return
@@ -187,20 +196,24 @@ class MuseNotificationManager(private val context: Context) {
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .build()
         resultOf { nm.notify(NOTIF_ID_CHAT_PENDING_APPROVAL, notif) }
-            .onError { msg, _ -> Logger.w(TAG, "notifyChatPendingApproval failed: $msg") }
+            .onError { msg, t ->
+                Logger.w(TAG, "notifyChatPendingApproval failed: $msg")
+                // 权限被拒不是普通失败:记下来,让前台界面在合适的时机提出授权请求
+                if (t is SecurityException) NotificationPermissionBus.needed.value = true
+            }
     }
 
     /**
-     * v0.32: con estrategia"Respuesta completada"Notificación.
+     * v0.32: 带策略的"回复完成"通知。
      *
-     * Determinar si enviar notificaciones según la política de notificación establecida por el usuario:
-     *  - "never": nunca enviar notificación
-     *  - "when_unfocused": Enviado cuando la aplicación no está en primer plano(Comportamiento predeterminado,Evite las distracciones iniciales)
-     *  - "always": enviar siempre notificación
+     * 根据用户设置的通知策略决定是否发通知:
+     *  - "never": 从不发通知
+     *  - "when_unfocused": 应用不在前台时才发(默认行为,避免前台干扰)
+     *  - "always": 总是发通知
      *
-     * @param policy Cadena de política de notificación
-     * @param sessionTitle Título de la sesión
-     * @param preview Vista previa del texto
+     * @param policy 通知策略字符串
+     * @param sessionTitle 会话标题
+     * @param preview 预览文本
      */
     fun notifyChatCompletedWithPolicy(
         policy: String,
@@ -211,7 +224,7 @@ class MuseNotificationManager(private val context: Context) {
         when (policy) {
             "never" -> return
             "always" -> notifyChatCompleted(sessionTitle, preview, target)
-            // when_unfocused o valor desconocido:Comportamiento predeterminado cuando_unfocused(Notificar solo cuando la aplicación no esté en primer plano)
+            // when_unfocused 或未知值:默认 when_unfocused 行为(仅应用不在前台时通知)
             else -> {
                 if (!isAppInForeground()) {
                     notifyChatCompleted(sessionTitle, preview, target)
@@ -221,12 +234,12 @@ class MuseNotificationManager(private val context: Context) {
     }
 
     /**
-     * v0.32: Comprueba si la aplicación está en primer plano.(usar ActivityManager).
-     * Se utiliza para informar juicios de políticas.,Evite molestar a los usuarios cuando esté en primer plano.
+     * v0.32: 检查应用是否在前台(用 ActivityManager)。
+     * 用于通知策略判断,避免在前台时打扰用户。
      */
     @android.annotation.SuppressLint("DiscouragedApi")
     private fun isAppInForeground(): Boolean {
-        // M2-1: Usar en su lugar resultOf{}
+        // M2-1: 改用 resultOf{}
         return resultOf {
             val am = context.getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -242,24 +255,24 @@ class MuseNotificationManager(private val context: Context) {
     }
 
     /**
-     * Revisión de corrección (2.0 B-34): Juicio de exposición en recepción — mensajes no solicitados/Los resúmenes diarios y otros canales de voz ALTOS se utilizan de manera uniforme,
-     * evitar"Silencio en la recepción"La lógica se repite en cada persona que llama.
+     * 审查修复 (2.0 B-34): 暴露前台判定 — 主动消息/每日总结等 HIGH 发声渠道统一使用,
+     * 避免"前台静默"逻辑在各调用方重复实现。
      */
     fun isAppForeground(): Boolean = isAppInForeground()
 
     /**
-     * mostrar"mensajes no solicitados"Notificación(Se llama al asistente cuando envía mensajes activamente al usuario como si fuera una persona real.).
+     * 显示"主动消息"通知(助手像真人一样主动给用户发消息时调用)。
      *
-     * v0.44: Cambiar el ícono de la barra de notificaciones al avatar del asistente(fotos/Emoji/iniciales),Ya no utilices los íconos de aplicaciones de manera uniforme.
-     * Si el avatar no se carga o no hay avatar, volverá al pequeño icono predeterminado.
+     * v0.44: 通知栏大图标改用助手头像(图片/Emoji/首字母),不再统一用 app 图标。
+     * 头像加载失败或无头像时回退到默认小图标。
      *
-     * Usar el canal IMPORTANCE_HIGH,Con sonido + banner,Capte la atención como si fuera un mensaje instantáneo.
-     * Por título"$assistantName Vienen noticias",El cuerpo es la vista previa del mensaje.(Truncado a 100 palabras),
-     * BigTextStyle Ampliar contenido completo;Haga clic para saltar a MainActivity y regresar a la página de chat.
+     * 用 IMPORTANCE_HIGH 渠道,有声音 + 横幅,吸引像收到即时消息一样的注意。
+     * 标题用"$assistantName 来消息了",正文是消息预览(截断 100 字),
+     * BigTextStyle 展开完整内容;点击跳转 MainActivity 回到聊天页。
      *
-     * @param assistant entidad auxiliar(Obtener nombre + avatar)
-     * @param preview Contenido completo del mensaje activo.
-     * @param outcomeId El id de este mensaje en la cuenta de resultados: Solo con esto podrás poner "Esta vez no" en la notificación.
+     * @param assistant 助手实体(取 name + 头像)
+     * @param preview 主动消息完整内容
+     * @param outcomeId 这条消息在结果账里的 id：有它才能在通知上挂「这次不用」
      */
     suspend fun notifyProactiveMessage(
         assistant: AssistantEntity,
@@ -267,11 +280,11 @@ class MuseNotificationManager(private val context: Context) {
         target: MuseNotificationTarget = MuseNotificationTarget.Chat,
         outcomeId: String? = null,
     ) {
-        // v1.0.80: El mensaje activo es"El asistente contacta proactivamente con el usuario.",Incluso en la recepción, se deben utilizar las notificaciones del sistema. —
-        // Es posible que el usuario no esté viendo la sesión.(Mirando otras paginas/Otros app),Las notificaciones de mensajes instantáneos no pueden interceptarse mediante un juicio en primer plano.
-        // La interceptación original de la recepción del B-15 resultó en:página de configuración"Probar mensajes proactivos"Cuando la aplicación debe estar en primer plano,Nunca se envían notificaciones,
-        // El usuario no puede autenticarse(retroalimentación:Hay mensajes activos pero no en la barra de notificaciones.). Hay un límite diario de mensajes activos.+Motor de puntuación,Sin interrupciones de alta frecuencia.
-        val assistantName = assistant.name.ifBlank { "muse" }
+        // v1.0.80: 主动消息是"助手主动联系用户",即使前台也应走系统通知 —
+        // 用户可能没盯着会话(在看别的页面/别的 app),即时消息式通知不能被前台判断拦截。
+        // 原 B-15 前台拦截导致:设置页"测试主动消息"时 App 必然前台,通知永远不发,
+        // 用户无法验证(反馈:主动消息有了但通知栏没有)。主动消息有每日上限+评分引擎,不会高频打扰。
+        val assistantName = assistant.name.ifBlank { "Muse" }
         val avatar = loadAssistantAvatar(assistant)
         val builder = NotificationCompat.Builder(context, CHANNEL_PROACTIVE_MESSAGE)
             .setSmallIcon(R.mipmap.ic_launcher)
@@ -281,16 +294,16 @@ class MuseNotificationManager(private val context: Context) {
             .setContentIntent(buildMainActivityPendingIntent(target))
             .setAutoCancel(true)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
-        // v0.44: Solo se establece si el avatar se carga correctamente largeIcon,De lo contrario, utilice el icono pequeño predeterminado
+        // v0.44: 头像加载成功才设 largeIcon,否则用默认小图标
         if (avatar != null) builder.setLargeIcon(avatar)
-        // pregunta6.4: A cada mensaje activo se le asigna un nombre único ID(Basado en el hash de ID del asistente + secuencia de incremento automático),
-        // Evite conflictos con el ID fijo de notifyReminder,Y no permita que las notificaciones nuevas sobrescriban las notificaciones antiguas.
-        // alcance [NOTIF_ID_PROACTIVE_MESSAGE_BASE, NOTIF_ID_PROACTIVE_MESSAGE_BASE + 0x0FFF],
-        // con NOTIF_ID_PROACTIVE_MESSAGE(1004)/NOTIF_ID_CHAT_COMPLETED(1001) Espere a que se escalone la identificación fija.
+        // 问题6.4: 每条主动消息分配唯一 ID(基于助手 id hash + 自增序列),
+        // 避免与 notifyReminder 的固定 ID 冲突,且不让新通知覆盖旧通知。
+        // 范围 [NOTIF_ID_PROACTIVE_MESSAGE_BASE, NOTIF_ID_PROACTIVE_MESSAGE_BASE + 0x0FFF],
+        // 与 NOTIF_ID_PROACTIVE_MESSAGE(1004)/NOTIF_ID_CHAT_COMPLETED(1001) 等固定 ID 错开。
         val notifId = NOTIF_ID_PROACTIVE_MESSAGE_BASE or
             (proactiveNotifIdSeq.getAndIncrement() and 0x0FFF)
-        // "Esta vez no": Tachar la notificación significa "No quiero verla ahora" y hacer clic en este botón significa "esto no debería enviarse".
-        // Las dos son señales diferentes en la cuenta de resultados, por lo que setAutoCancel no puede manejarlas.
+        // 「这次不用」：通知被划掉只是「现在不想看」，点这个按钮才是「这条不该发」。
+        // 两者在结果账里是不同的信号，所以不能靠 setAutoCancel 顺带处理。
         if (outcomeId != null) {
             builder.addAction(
                 R.drawable.ic_quick_capture_close,
@@ -299,13 +312,14 @@ class MuseNotificationManager(private val context: Context) {
             )
         }
         val notif = builder.build()
-        // M2-1: Usar en su lugar resultOf{}
+        // M2-1: 改用 resultOf{}
         resultOf { nm.notify(notifId, notif) }
             .onError { msg, t ->
-                // B-15: Android 13+ Se genera una SecurityException cuando se deniega el permiso de notificación.
-                // No puedo simplemente recordar W y bajar de categoría silenciosamente como un fallo normal.——Mantener registro de ERRORES,Esto permite que la página de configuración solicite al usuario que autorice POST_NOTIFICATIONS.
+                // B-15: Android 13+ 通知权限被拒时会抛 SecurityException。
+                // 不能像普通失败那样只记 W 静默降级——记 ERROR 日志,便于设置页据此提示用户授权 POST_NOTIFICATIONS。
                 if (t is SecurityException) {
-                    Logger.e(TAG, "notifyProactiveMessage denied (Permiso de notificación denegado, Android 13+ necesidad POST_NOTIFICATIONS): $msg", t)
+                    Logger.e(TAG, "notifyProactiveMessage denied (通知权限被拒, Android 13+ 需 POST_NOTIFICATIONS): $msg", t)
+                    NotificationPermissionBus.needed.value = true
                 } else {
                     Logger.w(TAG, "notifyProactiveMessage failed: $msg")
                 }
@@ -313,33 +327,33 @@ class MuseNotificationManager(private val context: Context) {
     }
 
     /**
-     * Razones por las que el sistema bloquea las notificaciones de mensajes proactivos;null Indica que no hay elementos de bloqueo visibles.
+     * 主动消息通知会被系统拦下的原因;null 表示看不出拦裁项。
      *
-     * Simplemente responda "¿Es posible mostrarlo después de enviarlo?"——El tiempo de envío y el contenido no se cambiarán.
-     * La interceptación a nivel del sistema no generará excepciones(notify Descartado después de unirse silenciosamente a la cola),La persona que llama no puede saberlo por el valor de retorno.,
-     * Por lo tanto, el enlace del mensaje activo lo utiliza para separar "notificación no enviada" y "notificación enviada pero el sistema la perderá".
+     * 只回答「发了之后到底有没有可能显示」——不改变发送时机与内容。
+     * 系统级拦截不会抛异常(notify 静默入队后被丢弃),调用方从返回值看不出来,
+     * 所以主动消息链路用它把「没发通知」和「发了但系统会丢掉」分开记。
      */
     fun proactiveNotificationBlocker(): String? = when {
-        !nm.areNotificationsEnabled() -> "El permiso de notificación del sistema ha sido desactivado"
+        !nm.areNotificationsEnabled() -> "系统通知权限已关闭"
         nm.getNotificationChannel(CHANNEL_PROACTIVE_MESSAGE)?.importance == NotificationManager.IMPORTANCE_NONE ->
-            "El canal de notificación de mensajes activos ha sido cerrado."
+            "主动消息通知渠道已被关闭"
         else -> null
     }
 
     /**
-     * v0.44: Cargue el avatar del asistente como Bitmap(Icono grande para la barra de notificaciones.).
+     * v0.44: 加载助手头像为 Bitmap(用于通知栏大图标)。
      *
-     * prioridad:① avatar de imagen(avatarImageUrl,Coil Cargar)→ ② Emoji avatar(Canvas dibujar)→ ③ iniciales(Canvas dibujar).
-     * Regreso ante cualquier falla null,La persona que llama vuelve al pequeño icono predeterminado.
+     * 优先级:① 图片头像(avatarImageUrl,Coil 加载)→ ② Emoji 头像(Canvas 画)→ ③ 名称首字母(Canvas 画)。
+     * 任一失败返回 null,调用方回退到默认小图标。
      *
-     * Los colores se toman del tema de papel cálido predeterminado.(WarmPaperTheme.lightScheme)de primary / surfaceVariant / onSurfaceVariant,
-     * La barra de notificaciones no depende del tiempo de ejecución de Compose,Por lo tanto, el valor de color del tema predeterminado estático se obtiene directamente.
+     * 颜色取自默认暖纸主题(WarmPaperTheme.lightScheme)的 primary / surfaceVariant / onSurfaceVariant,
+     * 通知栏不依赖 Compose 运行时,故直接取静态预设主题的色值。
      */
     private suspend fun loadAssistantAvatar(assistant: AssistantEntity): Bitmap? {
-        // H2-1: Usar en su lugar resultOf{}(Lanzamiento correcto CancellationException,loader.execute si suspend)
+        // H2-1: 改用 resultOf{}(正确重抛 CancellationException,loader.execute 是 suspend)
         return resultOf {
             when {
-                // ① avatar de imagen:Cargado con bobina como Bitmap
+                // ① 图片头像:用 Coil 加载为 Bitmap
                 assistant.hasImageAvatar() -> {
                     val loader = Coil.imageLoader(context)
                     val req = ImageRequest.Builder(context)
@@ -351,13 +365,13 @@ class MuseNotificationManager(private val context: Context) {
                         (d as? android.graphics.drawable.BitmapDrawable)?.bitmap
                     }
                 }
-                // ② Emoji avatar:Canvas dibujar AVATAR_SIZE x AVATAR_SIZE,fondo circulo color primario
+                // ② Emoji 头像:Canvas 画到 AVATAR_SIZE x AVATAR_SIZE,背景圆形 primary 色
                 assistant.avatarEmoji.isNotBlank() -> renderTextAvatar(
                     text = assistant.avatarEmoji,
                     bgColor = WarmPaperTheme.lightScheme.primary.toArgb(),
                     textColor = WarmPaperTheme.lightScheme.onPrimary.toArgb(),
                 )
-                // ③ iniciales:Canvas dibujar AVATAR_SIZE x AVATAR_SIZE,fondosuperficie del círculocolor variante,texto en superficieColor variante
+                // ③ 名称首字母:Canvas 画到 AVATAR_SIZE x AVATAR_SIZE,背景圆形 surfaceVariant 色,文字 onSurfaceVariant 色
                 else -> {
                     val initial = assistant.name.firstOrNull()?.toString()?.ifBlank { "A" } ?: "A"
                     renderTextAvatar(
@@ -367,15 +381,15 @@ class MuseNotificationManager(private val context: Context) {
                     )
                 }
             }
-        }.onError { msg, _ -> Logger.w(TAG, "No se pudo cargar el avatar: $msg") }.getOrNull()
+        }.onError { msg, _ -> Logger.w(TAG, "加载头像失败: $msg") }.getOrNull()
     }
 
     /**
-     * v0.44: Usa Canvas para poner texto(Emoji o iniciales)Dibuja en un mapa de bits circular de 96x96.
+     * v0.44: 用 Canvas 把文字(Emoji 或首字母)画到 96x96 圆形 Bitmap 上。
      *
-     * @param text texto para dibujar
-     * @param bgColor Color de fondo del círculo(Android int)
-     * @param textColor color del texto(Android int)
+     * @param text 要画的文字
+     * @param bgColor 圆形背景色(Android int)
+     * @param textColor 文字色(Android int)
      */
     private fun renderTextAvatar(text: String, bgColor: Int, textColor: Int): Bitmap {
         val size = AVATAR_SIZE
@@ -395,10 +409,10 @@ class MuseNotificationManager(private val context: Context) {
     }
 
     /**
-     * Actualización de notificación de progreso de compilación de transmisión(Puede actualizarse repetidamente con el mismo NOTIF_ID).
-     * @param sessionTitle Título de la sesión
-     * @param currentChars Número de caracteres generados actualmente
-     * @param isStreaming ¿Sigue generando?(false Cancelar notificación cuando)
+     * 更新流式生成进度通知(可被同一 NOTIF_ID 反复更新)。
+     * @param sessionTitle 会话标题
+     * @param currentChars 当前已生成字符数
+     * @param isStreaming 是否仍在生成(false 时取消通知)
      */
     fun updateLiveProgress(
         sessionTitle: String,
@@ -406,14 +420,14 @@ class MuseNotificationManager(private val context: Context) {
         isStreaming: Boolean,
         target: MuseNotificationTarget = MuseNotificationTarget.Chat,
     ) {
-        // v2.0: Ponga en cola solo el estado más reciente y regrese inmediatamente,Las notificaciones reales se envían mediante limitación de rutina de IO(≤1 veces/segundos)
+        // v2.0: 只入队最新状态并立即返回,实际通知由 IO 协程节流发送(≤1 次/秒)
         liveProgressRequests.value = LiveProgressRequest(sessionTitle, currentChars, isStreaming, target)
     }
 
     /**
-     * v2.5.0: Cancelar notificación de progreso ahora(sincronizar,No pases por la cola de limitación).
-     * Llamado antes de que se detenga el servicio en primer plano. —— startForeground Las notificaciones no se pueden limitar de forma asincrónica
-     * La cancelación se elimina de forma fiable.,Debe sincronizarse con stopForeground.
+     * v2.5.0: 立即取消进度通知(同步,不走节流队列)。
+     * 供前台服务 stopForeground 前调用 —— startForeground 的通知无法被异步节流
+     * 的 cancel 可靠移除,必须与 stopForeground 同步配合。
      */
     fun clearLiveProgress() {
         liveProgressRequests.value = null
@@ -423,9 +437,9 @@ class MuseNotificationManager(private val context: Context) {
     }
 
     /**
-     * v1.43: Cree notificaciones generadas por streaming utilizadas por los servicios de front-end.
+     * v1.43: 构建前台服务使用的流式生成通知。
      *
-     * con [updateLiveProgress] compartir el mismo canal y ID,Asegúrese de que el inicio del servicio sea coherente con las actualizaciones posteriores.
+     * 与 [updateLiveProgress] 共用同一渠道和 ID,保证服务启动与后续更新一致。
      */
     fun buildGenerationNotification(
         sessionTitle: String,
@@ -437,15 +451,58 @@ class MuseNotificationManager(private val context: Context) {
         .setContentText(context.getString(R.string.notif_live_progress_text, currentChars))
         .setOngoing(true)
         .setOnlyAlertOnce(true)
-        .setProgress(0, 0, true) // Barra de progreso incierta
+        .setProgress(0, 0, true) // 不确定进度条
         .setContentIntent(buildMainActivityPendingIntent(target))
         .setPriority(NotificationCompat.PRIORITY_LOW)
         .build()
 
     /**
-     * mostrar/Actualizar la notificación de estado del servidor web(permanente,hasta que el servidor se detenga).
-     * @param port puerto de escucha
-     * @param isRunning true mostrar"corriendo",false Cancelar aviso
+     * 工具阶段投影（对比清单 P2-03）：把"正在执行哪个工具"投到系统通知。
+     *
+     * 与流式进度共用同一个低优先级渠道，但用独立 ID —— 两者可以同时存在
+     * （一边生成一边调工具），互相覆盖会让用户看到跳动的内容。
+     *
+     * **降级**：通知被系统或用户关掉时直接返回，不报错也不弹提示 ——
+     * 这是"没有通知"而不是"任务失败"，静默跳过才符合预期。
+     */
+    fun updateTaskStage(text: String?, target: MuseNotificationTarget = MuseNotificationTarget.Chat) {
+        if (text.isNullOrBlank()) {
+            resultOf { nm.cancel(NOTIF_ID_TASK_STAGE) }
+            return
+        }
+        if (!notificationsAllowed()) return
+        val stopIntent = PendingIntent.getBroadcast(
+            context,
+            0,
+            android.content.Intent(context, TaskStageActionReceiver::class.java)
+                .setAction(TaskStageActionReceiver.ACTION_STOP),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+        val notif = NotificationCompat.Builder(context, CHANNEL_CHAT_LIVE_UPDATE)
+            .setSmallIcon(R.mipmap.ic_launcher)
+            .setContentTitle(context.getString(R.string.notif_task_stage_title))
+            .setContentText(text)
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .setProgress(0, 0, true)
+            .setContentIntent(buildMainActivityPendingIntent(target))
+            .addAction(0, context.getString(R.string.notif_task_stage_stop), stopIntent)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .build()
+        resultOf { nm.notify(NOTIF_ID_TASK_STAGE, notif) }
+            .onError { msg, t ->
+                Logger.w(TAG, "updateTaskStage failed: $msg")
+                // 权限被拒不是普通失败:记下来,让前台界面在合适的时机提出授权请求
+                if (t is SecurityException) NotificationPermissionBus.needed.value = true
+            }
+    }
+
+    private fun notificationsAllowed(): Boolean = runCatching { nm.areNotificationsEnabled() }.getOrDefault(false)
+
+    /**
+     * 显示/更新 Web 服务器运行状态通知(常驻,直到服务器停止)。
+     * @param port 监听端口
+     * @param isRunning true 显示"运行中",false 取消通知
      */
     fun updateWebServerStatus(port: Int, isRunning: Boolean, target: MuseNotificationTarget = MuseNotificationTarget.SettingsData) {
         if (!isRunning) {
@@ -460,17 +517,21 @@ class MuseNotificationManager(private val context: Context) {
             .setContentIntent(buildMainActivityPendingIntent(target))
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .build()
-        // M2-1: Usar en su lugar resultOf{}
+        // M2-1: 改用 resultOf{}
         resultOf { nm.notify(NOTIF_ID_WEB_SERVER, notif) }
-            .onError { msg, _ -> Logger.w(TAG, "updateWebServerStatus failed: $msg") }
+            .onError { msg, t ->
+                Logger.w(TAG, "updateWebServerStatus failed: $msg")
+                // 权限被拒不是普通失败:记下来,让前台界面在合适的时机提出授权请求
+                if (t is SecurityException) NotificationPermissionBus.needed.value = true
+            }
     }
 
     /**
-     * v1.136: Mostrar notificaciones de recordatorio programadas.
+     * v1.136: 显示定时提醒通知。
      *
-     * @param title Título de la notificación
-     * @param message Texto de notificación
-     * @param notificationId Notificación id(Usar ID de recordatorio hashCode,Fácil de cancelar)
+     * @param title 通知标题
+     * @param message 通知正文
+     * @param notificationId 通知 id(用提醒 id 的 hashCode,便于取消)
      */
     fun notifyReminder(title: String, message: String, notificationId: Int, target: MuseNotificationTarget = MuseNotificationTarget.Home) {
         val notif = NotificationCompat.Builder(context, CHANNEL_PROACTIVE_MESSAGE)
@@ -483,17 +544,21 @@ class MuseNotificationManager(private val context: Context) {
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .build()
         resultOf { nm.notify(notificationId, notif) }
-            .onError { msg, _ -> Logger.w(TAG, "notifyReminder failed: $msg") }
+            .onError { msg, t ->
+                Logger.w(TAG, "notifyReminder failed: $msg")
+                // 权限被拒不是普通失败:记下来,让前台界面在合适的时机提出授权请求
+                if (t is SecurityException) NotificationPermissionBus.needed.value = true
+            }
     }
 
     /**
-     * F-04: Recordatorio automático del resultado de la copia de seguridad(Clasificación por motivos de fallo.).
+     * F-04: 自动备份结果提醒(按失败原因分类)。
      *
-     * por [io.zer0.muse.schedule.CloudBackupScheduler] Se llama después de que se completa la copia de seguridad automática programada.:
-     * éxito/Enviar una notificación por cada fallo.(Los recordatorios de fallos son particularmente importantes,Evite que los usuarios no se den cuenta de las interrupciones de la copia de seguridad durante mucho tiempo).
-     * El fallo diferencia aún más entre fallo de escritura/fallo de verificación de relectura,El texto proporciona indicaciones ejecutables.;
-     * [io.zer0.muse.backup.BackupService.CloudBackupOutcome.NOT_CONFIGURED] Sin aviso(No configurado para no molestar a los usuarios).
-     * Reutilizar [notifyReminder] Canales comunes y comportamiento de la página de respaldo en la nube al hacer clic para ingresar,Se corrigieron los ID de notificación para facilitar la anulación.
+     * 由 [io.zer0.muse.schedule.CloudBackupScheduler] 在定时自动备份完成后调用:
+     * 成功/失败各发一条通知(失败提醒尤为重要,避免用户长期不知道备份中断)。
+     * 失败进一步区分写入失败 / 读回校验失败,正文给出可执行提示;
+     * [io.zer0.muse.backup.BackupService.CloudBackupOutcome.NOT_CONFIGURED] 不发通知(未配置不打扰用户)。
+     * 复用 [notifyReminder] 的通用渠道与点击进入云备份页行为,固定通知 ID 便于覆盖。
      */
     fun notifyAutoBackup(outcome: io.zer0.muse.backup.BackupService.CloudBackupOutcome) {
         if (outcome == io.zer0.muse.backup.BackupService.CloudBackupOutcome.NOT_CONFIGURED) return
@@ -505,9 +570,9 @@ class MuseNotificationManager(private val context: Context) {
             io.zer0.muse.backup.BackupService.CloudBackupOutcome.VERIFY_FAILED ->
                 R.string.notif_auto_backup_failed_title to R.string.notif_auto_backup_failed_verify_text
             io.zer0.muse.backup.BackupService.CloudBackupOutcome.NOT_CONFIGURED ->
-                // No accesible(Ya arriba return),Mantenga las ramas para satisfacer cuando se agoten.
+                // 不可达(上方已 return),保留分支以满足 when 穷尽
                 return
-            // B-9: La contraseña de respaldo expiró,Reutilizar copia de recordatorio de error
+            // B-9: 备份密码失效,复用失败提醒文案
             io.zer0.muse.backup.BackupService.CloudBackupOutcome.PASSWORD_UNAVAILABLE ->
                 R.string.notif_auto_backup_failed_title to R.string.notif_auto_backup_failed_write_text
         }
@@ -519,14 +584,14 @@ class MuseNotificationManager(private val context: Context) {
         )
     }
 
-    /** Cancela todas las notificaciones enviadas por muse. */
+    /** 取消所有 muse 发出的通知。 */
     fun cancelAll() {
         resultOf {
             nm.cancel(NOTIF_ID_CHAT_COMPLETED)
             nm.cancel(NOTIF_ID_CHAT_PENDING_APPROVAL)
             nm.cancel(NOTIF_ID_LIVE_UPDATE)
             nm.cancel(NOTIF_ID_WEB_SERVER)
-            // La versión antigua usa fijo. ID,Mantenga la limpieza de compatibilidad.
+            // 旧版本使用固定 ID,保留兼容清理。
             nm.cancel(NOTIF_ID_PROACTIVE_MESSAGE)
             nm.cancel(NOTIF_ID_AUTO_BACKUP)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -537,7 +602,7 @@ class MuseNotificationManager(private val context: Context) {
         }.onError { msg, _ -> Logger.w(TAG, "cancelAll failed: $msg") }
     }
 
-    /** Cree un MainActivity PendingIntent con un objetivo de cadena profunda controlado. */
+    /** 构建带受控深链目标的 MainActivity PendingIntent。 */
     fun buildMainActivityPendingIntent(target: MuseNotificationTarget): PendingIntent {
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
@@ -553,10 +618,10 @@ class MuseNotificationManager(private val context: Context) {
     }
 
     /**
-     * Construya el PendingIntent para el botón "Esta vez no" en la notificación.
+     * 构建通知上「这次不用」按钮的 PendingIntent。
      *
-     * requestCode Usar ID de notificación: un botón para cada mensaje activo. Si comparten el mismo PendingIntent,
-     * El enviado más tarde sobrescribirá el extra del anterior, y el usuario hace clic en la notificación anterior pero será recordada como el mensaje nuevo.
+     * requestCode 用通知 id：每条主动消息一个按钮，若共用同一个 PendingIntent，
+     * 后发的会覆盖前一条的 extra，用户点老通知却记到新消息头上。
      */
     private fun buildDismissIntent(outcomeId: String, notifId: Int): PendingIntent {
         val intent = Intent(context, ProactiveDismissReceiver::class.java).apply {
@@ -579,7 +644,10 @@ class MuseNotificationManager(private val context: Context) {
         private const val NOTIF_ID_CHAT_PENDING_APPROVAL = 1005
         private const val NOTIF_ID_LIVE_UPDATE = 1002
 
-        // v2.0: Intervalo mínimo de envío para notificaciones de progreso de transmisión(milisegundos)
+        /** 工具阶段通知：与流式进度分开，避免互相覆盖。 */
+        private const val NOTIF_ID_TASK_STAGE = 1005
+
+        // v2.0: 流式进度通知最小发送间隔(毫秒)
         private const val LIVE_PROGRESS_MIN_INTERVAL_MS = 900L
         private const val NOTIF_ID_WEB_SERVER = 1003
         private const val NOTIF_ID_PROACTIVE_MESSAGE = 1004
@@ -587,15 +655,15 @@ class MuseNotificationManager(private val context: Context) {
         // Keep auto-backup separate from the pending-approval notification.
         private const val NOTIF_ID_AUTO_BACKUP = 1006
 
-        // pregunta6.4: La dirección base del ID de notificación único del mensaje activo.,Escalonado desde la identificación fija anterior.
-        // eventualmente ID = BASE or (seq & 0x0FFF),alcance [0x10000000, 0x10000FFF],no se arreglará con ID(1001~1004)conflicto.
+        // 问题6.4: 主动消息唯一通知 ID 的基址,与上面固定 ID 错开。
+        // 最终 ID = BASE or (seq & 0x0FFF),范围 [0x10000000, 0x10000FFF],不会与固定 ID(1001~1004)冲突。
         private const val NOTIF_ID_PROACTIVE_MESSAGE_BASE = 0x1000_0000
         private const val NOTIF_PREVIEW_MAX_LEN = 200
 
-        // L2-1: Tamaño de avatar(Píxel),Se utiliza para cargar bobinas y dibujar lienzos.
+        // L2-1: 头像尺寸(像素),用于 Coil 加载与 Canvas 绘制
         private const val AVATAR_SIZE = 96
 
-        // L2-2: Relación entre el tamaño de fuente china en el avatar de texto y el tamaño del avatar
+        // L2-2: 文字头像中文字字号占头像尺寸的比例
         private const val TEXT_SIZE_RATIO = 0.5f
     }
 }

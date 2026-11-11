@@ -4,20 +4,20 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 /**
- * Muse elevación/Escala semántica sombreada (CMP-01: fuente de datos única,tonalElevation Compartido con sombraElevación).
+ * Muse 高程/阴影语义刻度 (CMP-01: 唯一数据源,tonalElevation 与 shadowElevation 共用)。
  *
- * Finalidad de cada archivo:
- *  - [none]:   0 — Sin jerarquía(superficie predeterminada)
- *  - [micro]:  0.5 — adherirse a la superficie,solo pistas sobre niveles
- *  - [low]:    1 — Valor predeterminado de elemento de lista/tarjeta
- *  - [card]:   1 — tarjeta(Mismo valor que bajo,distinción semántica)
- *  - [medium]: 2 — Isla de entrada/barra flotante shadowElevation
- *  - [high]:   4 — Artículo seleccionado/Tarjeta destacada
- *  - [modal]:  8 — cuadro de diálogo / BottomSheet
- *  - [floating]: 12 — v2.x: capa flotante/panel grande(Compensa los grandes puestos)
- *  - [overlay]:  24 — v2.x: Elemento grande flotante/modal de pantalla completa(Compensa los grandes puestos)
+ * 各档用途:
+ *  - [none]:   0 — 无层次(默认表面)
+ *  - [micro]:  0.5 — 紧贴表面,仅暗示层次
+ *  - [low]:    1 — 列表项 / 卡片默认
+ *  - [card]:   1 — 卡片(与 low 同值,语义区分)
+ *  - [medium]: 2 — 输入岛 / 浮动条 shadowElevation
+ *  - [high]:   4 — 选中项 / 强调卡片
+ *  - [modal]:  8 — 对话框 / BottomSheet
+ *  - [floating]: 12 — v2.x: 浮层 / 大面板(补回大档位)
+ *  - [overlay]:  24 — v2.x: 全屏模态 / 悬浮大元素(补回大档位)
  *
- * Dos conjuntos de registros históricos con el mismo nombre y valores diferentes(MuseShadow.low=2/high=12/modal=24)Fusionado y eliminado,Sigue la misma escala.
+ * 历史两套同名不同值(MuseShadow.low=2/high=12/modal=24)已合并删除,统一走本刻度。
  */
 object MuseElevation {
     val none: Dp = 0.dp
@@ -28,9 +28,9 @@ object MuseElevation {
     val high: Dp = 4.dp
     val modal: Dp = 8.dp
 
-    /** v2.x: capa flotante/panel grande — 12dp(Compensa los grandes puestos,menú/Uso de contenedores de paneles.). */
+    /** v2.x: 浮层 / 大面板 — 12dp(补回大档位,供菜单/面板类容器使用)。 */
     val floating: Dp = 12.dp
 
-    /** v2.x: Elemento grande flotante/modal de pantalla completa — 24dp(Compensa los grandes puestos,Para usar con superposiciones de pantalla completa). */
+    /** v2.x: 全屏模态 / 悬浮大元素 — 24dp(补回大档位,供全屏覆盖层使用)。 */
     val overlay: Dp = 24.dp
 }

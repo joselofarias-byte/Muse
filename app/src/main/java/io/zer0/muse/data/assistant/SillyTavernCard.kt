@@ -10,23 +10,23 @@ import kotlinx.serialization.json.JsonPrimitive
 import java.util.zip.CRC32
 
 /**
- * SillyTavern Especificación de la tarjeta de personaje V2 (chara_card_v2, spec 2.10).
+ * SillyTavern 角色卡 V2 规范 (chara_card_v2, spec 2.10)。
  *
- * SillyTavern Las tarjetas de personajes son un formato común en la industria.:PNG Metadatos de imagen (tEXt chunk, key="chara")
- * o archivo JSON para almacenar la definición completa del rol. Admite la importación de tarjetas de personajes creadas por otras aplicaciones. Muse,
- * También puedes exportar el asistente Muse como una tarjeta de personaje y compartirlo con otras aplicaciones.
+ * SillyTavern 角色卡是业内通用格式:PNG 图片元数据 (tEXt chunk, key="chara")
+ * 或 JSON 文件存储完整角色定义。支持把其他 App 创建的角色卡导入 Muse,
+ * 也能把 Muse 助手导出为角色卡分享给其他 App。
  *
- * V2 estructura de la tarjeta:
+ * V2 卡片结构:
  *   {
  *     "spec": "chara_card_v2",
  *     "spec_version": "2.10",
  *     "data": { ... }
  *   }
  *
- * V1 Las tarjetas son planas. (Sin paquete de especificaciones/datos),Contiene sólo name/description/personality/
- * scenario/first_mes/mes_example campos. Importado por [CharacterCardImporter] Identifica automáticamente V1/V2.
+ * V1 卡片为扁平结构 (无 spec/data 包裹),仅含 name/description/personality/
+ * scenario/first_mes/mes_example 等字段。导入时由 [CharacterCardImporter] 自动识别 V1/V2。
  *
- * Sigue las convenciones de formato público de SillyTavern Character Card v2.
+ * 遵循 SillyTavern 角色卡 v2 公开格式约定。
  */
 @Serializable
 data class SillyTavernCardV2(
@@ -37,15 +37,15 @@ data class SillyTavernCardV2(
 ) {
 
     /**
-     * Convierte tarjetas de personajes en entidades auxiliares de Muse (id/Dejar la marca de tiempo en blanco,Completado por la persona que llama).
+     * 把角色卡转换为 Muse 助手实体 (id/时间戳留空,由调用方补全)。
      *
-     * Estrategia de mapeo de campo:
+     * 字段映射策略:
      *  - name → name
-     *  - system_prompt Prioridad;Usado cuando está vacío description + personality + scenario empalme → systemPrompt
-     *  - first_mes → messageTemplate (Úselo como plantilla de apertura)
-     *  - post_history_instructions → deletrear hasta el final del sistemaPrompt
+     *  - system_prompt 优先;为空时用 description + personality + scenario 拼接 → systemPrompt
+     *  - first_mes → messageTemplate (用作开场白模板)
+     *  - post_history_instructions → 拼到 systemPrompt 末尾
      *  - tags → tagsJson
-     *  - mes_example / alternate_greetings / creator_notes / extensions → descartar (Muse Sin campo correspondiente)
+     *  - mes_example / alternate_greetings / creator_notes / extensions → 丢弃 (Muse 无对应字段)
      */
     fun toAssistantEntity(): AssistantEntity {
         val parts = mutableListOf<String>()
@@ -54,16 +54,16 @@ data class SillyTavernCardV2(
             parts += sp
         } else {
             if (data.description.isNotBlank()) parts += data.description
-            if (data.personality.isNotBlank()) parts += "Rasgos de carácter: ${data.personality}"
-            if (data.scenario.isNotBlank()) parts += "Configuración de escena: ${data.scenario}"
+            if (data.personality.isNotBlank()) parts += "性格特点: ${data.personality}"
+            if (data.scenario.isNotBlank()) parts += "场景设定: ${data.scenario}"
         }
         if (data.postHistoryInstructions.isNotBlank()) {
-            parts += "post-comando: ${data.postHistoryInstructions}"
+            parts += "后置指令: ${data.postHistoryInstructions}"
         }
         val combined = parts.joinToString("\n\n")
         return AssistantEntity(
             id = "",
-            name = data.name.ifBlank { "Importar roles" },
+            name = data.name.ifBlank { "导入角色" },
             systemPrompt = combined,
             messageTemplate = data.firstMes,
             tagsJson = serializeStringListSafe(data.tags),
@@ -72,15 +72,15 @@ data class SillyTavernCardV2(
 
     companion object {
         /**
-         * Construye tarjetas de personajes de SillyTavern V2 a partir de entidades auxiliares de Muse.
+         * 从 Muse 助手实体构造 SillyTavern V2 角色卡。
          *
-         * Mapeo de campo:
+         * 字段映射:
          *  - name → name
-         *  - systemPrompt → description + system_prompt (doble escritura, Mejor compatibilidad)
+         *  - systemPrompt → description + system_prompt (双写, 兼容性最好)
          *  - messageTemplate → first_mes
          *  - tagsJson → tags
-         *  - id → extensions.muse_id (Para viaje redondo)
-         *  - avatarEmoji → extensions.muse_avatar_emoji (Para viaje redondo)
+         *  - id → extensions.muse_id (往返用)
+         *  - avatarEmoji → extensions.muse_avatar_emoji (往返用)
          */
         fun fromAssistantEntity(a: AssistantEntity): SillyTavernCardV2 {
             val tags = parseStringListSafe(a.tagsJson)
@@ -104,11 +104,11 @@ data class SillyTavernCardV2(
 }
 
 /**
- * SillyTavern Campo de datos de la tarjeta de rol (V2 spec).
+ * SillyTavern 角色卡 data 字段 (V2 spec)。
  *
- * V1 Campos compatibles:name / description / personality / scenario / first_mes / mes_example.
- * V2 Agregar nuevo campo:creator_notes / system_prompt / post_history_instructions / tags /
- * creator / character_version / alternate_greetings / extensions.
+ * V1 兼容字段:name / description / personality / scenario / first_mes / mes_example。
+ * V2 新增字段:creator_notes / system_prompt / post_history_instructions / tags /
+ * creator / character_version / alternate_greetings / extensions。
  */
 @Serializable
 data class SillyTavernCardData(
@@ -128,12 +128,12 @@ data class SillyTavernCardData(
     val extensions: Map<String, JsonElement> = emptyMap(),
 )
 
-// ── herramientas internas ──
+// ── 内部工具 ──
 
-/** Serializar una lista de cadenas en JSON (Consistente con AssistantRepository.serializeStringList). */
+/** 把字符串列表序列化为 JSON (与 AssistantRepository.serializeStringList 一致)。 */
 internal fun serializeStringListSafe(list: List<String>): String = AppJson.encodeToString(ListSerializer(String.serializer()), list)
 
-/** Analizar de forma segura listas de cadenas JSON, Devuelve una lista vacía en caso de error. */
+/** 安全解析 JSON 字符串列表, 失败返回空列表。 */
 internal fun parseStringListSafe(json: String): List<String> {
     if (json.isBlank() || json == "[]") return emptyList()
     return runCatching {
@@ -142,15 +142,15 @@ internal fun parseStringListSafe(json: String): List<String> {
 }
 
 /**
- * PNG chunk análisis manual/herramienta de escritura (No se introducen bibliotecas PNG de terceros).
+ * PNG chunk 手动解析/写入工具 (不引入第三方 PNG 库)。
  *
- * PNG Estructura de archivos:
+ * PNG 文件结构:
  *   signature(8) + chunk* (length(4) + type(4) + data(length) + crc(4))
  *
- * tEXt chunk data Formato: keyword(1-79 bytes Latin-1) + 0x00 + text(Latin-1)
- * SillyTavern Acuerdo: keyword="chara", text=base64(JSON)
+ * tEXt chunk data 格式: keyword(1-79 bytes Latin-1) + 0x00 + text(Latin-1)
+ * SillyTavern 约定: keyword="chara", text=base64(JSON)
  *
- * CRC-32 Portada type + data, usar [CRC32] Calcular.
+ * CRC-32 覆盖 type + data, 用 [CRC32] 计算。
  */
 internal object PngChunkUtil {
 
@@ -166,12 +166,12 @@ internal object PngChunkUtil {
     )
 
     /**
-     * Lee los bytes PNG especificados [keyword] El texto del fragmento de texto.
+     * 从 PNG 字节中读取指定 [keyword] 的 tEXt chunk 文本。
      *
-     * @return Devolución del golpe text (Latin-1 decodificar); PNG no encontrado o no devuelto null
+     * @return 命中返回 text (Latin-1 解码); 未找到或非 PNG 返回 null
      */
     fun readTextChunk(bytes: ByteArray, keyword: String): String? {
-        // Verificar firma
+        // 校验签名
         if (bytes.size < PNG_SIGNATURE.size + 8) return null
         for (i in PNG_SIGNATURE.indices) {
             if (bytes[i] != PNG_SIGNATURE[i]) return null
@@ -182,7 +182,7 @@ internal object PngChunkUtil {
             val type = String(bytes, pos + 4, 4, Charsets.US_ASCII)
             val dataStart = pos + 8
             val dataEnd = dataStart + length.toInt()
-            if (dataEnd + 4 > bytes.size) break // cruzar la linea, Archivos corruptos
+            if (dataEnd + 4 > bytes.size) break // 越界, 损坏文件
             if (type == "tEXt") {
                 val data = bytes.copyOfRange(dataStart, dataEnd)
                 val sepIndex = data.indexOf(0)
@@ -193,48 +193,48 @@ internal object PngChunkUtil {
                     }
                 }
             }
-            pos = dataEnd + 4 // saltar CRC
+            pos = dataEnd + 4 // 跳过 CRC
             if (type == "IEND") break
         }
         return null
     }
 
     /**
-     * Insertar en bytes PNG tEXt chunk (Después de insertar en IHDR, Ubicación recomendada según especificaciones.).
+     * 在 PNG 字节中插入 tEXt chunk (插入到 IHDR 之后, 符合规范推荐位置)。
      *
-     * No comprueba si ya existe la misma palabra clave tEXt (La persona que llama es responsable.).
-     * si [bytes] Si no es un PNG, se devuelve sin cambios.
+     * 不检查是否已存在同 keyword 的 tEXt (调用方负责)。
+     * 若 [bytes] 非 PNG 则原样返回。
      */
     fun writeTextChunk(bytes: ByteArray, keyword: String, text: String): ByteArray {
-        // Verificar firma
+        // 校验签名
         if (bytes.size < PNG_SIGNATURE.size) return bytes
         for (i in PNG_SIGNATURE.indices) {
             if (bytes[i] != PNG_SIGNATURE[i]) return bytes
         }
-        // estructura tEXt chunk data: keyword + 0x00 + text
+        // 构造 tEXt chunk data: keyword + 0x00 + text
         val keywordBytes = keyword.toByteArray(Charsets.ISO_8859_1)
-        require(keywordBytes.size in 1..79) { "tEXt keyword La longitud debe estar dentro 1..79" }
+        require(keywordBytes.size in 1..79) { "tEXt keyword 长度须在 1..79" }
         val textBytes = text.toByteArray(Charsets.ISO_8859_1)
         val chunkData = ByteArray(keywordBytes.size + 1 + textBytes.size)
         System.arraycopy(keywordBytes, 0, chunkData, 0, keywordBytes.size)
         chunkData[keywordBytes.size] = 0
         System.arraycopy(textBytes, 0, chunkData, keywordBytes.size + 1, textBytes.size)
-        // CRC Portada type + data
+        // CRC 覆盖 type + data
         val crc = CRC32().apply {
             update("tEXt".toByteArray(Charsets.US_ASCII))
             update(chunkData)
         }.value
-        // empalme chunk: length(4) + type(4) + data + crc(4)
+        // 拼接 chunk: length(4) + type(4) + data + crc(4)
         val chunk = ByteArray(8 + chunkData.size + 4)
         writeUInt32BE(chunk, 0, chunkData.size.toLong())
         "tEXt".toByteArray(Charsets.US_ASCII).copyInto(chunk, 4)
         chunkData.copyInto(chunk, 8)
         writeUInt32BE(chunk, 8 + chunkData.size, crc)
-        // El primer trozo debe ser IHDR; Lea su longitud para determinar la posición final.
+        // 第一个 chunk 必须是 IHDR; 读其长度确定结束位置
         val sigEnd = PNG_SIGNATURE.size
         if (sigEnd + 8 > bytes.size) return bytes
         val ihdrType = String(bytes, sigEnd + 4, 4, Charsets.US_ASCII)
-        if (ihdrType != "IHDR") return bytes // anormal PNG
+        if (ihdrType != "IHDR") return bytes // 异常 PNG
         val ihdrLen = readUInt32BE(bytes, sigEnd).toInt()
         val ihdrEnd = sigEnd + 8 + ihdrLen + 4 // length + type + data + crc
         if (ihdrEnd > bytes.size) return bytes
@@ -243,7 +243,7 @@ internal object PngChunkUtil {
         return before + chunk + after
     }
 
-    // ── Herramientas de orden de bytes ──
+    // ── 字节序工具 ──
 
     private fun readUInt32BE(bytes: ByteArray, offset: Int): Long = ((bytes[offset].toLong() and 0xFF) shl 24) or
         ((bytes[offset + 1].toLong() and 0xFF) shl 16) or

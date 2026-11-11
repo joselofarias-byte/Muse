@@ -22,11 +22,11 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 
 /**
- * Una instantánea del color del tema Material utilizado por la ventana flotante del sistema.
+ * 系统悬浮窗使用的 Material 主题颜色快照。
  *
- * La ventana flotante no está en el árbol de redacción.,Por lo tanto no se puede leer directamente. [androidx.compose.material3.MaterialTheme].
- * Aquí reutilizamos la configuración del tema de MuseTheme y la lógica de generación de ColorScheme.,Convertir colores a los utilizados por la Vista nativa
- * ARGB Int,Garantice la coherencia visual en temas de color dinámicos, personalizados, preestablecidos y en blanco y negro.
+ * 悬浮窗不在 Compose 树内,因此不能直接读取 [androidx.compose.material3.MaterialTheme]。
+ * 这里复用 MuseTheme 的主题设置和 ColorScheme 生成逻辑,把颜色转换成原生 View 使用的
+ * ARGB Int,保证黑白、预设、自定义和动态取色主题的视觉一致。
  */
 internal data class QuickCaptureThemeColors(
     val primary: Int,
@@ -38,7 +38,7 @@ internal data class QuickCaptureThemeColors(
     val outline: Int,
 ) {
     companion object {
-        /** Establece el color mínimo disponible cuando la lectura aún no se ha completado,Manténgase legible mediante el modo claro y oscuro del sistema. */
+        /** 设置读取尚未完成时的最小可用颜色,按系统明暗模式保持可读。 */
         fun fallback(context: Context): QuickCaptureThemeColors {
             val dark = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
                 Configuration.UI_MODE_NIGHT_YES
@@ -59,7 +59,7 @@ private data class ThemeInputs(
 )
 
 /**
- * Monitoreo y [MuseTheme] Misma configuración de apariencia,Se utiliza para aplicar aspectos en tiempo real a ventanas flotantes nativas en servicios.
+ * 监听与 [MuseTheme] 相同的外观设置,用于服务中的原生悬浮窗实时换肤。
  */
 internal fun observeQuickCaptureThemeColors(context: Context): Flow<QuickCaptureThemeColors> {
     val appContext = context.applicationContext
@@ -99,7 +99,7 @@ private fun resolveQuickCaptureThemeColors(context: Context, inputs: ThemeInputs
         "dark" -> true
         else -> systemDark
     }
-    // v1.0.92: El tema independiente del modo oscuro ha estado desconectado — Utilice uniformemente la versión oscura del tema claro.
+    // v1.0.92: 深色模式独立主题已下线 — 统一使用亮色主题的暗色版
     val resolvedThemeId = inputs.themeId
     val scheme = when {
         inputs.dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {

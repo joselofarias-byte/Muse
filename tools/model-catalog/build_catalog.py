@@ -1,30 +1,30 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Generar el manifiesto del modelo propio de Muse (ModelCatalog formato).
+"""生成 Muse 自己的模型清单（ModelCatalog 格式）。
 
-## ¿Por qué guardarlo usted mismo?
+## 为什么自己攒
 
-Anteriormente, esta lista era producto de otras: copie HANA en su totalidad o espere actualizaciones externas.
-Cada lado solo cubre la mitad de los hechos. —— HANA Sepa "en qué dialecto se llama esta herramienta y cuáles son los resultados",
-models.dev Sepa "cuán largo es el contexto, cuál es el resultado máximo y si comer la imagen o no".
-Hay agujeros cuando lo miras por separado, pero está completo cuando lo juntas.
+之前这份清单是别人的产物：要么整份抄 HANA，要么等外部更新。
+两边各只覆盖一半事实 —— HANA 知道「这家的工具调用是什么方言、结果怎么回」，
+models.dev 知道「上下文多长、最大输出多少、吃不吃图」。
+分开看都有洞，合起来才完整。
 
-## El papel de los datos bidireccionales
+## 两路数据的角色
 
-- **esqueleto**:HANA de proveedores. Ese es el conjunto de proveedores que Muse realmente admite.
-  Solo viene con toolUse.dialect(openai / anthropic / gemini diferencia).
-- **suplemento**:models.dev de limit / modalities / tool_call / reasoning.
+- **骨架**：HANA 的 providers。那是 Muse 实际支持的厂商集合，
+  也只有它带 toolUse.dialect（openai / anthropic / gemini 的差异）。
+- **补充**：models.dev 的 limit / modalities / tool_call / reasoning。
 
-Prioridad de campo:HANA La entrada misma > HANA fallbacks > models.dev este canal > models.dev A través de canales.
-Motivo: cuanto más cerca esté del hecho "verificado en nuestra ruta de llamada".
+字段优先级：HANA 条目本身 > HANA fallbacks > models.dev 本渠道 > models.dev 跨渠道。
+理由：越靠前越贴近「在我们这套调用路径上验证过的」事实。
 
-## Formato de salida
+## 输出格式
 
-con `io.zer0.ai.core.ModelCatalog` Alineación:
+与 `io.zer0.ai.core.ModelCatalog` 对齐：
     { schemaVersion, publishedAt, providers: { pid: { mid: entry } } }
-entry Campos:name / context / maxOutput / image / reasoning / toolUse / thinkingLevels
+entry 字段：name / context / maxOutput / image / reasoning / toolUse / thinkingLevels
 
-## Uso
+## 用法
 
     python tools/model-catalog/build_catalog.py \\
         --hana  /path/to/model-catalog.v2.json \\
@@ -42,8 +42,8 @@ from datetime import datetime, timezone
 
 SCHEMA_VERSION = 1
 
-# HANA de provider id → models.dev clave del proveedor.
-# Acepte únicamente aquellos que se puedan confirmar: las discrepancias son más difíciles de detectar que las faltantes, y aquellos que no se pueden confirmar preferirían dejarse en blanco y utilizar solo datos de HANA.
+# HANA 的 provider id → models.dev 的 provider key。
+# 只收能确认的：错配比缺失更难发现，确认不了的宁可留空只用 HANA 数据。
 PROVIDER_ALIAS = {
     "dashscope": "alibaba",
     "dashscope-coding": "alibaba-coding-plan",
@@ -73,12 +73,12 @@ def pick(*values):
 
 
 def bare_id(model_id: str) -> str:
-    """Elimine el prefijo del agregador y `:free` Tales sufijos."""
+    """去掉聚合商前缀与 `:free` 之类后缀。"""
     return model_id.split("/")[-1].split(":")[0]
 
 
 def build_dev_index(models: dict) -> dict[str, dict]:
-    """Múltiples índices dentro de un canal: nombre original / identificación canónica / nombre desnudo."""
+    """一家渠道内的多路索引：原名 / canonical id / 裸名。"""
     index: dict[str, dict] = {}
     for mid, model in models.items():
         if not isinstance(model, dict):
@@ -99,10 +99,10 @@ def lookup(index: dict, model_id: str) -> dict:
 
 
 def build_global_limits(dev: dict) -> dict[str, dict]:
-    """Limite la indexación entre canales.
+    """跨渠道的 limit 索引。
 
-    La salida máxima es un atributo de modelo, no un atributo de canal:openrouter Las entradas generalmente no tienen salida.
-    Pero el mismo modelo está disponible en la entrada del canal oficial. Cuando este canal no encuentra el valor, es más efectivo utilizar los valores de otras personas que dejarlos en blanco.
+    最大输出是模型属性，不是渠道属性：openrouter 条目普遍没有 output，
+    但同款模型在官方渠道条目里有。本渠道查不到时用别家的值，比留空有用。
     """
     index: dict[str, dict] = {}
     for provider in dev.values():
@@ -140,7 +140,7 @@ def build_entry(model_id: str, hana_model: dict, fallbacks: dict, dev_index: dic
     fb = fallbacks.get(model_id) or {}
     dev_limit = dev_model.get("limit") or {}
 
-    entry: dict = dict(hana_model)  # Primero, mantenga las entradas de HANA como están, incluidos campos como thinkLevelMap que no hemos modelado.
+    entry: dict = dict(hana_model)  # 先原样保留 HANA 条目，含 thinkingLevelMap 这类我们没建模的字段
     name = pick(hana_model.get("name"), dev_model.get("name"), model_id)
     if name:
         entry["name"] = name
@@ -191,7 +191,7 @@ def main() -> int:
     ap.add_argument("--hana", required=True)
     ap.add_argument("--modelsdev", required=True)
     ap.add_argument("--out", required=True)
-    ap.add_argument("--published-at", default="", help="Anular publicado en; predeterminado a la hora actual")
+    ap.add_argument("--published-at", default="", help="覆盖 publishedAt；默认取当前时间")
     args = ap.parse_args()
 
     hana = load(pathlib.Path(args.hana))
@@ -221,10 +221,10 @@ def main() -> int:
     with_ctx = sum(1 for v in providers.values() for e in v.values() if e.get("context"))
     with_out = sum(1 for v in providers.values() for e in v.values() if e.get("maxOutput"))
     with_tools = sum(1 for v in providers.values() for e in v.values() if e.get("toolUse"))
-    print(f"generar {out}")
-    print(f"  canal {len(providers)} Inicio / Modelo {total} un")
-    print(f"  contexto {with_ctx} / salida máxima {with_out} / Especificaciones de la herramienta {with_tools}")
-    print(f"  tamaño de archivo {out.stat().st_size // 1024} KB")
+    print(f"生成 {out}")
+    print(f"  渠道 {len(providers)} 家 / 模型 {total} 个")
+    print(f"  上下文 {with_ctx} / 最大输出 {with_out} / 工具规格 {with_tools}")
+    print(f"  文件大小 {out.stat().st_size // 1024} KB")
     return 0
 
 

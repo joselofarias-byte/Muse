@@ -7,7 +7,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * R-TEST-20: Prueba de análisis del comando de barra diagonal.
+ * R-TEST-20: 斜杠命令解析测试。
  */
 class SlashCommandRegistryTest {
 

@@ -101,6 +101,7 @@ import io.zer0.muse.ui.theme.MusePaddings
 import io.zer0.muse.ui.theme.MuseShapes
 import io.zer0.muse.ui.theme.assistantBubble
 import io.zer0.muse.ui.theme.semiLarge
+import io.zer0.muse.ui.theme.titleMediumStrong
 import io.zer0.muse.util.ShareIntentHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -111,42 +112,42 @@ import kotlinx.coroutines.withContext
 import org.koin.androidx.compose.koinViewModel
 
 /**
- * Página de detalles del chat grupal — Flujo de mensajes + campo de entrada + respuesta de rotación de agentes.
+ * 群聊详情页 — 消息流 + 输入栏 + Agent 轮转回复。
  *
- * diseño(warm-paper estilo):
- *  - Scaffold:TopAppBar(Nombre del chat grupal + regresar + botón de lista de miembros)+ abajo InputBar
- *  - medio:LazyColumn flujo de mensajes,Distinguir entre mensajes de usuario/asistente
- *  - assistant noticias:Izquierda + avatar + senderName
- *  - user noticias:lado derecho
- *  - Agent Mostrado durante la respuesta"pensando..."estado de espera
- *  - El flujo de mensajes se desplaza automáticamente hacia la parte inferior
+ * 设计(warm-paper 风格):
+ *  - Scaffold:TopAppBar(群聊名 + 返回 + 成员列表按钮)+ 底部 InputBar
+ *  - 中间:LazyColumn 消息流,区分 user / assistant 消息
+ *  - assistant 消息:左侧 + 头像 + senderName
+ *  - user 消息:右侧
+ *  - Agent 回复期间显示"正在思考..."等待状态
+ *  - 消息流自动滚动到底部
  *
- * @param chatId chat grupal id
- * @param onBack devolución de llamada
- * @param viewModel chat grupal ViewModel
+ * @param chatId 群聊 id
+ * @param onBack 返回回调
+ * @param viewModel 群聊 ViewModel
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun GroupChatDetailScreen(
     chatId: String,
     onBack: () -> Unit,
-    /** HTML/SVG Devolución de llamada de vista previa de pantalla completa de bloque de código(El parámetro es el código fuente HTML completo.). */
+    /** HTML/SVG 代码块全屏预览回调(参数为完整 HTML 源码)。 */
     onHtmlPreview: (String) -> Unit = {},
-    /** B0-07: Abra la página de administración de plantillas de Word. */
+    /** B0-07: 打开提示词模板管理页。 */
     onOpenPromptTemplateManager: () -> Unit = {},
-    /** v1.0.72: Proveedor de asistente de edición(Ir a la página de configuración de modelo y servicio). */
+    /** v1.0.72: 编辑助手供应商(跳模型与服务设置页)。 */
     onEditAssistantProvider: (String) -> Unit = {},
     viewModel: GroupChatViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    // v1.45: Inicializado con la posición de desplazamiento almacenada en caché en ViewModel LazyListState,Cortar páginas/Restaurar ubicación después del fondo
+    // v1.45: 用 ViewModel 中缓存的滚动位置初始化 LazyListState,切页/后台后恢复位置
     val listState = rememberLazyListState(
         initialFirstVisibleItemIndex = state.listFirstVisibleItemIndex,
         initialFirstVisibleItemScrollOffset = state.listFirstVisibleItemScrollOffset,
     )
-    // v1.45: Se almacena en caché sincrónicamente cuando cambia la posición de desplazamiento ViewModel
-    // v1.100: agregar distinctUntilChanged + sample(100ms) desaceleración,Evite la alta frecuencia al desplazarse
-    // Escribir en el estado ViewModel provoca la reorganización de la página completa(desplazarse → escribir state → Reorganización → Bucle implícito de remedición)
+    // v1.45: 滚动位置变化时同步缓存到 ViewModel
+    // v1.100: 加 distinctUntilChanged + sample(100ms) 降频,避免滚动时高频
+    // 写入 ViewModel state 导致整页重组(滚动 → 写 state → 重组 → 重测量的隐性循环)
     LaunchedEffect(listState) {
         snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
             .sample(100L)
@@ -155,54 +156,54 @@ fun GroupChatDetailScreen(
                 viewModel.onListScrollPositionChanged(index, offset)
             }
     }
-    // v1.0.74 fix (Auditoría inicial 1.4): consumo jumpTargetId — Después de hacer clic en los resultados de la búsqueda, desplácese hasta el mensaje de destino y resáltelo brevemente.
-    // Anteriormente, jumpTargetId solo estaba definido en ViewModel.,UI Sin seguimiento,La función de salto de búsqueda está desactivada silenciosamente.
+    // v1.0.74 fix (前端审计 1.4): 消费 jumpTargetId — 搜索结果点击后滚动到目标消息并短暂高亮。
+    // 此前 jumpTargetId 仅在 ViewModel 定义,UI 无任何监听,搜索跳转功能静默失效。
     var highlightedJumpMessage by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(viewModel.jumpTargetId) {
         val targetId = viewModel.jumpTargetId.value ?: return@LaunchedEffect
-        // Desplazamiento inicial del área de mensajes: Load_more_indicator superior cuando esté presente index 0
+        // 消息区起始偏移: 顶部 load_more_indicator 存在时占 index 0
         val msgStart = if (state.isLoadingMore) 1 else 0
         val idx = state.currentMessages.indexOfFirst { it.id == targetId }
         if (idx >= 0) {
             listState.animateScrollToItem(msgStart + idx)
             highlightedJumpMessage = targetId
-            // Resalte 2,5 segundos y luego borre
+            // 高亮 2.5s 后清除
             delay(2500)
             if (highlightedJumpMessage == targetId) highlightedJumpMessage = null
         }
     }
     var showMembersDialog by rememberSaveable { mutableStateOf(false) }
     var showToolSheet by rememberSaveable { mutableStateOf(false) }
-    // v2.x: Panel de operación de conferencia(votar/Resumen/@/miembro/contexto/Editar) — Entrada nivel 1 promocionada desde el menú plus
+    // v2.x: 会议操作面板(表决/总结/@/成员/上下文/编辑) — 从加号菜单提升的一级入口
     var showMeetingSheet by remember { mutableStateOf(false) }
-    // v1.97: Cuadro de diálogo de edición de chat grupal
+    // v1.97: 群聊编辑对话框
     var showEditDialog by rememberSaveable { mutableStateOf(false) }
-    // v1.0.72: Función de menú de tres puntos
+    // v1.0.72: 三点菜单功能
     var showSearchDialog by rememberSaveable { mutableStateOf(false) }
     var showProviderDialog by rememberSaveable { mutableStateOf(false) }
     var providerTargetAssistantId by remember { mutableStateOf<String?>(null) }
-    // v1.77: Mensaje pulsación larga menú + confirmación de eliminación
+    // v1.77: 消息长按菜单 + 删除确认
     var messageMenuTarget by remember { mutableStateOf<GroupChatMessageEntity?>(null) }
     var messageMenuBounds by remember { mutableStateOf(Rect.Zero) }
     var messageMenuPointInWindow by remember { mutableStateOf<Offset?>(null) }
     var deleteMessageTarget by remember { mutableStateOf<GroupChatMessageEntity?>(null) }
-    // v1.x: Confirmación de eliminación de lotes de selección múltiple
+    // v1.x: 多选批量删除确认
     var deleteSelectedTarget by remember { mutableStateOf(false) }
-    // v2.x: Estado del cuadro de diálogo Respuesta/Susurro/Voto/Resumen de cotización
+    // v2.x: 引用回复 / 悄悄话 / 表决 / 总结 对话框状态
     var replyToMessage by remember { mutableStateOf<GroupChatMessageEntity?>(null) }
     var whisperTarget by remember { mutableStateOf<GroupChatMessageEntity?>(null) }
     var showVoteDialog by remember { mutableStateOf(false) }
     var showSummaryDialog by remember { mutableStateOf(false) }
-    // v2.x: Gestión del contexto del chat grupal sheet(Documentos compartidos en grupo + contexto exclusivo de IA)
+    // v2.x: 群聊上下文管理 sheet(群共享文档 + AI 专属上下文)
     var showContextSheet by remember { mutableStateOf(false) }
-    // v2.x: Plegado redondo — Conjunto ampliado de puntos de partida de secciones asistentes consecutivas.(Contraer la parte intermedia de una ronda de discusión larga para mantenerla legible.)
+    // v2.x: 轮次折叠 — 已展开的连续助理段起点集合(长讨论轮中段收起保持可读)
     var expandedRoundStarts by remember { mutableStateOf(setOf<Int>()) }
     val keyboard = LocalSoftwareKeyboardController.current
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val haptic = LocalHapticFeedback.current
-    // Phase 4: Las burbujas de chat grupal comparten la misma apariencia de anfitrión;null = Apariencia del chat grupal existente(El análisis y el respaldo están dentro del componente de burbuja.).
-    // La máscara del complemento tiene el mismo origen que DanChat.:Vuelva a comprobar al leer,Complemento deshabilitado/Volver al valor predeterminado integrado después de la desinstalación.
+    // Phase 4: 群聊气泡共用同一份宿主皮肤;null = 既有群聊外观(解析与回退在气泡组件内)。
+    // 插件皮肤与单聊同源:读取时重新校验,插件禁用/卸载后回退内置 default。
     val pluginSkinSource: io.zer0.muse.ui.theme.PluginSkinSource =
         org.koin.compose.koinInject()
     val bubbleSkinStore = remember(context, pluginSkinSource) {
@@ -210,7 +211,7 @@ fun GroupChatDetailScreen(
     }
     val bubbleSkin by bubbleSkinStore.selectedSkinFlow.collectAsStateWithLifecycle(initialValue = null)
 
-    // Selector de imágenes:Las imágenes seleccionadas se agregan a la lista de envío
+    // 图片选择器:选中的图片加入待发送列表
     val imageLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent(),
     ) { uri: Uri? ->
@@ -222,15 +223,15 @@ fun GroupChatDetailScreen(
                     val bytes = readImageBytes(context, uri)
                     val boundsOptions = BitmapFactory.Options().apply { inJustDecodeBounds = true }
                     BitmapFactory.decodeByteArray(bytes, 0, bytes.size, boundsOptions)
-                    if (boundsOptions.outWidth <= 0 || boundsOptions.outHeight <= 0) {
-                        throw IllegalStateException("No se puede analizar el tamaño de la imagen")
+                    check(boundsOptions.outWidth > 0 && boundsOptions.outHeight > 0) {
+                        "No se pudieron determinar las dimensiones de la imagen"
                     }
                     val maxDim = maxOf(boundsOptions.outWidth, boundsOptions.outHeight)
                     var sampleSize = 1
                     while (maxDim / sampleSize > 1024) sampleSize *= 2
                     val decodeOptions = BitmapFactory.Options().apply { inSampleSize = sampleSize }
                     val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, decodeOptions)
-                        ?: throw IllegalStateException("No se puede decodificar la imagen")
+                        ?: error("No se pudo decodificar la imagen")
                     try {
                         encodeBitmapToBase64(bitmap)
                     } finally {
@@ -240,12 +241,12 @@ fun GroupChatDetailScreen(
                 viewModel.addPendingImage("data:image/jpeg;base64,$dataUri")
             } catch (t: Throwable) {
                 if (t is kotlinx.coroutines.CancellationException) throw t
-                Logger.w("GroupChatDetail", "Falló la lectura de la imagen: ${t.message}", t)
+                Logger.w("GroupChatDetail", "图片读取失败: ${t.message}", t)
             }
         }
     }
 
-    // v1.0.30: Selector de archivos adjuntos — Guardar archivo como archivo adjunto base64
+    // v1.0.30: 文件附件选择器 — 保存文件为 base64 附件
     val documentLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument(),
     ) { uri: Uri? ->
@@ -256,13 +257,13 @@ fun GroupChatDetailScreen(
                 val (bytes, mimeType, fileName) = withContext(Dispatchers.IO) {
                     val stream = context.contentResolver.openInputStream(uri)
                         ?: context.contentResolver.openFileDescriptor(uri, "r")?.let { java.io.FileInputStream(it.fileDescriptor) }
-                        ?: throw IllegalStateException("No se puede leer el archivo")
+                        ?: error("No se pudo leer el archivo")
                     val data = stream.use { it.readBytes() }
                     Triple(data, context.contentResolver.getType(uri) ?: "application/octet-stream", uri.lastPathSegment ?: "Archivo")
                 }
                 if (bytes.size > 10 * 1024 * 1024) {
-                    // P2-10: Anteriormente, los archivos de gran tamaño se descartaban silenciosamente,El usuario no lo sabe;Cambiar a mensaje explícito
-                    Logger.w("GroupChatDetail", "El archivo supera el límite de 10 MB,Rechazado: $fileName")
+                    // P2-10: 超限文件此前静默丢弃,用户无感知;改为明确提示
+                    Logger.w("GroupChatDetail", "文件超出 10MB 上限,已拒绝: $fileName")
                     io.zer0.muse.ui.common.feedback.MuseToast.show(
                         context.getString(R.string.err_group_chat_attachment_too_large),
                     )
@@ -272,8 +273,8 @@ fun GroupChatDetailScreen(
                 viewModel.addPendingFileAttachment(FileAttachment(name = fileName, mimeType = mimeType, base64 = base64))
             } catch (t: Throwable) {
                 if (t is kotlinx.coroutines.CancellationException) throw t
-                Logger.w("GroupChatDetail", "Falló la lectura del archivo: ${t.message}", t)
-                // P2-10: Los fallos de lectura ya no solo registran,Dar a los usuarios sugerencias visibles
+                Logger.w("GroupChatDetail", "文件读取失败: ${t.message}", t)
+                // P2-10: 读失败不再仅日志,给用户可见提示
                 io.zer0.muse.ui.common.feedback.MuseToast.show(
                     context.getString(R.string.err_group_chat_attachment_read_failed),
                 )
@@ -281,12 +282,12 @@ fun GroupChatDetailScreen(
         }
     }
 
-    // v1.112 (C2): Prompt Estado de la hoja de selección de plantilla
+    // v1.112 (C2): Prompt 模板选择 sheet 状态
     var showPromptTemplateSheet by remember { mutableStateOf(false) }
     val settings: io.zer0.muse.data.SettingsRepository = org.koin.compose.koinInject()
     val promptTemplates by settings.promptTemplatesFlow.collectAsStateWithLifecycle(initialValue = emptyList())
 
-    // v1.0.72: Área multimedia del menú Plus — álbum de fotos/Permiso de cámara + toma de fotos + clic en miniatura del álbum
+    // v1.0.72: 加号菜单媒体区 — 相册/相机权限 + 拍照 + 相册缩略图点击
     val galleryPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
         android.Manifest.permission.READ_MEDIA_IMAGES
     } else {
@@ -302,10 +303,10 @@ fun GroupChatDetailScreen(
         ActivityResultContracts.RequestPermission(),
     ) { granted -> hasGalleryPermission = granted }
 
-    // tomar fotos:Cámara del sistema(TakePicture No se requiere permiso de la CÁMARA,FileProvider guardar)
+    // 拍照:系统相机(TakePicture 不需要 CAMERA 权限,FileProvider 保存)
     var pendingCameraUri by remember { mutableStateOf<Uri?>(null) }
 
-    // Miniatura del álbum/Resultados de fotos → Compresión base64 → Añadir para enviar
+    // 相册缩略图/拍照结果 → 压缩 base64 → 加入待发送
     fun loadUriToPending(uri: Uri) {
         scope.launch {
             try {
@@ -313,15 +314,15 @@ fun GroupChatDetailScreen(
                     val bytes = readImageBytes(context, uri)
                     val boundsOptions = BitmapFactory.Options().apply { inJustDecodeBounds = true }
                     BitmapFactory.decodeByteArray(bytes, 0, bytes.size, boundsOptions)
-                    if (boundsOptions.outWidth <= 0 || boundsOptions.outHeight <= 0) {
-                        throw IllegalStateException("No se puede analizar el tamaño de la imagen")
+                    check(boundsOptions.outWidth > 0 && boundsOptions.outHeight > 0) {
+                        "No se pudieron determinar las dimensiones de la imagen"
                     }
                     val maxDim = maxOf(boundsOptions.outWidth, boundsOptions.outHeight)
                     var sampleSize = 1
                     while (maxDim / sampleSize > 1024) sampleSize *= 2
                     val decodeOptions = BitmapFactory.Options().apply { inSampleSize = sampleSize }
                     val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, decodeOptions)
-                        ?: throw IllegalStateException("No se puede decodificar la imagen")
+                        ?: error("No se pudo decodificar la imagen")
                     try {
                         encodeBitmapToBase64(bitmap)
                     } finally {
@@ -331,7 +332,7 @@ fun GroupChatDetailScreen(
                 viewModel.addPendingImage("data:image/jpeg;base64,$dataUri")
             } catch (t: Throwable) {
                 if (t is kotlinx.coroutines.CancellationException) throw t
-                Logger.w("GroupChatDetail", "Falló la lectura de la imagen: ${t.message}", t)
+                Logger.w("GroupChatDetail", "图片读取失败: ${t.message}", t)
             }
         }
     }
@@ -346,7 +347,7 @@ fun GroupChatDetailScreen(
         pendingCameraUri = null
     }
 
-    // Entrada de foto:Cree FileProvider uri y ajuste la cámara del sistema
+    // 拍照入口:创建 FileProvider uri 并调系统相机
     fun startCameraCapture() {
         val file = java.io.File.createTempFile("muse_group_capture_", ".jpg", context.cacheDir)
         val uri = androidx.core.content.FileProvider.getUriForFile(
@@ -358,17 +359,17 @@ fun GroupChatDetailScreen(
         takePictureLauncher.launch(uri)
     }
 
-    // Selecciona el chat grupal al ingresar a la página(Cargar flujo de mensajes)
+    // 进入页面时选中该群聊(加载消息流)
     LaunchedEffect(chatId) {
         viewModel.selectChat(chatId)
     }
 
-    // M7: Regresar automáticamente a la página de lista cuando se elimina un chat grupal
+    // M7: 群聊被删除时自动返回列表页
     LaunchedEffect(state.chatDeleted) {
         if (state.chatDeleted) onBack()
     }
 
-    // v1.126: Borrar mensajes de error automáticamente(Restablecer después de mostrar durante 3 segundos)
+    // v1.126: 错误提示自动清除(显示 3 秒后重置)
     LaunchedEffect(state.errorMessage) {
         if (state.errorMessage != null) {
             kotlinx.coroutines.delay(3000)
@@ -376,28 +377,28 @@ fun GroupChatDetailScreen(
         }
     }
 
-    // Desplácese automáticamente hasta el final cuando cambie la lista de mensajes
-    // H-GC1 Reparación: AnimateScrollToItem incondicional original hasta el final,Los usuarios se verán obligados a retroceder al ver los mensajes históricos.
-    // Cambiar a:Sólo si listState ya está cerca del final(Dentro de los últimos 2 artículos)Desplazarse automáticamente cuando,
-    // No hay interrupción cuando el usuario desliza activamente hacia arriba para ver el historial.
-    // v1.53-GC: Hay un elemento más al principio de la lista."cargar más"indicador item,El desplazamiento automático hacia abajo todavía se basa en el mensaje lastIndex.
-    // (Indicador de pensamiento detrás del mensaje,no afecta"Llegó al fondo"juez).
+    // 消息列表变化时自动滚动到底部
+    // H-GC1 修复: 原先无条件 animateScrollToItem 到底部,用户查看历史消息时会被强制拉回。
+    // 改为:仅当 listState 已在底部附近(最后 2 个 item 内)时才自动滚动,
+    // 用户主动上滑查看历史时不打断。
+    // v1.53-GC: 列表头部多了一个"加载更多"指示器 item,自动滚到底部仍以消息 lastIndex 为准
+    // (思考指示器在消息之后,不影响"已到底部"判断)。
     LaunchedEffect(state.currentMessages.size, state.isAgentResponding, state.streamingContent?.length) {
         if (state.currentMessages.isEmpty()) return@LaunchedEffect
         val lastIndex = state.currentMessages.lastIndex
         val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
         val isNearBottom = lastVisible >= lastIndex - 2 || lastVisible < 0
         if (isNearBottom) {
-            // v1.0.74 fix (Auditoría inicial 1.6): streamingContent Después de agregar la longitud a la clave,
-            // La salida de streaming también activará el desplazamiento cuando crezca token por token,Los usuarios pueden ver el contenido que se genera.
+            // v1.0.74 fix (前端审计 1.6): streamingContent 长度加入 key 后,
+            // 流式输出逐 token 增长时也会触发滚动,用户能看到生成中的内容。
             listState.animateScrollToItem(lastIndex)
         }
     }
 
-    // v1.53-GC: Desliza hacia arriba para cargar más noticias históricas — Llegar al principio de la lista(firstVisibleItemIndex==0)y se activa cuando se cumplen las condiciones.
-    // Configuración de ViewModel después de activar lastHistoryLoadCount,El LaunchedEffect a continuación ajusta la posición de desplazamiento en consecuencia,
-    // Omitir la cantidad de elementos recién insertados,Hacer que firstVisibleItemIndex se convierta en lastHistoryLoadCount(>0),
-    // evitando así repetidos disparos en la parte superior(El usuario debe deslizar activamente hacia arriba nuevamente para continuar con la carga.).
+    // v1.53-GC: 上滑加载更多历史消息 — 到达列表顶部(firstVisibleItemIndex==0)且满足条件时触发。
+    // 触发后 ViewModel 设置 lastHistoryLoadCount,下面的 LaunchedEffect 据此调整滚动位置,
+    // 跳过新插入的条数,使 firstVisibleItemIndex 变为 lastHistoryLoadCount(>0),
+    // 从而避免在顶部重复触发(用户需再次主动上滑才继续加载)。
     var savedScrollOffset by remember { mutableStateOf(0) }
     val loadMoreTrigger by remember {
         derivedStateOf {
@@ -410,13 +411,13 @@ fun GroupChatDetailScreen(
     }
     LaunchedEffect(loadMoreTrigger) {
         if (loadMoreTrigger) {
-            // registro actual offset,Mantenga la posición visual al saltar a una nueva ubicación después de completar la carga
+            // 记录当前 offset,加载完成后跳到新位置时保持视觉位置
             savedScrollOffset = listState.firstVisibleItemScrollOffset
             viewModel.loadMoreHistory()
         }
     }
-    // v1.53-GC: Ajuste la posición de desplazamiento después de que se complete la carga,Evita que la posición visual salte.
-    // (El mensaje que estaba en la parte superior ahora está en lastHistoryLoadCount)
+    // v1.53-GC: 加载完成后调整滚动位置,保持视觉位置不跳动
+    // (原来在顶部的消息现在在 lastHistoryLoadCount 位置)
     LaunchedEffect(state.lastHistoryLoadCount) {
         if (state.lastHistoryLoadCount > 0) {
             listState.scrollToItem(state.lastHistoryLoadCount, savedScrollOffset)
@@ -427,15 +428,15 @@ fun GroupChatDetailScreen(
 
     val chatName = state.currentChat?.name ?: stringResource(R.string.groupchat_default_name)
 
-    // v1.0.74: Fondo personalizado del chat grupal(Compartir configuración con fondo de chat)
+    // v1.0.74: 群聊自定义背景(与聊天背景共用设置)
     val chatBackground by org.koin.compose.koinInject<io.zer0.muse.data.SettingsRepository>()
         .chatBackgroundFlow
         .collectAsState(initial = null)
 
     Box(modifier = Modifier.fillMaxSize()) {
-        // v2.6: Capa de fondo de vidrio a nivel de página —— Isomórfico con chat único.
-        // clave:backdrop La capa solo cubre el fondo.,Contenido como nodo hermano,evitar
-        // “toma de vidrio backdrop → backdrop Contiene vidrio”recursión de renderizado(Causará el desbordamiento de la pila de RenderThread).
+        // v2.6: 页面级玻璃背景层 —— 与单聊同构。
+        // 关键:backdrop 层只包背景本身,内容作兄弟节点,避免
+        // “玻璃取 backdrop → backdrop 含玻璃”的渲染递归(会导致 RenderThread 栈溢出)。
         val glassConfig = io.zer0.muse.ui.theme.LocalLiquidGlass.current
         val glassActive = glassConfig.enabled && io.zer0.muse.ui.theme.isRealGlassSupported()
         val pageLayerBackdrop =
@@ -470,7 +471,8 @@ fun GroupChatDetailScreen(
             if (!chatBackground.isNullOrBlank()) {
                 io.zer0.muse.ui.SmartImage(
                     model = chatBackground,
-                    contentDescription = stringResource(R.string.groupchat_bg_cd), // Correcciones en la interfaz (i18n-1)
+                    // 前端修复 (i18n-1)
+                    contentDescription = stringResource(R.string.groupchat_bg_cd),
                     contentScale = androidx.compose.ui.layout.ContentScale.Crop,
                     modifier = Modifier.fillMaxSize(),
                 )
@@ -484,13 +486,13 @@ fun GroupChatDetailScreen(
             io.zer0.muse.ui.theme.LocalGlassIsBackgroundDark provides backgroundIsDark,
         ) {
             MusePageScaffold(
-                // v1.0.52: La barra superior y el área de entrada inferior son respectivamente responsables de la inserción de la barra del sistema, de modo que el contenido de la página no se repita.
+                // v1.0.52: 顶栏和底部输入区分别负责系统栏 inset，页面内容不重复避让。
                 topBar = {
-                    // Menú de tres puntos: Buscar/Editar chat grupal/Editar proveedores asistentes
+                    // 三点菜单: 搜索 / 编辑群聊 / 编辑助手供应商
                     Box(modifier = Modifier.fillMaxWidth()) {
-                        // Fondo degradado muy claro para la barra superior de íconos desnudos:noticias(O personalizar el fondo del chat)rodará debajo de la barra superior,
-                        // Sin él, el icono y el nombre del grupo se superpondrían en el contenido.
-                        // v2.5.0: Sincronización con chat único — Fuente de vidrio global + isla de vidrio independiente.
+                        // 裸图标顶栏的极浅渐变底:消息(或自定义聊天背景)会从顶栏下面滚过,
+                        // 没有它图标与群名会压在内容上。
+                        // v2.5.0: 与单聊同步 — 全局玻璃源 + 独立玻璃大岛。
                         ChatTopBarScrim(
                             modifier = Modifier.matchParentSize(),
                             glassActive = io.zer0.muse.ui.theme.LocalLiquidGlass.current.enabled,
@@ -504,13 +506,13 @@ fun GroupChatDetailScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(MusePaddings.contentGap),
                         ) {
-                            // isla izquierda:Regresar(Componentes circulares compartidos,Chatea con Dan/Barra superior de la página de inicio del mismo tamaño)
+                            // 左岛:返回(共享圆形组件,与单聊/首页顶栏同尺寸)
                             MuseTopBarIconButton(
                                 icon = MuseIcons.arrowLeft,
                                 contentDescription = stringResource(R.string.groupchat_back),
                                 onClick = onBack,
                             )
-                            // Nakajima:Nombre del chat grupal(La altura es la misma que la de Danchaozhongdao.:48dp,Los botones redondos izquierdo y derecho 40dp abren la capa)
+                            // 中岛:群聊名(高度与单聊中岛一致:48dp,左右圆按钮 40dp 拉开层级)
                             Surface(
                                 shape = CircleShape,
                                 color = MaterialTheme.colorScheme.surfaceVariant,
@@ -522,14 +524,14 @@ fun GroupChatDetailScreen(
                                 ) {
                                     Text(
                                         text = chatName,
-                                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                        style = MaterialTheme.typography.titleMediumStrong,
                                         color = MaterialTheme.colorScheme.onSurface,
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis,
                                     )
                                 }
                             }
-                            // isla derecha:Menú de tres puntos(Componentes circulares compartidos)
+                            // 右岛:三点菜单(共享圆形组件)
                             var showTopMenu by rememberSaveable { mutableStateOf(false) }
                             Box(
                                 modifier = Modifier.size(MuseIconSizes.touchTarget),
@@ -542,7 +544,7 @@ fun GroupChatDetailScreen(
                                     tint = if (showTopMenu) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
                                 )
                                 if (showTopMenu) {
-                                    // v1.0.90: Mantenga la capa flotante de tres puntos en la esquina superior derecha (se cambió al panel inferior y se volvió a cambiar según los comentarios).
+                                    // v1.0.90: 保持右上角三点浮层（曾改成底部面板，按反馈改回）。
                                     MuseFloatingActionMenu(
                                         items = listOf(
                                             MuseFloatingActionItem(
@@ -565,7 +567,7 @@ fun GroupChatDetailScreen(
                                             ),
                                             MuseFloatingActionItem(
                                                 key = "provider",
-                                                // UI-FIX: De acuerdo con el menú de chat único, los proveedores utilizan iconos de chips en lugar de flashes.
+                                                // UI-FIX: 与单聊菜单保持一致，供应商用芯片图标而不是闪光。
                                                 icon = MuseIcons.memoryChip,
                                                 label = stringResource(R.string.groupchat_edit_provider),
                                                 onClick = {
@@ -573,7 +575,7 @@ fun GroupChatDetailScreen(
                                                     showProviderDialog = true
                                                 },
                                             ),
-                                            // v2.x: Archivo/Desarchivar
+                                            // v2.x: 归档/取消归档
                                             MuseFloatingActionItem(
                                                 key = "archive",
                                                 icon = MuseIcons.archive,
@@ -608,7 +610,7 @@ fun GroupChatDetailScreen(
                     Column(
                         modifier = Modifier.museBottomBarInsets(),
                     ) {
-                        // A4: Barra de operación por lotes de selección múltiple — Componente unificado ChatSelectionBar compartido con chat único
+                        // A4: 多选批量操作栏 — 与单聊共用 ChatSelectionBar 统一组件
                         if (state.selectedMessageIds.isNotEmpty()) {
                             val selectedText = state.currentMessages
                                 .filter { it.id in state.selectedMessageIds }
@@ -640,10 +642,10 @@ fun GroupChatDetailScreen(
                                     .padding(horizontal = MusePaddings.screen, vertical = 6.dp),
                             )
                         }
-                        // ActivityHub: Barra de estado activa compacta encima del cuadro de entrada,Muestra el chip de estado de cada agente en la rotación actual.
-                        // IDLE El estado lo filtra internamente AgentActivityBar y no se muestra.;Cuando no hay actividad, toda la columna no ocupa espacio.
+                        // ActivityHub: 输入框上方的紧凑活动状态栏,展示当前轮转中各 agent 的状态 chip。
+                        // IDLE 状态被 AgentActivityBar 内部过滤不显示;无活动时整个栏不占空间。
                         AgentActivityBar(activities = state.activities)
-                        // v2.x: Girar la tira de control del director — pausa/continuar/saltar restante(pausa+continuar=Un solo paso adelante,Para después de cada uno)
+                        // v2.x: 轮转导演控制条 — 暂停/继续/跳过剩余(暂停+继续=单步推进,每放一位再停)
                         if (state.isAgentResponding) {
                             Row(
                                 modifier = Modifier
@@ -671,7 +673,7 @@ fun GroupChatDetailScreen(
                                         variant = IosCapsuleButtonVariant.Text,
                                     )
                                 }
-                                // v2.x: Visualización de colas — Los miembros restantes que hablarán en esta ronda.
+                                // v2.x: 队列可视化 — 本轮剩余待发言成员
                                 if (state.upcomingSpeakers.isNotEmpty()) {
                                     Text(
                                         text = stringResource(R.string.groupchat_round_upcoming) + " " +
@@ -682,7 +684,7 @@ fun GroupChatDetailScreen(
                                 }
                             }
                         }
-                        // Vista previa de la línea de imagen que se enviará
+                        // 待发送图片预览行
                         if (state.pendingImages.isNotEmpty()) {
                             PendingImagesRow(
                                 images = state.pendingImages,
@@ -693,9 +695,9 @@ fun GroupChatDetailScreen(
                                     .padding(horizontal = MusePaddings.screen, vertical = 8.dp),
                             )
                         }
-                        // v2.6.7: Vista previa de la línea del archivo adjunto que se enviará
-                        // Anteriormente, pendienteFileAttachments solo participaba en el juicio canSend y la interfaz no se representaba en absoluto.
-                        // Los usuarios no pueden ver ni eliminar (removePendingFileAttachment cero llamadas).
+                        // v2.6.7: 待发送附件预览行
+                        // 之前 pendingFileAttachments 只参与 canSend 判断，界面完全不渲染，
+                        // 用户既看不见也删不掉（removePendingFileAttachment 零调用）。
                         if (state.pendingFileAttachments.isNotEmpty()) {
                             PendingAttachmentsRow(
                                 attachments = state.pendingFileAttachments,
@@ -706,7 +708,7 @@ fun GroupChatDetailScreen(
                                     .padding(horizontal = MusePaddings.screen, vertical = 8.dp),
                             )
                         }
-                        // Analizar miembros del chat grupal(Para el filtrado automático de finalización de @menciones)
+                        // 解析群聊成员(供 @mention 自动补全过滤)
                         val chat = state.currentChat
                         val memberIds = remember(chat) {
                             chat?.let { viewModel.parseMemberIds(it) } ?: emptyList()
@@ -734,7 +736,7 @@ fun GroupChatDetailScreen(
                                 state.pendingImages.isNotEmpty() ||
                                 state.pendingFileAttachments.isNotEmpty(),
                             members = members,
-                            // v2.6.7: Durante la generación, cambie la clave de envío a la tecla de parada (stopGeneration llamada nula antes)
+                            // v2.6.7: 生成中把发送键变停止键（stopGeneration 之前零调用）
                             isGenerating = state.isAgentResponding,
                             onStop = {
                                 MuseHaptics.light(haptic)
@@ -744,7 +746,7 @@ fun GroupChatDetailScreen(
                     }
                 },
             ) { innerPadding ->
-                // v1.126: pancarta de error(superposición sobre el contenido)
+                // v1.126: 错误提示横幅(覆盖在内容上方)
                 val errorMsg = state.errorMessage
                 if (errorMsg != null) {
                     Box(
@@ -768,7 +770,7 @@ fun GroupChatDetailScreen(
                         }
                     }
                 }
-                // v1.77: Estado de inicio de mensaje vacío(El nuevo chat grupal no se muestra en blanco después de ingresar)
+                // v1.77: 空消息引导状态(新群聊进入后不显示空白)
                 if (state.currentMessages.isEmpty() && !state.isAgentResponding) {
                     Box(
                         modifier = Modifier
@@ -787,7 +789,7 @@ fun GroupChatDetailScreen(
                             Text(
                                 text = stringResource(R.string.groupchat_empty_hint),
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.outline,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
                     }
@@ -796,20 +798,20 @@ fun GroupChatDetailScreen(
                         state = listState,
                         modifier = Modifier
                             .fillMaxSize()
-                            // v1.0.72: No pad top — La lista de mensajes se extiende detrás de la isla flotante en la parte superior.(efecto levitante)
+                            // v1.0.72: 不 pad top — 消息列表延伸到顶部悬浮岛后面(悬浮效果)
                             .padding(bottom = innerPadding.calculateBottomPadding()),
                         contentPadding = androidx.compose.foundation.layout.PaddingValues(
                             start = MusePaddings.screen,
                             end = MusePaddings.screen,
-                            // v1.0.72: La cima da paso a tres islas suspendidas.
+                            // v1.0.72: 顶部让位给悬浮三岛
                             top = innerPadding.calculateTopPadding(),
                             bottom = MusePaddings.itemGap,
                         ),
                         verticalArrangement = Arrangement.spacedBy(MusePaddings.itemGap),
                     ) {
-                        // v1.53-GC: Indicador de carga superior al deslizar hacia arriba para cargar más historial(Chat único de referencia HistoryLoadMorePlaceholder).
-                        // isLoadingMore=true inserta esto item(ocupar index 0),Una vez completada la carga(lastHistoryLoadCount>0)
-                        // Ajuste scrollToItem por LaunchedEffect para omitir la cantidad de elementos recién insertados,Mantén la posición visual sin saltar.
+                        // v1.53-GC: 上滑加载更多历史时的顶部加载指示器(参考单聊 HistoryLoadMorePlaceholder)。
+                        // isLoadingMore=true 时插入此 item(占据 index 0),加载完成后(lastHistoryLoadCount>0)
+                        // 由 LaunchedEffect 调 scrollToItem 跳过新插入条数,保持视觉位置不跳。
                         if (state.isLoadingMore) {
                             item(key = "load_more_indicator") {
                                 Row(
@@ -835,19 +837,19 @@ fun GroupChatDetailScreen(
                             items = state.currentMessages,
                             key = { _, it -> it.id },
                         ) { index, message ->
-                            // v2.x: Plegado redondo — segmento asistente continuo ≥4 Cuando la tira no está expandida.,sección media(primero2/fin1afuera)cerrar
+                            // v2.x: 轮次折叠 — 连续助理段 ≥4 条且未展开时,中段(首2/末1之外)收起
                             val collapseSeg = groupCollapseSegment(state.currentMessages, index)
                             if (collapseSeg != null && collapseSeg.second >= 4 && collapseSeg.third &&
                                 collapseSeg.first !in expandedRoundStarts
                             ) {
                                 return@itemsIndexed
                             }
-                            // CHAT-04: Agregar separador de fecha en el chat grupal(lapso de tiempo,Reutilizar la implementación de chat único)
+                            // CHAT-04: 群聊补日期分隔线(跨天时,复用单聊实现)
                             val prevMessage = state.currentMessages.getOrNull(index - 1)
                             if (prevMessage == null || !isSameDay(prevMessage.timestamp, message.timestamp)) {
                                 DateSeparator(timestamp = message.timestamp)
                             }
-                            // v2.x: Contraer información sobre herramientas — Después del segundo párrafo al principio del párrafo, el mensaje se cierra en el párrafo medio.
+                            // v2.x: 折叠提示条 — 段首第 2 条之后提示被收起的中段
                             if (collapseSeg != null && collapseSeg.second >= 4 &&
                                 index == collapseSeg.first + 1 && collapseSeg.first !in expandedRoundStarts
                             ) {
@@ -857,7 +859,7 @@ fun GroupChatDetailScreen(
                                 )
                             }
                             val expandedState = state.messageExpandedStates[message.id]
-                            // v2.x: Tarjeta exclusiva para resumir mensajes. — Copiar/Compartir/Guardar como documento compartido(Cristalización de la discusión)
+                            // v2.x: 总结消息专属卡片 — 复制/分享/存为共享文档(讨论结晶)
                             if (message.messageType == "summary") {
                                 GroupSummaryCard(
                                     message = message,
@@ -874,7 +876,7 @@ fun GroupChatDetailScreen(
                                     },
                                     onSaveAsSharedDoc = { viewModel.saveSummaryAsSharedDoc(message.id) },
                                     onContinue = {
-                                        // v2.x: Continuar implementando — Resumen devuelve el cuadro de entrada,Puede agregar instrucciones o @members para continuar con el progreso.
+                                        // v2.x: 继续落实 — 总结带回输入框,可补充指令或 @成员后继续推进
                                         val body = if (message.body.length > 500) message.body.take(500) + "…" else message.body
                                         val prefix = if (state.inputText.isBlank()) "" else state.inputText + "\n\n"
                                         val marker = context.getString(R.string.groupchat_continue_summary_prefix)
@@ -889,13 +891,13 @@ fun GroupChatDetailScreen(
                                     assistants = state.assistants,
                                     chatPrefs = state.chatPreferences,
                                     bubbleSkin = bubbleSkin,
-                                    // v1.0.74 fix (Auditoría inicial 1.4): Resaltado de salto de búsqueda
+                                    // v1.0.74 fix (前端审计 1.4): 搜索跳转高亮
                                     highlighted = message.id == highlightedJumpMessage,
                                     isMoodExpanded = expandedState?.isMoodExpanded,
                                     isReasoningExpanded = expandedState?.isReasoningExpanded,
                                     onToggleMoodExpanded = { viewModel.toggleMessageMoodExpanded(message.id) },
                                     onToggleReasoningExpanded = { viewModel.toggleMessageReasoningExpanded(message.id) },
-                                    // v1.77: Mantenga presionado para que aparezca el menú de operación.
+                                    // v1.77: 长按弹出操作菜单
                                     onLongClick = { bounds, pointInWindow ->
                                         MuseHaptics.medium(haptic)
                                         if (state.selectedMessageIds.isNotEmpty()) {
@@ -906,13 +908,13 @@ fun GroupChatDetailScreen(
                                             messageMenuTarget = message
                                         }
                                     },
-                                    // v1.x: Modo de selección múltiple
+                                    // v1.x: 多选模式
                                     selectionMode = state.selectedMessageIds.isNotEmpty(),
                                     selected = message.id in state.selectedMessageIds,
                                     onSelectToggle = { viewModel.toggleMessageSelection(message.id) },
                                     onHtmlPreview = onHtmlPreview,
-                                    // La devolución de la tarjeta recae en**Chat grupal actual**: Las tarjetas del chat grupal pertenecen naturalmente a este chat grupal.
-                                    // No deberías saltar a un chat privado.Save Actualmente no hay una ubicación para mostrar artefactos en el chat grupal y se ha implementado un mensaje legible.
+                                    // 卡片回传落到**当前群聊**：群聊里的卡片自然属于这个群聊，
+                                    // 不该跳去单聊。Save 在群聊里暂无工件展示位置，落成一个可读提示。
                                     onCardAction = { action ->
                                         when (action) {
                                             is io.zer0.muse.ui.markdown.CardAction.Send -> {
@@ -927,21 +929,21 @@ fun GroupChatDetailScreen(
                                                 }
                                                 if (body.isNotBlank()) viewModel.sendMessage(body)
                                             }
-                                            // La recogida/guardado de la devolución de la tarjeta requiere el artefacto y el sistema de recogida del anfitrión;
-                                            // No respondas primero al chat grupal para evitar hacer“Se hizo clic pero no hubo respuesta.”entrada falsa.
+                                            // 卡片回传的收藏 / 保存需要宿主的工件与收藏体系；
+                                            // 群聊侧先不接，避免做出“点了没反应”的假入口。
                                             else -> Unit
                                         }
                                     },
                                 )
                             }
                         }
-                        // Agent Mientras responde"pensando..."Estado
+                        // Agent 正在回复时的"正在思考..."状态
                         if (state.isAgentResponding) {
                             item(key = "thinking_indicator") {
                                 ThinkingIndicator(currentSpeaker = state.currentSpeaker)
                             }
                         }
-                        // v1.x: Salida de transmisión de chat grupal — Visualización en tiempo real del contenido generado.(Será reemplazado por noticias oficiales después de ser eliminado.)
+                        // v1.x: 群聊流式输出 — 生成中的内容实时展示(落库后由正式消息替换)
                         state.streamingContent?.takeIf { it.isNotBlank() }?.let { streaming ->
                             item(key = "streaming_content") {
                                 Column(
@@ -974,7 +976,7 @@ fun GroupChatDetailScreen(
                 }
             }
 
-            // Diálogo de lista de miembros
+            // 成员列表对话框
             if (showMembersDialog) {
                 val chat = state.currentChat
                 val memberIds = remember(chat) {
@@ -990,7 +992,7 @@ fun GroupChatDetailScreen(
                 )
             }
 
-            // Menú más(panel de herramientas)
+            // 加号菜单(工具面板)
             if (showToolSheet) {
                 GroupChatToolSheet(
                     onPickImage = { imageLauncher.launch("image/*") },
@@ -998,17 +1000,17 @@ fun GroupChatDetailScreen(
                         runCatching {
                             documentLauncher.launch(arrayOf("text/*", "application/pdf"))
                         }.onFailure {
-                            Logger.w("GroupChatDetail", "El selector de archivos no pudo iniciarse", it)
+                            Logger.w("GroupChatDetail", "文件选择器启动失败", it)
                         }
                     },
                     onInsertKnowledge = {
-                        // v1.112: Inserte la marca @ al final del cuadro de entrada,El usuario completa manualmente el nombre del documento.
+                        // v1.112: 在输入框末尾插入 @ 标记,用户手动补全文档名
                         val current = state.inputText
                         val prefix = if (current.isBlank() || current.endsWith(" ") || current.endsWith("\n")) "" else " "
                         viewModel.updateInput("$current$prefix@")
                     },
                     onPickPromptTemplate = { showPromptTemplateSheet = true },
-                    // v1.0.72: Parámetros del área de medios
+                    // v1.0.72: 媒体区参数
                     hasGalleryPermission = hasGalleryPermission,
                     onRequestGalleryPermission = { galleryPermissionLauncher.launch(galleryPermission) },
                     onPickGalleryImage = { uri -> loadUriToPending(uri) },
@@ -1017,7 +1019,7 @@ fun GroupChatDetailScreen(
                 )
             }
 
-            // v2.x: Panel de operación de conferencia — votar/Resumen/@/miembro/contexto/Editar(Entrada rápida promocionada desde el menú plus)
+            // v2.x: 会议操作面板 — 表决/总结/@/成员/上下文/编辑(从加号菜单提升的快捷入口)
             if (showMeetingSheet) {
                 GroupChatMeetingSheet(
                     onOpenMembers = { showMembersDialog = true },
@@ -1034,7 +1036,7 @@ fun GroupChatDetailScreen(
                 )
             }
 
-            // v1.112 (C2): Prompt Selección de plantilla sheet
+            // v1.112 (C2): Prompt 模板选择 sheet
             if (showPromptTemplateSheet) {
                 MuseBottomSheet(onDismissRequest = { showPromptTemplateSheet = false }) {
                     Text(
@@ -1049,8 +1051,8 @@ fun GroupChatDetailScreen(
                             .heightIn(max = 400.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
-                        // v1.114: agregar key(it.id),Cuando la lista cambia, Compose puede reutilizar combinaciones de elementos por clave.,
-                        // evitar agregar/Reorganizar columnas enteras al eliminar una plantilla(PromptTemplate.id solo).
+                        // v1.114: 加 key(it.id),列表变化时 Compose 可按 key 复用 item 组合,
+                        // 避免新增/删除模板时整列重组(PromptTemplate.id 唯一)。
                         items(items = promptTemplates, key = { it.id }) { template ->
                             Surface(
                                 onClick = {
@@ -1092,7 +1094,7 @@ fun GroupChatDetailScreen(
                 )
             }
 
-            // v1.97: Editar diálogo de chat grupal(Cambiar nombre/cambiar miembros)
+            // v1.97: 编辑群聊对话框(改名 / 改成员)
             if (showEditDialog) {
                 val chat = state.currentChat
                 val initialMemberIds = remember(chat) {
@@ -1101,7 +1103,7 @@ fun GroupChatDetailScreen(
                 EditGroupChatDialog(
                     dialogKey = chatId,
                     initialName = chat?.name ?: "",
-                    // Mantenga visibles a los miembros discapacitados en los chats grupales históricos,Sin embargo, no se permiten agregar asistentes que no estén autorizados a unirse al chat grupal o que hayan sido deshabilitados.
+                    // 保留历史群聊中已禁用的成员可见,但不允许再新增未授权加入群聊或已停用的助手。
                     assistants = state.assistants.filter { (it.allowGroupChat && it.enabled) || it.id in initialMemberIds },
                     initialMemberIds = initialMemberIds,
                     initialDiscussionMode = chat?.discussionMode ?: "round_robin",
@@ -1126,10 +1128,10 @@ fun GroupChatDetailScreen(
                 )
             }
 
-            // v1.0.72: Cuadro de diálogo de búsqueda de chat grupal(Menú de tres puntos → Buscar)
+            // v1.0.72: 群聊搜索对话框(三点菜单 → 搜索)
             if (showSearchDialog) {
                 var query by rememberSaveable { mutableStateOf("") }
-                // Búsqueda anti-vibración:Disparo después de detener la entrada durante 300 ms
+                // 防抖搜索:停止输入 300ms 后触发
                 LaunchedEffect(query) {
                     delay(300)
                     viewModel.searchMessages(query)
@@ -1178,7 +1180,7 @@ fun GroupChatDetailScreen(
                                                 .clickable {
                                                     showSearchDialog = false
                                                     viewModel.searchMessages("")
-                                                    // Saltar a este mensaje(Desplácese hasta la posición correspondiente)
+                                                    // 跳转到该消息(滚动到对应位置)
                                                     viewModel.jumpToMessage(result.id)
                                                 }
                                                 .padding(vertical = 8.dp),
@@ -1189,7 +1191,7 @@ fun GroupChatDetailScreen(
                                                         R.string.groupchat_sender_user,
                                                     )
                                                 },
-                                                // Correcciones en la interfaz (i18n-1)
+                                                // 前端修复 (i18n-1)
                                                 style = MaterialTheme.typography.labelSmall,
                                                 color = MaterialTheme.colorScheme.primary,
                                             )
@@ -1220,7 +1222,7 @@ fun GroupChatDetailScreen(
                 )
             }
 
-            // v1.0.72: Proveedor de asistente de edición — dos pasos:elegir miembros → ModelSwitchSheet(Guardar en el asistente)
+            // v1.0.72: 编辑助手供应商 — 两步:选成员 → ModelSwitchSheet(保存到该助手)
             if (showProviderDialog) {
                 MuseDialog(
                     onDismissRequest = { showProviderDialog = false },
@@ -1268,11 +1270,11 @@ fun GroupChatDetailScreen(
                 )
             }
 
-            // Después de seleccionar miembros:Abra ModelSwitchSheet para configurar el proveedor del miembro./modelo
+            // 选中成员后:打开 ModelSwitchSheet 配置该成员的供应商/模型
             providerTargetAssistantId?.let { assistantId ->
                 val target = state.assistants.firstOrNull { it.id == assistantId }
                 if (target != null) {
-                    // Leer proveedor actual/modelo(Prefiere la configuración por asistente del asistente,De lo contrario, recurra al nivel global.)
+                    // 读取当前供应商/模型(优先用该助手的 per-assistant 配置,否则回退全局)
                     val providers by settings.providersFlow.collectAsStateWithLifecycle(initialValue = emptyList())
                     val activeProviderId by settings.activeProviderIdFlow.collectAsStateWithLifecycle(initialValue = null)
                     val selectedModelId by settings.selectedModelIdFlow.collectAsStateWithLifecycle(initialValue = null)
@@ -1281,7 +1283,7 @@ fun GroupChatDetailScreen(
                         activeProviderId = target.providerId ?: activeProviderId,
                         selectedModelId = target.modelId ?: selectedModelId,
                         onPickProvider = { providerId ->
-                            // Cambiar de proveedor:guardar ahora providerId(Modelo retrasado)
+                            // 切换供应商:立即保存 providerId(模型延后)
                             viewModel.updateAssistantModel(assistantId, providerId, target.modelId)
                         },
                         onPickModel = { modelId ->
@@ -1292,7 +1294,7 @@ fun GroupChatDetailScreen(
                             )
                         },
                         onRefreshModels = { providerId ->
-                            // Actualizar lista de modelos(Las escenas de chat grupal no se actualizan de forma independiente por el momento.)
+                            // 刷新模型列表(群聊场景暂不实现独立刷新)
                         },
                         isFetchingModels = false,
                         fetchModelsError = null,
@@ -1301,7 +1303,7 @@ fun GroupChatDetailScreen(
                 }
             }
 
-            // v2.x: Menú de operación de pulsación larga de mensaje — burbuja de mensaje de anclaje,Ya no utilices una máscara de pantalla completa para centrar la ventana emergente.
+            // v2.x: 消息长按操作菜单 — 锚定消息气泡,不再用全屏遮罩居中弹窗。
             messageMenuTarget?.let { msg ->
                 MusePopover(
                     anchorBounds = messageMenuBounds,
@@ -1341,7 +1343,7 @@ fun GroupChatDetailScreen(
                                 messageMenuTarget = null
                                 viewModel.startSelection(msg.id)
                             }
-                            // AI noticias → Regenerar/Susurrar
+                            // AI 消息 → 重新生成 / 悄悄话
                             if (msg.senderType == "assistant") {
                                 GroupChatActionRow(MuseIcons.refresh, stringResource(R.string.groupchat_regenerate), textColor, iconBlock) {
                                     messageMenuTarget = null
@@ -1373,7 +1375,7 @@ fun GroupChatDetailScreen(
                 }
             }
 
-            // v1.77: Eliminar mensaje de confirmación
+            // v1.77: 删除消息确认
             deleteMessageTarget?.let { msg ->
                 MuseDialog(
                     onDismissRequest = { deleteMessageTarget = null },
@@ -1395,7 +1397,7 @@ fun GroupChatDetailScreen(
                 )
             }
 
-            // v1.x: Confirmación de eliminación de lotes de selección múltiple
+            // v1.x: 多选批量删除确认
             if (deleteSelectedTarget) {
                 MuseDialog(
                     onDismissRequest = { deleteSelectedTarget = false },
@@ -1417,9 +1419,9 @@ fun GroupChatDetailScreen(
                 )
             }
 
-            // v2.x: Diálogo de respuesta a cotización
+            // v2.x: 引用回复对话框
             replyToMessage?.let { msg ->
-                // Correcciones en la interfaz (persistencia-10): Cita del borrador de respuesta rememberSaveable,Girar sin perder el contenido de entrada
+                // 前端修复 (持久化-10): 引用回复草稿改 rememberSaveable,旋转不丢已输入内容
                 var replyText by rememberSaveable { mutableStateOf("") }
                 MuseDialog(
                     onDismissRequest = { replyToMessage = null },
@@ -1452,7 +1454,7 @@ fun GroupChatDetailScreen(
                 )
             }
 
-            // v2.x: cuadro de diálogo de mensaje privado
+            // v2.x: 悄悄话对话框
             whisperTarget?.let { target ->
                 var whisperText by remember { mutableStateOf("") }
                 MuseDialog(
@@ -1486,7 +1488,7 @@ fun GroupChatDetailScreen(
                 )
             }
 
-            // v2.x: Iniciar diálogo de votación
+            // v2.x: 发起表决对话框
             if (showVoteDialog) {
                 var voteTopic by remember { mutableStateOf("") }
                 MuseDialog(
@@ -1512,7 +1514,7 @@ fun GroupChatDetailScreen(
                 )
             }
 
-            // v2.x: Diálogo de resumen(Elija un resumidor)
+            // v2.x: 总结对话框(选择总结者)
             if (showSummaryDialog) {
                 MuseDialog(
                     onDismissRequest = { showSummaryDialog = false },
@@ -1539,7 +1541,7 @@ fun GroupChatDetailScreen(
                                         fillWidth = false,
                                     )
                                 }
-                            // El primer miembro se utiliza por defecto.
+                            // 默认用第一个成员
                             MuseCapsuleButton(
                                 text = stringResource(R.string.groupchat_summary_auto),
                                 onClick = {
@@ -1557,7 +1559,7 @@ fun GroupChatDetailScreen(
                 )
             }
 
-            // v2.x: Gestión del contexto del chat grupal sheet(Documentos compartidos en grupo + contexto exclusivo de IA)
+            // v2.x: 群聊上下文管理 sheet(群共享文档 + AI 专属上下文)
             if (showContextSheet) {
                 val chat = state.currentChat
                 val sharedDocs = remember(chat) {
@@ -1572,10 +1574,10 @@ fun GroupChatDetailScreen(
                 val members = remember(memberIds, state.assistants) {
                     memberIds.mapNotNull { id -> state.assistants.find { it.id == id } }
                 }
-                // Nuevos campos de entrada de documentos
+                // 新文档输入字段
                 var newDocTitle by remember { mutableStateOf("") }
                 var newDocContent by remember { mutableStateOf("") }
-                // Contexto específico del miembro en la edición actual(assistantId -> Editar texto chino)
+                // 当前编辑中的成员专属上下文(assistantId -> 编辑中文本)
                 val editingContexts = remember { mutableStateOf<Map<String, String>>(emptyMap()) }
 
                 MuseBottomSheet(onDismissRequest = { showContextSheet = false }) {
@@ -1584,7 +1586,7 @@ fun GroupChatDetailScreen(
                             .fillMaxWidth(),
                         verticalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
-                        // ── Documentos compartidos en grupo ──
+                        // ── 群共享文档 ──
                         Text(
                             text = stringResource(R.string.groupchat_context_shared_docs),
                             style = MaterialTheme.typography.titleMedium,
@@ -1619,7 +1621,7 @@ fun GroupChatDetailScreen(
                                                 text = doc.title,
                                                 style = MaterialTheme.typography.bodyLarge,
                                                 fontWeight = FontWeight.Medium,
-                                                // LAYOUT-01: El título del documento toma el ancho restante + límite a 2 líneas,Evite que el botón de recuento y eliminación de palabras se comprima en una columna de la derecha.
+                                                // LAYOUT-01: 文档标题取剩余宽度 + 限 2 行,防止被右侧字数与删除按钮挤成一列。
                                                 modifier = Modifier.weight(1f),
                                                 maxLines = 2,
                                                 overflow = TextOverflow.Ellipsis,
@@ -1628,7 +1630,7 @@ fun GroupChatDetailScreen(
                                                 text = stringResource(R.string.groupchat_context_doc_chars, doc.content.length),
                                                 style = MaterialTheme.typography.bodySmall,
                                                 color = MaterialTheme.colorScheme.outline,
-                                                // LAYOUT-01: El límite de recuento de palabras es 1 línea.,No participe en la indulgencia.
+                                                // LAYOUT-01: 字数标注限 1 行,不参与取宽。
                                                 maxLines = 1,
                                             )
                                             MuseTactileButton(
@@ -1641,7 +1643,7 @@ fun GroupChatDetailScreen(
                                 }
                             }
                         }
-                        // Agregar nuevo formulario de documento
+                        // 添加新文档表单
                         MuseTextField(
                             value = newDocTitle,
                             onValueChange = { newDocTitle = it },
@@ -1674,7 +1676,7 @@ fun GroupChatDetailScreen(
                             modifier = Modifier.align(Alignment.End),
                         )
 
-                        // divisor
+                        // 分隔线
                         Surface(
                             color = MaterialTheme.colorScheme.outlineVariant,
                             modifier = Modifier
@@ -1682,7 +1684,7 @@ fun GroupChatDetailScreen(
                                 .height(1.dp),
                         ) {}
 
-                        // ── AI Contexto exclusivo ──
+                        // ── AI 专属上下文 ──
                         Text(
                             text = stringResource(R.string.groupchat_context_private_context),
                             style = MaterialTheme.typography.titleMedium,
@@ -1718,7 +1720,7 @@ fun GroupChatDetailScreen(
                                                 text = assistant.name,
                                                 style = MaterialTheme.typography.bodyLarge,
                                                 fontWeight = FontWeight.Medium,
-                                                // LAYOUT-01: El nombre del miembro toma el ancho restante + límite de fila.,Evite ser "preparado/El estado "No establecido" está alineado con el botón de edición.
+                                                // LAYOUT-01: 成员名取剩余宽度 + 限行,防止被「已设置/未设置」状态与编辑按钮挤成一列。
                                                 modifier = Modifier.weight(1f),
                                                 maxLines = 1,
                                                 overflow = TextOverflow.Ellipsis,
@@ -1765,7 +1767,7 @@ fun GroupChatDetailScreen(
                                                 MuseCapsuleButton(
                                                     text = stringResource(R.string.groupchat_context_clear),
                                                     onClick = {
-                                                        // Limpiar el contexto exclusivo del miembro
+                                                        // 清除该成员的专属上下文
                                                         viewModel.setMemberPrivateContext(assistant.id, "")
                                                         editingContexts.value = editingContexts.value - assistant.id
                                                     },
@@ -1790,11 +1792,11 @@ fun GroupChatDetailScreen(
                     }
                 }
             }
-        } // CompositionLocalProvider(Fuente de cristal a nivel de página)
-    } // fondo Box(v1.0.74 Fondo de chat personalizado)
+        } // CompositionLocalProvider(页面级玻璃源)
+    } // 背景 Box(v1.0.74 自定义聊天背景)
 }
 
-/** v1.0.72: Línea de menú de pulsación larga del chat grupal(Coincidencia de color fija:Bloque base de iconos + texto). */
+/** v1.0.72: 群聊长按菜单行(固定配色:图标底块 + 文字)。 */
 @Composable
 private fun GroupChatActionRow(icon: ImageVector, text: String, textColor: Color, iconBlockColor: Color, onClick: () -> Unit) {
     Row(

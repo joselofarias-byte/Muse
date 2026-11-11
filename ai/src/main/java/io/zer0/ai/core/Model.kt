@@ -3,17 +3,17 @@ package io.zer0.ai.core
 import kotlinx.serialization.Serializable
 
 /**
- * Identificación del modelo. Múltiples modelos bajo el mismo pase de Proveedor [id] distinguir,
- * Complete OpenAI al llamar `model` campo.
+ * 模型标识。同一 Provider 下多个模型通过 [id] 区分,
+ * 调用时填入 OpenAI 的 `model` 字段。
  *
- * Phase 8.1 Expandir: agregar [abilities] / [tools] / [inputModalities] / [outputModalities] campo,
- * Escrito de forma independiente.
- * Se utiliza para declarar capacidades del modelo.(llamada de herramienta/razonamiento/Visión),Deje que la interfaz de usuario y el proveedor decidan qué funciones están disponibles en consecuencia.
+ * Phase 8.1 扩展: 加 [abilities] / [tools] / [inputModalities] / [outputModalities] 字段,
+ * 独立编写。
+ * 用于声明模型能力(工具调用/推理/视觉),让 UI 和 Provider 据此决定可用功能。
  *
- * @param abilities Conjunto de capacidades del modelo(Un conjunto vacío significa no declarado,conservador"No compatible"Ten todo en cuenta)
- * @param tools Declaración de herramienta incorporada(como Géminis Search/UrlContext/ImageGeneration)
- * @param inputModalities modo de entrada(Predeterminado ["text"]);modelo visual plus "image"
- * @param outputModalities Modo de salida(Predeterminado ["text"]);modelo de dibujo más "image"
+ * @param abilities 模型能力集合(空集表示未声明,按保守"不支持"兜底)
+ * @param tools 内置工具声明(如 Gemini 的 Search/UrlContext/ImageGeneration)
+ * @param inputModalities 输入模态(默认 ["text"]);视觉模型加 "image"
+ * @param outputModalities 输出模态(默认 ["text"]);绘图模型加 "image"
  */
 @Serializable
 data class Model(
@@ -22,11 +22,11 @@ data class Model(
     val providerId: String,
     val maxOutputTokens: Int? = null,
     /**
-     * v0.45: Tamaño de la ventana de contexto del modelo(token numero).
+     * v0.45: 模型上下文窗口大小(token 数)。
      *
-     * Utilizado para la visualización de capas de UI"El contexto ocupa un pequeño círculo."(Relación token de conversación actual/ventana de contexto).
-     * null o 0 para desconocido,UI Los anillos de ocupación no se muestran.
-     * Compatible con serialización:El antiguo JSON vuelve al valor predeterminado de nulo cuando este campo no está presente.
+     * 用于 UI 层展示"上下文占用小圈"(当前对话 token / contextWindow 比例)。
+     * null 或 0 表示未知,UI 不显示占用圆环。
+     * 序列化兼容:旧 JSON 无此字段时回退到 null 默认值。
      */
     val contextWindow: Int? = null,
     val supportsVision: Boolean = false,
@@ -37,82 +37,82 @@ data class Model(
     val inputModalities: Set<String> = setOf("text"),
     val outputModalities: Set<String> = setOf("text"),
     /**
-     * v1.0.4: Declaración de capacidad visual(grounding Posicionamiento de coordenadas + formato de salida).
+     * v1.0.4: 视觉能力声明(grounding 坐标定位 + 输出格式)。
      *
-     * Cuando el modelo admite el posicionamiento de objetos en la imagen.(Marco de coordenadas de retorno)establecido en no cuando null,VisionBridge Tomará el camino estructurado+primitivos.,
-     * Deje que los modelos visuales describan más que solo imágenes,También devuelve coordenadas normalizadas.,El modelo de texto plano puede basarse en la teoría de coordenadas"Haga clic [320,240]".
+     * 当模型支持在图片上定位物体(返回坐标框)时设为非 null,VisionBridge 会走 structured+primitives 路径,
+     * 让视觉模型不仅描述图片,还返回归一化坐标,纯文本模型可基于坐标说"点击 [320,240]"。
      *
-     * null o grounding=false Indica que el modelo solo puede describir imágenes.(note-only camino).
+     * null 或 grounding=false 表示模型只能描述图片(note-only 路径)。
      */
     val visionCapabilities: VisionCapabilities? = null,
     /**
-     * v1.0.53: Fuente de datos del modelo y anotación de credibilidad,Deje que la interfaz de usuario avise al usuario"No verificado/Campo de excepción".
+     * v1.0.53: 模型数据来源与可信度标注,让 UI 向用户提示"未验证/异常字段"。
      *
-     * - [ModelVerification.VERIFIED]: Acceda al documento de especificaciones local(KnownModels),Calibrado en campo,Puede usarse con confianza
-     * - [ModelVerification.UNVERIFIED]: Documento local perdido,Adopte completamente los datos de retorno ascendentes,Los campos pueden ser incorrectos
-     * - [ModelVerification.SUSPICIOUS]: Llegando al documento local pero hay una excepción obvia en el retorno ascendente(Como por ejemplo contextWindow=0,
-     *   Los modelos de solo texto están etiquetados vision),Sobrescrito con datos locales,pero le indica al usuario que la declaración ascendente es sospechosa
+     * - [ModelVerification.VERIFIED]: 命中本地规格文档(KnownModels),字段已校准,可放心使用
+     * - [ModelVerification.UNVERIFIED]: 未命中本地文档,完全采用上游返回数据,字段可能不准
+     * - [ModelVerification.SUSPICIOUS]: 命中本地文档但上游返回存在明显异常(如 contextWindow=0、
+     *   纯文本模型被标为 vision),已用本地数据覆盖,但提示用户上游声明可疑
      *
-     * Predeterminado UNVERIFIED,por [ModelRegistry.enhanceModel] Se rellena en el proceso listModels.
+     * 默认 UNVERIFIED,由 [ModelRegistry.enhanceModel] 在 listModels 流程中填充。
      */
     val verification: ModelVerification = ModelVerification.UNVERIFIED,
     /**
-     * v2.6.1: Si el usuario ha editado explícitamente el modelo en la página de configuración.
+     * v2.6.1: 用户是否在设置页显式编辑过该模型的能力。
      *
-     * Cuando se establece en verdadero [io.zer0.ai.registry.ModelRegistry.enhanceModel] Regresar directamente como está,
-     * No más registro/El documento de especificaciones anula la configuración del usuario —— Reparación“Encienda el interruptor multimodal y vuelva a cambiarlo después de guardar.”.
+     * 置 true 时 [io.zer0.ai.registry.ModelRegistry.enhanceModel] 直接原样返回，
+     * 不再用注册表/规格文档覆盖用户设置 —— 修复“打开多模态开关保存后又变回去”。
      */
     val userEdited: Boolean = false,
 ) {
-    /** Provider Referencias de unión estable a modelos para evitar el enrutamiento de cadenas entre proveedores de modelos con el mismo nombre. */
+    /** Provider 与模型的稳定联合引用，避免同名模型跨 Provider 串路由。 */
     fun reference(): ModelReference = ModelReference.of(this)
 
     /**
-     * Juicio conveniente:Ya sea para admitir llamadas a herramientas.
-     * v1.80 (M-CORE6): conjunto vacío(No declarado)Cambiar a conservador false,Evite enviar el campo de herramientas a modelos no compatibles, lo que generará 400.
+     * 便捷判断:是否支持工具调用。
+     * v1.80 (M-CORE6): 空集(未声明)改为保守 false,避免向不支持的模型发送 tools 字段导致 400。
      */
     fun supportsToolCalling(): Boolean = ModelAbility.TOOL in abilities
 
-    /** Juicio conveniente:Si el razonamiento está respaldado.v1.80: Lo mismo M-CORE6,El conjunto vacío es conservador falso. */
+    /** 便捷判断:是否支持推理。v1.80: 同 M-CORE6,空集保守 false。 */
     fun supportsReasoning(): Boolean = ModelAbility.REASONING in abilities
 
-    /** Juicio conveniente:Ya sea para admitir información visual. */
+    /** 便捷判断:是否支持视觉输入。 */
     fun supportsVisionInput(): Boolean = supportsVision || "image" in inputModalities
 
-    /** Juicio conveniente:Ya sea para admitir la salida de imágenes(modelo de dibujo). */
+    /** 便捷判断:是否支持图片输出(绘图模型)。 */
     fun supportsImageOutput(): Boolean = "image" in outputModalities
 
-    /** Juicio conveniente:Ya sea para admitir salida de video. */
+    /** 便捷判断:是否支持视频输出。 */
     fun supportsVideoOutput(): Boolean = supportsVideo
 
-    /** v1.0.4: Juicio conveniente:Ya sea para apoyar la visión grounding(Posicionamiento coordinado). */
+    /** v1.0.4: 便捷判断:是否支持视觉 grounding(坐标定位)。 */
     fun supportsVisionGrounding(): Boolean = visionCapabilities?.grounding == true
 
     /**
-     * v2.7: El modelo está en el catálogo de capacidades.(model-catalog)El formato de pensamiento indicado aquí.
+     * v2.7: 该模型在能力目录(model-catalog)里声明的思考格式。
      *
-     * Campo de directorio(`ModelCatalogEntry.compat.thinkingFormat`)Resulta que solo analiza pero no consume.,El comportamiento está enteramente determinado por
-     * [ProviderCompatRules] La tabla codificada del host lo determina. Aquí, cuelgue la conclusión del directorio para [Model] en,dejar sostener el modelo
-     * La persona que llama y el período de solicitud obtienen la misma respuesta —— Compartido por ambas partes [ProviderCompatRules.catalogThinkingFormat]
-     * un mapa de vocabulario,Los calibres no se repiten.
+     * 目录字段(`ModelCatalogEntry.compat.thinkingFormat`)原来只解析不消费,行为完全由
+     * [ProviderCompatRules] 的 host 硬编码表决定。这里把目录结论挂到 [Model] 上,让持有模型
+     * 的调用方与请求期派生出同一答案 —— 两边共用 [ProviderCompatRules.catalogThinkingFormat]
+     * 一份词汇映射,不重复口径。
      *
-     * null "El catálogo no dice(O el vocabulario no se puede mapear)",En este momento, prevalecerá la tabla codificada.,De lo contrario, volverá al valor predeterminado.
-     * prioridad completa:[Directorio] > [tabla codificada] > [Valor predeterminado].
+     * null 表示「目录没说(或词汇映射不了)」,此时以硬编码表为准,再没有就回到默认值。
+     * 完整优先级:[目录] > [硬编码表] > [默认值]。
      */
     val catalogThinkingFormat: ThinkingFormat?
         get() = ProviderCompatRules.catalogThinkingFormat(id, providerId)
 }
 
 /**
- * v1.0.4: Declaración de capacidad visual.
+ * v1.0.4: 视觉能力声明。
  *
- * @param grounding Ya sea para admitir el posicionamiento de objetos en imágenes(Marco de coordenadas de retorno)
- * @param outputFormat Formato de salida de coordenadas,Determinar los requisitos de palabras rápidas y la lógica de normalización.:
- *  - "gemini": box_2d: [ymin, xmin, ymax, xmax](Gemini Nativo yxyx,normalización 0-1000)
- *  - "qwen": bbox_2d: [x1, y1, x2, y2] + point_2d: [x, y](Qwen-VL Nativo)
- *  - "anchor": visual_anchors traer role/center/box(Claude computer-use estilo)
- *  - "muse-box": box: [x1, y1, x2, y2](Formato de coordenadas unificado,xyxy + norm-1000)
- *  - null: no especificado,prensa "muse-box" Manejo de formato predeterminado
+ * @param grounding 是否支持在图片上定位物体(返回坐标框)
+ * @param outputFormat 坐标输出格式,决定提示词要求和归一化逻辑:
+ *  - "gemini": box_2d: [ymin, xmin, ymax, xmax](Gemini 原生 yxyx,归一化 0-1000)
+ *  - "qwen": bbox_2d: [x1, y1, x2, y2] + point_2d: [x, y](Qwen-VL 原生)
+ *  - "anchor": visual_anchors 带 role/center/box(Claude computer-use 风格)
+ *  - "muse-box": box: [x1, y1, x2, y2](统一坐标格式,xyxy + norm-1000)
+ *  - null: 未指定,按 "muse-box" 默认格式处理
  */
 @Serializable
 data class VisionCapabilities(
@@ -121,33 +121,33 @@ data class VisionCapabilities(
 )
 
 /**
- * Enumeración de capacidades del modelo.
- * - [TOOL]: Llamadas a funciones de soporte(function calling)
- * - [REASONING]: Cadena de razonamiento de soporte(thinking / o1 Serie)
+ * 模型能力枚举。
+ * - [TOOL]: 支持函数调用(function calling)
+ * - [REASONING]: 支持推理链(thinking / o1 系列)
  */
 @Serializable
 enum class ModelAbility { TOOL, REASONING }
 
 /**
- * Enumeración de herramientas incorporadas(Compatible de forma nativa con el proveedor,no function calling).
- * Se utiliza principalmente para herramientas nativas de Gemini.
+ * 内置工具枚举(由 Provider 原生支持,非 function calling)。
+ * 主要用于 Gemini 原生工具。
  * - [SEARCH]: Google Search(Gemini grounding)
- * - [URL_CONTEXT]: URL Extracción de contenido(Gemini)
- * - [IMAGE_GENERATION]: Dibujo incorporado(Gemini Imagen)
+ * - [URL_CONTEXT]: URL 内容提取(Gemini)
+ * - [IMAGE_GENERATION]: 内置绘图(Gemini Imagen)
  */
 @Serializable
 enum class BuiltInTool { SEARCH, URL_CONTEXT, IMAGE_GENERATION }
 
 /**
- * v1.0.53: Anotación de credibilidad de datos del modelo.
+ * v1.0.53: 模型数据可信度标注。
  *
- * Se utiliza para que la interfaz de usuario le pregunte al usuario si los campos del modelo están calibrados localmente.:
- * - [VERIFIED]: Acceda al documento de especificaciones local(KnownModels),Los campos clave están calibrados
- * - [UNVERIFIED]: Documento local perdido,Adopte completamente los datos de retorno ascendentes
- * - [SUSPICIOUS]: Acceda al documento local pero hay una excepción obvia en la declaración ascendente,Sobrescrito con datos locales
+ * 用于让 UI 向用户提示模型字段是否经过本地校准:
+ * - [VERIFIED]: 命中本地规格文档(KnownModels),关键字段已校准
+ * - [UNVERIFIED]: 未命中本地文档,完全采用上游返回数据
+ * - [SUSPICIOUS]: 命中本地文档但上游声明存在明显异常,已用本地数据覆盖
  *
- * por [io.zer0.ai.registry.ModelRegistry.enhanceModel] Completar en el proceso listModels,
- * UI Puede agregar una marca de esquina en la página de selección de modelo en consecuencia.(Como por ejemplo"Calibrado"/"No verificado"/"Las afirmaciones upstream son sospechosas").
+ * 由 [io.zer0.ai.registry.ModelRegistry.enhanceModel] 在 listModels 流程中填充,
+ * UI 可据此在模型选择页加角标(如"已校准"/"未验证"/"上游声明可疑")。
  */
 @Serializable
 enum class ModelVerification {

@@ -12,32 +12,35 @@ import io.zer0.muse.miniphone.data.moment.MP_LOCAL_ACTOR_ID
 import io.zer0.muse.miniphone.data.moment.MpCharacterMaterial
 import io.zer0.muse.miniphone.data.moment.MpMomentsRepository
 import io.zer0.muse.miniphone.data.settings.MpMomentAutoStore
+import io.zer0.muse.miniphone.ui.launchGuarded
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlin.random.Random
 
 /**
- * El estado y las acciones de la página del círculo de amigos.
+ * 朋友圈页的状态与动作。
  *
- * La línea de tiempo es "una ventana cargada",No es una suscripción de mesa completa:El cursor es el número de elementos cargados.,por página [PAGE_SIZE] Artículo,
- * El mismo enfoque que la lista de mensajes privados. La ventana está sólo en [timelineLock] moverse —— Cuando la actualización y el cambio de página aparecen al mismo tiempo,
- * La primera vez que llegué, reemplacé la ventana.,Los que lleguen más tarde seguirán recogiendo según el nuevo número de artículos cargados.
+ * 时间线是「已加载的一段窗口」,不是整表订阅:游标就是已加载条数,每页 [PAGE_SIZE] 条,
+ * 与私信列表同一套做法。窗口只在 [timelineLock] 里挪动 —— 刷新、翻页同时进来时,
+ * 先到的那次把窗口换掉,后到的按新的已加载条数继续接。
  *
- * Tira hacia abajo para actualizar y deja que el personaje publique una actualización.:Esta es una de las dos unidades de caracteres del módulo.(Otro lugar es [io.zer0.muse.miniphone.work.MpMomentWorker]),
- * Si fallas, detente en silencio.,No hay errores en la interfaz y no se agregan actualizaciones vacías. El cepillado de manos exitoso también se cuenta como una generación. ——
- * La marca de tiempo se escribe en la cuenta anti-vibración de la tarea en segundo plano.,De lo contrario, se podrá agregar otra tarea programada dentro de los 90 minutos.
+ * 下拉刷新顺带让角色发一条动态:这是模块内两处角色驱动之一(另一处是 [io.zer0.muse.miniphone.work.MpMomentWorker]),
+ * 失败就静默收手,界面上不出现错误、也不补一条空动态。手刷成功也算一次生成 ——
+ * 时间戳写给后台任务的防抖账,否则 90 分钟内可能被定时任务再补一条。
  *
- * @param settings Cambio de tareas en segundo plano y libro mayor anti-vibración
- * @param material Generar material: de qué hablamos recientemente, qué publicamos la última vez, qué hora es ahora
- * @param onlyMine Solo mira lo que publicas:La línea de tiempo solo verifica la información del usuario local.,La actualización desplegable ya no requiere generación de personajes.
- * @param random Fuente aleatoria para elegir personajes.:Elige aleatoriamente un personaje habilitado cada vez que se actualice,La prueba se puede clavar
+ * @param settings 后台任务的开关与防抖账本
+ * @param material 生成素材：最近聊过什么、上一条发过什么、现在几点
+ * @param onlyMine 只看自己发的动态:时间线只查本机用户的,下拉刷新也不再去叫角色生成
+ * @param random 挑角色的随机源:每次刷新随机取一个启用角色,测试可钉死
  */
+// 日志里认出「这一页的失败」用的稳定 tag；具体动作名写在调用处。
+private const val LOG_TAG = "MiniPhoneMoments"
+
 class MiniPhoneMomentsViewModel(
     private val repository: MpMomentsRepository,
     private val host: MiniPhoneHost,
@@ -51,38 +54,43 @@ class MiniPhoneMomentsViewModel(
 
     val uiState: StateFlow<MomentsUiState> = mutableState.asStateFlow()
 
-    /** Lista de personajes dada por el anfitrión.(id → papel),Se utiliza para complementar el avatar del autor. */
+    /** 宿主给的角色名单(id → 角色),补作者头像用。 */
     private var characters: Map<String, MpCharacter> = emptyMap()
 
     private var selfName: String = ""
 
-    /** Puerta de la ventana de la línea de tiempo:No se permite actualizar y pasar página para cambiar la ventana al mismo tiempo. */
+    /** 时间线窗口的闸:刷新与翻页不许同时改窗口。 */
     private val timelineLock = Mutex()
 
     init {
         observeHost()
-        viewModelScope.launch { reloadFirstPage() }
+        viewModelScope.launchGuarded(LOG_TAG, "打开朋友圈首屏") { reloadFirstPage() }
     }
 
-    /** Cargue una página más antigua cuando se desplace hacia el final. No hay más, o la página anterior aún está en camino,Simplemente ignóralo. */
+    /** 滚到底时加载更老的一页。没有更多、或上一页还在路上,直接忽略。 */
     fun loadMore() {
         val current = mutableState.value
         if (!current.hasMore || current.isLoadingMore) return
         mutableState.update { it.copy(isLoadingMore = true) }
-        viewModelScope.launch { appendPage() }
+        viewModelScope.launchGuarded(
+            LOG_TAG,
+            "加载更老的一页",
+            // 失败时必须收起「加载中」，否则这一行会永远卡在转圈，用户以为还在跑
+            onError = { mutableState.update { it.copy(isLoadingMore = false) } },
+        ) { appendPage() }
     }
 
     /**
-     * Tira hacia abajo para actualizar:Primero deja que el personaje envíe una actualización.,Lea la primera pantalla nuevamente.
+     * 下拉刷新:先让角色发一条动态,再重读首屏。
      *
-     * Error de compilación(No hay rol, el host devuelve nulo, el host lanza una excepción que no debería lanzarse)No se inserta nada cuando,
-     * Vuelva a leer la línea de tiempo como de costumbre. —— La animación desplegable está limpia.,No habrá más actualizaciones vacías en la página.
-     * No generado en modo "Mis Momentos":Las actualizaciones publicadas por el personaje no pertenecen a esta página.,Este desove sólo ocurrirá en otros lugares.
+     * 生成失败(没有角色、宿主返回 null、宿主抛了不该抛的异常)时什么都不插入,
+     * 时间线照常重读一遍 —— 下拉动画收得干净,页面上也不会多出一条空动态。
+     * 「我的朋友圈」模式下不生成:角色发的动态不属于这一页,这次生成只会在别处出现。
      */
     fun refresh() {
         if (mutableState.value.isRefreshing) return
         mutableState.update { it.copy(isRefreshing = true) }
-        viewModelScope.launch {
+        viewModelScope.launchGuarded(LOG_TAG, "下拉刷新朋友圈") {
             try {
                 if (!onlyMine) generateMoment()
                 reloadFirstPage()
@@ -92,23 +100,23 @@ class MiniPhoneMomentsViewModel(
         }
     }
 
-    /** Envía un mensaje propio:Texto + hasta nueve imágenes;Después de una publicación exitosa, se insertará en la parte superior de la línea de tiempo. */
+    /** 发一条自己的动态:文字 + 最多九张图;发布成功后插到时间线最上面。 */
     fun publish(content: String, imageUris: List<Uri>, visibleToSelf: Boolean = false) {
-        viewModelScope.launch {
+        viewModelScope.launchGuarded(LOG_TAG, "发一条动态") {
             val moment = repository.publish(
                 content = content,
                 imageUris = imageUris,
                 authorName = selfName,
                 visibleTo = if (visibleToSelf) MP_LOCAL_ACTOR_ID else "",
-            ) ?: return@launch
+            ) ?: return@launchGuarded
             val row = buildRow(moment)
             mutableState.update { it.copy(moments = listOf(row) + it.moments) }
         }
     }
 
-    /** Me gusta o no,Reemplace convenientemente la lista y el recuento de Me gusta en esta fila con los últimos resultados de Curry. */
+    /** 点赞或取消点赞,顺手把这一行的点赞人列表与计数换成库里的最新结果。 */
     fun toggleLike(momentId: String) {
-        viewModelScope.launch {
+        viewModelScope.launchGuarded(LOG_TAG, "点赞/取消点赞") {
             val liked = repository.toggleLike(momentId, MpActorType.USER, MP_LOCAL_ACTOR_ID, selfName)
             val likes = repository.likesOf(momentId)
             updateRow(momentId) { row ->
@@ -118,14 +126,14 @@ class MiniPhoneMomentsViewModel(
     }
 
     /**
-     * Actualizaciones de comentarios,O responde a uno de los comentarios.
+     * 评论动态,或回复其中一条评论。
      *
-     * [parentId] Vacío significa comentario directo;[parentId] Responder a un comentario cuando lo señale(Lo mismo ocurre con la respuesta.,
-     * Se retrocederá dos niveles durante la visualización.).
+     * [parentId] 为空是直接评论;[parentId] 指向某条评论时是回复它(回复的回复也一样,
+     * 展示时会压回两级)。
      */
     fun comment(momentId: String, parentId: String?, content: String) {
         if (content.isBlank()) return
-        viewModelScope.launch {
+        viewModelScope.launchGuarded(LOG_TAG, "写评论") {
             repository.addComment(
                 momentId = momentId,
                 parentId = parentId,
@@ -133,17 +141,17 @@ class MiniPhoneMomentsViewModel(
                 senderId = MP_LOCAL_ACTOR_ID,
                 senderName = selfName,
                 content = content,
-            ) ?: return@launch
+            ) ?: return@launchGuarded
             val comments = repository.commentsOf(momentId)
             updateRow(momentId) { row -> row.copy(comments = buildCommentTree(comments)) }
         }
     }
 
-    /** Eliminar tus publicaciones;Aquí no se abordan las dinámicas de otras personas. */
+    /** 删掉自己发的动态;别人的动态不在这里处理。 */
     fun deleteMoment(momentId: String) {
-        viewModelScope.launch {
-            val row = mutableState.value.moments.firstOrNull { moment -> moment.id == momentId } ?: return@launch
-            if (!row.isMine) return@launch
+        viewModelScope.launchGuarded(LOG_TAG, "删自己发的动态") {
+            val row = mutableState.value.moments.firstOrNull { moment -> moment.id == momentId } ?: return@launchGuarded
+            if (!row.isMine) return@launchGuarded
             repository.deleteMoment(momentId)
             mutableState.update { state ->
                 state.copy(moments = state.moments.filterNot { moment -> moment.id == momentId })
@@ -152,22 +160,24 @@ class MiniPhoneMomentsViewModel(
     }
 
     /**
-     * Eliminar un comentario que escribiste:Las respuestas que cuelgan debajo también se eliminarán.
+     * 删一条自己写的评论:它下面挂着的回复也一起删。
      *
-     * Los comentarios de otras personas no serán procesados. —— No hay ninguna entrada en la interfaz.,Guardia aquí de nuevo. Vuelva a leer el árbol de comentarios después de eliminarlo.,
-     * Para evitar dejar una línea de respuestas en la interfaz que ya no existe.
+     * 别人的评论不处理 —— 界面上根本没给入口,这里再守一次。删完重读一次评论树,
+     * 免得界面上留着一行已经不存在的回复。
      */
     fun deleteComment(momentId: String, commentId: String) {
-        viewModelScope.launch {
+        viewModelScope.launchGuarded(LOG_TAG, "删自己写的评论") {
             repository.deleteComment(momentId, commentId)
             val comments = repository.commentsOf(momentId)
             updateRow(momentId) { row -> row.copy(comments = buildCommentTree(comments)) }
         }
     }
 
-    /** Lista de personajes del anfitrión y datos locales.:Un avatar complementario,Una portada suplementaria y un apodo. */
+    /** 宿主的角色名单与本机资料:一个补头像,一个补封面与昵称。 */
     private fun observeHost() {
-        viewModelScope.launch {
+        // 收集体的 `.catch` 只管上游流；`applyAvatars()` 这类本地改写抛了照样会崩整应用，
+        // 所以这里也要有兜底（与本页其它用户动作同一套约束：取消照常传播）。
+        viewModelScope.launchGuarded(LOG_TAG, "接宿主角色名单（补头像）") {
             host.observeCharacters()
                 .catch { emit(emptyList()) }
                 .collect { list ->
@@ -175,7 +185,7 @@ class MiniPhoneMomentsViewModel(
                     applyAvatars()
                 }
         }
-        viewModelScope.launch {
+        viewModelScope.launchGuarded(LOG_TAG, "接本机资料（补昵称与封面）") {
             host.observeProfile()
                 .catch { emit(MpProfile(nickname = "")) }
                 .collect { profile ->
@@ -191,13 +201,13 @@ class MiniPhoneMomentsViewModel(
         }
     }
 
-    /** Dejar que un personaje habilitado aleatoriamente genere una actualización;No hace nada si no hay personajes o no se generan personajes. */
+    /** 让随机一个启用角色生成一条动态;没有角色或没生成出来就什么都不做。 */
     private suspend fun generateMoment() {
         val character = characters.values.randomOrNull(random) ?: return
         val hint = material.forMoment(character.id)
         val content = runCatching { host.composeMoment(character.id, hint) }.getOrNull() ?: return
         val moment = repository.insertFromCharacter(character, content) ?: return
-        // El cepillado de manos también se considera una generación única:Registro en el libro mayor anti-vibración,No escribir solo significa una capa menos de protección,No debería retrasar esta actualización
+        // 手刷也算一次生成:记进防抖账本,写失败只意味着少一层保护,不该拖垮这次刷新
         runCatching { settings.markGenerated(moment.createdAt) }
     }
 
@@ -227,14 +237,14 @@ class MiniPhoneMomentsViewModel(
         }
     }
 
-    /** línea de tiempo de una página:Los dos modos solo tienen condiciones de consulta diferentes.,La paginación es exactamente igual que el cursor. */
+    /** 一页时间线:两种模式只是查询条件不同,分页与游标完全一样。 */
     private suspend fun pageOf(limit: Int, offset: Int): List<MpMomentEntity> =
         if (onlyMine) repository.pageMine(limit, offset) else repository.page(limit, offset)
 
     /**
-     * Una página agrega dinámicamente me gusta y comentarios.
+     * 一页动态补上点赞人与评论。
      *
-     * Dos consultas por lotes(Me gusta y comenta)En lugar de revisar cada elemento dos veces:Originalmente, veinte actualizaciones requerían cuarenta viajes de ida y vuelta.
+     * 两次批量查询(点赞一张、评论一张)而不是每条各查两次:二十条动态原本要四十次往返。
      */
     private suspend fun buildRows(entities: List<MpMomentEntity>): List<MomentUi> {
         if (entities.isEmpty()) return emptyList()
@@ -251,7 +261,7 @@ class MiniPhoneMomentsViewModel(
         }
     }
 
-    /** noticias individuales(Recién publicado, solo me gusta/Comentario)Completo con cheque único,No es necesario agrupar una acción a la vez. */
+    /** 单条动态(刚发布的、刚被点赞/评论的)用单查补齐,不必为一行动一次批量。 */
     private suspend fun buildRow(entity: MpMomentEntity): MomentUi = buildMomentUi(
         entity = entity,
         likes = repository.likesOf(entity.id),
@@ -267,7 +277,7 @@ class MiniPhoneMomentsViewModel(
         }
     }
 
-    /** Agregaré avatares después de que llegue la lista de personajes.;Los campos restantes de la fila no se modifican. */
+    /** 角色名单到了之后补头像;行的其余字段不动。 */
     private fun applyAvatars() {
         mutableState.update { state ->
             state.copy(
@@ -280,7 +290,7 @@ class MiniPhoneMomentsViewModel(
     }
 
     private companion object {
-        /** Número de artículos por página:Aproximadamente dos o tres actualizaciones por pantalla,Veinte elementos son suficientes para pasar por varias pantallas. */
+        /** 每页条数:一屏大约两三条动态,二十条够翻好几屏。 */
         const val PAGE_SIZE: Int = 20
     }
 }

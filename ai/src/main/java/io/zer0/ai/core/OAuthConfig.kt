@@ -3,26 +3,26 @@ package io.zer0.ai.core
 import kotlinx.serialization.Serializable
 
 /**
- * P1-6: OAuth Configuración de autenticación.
+ * P1-6: OAuth 认证配置。
  *
- * para apoyo OAuth Device Flow(RFC 8628)o Authorization Code Flow(PKCE)de
- * proveedor(Como xAI,OpenAI Codex espera),Inicie sesión a través de OAuth en lugar de completar la clave apiKey manualmente.
+ * 用于支持 OAuth Device Flow(RFC 8628)或 Authorization Code Flow(PKCE)的
+ * 供应商(如 xAI、OpenAI Codex 等),通过 OAuth 登录替代手动填 apiKey。
  *
- * - [deviceCodeUrl] Cuando no esté vacío, vaya primero a Device Flow:POST. device_code + user_code,
- *   Visualización de ventana emergente user_code,sondeo [tokenUrl] Hasta que obtengas el access_token.
- * - [deviceCodeUrl] Si está vacío, vaya a Flujo del código de autorización: abrir con el navegador del sistema
- *   [authorizeUrl],Pase Deep Link(`io.zer0.muse://oauth/callback`)recibir code,
- *   Reemplace el código con access_token.
+ * - [deviceCodeUrl] 非空时优先走 Device Flow:POST 拿 device_code + user_code,
+ *   弹窗显示 user_code,轮询 [tokenUrl] 直到拿到 access_token。
+ * - [deviceCodeUrl] 为空时走 Authorization Code Flow:用系统浏览器打开
+ *   [authorizeUrl],通过 Deep Link(`io.zer0.muse://oauth/callback`)接收 code,
+ *   再用 code 换 access_token。
  *
- * @param authorizeUrl Authorization Code Flow página de autorización URL
- * @param tokenUrl Punto final del token común a ambos flujos(Cambiar access_token)
- * @param clientId OAuth cliente de aplicación ID(Requerido,Aplicar desde la consola del proveedor)
- * @param clientSecret OAuth Aplicar secreto de cliente(Confidential Client solo necesito,
- *   El cliente público celular debe dejarse en blanco,Usar en su lugar PKCE)
- * @param redirectUri Authorization Code Flow devolución de llamada URI,
- *   Predeterminado `io.zer0.muse://oauth/callback`(Registrado en AndroidManifest)
- * @param scope Alcance de la autoridad solicitada(Como por ejemplo `chat.read chat.write`),Vacío significa usar el proveedor predeterminado
- * @param deviceCodeUrl Device Flow El punto final de código_dispositivo;nulo significa no soportado Device Flow
+ * @param authorizeUrl Authorization Code Flow 的授权页 URL
+ * @param tokenUrl 两种 Flow 共用的 token 端点(换 access_token)
+ * @param clientId OAuth 应用客户端 ID(必填,由供应商控制台申请)
+ * @param clientSecret OAuth 应用客户端密钥(Confidential Client 才需要,
+ *   移动端 Public Client 应留空,改用 PKCE)
+ * @param redirectUri Authorization Code Flow 的回调 URI,
+ *   默认 `io.zer0.muse://oauth/callback`(已在 AndroidManifest 注册)
+ * @param scope 申请的权限范围(如 `chat.read chat.write`),空表示用供应商默认
+ * @param deviceCodeUrl Device Flow 的 device_code 端点;为 null 表示不支持 Device Flow
  */
 @Serializable
 data class OAuthConfig(
@@ -32,14 +32,14 @@ data class OAuthConfig(
     val clientSecret: String? = null,
     val redirectUri: String = "io.zer0.muse://oauth/callback",
     /**
-     * v2.6.0: Codex Interruptor de proceso de código de equipo especial.
+     * v2.6.0: Codex 专用设备码流程开关。
      *
-     * true Realice el proceso de autorización de dispositivo exclusivo de OpenAI Codex(oficial codex CLI `--device-auth` Mismo estilo):
+     * true 时走 OpenAI Codex 特有的设备授权流程(官方 codex CLI `--device-auth` 同款):
      *  - POST {base}/api/accounts/deviceauth/usercode (JSON, body {client_id})
-     *  - sondeo POST {base}/api/accounts/deviceauth/token (JSON, body {device_auth_id, user_code})
-     *  - POST {base}/oauth/token Reemplazar con el código_autorización + verificador_código devuelto token
-     *    (redirect_uri fijo a https://auth.openai.com/deviceauth/callback)
-     * No es necesario realizar una devolución de llamada de localhost durante todo el proceso. —— Evite que el agente de usuario trague la dirección de bucle invertido en el túnel y provoque que se agote el tiempo de espera de la conexión.
+     *  - 轮询 POST {base}/api/accounts/deviceauth/token (JSON, body {device_auth_id, user_code})
+     *  - POST {base}/oauth/token 用返回的 authorization_code + code_verifier 换 token
+     *    (redirect_uri 固定为 https://auth.openai.com/deviceauth/callback)
+     * 全程不需要 localhost 回调 —— 避免用户代理把回环地址吞进隧道导致连接超时。
      */
     val codexDeviceAuth: Boolean = false,
     val scope: String = "",
@@ -47,16 +47,16 @@ data class OAuthConfig(
 ) {
     companion object {
         /**
-         * xAI OAuth Predeterminado.
+         * xAI OAuth 预设。
          *
-         * v2.6.0(Comentarios de los usuarios: el inicio de sesión con un clic no está disponible): funcionario de prensa/Solución implementada por la comunidad.
+         * v2.6.0（用户反馈：一键登录全部不可用）: 按官方/社区实现修正。
          *
-         * El punto final de implementación original y el clientId son marcadores de posición.(x.ai/oauth,clientId vacío) —— Un ID de cliente vacío hará
-         * Device Flow juicio directo“No disponible”. Inicio de sesión de suscripción xAI real:
-         *  - Servidor de autorización: `https://auth.x.ai`(no x.ai), admite descubrimiento OIDC
-         *  - device code: `https://auth.x.ai/oauth2/device/code`(RFC 8628)
+         * 原实现端点与 clientId 均为占位(x.ai/oauth、clientId 空) —— 空 clientId 会让
+         * Device Flow 直接判“不可用”。实际 xAI 订阅登录：
+         *  - 授权服务器: `https://auth.x.ai`（非 x.ai），支持 OIDC 发现
+         *  - device code: `https://auth.x.ai/oauth2/device/code`（RFC 8628）
          *  - token:      `https://auth.x.ai/oauth2/token`
-         *  - clientId:    Grok CLI Cliente público de flujo de dispositivos (mismo origen que oh-my-pi/hermes-agent, no confidencial)
+         *  - clientId:    Grok CLI 公开 device-flow client（与 oh-my-pi/hermes-agent 同源，非机密）
          *  - scope:       `openid profile email offline_access grok-cli:access`
          */
         val XAI_PRESET = OAuthConfig(
@@ -68,13 +68,13 @@ data class OAuthConfig(
         )
 
         /**
-         * v1.0.6: xAI OAuth Responses Predeterminado.
+         * v1.0.6: xAI OAuth Responses 预设。
          *
-         * con [XAI_PRESET] diferencia:Este valor predeterminado utiliza el protocolo OpenAI Responses.(openai-responses),
-         * baseUrl Apunte al punto final del proxy xAI OAuth https://cli-chat-proxy.grok.com,
-         * Una vez autorizado el usuario, obtiene el token de acceso y llama al punto final /v1/responses para acceder al modelo Grok 4.5+.
+         * 与 [XAI_PRESET] 区别:此预设走 OpenAI Responses 协议(openai-responses),
+         * baseUrl 指向 xAI OAuth 代理端点 https://cli-chat-proxy.grok.com,
+         * 用户授权后拿到 access_token 调用 /v1/responses 端点访问 Grok 4.5+ 模型。
          *
-         * v2.6.0: Corrección de sincronización con el punto final auth.x.ai + client_id público (igual que [XAI_PRESET]).
+         * v2.6.0: 同步修正为 auth.x.ai 端点 + 公开 client_id（同 [XAI_PRESET]）。
          */
         val XAI_OAUTH_PRESET = OAuthConfig(
             authorizeUrl = "https://auth.x.ai/oauth2/authorize",
@@ -85,16 +85,16 @@ data class OAuthConfig(
         )
 
         /**
-         * v2.x(comentarios de los usuarios): OpenAI Codex OAuth Predeterminado —— Modificado según el mismo acuerdo que Codex CLI.
+         * v2.x（用户反馈）: OpenAI Codex OAuth 预设 —— 按 Codex CLI 同款协议修正。
          *
-         * ChatGPT Inicie sesión con una cuenta de suscripción (no utilice facturación API, utilice cuota de suscripción):
-         *  - proceso: Authorization Code Flow + PKCE(S256), el navegador volverá al bucle invertido después de abrir la página de autorización;
-         *  - authorizeUrl: `https://auth.openai.com/oauth/authorize`;
-         *  - tokenUrl:     `https://auth.openai.com/oauth/token`(code Compartido con reemplazo y actualización de token);
-         *  - clientId:     Codex CLI client_id público (valor común de implementación comunitaria);
-         *  - scope:        `openid profile email offline_access`(offline_access enviará refresco_token);
-         *  - punto final de inferencia:     `https://chatgpt.com/backend-api/codex/responses`(ver PresetProviders.openaiCodex);
-         *  - Encabezado de solicitud:       Además del portador, también necesitas `ChatGPT-Account-ID`(analizado de id_token JWT).
+         * ChatGPT 订阅账号登录（不走 API 计费，走订阅额度）：
+         *  - 流程: Authorization Code Flow + PKCE(S256)，浏览器打开授权页后回跳 loopback；
+         *  - authorizeUrl: `https://auth.openai.com/oauth/authorize`；
+         *  - tokenUrl:     `https://auth.openai.com/oauth/token`（code 换 token 与刷新共用）；
+         *  - clientId:     Codex CLI 公开 client_id（社区实现通用值）；
+         *  - scope:        `openid profile email offline_access`（offline_access 才会发 refresh_token）；
+         *  - 推理端点:     `https://chatgpt.com/backend-api/codex/responses`（见 PresetProviders.openaiCodex）；
+         *  - 请求头:       除 Bearer 外还需 `ChatGPT-Account-ID`（从 id_token JWT 解析）。
          */
         val OPENAI_CODEX_PRESET = OAuthConfig(
             authorizeUrl = "https://auth.openai.com/oauth/authorize",
@@ -102,27 +102,27 @@ data class OAuthConfig(
             clientId = "app_EMoamEEZ73f0CkXaXp7hrann",
             scope = "openid profile email offline_access",
             redirectUri = "http://localhost:1455/auth/callback",
-            // v2.6.0: Proceso de código de dispositivo específico de Mark Codex —— Codex Sin estándares RFC 8628:
-            // Punto final del código del dispositivo /api/accounts/deviceauth/*(JSON + dos etapas),
-            // token intercambio de redirección_uri arreglado https://auth.openai.com/deviceauth/callback.
-            // No se requiere devolución de llamada de localhost para seguir esta ruta,evitar completamente“Bucle invertido del agente→tiempo de espera”pregunta.
+            // v2.6.0: 标记 Codex 专用设备码流程 —— Codex 不用标准 RFC 8628:
+            // 设备码端点走 /api/accounts/deviceauth/*(JSON + 两段式),
+            // token 交换 redirect_uri 固定 https://auth.openai.com/deviceauth/callback。
+            // 走这条路径不需要 localhost 回调,彻底避开“代理吞回环→超时”问题。
             codexDeviceAuth = true,
         )
 
         /**
-         * v1.134 P2-1: GitHub Copilot OAuth Predeterminado(Device Flow).
+         * v1.134 P2-1: GitHub Copilot OAuth 预设(Device Flow)。
          *
-         * GitHub oficial OAuth Device Flow(RFC 8628),Después de que el usuario ingresa el código de usuario en el navegador para obtener autorización,
-         * Llamado con access_token Copilot API(https://api.githubcopilot.com):
-         *  - authorizeUrl: `https://github.com/login/oauth/authorize`(Authorization Code Flow Repuesto)
-         *  - tokenUrl:     `https://github.com/login/oauth/access_token`(Cambiar token)
-         *  - deviceCodeUrl:`https://github.com/login/device/code`(Device Flow camino principal)
-         *  - clientId:     GitHub Copilot cliente público de OAuth (VS Code / Copilot CLI y
-         *                  Una gran cantidad de herramientas de terceros son comunes y no confidenciales;v2.6.0 Corrección: el valor original estaba vacío, lo que hacía que no estuviera disponible directamente)
+         * GitHub 官方 OAuth Device Flow(RFC 8628),用户在浏览器输入 user_code 授权后,
+         * 用 access_token 调用 Copilot API(https://api.githubcopilot.com):
+         *  - authorizeUrl: `https://github.com/login/oauth/authorize`(Authorization Code Flow 备用)
+         *  - tokenUrl:     `https://github.com/login/oauth/access_token`(换 token)
+         *  - deviceCodeUrl:`https://github.com/login/device/code`(Device Flow 主路径)
+         *  - clientId:     GitHub Copilot 公开 OAuth client（VS Code / Copilot CLI 及
+         *                  大量第三方工具通用，非机密；v2.6.0 修正：原为空导致直接不可用）
          *  - scope:        `read:user`
          *
-         * Al llamar a Copilot, trate access_token como apiKey,BASE_URL señalar a
-         * `https://api.githubcopilot.com`,Copilot La puerta de enlace funcionará como proxy para modelos como OpenAI/GPT-4o.
+         * 调用 Copilot 时把 access_token 当作 apiKey,BASE_URL 指向
+         * `https://api.githubcopilot.com`,Copilot 网关会代理到 OpenAI/GPT-4o 等模型。
          */
         val GITHUB_COPILOT_PRESET = OAuthConfig(
             authorizeUrl = "https://github.com/login/oauth/authorize",

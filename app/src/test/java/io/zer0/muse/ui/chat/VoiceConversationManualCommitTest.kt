@@ -25,21 +25,21 @@ import org.junit.Before
 import org.junit.Test
 
 /**
- * Un contrato de "punto final totalmente manual" para conversaciones de voz.
+ * 语音对话的「完全手动端点」契约。
  *
- * Escollos de la regresión:ASR la sesión termina(Cierre silencioso del lado del servidor, reconocimiento de errores e informes de errores)Me trataron como a un usuario y terminé.,
- * Envía media frase directamente al modelo.,Y el micrófono sigue captando durante la transmisión TTS.,Reconozca su propia voz de lectura como el discurso del usuario.
+ * 回归的缺陷:ASR 会话一结束(服务端静音收尾、识别报错)就被当成用户说完了,
+ * 半句话直接发给模型,而且 TTS 播报期间麦克风仍在采集,把自己的朗读声识别成用户说话。
  *
- * nuevo contrato:
- *  - Sólo el usuario hace clic en "Finalizar"([ChatMediaController.finishVoiceConversationListening])Enviar
- *  - ASR Termina solo → Ningún mensaje,Vuelva a ESCUCHAR para escuchar de nuevo;El texto reconocido permanece en el texto acumulado y continúa acumulándose.,
- *    Por lo tanto, el mensaje luminoso "Decir de nuevo" solo aparece cuando el texto acumulado aún está vacío.
- *  - THINKING / SPEAKING El micrófono permanece apagado durante,Vuelva a abrir solo cuando regrese a ESCUCHAR
+ * 新契约:
+ *  - 只有用户点「结束」([ChatMediaController.finishVoiceConversationListening])才算提交
+ *  - ASR 自行结束 → 不发消息,回 LISTENING 重新收音;已识别文字保留在累积文本里继续累积,
+ *    所以只在累积文本仍为空时才给「再说一次」轻提示
+ *  - THINKING / SPEAKING 期间麦克风保持关闭,只在回到 LISTENING 时重开
  */
 class VoiceConversationManualCommitTest {
 
     private companion object {
-        const val RETRY_HINT = "No te escuché claramente. Dilo de nuevo."
+        const val RETRY_HINT = "没听清，再说一次"
     }
 
     private lateinit var scope: CoroutineScope
@@ -88,7 +88,7 @@ class VoiceConversationManualCommitTest {
             onStop = { },
             onUpdateInput = { inputUpdates.add(it) },
             settings = mockk<SettingsRepository>(relaxed = true),
-            // El organismo de control no utiliza la afirmación de esta prueba.,Dar un tiempo de espera lo suficientemente largo para evitar interferencias.
+            // 看门狗用不到本测试的断言,给一个足够长的超时避免干扰
             speakingWatchdogTimeoutMs = { 60_000L },
         )
     }
@@ -117,14 +117,14 @@ class VoiceConversationManualCommitTest {
         assertEquals(VoiceConversationState.LISTENING, voiceState.state.value)
 
         stateStore.state.value = uiState(ASRStatus.Listening)
-        voiceState.transcript.value = "Compruébalo por mí"
-        // Final silencioso del lado del servidor:ASR regresar solo Idle,El usuario no hizo clic en finalizar.
-        stateStore.state.value = uiState(ASRStatus.Idle, transcript = "Compruébalo por mí")
+        voiceState.transcript.value = "帮我查一下"
+        // 服务端静音收尾:ASR 自己回到 Idle,用户并没有点结束
+        stateStore.state.value = uiState(ASRStatus.Idle, transcript = "帮我查一下")
 
-        assertTrue("ASR No envíe mensajes al modelo si termina solo.", sent.isEmpty())
+        assertTrue("ASR 自行结束不得发消息给模型", sent.isEmpty())
         assertEquals(VoiceConversationState.LISTENING, voiceState.state.value)
-        assertEquals("Las palabras dichas deben permanecer", "Compruébalo por mí", voiceState.transcript.value)
-        assertNull("No solicitar repetir cuando hay texto acumulado", voiceState.hint.value)
+        assertEquals("已说出的文字必须留着", "帮我查一下", voiceState.transcript.value)
+        assertNull("有累积文本时不提示重说", voiceState.hint.value)
         verify(exactly = 2) { audioCoordinator.startVoiceConversationListening(any()) }
     }
 
@@ -133,14 +133,14 @@ class VoiceConversationManualCommitTest {
         controller.startVoiceConversation()
 
         stateStore.state.value = uiState(ASRStatus.Listening)
-        voiceState.transcript.value = "Hola"
-        stateStore.state.value = uiState(ASRStatus.Error, transcript = "Hola")
+        voiceState.transcript.value = "你好"
+        stateStore.state.value = uiState(ASRStatus.Error, transcript = "你好")
 
-        assertTrue("ASR Al informar un error, no debe enviar un mensaje al modelo.", sent.isEmpty())
+        assertTrue("ASR 报错不得发消息给模型", sent.isEmpty())
         assertEquals(VoiceConversationState.LISTENING, voiceState.state.value)
-        assertEquals("Hola", voiceState.transcript.value)
-        assertNull("No solicitar repetir cuando hay texto acumulado", voiceState.hint.value)
-        // Error No se vuelve a abrir automáticamente cuando está en estado,evitar start → Error bucle infinito
+        assertEquals("你好", voiceState.transcript.value)
+        assertNull("有累积文本时不提示重说", voiceState.hint.value)
+        // Error 状态下不自动重开,避免 start → Error 死循环
         verify(exactly = 1) { audioCoordinator.startVoiceConversationListening(any()) }
     }
 
@@ -149,23 +149,23 @@ class VoiceConversationManualCommitTest {
         controller.startVoiceConversation()
         stateStore.state.value = uiState(ASRStatus.Listening)
 
-        // Terminar sin hacer clic:No importa cómo cambie el texto de reconocimiento, no se envía.
-        voiceState.transcript.value = "ayudame"
+        // 未点结束:识别文本怎么变都不发送
+        voiceState.transcript.value = "帮我"
         stateStore.state.value = uiState(ASRStatus.Listening)
-        voiceState.transcript.value = "Ayúdame a comprobar el tiempo en Beijing mañana."
+        voiceState.transcript.value = "帮我查一下明天北京天气"
         stateStore.state.value = uiState(ASRStatus.Listening)
-        assertTrue("No enviar hasta que el usuario diga que ha terminado", sent.isEmpty())
+        assertTrue("用户没说结束时不得发送", sent.isEmpty())
 
         controller.finishVoiceConversationListening()
         verify { audioCoordinator.stopVoiceConversationListening() }
 
-        stateStore.state.value = uiState(ASRStatus.Idle, transcript = "Ayúdame a comprobar el tiempo en Beijing mañana.")
+        stateStore.state.value = uiState(ASRStatus.Idle, transcript = "帮我查一下明天北京天气")
 
-        assertEquals(listOf("Ayúdame a comprobar el tiempo en Beijing mañana."), sent)
+        assertEquals(listOf("帮我查一下明天北京天气"), sent)
         assertEquals(VoiceConversationState.THINKING, voiceState.state.value)
-        assertNull("Borrar el mensaje de luz después del envío", voiceState.hint.value)
-        assertEquals("Borrar texto acumulado después del envío", "", voiceState.transcript.value)
-        // THINKING No vuelva a encender el micrófono durante este período.
+        assertNull("提交后清掉轻提示", voiceState.hint.value)
+        assertEquals("提交后清空累积文本", "", voiceState.transcript.value)
+        // THINKING 期间不重开麦克风
         verify(exactly = 1) { audioCoordinator.startVoiceConversationListening(any()) }
     }
 
@@ -177,7 +177,7 @@ class VoiceConversationManualCommitTest {
         controller.finishVoiceConversationListening()
         stateStore.state.value = uiState(ASRStatus.Idle, transcript = "")
 
-        assertTrue("No se permite texto vacío para enviar mensajes.", sent.isEmpty())
+        assertTrue("空文本不得发消息", sent.isEmpty())
         assertEquals(VoiceConversationState.LISTENING, voiceState.state.value)
         assertEquals(RETRY_HINT, voiceState.hint.value)
         verify(exactly = 2) { audioCoordinator.startVoiceConversationListening(any()) }
@@ -187,41 +187,41 @@ class VoiceConversationManualCommitTest {
     fun `commit followed by asr error still does not send`() {
         controller.startVoiceConversation()
         stateStore.state.value = uiState(ASRStatus.Listening)
-        voiceState.transcript.value = "ayúdame a ver"
+        voiceState.transcript.value = "帮我看"
 
         controller.finishVoiceConversationListening()
-        // Identificar errores durante el proceso de cierre.:Este texto no es creíble.,No se puede enviar al modelo
-        stateStore.state.value = uiState(ASRStatus.Error, transcript = "ayúdame a ver")
+        // 收尾过程中识别报错:这段文本不可信,不能发给模型
+        stateStore.state.value = uiState(ASRStatus.Error, transcript = "帮我看")
 
-        assertTrue("Error No enviar mensajes al final.", sent.isEmpty())
+        assertTrue("Error 收尾不得发消息", sent.isEmpty())
         assertEquals(VoiceConversationState.LISTENING, voiceState.state.value)
-        assertEquals("Retención acumulativa de texto,El usuario puede hacer clic una vez más para finalizar el", "ayúdame a ver", voiceState.transcript.value)
-        assertNull("No solicitar repetir cuando hay texto acumulado", voiceState.hint.value)
+        assertEquals("累积文本保留,用户再点一次结束即可", "帮我看", voiceState.transcript.value)
+        assertNull("有累积文本时不提示重说", voiceState.hint.value)
     }
 
     @Test
     fun `microphone stays closed while speaking and reopens only on listening`() {
         controller.startVoiceConversation()
         stateStore.state.value = uiState(ASRStatus.Listening)
-        voiceState.transcript.value = "¿Está ahí?"
+        voiceState.transcript.value = "在吗"
         controller.finishVoiceConversationListening()
-        stateStore.state.value = uiState(ASRStatus.Idle, transcript = "¿Está ahí?")
+        stateStore.state.value = uiState(ASRStatus.Idle, transcript = "在吗")
         assertEquals(VoiceConversationState.THINKING, voiceState.state.value)
 
-        // THINKING → SPEAKING:El micrófono debe estar apagado antes de transmitir.,y no volverá a abrir
-        stateStore.messages.value = listOf(UIMessage(role = MessageRole.ASSISTANT, content = "En."))
+        // THINKING → SPEAKING:播报前必须关麦,且不重开
+        stateStore.messages.value = listOf(UIMessage(role = MessageRole.ASSISTANT, content = "在的。"))
         stateStore.state.value = uiState(ASRStatus.Idle, isStreaming = true)
         stateStore.state.value = uiState(ASRStatus.Idle, isStreaming = false)
         assertEquals(VoiceConversationState.SPEAKING, voiceState.state.value)
-        // detenerse en el camino de envío + al entrar HABLAR stop,puede golpear;La clave es que en este momento no hay start
+        // 一次提交路径上的 stop + 进入 SPEAKING 时的 stop,都可能命中;关键是此时没有 start
         verify(exactly = 1) { audioCoordinator.startVoiceConversationListening(any()) }
 
-        // El estado cambió varias veces más durante la transmisión.,Aún no vuelves a encender el micrófono
+        // 播报期间再来几次状态抖动,依然不重开麦克风
         stateStore.state.value = uiState(ASRStatus.Idle, isSpeaking = true)
         stateStore.state.value = uiState(ASRStatus.Idle, isSpeaking = true)
         verify(exactly = 1) { audioCoordinator.startVoiceConversationListening(any()) }
 
-        // Fin de la lectura → LISTENING,Vuelve a abrirlo ahora
+        // 朗读结束 → LISTENING,这时才重开一次
         stateStore.state.value = uiState(ASRStatus.Idle, isSpeaking = false)
         assertEquals(VoiceConversationState.LISTENING, voiceState.state.value)
         verify(exactly = 2) { audioCoordinator.startVoiceConversationListening(any()) }
@@ -232,22 +232,22 @@ class VoiceConversationManualCommitTest {
         controller.startVoiceConversation()
         verify(exactly = 1) { audioCoordinator.startVoiceConversationListening(any()) }
 
-        // LISTENING Pero ASR no está grabando.:Haga clic = Empezar a grabar de nuevo,no enviar
+        // LISTENING 但 ASR 未在录音:点一下 = 重新开始录音,不提交
         stateStore.state.value = uiState(ASRStatus.Idle)
         controller.toggleVoiceConversation()
         verify(exactly = 2) { audioCoordinator.startVoiceConversationListening(any()) }
         assertTrue(sent.isEmpty())
 
-        // LISTENING Y grabando:Haga clic = Finalizar y enviar
+        // LISTENING 且录音中:点一下 = 结束并提交
         stateStore.state.value = uiState(ASRStatus.Listening)
-        voiceState.transcript.value = "hola"
+        voiceState.transcript.value = "你好呀"
         controller.toggleVoiceConversation()
         verify { audioCoordinator.stopVoiceConversationListening() }
-        stateStore.state.value = uiState(ASRStatus.Idle, transcript = "hola")
-        assertEquals(listOf("hola"), sent)
+        stateStore.state.value = uiState(ASRStatus.Idle, transcript = "你好呀")
+        assertEquals(listOf("你好呀"), sent)
         assertEquals(VoiceConversationState.THINKING, voiceState.state.value)
 
-        // THINKING Haga clic a continuación = interrumpir(Mantener la semántica existente)
+        // THINKING 下点一下 = 中断(保持既有语义)
         controller.toggleVoiceConversation()
         assertEquals(VoiceConversationState.IDLE, voiceState.state.value)
         verify { audioCoordinator.cancelVoiceConversationListening() }

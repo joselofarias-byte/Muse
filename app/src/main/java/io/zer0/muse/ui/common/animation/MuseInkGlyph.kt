@@ -26,36 +26,36 @@ import io.zer0.muse.ui.theme.MuseAnimation
 import kotlin.math.cos
 import kotlin.math.sin
 
-/** El ángulo de inclinación de toda la forma de tinta con respecto al lienzo es coherente con la postura de la figura principal. */
+/** 整枚墨形相对画布的倾斜角，与主识别形的姿态一致。 */
 private const val TILT_DEGREES = -38f
 
-/** La proporción de la longitud de la luz que viaja a lo largo del contorno. */
+/** 沿轮廓游走的那段光的长度占比。 */
 private const val TRAVEL_FRACTION = 0.28f
 
-/** Piensa en las longitudes de los lados de las formas de tinta en el indicador. */
+/** 思考指示器里墨形的边长。 */
 val MuseThinkingGlyphSize = 18.dp
 
-/** El desplazamiento de los dos extremos del pecíolo con respecto al centro del lienzo, en múltiplos del radio;drawStem Comparte el mismo conjunto de números que el cálculo de alineación. */
+/** 叶柄两端相对画布中心的偏移，单位为半径倍数；drawStem 与对齐计算共用同一组数。 */
 private const val STEM_X0 = 0.06f
 private const val STEM_Y0 = 0.02f
 private const val STEM_X1 = 0.30f
 private const val STEM_Y1 = 0.10f
 
-/** Número de segmentos de contorno para alinear las muestras. La misma magnitud que el contorno, no píxel por píxel. */
+/** 对齐采样的轮廓段数。与轮廓同量级即可，不必逐像素。 */
 private const val ALIGN_SAMPLES = 96
 
 private const val TWO_PI = (Math.PI * 2).toFloat()
 
 /**
- * El indicador en forma de tinta de la etapa de espera: una hoja, una estrella y un anillo, los tres se transforman entre sí.
+ * 等待阶段的墨形指示器：一片叶，一枚星，一道环，三者互相变。
  *
- * ¿Por qué utilizar "forma" en lugar de "girar en círculos": girar en círculos transmite "algo está ocupado", mientras que los cambios en la forma transmiten
- * "Algo está creciendo." El primero es el lenguaje de la máquina y el segundo es el sentimiento que queremos dar a la gente.
+ * 为什么用「形态」而不是「转圈」：转圈传达的是「有东西在忙」，形态变化传达的是
+ * 「有东西在生长」。前者是机器的语言，后者才是我们想给人的感觉。
  *
- * Precio: Trazo de lienzo puro, sin WebView, sin mapa de bits superpuesto. La geometría se define en MuseInkForm.kt.
+ * 代价：纯 Canvas 描边，不起 WebView、不叠位图。几何定义在 MuseInkForm.kt。
  */
 
-/** Cuerpo en forma de tinta. */
+/** 墨形本体。 */
 @Composable
 internal fun MuseInkGlyph(
     modifier: Modifier = Modifier,
@@ -91,10 +91,10 @@ private fun DrawScope.drawGlyphFrame(progress: Float, color: Color, travel: Floa
     val radius = size.minDimension / 2f * 0.92f
     val center = Offset(size.width / 2f, size.height / 2f)
     val form = formAt(progress)
-    // El contorno de la forma de la hoja es naturalmente asimétrico en coordenadas polares: la punta es angle=0, extremo redondo en angle=π,
-    // Luego gire alrededor del centro del lienzo. -38°, el centro de su cuadro delimitador visual sale del centro geométrico (18dp Aproximadamente 1,7 dp de abajo a izquierda,
-    // Aproximadamente 1,3 dp menos). Esto se puede ver de un vistazo en el pequeño icono.“torcido”.
-    // Entonces, primero calcule el centro del cuadro delimitador de la forma actual y luego traslade todo el grupo de dibujos hacia atrás para que la tinta caiga en el centro del lienzo.
+    // 叶形的轮廓在极坐标里天生左右不对称：尖在 angle=0、圆端在 angle=π，
+    // 再绕画布中心转 -38°，它的视觉包围盒中心就离开了几何中心（18dp 下偏左约 1.7dp、
+    // 偏下约 1.3dp）。这在小图标里一眼就能看出“歪”。
+    // 所以先算出当前形状自身的包围盒中心，再把整组绘制平移回去，让墨落在画布正中。
     val bounds = inkBounds(form, radius)
     val hairline = Stroke(
         width = 1.6.dp.toPx(),
@@ -103,10 +103,10 @@ private fun DrawScope.drawGlyphFrame(progress: Float, color: Color, travel: Floa
     )
     translate(left = -bounds.center.x, top = -bounds.center.y) {
         rotate(degrees = TILT_DEGREES, pivot = center) {
-            // No hagas una revelación de "un solo trazo" aquí: la revelación requiere que el contorno no sea visible cuando el progreso se restablece a cero.
-            // Y el final del bucle es bucle.→La deformación de las hojas, las dos se pelearán por las costuras.——
-            // Lo que el usuario ve es que la hoja desaparece repentinamente y se vuelve a dibujar. Ahora el contorno es siempre visible,
-            // La "sensación de crecimiento" depende enteramente de la propia interpolación morfológica y puede conectarse de principio a fin.
+            // 不在这里做「一笔画出」的揭示：揭示要求进度归零时轮廓不可见，
+            // 而循环末尾是 环→叶 的形变，两者在接缝处会互相打架——
+            // 用户看到的是叶突然消失又重画一遍。现在轮廓始终可见，
+            // 「生长感」完全由形态插值本身承担，首尾就能接上。
             val path = contourPath(form, center, radius)
             drawPath(path, color, style = hairline)
             drawSparkTravel(path, color, travel, form)
@@ -116,9 +116,9 @@ private fun DrawScope.drawGlyphFrame(progress: Float, color: Color, travel: Floa
 }
 
 /**
- * El cuadro delimitador de la forma actual (incluido el ángulo de inclinación) en el lienzo, siendo el origen el centro del lienzo.
+ * 当前形态（含倾角）在画布上的包围盒，原点为画布中心。
  *
- * Los pecíolos también están incluidos: sólo están centrados en el contorno y los tallos todavía sobresalen, por lo que todavía parecen torcidos.
+ * 叶柄也算进去：只居中轮廓、柄还戳在外面，看上去仍然是偏的。
  */
 private fun inkBounds(form: Float, radius: Float): Rect {
     val base = form.toInt().coerceIn(0, FORM_COUNT - 1)
@@ -155,8 +155,8 @@ private fun inkBounds(form: Float, radius: Float): Rect {
 }
 
 /**
- * Un tramo de luz errante en forma de estrella: Tome un tramo del 28% de la circunferencia del contorno, avance por el camino y la cabeza de la línea alcanzará el final de la línea.
- * Dibuja solo cuando la forma de estrella represente una proporción lo suficientemente alta como para evitar el follaje./Hay una línea brillante inesperada en el anillo.
+ * 星形态下的一段游走光：取轮廓 28% 周长的一段，沿路径推进，线头追线尾。
+ * 只有星形态占比足够高时才画，避免在叶/环上多出一截突兀的亮线。
  */
 private fun DrawScope.drawSparkTravel(path: Path, color: Color, travel: Float, form: Float) {
     val weight = formWeight(form, FORM_SPARK)
@@ -184,7 +184,7 @@ private fun DrawScope.drawSparkTravel(path: Path, color: Color, travel: Float, f
     )
 }
 
-/** Pecíolo: sólo visible cuando la hoja está en forma y se desvanece cuando se deforma. */
+/** 叶柄：只在叶形态显形，形变时淡出。 */
 private fun DrawScope.drawStem(center: Offset, radius: Float, color: Color, weight: Float) {
     if (weight < 0.02f) return
     drawLine(

@@ -7,27 +7,27 @@ import androidx.room.PrimaryKey
 import kotlinx.serialization.Serializable
 
 /**
- * entidad de sesión.
+ * 会话实体。
  *
- * Una conversación corresponde a una conversación continua.,Tiene historial de mensajes independiente y aislamiento de sesiones de memoria.
- * - [id] clave primaria,cuerda UUID
- * - [title] Título de la sesión(Editable por el usuario,De forma predeterminada, se toman los primeros 20 caracteres del primer mensaje.)
- * - [createdAt] Crear marca de tiempo
- * - [updatedAt] Última actualización(Se utiliza para clasificar la barra lateral)
- * - [lastMessagePreview] Vista previa del último mensaje(Visualización de la barra lateral,Una sesión vacía es una cadena vacía)
+ * 一个会话对应一段连续对话,拥有独立的消息历史和 memory session 隔离。
+ * - [id] 主键,字符串 UUID
+ * - [title] 会话标题(用户可编辑,默认取首条消息前 20 字)
+ * - [createdAt] 创建时间戳
+ * - [updatedAt] 最后更新时间(用于侧栏排序)
+ * - [lastMessagePreview] 最后一条消息预览(侧栏显示,空会话为空串)
  *
- * Phase 5-I: Agregue @Serializable para exportar copias de seguridad/Importar.
- * Phase 8.2: agregar [assistantId] Personalidad del asistente de enlace de campo;[pinned] Los campos admiten pegarse a la cima.
- * Phase 8.5 Reparación: @ColumnInfo(defaultValue=...) Totalmente alineado con MIGRATION_1_2 SQL,Evite fallas en la validación del esquema de la sala.
- * Phase 9.1 (M13): agregar [folderId] El campo admite agrupación de carpetas(null = No agrupado).
- * v0.45: agregar [archived] El campo admite el archivo(Predeterminado false,Después de archivarlo, no se mostrará en la lista principal.).
- * v1.28: agregar [isAgentSession] Los campos diferencian las sesiones de la pestaña Agente(true)Conversación con la pestaña Tarea(false),
- *        Agent Tab Los chats diarios no contaminan la lista de tareas pendientes.
+ * Phase 5-I: 加 @Serializable 用于备份导出/导入。
+ * Phase 8.2: 加 [assistantId] 字段绑定 Assistant 人格;[pinned] 字段支持置顶。
+ * Phase 8.5 修复: @ColumnInfo(defaultValue=...) 与 MIGRATION_1_2 SQL 完全对齐,避免 Room schema 验证崩溃。
+ * Phase 9.1 (M13): 加 [folderId] 字段支持文件夹分组(null = 未分组)。
+ * v0.45: 加 [archived] 字段支持归档(默认 false,归档后不在主列表显示)。
+ * v1.28: 加 [isAgentSession] 字段区分 Agent Tab 会话(true)与任务 Tab 会话(false),
+ *        Agent Tab 的日常聊天不污染任务列表。
  */
 @Serializable
 @Entity(
     tableName = "sessions",
-    // D-AUDIT: Lista de sesiones/consulta por asistente/índice compuesto para consulta bifurcada(Escaneo completo de la tabla con índice cero anterior)
+    // D-AUDIT: 会话列表 / 按助手查询 / 分叉查询的复合索引(此前零索引全表扫描)
     indices = [
         Index(value = ["assistantId", "updatedAt"], name = "idx_sessions_assistantId_updatedAt"),
         Index(value = ["deletedAt", "archived", "updatedAt"], name = "idx_sessions_deletedAt_archived_updatedAt"),
@@ -44,64 +44,64 @@ data class SessionEntity(
     @ColumnInfo(defaultValue = "0") val pinned: Boolean = false,
     @ColumnInfo(defaultValue = "") val folderId: String? = null,
     @ColumnInfo(defaultValue = "0") val archived: Boolean = false,
-    /** v1.28: Si se trata de una sesión de la pestaña Agente(Agent Tab charla diaria,No mostrar en la lista de tareas). */
+    /** v1.28: 是否为 Agent Tab 的会话(Agent Tab 日常聊天,不在任务列表显示)。 */
     @ColumnInfo(defaultValue = "0") val isAgentSession: Boolean = false,
-    /** v1.107 Redundancia: Número de mensajes de sesión(Evite la página de lista COUNT escaneo de tabla completa,Repository Mantenimiento de doble escritura). */
+    /** v1.107 冗余: 会话消息数(避免列表页 COUNT 全表扫描,Repository 双写维护)。 */
     /**
-     * columna reservada:Se utilizaron versiones históricas para el bloqueo de sesiones, actualmente**No hay manera de leer o escribir**(ENG-10 Revisar y confirmar).
+     * 保留列:历史版本曾用于会话锁定，当前**没有任何读写方**（ENG-10 复核确认）。
      *
-     * El motivo para conservar campos en lugar de eliminar columnas: eliminar migraciones que requieren reconstruir la tabla (el antiguo SQLite no admite DROP COLUMN),
-     * Los rendimientos son reales y libres de riesgo. No lo utilice en código nuevo; Si está seguro de borrarlo, realice una migración por separado con la verificación del dispositivo.
+     * 之所以保留字段而不是删列：删除需要重建表的迁移（旧 SQLite 不支持 DROP COLUMN），
+     * 收益为零风险却实打实。新代码不要使用它；若确定要清掉，请单独做一次带设备验证的迁移。
      */
     @ColumnInfo(defaultValue = "0") val isLocked: Boolean = false,
     @ColumnInfo(defaultValue = "0") val messageCount: Int = 0,
-    /** v2.0: Marca de tiempo de eliminación temporal(null = no eliminado). */
+    /** v2.0: 软删除时间戳(null = 未删除)。 */
     @ColumnInfo(defaultValue = "NULL") val deletedAt: Long? = null,
-    /** v5: Sesión fuente bifurcada id(null = sesión no bifurcada). */
+    /** v5: 分叉来源会话 id(null = 非分叉会话)。 */
     @ColumnInfo(defaultValue = "NULL") val parentSessionId: String? = null,
-    /** v5: Número de sesiones bifurcadas(Solo se mantiene en la sesión original.). */
+    /** v5: 分叉子会话数量(仅在原始会话上维护)。 */
     @ColumnInfo(defaultValue = "0") val childCount: Int = 0,
     /**
-     * v1.0.47 P3: Anulaciones de habilidades a nivel de sesión.
-     * "[]" = Asistente de heredas skillIdsJson(Comportamiento predeterminado sin cambios);
-     * matriz no vacía = Portada Assistant,Solo está habilitada la habilidad especificada.
+     * v1.0.47 P3: 会话级 skill 覆盖。
+     * "[]" = 继承 Assistant 的 skillIdsJson(默认行为不变);
+     * 非空数组 = 覆盖 Assistant,仅启用指定 skill。
      */
 
-    /** B7-03: posición de lectura(último mensaje leído id,null = Aún no grabado). */
+    /** B7-03: 已读位置(最后已读消息 id,null = 尚未记录)。 */
     @ColumnInfo(defaultValue = "NULL") val lastReadMessageId: String? = null,
-    /** B7-03: Número de mensajes leídos(Funciona con messageCount para contar mensajes no leídos,Evite consultar la tabla de mensajes sesión por sesión en la página de lista). */
+    /** B7-03: 已读消息数(与 messageCount 配合计算未读数,避免列表页逐会话查消息表)。 */
     @ColumnInfo(defaultValue = "0") val lastReadCount: Int = 0,
-    /** B7-05: Número de secuencia de conversación superior(Sólo las conversaciones fijadas participan en la clasificación.,La conversación ordinaria todavía presiona updatedAt). */
+    /** B7-05: 置顶会话排序号(仅置顶会话参与排序,普通会话仍按 updatedAt)。 */
     @ColumnInfo(defaultValue = "0") val sortOrder: Int = 0,
-    /** B8-01: Mensaje activo a nivel de sesión siguiente marca de tiempo de activación(null=No programado,Limpiar después de eliminar una sesión). */
+    /** B8-01: 会话级主动消息下次触发时间戳(null=未排期,删除会话后随行清理)。 */
     @ColumnInfo(defaultValue = "NULL") val proactiveNextTriggerAt: Long? = null,
     @ColumnInfo(defaultValue = "[]") val skillIdsJson: String = "[]",
     /**
-     * v1.0.72: Esta sesión no se refiere a la memoria.(Opción de página de conversación en blanco).
-     * true El mensaje del sistema omite el retrato del usuario/Memoria de pines/memoria a largo plazo/Memoria de chat grupal/Biblioteca de experiencias,
-     * La conversación comienza desde cero,Ninguna referencia a ninguna memoria histórica.
+     * v1.0.72: 本会话不参考记忆(空白对话页选项)。
+     * true 时 system prompt 跳过用户画像/置顶记忆/长期记忆/群聊记忆/经验库,
+     * 对话从零开始,不参考任何历史记忆。
      */
     @ColumnInfo(defaultValue = "0") val ignoreMemory: Boolean = false,
-    /** v1.138: Columna compatible con historial——Marcadores de conversación en el espacio de mensajes privados de pequeños teléfonos celulares antiguos.
-     * El viejo y pequeño teléfono celular ha sido retirado por completo y está en la biblioteca. isMiniPhone = 1 La línea está en 121→122 Eliminar durante la migración;
-     * Esta columna está reservada únicamente para compatibilidad histórica y no tiene parte autora. Se eliminará cuando se produzca el próximo cambio de estructura (es necesario reconstruir la tabla).
+    /** v1.138: 历史兼容列——旧小手机私信空间的会话标记。
+     * 旧小手机已整体移除，库内 isMiniPhone = 1 的行在 121→122 迁移中删除；
+     * 本列仅为历史兼容保留，已无写入方，下次结构变更（需重建表）时一并移除。
      */
     @ColumnInfo(defaultValue = "0") val isMiniPhone: Boolean = false,
-    /** v2.x Importar calentamiento:Las sesiones se importan desde el exterior./Copia de seguridad y restauración,En la primera ronda, el contexto se construye una vez con toda la historia.(Borrar después de una respuesta exitosa). */
+    /** v2.x 导入预热:会话由外部导入/备份恢复,首轮以全量历史构建上下文一次(成功回复后清除)。 */
     @ColumnInfo(defaultValue = "0") val warmupPending: Boolean = false,
     /**
-     * v2.5.3 (P3-2): Instantánea de configuración a nivel de sesión(JSON, null = No tomado).
+     * v2.5.3 (P3-2): 会话级配置快照(JSON, null = 未拍摄)。
      *
-     * Cuando la sesión se genera por primera vez, el modelo actual/nivel de pensamiento/La temperatura, etc. son fijas, y luego, incluso si se cambia el modelo global,
-     * Las sesiones antiguas todavía hacen clic"La configuración en ese momento."Reenviar. al leer"Los campos de sesión anulan los campos auxiliares"; El modelo fijo volverá al valor actual del asistente si se elimina el modelo.
+     * 会话首次生成时把当时的模型/思考级别/温度等固定下来，之后即使全局模型被切换，
+     * 旧会话仍按"当时的配置"重发。读取时"会话字段覆盖助手字段"；固定模型被删则回退助手当前值。
      */
     @ColumnInfo(defaultValue = "NULL") val configSnapshotJson: String? = null,
 
     /**
-     * Borrador de entrada no enviado.
+     * 未发送的输入草稿。
      *
-     * Al cambiar de sesión, conserve el contenido no enviado de cada una para evitar cortar y tirar el contenido a medio escribir.
-     * Una cadena vacía indica que no hay borrador; cada cambio de entrada se escribe mediante antivibración de la capa de interfaz de usuario.
+     * 切换会话时保留各自未发出的内容，避免写了一半切走就丢。
+     * 空串表示无草稿；每次输入变化由 UI 层防抖写入。
      */
     @ColumnInfo(name = "input_draft", defaultValue = "") val inputDraft: String = "",
 )

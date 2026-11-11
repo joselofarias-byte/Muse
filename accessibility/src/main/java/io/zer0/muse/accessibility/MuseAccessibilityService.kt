@@ -16,109 +16,109 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
 /**
- * P3-3: Muse Servicios de accesibilidad — UI Base de capacidad de automatización.
+ * P3-3: Muse 无障碍服务 — UI 自动化能力底座。
  *
- * Responsabilidades:
- *  1. como [AccessibilityService] Recibir eventos de accesibilidad del sistema,Registrar la recepción actual Activity
- *  2. Pase [companion object] instancia estática para [io.zer0.muse.tools.system.AccessibilityClient] Exponer las capacidades de operación de la interfaz de usuario:
- *     - Leer la jerarquía de la interfaz de usuario([getUiHierarchy])
- *     - Haga clic/Pulsación larga/gesto de deslizar([performClick]/[performLongPress]/[performSwipe])
- *     - acción global([execGlobalAction]:Regresar/HOME/Tareas recientes, etc.)
- *     - Entrada de texto del nodo([setTextOnNode])
- *     - captura de pantalla([takeScreenshot],API 34+)
- *     - Consulta de actividad actual([getCurrentActivityName])
+ * 职责:
+ *  1. 作为 [AccessibilityService] 接收系统无障碍事件,记录当前前台 Activity
+ *  2. 通过 [companion object] 静态实例向 [io.zer0.muse.tools.system.AccessibilityClient] 暴露 UI 操作能力:
+ *     - 读取 UI 层级([getUiHierarchy])
+ *     - 点击/长按/滑动手势([performClick]/[performLongPress]/[performSwipe])
+ *     - 全局动作([execGlobalAction]:返回/HOME/最近任务等)
+ *     - 节点文本输入([setTextOnNode])
+ *     - 截图([takeScreenshot],API 34+)
+ *     - 当前 Activity 查询([getCurrentActivityName])
  *
- * descripción del diseño(¿Por qué no usar? AIDL bindService):
- *  - [AccessibilityService] Ciclo de vida gestionado por el sistema.,onBind Ya ocupado por el Marco para la vinculación de accesibilidad.
- *  - Kotlin No está permitido heredar tanto AccessibilityService como IAccessibilityProvider.Stub(ambas son clases)
- *  - Dentro del mismo APK(mismo proceso)Es más eficiente llamar directamente con una instancia estática,Evite el conflicto de bindService con el enlace del sistema
- *  - AIDL interfaz [IAccessibilityProvider] Se mantiene como contrato de método + base para futuras extensiones entre procesos
+ * 设计说明(为何不用 AIDL bindService):
+ *  - [AccessibilityService] 由系统管理生命周期,onBind 已被 Framework 占用用于无障碍绑定
+ *  - Kotlin 不允许同时继承 AccessibilityService 和 IAccessibilityProvider.Stub(两者都是类)
+ *  - 同 APK 内(同进程)用静态实例直接调用更高效,避免 bindService 与系统绑定冲突
+ *  - AIDL 接口 [IAccessibilityProvider] 保留作为方法契约 + 未来跨进程扩展的基础
  *
- * Identificador de ruta de nodo:
- *  - getUiHierarchy Asignar una ruta a cada nodo "ruta principal.subíndice",como raíz="0",raíz de2nodo hijo="0.1"
- *  - findFocusedNodeId Devuelve la ruta del nodo de enfoque.
- *  - setTextOnNode Recorre el árbol para localizar nodos por ruta.
+ * 节点路径标识:
+ *  - getUiHierarchy 为每个节点分配路径 "父路径.子索引",如根="0",根的第2个子节点="0.1"
+ *  - findFocusedNodeId 返回焦点节点的路径
+ *  - setTextOnNode 按路径遍历树定位节点
  *
- * seguro:
- *  - El manifiesto principal de la aplicación comienza con exported=true Regístrese para el servicio,Permitir que el sistema Android se vincule;
- *    BIND_ACCESSIBILITY_SERVICE Las aplicaciones normales todavía no pueden vincularse directamente.
- *  - El sistema requiere el permiso BIND_ACCESSIBILITY_SERVICE para vincularse
- *  - Todas las operaciones solo responden a llamadas activas del cliente.,Sin monitoreo de fondo(El evento solo se utiliza para actualizar el nombre de la actividad actual.)
+ * 安全:
+ *  - 主 App 清单以 exported=true 注册该服务,让 Android 系统能够绑定;
+ *    BIND_ACCESSIBILITY_SERVICE 仍阻止普通应用直接绑定。
+ *  - 系统要求 BIND_ACCESSIBILITY_SERVICE 权限才能绑定
+ *  - 所有操作仅响应客户端主动调用,不后台监控(事件仅用于更新当前 Activity 名)
  */
 open class MuseAccessibilityService : AccessibilityService() {
 
     companion object {
         private const val TAG = "MuseA11yService"
 
-        /** UI Número máximo de nodos para recorrido de nivel(Evitar que árboles muy grandes pesen en el contexto LLM). */
+        /** UI 层级遍历最大节点数(防止超大树拖垮 LLM 上下文)。 */
         private const val MAX_NODES = 500
 
-        /** Tiempo de espera de devolución de llamada de gesto(milisegundos). */
+        /** 手势回调等待超时(毫秒)。 */
         private const val GESTURE_TIMEOUT_MS = 2000L
 
-        /** Tiempo de espera de devolución de llamada de captura de pantalla(milisegundos). */
+        /** 截图回调等待超时(毫秒)。 */
         private const val SCREENSHOT_TIMEOUT_MS = 3000L
 
         /**
-         * Instancia de servicio actual(onServiceConnected configuración de publicaciones,onDestroy Borrar).
-         * AccessibilityClient Llame directamente al método de servicio a través de esta referencia estática(mismo proceso,No es necesario bindService).
+         * 当前服务实例(onServiceConnected 后设置,onDestroy 清除)。
+         * AccessibilityClient 通过此静态引用直接调用服务方法(同进程,无需 bindService)。
          */
         @Volatile
         var instance: MuseAccessibilityService? = null
 
         /**
-         * v2.7: conexión de servicio/Desconecte el oyente (registro de host, utilizado para actualizar el estado del permiso a tiempo).
+         * v2.7: 服务连接/断开监听器（宿主注册，用于及时刷新权限状态）。
          *
-         * Los servicios de accesibilidad son**conexión asíncrona**de: Después de que el usuario enciende el interruptor en la configuración del sistema,
-         * `onServiceConnected` Simplemente ejecuta. Si el host solo detecta permisos una vez cuando se inicia la aplicación,
-         * El caché se detendrá en falso al inicio, lo que provocará errores de evaluación previa de la herramienta.“No autorizado”.
-         * Aquí se proporcionan devoluciones de llamadas del ciclo de vida del servicio para permitir que el host (como AutomationManager)
-         * en conexión/Actualice proactivamente las instantáneas de permisos cuando esté desconectado.
+         * 无障碍服务是**异步连接**的：用户在系统设置里开启开关后，
+         * `onServiceConnected` 才执行。若宿主只在 App 启动时探测一次权限，
+         * 缓存会停在启动时的 false，导致工具预检误判“未授权”。
+         * 这里提供服务生命周期回调，让宿主（如 AutomationManager）
+         * 在连接/断开时主动刷新权限快照。
          *
-         * Se vuelve a llamar al oyente dentro del proceso de servicio; el host debe registrarse durante el ciclo de vida de la aplicación y eliminarse al salir.
+         * 监听器在服务进程内回调；宿主应在 Application 生命周期内注册并在退出时移除。
          */
         private val connectionListeners =
             java.util.concurrent.CopyOnWriteArrayList<(connected: Boolean) -> Unit>()
 
-        /** Monitoreo del estado de la conexión de registros (idempotente: se deduplicarán los registros repetidos con la misma referencia). */
+        /** 注册连接状态监听（幂等：同一引用重复注册会被去重）。 */
         fun addConnectionListener(listener: (connected: Boolean) -> Unit) {
             connectionListeners.addIfAbsent(listener)
         }
 
-        /** Eliminar la supervisión del estado de la conexión. */
+        /** 移除连接状态监听。 */
         fun removeConnectionListener(listener: (connected: Boolean) -> Unit) {
             connectionListeners.remove(listener)
         }
 
-        /** Notificar a todos los oyentes (llamados por el ciclo de vida del servicio). */
+        /** 通知所有监听器（供服务生命周期调用）。 */
         internal fun notifyConnectionChanged(connected: Boolean) {
             connectionListeners.forEach { listener ->
                 runCatching { listener(connected) }
-                    .onFailure { Logger.w(TAG, "Error en la devolución de llamada de escucha de conexión: ${it.message}") }
+                    .onFailure { Logger.w(TAG, "连接监听回调失败: ${it.message}") }
             }
         }
     }
 
-    /** El nombre del paquete del evento de cambio de estado de ventana más reciente./nombre de clase(usado para getCurrentActivityName). */
+    /** 最近一次窗口状态变化事件的包名/类名(用于 getCurrentActivityName)。 */
     @Volatile private var lastPackage: String = ""
 
     @Volatile private var lastClassName: String = ""
 
-    /** ¿Está conectado el servicio?(onServiceConnected trasero true). */
+    /** 服务是否已连接(onServiceConnected 后置 true)。 */
     @Volatile private var connected = false
 
-    // ── AccessibilityService ciclo de vida ──────────────────────────────────────────
+    // ── AccessibilityService 生命周期 ──────────────────────────────────────────
 
     override fun onServiceConnected() {
         super.onServiceConnected()
         connected = true
         instance = this
-        Logger.i(TAG, "Los servicios de accesibilidad están conectados")
+        Logger.i(TAG, "无障碍服务已连接")
         notifyConnectionChanged(true)
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        // Registrar únicamente la información actual de la actividad en primer plano,Ningún otro procesamiento(Sin supervisión en segundo plano del comportamiento del usuario)
+        // 仅记录当前前台 Activity 信息,不进行其他处理(不后台监控用户行为)
         if (event == null) return
         if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
             val pkg = event.packageName?.toString()
@@ -131,38 +131,54 @@ open class MuseAccessibilityService : AccessibilityService() {
     }
 
     override fun onInterrupt() {
-        Logger.w(TAG, "El servicio de accesibilidad fue interrumpido por el sistema.")
+        Logger.w(TAG, "无障碍服务被系统中断")
+    }
+
+    /**
+     * 系统解绑（用户在设置里关掉开关、或系统回收绑定）时的回调。
+     *
+     * **必须处理**：只实现 onDestroy 是不够的 —— 系统解绑时可能只调 onUnbind 而进程仍然存活，
+     * 那时 connected 还是 true、instance 还指着旧实例，宿主会以为「无障碍可用」，
+     * 于是照样发手势/读控件树，然后失败。API 36 模拟器上实测能看到
+     * 「服务已连接 → Bound services 变空」这个漂移，正是这种情况。
+     */
+    override fun onUnbind(intent: android.content.Intent?): Boolean {
+        connected = false
+        instance = null
+        Logger.i(TAG, "无障碍服务被解绑")
+        notifyConnectionChanged(false)
+        return super.onUnbind(intent)
     }
 
     override fun onDestroy() {
         connected = false
         instance = null
-        Logger.i(TAG, "Servicios de accesibilidad destruidos")
+        Logger.i(TAG, "无障碍服务已销毁")
         notifyConnectionChanged(false)
         super.onDestroy()
     }
 
-    // ── IAccessibilityProvider método de contrato(Implementación directa,No heredado Stub) ─────────────────
+    // ── IAccessibilityProvider 契约方法(直接实现,不继承 Stub) ─────────────────
 
     fun isAccessibilityServiceEnabled(): Boolean = connected
 
     /**
-     * Si la capacidad de captura de pantalla está disponible.
+     * 截图能力是否可用。
      *
-     * v2.6.13: En lugar de leer el bit de capacidad realmente informado por el sistema, ya no confíe en“Si la reflexión falló”Hacer retroceder.
+     * v2.6.13: 换成读系统真实上报的 capability 位，不再靠“反射是否失败”反推。
      *
-     * La implementación anterior utiliza la reflexión para escribir el campo mCanTakeScreenshots en AccessibilityServiceInfo.
-     * Pero ese campo no existe en AOSP en absoluto (registro de máquina real:`No field mCanTakeScreenshots in class
-     * Landroid/accessibilityservice/AccessibilityServiceInfo;`). La capacidad de tomar capturas de pantalla en realidad la proporciona
-     * `android:canTakeScreenshot` Declaración de atributo (singular), escrita en CAPABILITY_CAN_TAKE_SCREENSHOT después del análisis del sistema.
-     * Entonces, aquí le pide directamente al sistema que obtenga el resultado y lo maneja como disponible si es desconocido (una llamada verdadera devolverá un código de error específico).
+     * 旧实现用反射去写 AccessibilityServiceInfo 里的 mCanTakeScreenshots 字段，
+     * 但那个字段在 AOSP 里根本不存在（真机日志：`No field mCanTakeScreenshots in class
+     * Landroid/accessibilityservice/AccessibilityServiceInfo;`）。截图能力实际由
+     * `android:canTakeScreenshot` 属性（单数）声明，系统解析后写进 CAPABILITY_CAN_TAKE_SCREENSHOT。
+     * 所以这里直接问系统拿结果，未知时按可用处理（真调用会返回具体错误码）。
      */
     fun canTakeScreenshot(): Boolean {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return false
         val info = runCatching { serviceInfo }.getOrNull() ?: return false
         val capable = info.capabilities and AccessibilityServiceInfo.CAPABILITY_CAN_TAKE_SCREENSHOT != 0
         if (!capable) {
-            Logger.w(TAG, "El servicio no obtuvo la capacidad de tomar capturas de pantalla.(capabilities=${info.capabilities});Compruebe si se declara XML android:canTakeScreenshot")
+            Logger.w(TAG, "服务未获得截图能力(capabilities=${info.capabilities});检查 XML 是否声明 android:canTakeScreenshot")
         }
         return capable
     }
@@ -173,14 +189,14 @@ open class MuseAccessibilityService : AccessibilityService() {
     }
 
     fun getUiHierarchy(): String {
-        val root = rootInActiveWindow ?: return "[error] Ninguna ventana activa(Los servicios de accesibilidad no están autorizados o no hay ventana frontal.)"
+        val root = rootInActiveWindow ?: return "[error] 无活动窗口(无障碍服务未授权或无前台窗口)"
         val sb = StringBuilder()
         try {
             sb.append("[activity] ").append(getCurrentActivityName().ifBlank { "unknown" }).append('\n')
             val counter = intArrayOf(0)
             dumpNode(root, "0", sb, counter)
             return if (counter[0] >= MAX_NODES) {
-                sb.append("\n[truncated] Número máximo de nodos alcanzado $MAX_NODES")
+                sb.append("\n[truncated] 已达到最大节点数 $MAX_NODES")
                 sb.toString()
             } else {
                 sb.toString()
@@ -195,10 +211,10 @@ open class MuseAccessibilityService : AccessibilityService() {
     fun performLongPress(x: Int, y: Int): Boolean = dispatchClick(x, y, longPress = true)
 
     /**
-     * Realizar acciones de accesibilidad global(Regresar/HOME/Tareas recientes, etc.).
-     * Nota:Nombrado execGlobalAction en lugar de performGlobalAction,porque
-     * AccessibilityService.performGlobalAction si final,no puedo override;
-     * Este método llama directamente al método final de la clase principal.
+     * 执行全局无障碍动作(返回/HOME/最近任务等)。
+     * 注意:命名为 execGlobalAction 而非 performGlobalAction,因为
+     * AccessibilityService.performGlobalAction 是 final,不能 override;
+     * 此方法直接调用父类的 final 方法。
      */
     fun execGlobalAction(actionId: Int): Boolean {
         val ok = performGlobalAction(actionId)
@@ -243,7 +259,9 @@ open class MuseAccessibilityService : AccessibilityService() {
                 Logger.d(TAG, "setTextOnNode($nodeId) -> $ok")
                 return ok
             } finally {
-                target.recycle()
+                // `nodeId == "0"` 定位到的就是 root 本身（根路径合法），
+                // 那时下面那个 finally 已经 recycle 过 root —— 同一个节点不能还两次。
+                if (target !== root) target.recycle()
             }
         } finally {
             root.recycle()
@@ -252,9 +270,9 @@ open class MuseAccessibilityService : AccessibilityService() {
 
     fun takeScreenshot(path: String, format: String): Boolean {
         check(Looper.myLooper() != Looper.getMainLooper()) { "takeScreenshot must not run on main thread" }
-        // AccessibilityService.takeScreenshot() necesidad API 34+,La versión inferior no es compatible
+        // AccessibilityService.takeScreenshot() 需 API 34+,低版本不支持
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            Logger.w(TAG, "takeScreenshot necesidad Android 14+(API 34),actual API ${Build.VERSION.SDK_INT}")
+            Logger.w(TAG, "takeScreenshot 需 Android 14+(API 34),当前 API ${Build.VERSION.SDK_INT}")
             return false
         }
         if (path.isBlank()) return false
@@ -270,21 +288,21 @@ open class MuseAccessibilityService : AccessibilityService() {
                 }
 
                 override fun onFailure(errorCode: Int) {
-                    Logger.w(TAG, "takeScreenshot falló errorCode=$errorCode")
+                    Logger.w(TAG, "takeScreenshot 失败 errorCode=$errorCode")
                     latch.countDown()
                 }
             },
         )
         if (!latch.await(SCREENSHOT_TIMEOUT_MS, TimeUnit.MILLISECONDS)) {
-            Logger.w(TAG, "takeScreenshot tiempo de espera")
+            Logger.w(TAG, "takeScreenshot 超时")
             return false
         }
         return result
     }
 
-    // ── implementación interna ────────────────────────────────────────────────────────────────
+    // ── 内部实现 ────────────────────────────────────────────────────────────────
 
-    /** Enviar información de nodo de forma recursiva a [sb], [path] es la ruta del nodo actual(Como por ejemplo "0.1.2"). */
+    /** 递归输出节点信息到 [sb], [path] 为当前节点路径(如 "0.1.2")。 */
     private fun dumpNode(node: AccessibilityNodeInfo, path: String, sb: StringBuilder, counter: IntArray) {
         if (counter[0] >= MAX_NODES) return
         counter[0]++
@@ -310,12 +328,12 @@ open class MuseAccessibilityService : AccessibilityService() {
         }
     }
 
-    /** Escapar de nuevas líneas en el texto/carácter de tabulación,Salida de línea única garantizada. */
+    /** 转义文本中的换行/制表符,保证单行输出。 */
 
     private val AccessibilityNodeInfo.rect: android.graphics.Rect
         get() = android.graphics.Rect().also { getBoundsInScreen(it) }
 
-    /** Haga clic/Distribuido mediante un gesto de pulsación larga. */
+    /** 点击/长按手势分发。 */
     private fun dispatchClick(x: Int, y: Int, longPress: Boolean): Boolean {
         val path = Path().apply { moveTo(x.toFloat(), y.toFloat()) }
         val duration = if (longPress) 500L else 50L
@@ -326,7 +344,7 @@ open class MuseAccessibilityService : AccessibilityService() {
         return ok
     }
 
-    /** Esperando sincrónicamente los resultados de la distribución de gestos(CountDownLatch + tiempo de espera). */
+    /** 同步等待手势分发结果(CountDownLatch + 超时)。 */
     private fun awaitGesture(gesture: GestureDescription): Boolean {
         check(Looper.myLooper() != Looper.getMainLooper()) { "awaitGesture must not run on main thread" }
         val latch = CountDownLatch(1)
@@ -350,8 +368,8 @@ open class MuseAccessibilityService : AccessibilityService() {
     }
 
     /**
-     * en [root] Buscar en subárbol [target] El identificador de ruta del nodo.
-     * @return cadena de ruta(Como por ejemplo "0.1.2");Devolución no encontrada null
+     * 在 [root] 子树中查找 [target] 节点的路径标识。
+     * @return 路径字符串(如 "0.1.2");未找到返回 null
      */
     private fun findNodePath(root: AccessibilityNodeInfo, target: AccessibilityNodeInfo): String? {
         val targetHash = System.identityHashCode(target)
@@ -373,21 +391,31 @@ open class MuseAccessibilityService : AccessibilityService() {
         return null
     }
 
-    /** Identificar por ruta(Como por ejemplo "0.1.2")de [root] Atraviese el nodo de posicionamiento. */
+    /**
+     * 按路径标识(如 "0.1.2")从 [root] 遍历定位节点。
+     *
+     * 中间节点的归还：路径有 k 段就会取 k-1 个中间节点，除最后一个交给调用方外都要 recycle。
+     * **定位失败时手上那个中间节点同样要还** —— 无障碍节点是 binder 引用，
+     * 而 `path` 是模型给的工具参数，"指到一半发现没有"是常态而不是异常；
+     * 以前失败走的是 `?: return null`，每漏一次就少还一个。
+     */
     private fun findNodeByPath(root: AccessibilityNodeInfo, path: String): AccessibilityNodeInfo? {
         val indices = AccessibilityPathUtils.parseNodePath(path)
         if (indices.isEmpty()) return null
         var current: AccessibilityNodeInfo = root
         for (i in 1 until indices.size) {
-            val idx = indices[i]
-            val child = current.getChild(idx) ?: return null
+            val child = current.getChild(indices[i])
+            if (child == null) {
+                if (i > 1) current.recycle()
+                return null
+            }
             if (i > 1) current.recycle()
             current = child
         }
         return current
     }
 
-    /** voluntad [ScreenshotResult] Guarde el mapa de bits en un archivo.ScreenshotResult El hardwareBuffer es API 30+. */
+    /** 将 [ScreenshotResult] 的 bitmap 保存到文件。ScreenshotResult 的 hardwareBuffer 是 API 30+。 */
     @androidx.annotation.RequiresApi(android.os.Build.VERSION_CODES.R)
     private fun saveScreenshot(screenshot: ScreenshotResult, path: String, format: String): Boolean {
         val hardwareBuffer = screenshot.hardwareBuffer ?: return false
@@ -404,8 +432,8 @@ open class MuseAccessibilityService : AccessibilityService() {
             FileOutputStream(path).use { fos -> bitmap.compress(fmt, 90, fos) }
             true
         } catch (e: Exception) {
-            // Tolerancia a fallos necesaria:El archivo IO puede fallar(disco lleno/Permisos),Registrar en lugar de tragar excepciones
-            Logger.e(TAG, "saveScreenshot falló: ${e.message}", e)
+            // 必要容错:文件 IO 可能失败(磁盘满/权限),记录日志而非吞异常
+            Logger.e(TAG, "saveScreenshot 失败: ${e.message}", e)
             false
         } finally {
             hardwareBuffer.close()
@@ -413,5 +441,5 @@ open class MuseAccessibilityService : AccessibilityService() {
     }
 }
 
-/** Pantalla predeterminada ID(main display = 0). */
+/** 默认显示器 ID(main display = 0)。 */
 private const val DEFAULT_DISPLAY = 0

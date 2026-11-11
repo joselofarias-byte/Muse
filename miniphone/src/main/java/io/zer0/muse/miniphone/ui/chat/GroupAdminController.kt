@@ -7,23 +7,25 @@ import io.zer0.muse.miniphone.data.chat.normalizeGroupTitle
 import io.zer0.muse.miniphone.data.db.dao.MpThreadDao
 import io.zer0.muse.miniphone.data.db.dao.MpThreadMemberDao
 import io.zer0.muse.miniphone.data.db.entity.MpThreadEntity
-import io.zer0.muse.miniphone.ui.shell.UNKNOWN_CHARACTER_NAME
+import io.zer0.muse.miniphone.ui.launchGuarded
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
 
 /**
- * Cuatro puntos de entrada para la gestión de miembros del grupo:Cambiar nombre, agregar personas, mudarse, disolverse.
+ * 群成员管理的四个写入口:改名、加人、移出、解散。
  *
- * yuxtapuesto con la cadena que envió el mensaje,no mezclados:Aquí sólo cambiamos "¿A qué grupo pertenece y cómo se llama?",No involucrado en la generación y envío.
- * El nombre del grupo en la interfaz se cambiará después de que la base de datos se haya escrito correctamente. —— Cuando falla la escritura, la interfaz no debe cambiar primero y luego regresar.
+ * 与发消息那条链并列,不混在一起:这里只改「群是谁的、叫什么」,不参与生成与发送。
+ * 界面上的群名在写库成功之后才换 —— 写失败时界面不该先变一下再退回来。
  *
- * La determinación del "nombre predeterminado" se encuentra en este nivel.:El nombre del grupo no ha sido cambiado por el usuario.(títuloPersonalizado en la línea de sesión es 0)tiempo,
- * Agregar personas/Después de mover personas, presione "todos los miembros ahora" para volver a calcular;No se tocó ni una sola palabra del grupo modificado.
+ * 「默认名」的判定就在这一层:群名没被用户改过(会话行上的 titleCustomized 为 0)时,
+ * 加人/移人之后按「现在全部成员」重算;改过的群一个字都不动。
  *
- * @param characters Lista de personajes dada por el anfitrión.;Para deletrear el nombre del grupo predeterminado, debe usar el nombre
+ * @param characters 宿主给的角色名单;拼默认群名要拿名字
  */
+// 日志里区分是哪个用户动作失败了（动作名写在调用处）。
+private const val TAG_GROUP_ADMIN = "MiniPhoneGroupAdmin"
+
 internal class GroupAdminController(
     private val threadId: String,
     private val threadDao: MpThreadDao,
@@ -34,63 +36,63 @@ internal class GroupAdminController(
     private val scope: CoroutineScope,
 ) {
 
-    /** Cambiar nombre de grupo:No escribas un nombre vacío,Truncamiento extralargo;Una vez que la escritura sea exitosa, el nombre del grupo en la interfaz se cambiará inmediatamente. */
+    /** 改群名:空名不写,超长截断;写成功后界面上的群名立刻跟着换。 */
     fun renameGroup(title: String) {
         val normalized = normalizeGroupTitle(title)
         if (normalized.isEmpty()) return
-        scope.launch {
-            if (!store.renameGroup(threadId, normalized)) return@launch
+        scope.launchGuarded(TAG_GROUP_ADMIN, "改群名") {
+            if (!store.renameGroup(threadId, normalized)) return@launchGuarded
             state.update { it.copy(groupTitle = normalized) }
         }
     }
 
-    /** Agregar personas al grupo:Las personas que ya están en el grupo serán omitidas automáticamente.;El nombre predeterminado se recalcula con nuevos miembros. */
+    /** 往群里加人:已经在群里的人自动跳过;默认名跟着新成员重算。 */
     fun addMembers(characterIds: List<String>) {
         val ids = characterIds.map(String::trim).filter(String::isNotEmpty).distinct()
         if (ids.isEmpty()) return
-        scope.launch {
-            val thread = groupThread() ?: return@launch
+        scope.launchGuarded(TAG_GROUP_ADMIN, "往群里加人") {
+            val thread = groupThread() ?: return@launchGuarded
             val existing = memberDao.membersOf(threadId).map { member -> member.characterId }
             val fresh = ids.filterNot { characterId -> characterId in existing }
-            if (fresh.isEmpty()) return@launch
+            if (fresh.isEmpty()) return@launchGuarded
             val autoTitle = autoTitleOf(thread, existing + fresh)
-            if (!store.addMembers(threadId, fresh, autoTitle)) return@launch
+            if (!store.addMembers(threadId, fresh, autoTitle)) return@launchGuarded
             if (autoTitle != null) state.update { it.copy(groupTitle = autoTitle) }
         }
     }
 
-    /** Eliminar una persona del grupo:Mantenga lo que dijo;La capa de escritura rechazará cuando solo quede una persona. */
+    /** 把一个人移出群:他说过的话留着;只剩一个人时写入层会拒绝。 */
     fun removeMember(characterId: String) {
-        scope.launch {
-            val thread = groupThread() ?: return@launch
+        scope.launchGuarded(TAG_GROUP_ADMIN, "把一个人移出群") {
+            val thread = groupThread() ?: return@launchGuarded
             val remaining = memberDao.membersOf(threadId)
                 .map { member -> member.characterId }
                 .filterNot { id -> id == characterId }
             val autoTitle = autoTitleOf(thread, remaining)
-            if (!store.removeMember(threadId, characterId, autoTitle)) return@launch
+            if (!store.removeMember(threadId, characterId, autoTitle)) return@launchGuarded
             if (autoTitle != null) state.update { it.copy(groupTitle = autoTitle) }
         }
     }
 
-    /** disolver:Las sesiones, los miembros y los mensajes desaparecen juntos. La propia interfaz es responsable de salir de esta página. */
+    /** 解散:会话、成员、消息一起没。界面自己负责退出这一页。 */
     fun disbandGroup() {
-        scope.launch { store.disbandGroup(threadId) }
+        scope.launchGuarded(TAG_GROUP_ADMIN, "解散群") { store.disbandGroup(threadId) }
     }
 
-    /** Los mensajes privados que lleguen a este punto no serán procesados.:Estas acciones sólo tienen significado para el grupo. */
+    /** 私信走到这里一律不处理:这几个动作只对群有意义。 */
     private suspend fun groupThread(): MpThreadEntity? = threadDao.getThread(threadId)?.takeIf { thread -> thread.isGroup }
 
     /**
-     * El nombre del grupo no se ha cambiado manualmente.,Presione "Miembros actuales" para deletrear uno;Volver después de la corrección null(Di no te muevas).
+     * 群名没被手动改过时,按「现在的成员」拼一个;改过就返回 null(表示别动)。
      *
-     * Nombre tomado de la lista de hosts:Cuando se elimina un carácter, se convierte en un nombre de marcador de posición.,No convierta un grupo en un grupo anónimo por esto.
+     * 这份名字会落库，所以只写真名字：角色被删了就跳过他（[groupTitleOf] 会滤掉空串），
+     * 不拿一句界面提示去占位——那句话说的是"界面当时是什么语言"，不是这个群叫什么。
      */
     private fun autoTitleOf(thread: MpThreadEntity, memberIds: List<String>): String? {
         if (thread.titleCustomized) return null
         val known = characters()
         val names = memberIds.map { id ->
-            known.firstOrNull { character -> character.id == id }?.name?.takeIf(String::isNotBlank)
-                ?: UNKNOWN_CHARACTER_NAME
+            known.firstOrNull { character -> character.id == id }?.name.orEmpty()
         }
         return groupTitleOf(names).takeIf(String::isNotEmpty)
     }

@@ -1,10 +1,10 @@
 /**
- * Afirmaciones para páginas auxiliares y de memoria: lista/Representación detallada, parámetros de solo lectura, paginación de memoria y búsqueda de estados vacíos y avisos de bits de capacidad faltantes.
+ * 助手与记忆页的断言：列表/详情渲染、只读参数、记忆分页与搜索空态、能力位缺失提示。
  *
- * El componente se renderiza directamente usando renderToStaticMarkup (la vista detallada se exporta por separado y no depende de los clics).
- * La ruta de interacción (haga clic para ir, desplácese hasta la parte inferior e ingrese para buscar) está cableada y afirmada de acuerdo con el código fuente.
+ * 组件用 renderToStaticMarkup 直接渲染（详情视图单独导出，不依赖点击），
+ * 交互路径（点行、滚到底、回车搜索）按源码接线断言。
  *
- * Uso:npm --workspace @muse/client run test
+ * 用法：npm --workspace @muse/client run test
  */
 import { build } from "esbuild";
 import { readFileSync } from "node:fs";
@@ -65,13 +65,13 @@ const PROVIDERS = [{ id: "p1", name: "OpenAI", enabled: true, models: [{ id: "gp
 const DETAIL = {
   id: "a1",
   name: "PROTO-Muse",
-  description: "PROTO-Introducción",
+  description: "PROTO-简介",
   modelId: "gpt-x",
   providerId: "p1",
   temperature: 0.7,
   topP: 0.9,
   maxTokens: 4096,
-  personaSummary: "PROTO-Resumen del personaje",
+  personaSummary: "PROTO-人设摘要",
   systemPromptLength: 1234,
   toolCount: 12,
   contextMessageSize: 40,
@@ -80,14 +80,14 @@ const DETAIL = {
 };
 
 try {
-  // ── 1. negociación de competencias ─────────────────────────────────────────────
-  assert(mod.supportsFlag(undefined, mod.MEMORY_FLAGS) === true, "El viejo anfitrión (incompetente) lo intentará primero.");
-  assert(mod.supportsFlag([], mod.MEMORY_FLAGS) === false, "Los bits de habilidad se emiten pero no incluyen memory → No compatible");
-  assert(mod.supportsFlag(["memory"], mod.MEMORY_FLAGS) === true, "Se pueden identificar las capacidades declaradas.");
-  assert(mod.isUnsupportedCommandError("unsupported host command: memory.list") === true, "Incluso si se rechaza en tiempo de ejecución, se reconocerá.");
-  assert(mod.isUnsupportedCommandError("focus_not_held") === false, "Los errores comerciales no se consideran \"no admitidos\"");
+  // ── 1. 能力协商 ─────────────────────────────────────────────
+  assert(mod.supportsFlag(undefined, mod.MEMORY_FLAGS) === true, "老 Host（没能力位）先试一次");
+  assert(mod.supportsFlag([], mod.MEMORY_FLAGS) === false, "下发了能力位但不含 memory → 不支持");
+  assert(mod.supportsFlag(["memory"], mod.MEMORY_FLAGS) === true, "声明的能力位能识别");
+  assert(mod.isUnsupportedCommandError("unsupported host command: memory.list") === true, "运行时拒绝也认");
+  assert(mod.isUnsupportedCommandError("focus_not_held") === false, "业务错误不算「不支持」");
 
-  // ── 2. lista de asistentes ─────────────────────────────────────────────
+  // ── 2. 助手列表 ─────────────────────────────────────────────
   const listHtml = render(
     mod.createElement(mod.AssistantsPage, {
       assistants: ASSISTANTS,
@@ -102,11 +102,11 @@ try {
       onBack: () => undefined,
     }),
   );
-  assert(listHtml.includes("PROTO-Muse") && listHtml.includes("PROTO-Iris"), "Lista que muestra todos los nombres de los asistentes");
-  assert(listHtml.includes(">Predeterminado<"), "El asistente predeterminado está marcado");
-  assert(listHtml.includes("PROTO-GPT-X"), "Detalles + los proveedores pueden revelar el nombre del modelo");
-  assert((listHtml.match(/muse-listrow is-interactive/g) ?? []).length === 2, "Se puede hacer clic en cada fila para obtener más detalles.");
-  assert(listHtml.includes('src="/api/media/face-1"'), "El avatar se representa usando la dirección /api/media");
+  assert(listHtml.includes("PROTO-Muse") && listHtml.includes("PROTO-Iris"), "列表显示所有助手名");
+  assert(listHtml.includes(">默认<"), "默认助手有标记");
+  assert(listHtml.includes("PROTO-GPT-X"), "详情 + providers 能翻出模型名");
+  assert((listHtml.match(/muse-listrow is-interactive/g) ?? []).length === 2, "每行可点进详情");
+  assert(listHtml.includes('src="/api/media/face-1"'), "头像用 /api/media 地址渲染");
 
   const emptyList = render(
     mod.createElement(mod.AssistantsPage, {
@@ -122,9 +122,9 @@ try {
       onBack: () => undefined,
     }),
   );
-  assert(emptyList.includes("Aún no hay asistente en el teléfono"), "Dejar vacío cuando no haya ayudante.");
+  assert(emptyList.includes("手机上还没有助手"), "没有助手时给空态");
 
-  // ── 3. Detalles del asistente ─────────────────────────────────────────────
+  // ── 3. 助手详情 ─────────────────────────────────────────────
   const detailHtml = render(
     mod.createElement(mod.AssistantDetailView, {
       assistant: ASSISTANTS[0],
@@ -135,17 +135,17 @@ try {
       onBack: () => undefined,
     }),
   );
-  assert(detailHtml.includes("PROTO-Introducción"), "Introducción a la visualización de detalles");
-  assert(detailHtml.includes("PROTO-Resumen del personaje") && detailHtml.includes("host-persona"), "El resumen del personaje es plegable (6 truncamiento de línea)");
-  assert(detailHtml.includes("Expandir"), "El resumen del personaje da la entrada a la expansión.");
-  assert(detailHtml.includes("temperatura") && detailHtml.includes("0.7"), "Pantalla de solo lectura de temperatura");
-  assert(detailHtml.includes("4,096"), "Token máximo agrupado por Intl");
-  assert(detailHtml.includes("configurado 1,234 palabra"), "La palabra solicitada solo muestra la cantidad de palabras, no el texto.");
-  assert(!detailHtml.includes("Texto de palabra de aviso del sistema"), "El texto de la palabra solicitada no aparece en la página.");
-  assert(detailHtml.includes("12 un"), "Visualización del número de herramienta");
-  assert(/role="switch"/.test(detailHtml) && detailHtml.includes("disabled"), "El interruptor de habilitación es de solo lectura.");
-  assert(!/<input/i.test(detailHtml), "No aparece ningún cuadro de entrada para parámetros de solo lectura");
-  assert(detailHtml.includes("Iniciar una conversación con este asistente"), "La parte superior puede iniciar directamente una conversación.");
+  assert(detailHtml.includes("PROTO-简介"), "详情显示简介");
+  assert(detailHtml.includes("PROTO-人设摘要") && detailHtml.includes("host-persona"), "人设摘要可折叠（6 行截断）");
+  assert(detailHtml.includes("展开"), "人设摘要给展开入口");
+  assert(detailHtml.includes("温度") && detailHtml.includes("0.7"), "温度只读展示");
+  assert(detailHtml.includes("4,096"), "最大 Token 走 Intl 分组");
+  assert(detailHtml.includes("已配置 1,234 字"), "提示词只显示字数，不给正文");
+  assert(!detailHtml.includes("系统提示词正文"), "提示词正文没有出现在页面上");
+  assert(detailHtml.includes("12 个"), "工具数展示");
+  assert(/role="switch"/.test(detailHtml) && detailHtml.includes("disabled"), "启用开关是只读的");
+  assert(!/<input/i.test(detailHtml), "只读参数不出现输入框");
+  assert(detailHtml.includes("用这个助手开始会话"), "顶部能直接发起会话");
 
   const unsupportedDetail = render(
     mod.createElement(mod.AssistantDetailView, {
@@ -157,9 +157,9 @@ try {
       onBack: () => undefined,
     }),
   );
-  assert(unsupportedDetail.includes("La versión actual no admite la visualización de detalles del asistente en la página web."), "Dé un mensaje en lugar de dejar un espacio en blanco cuando falte un espacio de capacidad.");
+  assert(unsupportedDetail.includes("当前版本暂不支持在网页端查看助手详情"), "缺能力位时给提示而不是空白");
 
-  // ── 4. pagina de memoria ───────────────────────────────────────────────
+  // ── 4. 记忆页 ───────────────────────────────────────────────
   const memoryPage = (overrides) =>
     render(
       mod.createElement(mod.MemoryPage, {
@@ -179,36 +179,36 @@ try {
     );
 
   const items = [
-    { id: "m1", content: "PROTO-contenido de la memoria", createdAt: Date.now(), source: "conversation", pinned: true },
-    { id: "m2", content: "PROTO-Artículo 2", createdAt: Date.now() - 3 * 24 * 60 * 60 * 1000, source: "manual" },
+    { id: "m1", content: "PROTO-记忆内容", createdAt: Date.now(), source: "conversation", pinned: true },
+    { id: "m2", content: "PROTO-第二条", createdAt: Date.now() - 3 * 24 * 60 * 60 * 1000, source: "manual" },
   ];
   const listMemory = memoryPage({ items, hasMore: true });
-  assert(listMemory.includes("PROTO-contenido de la memoria") && listMemory.includes("PROTO-Artículo 2"), "Listar todos los contenidos de la memoria");
-  assert(listMemory.includes("fijar hacia arriba"), "etiqueta de alfiler");
-  assert(listMemory.includes("conversation"), "etiqueta fuente");
-  assert(listMemory.includes("justo ahora") && listMemory.includes("hace 3 días"), "El tiempo va localizado en relación con el tiempo.");
-  assert(listMemory.includes("cargar más"), "Habrá más puntos de entrada para la carga.");
+  assert(listMemory.includes("PROTO-记忆内容") && listMemory.includes("PROTO-第二条"), "记忆内容都列出来");
+  assert(listMemory.includes("置顶"), "置顶标记");
+  assert(listMemory.includes("conversation"), "来源标签");
+  assert(listMemory.includes("刚刚") && listMemory.includes("3 天前"), "时间走本地化相对时间");
+  assert(listMemory.includes("加载更多"), "还有更多时给加载入口");
   const lastMemory = memoryPage({ items, hasMore: false });
-  assert(lastMemory.includes("no más") && !lastMemory.includes("cargar más"), "Al llegar al final muestra \"No más\"");
+  assert(lastMemory.includes("没有更多了") && !lastMemory.includes("加载更多"), "到底后显示「没有更多了」");
   const emptyMemory = memoryPage({});
-  assert(emptyMemory.includes("Aún no hay memoria"), "Proporcionar orientación cuando no hay memoria.");
-  const noHit = memoryPage({ items: [], query: "PROTO-palabras clave" });
-  assert(noHit.includes("PROTO-palabras clave") && noHit.includes("Borrar"), "Las palabras clave y \"Borrar\" se muestran cuando no se encuentran resultados en la búsqueda.");
-  assert(memoryPage({ unsupported: true }).includes("La versión actual no admite la visualización de recuerdos en la página web."), "Preguntar si no es compatible");
-  assert(memoryPage({ error: "PROTO-error" }).includes("PROTO-error"), "El error de lectura muestra un error y vuelve a intentarlo");
+  assert(emptyMemory.includes("还没有记忆"), "无记忆时给引导");
+  const noHit = memoryPage({ items: [], query: "PROTO-关键词" });
+  assert(noHit.includes("PROTO-关键词") && noHit.includes("清空"), "搜索无命中时显示关键词与「清空」");
+  assert(memoryPage({ unsupported: true }).includes("当前版本暂不支持在网页端查看记忆"), "不支持时给提示");
+  assert(memoryPage({ error: "PROTO-错误" }).includes("PROTO-错误"), "读取失败显示错误与重试");
 
-  // ── 5. Cableado ───────────────────────────────────────────────
-  assert(HOST_SETTINGS.includes('openPage.entry.id === "assistants"') && HOST_SETTINGS.includes("<AssistantsPage"), "Ingrese el elemento \"Asistente\" en la configuración para ingresar a la página del asistente");
-  assert(HOST_SETTINGS.includes('openPage.entry.id === "memory"') && HOST_SETTINGS.includes("<MemoryPage"), "La entrada \"Memoria\" ingresa a la página de memoria");
-  assert(HOST_CHAT.includes("onStartSession={startSessionWith}") && HOST_CHAT.includes('type: "session.new", assistantId'), "La página de detalles puede abrir una sesión con asistenteId");
-  assert(CONNECTION.includes('type: "assistants.detail", assistantId'), "Detalles del asistente solicitados por ID de asistente");
-  assert(CONNECTION.includes('type: "memory.list", limit: MEMORY_PAGE_SIZE') && CONNECTION.includes("cursor: options.cursor"), "Lista de memoria con límite y paginación del cursor.");
-  assert(CONNECTION.includes('type: "memory.search", query, limit: MEMORY_PAGE_SIZE'), "cinta de búsqueda de memoria query");
-  assert(CONNECTION.includes("MEMORY_PAGE_SIZE = 30"), "30 artículos por página (Host valor predeterminado)");
-  assert(/host-assistant-actions|host-memory-list|host-persona/.test(CSS), "Existe una nueva clase de estilo.");
+  // ── 5. 接线 ───────────────────────────────────────────────
+  assert(HOST_SETTINGS.includes('openPage.entry.id === "assistants"') && HOST_SETTINGS.includes("<AssistantsPage"), "设置里「助手」条目进助手页");
+  assert(HOST_SETTINGS.includes('openPage.entry.id === "memory"') && HOST_SETTINGS.includes("<MemoryPage"), "「记忆」条目进记忆页");
+  assert(HOST_CHAT.includes("onStartSession={startSessionWith}") && HOST_CHAT.includes('type: "session.new", assistantId'), "详情页能带着 assistantId 开会话");
+  assert(CONNECTION.includes('type: "assistants.detail", assistantId'), "助手详情按 assistantId 请求");
+  assert(CONNECTION.includes('type: "memory.list", limit: MEMORY_PAGE_SIZE') && CONNECTION.includes("cursor: options.cursor"), "记忆列表带 limit 与 cursor 分页");
+  assert(CONNECTION.includes('type: "memory.search", query, limit: MEMORY_PAGE_SIZE'), "记忆搜索带 query");
+  assert(CONNECTION.includes("MEMORY_PAGE_SIZE = 30"), "每页 30 条（Host 默认值）");
+  assert(/host-assistant-actions|host-memory-list|host-persona/.test(CSS), "新增样式类存在");
 
-  if (failures > 0) throw new Error(`El asistente con la afirmación de la memoria falló (${failures} artículo)`);
-  console.log("\nTodas las afirmaciones del asistente y de la memoria pasan (lista/detalles/paginación/búsqueda/bits de capacidad).");
+  if (failures > 0) throw new Error(`助手与记忆断言未通过（${failures} 条）`);
+  console.log("\n助手与记忆断言全部通过（列表 / 详情 / 分页 / 搜索 / 能力位）。");
 } finally {
   await rm(TEMP, { force: true });
 }

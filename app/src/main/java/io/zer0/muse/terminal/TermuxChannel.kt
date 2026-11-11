@@ -16,38 +16,43 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 
 /**
- * v2.2.1 Termux canal — Enviar comandos al usuario instalado Termux(Entorno Linux completo)Ejecute y obtenga los resultados.
+ * v2.2.1 Termux 通道 — 把命令送进用户安装的 Termux(完整 Linux 环境)执行并取回结果。
  *
- * mecanismo(Alineado con el protocolo RUN_COMMAND oficial de Termux):
- *  - hacia `com.termux.app.RunCommandService` enviar action=`com.termux.RUN_COMMAND` intención;
- *  - Pase `com.termux.RUN_COMMAND_PENDING_INTENT` Obtener resultados(stdout/stderr/exitCode/errmsg);
- *  - `am startservice` El método no puede obtener el resultado.,Por lo tanto, se debe seguir la ruta del código.
+ * 机制(对齐 Termux 官方 RUN_COMMAND 协议)：
+ *  - 向 `com.termux.app.RunCommandService` 发送 action=`com.termux.RUN_COMMAND` 的 intent；
+ *  - 通过 `com.termux.RUN_COMMAND_PENDING_INTENT` 收结果(stdout/stderr/exitCode/errmsg)；
+ *  - `am startservice` 方式拿不到结果,故必须走代码路径。
  *
- * Frente del lado del usuario(No listo [describe] Dar orientación paso a paso):
- *  1. Instalación Termux;
- *  2. Configuración del sistema→Solicitud→Termux→Permisos adicionales,Conceder "Ejecutar comando Termux"(`com.termux.permission.RUN_COMMAND`);
- *  3. Termux dentro `~/.termux/termux.properties` escribir `allow-external-apps = true` y reiniciar Termux;
- *  4. sistema parcial(Android 10+)Es necesario permitir que Termux se inicie externamente(Como la opción "Aplicación asociada").
+ * 用户侧前置(未就绪时 [describe] 给出逐步引导)：
+ *  1. 安装 Termux;
+ *  2. 系统设置→应用→Termux→附加权限,授予「运行 Termux 命令」(`com.termux.permission.RUN_COMMAND`);
+ *  3. Termux 内 `~/.termux/termux.properties` 写 `allow-external-apps = true` 并重启 Termux;
+ *  4. 部分系统(Android 10+)需允许 Termux 被外部启动(如「关联应用」选项)。
  *
- * Descripción:Los nombres de los campos del paquete de resultados corresponden a las constantes oficiales de Termux.;Analizar la compatibilidad defensiva(stdout/stderr/exitCode/err/errmsg,
- * Compatible con variantes exit_code/errCode),Los formatos desconocidos registrarán el conjunto de claves original para facilitar la resolución de problemas.
+ * 说明:结果包字段名按 Termux 官方常量;解析做防御性兼容(stdout/stderr/exitCode/err/errmsg,
+ * 兼容 exit_code/errCode 变体),未知格式会记录原始 keySet 便于排查。
  */
 class TermuxChannel private constructor(private val context: Context) {
 
-    /** Disponibilidad de canales. */
+    /** 通道可用性。 */
     sealed class Availability {
         data object Ready : Availability()
         data object NotInstalled : Availability()
+
+        /** 已安装但版本过旧：结果回传需 0.118+，Play 商店版停更在 0.101，永远拿不到结果。 */
+        data class OutdatedVersion(val versionName: String?) : Availability()
         data object PermissionMissing : Availability()
         data class NotConfigured(val detail: String?) : Availability()
     }
 
-    /** Resultado de ejecución único.error No vacío indica falla a nivel de canal(El inicio falló/tiempo de espera/Servidor errmsg). */
+    /** 单次执行结果。error 非空表示通道级失败(启动失败/超时/服务端 errmsg)。 */
     data class ExecResult(
         val exitCode: Int,
         val stdout: String,
         val stderr: String,
         val error: String?,
+        /** Termux 侧把超 100KB 的输出截断；true 表示 stdout/stderr 不完整。 */
+        val truncated: Boolean = false,
     )
 
     private val pending = ConcurrentHashMap<Int, CompletableDeferred<TermuxResult>>()
@@ -61,15 +66,15 @@ class TermuxChannel private constructor(private val context: Context) {
         override fun onReceive(receiverContext: Context?, intent: Intent?) {
             if (intent == null) return
             val requestId = intent.getIntExtra(EXTRA_REQUEST_ID, -1)
-            // Los extras en la banda de transmisión se repetirán en el registro tal como están, pero los resultados sin identificadores solo se perderán:
-            // Los resultados sin propietario son peores que perder uno (lanzar los resultados de otra persona a la persona que llama).
+            // 广播带的 extras 会原样回显到日志里，但没有 id 的结果只能丢：
+            // 无主结果比丢一条更糟（会把别人的结果塞给这个调用方）。
             val deferred = pending.remove(requestId) ?: return
-            // Termux 0.118.x Fijo "result" Como clave del paquete de resultados, el nombre largo solo está reservado por motivos de compatibilidad.
+            // Termux 0.118.x 固定用 "result" 作结果包 key，长名只作兼容保留。
             val bundle = intent.getBundleExtra(EXTRA_RESULT_BUNDLE)
                 ?: intent.getBundleExtra(EXTRA_RESULT_BUNDLE_TERMUX)
             if (bundle == null) {
-                Logger.w(TAG, "Termux falta el resultado result bundle,extras=${intent.extras?.keySet()}")
-                deferred.complete(TermuxResult(-1, "", "", "Formato de resultado anormal(desaparecido result bundle)"))
+                Logger.w(TAG, "Termux 结果缺 result bundle,extras=${intent.extras?.keySet()}")
+                deferred.complete(TermuxResult(-1, "", "", "结果格式异常(缺 result bundle)"))
                 return
             }
             val entries = HashMap<String, Any?>()
@@ -81,9 +86,11 @@ class TermuxChannel private constructor(private val context: Context) {
         }
     }
 
-    /** Comprobación estática rápida(No ejecutar el comando). */
+    /** 快速静态检查(不执行命令、不唤醒 Termux)。 */
     fun availability(): Availability {
         if (!isInstalled()) return Availability.NotInstalled
+        val version = installedVersionName()
+        if (!isVersionSupported(version)) return Availability.OutdatedVersion(version)
         if (!hasPermission()) return Availability.PermissionMissing
         return Availability.Ready
     }
@@ -92,32 +99,52 @@ class TermuxChannel private constructor(private val context: Context) {
         context.packageManager.getPackageInfo(PKG, 0)
     }.isSuccess
 
+    /** 已安装 Termux 的 versionName（未装或读取失败返回 null）。 */
+    fun installedVersionName(): String? = runCatching {
+        context.packageManager.getPackageInfo(PKG, 0).versionName
+    }.getOrNull()
+
     fun hasPermission(): Boolean = context.checkSelfPermission(PERMISSION) == PackageManager.PERMISSION_GRANTED
 
+    /** probe 结果缓存：避免每次进向导都真实执行 echo 唤醒 Termux。手动刷新可强制重探。 */
+    @Volatile
+    private var cachedProbe: Availability? = null
+
     /**
-     * Detección completa de enlaces:Ejecutar realmente un comando de etiqueta de eco,Verifique configuraciones como permitir aplicaciones externas.
-     * que [availability] lento(Primero debe iniciar el servicio Termux),Para visualización de estado/Uso de solución de problemas.
+     * 完整链路探测:实际执行一条 echo 标记命令,验证 allow-external-apps 等配置。
+     * 比 [availability] 慢(要先起 Termux 服务),供状态展示/排障使用。
+     *
+     * @param forceRefresh true 时忽略缓存真实重探（手动刷新）；false 时复用缓存（页面 RESUMED），
+     *   免得每次回到向导都唤醒 Termux。前置静态检查失败时清缓存并直接返回。
      */
-    suspend fun probe(): Availability {
+    suspend fun probe(forceRefresh: Boolean = false): Availability {
         val quick = availability()
-        if (quick !is Availability.Ready) return quick
+        if (quick !is Availability.Ready) {
+            cachedProbe = null
+            return quick
+        }
+        if (!forceRefresh) {
+            cachedProbe?.let { return it }
+        }
         val result = exec("echo __MUSE_TERMUX_OK__", timeoutMs = 15_000L)
-        return when {
+        val verdict = when {
             result.error != null -> Availability.NotConfigured(result.error)
             result.stdout.contains("__MUSE_TERMUX_OK__") -> Availability.Ready
-            else -> Availability.NotConfigured("Detectar anomalías de salida(exit=${result.exitCode})")
+            else -> Availability.NotConfigured("探测输出异常(exit=${result.exitCode})")
         }
+        cachedProbe = verdict
+        return verdict
     }
 
     /**
-     * Ejecute el comando y espere los resultados.
-     * @param command a `bash -c` Comando completo ejecutado
-     * @param timeoutMs Esperar al límite superior(Incluyendo el tiempo de cola lateral de Termux)
-     * @param workdir directorio de trabajo(Predeterminado Termux home)
+     * 执行命令并等待结果。
+     * @param command 以 `bash -c` 执行的完整命令
+     * @param timeoutMs 等待上限(含 Termux 侧排队时间)
+     * @param workdir 工作目录(默认 Termux home)
      */
     suspend fun exec(command: String, timeoutMs: Long = DEFAULT_TIMEOUT_MS, workdir: String? = null): ExecResult {
-        if (!isInstalled()) return ExecResult(-1, "", "", "No instalado Termux")
-        if (!hasPermission()) return ExecResult(-1, "", "", "Falta el permiso de llamada de Termux")
+        if (!isInstalled()) return ExecResult(-1, "", "", "未安装 Termux")
+        if (!hasPermission()) return ExecResult(-1, "", "", "缺少 Termux 调用权限")
         ensureReceiver()
         val requestId = nextRequestId.incrementAndGet()
         val deferred = CompletableDeferred<TermuxResult>()
@@ -126,15 +153,15 @@ class TermuxChannel private constructor(private val context: Context) {
             context.startService(buildRunCommandIntent(command, workdir, requestId))
         } catch (e: Exception) {
             pending.remove(requestId)
-            Logger.w(TAG, "No se pudo iniciar el servicio Termux: ${e.message}")
+            Logger.w(TAG, "启动 Termux 服务失败: ${e.message}")
             val raw = e.message ?: e.javaClass.simpleName
-            // Android 8+ Restricciones de inicio del servicio en segundo plano:App El sistema rechazará el inicio de servicios externos en segundo plano.
+            // Android 8+ 后台服务启动限制:App 纯后台时启动外部服务会被系统拒绝
             val hint = if (raw.contains("Not allowed to start service") || raw.contains("background")) {
-                "(Android Restricciones de fondo:Mantén la aplicación en primer plano.,O abra \"Configuración→Agent→Backend y confiabilidad→Sigue ejecutándose en segundo plano\")"
+                "(Android 后台限制:请保持 App 在前台,或开启「设置→Agent→后台与可靠性→保持后台运行」)"
             } else {
                 ""
             }
-            return ExecResult(-1, "", "", "No se pudo iniciar el servicio Termux: $raw$hint")
+            return ExecResult(-1, "", "", "启动 Termux 服务失败: $raw$hint")
         }
         val result = try {
             withTimeoutOrNull(timeoutMs) { deferred.await() }
@@ -142,32 +169,32 @@ class TermuxChannel private constructor(private val context: Context) {
             pending.remove(requestId)
         }
         if (result == null) {
-            return ExecResult(-1, "", "", "Tiempo de espera esperando resultado(${timeoutMs / 1000}s):Termux Es posible que el sistema impida que se inicie en segundo plano o no responda.")
+            return ExecResult(-1, "", "", "等待结果超时(${timeoutMs / 1000}s):Termux 可能被系统限制后台启动或未响应")
         }
-        return ExecResult(result.exitCode, result.stdout, result.stderr, result.error)
+        return ExecResult(result.exitCode, result.stdout, result.stderr, result.error, result.truncated)
     }
 
     /**
-     * Registre un receptor de transmisión para recibir resultados de Termux.
+     * 注册接收 Termux 结果的广播接收器。
      *
-     * v2.6.13 Solución: se debe utilizar RECEIVER_EXPORTED.
+     * v2.6.13 修正：必须用 RECEIVER_EXPORTED。
      *
-     * La implementación anterior declaraba RECEIVER_NOT_EXPORTED, mientras que la transmisión del resultado era **Termux esa aplicación** enviado de vuelta
-     * (diferente fluido, diferente proceso). Los receptores no exportados solo aceptan transmisiones desde la misma aplicación, por lo que la respuesta de Termux
-     * El sistema lo descarta silenciosamente cada vez.[exec] Espera por siempre hasta que se agote el tiempo —— Lo que ve el usuario es“Autorizado pero completamente inutilizable.”,
-     * Y todas las comprobaciones previas (instaladas/autorizadas/permitir aplicaciones externas) son normales.
+     * 旧实现声明了 RECEIVER_NOT_EXPORTED，而结果广播是 **Termux 那个应用** 发回来的
+     * （不同 uid、不同进程）。非导出接收器只接受同应用发出的广播，于是 Termux 的回复
+     * 每次都被系统静默丢弃，[exec] 永远等到超时 —— 用户看到的就是“授权了但完全不能用”，
+     * 而所有前置检查（已安装 / 已授权 / allow-external-apps）都显示正常。
      *
-     * El límite de seguridad se mantiene mediante dos restricciones:
-     *  1. La transmisión del resultado debe tomar [EXTRA_REQUEST_ID], y el id debe estar en la tabla pendiente de este proceso——
-     *     Las aplicaciones externas no pueden adivinar la identificación incrementada automáticamente y no pueden falsificar identificaciones desconocidas.“resultado”;
-     *  2. El contenido recibido solo se genera como una cadena, sin llamadas de reflexión, ejecución ni ortografía de ruta.
+     * 安全边界靠两道限制维持：
+     *  1. 结果广播必须带 [EXTRA_REQUEST_ID]，且该 id 必须在本进程的 pending 表里——
+     *     外部应用猜不到自增 id，也无法伪造未知 id 的“结果”；
+     *  2. 收到的内容只当作字符串输出，不反射调用、不执行、不拼路径。
      *
-     * ¿Por qué no puedo cambiar a la versión del sistema? flags = 0:
-     * [ContextCompat.registerReceiver] en flags **No contiene RECEIVER_EXPORTED ni
-     * RECEIVER_NOT_EXPORTED** tirar incondicionalmente `IllegalArgumentException`, con `Build.VERSION.SDK_INT`
-     * irrelevante (implementación antigua `SDK_INT >= TIRAMISU` Se consideró que Android 12 y versiones anteriores deberían tomar la rama 0, por lo que en
-     * vivo V1990A / Android 10 melodía anterior [exec] Simplemente colapsar). Exportar o no no tiene nada que ver con la versión del sistema. Es el único requisito estricto.
-     * Así que pase RECEIVER_EXPORTED aquí constantemente y no haga bifurcaciones por versión.
+     * 为什么不能按系统版本降级成 flags = 0：
+     * [ContextCompat.registerReceiver] 在 flags **既不含 RECEIVER_EXPORTED 也不含
+     * RECEIVER_NOT_EXPORTED** 时无条件抛 `IllegalArgumentException`，与 `Build.VERSION.SDK_INT`
+     * 无关（旧实现的 `SDK_INT >= TIRAMISU` 判断让 Android 12 及以下都走 0 分支，于是在
+     * vivo V1990A / Android 10 上一调 [exec] 就崩）。导出与否和系统版本无关，是唯一硬性要求，
+     * 所以这里恒定传入 RECEIVER_EXPORTED，不要再按版本分支。
      */
     private fun ensureReceiver() {
         if (receiverRegistered) return
@@ -185,9 +212,9 @@ class TermuxChannel private constructor(private val context: Context) {
 
     @SuppressLint("UnspecifiedImmutableFlag")
     internal fun buildRunCommandIntent(command: String, workdir: String?, requestId: Int): Intent {
-        // requestId Debe adjuntarse al Intent básico de PendingIntent y no se puede colocar solo en el Intent del comando:
-        // Termux Al regresar, solo se repondrá el paquete de resultados como complemento y no se recuperará el extra personalizado de la persona que llama.
-        // Por lo tanto, el extremo receptor nunca puede encontrar la tabla pendiente presionando -1, y el resultado se descarta silenciosamente y solo puede esperar el tiempo de espera.
+        // requestId 必须挂到 PendingIntent 的基础 Intent 上，不能只放在命令 Intent 里：
+        // Termux 回传时只把 result bundle 作为 fill-in 回填，不会把调用方自定义的 extra 带回来，
+        // 于是接收端永远按 -1 查不到 pending 表，结果被静默丢弃、只能等超时。
         val resultIntent = Intent(ACTION_RESULT)
             .setPackage(context.packageName)
             .putExtra(EXTRA_REQUEST_ID, requestId)
@@ -233,7 +260,7 @@ class TermuxChannel private constructor(private val context: Context) {
         private const val EXTRA_PENDING_INTENT = "com.termux.RUN_COMMAND_PENDING_INTENT"
         private const val EXTRA_RESULT_BUNDLE = "com.termux.RUN_COMMAND_RESULT_BUNDLE"
 
-        /** Termux 0.118.x La clave del paquete de resultados real utilizada (TermuxPluginUtils Escritura fija). */
+        /** Termux 0.118.x 实际使用的结果包 key（TermuxPluginUtils 固定写入）。 */
         private const val EXTRA_RESULT_BUNDLE_TERMUX = "result"
         private const val EXTRA_REQUEST_ID = "io.zer0.muse.TERMUX_REQUEST_ID"
         private const val ACTION_RESULT = "io.zer0.muse.action.TERMUX_RESULT"
@@ -248,16 +275,30 @@ class TermuxChannel private constructor(private val context: Context) {
             instance ?: TermuxChannel(context.applicationContext).also { instance = it }
         }
 
-        /** Estado intermedio del resultado de la ejecución. */
+        /** 执行结果中间态。 */
         data class TermuxResult(
             val exitCode: Int,
             val stdout: String,
             val stderr: String,
             val error: String?,
+            val truncated: Boolean = false,
         )
 
         /**
-         * Campos de resultados del análisis defensivo(Se puede probar individualmente):Compatible con código de salida/código_salida,err/errCode con valores de cadena.
+         * Termux 版本是否支持结果回传（需 ≥0.118；0.109 起支持、0.118 稳定）。
+         * Play 商店版停更在 0.101，无 PendingIntent 回传机制，调用永远超时。
+         * 解析不了版本号时不误报（按支持处理），避免把自定义构建判死。
+         */
+        internal fun isVersionSupported(versionName: String?): Boolean {
+            if (versionName.isNullOrBlank()) return true
+            val parts = versionName.trim().split('.')
+            val major = parts.getOrNull(0)?.toIntOrNull() ?: return true
+            val minor = parts.getOrNull(1)?.toIntOrNull() ?: return true
+            return major > 0 || minor >= 118
+        }
+
+        /**
+         * 防御性解析结果字段(可单测):兼容 exitCode/exit_code、err/errCode 与字符串数值。
          */
         internal fun parseResultEntries(entries: Map<String, Any?>): TermuxResult {
             val stdout = (entries["stdout"] as? String).orEmpty()
@@ -273,26 +314,34 @@ class TermuxChannel private constructor(private val context: Context) {
                 else -> null
             }
             val errmsg = (entries["errmsg"] as? String)?.takeIf { it.isNotBlank() }
-            // Termux El código de éxito es Errno.ERRNO_SUCCESS = -1,ResultData.getErrCode() Devuelve -1 si no hay errores.
-            // tomar “!= 0” La sentencia escribirá cada éxito como "Termux Código de error de servicio -1", el canal parece no estar disponible permanentemente.
-            // Sólo los números positivos son verdaderos errores;0 Dáselo a la versión antigua./Otras implementaciones actúan como códigos de éxito.
-            val error = errmsg ?: if (errCode != null && errCode > 0) "Termux Código de error de servicio $errCode" else null
-            return TermuxResult(exitCode, stdout, stderr, error)
+            // Termux 的成功码是 Errno.ERRNO_SUCCESS = -1，ResultData.getErrCode() 无错时返回 -1。
+            // 拿 “!= 0” 判定会把每次成功都写成「Termux 服务错误码 -1」，通道看上去永久不可用。
+            // 只有正数才是真错误；0 交给旧版本/其他实现当成功码。
+            val error = errmsg ?: if (errCode != null && errCode > 0) "Termux 服务错误码 $errCode" else null
+            // Termux 把超 100KB 的输出从头截断,并带回原始长度;原始长度 > 实收长度即被截断。
+            val stdoutOriginal = (entries["stdout_original_length"] as? Number)?.toInt()
+            val stderrOriginal = (entries["stderr_original_length"] as? Number)?.toInt()
+            val truncated = (stdoutOriginal != null && stdoutOriginal > stdout.length) ||
+                (stderrOriginal != null && stderrOriginal > stderr.length)
+            return TermuxResult(exitCode, stdout, stderr, error, truncated)
         }
 
-        /** Orientado al usuario/Copia introductoria del modelo(Chino codificado,El mismo calibre que device_shell y otras indicaciones en tiempo de ejecución). */
+        /** 面向用户/模型的引导文案(硬编码中文,与 device_shell 等运行时提示同口径)。 */
         fun describe(availability: Availability): String = when (availability) {
-            is Availability.Ready -> "Termux canal listo"
+            is Availability.Ready -> "Termux 通道就绪"
             is Availability.NotInstalled ->
-                "Termux canal no disponible:Termux no está instalado. Por favor instale primero Termux(tienda de aplicaciones / F-Droid),Después de la instalación, regrese a Configuración→Detección de herramientas."
+                "Termux 通道不可用:未安装 Termux。请先安装 Termux(F-Droid / GitHub),装好后回到 设置→工具 检测。"
+            is Availability.OutdatedVersion ->
+                "Termux 版本过旧(${availability.versionName ?: "未知"}):命令结果回传需 0.118+。" +
+                    "Play 商店版已停更(0.101),拿不到执行结果;请从 F-Droid 或 GitHub 安装新版 Termux 后重试。"
             is Availability.PermissionMissing ->
-                "Termux El canal espera autorización:Por favor vaya a la configuración del sistema→Solicitud→Termux→Permisos adicionales,Marque \"Ejecutar comando Termux\"" +
-                    "(Run commands in Termux environment),Luego inténtalo de nuevo."
+                "Termux 通道待授权:请到 系统设置→应用→Termux→附加权限,勾选「运行 Termux 命令」" +
+                    "(Run commands in Termux environment),然后重试。"
             is Availability.NotConfigured ->
-                "Termux Canal a configurar:Por favor ejecute en Termux " +
-                    "`echo 'allow-external-apps = true' >> ~/.termux/termux.properties` y reiniciar Termux;" +
-                    "sistema parcial(Android 10+)También debe permitir que Termux se inicie externamente(Como la opción \"Aplicación asociada\")." +
-                    "\núltimo error:${availability.detail ?: "desconocido"}"
+                "Termux 通道待配置:请在 Termux 中执行 " +
+                    "`echo 'allow-external-apps = true' >> ~/.termux/termux.properties` 并重启 Termux;" +
+                    "部分系统(Android 10+)还需允许 Termux 被外部启动(如「关联应用」选项)。" +
+                    "\n最近一次错误:${availability.detail ?: "未知"}"
         }
     }
 }

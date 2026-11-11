@@ -24,8 +24,8 @@ import org.junit.Test
 import kotlin.uuid.Uuid
 
 /**
- * Mood Análisis de pruebas de regresión: verifique que la misma entrada de actualización utilizada al final de la transmisión cambie el estado de ánimo del texto principal./canal de razonamiento
- * Sepárelo para garantizar que MessageBubble posterior tenga datos para representar, en lugar de simplemente requerir la salida del modelo en el mensaje.
+ * Mood 解析回归测试：验证流式收尾使用的同一更新入口会把 Mood 从正文/推理通道
+ * 分离出来，保证后续 MessageBubble 有数据可渲染，而不是只在 prompt 里要求模型输出。
  */
 class ChatStreamMoodTest {
 
@@ -46,14 +46,14 @@ class ChatStreamMoodTest {
                 Reflections: keep the answer clear
                 Will: help the user
                 </mood>
-                este es el texto
+                这是正文
             """.trimIndent(),
             reasoning = "<think>internal reasoning</think>",
             isStreaming = false,
         )
 
         val updated = accessor.messages.single()
-        assertEquals("este es el texto", updated.content.trim())
+        assertEquals("这是正文", updated.content.trim())
         assertNotNull(updated.mood)
         assertTrue(updated.mood!!.contains("Vibe: calm"))
         assertFalse(updated.content.contains("<mood>", ignoreCase = true))
@@ -71,15 +71,15 @@ class ChatStreamMoodTest {
 
         coordinator.updateAssistant(
             id = messageId,
-            content = "respuesta final",
-            reasoning = "<mood>Vibe: thoughtful</mood><think>proceso de análisis</think>",
+            content = "最终答案",
+            reasoning = "<mood>Vibe: thoughtful</mood><think>分析过程</think>",
             isStreaming = false,
         )
 
         val updated = accessor.messages.single()
-        assertEquals("respuesta final", updated.content)
+        assertEquals("最终答案", updated.content)
         assertEquals("Vibe: thoughtful", updated.mood?.trim())
-        assertEquals("proceso de análisis", updated.reasoning?.trim())
+        assertEquals("分析过程", updated.reasoning?.trim())
     }
 
     private fun coordinator(accessor: MutableMessagesAccessor): ChatStreamCoordinator = ChatStreamCoordinator(

@@ -15,13 +15,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 /**
- * El pequeño teléfono celular tiene su propia paleta de colores.
+ * 小手机自有色板。
  *
- * Este módulo no hereda el tema anfitrión.:La combinación de colores del anfitrión se ajusta al entorno de trabajo del chat.(Vidrio, degradado, piel de expresión.),
- * Lo que quieren los celulares pequeños es la textura del papel —— base blanca cálida,Verde oscuro para dar énfasis,El rojo ladrillo sólo queda sin leer.
+ * 本模块不继承宿主主题:宿主的配色是为聊天工作台调的(玻璃、渐变、表情皮肤),
+ * 而小手机要的是纸的质感 —— 暖白打底,黛绿做强调,砖红只留给未读。
  *
- * El color oscuro no es una simple inversión del color claro.:El fondo es casi negro.,Mueve la tarjeta hacia arriba,Los colores destacados garantizan la legibilidad,
- * Cambia tus propias burbujas a fondo claro y personajes oscuros.(Presionar palabras blancas sobre un fondo profundo no proporciona suficiente contraste.).
+ * 深色不是浅色的简单反转:背景压到近黑,卡片抬一档,强调色提亮保证可读,
+ * 自己气泡改浅底深字(深底上再压白字对比不够)。
  */
 @Immutable
 @Suppress("LongParameterList")
@@ -45,7 +45,7 @@ data class MiniPhoneColors(
     val wallpaperBottom: Color,
 )
 
-/** Color claro cuarta marcha:Abajo, tarjeta, palabra primaria, palabra secundaria. */
+/** 浅色四档:底、卡、主字、次字。 */
 private val LightBackground = Color(0xFFF5F3EF)
 private val LightSurface = Color(0xFFFFFFFF)
 private val LightTextPrimary = Color(0xFF1C1B19)
@@ -54,7 +54,7 @@ private val LightDivider = Color(0xFFE6E2DA)
 private val LightAccent = Color(0xFF4F6E5A)
 private val LightUnread = Color(0xFFC4644F)
 
-/** Color oscuro cuatro niveles. */
+/** 深色四档。 */
 private val DarkBackground = Color(0xFF12110F)
 private val DarkSurface = Color(0xFF24211D)
 private val DarkTextPrimary = Color(0xFFEDE9E3)
@@ -62,7 +62,7 @@ private val DarkTextSecondary = Color(0xFF8F887D)
 private val DarkDivider = Color(0xFF332F29)
 private val DarkAccent = Color(0xFF7C9B85)
 
-/** muestras de colores claros:Papel de arroz blanco cálido + verde oscuro. */
+/** 浅色色板:宣纸暖白 + 黛绿。 */
 fun lightMiniPhoneColors(): MiniPhoneColors = MiniPhoneColors(
     isDark = false,
     background = LightBackground,
@@ -83,7 +83,7 @@ fun lightMiniPhoneColors(): MiniPhoneColors = MiniPhoneColors(
     wallpaperBottom = Color(0xFFE4DED3),
 )
 
-/** paleta de colores oscuros:mismo conjunto de semántica,Se recalcula todo el brillo. */
+/** 深色色板:同一套语义,亮度全部重算。 */
 fun darkMiniPhoneColors(): MiniPhoneColors = MiniPhoneColors(
     isDark = true,
     background = DarkBackground,
@@ -105,10 +105,10 @@ fun darkMiniPhoneColors(): MiniPhoneColors = MiniPhoneColors(
 )
 
 /**
- * Escala de tamaño de fuente:Título/Texto/Secundario/Marca de tiempo.
+ * 字号阶梯:标题 / 正文 / 次要 / 时间戳。
  *
- * Aquí solo se definen el tamaño y el peso de la fuente.,Los colores están determinados por el lugar de uso. [MiniPhoneColors] tomar,
- * Evite utilizar el mismo TextStyle con colores incorrectos en diferentes fondos.
+ * 这里只定义字号与字重,颜色一律由使用处从 [MiniPhoneColors] 取,
+ * 避免同一个 TextStyle 在不同底色上带着错误的颜色。
  */
 @Immutable
 data class MiniPhoneTypography(
@@ -119,10 +119,10 @@ data class MiniPhoneTypography(
 )
 
 /**
- * Escalera de tamaño.
+ * 尺寸阶梯。
  *
- * Los primeros cinco elementos son las especificaciones fijas de este módulo.(Esquinas redondeadas de burbujas, esquinas redondeadas de tarjetas, dos avatares, márgenes de página);
- * Los siguientes elementos son la altura y el tamaño del icono que no se pueden evitar en el diseño del shell.,Esparcidos por todas partes individualmente, será más difícil alinearlos.
+ * 前五项是本模块的固定规格(气泡圆角、卡片圆角、两种头像、页边距);
+ * 后面几项是外壳布局绕不开的高度与图标尺寸,单独散落在各处会更难对齐。
  */
 @Immutable
 @Suppress("LongParameterList")
@@ -143,7 +143,7 @@ data class MiniPhoneDimens(
     val launcherTile: Dp = 56.dp,
     val launcherIcon: Dp = 30.dp,
     val dockHeight: Dp = 76.dp,
-    /** La altura del círculo de amigos cubre.:Pulsa la parte superior de la pantalla.,No aprietes la primera carta de abajo. */
+    /** 朋友圈封面的高度:压住一屏的顶部,又不把下面第一张卡片挤下去。 */
     val coverHeight: Dp = 160.dp,
 )
 
@@ -152,10 +152,10 @@ val LocalMiniPhoneTypography = staticCompositionLocalOf { MiniPhoneTypography() 
 val LocalMiniPhoneDimens = staticCompositionLocalOf { MiniPhoneDimens() }
 
 /**
- * Pequeña entrada temática para teléfonos celulares.:Presione el interruptor oscuro del sistema para bajar la paleta de colores.,Envíe el tamaño de fuente y el tamaño al mismo tiempo.
+ * 小手机主题入口:按系统深色开关下发色板,同时下发字号与尺寸。
  *
- * Sólo se proporcionan tres juegos de este módulo. token,Sin hosts puente MaterialTheme —— La interfaz de los teléfonos celulares pequeños no puede leer el host
- * colorScheme / typography,Si no puedes leerlo, no te llevarán cuando el anfitrión cambie de piel.
+ * 只提供本模块自有的三套 token,不桥接宿主 MaterialTheme —— 小手机的界面不读宿主的
+ * colorScheme / typography,读不到也就不会在宿主换肤时被带跑。
  */
 @Composable
 fun MiniPhoneTheme(darkTheme: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
@@ -168,7 +168,7 @@ fun MiniPhoneTheme(darkTheme: Boolean = isSystemInDarkTheme(), content: @Composa
     )
 }
 
-/** token puerto de acceso:Al escribir la interfaz, solo tome el color, el tamaño de fuente y el tamaño de aquí. */
+/** token 取用口:写界面时只从这里拿颜色、字号、尺寸。 */
 object MiniPhoneTheme {
     val colors: MiniPhoneColors
         @Composable @ReadOnlyComposable

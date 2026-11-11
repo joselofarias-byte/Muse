@@ -30,8 +30,8 @@ class UserMessageTimeContextTest {
 
         assertTrue(context.contains("2026-10-01 09:00:00 UTC"))
         assertTrue(context.contains("2026-10-01 09:01:05 UTC"))
-        assertTrue(context.contains("1 puntos 5 segundos"))
-        assertTrue(context.contains("no se puede sustituir por el pensamiento del asistente, la ejecución de la herramienta o el tiempo transcurrido de la solicitud API."))
+        assertTrue(context.contains("1 分 5 秒"))
+        assertTrue(context.contains("不能用助手思考、工具执行或 API 请求耗时替代"))
     }
 
     @Test
@@ -41,8 +41,8 @@ class UserMessageTimeContextTest {
             ZoneId.of("UTC"),
         )
 
-        assertTrue(context.contains("No hay ningún mensaje de usuario anterior con el que comparar"))
-        assertFalse(context.contains("intervalo de mensaje:"))
+        assertTrue(context.contains("没有可比较的上一条用户消息"))
+        assertFalse(context.contains("消息间隔:"))
     }
 
     private fun userMessage(id: String, timestamp: String) = UIMessage(

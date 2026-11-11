@@ -3,9 +3,9 @@ package io.zer0.muse.miniphone.ui.shell
 import androidx.compose.runtime.Immutable
 
 /**
- * Cuatro devoluciones de llamada de acción en mi página.
+ * 我页的四个动作回调。
  *
- * Reúnalos en lugar de usarlos como parámetros uno por uno.:Dos interruptores más dos entradas ya son cuatro elementos,Pasarlos sin apretar hará que la lista de parámetros sea más larga que su contenido.
+ * 聚成一份而不是逐个当参数:两个开关加两个入口已经四项,散着传会让参数表比内容还长。
  */
 @Immutable
 internal class MePageActions(

@@ -4,23 +4,23 @@ import io.zer0.common.Logger
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * API Key Rotador.
+ * API Key 轮换器。
  *
- * Admite múltiples configuraciones por proveedor API key(Separados por coma o nueva línea), distribuya la carga según los registros de uso recientes:
- * Se da prioridad a las claves no utilizadas, y cuando se han utilizado todas, se selecciona la clave que lleva más tiempo sin utilizarse.
+ * 支持每个 Provider 配置多个 API key(逗号或换行分隔)，按最近使用记录分摊负载：
+ * 优先选择未使用过的 key，全部用过时选择最久未使用的 key。
  *
- * v1.0.1 Mejora:
- *  - [pickNext]: 429 Cambie activamente al siguiente cuando la corriente sea limitada key(saltar actual key)
- *  - Lista negra temporal: las claves omitidas por pickNext están en [BLOCK_TTL_MS] Ya no hay una prioridad dentro,
- *    Evite que las teclas que limitan la corriente se seleccionen repetidamente;TTL Reanudar candidatos automáticamente después del vencimiento
- *  - [markFailed]: No se puede marcar explícitamente una clave(Como la autenticación 401 falló),TTL completamente excluido dentro
+ * v1.0.1 增强：
+ *  - [pickNext]: 429 限流时主动切换到下一个 key(跳过当前 key)
+ *  - 临时黑名单：被 pickNext 跳过的 key 在 [BLOCK_TTL_MS] 内不再优先选择，
+ *    避免限流的 key 被反复选中；TTL 过期后自动恢复候选
+ *  - [markFailed]: 显式标记某个 key 失败(如 401 鉴权失败)，TTL 内完全排除
  *
- * Uso:
+ * 用法：
  * ```kotlin
  * val keyRoulette = KeyRoulette()
- * // Selección por primera vez key
+ * // 首次选 key
  * val key = keyRoulette.pick("provider-123", "key1,key2,key3")
- * // 429 Cambie al siguiente cuando la corriente sea limitada key
+ * // 429 限流时切换到下一个 key
  * val nextKey = keyRoulette.pickNext("provider-123", "key1,key2,key3", currentKey = key)
  * ```
  */
@@ -29,9 +29,9 @@ class KeyRoulette {
     companion object {
         private const val TAG = "KeyRoulette"
         private const val MAX_RECORDS_PER_PROVIDER = 100
-        private const val USAGE_EXPIRY_MS = 24 * 60 * 60 * 1000L // 24 horas
+        private const val USAGE_EXPIRY_MS = 24 * 60 * 60 * 1000L // 24 小时
 
-        /** v1.0.1: Lista negra temporal de claves limitantes actuales TTL(60 segundos,Consistente con la mayoría de las recomendaciones de reintento posterior del proveedor). */
+        /** v1.0.1: 限流 key 的临时黑名单 TTL(60 秒,与多数 Provider 的 Retry-After 推荐值一致)。 */
         private const val BLOCK_TTL_MS = 60 * 1000L
     }
 
@@ -40,27 +40,27 @@ class KeyRoulette {
         val lastUsedAt: Long,
     )
 
-    /** v1.0.1: entrada de lista negra(key → Marca de tiempo de vencimiento). */
+    /** v1.0.1: 黑名单条目(key → 过期时间戳)。 */
     private data class BlockRecord(
         val key: String,
         val expiresAt: Long,
-        /** Ya sea para excluir completamente(true=completamente excluido,Como por ejemplo 401;false=Disminuir prioridad,Como por ejemplo 429). */
+        /** 是否完全排除(true=完全排除,如 401;false=降优先级,如 429)。 */
         val hardBlock: Boolean,
     )
 
-    /** providerId → Registros de uso recientes (los más antiguos primero) */
+    /** providerId → 最近使用记录（最旧的在前） */
     private val usage = ConcurrentHashMap<String, MutableList<UsageRecord>>()
 
-    /** v1.0.1: providerId → entrada de lista negra */
+    /** v1.0.1: providerId → 黑名单条目 */
     private val blocks = ConcurrentHashMap<String, MutableList<BlockRecord>>()
 
     /**
-     * desde coma/Seleccione una clave de la cadena de claves delimitada por nueva línea.
-     * Priorice las claves que no se hayan utilizado recientemente.
+     * 从逗号/换行分隔的 key 字符串中选取一个 key。
+     * 优先选择最近未使用的 key。
      *
-     * @param providerId Provider identificador único
-     * @param keysString separados por coma o nueva línea API key
-     * @return La clave seleccionada; si solo hay una clave, se devuelve la cadena original
+     * @param providerId Provider 的唯一标识
+     * @param keysString 逗号或换行分隔的 API key
+     * @return 选中的 key；若只有一个 key 则返回原始字符串
      */
     fun pick(providerId: String, keysString: String): String {
         val keys = parseKeys(keysString)
@@ -70,16 +70,16 @@ class KeyRoulette {
         val records = usage.getOrPut(providerId) { mutableListOf() }
         val blocksForProvider = blocks.getOrPut(providerId) { mutableListOf() }
 
-        // Borrar lista negra caducada
+        // 清理过期黑名单
         synchronized(blocksForProvider) {
             blocksForProvider.removeAll { it.expiresAt < now }
         }
 
-        // Priorizar a aquellos que no están en la lista negra dura key
+        // 优先选未在硬黑名单中的 key
         val hardBlocked = blocksForProvider.filter { it.hardBlock }.map { it.key }.toSet()
         val candidates = keys.filter { it !in hardBlocked }
 
-        // Todas las claves están en la lista negra dura. → Degenera en devolver el primero.(Deje que el proveedor informe los errores por sí solo)
+        // 所有 key 都在硬黑名单 → 退化为返回第一个(让 Provider 自己报错)
         if (candidates.isEmpty()) {
             Logger.w(TAG, "pick: all keys hard-blocked for $providerId, returning first key")
             return keys.first()
@@ -91,15 +91,15 @@ class KeyRoulette {
     }
 
     /**
-     * v1.0.1: 429 Cambie activamente a la siguiente tecla cuando la corriente sea limitada.
+     * v1.0.1: 429 限流时主动切换到下一个 key。
      *
-     * poner [currentKey] Únase a la lista negra suave(60s Menor prioridad internamente),Luego elige la siguiente clave.
-     * si solo hay uno key,Volver al original key(No se puede cambiar,Utilice un retroceso exponencial por proveedor).
+     * 把 [currentKey] 加入软黑名单(60s 内降优先级),然后 pick 下一个 key。
+     * 如果只有一个 key,返回原 key(无法切换,由 Provider 走指数退避)。
      *
-     * @param providerId Provider logotipo
-     * @param keysString Todas las cadenas clave
-     * @param currentKey Activando actualmente 429 key
-     * @return siguiente key(Puede ser el mismo que currentKey,si solo hay uno key)
+     * @param providerId Provider 标识
+     * @param keysString 全部 key 字符串
+     * @param currentKey 当前触发 429 的 key
+     * @return 下一个 key(可能与 currentKey 相同,如果只有一个 key)
      */
     fun pickNext(providerId: String, keysString: String, currentKey: String): String {
         val keys = parseKeys(keysString)
@@ -108,7 +108,7 @@ class KeyRoulette {
         val now = System.currentTimeMillis()
         val blocksForProvider = blocks.getOrPut(providerId) { mutableListOf() }
 
-        // Agregue la clave actual a la lista negra suave(60s)
+        // 把当前 key 加入软黑名单(60s)
         synchronized(blocksForProvider) {
             blocksForProvider.removeAll { it.key == currentKey }
             blocksForProvider.add(
@@ -118,27 +118,27 @@ class KeyRoulette {
                     hardBlock = false,
                 ),
             )
-            // Evitar la expansión de la lista negra
+            // 防止黑名单膨胀
             while (blocksForProvider.size > MAX_RECORDS_PER_PROVIDER) blocksForProvider.removeAt(0)
         }
 
-        Logger.i(TAG, "pickNext: 429 Limitación de corriente,poner key=${maskKey(currentKey)} Únase a la lista negra suave 60s,cambiar al siguiente key")
+        Logger.i(TAG, "pickNext: 429 限流,把 key=${maskKey(currentKey)} 加入软黑名单 60s,切换到下一个 key")
 
-        // re pick(Se saltará la lista negra suave key,A menos que no haya otra opción)
+        // 重新 pick(会跳过软黑名单中的 key,除非没有其他选择)
         return pick(providerId, keysString)
     }
 
     /**
-     * v1.0.1: No se puede marcar explícitamente una clave(Como falla de autenticación 401,key Caducado).
+     * v1.0.1: 显式标记某个 key 失败(如 401 鉴权失败、key 已失效)。
      *
-     * con [pickNext] la diferencia:
-     *  - [markFailed] Predeterminado hardBlock=true,excluir completamente esto key(hasta que expire TTL)
-     *  - [pickNext] Es una lista negra suave,Sólo menor prioridad cuando hay varias claves
+     * 与 [pickNext] 的区别:
+     *  - [markFailed] 默认 hardBlock=true,完全排除该 key(直到 TTL 过期)
+     *  - [pickNext] 是软黑名单,仅在有多 key 时降优先级
      *
-     * @param providerId Provider logotipo
-     * @param key falló key
-     * @param hardBlock true=completamente excluido(Predeterminado,Como por ejemplo 401),false=Disminuir prioridad(Como por ejemplo 429)
-     * @param ttlMs lista negra TTL,Predeterminado 5 minutos(hardBlock Escena más larga que 429)
+     * @param providerId Provider 标识
+     * @param key 失败的 key
+     * @param hardBlock true=完全排除(默认,如 401),false=降优先级(如 429)
+     * @param ttlMs 黑名单 TTL,默认 5 分钟(hardBlock 场景比 429 更长)
      */
     fun markFailed(providerId: String, key: String, hardBlock: Boolean = true, ttlMs: Long = 5 * 60 * 1000L) {
         val blocksForProvider = blocks.getOrPut(providerId) { mutableListOf() }
@@ -154,23 +154,23 @@ class KeyRoulette {
             )
             while (blocksForProvider.size > MAX_RECORDS_PER_PROVIDER) blocksForProvider.removeAt(0)
         }
-        Logger.w(TAG, "markFailed: key=${maskKey(key)} Marcar como fallido(hardBlock=$hardBlock, ttl=${ttlMs}ms)")
+        Logger.w(TAG, "markFailed: key=${maskKey(key)} 标记为失败(hardBlock=$hardBlock, ttl=${ttlMs}ms)")
     }
 
-    /** Borre todos los datos de uso de claves almacenados en caché. */
+    /** 清除所有缓存的 key 使用数据。 */
     fun clear() {
         usage.clear()
         blocks.clear()
     }
 
     /**
-     * v1.0.1: Borrar la lista negra del proveedor especificado(usado para"Inténtalo de nuevo"Después de cambios de botón o configuración).
+     * v1.0.1: 清除指定 Provider 的黑名单(用于"重试"按钮或配置变更后)。
      */
     fun clearBlacklist(providerId: String) {
         blocks.remove(providerId)
     }
 
-    // ---------- método interno ----------
+    // ---------- 内部方法 ----------
 
     private fun parseKeys(keysString: String): List<String> {
         return keysString.split(",", "\n", "\r\n")
@@ -184,7 +184,7 @@ class KeyRoulette {
         now: Long,
         blocksForProvider: MutableList<BlockRecord>,
     ): String {
-        // Disminuir la prioridad de las claves en la lista negra suave(Poner la última opción)
+        // 软黑名单中的 key 降优先级(放最后选)
         val softBlocked = blocksForProvider.filter { !it.hardBlock }.map { it.key }.toSet()
         val unblocked = candidates.filter { it !in softBlocked }
 
@@ -192,13 +192,13 @@ class KeyRoulette {
             return lruPick(unblocked, records, now)
         }
 
-        // Todos los candidatos están en la lista negra blanda(raro,Por ejemplo, todas las claves acaban de ser restringidas.),degenerar en LRU
+        // 所有候选都在软黑名单(罕见,如所有 key 都刚限流),退化为 LRU
         return lruPick(candidates, records, now)
     }
 
     private fun lruPick(candidates: List<String>, records: MutableList<UsageRecord>, now: Long): String {
-        // Reparación de auditoría (3.1): Leer operación y registrar uso synchronized(records) mutuamente excluyentes,
-        // Evite ser arrojado por eliminar todo/agregar modificación estructural durante el recorrido durante solicitudes concurrentes. ConcurrentModificationException
+        // 审计修复 (3.1): 读操作与 recordUsage 的 synchronized(records) 互斥,
+        // 避免并发请求时遍历期间被 removeAll/add 结构性修改而抛 ConcurrentModificationException
         val usedKeys = synchronized(records) {
             records
                 .filter { now - it.lastUsedAt < USAGE_EXPIRY_MS }
@@ -210,7 +210,7 @@ class KeyRoulette {
         return if (unusedKeys.isNotEmpty()) {
             unusedKeys.random()
         } else {
-            // Todas las claves se han utilizado recientemente y entre las candidatas se selecciona la que lleva más tiempo sin utilizarse.
+            // 所有 key 最近都使用过，在候选中选最久未用的
             val oldest = synchronized(records) {
                 records.filter { it.key in candidates }.minByOrNull { it.lastUsedAt }
             }

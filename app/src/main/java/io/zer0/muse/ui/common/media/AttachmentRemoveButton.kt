@@ -22,10 +22,10 @@ import io.zer0.muse.ui.theme.MuseElevation
 import io.zer0.muse.ui.theme.MuseIconSizes
 
 /**
- * Operación de eliminación de archivos adjuntos: círculo visual pequeño, área de clic independiente de 48 dp, sin cruz gigante que cubra la miniatura.
+ * 附件移除操作：小圆形视觉，独立 48dp 点击区域，不使用巨大叉号覆盖缩略图。
  *
- * CMP-11: El área táctil se dibuja automáticamente con Box + en el que se puede hacer clic (isomorfo a MuseTactileButton),
- * No haga referencia directa al IconButton M3; los puntos exteriores de 48 dp garantizan la posibilidad de hacer clic y los puntos interiores de 22 dp garantizan una apariencia y sensación de ligereza.
+ * CMP-11: 触摸区用 Box + clickable 自绘（与 MuseTactileButton 同构），
+ * 不直接引用 M3 IconButton；外层 48dp 保证可点，内层 22dp 圆点保证观感轻盈。
  */
 @Composable
 internal fun AttachmentRemoveButton(contentDescription: String, onClick: () -> Unit, modifier: Modifier = Modifier) {

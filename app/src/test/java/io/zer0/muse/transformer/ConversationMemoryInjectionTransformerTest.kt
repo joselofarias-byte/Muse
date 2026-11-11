@@ -140,7 +140,8 @@ private class SingleSessionSummaryDao(
     override suspend fun markProcessed(sessionId: String, now: String) = Unit
     override suspend fun deleteAll() = Unit
     override suspend fun deleteById(sessionId: String) = Unit
-    // Cuando se elimina un asistente, se debe borrar el resumen de su nombre.;No hay datos de este asistente en el fake de sesión única,Se corrigió el retorno de 0 filas.
+
+    // 助手被删除时要清掉它名下的摘要;单会话假件里没有这条助手的数据,固定返回 0 行。
     override suspend fun deleteByAssistant(assistantId: String): Int = 0
 }
 

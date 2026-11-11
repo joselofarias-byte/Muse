@@ -9,7 +9,7 @@ import androidx.room.Upsert
 import kotlinx.coroutines.flow.Flow
 
 /**
- * Assistant objeto de acceso a datos(Phase 8.2).
+ * Assistant 数据访问对象(Phase 8.2)。
  */
 @Dao
 interface AssistantDao {
@@ -18,8 +18,8 @@ interface AssistantDao {
     suspend fun upsert(assistant: AssistantEntity)
 
     /**
-     * M-AST1: INSERT OR IGNORE — usado para [AssistantRepository.ensureDefaultExists] Inserción atómica de,
-     * Evite verificar y luego insertar la condición de carrera TOCTOU. Ignorar silenciosamente los conflictos(Regresar rowId=-1).
+     * M-AST1: INSERT OR IGNORE — 用于 [AssistantRepository.ensureDefaultExists] 的原子插入,
+     * 避免 check-then-insert TOCTOU 竞态。冲突时静默忽略(返回 rowId=-1)。
      */
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertIgnore(assistant: AssistantEntity): Long
@@ -48,17 +48,17 @@ interface AssistantDao {
     @Query("DELETE FROM assistants")
     suspend fun deleteAll()
 
-    // ── v1.107 Método de mantenimiento de campo redundante ──
+    // ── v1.107 冗余字段维护方法 ──
 
-    /** v1.107: Aumenta y disminuye atómicamente el recuento de mensajes del Asistente. */
+    /** v1.107: 原子增减 Assistant 消息计数。 */
     @Query("UPDATE assistants SET messageCount = messageCount + :delta WHERE id = :id")
     suspend fun incrementMessageCount(id: String, delta: Int)
 
-    /** v1.107: Actualice la última vez que se utilizó el Asistente. */
+    /** v1.107: 更新 Assistant 最后使用时间。 */
     @Query("UPDATE assistants SET updatedAt = :timestamp WHERE id = :id")
     suspend fun updateLastUsedAt(id: String, timestamp: Long)
 
-    /** U-26: habilitar/Desactiva el asistente. */
+    /** U-26: 启用/停用助手。 */
     @Query("UPDATE assistants SET enabled = :enabled WHERE id = :id")
     suspend fun setEnabled(id: String, enabled: Boolean)
 }

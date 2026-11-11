@@ -4,13 +4,13 @@ import androidx.room.Entity
 import androidx.room.Index
 
 /**
- * Un miembro del chat grupal.
+ * 群聊的一个成员。
  *
- * Solo hay un personaje seguido,La clave principal es(sesión, papel):El mismo personaje entra al mismo grupo y solo sale una línea.,La escritura repetida equivale a sobrescribir.
- * El usuario local no está en la tabla. —— Los únicos personajes del grupo son "otros".,Por su parte, la interfaz se utiliza para dibujar de acuerdo con los datos locales.
+ * 一行只有一个角色,主键是(会话, 角色):同一个角色进同一个群只留一行,重复写入等于覆盖。
+ * 本机用户不在表里 —— 群里只有角色是「别人」,自己那侧由界面按本机资料画。
  *
- * [joinedAt] Es hora de unirse al grupo.,También sirve como secuencia de visualización.:Al establecer un grupo en un mismo lote, aumentar el orden de selección.,
- * Por lo tanto, la página de miembros del grupo se pone en cola de manera constante según el orden de entrada del grupo.,No depende del orden alfabético de los identificadores de funciones.
+ * [joinedAt] 是入群时间,同时充当展示顺序:同一批建群时按选择顺序递增,
+ * 群成员页因此稳定地按入群先后排队,不依赖角色 id 的字母序。
  */
 @Entity(
     tableName = "mp_thread_member",

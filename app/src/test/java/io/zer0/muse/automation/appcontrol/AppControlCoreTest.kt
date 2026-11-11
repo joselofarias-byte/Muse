@@ -19,10 +19,10 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * Pruebas de decisión central de los controles aplicados.
+ * 应用控制的核心决策测试。
  *
- * Esta capa es"Agent ¿Se puede confiar en usted?"La clave: el modelo debe poder aprender de los resultados**saber exactamente**
- * "Ya estaba hecho/no pude hacerlo y qué habilidad me faltaba/lo intenté pero fallé" en lugar de recibir vagos fracasos o falsos éxitos.
+ * 这一层是"Agent 能不能被信任"的关键：模型必须能从结果里**准确知道**
+ * 「做成了 / 做不到以及缺哪一项能力 / 尝试了但失败」，而不是收到含糊的失败或假成功。
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -34,14 +34,14 @@ class AppControlCoreTest {
 
     private fun app(
         pkg: String = "com.example.app",
-        label: String = "Ejemplo",
+        label: String = "示例",
         system: Boolean = false,
         self: Boolean = false,
     ): InstalledAppInfo {
         return InstalledAppInfo(packageName = pkg, label = label, versionName = "1.0", system = system, self = self)
     }
 
-    // ── Verificación del nombre del paquete/protección de inyección de comandos ──────────────────────────────
+    // ── 包名校验 / 命令注入防护 ──────────────────────────────
 
     @Test
     fun `valid package names pass`() {
@@ -52,7 +52,7 @@ class AppControlCoreTest {
 
     @Test
     fun `shell metacharacters in package name are rejected`() {
-        // El nombre del paquete eventualmente se escribirá `am force-stop <pkg>` Para este tipo de comando, se deben bloquear todos los caracteres inyectables.
+        // 包名最终会拼进 `am force-stop <pkg>` 这类命令，任何可注入字符都必须被挡住
         listOf(
             "com.foo; rm -rf /",
             "com.foo && reboot",
@@ -64,22 +64,22 @@ class AppControlCoreTest {
             "com.foo\nid",
             "com",
         ).forEach { bad ->
-            assertFalse("debe ser rechazado: $bad", AppControlCore.isValidPackageName(bad))
+            assertFalse("应拒绝: $bad", AppControlCore.isValidPackageName(bad))
         }
     }
 
     @Test
     fun `command builder refuses to be reached with invalid names`() {
-        // buildCommand Acepte únicamente nombres que hayan pasado la lista blanca; el formulario de comando que se detalla aquí está bloqueado sin parámetros adicionales.
+        // buildCommand 只接受已过白名单的名字；这里锁定它拼出的命令形态不含额外参数
         assertEquals("am force-stop com.example.app", AppControlCore.buildCommand(AppControlAction.FORCE_STOP, "com.example.app"))
         assertEquals("pm clear com.example.app", AppControlCore.buildCommand(AppControlAction.CLEAR_DATA, "com.example.app"))
         assertEquals("pm uninstall com.example.app", AppControlCore.buildCommand(AppControlAction.UNINSTALL, "com.example.app"))
-        // Las acciones de la capa de aplicación no tienen comandos de dispositivo
+        // 应用层动作没有设备命令
         assertNull(AppControlCore.buildCommand(AppControlAction.LAUNCH, "com.example.app"))
         assertNull(AppControlCore.buildCommand(AppControlAction.OPEN_APP_SETTINGS, "com.example.app"))
     }
 
-    // ── Decisión de bajar el canal ────────────────────────────────────────
+    // ── 通道降级决策 ────────────────────────────────────────
 
     @Test
     fun `invalid name is unavailable regardless of channels`() {
@@ -108,7 +108,7 @@ class AppControlCoreTest {
         ).forEach { action ->
             val result = AppControlCore.evaluate(action, "com.example.app", noChannel)
             assertEquals(
-                "Cuando hay falta de acceso, la falta de capacidad debe informarse claramente, en lugar de un fracaso vago.: $action",
+                "缺通道时必须明确回报缺少能力，而不是含糊失败: $action",
                 AppActionResult.Unavailable(UnavailableReason.NEED_SHELL_OR_ROOT),
                 result,
             )
@@ -157,54 +157,54 @@ class AppControlCoreTest {
         )
     }
 
-    // ── coincidencia de nombre ────────────────────────────────────────────
+    // ── 名称匹配 ────────────────────────────────────────────
 
     @Test
     fun `match prefers exact package then label then partial label`() {
         val apps = listOf(
-            app(pkg = "com.tencent.mm", label = "WeChat"),
+            app(pkg = "com.tencent.mm", label = "微信"),
             app(pkg = "com.tencent.mobileqq", label = "QQ"),
-            app(pkg = "com.example.wechathelper", label = "Asistente de WeChat"),
+            app(pkg = "com.example.wechathelper", label = "微信助手"),
         )
         assertEquals("com.tencent.mm", AppControlCore.matchApp(apps, "com.tencent.mm")?.packageName)
-        assertEquals("com.tencent.mm", AppControlCore.matchApp(apps, "WeChat")?.packageName)
+        assertEquals("com.tencent.mm", AppControlCore.matchApp(apps, "微信")?.packageName)
         assertEquals("com.tencent.mobileqq", AppControlCore.matchApp(apps, "qq")?.packageName)
-        // Los nombres exactos tienen prioridad sobre las coincidencias que contienen ("WeChat" No debería haber golpeado "Asistente de WeChat")
-        assertEquals("com.tencent.mm", AppControlCore.matchApp(apps, "WeChat")?.packageName)
-        assertEquals("com.example.wechathelper", AppControlCore.matchApp(apps, "asistente")?.packageName)
+        // 精确名称优先于包含匹配（"微信" 不该命中 "微信助手"）
+        assertEquals("com.tencent.mm", AppControlCore.matchApp(apps, "微信")?.packageName)
+        assertEquals("com.example.wechathelper", AppControlCore.matchApp(apps, "助手")?.packageName)
         assertNull(AppControlCore.matchApp(apps, ""))
-        assertNull(AppControlCore.matchApp(apps, "aplicación inexistente"))
+        assertNull(AppControlCore.matchApp(apps, "不存在的应用"))
     }
 
-    // ── Representación de lista ────────────────────────────────────────────
+    // ── 列表渲染 ────────────────────────────────────────────
 
     @Test
     fun `render app list marks system and self and handles empty`() {
         val text = AppControlCore.renderAppList(
             listOf(
-                app(pkg = "com.tencent.mm", label = "WeChat"),
-                app(pkg = "android", label = "Interfaz del sistema", system = true),
+                app(pkg = "com.tencent.mm", label = "微信"),
+                app(pkg = "android", label = "系统界面", system = true),
                 app(pkg = "io.zer0.muse", label = "Muse", self = true),
             ),
         )
-        assertTrue(text.contains("total 3 aplicaciones ejecutables"))
-        assertTrue(text.contains("WeChat | com.tencent.mm"))
-        assertTrue(text.contains("Aplicación del sistema"))
-        assertTrue(text.contains("Esta aplicación"))
+        assertTrue(text.contains("共 3 个可启动应用"))
+        assertTrue(text.contains("微信 | com.tencent.mm"))
+        assertTrue(text.contains("系统应用"))
+        assertTrue(text.contains("本应用"))
 
-        assertTrue(AppControlCore.renderAppList(emptyList()).contains("No se encontró"))
+        assertTrue(AppControlCore.renderAppList(emptyList()).contains("未找到"))
     }
 
     @Test
     fun `render app list respects the displayed limit but reports the real total`() {
         val apps = (1..5).map { app(pkg = "com.example.app$it", label = "App$it") }
         val text = AppControlCore.renderAppList(apps, limit = 2)
-        assertTrue(text.contains("total 5 aplicaciones ejecutables"))
-        assertTrue(text.contains("solo listado antes 2"))
+        assertTrue(text.contains("共 5 个可启动应用"))
+        assertTrue(text.contains("仅列出前 2 个"))
         assertFalse(text.contains("com.example.app5"))
     }
 
-    // ── Controlador: Detección de canales y entrada ilegal ───────────────────────────
+    // ── 控制器：通道探测与非法输入 ───────────────────────────
 
     private fun controllerWith(shell: Boolean, root: Boolean): AndroidAppController {
         val state = AutomationManager.PermissionState(
@@ -237,14 +237,14 @@ class AppControlCoreTest {
     fun `perform rejects injected package names before touching the system`() = runTest {
         val result = controllerWith(shell = true, root = false)
             .perform(AppControlAction.FORCE_STOP, "com.foo; reboot")
-        // No es un nombre de paquete legal ni un nombre de aplicación. → No encontrado (la clave es no ejecutar ningún comando)
+        // 既不是合法包名、也不是任何应用名 → 未找到（关键是不执行任何命令）
         assertTrue(result is AppActionResult.Unavailable)
     }
 
     @Test
     fun `perform reports missing channel for destructive action on unknown name`() = runTest {
         val result = controllerWith(shell = false, root = false)
-            .perform(AppControlAction.CLEAR_DATA, "Aplicación completamente inexistente")
+            .perform(AppControlAction.CLEAR_DATA, "完全不存在的应用")
         assertEquals(
             AppActionResult.Unavailable(UnavailableReason.PACKAGE_NOT_FOUND),
             result,

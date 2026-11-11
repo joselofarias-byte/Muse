@@ -71,9 +71,9 @@ class MemoryDbArchiveRecovery(
         val directory = databaseFile.parentFile
             ?.listFiles { file -> file.isDirectory && file.name == archiveId }
             ?.singleOrNull()
-            ?: return@withContext Result.failure(IllegalArgumentException("El archivo de memoria no existe: $archiveId"))
+            ?: return@withContext Result.failure(IllegalArgumentException("记忆库归档不存在: $archiveId"))
         val version = parseStoredVersion(directory.name, databaseFile.name)
-            ?: return@withContext Result.failure(IllegalArgumentException("El nombre del archivo de memoria es ilegal.: $archiveId"))
+            ?: return@withContext Result.failure(IllegalArgumentException("记忆库归档名称非法: $archiveId"))
         runCatching { readSnapshot(directory) }
             .map { snapshot ->
                 ArchiveInfo(
@@ -96,15 +96,15 @@ class MemoryDbArchiveRecovery(
     suspend fun restoreLatestIfEmpty(): Result<RecoveryReport> = withContext(Dispatchers.IO) {
         if (!currentDatabaseIsEmpty()) {
             return@withContext Result.failure(
-                IllegalStateException("El banco de memoria actual ya tiene datos, se rechaza la sobrescritura y la recuperación."),
+                IllegalStateException("当前记忆库已有数据，拒绝覆盖恢复"),
             )
         }
         val candidate = archiveCandidates()
             .maxWithOrNull(compareBy<ArchiveCandidate> { it.info.storedVersion }.thenBy { it.directory.lastModified() })
-            ?: return@withContext Result.failure(IllegalStateException("No hay archivos de memoria legibles."))
+            ?: return@withContext Result.failure(IllegalStateException("没有可读取的记忆库归档"))
         val snapshot = readSnapshot(candidate.directory)
         if (snapshot.totalRows() == 0) {
-            return@withContext Result.failure(IllegalStateException("No hay datos de memoria recuperables en el archivo."))
+            return@withContext Result.failure(IllegalStateException("归档中没有可恢复的记忆数据"))
         }
 
         database.withTransaction {
@@ -142,7 +142,7 @@ class MemoryDbArchiveRecovery(
             val version = parseStoredVersion(directory.name, databaseFile.name) ?: return@mapNotNull null
             val snapshot = runCatching { readSnapshot(directory) }
                 .onFailure { error ->
-                    Logger.w(TAG, "Saltar archivos de memoria ilegibles: ${directory.name}: ${error.message}")
+                    Logger.w(TAG, "跳过不可读取的记忆库归档: ${directory.name}: ${error.message}")
                 }
                 .getOrNull()
                 ?: return@mapNotNull null
@@ -170,7 +170,7 @@ class MemoryDbArchiveRecovery(
     private fun readSnapshot(directory: File): Snapshot {
         val databaseNameOnly = context.getDatabasePath(databaseName).name
         val archiveDatabase = File(directory, databaseNameOnly)
-        require(archiveDatabase.isFile) { "Al archivo le falta el archivo de base de datos maestra" }
+        require(archiveDatabase.isFile) { "归档缺少主数据库文件" }
         val temporaryPrefix = "memory_archive_read_${UUID.randomUUID()}"
         val temporaryDatabase = File(context.cacheDir, temporaryPrefix)
         val temporarySidecars = listOf("wal", "shm").map { suffix ->

@@ -40,13 +40,13 @@ import io.zer0.muse.ui.settings.SettingsSubPageScaffold
 import kotlinx.coroutines.flow.map
 
 // ──────────────────────────────────────────────────────────────────────────────
-// Subpágina 5: Avanzado
+// 子页 5: 高级
 // ──────────────────────────────────────────────────────────────────────────────
 
 /**
- * Subpágina avanzada — Solicitudes/etiquetas personalizadas.
+ * 高级子页 — 自定义请求 / 标签。
  *
- * Nota:Imagen de fondo del asistente/Transparencia/Se eliminaron las configuraciones de degradado(No renderizar al consumidor,principio del producto semiacabado).
+ * 注:助手背景图/透明度/渐变设置已移除(无渲染消费端,半成品原则)。
  */
 @Composable
 fun AssistantAdvancedPage(assistantId: String, onBack: () -> Unit) {
@@ -56,7 +56,7 @@ fun AssistantAdvancedPage(assistantId: String, onBack: () -> Unit) {
     SettingsSubPageScaffold(title = stringResource(R.string.assistant_detail_advanced), onBack = onBack) {
         val a = assistant
         if (a == null) {
-            // v2.x: Finalización del efecto de movimiento — Entrando en estado de carga(ficha animateItem)
+            // v2.x: 动效补齐 — 加载态入场(令牌 animateItem)
             item {
                 Box(
                     museAnimateItem(),
@@ -64,8 +64,8 @@ fun AssistantAdvancedPage(assistantId: String, onBack: () -> Unit) {
             }
             return@SettingsSubPageScaffold
         }
-        // Baraja de cartas 1: Solicitud personalizada
-        // v2.x: Finalización del efecto de movimiento — Entrada a la baraja de cartas(ficha animateItem)
+        // 卡片组 1: 自定义请求
+        // v2.x: 动效补齐 — 卡片组入场(令牌 animateItem)
         item {
             Box(museAnimateItem()) {
                 CardGroup {
@@ -92,8 +92,8 @@ fun AssistantAdvancedPage(assistantId: String, onBack: () -> Unit) {
                 }
             }
         }
-        // Mazo de cartas 3: Tags
-        // v2.x: Finalización del efecto de movimiento — Entrada a la baraja de cartas(ficha animateItem)
+        // 卡片组 3: 标签
+        // v2.x: 动效补齐 — 卡片组入场(令牌 animateItem)
         item {
             Box(museAnimateItem()) {
                 CardGroup {
@@ -112,8 +112,8 @@ fun AssistantAdvancedPage(assistantId: String, onBack: () -> Unit) {
                 }
             }
         }
-        // Baraja de cartas 2: Etiquetas de habilidad de múltiples agentes
-        // v2.x: Finalización del efecto de movimiento — Entrada de tarjeta de etiqueta de habilidad(ficha animateItem)
+        // 卡片组 2: 多 Agent 能力标签
+        // v2.x: 动效补齐 — 能力标签卡片入场(令牌 animateItem)
         item {
             Box(museAnimateItem()) {
                 CapabilityChipsSection(
@@ -122,8 +122,8 @@ fun AssistantAdvancedPage(assistantId: String, onBack: () -> Unit) {
                 )
             }
         }
-        // Baraja de cartas 3: reglas de reemplazo regular v1.97
-        // v2.x: Finalización del efecto de movimiento — Entrada de tarjeta de reglas regulares(ficha animateItem)
+        // 卡片组 3: v1.97 正则替换规则
+        // v2.x: 动效补齐 — 正则规则卡片入场(令牌 animateItem)
         item {
             Box(museAnimateItem()) {
                 RegexRulesSection(
@@ -136,10 +136,10 @@ fun AssistantAdvancedPage(assistantId: String, onBack: () -> Unit) {
 }
 
 /**
- * v1.97: Área de edición de reglas de reemplazo regular.
+ * v1.97: 正则替换规则编辑区。
  *
- * Mostrar lista de reglas(nombre + alcance + habilitar interruptor + editar/boton borrar),
- * Aparece al hacer clic en "Agregar regla" o editar una regla existente [RegexRuleEditDialog].
+ * 显示规则列表(名称 + 范围 + 启用开关 + 编辑/删除按钮),
+ * 点击「添加规则」或编辑现有规则时弹出 [RegexRuleEditDialog]。
  */
 @Composable
 private fun RegexRulesSection(rulesJson: String, onRulesChange: (String) -> Unit) {
@@ -192,7 +192,7 @@ private fun RegexRulesSection(rulesJson: String, onRulesChange: (String) -> Unit
                                 "user" -> stringResource(R.string.assistant_detail_regex_scope_user)
                                 "assistant" -> stringResource(R.string.assistant_detail_regex_scope_assistant)
                                 else -> stringResource(R.string.assistant_detail_regex_scope_both)
-                            } + if (rule.visualOnly) " · Mostrar solo" else "",
+                            } + if (rule.visualOnly) " · Solo visual" else "",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.outline,
                         )
@@ -241,7 +241,7 @@ private fun RegexRulesSection(rulesJson: String, onRulesChange: (String) -> Unit
                 )
             }
         }
-        // Botón Agregar regla
+        // 添加规则按钮
         item(
             onClick = { showAddDialog = true },
             leadingContent = {
@@ -260,7 +260,7 @@ private fun RegexRulesSection(rulesJson: String, onRulesChange: (String) -> Unit
         )
     }
 
-    // Editar regla existente
+    // 编辑现有规则
     editingRule?.let { rule ->
         RegexRuleEditDialog(
             rule = rule,
@@ -273,7 +273,7 @@ private fun RegexRulesSection(rulesJson: String, onRulesChange: (String) -> Unit
             },
         )
     }
-    // Agregar nueva regla
+    // 新增规则
     if (showAddDialog) {
         RegexRuleEditDialog(
             rule = io.zer0.muse.data.assistant.AssistantRegex(),
@@ -289,10 +289,10 @@ private fun RegexRulesSection(rulesJson: String, onRulesChange: (String) -> Unit
 }
 
 /**
- * v1.97: Ventana emergente de edición de reglas normal.
+ * v1.97: 正则规则编辑弹窗。
  *
- * campo:Nombre/Buscar regular/Reemplazar cadena/Ámbito afectado/Mostrar solo reemplazo/Habilitar.
- * Verifique la sintaxis regular al guardar,Avisar si no es válido.
+ * 字段:名称 / 查找正则 / 替换字符串 / 影响范围 / 仅显示替换 / 启用。
+ * 保存时校验正则语法,无效则提示。
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -337,7 +337,7 @@ private fun RegexRuleEditDialog(
                     value = findRegex,
                     onValueChange = {
                         findRegex = it
-                        // Verificación en tiempo real de la gramática regular.
+                        // 实时校验正则语法
                         regexError = if (it.isBlank()) {
                             false
                         } else {
@@ -389,7 +389,7 @@ private fun RegexRuleEditDialog(
                         text = stringResource(R.string.assistant_detail_regex_visual_only),
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.weight(1f),
-                        // LAYOUT-01: Row Ancho del texto interno + límite de línea, evita el ajuste de línea palabra por palabra al ampliar el tamaño de fuente
+                        // LAYOUT-01: Row 内文本取宽 + 限行，防放大字号下逐字换行
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -404,7 +404,7 @@ private fun RegexRuleEditDialog(
                         text = stringResource(R.string.assistant_detail_regex_enabled),
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.weight(1f),
-                        // LAYOUT-01: Igual que arriba, la etiqueta de la fila del interruptor está limitada a 1 fila
+                        // LAYOUT-01: 同上，开关行标签限 1 行
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -414,7 +414,7 @@ private fun RegexRuleEditDialog(
         },
         confirmText = stringResource(R.string.assistant_detail_done),
         onConfirm = {
-            // No permitir guardar expresiones regulares con errores de sintaxis(Se permiten expresiones regulares vacías,pero no tendrá efecto)
+            // 不允许保存语法错误的正则(空正则允许,但不会生效)
             if (regexError) return@MuseDialog
             onSave(
                 rule.copy(
@@ -507,7 +507,7 @@ private fun CapabilityChipsSection(capabilitiesJson: String, onCapabilitiesChang
     }
 }
 
-/** poner tagsJson (["a","b"]) Convierta a una cadena separada por comas para facilitar la edición. */
+/** 把 tagsJson (["a","b"]) 转为逗号分隔字符串便于编辑。 */
 private fun parseTagsForEdit(json: String): String {
     val raw = json.trim()
     if (raw.isBlank() || raw == "[]") return ""
@@ -518,7 +518,7 @@ private fun parseTagsForEdit(json: String): String {
         .joinToString(", ")
 }
 
-/** Volver a convertir una cadena separada por comas tagsJson (["a","b"]). */
+/** 把逗号分隔字符串转回 tagsJson (["a","b"])。 */
 private fun serializeTagsForEdit(text: String): String {
     val ids = text.split(",").map { it.trim() }.filter { it.isNotEmpty() }
     if (ids.isEmpty()) return "[]"

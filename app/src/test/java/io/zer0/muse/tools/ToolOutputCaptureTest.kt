@@ -25,16 +25,16 @@ class ToolOutputCaptureTest {
         val capture = ToolOutputCapture(directory, "terminal_exec")
         output.chunked(1_024).forEach(capture::append)
 
-        val result = capture.finish(header = "exit=1", emptyMessage = "(Sin salida)")
+        val result = capture.finish(header = "exit=1", emptyMessage = "(无输出)")
         val savedFile = directory.listFiles()?.single()
 
-        assertTrue(result.contains("[El resultado completo se ha guardado en:"))
+        assertTrue(result.contains("[完整输出已保存到:"))
         assertTrue(result.contains("path=tool_outputs:/"))
         assertTrue(result.contains("read_file"))
         assertTrue(result.contains("offset_chars=0"))
-        // La conclusión del comando está al final: la cola debe estar allí y el registro de progreso de 4 KB al principio no debe ocupar espacio.
-        assertTrue("Se debe conservar la conclusión final.", result.contains("FAILED: assertion at BuildTest.kt:42"))
-        assertFalse("El registro de progreso del encabezado no debería aparecer en la vista previa", result.contains(output.take(TOOL_RESULT_PREVIEW_CHARS)))
+        // 命令的结论在末尾：尾部必须在，开头那 4KB 进度日志不该占位置。
+        assertTrue("尾部结论必须保留", result.contains("FAILED: assertion at BuildTest.kt:42"))
+        assertFalse("头部进度日志不该出现在预览里", result.contains(output.take(TOOL_RESULT_PREVIEW_CHARS)))
         assertFalse(result.contains(output))
         assertEquals(output, savedFile?.readText())
     }
@@ -46,10 +46,10 @@ class ToolOutputCaptureTest {
         val capture = ToolOutputCapture(directory, "execute_shell")
         capture.append(output)
 
-        val result = capture.finish(header = "exit=0", emptyMessage = "(Sin salida)")
+        val result = capture.finish(header = "exit=0", emptyMessage = "(无输出)")
 
-        assertTrue("El mensaje de paginación debe indicar la cantidad total del texto original.", result.contains("total del texto original ${output.length} palabra"))
-        assertTrue("El mensaje de paginación debe indicar que la vista previa se toma desde el final.", result.contains("final de la salida"))
+        assertTrue("分页提示必须给出原文总量", result.contains("原文共 ${output.length} 字"))
+        assertTrue("分页提示必须说明预览取自末尾", result.contains("输出末尾"))
         assertTrue(result.contains("offset_chars=0"))
     }
 
@@ -60,34 +60,34 @@ class ToolOutputCaptureTest {
         val capture = ToolOutputCapture(directory, "read_public_file")
         output.chunked(1_024).forEach(capture::append)
 
-        val result = capture.finish(header = "", emptyMessage = "(vacío)")
+        val result = capture.finish(header = "", emptyMessage = "(空)")
 
-        assertTrue("El comienzo de la salida de la clase de archivo es más útil.", result.contains(output.take(TOOL_RESULT_PREVIEW_CHARS)))
-        assertTrue(result.contains("el comienzo de la salida"))
-        assertTrue(result.contains("total del texto original ${output.length} palabras"))
+        assertTrue("文件类输出开头更有用", result.contains(output.take(TOOL_RESULT_PREVIEW_CHARS)))
+        assertTrue(result.contains("输出开头"))
+        assertTrue(result.contains("原文共 ${output.length} 字"))
     }
 
     @Test
     fun `tail preview never splits a surrogate pair`() {
-        // Deje que el límite de 4 KB caiga exactamente en el medio de un emoji: el primer carácter de la mitad del ancho mueve todo el subíndice coincidente una posición.
+        // 让 4KB 边界正好落在一个 emoji 中间：前面一个半角字符把配对下标整体挪一位。
         val output = "a" + "\uD83D\uDE00".repeat(3_000) + "\nDONE exit=0"
         val directory = File(tempFolder.root, TOOL_OUTPUTS_DIR)
-        // El límite superior de en línea se establece en 1_000 palabras, lo que lo obliga a tomar la ruta de placa desplegable + vista previa final.
+        // 内联上限压到 1_000 字，逼它走落盘 + 尾部预览这条路径。
         val capture = ToolOutputCapture(directory, "terminal_exec", inlineLimitChars = 1_000)
         output.chunked(977).forEach(capture::append)
 
-        val result = capture.finish(header = "", emptyMessage = "(Sin salida)")
+        val result = capture.finish(header = "", emptyMessage = "(无输出)")
 
-        assertFalse("La vista previa no puede contener caracteres sustitutos huérfanos", hasUnpairedSurrogate(result))
+        assertFalse("预览不能包含孤立代理字符", hasUnpairedSurrogate(result))
         assertTrue(result.contains("DONE exit=0"))
-        // Después de perder la mitad del agente, la cantidad de palabras en el mensaje aún debe ser consistente: mostradas + no mostradas = Cantidad total de texto original.
-        val notice = Regex("""final de la salida\. (\d+) Vista previa de palabras; total del texto original (\d+) palabra, comienzo (\d+) Las palabras no se muestran""").find(result)
-        assertTrue("El mensaje de búsqueda debe dar tres números.", notice != null)
+        // 丢掉半个代理之后，提示里的字数必须仍然自洽：显示的 + 未显示的 = 原文总量。
+        val notice = Regex("""末尾 (\d+) 字的预览；原文共 (\d+) 字，开头 (\d+) 字未显示""").find(result)
+        assertTrue("分页提示必须给出三个数", notice != null)
         val shown = notice!!.groupValues[1].toInt()
         val total = notice.groupValues[2].toInt()
         val omitted = notice.groupValues[3].toInt()
         assertEquals(output.length, total)
-        assertEquals("Mostrado + No mostrado debe ser igual a la cantidad total del texto original", total, shown + omitted)
+        assertEquals("已显示 + 未显示必须等于原文总量", total, shown + omitted)
     }
 
     @Test
@@ -96,7 +96,7 @@ class ToolOutputCaptureTest {
         val capture = ToolOutputCapture(directory, "terminal_exec")
         capture.append("short result")
 
-        assertEquals("exit=0\nshort result", capture.finish(header = "exit=0", emptyMessage = "(Sin salida)"))
+        assertEquals("exit=0\nshort result", capture.finish(header = "exit=0", emptyMessage = "(无输出)"))
         assertFalse(directory.exists())
     }
 
@@ -123,7 +123,7 @@ class ToolOutputCaptureTest {
         val output = "large alternate tool result\n".repeat(2_000)
 
         val result = captureLargeToolOutput(context, "recovery_tool", output)
-        val savedPath = Regex("""\[El resultado completo se ha guardado en: ([^\]]+)]""")
+        val savedPath = Regex("""\[完整输出已保存到: ([^\]]+)]""")
             .find(result)
             ?.groupValues
             ?.get(1)
@@ -132,7 +132,7 @@ class ToolOutputCaptureTest {
         assertEquals(output, File(savedPath!!).readText())
     }
 
-    /** alto/Los caracteres sustitutos bajos deben aparecer en pares; uno aislado se dividirá durante la serialización JSON descendente. */
+    /** 高/低代理字符必须成对出现，孤立的一个会在下游 JSON 序列化时被打断。 */
     private fun hasUnpairedSurrogate(text: String): Boolean {
         var i = 0
         while (i < text.length) {

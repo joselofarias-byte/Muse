@@ -7,13 +7,13 @@ interface ImageLightboxProps {
   readonly onClose: () => void;
 }
 
-/** Selectores para controles enfocables: la trampa de enfoque simplemente alterna entre estos. */
+/** 可聚焦控件的选择器：焦点陷阱只在这些之间循环。 */
 const FOCUSABLE = 'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 /**
- * Tab El siguiente índice del bucle (función pura, fácil para afirmaciones).
+ * Tab 循环的下一个下标（纯函数，便于断言）。
  *
- * `active` -1 significa que el foco no está en el cuadro de diálogo: avanzar al 0, retroceder al último.
+ * `active` 为 -1 表示焦点不在对话框里：正向回到第 0 个，反向回到最后一个。
  */
 export function trapNextIndex(count: number, active: number, shift: boolean): number {
   if (count <= 0) return -1;
@@ -23,10 +23,10 @@ export function trapNextIndex(count: number, active: number, shift: boolean): nu
 }
 
 /**
- * Ver la imagen en pantalla completa.
+ * 图片全屏查看。
  *
- * Máscara de punto apagada,Esc Cerrar, el botón "Cerrar" se cierra; al abrir, mueva el foco al cuadro de diálogo,
- * Tab / Shift+Tab En el bucle interno (trampa de enfoque), el foco vuelve al elemento original después del cierre.
+ * 点遮罩关闭、Esc 关闭、「关闭」按钮关闭；打开时把焦点移进对话框、
+ * Tab / Shift+Tab 在内部循环（焦点陷阱），关闭后把焦点还给原来的元素。
  */
 export function ImageLightbox({ src, onClose }: ImageLightboxProps) {
   const { t } = useI18n();

@@ -9,31 +9,51 @@ import kotlinx.coroutines.launch
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
- * R-AI-04: razonamiento profundo/El modelo de contexto muy largo relaja el tiempo de espera del primer evento,El modelo normal sigue siendo el predeterminado.
+ * 首事件超时的**唯一真源**。
  *
- * v2.x: Predeterminado 15s→45s, razonamiento/Archivo de contexto muy largo 60s→90s.15s hacer cola lenta/El modelo de arranque en frío es demasiado corto —
- * Si el primer token es un poco lento, se considerará erróneamente como una transmisión inactiva, la transmisión se cancelará y se reenviará la solicitud de no transmisión.:Los usuarios se ven obligados a esperar el doble de tiempo,
- * y responder con“Toda la sección aparece a la vez.”aparecer de una manera(Comentarios de los usuarios).
+ * 原先这个数散在三处：`firstEventTimeoutMs` 的默认参数、`withFirstEventWatchdog` 的默认参数
+ * （**还停在 15s**）、以及 app 侧 `AiModule` 里又抄的一份 `45_000L`。
+ * 15s 正是下面注释里写明"过短、害用户等双倍时间"的那个旧值 —— 它留在默认参数上，
+ * 等于给任何一个省略参数的新调用方发一张**已知有坑的**默认档。
  */
-internal fun Model.firstEventTimeoutMs(defaultMs: Long = 45_000L): Long =
-    if (supportsReasoning() || (contextWindow ?: 0) > 200_000) 90_000L else defaultMs
+const val DEFAULT_FIRST_EVENT_TIMEOUT_MS: Long = 45_000L
+
+/** 深度推理 / 超长上下文模型的放宽档：首 token 天然慢，按普通档会误判死流。 */
+const val RELAXED_FIRST_EVENT_TIMEOUT_MS: Long = 90_000L
+
+/** 超过这个上下文规模就按放宽档算（大窗口首包通常明显更慢）。 */
+const val LARGE_CONTEXT_WINDOW: Int = 200_000
 
 /**
- * B3-01: Vigilancia del primer evento.
+ * R-AI-04: 深度推理/超长上下文模型放宽首事件超时,普通模型保持默认。
  *
- * SSE Una vez establecida la conexión, si [timeoutMs] No se recibieron eventos válidos dentro,Cancelar automáticamente el flujo aguas arriba,
- * Cambiar a no transmisión [fallback] Inténtalo de nuevo,y lo envía a la UI [ChatStreamEvent.FallbackNotice].
+ * v2.x: 默认 15s→45s、推理/超长上下文档 60s→90s。15s 对慢队列/冷启动模型过短 —
+ * 首 token 稍慢就被误判为死流、取消流式并重发非流式请求:用户被迫等待双倍时间,
+ * 且回复以“整段一次性弹出”的方式出现(用户反馈)。
+ */
+internal fun Model.firstEventTimeoutMs(defaultMs: Long = DEFAULT_FIRST_EVENT_TIMEOUT_MS): Long =
+    if (supportsReasoning() || (contextWindow ?: 0) > LARGE_CONTEXT_WINDOW) {
+        RELAXED_FIRST_EVENT_TIMEOUT_MS
+    } else {
+        defaultMs
+    }
+
+/**
+ * B3-01: 首事件看门狗。
  *
- * Revisión de corrección (2.0 B-25): callbackFlow → channelFlow — callbackFlow Capacidad del canal interno
- * Fijo 64,Producción rápida/consumo lento(Como la interfaz de usuario que limita el corte adaptativo de 50 ms)Cuando trySend devuelve falso, la película se pierde silenciosamente.,
- * y aguas abajo `.buffer(UNLIMITED)` no puede cambiar su capacidad interna;channelFlow El canal interno es siempre
- * UNLIMITED,El mismo esquema que la corrección C-35 de OpenAIProvider.
+ * SSE 连接建立后若 [timeoutMs] 内没有收到任何有效事件,自动取消上游流,
+ * 改用非流式 [fallback] 重试一次,并向 UI 发出 [ChatStreamEvent.FallbackNotice]。
+ *
+ * 审查修复 (2.0 B-25): callbackFlow → channelFlow — callbackFlow 内部 channel 容量
+ * 固定 64,快速生产/慢消费(如 UI 节流 50ms 自适应切片)时 trySend 返回 false 静默丢片,
+ * 且下游 `.buffer(UNLIMITED)` 无法改变其内部容量;channelFlow 内部 channel 恒为
+ * UNLIMITED,与 OpenAIProvider 的 C-35 修复同一方案。
  */
 fun Flow<ChatStreamEvent>.withFirstEventWatchdog(
-    timeoutMs: Long = 15_000L,
+    timeoutMs: Long = DEFAULT_FIRST_EVENT_TIMEOUT_MS,
     fallback: suspend () -> ChatCompletion,
-    // Reparación de auditoría (7.8): Cheque de cancelación opcional — La persona que llama pasa"Si el usuario se ha detenido"juicio,
-    // fallback Comprobar antes de disparar,Evite que el usuario siga enviando una solicitud de facturación después de detenerse.
+    // 审计修复 (7.8): 可选取消检查 — 调用方传入"用户是否已停止"的判断,
+    // fallback 触发前检查,避免用户停止后仍发一次计费请求。
     abortCheck: () -> Boolean = { false },
 ): Flow<ChatStreamEvent> = channelFlow {
     val firstEventReceived = AtomicBoolean(false)
@@ -52,17 +72,17 @@ fun Flow<ChatStreamEvent>.withFirstEventWatchdog(
             completion.reasoningContent?.takeIf { it.isNotBlank() }?.let {
                 trySend(ChatStreamEvent.ReasoningDelta(it))
             }
-            // v1.0.90 (S-6): Cuando se ha recibido contenido en streaming,Ya no se adjunta el texto completo de la reversión. —
-            // Anteriormente incondicional trySend(ContentDelta(completion.text)),Si la transmisión ha generado parte del contenido
-            // (Modelos como el GLM-4-9B tienen un comportamiento de transmisión anormal,Genera el fragmento primero),El texto completo está empalmado con,
-            // El mensaje se convierte"fragmento + respuesta completa"(Gran superposición en los comentarios de los usuarios).
-            // En este momento solo se conservará el contenido mostrado.,Enviar mensaje de aviso de reserva(UI Puede solicitar al usuario que vuelva a intentarlo.).
+            // v1.0.90 (S-6): 已收到过流式内容时,回退的完整文本不再追加 —
+            // 此前无条件 trySend(ContentDelta(completion.text)),若流式已输出部分内容
+            // (如 GLM-4-9B 等模型流式行为异常,先输出片段),完整文本与之拼接,
+            // 消息变成"片段 + 完整回复"(用户反馈的严重重叠)。
+            // 此时只保留已显示内容,发 FallbackNotice 提示(UI 可提示用户重试)。
             if (completion.text.isNotBlank() && !meaningfulEventReceived.get()) {
                 trySend(ChatStreamEvent.ContentDelta(completion.text))
             } else if (completion.text.isNotBlank()) {
                 trySend(
                     ChatStreamEvent.Error(
-                        "Transmisión de contenido de salida pero no completado,El contenido actual se ha conservado.(Generación reintentable)",
+                        "流式已输出内容但未完成,已保留当前内容(可重试生成)",
                         null,
                     ),
                 )
@@ -85,7 +105,7 @@ fun Flow<ChatStreamEvent>.withFirstEventWatchdog(
             close(cancelled)
             throw cancelled
         } catch (t: Throwable) {
-            trySend(ChatStreamEvent.Error(t.message ?: "Falló el respaldo sin transmisión", t))
+            trySend(ChatStreamEvent.Error(t.message ?: "非流式回退失败", t))
         } finally {
             close()
         }
@@ -118,10 +138,10 @@ fun Flow<ChatStreamEvent>.withFirstEventWatchdog(
                         trySend(event)
                     }
                     is ChatStreamEvent.Done -> {
-                        // Algunos relés compatibles con OpenAI solo devolverán un Listo vacío después de configurar SSE.
-                        // Esta no es una respuesta normal que se pueda mostrar.,Realizar inmediatamente una solicitud sin transmisión,Evite que los usuarios vean mensajes vacíos y esperen largos periodos de tiempo.
+                        // 部分 OpenAI 兼容中转会建立 SSE 后只返回一个空 Done。
+                        // 这不是可展示的正常回复,立即走一次非流式请求,避免用户看到空消息并长时间等待。
                         if (!meaningfulEventReceived.get()) {
-                            emitFallback("La respuesta de transmisión está vacía y se está cambiando el método de solicitud.", cancelUpstream = false)
+                            emitFallback("流式响应为空，正在切换请求方式", cancelUpstream = false)
                         } else {
                             trySend(event)
                             finished.set(true)
@@ -143,22 +163,22 @@ fun Flow<ChatStreamEvent>.withFirstEventWatchdog(
                     }
                 }
             }
-            // flujo aguas arriba“Termina sin ningún evento.”(como transmisión vacía/desconexión SSE inmediatamente) Se ha confirmado que no se generará más contenido,
-            // El primer supervisor de eventos no debería seguir esperando hasta los 45/90. Reutilice inmediatamente las alternativas que no son de transmisión para evitar que los usuarios vean por mucho tiempo
-            // loading;SSE que permanece abierto no irá aquí mientras el usuario se detenga/Una ruta de error explícita primero establecerá el valor finalizado en verdadero.
+            // 上游流“无任何事件即结束”（如空流 / SSE 立即断开）已经确认不会再产生内容，
+            // 不应继续等待 45s/90s 的首事件看门狗。立即复用非流式回退，避免用户看到长时间
+            // loading；仍保持打开的 SSE 不会进入这里，而用户停止/显式错误路径会先把 finished 置 true。
             if (!meaningfulEventReceived.get() && !finished.get()) {
-                emitFallback("La respuesta de transmisión está vacía y se está cambiando el método de solicitud.", cancelUpstream = false)
+                emitFallback("流式响应为空，正在切换请求方式", cancelUpstream = false)
             }
         } catch (t: Throwable) {
             if (t is kotlinx.coroutines.CancellationException) {
-                // Cancelar/abortar: marque el final y propague hacia arriba, no considere la cancelación como una transmisión fallida,
-                // También evita que el organismo de control continúe activando el respaldo después de la cancelación.
+                // 取消 / abort：标记结束并向上传播，不把取消当成 stream failed，
+                // 也阻止 watchdog 在取消后继续触发回退。
                 finished.set(true)
                 throw t
             }
             if (!finished.get()) {
                 finished.set(true)
-                trySend(ChatStreamEvent.Error(t.message ?: "stream failed", t))
+                trySend(ChatStreamEvent.Error(t.message ?: "流式请求失败", t))
                 close()
             }
         }
@@ -167,8 +187,8 @@ fun Flow<ChatStreamEvent>.withFirstEventWatchdog(
     val watchdogJob = launch {
         delay(timeoutMs)
         if (!firstEventReceived.get() && !finished.get()) {
-            // Reparación de auditoría (7.8): No más mensajes cuando el usuario se ha detenido fallback,Guarde una solicitud de facturación.
-            emitFallback("La red es lenta, el método de solicitud ha sido cambiado.", cancelUpstream = true)
+            // 审计修复 (7.8): 用户已停止时不再发 fallback,省一次计费请求。
+            emitFallback("网络较慢，已切换请求方式", cancelUpstream = true)
         }
     }
 

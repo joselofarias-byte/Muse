@@ -10,14 +10,14 @@ import io.zer0.muse.ui.PendingToolApproval
 import kotlinx.serialization.json.Json
 
 /**
- * v2.x Refactorizar S4/S5: [ChatToolApprovalCoordinator] con [ChatToolResumeCoordinator]
- * Acceda a la interfaz de puente estrecho de ChatViewModel(Aprobación y restauración del mismo dominio.,compartir un puente).
+ * v2.x 重构 S4/S5: [ChatToolApprovalCoordinator] 与 [ChatToolResumeCoordinator]
+ * 访问 ChatViewModel 的窄桥接口(审批与恢复同域,共用一个桥)。
  *
- * Propiedades de migración:Extracción pura.VM Implementado con objetos anónimos.,Todo por**Reenviar directamente**,Sin lógica.
+ * 迁移性质:纯抽取。VM 侧以匿名对象实现,全部为**直接转发**,无逻辑。
  */
 internal interface ChatToolApprovalHostBridge {
 
-    // ── depender de ───────────────────────────────────────────────────────────
+    // ── 依赖 ───────────────────────────────────────────────────────────
 
     val stateStore: ChatStateStore
 
@@ -28,27 +28,28 @@ internal interface ChatToolApprovalHostBridge {
     val sessionPermissionStore: SessionPermissionStore
     val toolConfigStore: io.zer0.muse.tools.ToolConfigStore?
     val toolRegistry: io.zer0.muse.tools.ToolRegistry
+    val autonomousAccessibilityRuntime: io.zer0.muse.automation.core.AutonomousAccessibilityRuntime?
     val notificationManager: MuseNotificationManager
     val sessionManager: ConversationSessionManager
     val skillRepository: SkillRepository
 
-    /** El analizador idListJson para la VM original. */
+    /** 原 VM 的 idListJson 解析器。 */
     val idListJson: Json
     val coroutineScope: kotlinx.coroutines.CoroutineScope
 
-    // ── Contenedor de estado de aprobación(Variabilidad de la VM original. Map,El estado de propiedad no cambia esta vez.)──────────────
+    // ── 审批状态容器(原 VM 的可变 Map,状态归属本次不动)──────────────
 
     val toolApprovalResults: MutableMap<String, kotlinx.coroutines.CompletableDeferred<ToolApprovalState>>
     val toolApprovalSessions: MutableMap<String, String>
     val pendingToolApprovalRecords: MutableMap<String, PendingToolApproval>
 
-    /** Originales `approvalTimeoutPaused`(leer). */
+    /** 原 `approvalTimeoutPaused`(读)。 */
     val approvalTimeoutPaused: Boolean
 
-    /** ¿Está la aplicación en primer plano?(ProcessLifecycleOwner El controlador ON_START/ON_STOP). */
+    /** 应用是否在前台(ProcessLifecycleOwner 的 ON_START/ON_STOP 驱动)。 */
     val appInForeground: Boolean
 
-    // ── reenvío de métodos ───────────────────────────────────────────────────────
+    // ── 方法转发 ───────────────────────────────────────────────────────
 
     fun addError(type: io.zer0.muse.ui.ChatErrorType, message: String, isRecoverable: Boolean = true)
     val skillExecutor: io.zer0.muse.tools.SkillExecutor

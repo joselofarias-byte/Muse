@@ -12,18 +12,18 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 /**
- * v1.0.47 P2-2/P2-3/P2-4: Conjunto de herramientas de archivos y enlaces(AI invocable).
+ * v1.0.47 P2-2/P2-3/P2-4: 文件与链接工具集(AI 可调用)。
  *
- * Tres herramientas complementan el procesamiento de IA"Archivos proporcionados por el usuario/enlace"habilidad:
- *  1. read_file      — Leer archivos de texto en directorios accesibles a la aplicación.(Descargar/Documentación/espacio de trabajo/Salida de herramienta)
- *  2. create_download — Escribir contenido de texto en el directorio de descargas.,Generar archivos de descarga visibles para el usuario
- *  3. parse_link     — Rastrear página URL,Extraer título+Texto(Desembalaje de anuncios/Navegación),Regresar Markdown
+ * 三个工具补全 AI 处理"用户提供的文件/链接"的能力:
+ *  1. read_file      — 读取应用可访问目录下的文本文件(下载/文档/工作区/工具输出)
+ *  2. create_download — 将文本内容写入 Download 目录,生成用户可见的下载文件
+ *  3. parse_link     — 抓取 URL 页面,提取标题+正文(脱壳广告/导航),返回 Markdown
  *
- * Diseño seguro:
- *  - read_file Lista blanca de rutas:Solo se permite aplicar filesDir / cacheDir / descarga externa / espacio de trabajo / tool_outputs
- *  - read_file prohibido ".." ultra vires,Los archivos grandes se leen mediante paginación del cursor de caracteres
- *  - create_download Solo escribe en el directorio de descarga público.(MediaStore.Downloads),nombre de archivo sanitize
- *  - parse_link solo HTTP/HTTPS,tiempo de espera 15s;Las respuestas grandes se guardan por completo y se pueden leer en segmentos.
+ * 安全设计:
+ *  - read_file 路径白名单:仅允许应用 filesDir / cacheDir / 外部 Download / 工作区 / tool_outputs
+ *  - read_file 禁止 ".." 越权,大文件通过字符游标分页读取
+ *  - create_download 仅写入公共 Download 目录(MediaStore.Downloads),文件名 sanitize
+ *  - parse_link 仅 HTTP/HTTPS,超时 15s;大响应完整保存并可分段读取
  */
 object FileTools {
 
@@ -31,36 +31,36 @@ object FileTools {
     const val NAME_CREATE_DOWNLOAD = "create_download"
     const val NAME_PARSE_LINK = "parse_link"
 
-    /** Cuando se excede este volumen, read_file devuelve la página del primer carácter de forma predeterminada.,Evite leer archivos grandes a la vez. */
+    /** 超过该体积时 read_file 默认返回首个字符页,避免一次读入大文件。 */
     private const val READ_FILE_AUTO_PAGE_BYTES = 2 * 1024 * 1024
 
-    /** create_download El límite de tamaño del contenido es de 10 MB. */
+    /** create_download 内容大小上限 10MB。 */
     private const val CREATE_DOWNLOAD_MAX_BYTES = 10 * 1024 * 1024
 
-    /** parse_link Obtener tiempo de espera ms. */
+    /** parse_link 抓取超时 ms。 */
     private const val PARSE_LINK_TIMEOUT_MS = 15_000
 
-    /** HTML Límite superior de vista previa del análisis de sujetos;El cuerpo completo de la respuesta aún se guarda en un archivo paginable. */
+    /** HTML 主体解析预览上限;完整响应正文仍会保存到可分页文件。 */
     private const val PARSE_LINK_PARSE_PREVIEW_CHARS = 1_000_000
 
-    /** B-30: parse_link Límite de salto manual(Cada salto pasa la verificación del host SSRF). */
+    /** B-30: parse_link 手动跟跳转上限(每跳都过 SSRF 主机校验)。 */
     private const val MAX_REDIRECTS = 5
 
     fun toolDefs(): List<ToolRegistry.ToolDef> = listOf(
         ToolRegistry.ToolDef(
             name = NAME_READ_FILE,
-            // v1.0.75 fix (Revisión de herramientas 01): description Alinearse con la implementación — La implementación rechaza caminos absolutos,
-            // Reclamaciones de descripción original"Admite rutas absolutas"Como resultado, la primera llamada al modelo debe fallar.(Comentarios de los usuarios"prueba y error"causa raíz).
-            description = "Leer archivos de texto en directorios accesibles a la aplicación.(UTF-8). Segmentación automática de archivos grandes.,Puedes usar offset_chars/length_chars para continuar leyendo." +
-                "Solo se admiten rutas relativas,Soporte tres: Ruta relativa del espacio de trabajo(Como por ejemplo 'notes.txt')," +
-                "Referencia de salida de herramienta(Como por ejemplo 'tool_outputs/xxx.json'), ruta relativa del directorio privado de la aplicación." +
-                "Los caminos absolutos serán rechazados.,no enviar '/storage/emulated/0/...' forma.",
+            // v1.0.75 fix (工具审查 01): description 与实现对齐 — 实现拒绝绝对路径,
+            // 原描述声称"支持绝对路径"导致模型首次调用必失败(用户反馈"反复试错"根因)。
+            description = "读取应用可访问目录下的文本文件(UTF-8)。大文件自动分段,可用 offset_chars/length_chars 续读。" +
+                "仅支持相对路径,支持三种: 工作区相对路径(如 'notes.txt')、" +
+                "工具输出引用(如 'tool_outputs/xxx.json')、应用私有目录相对路径。" +
+                "绝对路径会被拒绝,请勿传 '/storage/emulated/0/...' 形式。",
             parameters = mapOf(
-                "path" to "Requerido,Ruta relativa del archivo. apoyo:Ruta relativa del espacio de trabajo(Como por ejemplo 'notes.txt')," +
-                    "Referencia de salida de herramienta(Como por ejemplo 'tool_outputs/xxx.json'), ruta relativa del directorio privado de la aplicación." +
-                    "Se rechazan los caminos absolutos.",
-                "offset_chars" to "Opcional,cursor de inicio de carácter;Utilice los últimos offset_chars devueltos cuando continúe leyendo archivos grandes.",
-                "length_chars" to "Opcional,Número de caracteres en una sola página.,máximo ${TOOL_OUTPUT_READ_PAGE_CHARS}.",
+                "path" to "必填,文件相对路径。支持:工作区相对路径(如 'notes.txt')、" +
+                    "工具输出引用(如 'tool_outputs/xxx.json')、应用私有目录相对路径。" +
+                    "绝对路径会被拒绝。",
+                "offset_chars" to "可选,字符起始游标;大文件继续读取时使用上次返回的 offset_chars。",
+                "length_chars" to "可选,单页字符数,最大 ${TOOL_OUTPUT_READ_PAGE_CHARS}。",
             ),
             required = setOf("path"),
             category = "built-in",
@@ -68,14 +68,14 @@ object FileTools {
         ),
         ToolRegistry.ToolDef(
             name = NAME_CREATE_DOWNLOAD,
-            description = "Escriba contenido de texto en el directorio de descargas visible para el usuario.,Generar archivo de descarga." +
-                "Aplicable a:AI Texto largo generado/código/JSON/CSV Esperando a que el usuario guarde el contenido visto." +
-                "Equivalente a save_to_downloads(Elige uno);Esta herramienta admite subdirectorios." +
-                "Nombre del archivo automáticamente sanitize(Eliminar caracteres especiales),A los archivos con el mismo nombre se les añaden automáticamente números de serie.",
+            description = "将文本内容写入用户可见的 Download 目录,生成下载文件。" +
+                "适用于:AI 生成的长文/代码/JSON/CSV 等需要用户保存查看的内容。" +
+                "与 save_to_downloads 等价(二选一);本工具支持 subdir 子目录。" +
+                "文件名自动 sanitize(移除特殊字符),同名文件自动追加序号。",
             parameters = mapOf(
-                "filename" to "Requerido,nombre de archivo(Como por ejemplo 'report.md','data.json')",
-                "content" to "Requerido,El contenido del texto a escribir.(UTF-8)",
-                "subdir" to "Opcional,Download subdirectorios bajo(Como por ejemplo 'AIgenerar'),Directorio raíz predeterminado",
+                "filename" to "必填,文件名(如 'report.md'、'data.json')",
+                "content" to "必填,要写入的文本内容(UTF-8)",
+                "subdir" to "可选,Download 下的子目录(如 'AI生成'),默认根目录",
             ),
             required = setOf("filename", "content"),
             category = "built-in",
@@ -83,13 +83,13 @@ object FileTools {
         ),
         ToolRegistry.ToolDef(
             name = NAME_PARSE_LINK,
-            // v1.0.75 fix (Revisión de herramientas 01): Declaración mutuamente excluyente con web_fetch/http_get
-            description = "Rastrear página URL,Extraer título y texto del cuerpo.,Formato de devolución de rebajas(con titulo)." +
-                "Anuncios de bombardeo automático/Navegación/barra lateral,Bueno para leer noticias./Blog/Documentación." +
-                "Tiempo de espera 15 segundos,La página grande guardará el código fuente completo y proporcionará acceso de lectura segmentado." +
-                "Quiere utilizar texto sin formato web_fetch;Si desea la respuesta original utilice http_get.",
+            // v1.0.75 fix (工具审查 01): 与 web_fetch/http_get 互斥声明
+            description = "抓取 URL 页面,提取标题和正文,返回 Markdown 格式(含标题)。" +
+                "自动脱壳广告/导航/侧边栏,适合阅读新闻/博客/文档。" +
+                "超时 15 秒,大页面会保存完整源码并提供分段读取入口。" +
+                "想要纯文本用 web_fetch;想要原始响应用 http_get。",
             parameters = mapOf(
-                "url" to "Requerido,HTTP/HTTPS URL",
+                "url" to "必填,HTTP/HTTPS URL",
             ),
             required = setOf("url"),
             category = "built-in",
@@ -98,10 +98,10 @@ object FileTools {
     )
 
     /**
-     * Ejecute la llamada a la herramienta.
+     * 执行工具调用。
      *
-     * @param context contexto de aplicación(leer filesDir/Download)
-     * @param workspaceRoot directorio raíz del espacio de trabajo(Se utiliza para resolver rutas relativas del espacio de trabajo.)
+     * @param context 应用上下文(读取 filesDir/Download)
+     * @param workspaceRoot 工作区根目录(用于解析工作区相对路径)
      */
     suspend fun execute(name: String, args: Map<String, String>, context: Context, workspaceRoot: File): String =
         withContext(Dispatchers.IO) {
@@ -109,7 +109,7 @@ object FileTools {
                 NAME_READ_FILE -> execReadFile(args, context, workspaceRoot)
                 NAME_CREATE_DOWNLOAD -> execCreateDownload(args, context)
                 NAME_PARSE_LINK -> execParseLink(args, context)
-                else -> "[error] herramienta desconocida: $name"
+                else -> "[错误] 未知工具: $name"
             }
         }
 
@@ -117,15 +117,15 @@ object FileTools {
 
     private fun execReadFile(args: Map<String, String>, context: Context, workspaceRoot: File): String {
         val path = args["path"]?.takeIf { it.isNotBlank() }
-            ?: return "[error] Falta el parámetro requerido path"
+            ?: return "[错误] 缺少必填参数 path"
 
-        // seguro:Prohibido.. Ultra vires
-        if (path.contains("..")) return "[error] El camino no debe contener '..'"
+        // 安全:禁止 .. 越权
+        if (path.contains("..")) return "[错误] 路径禁止包含 '..'"
 
-        // Reparación de auditoría (1.2): rechazar el camino absoluto — File(workspaceRoot, absolutePath) regresará directamente
-        // el camino absoluto en sí(Java ignorar parent),Omita la lista blanca del directorio de candidatos a continuación,Archivos arbitrarios privados de aplicaciones legibles.
+        // 审计修复 (1.2): 拒绝绝对路径 — File(workspaceRoot, absolutePath) 会直接返回
+        // 绝对路径本身(Java 忽略 parent),绕开下方候选目录白名单,可读应用私有任意文件。
         val rawPath = path.trim()
-        // El recibo de salida de la herramienta está en el modo de montaje. `tool_outputs:/x.txt`,Aquí la misma boca se procesa en forma relativa.
+        // 工具输出回执用的是挂载形式 `tool_outputs:/x.txt`,这里按相对形式同一口处理
         val trimmedPath = if (rawPath.startsWith("$TOOL_OUTPUTS_DIR:/")) {
             TOOL_OUTPUTS_DIR + "/" + rawPath.removePrefix("$TOOL_OUTPUTS_DIR:/")
         } else {
@@ -134,12 +134,12 @@ object FileTools {
         val isAbsolute = trimmedPath.startsWith("/") || trimmedPath.startsWith("\\") ||
             Regex("^[A-Za-z]:[/\\\\]").containsMatchIn(trimmedPath)
         if (isAbsolute) {
-            return "[error] No se admiten rutas absolutas,Por favor use el espacio de trabajo/Ruta relativa al directorio privado: $path"
+            return "[错误] 不支持绝对路径,请使用工作区/私有目录相对路径: $path"
         }
 
-        // Analizar rutas candidatas:Ruta relativa del espacio de trabajo → filesDir → cacheDir → externo Download
-        //(El directorio de salida de la herramienta se encuentra en filesDir.`tool_outputs/x.txt` golpeado por el próximo candidato;
-        //  No más esfuerzos adicionales `tool_outputs/$path`, esa capa de empalme se convertirá en un prefijo doble cuando la ruta tenga el prefijo, y nunca llegará)
+        // 解析候选路径:工作区相对路径 → filesDir → cacheDir → 外部 Download
+        // （工具输出目录就在 filesDir 下，`tool_outputs/x.txt` 由下一条候选命中；
+        //  不再额外拼 `tool_outputs/$path`，那层拼接在路径已带前缀时会变成双前缀，永远撞不上）
         val candidates = listOf(
             File(workspaceRoot, trimmedPath),
             File(context.filesDir, trimmedPath),
@@ -148,11 +148,11 @@ object FileTools {
         )
 
         val target = candidates.firstOrNull { it.exists() && it.isFile }
-            ?: return "[error] El archivo no existe o no es un archivo común y corriente: $path" +
-                // Utilice filesDir para insertar el directorio:tool_outputs/ Simplemente cuélgalo debajo.
+            ?: return "[错误] 文件不存在或不是普通文件: $path" +
+                // 用 filesDir 那一支推目录：tool_outputs/ 就挂在它下面。
                 siblingHint(File(context.filesDir, trimmedPath))
 
-        if (!target.canRead()) return "[error] El archivo no es legible: ${target.absolutePath}"
+        if (!target.canRead()) return "[错误] 文件不可读: ${target.absolutePath}"
 
         val size = target.length()
         val requestedOffset = args["offset_chars"]?.toIntOrNull()?.coerceAtLeast(0)
@@ -168,35 +168,35 @@ object FileTools {
         }
 
         return runCatching { target.readText() }
-            .onFailure { Logger.w("FileTools", "read_file Error de lectura: ${it.message}", it) }
-            .getOrElse { "[error] Error de lectura: ${it.message}" }
+            .onFailure { Logger.w("FileTools", "read_file 读取失败: ${it.message}", it) }
+            .getOrElse { "[错误] 读取失败: ${it.message}" }
     }
 
     // ============================ create_download ============================
 
     private fun execCreateDownload(args: Map<String, String>, context: Context): String {
         val filename = args["filename"]?.takeIf { it.isNotBlank() }
-            ?: return "[error] Falta el parámetro requerido filename"
-        val content = args["content"] ?: return "[error] Falta el parámetro requerido content"
+            ?: return "[错误] 缺少必填参数 filename"
+        val content = args["content"] ?: return "[错误] 缺少必填参数 content"
         val subdir = args["subdir"]?.trim()?.trim('/') ?: ""
 
         if (content.toByteArray().size > CREATE_DOWNLOAD_MAX_BYTES) {
-            return "[error] El contenido es demasiado grande.,límite superior ${CREATE_DOWNLOAD_MAX_BYTES / 1024 / 1024}MB"
+            return "[错误] 内容过大,上限 ${CREATE_DOWNLOAD_MAX_BYTES / 1024 / 1024}MB"
         }
 
-        // sanitize nombre de archivo:Mantenga solo guiones alfanuméricos de punto y guión bajo
+        // sanitize 文件名:仅保留字母数字下划线点连字符
         val safeFilename = filename.replace(Regex("[^A-Za-z0-9._-]"), "_")
             .takeIf { it.isNotBlank() } ?: "download_${System.currentTimeMillis()}.txt"
 
-        // C-27: subdir filtrar ".."/"." segmento,Directorio de descargas de Prevent Escape
+        // C-27: subdir 过滤 ".."/"." 段,防止逃逸 Download 目录
         val safeSubdir = subdir.split("/")
             .filter { it.isNotBlank() && it != ".." && it != "." }
             .joinToString("/")
 
         return runCatching {
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-                // B-06: API 29+ scoped storage La escritura directa en directorios públicos fallará(EACCES),
-                // Cambia tu ruta MediaStore.Downloads(Unirse automáticamente a la lista de descargas del sistema,Agregue automáticamente números de serie a nombres duplicados).
+                // B-06: API 29+ scoped storage 直写公共目录必失败(EACCES),
+                // 改走 MediaStore.Downloads(自动加入系统下载列表,重名自动加序号)。
                 val resolver = context.contentResolver
                 val relativePath = if (safeSubdir.isNotBlank()) {
                     "${android.os.Environment.DIRECTORY_DOWNLOADS}/$safeSubdir"
@@ -209,23 +209,23 @@ object FileTools {
                     put(android.provider.MediaStore.MediaColumns.RELATIVE_PATH, relativePath)
                 }
                 val uri = resolver.insert(android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
-                    ?: return "[error] No se puede crear el archivo en el directorio de descarga"
+                    ?: return "[错误] 无法在 Download 目录创建文件"
                 resolver.openOutputStream(uri)?.use { it.write(content.toByteArray()) }
-                    ?: return "[error] No se puede abrir el flujo de salida"
-                Logger.i("FileTools", "create_download éxito(MediaStore): $safeFilename (${content.length} chars)")
-                "[éxito] Archivo guardado en el directorio de descarga\nnombre de archivo: $safeFilename" +
-                    (if (safeSubdir.isNotBlank()) "\nsubdirectorio: $safeSubdir" else "") +
-                    "\ntamaño: ${content.length} personaje"
+                    ?: return "[错误] 无法打开输出流"
+                Logger.i("FileTools", "create_download 成功(MediaStore): $safeFilename (${content.length} chars)")
+                "[成功] 文件已保存到 Download 目录\n文件名: $safeFilename" +
+                    (if (safeSubdir.isNotBlank()) "\n子目录: $safeSubdir" else "") +
+                    "\n大小: ${content.length} 字符"
             } else {
-                // Android 9 Abajo:Escribe directamente al directorio público.(necesidad WRITE_EXTERNAL_STORAGE)
+                // Android 9 以下:直接写公共目录(需 WRITE_EXTERNAL_STORAGE)
                 val hasWritePerm = androidx.core.content.ContextCompat.checkSelfPermission(
                     context, android.Manifest.permission.WRITE_EXTERNAL_STORAGE,
                 ) == android.content.pm.PackageManager.PERMISSION_GRANTED
-                if (!hasWritePerm) return "[error] Falta permiso de almacenamiento de escritura(WRITE_EXTERNAL_STORAGE)"
+                if (!hasWritePerm) return "[错误] 缺少写存储权限(WRITE_EXTERNAL_STORAGE)"
                 val downloadDir = android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS)
                 val targetDir = if (safeSubdir.isNotBlank()) File(downloadDir, safeSubdir) else downloadDir
                 if (!targetDir.exists()) targetDir.mkdirs()
-                // Los archivos con el mismo nombre agregan automáticamente números de serie
+                // 同名文件自动追加序号
                 var target = File(targetDir, safeFilename)
                 var idx = 1
                 val dotIdx = safeFilename.lastIndexOf('.')
@@ -236,12 +236,12 @@ object FileTools {
                     idx++
                 }
                 target.writeText(content)
-                Logger.i("FileTools", "create_download éxito: ${target.absolutePath} (${content.length} chars)")
-                "[éxito] Archivo guardado en el directorio de descarga\ncamino: ${target.absolutePath}\ntamaño: ${content.length} personaje"
+                Logger.i("FileTools", "create_download 成功: ${target.absolutePath} (${content.length} chars)")
+                "[成功] 文件已保存到 Download 目录\n路径: ${target.absolutePath}\n大小: ${content.length} 字符"
             }
         }.getOrElse {
-            Logger.w("FileTools", "create_download falló: ${it.message}", it)
-            "[error] Error de escritura: ${it.message}"
+            Logger.w("FileTools", "create_download 失败: ${it.message}", it)
+            "[错误] 写入失败: ${it.message}"
         }
     }
 
@@ -249,31 +249,31 @@ object FileTools {
 
     private fun execParseLink(args: Map<String, String>, context: Context): String {
         val urlStr = args["url"]?.takeIf { it.isNotBlank() }
-            ?: return "[error] Falta el parámetro requerido url"
+            ?: return "[错误] 缺少必填参数 url"
 
-        if (!URLUtil.isNetworkUrl(urlStr)) return "[error] Sólo admite HTTP/HTTPS URL"
+        if (!URLUtil.isNetworkUrl(urlStr)) return "[错误] 仅支持 HTTP/HTTPS URL"
         if (!urlStr.startsWith("http://") && !urlStr.startsWith("https://")) {
-            return "[error] URL Debe comenzar con http:// o https://"
+            return "[错误] URL 必须以 http:// 或 https:// 开头"
         }
 
-        // G3: SSRF La protección converge hacia SsrfGuard — Rechazar bucle invertido/red privada/enlace local/dirección reservada(Contiene
-        // IPv4-mapped IPv6 con fc00::/7 ULA,Rechazo conservador cuando falla el análisis).
-        // Evitar que parse_link rastree la máquina local/Servicios de intranet.
+        // G3: SSRF 防护收敛到 SsrfGuard — 拒绝回环/私网/链路本地/保留地址(含
+        // IPv4-mapped IPv6 与 fc00::/7 ULA,解析失败时保守拒绝)。
+        // 防止 parse_link 抓取本机/内网服务。
         if (SsrfGuard.isBlocked(urlStr)) {
-            return "[error] La dirección de destino pertenece al loopback./Intranet/dirección reservada,Rastreo rechazado"
+            return "[错误] 目标地址属于回环/内网/保留地址,已拒绝抓取"
         }
 
         return runCatching {
-            // B-30: Salto manual — instanceFollowRedirects=true Time 302 se puede llevar a la intranet
-            // (Después de que pase la verificación inicial del host,El objetivo de redireccionamiento ya no está verificado). Desactivar el seguimiento automático,
-            // Repite cada salto SsrfGuard.isBlocked,Hasta MAX_REDIRECTS veces.
+            // B-30: 手动跟跳转 — instanceFollowRedirects=true 时 302 可带向内网
+            // (初始 host 校验通过后,重定向目标不再校验)。关闭自动跟随,
+            // 每一跳都重新过 SsrfGuard.isBlocked,最多 MAX_REDIRECTS 次。
             var currentUrl = urlStr
             var redirects = 0
             var conn: HttpURLConnection? = null
             while (true) {
-                // G3: La URL completa para cada salto. SsrfGuard(Contiene verificación de esquema.)
+                // G3: 每跳 URL 整体过 SsrfGuard(含 scheme 校验)
                 if (SsrfGuard.isBlocked(currentUrl)) {
-                    return "[error] La dirección de destino pertenece al loopback./Intranet/dirección reservada,Rastreo rechazado"
+                    return "[错误] 目标地址属于回环/内网/保留地址,已拒绝抓取"
                 }
                 conn?.disconnect()
                 val u = URL(currentUrl)
@@ -287,19 +287,19 @@ object FileTools {
                 }
                 val code = conn.responseCode
                 if (code in 300..399) {
-                    val location = conn.getHeaderField("Location") ?: return "[error] HTTP $code: Falta el redireccionamiento Location"
+                    val location = conn.getHeaderField("Location") ?: return "[错误] HTTP $code: 重定向缺少 Location"
                     redirects++
-                    if (redirects > MAX_REDIRECTS) return "[error] El número de redirecciones supera el límite superior.($MAX_REDIRECTS),terminado"
-                    // Ubicación relativa analizada por la URL actual
+                    if (redirects > MAX_REDIRECTS) return "[错误] 重定向次数超过上限($MAX_REDIRECTS),已终止"
+                    // 相对 Location 按当前 URL 解析
                     currentUrl = URL(u, location).toExternalForm()
                     continue
                 }
                 break
             }
-            val finalConn = conn ?: return "[error] Error de recuperación: Conexión no establecida"
+            val finalConn = conn ?: return "[错误] 抓取失败: 连接未建立"
             try {
                 val code = finalConn.responseCode
-                if (code !in 200..299) return "[error] HTTP $code: ${finalConn.responseMessage}"
+                if (code !in 200..299) return "[错误] HTTP $code: ${finalConn.responseMessage}"
 
                 val contentType = finalConn.contentType ?: ""
                 if (!contentType.contains("html", ignoreCase = true)) {
@@ -311,7 +311,7 @@ object FileTools {
                             previewLimitChars = 0,
                         )
                     }
-                    return "[Contenido que no es HTML: $contentType]\n\n${captured.reference}"
+                    return "[非 HTML 内容: $contentType]\n\n${captured.reference}"
                 }
 
                 // Retain the complete response while only building a bounded DOM parse preview.
@@ -326,20 +326,20 @@ object FileTools {
                 finalConn.disconnect()
 
                 val doc = Jsoup.parse(captured.preview, currentUrl)
-                val title = doc.title().trim().ifBlank { "(Sin título)" }
-                // Jsoup Eliminar automáticamente script/style,Luego seleccione el artículo o body
+                val title = doc.title().trim().ifBlank { "(无标题)" }
+                // Jsoup 自动移除 script/style,再选 article 或 body
                 val article = doc.selectFirst("article") ?: doc.body()
                 val text = article.text().replace(Regex("\\s{2,}"), "\n").trim()
 
-                Logger.i("FileTools", "parse_link éxito: $currentUrl (${text.length} chars)")
+                Logger.i("FileTools", "parse_link 成功: $currentUrl (${text.length} chars)")
                 buildString {
-                    append("# ").append(title).append("\n\nFuente: ").append(currentUrl).append("\n\n")
+                    append("# ").append(title).append("\n\n来源: ").append(currentUrl).append("\n\n")
                     append(text)
                     if (captured.savedFile != null) {
                         if (captured.totalChars > PARSE_LINK_PARSE_PREVIEW_CHARS) {
-                            append("\n\n[Analizar solo antes de sobrescribir $PARSE_LINK_PARSE_PREVIEW_CHARS personajes;El código fuente completo de la página web se puede leer en secciones.]\n")
+                            append("\n\n[解析仅覆盖前 $PARSE_LINK_PARSE_PREVIEW_CHARS 个字符;完整网页源码可分段读取]\n")
                         } else {
-                            append("\n\n[El código fuente completo de la página web se puede leer en secciones.]\n")
+                            append("\n\n[完整网页源码可分段读取]\n")
                         }
                         append(captured.reference)
                     }
@@ -348,16 +348,16 @@ object FileTools {
                 finalConn.disconnect()
             }
         }.getOrElse {
-            Logger.w("FileTools", "parse_link falló: ${it.message}", it)
-            "[error] Error de recuperación: ${it.message}"
+            Logger.w("FileTools", "parse_link 失败: ${it.message}", it)
+            "[错误] 抓取失败: ${it.message}"
         }
     }
 }
 
 /**
- * v1.0.47 P2: FileTools registrador — Registre read_file/create_download/parse_link en ToolRegistry.
+ * v1.0.47 P2: FileTools 注册器 — 把 read_file/create_download/parse_link 注册到 ToolRegistry。
  *
- * depender de ToolRegistry + WorkspaceManager(tomar rootDir)+ Context.
+ * 依赖 ToolRegistry + WorkspaceManager(取 rootDir)+ Context。
  */
 class FileToolsRegistrar(
     private val toolRegistry: ToolRegistry,
@@ -378,11 +378,11 @@ class FileToolsRegistrar(
 }
 
 /**
- * Cuando la lectura falla, aparecerá la frase "¿Qué hay realmente aquí?".
+ * 读取失败时给一句「这里实际有什么」。
  *
- * Anteriormente, sólo se informaba "No existe o no es un archivo normal" y el modelo se dirigía a `workspace_list` directorio de lista ——
- * pero `tool_outputs/` Colgada en filesDir, no en la raíz del espacio de trabajo, esa acción simplemente está fuera de su alcance.
- * Enumerar directamente varios nombres de archivos reales en el mismo directorio es más útil que pedirle al modelo que intente una acción que no existe.
+ * 此前只报「不存在或不是普通文件」，模型被指引去 `workspace_list` 列目录 ——
+ * 但 `tool_outputs/` 挂在 filesDir 下，不在 workspace 根里，那个动作根本够不着。
+ * 直接在同目录列几个真实文件名，比让模型去试一个不存在的动作有用。
  */
 private fun siblingHint(target: File): String {
     val dir = target.parentFile ?: return ""
@@ -390,5 +390,5 @@ private fun siblingHint(target: File): String {
         dir.listFiles()?.filter { it.isFile }?.take(5)?.map { it.name }
     }.getOrNull().orEmpty()
     if (names.isEmpty()) return ""
-    return ". Existente en este directorio: " + names.joinToString(", ")
+    return "。该目录下现有: " + names.joinToString(", ")
 }

@@ -5,20 +5,20 @@ import "./primitives.css";
 
 export interface TopBarProps {
   readonly title: string;
-  /** Si no se pasa, la clave de retorno no se generará (similar a la de MuseTopBar). `onBack = null` sinónimo). */
+  /** 不传则不渲染返回键（与 MuseTopBar 的 `onBack = null` 同义）。 */
   readonly onBack?: () => void;
-  /** Large Title:El título tiene su propia fila displayLarge(34sp), la columna superior solo deja retornos y operaciones. */
+  /** Large Title：标题独占一行走 displayLarge（34sp），顶栏行只留返回与操作。 */
   readonly largeTitle?: boolean;
   readonly actions?: ReactNode;
-  /** Copia de accesibilidad de la clave de devolución; no pase la entrada según el idioma actual (common.back). */
+  /** 返回键的无障碍文案；不传按当前语言取词条（common.back）。 */
   readonly backLabel?: string;
 }
 
 /**
- * Barra superior: Atrás/Título/Acción derecha.
+ * 顶栏：返回 / 标题 / 右侧动作。
  *
- * Especificaciones tomadas de MuseTopBar —— margen en línea chipInnerTight(4/1), tecla de retorno 48dp objetivo táctil,
- * Título del título Se omite una sola línea grande,Large Title Utilice el relleno displayLarge + messageGap/tightGap.
+ * 规格取自 MuseTopBar —— 行内边距 chipInnerTight(4/1)、返回键 48dp 触摸目标、
+ * 标题 titleLarge 单行省略、Large Title 用 displayLarge + messageGap/tightGap 内边距。
  */
 export function TopBar({ title, onBack, largeTitle = false, actions, backLabel }: TopBarProps) {
   const { t } = useI18n();

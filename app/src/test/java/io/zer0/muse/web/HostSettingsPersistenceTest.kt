@@ -16,10 +16,10 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * `settings.update` → Verdadero [SettingsRepository] → Vuelve a leerlo.
+ * `settings.update` → 真 [SettingsRepository] → 再读回来。
  *
- * frente [HostSettingsCommandsTest] Utilice el almacén falso para verificar la lógica de verificación, aquí utilice el DataStore real para verificar“¿Lo has escrito?”:
- * Después de pasar la verificación de tipo, la cadena debe traducirse a un valor reconocido por el almacén durante el paso de introducción, en lugar de simplemente almacenarse en la memoria.
+ * 前面的 [HostSettingsCommandsTest] 用假仓储验校验逻辑，这里用真 DataStore 验“写进去了没”：
+ * 类型校验通过之后，字符串必须在落库那一步被翻成仓库认识的值，而不是只在内存里过了一手。
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33], application = SettingsRepositoryTestApplication::class)
@@ -28,14 +28,14 @@ class HostSettingsPersistenceTest {
     private val context: Context get() = ApplicationProvider.getApplicationContext()
 
     /**
-     * Toda la clase de prueba comparte un repositorio.
+     * 整个测试类共用一个仓储。
      *
-     * Crea una nueva para cada pregunta. `SettingsRepository` permitirá que varias instancias de DataStore hagan referencia al mismo archivo de preferencias al mismo tiempo.
-     * Windows siguiente escritura/solo cambia el nombre `AccessDeniedException`(Y afectará otros casos de uso en la misma JVM que necesitan usar la biblioteca de configuración).
+     * 每题新建一个 `SettingsRepository` 会让多个 DataStore 实例同时据着同一个 preferences 文件，
+     * Windows 下下一次写入/改名就会 `AccessDeniedException`（而且会连累同一 JVM 里其他要用设置库的用例）。
      */
     private val settings: SettingsRepository by lazy { SettingsRepository(context, mockk(relaxed = true)) }
 
-    /** Cada pregunta recibió el mismo ejemplo (ver [settings] descripción). */
+    /** 每题拿到的都是同一个实例（见 [settings] 的说明）。 */
     private fun repository(): SettingsRepository = settings
 
     private fun commands(settings: SettingsRepository) = HostSettingsCommands(
@@ -51,10 +51,10 @@ class HostSettingsPersistenceTest {
             HostSettingsUpdateResult.Applied(HostSettingKeys.PII_GUARD),
             commands(settings).update(HostSettingKeys.PII_GUARD, "true"),
         )
-        assertTrue("La escritura booleana debe iniciar sesión en la biblioteca.", settings.piiGuardEnabledFlow.first())
+        assertTrue("布尔写入必须落库", settings.piiGuardEnabledFlow.first())
 
         commands(settings).update(HostSettingKeys.PII_GUARD, "false")
-        assertFalse("Si vuelve a escribir falso, deberá sobrescribirlo.", settings.piiGuardEnabledFlow.first())
+        assertFalse("再写 false 必须覆盖回去", settings.piiGuardEnabledFlow.first())
     }
 
     @Test
@@ -113,7 +113,7 @@ class HostSettingsPersistenceTest {
         val after = settings.mediaConfigFlow.first()
         assertEquals("openai", after.ttsEngine)
         assertEquals(1.25, after.ttsSpeechRate.toDouble(), 1e-6)
-        assertEquals("Cambiar un campo no puede restablecer fácilmente otros campos", before.ttsPitch.toDouble(), after.ttsPitch.toDouble(), 1e-6)
+        assertEquals("改一个字段不能顺手重置别的字段", before.ttsPitch.toDouble(), after.ttsPitch.toDouble(), 1e-6)
     }
 
     @Test
@@ -125,7 +125,7 @@ class HostSettingsPersistenceTest {
         assertTrue(commands(settings).update("liquidGlassStrength", "101") is HostSettingsUpdateResult.Rejected)
         assertTrue(commands(settings).update("notAKey", "true") is HostSettingsUpdateResult.Rejected)
 
-        assertEquals("Las escrituras rechazadas no se pueden cambiar en la base de datos.", before, settings.themeModeFlow.first())
+        assertEquals("被拒的写入不得改库", before, settings.themeModeFlow.first())
     }
 
     @Test
@@ -141,10 +141,52 @@ class HostSettingsPersistenceTest {
         assertEquals("light", values.getValue("themeMode").value)
         assertEquals("35", values.getValue("liquidGlassStrength").value)
         assertEquals("edge", values.getValue("mediaConfig.ttsEngine").value)
-        // El valor derivado sigue el almacén (el proveedor predeterminado puede haber hecho que isConfigured sea verdadero), en lugar de codificar un valor esperado.
+        // 派生值跟仓库走（预设供应商可能已让 isConfigured 为真），不写死一个期望值。
         assertEquals(
             (settings.providerConfigFlow.first() != null).toString(),
             values.getValue("model.configured").value,
         )
+    }
+
+    /**
+     * S2:类型校验放行的小数强度必须**说出来**,而不是静默什么都不做。
+     *
+     * 这一条是本类里唯一不能被假仓储替代的断言:[HostSettingsCommandsTest] 用假仓储只能验到
+     * 「字符串被规范化成什么」,而缺陷发生在下一步 —— `liquidGlassStrength` 是 Int,
+     * 校验器认 12.5 是合法数字,写入器却写成 `toIntOrNull()?.let { … }`;
+     * 于是 12.5 谁也没落地,调用方还拿到了 Applied。
+     * 用户视角就是「滑块松手保存了,重开设置又弹回原值」。
+     */
+    @Test
+    fun `fractional strength is rejected instead of silently dropped`() = runBlocking {
+        val settings = repository()
+        val api = commands(settings)
+
+        api.update("liquidGlassStrength", "40")
+        assertEquals(40, settings.liquidGlassStrengthFlow.first())
+
+        val result = api.update("liquidGlassStrength", "12.5")
+        assertTrue(
+            "小数强度必须被拒绝,不能回执 Applied 却不写: $result",
+            result is HostSettingsUpdateResult.Rejected,
+        )
+        assertEquals("被拒绝的写入不许动原值 —— 失败不能丢配置", 40, settings.liquidGlassStrengthFlow.first())
+
+        // 反向对照:同一项的整数写入仍要照常落地(收紧不能顺手把好路径也堵死)。
+        assertEquals(HostSettingsUpdateResult.Applied("liquidGlassStrength"), api.update("liquidGlassStrength", "55"))
+        assertEquals(55, settings.liquidGlassStrengthFlow.first())
+    }
+
+    @Test
+    fun `tts speech rate lands and keeps its value when rejected`() = runBlocking {
+        val settings = repository()
+        val api = commands(settings)
+
+        api.update("mediaConfig.ttsSpeechRate", "1.2")
+        assertEquals("校验通过的数值要真的落到整份对象里", 1.2f, settings.mediaConfigFlow.first().ttsSpeechRate, 0.001f)
+
+        val rejected = api.update("mediaConfig.ttsSpeechRate", "99")
+        assertTrue("超出范围必须拒绝而不是截断保存: $rejected", rejected is HostSettingsUpdateResult.Rejected)
+        assertEquals("拒绝之后原值不动", 1.2f, settings.mediaConfigFlow.first().ttsSpeechRate, 0.001f)
     }
 }

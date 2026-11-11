@@ -1,28 +1,37 @@
 package io.zer0.muse.automation.core
 
 /**
- * Captura de pantalla de información.
+ * 屏幕信息快照。
  *
- * Sintetizado a partir del árbol de control de accesibilidad + resumen de dumpsys,Para que la IA juzgue"Qué hay en la pantalla y dónde hacer clic".
+ * 由无障碍控件树 + dumpsys 摘要合成,供 AI 判断"屏幕上有什么、该点哪里"。
  */
 data class ScreenInfo(
-    /** El nombre del paquete de interfaz actual. */
+    /** 当前前台包名。 */
     val packageName: String? = null,
-    /** Nombre de la clase de actividad actual(Si es deseable). */
+    /** 当前 Activity 类名(若可取)。 */
     val activityName: String? = null,
-    /** Interactivo/Una lista legible de nodos de control. */
+    /** 可交互/可读的控件节点列表。 */
     val nodes: List<UiNode> = emptyList(),
-    /** ancho de captura de pantalla(Píxel),Se utiliza para convertir coordenadas normalizadas en coordenadas absolutas. */
+    /** 截屏的宽度(像素),用于把归一化坐标换算成绝对坐标。 */
     val screenWidth: Int = 0,
-    /** Altura de captura de pantalla(Píxel). */
+    /** 截屏的高度(像素)。 */
     val screenHeight: Int = 0,
-    /** Etiqueta de fuente de datos: accessibility / shell / root. */
+    /** 数据来源标记: accessibility / shell / root。 */
     val source: String = "",
+    /**
+     * 本次读取**不完整**的原因；`null` 表示读全了。
+     *
+     * 为什么要有这个字段：控件树遍历会中途抛（系统回收节点）、也会受深度上限影响，
+     * 以前这两种情况都只写日志，`ScreenInfo` 里看起来就是一次正常读取。
+     * 模型于是把"没读到"当成"屏幕上没有" —— 结果是找不到控件、误点、或者报告"界面没有该按钮"。
+     * 残缺必须写在数据里，让看数据的人（和模型）第一眼就看到。
+     */
+    val incompleteReason: String? = null,
 ) {
     /**
-     * Seleccione el nodo en el árbol de control que más probablemente represente el objetivo del usuario.
-     * Prioridad de puntuación: usabilidad → coincidencia exacta → prefijo/contiene coincidencias → Capacidad de hacer clic → Campo de texto.
-     * De esta manera, el agente visual y el flujo de trabajo semántico no harán clic aleatoriamente en el texto decorativo con el mismo nombre debido a cambios en el orden transversal del árbol.
+     * 在控件树中选择最有可能代表用户目标的节点。
+     * 评分优先级：可用性 → 精确匹配 → 前缀/包含匹配 → 可点击性 → 文本字段。
+     * 这样视觉 Agent 和语义工作流不会因树遍历顺序变化而随机点击同名装饰文本。
      */
     fun findBestTextNode(query: String, exact: Boolean = false): UiNode? {
         val normalized = query.trim()
@@ -80,32 +89,77 @@ data class ScreenInfo(
             ?.first
     }
 
-    /** Genere resúmenes de texto compactos para que los lea la IA. */
+    /** 生成给 AI 阅读的紧凑文本摘要。 */
     fun toSummary(maxNodes: Int = 40): String = buildString {
-        appendLine("Solicitud actual: ${packageName ?: "desconocido"}")
-        if (!activityName.isNullOrBlank()) appendLine("interfaz: $activityName")
-        appendLine("resolución: ${screenWidth}x$screenHeight")
-        appendLine("Número de controles: ${nodes.size}")
+        appendLine("当前应用: ${packageName ?: "未知"}")
+        if (!activityName.isNullOrBlank()) appendLine("界面: $activityName")
+        appendLine("分辨率: ${screenWidth}x$screenHeight")
+        appendLine("控件数: ${nodes.size}")
+        // 残缺要排在控件清单**之前**：模型读完前半截就可能已经决定点哪儿了，
+        // 提示放在末尾等于没放。
+        incompleteReason?.let { appendLine("⚠ 本次读取不完整：$it") }
         appendLine("---")
         nodes.take(maxNodes).forEachIndexed { i, n ->
             appendLine("[$i] ${n.toShortString()}")
         }
-        if (nodes.size > maxNodes) appendLine("... también ${nodes.size - maxNodes} nodos")
+        if (nodes.size > maxNodes) appendLine("... 还有 ${nodes.size - maxNodes} 个节点")
     }
 }
 
 /**
- * UI Nodo de control(Representación unificada entre capas,Bloquear accesibilidad/dumpsys diferencia).
+ * 坐标越界的确定原因（纯函数，供工具层与执行器层共用同一句措辞）。
+ *
+ * 为什么要单独抽出来：越界时 `dispatchGesture` 只是返回 false，模型收到的
+ * 是一句"点击失败(坐标越界或通道未就绪…)" —— 两种原因混在一起，
+ * 模型分不清该「重新取坐标」还是「等权限就绪」，于是拿同一组坐标反复试，白烧步数。
+ * 这里把"到底是哪个"在**发手势之前**就判出来。
+ *
+ * `width` / `height` 非正（拿不到屏幕尺寸）时返回 null：**尺寸未知不拦** ——
+ * 拿 0 当边界会把所有点击都判成越界，那是把保护变成故障。
+ */
+internal fun boundsIssue(x: Int, y: Int, width: Int, height: Int): String? {
+    if (width <= 0 || height <= 0) return null
+    if (x in 0 until width && y in 0 until height) return null
+    return "坐标越界: ($x,$y) 不在 0..${width - 1} / 0..${height - 1} 内"
+}
+
+/** 多点动作（滑动/缩放/路径）的越界原因：把**所有**越界的点都列出来。 */
+internal fun pointsBoundsIssue(points: List<Pair<Int, Int>>, width: Int, height: Int): String? {
+    if (width <= 0 || height <= 0) return null
+    val bad = points.filter { (x, y) -> x !in 0 until width || y !in 0 until height }
+    if (bad.isEmpty()) return null
+    return "坐标越界: " + bad.joinToString(", ") { "(${it.first},${it.second})" } +
+        " 不在 0..${width - 1} / 0..${height - 1} 内"
+}
+
+/**
+ * 合成「本次屏幕读取是否残缺」的原因（纯函数，供各读取实现复用与单测）。
+ *
+ * @param depthTruncated 是否因为超过 [maxDepth] 层而丢掉了更深的控件
+ * @param error 遍历中途抛出的异常描述（null 表示没抛）
+ * @param collected 实际收集到的控件数
+ */
+internal fun screenReadIssue(depthTruncated: Boolean, error: String?, collected: Int, maxDepth: Int): String? = buildList {
+    if (error != null) {
+        add("控件树遍历中断（$error），只拿到中断前的 $collected 个控件")
+    }
+    if (depthTruncated) {
+        add("层级超过 $maxDepth 层，更深的控件没有读到")
+    }
+}.joinToString("；").takeIf { it.isNotEmpty() }
+
+/**
+ * UI 控件节点(跨层统一表示,屏蔽无障碍/dumpsys 差异)。
  */
 data class UiNode(
     val text: String? = null,
     val contentDescription: String? = null,
     val className: String? = null,
     val viewIdResourceName: String? = null,
-    /** Controlar la esquina superior izquierda x(píxeles absolutos). */
+    /** 控件左上角 x(绝对像素)。 */
     val boundsLeft: Int = 0,
     val boundsTop: Int = 0,
-    /** x en la esquina inferior derecha del control. */
+    /** 控件右下角 x。 */
     val boundsRight: Int = 0,
     val boundsBottom: Int = 0,
     val isClickable: Boolean = false,
@@ -114,7 +168,7 @@ data class UiNode(
     val isChecked: Boolean? = null,
     val isEnabled: Boolean = true,
 ) {
-    /** Centro x,Para que la IA regrese al hacer clic en el objetivo. */
+    /** 中心 x,供 AI 返回点击目标时换算。 */
     val centerX: Int get() = (boundsLeft + boundsRight) / 2
     val centerY: Int get() = (boundsTop + boundsBottom) / 2
 
@@ -123,13 +177,13 @@ data class UiNode(
             ?: contentDescription?.take(30)
             ?: viewIdResourceName?.substringAfterLast('/')
             ?: className?.substringAfterLast('.')
-            ?: "Sin nombre"
+            ?: "未命名"
         val tags = buildList {
-            if (isClickable) add("Se puede pedir")
-            if (isEditable) add("Se puede ingresar")
-            if (isScrollable) add("desplazable")
-            if (isChecked == true) add("comprobado")
-            if (!isEnabled) add("Desactivar")
+            if (isClickable) add("可点")
+            if (isEditable) add("可输入")
+            if (isScrollable) add("可滚动")
+            if (isChecked == true) add("已勾选")
+            if (!isEnabled) add("禁用")
         }
         val tagStr = if (tags.isEmpty()) "" else " [${tags.joinToString(",")}]"
         val bounds = "($centerX,$centerY)"

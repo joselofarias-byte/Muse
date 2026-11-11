@@ -15,8 +15,10 @@ import io.zer0.muse.ui.WorkspaceScreen
 import io.zer0.muse.ui.account.AccountScreen
 import io.zer0.muse.ui.dev.ComponentGalleryScreen
 import io.zer0.muse.ui.knowledge.KnowledgeScreen
+import io.zer0.muse.ui.settings.AgentDirectivesPage
 import io.zer0.muse.ui.settings.AgentSettingsPage
 import io.zer0.muse.ui.settings.AuditLogPage
+import io.zer0.muse.ui.settings.BrowserSettingsPage
 import io.zer0.muse.ui.settings.ChatSettingsPage
 import io.zer0.muse.ui.settings.CloudBackupPage
 import io.zer0.muse.ui.settings.ExperimentsSettingsPage
@@ -36,9 +38,11 @@ import io.zer0.muse.ui.settings.SettingsAsrPage
 import io.zer0.muse.ui.settings.SettingsAssistantResourcesPage
 import io.zer0.muse.ui.settings.SettingsDataImportPage
 import io.zer0.muse.ui.settings.SettingsDataPage
+import io.zer0.muse.ui.settings.SettingsDiagnosticsPage
 import io.zer0.muse.ui.settings.SettingsGroupPage
 import io.zer0.muse.ui.settings.SettingsMcpPage
 import io.zer0.muse.ui.settings.SettingsModelPage
+import io.zer0.muse.ui.settings.SettingsSessionTermsPage
 import io.zer0.muse.ui.settings.SettingsTutorialPage
 import io.zer0.muse.ui.settings.SettingsWebSearchPage
 import io.zer0.muse.ui.settings.TaskRoutingSettingsPage
@@ -51,14 +55,14 @@ import io.zer0.muse.ui.terminal.TerminalScreen
 import org.koin.compose.koinInject
 
 /**
- * Establecer dominio NavGraph — Contiene la configuración de la página de inicio + 31 niveles secundarios./Página de configuración de nivel 3(cuenta/modelo/Apariencia/agente/mucho Agent/
- * Flujo de trabajo/Agent/permiso/Depuración/auditoría/espacio de trabajo/Provider Complementos, etc.)32 componibles en total.
+ * 设置域 NavGraph — 包含设置主页 + 31 个二级/三级设置页(账户/模型/外观/代理/多 Agent/
+ * 工作流/Agent/许可/调试/审计/工作区/Provider 插件等)共 32 个 composable。
  *
- * Extracto de MainActivity para resolver el último problema de sobrecarga(Línea original 1804 → objetivo ≤ 800 OK).
- * Todos los componibles se utilizan de manera uniforme. [MuseTransitions.horizontalPushEnter] / [horizontalPushPopExit] Transición.
+ * 从 MainActivity 抽取以解决后者过载问题(原 1804 行 → 目标 ≤ 800 行)。
+ * 所有 composable 统一使用 [MuseTransitions.horizontalPushEnter] / [horizontalPushPopExit] 过渡。
  */
 fun NavGraphBuilder.settingsNavGraph(navController: NavHostController, sharedViewModel: ChatViewModel) {
-    // página de configuración(slide-in)
+    // 设置页(slide-in)
     composable<SettingsRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
@@ -66,17 +70,17 @@ fun NavGraphBuilder.settingsNavGraph(navController: NavHostController, sharedVie
         SettingsScreen(
             onBack = { navController.popBackStack() },
             onOpenAccount = { navController.navigate(AccountRoute) },
-            onOpenGroup = { kind -> navController.navigate(SettingsGroupRoute(kind.name)) },
+            onOpenGroup = { kind, focus -> navController.navigate(SettingsGroupRoute(kind.name, focus?.name.orEmpty())) },
             onNavigate = { route -> navController.navigate(route) },
         )
     }
-    // Configure la página de clasificación de primer nivel: la lista de inscritos después de ingresar los 14 puntos de clasificación en la página de inicio
+    // 设置一级分类页：首页 14 个分类点进来后的条目列表
     composable<SettingsGroupRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
     ) { backStackEntry ->
         val route = backStackEntry.toRoute<SettingsGroupRoute>()
-        // Lo que se almacena en la ruta es la cadena ID; Si no se puede mapear, regrese a la página de inicio. No utilice una categoría predeterminada para llevar a los usuarios al lugar equivocado.
+        // 路由里存的是字符串 id；映射不到就回首页，不要拿一个默认分类把用户带到错地方。
         val kind = io.zer0.muse.ui.settings.SettingsGroupKind.entries
             .firstOrNull { it.name == route.kind }
         if (kind == null) {
@@ -84,12 +88,13 @@ fun NavGraphBuilder.settingsNavGraph(navController: NavHostController, sharedVie
         } else {
             SettingsGroupPage(
                 kind = kind,
+                focusEntry = route.focusEntry.ifBlank { null },
                 onBack = { navController.popBackStack() },
                 onNavigate = { target -> navController.navigate(target) },
             )
         }
     }
-    // v0.25: Centro de cuentas(Página de inicio de sesión de marcador de posición)
+    // v0.25: 账户中心(占位登录页)
     composable<AccountRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
@@ -99,26 +104,26 @@ fun NavGraphBuilder.settingsNavGraph(navController: NavHostController, sharedVie
             onOpenUserProfile = { navController.navigate(UserProfileEditRoute) },
         )
     }
-    // v0.26: Configurar página secundaria — Modelos y Servicios(v1.133: Sólo lista de proveedores,Otros están divididos en páginas secundarias independientes.)
+    // v0.26: 设置二级页 — 模型与服务(v1.133: 仅供应商列表,其他拆为独立二级页)
     composable<SettingsModelRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
     ) {
         SettingsModelPage(
             onBack = { navController.popBackStack() },
-            // v1.0.74 fix: El enrutamiento de cadenas está en desuso y no está registrado,colapsará;Utilice en su lugar enrutamiento con seguridad de tipos
+            // v1.0.74 fix: 字符串路由已废弃且未注册,必崩;改用类型安全路由
             onOpenAsr = { navController.navigate(SettingsAsrRoute) },
         )
     }
-    // v1.133: Configurar página secundaria — búsqueda en internet(Separarse de ConfiguraciónModelPage)
-    // B0-04: Configurar página secundaria — Enrutamiento del modelo de tarea
+    // v1.133: 设置二级页 — 联网搜索(从 SettingsModelPage 拆出)
+    // B0-04: 设置二级页 — 任务模型路由
     composable<SettingsTaskRoutingRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
     ) {
         TaskRoutingSettingsPage(
             onBack = { navController.popBackStack() },
-            // v2.x: Entrada visual a los bloques modelo auxiliares. → Página independiente de ayuda visual
+            // v2.x: 辅助模型区块的视觉入口 → 视觉辅助独立页
             onOpenVision = { navController.navigate(SettingsVisionRoute) },
         )
     }
@@ -130,7 +135,7 @@ fun NavGraphBuilder.settingsNavGraph(navController: NavHostController, sharedVie
             onBack = { navController.popBackStack() },
         )
     }
-    // v1.133: Configurar página secundaria — reconocimiento de voz ASR(Separarse de ConfiguraciónModelPage)
+    // v1.133: 设置二级页 — 语音识别 ASR(从 SettingsModelPage 拆出)
     composable<SettingsAsrRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
@@ -140,7 +145,7 @@ fun NavGraphBuilder.settingsNavGraph(navController: NavHostController, sharedVie
             onOpenProviderSettings = { navController.navigate(SettingsModelRoute) },
         )
     }
-    // v1.133: Configurar página secundaria — MCP servidor(Separarse de ConfiguraciónModelPage)
+    // v1.133: 设置二级页 — MCP 服务器(从 SettingsModelPage 拆出)
     composable<SettingsMcpRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
@@ -149,7 +154,7 @@ fun NavGraphBuilder.settingsNavGraph(navController: NavHostController, sharedVie
             onBack = { navController.popBackStack() },
         )
     }
-    // v1.133: Configurar página secundaria — Recursos asistentes(Separarse de ConfiguraciónModelPage:Favoritos/libro mundial/mensaje rapido/inyección de patrón/Skills/interruptor de memoria)
+    // v1.133: 设置二级页 — 助手资源(从 SettingsModelPage 拆出:收藏夹/世界书/快捷消息/模式注入/Skills/记忆开关)
     composable<SettingsAssistantResourcesRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
@@ -165,7 +170,7 @@ fun NavGraphBuilder.settingsNavGraph(navController: NavHostController, sharedVie
             onOpenSkills = { navController.navigate(SkillsRoute) },
         )
     }
-    // P3-3: Asistente de configuración de permisos(Sin barreras / Shizuku / Root Three Channel)
+    // P3-3: 权限配置向导(无障碍 / Shizuku / Root 三通道)
     composable<SettingsPermissionWizardRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
@@ -174,7 +179,7 @@ fun NavGraphBuilder.settingsNavGraph(navController: NavHostController, sharedVie
             onBack = { navController.popBackStack() },
         )
     }
-    // Página de edición de retratos de usuario(edad/ciudad/MBTI espera)
+    // 用户画像编辑页(年龄/城市/MBTI 等)
     composable<UserProfileEditRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
@@ -183,7 +188,7 @@ fun NavGraphBuilder.settingsNavGraph(navController: NavHostController, sharedVie
             onBack = { navController.popBackStack() },
         )
     }
-    // v0.26: Configurar página secundaria — Datos y respaldo
+    // v0.26: 设置二级页 — 数据与备份
     composable<SettingsDataRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
@@ -193,7 +198,7 @@ fun NavGraphBuilder.settingsNavGraph(navController: NavHostController, sharedVie
             onOpenCloudBackup = { navController.navigate(SettingsCloudBackupRoute) },
         )
     }
-    // v1.132: Configurar página secundaria — Página de configuración independiente de la copia de seguridad en la nube(WebDAV/S3 Formulario + lista de respaldo remoto)
+    // v1.132: 设置二级页 — 云备份独立配置页(WebDAV/S3 表单 + 远端备份列表)
     composable<SettingsCloudBackupRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
@@ -202,7 +207,7 @@ fun NavGraphBuilder.settingsNavGraph(navController: NavHostController, sharedVie
             onBack = { navController.popBackStack() },
         )
     }
-    // v0.26: Configurar página secundaria — Apariencia
+    // v0.26: 设置二级页 — 外观
     composable<SettingsAppearanceRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
@@ -211,7 +216,7 @@ fun NavGraphBuilder.settingsNavGraph(navController: NavHostController, sharedVie
             onBack = { navController.popBackStack() },
         )
     }
-    // v0.26: Configurar página secundaria — Acerca de
+    // v0.26: 设置二级页 — 关于
     composable<SettingsAboutRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
@@ -219,11 +224,29 @@ fun NavGraphBuilder.settingsNavGraph(navController: NavHostController, sharedVie
         SettingsAboutPage(
             onBack = { navController.popBackStack() },
             onOpenLicenses = { navController.navigate(LicensesRoute) },
-            // v2.x: Entrada a la página de configuración de informes de fallos(La página anterior existía pero no había ninguna entrada.)
+            // v2.x: 崩溃上报设置页入口(此前页面存在但无任何入口)
             onOpenCrashReport = { navController.navigate(SettingsCrashReportRoute) },
         )
     }
-    // v2.x: Página de configuración de informes de fallos — De "Acerca de → Comentarios" entrar,Se puede acceder a los índices de búsqueda con el mismo nombre.
+    // v2.7.x(E2): 助手术语页 —「记忆」组入口 + 搜索直达
+    composable<SettingsSessionTermsRoute>(
+        enterTransition = { MuseTransitions.horizontalPushEnter() },
+        popExitTransition = { MuseTransitions.horizontalPushPopExit() },
+    ) {
+        SettingsSessionTermsPage(
+            onBack = { navController.popBackStack() },
+        )
+    }
+    // v2.6.23(S4): 运行诊断子页 —「关于」组入口 + 搜索直达
+    composable<SettingsDiagnosticsRoute>(
+        enterTransition = { MuseTransitions.horizontalPushEnter() },
+        popExitTransition = { MuseTransitions.horizontalPushPopExit() },
+    ) {
+        SettingsDiagnosticsPage(
+            onBack = { navController.popBackStack() },
+        )
+    }
+    // v2.x: 崩溃上报设置页 — 从「关于 → 反馈」进入,搜索索引同名可达
     composable<SettingsCrashReportRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
@@ -232,7 +255,7 @@ fun NavGraphBuilder.settingsNavGraph(navController: NavHostController, sharedVie
             onBack = { navController.popBackStack() },
         )
     }
-    // v0.31: Configurar página secundaria — comportamiento de chat
+    // v0.31: 设置二级页 — 聊天行为
     composable<SettingsChatRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
@@ -242,7 +265,7 @@ fun NavGraphBuilder.settingsNavGraph(navController: NavHostController, sharedVie
             onOpenQuickActions = { navController.navigate(SettingsQuickActionsRoute) },
         )
     }
-    // v2.6.0: Configurar página de tercer nivel — Personalización del botón de acceso directo a mensajes (Via fórmula)
+    // v2.6.0: 设置三级页 — 消息快捷按钮自定义（Via 式）
     composable<SettingsQuickActionsRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
@@ -251,7 +274,7 @@ fun NavGraphBuilder.settingsNavGraph(navController: NavHostController, sharedVie
             onBack = { navController.popBackStack() },
         )
     }
-    // v1.0.51: centro de memoria — 4 Tab Ver+Editar(presente/corto plazo/largo plazo/hechos)
+    // v1.0.51: 记忆中心 — 4 Tab 查看+编辑(当下/短期/长期/事实)
     composable<SettingsMemoryRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
@@ -265,7 +288,7 @@ fun NavGraphBuilder.settingsNavGraph(navController: NavHostController, sharedVie
             },
         )
     }
-    // v1.0.51: Página de configuración de parámetros de memoria(Originales"Memorias y Notificaciones",Ingrese desde la entrada del equipo del centro de memoria.)
+    // v1.0.51: 记忆参数配置页(原"记忆与通知",从记忆中心齿轮入口进入)
     composable<SettingsMemoryConfigRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
@@ -275,7 +298,7 @@ fun NavGraphBuilder.settingsNavGraph(navController: NavHostController, sharedVie
             onOpenMemorySpace = { navController.navigate(SettingsMemorySpaceRoute) },
         )
     }
-    // v1.0.52 P2-2: Página de gestión del espacio de memoria(Space CRUD)
+    // v1.0.52 P2-2: 记忆空间管理页(Space CRUD)
     composable<SettingsMemorySpaceRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
@@ -284,7 +307,7 @@ fun NavGraphBuilder.settingsNavGraph(navController: NavHostController, sharedVie
             onBack = { navController.popBackStack() },
         )
     }
-    // v2.6.10: Página independiente de la biblioteca de paquetes de expresiones
+    // v2.6.10: 表情包库独立页
     composable<StickerSettingsRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
@@ -293,7 +316,7 @@ fun NavGraphBuilder.settingsNavGraph(navController: NavHostController, sharedVie
             onBack = { navController.popBackStack() },
         )
     }
-    // v0.32: Configurar página secundaria — medios de comunicación
+    // v0.32: 设置二级页 — 媒体
     composable<SettingsMediaRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
@@ -301,11 +324,11 @@ fun NavGraphBuilder.settingsNavGraph(navController: NavHostController, sharedVie
         MediaSettingsPage(
             onBack = { navController.popBackStack() },
             onOpenVoiceCloning = { navController.navigate(VoiceCloningRoute) },
-            // El modelo solo se mantiene en el proveedor: cuando el candidato está vacío, la exportación apunta de nuevo a la lista de proveedores.
+            // 模型只在供应商里维护：候选为空时出口指回供应商列表
             onOpenProviderSettings = { navController.navigate(SettingsModelRoute) },
         )
     }
-    // v0.32: Configurar página secundaria — Experimental
+    // v0.32: 设置二级页 — 实验性
     composable<SettingsExperimentsRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
@@ -314,7 +337,7 @@ fun NavGraphBuilder.settingsNavGraph(navController: NavHostController, sharedVie
             onBack = { navController.popBackStack() },
         )
     }
-    // v1.56: Configurar página secundaria — RAG Configuración de búsqueda en la base de conocimientos
+    // v1.56: 设置二级页 — RAG 知识库检索配置
     composable<SettingsRagRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
@@ -324,9 +347,9 @@ fun NavGraphBuilder.settingsNavGraph(navController: NavHostController, sharedVie
             onManageKbs = { navController.navigate(KnowledgeBaseManageRoute) },
         )
     }
-    // v2.4.6: Página de nivel 3 — Gestión de la base de conocimientos.
-    // Combinado con la entrada de la base de conocimientos de la página de inicio en la misma página(KnowledgeScreen):base de conocimientos=raíz, carpeta=subdirectorio,
-    // Ambas entradas conducen a la misma página.,La pila de retorno, naturalmente, regresa a sus respectivas fuentes.
+    // v2.4.6: 三级页 — 知识库管理
+    // 与首页知识库入口合并为同一页(KnowledgeScreen):知识库=根、文件夹=子目录,
+    // 两个入口进的是同一个页面,返回栈自然回各自来源。
     composable<KnowledgeBaseManageRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
@@ -335,7 +358,7 @@ fun NavGraphBuilder.settingsNavGraph(navController: NavHostController, sharedVie
             onBack = { navController.popBackStack() },
         )
     }
-    // v1.25: Configurar página secundaria — ayuda visual
+    // v1.25: 设置二级页 — 视觉辅助
     composable<SettingsVisionRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
@@ -344,7 +367,7 @@ fun NavGraphBuilder.settingsNavGraph(navController: NavHostController, sharedVie
             onBack = { navController.popBackStack() },
         )
     }
-    // v1.61: Configurar página secundaria — Importación de datos
+    // v1.61: 设置二级页 — 数据导入
     composable<SettingsDataImportRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
@@ -353,7 +376,7 @@ fun NavGraphBuilder.settingsNavGraph(navController: NavHostController, sharedVie
             onBack = { navController.popBackStack() },
         )
     }
-    // v1.61: Configurar página secundaria — Tutoría(guía novato)
+    // v1.61: 设置二级页 — 使用教程(新手引导)
     composable<SettingsTutorialRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
@@ -362,7 +385,7 @@ fun NavGraphBuilder.settingsNavGraph(navController: NavHostController, sharedVie
             onBack = { navController.popBackStack() },
         )
     }
-    // v0.32: Configurar página secundaria — Seguridad y uso compartido
+    // v0.32: 设置二级页 — 安全与分享
     composable<SettingsSecurityRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
@@ -371,7 +394,7 @@ fun NavGraphBuilder.settingsNavGraph(navController: NavHostController, sharedVie
             onBack = { navController.popBackStack() },
         )
     }
-    // Configurar página secundaria — proxy de red
+    // 设置二级页 — 网络代理
     composable<SettingsProxyRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
@@ -380,7 +403,7 @@ fun NavGraphBuilder.settingsNavGraph(navController: NavHostController, sharedVie
             onBack = { navController.popBackStack() },
         )
     }
-    // v1.25: Configurar página secundaria — Colaboración entre múltiples agentes
+    // v1.25: 设置二级页 — 多 Agent 协作
     composable<SettingsMultiAgentRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
@@ -391,7 +414,7 @@ fun NavGraphBuilder.settingsNavGraph(navController: NavHostController, sharedVie
         )
     }
 
-    // v1.27: Configurar página secundaria — Agent Configuración(Selección de asistente/colaboración/mensajes no solicitados)
+    // v1.27: 设置二级页 — Agent 配置(助手选择/协作/主动消息)
     composable<SettingsProactiveRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
@@ -409,14 +432,14 @@ fun NavGraphBuilder.settingsNavGraph(navController: NavHostController, sharedVie
             onOpenPreferences = { navController.navigate(SettingsPreferenceRoute) },
         )
     }
-    // v2.6.7 fix (AUDIT F9): Página de gestión de preferencias del usuario.
+    // v2.6.7 fix (AUDIT F9): 用户偏好管理页。
     composable<SettingsPreferenceRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
     ) {
         UserPreferencePage(onBack = { navController.popBackStack() })
     }
-    // v1.25: Página de licencia de código abierto — Reparación LICENCIAS desconexión ruta
+    // v1.25: 开源许可页 — 修复 LICENSES 路由断链
     composable<LicensesRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
@@ -425,7 +448,7 @@ fun NavGraphBuilder.settingsNavGraph(navController: NavHostController, sharedVie
             onBack = { navController.popBackStack() },
         )
     }
-    // Página de registro de depuración — desde la configuración → Acerca de → Entrada al registro de depuración,Mostrar llamadas recientes del registrador
+    // 调试日志页 — 从设置 → 关于 → 调试日志 进入,展示最近 Logger 调用
     composable<DebugRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
@@ -434,7 +457,7 @@ fun NavGraphBuilder.settingsNavGraph(navController: NavHostController, sharedVie
             onBack = { navController.popBackStack() },
         )
     }
-    // v2.x fase terminal uno — desde la configuración → Herramientas → Entrada de terminal,Interactividad dentro del sandbox de la aplicación shell
+    // v2.x 终端一期 — 从设置 → 工具 → 终端 进入,应用沙盒内的交互式 shell
     composable<TerminalRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
@@ -443,7 +466,7 @@ fun NavGraphBuilder.settingsNavGraph(navController: NavHostController, sharedVie
             onBack = { navController.popBackStack() },
         )
     }
-    // Galería de componentes — desde la configuración → Acerca de → Galería de componentes Ingresar,Aceptación morfológica de todos los componentes en la biblioteca de componentes.(Versión oficial reservada)
+    // 组件画廊 — 从设置 → 关于 → 组件画廊 进入,组件库全部组件的形态验收(正式版保留)
     composable<ComponentGalleryRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
@@ -452,7 +475,7 @@ fun NavGraphBuilder.settingsNavGraph(navController: NavHostController, sharedVie
             onBack = { navController.popBackStack() },
         )
     }
-    // P2-4: Página de registro de auditoría — desde la configuración → Datos y privacidad → Registro de auditoría Ingresar
+    // P2-4: 审计日志页 — 从设置 → 数据与隐私 → 审计日志 进入
     composable<AuditLogRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
@@ -461,17 +484,19 @@ fun NavGraphBuilder.settingsNavGraph(navController: NavHostController, sharedVie
             onBack = { navController.popBackStack() },
         )
     }
-    // P2-7: página del espacio de trabajo — desde la configuración → Datos y privacidad → Espacio de trabajo Entrar
+    // P2-7: 工作区页 — 从设置 → 数据与隐私 → 工作区 进入
     composable<WorkspaceRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
-    ) {
+    ) { entry ->
+        val route = entry.toRoute<WorkspaceRoute>()
         WorkspaceScreen(
+            initialPath = route.initialPath,
             onBack = { navController.popBackStack() },
             onOpenArtifacts = { navController.navigate(ArtifactCenterRoute) },
         )
     }
-    // v2.0.1: Centro de productos — Ingrese desde la barra superior del espacio de trabajo
+    // v2.0.1: 产物中心 — 从工作区页顶栏进入
     composable<ArtifactCenterRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
@@ -480,7 +505,7 @@ fun NavGraphBuilder.settingsNavGraph(navController: NavHostController, sharedVie
             onBack = { navController.popBackStack() },
         )
     }
-    // v2.0.1: centro de conexion — Ingrese desde la página de inicio de configuración (descripción general de la conexión)
+    // v2.0.1: 连接中心 — 从设置首页进入（连接总览）
     composable<ConnectionCenterRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
@@ -490,17 +515,36 @@ fun NavGraphBuilder.settingsNavGraph(navController: NavHostController, sharedVie
             onOpenChannels = { navController.navigate(ChannelSettingsRoute) },
             onOpenMcp = { navController.navigate(SettingsMcpRoute) },
             onOpenPlugins = { navController.navigate(PluginManageRoute) },
+            onOpenSkills = { navController.navigate(SkillsRoute) },
             onOpenToolPermissions = { navController.navigate(ToolsSettingsRoute) },
         )
     }
-    // Acceso a la versión web — ajustes → conectar → Acceso a la versión web (dirección / PIN / código QR)
+    // 网页版访问 — 设置 → 连接 → 网页版访问（地址 / PIN / 二维码）
     composable<SettingsWebAccessRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
     ) {
         WebAccessPage(onBack = { navController.popBackStack() })
     }
-    // Página de administración de complementos unificada (complemento externo + complemento de proveedor fusionado), la entrada anterior se ha convergido en PluginManageRoute
+    // 它该做与不该做的事（用户约定）— 设置 → 自动化 分组
+    composable<SettingsAgentDirectivesRoute>(
+        enterTransition = { MuseTransitions.horizontalPushEnter() },
+        popExitTransition = { MuseTransitions.horizontalPushPopExit() },
+    ) {
+        AgentDirectivesPage(
+            onBack = { navController.popBackStack() },
+            // 音色沿用「设置 → 多媒体」那一处配置，这里只是跳过去，不另存一份
+            onOpenVoiceSettings = { navController.navigate(SettingsMediaRoute) },
+        )
+    }
+    // 内置浏览器设置 — 地址栏搜索引擎 / Cookies 行为
+    composable<SettingsBrowserRoute>(
+        enterTransition = { MuseTransitions.horizontalPushEnter() },
+        popExitTransition = { MuseTransitions.horizontalPushPopExit() },
+    ) {
+        BrowserSettingsPage(onBack = { navController.popBackStack() })
+    }
+    // 统一插件管理页（外部插件 + Provider 插件合并），旧入口已收敛到 PluginManageRoute
     composable<PluginManageRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
@@ -509,8 +553,8 @@ fun NavGraphBuilder.settingsNavGraph(navController: NavHostController, sharedVie
             onBack = { navController.popBackStack() },
         )
     }
-    // v1.0.20: Página de gestión de aprobación de herramientas — desde la configuración → charlar → Aprobación de llamada de herramienta Ingresar
-    // Mostrar todas las herramientas agrupadas por nivel de riesgo,Se pueden establecer tres estrategias para cada herramienta.(ALWAYS_ALLOW / ASK_EVERY_TIME / ALWAYS_DENY)
+    // v1.0.20: 工具批准管理页 — 从设置 → 聊天 → 工具调用批准 进入
+    // 按风险等级分组展示所有工具,每个工具可设置三档策略(ALWAYS_ALLOW / ASK_EVERY_TIME / ALWAYS_DENY)
     composable<ToolsSettingsRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
@@ -519,7 +563,7 @@ fun NavGraphBuilder.settingsNavGraph(navController: NavHostController, sharedVie
             onBack = { navController.popBackStack() },
         )
     }
-    // v1.0.80: UI Configuración de permisos automatizados(gradiente de tres capas)
+    // v1.0.80: UI 自动化权限设置(三层梯度)
     composable<SettingsAutomationRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
@@ -530,9 +574,9 @@ fun NavGraphBuilder.settingsNavGraph(navController: NavHostController, sharedVie
             manager = manager,
             settings = settings,
             onBack = { navController.popBackStack() },
-            // v1.xxx: F-24 Vaya a la página de tareas programadas con un clic para programar acciones automatizadas(Lo mismo NavHost,Navegue directamente para llegar a través del gráfico)
+            // v1.xxx: F-24 一键跳到定时任务页编排自动化动作(同 NavHost,直接 navigate 跨图可达)
             onOpenScheduledTasks = { navController.navigate(ScheduledTasksRoute) },
-            // v2.x: Asistente de configuración de permisos — La configuración de permisos de tres canales ha convergido en la página del asistente.
+            // v2.x: 权限配置向导 — 三通道权限配置已收敛到向导页
             onOpenPermissionWizard = { navController.navigate(SettingsPermissionWizardRoute) },
         )
     }

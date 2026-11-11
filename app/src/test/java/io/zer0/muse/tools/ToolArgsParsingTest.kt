@@ -10,11 +10,11 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * v2.6.2(auditoría de usuario): hook / Rutas de aprobación y ejecución parametrizadas**Análisis de parámetros de la misma fuente.**Devolver.
+ * v2.6.2（用户审计）: hook / 参数化审批 与执行路径的**参数解析同源**回归。
  *
- * Anteriormente, parseToolCallArgs usaba análisis estándar simple:JSON con formato incorrecto (que une varios objetos) devuelve vacío map,
- * En la ejecución real, se puede utilizar parseArgumentsLenient para guardarlo. —— hook Visto con ParamPolicies
- * Los parámetros no son consistentes con la ejecución real (file:// Dicho rechazo a nivel de parámetro también quedará invalidado).
+ * 此前 parseToolCallArgs 走简单标准解析:畸形 JSON（拼接多对象）返回空 map,
+ * 而实际执行走 parseArgumentsLenient 能救回来 —— hook 与 ParamPolicies 看到的
+ * 参数与真正执行的不一致（file:// 之类的参数级拒绝还会因此失效）。
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -29,17 +29,17 @@ class ToolArgsParsingTest {
 
     @Test
     fun `malformed concatenated json still yields the same args as execution`() {
-        // Mismo origen que ToolRegistry.parseArgumentsLenient:Empalmar varios objetos también puede resolver claves.
+        // 与 ToolRegistry.parseArgumentsLenient 同源:拼接多对象也能解出键。
         val args = parse("{}" + """{"url":"http://example.com"}""")
         assertEquals("http://example.com", args["url"])
     }
 
     @Test
     fun `file url is visible to param policies after lenient parse`() {
-        // Devoluciones de seguridad críticas:file:// URL Debe ser visible en estrategias a nivel de parámetro (previamente mal formadas). JSON → vacío map → Negarse a fracasar).
+        // 关键安全回归:file:// URL 必须在参数级策略里可见（此前畸形 JSON → 空 map → 拒绝失效）。
         val args = parse("""{"url":"file:///etc/passwd"}""")
         val state = ParamPolicies.evaluate("open_url", args)
-        assertTrue("file:// Debe ser rechazado por la política de parámetros.", state is ToolApprovalState.Denied)
+        assertTrue("file:// 应被参数策略拒绝", state is ToolApprovalState.Denied)
     }
 
     @Test
@@ -56,6 +56,6 @@ class ToolArgsParsingTest {
     fun `nested object is passed as json text`() {
         val args = parse("""{"data":{"labels":["a","b"]}}""")
         val text = args["data"] as String
-        assertTrue("Los objetos anidados deben pasarse como texto JSON", text.contains("\"labels\""))
+        assertTrue("嵌套对象应以 JSON 文本透传", text.contains("\"labels\""))
     }
 }

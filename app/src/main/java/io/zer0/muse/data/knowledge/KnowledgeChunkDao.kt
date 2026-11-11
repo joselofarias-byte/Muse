@@ -8,20 +8,20 @@ import androidx.room.SkipQueryVerification
 import androidx.room.Transaction
 
 /**
- * v1.54: La base de conocimientos está fragmentada en Dao.
+ * v1.54: 知识库分块 Dao。
  *
- * v1.133 Transformación:
- *  - Nuevo [getAllWithEmbeddingBlob] / [getPageWithEmbeddingBlob]:Prioridad BLOB,Sin JSON de reserva de BLOB.
- *  - Nuevo [getByDocIds]:Filtrar por docId(Asistente de enlace KB/@mención para recuperación dirigida).
- *  - Los métodos de búsqueda ya no filtran internal(internal filtrar en [KnowledgeDocDao] Hecho en capas).
+ * v1.133 改造:
+ *  - 新增 [getAllWithEmbeddingBlob] / [getPageWithEmbeddingBlob]:优先 BLOB,无 BLOB fallback JSON。
+ *  - 新增 [getByDocIds]:按 docIds 过滤(助手绑定 KB / @mention 定向检索用)。
+ *  - 检索方法不再过滤 internal(internal 过滤在 [KnowledgeDocDao] 层做)。
  */
 @Dao
 interface KnowledgeChunkDao {
     /**
-     * P3-3: chunk Proyección ligera de metadatos (sin incrustar).
+     * P3-3: chunk 元数据轻量投影（不含 embedding）。
      *
-     * `KnowledgeChunkEntity` de `embedding` Si la columna no está vacía, verificar directamente algunas columnas generará un error de verificación de sala;
-     * El uso de la clase de proyección solo puede recuperar los campos requeridos, lo que realmente puede reducir el pico de memoria.
+     * `KnowledgeChunkEntity` 的 `embedding` 列非空，直接查部分列会触发 Room 校验错误；
+     * 用投影类才能只取需要的字段，真正降低峰值内存。
      */
     data class ChunkMetaProjection(
         val id: String,
@@ -37,8 +37,8 @@ interface KnowledgeChunkDao {
     suspend fun getByDoc(docId: String): List<KnowledgeChunkEntity>
 
     /**
-     * v1.133: Cargar todos los fragmentos con incrustaciones generadas(BLOB Prioridad,JSON compatibles).
-     * Condiciones:embedding_blob NOT NULL OR embedding != '' AND embedding != '[]'.
+     * v1.133: 加载全部已生成 embedding 的分块(BLOB 优先,JSON 兼容)。
+     * 条件:embedding_blob NOT NULL OR embedding != '' AND embedding != '[]'。
      */
     @Query(
         """
@@ -49,12 +49,12 @@ interface KnowledgeChunkDao {
     )
     suspend fun getAllWithEmbedding(): List<KnowledgeChunkEntity>
 
-    /** v1.133 Alias:Misma semántica [getAllWithEmbedding],Utilice nombres más específicos para el código nuevo. */
+    /** v1.133 别名:语义同 [getAllWithEmbedding],供新代码使用更明确的名字。 */
     suspend fun getAllWithEmbeddingBlob(): List<KnowledgeChunkEntity> = getAllWithEmbedding()
 
     /**
-     * v1.133: Fragmentos indexados filtrados por docIds(Asistente de enlace KB/@mención para recuperación dirigida).
-     * docIds Devuelve una lista vacía si está vacía(Evite escanear por error toda la tabla).
+     * v1.133: 按 docIds 过滤的已索引分块(助手绑定 KB / @mention 定向检索用)。
+     * docIds 为空时返回空列表(避免误全表扫)。
      */
     @Query(
         """
@@ -67,11 +67,11 @@ interface KnowledgeChunkDao {
     suspend fun getByDocIds(docIds: List<String>): List<KnowledgeChunkEntity>
 
     /**
-     * P2-33: Paginar por docIds para recuperar fragmentos indexados(Para búsqueda dirigida).
+     * P2-33: 按 docIds 分页取已索引分块(定向检索用)。
      *
-     * con [getByDocIds] Mismo filtro y clasificación(`created_at ASC`),pero impuesto por SQL LIMIT/OFFSET:
-     * búsqueda dirigida(@mention / Encuadernación auxiliar KB)Extraer por página de la base de datos,Evite fragmentar todo el rango de búsqueda
-     * Cargar la memoria una vez(antigua implementación `getByDocIds(...).drop().take()` amplificación de la memoria).
+     * 与 [getByDocIds] 同一过滤条件与排序(`created_at ASC`),但由 SQL 施加 LIMIT/OFFSET:
+     * 定向检索(@mention / 助手绑定 KB)在大库上按页拉取,避免把整个检索范围的分块
+     * 一次性载入内存(旧实现 `getByDocIds(...).drop().take()` 的内存放大)。
      */
     @Query(
         """
@@ -84,14 +84,14 @@ interface KnowledgeChunkDao {
     suspend fun getPageByDocIds(docIds: List<String>, limit: Int, offset: Int): List<KnowledgeChunkEntity>
 
     /**
-     * P2-31: Obtener fragmentos en lotes por fragmentId(Complemente los metadatos de contenido de las visitas exclusivas de BM25 durante la recuperación híbrida).
-     * ids Devuelve una lista vacía si está vacía. No requerido embedding(Sólo éxitos de FTS,Puede que no haya ningún vector).
+     * P2-31: 按 chunkId 批量取分块(混合检索时补齐 BM25-only 命中的内容元数据)。
+     * ids 为空时返回空列表。不要求有 embedding(仅 FTS 命中,可能无向量)。
      */
     @Query("SELECT * FROM knowledge_chunks WHERE id IN (:ids)")
     suspend fun getByIds(ids: List<String>): List<KnowledgeChunkEntity>
 
     /**
-     * M-KC1: Carga de página de fragmentos con incrustación generada(Para datos a gran escala).
+     * M-KC1: 分页加载已生成 embedding 的分块(大规模数据用)。
      */
     @Query(
         """
@@ -103,8 +103,8 @@ interface KnowledgeChunkDao {
     suspend fun getPageWithEmbedding(limit: Int, offset: Int): List<KnowledgeChunkEntity>
 
     /**
-     * B4-03: Consulta paginada con filtrado de metadatos.(docIds/tag/El rango de tiempo se reduce a SQLite).
-     * docIdsJson Sin filtrado cuando la matriz está vacía;tag Sin filtrado cuando está vacío;start/endTime Cuando es 0, no se realiza ningún filtrado.
+     * B4-03: 带 metadata 过滤的分页查询(docIds/tag/时间范围下推到 SQLite)。
+     * docIdsJson 为空数组时不过滤;tag 为空时不过滤;start/endTime 为 0 时不过滤。
      */
     @SkipQueryVerification
     @Query(
@@ -127,10 +127,10 @@ interface KnowledgeChunkDao {
         endTime: Long,
     ): List<KnowledgeChunkEntity>
 
-    /** v1.133 Alias:Misma semántica [getPageWithEmbedding]. */
+    /** v1.133 别名:语义同 [getPageWithEmbedding]。 */
     suspend fun getPageWithEmbeddingBlob(limit: Int, offset: Int): List<KnowledgeChunkEntity> = getPageWithEmbedding(limit, offset)
 
-    /** Elimine todos los fragmentos por ID de documento. */
+    /** 按文档 ID 删除全部分块。 */
     @Query("DELETE FROM knowledge_chunks WHERE doc_id = :docId")
     suspend fun deleteByDoc(docId: String)
 
@@ -140,7 +140,7 @@ interface KnowledgeChunkDao {
         insertAll(chunks)
     }
 
-    /** v1.133: Reindexación por lotes(Reindexación por lotes para trabajadores). */
+    /** v1.133: 批量重新索引(批量重索引 Worker 用)。 */
     @Transaction
     suspend fun reindexBatch(chunksByDoc: Map<String, List<KnowledgeChunkEntity>>) {
         chunksByDoc.forEach { (docId, chunks) ->
@@ -160,18 +160,18 @@ interface KnowledgeChunkDao {
     @Query("SELECT COUNT(*) FROM knowledge_chunks WHERE doc_id = :docId")
     suspend fun countByDoc(docId: String): Int
 
-    /** Proyección de números de fragmentos agregados por base de conocimientos. */
+    /** 按知识库聚合的分块数投影。 */
     data class ChunkCountByKb(
         @androidx.room.ColumnInfo(name = "kb_id") val kbId: String,
         @androidx.room.ColumnInfo(name = "chunk_count") val chunkCount: Int,
     )
 
     /**
-     * Calcular el número de bloques según la base de conocimientos.(Excluir documentos internos).
+     * 按知识库现算分块数(排除内部文档)。
      *
-     * Lo que quiere la descripción general de la base de conocimientos es "¿Cuántas piezas tiene realmente esta biblioteca ahora?" —— en la línea del documento `chunk_count` Se registra al escribir.,
-     * El número de bloques puede ser inconsistente con el número real después de que la reconstrucción falla o se interrumpe a mitad de camino.,Entonces cuenta las filas físicas. Las bibliotecas sin bloques no aparecen en los resultados,
-     * La persona que llama se trata como 0.
+     * 知识库一览要的是「这个库现在真有多少块」 —— 文档行上的 `chunk_count` 是写入时记录的,
+     * 重建失败或半途中断后可能与实际块数不一致,所以数实体行。没有块的库不出现在结果里,
+     * 调用方按 0 处理。
      */
     @Query(
         """
@@ -185,25 +185,25 @@ interface KnowledgeChunkDao {
     suspend fun countByKb(): List<ChunkCountByKb>
 
     /**
-     * P1-5(informe de auditoría): Estadísticas**no pertenece**El número de fragmentos de una colección de documentos determinada.
+     * P1-5（审计报告）: 统计**不属于**给定文档集合的 chunk 数量。
      *
-     * Para calcular un valor booleano de "si todos los documentos indexados están cubiertos", la implementación anterior llamaba `getAllWithEmbedding()`
-     * Lea el fragmento completo de la biblioteca junto con el BLOB incorporado en la memoria a la vez (1024 dimensión ≈ 4KB/bloque,
-     * 1 diez mil yuanes ≈ 40MB+), las máquinas de gama baja son propensas a OOM.
+     * 旧实现为了算一个「是否覆盖全部已索引文档」的布尔值，调 `getAllWithEmbedding()`
+     * 把全库 chunk 连同 embedding BLOB 一次性读进内存（1024 维 ≈ 4KB/块，
+     * 1 万块 ≈ 40MB+），低端机易 OOM。
      *
-     * Esta consulta devuelve el recuento directamente en la capa SQL.0 Es decir, "todo dentro del alcance" y cero sobrecarga de memoria.
+     * 本查询在 SQL 层直接返回计数，0 即「全在范围内」，零内存开销。
      */
     @Query("SELECT COUNT(*) FROM knowledge_chunks WHERE doc_id NOT IN (:docIds)")
     suspend fun countOutsideDocs(docIds: List<String>): Int
 
     /**
-     * P3-3(informe de auditoría): Lea el fragmento completo en las páginas (solo campos de metadatos, excluyendo la incrustación).
+     * P3-3（审计报告）: 分页读取全量 chunk（仅元数据字段，不含 embedding）。
      *
-     * Se utiliza para escenarios que requieren un recorrido completo pero no requieren vectores (como la reconstrucción de chunkMetaCache al inicio).
-     * Para implementación anterior `getAllWithEmbedding()` Recuperar todas las filas + incrustar BLOB a la vez,
-     * La memoria máxima es igual al tamaño total de la base de datos; después de la paginación, el valor máximo cae a una sola página.
+     * 用于需要全量遍历但不需要向量的场景（如启动时重建 chunkMetaCache）。
+     * 旧实现用 `getAllWithEmbedding()` 一次性取回全部行 + embedding BLOB，
+     * 峰值内存等于整库大小；分页后峰值降到单页。
      *
-     * El orden ascendente por ID de fila garantiza una paginación estable (no depende del orden de la clave principal).
+     * 按 rowid 升序保证分页稳定（不依赖主键顺序）。
      */
     @Query(
         "SELECT id, doc_id, content, chunk_index FROM knowledge_chunks ORDER BY rowid LIMIT :limit OFFSET :offset",
@@ -211,11 +211,11 @@ interface KnowledgeChunkDao {
     suspend fun getPageWithoutEmbedding(limit: Int, offset: Int): List<ChunkMetaProjection>
 
     /**
-     * v1.133: Obtenga la dimensión de incrustación del primer fragmento indexado en la biblioteca(BLOB longitud / 4).
-     * usado para [io.zer0.muse.rag.RagService.indexDocument] Comprobación de coherencia de dimensiones —
-     * Evitar que los usuarios cambien de modelo integrado después,Las dimensiones del nuevo documento no son coherentes con las del documento antiguo, lo que provoca que falle toda recuperación de vectores.
+     * v1.133: 取库中第一条已索引 chunk 的 embedding 维度(BLOB 长度 / 4)。
+     * 用于 [io.zer0.muse.rag.RagService.indexDocument] 维度一致性校验 —
+     * 防止用户切换 embedding 模型后,新文档维度与旧文档不一致导致向量检索全部失效。
      *
-     * Devolver nulo significa que no hay datos BLOB en la biblioteca(Todos los datos JSON antiguos o biblioteca vacía),La persona que llama debe omitir la verificación.
+     * 返回 null 表示库中无 BLOB 数据(全是旧 JSON 数据或空库),调用方应跳过校验。
      */
     @Query(
         """
@@ -229,7 +229,7 @@ interface KnowledgeChunkDao {
     @Query("DELETE FROM knowledge_chunks")
     suspend fun deleteAll()
 
-    /** v1.133: Eliminación por lotes por docIds en KB(Se utiliza al eliminar KB). */
+    /** v1.133: 按 KB 下的 docIds 批量删除(删 KB 时用)。 */
     @Query("DELETE FROM knowledge_chunks WHERE doc_id IN (:docIds)")
     suspend fun deleteByDocIds(docIds: List<String>)
 

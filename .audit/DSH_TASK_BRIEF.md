@@ -1,47 +1,47 @@
-# DSH Declaración de misión:Muse Revisión de planes de restauración para seguir adelante
+# DSH 任务书：Muse 审查修复计划推进
 
-> Este archivo es la especificación completa para el ejecutor dsh. Después de leer, siga estrictamente esta guía. Si se informa un error, continúe con el autodiagnóstico. No te detengas y esperes a los demás.
-> Cada vez que se completa un paso, el progreso se agrega a este directorio. `DSH_PROGRESS.md`.
+> 本文件是 dsh 执行器的完整任务书。读完严格按此执行，遇报错自行诊断继续，不停下等人。
+> 每完成一步把进度追加到本目录 `DSH_PROGRESS.md`。
 
-## papel
+## 角色
 
-Eres el ejecutor de reparaciones del proyecto Muse para Android, avanzando `.audit/REPORT_MASTER.md` Revisión del plan de reparación.
-Lea REPORT_MASTER.md primero y relacionado `.audit/REPORT_*.md` Informe por separado y luego ejecútelo de acuerdo con la lista a continuación.
+你是 Muse Android 项目的修复执行器，推进 `.audit/REPORT_MASTER.md` 里的审查修复计划。
+先读 REPORT_MASTER.md 和相关 `.audit/REPORT_*.md` 分报告，再按下面清单执行。
 
-## Fijo——No rehacer (git log comprobado)
+## 已修——不要重做（git log 已核对）
 
-1. Copia de seguridad de la carpeta de la base de conocimientos de datos F1/F2 (commit `764823a2`)
-2. A2A aislar sin cabeza (`92c2d1fa`, incluida la semántica del protocolo)
-3. Tasker cambiar+Limitación de frecuencia (`54c8224f`)
-4. Credenciales del sitio web oficial (`3d2cdedc`)
-5. CI F2 locale(values-en Ya `chat_token_estimated_cost`)
-6. CI F1 cjk puerta (`df740a6d`, cadena de registrador multilínea + recurso de transferencia codificado de OAuth, la puerta ha sido PASS)
-7. AI F1 supersede cursor(`787ca9cf`, incluidas las pruebas de regresión)
+1. 数据 F1/F2 知识库文件夹备份（commit `764823a2`）
+2. A2A 隔离 headless（`92c2d1fa`，含协议语义）
+3. Tasker 开关+限频（`54c8224f`）
+4. 官网凭据（`3d2cdedc`）
+5. CI F2 locale（values-en 已有 `chat_token_estimated_cost`）
+6. CI F1 cjk 闸门（`df740a6d`，多行 Logger 字符串 + OAuth 硬编码转资源，闸门已 PASS）
+7. AI F1 supersede 游标（`787ca9cf`，含回归测试）
 
-## Progreso actual: desde X1 (vdserver) empezar
+## 当前进度：从 X1（vdserver）开始
 
-## Lotes posteriores (en orden, salte reparado)
+## 后续批次（按序，跳过已修）
 
-- **AI F1**: supersede Reanudar el tiempo de carga (ChatToolLoopRunner.kt:869-871 Restablecer solo lastUiUpdateChars,lastPersistChars/lastNotifChars Retención, el contenido nuevo es más corto que el contenido antiguo y la limitación falla)
-- **X1**: vdserver waitFor() Sin tiempo de espera (ServerService.java:361/377)+ bloqueo completo
-- **UI F2/F3**: ChatToolResumeCoordinator:194/235 Perder y actualizar CAS;refreshDisplayedSessionFromDatabase:4601 recoger SessionSwitchGuard
-- **RAG F1**: BuiltInKnowledgeDocSeeder.ensureIndexed Suplemento de incrustación de comparación de huellas digitales de modelos (108-113)
-- **RAG F3**: guess Contaminación dimensional Huella digital HNSW
-- **canal F2**: Cinco receptores están permanentemente muertos sin autocuración (TelegramReceiver.kt:58,ChannelStore.load:27-29, inténtalo de nuevo/WorkManager detalles completos)
-- **datos**: B-34 La conciliación solo cuenta el número de líneas y no verifica la entrada en la base de datos (BackupService.kt:1007-1013)
-- **CI F3/F5/F7**: tag↔Gradle Sincronización de versiones,detekt cap libro mayor,.gitattributes Bloquear finales de línea de Kotlin
-- **NOTICE** Suplemento v2.5.x nuevas dependencias
+- **AI F1**: supersede 续传时序（ChatToolLoopRunner.kt:869-871 只重置 lastUiUpdateChars，lastPersistChars/lastNotifChars 滞留，新内容比旧短时节流失效）
+- **X1**: vdserver waitFor() 无超时（ServerService.java:361/377）+ 全锁
+- **UI F2/F3**: ChatToolResumeCoordinator:194/235 丢更新改 CAS；refreshDisplayedSessionFromDatabase:4601 接 SessionSwitchGuard
+- **RAG F1**: BuiltInKnowledgeDocSeeder.ensureIndexed 补 embeddingModel 指纹比对（108-113）
+- **RAG F3**: guess 维度污染 HNSW 指纹
+- **渠道 F2**: 五接收器永久死亡无自愈（TelegramReceiver.kt:58、ChannelStore.load:27-29，加重试/WorkManager 兜底）
+- **数据**: B-34 对账只数行数不验入库（BackupService.kt:1007-1013）
+- **CI F3/F5/F7**: tag↔Gradle 版本同步、detekt cap 台账、.gitattributes 锁 Kotlin 行尾
+- **NOTICE** 补 v2.5.x 新依赖
 
-## Disciplina (ley de hierro)
+## 纪律（铁律）
 
-1. `.audit/` Sólo se permite escribir en `DSH_PROGRESS.md`, el resto son de sólo lectura;`releases/` sin moverse
-2. Ejecute control de acceso total al final del lote `.\gradlew.bat :app:ktlintKotlinSourceCheck :app:detekt :app:testDebugUnitTest`(pwsh 7, redirigir para tomar `$LASTEXITCODE`)
-3. baseline Número de línea sensible: reconstrucción bajo demanda+diff Confirmar que no hay nuevas exenciones; A las nuevas violaciones se les dará prioridad para corregir el código y la estructura inherente. `@Suppress` exención por punto
-4. Compromiso de git independiente para cada reparación (`fix(scope)` + AUD número), exacto `git add`, prohibido `add -A`
-5. Corregir errores sin refactorizar;UI Copiar sincronización 7 idiomas strings*.xml(values/values-en/es/ja/ko/pt-rBR/ru)
-6. Sin embalaje, sin publicación, sin envío remoto, sin impresión tag
-7. git/gradle Si necesita exceder su autoridad, presente la solicitud directamente y el anfitrión lo dejará ir automáticamente.
+1. `.audit/` 里只允许写 `DSH_PROGRESS.md`，其余只读；`releases/` 不动
+2. 批次结束跑全量门禁 `.\gradlew.bat :app:ktlintKotlinSourceCheck :app:detekt :app:testDebugUnitTest`（pwsh 7，重定向取 `$LASTEXITCODE`）
+3. baseline 行号敏感：按需重建+diff 确认无新增豁免；新违规优先修代码，固有结构 `@Suppress` 按点豁免
+4. 每修一项独立 git commit（`fix(scope)` + AUD 编号），精确 `git add`，禁止 `add -A`
+5. 修 bug 不重构；UI 文案同步 7 语言 strings*.xml（values/values-en/es/ja/ko/pt-rBR/ru）
+6. 不打包、不发布、不推远端、不打 tag
+7. git/gradle 需要越权时直接申请，宿主自动放行
 
-## Estándares de finalización
+## 完成标准
 
-Una vez completados todos los lotes: ejecute el control de acceso total+La confirmación de prueba única es verde y el resumen de resultados (lo que se reparó)/Resultados de la verificación/lista sobrante).
+全部批次完成后：跑全量门禁+单测确认绿，输出总结（修了什么/验证结果/遗留清单）。

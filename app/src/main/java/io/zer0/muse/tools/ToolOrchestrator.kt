@@ -58,7 +58,7 @@ import java.io.File
 import kotlin.coroutines.coroutineContext
 import kotlin.uuid.Uuid
 
-/** Umbral de tiempo de espera de llamada de herramienta(2 minutos),Terminar después del tiempo de espera,Evite bloquear la salida de streaming. */
+/** 工具调用超时阈值(2 分钟),超时则终止,避免阻塞流式输出。 */
 internal const val TOOL_TIMEOUT_MS = 120_000L
 
 /**
@@ -128,104 +128,104 @@ internal object ToolExecutionTimeoutPolicy {
 internal const val TOOL_OUTPUT_INLINE_FALLBACK_CHARS = 32 * 1024
 private const val SMALL_TOOL_RESULT_INLINE_CHARS = 4 * 1024
 
-/** La cantidad de caracteres de vista previa proporcionados con la referencia completa del archivo después de que se haya excedido el presupuesto de contexto restante para la ronda actual. */
+/** 超出当前轮剩余上下文预算后，随完整文件引用提供的预览字符数。 */
 internal const val TOOL_RESULT_PREVIEW_CHARS = 4 * 1024
 
 /** Suggested character page size for reading a saved tool output. */
 internal const val TOOL_OUTPUT_READ_PAGE_CHARS = 64 * 1024
 
-/** ¿Cuánto tiempo se deben conservar los archivos de salida de la herramienta?(milisegundos),después de exceder [cleanupOldToolOutputs] Limpiar. */
+/** 工具输出文件保留时长(毫秒),超过后由 [cleanupOldToolOutputs] 清理。 */
 internal const val TOOL_OUTPUT_RETENTION_MS = 24L * 60 * 60 * 1000
 
-/** Subdirectorio de almacenamiento de archivos de salida de herramientas(Ubicado en filesDir),suministro [ToolOrchestrator] con [cleanupOldToolOutputs] Compartir. */
+/** 工具输出文件存储子目录(位于 filesDir 下),供 [ToolOrchestrator] 与 [cleanupOldToolOutputs] 共享。 */
 internal const val TOOL_OUTPUTS_DIR = "tool_outputs"
 
 /**
- * Phase 3: Tiempo de espera de colocación del disco de salida de herramienta(milisegundos).
+ * Phase 3: 工具输出落盘超时(毫秒)。
  *
- * La colocación es"El resultado completo se puede leer con read_file"camino de mejora,No es el resultado de la herramienta en sí;
- * tiempo de espera(o escribir excepción)Mantener el texto original completo en la memoria y mantener registros.,Nunca permita que el disco IO bloquee un bucle de herramienta indefinidamente.
+ * 落盘是"完整输出可被 read_file 读取"的增强路径,不是工具结果本身;
+ * 超时(或写入异常)时保留完整内存原文并记日志,绝不能让磁盘 IO 无限阻塞工具循环。
  */
 internal const val TOOL_OUTPUT_WRITE_TIMEOUT_MS = 5_000L
 
 /**
- * Phase 3: Cambio de simultaneidad limitada de herramientas de solo lectura(interruptor constante,Desactivado de forma predeterminada = conservador).
+ * Phase 3: 只读工具有限并发开关(常量开关,默认关闭 = 保守)。
  *
- * Mantiene la semántica de ejecución en serie del B-38 cuando está cerrado.(Ejecutar llamadas a herramientas una por una en la misma ronda,Cero cambios de comportamiento);
- * Presione cuando la herramienta esté abierta y toda la rueda sea de solo lectura [READ_ONLY_TOOL_MAX_PARALLELISM] Ejecución concurrente,
- * Los resultados todavía se reponen en el orden de llamada de herramienta original. escribir/Los efectos secundarios externos se serializan en todos los casos.
- * Los usuarios pueden activarlo o desactivarlo con un clic a través de paraleloReadOnlyTools en la "Función experimental"(ver [ExperimentsConfig.parallelReadOnlyTools]).
+ * 关闭时保持 B-38 的串行执行语义(同轮 tool-call 逐个执行,零行为变化);
+ * 打开且整轮均为只读工具时按 [READ_ONLY_TOOL_MAX_PARALLELISM] 并发执行,
+ * 结果仍按原始 tool-call 顺序回填。写入/外部副作用工具任何情况下都串行。
+ * 用户可经「实验功能」的 parallelReadOnlyTools 一键打开或关闭(见 [ExperimentsConfig.parallelReadOnlyTools])。
  *
- * Rectificación y revisión(2026-09-20):Previamente habilitado de forma predeterminada,Sin embargo, el tiempo de ejecución concurrente solo se ha probado de una sola manera y no hay verificación del estado del dispositivo.,
- * Es incompatible con el plan "conservador por defecto, habilitado explícitamente por el usuario",Por lo tanto, el interruptor real se cambia a
- * [ExperimentsConfig.parallelReadOnlyTools](Predeterminado false = de serie)control.
- * esta reparación:Esta constante estaba previamente codificada false,Estará en [shouldExecuteRoundInParallel] cortocircuito por adelantado,
- * Inundar directamente el interruptor experimental del usuario —— Ahora sólo significa“Funciones disponibles”(true),El interruptor real se devuelve al usuario.
+ * 整改复核(2026-09-20):此前默认开启,但并发执行时序只做过单测、没有设备态验证,
+ * 与计划书「默认保守、由用户显式开启」不符,故实际开关改为由
+ * [ExperimentsConfig.parallelReadOnlyTools]（**默认 true = 只读工具并发，上限 3**；写工具始终串行）控制。
+ * 本次修复:该常量此前硬编码 false,会在 [shouldExecuteRoundInParallel] 里提前短路,
+ * 直接把用户的实验开关淹掉 —— 现在它只表示“特性可用”(true),真正的开关交回用户。
  */
 internal const val PARALLEL_READ_ONLY_TOOLS_ENABLED_DEFAULT = true
 
-/** Phase 3: Límite de simultaneidad de herramientas de solo lectura(Simultaneidad limitada,Evite romper la red/Límite actual del lado del servidor). */
+/** Phase 3: 只读工具并发上限(有限并发,避免打爆网络/服务端限流)。 */
 internal const val READ_ONLY_TOOL_MAX_PARALLELISM = 3
 
 /**
- * Phase 3: Categoría de ejecución de herramienta — Determine si se permite la concurrencia con otras herramientas en la misma ronda.
+ * Phase 3: 工具执行类别 — 决定同轮内是否允许与其它工具并发。
  *
- * solo lectura/Las herramientas idempotentes no tienen efectos secundarios compartidos,Posible simultaneidad limitada;escribir/herramientas de efectos secundarios externos(y todas las herramientas desconocidas)
- * debe ser serial,Garantice el orden de las llamadas y la visibilidad de los efectos secundarios.
+ * 只读/幂等工具无共享副作用,可有限并发;写入/外部副作用工具(以及所有未知工具)
+ * 必须串行,保证调用顺序与副作用可见性。
  */
 internal enum class ToolExecCategory {
-    /** solo lectura/idempotente:Es posible una concurrencia limitada. */
+    /** 只读/幂等:可有限并发。 */
     READ_ONLY,
 
-    /** escribir/efectos secundarios externos/desconocido:Debe estar serializado. */
+    /** 写入/外部副作用/未知:必须串行。 */
     SERIAL,
 }
 
 /**
- * Phase 3: Lista blanca de herramientas de solo lectura(enumeración conservadora).
+ * Phase 3: 只读工具白名单(保守枚举)。
  *
- * Registre únicamente herramientas de consulta que seguramente no tendrán efectos secundarios externos;Herramienta no registrada(Contiene habilidades personalizadas/MCP/futuras nuevas herramientas)
- * Presione siempre [ToolExecCategory.SERIAL] Proceso,Evite efectos secundarios desconocidos y condiciones de carrera simultáneas.
+ * 仅登记确定无外部副作用的查询类工具;未登记的工具(含自定义 skill / MCP / 未来新工具)
+ * 一律按 [ToolExecCategory.SERIAL] 处理,避免未知副作用并发竞态。
  */
 private val READ_ONLY_TOOL_NAMES: Set<String> =
     setOf(
-        // Cálculo básico/consulta de estado
+        // 基础计算 / 状态查询
         "get_current_time", "calculator", "echo", "current_status", "get_token_usage",
-        // red de solo lectura(Buscar / Rastrear / Clima / DNS)
+        // 网络只读(搜索 / 抓取 / 天气 / DNS)
         "web_search", "web_fetch", "get_weather", "get_public_ip", "ping_host", "dns_lookup", "translate",
-        // Información del dispositivo/sistema
+        // 设备 / 系统信息
         "get_device_info", "get_battery_info", "get_network_info", "get_storage_info", "get_memory_info",
         "get_display_info", "get_cpu_info", "get_sensors_list", "get_foreground_app", "get_wifi_info",
         "get_bluetooth_devices", "get_brightness", "get_volume", "get_location",
         "get_contacts_count", "get_contacts_list", "get_recent_notifications", "screen_time",
         "calendar_today", "get_calendar_today", "list_installed_apps", "list_reminders",
         "list_stickers", "list_skills",
-        // Archivo de solo lectura
+        // 文件只读
         "read_file", "read_public_file", "list_public_files", "list_dir",
-        // Memoria/Base de datos/Notas Sólo lectura
+        // 记忆 / 资料库 / 笔记只读
         "search_memory", "recall_experience", "resource_list", "resource_search", "resource_get",
         "quick_note_list", "quick_note_get", "quick_note_search",
         "scheduled_task_list", "scheduled_task_get_history",
-        // v2.6.2: Solo lectura entre sesiones (hojear otras sesiones)
+        // v2.6.2: 跨会话只读（翻看其他会话）
         "session_list", "session_read",
-        // Asistencia informática puramente local
+        // 纯本地计算辅助
         "json_pretty", "hash_text", "generate_uuid", "random_number", "base64_decode", "url_decode",
         "generate_password",
-        // pantalla de solo lectura(No incluye capturas de pantalla/clics/entradas ni otros efectos secundarios)
+        // 屏幕只读(不含截图 / 点击 / 输入等副作用)
         "ui_get_page_info", "ui_get_current_app", "screen_read", "screen_current_app", "screen_permission_status",
     )
 
-/** Phase 3: Determinar la categoría de ejecución de la herramienta.;Las herramientas desconocidas siempre están serializadas.([ToolExecCategory.SERIAL]). */
+/** Phase 3: 判定工具执行类别;未知工具一律串行([ToolExecCategory.SERIAL])。 */
 internal fun classifyToolExecution(toolName: String): ToolExecCategory =
     if (toolName in READ_ONLY_TOOL_NAMES) ToolExecCategory.READ_ONLY else ToolExecCategory.SERIAL
 
 /**
- * v2.6.2(auditoría de usuario): Convierta el parámetro de herramienta JsonObject en un mapa para aprobación de gancho/parametrizado.
+ * v2.6.2（用户审计）: 把工具参数 JsonObject 转为 hook / 参数化审批用的 Map。
  *
- * Tiene el mismo origen que la ruta de análisis de ToolRegistry.executeFromJson (ambos pasan parseArgumentsLenient primero),
- * y conservar el tipo original JSON: cadena→String, booleano→Boolean, números→Long/Double,
- * Objetos anidados/matriz→JSON texto. La implementación anterior siempre toma .content para JsonPrimitive.
- * pon los numeros/Todos los valores booleanos se convierten en cadenas, lo que hace que la política de parámetros sea inconsistente con el comportamiento de la ruta de ejecución cuando se determina por tipo.
+ * 与 ToolRegistry.executeFromJson 的解析路径同源（都先过 parseArgumentsLenient），
+ * 并保留 JSON 原始类型：字符串→String，布尔→Boolean，数字→Long/Double，
+ * 嵌套对象/数组→JSON 文本。旧实现对 JsonPrimitive 一律取 .content，
+ * 把数字/布尔都变成字符串，导致参数策略按类型判定时与执行路径行为不一致。
  */
 internal fun toolArgsToMap(obj: JsonObject): Map<String, Any> = obj.mapValues { (_, v) ->
     when (v) {
@@ -240,8 +240,8 @@ internal fun toolArgsToMap(obj: JsonObject): Map<String, Any> = obj.mapValues { 
 }
 
 /**
- * Phase 3: Implementación del disco de escritura predeterminado de salida de herramienta(IO Sobrescribir hilo).
- * Uso fijo de enlaces de producción.;Una sola prueba puede inyectar una escritura lenta/Lanzar sustitutos de error para tiempos de espera de validación deterministas y rutas de degradación.
+ * Phase 3: 工具输出默认写盘实现(IO 线程覆盖写)。
+ * 生产链路固定使用;单测可注入慢写/抛错替身以确定性验证超时与降级路径。
  */
 private val DEFAULT_TOOL_OUTPUT_WRITER: suspend (File, String) -> Unit = { file, content ->
     withContext(Dispatchers.IO) { file.writeText(content) }
@@ -256,26 +256,26 @@ private val DEFAULT_TOOL_OUTPUT_WRITER: suspend (File, String) -> Unit = { file,
  */
 internal const val MAX_TOOL_CHAIN_MESSAGES = Int.MAX_VALUE
 
-/** v1.x: tareas simples(Ninguno task_plan)El número máximo predeterminado de rondas. */
+/** v1.x: 简单任务(无 task_plan)的默认最大轮次。 */
 internal const val DEFAULT_MAX_TOOL_ROUNDS = 10
 
-/** v1.x: Límite superior absoluto para bucles de llamada de herramientas(Bolsillo de circulación anti-muertos),No importa cuántos pasos de task_plan haya, no se excederá este valor. */
+/** v1.x: 工具调用循环绝对上限(防死循环兜底),即使 task_plan 步骤再多也不超过此值。 */
 internal const val MAX_TOOL_ROUNDS_HARD_CAP = 25
 
-/** v2.x: Valor centinela para rondas ilimitadas(Se utiliza cuando se libera la configuración del usuario.;llamadas repetidas/atascado/La protección del presupuesto, como por ejemplo fallos consecutivos, no se ve afectada.). */
+/** v2.x: 无限制轮次的哨兵值(用户设置放开时使用;重复调用/卡死/连续失败等预算保护不受影响)。 */
 internal const val UNLIMITED_TOOL_ROUNDS = Int.MAX_VALUE
 
-/** Los resultados de la herramienta retroceden antes del mensaje.,La cantidad máxima de tiempo que pueden tardar los registros de puntos de interrupción de limpieza. */
+/** 工具结果落回消息前,清理断点记录允许占用的最长时间。 */
 private const val PENDING_TOOL_CLEANUP_TIMEOUT_MS = 2_000L
 
 /**
- * Parámetros de entrada para solicitudes de transmisión de LLM de ronda única.
+ * 单轮 LLM 流式请求的输入参数。
  *
- * @param round ronda actual(empezar desde 1)
- * @param history El historial de conversaciones que se enviará en esta ronda.(Prefijo del sistema y resultados de herramientas incluidos.)
- * @param currentAssistantId El marcador de posición actual para el mensaje del asistente. id
- * @param builder assistant acumulador de texto
- * @param reasoningBuilder assistant reasoning/think acumulador
+ * @param round 当前轮次(从 1 开始)
+ * @param history 本轮要发送的对话历史(已含 system prefix 和工具结果)
+ * @param currentAssistantId 当前占位 assistant 消息的 id
+ * @param builder assistant 正文累积器
+ * @param reasoningBuilder assistant reasoning/think 累积器
  */
 data class StreamRoundParams(
     val round: Int,
@@ -283,50 +283,50 @@ data class StreamRoundParams(
     val currentAssistantId: Uuid,
     val builder: StringBuilder,
     val reasoningBuilder: StringBuilder,
-    // v1.0.1 (P4): Recuento de reintentos de transmisión por ronda de invocación de herramienta,Se incrementa cuando se llama a streamRound de forma recursiva.
-    //   El contador original se declara fuera de launchStream.,Compartido en todas las rondas de herramientas,Como resultado, las rondas siguientes no se pueden volver a intentar una vez agotada la primera ronda.
-    //   Cada ronda es independiente después de pasar a los parámetros.,Y el reintento recursivo pasa. copy(retryCount = ...) aprobar.
+    // v1.0.1 (P4): 每轮工具调用的流式重试计数,递归调用 streamRound 时递增。
+    //   原计数器声明在 launchStream 外层,跨所有 tool round 共享,导致第 1 轮耗尽后后续轮次无法重试。
+    //   移入 params 后每轮独立,且递归重试通过 copy(retryCount = ...) 传递。
     val retryCount: Int = 0,
     /**
-     * v1.0.17: StreamInterrupted Logotipo de currículum inteligente — true Al omitir constructor/razonamientoBuilder clear().
+     * v1.0.17: StreamInterrupted 智能续传标志 — true 时跳过 builder/reasoningBuilder 的 clear()。
      *
-     * Escenarios aplicables:La red fue interrumpida después de recibir algún contenido.(StreamInterrupted),Vuelva a intentarlo después de la recuperación de la red.,
-     * Vuelva a enviar el mensaje completo pero conserve parte del contenido mostrado,UI Solo agregar contenido nuevo(No vuelvas a la primera palabra.).
+     * 适用场景:已收部分内容后网络中断(StreamInterrupted),网络恢复后重试,
+     * 重新发完整 prompt 但保留已显示的部分内容,UI 仅追加新内容(不闪回到首字)。
      *
-     * Nota:Esta bandera solo controla si el acumulador se borra;B3-03 El contenido mostrado ha sido tratado como resumeFromText
-     * inyectar en ChatService,Se utiliza como mensaje final del asistente al reintentar para permitir que el modelo continúe donde lo dejó.,Evite reconstruir desde cero.
+     * 注意:此标志仅控制是否清空累积器;B3-03 已把已显示内容作为 resumeFromText
+     * 注入到 ChatService,重试时作为末尾 assistant 消息让模型从中断处继续,避免从头重生成。
      */
     val preservePartialContent: Boolean = false,
-    /** Provider Conmutador de búsqueda de red nativo; cuando esté habilitada, la herramienta web_search local no se enviará en esta ronda. */
+    /** Provider 原生联网搜索开关；启用时本轮不发送本地 web_search 工具。 */
     val nativeWebSearch: Boolean = false,
     /**
-     * Revisión de corrección (2.0 A-01): Forzar el uso del modelo principal para volver a ejecutar la ronda. — toolModel rueda(round>1)Si sale directamente
-     * respuesta final(Ninguno toolCalls),Demuestra que esta ronda es en realidad"ronda de respuesta final",Por ChatViewModel con esta bandera
-     * Volver a ejecutar una ronda de forma recursiva,Se garantiza que la respuesta final será generada por el modelo maestro. Después de configurar isToolRound, se determina que está en cortocircuito.,
-     * La segunda ronda suplementaria ya no se activará.(Prevenir la recursividad infinita).
+     * 审查修复 (2.0 A-01): 强制使用主模型重跑本轮 — toolModel 轮(round>1)若直接产出
+     * 最终答复(无 toolCalls),说明本轮实为"最终回复轮",由 ChatViewModel 以该标志
+     * 递归重跑一轮,保证最终答复由主模型输出。置位后 isToolRound 判定被短路,
+     * 不会再触发二次补轮(防无限递归)。
      */
     val forceMainModel: Boolean = false,
     /**
-     * La ronda final después de que la herramienta falla continuamente: fuerce no exponer ninguna herramienta, deje que el modelo principal se base en el ya completado
-     * TOOL El resultado es una respuesta final visible para el usuario.
+     * 工具连续失败后的收尾轮：强制不暴露任何工具，让主模型基于已经回填的
+     * TOOL 结果生成用户可见的最终答复。
      */
     val forceFinalResponse: Boolean = false,
 )
 
 /**
- * Resultados de una única ronda de solicitudes de transmisión de LLM.
+ * 单轮 LLM 流式请求的结果。
  */
 sealed class StreamRoundResult {
     /**
-     * La transmisión finalizó exitosamente.
+     * 流式成功结束。
      *
-     * @param assistantMessage El mensaje del asistente finalizado.(Contiene toolCalls,si hay)
-     * @param hasToolCalls Si se generó una llamada de herramienta en esta ronda
-     * @param contentLength El número de caracteres en el texto asistente de esta ronda.(para estadísticas de rendimiento)
-     * @param firstTokenTime Hora del sistema a la que llega el primer token,Si no ha llegado es 0
-     * @param toolCallsTruncated Los argumentos para esta ronda de llamadas a herramientas se truncan por el límite superior de la longitud de salida.
-     *   Los parámetros incompletos no se analizan ni ejecutan.,Haga que el orquestador complete un error explícito para cada llamada tool result,
-     *   Deje que el modelo vea el motivo en el mismo contexto y vuelva a emitir la llamada completa.
+     * @param assistantMessage 最终 finalized 的 assistant 消息(含 toolCalls,如果有)
+     * @param hasToolCalls 本轮是否产生了工具调用
+     * @param contentLength 本轮 assistant 正文字符数(用于性能统计)
+     * @param firstTokenTime 首 token 到达时的系统时间,未到达则为 0
+     * @param toolCallsTruncated 本轮 tool_calls 的 arguments 被输出长度上限截断。
+     *   残缺参数既不解析也不执行,由编排器为每个调用回填一条明确的错误 tool result,
+     *   让模型在同一份上下文里看到原因并重发完整调用。
      */
     data class Success(
         val assistantMessage: UIMessage,
@@ -338,12 +338,12 @@ sealed class StreamRoundResult {
     ) : StreamRoundResult()
 
     /**
-     * La transmisión falló(red/Limitación de corriente/API Errores etc,y ha agotado los reintentos automáticos).
+     * 流式失败(网络/限流/API 错误等,且已耗尽自动重试)。
      *
-     * @param type Tipo de error
-     * @param message Mensajes de error fáciles de usar
-     * @param partialContent Parte del texto recibido.
-     * @param partialReasoning Parte recibida reasoning
+     * @param type 错误类型
+     * @param message 用户友好错误消息
+     * @param partialContent 已接收的部分正文
+     * @param partialReasoning 已接收的部分 reasoning
      */
     data class Error(
         val type: ChatErrorType,
@@ -354,40 +354,40 @@ sealed class StreamRoundResult {
 }
 
 /**
- * v2.x: cadena de herramientas"reconstrucción local"Marca visible después.
+ * v2.x: 工具链被"本地重建"后的可见标记。
  *
- * Visible para el usuario (puede ver que este párrafo se ha ordenado en el flujo de conversación) e informar al modelo al mismo tiempo."Se han descartado las llamadas de herramientas y los resultados más antiguos.",
- * Evite que piense que esos resultados siguen ahí y siga haciendo referencia a ellos.
+ * 用户可见（能在对话流里看出这一段被整理过），同时告知模型"更早的工具调用与结果已被丢弃"，
+ * 避免它以为那些结果还在、继续引用它们。
  */
 internal const val TRUNCATED_TOOL_CHAIN_MARKER: String =
-    "(Las llamadas a herramientas anteriores y los resultados se han organizado y omitido.,Sólo se conservan los más recientes; si necesita volver a obtenerlos, llame nuevamente a la herramienta correspondiente.)"
+    "(较早的工具调用与结果已整理省略,仅保留最近若干条；如需重新获取请再次调用对应工具)"
 
 /**
- * v2.x: Determina cuántos mensajes finales debe retener la cadena de herramientas (0 significa descartar todo).
+ * v2.x: 决定工具链该保留多少条尾部消息（0 表示全部丢弃）。
  *
- * Determine únicamente basándose en el presupuesto de token conocido:
- *  1. **ventana desconocida**: Descartar el historial de herramientas sin personalizar la cantidad de elementos por aplicación;
- *  2. **Presupuesto simbólico conocido**: Los tokens acumulados exceden [budgetTokens] , presione"Deje la mitad del presupuesto para el último final"
- *     Calculo que todavía quedan algunos. —— protegerse contra"No hay muchas rondas, pero sí grandes resultados para cada entrada."(Registros, archivos grandes, textos largos de páginas web).
+ * 仅按已知 token 预算判定：
+ *  1. **未知窗口**：不按应用自定条数丢弃工具历史；
+ *  2. **已知 token 预算**：累计 token 超过 [budgetTokens] 时，按"留一半预算给最新尾部"
+ *     估算还能留几条 —— 防"轮次不多但每条结果巨大"（日志、大文件、长网页正文）。
  *
- * Esta es una reconstrucción local sin solicitudes: sin ajuste del modelo, sin dependencia de la red y, en el peor de los casos, se puede enviar la ronda actual de solicitudes.
+ * 这是零请求的本地重建：不调模型、不依赖网络，最坏情况下也能让本轮请求发得出去。
  *
- * @param chainSize Número de mensajes de la cadena de herramientas (excluyendo el contexto inicial)
- * @param chainTokens Estimación del token de la cadena de herramientas ([budgetTokens] <= 0 El que llama pasa 0)
- * @param budgetTokens Presupuesto de contexto disponible para esta ronda;<= 0 Indica que el anfitrión no puede proporcionarlo y solo se determina la cantidad de elementos.
+ * @param chainSize 工具链消息条数（不含初始上下文）
+ * @param chainTokens 工具链的 token 估算（[budgetTokens] <= 0 时调用方传 0）
+ * @param budgetTokens 本轮可用上下文预算；<= 0 表示宿主无法提供，只做条数判定
  */
 internal fun toolChainTailToKeep(chainSize: Int, chainTokens: Int, budgetTokens: Int): Int {
     val byCount = minOf(chainSize, MAX_TOOL_CHAIN_MESSAGES)
     val noBudgetSignal = budgetTokens <= 0 || chainTokens <= 0
     val withinHalfBudget = chainTokens <= budgetTokens / 2
-    // prensa**Tamaño de barra promedio medido**Valor estimado, no fijo: resultado único muy grande (registro de cientos de miles de tokens)
-    // Usando un token/artículo fijo de 50 para calcular, obtendremos"Todavía quedan miles"La conclusión absurda fue que la ventana seguía rota.
+    // 按**实测平均条大小**估算，而不是固定值：单条超大结果（几十万 token 的日志）
+    // 用固定 50 token/条去算会得出"还能留上千条"的荒谬结论，窗口照样被撞爆。
     val perMessageTokens = if (chainSize > 0) (chainTokens / chainSize).coerceAtLeast(1) else 1
     val byBudget = (budgetTokens / 2) / perMessageTokens
     return when {
         chainSize <= 0 -> 0
         noBudgetSignal || withinHalfBudget -> byCount
-        // Deja al menos 1: Perderlos todos hará que el modelo sea completamente invisible."¿Qué pasó en esa llamada de hace un momento?", peor que dejar uno más.
+        // 至少留 1 条：全丢会让模型完全看不到"刚才那次调用发生了什么"，比多留一条更糟。
         else -> minOf(byCount, maxOf(1, byBudget))
     }
 }
@@ -407,29 +407,29 @@ internal fun canInlineToolOutput(outputLength: Int, estimatedTokens: Int, inline
 }
 
 /**
- * La devolución de llamada del host para el bucle de llamada de la herramienta.
+ * 工具调用循环的宿主回调。
  *
- * por [ChatViewModel] darse cuenta,Responsable de solicitudes de streaming reales,UI Actualizaciones, aprobaciones de herramientas, etc.
- * [ToolOrchestrator] Solo organiza rondas,Sin manipulación directa de la interfaz de usuario.
+ * 由 [ChatViewModel] 实现,负责真正的流式请求、UI 更新、工具审批等。
+ * [ToolOrchestrator] 只编排轮次,不直接操作 UI。
  */
 interface ToolLoopHost {
     /**
-     * Ejecute una ronda de solicitudes de transmisión de LLM y devuelva los resultados.
+     * 执行一轮 LLM 流式请求并返回结果。
      *
-     * Necesidades de implementación:
-     *  - llamar chatService.streamChat
-     *  - recoger ContentDelta / ReasoningDelta / ToolCallDelta / ImageDelta
-     *  - actualizaciones en tiempo real UI(acelerador)
-     *  - Manejo de reintentos automáticos NETWORK/RATE_LIMIT
-     *  - finalize assistant noticias(mood/reflection/think Extracto)
-     *  - La devolución contiene/mensaje asistente sin herramientaLlamadas
+     * 实现方需要:
+     *  - 调用 chatService.streamChat
+     *  - 收集 ContentDelta / ReasoningDelta / ToolCallDelta / ImageDelta
+     *  - 实时更新 UI(节流)
+     *  - 处理 NETWORK/RATE_LIMIT 自动重试
+     *  - finalize assistant 消息(mood/reflection/think 提取)
+     *  - 返回含/不含 toolCalls 的 assistant 消息
      */
     suspend fun streamRound(params: StreamRoundParams): StreamRoundResult
 
     /**
-     * Solicitar llamada a la herramienta de aprobación del usuario,Cuelgue hasta que el usuario tome una decisión.
+     * 请求用户审批工具调用,挂起直到用户做出决定。
      *
-     * @param args v1.0.53: Parámetros completos de la herramienta,Para la determinación de permisos parametrizada(con valor predeterminado,Las implementaciones antiguas no se ven afectadas)
+     * @param args v1.0.53: 完整工具参数,供参数化权限判定(带默认值,旧实现不受影响)
      */
     suspend fun requestToolApproval(
         toolName: String,
@@ -439,83 +439,90 @@ interface ToolLoopHost {
     ): ToolApprovalState
 
     /**
-     * Devolución de llamada cuando ocurre un error no fatal dentro del ciclo de llamada de la herramienta(Si la ubicación de la base de datos falla).
+     * 工具调用循环内部发生非致命错误时回调(如 DB 落盘失败)。
      */
     fun onToolLoopError(type: ChatErrorType, message: String, recoverable: Boolean = true)
 
     /**
-     * v1.x: Devolución de llamada cuando una sola herramienta comienza a ejecutarse(Se puede utilizar para indicaciones de progreso de la interfaz de usuario./Iniciar sesión).
+     * v1.x: 单个工具开始执行时回调(可用于 UI 进度提示/日志)。
      *
-     * Implementación vacía predeterminada,Anulaciones opcionales del host,Para notificaciones de progreso detalladas.
+     * 默认空实现,宿主可选覆盖,用于细粒度进度通知。
      */
     fun onToolStart(toolCallId: String, toolName: String) {}
 
     /**
-     * v2.6.7: Canales de dispositivo actualmente listos(Accesibilidad/Shell/Root/Uso/Aviso de derechos de uso…).
+     * v2.6.7: 当前已就绪的设备通道(无障碍/Shell/Root/使用情况/通知使用权…)。
      *
-     * El orquestador lo utiliza para realizar una verificación previa antes de ejecutar la herramienta.,Bloquear "llamadas condenadas" antes de la ejecución,
-     * Y proporcione pautas ejecutables sobre "qué abrir en la configuración" —— En lugar de dejar que la herramienta golpee la pared y devuelva una frase
-     * Errores que ni el modelo ni el usuario pueden entender.
+     * 编排器在真正执行工具前用它做一次预检,把「注定失败的调用」挡在执行之前,
+     * 并给出「去设置里开什么」的可执行指引 —— 而不是让工具撞墙后返回一句
+     * 模型和用户都读不懂的错误。
      *
-     * Devolver un conjunto vacío de forma predeterminada significa "el anfitrión no proporcionó información del canal",Saltar verificación previa en este momento(mantener el comportamiento original),
-     * Evite hosts que no implementen este método(Subagentes, tareas programadas, etc.)Se calculó erróneamente que todos los canales no están disponibles.
+     * 默认返回空集表示「宿主未提供通道信息」,此时跳过预检(维持原行为),
+     * 避免不实现该方法的宿主(子代理、定时任务等)被误判成所有通道都不可用。
      */
     suspend fun availableDeviceChannels(): Set<ToolRequirements.Channel>? = null
 
     /**
-     * v1.x: Devolución de llamada final de ejecución de una sola herramienta.
+     * 自动化总闸是否打开。默认 true（跳过判断），由宿主按设置实现。
      *
-     * @param success ¿Tiene éxito?(Juicio basado en los resultados de la herramienta.)
-     * @param durationMs Tiempo de ejecución de la herramienta(milisegundos,Incluye aprobación pendiente)
-     * Implementación vacía predeterminada,Anulación opcional del host.
+     * 放在**审批之前**用：闸关时不该先弹一次审批再拒绝 —— 那等于白打扰用户一次。
+     */
+    suspend fun automationEnabled(): Boolean = true
+
+    /**
+     * v1.x: 单个工具执行结束回调。
+     *
+     * @param success 是否成功(按工具结果判定)
+     * @param durationMs 工具执行耗时(毫秒,含审批等待)
+     * 默认空实现,宿主可选覆盖。
      */
     fun onToolFinish(toolCallId: String, toolName: String, success: Boolean, durationMs: Long) {}
 
     /**
-     * v2.x: El presupuesto de token de contexto disponible para esta ronda (0 O un número negativo significa que el anfitrión no puede proporcionarlo y el orquestador no determina el token).
+     * v2.x: 本轮可用的上下文 token 预算（0 或负数表示宿主无法提供，编排器不做 token 判定）。
      *
-     * Por qué lo necesita: el truncamiento de la cadena de herramientas antes solo se veía**Número de artículos**([MAX_TOOL_CHAIN_MESSAGES]),
-     * Sin embargo, algunos resultados de herramientas extremadamente grandes pueden hacer estallar la ventana dentro del límite numérico. —— No hay posibilidad de compresión durante la generación.
-     * El anfitrión conoce la ventana y la reserva del modelo actual. Sólo se solicita una vez y no depende de la implementación del host.
+     * 为什么需要它：工具链截断此前只看**条数**（[MAX_TOOL_CHAIN_MESSAGES]），
+     * 但几条超大工具结果就能在条数限额内把窗口撞爆 —— 而生成中途没有压缩机会。
+     * 宿主掌握当前模型的窗口与预留量，这里只问一次、不反向依赖宿主实现。
      *
-     * De forma predeterminada, se devuelve 0 (no se realiza ningún juicio), lo que garantiza que no es necesario cambiar la implementación existente.
+     * 默认返回 0（不做判定），保证现有实现不需要改动。
      */
     fun contextBudgetTokens(): Int = 0
 
     /**
-     * Toma las palabras (interjecciones) emitidas por el usuario mientras se ejecuta la cadena de herramientas.
+     * 取用户在工具链运行期间发出的话（插话）。
      *
-     * Se llama al orquestador una vez "después de que se hayan completado todos los resultados de esta ronda de herramientas y antes de que se envíe la siguiente ronda de solicitudes", y cada texto devuelto se
-     * Se adjunta después del resultado de la herramienta como un nuevo mensaje de USUARIO. ejecutando/Las herramientas que se acaban de ejecutar no se ven afectadas:
-     * No hay reversión ni cancelación y el resultado aún se repone. La interrupción solo cambia el contenido visible en la siguiente ronda de solicitudes.
+     * 编排器在「本轮工具结果全部回填完、下一轮请求发出之前」调用一次，把返回的每条文本
+     * 作为一条新的 USER 消息追加在 tool 结果之后。正在执行/刚执行完的工具不受影响：
+     * 不回滚、不取消、结果照旧回填，插话只改变下一轮请求看得到的内容。
      *
-     * Devuelve una lista vacía por defecto —— El comportamiento de los hosts (subagentes, tareas programadas, etc.) que no implementan este método permanece completamente sin cambios:
-     * No se generan mensajes adicionales cuando no hay interrupción,history Igual que antes del cambio.
+     * 默认返回空列表 —— 不实现该方法的宿主（子代理、定时任务等）行为完全不变：
+     * 没有插话时不产生任何额外消息，history 与改动前逐字一致。
      */
     suspend fun drainSteeringMessages(): List<String> = emptyList()
 }
 
 /**
- * Parámetros para el bucle de llamada de herramienta.
+ * 工具调用循环的参数。
  *
- * @param sessionId sesión actual id
- * @param initialAssistantId Mensaje inicial del asistente de marcador de posición id
- * @param baseHistorySize Tamaño de contexto inicial no truncable(system prefix + historia)
- * @param maxRounds Rondas máximas de herramientas;0=Ilimitado,entero positivo=Límite superior fijo(Resuelto por la persona que llama desde la configuración)
- * @param tools Lista de definiciones de herramientas expuestas a LLM en esta ronda
- * @param skillMap habilidad habilitada id → SkillEntity mapeo
- * @param model Modelos realmente utilizados
- * @param providerConfig Configuración real del proveedor utilizada
- * @param temperature temperatura
- * @param maxTokens Número máximo de fichas
- * @param reasoningLevel nivel de razonamiento
- * @param webSearchEnabled Si se debe habilitar la búsqueda en Internet(Para extracción de resultados de la herramienta web_search citation URL)
- * @param experiments Configuración experimental(Solo para registros de depuración)
- * @param assistant Configuración actual del asistente(Opcional,para delegado_agente, etc.)
+ * @param sessionId 当前会话 id
+ * @param initialAssistantId 初始占位 assistant 消息 id
+ * @param baseHistorySize 不可截断的初始上下文大小(system prefix + 历史)
+ * @param maxRounds 最大工具轮次;0=无限制,正整数=固定上限(由调用方从设置解析)
+ * @param tools 本轮暴露给 LLM 的工具定义列表
+ * @param skillMap 已启用 skill 的 id → SkillEntity 映射
+ * @param model 实际使用的模型
+ * @param providerConfig 实际使用的 Provider 配置
+ * @param temperature 温度
+ * @param maxTokens 最大 token 数
+ * @param reasoningLevel 推理等级
+ * @param webSearchEnabled 是否启用联网搜索(用于从 web_search 工具结果提取 citation URL)
+ * @param experiments 实验配置(仅用于 debug 日志)
+ * @param assistant 当前 Assistant 配置(可选,用于 delegate_agent 等)
  */
 data class ToolLoopParams(
     val sessionId: String,
-    /** F-12: enlace unificado id(de StreamRunState.traceId),Las herramientas realizan auditorías y transporte de registros. */
+    /** F-12: 统一链路 id(源自 StreamRunState.traceId),工具执行审计与日志携带。 */
     val traceId: String = "",
     val initialAssistantId: Uuid,
     val baseHistorySize: Int,
@@ -530,26 +537,26 @@ data class ToolLoopParams(
     val maxTokens: Int?,
     val reasoningLevel: ReasoningLevel,
     val webSearchEnabled: Boolean = false,
-    /** Cuando utilice la búsqueda de red nativa del proveedor, desactive la herramienta web_search local para evitar la superposición de los dos conjuntos de búsquedas. */
+    /** 使用 Provider 原生联网搜索时，关闭本地 web_search 工具，避免两套搜索叠加。 */
     val nativeWebSearch: Boolean = false,
     val experiments: ExperimentsConfig = ExperimentsConfig(),
     val assistant: AssistantEntity? = null,
-    /** B7-04: La primera ronda de ajustes preestablecidos ha producido el texto.(Reanudar la escritura desde el punto de interrupción cuando continúe la compilación). */
+    /** B7-04: 首轮预置已产出正文(继续生成时从断点续写)。 */
     val initialBuilderContent: String = "",
-    /** B7-04: La primera ronda de ajustes preestablecidos ha producido razonamientos. */
+    /** B7-04: 首轮预置已产出 reasoning。 */
     val initialReasoningContent: String = "",
-    /** Nueva propiedad de la ronda de enlaces; cuando está vacío, sólo se conserva el comportamiento del vínculo anterior. */
+    /** 新链路回合归属；为空时仅保留旧链路行为。 */
     val turnId: String = "",
-    /** La identidad unificada generada actualmente; una identidad compatible generada por el orquestador cuando la antigua persona que llama está vacía. */
+    /** 当前生成的统一身份；旧调用方为空时由编排器生成兼容身份。 */
     val generationIdentity: io.zer0.muse.session.GenerationIdentity? = null,
-    /** Inyectado por el host de la sesión principal y utilizado por herramientas sensibles al aislamiento como search_memory. */
+    /** 由主会话宿主注入，供 search_memory 等隔离敏感工具使用。 */
     val toolExecutionContext: ToolExecutionContext? = null,
     /** When false, tool calls are recorded as paused and never execute real side effects. */
     val allowToolExecution: Boolean = true,
 )
 
 /**
- * Mensaje de error para el bucle de llamada de herramienta.
+ * 工具调用循环的错误信息。
  */
 data class ToolLoopError(
     val type: ChatErrorType,
@@ -559,40 +566,40 @@ data class ToolLoopError(
 )
 
 /**
- * Phase 3: Motivo de terminación estructurado para el bucle de llamada de herramienta.
+ * Phase 3: 工具调用循环的结构化终止原因。
  *
- * con [ToolLoopResult.success] relación:`success` solo en [COMPLETED] el tiempo es true;
- * Límite redondo / Llamadas repetidas estancadas / Fallos consecutivos / Presupuesto agotado / Llamadas a herramientas no válidas / Errores de transmisión
- * Todos salen anormalmente,La persona que llama distingue"respuesta normal"con"Disyuntor".
+ * 与 [ToolLoopResult.success] 的关系:`success` 仅在 [COMPLETED] 时为 true;
+ * 轮次上限 / 重复调用停滞 / 连续失败 / 预算耗尽 / 无效工具调用 / 流式错误
+ * 都是异常退出,调用方据此区分"正常答复"与"熔断收尾"。
  */
 enum class ToolLoopTerminationReason {
-    /** Terminar normalmente:LLM Producir respuesta final,No hay llamadas de herramientas pendientes. */
+    /** 正常结束:LLM 产出最终答复,无待执行工具调用。 */
     COMPLETED,
 
-    /** Límite de ronda de llamada de herramienta alcanzado(Calculado por ComputeMaxRounds). */
+    /** 达到工具调用轮次上限(由 computeMaxRounds 计算)。 */
     ROUND_LIMIT,
 
-    /** Lo mismo para múltiples rondas consecutivas tool_call,Juicio de estancamiento(fusible). */
+    /** 连续多轮相同 tool_call,判定停滞(熔断)。 */
     REPEATED_TOOL_CALLS,
 
-    /** El fallo continuo de la herramienta alcanza el umbral(fusible). */
+    /** 连续工具失败达到阈值(熔断)。 */
     CONSECUTIVE_FAILURES,
 
-    /** turn Llamadas de nivel/presupuesto de tiempo agotado(fusible). */
+    /** turn 级调用数 / 时间预算耗尽(熔断)。 */
     BUDGET_EXHAUSTED,
 
-    /** Todas las llamadas a herramientas del modelo en esta ronda no son válidas después de la limpieza.,El orquestador termina después de inyectar la pista. */
+    /** 模型本轮 toolCalls 经清洗后全部无效,编排器注入提示后结束。 */
     INVALID_TOOL_CALLS,
 
-    /** Error de solicitud de transmisión(Error de red/límite actual/API),El bucle falla y sale. */
+    /** 流式请求错误(网络 / 限流 / API 错误),循环失败退出。 */
     STREAM_ERROR,
 
-    /** La herramienta generó con éxito una respuesta final basada en los resultados existentes después de fallos consecutivos. */
+    /** 工具连续失败后仍成功生成了基于已有结果的最终答复。 */
     COMPLETED_AFTER_TOOL_FAILURES,
 }
 
 /**
- * El resultado de un bucle de llamada de herramienta.
+ * 工具调用循环的结果。
  */
 data class ToolLoopResult(
     val finalAssistantId: Uuid,
@@ -602,66 +609,66 @@ data class ToolLoopResult(
     val firstTokenTime: Long,
     val citationUrls: List<String>,
     /**
-     * Ya sea para completar la respuesta final.
+     * 是否完成最终答复。
      *
-     * Phase 3 solo si [terminationReason] == [COMPLETED] o
-     * [COMPLETED_AFTER_TOOL_FAILURES] el tiempo es true;
-     * El límite de ronda/llamadas repetidas/agotamiento presupuestario y otras salidas inconclusas son falsas;
-     * Una ronda que falla consecutivamente pero genera exitosamente una respuesta de cierre está en estado de finalización.
+     * Phase 3 起仅当 [terminationReason] == [COMPLETED] 或
+     * [COMPLETED_AFTER_TOOL_FAILURES] 时为 true;
+     * 轮次上限 / 重复调用 / 预算耗尽等未收尾退出为 false；
+     * 连续失败但成功生成收尾答复的回合属于完成态。
      */
     val success: Boolean,
     val error: ToolLoopError? = null,
-    /** El mensaje final del asistente cuando se completa el ciclo de la herramienta; nulo por pura interrupción del circuito y sin respuesta de cierre. */
+    /** 工具循环完成时的最终 assistant 消息；纯熔断且没有收尾答复时为 null。 */
     val finalAssistantMessage: UIMessage? = null,
-    /** La rueda de herramientas estructurada de este ciclo de herramientas se envía una vez con el mensaje final. */
+    /** 本次工具循环的结构化工具轮，随最终消息一次性提交。 */
     val toolRounds: List<ToolRoundEntity> = emptyList(),
-    /** Phase 3: Motivo de rescisión estructurada;con [success] consistente(success == terminationReason == COMPLETED). */
+    /** Phase 3: 结构化终止原因;与 [success] 一致(success == terminationReason == COMPLETED)。 */
     val terminationReason: ToolLoopTerminationReason = ToolLoopTerminationReason.COMPLETED,
 )
 
 /**
- * Phase 2: La herramienta llama al orquestador de bucles.
+ * Phase 2: 工具调用循环编排器。
  *
- * poner [ChatViewModel] medio grueso `while (hasToolCalls && round < maxToolRounds)` Saca el ciclo,
- * Responsabilidades:
- *  - Controle múltiples rondas de procesos de llamada de herramientas(Truncamiento, límite de ronda, parada anticipada por fallos consecutivos)
- *  - Ejecutar múltiples llamadas a herramientas en paralelo y completar los resultados.
- *  - Tarjeta de tareas de mantenimiento(TaskCard)Estado
- *  - Extracto de los resultados de la herramienta web_search citation URL,Como referencia en el mensaje final del asistente.
+ * 把 [ChatViewModel] 中厚重的 `while (hasToolCalls && round < maxToolRounds)` 循环抽离出来,
+ * 职责:
+ *  - 控制多轮工具调用流程(截断、轮次上限、连续失败早停)
+ *  - 并行执行多个工具调用并回填结果
+ *  - 维护任务卡(TaskCard)状态
+ *  - 从 web_search 工具结果中提取 citation URL,供最终 assistant 消息引用
  *
- * Solicitudes de transmisión verdaderas,UI Actualizaciones y herramientas aprobadas [ToolLoopHost] La devolución de llamada se realiza a ChatViewModel.
+ * 真正的流式请求、UI 更新、工具审批通过 [ToolLoopHost] 回调交给 ChatViewModel。
  */
 @Suppress("LongParameterList")
 /**
- * P2-33: "Puerta de resultados" para bloquear los tiempos de espera de la herramienta— La estructura garantiza que no se puedan implementar resultados tardíos después del tiempo de espera.
+ * P2-33: 阻塞型工具超时的「结果闸门」— 在结构上保证超时后的迟到结果无法落地。
  *
- * fondo:herramientas de bloqueo(WebView / bloqueando IO)RunBlocking usado internamente para puentear,[Future.cancel] solo puedo
- * Enviar una señal de interrupción;Las llamadas que ignoran las interrupciones seguirán finalizándose y produciendo resultados. En la implementación anterior, la rama de tiempo de espera se abandona directamente.
- * `future.get()`,El resultado de llegar tarde es simplemente "nadie leyó",Cualquier conexión posterior de este futuro/devolución de llamada al punto de escritura de estado
- * Cualquier cambio reintroducirá la contaminación.(El resultado sobrescribe la TaskCard/mensaje después del tiempo de espera / toolCallRecord).
+ * 背景:阻塞型工具(WebView / 阻塞 IO)内部用 runBlocking 桥接,[Future.cancel] 只能
+ * 发出中断信号;忽略中断的调用会继续跑完并产出结果。旧实现里超时分支直接放弃
+ * `future.get()`,迟到结果只是「无人读取」,任何后续把该 future/回调接回状态写入点
+ * 的改动都会重新引入污染(超时后结果覆盖 TaskCard / 消息 / toolCallRecord)。
  *
- * Esta puerta converge la "liberación de resultados" en un CAS: el tiempo de espera primero [abandon],Las publicaciones que llegan después se rechazan y se cuentan.,
- * El orquestador solo lee valores de la puerta. —— Llegar tarde no sólo significa que nadie lo lea,Y no puedo escribirlo.
+ * 本闸门把「结果发布」收敛为一次 CAS:超时先 [abandon],之后到达的发布一律被拒绝并计数,
+ * 编排器只从闸门读值 —— 迟到结果不仅没人读,而且写不进去。
  */
 internal class ToolResultGate(
-    /** Devolución de llamada cuando se descartan resultados tardíos(El orquestador registra esto/contar,La prueba única afirma basada en esto). */
+    /** 迟到结果被丢弃时的回调(编排器据此记日志/计数,单测据此断言)。 */
     private val onLateDrop: () -> Unit = {},
 ) {
     private val abandoned = java.util.concurrent.atomic.AtomicBoolean(false)
     private val published = java.util.concurrent.atomic.AtomicBoolean(false)
     private val result = java.util.concurrent.atomic.AtomicReference<String?>(null)
 
-    /** No válido después del tiempo de espera(idempotente):después [publish] Rechace siempre. */
+    /** 超时作废(幂等):此后 [publish] 一律拒绝。 */
     fun abandon() {
         abandoned.set(true)
     }
 
-    /** Si la ejecución ha sido cancelada por tiempo de espera. */
+    /** 该次执行是否已被超时作废。 */
     val isAbandoned: Boolean get() = abandoned.get()
 
     /**
-     * Resultados publicados(Llamada al hilo de ejecución):Si no se invalida, solo se acepta y devuelve el primer resultado. true;
-     * anulado(tiempo de espera)Descartar resultados, diagnósticos de devolución de llamada y devolver falso.
+     * 结果发布(执行线程调用):未作废时仅接受第一个结果并返回 true;
+     * 已作废(超时)时丢弃结果、回调诊断并返回 false。
      */
     fun publish(value: String): Boolean {
         if (abandoned.get()) {
@@ -669,12 +676,12 @@ internal class ToolResultGate(
             return false
         }
         if (!published.compareAndSet(false, true)) return false
-        // La liberación y el tiempo de espera pueden ser simultáneos:Si ha sido invalidado después de su publicación,El valor también es ilegible.(valueOrNull Revisión)
+        // 发布与超时可能并发:发布后若已被作废,值同样不可读(valueOrNull 复核)
         result.set(value)
         return !abandoned.get()
     }
 
-    /** Valor de lectura del orquestador:ha sido invalidado(tiempo de espera)regresar cuando null,Los resultados tardíos nunca se filtrarán. */
+    /** 编排器读值:已被作废(超时)时返回 null,迟到结果永不外泄。 */
     fun valueOrNull(): String? = if (abandoned.get()) null else result.get()
 }
 
@@ -684,32 +691,32 @@ class ToolOrchestrator(
     private val skillExecutor: SkillExecutor,
     private val assistantRepository: AssistantRepository,
     private val sessionRepository: SessionRepository,
-    // v1.x: La inyección de contexto se utiliza para colocar la salida de herramientas súper largas en el disco. filesDir/tool_outputs/,
-    // Deje que LLM lea el contenido completo a pedido a través de la herramienta read_file.
+    // v1.x: 注入 Context 用于把超长工具输出落盘到 filesDir/tool_outputs/,
+    // 让 LLM 通过 read_file 工具按需读取完整内容。
     private val context: Context,
-    // P1-1: Hook Registro — Llamado en cada etapa de la invocación de la herramienta. ToolLifecycleHook
+    // P1-1: Hook 注册表 — 在工具调用各阶段调用 ToolLifecycleHook
     private val hookRegistry: io.zer0.muse.hook.HookRegistry? = null,
-    // P2-4: Registrador de auditoría(Se registra cuando se aprueban y lanzan las herramientas.).
+    // P2-4: 审计日志记录器(工具审批放行时记录)。
     private val auditLogger: AuditLogger? = null,
-    // F-08: Agent Run Libro mayor de memoria de recibos(Cada vez que la herramienta realiza una escritura,Contiene cadena de llamadas parentRunId).
+    // F-08: Agent Run 收据内存账本(每次工具执行写入,含 parentRunId 调用链)。
     private val agentRunTracker: io.zer0.muse.data.audit.AgentRunTracker? = null,
-    // v1.x: Registro de instancias de navegador a nivel de sesión(Independiente por sesión WebView).
+    // v1.x: 会话级浏览器实例注册表(每个会话独立 WebView)。
     private val browserManagerRegistry: BrowserManagerRegistry = BrowserManagerRegistry(context),
-    // R-TEST-10: Se puede inyectar el tiempo de espera de la herramienta,Valor predeterminado de producción 2 minutos
+    // R-TEST-10: 工具超时可注入,生产默认 2 分钟
     private val toolTimeoutMs: Long = TOOL_TIMEOUT_MS,
-    // v1.x: Registro unificado de recursos de ejecución de herramientas para cancelación por sesión y diagnóstico de resultados tardíos.
+    // v1.x: 统一登记工具执行资源，供按 session 取消和 late-result 诊断使用。
     private val executionRegistry: io.zer0.muse.session.SessionExecutionRegistry? = null,
     /**
-     * Phase 3: Cambio de simultaneidad limitada de herramientas de solo lectura(Habilitado por defecto = Escala de grises;Las pruebas pueden inyectar falso para verificar la ruta en serie.).
+     * Phase 3: 只读工具有限并发开关(默认开启 = 灰度;测试可注入 false 验证串行路径)。
      *
-     * Después de abrir,Solo si todas las herramientas de la misma ronda son de solo lectura(lista blanca,y no enrutado a skill)Sólo presione
-     * [READ_ONLY_TOOL_MAX_PARALLELISM] Simultaneidad limitada;incluyendo escritura/Las herramientas de efectos secundarios se serializan a lo largo de la ronda.
-     * Los usuarios pueden utilizar la "Función experimental" [ExperimentsConfig.parallelReadOnlyTools] Un clic para cerrar.
+     * 打开后,仅当同一轮全部为只读工具(白名单,且不路由到 skill)时才按
+     * [READ_ONLY_TOOL_MAX_PARALLELISM] 有限并发;含写入/副作用工具则整轮串行。
+     * 用户可经「实验功能」的 [ExperimentsConfig.parallelReadOnlyTools] 一键关闭。
      */
     private val parallelReadOnlyToolsEnabled: Boolean = PARALLEL_READ_ONLY_TOOLS_ENABLED_DEFAULT,
-    /** Phase 3: Tiempo de espera de colocación del disco de salida de herramienta(Las pruebas pueden inyectar valores más cortos.). */
+    /** Phase 3: 工具输出落盘超时(测试可注入更短值)。 */
     private val toolOutputWriteTimeoutMs: Long = TOOL_OUTPUT_WRITE_TIMEOUT_MS,
-    /** Phase 3: Implementación del disco de escritura de salida de herramienta(Las pruebas pueden inyectar escrituras lentas/Lanzar el sustituto equivocado). */
+    /** Phase 3: 工具输出写盘实现(测试可注入慢写/抛错替身)。 */
     private val toolOutputWriter: suspend (File, String) -> Unit = DEFAULT_TOOL_OUTPUT_WRITER,
 ) {
     private val routeGuard = ToolRouteExecutionGuard(toolRegistry)
@@ -718,13 +725,13 @@ class ToolOrchestrator(
         const val TAG = "ToolOrchestrator"
 
         /**
-         * F-12/B-28: Desensibilización de la auditoría — Elimina la parte de consulta de la URL del texto.
-         * Prevenir parámetros de herramienta/La URL del resultado contiene parámetros confidenciales, como la clave API, y se escribe en el recibo de auditoría.
-         * mantener solo el acuerdo+Anfitrión+camino;query/fragment Desechar siempre.
+         * F-12/B-28: 审计脱敏 — 移除文本中 URL 的 query 部分。
+         * 防止工具参数/结果里的 URL 携带 API key 等敏感参数被写入审计收据。
+         * 仅保留协议+主机+路径;query/fragment 一律丢弃。
          */
         private val URL_QUERY_SANITIZER = Regex("""(https?://[^\s"'\]\}]+)(\?[^\s"'\]\}]*)?(#\S*)?""")
 
-        /** v1.x: Nombre de la herramienta del navegador(Enrutamiento por sesión a independiente BrowserManager). */
+        /** v1.x: 浏览器工具名(按会话路由到独立 BrowserManager)。 */
         private val BROWSER_TOOL_NAMES =
             setOf(
                 BrowserAutomationTool.TOOL_NAVIGATE,
@@ -734,22 +741,22 @@ class ToolOrchestrator(
                 BrowserAutomationTool.TOOL_SCROLL_BOTTOM,
                 BrowserAutomationTool.TOOL_GET_HTML,
                 BrowserAutomationTool.TOOL_SNAPSHOT,
-                // v2.6.0: herramienta de recorte —— deja que el modelo“mira”Representación de página
+                // v2.6.0: 截图工具 —— 让模型能“看”页面渲染图
                 BrowserAutomationTool.TOOL_SCREENSHOT,
             )
     }
 
     /**
-     * F-12/B-28: Eliminar todas las URL del texto query/fragment(ver [URL_QUERY_SANITIZER]).
-     * El texto que no es URL se devuelve sin cambios.
+     * F-12/B-28: 对文本内所有 URL 去掉 query/fragment(见 [URL_QUERY_SANITIZER])。
+     * 非 URL 文本原样返回。
      */
     private fun sanitizeUrlQuery(text: String): String = URL_QUERY_SANITIZER.replace(text) { match -> match.groupValues[1] }
 
     /**
-     * v2.6.0: Extraiga capturas de pantalla de los resultados de la herramienta JSON(Base64 PNG).
+     * v2.6.0: 从工具结果 JSON 中提取截图(Base64 PNG)。
      *
-     * Sólo si:① Éxito de la herramienta;② El resultado es un objeto JSON;③ Contiene campos acordados [BrowserAutomationTool.SCREENSHOT_RESULT_FIELD]
-     * Sólo entonces devuelve un valor no nulo. De lo contrario, devuelve nulo.
+     * 仅当：① 工具成功；② 结果是 JSON 对象；③ 含约定字段 [BrowserAutomationTool.SCREENSHOT_RESULT_FIELD]
+     * 时才返回非空。其他情况返回 null。
      */
     private fun extractScreenshotBase64(toolResult: String, isSuccess: Boolean): String? {
         if (!isSuccess) return null
@@ -766,24 +773,24 @@ class ToolOrchestrator(
     }
 
     /**
-     * F-07: Máquina de estados de ejecución de herramientas.
-     *  - [SUCCESS]: Ejecutado con éxito;
-     *  - [FAILED]: La ejecución falló(Error de herramienta/Aprobación rechazada/tiempo de espera/Devolución de excepción);
-     *  - [INTERRUPTED]: Ejecución interrumpida por streaming(usuario detenido/Cambio de sesión),Resultados incompletos;
-     *  - [APPROVAL_PENDING]: Esperando la aprobación del usuario,El bucle de construcción se bloquea.
+     * F-07: 工具执行状态机。
+     *  - [SUCCESS]: 执行成功;
+     *  - [FAILED]: 执行失败(工具报错/审批拒绝/超时/异常回传);
+     *  - [INTERRUPTED]: 执行被流式中断(用户停止/会话切换),结果不完整;
+     *  - [APPROVAL_PENDING]: 等待用户审批,生成循环挂起。
      */
     enum class ToolExecStatus { SUCCESS, FAILED, DENIED, INTERRUPTED, APPROVAL_PENDING, TIMED_OUT, CANCELLED }
 
     /**
-     * Phase 3: Estado final de ejecución de la herramienta → Mapeo del estado de los pasos de la tarjeta de tareas.
+     * Phase 3: 工具执行终态 → 任务卡步骤状态映射。
      *
-     * TIMED_OUT / CANCELLED ya no está doblado FAILED,Por lo tanto, la tarjeta de tareas puede presentar el verdadero estado final.
-     * (Tanto la barra de pasos contraída como la fila de pasos expandida mostrarán el tiempo de espera en consecuencia./cancelar icono).
+     * TIMED_OUT / CANCELLED 不再被折叠成 FAILED,任务卡因此能呈现真实终态
+     * (折叠态步骤条与展开态步骤行都会据此显示超时/取消图标)。
      */
     private fun ToolExecStatus.toTaskStepStatus(): TaskStepStatus = when (this) {
         ToolExecStatus.SUCCESS -> TaskStepStatus.SUCCESS
         ToolExecStatus.FAILED -> TaskStepStatus.FAILED
-        // El rechazo activo del usuario no es un fracaso:La herramienta no se ejecutó y no se informó ningún error.,El mismo nivel que "cancelar" es más práctico.
+        // 用户主动拒绝不是失败:工具没跑、也没报错,与「取消」同档更贴实际。
         ToolExecStatus.DENIED -> TaskStepStatus.CANCELLED
         ToolExecStatus.INTERRUPTED -> TaskStepStatus.CANCELLED
         ToolExecStatus.CANCELLED -> TaskStepStatus.CANCELLED
@@ -796,30 +803,30 @@ class ToolOrchestrator(
         val tc: ToolCall,
         val finalToolResult: String,
         val isSuccess: Boolean,
-        /** v1.x: Resultados mostrados a los usuarios.(Fracaso sin instrucciones de LLM),null revertir [finalToolResult]. */
+        /** v1.x: 展示给用户的结果(失败时不含 LLM 引导语),null 时回退 [finalToolResult]。 */
         val displayResult: String? = null,
-        /** F-07: Estado de ejecución(Predeterminado SUCCESS,falló/Etiquetado explícito de puntos de ruptura.). */
+        /** F-07: 执行状态(默认 SUCCESS,失败/中断点显式标注)。 */
         val status: ToolExecStatus = ToolExecStatus.SUCCESS,
-        /** F-08: Tiempo de ejecución de la herramienta(ms),Proporciona el recibo de AgentRunRecord. */
+        /** F-08: 工具执行耗时(ms),供 AgentRunRecord 收据。 */
         val durationMs: Long = 0L,
         val startedAt: Long = 0L,
         val finishedAt: Long = 0L,
         val executionId: String = "",
         /**
-         * v2.6.0: Captura de pantalla de la salida de la herramienta(Base64 PNG,Ninguno dato: prefijo).
-         * Sólo la herramienta de captura de pantalla del navegador tiene valor;La persona que llama lo agregará a la conversación como un mensaje de usuario con una imagen.,
-         * Haz que el modelo sea realmente“ver”Representación de página(El resultado de la herramienta en sí no puede contener imágenes.).
+         * v2.6.0: 工具产出的截图(Base64 PNG,无 data: 前缀)。
+         * 仅浏览器截图工具有值;调用方会把它作为一条带图用户消息追加到对话,
+         * 让模型真正“看到”页面渲染图(工具结果本身无法携带图片)。
          */
         val screenshotBase64: String? = null,
     )
 
     /**
-     * Ejecute el ciclo de llamada de herramienta hasta que LLM ya no llame a la herramienta, alcance el límite de ronda o se complete después de fallas consecutivas.
-     * Una ronda de respuesta final sin herramientas.
+     * 运行工具调用循环，直到 LLM 不再调用工具、达到轮次上限，或连续失败后完成
+     * 一轮无工具最终答复。
      *
-     * @param params Parámetros de bucle
-     * @param conversationHistory Historial de conversaciones variables(tool_calls/tool message se agregará en este método)
-     * @param host Devolución de llamada del anfitrión
+     * @param params 循环参数
+     * @param conversationHistory 可变对话历史(会在此方法内被追加 tool_calls/tool 消息)
+     * @param host 宿主回调
      */
     suspend fun runLoop(
         params: ToolLoopParams,
@@ -837,14 +844,14 @@ class ToolOrchestrator(
         var forceFinalResponse = false
         var nativeFallbackUsed = false
         var finalAssistantMessage: UIMessage? = null
-        // A-07: Motivos de salida anormales(atascado/fracasos consecutivos),Copia para mensaje de cierre
+        // A-07: 非正常退出原因(卡死/连续失败),用于收尾消息文案
         var abortReason: String? = null
-        // Phase 3: Motivo de rescisión estructurada — Cada ruta de salida está etiquetada explícitamente,La línea final al final del ciclo es ROUND_LIMIT.
+        // Phase 3: 结构化终止原因 — 每个退出路径显式标注,循环末尾兜底为 ROUND_LIMIT。
         var terminationReason: ToolLoopTerminationReason? = null
 
-        // M3.3: presupuesto unificado/fuente de estado de parada — ToolExecutionPolicy Tapa redonda de gestión/Número de llamadas/fracasos consecutivos/Huellas dactilares duplicadas/Presupuesto de tiempo.
-        // v2.x: El límite de ronda proviene de la configuración del usuario.(resolveToolRoundLimit:0=Ilimitado,entero positivo=Límite superior fijo),
-        // escritura de resultados execPolicy.maxRounds,La variable local independiente maxRounds ya no se mantiene dentro del bucle.
+        // M3.3: 统一预算/停止状态源 — ToolExecutionPolicy 管理轮次上限/调用数/连续失败/重复指纹/时间预算。
+        // v2.x: 轮次上限来自用户设置(resolveToolRoundLimit:0=无限制,正整数=固定上限),
+        // 结果写入 execPolicy.maxRounds,循环内不再维护独立的 maxRounds 局部变量。
         val execPolicy =
             ToolExecutionPolicy(
                 initialMaxRounds = resolveToolRoundLimit(params.maxRounds),
@@ -857,21 +864,21 @@ class ToolOrchestrator(
                 generationId = params.traceId.ifBlank { "generation-$currentAssistantId" },
                 streamId = "stream-${params.traceId.ifBlank { currentAssistantId.toString() }}",
             )
-        Logger.i(TAG, "Agent Loop empezar | sessionId=${params.sessionId} | rondas máximas iniciales: $roundLimitLabel")
+        Logger.i(TAG, "Agent Loop 开始 | sessionId=${params.sessionId} | 初始最大轮次: $roundLimitLabel")
 
-        // Presione cada ronda"historia actual"Calcule la ocupación del token (para el presupuesto de producción en línea). Sólo quedan dos récords más en cada ronda de la historia.
-        // Después de compartir una caché de recuento por instancia, solo las dos recién agregadas se contarán a partir de la segunda ronda y ya no se volverá a ejecutar toda la BPE.
+        // 每轮都要按"当前历史"算一次 token 占用（给内联输出预算用）。历史每轮只多两条，
+        // 共用一份按实例的计数缓存后，第 2 轮起只算新增的那两条，不再整份重跑 BPE。
         val loopTokenCache = io.zer0.muse.util.MessageTokenCache()
 
         while ((hasToolCalls || forceFinalResponse) && round < execPolicy.maxRounds) {
             round++
             val stepStartedAt = System.currentTimeMillis()
-            Logger.d(TAG, "Agent Loop step $round/$roundLimitLabel empezar | sessionId=${params.sessionId}")
+            Logger.d(TAG, "Agent Loop step $round/$roundLimitLabel 开始 | sessionId=${params.sessionId}")
 
-            // M3.2/P2-7: El presupuesto restante se controla uniformemente al comienzo de cada ronda.(llamadas totales/Caracteres de salida/fracasos consecutivos/tiempo),
-            // Cuando algún elemento se agote, se finalizará con anticipación y se inyectará una copia visible.,No más viajes de ida y vuelta de modelos desperdiciados que seguramente serán interceptados.
-            // Después de fallos consecutivos, se seguirá enviando una ronda de solicitudes de cierre sin herramientas; la herramienta ya no se ejecutará en esta ronda.
-            // No puede ser bloqueado por el presupuesto fallido consecutivo que acaba de alcanzar.
+            // M3.2/P2-7: 每轮开头统一校验剩余预算(总调用数/输出字符/连续失败/时间),
+            // 任一项耗尽即提前收尾并注入可见文案,不再浪费一次必然被拦截的模型往返。
+            // 连续失败后仍要发一轮无工具收尾请求；该轮不再执行工具，
+            // 不能被刚刚命中的连续失败预算挡住。
             val roundBudget =
                 if (forceFinalResponse) {
                     ToolExecutionPolicy.Decision(allowed = true)
@@ -883,17 +890,17 @@ class ToolOrchestrator(
                 terminationReason = ToolLoopTerminationReason.BUDGET_EXHAUSTED
                 Logger.w(
                     TAG,
-                    "Agent Loop Presupuesto redondo agotado,terminación anticipada | sessionId=${params.sessionId} | " +
+                    "Agent Loop 轮次预算耗尽,提前终止 | sessionId=${params.sessionId} | " +
                         "reason=${roundBudget.reason} | ${roundBudget.detail} | " +
-                        "traceId=${params.traceId} | Llamada ejecutada=${execPolicy.executedCalls}",
+                        "traceId=${params.traceId} | 已执行调用=${execPolicy.executedCalls}",
                 )
                 break
             }
 
-            // C1-2: Truncado cuando la cadena de herramientas es demasiado larga,Mantener contexto inicial + cadena de herramientas reciente.
-            // v2.x: Además del número de artículos, aumente **token presupuesto**juicio —— Algunos resultados de herramientas muy grandes pueden estar dentro del límite numérico
-            //   volar la ventana,No hay posibilidad de compresión durante la generación. Este nivel es una reconstrucción local sin solicitudes.:
-            //   Deseche la cadena de herramientas vieja y conserve solo la cola más reciente.,E inserte marcadores visibles para indicarle al modelo que su historial ha sido ordenado.
+            // C1-2: 工具链过长时截断,保留初始上下文 + 最近工具链。
+            // v2.x: 除条数外增加 **token 预算**判定 —— 几条超大工具结果就能在条数限额内
+            //   把窗口撞爆,而生成中途没有压缩机会。这一级是零请求的本地重建:
+            //   丢弃旧工具链、只保留最新尾部,并插入可见标记告知模型历史被整理过。
             val toolChainSize = conversationHistory.size - params.baseHistorySize
             val budget = host.contextBudgetTokens()
             val chainTokens =
@@ -928,7 +935,7 @@ class ToolOrchestrator(
                 )
             }
 
-            // Restablecer el totalizador de transmisión en cada ronda;Preestablezca el contenido de salida cuando continúe la primera ronda de generación.
+            // 每轮重置流式累积器;第一轮继续生成时预置已产出内容
             val isFirstRound = round == 1
             val builder =
                 StringBuilder().apply {
@@ -956,17 +963,17 @@ class ToolOrchestrator(
 
             when (outcome) {
                 is StreamRoundResult.Error -> {
-                    // Bajar a la cadena de búsqueda local cuando falla la búsqueda nativa: primero se prueba la API configurada por el usuario,
-                    // Finalmente, están Bing HTTP y Baidu HTTP. Baje de categoría solo una vez para evitar solicitudes de facturación repetidas.
+                    // 原生搜索失败时降级到本地搜索链：其中先尝试用户已配置的 API，
+                    // 最后才是 Bing HTTP 与百度 HTTP。只降级一次，避免重复计费请求。
                     if (params.nativeWebSearch && !nativeFallbackUsed && !forceFinalResponse) {
                         nativeFallbackUsed = true
                         round--
-                        Logger.w(TAG, "La solicitud de búsqueda nativa falla y se degrada a la cadena de búsqueda API/HTTP del usuario")
+                        Logger.w(TAG, "原生搜索请求失败，降级到用户 API/HTTP 搜索链")
                         continue
                     }
                     Logger.w(
                         TAG,
-                        "Agent Loop Terminación debido a un error de transmisión | sessionId=${params.sessionId} | traceId=${params.traceId}" +
+                        "Agent Loop 因流式错误终止 | sessionId=${params.sessionId} | traceId=${params.traceId}" +
                             " | round=$round | type=${outcome.type} | msg=${outcome.message}",
                     )
                     return ToolLoopResult(
@@ -1006,19 +1013,19 @@ class ToolOrchestrator(
                                 ToolLoopTerminationReason.COMPLETED
                             }
                         forceFinalResponse = false
-                        Logger.d(TAG, "Agent Loop step $round/$roundLimitLabel fin(Sin llamada de herramienta,El bucle termina normalmente.)")
+                        Logger.d(TAG, "Agent Loop step $round/$roundLimitLabel 结束(无工具调用,循环正常结束)")
                         break
                     }
 
-                    // La rueda de acabado ha cerrado explícitamente la herramienta; Si el flujo ascendente aún devuelve llamadas a herramientas, ya no se ejecutarán efectos secundarios desconocidos.
-                    // Cierra la ronda actual con un aviso visible para evitar una segunda tormenta de herramientas después de fallas consecutivas.
+                    // 收尾轮已明确关闭工具；若上游仍返回 tool_calls，不再执行未知副作用，
+                    // 用可见提示收口当前回合，避免连续失败后的第二次工具风暴。
                     if (forceFinalResponse) {
                         hasToolCalls = false
                         finalAssistantMessage =
                             outcome.assistantMessage.copy(
                                 toolCalls = emptyList(),
                                 content = outcome.assistantMessage.content.ifBlank {
-                                    "Las llamadas a la herramienta han fallado continuamente y se han detenido según los resultados existentes."
+                                    "工具调用连续失败，已基于已有结果停止继续调用。"
                                 },
                             )
                         terminationReason = ToolLoopTerminationReason.COMPLETED_AFTER_TOOL_FAILURES
@@ -1033,12 +1040,12 @@ class ToolOrchestrator(
                         if (truncatedArgsRound) {
                             truncatedToolCallsForBackfill(rawToolCallList, round)
                         } else {
-                            // v1.0.48: Filtrado no válido toolCalls — SenseTime completeText puede regresar en escenarios como la reversión
-                            //   nombre vacío o argumentos vacíos toolCall,La ejecución directa causará HTTP 400
+                            // v1.0.48: 过滤无效 toolCalls — 商汤 completeText 回退等场景可能返回
+                            //   空 name 或空 arguments 的 toolCall,直接执行会引发 HTTP 400
                             //   (invalid tool_call function, function/name/arguments cannot be empty)
-                            //   Si no hay ninguna llamada válida después del filtrado,prensa"Sin llamada de herramienta"Procesar esta ronda,Evite quedarse atascado
-                            // v2.6.10: Pase el nombre de la herramienta expuesta en esta ronda. El modelo ocasionalmente envía líneas y nombres de funciones en una cadena.,
-                            //   Sólo con esta lista podremos restaurar el nombre real de la herramienta al final.,En lugar de desperdiciar toda la llamada.
+                            //   过滤后若无有效调用,按"无工具调用"处理本轮,避免卡死
+                            // v2.6.10: 传入本轮暴露的工具名。模型偶尔把台词和函数名连成一串提交,
+                            //   有了这份名单才能把末尾那个真工具名还原出来,而不是把整条调用丢掉。
                             ToolCallSanitizer.sanitize(
                                 rawToolCallList,
                                 params.tools.mapTo(HashSet()) { it.name },
@@ -1047,19 +1054,19 @@ class ToolOrchestrator(
                     if (rawToolCallList.size != toolCallList.size) {
                         Logger.w(
                             TAG,
-                            "Filtrado no válido toolCalls: ${rawToolCallList.size} -> ${toolCallList.size}" +
+                            "过滤无效 toolCalls: ${rawToolCallList.size} -> ${toolCallList.size}" +
                                 " | sessionId=${params.sessionId}",
                         )
                     }
                     execPolicy.recordEmittedToolCalls(toolCallList.size)
 
-                    // v1.0.48: No válido después de filtrar toolCalls,prensa"Sin llamada de herramienta"Procesar esta ronda
+                    // v1.0.48: 过滤后无有效 toolCalls,按"无工具调用"处理本轮
                     if (toolCallList.isEmpty()) {
                         hasToolCalls = false
                         val rawCount = assistantToolMsg.toolCalls?.size ?: 0
-                        // v2.6.10: Los modelos pequeños a menudo incluyen todo lo que quieren decir en llamadas a herramientas (name está vacío,
-                        // arguments Sólo una frase completa). Esa frase en sí es lo que el modelo quiere decir,
-                        // debe mostrarse como texto del cuerpo en lugar de informar al usuario"Formato de parámetro anormal".
+                        // v2.6.10: 小模型常把要说的话整个塞进工具调用里（name 为空、
+                        // arguments 就是一整句）。那句话本身就是模型想说的话，
+                        // 应当当作正文展示，而不是向用户报"参数格式异常"。
                         val recovered = recoverProseFromInvalidToolCalls(rawToolCallList)
                         if (recovered != null) {
                             finalAssistantMessage =
@@ -1067,66 +1074,66 @@ class ToolOrchestrator(
                             terminationReason = ToolLoopTerminationReason.COMPLETED
                             Logger.w(
                                 TAG,
-                                "Agent Loop step $round/$roundLimitLabel: toolCalls No ejecutable pero el contenido es texto.," +
-                                    "Cerrado como respuesta de texto(raw=$rawCount, chars=${recovered.length})",
+                                "Agent Loop step $round/$roundLimitLabel: toolCalls 不可执行但内容是正文," +
+                                    "已当文本回复收口(raw=$rawCount, chars=${recovered.length})",
                             )
                             break
                         }
-                        // v1.0.81: No más burbujas con contenido vacío(Eso mostrará una interfaz de usuario vacía sin indicaciones).
-                        // Cuando se limpian las llamadas a herramientas, la salida del modelo suele estar incompleta./Parámetro de herramienta ilegal(Sanitizer descartar),
-                        // Ofrezca a los usuarios y modelos un recordatorio claro,Haga que esta ronda sea observable y vuelva a intentar la siguiente ronda.
+                        // v1.0.81: 不再留 content 为空的气泡(那会显示空 UI 且无任何提示)。
+                        // 工具调用被清洗通常是模型输出了不完整/非法的工具参数(Sanitizer 丢弃),
+                        // 给用户和模型一个明确提示,让本轮可观测、下一轮可重试。
                         val hint =
                             if (rawCount > 0) {
-                                "modelo iniciado $rawCount llamadas de herramientas,Sin embargo, el formato del parámetro era anormal y la ejecución falló. Por favor vuelva a describir sus necesidades,Lo intentaré de nuevo."
+                                "模型发起了 $rawCount 个工具调用,但参数格式异常未能执行。请重新描述你的需求,我会再试一次。"
                             } else {
-                                "El modelo no genera llamadas de herramientas válidas,No hay herramientas para ejecutar esta ronda. Para búsqueda u otras herramientas,Vuelva a describir sus necesidades."
+                                "模型未输出有效的工具调用,本轮无工具可执行。如需搜索或其他工具,请重新描述你的需求。"
                             }
                         finalAssistantMessage =
                             assistantToolMsg.copy(
                                 toolCalls = emptyList(),
                                 content = hint,
                             )
-                        // Phase 3: No hay llamadas válidas después de la limpieza."Complete la respuesta final normalmente" — Razones de estructuración del documento.,
-                        // Al final, usa la pista como error message,Es conveniente que la capa superior distinga entre las respuestas del modelo y los detalles del organizador.
+                        // Phase 3: 清洗后无有效调用不是"正常完成最终答复" — 记录结构化原因,
+                        // 收尾时同时把 hint 作为 error message,便于上层区分模型答复与编排器兜底。
                         abortReason = hint
                         terminationReason = ToolLoopTerminationReason.INVALID_TOOL_CALLS
                         Logger.w(
                             TAG,
-                            "Agent Loop step $round/$roundLimitLabel: toolCalls Vaciar después de la limpieza(raw=$rawCount),Consejos de inyección",
+                            "Agent Loop step $round/$roundLimitLabel: toolCalls 清洗后为空(raw=$rawCount),注入提示",
                         )
                         break
                     }
 
-                    // M3.3: Prueba de parada temprana continua y sin progresión — Subordinado a la detección de duplicación de firmas a nivel redondo de execPolicy,
-                    // Juzgue antes de rellenar,Evite ejecutar herramientas duplicadas cuando esté atascado.
+                    // M3.3: 连续无进展早停检测 — 归入 execPolicy 轮级签名重复检测,
+                    // 在回填前判断,避免卡死时还执行重复工具。
                     val currentSignature = toolCallSignature(toolCallList)
                     val progressDecision = execPolicy.checkRoundProgress(currentSignature)
                     if (!progressDecision.allowed) {
                         Logger.w(
                             TAG,
-                            "Agent Loop Continuo idéntico detectado tool_call(${progressDecision.detail})" +
+                            "Agent Loop 检测到连续相同 tool_call(${progressDecision.detail})" +
                                 " | sessionId=${params.sessionId} | signature=$currentSignature",
                         )
-                        Logger.w(TAG, "Agent Loop Las mismas rondas continuas de llamada de herramienta alcanzan el límite superior,Decidido a quedar atrapado,terminación anticipada")
+                        Logger.w(TAG, "Agent Loop 连续相同 tool_call 轮次达上限,判定卡死,提前终止")
                         hasToolCalls = false
                         terminationReason = ToolLoopTerminationReason.REPEATED_TOOL_CALLS
-                        // A-07: Motivo de salida del registro,Inyecte una copia clara al final(De lo contrario, el usuario sólo verá la tarjeta de herramientas sin ninguna respuesta.)
-                        abortReason = "Se detectó una llamada de herramienta estancada(continuo ${execPolicy.noProgressRoundsCount} No hay progreso en la ronda),Se detuvo automáticamente. para continuar,Déjame reprocesarlo."
-                        // No agregue asistenteToolMsg history,Evite dejar mensajes del asistente sin resultados de la herramienta
+                        // A-07: 记录退出原因,收尾时注入明确文案(否则用户只看到工具卡片无任何回复)
+                        abortReason = "检测到工具调用停滞(连续 ${execPolicy.noProgressRoundsCount} 轮无进展),已自动停止。如需继续,可以让我重新处理。"
+                        // 不把 assistantToolMsg 加入 history,避免遗留无 tool 结果的 assistant 消息
                         break
                     }
 
-                    // v1.0.62: La historia y la persistencia deben utilizar la limpieza. toolCalls,
-                    // Evite que las llamadas ilegales con nombres y argumentos vacíos activen 400 en la siguiente ronda de solicitudes.
-                    // v1.0.80: La implementación anterior solo usaba los resultados de limpieza cuando cambiaba la cantidad. — Si desinfectar solo arregla
-                    // arguments(malo JSON → "{}")mientras la cantidad permanece sin cambios,Los malos argumentos seguirán pasando a la historia,
-                    // Se activa la próxima ronda de solicitudes 400 "Assistant tool call arguments must be valid JSON".
-                    // Utilice siempre la herramienta desinfectadaCallList en su lugar.
+                    // v1.0.62: 历史与持久化必须使用清洗后的 toolCalls,
+                    // 避免空 name/空 arguments 的非法调用在下一轮请求中触发 400。
+                    // v1.0.80: 旧实现仅当数量变化时才用清洗结果 — 若 sanitize 只修复了
+                    // arguments(坏 JSON → "{}")而数量不变,坏 arguments 仍会进入历史回传,
+                    // 下一轮请求触发 400 "Assistant tool call arguments must be valid JSON"。
+                    // 改为始终使用清洗后的 toolCallList。
                     val cleanedAssistantToolMsg = assistantToolMsg.copy(toolCalls = toolCallList)
 
-                    // Los mensajes del asistente con tool_calls solo pertenecen a esta ronda del historial del protocolo del proveedor.
-                    // MessageEntity El campo ToolCalls no se guarda. Si el mensaje de protocolo con contenido vacío se coloca en la biblioteca,
-                    // Después de recargar, solo quedará un shell de asistente vacío sin contenido.
+                    // 带 tool_calls 的 assistant 消息只属于本轮 Provider 协议历史。
+                    // MessageEntity 不保存 toolCalls 字段，若把 content 为空的协议消息落库，
+                    // 重载后只会剩下一条没有任何内容的 assistant 空壳。
                     conversationHistory.add(cleanedAssistantToolMsg)
                     if (
                         cleanedAssistantToolMsg.content.isNotBlank() ||
@@ -1138,20 +1145,20 @@ class ToolOrchestrator(
                         persistAssistantToolMsg(params.sessionId, cleanedAssistantToolMsg, host)
                     }
 
-                    // Reanudar la carga desde el punto de interrupción:Persistir en las llamadas de herramientas pendientes. El modo de pausa lo selecciona explícitamente el usuario
-                    // “No ejecutado esta ronda”, estas llamadas no deben confundirse con los efectos secundarios que se restaurarán después de reiniciar.
-                    // Lo mismo ocurre con la rueda de truncamiento de parámetros: los argumentos utilizados para el relleno son simplemente `{}` ocupar un lugar, caer en pending
-                    // Se ejecutará como una llamada verdadera después de reiniciar.
+                    // 断点续传:持久化未完成的工具调用。暂停模式是用户明确选择的
+                    // “本轮不执行”，不应把这些调用重启后误当成待恢复副作用。
+                    // 参数截断轮同理：回填用的 arguments 只是 `{}` 占位，落进 pending
+                    // 会在重启后被当成真调用执行。
                     if (params.allowToolExecution && !truncatedArgsRound) {
                         savePendingToolCalls(params.sessionId, toolCallList, executionIdentity, host)
                     }
 
-                    // Cree la tarjeta de tareas y cambie a EXECUTING
-                    // v1.0.53: send_sticker No incluido en tarjetas de tareas(Los emoticonos son interacciones divertidas,No mostrar plan de ejecución),
-                    //   Cuando todas las llamadas sean herramientas silenciosas, no se creará ninguna tarjeta.(taskCardId=null,Las operaciones posteriores en la tarjeta se omitirán internamente.).
-                    // v1.0.54: list_stickers Mismo silencio(Listar memes es un trabajo interno,Los usuarios no necesitan ver).
-                    // No se crean tarjetas en la ronda de truncamiento de parámetros: ninguna de las llamadas en esta ronda se ejecutará realmente y las tarjetas solo se colgarán en una fila.
-                    // No hay pasos hacia adelante; El hecho del truncamiento se explica al usuario en la tarjeta de recibo de la herramienta que aparece a continuación.
+                    // 构建任务卡并切换到 EXECUTING
+                    // v1.0.53: send_sticker 不纳入任务卡(表情包是趣味交互,不展示执行计划),
+                    //   全部调用均为静默工具时不建卡(taskCardId=null,后续对卡的操作内部判空跳过)。
+                    // v1.0.54: list_stickers 同样静默(列表情包是内部工作,用户无需看到)。
+                    // 参数截断轮不建卡：本轮没有一个调用会真的执行，卡片只会挂一排
+                    // 不前进的步骤；截断事实由下面的工具回执卡片向用户说明。
                     val silentToolNames = setOf("send_sticker", "list_stickers")
                     val taskCardToolCallsWithIds =
                         toolCallList
@@ -1178,16 +1185,16 @@ class ToolOrchestrator(
                             null
                         }
 
-                    // paralelo/Llamadas a herramientas de ejecución en serie
-                    // v1.0.47 P6-2: El modelo de herramientas débil se degrada a la ejecución en serie,Evite las llamadas a herramientas paralelas que causan malformaciones
-                    // Phase 3: stateLock/approvalLock Creado solo en rondas simultáneas de solo lectura;transmisión de ruta en serie null(El comportamiento es completamente consistente con el status quo.)
+                    // 并行/串行执行工具调用
+                    // v1.0.47 P6-2: 弱工具模型降级为串行执行,避免并行 tool_calls 导致格式错乱
+                    // Phase 3: stateLock/approvalLock 仅在只读并发轮创建;串行路径传 null(行为与现状完全一致)
                     val contextBudgetTokens = host.contextBudgetTokens()
                     val currentHistoryTokens =
                         if (contextBudgetTokens > 0) {
-                        TokenEstimator.estimate(conversationHistory, cache = loopTokenCache)
-                    } else {
-                        0
-                    }
+                            TokenEstimator.estimate(conversationHistory, cache = loopTokenCache)
+                        } else {
+                            0
+                        }
                     val inlineOutputBudgetTokens =
                         toolOutputInlineBudgetTokens(
                             contextBudgetTokens = contextBudgetTokens,
@@ -1204,8 +1211,8 @@ class ToolOrchestrator(
                                     cancel = { executionJob?.cancel() },
                                 )
                             executionId?.let { id -> executionRegistry?.start(id) }
-                            // F-13: progreso sin bloqueo — Nombre de la herramienta actual toolProgressMessage(UI mostrar),
-                            // Fin de la fase de herramientas(execResults Después del relleno)Borrar, Vinculado con la máquina de estados F-07
+                            // F-13: 非阻塞进度 — 当前工具名进 toolProgressMessage(UI 显示),
+                            // 工具阶段结束(execResults 回填后)清除, 与 F-07 状态机联动
                             accessor.update {
                                 it.copy(toolProgressMessage = context.getString(R.string.tool_running, tc.name))
                             }
@@ -1220,8 +1227,8 @@ class ToolOrchestrator(
                                 result
                             } catch (ce: kotlinx.coroutines.CancellationException) {
                                 executionId?.let { id -> executionRegistry?.markCancelled(id) }
-                                // El contexto de rutina no se puede suspender cuando se cancela; borrar el punto de interrupción del disco en NonCancellable
-                                // Marcar ABORTADO para evitar ser cancelado después de reiniciar/Es posible que algunas llamadas de efectos secundarios se confundan con tareas ejecutables.
+                                // 取消时协程上下文已不可挂起；在 NonCancellable 中把磁盘断点明确
+                                // 标为 ABORTED，避免重启后将已取消/可能部分副作用的调用误当成可执行任务。
                                 withContext(NonCancellable) {
                                     runCatching {
                                         PendingToolCallStore.updateState(
@@ -1230,16 +1237,16 @@ class ToolOrchestrator(
                                             "generation_cancelled",
                                         )
                                     }.onFailure { error ->
-                                        Logger.w(TAG, "La escritura ABORTADA falló después de cancelar la herramienta: ${tc.id}", error)
+                                        Logger.w(TAG, "取消工具后写入 ABORTED 失败: ${tc.id}", error)
                                     }
                                 }
 
-                                // F-07: marca de rotura — Ejecución de herramienta interrumpida por streaming(usuario detenido/Cambio de sesión).
-                                // Resultados incompletos, Registre el registro de estado INTERRUMPIDO y los pasos de la tarjeta de tareas, Propague la cancelación hacia arriba nuevamente.
-                                Logger.w(TAG, "Herramientas ${tc.name} interrumpido(INTERRUPTED) | sessionId=${params.sessionId}")
+                                // F-07: 中断标记 — 工具执行被流式中断(用户停止/会话切换)。
+                                // 结果不完整, 记录 INTERRUPTED 状态日志与任务卡步骤, 再向上传播取消。
+                                Logger.w(TAG, "工具 ${tc.name} 被中断(INTERRUPTED) | sessionId=${params.sessionId}")
                                 val interruptedAt = System.currentTimeMillis()
-                                val interruptedText = "[interrumpir] Herramientas ${tc.name} Ejecución cancelada"
-                                // Phase 3: La cancelación es un estado final independiente.,ya no está completo FAILED(TaskStepStatus.CANCELLED).
+                                val interruptedText = "[中断] 工具 ${tc.name} 执行被取消"
+                                // Phase 3: 取消是独立终态,不再落成 FAILED(TaskStepStatus.CANCELLED)。
                                 taskCardCoordinator.updateTaskCardStep(taskCardId, idx) { s ->
                                     s.copy(
                                         status = ToolExecStatus.CANCELLED.toTaskStepStatus(),
@@ -1248,7 +1255,7 @@ class ToolOrchestrator(
                                     )
                                 }
                                 // Cancellation previously vanished from the message stream and the
-                                // tool history; record it so theinterrumpir is visible after the fact.
+                                // tool history; record it so the中断 is visible after the fact.
                                 accessor.update { state ->
                                     state.copy(
                                         toolCallHistory =
@@ -1276,29 +1283,29 @@ class ToolOrchestrator(
                                 throw ce
                             } catch (e: Exception) {
                                 executionId?.let { id -> executionRegistry?.fail(id) }
-                                // Las herramientas pueden haber completado efectos secundarios externos.(Por ejemplo, escribir en la memoria.),pero devolución de llamada/Excepción durante la fase de limpieza
-                                // No se puede simplemente dejar que desaparezca todo el ciclo de la herramienta,De lo contrario, los usuarios sólo verán“ejecutando”.
-                                Logger.e(TAG, "No se pudieron devolver los resultados de la herramienta: ${tc.name}", e)
+                                // 工具已经可能完成了外部副作用(例如写入记忆),但回调/清理阶段异常
+                                // 不能让整个工具循环直接消失,否则用户只会看到“执行中”。
+                                Logger.e(TAG, "工具结果回传失败: ${tc.name}", e)
                                 failedToolResult(
                                     taskCardId = taskCardId,
                                     tc = tc,
                                     idx = idx,
                                     host = host,
                                     taskCardCoordinator = taskCardCoordinator,
-                                    reason = e.message ?: "error desconocido",
+                                    reason = e.message ?: "未知错误",
                                 )
                             }
                         }
 
-                    // B-38: Ejecución en serie predeterminada — async+awaitAll Al mismo tiempo execPolicy.afterExecute /
-                    // taskCardCoordinator / PendingToolCallStore Existe una condición de carrera al escribir estados no atómicos.
-                    // (ToolExecutionPolicy Presione explícitamente"Uso de secuencia de un solo giro"diseño).LLM Herramienta de marco único
-                    // Llamadas normalmente 1-3,Rendimiento en serie aceptable,Y es consistente con la ruta de degradación del modelo de herramienta débil.
-                    // Phase 3: Cuando el interruptor está activado y toda la ronda es una herramienta de solo lectura,Ejecutar con concurrencia limitada;Todas las escrituras de estado por turno
-                    // (TaskCard / PendingToolCallStore / execPolicy / hook / host devolución de llamada)Serializado a través de stateLock,
-                    // Solicitudes de aprobación serializadas mediante AppLock,Los resultados todavía se reponen en el orden de llamada de herramienta original.
+                    // B-38: 默认串行执行 — async+awaitAll 并发下 execPolicy.afterExecute /
+                    // taskCardCoordinator / PendingToolCallStore 等非原子状态写入存在竞态
+                    // (ToolExecutionPolicy 明确按"单 turn 顺序使用"设计)。LLM 单帧工具
+                    // 调用通常 1-3 个,串行性能可接受,且与弱工具模型降级路径一致。
+                    // Phase 3: 开关开启且整轮均为只读工具时,按有限并发执行;所有 per-turn 状态写入
+                    // (TaskCard / PendingToolCallStore / execPolicy / hook / host 回调)经 stateLock 串行化,
+                    // 审批提示经 approvalLock 串行化,结果仍按原始 tool-call 顺序回填。
                     if (toolCallList.size > 1 && WeakToolUseDetector.isWeakToolModel(params.model)) {
-                        Logger.i(TAG, "Se detectó un modelo de herramienta débil ${toolCallList.size} llamadas de herramientas,ejecución en serie | model=${params.model?.id}")
+                        Logger.i(TAG, "弱工具模型检测到 ${toolCallList.size} 个工具调用,串行执行 | model=${params.model?.id}")
                     }
                     val parallelRound = !truncatedArgsRound && shouldExecuteRoundInParallel(toolCallList, params)
                     val stateLock = if (parallelRound) Mutex() else null
@@ -1306,23 +1313,23 @@ class ToolOrchestrator(
                     if (parallelRound) {
                         Logger.i(
                             TAG,
-                            "Las herramientas de solo lectura tienen ejecución simultánea limitada: ${toolCallList.size} llamadas" +
-                                " | Límite de concurrencia=$READ_ONLY_TOOL_MAX_PARALLELISM | sessionId=${params.sessionId}",
+                            "只读工具有限并发执行: ${toolCallList.size} 个调用" +
+                                " | 并发上限=$READ_ONLY_TOOL_MAX_PARALLELISM | sessionId=${params.sessionId}",
                         )
                     }
                     val execResults: List<ToolExecResult> =
                         if (truncatedArgsRound) {
-                            // Sin ejecución, sin aprobación, sin pendientes: solo pon“Los parámetros de esta llamada están truncados por el límite superior de salida.”
-                            // Como resultado de la herramienta, se rellena al modelo, que reenvía los parámetros completos en la siguiente ronda.
-                            // El precio es aceptar una ronda más de solicitudes en esta ronda (el límite superior de rondas es 1 ronda adicional en el peor de los casos).
-                            // Es mejor que invalidar silenciosamente una ronda entera; El truncamiento repetido todavía está sujeto a la detección de estancamiento y al límite superior de rondas.
+                            // 不执行、不审批、不落 pending：只把“这次调用的参数被输出上限截断”
+                            // 作为 tool result 回填给模型，由它在下一轮重发完整参数。
+                            // 代价是本回合多占一轮请求（轮次上限最坏多吃 1 轮），
+                            // 优于一整轮静默作废；反复截断仍受停滞检测与轮次上限约束。
                             toolCallList.mapIndexed { idx, tc ->
                                 ToolExecResult(
                                     idx = idx,
                                     tc = tc,
                                     finalToolResult = truncatedArgumentsToolResult(tc.name),
                                     isSuccess = false,
-                                    displayResult = "Herramientas ${tc.name} No ejecutado: el argumento fue truncado por el límite de longitud de salida en la generación",
+                                    displayResult = "工具 ${tc.name} 未执行：参数在生成时被输出长度上限截断",
                                     status = ToolExecStatus.FAILED,
                                     finishedAt = System.currentTimeMillis(),
                                 )
@@ -1335,13 +1342,13 @@ class ToolOrchestrator(
                             )
                         }
                     if (!params.allowToolExecution) {
-                        // Dale al modelo una ronda explícita.“La herramienta está en pausa”Como resultado, la herramienta se ve obligada a cerrarse para terminar;
-                        // Los pensamientos y las respuestas finales aún se conservan y no desencadenan efectos secundarios reales de la herramienta.
+                        // 给模型一轮明确的“工具已暂停”结果，然后强制关闭工具收尾；
+                        // 思考和最终回复仍然保留，不会触发真实工具副作用。
                         forceFinalResponse = true
                         hasToolCalls = true
                     }
 
-                    // Registro estructurado de esta ronda de convocatorias de herramientas;UI El mensaje aún tiene el campo de compatibilidad y se puede restaurar desde esta tabla al volver a ingresar a la sesión.
+                    // 结构化记录本轮工具调用；UI 消息仍走兼容字段，重进会话时由此表恢复。
                     if (params.turnId.isNotBlank()) {
                         val finishedAt = System.currentTimeMillis()
                         toolRounds +=
@@ -1370,20 +1377,20 @@ class ToolOrchestrator(
                             }
                     }
 
-                    // Rellene los resultados secuencialmente en el historial y UI
+                    // 按顺序回填结果到历史和 UI
                     for (result in execResults) {
                         val (idx, tc, finalToolResult, isSuccess, displayResult) = result
-                        // F-07: registro de estado — Registre el estado final al final de la ejecución de cada herramienta.(SUCCESS/FAILED/INTERRUPTED/APPROVAL_PENDING)
+                        // F-07: 状态日志 — 每工具执行结束记录终态(SUCCESS/FAILED/INTERRUPTED/APPROVAL_PENDING)
                         Logger.d(
                             TAG,
-                            "Finaliza la ejecución de la herramienta: ${tc.name} status=${result.status} isSuccess=$isSuccess" +
+                            "工具执行结束: ${tc.name} status=${result.status} isSuccess=$isSuccess" +
                                 " | sessionId=${params.sessionId}",
                         )
-                        // F-08: Agent Run recibo unificado — Libro mayor de memoria + registro de auditoría(Persistencia opcional).
-                        // parentRunId: Si esta herramienta es la iniciadora de delegado_agent/subagent_task,
-                        // Las llamadas a herramientas en su subagente formarán una cadena de llamadas con este runId como parentRunId.
-                        // F-11: exposedToolIds Registre esta ronda de herramientas visibles de LLM(Exponiendo evidencia instantánea,
-                        // Se puede determinar comparando con callToolId"Si la herramienta está razonablemente expuesta").
+                        // F-08: Agent Run 统一收据 — 内存账本 + 审计日志(可选持久化)。
+                        // parentRunId: 本工具若是 delegate_agent/subagent_task 的发起者,
+                        // 其子 agent 内的工具调用会以本 runId 为 parentRunId 形成调用链。
+                        // F-11: exposedToolIds 记录本轮 LLM 可见工具(暴露快照证据,
+                        // 与 calledToolId 对照可判定"工具是否被合理暴露")。
                         val isDelegationTool = tc.name == "delegate_agent" || tc.name == "subagent_task"
                         agentRunTracker?.record(
                             io.zer0.muse.data.audit.AgentRunRecord(
@@ -1392,7 +1399,7 @@ class ToolOrchestrator(
                                 sessionId = params.sessionId,
                                 round = round,
                                 toolName = tc.name,
-                                // F-12/B-28: Resumen de parámetros y resultados primera desensibilización URL query,La auditoría no registra parámetros sensibles a clases clave
+                                // F-12/B-28: 参数与结果摘要先脱敏 URL query,审计不记录 key 类敏感参数
                                 argumentsSummary = sanitizeUrlQuery(tc.arguments.take(200)),
                                 resultSummary = sanitizeUrlQuery(finalToolResult.take(200)),
                                 status = result.status.name,
@@ -1424,33 +1431,33 @@ class ToolOrchestrator(
                             )
                         conversationHistory.add(toolMsg)
 
-                        // v2.6.0: Cuando la herramienta produce una captura de pantalla,Añadir un mensaje de usuario con una imagen. —— Los resultados de la herramienta en sí solo se pueden rellenar
-                        // texto(function_call_output Cadena limitada),La imagen debe ser enviada al mensaje del usuario. imageBase64List
-                        // canal(Ya está respaldado por información visual de varios proveedores.). Nota:Agregar al historial no se muestra directamente al usuario;
-                        // UI La visualización de la captura de pantalla en el lateral es manejada por la propia tarjeta de herramientas.
+                        // v2.6.0: 工具产出截图时,追加一条带图用户消息 —— 工具结果本身只能回填
+                        // 文本(function_call_output 限字符串),图片得走 user 消息的 imageBase64List
+                        // 通道(已被各 Provider 的视觉输入支持)。注:追加到历史不直接展示给用户;
+                        // UI 侧的截图展示由工具卡片自身处理。
                         result.screenshotBase64?.let { b64 ->
                             conversationHistory.add(
                                 UIMessage(
                                     role = MessageRole.USER,
-                                    content = "[Captura de pantalla del navegador] Esta es la representación de la página actual devuelta por la captura de pantalla del navegador que acaba de llamar.",
+                                    content = "[浏览器截图] 这是你刚调用的 browser_screenshot 返回的当前页面渲染图。",
                                     imageBase64List = listOf(b64),
                                 ),
                             )
-                            Logger.d(TAG, "browser_screenshot El resultado se ha adjuntado como un mensaje con una imagen. | sessionId=${params.sessionId}")
+                            Logger.d(TAG, "browser_screenshot 结果已作为带图消息追加 | sessionId=${params.sessionId}")
                         }
 
                         val toolDisplay =
                             UIMessage(
                                 role = MessageRole.ASSISTANT,
-                                // v2.5.2 fix: El mensaje de visualización de la herramienta está vinculado al mensaje del asistente correspondiente (asociación de padres),
-                                // De lo contrario, al eliminar esta ronda de mensajes del asistente, la tarjeta de herramientas no se puede encontrar en la eliminación en cascada (búsqueda por padre).
-                                // Dejar tarjetas huérfanas (prueba de usuario:“El registro de llamada a la herramienta después de eliminar el mensaje aún permanece”).
+                                // v2.5.2 fix: 工具展示消息挂到所属助手消息上（父关联），
+                                // 否则删除该轮助手消息时级联删除（按 parent 查找）找不到工具卡，
+                                // 留下孤儿卡片（用户实测：“删消息后调用工具的记录还留着”）。
                                 parentMessageId = currentAssistantId.toString(),
                                 parentGroupId = currentAssistantId.toString(),
-                                // v1.0.54: La visualización de llamadas de herramientas está unificada en tarjetas plegadas.(ToolCallCard,y proceso de pensamiento/mood isomorfismo),
-                                //   El cuerpo del mensaje ya no está escrito."herramienta de llamada/parámetros/resultado"texto.
-                                //   send_sticker Caso especial: content Mantenga solo la ruta de la etiqueta(MessageBubble.extractStickerPaths
-                                //   Renderiza la imagen en consecuencia),Tarjeta de herramientas silenciosa(isSilentTool).
+                                // v1.0.54: 工具调用展示统一为折叠卡片(ToolCallCard,与思考过程/mood 同构),
+                                //   消息本体不再拼"调用工具/参数/结果"文本。
+                                //   send_sticker 特例: content 只保留贴纸路径(MessageBubble.extractStickerPaths
+                                //   据此渲染图片),工具卡片静默(isSilentTool)。
                                 content =
                                 if (tc.name == "send_sticker") {
                                     extractStickerPaths(finalToolResult).joinToString("\n")
@@ -1463,8 +1470,8 @@ class ToolOrchestrator(
                                     arguments = tc.arguments,
                                     result = displayResult ?: finalToolResult,
                                     isSuccess = isSuccess,
-                                    // Registrar el tiempo de ejecución local (excluyendo la espera de red y la generación de modelos),
-                                    // Se muestra en el lado derecho de los pasos de la herramienta para que los usuarios puedan determinar si la lentitud radica en el modelo o en la herramienta.
+                                    // 记录本地执行耗时（不含网络等待与模型生成），
+                                    // 供工具步骤右侧展示，让用户能判断慢在模型还是慢在工具。
                                     durationMs = (System.currentTimeMillis() - stepStartedAt)
                                         .takeIf { it >= 0 },
                                 ),
@@ -1495,9 +1502,9 @@ class ToolOrchestrator(
                                 },
                             )
 
-                        // Los mensajes de resultados de la herramienta no se pueden colocar simplemente en la interfaz de usuario de la memoria: la tarjeta de la herramienta aún debe mostrarse después de que se corta la sesión y se reinicia el proceso.
-                        // assistant(tool_calls) El pedido se realizó arriba y el mensaje de visualización del resultado de la herramienta correspondiente se completa aquí.
-                        // El uso del propio ID del mensaje como inserción idempotente no afecta si la interfaz de usuario actual muestra la sesión.
+                        // 工具结果消息不能只放在内存 UI：切出会话、进程重启后仍需显示工具卡片。
+                        // assistant(tool_calls) 已在上方落盘，这里补齐对应的 tool result 展示消息。
+                        // 使用消息自身 id 做幂等 upsert，不影响当前 UI 是否正在展示该会话。
                         if (tc.name !in silentToolNames || tc.name == "send_sticker") {
                             val persistedToolDisplay =
                                 toolDisplay.copy(
@@ -1520,9 +1527,9 @@ class ToolOrchestrator(
                                 snapshot.currentSessionId == params.sessionId
                             }
                         if (isCurrentDisplayedSession) {
-                            // v1.0.54: herramienta silenciosa(list_stickers)No envíe ningún mensaje de interfaz de usuario — No hay rastro de funcionamiento interno;
-                            //   send_sticker empujar content=mensaje de ruta de etiqueta(Renderizar imagen,tarjeta de silencio);
-                            //   Otras herramientas se vacían content + toolCallInfo(expositor de tarjetas plegadas).
+                            // v1.0.54: 静默工具(list_stickers)完全不推 UI 消息 — 内部工作无痕;
+                            //   send_sticker 推送 content=贴纸路径的消息(渲染图片,卡片静默);
+                            //   其余工具推送空 content + toolCallInfo(折叠卡片展示)。
                             if (tc.name !in silentToolNames || tc.name == "send_sticker") {
                                 accessor.updateMessages { it + toolDisplay }
                                 accessor.update {
@@ -1540,32 +1547,32 @@ class ToolOrchestrator(
                             )
                         }
 
-                        // Extracto de los resultados de web_search citation URL
+                        // 从 web_search 结果中提取 citation URL
                         if (tc.name == "web_search") {
                             citationUrls.addAll(extractWebSearchUrls(finalToolResult))
                         }
 
-                        // M3.3: Fallo continuo y parada anticipada. — por execPolicy(fuente de estado única)juicio
+                        // M3.3: 连续失败早停 — 由 execPolicy(唯一状态源)判定
                         if (execPolicy.shouldAbortOnConsecutiveFailures()) {
                             Logger.w(
                                 "ToolOrchestrator",
-                                "continuo ${execPolicy.consecutiveFailuresCount} herramienta falló,Terminación anticipada del bucle de llamada de herramienta " +
+                                "连续 ${execPolicy.consecutiveFailuresCount} 次工具失败,提前终止工具调用循环 " +
                                     "(round=$round, tool=${tc.name})",
                             )
-                            // No termine aquí directamente: primero rellene completamente todos los resultados de las HERRAMIENTAS de esta ronda,
-                            // Luego apague la herramienta y deje que el modelo principal genere el acabado visible.
+                            // 不在这里直接结束：先把本轮所有 TOOL 结果完整回填，
+                            // 下一轮关闭工具并让主模型生成可见收尾。
                             forceFinalResponse = true
                             hasToolCalls = true
                         }
                     }
 
-                    // F-13: Fin de la fase de herramientas,Borrar"ejecutando"Progreso(No habrá residuos en la próxima generación de todos contra todos.)
+                    // F-13: 工具阶段结束,清除"正在执行"进度(下一轮流式生成不残留)
                     accessor.update { it.copy(toolProgressMessage = null) }
                     taskCardCoordinator.updateTaskCardPhase(taskCardId, TaskCardPhase.DONE)
 
-                    // Sincronizar el plan de flujo de trabajo del agente con UI
-                    // v1.137: Asociar el mensaje actual del asistente con el plan ID,Haga que la tarjeta de planificación permanezca fijada en el mensaje que la creó y desplácese con el mensaje,
-                    // en lugar de siempre"saltar"Ir al último mensaje del asistente(Comentarios de los usuarios"La lista está fija en la parte inferior y no sigue el desplazamiento.").
+                    // 同步 Agent 工作流计划到 UI
+                    // v1.137: 为计划关联当前助手消息 ID,使计划卡固定在创建它的消息上随消息滚动,
+                    // 而不是始终"跳"到最后一条助手消息(用户反馈"列表固定在底部不跟随滚动")。
                     val latestPlans =
                         skillExecutor.getActivePlans(params.sessionId).mapValues { (_, plan) ->
                             if (plan.messageId == null) plan.copy(messageId = currentAssistantId.toString()) else plan
@@ -1574,16 +1581,16 @@ class ToolOrchestrator(
                         accessor.update { it.copy(agentPlans = latestPlans) }
                     }
 
-                    // ¿Hay otra ronda de solicitudes por enviar? Las interjecciones sólo se toman cuando hay una siguiente ronda: si la ronda actual ha terminado,
-                    // No hay ningún lugar para enviarlo (el mensaje del usuario no será solicitado ni estará en la cola).
+                    // 是否还有下一轮请求要发。插话只在有下一轮时取：本轮就结束的话，
+                    // 取出来也无处可送（用户那条消息会既没进请求、又不在队列里）。
                     val willRunAnotherRound = (hasToolCalls || forceFinalResponse) && round < execPolicy.maxRounds
 
-                    // Interjección del usuario: Una vez finalizada la ronda de herramientas y antes de la siguiente ronda de solicitudes, las palabras pronunciadas por el usuario durante la generación se reciben como mensajes de USUARIO.
-                    // **Después de todos los resultados de la herramienta**. Esta es la única ubicación legal:
-                    //  - Insertar en epiciclo assistant(tool_calls) entre resultados de herramientas → Rompe el emparejamiento,Provider Directo 400;
-                    //  - Fusionarse en un mensaje de HERRAMIENTA → TOOL Solo se pueden reponer los resultados correspondientes a tool_call_id, y el resto del contenido también se rellena con 400;
-                    //  - insertado en medio de la historia anterior → Los prefijos que el modelo ya haya visto se sobrescribirán y la caché y la reproducción del bloque de pensamiento estarán desalineadas.
-                    // Se sigue como un mensaje de USUARIO independiente al final, que no cambia el emparejamiento existente y garantiza que la siguiente ronda de modelos lo verá.
+                    // 用户插话：工具轮跑完、下一轮请求之前，把用户生成期间说的话作为 USER 消息接在
+                    // **全部 tool 结果之后**。位置只有这一处合法：
+                    //  - 插在本轮 assistant(tool_calls) 与 tool 结果之间 → 拆散配对，Provider 直接 400；
+                    //  - 并进某条 TOOL 消息 → TOOL 只能回填对应 tool_call_id 的结果，塞别的内容同样 400；
+                    //  - 插在更早的历史中间 → 会改写模型已经看过的前缀，缓存与思考块回放都会错位。
+                    // 作为一条独立的 USER 消息接在尾部，既不改动既有配对，又保证下一轮模型看到它。
                     if (willRunAnotherRound) {
                         val steeringMessages = host.drainSteeringMessages()
                         if (steeringMessages.isNotEmpty()) {
@@ -1592,12 +1599,12 @@ class ToolOrchestrator(
                             }
                             Logger.i(
                                 TAG,
-                                "Insertar comentarios de usuario ${steeringMessages.size} Artículo | sessionId=${params.sessionId} | round=$round",
+                                "插入用户插话 ${steeringMessages.size} 条 | sessionId=${params.sessionId} | round=$round",
                             )
                         }
                     }
 
-                    // Cree un nuevo mensaje de asistente de marcador de posición para recibir la siguiente ronda de respuestas
+                    // 创建新的占位 assistant 消息接收下一轮流式回复
                     if (willRunAnotherRound) {
                         val nextAssistant = UIMessage(role = MessageRole.ASSISTANT, content = "")
                         val snapshot = accessor.snapshot
@@ -1613,26 +1620,26 @@ class ToolOrchestrator(
                         currentAssistantId = nextAssistant.id
                     }
 
-                    // v1.x: registro de fin de paso — Grabar nombre de la herramienta, éxito/Número de fallas, tiempo necesario.
+                    // v1.x: 步结束日志 — 记录工具名、成功/失败数、耗时
                     val stepElapsedMs = System.currentTimeMillis() - stepStartedAt
                     val toolNames = toolCallList.joinToString(",") { it.name }
                     val successCount = execResults.count { it.isSuccess }
                     val failCount = execResults.size - successCount
-                    // P3-9: Tiempo dedicado a enterrar puntos en cada ronda. — Escribir además del registro de depuración Perf(Proporcionar un registro/ANR ¿El diagnóstico y posicionamiento es lento en qué tramo?)
+                    // P3-9: 每轮耗时埋点 — 除 debug 日志外同时写入 Perf(供一次日志/ANR 诊断定位慢在哪一段)
                     Perf.log("chat-tool-round", stepElapsedMs)
                     Logger.d(
                         TAG,
-                        "Agent Loop step $round/$roundLimitLabel fin | Herramientas=[$toolNames]" +
-                            " | éxito=$successCount falló=$failCount | Consume mucho tiempo=${stepElapsedMs}ms",
+                        "Agent Loop step $round/$roundLimitLabel 结束 | 工具=[$toolNames]" +
+                            " | 成功=$successCount 失败=$failCount | 耗时=${stepElapsedMs}ms",
                     )
                 }
             }
         }
 
-        // v2.6.4: Cerrar el plan inacabado cuando sale el bucle de herramientas —— Convierta el paso PENDIENTE / EN_PROGRESO en CANCELADO,
-        // De lo contrario, la tarjeta del plan siempre se detendrá en el medio.(girar en circulos), porque ya nadie ajusta update_plan_step.
-        // Cubrir todas las rutas de salida(Finalización normal/Rondas agotadas/Fallos continuos/Error de transmisión),
-        // Completado/falló/saltar/Los pasos cuyo tiempo de espera no se ven afectados (settleUnfinishedPlans Sólo los no finalizados se procesan internamente).
+        // v2.6.4: 工具循环退出时收尾未完成计划 —— 把 PENDING / IN_PROGRESS 步骤落成 CANCELLED，
+        // 否则计划卡会永远停在中途(转圈)，因为没人再调 update_plan_step 了。
+        // 覆盖全部退出路径(正常完成 / 轮次耗尽 / 连续失败 / 流式错误)，
+        // 已完成/失败/跳过/超时的步骤不受影响（settleUnfinishedPlans 内部只处理未终结的）。
         val settledPlans = skillExecutor.settleUnfinishedPlans(params.sessionId)
         if (settledPlans.isNotEmpty()) {
             val snapshot = accessor.snapshot
@@ -1644,17 +1651,17 @@ class ToolOrchestrator(
                 }
             if (isCurrentDisplayedSession3) {
                 accessor.update { state ->
-                    // Fusionar en lugar de sobrescribir: el plan cerrado sobrescribe el elemento con el mismo nombre y se conserva el plan sin cambios.
+                    // 合并而非覆盖：已收尾的计划覆盖同名项，未变动的计划保留。
                     state.copy(agentPlans = state.agentPlans + settledPlans)
                 }
             }
         }
 
-        // v1.0.74 fix: Quedarse sin rondas/Cuando se atasca y sale, finalAssistantMessage es null,No hay nada en la sesión.
-        // Consejos de cierre,La tarjeta de tareas queda colgada y el usuario piensa que el asistente está roto. Inyecte un mensaje de cierre claro.
-        // A-07: Cubra todos los caminos de salida interminables — atascado/Fallo continuo y parada anticipada.(hasToolCalls Ya configurado false
-        // Pero abortReason no está vacío)también inyectar,Y diferenciar el copywriting por motivo de salida.
-        val roundLimitText = "[Se ha alcanzado el límite de ronda de llamadas de herramientas(${execPolicy.maxRounds} rueda),Deténgase automáticamente. para continuar,Puedes dejarme manejarlo.]"
+        // v1.0.74 fix: 轮次耗尽/卡死退出时 finalAssistantMessage 为 null,会话里没有任何
+        // 收尾提示,任务卡悬空、用户以为助手坏了。注入一条明确的收尾消息。
+        // A-07: 覆盖全部无收尾退出路径 — 卡死/连续失败早停(hasToolCalls 已置 false
+        // 但 abortReason 非空)同样注入,并按退出原因区分文案。
+        val roundLimitText = "[已达到工具调用轮次上限(${execPolicy.maxRounds} 轮),自动停止。如需继续,可以让我接着处理。]"
         if (finalAssistantMessage == null) {
             val reasonText = abortReason ?: if (hasToolCalls) roundLimitText else null
             if (reasonText != null) {
@@ -1664,8 +1671,8 @@ class ToolOrchestrator(
                         role = MessageRole.ASSISTANT,
                         content = reasonText,
                     )
-                // B-04: Reemplazar la semántica en lugar de agregar — El mensaje del marcador de posición ya está en la interfaz de usuario.,Agregar la misma identificación generará dos burbujas idénticas.
-                // Si aparece un mensaje con la misma identificación, reemplácelo en su lugar.,De lo contrario, agregue un mensaje nuevo.
+                // B-04: 替换语义而非追加 — 占位消息已在 UI 中,追加同 id 会渲染两条相同气泡。
+                // 命中既有同 id 消息则原地替换,否则追加新消息。
                 accessor.updateMessages { list ->
                     if (list.any { it.id == finalAssistantMessage.id }) {
                         list.map { if (it.id == finalAssistantMessage.id) finalAssistantMessage else it }
@@ -1676,9 +1683,9 @@ class ToolOrchestrator(
             }
         }
 
-        // Phase 3: estado final estructurado — Salida de condición de bucle(while condición fallida)Sólo puede ser el límite de ronda.;
-        // success solo significa"Complete la respuesta final normalmente",fusible/Salir de todo es siempre false,
-        // Y envíe el motivo de la terminación a la capa superior como un mensaje de error.(De lo contrario, ChatViewModel sólo puede informar errores desconocidos.).
+        // Phase 3: 结构化终态 — 循环条件退出(while 条件失败)只可能是轮次上限;
+        // success 仅表示"正常完成最终答复",熔断/兜底退出一律为 false,
+        // 并把终止原因作为 error message 交给上层(否则 ChatViewModel 只能报未知错误)。
         val effectiveReason = terminationReason ?: ToolLoopTerminationReason.ROUND_LIMIT
         val completed =
             effectiveReason == ToolLoopTerminationReason.COMPLETED ||
@@ -1688,12 +1695,12 @@ class ToolOrchestrator(
                 ToolLoopTerminationReason.COMPLETED -> null
                 ToolLoopTerminationReason.COMPLETED_AFTER_TOOL_FAILURES -> null
                 ToolLoopTerminationReason.ROUND_LIMIT -> roundLimitText
-                else -> abortReason ?: "El bucle de llamada de herramienta finalizó prematuramente(${effectiveReason.name})"
+                else -> abortReason ?: "工具调用循环提前终止(${effectiveReason.name})"
             }
 
         Logger.i(
             TAG,
-            "Agent Loop fin | sessionId=${params.sessionId} | rounds=$round/$roundLimitLabel" +
+            "Agent Loop 结束 | sessionId=${params.sessionId} | rounds=$round/$roundLimitLabel" +
                 " | toolCalls=${execPolicy.emittedToolCallCount} | chars=${execPolicy.streamedCharCount}" +
                 " | success=$completed | reason=$effectiveReason",
         )
@@ -1721,21 +1728,21 @@ class ToolOrchestrator(
     }
 
     /**
-     * P2-7: Los usuarios que alcancen el presupuesto redondo pueden ver la copia final.
+     * P2-7: 轮次预算命中的用户可见收尾文案。
      *
-     * Mismo origen que ToolLoopResult.error.message,Finalmente, runLoop finaliza y se inyecta en el mensaje del asistente.,
-     * garantia"Terminar temprano"Visible para los usuarios(En lugar de simplemente dejar la tarjeta de tarea colgada).
+     * 与 ToolLoopResult.error.message 同源,最终由 runLoop 收尾注入为 assistant 消息,
+     * 保证"提前收尾"对用户可见(而不是只有任务卡悬空)。
      */
     private fun roundBudgetStopText(reason: ToolExecutionPolicy.StopReason?): String = when (reason) {
         ToolExecutionPolicy.StopReason.MAX_TOTAL_CALLS ->
-            "El número de llamadas de herramientas en esta ronda ha alcanzado el límite superior,Se detuvo automáticamente. para continuar,Puedes dejarme manejarlo."
+            "本轮工具调用次数已达上限,已自动停止。如需继续,可以让我接着处理。"
         ToolExecutionPolicy.StopReason.MAX_TOTAL_OUTPUT_CHARS ->
-            "Esta ronda de producción de herramientas ha superado el presupuesto.,Se detuvo automáticamente. para continuar,Puedes dejarme manejarlo."
+            "本轮工具输出已超出预算,已自动停止。如需继续,可以让我接着处理。"
         ToolExecutionPolicy.StopReason.CONSECUTIVE_FAILURES ->
-            "Varias llamadas a herramientas fallaron seguidas,Se detuvo automáticamente. para continuar,Déjame reprocesarlo."
+            "连续多次工具调用失败,已自动停止。如需继续,可以让我重新处理。"
         ToolExecutionPolicy.StopReason.TIME_BUDGET_EXHAUSTED ->
-            "El tiempo del ciclo de la herramienta excedió el presupuesto,Se detuvo automáticamente. para continuar,Puedes dejarme manejarlo."
-        else -> "La llamada de herramienta superó el presupuesto,Se detuvo automáticamente. para continuar,Puedes dejarme manejarlo."
+            "工具循环耗时已超出预算,已自动停止。如需继续,可以让我接着处理。"
+        else -> "工具调用已超出预算,已自动停止。如需继续,可以让我接着处理。"
     }
 
     private suspend fun persistToolRoundIncrementally(params: ToolLoopParams, round: Int, startedAt: Long, result: ToolExecResult) {
@@ -1765,24 +1772,24 @@ class ToolOrchestrator(
             )
         resultOf { sessionRepository.upsertToolRound(entity) }
             .onError { msg, t ->
-                Logger.w(TAG, "Error en la colocación incremental de la rueda de herramientas: ${result.tc.name}: $msg", t)
+                Logger.w(TAG, "工具轮增量落盘失败: ${result.tc.name}: $msg", t)
             }
     }
 
     /**
-     * Phase 3: Si se debe ejecutar toda la ronda simultáneamente como de solo lectura.
+     * Phase 3: 是否整轮按只读并发执行。
      *
-     * Condiciones(Necesidad de satisfacer a todos):
-     *  - [parallelReadOnlyToolsEnabled] encender(Desactivado de forma predeterminada → Exactamente consistente con el comportamiento en serie del B-38.);
-     *  - misma ronda ≥2 llamadas(Llamada única sin concurrencia);
-     *  - modelo de herramienta no débil(Débil degradación del modelo tras el B-38);
-     *  - Cada llamada llega a la lista blanca de solo lectura,y no enrutado a skill(herramienta desconocida/skill Siempre en serie).
+     * 条件(需全部满足):
+     *  - [parallelReadOnlyToolsEnabled] 开启(默认关闭 → 与 B-38 串行行为完全一致);
+     *  - 同一轮 ≥2 个调用(单调用无需并发);
+     *  - 非弱工具模型(沿用 B-38 的弱模型降级);
+     *  - 每个调用都命中只读白名单,且不路由到 skill(未知工具/skill 一律串行)。
      *
-     * rueda mezcladora(incluyendo escritura/herramienta de efectos secundarios)serie general,evitar la destrucción"lee primero luego escribe"Semántica del orden de llamadas.
+     * 混合轮(含写入/副作用工具)整体串行,避免破坏"先读后写"的调用顺序语义。
      */
     private fun shouldExecuteRoundInParallel(toolCallList: List<ToolCall>, params: ToolLoopParams): Boolean {
         if (!parallelReadOnlyToolsEnabled || toolCallList.size <= 1) return false
-        // Los usuarios pueden desactivar el paralelismo de herramientas de solo lectura con un clic en la "Función experimental"(interruptor de escala de grises)
+        // 用户可在「实验功能」中一键关闭只读工具并行(灰度开关)
         if (!params.experiments.parallelReadOnlyTools) return false
         if (WeakToolUseDetector.isWeakToolModel(params.model)) return false
         return toolCallList.all { tc ->
@@ -1794,11 +1801,11 @@ class ToolOrchestrator(
     }
 
     /**
-     * Phase 3: Ejecute una ronda de llamadas a herramientas por patrón.
+     * Phase 3: 按模式执行一轮工具调用。
      *
-     * - [parallel] = false: ejecución secuencial(consistente con el comportamiento existente);
-     * - [parallel] = true: a [READ_ONLY_TOOL_MAX_PARALLELISM] Ejecución concurrente para el límite superior,
-     *   `awaitAll` Lista de resultados garantizados con [toolCallList] Correspondencia uno a uno en orden(Relleno secuencial de llamada de herramienta original).
+     * - [parallel] = false: 顺序执行(与既有行为一致);
+     * - [parallel] = true: 以 [READ_ONLY_TOOL_MAX_PARALLELISM] 为上限并发执行,
+     *   `awaitAll` 保证结果列表与 [toolCallList] 顺序一一对应(原始 tool-call 顺序回填)。
      */
     private suspend fun executeToolRound(
         toolCallList: List<ToolCall>,
@@ -1817,11 +1824,11 @@ class ToolOrchestrator(
     }
 
     /**
-     * Phase 3: per-turn El estado se escribe en el bloqueo en serie.
+     * Phase 3: per-turn 状态写入串行锁。
      *
-     * Ronda simultánea de solo lectura,TaskCard/PendingToolCallStore/execPolicy/hook/host devolución de llamada, etc.
-     * "Uso en secuencia de un solo giro."estado de diseño no atómico,Escrituras en serie unificadas a través de este bloqueo;
-     * [lock] para null(ruta serial)ejecutado directamente,Cero gastos generales adicionales, comportamiento coherente con el status quo.
+     * 只读并发轮中,TaskCard/PendingToolCallStore/execPolicy/hook/host 回调等
+     * "按单 turn 顺序使用"设计的非原子状态,统一经此锁串行写入;
+     * [lock] 为 null(串行路径)时直接执行,零额外开销、行为与现状一致。
      */
     private suspend fun <T> withTurnLock(lock: Mutex?, block: suspend () -> T): T {
         if (lock == null) return block()
@@ -1834,16 +1841,16 @@ class ToolOrchestrator(
     }
 
     /**
-     * P2-18: Grupo de subprocesos de ejecución dedicado para herramientas de bloqueo.
+     * P2-18: 阻塞型工具专用执行线程池。
      *
-     * Implementación de herramientas(BrowserAutomationTool / CodeExecutionTool / WorkspaceTool espera)adaptarse
-     * ToolRegistry Herramienta de sincronizaciónFn Firma,Para uso interno [kotlinx.coroutines.runBlocking] puente
-     * suspend API;runBlocking es una llamada de bloqueo,La cancelación de rutina no se puede entregar,conduciendo a la capa exterior withTimeoutOrNull
-     * Inválido(tiempo de espera falso:Nunca se puede alcanzar la rama de tiempo de espera,IO el hilo esta atascado).
+     * 工具实现(BrowserAutomationTool / CodeExecutionTool / WorkspaceTool 等)为适配
+     * ToolRegistry 的同步 ToolFn 签名,内部用 [kotlinx.coroutines.runBlocking] 桥接
+     * suspend API;runBlocking 是阻塞调用,协程取消无法送达,导致外层 withTimeoutOrNull
+     * 失效(假超时:超时分支永远走不到,IO 线程被卡死)。
      *
-     * Planificar:Las llamadas de bloqueo se ejecutan en un grupo de subprocesos de demonio dedicado,La capa exterior utiliza el futuro de sondeo para mantener la corrutina cancelable.;
-     * después del tiempo de espera [java.util.concurrent.Future.cancel] Interrumpir hilo dedicado(runBlocking conciencia de bucle de eventos
-     * El hilo interrumpe y cancela la suspensión interna.),Hacer que los tiempos de espera realmente surtan efecto,Al mismo tiempo, no ocupa subprocesos del grupo de IO compartido.
+     * 方案:阻塞调用放到专用 daemon 线程池执行,外层用轮询 future 的方式保持协程可取消;
+     * 超时后 [java.util.concurrent.Future.cancel] 中断专用线程(runBlocking 事件循环感知
+     * 线程中断并取消内部挂起),让超时真正生效,同时不占共享 IO 池线程。
      */
     private val blockingToolExecutor: java.util.concurrent.ExecutorService =
         java.util.concurrent.Executors.newCachedThreadPool { r ->
@@ -1851,76 +1858,76 @@ class ToolOrchestrator(
         }
 
     /**
-     * P2-33: Libro mayor de identificación de llamadas de herramienta donde se produjo el "resultado tardío después del tiempo de espera"(para diagnóstico;Nuevas ejecuciones posteriores con el mismo id.
-     * no será bloqueado por eso,Porque la puerta de resultados se basa en la generación de ejecución.(Cada vez que ejecutas un nuevo)juicio).
+     * P2-33: 发生过「超时后迟到结果」的工具调用 id 台账(诊断用;同一 id 的后续新执行
+     * 不会被它阻断,因为结果闸门按执行代次(每次执行新建)判定)。
      */
     private val abandonedToolCallIds: MutableSet<String> = java.util.concurrent.ConcurrentHashMap.newKeySet()
 
-    /** P2-33: Recuento de resultados tardíos descartados después del tiempo de espera(Diagnóstico/afirmación de prueba única). */
+    /** P2-33: 超时后被丢弃的迟到结果计数(诊断/单测断言)。 */
     private val lateDroppedResultCount = java.util.concurrent.atomic.AtomicInteger(0)
 
-    /** P2-33: ¿Alguna vez se agotó el tiempo de espera del toolCallId o llegó tarde?(El resultado ha sido descartado.). */
+    /** P2-33: 该 toolCallId 是否发生过超时迟到(其结果已被丢弃)。 */
     internal fun isToolCallAbandoned(toolCallId: String): Boolean = toolCallId in abandonedToolCallIds
 
-    /** P2-33: El número de resultados tardíos que se descartaron después del tiempo de espera. */
+    /** P2-33: 超时后被丢弃的迟到结果数量。 */
     internal fun droppedLateResultCount(): Int = lateDroppedResultCount.get()
 
     /**
-     * P2-18: Ejecute llamadas a la herramienta de bloqueo en un hilo dedicado e imponga un tiempo de espera interrumpible.
+     * P2-18: 在专用线程执行阻塞型工具调用并施加可中断的超时。
      *
-     * P2-33: Los resultados [ToolResultGate] publicar — Si el tiempo de espera expira, la puerta se desactivará primero y luego cancel,Ignore las llamadas interrumpidas incluso si
-     * Terminar de ejecutar más tarde,El resultado sólo será descartado.([lateDroppedResultCount] contar + iniciar sesión),no entrará
-     * TaskCard / noticias / toolCallRecord;Por lo tanto, los resultados tardíos para el mismo toolCallId ya no pueden afectar el estado
-     * ([abandonedToolCallIds] dejar rastros). Las nuevas ejecuciones posteriores del mismo toolCallId utilizan la nueva puerta,No afectado por las viejas generaciones.
+     * P2-33: 结果经 [ToolResultGate] 发布 — 超时先作废闸门再 cancel,忽略中断的调用即使
+     * 稍后跑完,其结果也只会被丢弃([lateDroppedResultCount] 计数 + 日志),不会进入
+     * TaskCard / 消息 / toolCallRecord;同一 toolCallId 的迟到结果因此无法再影响状态
+     * ([abandonedToolCallIds] 留痕)。同一 toolCallId 的后续新执行使用新闸门,不受旧代次影响。
      *
-     * @param timeoutMs Tiempo de espera en milisegundos
-     * @param toolCallId llamada de herramienta id(Llegar tarde deja huella/para diagnóstico)
-     * @param block Ejecución de herramienta de bloqueo(Puede contener en su interior runBlocking)
-     * @return Resultado de la ejecución;Regreso del tiempo de espera null(La persona que llama lo maneja de acuerdo con la semántica de tiempo de espera existente.)
+     * @param timeoutMs 超时毫秒
+     * @param toolCallId 工具调用 id(迟到丢弃留痕/诊断用)
+     * @param block 阻塞型工具执行(内部可含 runBlocking)
+     * @return 执行结果;超时返回 null(调用方按既有超时语义处理)
      */
     private suspend fun executeBlockingToolWithHardTimeout(timeoutMs: Long, toolCallId: String, block: () -> String): String? {
         val gate = ToolResultGate { onLateResultDropped(toolCallId) }
         val future =
             blockingToolExecutor.submit {
-                // Pasó primero por la puerta.:Devolver falso indica que la ejecución ha agotado el tiempo de espera y no es válida.,los resultados se descartan
+                // 结果先过闸门:返回 false 表示该次执行已超时作废,结果被丢弃
                 gate.publish(block())
             }
         return try {
             withTimeout(timeoutMs) {
-                // El sondeo mantiene la corrutina en un punto de suspensión cancelable;done después get() Regresar inmediatamente,Sin bloqueo secundario
+                // 轮询让协程保持在可取消挂起点;done 后 get() 立即返回,不会二次阻塞
                 while (!future.isDone) delay(50)
                 try {
                     future.get()
                 } catch (e: java.util.concurrent.ExecutionException) {
-                    // Excepción de ejecución de descomprimido,Deje que la ruta de manejo de errores existente de la persona que llama se haga cargo
+                    // 解包执行异常,让调用方既有的错误处理路径接管
                     throw (e.cause ?: e)
                 }
                 gate.valueOrNull()
             }
         } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
-            // P2-33: Desactive la puerta primero(Eliminar las cancelaciones tardías),Luego interrumpa el hilo dedicado e intente finalizar runBlocking y su suspensión interna.
+            // P2-33: 先作废闸门(切断迟到回写),再中断专用线程尽力终止 runBlocking 及其内部挂起
             gate.abandon()
             future.cancel(true)
             abandonedToolCallIds.add(toolCallId)
             Logger.w(
                 TAG,
-                "Tiempo de espera de la herramienta,Cancelación de la reescritura tardía | toolCallId=$toolCallId | timeout=${timeoutMs}ms",
+                "工具超时,已切断迟到回写 | toolCallId=$toolCallId | timeout=${timeoutMs}ms",
             )
             null
         }
     }
 
     /**
-     * P2-33: El resultado de la ejecución del tiempo de espera no se publica.(tarde)entrada de diagnóstico.
-     * El resultado en sí ha sido [ToolResultGate] descartar,Aquí sólo contamos y dejamos huellas.,No se escribe ningún estado.
+     * P2-33: 超时执行的结果未被发布(迟到)时的诊断入口。
+     * 结果本身已被 [ToolResultGate] 丢弃,这里只计数与留痕,不做任何状态写入。
      */
     private fun onLateResultDropped(toolCallId: String) {
         lateDroppedResultCount.incrementAndGet()
-        Logger.w(TAG, "Descartar resultados tardíos de las herramientas de tiempo de espera(Reescritura cortada) | toolCallId=$toolCallId")
+        Logger.w(TAG, "丢弃超时工具的迟到结果(已切断回写) | toolCallId=$toolCallId")
     }
 
-    // M3.2 Cableado:cuerpo funcional/La complejidad queda en la historia de este documento.(aprobación,Hook, almacenamiento de medios, agregación de múltiples rutas de tarjetas de tareas),
-    // Esta vez sólo se dará a conocer el nuevo presupuesto./Dos párrafos de acuerdo;La división general es una tarea de reconstrucción independiente(precedente:A5 LargeClass Notas de exención).
+    // M3.2 接线:函数体量/复杂度为本文件历史遗留(审批、Hook、媒体落库、任务卡多路径汇聚),
+    // 本次仅新增预算放行/落账两小段;整体拆分属独立重构任务(先例:A5 LargeClass 豁免注释)。
     @Suppress("LongMethod", "CyclomaticComplexMethod", "ReturnCount")
     private suspend fun executeSingleToolCall(
         params: ToolLoopParams,
@@ -1930,15 +1937,15 @@ class ToolOrchestrator(
         host: ToolLoopHost,
         taskCardCoordinator: ChatTaskCardCoordinator,
         execPolicy: ToolExecutionPolicy,
-        /** Phase 3: Bloqueo de escritura de estado por turno para rondas simultáneas de solo lectura;La ruta serial es null(Sin gastos generales). */
+        /** Phase 3: 只读并发轮的 per-turn 状态写锁;串行路径为 null(无开销)。 */
         stateLock: Mutex?,
-        /** Phase 3: La aprobación de rondas simultáneas de solo lectura solicita un bloqueo de escritura(No retenido durante el período pendiente de aprobación stateLock). */
+        /** Phase 3: 只读并发轮的审批提示写锁(审批挂起期间不持有 stateLock)。 */
         approvalLock: Mutex?,
         inlineOutputBudgetTokens: Int?,
     ): ToolExecResult {
         if (!params.allowToolExecution) {
             val finishedAt = System.currentTimeMillis()
-            val pausedText = "Herramientas ${tc.name} En pausa, no se realizan operaciones reales en esta ronda."
+            val pausedText = "工具 ${tc.name} 已暂停，本轮未执行真实操作"
             val safeToolName = tc.name.replace("\\", "\\\\").replace("\"", "\\\"")
             withTurnLock(stateLock) {
                 taskCardCoordinator.updateTaskCardStep(taskCardId, idx) { s ->
@@ -1959,8 +1966,8 @@ class ToolOrchestrator(
                 finishedAt = finishedAt,
             )
         }
-        // La pausa de una sola herramienta es un estado dinámico:El usuario puede realizar en el paso anterior/Las convocatorias posteriores quedan suspendidas durante el periodo de aprobación.
-        // Verifique solo antes de que comiencen los efectos secundarios reales,No mate a la fuerza las herramientas que ya están en tránsito.
+        // 单工具暂停是动态状态:用户可在前一个步骤执行/审批期间暂停后续调用。
+        // 只在真实副作用开始前检查,不强杀已在途工具。
         if (taskCardCoordinator.isTaskStepPauseRequested(taskCardId, tc.id, idx)) {
             return pausedToolCallResult(
                 taskCardId = taskCardId,
@@ -1972,14 +1979,14 @@ class ToolOrchestrator(
                 toolStartAt = 0L,
             )
         }
-        // M3.2: liberación del presupuesto unificado —— llamadas totales/fracasos consecutivos/Huellas dactilares duplicadas/Cortocircuito cuando llega el presupuesto de tiempo,
-        // Sin aprobación y sin implementación de herramientas reales.;El motivo de la interceptación se devuelve al modelo y a la tarjeta de tarea como resultado de síntesis.
-        // Phase 3: execPolicy Utilice diseños en orden de una sola vuelta.,Las rondas simultáneas se lanzan en serie a través de stateLock.
+        // M3.2: 统一预算放行 —— 总调用数/连续失败/重复指纹/时间预算命中时短路,
+        // 不弹审批、不执行真实工具;拦截原因作为合成结果回给模型与任务卡。
+        // Phase 3: execPolicy 按单 turn 顺序使用设计,并发轮经 stateLock 串行放行。
         val policyDecision = withTurnLock(stateLock) { execPolicy.beforeExecute(tc.name, tc.arguments) }
         if (!policyDecision.allowed) {
             Logger.w(
                 TAG,
-                "Llamada de herramienta bloqueada por presupuesto | reason=${policyDecision.reason} | ${policyDecision.detail} | " +
+                "工具调用被预算拦截 | reason=${policyDecision.reason} | ${policyDecision.detail} | " +
                     "sessionId=${params.sessionId} | traceId=${params.traceId} | tool=${tc.name}",
             )
             val blockedResult = """{"error": "tool_execution_policy_blocked", "reason": "${policyDecision.reason}"}"""
@@ -1987,7 +1994,7 @@ class ToolOrchestrator(
                 taskCardCoordinator.updateTaskCardStep(taskCardId, idx) { s ->
                     s.copy(
                         status = TaskStepStatus.FAILED,
-                        result = "Herramientas ${tc.name} No ejecutado(${policyDecision.reason})",
+                        result = "工具 ${tc.name} 未执行(${policyDecision.reason})",
                         finishedAt = System.currentTimeMillis(),
                     )
                 }
@@ -1997,34 +2004,34 @@ class ToolOrchestrator(
                 tc = tc,
                 finalToolResult = blockedResult,
                 isSuccess = false,
-                displayResult = "Herramientas ${tc.name} No ejecutado(${policyDecision.reason})",
+                displayResult = "工具 ${tc.name} 未执行(${policyDecision.reason})",
                 status = ToolExecStatus.FAILED,
             )
         }
-        // v1.x: Notificar a la herramienta host para iniciar la ejecución(Incluyendo el tiempo de espera de aprobación),para un progreso detallado
+        // v1.x: 通知宿主工具开始执行(含审批等待时间),用于细粒度进度
         val toolStartAt = System.currentTimeMillis()
         withTurnLock(stateLock) { host.onToolStart(tc.id, tc.name) }
 
-        // v1.0.53: Parámetros de análisis unificados(Hook La interceptación se comparte con aprobación parametrizada.)
+        // v1.0.53: 统一解析参数(Hook 拦截与参数化审批共用)
         val paramsMap = parseToolCallArgs(tc.arguments)
 
-        // P1-1: ToolLifecycleHook.onToolCallRequested — Llamadas de herramientas interceptables
+        // P1-1: ToolLifecycleHook.onToolCallRequested — 可拦截工具调用
         if (hookRegistry != null) {
             var blocked: io.zer0.muse.hook.ToolCallAction.Block? = null
-            // Phase 3: hook El registro no es simultáneamente seguro,Rondas simultáneas de llamadas en serie de stateLock
+            // Phase 3: hook 注册表非并发安全,并发轮经 stateLock 串行调用
             withTurnLock(stateLock) {
                 hookRegistry.executeNoResult(io.zer0.muse.hook.ToolLifecycleHook::class) { hook ->
                     if (blocked != null) return@executeNoResult
                     when (val action = hook.onToolCallRequested(tc.name, paramsMap)) {
                         is io.zer0.muse.hook.ToolCallAction.Block -> blocked = action
-                        is io.zer0.muse.hook.ToolCallAction.Allow -> { /* continuar */ }
+                        is io.zer0.muse.hook.ToolCallAction.Allow -> { /* 继续 */ }
                     }
                 }
             }
             if (blocked != null) {
                 val blockResult = """{"error": "Tool blocked by hook", "reason": "${blocked.reason}"}"""
-                // v2.6.2(Auditoría de herramientas): Terminando con el mismo calibre que Denied —— Escribir paso de estado final + borrar pendiente,
-                // De lo contrario, la llamada puede tratarse como una llamada incompleta y volver a ejecutarse durante la recuperación del reinicio.
+                // v2.6.2（工具审计）: 与 Denied 同口径收尾 —— 写终态步骤 + 清理 pending，
+                // 否则重启恢复时该调用可能被当作未完成调用重新执行。
                 withTurnLock(stateLock) {
                     taskCardCoordinator.updateTaskCardStep(taskCardId, idx) { s ->
                         s.copy(
@@ -2041,19 +2048,36 @@ class ToolOrchestrator(
             }
         }
 
-        // Verificación de aprobación de herramienta(v1.0.53: Pase argumentos completos para la determinación de permisos parametrizados)
-        // F-07: Visibilidad pendiente de aprobación — El proceso de registros de respuesta de usuario pendientes de registro de estado APPROVAL_PENDING
-        Logger.d(TAG, "Herramientas ${tc.name} Esperando aprobación(APPROVAL_PENDING) | sessionId=${params.sessionId}")
+        // v2.6.7 / v2.7: 通道预检 + 总闸判断必须**早于审批**。
+        // 原来预检在审批之后：注定失败的调用也会先弹一次审批，用户点了「允许」再被告知执行不了。
+        val preflight = ToolChannelPreflight.checkPreflightable(
+            tc.name,
+            host.availableDeviceChannels(),
+            host.automationEnabled(),
+        )
+        if (preflight is ToolChannelPreflight.Result.Blocked) {
+            Logger.w(TAG, "预检拦截 ${tc.name}: ${preflight.message.take(60)}")
+        }
+
+        // 工具审批检查(v1.0.53: 传完整 args 供参数化权限判定)
+        // F-07: 审批等待可见化 — 挂起等待用户响应的过程记录 APPROVAL_PENDING 状态日志
+        Logger.d(TAG, "工具 ${tc.name} 等待审批(APPROVAL_PENDING) | sessionId=${params.sessionId}")
         withTurnLock(stateLock) {
             PendingToolCallStore.updateState(tc.id, PendingToolCallStore.APPROVAL_PENDING)
             // Make the wait visible on the task card: otherwise a pending approval looks
             // identical to a running tool until the 30s timeout silently denies it.
             taskCardCoordinator.updateTaskCardStep(taskCardId, idx) { s ->
-                s.copy(progressText = "Esperando aprobación…")
+                s.copy(progressText = APPROVAL_WAIT_LABEL)
             }
         }
-        // Phase 3: Los mensajes de aprobación aparecen uno por uno en rondas simultáneas(approvalLock),Evite que se cuelguen varios cuadros de diálogo de aprobación al mismo tiempo;
-        // No retenido mientras se espera al usuario stateLock,Las escrituras de estado de otras herramientas no están bloqueadas.
+        // 同一个时机也要告诉通知栏：`onToolCallRequested` 在审批之前就已触发，
+        // 于是切出应用的用户看到挂着「正在执行：shell」——那是错话，它其实在等自己按批准，
+        // 30 秒后还会静默变成拒绝。这里不写界面状态，只派发投影，因此不占 stateLock。
+        hookRegistry?.executeNoResult(io.zer0.muse.hook.ToolLifecycleHook::class) { hook ->
+            hook.onToolApprovalRequested(tc.name)
+        }
+        // Phase 3: 并发轮中审批提示逐个弹出(approvalLock),避免多个审批对话框同时挂起;
+        // 等待用户期间不持有 stateLock,其它工具的状态写入不被阻塞。
         val approvalState =
             withTurnLock(approvalLock) {
                 host.requestToolApproval(tc.name, tc.id, tc.arguments.take(200), paramsMap)
@@ -2061,7 +2085,7 @@ class ToolOrchestrator(
         withTurnLock(stateLock) {
             PendingToolCallStore.updateState(tc.id, PendingToolCallStore.EXECUTING)
             taskCardCoordinator.updateTaskCardStep(taskCardId, idx) { s ->
-                if (s.progressText == "Esperando aprobación…") s.copy(progressText = null) else s
+                if (s.progressText == APPROVAL_WAIT_LABEL) s.copy(progressText = null) else s
             }
         }
 
@@ -2076,7 +2100,7 @@ class ToolOrchestrator(
         }
 
         if (approvalState is ToolApprovalState.Denied) {
-            val deniedResult = """{"error": "Tool denied by user", "reason": "${approvalState.reason}"}"""
+            val deniedResult = """{"error": "${denialErrorLabel(approvalState.source)}", "reason": "${approvalState.reason}"}"""
             withTurnLock(stateLock) {
                 taskCardCoordinator.updateTaskCardStep(taskCardId, idx) { s ->
                     s.copy(
@@ -2088,7 +2112,7 @@ class ToolOrchestrator(
                 PendingToolCallStore.updateState(
                     tc.id,
                     PendingToolCallStore.ABORTED,
-                    "user_denied",
+                    denialAuditNote(approvalState.source),
                 )
             }
             cleanupPendingToolCall(tc.id)
@@ -2098,9 +2122,9 @@ class ToolOrchestrator(
             return ToolExecResult(idx, tc, deniedResult, false, status = ToolExecStatus.DENIED)
         }
 
-        // v2.6.2(Auditoría de herramientas): Answered La semántica es“El usuario proporciona una respuesta personalizada, la herramienta no se ejecuta”.
-        // La implementación anterior solo provocó un cortocircuito. Denegado,Answered Continuará fusionando parámetros y realmente se ejecutará. —— La semántica es lo opuesto a la implementación.
-        // Aquí Respondido se considera el estado final: la respuesta del usuario se devuelve como resultado de la herramienta y no se ejecuta.
+        // v2.6.2（工具审计）: Answered 语义是“用户提供自定义回答，不执行工具”。
+        // 旧实现只对 Denied 短路，Answered 会继续合并参数并真实执行 —— 语义与实现相反。
+        // 这里把 Answered 当成终态：把用户回答作为工具结果返回，不执行。
         if (approvalState is ToolApprovalState.Answered) {
             val answeredResult = """{"user_answer": "${approvalState.answer}"}"""
             withTurnLock(stateLock) {
@@ -2120,8 +2144,8 @@ class ToolOrchestrator(
             return ToolExecResult(idx, tc, answeredResult, true, status = ToolExecStatus.SUCCESS)
         }
 
-        // Durante la ventana emergente de aprobación, los usuarios también pueden pausar las herramientas que aún no se han iniciado.;Inspección de puerta nuevamente después de la aprobación de la devolución.,
-        // Asegúrese de que la aprobación no omita la intención de pausa que el usuario acaba de establecer.
+        // 审批弹窗期间也允许用户暂停尚未开始的工具;批准返回后再次闸门检查,
+        // 确保审批通过不会绕过用户刚设置的暂停意图。
         if (taskCardCoordinator.isTaskStepPauseRequested(taskCardId, tc.id, idx)) {
             return pausedToolCallResult(
                 taskCardId = taskCardId,
@@ -2134,7 +2158,7 @@ class ToolOrchestrator(
             )
         }
 
-        // P2-4: Registro de auditoría — Herramienta de aprobación y liberación de usuarios
+        // P2-4: 审计日志 — 用户审批放行工具
         if (approvalState is ToolApprovalState.Approved) {
             withTurnLock(stateLock) {
                 auditLogger?.log(
@@ -2146,8 +2170,8 @@ class ToolOrchestrator(
             }
         }
 
-        // v1.x: Parámetros anulados por los usuarios durante la fase de aprobación(Como el mapa local reference_image de generate_image)fusionarse en tc.arguments
-        // fusionar reglas: argOverrides Las claves en LLM anulan las claves del mismo nombre en el JSON original de LLM;Cuando falla el análisis JSON sin formato, simplemente use overrides
+        // v1.x: 审批阶段用户覆盖的参数(如 generate_image 的 reference_image 本地图)合并到 tc.arguments
+        // 合并规则: argOverrides 中的键覆盖 LLM 原始 JSON 中的同名键;原始 JSON 解析失败时仅用 overrides
         val effectiveArguments =
             if (approvalState is ToolApprovalState.Approved && approvalState.argOverrides.isNotEmpty()) {
                 mergeToolArguments(tc.arguments, approvalState.argOverrides)
@@ -2157,7 +2181,7 @@ class ToolOrchestrator(
 
         val stepStartedAt = System.currentTimeMillis()
 
-        // delegate_agent Analiza el nombre del asistente antes de comenzar el paso.,Actualizar título del paso/texto de progreso
+        // delegate_agent 步骤启动前解析助手名,更新步骤标题/进度文本
         val delegateAgentInfo =
             if (tc.name == "delegate_agent") {
                 resultOf {
@@ -2170,8 +2194,8 @@ class ToolOrchestrator(
             delegateAgentInfo?.assistantId?.takeIf { it.isNotBlank() }?.let { id ->
                 resultOf { assistantRepository.getById(id)?.name }.getOrNull()?.takeIf { it.isNotBlank() } ?: id
             }
-        val stepTitle = if (assistantName != null) "confiado a $assistantName" else tc.name
-        val stepProgress = if (assistantName != null) "Delegar a $assistantName..." else null
+        val stepTitle = if (assistantName != null) "委托给 $assistantName" else tc.name
+        val stepProgress = if (assistantName != null) "正在委托给 $assistantName..." else null
         val claimedForExecution =
             withTurnLock(stateLock) {
                 taskCardCoordinator.markTaskStepRunningIfNotPaused(
@@ -2200,10 +2224,10 @@ class ToolOrchestrator(
             )
         }
 
-        // Revisión de corrección (2.0 B-14): subagent_task Cuando se omite parent_session_id, el lado de ejecución lo completará. —
-        // Los resultados asincrónicos deben pertenecer a la sesión de inicio.,De lo contrario, guárdelo con una clave de cadena vacía. DeferredResultStore,
-        // Inyectado por consumir degradación sin dueño"Sesión actualmente activa",Puede cruzar el canal a otras sesiones.
-        // Lado de ejecución(esta oficina)es el único que sabe con certeza dónde se inició la sesión,No depende de LLM para pasar parámetros automáticamente.
+        // 审查修复 (2.0 B-14): subagent_task 省略 parent_session_id 时由执行侧补齐 —
+        // 异步结果必须归属发起会话,否则以空串 key 存入 DeferredResultStore,
+        // 被 consumeUnowned 降级注入"当前活跃会话",可能串台到别的会话。
+        // 执行侧(本处)是唯一确定知道发起会话的位置,不依赖 LLM 自觉传参。
         val subagentSessionFix =
             if (tc.name == "subagent_task") {
                 val hasParent =
@@ -2222,16 +2246,9 @@ class ToolOrchestrator(
 
         val effectiveToolTimeoutMs = ToolExecutionTimeoutPolicy.forTool(tc.name, subagentSessionFix, toolTimeoutMs)
 
-        // v2.6.7: Comprobación previa del canal de ejecución previa —— Las herramientas sin canales preparados están condenadas al fracaso,Detenlos con anticipación y dales la ruta de apertura.,
-        // En lugar de dejar que el modelo acepte al usuario primero y luego choque contra la pared. Cuando el anfitrión no proporciona información del canal(null)saltar,Mantener el comportamiento original.
-        val preflight = ToolChannelPreflight.checkPreflightable(tc.name, host.availableDeviceChannels())
-        if (preflight is ToolChannelPreflight.Result.Blocked) {
-            Logger.w(TAG, "Intercepción de verificación previa del canal ${tc.name}: desaparecido ${preflight.missing.joinToString(",")}")
-        }
-
-        // herramienta de ejecución:skill ir SkillExecutor(Pendiente, Cancelable),Las herramientas locales van ToolRegistry
-        // P2-18: herramientas de bloqueo(Ejecución internaBloqueo de puentes WebView/archivo IO)No se puede cancelar mediante corrutina,
-        // Se debe utilizar un grupo de subprocesos dedicado + future.cancel(true),De lo contrario, el tiempo de espera externo será inútil.(tiempo de espera falso).
+        // 执行工具:skill 走 SkillExecutor(挂起、可取消),本地工具走 ToolRegistry
+        // P2-18: 阻塞型工具(内部 runBlocking 桥接 WebView/文件 IO)无法被协程取消,
+        // 必须走专用线程池 + future.cancel(true),否则外层超时形同虚设(假超时)。
         val route = params.routeSnapshot?.routeFor(tc.name)
         val skill = params.skillMap[tc.name]
         val rawToolResultOrNull: String? =
@@ -2246,8 +2263,8 @@ class ToolOrchestrator(
                         skill = skillToExecute,
                         argumentsJson = effectiveArguments,
                         onProgress = { msg ->
-                            // Phase 3: onProgress Solo se puede acceder a las ramas de ejecución de habilidades,La herramienta de enrutamiento de habilidades no entrará
-                            // Rondas simultáneas de solo lectura(shouldExecuteRoundInParallel excluir skill),Aquí no se requiere bloqueo.
+                            // Phase 3: onProgress 仅 skill 执行分支可达,而 skill 路由的工具不会进入
+                            // 只读并发轮(shouldExecuteRoundInParallel 排除 skill),此处无需加锁。
                             taskCardCoordinator.updateTaskCardStep(taskCardId, idx) { s ->
                                 s.copy(progressText = msg)
                             }
@@ -2258,11 +2275,11 @@ class ToolOrchestrator(
                 }
             } else {
                 executeBlockingToolWithHardTimeout(effectiveToolTimeoutMs, tc.id) {
-                    // Las herramientas de bloqueo se ejecutan en un hilo dedicado;Se utiliza el ejecutable de suspensión de nivel superior desde Json. runBlocking
-                    // Puente como llamada de bloqueo(Mismo hilo que runBlocking dentro de la herramienta,Las interrupciones son entregables),Los tiempos de espera pueden realmente interrumpirse
+                    // 阻塞型工具在专用线程执行;顶层 suspend 的 executeFromJson 用 runBlocking
+                    // 桥接为阻塞调用(与工具内部 runBlocking 同线程,中断可传递),超时可被真正中断
                     kotlinx.coroutines.runBlocking {
-                        // v1.x: Herramientas del navegador Enrutamiento por sesión — Independiente por sesión BrowserManager(WebView),
-                        // Evite la conversación cruzada entre sesiones(Sesión A Cerrar el navegador no afecta la sesión B).
+                        // v1.x: 浏览器工具按会话路由 — 每个会话独立 BrowserManager(WebView),
+                        // 避免跨会话串扰(会话 A 关闭浏览器不影响会话 B)。
                         if (tc.name in BROWSER_TOOL_NAMES) {
                             val sessionBm = browserManagerRegistry.getForSession(params.sessionId)
                             val argsMap =
@@ -2273,14 +2290,24 @@ class ToolOrchestrator(
                             BrowserAutomationTool.executeFromArgs(tc.name, argsMap, sessionBm)
                         } else {
                             if (params.toolExecutionContext != null) {
+                                // 进度回调是**每次调用**的上下文（要绑 taskCardId + idx），
+                                // 宿主只能给出会话级字段，所以在这里 copy 一份补上。
+                                // 与 skill 分支写的是同一块 progressText，用户看到的是同一个入口。
+                                val callContext = params.toolExecutionContext.copy(
+                                    onProgress = { msg ->
+                                        taskCardCoordinator.updateTaskCardStep(taskCardId, idx) { s ->
+                                            s.copy(progressText = msg)
+                                        }
+                                    },
+                                )
                                 if (params.routeSnapshot == null) {
-                                    toolRegistry.executeFromJson(tc.name, subagentSessionFix, params.toolExecutionContext)
+                                    toolRegistry.executeFromJson(tc.name, subagentSessionFix, callContext)
                                 } else {
                                     routeGuard.executeFromJson(
                                         tc.name,
                                         subagentSessionFix,
                                         params.routeSnapshot,
-                                        params.toolExecutionContext,
+                                        callContext,
                                     )
                                 }
                             } else {
@@ -2297,36 +2324,36 @@ class ToolOrchestrator(
         val timedOut = rawToolResultOrNull == null
         val rawToolResult =
             rawToolResultOrNull
-                ?: "[tiempo de espera] Herramientas ${tc.name} ${effectiveToolTimeoutMs / 1000} Sin respuesta por segundos,terminado"
-        // Algunas herramientas que sólo producen efectos secundarios externos pueden devolver cadenas vacías. Independientemente de si los efectos secundarios han sido exitosos,
-        // Tanto la interfaz de usuario como la siguiente ronda de modelos deben recibir un texto de estado final claro.,Evite que la tarjeta parezca que todavía está esperando.
+                ?: "[超时] 工具 ${tc.name} ${effectiveToolTimeoutMs / 1000} 秒未响应,已终止"
+        // 某些只产生外部副作用的工具可能返回空字符串。无论副作用是否已经成功,
+        // 都必须给 UI 和下一轮模型一个明确的终态文本,避免卡片看起来像仍在等待。
         val toolResult = normalizeToolResult(tc.name, rawToolResult)
 
         val isSuccess = taskCardCoordinator.isToolResultSuccess(toolResult)
-        // Phase 3: El estado final de ejecución de la herramienta es consistente con ToolExecStatus en la tarjeta de tareas. —
-        // tiempo de espera → TaskStepStatus.TIMED_OUT(ya no ser isSuccess=false doblado en FAILED).
+        // Phase 3: 工具执行终态在任务卡上与 ToolExecStatus 保持一致 —
+        // 超时 → TaskStepStatus.TIMED_OUT(不再被 isSuccess=false 折叠成 FAILED)。
         val execStatus =
             when {
                 timedOut -> ToolExecStatus.TIMED_OUT
                 isSuccess -> ToolExecStatus.SUCCESS
                 else -> ToolExecStatus.FAILED
             }
-        // Seleccione pase directo o por presupuesto de contexto restante"Colocación completa + referencia del archivo";
-        // Cuando se necesita más contenido, el asistente puede usar el cursor de caracteres de read_file para leer por partes.
-        // Las representaciones de resultados se generan solo una vez, lo que muestra que la pantalla comparte el mismo texto completo o cita de archivo completo que el LLM.
-        // El arranque fallido solo ingresa al historial de LLM,No filtrado a tarjetas de tareas visibles para el usuario/Tarjetas de herramientas.
+        // 按剩余上下文预算选择直传或"完整落盘 + 文件引用"；
+        // 需要更多内容时助手可用 read_file 的字符游标分段读取。
+        // 只生成一次结果表示，展示与 LLM 共用同一份完整文本或完整文件引用。
+        // 失败引导只进 LLM 历史,不泄漏到用户可见的任务卡/工具卡片。
         val baseResult = prepareToolOutput(tc.id, tc.name, toolResult, inlineOutputBudgetTokens)
-        // v1.0.47 P2-1: Guía de fallas estructurada — Solo las noticias históricas de LLM.,Evite bucles de reintento no válidos
+        // v1.0.47 P2-1: 结构化失败引导 — 仅拼进给 LLM 的历史消息,避免无效重试循环
         val llmResult =
             if (isSuccess) {
                 baseResult
             } else {
-                // v2.6.7: Primero averigüe a qué categoría pertenece esta falla y si se puede volver a intentar.,Dame más orientación ——
-                // Hasta ahora solo se daban cuatro niveles de prioridad fijos.,El modelo tiene que adivinar a partir del propio texto del error.,Adivinar mal desperdicia tu única oportunidad de corregir.
+                // v2.6.7: 先算出这条失败属于哪一类、能不能重试,再给引导 ——
+                // 此前只给固定的四级优先级,模型得自己从错误文本猜,猜错就浪费掉唯一一次修正机会。
                 val verdict = ToolFailureClassifier.classify(baseResult, timedOut = timedOut)
                 val attempt = execPolicy.recordToolFailure(tc.name)
-                // v2.6.7 fix (AUDIT F13): Al mismo tiempo, se proporciona un presupuesto de herramienta única y un presupuesto de falla continua para toda la ronda.
-                // evitar“queda 1 vez”con“El bucle se ha detenido prematuramente”Dos calibres peleando.
+                // v2.6.7 fix (AUDIT F13): 同时给出单工具预算与整轮连续失败预算，
+                // 避免“还剩 1 次”与“循环已被早停”两个口径打架。
                 val budget = ToolRetryBudget.describeWithRoundBudget(
                     toolName = tc.name,
                     attempt = attempt,
@@ -2335,14 +2362,14 @@ class ToolOrchestrator(
                     abortThreshold = execPolicy.consecutiveFailureAbortThreshold,
                 )
                 "$baseResult\n\n${ToolFailureClassifier.receiptLine(verdict)}\n$budget\n" +
-                    "[La llamada a la herramienta no pudo iniciar] Por favor juzgue de acuerdo con las siguientes prioridades.:\n" +
-                    "1. parámetros/Error de ruta → Vuelva a intentar esta herramienta después de realizar correcciones.(Máximo 1 vez)\n" +
-                    "2. Permisos/Recurso no disponible → Cambiar a otra herramienta o informar a los usuarios sobre las limitaciones\n" +
-                    "3. Tiempo de espera de la red → puedo intentarlo de nuevo,Si aún falla, notifique al usuario.\n" +
-                    "4. No se puede resolver → Informar directamente a los usuarios de los motivos del fracaso y sugerencias.,no esperes"
+                    "[工具调用失败引导] 请按以下优先级判断:\n" +
+                    "1. 参数/路径错误 → 修正后重试本工具(最多 1 次)\n" +
+                    "2. 权限/资源不可用 → 换用其他工具或告知用户限制\n" +
+                    "3. 网络超时 → 可重试一次,仍失败则告知用户\n" +
+                    "4. 无法解决 → 直接告知用户失败原因和建议,不要硬撑"
             }
         val finalToolResult = llmResult
-        // B-09: Mostrar texto de error puro,No incluye lenguaje introductorio al LLM.
+        // B-09: 展示用纯报错文本,不含 LLM 引导语
         val displayResult = baseResult
 
         withTurnLock(stateLock) {
@@ -2373,23 +2400,23 @@ class ToolOrchestrator(
             }
         }
 
-        // Phase 3: host Devolución de llamada y liquidación del presupuesto de ejecución.(No es seguro para subprocesos)Escritura en serie unificada a través de stateLock
+        // Phase 3: host 回调与执行预算落账(非线程安全)统一经 stateLock 串行写入
         val executionFinishedAt = System.currentTimeMillis()
         val (clampedResult, wasTruncated) =
             withTurnLock(stateLock) {
                 host.onToolFinish(tc.id, tc.name, isSuccess, executionFinishedAt - toolStartAt)
-                // M3.2: Ejecutar contabilidad(contar/combo fallido/Huellas dactilares duplicadas)+ Tamaño máximo de salida
-                // (Aprobación rechazada/Se ha avanzado en el camino de la interceptación presupuestaria return,No contabilizado en llamadas)
+                // M3.2: 执行落账(计数/失败连击/重复指纹)+ 输出大小上限
+                // (审批拒绝/预算拦截的路径已提前 return,不计入调用数)
                 execPolicy.afterExecute(tc.name, tc.arguments, isSuccess)
                 val clamped = execPolicy.clampOutput(finalToolResult)
-                // Registre el número real de caracteres de relleno;La cantidad total de salida no está limitada de forma predeterminada.
+                // 记录实际回填字符数;输出总量默认不设上限。
                 execPolicy.recordOutputChars(clamped.first.length)
                 clamped
             }
         if (wasTruncated) {
             Logger.w(
                 TAG,
-                "Resultados de la herramienta truncados más allá de los límites | tool=${tc.name} | longitud original=${finalToolResult.length} | sessionId=${params.sessionId}",
+                "工具结果超限截断 | tool=${tc.name} | 原始长度=${finalToolResult.length} | sessionId=${params.sessionId}",
             )
         }
         return ToolExecResult(
@@ -2398,8 +2425,8 @@ class ToolOrchestrator(
             clampedResult,
             isSuccess,
             displayResult = displayResult,
-            // v2.6.0: Si los resultados de la herramienta incluyen capturas de pantalla(Herramienta de captura de pantalla del navegador),Extraerlo y dárselo a la persona que llama.,
-            // Agrega un mensaje de usuario con una imagen para permitir que el modelo vea la representación de la página.
+            // v2.6.0: 若工具结果带截图(浏览器截图工具),提取出来交给调用方,
+            // 由它追加一条带图用户消息让模型看到页面渲染图。
             screenshotBase64 = extractScreenshotBase64(toolResult, isSuccess),
             // Timeout must not be reported as a plain success/failure: callers use the
             // status to render the terminal state and to record a terminationReason.
@@ -2409,9 +2436,9 @@ class ToolOrchestrator(
     }
 
     /**
-     * Limpiar el registro del punto de interrupción una vez completada la herramienta,Pero no puedes permitir que los resultados del chat bloqueado de File IO se recuperen.
+     * 工具完成后清理断点记录,但不能让文件 IO 卡住聊天结果回填。
      *
-     * Los registros de puntos de interrupción son datos auxiliares para las capacidades de recuperación.;Después de que se haya generado el resultado del mensaje,Se deben registrar las fallas de limpieza y se debe permitir que la ronda continúe hasta su finalización.
+     * 断点记录是恢复能力的辅助数据;消息结果已经生成后,清理失败应记录日志并让本轮继续结束。
      */
     private suspend fun cleanupPendingToolCall(toolCallId: String) {
         val cleaned =
@@ -2420,22 +2447,22 @@ class ToolOrchestrator(
                 true
             } ?: false
         if (!cleaned) {
-            Logger.w(TAG, "Limpiar el tiempo de espera de llamada de herramienta pendiente: $toolCallId")
+            Logger.w(TAG, "清理 pending 工具调用超时: $toolCallId")
         }
     }
 
-    /** La herramienta no devuelve recibos visibles uniformes cuando se puede mostrar texto. */
+    /** 工具没有返回可显示文本时的统一可见回执。 */
     private fun normalizeToolResult(toolName: String, result: String): String = if (result.isBlank()) {
-        "Herramientas $toolName Ejecución completada,Pero no se devuelve ningún contenido visualizable."
+        "工具 $toolName 已执行完成,但没有返回可显示的内容。"
     } else {
         result
     }
 
     /**
-     * Acabado uniforme con suspensión de una sola herramienta.
+     * 单工具暂停的统一收尾。
      *
-     * Mantiene el mismo resultado del protocolo y el estado final CANCELADO que la pausa globalToolExecution,pero limpieza extra
-     * Registros pendientes escritos,Evite que las rutas de recuperación de reinicio vuelvan a ejecutar efectos secundarios que el usuario pausó explícitamente.
+     * 与全局 pauseToolExecution 保持相同的协议结果和 CANCELLED 终态,但额外清理
+     * 已写入的 pending 记录,防止重启恢复路径把用户明确暂停的副作用重新执行。
      */
     private suspend fun pausedToolCallResult(
         taskCardId: String?,
@@ -2447,7 +2474,7 @@ class ToolOrchestrator(
         toolStartAt: Long,
     ): ToolExecResult {
         val finishedAt = System.currentTimeMillis()
-        val pausedText = "Herramientas ${tc.name} En pausa, no se realizan operaciones reales en esta ronda."
+        val pausedText = "工具 ${tc.name} 已暂停，本轮未执行真实操作"
         val safeToolName = tc.name.replace("\\", "\\\\").replace("\"", "\\\"")
         withTurnLock(stateLock) {
             taskCardCoordinator.updateTaskCardStepByToolCallId(taskCardId, tc.id) { step ->
@@ -2458,7 +2485,7 @@ class ToolOrchestrator(
                     pauseRequested = false,
                 )
             }
-            // Compatible con tarjetas de tareas antiguas/Restaurar instantánea sin toolCallId.
+            // 兼容旧任务卡/无 toolCallId 的恢复快照。
             taskCardCoordinator.updateTaskCardStep(taskCardId, idx) { step ->
                 if (step.toolCallId.isBlank()) {
                     step.copy(
@@ -2478,7 +2505,7 @@ class ToolOrchestrator(
                     "tool_paused",
                 )
             }.onFailure { error ->
-                Logger.w(TAG, "La escritura ABORTADA falló después de suspender la herramienta: ${tc.id}", error)
+                Logger.w(TAG, "暂停工具后写入 ABORTED 失败: ${tc.id}", error)
             }
         }
         cleanupPendingToolCall(tc.id)
@@ -2497,8 +2524,8 @@ class ToolOrchestrator(
     }
 
     /**
-     * Es posible que se hayan completado los efectos secundarios de la herramienta.,Sin embargo, el estado final es cuando el enlace de retorno aún es anormal.
-     * Esta ruta garantiza específicamente que TaskCard,ToolCallCard y los registros pendientes ya no están estancados en la ejecución.
+     * 工具副作用可能已经完成,但结果回传链路仍发生异常时的终态。
+     * 这条路径专门保证 TaskCard、ToolCallCard 和 pending 记录都不再停留在运行中。
      */
     private suspend fun failedToolResult(
         taskCardId: String?,
@@ -2508,7 +2535,7 @@ class ToolOrchestrator(
         taskCardCoordinator: ChatTaskCardCoordinator,
         reason: String,
     ): ToolExecResult {
-        val result = "Herramientas ${tc.name} La devolución de datos falló después de completarse la ejecución: $reason"
+        val result = "工具 ${tc.name} 执行完成后回传失败: $reason"
         taskCardCoordinator.updateTaskCardStep(taskCardId, idx) { step ->
             step.copy(
                 status = TaskStepStatus.FAILED,
@@ -2529,15 +2556,15 @@ class ToolOrchestrator(
     }
 
     /**
-     * para“Argumento truncado por el límite superior de longitud de salida”La rueda de herramientas construye la lista de llamadas utilizada para el relleno.
+     * 为“参数被输出长度上限截断”的工具轮构造回填用的调用列表。
      *
-     * Los argumentos incompletos no se analizan, reparan ni ejecutan hasta el momento: la forma completada con la mitad de JSON nunca es la intención original del modelo.
-     * Aquí solo se guardan los dos datos requeridos en el protocolo: nombre de la herramienta y tool_call_id.
-     *  - arguments Reemplazar uniformemente con `{}` Marcador de posición: las llamadas a herramientas del asistente devueltas al proveedor deben ser JSON legales.
-     *    De lo contrario, la siguiente ronda de solicitudes será“Assistant tool call arguments must be valid JSON”rechazar directamente;
-     *  - Las llamadas que ni siquiera reciben el nombre de la herramienta no pueden describirse ni coincidir, por lo que se descarta toda la llamada (assistant Los elementos correspondientes desaparecen juntos,
-     *    No quedará ningún tool_call sin resultado); regresar cuando todo esté descartado“No hay convocatoria válida en esta ronda”camino de cierre existente;
-     *  - id Por ronda cuando falta o está duplicado+La síntesis de números de serie garantiza que cada llamada pueda identificarse mediante el resultado de su propia herramienta.
+     * 残缺 arguments 到此为止不解析、不修复、不执行：半截 JSON 补出来的形状永远不是模型的本意。
+     * 这里只保留协议上必需的两样事实：工具名与 tool_call_id。
+     *  - arguments 统一换成 `{}` 占位：回传给 provider 的 assistant tool_calls 必须是合法 JSON，
+     *    否则下一轮请求会被“Assistant tool call arguments must be valid JSON”直接拒掉；
+     *  - 连工具名都没收到的调用无从描述、也无从配对，整条丢弃（assistant 里的对应项一并消失，
+     *    不会留下无结果的 tool_call）；全部丢弃时回到“本轮无有效调用”的既有收口路径；
+     *  - id 缺失或重复时按轮次+序号合成，保证每条调用都能被自己的 tool result 指认。
      */
     internal fun truncatedToolCallsForBackfill(raw: List<ToolCall>, round: Int): List<ToolCall> {
         val usedIds = mutableSetOf<String>()
@@ -2548,27 +2575,27 @@ class ToolOrchestrator(
         }
     }
 
-    /** Recibo de truncamiento de parámetros: un código de error legible por máquina, más lo que el modelo debe hacer a continuación. */
+    /** 参数截断回执：机器可读的错误码，加上模型下一步该做什么。 */
     internal fun truncatedArgumentsToolResult(toolName: String): String {
         val safeToolName = toolName.replace("\\", "\\\\").replace("\"", "\\\"")
         return """{"error":"arguments_truncated_by_output_limit","tool":"$safeToolName",""" +
-            """"detail":"Los parámetros de esta llamada fueron truncados por el límite superior de la longitud de salida cuando se generaron y no se ejecutaron;""" +
-            """Reinicie la llamada con los parámetros completos. Si el contenido es demasiado largo, divídalo en varias llamadas más pequeñas."}"""
+            """"detail":"这次调用的参数在生成时被输出长度上限截断，未执行；""" +
+            """请用完整参数重新发起该调用，内容过长时拆成多次较小的调用。"}"""
     }
 
     /**
-     * Algunos modelos agrupan el mensaje completo en una llamada de herramienta:name está vacío o es ilegal,arguments Es toda una frase humana.
+     * 有些模型会把要说的话整个塞进工具调用里：name 为空或非法，arguments 是一整句人话。
      *
-     * Este tipo de llamada no se puede ejecutar, pero no está llena de parámetros, sino de lo que el modelo originalmente quería decirle al usuario.
-     * Solo responde directamente"Formato de parámetro anormal"Convertirá una buena frase en un fracaso, así que la elimino aquí como texto principal.
+     * 这种调用无法执行，但里面装的不是参数，而是模型本来想说给用户的话。
+     * 直接回一句"参数格式异常"会把一句好好的话变成一次失败，所以这里把它取出来当正文。
      *
-     * Sólo se acepta texto plano: con forma de datos estructurados (comenzando por { o [ Principio) no será respondido, eso significa que los parámetros están realmente rotos.
-     * Debes tomar el camino que te indica que vuelvas a intentarlo.
+     * 只接纯文本：形状像结构化数据的（以 { 或 [ 开头）一律不接，那说明参数是真坏了，
+     * 应该走提示重试的路径。
      */
     private fun recoverProseFromInvalidToolCalls(raw: List<ToolCall>): String? {
         val joined = raw.joinToString(" ") { it.arguments.trim() }.trim()
-        // Con forma de datos estructurados (con { o [ al principio) indica que los parámetros están realmente rotos y se le pedirá que vuelva a intentarlo;
-        // Sólo se considera texto plano con letras lo que el modelo quiere decir.
+        // 形状像结构化数据（以 { 或 [ 开头）说明参数是真坏了，走提示重试；
+        // 纯文本且带字母才当作模型想说的话。
         val looksStructured = joined.startsWith("{") || joined.startsWith("[")
         val isProse = joined.isNotEmpty() &&
             !looksStructured &&
@@ -2577,20 +2604,20 @@ class ToolOrchestrator(
         return if (isProse) joined else null
     }
 
-    /** P1-1: Los parámetros JSON llamados por la herramienta de análisis son Map(Para uso con ToolLifecycleHook y aprobación parametrizada). */
+    /** P1-1: 解析工具调用 JSON 参数为 Map(供 ToolLifecycleHook 与参数化审批使用)。 */
     private fun parseToolCallArgs(argumentsJson: String): Map<String, Any> =
         runCatching { toolArgsToMap(toolRegistry.parseArgumentsLenient(argumentsJson)) }
             .getOrDefault(emptyMap())
 
     /**
-     * v1.x: Agregar parámetros que los usuarios anulan durante la fase de aprobación(clave → valor)Fusionado en JSON de argumentos sin procesar de LLM.
+     * v1.x: 把用户在审批阶段覆盖的参数(键 → 值)合并进 LLM 原始 arguments JSON。
      *
-     * fusionar reglas:
-     *  - El JSON sin formato se analiza como JsonObject,Reservado clave por clave;
-     *  - [overrides] Las claves introducidas se sobrescriben con nuevos valores.(Ya existe)o agregar nuevo(no existe);
-     *  - Cuando falla el análisis JSON sin formato,Sólo uso [overrides] Construye un nuevo JSON.
-     * Todos los valores están escritos en forma de cadenas JSON.(Alinear las convenciones de análisis para ToolRegistry.executeFromJson:
-     * `v.toString().trim('"')`).
+     * 合并规则:
+     *  - 原始 JSON 解析为 JsonObject,逐键保留;
+     *  - [overrides] 中的键以新值覆盖(已存在)或新增(不存在);
+     *  - 原始 JSON 解析失败时,仅用 [overrides] 构造一个新 JSON。
+     * 所有值统一以 JSON 字符串形式写入(对齐 ToolRegistry.executeFromJson 的解析约定:
+     * `v.toString().trim('"')`)。
      */
     internal fun mergeToolArguments(originalArguments: String, overrides: Map<String, String>): String {
         if (overrides.isEmpty()) return originalArguments
@@ -2615,7 +2642,7 @@ class ToolOrchestrator(
             Logger.e("ToolOrchestrator", "upsertMessage(toolCalls) failed", e)
             host.onToolLoopError(
                 ChatErrorType.TOOL_ERROR,
-                "No se pudo guardar el registro de llamadas a la herramienta: ${e.message ?: "error desconocido"}",
+                "工具调用记录保存失败: ${e.message ?: "未知错误"}",
             )
         }
     }
@@ -2645,25 +2672,25 @@ class ToolOrchestrator(
         } catch (ce: kotlin.coroutines.cancellation.CancellationException) {
             throw ce
         } catch (e: Exception) {
-            Logger.w("ToolOrchestrator", "PendingToolCallStore.saveAll falló: ${e.message}", e)
+            Logger.w("ToolOrchestrator", "PendingToolCallStore.saveAll 失败: ${e.message}", e)
         }
     }
 
     /**
-     * v2.x: Analice el límite superior de la ronda de este ciclo de herramienta.
-     *  - requested <= 0:Ilimitado([UNLIMITED_TOOL_ROUNDS]) — Una vez que se liberan las configuraciones del usuario, las rondas ya no interrumpirán las tareas largas.,
-     *    Llamar repetidamente a la huella digital/Sin detección de progreso/Fallo continuo y parada anticipada./Las protecciones presupuestarias, como el número total de llamadas, siguen teniendo efecto de forma independiente.
-     *  - requested > 0:Límite superior fijo establecido por el usuario(No más expansión dinámica task_plan superpuesta)
+     * v2.x: 解析本轮工具循环的轮次上限。
+     *  - requested <= 0:无限制([UNLIMITED_TOOL_ROUNDS]) — 用户设置放开后长任务不再被轮次卡断,
+     *    重复调用指纹/无进展检测/连续失败早停/总调用数等预算保护仍独立生效
+     *  - requested > 0:用户设定的固定上限(不再叠加 task_plan 动态扩容)
      */
     internal fun resolveToolRoundLimit(requested: Int): Int = if (requested <= 0) UNLIMITED_TOOL_ROUNDS else requested
 
     /**
-     * v1.x: Calcule dinámicamente las rondas máximas de llamadas de herramientas en función de la complejidad de la tarea(Reservar:Referencia de prueba y transmisión automática.;Los enlaces de producción ahora están controlados por la configuración del usuario.).
+     * v1.x: 根据任务复杂度动态计算最大工具调用轮次(保留:测试与自动档参考;生产链路现由用户设置控制)。
      *
-     * Estrategia:
-     *  - si ya hay task_plan(AgentPlan caché o historial tool_call),por número de pasos * 2 + 5 extrapolar
-     *  - De lo contrario, las tareas simples están predeterminadas en [DEFAULT_MAX_TOOL_ROUNDS](10 rueda)
-     *  - límite superior [MAX_TOOL_ROUNDS_HARD_CAP](25)Ten todo en cuenta,y no más que [hardCap](Compatible con versiones anteriores de llamadas pasadas params.maxRounds)
+     * 策略:
+     *  - 若已有 task_plan(AgentPlan 缓存或历史 tool_call),按步骤数 * 2 + 5 推算
+     *  - 否则简单任务默认 [DEFAULT_MAX_TOOL_ROUNDS](10 轮)
+     *  - 上限 [MAX_TOOL_ROUNDS_HARD_CAP](25)兜底,且不超过 [hardCap](向后兼容调用方传入的 params.maxRounds)
      */
     internal fun computeMaxRounds(messages: List<UIMessage>, hardCap: Int = MAX_TOOL_ROUNDS_HARD_CAP, sessionId: String? = null): Int {
         val planSteps = countTaskPlanSteps(messages, sessionId)
@@ -2672,8 +2699,8 @@ class ToolOrchestrator(
     }
 
     /**
-     * Cuente el número de pasos en task_plan:Priorizar planes activos en la memoria de SkillExecutor,
-     * Alternativa para analizar el parámetro de pasos de la llamada a la herramienta task_plan a partir de mensajes históricos(Reanudar la carga desde el punto de interrupción/Continuar escenario de conversación).
+     * 统计 task_plan 步骤数:优先用 SkillExecutor 内存中的活跃计划,
+     * 回退到从历史消息中解析 task_plan 工具调用的 steps 参数(断点续传/继续会话场景)。
      */
     internal fun countTaskPlanSteps(messages: List<UIMessage>, sessionId: String? = null): Int {
         val activePlanSteps =
@@ -2694,8 +2721,8 @@ class ToolOrchestrator(
     }
 
     /**
-     * Analiza la longitud de la matriz de pasos a partir de los argumentos JSON de la llamada a la herramienta task_plan.
-     * Devolver si falla el análisis null(tolerancia a fallas,No afecta el proceso principal.).
+     * 从 task_plan 工具调用的 arguments JSON 中解析 steps 数组长度。
+     * 解析失败返回 null(容错,不影响主流程)。
      */
     internal fun parseTaskPlanStepCount(argumentsJson: String): Int? {
         return resultOf {
@@ -2710,10 +2737,10 @@ class ToolOrchestrator(
     }
 
     /**
-     * v1.x: Calcular la firma de una ronda de listas de llamadas a herramientas(Utilizado para la detección de atascos).
+     * v1.x: 计算一轮 tool_call 列表的签名(用于卡死检测)。
      *
-     * firma = Ordenado por identificación "name(arguments)" empalme,El orden no importa,Evite errores de cálculo por fluctuación de secuencia de herramientas en paralelo.
-     * La lista vacía devuelve una cadena vacía(No participar en la detección atascada).
+     * 签名 = 按 id 排序后的 "name(arguments)" 拼接,顺序无关,避免并行工具顺序抖动误判。
+     * 空列表返回空字符串(不参与卡死检测)。
      */
     internal fun toolCallSignature(toolCalls: List<ToolCall>): String {
         if (toolCalls.isEmpty()) return ""
@@ -2727,24 +2754,19 @@ class ToolOrchestrator(
     }
 
     /**
-     * Priorizar el envío del resultado completo a la ventana del modelo actual; si no cabe guardar el texto completo y enviar sólo la vista previa y las instrucciones de lectura segmentadas.
-     * Cuando falla la escritura en el disco, el resultado de la memoria original se conserva y la cola ya no se recorta silenciosamente.
+     * 优先把完整结果送入当前模型窗口；放不下时保存完整文本并只传预览与分段读取指引。
+     * 写盘失败时保留原始内存结果，不再悄悄裁掉尾部。
      *
-     * La dirección de vista previa se selecciona según la semántica de la herramienta:[keepsOutputTail] Deje la cola para verdaderas herramientas de comando (informar un error/caso de uso fallido/Los códigos de salida están al final),
-     * El resto (lectura de archivos, resultados de búsqueda, etc.) todavía se consideran de principio a fin.——El comienzo es la información de posicionamiento más utilizada.
+     * 预览方向按工具语义选：[keepsOutputTail] 为真的命令类工具留尾部（报错/失败用例/退出码都在最后），
+     * 其余（文件读取、搜索结果等）仍然首尾兼顾——开头就是他们最常用的定位信息。
      */
-    private suspend fun prepareToolOutput(
-        toolCallId: String,
-        toolName: String,
-        output: String,
-        inlineBudgetTokens: Int?,
-    ): String {
+    private suspend fun prepareToolOutput(toolCallId: String, toolName: String, output: String, inlineBudgetTokens: Int?): String {
         if (output.length <= SMALL_TOOL_RESULT_INLINE_CHARS) return output
         val estimatedTokens = TokenEstimator.estimate(listOf(UIMessage(role = MessageRole.TOOL, content = output)))
         if (canInlineToolOutput(output.length, estimatedTokens, inlineBudgetTokens)) return output
 
-        // Vista previa del truncamiento seguro por punto de código:La toma directa pondrá al agente en (emoji etc.) cortado por la mitad,
-        // Y decirle al modelo las omisiones para evitar que piense que lo que ve lo es todo.
+        // 预览按码点安全截断:直接 take 会把代理对（emoji 等）切成两半，
+        // 并把省略量告诉模型，避免它以为看到的就是全部。
         val keepTail = keepsOutputTail(toolName)
         val preview =
             if (keepTail) {
@@ -2757,7 +2779,7 @@ class ToolOrchestrator(
         return try {
             val dir = File(context.filesDir, TOOL_OUTPUTS_DIR)
             val file = File(dir, fileName)
-            // tiempo de espera independiente:Creación de directorio + escritura en disco;Tiempo de espera para retener el texto original completo actualmente en la memoria
+            // 独立超时:目录创建 + 写盘;超时保留当前内存中的完整原文
             val written =
                 withTimeoutOrNull(toolOutputWriteTimeoutMs) {
                     if (!dir.exists()) dir.mkdirs()
@@ -2767,52 +2789,52 @@ class ToolOrchestrator(
             if (written == null) {
                 Logger.w(
                     TAG,
-                    "Tiempo de espera de colocación del disco de salida de herramienta(${toolOutputWriteTimeoutMs}ms),Mantener los resultados de la memoria llena" +
-                        " | toolCallId=$toolCallId | longitud total=${output.length}",
+                    "工具输出落盘超时(${toolOutputWriteTimeoutMs}ms),保留完整内存结果" +
+                        " | toolCallId=$toolCallId | 总长=${output.length}",
                 )
-                return output + "\n\n[El resultado completo del tiempo de espera de colocación; el texto original completo de este mensaje permanece]"
+                return output + "\n\n[完整输出落盘超时；本次消息仍保留完整原文]"
             }
             Logger.i(
                 TAG,
-                "Colocación completa de salida de herramienta: toolCallId=$toolCallId | longitud total=${output.length}" +
-                    " | El resultado completo ha sido publicado.: ${file.absolutePath}",
+                "工具输出完整落盘: toolCallId=$toolCallId | 总长=${output.length}" +
+                    " | 完整输出已落盘: ${file.absolutePath}",
             )
             buildString {
-                append("[Resultados completos guardados, total ${output.length} personaje]\n")
+                append("[完整结果已保存，共 ${output.length} 字符]\n")
                 // Emit the absolute path so the UI can render it as an openable attachment
                 // chip; the previous "/tool_outputs/..." form matched no extractor pattern.
-                append("[El resultado completo se ha guardado en: ${file.absolutePath}]\n")
+                append("[完整输出已保存到: ${file.absolutePath}]\n")
                 append(
-                    "[Utilice workspace_read para leer segmentadamente cuando se requiera contenido completo.: path=$TOOL_OUTPUTS_DIR:/$fileName, " +
-                        "offset_chars=0, length_chars=$TOOL_OUTPUT_READ_PAGE_CHARS;" +
-                        "También puedes usar read_file para leer (path=$TOOL_OUTPUTS_DIR/$fileName)]\n\n",
+                    "[需要完整内容时用 workspace_read 分段读取: path=$TOOL_OUTPUTS_DIR:/$fileName, " +
+                        "offset_chars=0, length_chars=$TOOL_OUTPUT_READ_PAGE_CHARS；" +
+                        "也可用 read_file 读取（path=$TOOL_OUTPUTS_DIR/$fileName）]\n\n",
                 )
                 append(preview)
-                // Al obtener una vista previa de la cola, se informa claramente que se omite el comienzo; de lo contrario, el modelo tratará las últimas líneas como el comienzo del resultado completo.
+                // 尾部预览时明确告知省略的是开头，否则模型会把最后几行当成完整结果的开头。
                 append(
                     if (keepTail) {
-                        "\n\n[Lo anterior es una vista previa al final de los resultados, no los resultados completos; el comienzo comienza con offset_chars=0 Lectura segmentada]"
+                        "\n\n[以上是结果末尾的预览，不是完整结果；开头部分从 offset_chars=0 分段读取]"
                     } else {
-                        "\n\n[Lo anterior es una vista previa, no el resultado completo; por favor presione el cursor del carácter para continuar leyendo la parte requerida]"
+                        "\n\n[以上是预览，不是完整结果；请按字符游标继续读取所需部分]"
                     },
                 )
             }
         } catch (ce: kotlin.coroutines.cancellation.CancellationException) {
             throw ce
         } catch (e: Exception) {
-            // No escribir en el disco no descarta el texto original que aún está en la memoria; el resultado es posteriormente presupuestado por el contexto/La ventana del modelo se procesa normalmente.
-            Logger.w(TAG, "La salida de la herramienta falló en el disco,Mantener los resultados de la memoria llena: ${e.message}", e)
-            output + "\n\n[La salida completa falló; el texto original completo de este mensaje permanece]"
+            // 写盘失败不丢掉仍在内存中的原文；结果随后由上下文预算/模型窗口正常处理。
+            Logger.w(TAG, "工具输出落盘失败,保留完整内存结果: ${e.message}", e)
+            output + "\n\n[完整输出落盘失败；本次消息仍保留完整原文]"
         }
     }
 }
 
 /**
- * v1.x: Limpiar más de [TOOL_OUTPUT_RETENTION_MS] archivo de salida de la herramienta.
+ * v1.x: 清理超过 [TOOL_OUTPUT_RETENTION_MS] 的工具输出文件。
  *
- * Cuando se inicia la aplicación(MuseApp.onCreate)llamar una vez,Evite la acumulación ilimitada del directorio tool_outputs/.
- * Recorre todos los archivos .txt en el directorio,Determinar si ha caducado por última modificación,Eliminar archivos caducados.
- * Las operaciones de eliminación fallidas solo se registran,No afecta la limpieza de otros archivos.
+ * 在 App 启动时(MuseApp.onCreate)调用一次,避免 tool_outputs/ 目录无限累积。
+ * 遍历目录下所有 .txt 文件,按 lastModified 判定是否过期,删除过期文件。
+ * 失败的删除操作仅记日志,不影响其他文件清理。
  */
 fun cleanupOldToolOutputs(context: Context, retentionMs: Long = TOOL_OUTPUT_RETENTION_MS) {
     val dir = File(context.filesDir, TOOL_OUTPUTS_DIR)
@@ -2825,17 +2847,17 @@ fun cleanupOldToolOutputs(context: Context, retentionMs: Long = TOOL_OUTPUT_RETE
         if (mtime > 0 && mtime < cutoff) {
             runCatching { f.delete() }
                 .onSuccess { deleted++ }
-                .onFailure { Logger.w("ToolOrchestrator", "Error al eliminar la salida de la herramienta caducada: ${f.name}", it) }
+                .onFailure { Logger.w("ToolOrchestrator", "删除过期工具输出失败: ${f.name}", it) }
         }
     }
     if (deleted > 0) {
-        Logger.i("ToolOrchestrator", "Limpiar archivos de salida de herramientas obsoletos: Eliminar $deleted un")
+        Logger.i("ToolOrchestrator", "清理过期工具输出文件: 删除 $deleted 个")
     }
 }
 
 /**
- * v1.0.54: Extraiga la ruta absoluta del paquete de emoticonos del texto(El mismo patrón regular que MessageBubble.extractStickerPaths).
- * send_sticker La herramienta Mostrar contenido solo mantiene la ruta.,Para que MessageBubble represente imágenes de pegatinas.
+ * v1.0.54: 从文本中提取表情包绝对路径(与 MessageBubble.extractStickerPaths 同款正则)。
+ * send_sticker 的 toolDisplay content 只保留路径,供 MessageBubble 渲染贴纸图片。
  */
 private val STICKER_PATH_PATTERN =
     Regex(

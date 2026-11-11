@@ -6,7 +6,7 @@ import androidx.room.Query
 import kotlinx.coroutines.flow.Flow
 
 /**
- * v1.107 Registro de copia de seguridad automática DAO.
+ * v1.107 自动备份日志 DAO。
  */
 @Dao
 interface AutoBackupLogDao {

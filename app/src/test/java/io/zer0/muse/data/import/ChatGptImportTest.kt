@@ -19,13 +19,13 @@ import org.robolectric.annotation.Config
 import java.io.File
 
 /**
- * v1.0.74: ChatGPT Pruebas de exportación e importación.
+ * v1.0.74: ChatGPT 导出导入测试。
  *
- * Anular el análisis oficial de conversaciones.json:
- *  - Formato de matriz de nivel superior + árbol de mapeo extrae mensajes de usuario/asistente
- *  - Marca de tiempo de segundo nivel a milisegundos + ordenar por tiempo
- *  - system/tool Mensaje omitido
- *  - Creación de sesiones + almacenamiento de mensajes.
+ * 覆盖官方 conversations.json 解析:
+ *  - 顶层数组格式 + mapping 树提取 user/assistant 消息
+ *  - 秒级时间戳转毫秒 + 按时间排序
+ *  - system/tool 消息跳过
+ *  - 会话创建 + 消息落库
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -49,7 +49,7 @@ class ChatGptImportTest {
             messageImageStore = MessageImageStore(File(context.cacheDir, "msg_imgs_test")),
         )
         assistantRepo = AssistantRepository(db.assistantDao(), context)
-        // Asegúrese de que exista el asistente predeterminado
+        // 确保默认助手存在
         kotlinx.coroutines.runBlocking { assistantRepo.ensureDefaultExists() }
     }
 
@@ -58,20 +58,20 @@ class ChatGptImportTest {
         db.close()
     }
 
-    /** Formato oficial de exportación:Matriz de nivel superior + árbol de mapeo. */
+    /** 官方导出格式:顶层数组 + mapping 树。 */
     @Test
     fun importChatGpt_mappingTree_extractsOrderedMessages() = kotlinx.coroutines.runBlocking {
         val sample = """
         [
           {
-            "title": "planes de fin de semana",
+            "title": "周末计划",
             "create_time": 1690000000.0,
             "mapping": {
               "n1": {
                 "message": {
                   "id": "n1",
                   "author": {"role": "user"},
-                  "content": {"content_type": "text", "parts": ["Hola"]},
+                  "content": {"content_type": "text", "parts": ["你好"]},
                   "create_time": 1690000001.0
                 },
                 "parent": null,
@@ -81,7 +81,7 @@ class ChatGptImportTest {
                 "message": {
                   "id": "n2",
                   "author": {"role": "assistant"},
-                  "content": {"content_type": "text", "parts": ["Hola!¿Hay algo en lo que pueda ayudarte??"]},
+                  "content": {"content_type": "text", "parts": ["你好!有什么可以帮你?"]},
                   "create_time": 1690000002.0
                 },
                 "parent": "n1",
@@ -91,7 +91,7 @@ class ChatGptImportTest {
                 "message": {
                   "id": "n3",
                   "author": {"role": "user"},
-                  "content": {"content_type": "text", "parts": ["Ayúdame a planificar el fin de semana."]},
+                  "content": {"content_type": "text", "parts": ["帮我规划周末"]},
                   "create_time": 1690000005.0
                 },
                 "parent": "n2",
@@ -121,24 +121,24 @@ class ChatGptImportTest {
         )
 
         println("DEBUG result: $result")
-        assertTrue("No debería haber errores: ${result.errors}", result.errors.isEmpty())
-        assertEquals("Se debe importar 1 sesión", 1, result.conversationsImported)
-        assertEquals("Se deben importar 3 mensajes.(system saltar)", 3, result.messagesImported)
+        assertTrue("不应有错误: ${result.errors}", result.errors.isEmpty())
+        assertEquals("应导入 1 个会话", 1, result.conversationsImported)
+        assertEquals("应导入 3 条消息(system 跳过)", 3, result.messagesImported)
     }
 
-    /** parts Contiene varios párrafos de texto.(empalme). */
+    /** parts 含多段文本(拼接)。 */
     @Test
     fun importChatGpt_multipleParts_joins() = kotlinx.coroutines.runBlocking {
         val sample = """
         [
           {
-            "title": "Varios párrafos",
+            "title": "多段",
             "mapping": {
               "n1": {
                 "message": {
                   "id": "n1",
                   "author": {"role": "assistant"},
-                  "content": {"content_type": "text", "parts": ["primer párrafo", "Segundo párrafo"]},
+                  "content": {"content_type": "text", "parts": ["第一段", "第二段"]},
                   "create_time": 1690000010.0
                 },
                 "parent": null,
@@ -161,13 +161,13 @@ class ChatGptImportTest {
         assertEquals(1, result.conversationsImported)
     }
 
-    /** Sesión vacía(No hay mensajes de usuario/asistente)Saltar. */
+    /** 空会话(无 user/assistant 消息)跳过。 */
     @Test
     fun importChatGpt_emptyConversation_skipped() = kotlinx.coroutines.runBlocking {
         val sample = """
         [
           {
-            "title": "vacío",
+            "title": "空",
             "mapping": {
               "n1": {
                 "message": {

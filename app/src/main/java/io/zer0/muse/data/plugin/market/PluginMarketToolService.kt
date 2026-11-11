@@ -8,18 +8,18 @@ import kotlinx.coroutines.withContext
 import java.io.File
 
 /**
- * v2.0.1: Servicios del lado de las herramientas en el mercado de complementos — suministro `plugin_market_search` / `plugin_market_install` Usar.
+ * v2.0.1: 插件市场的工具侧服务 — 供 `plugin_market_search` / `plugin_market_install` 使用。
  *
- * Comparte el mismo conjunto de componentes del mercado (caché de directorio, raíz de confianza,staging directorio), asegurándose de que las herramientas en segundo plano
- * Lo que ve la interfaz de usuario es el mismo directorio firmado y la misma secuencia aceptada, y no se produce ninguna bifurcación del estado de instancia dual.
+ * 与插件管理页共享同一套市场组件（目录缓存、信任根、staging 目录），保证后台工具
+ * 与 UI 看到的是同一份已验签目录与已接受 sequence，不产生双实例状态分叉。
  *
- * Límite de seguridad:
- *  - La búsqueda es una operación de sólo lectura;
- *  - La instalación debe pasar por la tarjeta de aprobación de sesión (herramienta registrada como ALTO riesgo) y reutilización. [PluginManager] de completo
- *    enlace de revisión (ZIP estructura, lista blanca de capacidades, firma del emisor, resumen de contenido) y [PluginInstallCoordinator]
- *    La verificación de vinculación de directorio no proporciona ninguna ruta para omitir la confirmación del usuario;
- *  - El editor desconocido se rechaza de forma predeterminada: solo la persona que llama pasa explícitamente `trustPublisher=true`(Indica que el usuario ya está en la conversación
- *    Confirme que confía en el editor) antes de escribir a la raíz de confianza y continuar con la instalación.
+ * 安全边界：
+ *  - 搜索是只读操作；
+ *  - 安装必须经过会话审批卡（工具注册为 HIGH 风险），并复用 [PluginManager] 的完整
+ *    审查链路（ZIP 结构、能力白名单、发行者签名、内容摘要）与 [PluginInstallCoordinator]
+ *    的目录绑定校验，不提供任何绕过用户确认的路径；
+ *  - 未知发行者默认拒绝：只有调用方显式传 `trustPublisher=true`（表示用户已在对话中
+ *    确认信任该发行者）才会写入信任根并继续安装。
  */
 internal class PluginMarketToolService(
     private val context: Context,
@@ -34,57 +34,57 @@ internal class PluginMarketToolService(
     )
     private val installer = PluginMarketInstaller(pluginManager)
 
-    /** Recupere el directorio de complementos; devuelve una lista de texto para que el modelo lo lea. */
+    /** 检索插件目录；返回给模型阅读的文本清单。 */
     override suspend fun search(query: String): String {
         val catalog = ensureCatalog().getOrElse { error ->
-            return "El mercado de complementos no está disponible temporalmente:${error.message ?: "error desconocido"}"
+            return "插件市场暂时不可用：${error.message ?: "未知错误"}"
         }
         return renderSearchResult(catalog, query)
     }
 
-    /** Descargue e instale el complemento especificado; devolver los resultados de la ejecución para la lectura del modelo. */
+    /** 下载并安装指定插件；返回给模型阅读的执行结果。 */
     override suspend fun install(entryId: String, trustPublisher: Boolean): String {
         val id = entryId.trim()
-        if (id.isBlank()) return "Error de instalación: falta plugin_id."
+        if (id.isBlank()) return "安装失败：缺少 plugin_id。"
         return runInstall(id, trustPublisher)
     }
 
-    /** Desinstale el complemento instalado; devolver los resultados de la ejecución para la lectura del modelo. */
+    /** 卸载已安装插件；返回给模型阅读的执行结果。 */
     override suspend fun uninstall(pluginId: String): String {
         val id = pluginId.trim()
-        if (id.isBlank()) return "Error de desinstalación: falta plugin_id."
+        if (id.isBlank()) return "卸载失败：缺少 plugin_id。"
         val installed = pluginManager.list().firstOrNull { it.id == id }
-            ?: return "Complemento instalado no encontrado\"$id”. Primero puede usar plugin_market_search para verificar el ID del complemento en el mercado."
+            ?: return "未找到已安装的插件「$id」。可以先用 plugin_market_search 查看市场里的插件 id。"
         return try {
             pluginManager.uninstall(id)
-            "El complemento ha sido desinstalado\"${installed.name}\"($id), cuyas habilidades se limpian junto con la copia local."
+            "已卸载插件「${installed.name}」($id)，其技能与本地副本一并清理。"
         } catch (e: Exception) {
-            "La desinstalación falló:${e.message ?: "error desconocido"}"
+            "卸载失败：${e.message ?: "未知错误"}"
         }
     }
 
-    /** habilitar/Desactivar complementos instalados; devolver resultados de ejecución para la lectura del modelo. */
+    /** 启用/停用已安装插件；返回给模型阅读的执行结果。 */
     override suspend fun setEnabled(pluginId: String, enabled: Boolean): String {
         val id = pluginId.trim()
-        if (id.isBlank()) return "Error en la operación: falta plugin_id."
+        if (id.isBlank()) return "操作失败：缺少 plugin_id。"
         val installed = pluginManager.list().firstOrNull { it.id == id }
-            ?: return "Complemento instalado no encontrado\"$id”."
+            ?: return "未找到已安装的插件「$id」。"
         if (enabled && !installed.installationConfirmed) {
-            return "El complemento aún no ha completado la confirmación de la instalación y se ha rechazado su activación. Primero complete la confirmación de instalación en la página de administración de complementos."
+            return "该插件尚未完成安装确认，已拒绝启用。请先在插件管理页完成安装确认。"
         }
         return try {
             pluginManager.setEnabled(id, enabled)
             if (enabled) {
-                "Complemento habilitado\"${installed.name}\"($id)."
+                "已启用插件「${installed.name}」($id)。"
             } else {
-                "Complemento deshabilitado\"${installed.name}\"($id), la instalación se conserva y se puede volver a habilitar en cualquier momento."
+                "已停用插件「${installed.name}」($id)，安装保留，可随时重新启用。"
             }
         } catch (e: Exception) {
-            "Operación fallida:${e.message ?: "error desconocido"}"
+            "操作失败：${e.message ?: "未知错误"}"
         }
     }
 
-    // ── Buscar ─────────────────────────────────────────────────────────────
+    // ── 检索 ─────────────────────────────────────────────────────────────
 
     private fun renderSearchResult(catalog: SignedPluginCatalog, query: String): String {
         val entries = catalog.payload.entries
@@ -102,13 +102,13 @@ internal class PluginMarketToolService(
         }
         if (matched.isEmpty()) {
             return if (entries.isEmpty()) {
-                "Actualmente no hay complementos instalables en Plugin Market."
+                "插件市场目前没有可安装的插件。"
             } else {
-                "No hay coincidencia \"$query”complemento."
+                "没有匹配「$query」的插件。"
             }
         }
         val builder = StringBuilder()
-        builder.appendLine("mercado de complementos ${entries.size} complementos, coincidencia ${matched.size} de:")
+        builder.appendLine("插件市场 ${entries.size} 个插件，匹配 ${matched.size} 个：")
         matched.take(MAX_SEARCH_RESULTS).forEach { entry ->
             val installedVersion = installedById[entry.id]?.version
             val publisherTrusted = trustedPublishers.any { publisher ->
@@ -116,38 +116,38 @@ internal class PluginMarketToolService(
                     publisher.fingerprint.equals(entry.publisherKeyFingerprint, ignoreCase = true)
             }
             builder.appendLine(
-                "- ${entry.id} v${entry.version}「${entry.name}\":${entry.description.take(DESCRIPTION_LIMIT)}" +
-                    "(Editor ${entry.publisherId}" +
-                    (if (publisherTrusted) ", ya confiaba" else ", no es de confianza para esta máquina") +
-                    ";" + (if (installedVersion != null) "Instalado v$installedVersion" else "No instalado") + ")",
+                "- ${entry.id} v${entry.version}「${entry.name}」：${entry.description.take(DESCRIPTION_LIMIT)}" +
+                    "（发行者 ${entry.publisherId}" +
+                    (if (publisherTrusted) "，已受信任" else "，未受本机信任") +
+                    "；" + (if (installedVersion != null) "已安装 v$installedVersion" else "未安装") + "）",
             )
         }
         if (matched.size > MAX_SEARCH_RESULTS) {
-            builder.appendLine("(Totales ${matched.size} , solo se enumeran los primeros $MAX_SEARCH_RESULTS )")
+            builder.appendLine("（共 ${matched.size} 个，仅列出前 $MAX_SEARCH_RESULTS 个）")
         }
         builder.append(
-            "Instalar usando plugin_market_install(plugin_id ver arriba). La tarjeta de aprobación aparecerá durante la instalación;" +
-                "Cuando no se confía en el emisor, la herramienta primero devolverá información para ser confirmada. Muestre la información del emisor al usuario." +
-                "Traer después de la confirmación del usuario trust_publisher=true Recordar.",
+            "安装用 plugin_market_install（plugin_id 见上）。安装会弹出审批卡片；" +
+                "发行者未受信任时，工具会先返回待确认信息，请把发行者信息展示给用户，" +
+                "用户确认后再带 trust_publisher=true 重新调用。",
         )
         return builder.toString()
     }
 
-    // ── Instalación ─────────────────────────────────────────────────────────────
+    // ── 安装 ─────────────────────────────────────────────────────────────
 
     /**
-     * Proceso de instalación principal (excluyendo la verificación de entrada).
+     * 安装主流程（不含输入校验）。
      *
-     * Las rutas de falla se lanzan uniformemente [InstallFailed], para evitar que se dispersen múltiples salidas; generar con éxito dos formularios:
-     *  - El emisor no es de confianza y la persona que llama no está confirmada → Información de devolución por confirmar (sin realizar el pedido);
-     *  - Instalación completada → Devuelve los resultados de la instalación.
+     * 失败路径统一抛 [InstallFailed]，避免多出口散落；成功输出两种形态：
+     *  - 发行者未受信任且调用方未确认 → 返回待确认信息（不落盘）；
+     *  - 安装完成 → 返回安装结果。
      */
     private suspend fun runInstall(id: String, trustPublisher: Boolean): String {
         var stagedFile: File? = null
         var planCreated = false
         return try {
             val catalog = ensureCatalog().getOrElse { error ->
-                throw InstallFailed("La instalación falló:${error.message ?: "El mercado de complementos no está disponible temporalmente"}")
+                throw InstallFailed("安装失败：${error.message ?: "插件市场暂时不可用"}")
             }
             val staged = requireStaged(catalog, id)
             stagedFile = staged.artifact.file
@@ -163,45 +163,45 @@ internal class PluginMarketToolService(
                 )
                 installer.discard(plan)
                 val installed = result.getOrElse { error ->
-                    throw InstallFailed("La instalación falló:${error.message ?: "Error al enviar la instalación"}")
+                    throw InstallFailed("安装失败：${error.message ?: "安装提交失败"}")
                 }
-                "Complemento instalado y habilitado:${installed.name} v${installed.version}(${installed.id})."
+                "已安装并启用插件：${installed.name} v${installed.version}（${installed.id}）。"
             }
         } catch (failed: InstallFailed) {
-            failed.message ?: "La instalación falló"
+            failed.message ?: "安装失败"
         } finally {
             val staged = stagedFile
             if (!planCreated && staged != null) runCatching { staged.delete() }
         }
     }
 
-    /** Localice la entrada del directorio y descargue el producto en staging (tamaño/La verificación resumida se completa en el cliente de descarga); lanzamientos de fracaso [InstallFailed]. */
+    /** 定位目录条目并下载产物到 staging（大小/摘要校验在下载客户端内完成）；失败抛 [InstallFailed]。 */
     private suspend fun requireStaged(catalog: SignedPluginCatalog, id: String): StagedPlugin {
         val entry = catalog.payload.entries.firstOrNull { it.id == id }
-            ?: throw InstallFailed("Error de instalación: el complemento no existe en el directorio $id(Primero use plugin_market_search para recuperar la identificación de confirmación).")
+            ?: throw InstallFailed("安装失败：目录中不存在插件 $id（先用 plugin_market_search 检索确认 id）。")
         val artifact = withContext(Dispatchers.IO) { downloadClient.download(entry) }.artifact
-            ?: throw InstallFailed("Error de instalación: Error de descarga")
+            ?: throw InstallFailed("安装失败：下载失败")
         return StagedPlugin(entry, artifact)
     }
 
-    /** Revisar el paquete de complementos (estructura/Habilidad/Firma del editor); lanzado cuando la excepción o la vista previa no está disponible [InstallFailed]. */
+    /** 审查插件包（结构/能力/发行者签名）；异常或不可预览时抛 [InstallFailed]。 */
     private suspend fun reviewArtifact(artifact: DownloadedArtifact): PluginSecurityGate.Decision =
         pluginManager.reviewFromFile(artifact.file).getOrElse { error ->
-            throw InstallFailed("La instalación falló:${error.message ?: "Error en la revisión del complemento"}")
+            throw InstallFailed("安装失败：${error.message ?: "插件审查失败"}")
         }
 
-    /** Rechazar resultados de revisión no instalables: los paquetes de Market deben estar firmados de forma válida y no alterados. */
+    /** 拒绝不可安装的审查结果：市场包必须签名有效且未被篡改。 */
     private fun requireAllowed(decision: PluginSecurityGate.Decision): PluginSecurityGate.Decision {
         if (!decision.allowed) {
-            throw InstallFailed("La instalación falló:${decision.reason ?: "Revisión de seguridad fallida del complemento"}")
+            throw InstallFailed("安装失败：${decision.reason ?: "插件未通过安全审查"}")
         }
         if (decision.signature.status == PluginSecurityGate.SignatureStatus.UNSIGNED) {
-            throw InstallFailed("Error de instalación: los paquetes de Market deben estar firmados por el editor.")
+            throw InstallFailed("安装失败：市场包必须带有发行者签名。")
         }
         return decision
     }
 
-    /** Utilice la raíz de confianza actual para elaborar un plan de instalación; la verificación del directorio falla y arroja [InstallFailed]. */
+    /** 用当前信任根构造安装计划；目录校验失败抛 [InstallFailed]。 */
     private fun buildPlan(
         catalog: SignedPluginCatalog,
         entry: PluginCatalogEntry,
@@ -225,17 +225,17 @@ internal class PluginMarketToolService(
             )
         ) {
             is InstallPlanResult.Ready -> planResult.plan
-            is InstallPlanResult.Rejected -> throw InstallFailed("La instalación falló:${planResult.reason}")
+            is InstallPlanResult.Rejected -> throw InstallFailed("安装失败：${planResult.reason}")
         }
     }
 
-    // ── Directorio y confianza ───────────────────────────────────────────────────────
+    // ── 目录与信任 ───────────────────────────────────────────────────────
 
     /**
-     * Asegúrese de que el directorio esté disponible: dé prioridad al uso del caché firmado local; si el caché no está disponible, actualícelo según la configuración actual.
+     * 确保目录可用：优先使用本地已验签缓存；缓存不可用时按当前配置刷新一次。
      *
-     * No se realiza ninguna actualización de la red cuando el caché está disponible (consistente con el comportamiento cuando se abre la página de administración del complemento) para evitar esperar a la red para cada búsqueda;
-     * pérdida de caché/Caducado/Actualizar cuando esté dañado, devolver el motivo específico si falla.
+     * 缓存可用时不做网络刷新（与插件管理页打开时的行为一致），避免每次搜索都等网络；
+     * 缓存缺失/过期/损坏时刷新，失败返回具体原因。
      */
     private suspend fun ensureCatalog(): Result<SignedPluginCatalog> {
         trustRoots.reload()
@@ -243,39 +243,39 @@ internal class PluginMarketToolService(
         if (cached != null) return Result.success(cached)
         val url = marketSettings.catalogUrl()
         return if (url.isBlank()) {
-            Result.failure(IllegalStateException("El directorio de complementos no está configurado"))
+            Result.failure(IllegalStateException("插件目录未配置"))
         } else {
             when (val refreshed = repository.refresh(url)) {
                 is CatalogRefreshResult.Updated -> Result.success(refreshed.signedCatalog)
                 is CatalogRefreshResult.Rejected ->
-                    Result.failure(IllegalStateException("Error al actualizar el directorio:${refreshed.reason}"))
+                    Result.failure(IllegalStateException("目录刷新失败：${refreshed.reason}"))
                 CatalogRefreshResult.NotConfigured ->
-                    Result.failure(IllegalStateException("El directorio de complementos no está configurado"))
+                    Result.failure(IllegalStateException("插件目录未配置"))
             }
         }
     }
 
-    /** Pendiente de confirmación del emisor que no es de confianza; El modelo debe mostrarse al usuario antes de traerlo. `trust_publisher=true` Intentar otra vez. */
+    /** 未受信任发行者的待确认信息；模型应展示给用户后再带 `trust_publisher=true` 重试。 */
     private fun publisherTrustPrompt(decision: PluginSecurityGate.Decision, entry: PluginCatalogEntry): String {
         val capabilities = (decision.preview.capabilities + decision.preview.permissions).distinct()
         return buildString {
-            appendLine("El usuario debe confirmar que confía en el editor antes de poder instalarlo (esta es la primera vez que se instala el complemento del editor en esta máquina).")
-            appendLine("Primero muestre la siguiente información al usuario; después de que el usuario confirme, llame a plugin_market_install nuevamente y traiga trust_publisher=true:")
-            appendLine("- Complemento:${entry.name} v${entry.version}(${entry.id})")
-            appendLine("- Propósito:${entry.description}")
-            appendLine("- Editor:${decision.signature.publisherId}")
-            appendLine("- Huella digital de clave pública:${decision.signature.fingerprint}")
-            append("- Declarar capacidades:${if (capabilities.isEmpty()) "Ninguno (solo se proporcionan herramientas)" else capabilities.joinToString()}")
+            appendLine("需要用户确认信任发行者后才能安装（本机第一次安装该发行者的插件）。")
+            appendLine("请先把下面信息展示给用户；用户确认后，重新调用 plugin_market_install 并带 trust_publisher=true：")
+            appendLine("- 插件：${entry.name} v${entry.version}（${entry.id}）")
+            appendLine("- 用途：${entry.description}")
+            appendLine("- 发行者：${decision.signature.publisherId}")
+            appendLine("- 公钥指纹：${decision.signature.fingerprint}")
+            append("- 声明能力：${if (capabilities.isEmpty()) "无（仅提供工具）" else capabilities.joinToString()}")
         }
     }
 
-    /** Complemento descargado y de preparación (entrada de directorio + producto local). */
+    /** 已下载并落 staging 的插件（目录条目 + 本地产物）。 */
     private data class StagedPlugin(
         val entry: PluginCatalogEntry,
         val artifact: DownloadedArtifact,
     )
 
-    /** Excepción del flujo de control del proceso de instalación: solo se transmite al usuario el motivo del fallo y no se elimina [runInstall]. */
+    /** 安装流程的控制流异常：只承载给用户的失败原因，不跨出 [runInstall]。 */
     private class InstallFailed(message: String) : Exception(message)
 
     private companion object {

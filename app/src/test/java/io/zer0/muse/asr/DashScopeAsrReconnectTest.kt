@@ -13,22 +13,22 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Phase 3: DashScope ASR Prueba de orientación de desconexión y reconexión.
+ * Phase 3: DashScope ASR 断线重连定向测试。
  *
- * Portada:
- *  - Secuencias de retroceso exponencial y límites superiores(DashScopeReconnectPolicy);
- *  - Sentencia de acción de desconexión(Ignorar el estado final/Parada/dispose,Listening Reconectar,Rebaja por agotamiento);
- *  - DashScopeSession Semántica de notificación de desconexión(onFailure/onClosing Notificación,onClosed sin previo aviso);
- *  - Retírate, espera, no tragues. CancellationException(La corrutina en realidad termina después de la cancelación.);
- *  - Los usuarios que hayan agotado sus reconexiones verán la copia de degradación.
+ * 覆盖:
+ *  - 指数退避序列与上限(DashScopeReconnectPolicy);
+ *  - 断线动作判定(忽略终态/停止中/dispose,Listening 重连,耗尽降级);
+ *  - DashScopeSession 断线通知语义(onFailure/onClosing 通知,onClosed 不通知);
+ *  - 退避等待不吞 CancellationException(取消后协程真正结束);
+ *  - 重连耗尽后的用户可见降级文案。
  *
- * correr: ./gradlew :app:testDebugUnitTest --tests "*DashScopeAsrReconnectTest*"
+ * 运行: ./gradlew :app:testDebugUnitTest --tests "*DashScopeAsrReconnectTest*"
  */
 class DashScopeAsrReconnectTest {
 
     private val json = Json { ignoreUnknownKeys = true }
 
-    // ── estrategia de retroceso ─────────────────────────────────────────────────────────
+    // ── 退避策略 ─────────────────────────────────────────────────────────
 
     @Test
     fun `backoff doubles exponentially and caps at max delay`() {
@@ -37,22 +37,22 @@ class DashScopeAsrReconnectTest {
         assertEquals(2_000L, DashScopeReconnectPolicy.delayForAttempt(2))
         assertEquals(4_000L, DashScopeReconnectPolicy.delayForAttempt(3))
         assertEquals(8_000L, DashScopeReconnectPolicy.delayForAttempt(4))
-        // Limitado después de exceder el límite superior,Y el gran intento no se volverá negativo debido al desbordamiento de turnos.
+        // 超过上限后封顶,且大 attempt 不因移位溢出变负
         assertEquals(DashScopeReconnectPolicy.MAX_DELAY_MS, DashScopeReconnectPolicy.delayForAttempt(10))
         assertTrue(DashScopeReconnectPolicy.delayForAttempt(Int.MAX_VALUE) > 0)
-        // numero negativo/Intento ilegal de retroceder al primer retroceso.
+        // 负数/非法 attempt 回退到首次退避
         assertEquals(DashScopeReconnectPolicy.BASE_DELAY_MS, DashScopeReconnectPolicy.delayForAttempt(-3))
     }
 
     @Test
     fun `exhausted message is user visible degradation with manual retry hint`() {
         val message = DashScopeReconnectPolicy.EXHAUSTED_MESSAGE
-        assertTrue(message.contains("Se volvió a conectar automáticamente 3 veces"))
-        assertTrue(message.contains("retenido"))
-        assertTrue(message.contains("comience a grabar nuevamente"))
+        assertTrue(message.contains("重连 3 次"))
+        assertTrue(message.contains("已保留"))
+        assertTrue(message.contains("重新开始录音"))
     }
 
-    // ── Sentencia de acción de desconexión ─────────────────────────────────────────────────────
+    // ── 断线动作判定 ─────────────────────────────────────────────────────
 
     @Test
     fun `terminal and stopping states never trigger reconnect`() {
@@ -68,7 +68,7 @@ class DashScopeAsrReconnectTest {
             AsrDisconnectAction.IGNORE,
             resolveAsrDisconnectAction(ASRStatus.Stopping, isDisposed = false, reconnectAttempt = 0),
         )
-        // Conexión por primera vez/La desconexión durante el establecimiento de la reconexión la maneja el propio establishmentConnection.,Evite el doble conteo
+        // 首次连接/重连建立中的断开由 establishConnection 自行处理,避免双重计数
         assertEquals(
             AsrDisconnectAction.IGNORE,
             resolveAsrDisconnectAction(ASRStatus.Connecting, isDisposed = false, reconnectAttempt = 0),
@@ -107,7 +107,7 @@ class DashScopeAsrReconnectTest {
         )
     }
 
-    // ── Notificación de desconexión de sesión ────────────────────────────────────────────────────
+    // ── 会话断线通知 ────────────────────────────────────────────────────
 
     @Test
     fun `session notifies disconnect on websocket failure`() = runBlocking {
@@ -117,8 +117,8 @@ class DashScopeAsrReconnectTest {
 
         session.onFailure(mockk(relaxed = true), java.io.IOException("boom"), null)
 
-        assertTrue("onFailure El motivo de la excepción debe llevarse", notified?.contains("boom") == true)
-        // El canal esta cerrado:Espere a que el evento regrese inmediatamente. null(No se cuelga al intentar volver a conectarse)
+        assertTrue("onFailure 应携带异常原因", notified?.contains("boom") == true)
+        // 通道已关闭:等待事件立即返回 null(重连尝试不会挂死)
         assertNull(session.waitForEvent("task-started", 100))
     }
 
@@ -141,21 +141,21 @@ class DashScopeAsrReconnectTest {
         var notified: String? = null
         session.onDisconnected = { notified = it }
 
-        // locales close()/cleanupConnection solo disparador onClosed,Nunca autoactive la reconexión
+        // 本地 close()/cleanupConnection 只触发 onClosed,绝不能自触发重连
         session.onClosed(mockk(relaxed = true), 1000, "session ended")
 
         assertNull(notified)
     }
 
-    // ── Semántica de cancelación de retroceso ────────────────────────────────────────────────────
+    // ── 退避取消语义 ────────────────────────────────────────────────────
 
     @Test
     fun `backoff wait propagates cancellation without being swallowed`() = runBlocking {
-        val job = launch { awaitReconnectBackoff(5) } // 8s,Tome la iniciativa de cancelar a continuación
+        val job = launch { awaitReconnectBackoff(5) } // 8s,下面主动取消
         delay(50)
         job.cancel()
         job.join()
 
-        assertTrue("La corrutina debe terminar después de la cancelación.(Retirarse y esperar sin tragar. CancellationException)", job.isCancelled)
+        assertTrue("取消后协程必须真正结束(退避等待不得吞 CancellationException)", job.isCancelled)
     }
 }

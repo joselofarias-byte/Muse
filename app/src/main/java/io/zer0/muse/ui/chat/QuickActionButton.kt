@@ -13,15 +13,15 @@ import io.zer0.muse.ui.messageCopyText
 import io.zer0.muse.ui.theme.MuseIconSizes
 
 /**
- * v2.6.0: Organice rápidamente botones de acción individuales.
+ * v2.6.0: 快捷排单个动作按钮。
  *
- * Reúna en un solo lugar cada representación de botones y comportamiento de clic que originalmente estaban dispersos en MessageBubble.
- * con [QuickAction] Todos los grupos tienen correspondencia uno a uno. El estilo es completamente consistente con el diseño del acceso directo original (outline color,
- * touchTarget tamaño,iconSmall icono), el comportamiento se alinea uno por uno con la implementación original:
- * - COPY: Copie el texto (incluida la lógica de empalme de razonamiento la maneja la persona que llama messageCopyText)
- * - REASONING: Copie solo el proceso de pensamiento (después de la limpieza)
- * - DELETE: Activar confirmación secundaria (destructiva, roja)
- * - El resto de acciones son consistentes con mantener presionada la opción del mismo nombre en el panel "Más".
+ * 把原先散落在 MessageBubble 里的每个按钮渲染与点击行为收拢到一处，
+ * 与 [QuickAction] 全量池一一对应。样式与原快捷排完全一致（outline 色、
+ * touchTarget 尺寸、iconSmall 图标），行为与原实现逐一对齐：
+ * - COPY: 复制正文（含 reasoning 拼接逻辑由调用方 messageCopyText 处理）
+ * - REASONING: 仅复制思考过程（清洗后）
+ * - DELETE: 触发二次确认（破坏性，红色）
+ * - 其余动作与长按「更多」面板同名项行为一致
  */
 @Composable
 internal fun QuickActionButton(
@@ -65,7 +65,7 @@ internal fun QuickActionButton(
     }
     val tint = when (action) {
         QuickAction.DELETE -> MaterialTheme.colorScheme.error
-        else -> MaterialTheme.colorScheme.outline
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
     val icon = when (action) {
         QuickAction.FAVORITE -> MuseIcons.star

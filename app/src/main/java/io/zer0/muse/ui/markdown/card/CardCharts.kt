@@ -1,29 +1,29 @@
 package io.zer0.muse.ui.markdown.card
 
 /**
- * Representador de gráficos en la tarjeta.
+ * 卡片里的图表渲染器。
  *
- * Ocho tipos de gráficos comparten una forma de datos:
+ * 八种图共用一个数据形状：
  *
  * ```
  * { labels: [...], series: [{id, label, values}], unit?, title?, ariaLabel?, legend?, minWidth? }
  * ```
  *
- * La ventaja de unificar la forma es que al cambiar la imagen, solo necesitas cambiar `kind`, no es necesario reorganizar los datos; el modelo sólo necesita recordar una forma de escribir.
+ * 让形状统一的好处是换图只要改 `kind`，不用重排数据；模型也只需要记住一种写法。
  *
- * Tres acuerdos duros:
+ * 三条硬约定：
  *
- *  - Los valores deben pasar `Intl.NumberFormat`, la cola de punto flotante no aparece en la pantalla;
- *  - Los datos ilegales arrojarán directamente un error y NaN no se dibujará como 0. La imagen dibujada después de la degradación parece normal pero en realidad es completamente incorrecta.
- *    Mucho más peligroso que informar un error;
- *  - Cada gráfico está respaldado por una tabla de datos legible y los gráficos no son el único portador de información.
+ *  - 数值一律过 `Intl.NumberFormat`，浮点尾巴不上屏；
+ *  - 非法数据直接抛错，不把 NaN 当 0 画出来。降级画出来的图看着正常其实全错，
+ *    比报错危险得多；
+ *  - 每张图都有可读的数据表兜底，图表不是唯一的信息载体。
  */
 internal object CardCharts {
 
-    /** Nombre de montaje global. Utilizado en tarjetas `MuseCharts.render(el, spec)`. */
+    /** 全局挂载名。卡片里用 `MuseCharts.render(el, spec)`。 */
     const val GLOBAL_NAME: String = "MuseCharts"
 
-    /** Guión completo. */
+    /** 完整脚本。 */
     fun build(): String = SCRIPT
 
     private const val SCRIPT: String = """
@@ -37,7 +37,7 @@ internal object CardCharts {
   function fail(msg){ throw new Error('[MuseCharts] ' + msg); }
 
   function fmt(v){
-    if (typeof v !== 'number' || !isFinite(v)) fail('El valor no es un número finito.: ' + v);
+    if (typeof v !== 'number' || !isFinite(v)) fail('数值不是有限数字: ' + v);
     return nf.format(v);
   }
 
@@ -49,32 +49,32 @@ internal object CardCharts {
   }
 
   function checkSpec(spec){
-    if (!spec) fail('desaparecido spec');
+    if (!spec) fail('缺少 spec');
     var labels = spec.labels;
-    if (!Array.isArray(labels) || labels.length === 0) fail('labels Debe ser una matriz no vacía');
-    if (!Array.isArray(spec.series) || spec.series.length === 0) fail('series Debe ser una matriz no vacía');
-    if (spec.series.length > 6) fail('series Máximo 6 elementos, agrúpelos o utilice un gráfico apilado si hay más');
+    if (!Array.isArray(labels) || labels.length === 0) fail('labels 必须是非空数组');
+    if (!Array.isArray(spec.series) || spec.series.length === 0) fail('series 必须是非空数组');
+    if (spec.series.length > 6) fail('series 最多 6 条，再多请分组或改用堆叠图');
     var seen = {};
     spec.series.forEach(function(s, i){
-      if (!s || typeof s.id !== 'string' || !s.id) fail('series[' + i + '] desaparecido id');
-      if (seen[s.id]) fail('series id Repetir: ' + s.id);
+      if (!s || typeof s.id !== 'string' || !s.id) fail('series[' + i + '] 缺少 id');
+      if (seen[s.id]) fail('series id 重复: ' + s.id);
       seen[s.id] = true;
       if (!Array.isArray(s.values) || s.values.length !== labels.length) {
-        fail('series[' + s.id + '] La longitud de los valores debe ser igual a labels');
+        fail('series[' + s.id + '] 的 values 长度必须等于 labels');
       }
       s.values.forEach(function(v){
-        if (typeof v !== 'number' || !isFinite(v)) fail('series[' + s.id + '] Contiene valores ilegales');
+        if (typeof v !== 'number' || !isFinite(v)) fail('series[' + s.id + '] 含非法数值');
       });
     });
     if (spec.minWidth != null) {
       if (typeof spec.minWidth !== 'number' || !isFinite(spec.minWidth) || spec.minWidth < 0) {
-        fail('minWidth Debe ser un número finito no menor que 0');
+        fail('minWidth 必须是不小于 0 的有限数字');
       }
     }
     return spec;
   }
 
-  /** 1/2/5 La agrupación garantiza que el campo siempre contenga 0. */
+  /** 1/2/5 分档，保证域始终包含 0。 */
   function niceDomain(min, max){
     if (min > 0) min = 0;
     if (max < 0) max = 0;
@@ -97,12 +97,12 @@ internal object CardCharts {
     return patterns[i % patterns.length];
   }
 
-  /** Tabla de datos debajo del gráfico: un método de lectura ascendente más allá del gráfico. */
+  /** 图下数据表：图表之外的兜底读法。 */
   function dataTable(labels, series, unit){
     var d = document.createElement('details');
     d.className = 'm-disclosure';
     var s = document.createElement('summary');
-    s.textContent = 'Ver datos';
+    s.textContent = '查看数据';
     d.appendChild(s);
     var wrap = document.createElement('div');
     wrap.className = 'm-disclosure-body m-table-region';
@@ -160,7 +160,7 @@ internal object CardCharts {
     };
   }
 
-  // ── Polilínea/Área/Columna/Sistema de coordenadas compartidas apiladas ──────────────
+  // ── 折线 / 面积 / 柱状 / 堆叠 共用坐标系 ──────────────
   function cartesian(root, spec, kind){
     checkSpec(spec);
     var labels = spec.labels, series = spec.series;
@@ -170,7 +170,7 @@ internal object CardCharts {
     if (stacked) {
       var hasPos = false, hasNeg = false;
       series.forEach(function(s){ s.values.forEach(function(v){ if (v > 0) hasPos = true; if (v < 0) hasNeg = true; }); });
-      if (hasPos && hasNeg) fail('Los gráficos de columnas apiladas no pueden mezclar positivos y negativos; utilice column');
+      if (hasPos && hasNeg) fail('堆叠柱状图不能正负混合，请改用 column');
     }
 
     var min = 0, max = 0;
@@ -199,14 +199,14 @@ internal object CardCharts {
     function x(i){ return PAD_L + (labels.length === 1 ? innerW / 2 : innerW * i / (labels.length - 1)); }
     function y(v){ return H - ((v - dom.lo) / (dom.hi - dom.lo)) * H; }
 
-    // cuadrícula
+    // 网格
     for (var g = dom.lo; g <= dom.hi + 0.0001; g += dom.step) {
       svg.appendChild(el('line', {
         x1: 0, x2: W, y1: y(g), y2: y(g),
         stroke: 'var(--muse-card-line-soft)', 'stroke-width': 0.3
       }));
     }
-    // línea de base cero
+    // 零基线
     if (dom.lo < 0) {
       svg.appendChild(el('line', {
         x1: 0, x2: W, y1: y(0), y2: y(0),
@@ -233,7 +233,7 @@ internal object CardCharts {
         svg.appendChild(el('text', {
           x: W / 2, y: H / 2, 'text-anchor': 'middle',
           fill: 'var(--muse-faint)', 'font-size': 2.6
-        }, 'Todas las series están ocultas.'));
+        }, '所有系列已隐藏'));
         return;
       }
       if (isColumn) {
@@ -314,18 +314,18 @@ internal object CardCharts {
     return destroyable(nodes, []);
   }
 
-  // ── barra horizontal ────────────────────────────────────────
+  // ── 横向条形 ────────────────────────────────────────
   function bar(root, spec){
     var items = spec.items;
     var labels, series;
     if (Array.isArray(items)) {
       checkSpec({ labels: items.map(function(x){ return x.label; }),
-                  series: [{ id: 'v', label: spec.title || 'valor numérico', values: items.map(function(x){ return x.value; }) }] });
+                  series: [{ id: 'v', label: spec.title || '数值', values: items.map(function(x){ return x.value; }) }] });
       labels = items.map(function(x){ return x.label; });
-      series = [{ id: 'v', label: spec.title || 'valor numérico', values: items.map(function(x){ return x.value; }) }];
+      series = [{ id: 'v', label: spec.title || '数值', values: items.map(function(x){ return x.value; }) }];
     } else {
       checkSpec(spec);
-      if (spec.series.length !== 1) fail('Los gráficos de barras sólo aceptan una única serie. Para series múltiples, utilice la columna o stacked');
+      if (spec.series.length !== 1) fail('条形图只接受单个系列，多系列请用 column 或 stacked');
       labels = spec.labels;
       series = spec.series;
     }
@@ -371,17 +371,17 @@ internal object CardCharts {
     return destroyable([svg, table], []);
   }
 
-  // ── Gráfico circular/rosquilla ─────────────────────────────────────
+  // ── 饼图 / 环形 ─────────────────────────────────────
   function pie(root, spec, donut){
     checkSpec(spec);
-    if (spec.series.length !== 1) fail('El gráfico circular solo acepta una serie');
+    if (spec.series.length !== 1) fail('饼图只接受一个系列');
     var values = spec.series[0].values;
     var total = 0;
-    values.forEach(function(v){ if (v < 0) fail('El gráfico circular no acepta números negativos'); total += v; });
-    if (total <= 0) fail('El total del gráfico circular es 0 y no se puede calcular la proporción.');
+    values.forEach(function(v){ if (v < 0) fail('饼图不接受负数'); total += v; });
+    if (total <= 0) fail('饼图合计为 0，无法计算占比');
     var labels = spec.labels;
     var inner = donut ? 0.6 : (typeof spec.innerRadius === 'number' ? spec.innerRadius : 0);
-    if (inner < 0 || inner > 0.9) fail('innerRadius más allá 0–0.9');
+    if (inner < 0 || inner > 0.9) fail('innerRadius 超出 0–0.9');
 
     var S = 100, C = 50, R = 40, IR = R * inner;
     var svg = el('svg', {
@@ -425,7 +425,7 @@ internal object CardCharts {
       svg.appendChild(el('text', {
         x: C, y: C + 7, 'text-anchor': 'middle',
         fill: 'var(--muse-faint)', 'font-size': 4
-      }, 'total'));
+      }, '合计'));
     }
     root.appendChild(svg);
     var legendBox = document.createElement('div');
@@ -469,7 +469,7 @@ internal object CardCharts {
       if (kind === 'bar') return api.renderBarChart(root, spec);
       if (kind === 'pie') return api.renderPieChart(root, spec);
       if (kind === 'donut') return api.renderDonutChart(root, spec);
-      fail('desconocido kind: ' + kind + '(línea/área/columna/apilada/barra/pastel/rosquilla disponible)');
+      fail('未知 kind: ' + kind + '（可用 line/area/column/stacked/bar/pie/donut）');
     }
   };
   window.MuseCharts = api;

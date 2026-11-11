@@ -15,11 +15,11 @@ import okhttp3.MultipartBody
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 
-/** QQ Envío de medios: primero cargue y cambie file_info, luego presione msg_type=7 Enviar. */
+/** QQ 媒体发送：先上传换 file_info，再按 msg_type=7 发送。 */
 internal object QqMediaSender {
     private const val TAG = "QqMedia"
 
-    /** Cargue todos los parámetros requeridos. */
+    /** 上传所需的全部参数。 */
     private data class Upload(
         val appId: String,
         val accessToken: String,
@@ -40,7 +40,7 @@ internal object QqMediaSender {
                 config.targetType == "group"
             }
             val target = rawTarget.removePrefix("group:")
-            val payload = MediaPayload.from(media) ?: error("No se puede leer el contenido multimedia")
+            val payload = MediaPayload.from(media) ?: error("无法读取媒体内容")
             val path = if (isGroup) "groups" else "users"
             val fileInfo = upload(
                 Upload(
@@ -63,10 +63,10 @@ internal object QqMediaSender {
                 .post(body.toRequestBody(MediaHttp.jsonMediaType))
                 .build()
             MediaHttp.postAndCheck(req, "QQ")
-        }.onFailure { e -> Logger.w(TAG, "QQ Error al enviar medios: ${e.message}") }
+        }.onFailure { e -> Logger.w(TAG, "QQ 媒体发送失败: ${e.message}") }
     }
 
-    /** QQ Tipos de medios enriquecidos:1 Imágenes/2 Vídeos/3 Voces/4 Archivos. */
+    /** QQ 富媒体类型：1 图片 / 2 视频 / 3 语音 / 4 文件。 */
     private fun fileTypeOf(kind: MediaKind): Int = when (kind) {
         MediaKind.IMAGE -> 1
         MediaKind.VIDEO -> 2
@@ -98,7 +98,7 @@ internal object QqMediaSender {
             return (obj["file_info"] ?: obj["file_uuid"] ?: obj["id"])
                 ?.jsonPrimitive?.contentOrNull
                 ?.takeIf { it.isNotBlank() }
-                ?: error("Falta respuesta de carga file_info: ${text.take(200)}")
+                ?: error("上传响应缺 file_info: ${text.take(200)}")
         }
     }
 }

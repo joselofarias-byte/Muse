@@ -34,35 +34,40 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import io.zer0.muse.miniphone.R
 import io.zer0.muse.miniphone.ui.chat.MiniPhoneChatRoute
 import io.zer0.muse.miniphone.ui.icons.MiniPhoneIcons
+import io.zer0.muse.miniphone.ui.launchGuarded
 import io.zer0.muse.miniphone.ui.moments.MiniPhoneMomentsRoute
 import io.zer0.muse.miniphone.ui.theme.MiniPhoneTheme
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
 /**
- * Funda pequeña para celular.
+ * 小手机外壳。
  *
- * tercer piso:barra de estado, área de contenido(Escritorio/una determinada página/página de chat/momentos), barra de pestañas inferior;El papel tapiz es la parte inferior de todo el caparazón.
- * Cambiar escritorio y página en el mismo shell(El escritorio "no tiene ninguna pestaña seleccionada"),tab Tanto el estado como la sesión actual se guardan usando recuerdaSaveable,
- * Incluso si el proceso se rota, se recicla y luego se devuelve, se detendrá en la página original.
+ * 三层:状态栏、内容区(桌面 / 某一页 / 聊天页 / 朋友圈)、底部 tab 栏;壁纸是整壳的底。
+ * 桌面与页面在同一个壳里切换(桌面是「没选 tab」),tab 状态与当前会话都用 rememberSaveable 存,
+ * 旋转、进程被回收再回来都还停在原来那一页。
  *
- * La página de chat y los Momentos no entran en la navegación del anfitrión.:Este módulo solo tiene una "identificación de sesión actual" y un "círculo de momentos está abierto o no",
- * Cuando se establezca alguno, cambie el área de contenido a la página correspondiente y contraiga la barra de pestañas.,Se borra al regresar.
- * Hay dos entradas al círculo de amigos.:Descubre todas las novedades en la página.,"Mis momentos" en mi página solo ve mis publicaciones.
+ * 聊天页与朋友圈都不进宿主导航:本模块只有一个「当前会话 id」与一个「朋友圈开没开」,
+ * 任一成立就把内容区换成对应页面、同时收起 tab 栏,返回时清掉。
+ * 朋友圈有两个入口:发现页开全部动态,我页的「我的朋友圈」只看自己发的。
  *
- * Iniciar un chat grupal también es una página completa:"+"ábrelo,Seleccione suficientes personas y haga clic en "Completar" para unirse al grupo directamente. ——
- * Crea una página de grupo sin tocar la biblioteca tú mismo,Después de crear el ID de sesión, regrese aquí para abrirlo.
+ * 发起群聊也是一层整页:消息页顶栏的「+」打开它,选够人点「完成」之后直接进那个群 ——
+ * 建群页自己不碰库,建完拿到的会话 id 回到这里打开。
  *
- * @param chatContent El puerto de renderizado de la página de chat.,De forma predeterminada, este módulo [MiniPhoneChatRoute];Prueba de avatar inyectable
- * @param momentsContent Puerto de renderizado de Moments,El primer parámetro es el modo "mírate sólo a ti mismo".;El valor predeterminado es [MiniPhoneMomentsRoute]
- * @param onOpenCharacterChat Al hacer clic en una persona en la libreta de direcciones, se requiere la identificación de la sesión: si ya hay una sesión, devuélvala,No hay nadie abierto en el lugar.;
- *   Devuelve nulo para indicar que no se puede abrir.(La identificación del rol está vacía),El shell se detiene en la página original. Navegación en este shell,No se lo entregues a los superiores
- * @param actions Acciones del usuario en la página.(Cambiar, acción de conversación, borrar, abrir mi círculo de amigos, crear un grupo),Recibido desde la entrada. ViewModel
+ * @param chatContent 聊天页的渲染口,默认取本模块的 [MiniPhoneChatRoute];测试可注入替身
+ * @param momentsContent 朋友圈的渲染口,第一个参数是「只看自己」模式;默认取 [MiniPhoneMomentsRoute]
+ * @param onOpenCharacterChat 通讯录点一个人时要会话 id:已有会话就返回它,没有就地开一条;
+ *   返回 null 表示没法开(角色 id 为空),外壳停在原页。导航在本壳,不交给上层
+ * @param actions 页面上的用户动作(开关、会话动作、清空、开我的朋友圈、建群),由入口接到 ViewModel
  */
+// 日志里区分是哪个用户动作失败了（动作名写在调用处）。
+private const val TAG_SHELL_UI = "MiniPhoneShellUi"
+
 @Composable
 fun MiniPhoneShell(
     state: ShellUiState,
@@ -82,7 +87,7 @@ fun MiniPhoneShell(
     var momentsOpen by rememberSaveable { mutableStateOf(false) }
     var momentsOnlyMine by rememberSaveable { mutableStateOf(false) }
     var groupCreateOpen by rememberSaveable { mutableStateOf(false) }
-    // Las personas seleccionadas al crear un grupo se guardan en la lista:El orden de hacer clic es el orden de unirse al grupo.,Las páginas de miembros también están organizadas en este orden.
+    // 建群所选中的人用 list 存:点击先后就是入群顺序,成员页也按这个顺序排
     var groupSelection by rememberSaveable { mutableStateOf(listOf<String>()) }
     val openThread: (String) -> Unit = { currentThreadId = it }
     val closeThread: () -> Unit = { currentThreadId = null }
@@ -90,16 +95,16 @@ fun MiniPhoneShell(
         momentsOnlyMine = onlyMine
         momentsOpen = true
     }
-    // Para hacer clic en la libreta de direcciones es necesario consultar primero la conversación. id(Es posible que tengas que crear uno nuevo.),Entonces tienes que traer una capa de alcance de rutina.
+    // 通讯录点击要先问会话 id(可能要新建一条),所以得带一层协程作用域
     val scope = rememberCoroutineScope()
     val openContact: (String) -> Unit = { characterId ->
-        scope.launch {
+        scope.launchGuarded(TAG_SHELL_UI, "从通讯录打开某个角色的会话") {
             onOpenCharacterChat(characterId)?.let { threadId -> currentThreadId = threadId }
         }
     }
-    // Al crear un grupo, también debes esperar hasta que la biblioteca termine de escribir antes de poder obtener la sesión. id,No se puede abrir sincrónicamente
+    // 建群同样要等库里写完才拿得到会话 id,不能同步打开
     val createGroup: () -> Unit = {
-        scope.launch {
+        scope.launchGuarded(TAG_SHELL_UI, "建群") {
             actions.onCreateGroup(groupSelection)?.let { created ->
                 groupCreateOpen = false
                 groupSelection = emptyList()
@@ -151,7 +156,7 @@ fun MiniPhoneShell(
                     )
                 }
             }
-            // La página de chat, el círculo de amigos y la página de creación de grupos ocupan el área de contenido.,tab Las columnas dan paso a sus propios campos inferiores y de entrada.
+            // 聊天页、朋友圈与建群页占满内容区,tab 栏让位给它们自己的底栏与输入栏
             if (currentThreadId == null && !momentsOpen && !groupCreateOpen) {
                 MiniPhoneTabBar(selected = selectedTab, onSelect = { selectedTab = it })
             }
@@ -160,10 +165,10 @@ fun MiniPhoneShell(
 }
 
 /**
- * Todas las acciones del usuario en la página.,Recibido desde la entrada de ViewModel.
+ * 页面上全部用户动作,由入口接到 ViewModel。
  *
- * Reúnalos en lugar de usarlos como parámetros uno por uno.:Ya hay cuatro puertos de renderizado y una devolución de llamada de rutina en la lista de parámetros del shell.,
- * Si agrega siete devoluciones de llamada más y las aplana, el punto se perderá por completo.;Agregar una acción elimina la necesidad de contactar a todas las personas que llaman.
+ * 聚成一份而不是逐个当参数:外壳的参数表里已经有四个渲染口与一个协程回调,
+ * 再把七个回调平铺进来就该彻底看不出重点了;加一个动作也不必再动所有调用方。
  */
 @Immutable
 data class MiniPhoneShellActions(
@@ -173,14 +178,14 @@ data class MiniPhoneShellActions(
     val onMarkThreadRead: (threadId: String) -> Unit = {},
     val onDeleteThread: (threadId: String) -> Unit = {},
     val onClearConversations: () -> Unit = {},
-    /** Crear un grupo:El parámetro es el rol seleccionado. id(El orden de hacer clic es el orden de unirse al grupo.),Volver a nueva sesión id;Devuelve nulo si no se completa. */
+    /** 建群:参数是选中的角色 id(点击先后就是入群顺序),返回新会话 id;没建成时返回 null。 */
     val onCreateGroup: suspend (characterIds: List<String>) -> String? = { null },
 )
 
 /**
- * Seis devoluciones de llamada de salto en el área de contenido:Cortar pestañas y abrir Momentos(Todo/Ver sólo a ti mismo), abra una sesión, abra una sesión por rol, cree una página de grupo y regrese al escritorio.
+ * 内容区的六条跳转回调:切 tab、开朋友圈(全部 / 只看自己)、开会话、按角色开会话、开建群页、回桌面。
  *
- * describen lo mismo(¿Adónde quieren ir los usuarios?),Componer un valor es más fácil de leer que seis parámetros de mosaico.
+ * 它们描述的是同一件事(用户要去哪),合成一个值比六个平铺参数好读。
  */
 private data class PageNav(
     val selectTab: (MiniPhoneTab) -> Unit = {},
@@ -192,7 +197,7 @@ private data class PageNav(
     val goHome: () -> Unit = {},
 )
 
-/** área de contenido:Escritorio, una página o una página de chat. */
+/** 内容区:桌面、某一页或聊天页。 */
 @Composable
 private fun MiniPhonePageContent(selectedTab: MiniPhoneTab?, state: ShellUiState, nav: PageNav, actions: MiniPhoneShellActions) {
     if (selectedTab == null) {
@@ -200,7 +205,7 @@ private fun MiniPhonePageContent(selectedTab: MiniPhoneTab?, state: ShellUiState
         return
     }
     MiniPhonePageFrame(
-        title = selectedTab.title,
+        title = stringResource(selectedTab.titleRes),
         onGoHome = nav.goHome,
         headerAction = if (selectedTab == MiniPhoneTab.MESSAGES) {
             { GroupCreateEntry(onClick = nav.openGroupCreate) }
@@ -212,7 +217,7 @@ private fun MiniPhonePageContent(selectedTab: MiniPhoneTab?, state: ShellUiState
             MiniPhoneTab.MESSAGES -> MessagesPage(
                 threads = state.threads,
                 onOpenThread = nav.openThread,
-                // botón en estado vacío:Ir directamente a la libreta de direcciones,No es necesario que los usuarios regresen y lo encuentren ellos mismos. tab
+                // 空态里的按钮:直接切到通讯录,不用用户自己回去找 tab
                 onGoContacts = { nav.selectTab(MiniPhoneTab.CONTACTS) },
                 actions = ThreadMenuActions(
                     onTogglePin = actions.onToggleThreadPin,
@@ -239,9 +244,9 @@ private fun MiniPhonePageContent(selectedTab: MiniPhoneTab?, state: ShellUiState
 }
 
 /**
- * barra de estado:reloj izquierdo,Señal/Wi-Fi/Batería a la derecha.
+ * 状态栏:左边时钟,右边信号 / Wi-Fi / 电量。
  *
- * Alinee el reloj con el siguiente minuto antes de actualizar,No hagas encuestas cada segundo —— No es necesario mostrar los segundos.,Despierta sesenta veces menos.
+ * 时钟对齐到下一分钟再刷新,不做每秒轮询 —— 秒不需要显示,少唤醒六十次。
  */
 @Composable
 private fun MiniPhoneStatusBar(modifier: Modifier = Modifier) {
@@ -285,7 +290,7 @@ private fun MiniPhoneStatusBar(modifier: Modifier = Modifier) {
     }
 }
 
-/** \"Ahora\" que se alinea y actualiza cada minuto. */
+/** 每分钟对齐刷新一次的「现在」。 */
 @Composable
 private fun rememberMinuteClock(): Long {
     var nowMs by remember { mutableLongStateOf(System.currentTimeMillis()) }
@@ -300,9 +305,9 @@ private fun rememberMinuteClock(): Long {
 }
 
 /**
- * Escritorio:Cuadrícula de iconos de cuatro columnas,Deje el muelle inferior vacío.
+ * 桌面:四列图标网格,底部 dock 留空。
  *
- * Tabla de iconos de [MiniPhoneApps],Cambiar un lote de entradas no requiere cambiar el diseño.
+ * 图标表来自 [MiniPhoneApps],换一批入口不需要改布局。
  */
 @Composable
 private fun MiniPhoneLauncher(onOpen: (MiniPhoneTab) -> Unit, modifier: Modifier = Modifier) {
@@ -329,12 +334,12 @@ private fun MiniPhoneLauncher(onOpen: (MiniPhoneTab) -> Unit, modifier: Modifier
             }
         }
         Spacer(Modifier.weight(1f))
-        // Muelle inferior: déjelo en blanco en esta etapa,Solo ocupa altura,La entrada permanente se colocará más adelante.
+        // 底部 dock:本阶段留空,只占住高度,后续放常驻入口
         Spacer(Modifier.height(dimens.dockHeight))
     }
 }
 
-/** un icono en el escritorio:Base de papel + icono de color destacado + fila de etiquetas. */
+/** 桌面上的一个图标:纸片底 + 强调色图标 + 一行标签。 */
 @Composable
 private fun LauncherTile(app: MiniPhoneApp, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val colors = MiniPhoneTheme.colors
@@ -366,13 +371,13 @@ private fun LauncherTile(app: MiniPhoneApp, modifier: Modifier = Modifier, onCli
         }
         Spacer(Modifier.height(6.dp))
         Text(
-            text = app.label,
+            text = stringResource(app.labelRes),
             style = typography.timestamp.copy(color = colors.textPrimary),
         )
     }
 }
 
-/** marco de página:Título + Acción de encabezado + Botón Volver al escritorio + Contenido. Color del papel para el color de fondo.,Asegúrese de que el texto de la lista se pueda mantener presionado. */
+/** 页面外框:标题 + 页头动作 + 回桌面按钮 + 内容。底色用纸色,保证列表文字压得住。 */
 @Composable
 private fun MiniPhonePageFrame(
     title: String,
@@ -415,7 +420,7 @@ private fun MiniPhonePageFrame(
             ) {
                 Icon(
                     imageVector = MiniPhoneIcons.Home,
-                    contentDescription = "Volver al escritorio",
+                    contentDescription = stringResource(R.string.mp_home_back_cd),
                     tint = colors.textSecondary,
                     modifier = Modifier.size(18.dp),
                 )
@@ -428,10 +433,10 @@ private fun MiniPhonePageFrame(
 }
 
 /**
- * Entrada de creación de grupos en la barra superior de la página de mensajes:Un signo más que dibujé yo mismo.
+ * 消息页顶栏的建群入口:一枚自己画的加号。
  *
- * Mismo tamaño y forma que el botón de volver al escritorio(Área de toque circular + ícono personalizado),Usa colores de acento ——
- * Es la única acción activa en esta página.,No debería verse exactamente como el ícono de navegación.
+ * 与回桌面按钮同尺寸同形制(圆形轻按区 + 自绘图标),颜色用强调色 ——
+ * 它是这一页唯一的主动作,不该和导航图标长成一模一样。
  */
 @Composable
 private fun GroupCreateEntry(onClick: () -> Unit) {
@@ -446,14 +451,14 @@ private fun GroupCreateEntry(onClick: () -> Unit) {
     ) {
         Icon(
             imageVector = MiniPhoneIcons.Plus,
-            contentDescription = "Iniciar un chat grupal",
+            contentDescription = stringResource(R.string.mp_group_create_cd),
             tint = colors.accent,
             modifier = Modifier.size(18.dp),
         )
     }
 }
 
-/** barra de pestañas inferior:Cuatro artículos,Utilice un color de acento para los elementos seleccionados. */
+/** 底部 tab 栏:四项,选中项用强调色。 */
 @Composable
 private fun MiniPhoneTabBar(selected: MiniPhoneTab?, onSelect: (MiniPhoneTab) -> Unit, modifier: Modifier = Modifier) {
     val colors = MiniPhoneTheme.colors
@@ -491,7 +496,7 @@ private fun MiniPhoneTabBar(selected: MiniPhoneTab?, onSelect: (MiniPhoneTab) ->
                     )
                     Spacer(Modifier.height(3.dp))
                     Text(
-                        text = tab.title,
+                        text = stringResource(tab.titleRes),
                         style = typography.timestamp.copy(color = tint, fontWeight = if (active) FontWeight.Medium else FontWeight.Normal),
                     )
                 }

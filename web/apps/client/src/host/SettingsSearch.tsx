@@ -13,11 +13,11 @@ interface SettingsSearchProps {
 }
 
 /**
- * Búsqueda de configuración de pantalla completa.
+ * 全屏设置搜索。
  *
- * El cuadro de entrada se enfoca automáticamente cuando se abre.Esc Cerrar (se puede cerrar incluso si el foco no está en el cuadro de entrada).
- * ↑/↓ Mover seleccionado,Enter Ingresar; Pase el mouse para seleccionar simultáneamente, y el punto y el teclado tomarán la misma ruta de selección.
- * Los resultados sólo están disponibles localmente en `settings.snapshot` Calculado, no se activa ninguna solicitud de protocolo.
+ * 打开时输入框自动获得焦点，Esc 关闭（焦点不在输入框里也能关）。
+ * ↑/↓ 移动选中、Enter 进入；鼠标悬停同步选中，点和键盘走同一条 pick 路径。
+ * 结果只在本地从 `settings.snapshot` 算，不触发任何协议请求。
  */
 export function SettingsSearch({ snapshot, query, onQueryChange, onPick, onClose }: SettingsSearchProps) {
   const { t } = useI18n();
@@ -30,7 +30,7 @@ export function SettingsSearch({ snapshot, query, onQueryChange, onPick, onClose
     inputRef.current?.focus();
   }, []);
 
-  // Tan pronto como cambie la palabra clave, mueva la selección nuevamente al primer elemento para evitar detenerse en elementos que se han filtrado.
+  // 关键词一变就把选中拉回第一条，免得停在已经被过滤掉的项上。
   useEffect(() => {
     setActive(0);
   }, [query]);

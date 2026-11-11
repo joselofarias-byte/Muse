@@ -45,7 +45,6 @@
     <string name="groupchat_member_required">少なくとも 1 人のメンバーを選択してください</string>
     <string name="groupchat_team_optional">リンクチーム（オプション）</string>
     <string name="groupchat_no_team">リンクされていません</string>
-    <string name="groupchat_selected_members">%1$d メンバーが選択されました</string>
     <string name="groupchat_create_btn">作成する</string>
 
     <!-- ===== ui/account ===== -->
@@ -105,6 +104,13 @@
     <string name="schedule_cancel">キャンセル</string>
     <string name="schedule_msg_cancel">スケジュールメッセージをキャンセル</string>
     <string name="schedule_err_name_required">タスク名を入力してください</string>
+    <string name="schedule_time_daily">毎日実行する時刻</string>
+    <string name="schedule_time_weekly">毎週実行する時刻</string>
+    <string name="schedule_time_once">実行時刻</string>
+    <string name="schedule_time_unset">タップして時刻を選択</string>
+    <string name="schedule_err_once_time_required">一度きりのタスクの実行時刻を選択してください</string>
+    <string name="schedule_status_running">実行中</string>
+    <string name="schedule_status_completed">完了</string>
     <string name="schedule_err_content_required">実行内容を入力してください</string>
     <string name="schedule_err_cron_invalid">無効な cron 式です。</string>
     <string name="schedule_assistant">アシスタント</string>
@@ -252,6 +258,8 @@
     <string name="knowledge_zip_progress">解凍してインポート中…(インポート済み %1$d 件)</string>
     <string name="knowledge_zip_done">ナレッジベース %1$s を作成:文書 %2$d 件をインポート、%3$d 件をスキップ</string>
     <string name="knowledge_zip_empty">インポート可能な文書が見つかりませんでした</string>
+    <!-- 回滚没清干净时说这句：否则列表里留着一个打不开的条目，而提示只说「没有可导入的文档」，用户两句对不上 -->
+    <string name="knowledge_zip_empty_leftover">インポート可能な文書がなく、一時エントリの削除にも失敗しました：一覧から「%1$s」を手動で削除してください</string>
     <string name="knowledge_import_empty">インポートに失敗しました: ファイルの内容が空です</string>
     <!-- v1.0.47 P7-3: File size friendly prompt -->
     <string name="knowledge_file_too_large_title">ファイルが大きすぎます</string>
@@ -329,7 +337,7 @@
     <string name="stats_hourly_chart_cd">24時間メッセージ分布棒グラフ</string>
     <string name="stats_other">その他</string>
     <string name="stats_model_donut_cd">モデル使用分布ドーナツチャート</string>
-    <string name="stats_summary_header">===== Muse 統計概要 =====</string>
+    <string name="stats_summary_header">===== Musa 統計概要 =====</string>
     <string name="stats_summary_total_sessions">合計セッション数: %1$d</string>
     <string name="stats_summary_total_messages">総メッセージ数: %1$d</string>
     <string name="stats_summary_ai_replies">AI 返信数: %1$d</string>
@@ -382,6 +390,7 @@
     <string name="subagent_task_completed">完了</string>
     <string name="subagent_task_failed">失敗した</string>
     <string name="subagent_task_cancel">キャンセル</string>
+    <string name="subagent_task_close_cd">サブエージェントタスクを閉じる</string>
 
     <!-- ===== ui/artifact ===== -->
     <string name="artifact_untitled">無題</string>
@@ -551,11 +560,11 @@
     <string name="cover_empty_hint">右下のボタンをタップして画像をインポートするか、AIにカバーを生成させます</string>
     <string name="quick_notes_settings_title">クイックキャプチャ設定</string>
     <string name="quick_capture_swipe_title">スワイプでクイックキャプチャを表示</string>
-    <string name="quick_capture_swipe_desc">Muse 内の右端にクイックキャプチャのハンドルを表示</string>
+    <string name="quick_capture_swipe_desc">Musa 内の右端にクイックキャプチャのハンドルを表示</string>
     <string name="quick_capture_overlay_title">システムオーバーレイを有効化</string>
-    <string name="quick_capture_overlay_desc">Muse を離れた後もフローティングカプセルを利用可能に保つ</string>
+    <string name="quick_capture_overlay_desc">Musa を離れた後もフローティングカプセルを利用可能に保つ</string>
     <string name="quick_capture_overlay_permission_error">オーバーレイ権限設定を開けませんでした</string>
-    <string name="quick_capture_overlay_hint">オーバーレイはデフォルトでオフです。有効にするには、Muse が他のアプリの上に表示することをシステムに許可させる必要があります。</string>
+    <string name="quick_capture_overlay_hint">オーバーレイはデフォルトでオフです。有効にするには、Musa が他のアプリの上に表示することをシステムに許可させる必要があります。</string>
     <string name="chat_background_cd">チャットの背景</string>
     <string name="chat_analyzing_image">画像を分析中 %1$d/%2$d…</string>
     <string name="msg_compressed">圧縮済み</string>
@@ -564,7 +573,7 @@
     <string name="plugin_models_summary">%1$d モデル · %2$s</string>
     <string name="accessibility_enable_btn">システム設定を開く</string>
     <string name="accessibility_section_title">アクセシビリティサービス</string>
-    <string name="accessibility_status_disabled">有効ではありません。システム設定で「Muse UI 自動化」を許可してください。</string>
+    <string name="accessibility_status_disabled">有効ではありません。システム設定で「Musa UI 自動化」を許可してください。</string>
     <string name="accessibility_status_enabled">アクセシビリティサービス有効。UI操作（クリック/スワイプ/入力/スクリーンショット/UIツリー読み取り）を利用できます。</string>
     <string name="action_retry">再試行</string>
     <string name="common_load_failed">読み込みに失敗しました</string>
@@ -593,7 +602,7 @@
     <string name="permission_level_none">なし（UI自動化を利用不可）</string>
     <string name="permission_level_root">Root 承認済み（全機能を利用可能）</string>
     <string name="permission_level_shizuku">Shizuku 承認済み（UI + シェルコマンドを利用可能）</string>
-    <string name="permission_wizard_desc">Muse の UI 自動化は3チャネルの権限モデルを使用します。下の各項目を有効にしてください。レベルが高いほど、より多くの操作が利用できます。UI操作はアクセシビリティのみ、シェルコマンドは Shizuku または Root が必要です。</string>
+    <string name="permission_wizard_desc">Musa の UI 自動化は3チャネルの権限モデルを使用します。下の各項目を有効にしてください。レベルが高いほど、より多くの操作が利用できます。UI操作はアクセシビリティのみ、シェルコマンドは Shizuku または Root が必要です。</string>
     <string name="permission_wizard_title">権限ウィザード</string>
     <string name="root_section_title">Root 権限</string>
     <string name="root_status_available">Root 承認済み（フォールバックチャネル。su コマンドを直接実行可能）</string>
@@ -604,10 +613,19 @@
     <string name="settings_about_join_qq_group">QQ グループに参加</string>
     <string name="settings_about_join_qq_group_subtitle">QQ グループ: 905451314</string>
     <string name="settings_about_qq_not_installed">QQ が見つかりません。グループ番号 905451314 をクリップボードにコピーしました</string>
-    <string name="shizuku_authorize_btn">Muse を承認</string>
+    <string name="shizuku_authorize_btn">Musa を承認</string>
+    <string name="permission_shizuku_opened_toast">Shizuku を開きました。アプリ内でサービスを起動してから戻って更新してください</string>
+    <string name="permission_shizuku_activation_hint">サービスが停止中です。Android 11 以降：開発者オプションを有効にし、Shizuku 内の「ワイヤレス デバッグ」でペアリングして起動します。root 済み端末は直接起動できます。端末の再起動後は再度有効化が必要です。</string>
+    <string name="permission_shizuku_manual_grant_hint">権限ダイアログは「今後表示しない」で拒否されています。Shizuku を開いたので、アプリ内で Musa を手動で許可してください</string>
+    <string name="permission_shizuku_denied_toast">Shizuku の権限が拒否されました</string>
+    <string name="permission_shizuku_timeout_toast">Shizuku の承認待ちがタイムアウトしました。再試行してください</string>
+    <string name="permission_shizuku_unavailable_toast">Shizuku サービスが停止中です。先に Shizuku アプリで起動してください</string>
+    <string name="permission_root_manager_missing">root 環境は検出されましたが、マネージャー（Magisk / KernelSU / APatch）がインストールされていません。この状態では su 要求は暗黙的に拒否されます。対応するマネージャーをインストールして開いてから、上の「承認をリクエスト」をタップしてください。</string>
+    <string name="permission_termux_outdated">この Termux バージョンは古すぎてコマンド結果を返せません。F-Droid または GitHub から 0.118+ に更新してください（Play ストア版は更新停止中です）。</string>
+    <string name="permission_shizuku_version_old">Shizuku が古すぎます（v11+ 必須、v13+ 推奨）。更新して再試行してください。</string>
     <string name="shizuku_install_btn">Shizuku をダウンロード</string>
-    <string name="shizuku_section_title">Shizuku（推奨）</string>
-    <string name="shizuku_status_authorized">Muse の Shizuku 使用が承認済み</string>
+    <string name="shizuku_section_title">Shizuku</string>
+    <string name="shizuku_status_authorized">Musa の Shizuku 使用が承認済み</string>
     <string name="skill_agent_phone_not_configured">agent_phone 未設定: GroupChatScheduler が注入されていません</string>
     <string name="skill_agent_phone_target_not_found">対象エージェントが存在しません</string>
     <string name="skill_message_blank">メッセージは空にできません</string>
@@ -720,7 +738,7 @@
     <!-- バックグラウンド起動の診断:システムが実際に Muse の起動を予約しているか(読み取り専用) -->
     <string name="wake_diagnostics_open">バックグラウンド起動状態</string>
     <string name="wake_diagnostics_title">バックグラウンド起動状態</string>
-    <string name="wake_diagnostics_subtitle">システムのキューにある実際のスケジュールを表示します。読み取り専用で、スケジュールは変更しません。</string>
+    <string name="wake_diagnostics_subtitle">システムが実際に予約しているバックグラウンドジョブの一覧です。内蔵のバックアップや要約も含まれ、あなたが作成したタスクとは別ものです。読み取り専用で、予約は変わりません。</string>
     <string name="wake_diagnostics_refresh">再読み込み</string>
     <string name="wake_diagnostics_copy">スナップショットをコピー</string>
     <string name="wake_diagnostics_copied">スナップショットをコピーしました</string>
@@ -773,4 +791,74 @@
     <string name="wake_stop_user">ユーザー操作</string>
     <string name="wake_stop_system_processing">システム処理中</string>
     <string name="wake_stop_launch_time">推定起動時刻の変化</string>
+    <string name="plugin_permission_section_title">権限と能力</string>
+    <string name="plugin_permission_hint">未申告または無効な能力は即座に拒否されます。切り替えは直ちに反映されます。</string>
+    <string name="plugin_permission_pending_title">このプラグインは更新後に新しい能力を申告しました</string>
+    <string name="plugin_permission_approve">新規を承認</string>
+    <string name="plugin_permission_none">このプラグインは能力を申告していないため、純粋な計算のみ実行できます。</string>
+    <string name="plugin_permission_denied_title">拒否された呼び出し</string>
+    <string name="plugin_permission_denied_row">%1$s には能力 %2$s が必要です</string>
+    <string name="plugin_permission_allow_session">このセッションだけ許可</string>
+    <string name="plugin_permission_recent_title">最近の呼び出し</string>
+    <string name="plugin_permission_recent_empty">記録された呼び出しはありません</string>
+    <string name="plugin_permission_recent_row">%1$s · %2$s %3$s</string>
+    <string name="plugin_permission_expand">表示</string>
+    <string name="plugin_permission_collapse">閉じる</string>
+    <string name="plugin_permission_python_title">Python ランタイム（高信頼）</string>
+    <string name="plugin_permission_python_warning">Python プラグインは本アプリと同じ UID のサブプロセスで動作し、アプリデータを直接読み書きできます。上記の能力スイッチやファイルサンドボックスの適用外です。信頼できる場合のみ有効化してください。</string>
+    <string name="plugin_row_python_trusted">Python ランタイム · 許可済み</string>
+    <string name="plugin_row_python_locked">Python ランタイム · 高信頼の許可が必要</string>
+    <string name="plugin_row_circuit_cooling">遮断中、残り %1$d 秒</string>
+    <string name="plugin_row_circuit_probing">半開テスト中</string>
+    <string name="plugin_permission_node_note">Node ランタイム：組み込み Node のサブプロセスで実行され、能力は項目ごとに認可します。タイムアウトは実際に中断され、他のプラグインに波及しません。</string>
+    <string name="plugin_cap_resource_read">ファイルの読み取り（プラグイン自身の沙盒フォルダ内のみ）</string>
+    <string name="plugin_cap_resource_write">ファイルの書き込み（プラグイン自身の沙盒フォルダのみ）</string>
+    <string name="plugin_cap_network">外部 URL への通信（ローカルと私用アドレスは遮断）</string>
+    <string name="plugin_cap_event_on_message">メッセージごと</string>
+    <string name="plugin_cap_event_on_tool_call">ツール呼び出しごと</string>
+    <string name="plugin_cap_hook_tool_before">ツール呼び出しをブロック</string>
+    <string name="plugin_cap_hook_system_prompt">システムプロンプトに追記（振る舞いが変わります）</string>
+    <string name="plugin_cap_schedule">定期的に実行（アプリ起動中のみ）</string>
+    <string name="plugin_cap_network_local">LAN と localhost へのアクセス（家庭内サービス、ローカルポート）</string>
+    <string name="plugin_cap_app_navigate">アプリ内の指定ページを開く（ホーム、設定、会話など）</string>
+    <string name="plugin_cap_app_messages">会話にメッセージを書き込む（アシスタントの発言として表示されます）</string>
+    <string name="plugin_cap_app_theme">ライト/ダーク表示の切り替え</string>
+    <string name="plugin_slot_provided_by">プラグイン「%1$s」提供</string>
+    <string name="plugin_cap_ui_slot">チャット上部にプラグインの画面を表示</string>
+    <string name="plugin_cap_runtime_long">長時間の実行（1 回あたり最大 10 分）</string>
+    <string name="plugin_cap_schedule_background">バックグラウンドで定期タスクを実行（アプリ未起動でも）</string>
+    <string name="plugin_service_channel_name">プラグインサービス</string>
+    <string name="plugin_service_channel_desc">プラグインがフォアグラウンドサービスで動作中の通知</string>
+    <string name="plugin_service_notification_title">プラグインサービス実行中</string>
+    <string name="plugin_service_notification_text">バックグラウンドで動作中のプラグインがあります</string>
+    <string name="plugin_service_notification_stop">停止</string>
+    <string name="plugin_cap_runtime_service">バックグラウンドで常駐（フォアグラウンドサービス）</string>
+    <string name="plugin_cap_app_settings">アプリ設定の変更（文字サイズ、ダイナミックカラー、ハイコントラスト、ホーム）</string>
+    <string name="plugin_debug_title">プラグインのデバッグ</string>
+    <string name="plugin_cap_clipboard_read">クリップボードの読み取り</string>
+    <string name="plugin_cap_clipboard_write">クリップボードへの書き込み</string>
+    <string name="plugin_cap_clipboard">クリップボードの読み書き</string>
+    <string name="plugin_cap_notify">通知の表示</string>
+    <string name="plugin_cap_device_info">端末情報の読み取り（機種・OS バージョン）</string>
+    <string name="plugin_cap_storage">プラグイン専用ストレージの使用（上限 8MB）</string>
+    <string name="plugin_cap_config_write">プラグイン自身の設定変更（秘密項目は変更不可）</string>
+    <string name="plugin_cap_tool_invoke">他のツールの実行申請（毎回あなたの承認が必要）</string>
+    <string name="plugin_cap_chat_read">現在の会話の直近メッセージの読み取り（プライバシー、既定オフ）</string>
+    <string name="plugin_cap_model_call">設定済みモデルでの生成（あなたの利用量に算入）</string>
+    <string name="plugin_cap_ui_skin">外観スキンの変更</string>
+    <string name="plugin_cap_ui_interactive">送信フォームを表示しプラグインのハンドラを実行（データを変更、既定で無効）</string>
+    <string name="plugin_cap_runtime_python">沙盒の外で Python を実行（高信頼、個別に確認）</string>
+    <string name="video_no_video_model_hint">現在のプロバイダーには動画出力に対応したモデルがありません。設定 › モデルとプロバイダーで「動画出力」を有効にしてください。</string>
+    <string name="permission_next_step">次にやる推奨ステップ：%1$s</string>
+    <string name="permission_optional_channels">基本の権限は準備済み、その他のチャネルは任意</string>
+    <string name="permission_privacy_notice_title">これらの権限はこの端末内でだけ有効です</string>
+    <string name="permission_privacy_notice_body">画面読み上げとコマンド実行はこの端末内で行われ、内容は送信されません。Root / Shizuku / Termux は任意の高権限チャネルで、有効にするとアプリが端末を操作できます。システム設定または各アプリからいつでも取り消せます。</string>
+    <plurals name="groupchat_selected_members">
+        <item quantity="other">%1$d メンバーを選択中</item>
+    </plurals>
+    <string name="workspace_go_root">ワークスペースの最上位へ戻る</string>
+    <string name="artifact_center_empty_hint">成果物とは、会話の中でアシスタントが作った画像・ファイル・長いテキストのことです。ここで見返しや共有ができます</string>
+    <string name="daily_summary_light_fallback">今日はまだ話すことが少なめです。思いついたときにいつでも。</string>
+    <string name="daily_summary_rest_fallback">今日はお疲れさまでした。ゆっくり休んでください。</string>
+    <string name="daily_summary_none_fallback">今日は新しい会話はまだありません。</string>
 </resources>

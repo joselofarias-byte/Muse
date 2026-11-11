@@ -1,19 +1,19 @@
 package io.zer0.ai.core
 
+import io.zer0.common.Logger
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import io.zer0.ai.registry.ModelRegistry as RuntimeModelRegistry
-import io.zer0.common.Logger
 
 /**
- * Prioridad derivada de compatibilidad:[Directorio] > [tabla codificada] > [Valor predeterminado].
+ * 兼容性派生优先级:[目录] > [硬编码表] > [默认值]。
  *
- * Directorio(model-catalog)declarado explícitamente en `compat.thinkingFormat` modelo,Los comportamientos van por directorio;
- * Directorio no escrito(O el vocabulario no se puede mapear)modelo,El comportamiento es exactamente el mismo que antes de acceder al directorio. —— todavía por
- * [ProviderCompatRules] El prefijo de host/modelo está determinado por una tabla codificada;Si faltan ambos, el valor predeterminado es nulo.
+ * 目录(model-catalog)里显式声明了 `compat.thinkingFormat` 的模型,行为按目录走;
+ * 目录没写(或词汇映射不了的)模型,行为与接入目录前完全一致 —— 仍由
+ * [ProviderCompatRules] 的 host / 模型前缀硬编码表决定;两条都缺时回到默认 null。
  */
 class ProviderCompatCatalogTest {
 
@@ -36,11 +36,11 @@ class ProviderCompatCatalogTest {
         )
     }
 
-    // ── Directorio escribe valor → El comportamiento sigue el valor del directorio. ──────────────────────────────
+    // ── 目录写了值 → 行为按目录值走 ──────────────────────────────
 
     @Test
     fun `catalog declaration overrides the host table`() {
-        // Tabla codificada para juzgar el protocolo DeepSeek en opencode.ai,El catálogo declara zhipu para este modelo.
+        // 硬编码表在 opencode.ai 上判 DeepSeek 协议,目录对本模型声明的是 zhipu。
         assertEquals(
             ThinkingFormat.DEEPSEEK,
             ProviderCompatRules.resolve(ProviderType.OPENAI, openCodeGo, "glm-5.2").thinkingFormat,
@@ -56,7 +56,7 @@ class ProviderCompatCatalogTest {
 
     @Test
     fun `catalog declaration fills a model the table leaves at the default`() {
-        // Tabla codificada para reglas sin modelo glm-5.2,host La capa también sólo cae a DeepSeek;Cuando un directorio declara kimi, el directorio debería prevalecer.
+        // 硬编码表对 glm-5.2 无模型级规则,host 层也只落到 DeepSeek;目录声明 kimi 时应以目录为准。
         install("moonshot", "glm-5.2", CompatProfile(thinkingFormat = "kimi"))
 
         assertEquals(
@@ -76,11 +76,11 @@ class ProviderCompatCatalogTest {
         assertNull(Model(id = "no-such-model", providerId = "opencode-go").catalogThinkingFormat)
     }
 
-    // ── El directorio no tiene ningún valor escrito. → Tabla codificada alternativa,El comportamiento es el mismo que antes de acceder. ────────────────
+    // ── 目录没写值 → 回落硬编码表,行为与接入前一致 ────────────────
 
     @Test
     fun `catalog entry without compat keeps the hardcoded result`() {
-        // Hay este modelo en el catálogo.,pero no escribi compat → Siga las reglas de host de api.deepseek.com y siga DEEPSEEK.
+        // 目录里有这个模型,但没写 compat → 仍按 api.deepseek.com 的 host 规则走 DEEPSEEK。
         install("deepseek", "deepseek-v4-flash", null)
 
         assertEquals(
@@ -115,9 +115,9 @@ class ProviderCompatCatalogTest {
     fun `unknown relay still refuses vendor extension fields`() {
         install("kimi-coding", "kimi-for-coding", CompatProfile(thinkingFormat = "kimi"))
 
-        // Las estaciones de transferencia desconocidas no emiten campos extendidos como pensar/enable_thinking(v1.0.53 tratamiento conservador).
+        // 未知中转站不下发 thinking / enable_thinking 这类扩展字段(v1.0.53 的保守处理)。
         assertNull(ProviderCompatRules.resolve(ProviderType.OPENAI, unknownRelay, "kimi-for-coding").thinkingFormat)
-        // Siga el directorio únicamente si conoce el punto final.
+        // 已知端点上才按目录走。
         assertEquals(
             ThinkingFormat.KIMI,
             ProviderCompatRules.resolve(ProviderType.OPENAI, kimi, "kimi-for-coding").thinkingFormat,
@@ -143,32 +143,32 @@ class ProviderCompatCatalogTest {
             ),
         )
 
-        // anthropic / google-thinking-level Manejado por el propio proveedor nativo.,No se puede utilizar como campo de extensión para enlaces compatibles con OpenAI.
+        // anthropic / google-thinking-level 由原生 Provider 自己处理,不能当 OpenAI 兼容链路的扩充字段。
         assertNull(ProviderCompatRules.resolve(ProviderType.OPENAI, siliconFlow, "claude-opus-5").thinkingFormat)
         assertNull(ProviderCompatRules.resolve(ProviderType.OPENAI, siliconFlow, "gemini-4-argon").thinkingFormat)
     }
 
-    // ── ambos faltan → Valor predeterminado ─────────────────────────────────────
+    // ── 两者都缺失 → 默认值 ─────────────────────────────────────
 
     @Test
     fun `both missing yields the default`() {
-        // El directorio está vacío + el host es desconocido + el nombre del modelo es desconocido.
+        // 目录空 + host 未知 + 模型名不认识。
         assertNull(ProviderCompatRules.resolve(ProviderType.OPENAI, unknownRelay, "totally-unknown-model").thinkingFormat)
-        // El directorio está vacío + se conoce el host pero no se declara en la tabla.
+        // 目录空 + 已知 host 但表里也没声明。
         assertNull(ProviderCompatRules.resolve(ProviderType.OPENAI, siliconFlow, "totally-unknown-model").thinkingFormat)
         assertNull(ProviderCompatRules.resolve(ProviderType.OPENAI, "", "totally-unknown-model").thinkingFormat)
-        // Si no se proporciona modelId, no se accederá al directorio.
+        // 不给 modelId 时也不会有目录命中。
         assertNull(ProviderCompatRules.resolve(ProviderType.OPENAI, siliconFlow).thinkingFormat)
     }
 
-    // ── Declaración del proveedor de tolva:Sólo llama a la policía.,No cambiar el comportamiento ────────────────────
+    // ── 同名跳供应商声明:只报警,不改行为 ────────────────────
 
     @Test
     fun `ambiguous cross-provider declaration is reported without changing behaviour`() {
         val lines = mutableListOf<String>()
         Logger.sink = { level, tag, msg, _ -> if (tag == "ProviderCompatRules") lines += "$level $msg" }
         try {
-            // Formulario 1: Ambas declaraciones tienen valores diferentes. → Informar "conflicto",El acto sigue siendo el primero en aparecer y gana.
+            // 形态 1:两家都声明且取值不同 → 报「冲突」,行为仍是先出现者获胜。
             RuntimeModelRegistry.installCatalog(
                 ModelCatalog(
                     providers = mapOf(
@@ -182,7 +182,7 @@ class ProviderCompatCatalogTest {
                 ),
             )
             assertEquals(1, lines.size)
-            assertTrue(lines.single().contains("Conflicto de declaración de directorio"))
+            assertTrue(lines.single().contains("目录声明冲突"))
             assertTrue(lines.single().contains("opencode-go=zhipu"))
             assertTrue(lines.single().contains("zhipu=kimi"))
             assertEquals(
@@ -190,7 +190,7 @@ class ProviderCompatCatalogTest {
                 ProviderCompatRules.resolve(ProviderType.OPENAI, siliconFlow, "glm-5.2").thinkingFormat,
             )
 
-            // Formulario 2: Sólo una empresa declara → Presentar una "declaración unilateral"(Los proveedores no declarados toman prestada la declaración de otra persona).
+            // 形态 2:只有一家声明 → 报「单边声明」(未声明的供应商借了别人的宣告)。
             lines.clear()
             RuntimeModelRegistry.installCatalog(
                 ModelCatalog(
@@ -203,8 +203,8 @@ class ProviderCompatCatalogTest {
                 ),
             )
             assertEquals(1, lines.size)
-            assertTrue(lines.single().contains("declaración unilateral directorio"))
-            assertTrue(lines.single().contains("zhipu=<No declarado>"))
+            assertTrue(lines.single().contains("目录单边声明"))
+            assertTrue(lines.single().contains("zhipu=<未声明>"))
         } finally {
             Logger.sink = null
         }
@@ -228,7 +228,7 @@ class ProviderCompatCatalogTest {
 
         val compat = ProviderCompatRules.resolve(ProviderType.OPENAI, openCodeGo, "glm-5.2")
 
-        // El directorio sólo cubre thinkingFormat;El contrato de reproducción, etc. todavía se derivan del enlace original.(opencode.ai → DeepSeek Acuerdo).
+        // 目录只覆盖 thinkingFormat;回放契约等仍按原有链路派生(opencode.ai → DeepSeek 协议)。
         assertEquals(ReasoningCarrier.REASONING_CONTENT, compat.reasoningReplayContract?.carrier)
         assertEquals(ReasoningReplayPolicy.REQUIRE_TOOL_CALL, compat.reasoningReplayContract?.policy)
     }

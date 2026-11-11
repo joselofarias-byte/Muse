@@ -24,44 +24,44 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
 /**
- * Comprobador de actualizaciones de aplicaciones — Obtenga la última versión de lanzamiento.
+ * 应用更新检查器 — 拉取最新发布版本。
  *
- * Puntos finales (pruebe en orden, use el siguiente solo si el anterior falla):
- *  1. `https://museai.ltd/api/latest.json` —— Imagen de construcción propia, la estructura se convierte desde GitHub Release,
- *     **Sin límite actual**;Los campos son consistentes con GitHub (faltan `body`/`digest` procesado por defecto).
- *  2. `https://api.github.com/repos/{repo}/releases/latest` —— Llega al fondo de esto.
+ * 端点（按顺序尝试，前一个失败才用下一个）：
+ *  1. `https://museai.ltd/api/latest.json` —— 自建镜像，结构由 GitHub Release 转换而来，
+ *     **不限流**；字段与 GitHub 一致（缺 `body`/`digest` 时按缺省处理）。
+ *  2. `https://api.github.com/repos/{repo}/releases/latest` —— 兜底。
  *
- * ¿Por qué debemos anteponer las imágenes creadas por nosotros mismos?GitHub si"No certificado"Las solicitudes están limitadas a 60 solicitudes por hora y se calculan por IP.
- * La IP de salida de la red celular suele ser compartida por una gran cantidad de dispositivos. Cuando la cuota esté llena, se verificará y actualizará toda la IP. 403
- * (Encabezado de respuesta X-RateLimit-Remaining: 0). Este fallo no tiene nada que ver con el comportamiento del propio usuario y sólo se puede solucionar cambiando el punto final.
+ * 为什么必须把自建镜像放前面：GitHub 对"未认证"请求的额度是每小时 60 次，且按 IP 计算。
+ * 移动网络出口 IP 常被大量设备共用，额度被跑满后整个 IP 的检查更新都会 403
+ * （响应头 X-RateLimit-Remaining: 0）。这个失败与用户自己的行为无关，只能靠换端点解决。
  *
- * Instrucciones de implementación:
- *  - Las solicitudes de red se ejecutan en el hilo IO.,La corrutina se puede cancelar.(suspendCancellableCoroutine + enqueue)
- *  - No se introducen nuevas dependencias.,Reutilizar proyectos existentes OkHttp + kotlinx.serialization
- *  - GitHub Requisitos obligatorios del terminal User-Agent header,De lo contrario 403
+ * 实现说明：
+ *  - 网络请求在 IO 线程执行,协程可取消(suspendCancellableCoroutine + enqueue)
+ *  - 不引入新依赖,复用项目已有的 OkHttp + kotlinx.serialization
+ *  - GitHub 端点强制要求 User-Agent header,否则 403
  *
- * @param client OkHttpClient(Inyectado por la persona que llama,Generalmente reutilizado named("chat") singleton)
- * @param repo GitHub identificación del almacén,Formato "owner/name"
+ * @param client OkHttpClient(由调用方注入,通常复用 named("chat") 单例)
+ * @param repo GitHub 仓库标识,格式 "owner/name"
  */
 class UpdateChecker(
     private val client: OkHttpClient,
     private val repo: String = DEFAULT_REPO,
 ) {
 
-    /** Punto final espejo autoconstruido (preferido, sin límite actual). */
+    /** 自建镜像端点（首选，不限流）。 */
     private val officialApiUrl: String get() = OFFICIAL_LATEST_URL
 
-    /** GitHub Releases API Punto final (abajo). */
+    /** GitHub Releases API 端点（兜底）。 */
     private val githubApiUrl: String
         get() = "https://api.github.com/repos/$repo/releases/latest"
 
     /**
-     * GitHub Release Recursos(APK Archivo).
+     * GitHub Release 资源(APK 文件)。
      *
-     * @param name nombre de archivo(Como por ejemplo "muse-v1.133.apk")
-     * @param downloadUrl Enlace directo de descarga del navegador(browser_download_url)
-     * @param size bytes de archivo
-     * @param sha256 GitHub Release Resumen de activos(Compatible con antiguo cuando falta Release)
+     * @param name 文件名(如 "muse-v1.133.apk")
+     * @param downloadUrl 浏览器下载直链(browser_download_url)
+     * @param size 文件字节数
+     * @param sha256 GitHub Release 资产摘要(缺失时兼容旧 Release)
      */
     @Serializable
     data class ApkAsset(
@@ -72,14 +72,14 @@ class UpdateChecker(
     )
 
     /**
-     * GitHub Release información.
+     * GitHub Release 信息。
      *
-     * @param tagName etiqueta de versión(Como por ejemplo "v1.132")
-     * @param name release Título
-     * @param body release notes(markdown Texto)
-     * @param htmlUrl release Página URL(usado para"Ver detalles")
-     * @param publishedAt Marca de tiempo de publicación(milisegundos)
-     * @param apkAssets Lista de recursos que terminan en .apk(Filtrado)
+     * @param tagName 版本标签(如 "v1.132")
+     * @param name release 标题
+     * @param body release notes(markdown 正文)
+     * @param htmlUrl release 页面 URL(用于"查看详情")
+     * @param publishedAt 发布时间戳(毫秒)
+     * @param apkAssets 以 .apk 结尾的资源列表(已过滤)
      */
     @Serializable
     data class ReleaseInfo(
@@ -92,16 +92,16 @@ class UpdateChecker(
     )
 
     /**
-     * Consulta asincrónicamente la última versión: prueba cada punto final en secuencia y se devolverá el primero que tenga éxito.
+     * 异步查询最新 Release：依次尝试各端点，第一个成功即返回。
      *
-     * La primera opción es crear una imagen autoconstruida (sin límite actual) y recurrir a la API de GitHub después de una falla. Se devuelve un error sólo si todos fallan.
+     * 首选自建镜像（不限流），失败后回落 GitHub API。全部失败才返回错误。
      *
-     * @return Regresar exitosamente [Result.Success] llevar [ReleaseInfo];
-     *         falló(red/error de análisis)Regresar [Result.Error]
+     * @return 成功返回 [Result.Success] 携带 [ReleaseInfo];
+     *         失败(网络/解析错误)返回 [Result.Error]
      */
     suspend fun checkLatestRelease(): Result<ReleaseInfo> = withContext(Dispatchers.IO) {
         val attempts = listOf("official" to officialApiUrl, "github" to githubApiUrl)
-        var lastError: Result.Error = Result.Error("network error")
+        var lastError: Result.Error = Result.Error("Error de red")
         for ((label, url) in attempts) {
             when (val outcome = fetchRelease(label, url)) {
                 is Result.Success -> return@withContext outcome
@@ -115,9 +115,9 @@ class UpdateChecker(
     }
 
     /**
-     * Recuperación y análisis de un único punto final; cualquier falla converge a [Result.Error].
+     * 单个端点的取回与解析；任何失败都收敛成 [Result.Error]。
      *
-     * `internal`(en lugar de privado) para que la prueba pueda alimentar directamente la dirección de MockWebServer y verificar"Recuperar + analizar"Esta capa.
+     * `internal`（而非 private）以便测试直接喂入 MockWebServer 地址，验证"取回 + 解析"这一层。
      */
     internal suspend fun fetchRelease(label: String, url: String): Result<ReleaseInfo> {
         val req = Request.Builder()
@@ -129,25 +129,25 @@ class UpdateChecker(
         return resultOf {
             exec(req).use { resp ->
                 if (!resp.isSuccessful) {
-                    // 403 Suele ser una limitación actual anónima de GitHub (X-RateLimit-Remaining: 0)
+                    // 403 在这里通常就是 GitHub 匿名限流（X-RateLimit-Remaining: 0）
                     Logger.w(TAG, "$label API failed: HTTP ${resp.code}")
                     return@use Result.Error("HTTP ${resp.code}")
                 }
                 val bodyText = resp.body.string()
                 if (bodyText.isBlank()) {
-                    return@use Result.Error("response is empty")
+                    return@use Result.Error("El servidor devolvió una respuesta vacía")
                 }
                 parseReleaseInfo(bodyText)
             }
         }.onError { msg, t ->
-            Logger.e(TAG, "Error en la búsqueda de actualizaciones($label): ${t?.message ?: msg}", t)
-        }.getOrNull() ?: Result.Error("network error")
+            Logger.e(TAG, "检查更新失败($label): ${t?.message ?: msg}", t)
+        }.getOrNull() ?: Result.Error("Error de red")
     }
 
     private fun parseReleaseInfo(bodyText: String): Result<ReleaseInfo> {
         val json = AppJson.parseToJsonElement(bodyText).jsonObject
         val tagName = json["tag_name"]?.jsonPrimitive?.contentOrNull
-            ?: return Result.Error("failed to parse tag_name")
+            ?: return Result.Error("No se pudo interpretar el campo tag_name")
         val assets = json["assets"]?.jsonArray
             ?.mapNotNull { it.jsonObject }
             ?.mapNotNull(::parseApkAsset)
@@ -176,7 +176,7 @@ class UpdateChecker(
         }
         val validName = name?.takeIf { it.endsWith(".apk", ignoreCase = true) }
         val validUrl = url?.takeIf(::isTrustedDownloadUrl)
-        // El resumen que falta es compatible con versiones anteriores; Siempre que el resumen sea proporcionado por upstream, debe ser SHA-256 legal.
+        // 缺少 digest 兼容旧 Release；只要上游提供 digest，就必须是合法 SHA-256。
         val validDigest = digest == null || (sha256 != null && SHA256_REGEX.matches(sha256))
         return if (validName != null && validUrl != null && validDigest) {
             ApkAsset(
@@ -191,11 +191,11 @@ class UpdateChecker(
     }
 
     /**
-     * Ejecución HTTP cancelable de rutina — Implementación de ProviderHttpSupport/ImageService por ai/módulo.
+     * 协程可取消的 HTTP 执行 — 按 ai/ 模块 ProviderHttpSupport / ImageService 的实现。
      *
-     * Utilice suspendCancellableCoroutine + poner en cola en lugar de sincronización [Call.execute]:
-     *  - Se llama cuando se cancela la corrutina. [Call.cancel],Interrumpir llamadas de red bloqueadas
-     *  - No ocupes el hilo esperando respuesta.(enqueue Devolución de llamada por hilo del programador OkHttp)
+     * 用 suspendCancellableCoroutine + enqueue 替代同步 [Call.execute]:
+     *  - 协程取消时调用 [Call.cancel],中断阻塞的网络调用
+     *  - 不占用线程等待响应(enqueue 由 OkHttp 调度器线程回调)
      */
     private suspend fun exec(request: Request): Response = suspendCancellableCoroutine { cont ->
         val call = client.newCall(request)
@@ -212,14 +212,14 @@ class UpdateChecker(
     }
 
     /**
-     * Analizar cadena ISO8601(Como por ejemplo "2025-01-01T00:00:00Z")es la marca de tiempo en milisegundos.
-     * Devuelve 0 si falla el análisis.
+     * 解析 ISO8601 字符串(如 "2025-01-01T00:00:00Z")为毫秒时间戳。
+     * 解析失败返回 0。
      */
     private fun parseIso8601ToMillis(value: String): Long {
         if (value.isBlank()) return 0L
         return resultOf {
-            // Analizar con java.time(Proyecto minSdk=26 Ya apoyado java.time,API 26+ Incorporado)
-            // Compatible con formas como "2025-01-01T00:00:00Z" con "2025-01-01T00:00:00.000Z"
+            // 用 java.time 解析(项目 minSdk=26 时已支持 java.time,API 26+ 内置)
+            // 兼容形如 "2025-01-01T00:00:00Z" 与 "2025-01-01T00:00:00.000Z"
             java.time.OffsetDateTime.parse(value).toInstant().toEpochMilli()
         }.getOrNull() ?: 0L
     }
@@ -227,15 +227,15 @@ class UpdateChecker(
     companion object {
         private const val TAG = "UpdateChecker"
 
-        /** User-Agent(GitHub API Requisitos obligatorios,De lo contrario 403). */
+        /** User-Agent(GitHub API 强制要求,否则 403)。 */
         private const val USER_AGENT = "muse-android"
 
         /**
-         * Punto final espejo autoconstruido: el servidor del sitio web oficial sincroniza la instantánea de la versión de GitHub cada 30 minutos.
+         * 自建镜像端点：官网服务器每 30 分钟从 GitHub 同步一次的 Release 快照。
          *
-         * Campos con GitHub `releases/latest` alinear (`tag_name` / `name` / `html_url` /
-         * `published_at` / `assets[].browser_download_url`); sin aguas arriba `body` con `digest` cuando,
-         * Botón Aplicar"Predeterminado"Procesamiento (la descripción está vacía, se omite la verificación resumida), lo que no afecta el juicio de versión ni la descarga.
+         * 字段与 GitHub 的 `releases/latest` 对齐（`tag_name` / `name` / `html_url` /
+         * `published_at` / `assets[].browser_download_url`）；上游没有 `body` 与 `digest` 时，
+         * 应用按"缺省"处理（说明为空、跳过摘要校验），不影响版本判断与下载。
          */
         const val OFFICIAL_LATEST_URL = "https://museai.ltd/api/latest.json"
         private val SHA256_REGEX = Regex("^[0-9a-fA-F]{64}$")
@@ -245,7 +245,7 @@ class UpdateChecker(
             "github-releases.githubusercontent.com",
         )
 
-        /** Permitir solo direcciones de activos HTTPS oficiales de GitHub para evitar el almacenamiento en caché/Los datos ascendentes convierten la entrada de descarga en un salto arbitrario. */
+        /** 仅允许 GitHub 官方 HTTPS 资产地址，避免缓存/上游数据把下载入口变成任意跳转。 */
         fun isTrustedDownloadUrl(url: String): Boolean = runCatching {
             val parsed = URI(url)
             parsed.scheme.equals("https", ignoreCase = true) &&
@@ -255,20 +255,20 @@ class UpdateChecker(
                 parsed.path.endsWith(".apk", ignoreCase = true)
         }.getOrDefault(false)
 
-        /** Compruebe si el recurso de lanzamiento se puede utilizar como entrada de descarga de APK. La falta de sha256 simplemente significa que la versión anterior no tiene resumen. */
+        /** 检查 Release 资产是否可作为 APK 下载入口。缺失 sha256 仅表示旧 Release 无摘要。 */
         fun isTrustedApkAsset(asset: ApkAsset): Boolean = asset.name.endsWith(".apk", ignoreCase = true) &&
             isTrustedDownloadUrl(asset.downloadUrl) &&
             (asset.sha256 == null || SHA256_REGEX.matches(asset.sha256))
-        /** Repositorio predeterminado de GitHub(owner/name). */
-        /** v1.0.55: Corregido al almacén real. Zer0Qing/Muse(Error ortográfico original zer0/muse,404 Siempre se nota que es lo último.). */
+        /** 默认 GitHub 仓库(owner/name)。 */
+        /** v1.0.55: 修正为实际仓库 Zer0Qing/Muse(原误写 zer0/muse,404 后一直显示已是最新)。 */
         const val DEFAULT_REPO = "Zer0Qing/Muse"
 
         /**
-         * Comparación de versiones semánticas(apoyo "v1.132" / "1.132" / "1.13.2" formato etc.).
+         * 语义版本比较(支持 "v1.132" / "1.132" / "1.13.2" 等格式)。
          *
-         * @param current Versión actual(se puede traer "v" prefijo)
-         * @param latest Versión a comparar(se puede traer "v" prefijo)
-         * @return representación de números negativos current < latest;0 significa igual;representación de números positivos current > latest
+         * @param current 当前版本(可带 "v" 前缀)
+         * @param latest 待比较版本(可带 "v" 前缀)
+         * @return 负数表示 current < latest;0 表示相等;正数表示 current > latest
          */
         fun compareVersions(current: String, latest: String): Int {
             val a = parseVersion(current)
@@ -282,7 +282,7 @@ class UpdateChecker(
             return 0
         }
 
-        /** Analizar los números de versión como una lista de números enteros(Como por ejemplo "v1.132" → [1, 132]);Los segmentos no numéricos se ignoran. */
+        /** 解析版本号为整数列表(如 "v1.132" → [1, 132]);非数字片段忽略。 */
         private fun parseVersion(version: String): List<Int> {
             val trimmed = version.trim().trimStart('v', 'V')
             return trimmed.split('.').mapNotNull { it.toIntOrNull() }

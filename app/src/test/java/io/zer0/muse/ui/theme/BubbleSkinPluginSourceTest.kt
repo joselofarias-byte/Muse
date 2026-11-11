@@ -15,10 +15,10 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * Acceso a la máscara de complemento [BubbleSkinStore] elección/Pruebas semánticas alternativas.
+ * 插件皮肤接入 [BubbleSkinStore] 的选择/回退语义测试。
  *
- * Siga las convenciones de prueba establecidas en la Tienda:Cubra múltiples estados secuencialmente dentro de un solo método de prueba,Evite los archivos DataStore en
- * Contaminación entre métodos de prueba.;La fuente del complemento del robot está implementada en la memoria.,No toca el directorio de complementos real.
+ * 遵循既有 Store 测试约定:单个测试方法内按顺序覆盖多个状态,避免 DataStore 文件在
+ * 测试方法间互相污染;机器人插件来源用内存实现,不触碰真实插件目录。
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -39,15 +39,15 @@ class BubbleSkinPluginSourceTest {
         try {
             selectAndFallBack(store, source)
         } finally {
-            // muse_settings DataStore Los singleton son compartidos por múltiples clases de prueba dentro del mismo entorno limitado de Robolectric:
-            // Limpiar esta escritura de prueba,Evite contaminar las afirmaciones de valores predeterminados de BubbleSkinStoreTest existentes.
+            // muse_settings DataStore 单例在同一 Robolectric sandbox 内被多个测试类共享:
+            // 清理本测试写入,避免污染既有 BubbleSkinStoreTest 的默认值断言。
             store.deleteSkin("shared-id")
             store.saveSelectedSkinId(BubbleSkinCatalog.DEFAULT_SKIN_ID)
         }
     }
 
     private suspend fun selectAndFallBack(store: BubbleSkinStore, source: FakePluginSkinSource) {
-        // Mantenga el comportamiento existente cuando no haya un diseño de complemento:Verificar incorporado id → null.
+        // 无插件皮肤时保持既有行为:选中内置 id → null。
         assertNull(store.selectedSkinFlow.first())
 
         source.entries = listOf(installedSkin("aurora", enabled = true))
@@ -55,24 +55,24 @@ class BubbleSkinPluginSourceTest {
         assertEquals("aurora", store.selectedSkinFlow.first()?.id)
         assertEquals(listOf("aurora"), store.pluginSkinsFlow.first().map { it.skin.id })
 
-        // El complemento está deshabilitado(Procedente de enabled=false Regresar)→ Respaldo estable incorporado default;La página de configuración todavía parece no estar disponible.
+        // 插件被禁用(来源以 enabled=false 返回)→ 稳定回退内置 default;设置页仍显示为不可用。
         source.entries = listOf(installedSkin("aurora", enabled = false))
         source.revision.value += 1
         assertNull(store.selectedSkinFlow.first())
         assertEquals(listOf(false), store.pluginSkinsFlow.first().map { it.enabled })
 
-        // Volver a habilitar → Restaura la máscara del complemento.
+        // 重新启用 → 恢复该插件皮肤。
         source.entries = listOf(installedSkin("aurora", enabled = true))
         source.revision.value += 1
         assertEquals("aurora", store.selectedSkinFlow.first()?.id)
 
-        // El complemento está desinstalado → Respaldo incorporado default,La entrada desaparece.
+        // 插件被卸载 → 回退内置 default,条目消失。
         source.entries = emptyList()
         source.revision.value += 1
         assertNull(store.selectedSkinFlow.first())
         assertTrue(store.pluginSkinsFlow.first().isEmpty())
 
-        // Al mismo tiempo, la máscara personalizada importada por el usuario mantiene su prioridad existente.,La instalación de complementos no cambia la apariencia existente del usuario.
+        // 同 id 时用户导入的自定义皮肤保持既有优先级,安装插件不改变用户已有外观。
         assertTrue(store.upsertSkin(skin("shared-id", name = "Custom shared")))
         source.entries = listOf(
             InstalledSkin(
@@ -87,7 +87,7 @@ class BubbleSkinPluginSourceTest {
         store.saveSelectedSkinId("shared-id")
         assertEquals("Custom shared", store.selectedSkinFlow.first()?.name)
 
-        // Máscaras de complementos ilegales incluso si la fuente los marca como disponibles,No entrará en la ruta de renderizado.(La última verificación por parte del anfitrión.).
+        // 非法插件皮肤即使被来源标记为可用,也不会进入渲染路径(宿主侧最后一道校验)。
         source.entries = listOf(
             InstalledSkin(
                 pluginId = "skin-pack",
@@ -108,7 +108,7 @@ class BubbleSkinPluginSourceTest {
         store.saveSelectedSkinId("broken")
         assertNull(store.selectedSkinFlow.first())
 
-        // La identificación predeterminada incorporada nunca puede ser ocupada por un diseño de complemento.
+        // 内置 default 的 id 永远不能被插件皮肤占用。
         source.entries = listOf(
             InstalledSkin(
                 pluginId = "skin-pack",
@@ -138,7 +138,7 @@ class BubbleSkinPluginSourceTest {
         skin = skin(id),
     )
 
-    /** Fuente de máscara del complemento de versión de memoria:Prueba aprobada modificación [entries] y aumentar por si solo [revision] Simule cambios de estado de complementos. */
+    /** 内存版插件皮肤来源:测试通过修改 [entries] 并自增 [revision] 模拟插件状态变化。 */
     private class FakePluginSkinSource : PluginSkinSource {
         val revision = MutableStateFlow(0)
         var entries: List<InstalledSkin> = emptyList()

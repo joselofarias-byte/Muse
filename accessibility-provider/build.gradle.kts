@@ -6,9 +6,9 @@ plugins {
     alias(libs.plugins.ktlint)
 }
 
-// v2.2.1: release Las variantes se comparten con la aplicación principal. keystore.properties —— Permisos a nivel de firma
-// io.zer0.muse.permission.A11Y_BRIDGE Requerir que la aplicación principal y el Proveedor tengan la misma firma,Debe tener la misma clave.
-// (storeFile Las rutas relativas se resuelven por directorio de módulo.;Este módulo y la aplicación son submódulos directos del directorio raíz.,Los resultados del análisis son consistentes.)
+// v2.2.1: release 变体与主应用共用 keystore.properties —— 签名级权限
+// io.zer0.muse.permission.A11Y_BRIDGE 要求主应用与 Provider 同签名,必须同一把钥匙。
+// (storeFile 相对路径按模块目录解析;本模块与 app 同为根目录直系子模块,解析结果一致。)
 val keystorePropertiesFile = rootProject.file("keystore.properties")
 
 android {
@@ -39,7 +39,11 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("release")
+            signingConfig = if (providers.gradleProperty("musaUnsignedVerification").orNull == "true") {
+                null
+            } else {
+                signingConfigs.getByName("release")
+            }
         }
     }
 
@@ -50,7 +54,7 @@ android {
 }
 
 dependencies {
-    // Implementación compartida y contrato AIDL.(io.zer0.muse.accessibility)
+    // 共享实现与 AIDL 契约(io.zer0.muse.accessibility)
     implementation(project(":accessibility"))
     implementation(project(":common"))
     implementation(libs.androidx.core.ktx)

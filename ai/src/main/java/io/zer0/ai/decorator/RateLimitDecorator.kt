@@ -11,28 +11,28 @@ import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 
 /**
- * P1-3: Decorador limitante actual.
+ * P1-3: 限流装饰器。
  *
- * en [Provider] Dos controles frontales se superponen a la capa exterior.(Válido hasta que se emita la solicitud):
- *  1. **RPM Limitación de corriente**([SlidingWindowRateLimiter])—— La ventana deslizante controla el número máximo de solicitudes por minuto,
- *     Suspender y esperar vacante cuando se supere el límite,En lugar de rechazarlo directamente. Rutas de diálogo fáciles de usar(Esperar unos segundos más es mejor que informar un error).
- *  2. **control de concurrencia**([Semaphore])—— Limitar el número de solicitudes en tránsito al mismo tiempo,Evite la concurrencia masiva en un corto período de tiempo
- *     Destruye el río arriba(Especialmente en escenarios con múltiples grupos de claves, KeyRoulette solo se preocupa por el sondeo de claves y no por la concurrencia total.).
+ * 在 [Provider] 外层叠加两道前置控制(请求发出前生效):
+ *  1. **RPM 限流**([SlidingWindowRateLimiter])—— 滑动窗口控制每分钟最大请求数,
+ *     超限时挂起等待空位,而非直接拒绝。用户对话路径友好(多等几秒胜过报错)。
+ *  2. **并发控制**([Semaphore])—— 限制同时在途的请求数,防止短时间大量并发
+ *     打爆上游(尤其多 Key 池场景下 KeyRoulette 只管 key 轮询不管总并发)。
  *
- * Si algún parámetro es 0, significa que la restricción correspondiente no está habilitada.(Saltar la lógica de decoración,comisión directa).
+ * 任一参数为 0 表示不启用对应限制(跳过装饰逻辑,直接委托)。
  *
- * con [io.zer0.ai.util.KeyRoulette] relación colaborativa:
- *  - RateLimitDecorator si**prefijo**controlar:Limitación actual + puerta de concurrencia antes de que se emita la solicitud
- *  - KeyRoulette si**trasero**controlar:429 Después de regresar, cambie a la siguiente clave e inténtelo nuevamente.
- *  - Superposición de los dos:Pase primero por la puerta limitadora de corriente. → Seleccionar clave para enviar solicitud → 429 Reintento de tecla de corte de tiempo
+ * 与 [io.zer0.ai.util.KeyRoulette] 的协作关系:
+ *  - RateLimitDecorator 是**前置**控制:请求发出前限流 + 并发闸
+ *  - KeyRoulette 是**后置**控制:429 返回后切换到下一个 key 重试
+ *  - 两者叠加:先过限流闸 → 选 key 发请求 → 429 时切 key 重试
  *
- * semántica de transmisión:[streamChat] El flujo devuelto está en**Al recolectar**(en lugar de durante la construcción)Obtenga una licencia con limitación de corriente,
- * y posee una licencia simultánea durante todo el período de recopilación de transmisión;Finaliza la colección/Liberado tras cancelación.
- * Esto garantiza que el recuento de simultaneidad refleje los flujos reales en vuelo en lugar de"Colección iniciada pero no iniciada"pedido.
+ * 流式语义:[streamChat] 返回的 Flow 在**收集时**(而非构造时)获取限流许可,
+ * 并在整个流式收集期间持有并发许可;收集结束/取消时释放。
+ * 这确保并发计数反映真实的在途流而非"已发起但未开始收集"的请求。
  *
- * @param delegate realidad decorada Provider(OpenAI/Anthropic/Gemini)
- * @param requestLimitPerMinute Número máximo de solicitudes por minuto,0 Indica que no hay límite
- * @param maxConcurrentRequests Número máximo de solicitudes simultáneas en vuelo,0 Indica que no hay límite
+ * @param delegate 被装饰的真实 Provider(OpenAI/Anthropic/Gemini)
+ * @param requestLimitPerMinute 每分钟最大请求数,0 表示不限
+ * @param maxConcurrentRequests 最大并发在途请求数,0 表示不限
  */
 class RateLimitDecorator(
     private val delegate: Provider,
@@ -47,9 +47,9 @@ class RateLimitDecorator(
         if (maxConcurrentRequests > 0) Semaphore(maxConcurrentRequests) else null
 
     override fun streamChat(request: ChatRequest): Flow<ChatStreamEvent> = flow {
-        // Limitación de corriente:Obtenga la licencia RPM cuando la transmisión comience a recopilarse(Suspendido esperando espacio)
+        // 限流:在流开始收集时获取 RPM 许可(挂起等待空位)
         limiter?.acquire()
-        // concurrencia:Licencia mantenida durante todo el período de recopilación de transmisión,fin/liberado al cancelar
+        // 并发:在整个流式收集期间持有许可,结束/取消时释放
         if (semaphore != null) {
             semaphore.acquire()
             try {

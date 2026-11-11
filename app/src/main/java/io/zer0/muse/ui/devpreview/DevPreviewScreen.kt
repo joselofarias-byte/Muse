@@ -22,13 +22,13 @@ import io.zer0.muse.ui.MessageBubble
 import io.zer0.muse.ui.theme.MusePaddings
 
 /**
- * Página de vista previa del período de desarrollo: use real [MessageBubble] Representa un mensaje con llamadas de MOOD/PENSAMIENTOS/HERRAMIENTA.
+ * 开发期预览页：用真实 [MessageBubble] 渲染一份带 MOOD / 思考 / 工具调用的消息。
  *
- * El único propósito de la existencia: cuando no hay un proveedor de configuración ni una sesión real,
- * También puede ver el diseño real de las burbujas de mensajes en el simulador, que se utiliza para verificar y aceptar las secciones de MOOD.
- * Piense en líneas de resumen de tarjetas y otros cambios. No participa en la navegación formal y solo adb puede abrirlo directamente.
+ * 存在的唯一目的：在没有配置供应商、也没有真实会话的情况下，
+ * 也能在模拟器上看到消息气泡的实际排版，用来验收 MOOD 分节、
+ * 思考卡摘要行等改动。不参与正式导航，只能由 adb 直接拉起。
  *
- * Debe eliminarse junto con la ruta antes de conectarse.
+ * 此页不属于正式导航，只由本地调试入口使用。
  */
 @Composable
 fun DevPreviewScreen() {
@@ -58,7 +58,7 @@ fun DevPreviewScreen() {
             .padding(vertical = MusePaddings.sectionGap),
     ) {
         Text(
-            text = "MOOD / Vista previa de la tarjeta de pensamiento (para desarrollo)",
+            text = "MOOD / THINKING CARD PREVIEW (DEBUG)",
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.outline,
             modifier = Modifier.padding(horizontal = MusePaddings.screen, vertical = 8.dp),
@@ -93,28 +93,27 @@ fun DevPreviewScreen() {
             isReasoningExpanded = false,
             onToggleReasoningExpanded = {},
         )
-        // Animación del proceso: el mismo componente que el final del flujo de mensajes en la página de chat.
+        // 过程动画：与聊天页消息流末尾同一组件
         io.zer0.muse.ui.ThinkingBubble(progressText = null)
     }
 }
 
-/** Muestra para vista previa: cuatro párrafos con MOOD + texto de reflexión. */
+/** 预览用样本：带 MOOD 四段 + 思考正文。 */
 private fun sampleMessage(): UIMessage = UIMessage(
     role = MessageRole.ASSISTANT,
-    content = "Reorganicé la página de configuración en 11 grupos según la intención del usuario y aumenté el número de entradas de primer nivel de 34 a 48.\n\n" +
-        "Arreglé fácilmente dos páginas de configuración a las que no podía acceder antes.",
-    reasoning = "Primero confirme si el nivel existente y el número real de campos son consistentes." +
-        "Se encontró que solo hay 7 grupos y 34 entradas visibles en el primer nivel, pero hay 275 campos sin cita previa." +
-        "Explique que la jerarquía de la interfaz es una proyección de la estructura del módulo de código, no una proyección de la intención del usuario.",
+    content = "Settings now follow user intent across 12 categories.\n\n" +
+        "Long messages are split into independently rendered sections.",
+    reasoning = "Check the real hierarchy and field counts before reorganizing." +
+        "Then verify that headers, bodies, and actions can be reused independently.",
     mood = SAMPLE_MOOD,
     modelId = "preview",
 )
 
-/** Muestra para vista previa: solo pensamientos + una llamada de herramienta para mostrar la línea de resumen del proceso. */
+/** 预览用样本：只有思考 + 一条工具调用，用来展示过程摘要行。 */
 private fun sampleToolMessage(): UIMessage = UIMessage(
     role = MessageRole.ASSISTANT,
     content = "",
-    reasoning = "Lea las agrupaciones de páginas de configuración existentes antes de decidir cómo fusionarlas.",
+    reasoning = "Read the current settings groups before merging them.",
     modelId = "preview",
     toolCallInfo = io.zer0.ai.core.ToolCallInfo(
         toolName = "update_settings",
@@ -125,14 +124,14 @@ private fun sampleToolMessage(): UIMessage = UIMessage(
     ),
 )
 
-private const val SAMPLE_MOOD = "Vibe: Después de esta revisión, la página de chat finalmente ya no parece un montón de tarjetas.\n" +
+private const val SAMPLE_MOOD = "Vibe: The chat page should feel like a conversation, not a stack of cards\n" +
     "Sparks:\n" +
-    "  - Después de desarmar las cuatro secciones de estado de ánimo,Sparks Sólo esos tres tienen lugares donde pararse.\n" +
-    "  - Las tarjetas de pensamiento y las tarjetas de herramientas deben ser como una corriente continua, no dos bloques de construcción.\n" +
-    "  - Usar \"Lo pensé por un tiempo\" en la línea de resumen es más humano que cortar las primeras 40 palabras.\n" +
+    "  - Four mood sections leave space for the key ideas\n" +
+    "  - Thinking and tool cards should read as one continuous flow\n" +
+    "  - A short summary is clearer than a truncated paragraph\n" +
     "Reflections:\n" +
-    "  - El título plegable tiene operandos, por lo que los usuarios pueden ver de un vistazo cuánto trabajo se ha realizado en este paso.\n" +
-    "  - Es correcto mantener la tarjeta del plan independiente. Es lo más importante a tener en cuenta a la hora de trabajar.\n" +
+    "  - Collapsed headers expose the operation count at a glance\n" +
+    "  - The plan card should remain visible while work is running\n" +
     "Will:\n" +
-    "  - Quiero estabilizar este diseño.\n" +
-    "  - No quiero agregar nuevas tarjetas"
+    "  - Keep this rendering structure stable\n" +
+    "  - Avoid adding more card types"

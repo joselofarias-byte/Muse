@@ -9,18 +9,18 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
 /**
- * Tipo de función de ejecución de la herramienta de chat grupal.
+ * 群聊工具执行函数类型。
  *
- * con [ToolRegistry] Los tipos internos de ToolFn son consistentes(suspend (Map<String, String>) -> String),
- * Pero ToolFn en ToolRegistry es private,No se puede hacer referencia externamente,Por lo tanto, aquí se divulga el alias de tipo con el mismo nombre.
+ * 与 [ToolRegistry] 内部的 ToolFn 类型一致(suspend (Map<String, String>) -> String),
+ * 但 ToolFn 在 ToolRegistry 中是 private,无法在外部引用,故在此公开同名类型别名。
  */
 typealias ChannelToolFn = suspend (Map<String, String>) -> String
 
 /**
- * v1.0.53 Phase 5: poner [ToolRegistry.ToolDef] Convertir a consumible LLM [ToolDefinition].
+ * v1.0.53 Phase 5: 把 [ToolRegistry.ToolDef] 转换为 LLM 可消费的 [ToolDefinition]。
  *
- * con [ToolRegistry.listToolsAsToolDefinitions] Origen lógico interno,pero expuesto como una función de extensión,
- * dejar [ChannelToolFactory] Los conjuntos de herramientas únicos creados también se pueden pasar directamente a [io.zer0.ai.ChatService.streamChat].
+ * 与 [ToolRegistry.listToolsAsToolDefinitions] 内部逻辑同源,但作为扩展函数公开,
+ * 让 [ChannelToolFactory] 构造的一次性工具集也能直接传给 [io.zer0.ai.ChatService.streamChat]。
  */
 fun ToolRegistry.ToolDef.toToolDefinition(): ToolDefinition {
     val schema = buildJsonObject {
@@ -54,26 +54,26 @@ fun ToolRegistry.ToolDef.toToolDefinition(): ToolDefinition {
 }
 
 /**
- * Fábrica de herramientas especiales de chat grupal — Phone Session Construcción dinámica en modo. channel_* Conjunto de tres piezas.
+ * 群聊专用工具工厂 — Phone Session 模式下动态构造 channel_* 三件套。
  *
- * Phone Session Inyecte 3 herramientas de decisión forzada,
- * agent debe ser llamado channel_reply / channel_pass / channel_read_context la postura de uno,
- * De lo contrario desencadenar repair attempt(Reintentar 1 vez).
+ * Phone Session 注入 3 个强制决策工具,
+ * agent 必须调用 channel_reply / channel_pass / channel_read_context 之一表态,
+ * 否则触发 repair attempt(重试 1 次)。
  *
- * Diferencias con el registro de la herramienta de sesión principal:
- *  - La herramienta principal de sesión es proporcionada por [io.zer0.muse.tools.AgentToolsRegistrar.registerAll] Regístrese para
- *    situación general [ToolRegistry],Visible para todos los asistentes
- *  - channel_* la herramienta es**Solo chat grupal**de,No registrado en la sesión principal(De lo contrario, la sesión principal LLM verá estas herramientas.,
- *    Lista de posibles herramientas de mal uso/contaminación)
- *  - llamador(GroupChatScheduler)Aprobado durante la sesión telefónica [createChannelTools] Dinámico
- *    Construya un conjunto de herramientas de una sola vez,Vincular chatId/senderAssistantId actual con devolución de llamada,Descartado después de finalizar la sesión
+ * 与主会话工具注册的区别:
+ *  - 主会话工具由 [io.zer0.muse.tools.AgentToolsRegistrar.registerAll] 注册到
+ *    全局 [ToolRegistry],所有 Assistant 都可见
+ *  - channel_* 工具是**群聊专用**的,不在主会话注册(否则主会话 LLM 会看到这些工具,
+ *    可能误用 / 污染工具列表)
+ *  - 调用方(GroupChatScheduler)在 Phone Session 时通过 [createChannelTools] 动态
+ *    构造一次性工具集,绑定当前 chatId / senderAssistantId 与回调,会话结束后丢弃
  *
- * Contenido del conjunto de herramientas:
- *  1. [ChannelReplyTool]   — channel_reply,Escribir respuesta al chat grupal(La única herramienta que hace aparecer los mensajes)
- *  2. [ChannelPassTool]    — channel_pass,No hables esta ronda
- *  3. [ChannelReadContextTool] — channel_read_context,Leer más historial de chat grupal(Máximo 50)
+ * 工具集内容:
+ *  1. [ChannelReplyTool]   — channel_reply,把回复写入群聊(唯一能让消息出现的工具)
+ *  2. [ChannelPassTool]    — channel_pass,本轮不发言
+ *  3. [ChannelReadContextTool] — channel_read_context,读取更多群聊历史(最多 50 条)
  *
- * Ejemplos de uso(GroupChatScheduler en):
+ * 用法示例(GroupChatScheduler 中):
  * ```
  * val tools = ChannelToolFactory.createChannelTools(
  *     groupChatId = chatId,
@@ -82,20 +82,20 @@ fun ToolRegistry.ToolDef.toToolDefinition(): ToolDefinition {
  *     onPass = { reason -> Logger.i(TAG, "Agent ${assistant.name} PASS: $reason") },
  *     contextProvider = { limit -> formatHistory(groupChatRepository.getRecentMessages(chatId, limit)) },
  * )
- * // Registrar herramientas en el temporal de la sesión actual. ToolRegistry,O deletréelo directamente en una lista ToolDefinition y páselo a streamChat
+ * // 把 tools 注册到当前会话的临时 ToolRegistry,或直接拼成 ToolDefinition 列表传给 streamChat
  * ```
  */
 object ChannelToolFactory {
 
     /**
-     * Construya un conjunto de herramientas especial para la sesión telefónica de chat grupal.
+     * 构造群聊 Phone Session 专用工具集。
      *
-     * @param groupChatId Chat grupal actual id(Vincular a la herramienta,LLM invisibles)
-     * @param senderAssistantId El agente hablante actual. id(Vincular a la herramienta,LLM invisibles)
-     * @param onReply channel_reply devolución de llamada:Conservar el contenido en el chat grupal
-     * @param onPass channel_pass devolución de llamada:Registra a los que no hablan en esta ronda. activity(Opcional reason)
-     * @param contextProvider channel_read_context devolución de llamada:Devuelve el texto del mensaje del historial formateado
-     * @return conjunto de tres piezas(ToolDef, Ejecutar función),La persona que llama puede registrarse en un ToolRegistry temporal o transferir ToolDefinition
+     * @param groupChatId 当前群聊 id(绑定到工具,LLM 不可见)
+     * @param senderAssistantId 当前发言 agent 的 id(绑定到工具,LLM 不可见)
+     * @param onReply channel_reply 回调:把 content 持久化到群聊
+     * @param onPass channel_pass 回调:记录本轮不发言的 activity(可选 reason)
+     * @param contextProvider channel_read_context 回调:返回格式化的历史消息文本
+     * @return 三件套(ToolDef, 执行函数),调用方可注册到临时 ToolRegistry 或转 ToolDefinition
      */
     fun createChannelTools(
         groupChatId: String,
@@ -104,7 +104,7 @@ object ChannelToolFactory {
         onPass: suspend (String?) -> Unit,
         contextProvider: suspend (Int) -> String,
     ): List<Pair<ToolRegistry.ToolDef, ChannelToolFn>> {
-        // Secuencia de inyección de tres piezas.:
+        // 三件套注入顺序:
         // reply → pass → read_context
         val reply = ChannelReplyTool(groupChatId, senderAssistantId, onReply)
         val pass = ChannelPassTool(onPass)
@@ -117,13 +117,13 @@ object ChannelToolFactory {
     }
 
     /**
-     * v1.0.53 Phase 5: Creación de un conjunto de herramientas para sesiones telefónicas de chat grupal,Y devolver directamente los consumibles de LLM [ToolDefinition] lista
-     * Mapeo de ejecutor con búsqueda por nombre(name → suspend fn).
+     * v1.0.53 Phase 5: 构造群聊 Phone Session 工具集,并直接返回 LLM 可消费的 [ToolDefinition] 列表
+     * 与 按名查找的执行器映射(name → suspend fn)。
      *
-     * llamador(GroupChatScheduler.invokeAgent)usar [ToolDefinition] Lista pasada a streamChat,
-     * Se envía por nombre utilizando el mapa ejecutor después de recibir ToolCallDelta.
+     * 调用方(GroupChatScheduler.invokeAgent)用 [ToolDefinition] 列表传给 streamChat,
+     * 收到 ToolCallDelta 后用执行器映射按名分派。
      *
-     * @return Pair(ToolDefinitions lista, Mapeo de ejecutores)
+     * @return Pair(ToolDefinitions 列表, 执行器映射)
      */
     fun createChannelToolDefinitions(
         groupChatId: String,

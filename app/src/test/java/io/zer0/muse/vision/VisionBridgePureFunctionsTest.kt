@@ -18,7 +18,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * R-TEST-19: Funciones puras para ayudar visualmente a la orquestación de procesos/Prueba rápida de degradación.
+ * R-TEST-19: 视觉辅助流程编排的纯函数/降级提示测试。
  */
 class VisionBridgePureFunctionsTest {
 
@@ -80,20 +80,20 @@ class VisionBridgePureFunctionsTest {
     @Test
     fun `buildVisionContext joins descriptions with blank line`() {
         assertEquals("", bridge.buildVisionContext(emptyList()))
-        assertEquals("Descripción uno\n\n", bridge.buildVisionContext(listOf("Descripción uno")))
-        assertEquals("Descripción uno\n\nDescripción dos\n\n", bridge.buildVisionContext(listOf("Descripción uno", "Descripción dos")))
+        assertEquals("描述一\n\n", bridge.buildVisionContext(listOf("描述一")))
+        assertEquals("描述一\n\n描述二\n\n", bridge.buildVisionContext(listOf("描述一", "描述二")))
     }
 
     @Test
     fun `buildFailureNotice includes reason and guidance`() {
-        val notice = bridge.buildFailureNotice("Tiempo de espera del modelo")
-        assertTrue(notice.contains("Tiempo de espera del modelo"))
-        assertTrue(notice.contains("El análisis de la imagen falló"))
-        assertTrue(notice.contains("pedirle al usuario que vuelva a intentarlo más tarde"))
+        val notice = bridge.buildFailureNotice("模型超时")
+        assertTrue(notice.contains("模型超时"))
+        assertTrue(notice.contains("图片分析失败"))
+        assertTrue(notice.contains("请用户稍后重试"))
 
         val blank = bridge.buildFailureNotice(null)
         assertFalse(blank.contains("null"))
-        assertTrue(blank.contains("El análisis de la imagen falló"))
+        assertTrue(blank.contains("图片分析失败"))
     }
 
     @Test
@@ -118,8 +118,8 @@ class VisionBridgePureFunctionsTest {
 
     @Test
     fun `reasoning-only vision completion remains usable`() {
-        assertEquals("Resultados del reconocimiento", effectiveVisionResponseText("", "Resultados del reconocimiento"))
-        assertEquals("Texto", effectiveVisionResponseText("Texto", "No cubras el texto principal."))
+        assertEquals("识别结果", effectiveVisionResponseText("", "识别结果"))
+        assertEquals("正文", effectiveVisionResponseText("正文", "不要覆盖正文"))
     }
 
     @Test
@@ -129,6 +129,6 @@ class VisionBridgePureFunctionsTest {
         assertTrue(notice.contains("SiliconFlow"))
         assertTrue(notice.contains("GLM-4.6"))
         assertTrue(notice.contains("text"))
-        assertTrue(notice.contains("La entrada de imágenes no es compatible"))
+        assertTrue(notice.contains("不支持图片输入"))
     }
 }

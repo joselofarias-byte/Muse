@@ -1,58 +1,66 @@
 package io.zer0.muse.data.proactive
 
 /**
- * Motor de sincronización para mensajes proactivos.
+ * 主动消息的时机判定引擎。
  *
- * Este objeto es la única parte de "juicio" de todo el mecanismo, y el resto es transporte.
- * Entonces está escrito como**función pura**: No lea la configuración, no toque la base de datos, no mire el reloj del sistema,
- * Todas las entradas entran a través de parámetros y todas las conclusiones salen a través de valores de retorno.
+ * 这个对象是整套机制里唯一「做判断」的地方，其余都是搬运。
+ * 所以它被写成**纯函数**：不读配置、不碰数据库、不看系统时钟，
+ * 所有输入靠参数进来，所有结论靠返回值出去。
  *
- * La decisión sólo responde a una pregunta:**¿Puedes decirme ahora?**. No respondas “¿debería decirlo o no?”
+ * 判定只回答一个问题：**现在能不能说**。不回答「该不该说」。
  *
- * "Puede" es interpretable: no molestar y punto, generar, solo charlar, calmarse, cuota.
- * "Debería o no" solo se puede calificar, y si la puntuación está por debajo del umbral, se generará una oración para explicar por qué no decirlo.
- * Esa explicación no significa nada para los usuarios. —— No sabía lo que estabas pensando, simplemente sentía como si una máquina lo pesara.
+ * 「能不能」是可解释的：免打扰时段、正在生成、刚聊过、冷却、额度。
+ * 「该不该」只能靠打分，而分数切在阈值下面就会输出一句话来解释为什么不说，
+ * 那种解释对用户毫无意义 —— 他不知道你在算什么，只觉得被机器掂量了一遍。
  *
- * Orden de sentencia:
+ * 判定顺序：
  *
  *  Q1 [Verdict.QUIET_HOUR] / [Verdict.USER_ACTIVE] / [Verdict.IN_CONVERSATION] / [Verdict.COOLDOWN]
- *      ¿Es ahora un buen momento para interrumpir?—— Puramente local, costo cero.
+ *      现在是不是打扰的好时机？—— 纯本地，零成本。
  *  Q2 [Verdict.NO_BUDGET]
- *      ¿Aún está disponible el cupo?—— No significa no, vuelve mañana.
+ *      额度还有没有？—— 没有就是没有，明天再来。
  *
- * Todos los juicios a nivel de contenido se dejan para el paso de generación: proporcione al modelo la conversación más reciente y déjelo decidir si hay un huatuan o no.
- * Si el modelo no puede decirlo, simplemente diga omitir, que es mucho más confiable que adivinar con un montón de pesos.
+ * 内容层面的判断全部交给生成那一步：把最近对话给模型，由它决定有没有话头。
+ * 模型说不出来就说 skip，这比用一堆权重去猜可靠得多。
  *
- * El juicio se escribe como una cadena. `?:` con un `when` expresión (salida única),
- * No es una cuestión de estilo: el orden de las cuatro preguntas es el núcleo semántico de este mecanismo.
- * Después de estar disperso en múltiples retornos, es fácil cambiar la posición del juicio y perder de vista las dependencias posteriores de él.
+ * 判定写成一串 `?:` 与一个 `when` 表达式（单出口），
+ * 不是风格洁癖：四问的先后顺序是这套机制的语义核心，
+ * 散成多个 return 之后，改一处判断位置很容易看不到下游依赖它。
  */
 object ProactiveTimingEngine {
 
-    /** Si el usuario ha hablado en los últimos 10 minutos no se considera \"activo\", está interrumpiendo la conversación. */
+    /** 用户最近 10 分钟内说过话，就不算「主动」，那是打断对话。 */
     const val USER_ACTIVE_WINDOW_MS = 10 * 60 * 1000L
 
     /**
-     * El intervalo predeterminado en minutos entre dos mensajes no solicitados.
+     * 两条主动消息之间的默认间隔（分钟）。
      *
-     * con [io.zer0.muse.data.ProactiveMessageConfig.intervalMinutes] Los valores predeterminados son los mismos:
-     * En la configuración anterior, este campo siempre ha sido 240 y la interfaz siempre se ha escrito así. La sentencia debe basarse en el mismo número.
+     * 与 [io.zer0.muse.data.ProactiveMessageConfig.intervalMinutes] 的默认值一致：
+     * 老配置里这个字段一直是 240，界面也一直这么写，判定必须按同一个数走。
      */
     const val DEFAULT_INTERVAL_MINUTES = 240
 
-    /** Límite inferior del intervalo (minutos). Un poco más corto y no estará \"activo\", sino simplemente deslizando la pantalla. */
+    /** 间隔下限（分钟）。再短就不是「主动」而是刷屏了。 */
     const val MIN_INTERVAL_MINUTES = 30
 
-    /** Límite superior del intervalo (minutos,24 horas). Un poco más y se convierte en \"cuántas veces al año hablamos\". */
+    /** 间隔上限（分钟，24 小时）。再长就变成「一年说几次话」。 */
     const val MAX_INTERVAL_MINUTES = 1440
 
     private const val MINUTE_MS = 60_000L
 
     /**
-     * Todas las entradas para un juicio.
+     * 日保底窗口：距上一条主动消息超过这么久，就认为「今天这条还欠着」。
      *
-     * Creado deliberadamente para ser una clase de datos planos en lugar de un montón de parámetros: la persona que llama debe preparar todo explícitamente,
-     * Si se omite uno, la compilación fallará y no se "olvidará cargar el tiempo activo del usuario, lo que provocará interrupciones nocturnas".
+     * 用户要的是「每天都能收到」，而不是「有事才发」。卡 22 小时而不是 24，
+     * 是因为巡检不是准点任务：按 24 算，连续两轮抖动就会变成隔一天多。
+     */
+    const val DAILY_GUARANTEE_MS = 22L * 60 * 60 * 1000L
+
+    /**
+     * 一次判定的全部输入。
+     *
+     * 刻意做成扁平的数据类而不是一堆参数：调用方必须显式准备每一件事，
+     * 漏掉一个就编译不过，不会出现「忘了传用户活跃时间导致深夜打扰」。
      */
     data class Input(
         val now: Long,
@@ -60,109 +68,141 @@ object ProactiveTimingEngine {
         val allowedHourStart: Int,
         val allowedHourEnd: Int,
         val allDayAllowed: Boolean,
-        /** La marca de tiempo de la última vez que habló el usuario,0 Indica desconocido. */
+        /** 用户最后一次说话的时间戳，0 表示未知。 */
         val lastUserMessageAt: Long,
-        /** ¿Hay alguna generación de respuesta en progreso? */
+        /** 是否有正在进行的回复生成。 */
         val isGenerating: Boolean,
-        /** La hora en que se envió el último mensaje activo,0 Dijo que nunca sucedió. */
+        /** 上一条主动消息的发出时间，0 表示从没有过。 */
         val lastProactiveSentAt: Long,
         /**
-         * El momento en que la última ronda de inspección entró en la generación,0 Indica que el proceso aún no ha pasado.
+         * 上一轮巡检进入生成的时间，0 表示进程内还没有过。
          *
-         * con [lastProactiveSentAt] Son dos cosas que no se pueden sustituir entre sí: la cuenta de resultados no se puede escribir hasta que la noticia esté efectivamente en la base de datos;
-         * El paso de generación dura hasta decenas de segundos. —— Durante este período de tiempo, no había nada en la cuenta.
-         * Si sólo miramos los resultados,**La ronda que se genera no existe en la capa de datos.**,
-         * Por lo tanto, se considerará que otra ronda de inspecciones "ha pasado bastante tiempo desde la última" y se dará a conocer.
-         * Regístrese en este momento antes de ajustar el modelo, solo para llenar la ventana vacía.
+         * 与 [lastProactiveSentAt] 是两件事，不能互相替代：结果账要等消息真正落库才写，
+         * 而生成那一步最长要几十秒 —— 这段时间里结果账上什么都没有，
+         * 只看结果账的话，**正在生成的那一轮在数据层等于不存在**，
+         * 于是又一轮巡检会认为「距上一条已经够久了」而放行。
+         * 这个时间在调模型之前就登记，正好补上那段空窗。
          */
         val lastProactiveAttemptAt: Long = 0L,
         /**
-         * Parámetros de ritmo: intervalo, jitter del día e ID del asistente que participa en el jitter.
+         * 节奏参数：间隔、当日抖动与参与抖动的助手 id。
          *
-         * Estos tres son un grupo: para cambiar el intervalo, debes conocer el límite superior de jitter y "quién lo envía".
-         * Dividirlo en tres campos en mosaico haría [Input] Los parámetros de construcción exceden el rango legible,
-         * También hace que la persona que llama piense que no tienen nada que ver entre sí.
+         * 这三个是一组：改间隔必然要知道抖动上限和「是谁在发」，
+         * 拆成三个平铺字段会让 [Input] 的构造参数超过可读范围，
+         * 也会让调用方以为它们彼此无关。
          */
         val pacing: Pacing = Pacing(),
+        /**
+         * 日保底窗口（毫秒），0 表示关闭。
+         *
+         * 默认跟着 [DAILY_GUARANTEE_MS]；由上层按用户设置传入，
+         * 这样引擎不认识配置类型，配置改了也不用改判定。
+         */
+        val dailyGuaranteeMs: Long = DAILY_GUARANTEE_MS,
     )
 
     /**
-     * Un conjunto de parámetros de ritmo.
+     * 一组节奏参数。
      *
-     * El intervalo base proviene de la configuración del usuario (nivel "Actividad" o control deslizante personalizado),
-     * El límite superior de fluctuación también proviene de la configuración, y el intervalo después de que los dos se superponen es la puerta dura real (consulte [effectiveIntervalMinutes]).
+     * 基础间隔来自用户设置（「主动程度」档位或自定义滑块），
+     * 抖动上限同样来自设置，两者叠加后的间隔才是真正的硬闸（见 [effectiveIntervalMinutes]）。
      */
     data class Pacing(
-        /** Intervalo base (minutos). atrapado durante el juicio [MIN_INTERVAL_MINUTES]..[MAX_INTERVAL_MINUTES]. */
+        /** 基础间隔（分钟）。判定时夹到 [MIN_INTERVAL_MINUTES]..[MAX_INTERVAL_MINUTES]。 */
         val intervalMinutes: Int = DEFAULT_INTERVAL_MINUTES,
-        /** Desplazamiento máximo del día (en minutos).0 Indica que no hay temblores. */
+        /** 当日偏移上限（分钟）。0 表示不抖动。 */
         val randomOffsetMinutes: Int = 0,
-        /** La identificación del asistente participa en el hash \"fecha + asistente\", de modo que la inquietud de diferentes asistentes cae en diferentes minutos. */
+        /** 助手 id，参与「日期 + 助手」哈希，让不同助手的抖动落在不同分钟。 */
         val assistantId: String = "",
     )
 
-    /** Determina la conclusión. */
+    /** 判定结论。 */
     enum class Verdict {
-        /** Si se dictan todas las sentencias, se puede emitir. */
+        /** 判定全过，可以发。 */
         OK,
 
-        /** Durante el periodo de no molestar. */
+        /** 在免打扰时段内。 */
         QUIET_HOUR,
 
-        /** El usuario está activo (acaba de hablar) y \"activo\" en este momento significa interrumpir. */
+        /** 用户正在活跃（刚说过话），这时候「主动」等于打断。 */
         USER_ACTIVE,
 
-        /** Se está generando la respuesta, espere hasta que finalice. */
+        /** 正在生成回复，等它生成完再说。 */
         IN_CONVERSATION,
 
-        /** El usuario dijo \"No me molestes últimamente\". */
+        /** 用户说过「最近别烦我」。 */
         COOLDOWN,
 
-        /** Demasiado cerca del último mensaje activo. */
+        /** 距上一条主动消息太近。 */
         TOO_SOON,
 
-        /** La cuota se ha agotado hoy. */
+        /** 今天额度用完了。 */
         NO_BUDGET,
     }
 
-    /** Resultado del juicio. Traiga suficientes detalles para escribir un registro que facilite la resolución de problemas \"por qué no se publicó\". */
+    /** 判定结果。带出足够写日志的细节，便于排查「为什么没发」。 */
     data class Decision(
         val verdict: Verdict,
         val remainingBudget: Float,
         val hourOfDay: Int,
-        /** Esta vez, determine el intervalo real utilizado (incluido el desplazamiento del día). Mírelo primero cuando solucione el problema \"por qué aún no ha llegado al punto\". */
+        /** 本次判定实际使用的间隔（含当日偏移），排查「为什么还没到点」时先看它。 */
         val effectiveIntervalMinutes: Int = DEFAULT_INTERVAL_MINUTES,
+        /** 本次放行是否来自「日保底」（只越过「间隔还没到」这一道闸）。 */
+        val dailyGuarantee: Boolean = false,
     ) {
         val shouldSend: Boolean get() = verdict == Verdict.OK
     }
 
     /**
-     * Después de responder cuatro preguntas, regrese a la conclusión.
+     * 跑完四个问题，返回结论。
      *
-     * El orden no se puede revertir. Por ejemplo, la verificación del presupuesto debe realizarse después de la idoneidad. ——
-     * De lo contrario, cuando el presupuesto sea 0, el registro escribirá "No tengo nada que decir", pero la verdad es "Tengo algo que decir pero la cuota se ha agotado hoy".
-     * Las direcciones de la investigación en estos dos casos son completamente opuestas.
+     * 顺序不能调换。比如预算检查必须在 fitness 之后 ——
+     * 否则预算为 0 时日志会写「没有可说的」，而真相是「有话但今天额度用完了」，
+     * 这两种情况的排查方向完全相反。
      */
     fun evaluate(input: Input): Decision {
         val hour = hourOfDay(input.now)
         val remaining = remainingBudget(input.relation)
         val intervalMinutes = effectiveIntervalMinutes(input)
 
-        // Q1: Sincronización
+        // Q1：时机
+        val quiet = !input.allDayAllowed &&
+            isInQuietHours(hour, input.allowedHourStart, input.allowedHourEnd)
+
         val timingBlock = checkTiming(input, hour, intervalMinutes * MINUTE_MS)
 
-        // Q2: Cantidad. Se coloca después del momento porque las direcciones de investigación de "no se puede perturbar ahora" y "sin cuota" son diferentes.
-        val verdict = timingBlock ?: if (remaining < 1f) Verdict.NO_BUDGET else Verdict.OK
+        // 日保底：距上一条超过保底窗口（或从未发过）时，只越过「间隔还没到」这一道闸。
+        // 不越过冷却、不越过「用户刚说过话」、不越过「正在生成」、也不越过额度 ——
+        // 那些是「别打扰人」的规矩，把它们一起压掉就成了闹钟。
+        //
+        // 另外：如果上一轮已经真正开跑过（有过尝试），也不能压 —— 那是防成本风暴的闸，
+        // 压过去就变成每隔几分钟尝试一次。
+        val intervalMs = intervalMinutes * MINUTE_MS
+        val attemptedRecently = tooSoon(input.now, input.lastProactiveAttemptAt, intervalMs)
+        val usedGuarantee = input.dailyGuaranteeMs > 0L && !quiet && !attemptedRecently &&
+            remaining >= 1f &&
+            timingBlock == Verdict.TOO_SOON &&
+            (
+                input.lastProactiveSentAt <= 0L ||
+                    input.now - input.lastProactiveSentAt >= input.dailyGuaranteeMs
+                )
+
+        // Q2：额度。放在时机之后，是因为「现在不能打扰」和「没额度」的排查方向不同。
+        val verdict = when {
+            usedGuarantee -> Verdict.OK
+            else -> timingBlock ?: if (remaining < 1f) Verdict.NO_BUDGET else Verdict.OK
+        }
 
         return Decision(
             verdict = verdict,
             remainingBudget = remaining,
             hourOfDay = hour,
             effectiveIntervalMinutes = intervalMinutes,
+            dailyGuarantee = usedGuarantee,
         )
     }
 
-    /** Q1 de portón duro. Devolver no vacío significa que se detuvo. */
+    /** Q1 的硬闸。返回非空表示被拦下。 */
     private fun checkTiming(input: Input, hour: Int, intervalMs: Long): Verdict? = when {
         !input.allDayAllowed &&
             isInQuietHours(hour, input.allowedHourStart, input.allowedHourEnd) -> Verdict.QUIET_HOUR
@@ -171,8 +211,8 @@ object ProactiveTimingEngine {
 
         tooSoon(input.now, input.lastProactiveSentAt, intervalMs) -> Verdict.TOO_SOON
 
-        // La última ronda no comenzó lo suficientemente larga, por lo que también se consideró "demasiado reñida".
-        // Este elemento es la barrera de seguridad en la ventana de generación: la cuenta de resultados aún está vacía, pero el intento se ha registrado.
+        // 上一轮开跑得还不够久，也按「太近」处理。
+        // 这一条才是生成窗口内的护栏：结果账还是空的，但尝试已经登记过了。
         tooSoon(input.now, input.lastProactiveAttemptAt, intervalMs) -> Verdict.TOO_SOON
 
         input.isGenerating -> Verdict.IN_CONVERSATION
@@ -183,16 +223,15 @@ object ProactiveTimingEngine {
         else -> null
     }
 
-    /** distancia [timestamp] insuficiente [intervalMs] Incluso si está demasiado cerca;0 Quiere decir que nunca ha sucedido y no participa en el juicio. */
-    private fun tooSoon(now: Long, timestamp: Long, intervalMs: Long): Boolean =
-        timestamp > 0 && now - timestamp < intervalMs
+    /** 距 [timestamp] 不足 [intervalMs] 就算太近；0 表示从未发生，不参与判定。 */
+    private fun tooSoon(now: Long, timestamp: Long, intervalMs: Long): Boolean = timestamp > 0 && now - timestamp < intervalMs
 
     /**
-     * El intervalo realmente utilizado en esta determinación: el intervalo básico configurado por el usuario + el desplazamiento del día.
+     * 本次判定真正使用的间隔：用户配的基础间隔 + 当日偏移。
      *
-     * El intervalo básico está sujeto a [MIN_INTERVAL_MINUTES]..[MAX_INTERVAL_MINUTES]:
-     * El rango legal del control deslizante de la página de configuración es más amplio y la configuración anterior puede almacenarse durante 15 minutos o varios días.
-     * Usar estos valores directamente para juzgar hará que el asistente se convierta en un despertador o en silencio.
+     * 基础间隔夹到 [MIN_INTERVAL_MINUTES]..[MAX_INTERVAL_MINUTES]：
+     * 设置页滑块的合法范围更宽，老配置里也可能存着 15 分钟或几天，
+     * 这些值直接拿来判定会让助手变成闹钟或者哑巴。
      */
     fun effectiveIntervalMinutes(input: Input): Int {
         val base = input.pacing.intervalMinutes.coerceIn(MIN_INTERVAL_MINUTES, MAX_INTERVAL_MINUTES)
@@ -205,12 +244,12 @@ object ProactiveTimingEngine {
     }
 
     /**
-     * Compensación de fluctuación del día (en minutos).
+     * 当天的抖动偏移（分钟）。
      *
-     * La misma "fecha + ID de asistente" obtendrá el mismo desplazamiento, que cambiará a lo largo de los días. —— No es necesario aleatorizar cada vez,
-     * Esto se debe a que cada aleatorización equivale a convertir el intervalo en un intervalo, que es ajustado por el usuario.4 La "hora" de repente llegará temprano y tarde;
-     * El desplazamiento fijo por día no sólo conserva la sensación natural de "no decir la hora", sino que también hace que el ritmo dentro del mismo día sea predecible.
-     * El hash se basa únicamente en la cadena misma y no depende de ningún estado que no sea fuentes aleatorias y zonas horarias.
+     * 同一「日期 + 助手 id」得到同一个偏移，跨天才会变 —— 不用每次随机，
+     * 是因为每次随机等于把间隔变成一个区间，用户调好的「4 小时」会忽早忽晚；
+     * 按天固定的偏移既保留了「不是整点报时」的自然感，又让同一天内的节奏可预期。
+     * 哈希只依赖字符串本身，不依赖随机源与时区以外的任何状态。
      */
     fun dailyOffsetMinutes(dateKey: String, assistantId: String, maxOffsetMinutes: Int): Int {
         val max = maxOffsetMinutes.coerceIn(0, MAX_INTERVAL_MINUTES)
@@ -218,7 +257,7 @@ object ProactiveTimingEngine {
         return "$dateKey|$assistantId".hashCode().mod(max + 1)
     }
 
-    /** La fecha de la marca de tiempo (zona horaria local,`yyyy-MM-dd`). Depende de él para cambiar el desplazamiento en el cielo. */
+    /** 时间戳所在日期（本地时区，`yyyy-MM-dd`）。跨天换偏移靠的就是它。 */
     fun dayKey(timestamp: Long): String {
         val cal = java.util.Calendar.getInstance().apply { timeInMillis = timestamp }
         val month = cal.get(java.util.Calendar.MONTH) + 1
@@ -235,73 +274,72 @@ object ProactiveTimingEngine {
     }
 
     // ══════════════════════════════════════════════════════════════
-    // presupuesto
+    // 预算
     // ══════════════════════════════════════════════════════════════
 
     /**
-     * Saldo restante actual.
+     * 当前剩余额度。
      *
      * ```
-     * Cuota diaria = Límite de nivel (sin límite para el nivel adherente)
-     * budget   = max(0, Cuota diaria − Enviado hoy)
+     * 每日额度 = 等级上限（黏人档为不限）
+     * budget   = max(0, 每日额度 − 今日已发)
      * ```
      *
-     * La cantidad está completamente determinada por la marcha seleccionada por el usuario: Quiet 3 / Restraint 8 / Standard 15 / Active 30 / Adherencia ilimitada.
-     * En la versión anterior, se utilizaba "valor de aprendizaje de piso + intimidad" para calcular la cuota. Si el usuario optaba por ser pegajoso, sólo podía enviar 5 mensajes por día.
-     * Es inconsistente con la promesa de la interfaz y ha sido abandonado. La intimidad todavía participa en otras determinaciones temporales, pero ya no determina el número de elementos.
+     * 额度完全由用户选的档位决定：安静 3 / 克制 8 / 标准 15 / 主动 30 / 黏人不限。
+     * 早期版本用「地板 + 亲密度学习值」拼额度，用户选了黏人每天也只能发 5 条，
+     * 与界面承诺不符，已废弃。亲密度仍参与其它时机判定，但不再决定条数。
      */
     fun remainingBudget(relation: ProactiveRelationEntity): Float {
         val allowance = dailyAllowance(relation)
         return (allowance - relation.spentToday).coerceIn(0f, allowance)
     }
 
-    /** El cupo total del día (no hay límite para los que se ciñen a personas). */
+    /** 当天额度总量（黏人档为不限）。 */
     fun dailyAllowance(relation: ProactiveRelationEntity): Float =
         relation.intensityEnum().let { if (it.unlimited) Float.MAX_VALUE else it.cap.toFloat() }
 
     /**
-     * Restablecimiento del juicio entre días.
+     * 跨日重置判定。
      *
-     * true Indica que la persona que llama debe poner el recuento del presupuesto en cero antes de continuar.
-     * Se coloca aquí en lugar de en DAO porque "cross-day" es semántica comercial, no semántica de almacenamiento.
+     * true 表示调用方应当先把预算计数清零再继续。
+     * 放在这里而不是 DAO 里，是因为「跨日」是业务语义，不是存储语义。
      */
-    fun needsBudgetReset(relation: ProactiveRelationEntity, todayDate: String): Boolean =
-        relation.budgetDate != todayDate
+    fun needsBudgetReset(relation: ProactiveRelationEntity, todayDate: String): Boolean = relation.budgetDate != todayDate
 
     // ══════════════════════════════════════════════════════════════
-    // Herramientas
+    // 工具
     // ══════════════════════════════════════════════════════════════
 
-    /** Si la preocupación ha expirado.EVERGREEN Nunca caduca. */
+    /** 牵挂是否已过期。EVERGREEN 永不过期。 */
     fun isExpired(thought: PendingThoughtEntity, now: Long): Boolean {
         val expiresAt = thought.expiresAt ?: return false
         return now > expiresAt
     }
 
-    /** La hora correspondiente a la marca de tiempo (0-23). */
+    /** 时间戳对应的小时（0-23）。 */
     fun hourOfDay(timestamp: Long): Int {
         val cal = java.util.Calendar.getInstance().apply { timeInMillis = timestamp }
         return cal.get(java.util.Calendar.HOUR_OF_DAY)
     }
 
     /**
-     * Ya sea durante el periodo de no molestar.
+     * 是否在免打扰时段。
      *
-     * Reutilizar [QuietHoursPolicy] En lugar de escribir otro usted mismo: Semántica de límites de No molestar
-     * (Cerrando por la izquierda y abriéndose por la derecha, cruzando la noche) Ya hay una realización única, y tarde o temprano surgirá una nueva,
-     * La realización de esta deriva es "enviar ocasionalmente un mensaje más durante ciertos períodos", lo cual es extremadamente difícil de reproducir.
+     * 复用 [QuietHoursPolicy] 而不是自己再写一份：免打扰的边界语义
+     * （左闭右开、跨夜）已经有单一实现，再造一份迟早漂移，
+     * 而这种漂移的表现是「某些时段偶尔多发一条」，极难复现。
      */
     fun isInQuietHours(hour: Int, start: Int, end: Int, allDayAllowed: Boolean = false): Boolean =
         !QuietHoursPolicy.isWithinAllowedWindow(hour, start, end, allDayAllowed)
 
-    /** Traduzca la conclusión del juicio en una oración que pueda publicarse en la página de configuración. */
+    /** 把判定结论翻译成能贴进设置页的一句话。 */
     fun describe(decision: Decision): String = when (decision.verdict) {
-        Verdict.QUIET_HOUR -> "Ahora es el período de no molestar (${decision.hourOfDay}puntos)"
-        Verdict.USER_ACTIVE -> "Acabamos de charlar, esperando que te quedes callado un rato."
-        Verdict.IN_CONVERSATION -> "Respondiendo, no interrumpas"
-        Verdict.COOLDOWN -> "Me pediste que no te molestara recientemente"
-        Verdict.TOO_SOON -> "Acabamos de hablar, hablemos en un rato."
-        Verdict.NO_BUDGET -> "Basta de hablar por hoy, hablemos de ello mañana."
-        Verdict.OK -> "puede enviar"
+        Verdict.QUIET_HOUR -> "现在是免打扰时段（${decision.hourOfDay}点）"
+        Verdict.USER_ACTIVE -> "刚聊过，等你安静一会儿"
+        Verdict.IN_CONVERSATION -> "正在回复，不打断"
+        Verdict.COOLDOWN -> "你让我最近别打扰"
+        Verdict.TOO_SOON -> "刚说过话，过一会儿再说"
+        Verdict.NO_BUDGET -> "今天说得够多了，明天再说"
+        Verdict.OK -> "可以发"
     }
 }

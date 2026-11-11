@@ -16,25 +16,25 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import java.util.concurrent.TimeUnit
 
 /**
- * v1.0.92: remitente del canal — Enviar un texto a la plataforma correspondiente(lado emisor).
+ * v1.0.92: 渠道发送器 — 把一段文本发送到对应平台(发送侧)。
  *
- * lado receptor(Conexión larga al evento/acceso al webhook)Progrese paso a paso con capacidades bidireccionales más profundas.
+ * 接收侧(事件长连接 / webhook 接入)与更深的双向能力分步推进。
  */
 internal interface ChannelSender {
     /**
-     * enviar un mensaje de texto;Devuelve una excepción razonada en caso de error.
+     * 发送一段文本;失败时返回带原因的异常。
      *
-     * [targetOverride] Se utiliza para respuestas automáticas, etc."Publicar de nuevo a la fuente"escena(Feishu open_id / QQ openid),
-     * Usado cuando está vacío [ChannelConfig.targetId].
+     * [targetOverride] 用于自动回复等"回发到消息来源"场景(飞书 open_id / QQ openid),
+     * 为空时使用 [ChannelConfig.targetId]。
      */
     suspend fun sendText(config: ChannelConfig, text: String, targetOverride: String? = null): Result<Unit>
 
-    /** WeClaw Las respuestas automáticas pueden anular el caché global,Reintento garantizado utilizando el token del evento entrante original. */
+    /** WeClaw 自动回复可以覆盖全局缓存,保证重试使用原入站事件的令牌。 */
     @Suppress("UnusedParameter")
     suspend fun sendText(config: ChannelConfig, text: String, targetOverride: String?, contextTokenOverride: String?): Result<Unit> =
         sendText(config, text, targetOverride)
 
-    /** QQ Las respuestas automáticas pueden vincularse a eventos entrantes ID,evitar de“caché de mensajes recientes”Los mensajes de seguimiento se obtuvieron por error. */
+    /** QQ 自动回复可绑定入站事件 ID,避免从“最近消息缓存”误取后续消息。 */
     @Suppress("UnusedParameter")
     suspend fun sendText(
         config: ChannelConfig,
@@ -44,7 +44,7 @@ internal interface ChannelSender {
         sourceEventIdOverride: String?,
     ): Result<Unit> = sendText(config, text, targetOverride, contextTokenOverride)
 
-    /** QQ Genere un msg_seq incrementado utilizando el número persistente de intentos de envío cuando se reintente la respuesta automática. */
+    /** QQ 自动回复重试时使用持久化的派发尝试次数生成递增 msg_seq。 */
     @Suppress("UnusedParameter")
     suspend fun sendText(
         config: ChannelConfig,
@@ -62,7 +62,7 @@ internal interface ChannelSender {
     )
 }
 
-/** Caché de token de acceso de plataforma(Válido por aproximadamente 2 horas.;Se considera caducado con 5 minutos de antelación.). */
+/** 平台 access_token 缓存(有效期约 2 小时;提前 5 分钟视为过期)。 */
 private class TokenCache {
     @Volatile private var token: String? = null
 
@@ -86,7 +86,7 @@ private val HTTP: OkHttpClient by lazy {
 
 private val JSON_MEDIA = "application/json; charset=utf-8".toMediaType()
 
-/** Enviar una solicitud JSON POST;Excepciones no 2xx con fragmentos de respuesta generados(para cadena de resultados). */
+/** 发送 JSON POST 请求;非 2xx 抛带响应片段的异常(用于 Result 链)。 */
 private fun postJson(url: String, body: String, headers: Map<String, String> = emptyMap()): Result<String> = runCatching {
     val builder = Request.Builder().url(url).post(body.toRequestBody(JSON_MEDIA))
     headers.forEach { (k, v) -> builder.header(k, v) }
@@ -98,10 +98,10 @@ private fun postJson(url: String, body: String, headers: Map<String, String> = e
 }
 
 /**
- * Feishu(Aplicaciones de plataforma abierta y autoconstruidas)transmisor.
+ * 飞书(开放平台自建应用)发送器。
  *
- * a cambio de tenant_access_token → `POST /open-apis/im/v1/messages`.
- * receive_id_type Determinar por prefijo de destino:oc_=chat_id / ou_=open_id / on_=union_id.
+ * 换取 tenant_access_token → `POST /open-apis/im/v1/messages`。
+ * receive_id_type 按目标前缀判定:oc_=chat_id / ou_=open_id / on_=union_id。
  */
 internal class FeishuChannelSender : ChannelSender {
 
@@ -135,17 +135,17 @@ internal class FeishuChannelSender : ChannelSender {
             }.fold(
                 onSuccess = { Result.success(Unit) },
                 onFailure = { e ->
-                    Logger.w(TAG, "El envío de Feishu falló: ${e.message}")
+                    Logger.w(TAG, "飞书发送失败: ${e.message}")
                     Result.failure(e)
                 },
             )
         }
 
-    /** v2.0.1: Nombre de dominio de plataforma abierta Feishu — Elija una de las versiones china o internacional Lark. */
+    /** v2.0.1: 飞书开放平台域名 — 中国版 / 国际版 Lark 二选一。 */
     private fun feishuOpenBase(config: ChannelConfig): String =
         if (config.region == "intl") "https://open.larksuite.com" else "https://open.feishu.cn"
 
-    /** a cambio de tenant_access_token,Regresar (token, expiresInSeconds).internal Para reutilización en la detección de credenciales. */
+    /** 换取 tenant_access_token,返回 (token, expiresInSeconds)。internal 供凭证检测复用。 */
     internal fun fetchToken(config: ChannelConfig): Pair<String, Long> {
         val body = buildJsonObject {
             put("app_id", config.appId)
@@ -157,8 +157,8 @@ internal class FeishuChannelSender : ChannelSender {
         ).getOrThrow()
         val obj = AppJson.parseToJsonElement(resp).jsonObject
         val code = obj["code"]?.jsonPrimitive?.contentOrNull
-        if (code != null && code != "0") error("Error de token de Feishu: ${resp.take(200)}")
-        val token = obj["tenant_access_token"]?.jsonPrimitive?.contentOrNull ?: error("Faltan campos de respuesta del token Feishu")
+        if (code != null && code != "0") error("飞书 token 错误: ${resp.take(200)}")
+        val token = obj["tenant_access_token"]?.jsonPrimitive?.contentOrNull ?: error("飞书 token 响应缺字段")
         val expires = obj["expire"]?.jsonPrimitive?.contentOrNull?.toLongOrNull() ?: 7200L
         return token to expires
     }
@@ -169,10 +169,10 @@ internal class FeishuChannelSender : ChannelSender {
 }
 
 /**
- * QQ Transmisor robot de plataforma abierta.
+ * QQ 开放平台机器人发送器。
  *
- * AppID/AppSecret Cambiar access_token → `POST /v2/groups/{group_openid}/messages`
- * o `/v2/users/{openid}/messages`(Distinguir por tipo de objetivo).
+ * AppID/AppSecret 换 access_token → `POST /v2/groups/{group_openid}/messages`
+ * 或 `/v2/users/{openid}/messages`(按 targetType 区分)。
  */
 internal class QqChannelSender : ChannelSender {
 
@@ -192,7 +192,7 @@ internal class QqChannelSender : ChannelSender {
     ): Result<Unit> = withContext(Dispatchers.IO) {
         val token = tokenCache.get() ?: run {
             val info = QqClient.fetchAccessToken(config.appId, config.appSecret).getOrElse { e ->
-                Logger.w(TAG, "QQ access_token No se pudo obtener: ${e.message}")
+                Logger.w(TAG, "QQ access_token 获取失败: ${e.message}")
                 return@withContext Result.failure<Unit>(e)
             }
             tokenCache.put(info.accessToken, info.expiresInSeconds)
@@ -200,7 +200,7 @@ internal class QqChannelSender : ChannelSender {
         }
         val overrideTarget = targetOverride?.takeIf { it.isNotBlank() }
         val rawTarget = overrideTarget ?: config.targetId
-        // v2.0.1: El grupo objetivo es "group:" etiqueta de prefijo(mensaje del grupo);De lo contrario, se determinará según el targetType configurado.
+        // v2.0.1: 群目标以 "group:" 前缀标记(来自群消息);否则按配置的 targetType 判定。
         val isGroup = if (overrideTarget != null) {
             overrideTarget.startsWith("group:")
         } else {
@@ -212,31 +212,31 @@ internal class QqChannelSender : ChannelSender {
         } else {
             "${QqClient.API_BASE}/v2/users/$target/messages"
         }
-        // Calcule primero el contexto de respuesta:replyContext msg_seq avanzará y las llamadas repetidas aumentarán el número de secuencia.
+        // 先算一次回复上下文：replyContext 会推进 msg_seq，重复调用会让序号多增。
         val reply = QqMsgIdCache.replyContext(
             target = rawTarget,
             sourceEventId = sourceEventIdOverride,
             sequenceOverride = sourceEventSequenceOverride,
         )
-        // El chat grupal no tiene permiso de mensaje activo: sin msg_id debe ser 40034102. En lugar de enviar una solicitud que seguramente fallará,
-        // Es mejor explicar el motivo claramente en el acto (la implementación anterior no tenía msg_id enviado y el error se oculta como“No me responde”).
+        // 群聊没有主动消息权限：没有 msg_id 就必然 40034102。与其发一个注定失败的请求，
+        // 不如当场把原因说清楚（旧实现不带 msg_id 硬发，错误被掩成“它不回我”）。
         if (isGroup && reply == null) {
             Logger.w(
                 TAG,
-                "QQ El chat grupal no tiene contexto de respuesta pasiva | target=$rawTarget " +
-                    "eventId=${sourceEventIdOverride?.let { if (it.isBlank()) "<cadena vacía>" else it } ?: "<null>"} " +
-                    "cached=${QqMsgIdCache.get(rawTarget) ?: "<Ninguno>"}",
+                "QQ 群聊无被动回复上下文 | target=$rawTarget " +
+                    "eventId=${sourceEventIdOverride?.let { if (it.isBlank()) "<空串>" else it } ?: "<null>"} " +
+                    "cached=${QqMsgIdCache.get(rawTarget) ?: "<无>"}",
             )
             return@withContext Result.failure(
                 IllegalStateException(
-                    "QQ El chat grupal solo puede responder de forma pasiva: no se ha obtenido el ID del mensaje en 5 minutos (es posible que se haya agotado el tiempo de espera o que el evento haya caducado)",
+                    "QQ 群聊只能被动回复：未拿到 5 分钟内的消息 ID（可能已超时或事件已失效）",
                 ),
             )
         }
         val body = buildJsonObject {
             put("content", text)
             put("msg_type", 0)
-            // v2.0.1: respuesta pasiva — ID del mensaje de origen (5 ventana de minutos)+ Incremente el número de secuencia (la plataforma eliminará los duplicados del mismo msg_id+seq).
+            // v2.0.1: 被动回复 — 来源消息 ID（5 分钟窗）+ 递增序号（相同 msg_id+seq 会被平台去重）。
             reply?.let {
                 put("msg_id", it.messageId)
                 put("msg_seq", it.sequence)
@@ -254,9 +254,9 @@ internal class QqChannelSender : ChannelSender {
         }.fold(
             onSuccess = { Result.success(Unit) },
             onFailure = { e ->
-                // Traduzca el código de error QQ en una oración que pueda usarse para solucionar problemas; el texto original todavía se ingresa en el registro.
+                // 把 QQ 的错误码翻成能照它排查的一句话；原始文本仍进日志。
                 val reason = QqSendErrorMapper.describe(e.message, isGroup)
-                Logger.w(TAG, "QQ Envío fallido(${if (isGroup) "chat grupal" else "charla privada"}): ${e.message}")
+                Logger.w(TAG, "QQ 发送失败(${if (isGroup) "群聊" else "单聊"}): ${e.message}")
                 Result.failure(IllegalStateException(reason, e))
             },
         )
@@ -268,10 +268,10 @@ internal class QqChannelSender : ChannelSender {
 }
 
 /**
- * v2.0: WeChat ClawBot(iLink)transmisor.
+ * v2.0: 微信 ClawBot(iLink)发送器。
  *
- * bot_token existir en appSecret;El objetivo de la respuesta es el usuario vinculado al escanear el código QR.(targetId=ilink_user_id).
- * Al enviar de vuelta, se da prioridad al mensaje de origen. context_token(Requisitos del acuerdo).
+ * bot_token 存于 appSecret;回复目标为扫码绑定的用户(targetId=ilink_user_id)。
+ * 回发时优先携带来源消息的 context_token(协议要求)。
  */
 internal class WeClawChannelSender : ChannelSender {
     override suspend fun sendText(config: ChannelConfig, text: String, targetOverride: String?): Result<Unit> =
@@ -287,9 +287,9 @@ internal class WeClawChannelSender : ChannelSender {
         val target = targetOverride?.takeIf { it.isNotBlank() } ?: config.targetId
         val result = when {
             botToken.isBlank() ->
-                Result.failure(IllegalStateException("ClawBot no obligado(desaparecido bot_token,Escanee el código para vincularse primero)"))
+                Result.failure(IllegalStateException("ClawBot 未绑定(缺少 bot_token,请先扫码绑定)"))
             target.isBlank() ->
-                Result.failure(IllegalStateException("Receptor perdido ID(ilink_user_id)"))
+                Result.failure(IllegalStateException("缺少接收方 ID(ilink_user_id)"))
             else -> WeClawClient.sendMessage(
                 botToken = botToken,
                 toUserId = target,
@@ -302,31 +302,31 @@ internal class WeClawChannelSender : ChannelSender {
 }
 
 /**
- * v2.0: Telegram transmisor.
+ * v2.0: Telegram 发送器。
  *
- * Bot Token existir en appSecret(@BotFather proporcionar);El objetivo de envío es chat_id.
- * Utilice sendMessage para enviar el mensaje de respuesta directamente a chat_id,No se requiere ningún token de contexto adicional.
+ * Bot Token 存于 appSecret(@BotFather 提供);发送目标为 chat_id。
+ * 回复消息用 sendMessage 直接发到 chat_id,无需额外上下文令牌。
  */
 internal class TelegramChannelSender : ChannelSender {
     override suspend fun sendText(config: ChannelConfig, text: String, targetOverride: String?): Result<Unit> {
         val token = config.appSecret.trim()
         if (token.isBlank()) {
-            return Result.failure(IllegalStateException("Telegram Bot Token No configurado(Por favor complete App Secret)"))
+            return Result.failure(IllegalStateException("Telegram Bot Token 未配置(请填 App Secret)"))
         }
         val target = targetOverride?.takeIf { it.isNotBlank() } ?: config.targetId
         if (target.isBlank()) {
-            return Result.failure(IllegalStateException("desaparecido chat_id(Enviar objetivo)"))
+            return Result.failure(IllegalStateException("缺少 chat_id(发送目标)"))
         }
         return TelegramClient.sendMessage(token, target, text)
     }
 }
 
 /**
- * v2.0: Remitente de DingTalk.
+ * v2.0: 钉钉发送器。
  *
- * Priorizar el uso de la sesión Webhook almacenada en caché al recibir el mensaje para publicar(Válido por aproximadamente 2 horas.,No se requiere autenticación);
- * Cuando el caché no esté disponible, utilice OpenAPI para enviarlo de forma proactiva.(Requiere reemplazo ClientID/ClientSecret access_token).
- * semántica objetivo:a "cid" Comience como una conversación grupal(openConversationId),En caso contrario, será considerado como un único usuario del chat.(senderStaffId).
+ * 优先用收到消息时缓存的 sessionWebhook 回发(约 2 小时内有效,无需鉴权);
+ * 缓存不可用时走 OpenAPI 主动发送(需要 ClientID/ClientSecret 换 access_token)。
+ * 目标语义:以 "cid" 开头视为群会话(openConversationId),否则视为单聊用户(senderStaffId)。
  */
 internal class DingtalkChannelSender : ChannelSender {
 
@@ -343,18 +343,18 @@ internal class DingtalkChannelSender : ChannelSender {
     ): Result<Unit> {
         val target = targetOverride?.takeIf { it.isNotBlank() } ?: config.targetId
         if (target.isBlank()) {
-            return Result.failure(IllegalStateException("Falta destino de envío(sesión o usuario id)"))
+            return Result.failure(IllegalStateException("缺少发送目标(会话或用户 id)"))
         }
-        // 1. sessionWebhook Prioridad(La dirección temporal viene con las credenciales de sesión.)
+        // 1. sessionWebhook 优先(临时地址自带会话凭据)
         (contextTokenOverride?.takeIf { it.isNotBlank() } ?: DingtalkSessionCache.get(target))?.let { webhook ->
             return DingtalkClient.sendViaSessionWebhook(webhook, text)
         }
-        // 2. OpenAPI Enviar proactivamente
+        // 2. OpenAPI 主动发送
         val appKey = config.appId.trim()
         val appSecret = config.appSecret.trim()
         if (appKey.isBlank() || appSecret.isBlank()) {
             return Result.failure(
-                IllegalStateException("Las credenciales de DingTalk no están configuradas(ClientID/ClientSecret),y la ventana de sesión ha expirado"),
+                IllegalStateException("钉钉凭据未配置(ClientID/ClientSecret),且会话窗口已过期"),
             )
         }
         val token = tokenCache.get() ?: run {
@@ -364,7 +364,7 @@ internal class DingtalkChannelSender : ChannelSender {
             tokenCache.put(info.accessToken, info.expireInSeconds)
             info.accessToken
         }
-        // v2.0.1: Robot Code La configuración explícita tiene prioridad,Dejar en blanco para regresar AppKey(Los bots internos suelen ser los mismos).
+        // v2.0.1: Robot Code 显式配置优先,留空回退 AppKey(企业内部机器人两者通常相同)。
         val robotCode = config.robotCode.trim().ifBlank { appKey }
         return if (target.startsWith("cid")) {
             DingtalkClient.sendToGroup(token, robotCode, target, text, config.dingtalkApiBase)

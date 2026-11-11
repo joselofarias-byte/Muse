@@ -4,19 +4,19 @@ import android.os.Looper;
 import android.util.Log;
 
 /**
- * v2.2.1 pantalla virtual:Entrada del servidor.
+ * v2.2.1 虚拟屏:服务端入口。
  *
- * Modo de operación(shell uid):
+ * 运行方式(shell uid):
  * <pre>
  * CLASSPATH=/data/local/tmp/muse-vd-server.jar app_process / io.zer0.muse.vdserver.Main &lt;hostPkg&gt; &lt;handoffToken&gt;
  * </pre>
  *
- * secuencia de inicio:
- *  1. prepareMainLooper(reflexión,app_process sin valor predeterminado main looper)
- *  2. Workarounds.apply(ActivityThread parche,Pase el nombre del paquete del marco./uid verificar)
- *  3. estructura DisplayManager(FakeContext) + ServerService
- *  4. La emisora ​​envía la carpeta al paquete host.
- *  5. El hilo principal Looper.loop se cuelga;El observador inactivo en segundo plano 15 saldrá sin llamar
+ * 启动序列:
+ *  1. prepareMainLooper(反射,app_process 没有默认 main looper)
+ *  2. Workarounds.apply(ActivityThread 修补,过 framework 的包名/uid 校验)
+ *  3. 构造 DisplayManager(FakeContext) + ServerService
+ *  4. 广播手递手把 binder 发给宿主包
+ *  5. 主线程 Looper.loop 吊住;后台 idle watcher 15s 无调用即退出
  */
 public final class Main {
 
@@ -57,7 +57,7 @@ public final class Main {
         Looper.loop();
     }
 
-    /** app_process El medio ambiente no está preparado main looper,preparación de reflejos(Los nombres de los métodos son diferentes en diferentes versiones.). */
+    /** app_process 环境没有现成 main looper,反射准备(不同版本方法名有差异)。 */
     private static void prepareMainLooper() throws Exception {
         Class<?> looper = Class.forName("android.os.Looper");
         try {
@@ -71,7 +71,7 @@ public final class Main {
         try {
             Log.i(TAG, message);
         } catch (Throwable ignored) {
-            // logcat Permanecer en silencio cuando no esté disponible
+            // logcat 不可用时保持静默
         }
     }
 }

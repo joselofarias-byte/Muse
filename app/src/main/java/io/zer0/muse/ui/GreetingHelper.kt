@@ -8,26 +8,26 @@ import java.time.LocalDate
 import java.time.LocalTime
 
 object GreetingHelper {
-    /** Presupuesto de caracteres de una sola línea para recordatorios personalizados en el área de saludo de la página de inicio. */
+    /** 首页问候区个性化提醒的单行字符预算。 */
     internal const val PERSONALIZED_HINT_MAX_LENGTH = 18
 
-    /** Presupuesto de caracteres de una sola línea para el resumen diario del área de saludo de la página de inicio. */
+    /** 首页问候区每日总结的单行字符预算。 */
     internal const val DAILY_SUMMARY_HINT_MAX_LENGTH = 24
 
     /**
-     * v2.7: Visualización de resumen diario**Suelto**Límite superior de seguridad (objetivo no truncado).
+     * v2.7: 每日总结展示的**宽松**安全上限（非截断目标）。
      *
-     * La capa de presentación ya no limita el resumen a 24 palabras; la longitud está controlada por el lado de la generación. Esto solo evita la salida anormal del modelo.
-     * El artículo extremadamente largo llena la página de inicio y se genera normalmente (≤60 palabras) es mucho menor que este valor.
+     * 展示层不再把总结硬压到 24 字；长度由生成侧控制。这里只防止模型异常输出
+     * 极端长文撑爆首页，正常生成（≤60 字）远低于此值。
      */
     internal const val DAILY_SUMMARY_DISPLAY_SAFETY_LIMIT = 200
 
-    /** v2.3.1: entorno sin recursos(Pruebas unitarias)El patrón de fechas a continuación está detallado con todo detalle. */
+    /** v2.3.1: 无资源环境(单元测试)下的日期模式兜底。 */
     private const val DEFAULT_DATE_PATTERN = "MMM d, EEEE"
 
     /**
-     * I18N-01: Priorizar cadenas de recursos,Sin recursos(Pruebas unitarias)Recurrir a las constantes chinas.
-     * @param args con marcadores de posición de recursos(%1$s espera)Correspondencia uno a uno.
+     * I18N-01: 优先用资源字符串,无资源(单元测试)回退中文常量。
+     * @param args 与资源占位符(%1$s 等)一一对应。
      */
     private fun zh(res: Resources?, id: Int, fallback: String, vararg args: Any): String = if (res != null) {
         res.getString(id, *args)
@@ -37,7 +37,7 @@ object GreetingHelper {
         String.format(fallback, *args)
     }
 
-    // Devolver el saludo según el tiempo
+    // 根据时间返回问候语
     fun getTimeGreeting(hour: Int = LocalTime.now().hour, res: Resources? = null): String {
         val id = when (hour) {
             in 5..10 -> R.string.greeting_morning
@@ -50,54 +50,54 @@ object GreetingHelper {
             res,
             id,
             when (hour) {
-                in 5..10 -> "buenos dias"
-                in 11..13 -> "buen mediodía"
-                in 14..17 -> "buenas tardes"
-                in 18..22 -> "buenas noches"
-                else -> "es tarde en la noche"
+                in 5..10 -> "早上好"
+                in 11..13 -> "中午好"
+                in 14..17 -> "下午好"
+                in 18..22 -> "晚上好"
+                else -> "深夜了"
             },
         )
     }
 
-    // Obtener términos solares (v1.0.72: Calcule por año usando la fórmula de la estrella de longevidad,Tabla alternativa de fechas fijas)
+    // 获取节气（v1.0.72: 用寿星公式按年份计算,替代固定日期表）
     //
-    // fondo:La implementación anterior era una tabla de fechas fijas.(Triple(8,8,"Principios de otoño")),Pero los términos solares son eventos astronómicos.,
-    // Fechas diferentes cada año(2026 El comienzo del otoño está aquí. 8/7,vieja declaración 8/8 → Comentarios de los usuarios"El comienzo del otoño fue ayer.").
+    // 背景:旧实现是固定日期表(Triple(8,8,"立秋")),但节气是天文事件,
+    // 每年日期不同(2026 立秋在 8/7,旧表报 8/8 → 用户反馈"立秋是昨天的事")。
     //
-    // fórmula de longevidad: D = floor(Y*0.2422 + C) - floor(Y/4)
-    //   Y = Últimos dos dígitos del año,[] = Redondear hacia abajo,C = Constantes de siglo para cada término solar.(21 Adecuado durante siglos,Error < 1 dia;
-    //   20 necesidades del siglo C-1)
+    // 寿星公式: D = floor(Y*0.2422 + C) - floor(Y/4)
+    //   Y = 年份后两位,[] = 向下取整,C = 各节气世纪常数(21 世纪适用,误差 < 1 天;
+    //   20 世纪需 C-1)
     fun getSolarTerm(date: LocalDate = LocalDate.now()): String? {
-        // 24 Términos solares constante de siglo(orden: 1yue xiaohan/Mucho frío...muchas nevadas en diciembre/solsticio de invierno)
+        // 24 节气世纪常数(顺序: 1月小寒/大寒 ... 12月大雪/冬至)
         val cValues = doubleArrayOf(
-            5.4055, 20.12, // 1mes
-            3.87, 18.73, // 2mes
-            5.63, 20.646, // 3mes
-            4.81, 20.1, // 4mes
-            5.52, 21.04, // 5mes
-            5.678, 21.37, // 6mes
-            7.108, 22.83, // 7mes
-            7.5, 23.13, // 8mes
-            7.646, 23.042, // 9mes
-            8.318, 23.438, // 10mes
-            7.438, 22.36, // 11mes
-            7.18, 21.94, // 12mes
+            5.4055, 20.12, // 1月
+            3.87, 18.73, // 2月
+            5.63, 20.646, // 3月
+            4.81, 20.1, // 4月
+            5.52, 21.04, // 5月
+            5.678, 21.37, // 6月
+            7.108, 22.83, // 7月
+            7.5, 23.13, // 8月
+            7.646, 23.042, // 9月
+            8.318, 23.438, // 10月
+            7.438, 22.36, // 11月
+            7.18, 21.94, // 12月
         )
         val termNames = listOf(
-            "osamu", "gran frio", "Principio de primavera", "lluvia", "Despertar de los insectos", "equinoccio",
-            "Qingming", "Guyu", "Principio de verano", "Xiaoman", "miscanto", "solsticio de verano",
-            "Xiaoshu", "Gran calor", "Principios de otoño", "Fin del calor del verano", "rocío blanco", "equinoccio de otoño",
-            "rocio frio", "escarcha", "Principio del invierno", "Xiaoxue", "fuertes nevadas", "solsticio de invierno",
+            "小寒", "大寒", "立春", "雨水", "惊蛰", "春分",
+            "清明", "谷雨", "立夏", "小满", "芒种", "夏至",
+            "小暑", "大暑", "立秋", "处暑", "白露", "秋分",
+            "寒露", "霜降", "立冬", "小雪", "大雪", "冬至",
         )
 
-        /** fórmula de longevidad: Un determinado término solar en un determinado año.(índice 0-23)¿En qué número cae? */
+        /** 寿星公式: 某年某节气(索引 0-23)落在几号。 */
         fun solarTermDay(year: Int, termIndex: Int): Int {
             val y = (year % 100).toDouble()
-            val centuryAdj = if (year in 1900..1999) 1.0 else 0.0 // 20 siglo C-1
+            val centuryAdj = if (year in 1900..1999) 1.0 else 0.0 // 20 世纪 C-1
             return (Math.floor(y * 0.2422 + cValues[termIndex] - centuryAdj) - Math.floor(y / 4.0)).toInt()
         }
 
-        /** El término solar nombre de un día determinado.(Sin reglas null). */
+        /** 某天命中的节气名(无则 null)。 */
         fun termFor(d: LocalDate): String? {
             for (idx in termNames.indices) {
                 if (idx / 2 + 1 != d.monthValue) continue
@@ -106,46 +106,46 @@ object GreetingHelper {
             return null
         }
 
-        // Comprobar si hoy o mañana es término solar (avisar con antelación)
-        termFor(date)?.let { return "hoy es $it" }
-        termFor(date.plusDays(1))?.let { return "mañana es $it" }
+        // 检查今天或明天是否是节气（提前告知）
+        termFor(date)?.let { return "今天是$it" }
+        termFor(date.plusDays(1))?.let { return "明天是$it" }
         return null
     }
 
-    // obtener festival
+    // 获取节日
     fun getFestival(date: LocalDate = LocalDate.now()): String? {
         val festivals = listOf(
-            Triple(1, 1, "día de año nuevo"), Triple(2, 14, "dia de san valentin"),
-            Triple(3, 8, "dia de la mujer"), Triple(5, 1, "dia del trabajo"),
-            Triple(5, 4, "dia de la juventud"), Triple(6, 1, "dia del niño"),
-            Triple(7, 1, "Día de la fundación del partido"), Triple(8, 1, "dia del ejercito"),
-            Triple(9, 10, "dia del maestro"), Triple(10, 1, "dia nacional"),
-            Triple(12, 25, "navidad"),
+            Triple(1, 1, "元旦"), Triple(2, 14, "情人节"),
+            Triple(3, 8, "妇女节"), Triple(5, 1, "劳动节"),
+            Triple(5, 4, "青年节"), Triple(6, 1, "儿童节"),
+            Triple(7, 1, "建党节"), Triple(8, 1, "建军节"),
+            Triple(9, 10, "教师节"), Triple(10, 1, "国庆节"),
+            Triple(12, 25, "圣诞节"),
         )
         val today = festivals.firstOrNull { it.first == date.monthValue && it.second == date.dayOfMonth }
-        if (today != null) return "hoy es ${today.third}"
+        if (today != null) return "今天是${today.third}"
         val tomorrow = date.plusDays(1)
         val tmr = festivals.firstOrNull { it.first == tomorrow.monthValue && it.second == tomorrow.dayOfMonth }
-        if (tmr != null) return "mañana es ${tmr.third}"
+        if (tmr != null) return "明天是${tmr.third}"
         return null
     }
 
     /**
-     * Palabras clave de eventos recientes — Los aciertos en la memoria de estas palabras se tratarán como"eventos recientes"(examen/viajar/reuniones, etcétera).
-     * Haga coincidir el campo de tiempo de la memoria después del golpe (mañana/pasado mañana/3 En unos días) genera recordatorios personalizados.
+     * 近期事项关键词 — 命中这些词的记忆会被视为"近期事件"（考试/出行/会议等）。
+     * 命中后配合记忆的 time 字段（明天/后天/3 天内）生成个性化提醒。
      */
     private val EVENT_KEYWORDS = listOf(
-        "examen", "Examen de ingreso a posgrado", "examen de ingreso a la universidad", "Fin del plazo", "defensa", "entrevista",
-        "vuelos", "tren", "tren de alta velocidad", "avión", "boletos aéreos", "poner en marcha", "viaje de regreso", "viaje de negocios", "viajar", "viajar",
-        "reunión", "reunión", "informe", "Fecha límite", "Regístrate", "Enviar",
-        "Examen físico", "Visita de seguimiento", "Revisión", "cirugia", "conseguir medicina",
-        "reembolso", "pagar el alquiler", "pagar", "deadline", "DDL",
-        "cumpleaños", "aniversario", "citas", "fiesta", "boda",
+        "考试", "考研", "高考", "期末", "答辩", "面试",
+        "航班", "火车", "高铁", "飞机", "机票", "出发", "回程", "出差", "旅行", "旅游",
+        "会议", "开会", "报告", "截止", "报名", "提交",
+        "体检", "复诊", "复查", "手术", "取药",
+        "还款", "交租", "缴费", "deadline", "DDL",
+        "生日", "纪念日", "约会", "聚会", "婚礼",
     )
 
     /**
-     * Seleccionar candidatos para eventos recientes(Visitas de palabras clave en los próximos 1 a 3 días),Devuelve la lista de texto de materia original.
-     * Para que LLM lo use como entrada al generar recordatorios personalizados;Si no hay candidatos, se devuelve una lista vacía.
+     * 筛选近期事项候选(未来 1-3 天内、关键词命中),返回原始事项文本列表。
+     * 供 LLM 生成个性化提醒时作为输入;无候选返回空列表。
      */
     fun recentEvents(facts: List<FactEntity>, today: LocalDate = LocalDate.now()): List<String> {
         if (facts.isEmpty()) return emptyList()
@@ -155,14 +155,14 @@ object GreetingHelper {
             val time = fact.time ?: continue
             if (!EVENT_KEYWORDS.any { text.contains(it) }) continue
             val eventDate = runCatching { LocalDate.parse(time.substringBefore("T")) }
-                .onFailure { Logger.w("GreetingHelper", "Ignorar campos de tiempo de memoria no resueltos", it) }
+                .onFailure { Logger.w("GreetingHelper", "忽略无法解析的记忆时间字段", it) }
                 .getOrNull() ?: continue
             val diff = java.time.temporal.ChronoUnit.DAYS.between(today, eventDate)
             if (diff !in 1..3) continue
             val whenText = when (diff) {
-                1L -> "mañana"
-                2L -> "pasado mañana"
-                else -> "${diff}reina del cielo"
+                1L -> "明天"
+                2L -> "后天"
+                else -> "${diff}天后"
             }
             events += "$whenText$text"
         }
@@ -170,81 +170,81 @@ object GreetingHelper {
     }
 
     /**
-     * Recupera recordatorios personalizados (cumpleaños, eventos recientes) de la memoria.
+     * 从记忆中提取个性化提示（生日、近期事项）。
      *
-     * Prioridad: mañana > pasado mañana > 3 en unos días. Se toma el primero con la misma prioridad.
-     * Las propinas devueltas han sido truncadas por el presupuesto de una sola línea de la página de inicio (≤ 18 palabras).
+     * 优先级：明天 > 后天 > 3 天内。同一优先级取第一条。
+     * 返回的提示已按首页单行预算截断（≤ 18 字）。
      */
     fun getMemoryHint(facts: List<FactEntity>, today: LocalDate = LocalDate.now(), res: Resources? = null): String? {
         if (facts.isEmpty()) return null
         var best: Pair<Int, String>? = null // (diffDays, hint)
         for (fact in facts) {
             val text = fact.fact ?: continue
-            // Comprobar fecha de nacimiento (admite"El cumpleaños es en el mes X.Xdia")
-            if (text.contains("cumpleaños") || text.contains("nacido")) {
-                val dateMatch = Regex("""(\d{1,2})[/-](\d{1,2})""").find(text)
+            // 检查生日（支持"生日是 X月X日"）
+            if (text.contains("生日") || text.contains("出生")) {
+                val dateMatch = Regex("""(\d{1,2})[月/-](\d{1,2})""").find(text)
                 if (dateMatch != null) {
                     val month = dateMatch.groupValues[1].toIntOrNull() ?: continue
                     val day = dateMatch.groupValues[2].toIntOrNull() ?: continue
-                    // Reparación de auditoría (2.2): cita ilegal(Como por ejemplo"13mes45dia")Lanzar DateTimeException y bloquear;
-                    // Esta función debe ejecutarse en la página de guía de sesión vacía.,La memoria colapsará si contiene dicho texto.
+                    // 审计修复 (2.2): 非法日期(如"13月45日")抛 DateTimeException 崩溃;
+                    // 空会话引导页必执行本函数,记忆含此类文本即崩。
                     if (month !in 1..12 || day !in 1..31) continue
                     val birthdayThisYear = runCatching { LocalDate.of(today.year, month, day) }.getOrNull() ?: continue
                     val diff = java.time.temporal.ChronoUnit.DAYS.between(today, birthdayThisYear)
-                    // I18N-01: Recursos recordatorios,Prueba de respaldo al chino.
+                    // I18N-01: 提示语走资源,测试回退中文。
                     val hint = when {
-                        diff == 0L -> zh(res, R.string.greeting_today_birthday, "hoy es cumpleaños")
-                        diff == 1L -> zh(res, R.string.greeting_tomorrow_birthday, "mañana es cumpleaños")
-                        diff in 2..7L -> zh(res, R.string.greeting_days_birthday, "%1\$des el cumpleaños de la reina", diff)
+                        diff == 0L -> zh(res, R.string.greeting_today_birthday, "今天是生日")
+                        diff == 1L -> zh(res, R.string.greeting_tomorrow_birthday, "明天是生日")
+                        diff in 2..7L -> zh(res, R.string.greeting_days_birthday, "%1\$d天后是生日", diff)
                         else -> null
                     }
                     if (hint != null) best = betterHint(best, diff, hint)
                 }
                 continue
             }
-            // Eventos recientes: visitas a palabras clave + campo de tiempo dentro de los 3 días
+            // 近期事项：关键词命中 + time 字段在 3 天内
             if (EVENT_KEYWORDS.any { text.contains(it) }) {
                 val time = fact.time
                 if (time == null) continue
                 val eventDate = runCatching { LocalDate.parse(time.substringBefore("T")) }
-                    .onFailure { Logger.w("GreetingHelper", "Ignorar campos de tiempo de memoria no resueltos", it) }
+                    .onFailure { Logger.w("GreetingHelper", "忽略无法解析的记忆时间字段", it) }
                     .getOrNull() ?: continue
                 val diff = java.time.temporal.ChronoUnit.DAYS.between(today, eventDate)
                 if (diff !in 1..3) continue
-                val keyword = EVENT_KEYWORDS.firstOrNull { text.contains(it) } ?: "cosa"
+                val keyword = EVENT_KEYWORDS.firstOrNull { text.contains(it) } ?: "事"
                 val hint = when (diff) {
-                    1L -> zh(res, R.string.greeting_tomorrow_event, "habrá mañana%1\$s:%2\$s", keyword, text.take(16))
-                    else -> zh(res, R.string.greeting_days_event, "%1\$dEn unos días%2\$s:%3\$s", diff, keyword, text.take(14))
+                    1L -> zh(res, R.string.greeting_tomorrow_event, "明天有%1\$s：%2\$s", keyword, text.take(16))
+                    else -> zh(res, R.string.greeting_days_event, "%1\$d天内有%2\$s：%3\$s", diff, keyword, text.take(14))
                 }
                 best = betterHint(best, diff, hint)
             }
         }
         return best?.second
-            ?.replace("Usuario", "tu")
+            ?.replace("用户", "你")
             ?.let { compactGreetingText(it, PERSONALIZED_HINT_MAX_LENGTH) }
     }
 
     /**
-     * Condense el texto del modelo, la caché o la regla en un mensaje de una sola línea que se puede utilizar en el área de saludo de la página de inicio.
+     * 将模型、缓存或规则文本压缩成首页问候区可用的单行提示。
      *
-     * Las palabras rápidas y los maxTokens son solo restricciones suaves,Es posible que las cachés antiguas o los proveedores de excepciones aún devuelvan texto largo,
-     * Por lo tanto, se debe implementar una normalización uniforme y un límite de longitud estricto antes de la visualización.
+     * 提示词与 maxTokens 只是软约束,旧缓存或异常 Provider 仍可能返回长文本,
+     * 因此展示前必须统一归一化并执行硬长度上限。
      */
     internal fun compactGreetingText(text: String?, maxChars: Int): String? {
         if (text.isNullOrBlank() || maxChars <= 0) return null
-        // UI-FIX: El mensaje de versión de las reglas vinculará los hechos al texto original."(tiempo:…)"luchar juntos,Retire esta nota final antes de mostrarla
-        // No se trata solo de metadatos internos, sino que también es fácil llenar toda la línea, lo que hace que parezca que está truncada.
-        // Nota:Para palabras \u escapar,Evite que las puertas chinas codificadas traten las expresiones regulares como una copia visible para el usuario.
+        // UI-FIX: 规则版提示会把事实原文连"(时间:…)"一起拼进来,展示前剥掉这段尾注
+        // 既是内部元数据、又容易把整行挤满导致看起来像被截断。
+        // 注:字样用 \u 转义,避免中文硬编码闸门把正则当成用户可见文案。
         val normalized = text
-            .replace(Regex("[((]\\s*\\u65F6\\u95F4\\s*[::][^))]*[))]"), " ")
+            .replace(Regex("[（(]\\s*\\u65F6\\u95F4\\s*[:：][^）)]*[）)]"), " ")
             .replace(Regex("\\s+"), " ")
             .trim()
         val compacted = normalized
             .take(maxChars)
-            .trimEnd(' ', ',', ',', '.', '.', ';', ';', ':', ':')
+            .trimEnd(' ', ',', '，', '.', '。', ';', '；', ':', '：')
         if (compacted.isBlank()) return null
-        // v1.0.92: Termine explícitamente con una elipse cuando la longitud sea demasiado larga. — La antigua implementación corta directamente,Comentarios de los usuarios"Visualización siempre incompleta";
-        // mantener la longitud total≤maxChars(take(maxChars-1) + Elipsis).
+        // v1.0.92: 超长时用省略号显式收尾 — 旧实现直接硬切,用户反馈"老是显示不全";
+        // 保持总长≤maxChars(take(maxChars-1) + 省略号)。
         return if (normalized.length > maxChars) {
             compacted.take((maxChars - 1).coerceAtLeast(1)) + "…"
         } else {
@@ -253,16 +253,16 @@ object GreetingHelper {
     }
 
     /**
-     * Normalice el resumen diario del último día y muéstrelo en el área de saludo de la página de inicio.
+     * 将最近一天内的每日总结归一化后展示在首页问候区。
      *
-     * v2.7(Comentarios de los usuarios): No más líneas individuales/Compresión dura de caracteres cortos —— La capa de visualización no se trunca y el texto se ajusta de forma natural.
-     * Organizar hacia abajo (el contenido a continuación se mueve hacia abajo a su vez). La longitud es generada por el lado (DailySummaryService palabra rápida
-     * con maxTokens). Aquí solo hacemos:
-     *  - Elimine las notas finales de metadatos internos (p. ej.“(tiempo:…)”) y espacio en blanco adicional
-     *  - uno**suelto**Límite superior de seguridad (para evitar que el modelo se salga de control y artículos extremadamente largos), que excede con creces la longitud normal de generación
+     * v2.7（用户反馈）：不再做单行/短字符硬压缩 —— 展示层不截断，文本自然换行、
+     * 向下排布（下方内容依次下移）。长度由生成侧（DailySummaryService 的提示词
+     * 与 maxTokens）控制。这里仅做：
+     *  - 去除内部元数据尾注（如“(时间:…)”）与多余空白
+     *  - 一个**宽松的**安全上限（防模型跑飞导致极端长文），远超正常生成长度
      *
-     * El resumen puede generarse en segundo plano, por lo que solo acepte contenido de hoy o de ayer para evitar que los usuarios no lo abran durante unos días.
-     * Todavía veo artículos vencidos después de presentar la solicitud.
+     * 总结可能是在后台生成的，因此只接受今天或昨天的内容，避免用户几天没打开
+     * 应用后仍看到过期事项。
      */
     fun getDailySummaryHint(summary: String?, summaryDate: String?, today: LocalDate = LocalDate.now()): String? {
         if (summary.isNullOrBlank() || summaryDate.isNullOrBlank()) return null
@@ -275,16 +275,16 @@ object GreetingHelper {
     }
 
     /**
-     * v2.7: Sólo normalizar (eliminar notas finales)/en blanco)+ Límite superior de seguridad flexible, sin truncamiento de caracteres cortos.
+     * v2.7: 只做归一化（去尾注/空白）+ 宽松安全上限，不做短字符截断。
      *
-     * con [compactGreetingText](Para mensajes cortos de una sola línea, corte con elipses) Distinguir:
-     * Los resúmenes diarios son textos que se pueden mostrar en varias líneas y no deben acortarse a nivel de presentación.
-     * [safetyLimit] Solo evita que el modelo genere de manera anormal artículos extremadamente largos que abrumarán la página de inicio. La longitud normal es mucho menor que ésta.
+     * 与 [compactGreetingText]（单行短提示用，带省略号硬切）区分：
+     * 每日总结是可多行展示的正文，不应在展示层被切短。
+     * [safetyLimit] 仅防止模型异常输出极端长文撑爆首页，正常长度远低于它。
      */
     internal fun normalizeGreetingText(text: String?, safetyLimit: Int): String? {
         val normalized = text?.takeIf { it.isNotBlank() }?.let { raw ->
             raw
-                .replace(Regex("[((]\\s*\\u65F6\\u95F4\\s*[::][^))]*[))]"), " ")
+                .replace(Regex("[（(]\\s*\\u65F6\\u95F4\\s*[:：][^）)]*[）)]"), " ")
                 .replace(Regex("[ \\t]+"), " ")
                 .replace(Regex("\\n{3,}"), "\n\n")
                 .trim()
@@ -296,45 +296,45 @@ object GreetingHelper {
         }
     }
 
-    /** Sigue siendo más urgente (diff más pequeños) puntas. */
+    /** 保留更紧急（diff 更小）的提示。 */
     private fun betterHint(best: Pair<Int, String>?, diff: Long, hint: String): Pair<Int, String> {
         return if (best == null || diff < best.first) diff.toInt() to hint else best
     }
 
     /**
-     * v2.6.7 fix (AUDIT F8): Solicitar tareas pendientes sin terminar en todas las sesiones (“Aún quedan N sesiones con asuntos pendientes”).
+     * v2.6.7 fix (AUDIT F8): 跨会话未完成待办的提示（“还有 N 个会话留着没做完的事”）。
      *
-     * `SessionTodoRepository` de `sessionsWithOpenItems` / `countSessionsWithOpenItems`
-     * Anteriormente, no hubo ninguna convocatoria para el puesto completo. —— Los datos se guardan pero“Puede recordar proactivamente”El objetivo no fue entregado.
-     * El saludo de la página de inicio es el lugar de entrega de menor costo: sin interrupciones, sin ventanas emergentes y visible para los usuarios tan pronto como lo abren.
+     * `SessionTodoRepository` 的 `sessionsWithOpenItems` / `countSessionsWithOpenItems`
+     * 之前全仓零调用 —— 数据存了但“能主动提醒”的目标没交付。
+     * 首页问候是成本最低的交付位置：不打扰、不弹窗、用户一打开就看得到。
      *
-     * @param openSessionCount Número de sesiones con temas pendientes (0 o un número negativo devuelve nulo)
+     * @param openSessionCount 还有未完成项的会话数（0 或负数返回 null）
      */
     fun getOpenTodoHint(openSessionCount: Int, res: Resources? = null): String? {
         if (openSessionCount <= 0) return null
-        // Sin recursos (prueba unitaria/Devuelve nulo cuando es muy temprano), no hay literales chinos incorporados:
-        // El control de acceso CJK codificado está "sólo hacia abajo pero no hacia arriba". Agregar uno nuevo aquí hará que la deuda aumente.
+        // 无资源（单元测试/极早期）时返回 null，不内置中文字面量：
+        // 硬编码 CJK 门禁是「只降不升」，这里新增一条会造成债增加。
         return res?.getString(R.string.greeting_open_todos, openSessionCount)
     }
 
-    // Indicaciones de memoria (humanizadas)— I18N-01: Recursos de redacción,Prueba de respaldo al chino.
+    // 记忆提示语（人性化）— I18N-01: 文案走资源,测试回退中文。
     fun getMemoryCountText(count: Int, assistantName: String = "Muse", res: Resources? = null): String {
         return when (count) {
-            0 -> zh(res, R.string.greeting_memory_0, "$assistantName No estoy familiarizado contigo todavía", assistantName)
-            in 1..9 -> zh(res, R.string.greeting_memory_few, "$assistantName Conociéndote poco a poco", assistantName)
-            in 10..49 -> zh(res, R.string.greeting_memory_mid, "$assistantName Ya recordado $count Recuerdos, empezando a volverse familiares.", assistantName, count)
-            in 50..99 -> zh(res, R.string.greeting_memory_many, "$assistantName Ya estoy muy familiarizado contigo", assistantName)
-            in 100..199 -> zh(res, R.string.greeting_memory_max, "$assistantName hablarte de todo", assistantName)
-            else -> zh(res, R.string.greeting_memory_huge, "$assistantName Te entiendo mejor que nadie, lo he recordado. $count memoria", assistantName, count)
+            0 -> zh(res, R.string.greeting_memory_0, "$assistantName 还跟你不够熟悉", assistantName)
+            in 1..9 -> zh(res, R.string.greeting_memory_few, "$assistantName 正在慢慢认识你", assistantName)
+            in 10..49 -> zh(res, R.string.greeting_memory_mid, "$assistantName 已经记住了 $count 条记忆，开始熟悉了", assistantName, count)
+            in 50..99 -> zh(res, R.string.greeting_memory_many, "$assistantName 和你已经很熟了", assistantName)
+            in 100..199 -> zh(res, R.string.greeting_memory_max, "$assistantName 和你无话不谈了", assistantName)
+            else -> zh(res, R.string.greeting_memory_huge, "$assistantName 比谁都懂你，已记住 $count 条记忆", assistantName, count)
         }
     }
 
     /**
-     * v2.x: Fila de fecha de inicio(sustituto original"familiaridad"línea de recuento de memoria) — Ejemplo:9mes27día sábado.
+     * v2.x: 首页日期行(替代原"熟悉度"记忆计数行) — 例:9月27日 星期六。
      *
-     * v2.3.1: Patrón de fecha por recurso de cadena [R.string.home_date_pattern] Disponible por idioma
-     * (zh/ja「MmesdJapón EEEE",ko「M월 d일 EEEE”, el resto “MMM d, EEEE"),No más codificación estricta en el código;
-     * Sin recursos(Pruebas unitarias)regresar cuando [DEFAULT_DATE_PATTERN]. Volver a la fecha ISO cuando se produce una excepción de formato.
+     * v2.3.1: 日期模式由字符串资源 [R.string.home_date_pattern] 按语言提供
+     * (zh/ja「M月d日 EEEE」、ko「M월 d일 EEEE」、其余「MMM d, EEEE」),不再在代码里硬编码;
+     * 无资源(单元测试)时退回 [DEFAULT_DATE_PATTERN]。格式化异常时回退 ISO 日期。
      */
     fun getDateLine(date: LocalDate = LocalDate.now(), res: Resources? = null): String {
         val locale = runCatching { res?.configuration?.locales?.get(0) }.getOrNull()
@@ -347,11 +347,11 @@ object GreetingHelper {
     }
 
     /**
-     * Arma el saludo completo.
+     * 组装完整问候语。
      *
-     * Prioridad personalizada: eventos recientes (exámenes) en la memoria/vuelos/reuniones, etc.), utilice únicamente indicaciones de memoria;
-     * Cuando no haya tiempo, entonces sigue los términos solares./Elija uno al azar durante las vacaciones y utilícelo como mensaje general (evite que sea el mismo cada vez).
-     * Control de longitud: sólo se conserva un sufijo y el conjunto ≤ Aproximadamente 28 palabras.
+     * 个性化优先：记忆里有近期事项（考试/航班/会议等）时，只用记忆提示；
+     * 没有时再从节气/节日里随机选一个作为通用信息（避免每次都一样）。
+     * 长度控制：后缀只保留一条，整体 ≤ 约 28 字。
      */
     fun buildGreeting(
         facts: List<FactEntity>,
@@ -361,18 +361,18 @@ object GreetingHelper {
         dailySummaryDate: String? = null,
     ): String {
         val prefix = getTimeGreeting(hour)
-        // 1. Prioridad del resumen diario,Deje que los elementos generados por la noche vayan seguidos de un saludo cuando abra la página de inicio la próxima vez.
+        // 1. 每日总结优先,让晚间生成的事项能在下一次打开首页时接上问候语
         getDailySummaryHint(dailySummary, dailySummaryDate, date)?.let { hint ->
-            return "$prefix,$hint"
+            return "$prefix，$hint"
         }
-        // 2. La memoria indica prioridad (personalizada)
+        // 2. 记忆提示优先（个性化）
         getMemoryHint(facts, date)?.let { hint ->
-            return "$prefix,$hint"
+            return "$prefix，$hint"
         }
-        // 3. Sin consejos personalizados: términos solares/Elija uno al azar durante las vacaciones (la información general se reemplaza al azar)
+        // 3. 无个性化提示：节气/节日随机选一（通用信息随机替换）
         val extras = listOfNotNull(getSolarTerm(date), getFestival(date))
         if (extras.isNotEmpty()) {
-            return "$prefix,${extras.random()}"
+            return "$prefix，${extras.random()}"
         }
         return prefix
     }

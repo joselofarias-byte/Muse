@@ -10,6 +10,7 @@ import io.zer0.ai.core.ProviderType
 import io.zer0.ai.core.UIMessage
 import io.zer0.common.Logger
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -69,48 +70,85 @@ class OpenAIProviderAbortTest {
 
     @Test
     fun `aborting during retry backoff prevents stale EventSource reconnect`() = runBlocking {
-        val firstRequest = CountDownLatch(1)
-        server.delegate.dispatcher = object : Dispatcher() {
-            override fun dispatch(request: mockwebserver3.RecordedRequest): MockResponse {
-                firstRequest.countDown()
-                return MockResponse.Builder()
-                    .code(503)
-                    .clearHeaders()
-                    .addHeader("Content-Type", "text/event-stream")
-                    .body("data: {\"error\":{\"message\":\"temporary\"}}\n\n")
-                    .build()
+        assertAbortDuringRetry()
+    }
+
+    @Test
+    fun `aborting Chat Completions long retry backoff completes promptly`() = runBlocking {
+        assertAbortDuringRetry(abortAtBackoff = true)
+    }
+
+    @Test
+    fun `aborting Responses long retry backoff completes promptly`() = runBlocking {
+        assertAbortDuringRetry(abortAtBackoff = true, useResponsesApi = true)
+    }
+
+    private suspend fun assertAbortDuringRetry(abortAtBackoff: Boolean = false, useResponsesApi: Boolean = false) =
+        kotlinx.coroutines.coroutineScope {
+            val firstRequest = CountDownLatch(1)
+            server.delegate.dispatcher = object : Dispatcher() {
+                override fun dispatch(request: mockwebserver3.RecordedRequest): MockResponse {
+                    firstRequest.countDown()
+                    return MockResponse.Builder()
+                        .code(if (abortAtBackoff) 429 else 503)
+                        .clearHeaders()
+                        .addHeader("Content-Type", "text/event-stream")
+                        .addHeader("Retry-After", "60")
+                        .body("data: {\"error\":{\"message\":\"temporary\"}}\n\n")
+                        .build()
+                }
+            }
+
+            val signal = AbortSignal()
+            val request = ChatRequest(
+                messages = listOf(UIMessage(role = MessageRole.USER, content = "retry then cancel")),
+                model = Model(id = "test-model", providerId = "openai-test"),
+                abortSignal = signal,
+            )
+            val provider = OpenAIProvider(
+                ProviderConfig(
+                    id = "openai-test",
+                    displayName = "OpenAI Test",
+                    type = ProviderType.OPENAI,
+                    baseUrl = server.url("/v1").toString(),
+                    apiKey = "sk-test",
+                    specific = io.zer0.ai.core.ProviderSpecificConfig.OpenAI(useResponseApi = useResponsesApi),
+                ),
+            )
+
+            val backoffStarted = CountDownLatch(1)
+            val previousSink = Logger.sink
+            if (abortAtBackoff) {
+                Logger.enabled = true
+                Logger.sink = { _, tag, message, _ ->
+                    if (tag == "OpenAIProvider" && message.contains("onFailure, retry 1/")) {
+                        signal.abort()
+                        backoffStarted.countDown()
+                    }
+                }
+            }
+            val collector = launch(Dispatchers.IO) {
+                provider.streamChat(request).collect()
+            }
+            try {
+                assertTrue("first retryable response should arrive", firstRequest.await(5, TimeUnit.SECONDS))
+                if (abortAtBackoff) {
+                    assertTrue("retry backoff should start", backoffStarted.await(5, TimeUnit.SECONDS))
+                } else {
+                    signal.abort()
+                }
+                withTimeout(if (abortAtBackoff) 2_000 else 5_000) { collector.join() }
+                delay(1_500)
+                assertEquals("cancelled retry must not reconnect", 1, server.requestCount)
+                assertEquals("abort listener must be removed", 0, signal.listenerCount)
+            } finally {
+                collector.cancel()
+                if (abortAtBackoff) {
+                    Logger.sink = previousSink
+                    Logger.enabled = false
+                }
             }
         }
-
-        val signal = AbortSignal()
-        val request = ChatRequest(
-            messages = listOf(UIMessage(role = MessageRole.USER, content = "retry then cancel")),
-            model = Model(id = "test-model", providerId = "openai-test"),
-            abortSignal = signal,
-        )
-        val provider = OpenAIProvider(
-            ProviderConfig(
-                id = "openai-test",
-                displayName = "OpenAI Test",
-                type = ProviderType.OPENAI,
-                baseUrl = server.url("/v1").toString(),
-                apiKey = "sk-test",
-            ),
-        )
-
-        val collector = launch(Dispatchers.IO) {
-            provider.streamChat(request).collect()
-        }
-        assertTrue("first retryable response should arrive", firstRequest.await(5, TimeUnit.SECONDS))
-        signal.abort()
-
-        withTimeout(20_000) { collector.join() }
-        // The stale onFailure/onClosed callback from the cancelled EventSource must not
-        // schedule the retry that was pending after the 503 response.
-        Thread.sleep(1_500)
-        assertEquals("cancelled retry must not reconnect", 1, server.requestCount)
-        assertEquals("abort listener must be removed", 0, signal.listenerCount)
-    }
 
     private suspend fun assertAbortClosesLongSse(useResponsesApi: Boolean, cancelCollector: Boolean = false) =
         kotlinx.coroutines.coroutineScope {
@@ -154,7 +192,7 @@ class OpenAIProviderAbortTest {
                 signal.abort()
             }
 
-            withTimeout(20_000) { collector.join() }
+            withTimeout(5_000) { collector.join() }
             assertEquals("collector cancellation must not mutate the caller's signal", !cancelCollector, signal.aborted)
             assertTrue(
                 "server must observe the client closing the long SSE socket",

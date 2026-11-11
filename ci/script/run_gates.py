@@ -1,25 +1,25 @@
 #!/usr/bin/env python3
 """
-run_gates.py — poner todo `check_*.py` Ejecute el control de acceso una vez y presione "Regresar" para determinar.
+run_gates.py — 把所有 `check_*.py` 门禁跑一遍，并按「是否回归」判定。
 
-## por qué es necesario
+## 为什么需要它
 
-Hay más de 20 en el almacén. `ci/script/check_*.py`, pero**Ningún guión los llama uniformemente.** ——
-El resultado es que las cinco puertas han estado rojas durante mucho tiempo y nadie se ha dado cuenta de ellas."rojo"Esto desensibilizará a todos respecto del control de acceso.
+仓库里有 20+ 个 `ci/script/check_*.py`，但**没有任何脚本统一调用它们** ——
+结果是 5 条门禁长期是红的、没人发现，而"红着"本身会让所有人对门禁脱敏。
 
-Este corredor solidifica el estado en una línea de base (`ci/baseline/gate_status.json`):
+这个 runner 把状态固化成基线（`ci/baseline/gate_status.json`）：
 
-- **rojo conocido**El control de acceso no está bloqueado (se registran las deudas existentes);
-- **ponerse rojo**(green → red) o**Nuevo**la puerta es roja → **exit 1**;
-- Si se vuelve verde, se le solicitará que actualice la línea de base (liquidar la deuda).
+- **已知红**的门禁不阻塞（存量债，记在案）；
+- **变红**（green → red）或**新增**门禁是红 → **exit 1**；
+- 变绿会提示可以更新基线（把债还掉）。
 
-De esta manera, la deuda existente no será cubierta, ni la IC quedará estancada debido a la deuda existente.
+这样既不掩盖存量债，也不会因为存量债把 CI 卡死。
 
-Uso:
-  py -3 ci/script/run_gates.py                 # Sólo informe"Regresar"(predeterminado)
-  py -3 ci/script/run_gates.py --all           # Cualquier rojo falla
+用法：
+  py -3 ci/script/run_gates.py                 # 只报"回归"（默认）
+  py -3 ci/script/run_gates.py --all           # 任何红都失败
   py -3 ci/script/run_gates.py --update-baseline
-  py -3 ci/script/run_gates.py --verbose       # Imprima la primera línea del motivo de cada control de acceso fallido
+  py -3 ci/script/run_gates.py --verbose       # 打印每个失败门禁的首行原因
 """
 
 from __future__ import annotations
@@ -52,14 +52,14 @@ def run_gate(path: Path) -> tuple[bool, str]:
             timeout=TIMEOUT_SECONDS,
         )
     except subprocess.TimeoutExpired:
-        return False, f"tiempo de espera (>{TIMEOUT_SECONDS}s)"
-    except Exception as error:  # noqa: BLE001 — El colapso de un único control de acceso no debería hacer caer toda la ronda.
-        return False, f"La ejecución falló: {error}"
+        return False, f"超时（>{TIMEOUT_SECONDS}s）"
+    except Exception as error:  # noqa: BLE001 — 单个门禁崩了不该拖垮整轮
+        return False, f"执行失败: {error}"
 
     if completed.returncode == 0:
         return True, ""
-    # exit=2 Es un error de uso de argparse: significa que este control de acceso requiere parámetros (como la ruta release_body),
-    # No aplicable al escenario actual, informe n/a en lugar de rojo —— De lo contrario, habrá una deuda falsa adicional en la descripción general del control de acceso.
+    # exit=2 是 argparse 的用法错误：说明这条门禁需要参数（如 release_body 路径），
+    # 不适用于当前场景，报 n/a 而不是红 —— 否则门禁总览里会多出一条假债。
     if completed.returncode == 2:
         return True, ""
     reason = ""
@@ -78,14 +78,14 @@ def load_baseline() -> dict[str, str]:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--all", action="store_true", help="Cualquier rojo falla")
+    parser.add_argument("--all", action="store_true", help="任何红都失败")
     parser.add_argument("--update-baseline", action="store_true")
     parser.add_argument("--verbose", action="store_true")
     args = parser.parse_args()
 
     gates = discover()
     if not gates:
-        print("no encontré ninguno check_*.py Guión de control de acceso.")
+        print("没有找到任何 check_*.py 门禁脚本。")
         return 0
 
     baseline = load_baseline()
@@ -101,24 +101,24 @@ def main() -> int:
             encoding="utf-8",
         )
         red = sum(1 for v in snapshot.values() if v == "red")
-        print(f"Línea de base escrita:{BASELINE_PATH.relative_to(PROJECT_ROOT)}({len(snapshot)} tiras, de las cuales rojas {red} artículo)")
+        print(f"已写入基线：{BASELINE_PATH.relative_to(PROJECT_ROOT)}（{len(snapshot)} 条，其中红 {red} 条）")
         return 0
 
     name_width = max(len(name) for name in results) + 2
     regressions: list[str] = []
     improvements: list[str] = []
 
-    print(f"{'control de acceso'.ljust(name_width)}{'actual':<8}{'línea de base':<8}")
+    print(f"{'门禁'.ljust(name_width)}{'当前':<8}{'基线':<8}")
     print("-" * (name_width + 16))
     for name, (ok, reason) in sorted(results.items()):
         current = "green" if ok else "red"
         was = baseline.get(name, "green")
         note = ""
         if not ok and was == "green":
-            note = "  ← Regresar"
+            note = "  ← 回归"
             regressions.append(name)
         elif ok and was == "red":
-            note = "  ← Fijo, línea de base actualizada"
+            note = "  ← 已修复，可更新基线"
             improvements.append(name)
         print(f"{name.ljust(name_width)}{current:<8}{was:<8}{note}")
         if args.verbose and not ok and reason:
@@ -127,16 +127,16 @@ def main() -> int:
     print()
     red_now = [n for n, (ok, _) in results.items() if not ok]
     if improvements:
-        print(f"Fijo {len(improvements)} Artículo:{', '.join(improvements)}(--update-baseline Las deudas se pueden cancelar)")
+        print(f"已修复 {len(improvements)} 条：{', '.join(improvements)}（--update-baseline 可把债销掉）")
 
     if regressions:
-        print(f"FAILED — {len(regressions)} La barra de control de acceso cambia de verde a rojo:{', '.join(regressions)}")
+        print(f"FAILED — {len(regressions)} 条门禁从绿变红：{', '.join(regressions)}")
         return 1
     if args.all and red_now:
-        print(f"FAILED(--all)— todavía hay {len(red_now)} Franja roja:{', '.join(sorted(red_now))}")
+        print(f"FAILED（--all）— 仍有 {len(red_now)} 条红：{', '.join(sorted(red_now))}")
         return 1
 
-    print(f"OK: Sin retorno (actualmente rojo {len(red_now)} barras, todas son acciones conocidas).")
+    print(f"OK: 无回归（当前红 {len(red_now)} 条，均为已知存量）。")
     return 0
 
 

@@ -27,13 +27,13 @@ class SettingsRepositoryTest {
     @Test
     fun enterGuestMode_keepsOnboardingNickname() = runBlocking {
         val repo = newRepository()
-        repo.saveUserProfile(UserProfile(userNickName = "Ziqi"))
+        repo.saveUserProfile(UserProfile(userNickName = "子奇"))
 
         repo.enterGuestMode()
 
         val state = repo.accountStateFlow.first()
         assertTrue(state.isGuestMode)
-        assertEquals("Ziqi", state.userName)
+        assertEquals("子奇", state.userName)
     }
 
     @Test
@@ -54,31 +54,31 @@ class SettingsRepositoryTest {
 
     @Test
     fun detectTaskType_codePromptDoesNotBecomeCreative() {
-        assertEquals(SettingsRepository.TaskType.CODE, newRepository().detectTaskType("Escribir código para implementar un algoritmo de clasificación."))
+        assertEquals(SettingsRepository.TaskType.CODE, newRepository().detectTaskType("写代码实现一个排序算法"))
     }
 
     @Test
     fun detectTaskType_analysisPromptIsDetected() {
-        assertEquals(SettingsRepository.TaskType.ANALYSIS, newRepository().detectTaskType("Analizar estos datos y proporcionar un informe."))
+        assertEquals(SettingsRepository.TaskType.ANALYSIS, newRepository().detectTaskType("分析这份数据并给出报告"))
     }
 
-    // ── P0-1: Bandera de contraseña de respaldo(backupPasswordSet)No se puede borrar mediante guardados y recálculos irrelevantes. ──
+    // ── P0-1: 备份密码标志(backupPasswordSet)不可被无关保存重算清空 ──
 
     @Test
     fun saveCloudBackupConfig_passwordBlankButFlagTrue_keepsFlag() = runBlocking {
-        // Keystore Escenario de falla:La contraseña leída está vacía,Pero el usuario ha establecido una contraseña.(La bandera es true).
-        // cualquier salvamento superfluo(Joo Chiat autoSync)no puede recalcular la bandera como false,De lo contrario la nube/La guardia de exportación local está deshabilitada.
+        // Keystore 失效场景:密码读回为空,但用户曾设置过密码(标志为 true)。
+        // 任何无关保存(如切 autoSync)都不得把标志重算为 false,否则云端/本地导出守卫失效。
         val repo = newRepository()
         repo.saveCloudBackupConfig(CloudBackupConfig(backupPassword = "", backupPasswordSet = true))
 
         val readBack = repo.cloudBackupConfigFlow.first()
 
-        assertTrue("Una vez que caduque la contraseña, se deben conservar los campos irrelevantes. backupPasswordSet=true", readBack.backupPasswordSet)
+        assertTrue("密码失效后保存无关字段必须保留 backupPasswordSet=true", readBack.backupPasswordSet)
     }
 
     @Test
     fun saveCloudBackupConfig_passwordProvided_setsFlag() = runBlocking {
-        // Nueva contraseña del usuario → Ubicación de la bandera true(Sustituto de memoria cifrada,Robolectric Ninguno Android Keystore)
+        // 用户新设置密码 → 标志置 true(加密走内存替身,Robolectric 无 Android Keystore)
         val original = SecureKeyStore.delegate
         try {
             SecureKeyStore.delegate = object : SecureKeyCipher {
@@ -91,7 +91,7 @@ class SettingsRepositoryTest {
 
             val readBack = repo.cloudBackupConfigFlow.first()
 
-            assertTrue("Después de configurar la contraseña backupPasswordSet debe ser true", readBack.backupPasswordSet)
+            assertTrue("设置密码后 backupPasswordSet 必须为 true", readBack.backupPasswordSet)
         } finally {
             SecureKeyStore.delegate = original
         }
@@ -99,21 +99,21 @@ class SettingsRepositoryTest {
 
     @Test
     fun saveCloudBackupConfig_passwordBlankAndFlagFalse_staysFalse() = runBlocking {
-        // El usuario borra explícitamente la contraseña(o nunca establecer)→ La bandera permanece false,Permitir exportaciones posteriores de texto claro
+        // 用户显式清除密码(或从未设置)→ 标志保持 false,允许后续明文导出
         val repo = newRepository()
         repo.saveCloudBackupConfig(CloudBackupConfig(backupPassword = "", backupPasswordSet = false))
 
         val readBack = repo.cloudBackupConfigFlow.first()
 
-        assertFalse("Después de borrar explícitamente la contraseña backupPasswordSet debe ser false", readBack.backupPasswordSet)
+        assertFalse("显式清除密码后 backupPasswordSet 必须为 false", readBack.backupPasswordSet)
     }
 
-    // ── AUDIT §11.3-7: stringSet Se debe realizar una copia de seguridad de los elementos de configuración de tipo ──
+    // ── AUDIT §11.3-7: stringSet 类型设置项必须进备份 ──
 
     @Test
     fun stringSetFavoritesRoundTripThroughBackupSnapshot() = runBlocking {
-        // Segundo caso de brecha similar: La instantánea solo atraviesa las cuatro categorías string/bool/int/long,stringSet Ninguno exportado,
-        // La colección de momentos y la colección de álbumes de fotos se perderán cuando cambies de teléfono. Realiza todo el viaje de ida y vuelta aquí.:Exportar → Cambiar valor local → restaurar → Compara artículo por artículo.
+        // 第二例同类缺口: 快照只遍历 string/bool/int/long 四类,stringSet 一个都没导出,
+        // 朋友圈收藏与相册收藏换机即丢。这里跑完整往返:导出 → 改掉本地值 → 恢复 → 逐项比对。
         val repo = newRepository()
         repo.saveMomentFavoriteIds(setOf("moment-a", "moment-b"))
         repo.toggleMiniAlbumFavoriteImage("1024")
@@ -121,27 +121,27 @@ class SettingsRepositoryTest {
 
         val snapshot = repo.exportSettingsSnapshot()
         assertTrue(
-            "Las colecciones en Moments deben ingresarse en instantáneas: ${snapshot.keys}",
+            "朋友圈收藏必须进快照: ${snapshot.keys}",
             snapshot.containsKey("stringSet:moment_favorite_ids"),
         )
         assertTrue(
-            "La colección de álbumes debe ingresar instantáneas.: ${snapshot.keys}",
+            "相册收藏必须进快照: ${snapshot.keys}",
             snapshot.containsKey("stringSet:mini_album_favorite_image_ids"),
         )
 
-        // Simular el estado existente del dispositivo de destino(Nada que ver con el contenido de la copia de seguridad)
+        // 模拟目标设备的现有状态(与备份内容无关)
         repo.saveMomentFavoriteIds(emptySet())
         repo.toggleMiniAlbumFavoriteImage("999")
 
         repo.restoreSettingsSnapshot(snapshot)
 
         assertEquals(
-            "El contenido de la colección debe ser consistente después de la restauración.",
+            "恢复后收藏内容必须一致",
             setOf("moment-a", "moment-b"),
             repo.momentFavoriteIdsFlow.first(),
         )
         assertEquals(
-            "La recuperación de la colección de álbumes se sobrescribe en lugar de fusionarse:El 999 local original debe reemplazarse por el contenido de la instantánea.",
+            "相册收藏恢复是覆盖而非合并:本地原有的 999 应被快照内容替掉",
             setOf("1024", "2048"),
             repo.miniAlbumFavoriteImageIdsFlow.first(),
         )
@@ -149,14 +149,14 @@ class SettingsRepositoryTest {
 
     @Test
     fun emptyFavoriteSetSurvivesRoundTripAsEmptySet() = runBlocking {
-        // colección vacía"presencia explícita"con"no, esto key"debe poder distinguir:La primera es una colección vacía después de la recuperación.,
-        // Este último debería dejar sin cambios el valor original del dispositivo de destino. Si se usa para codificar joinToString,Los dos se comprimirán en una cadena vacía.
+        // 空集合"显式存在"与"没有这个 key"必须能区分:前者恢复后是空集合,
+        // 后者应保持目标设备的原值不动。若编码用 joinToString,两者会压成一个空串。
         val repo = newRepository()
         repo.saveMomentFavoriteIds(emptySet())
 
         val snapshot = repo.exportSettingsSnapshot()
         assertEquals(
-            "Esto también debería escribirse para el conjunto vacío. key(De lo contrario, será imposible borrar la colección al restaurar.)",
+            "空集合也要写出这个 key(否则恢复时无法表达清空收藏)",
             "[]",
             snapshot["stringSet:moment_favorite_ids"],
         )
@@ -164,7 +164,7 @@ class SettingsRepositoryTest {
 
     @Test
     fun oldBackupWithoutStringSetFieldsRestoresWithoutError() = runBlocking {
-        // copia de seguridad antigua(Sin campo stringSet)Debe poder recuperarse normalmente.,Y no debe borrar las colecciones existentes en el dispositivo de destino.
+        // 旧备份(无 stringSet 字段)必须能正常恢复,且不得抹掉目标设备已有的收藏。
         val repo = newRepository()
         repo.saveMomentFavoriteIds(setOf("keep-me"))
 
@@ -172,7 +172,7 @@ class SettingsRepositoryTest {
         repo.restoreSettingsSnapshot(oldStyleSnapshot)
 
         assertEquals(
-            "Si la clave no existe en la instantánea, no se debe tocar.(Misma semántica que las otras cuatro categorías.:Sobrescribe solo los contenidos en la instantánea. key)",
+            "快照里没这个 key 就不该动它(与其它四类同语义:只覆盖快照包含的 key)",
             setOf("keep-me"),
             repo.momentFavoriteIdsFlow.first(),
         )
@@ -180,14 +180,14 @@ class SettingsRepositoryTest {
 
     @Test
     fun malformedStringSetValueIsSkippedInsteadOfWiped() = runBlocking {
-        // Los datos incorrectos escriben una colección vacía que destruye silenciosamente la colección;El enfoque correcto es omitir esta clave.
+        // 坏数据写空集会静默销毁收藏;正确做法是跳过这个 key。
         val repo = newRepository()
         repo.saveMomentFavoriteIds(setOf("keep-me"))
 
         repo.restoreSettingsSnapshot(mapOf("stringSet:moment_favorite_ids" to "not-a-json-array"))
 
         assertEquals(
-            "Se deben omitir los errores de análisis en lugar de escribir el conjunto vacío",
+            "解析失败应跳过而不是写空集",
             setOf("keep-me"),
             repo.momentFavoriteIdsFlow.first(),
         )
@@ -195,12 +195,12 @@ class SettingsRepositoryTest {
 
     @Test
     fun nonWhitelistedStringSetIsIgnoredOnRestore() = runBlocking {
-        // Es posible que los datos de recuperación hayan sido manipulados:Los StringSets que no están en la lista blanca no se deben escribir en(Mismo calibre que los cuatro tipos de escalares.).
+        // 恢复数据可能被篡改:未进白名单的 stringSet 不得写入(与四类标量同口径)。
         val repo = newRepository()
         repo.restoreSettingsSnapshot(mapOf("stringSet:daily_summary_claimed_slots" to "[\"2026-10-23#0900\"]"))
 
         assertFalse(
-            "El estado de deduplicación programada no se debe restaurar con una copia de seguridad",
+            "调度去重状态不得随备份恢复",
             repo.isDailySummarySlotClaimed("2026-10-23#0900"),
         )
     }

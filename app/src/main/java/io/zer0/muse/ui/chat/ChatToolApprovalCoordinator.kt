@@ -1,6 +1,9 @@
 package io.zer0.muse.ui.chat
 import io.zer0.common.Logger
 import io.zer0.muse.R
+import io.zer0.muse.automation.core.AutonomousAccessibilityApproval
+import io.zer0.muse.automation.core.AutonomousAccessibilityRuntimeSnapshot
+import io.zer0.muse.tools.DenySource
 import io.zer0.muse.tools.ToolApprovalState
 import io.zer0.muse.tools.ToolPermissionResolver
 import io.zer0.muse.ui.PendingToolApproval
@@ -10,12 +13,12 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.withTimeoutOrNull
 
 /**
- * v2.x Refactor S4: orquestación de aprobación de herramientas extraída de ChatViewModel.
+ * v2.x 重构 S4: 从 ChatViewModel 提取的工具审批编排。
  *
- * Ubicación original:ChatViewModel.requestToolApprovalForSession(4218-4331).
+ * 原位置:ChatViewModel.requestToolApprovalForSession(4218-4331)。
  *
- * Propiedades de migración:**extracción pura**——Mueve el código tal como está.,No hay cambios en ninguna lógica./orden/Semántica de excepción.
- * ChatViewModel Mantenga la llamada del delegado en su posición original.
+ * 迁移性质:**纯抽取**——代码原样搬入,不改动任何逻辑/顺序/异常语义。
+ * ChatViewModel 原位置保留委托调用。
  */
 @Suppress(
     "LongParameterList",
@@ -31,16 +34,16 @@ internal class ChatToolApprovalCoordinator(
     private val host: ChatToolApprovalHostBridge,
 ) {
 
-    /** Constantes migradas desde ChatViewModel(Referencia directa a la cadena de aprobación original.). */
+    /** 从 ChatViewModel 随迁的常量(原审批链直接引用)。 */
     companion object {
-        /** Se agotó el tiempo de aprobación. La cuenta regresiva de la interfaz debe derivarse de aquí., No guarde una copia separada del número. */
+        /** 审批超时。界面倒计时必须从这里派生, 不得另存一份数字。 */
         const val TOOL_APPROVAL_TIMEOUT_MS = 30_000L
 
         /**
-         * El límite superior de congelación acumulada durante el período desenfocado/de fondo.
+         * 失焦 / 退后台期间的累计冻结上限。
          *
-         * Congelar la cuenta regresiva cuando el usuario no pueda ver la tarjeta de aprobación,Suelta/abandona la aplicación y regresa y aun así aprobala;Pero la congelación no puede ser ilimitada,
-         * De lo contrario, la rutina y la ronda de herramientas de la sesión se colgarán permanentemente cuando el usuario no regrese. Superar este valor terminará con el tiempo de espera.
+         * 用户看不到审批卡时冻结倒计时,让切走 / 离开应用再回来仍能批准;但冻结不能无限,
+         * 否则用户不再回来时协程与该会话的工具轮次会永久挂住。超过此值仍按超时收尾。
          */
         const val APPROVAL_UNFOCUSED_PAUSE_MAX_MS = 10 * 60_000L
     }
@@ -51,22 +54,22 @@ internal class ChatToolApprovalCoordinator(
         argsPreview: String,
         args: Map<String, Any?>,
     ): ToolApprovalState {
-        // El permiso temporal de esta sesión solo debe omitir la confirmación y aún así debe ser denegado por los parámetros del analizador unificado.
-        // Las políticas de persistencia explícitas tienen prioridad para evitar que el permiso temporal pase por alto ALWAYS_DENY del usuario.
+        // 本会话临时允许只应跳过确认，仍需经过统一解析器的参数硬拒绝。
+        // 显式持久化策略优先，避免临时 allow 绕过用户的 ALWAYS_DENY。
         val allowedThisSession = host.sessionPermissionStore.isAllowedThisSession(sessionId, toolName)
-        // toolConfigStore no puede ser inyectado(declarado como anulable,Predeterminado null);Cuando no se inyecta, degenera en
-        // modo de sesión+Determinación por defecto del nivel de riesgo(ASK NORMAL/ALTO seguirá siendo aprobado),evitar el primer artículo
-        // La herramienta de aprobación llama a fallas directas de NPE.
-        // tomar solo**Configuración explícita del usuario**estrategia:No configurado debe ser null,En caso contrario, se considerará como
-        // "El usuario ha sido liberado.",ASK/STRICT En el modo, se omitirán todas las aprobaciones basadas en niveles de riesgo.
+        // toolConfigStore 可能未注入(声明为可空,默认 null);未注入时退化为
+        // 会话模式+风险等级的默认判定(ASK 下 NORMAL/HIGH 仍会审批),避免首条
+        // 需审批工具调用直接 NPE 崩溃。
+        // 只取**用户显式配置**的策略:未配置必须是 null,否则会被判定器当成
+        // "用户已放行",ASK/STRICT 模式下按风险等级应有的审批会被整段跳过。
         val configuredPolicy = host.toolConfigStore?.getConfiguredPolicy(toolName)
         val perToolPolicy = io.zer0.muse.tools.effectivePerToolPolicy(configuredPolicy, allowedThisSession)
         val displayedSessionId = host.currentSessionIdForApproval()
-        // AUD-20261011-A2A-ALLOWALL: situación general"Aprobar todo durante este período de apertura"Sólo cuando el usuario está mirando la sesión.
-        // Actualizado a CONFIABLE.A2A solicitud remota(por chatViewModel.send() Siga la misma cadena de aprobación y el punto final es solo
-        // JWT Sin control de enfoque)Volver al modo propio de la sesión cuando se ejecuta una sesión no enfocada —— HIGH Herramientas de dispositivos de riesgo
-        // (device_shell / app_clear_data / ui_agent espera)Seguir pasando por la tarjeta de aprobación o rechazado después de un tiempo de espera de 30 segundos,
-        // No se ejecutará en silencio cuando no haya nadie frente a la pantalla. Ver el calibre del juicio [resolveApprovalMode].
+        // AUD-20261011-A2A-ALLOWALL: 全局"本次开启期间批准全部"位只在用户正看着该会话时
+        // 升级为 TRUSTED。A2A 远程请求(经 chatViewModel.send() 走同一条审批链、端点只有
+        // JWT 无焦点校验)跑到非焦点会话时回落该会话自身模式 —— HIGH 风险设备工具
+        // (device_shell / app_clear_data / ui_agent 等)仍走审批卡或 30s 超时拒绝,
+        // 不会在无人在屏幕前静默执行。判定口径见 [resolveApprovalMode]。
         val mode = resolveApprovalMode(
             allowAllToolsThisRun = host.stateStore.state.value.appRunAllowAllTools,
             displayedSessionId = displayedSessionId,
@@ -80,31 +83,32 @@ internal class ChatToolApprovalCoordinator(
             },
         )
         val risk = host.toolRegistry.getToolRiskLevel(toolName)
-        // v1.x: Registro de depuración de decisiones de aprobación — solución de problemas"La delegación completa de poderes no surte efecto/Permitir siempre no válido"problema de clase
+        // v1.x: 审批决策调试日志 — 排查"完全放权不生效/始终允许无效"类问题
         Logger.d(
             "ToolApproval",
             "resolve | tool=$toolName | mode=$mode | risk=$risk | policy=$perToolPolicy" +
                 " | allowAllRun=${host.stateStore.state.value.appRunAllowAllTools}",
         )
-        // v1.0.53: Transmisión completa args,estrategia paramétrica(open_url/execute_javascript)hacer efecto
+        // v1.0.53: 传完整 args,参数化策略(open_url/execute_javascript)生效
         val resolved = ToolPermissionResolver.resolve(toolName, risk, mode, perToolPolicy, args)
         Logger.d(
             "ToolApproval",
             "resolved | tool=$toolName | state=$resolved",
         )
-        // Bucle cerrado de máquina de estados:Enumere explícitamente todas las ramas estatales finales,Asegúrese de que ToolApprovalState.Answered tenga una ruta de procesamiento
-        when (resolved) {
-            is ToolApprovalState.Pending -> { /* Pendiente de aprobación,Continúe siguiendo el proceso de aprobación del usuario a continuación */ }
+        val autonomous = applyAutonomousAccessibilityGate(sessionId, toolName, resolved)
+        // 状态机闭环:显式列出所有终态分支,确保 ToolApprovalState.Answered 有处理路径
+        when (autonomous) {
+            is ToolApprovalState.Pending -> { /* 待审批,继续走下方用户审批流程 */ }
             is ToolApprovalState.Answered -> {
-                // El usuario ha proporcionado una respuesta personalizada.(Ejecución de herramientas alternativas),Volver directamente a esta respuesta
-                return resolved
+                // 用户已提供自定义答案(替代工具执行),直接返回该答案
+                return autonomous
             }
             is ToolApprovalState.Approved, is ToolApprovalState.Auto,
             is ToolApprovalState.Denied,
-            -> return resolved
+            -> return autonomous
         }
 
-        // Requiere la aprobación del usuario:Agregar a la lista de aprobación pendiente y esperar los resultados
+        // 需要用户审批:添加到待审批列表并等待结果
         val deferred = kotlinx.coroutines.CompletableDeferred<ToolApprovalState>()
         host.toolApprovalResults[toolCallId] = deferred
         host.toolApprovalSessions[toolCallId] = sessionId
@@ -113,12 +117,12 @@ internal class ChatToolApprovalCoordinator(
                 toolCallId = toolCallId,
                 toolName = toolName,
                 argumentsPreview = argsPreview,
-                // Vista previa solo de los primeros 200 caracteres,Los parámetros completos se proporcionan a la tarjeta juntos.,Deja que le diga al usuario cuánto queda,
-                // Y muestre el monto total después de la expansión. Esto también es lo que se usa para juzgar. args,Ambos tienen el mismo origen.
+                // 预览只有前 200 字符,完整参数一并交给卡片,让它能告诉用户还差多少、
+                // 并在展开后展示全量。判定用的也是这份 args,两者同源。
                 argumentsFull = args,
             )
         host.pendingToolApprovalRecords[toolCallId] = pending
-        // v2.0.1: Recordatorio en segundo plano"Esperando aprobación"(La recepción está en silencio, consulte el juicio interno notifyChatPendingApproval)
+        // v2.0.1: 后台时提醒"等待批准"（前台静默，见 notifyChatPendingApproval 内部判断）
         runCatching {
             host.notificationManager.notifyChatPendingApproval(
                 io.zer0.muse.ui.chat.ToolCallVisuals.labelFor(toolName, host.appContext.resources),
@@ -129,16 +133,16 @@ internal class ChatToolApprovalCoordinator(
                 it.copy(pendingToolApprovals = it.pendingToolApprovals + pending)
             }
         }
-        // M1.7: Pendiente de aprobación del usuario -> WAITING_APPROVAL punto de control;restaurar/Regreso después del fracaso GENERATING
+        // M1.7: 挂起等待用户审批 -> WAITING_APPROVAL 检查点;恢复/失败后回 GENERATING
         host.sessionManager.runtime(sessionId)?.markWaitingApproval()
         return try {
-            // CHAT-08: La aprobación se puede suspender si caduca — Cuenta regresiva para esperar por segmento,No se realizará ninguna deducción de tiempo durante el período de suspensión.,Reanudar desde la duración restante;
-            // Aprobación del usuario en cualquier momento/Devolver inmediatamente si es rechazado,La semántica es consistente con los años 30 originales.
-            // Segundo camino congelado:El usuario ya no podrá ver esta tarjeta de aprobación y no se descontará ningún tiempo.(Corta otras sesiones y retira la aplicación a un segundo plano.).
-            // De lo contrario, el usuario saldrá unos minutos y luego volverá.,Sólo verás un registro que ya ha sido denegado.,El modelo también expirará esta vez.
-            // Tratado como rechazo del usuario y redirigido. Criterio ver [shouldPauseApprovalTimeout].
-            // La congelación tiene límite superior(APPROVAL_UNFOCUSED_PAUSE_MAX_MS):Termine a tiempo cuando los usuarios dejen de regresar,
-            // Evite que las corrutinas y las rondas de sesiones se cuelguen permanentemente. Plegar y leer es un comportamiento activo del usuario,No sujeto a este límite superior.
+            // CHAT-08: 审批超时可暂停 — 倒计时按段等待,暂停期间不扣时长,恢复后从剩余时长继续;
+            // 任何时刻用户批准/拒绝都立即返回,语义与原 30s 一致。
+            // 第二条冻结路径:用户已经看不到这张审批卡时不扣时(切去别的会话、应用退到后台)。
+            // 否则用户出去几分钟再回来,只会看到一条早已 Denied 的记录,模型还会把这次超时
+            // 当成用户拒绝而改道。判据见 [shouldPauseApprovalTimeout]。
+            // 冻结有上限(APPROVAL_UNFOCUSED_PAUSE_MAX_MS):用户不再回来时仍按时收尾,
+            // 不让协程与会话轮次永久挂住。折叠阅读属用户主动行为,不受此上限约束。
             val outcome =
                 awaitApprovalOutcome(
                     timeoutMs = TOOL_APPROVAL_TIMEOUT_MS,
@@ -162,13 +166,13 @@ internal class ChatToolApprovalCoordinator(
             when (outcome) {
                 is ApprovalWaitOutcome.Resolved -> outcome.state
                 ApprovalWaitOutcome.Abandoned -> {
-                    // Se ha cerrado la sesión de aprobación del registro pendiente(Sesión eliminada / generación detenida / volver a registrarse con la misma herramientaCallId),
-                    // No habrá ninguna conclusión que regrese. —— Terminar inmediatamente,No quedan corrutinas pendientes.
+                    // 审批已从等待注册表注销(会话被删 / 生成被停 / 同一 toolCallId 重新登记),
+                    // 不会再有结论回来 —— 立刻收尾,不留悬挂协程。
                     Logger.d("ToolApproval", "abandoned | tool=$toolName | call=$toolCallId")
-                    ToolApprovalState.Denied("Generation stopped")
+                    ToolApprovalState.Denied("Generation stopped", source = DenySource.SYSTEM)
                 }
                 ApprovalWaitOutcome.TimedOut -> {
-                    // P2-1: Borrar las tarjetas de aprobación restantes después del tiempo de espera,Evite "No hay respuesta incluso después de hacer clic en "Permitir"";y preguntar al usuario
+                    // P2-1: 超时后清掉残留审批卡,避免「点了允许也没反应」;并提示用户
                     host.stateStore.state.update {
                         it.copy(
                             pendingToolApprovals = it.pendingToolApprovals.filter { p -> p.toolCallId != toolCallId },
@@ -177,7 +181,7 @@ internal class ChatToolApprovalCoordinator(
                     MuseToast.show(
                         host.appContext.getString(R.string.tool_approval_timeout_hint, toolName),
                     )
-                    ToolApprovalState.Denied("Approval timed out")
+                    ToolApprovalState.Denied("Approval timed out", source = DenySource.TIMEOUT)
                 }
             }
         } finally {
@@ -187,14 +191,48 @@ internal class ChatToolApprovalCoordinator(
             host.pendingToolApprovalRecords.remove(toolCallId)
         }
     }
+
+    private suspend fun applyAutonomousAccessibilityGate(
+        sessionId: String,
+        toolName: String,
+        resolved: ToolApprovalState,
+    ): ToolApprovalState {
+        if (resolved !== ToolApprovalState.Pending) return resolved
+        val runtime = host.autonomousAccessibilityRuntime ?: return resolved
+        val snapshot = runCatching { runtime.snapshot(sessionId) }.getOrElse { error ->
+            Logger.w("ToolApproval", "autonomous accessibility snapshot failed: ${error.message}")
+            AutonomousAccessibilityRuntimeSnapshot()
+        }
+        val decision =
+            io.zer0.muse.ui.chat.AutonomousAccessibilityGate.reserve(
+                sessionId = sessionId,
+                toolName = toolName,
+                pending = resolved,
+                snapshot = snapshot,
+            )
+        if (decision.approval === ToolApprovalState.Auto) {
+            Logger.i(
+                "ToolApproval",
+                "autonomous accessibility auto-approved | tool=$toolName | " +
+                    "package=${snapshot.currentPackage} | runs=${snapshot.runCountToday}/" +
+                    snapshot.window.maxRunsPerDay,
+            )
+        } else if (AutonomousAccessibilityApproval.actionFor(toolName) != null) {
+            Logger.d(
+                "ToolApproval",
+                "autonomous accessibility kept pending | tool=$toolName | reason=${decision.reason}",
+            )
+        }
+        return decision.approval
+    }
 }
 
 /**
- * Si la cuenta regresiva de aprobación debe congelarse en este paso.
+ * 审批倒计时是否应在当前这一步冻结。
  *
- * dos caminos independientes:Los usuarios doblan y leen activamente([foldedPaused]),O el usuario ya no puede ver esta tarjeta de aprobación. ——
- * La aplicación no está en primer plano.([appInForeground] para false),O la sesión a la que pertenece la aprobación ya no es la sesión de primer plano.
- * Foco desconocido([displayedSessionId] para null)Fuera de foco en todo momento,Mantenga el comportamiento de sincronización original.
+ * 两条独立路径:用户主动折叠阅读([foldedPaused]),或用户已经看不到这张审批卡 ——
+ * 应用不在前台([appInForeground] 为 false),或审批所属会话不再是前台会话。
+ * 焦点未知([displayedSessionId] 为 null)时不判失焦,维持原有计时行为。
  */
 internal fun shouldPauseApprovalTimeout(
     foldedPaused: Boolean,
@@ -203,36 +241,36 @@ internal fun shouldPauseApprovalTimeout(
     appInForeground: Boolean = true,
 ): Boolean = foldedPaused || !appInForeground || (displayedSessionId != null && displayedSessionId != sessionId)
 
-/** Tamaño de un solo paso de cuenta regresiva:Intervalo entre sondas durante la pausa,También es la granularidad de la deducción de tiempo. */
+/** 倒计时单段步长:暂停期间的探活间隔,也是扣时的粒度。 */
 private const val APPROVAL_WAIT_STEP_MS = 200L
 
-/** Señal de congelación de un solo paso.[folded] ¿El usuario está doblado para leer?(No sujeto a presupuesto suspendido),[paused] Es si el tiempo está actualmente congelado. */
+/** 单步冻结信号。[folded] 是用户折叠阅读(不受暂停预算约束),[paused] 是当前是否冻结计时。 */
 internal data class ApprovalPause(val folded: Boolean, val paused: Boolean)
 
-/** [awaitApprovalOutcome] El final. */
+/** [awaitApprovalOutcome] 的终局。 */
 internal sealed interface ApprovalWaitOutcome {
-    /** El usuario o la ruta externa da la conclusión. */
+    /** 用户或外部路径给出了结论。 */
     data class Resolved(val state: ToolApprovalState) : ApprovalWaitOutcome
 
-    /** cuenta regresiva agotada(Presupuesto agotado con pausa). */
+    /** 倒计时用尽(含暂停预算用尽)。 */
     data object TimedOut : ApprovalWaitOutcome
 
-    /** Se ha cerrado la sesión de aprobación del registro pendiente,No habrá ninguna conclusión a la que regresar. */
+    /** 审批已从等待注册表注销,不会再有结论回来。 */
     data object Abandoned : ApprovalWaitOutcome
 }
 
 /**
- * Está pendiente una cuenta regresiva de aprobación pausable.
+ * 可暂停的审批倒计时等待。
  *
- * Espera cada párrafo [awaitOutcome] dar conclusión,tiempo de reasentamiento:Segmentos descongelados de [timeoutMs] Botón,
- * No se deducen los gajos congelados. Por lo tanto, después de una pausa de 5 minutos, todavía queda el tiempo restante original.,en lugar de rellenar.
- * La sección congelada todavía está presionada. [APPROVAL_WAIT_STEP_MS] explorar la vida,aprobación externa/La negativa no tiene que esperar a que regrese la recuperación.
+ * 每一段先等 [awaitOutcome] 给出结论,再结算时长:未冻结的段从 [timeoutMs] 里扣,
+ * 冻结的段不扣。因此暂停 5 分钟回来仍剩原本的剩余时长,而不是重新计满。
+ * 冻结段照样按 [APPROVAL_WAIT_STEP_MS] 探活,外部批准/拒绝不必等恢复就能返回。
  *
- * @param timeoutMs Tiempo total en estado descongelado
- * @param pauseBudgetMs Límite superior acumulativo para congelaciones sin colapso;Terminar con tiempo de espera después del agotamiento.,Evite quedarse atascado permanentemente
- * @param pauseSignals Congelar señal para cada paso
- * @param isStillRegistered ¿Aún está pendiente la aprobación en el registro?;false Dijo que no habría más conclusiones.
- * @param awaitOutcome Espere la cantidad dada de milisegundos,Volver a la conclusión si hay una conclusión.,Esta sección caduca y regresa. null
+ * @param timeoutMs 未冻结状态下的总时长
+ * @param pauseBudgetMs 非折叠冻结的累计上限;用尽后按超时收尾,避免永久挂住
+ * @param pauseSignals 每步的冻结信号
+ * @param isStillRegistered 审批是否仍在等待注册表里;false 表示不会再有结论
+ * @param awaitOutcome 等待给定毫秒数,有结论返回结论,本段超时返回 null
  */
 @Suppress("ReturnCount")
 internal suspend fun awaitApprovalOutcome(
@@ -248,15 +286,15 @@ internal suspend fun awaitApprovalOutcome(
         val pause = pauseSignals()
         val sliceMs = if (pause.paused) APPROVAL_WAIT_STEP_MS else minOf(APPROVAL_WAIT_STEP_MS, remainingMs)
         awaitOutcome(sliceMs)?.let { return ApprovalWaitOutcome.Resolved(it) }
-        // Cancelar rutas con concurrente(cancelPendingApprovalsForSession Quitar primero y luego complete)Hay una muy pequeña
-        // ventana:Si la exploración se produjo en medio de dos pasos,Abandonado será devuelto aquí sin llegar a la conclusión completa.
-        // El resultado final de ambos caminos es Denied,Sólo porque de qué lado se toma la cuerda,Para ello no es necesario bloquear ni reorganizar.
+        // 与并发取消路径(cancelPendingApprovalsForSession 先 remove 再 complete)之间有一个极小的
+        // 窗口:探活若恰好落在两步中间,这里会返回 Abandoned 而没拿到那次 complete 的结论。
+        // 两条路径的终局都是 Denied,只是原因字符串取自哪一边,不需要为此加锁或重排。
         if (!isStillRegistered()) return ApprovalWaitOutcome.Abandoned
         if (!pause.paused) {
             remainingMs -= sliceMs
             if (remainingMs <= 0L) return ApprovalWaitOutcome.TimedOut
         } else if (!pause.folded) {
-            // La lectura plegable es un comportamiento activo de los usuarios,No incluido en el presupuesto de suspensión;Fuera de foco/Debe haber un límite superior para la congelación en el backend.
+            // 折叠阅读是用户主动行为,不计入暂停预算;失焦/退后台的冻结必须有上限。
             pauseElapsedMs += sliceMs
             if (pauseElapsedMs >= pauseBudgetMs) return ApprovalWaitOutcome.TimedOut
         }

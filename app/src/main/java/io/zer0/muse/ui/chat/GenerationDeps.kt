@@ -21,11 +21,11 @@ import kotlinx.serialization.json.Json
 import kotlin.uuid.Uuid
 
 /**
- * v1.x: generar/Envíe el paquete de dependencia de la canalización.
+ * v1.x: 生成/发送管线的依赖 bundle。
  *
- * Consolide los servicios y el estado compartido compartido por send/enqueueSend/launchStream y sus ayudantes en un único parámetro de constructor.,
- * Evite la explosión de parámetros de construcción de ChatGenerationController.ChatViewModel Todavía es necesario proporcionar algunas devoluciones de llamadas de métodos.
- * (addError/generateImage/launchStream),Porque son implementaciones privadas dentro de fachada.,Utilice devoluciones de llamada en lugar de dependencias inversas.
+ * 把 send/enqueueSend/launchStream 及其 helper 共用的服务与共享状态收口成单一构造参数,
+ * 避免 ChatGenerationController 构造参数爆炸。ChatViewModel 侧仍需提供少数方法回调
+ * (addError/generateImage/launchStream),因为它们是 facada 内私有实现,用回调而非反向依赖。
  */
 @Suppress("LongParameterList")
 internal class GenerationDeps(
@@ -63,17 +63,17 @@ internal class GenerationDeps(
     val memoryTicker: MemoryTicker,
     val refreshContextInfo: suspend () -> Unit,
     val triggerAutoCompress: suspend (sessionId: String) -> Unit,
-    /** Enrutamiento automático de tareas;Devuelve verdadero para indicar que la delegación está completa,En esta ronda ya no se iniciará la generación de modelos ordinarios. */
+    /** 自动任务路由;返回 true 表示已完成委派,本轮不再启动普通模型生成。 */
     val maybeAutoRoute: suspend (text: String, assistantMessageId: Uuid, sessionId: String) -> Boolean,
     /**
-     * v2.6.9: Omitir notificación cuando el usuario habla (bucle cerrado de retroalimentación de mensaje activo).
+     * v2.6.9: 用户开口时的旁路通知（主动消息反馈闭环）。
      *
-     * como una devolución de llamada en lugar de depender directamente de ProactiveScheduler: ese tipo de dependencia haría ChatViewModel
-     * La referencia mutua con el programador también filtrará los detalles de almacenamiento de los mensajes activos a la capa de sesión.
-     * La implementación predeterminada está vacía y el comportamiento cuando no está ensamblado es consistente con la versión anterior.
+     * 拿成回调而不是直接依赖 ProactiveScheduler：那种依赖会让 ChatViewModel
+     * 与调度器互引，也会把主动消息的存储细节泄到会话层。
+     * 默认空实现，未装配时行为与旧版一致。
      *
-     * Sin colgar: la persona que llama envía una ruta activa y no puede bloquearla para registrar un comentario.
-     * El implementador decide dónde iniciar la rutina.
+     * 非挂起：调用方是发送热路径，不能为了记一笔反馈而阻塞。
+     * 实现方自己决定在哪里起协程。
      */
     val onUserSpoke: (sessionId: String) -> Unit = {},
 )

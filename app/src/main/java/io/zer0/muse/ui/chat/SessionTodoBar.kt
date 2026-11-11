@@ -32,11 +32,11 @@ import io.zer0.muse.ui.theme.MusePaddings
 import io.zer0.muse.ui.theme.MuseShapes
 
 /**
- * v1.0.92: Lista de tareas pendientes de la conversación — Muestra el progreso de descomposición de tareas mantenido por la IA a través de todo_write.
+ * v1.0.92: 会话待办条 — 展示 AI 通过 todo_write 维护的任务分解进度。
  *
- * Anteriormente la lista solo existía en la memoria.(TodoTool.sessionTodos),Los usuarios no pueden ver el progreso de desmontaje y ejecución de la IA;
- * Mostrar encima del campo de entrada cuando hay contenido"Tareas por hacer · Completo/total",Haga clic para ampliar la lista completa.
- * No ocupa espacio cuando no hay una lista de tareas pendientes.
+ * 此前清单仅存内存(TodoTool.sessionTodos),用户看不到 AI 的拆解与执行进度;
+ * 有内容时在输入栏上方显示"任务待办 · 完成/总数",点击展开完整清单。
+ * 无待办时不占任何空间。
  */
 @Composable
 fun SessionTodoBar(sessionId: String, modifier: Modifier = Modifier) {
