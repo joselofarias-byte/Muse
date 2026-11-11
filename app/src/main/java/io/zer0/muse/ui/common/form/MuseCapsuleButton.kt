@@ -129,6 +129,7 @@ fun MuseCapsuleButton(
         contentAlignment = Alignment.Center,
     ) {
         Row(
+            modifier = if (textMaxLines > 1) Modifier.fillMaxWidth() else Modifier,
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center,
         ) {
@@ -149,7 +150,7 @@ fun MuseCapsuleButton(
             }
             Text(
                 text = text,
-                modifier = if (textMaxLines > 1) Modifier.weight(1f, fill = false) else Modifier,
+                modifier = if (textMaxLines > 1) Modifier.weight(1f) else Modifier,
                 style = MaterialTheme.typography.labelLarge.copy(
                     fontWeight = FontWeight.SemiBold,
                 ),

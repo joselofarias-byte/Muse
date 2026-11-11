@@ -50,13 +50,18 @@ class FreeModelConfigSource(
         if (!force && !shouldRefresh()) return FetchOutcome.Throttled
 
         lastFetchAtMs = clock()
-        val raw = try {
-            fetch(dispatchUrl)
-        } catch (e: Exception) {
-            // 网络异常按回退处理；日志只带异常类型，不带 URL 查询串或密钥。
-            return FetchOutcome.Failed("请求失败: ${e.javaClass.simpleName}")
-        } ?: return FetchOutcome.Failed("空响应")
+        return runCatching { fetch(dispatchUrl) }.fold(
+            onSuccess = ::applyResponse,
+            onFailure = { error ->
+                if (error !is Exception) throw error
+                // 网络异常按回退处理；日志只带异常类型，不带 URL 查询串或密钥。
+                FetchOutcome.Failed("请求失败: ${error.javaClass.simpleName}")
+            },
+        )
+    }
 
+    private fun applyResponse(raw: String?): FetchOutcome {
+        if (raw == null) return FetchOutcome.Failed("空响应")
         val parsed = parse(raw)
             ?: return FetchOutcome.Failed("响应无法解析为免费模型配置")
         if (!parsed.isUsable) {
@@ -64,15 +69,11 @@ class FreeModelConfigSource(
         }
 
         val previous = cached
-        if (previous != null && parsed.version < previous.version) {
-            // 服务端回滚配置：接受但记录，便于排查「刚换上去又变回去」。
-            cached = parsed
-            writeCache(parsed)
-            return FetchOutcome.Applied(parsed, rolledBack = true)
-        }
+        // 服务端回滚配置：接受但记录，便于排查「刚换上去又变回去」。
+        val rolledBack = previous != null && parsed.version < previous.version
         cached = parsed
         writeCache(parsed)
-        return FetchOutcome.Applied(parsed, rolledBack = false)
+        return FetchOutcome.Applied(parsed, rolledBack = rolledBack)
     }
 
     /** 直接注入配置（测试用；也供调用方在拿到远端结果后统一入口）。 */
@@ -157,8 +158,11 @@ class FreeModelConfigSource(
                 conn.readTimeout = TIMEOUT_MS
                 conn.requestMethod = "GET"
                 conn.setRequestProperty("Accept", "application/json")
-                if (conn.responseCode !in 200..299) null
-                else conn.inputStream.bufferedReader().use { it.readText() }
+                if (conn.responseCode !in 200..299) {
+                    null
+                } else {
+                    conn.inputStream.bufferedReader().use { it.readText() }
+                }
             } finally {
                 conn.disconnect()
             }

@@ -298,7 +298,7 @@
     <string name="settings_crash_privacy_title">Promesa de privacidad de informes de fallas</string>
     <string name="settings_crash_privacy_content">• Los informes están desactivados de forma predeterminada.\n• Antes de enviarlos se solicita tu confirmación.\n• Las claves API y los tokens Bearer de las trazas se sustituyen por ***.\n• Se incluyen el modelo del dispositivo, las versiones de Android y de la aplicación, y la fecha y hora.\n• No se incluyen identificadores únicos como IMEI, Android ID o MAC.\n• Por correo: se abre tu aplicación de correo y tú confirmas el envío.\n• Por webhook: se envía una solicitud HTTP POST a la URL que configures.</string>
     <string name="settings_crash_confirm_dialog_title">Confirmar informe de fallo</string>
-    <string name="settings_crash_confirm_dialog_content">Se enviaran %1$d registro(s) de fallo.\n\nIncluye: traza del fallo + modelo del dispositivo + version de Android + version de la app + marca de tiempo.\nLa traza ya esta anonimizada. Continuar?</string>
+    <string name="settings_crash_confirm_dialog_content">Se enviarán %1$d registro(s) de fallo.\n\nIncluyen: traza del fallo + modelo del dispositivo + versión de Android + versión de la app + marca de tiempo.\nLa traza ya está anonimizada. ¿Continuar?</string>
     <string name="settings_crash_confirm_button">Confirmar informe</string>
     <string name="settings_crash_no_pending">No hay fallas pendientes que reportar</string>
     <string name="settings_web_search_mode">Modo de búsqueda</string>

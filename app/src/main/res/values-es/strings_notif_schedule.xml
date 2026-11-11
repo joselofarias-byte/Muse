@@ -81,8 +81,8 @@
     <string name="safe_mode_data_recovery_ok">Entendido</string>
     <string name="safe_mode_continue_normal_desc">Conserva tus chats y ajustes e intenta abrir Muse de nuevo</string>
     <string name="safe_mode_disable_plugins">Desactivar todos los plugins y reiniciar</string>
-    <string name="safe_mode_disable_plugins_desc">Los plugins son la causa mas comun de fallos. La app arranca igual; puedes restaurarlos en la pagina de plugins.</string>
-    <string name="plugin_kill_switch_title">Todos los plugins estan desactivados</string>
+    <string name="safe_mode_disable_plugins_desc">Los complementos son la causa más común de fallos. La app se inicia con normalidad al desactivarlos; puedes reactivarlos desde la gestión de complementos.</string>
+    <string name="plugin_kill_switch_title">Todos los complementos están desactivados</string>
     <string name="plugin_kill_switch_desc">Es el interruptor del modo seguro: herramientas, comandos, eventos, hooks y tareas no se ejecutan. Restaura para volver a activarlos.</string>
     <string name="plugin_kill_switch_restore">Restaurar plugins</string>
     <string name="plugin_kill_switch_disable">Desactivar todos los plugins</string>

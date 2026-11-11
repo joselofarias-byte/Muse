@@ -4,6 +4,8 @@ import android.content.Context
 import android.content.res.Configuration
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
@@ -14,6 +16,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.Density
@@ -61,7 +64,7 @@ class PermissionWizardLayoutTest {
                 LocalDensity provides Density(density.density, fontScale),
             ) {
                 MaterialTheme {
-                    Box(Modifier.width(240.dp)) {
+                    Box(Modifier.width(240.dp).verticalScroll(rememberScrollState())) {
                         ShizukuChannelCard(
                             installed = false,
                             available = false,
@@ -82,16 +85,22 @@ class PermissionWizardLayoutTest {
         for (label in listOf(install, refresh)) {
             val layouts = mutableListOf<TextLayoutResult>()
             val node = compose.onNodeWithText(label, useUnmergedTree = true)
+            node.performScrollTo()
             node.assertIsDisplayed()
             node.performSemanticsAction(SemanticsActions.GetTextLayoutResult) { action -> action(layouts) }
             assertTrue("No layout for $label", layouts.isNotEmpty())
-            assertFalse("Clipped action: $label at font scale $fontScale", layouts.single().hasVisualOverflow)
+            val layout = layouts.single()
+            assertFalse(
+                "Clipped action: $label at font scale $fontScale: size=${layout.size}, " +
+                    "lines=${layout.lineCount}, width=${layout.didOverflowWidth}, height=${layout.didOverflowHeight}",
+                layout.hasVisualOverflow,
+            )
         }
         val installBounds = compose.onNodeWithText(install).fetchSemanticsNode().boundsInRoot
         val refreshBounds = compose.onNodeWithText(refresh).fetchSemanticsNode().boundsInRoot
         assertTrue("Actions must stack instead of competing for width", installBounds.bottom < refreshBounds.top)
-        compose.onNodeWithText(install).performClick()
-        compose.onNodeWithText(refresh).performClick()
+        compose.onNodeWithText(install).performScrollTo().performClick()
+        compose.onNodeWithText(refresh).performScrollTo().performClick()
         compose.runOnIdle {
             assertTrue(installed)
             assertTrue(refreshed)
