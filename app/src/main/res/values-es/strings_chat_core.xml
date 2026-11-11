@@ -451,7 +451,7 @@
     <string name="settings_sticker_move_target_label">Mover a otro paquete (un nombre nuevo crea uno)</string>
     <string name="settings_sticker_move_up">Subir</string>
     <string name="settings_sticker_move_down">Bajar</string>
-    <string name="settings_sticker_upload_zip_subtitle">Elija un archivo ZIP;</string>
+    <string name="settings_sticker_upload_zip_subtitle">Selecciona un archivo ZIP. Las imágenes se clasifican automáticamente según sus carpetas.</string>
     <string name="settings_sticker_imported">Pegatinas %1$d importadas</string>
     <string name="settings_sticker_import_failed">Error de importación: %1$s</string>
     <string name="settings_sticker_export_location_failed">No se puede escribir en la ubicación seleccionada</string>

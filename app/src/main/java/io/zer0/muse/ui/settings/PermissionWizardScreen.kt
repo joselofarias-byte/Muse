@@ -25,6 +25,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -234,9 +235,6 @@ fun PermissionWizardScreen(onBack: () -> Unit) {
                     Text(
                         text = stringResource(R.string.permission_privacy_notice_title),
                         style = MaterialTheme.typography.titleMedium,
-                        // LAYOUT-01: 卡片标题取宽 + 限行，防放大字号下挤成一列
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
                     )
                     Spacer(Modifier.height(4.dp))
                     Text(
@@ -323,7 +321,7 @@ fun PermissionWizardScreen(onBack: () -> Unit) {
             // 收进一个折叠，已经装上或已授权的机器直接展开，不让现有配置看起来消失了。
             val advancedReady = rootAvailable || suiAvailable || termuxInstalled
             val advancedExpanded = showAdvanced ?: advancedReady
-            MuseCapsuleButton(
+            PermissionActionButton(
                 text = stringResource(R.string.permission_advanced_channels),
                 onClick = { showAdvanced = !advancedExpanded },
                 variant = IosCapsuleButtonVariant.Secondary,
@@ -526,8 +524,7 @@ private fun ChannelCard(
                     text = title,
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.weight(1f),
-                    // LAYOUT-01: Row 内标题取宽 + 限行，防放大字号下被右侧状态图标挤成一列
-                    maxLines = 1,
+                    maxLines = 4,
                     overflow = TextOverflow.Ellipsis,
                 )
                 Icon(
@@ -559,12 +556,12 @@ private fun ChannelCard(
             )
             if (actionText.isNotBlank()) {
                 Spacer(Modifier.height(12.dp))
-                // ST-08b: M3 Button → MuseCapsuleButton(主样式)
-                MuseCapsuleButton(text = actionText, onClick = onAction)
+                // ST-08b: M3 Button → PermissionActionButton(主样式)
+                PermissionActionButton(text = actionText, onClick = onAction)
             }
             Spacer(Modifier.height(8.dp))
-            // ST-08b: M3 OutlinedButton → MuseCapsuleButton(次样式)
-            MuseCapsuleButton(
+            // ST-08b: M3 OutlinedButton → PermissionActionButton(次样式)
+            PermissionActionButton(
                 text = stringResource(R.string.permission_refresh_status),
                 onClick = onRefresh,
                 variant = IosCapsuleButtonVariant.Secondary,
@@ -595,8 +592,7 @@ private fun ShizukuChannelCard(
                     text = stringResource(R.string.shizuku_section_title),
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.weight(1f),
-                    // LAYOUT-01: 限 1 行（见 PROJECT_GUIDE §5）
-                    maxLines = 1,
+                    maxLines = 4,
                     overflow = TextOverflow.Ellipsis,
                 )
                 val ready = installed && available && authorized
@@ -652,34 +648,33 @@ private fun ShizukuChannelCard(
                 )
             }
             Spacer(Modifier.height(12.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                // ST-08b: 三个动作按钮 M3 Button → MuseCapsuleButton(fillWidth = false 保持并排)
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                // Full-width actions remain readable on narrow screens and with large fonts.
                 if (!installed) {
-                    MuseCapsuleButton(
+                    PermissionActionButton(
                         text = stringResource(R.string.shizuku_install_btn),
                         onClick = onInstall,
-                        fillWidth = false,
                     )
                 } else if (!available) {
-                    MuseCapsuleButton(
+                    PermissionActionButton(
                         text = stringResource(R.string.permission_open_shizuku_service),
                         onClick = onStartService,
-                        fillWidth = false,
                     )
                 } else if (!authorized && !permissionGranted) {
                     // 已授权但 Shell 服务没绑上时不再给「授权」按钮：再点只会拿到「已授权」，
                     // 用户看到的就是「点了什么也没发生」。用刷新重试绑定。
-                    MuseCapsuleButton(
+                    PermissionActionButton(
                         text = stringResource(R.string.shizuku_authorize_btn),
                         onClick = onAuthorize,
-                        fillWidth = false,
                     )
                 }
-                MuseCapsuleButton(
+                PermissionActionButton(
                     text = stringResource(R.string.permission_refresh_status),
                     onClick = onRefresh,
                     variant = IosCapsuleButtonVariant.Secondary,
-                    fillWidth = false,
                 )
             }
         }
@@ -707,8 +702,7 @@ private fun TermuxChannelCard(
                     text = stringResource(R.string.permission_termux_title),
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.weight(1f),
-                    // LAYOUT-01: 限 1 行（见 PROJECT_GUIDE §5）
-                    maxLines = 1,
+                    maxLines = 4,
                     overflow = TextOverflow.Ellipsis,
                 )
                 val ready = installed && permitted && probeOk == true
@@ -775,49 +769,47 @@ private fun TermuxChannelCard(
                     // lint LocalContextGetResourceValueCall: 资源取值必须在组合期完成,
                     // 不能在点击回调里调 getString。这里文案无占位符,用无参 stringResource。
                     val copyDoneText = stringResource(R.string.permission_termux_copy_cmd_done)
-                    MuseCapsuleButton(
+                    PermissionActionButton(
                         text = stringResource(R.string.permission_termux_copy_cmd),
                         onClick = {
                             clipboard.setText(androidx.compose.ui.text.AnnotatedString(termuxCmd))
                             MuseToast.show(copyDoneText)
                         },
                         variant = IosCapsuleButtonVariant.Secondary,
-                        fillWidth = false,
                     )
                 }
             }
             Spacer(Modifier.height(12.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 when {
                     !installed -> {
-                        MuseCapsuleButton(
+                        PermissionActionButton(
                             text = stringResource(R.string.permission_termux_get_btn),
                             onClick = onGet,
-                            fillWidth = false,
                         )
                     }
 
                     !permitted -> {
-                        MuseCapsuleButton(
+                        PermissionActionButton(
                             text = stringResource(R.string.permission_termux_grant_btn),
                             onClick = onGrant,
-                            fillWidth = false,
                         )
                     }
 
                     probeOk != true -> {
-                        MuseCapsuleButton(
+                        PermissionActionButton(
                             text = stringResource(R.string.permission_termux_open_btn),
                             onClick = onOpenApp,
-                            fillWidth = false,
                         )
                     }
                 }
-                MuseCapsuleButton(
+                PermissionActionButton(
                     text = stringResource(R.string.permission_refresh_status),
                     onClick = onRefresh,
                     variant = IosCapsuleButtonVariant.Secondary,
-                    fillWidth = false,
                 )
             }
         }
@@ -836,8 +828,7 @@ private fun A11yProviderCard(installed: Boolean, bundled: Boolean, onInstall: ()
                     text = stringResource(R.string.permission_a11y_provider_title),
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.weight(1f),
-                    // LAYOUT-01: 限 1 行（见 PROJECT_GUIDE §5）
-                    maxLines = 1,
+                    maxLines = 4,
                     overflow = TextOverflow.Ellipsis,
                 )
                 // 可选增强:未安装时用中性色,避免与"未授权的必需通道"混淆
@@ -870,19 +861,20 @@ private fun A11yProviderCard(installed: Boolean, bundled: Boolean, onInstall: ()
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Spacer(Modifier.height(12.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 if (!installed && bundled) {
-                    MuseCapsuleButton(
+                    PermissionActionButton(
                         text = stringResource(R.string.permission_a11y_provider_install_btn),
                         onClick = onInstall,
-                        fillWidth = false,
                     )
                 }
-                MuseCapsuleButton(
+                PermissionActionButton(
                     text = stringResource(R.string.permission_refresh_status),
                     onClick = onRefresh,
                     variant = IosCapsuleButtonVariant.Secondary,
-                    fillWidth = false,
                 )
             }
         }
@@ -891,7 +883,10 @@ private fun A11yProviderCard(installed: Boolean, bundled: Boolean, onInstall: ()
 
 @Composable
 private fun StatusLine(done: Boolean, text: String) {
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 2.dp)) {
+    Row(
+        verticalAlignment = Alignment.Top,
+        modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+    ) {
         Icon(
             imageVector = if (done) MuseIcons.circleCheck else MuseIcons.lock,
             contentDescription = null,
@@ -902,6 +897,9 @@ private fun StatusLine(done: Boolean, text: String) {
         Spacer(Modifier.width(8.dp))
         Text(
             text = text,
+            modifier = Modifier.weight(1f),
+            maxLines = 6,
+            overflow = TextOverflow.Ellipsis,
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -909,3 +907,19 @@ private fun StatusLine(done: Boolean, text: String) {
 }
 
 private fun buildGlobalActionsHelp(context: Context): String = context.getString(R.string.permission_action_id_help)
+
+@Composable
+private fun PermissionActionButton(
+    text: String,
+    onClick: () -> Unit,
+    variant: IosCapsuleButtonVariant = IosCapsuleButtonVariant.Primary,
+    trailingIcon: ImageVector? = null,
+) {
+    MuseCapsuleButton(
+        text = text,
+        onClick = onClick,
+        variant = variant,
+        trailingIcon = trailingIcon,
+        textMaxLines = 6,
+    )
+}

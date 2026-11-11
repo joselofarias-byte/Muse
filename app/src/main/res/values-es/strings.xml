@@ -202,7 +202,7 @@
     <string name="settings_multi_agent_workflow">Flujo de trabajo</string>
     <string name="settings_multi_agent_workflow_desc">Definir orden de ejecución, dependencias y estrategia de agregación.</string>
     <string name="settings_multi_agent_aggregation">Agregación</string>
-    <string name="settings_multi_agent_no_workflow">No hay flujo de trabajo configurado;</string>
+    <string name="settings_multi_agent_no_workflow">Sin flujo configurado. Los miembros ejecutarán sus tareas uno tras otro, en el orden indicado.</string>
     <string name="settings_multi_agent_add_node">Agregar nodo</string>
     <string name="settings_multi_agent_edit_node">Editar nodo</string>
     <string name="settings_multi_agent_node_name">Nombre de nodo</string>

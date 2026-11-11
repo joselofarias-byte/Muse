@@ -54,6 +54,7 @@ import io.zer0.muse.ui.theme.huge
  * @param leadingIcon 可选的前置图标
  * @param trailingIcon 可选的后置图标（选中勾选、状态指示等）
  * @param loading 进行中:显示小转圈并禁止点击
+ * @param textMaxLines Maximum label lines; permission actions may wrap instead of truncating.
  * @param destructive 危险操作(删除/清除):容器走主题错误色，覆盖 [variant] 的底色
  */
 @Composable
@@ -68,6 +69,7 @@ fun MuseCapsuleButton(
     trailingIcon: ImageVector? = null,
     loading: Boolean = false,
     destructive: Boolean = false,
+    textMaxLines: Int = 1,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
@@ -147,14 +149,15 @@ fun MuseCapsuleButton(
             }
             Text(
                 text = text,
+                modifier = if (textMaxLines > 1) Modifier.weight(1f, fill = false) else Modifier,
                 style = MaterialTheme.typography.labelLarge.copy(
                     fontWeight = FontWeight.SemiBold,
                 ),
                 color = contentColor.copy(alpha = contentAlpha),
                 textAlign = TextAlign.Center,
-                // 胶囊按钮永远是单行：窄屏 / 大字号下宁可省略号，也不要把文字挤成竖排。
-                maxLines = 1,
-                softWrap = false,
+                // Single-line by default; permission actions can wrap on narrow screens.
+                maxLines = textMaxLines,
+                softWrap = textMaxLines > 1,
                 overflow = TextOverflow.Ellipsis,
             )
             if (trailingIcon != null) {

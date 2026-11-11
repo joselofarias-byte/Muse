@@ -15,7 +15,7 @@
     <!-- WebSearchSection.kt -->
     <string name="settings_web_search_section">Búsqueda web</string>
     <string name="settings_web_search_enable">Habilitar búsqueda web</string>
-    <string name="settings_web_search_enable_subtitle">Estado predeterminado global;</string>
+    <string name="settings_web_search_enable_subtitle">Define el estado predeterminado. Aunque esté desactivado, puedes activar la búsqueda temporalmente desde el campo de entrada.</string>
     <string name="settings_web_search_engine">Motor de búsqueda</string>
     <string name="settings_web_search_api_key_label">Clave API (opcional)</string>
     <string name="settings_web_search_multi_key_title">Claves API multi-motor</string>
@@ -67,7 +67,7 @@
     <string name="settings_user_profile_your_name_desc">La IA se dirigirá a ti con este nombre.</string>
     <string name="settings_user_profile_bio">Biografía</string>
     <string name="settings_user_profile_bio_hint">Un párrafo que te presenta y que le da a la IA una idea general de quién eres.</string>
-    <string name="settings_user_profile_bio_desc">Máxima prioridad;</string>
+    <string name="settings_user_profile_bio_desc">Información de máxima prioridad para que la IA conozca tu perfil general.</string>
     <string name="settings_user_profile_timezone">Zona horaria</string>
     <string name="settings_user_profile_timezone_hint">p.ej.</string>
     <string name="settings_user_profile_background">Antecedentes &amp; Experiencia</string>
@@ -173,13 +173,13 @@
     <!-- Chapter 1 -->
     <string name="settings_tutorial_ch1_title">Capítulo 1: Primeros pasos</string>
     <string name="settings_tutorial_ch1_s1_title">¿Qué es Muse?</string>
-    <string name="settings_tutorial_ch1_s1_content">Muse es una aplicación de asistente inteligente de IA.</string>
+    <string name="settings_tutorial_ch1_s1_content">Muse es un asistente de IA para conversar, redactar, traducir, resumir, programar y planificar. Sus capacidades dependen del modelo y de las herramientas que configures. Puedes crear asistentes con personalidades y especialidades diferentes.\n\nPara generar respuestas, Muse se conecta a un servicio de modelos de IA. Configura un proveedor antes de empezar. Verifica la información importante: las respuestas pueden contener errores.</string>
     <string name="settings_tutorial_ch1_s2_title">¿Qué hacer para el primer uso?</string>
-    <string name="settings_tutorial_ch1_s2_content">No se preocupe, solo tres pasos para comenzar:\n\n1.</string>
+    <string name="settings_tutorial_ch1_s2_content">Para empezar:\n\n1. Obtén una clave API de un proveedor de modelos.\n2. Agrega el proveedor y la clave desde Ajustes.\n3. Selecciona un modelo, abre una conversación y envía un mensaje.\n\nPuedes seguir el asistente de configuración inicial o volver a Ajustes en cualquier momento.</string>
     <string name="settings_tutorial_ch1_s3_title">Cómo iniciar tu primera conversación</string>
-    <string name="settings_tutorial_ch1_s3_content">1. Abra la aplicación y vaya a la página de chat\n2.</string>
+    <string name="settings_tutorial_ch1_s3_content">1. Abre una conversación.\n2. Toca el campo de entrada.\n3. Escribe una pregunta o una instrucción.\n4. Toca Enviar.\n5. La respuesta aparecerá a medida que el modelo la genere.\n6. Envía otro mensaje para continuar con el mismo contexto.\n\nPrueba primero con una pregunta sencilla para conocer el estilo del asistente.</string>
     <string name="settings_tutorial_ch1_s4_title">Introducción a la interfaz: tareas, agentes y páginas de chat</string>
-    <string name="settings_tutorial_ch1_s4_content">La interfaz principal de Muse suele estar dividida en tres áreas.</string>
+    <string name="settings_tutorial_ch1_s4_content">La interfaz tiene tres áreas principales:\n\n• Conversaciones: escribe mensajes y consulta el historial.\n• Asistentes: crea, edita y selecciona asistentes con distintas instrucciones y especialidades.\n• Tareas: consulta y administra el trabajo que se ejecuta en segundo plano.\n\nPuedes cambiar de área mientras una tarea sigue en curso.</string>
     <string name="settings_tutorial_ch1_s5_title">Errores y consejos para principiantes</string>
     <string name="settings_tutorial_ch1_s5_content">• La IA puede equivocarse o inventar información. Verifica los datos importantes, especialmente los médicos, legales o financieros.\n• Explica el contexto y el resultado que necesitas. Por ejemplo, indica qué trabajo hiciste y a quién va dirigido un informe.\n• Puedes pedir cambios de estilo, correcciones o más detalles en los mensajes siguientes.\n• Mantén pulsada una respuesta para copiarla, regenerarla, marcarla como favorita o bifurcar la conversación.\n• El botón de adjuntos permite enviar imágenes, archivos y plantillas; el micrófono sirve para dictar.</string>
 
@@ -190,13 +190,13 @@
     <string name="settings_tutorial_ch2_s2_title">¿Dónde solicitar una clave API?</string>
     <string name="settings_tutorial_ch2_s2_content">Estos son algunos proveedores de IA habituales (sin un orden específico):\n\n• DeepSeek — chino, económico y con buenos resultados\n  Sitio web: platform.deepseek.com\n\n• Zhipu AI — chino, con cuota gratuita disponible\n  Sitio web: open.bigmodel.cn\n\n• Alibaba Tongyi Qianwen — chino, con cuota gratuita disponible\n  Sitio web: dashscope.aliyun.com\n\n• Moonshot Kimi — chino, con buena capacidad para contextos largos\n  Sitio web: platform.moonshot.cn\n\n• OpenAI (ChatGPT) — internacional, con resultados excelentes, pero requiere un medio de pago internacional\n  Sitio web: platform.openai.com\n\n• Anthropic (Claude) — internacional, destaca en escritura y razonamiento\n  Sitio web: console.anthropic.com\n\n• Google Gemini — internacional, con gran capacidad multimodal\n  Sitio web: ai.google.dev\n\nSi estás empezando, prueba DeepSeek o Zhipu. Tras registrarte, busca la página \"API Keys\" en el panel, haz clic en \"Create new Key\" y copia el código. La mayoría de los proveedores chinos ofrecen crédito gratuito al registrarte para que puedas probarlos sin coste.</string>
     <string name="settings_tutorial_ch2_s3_title">Cómo agregar un proveedor en Muse</string>
-    <string name="settings_tutorial_ch2_s3_content">1. Toque la parte inferior derecha o superior izquierda para ingresar a \"Configuración\"\n2.</string>
+    <string name="settings_tutorial_ch2_s3_content">1. Abre Ajustes y entra en Proveedores o Modelos y servicios.\n2. Toca Agregar proveedor.\n3. Elige el tipo de API o un proveedor preconfigurado.\n4. Introduce el nombre, la clave API y la URL base indicada por el proveedor.\n5. Guarda los cambios.\n6. Obtén la lista de modelos y selecciona los que quieras usar, o agrega sus identificadores manualmente.\n7. Prueba la conexión.\n\nLos proveedores preconfigurados pueden completar la URL y la lista de modelos automáticamente.</string>
     <string name="settings_tutorial_ch2_s4_title">Cómo seleccionar el modelo actual</string>
     <string name="settings_tutorial_ch2_s4_content">En la página de chat, el nombre del modelo se muestra cerca de la barra superior o de entrada.</string>
     <string name="settings_tutorial_ch2_s5_title">Cómo elegir un modelo adecuado &amp; capacidades del modelo</string>
     <string name="settings_tutorial_ch2_s5_content">Elige el modelo según la tarea y las capacidades que indique su ficha:\n\n• Conversación y redacción: un modelo de propósito general.\n• Matemáticas, programación o problemas complejos: un modelo con razonamiento.\n• Análisis de imágenes: un modelo con visión o entrada multimodal.\n• Creación de imágenes: un modelo con generación de imágenes.\n• Creación de vídeo: un modelo con generación de vídeo, si el proveedor lo admite.\n\nLas fichas también indican si el modelo admite herramientas. Compara las capacidades, el costo y la velocidad; un modelo pequeño puede ser suficiente para tareas sencillas.</string>
     <string name="settings_tutorial_ch2_s6_title">Consultas de saldo y rotación de múltiples claves</string>
-    <string name="settings_tutorial_ch2_s6_content">Si la clave de un proveedor se agota o tiene una velocidad limitada, puede configurar varias claves para que Muse gire automáticamente para que las conversaciones no se interrumpan.\n\n• Agregue varias claves: en la configuración del proveedor puede ingresar varias claves API (una por línea);</string>
+    <string name="settings_tutorial_ch2_s6_content">Puedes configurar varias claves API en un proveedor, una por línea. Si una falla o alcanza un límite, Muse puede probar la siguiente.\n\nAlgunos proveedores permiten consultar el saldo desde sus ajustes. Si la consulta no está disponible, revisa tu cuenta en el sitio del proveedor.\n\nTambién puedes configurar varios proveedores y cambiar de modelo cuando uno no esté disponible.</string>
 
     <!-- Chapter 3 -->
     <string name="settings_tutorial_ch3_title">Capítulo 3: Chat diario</string>
@@ -273,13 +273,13 @@
     <string name="settings_tutorial_ch7_s2_title">¿Respuestas lentas?</string>
     <string name="settings_tutorial_ch7_s2_content">Para mejorar la velocidad:\n\n1. Prueba un modelo más rápido.\n2. Comprueba la estabilidad de la conexión y del proxy, si lo usas.\n3. Desactiva el razonamiento profundo cuando no lo necesites.\n4. Consulta si el proveedor tiene una incidencia o alta demanda.\n5. Inicia una conversación nueva o comprime el contexto si el historial es muy largo.</string>
     <string name="settings_tutorial_ch7_s3_title">¿Cómo ahorrar el uso de tokens?</string>
-    <string name="settings_tutorial_ch7_s3_content">Los tokens se facturan por recuento de caracteres; guardar tokens ahorra dinero:\n1.</string>
+    <string name="settings_tutorial_ch7_s3_content">El consumo de tokens influye en el costo de muchos servicios de IA. Para reducirlo:\n\n1. Configura un modelo auxiliar para tareas sencillas y llamadas a herramientas.\n2. Desactiva la búsqueda web cuando no la necesites.\n3. Compara las tarifas de los proveedores.\n4. Desactiva el razonamiento profundo en tareas simples.\n5. Crea una conversación nueva cuando el historial anterior ya no sea relevante.\n6. Activa la compresión de contexto para conversaciones largas.\n7. Reserva los modelos más grandes para los problemas complejos.</string>
     <string name="settings_tutorial_ch7_s4_title">Cómo borrar todos los datos</string>
-    <string name="settings_tutorial_ch7_s4_content">Configuración → Gestión de datos puede tener opciones relevantes.</string>
+    <string name="settings_tutorial_ch7_s4_content">Puedes borrar los datos desde la gestión de datos de Muse o desde los ajustes de aplicaciones de Android. Esto elimina conversaciones y configuraciones locales. Haz una copia de seguridad antes de continuar.\n\nSi solo quieres empezar otra vez, puedes eliminar las conversaciones y conservar los proveedores y asistentes.</string>
     <string name="settings_tutorial_ch7_s5_title">¿Errores de API 401/400?</string>
     <string name="settings_tutorial_ch7_s5_content">• 401 (no autorizado): revisa la clave API, su vigencia y sus permisos. Comprueba que no tenga espacios adicionales.\n• 400 (solicitud incorrecta): revisa el identificador del modelo, los parámetros y la longitud de la entrada. Prueba con una conversación nueva y un mensaje breve.\n• 429 (demasiadas solicitudes): puedes haber superado el límite de frecuencia o la cuota. Espera o revisa los límites de tu cuenta.\n• 5xx (error del servidor): consulta el estado del proveedor y vuelve a intentarlo más tarde.\n\nEl mensaje de error de la aplicación puede aportar más detalles.</string>
     <string name="settings_tutorial_ch7_s6_title">¿Cómo proteger la privacidad (redacción de PII)?</string>
-    <string name="settings_tutorial_ch7_s6_content">La redacción de PII (información de identificación personal) reemplaza automáticamente la información confidencial en las conversaciones (números de teléfono, números de identificación, tarjetas bancarias, correos electrónicos) con marcadores de posición antes de enviarla a la IA; la IA no puede ver la información real;</string>
+    <string name="settings_tutorial_ch7_s6_content">La protección de datos personales (PII) sustituye información sensible por marcadores antes de enviarla al modelo y restaura su presentación en la respuesta. Se configura desde las opciones de privacidad.\n\nLa detección se realiza localmente mediante reglas y puede omitir datos o identificar otros por error. Revisa los mensajes antes de enviarlos y evita compartir contraseñas o códigos de verificación.</string>
 
     <!-- CrashReportSettings.kt -->
     <string name="settings_crash_page_title">Informe de fallos</string>
@@ -296,7 +296,7 @@
     <string name="settings_crash_enable_subtitle">Los registros solo se envian al pulsar Informar ahora</string>
     <string name="settings_crash_privacy_section">Privacidad</string>
     <string name="settings_crash_privacy_title">Promesa de privacidad de informes de fallas</string>
-    <string name="settings_crash_privacy_content">• Desactivado de forma predeterminada;</string>
+    <string name="settings_crash_privacy_content">• Los informes están desactivados de forma predeterminada.\n• Antes de enviarlos se solicita tu confirmación.\n• Las claves API y los tokens Bearer de las trazas se sustituyen por ***.\n• Se incluyen el modelo del dispositivo, las versiones de Android y de la aplicación, y la fecha y hora.\n• No se incluyen identificadores únicos como IMEI, Android ID o MAC.\n• Por correo: se abre tu aplicación de correo y tú confirmas el envío.\n• Por webhook: se envía una solicitud HTTP POST a la URL que configures.</string>
     <string name="settings_crash_confirm_dialog_title">Confirmar informe de fallo</string>
     <string name="settings_crash_confirm_dialog_content">Se enviaran %1$d registro(s) de fallo.\n\nIncluye: traza del fallo + modelo del dispositivo + version de Android + version de la app + marca de tiempo.\nLa traza ya esta anonimizada. Continuar?</string>
     <string name="settings_crash_confirm_button">Confirmar informe</string>

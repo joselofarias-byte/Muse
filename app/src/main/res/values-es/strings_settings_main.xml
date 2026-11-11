@@ -196,7 +196,7 @@
     <string name="settings_backup_password">Contraseña</string>
     <string name="settings_backup_remote_dir">Directorio remoto (por ejemplo, /muse/)</string>
     <string name="settings_backup_encrypt_password">Contraseña de cifrado de respaldo (opcional)</string>
-    <string name="settings_backup_encrypt_password_hint">Déjelo vacío para texto sin formato;</string>
+    <string name="settings_backup_encrypt_password_hint">Si lo dejas vacío, la copia se subirá sin cifrar. Si defines una contraseña, se cifrará con AES-256.</string>
 
     <!-- ==================== MCP Settings ==================== -->
     <string name="settings_mcp_title">Servidores MCP</string>
@@ -258,7 +258,7 @@
     <string name="settings_web_security_hint">Consejo de seguridad</string>
     <string name="settings_web_access_warning">Otros usuarios del mismo Wi-Fi pueden acceder a través de la siguiente dirección + PIN</string>
     <string name="settings_web_address_pin">Dirección: %1$s PIN: %2$s</string>
-    <string name="settings_web_pin_hint">El PIN es sólo para la verificación del acceso web por primera vez;</string>
+    <string name="settings_web_pin_hint">El PIN se usa para verificar el primer acceso desde la web. Después, el navegador guarda un token de acceso.</string>
     <string name="settings_web_enable">Habilitar servidor web</string>
     <string name="settings_web_enable_subtitle">Entra en vigor el próximo lanzamiento de la aplicación.</string>
     <string name="settings_web_allow_lan">Permitir acceso LAN</string>
@@ -367,7 +367,7 @@
     <string name="settings_chat_session_cache_subtitle">Copias de mensajes de sesion en memoria; mayor = cambio mas rapido, mas memoria</string>
     <!-- v1.0.47 P5-3: Token estimate (experimental) -->
     <string name="settings_chat_token_estimate">Estimación de tokens (experimental)</string>
-    <string name="settings_chat_token_estimate_subtitle">Mostrar un botón de recuento de tokens en la barra de entrada;</string>
+    <string name="settings_chat_token_estimate_subtitle">Muestra el contador de tokens en el campo de entrada. Está desactivado de forma predeterminada para evitar el costo del cálculo.</string>
 
     <!-- ==================== v1.0.20: Tool Call Approval ==================== -->
     <string name="settings_chat_tool_approval_section">Aprobación de herramientas</string>
@@ -377,7 +377,7 @@
     <string name="settings_chat_tool_approval_ask">Preguntar bajo demanda</string>
     <string name="settings_chat_tool_approval_strict">Modo estricto</string>
     <string name="settings_chat_tool_approval_trusted_desc">Confianza total: la IA puede llamar a todas las herramientas directamente sin confirmación (para conjuntos de herramientas confiables)</string>
-    <string name="settings_chat_tool_approval_ask_desc">Pregunte bajo demanda: las herramientas de alto riesgo le avisan antes de invocarlas;</string>
+    <string name="settings_chat_tool_approval_ask_desc">Las herramientas de alto riesgo requieren tu aprobación antes de ejecutarse; las herramientas seguras se permiten automáticamente.</string>
     <string name="settings_chat_tool_approval_strict_desc">Modo estricto: todas las llamadas a herramientas requieren su confirmación, excepto las herramientas de consulta de solo lectura</string>
     <string name="settings_chat_tool_approval_per_tool">Política por herramienta</string>
     <string name="settings_chat_tool_approval_per_tool_subtitle">Establecer permitir/denegar/preguntar individualmente para cada herramienta</string>

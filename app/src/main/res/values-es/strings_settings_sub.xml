@@ -192,7 +192,7 @@
     <string name="settings_memory_decay_rate_title">Tasa de decadencia λ</string>
     <string name="settings_memory_decay_rate_subtitle">Más alto significa olvido más rápido (0,01 lento / 0,02 predeterminado / 0,04 rápido)</string>
     <string name="settings_memory_hit_bonus">Bonificación de golpe</string>
-    <string name="settings_memory_hit_bonus_subtitle">Los recuerdos mencionados con frecuencia se desintegran más lentamente;</string>
+    <string name="settings_memory_hit_bonus_subtitle">Los recuerdos que se mencionan con frecuencia pierden relevancia más lentamente. Las coincidencias se registran al agregar o combinar recuerdos.</string>
     <string name="settings_memory_compile_threshold">Umbral de compilación</string>
     <string name="settings_memory_compile_threshold_subtitle">Los recuerdos por debajo de esta puntuación no se agregan a Memory.md (debe estar por debajo de %1$s)</string>
     <string name="settings_memory_forget_speed">Olvídate de la velocidad</string>
@@ -304,7 +304,7 @@
     <string name="settings_rag_cloud_api">API de la nube</string>
     <string name="settings_rag_cloud_api_subtitle">La calidad es lo primero, requiere red y clave API</string>
     <string name="settings_rag_local_keyword">Palabras clave locales (sin conexión)</string>
-    <string name="settings_rag_local_keyword_subtitle">No se necesita red;</string>
+    <string name="settings_rag_local_keyword_subtitle">Búsqueda local sin conexión mediante pares de caracteres chinos y palabras en inglés.</string>
     <string name="settings_rag_active_backend_section">Backend activo</string>
     <string name="settings_rag_active_backend_label">En uso actualmente</string>
     <string name="settings_rag_active_backend_degraded_unknown">Se ha recurrido a otro backend; el motivo no se registró</string>
@@ -337,7 +337,7 @@
     <string name="settings_rag_rerank">Reclasificar</string>
     <string name="settings_rag_rerank_subtitle">Reclasificación del codificador cruzado en los mejores candidatos K×5</string>
     <string name="settings_rag_token_budget">Presupuesto simbólico</string>
-    <string name="settings_rag_token_budget_subtitle">0=ilimitado;</string>
+    <string name="settings_rag_token_budget_subtitle">0: sin límite. Un valor mayor limita los fragmentos por presupuesto de tokens, en orden de mayor a menor similitud.</string>
     <string name="settings_rag_markdown_aware">Fragmentación consciente de las rebajas</string>
     <string name="settings_rag_markdown_aware_subtitle">Preservar bloques/encabezados/tablas de código, evitar dividir</string>
     <string name="settings_rag_chunk_by_token">Fragmentación basada en tokens</string>
@@ -355,7 +355,7 @@
     <string name="settings_rag_mineru_token">Token de MinerU (opcional)</string>
     <string name="settings_rag_notes_section">Notas</string>
     <string name="settings_rag_note1">• Después de cambiar los parámetros del fragmento, los documentos recién importados utilizarán los nuevos parámetros</string>
-    <string name="settings_rag_note2">• Los documentos ya indexados no se vuelven a fragmentar automáticamente;</string>
+    <string name="settings_rag_note2">• Si cambias los parámetros de fragmentación, toca «Reconstruir índice» en la base de conocimientos. No necesitas eliminar ni volver a importar los documentos.</string>
     <string name="settings_rag_note3">• La herramienta Knowledge_Search siempre está disponible, independientemente de la opción de inyección automática.</string>
 
     <!-- v1.133: Multi-KB management -->
