@@ -337,7 +337,31 @@ class SkillSearchToolsImpl(
 
     private fun formatCoordinatedSearchResponse(response: io.zer0.muse.web.WebSearchResponse, maxResults: Int): String {
         if (response.status != io.zer0.muse.web.WebSearchStatus.RESULTS || response.results.isEmpty()) {
-            return when (response.status) {
+            return formatEmptySearchResponse(response)
+        }
+        val sb = StringBuilder(context.getString(R.string.skill_search_result_header, response.normalizedQuery, response.results.size))
+        response.results.take(maxResults).forEachIndexed { idx, r ->
+            sb.appendLine("[${idx + 1}] ${r.title}")
+            sb.appendLine("    URL: ${r.url}")
+            sb.appendLine("    摘要: ${r.snippet}")
+        }
+        sb.appendLine("\n搜索来源：${response.provider ?: "未知"}；本轮状态：${response.status}")
+        // 可观测性：把实际生效引擎、构造后的 query、各阶段结果数交出去，
+        // 线上召回问题不必再靠用户反馈反推。只在有 debug 时附加，不影响旧调用方。
+        response.debug?.let { d ->
+            sb.appendLine("检索词：${d.outboundQuery}")
+            if (d.appliedDateRange != null) {
+                sb.appendLine("时间范围：${d.appliedDateRange}${if (d.inferredDateRange) "（由查询推断）" else ""}")
+            }
+            if (!d.constraints.isEmpty()) sb.appendLine("已应用约束：${d.constraints}")
+            if (d.unsupportedOperators.isNotEmpty()) sb.appendLine("未支持的操作符（已忽略）：${d.unsupportedOperators.joinToString()}")
+            sb.appendLine("结果数：召回 ${d.recalledCount} → 过滤 ${d.afterFilterCount} → 去重 ${d.afterDedupCount} → 最终 ${d.finalCount}")
+        }
+        return sb.toString().trimEnd()
+    }
+
+    private fun formatEmptySearchResponse(response: io.zer0.muse.web.WebSearchResponse): String {
+        return when (response.status) {
                 io.zer0.muse.web.WebSearchStatus.BUDGET_EXCEEDED -> "搜索预算已用尽：本轮最多搜索 ${WebSearchPolicy().maxSearchesPerTurn} 次，请基于已有结果回答。"
                 io.zer0.muse.web.WebSearchStatus.DUPLICATE_QUERY -> "这个搜索词本轮已经搜过了，请不要重复搜索。"
                 io.zer0.muse.web.WebSearchStatus.RATE_LIMITED -> "搜索服务被限速了，请稍后再试。"
@@ -363,26 +387,6 @@ class SkillSearchToolsImpl(
                     }
                 }
             }
-        }
-        val sb = StringBuilder(context.getString(R.string.skill_search_result_header, response.normalizedQuery, response.results.size))
-        response.results.take(maxResults).forEachIndexed { idx, r ->
-            sb.appendLine("[${idx + 1}] ${r.title}")
-            sb.appendLine("    URL: ${r.url}")
-            sb.appendLine("    摘要: ${r.snippet}")
-        }
-        sb.appendLine("\n搜索来源：${response.provider ?: "未知"}；本轮状态：${response.status}")
-        // 可观测性：把实际生效引擎、构造后的 query、各阶段结果数交出去，
-        // 线上召回问题不必再靠用户反馈反推。只在有 debug 时附加，不影响旧调用方。
-        response.debug?.let { d ->
-            sb.appendLine("检索词：${d.outboundQuery}")
-            if (d.appliedDateRange != null) {
-                sb.appendLine("时间范围：${d.appliedDateRange}${if (d.inferredDateRange) "（由查询推断）" else ""}")
-            }
-            if (!d.constraints.isEmpty()) sb.appendLine("已应用约束：${d.constraints}")
-            if (d.unsupportedOperators.isNotEmpty()) sb.appendLine("未支持的操作符（已忽略）：${d.unsupportedOperators.joinToString()}")
-            sb.appendLine("结果数：召回 ${d.recalledCount} → 过滤 ${d.afterFilterCount} → 去重 ${d.afterDedupCount} → 最终 ${d.finalCount}")
-        }
-        return sb.toString().trimEnd()
     }
 
     /**
