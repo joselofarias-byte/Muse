@@ -1,5 +1,6 @@
 package io.zer0.muse.knowledge.retrieval
 
+import io.zer0.muse.knowledge.domain.knowledgeOperation
 import io.zer0.muse.data.knowledge.KnowledgeJobDao
 
 /**
@@ -34,7 +35,7 @@ class V2LexicalRetriever(
         val candidateBudget = (limit * oversample).coerceAtLeast(limit)
         val rowsById = LinkedHashMap<String, io.zer0.muse.data.knowledge.KnowledgeLexicalRow>()
         var incomplete = false
-        try {
+        knowledgeOperation {
             // 逐词项在 SQL 侧过滤后再 LIMIT;合并去重(同一 chunk 命中多个词项)。
             for (term in terms) {
                 val rows = dao.searchLexicalRows(activeGenerationIds, escapeLike(term), candidateBudget)
@@ -43,7 +44,7 @@ class V2LexicalRetriever(
                     rowsById.putIfAbsent("${row.generationId}#${row.chunkIndex}", row)
                 }
             }
-        } catch (e: Exception) {
+        }.getOrElse { e ->
             return LexicalRecall(
                 hits = emptyList(),
                 degradedReason = "词法索引不可用: ${e.message}",

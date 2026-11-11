@@ -165,7 +165,9 @@ data class KnowledgeVectorRow(
 )
 
 @Dao
-interface KnowledgeJobDao {
+interface KnowledgeJobDao : KnowledgeJobDaoOperations, KnowledgeGenerationStorageDao, KnowledgeGenerationQueryDao, KnowledgeJobRestoreDao
+
+interface KnowledgeJobDaoOperations {
 
     // ---------- 批次 ----------
 
@@ -257,6 +259,10 @@ interface KnowledgeJobDao {
     @Query("DELETE FROM knowledge_v2_job_items WHERE jobId = :jobId")
     suspend fun deleteJobItems(jobId: String)
 
+}
+
+interface KnowledgeGenerationStorageDao {
+
     // ---------- generation 表 ----------
 
     @Insert(onConflict = OnConflictStrategy.ABORT)
@@ -294,6 +300,10 @@ interface KnowledgeJobDao {
     suspend fun getGenChunks(generationId: String): List<KnowledgeGenChunkEntity>
 
     /** R5: 写入单条 chunk 的向量(仅限 staging 代;活动代内容不可变)。 */
+}
+
+interface KnowledgeGenerationQueryDao {
+
     @Query("UPDATE knowledge_v2_gen_chunks SET embedding_blob = :blob WHERE id = :chunkRowId")
     suspend fun updateGenChunkEmbedding(chunkRowId: String, blob: ByteArray)
 
@@ -368,6 +378,10 @@ interface KnowledgeJobDao {
 
     @Query("DELETE FROM knowledge_v2_active_generation WHERE docId = :docId")
     suspend fun clearActiveGeneration(docId: String)
+
+}
+
+interface KnowledgeJobRestoreDao {
 
     // ---------- R9 备份恢复:清空 ----------
 

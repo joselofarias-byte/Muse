@@ -1,5 +1,6 @@
 package io.zer0.muse.knowledge.jobs
 
+import io.zer0.muse.knowledge.domain.knowledgeOperation
 import io.zer0.common.Logger
 import io.zer0.muse.data.knowledge.KnowledgeJobDao
 import io.zer0.muse.data.knowledge.KnowledgeJobItemEntity
@@ -79,9 +80,9 @@ class JobRunner(
 
         val execution = JobExecution(jobDao = jobDao, jobItemId = jobItemId, holder = holder, clock = clock)
 
-        val result = try {
+        val result = knowledgeOperation {
             execution.execute()
-        } catch (e: Exception) {
+        }.getOrElse { e ->
             // 阶段执行抛异常 -> FAILED(默认可重试);但若期间收到取消,转 CANCELLED。
             Logger.w("JobRunner", "作业项执行异常(item=$jobItemId): ${e.message}", e)
             val latest = jobDao.getJobItem(jobItemId)

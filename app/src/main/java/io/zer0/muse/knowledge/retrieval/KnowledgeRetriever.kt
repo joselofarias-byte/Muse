@@ -1,5 +1,6 @@
 package io.zer0.muse.knowledge.retrieval
 
+import io.zer0.muse.knowledge.domain.knowledgeOperation
 import io.zer0.muse.knowledge.domain.KnowledgeScope
 import io.zer0.muse.knowledge.domain.RetrievalPolicy
 
@@ -191,9 +192,9 @@ class KnowledgeRetriever(
         traceBase.scopeSummary = scopeSummary
 
         // 2. 解析活动代(范围过滤在这一步)。
-        val activeGenerations = try {
+        val activeGenerations = knowledgeOperation {
             generationResolver.resolve(scope)
-        } catch (e: Exception) {
+        }.getOrElse { e ->
             return RetrievalOutcome.Failed("活动代解析失败: ${e.message}", traceBase.build())
         }
         if (activeGenerations.isEmpty()) {
@@ -264,18 +265,18 @@ class KnowledgeRetriever(
     ): RecallOutcome {
         var lexical: LexicalRecall? = null
         var lexicalError: String? = null
-        try {
+        knowledgeOperation {
             lexical = lexicalRetriever.search(request, activeGenerations, limit)
-        } catch (e: Exception) {
+        }.getOrElse { e ->
             lexicalError = "词法检索异常: ${e.message}"
         }
 
         var dense: DenseRecall? = null
         var denseError: String? = null
         if (request.policy.hybridEnabled && denseRetriever != null) {
-            try {
+            knowledgeOperation {
                 dense = denseRetriever.search(request, activeGenerations, limit)
-            } catch (e: Exception) {
+            }.getOrElse { e ->
                 denseError = "向量检索异常: ${e.message}"
             }
         }
@@ -305,9 +306,9 @@ class KnowledgeRetriever(
         degraded: MutableList<String>,
     ): List<EvidenceCandidate> {
         if (!request.policy.rerankEnabled || rerankProvider == null) return fused
-        val reranked = try {
+        val reranked = knowledgeOperation {
             rerankProvider.rerank(request.query, fused, limit)
-        } catch (e: Exception) {
+        }.getOrElse { e ->
             degraded.add("重排失败(保留原序): ${e.message}")
             null
         }
