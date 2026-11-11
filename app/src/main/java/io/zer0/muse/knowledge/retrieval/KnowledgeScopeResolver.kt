@@ -2,6 +2,7 @@ package io.zer0.muse.knowledge.retrieval
 
 import io.zer0.muse.knowledge.domain.KnowledgeScope
 import io.zer0.muse.knowledge.domain.ScopeDoc
+import io.zer0.muse.knowledge.domain.knowledgeOperation
 
 /**
  * 范围解析器 — 把「助手绑定(KB/文件夹)」解析为显式 [KnowledgeScope]。
@@ -23,10 +24,7 @@ interface KnowledgeScopeResolver {
      * @param folderScopes (kbId, folderPath) 绑定;folderPath 为库内相对路径
      *   (未归一化原始输入,解析器内部归一化),空串表示整库。
      */
-    suspend fun resolveBinding(
-        knowledgeBaseIds: List<String>,
-        folderScopes: List<Pair<String, String>>,
-    ): KnowledgeScope
+    suspend fun resolveBinding(knowledgeBaseIds: List<String>, folderScopes: List<Pair<String, String>>): KnowledgeScope
 }
 
 /**
@@ -40,10 +38,7 @@ class DefaultKnowledgeScopeResolver(
     private val docsByKbIds: suspend (List<String>) -> List<ScopeDoc>,
 ) : KnowledgeScopeResolver {
 
-    override suspend fun resolveBinding(
-        knowledgeBaseIds: List<String>,
-        folderScopes: List<Pair<String, String>>,
-    ): KnowledgeScope {
+    override suspend fun resolveBinding(knowledgeBaseIds: List<String>, folderScopes: List<Pair<String, String>>): KnowledgeScope {
         val kbIds = knowledgeBaseIds.map { it.trim() }.filter { it.isNotBlank() }.distinct()
         val scopes = folderScopes
             .map { (kbId, path) -> kbId.trim() to FolderPathNormalizer.normalize(path) }
@@ -56,9 +51,9 @@ class DefaultKnowledgeScopeResolver(
 
         // 绑定引用的目标全部无法命中 → Invalid(失效绑定):调用方必须提示修复,
         // 不得静默回退成 None(=空结果)或全库。区分依据:输入绑定非空但展开为零。
-        val docs = try {
+        val docs = knowledgeOperation {
             docsByKbIds((scopes.map { it.first } + kbIds).distinct())
-        } catch (t: Throwable) {
+        }.getOrElse { t ->
             return KnowledgeScope.Failed(t.message ?: "scope resolution failed")
         }
         if (docs.isEmpty()) return KnowledgeScope.Invalid
@@ -93,10 +88,7 @@ class DefaultKnowledgeScopeResolver(
  *
  * 返回 null 的唯一来源 = 未绑定且无 mention;返回空列表的唯一来源 = 显式零结果许可。
  */
-fun mergeMentionWithPermit(
-    mentionDocIds: List<String>?,
-    permittedDocIds: List<String>?,
-): List<String>? = when {
+fun mergeMentionWithPermit(mentionDocIds: List<String>?, permittedDocIds: List<String>?): List<String>? = when {
     permittedDocIds == null -> mentionDocIds?.takeIf { it.isNotEmpty() }
     permittedDocIds.isEmpty() -> emptyList()
     mentionDocIds.isNullOrEmpty() -> permittedDocIds

@@ -157,7 +157,14 @@ private fun describeCron(expr: String, res: Resources): String? {
         return res.getString(R.string.schedule_cron_workday, fmtTime(hour, minute))
     }
     // 周末 H:M(dow = 0,6 或 6,0)
-    if (dom == "*" && month == "*" && (dow == "0,6" || dow == "6,0") && minute != "*" && hour != "*" && !minute.contains("-") && !hour.contains("-")) {
+    if (dom == "*" &&
+        month == "*" &&
+        (dow == "0,6" || dow == "6,0") &&
+        minute != "*" &&
+        hour != "*" &&
+        !minute.contains("-") &&
+        !hour.contains("-")
+    ) {
         return res.getString(R.string.schedule_cron_weekend, fmtTime(hour, minute))
     }
     // 指定星期 H:M(dow 是单个数字或逗号列表)
@@ -168,7 +175,15 @@ private fun describeCron(expr: String, res: Resources): String? {
         }
     }
     // 每月指定日 H:M
-    if (dom != "*" && month == "*" && dow == "*" && minute != "*" && hour != "*" && !minute.contains("-") && !hour.contains("-") && !dom.contains("-")) {
+    if (dom != "*" &&
+        month == "*" &&
+        dow == "*" &&
+        minute != "*" &&
+        hour != "*" &&
+        !minute.contains("-") &&
+        !hour.contains("-") &&
+        !dom.contains("-")
+    ) {
         return res.getString(R.string.schedule_cron_monthly, dom, fmtTime(hour, minute))
     }
     return null
@@ -908,7 +923,12 @@ private fun TaskDialog(
                     ).forEach { (value, label) ->
                         Surface(
                             shape = MuseShapes.small,
-                            color = if (interval == value) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                            color =
+                            if (interval == value) {
+                                MaterialTheme.colorScheme.primaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.surfaceVariant
+                            },
                             modifier = Modifier.clickable(
                                 role = Role.Button,
                             ) {
@@ -918,7 +938,12 @@ private fun TaskDialog(
                             Text(
                                 label,
                                 style = MaterialTheme.typography.labelMedium,
-                                color = if (interval == value) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                                color =
+                                if (interval == value) {
+                                    MaterialTheme.colorScheme.onPrimaryContainer
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                },
                                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                             )
                         }
@@ -1256,7 +1281,8 @@ private fun AssistantSelector(selectedName: String, assistants: List<AssistantEn
                                 }.getOrNull() ?: 0
                                 val modelLabel = a.modelId ?: stringResource(R.string.schedule_default_model) // 前端修复 (i18n-5)
                                 Text(
-                                    stringResource(R.string.schedule_assistant_tools, modelLabel, toolCount), // 前端修复 (i18n-5)
+                                    // 前端修复 (i18n-5)
+                                    stringResource(R.string.schedule_assistant_tools, modelLabel, toolCount),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.outline,
                                 )
@@ -1312,13 +1338,23 @@ private fun AutomationConditionSection(
             ).forEach { (value, label) ->
                 Surface(
                     shape = MuseShapes.small,
-                    color = if (conditionType == value) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                    color =
+                    if (conditionType == value) {
+                        MaterialTheme.colorScheme.primaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.surfaceVariant
+                    },
                     modifier = Modifier.clickable(role = Role.Button) { onConditionTypeChange(value) },
                 ) {
                     Text(
                         label,
                         style = MaterialTheme.typography.labelSmall,
-                        color = if (conditionType == value) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                        color =
+                        if (conditionType == value) {
+                            MaterialTheme.colorScheme.onPrimaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
                     )
                 }
@@ -1421,13 +1457,23 @@ private fun AutomationActionSection(
             ).forEach { (value, label) ->
                 Surface(
                     shape = MuseShapes.small,
-                    color = if (actionType == value) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                    color =
+                    if (actionType == value) {
+                        MaterialTheme.colorScheme.primaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.surfaceVariant
+                    },
                     modifier = Modifier.clickable(role = Role.Button) { onActionTypeChange(value) },
                 ) {
                     Text(
                         label,
                         style = MaterialTheme.typography.labelSmall,
-                        color = if (actionType == value) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                        color =
+                        if (actionType == value) {
+                            MaterialTheme.colorScheme.onPrimaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
                     )
                 }

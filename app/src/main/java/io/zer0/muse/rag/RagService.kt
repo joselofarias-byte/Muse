@@ -1778,10 +1778,8 @@ class RagService(
      * ([KnowledgeDocDao.getByKbIds] + [KnowledgeFolderBrowser.folderPath]),保证过渡期两种
      * 展开入口的结果一致。
      */
-    suspend fun resolveBindingScope(
-        knowledgeBaseIds: List<String>,
-        folderScopes: List<Pair<String, String>>,
-    ): KnowledgeScope = knowledgeScopeResolver.resolveBinding(knowledgeBaseIds, folderScopes)
+    suspend fun resolveBindingScope(knowledgeBaseIds: List<String>, folderScopes: List<Pair<String, String>>): KnowledgeScope =
+        knowledgeScopeResolver.resolveBinding(knowledgeBaseIds, folderScopes)
 
     /** R1: 惰性构造的范围解析器(与 [resolveKbFolderScopes] 同一 DAO 数据源)。 */
     private val knowledgeScopeResolver: KnowledgeScopeResolver by lazy {

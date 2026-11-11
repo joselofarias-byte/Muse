@@ -471,7 +471,8 @@ class PresetProviders(
         ),
         oauthConfig = OAuthConfig.XAI_OAUTH_PRESET,
         specific = ProviderSpecificConfig.OpenAI(useResponseApi = true),
-        allowMissingApiKey = true, // OAuth 拿到 token 前允许空 apiKey
+        // OAuth 拿到 token 前允许空 apiKey
+        allowMissingApiKey = true,
     )
 
     /**
@@ -498,7 +499,8 @@ class PresetProviders(
         models = emptyList(),
         oauthConfig = OAuthConfig.OPENAI_CODEX_PRESET,
         specific = ProviderSpecificConfig.OpenAI(useResponseApi = true),
-        allowMissingApiKey = true, // OAuth 拿到 token 前允许空 apiKey
+        // OAuth 拿到 token 前允许空 apiKey
+        allowMissingApiKey = true,
     )
 
     /**
@@ -597,7 +599,8 @@ class PresetProviders(
         apiKey = "",
         builtIn = true,
         category = ProviderCategory.OFFICIAL,
-        models = emptyList(), // 聚合平台,模型列表由用户从 /models 拉取
+        // 聚合平台,模型列表由用户从 /models 拉取
+        models = emptyList(),
     )
 
     /** 1muse 特有。 */
@@ -676,7 +679,8 @@ class PresetProviders(
         apiKey = "",
         builtIn = true,
         category = ProviderCategory.OFFICIAL,
-        models = emptyList(), // 由用户本地 ollama pull 的模型决定
+        // 由用户本地 ollama pull 的模型决定
+        models = emptyList(),
         allowMissingApiKey = true,
     )
 
@@ -855,7 +859,8 @@ class PresetProviders(
         type = ProviderType.OPENAI,
         // 端点随服务端轮换：每次构建预设都取当前生效值，不在代码里写死某一家网关。
         baseUrl = SiliconFlowFreeModels.BASE_URL,
-        apiKey = "", // 空：触发免费档派发 key
+        // 空：触发免费档派发 key
+        apiKey = "",
         builtIn = true,
         hiddenFromSettings = true,
         category = ProviderCategory.OFFICIAL,
@@ -1303,7 +1308,8 @@ class PresetProviders(
         id = "preset_oneapi",
         displayName = context.getString(R.string.preset_provider_oneapi),
         type = ProviderType.OPENAI,
-        baseUrl = "", // 用户自部署,留空让用户填
+        // 用户自部署,留空让用户填
+        baseUrl = "",
         apiKey = "",
         builtIn = true,
         category = ProviderCategory.RELAY,
@@ -1316,7 +1322,8 @@ class PresetProviders(
         id = "preset_newapi",
         displayName = context.getString(R.string.preset_provider_newapi),
         type = ProviderType.OPENAI,
-        baseUrl = "", // 用户自部署,留空让用户填
+        // 用户自部署,留空让用户填
+        baseUrl = "",
         apiKey = "",
         builtIn = true,
         category = ProviderCategory.RELAY,

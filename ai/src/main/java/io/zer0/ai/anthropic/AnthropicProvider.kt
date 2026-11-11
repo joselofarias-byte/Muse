@@ -104,17 +104,16 @@ class AnthropicProvider(
      * 用于 400 “思考块绑定到不同会话”自愈：编辑历史后旧思考块签名与新上下文不匹配，
      * 删除后重试可让上游重新生成思考。保留正文与 tool_use 块。
      */
-    private fun stripThinkingFromMessages(messages: List<UIMessage>): List<UIMessage> =
-        messages.map { m ->
-            val hasThinking =
-                m.role == MessageRole.ASSISTANT &&
-                    (!m.reasoning.isNullOrBlank() || !m.thinkingSignature.isNullOrBlank())
-            if (hasThinking) {
-                m.copy(reasoning = null, thinkingSignature = null, thinkingEncryptedContent = null)
-            } else {
-                m
-            }
+    private fun stripThinkingFromMessages(messages: List<UIMessage>): List<UIMessage> = messages.map { m ->
+        val hasThinking =
+            m.role == MessageRole.ASSISTANT &&
+                (!m.reasoning.isNullOrBlank() || !m.thinkingSignature.isNullOrBlank())
+        if (hasThinking) {
+            m.copy(reasoning = null, thinkingSignature = null, thinkingEncryptedContent = null)
+        } else {
+            m
         }
+    }
 
     override fun streamChat(request: ChatRequest): Flow<ChatStreamEvent> = channelFlow {
         val producerScope = this
@@ -1083,14 +1082,13 @@ class AnthropicProvider(
  * @param input `message_start` 的 `message.usage`(非流式路径为响应体 `usage`),null 表示未返回
  * @param outputTokens 输出 token 数(流式取 `message_delta.usage.output_tokens`)
  */
-internal fun anthropicUsageTokens(input: AnthropicUsage?, outputTokens: Int): UsageTokens =
-    UsageTokens(
-        promptTokens = input?.input_tokens ?: 0,
-        completionTokens = outputTokens,
-        cachedTokens = input?.cache_read_input_tokens ?: 0,
-        // 未发生缓存写入时上游不返回该字段,缺省 0
-        cacheWriteTokens = input?.cache_creation_input_tokens ?: 0,
-        // Anthropic 的 input_tokens 本身就是非缓存输入(不含 cache_read/cache_creation),
-        // 与 OpenAI/Gemini 的 prompt_tokens 口径相反,计价时必须声明,否则会重复相减
-        promptTokensIncludeCache = false,
-    )
+internal fun anthropicUsageTokens(input: AnthropicUsage?, outputTokens: Int): UsageTokens = UsageTokens(
+    promptTokens = input?.input_tokens ?: 0,
+    completionTokens = outputTokens,
+    cachedTokens = input?.cache_read_input_tokens ?: 0,
+    // 未发生缓存写入时上游不返回该字段,缺省 0
+    cacheWriteTokens = input?.cache_creation_input_tokens ?: 0,
+    // Anthropic 的 input_tokens 本身就是非缓存输入(不含 cache_read/cache_creation),
+    // 与 OpenAI/Gemini 的 prompt_tokens 口径相反,计价时必须声明,否则会重复相减
+    promptTokensIncludeCache = false,
+)

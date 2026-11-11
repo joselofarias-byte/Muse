@@ -37,7 +37,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -547,8 +546,9 @@ private fun StaticHistoryLoadMorePlaceholder() {
 internal fun DateSeparator(timestamp: Long) {
     val now = System.currentTimeMillis()
     val isToday = remember(timestamp) { isSameDay(timestamp, now) }
-    val resources = LocalContext.current.resources
-    val dateText = remember(timestamp, isToday, resources.configuration) {
+    val resources = androidx.compose.ui.platform.LocalResources.current
+    val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+    val dateText = remember(timestamp, isToday, configuration) {
         val timeSdf = java.text.SimpleDateFormat(MuseDateFormats.TIME_SHORT, java.util.Locale.getDefault())
         val timeText = timeSdf.format(java.util.Date(timestamp))
         if (isToday) {

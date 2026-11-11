@@ -711,7 +711,12 @@ internal fun ConfigTab(
                                     placeholder = { Text("-----BEGIN PRIVATE KEY-----\n...") },
                                     minLines = 3,
                                     maxLines = 8,
-                                    visualTransformation = if (privateKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                                    visualTransformation =
+                                    if (privateKeyVisible) {
+                                        VisualTransformation.None
+                                    } else {
+                                        PasswordVisualTransformation()
+                                    },
                                     trailingIcon = {
                                         MuseTactileButton(
                                             icon = if (privateKeyVisible) MuseIcons.eyeOff else MuseIcons.eye,
@@ -853,7 +858,11 @@ internal fun ConfigTab(
                             }
                         }
                         balanceResult?.let { result ->
-                            val isError = result.startsWith(queryFailedPrefix) || result.startsWith(configureFirstPrefix) || result.startsWith(pathNotFoundPrefix) || result.startsWith(unableToResolvePrefix) || result.startsWith(queryTimeoutPrefix)
+                            val isError = result.startsWith(queryFailedPrefix) ||
+                                result.startsWith(configureFirstPrefix) ||
+                                result.startsWith(pathNotFoundPrefix) ||
+                                result.startsWith(unableToResolvePrefix) ||
+                                result.startsWith(queryTimeoutPrefix)
                             Text(
                                 text = result,
                                 style = MaterialTheme.typography.bodySmall,

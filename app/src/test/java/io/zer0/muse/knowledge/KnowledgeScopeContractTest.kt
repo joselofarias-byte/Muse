@@ -89,7 +89,8 @@ class KnowledgeScopeContractTest {
         val fts = mockk<KnowledgeChunkFtsDao>(relaxed = true)
         coEvery { fts.searchBm25(any(), any()) } returns listOf(
             KnowledgeChunkFtsHit(chunkId = "alpha-1", score = -10.0),
-            KnowledgeChunkFtsHit(chunkId = "beta-1", score = -11.0), // BM25-only 且 scope 外
+            // BM25-only 且 scope 外
+            KnowledgeChunkFtsHit(chunkId = "beta-1", score = -11.0),
         )
         val hybrid = HybridSearchService(
             ftsDao = fts,
