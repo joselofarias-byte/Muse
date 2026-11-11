@@ -1063,7 +1063,9 @@ class GroupChatViewModel(
     ) {
         viewModelScope.launch {
             try {
-                groupChatRepository.updateChat(chatId, name, description, memberIds, discussionMode, autoMaxRounds, hostId, replyLengthMode, observerIds)
+                groupChatRepository.updateChat(
+                    chatId, name, description, memberIds, discussionMode, autoMaxRounds, hostId, replyLengthMode, observerIds,
+                )
             } catch (e: Exception) {
                 Logger.e(TAG, "更新群聊失败", e)
                 _state.update { it.copy(errorMessage = appContext.getString(R.string.err_group_chat_update_failed)) }

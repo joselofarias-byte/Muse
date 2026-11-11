@@ -28,10 +28,11 @@ class GreetingHintGenerator(
     private val chatService: ChatService,
 ) {
 
-    private val tag = "GreetingHintGenerator"
+    private companion object {
+        const val LLM_TIMEOUT_MS = 8000L
+    }
 
-    /** LLM 生成超时(UI 场景不能久等,失败快速回退)。 */
-    private val LLM_TIMEOUT_MS = 8000L
+    private val tag = "GreetingHintGenerator"
 
     /** 生成结果最大长度(UI 单行预算)。 */
     private val maxHintLength = GreetingHelper.PERSONALIZED_HINT_MAX_LENGTH

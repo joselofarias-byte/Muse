@@ -79,7 +79,8 @@ class AutonomousAccessibilityApprovalTest {
         // 去掉 INPUT 的硬闸后，输入是否放行完全交给动作白名单：不在名单照样 Pending。
         val result =
             AutonomousAccessibilityApproval.evaluate(
-                window = window, // allowedActions 不含 INPUT
+                // allowedActions 不含 INPUT
+                window = window,
                 toolName = "screen_input",
                 currentPackage = "com.xingin.xhs",
                 minuteOfDay = 15 * 60,

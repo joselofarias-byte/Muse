@@ -3,6 +3,7 @@ package io.zer0.muse.knowledge.index
 import io.zer0.common.Logger
 import io.zer0.muse.data.knowledge.IndexGenerationState
 import io.zer0.muse.data.knowledge.KnowledgeJobDao
+import io.zer0.muse.knowledge.domain.knowledgeOperation
 
 /**
  * R4 索引协调器 — 设计 §8.3「outbox 负责 ANN、缓存失效和非阻塞清理」的清理/修复实现。
@@ -40,9 +41,9 @@ class KnowledgeIndexReconciler(
         var dangling = 0
 
         // 1. 过期租约回收。
-        val expiredLeases = try {
+        val expiredLeases = knowledgeOperation {
             v2Dao.deleteExpiredLeases(clock())
-        } catch (e: Exception) {
+        }.getOrElse { e ->
             errors.add("租约回收失败: ${e.message}")
             0
         }
@@ -77,41 +78,38 @@ class KnowledgeIndexReconciler(
         var retired = 0
         var dangling = 0
 
-        val latest = try {
+        val latest = knowledgeOperation {
             jobDao.getLatestGeneration(docId)
-        } catch (e: Exception) {
+        }.getOrElse { e ->
             return ReconcileReport(0, 0, 0, 0, listOf("读取代失败: ${e.message}"))
         }
-        val activePointer = try {
+        val activePointer = knowledgeOperation {
             jobDao.getActiveGeneration(docId)
-        } catch (e: Exception) {
+        }.getOrElse { e ->
             return ReconcileReport(0, 0, 0, 0, listOf("读取活动指针失败: ${e.message}"))
         }
 
         // 悬挂指针:指针非空但该代不存在或不是 ACTIVE。
         if (!activePointer.isNullOrBlank()) {
-            val pointerGen = try {
+            knowledgeOperation {
                 jobDao.getGeneration(activePointer)
-            } catch (e: Exception) {
-                null.also { errors.add("读取活动代失败: ${e.message}") }
-            }
-            if (pointerGen == null || pointerGen.state != IndexGenerationState.ACTIVE.name) {
-                try {
-                    jobDao.clearActiveGeneration(docId)
-                    dangling++
-                } catch (e: Exception) {
-                    errors.add("清理悬挂指针失败: ${e.message}")
+            }.onSuccess { pointerGen ->
+                if (pointerGen == null || pointerGen.state != IndexGenerationState.ACTIVE.name) {
+                    knowledgeOperation {
+                        jobDao.clearActiveGeneration(docId)
+                        dangling++
+                    }.onFailure { e -> errors.add("清理悬挂指针失败: ${e.message}") }
                 }
-            }
+            }.onFailure { e -> errors.add("读取活动代失败: ${e.message}") }
         }
 
         // 清理最新代若为 FAILED(崩溃残留)。
         if (latest != null && latest.state == IndexGenerationState.FAILED.name) {
-            try {
+            knowledgeOperation {
                 jobDao.deleteGenChunks(latest.generationId)
                 jobDao.deleteGenLexical(latest.generationId)
                 cleanedFailed++
-            } catch (e: Exception) {
+            }.getOrElse { e ->
                 errors.add("清理 FAILED 代失败: ${e.message}")
             }
         }
@@ -120,11 +118,11 @@ class KnowledgeIndexReconciler(
         if (latest != null && latest.state == IndexGenerationState.RETIRED.name) {
             val age = clock() - latest.createdAt
             if (age >= retiredRetentionMs) {
-                try {
+                knowledgeOperation {
                     jobDao.deleteGenChunks(latest.generationId)
                     jobDao.deleteGenLexical(latest.generationId)
                     retired++
-                } catch (e: Exception) {
+                }.getOrElse { e ->
                     errors.add("回收 RETIRED 代失败: ${e.message}")
                 }
             }
@@ -136,11 +134,11 @@ class KnowledgeIndexReconciler(
     /**
      * 候选文档:所有存在 FAILED/RETIRED 代的文档(按状态列 docId,不做全表文档扫描)。
      */
-    private suspend fun candidateDocIds(): List<String> = try {
+    private suspend fun candidateDocIds(): List<String> = knowledgeOperation {
         jobDao.getDocIdsByGenerationStates(
             listOf(IndexGenerationState.FAILED.name, IndexGenerationState.RETIRED.name),
         )
-    } catch (e: Exception) {
+    }.getOrElse { e ->
         Logger.w("KnowledgeIndexReconciler", "读取候选文档失败: ${e.message}", e)
         emptyList()
     }

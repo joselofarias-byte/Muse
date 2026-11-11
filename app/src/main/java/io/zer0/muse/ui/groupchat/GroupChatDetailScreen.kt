@@ -200,6 +200,7 @@ fun GroupChatDetailScreen(
     var expandedRoundStarts by remember { mutableStateOf(setOf<Int>()) }
     val keyboard = LocalSoftwareKeyboardController.current
     val context = LocalContext.current
+    val contextResources = androidx.compose.ui.platform.LocalResources.current
     val scope = rememberCoroutineScope()
     val haptic = LocalHapticFeedback.current
     // Phase 4: 群聊气泡共用同一份宿主皮肤;null = 既有群聊外观(解析与回退在气泡组件内)。
@@ -475,7 +476,8 @@ fun GroupChatDetailScreen(
             if (!chatBackground.isNullOrBlank()) {
                 io.zer0.muse.ui.SmartImage(
                     model = chatBackground,
-                    contentDescription = stringResource(R.string.groupchat_bg_cd), // 前端修复 (i18n-1)
+                    // 前端修复 (i18n-1)
+                    contentDescription = stringResource(R.string.groupchat_bg_cd),
                     contentScale = androidx.compose.ui.layout.ContentScale.Crop,
                     modifier = Modifier.fillMaxSize(),
                 )
@@ -1340,7 +1342,7 @@ fun GroupChatDetailScreen(
                                 messageMenuTarget = null
                                 val clipboard = context.getSystemService(android.content.ClipboardManager::class.java)
                                 clipboard?.setPrimaryClip(android.content.ClipData.newPlainText("message", msg.body))
-                                io.zer0.muse.ui.common.feedback.MuseToast.show(context.getString(R.string.groupchat_copied))
+                                io.zer0.muse.ui.common.feedback.MuseToast.show(contextResources.getString(R.string.groupchat_copied))
                             }
                             GroupChatActionRow(MuseIcons.chat, stringResource(R.string.groupchat_reply), textColor, iconBlock) {
                                 messageMenuTarget = null

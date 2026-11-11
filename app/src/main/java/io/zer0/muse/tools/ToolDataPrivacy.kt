@@ -86,7 +86,9 @@ internal object ToolDataPrivacy {
     private fun redactText(text: String): String {
         var value = text
         value = Regex(
-            """(?i)(api[\s_-]?key|access[\s_-]?token|refresh[\s_-]?token|authorization|cookie|password|passwd|secret|private[\s_-]?key|jwt|pin|webhook|token)\s*[:=]?\s*["']?[A-Za-z0-9._~+/=-]{6,}""",
+            """(?i)(api[\s_-]?key|access[\s_-]?token|refresh[\s_-]?token|authorization|cookie|""" +
+                """password|passwd|secret|private[\s_-]?key|jwt|pin|webhook|""" +
+                """token)\s*[:=]?\s*["']?[A-Za-z0-9._~+/=-]{6,}""",
         ).replace(value) { "${it.groupValues[1]}=$REDACTED" }
         value = Regex("""(?i)\b(?:sk|rk|pk|ak)-[A-Za-z0-9][A-Za-z0-9._-]{5,}\b""")
             .replace(value, REDACTED)
