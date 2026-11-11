@@ -1798,7 +1798,7 @@ export const ES: MessageDict = {
   "assistants.title": "Elige un asistente",
   "assistants.listAria": "Asistentes",
   "assistants.default": "Predeterminado",
-  "assistants.pageTitle": "Asistentes",
+  "assistants.pageTitle": "Asistentes y roles",
   "assistants.loading": "Cargando asistentes…",
   "assistants.listEmpty": "Aún no hay asistentes",
   "assistants.model": "Modelo",
@@ -1839,7 +1839,7 @@ export const ES: MessageDict = {
   "common.noMore": "No hay más",
   "common.loadMore": "Cargar más",
 
-  "knowledge.title": "Conocimiento",
+  "knowledge.title": "Bases de conocimiento y búsqueda",
   "knowledge.loading": "Cargando bases de conocimiento…",
   "knowledge.empty": "Aún no hay bases de conocimiento — los documentos que importes en tu teléfono aparecerán aquí.",
   "knowledge.readOnly": "Importa y gestiona las bases de conocimiento en tu teléfono",
@@ -1854,7 +1854,7 @@ export const ES: MessageDict = {
   "knowledge.unsupported": "Esta versión no permite mostrar bases de conocimiento en la web",
 
   "data.storage": "Almacenamiento",
-  "data.database": "Base de datos",
+  "data.database": "BD",
   "data.media": "Archivos multimedia",
   "data.voice": "Voz",
   "data.workspace": "Espacio de trabajo",
