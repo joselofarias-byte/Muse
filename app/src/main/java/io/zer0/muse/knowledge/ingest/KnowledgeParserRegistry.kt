@@ -13,7 +13,8 @@ object KnowledgeParserRegistry {
     /** 当前支持的格式白名单(扩展名,小写);路由时未知扩展名 → 拒绝。 */
     private val SUPPORTED_EXTENSIONS = setOf(
         "txt", "md", "pdf", "docx", "pptx", "xlsx", "epub",
-        "png", "jpg", "jpeg", "webp", "gif", // 图片入口(OCR 路径,步骤 4)
+        // 图片入口(OCR 路径,步骤 4)
+        "png", "jpg", "jpeg", "webp", "gif",
     )
 
     /**

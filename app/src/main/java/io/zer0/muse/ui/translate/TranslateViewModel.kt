@@ -360,7 +360,10 @@ class TranslateViewModel(
                 _state.update {
                     it.copy(
                         translating = false,
-                        errorMessage = appContext.getString(R.string.err_chat_translate_failed, t.message ?: appContext.getString(R.string.err_chat_unknown)),
+                        errorMessage = appContext.getString(
+                            R.string.err_chat_translate_failed,
+                            t.message ?: appContext.getString(R.string.err_chat_unknown),
+                        ),
                     )
                 }
             }
@@ -705,8 +708,7 @@ class TranslateViewModel(
 
         // Localize labels only; persisted values and prompt selection remain unchanged.
         @StringRes
-        fun translationStyleLabelResId(style: String): Int? =
-            translationStyleLabelResIds.getOrNull(TRANSLATION_STYLES.indexOf(style))
+        fun translationStyleLabelResId(style: String): Int? = translationStyleLabelResIds.getOrNull(TRANSLATION_STYLES.indexOf(style))
 
         /**
          * 构建翻译 prompt。

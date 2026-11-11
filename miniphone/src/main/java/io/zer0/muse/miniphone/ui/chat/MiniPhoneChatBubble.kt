@@ -224,7 +224,7 @@ private fun InnerVoiceRow(text: String, alignEnd: Boolean, maxBubbleWidth: Dp, m
  */
 @Composable
 private fun ChatDeliveryState(message: ChatMessageUi, onRetry: () -> Unit) {
-    val context = LocalContext.current
+    val contextResources = androidx.compose.ui.platform.LocalResources.current
     val colors = MiniPhoneTheme.colors
     val typography = MiniPhoneTheme.typography
     if (message.isSending) {
@@ -240,7 +240,7 @@ private fun ChatDeliveryState(message: ChatMessageUi, onRetry: () -> Unit) {
             .testTag(MiniPhoneChatTags.status(message.id))
             .clip(RoundedCornerShape(SendFailRadius))
             .clickable(onClick = onRetry)
-            .semantics { contentDescription = context.getString(SEND_FAILED_TEXT_RES) }
+            .semantics { contentDescription = contextResources.getString(SEND_FAILED_TEXT_RES) }
             .padding(horizontal = 4.dp, vertical = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -365,7 +365,7 @@ internal fun ChatTimeDividerRow(at: Long) {
 /** 「对方正在输入…」:对方一侧的气泡里三个跳动的点。 */
 @Composable
 internal fun ChatTypingRow(peerName: String, peerAvatarUri: String?, showName: Boolean = false) {
-    val context = LocalContext.current
+    val contextResources = androidx.compose.ui.platform.LocalResources.current
     val colors = MiniPhoneTheme.colors
     val dimens = MiniPhoneTheme.dimens
     val typography = MiniPhoneTheme.typography
@@ -374,7 +374,7 @@ internal fun ChatTypingRow(peerName: String, peerAvatarUri: String?, showName: B
         modifier = Modifier
             .fillMaxWidth()
             .testTag(MiniPhoneChatTags.TYPING)
-            .semantics { contentDescription = context.getString(TYPING_TEXT_RES) }
+            .semantics { contentDescription = contextResources.getString(TYPING_TEXT_RES) }
             .padding(horizontal = dimens.pageMargin, vertical = 4.dp),
         verticalAlignment = Alignment.Top,
     ) {

@@ -40,6 +40,7 @@ import io.zer0.muse.workspace.WorkspaceLocation
 @Composable
 fun WorkspaceLocationCard(modifier: Modifier = Modifier) {
     val context = LocalContext.current
+    val contextResources = androidx.compose.ui.platform.LocalResources.current
     // 迁移结果只影响这一屏的提示文案，所以放在局部状态里，不往上抬
     var message by remember { mutableStateOf<String?>(null) }
     var needsRestart by remember { mutableStateOf(false) }
@@ -80,22 +81,22 @@ fun WorkspaceLocationCard(modifier: Modifier = Modifier) {
                             val intent = WorkspaceLocation.requestBroadStorageAccessIntent(context)
                             if (intent != null) {
                                 context.startActivity(intent)
-                                message = context.getString(R.string.workspace_location_need_permission)
+                                message = contextResources.getString(R.string.workspace_location_need_permission)
                             } else {
-                                message = context.getString(R.string.workspace_location_need_permission)
+                                message = contextResources.getString(R.string.workspace_location_need_permission)
                             }
                         } else {
                             when (val result = WorkspaceLocation.migrateToDownloads(context)) {
                                 is WorkspaceLocation.Migration.Moved -> {
-                                    message = context.getString(R.string.workspace_location_moved, result.files)
+                                    message = contextResources.getString(R.string.workspace_location_moved, result.files)
                                     needsRestart = true
                                 }
                                 is WorkspaceLocation.Migration.AlreadyThere -> {
-                                    message = context.getString(R.string.workspace_location_moved, 0)
+                                    message = contextResources.getString(R.string.workspace_location_moved, 0)
                                     needsRestart = true
                                 }
                                 is WorkspaceLocation.Migration.Failed -> {
-                                    message = context.getString(R.string.workspace_location_failed, result.reason)
+                                    message = contextResources.getString(R.string.workspace_location_failed, result.reason)
                                 }
                             }
                         }
@@ -107,9 +108,9 @@ fun WorkspaceLocationCard(modifier: Modifier = Modifier) {
                     onClick = {
                         when (val result = WorkspaceLocation.migrateBackInternal(context)) {
                             is WorkspaceLocation.Migration.Failed ->
-                                message = context.getString(R.string.workspace_location_failed, result.reason)
+                                message = contextResources.getString(R.string.workspace_location_failed, result.reason)
                             else -> {
-                                message = context.getString(R.string.workspace_location_moved, 0)
+                                message = contextResources.getString(R.string.workspace_location_moved, 0)
                                 needsRestart = true
                             }
                         }

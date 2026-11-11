@@ -114,11 +114,16 @@ class DelegationPauseManager {
     /** 暂停点配置策略。 */
     @Serializable
     data class PausePolicy(
-        val pauseBeforeTeam: Boolean = false, // 团队工作流执行前
-        val pauseBeforeEachMember: Boolean = false, // 团队每个成员执行前
-        val pauseOnIntermediateResult: Boolean = false, // 中间结果产出后
-        val pauseOnHighRisk: Boolean = true, // 高风险任务前(默认开启)
-        val autoTimeoutSec: Int = 300, // 暂停等待超时(秒),超时自动拒绝
+        // 团队工作流执行前
+        val pauseBeforeTeam: Boolean = false,
+        // 团队每个成员执行前
+        val pauseBeforeEachMember: Boolean = false,
+        // 中间结果产出后
+        val pauseOnIntermediateResult: Boolean = false,
+        // 高风险任务前(默认开启)
+        val pauseOnHighRisk: Boolean = true,
+        // 暂停等待超时(秒),超时自动拒绝
+        val autoTimeoutSec: Int = 300,
     )
 
     /** 当前活跃的暂停请求(requestId -> PauseRequest)。 */

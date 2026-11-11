@@ -37,6 +37,7 @@ class KnowledgeRepository(
 
     sealed interface EditResult {
         data class Ok(val doc: KnowledgeRevision) : EditResult
+
         /** expectedRevisionId 与当前版本不符:并发更新冲突,调用方应刷新后重试。 */
         data object Conflict : EditResult
     }
@@ -76,8 +77,7 @@ class KnowledgeRepository(
     }
 
     /** 读取 revision 工件(全文真源;preview 只是它的派生)。 */
-    fun loadRevision(revisionId: String): KnowledgeRevision =
-        requireNotNull(revisions[revisionId]) { "revision 不存在: $revisionId" }
+    fun loadRevision(revisionId: String): KnowledgeRevision = requireNotNull(revisions[revisionId]) { "revision 不存在: $revisionId" }
 
     /**
      * R2 步骤 6:旧行导入 — 只做已知信息分类,不猜测、不拼接冒充。
@@ -90,17 +90,7 @@ class KnowledgeRepository(
      *  - 完整行(含长正文):全文进 revision,preview 派生;
      *  - docId 原样保留(citation 身份锚点);owner 持久落位。
      */
-    fun importLegacyRow(
-        docId: String,
-        ownerType: String,
-        ownerId: String,
-        isInternal: Boolean,
-        content: String,
-        contentHash: String,
-        metadataJson: String,
-        chunks: List<String>,
-        sourceMissing: Boolean,
-    ): LegacyImport {
+    fun importLegacyRow(row: LegacyImportRequest): LegacyImport = with(row) {
         val hashMatches = contentHash.isNotBlank() &&
             contentHash == KnowledgeContentStore.hashOf(content.toByteArray())
         val rowClass = KnowledgeLegacyRowClassifier.classify(
@@ -119,7 +109,7 @@ class KnowledgeRepository(
             fullContent = if (rowClass == KnowledgeLegacyRowClass.CHUNK_ONLY) "" else content,
             origin = "legacy-import:$rowClass",
         )
-        return LegacyImport(
+        LegacyImport(
             docId = docId,
             ownerType = ownerType,
             ownerId = ownerId,
@@ -129,6 +119,18 @@ class KnowledgeRepository(
             chunkTexts = chunks.toList(),
         )
     }
+
+    data class LegacyImportRequest(
+        val docId: String,
+        val ownerType: String,
+        val ownerId: String,
+        val isInternal: Boolean,
+        val content: String,
+        val contentHash: String,
+        val metadataJson: String,
+        val chunks: List<String>,
+        val sourceMissing: Boolean,
+    )
 
     /** 旧行导入结果 — 分类 + 落位身份 + 原样保留的旧数据。 */
     data class LegacyImport(
@@ -176,8 +178,7 @@ class KnowledgeRepository(
         fun derivePreview(fullContent: String): String =
             if (fullContent.length <= PREVIEW_MAX_CHARS) fullContent else fullContent.take(PREVIEW_MAX_CHARS)
 
-        private fun shortHash(s: String): String =
-            MessageDigest.getInstance("SHA-256").digest(s.toByteArray())
-                .joinToString("") { "%02x".format(it) }.take(8)
+        private fun shortHash(s: String): String = MessageDigest.getInstance("SHA-256").digest(s.toByteArray())
+            .joinToString("") { "%02x".format(it) }.take(8)
     }
 }

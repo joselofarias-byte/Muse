@@ -2,6 +2,7 @@ package io.zer0.muse.knowledge.retrieval
 
 import io.zer0.muse.data.knowledge.KnowledgeJobDao
 import io.zer0.muse.data.knowledge.KnowledgeVectorRow
+import io.zer0.muse.knowledge.domain.knowledgeOperation
 import kotlin.math.sqrt
 
 /**
@@ -21,28 +22,27 @@ class V2DenseRetriever(
     private val oversample: Int = 4,
 ) : DenseRetriever {
 
-    override suspend fun search(
-        request: KnowledgeSearchRequest,
-        activeGenerationIds: List<String>,
-        limit: Int,
-    ): DenseRecall {
+    override suspend fun search(request: KnowledgeSearchRequest, activeGenerationIds: List<String>, limit: Int): DenseRecall {
         if (activeGenerationIds.isEmpty()) return DenseRecall(hits = emptyList())
 
         val queryVector = request.queryVector
-            ?: return DenseRecall(
+        if (queryVector == null || queryVector.isEmpty()) {
+            return DenseRecall(
                 hits = emptyList(),
-                degradedReason = "本轮未提供查询向量,dense 路径跳过",
+                degradedReason = if (queryVector == null) "本轮未提供查询向量,dense 路径跳过" else "查询向量为空",
             )
-        if (queryVector.isEmpty()) {
-            return DenseRecall(hits = emptyList(), degradedReason = "查询向量为空")
         }
 
         val candidateBudget = (limit * oversample).coerceAtLeast(limit)
-        val rows = try {
+        val rows = knowledgeOperation {
             dao.getVectorRows(activeGenerationIds, candidateBudget)
-        } catch (e: Exception) {
+        }.getOrElse { e ->
             return DenseRecall(hits = emptyList(), degradedReason = "向量索引不可用: ${e.message}")
         }
+        return scoreRows(rows, queryVector, candidateBudget)
+    }
+
+    private fun scoreRows(rows: List<KnowledgeVectorRow>, queryVector: FloatArray, candidateBudget: Int): DenseRecall {
         if (rows.isEmpty()) {
             return DenseRecall(hits = emptyList(), degradedReason = "活动代内没有已就绪向量")
         }
@@ -57,18 +57,19 @@ class V2DenseRetriever(
                 continue
             }
             val score = cosine(queryVector, vector)
-            if (!score.isFinite()) continue
-            scored.add(
-                DenseHit(
-                    chunkId = "${row.generationId}#${row.chunkIndex}",
-                    docId = row.docId,
-                    generationId = row.generationId,
-                    text = row.content,
-                    locator = row.locator,
-                    score = score,
-                    rank = 0,
-                ),
-            )
+            if (score.isFinite()) {
+                scored.add(
+                    DenseHit(
+                        chunkId = "${row.generationId}#${row.chunkIndex}",
+                        docId = row.docId,
+                        generationId = row.generationId,
+                        text = row.content,
+                        locator = row.locator,
+                        score = score,
+                        rank = 0,
+                    ),
+                )
+            }
         }
 
         val degradedReason = when {
