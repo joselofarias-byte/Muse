@@ -152,7 +152,7 @@
     <string name="permission_termux_open_btn">Abrir Termux</string>
     <string name="permission_termux_grant_denied_hint">No se concedió el permiso para ejecutar comandos de Termux. Pulsa reintentar y elige Permitir en el diálogo del sistema.</string>
     <string name="permission_termux_grant_btn">Conceder permiso</string>
-    <string name="permission_termux_config_hint">Permite las llamadas externas en Termux y aplica el cambio con termux-reload-settings. Puedes copiar el comando con el botón de abajo.</string>
+    <string name="permission_termux_config_hint">Ejecuta este comando en Termux para permitir las llamadas externas y recargar la configuración de inmediato. Ambos pasos son necesarios. Puedes copiarlo con el botón de abajo:\necho \'allow-external-apps = true\' &gt;&gt; ~/.termux/termux.properties &amp;&amp; termux-reload-settings</string>
     <string name="shizuku_apk_installed">Shizuku instalado</string>
     <string name="shizuku_apk_not_installed">Shizuku no está instalado</string>
     <string name="shizuku_service_running">Servicio de Shizuku activo</string>
@@ -769,7 +769,7 @@
     <string name="muse_plugins_draft_saved">Guardado como borrador deshabilitado</string>
     <string name="muse_plugins_install_confirm_action">Confirmar instalación y activar</string>
     <string name="muse_plugins_install_confirm_capabilities">Capacidades que declara usar: %1$s</string>
-    <string name="muse_plugins_capabilities_disclaimer">Esta lista es el limite de capacidades del complemento: las acciones no declaradas se rechazan de raiz. Podras cambiar cada capacidad despues en Capacidades y permisos.</string>
+    <string name="muse_plugins_capabilities_disclaimer">Esta declaración define los límites del complemento: las acciones no declaradas se rechazan directamente. Después de instalarlo, puedes activar o desactivar cada capacidad en «Capacidades y permisos».</string>
     <string name="muse_plugins_global_switch_title">Interruptor general de plugins</string>
     <string name="muse_plugins_global_switch_desc">Si está desactivado, ningún plugin se ejecuta. Las instalaciones y los ajustes se conservan.</string>
     <string name="muse_plugins_runtime_label">Entorno de ejecución: %1$s</string>
@@ -895,10 +895,10 @@
     <string name="workspace_mount_remove_failed">No se pudo quitar «%1$s»: sigue en la lista</string>
     <string name="workspace_mount_failed">Error al montar: %1$s</string>
     <string name="workspace_read_only_hint">Montaje de solo lectura, no se puede modificar</string>
-    <string name="muse_plugins_market_advice_downgrade">La version del catalogo es mas antigua que la instalada; seria una bajada</string>
-    <string name="muse_plugins_market_advice_unknown_version">No se reconoce la version; no instales todavia</string>
-    <string name="muse_plugins_market_advice_needs_newer_app">Este plugin necesita una version mas nueva de la app</string>
-    <string name="muse_plugins_market_advice_compat_unconfirmed">La compatibilidad se comprueba con el manifest al descargar; aun no se puede afirmar</string>
+    <string name="muse_plugins_market_advice_downgrade">La versión del catálogo es más antigua que la instalada; instalarla supondría volver a una versión anterior</string>
+    <string name="muse_plugins_market_advice_unknown_version">No se reconoce la versión; no lo instales todavía</string>
+    <string name="muse_plugins_market_advice_needs_newer_app">Este complemento necesita una versión más reciente de la app</string>
+    <string name="muse_plugins_market_advice_compat_unconfirmed">La compatibilidad se comprueba con el manifiesto al descargar; aún no se puede confirmar</string>
     <string name="muse_plugins_market_advice_retained">Hay copias locales de estas versiones: %1$s (se cambian desde la lista instalada)</string>
     <string name="audit_log_field_action">Acción</string>
     <string name="audit_log_field_target">Destino</string>

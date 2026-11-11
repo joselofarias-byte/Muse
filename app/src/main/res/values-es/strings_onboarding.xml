@@ -18,7 +18,7 @@
     <string name="onboarding_names_agent_placeholder">Por ejemplo, Nova</string>
     <string name="onboarding_names_hint">Se aplica a tu asistente predeterminado; cámbialo cuando quieras.</string>
     <string name="onboarding_memory_title">Activa la memoria del asistente</string>
-    <string name="onboarding_memory_subtitle">Permite conservar información de las conversaciones a largo plazo. Actualizar la memoria con frecuencia puede reducir el aprovechamiento de la caché del modelo y aumentar el costo.</string>
+    <string name="onboarding_memory_subtitle">Al activarla, las conversaciones se organizan automáticamente en recuerdos a largo plazo al terminar. Actualizarlos con frecuencia puede reducir el aprovechamiento de la caché del modelo y aumentar el costo, pero mejora la continuidad de las conversaciones.</string>
     <string name="onboarding_memory_switch_title">Activar memoria</string>
     <string name="onboarding_memory_switch_subtitle">Se organiza al terminar cada charla; desactívalo cuando quieras.</string>
 
