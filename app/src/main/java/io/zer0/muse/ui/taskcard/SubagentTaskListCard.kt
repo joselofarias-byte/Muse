@@ -128,7 +128,11 @@ fun SubagentTaskListCard(
                             taskId = task.taskId,
                             assistantId = activeThreads.firstOrNull { it.threadId == task.threadId }?.assistantId,
                             onCancel = onCancel,
-                            onClick = { task.threadId?.let { tid -> selectedThread = tid to (activeThreads.firstOrNull { it.threadId == tid }?.assistantId ?: "") } },
+                            onClick = {
+                                task.threadId?.let { tid ->
+                                    selectedThread = tid to (activeThreads.firstOrNull { it.threadId == tid }?.assistantId ?: "")
+                                }
+                            },
                         )
                     }
 

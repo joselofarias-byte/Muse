@@ -644,7 +644,10 @@ class SkillExecutor(
                     id = "web_search",
                     name = "网页搜索",
                     // v1.0.75 fix (工具审查 01): 删冗余 time_period,补 date_range 使用指引
-                    description = "用配置好的搜索引擎搜索网页。返回标题、URL 和摘要。当用户问到需要最新信息的问题时调用此工具。使用时机: 用户问到需要最新/实时信息的问题(价格、版本、政策、行情、天气等),或你知识不确定时。需要限定时间时传 date_range(如用户说'最近一周',传 past_week);查询里带'今天/最近/最新/本月'等词也会自动推断时间范围。支持 site:域名、filetype:类型、intitle:关键词 操作符,会作为结果过滤生效。用完整的自然语言或关键词串提问即可,不要只给一个单词。不要使用: 常识性问题或用户已提供足够信息时;搜索结果不相关时换关键词重搜,不要编造。",
+                    description = "用配置好的搜索引擎搜索网页。返回标题、URL 和摘要。当用户问到需要最新信息的问题时调用此工具。使用时机: 用户问到需要最新/实时信息的问题(价格、版本、政策、行情、天气等),或你" +
+                        "知识不确定时。需要限定时间时传 date_range(如用户说'最近一周',传 past_week);查询里带'今天/最近/最新/本月'等词也会自动推断时间范围。支持 site:域" +
+                        "名、filetype:类型、intitle:关键词 操作符,会作为结果过滤生效。用完整的自然语言或关键词串提问即可,不要只给一个单词。不要使用: 常识性问题或用户已提供足够信息时;" +
+                        "搜索结果不相关时换关键词重搜,不要编造。",
                     parametersJson =
                     buildJsonObject {
                         put("type", "object")
@@ -686,7 +689,8 @@ class SkillExecutor(
                 SkillEntity(
                     id = "web_fetch",
                     name = "网页抓取",
-                    description = "抓取指定 URL 的网页正文(自动去除 HTML 标签,返回纯文本)。用于读取 web_search 返回的 URL 全文内容。使用时机: 读取 web_search 返回的 URL 全文,或用户给出明确 URL 时。不要使用: 无 URL 时;页面需要登录/交互时说明无法获取,不要猜测内容。",
+                    description = "抓取指定 URL 的网页正文(自动去除 HTML 标签,返回纯文本)。用于读取 web_search 返回的 URL 全文内容。使用时机: 读取 web_search 返" +
+                        "回的 URL 全文,或用户给出明确 URL 时。不要使用: 无 URL 时;页面需要登录/交互时说明无法获取,不要猜测内容。",
                     parametersJson =
                     buildJsonObject {
                         put("type", "object")
@@ -720,7 +724,9 @@ class SkillExecutor(
                     name = "知识库搜索",
                     // v1.0.75 fix (工具审查 01): 明确与 web_search 的边界,
                     // 原"可能与已导入文档相关时优先调用"太模糊,模型先试本地再退搜索浪费轮次。
-                    description = "在用户主动导入的知识库文档中语义搜索(向量检索 + 标题/内容匹配)。仅当用户知识库中可能有答案时使用(如用户导入过资料、问'我之前存的文档里怎么说的')。通用事实、实时信息、网上能查到的问题一律用 web_search,不要先用本工具试探。用户问 muse app 自身功能(如怎么用深度思考/主动消息怎么设置)时,传 include_internal=true 可检索内置功能文档。",
+                    description = "在用户主动导入的知识库文档中语义搜索(向量检索 + 标题/内容匹配)。仅当用户知识库中可能有答案时使用(如用户导入过资料、问'我之前存的文档里怎么说的')。通用事实、实时" +
+                        "信息、网上能查到的问题一律用 web_search,不要先用本工具试探。用户问 muse app 自身功能(如怎么用深度思考/主动消息怎么设置)时,传 include_i" +
+                        "nternal=true 可检索内置功能文档。",
                     parametersJson =
                     buildJsonObject {
                         put("type", "object")
@@ -835,7 +841,13 @@ class SkillExecutor(
                 SkillEntity(
                     id = "install_skill",
                     name = "安装 Skill",
-                    description = "让助手自己生成新的 skill 定义并安装到用户设备。skill_json 参数为 .skill.json 格式的 JSON 字符串。必填字段: id, name, description, category, implementationKotlin, parametersJson。category 取值: file/http/search/knowledge/system/agent/sticker/custom。implementationKotlin 必须是内置实现之一(read_file/write_file/http_get/http_post/web_search/web_fetch/knowledge_search/arxiv_search),不支持任意代码执行。安装后用户可在设置→Skill 中查看/启停。提示词技能:implementationKotlin 传 \"prompt\",指令文本放 prompt 字段(也接受 \"prompt:<文本>\" 形式;文本受注入黑名单与 8KB 上限约束)。提示词技能可被调用时传可选 input 参数:指令文本中的 {{input}} 占位符会被代入,无占位符时输入追加到指令末尾。",
+                    description = "让助手自己生成新的 skill 定义并安装到用户设备。skill_json 参数为 .skill.json 格式的 JSON 字符串。必填字段: id, name, de" +
+                        "scription, category, implementationKotlin, parametersJson。category 取值: file/http/sear" +
+                        "ch/knowledge/system/agent/sticker/custom。implementationKotlin 必须是内置实现之一(read_file/wri" +
+                        "te_file/http_get/http_post/web_search/web_fetch/knowledge_search/arxiv_search),不支持任意代" +
+                        "码执行。安装后用户可在设置→Skill 中查看/启停。提示词技能:implementationKotlin 传 \"prompt\",指令文本放 prompt 字段(也接" +
+                        "受 \"prompt:<文本>\" 形式;文本受注入黑名单与 8KB 上限约束)。提示词技能可被调用时传可选 input 参数:指令文本中的 {{input}} 占位符会" +
+                        "被代入,无占位符时输入追加到指令末尾。",
                     parametersJson =
                     buildJsonObject {
                         put("type", "object")
@@ -848,7 +860,10 @@ class SkillExecutor(
                                         put("type", "string")
                                         put(
                                             "description",
-                                            "skill 定义 JSON 字符串(.skill.json 格式)。示例: {\"id\":\"fetch_weather\",\"name\":\"查询天气\",\"description\":\"查询城市天气\",\"parametersJson\":\"{\\\"type\\\":\\\"object\\\",\\\"properties\\\":{\\\"url\\\":{\\\"type\\\":\\\"string\\\"}}}\",\"implementationKotlin\":\"http_get\"}",
+                                            "skill 定义 JSON 字符串(.skill.json 格式)。示例: {\"id\":\"fetch_weather\",\"name\":\"查询天气\",\"d" +
+                                                "escription\":\"查询城市天气\",\"parametersJson\":\"{\\\"type\\\":\\\"object\\\",\\\"propert" +
+                                                "ies\\\":{\\\"url\\\":{\\\"type\\\":\\\"string\\\"}}}\",\"implementationKotlin\":\"htt" +
+                                                "p_get\"}",
                                         )
                                     },
                                 )
@@ -918,7 +933,8 @@ class SkillExecutor(
                                         put("type", "string")
                                         put(
                                             "description",
-                                            "JS 入口源码(≤256KB)。每个工具的 functionName 必须在源码里有顶层 function 声明,如 'function summarize(args) { return ...; }'",
+                                            "JS 入口源码(≤256KB)。每个工具的 functionName 必须在源码里有顶层 function 声明,如 'function summarize(args) " +
+                                                "{ return ...; }'",
                                         )
                                     },
                                 )
@@ -1180,7 +1196,9 @@ class SkillExecutor(
                 SkillEntity(
                     id = "agent_phone",
                     name = "Agent 私聊",
-                    description = "在群聊中向指定 agent 发起私聊(whisper)。传入 chatId(群聊 id)、targetAssistantId(目标 agent id)和 message(私聊内容)。私聊消息仅目标 agent 可见,不参与群聊轮转上下文,且会持久化到独立会话账本(App 重启后可续接)。调用后立即返回,目标 agent 的回复异步到达群聊消息流。",
+                    description = "在群聊中向指定 agent 发起私聊(whisper)。传入 chatId(群聊 id)、targetAssistantId(目标 agent id)和 message(" +
+                        "私聊内容)。私聊消息仅目标 agent 可见,不参与群聊轮转上下文,且会持久化到独立会话账本(App 重启后可续接)。调用后立即返回,目标 agent 的回复异步到达群聊" +
+                        "消息流。",
                     parametersJson =
                     buildJsonObject {
                         put("type", "object")
@@ -1359,7 +1377,8 @@ class SkillExecutor(
                 SkillEntity(
                     id = "read_public_file",
                     name = "读取公共文件",
-                    description = "通过 content:// URI 读取公共文件。可读取 list_public_files 返回的 URI(含 MediaStore URI),也可读用户分享/打开方式传入的 URI。返回文本内容(上限 1MB)。注:仅支持文本类文件,二进制文件可能乱码。",
+                    description = "通过 content:// URI 读取公共文件。可读取 list_public_files 返回的 URI(含 MediaStore URI),也可读用户分享/打开方式" +
+                        "传入的 URI。返回文本内容(上限 1MB)。注:仅支持文本类文件,二进制文件可能乱码。",
                     parametersJson =
                     buildJsonObject {
                         put("type", "object")
@@ -1394,7 +1413,8 @@ class SkillExecutor(
                 SkillEntity(
                     id = "save_to_downloads",
                     name = "保存到下载目录",
-                    description = "保存文本内容或本地沙盒文件到系统 Download 目录。Android 10+ 通过 MediaStore 写入,Android 9 及以下直接写公共 Download 目录。传 file_path 时支持二进制文件转存(无需先 read_file 再写文本)。",
+                    description = "保存文本内容或本地沙盒文件到系统 Download 目录。Android 10+ 通过 MediaStore 写入,Android 9 及以下直接写公共 Download" +
+                        " 目录。传 file_path 时支持二进制文件转存(无需先 read_file 再写文本)。",
                     parametersJson =
                     buildJsonObject {
                         put("type", "object")
@@ -1447,7 +1467,8 @@ class SkillExecutor(
                 SkillEntity(
                     id = "list_public_files",
                     name = "列出公共目录",
-                    description = "列出指定公共目录(Downloads/Documents/Pictures/Music 等)的文件。通过 MediaStore 查询,返回文件名和大小。默认列 Downloads,最多 50 条,按修改时间倒序。",
+                    description = "列出指定公共目录(Downloads/Documents/Pictures/Music 等)的文件。通过 MediaStore 查询,返回文件名和大小。默认列 Downl" +
+                        "oads,最多 50 条,按修改时间倒序。",
                     parametersJson =
                     buildJsonObject {
                         put("type", "object")
@@ -1628,7 +1649,9 @@ class SkillExecutor(
                 SkillEntity(
                     id = "update_skill",
                     name = "更新 Skill",
-                    description = "更新用户自建 skill 的 name / description / parametersJson(JSON Schema 字符串)。提示词技能额外支持用 prompt 参数替换指令文本。只能改用户自己创建的 skill:内置保留 skill 与插件技能一律拒绝;更新内容仍走导入校验(保留 id/category 白名单/注入黑名单),更新后 id 不变且保持启用。",
+                    description = "更新用户自建 skill 的 name / description / parametersJson(JSON Schema 字符串)。提示词技能额外支持用 prompt" +
+                        " 参数替换指令文本。只能改用户自己创建的 skill:内置保留 skill 与插件技能一律拒绝;更新内容仍走导入校验(保留 id/category 白名单/注入黑名单)," +
+                        "更新后 id 不变且保持启用。",
                     parametersJson =
                     buildJsonObject {
                         put("type", "object")
@@ -1682,7 +1705,8 @@ class SkillExecutor(
                 SkillEntity(
                     id = "task_plan",
                     name = "创建任务计划",
-                    description = "面对复杂多步骤任务时,先创建一个结构化计划再逐步执行。传入计划标题和步骤列表(每步含标题和描述)。计划会在用户界面显示为可追踪的检查清单。创建后按顺序执行各步骤,每完成一步调用 update_plan_step 更新状态。",
+                    description = "面对复杂多步骤任务时,先创建一个结构化计划再逐步执行。传入计划标题和步骤列表(每步含标题和描述)。计划会在用户界面显示为可追踪的检查清单。创建后按顺序执行各步骤,每完成一" +
+                        "步调用 update_plan_step 更新状态。",
                     parametersJson =
                     buildJsonObject {
                         put("type", "object")
@@ -1846,7 +1870,8 @@ class SkillExecutor(
                 SkillEntity(
                     id = "generate_image",
                     name = "生成图片",
-                    description = "根据文字描述生成图片。调用 AI 绘图模型(需配置 OpenAI 兼容绘图供应商)。返回图片 URL。使用时机: 用户要求生成图片/海报/封面时。不要使用: 未配置绘图模型时(会失败,应告知用户去设置配置);prompt 尽量用英文描述主体/风格/构图。",
+                    description = "根据文字描述生成图片。调用 AI 绘图模型(需配置 OpenAI 兼容绘图供应商)。返回图片 URL。使用时机: 用户要求生成图片/海报/封面时。不要使用: 未配置绘图模" +
+                        "型时(会失败,应告知用户去设置配置);prompt 尽量用英文描述主体/风格/构图。",
                     parametersJson =
                     buildJsonObject {
                         put("type", "object")
@@ -1873,7 +1898,8 @@ class SkillExecutor(
                                         put("type", "string")
                                         put(
                                             "description",
-                                            "可选,参考图 URL 或 base64(用于图生图/图片编辑);非空时调用图生图端点。注意:LLM 无法访问用户本地相册,本地参考图由用户在工具审批卡片中从相册选择后注入,LLM 调用时无需也无法填入本参数",
+                                            "可选,参考图 URL 或 base64(用于图生图/图片编辑);非空时调用图生图端点。注意:LLM 无法访问用户本地相册,本地参考图由用户在工具审批卡片中从相册选择后注入" +
+                                                ",LLM 调用时无需也无法填入本参数",
                                         )
                                     },
                                 )

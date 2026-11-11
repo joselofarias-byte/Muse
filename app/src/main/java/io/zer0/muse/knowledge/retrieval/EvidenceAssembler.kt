@@ -81,13 +81,9 @@ class EvidenceAssembler(
             val separator = if (units.isEmpty()) "" else "\n\n"
             val fixedTokens = estimator(header) + estimator(separator) + estimator("[${units.size + 1}]")
             val remaining = budgetTokens - used - fixedTokens
-            if (remaining <= MIN_SNIPPET_TOKENS) {
-                skipped++
-                degraded = true
-                continue
-            }
-            val originalTokens = estimator(candidate.text)
-            val snippet = if (originalTokens <= remaining) {
+            val snippet = if (remaining <= MIN_SNIPPET_TOKENS) {
+                ""
+            } else if (estimator(candidate.text) <= remaining) {
                 candidate.text
             } else {
                 // 结构安全截取:按字素边界截到预算内,不切断代理对。

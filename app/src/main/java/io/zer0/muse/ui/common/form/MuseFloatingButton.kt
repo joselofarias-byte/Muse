@@ -109,7 +109,8 @@ fun MuseFloatingButton(
         ) {
             Icon(
                 imageVector = icon,
-                contentDescription = null, // 已在 semantics 提供
+                // 已在 semantics 提供
+                contentDescription = null,
                 modifier = Modifier.size(iconSize),
             )
         }

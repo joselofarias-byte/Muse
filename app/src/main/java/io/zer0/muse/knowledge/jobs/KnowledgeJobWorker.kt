@@ -38,6 +38,10 @@ class KnowledgeJobWorker(
         val db = resultOf { koin.get<MuseDb>() }.getOrNull()
             ?: return Result.retry().also { Logger.w(TAG, "MuseDb 解析失败,稍后重试") }
 
+        return runJob(jobId, db, koin)
+    }
+
+    private suspend fun runJob(jobId: String, db: MuseDb, koin: org.koin.core.Koin): Result {
         // 处理器:优先使用装配层覆盖实现;缺省直接构建默认可用的词法重建处理器。
         // 这使 Worker 具备真实执行能力,但仍只在显式入队时运行(生产入口未接线)。
         val processor = resultOf { koin.get<KnowledgeJobProcessor>() }.getOrNull()

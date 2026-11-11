@@ -338,6 +338,7 @@ private fun ModelCatalogRow() {
     var refreshing by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val context = androidx.compose.ui.platform.LocalContext.current
+    val contextResources = androidx.compose.ui.platform.LocalResources.current
 
     Row(
         modifier = Modifier
@@ -357,7 +358,7 @@ private fun ModelCatalogRow() {
                     append(formatCatalogTimestamp(status.publishedAt))
                     append(" · ")
                     append(
-                        context.getString(
+                        contextResources.getString(
                             R.string.settings_model_catalog_counts,
                             status.providerCount,
                             status.modelCount,

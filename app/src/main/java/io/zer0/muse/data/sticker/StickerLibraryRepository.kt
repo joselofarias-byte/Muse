@@ -75,9 +75,9 @@ class StickerLibraryRepository(private val appContext: Context) {
     private val neutralDimension = 500 to 500
 
     // v1.117: 导入体积限制,防 ZIP 炸弹 / OOM(对齐 DocumentParser 的限制策略)
-    private val MAX_SINGLE_ENTRY_BYTES = 10L * 1024 * 1024 // 单个图片 10MB
-    private val MAX_TOTAL_IMPORT_BYTES = 200L * 1024 * 1024 // 累计 200MB
-    private val MAX_ENTRY_COUNT = 1000 // 最多 1000 个文件
+    private const val MAX_SINGLE_ENTRY_BYTES = 10L * 1024 * 1024 // 单个图片 10MB
+    private const val MAX_TOTAL_IMPORT_BYTES = 200L * 1024 * 1024 // 累计 200MB
+    private const val MAX_ENTRY_COUNT = 1000 // 最多 1000 个文件
 
     // ── 公开 API ──────────────────────────────────────────────────────────
 

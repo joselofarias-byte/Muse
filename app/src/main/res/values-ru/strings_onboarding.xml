@@ -39,6 +39,7 @@
         <item quantity="one">Соединение установлено. Доступна %1$d модель.</item>
         <item quantity="few">Соединение установлено. Доступно %1$d модели.</item>
         <item quantity="other">Соединение установлено. Доступно моделей: %1$d.</item>
+        <item quantity="many">Соединение установлено. Доступно моделей: %1$d.</item>
     </plurals>
     <string name="onboarding_provider_skip">Настроить позже в настройках</string>
     <string name="onboarding_provider_custom">Пользовательский (совместимый с OpenAI)</string>

@@ -68,94 +68,7 @@ fun PlanCard(plan: AgentPlan, modifier: Modifier = Modifier) {
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
     ) {
         Column {
-            // 标题栏:渐变色 + 计划标题 + 进度
-            // M-TC1 修复: 文字/图标色从硬编码 Color.White 改为 MaterialTheme.colorScheme.onPrimary,
-            // 保证在自定义主题下的对比度
-            val onPrimaryColor = MaterialTheme.colorScheme.onPrimary
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(
-                        brush = Brush.horizontalGradient(
-                            colors = listOf(
-                                MaterialTheme.colorScheme.primary,
-                                MaterialTheme.colorScheme.tertiary,
-                            ),
-                        ),
-                    )
-                    .clip(RoundedCornerShape(topStart = MuseCornerRadius.SEMI_LARGE.dp, topEnd = MuseCornerRadius.SEMI_LARGE.dp))
-                    // CHAT-06: 整行可点 — 箭头移入头部行后,标题栏任何位置都可折叠/展开
-                    .clickable { expanded = !expanded }
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = plan.title,
-                        style = MaterialTheme.typography.titleSmall,
-                        color = onPrimaryColor,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    Spacer(Modifier.height(2.dp))
-                    // v2.0.1: 计划前瞻 — 折叠态预告下一步（对齐"计划要做的事"可见性）
-                    val nextStep = remember(plan.steps) {
-                        plan.steps.firstOrNull { it.status == AgentPlanStepStatus.IN_PROGRESS }
-                            ?: plan.steps.firstOrNull { it.status == AgentPlanStepStatus.PENDING }
-                    }
-                    val nextStepLabel =
-                        if (nextStep != null) {
-                            stringResource(R.string.plan_next_step_label, nextStep.title)
-                        } else {
-                            null
-                        }
-                    val completedLabel = stringResource(R.string.code_more_plan_steps, plan.completedSteps, plan.totalSteps)
-                    val failedLabel = stringResource(R.string.code_more_plan_failed, plan.failedSteps)
-                    Text(
-                        text = buildString {
-                            append(completedLabel)
-                            if (plan.failedSteps > 0) append(" · " + failedLabel)
-                            if (nextStepLabel != null) append(" · " + nextStepLabel)
-                        },
-                        style = MaterialTheme.typography.labelSmall,
-                        color = onPrimaryColor.copy(alpha = 0.85f),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-                if (!plan.isAllDone) {
-                    MuseSpinner(
-                        size = 20.dp,
-                        color = onPrimaryColor,
-                    )
-                } else {
-                    Icon(
-                        imageVector = MuseIcons.check,
-                        contentDescription = null,
-                        tint = onPrimaryColor,
-                        modifier = Modifier.size(20.dp),
-                    )
-                }
-                // CHAT-06: 折叠箭头移入头部行,48dp 热区;整行也已可点。
-                Box(
-                    modifier = Modifier
-                        .padding(start = 8.dp)
-                        .size(48.dp)
-                        .clip(CircleShape)
-                        .clickable { expanded = !expanded },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        imageVector = if (expanded) MuseIcons.chevronUp else MuseIcons.chevronDown,
-                        contentDescription = stringResource(
-                            if (expanded) R.string.action_collapse else R.string.action_expand,
-                        ),
-                        tint = onPrimaryColor,
-                        modifier = Modifier.size(20.dp),
-                    )
-                }
-            }
+            PlanCardHeader(plan, expanded) { expanded = !expanded }
 
             // 进度条
             if (!plan.isAllDone && plan.progress > 0f) {
@@ -185,6 +98,98 @@ fun PlanCard(plan: AgentPlan, modifier: Modifier = Modifier) {
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun PlanCardHeader(plan: AgentPlan, expanded: Boolean, onToggle: () -> Unit) {
+    // 标题栏:渐变色 + 计划标题 + 进度
+    // M-TC1 修复: 文字/图标色从硬编码 Color.White 改为 MaterialTheme.colorScheme.onPrimary,
+    // 保证在自定义主题下的对比度
+    val onPrimaryColor = MaterialTheme.colorScheme.onPrimary
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                brush = Brush.horizontalGradient(
+                    colors = listOf(
+                        MaterialTheme.colorScheme.primary,
+                        MaterialTheme.colorScheme.tertiary,
+                    ),
+                ),
+            )
+            .clip(RoundedCornerShape(topStart = MuseCornerRadius.SEMI_LARGE.dp, topEnd = MuseCornerRadius.SEMI_LARGE.dp))
+            // CHAT-06: 整行可点 — 箭头移入头部行后,标题栏任何位置都可折叠/展开
+            .clickable { onToggle() }
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = plan.title,
+                style = MaterialTheme.typography.titleSmall,
+                color = onPrimaryColor,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Spacer(Modifier.height(2.dp))
+            // v2.0.1: 计划前瞻 — 折叠态预告下一步（对齐"计划要做的事"可见性）
+            val nextStep = remember(plan.steps) {
+                plan.steps.firstOrNull { it.status == AgentPlanStepStatus.IN_PROGRESS }
+                    ?: plan.steps.firstOrNull { it.status == AgentPlanStepStatus.PENDING }
+            }
+            val nextStepLabel =
+                if (nextStep != null) {
+                    stringResource(R.string.plan_next_step_label, nextStep.title)
+                } else {
+                    null
+                }
+            val completedLabel = stringResource(R.string.code_more_plan_steps, plan.completedSteps, plan.totalSteps)
+            val failedLabel = stringResource(R.string.code_more_plan_failed, plan.failedSteps)
+            Text(
+                text = buildString {
+                    append(completedLabel)
+                    if (plan.failedSteps > 0) append(" · " + failedLabel)
+                    if (nextStepLabel != null) append(" · " + nextStepLabel)
+                },
+                style = MaterialTheme.typography.labelSmall,
+                color = onPrimaryColor.copy(alpha = 0.85f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        if (!plan.isAllDone) {
+            MuseSpinner(
+                size = 20.dp,
+                color = onPrimaryColor,
+            )
+        } else {
+            Icon(
+                imageVector = MuseIcons.check,
+                contentDescription = null,
+                tint = onPrimaryColor,
+                modifier = Modifier.size(20.dp),
+            )
+        }
+        // CHAT-06: 折叠箭头移入头部行,48dp 热区;整行也已可点。
+        Box(
+            modifier = Modifier
+                .padding(start = 8.dp)
+                .size(48.dp)
+                .clip(CircleShape)
+                .clickable { onToggle() },
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = if (expanded) MuseIcons.chevronUp else MuseIcons.chevronDown,
+                contentDescription = stringResource(
+                    if (expanded) R.string.action_collapse else R.string.action_expand,
+                ),
+                tint = onPrimaryColor,
+                modifier = Modifier.size(20.dp),
+            )
         }
     }
 }

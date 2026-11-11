@@ -26,10 +26,9 @@ class DocumentParserAdapter(
 ) {
 
     /** 旧链截断/上限标记识别:含「已截断」或「仅提取前」的方括号提示行。 */
-    internal fun detectTruncationMarker(text: String): String? =
-        text.lineSequence().map { it.trim() }.firstOrNull { line ->
-            line.startsWith("[…") && (line.contains("已截断") || line.contains("仅提取前"))
-        }
+    internal fun detectTruncationMarker(text: String): String? = text.lineSequence().map { it.trim() }.firstOrNull { line ->
+        line.startsWith("[…") && (line.contains("已截断") || line.contains("仅提取前"))
+    }
 
     /**
      * 正文是否有实际内容 —— 排除解析器附加的「[文档信息]」「[目录]」元数据块与截断提示行。
@@ -39,17 +38,11 @@ class DocumentParserAdapter(
         var inMetadataSection = false
         for (raw in text.lineSequence()) {
             val line = raw.trim()
-            if (line.isEmpty()) {
-                inMetadataSection = false
-                continue
+            when {
+                line.isEmpty() -> inMetadataSection = false
+                line == "[文档信息]" || line == "[目录]" -> inMetadataSection = true
+                !line.startsWith("[…") && !inMetadataSection -> return true
             }
-            if (line == "[文档信息]" || line == "[目录]") {
-                inMetadataSection = true
-                continue
-            }
-            if (line.startsWith("[…")) continue
-            if (inMetadataSection) continue
-            return true
         }
         return false
     }
