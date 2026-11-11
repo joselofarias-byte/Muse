@@ -24,15 +24,22 @@ object WebSearchDateParser {
     fun parse(text: String, nowMillis: Long = System.currentTimeMillis()): Long? {
         if (text.isBlank()) return null
 
-        DAYS_AGO.find(text)?.let { return nowMillis - TimeUnit.DAYS.toMillis(it.groupValues[1].toLong()) }
-        EN_DAYS_AGO.find(text)?.let { return nowMillis - TimeUnit.DAYS.toMillis(it.groupValues[1].toLong()) }
-        WEEKS_AGO.find(text)?.let { return nowMillis - TimeUnit.DAYS.toMillis(it.groupValues[1].toLong() * 7) }
-        HOURS_AGO.find(text)?.let { return nowMillis - TimeUnit.HOURS.toMillis(it.groupValues[1].toLong()) }
+        val relative = sequenceOf(
+            Triple(DAYS_AGO, TimeUnit.DAYS, 1L),
+            Triple(EN_DAYS_AGO, TimeUnit.DAYS, 1L),
+            Triple(WEEKS_AGO, TimeUnit.DAYS, 7L),
+            Triple(HOURS_AGO, TimeUnit.HOURS, 1L),
+        ).firstNotNullOfOrNull { (pattern, unit, multiplier) ->
+            pattern.find(text)?.let { nowMillis - unit.toMillis(it.groupValues[1].toLong() * multiplier) }
+        }
+        return relative ?: parseAbsolute(text)
+    }
 
+    private fun parseAbsolute(text: String): Long? {
         ISO_DATE.find(text)?.let { m ->
-            val year = m.groupValues[1].toIntOrNull() ?: return null
-            val month = m.groupValues[2].toIntOrNull() ?: return null
-            val day = m.groupValues[3].toIntOrNull() ?: return null
+            val year = m.groupValues[1].toInt()
+            val month = m.groupValues[2].toInt()
+            val day = m.groupValues[3].toInt()
             if (month !in 1..12 || day !in 1..31) return null
             return runCatching {
                 Calendar.getInstance(Locale.ROOT).apply {

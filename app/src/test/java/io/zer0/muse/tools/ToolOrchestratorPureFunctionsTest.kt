@@ -520,7 +520,8 @@ class ToolOrchestratorPureFunctionsTest {
         every { mockSkillExecutor.getActivePlans() } returns emptyMap()
         val maxRounds = orchestrator.computeMaxRounds(
             emptyList(),
-            hardCap = 100, // 远超 HARD_CAP
+            // 远超 HARD_CAP
+            hardCap = 100,
         )
         assertEquals(
             "hardCap 超过 HARD_CAP 时不应被反向放大,以 base 和 HARD_CAP 中较小者为限",

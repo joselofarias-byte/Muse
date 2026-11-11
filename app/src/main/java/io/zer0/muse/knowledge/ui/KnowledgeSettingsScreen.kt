@@ -25,11 +25,7 @@ import io.zer0.muse.ui.theme.MusePaddings
  * 不直接读写配置;标签与影响面文案来自状态模型,页面不自行发明同义说明。
  */
 @Composable
-fun KnowledgeSettingsScreen(
-    state: KnowledgeSettingsUiState,
-    onBack: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
+fun KnowledgeSettingsScreen(state: KnowledgeSettingsUiState, onBack: () -> Unit, modifier: Modifier = Modifier) {
     MusePageScaffold(
         modifier = modifier,
         topBar = { MuseTopBar(title = stringResource(R.string.kb_settings_title), onBack = onBack) },

@@ -62,6 +62,8 @@ class TtsManager(
 ) {
 
     companion object {
+        private const val SYNTH_PREFIX = "syn_"
+
         // M-SP2 修复: 将 speakStream / stripMarkdown 中每次调用都新建的 Regex 提升为 companion object 常量,
         // 避免 Regex 模式编译开销(13 个 Regex × 每条消息 = 显著 GC 压力)
         private val SENTENCE_END_REGEX = Regex("[。！？.!?]")
@@ -160,9 +162,6 @@ class TtsManager(
             // 模型偶尔用 <b>/<br>/<span style=…> 排版，朗读时会被逐字念成「小于 b 大于」
             .replace(HTML_TAG_REGEX, "")
     }
-
-    /** 合成到文件用的 utteranceId 前缀(区分 speakStream 的真实 id)。 */
-    private val SYNTH_PREFIX = "syn_"
 
     private val appContext = context.applicationContext
     private val cacheDir: File = appContext.cacheDir

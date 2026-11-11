@@ -3,6 +3,7 @@ package io.zer0.muse.knowledge.integration
 import io.zer0.common.Logger
 import io.zer0.muse.knowledge.domain.KnowledgeScope
 import io.zer0.muse.knowledge.domain.ResolvedPolicy
+import io.zer0.muse.knowledge.domain.knowledgeOperation
 import io.zer0.muse.knowledge.retrieval.EvidenceAssembler
 import io.zer0.muse.knowledge.retrieval.EvidenceBundle
 import io.zer0.muse.knowledge.retrieval.KnowledgeEntryType
@@ -58,24 +59,17 @@ class KnowledgeContextContributor(
         budgetTokens: Int,
         requestId: String,
     ): ContributionResult {
-        if (!context.knowledgeReadAllowed) {
-            return ContributionResult.Skipped("入口未开放知识读取")
+        val skipReason = when {
+            !context.knowledgeReadAllowed -> "入口未开放知识读取"
+            context.entry == KnowledgeEntryType.A2A -> "A2A 默认不读知识(tools=null 策略)"
+            budgetTokens <= 0 -> "知识预算为 0"
+            query.isBlank() -> "空查询不触发自动检索"
+            context.allowedScope is KnowledgeScope.None ||
+                context.allowedScope is KnowledgeScope.Invalid ||
+                context.allowedScope is KnowledgeScope.Failed -> "入口范围为空/无效"
+            else -> null
         }
-        if (context.entry == KnowledgeEntryType.A2A) {
-            return ContributionResult.Skipped("A2A 默认不读知识(tools=null 策略)")
-        }
-        if (budgetTokens <= 0) {
-            return ContributionResult.Skipped("知识预算为 0")
-        }
-        if (query.isBlank()) {
-            return ContributionResult.Skipped("空查询不触发自动检索")
-        }
-        if (context.allowedScope is KnowledgeScope.None ||
-            context.allowedScope is KnowledgeScope.Invalid ||
-            context.allowedScope is KnowledgeScope.Failed
-        ) {
-            return ContributionResult.Skipped("入口范围为空/无效")
-        }
+        if (skipReason != null) return ContributionResult.Skipped(skipReason)
 
         val policy = policyProvider(context)
         val request = KnowledgeSearchRequest(
@@ -88,24 +82,30 @@ class KnowledgeContextContributor(
             deadlineMs = Long.MAX_VALUE,
         )
 
-        return try {
+        return knowledgeOperation {
             when (val outcome = retriever.search(request)) {
                 is RetrievalOutcome.Found -> {
                     val bundle = assembler.assemble(outcome, budgetTokens, traceId = requestId)
-                    if (bundle.isEmpty) ContributionResult.Skipped("检索命中为空")
-                    else ContributionResult.Evidence(bundle)
+                    if (bundle.isEmpty) {
+                        ContributionResult.Skipped("检索命中为空")
+                    } else {
+                        ContributionResult.Evidence(bundle)
+                    }
                 }
                 is RetrievalOutcome.Partial -> {
                     val bundle = assembler.assemble(outcome, budgetTokens, traceId = requestId)
-                    if (bundle.isEmpty) ContributionResult.Failed("检索部分降级且无可发送证据: ${outcome.missingPaths.joinToString()}")
-                    else ContributionResult.Evidence(bundle)
+                    if (bundle.isEmpty) {
+                        ContributionResult.Failed("检索部分降级且无可发送证据: ${outcome.missingPaths.joinToString()}")
+                    } else {
+                        ContributionResult.Evidence(bundle)
+                    }
                 }
                 is RetrievalOutcome.NoMatch -> ContributionResult.Skipped("范围内无匹配资料")
                 is RetrievalOutcome.EmptyScope -> ContributionResult.Skipped("空范围: ${outcome.reason}")
                 is RetrievalOutcome.Unavailable -> ContributionResult.Failed("检索不可用: ${outcome.reason}")
                 is RetrievalOutcome.Failed -> ContributionResult.Failed("检索失败: ${outcome.reason}")
             }
-        } catch (e: Exception) {
+        }.getOrElse { e ->
             Logger.w("KnowledgeContextContributor", "prepareEvidence 异常(request=$requestId): ${e.message}", e)
             ContributionResult.Failed("证据准备异常: ${e.message}")
         }

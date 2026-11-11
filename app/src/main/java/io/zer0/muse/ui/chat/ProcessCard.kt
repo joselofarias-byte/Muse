@@ -317,6 +317,7 @@ private fun ProcessStepList(steps: List<TaskStep>) {
 @Composable
 private fun ProcessStepRow(step: TaskStep, depth: Int) {
     val context = LocalContext.current
+    val contextResources = androidx.compose.ui.platform.LocalResources.current
     val scheme = MaterialTheme.colorScheme
     val statusColor =
         when (step.status) {
@@ -344,7 +345,7 @@ private fun ProcessStepRow(step: TaskStep, depth: Int) {
             )
             Text(
                 text = step.title.ifBlank {
-                    step.toolName.ifBlank { context.getString(R.string.chat_process_step_fallback) }
+                    step.toolName.ifBlank { contextResources.getString(R.string.chat_process_step_fallback) }
                 },
                 style = MaterialTheme.typography.labelMedium,
                 color = scheme.onSurface,

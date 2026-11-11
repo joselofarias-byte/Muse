@@ -3,10 +3,12 @@ package io.zer0.muse.knowledge
 import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import io.zer0.muse.data.knowledge.IndexGenerationState
 import io.zer0.muse.data.knowledge.KnowledgeActiveGenerationEntity
 import io.zer0.muse.data.knowledge.KnowledgeGenChunkEntity
 import io.zer0.muse.data.knowledge.KnowledgeGenLexicalEntity
 import io.zer0.muse.data.knowledge.KnowledgeGenerationEntity
+import io.zer0.muse.data.knowledge.KnowledgeJobDao
 import io.zer0.muse.data.knowledge.KnowledgeV2RetentionLeaseEntity
 import io.zer0.muse.data.session.MuseDb
 import io.zer0.muse.knowledge.index.KnowledgeIndexReconciler
@@ -20,7 +22,6 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import io.zer0.muse.data.knowledge.IndexGenerationState
 
 /**
  * R4 协调器合同(计划 R4 「outbox 只负责 ANN、缓存失效和清理」的清理面):
@@ -123,6 +124,26 @@ class KnowledgeIndexReconcilerTest {
         val report = reconciler.reconcileDoc("doc-9")
         assertEquals(1, report.danglingPointersCleared)
         assertNull("悬挂指针必须清除", db.knowledgeJobDao().getActiveGeneration("doc-9"))
+    }
+
+    @Test
+    fun `generation read failure reports error without clearing active pointer`() = runBlocking {
+        seedGeneration("doc-read-error", "gen-active", IndexGenerationState.ACTIVE, chunkCount = 2)
+        val dao = db.knowledgeJobDao()
+        dao.upsertActiveGeneration(KnowledgeActiveGenerationEntity("doc-read-error", "gen-active", 0L))
+        val failingDao = object : KnowledgeJobDao by dao {
+            override suspend fun getGeneration(generationId: String): KnowledgeGenerationEntity? =
+                throw IllegalStateException("generation read unavailable")
+        }
+        val failingReconciler = KnowledgeIndexReconciler(failingDao, db.knowledgeV2Dao())
+
+        val report = failingReconciler.reconcileDoc("doc-read-error")
+
+        assertEquals(0, report.danglingPointersCleared)
+        assertEquals(listOf("读取活动代失败: generation read unavailable"), report.errors)
+        assertEquals("gen-active", dao.getActiveGeneration("doc-read-error"))
+        assertEquals(2, dao.countGenChunks("gen-active"))
+        assertEquals(2, dao.countGenLexical("gen-active"))
     }
 
     @Test
