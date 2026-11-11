@@ -83,6 +83,7 @@ internal fun ChatInputBar(
     val dimens = MiniPhoneTheme.dimens
     val typography = MiniPhoneTheme.typography
     val context = LocalContext.current
+    val contextResources = androidx.compose.ui.platform.LocalResources.current
     var text by rememberSaveable { mutableStateOf("") }
     var stickerPanelOpen by rememberSaveable { mutableStateOf(false) }
     val canSend = text.isNotBlank()
@@ -103,7 +104,7 @@ internal fun ChatInputBar(
     val voiceState by voice.state.collectAsState()
     val askMic = rememberMicPermissionRequest(
         onGranted = voice::start,
-        onDenied = { context.toast(context.getString(MIC_PERMISSION_NOTICE_RES)) },
+        onDenied = { context.toast(contextResources.getString(MIC_PERMISSION_NOTICE_RES)) },
     )
     Column(
         modifier = modifier
@@ -181,7 +182,7 @@ internal fun ChatInputBar(
                 onClick = {
                     when {
                         // 引擎不支持录音输入:键是灰的,点了只解释一句,不弹权限框也不开采集
-                        !voiceInputEnabled -> context.toast(context.getString(VOICE_UNSUPPORTED_NOTICE_RES))
+                        !voiceInputEnabled -> context.toast(contextResources.getString(VOICE_UNSUPPORTED_NOTICE_RES))
                         voiceState is MpVoiceInputState.Recording -> voice.stop()
                         voiceState == MpVoiceInputState.Transcribing -> Unit
                         else -> askMic()
@@ -214,13 +215,14 @@ private fun rememberVoiceInput(
     val currentNotice = rememberUpdatedState(onNotice)
     val currentEnabled = rememberUpdatedState(voiceInputEnabled)
     val context = LocalContext.current
+    val contextResources = androidx.compose.ui.platform.LocalResources.current
     val controller = remember(recorder) {
         MpVoiceInputController(
             recorder = recorder,
             transcribe = { wav -> currentTranscribe.value(wav) },
             onTranscript = { transcript -> currentTranscript.value(transcript) },
-            onEmptyTranscript = { currentNotice.value(context.getString(EMPTY_TRANSCRIPT_NOTICE_RES)) },
-            onStartFailed = { currentNotice.value(context.getString(START_FAILED_NOTICE_RES)) },
+            onEmptyTranscript = { currentNotice.value(contextResources.getString(EMPTY_TRANSCRIPT_NOTICE_RES)) },
+            onStartFailed = { currentNotice.value(contextResources.getString(START_FAILED_NOTICE_RES)) },
             canRecord = { currentEnabled.value },
             scope = scope,
         )
