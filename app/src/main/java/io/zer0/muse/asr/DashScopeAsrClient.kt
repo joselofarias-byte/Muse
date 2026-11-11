@@ -478,7 +478,8 @@ class DashScopeAsrController(
                     R.string.asr_reconnecting_message,
                     attemptNumber,
                     MAX_RECONNECT_ATTEMPTS,
-                ), // CONS-05: 硬编码中文迁移到字符串资源
+                    // CONS-05: 硬编码中文迁移到字符串资源
+                ),
             )
         }
         reconnectJob = scope.launch {

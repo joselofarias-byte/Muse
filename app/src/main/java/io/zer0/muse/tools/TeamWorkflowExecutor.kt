@@ -324,7 +324,9 @@ class TeamWorkflowExecutor(
                 val sequential = runnable.first().mode == DelegationContract.TeamWorkflowNode.Mode.SEQUENTIAL
                 val layerResults: List<DelegationContract.DelegationResult> = if (sequential) {
                     runnable.map { node ->
-                        executed[node.id] ?: executeNode(node, teamTask, parentRequestId, baseContext, executed, effectiveRunId, nodeSeqMap[node.id] ?: -1).also {
+                        executed[node.id] ?: executeNode(
+                            node, teamTask, parentRequestId, baseContext, executed, effectiveRunId, nodeSeqMap[node.id] ?: -1,
+                        ).also {
                             executed[node.id] = it
                         }
                     }

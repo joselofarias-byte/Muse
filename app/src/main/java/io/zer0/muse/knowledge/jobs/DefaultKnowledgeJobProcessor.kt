@@ -7,6 +7,7 @@ import io.zer0.muse.knowledge.domain.JobStepResult
 import io.zer0.muse.knowledge.domain.KnowledgeAvailability
 import io.zer0.muse.knowledge.domain.KnowledgeJobStage
 import io.zer0.muse.knowledge.domain.PublishResult
+import io.zer0.muse.knowledge.domain.knowledgeOperation
 import io.zer0.muse.knowledge.index.GenerationPublisher
 import io.zer0.muse.knowledge.ingest.ParsedBlock
 import io.zer0.muse.knowledge.ingest.StructuredChunker
@@ -29,10 +30,7 @@ class DefaultKnowledgeJobProcessor(
     private val chunker: StructuredChunker = StructuredChunker(chunkSize = 500, chunkOverlap = 50),
 ) : KnowledgeJobProcessor {
 
-    override suspend fun process(
-        jobItem: KnowledgeJobItemEntity,
-        execution: JobRunner.JobExecution,
-    ): JobStepResult {
+    override suspend fun process(jobItem: KnowledgeJobItemEntity, execution: JobRunner.JobExecution): JobStepResult {
         val doc = v2Dao.getDoc(jobItem.docId)
             ?: return JobStepResult.Failed(
                 jobItemId = jobItem.jobItemId,
@@ -56,6 +54,15 @@ class DefaultKnowledgeJobProcessor(
             )
         }
 
+        return rebuild(jobItem, execution, doc.docId, revision)
+    }
+
+    private suspend fun rebuild(
+        jobItem: KnowledgeJobItemEntity,
+        execution: JobRunner.JobExecution,
+        docId: String,
+        revision: io.zer0.muse.data.knowledge.KnowledgeV2RevisionEntity,
+    ): JobStepResult {
         execution.advance(KnowledgeJobStage.PARSE, "chars=${revision.fullContent.length}")
         if (execution.isCancelRequested()) return JobStepResult.Cancelled(jobItem.jobItemId)
 
@@ -80,10 +87,10 @@ class DefaultKnowledgeJobProcessor(
         }
 
         execution.advance(KnowledgeJobStage.LEXICAL, "chunks=${chunks.size}")
-        val generationId = try {
-            publisher.stageGeneration(doc.docId, revision.revisionId, chunks)
-        } catch (e: Exception) {
-            Logger.w("DefaultKnowledgeJobProcessor", "staging 失败(doc=${doc.docId}): ${e.message}", e)
+        val generationId = knowledgeOperation {
+            publisher.stageGeneration(docId, revision.revisionId, chunks)
+        }.getOrElse { e ->
+            Logger.w("DefaultKnowledgeJobProcessor", "staging 失败(doc=$docId): ${e.message}", e)
             return JobStepResult.Failed(
                 jobItemId = jobItem.jobItemId,
                 stage = KnowledgeJobStage.LEXICAL,
@@ -92,6 +99,15 @@ class DefaultKnowledgeJobProcessor(
             )
         }
 
+        return validateAndPublish(jobItem, execution, generationId, revision)
+    }
+
+    private suspend fun validateAndPublish(
+        jobItem: KnowledgeJobItemEntity,
+        execution: JobRunner.JobExecution,
+        generationId: String,
+        revision: io.zer0.muse.data.knowledge.KnowledgeV2RevisionEntity,
+    ): JobStepResult {
         execution.advance(KnowledgeJobStage.VALIDATE)
         // 分块带 overlap:校验前须按 overlap 重建原文,否则拼接会把重叠段重复计入导致 hash 误报。
         val validationError = publisher.validate(generationId, revision.revisionId, revision.contentHash) { texts ->
