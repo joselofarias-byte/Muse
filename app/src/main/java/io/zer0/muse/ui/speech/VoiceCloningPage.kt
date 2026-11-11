@@ -91,6 +91,7 @@ fun VoiceCloningPage(
     ttsManager: TtsManager = koinInject(),
 ) {
     val context = LocalContext.current
+    val contextResources = androidx.compose.ui.platform.LocalResources.current
     val scope = rememberCoroutineScope()
 
     // ── 表单状态(rememberSaveable 保证旋转/配置变更后保留;Uri 用 remember 避免序列化兼容问题;
@@ -489,7 +490,7 @@ fun VoiceCloningPage(
                         // v2.6.7 fix (AUDIT F21): 直接调 TtsManager.speakWithClonedVoice
                         // —— 该方法早已实现但零调用。
                         onPreview = {
-                            val sample = context.getString(R.string.tts_preview_sample_text)
+                            val sample = contextResources.getString(R.string.tts_preview_sample_text)
                             runCatching {
                                 ttsManager.speakWithClonedVoice(
                                     text = sample,
@@ -500,7 +501,7 @@ fun VoiceCloningPage(
                             }.onFailure {
                                 scope.launch {
                                     MuseToast.show(
-                                        context.getString(R.string.tts_preview_failed, it.message),
+                                        contextResources.getString(R.string.tts_preview_failed, it.message),
                                         3000,
                                     )
                                 }

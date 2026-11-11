@@ -165,7 +165,9 @@ data class KnowledgeVectorRow(
 )
 
 @Dao
-interface KnowledgeJobDao {
+interface KnowledgeJobDao : KnowledgeJobDaoOperations, KnowledgeGenerationStorageDao, KnowledgeGenerationQueryDao, KnowledgeJobRestoreDao
+
+interface KnowledgeJobDaoOperations {
 
     // ---------- 批次 ----------
 
@@ -237,7 +239,7 @@ interface KnowledgeJobDao {
     @Query(
         "UPDATE knowledge_v2_job_items SET state = :terminalState, stage = :stage, result_reason = :reason, " +
             "lease_holder = '', lease_expires_at = 0, updated_at = :updatedAt " +
-            "WHERE jobItemId = :jobItemId AND state NOT IN (:terminalStates) " +
+            "WHERE jobItemId = :jobItemId AND state NOT IN ('SUCCEEDED', 'SUCCEEDED_WITH_WARNINGS', 'FAILED', 'CANCELLED') " +
             "AND lease_holder = :holder AND generation_fence = :expectedFence",
     )
     suspend fun commitTerminal(
@@ -247,7 +249,6 @@ interface KnowledgeJobDao {
         terminalState: String,
         stage: String,
         reason: String,
-        terminalStates: List<String>,
         updatedAt: Long,
     ): Int
 
@@ -256,6 +257,10 @@ interface KnowledgeJobDao {
 
     @Query("DELETE FROM knowledge_v2_job_items WHERE jobId = :jobId")
     suspend fun deleteJobItems(jobId: String)
+
+}
+
+interface KnowledgeGenerationStorageDao {
 
     // ---------- generation 表 ----------
 
@@ -293,7 +298,12 @@ interface KnowledgeJobDao {
     @Query("SELECT * FROM knowledge_v2_gen_chunks WHERE generationId = :generationId ORDER BY chunk_index ASC")
     suspend fun getGenChunks(generationId: String): List<KnowledgeGenChunkEntity>
 
+}
+
+interface KnowledgeGenerationQueryDao {
+
     /** R5: 写入单条 chunk 的向量(仅限 staging 代;活动代内容不可变)。 */
+
     @Query("UPDATE knowledge_v2_gen_chunks SET embedding_blob = :blob WHERE id = :chunkRowId")
     suspend fun updateGenChunkEmbedding(chunkRowId: String, blob: ByteArray)
 
@@ -368,6 +378,10 @@ interface KnowledgeJobDao {
 
     @Query("DELETE FROM knowledge_v2_active_generation WHERE docId = :docId")
     suspend fun clearActiveGeneration(docId: String)
+
+}
+
+interface KnowledgeJobRestoreDao {
 
     // ---------- R9 备份恢复:清空 ----------
 

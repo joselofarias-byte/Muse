@@ -1,5 +1,6 @@
 package io.zer0.muse.knowledge.backup
 
+import io.zer0.muse.knowledge.domain.knowledgeOperation
 import io.zer0.common.Logger
 import io.zer0.muse.data.knowledge.KnowledgeFolderV2Dao
 import io.zer0.muse.data.knowledge.KnowledgeJobDao
@@ -227,14 +228,14 @@ class KnowledgePortableBackupService(
             missingContent = mutableListOf(),
         )
 
-        try {
+        knowledgeOperation {
             // 4. 依赖顺序:folders → docs → revisions。
             writeFoldersAndDocs(backup, state)
             // 5. 词法重建:完整正文重建 generation;ChunkOnly/空正文保持 StoredOnly。
             rebuildLexical(backup, state)
             // 6. 绑定恢复(目标不存在只记警告,不静默扩成全库)。
             restoreBindings(backup, state)
-        } catch (e: Exception) {
+        }.getOrElse { e ->
             Logger.w("KnowledgePortableBackupService", "恢复失败: ${e.message}", e)
             // 失败:本方法内已写入的行由调用方以恢复点回滚;报告如实失败。
             return failed("恢复中断: ${e.message}", newEpochNo, state.warnings)

@@ -1,5 +1,6 @@
 package io.zer0.muse.knowledge.jobs
 
+import io.zer0.muse.knowledge.domain.knowledgeOperation
 import io.zer0.common.Logger
 import io.zer0.muse.data.knowledge.KnowledgeJobDao
 import io.zer0.muse.data.knowledge.KnowledgeJobItemEntity
@@ -64,6 +65,15 @@ class JobRunner(
             return finalizeCancelled(item, holder = item.leaseHolder)
         }
 
+        return runAcquired(item, leaseDurationMs, execute)
+    }
+
+    private suspend fun runAcquired(
+        item: KnowledgeJobItemEntity,
+        leaseDurationMs: Long,
+        execute: suspend JobExecution.() -> JobStepResult,
+    ): JobStepResult {
+        val jobItemId = item.jobItemId
         val holder = newHolderId()
         val now = clock()
         val acquired = jobDao.tryAcquire(
@@ -79,9 +89,9 @@ class JobRunner(
 
         val execution = JobExecution(jobDao = jobDao, jobItemId = jobItemId, holder = holder, clock = clock)
 
-        val result = try {
+        val result = knowledgeOperation {
             execution.execute()
-        } catch (e: Exception) {
+        }.getOrElse { e ->
             // 阶段执行抛异常 -> FAILED(默认可重试);但若期间收到取消,转 CANCELLED。
             Logger.w("JobRunner", "作业项执行异常(item=$jobItemId): ${e.message}", e)
             val latest = jobDao.getJobItem(jobItemId)
@@ -148,7 +158,6 @@ class JobRunner(
         val rows = jobDao.requestCancel(
             jobItemId = jobItemId,
             cancelRequestedState = KnowledgeJobState.CANCEL_REQUESTED.name,
-            terminalStates = terminalStates,
             updatedAt = clock(),
         )
         return rows > 0
@@ -188,8 +197,7 @@ class JobRunner(
                 KnowledgeJobStage.CLEANUP,
                 "cancelled",
             )
-            is JobStepResult.Fenced -> return result // 不会走到此处(领取已拒)
-            is JobStepResult.Progressed -> return result // 未终态,无需提交
+            is JobStepResult.Fenced, is JobStepResult.Progressed -> return result
         }
         val committed = jobDao.commitTerminal(
             jobItemId = item.jobItemId,
@@ -198,7 +206,6 @@ class JobRunner(
             terminalState = terminalState,
             stage = stage.name,
             reason = reason,
-            terminalStates = terminalStates,
             updatedAt = clock(),
         )
         if (committed == 0) {
@@ -225,7 +232,6 @@ class JobRunner(
             terminalState = KnowledgeJobState.CANCELLED.name,
             stage = KnowledgeJobStage.CLEANUP.name,
             reason = "cancelled",
-            terminalStates = terminalStates,
             updatedAt = clock(),
         )
         return if (committed == 1) JobStepResult.Cancelled(item.jobItemId)

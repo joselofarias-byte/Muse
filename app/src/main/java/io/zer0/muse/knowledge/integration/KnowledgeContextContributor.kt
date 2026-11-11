@@ -1,5 +1,6 @@
 package io.zer0.muse.knowledge.integration
 
+import io.zer0.muse.knowledge.domain.knowledgeOperation
 import io.zer0.common.Logger
 import io.zer0.muse.knowledge.domain.KnowledgeScope
 import io.zer0.muse.knowledge.domain.ResolvedPolicy
@@ -88,7 +89,7 @@ class KnowledgeContextContributor(
             deadlineMs = Long.MAX_VALUE,
         )
 
-        return try {
+        return knowledgeOperation {
             when (val outcome = retriever.search(request)) {
                 is RetrievalOutcome.Found -> {
                     val bundle = assembler.assemble(outcome, budgetTokens, traceId = requestId)
@@ -105,7 +106,7 @@ class KnowledgeContextContributor(
                 is RetrievalOutcome.Unavailable -> ContributionResult.Failed("检索不可用: ${outcome.reason}")
                 is RetrievalOutcome.Failed -> ContributionResult.Failed("检索失败: ${outcome.reason}")
             }
-        } catch (e: Exception) {
+        }.getOrElse { e ->
             Logger.w("KnowledgeContextContributor", "prepareEvidence 异常(request=$requestId): ${e.message}", e)
             ContributionResult.Failed("证据准备异常: ${e.message}")
         }
