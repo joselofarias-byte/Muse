@@ -80,7 +80,7 @@
     <string name="lorebook_field_case_sensitive">Distingue mayúsculas y minúsculas</string>
     <string name="lorebook_field_case_sensitive_desc">Cuando está activado, la concordancia de palabras clave distingue entre mayúsculas y minúsculas.</string>
     <string name="lorebook_field_whole_word">Palabra completa</string>
-    <string name="lorebook_field_whole_word_desc">La palabra clave debe coincidir como palabra completa (para ingles; los terminos CJK vuelven al modo automatico)</string>
+    <string name="lorebook_field_whole_word_desc">La palabra clave debe coincidir como palabra completa (para inglés; las palabras clave en chino pasan automáticamente a la coincidencia normal)</string>
     <string name="lorebook_field_enabled">Activado</string>
     <string name="lorebook_field_enabled_desc">Cuando esté desactivada, esta entrada ya no activará la inyección.</string>
 
@@ -206,5 +206,5 @@
     <string name="assistant_diff_will_change">Frente al asistente con el mismo nombre, cambian %1$d campos</string>
     <string name="assistant_diff_legacy_pack">Tarjeta antigua: solo se toma la persona; claves, modelos y estadisticas no se transfieren</string>
     <string name="assistant_diff_no_switch">Importar no cambia el asistente actual ni reasigna chats</string>
-    <string name="assistant_diff_more">...y %1$d mas</string>
+    <string name="assistant_diff_more">…y %1$d más</string>
 </resources>
