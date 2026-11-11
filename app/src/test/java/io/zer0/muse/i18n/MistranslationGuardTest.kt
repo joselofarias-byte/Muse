@@ -36,6 +36,31 @@ class MistranslationGuardTest {
         return base.createConfigurationContext(config).resources.getString(resId)
     }
 
+    @Test
+    fun `Spanish provider settings preserve brands and use natural terms`() {
+        assertTrue(text("es", R.string.settings_provider_anthropic_specific).contains("Anthropic"))
+        assertTrue(text("es", R.string.settings_provider_max_output_tokens).contains("tokens"))
+        assertEquals("Administrar asistentes", text("es", R.string.settings_assistant_manage))
+        assertEquals("Actualizar estado", text("es", R.string.permission_refresh_status))
+        assertEquals("Permisos de root", text("es", R.string.root_section_title))
+    }
+
+    @Test
+    fun `Spanish setup guide retains complete numbered instructions`() {
+        val guide = text("es", R.string.settings_tutorial_ch1_s2_content)
+        listOf("1.", "2.", "3.").forEach { step -> assertTrue("Missing $step in $guide", guide.contains(step)) }
+        assertTrue(guide.contains("clave API"))
+        assertTrue(guide.contains("mensaje"))
+    }
+
+    @Test
+    fun `Spanish privacy notice retains reporting methods and redaction details`() {
+        val notice = text("es", R.string.settings_crash_privacy_content)
+        listOf("confirmación", "Bearer", "IMEI", "correo", "webhook").forEach { term ->
+            assertTrue("Missing privacy detail $term", notice.contains(term))
+        }
+    }
+
     private val locales = listOf("zh", "en", "es", "ja", "ko", "pt-rBR", "ru")
 
     @Test

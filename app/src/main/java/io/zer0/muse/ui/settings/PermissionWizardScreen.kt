@@ -571,7 +571,7 @@ private fun ChannelCard(
 }
 
 @Composable
-private fun ShizukuChannelCard(
+internal fun ShizukuChannelCard(
     installed: Boolean,
     available: Boolean,
     authorized: Boolean,

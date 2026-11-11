@@ -147,7 +147,7 @@
     <string name="settings_provider_prefix_unable_to_resolve">No se puede resolver</string>
     <string name="settings_provider_prefix_query_timeout">Se agotó el tiempo de espera de la consulta</string>
     <string name="settings_provider_prefix_cannot_connect">No se puede conectar al servidor</string>
-    <string name="settings_provider_prefix_fetch_models_failed">No se pudieron recuperar los modelos</string>
+    <string name="settings_provider_prefix_fetch_models_failed">No se pudieron obtener los modelos</string>
 
     <!-- ==================== Backup Settings ==================== -->
     <string name="settings_backup_usage_stats">Estadísticas de uso</string>

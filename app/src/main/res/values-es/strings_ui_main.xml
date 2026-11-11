@@ -164,7 +164,7 @@
     <string name="permission_action_id_help">1 = Volver (BACK)\n2 = Inicio (HOME)\n3 = Aplicaciones recientes (RECENTS)\n4 = Notificaciones (NOTIFICATIONS)\n5 = Ajustes rápidos (QUICK_SETTINGS)\n6 = Menú de apagado (POWER_DIALOG)\n10 = Cerrar notificaciones (DISMISS_NOTIFICATION_SHADE)\n\nIdentificador para ui_global_action: action_id.\nAccesos directos: ui_back (action_id=1), ui_home (action_id=2).</string>
     <string name="memory_screen_ai_understanding">La comprensión que la IA tiene de ti</string>
     <string name="memory_screen_no_summary_hint">Todavía no hay resumen. Se generará automáticamente a medida que continúes la conversación.</string>
-    <string name="memory_screen_click_collapse">Toca para colapsar</string>
+    <string name="memory_screen_click_collapse">Toca para contraer</string>
     <!-- v1.98: Experience library -->
     <string name="memory_screen_experience_title">Biblioteca de experiencias</string>
     <string name="memory_screen_experience_desc">Buenas prácticas y métodos acumulados que la IA puede consultar en tareas similares.</string>

@@ -49,6 +49,7 @@ switch ($Lane) {
             'ci/test/test_check_detekt_debt.py',
             'ci/test/test_baseline_fail_closed.py',
             'ci/test/test_check_localizations.py',
+            'ci/test/test_spanish_quality.py',
             'ci/test/test_repo_hygiene.py',
             'ci/test/test_migration_coverage.py',
             # CMP-11 / I18N-02 / A11Y-03 护栏脚本的单测
@@ -95,6 +96,7 @@ switch ($Lane) {
             Invoke-Checked $python @("ci/script/$_")
         }
         Invoke-LaneScript 'check_localizations.py' @('localization')
+        Invoke-LaneScript 'check_spanish_quality.py' @('localization', 'android_resources', 'script')
         Invoke-LaneScript 'check_migration_coverage.py' @('android_jvm', 'android_full', 'script')
         Invoke-LaneScript 'check_design_tokens.py' @('android_jvm', 'android_resources', 'android_full')
         Invoke-LaneScript 'check_hardcoded_font_size.py' @('android_jvm', 'android_resources', 'android_full')
