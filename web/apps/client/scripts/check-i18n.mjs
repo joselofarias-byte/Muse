@@ -134,6 +134,9 @@ try {
   assert(mod.resolveTemplate("es", "common.cancel", { ...mod.MESSAGES, es: partialEs }) === mod.ES["common.cancel"], "es 其余词条仍用自己的");
 
   assert(mod.translate("es", "login.pinLabel") === "PIN del dispositivo", "es etiqueta accesible del PIN");
+  assert(mod.translate("es", "data.database") === "BD", "es usa BD en la etiqueta visible de almacenamiento");
+  assert(mod.translate("es", "knowledge.title") === "Bases de conocimiento y búsqueda", "es conserva el alcance completo del título de conocimiento");
+  assert(mod.translate("es", "assistants.pageTitle") === "Asistentes y roles", "es conserva los roles en el título de asistentes");
   for (const locale of ["zh", "en", "ja", "ko", "ru"]) {
     assert(mod.translate(locale, "login.pinLabel") === "Host PIN", `${locale} conserva la etiqueta del PIN`);
   }
