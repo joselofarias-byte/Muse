@@ -16,7 +16,6 @@ printf 'fixture\n' > "$TEST_DIR/prefix/VERSION"
 tar czf "$TEST_DIR/fixture.tar.gz" -C "$TEST_DIR" prefix
 {
   printf '%s  zlib_%s_aarch64.deb\n' "$(sha256sum "$TEST_DIR/fixture.deb" | cut -d ' ' -f1)" "$ZLIB_VER"
-  printf '%s  libicu_%s_aarch64.deb\n' "$(sha256sum "$TEST_DIR/fixture.deb" | cut -d ' ' -f1)" "$ICU_VER"
   for abi in aarch64 x86_64; do
     printf '%s  libicu_%s_%s.deb\n' "$(sha256sum "$TEST_DIR/fixture.deb" | cut -d ' ' -f1)" "$ICU_VER" "$abi"
     printf '%s  nodejs_%s_%s.deb\n' "$(sha256sum "$TEST_DIR/fixture.deb" | cut -d ' ' -f1)" "$NODE_VER" "$abi"
