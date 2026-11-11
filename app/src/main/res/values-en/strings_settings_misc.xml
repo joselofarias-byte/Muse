@@ -338,4 +338,6 @@
     <string name="settings_web_search_status_connected">Connected</string>
     <string name="settings_web_search_status_failed">Connection failed</string>
     <string name="settings_web_search_status_untested">Not tested</string>
+    <string name="settings_web_search_multi_key_title">Multi-engine API keys</string>
+    <string name="settings_web_search_multi_key_subtitle">Configure a key for each search engine. Automatic mode tries the next engine if one fails.</string>
 </resources>

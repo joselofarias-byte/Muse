@@ -271,6 +271,6 @@ internal object CardScript {
   }
   start();
 })();
-""".trimIndent()
+        """.trimIndent()
     }
 }

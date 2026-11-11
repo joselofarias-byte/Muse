@@ -50,7 +50,8 @@ object SubagentTool {
         val taskId: String,
         val agentId: String,
         val description: String,
-        val status: String, // pending / running / completed / failed / cancelled
+        // pending / running / completed / failed / cancelled
+        val status: String,
         val progress: String = "",
         val result: String? = null,
         val createdAt: Long = System.currentTimeMillis(),
