@@ -719,6 +719,7 @@
         <item quantity="one">Найден %1$d результат</item>
         <item quantity="few">Найдено %1$d результата</item>
         <item quantity="other">Найдено %1$d результатов</item>
+        <item quantity="many">Найдено %1$d результатов</item>
     </plurals>
     <string name="settings_screen_miniphone_desc">Ранняя версия экспериментальной функции</string>
     <string name="model_diff_clear_add">Очистить новые модели</string>
@@ -739,11 +740,13 @@
         <item quantity="one">Удалить %1$d выбранную беседу и все её сообщения? Это действие необратимо.</item>
         <item quantity="few">Удалить %1$d выбранные беседы и все их сообщения? Это действие необратимо.</item>
         <item quantity="other">Удалить %1$d выбранных бесед и все их сообщения? Это действие необратимо.</item>
+        <item quantity="many">Удалить %1$d выбранных бесед и все их сообщения? Это действие необратимо.</item>
     </plurals>
     <plurals name="chat_list_edit_done">
         <item quantity="one">Обработан элемент: %1$d</item>
         <item quantity="few">Обработано элемента: %1$d</item>
         <item quantity="other">Обработано элементов: %1$d</item>
+        <item quantity="many">Обработано элементов: %1$d</item>
     </plurals>
     <string name="chat_list_edit_exit">Выйти</string>
     <string name="chat_list_edit_select_all">Выбрать всё</string>

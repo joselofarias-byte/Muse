@@ -60,6 +60,7 @@ fun VisionSettingsPage(onBack: () -> Unit) {
     val settings: SettingsRepository = koinInject()
     val visionBridge: VisionBridge = koinInject()
     val context = LocalContext.current
+    val contextResources = androidx.compose.ui.platform.LocalResources.current
     val enabled by settings.visionEnabledFlow.collectAsStateWithLifecycle(initialValue = false)
     val visionModelId by settings.visionModelIdFlow.collectAsStateWithLifecycle(initialValue = null)
     val visionProviderId by settings.visionProviderIdFlow.collectAsStateWithLifecycle(initialValue = null)
@@ -223,7 +224,8 @@ fun VisionSettingsPage(onBack: () -> Unit) {
                                                 text = "探针测试",
                                                 images = listOf(VISION_PROBE_IMAGE_PNG_BASE64),
                                                 userRequest = "探针测试:这张图是什么颜色?",
-                                                sessionId = null, // 不走缓存 key 维度的 session
+                                                // 不走缓存 key 维度的 session
+                                                sessionId = null,
                                             )
                                         }
                                         probeState = when {
@@ -239,7 +241,7 @@ fun VisionSettingsPage(onBack: () -> Unit) {
                                             )
                                             else -> ProbeState.Failed(
                                                 result.getOrNull()?.text
-                                                    ?: context.getString(R.string.code_gap_vision_probe_empty),
+                                                    ?: contextResources.getString(R.string.code_gap_vision_probe_empty),
                                             )
                                         }
                                     }

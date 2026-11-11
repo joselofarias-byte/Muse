@@ -39,26 +39,25 @@ data class EvidenceSourceResolution(
     val canOpenDocument: Boolean get() = state == EvidenceSourceState.AVAILABLE
 }
 
+data class EvidenceSourceRequest(
+    val docId: String,
+    val docTitle: String,
+    val revisionId: String?,
+    val locator: String?,
+    val snapshotText: String,
+    val docExists: Boolean,
+    val revisionExists: Boolean,
+    val hasRevisionInfo: Boolean,
+    val error: String? = null,
+)
+
 object EvidenceSourceResolver {
 
     /**
      * 解析来源打开结果。
      *
-     * @param docExists 文档当前是否存在
-     * @param revisionExists 引用指向的 revision 是否仍存在
-     * @param hasRevisionInfo 引用是否带 revision/locator 信息(旧引用没有)
      */
-    fun resolve(
-        docId: String,
-        docTitle: String,
-        revisionId: String?,
-        locator: String?,
-        snapshotText: String,
-        docExists: Boolean,
-        revisionExists: Boolean,
-        hasRevisionInfo: Boolean,
-        error: String? = null,
-    ): EvidenceSourceResolution {
+    fun resolve(source: EvidenceSourceRequest): EvidenceSourceResolution = with(source) {
         val state = when {
             error != null -> EvidenceSourceState.ERROR
             !docExists -> EvidenceSourceState.DOC_DELETED
@@ -78,7 +77,7 @@ object EvidenceSourceResolver {
             EvidenceSourceState.ERROR ->
                 "打开来源失败: ${error ?: "未知错误"}"
         }
-        return EvidenceSourceResolution(
+        EvidenceSourceResolution(
             state = state,
             docId = docId,
             docTitle = docTitle,
@@ -93,6 +92,5 @@ object EvidenceSourceResolver {
      * 防冒充校验:缺源/删除/旧版引用都**不得**返回"可跳转到最新文本"。
      * 只有 AVAILABLE 才允许打开文档。
      */
-    fun shouldOpenDocument(resolution: EvidenceSourceResolution): Boolean =
-        resolution.canOpenDocument
+    fun shouldOpenDocument(resolution: EvidenceSourceResolution): Boolean = resolution.canOpenDocument
 }
