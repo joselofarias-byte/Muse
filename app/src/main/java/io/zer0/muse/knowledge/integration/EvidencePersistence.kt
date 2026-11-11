@@ -61,7 +61,8 @@ object EvidenceSnapshotCodec {
         tokenEstimate = bundle.tokenEstimate,
         traceId = bundle.traceId,
         providedToModel = bundle.citations.map { it.chunkId },
-        actuallyCited = emptyList(), // 由正文引用解析后回填;未知时不得伪造"已使用"
+        // 由正文引用解析后回填;未知时不得伪造"已使用"
+        actuallyCited = emptyList(),
     )
 
     fun fromSnapshot(snapshot: EvidenceBundleSnapshot): EvidenceBundle = EvidenceBundle(
@@ -74,11 +75,9 @@ object EvidenceSnapshotCodec {
         degraded = false,
     )
 
-    fun encode(snapshot: EvidenceBundleSnapshot): String =
-        json.encodeToString(EvidenceBundleSnapshot.serializer(), snapshot)
+    fun encode(snapshot: EvidenceBundleSnapshot): String = json.encodeToString(EvidenceBundleSnapshot.serializer(), snapshot)
 
-    fun decode(text: String): EvidenceBundleSnapshot =
-        json.decodeFromString(EvidenceBundleSnapshot.serializer(), text)
+    fun decode(text: String): EvidenceBundleSnapshot = json.decodeFromString(EvidenceBundleSnapshot.serializer(), text)
 
     private fun EvidenceUnit.toSnapshot() = EvidenceUnitSnapshot(
         index = index,

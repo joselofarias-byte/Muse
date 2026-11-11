@@ -15,14 +15,14 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
-import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Call
 import okhttp3.Callback
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
-import okhttp3.Response
-import kotlin.coroutines.resumeWithException
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.Response
+import kotlin.coroutines.resumeWithException
 
 /**
  * v1.54: 云端 Embedding Provider(OpenAI 兼容接口)。
@@ -161,7 +161,8 @@ class OpenAIEmbeddingProvider(
             )
         io.zer0.ai.core.ProviderType.GEMINI ->
             throw IllegalStateException(
-                "Gemini's embedding API is not fully compatible with OpenAI's. Please specify an embedding model in RAG settings or switch to an OpenAI-compatible Provider",
+                "Gemini's embedding API is not fully compatible with OpenAI's. Please specify an embed" +
+                    "ding model in RAG settings or switch to an OpenAI-compatible Provider",
             )
     }
 
@@ -184,4 +185,5 @@ class OpenAIEmbeddingProvider(
         cont.invokeOnCancellation {
             runCatching { cancel() }
         }
-    }}
+    }
+}

@@ -68,6 +68,7 @@ import org.koin.core.qualifier.named
 @Composable
 fun CrashReportSettingsPage(onBack: () -> Unit) {
     val context = LocalContext.current
+    val contextResources = androidx.compose.ui.platform.LocalResources.current
     val settings: SettingsRepository = koinInject()
     // 复用 named("chat") OkHttpClient（上报内部会覆盖超时）
     val chatClient: OkHttpClient = koinInject<OkHttpClient>(qualifier = named("chat"))
@@ -222,7 +223,7 @@ fun CrashReportSettingsPage(onBack: () -> Unit) {
                             is SubmitOutcome.MailFallback ->
                                 context.getString(R.string.settings_crash_done_mail)
                             SubmitOutcome.NothingToSend, SubmitOutcome.Failed ->
-                                context.getString(R.string.settings_crash_done_failed)
+                                contextResources.getString(R.string.settings_crash_done_failed)
                         },
                     )
                     Logger.i("CrashReportSettings", "上报结果: $outcome, 剩余 $pendingCount 条")
