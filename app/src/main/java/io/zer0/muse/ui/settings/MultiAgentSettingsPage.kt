@@ -957,7 +957,8 @@ private fun DelegationTimeoutSliderRow(timeoutSec: Int, onValueChange: (Int) -> 
         title = stringResource(R.string.delegation_pause_timeout),
         value = timeoutSec.toFloat(),
         valueRange = 60f..600f,
-        steps = 17, // 60, 90, ..., 600 共 19 个取值,steps = 19 - 2 = 17
+        // 60, 90, ..., 600 共 19 个取值,steps = 19 - 2 = 17
+        steps = 17,
         valueText = "$timeoutSec $secUnit",
         onValueChange = { v -> onValueChange(v.toInt()) },
     )

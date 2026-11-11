@@ -286,6 +286,7 @@ internal data class GeminiFileResource(
 internal fun GeminiUsageMetadata.toUsageTokens(): io.zer0.ai.core.UsageTokens = io.zer0.ai.core.UsageTokens(
     promptTokens = promptTokenCount,
     completionTokens = candidatesTokenCount,
-    reasoningTokens = 0, // Gemini 不单独计 reasoning tokens
+    // Gemini 不单独计 reasoning tokens
+    reasoningTokens = 0,
     cachedTokens = cachedContentTokenCount,
 )

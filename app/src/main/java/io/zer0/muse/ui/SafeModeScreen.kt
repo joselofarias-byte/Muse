@@ -77,6 +77,7 @@ import io.zer0.muse.util.ShareIntentHelper
 @Composable
 fun SafeModeScreen() {
     val context = LocalContext.current
+    val contextResources = androidx.compose.ui.platform.LocalResources.current
 
     // v1.141 F2: 崩溃恢复引导 — 展示数据完好说明与云端备份恢复路径
     var showRecoveryGuide by remember { mutableStateOf(false) }
@@ -141,7 +142,7 @@ fun SafeModeScreen() {
                     val nowDisabled = io.zer0.muse.data.plugin.PluginKillSwitch
                         .setDisabled(context, !pluginsDisabled)
                     MuseToast.show(
-                        context.getString(
+                        contextResources.getString(
                             if (nowDisabled) R.string.plugin_kill_switch_title else R.string.plugin_kill_switch_restore,
                         ),
                     )

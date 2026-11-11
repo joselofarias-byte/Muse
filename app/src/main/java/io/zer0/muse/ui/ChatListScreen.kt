@@ -219,7 +219,8 @@ fun ChatListScreen(
         // Repository 的两个查询此前全仓零调用，现在在首页真实展示。
         var openTodoSessionCount by remember { mutableStateOf(0) }
         val context = LocalContext.current
-        LaunchedEffect(Unit) {
+        val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+        LaunchedEffect(configuration) {
             // 先投递系统兜底,再在前台直接生成当前时段;否则部分 ROM 会把 WorkManager
             // 延迟很久,用户只看到“早上好/中午好/晚上好”而看不到后面的助手总结。
             DailySummaryWorker.enqueueCatchUpIfDue(context, settings)
@@ -254,7 +255,7 @@ fun ChatListScreen(
             // v1.x: 个性化问候 — 缓存优先(当天),未命中则 LLM 生成,失败回退规则版。
             runCatching {
                 val today = java.time.LocalDate.now().toString()
-                val cachePrefix = "$today|${context.resources.configuration.locales[0].toLanguageTag()}|"
+                val cachePrefix = "$today|${configuration.locales[0].toLanguageTag()}|"
                 val cached = settings.getGreetingHintCache()
                 if (cached?.startsWith(cachePrefix) == true) {
                     resolvedGreetingHint = GreetingHelper.compactGreetingText(
@@ -549,7 +550,7 @@ private fun GreetingHeader(
     modifier: Modifier = Modifier,
 ) {
     // I18N-01: 问候语经资源解析(测试路径仍可直接调 GreetingHelper 中文回退)。
-    val resources = LocalContext.current.resources
+    val resources = androidx.compose.ui.platform.LocalResources.current
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -1286,6 +1287,7 @@ private fun TaskActionSheet(
     onMoveToFolder: (String?) -> Unit,
 ) {
     val context = LocalContext.current
+    val contextResources = androidx.compose.ui.platform.LocalResources.current
     MuseBottomSheet(
         onDismissRequest = onDismiss,
         // UI-FIX(贴边): 原来把水平内边距压成 0，标题和操作卡片直接顶到屏幕边。
@@ -1336,7 +1338,7 @@ private fun TaskActionSheet(
                     val clipboard = context.getSystemService(android.content.ClipboardManager::class.java)
                     clipboard?.setPrimaryClip(android.content.ClipData.newPlainText("session_id", session.id))
                     io.zer0.muse.ui.common.feedback.MuseToast.show(
-                        context.getString(R.string.quick_notes_copied),
+                        contextResources.getString(R.string.quick_notes_copied),
                     )
                     onDismiss()
                 },

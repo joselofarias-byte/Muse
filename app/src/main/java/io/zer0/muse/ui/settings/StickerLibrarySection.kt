@@ -95,6 +95,7 @@ import androidx.compose.foundation.lazy.items as lazyItems
 @Composable
 internal fun StickerLibrarySection(settings: SettingsRepository, scope: CoroutineScope) {
     val context = LocalContext.current
+    val contextResources = androidx.compose.ui.platform.LocalResources.current
     // v2.6.2: 预解析提示文案（带参数的用模板 + replace）—— 回调 lambda 里直接用
     // context.getString 会触发 lint LocalContextGetResourceValueCall。
     //
@@ -170,12 +171,12 @@ internal fun StickerLibrarySection(settings: SettingsRepository, scope: Coroutin
                 runCatching {
                     context.contentResolver.openOutputStream(uri)?.use { stream ->
                         stickerRepo.exportCategoryZip(category, stream).getOrThrow()
-                    } ?: error(context.getString(R.string.settings_sticker_export_location_failed))
+                    } ?: error(contextResources.getString(R.string.settings_sticker_export_location_failed))
                 }.onSuccess { count ->
-                    MuseToast.show(context.getString(R.string.settings_sticker_export_done, category, count))
+                    MuseToast.show(contextResources.getString(R.string.settings_sticker_export_done, category, count))
                 }.onFailure { error ->
                     MuseToast.show(
-                        context.getString(R.string.settings_sticker_import_failed, error.message),
+                        contextResources.getString(R.string.settings_sticker_import_failed, error.message),
                         3500,
                     )
                 }
@@ -220,15 +221,15 @@ internal fun StickerLibrarySection(settings: SettingsRepository, scope: Coroutin
                         if (total != null && total > 0) {
                             "$phase $done/$total"
                         } else {
-                            context.getString(R.string.settings_sticker_import_progress, phase, done)
+                            contextResources.getString(R.string.settings_sticker_import_progress, phase, done)
                         }
                 }
                     .onSuccess { count ->
-                        MuseToast.show(context.getString(R.string.settings_sticker_imported, count))
+                        MuseToast.show(contextResources.getString(R.string.settings_sticker_imported, count))
                         refreshTrigger++
                     }
                     .onError { msg, _ ->
-                        MuseToast.show(context.getString(R.string.settings_sticker_import_failed, msg), 3500)
+                        MuseToast.show(contextResources.getString(R.string.settings_sticker_import_failed, msg), 3500)
                     }
                 importingSticker = false
                 stickerImportProgress = null
@@ -247,11 +248,11 @@ internal fun StickerLibrarySection(settings: SettingsRepository, scope: Coroutin
             scope.launch {
                 stickerRepo.importImages(uris, selectedCategory.ifBlank { null })
                     .onSuccess { count ->
-                        MuseToast.show(context.getString(R.string.settings_sticker_imported, count))
+                        MuseToast.show(contextResources.getString(R.string.settings_sticker_imported, count))
                         refreshTrigger++
                     }
                     .onError { msg, _ ->
-                        MuseToast.show(context.getString(R.string.settings_sticker_import_failed, msg), 3500)
+                        MuseToast.show(contextResources.getString(R.string.settings_sticker_import_failed, msg), 3500)
                     }
                 importingFromGallery = false
             }
@@ -685,11 +686,11 @@ internal fun StickerLibrarySection(settings: SettingsRepository, scope: Coroutin
                     stickerRepo.renameCategory(from, renameText)
                         .onSuccess {
                             selectedCategory = renameText.trim()
-                            MuseToast.show(context.getString(R.string.settings_sticker_action_saved))
+                            MuseToast.show(contextResources.getString(R.string.settings_sticker_action_saved))
                             refreshTrigger++
                         }
                         .onError { msg, _ ->
-                            MuseToast.show(context.getString(R.string.settings_sticker_action_failed, msg), 3500)
+                            MuseToast.show(contextResources.getString(R.string.settings_sticker_action_failed, msg), 3500)
                         }
                 }
             },
@@ -784,7 +785,7 @@ internal fun StickerLibrarySection(settings: SettingsRepository, scope: Coroutin
                                     stickerRepo.downloadDraftOriginals(draft.id, kept)
                                         .onSuccess { (replaced, failures) ->
                                             MuseToast.show(
-                                                context.getString(
+                                                contextResources.getString(
                                                     R.string.settings_sticker_download_result,
                                                     replaced,
                                                     failures.size,
@@ -796,7 +797,7 @@ internal fun StickerLibrarySection(settings: SettingsRepository, scope: Coroutin
                                         }
                                         .onError { msg, _ ->
                                             MuseToast.show(
-                                                context.getString(R.string.settings_sticker_import_failed, msg),
+                                                contextResources.getString(R.string.settings_sticker_import_failed, msg),
                                                 3500,
                                             )
                                         }
@@ -816,11 +817,11 @@ internal fun StickerLibrarySection(settings: SettingsRepository, scope: Coroutin
                 scope.launch {
                     stickerRepo.commitDraft(draft.id, kept)
                         .onSuccess { count ->
-                            MuseToast.show(context.getString(R.string.settings_sticker_imported, count))
+                            MuseToast.show(contextResources.getString(R.string.settings_sticker_imported, count))
                             refreshTrigger++
                         }
                         .onError { msg, _ ->
-                            MuseToast.show(context.getString(R.string.settings_sticker_import_failed, msg), 3500)
+                            MuseToast.show(contextResources.getString(R.string.settings_sticker_import_failed, msg), 3500)
                         }
                 }
             },
@@ -898,7 +899,7 @@ internal fun StickerLibrarySection(settings: SettingsRepository, scope: Coroutin
                     if (actionTarget.trim().isNotEmpty() && actionTarget.trim() != target.category) {
                         stickerRepo.moveSticker(target.id, actionTarget)
                     }
-                    MuseToast.show(context.getString(R.string.settings_sticker_action_saved))
+                    MuseToast.show(contextResources.getString(R.string.settings_sticker_action_saved))
                     refreshTrigger++
                 }
             },

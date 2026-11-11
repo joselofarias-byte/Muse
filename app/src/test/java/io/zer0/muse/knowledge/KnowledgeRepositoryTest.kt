@@ -125,15 +125,17 @@ class KnowledgeRepositoryTest {
     fun `legacy chunk only row imports without pretending to be complete`() {
         val repo = repo()
         val imported = repo.importLegacyRow(
-            docId = "legacy-chunk-only",
-            ownerType = "UserLibrary",
-            ownerId = "kb-old",
-            isInternal = false,
-            content = "",
-            contentHash = "",
-            metadataJson = """{"source":"upload/old"}""",
-            chunks = listOf("第一段原文", "第二段原文", "第三段原文"),
-            sourceMissing = false,
+            KnowledgeRepository.LegacyImportRequest(
+                docId = "legacy-chunk-only",
+                ownerType = "UserLibrary",
+                ownerId = "kb-old",
+                isInternal = false,
+                content = "",
+                contentHash = "",
+                metadataJson = """{"source":"upload/old"}""",
+                chunks = listOf("第一段原文", "第二段原文", "第三段原文"),
+                sourceMissing = false,
+            ),
         )
 
         assertEquals("分类 = ChunkOnly(不猜测升级)", KnowledgeLegacyRowClass.CHUNK_ONLY, imported.rowClass)
@@ -151,15 +153,17 @@ class KnowledgeRepositoryTest {
         val repo = repo()
         val full = "完整旧行正文"
         val imported = repo.importLegacyRow(
-            docId = "legacy-complete",
-            ownerType = "UserLibrary",
-            ownerId = "kb-old",
-            isInternal = false,
-            content = full,
-            contentHash = io.zer0.muse.knowledge.storage.KnowledgeContentStore.hashOf(full.toByteArray()),
-            metadataJson = "{}",
-            chunks = emptyList(),
-            sourceMissing = false,
+            KnowledgeRepository.LegacyImportRequest(
+                docId = "legacy-complete",
+                ownerType = "UserLibrary",
+                ownerId = "kb-old",
+                isInternal = false,
+                content = full,
+                contentHash = io.zer0.muse.knowledge.storage.KnowledgeContentStore.hashOf(full.toByteArray()),
+                metadataJson = "{}",
+                chunks = emptyList(),
+                sourceMissing = false,
+            ),
         )
 
         assertEquals("hash 可验证 → COMPLETE", KnowledgeLegacyRowClass.COMPLETE, imported.rowClass)
@@ -170,15 +174,17 @@ class KnowledgeRepositoryTest {
     fun `legacy internal row keeps internal owner semantics`() {
         val repo = repo()
         val imported = repo.importLegacyRow(
-            docId = "legacy-devdoc",
-            ownerType = "BuiltinHelp",
-            ownerId = "corpus-v1",
-            isInternal = true,
-            content = "内置帮助",
-            contentHash = "",
-            metadataJson = "{}",
-            chunks = emptyList(),
-            sourceMissing = false,
+            KnowledgeRepository.LegacyImportRequest(
+                docId = "legacy-devdoc",
+                ownerType = "BuiltinHelp",
+                ownerId = "corpus-v1",
+                isInternal = true,
+                content = "内置帮助",
+                contentHash = "",
+                metadataJson = "{}",
+                chunks = emptyList(),
+                sourceMissing = false,
+            ),
         )
 
         assertEquals(KnowledgeLegacyRowClass.INTERNAL, imported.rowClass)

@@ -31,22 +31,47 @@ import java.io.File
  */
 class KnowledgeRuntime private constructor(
     val db: MuseDb,
-    val jobDao: KnowledgeJobDao,
-    val v2Dao: KnowledgeV2Dao,
-    val publisher: GenerationPublisher,
-    val jobRunner: JobRunner,
-    val jobEnqueue: KnowledgeJobEnqueueService,
-    val processor: DefaultKnowledgeJobProcessor,
-    val retriever: KnowledgeRetriever,
-    val assembler: EvidenceAssembler,
-    val contributor: KnowledgeContextContributor,
-    val lifecycle: KnowledgeLifecycleService,
-    val management: KnowledgeManagementFacade,
-    val portableBackup: KnowledgePortableBackupService,
-    /** 原件内容寻址存储(blobsDirectory 下的 store 目录)。 */
-    val contentStore: io.zer0.muse.knowledge.storage.KnowledgeContentStore,
-    val policyProvider: suspend (TrustedGenerationContext) -> ResolvedPolicy,
+    private val jobs: RuntimeJobs,
+    private val retrieval: RuntimeRetrieval,
+    private val storage: RuntimeStorage,
 ) {
+    val jobDao get() = jobs.jobDao
+    val v2Dao get() = storage.v2Dao
+    val publisher get() = jobs.publisher
+    val jobRunner get() = jobs.jobRunner
+    val jobEnqueue get() = jobs.jobEnqueue
+    val processor get() = jobs.processor
+    val retriever get() = retrieval.retriever
+    val assembler get() = retrieval.assembler
+    val contributor get() = retrieval.contributor
+    val policyProvider get() = retrieval.policyProvider
+    val lifecycle get() = storage.lifecycle
+    val management get() = storage.management
+    val portableBackup get() = storage.portableBackup
+    val contentStore get() = storage.contentStore
+
+    private data class RuntimeJobs(
+        val jobDao: KnowledgeJobDao,
+        val publisher: GenerationPublisher,
+        val jobRunner: JobRunner,
+        val jobEnqueue: KnowledgeJobEnqueueService,
+        val processor: DefaultKnowledgeJobProcessor,
+    )
+
+    private data class RuntimeRetrieval(
+        val retriever: KnowledgeRetriever,
+        val assembler: EvidenceAssembler,
+        val contributor: KnowledgeContextContributor,
+        val policyProvider: suspend (TrustedGenerationContext) -> ResolvedPolicy,
+    )
+
+    private data class RuntimeStorage(
+        val v2Dao: KnowledgeV2Dao,
+        val lifecycle: KnowledgeLifecycleService,
+        val management: KnowledgeManagementFacade,
+        val portableBackup: KnowledgePortableBackupService,
+        val contentStore: io.zer0.muse.knowledge.storage.KnowledgeContentStore,
+    )
 
     companion object {
         /**
@@ -55,11 +80,7 @@ class KnowledgeRuntime private constructor(
          * @param blobsDirectory 内容寻址原件目录(生产应位于 app 私有 filesDir 下)。
          * @param ragConfigProvider 全局 RAG 配置来源;默认 RagConfig(),由调用方注入真实设置。
          */
-        fun create(
-            db: MuseDb,
-            blobsDirectory: File,
-            ragConfigProvider: suspend () -> RagConfig = { RagConfig() },
-        ): KnowledgeRuntime {
+        fun create(db: MuseDb, blobsDirectory: File, ragConfigProvider: suspend () -> RagConfig = { RagConfig() }): KnowledgeRuntime {
             val jobDao = db.knowledgeJobDao()
             val v2Dao = db.knowledgeV2Dao()
             val folderDao = db.knowledgeFolderV2Dao()
@@ -104,22 +125,15 @@ class KnowledgeRuntime private constructor(
             )
             return KnowledgeRuntime(
                 db = db,
-                jobDao = jobDao,
-                v2Dao = v2Dao,
-                publisher = publisher,
-                jobRunner = jobRunner,
-                jobEnqueue = jobEnqueue,
-                processor = processor,
-                retriever = retriever,
-                assembler = assembler,
-                contributor = contributor,
-                lifecycle = lifecycle,
-                management = KnowledgeManagementFacade(lifecycle),
-                portableBackup = KnowledgePortableBackupService(v2Dao, folderDao, jobDao),
-                contentStore = io.zer0.muse.knowledge.storage.KnowledgeContentStore(
-                    java.io.File(blobsDirectory, "store"),
+                jobs = RuntimeJobs(jobDao, publisher, jobRunner, jobEnqueue, processor),
+                retrieval = RuntimeRetrieval(retriever, assembler, contributor, policyProvider),
+                storage = RuntimeStorage(
+                    v2Dao = v2Dao,
+                    lifecycle = lifecycle,
+                    management = KnowledgeManagementFacade(lifecycle),
+                    portableBackup = KnowledgePortableBackupService(v2Dao, folderDao, jobDao),
+                    contentStore = io.zer0.muse.knowledge.storage.KnowledgeContentStore(File(blobsDirectory, "store")),
                 ),
-                policyProvider = policyProvider,
             )
         }
     }

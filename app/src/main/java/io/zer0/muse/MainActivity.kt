@@ -450,6 +450,7 @@ private fun MuseNavGraph(
     onSplashReady: () -> Unit = {},
 ) {
     val context = LocalContext.current
+    val contextResources = androidx.compose.ui.platform.LocalResources.current
     val navController = rememberNavController()
     val sharedViewModel: ChatViewModel = koinInject()
     val quickNotesViewModel: QuickNotesViewModel = koinInject()
@@ -601,9 +602,9 @@ private fun MuseNavGraph(
                                 )
                                 val message = when (val outcome = importer.importUrl(result.url)) {
                                     is io.zer0.muse.data.skill.SkillPackageImporter.Outcome.Installed ->
-                                        context.getString(R.string.skill_imported, outcome.skill.name)
+                                        contextResources.getString(R.string.skill_imported, outcome.skill.name)
                                     is io.zer0.muse.data.skill.SkillPackageImporter.Outcome.Failed ->
-                                        context.getString(R.string.skill_import_error, outcome.reason)
+                                        contextResources.getString(R.string.skill_import_error, outcome.reason)
                                 }
                                 io.zer0.muse.ui.common.feedback.MuseToast.show(message)
                             }
@@ -826,7 +827,7 @@ private fun isSystemNightMode(context: android.content.Context): Boolean {
  *
  * 以 Application 级系统配置为基准(attachBaseContext 只包 Activity 基资源,
  * applicationContext 始终是系统配置),因此无论从哪种语言切回 "system" 都能正确恢复。
- * stringResource 在 Compose 1.7 直接读 LocalContext.current.resources,故覆盖 LocalContext
+ * stringResource 在 Compose 1.7 直接读 androidx.compose.ui.platform.LocalResources.current,故覆盖 LocalContext
  * 为新 locale 的 ContextWrapper(applicationContext 透传,系统服务/launcher 均不受影响;
  * 依赖 Activity 身份的 as? Activity 调用点数量有限且均有兜底)。
  * ROM 兜底: 与 wrapWithLanguage 一致,额外 updateConfiguration 强制刷新 locale。

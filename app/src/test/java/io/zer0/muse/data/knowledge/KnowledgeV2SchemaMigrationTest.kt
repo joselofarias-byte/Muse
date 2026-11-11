@@ -74,14 +74,21 @@ class KnowledgeV2SchemaMigrationTest {
         // 两个 owner 各一个文档;同 owner 查询只返回自己的行(隔离的 DB 级保证)
         dao.insertDoc(
             KnowledgeV2DocEntity(
-                docId = "doc-alpha", ownerType = "UserLibrary", ownerId = "kb-alpha",
-                folderId = "共享目录", createdAt = 1L, updatedAt = 1L,
+                docId = "doc-alpha",
+                ownerType = "UserLibrary",
+                ownerId = "kb-alpha",
+                folderId = "共享目录",
+                createdAt = 1L,
+                updatedAt = 1L,
             ),
         )
         dao.insertDoc(
             KnowledgeV2DocEntity(
-                docId = "doc-beta", ownerType = "UserLibrary", ownerId = "kb-beta",
-                createdAt = 1L, updatedAt = 1L,
+                docId = "doc-beta",
+                ownerType = "UserLibrary",
+                ownerId = "kb-beta",
+                createdAt = 1L,
+                updatedAt = 1L,
             ),
         )
 
@@ -91,14 +98,20 @@ class KnowledgeV2SchemaMigrationTest {
         // 会话附件 owner:删除会话 → 只删该会话的行;转存(改 owner)的行独立存活
         dao.insertDoc(
             KnowledgeV2DocEntity(
-                docId = "doc-att-1", ownerType = "SessionAttachment", ownerId = "session-1",
-                createdAt = 1L, updatedAt = 1L,
+                docId = "doc-att-1",
+                ownerType = "SessionAttachment",
+                ownerId = "session-1",
+                createdAt = 1L,
+                updatedAt = 1L,
             ),
         )
         dao.insertDoc(
             KnowledgeV2DocEntity(
-                docId = "doc-att-2", ownerType = "SessionAttachment", ownerId = "session-1",
-                createdAt = 1L, updatedAt = 1L,
+                docId = "doc-att-2",
+                ownerType = "SessionAttachment",
+                ownerId = "session-1",
+                createdAt = 1L,
+                updatedAt = 1L,
             ),
         )
         dao.reassignOwner("doc-att-2", "UserLibrary", "kb-alpha", updatedAt = 2L)
@@ -122,14 +135,24 @@ class KnowledgeV2SchemaMigrationTest {
         dao.insertDoc(KnowledgeV2DocEntity(docId = "doc-r", ownerType = "UserLibrary", ownerId = "kb-1", createdAt = 1L, updatedAt = 1L))
         dao.insertRevision(
             KnowledgeV2RevisionEntity(
-                revisionId = "rev-1", docId = "doc-r", revisionNo = 1,
-                contentHash = "h1", fullContent = "v1", preview = "v1", createdAt = 1L,
+                revisionId = "rev-1",
+                docId = "doc-r",
+                revisionNo = 1,
+                contentHash = "h1",
+                fullContent = "v1",
+                preview = "v1",
+                createdAt = 1L,
             ),
         )
         dao.insertRevision(
             KnowledgeV2RevisionEntity(
-                revisionId = "rev-2", docId = "doc-r", revisionNo = 2,
-                contentHash = "h2", fullContent = "v2", preview = "v2", createdAt = 2L,
+                revisionId = "rev-2",
+                docId = "doc-r",
+                revisionNo = 2,
+                contentHash = "h2",
+                fullContent = "v2",
+                preview = "v2",
+                createdAt = 2L,
             ),
         )
 
@@ -165,8 +188,11 @@ class KnowledgeV2SchemaMigrationTest {
 
         dao.insertLease(
             KnowledgeV2RetentionLeaseEntity(
-                leaseId = "l1", contentKey = "hash-a", holderId = "worker-1",
-                acquiredAt = 1L, expiresAt = 100L,
+                leaseId = "l1",
+                contentKey = "hash-a",
+                holderId = "worker-1",
+                acquiredAt = 1L,
+                expiresAt = 100L,
             ),
         )
         assertEquals("未到期租约有效", 1, dao.getActiveLeases("hash-a", nowMs = 50L).size)
@@ -195,8 +221,12 @@ class KnowledgeV2SchemaMigrationTest {
         val json = kotlinx.serialization.json.Json.encodeToString(SourceRef.serializer(), sourceRef)
         dao.insertDoc(
             KnowledgeV2DocEntity(
-                docId = "doc-src", ownerType = "UserLibrary", ownerId = "kb-1",
-                sourceRefJson = json, createdAt = 1L, updatedAt = 1L,
+                docId = "doc-src",
+                ownerType = "UserLibrary",
+                ownerId = "kb-1",
+                sourceRefJson = json,
+                createdAt = 1L,
+                updatedAt = 1L,
             ),
         )
         val restored = kotlinx.serialization.json.Json.decodeFromString(
@@ -222,8 +252,13 @@ class KnowledgeV2SchemaMigrationTest {
         dao.insertDoc(KnowledgeV2DocEntity(docId = "doc-fk", ownerType = "UserLibrary", ownerId = "kb-1", createdAt = 1L, updatedAt = 1L))
         dao.insertRevision(
             KnowledgeV2RevisionEntity(
-                revisionId = "rev-fk-1", docId = "doc-fk", revisionNo = 1,
-                contentHash = "h", fullContent = "正文", preview = "正文", createdAt = 1L,
+                revisionId = "rev-fk-1",
+                docId = "doc-fk",
+                revisionNo = 1,
+                contentHash = "h",
+                fullContent = "正文",
+                preview = "正文",
+                createdAt = 1L,
             ),
         )
 
@@ -235,7 +270,8 @@ class KnowledgeV2SchemaMigrationTest {
         // CASCADE:删 doc → revision 随行失效
         open.execSQL("DELETE FROM knowledge_v2_docs WHERE docId = 'doc-fk'")
         val orphanRevisions = open.query("SELECT COUNT(*) FROM knowledge_v2_revisions WHERE docId = 'doc-fk'").use { c ->
-            c.moveToFirst(); c.getLong(0)
+            c.moveToFirst()
+            c.getLong(0)
         }
         assertEquals("doc 删除时 revision 级联消失(不静默孤儿)", 0L, orphanRevisions)
     }
@@ -263,13 +299,19 @@ class KnowledgeV2SchemaMigrationTest {
         // 幂等:重复执行不得抛错、不得丢行
         KnowledgeSchemaMigrations.MIGRATION_125_126.migrate(open)
 
-        val legacyCount = open.query("SELECT COUNT(*) FROM knowledge_docs").use { c -> c.moveToFirst(); c.getLong(0) }
+        val legacyCount = open.query("SELECT COUNT(*) FROM knowledge_docs").use { c ->
+            c.moveToFirst()
+            c.getLong(0)
+        }
         assertEquals("旧行在迁移后原样保留", 1L, legacyCount)
         open.query("SELECT COUNT(*) FROM knowledge_v2_docs").use { c -> c.moveToFirst() }
         open.query("SELECT COUNT(*) FROM knowledge_v2_revisions").use { c -> c.moveToFirst() }
         open.query("SELECT COUNT(*) FROM knowledge_v2_dataset_epoch").use { c -> c.moveToFirst() }
         open.query("SELECT COUNT(*) FROM knowledge_v2_retention_leases").use { c -> c.moveToFirst() }
-        val title = open.query("SELECT title FROM knowledge_docs WHERE id='legacy-1'").use { c -> c.moveToFirst(); c.getString(0) }
+        val title = open.query("SELECT title FROM knowledge_docs WHERE id='legacy-1'").use { c ->
+            c.moveToFirst()
+            c.getString(0)
+        }
         assertEquals("旧正文字段未被迁移触碰", "旧文档", title)
     }
 }
