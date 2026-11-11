@@ -59,11 +59,13 @@ class WebSearchKeyRouletteTest {
     }
 
     @Test
-    fun `resolveProviderKey 从 Key 池首把读 旧字段兼容回退`() {
+    fun `resolveProviderKey 轮换 Key 池 旧字段兼容回退`() {
         val v3 = WebSearchConfig(
             providerEntries = listOf(WebSearchProviderEntry(id = "Tavily", type = "Tavily", apiKeys = listOf("first", "second"))),
         )
-        assertEquals("first", resolveProviderKey(v3, "Tavily"))
+        // Unused keys are selected randomly; consecutive picks must exhaust this two-key pool.
+        val pickedKeys = listOf(resolveProviderKey(v3, "Tavily"), resolveProviderKey(v3, "Tavily"))
+        assertEquals(setOf("first", "second"), pickedKeys.toSet())
         val legacy = WebSearchConfig(apiKeys = mapOf("Brave" to "legacy"))
         assertEquals("legacy", resolveProviderKey(legacy, "Brave"))
         val single = WebSearchConfig(providerName = "Exa", apiKey = "single")

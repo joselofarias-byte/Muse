@@ -30,6 +30,7 @@ data class SettingsActionHost(
 @Composable
 internal fun rememberSettingsActionHost(): SettingsActionHost {
     val context = LocalContext.current
+    val contextResources = androidx.compose.ui.platform.LocalResources.current
     val updateNotifier: UpdateNotifier = koinInject()
     val scope = rememberCoroutineScope()
     var busyAction by remember { mutableStateOf<SettingsActionId?>(null) }
@@ -45,10 +46,10 @@ internal fun rememberSettingsActionHost(): SettingsActionHost {
                         busyAction = null
                     }
                     when (result) {
-                        is UpdateCheckResult.NewVersion -> MuseToast.show(context.getString(R.string.update_found_new))
-                        UpdateCheckResult.UpToDate -> MuseToast.show(context.getString(R.string.update_already_latest))
+                        is UpdateCheckResult.NewVersion -> MuseToast.show(contextResources.getString(R.string.update_found_new))
+                        UpdateCheckResult.UpToDate -> MuseToast.show(contextResources.getString(R.string.update_already_latest))
                         is UpdateCheckResult.Failed -> MuseToast.show(
-                            context.getString(R.string.settings_about_update_check_failed, result.message),
+                            contextResources.getString(R.string.settings_about_update_check_failed, result.message),
                         )
                         UpdateCheckResult.Skipped -> Unit
                     }

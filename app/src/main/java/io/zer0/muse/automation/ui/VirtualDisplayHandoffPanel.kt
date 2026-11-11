@@ -57,7 +57,7 @@ fun VirtualDisplayHandoffPanel(
     var lastTap by remember(displayId) { mutableStateOf<String?>(null) }
     var actionResult by remember(displayId) { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
-    val context = androidx.compose.ui.platform.LocalContext.current
+    val contextResources = androidx.compose.ui.platform.LocalResources.current
 
     LaunchedEffect(displayId) {
         while (true) {
@@ -139,7 +139,7 @@ fun VirtualDisplayHandoffPanel(
                 onClick = {
                     scope.launch {
                         val ok = runCatching { bringToMain() }.getOrDefault(false)
-                        actionResult = context.getString(
+                        actionResult = contextResources.getString(
                             if (ok) {
                                 R.string.automation_handoff_bring_main_ok
                             } else {

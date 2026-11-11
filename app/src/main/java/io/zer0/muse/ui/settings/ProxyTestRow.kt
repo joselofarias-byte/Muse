@@ -48,7 +48,7 @@ internal fun ProxyTestRow(proxyConfig: ProxyConfig) {
     var running by remember { mutableStateOf(false) }
     var result by remember { mutableStateOf<TestOutcome?>(null) }
     val scope = rememberCoroutineScope()
-    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val ctxResources = androidx.compose.ui.platform.LocalResources.current
 
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
@@ -72,14 +72,14 @@ internal fun ProxyTestRow(proxyConfig: ProxyConfig) {
                                 runProbe(
                                     proxyConfig,
                                     ProbeTexts(
-                                        invalidConfig = ctx.getString(R.string.proxy_test_invalid_config),
-                                        connected = ctx.getString(R.string.proxy_test_connected),
-                                        needAuth = ctx.getString(R.string.proxy_test_need_auth),
-                                        reachableFailed = ctx.getString(R.string.proxy_test_reachable_failed),
-                                        timeout = ctx.getString(R.string.proxy_test_timeout),
-                                        dnsFailed = ctx.getString(R.string.proxy_test_dns_failed),
-                                        connectFailed = ctx.getString(R.string.proxy_test_connect_failed),
-                                        unexpected = ctx.getString(R.string.proxy_test_unexpected),
+                                        invalidConfig = ctxResources.getString(R.string.proxy_test_invalid_config),
+                                        connected = ctxResources.getString(R.string.proxy_test_connected),
+                                        needAuth = ctxResources.getString(R.string.proxy_test_need_auth),
+                                        reachableFailed = ctxResources.getString(R.string.proxy_test_reachable_failed),
+                                        timeout = ctxResources.getString(R.string.proxy_test_timeout),
+                                        dnsFailed = ctxResources.getString(R.string.proxy_test_dns_failed),
+                                        connectFailed = ctxResources.getString(R.string.proxy_test_connect_failed),
+                                        unexpected = ctxResources.getString(R.string.proxy_test_unexpected),
                                     ),
                                 )
                             }

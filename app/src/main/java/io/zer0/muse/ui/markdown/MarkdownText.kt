@@ -981,14 +981,67 @@ fun parseInline(
 ): AnnotatedString {
     if (!hasInlineMarkdownSyntax(text, citationUrls.isNotEmpty())) return AnnotatedString(text)
     return buildAnnotatedString {
-    // L2 修复: 正则已提升为文件级 private val(INLINE_REGEX / CITATION_REGEX),此处直接引用
-    // Phase 8.4: 单独走 [N] 引用扫描(在主正则之后),避免与 [text](url) 冲突
-    var lastEnd = 0
-    INLINE_REGEX.findAll(text).forEach { match ->
-        // 输出匹配前的普通文本(可能含 [N] 引用或纯文本 URL)
-        if (match.range.first > lastEnd) {
+        // L2 修复: 正则已提升为文件级 private val(INLINE_REGEX / CITATION_REGEX),此处直接引用
+        // Phase 8.4: 单独走 [N] 引用扫描(在主正则之后),避免与 [text](url) 冲突
+        var lastEnd = 0
+        INLINE_REGEX.findAll(text).forEach { match ->
+            // 输出匹配前的普通文本(可能含 [N] 引用或纯文本 URL)
+            if (match.range.first > lastEnd) {
+                appendSegmentWithCitations(
+                    text.substring(lastEnd, match.range.first),
+                    citationUrls,
+                    citationColor,
+                    CITATION_REGEX,
+                    baseColor,
+                    linkColor,
+                )
+            }
+            when {
+                // 链接 [text](url) — group 1=text, 2=url
+                match.groupValues[1].isNotEmpty() -> {
+                    val linkText = match.groupValues[1]
+                    val url = match.groupValues[2]
+                    pushStringAnnotation(tag = "URL", annotation = url)
+                    withStyle(
+                        SpanStyle(
+                            color = linkColor,
+                            textDecoration = TextDecoration.Underline,
+                        ),
+                    ) {
+                        append(linkText)
+                    }
+                    pop()
+                }
+                // 行内代码 `...` — group 3
+                match.groupValues[3].isNotEmpty() -> {
+                    withStyle(
+                        SpanStyle(
+                            fontFamily = MuseMonoFontFamily,
+                            background = codeBgColor,
+                        ),
+                    ) {
+                        append(match.groupValues[3])
+                    }
+                }
+                // 粗体 **...** — group 4
+                match.groupValues[4].isNotEmpty() -> {
+                    withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
+                        append(match.groupValues[4])
+                    }
+                }
+                // 斜体 *...* — group 5
+                match.groupValues[5].isNotEmpty() -> {
+                    withStyle(SpanStyle(fontStyle = FontStyle.Italic)) {
+                        append(match.groupValues[5])
+                    }
+                }
+            }
+            lastEnd = match.range.last + 1
+        }
+        // 输出末尾剩余文本(可能含 [N] 引用或纯文本 URL)
+        if (lastEnd < text.length) {
             appendSegmentWithCitations(
-                text.substring(lastEnd, match.range.first),
+                text.substring(lastEnd),
                 citationUrls,
                 citationColor,
                 CITATION_REGEX,
@@ -996,59 +1049,6 @@ fun parseInline(
                 linkColor,
             )
         }
-        when {
-            // 链接 [text](url) — group 1=text, 2=url
-            match.groupValues[1].isNotEmpty() -> {
-                val linkText = match.groupValues[1]
-                val url = match.groupValues[2]
-                pushStringAnnotation(tag = "URL", annotation = url)
-                withStyle(
-                    SpanStyle(
-                        color = linkColor,
-                        textDecoration = TextDecoration.Underline,
-                    ),
-                ) {
-                    append(linkText)
-                }
-                pop()
-            }
-            // 行内代码 `...` — group 3
-            match.groupValues[3].isNotEmpty() -> {
-                withStyle(
-                    SpanStyle(
-                        fontFamily = MuseMonoFontFamily,
-                        background = codeBgColor,
-                    ),
-                ) {
-                    append(match.groupValues[3])
-                }
-            }
-            // 粗体 **...** — group 4
-            match.groupValues[4].isNotEmpty() -> {
-                withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
-                    append(match.groupValues[4])
-                }
-            }
-            // 斜体 *...* — group 5
-            match.groupValues[5].isNotEmpty() -> {
-                withStyle(SpanStyle(fontStyle = FontStyle.Italic)) {
-                    append(match.groupValues[5])
-                }
-            }
-        }
-        lastEnd = match.range.last + 1
-    }
-    // 输出末尾剩余文本(可能含 [N] 引用或纯文本 URL)
-    if (lastEnd < text.length) {
-        appendSegmentWithCitations(
-            text.substring(lastEnd),
-            citationUrls,
-            citationColor,
-            CITATION_REGEX,
-            baseColor,
-            linkColor,
-        )
-    }
     }
 }
 

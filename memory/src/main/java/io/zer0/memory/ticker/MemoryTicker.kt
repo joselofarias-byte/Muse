@@ -64,7 +64,7 @@ internal fun shouldCompileToday(turnCount: Int): Boolean = turnCount > 0 && turn
  *
  * 线程安全:
  *  - [_summaryInProgress] / [_activeJobs] 用 [Mutex] 保护
- *  - [_health] 用 synchronized 保护(纯内存读写,极短临界区)
+ *  - [health] 用 synchronized 保护(纯内存读写,极短临界区)
  *  - daily pipeline 用 [_dailyRunning] (AtomicBoolean.compareAndSet) 防重入
  */
 @Suppress("LongParameterList")
@@ -267,12 +267,12 @@ class MemoryTicker(
         val failCount: Int = 0,
     )
 
-    private val _health = STEP_KEYS.associateWith { StepHealth() }.toMutableMap()
-    private val _healthLock = Any()
+    private val health = STEP_KEYS.associateWith { StepHealth() }.toMutableMap()
+    private val healthLock = Any()
 
-    // v1.0.51: healthFlow 初始化为当前 _health 快照,而非空 map,
+    // v1.0.51: healthFlow 初始化为当前 health 快照,而非空 map,
     // 订阅方首次读取即可看到全部步骤的初始健康状态(而非等首次 publishHealth)
-    private val _healthFlow = MutableStateFlow<Map<String, StepHealth>>(_health.toMap())
+    private val _healthFlow = MutableStateFlow<Map<String, StepHealth>>(health.toMap())
     val healthFlow: StateFlow<Map<String, StepHealth>> = _healthFlow.asStateFlow()
 
     /**
@@ -300,11 +300,11 @@ class MemoryTicker(
      * 导致 step A 下次失败不被去重(刷屏),且 step B 的恢复日志归属错误。
      * 改为 per-step map 后,各步骤的恢复/去重互不干扰。
      */
-    private val _errorSigs = ConcurrentHashMap<String, String>()
+    private val errorSigs = ConcurrentHashMap<String, String>()
 
     // ── D3-P1: 管线观测(每步耗时/触发/失败分类 → pipeline_log) ──────────────
     /** 单步运行起点(stepKey → 起点时间/触发来源)。 */
-    private val _stepRunMeta = ConcurrentHashMap<String, StepRunMeta>()
+    private val stepRunMeta = ConcurrentHashMap<String, StepRunMeta>()
 
     /** 步骤运行元数据(D3-P1)。 */
     private data class StepRunMeta(val startMs: Long, val trigger: String, val scope: String?)
@@ -324,12 +324,12 @@ class MemoryTicker(
      * 未标记的步骤在记录时会得 0 耗时 + "unknown" 来源,不影响正确性。
      */
     private fun markStepStart(stepKey: String, trigger: String, scope: String? = null) {
-        _stepRunMeta[stepKey] = StepRunMeta(System.currentTimeMillis(), trigger, scope)
+        stepRunMeta[stepKey] = StepRunMeta(System.currentTimeMillis(), trigger, scope)
     }
 
     /** D3-P1: 步骤结果上报观测层(计数 + pipeline_log);无论成败都消费本次 start 元数据。 */
     private fun recordStepOutcome(stepKey: String, error: Throwable?) {
-        val meta = _stepRunMeta.remove(stepKey)
+        val meta = stepRunMeta.remove(stepKey)
         val duration = meta?.let { System.currentTimeMillis() - it.startMs } ?: 0L
         val trigger = meta?.trigger ?: "unknown"
         val scope = meta?.scope
@@ -354,9 +354,9 @@ class MemoryTicker(
 
     private fun markSuccess(stepKey: String) {
         recordStepOutcome(stepKey, null)
-        synchronized(_healthLock) {
-            val h = _health[stepKey] ?: return
-            _health[stepKey] = h.copy(
+        synchronized(healthLock) {
+            val h = health[stepKey] ?: return
+            health[stepKey] = h.copy(
                 lastSuccessAt = Instant.now().toString(),
                 lastErrorAt = null,
                 lastErrorMsg = null,
@@ -368,9 +368,9 @@ class MemoryTicker(
 
     private fun markFailure(stepKey: String, err: Throwable) {
         recordStepOutcome(stepKey, err)
-        synchronized(_healthLock) {
-            val h = _health[stepKey] ?: return
-            _health[stepKey] = h.copy(
+        synchronized(healthLock) {
+            val h = health[stepKey] ?: return
+            health[stepKey] = h.copy(
                 lastErrorAt = Instant.now().toString(),
                 lastErrorMsg = err.message ?: err.toString(),
                 failCount = h.failCount + 1,
@@ -380,29 +380,29 @@ class MemoryTicker(
     }
 
     private fun publishHealth() {
-        _healthFlow.value = _health.toMap()
+        _healthFlow.value = health.toMap()
     }
 
     private fun logStepError(label: String, err: Throwable) {
         val msg = err.message ?: err.toString()
         val sig = "$label|$msg"
         // v1.0.51: per-step 去重 — 同一 step 的相同根因只打一次 warn
-        if (_errorSigs[label] == sig) {
+        if (errorSigs[label] == sig) {
             Logger.d(TAG, "$label (dup suppressed): $msg")
             return
         }
-        _errorSigs[label] = sig
+        errorSigs[label] = sig
         Logger.w(TAG, "$label 失败: $msg", err)
     }
 
     private fun markStepRecovered(label: String) {
-        val prev = _errorSigs.remove(label) ?: return
+        val prev = errorSigs.remove(label) ?: return
         Logger.i(TAG, "$label 恢复正常(之前: $prev)")
     }
 
     /** 返回每个步骤的健康快照(深拷贝,调用方安全持有)。 */
-    fun getHealthStatus(): Map<String, StepHealth> = synchronized(_healthLock) {
-        _health.mapValues { it.value.copy() }
+    fun getHealthStatus(): Map<String, StepHealth> = synchronized(healthLock) {
+        health.mapValues { it.value.copy() }
     }
 
     // ──────────────────────────────────────────────
