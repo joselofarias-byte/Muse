@@ -120,6 +120,7 @@ fun KnowledgeScreen(
 ) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val contextResources = androidx.compose.ui.platform.LocalResources.current
     var searchQuery by rememberSaveable { mutableStateOf("") }
     // v1.0.74 fix (前端审计 6.5): 搜索 300ms 防抖 — 原 remember(searchQuery) 每敲一个字符
     // 都重启 Room Flow 查询,输入卡顿。用 snapshotFlow+debounce 驱动实际查询词。
@@ -1813,7 +1814,7 @@ fun KnowledgeScreen(
                                 name = path.substringAfterLast('/'),
                             ),
                         )
-                        MuseToast.show(context.getString(R.string.knowledge_folder_created, path))
+                        MuseToast.show(contextResources.getString(R.string.knowledge_folder_created, path))
                     }
                 }
                 creatingFolder = false
@@ -1835,7 +1836,7 @@ fun KnowledgeScreen(
             ),
             onConfirm = { newName, _ ->
                 if (kbNow == null || newName.isBlank()) {
-                    if (newName.isBlank()) MuseToast.show(context.getString(R.string.knowledge_folder_name_empty))
+                    if (newName.isBlank()) MuseToast.show(contextResources.getString(R.string.knowledge_folder_name_empty))
                 } else {
                     scope.launch {
                         val parent = KnowledgeFolderBrowser.parent(oldPath)
@@ -1873,7 +1874,7 @@ fun KnowledgeScreen(
                         if (currentFolderPath == oldPath || currentFolderPath.startsWith("$oldPath/")) {
                             currentFolderPath = newPath + currentFolderPath.removePrefix(oldPath)
                         }
-                        MuseToast.show(context.getString(R.string.knowledge_folder_renamed, newName))
+                        MuseToast.show(contextResources.getString(R.string.knowledge_folder_renamed, newName))
                     }
                 }
                 renamingFolder = null
@@ -1897,7 +1898,7 @@ fun KnowledgeScreen(
                         if (currentFolderPath == path || currentFolderPath.startsWith("$path/")) {
                             currentFolderPath = KnowledgeFolderBrowser.parent(path)
                         }
-                        MuseToast.show(context.getString(R.string.knowledge_folder_deleted))
+                        MuseToast.show(contextResources.getString(R.string.knowledge_folder_deleted))
                     }
                 }
                 deletingFolder = null

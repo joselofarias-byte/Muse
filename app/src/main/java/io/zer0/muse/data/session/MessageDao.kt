@@ -37,7 +37,8 @@ interface MessageDao {
 
     /** 观察指定会话的全部消息(按 seq 单调序列升序)。备份导出用,需全量加载。 */
     @Query(
-        "SELECT * FROM messages WHERE sessionId = :sessionId ORDER BY CASE WHEN commitSeq > 0 THEN commitSeq ELSE seq END ASC, createdAt ASC, id ASC",
+        "SELECT * FROM messages WHERE sessionId = :sessionId ORDER BY CASE WHEN commitSeq > 0 THEN commitSeq " +
+            "ELSE seq END ASC, createdAt ASC, id ASC",
     )
     fun observeBySession(sessionId: String): Flow<List<MessageEntity>>
 
@@ -50,7 +51,9 @@ interface MessageDao {
      * (如 [SessionRepository.OBSERVE_LIMIT])。
      */
     @Query(
-        "SELECT * FROM (SELECT * FROM messages WHERE sessionId = :sessionId AND deletedAt IS NULL ORDER BY CASE WHEN commitSeq > 0 THEN commitSeq ELSE seq END DESC, createdAt DESC, id DESC LIMIT :limit) ORDER BY CASE WHEN commitSeq > 0 THEN commitSeq ELSE seq END ASC, createdAt ASC, id ASC",
+        "SELECT * FROM (SELECT * FROM messages WHERE sessionId = :sessionId AND deletedAt IS NULL ORDER BY " +
+            "CASE WHEN commitSeq > 0 THEN commitSeq ELSE seq END DESC, createdAt DESC, id DESC LIMIT :limit) " +
+            "ORDER BY CASE WHEN commitSeq > 0 THEN commitSeq ELSE seq END ASC, createdAt ASC, id ASC",
     )
     fun observeRecentBySession(sessionId: String, limit: Int): Flow<List<MessageEntity>>
 
@@ -61,7 +64,8 @@ interface MessageDao {
      * 返回顺序为降序(最新在前),调用方需自行 reversed()。
      */
     @Query(
-        "SELECT * FROM messages WHERE sessionId = :sessionId AND deletedAt IS NULL ORDER BY CASE WHEN commitSeq > 0 THEN commitSeq ELSE seq END DESC, createdAt DESC, id DESC LIMIT :limit",
+        "SELECT * FROM messages WHERE sessionId = :sessionId AND deletedAt IS NULL ORDER BY CASE WHEN " +
+            "commitSeq > 0 THEN commitSeq ELSE seq END DESC, createdAt DESC, id DESC LIMIT :limit",
     )
     suspend fun getRecentBySession(sessionId: String, limit: Int): List<MessageEntity>
 
@@ -130,7 +134,8 @@ interface MessageDao {
 
     /** 每日总结用:取指定时间区间内的用户消息(升序,限量)。 */
     @Query(
-        "SELECT * FROM messages WHERE role = 'USER' AND createdAt >= :fromCreatedAt AND createdAt < :toCreatedAt ORDER BY createdAt ASC, rowid ASC LIMIT :limit",
+        "SELECT * FROM messages WHERE role = 'USER' AND createdAt >= :fromCreatedAt AND createdAt < " +
+            ":toCreatedAt ORDER BY createdAt ASC, rowid ASC LIMIT :limit",
     )
     suspend fun getUserMessagesBetween(fromCreatedAt: Long, toCreatedAt: Long, limit: Int): List<MessageEntity>
 

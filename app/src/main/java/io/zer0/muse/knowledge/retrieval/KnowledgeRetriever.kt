@@ -2,6 +2,7 @@ package io.zer0.muse.knowledge.retrieval
 
 import io.zer0.muse.knowledge.domain.KnowledgeScope
 import io.zer0.muse.knowledge.domain.RetrievalPolicy
+import io.zer0.muse.knowledge.domain.knowledgeOperation
 
 /**
  * R6 统一检索 — 设计 §10「范围先于候选截断」与计划 R6。
@@ -180,26 +181,37 @@ class KnowledgeRetriever(
         val traceBase = TraceBuilder(request, startedAt, clock)
 
         // 1. 范围先于候选:空/无效/失败绝不扩域;可检索范围同时给出 trace 摘要。
-        val scopeSummary = when (scope) {
-            is KnowledgeScope.None -> return RetrievalOutcome.EmptyScope("空范围", traceBase.build())
-            is KnowledgeScope.Invalid -> return RetrievalOutcome.EmptyScope("失效绑定", traceBase.build())
-            is KnowledgeScope.Failed ->
-                return RetrievalOutcome.EmptyScope("范围解析失败: ${scope.reason}", traceBase.build())
-            is KnowledgeScope.Resolved -> "docs=${scope.docIds.size}"
-            is KnowledgeScope.AllUserLibraries -> "all"
+        val scopeError = when (scope) {
+            is KnowledgeScope.None -> "空范围"
+            is KnowledgeScope.Invalid -> "失效绑定"
+            is KnowledgeScope.Failed -> "范围解析失败: ${scope.reason}"
+            else -> null
         }
-        traceBase.scopeSummary = scopeSummary
+        if (scopeError != null) return RetrievalOutcome.EmptyScope(scopeError, traceBase.build())
+        traceBase.scopeSummary = if (scope is KnowledgeScope.Resolved) "docs=${scope.docIds.size}" else "all"
+        return searchActiveScope(request, traceBase)
+    }
 
+    private suspend fun searchActiveScope(request: KnowledgeSearchRequest, traceBase: TraceBuilder): RetrievalOutcome {
+        val scope = request.scope
         // 2. 解析活动代(范围过滤在这一步)。
-        val activeGenerations = try {
+        val activeGenerations = knowledgeOperation {
             generationResolver.resolve(scope)
-        } catch (e: Exception) {
+        }.getOrElse { e ->
             return RetrievalOutcome.Failed("活动代解析失败: ${e.message}", traceBase.build())
         }
         if (activeGenerations.isEmpty()) {
             return RetrievalOutcome.NoMatch(traceBase.build())
         }
 
+        return rankActiveGenerations(request, traceBase, activeGenerations)
+    }
+
+    private suspend fun rankActiveGenerations(
+        request: KnowledgeSearchRequest,
+        traceBase: TraceBuilder,
+        activeGenerations: List<String>,
+    ): RetrievalOutcome {
         val limit = request.policy.topK
         val recall = recallBothPaths(request, activeGenerations, limit)
         val degraded = recall.degradedReasons.toMutableList()
@@ -234,7 +246,6 @@ class KnowledgeRetriever(
         }
     }
 
-
     /** 两路召回结果与降级原因。 */
     private class RecallOutcome(
         val lexicalHits: List<LexicalHit>,
@@ -251,31 +262,26 @@ class KnowledgeRetriever(
             return !lexicalAvailable && !denseAvailable && (hybridEnabled || noDenseRetriever)
         }
 
-        fun unavailableReason(): String =
-            listOfNotNull(lexicalError, denseError, lexicalDegraded, denseDegraded)
-                .joinToString("; ")
-                .ifBlank { "所有检索路径不可用" }
+        fun unavailableReason(): String = listOfNotNull(lexicalError, denseError, lexicalDegraded, denseDegraded)
+            .joinToString("; ")
+            .ifBlank { "所有检索路径不可用" }
     }
 
-    private suspend fun recallBothPaths(
-        request: KnowledgeSearchRequest,
-        activeGenerations: List<String>,
-        limit: Int,
-    ): RecallOutcome {
+    private suspend fun recallBothPaths(request: KnowledgeSearchRequest, activeGenerations: List<String>, limit: Int): RecallOutcome {
         var lexical: LexicalRecall? = null
         var lexicalError: String? = null
-        try {
+        knowledgeOperation {
             lexical = lexicalRetriever.search(request, activeGenerations, limit)
-        } catch (e: Exception) {
+        }.getOrElse { e ->
             lexicalError = "词法检索异常: ${e.message}"
         }
 
         var dense: DenseRecall? = null
         var denseError: String? = null
         if (request.policy.hybridEnabled && denseRetriever != null) {
-            try {
+            knowledgeOperation {
                 dense = denseRetriever.search(request, activeGenerations, limit)
-            } catch (e: Exception) {
+            }.getOrElse { e ->
                 denseError = "向量检索异常: ${e.message}"
             }
         }
@@ -305,9 +311,9 @@ class KnowledgeRetriever(
         degraded: MutableList<String>,
     ): List<EvidenceCandidate> {
         if (!request.policy.rerankEnabled || rerankProvider == null) return fused
-        val reranked = try {
+        val reranked = knowledgeOperation {
             rerankProvider.rerank(request.query, fused, limit)
-        } catch (e: Exception) {
+        }.getOrElse { e ->
             degraded.add("重排失败(保留原序): ${e.message}")
             null
         }
@@ -386,7 +392,8 @@ class KnowledgeRetriever(
             denseCount = denseCount,
             fusedCount = fusedCount,
             finalCount = finalCount,
-            degradedReasons = emptyList(), // 降级原因随 Partial 单独返回,避免双份真相
+            // 降级原因随 Partial 单独返回,避免双份真相
+            degradedReasons = emptyList(),
             elapsedMs = (clock() - startedAt).coerceAtLeast(0L),
         )
     }

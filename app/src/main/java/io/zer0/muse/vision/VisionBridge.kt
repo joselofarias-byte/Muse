@@ -433,7 +433,10 @@ class VisionBridge(
             }
 
         val rawVisionModel: Model = visionProvider.models.firstOrNull { it.id == visionModelId }
-            ?: throw VisionAnalysisException("视觉模型 $visionModelId 未找到(供应商 ${visionProvider.displayName} 共 ${visionProvider.models.size} 个模型)").also {
+            ?: throw VisionAnalysisException(
+                "视觉模型 $visionModelId 未找到(供应商 ${visionProvider.displayName} 共 " +
+                    "${visionProvider.models.size} 个模型)",
+            ).also {
                 Logger.w(TAG, "视觉分析[跳过]: modelId=$visionModelId 不在供应商 ${visionProvider.displayName} 的模型列表中")
             }
 
@@ -530,7 +533,10 @@ class VisionBridge(
                     val normalized = normalizePrimitive(prim, caps)
                     if (normalized != null) {
                         builder.append(
-                            "- v${idx + 1} | type: ${normalized.type} | ${if (normalized.type == "point") "point" else "box"}: ${normalized.point ?: normalized.box} | ref: ${normalized.ref} | confidence: ${normalized.confidence}\n",
+                            "- v${idx + 1} | type: ${normalized.type} | " +
+                                "${if (normalized.type == "point") "point" else "box"}: " +
+                                "${normalized.point ?: normalized.box} | ref: ${normalized.ref} | confidence: " +
+                                "${normalized.confidence}\n",
                         )
                     }
                 }
