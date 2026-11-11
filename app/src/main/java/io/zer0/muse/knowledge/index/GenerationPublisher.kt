@@ -1,5 +1,6 @@
 package io.zer0.muse.knowledge.index
 
+import io.zer0.muse.knowledge.domain.knowledgeOperation
 import io.zer0.common.Logger
 import io.zer0.muse.data.knowledge.IndexGenerationState
 import io.zer0.muse.data.knowledge.KnowledgeActiveGenerationEntity
@@ -138,7 +139,7 @@ class GenerationPublisher(private val jobDao: KnowledgeJobDao) {
                 "generation revision(${gen.revisionId}) 与期望($expectedRevisionId) 不符,活动代不变",
             )
         }
-        return try {
+        return knowledgeOperation {
             // 事务由调用方(in-transaction)提供;这里执行代状态置 ACTIVE + 活动指针 upsert。
             jobDao.updateGenerationState(generationId, IndexGenerationState.ACTIVE.name)
             jobDao.upsertActiveGeneration(
@@ -149,7 +150,7 @@ class GenerationPublisher(private val jobDao: KnowledgeJobDao) {
                 ),
             )
             PublishResult.Published(generationId = generationId, docId = gen.docId)
-        } catch (e: Exception) {
+        }.getOrElse { e ->
             // 半失败:回滚代状态并清理本代 staging 行;旧活动代未受影响。
             Logger.w(
                 "GenerationPublisher",

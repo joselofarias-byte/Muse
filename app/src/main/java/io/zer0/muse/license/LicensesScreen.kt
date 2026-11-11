@@ -67,6 +67,7 @@ import org.koin.compose.koinInject
 @Composable
 fun LicensesScreen(onBack: () -> Unit, repository: LicenseRepository = koinInject()) {
     val context = LocalContext.current
+    val contextResources = androidx.compose.ui.platform.LocalResources.current
     var manifest by remember { mutableStateOf<LicenseManifest?>(null) }
     var showLicenseDialog by remember { mutableStateOf<Pair<String, String>?>(null) }
     var dialogText by remember { mutableStateOf<String?>(null) }
@@ -154,7 +155,7 @@ fun LicensesScreen(onBack: () -> Unit, repository: LicenseRepository = koinInjec
                                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                                 context.startActivity(intent)
                             }.onError { msg, t ->
-                                MuseToast.show(context.getString(R.string.audit_licenses_no_link_app))
+                                MuseToast.show(contextResources.getString(R.string.audit_licenses_no_link_app))
                             }
                         },
                     )
@@ -353,6 +354,7 @@ private fun DependencyRow(entry: LicenseEntry, onClickUrl: (String) -> Unit) {
 @Composable
 private fun FooterNote() {
     val context = LocalContext.current
+    val contextResources = androidx.compose.ui.platform.LocalResources.current
     Column(
         modifier = Modifier.padding(horizontal = 4.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
@@ -376,7 +378,7 @@ private fun FooterNote() {
                             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
                             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                             context.startActivity(intent)
-                        }.onError { _, _ -> MuseToast.show(context.getString(R.string.audit_licenses_no_link_app)) }
+                        }.onError { _, _ -> MuseToast.show(contextResources.getString(R.string.audit_licenses_no_link_app)) }
                     },
                 )
             }

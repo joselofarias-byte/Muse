@@ -1,5 +1,6 @@
 package io.zer0.muse.knowledge.jobs
 
+import io.zer0.muse.knowledge.domain.knowledgeOperation
 import io.zer0.common.Logger
 import io.zer0.muse.data.knowledge.KnowledgeJobItemEntity
 import io.zer0.muse.data.knowledge.KnowledgeV2Dao
@@ -56,6 +57,15 @@ class DefaultKnowledgeJobProcessor(
             )
         }
 
+        return rebuild(jobItem, execution, doc.docId, revision)
+    }
+
+    private suspend fun rebuild(
+        jobItem: KnowledgeJobItemEntity,
+        execution: JobRunner.JobExecution,
+        docId: String,
+        revision: io.zer0.muse.data.knowledge.KnowledgeV2RevisionEntity,
+    ): JobStepResult {
         execution.advance(KnowledgeJobStage.PARSE, "chars=${revision.fullContent.length}")
         if (execution.isCancelRequested()) return JobStepResult.Cancelled(jobItem.jobItemId)
 
@@ -80,10 +90,10 @@ class DefaultKnowledgeJobProcessor(
         }
 
         execution.advance(KnowledgeJobStage.LEXICAL, "chunks=${chunks.size}")
-        val generationId = try {
-            publisher.stageGeneration(doc.docId, revision.revisionId, chunks)
-        } catch (e: Exception) {
-            Logger.w("DefaultKnowledgeJobProcessor", "staging 失败(doc=${doc.docId}): ${e.message}", e)
+        val generationId = knowledgeOperation {
+            publisher.stageGeneration(docId, revision.revisionId, chunks)
+        }.getOrElse { e ->
+            Logger.w("DefaultKnowledgeJobProcessor", "staging 失败(doc=${docId}): ${e.message}", e)
             return JobStepResult.Failed(
                 jobItemId = jobItem.jobItemId,
                 stage = KnowledgeJobStage.LEXICAL,

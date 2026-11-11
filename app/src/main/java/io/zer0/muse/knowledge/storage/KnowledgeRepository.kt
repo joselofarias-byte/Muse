@@ -90,17 +90,7 @@ class KnowledgeRepository(
      *  - 完整行(含长正文):全文进 revision,preview 派生;
      *  - docId 原样保留(citation 身份锚点);owner 持久落位。
      */
-    fun importLegacyRow(
-        docId: String,
-        ownerType: String,
-        ownerId: String,
-        isInternal: Boolean,
-        content: String,
-        contentHash: String,
-        metadataJson: String,
-        chunks: List<String>,
-        sourceMissing: Boolean,
-    ): LegacyImport {
+    fun importLegacyRow(row: LegacyImportRequest): LegacyImport = with(row) {
         val hashMatches = contentHash.isNotBlank() &&
             contentHash == KnowledgeContentStore.hashOf(content.toByteArray())
         val rowClass = KnowledgeLegacyRowClassifier.classify(
@@ -119,7 +109,7 @@ class KnowledgeRepository(
             fullContent = if (rowClass == KnowledgeLegacyRowClass.CHUNK_ONLY) "" else content,
             origin = "legacy-import:$rowClass",
         )
-        return LegacyImport(
+        LegacyImport(
             docId = docId,
             ownerType = ownerType,
             ownerId = ownerId,
@@ -129,6 +119,18 @@ class KnowledgeRepository(
             chunkTexts = chunks.toList(),
         )
     }
+
+    data class LegacyImportRequest(
+        val docId: String,
+        val ownerType: String,
+        val ownerId: String,
+        val isInternal: Boolean,
+        val content: String,
+        val contentHash: String,
+        val metadataJson: String,
+        val chunks: List<String>,
+        val sourceMissing: Boolean,
+    )
 
     /** 旧行导入结果 — 分类 + 落位身份 + 原样保留的旧数据。 */
     data class LegacyImport(

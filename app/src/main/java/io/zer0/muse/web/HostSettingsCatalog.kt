@@ -167,13 +167,10 @@ internal object HostSettingsCatalog {
             link("tutorial", "settings_screen_tutorial", "settings_screen_tutorial_desc", "school"),
             link("about", "settings_screen_about", "settings_screen_about_desc", "info"),
             action("check_update", "settings_screen_check_update", "settings_screen_check_update_desc", "refresh"),
-            // v2.6.23(S4/S5): App 端「运行诊断」子页的 1:1 镜像条目。
-            // S5 已在 Web 端补出「运行」三 Tab 页(runtime.logs / runtime.diagnostics / runtime.stats),
-            // 因此点亮;标题与说明沿用 App 侧同一组字符串,不再造第二个叫法。
-            link("diagnostics", "settings_screen_diagnostics", "settings_screen_diagnostics_desc", "bug"),
         ),
         group(
             "settings_group_developer",
+            link("diagnostics", "settings_screen_diagnostics", "settings_screen_diagnostics_desc", "bug"),
             link("stats", "settings_screen_stats", "settings_screen_stats_desc", "chartBar"),
             link("experiments", "settings_screen_experiments", "settings_screen_experiments_desc", "flask"),
             link("debug_log", "settings_screen_debug_log", "settings_screen_debug_log_desc", "bug"),

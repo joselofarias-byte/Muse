@@ -51,7 +51,7 @@ internal fun CardRuntime(
 ) {
     var contentHeightPx by remember { mutableIntStateOf(0) }
 
-    val sink = remember { CardHeightSink() }
+    val sink: CardHeightSink = remember { CardHeightSink() }
     LaunchedEffect(sink) {
         sink.onHeightChanged = { px -> if (px > 0) contentHeightPx = px }
     }

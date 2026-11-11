@@ -104,6 +104,7 @@ fun WorkspaceScreen(
     val workspaceManager: WorkspaceManager = koinInject()
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val contextResources = androidx.compose.ui.platform.LocalResources.current
     val mainMountLabel = stringResource(R.string.workspace_title)
     val toolOutputsMountLabel = stringResource(R.string.workspace_tool_outputs)
     val widthClass = rememberWindowWidthClass()
@@ -639,7 +640,7 @@ fun WorkspaceScreen(
                                 it.mimeType.ifBlank { "-" },
                                 io.zer0.muse.workspace.WorkspaceMediaReport.formatBytes(it.sizeBytes),
                             )
-                        } ?: context.getString(R.string.workspace_media_info, "-", "-", "-"),
+                        } ?: contextResources.getString(R.string.workspace_media_info, "-", "-", "-"),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -657,7 +658,7 @@ fun WorkspaceScreen(
                                     )
                                 }.onFailure {
                                     // 系统里没有能处理这个 MIME 的应用：只说这一件事，不把类型信息当错误弹。
-                                    MuseToast.show(context.getString(R.string.workspace_media_no_handler))
+                                    MuseToast.show(contextResources.getString(R.string.workspace_media_no_handler))
                                 }
                                 mediaEntry = null
                             },
@@ -698,7 +699,7 @@ fun WorkspaceScreen(
                         label = stringResource(R.string.workspace_path_copied),
                         onClick = {
                             copyToClipboard(context, entry.relativePath)
-                            MuseToast.show(context.getString(R.string.workspace_path_copied))
+                            MuseToast.show(contextResources.getString(R.string.workspace_path_copied))
                             menuEntry = null
                         },
                     )
@@ -749,7 +750,7 @@ fun WorkspaceScreen(
                             "移除挂载失败 id=${target.id} label=${target.label}（列表未变）",
                         )
                         MuseToast.show(
-                            context.getString(R.string.workspace_mount_remove_failed, target.label),
+                            contextResources.getString(R.string.workspace_mount_remove_failed, target.label),
                         )
                     }
                 }
@@ -787,7 +788,7 @@ fun WorkspaceScreen(
                     when (val r = workspaceManager.delete(target.relativePath)) {
                         is WorkspaceManager.OpResult.Success -> {
                             // 审计修复 (8.10): 原用 common_confirm("确定")文案错误
-                            MuseToast.show(context.getString(R.string.chat_list_deleted_toast))
+                            MuseToast.show(contextResources.getString(R.string.chat_list_deleted_toast))
                             reload()
                         }
                         is WorkspaceManager.OpResult.Error -> {
@@ -820,7 +821,7 @@ fun WorkspaceScreen(
                 val name = newName.trim()
                 // 名称为空或包含非法字符(/ 或 ..)时弹提示且不关闭弹窗
                 if (name.isEmpty() || name.contains('/') || name.contains("..")) {
-                    MuseToast.show(context.getString(R.string.workspace_file_name))
+                    MuseToast.show(contextResources.getString(R.string.workspace_file_name))
                     return@MuseDialog
                 }
                 // 名称未变直接关闭弹窗,不执行 IO
@@ -903,7 +904,7 @@ fun WorkspaceScreen(
                             runCatching { mountDirectoryLauncher.launch(null) }
                                 .onFailure {
                                     MuseToast.show(
-                                        context.getString(R.string.workspace_mount_failed, it.message),
+                                        contextResources.getString(R.string.workspace_mount_failed, it.message),
                                     )
                                 }
                         },
@@ -968,7 +969,7 @@ fun WorkspaceScreen(
             onConfirm = {
                 val name = newName.trim()
                 if (name.isEmpty() || name.contains('/') || name.contains("..")) {
-                    MuseToast.show(context.getString(R.string.workspace_file_name))
+                    MuseToast.show(contextResources.getString(R.string.workspace_file_name))
                     return@MuseDialog
                 }
                 val target = if (currentPath.isEmpty()) name else "$currentPath/$name"

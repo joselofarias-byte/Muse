@@ -271,7 +271,7 @@ class FactDbMigrationTest {
         val dbFile = newDbFile()
         val factory = FrameworkSQLiteOpenHelperFactory()
         // v11 schema: facts + fts + 全部旧列(pinned_at 最后)
-        val V11_CREATE_FACTS = """
+        val v11CreateFacts = """
             CREATE TABLE IF NOT EXISTS `facts` (
                 `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
                 `fact` TEXT NOT NULL,
@@ -291,13 +291,13 @@ class FactDbMigrationTest {
                 `pinned_at` TEXT DEFAULT NULL
             )
         """.trimIndent()
-        val V11_CREATE_FTS = """
+        val v11CreateFts = """
             CREATE VIRTUAL TABLE IF NOT EXISTS `facts_fts` USING FTS4(
                 `fact_id` INTEGER NOT NULL,
                 `content_ngram` TEXT NOT NULL
             )
         """.trimIndent()
-        val V11_CREATE_SPACES = """
+        val v11CreateSpaces = """
             CREATE TABLE IF NOT EXISTS `memory_spaces` (
                 `id` TEXT NOT NULL PRIMARY KEY,
                 `name` TEXT NOT NULL,
@@ -307,7 +307,7 @@ class FactDbMigrationTest {
                 `sort_index` INTEGER NOT NULL DEFAULT 0
             )
         """.trimIndent()
-        val V11_CREATE_LINKS = """
+        val v11CreateLinks = """
             CREATE TABLE IF NOT EXISTS `memory_links` (
                 `id` INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
                 `source_fact_id` INTEGER NOT NULL,
@@ -326,10 +326,10 @@ class FactDbMigrationTest {
                 .name(dbFile.absolutePath)
                 .callback(object : androidx.sqlite.db.SupportSQLiteOpenHelper.Callback(11) {
                     override fun onCreate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
-                        db.execSQL(V11_CREATE_FACTS)
-                        db.execSQL(V11_CREATE_FTS)
-                        db.execSQL(V11_CREATE_SPACES)
-                        db.execSQL(V11_CREATE_LINKS)
+                        db.execSQL(v11CreateFacts)
+                        db.execSQL(v11CreateFts)
+                        db.execSQL(v11CreateSpaces)
+                        db.execSQL(v11CreateLinks)
                         // v9 索引
                         db.execSQL("CREATE INDEX IF NOT EXISTS `index_facts_scope` ON `facts` (`scope`)")
                         db.execSQL("CREATE INDEX IF NOT EXISTS `index_facts_space_id` ON `facts` (`space_id`)")
@@ -461,7 +461,7 @@ class FactDbMigrationTest {
         val dbFile = newDbFile()
         val factory = FrameworkSQLiteOpenHelperFactory()
         // v12 schema: facts(含 entity_key) + fts + spaces + links
-        val V12_CREATE_FACTS = """
+        val v12CreateFacts = """
             CREATE TABLE IF NOT EXISTS `facts` (
                 `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
                 `fact` TEXT NOT NULL,
@@ -482,13 +482,13 @@ class FactDbMigrationTest {
                 `entity_key` TEXT
             )
         """.trimIndent()
-        val V12_CREATE_FTS = """
+        val v12CreateFts = """
             CREATE VIRTUAL TABLE IF NOT EXISTS `facts_fts` USING FTS4(
                 `fact_id` INTEGER NOT NULL,
                 `content_ngram` TEXT NOT NULL
             )
         """.trimIndent()
-        val V12_CREATE_SPACES = """
+        val v12CreateSpaces = """
             CREATE TABLE IF NOT EXISTS `memory_spaces` (
                 `id` TEXT NOT NULL PRIMARY KEY,
                 `name` TEXT NOT NULL,
@@ -498,7 +498,7 @@ class FactDbMigrationTest {
                 `sort_index` INTEGER NOT NULL DEFAULT 0
             )
         """.trimIndent()
-        val V12_CREATE_LINKS = """
+        val v12CreateLinks = """
             CREATE TABLE IF NOT EXISTS `memory_links` (
                 `id` INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
                 `source_fact_id` INTEGER NOT NULL,
@@ -517,10 +517,10 @@ class FactDbMigrationTest {
                 .name(dbFile.absolutePath)
                 .callback(object : androidx.sqlite.db.SupportSQLiteOpenHelper.Callback(12) {
                     override fun onCreate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
-                        db.execSQL(V12_CREATE_FACTS)
-                        db.execSQL(V12_CREATE_FTS)
-                        db.execSQL(V12_CREATE_SPACES)
-                        db.execSQL(V12_CREATE_LINKS)
+                        db.execSQL(v12CreateFacts)
+                        db.execSQL(v12CreateFts)
+                        db.execSQL(v12CreateSpaces)
+                        db.execSQL(v12CreateLinks)
                         // v12 schema 完整索引 — 全部 7 个 facts 索引 + 关联表索引,否则迁移后 Room 校验失败
                         db.execSQL("CREATE INDEX IF NOT EXISTS `idx_facts_time` ON `facts` (`time`)")
                         db.execSQL("CREATE INDEX IF NOT EXISTS `idx_facts_session` ON `facts` (`session_id`)")
