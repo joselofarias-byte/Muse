@@ -88,7 +88,6 @@ import io.zer0.muse.ui.theme.PresetThemes
 import io.zer0.muse.ui.theme.pill
 import io.zer0.muse.ui.theme.semiLarge
 import io.zer0.muse.util.AppLocales
-import java.util.Locale
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
@@ -121,6 +120,8 @@ fun OnboardingScreen(onComplete: () -> Unit, onOpenSection: (String) -> Unit = {
     val presetProviders: PresetProviders = koinInject()
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+    val contextResources = androidx.compose.ui.platform.LocalResources.current
     // 引导走到第几步存几步:中途按返回退出后再进来,不该从第 1 步重来。
     var lastPage by rememberSaveable { mutableStateOf(0) }
     val pagerState = rememberPagerState(initialPage = lastPage, pageCount = { 8 })
@@ -135,7 +136,7 @@ fun OnboardingScreen(onComplete: () -> Unit, onOpenSection: (String) -> Unit = {
         mutableStateOf(
             AppLocales.resolveDisplayLanguageCode(
                 stored = settings.getLanguageSync(),
-                locale = context.resources.configuration.locales[0],
+                locale = configuration.locales[0],
             ),
         )
     }
@@ -280,7 +281,7 @@ fun OnboardingScreen(onComplete: () -> Unit, onOpenSection: (String) -> Unit = {
                                 is ProviderModelFetcher.VerifyOutcome.NotReady -> {
                                     Logger.w("Onboarding", "测试连接失败: ${outcome.kind} ${outcome.reason}")
                                     testStatus = TestStatus.Error(
-                                        context.getString(
+                                        contextResources.getString(
                                             R.string.settings_provider_test_error_failed,
                                             friendlyConnectError(
                                                 raw = outcome.reason,

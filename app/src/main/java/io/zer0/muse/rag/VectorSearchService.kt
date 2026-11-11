@@ -177,12 +177,7 @@ class VectorSearchService(
         if (metadataFilter != null && !metadataFilter.isEmpty() && chunkPageByMetadataProvider != null) {
             if (scopeDocIds != null && scopeDocIds.isEmpty()) return emptyList()
             return scanPagedProvider(
-                queryVector = queryVector,
-                queryNorm = queryNorm,
-                topK = topK,
-                threshold = threshold,
-                mmrLambda = mmrLambda,
-                applyMetadataInMemory = true,
+                settings = SimilarityQuery(queryVector, queryNorm, topK, threshold, mmrLambda),
                 metadataFilter = metadataFilter,
                 scopeDocIds = scopeDocIds?.toSet(),
                 pageProvider = { limit, offset -> chunkPageByMetadataProvider(metadataFilter, limit, offset) },
@@ -196,12 +191,7 @@ class VectorSearchService(
             if (scopeDocIds.isEmpty()) return emptyList()
             if (chunkPageByDocIdsProvider != null) {
                 return scanPagedProvider(
-                    queryVector = queryVector,
-                    queryNorm = queryNorm,
-                    topK = topK,
-                    threshold = threshold,
-                    mmrLambda = mmrLambda,
-                    applyMetadataInMemory = true,
+                    settings = SimilarityQuery(queryVector, queryNorm, topK, threshold, mmrLambda),
                     metadataFilter = metadataFilter,
                     scopeDocIds = scopeDocIds.toSet(),
                     pageProvider = { limit, offset -> chunkPageByDocIdsProvider(scopeDocIds, limit, offset) },
@@ -240,7 +230,7 @@ class VectorSearchService(
      *  - λ≥1.0(纯相似度,含默认值):用 [BoundedTopK] 有界候选池,只保留 topK 且平局次序
      *    与稳定排序 `sortedByDescending{score}.take(topK)` 一致。
      *
-     * @param applyMetadataInMemory 是否按 metadataFilter 逐条内存判定。scope / metadata 两条
+     * scope / metadata 两条
      *   provider 路径均需开启:provider 只承担候选范围裁剪,过滤语义统一由 [MetadataFilter.matches]
      *   在内存中判定(避免标题/来源等 provider 未覆盖的条件被静默忽略)。
      * @param scopeDocIds R1 范围合同:候选必须落在该文档集合内(null = 无范围约束)。
@@ -248,16 +238,11 @@ class VectorSearchService(
      *   语义唯一真源,provider 裁剪只是优化)。
      */
     private suspend fun scanPagedProvider(
-        queryVector: FloatArray,
-        queryNorm: Float,
-        topK: Int,
-        threshold: Float,
-        mmrLambda: Float,
-        applyMetadataInMemory: Boolean,
+        settings: SimilarityQuery,
         metadataFilter: MetadataFilter?,
         scopeDocIds: Set<String>? = null,
         pageProvider: suspend (limit: Int, offset: Int) -> List<ChunkWithDoc>,
-    ): List<SearchResult> {
+    ): List<SearchResult> = with(settings) {
         val needsFullCandidates = mmrLambda < 1.0f
         val allCandidates = if (needsFullCandidates) ArrayList<Pair<CachedVector, Float>>() else null
         val bounded = if (needsFullCandidates) null else BoundedTopK(topK)
@@ -266,23 +251,14 @@ class VectorSearchService(
             val page = resultOf { pageProvider(BATCH_SIZE, offset) }.getOrNull() ?: emptyList()
             if (page.isEmpty()) break
             for (chunk in page) {
-                if (scopeDocIds != null && chunk.docId !in scopeDocIds) continue
-                if (applyMetadataInMemory && !chunkMatchesMetadata(chunk, metadataFilter)) continue
-                val vector = parseEmbedding(chunk) ?: continue
-                val n = norm(vector)
-                if (n == 0f) continue
-                val score = scoreOf(vector, n, queryVector, queryNorm)
-                if (score == Float.NEGATIVE_INFINITY || score < threshold) continue
-                val candidate = CachedVector(
-                    chunk.chunkId, chunk.docId, chunk.docTitle, chunk.content, vector, n, chunk.chunkIndex,
-                ) to score
+                val candidate = scoreChunk(chunk, settings, scopeDocIds, metadataFilter) ?: continue
                 allCandidates?.add(candidate) ?: bounded?.offer(candidate)
             }
             if (page.size < BATCH_SIZE) break
             offset += BATCH_SIZE
         }
         val candidates = allCandidates ?: bounded?.toList() ?: emptyList()
-        return applyMMR(candidates, topK, mmrLambda)
+        applyMMR(candidates, topK, mmrLambda)
     }
 
     /**
@@ -368,6 +344,7 @@ class VectorSearchService(
         metadataFilter: MetadataFilter?,
     ): List<SearchResult> {
         // 流式场景下 MMR 难以应用(需全量候选集算 sim),降级为纯相似度 + topK×5 候选再做 MMR
+        val settings = SimilarityQuery(queryVector, queryNorm, topK, threshold, mmrLambda)
         val candidatePoolSize = if (mmrLambda < 1.0f) topK * 5 else topK
         // 显式空范围在此即为空过滤集:所有候选都被剔除,返回零结果(不再退化为全库扫描)。
         val scopeSet = scopeDocIds?.toHashSet()
@@ -379,22 +356,42 @@ class VectorSearchService(
             val page = resultOf { chunkPageProvider(BATCH_SIZE, offset) }.getOrNull() ?: emptyList()
             if (page.isEmpty()) break
             for (chunk in page) {
-                // P2-30: 流式分页同样按 scope 过滤,避免越界检索
-                if (scopeSet != null && chunk.docId !in scopeSet) continue
-                if (!chunkMatchesMetadata(chunk, metadataFilter)) continue
-                val vector = parseEmbedding(chunk) ?: continue
-                val n = norm(vector)
-                if (n == 0f) continue
-                val score = scoreOf(vector, n, queryVector, queryNorm)
-                if (score == Float.NEGATIVE_INFINITY || score < threshold) continue
-                val cv = CachedVector(chunk.chunkId, chunk.docId, chunk.docTitle, chunk.content, vector, n, chunk.chunkIndex)
-                heap.offer(cv to score)
+                val candidate = scoreChunk(chunk, settings, scopeSet, metadataFilter) ?: continue
+                heap.offer(candidate)
                 if (heap.size > candidatePoolSize) heap.poll()
             }
             if (page.size < BATCH_SIZE) break
             offset += BATCH_SIZE
         }
         return applyMMR(heap.toList(), topK, mmrLambda)
+    }
+
+    private data class SimilarityQuery(
+        val queryVector: FloatArray,
+        val queryNorm: Float,
+        val topK: Int,
+        val threshold: Float,
+        val mmrLambda: Float,
+    )
+
+    private fun scoreChunk(
+        chunk: ChunkWithDoc,
+        settings: SimilarityQuery,
+        scopeDocIds: Set<String>?,
+        metadataFilter: MetadataFilter?,
+    ): Pair<CachedVector, Float>? {
+        if ((scopeDocIds != null && chunk.docId !in scopeDocIds) || !chunkMatchesMetadata(chunk, metadataFilter)) return null
+        val vector = parseEmbedding(chunk) ?: return null
+        val vectorNorm = norm(vector)
+        if (vectorNorm == 0f) return null
+        val score = scoreOf(vector, vectorNorm, settings.queryVector, settings.queryNorm)
+        return if (score == Float.NEGATIVE_INFINITY || score < settings.threshold) {
+            null
+        } else {
+            CachedVector(
+                chunk.chunkId, chunk.docId, chunk.docTitle, chunk.content, vector, vectorNorm, chunk.chunkIndex,
+            ) to score
+        }
     }
 
     private fun scoreOf(vector: FloatArray, vectorNorm: Float, queryVector: FloatArray, queryNorm: Float): Float =

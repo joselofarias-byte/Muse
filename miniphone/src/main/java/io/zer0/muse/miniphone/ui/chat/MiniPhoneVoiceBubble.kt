@@ -26,7 +26,6 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -63,7 +62,7 @@ internal fun ChatVoiceBubble(
     controller: MiniPhoneVoicePlaybackController = koinInject(),
     onLongPress: () -> Unit = {},
 ) {
-    val context = LocalContext.current
+    val contextResources = androidx.compose.ui.platform.LocalResources.current
     val uri = message.mediaUri.orEmpty()
     val durationMs = message.voiceDurationMs
     val file = remember(uri) { localAudioFileOf(uri) }
@@ -113,7 +112,7 @@ internal fun ChatVoiceBubble(
                 onClick = { controller.toggle(uri, file) },
                 onLongClick = onLongPress,
             )
-            .semantics { contentDescription = context.getString(if (playing) VOICE_PAUSE_LABEL_RES else VOICE_PLAY_LABEL_RES) }
+            .semantics { contentDescription = contextResources.getString(if (playing) VOICE_PAUSE_LABEL_RES else VOICE_PLAY_LABEL_RES) }
             .padding(horizontal = 10.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),

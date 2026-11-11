@@ -56,6 +56,13 @@ private data class CaptionsFile(
 
 class StickerLibraryRepository(private val appContext: Context) {
 
+    private companion object {
+        // v1.117: 导入体积限制,防 ZIP 炸弹 / OOM(对齐 DocumentParser 的限制策略)
+        private const val MAX_SINGLE_ENTRY_BYTES = 10L * 1024 * 1024 // 单个图片 10MB
+        private const val MAX_TOTAL_IMPORT_BYTES = 200L * 1024 * 1024 // 累计 200MB
+        private const val MAX_ENTRY_COUNT = 1000 // 最多 1000 个文件
+    }
+
     /** stickers 根目录(`filesDir/stickers`)。 */
     private val rootDir: File get() = File(appContext.filesDir, "stickers").apply { if (!exists()) mkdirs() }
 
@@ -73,11 +80,6 @@ class StickerLibraryRepository(private val appContext: Context) {
 
     /** 解不出尺寸时的中性回退：不因尺寸挡下用户选中的图（不是常量，所以用小写名）。 */
     private val neutralDimension = 500 to 500
-
-    // v1.117: 导入体积限制,防 ZIP 炸弹 / OOM(对齐 DocumentParser 的限制策略)
-    private val MAX_SINGLE_ENTRY_BYTES = 10L * 1024 * 1024 // 单个图片 10MB
-    private val MAX_TOTAL_IMPORT_BYTES = 200L * 1024 * 1024 // 累计 200MB
-    private val MAX_ENTRY_COUNT = 1000 // 最多 1000 个文件
 
     // ── 公开 API ──────────────────────────────────────────────────────────
 

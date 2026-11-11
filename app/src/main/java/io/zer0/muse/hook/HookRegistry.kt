@@ -33,8 +33,6 @@ import kotlin.reflect.KClass
  */
 class HookRegistry {
 
-    private val TAG = "HookRegistry"
-
     /** 按 Hook 接口分桶存储,同一类型下按 id 去重。 */
     private val buckets = ConcurrentHashMap<KClass<out SkillHook>, MutableMap<String, SkillHook>>()
 
@@ -166,6 +164,8 @@ class HookRegistry {
     private fun hookTypesOf(hook: SkillHook): List<KClass<out SkillHook>> = HOOK_TYPES.filter { it.java.isInstance(hook) }
 
     private companion object {
+        private const val TAG = "HookRegistry"
+
         /**
          * 全部 Hook 接口清单。
          *

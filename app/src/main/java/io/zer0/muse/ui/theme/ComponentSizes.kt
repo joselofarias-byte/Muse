@@ -60,5 +60,5 @@ object MuseListItemSizes {
  */
 object MuseCapsuleButtonSizes {
     /** 按压时的缩放比例(1f 为原尺寸)。 */
-    const val pressScale = 0.97f
+    const val PRESS_SCALE = 0.97f
 }
