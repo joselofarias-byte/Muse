@@ -57,7 +57,7 @@ object KnowledgeLegacyRowClassifier {
         isInternal -> KnowledgeLegacyRowClass.INTERNAL
         sourceMissing -> KnowledgeLegacyRowClass.SOURCE_MISSING
         content.isBlank() && hasChunks -> KnowledgeLegacyRowClass.CHUNK_ONLY
-        contentHashMatches -> KnowledgeLegacyRowClass.COMPLETE
+        contentHash.isNotBlank() && contentHashMatches -> KnowledgeLegacyRowClass.COMPLETE
         content.length >= LEGACY_PREVIEW_CHARS -> KnowledgeLegacyRowClass.PREVIEW_ONLY
         else -> KnowledgeLegacyRowClass.COMPLETE
     }
