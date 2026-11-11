@@ -68,6 +68,42 @@ fun PlanCard(plan: AgentPlan, modifier: Modifier = Modifier) {
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
     ) {
         Column {
+            PlanCardHeader(plan, expanded) { expanded = !expanded }
+
+            // 进度条
+            if (!plan.isAllDone && plan.progress > 0f) {
+                MuseProgressBar(
+                    progress = plan.progress,
+                    modifier = Modifier.fillMaxWidth().height(3.dp),
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                )
+            }
+
+            // 步骤列表
+            AnimatedVisibility(
+                visible = expanded,
+                enter = MuseMotion.expandFadeEnter(),
+                exit = MuseMotion.expandFadeExit(),
+            ) {
+                Column(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    // L-TC6 修复: forEach 加 key,步骤状态变化时 Compose 能精准重组对应行
+                    plan.steps.forEach { step ->
+                        key(step.id) {
+                            PlanStepRow(step = step)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PlanCardHeader(plan: AgentPlan, expanded: Boolean, onToggle: () -> Unit) {
             // 标题栏:渐变色 + 计划标题 + 进度
             // M-TC1 修复: 文字/图标色从硬编码 Color.White 改为 MaterialTheme.colorScheme.onPrimary,
             // 保证在自定义主题下的对比度
@@ -85,7 +121,7 @@ fun PlanCard(plan: AgentPlan, modifier: Modifier = Modifier) {
                     )
                     .clip(RoundedCornerShape(topStart = MuseCornerRadius.SEMI_LARGE.dp, topEnd = MuseCornerRadius.SEMI_LARGE.dp))
                     // CHAT-06: 整行可点 — 箭头移入头部行后,标题栏任何位置都可折叠/展开
-                    .clickable { expanded = !expanded }
+                    .clickable { onToggle() }
                     .padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -143,7 +179,7 @@ fun PlanCard(plan: AgentPlan, modifier: Modifier = Modifier) {
                         .padding(start = 8.dp)
                         .size(48.dp)
                         .clip(CircleShape)
-                        .clickable { expanded = !expanded },
+                        .clickable { onToggle() },
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
@@ -157,36 +193,6 @@ fun PlanCard(plan: AgentPlan, modifier: Modifier = Modifier) {
                 }
             }
 
-            // 进度条
-            if (!plan.isAllDone && plan.progress > 0f) {
-                MuseProgressBar(
-                    progress = plan.progress,
-                    modifier = Modifier.fillMaxWidth().height(3.dp),
-                    color = MaterialTheme.colorScheme.primary,
-                    trackColor = MaterialTheme.colorScheme.surfaceVariant,
-                )
-            }
-
-            // 步骤列表
-            AnimatedVisibility(
-                visible = expanded,
-                enter = MuseMotion.expandFadeEnter(),
-                exit = MuseMotion.expandFadeExit(),
-            ) {
-                Column(
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    // L-TC6 修复: forEach 加 key,步骤状态变化时 Compose 能精准重组对应行
-                    plan.steps.forEach { step ->
-                        key(step.id) {
-                            PlanStepRow(step = step)
-                        }
-                    }
-                }
-            }
-        }
-    }
 }
 
 @Composable

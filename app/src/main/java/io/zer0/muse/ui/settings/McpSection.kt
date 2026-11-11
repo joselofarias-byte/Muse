@@ -588,7 +588,8 @@ private fun McpServerAddDialog(onDismiss: () -> Unit, onAdd: suspend (McpServerC
                         label = "URL",
                         value = url,
                         onValueChange = { url = it },
-                        placeholder = (selectedTemplate.urlPlaceholderResId?.let { context.getString(it) } ?: selectedTemplate.urlPlaceholder),
+                        placeholder = selectedTemplate.urlPlaceholderResId?.let { context.getString(it) }
+                            ?: selectedTemplate.urlPlaceholder,
                     )
                 }
                 Text(stringResource(R.string.settings_mcp_transport_type), style = MaterialTheme.typography.labelMedium)
@@ -749,7 +750,9 @@ private fun McpServerAddDialog(onDismiss: () -> Unit, onAdd: suspend (McpServerC
             } else {
                 val config = McpServerConfig(
                     id = "mcp-" + System.currentTimeMillis(),
-                    name = name.ifBlank { (selectedTemplate.displayNameResId?.let { context.getString(it) } ?: selectedTemplate.displayName) },
+                    name = name.ifBlank {
+                        selectedTemplate.displayNameResId?.let { context.getString(it) } ?: selectedTemplate.displayName
+                    },
                     transportType = transportType,
                     url = url.trim(),
                     command = command.trim(),
