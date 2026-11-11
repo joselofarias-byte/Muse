@@ -1,6 +1,7 @@
 package io.zer0.muse.knowledge.retrieval
 
 import io.zer0.muse.data.knowledge.KnowledgeJobDao
+import io.zer0.muse.knowledge.domain.knowledgeOperation
 
 /**
  * R6 V2 词法召回实现 — 在活动代范围内做词法匹配与排名。
@@ -19,11 +20,7 @@ class V2LexicalRetriever(
     private val oversample: Int = 4,
 ) : LexicalRetriever {
 
-    override suspend fun search(
-        request: KnowledgeSearchRequest,
-        activeGenerationIds: List<String>,
-        limit: Int,
-    ): LexicalRecall {
+    override suspend fun search(request: KnowledgeSearchRequest, activeGenerationIds: List<String>, limit: Int): LexicalRecall {
         if (activeGenerationIds.isEmpty()) {
             return LexicalRecall(hits = emptyList(), degradedReason = null)
         }
@@ -34,7 +31,7 @@ class V2LexicalRetriever(
         val candidateBudget = (limit * oversample).coerceAtLeast(limit)
         val rowsById = LinkedHashMap<String, io.zer0.muse.data.knowledge.KnowledgeLexicalRow>()
         var incomplete = false
-        try {
+        knowledgeOperation {
             // 逐词项在 SQL 侧过滤后再 LIMIT;合并去重(同一 chunk 命中多个词项)。
             for (term in terms) {
                 val rows = dao.searchLexicalRows(activeGenerationIds, escapeLike(term), candidateBudget)
@@ -43,7 +40,7 @@ class V2LexicalRetriever(
                     rowsById.putIfAbsent("${row.generationId}#${row.chunkIndex}", row)
                 }
             }
-        } catch (e: Exception) {
+        }.getOrElse { e ->
             return LexicalRecall(
                 hits = emptyList(),
                 degradedReason = "词法索引不可用: ${e.message}",
@@ -61,16 +58,19 @@ class V2LexicalRetriever(
                     index = lexical.indexOf(term, index + term.length)
                 }
             }
-            if (score <= 0f) null
-            else LexicalHit(
-                chunkId = "${row.generationId}#${row.chunkIndex}",
-                docId = row.docId,
-                generationId = row.generationId,
-                text = row.content,
-                locator = row.locator,
-                score = score,
-                rank = 0,
-            )
+            if (score <= 0f) {
+                null
+            } else {
+                LexicalHit(
+                    chunkId = "${row.generationId}#${row.chunkIndex}",
+                    docId = row.docId,
+                    generationId = row.generationId,
+                    text = row.content,
+                    locator = row.locator,
+                    score = score,
+                    rank = 0,
+                )
+            }
         }
             .sortedWith(compareByDescending<LexicalHit> { it.score }.thenBy { it.chunkId })
             .take(candidateBudget)
@@ -83,15 +83,13 @@ class V2LexicalRetriever(
         /** 词法规范化版本 — 与 GenerationPublisher.normalizeLexical 同一口径(小写+空白折叠)。 */
         const val NORMALIZATION_VERSION = "v1-lowercase-collapse"
 
-        fun tokenize(query: String): List<String> =
-            query.lowercase()
-                .replace(Regex("\\s+"), " ")
-                .trim()
-                .split(' ')
-                .filter { it.isNotBlank() }
+        fun tokenize(query: String): List<String> = query.lowercase()
+            .replace(Regex("\\s+"), " ")
+            .trim()
+            .split(' ')
+            .filter { it.isNotBlank() }
 
         /** LIKE 通配符转义:用户输入中的 % / _ / \ 按字面匹配(参数化查询不涉及注入)。 */
-        fun escapeLike(term: String): String =
-            term.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        fun escapeLike(term: String): String = term.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
     }
 }

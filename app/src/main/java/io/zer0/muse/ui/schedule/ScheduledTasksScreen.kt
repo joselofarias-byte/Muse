@@ -1256,7 +1256,8 @@ private fun AssistantSelector(selectedName: String, assistants: List<AssistantEn
                                 }.getOrNull() ?: 0
                                 val modelLabel = a.modelId ?: stringResource(R.string.schedule_default_model) // 前端修复 (i18n-5)
                                 Text(
-                                    stringResource(R.string.schedule_assistant_tools, modelLabel, toolCount), // 前端修复 (i18n-5)
+                                    // 前端修复 (i18n-5)
+                                    stringResource(R.string.schedule_assistant_tools, modelLabel, toolCount),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.outline,
                                 )

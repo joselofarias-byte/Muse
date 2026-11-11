@@ -83,6 +83,7 @@ fun SkillScreen(onBack: () -> Unit, skillRepository: SkillRepository = koinInjec
     val skills by skillRepository.observeAll.collectAsStateWithLifecycle(initialValue = null)
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val contextResources = androidx.compose.ui.platform.LocalResources.current
     var detailTarget by remember { mutableStateOf<SkillEntity?>(null) }
     var deleteConfirmTarget by remember { mutableStateOf<SkillEntity?>(null) }
     var importMessage by remember { mutableStateOf<String?>(null) }
@@ -114,9 +115,9 @@ fun SkillScreen(onBack: () -> Unit, skillRepository: SkillRepository = koinInjec
                 ) {
                     importMessage = when (val outcome = packageImporter.importUri(uri)) {
                         is SkillPackageImporter.Outcome.Installed ->
-                            context.getString(R.string.skill_imported, outcome.skill.name)
+                            contextResources.getString(R.string.skill_imported, outcome.skill.name)
                         is SkillPackageImporter.Outcome.Failed ->
-                            context.getString(R.string.skill_import_error, outcome.reason)
+                            contextResources.getString(R.string.skill_import_error, outcome.reason)
                     }
                     return@launch
                 }
@@ -124,7 +125,7 @@ fun SkillScreen(onBack: () -> Unit, skillRepository: SkillRepository = koinInjec
                     // v1.73: 用 use{} 确保 InputStream/BufferedReader 关闭,避免 FD 泄漏
                     context.contentResolver.openInputStream(uri)?.use { input ->
                         // v1.114: 限制读取 10MB,防止超大文件 OOM
-                        val MAX_READ_BYTES = 10L * 1024 * 1024
+                        val mAX_READ_BYTES = 10L * 1024 * 1024
                         val sb = StringBuilder()
                         val buffer = CharArray(8192)
                         var total = 0L
@@ -133,11 +134,11 @@ fun SkillScreen(onBack: () -> Unit, skillRepository: SkillRepository = koinInjec
                                 val read = reader.read(buffer)
                                 if (read <= 0) break
                                 total += read
-                                if (total > MAX_READ_BYTES) {
+                                if (total > mAX_READ_BYTES) {
                                     error(
                                         context.getString(
                                             R.string.code_gap_skill_file_too_large,
-                                            MAX_READ_BYTES / 1024 / 1024,
+                                            mAX_READ_BYTES / 1024 / 1024,
                                         ),
                                     )
                                 }
@@ -165,7 +166,7 @@ fun SkillScreen(onBack: () -> Unit, skillRepository: SkillRepository = koinInjec
                     recipeResult.skills.forEach { skill ->
                         resultOf { skillRepository.upsert(skill) }
                             .onSuccess { count++ }
-                            .onError { msg, _ -> MuseToast.show(context.getString(R.string.skill_operation_failed, msg)) }
+                            .onError { msg, _ -> MuseToast.show(contextResources.getString(R.string.skill_operation_failed, msg)) }
                     }
                     importMessage = context.getString(R.string.skill_recipe_imported, count)
                 } else {
@@ -328,7 +329,11 @@ fun SkillScreen(onBack: () -> Unit, skillRepository: SkillRepository = koinInjec
                                 scope.launch {
                                     // M-SKUI1: 用 resultOf 替代 runCatching,避免吞 CancellationException
                                     resultOf { skillRepository.setEnabled(skill.id, enabled) }
-                                        .onError { msg, _ -> MuseToast.show(context.getString(R.string.skill_operation_failed, msg)) }
+                                        .onError { msg, _ ->
+                                            MuseToast.show(
+                                                contextResources.getString(R.string.skill_operation_failed, msg),
+                                            )
+                                        }
                                 }
                             },
                             onShowDetail = { detailTarget = skill },
@@ -375,7 +380,7 @@ fun SkillScreen(onBack: () -> Unit, skillRepository: SkillRepository = koinInjec
                     resultOf {
                         context.startActivity(android.content.Intent.createChooser(sendIntent, null))
                     }.onError { msg, _ ->
-                        MuseToast.show(context.getString(R.string.skill_operation_failed, msg))
+                        MuseToast.show(contextResources.getString(R.string.skill_operation_failed, msg))
                     }
                 }
             },
@@ -388,11 +393,11 @@ fun SkillScreen(onBack: () -> Unit, skillRepository: SkillRepository = koinInjec
                             resultOf { skillRepository.upsert(template) }
                                 .onSuccess {
                                     MuseToast.show(
-                                        context.getString(R.string.skill_restored, skill.name.ifBlank { skill.id }),
+                                        contextResources.getString(R.string.skill_restored, skill.name.ifBlank { skill.id }),
                                     )
                                 }
                                 .onError { msg, _ ->
-                                    MuseToast.show(context.getString(R.string.skill_operation_failed, msg))
+                                    MuseToast.show(contextResources.getString(R.string.skill_operation_failed, msg))
                                 }
                         }
                     }
@@ -420,7 +425,7 @@ fun SkillScreen(onBack: () -> Unit, skillRepository: SkillRepository = koinInjec
                 scope.launch {
                     resultOf { skillRepository.delete(skill.id) }
                         .onSuccess { scope.launch { packageImporter.deletePackageFor(skill) } }
-                        .onError { msg, _ -> MuseToast.show(context.getString(R.string.skill_delete_failed_ui, msg)) }
+                        .onError { msg, _ -> MuseToast.show(contextResources.getString(R.string.skill_delete_failed_ui, msg)) }
                 }
             },
             dismissText = stringResource(R.string.skill_close),

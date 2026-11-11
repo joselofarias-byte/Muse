@@ -56,7 +56,9 @@ data class KnowledgeV2BindingEntity(
 )
 
 @Dao
-interface KnowledgeFolderV2Dao {
+interface KnowledgeFolderV2Dao : KnowledgeFolderV2DaoOperations, KnowledgeBindingDao
+
+interface KnowledgeFolderV2DaoOperations {
 
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertFolder(folder: KnowledgeV2FolderEntity)
@@ -88,6 +90,9 @@ interface KnowledgeFolderV2Dao {
 
     @Query("DELETE FROM knowledge_v2_folders WHERE folderId = :folderId")
     suspend fun deleteFolder(folderId: String)
+}
+
+interface KnowledgeBindingDao {
 
     // ---------- bindings ----------
 

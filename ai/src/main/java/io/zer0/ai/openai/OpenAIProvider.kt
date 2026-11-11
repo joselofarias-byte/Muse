@@ -699,7 +699,8 @@ class OpenAIProvider(
                             }
                             Logger.i(
                                 "OpenAIProvider",
-                                "stream-guard: 非流式回退成功 (text=${text.length} chars, reasoning=${reasoning.length} chars, toolCalls=${toolCalls.size})",
+                                "stream-guard: 非流式回退成功 (text=${text.length} chars, reasoning=${reasoning.length} chars" +
+                                    ", toolCalls=${toolCalls.size})",
                             )
                         } else {
                             Logger.w("OpenAIProvider", "stream-guard: 非流式回退最终失败: ${lastError?.message}")
@@ -1035,7 +1036,8 @@ class OpenAIProvider(
                                         }
                                         Logger.w(
                                             "OpenAIProvider",
-                                            "stream-guard: 空 name tool call 超过 $MAX_EMPTY_NAME_TOOL_CALLS 条,按正文增量恢复 (localIndex=$localIndex)",
+                                            "stream-guard: 空 name tool call 超过 $MAX_EMPTY_NAME_TOOL_CALLS 条,按正文增量恢复 (localIndex=$l" +
+                                                "ocalIndex)",
                                         )
                                         return@forEach
                                     }

@@ -67,6 +67,7 @@ import kotlin.math.roundToInt
 @Composable
 fun RagSettingsPage(onBack: () -> Unit, onManageKbs: () -> Unit = {}) {
     val context = LocalContext.current
+    val contextResources = androidx.compose.ui.platform.LocalResources.current
     val settings: SettingsRepository = koinInject()
     val embeddingService: io.zer0.muse.rag.EmbeddingService = koinInject()
     val config by settings.ragConfigFlow.collectAsStateWithLifecycle(initialValue = RagConfig())
@@ -135,9 +136,9 @@ fun RagSettingsPage(onBack: () -> Unit, onManageKbs: () -> Unit = {}) {
             scope.launch {
                 runCatching {
                     settings.saveRagConfig(config.copy(cloudModel = cloudModelTemp))
-                    MuseToast.show(context.getString(R.string.rag_saved_success))
+                    MuseToast.show(contextResources.getString(R.string.rag_saved_success))
                 }.onFailure {
-                    MuseToast.show(context.getString(R.string.rag_save_failed))
+                    MuseToast.show(contextResources.getString(R.string.rag_save_failed))
                 }
             }
         }
@@ -427,9 +428,9 @@ fun RagSettingsPage(onBack: () -> Unit, onManageKbs: () -> Unit = {}) {
                                                 embeddingTestResult =
                                                     TestResult(
                                                         false,
-                                                        context.getString(
+                                                        contextResources.getString(
                                                             R.string.settings_rag_embedding_test_failed,
-                                                            context.getString(R.string.settings_rag_config_read_failed),
+                                                            contextResources.getString(R.string.settings_rag_config_read_failed),
                                                         ),
                                                     )
                                                 embeddingTestRunning = false
@@ -445,12 +446,12 @@ fun RagSettingsPage(onBack: () -> Unit, onManageKbs: () -> Unit = {}) {
                                             }
                                             embeddingTestResult = outcome.fold(
                                                 onSuccess = { (dim, ms) ->
-                                                    TestResult(true, context.getString(R.string.settings_rag_embedding_test_ok, dim, ms))
+                                                    TestResult(true, contextResources.getString(R.string.settings_rag_embedding_test_ok, dim, ms))
                                                 },
                                                 onFailure = { e ->
                                                     TestResult(
                                                         false,
-                                                        context.getString(
+                                                        contextResources.getString(
                                                             R.string.settings_rag_embedding_test_failed,
                                                             e.message?.take(160) ?: e::class.simpleName ?: "",
                                                         ),

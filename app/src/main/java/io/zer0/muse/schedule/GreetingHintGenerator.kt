@@ -31,7 +31,7 @@ class GreetingHintGenerator(
     private val tag = "GreetingHintGenerator"
 
     /** LLM 生成超时(UI 场景不能久等,失败快速回退)。 */
-    private val LLM_TIMEOUT_MS = 8000L
+    private const val LLM_TIMEOUT_MS = 8000L
 
     /** 生成结果最大长度(UI 单行预算)。 */
     private val maxHintLength = GreetingHelper.PERSONALIZED_HINT_MAX_LENGTH

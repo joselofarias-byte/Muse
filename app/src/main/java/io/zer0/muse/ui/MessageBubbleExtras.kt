@@ -128,8 +128,8 @@ internal fun ToolCallCard(
     val hasFailed = !isSuccess && result.isNotBlank()
 
     // 产物直出与普通工具卡都要用到的标签，提前解出来。
-    val labelResources = LocalContext.current.resources
-    val label = remember(toolName) { ToolCallVisuals.labelFor(toolName, labelResources) }
+    val labelResources = androidx.compose.ui.platform.LocalResources.current
+    val label = ToolCallVisuals.labelFor(toolName, labelResources)
 
     // ── 产物直出 ──────────────────────────────────────────────────────────
     //
@@ -168,14 +168,15 @@ internal fun ToolCallCard(
     }
 
     // I18N-01: 工具摘要/标签经资源解析(zh+en 已入 strings_tools)
-    val resources = LocalContext.current.resources
+    val resources = androidx.compose.ui.platform.LocalResources.current
+    val configuration = androidx.compose.ui.platform.LocalConfiguration.current
     val icon = remember(toolName) { ToolCallVisuals.iconFor(toolName) }
     // label 已在函数开头解出（产物直出分支需要提前使用）
     // F-19: 生成图片/视频/二维码类工具，若结果含图片源则渲染 AsyncImage 缩略图
     val imageSources = remember(toolName, result) {
         if (toolName in IMAGE_PREVIEW_TOOL_NAMES) extractImageSources(result) else emptyList()
     }
-    val summary = remember(toolName, arguments, result, isSuccess, isRunning, resources.configuration) {
+    val summary = remember(toolName, arguments, result, isSuccess, isRunning, configuration) {
         when {
             isRunning -> resources.getString(R.string.tool_trace_running).trimEnd('.', '…') + "…"
             else -> ToolCallVisuals.terminalSummaryFor(result, resources)
@@ -315,7 +316,7 @@ internal fun ToolCallCard(
                         )
                     } else {
                         // 参数：键值对展示（不再裸 {"k":"v"}）
-                        val paramRows = remember(arguments, resources.configuration) { parseParamRows(arguments, resources) }
+                        val paramRows = remember(arguments, configuration) { parseParamRows(arguments, resources) }
                         if (paramRows.isNotEmpty()) {
                             ParamSection(rows = paramRows)
                         }

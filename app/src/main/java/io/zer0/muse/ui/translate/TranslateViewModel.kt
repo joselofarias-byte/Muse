@@ -705,8 +705,7 @@ class TranslateViewModel(
 
         // Localize labels only; persisted values and prompt selection remain unchanged.
         @StringRes
-        fun translationStyleLabelResId(style: String): Int? =
-            translationStyleLabelResIds.getOrNull(TRANSLATION_STYLES.indexOf(style))
+        fun translationStyleLabelResId(style: String): Int? = translationStyleLabelResIds.getOrNull(TRANSLATION_STYLES.indexOf(style))
 
         /**
          * 构建翻译 prompt。
