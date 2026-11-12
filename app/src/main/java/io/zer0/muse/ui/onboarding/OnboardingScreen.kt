@@ -1,7 +1,6 @@
 package io.zer0.muse.ui.onboarding
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
@@ -10,6 +9,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -48,11 +48,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
@@ -62,7 +63,6 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.zer0.ai.core.Model
 import io.zer0.ai.core.ProviderConfig
@@ -74,6 +74,7 @@ import io.zer0.muse.data.preset.PresetProviders
 import io.zer0.muse.data.provider.ProviderModelFetcher
 import io.zer0.muse.ui.common.form.IosCapsuleButtonVariant
 import io.zer0.muse.ui.common.form.MuseCapsuleButton
+import io.zer0.muse.ui.common.form.MuseDropdown
 import io.zer0.muse.ui.common.form.MuseSwitch
 import io.zer0.muse.ui.common.form.MuseTactileButton
 import io.zer0.muse.ui.common.form.MuseTextField
@@ -93,7 +94,7 @@ import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
 // ── 测试连接状态 ──────────────────────────────────────────────
-private sealed class TestStatus {
+internal sealed class TestStatus {
     data object Idle : TestStatus()
     data object Loading : TestStatus()
     data class Success(val models: List<Model>) : TestStatus()
@@ -102,7 +103,7 @@ private sealed class TestStatus {
 
 /**
  * 开机引导页面 — 全屏 HorizontalPager,8 步完成初始配置:
- * 欢迎(多语言问候轮播) → 语言 → 认识 → 记忆 → 接入 → 模型 → 外观 → 出发。
+ * 欢迎(当前语言问候) → 语言 → 认识 → 记忆 → 接入 → 模型 → 外观 → 出发。
  *
  * 数据流：OnboardingScreen 接收 [onComplete] 回调，内部用 koinInject 获取
  * [SettingsRepository] / [AssistantRepository] / [PresetProviders]，
@@ -437,39 +438,32 @@ private fun ProgressDots(currentPage: Int, pageCount: Int, modifier: Modifier = 
 }
 
 // ── 步骤 0：欢迎页 ──────────────────────────────────────────────
-/**
- * 问候语轮播表 — 跟随支持的语言逐条切换(中文优先,其次英文,其余顺序轮转)。
- * 每条本身就是对应语言的原文,不走资源本地化。
- */
-private val WELCOME_GREETINGS = listOf(
-    "嗨，终于见面了。",
-    "Hi, nice to meet you.",
-    "はじめまして。",
-    "반가워요.",
-    "Hola, encantado.",
-    "Olá, prazer.",
-    "Привет, рады знакомству.",
+private val WELCOME_GREETINGS = mapOf(
+    "zh" to "嗨，终于见面了。",
+    "en" to "Hi, nice to meet you.",
+    "ja" to "はじめまして。",
+    "ko" to "반가워요.",
+    "es" to "Hola, encantado.",
+    "pt" to "Olá, prazer.",
+    "ru" to "Привет, рады знакомству.",
 )
 
 @Composable
-private fun StepWelcome() {
+internal fun StepWelcome() {
     // v2.x: 首屏重构 — 大 logo 单放(无底框),名字在下,问候语从 logo 处"展开"入场。
     // 不再有副标题与特性磁贴:首屏只留 logo / 名字 / 一句问候。
     var entered by remember { mutableStateOf(false) }
     var nameVisible by remember { mutableStateOf(false) }
     var greetingVisible by remember { mutableStateOf(false) }
-    var greetingIndex by remember { mutableStateOf(0) }
+    val language = LocalConfiguration.current.locales[0].language
+    val greeting = WELCOME_GREETINGS.getValue(language.takeIf { it in WELCOME_GREETINGS } ?: "en")
     LaunchedEffect(Unit) {
-        // 入场时序:logo → 名字 → 问候"展开";之后进入多语言轮播(2.6s/条)
+        // 入场时序:logo → 名字 → 当前语言问候。
         entered = true
         delay(260)
         nameVisible = true
         delay(390)
         greetingVisible = true
-        while (true) {
-            delay(2600)
-            greetingIndex = (greetingIndex + 1) % WELCOME_GREETINGS.size
-        }
     }
 
     val logoAlpha by animateFloatAsState(
@@ -536,7 +530,7 @@ private fun StepWelcome() {
                 .offset(y = nameOffset),
         )
         Spacer(modifier = Modifier.height(MusePaddings.contentGap))
-        // 问候语:从 logo 方向"展开"出场(顶端为缩放原点),之后多语言轮播交叉淡入
+        // 问候语从 logo 方向展开,始终跟随当前界面语言。
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -549,30 +543,13 @@ private fun StepWelcome() {
                 },
             contentAlignment = Alignment.Center,
         ) {
-            Crossfade(
-                targetState = greetingIndex,
-                animationSpec = MuseMotion.tween(MuseAnimation.NORMAL_MS),
-                // 用 Crossfade 而不是 AnimatedContent：后者默认带 SizeTransform，
-                // 两条不同高度的问候语会同时参与布局并叠在同一位置，
-                // 视觉上是两句话压在一起。Crossfade 只在同一槽位内做淡入淡出。
-                label = "welcomeGreeting",
-            ) { index ->
-                Text(
-                    text = WELCOME_GREETINGS[index],
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    textAlign = TextAlign.Center,
-                )
-            }
+            Text(
+                text = greeting,
+                style = MaterialTheme.typography.headlineSmall,
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.Center,
+            )
         }
-        // 轮播的是各语言的问候,不是"当前界面语言"的提示 —— 不加这句,
-        // 刚切过语言的用户会以为界面没换成功。
-        Text(
-            text = stringResource(R.string.onboarding_welcome_greetings_caption),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-        )
     }
 }
 
@@ -623,7 +600,7 @@ private fun StepLanguage(selectedLanguage: String, onLanguageSelected: (String) 
 
 // ── 步骤 6：外观 ────────────────────────────────────────────────
 @Composable
-private fun StepTheme(selectedThemeId: String, onThemeSelected: (String) -> Unit) {
+internal fun StepTheme(selectedThemeId: String, onThemeSelected: (String) -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -642,26 +619,33 @@ private fun StepTheme(selectedThemeId: String, onThemeSelected: (String) -> Unit
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(modifier = Modifier.height(MusePaddings.itemGap))
-        // 12 套主题网格（3 列 x 4 行）
-        PresetThemes.chunked(3).forEach { rowThemes ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(MusePaddings.contentGap),
-            ) {
-                rowThemes.forEach { theme ->
-                    ThemeColorBlock(
-                        theme = theme,
-                        selected = selectedThemeId == theme.id,
-                        onClick = { onThemeSelected(theme.id) },
-                        modifier = Modifier.weight(1f),
-                    )
-                }
-                // 不足 3 个时补齐占位，保持网格对齐
-                repeat(3 - rowThemes.size) {
-                    Spacer(modifier = Modifier.weight(1f))
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+            val fontScale = LocalDensity.current.fontScale
+            val columns = (
+                (maxWidth + MusePaddings.contentGap) /
+                    (104.dp * fontScale + MusePaddings.contentGap)
+                ).toInt().coerceIn(1, 3)
+            Column {
+                PresetThemes.chunked(columns).forEach { rowThemes ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(MusePaddings.contentGap),
+                    ) {
+                        rowThemes.forEach { theme ->
+                            ThemeColorBlock(
+                                theme = theme,
+                                selected = selectedThemeId == theme.id,
+                                onClick = { onThemeSelected(theme.id) },
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                        repeat(columns - rowThemes.size) {
+                            Spacer(modifier = Modifier.weight(1f))
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(MusePaddings.contentGap))
                 }
             }
-            Spacer(modifier = Modifier.height(MusePaddings.contentGap))
         }
     }
 }
@@ -731,7 +715,7 @@ private fun ThemeColorBlock(
         border = BorderStroke(borderWidth, borderColor),
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().padding(MusePaddings.contentGap),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
@@ -751,8 +735,7 @@ private fun ThemeColorBlock(
                 } else {
                     MaterialTheme.colorScheme.onSurfaceVariant
                 },
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center,
             )
         }
     }
@@ -891,9 +874,6 @@ private fun StepMemory(memoryEnabled: Boolean, onMemoryEnabledChange: (Boolean) 
 }
 
 // ── 步骤 4：配置供应商 ──────────────────────────────────────────
-/** 引导页供应商预设列表的最大可视高度（约 5 行），超出后列表内部滚动。 */
-private val ONBOARDING_PRESET_LIST_MAX_HEIGHT = 320.dp
-
 /**
  * 把上游/内部错误翻译成用户能行动的一句话。
  *
@@ -921,7 +901,7 @@ private fun friendlyConnectError(raw: String, context: android.content.Context):
 }
 
 @Composable
-private fun StepProviderConfig(
+internal fun StepProviderConfig(
     presetProviders: PresetProviders,
     selectedPresetId: String,
     onPresetSelected: (String) -> Unit,
@@ -956,51 +936,13 @@ private fun StepProviderConfig(
         )
         Spacer(modifier = Modifier.height(MusePaddings.itemGap))
 
-        // 供应商选择列表（精选：海外/国产/中转各约 1/3 + 自定义）
-        Text(
-            text = stringResource(R.string.onboarding_provider_select_label),
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.onSurface,
+        MuseDropdown(
+            value = selectedPresetId,
+            onValueChange = onPresetSelected,
+            label = stringResource(R.string.onboarding_provider_select_label),
+            options = presetProviders.onboardingPresets.map { it.id to it.displayName },
         )
-        Spacer(modifier = Modifier.height(MusePaddings.contentGap))
-        // 预设列表独立滚动并限高：此前 20+ 项平铺，把下方的 Key 输入框与
-        // 「测试连接」按钮推到屏幕外，用户选完供应商却找不到继续的办法。
-        // 底部渐隐提示「还有内容可滚」，避免最后一行被整齐切断成半张残缺卡片。
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(max = ONBOARDING_PRESET_LIST_MAX_HEIGHT),
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState()),
-            ) {
-                presetProviders.onboardingPresets.forEach { preset ->
-                    LanguageCard(
-                        label = preset.displayName,
-                        selected = selectedPresetId == preset.id,
-                        onClick = { onPresetSelected(preset.id) },
-                    )
-                    Spacer(modifier = Modifier.height(MusePaddings.contentGap))
-                }
-            }
-            // 底部渐隐遮罩：不拦截触摸，仅做视觉提示。
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .height(36.dp)
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(
-                                MaterialTheme.colorScheme.background.copy(alpha = 0f),
-                                MaterialTheme.colorScheme.background,
-                            ),
-                        ),
-                    ),
-            )
-        }
+        Spacer(modifier = Modifier.height(MusePaddings.itemGap))
 
         // 自定义供应商：baseUrl 输入
         androidx.compose.animation.AnimatedVisibility(
@@ -1177,7 +1119,8 @@ private fun StepProviderConfig(
             text = stringResource(R.string.onboarding_provider_skip),
             onClick = onSkip,
             variant = IosCapsuleButtonVariant.Text,
-            fillWidth = false,
+            fillWidth = true,
+            textMaxLines = Int.MAX_VALUE,
             modifier = Modifier.align(Alignment.CenterHorizontally),
         )
     }
@@ -1321,7 +1264,7 @@ private fun ModelItem(model: Model, selected: Boolean, onClick: () -> Unit) {
 
 // ── 步骤 5：完成页 ──────────────────────────────────────────────
 @Composable
-private fun StepComplete(onOpenSection: (String) -> Unit) {
+internal fun StepComplete(onOpenSection: (String) -> Unit) {
     val tutorials = listOf(
         FeatureItem(
             MuseIcons.chat,
@@ -1395,7 +1338,8 @@ private fun StepComplete(onOpenSection: (String) -> Unit) {
             text = stringResource(R.string.onboarding_restore_from_backup),
             onClick = { onOpenSection("backup") },
             variant = IosCapsuleButtonVariant.Secondary,
-            fillWidth = false,
+            fillWidth = true,
+            textMaxLines = Int.MAX_VALUE,
         )
     }
 }
