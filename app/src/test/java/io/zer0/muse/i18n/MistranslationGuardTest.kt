@@ -37,6 +37,12 @@ class MistranslationGuardTest {
     }
 
     @Test
+    fun `Spanish settings search and tutorial use natural wording`() {
+        assertEquals("Buscar en los ajustes…", text("es", R.string.settings_search_hint))
+        assertEquals("Primeros pasos y guía de funciones", text("es", R.string.settings_screen_tutorial_desc))
+    }
+
+    @Test
     fun `Spanish provider settings preserve brands and use natural terms`() {
         assertTrue(text("es", R.string.settings_provider_anthropic_specific).contains("Anthropic"))
         assertTrue(text("es", R.string.settings_provider_max_output_tokens).contains("tokens"))
