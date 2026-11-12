@@ -72,7 +72,8 @@ class GreetingHintGenerator(
     private fun buildPrompt(events: List<String>, resources: Resources): List<UIMessage> {
         val system = UIMessage(
             role = MessageRole.SYSTEM,
-            content = resources.getString(R.string.greeting_hint_generation_prompt),
+            content = resources.getString(R.string.greeting_hint_generation_prompt) +
+                "\nOutput language: ${resources.configuration.locales[0].toLanguageTag()}.",
         )
         val user = UIMessage(
             role = MessageRole.USER,
