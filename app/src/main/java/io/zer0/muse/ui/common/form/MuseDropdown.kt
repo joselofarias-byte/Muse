@@ -70,6 +70,7 @@ fun MuseDropdown(
     // 当前保持 Pair 以兼容现有调用方(PromptInjectionRepository.PRESET_MODES 等)。
     options: List<Pair<String, String>>,
     modifier: Modifier = Modifier,
+    singleLine: Boolean = true,
 ) {
     // M-DD1: expanded 用 rememberSaveable 持久化,配置变更(旋转/暗色切换)时不丢失展开状态。
     var expanded by rememberSaveable { mutableStateOf(false) }
@@ -80,7 +81,7 @@ fun MuseDropdown(
     val interactionSource = remember { MutableInteractionSource() }
     LaunchedEffect(interactionSource) {
         interactionSource.interactions.collect { interaction ->
-            if (interaction is PressInteraction.Press) {
+            if (interaction is PressInteraction.Release) {
                 expanded = true
             }
         }
@@ -108,7 +109,7 @@ fun MuseDropdown(
             },
             modifier = Modifier.fillMaxWidth(),
             shape = MuseShapes.medium,
-            singleLine = true,
+            singleLine = singleLine,
             interactionSource = interactionSource,
         )
 
