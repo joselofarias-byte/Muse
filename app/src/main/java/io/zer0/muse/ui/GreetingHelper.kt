@@ -37,6 +37,16 @@ object GreetingHelper {
         String.format(fallback, *args)
     }
 
+    // Invalidate hints saved before generation and display shared the same locale resources.
+    internal fun greetingHintCachePrefix(date: String, localeTag: String): String = "v2|$date|$localeTag|"
+
+    internal fun cachedGreetingHint(cache: String?, date: String, localeTag: String): String? {
+        val prefix = greetingHintCachePrefix(date, localeTag)
+        return cache?.takeIf { it.startsWith(prefix) }
+            ?.removePrefix(prefix)
+            ?.let { compactGreetingText(it, PERSONALIZED_HINT_MAX_LENGTH) }
+    }
+
     // 根据时间返回问候语
     fun getTimeGreeting(hour: Int = LocalTime.now().hour, res: Resources? = null): String {
         val id = when (hour) {

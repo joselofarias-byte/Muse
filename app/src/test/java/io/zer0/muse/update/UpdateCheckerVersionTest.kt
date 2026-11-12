@@ -108,7 +108,7 @@ class UpdateCheckerVersionTest {
         assertTrue(!UpdateChecker.isTrustedApkAsset(wrongHash))
     }
 
-    // ── Banner 显示判定(升级到同版本后不再提示) ──
+    // ── Version comparison and manual update results ──
 
     @Test
     fun `official download page constant points to museai ltd https`() {
@@ -127,18 +127,18 @@ class UpdateCheckerVersionTest {
     }
 
     @Test
-    fun `banner should not show when current equals cached latest`() {
-        // HomeScreen 判定:compareVersions(current, cached.tagName) < 0 才显示 Banner
+    fun `same installed and cached version compares equal`() {
+        // Version comparison remains available to manual checks, not Home banners.
         val current = "1.0.71"
         val cached = "v1.0.71"
-        assertTrue("升级到同版本后不应显示 Banner", UpdateChecker.compareVersions(current, cached) >= 0)
+        assertTrue(UpdateChecker.compareVersions(current, cached) >= 0)
     }
 
     @Test
-    fun `banner should show when current older than cached`() {
+    fun `older installed version compares below cached version`() {
         val current = "1.0.70"
         val cached = "v1.0.71"
-        assertTrue("存在新版本时应显示 Banner", UpdateChecker.compareVersions(current, cached) < 0)
+        assertTrue(UpdateChecker.compareVersions(current, cached) < 0)
     }
 
     @Test
