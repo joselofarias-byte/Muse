@@ -25,6 +25,16 @@ class SettingsRepositoryTest {
     private fun newRepository(): SettingsRepository = SettingsRepository(context, mockk(relaxed = true))
 
     @Test
+    fun dailySummary_preservesLanguageProvenance() = runBlocking {
+        val repo = newRepository()
+        repo.saveDailySummary("2026-11-12", "Resumen del día", "es-ES")
+        val summary = repo.dailySummaryFlow.first()!!
+        assertEquals("es-ES", summary.localeTag)
+        assertEquals("Resumen del día", summary.textForLocale("es-ES"))
+        assertEquals(null, summary.textForLocale("zh-CN"))
+    }
+
+    @Test
     fun enterGuestMode_keepsOnboardingNickname() = runBlocking {
         val repo = newRepository()
         repo.saveUserProfile(UserProfile(userNickName = "子奇"))
