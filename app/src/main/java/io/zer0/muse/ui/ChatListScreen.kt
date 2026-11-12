@@ -406,7 +406,7 @@ fun ChatListScreen(
                             GreetingHeader(
                                 facts = greetingFacts,
                                 personalizedHint = greetingHint,
-                                dailySummaryText = dailySummary?.text,
+                                dailySummaryText = dailySummary?.textForLocale(greetingLocaleTag),
                                 dailySummaryDate = dailySummary?.date,
                                 openTodoSessionCount = openTodoSessionCount,
                                 hasSessionToday = hasSessionToday,

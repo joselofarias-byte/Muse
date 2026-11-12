@@ -57,7 +57,10 @@ import java.util.concurrent.atomic.AtomicBoolean
 data class DailySummarySnapshot(
     val date: String,
     val text: String,
-)
+    val localeTag: String? = null,
+) {
+    fun textForLocale(localeTag: String): String? = text.takeIf { this.localeTag == localeTag }
+}
 
 /** 派生配置流去重：DataStore.data 只对整份 Preferences 去重，map 后各自去重以抑制无关 key 触发的相同值重复发射。 */
 private fun <T> Flow<Preferences>.mapDistinct(transform: suspend (Preferences) -> T): Flow<T> = map(transform).distinctUntilChanged()
@@ -836,7 +839,7 @@ class SettingsRepository(
             if (date.isNullOrBlank() || text.isNullOrBlank()) {
                 null
             } else {
-                DailySummarySnapshot(date = date, text = text)
+                DailySummarySnapshot(date = date, text = text, localeTag = prefs[KEY_DAILY_SUMMARY_LOCALE])
             }
         }
 
@@ -909,13 +912,14 @@ class SettingsRepository(
     }
 
     /** 保存每日总结,单独存日期和正文,避免正文中的分隔符破坏解析。 */
-    suspend fun saveDailySummary(date: String, summary: String) {
+    suspend fun saveDailySummary(date: String, summary: String, localeTag: String) {
         val cleanDate = date.trim()
         val cleanSummary = summary.trim().take(200)
         if (cleanDate.isBlank() || cleanSummary.isBlank()) return
         store.edit {
             it[KEY_DAILY_SUMMARY_DATE] = cleanDate
             it[KEY_DAILY_SUMMARY_TEXT] = cleanSummary
+            it[KEY_DAILY_SUMMARY_LOCALE] = localeTag
         }
     }
 
@@ -3113,6 +3117,7 @@ class SettingsRepository(
 
         // v1.x: 最近一次每日总结,供首页问候语展示
         private val KEY_DAILY_SUMMARY_DATE = stringPreferencesKey("daily_summary_date")
+        private val KEY_DAILY_SUMMARY_LOCALE = stringPreferencesKey("daily_summary_locale")
         private val KEY_DAILY_SUMMARY_TEXT = stringPreferencesKey("daily_summary_text")
 
         // 每日总结已抢占时点，格式为 yyyy-MM-dd#HHmm；用于进程内与 WorkManager 去重。
