@@ -1,7 +1,6 @@
 package io.zer0.muse.ui
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -27,19 +26,12 @@ import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import io.zer0.common.AppJson
-import io.zer0.common.Logger
 import io.zer0.muse.R
 import io.zer0.muse.data.SettingsRepository
 import io.zer0.muse.ui.chat.WorkspaceQuickPickDialog
 import io.zer0.muse.ui.common.MuseFloatingActionItem
-import io.zer0.muse.ui.common.form.IosCapsuleButtonVariant
-import io.zer0.muse.ui.common.form.MuseCapsuleButton
 import io.zer0.muse.ui.common.form.MuseCapsuleTab
 import io.zer0.muse.ui.common.form.MuseTactileButton
 import io.zer0.muse.ui.common.horizontalGestureExclusion
@@ -57,11 +49,6 @@ import io.zer0.muse.ui.theme.MuseMotion
 import io.zer0.muse.ui.theme.MusePaddings
 import io.zer0.muse.ui.theme.MuseShapes
 import io.zer0.muse.ui.theme.pill
-import io.zer0.muse.ui.theme.semiLarge
-import io.zer0.muse.ui.theme.titleSmallStrong
-import io.zer0.muse.update.UpdateChecker
-import io.zer0.muse.update.UpdateNotifier
-import io.zer0.muse.util.ShareIntentHelper
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
@@ -135,16 +122,12 @@ fun HomeScreen(
     // v1.95: 启动默认页由设置决定(0=任务, 1=Agent, 2=群聊),initialPage 仅首次组合生效
     val settings: SettingsRepository = koinInject()
     val defaultPage by settings.defaultHomePageFlow.collectAsStateWithLifecycle(initialValue = 0)
-    // v1.133: 订阅缓存的 ReleaseInfo,有值则渲染 Banner
-    val releaseJson by settings.latestReleaseInfoFlow.collectAsStateWithLifecycle(initialValue = null)
     val pagerState = rememberPagerState(initialPage = defaultPage, pageCount = { 3 })
     // 01①: 更多菜单触发任务列表的编辑/新建文件夹，ChatListScreen 消费后回执清零。
     var pendingListAction by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     // v1.41: Agent Tab 模型切换面板展开状态
     var showModelSheet by remember { mutableStateOf(false) }
-    // v1.133: 用户主动关闭 Banner 后,本次会话不再展示(下次冷启动恢复)
-    var bannerDismissed by remember { mutableStateOf(false) }
     // v1.136 T8: 首页右下快捷工具栏展开/收起状态(长按 Plus 切换)
     var capsuleExpanded by rememberSaveable { mutableStateOf(true) }
     val context = LocalContext.current
@@ -181,18 +164,19 @@ fun HomeScreen(
     }
 
     MusePageScaffold(
-        floatingActionButton = {
-            // v1.0.17: 悬浮胶囊仅在"任务"Tab(首页)显示,Agent/群聊页不显示
-            // C4: 宽屏双栏时隐藏(FAB 会悬浮在右栏输入区上方遮挡;左栏已有新建入口)
+        // Reserve the measured toolbar height so large text cannot cover the task list.
+        bottomBar = {
             if (pagerState.currentPage == 0 && !isWideTasks) {
-                HomeQuickActionCapsule(
-                    onOpenScheduledTasks = onOpenScheduledTasks,
-                    onOpenQuickNotes = onOpenQuickNotes,
-                    onOpenQuickTranslate = onOpenQuickTranslate,
-                    onCreateNewTask = onCreateNewTask,
-                    expanded = capsuleExpanded,
-                    onToggleExpanded = { capsuleExpanded = !capsuleExpanded },
-                )
+                Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.BottomEnd) {
+                    HomeQuickActionCapsule(
+                        onOpenScheduledTasks = onOpenScheduledTasks,
+                        onOpenQuickNotes = onOpenQuickNotes,
+                        onOpenQuickTranslate = onOpenQuickTranslate,
+                        onCreateNewTask = onCreateNewTask,
+                        expanded = capsuleExpanded,
+                        onToggleExpanded = { capsuleExpanded = !capsuleExpanded },
+                    )
+                }
             }
         },
         topBar = {
@@ -368,40 +352,6 @@ fun HomeScreen(
             // v1.0.16: 新任务/新会话入口 — 放在 3 大切换 tab 栏正下方,
             // 从原来的 ChatListScreen 顶部上提到这里,方便所有 Tab 可见。
             // 仅在"任务"Tab 显示(Agent 页自己就能输入,群聊页有群聊列表入口)。
-            // v1.133: 顶部"新版本可用"Banner — 有缓存 ReleaseInfo 且未被关闭时显示
-            // v1.0.72: 用户点过忽略的版本不再展示(持久化,下次冷启动也不弹)
-            // v1.0.72: 升级到同版本/更高版本后即使缓存未清也不显示(24h 检查间隔内缓存会残留)
-            val ignoredUpdateVersion by settings.ignoredUpdateVersionFlow.collectAsStateWithLifecycle(initialValue = null)
-            val currentVersionName = remember { UpdateNotifier.getCurrentVersionName(context) }
-            val release = remember(releaseJson, bannerDismissed, ignoredUpdateVersion, currentVersionName) {
-                if (bannerDismissed || releaseJson.isNullOrBlank()) {
-                    null
-                } else {
-                    parseReleaseInfo(releaseJson)?.takeIf { info ->
-                        info.tagName != ignoredUpdateVersion &&
-                            UpdateNotifier.compareVersions(currentVersionName, info.tagName) < 0
-                    }
-                }
-            }
-            if (release != null) {
-                // 下载/更新出口统一指向官网下载页(版本、更新日志与下载入口一体,国内 CDN 直连)
-                val openDownloadPage: () -> Unit = {
-                    val intent = UpdateNotifier.buildOfficialDownloadIntent()
-                    runCatching {
-                        ShareIntentHelper.startChooserSafely(context, intent)
-                    }.onFailure { Logger.w("HomeScreen", "startActivity failed: ${it.message}") }
-                }
-                UpdateAvailableBanner(
-                    release = release,
-                    onClose = {
-                        bannerDismissed = true
-                        // v1.0.72: 忽略后持久化,该版本不再提示(用户可在设置-更新里手动检查)
-                        scope.launch { settings.saveIgnoredUpdateVersion(release.tagName) }
-                    },
-                    onViewRelease = openDownloadPage,
-                    onDownloadApk = openDownloadPage,
-                )
-            }
             HorizontalPager(
                 state = pagerState,
                 modifier = Modifier
@@ -582,108 +532,10 @@ fun HomeScreen(
     }
 }
 
-/**
- * v1.133: "新版本可用"Banner — 在 HomeScreen 顶部展示。
- *
- * 设计:
- *  - Surface 容器用 primaryContainer 色(暖色调高亮,与品牌一致)
- *  - 左侧:Close 图标(关闭 Banner,本次会话不再显示)
- *  - 中间:标题"<tagName> 已发布" + 版本名
- *  - 右侧:两个 TextButton("查看详情" / "下载 APK"),均打开官网下载页
- *
- * @param release 最新版本信息
- * @param onClose 关闭 Banner 回调
- * @param onViewRelease 打开官网下载页(版本与更新日志)
- * @param onDownloadApk 打开官网下载页(下载入口)
- */
+/** Home shortcuts wrap into two rows on narrow screens or with large text. */
 @Composable
-private fun UpdateAvailableBanner(
-    release: UpdateChecker.ReleaseInfo,
-    onClose: () -> Unit,
-    onViewRelease: () -> Unit,
-    onDownloadApk: () -> Unit,
-) {
-    val closeCd = stringResource(R.string.update_banner_close_cd)
-    val viewDetailText = stringResource(R.string.update_banner_view_detail)
-    val downloadApkText = stringResource(R.string.update_banner_download_apk)
-    val publishedText = stringResource(R.string.update_banner_published, release.tagName)
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = MusePaddings.screen, vertical = MusePaddings.contentGap),
-        shape = MuseShapes.semiLarge,
-        color = MaterialTheme.colorScheme.primaryContainer,
-        tonalElevation = 2.dp,
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = publishedText,
-                    style = MaterialTheme.typography.titleSmallStrong,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                )
-                if (release.name.isNotBlank()) {
-                    Text(
-                        text = release.name,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-            }
-            MuseCapsuleButton(
-                text = viewDetailText,
-                onClick = onViewRelease,
-                variant = IosCapsuleButtonVariant.Text,
-                fillWidth = false,
-            )
-            MuseCapsuleButton(
-                text = downloadApkText,
-                onClick = onDownloadApk,
-                variant = IosCapsuleButtonVariant.Text,
-                fillWidth = false,
-            )
-            MuseTactileButton(
-                icon = MuseIcons.x,
-                onClick = onClose,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                modifier = Modifier.semantics { contentDescription = closeCd },
-            )
-        }
-    }
-}
-
-/**
- * 解析缓存的 ReleaseInfo JSON。
- * 解析失败返回 null(Banner 不展示,避免损坏数据让 UI 崩溃)。
- */
-private fun parseReleaseInfo(json: String?): UpdateChecker.ReleaseInfo? {
-    if (json.isNullOrBlank()) return null
-    return runCatching {
-        AppJson.decodeFromString(UpdateChecker.ReleaseInfo.serializer(), json)
-    }.onFailure {
-        Logger.w("HomeScreen", "parseReleaseInfo failed: ${it.message}")
-    }.getOrNull()
-}
-
-/**
- * v1.0.16: 首页右下角悬浮胶囊 — 定时任务 / 快速记录 / 快速翻译 / 加号(新建任务)。
- *
- * 设计参考用户提供的右下角按钮布局:
- *  - 长椭圆胶囊,与主流输入形态一致
- *  - 4 个图标按钮等分排列,中间用细竖线分隔
- *  - 背景使用 surfaceContainer,漂浮在内容之上
- */
-@Composable
-@OptIn(ExperimentalFoundationApi::class)
-private fun HomeQuickActionCapsule(
+@OptIn(ExperimentalFoundationApi::class, ExperimentalLayoutApi::class)
+internal fun HomeQuickActionCapsule(
     onOpenScheduledTasks: () -> Unit,
     onOpenQuickNotes: () -> Unit,
     onOpenQuickTranslate: () -> Unit,
@@ -692,55 +544,65 @@ private fun HomeQuickActionCapsule(
     onToggleExpanded: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Surface(
+    BoxWithConstraints(
         modifier = modifier
-            .padding(end = 8.dp, bottom = 16.dp)
-            .navigationBarsPadding(),
-        shape = MuseShapes.pill,
-        color = MaterialTheme.colorScheme.surfaceContainer,
-        tonalElevation = 2.dp,
-        shadowElevation = 4.dp,
+            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
+            .padding(horizontal = 8.dp, vertical = 8.dp)
+            .widthIn(max = 480.dp)
+            .fillMaxWidth(),
+        contentAlignment = Alignment.CenterEnd,
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            // v1.136 T8: 收起时仅显示 Plus 按钮;展开时显示全部 4 个按钮(长按 Plus 切换)
-            AnimatedVisibility(
-                visible = expanded,
-                enter = MuseMotion.horizontalExpandEnter(),
-                exit = MuseMotion.horizontalExpandExit(),
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    HomeCapsuleButton(
+        val stacked = maxWidth < 440.dp || androidx.compose.ui.platform.LocalDensity.current.fontScale > 1.3f
+        Surface(
+            modifier = if (expanded) Modifier.fillMaxWidth() else Modifier.width(96.dp),
+            shape = if (expanded && stacked) MuseShapes.large else MuseShapes.pill,
+            color = MaterialTheme.colorScheme.surfaceContainer,
+            tonalElevation = 2.dp,
+            shadowElevation = 4.dp,
+        ) {
+            val actions: @Composable (Int, Modifier) -> Unit = { index, actionModifier ->
+                when (index) {
+                    0 -> HomeCapsuleButton(
                         icon = MuseIcons.calendarTime,
                         contentDescription = stringResource(R.string.chat_list_scheduled_tasks),
                         onClick = onOpenScheduledTasks,
+                        modifier = actionModifier,
                     )
-                    HomeCapsuleDivider()
-                    HomeCapsuleButton(
+                    1 -> HomeCapsuleButton(
                         icon = MuseIcons.edit,
                         contentDescription = stringResource(R.string.chat_list_quick_notes),
                         onClick = onOpenQuickNotes,
+                        modifier = actionModifier,
                     )
-                    HomeCapsuleDivider()
-                    HomeCapsuleButton(
+                    2 -> HomeCapsuleButton(
                         icon = MuseIcons.languages,
                         contentDescription = stringResource(R.string.chat_list_quick_translate),
                         onClick = onOpenQuickTranslate,
+                        modifier = actionModifier,
                     )
-                    HomeCapsuleDivider()
+                    else -> HomeCapsuleButton(
+                        icon = MuseIcons.plus,
+                        contentDescription = stringResource(R.string.chat_list_new_task),
+                        onClick = onCreateNewTask,
+                        onLongClick = onToggleExpanded,
+                        containerColor = MuseActionColors.container,
+                        contentColor = MuseActionColors.content,
+                        modifier = actionModifier,
+                    )
                 }
             }
-            // Plus 按钮始终显示;长按切换展开/收起
-            // CHAT-16: 弱化 FAB 主按钮 — 由实心 primary 改为 primaryContainer,
-            // 避免与首页输入栏发送键「两个大圆」抢焦点。
-            HomeCapsuleButton(
-                icon = MuseIcons.plus,
-                contentDescription = stringResource(R.string.chat_list_new_task),
-                onClick = onCreateNewTask,
-                onLongClick = onToggleExpanded,
-                // UI-FIX A: 主操作改实心容器（浅色近黑/深色近白）+ 反相图标
-                containerColor = MuseActionColors.container,
-                contentColor = MuseActionColors.content,
-            )
+            if (!expanded) {
+                actions(3, Modifier.fillMaxWidth())
+            } else {
+                Column {
+                    val columns = if (stacked) 2 else 4
+                    repeat(4 / columns) { row ->
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            repeat(columns) { column -> actions(row * columns + column, Modifier.weight(1f)) }
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -775,27 +637,19 @@ private fun HomeCapsuleButton(
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Icon(
                 imageVector = icon,
-                contentDescription = contentDescription,
+                contentDescription = null,
                 tint = contentColor,
                 modifier = Modifier.size(22.dp),
             )
             Spacer(Modifier.height(2.dp))
             Text(
                 text = contentDescription,
+                modifier = Modifier.fillMaxWidth(),
                 style = MaterialTheme.typography.labelSmall,
                 color = contentColor,
-                maxLines = 1,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                softWrap = true,
             )
         }
     }
-}
-
-@Composable
-private fun HomeCapsuleDivider() {
-    Box(
-        modifier = Modifier
-            .width(1.dp)
-            .height(26.dp)
-            .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
-    )
 }
