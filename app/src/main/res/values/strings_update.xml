@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="update_external_content_notice">An external website will open. Its interface and release notes may be in another language.</string>
+    <string name="update_open_external_site">Open external site</string>
+</resources>
