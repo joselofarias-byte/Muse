@@ -207,19 +207,22 @@ fun ChatListScreen(
         var showCreateFolderDialog by remember { mutableStateOf(false) }
         var newFolderName by remember { mutableStateOf("") }
 
+        val context = LocalContext.current
+        val resources = androidx.compose.ui.platform.LocalResources.current
+        val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+        val greetingLocaleTag = configuration.locales[0].toLanguageTag()
+
         // 首页数据:知识库文档数量
         var docCount by remember { mutableStateOf(0) }
         // 问候语匹配用的近期记忆(主作用域,取最近 100 条;避免子助手角色扮演记忆混入提醒)
         var greetingFacts by remember { mutableStateOf<List<FactEntity>>(emptyList()) }
         // v1.x: LLM 生成的个性化问候后缀(当天缓存,无则回退规则版)
-        var greetingHint by remember { mutableStateOf<String?>(null) }
+        var greetingHint by remember(greetingLocaleTag) { mutableStateOf<String?>(null) }
         // v1.x: 每日总结由 Worker 写入 DataStore,生成后首页可实时接收
         val dailySummary by settings.dailySummaryFlow.collectAsStateWithLifecycle(initialValue = null)
         // v2.6.7 fix (AUDIT F8): 跨会话未完成待办数。
         // Repository 的两个查询此前全仓零调用，现在在首页真实展示。
         var openTodoSessionCount by remember { mutableStateOf(0) }
-        val context = LocalContext.current
-        val configuration = androidx.compose.ui.platform.LocalConfiguration.current
         LaunchedEffect(configuration) {
             // 先投递系统兜底,再在前台直接生成当前时段;否则部分 ROM 会把 WorkManager
             // 延迟很久,用户只看到“早上好/中午好/晚上好”而看不到后面的助手总结。
@@ -234,7 +237,7 @@ fun ChatListScreen(
                 }
             }
         }
-        LaunchedEffect(Unit) {
+        LaunchedEffect(greetingLocaleTag) {
             // 审计修复 (8.8): 去掉内层 scope.launch — 原实现内层协程属于 rememberCoroutineScope,
             // 不随 LaunchedEffect 取消(离开组合/翻页后仍在跑),且双重启动无意义。
             runCatching { docCount = knowledgeDocDao.countUserVisible() }
@@ -255,31 +258,33 @@ fun ChatListScreen(
             // v1.x: 个性化问候 — 缓存优先(当天),未命中则 LLM 生成,失败回退规则版。
             runCatching {
                 val today = java.time.LocalDate.now().toString()
-                val cachePrefix = "$today|${configuration.locales[0].toLanguageTag()}|"
-                val cached = settings.getGreetingHintCache()
-                if (cached?.startsWith(cachePrefix) == true) {
-                    resolvedGreetingHint = GreetingHelper.compactGreetingText(
-                        cached.removePrefix(cachePrefix),
-                        GreetingHelper.PERSONALIZED_HINT_MAX_LENGTH,
-                    )
-                    greetingHint = resolvedGreetingHint
+                val cachePrefix = GreetingHelper.greetingHintCachePrefix(today, greetingLocaleTag)
+                val cachedHint = GreetingHelper.cachedGreetingHint(
+                    settings.getGreetingHintCache(), today, greetingLocaleTag,
+                )
+                if (cachedHint != null) {
+                    resolvedGreetingHint = cachedHint
+                    greetingHint = cachedHint
                 } else {
-                    greetingHintGenerator.generate(facts, context.resources)?.let { hint ->
+                    greetingHintGenerator.generate(facts, resources)?.let { hint ->
                         resolvedGreetingHint = hint
                         greetingHint = hint
                         settings.saveGreetingHintCache("$cachePrefix$hint")
                     }
                 }
-            }.onFailure { e -> Logger.w("ChatListScreen", "问候语生成失败: ${e.message}") }
+            }.onFailure { e ->
+                if (e is CancellationException) throw e
+                Logger.w("ChatListScreen", "问候语生成失败: ${e.message}")
+            }
             // v1.x: 问候语个性化提醒通知 — 有近期事项且今天未通知过时,发一条通知让用户知道助手在关注他(每天最多一次)。
             runCatching {
                 // 同一 LaunchedEffect 内状态更新尚未回流,使用局部结果保证首次加载也能通知。
-                val hint = resolvedGreetingHint ?: GreetingHelper.getMemoryHint(facts, res = context.resources)
+                val hint = resolvedGreetingHint ?: GreetingHelper.getMemoryHint(facts, res = resources)
                 if (hint != null) {
                     val today = java.time.LocalDate.now().toString()
                     val lastNotify = settings.getLastGreetingNotifyDate()
                     if (lastNotify != today) {
-                        val titles = context.resources.getStringArray(R.array.greeting_notify_titles)
+                        val titles = resources.getStringArray(R.array.greeting_notify_titles)
                         notificationManager.notifyReminder(
                             title = titles.random(),
                             message = hint,
@@ -536,7 +541,7 @@ fun ChatListScreen(
 /** 顶部问候标题 + 日期行 + 个性化提醒。 */
 @Suppress("LongParameterList") // Compose 参数只能平铺；合并成对象会让预览/重组更糟
 @Composable
-private fun GreetingHeader(
+internal fun GreetingHeader(
     facts: List<FactEntity>,
     /** v1.x: LLM 生成的个性化后缀(非空时优先展示,未生成则回退规则版)。 */
     personalizedHint: String? = null,

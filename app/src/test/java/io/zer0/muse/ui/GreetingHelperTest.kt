@@ -17,6 +17,20 @@ class GreetingHelperTest {
     )
 
     @Test
+    fun greeting_hint_cache_requires_current_date_locale_and_generation_version() {
+        val date = "2026-11-12"
+        val prefix = GreetingHelper.greetingHintCachePrefix(date, "es")
+        val cache = "${prefix}Mañana: examen"
+
+        assertEquals("Mañana: examen", GreetingHelper.cachedGreetingHint(cache, date, "es"))
+        assertNull(GreetingHelper.cachedGreetingHint(cache, date, "zh"))
+        assertNull(GreetingHelper.cachedGreetingHint(cache, "2026-11-13", "es"))
+        assertNull(GreetingHelper.cachedGreetingHint("$date|es|旧缓存", date, "es"))
+        assertNull(GreetingHelper.cachedGreetingHint("$date|旧缓存", date, "es"))
+        assertNull(GreetingHelper.cachedGreetingHint(prefix, date, "es"))
+    }
+
+    @Test
     fun `时间段问候语边界稳定`() {
         assertEquals("早上好", GreetingHelper.getTimeGreeting(5))
         assertEquals("早上好", GreetingHelper.getTimeGreeting(10))
