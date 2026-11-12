@@ -360,7 +360,7 @@
     <string name="settings_screen_tools_desc">Ver herramientas y permisos que la IA puede invocar</string>
     <string name="settings_screen_about">Acerca de</string>
     <string name="settings_screen_tutorial">Tutorial</string>
-    <string name="settings_screen_tutorial_desc">Incorporación/Guía de funciones</string>
+    <string name="settings_screen_tutorial_desc">Primeros pasos y guía de funciones</string>
     <string name="settings_screen_about_desc">Versión / Licencias de código abierto</string>
     <string name="settings_screen_debug_log">Registro de depuración</string>
     <string name="settings_screen_debug_log_desc">Ver registros y errores de la aplicación</string>
@@ -370,7 +370,7 @@
     <string name="settings_screen_check_update_desc">Consulte GitHub para conocer nuevos lanzamientos</string>
 
     <!-- v1.132: Settings search + group reorg -->
-    <string name="settings_search_hint">Configuración de búsqueda…</string>
+    <string name="settings_search_hint">Buscar en los ajustes…</string>
     <string name="settings_search_no_results">partidos</string>
 
     <!-- v1.97 gap8: Tools group (standalone translate page entry) -->
