@@ -33,6 +33,8 @@ internal fun rememberSettingsActionHost(): SettingsActionHost {
     val contextResources = androidx.compose.ui.platform.LocalResources.current
     val updateNotifier: UpdateNotifier = koinInject()
     val scope = rememberCoroutineScope()
+    var newVersion by remember { mutableStateOf<io.zer0.muse.update.UpdateChecker.ReleaseInfo?>(null) }
+    ManualUpdateDetailsDialog(newVersion, onDismiss = { newVersion = null })
     var busyAction by remember { mutableStateOf<SettingsActionId?>(null) }
 
     val run: (SettingsActionId) -> Unit = { id ->
@@ -46,7 +48,7 @@ internal fun rememberSettingsActionHost(): SettingsActionHost {
                         busyAction = null
                     }
                     when (result) {
-                        is UpdateCheckResult.NewVersion -> MuseToast.show(contextResources.getString(R.string.update_found_new))
+                        is UpdateCheckResult.NewVersion -> newVersion = result.release
                         UpdateCheckResult.UpToDate -> MuseToast.show(contextResources.getString(R.string.update_already_latest))
                         is UpdateCheckResult.Failed -> MuseToast.show(
                             contextResources.getString(R.string.settings_about_update_check_failed, result.message),
