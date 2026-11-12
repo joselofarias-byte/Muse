@@ -290,7 +290,9 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val startupReady by (application as MuseApp).startupReady.collectAsStateWithLifecycle()
-            if (!startupReady) {
+            val language by settings.languageFlow.collectAsStateWithLifecycle(initialValue = null)
+            val resolvedLanguage = language
+            if (!startupReady || resolvedLanguage == null) {
                 MuseTheme(darkTheme = isSystemInDarkTheme()) {
                     Box(
                         modifier = Modifier.fillMaxSize(),
@@ -302,8 +304,7 @@ class MainActivity : ComponentActivity() {
             } else {
                 // I4: 语言热切换 — 收集语言流,经 RuntimeLocaleProvider 覆盖 Compose 资源,
                 // 切换语言仅重组 UI,不重建 Activity(冷启动初始语言仍由 attachBaseContext 保证)。
-                val language by settings.languageFlow.collectAsStateWithLifecycle(initialValue = "system")
-                RuntimeLocaleProvider(lang = language) {
+                RuntimeLocaleProvider(lang = resolvedLanguage) {
                     // v2.6.2 fix（用户反馈）: 系统深浅色 —— 不读 LocalConfiguration
                     // （会被 RuntimeLocaleProvider 的语言快照覆盖），改用 Activity 层
                     // 监听 onConfigurationChanged 的 systemDarkState。

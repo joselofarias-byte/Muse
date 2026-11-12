@@ -852,10 +852,8 @@ fun SettingsAboutPage(
     onOpenCrashReport: () -> Unit = {},
 ) {
     val context = LocalContext.current
-    val settings: SettingsRepository = koinInject()
     val updateNotifier: UpdateNotifier = koinInject()
     val scope = rememberCoroutineScope()
-    val updateCheckEnabled by settings.updateCheckEnabledFlow.collectAsStateWithLifecycle(initialValue = true)
     val versionName = remember {
         runCatching {
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
@@ -990,14 +988,7 @@ fun SettingsAboutPage(
                         ChevronRight()
                     }
                 }
-                SettingsGroupDivider()
-                SettingsSwitchRow(
-                    icon = MuseIcons.refresh,
-                    title = stringResource(R.string.settings_about_auto_update),
-                    subtitle = stringResource(R.string.settings_about_auto_update_subtitle),
-                    checked = updateCheckEnabled,
-                    onCheckedChange = { v -> scope.launch { settings.saveUpdateCheckEnabled(v) } },
-                )
+
             }
         }
         item {
@@ -1053,17 +1044,25 @@ fun SettingsAboutPage(
             onDismissRequest = { newVersion = null },
             title = stringResource(R.string.settings_about_new_version_title),
             content = {
-                Text(
-                    text = stringResource(R.string.settings_about_new_version_desc, version.tagName),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                )
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Text(
+                        text = stringResource(R.string.settings_about_new_version_desc, version.tagName),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        text = UpdateNotifier.OFFICIAL_DOWNLOAD_PAGE,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             },
             confirmText = stringResource(R.string.settings_about_download),
             onConfirm = {
-                val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(UpdateNotifier.OFFICIAL_DOWNLOAD_PAGE))
-                runCatching { context.startActivity(browserIntent) }
+                openUrl(context, UpdateNotifier.OFFICIAL_DOWNLOAD_PAGE)
                 newVersion = null
             },
             dismissText = stringResource(R.string.action_cancel),
