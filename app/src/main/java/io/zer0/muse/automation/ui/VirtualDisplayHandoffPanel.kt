@@ -21,13 +21,14 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import io.zer0.muse.R
 import io.zer0.muse.ui.common.form.MuseCapsuleButton
 import io.zer0.muse.ui.theme.MusePaddings
+import kotlin.math.min
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlin.math.min
 
 /**
  * 虚拟屏预览 + 触摸接管（对比清单 P1-02 第二段）。
@@ -82,16 +83,20 @@ fun VirtualDisplayHandoffPanel(
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Text(
-            text = if (packageName.isBlank()) "虚拟屏 #$displayId" else "虚拟屏 #$displayId · $packageName",
+            text = if (packageName.isBlank()) {
+                stringResource(R.string.review_virtual_display_title, displayId)
+            } else {
+                stringResource(R.string.review_virtual_display_package, displayId, packageName)
+            },
             style = MaterialTheme.typography.titleSmall,
         )
         val current = frame
         if (current == null) {
             Text(
                 text = if (failures > 3) {
-                    "取不到画面（虚拟屏服务可能已断开）。可以关闭后让助手重新执行一次。"
+                    stringResource(R.string.review_virtual_display_unavailable)
                 } else {
-                    "正在获取画面…"
+                    stringResource(R.string.review_virtual_display_loading)
                 },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -100,7 +105,7 @@ fun VirtualDisplayHandoffPanel(
             val image = remember(current) { current.asImageBitmap() }
             Image(
                 bitmap = image,
-                contentDescription = "虚拟屏预览",
+                contentDescription = stringResource(R.string.review_virtual_display_preview),
                 contentScale = ContentScale.Fit,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -117,7 +122,7 @@ fun VirtualDisplayHandoffPanel(
                     },
             )
             Text(
-                text = lastTap?.let { "已点击 $it（若界面没反应，可能该控件不接受注入）" } ?: "点击画面即可操作这块屏",
+                text = lastTap?.let { stringResource(R.string.review_virtual_display_tapped, it) } ?: stringResource(R.string.review_virtual_display_tap_hint),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

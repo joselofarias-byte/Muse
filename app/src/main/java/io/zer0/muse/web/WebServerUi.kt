@@ -1,5 +1,8 @@
 package io.zer0.muse.web
 
+import android.content.Context
+import io.zer0.muse.R
+
 /**
  * WebServer 根路径 UI（单页应用：PIN 登录 → 会话列表 → 消息只读浏览）。
  * 纯内嵌 HTML/CSS/JS，无外部依赖，移动端/桌面浏览器均可使用。
@@ -9,6 +12,51 @@ package io.zer0.muse.web
  * （浅色：白底黑字；深色：纯黑底白字，卡片 #1C1C1E）。
  */
 object WebServerUi {
+
+    /** Localize only the static template; runtime messages and protocol fields stay intact. */
+    fun indexHtml(context: Context): String {
+        val labels = listOf(
+            "网页控制台已升级，请升级 Muse App 到最新版本以使用新版界面。当前为旧版兼容页。" to R.string.review_legacy_1,
+            "输入手机端设置页生成的 6 位 PIN" to R.string.review_legacy_2,
+            "仅限本机与已授权的局域网设备访问" to R.string.review_legacy_3,
+            "unauthorized" to R.string.review_legacy_4,
+            "请输入 6 位 PIN" to R.string.review_legacy_5,
+            "Provider: " to R.string.review_legacy_6,
+            "Host 尚未连接" to R.string.review_legacy_7,
+            "PIN 错误" to R.string.review_legacy_8,
+            "暂无供应商" to R.string.review_legacy_9,
+            "加载失败：" to R.string.review_legacy_10,
+            "写点什么…" to R.string.review_legacy_11,
+            "模型供应商" to R.string.review_legacy_12,
+            "暂无会话" to R.string.review_legacy_13,
+            "暂无消息" to R.string.review_legacy_14,
+            "连接失败" to R.string.review_legacy_15,
+            "加载中…" to R.string.review_legacy_16,
+            "当前模型" to R.string.review_legacy_17,
+            " 个模型" to R.string.review_legacy_18,
+            "未选择" to R.string.review_legacy_19,
+            "新对话" to R.string.review_legacy_20,
+            "未命名" to R.string.review_legacy_21,
+            "置顶" to R.string.review_legacy_22,
+            "刷新" to R.string.review_legacy_23,
+            "设置" to R.string.review_legacy_24,
+            "退出" to R.string.review_legacy_25,
+            "停止" to R.string.review_legacy_26,
+            "发送" to R.string.review_legacy_27,
+            "返回" to R.string.review_legacy_28,
+            "启用" to R.string.review_legacy_29,
+            "停用" to R.string.review_legacy_30,
+            "连接" to R.string.review_legacy_31,
+            "我" to R.string.review_legacy_32,
+            "无" to R.string.review_legacy_33,
+        )
+        var html = INDEX_HTML
+        for ((source, resource) in labels) {
+            html = html.replace(source, context.getString(resource))
+        }
+        val language = context.resources.configuration.locales[0].toLanguageTag()
+        return html.replace("lang=\"zh-CN\"", "lang=\"$language\"")
+    }
 
     const val INDEX_HTML: String = """<!DOCTYPE html>
 <html lang="zh-CN">

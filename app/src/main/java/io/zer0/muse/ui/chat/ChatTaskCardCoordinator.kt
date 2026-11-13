@@ -263,7 +263,7 @@ class ChatTaskCardCoordinator(
                         taskCardId = taskCardId,
                         stepId = step.id,
                         status = TaskStepStatus.FAILED,
-                        result = "[需手动] " + auditStateString(
+                        result = auditStateString(localizeString, R.string.review_retry_manual_prefix, "[需手动]") + " " + auditStateString(
                             localizeString,
                             R.string.audit_retry_manual_required,
                             "高危工具 %1\$s 不自动重试，请重新发起以再次确认",
@@ -301,7 +301,8 @@ class ChatTaskCardCoordinator(
                             taskCardId = taskCardId,
                             stepId = step.id,
                             status = TaskStepStatus.CANCELLED,
-                            result = "[取消] " + auditStateString(localizeString, R.string.audit_retry_cancelled, "重试 %1\$s 已取消", step.title),
+                            result = auditStateString(localizeString, R.string.review_retry_cancelled_prefix, "[取消]") + " " +
+                                auditStateString(localizeString, R.string.audit_retry_cancelled, "重试 %1\$s 已取消", step.title),
                             startedAt = startedAt,
                             finishedAt = System.currentTimeMillis(),
                             autoExpand = false,
@@ -314,7 +315,7 @@ class ChatTaskCardCoordinator(
                 val timedOut = retryResult == null
                 val toolResult = retryResult
                     ?: (
-                        "[超时] " + auditStateString(
+                        auditStateString(localizeString, R.string.review_retry_timeout_prefix, "[超时]") + " " + auditStateString(
                             localizeString,
                             R.string.audit_retry_timeout,
                             "重试 %1\$s 超过 %2\$d 秒未响应,已终止",

@@ -92,7 +92,7 @@
     <string name="debug_no_details">(Sin detalles)</string>
     <string name="debug_db_error_advice">Ve a Ajustes → Copias de seguridad para restaurar una copia automática. Exporta las conversaciones importantes antes de reinstalar la aplicación.</string>
     <string name="debug_integrity_check_passed">Comprobación de integridad superada</string>
-    <string name="debug_integrity_check_failed">La verificación de integridad falló; consulte los detalles</string>
+    <string name="debug_integrity_check_failed">La comprobación de integridad falló. Consulta los detalles.</string>
     <string name="debug_checking">Comprobando…</string>
     <string name="debug_check_now">Compruébalo ahora</string>
     <string name="debug_no_check_record">Aún no hay registro de verificación\n\nToque el botón a continuación para ejecutar una verificación de integridad ahora.</string>

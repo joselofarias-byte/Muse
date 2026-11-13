@@ -203,7 +203,7 @@ fun ComponentGalleryScreen(onBack: () -> Unit) {
             MuseTextField(
                 value = value,
                 onValueChange = { value = it },
-                placeholder = { Text("Field") },
+                placeholder = { Text(stringResource(R.string.review_gallery_1)) },
                 singleLine = true,
             )
         }
@@ -216,7 +216,7 @@ fun ComponentGalleryScreen(onBack: () -> Unit) {
                 style = MaterialTheme.typography.titleMedium,
             )
             Spacer(Modifier.height(MusePaddings.itemGap))
-            MuseCapsuleButton(text = "Close", onClick = { overlay = null })
+            MuseCapsuleButton(text = stringResource(R.string.action_close), onClick = { overlay = null })
         }
 
         GalleryOverlay.SelectionSheet -> MuseSelectionSheet(
@@ -241,7 +241,7 @@ fun ComponentGalleryScreen(onBack: () -> Unit) {
             Column(modifier = Modifier.padding(MusePaddings.itemGap)) {
                 Text(text = "MusePopover", style = MaterialTheme.typography.labelLarge)
                 Text(
-                    text = "Long-press menu anchored at the press point",
+                    text = stringResource(R.string.review_gallery_2),
                     style = MaterialTheme.typography.bodySmall,
                     color = MuseActionColors.mutedContent,
                 )
@@ -364,7 +364,7 @@ private fun ButtonsSection() {
             onClick = {},
         )
         MuseCapsuleButton(
-            text = "Primary + icon",
+            text = stringResource(R.string.review_gallery_3),
             leadingIcon = MuseIcons.check,
             onClick = {},
         )
@@ -379,21 +379,21 @@ private fun ButtonsSection() {
             onClick = {},
         )
         MuseCapsuleButton(
-            text = "Destructive",
+            text = stringResource(R.string.review_gallery_4),
             leadingIcon = MuseIcons.trash,
             destructive = true,
             onClick = {},
         )
         Row(horizontalArrangement = Arrangement.spacedBy(MusePaddings.itemGap)) {
             MuseCapsuleButton(
-                text = "Secondary",
+                text = stringResource(R.string.review_gallery_5),
                 variant = IosCapsuleButtonVariant.Secondary,
                 fillWidth = false,
                 onClick = {},
                 modifier = Modifier.weight(1f),
             )
             MuseCapsuleButton(
-                text = "Text",
+                text = stringResource(R.string.review_gallery_6),
                 variant = IosCapsuleButtonVariant.Text,
                 fillWidth = false,
                 onClick = {},
@@ -414,30 +414,30 @@ private fun IconButtonsSection() {
             MuseTactileButton(
                 icon = MuseIcons.sliders,
                 onClick = {},
-                contentDescription = "plain",
+                contentDescription = stringResource(R.string.review_gallery_7),
             )
             MuseTactileButton(
                 icon = MuseIcons.star,
                 onClick = {},
-                contentDescription = "tonal",
+                contentDescription = stringResource(R.string.review_gallery_8),
                 container = MuseIconContainer.Tonal,
             )
             MuseTactileButton(
                 icon = MuseIcons.plus,
                 onClick = {},
-                contentDescription = "solid",
+                contentDescription = stringResource(R.string.review_gallery_9),
                 container = MuseIconContainer.Solid,
             )
             MuseTactileButton(
                 icon = MuseIcons.refresh,
                 onClick = {},
-                contentDescription = "neutral",
+                contentDescription = stringResource(R.string.review_gallery_10),
                 container = MuseIconContainer.Neutral,
             )
             MuseTactileButton(
                 icon = MuseIcons.trash,
                 onClick = {},
-                contentDescription = "disabled",
+                contentDescription = stringResource(R.string.review_gallery_11),
                 container = MuseIconContainer.Tonal,
                 enabled = false,
             )
@@ -449,7 +449,7 @@ private fun IconButtonsSection() {
             MuseTactileButton(
                 icon = MuseIcons.user,
                 onClick = {},
-                contentDescription = "large",
+                contentDescription = stringResource(R.string.review_gallery_12),
                 size = MuseIconSizes.touchTarget,
                 iconSize = MuseIconSizes.iconLarge,
                 container = MuseIconContainer.Solid,
@@ -458,7 +458,7 @@ private fun IconButtonsSection() {
             MuseFloatingButton(
                 icon = MuseIcons.plus,
                 onClick = {},
-                contentDescription = "fab",
+                contentDescription = stringResource(R.string.review_gallery_13),
             )
         }
         GalleryLabel("MuseTactileButton: None / Tonal / Solid / Neutral / Disabled, touch target 48dp")
@@ -641,7 +641,7 @@ private fun SurfacesSection() {
             elevation = MuseElevation.card,
         ) {
             Column(modifier = Modifier.padding(MusePaddings.cardInner)) {
-                Text(text = "MuseSurface · extraLarge + card elevation", style = MaterialTheme.typography.bodyMedium)
+                Text(text = stringResource(R.string.review_gallery_17), style = MaterialTheme.typography.bodyMedium)
             }
         }
         MuseSurface(
@@ -651,7 +651,7 @@ private fun SurfacesSection() {
             color = MuseActionColors.neutralContainer,
         ) {
             Column(modifier = Modifier.padding(MusePaddings.cardInner)) {
-                Text(text = "MuseSurface · clickable + neutral container", style = MaterialTheme.typography.bodyMedium)
+                Text(text = stringResource(R.string.review_gallery_18), style = MaterialTheme.typography.bodyMedium)
             }
         }
         MuseIsland(modifier = Modifier.fillMaxWidth()) {
@@ -678,7 +678,7 @@ private fun SurfacesSection() {
                 color = MuseActionColors.neutralContainer,
             ) {
                 Column(modifier = Modifier.padding(MusePaddings.cardInner)) {
-                    Text(text = "Edge glow · pill outline variant", style = MaterialTheme.typography.bodyMedium)
+                    Text(text = stringResource(R.string.review_gallery_19), style = MaterialTheme.typography.bodyMedium)
                 }
             }
         }
@@ -686,13 +686,13 @@ private fun SurfacesSection() {
             MuseListItem(
                 onClick = {},
                 leadingContent = { IconTile(icon = MuseIcons.edit) },
-                supportingContent = { Text("headline / supporting / leading / trailing") },
+                supportingContent = { Text(stringResource(R.string.review_gallery_20)) },
                 trailingContent = { ChevronRight() },
                 headlineContent = { Text("MuseListItem") },
             )
             MuseDivider(startIndent = 0.dp)
             MuseListItem(
-                headlineContent = { Text("MuseListItem · not clickable") },
+                headlineContent = { Text(stringResource(R.string.review_gallery_21)) },
                 supportingContent = { Text("onClick = null") },
             )
         }
@@ -744,7 +744,7 @@ private fun OverlaysSection(onOpen: (GalleryOverlay) -> Unit, onPopoverAnchor: (
     GallerySection(stringResource(R.string.gallery_group_overlays)) {
         MuseCapsuleButton(text = "MuseDialog", onClick = { onOpen(GalleryOverlay.Dialog) })
         MuseCapsuleButton(
-            text = "MuseDialog · destructive",
+            text = stringResource(R.string.review_gallery_14),
             destructive = true,
             onClick = { onOpen(GalleryOverlay.DangerDialog) },
         )

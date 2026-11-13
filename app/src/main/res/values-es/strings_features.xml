@@ -195,7 +195,7 @@
     <string name="quick_notes_empty_title">Aún no hay notas</string>
     <string name="quick_notes_empty_subtitle">Tu primer pensamiento aparecerá aquí.</string>
     <string name="quick_notes_empty_search_title">No hay notas coincidentes</string>
-    <string name="quick_notes_empty_search_subtitle">Pruebe con una palabra clave diferente</string>
+    <string name="quick_notes_empty_search_subtitle">Prueba con otra palabra clave</string>
     <string name="quick_notes_copy">Copiar</string>
     <string name="quick_notes_copied">Copiado al portapapeles</string>
     <string name="quick_notes_send_to_chat">Enviar a nuevo chat</string>
@@ -232,7 +232,7 @@
     <string name="knowledge_clear">Vaciar</string>
     <string name="knowledge_no_match_title">No se encontraron documentos coincidentes</string>
     <string name="knowledge_empty_title">La base de conocimientos está vacía.</string>
-    <string name="knowledge_no_match_subtitle">Pruebe con una palabra clave diferente</string>
+    <string name="knowledge_no_match_subtitle">Prueba con otra palabra clave</string>
     <string name="knowledge_empty_subtitle">Toca + para importar un documento o un archivo comprimido (ZIP, 7Z o RAR).</string>
     <string name="knowledge_deleted">Eliminado</string>
     <string name="knowledge_delete_doc">Eliminar documento</string>
@@ -426,7 +426,7 @@
     <!-- ===== ui/model ===== -->
     <string name="model_profile_title">Avatares de modelos</string>
     <string name="model_profile_empty_title">Aún no hay modelos</string>
-    <string name="model_profile_empty_subtitle">Primero agregue un proveedor de IA en Configuración</string>
+    <string name="model_profile_empty_subtitle">Primero agrega un proveedor de IA en Ajustes</string>
     <string name="groupchat_edit_cd">Editar chat grupal</string>
     <string name="groupchat_edit">Editar</string>
     <string name="groupchat_edit_title">Editar chat grupal</string>

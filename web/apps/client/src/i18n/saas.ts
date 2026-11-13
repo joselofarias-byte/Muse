@@ -3,7 +3,7 @@ import { formatMessage, type TranslateParams } from "./translate.js";
 
 // Other locales retain the original SaaS copy.
 export const SAAS_ES = {
-  "PROVIDER VAULT": "ALMACÉN DE PROVEEDORES",
+  "PROVIDER VAULT": "CLAVES DE PROVEEDORES",
   "ASSISTANT STUDIO": "ESTUDIO DE ASISTENTES",
   "MEMORY · RAG": "MEMORIA · RAG",
   "OBJECT STORAGE": "ALMACENAMIENTO DE OBJETOS",
@@ -93,10 +93,10 @@ export const SAAS_ES = {
   "退出登录": "Cerrar sesión",
   "加载失败": "No se pudo cargar",
   "发送失败": "No se pudo enviar",
-  "关闭会话列表": "Cerrar lista de sesiones",
+  "关闭会话列表": "Cerrar lista de conversaciones",
   "＋ 新对话": "＋ Nueva conversación",
   "设置 Provider / Assistant": "Configurar proveedor / asistente",
-  "打开会话列表": "Abrir lista de sesiones",
+  "打开会话列表": "Abrir lista de conversaciones",
   "新对话": "Nueva conversación",
   "生成中…": "Generando…",
   "在线": "En línea",

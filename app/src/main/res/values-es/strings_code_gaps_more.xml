@@ -76,7 +76,7 @@
     <string name="greeting_event_followup_appointment">consulta de seguimiento</string>
     <string name="greeting_event_followup_examination">revisión de seguimiento</string>
     <string name="greeting_event_surgery">operación</string>
-    <string name="greeting_event_prescription_pickup">recogida de medicamentos</string>
+    <string name="greeting_event_prescription_pickup">retiro de medicamentos</string>
     <string name="greeting_event_repayment">pago de deuda</string>
     <string name="greeting_event_rent_payment">pago del alquiler</string>
     <string name="greeting_event_payment">pago</string>

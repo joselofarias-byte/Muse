@@ -66,7 +66,7 @@
     <string name="assistant_detail_clear_all">Borrar todo</string>
     <string name="assistant_detail_selected_count">%1$d seleccionado</string>
     <string name="assistant_detail_enable_memory">Habilitar memoria</string>
-    <string name="assistant_detail_enable_memory_desc">Cuando está apagado, este asistente no inyectará memoria a largo plazo</string>
+    <string name="assistant_detail_enable_memory_desc">Si lo desactivas, este asistente dejará de incorporar recuerdos a largo plazo al contexto.</string>
     <string name="assistant_detail_use_global_memory">Usar memoria global</string>
     <string name="assistant_detail_use_global_memory_desc">Al activarlo, este asistente también usa el perfil compartido, los recuerdos fijados y las experiencias. Sus hechos y chats recientes propios siguen disponibles. Está desactivado por defecto en asistentes nuevos.</string>
     <string name="assistant_detail_recent_chats_reference">Contexto de conversaciones recientes</string>
@@ -444,15 +444,15 @@
     <string name="skill_label_source">Fuente</string>
     <string name="skill_close">Cerrar</string>
     <string name="skill_row_cd">%1$s, %2$s. Toca para ver los detalles.</string>
-    <string name="skill_use_case_read_file">Cuando necesite leer notas, configuraciones o archivos en caché en la aplicación, el LLM lo llamará automáticamente.</string>
-    <string name="skill_use_case_write_file">Cuando necesite guardar notas, generar documentos o conservar datos, el LLM lo llamará automáticamente.</string>
-    <string name="skill_use_case_http_get">Cuando necesite solicitar API externas (por ejemplo, clima, tipos de cambio), el LLM lo llamará automáticamente.</string>
-    <string name="skill_use_case_http_post">Cuando necesite enviar datos a servicios externos (por ejemplo, enviar un webhook), el LLM lo llamará automáticamente.</string>
-    <string name="skill_use_case_web_search">Cuando pregunte sobre información en tiempo real (noticias, datos de mercado, últimas actualizaciones), el LLM buscará en la web automáticamente.</string>
+    <string name="skill_use_case_read_file">El asistente puede usar esta herramienta para leer notas, ajustes y archivos de la caché de la aplicación.</string>
+    <string name="skill_use_case_write_file">El asistente puede usar esta herramienta para guardar notas, generar documentos y conservar datos.</string>
+    <string name="skill_use_case_http_get">El asistente puede consultar servicios externos, por ejemplo, para obtener el clima o los tipos de cambio.</string>
+    <string name="skill_use_case_http_post">El asistente puede enviar datos a servicios externos, por ejemplo, mediante un webhook.</string>
+    <string name="skill_use_case_web_search">El asistente puede buscar en la web cuando necesites información actual, como noticias o datos del mercado.</string>
     <string name="skill_use_case_web_fetch">Al proporcionar un enlace web, el LLM obtiene el texto de la página; los resultados largos se conservan completos y pueden leerse por páginas.</string>
-    <string name="skill_use_case_knowledge_search">Cuando su pregunta involucra documentos de la base de conocimientos, el LLM buscará en la base de conocimientos en lugar de adivinar.</string>
-    <string name="skill_use_case_arxiv_search">Cuando pregunte sobre artículos académicos o direcciones de investigación, el LLM buscará en el repositorio de preimpresiones de arXiv.</string>
-    <string name="skill_use_case_install_skill">Cuando describe una nueva necesidad de capacidad (por ejemplo, \"crear una habilidad para verificar los tipos de cambio\"), el LLM generará e instalará una nueva habilidad automáticamente.</string>
+    <string name="skill_use_case_knowledge_search">El asistente puede buscar en la base de conocimientos cuando tu pregunta se refiera a los documentos que contiene.</string>
+    <string name="skill_use_case_arxiv_search">El asistente puede buscar artículos académicos y temas de investigación en arXiv.</string>
+    <string name="skill_use_case_install_skill">El asistente puede crear una habilidad cuando necesites una función nueva, por ejemplo, consultar los tipos de cambio.</string>
     <!-- ===== Assistant detail: regex rules ===== -->
     <string name="assistant_detail_regex_title">Reglas de reemplazo de expresiones regulares</string>
     <string name="assistant_detail_regex_desc">Aplicar reemplazos de expresiones regulares en mensajes de usuario/asistente (reemplazo de nombre de función, filtrado de palabras confidenciales, normalización de formato, etc.)</string>

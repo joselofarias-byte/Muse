@@ -700,7 +700,7 @@ class WebServer(
                 // L1: 添加 Referrer-Policy 头,防止 JWT query param 通过 Referer 头泄露到第三方
                 call.response.headers.append("Referrer-Policy", "no-referrer")
                 if (!servePackagedAsset(call, "muse-web/index.html")) {
-                    call.respondText(WebServerUi.INDEX_HTML, ContentType.Text.Html)
+                    call.respondText(WebServerUi.indexHtml(context), ContentType.Text.Html)
                 }
             }
 

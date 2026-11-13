@@ -25,6 +25,12 @@ internal object ToolResultJudge {
 
     private val BRACKET_FAILURE_MARKERS = listOf(
         "[超时]",
+        "[Timed out]",
+        "[Cancelled]",
+        "[Action required]",
+        "[Tiempo agotado]",
+        "[Cancelado]",
+        "[Requiere intervención]",
         "[中断]",
         "[工具输出已截断",
         "[错误]",

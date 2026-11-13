@@ -1,0 +1,100 @@
+archivo	clave	antes	después
+app/src/main/res/values-es/strings_review_literals.xml	review_virtual_display_title		Pantalla virtual #%1$d
+app/src/main/res/values-es/strings_review_literals.xml	review_virtual_display_package		Pantalla virtual #%1$d · %2$s
+app/src/main/res/values-es/strings_review_literals.xml	review_virtual_display_unavailable		No se puede obtener la imagen. Es posible que el servicio de pantalla virtual se haya desconectado. Cierra la pantalla y pide al asistente que lo intente de nuevo.
+app/src/main/res/values-es/strings_review_literals.xml	review_virtual_display_loading		Obteniendo imagen…
+app/src/main/res/values-es/strings_review_literals.xml	review_virtual_display_preview		Vista previa de la pantalla virtual
+app/src/main/res/values-es/strings_review_literals.xml	review_virtual_display_tapped		Se tocó %1$s. Si no ocurre nada, es posible que ese control no admita toques simulados.
+app/src/main/res/values-es/strings_review_literals.xml	review_virtual_display_tap_hint		Toca la vista previa para controlar esta pantalla
+app/src/main/res/values-es/strings_review_literals.xml	review_pinned_memories_count		Recuerdos fijados (%1$d)
+app/src/main/res/values-es/strings_review_literals.xml	review_debug_tag		Etiqueta
+app/src/main/res/values-es/strings_review_literals.xml	review_subagent_thread		Conversación: %1$s
+app/src/main/res/values-es/strings_review_literals.xml	review_vision_probe_request		¿De qué color es esta imagen?
+app/src/main/res/values-es/strings_review_literals.xml	review_build_variant		Compilación: %1$s
+app/src/main/res/values-es/strings_review_literals.xml	review_build_debug		Depuración
+app/src/main/res/values-es/strings_review_literals.xml	review_build_release		Distribución
+app/src/main/res/values-es/strings_review_literals.xml	review_gallery_1		Campo
+app/src/main/res/values-es/strings_review_literals.xml	review_gallery_2		Menú anclado al punto de la pulsación prolongada
+app/src/main/res/values-es/strings_review_literals.xml	review_gallery_3		Botón principal con icono
+app/src/main/res/values-es/strings_review_literals.xml	review_gallery_4		Acción destructiva
+app/src/main/res/values-es/strings_review_literals.xml	review_gallery_5		Secundario
+app/src/main/res/values-es/strings_review_literals.xml	review_gallery_6		Botón de texto
+app/src/main/res/values-es/strings_review_literals.xml	review_gallery_7		Simple
+app/src/main/res/values-es/strings_review_literals.xml	review_gallery_8		Tonal
+app/src/main/res/values-es/strings_review_literals.xml	review_gallery_9		Sólido
+app/src/main/res/values-es/strings_review_literals.xml	review_gallery_10		Neutro
+app/src/main/res/values-es/strings_review_literals.xml	review_gallery_11		Desactivado
+app/src/main/res/values-es/strings_review_literals.xml	review_gallery_12		Grande
+app/src/main/res/values-es/strings_review_literals.xml	review_gallery_13		Botón de acción flotante
+app/src/main/res/values-es/strings_review_literals.xml	review_gallery_14		MuseDialog · acción destructiva
+app/src/main/res/values-es/strings_review_literals.xml	review_gallery_15		SettingsItemRow · contenido al final
+app/src/main/res/values-es/strings_review_literals.xml	review_gallery_16		SettingsItemRow · desactivado
+app/src/main/res/values-es/strings_review_literals.xml	review_gallery_17		MuseSurface · extragrande con elevación de tarjeta
+app/src/main/res/values-es/strings_review_literals.xml	review_gallery_18		MuseSurface · contenedor neutro interactivo
+app/src/main/res/values-es/strings_review_literals.xml	review_gallery_19		Brillo en los bordes · contorno de cápsula
+app/src/main/res/values-es/strings_review_literals.xml	review_gallery_20		Título / descripción / contenido inicial / contenido final
+app/src/main/res/values-es/strings_review_literals.xml	review_gallery_21		MuseListItem · sin acción al tocar
+app/src/main/res/values-es/strings_review_literals.xml	review_character_watermark		Creado con Muse · museai.ltd
+app/src/main/res/values-es/strings_review_literals.xml	review_legacy_1		La interfaz web se renovó. Actualiza Muse para usar la nueva versión. Esta es la página de compatibilidad.
+app/src/main/res/values-es/strings_review_literals.xml	review_legacy_2		Introduce el PIN de 6 dígitos que aparece en los ajustes de Muse en tu teléfono
+app/src/main/res/values-es/strings_review_literals.xml	review_legacy_3		Solo pueden acceder este dispositivo y los dispositivos autorizados de la red local
+app/src/main/res/values-es/strings_review_literals.xml	review_legacy_4		Inicia sesión para continuar
+app/src/main/res/values-es/strings_review_literals.xml	review_legacy_5		Introduce el PIN de 6 dígitos
+app/src/main/res/values-es/strings_review_literals.xml	review_legacy_6		Proveedor:\u0020
+app/src/main/res/values-es/strings_review_literals.xml	review_legacy_7		Muse todavía no está conectado
+app/src/main/res/values-es/strings_review_literals.xml	review_legacy_8		PIN incorrecto
+app/src/main/res/values-es/strings_review_literals.xml	review_legacy_9		Todavía no hay proveedores
+app/src/main/res/values-es/strings_review_literals.xml	review_legacy_10		No se pudo cargar:\u0020
+app/src/main/res/values-es/strings_review_literals.xml	review_legacy_11		Escribe un mensaje…
+app/src/main/res/values-es/strings_review_literals.xml	review_legacy_12		Proveedores de modelos
+app/src/main/res/values-es/strings_review_literals.xml	review_legacy_13		Todavía no hay conversaciones
+app/src/main/res/values-es/strings_review_literals.xml	review_legacy_14		Todavía no hay mensajes
+app/src/main/res/values-es/strings_review_literals.xml	review_legacy_15		No se pudo conectar
+app/src/main/res/values-es/strings_review_literals.xml	review_legacy_16		Cargando…
+app/src/main/res/values-es/strings_review_literals.xml	review_legacy_17		Modelo actual
+app/src/main/res/values-es/strings_review_literals.xml	review_legacy_18		\u0020modelos
+app/src/main/res/values-es/strings_review_literals.xml	review_legacy_19		Sin seleccionar
+app/src/main/res/values-es/strings_review_literals.xml	review_legacy_20		Nueva conversación
+app/src/main/res/values-es/strings_review_literals.xml	review_legacy_21		Sin título
+app/src/main/res/values-es/strings_review_literals.xml	review_legacy_22		Fijada
+app/src/main/res/values-es/strings_review_literals.xml	review_legacy_23		Actualizar
+app/src/main/res/values-es/strings_review_literals.xml	review_legacy_24		Ajustes
+app/src/main/res/values-es/strings_review_literals.xml	review_legacy_25		Desconectar
+app/src/main/res/values-es/strings_review_literals.xml	review_legacy_26		Detener
+app/src/main/res/values-es/strings_review_literals.xml	review_legacy_27		Enviar
+app/src/main/res/values-es/strings_review_literals.xml	review_legacy_28		Volver
+app/src/main/res/values-es/strings_review_literals.xml	review_legacy_29		Activado
+app/src/main/res/values-es/strings_review_literals.xml	review_legacy_30		Desactivado
+app/src/main/res/values-es/strings_review_literals.xml	review_legacy_31		Conectar
+app/src/main/res/values-es/strings_review_literals.xml	review_legacy_32		Yo
+app/src/main/res/values-es/strings_review_literals.xml	review_legacy_33		Ninguno
+app/src/main/res/values-es/strings_review_literals.xml	review_widget_chat_label		Conversación
+app/src/main/res/values-es/strings_review_literals.xml	review_retry_manual_prefix		[Requiere intervención]
+app/src/main/res/values-es/strings_review_literals.xml	review_retry_cancelled_prefix		[Cancelado]
+app/src/main/res/values-es/strings_review_literals.xml	review_retry_timeout_prefix		[Tiempo agotado]
+app/src/main/res/values-es/strings_debug.xml	debug_integrity_check_failed	La verificación de integridad falló; consulte los detalles	La comprobación de integridad falló. Consulta los detalles.
+app/src/main/res/values-es/strings_code_gaps_more.xml	greeting_event_prescription_pickup	recogida de medicamentos	retiro de medicamentos
+app/src/main/res/values-es/strings_ui_main.xml	assistant_detail_enable_memory_desc	Cuando está apagado, este asistente no inyectará memoria a largo plazo	Si lo desactivas, este asistente dejará de incorporar recuerdos a largo plazo al contexto.
+app/src/main/res/values-es/strings_ui_main.xml	skill_use_case_read_file	Cuando necesite leer notas, configuraciones o archivos en caché en la aplicación, el LLM lo llamará automáticamente.	El asistente puede usar esta herramienta para leer notas, ajustes y archivos de la caché de la aplicación.
+app/src/main/res/values-es/strings_ui_main.xml	skill_use_case_write_file	Cuando necesite guardar notas, generar documentos o conservar datos, el LLM lo llamará automáticamente.	El asistente puede usar esta herramienta para guardar notas, generar documentos y conservar datos.
+app/src/main/res/values-es/strings_ui_main.xml	skill_use_case_http_get	Cuando necesite solicitar API externas (por ejemplo, clima, tipos de cambio), el LLM lo llamará automáticamente.	El asistente puede consultar servicios externos, por ejemplo, para obtener el clima o los tipos de cambio.
+app/src/main/res/values-es/strings_ui_main.xml	skill_use_case_http_post	Cuando necesite enviar datos a servicios externos (por ejemplo, enviar un webhook), el LLM lo llamará automáticamente.	El asistente puede enviar datos a servicios externos, por ejemplo, mediante un webhook.
+app/src/main/res/values-es/strings_ui_main.xml	skill_use_case_web_search	Cuando pregunte sobre información en tiempo real (noticias, datos de mercado, últimas actualizaciones), el LLM buscará en la web automáticamente.	El asistente puede buscar en la web cuando necesites información actual, como noticias o datos del mercado.
+app/src/main/res/values-es/strings_ui_main.xml	skill_use_case_knowledge_search	Cuando su pregunta involucra documentos de la base de conocimientos, el LLM buscará en la base de conocimientos en lugar de adivinar.	El asistente puede buscar en la base de conocimientos cuando tu pregunta se refiera a los documentos que contiene.
+app/src/main/res/values-es/strings_ui_main.xml	skill_use_case_arxiv_search	Cuando pregunte sobre artículos académicos o direcciones de investigación, el LLM buscará en el repositorio de preimpresiones de arXiv.	El asistente puede buscar artículos académicos y temas de investigación en arXiv.
+app/src/main/res/values-es/strings_ui_main.xml	skill_use_case_install_skill	"Cuando describe una nueva necesidad de capacidad (por ejemplo, \""crear una habilidad para verificar los tipos de cambio\""), el LLM generará e instalará una nueva habilidad automáticamente."	El asistente puede crear una habilidad cuando necesites una función nueva, por ejemplo, consultar los tipos de cambio.
+app/src/main/res/values-es/strings_features.xml	quick_notes_empty_search_subtitle	Pruebe con una palabra clave diferente	Prueba con otra palabra clave
+app/src/main/res/values-es/strings_features.xml	knowledge_no_match_subtitle	Pruebe con una palabra clave diferente	Prueba con otra palabra clave
+app/src/main/res/values-es/strings_features.xml	model_profile_empty_subtitle	Primero agregue un proveedor de IA en Configuración	Primero agrega un proveedor de IA en Ajustes
+app/src/main/res/values-es/strings_errors.xml	error_storage_migration_failed	Error en la actualización de la base de datos; reinicie o reinstale la aplicación	No se pudo actualizar la base de datos. Reinicia la aplicación e inténtalo de nuevo.
+app/src/main/res/values-es/strings_settings_main.xml	settings_chat_reasoning_expand_subtitle	Contraído de forma predeterminada cuando está apagado	Si lo desactivas, el razonamiento se mostrará contraído.
+app/src/main/res/values-es/strings_settings_main.xml	settings_chat_reflection_expand_subtitle	Contraído de forma predeterminada cuando está apagado	Si lo desactivas, la reflexión se mostrará contraída.
+app/src/main/res/values-es/strings_settings_sub.xml	settings_miniphone_title	Mini teléfono	Teléfono virtual
+app/src/main/res/values-es/strings_settings_sub.xml	settings_miniphone_enable_title	Activar Mini teléfono	Activar teléfono virtual
+app/src/main/res/values-es/strings_settings_sub.xml	settings_miniphone_enable_subtitle	Al activarlo, aparece un acceso a Mini teléfono en la esquina superior derecha de la pantalla de inicio	Al activarlo, aparece un acceso al teléfono virtual en la esquina superior derecha de la pantalla de inicio
+app/src/main/res/values-es/strings_settings_sub.xml	settings_miniphone_desc_title	Qué es Mini teléfono	Qué es el teléfono virtual
+app/src/main/res/values-es/strings_settings_sub.xml	miniphone_tab_chats	Mini teléfono	Teléfono virtual
+app/src/main/res/values-es/strings_settings_sub.xml	settings_group_miniphone	Mini teléfono	Teléfono virtual
+app/src/main/res/values-es/strings_ui_misc.xml	home_miniphone_cd	Mini teléfono	Teléfono virtual
+miniphone/src/main/res/values-es/strings.xml	mp_me_version_label	BD de Mini teléfono v%1$d / aplicación %2$s	BD del teléfono virtual v%1$d / aplicación %2$s
+miniphone/src/main/res/values-es/strings.xml	mp_me_version_module	BD de Mini teléfono v%1$d	BD del teléfono virtual v%1$d

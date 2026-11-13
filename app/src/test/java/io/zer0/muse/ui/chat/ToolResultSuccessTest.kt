@@ -21,6 +21,14 @@ class ToolResultSuccessTest {
     )
 
     @Test
+    fun `localized terminal markers remain failures`() {
+        val coordinator = coordinator()
+        listOf("[Timed out]", "[Cancelled]", "[Action required]", "[Tiempo agotado]", "[Cancelado]", "[Requiere intervención]").forEach { marker ->
+            assertFalse("Localized marker was treated as success: $marker", coordinator.isToolResultSuccess("$marker details"))
+        }
+    }
+
+    @Test
     fun bracketedTerminalStatesAreFailures() {
         val coordinator = coordinator()
 

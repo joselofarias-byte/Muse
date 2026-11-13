@@ -132,6 +132,26 @@ class MistranslationGuardTest {
         }
     }
 
+    @Test
+    fun `Spanish virtual phone and display use descriptive localized names`() {
+        assertEquals("Teléfono virtual", text("es", R.string.settings_miniphone_title))
+        assertEquals("Vista previa de la pantalla virtual", text("es", R.string.review_virtual_display_preview))
+        assertEquals("Recuerdos fijados (%1\$d)", text("es", R.string.review_pinned_memories_count))
+        assertEquals("¿De qué color es esta imagen?", text("es", R.string.review_vision_probe_request))
+    }
+
+    @Test
+    fun `Spanish compatibility page uses selected resources and keeps protocol fields`() {
+        val config = Configuration(base.resources.configuration).apply { setLocale(Locale.forLanguageTag("es-UY")) }
+        val html = io.zer0.muse.web.WebServerUi.indexHtml(base.createConfigurationContext(config))
+        listOf("Nueva conversación", "Introduce el PIN", "No se pudo cargar: ", "lang=\"es-UY\"").forEach { copy ->
+            assertTrue("Missing Spanish compatibility copy: $copy", html.contains(copy))
+        }
+        listOf("/api/auth/pin-login", "chat.send", "session.new", "requestId").forEach { token ->
+            assertTrue("Changed protocol field: $token", html.contains(token))
+        }
+    }
+
     private val locales = listOf("zh", "en", "es", "ja", "ko", "pt-rBR", "ru")
 
     @Test

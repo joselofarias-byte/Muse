@@ -534,10 +534,10 @@
     <string name="settings_provider_media_gen_section">Modelos de generación de medios</string>
     <string name="settings_asr_entry_title">Motor de reconocimiento de voz</string>
     <string name="settings_asr_entry_subtitle">Selecciona un motor de voz a texto (p. ej. Paraformer / Whisper)</string>
-    <string name="settings_miniphone_title">Mini teléfono</string>
-    <string name="settings_miniphone_enable_title">Activar Mini teléfono</string>
-    <string name="settings_miniphone_enable_subtitle">Al activarlo, aparece un acceso a Mini teléfono en la esquina superior derecha de la pantalla de inicio</string>
-    <string name="settings_miniphone_desc_title">Qué es Mini teléfono</string>
+    <string name="settings_miniphone_title">Teléfono virtual</string>
+    <string name="settings_miniphone_enable_title">Activar teléfono virtual</string>
+    <string name="settings_miniphone_enable_subtitle">Al activarlo, aparece un acceso al teléfono virtual en la esquina superior derecha de la pantalla de inicio</string>
+    <string name="settings_miniphone_desc_title">Qué es el teléfono virtual</string>
     <string name="settings_miniphone_desc_body">Un escritorio inmersivo en miniatura: Momentos, álbum de IA, notas, clima y diario del modelo. Al desactivarlo, la pantalla de inicio vuelve al diseño original.</string>
     <string name="settings_font_section_title">Fuentes</string>
     <string name="settings_font_body_label">Fuente del texto</string>
@@ -552,7 +552,7 @@
     <string name="automation_orchestration_action">Orquestar tareas programadas</string>
     <string name="miniphone_moments_count">%1$d momentos registrados</string>
     <string name="miniphone_moments_subtitle">Registra cada momento</string>
-    <string name="miniphone_tab_chats">Mini teléfono</string>
+    <string name="miniphone_tab_chats">Teléfono virtual</string>
     <string name="miniphone_typing">escribiendo…</string>
     <string name="miniphone_time_just_now">Ahora</string>
     <string name="miniphone_time_minutes_ago">Hace %1$d min</string>
@@ -699,7 +699,7 @@
     <string name="settings_keep_alive_title">Mantener en segundo plano</string>
     <string name="settings_group_keep_alive">Siempre activo</string>
     <string name="settings_group_keep_alive_desc">Persistencia, optimización de batería y autoinicio</string>
-    <string name="settings_group_miniphone">Mini teléfono</string>
+    <string name="settings_group_miniphone">Teléfono virtual</string>
     <string name="settings_group_miniphone_desc">Teléfono integrado con una casa virtual en 2D</string>
     <string name="settings_keep_alive_subtitle">Mantiene el proceso en primer plano con una notificación permanente</string>
     <string name="settings_keep_alive_hint">Muse mostrará una notificación permanente. Android lo exige para servicios en primer plano y no se puede ocultar. En algunas ROM chinas también hay que permitir el inicio automático.</string>

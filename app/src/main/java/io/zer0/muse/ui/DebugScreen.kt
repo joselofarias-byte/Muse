@@ -470,7 +470,7 @@ private fun FilterRow(
         MuseTextField(
             value = tagQuery,
             onValueChange = onTagChange,
-            label = { Text("Tag") },
+            label = { Text(stringResource(R.string.review_debug_tag)) },
             singleLine = true,
             modifier = Modifier.width(140.dp),
         )

@@ -242,7 +242,7 @@ class WeClawReceiver(
                 if (base64 != null) {
                     ChannelInbox.record(
                         source = source,
-                        text = "[图片]",
+                        text = context.getString(io.zer0.muse.R.string.channel_conversation_image_placeholder),
                         rawPayload = "",
                         media = ChannelInbox.Media(kind = "image", base64 = base64),
                     )

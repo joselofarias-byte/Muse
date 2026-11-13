@@ -120,6 +120,7 @@ private data class ChatWidgetData(
 
 @Composable
 private fun MuseChatWidgetContent(data: ChatWidgetData, params: ActionParameters) {
+    val context = androidx.glance.LocalContext.current
     GlanceTheme {
         Column(
             modifier = GlanceModifier
@@ -130,7 +131,7 @@ private fun MuseChatWidgetContent(data: ChatWidgetData, params: ActionParameters
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = "muse",
+                    text = "Muse",
                     style = TextStyle(
                         fontWeight = FontWeight.Bold,
                         color = ColorProvider(Color(0xFF8B5CF6), Color(0xFFA78BFA)),
@@ -138,7 +139,7 @@ private fun MuseChatWidgetContent(data: ChatWidgetData, params: ActionParameters
                     ),
                 )
                 Text(
-                    text = " 对话",
+                    text = " " + context.getString(R.string.review_widget_chat_label),
                     style = TextStyle(
                         color = ColorProvider(Color(0xFF333333), Color(0xFFE5E5E5)),
                         fontSize = 16.sp,

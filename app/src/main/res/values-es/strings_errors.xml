@@ -24,7 +24,7 @@
     <!-- ── StorageError ── -->
     <string name="error_storage_db_full">La base de datos está llena. Libera espacio y vuelve a intentarlo.</string>
     <string name="error_storage_io_error">Error al leer o escribir en el almacenamiento local. Reinicia la aplicación.</string>
-    <string name="error_storage_migration_failed">Error en la actualización de la base de datos; reinicie o reinstale la aplicación</string>
+    <string name="error_storage_migration_failed">No se pudo actualizar la base de datos. Reinicia la aplicación e inténtalo de nuevo.</string>
 
     <!-- ── ValidationError ── -->
     <string name="error_validation_empty_input">La entrada no puede estar vacía</string>

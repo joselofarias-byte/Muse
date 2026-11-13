@@ -171,7 +171,7 @@
     <string name="speech_next_chunk_cd">Siguiente fragmento</string>
     <string name="speech_previous_chunk_cd">Fragmento anterior</string>
     <string name="speech_seek_backward_5s_cd">Retroceder 5 segundos</string>
-    <string name="home_miniphone_cd">Mini teléfono</string>
+    <string name="home_miniphone_cd">Teléfono virtual</string>
     <string name="browser_viewer_collapse">Contraer</string>
     <string name="browser_viewer_refresh">Actualizar</string>
     <string name="browser_viewer_close">Cerrar el navegador</string>

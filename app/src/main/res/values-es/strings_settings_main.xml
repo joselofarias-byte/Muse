@@ -333,9 +333,9 @@
     <string name="settings_chat_mood_expand">MOOD ampliado de forma predeterminada</string>
     <string name="settings_chat_mood_expand_subtitle">Los detalles se muestran contraídos de forma predeterminada. Toca para expandirlos.</string>
     <string name="settings_chat_reasoning_expand">Razonamiento ampliado por defecto</string>
-    <string name="settings_chat_reasoning_expand_subtitle">Contraído de forma predeterminada cuando está apagado</string>
+    <string name="settings_chat_reasoning_expand_subtitle">Si lo desactivas, el razonamiento se mostrará contraído.</string>
     <string name="settings_chat_reflection_expand">Reflexión expandida por defecto</string>
-    <string name="settings_chat_reflection_expand_subtitle">Contraído de forma predeterminada cuando está apagado</string>
+    <string name="settings_chat_reflection_expand_subtitle">Si lo desactivas, la reflexión se mostrará contraída.</string>
     <string name="settings_chat_interaction">Interacción</string>
     <string name="settings_chat_context_section">Gestión de contexto</string>
     <string name="settings_chat_streaming">Respuesta en streaming</string>

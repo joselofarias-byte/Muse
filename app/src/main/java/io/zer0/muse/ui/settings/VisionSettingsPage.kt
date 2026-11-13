@@ -221,9 +221,9 @@ fun VisionSettingsPage(onBack: () -> Unit) {
                                     scope.launch {
                                         val result = resultOf {
                                             visionBridge.prepare(
-                                                text = "探针测试",
+                                                text = contextResources.getString(R.string.settings_vision_probe_button),
                                                 images = listOf(VISION_PROBE_IMAGE_PNG_BASE64),
-                                                userRequest = "探针测试:这张图是什么颜色?",
+                                                userRequest = contextResources.getString(R.string.review_vision_probe_request),
                                                 // 不走缓存 key 维度的 session
                                                 sessionId = null,
                                             )

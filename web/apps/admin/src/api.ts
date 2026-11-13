@@ -1,3 +1,5 @@
+import { t } from "./i18n.js";
+
 const API_BASE = import.meta.env.VITE_API_BASE ?? "http://localhost:8080";
 
 export interface AdminSession { readonly token: string; readonly userId: string; readonly expiresAt: number; }
@@ -10,14 +12,14 @@ async function request<T>(path: string, init: RequestInit, session: AdminSession
   headers.set("authorization", `Bearer ${session.token}`);
   const response = await fetch(`${API_BASE}${path}`, { ...init, headers });
   const body: unknown = await response.json();
-  if (!response.ok) throw new Error(body && typeof body === "object" && "message" in body && typeof body.message === "string" ? body.message : `请求失败 (${response.status})`);
+  if (!response.ok) throw new Error(body && typeof body === "object" && "message" in body && typeof body.message === "string" ? body.message : t("requestFailed", { status: response.status }));
   return body as T;
 }
 
 export async function login(email: string, password: string): Promise<AdminSession> {
   const response = await fetch(`${API_BASE}/api/v1/auth/login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email, password }) });
   const body = await response.json() as { session?: AdminSession; message?: string };
-  if (!response.ok || !body.session) throw new Error(body.message ?? "登录失败");
+  if (!response.ok || !body.session) throw new Error(body.message ?? t("loginFailed"));
   return body.session;
 }
 export const listPlans = (session: AdminSession) => request<{ plans: Plan[] }>("/api/v1/admin/plans", {}, session);
