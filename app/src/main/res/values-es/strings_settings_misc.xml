@@ -92,8 +92,8 @@
     <!-- PresetProviderPickerDialog.kt -->
     <string name="settings_preset_select_provider">Seleccionar Proveedor</string>
     <string name="settings_preset_subtitle">Elige un proveedor oficial o un intermediario y agrega tu clave API.</string>
-    <string name="settings_preset_group_overseas">Oficial en el extranjero</string>
-    <string name="settings_preset_group_domestic">Funcionario Nacional</string>
+    <string name="settings_preset_group_overseas">Proveedores internacionales</string>
+    <string name="settings_preset_group_domestic">Proveedores de China</string>
     <string name="settings_preset_group_relay">Relé</string>
     <string name="settings_preset_no_match">No hay proveedores coincidentes</string>
     <string name="settings_preset_search_hint">Buscar proveedores o dominios</string>
@@ -164,7 +164,7 @@
     <string name="settings_multi_agent_description_hint">Propósito del equipo o escenario de colaboración</string>
     <string name="settings_multi_agent_select_members">Seleccionar miembros</string>
     <string name="settings_multi_agent_no_assistants">No hay asistentes disponibles.</string>
-    <string name="settings_multi_agent_save">Ahorrar</string>
+    <string name="settings_multi_agent_save">Guardar</string>
     <string name="settings_multi_agent_cancel">Cancelar</string>
 
     <!-- SettingsTutorialPage.kt -->
@@ -205,7 +205,7 @@
     <string name="settings_tutorial_ch3_s2_title">Cómo volver a una conversación anterior</string>
     <string name="settings_tutorial_ch3_s2_content">Abre la barra lateral desde el menú de la conversación y selecciona el chat que quieras continuar.\n\nLas conversaciones suelen aparecer de la más reciente a la más antigua. Sus títulos ayudan a identificar el tema.</string>
     <string name="settings_tutorial_ch3_s3_title">Cómo eliminar una conversación</string>
-    <string name="settings_tutorial_ch3_s3_content">En la lista del historial de conversaciones, mantenga presionada la conversación que desea eliminar.</string>
+    <string name="settings_tutorial_ch3_s3_content">Mantén pulsada la conversación que quieras borrar y selecciona Eliminar. La acción no se puede deshacer. Exporta la conversación o crea una copia de seguridad antes de eliminarla si quieres conservarla.</string>
     <string name="settings_tutorial_ch3_s4_title">Cómo buscar el historial de mensajes</string>
     <string name="settings_tutorial_ch3_s4_content">Abre la búsqueda desde la conversación o desde la lista de chats e introduce una palabra o una frase. Aparecerán los mensajes del historial que coincidan, tanto los tuyos como los del asistente. Selecciona un resultado para abrir su conversación.</string>
     <string name="settings_tutorial_ch3_s5_title">¿Qué es una respuesta en tiempo real?</string>
@@ -255,7 +255,7 @@
 
     <!-- Chapter 6 -->
     <string name="settings_tutorial_ch6_title">Capítulo 6: Gestión de datos</string>
-    <string name="settings_tutorial_ch6_s1_title">Historial de chat de respaldo (nube WebDAV/S3)</string>
+    <string name="settings_tutorial_ch6_s1_title">Copias de seguridad en la nube con WebDAV o S3</string>
     <string name="settings_tutorial_ch6_s1_content">Configura una copia de seguridad en la nube desde Ajustes → Datos y copia de seguridad.\n\n• WebDAV: introduce la dirección del servidor, las credenciales y la ruta de destino.\n• S3: introduce la dirección del servicio, la clave de acceso, la clave secreta y el nombre del contenedor.\n\nHaz una copia de prueba y comprueba que termine correctamente. Si quieres copias periódicas, activa la programación y elige su frecuencia. La copia puede incluir conversaciones, asistentes y configuraciones.</string>
     <string name="settings_tutorial_ch6_s2_title">Importar datos de otras aplicaciones</string>
     <string name="settings_tutorial_ch6_s2_content">Desde la importación de datos puedes cargar copias compatibles de aplicaciones como RikkaHub o Kelivo. Exporta primero los datos desde la aplicación de origen y selecciona el archivo en Muse.\n\nSegún el formato, pueden importarse proveedores, asistentes y conversaciones. Crea una copia de seguridad de los datos actuales antes de importar.</string>

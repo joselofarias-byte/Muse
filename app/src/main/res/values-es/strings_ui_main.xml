@@ -48,7 +48,7 @@
     <string name="assistant_detail_global_default_selected">Valor predeterminado global (seleccionado)</string>
     <string name="assistant_detail_model_selected">%1$s (Seleccionado)</string>
     <!-- Phase 6: Model picker UX improvements -->
-    <string name="assistant_detail_use_global_default_card">Utilice el modelo predeterminado global</string>
+    <string name="assistant_detail_use_global_default_card">Usar el modelo predeterminado de la aplicación</string>
     <string name="assistant_detail_using_global_model">Actualmente se utiliza el modelo predeterminado global: %1$s</string>
     <string name="assistant_detail_model_hint">Consejo: puedes elegir un modelo dedicado para cada asistente en la configuración del asistente.</string>
     <string name="assistant_detail_system_prompt_label">Instrucciones del sistema (rol/reglas)</string>
@@ -88,7 +88,7 @@
     <string name="assistant_detail_memory_edit_missing">Esta memoria ya no existe o el contenido no es válido</string>
     <string name="assistant_detail_edit_memory_dialog_title">Editar memoria</string>
     <string name="assistant_detail_input_fact">Escribe la información que quieres guardar</string>
-    <string name="assistant_detail_save">Ahorrar</string>
+    <string name="assistant_detail_save">Guardar</string>
     <string name="assistant_detail_cancel">Cancelar</string>
     <string name="assistant_detail_custom_headers_label">Encabezados personalizados JSON (por ejemplo, {\"X-Custom\":\"value\"})</string>
     <string name="assistant_detail_custom_bodies_label">JSON de cuerpo personalizado (por ejemplo, {\"user\":\"abc\"})</string>
@@ -96,38 +96,38 @@
 
     <!-- ===== Memory screen MemoryScreen ===== -->
     <string name="memory_screen_title">Memoria</string>
-    <string name="memory_screen_search_fact_hint">Buscar metahechos…</string>
+    <string name="memory_screen_search_fact_hint">Buscar recuerdos…</string>
     <string name="memory_screen_search_cd">Buscar</string>
-    <string name="memory_screen_add_fact_cd">Agregar metahecho</string>
+    <string name="memory_screen_add_fact_cd">Agregar recuerdo</string>
     <string name="memory_tab_facts">Hechos</string>
     <!-- v1.0.51: memory backfill migration progress -->
     <string name="memory_screen_cancel">Cancelar</string>
-    <string name="memory_screen_edit_fact">Editar metahecho</string>
+    <string name="memory_screen_edit_fact">Editar recuerdo</string>
     <string name="memory_screen_edit_summary">Editar resumen de sesión</string>
     <string name="memory_open_conversation">Abrir conversación</string>
     <string name="memory_conversation_meta">Asistente %1$s · Espacio %2$s</string>
     <string name="memory_screen_no_match">No se encontraron recuerdos coincidentes</string>
     <string name="memory_screen_search_results">Resultados de la búsqueda (%1$d)</string>
-    <string name="memory_screen_no_fact">Aún no hay metahechos</string>
+    <string name="memory_screen_no_fact">Todavía no hay recuerdos guardados</string>
     <string name="memory_screen_collapse">Contraer</string>
     <string name="memory_screen_expand">Expandir</string>
     <string name="memory_screen_edit_cd">Editar</string>
     <string name="memory_pin_cd">Fijar</string>
     <string name="memory_unpin_cd">Desfijar</string>
     <string name="memory_screen_delete_cd">Borrar</string>
-    <string name="memory_screen_load_failed">Error de carga: detalles completos del error</string>
-    <string name="memory_screen_copied_trace">Seguimiento de pila completo copiado al portapapeles</string>
-    <string name="memory_screen_copy_trace_cd">Copiar seguimiento de pila completo</string>
-    <string name="memory_screen_retry">Rever</string>
+    <string name="memory_screen_load_failed">No se pudieron cargar los datos. Consulta los detalles del error.</string>
+    <string name="memory_screen_copied_trace">Detalles técnicos del error copiados al portapapeles</string>
+    <string name="memory_screen_copy_trace_cd">Copiar los detalles técnicos del error</string>
+    <string name="memory_screen_retry">Reintentar</string>
     <string name="memory_screen_input_content">Introduce el contenido...</string>
-    <string name="memory_screen_save">Ahorrar</string>
-    <string name="memory_screen_not_running">no corriendo</string>
+    <string name="memory_screen_save">Guardar</string>
+    <string name="memory_screen_not_running">Sin actividad</string>
     <string name="memory_screen_has_error">Problemas encontrados</string>
     <string name="memory_screen_normal">Normal</string>
     <string name="memory_screen_overview">Descripción general de la memoria</string>
-    <string name="memory_screen_fact_total_label">Metahechos totales</string>
-    <string name="memory_screen_last_compile">Última recopilación</string>
-    <string name="memory_screen_no_compile_time">Ninguno todavía</string>
+    <string name="memory_screen_fact_total_label">Recuerdos guardados</string>
+    <string name="memory_screen_last_compile">Última actualización de la memoria</string>
+    <string name="memory_screen_no_compile_time">Todavía no se ha actualizado</string>
     <string name="memory_screen_health">Estado de salud</string>
     <string name="memory_screen_collapse_steps">Contraer detalles del paso</string>
     <string name="memory_screen_view_steps">Ver detalles del paso</string>
@@ -173,7 +173,7 @@
     <string name="memory_screen_experience_add_dialog_title">Nueva experiencia</string>
     <string name="memory_screen_experience_edit_title">Editar experiencia</string>
     <string name="memory_screen_experience_title_label">Título</string>
-    <string name="memory_screen_experience_title_hint">Breve descripción, p.e.</string>
+    <string name="memory_screen_experience_title_hint">Describe brevemente la experiencia</string>
     <string name="memory_screen_experience_content_label">Detalles</string>
     <string name="memory_screen_experience_content_hint">Pasos, advertencias, fragmentos de código, etc.</string>
     <string name="memory_screen_experience_category_label">Categoría (opcional)</string>
@@ -268,7 +268,7 @@
     <string name="settings_web_access_tip_iphone">En iPhone, ábrela en Safari y usa Compartir → Añadir a pantalla de inicio para verla a pantalla completa</string>
     <string name="settings_web_access_tip_same_wifi">El móvil y este dispositivo deben estar en la misma Wi-Fi</string>
     <string name="settings_web_access_tip_disable">Si desactivas el interruptor, los demás dispositivos se desconectan de inmediato</string>
-    <string name="settings_screen_rag">Recuperación de conocimientos</string>
+    <string name="settings_screen_rag">Búsqueda en la base de conocimientos</string>
     <string name="settings_screen_rag_desc">Configuración RAG / Incrustación / Parámetros de fragmentos</string>
     <!-- Data &amp; Privacy group (PII Guard) -->
     <string name="settings_screen_pii_guard">Protección de privacidad (PII)</string>
@@ -301,18 +301,18 @@
     <string name="message_annotate_title">Notas del mensaje</string>
     <string name="message_annotate_hint">Escribe una nota…</string>
     <string name="connector_page_title">Conectores</string>
-    <string name="connector_intro">Conecta servicios externos (calendario/notas/código). Rellena los endpoints y credenciales de la app registrada; la autorización usa el navegador del sistema y las credenciales se cifran.</string>
+    <string name="connector_intro">Conecta servicios externos, como calendarios, notas o repositorios. Configura las URL de la API y las credenciales de la aplicación registrada. La autorización se completa en el navegador y las credenciales se guardan cifradas.</string>
     <string name="connector_add">Añadir conector</string>
     <string name="connector_connect">Conectar</string>
-    <string name="connector_connect_success">Conectado %1$s</string>
+    <string name="connector_connect_success">Conexión completada: %1$s</string>
     <string name="connector_connect_failed">Error de conexión: %1$s</string>
     <string name="connector_empty">Aún no hay conectores.</string>
-    <string name="connector_config_corrupt">La configuración está dañada, datos preservados, puedes reimportar</string>
+    <string name="connector_config_corrupt">La configuración está dañada. Los datos se conservaron; puedes volver a importarla.</string>
     <string name="connector_field_authorize">URL de autorización</string>
     <string name="connector_field_token">URL de token</string>
-    <string name="connector_field_scope">Scope</string>
-    <string name="connector_field_client_id">Client ID</string>
-    <string name="connector_field_client_secret">Client Secret</string>
+    <string name="connector_field_scope">Permisos solicitados (scope)</string>
+    <string name="connector_field_client_id">ID del cliente (Client ID)</string>
+    <string name="connector_field_client_secret">Clave del cliente (Client Secret)</string>
     <string name="channel_inbox_title">Recibidos recientemente</string>
     <string name="channel_intro_title">Envía mensajes a tu IM</string>
     <string name="channel_intro">Una vez configurado, el asistente puede enviar mensajes a canales Feishu/QQ. Las credenciales se cifran y guardan solo en este dispositivo.</string>
@@ -379,7 +379,7 @@
 
     <!-- v1.25: Vision Assist (let text-only models "see" images via vision model) -->
     <string name="settings_vision_title">Asistencia de visión</string>
-    <string name="settings_vision_description">Cuando utilice un modelo de solo texto que no admita la entrada de imágenes, llame automáticamente a un modelo de visión para analizar imágenes e insertar descripciones en la conversación.</string>
+    <string name="settings_vision_description">Si el modelo actual solo admite texto, usa un modelo con visión para analizar las imágenes y agregar su descripción a la conversación.</string>
     <string name="settings_vision_enabled">Habilitar asistencia visual</string>
     <string name="settings_vision_enabled_subtitle">Envíe automáticamente imágenes al modelo de visión para su análisis.</string>
     <string name="settings_vision_model_section">Modelo de visión</string>
@@ -415,7 +415,7 @@
     <string name="skill_intro">Las habilidades son herramientas a las que el LLM puede recurrir.</string>
     <string name="skill_no_skill_title">Aún no hay habilidades</string>
     <string name="skill_no_skill_subtitle">Dile a la IA "crea una habilidad XX para mí", o toca + en la parte inferior derecha para importar un archivo</string>
-    <string name="skill_importing">Importador</string>
+    <string name="skill_importing">Importando…</string>
     <string name="skill_importing_detail">Leyendo y analizando documento...</string>
     <string name="skill_open_picker_failed">No se pudo abrir el selector de archivos: %1$s</string>
     <string name="skill_imported">Importado: %1$s</string>
@@ -516,8 +516,8 @@
     <string name="oauth_login">Iniciar sesión OAuth</string>
     <string name="oauth_login_success">Autorización OAuth completada</string>
     <string name="oauth_login_failed">Error al iniciar sesión en OAuth: %1$s</string>
-    <string name="oauth_reason_no_browser">No se puede abrir el navegador</string>
-    <string name="oauth_reason_no_activity">No se obtiene el contexto de la pantalla; inténtalo de nuevo</string>
+    <string name="oauth_reason_no_browser">No se pudo abrir el navegador</string>
+    <string name="oauth_reason_no_activity">No se pudo abrir la pantalla de autorización. Inténtalo de nuevo.</string>
     <string name="oauth_reason_not_configured">OAuth no está configurado</string>
     <string name="provider_test_no_api_key">Falta la clave de API</string>
     <string name="oauth_activity_context_unavailable">No se pudo obtener el contexto de Activity</string>
@@ -527,9 +527,9 @@
 
     <!-- ===== P2-11: OAuth credential isolation (revoke / auto refresh) ===== -->
     <string name="oauth_revoke">Revocar acceso</string>
-    <string name="oauth_revoke_confirm">¿Confirmar revocar el acceso OAuth para este proveedor?</string>
+    <string name="oauth_revoke_confirm">¿Revocar el acceso OAuth de este proveedor?</string>
     <string name="oauth_revoke_success">Acceso revocado</string>
-    <string name="oauth_token_expired">La autorización expiró, inicie sesión nuevamente</string>
+    <string name="oauth_token_expired">La autorización venció. Inicia sesión de nuevo.</string>
     <string name="oauth_token_refreshed">Autorización actualizada automáticamente</string>
     <string name="oauth_stored">Autorización almacenada</string>
 

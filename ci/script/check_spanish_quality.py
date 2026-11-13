@@ -73,6 +73,9 @@ def check_resources(res_dir: Path) -> list[str]:
             if CJK.search(value):
                 errors.append(f'{name}/{quantity}: Chinese residue')
             normalized = value.replace(r'\n', '\n').strip()
+            if (name.endswith('_save') or name == 'groupchat_edit_btn') and normalized == 'Ahorrar':
+                errors.append(f'{name}/{quantity}: save action mistranslated as saving money')
+
             if DANGLING_STEP.search(normalized) or normalized.endswith(';'):
                 errors.append(f'{name}/{quantity}: unfinished sentence or list')
             original = original_values.get(quantity, original_values.get('other', ''))
@@ -91,6 +94,9 @@ def check_known_terms(res_dir: Path) -> list[str]:
         'settings_assistant_lorebook': 'Libro de trasfondo',
         'settings_bubble_skin_section': 'Diseño',
         'proxy_host': 'Servidor',
+        'settings_backup_bucket': 'bucket S3',
+        'settings_preset_group_domestic': 'China',
+        'memory_screen_retry': 'Reintentar',
     }
     errors = []
     for name, term in expected.items():

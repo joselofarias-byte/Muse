@@ -5,8 +5,8 @@
     <!-- Keep in sync with values/strings_errors.xml and ErrorMessageMapper. -->
 
     <!-- ── NetworkError ── -->
-    <string name="error_network_timeout">Se agotó el tiempo de espera de la conexión de red. Verifique su red y vuelva a intentarlo.</string>
-    <string name="error_network_no_connection">No hay conexión de red disponible, verifique su configuración</string>
+    <string name="error_network_timeout">Se agotó el tiempo de conexión. Revisa la red y vuelve a intentarlo.</string>
+    <string name="error_network_no_connection">No hay conexión a internet. Revisa los ajustes de red.</string>
     <string name="error_network_dns_failed">No se pudo resolver la dirección del servidor. Revisa la red y el proxy.</string>
 
     <!-- ── AuthError ── -->
@@ -15,14 +15,14 @@
     <string name="error_auth_unauthorized">No autorizado para acceder a este recurso</string>
 
     <!-- ── ApiError ── -->
-    <string name="error_api_rate_limit">Demasiadas solicitudes, vuelva a intentarlo en %1$d segundos</string>
-    <string name="error_api_rate_limit_nodelay">Demasiadas solicitudes. Vuelva a intentarlo más tarde.</string>
+    <string name="error_api_rate_limit">Demasiadas solicitudes. Inténtalo de nuevo en %1$d segundos.</string>
+    <string name="error_api_rate_limit_nodelay">Demasiadas solicitudes. Inténtalo de nuevo más tarde.</string>
     <string name="error_api_server_error">El servicio no está disponible temporalmente. Inténtalo de nuevo más tarde.</string>
     <string name="error_api_model_not_found">El modelo no está disponible. Selecciona otro en Ajustes.</string>
     <string name="error_api_context_length">El mensaje supera el límite de contexto del modelo. Acórtalo y vuelve a intentarlo.</string>
 
     <!-- ── StorageError ── -->
-    <string name="error_storage_db_full">La base de datos está llena, borre los datos y vuelva a intentarlo.</string>
+    <string name="error_storage_db_full">La base de datos está llena. Libera espacio y vuelve a intentarlo.</string>
     <string name="error_storage_io_error">Error de lectura/escritura del almacenamiento local; reinicie la aplicación</string>
     <string name="error_storage_migration_failed">Error en la actualización de la base de datos; reinicie o reinstale la aplicación</string>
 
@@ -70,14 +70,14 @@
     <string name="err_chat_misc_delete_msg_failed">No se pudo eliminar: %1$s</string>
 
     <!-- ── ChatViewModel: error messages / state strings / Toast ── -->
-    <string name="err_chat_queue_full">La cola de envío está llena. Vuelva a intentarlo más tarde.</string>
+    <string name="err_chat_queue_full">La cola de envío está llena. Inténtalo de nuevo más tarde.</string>
     <string name="err_chat_msg_save_failed">No se pudo guardar el mensaje: %1$s</string>
     <string name="err_chat_db_closed">Se perdió la conexión con la base de datos. Reinicia la aplicación e inténtalo de nuevo.</string>
     <string name="err_chat_network_unresolvable">No se pudo conectar con el servidor. Revisa la red y la URL de la API.</string>
-    <string name="err_chat_network_timeout">Se agotó el tiempo de conexión, vuelva a intentarlo más tarde.</string>
+    <string name="err_chat_network_timeout">Se agotó el tiempo de conexión. Inténtalo de nuevo más tarde.</string>
     <string name="err_chat_auth_invalid">La clave API no es válida o tiene permisos insuficientes</string>
-    <string name="err_chat_rate_limited">Demasiadas solicitudes. Vuelva a intentarlo más tarde.</string>
-    <string name="err_chat_server_error">Error del servidor. Vuelva a intentarlo más tarde.</string>
+    <string name="err_chat_rate_limited">Demasiadas solicitudes. Inténtalo de nuevo más tarde.</string>
+    <string name="err_chat_server_error">El servidor devolvió un error. Inténtalo de nuevo más tarde.</string>
     <string name="err_chat_stream_broken">La respuesta de la transmisión se interrumpió. Vuelve a intentarlo.</string>
     <string name="err_chat_request_failed">Solicitud fallida: %1$s</string>
     <string name="err_chat_compress_too_few">Muy pocos mensajes para comprimir</string>
@@ -86,15 +86,15 @@
     <string name="err_chat_compress_no_need">Memoria actualizada, no se necesita compresión de mensajes</string>
     <string name="err_chat_compress_failed">Error de compresión: %1$s</string>
     <string name="err_chat_fetch_models_empty">El upstream no devolvió ningún modelo.</string>
-    <string name="err_chat_fetch_models_failed">Error de recuperación</string>
+    <string name="err_chat_fetch_models_failed">No se pudieron obtener los modelos</string>
     <string name="err_chat_fetch_models_no_server">No se puede conectar al servidor</string>
     <string name="err_chat_fetch_models_timeout">Se agotó el tiempo de conexión</string>
     <string name="err_chat_fetch_models_not_supported">Este proveedor no admite el punto final /models</string>
-    <string name="err_chat_fetch_models_failed_msg">Error de recuperación: %1$s</string>
+    <string name="err_chat_fetch_models_failed_msg">No se pudieron obtener los modelos: %1$s</string>
     <string name="err_chat_model_switched_toast">Modelo cambiado</string>
     <string name="settings_mcp_connected_tools">(%1$d herramientas)</string>
     <string name="settings_mcp_last_connected">Última conexión: %1$s</string>
-    <string name="settings_mcp_connected_no_tools">Conectado, pero sin herramientas disponibles (verifique la lista de herramientas del servidor o el enlace de extensión del asistente)</string>
+    <string name="settings_mcp_connected_no_tools">Conectado, pero no hay herramientas disponibles. Revisa las herramientas del servidor y las extensiones del asistente.</string>
     <string name="err_chat_fork_failed">No se pudo bifurcar la conversación: %1$s</string>
     <string name="err_chat_context_restarted_toast">Contexto reiniciado</string>
     <string name="err_chat_translate_empty">El resultado de la traducción está vacío</string>

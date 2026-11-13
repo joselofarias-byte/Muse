@@ -90,7 +90,7 @@
     <string name="debug_db_size_label">Tamaño de base de datos: %1$s</string>
     <string name="debug_db_check_time_label">Hora de verificación: %1$s</string>
     <string name="debug_no_details">(Sin detalles)</string>
-    <string name="debug_db_error_advice">Sugerencia: restaure la última copia de seguridad automática desde \"Configuración → Copia de seguridad &amp; Recuperación\", o exporte conversaciones críticas y reinstale la aplicación.</string>
+    <string name="debug_db_error_advice">Ve a Ajustes → Copias de seguridad para restaurar una copia automática. Exporta las conversaciones importantes antes de reinstalar la aplicación.</string>
     <string name="debug_integrity_check_passed">Se pasó el control de integridad</string>
     <string name="debug_integrity_check_failed">La verificación de integridad falló; consulte los detalles</string>
     <string name="debug_checking">Comprobando…</string>

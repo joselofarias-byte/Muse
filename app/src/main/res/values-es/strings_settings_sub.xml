@@ -213,21 +213,21 @@
     <!-- Data Import -->
     <string name="settings_import_page_title">Importación de datos</string>
     <string name="settings_import_migrate_title">Migrar datos de otras aplicaciones</string>
-    <string name="settings_import_migrate_desc">Si anteriormente utilizó RikkaHub o Kelivo, puede importar sus archivos de respaldo a Muse.</string>
+    <string name="settings_import_migrate_desc">Puedes importar copias de seguridad de RikkaHub o Kelivo a Muse.</string>
     <string name="settings_import_step1">Paso 1: aprenda cómo exportar una copia de seguridad</string>
     <string name="settings_import_rikkahub_desc">Cliente de chat de IA de Android</string>
     <string name="settings_import_rikkahub_step1">1. Abra Configuración en la aplicación RikkaHub.</string>
-    <string name="settings_import_rikkahub_step2">2. Busque la opción \"Copia de seguridad &amp; Sincronización\"</string>
+    <string name="settings_import_rikkahub_step2">2. Busca la sección de copias de seguridad y sincronización.</string>
     <string name="settings_import_rikkahub_step3">3. Toca «Crear copia de seguridad» para generar un archivo ZIP.</string>
     <string name="settings_import_step_remember">4. Recuerda dónde se guarda este archivo.</string>
     <string name="settings_import_kelivo_desc">Cliente de chat AI multiplataforma (Flutter)</string>
     <string name="settings_import_kelivo_step1">1. Abra Configuración en la aplicación Kelivo.</string>
-    <string name="settings_import_kelivo_step2">2. Busque la opción \"Copia de seguridad &amp; Restaurar\"</string>
+    <string name="settings_import_kelivo_step2">2. Busca la sección de copias de seguridad y restauración.</string>
     <string name="settings_import_kelivo_step3">3. Toca «Exportar copia de seguridad» para generar un archivo ZIP.</string>
     <string name="settings_import_step2_title">Paso 2: selecciona una copia de seguridad</string>
     <string name="settings_import_select_backup">Selecciona una copia de seguridad en formato ZIP</string>
     <string name="settings_importing">Importando…</string>
-    <string name="settings_import_tips">Consejos:\n• Para configuraciones de proveedores importadas, es posible que deba verificar manualmente que las claves API sean correctas\n• Las conversaciones importadas se crean como sesiones nuevas y no sobrescribirán los datos existentes\n• Si la importación falla, verifique que el archivo de respaldo esté completo</string>
+    <string name="settings_import_tips">Después de importar:\n• Comprueba que las claves API de los proveedores sean correctas.\n• Las conversaciones se agregan como nuevas y no sobrescriben las existentes.\n• Si la importación falla, comprueba que el archivo de la copia esté completo.</string>
     <string name="settings_import_ready">Estoy listo, selecciona archivo</string>
     <string name="settings_import_complete">Importación completa</string>
     <string name="settings_import_providers_count">Proveedores: %1$d</string>
@@ -240,7 +240,7 @@
     <string name="settings_import_cherrystudio_title">CherryStudio / Chatbox</string>
     <string name="settings_import_cherrystudio_desc">Cliente de IA de escritorio (configuración JSON)</string>
     <string name="settings_import_cherrystudio_step1">1. Abra Configuración en CherryStudio / Chatbox</string>
-    <string name="settings_import_cherrystudio_step2">2. Busque \"Exportación de datos\" o \"Exportar configuración\"</string>
+    <string name="settings_import_cherrystudio_step2">2. Busca «Exportar datos» o «Exportar configuración».</string>
     <string name="settings_import_cherrystudio_step3">3. Exportar la configuración del proveedor como un archivo JSON</string>
     <string name="settings_import_json_skipped_count">Omitido (campos en conflicto o faltantes): %1$d</string>
     <string name="settings_import_json_names">Proveedores: %1$s</string>
@@ -280,7 +280,7 @@
     <string name="settings_asr_provider_openai_whisper">Susurro</string>
     <string name="settings_asr_provider_openai_realtime">En tiempo real</string>
     <string name="settings_asr_provider_agnes">Inés</string>
-    <string name="settings_asr_base_url">Punto final (retransmisión personalizada, en blanco por defecto)</string>
+    <string name="settings_asr_base_url">URL personalizada de la API (vacía para usar la predeterminada)</string>
     <!-- New: hot words -->
     <string name="settings_asr_hotwords">Palabras candentes (separadas por comas, aumentan el reconocimiento de los nombres propios)</string>
     <!-- New: VAD silence detection -->
@@ -293,7 +293,7 @@
     <string name="settings_asr_save_vad">Guardar configuración de VAD</string>
 
     <!-- Knowledge Base Retrieval (RAG) -->
-    <string name="settings_rag_page_title">Recuperación de la base de conocimientos</string>
+    <string name="settings_rag_page_title">Búsqueda en la base de conocimientos</string>
     <string name="rag_saved_success">Guardado</string>
     <string name="rag_save_failed">Error al guardar</string>
     <string name="settings_rag_injection_section">Contexto de la base de conocimientos</string>
@@ -315,8 +315,8 @@
     <string name="settings_rag_embedding_model_section">Modelo de incrustación</string>
     <string name="settings_rag_model_name_hint">Nombre del modelo (déjelo en blanco para usar el valor predeterminado del proveedor)</string>
     <string name="settings_rag_common_models">Modelos comunes: incrustación de texto-3-pequeño (1536d) / incrustación de texto-3-grande (3072d) / incrustación-2 (1024d)</string>
-    <string name="settings_rag_search_params_section">Parámetros de recuperación</string>
-    <string name="settings_rag_top_k">Recuento de recuperación (top-K)</string>
+    <string name="settings_rag_search_params_section">Parámetros de búsqueda</string>
+    <string name="settings_rag_top_k">Máximo de resultados (top-K)</string>
     <string name="settings_rag_similarity_threshold">Umbral de similitud</string>
     <string name="settings_rag_similarity_threshold_subtitle">Los resultados por debajo de este valor no se inyectan (más alto es más estricto)</string>
     <string name="settings_rag_chunk_params_section">Parámetros de fragmentos</string>
@@ -325,7 +325,7 @@
     <string name="settings_rag_chunk_overlap">Superposición de fragmentos</string>
     <string name="settings_rag_chunk_overlap_subtitle">Caracteres superpuestos entre fragmentos adyacentes (mantiene el contexto coherente)</string>
     <!-- v1.133: RAG advanced retrieval -->
-    <string name="settings_rag_advanced_section">Recuperación avanzada</string>
+    <string name="settings_rag_advanced_section">Búsqueda avanzada</string>
     <string name="settings_rag_mmr_lambda">Diversidad MMR</string>
     <string name="settings_rag_mmr_lambda_subtitle">0=pura diversidad, 1=pura similitud, predeterminado 0,5</string>
     <string name="settings_rag_hybrid">Búsqueda híbrida</string>
@@ -462,7 +462,7 @@
     <string name="settings_media_tts_hide">Esconder</string>
     <string name="settings_media_tts_saved">Guardado</string>
     <!-- v1.99: Cloud voice dynamic fetching -->
-    <string name="settings_media_tts_voice_fetch_failed">La recuperación falló.</string>
+    <string name="settings_media_tts_voice_fetch_failed">No se pudo obtener la lista de voces.</string>
     <string name="settings_media_tts_voice_pick">Elige una voz</string>
     <!-- v1.99: Advanced TTS parameters -->
     <string name="settings_media_tts_advanced_section">Parámetros avanzados</string>
@@ -491,7 +491,7 @@
     <string name="settings_theme_custom_secondary_color">Color secundario (opcional)</string>
     <string name="settings_theme_custom_tertiary_color">Color terciario (opcional)</string>
     <string name="settings_theme_custom_preview">Vista previa de color</string>
-    <string name="settings_theme_custom_save">Ahorrar</string>
+    <string name="settings_theme_custom_save">Guardar</string>
     <string name="settings_theme_custom_delete">Borrar</string>
     <string name="settings_theme_custom_delete_confirm">¿Eliminar este tema?</string>
     <string name="settings_theme_custom_delete_confirm_msg">Esto no se puede deshacer.</string>
@@ -691,9 +691,9 @@
     <string name="oauth_quick_login_started">Abriendo el navegador para autorizar…</string>
     <string name="oauth_quick_login_success">Autorizado y activado %1$s</string>
     <string name="settings_backup_include_secrets">Incluir claves de proveedores</string>
-    <string name="settings_backup_include_secrets_subtitle">Las claves API y credenciales se guardarán en texto plano en el archivo. Guárdelo de forma segura.</string>
+    <string name="settings_backup_include_secrets_subtitle">Las claves API y las credenciales se incluirán sin cifrar en el archivo. Guárdalo en un lugar seguro.</string>
     <string name="oauth_device_open_page">Abrir página de autorización</string>
-    <string name="oauth_device_open_failed">No se puede abrir el navegador</string>
+    <string name="oauth_device_open_failed">No se pudo abrir el navegador</string>
     <string name="keep_alive_notification_title">Muse se ejecuta en segundo plano</string>
     <string name="keep_alive_notification_text">Mantiene tareas programadas y mensajes proactivos en línea</string>
     <string name="settings_keep_alive_title">Mantener en segundo plano</string>

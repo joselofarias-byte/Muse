@@ -60,6 +60,15 @@ class MistranslationGuardTest {
     }
 
     @Test
+    fun `Spanish save actions refer to storing data rather than saving money`() {
+        listOf(R.string.action_save, R.string.settings_common_save, R.string.memory_screen_save).forEach { id ->
+            assertEquals("Guardar", text("es", id))
+        }
+        assertEquals("Reintentar", text("es", R.string.memory_screen_retry))
+        assertEquals("Contenedor (bucket S3)", text("es", R.string.settings_backup_bucket))
+    }
+
+    @Test
     fun `Spanish setup guide retains complete numbered instructions`() {
         val guide = text("es", R.string.settings_tutorial_ch1_s2_content)
         listOf("1.", "2.", "3.").forEach { step -> assertTrue("Missing $step in $guide", guide.contains(step)) }

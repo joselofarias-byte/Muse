@@ -86,6 +86,13 @@ def test_all_interface_modules_are_checked():
         assert any(error.startswith("miniphone:") and "missing Spanish" in error for error in errors)
 
 
+def test_save_action_is_not_mistranslated_as_saving_money():
+    for label, expected_error in [("Ahorrar", True), ("Guardar", False)]:
+        tmp, root = fixture('<string name="action_save">保存</string>', f'<string name="action_save">{label}</string>')
+        with tmp:
+            assert bool(check_resources(root)) == expected_error
+
+
 if __name__ == '__main__':
     tests = [value for name, value in sorted(globals().items()) if name.startswith('test_')]
     for test in tests:

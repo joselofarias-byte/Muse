@@ -57,7 +57,7 @@
     <string name="account_change_avatar_hint">Toca avatar para elegir de la galería</string>
     <string name="account_name_label">Nombre</string>
     <string name="account_name_placeholder">Introduce tu nombre</string>
-    <string name="account_save">Ahorrar</string>
+    <string name="account_save">Guardar</string>
     <string name="account_user_profile_title">Perfil</string>
     <string name="account_user_profile_subtitle">Deja que la IA te conozca mejor</string>
 
@@ -99,7 +99,7 @@
     <string name="schedule_preset_daily_8">8 am todos los días</string>
     <string name="schedule_preset_midnight">Cada medianoche</string>
     <string name="schedule_next_run_preview">Próxima ejecución en %1$s</string>
-    <string name="schedule_save">Ahorrar</string>
+    <string name="schedule_save">Guardar</string>
     <string name="schedule_create_btn">Crear</string>
     <string name="schedule_cancel">Cancelar</string>
     <string name="schedule_msg_cancel">Cancelar mensaje programado</string>
@@ -162,7 +162,7 @@
     <string name="schedule_action_note_title">Título de la nota</string>
     <string name="schedule_action_note_content">Contenido de la nota</string>
     <string name="schedule_action_note_tags">Etiquetas</string>
-    <string name="schedule_action_note_tags_placeholder">Separe varias etiquetas con comas</string>
+    <string name="schedule_action_note_tags_placeholder">Separa las etiquetas con comas</string>
     <string name="schedule_action_tool_id">ID de herramienta</string>
     <string name="schedule_action_tool_id_placeholder">p.ej.</string>
     <string name="schedule_action_tool_params">Parámetros de herramienta (JSON)</string>
@@ -185,11 +185,11 @@
     <string name="quick_notes_title_label">Título</string>
     <string name="quick_notes_content_label">Contenido</string>
     <string name="quick_notes_tags_label">Etiquetas (separadas por comas)</string>
-    <string name="quick_notes_save">Ahorrar</string>
+    <string name="quick_notes_save">Guardar</string>
     <string name="quick_notes_cancel">Cancelar</string>
     <string name="quick_notes_error_required">Se requiere título</string>
     <string name="quick_notes_input_hint">Anota tus pensamientos...</string>
-    <string name="quick_notes_tag_hint">Utilice #etiquetas para categorizar</string>
+    <string name="quick_notes_tag_hint">Usa #etiquetas para organizar las notas</string>
     <string name="quick_notes_history">Historia</string>
     <string name="quick_notes_count">%1$d notas</string>
     <string name="quick_notes_empty_title">Aún no hay notas</string>
@@ -244,7 +244,7 @@
     <string name="knowledge_fts_repaired">Índice de conocimiento reparado</string>
     <string name="knowledge_fts_repaired_partial">Índice reparado, pero %1$d documentos no se reindexaron</string>
     <string name="knowledge_fts_repair_failed">Error al reparar índice: %1$s</string>
-    <string name="knowledge_importing">Importador</string>
+    <string name="knowledge_importing">Importando…</string>
     <string name="knowledge_reindexing">Reindexación</string>
     <string name="knowledge_cancel">Cancelar</string>
     <string name="knowledge_reading_file">Leyendo archivo…</string>
@@ -263,7 +263,7 @@
     <string name="knowledge_import_empty">Falló la importación: el contenido del archivo está vacío</string>
     <!-- v1.0.47 P7-3: File size friendly prompt -->
     <string name="knowledge_file_too_large_title">Archivo demasiado grande</string>
-    <string name="knowledge_file_too_large_msg">El tamaño del archivo %1$s excede el límite %2$s.\nSugerencias:\n• Cargue archivos más pequeños en lotes\n• Utilice el analizador de la nube (Configuración → RAG → Analizador de documentos)</string>
+    <string name="knowledge_file_too_large_msg">El archivo %1$s supera el límite de %2$s.\n\nPrueba a importar archivos más pequeños o usa un analizador de documentos en la nube desde Ajustes → RAG.</string>
     <string name="knowledge_file_too_large_confirm">Entiendo</string>
     <string name="knowledge_imported_indexed">Importado: %1$s (%2$d fragmentos indexados)</string>
     <string name="knowledge_import_batch_progress">Importando %1$d de %2$d</string>
@@ -430,7 +430,7 @@
     <string name="groupchat_edit_cd">Editar chat grupal</string>
     <string name="groupchat_edit">Editar</string>
     <string name="groupchat_edit_title">Editar chat grupal</string>
-    <string name="groupchat_edit_btn">Ahorrar</string>
+    <string name="groupchat_edit_btn">Guardar</string>
     <string name="groupchat_edit_name_hint">Nombre del chat grupal</string>
     <!-- v2.x: Group chat discussion modes -->
     <string name="groupchat_mode_title">Modo de discusión</string>
@@ -444,7 +444,7 @@
     <string name="groupchat_mode_host_desc">Host AI analiza la pregunta y la envía a otros miembros.</string>
     <string name="groupchat_mode_auto_rounds">Rondas máximas</string>
     <string name="groupchat_mode_select_host">Seleccionar coordinador</string>
-    <string name="groupchat_mode_no_host">Ninguno (respaldo al round robin)</string>
+    <string name="groupchat_mode_no_host">Ninguno (los asistentes intervienen por turnos)</string>
     <!-- v2.x: Group chat message operations & collaboration -->
     <string name="groupchat_regenerate">Regenerado</string>
     <string name="groupchat_reply">Responder</string>
@@ -475,7 +475,7 @@
     <string name="groupchat_context_private_context_hint">Instrucciones privadas para este asistente, como su rol o sus restricciones</string>
     <string name="groupchat_context_private_context_set">Colocar</string>
     <string name="groupchat_context_private_context_empty">No establecido</string>
-    <string name="groupchat_context_save">Ahorrar</string>
+    <string name="groupchat_context_save">Guardar</string>
     <string name="groupchat_context_clear">Claro</string>
     <string name="groupchat_edit_member_required">El grupo debe conservar al menos un miembro</string>
     <!-- ActivityHub: agent activity status chip labels (idle/thinking/working/waiting/done) -->
@@ -520,7 +520,7 @@
     <!-- ===== v1.201: LLM Review (LLM_REVIEW aggregation strategy) ===== -->
     <string name="multi_agent_llm_review_enabled">Habilitar revisión de LLM</string>
     <string name="multi_agent_llm_review_model">Modelo de revisión</string>
-    <string name="multi_agent_llm_review_desc">Utilice una llamada de LLM separada para revisar los resultados de múltiples agentes; mayor calidad, pero mayor latencia y consumo de tokens</string>
+    <string name="multi_agent_llm_review_desc">Usa una llamada adicional al modelo para revisar los resultados del equipo. Puede mejorar la calidad, pero aumenta el tiempo de respuesta y el consumo de tokens.</string>
     <string name="quick_notes_attachment_count">%1$d archivos adjuntos</string>
     <string name="quick_notes_encrypt_off">Descifrar</string>
     <string name="quick_notes_encrypt_on">Cifrar</string>

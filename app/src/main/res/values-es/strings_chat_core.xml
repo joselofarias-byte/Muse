@@ -141,7 +141,7 @@
     <string name="chat_err_mic_permission">Se requiere permiso del micrófono para la entrada de voz</string>
     <string name="chat_err_open_file_picker">No se puede abrir el selector de archivos: %1$s</string>
     <string name="chat_err_open_image_picker">No se puede abrir el selector de imágenes: %1$s</string>
-    <string name="chat_error_cd">Error: %1$s, vuelva a intentarlo o cierre</string>
+    <string name="chat_error_cd">Error: %1$s. Reintenta o cierra el aviso.</string>
     <string name="chat_retry">Reintentar</string>
 
     <!-- Share -->
@@ -254,7 +254,7 @@
     <string name="chat_pending_tools_banner_subtitle">La transmisión fue interrumpida.</string>
     <string name="chat_pending_tools_resume">Reanudar</string>
     <string name="chat_pending_tools_discard">Desechar</string>
-    <string name="chat_pending_tools_cd">Banner de recuperación de llamadas de herramienta pendientes</string>
+    <string name="chat_pending_tools_cd">Aviso de llamadas a herramientas pendientes</string>
 
     <!-- Quick messages and images -->
     <string name="chat_unnamed">Sin nombre</string>
@@ -364,7 +364,7 @@
 
     <!-- Empty states -->
     <string name="chat_list_empty_archived">Aún no hay tareas archivadas</string>
-    <string name="chat_list_empty_archived_sub">Mantenga presionado un chat para archivarlo</string>
+    <string name="chat_list_empty_archived_sub">Mantén pulsada una conversación para archivarla.</string>
 
     <!-- Section titles -->
     <string name="chat_list_section_recent">Reciente</string>
