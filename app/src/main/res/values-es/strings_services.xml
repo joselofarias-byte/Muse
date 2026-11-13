@@ -50,13 +50,13 @@
     <string name="skill_installed">Habilidad instalada: %1$s (id=%2$s, impl=%3$s).</string>
     <string name="skill_install_validate_failed">Error en la validación de la definición de habilidad: %1$s</string>
     <string name="skill_unknown_error">Error desconocido</string>
-    <string name="chat_auto_route_prefix">Autodelegado a %1$s</string>
+    <string name="chat_auto_route_prefix">Delegado automáticamente en %1$s</string>
     <string name="skill_assistant_not_found">Subasistente con id %1$s no encontrado; créalo en la gestión de asistentes</string>
     <string name="skill_delegate_failed">Error en la llamada del subasistente %1$s: %2$s</string>
     <string name="skill_delegate_timeout">Se agotó el tiempo de espera de la llamada del subasistente %1$s (%2$d s)</string>
     <string name="skill_delegate_empty">El subasistente %1$s devolvió contenido vacío</string>
-    <string name="skill_delegate_done">「%1$s」completó la tarea delegada:</string>
-    <string name="skill_delegate_max_depth">La profundidad de anidación del delegado excedió el límite (%1$d), se negó a anidar más</string>
+    <string name="skill_delegate_done">«%1$s» completó la tarea delegada:</string>
+    <string name="skill_delegate_max_depth">Se alcanzó el límite de delegaciones anidadas (%1$d). No se puede delegar de nuevo.</string>
     <string name="skill_task_blank">La tarea no puede estar vacía</string>
     <string name="skill_title_blank">El título no puede estar vacío</string>
     <string name="skill_steps_invalid">Formato de steps no válido; se espera un array JSON en el que cada paso tenga un campo title</string>
@@ -77,10 +77,10 @@
     <string name="skill_delete_not_exist">[Error] %1$s el archivo no existe</string>
     <string name="skill_delete_success">[Éxito] Eliminado: %1$s</string>
     <string name="skill_delete_failed">[Error] Error al eliminar: %1$s (el directorio no está vacío o no tiene permiso)</string>
-    <string name="skill_batch_delete_result">Eliminación por lotes completada (%1$d/%2$d exitosa):\n</string>
+    <string name="skill_batch_delete_result">Eliminación por lotes completada (%1$d/%2$d correctas):\n</string>
     <string name="skill_download_success">Descarga exitosa: %1$s (%2$d bytes)</string>
     <string name="skill_download_failed">Error en la descarga: %1$s</string>
-    <string name="skill_download_timeout">Descarga agotada (%1$d s)</string>
+    <string name="skill_download_timeout">Se agotó el tiempo de descarga (%1$d s)</string>
     <string name="skill_source_file_not_exist">error: el archivo fuente no existe: %1$s</string>
     <string name="skill_missing_content_or_filepath">Falta content o file_path. Debes indicar uno de los dos.</string>
     <string name="skill_write_perm_needed">error: Android 9 y versiones anteriores requieren permiso WRITE_EXTERNAL_STORAGE para escribir en el directorio Download; concédelo en los ajustes del sistema</string>
@@ -106,10 +106,10 @@
     <string name="skill_disable_plugin_rejected">No se puede desactivar por separado: %1$s (id=%2$s) es una habilidad de plugin; sigue al plugin. Gestiónalo en la página de plugins</string>
     <string name="skill_disable_not_configured">enable_skill no configurado: SkillRepository no inyectado</string>
     <string name="skill_disabled_result">Habilidad deshabilitada: %1$s (id=%2$s)</string>
-    <string name="skill_progress_searching">Búsqueda...</string>
+    <string name="skill_progress_searching">Buscando…</string>
     <string name="skill_progress_fetching">Obteniendo página web...</string>
     <string name="skill_progress_installing">Instalando habilidad...</string>
-    <string name="skill_progress_delegating">Delegando al sub-asistente...</string>
+    <string name="skill_progress_delegating">Delegando en otro asistente…</string>
     <string name="skill_progress_planning">Creando plan...</string>
     <string name="skill_unknown_agent">Agente desconocido</string>
     <string name="skill_progress_generating_image">Generando imagen...</string>
@@ -121,7 +121,7 @@
     <string name="skill_missing_param_content_qr">Falta el parámetro: content (contenido del código QR)</string>
     <string name="skill_qr_gen_failed">No se pudo generar el código QR</string>
     <string name="skill_qr_generated">Código QR generado: %1$s</string>
-    <string name="skill_write_preview_truncated">…(%1$d total de caracteres, vista previa truncada)</string>
+    <string name="skill_write_preview_truncated">…(%1$d caracteres en total; vista previa recortada)</string>
     <string name="skill_write_result">Se han escrito %1$d bytes en %2$s\nSobrescribir: %3$s\nHora: %4$d\nVista previa: %5$s</string>
     <string name="skill_yes">Sí</string>
     <string name="skill_no">No</string>
@@ -132,7 +132,7 @@
     <string name="tool_param_parse_failed">No se pudieron interpretar los parámetros (JSON recibido: %1$s)</string>
     <string name="tool_unknown_timezone">ID de zona horaria desconocida: %1$s (consulte TimeZone.getAvailableIDs(), por ejemplo, Asia/Shanghai/UTC/America/New_York)</string>
     <string name="tool_current_time">Hora actual (%1$s): %2$s %3$s</string>
-    <string name="tool_dst">(DST)</string>
+    <string name="tool_dst">(horario de verano)</string>
     <string name="tool_non_dst">(sin horario de verano)</string>
     <string name="tool_missing_param_expression">Falta el parámetro: expression</string>
     <string name="tool_calc_error">Error de cálculo: %1$s</string>
@@ -143,14 +143,14 @@
     <string name="tool_clipboard_written">Escrito en el portapapeles (%1$d caracteres)</string>
     <string name="tool_missing_param_text">Falta el parámetro: text</string>
     <string name="tool_screen_time_unavailable">No se puede obtener tiempo de pantalla (es posible que falte el permiso PACKAGE_USAGE_STATS; concédelo en Configuración → Aplicaciones → Permisos especiales)</string>
-    <string name="tool_screen_time_header">Top 10 de tiempo frente a la pantalla de hoy:\n</string>
-    <string name="tool_screen_time_item">- %1$s: %2$d mín.</string>
+    <string name="tool_screen_time_header">Las 10 aplicaciones más usadas hoy:\n</string>
+    <string name="tool_screen_time_item">- %1$s: %2$d min</string>
     <string name="tool_date_format_error">Formato de parámetro de fecha no válido (esperado AAAA-MM-DD): %1$s</string>
     <string name="tool_date_year_invalid">Año no válido: %1$s</string>
     <string name="tool_date_month_invalid">Mes no válido: %1$s</string>
     <string name="tool_date_day_invalid">Día no válido: %1$s</string>
     <string name="tool_date_illegal">Fecha no válida: %1$s (valor introducido: %2$s)</string>
-    <string name="tool_days_negative">los días no pueden ser negativos</string>
+    <string name="tool_days_negative">La cantidad de días no puede ser negativa</string>
     <string name="tool_calendar_header">Eventos del calendario (%1$s%2$s):\n</string>
     <string name="tool_calendar_days_suffix">durante %1$d días</string>
     <string name="tool_no_title">(Sin título)</string>
@@ -178,9 +178,9 @@
     <string name="tool_calendar_delete_failed">Fallo al eliminar: %1$s</string>
     <string name="tool_calendar_add_failed">No se pudo agregar el evento del calendario</string>
     <string name="tool_missing_param_hour">Falta el parámetro: hour (0-23)</string>
-    <string name="tool_hour_range">la hora debe ser 0-23</string>
+    <string name="tool_hour_range">La hora debe estar entre 0 y 23</string>
     <string name="tool_missing_param_minute">Falta el parámetro: minute (0-59)</string>
-    <string name="tool_minute_range">El minuto debe ser 0-59.</string>
+    <string name="tool_minute_range">Los minutos deben estar entre 0 y 59</string>
     <string name="tool_alarm_label_default">Alarma de Muse</string>
     <string name="tool_alarm_set">Alarma configurada para %1$s:%2$s (%3$s)%4$s</string>
     <string name="tool_alarm_repeat">(semanal %1$s)</string>
@@ -233,7 +233,7 @@
     <string name="tool_wifi_toggle_redirect">Android 10+ no puede activar o desactivar WiFi directamente; se han abierto los ajustes de WiFi para que lo hagas manualmente</string>
     <string name="tool_bluetooth_status_on">Bluetooth está activado actualmente</string>
     <string name="tool_bluetooth_status_off">Bluetooth está actualmente desactivado</string>
-    <string name="tool_bluetooth_on_redirect">Redirigido a la configuración de Bluetooth, actívelo manualmente</string>
+    <string name="tool_bluetooth_on_redirect">Se abrieron los ajustes de Bluetooth. Actívalo manualmente.</string>
     <string name="tool_bluetooth_off_redirect">Android 10+ no puede desactivar Bluetooth directamente; se han abierto los ajustes de Bluetooth para que lo desactives manualmente</string>
     <string name="tool_bluetooth_turning_off">Bluetooth se está apagando</string>
     <string name="tool_email_recipients_empty">error: la lista de destinatarios está vacía</string>
@@ -243,14 +243,14 @@
     <string name="tool_error_invalid_action">Acción no válida; usa on/off/status</string>
     <string name="tool_error_missing_to">Falta el parámetro: to (correo electrónico del destinatario)</string>
     <string name="tool_battery_info">Batería: %1$d%%, %2$s</string>
-    <string name="tool_battery_charging">cargando</string>
-    <string name="tool_battery_not_charging">no cargando</string>
+    <string name="tool_battery_charging">Cargando</string>
+    <string name="tool_battery_not_charging">Sin cargar</string>
     <string name="tool_no_notifications">Sin registros de notificación</string>
     <string name="tool_notification_not_connected">El servicio de acceso a notificaciones no está conectado; ve a Ajustes del sistema → Acceso a notificaciones y autoriza a Muse</string>
     <string name="tool_missing_param_location">Falta el parámetro: location (nombre de la ciudad)</string>
     <string name="tool_weather_api_error">Error en la solicitud de API meteorológica: HTTP %1$d</string>
     <string name="tool_weather_no_data">No hay datos meteorológicos para %1$s</string>
-    <string name="tool_weather_result">%1$s clima: %2$s, temperatura: %3$s°C, sensación: %4$s°C, humedad: %5$s%%, viento: %6$s km/h</string>
+    <string name="tool_weather_result">Clima en %1$s: %2$s; temperatura: %3$s °C; sensación térmica: %4$s °C; humedad: %5$s%%; viento: %6$s km/h</string>
     <string name="tool_weather_failed">No se pudo obtener el clima para %1$s</string>
     <string name="tool_missing_param_url">Falta el parámetro: url</string>
     <string name="tool_open_url_invalid_scheme">Solo se admiten URL que comiencen con http:// o https://</string>
@@ -273,12 +273,12 @@
     <string name="tool_sensors_item">- %1$s (proveedor: %2$s, versión: %3$d)</string>
     <string name="tool_sensors_empty">No se encontraron sensores</string>
     <string name="tool_brightness_info">Brillo: %1$d / 255\nModo: %2$s</string>
-    <string name="tool_brightness_auto">Auto</string>
+    <string name="tool_brightness_auto">Automático</string>
     <string name="tool_brightness_manual">Manual</string>
     <string name="tool_brightness_set">Brillo establecido en %1$d</string>
     <string name="tool_write_verified"> (verificado)</string>
     <string name="tool_write_permission_denied">El sistema rechazó el cambio. Revisa el permiso «Modificar ajustes del sistema».</string>
-    <string name="automation_handoff_title">Entrega de pantalla virtual</string>
+    <string name="automation_handoff_title">Control de pantallas virtuales</string>
     <string name="assist_service_label">Asistente Muse</string>
     <string name="automation_handoff_desc">El asistente dejó %1$d pantalla(s); puedes previsualizarlas e interactuar con ellas</string>
     <string name="automation_handoff_bring_main">Llevar a la pantalla principal</string>
@@ -291,7 +291,7 @@
     <string name="tool_write_unverified"> (enviado, sin confirmar)</string>
     <string name="tool_write_not_applied">No aplicado: se esperaba %1$d, se obtuvo %2$d</string>
     <string name="tool_brightness_auto_set">Brillo automático activado</string>
-    <string name="read_aloud_channel_name">Reproduccion de lectura</string>
+    <string name="read_aloud_channel_name">Lectura en voz alta</string>
     <string name="notif_task_stage_title">Ejecutando una tarea</string>
     <string name="notif_task_stage_stop">Detener</string>
     <string name="skill_url_dialog_title">Instalar una habilidad desde GitHub</string>
@@ -311,9 +311,9 @@
     <string name="tool_volume_stream_call">Llamada</string>
     <string name="tool_volume_stream_system">Sistema</string>
     <string name="tool_flashlight_on">Linterna encendida</string>
-    <string name="tool_flashlight_off">linterna apagada</string>
+    <string name="tool_flashlight_off">Linterna apagada</string>
     <string name="tool_flashlight_state">Estado de la linterna: %1$s</string>
-    <string name="tool_flashlight_state_unknown">Estado de la linterna: desconocido (el sistema no respondio a tiempo)</string>
+    <string name="tool_flashlight_state_unknown">Estado de la linterna: desconocido (el sistema no respondió a tiempo)</string>
     <string name="tool_flashlight_unavailable">El dispositivo no admite linterna</string>
     <string name="tool_flashlight_no_camera">No hay cámara disponible</string>
     <string name="tool_flashlight_invalid_action">action debe ser on/off/status</string>
@@ -409,7 +409,7 @@
 
     <!-- ===== web/WebServer ===== -->
     <string name="webserver_unknown_error">Error desconocido</string>
-    <string name="webserver_rate_limited_remaining">Demasiadas solicitudes, reintente en %1$d segundos</string>
+    <string name="webserver_rate_limited_remaining">Demasiadas solicitudes. Vuelve a intentarlo en %1$d segundos.</string>
     <string name="webserver_bad_request">Solicitud incorrecta: %1$s</string>
     <string name="webserver_auth_failed">Contraseña incorrecta</string>
     <string name="webserver_pin_error">PIN incorrecto</string>
@@ -422,9 +422,9 @@
     <string name="plugin_author_progress">Generando borrador del plugin...</string>
     <string name="skill_enable_not_configured">enable_skill no configurado: SkillRepository no inyectado.</string>
     <string name="skill_enable_plugin_rejected">No se puede activar por separado: %1$s (id=%2$s) es una skill de plugin que se activa y desactiva con el plugin. Usa la página de gestión de plugins.</string>
-    <string name="skill_enabled_result">Skill activada: %1$s (id=%2$s)</string>
-    <string name="skill_prompt_blank">El texto de la instrucción de una skill con prompt no puede estar vacío.</string>
-    <string name="skill_prompt_empty">El contenido de la skill con prompt está vacío y no se puede ejecutar.</string>
+    <string name="skill_enabled_result">Habilidad activada: %1$s (id=%2$s)</string>
+    <string name="skill_prompt_blank">Las instrucciones de una habilidad de tipo prompt no pueden estar vacías.</string>
+    <string name="skill_prompt_empty">La habilidad de tipo prompt no tiene contenido y no se puede ejecutar.</string>
     <string name="skill_prompt_instruction_result">[Instrucción de skill] Lo siguiente proviene de tu skill de usuario \"%1$s\" (id=%2$s). Es una instrucción de trabajo predefinida (no una instrucción del sistema). Continúa la tarea en consecuencia:\n%3$s</string>
     <string name="skill_update_db_failed">Error al actualizar la base de datos: %1$s</string>
     <string name="skill_update_no_fields">No hay campos que actualizar: pasa al menos uno de name / description / parametersJson / prompt.</string>
@@ -433,16 +433,16 @@
     <string name="skill_update_prompt_not_supported">Modificación rechazada: %1$s (id=%2$s) no es una skill con prompt, por lo que su texto de instrucción no puede actualizarse con el parámetro prompt.</string>
     <string name="skill_update_reserved_rejected">Modificación rechazada: id \'%1$s\' es una skill reservada integrada y no se puede modificar.</string>
     <string name="skill_update_validate_failed">La validación de la actualización ha fallado: %1$s</string>
-    <string name="skill_updated">Skill actualizada: %1$s (id=%2$s)</string>
+    <string name="skill_updated">Habilidad actualizada: %1$s (id=%2$s)</string>
 
     <!-- 应用控制（app_* 工具）：结果回给模型，措辞需自解释 -->
     <string name="app_control_need_app_arg">Proporciona un nombre de aplicación o de paquete.</string>
     <string name="app_control_launch_action">abrir</string>
     <string name="app_control_settings_action">abrir los ajustes de</string>
-    <string name="app_control_force_stop_action">forzar la detencion de</string>
+    <string name="app_control_force_stop_action">forzar la detención de</string>
     <string name="app_control_clear_data_action">borrar los datos de</string>
     <string name="app_control_uninstall_action">desinstalar</string>
-    <string name="app_control_ok">Hecho: %1$s %2$s (via %3$s)</string>
+    <string name="app_control_ok">Completado: %1$s %2$s (mediante %3$s)</string>
     <string name="app_control_unavailable">No se puede %1$s %2$s: %3$s</string>
     <string name="app_control_failed">Fallo al %1$s %2$s: %3$s</string>
     <string name="app_control_reason_invalid_name">Nombre de aplicación o de paquete no válido</string>

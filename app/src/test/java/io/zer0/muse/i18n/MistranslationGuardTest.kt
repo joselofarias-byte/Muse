@@ -111,6 +111,27 @@ class MistranslationGuardTest {
         assertTrue(text("es", R.string.plugin_permission_node_note).contains("autorización para cada capacidad"))
     }
 
+    @Test
+    fun `Spanish labels preserve protocols provider names and font sizes`() {
+        assertEquals("SOCKS5", text("es", R.string.proxy_type_socks5))
+        assertEquals("Cerrar", text("es", R.string.action_close))
+        assertEquals("Mostrar", text("es", R.string.settings_common_show))
+        assertEquals("Personalizado", text("es", R.string.settings_provider_category_custom))
+        assertEquals("Whisper", text("es", R.string.settings_asr_provider_openai_whisper))
+        assertEquals("Agnes", text("es", R.string.settings_asr_provider_agnes))
+        assertEquals("MinerU", text("es", R.string.settings_rag_parser_mineru))
+        assertEquals("M", text("es", R.string.settings_theme_font_medium))
+        assertTrue(text("es", R.string.slash_command_new).startsWith("/new "))
+    }
+
+    @Test
+    fun `Spanish memory tutorial retains management and provider context`() {
+        val guide = text("es", R.string.settings_tutorial_ch4_s4_content)
+        listOf("Activación", "Funcionamiento", "Gestión", "Almacenamiento", "proveedor").forEach { detail ->
+            assertTrue("Missing memory tutorial detail $detail", guide.contains(detail))
+        }
+    }
+
     private val locales = listOf("zh", "en", "es", "ja", "ko", "pt-rBR", "ru")
 
     @Test

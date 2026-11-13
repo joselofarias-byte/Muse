@@ -3,13 +3,13 @@
     <!-- ===== DebugScreen.kt ===== -->
     <!-- Clear confirmation dialog -->
     <string name="debug_clear_logs_title">Borrar registros de depuración</string>
-    <string name="debug_clear_logs_confirm">¿Borrar todos los registros %1$d?</string>
+    <string name="debug_clear_logs_confirm">¿Borrar los %1$d registros?</string>
     <string name="debug_action_clear">Borrar</string>
     <string name="debug_cleared_toast">Borrado</string>
 
     <!-- Copy logs -->
     <string name="debug_no_logs_to_copy">No hay registros para copiar</string>
-    <string name="debug_logs_copied_toast">Copiado %1$d registros al portapapeles</string>
+    <string name="debug_logs_copied_toast">Se copiaron %1$d registros al portapapeles</string>
 
     <!-- Export logs -->
     <string name="debug_export_failed_no_logs">Falló la exportación: no hay registros o el directorio no se inicializó</string>
@@ -18,17 +18,17 @@
 
     <!-- Top bar / titles -->
     <string name="debug_screen_title">Registros de depuración</string>
-    <string name="debug_cd_resume_follow">Continuar siguiendo</string>
+    <string name="debug_cd_resume_follow">Reanudar seguimiento</string>
     <string name="debug_cd_pause_follow">Pausar seguimiento</string>
     <string name="debug_cd_crash_logs">Registros de fallos</string>
-    <string name="debug_cd_analytics">Análisis locales</string>
+    <string name="debug_cd_analytics">Análisis de datos locales</string>
     <string name="debug_cd_db_integrity">Integridad de la base de datos</string>
     <string name="debug_cd_clear">Borrar</string>
     <string name="debug_cd_export">Exportar</string>
     <string name="debug_cd_copy">Copiar</string>
 
     <!-- Log count -->
-    <string name="debug_log_count">%1$d total de entradas</string>
+    <string name="debug_log_count">%1$d registros en total</string>
     <string name="debug_log_count_paused_suffix">· Seguimiento en pausa</string>
 
     <!-- Filter row -->
@@ -56,19 +56,19 @@
     <string name="debug_share_crash_log_chooser">Compartir registro de fallos</string>
 
     <!-- Local analytics panel (AnalyticsSheet) -->
-    <string name="debug_analytics_title">Análisis locales</string>
+    <string name="debug_analytics_title">Análisis de datos locales</string>
     <string name="debug_loading_analytics">Cargando análisis…</string>
     <string name="debug_analytics_load_failed">No se pueden leer datos analíticos</string>
-    <string name="debug_metric_dau_today">DAU hoy</string>
-    <string name="debug_metric_mau_month">MAU este mes</string>
+    <string name="debug_metric_dau_today">Usuarios activos hoy</string>
+    <string name="debug_metric_mau_month">Usuarios activos este mes</string>
     <string name="debug_metric_total_sessions">Sesiones totales</string>
     <string name="debug_metric_total_messages">Mensajes totales</string>
-    <string name="debug_metric_launch_count">Lanzamientos</string>
+    <string name="debug_metric_launch_count">Inicios de la aplicación</string>
     <string name="debug_metric_crash_count">Fallos</string>
     <string name="debug_metric_crash_count_value">%1$d (%2$s)</string>
     <string name="debug_status_first_chat">Primer chat completado</string>
     <string name="debug_status_memory_adopted">Sistema de memoria adoptado</string>
-    <string name="debug_status_last_active">Última fecha activa</string>
+    <string name="debug_status_last_active">Última actividad</string>
     <string name="debug_value_yes">Sí</string>
     <string name="debug_value_no">No</string>
 
@@ -88,10 +88,10 @@
     <string name="debug_db_status_ok">Base de datos correcta</string>
     <string name="debug_db_status_error">Error de base de datos</string>
     <string name="debug_db_size_label">Tamaño de base de datos: %1$s</string>
-    <string name="debug_db_check_time_label">Hora de verificación: %1$s</string>
+    <string name="debug_db_check_time_label">Fecha y hora de comprobación: %1$s</string>
     <string name="debug_no_details">(Sin detalles)</string>
     <string name="debug_db_error_advice">Ve a Ajustes → Copias de seguridad para restaurar una copia automática. Exporta las conversaciones importantes antes de reinstalar la aplicación.</string>
-    <string name="debug_integrity_check_passed">Se pasó el control de integridad</string>
+    <string name="debug_integrity_check_passed">Comprobación de integridad superada</string>
     <string name="debug_integrity_check_failed">La verificación de integridad falló; consulte los detalles</string>
     <string name="debug_checking">Comprobando…</string>
     <string name="debug_check_now">Compruébalo ahora</string>

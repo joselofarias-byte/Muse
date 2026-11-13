@@ -36,9 +36,9 @@
     <string name="memory_created_today">Agregado hoy</string>
     <string name="memory_created_yesterday">Añadido ayer</string>
     <string name="memory_created_days_ago">Agregado hace %1$d días</string>
-    <string name="memory_sync_never">Memoria aún no compilada, conversaciones no en la memoria a largo plazo</string>
-    <string name="memory_sync_recent">Última compilación hace %1$d minutos, memoria sincronizada</string>
-    <string name="memory_sync_stale">Última compilación hace %1$d minutos, es posible que las conversaciones recientes aún no estén en la memoria.</string>
+    <string name="memory_sync_never">La memoria todavía no se ha actualizado. Estas conversaciones aún no forman parte de la memoria a largo plazo.</string>
+    <string name="memory_sync_recent">Memoria actualizada hace %1$d minutos; las conversaciones están sincronizadas.</string>
+    <string name="memory_sync_stale">Memoria actualizada hace %1$d minutos. Las conversaciones recientes podrían no estar incluidas.</string>
     <string name="memory_chart_type_distribution_cd">Gráfico circular de distribución de tipos de memoria</string>
     <string name="memory_chart_daily_trend_cd">Gráfico de tendencia diaria de memoria</string>
     <string name="memory_sync_set_importance_cd">Establecer importancia</string>
@@ -63,7 +63,7 @@
 
     <!-- v6: Error trace labels -->
     <string name="memory_error_trace_header">== Error de memoria de Muse ==</string>
-    <string name="memory_error_trace_time">Tiempo:</string>
+    <string name="memory_error_trace_time">Fecha y hora:</string>
     <string name="memory_error_trace_exception">Excepción:</string>
     <string name="memory_error_trace_message">Mensaje:</string>
     <string name="memory_error_trace_device">Dispositivo:</string>
@@ -79,7 +79,7 @@
     <string name="memory_space_manage_title">Espacios de memoria</string>
     <string name="memory_space_create">Crear espacio</string>
     <string name="memory_space_create_title">Nuevo espacio de memoria</string>
-    <string name="memory_space_rename">Rebautizar</string>
+    <string name="memory_space_rename">Cambiar nombre</string>
     <string name="memory_space_rename_title">Cambiar el nombre del espacio de memoria</string>
     <string name="memory_space_delete">Borrar</string>
     <string name="memory_space_name_label">Nombre del espacio</string>
@@ -113,7 +113,7 @@
     <string name="memory_clear_group_chat_failed">Error al borrar la memoria del grupo: %1$s</string>
     <string name="memory_menu_cd">Más acciones</string>
     <string name="memory_menu_pin">Fijar</string>
-    <string name="memory_menu_unpin">Desfijar</string>
+    <string name="memory_menu_unpin">Quitar de fijados</string>
     <string name="memory_menu_importance">Definir importancia</string>
     <string name="memory_menu_edit">Editar</string>
     <string name="memory_menu_delete">Eliminar</string>
@@ -153,7 +153,7 @@
     <string name="memory_contradictions_dismiss_cd">Ahora no</string>
     <string name="memory_contradictions_keep_a">Conservar la primera</string>
     <string name="memory_contradictions_keep_b">Conservar la segunda</string>
-    <string name="memory_evidence_line">Base: %1$s</string>
+    <string name="memory_evidence_line">Información de respaldo: %1$s</string>
     <string name="memory_contradictions_title">Recuerdos contradictorios pendientes de confirmar</string>
     <string name="memory_delete_confirm_title">Eliminar recuerdo</string>
     <string name="memory_menu_multi_select">Seleccionar varios</string>
@@ -168,7 +168,7 @@
     <string name="memory_graph_reset_view">Restablecer vista</string>
     <!-- v2.2.1: avisos de archivo/recuperación de la biblioteca de memoria -->
     <string name="memory_archive_rebuilt_hint">La biblioteca de memoria se archivó y reconstruyó por un cambio de versión; parte del historial podría no haberse conservado</string>
-    <string name="memory_archive_recovered">Se recuperaron %1$d memorias del archivo por cambio de versión</string>
+    <string name="memory_archive_recovered">Se recuperaron %1$d recuerdos del archivo de la versión anterior.</string>
     <string name="memory_archive_recovery_title">Archivo de memoria recuperable</string>
     <string name="memory_archive_recovery_message">Se encontró un archivo de cambio de versión con %1$d resúmenes de sesión y %2$d secciones compiladas. La base de memoria actual está vacía y se puede restaurar de forma segura.</string>
     <string name="memory_archive_recovery_action">Restaurar archivo</string>
@@ -197,12 +197,12 @@
     <string name="memory_center_merge_running">Fusionando…</string>
 
     <!-- Insignias de estado: la lista y el detalle comparten un mismo criterio -->
-    <string name="memory_status_merged">Fusionada</string>
-    <string name="memory_status_suppressed">Desvanecida</string>
-    <string name="memory_status_superseded">Reemplazada</string>
-    <string name="memory_status_merged_detail">Fusionada en otro recuerdo, así que ya no se recupera automáticamente. El texto se conserva aquí para consultarlo.</string>
-    <string name="memory_status_suppressed_detail">Desvanecida: sin uso durante el tiempo suficiente para salir de la recuperación automática. La fila sigue aquí y vuelve cuando se la vuelve a encontrar o se la marca como más importante.</string>
-    <string name="memory_status_superseded_detail">Sustituida por un recuerdo más reciente, así que ya no se usa como el hecho actual.</string>
+    <string name="memory_status_merged">Fusionado</string>
+    <string name="memory_status_suppressed">Inactivo</string>
+    <string name="memory_status_superseded">Reemplazado</string>
+    <string name="memory_status_merged_detail">Se fusionó con otro recuerdo y ya no se usa por separado. El texto se conserva aquí para consultarlo.</string>
+    <string name="memory_status_suppressed_detail">Este recuerdo dejó de usarse automáticamente por falta de actividad. Se conserva aquí y puede volver a activarse si resulta relevante o aumentas su importancia.</string>
+    <string name="memory_status_superseded_detail">Un recuerdo más reciente lo reemplazó. Ya no se considera información actual.</string>
 
     <!-- Mensajes de fallo al fusionar -->
     <string name="memory_merge_error_min_items">Selecciona al menos dos recuerdos para fusionar</string>

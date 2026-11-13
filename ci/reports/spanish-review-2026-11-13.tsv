@@ -1,0 +1,539 @@
+archivo	clave	antes	después
+app/src/main/res/values-es/strings.xml	proxy_type_socks5	CALCETINES5	SOCKS5
+app/src/main/res/values-es/strings.xml	action_close	Cerca	Cerrar
+app/src/main/res/values-es/strings.xml	message_action_quote	Cita	Citar
+app/src/main/res/values-es/strings.xml	quote_label_user	Usuario de cotización	Cita del usuario
+app/src/main/res/values-es/strings.xml	quote_label_assistant	Asistente de cotizaciones	Cita del asistente
+app/src/main/res/values-es/strings.xml	quote_clear	Cancelar cotización	Cancelar cita
+app/src/main/res/values-es/strings.xml	voice_stop_recording	Stop recording	Detener grabación
+app/src/main/res/values-es/strings.xml	asr_error_no_apikey	API Key no configurada	No hay ninguna clave API configurada
+app/src/main/res/values-es/strings.xml	favorites_group_custom	Costumbre	Personalizado
+app/src/main/res/values-es/strings.xml	err_memory_token_budget_invalid	Presupuesto de token de memoria no válido. (%1$s)	El límite de tokens para la memoria no es válido. (%1$s)
+app/src/main/res/values-es/strings.xml	err_rate_limited	Se superó el límite de tarifa.	Se superó el límite de solicitudes.
+app/src/main/res/values-es/strings.xml	proxy_test_connected	Proxy accesible, 	Conexión con el proxy establecida,
+app/src/main/res/values-es/strings.xml	settings_proactive_v2_ledger_sub	Tiene %1$d cosas en mente	Tiene %1$d asuntos pendientes
+app/src/main/res/values-es/strings_agent_directives.xml	settings_screen_agent_directives_desc	Reglas de largo plazo que cumple en chats proactivos y normales	Reglas permanentes para las conversaciones y los mensajes proactivos
+app/src/main/res/values-es/strings_agent_directives.xml	agent_directives_add_forbidden	Añadir un «nunca»	Agregar algo que debe evitar
+app/src/main/res/values-es/strings_agent_directives.xml	agent_directives_add_desired	Añadir un «haz»	Agregar una preferencia
+app/src/main/res/values-es/strings_agent_directives.xml	agent_directives_omitted	Demasiado contenido; esto no se aplicó esta vez: %1$s	Se superó el límite de contenido. No se aplicó lo siguiente: %1$s
+app/src/main/res/values-es/strings_ai_memory.xml	memory_sync_never	Memoria aún no compilada, conversaciones no en la memoria a largo plazo	La memoria todavía no se ha actualizado. Estas conversaciones aún no forman parte de la memoria a largo plazo.
+app/src/main/res/values-es/strings_ai_memory.xml	memory_sync_recent	Última compilación hace %1$d minutos, memoria sincronizada	Memoria actualizada hace %1$d minutos; las conversaciones están sincronizadas.
+app/src/main/res/values-es/strings_ai_memory.xml	memory_sync_stale	Última compilación hace %1$d minutos, es posible que las conversaciones recientes aún no estén en la memoria.	Memoria actualizada hace %1$d minutos. Las conversaciones recientes podrían no estar incluidas.
+app/src/main/res/values-es/strings_ai_memory.xml	memory_error_trace_time	Tiempo:	Fecha y hora:
+app/src/main/res/values-es/strings_ai_memory.xml	memory_space_rename	Rebautizar	Cambiar nombre
+app/src/main/res/values-es/strings_ai_memory.xml	memory_menu_unpin	Desfijar	Quitar de fijados
+app/src/main/res/values-es/strings_ai_memory.xml	memory_evidence_line	Base: %1$s	Información de respaldo: %1$s
+app/src/main/res/values-es/strings_ai_memory.xml	memory_archive_recovered	Se recuperaron %1$d memorias del archivo por cambio de versión	Se recuperaron %1$d recuerdos del archivo de la versión anterior.
+app/src/main/res/values-es/strings_ai_memory.xml	memory_status_merged	Fusionada	Fusionado
+app/src/main/res/values-es/strings_ai_memory.xml	memory_status_suppressed	Desvanecida	Inactivo
+app/src/main/res/values-es/strings_ai_memory.xml	memory_status_superseded	Reemplazada	Reemplazado
+app/src/main/res/values-es/strings_ai_memory.xml	memory_status_merged_detail	Fusionada en otro recuerdo, así que ya no se recupera automáticamente. El texto se conserva aquí para consultarlo.	Se fusionó con otro recuerdo y ya no se usa por separado. El texto se conserva aquí para consultarlo.
+app/src/main/res/values-es/strings_ai_memory.xml	memory_status_suppressed_detail	Desvanecida: sin uso durante el tiempo suficiente para salir de la recuperación automática. La fila sigue aquí y vuelve cuando se la vuelve a encontrar o se la marca como más importante.	Este recuerdo dejó de usarse automáticamente por falta de actividad. Se conserva aquí y puede volver a activarse si resulta relevante o aumentas su importancia.
+app/src/main/res/values-es/strings_ai_memory.xml	memory_status_superseded_detail	Sustituida por un recuerdo más reciente, así que ya no se usa como el hecho actual.	Un recuerdo más reciente lo reemplazó. Ya no se considera información actual.
+app/src/main/res/values-es/strings_audit_templates.xml	audit_translate_style_polished	Pulido	Refinado
+app/src/main/res/values-es/strings_audit_templates.xml	audit_mcp_local_memory_name	Grafo de conocimiento de memoria	Memoria mediante un grafo de conocimientos
+app/src/main/res/values-es/strings_chat_core.xml	diary_generate_failed	Fallo al generar el diario, inténtelo de nuevo más tarde	No se pudo generar el diario. Inténtalo de nuevo más tarde.
+app/src/main/res/values-es/strings_chat_core.xml	diary_backfill_action	Escribir este día	Generar el diario de este día
+app/src/main/res/values-es/strings_chat_core.xml	weather_city_not_found	"Ciudad ""%1$s"" no encontrada, pruebe con otro nombre"	No se encontró la ciudad «%1$s». Prueba con otro nombre.
+app/src/main/res/values-es/strings_chat_core.xml	moment_comment_hint	Publicar comentario:	Escribe un comentario:
+app/src/main/res/values-es/strings_chat_core.xml	moment_publish_placeholder	En qué estás pensando...	¿En qué estás pensando?
+app/src/main/res/values-es/strings_chat_core.xml	chat_thinking	Pensamiento…	Pensando…
+app/src/main/res/values-es/strings_chat_core.xml	chat_copied_toast	copiado	Copiado
+app/src/main/res/values-es/strings_chat_core.xml	chat_knowledge_dialog_title	Base de conocimientos de referencia	Consultar la base de conocimientos
+app/src/main/res/values-es/strings_chat_core.xml	chat_switch_assistant_title	Asistente de cambio	Cambiar de asistente
+app/src/main/res/values-es/strings_chat_core.xml	chat_delegate_team_prompt_message	Maneje el contenido anterior como equipo %1$s:	Encarga el contenido anterior al equipo %1$s:
+app/src/main/res/values-es/strings_chat_core.xml	chat_avatar_assistant_cd	avatar asistente	Avatar del asistente
+app/src/main/res/values-es/strings_chat_core.xml	chat_mood_expand_cd	Expandir ESTADO DE ÁNIMO	Expandir estado de ánimo
+app/src/main/res/values-es/strings_chat_core.xml	chat_save_image_cd	Salvar el imagen	Guardar imagen
+app/src/main/res/values-es/strings_chat_core.xml	chat_tts_stop	dejar de leer	Detener lectura
+app/src/main/res/values-es/strings_chat_core.xml	chat_fork_action	Chat de horquilla	Bifurcar conversación
+app/src/main/res/values-es/strings_chat_core.xml	chat_agent_weak_tool_title	Llamada a herramienta degradada	Aviso de limitaciones al usar herramientas
+app/src/main/res/values-es/strings_chat_core.xml	chat_translate_in_progress	Traductorio…	Traduciendo…
+app/src/main/res/values-es/strings_chat_core.xml	chat_pending_tools_discard	Desechar	Descartar
+app/src/main/res/values-es/strings_chat_core.xml	chat_tool_knowledge	Base de conocimientos de referencia	Consultar la base de conocimientos
+app/src/main/res/values-es/strings_chat_core.xml	chat_tool_skills_subtitle	Administrar y llamar habilidades habilitadas	Gestiona y usa las habilidades activadas
+app/src/main/res/values-es/strings_chat_core.xml	chat_tool_draw_mode	Modo de dibujo	Generación de imágenes
+app/src/main/res/values-es/strings_chat_core.xml	chat_tool_draw_mode_subtitle_on	Activado · Describir una imagen para generar	Activada · Describe la imagen que quieres generar
+app/src/main/res/values-es/strings_chat_core.xml	chat_tool_draw_mode_subtitle	Describir una imagen para generar	Describe la imagen que quieres generar
+app/src/main/res/values-es/strings_chat_core.xml	chat_expand_input_cd	Edición de pantalla completa	Editar a pantalla completa
+app/src/main/res/values-es/strings_chat_core.xml	chat_token_history	Mensajes históricos	Historial de mensajes
+app/src/main/res/values-es/strings_chat_core.xml	chat_token_context_window	ventana contextual	Ventana de contexto
+app/src/main/res/values-es/strings_chat_core.xml	chat_stop_generation_cd	dejar de generar	Detener generación
+app/src/main/res/values-es/strings_chat_core.xml	chat_draw_params	Dibujar parámetros	Opciones de generación de imágenes
+app/src/main/res/values-es/strings_chat_core.xml	chat_quality_hd	alta definición	Alta definición
+app/src/main/res/values-es/strings_chat_core.xml	chat_quality_auto	Auto	Automático
+app/src/main/res/values-es/strings_chat_core.xml	chat_list_pin	Alfiler	Fijar
+app/src/main/res/values-es/strings_chat_core.xml	chat_list_unpin	Desprender	Quitar de fijados
+app/src/main/res/values-es/strings_chat_core.xml	chat_list_archive	Archivo	Archivar
+app/src/main/res/values-es/strings_chat_core.xml	chat_list_move_ungrouped	Mover a Desagrupado	Mover a Sin carpeta
+app/src/main/res/values-es/strings_chat_core.xml	chat_list_rename	Rebautizar	Cambiar nombre
+app/src/main/res/values-es/strings_chat_core.xml	chat_list_confirm	DE ACUERDO	Aceptar
+app/src/main/res/values-es/strings_chat_core.xml	chat_list_delete_folder_confirm	"Al eliminar la carpeta \""%1$s\"" sus chats se moverán a Desagrupados."	Al eliminar la carpeta «%1$s», sus conversaciones pasarán a Sin carpeta.
+app/src/main/res/values-es/strings_chat_core.xml	settings_chat_sticker_section	Biblioteca de pegatinas	Biblioteca de stickers
+app/src/main/res/values-es/strings_chat_core.xml	settings_sticker_enabled	Habilitar pegatinas	Habilitar stickers
+app/src/main/res/values-es/strings_chat_core.xml	settings_sticker_enabled_subtitle	Permitir que el asistente envíe pegatinas en las respuestas	Permitir que el asistente envíe stickers en las respuestas
+app/src/main/res/values-es/strings_chat_core.xml	settings_sticker_frequency_subtitle	El asistente añade pegatinas naturalmente cuando el contexto lo permite	El asistente añade stickers naturalmente cuando el contexto lo permite
+app/src/main/res/values-es/strings_chat_core.xml	settings_sticker_upload_subtitle	Acepta zip, documentos docx/pptx e imagenes; un archivo a la vez	Admite archivos ZIP, DOCX, PPTX e imágenes. Puedes importar un archivo cada vez.
+app/src/main/res/values-es/strings_chat_core.xml	settings_sticker_action_failed	No se cambio: %1$s	No se modificó: %1$s
+app/src/main/res/values-es/strings_chat_core.xml	settings_sticker_actions_hint	Esta en “%1$s”	Está en «%1$s»
+app/src/main/res/values-es/strings_chat_core.xml	settings_sticker_imported	Pegatinas %1$d importadas	Se importaron %1$d stickers
+app/src/main/res/values-es/strings_chat_core.xml	settings_sticker_empty_title	Aún no hay pegatinas	Aún no hay stickers
+app/src/main/res/values-es/strings_chat_core.xml	settings_sticker_delete_confirm	¿Eliminar esta pegatina?	¿Eliminar esta sticker?
+app/src/main/res/values-es/strings_chat_core.xml	skill_sticker_not_found	Etiqueta con ID %1$s no encontrada	No se encontró el sticker con ID %1$s
+app/src/main/res/values-es/strings_chat_core.xml	skill_sticker_sent	Etiqueta enviada: %1$s	Sticker enviado: %1$s
+app/src/main/res/values-es/strings_chat_core.xml	skill_sticker_list_empty	La biblioteca de pegatinas está vacía	La biblioteca de stickers está vacía
+app/src/main/res/values-es/strings_chat_core.xml	slash_command_new	/nueva Nueva sesión	/new Nueva conversación
+app/src/main/res/values-es/strings_chat_core.xml	slash_command_pin	/pin Pin de alternancia	/pin Fijar o quitar de fijados
+app/src/main/res/values-es/strings_chat_core.xml	slash_command_reset_busy	No se puede restablecer durante la generación, detenga primero	No se puede restablecer el contexto mientras se genera una respuesta. Detén la generación primero.
+app/src/main/res/values-es/strings_chat_core.xml	chat_agent_tab_title	Agent	Agente
+app/src/main/res/values-es/strings_chat_core.xml	chat_reaction_love	Amor	Me encanta
+app/src/main/res/values-es/strings_chat_core.xml	chat_reaction_wow	Guau	Sorpresa
+app/src/main/res/values-es/strings_chat_core.xml	chat_delete_scope_only	Eliminar solo este mensaje (incluyendo sus respuestas)	Eliminar este mensaje y sus respuestas
+app/src/main/res/values-es/strings_chat_core.xml	chat_model_not_configured_hint	El servicio de modelos aún no está configurado. Configura una API Key primero.	No hay un proveedor de modelos configurado. Agrega una clave API para continuar.
+app/src/main/res/values-es/strings_chat_core.xml	settings_screen_sticker_desc	Importa y gestiona sus pegatinas	Importa y gestiona tus stickers
+app/src/main/res/values-es/strings_code_gaps.xml	code_gap_feishu_app_secret	Secreto de aplicación de Feishu	Clave secreta de la aplicación de Feishu
+app/src/main/res/values-es/strings_data.xml	prompt_template_category_writing	Escribiendo	Redacción
+app/src/main/res/values-es/strings_data.xml	prompt_template_category_learning	Aprendiendo	Aprendizaje
+app/src/main/res/values-es/strings_data.xml	prompt_template_category_creative	Creativo	Creación
+app/src/main/res/values-es/strings_data.xml	prompt_injection_mode_coding	Codificación	Programación
+app/src/main/res/values-es/strings_data.xml	session_repo_fork_title	Bifurcado de %1$s	Conversación derivada de %1$s
+app/src/main/res/values-es/strings_debug.xml	debug_clear_logs_confirm	¿Borrar todos los registros %1$d?	¿Borrar los %1$d registros?
+app/src/main/res/values-es/strings_debug.xml	debug_logs_copied_toast	Copiado %1$d registros al portapapeles	Se copiaron %1$d registros al portapapeles
+app/src/main/res/values-es/strings_debug.xml	debug_cd_resume_follow	Continuar siguiendo	Reanudar seguimiento
+app/src/main/res/values-es/strings_debug.xml	debug_cd_analytics	Análisis locales	Análisis de datos locales
+app/src/main/res/values-es/strings_debug.xml	debug_log_count	%1$d total de entradas	%1$d registros en total
+app/src/main/res/values-es/strings_debug.xml	debug_analytics_title	Análisis locales	Análisis de datos locales
+app/src/main/res/values-es/strings_debug.xml	debug_metric_dau_today	DAU hoy	Usuarios activos hoy
+app/src/main/res/values-es/strings_debug.xml	debug_metric_mau_month	MAU este mes	Usuarios activos este mes
+app/src/main/res/values-es/strings_debug.xml	debug_metric_launch_count	Lanzamientos	Inicios de la aplicación
+app/src/main/res/values-es/strings_debug.xml	debug_status_last_active	Última fecha activa	Última actividad
+app/src/main/res/values-es/strings_debug.xml	debug_db_check_time_label	Hora de verificación: %1$s	Fecha y hora de comprobación: %1$s
+app/src/main/res/values-es/strings_debug.xml	debug_integrity_check_passed	Se pasó el control de integridad	Comprobación de integridad superada
+app/src/main/res/values-es/strings_errors.xml	error_auth_expired	La autenticación ha caducado, restablezca la clave API	La autenticación caducó. Renueva la clave de API.
+app/src/main/res/values-es/strings_errors.xml	error_storage_io_error	Error de lectura/escritura del almacenamiento local; reinicie la aplicación	Error al leer o escribir en el almacenamiento local. Reinicia la aplicación.
+app/src/main/res/values-es/strings_errors.xml	err_chat_fetch_models_empty	El upstream no devolvió ningún modelo.	El proveedor no devolvió ningún modelo.
+app/src/main/res/values-es/strings_errors.xml	err_chat_resume_busy	Generación en curso. Deténgala antes de reanudar las llamadas de herramientas inacabadas.	Detén la generación actual antes de iniciar otra.
+app/src/main/res/values-es/strings_features.xml	groupchat_my_message	mi mensaje	Mi mensaje
+app/src/main/res/values-es/strings_features.xml	groupchat_copied	copiado	Copiado
+app/src/main/res/values-es/strings_features.xml	groupchat_close	Cerca	Cerrar
+app/src/main/res/values-es/strings_features.xml	groupchat_unpin	Desprender	Quitar de fijados
+app/src/main/res/values-es/strings_features.xml	groupchat_pin	Alfiler	Fijar
+app/src/main/res/values-es/strings_features.xml	groupchat_delete_chat_confirm	"¿Está seguro de que desea eliminar ""%1$s""?"	¿Eliminar «%1$s»?
+app/src/main/res/values-es/strings_features.xml	groupchat_sender_user	A mí	Yo
+app/src/main/res/values-es/strings_features.xml	groupchat_minutes_ago	%1$d hace minutos	Hace %1$d minutos
+app/src/main/res/values-es/strings_features.xml	groupchat_team_optional	Equipo de enlace (opcional)	Equipo vinculado (opcional)
+app/src/main/res/values-es/strings_features.xml	account_default_user	Usuario de musa	Usuario de Muse
+app/src/main/res/values-es/strings_features.xml	schedule_run_now	Corre ahora	Ejecutar ahora
+app/src/main/res/values-es/strings_features.xml	schedule_no_executions	Aún no hay carreras	Todavía no hay ejecuciones
+app/src/main/res/values-es/strings_features.xml	schedule_task_content	Ejecutar contenido	Instrucciones de la tarea
+app/src/main/res/values-es/strings_features.xml	schedule_content_placeholder	p.ej.	Por ejemplo: salúdame por la mañana
+app/src/main/res/values-es/strings_features.xml	schedule_cron_placeholder	p.ej.	Por ejemplo: 0 8 * * 1-5 (a las 08:00 de lunes a viernes)
+app/src/main/res/values-es/strings_features.xml	schedule_action_type_ai_prompt	mensaje de IA	Mensaje del asistente
+app/src/main/res/values-es/strings_features.xml	schedule_action_type_call_tool	herramienta de llamada	Ejecutar herramienta
+app/src/main/res/values-es/strings_features.xml	schedule_action_tool_id_placeholder	p.ej.	Por ejemplo: quick_note_add
+app/src/main/res/values-es/strings_features.xml	schedule_action_tool_params_placeholder	p.ej.	"Por ejemplo: {\""title\"":\""Resumen diario\""}"
+app/src/main/res/values-es/strings_features.xml	quick_notes_search	Notas de búsqueda...	Buscar notas…
+app/src/main/res/values-es/strings_features.xml	quick_notes_history	Historia	Historial
+app/src/main/res/values-es/strings_features.xml	quick_notes_clear_trash	Limpiar la basura	Vaciar papelera
+app/src/main/res/values-es/strings_features.xml	knowledge_title	base de conocimientos	Base de conocimientos
+app/src/main/res/values-es/strings_features.xml	knowledge_clear	Claro	Vaciar
+app/src/main/res/values-es/strings_features.xml	knowledge_close	Cerca	Cerrar
+app/src/main/res/values-es/strings_features.xml	knowledge_reindex_progress	Reconstruyendo y reconstruyendo el índice de vectores...	Reconstruyendo el índice vectorial…
+app/src/main/res/values-es/strings_features.xml	knowledge_sort_updated	Por hora actualizada	Fecha de modificación
+app/src/main/res/values-es/strings_features.xml	knowledge_sort_created	Por tiempo creado	Fecha de creación
+app/src/main/res/values-es/strings_features.xml	stats_empty_action	iniciar una conversación	Iniciar conversación
+app/src/main/res/values-es/strings_features.xml	delegation_status_running	Correr…	Ejecutando…
+app/src/main/res/values-es/strings_features.xml	artifact_untitled	Intitulado	Sin título
+app/src/main/res/values-es/strings_features.xml	artifact_close	Cerca	Cerrar
+app/src/main/res/values-es/strings_features.xml	model_profile_title	avatares modelo	Avatares de modelos
+app/src/main/res/values-es/strings_features.xml	groupchat_mode_round_robin	Ronda Robin	Por turnos
+app/src/main/res/values-es/strings_features.xml	groupchat_mode_round_robin_desc	Cada IA ​​habla por turno después de que el usuario envía un mensaje	Cada IA habla por turno después de que el usuario envía un mensaje
+app/src/main/res/values-es/strings_features.xml	groupchat_context_private_context_set	Colocar	Configurar
+app/src/main/res/values-es/strings_features.xml	groupchat_context_clear	Claro	Borrar
+app/src/main/res/values-es/strings_features.xml	groupchat_activity_no_reply	saltado	Omitido
+app/src/main/res/values-es/strings_features.xml	delegation_pause_section_title	Humano en el circuito	Supervisión humana
+app/src/main/res/values-es/strings_features.xml	delegation_pause_before_team	Pausa antes de la ejecución del equipo	Pausar antes de ejecutar el equipo
+app/src/main/res/values-es/strings_features.xml	delegation_pause_timeout	Pausar el tiempo de espera	Tiempo de espera de la aprobación
+app/src/main/res/values-es/strings_features.xml	delegation_pause_sec	segundo	segundos
+app/src/main/res/values-es/strings_features.xml	quick_notes_folder_set	Establecer carpeta	Elegir carpeta
+app/src/main/res/values-es/strings_features.xml	quick_capture_swipe_desc	Mostrar la manija de captura rápida en el borde derecho dentro de Muse	Muestra un control de captura rápida en el borde derecho de Muse
+app/src/main/res/values-es/strings_features.xml	knowledge_embedding_migrated	El modelo de incrustación ha cambiado; las búsquedas podrían no coincidir con documentos antiguos. Se recomienda reindexar.	Modelo de embeddings
+app/src/main/res/values-es/strings_features.xml	task_plan_status_timed_out	Agotado	Tiempo agotado
+app/src/main/res/values-es/strings_features.xml	wake_diagnostics_refresh	Volver a leer	Actualizar
+app/src/main/res/values-es/strings_features.xml	wake_stop_preempt	Apropiado por otra tarea	Reemplazado por otra tarea
+app/src/main/res/values-es/strings_features.xml	wake_stop_charging	Sin cargar	No se está cargando
+app/src/main/res/values-es/strings_features.xml	wake_stop_system_processing	Procesando el sistema	Sistema ocupado
+app/src/main/res/values-es/strings_notif_schedule.xml	notif_web_server_title	servidor web muse ejecutándose	Servidor web de Muse activo
+app/src/main/res/values-es/strings_notif_schedule.xml	update_banner_published	%1$s liberado	Nueva versión: %1$s
+app/src/main/res/values-es/strings_notif_schedule.xml	update_already_latest	Ya al ​​día	Aplicación actualizada
+app/src/main/res/values-es/strings_notif_schedule.xml	schedule_channel_desc	Notificación de tarea programada vencida	Avisos de tareas programadas
+app/src/main/res/values-es/strings_notif_schedule.xml	main_activity_safe_mode_desc	La última vez se produjo un accidente.	La aplicación se cerró inesperadamente.
+app/src/main/res/values-es/strings_notif_schedule.xml	safe_mode_warning_title	El último lanzamiento falló	Último inicio
+app/src/main/res/values-es/strings_notif_schedule.xml	safe_mode_crash_time_label	tiempo de choque	Fecha y hora del fallo
+app/src/main/res/values-es/strings_notif_schedule.xml	notif_listener_screen_title	Oyente de notificaciones	Acceso a notificaciones
+app/src/main/res/values-es/strings_notif_schedule.xml	notif_listener_feature_title	Descripción de la característica	Cómo funciona
+app/src/main/res/values-es/strings_services.xml	chat_auto_route_prefix	Autodelegado a %1$s	Delegado automáticamente en %1$s
+app/src/main/res/values-es/strings_services.xml	skill_delegate_done	「%1$s」completó la tarea delegada:	«%1$s» completó la tarea delegada:
+app/src/main/res/values-es/strings_services.xml	skill_delegate_max_depth	La profundidad de anidación del delegado excedió el límite (%1$d), se negó a anidar más	Se alcanzó el límite de delegaciones anidadas (%1$d). No se puede delegar de nuevo.
+app/src/main/res/values-es/strings_services.xml	skill_batch_delete_result	Eliminación por lotes completada (%1$d/%2$d exitosa):\n	Eliminación por lotes completada (%1$d/%2$d correctas):\n
+app/src/main/res/values-es/strings_services.xml	skill_download_timeout	Descarga agotada (%1$d s)	Se agotó el tiempo de descarga (%1$d s)
+app/src/main/res/values-es/strings_services.xml	skill_progress_searching	Búsqueda...	Buscando…
+app/src/main/res/values-es/strings_services.xml	skill_progress_delegating	Delegando al sub-asistente...	Delegando en otro asistente…
+app/src/main/res/values-es/strings_services.xml	skill_write_preview_truncated	…(%1$d total de caracteres, vista previa truncada)	…(%1$d caracteres en total; vista previa recortada)
+app/src/main/res/values-es/strings_services.xml	tool_dst	(DST)	(horario de verano)
+app/src/main/res/values-es/strings_services.xml	tool_screen_time_header	Top 10 de tiempo frente a la pantalla de hoy:\n	Las 10 aplicaciones más usadas hoy:\n
+app/src/main/res/values-es/strings_services.xml	tool_screen_time_item	- %1$s: %2$d mín.	- %1$s: %2$d min
+app/src/main/res/values-es/strings_services.xml	tool_days_negative	los días no pueden ser negativos	La cantidad de días no puede ser negativa
+app/src/main/res/values-es/strings_services.xml	tool_hour_range	la hora debe ser 0-23	La hora debe estar entre 0 y 23
+app/src/main/res/values-es/strings_services.xml	tool_minute_range	El minuto debe ser 0-59.	Los minutos deben estar entre 0 y 59
+app/src/main/res/values-es/strings_services.xml	tool_bluetooth_on_redirect	Redirigido a la configuración de Bluetooth, actívelo manualmente	Se abrieron los ajustes de Bluetooth. Actívalo manualmente.
+app/src/main/res/values-es/strings_services.xml	tool_battery_charging	cargando	Cargando
+app/src/main/res/values-es/strings_services.xml	tool_battery_not_charging	no cargando	Sin cargar
+app/src/main/res/values-es/strings_services.xml	tool_weather_result	%1$s clima: %2$s, temperatura: %3$s°C, sensación: %4$s°C, humedad: %5$s%%, viento: %6$s km/h	Clima en %1$s: %2$s; temperatura: %3$s °C; sensación térmica: %4$s °C; humedad: %5$s%%; viento: %6$s km/h
+app/src/main/res/values-es/strings_services.xml	tool_brightness_auto	Auto	Automático
+app/src/main/res/values-es/strings_services.xml	automation_handoff_title	Entrega de pantalla virtual	Control de pantallas virtuales
+app/src/main/res/values-es/strings_services.xml	read_aloud_channel_name	Reproduccion de lectura	Lectura en voz alta
+app/src/main/res/values-es/strings_services.xml	tool_flashlight_off	linterna apagada	Linterna apagada
+app/src/main/res/values-es/strings_services.xml	tool_flashlight_state_unknown	Estado de la linterna: desconocido (el sistema no respondio a tiempo)	Estado de la linterna: desconocido (el sistema no respondió a tiempo)
+app/src/main/res/values-es/strings_services.xml	webserver_rate_limited_remaining	Demasiadas solicitudes, reintente en %1$d segundos	Demasiadas solicitudes. Vuelve a intentarlo en %1$d segundos.
+app/src/main/res/values-es/strings_services.xml	skill_enabled_result	Skill activada: %1$s (id=%2$s)	Habilidad activada: %1$s (id=%2$s)
+app/src/main/res/values-es/strings_services.xml	skill_prompt_blank	El texto de la instrucción de una skill con prompt no puede estar vacío.	Las instrucciones de una habilidad de tipo prompt no pueden estar vacías.
+app/src/main/res/values-es/strings_services.xml	skill_prompt_empty	El contenido de la skill con prompt está vacío y no se puede ejecutar.	La habilidad de tipo prompt no tiene contenido y no se puede ejecutar.
+app/src/main/res/values-es/strings_services.xml	skill_updated	Skill actualizada: %1$s (id=%2$s)	Habilidad actualizada: %1$s (id=%2$s)
+app/src/main/res/values-es/strings_services.xml	app_control_force_stop_action	forzar la detencion de	forzar la detención de
+app/src/main/res/values-es/strings_services.xml	app_control_ok	Hecho: %1$s %2$s (via %3$s)	Completado: %1$s %2$s (mediante %3$s)
+app/src/main/res/values-es/strings_settings_main.xml	settings_common_close	Cerca	Cerrar
+app/src/main/res/values-es/strings_settings_main.xml	settings_common_show	Espectáculo	Mostrar
+app/src/main/res/values-es/strings_settings_main.xml	settings_common_hide	Esconder	Ocultar
+app/src/main/res/values-es/strings_settings_main.xml	settings_provider_category_custom	Costumbre	Personalizado
+app/src/main/res/values-es/strings_settings_main.xml	settings_provider_json_parse_failed	Error en el análisis JSON: falta clave_privada/correo_email_cliente	Error al analizar el JSON: falta private_key o client_email
+app/src/main/res/values-es/strings_settings_main.xml	settings_provider_fill_api_key_first	Primero complete la clave API	Introduce primero la clave de API
+app/src/main/res/values-es/strings_settings_main.xml	settings_provider_404_error	Este proveedor no admite el punto final /models; agregue modelos manualmente	Este proveedor no admite la ruta /models. Agrega los modelos manualmente.
+app/src/main/res/values-es/strings_settings_main.xml	settings_provider_balance_response	Respuesta de la balanza:\n%1$s	Respuesta de la consulta de saldo:\n%1$s
+app/src/main/res/values-es/strings_settings_main.xml	settings_unsaved_discard	Desechar	Descartar
+app/src/main/res/values-es/strings_settings_main.xml	settings_provider_test_error_unknown_host	No puede alcanzar el servidor	No se pudo conectar con el servidor
+app/src/main/res/values-es/strings_settings_main.xml	settings_provider_test_all_done	Hecho: %1$d ok / %2$d falló	Prueba completada: %1$d correctos / %2$d fallidos
+app/src/main/res/values-es/strings_settings_main.xml	settings_provider_tab_config	configuración	Configuración
+app/src/main/res/values-es/strings_settings_main.xml	settings_provider_delete_content	¿Está seguro de que desea eliminar %1$s?	¿Eliminar %1$s?
+app/src/main/res/values-es/strings_settings_main.xml	settings_provider_base_url	Punto final (déjela vacía por defecto)	Ruta de la API (opcional)
+app/src/main/res/values-es/strings_settings_main.xml	settings_provider_use_service_account	Autenticar con cuenta de servicio (recurre a la clave API)	Autenticar con una cuenta de servicio (si no está disponible, usar la clave de API)
+app/src/main/res/values-es/strings_settings_main.xml	settings_provider_private_key	Clave privada (formato PEM, incluidas líneas de INICIO/FIN)	Clave privada (formato PEM, incluidas las líneas BEGIN y END)
+app/src/main/res/values-es/strings_settings_main.xml	settings_provider_enable_this	Habilite este proveedor (los proveedores deshabilitados no aparecerán en el selector de modelos)	Activar este proveedor (los proveedores desactivados no aparecen en el selector de modelos)
+app/src/main/res/values-es/strings_settings_main.xml	settings_provider_rate_limit_rpm_hint	Dejar vacío para ilimitado, p.e.	Deja el campo vacío para no establecer un límite
+app/src/main/res/values-es/strings_settings_main.xml	settings_provider_max_concurrent_hint	Dejar vacío para ilimitado, p.e.	Deja el campo vacío para no establecer un límite
+app/src/main/res/values-es/strings_settings_main.xml	settings_provider_strip_model_prefix	Prefijo de ID del modelo de tira (déjelo vacío para omitirlo)	Prefijo que se eliminará del ID del modelo (opcional)
+app/src/main/res/values-es/strings_settings_main.xml	settings_provider_strip_model_prefix_placeholder	p.ej.	Por ejemplo: opencode-go/
+app/src/main/res/values-es/strings_settings_main.xml	settings_provider_edit_model_abilities	Editar habilidades del modelo	Editar capacidades del modelo
+app/src/main/res/values-es/strings_settings_main.xml	settings_provider_ability_tools	Llamada de herramientas	Uso de herramientas
+app/src/main/res/values-es/strings_settings_main.xml	settings_provider_ability_vision	Multimodal (entrada de visión)	Entrada de imágenes
+app/src/main/res/values-es/strings_settings_main.xml	settings_model_catalog_title	Catalogo de modelos	Catálogo de modelos
+app/src/main/res/values-es/strings_settings_main.xml	settings_provider_clear	Claro	Limpiar
+app/src/main/res/values-es/strings_settings_main.xml	settings_mcp_desc	Conéctese a servidores MCP externos y registre automáticamente sus herramientas localmente (SSE / StreamableHTTP)	Conecta servidores MCP externos y registra sus herramientas automáticamente (SSE / StreamableHTTP)
+app/src/main/res/values-es/strings_settings_main.xml	settings_mcp_display_name_placeholder	p.ej.	Por ejemplo: GitHub MCP
+app/src/main/res/values-es/strings_settings_main.xml	settings_mcp_bearer_token	Token al portador (opcional)	Token Bearer (opcional)
+app/src/main/res/values-es/strings_settings_main.xml	settings_mcp_auto_reconnect	Reconexión automática (retroceso exponencial)	Reconexión automática (espera exponencial)
+app/src/main/res/values-es/strings_settings_main.xml	settings_mcp_reconnect_base	Intervalo de reconexión de la base (ms)	Intervalo inicial de reconexión (ms)
+app/src/main/res/values-es/strings_settings_main.xml	settings_mcp_getting	Conseguir...	Obteniendo…
+app/src/main/res/values-es/strings_settings_main.xml	settings_mcp_get	Conseguir	Obtener
+app/src/main/res/values-es/strings_settings_main.xml	settings_mcp_get_failed	Obtener error: %1$s	No se pudo obtener: %1$s
+app/src/main/res/values-es/strings_settings_main.xml	settings_web_title	Servidor Web	Servidor web
+app/src/main/res/values-es/strings_settings_main.xml	settings_web_desc	Inicie un servidor web integrado en la aplicación para acceder de forma remota a las sesiones a través de un navegador (se requiere la misma LAN)	Inicia el servidor web de la aplicación para acceder a las conversaciones desde un navegador en la misma red local.
+app/src/main/res/values-es/strings_settings_main.xml	settings_web_enable_subtitle	Entra en vigor el próximo lanzamiento de la aplicación.	Se aplica la próxima vez que inicies la aplicación.
+app/src/main/res/values-es/strings_settings_main.xml	settings_web_allow_lan_subtitle	Solo localhost de forma predeterminada; habilítelo para permitir dispositivos en la misma Wi-Fi	De forma predeterminada, solo permite el acceso desde este dispositivo. Activa esta opción para permitir otros dispositivos de la misma red Wi-Fi.
+app/src/main/res/values-es/strings_settings_main.xml	settings_web_https_subtitle	Cifrado con certificado autofirmado; el navegador avisara sobre el certificado no confiable la primera vez	Cifra la conexión con un certificado autofirmado. El navegador mostrará una advertencia sobre el certificado la primera vez.
+app/src/main/res/values-es/strings_settings_main.xml	settings_web_regenerate_password_subtitle	Genere una contraseña aleatoria de 8 caracteres (la contraseña anterior no es válida)	Genera una contraseña aleatoria de 8 caracteres e invalida la anterior
+app/src/main/res/values-es/strings_settings_main.xml	settings_web_port_hint	Evite puertos comunes como 8080/3000.	Evita puertos habituales como 8080 o 3000.
+app/src/main/res/values-es/strings_settings_main.xml	settings_chat_temp_hint_balanced_low	Inclinada equilibrada, estable pero diversa	Estable, con algo de variedad
+app/src/main/res/values-es/strings_settings_main.xml	settings_chat_temp_hint_creative_low	Inclinándose creativo, más diverso	Creativo, con mayor variedad
+app/src/main/res/values-es/strings_settings_main.xml	settings_chat_enter_send_subtitle	Enter inserta una nueva línea cuando está desactivado	Si está desactivado, Intro inserta un salto de línea
+app/src/main/res/values-es/strings_settings_main.xml	settings_chat_default_deep_thinking_subtitle	Habilite el pensamiento profundo de forma predeterminada al crear o cambiar de sesión	Activa el pensamiento profundo al crear una conversación o cambiar a otra
+app/src/main/res/values-es/strings_settings_main.xml	settings_chat_performance_mode_subtitle	Para chats largos, muestre solo los 50 mensajes más recientes y cargue más en el desplazamiento hacia arriba para reducir el retraso.	Muestra solo los 50 mensajes más recientes y carga los anteriores al desplazarte hacia arriba para mejorar el rendimiento en conversaciones largas.
+app/src/main/res/values-es/strings_settings_main.xml	settings_chat_tool_approval_subtitle	Controle si la IA necesita su confirmación antes de llamar a las herramientas	Controla si el asistente necesita tu aprobación para ejecutar herramientas
+app/src/main/res/values-es/strings_settings_main.xml	settings_chat_tool_approval_trusted	Confía plenamente	Confianza total
+app/src/main/res/values-es/strings_settings_main.xml	settings_chat_tool_approval_strict_desc	Modo estricto: todas las llamadas a herramientas requieren su confirmación, excepto las herramientas de consulta de solo lectura	Todas las herramientas requieren tu aprobación, salvo las consultas de solo lectura
+app/src/main/res/values-es/strings_settings_main.xml	settings_chat_background_subtitle	Personaliza el fondo del chat / Agent / grupo	Personaliza el fondo de las conversaciones, los agentes y los grupos
+app/src/main/res/values-es/strings_settings_misc.xml	settings_selected_suffix	, Seleccionado	, seleccionado
+app/src/main/res/values-es/strings_settings_misc.xml	settings_web_search_multi_key_title	Claves API multi-motor	Claves de API por buscador
+app/src/main/res/values-es/strings_settings_misc.xml	settings_web_search_save_endpoint	Guardar punto final	Guardar dirección de la API
+app/src/main/res/values-es/strings_settings_misc.xml	settings_experiments_title	experimentos	Experimentos
+app/src/main/res/values-es/strings_settings_misc.xml	settings_experiments_warning	Las siguientes funciones son experimentales y pueden ser inestables o afectar su experiencia	Estas funciones son experimentales y pueden ser inestables o afectar tu experiencia
+app/src/main/res/values-es/strings_settings_misc.xml	settings_experiments_long_memory_compression	Compresión de memoria larga	Compresión de conversaciones largas
+app/src/main/res/values-es/strings_settings_misc.xml	settings_user_profile_assistant_name_hint	p.ej.	Por ejemplo: Muse o JARVIS
+app/src/main/res/values-es/strings_settings_misc.xml	settings_user_profile_your_name_hint	p.ej.	Por ejemplo: José
+app/src/main/res/values-es/strings_settings_misc.xml	settings_user_profile_profession_field	Campo Profesional	Área profesional
+app/src/main/res/values-es/strings_settings_misc.xml	settings_user_profile_profession_field_hint	p.ej.	Por ejemplo: desarrollo de software, finanzas o salud
+app/src/main/res/values-es/strings_settings_misc.xml	settings_user_profile_timezone_hint	p.ej.	Por ejemplo: America/Montevideo o UTC-3
+app/src/main/res/values-es/strings_settings_misc.xml	settings_user_profile_background	Antecedentes & Experiencia	Formación y experiencia
+app/src/main/res/values-es/strings_settings_misc.xml	settings_user_profile_education_hint	p.ej.	Por ejemplo: licenciatura en informática o maestría en finanzas
+app/src/main/res/values-es/strings_settings_misc.xml	settings_user_profile_skills_hint	p.ej.	Por ejemplo: Python, aprendizaje automático o diseño de productos
+app/src/main/res/values-es/strings_settings_misc.xml	settings_user_profile_comm_style_hint	p.ej.	Por ejemplo: conciso, detallado, animado o serio
+app/src/main/res/values-es/strings_settings_misc.xml	settings_user_profile_resp_length_hint	p.ej.	Por ejemplo: breve, media o extensa
+app/src/main/res/values-es/strings_settings_misc.xml	settings_user_profile_pref_tone_hint	p.ej.	Por ejemplo: cercano, profesional, humorístico o riguroso
+app/src/main/res/values-es/strings_settings_misc.xml	settings_user_profile_boundaries	Límites & Temas evitados	Límites y temas que evitar
+app/src/main/res/values-es/strings_settings_misc.xml	settings_user_profile_avoid_topics_hint	Separados por comas, p.	Separa los temas con comas
+app/src/main/res/values-es/strings_settings_misc.xml	settings_preset_select_provider	Seleccionar Proveedor	Seleccionar proveedor
+app/src/main/res/values-es/strings_settings_misc.xml	settings_preset_group_relay	Relé	Intermediarios
+app/src/main/res/values-es/strings_settings_misc.xml	settings_preset_clear	Claro	Limpiar
+app/src/main/res/values-es/strings_settings_misc.xml	settings_model_ability_streaming	Transmisión	Respuesta progresiva
+app/src/main/res/values-es/strings_settings_misc.xml	settings_model_ability_video	Video	Vídeo
+app/src/main/res/values-es/strings_settings_misc.xml	settings_model_ability_chat	Charlar	Conversación
+app/src/main/res/values-es/strings_settings_misc.xml	settings_assistant_manage_subtitle	Administrar asistentes y sus libros del mundo	Gestionar asistentes y sus libros de trasfondo
+app/src/main/res/values-es/strings_settings_misc.xml	settings_assistant_skills	Gerente de Habilidades	Gestión de habilidades
+app/src/main/res/values-es/strings_settings_misc.xml	settings_assistant_memory_enable_subtitle	Cuando están desactivadas, las conversaciones ya no inyectan memoria a largo plazo y se detiene el resumen en segundo plano.	Al desactivarlo, las conversaciones dejan de incorporar recuerdos a largo plazo y se detiene el resumen en segundo plano.
+app/src/main/res/values-es/strings_settings_misc.xml	settings_multi_agent_enable	Habilite la colaboración entre múltiples agentes	Activar la colaboración entre agentes
+app/src/main/res/values-es/strings_settings_misc.xml	settings_multi_agent_team_name_hint	p.ej.	Por ejemplo: equipo de redacción
+app/src/main/res/values-es/strings_settings_misc.xml	settings_tutorial_ch1_s2_title	¿Qué hacer para el primer uso?	Cómo empezar
+app/src/main/res/values-es/strings_settings_misc.xml	settings_tutorial_ch2_s2_content	"Estos son algunos proveedores de IA habituales (sin un orden específico):\n\n• DeepSeek — chino, económico y con buenos resultados\n  Sitio web: platform.deepseek.com\n\n• Zhipu AI — chino, con cuota gratuita disponible\n  Sitio web: open.bigmodel.cn\n\n• Alibaba Tongyi Qianwen — chino, con cuota gratuita disponible\n  Sitio web: dashscope.aliyun.com\n\n• Moonshot Kimi — chino, con buena capacidad para contextos largos\n  Sitio web: platform.moonshot.cn\n\n• OpenAI (ChatGPT) — internacional, con resultados excelentes, pero requiere un medio de pago internacional\n  Sitio web: platform.openai.com\n\n• Anthropic (Claude) — internacional, destaca en escritura y razonamiento\n  Sitio web: console.anthropic.com\n\n• Google Gemini — internacional, con gran capacidad multimodal\n  Sitio web: ai.google.dev\n\nSi estás empezando, prueba DeepSeek o Zhipu. Tras registrarte, busca la página \""API Keys\"" en el panel, haz clic en \""Create new Key\"" y copia el código. La mayoría de los proveedores chinos ofrecen crédito gratuito al registrarte para que puedas probarlos sin coste."	Puedes obtener una clave de API desde el sitio del proveedor que elijas:\n\n• DeepSeek: platform.deepseek.com\n• Zhipu AI: open.bigmodel.cn\n• Alibaba Tongyi Qianwen: dashscope.aliyun.com\n• Moonshot Kimi: platform.moonshot.cn\n• OpenAI: platform.openai.com\n• Anthropic: console.anthropic.com\n• Google Gemini: ai.google.dev\n\nBusca la sección de claves de API en el panel de tu cuenta. Crea una clave y cópiala en la configuración del proveedor de Muse. Consulta las tarifas y cuotas del servicio antes de usarlo.
+app/src/main/res/values-es/strings_settings_misc.xml	settings_tutorial_ch2_s5_title	Cómo elegir un modelo adecuado & capacidades del modelo	Cómo elegir un modelo y sus capacidades
+app/src/main/res/values-es/strings_settings_misc.xml	settings_tutorial_ch3_s6_title	Enviar imágenes, archivos & asistencia visual	Enviar imágenes y archivos
+app/src/main/res/values-es/strings_settings_misc.xml	settings_tutorial_ch3_s7_title	Usando herramientas & ramas de mensajes	Herramientas y ramas de conversación
+app/src/main/res/values-es/strings_settings_misc.xml	settings_tutorial_ch4_s4_content	"Con la memoria a largo plazo habilitada, la IA registra automáticamente información importante de las conversaciones (sus preferencias, identidad, acuerdos, eventos clave) y la recupera en conversaciones futuras, sin necesidad de repetirla cada vez.\n\n• Habilite: Configuración → Asistente → Memoria a largo plazo, active \""Activar sistema de memoria\"".\n• Cómo funciona: en segundo plano, en los momentos apropiados"	La memoria a largo plazo permite conservar preferencias, datos personales, acuerdos y acontecimientos importantes para tenerlos en cuenta en conversaciones futuras.\n\n• Activación: abre Ajustes → Asistente → Memoria a largo plazo y activa el sistema de memoria.\n• Funcionamiento: la aplicación resume las conversaciones en segundo plano, guarda los recuerdos y añade los relevantes al contexto de nuevas conversaciones.\n• Gestión: puedes consultar, editar y eliminar los recuerdos desde la gestión de memoria.\n• Almacenamiento: los recuerdos se guardan en el dispositivo y pueden incluirse en las copias de seguridad que configures. Los recuerdos incorporados al contexto se envían al proveedor del modelo cuando generan parte de una solicitud.\n\nPuedes usarla para recordar tus preferencias de alimentación, tu organización del trabajo o tus avances de estudio.
+app/src/main/res/values-es/strings_settings_misc.xml	settings_tutorial_ch4_s9_title	Generación de vídeo & tareas programadas	Generación de vídeo y tareas programadas
+app/src/main/res/values-es/strings_settings_misc.xml	settings_tutorial_ch4_s10_title	Sistema de habilidades & Complementos MCP	Habilidades y complementos MCP
+app/src/main/res/values-es/strings_settings_misc.xml	settings_tutorial_ch5_s1_title	Tema & Color dinámico	Tema y colores dinámicos
+app/src/main/res/values-es/strings_settings_misc.xml	settings_tutorial_ch5_s5_title	Perfil de usuario & preferencias	Perfil del usuario y preferencias
+app/src/main/res/values-es/strings_settings_misc.xml	settings_tutorial_ch5_s5_content	Configuración → Perfil de usuario, complete su información básica (nombre, ocupación, intereses, preferencias de comunicación, temas evitados).	En Ajustes → Perfil del usuario, completa tu nombre, ocupación, intereses, preferencias de comunicación y los temas que prefieres evitar.
+app/src/main/res/values-es/strings_settings_misc.xml	settings_tutorial_ch6_s3_title	Exportar tarjetas de personajes & datos	Exportar tarjetas de personajes y datos
+app/src/main/res/values-es/strings_settings_misc.xml	settings_tutorial_ch6_s4_title	Limpiar caché & ahorrar espacio	Limpiar la caché y liberar espacio
+app/src/main/res/values-es/strings_settings_misc.xml	settings_tutorial_ch6_s5_title	Seguridad de datos & privacidad	Seguridad de los datos y privacidad
+app/src/main/res/values-es/strings_settings_misc.xml	settings_tutorial_ch7_s6_title	¿Cómo proteger la privacidad (redacción de PII)?	Cómo proteger los datos personales (PII)
+app/src/main/res/values-es/strings_settings_misc.xml	settings_crash_enable_subtitle	Los registros solo se envian al pulsar Informar ahora	Los registros solo se envían cuando tocas Informar ahora
+app/src/main/res/values-es/strings_settings_misc.xml	settings_crash_privacy_title	Promesa de privacidad de informes de fallas	Privacidad de los informes de fallos
+app/src/main/res/values-es/strings_settings_misc.xml	settings_crash_no_pending	No hay fallas pendientes que reportar	No hay fallos pendientes de informar
+app/src/main/res/values-es/strings_settings_misc.xml	settings_web_search_provider_status_jina	Baidu HTTP: alternativa web nacional gratuita	Baidu HTTP: alternativa gratuita para búsquedas en China
+app/src/main/res/values-es/strings_settings_misc.xml	settings_experiments_parallel_tools_subtitle	Cuando todas las herramientas de una ronda son de solo lectura, se ejecutan en paralelo para ser más rápido y eficiente (activado por defecto; se puede desactivar para volver a serial)	Si todas las herramientas de una ronda son de solo lectura, se ejecutan en paralelo para reducir la espera. Puedes desactivar esta opción para ejecutarlas una por una.
+app/src/main/res/values-es/strings_settings_sub.xml	settings_agent_section_assistant	Asistente de agente	Asistente del agente
+app/src/main/res/values-es/strings_settings_sub.xml	settings_agent_default_assistant_title	Asistente de agente predeterminado	Asistente predeterminado del agente
+app/src/main/res/values-es/strings_settings_sub.xml	settings_agent_tool_model_title	Modelo utilitario pequeño	Modelo auxiliar pequeño
+app/src/main/res/values-es/strings_settings_sub.xml	settings_agent_subagent_model_title	Modelo utilitario grande	Modelo auxiliar grande
+app/src/main/res/values-es/strings_settings_sub.xml	settings_agent_select_subagent_model	Seleccionar modelo utilitario grande	Seleccionar modelo auxiliar grande
+app/src/main/res/values-es/strings_settings_sub.xml	settings_agent_clear_subagent_model	Borrar (reutilizar el modelo utilitario pequeño)	Borrar (usar el modelo auxiliar pequeño)
+app/src/main/res/values-es/strings_settings_sub.xml	settings_agent_boot_section	Inicio automático de arranque	Iniciar automáticamente al encender el dispositivo
+app/src/main/res/values-es/strings_settings_sub.xml	settings_agent_random_offset	Desplazamiento aleatorio	Variación aleatoria del horario
+app/src/main/res/values-es/strings_settings_sub.xml	settings_agent_offset_hint	Deje que el tiempo de envío fluya naturalmente durante el intervalo.	Varía aleatoriamente la hora de envío dentro del intervalo.
+app/src/main/res/values-es/strings_settings_sub.xml	settings_agent_offset_off_label	Apagado	Desactivado
+app/src/main/res/values-es/strings_settings_sub.xml	settings_agent_select_tool_model	Seleccionar modelo utilitario pequeño	Seleccionar modelo auxiliar pequeño
+app/src/main/res/values-es/strings_settings_sub.xml	settings_agent_offset_disabled	Apagado (intervalo fijo)	Desactivada (intervalo fijo)
+app/src/main/res/values-es/strings_settings_sub.xml	settings_agent_offset_minutes	± %1$d mín.	± %1$d min
+app/src/main/res/values-es/strings_settings_sub.xml	settings_agent_offset_hours	± %1$dh	± %1$d h
+app/src/main/res/values-es/strings_settings_sub.xml	settings_agent_offset_hours_minutes	± %1$d h %2$d mín.	± %1$d h %2$d min
+app/src/main/res/values-es/strings_settings_sub.xml	settings_theme_light	Luz	Claro
+app/src/main/res/values-es/strings_settings_sub.xml	settings_theme_font_small	S	P
+app/src/main/res/values-es/strings_settings_sub.xml	settings_theme_font_medium	METRO	M
+app/src/main/res/values-es/strings_settings_sub.xml	settings_theme_font_large	l	G
+app/src/main/res/values-es/strings_settings_sub.xml	settings_theme_font_xlarge	SG	XG
+app/src/main/res/values-es/strings_settings_sub.xml	settings_bubble_skin_preview_note	La vista previa usa el mismo BubbleSkinResolver que el chat. Si el diseño no es válido, se usa el predeterminado.	La vista previa muestra cómo se verán las burbujas en el chat. Si el diseño no es válido, se utiliza el predeterminado.
+app/src/main/res/values-es/strings_settings_sub.xml	settings_agent_daily_guarantee	Garantía diaria	Envío mínimo diario
+app/src/main/res/values-es/strings_settings_sub.xml	settings_agent_daily_guarantee_hint	Si no se ha enviado ningún mensaje proactivo durante este tiempo, se fuerza uno. Las horas de silencio, el enfriamiento, tu actividad reciente y el presupuesto diario siguen aplicándose.	Si no se ha enviado ningún mensaje proactivo durante este periodo, se intenta enviar uno. Se respetan las horas de silencio, el intervalo mínimo entre envíos, tu actividad reciente y el límite diario.
+app/src/main/res/values-es/strings_settings_sub.xml	settings_crash_anr_subtitle	Detecta que la app no responde y lo registra en registros de fallos/auditoría	Detecta cuándo la aplicación deja de responder y lo anota en los registros de fallos y auditoría
+app/src/main/res/values-es/strings_settings_sub.xml	settings_chat_paste_as_file	Pegado largo a archivo	Adjuntar texto largo al pegar
+app/src/main/res/values-es/strings_settings_sub.xml	settings_chat_custom_title_prompt	Indicación de título personalizada	Instrucciones para generar títulos
+app/src/main/res/values-es/strings_settings_sub.xml	settings_chat_custom_title_prompt_default	Usar la indicación integrada predeterminada	Usar las instrucciones predeterminadas
+app/src/main/res/values-es/strings_settings_sub.xml	settings_memory_custom_compress_prompt	Indicación de compresión personalizada	Instrucciones de compresión
+app/src/main/res/values-es/strings_settings_sub.xml	prompt_template_manager_title	Plantillas de indicaciones	Plantillas de instrucciones
+app/src/main/res/values-es/strings_settings_sub.xml	settings_sub_data_backup	Datos & Copia de seguridad	Datos y copias de seguridad
+app/src/main/res/values-es/strings_settings_sub.xml	settings_about_feedback_section	Comentario	Comentarios
+app/src/main/res/values-es/strings_settings_sub.xml	settings_about_feedback	Enviar un problema	Informar de un problema
+app/src/main/res/values-es/strings_settings_sub.xml	settings_about_star	Destaca este proyecto	Marcar el proyecto con una estrella
+app/src/main/res/values-es/strings_settings_sub.xml	settings_about_issues	Comentarios (problemas de GitHub)	Comentarios e incidencias en GitHub
+app/src/main/res/values-es/strings_settings_sub.xml	settings_about_up_to_date	Ya al ​​día	Aplicación actualizada
+app/src/main/res/values-es/strings_settings_sub.xml	settings_feedback_subject_label	Asunto: comentarios de musa	Asunto: comentarios sobre Muse
+app/src/main/res/values-es/strings_settings_sub.xml	settings_memory_policy_when_unfocused	cuando está desenfocado	Cuando la aplicación está en segundo plano
+app/src/main/res/values-es/strings_settings_sub.xml	settings_memory_token_budget	Presupuesto simbólico	Límite de tokens
+app/src/main/res/values-es/strings_settings_sub.xml	settings_memory_token_budget_subtitle	La longitud objetivo de memoria.md afecta la cantidad de contexto inyectado.	Longitud objetivo de memory.md. Determina cuánto contexto de memoria se incorpora a la conversación.
+app/src/main/res/values-es/strings_settings_sub.xml	settings_memory_decay_rate	Tasa de decadencia	Pérdida de relevancia
+app/src/main/res/values-es/strings_settings_sub.xml	settings_memory_decay_rate_title	Tasa de decadencia λ	Tasa de pérdida de relevancia λ
+app/src/main/res/values-es/strings_settings_sub.xml	settings_memory_hit_bonus	Bonificación de golpe	Refuerzo por coincidencias
+app/src/main/res/values-es/strings_settings_sub.xml	settings_memory_forget_speed	Olvídate de la velocidad	Velocidad de olvido
+app/src/main/res/values-es/strings_settings_sub.xml	settings_memory_keep_awake	Desvelar	Mantener el dispositivo activo
+app/src/main/res/values-es/strings_settings_sub.xml	settings_import_step1	Paso 1: aprenda cómo exportar una copia de seguridad	Paso 1: exporta una copia de seguridad
+app/src/main/res/values-es/strings_settings_sub.xml	settings_import_rikkahub_step1	1. Abra Configuración en la aplicación RikkaHub.	1. Abre los ajustes de RikkaHub.
+app/src/main/res/values-es/strings_settings_sub.xml	settings_import_kelivo_desc	Cliente de chat AI multiplataforma (Flutter)	Cliente de chat de IA multiplataforma (Flutter)
+app/src/main/res/values-es/strings_settings_sub.xml	settings_import_kelivo_step1	1. Abra Configuración en la aplicación Kelivo.	1. Abre los ajustes de Kelivo.
+app/src/main/res/values-es/strings_settings_sub.xml	settings_import_ready	Estoy listo, selecciona archivo	Seleccionar archivo
+app/src/main/res/values-es/strings_settings_sub.xml	settings_import_cherrystudio_step1	1. Abra Configuración en CherryStudio / Chatbox	1. Abre los ajustes de CherryStudio o Chatbox.
+app/src/main/res/values-es/strings_settings_sub.xml	settings_import_cherrystudio_step3	3. Exportar la configuración del proveedor como un archivo JSON	3. Exporta la configuración de los proveedores como un archivo JSON.
+app/src/main/res/values-es/strings_settings_sub.xml	settings_asr_hide	Esconder	Ocultar
+app/src/main/res/values-es/strings_settings_sub.xml	settings_asr_show	Espectáculo	Mostrar
+app/src/main/res/values-es/strings_settings_sub.xml	settings_asr_poll_timeout	Tiempo de espera total de la encuesta (ms, predeterminado 300000 = 5 min)	Tiempo máximo de espera del sondeo (ms, predeterminado: 300000 = 5 min)
+app/src/main/res/values-es/strings_settings_sub.xml	settings_asr_provider_openai_whisper	Susurro	Whisper
+app/src/main/res/values-es/strings_settings_sub.xml	settings_asr_provider_agnes	Inés	Agnes
+app/src/main/res/values-es/strings_settings_sub.xml	settings_asr_hotwords	Palabras candentes (separadas por comas, aumentan el reconocimiento de los nombres propios)	Palabras clave (separadas por comas; mejoran el reconocimiento de nombres propios)
+app/src/main/res/values-es/strings_settings_sub.xml	settings_asr_vad_silence	Duración de la parada automática del silencio (ms, predeterminado 1500)	Silencio antes de detener la grabación (ms, predeterminado: 1500)
+app/src/main/res/values-es/strings_settings_sub.xml	settings_rag_auto_inject_subtitle	Recupera automáticamente conocimientos relevantes e inyéctalos en el contexto durante el chat.	Busca información relevante en la base de conocimientos y la incorpora automáticamente al contexto de la conversación.
+app/src/main/res/values-es/strings_settings_sub.xml	settings_rag_embedding_source_section	Fuente de incrustación	Origen de los embeddings
+app/src/main/res/values-es/strings_settings_sub.xml	settings_rag_embedding_model_section	Modelo de incrustación	Modelo de embeddings
+app/src/main/res/values-es/strings_settings_sub.xml	settings_rag_common_models	Modelos comunes: incrustación de texto-3-pequeño (1536d) / incrustación de texto-3-grande (3072d) / incrustación-2 (1024d)	Modelos habituales: text-embedding-3-small (1536 dimensiones), text-embedding-3-large (3072) y embedding-2 (1024)
+app/src/main/res/values-es/strings_settings_sub.xml	settings_rag_token_budget	Presupuesto simbólico	Límite de tokens
+app/src/main/res/values-es/strings_settings_sub.xml	settings_rag_markdown_aware	Fragmentación consciente de las rebajas	Fragmentación que respeta Markdown
+app/src/main/res/values-es/strings_settings_sub.xml	settings_rag_markdown_aware_subtitle	Preservar bloques/encabezados/tablas de código, evitar dividir	Conserva los bloques de código, los encabezados y las tablas para evitar dividirlos
+app/src/main/res/values-es/strings_settings_sub.xml	settings_rag_parser_cloud	Analizador de nubes	Analizador en la nube
+app/src/main/res/values-es/strings_settings_sub.xml	settings_rag_parser_mineru	MineroU	MinerU
+app/src/main/res/values-es/strings_settings_sub.xml	settings_rag_note3	• La herramienta Knowledge_Search siempre está disponible, independientemente de la opción de inyección automática.	• La herramienta knowledge_search está siempre disponible, independientemente de la incorporación automática de contexto.
+app/src/main/res/values-es/strings_settings_sub.xml	settings_rag_manage_kbs	Administrar bases de conocimiento	Gestionar bases de conocimientos
+app/src/main/res/values-es/strings_settings_sub.xml	settings_rag_manage_kbs_subtitle	Crear, cambiar el nombre y eliminar bases de conocimiento.	Crear, cambiar el nombre y eliminar bases de conocimientos
+app/src/main/res/values-es/strings_settings_sub.xml	settings_security_include_model_subtitle	Adjunte el nombre del modelo generador al compartir	Añade el nombre del modelo al compartir una conversación
+app/src/main/res/values-es/strings_settings_sub.xml	settings_security_include_tokens_subtitle	Adjunte tokens por mensaje al compartir	Añade el consumo de tokens de cada mensaje al compartir
+app/src/main/res/values-es/strings_settings_sub.xml	settings_security_include_mood_subtitle	Adjunte el borrador interno de la IA al compartir	Añade el borrador interno del asistente al compartir
+app/src/main/res/values-es/strings_settings_sub.xml	settings_security_include_reasoning_subtitle	Adjunte el proceso de razonamiento de la IA al compartir	Añade el razonamiento del asistente al compartir
+app/src/main/res/values-es/strings_settings_sub.xml	settings_security_share_format	Formato de compartir	Formato para compartir
+app/src/main/res/values-es/strings_settings_sub.xml	settings_media_pitch	Paso	Tono de voz
+app/src/main/res/values-es/strings_settings_sub.xml	settings_media_tts_voice	Voz/Identificación de voz	Voz o ID de voz
+app/src/main/res/values-es/strings_settings_sub.xml	settings_media_tts_show	Espectáculo	Mostrar
+app/src/main/res/values-es/strings_settings_sub.xml	settings_media_tts_hide	Esconder	Ocultar
+app/src/main/res/values-es/strings_settings_sub.xml	settings_media_tts_response_format	formato de audio	Formato de audio
+app/src/main/res/values-es/strings_settings_sub.xml	settings_media_tts_follow_voice_hint	Seguir solo toma la URL y la clave de API; comprueba que la voz funcione con el proveedor elegido	Esta opción reutiliza solo la URL y la clave de API del proveedor. Comprueba que la voz sea compatible.
+app/src/main/res/values-es/strings_settings_sub.xml	settings_theme_custom_primary_color	color primario	Color primario
+app/src/main/res/values-es/strings_settings_sub.xml	settings_theme_custom_unnamed	Intitulado	Sin título
+app/src/main/res/values-es/strings_settings_sub.xml	settings_theme_custom_color_l	Ligereza	Luminosidad
+app/src/main/res/values-es/strings_settings_sub.xml	settings_agent_dm_subtitle	Ver mensajes directos entre Agent	Ver mensajes directos entre agentes
+app/src/main/res/values-es/strings_settings_sub.xml	settings_agent_agent_only	Solo chats de Agent	Solo conversaciones de agentes
+app/src/main/res/values-es/strings_settings_sub.xml	settings_agent_agent_only_subtitle	Al activarlo, solo los asistentes Agent envían mensajes proactivos; las sesiones de tarea no	Solo los asistentes de agentes enviarán mensajes proactivos; las conversaciones de tareas quedan excluidas
+app/src/main/res/values-es/strings_settings_sub.xml	settings_agent_current_model_hint	Predeterminado global (compartido por el chat principal / Agent)	Valor global predeterminado (compartido por el chat principal y los agentes)
+app/src/main/res/values-es/strings_settings_sub.xml	keep_alive_manual_hint	No se pudo abrir los ajustes automáticamente. Sigue los pasos anteriores para activarlo manualmente.	No se pudieron abrir los ajustes automáticamente. Sigue los pasos anteriores para activarlo manualmente.
+app/src/main/res/values-es/strings_settings_sub.xml	chat_switch_assistant_applied_hint	Cambiado a %1$s — se usarán el modelo y la memoria de TA	Se cambió a %1$s. Se utilizarán su modelo y sus recuerdos.
+app/src/main/res/values-es/strings_settings_sub.xml	settings_relationship_level_high	Muy apegado	Muy frecuente
+app/src/main/res/values-es/strings_settings_sub.xml	settings_relationship_affinity_new	Recién conocido	Acabamos de conocernos
+app/src/main/res/values-es/strings_settings_sub.xml	settings_relationship_affinity_familiar	Familiar	De confianza
+app/src/main/res/values-es/strings_settings_sub.xml	settings_agent_advanced_subtitle	Temperatura, desfase aleatorio, solo Agent, envío de prueba	Temperatura, variación aleatoria del horario, solo agentes y envío de prueba
+app/src/main/res/values-es/strings_settings_sub.xml	settings_asr_desc_whisper	OpenAI Whisper, compatible con servicios propios y relay	OpenAI Whisper, compatible con servidores propios e intermediarios
+app/src/main/res/values-es/strings_settings_sub.xml	settings_glass_off	Apagado	Desactivado
+app/src/main/res/values-es/strings_settings_sub.xml	search_custom_engines_hint	Conecta tu propio servicio: indica el endpoint, la plantilla de petición y la ruta de resultados.	Conecta tu propio servicio: indica la URL de la API, la plantilla de solicitud y la ruta de los resultados.
+app/src/main/res/values-es/strings_settings_sub.xml	settings_user_profile_auto_desc	Se destila de las conversaciones de forma periódica y se inyecta como referencia; los campos que rellenes siempre tienen prioridad.	El perfil se obtiene periódicamente de tus conversaciones y se incorpora como referencia. Los campos que completes manualmente siempre tienen prioridad.
+app/src/main/res/values-es/strings_settings_sub.xml	settings_user_profile_auto_override	Anular este grupo	Personalizar este grupo
+app/src/main/res/values-es/strings_settings_sub.xml	settings_user_profile_auto_revert	Restaurar automático	Restaurar el valor automático
+app/src/main/res/values-es/strings_settings_sub.xml	settings_diagnostics_loading	Recogiendo…	Recopilando…
+app/src/main/res/values-es/strings_settings_sub.xml	settings_diagnostics_refresh	Recoger de nuevo	Recopilar de nuevo
+app/src/main/res/values-es/strings_settings_sub.xml	settings_diagnostics_collected_at	Recogido el	Fecha de recopilación
+app/src/main/res/values-es/strings_settings_sub.xml	settings_diagnostics_jank_counts	jank / lento / bloqueado	Fotogramas irregulares / lentos / bloqueados
+app/src/main/res/values-es/strings_settings_sub.xml	settings_diagnostics_few_samples	pocas muestras	Pocas muestras
+app/src/main/res/values-es/strings_settings_sub.xml	settings_diagnostics_bg_error	Fallo al recoger	No se pudieron recopilar los datos
+app/src/main/res/values-es/strings_settings_sub.xml	settings_diagnostics_bg_none	Sin tareas registradas (puede que la programación en segundo plano nunca se activó)	No hay tareas registradas. Es posible que todavía no se haya activado la programación en segundo plano.
+app/src/main/res/values-es/strings_settings_sub.xml	settings_session_terms_action_body	Este término apareció %1$d veces en este asistente. Lectura actual: %2$s. Se usará como establecido solo tras confirmarlo.	Este término apareció %1$d veces con este asistente. Interpretación actual: %2$s. Solo se considerará confirmado cuando lo apruebes.
+app/src/main/res/values-es/strings_settings_sub.xml	settings_session_terms_promote	Promover al asistente	Usar en todo el asistente
+app/src/main/res/values-es/strings_settings_sub.xml	settings_session_terms_toast_promoted	«%1$s» promovido al asistente	«%1$s» se aplicará en todo el asistente
+app/src/main/res/values-es/strings_settings_sub.xml	settings_session_terms_scope_assistant	Nivel asistente	Ámbito del asistente
+app/src/main/res/values-es/strings_settings_sub.xml	kb_settings_ingest	Ingesta	Importación de documentos
+app/src/main/res/values-es/strings_settings_sub.xml	kb_settings_title	Ajustes de conocimiento	Ajustes de la base de conocimientos
+app/src/main/res/values-es/strings_tools.xml	tools_category_mcp	herramientas MCP	Herramientas MCP
+app/src/main/res/values-es/strings_tools.xml	tools_settings_policy_ask	Pregunta cada vez	Preguntar siempre
+app/src/main/res/values-es/strings_tools.xml	tools_settings_policy_always_deny	Negar siempre	Denegar siempre
+app/src/main/res/values-es/strings_tools.xml	tool_summary_delegate_agent	Delegó en un sub-agente	Delegó en otro agente
+app/src/main/res/values-es/strings_tools.xml	tool_summary_dns_lookup	Consulta DNS	Consultó el DNS
+app/src/main/res/values-es/strings_tools.xml	tool_summary_unpin_memory	Desfijó un recuerdo	Quitó un recuerdo de fijados
+app/src/main/res/values-es/strings_tools.xml	tool_terminal_timeout	Detenido por tiempo de espera	Se agotó el tiempo de espera
+app/src/main/res/values-es/strings_tools.xml	tool_label_delegate_agent	Delegar sub-agente	Delegar en otro agente
+app/src/main/res/values-es/strings_tools.xml	tool_label_execute_shell	Comando Shell	Comando de shell
+app/src/main/res/values-es/strings_tools.xml	tool_label_get_weather	Tiempo	Clima
+app/src/main/res/values-es/strings_tools.xml	tool_label_workspace_write	Escritura en workspace	Escribir en el espacio de trabajo
+app/src/main/res/values-es/strings_tools.xml	plugin_market_state_invalid	El estado del catálogo está desactualizado. Actualícelo.	El catálogo está desactualizado. Actualízalo.
+app/src/main/res/values-es/strings_tools.xml	tool_target_all_tools	todas las herramientas	Todas las herramientas
+app/src/main/res/values-es/strings_translate.xml	translate_page_target_language	Lengua de llegada	Idioma de destino
+app/src/main/res/values-es/strings_translate.xml	translate_page_send_to_chat_session	enviar al chat	Enviar al chat
+app/src/main/res/values-es/strings_translate.xml	translate_page_tts_not_ready	TTS no está listo, inténtelo de nuevo más tarde	El motor de voz todavía no está listo. Vuelve a intentarlo más tarde.
+app/src/main/res/values-es/strings_translate.xml	translate_page_history_loaded	Cargado a la entrada	Texto insertado en el campo de entrada
+app/src/main/res/values-es/strings_translate.xml	translate_page_history_source_short	S	Original
+app/src/main/res/values-es/strings_translate.xml	translate_page_history_translated_short	t	Traducción
+app/src/main/res/values-es/strings_translate.xml	translate_page_batch_translating	Traducción por lotes...	Traduciendo por lotes…
+app/src/main/res/values-es/strings_translate.xml	translate_page_batch_results_title	Resultados de lotes (%1$d elementos)	Resultados de la traducción por lotes (%1$d textos)
+app/src/main/res/values-es/strings_translate.xml	translate_page_glossary_original	Término fuente	Término de origen
+app/src/main/res/values-es/strings_translate.xml	translate_page_glossary_translated	Término objetivo	Término de destino
+app/src/main/res/values-es/strings_translate.xml	translate_page_ocr_empty	No se reconoce ningún texto	No se reconoció ningún texto
+app/src/main/res/values-es/strings_translate.xml	translate_page_ocr_failed	OCR falló	No se pudo reconocer el texto de la imagen
+app/src/main/res/values-es/strings_ui_main.xml	assistant_detail_prompt_desc	systemPrompt / Plantilla de mensaje / Mensajes preestablecidos	Instrucciones del sistema / plantilla de mensaje / mensajes preestablecidos
+app/src/main/res/values-es/strings_ui_main.xml	assistant_detail_memory_desc	Alternar memoria/Memoria global/Referencia de chat reciente/Recordatorio de tiempo	Memoria del asistente / memoria global / chats recientes / hora actual
+app/src/main/res/values-es/strings_ui_main.xml	assistant_detail_exclusive_model	Modelo Exclusivo	Modelo propio del asistente
+app/src/main/res/values-es/strings_ui_main.xml	assistant_detail_select_model	Seleccionar modelo exclusivo	Seleccionar un modelo para este asistente
+app/src/main/res/values-es/strings_ui_main.xml	assistant_detail_recent_chats_reference	Referencia de chat reciente	Contexto de conversaciones recientes
+app/src/main/res/values-es/strings_ui_main.xml	assistant_detail_recent_chats_reference_desc	Inyecte resúmenes de chats recientes como contexto en el mensaje	Incorpora resúmenes de conversaciones recientes como contexto
+app/src/main/res/values-es/strings_ui_main.xml	assistant_detail_manual_memory	Memoria Manual	Recuerdos añadidos manualmente
+app/src/main/res/values-es/strings_ui_main.xml	assistant_detail_add_memory	Agregar memoria	Agregar recuerdo
+app/src/main/res/values-es/strings_ui_main.xml	assistant_detail_saved_memory_count	Memorias guardadas (%1$d)	Recuerdos guardados (%1$d)
+app/src/main/res/values-es/strings_ui_main.xml	assistant_detail_global_pinned_count	Memorias globales fijadas (%1$d)	Recuerdos globales fijados (%1$d)
+app/src/main/res/values-es/strings_ui_main.xml	assistant_detail_delete_memory	Eliminar memoria	Eliminar recuerdo
+app/src/main/res/values-es/strings_ui_main.xml	assistant_detail_add_memory_dialog_title	Agregar memoria	Agregar recuerdo
+app/src/main/res/values-es/strings_ui_main.xml	assistant_detail_memory_edit_missing	Esta memoria ya no existe o el contenido no es válido	Este recuerdo ya no existe o su contenido no es válido
+app/src/main/res/values-es/strings_ui_main.xml	assistant_detail_edit_memory_dialog_title	Editar memoria	Editar recuerdo
+app/src/main/res/values-es/strings_ui_main.xml	memory_screen_edit_summary	Editar resumen de sesión	Editar resumen de la conversación
+app/src/main/res/values-es/strings_ui_main.xml	memory_unpin_cd	Desfijar	Quitar de fijados
+app/src/main/res/values-es/strings_ui_main.xml	memory_screen_health	Estado de salud	Estado de la memoria
+app/src/main/res/values-es/strings_ui_main.xml	memory_overview_total	Hechos totales	Total de hechos
+app/src/main/res/values-es/strings_ui_main.xml	settings_screen_chat	Charlar	Conversación
+app/src/main/res/values-es/strings_ui_main.xml	settings_screen_memory_notification	Centro de Memoria	Centro de memoria
+app/src/main/res/values-es/strings_ui_main.xml	settings_screen_rag_desc	Configuración RAG / Incrustación / Parámetros de fragmentos	Ajustes de búsqueda / embeddings / fragmentación de documentos
+app/src/main/res/values-es/strings_ui_main.xml	settings_screen_assistant_desc	Gestionar asistentes, modelos, personajes y libros del mundo.	Gestionar asistentes, modelos, personajes y libros de trasfondo
+app/src/main/res/values-es/strings_ui_main.xml	settings_screen_security_desc	Plantilla de compartir / Ajustes de exportación	Plantilla para compartir / ajustes de exportación
+app/src/main/res/values-es/strings_ui_main.xml	settings_screen_experiments_desc	Alternancias de funciones inestables	Activar o desactivar funciones experimentales
+app/src/main/res/values-es/strings_ui_main.xml	settings_screen_stats	Estadística	Estadísticas
+app/src/main/res/values-es/strings_ui_main.xml	settings_screen_notification_listener	Oyente de notificaciones	Acceso a notificaciones
+app/src/main/res/values-es/strings_ui_main.xml	channel_intro_title	Envía mensajes a tu IM	Envía mensajes a tus servicios de mensajería
+app/src/main/res/values-es/strings_ui_main.xml	settings_screen_notification_listener_desc	Autorizar a AI para leer las notificaciones de otras aplicaciones	Permitir que el asistente lea las notificaciones de otras aplicaciones
+app/src/main/res/values-es/strings_ui_main.xml	settings_screen_check_update_desc	Consulte GitHub para conocer nuevos lanzamientos	Consulta las nuevas versiones en GitHub
+app/src/main/res/values-es/strings_ui_main.xml	settings_search_no_results	partidos	Coincidencias
+app/src/main/res/values-es/strings_ui_main.xml	settings_screen_translate	Traductor AI	Traductor con IA
+app/src/main/res/values-es/strings_ui_main.xml	settings_screen_translate_desc	Traducción multilingüe con selección/intercambio/reproducción de fuente	Selecciona los idiomas, intercámbialos y escucha el texto o la traducción
+app/src/main/res/values-es/strings_ui_main.xml	settings_vision_title	Asistencia de visión	Asistencia visual
+app/src/main/res/values-es/strings_ui_main.xml	settings_vision_enabled_subtitle	Envíe automáticamente imágenes al modelo de visión para su análisis.	Envía las imágenes automáticamente al modelo de visión para analizarlas
+app/src/main/res/values-es/strings_ui_main.xml	vision_assist_label	Asistencia de visión	Asistencia visual
+app/src/main/res/values-es/strings_ui_main.xml	vision_assist_analyzing	Asistente de visión · Analizando %1$d/%2$d	Asistencia visual · Analizando %1$d/%2$d
+app/src/main/res/values-es/strings_ui_main.xml	search_placeholder	Buscar sesiones/mensajes/configuraciones...	Buscar conversaciones, mensajes o ajustes…
+app/src/main/res/values-es/strings_ui_main.xml	search_tab_sessions	Sesiones	Conversaciones
+app/src/main/res/values-es/strings_ui_main.xml	search_try_other	Pruebe otras palabras clave	Prueba con otras palabras clave
+app/src/main/res/values-es/strings_ui_main.xml	search_section_sessions	Sesiones	Conversaciones
+app/src/main/res/values-es/strings_ui_main.xml	skill_built_in	Incorporado	Integrada
+app/src/main/res/values-es/strings_ui_main.xml	skill_built_in_seed	Incorporado (semilla)	Integrada de inicio
+app/src/main/res/values-es/strings_ui_main.xml	skill_custom	Costumbre	Personalizada
+app/src/main/res/values-es/strings_ui_main.xml	assistant_detail_regex_name_hint	p.ej.	Por ejemplo: cambiar el nombre del personaje
+app/src/main/res/values-es/strings_ui_main.xml	assistant_detail_regex_find_label	encontrar expresiones regulares	Expresión regular de búsqueda
+app/src/main/res/values-es/strings_ui_main.xml	assistant_detail_regex_find_hint	p.ej.	Por ejemplo: \\bAI\\b
+app/src/main/res/values-es/strings_ui_main.xml	assistant_detail_regex_replace_label	Cuerda de repuesto	Texto de reemplazo
+app/src/main/res/values-es/strings_ui_main.xml	assistant_detail_regex_replace_hint	p.ej.	Por ejemplo: Muse (admite referencias a grupos como $1)
+app/src/main/res/values-es/strings_ui_main.xml	assistant_detail_regex_visual_only	Solo reemplazo de pantalla (no afecta la entrada LLM)	Cambiar solo la visualización (no modifica el texto enviado al modelo)
+app/src/main/res/values-es/strings_ui_main.xml	stats_deleted_session	Sesión eliminada	Conversación eliminada
+app/src/main/res/values-es/strings_ui_main.xml	model_diff_new	Upstream Nuevo (%1$d)	Nuevos en el proveedor (%1$d)
+app/src/main/res/values-es/strings_ui_main.xml	model_diff_add_all	Agregar todo nuevo	Agregar todos los modelos nuevos
+app/src/main/res/values-es/strings_ui_main.xml	model_diff_remove_all	Eliminar todo lo eliminado	Quitar los modelos retirados del proveedor
+app/src/main/res/values-es/strings_ui_main.xml	model_diff_kept_badge	Eliminado (Conservado)	Retirado del proveedor (conservado en la lista)
+app/src/main/res/values-es/strings_ui_main.xml	model_diff_apply	Aplicar Seleccionado	Aplicar selección
+app/src/main/res/values-es/strings_ui_main.xml	audit_log_empty	Sin registros de registro	No hay registros de auditoría
+app/src/main/res/values-es/strings_ui_main.xml	audit_log_clear_confirm	¿Confirmar que se borraron todos los registros de auditoría?	¿Borrar todos los registros de auditoría?
+app/src/main/res/values-es/strings_ui_main.xml	audit_log_export_subject	registros de auditoría de muse: %1$d entradas	Registros de auditoría de Muse: %1$d entradas
+app/src/main/res/values-es/strings_ui_main.xml	settings_screen_asr_desc	Voz a texto (Sistema / DashScope / Paso)	Voz a texto (Sistema / DashScope / Step)
+app/src/main/res/values-es/strings_ui_main.xml	settings_screen_mcp_desc	Servidores de herramientas de protocolo de contexto modelo	Servidores de herramientas MCP (Model Context Protocol)
+app/src/main/res/values-es/strings_ui_main.xml	video_gen_select_image	Elige entre locales	Elegir del dispositivo
+app/src/main/res/values-es/strings_ui_main.xml	provider_plugins_import	Complemento de importación	Importar complemento
+app/src/main/res/values-es/strings_ui_main.xml	workspace_rename	Rebautizar	Cambiar nombre
+app/src/main/res/values-es/strings_ui_main.xml	browser_refresh	Refrescar	Actualizar
+app/src/main/res/values-es/strings_ui_main.xml	voice_cloning_delete_confirm	¿Confirmar eliminar esta voz clonada?	¿Eliminar esta voz clonada?
+app/src/main/res/values-es/strings_ui_main.xml	desktop_context_regenerate	Regenerado	Regenerar
+app/src/main/res/values-es/strings_ui_main.xml	settings_vision_probe_section	Prueba de sonda	Prueba de compatibilidad
+app/src/main/res/values-es/strings_ui_main.xml	settings_vision_show_all_models_subtitle	Modo avanzado del relay: muestra todos los modelos y permite elegir manualmente uno no detectado	Modo avanzado para intermediarios: muestra todos los modelos y permite seleccionar uno que no se haya detectado automáticamente
+app/src/main/res/values-es/strings_ui_main.xml	settings_screen_entry_api_key	API Key	Clave de API
+app/src/main/res/values-es/strings_ui_main.xml	settings_screen_entry_enter_send	Enviar con Enter	Enviar con Intro
+app/src/main/res/values-es/strings_ui_main.xml	settings_screen_entry_memory_toggle	Interruptor de memoria	Activar memoria
+app/src/main/res/values-es/strings_ui_main.xml	settings_screen_entry_proxy_switch	Interruptor de proxy	Activar proxy
+app/src/main/res/values-es/strings_ui_main.xml	greeting_memory_huge	%1$s te entiende mejor que nadie y recuerda %2$d recuerdos	%1$s te conoce muy bien y conserva %2$d recuerdos
+app/src/main/res/values-es/strings_ui_main.xml	greeting_memory_many	Tú y %1$s ya sois muy cercanos	Tú y %1$s ya tienen mucha confianza
+app/src/main/res/values-es/strings_ui_main.xml	greeting_memory_mid	%1$s ha recordado %2$d recuerdos y empieza a familiarizarse	%1$s conserva %2$d recuerdos y empieza a conocerte
+app/src/main/res/values-es/strings_ui_main.xml	muse_plugins_global_switch_title	Interruptor general de plugins	Activar complementos
+app/src/main/res/values-es/strings_ui_main.xml	muse_plugins_install_confirm_summary	Versión %1$s · Autor %2$s · El código externo se ejecutará en una caja de arena JS restringida	Versión %1$s · Autor %2$s · El código externo se ejecutará en un entorno JavaScript aislado
+app/src/main/res/values-es/strings_ui_misc.xml	markdown_copied_lines	Copiado %1$d líneas de código	Se copiaron %1$d líneas de código
+app/src/main/res/values-es/strings_ui_misc.xml	markdown_collapse_remaining	Mostrar %1$d más líneas	Mostrar %1$d líneas más
+app/src/main/res/values-es/strings_ui_misc.xml	markdown_svg_cd	gráfico SVG	Gráfico SVG
+app/src/main/res/values-es/strings_ui_misc.xml	markdown_html_cd	contenido HTML	Contenido HTML
+app/src/main/res/values-es/strings_ui_misc.xml	html_preview_source_copied	fuente HTML copiada	Código HTML copiado
+app/src/main/res/values-es/strings_ui_misc.xml	speech_stop_reading_cd	dejar de leer	Detener lectura
+app/src/main/res/values-es/strings_ui_misc.xml	speech_seek_forward_5s_cd	Adelante 5 segundos	Avanzar 5 segundos
+app/src/main/res/values-es/strings_ui_misc.xml	speech_pause_cd	Pausa	Pausar
+app/src/main/res/values-es/strings_ui_misc.xml	model_switch_no_provider	Ningún proveedor configurado\nAgregue uno en Configuración → Gestión de proveedores	No hay proveedores configurados\nAgrega uno en Ajustes → Gestión de proveedores
+app/src/main/res/values-es/strings_ui_misc.xml	model_switch_refresh	Refrescar	Actualizar
+app/src/main/res/values-es/strings_ui_misc.xml	model_switch_no_models	"Este proveedor aún no tiene modelos
+Toca actualizar para obtener la lista"	Este proveedor todavía no tiene modelos. Toca Actualizar para obtener la lista.
+app/src/main/res/values-es/strings_ui_misc.xml	favorites_tag_edit_confirm	DE ACUERDO	Aceptar
+app/src/main/res/values-es/strings_ui_misc.xml	home_miniphone_cd	Mini Phone	Mini teléfono
+app/src/main/res/values-es/strings_ui_viewmodel.xml	quick_msg_discard	Desechar	Descartar
+app/src/main/res/values-es/strings_ui_viewmodel.xml	prompt_injection_discard	Desechar	Descartar
+app/src/main/res/values-es/strings_ui_viewmodel.xml	assistant_diff_persona_definition	Persona	Personalidad
+app/src/main/res/values-es/strings_ui_viewmodel.xml	assistant_diff_max_tokens	Tokens max.	Tokens máximos
+app/src/main/res/values-es/strings_ui_viewmodel.xml	assistant_diff_will_create	Se creara un asistente nuevo (el actual no cambia)	Se creará un asistente nuevo; el actual se conservará
+app/src/main/res/values-es/strings_ui_viewmodel.xml	assistant_diff_will_change	Frente al asistente con el mismo nombre, cambian %1$d campos	Hay %1$d campos distintos respecto al asistente con el mismo nombre

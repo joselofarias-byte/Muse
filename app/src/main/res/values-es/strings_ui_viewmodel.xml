@@ -22,7 +22,7 @@
     <!-- Edit page -->
     <string name="quick_msg_unsaved_title">Cambios no guardados</string>
     <string name="quick_msg_unsaved_content">Al salir se descartarán las ediciones actuales.</string>
-    <string name="quick_msg_discard">Desechar</string>
+    <string name="quick_msg_discard">Descartar</string>
     <string name="quick_msg_new_title">Nuevo mensaje rápido</string>
     <string name="quick_msg_edit_title">Editar mensaje rápido</string>
     <string name="quick_msg_save">Guardar</string>
@@ -104,7 +104,7 @@
     <!-- Edit page -->
     <string name="prompt_injection_unsaved_title">Cambios no guardados</string>
     <string name="prompt_injection_unsaved_content">Al salir se descartarán las ediciones actuales.</string>
-    <string name="prompt_injection_discard">Desechar</string>
+    <string name="prompt_injection_discard">Descartar</string>
     <string name="prompt_injection_new_title">Nueva inyección de instrucciones</string>
     <string name="prompt_injection_edit_title">Editar inyección de instrucciones</string>
     <string name="prompt_injection_save">Guardar</string>
@@ -190,20 +190,20 @@
     <string name="assistant_diff_name">Nombre</string>
     <string name="assistant_diff_summary">Resumen</string>
     <string name="assistant_diff_system_prompt">Instrucciones del sistema</string>
-    <string name="assistant_diff_persona_definition">Persona</string>
+    <string name="assistant_diff_persona_definition">Personalidad</string>
     <string name="assistant_diff_thinking_chain">Cadena de razonamiento</string>
     <string name="assistant_diff_message_template">Plantilla de mensaje</string>
     <string name="assistant_diff_preset_messages">Saludo</string>
     <string name="assistant_diff_temperature">Temperatura</string>
     <string name="assistant_diff_top_p">Top P</string>
-    <string name="assistant_diff_max_tokens">Tokens max.</string>
+    <string name="assistant_diff_max_tokens">Tokens máximos</string>
     <string name="assistant_diff_context_size">Mensajes de contexto</string>
     <string name="assistant_diff_reasoning_level">Nivel de razonamiento</string>
     <string name="assistant_diff_memory_enabled">Memoria</string>
     <string name="assistant_diff_use_global_memory">Memoria global</string>
     <string name="assistant_diff_allow_group_chat">Chat grupal</string>
-    <string name="assistant_diff_will_create">Se creara un asistente nuevo (el actual no cambia)</string>
-    <string name="assistant_diff_will_change">Frente al asistente con el mismo nombre, cambian %1$d campos</string>
+    <string name="assistant_diff_will_create">Se creará un asistente nuevo; el actual se conservará</string>
+    <string name="assistant_diff_will_change">Hay %1$d campos distintos respecto al asistente con el mismo nombre</string>
     <string name="assistant_diff_legacy_pack">Tarjeta antigua: solo se importa la personalidad; las claves, los modelos y las estadísticas no se transfieren</string>
     <string name="assistant_diff_no_switch">Importar no cambia el asistente actual ni reasigna chats</string>
     <string name="assistant_diff_more">…y %1$d más</string>

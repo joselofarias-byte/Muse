@@ -45,7 +45,7 @@ def test_parameter_identity_and_type_are_preserved():
 
 
 def test_truncated_list_and_sentence_fail():
-    for value in [r'Configura lo siguiente:\n1.', r'Paso completo\n2. ', 'Desactivado;']:
+    for value in [r'Configura lo siguiente:\n1.', r'Paso completo\n2. ', 'Desactivado;', 'p.ej.']:
         tmp, root = fixture('<string name="guide">说明</string>', f'<string name="guide">{value}</string>')
         with tmp:
             assert any('unfinished' in e for e in check_resources(root))
@@ -91,6 +91,38 @@ def test_save_action_is_not_mistranslated_as_saving_money():
         tmp, root = fixture('<string name="action_save">保存</string>', f'<string name="action_save">{label}</string>')
         with tmp:
             assert bool(check_resources(root)) == expected_error
+
+
+def test_names_and_contextual_actions_cannot_be_literal_translations():
+    for name, bad, good in [
+        ("proxy_type_socks5", "CALCETINES5", "SOCKS5"),
+        ("settings_common_close", "Cerca", "Cerrar"),
+        ("settings_common_show", "Espectáculo", "Mostrar"),
+        ("settings_provider_category_custom", "Costumbre", "Personalizado"),
+        ("settings_asr_provider_openai_whisper", "Susurro", "Whisper"),
+        ("settings_asr_provider_agnes", "Inés", "Agnes"),
+        ("settings_rag_parser_mineru", "MineroU", "MinerU"),
+        ("settings_theme_font_medium", "METRO", "M"),
+    ]:
+        for value, should_fail in [(bad, True), (good, False)]:
+            tmp, root = fixture(f'<string name="{name}">Label</string>', f'<string name="{name}">{value}</string>')
+            with tmp:
+                assert bool(check_resources(root)) == should_fail, (name, value)
+
+
+def test_slash_command_remains_executable():
+    for value, should_fail in [("/nueva Nueva conversación", True), ("/newer Nueva conversación", True), ("/new Nueva conversación", False)]:
+        tmp, root = fixture('<string name="slash_command_new">/new 新对话</string>', f'<string name="slash_command_new">{value}</string>')
+        with tmp:
+            assert bool(check_resources(root)) == should_fail
+
+
+def test_documented_model_ids_are_not_translated():
+    good = "text-embedding-3-small / text-embedding-3-large / embedding-2"
+    for value, should_fail in [("incrustación de texto-3-pequeño", True), (good, False)]:
+        tmp, root = fixture('<string name="settings_rag_common_models">Models</string>', f'<string name="settings_rag_common_models">{value}</string>')
+        with tmp:
+            assert bool(check_resources(root)) == should_fail
 
 
 if __name__ == '__main__':

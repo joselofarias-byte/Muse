@@ -26,9 +26,9 @@
     <string name="audit_translate_style_academic">Académico</string>
     <string name="audit_translate_style_business">Comercial</string>
     <string name="audit_translate_style_conversational">Coloquial</string>
-    <string name="audit_translate_style_polished">Pulido</string>
+    <string name="audit_translate_style_polished">Refinado</string>
     <string name="audit_translate_style_concise">Conciso</string>
-    <string name="audit_mcp_local_memory_name">Grafo de conocimiento de memoria</string>
+    <string name="audit_mcp_local_memory_name">Memoria mediante un grafo de conocimientos</string>
     <string name="audit_mcp_local_memory_summary">MCP local: memoria a largo plazo basada en un grafo de conocimiento (entorno de ejecución integrado)</string>
     <string name="audit_mcp_local_sequential_thinking_name">Pensamiento secuencial</string>
     <string name="audit_mcp_local_sequential_thinking_summary">MCP local: asistencia para razonar paso a paso (entorno de ejecución integrado)</string>

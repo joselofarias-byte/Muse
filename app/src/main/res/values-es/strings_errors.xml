@@ -11,7 +11,7 @@
 
     <!-- ── AuthError ── -->
     <string name="error_auth_invalid_key">La clave API no es válida. Revisa la configuración del proveedor.</string>
-    <string name="error_auth_expired">La autenticación ha caducado, restablezca la clave API</string>
+    <string name="error_auth_expired">La autenticación caducó. Renueva la clave de API.</string>
     <string name="error_auth_unauthorized">No autorizado para acceder a este recurso</string>
 
     <!-- ── ApiError ── -->
@@ -23,7 +23,7 @@
 
     <!-- ── StorageError ── -->
     <string name="error_storage_db_full">La base de datos está llena. Libera espacio y vuelve a intentarlo.</string>
-    <string name="error_storage_io_error">Error de lectura/escritura del almacenamiento local; reinicie la aplicación</string>
+    <string name="error_storage_io_error">Error al leer o escribir en el almacenamiento local. Reinicia la aplicación.</string>
     <string name="error_storage_migration_failed">Error en la actualización de la base de datos; reinicie o reinstale la aplicación</string>
 
     <!-- ── ValidationError ── -->
@@ -85,7 +85,7 @@
     <string name="err_chat_compress_done">Contexto comprimido</string>
     <string name="err_chat_compress_no_need">Memoria actualizada, no se necesita compresión de mensajes</string>
     <string name="err_chat_compress_failed">Error de compresión: %1$s</string>
-    <string name="err_chat_fetch_models_empty">El upstream no devolvió ningún modelo.</string>
+    <string name="err_chat_fetch_models_empty">El proveedor no devolvió ningún modelo.</string>
     <string name="err_chat_fetch_models_failed">No se pudieron obtener los modelos</string>
     <string name="err_chat_fetch_models_no_server">No se puede conectar al servidor</string>
     <string name="err_chat_fetch_models_timeout">Se agotó el tiempo de conexión</string>
@@ -110,7 +110,7 @@
     <string name="err_chat_unknown">Error desconocido</string>
     <string name="err_chat_ref_save_failed">No se pudo guardar el mensaje citado: %1$s</string>
     <string name="err_chat_reply_generated">Respuesta generada</string>
-    <string name="err_chat_resume_busy">Generación en curso. Deténgala antes de reanudar las llamadas de herramientas inacabadas.</string>
+    <string name="err_chat_resume_busy">Detén la generación actual antes de iniciar otra.</string>
     <string name="err_chat_resume_read_failed">No se pudieron leer las llamadas a herramientas pendientes: %1$s</string>
     <string name="err_chat_tool_result_save_failed">No se pudo guardar el resultado de la herramienta: %1$s</string>
     <string name="err_chat_assistant_save_failed">No se pudo guardar el asistente: %1$s</string>

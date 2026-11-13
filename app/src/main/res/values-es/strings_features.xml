@@ -4,8 +4,8 @@
     <string name="groupchat_default_name">Chat grupal</string>
     <string name="groupchat_back">Atrás</string>
     <string name="groupchat_empty_hint">Envía el primer mensaje para iniciar el chat grupal.</string>
-    <string name="groupchat_my_message">mi mensaje</string>
-    <string name="groupchat_copied">copiado</string>
+    <string name="groupchat_my_message">Mi mensaje</string>
+    <string name="groupchat_copied">Copiado</string>
     <string name="groupchat_copy">Copiar</string>
     <string name="groupchat_delete">Borrar</string>
     <string name="groupchat_cancel">Cancelar</string>
@@ -21,34 +21,34 @@
     <string name="groupchat_pending_image">Imagen pendiente</string>
     <string name="groupchat_members_title">Miembros (%1$d)</string>
     <string name="groupchat_no_members">Aún no hay miembros</string>
-    <string name="groupchat_close">Cerca</string>
+    <string name="groupchat_close">Cerrar</string>
     <string name="groupchat_list_title">Chats grupales</string>
     <string name="groupchat_create_cd">Nuevo chat grupal</string>
     <string name="groupchat_no_messages">Aún no hay mensajes</string>
-    <string name="groupchat_unpin">Desprender</string>
-    <string name="groupchat_pin">Alfiler</string>
+    <string name="groupchat_unpin">Quitar de fijados</string>
+    <string name="groupchat_pin">Fijar</string>
     <string name="groupchat_delete_chat">Eliminar chat grupal</string>
-    <string name="groupchat_delete_chat_confirm">¿Está seguro de que desea eliminar "%1$s"?</string>
+    <string name="groupchat_delete_chat_confirm">¿Eliminar «%1$s»?</string>
     <string name="assistant_delete_consequence">También se eliminará la memoria propia del asistente. Sus conversaciones se conservan, pero pierden el vínculo con el asistente. No se puede deshacer.</string>
     <string name="assistant_memory_delete_consequence">El asistente ya no hará referencia a este recuerdo. No se puede deshacer.</string>
     <string name="memory_delete_consequence">La IA ya no hará referencia a este recuerdo. No se puede deshacer.</string>
     <string name="moment_delete_item_name">Publicación de %1$s</string>
     <string name="moment_delete_consequence">También se eliminarán los \"me gusta\" y comentarios de esta publicación. No se puede deshacer.</string>
-    <string name="groupchat_sender_user">A mí</string>
+    <string name="groupchat_sender_user">Yo</string>
     <string name="groupchat_just_now">En este momento</string>
-    <string name="groupchat_minutes_ago">%1$d hace minutos</string>
+    <string name="groupchat_minutes_ago">Hace %1$d minutos</string>
     <string name="groupchat_create_title">Nuevo chat grupal</string>
     <string name="groupchat_name_label">Nombre del chat grupal</string>
     <string name="groupchat_name_required">Introduce un nombre para el grupo</string>
     <string name="groupchat_select_members">Seleccionar miembros</string>
     <string name="groupchat_no_assistants">Aún no hay asistentes.</string>
     <string name="groupchat_member_required">Selecciona al menos un miembro</string>
-    <string name="groupchat_team_optional">Equipo de enlace (opcional)</string>
+    <string name="groupchat_team_optional">Equipo vinculado (opcional)</string>
     <string name="groupchat_no_team">No vinculado</string>
     <string name="groupchat_create_btn">Crear</string>
 
     <!-- ===== ui/account ===== -->
-    <string name="account_default_user">Usuario de musa</string>
+    <string name="account_default_user">Usuario de Muse</string>
     <string name="account_loading">Cargando…</string>
     <!-- v2.x: Edit profile page (no login/register UI, local avatar + name only) -->
     <string name="account_edit_profile">Editar perfil</string>
@@ -74,27 +74,27 @@
     <string name="schedule_collapse_history">Ocultar historial de ejecución</string>
     <string name="schedule_expand_history">Mostrar historial de ejecución</string>
     <string name="schedule_next_run">Siguiente ejecución: %1$s</string>
-    <string name="schedule_run_now">Corre ahora</string>
+    <string name="schedule_run_now">Ejecutar ahora</string>
     <string name="schedule_edit">Editar</string>
     <string name="schedule_delete">Borrar</string>
     <string name="schedule_delete_task">Eliminar tarea</string>
     <string name="schedule_execution_history">Historial de ejecución</string>
-    <string name="schedule_no_executions">Aún no hay carreras</string>
+    <string name="schedule_no_executions">Todavía no hay ejecuciones</string>
     <string name="schedule_execution_failed">La ejecución falló</string>
     <string name="schedule_execution_success">Ejecución exitosa</string>
     <string name="schedule_execution_missed">Ejecución omitida</string>
     <string name="schedule_missed_summary">Se omitieron %1$d ejecuciones programadas (última prevista %2$s, hace unas %3$d h); esta vez solo se recuperó la más reciente, las otras %1$d no se volverán a ejecutar</string>
     <string name="schedule_edit_title">Editar tarea</string>
     <string name="schedule_task_name">Nombre de la tarea</string>
-    <string name="schedule_task_content">Ejecutar contenido</string>
-    <string name="schedule_content_placeholder">p.ej.</string>
+    <string name="schedule_task_content">Instrucciones de la tarea</string>
+    <string name="schedule_content_placeholder">Por ejemplo: salúdame por la mañana</string>
     <string name="schedule_interval_once">Una vez</string>
     <string name="schedule_interval_hourly">Cada hora</string>
     <string name="schedule_interval_daily">A diario</string>
     <string name="schedule_interval_weekly">Semanalmente</string>
     <string name="schedule_interval_cron">cron personalizado</string>
     <string name="schedule_cron_label">expresión cron</string>
-    <string name="schedule_cron_placeholder">p.ej.</string>
+    <string name="schedule_cron_placeholder">Por ejemplo: 0 8 * * 1-5 (a las 08:00 de lunes a viernes)</string>
     <string name="schedule_preset_workday_9">9 a. m. de lunes a viernes</string>
     <string name="schedule_preset_daily_8">8 am todos los días</string>
     <string name="schedule_preset_midnight">Cada medianoche</string>
@@ -155,18 +155,18 @@
     <string name="schedule_condition_start_hour">Hora de inicio</string>
     <string name="schedule_condition_end_hour">Hora final</string>
     <string name="schedule_action_title">Acción</string>
-    <string name="schedule_action_type_ai_prompt">mensaje de IA</string>
+    <string name="schedule_action_type_ai_prompt">Mensaje del asistente</string>
     <string name="schedule_action_type_create_quick_note">Crear nota</string>
-    <string name="schedule_action_type_call_tool">herramienta de llamada</string>
+    <string name="schedule_action_type_call_tool">Ejecutar herramienta</string>
     <string name="schedule_action_type_notify">Enviar notificación</string>
     <string name="schedule_action_note_title">Título de la nota</string>
     <string name="schedule_action_note_content">Contenido de la nota</string>
     <string name="schedule_action_note_tags">Etiquetas</string>
     <string name="schedule_action_note_tags_placeholder">Separa las etiquetas con comas</string>
     <string name="schedule_action_tool_id">ID de herramienta</string>
-    <string name="schedule_action_tool_id_placeholder">p.ej.</string>
+    <string name="schedule_action_tool_id_placeholder">Por ejemplo: quick_note_add</string>
     <string name="schedule_action_tool_params">Parámetros de herramienta (JSON)</string>
-    <string name="schedule_action_tool_params_placeholder">p.ej.</string>
+    <string name="schedule_action_tool_params_placeholder">Por ejemplo: {\"title\":\"Resumen diario\"}</string>
     <string name="schedule_action_notify_title">Título de la notificación</string>
     <string name="schedule_action_notify_message">Mensaje de notificación</string>
     <string name="schedule_chain_title">Tareas encadenadas (se activan al completarse la anterior)</string>
@@ -175,7 +175,7 @@
     <!-- ===== ui/quicknotes ===== -->
     <string name="quick_notes_title">Notas rápidas</string>
     <string name="quick_notes_new">Nueva nota</string>
-    <string name="quick_notes_search">Notas de búsqueda...</string>
+    <string name="quick_notes_search">Buscar notas…</string>
     <string name="quick_notes_edit">Editar</string>
     <string name="quick_notes_delete">Borrar</string>
     <string name="quick_notes_delete_title">Eliminar nota</string>
@@ -190,7 +190,7 @@
     <string name="quick_notes_error_required">Se requiere título</string>
     <string name="quick_notes_input_hint">Anota tus pensamientos...</string>
     <string name="quick_notes_tag_hint">Usa #etiquetas para organizar las notas</string>
-    <string name="quick_notes_history">Historia</string>
+    <string name="quick_notes_history">Historial</string>
     <string name="quick_notes_count">%1$d notas</string>
     <string name="quick_notes_empty_title">Aún no hay notas</string>
     <string name="quick_notes_empty_subtitle">Tu primer pensamiento aparecerá aquí.</string>
@@ -212,12 +212,12 @@
     <string name="quick_notes_export_updated_at">Actualizado: %1$s</string>
     <string name="quick_notes_delete_permanent_title">Eliminar permanentemente</string>
     <string name="quick_notes_delete_permanent_confirm">Esto no se puede deshacer. ¿Eliminar permanentemente "%1$s"?</string>
-    <string name="quick_notes_clear_trash">Limpiar la basura</string>
+    <string name="quick_notes_clear_trash">Vaciar papelera</string>
     <string name="quick_notes_clear_trash_confirm">Esto eliminará permanentemente todas las %1$d notas de la papelera.</string>
     <string name="quick_notes_trash_count">Papelera: %1$d</string>
 
     <!-- ===== ui/knowledge ===== -->
-    <string name="knowledge_title">base de conocimientos</string>
+    <string name="knowledge_title">Base de conocimientos</string>
     <string name="knowledge_folder_browser_hint">Las carpetas y los archivos conservan la ruta relativa del archivo comprimido. Escribe una ruta nueva al mover un documento para crear carpetas.</string>
     <string name="knowledge_move_to_folder">Mover a carpeta</string>
     <string name="knowledge_move_folder_title">Mover documento</string>
@@ -229,7 +229,7 @@
     <string name="knowledge_sort">Clasificar</string>
     <string name="knowledge_import">Importar</string>
     <string name="knowledge_search_placeholder">Buscar título o contenido…</string>
-    <string name="knowledge_clear">Claro</string>
+    <string name="knowledge_clear">Vaciar</string>
     <string name="knowledge_no_match_title">No se encontraron documentos coincidentes</string>
     <string name="knowledge_empty_title">La base de conocimientos está vacía.</string>
     <string name="knowledge_no_match_subtitle">Pruebe con una palabra clave diferente</string>
@@ -237,7 +237,7 @@
     <string name="knowledge_deleted">Eliminado</string>
     <string name="knowledge_delete_doc">Eliminar documento</string>
     <string name="knowledge_delete">Borrar</string>
-    <string name="knowledge_close">Cerca</string>
+    <string name="knowledge_close">Cerrar</string>
     <string name="knowledge_reindex">Reindexar</string>
     <string name="knowledge_repair_index">Reparar/reconstruir índice</string>
     <string name="knowledge_repairing">Reparando índice FTS y reindexando...</string>
@@ -274,7 +274,7 @@
     <string name="knowledge_import_failed_read">Falló la importación: no se puede leer el archivo</string>
     <string name="knowledge_source_unavailable">No se pudo leer el contenido original del documento.</string>
     <string name="knowledge_import_failed">Error de importación: %1$s</string>
-    <string name="knowledge_reindex_progress">Reconstruyendo y reconstruyendo el índice de vectores...</string>
+    <string name="knowledge_reindex_progress">Reconstruyendo el índice vectorial…</string>
     <string name="knowledge_reindexed">Reindexado: %1$s (%2$d fragmentos)</string>
     <string name="knowledge_reindex_failed">Reindexación fallida: %1$s</string>
     <string name="knowledge_reading_default">Leyendo y analizando el documento...</string>
@@ -287,8 +287,8 @@
     <!-- 前端修复 (i18n-7): PDF metadata card -->
     <string name="knowledge_doc_info">Información del documento</string>
     <string name="knowledge_doc_outline">Esquema (%1$d elementos)</string>
-    <string name="knowledge_sort_updated">Por hora actualizada</string>
-    <string name="knowledge_sort_created">Por tiempo creado</string>
+    <string name="knowledge_sort_updated">Fecha de modificación</string>
+    <string name="knowledge_sort_created">Fecha de creación</string>
     <string name="knowledge_sort_title">Por título</string>
     <string name="knowledge_sort_size">Por tamaño</string>
 
@@ -319,7 +319,7 @@
     <string name="stats_export_chooser">Compartir resumen de estadísticas</string>
     <string name="stats_export_subject">Resumen de estadísticas de Muse</string>
     <string name="stats_empty_title">Las estadísticas aparecerán aquí después de que comiences a chatear.</string>
-    <string name="stats_empty_action">iniciar una conversación</string>
+    <string name="stats_empty_action">Iniciar conversación</string>
     <string name="stats_view_all">Ver todo</string>
     <string name="stats_collapse">Contraer</string>
     <string name="stats_trend_title">Tendencia de actividad</string>
@@ -368,7 +368,7 @@
 
     <!-- ===== ui/taskcard: delegation chain (v1.201) ===== -->
     <string name="delegation_chain_title">Cadena de delegación</string>
-    <string name="delegation_status_running">Correr…</string>
+    <string name="delegation_status_running">Ejecutando…</string>
     <string name="delegation_status_paused">Esperando confirmación</string>
     <string name="delegation_node_count">Nodos %1$d</string>
     <string name="delegation_task_label">Tarea</string>
@@ -393,8 +393,8 @@
     <string name="subagent_task_close_cd">Cerrar tarea del subagente</string>
 
     <!-- ===== ui/artifact ===== -->
-    <string name="artifact_untitled">Intitulado</string>
-    <string name="artifact_close">Cerca</string>
+    <string name="artifact_untitled">Sin título</string>
+    <string name="artifact_close">Cerrar</string>
     <string name="artifact_copy">Copiar</string>
     <string name="artifact_type_code">Código</string>
     <string name="artifact_type_image">Imagen</string>
@@ -424,7 +424,7 @@
     <string name="data_card_download">Descargar gráfico</string>
 
     <!-- ===== ui/model ===== -->
-    <string name="model_profile_title">avatares modelo</string>
+    <string name="model_profile_title">Avatares de modelos</string>
     <string name="model_profile_empty_title">Aún no hay modelos</string>
     <string name="model_profile_empty_subtitle">Primero agregue un proveedor de IA en Configuración</string>
     <string name="groupchat_edit_cd">Editar chat grupal</string>
@@ -434,8 +434,8 @@
     <string name="groupchat_edit_name_hint">Nombre del chat grupal</string>
     <!-- v2.x: Group chat discussion modes -->
     <string name="groupchat_mode_title">Modo de discusión</string>
-    <string name="groupchat_mode_round_robin">Ronda Robin</string>
-    <string name="groupchat_mode_round_robin_desc">Cada IA ​​habla por turno después de que el usuario envía un mensaje</string>
+    <string name="groupchat_mode_round_robin">Por turnos</string>
+    <string name="groupchat_mode_round_robin_desc">Cada IA habla por turno después de que el usuario envía un mensaje</string>
     <string name="groupchat_mode_auto">Discusión libre</string>
     <string name="groupchat_mode_auto_desc">Los agentes de IA conversan automáticamente hasta el límite o nadie tiene más que decir</string>
     <string name="groupchat_mode_debate">Debate</string>
@@ -473,15 +473,15 @@
     <string name="groupchat_context_private_context">Contexto privado de IA</string>
     <string name="groupchat_context_private_context_desc">Solo visible para la IA correspondiente</string>
     <string name="groupchat_context_private_context_hint">Instrucciones privadas para este asistente, como su rol o sus restricciones</string>
-    <string name="groupchat_context_private_context_set">Colocar</string>
+    <string name="groupchat_context_private_context_set">Configurar</string>
     <string name="groupchat_context_private_context_empty">No establecido</string>
     <string name="groupchat_context_save">Guardar</string>
-    <string name="groupchat_context_clear">Claro</string>
+    <string name="groupchat_context_clear">Borrar</string>
     <string name="groupchat_edit_member_required">El grupo debe conservar al menos un miembro</string>
     <!-- ActivityHub: agent activity status chip labels (idle/thinking/working/waiting/done) -->
     <string name="groupchat_activity_viewing">visita</string>
     <string name="groupchat_activity_replying">respondiendo</string>
-    <string name="groupchat_activity_no_reply">saltado</string>
+    <string name="groupchat_activity_no_reply">Omitido</string>
     <string name="groupchat_activity_error">error</string>
     <!-- v2.1: Group chat tool sheet extras (members / vote / summary / context) -->
     <string name="groupchat_tool_members">Miembros</string>
@@ -501,13 +501,13 @@
     <string name="groupchat_unarchive">Desarchivar</string>
 
     <!-- ===== v1.201: human-in-the-loop / delegation pause ===== -->
-    <string name="delegation_pause_section_title">Humano en el circuito</string>
-    <string name="delegation_pause_before_team">Pausa antes de la ejecución del equipo</string>
+    <string name="delegation_pause_section_title">Supervisión humana</string>
+    <string name="delegation_pause_before_team">Pausar antes de ejecutar el equipo</string>
     <string name="delegation_pause_before_member">Pausa antes de cada miembro.</string>
     <string name="delegation_pause_intermediate">Confirmar resultado intermedio</string>
     <string name="delegation_pause_high_risk">Confirmar tarea de alto riesgo</string>
-    <string name="delegation_pause_timeout">Pausar el tiempo de espera</string>
-    <string name="delegation_pause_sec">segundo</string>
+    <string name="delegation_pause_timeout">Tiempo de espera de la aprobación</string>
+    <string name="delegation_pause_sec">segundos</string>
     <string name="delegation_confirm_title">Confirmación de tarea</string>
     <string name="delegation_confirm_task">Tarea</string>
     <string name="delegation_confirm_target">Objetivo</string>
@@ -532,7 +532,7 @@
     <string name="quick_notes_folder_all">Todo</string>
     <string name="quick_notes_folder_hint">Introduce el nombre de la carpeta</string>
     <string name="quick_notes_folder_new">Nueva carpeta</string>
-    <string name="quick_notes_folder_set">Establecer carpeta</string>
+    <string name="quick_notes_folder_set">Elegir carpeta</string>
     <string name="quick_notes_folder_uncategorized">Sin categoría</string>
     <string name="quick_notes_import_done">Importados %1$d registros</string>
     <string name="quick_notes_import_failed">Error de importación; comprueba el formato del archivo</string>
@@ -566,7 +566,7 @@
     <string name="cover_empty_hint">Toca el botón inferior derecho para importar una imagen, o deja que la IA genere una portada</string>
     <string name="quick_notes_settings_title">Ajustes de captura rápida</string>
     <string name="quick_capture_swipe_title">Mostrar captura rápida deslizando</string>
-    <string name="quick_capture_swipe_desc">Mostrar la manija de captura rápida en el borde derecho dentro de Muse</string>
+    <string name="quick_capture_swipe_desc">Muestra un control de captura rápida en el borde derecho de Muse</string>
     <string name="quick_capture_overlay_title">Habilitar superposición del sistema</string>
     <string name="quick_capture_overlay_desc">Mantener la cápsula flotante disponible al salir de Muse para capturar rápido</string>
     <string name="quick_capture_overlay_permission_error">No se pudo abrir la configuración del permiso de superposición</string>
@@ -689,7 +689,7 @@
     <string name="knowledge_edit_content">Editar contenido</string>
     <string name="knowledge_edit_content_hint">Tras modificarlo se volverá a dividir en bloques y se generará un índice vectorial para que el nuevo contenido pueda buscarse.</string>
     <string name="knowledge_edit_save_reindex">Guardar y reindexar</string>
-    <string name="knowledge_embedding_migrated">El modelo de incrustación ha cambiado; las búsquedas podrían no coincidir con documentos antiguos. Se recomienda reindexar.</string>
+    <string name="knowledge_embedding_migrated">Modelo de embeddings</string>
     <string name="knowledge_import_target_confirm">Base de conocimientos predeterminada</string>
     <string name="knowledge_import_target_default">Base de conocimientos predeterminada</string>
     <string name="knowledge_import_target_title">Importar a la base de conocimientos de destino</string>
@@ -710,7 +710,7 @@
     <string name="task_card_summary_timed_out">%1$d pasos agotados</string>
     <string name="task_card_total_duration">Duración total: %1$s</string>
     <string name="task_plan_status_cancelled">Cancelado</string>
-    <string name="task_plan_status_timed_out">Agotado</string>
+    <string name="task_plan_status_timed_out">Tiempo agotado</string>
     <string name="schedule_last_run_short">Última ejecución %1$s</string>
     <string name="plan_next_step_label">Siguiente: %1$s</string>
     <string name="home_date_pattern">MMM d, EEEE</string>
@@ -750,7 +750,7 @@
     <string name="wake_diagnostics_open">Estado de activación en segundo plano</string>
     <string name="wake_diagnostics_title">Estado de activación en segundo plano</string>
     <string name="wake_diagnostics_subtitle">Aquí están los trabajos en segundo plano tal como el sistema los programó, incluidos los de copia y resumen integrados; no son las tareas que creaste. Solo lectura: no se reprograma nada.</string>
-    <string name="wake_diagnostics_refresh">Volver a leer</string>
+    <string name="wake_diagnostics_refresh">Actualizar</string>
     <string name="wake_diagnostics_copy">Copiar instantánea</string>
     <string name="wake_diagnostics_copied">Instantánea copiada</string>
     <string name="wake_diagnostics_hint">Si «se ejecutó pero falló», mira failed／skipped／missed en el historial. «Nunca se ejecutó» suele ser que no está registrado, que el sistema lo bloquea o que el interruptor general está apagado, tal como se ve aquí.</string>
@@ -788,11 +788,11 @@
     <string name="wake_stop_not_stopped">No detenido</string>
     <string name="wake_stop_unknown">Motivo desconocido</string>
     <string name="wake_stop_cancelled_by_app">Cancelado por la app</string>
-    <string name="wake_stop_preempt">Apropiado por otra tarea</string>
+    <string name="wake_stop_preempt">Reemplazado por otra tarea</string>
     <string name="wake_stop_timeout">Tiempo agotado</string>
     <string name="wake_stop_device_state">Cambió el estado del dispositivo</string>
     <string name="wake_stop_battery">Batería baja</string>
-    <string name="wake_stop_charging">Sin cargar</string>
+    <string name="wake_stop_charging">No se está cargando</string>
     <string name="wake_stop_network">Sin red</string>
     <string name="wake_stop_device_idle">Dispositivo inactivo</string>
     <string name="wake_stop_storage">Poco espacio</string>
@@ -800,7 +800,7 @@
     <string name="wake_stop_background_restriction">Restricción en segundo plano</string>
     <string name="wake_stop_app_standby">Categoría de espera de la app</string>
     <string name="wake_stop_user">Acción del usuario</string>
-    <string name="wake_stop_system_processing">Procesando el sistema</string>
+    <string name="wake_stop_system_processing">Sistema ocupado</string>
     <string name="wake_stop_launch_time">Cambió el tiempo estimado de inicio</string>
     <string name="plugin_permission_section_title">Capacidades y permisos</string>
     <string name="plugin_permission_hint">Las capacidades no declaradas o desactivadas se rechazan de inmediato; los cambios surten efecto al instante.</string>

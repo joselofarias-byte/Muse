@@ -14,6 +14,27 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 FORMAT = re.compile(r'%(?:\d+\$)?[dsf]')
 CJK = re.compile(r'[\u3400-\u4dbf\u4e00-\u9fff]')
+# Values that were translated as ordinary words and broke names or UI actions.
+EXACT_LABELS = {
+    "proxy_type_socks5": "SOCKS5",
+    "action_close": "Cerrar",
+    "settings_common_close": "Cerrar",
+    "settings_common_show": "Mostrar",
+    "settings_provider_category_custom": "Personalizado",
+    "settings_asr_provider_openai_whisper": "Whisper",
+    "settings_asr_provider_agnes": "Agnes",
+    "settings_rag_parser_mineru": "MinerU",
+    "settings_theme_font_small": "P",
+    "settings_theme_font_medium": "M",
+    "settings_theme_font_large": "G",
+    "settings_theme_font_xlarge": "XG",
+}
+TECHNICAL_TERMS = {
+    "settings_provider_json_parse_failed": ("private_key", "client_email"),
+    "settings_rag_common_models": ("text-embedding-3-small", "text-embedding-3-large", "embedding-2"),
+    "settings_rag_note3": ("knowledge_search",),
+    "settings_rag_markdown_aware": ("Markdown",),
+}
 DANGLING_STEP = re.compile(r'(?:^|\n)\s*(?:\d+\.|[•-])\s*$')
 
 
@@ -72,10 +93,24 @@ def check_resources(res_dir: Path) -> list[str]:
                 errors.append(f'{name}/{quantity}: empty translation')
             if CJK.search(value):
                 errors.append(f'{name}/{quantity}: Chinese residue')
+            if name in EXACT_LABELS and value != EXACT_LABELS[name]:
+                errors.append(f'{name}/{quantity}: incorrect contextual label or protected name')
+            for term in TECHNICAL_TERMS.get(name, ()):
+                if term not in value:
+                    errors.append(f'{name}/{quantity}: missing technical identifier {term}')
+            original = original_values.get(quantity, original_values.get('other', ''))
+            if name.startswith('slash_command_'):
+                command = re.match(r'/[a-z_]+\b', original)
+                if command and not value.startswith(command.group() + ' '):
+                    errors.append(f'{name}/{quantity}: executable slash command changed')
+            if '\u200b' in value or '\ufeff' in value:
+                errors.append(f'{name}/{quantity}: invisible character in translation')
             normalized = value.replace(r'\n', '\n').strip()
             if (name.endswith('_save') or name == 'groupchat_edit_btn') and normalized == 'Ahorrar':
                 errors.append(f'{name}/{quantity}: save action mistranslated as saving money')
 
+            if normalized in {'p.ej.', 'p. ej.', 'p.'}:
+                errors.append(f'{name}/{quantity}: unfinished example')
             if DANGLING_STEP.search(normalized) or normalized.endswith(';'):
                 errors.append(f'{name}/{quantity}: unfinished sentence or list')
             original = original_values.get(quantity, original_values.get('other', ''))

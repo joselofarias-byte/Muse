@@ -16,23 +16,23 @@
     <string name="notif_proactive_action_dismiss">Ahora no</string>
     <string name="notif_live_progress_title">Generando · %1$s</string>
     <string name="notif_live_progress_text">%1$d caracteres</string>
-    <string name="notif_web_server_title">servidor web muse ejecutándose</string>
+    <string name="notif_web_server_title">Servidor web de Muse activo</string>
     <string name="notif_web_server_text">Puerto %1$d · Los dispositivos LAN pueden acceder</string>
     <!-- v1.133: App update notification (reuses CHANNEL_CHAT_COMPLETED) -->
     <string name="update_notif_title">Nueva versión disponible</string>
     <string name="update_notif_text">Nueva versión disponible: %1$s. Toca para ver los detalles.</string>
     <!-- v1.133: In-app update banner -->
-    <string name="update_banner_published">%1$s liberado</string>
+    <string name="update_banner_published">Nueva versión: %1$s</string>
     <string name="update_banner_view_detail">Ver detalles</string>
     <string name="update_banner_download_apk">Descargar APK</string>
     <string name="update_banner_close_cd">Descartar banner de nueva versión</string>
     <string name="update_found_new">Hay una nueva versión disponible. Consulta sus detalles.</string>
-    <string name="update_already_latest">Ya al ​​día</string>
+    <string name="update_already_latest">Aplicación actualizada</string>
 
     <!-- ===== schedule ===== -->
     <!-- Scheduled task notification channel -->
     <string name="schedule_channel_name">Tareas programadas</string>
-    <string name="schedule_channel_desc">Notificación de tarea programada vencida</string>
+    <string name="schedule_channel_desc">Avisos de tareas programadas</string>
     <!-- Scheduled task default session name -->
     <string name="schedule_default_session_name">tarea programada</string>
     <!-- Chat generation foreground service default notification title -->
@@ -42,29 +42,29 @@
 
     <!-- ===== main activity ===== -->
     <!-- Safe mode -->
-    <string name="main_activity_safe_mode_desc">La última vez se produjo un accidente.</string>
+    <string name="main_activity_safe_mode_desc">La aplicación se cerró inesperadamente.</string>
     <string name="main_activity_crash_log_copied">Registro de fallos copiado al portapapeles</string>
     <!-- v2.0+: SafeModeScreen new copy  -->
-    <string name="safe_mode_warning_title">El último lanzamiento falló</string>
+    <string name="safe_mode_warning_title">Último inicio</string>
     <string name="safe_mode_continue_normal">Continuar con el inicio normal</string>
     <string name="safe_mode_view_full_log">Ver registro de fallos completo</string>
     <string name="safe_mode_clear_data_restart">Borrar todos los datos y reiniciar</string>
     <string name="safe_mode_copy_crash_info">Copiar información de fallo</string>
-    <string name="safe_mode_crash_time_label">tiempo de choque</string>
+    <string name="safe_mode_crash_time_label">Fecha y hora del fallo</string>
     <string name="safe_mode_stack_trace_label">Seguimiento de pila</string>
     <string name="safe_mode_no_crash_log">No se registró ningún registro de fallos</string>
     <string name="safe_mode_share_log_failed">No se pudo compartir el registro de fallas</string>
     <!-- PIN lock screen -->
 
     <!-- ===== NotificationListenerScreen.kt ===== -->
-    <string name="notif_listener_screen_title">Oyente de notificaciones</string>
+    <string name="notif_listener_screen_title">Acceso a notificaciones</string>
     <string name="notif_bridge_title">Acceso de puente</string>
     <string name="notif_bridge_desc">Al activarlo para una fuente, su texto de notificación puede entrar al contexto del chat (solo local; las demás siguen ocultas)</string>
     <string name="notif_listener_open_settings_failed">No se puede abrir la configuración del sistema</string>
     <string name="notif_listener_auth_settings">Conceder acceso</string>
     <string name="notif_listener_cleared_toast">Registros de notificación borrados</string>
     <string name="notif_listener_clear_records">Borrar registros</string>
-    <string name="notif_listener_feature_title">Descripción de la característica</string>
+    <string name="notif_listener_feature_title">Cómo funciona</string>
     <string name="notif_listener_feature_desc">Una vez autorizado, Muse puede detectar notificaciones de otras aplicaciones como fuentes de eventos para que la IA las consulte en el chat.</string>
     <string name="notif_listener_privacy_title">Límite de privacidad</string>
     <string name="notif_listener_privacy_desc">• El contenido de las notificaciones se almacena solo localmente (máximo 50 entradas, las más antiguas se eliminan cuando están llenas)\n• La interfaz de usuario del sistema y las notificaciones propias de Muse se filtran\n• No se cargan datos de notificaciones en ningún servidor\n• Puede \"Borrar registros\" aquí o revocar el acceso en la configuración del sistema en cualquier momento</string>

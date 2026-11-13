@@ -5,7 +5,7 @@
     <string name="code_gap_memory_spaces_subtitle">Gestiona espacios de memoria independientes para el trabajo, la vida personal, los estudios y más</string>
     <string name="code_gap_mcp_config_template">Plantilla de configuración</string>
     <string name="code_gap_feishu_app_id">ID de aplicación de Feishu</string>
-    <string name="code_gap_feishu_app_secret">Secreto de aplicación de Feishu</string>
+    <string name="code_gap_feishu_app_secret">Clave secreta de la aplicación de Feishu</string>
     <string name="code_gap_feishu_token_refresh_hint">Muse obtiene y renueva tenant_access_token automáticamente; no necesitas sustituir el TAT manualmente cada 2 horas.</string>
     <string name="code_gap_markdown_cover">Portada</string>
     <string name="code_gap_vision_probe_empty">El modelo de visión devolvió un resultado vacío o recurrió al modo alternativo</string>

@@ -10,16 +10,16 @@
     <string name="settings_agent_tool_model_not_set_inherit">Usa el modelo principal</string>
     <!-- v2.x: auxiliary model tiers -->
     <string name="settings_agent_utility_large_not_set_inherit">Reutiliza el modelo pequeño</string>
-    <string name="settings_agent_section_assistant">Asistente de agente</string>
-    <string name="settings_agent_default_assistant_title">Asistente de agente predeterminado</string>
+    <string name="settings_agent_section_assistant">Asistente del agente</string>
+    <string name="settings_agent_default_assistant_title">Asistente predeterminado del agente</string>
     <string name="settings_agent_loading">Cargando...</string>
     <string name="settings_agent_use_first_assistant">Usa el primer asistente</string>
     <string name="settings_agent_section_model">Modelo</string>
     <string name="settings_agent_current_model">Modelo actual</string>
-    <string name="settings_agent_tool_model_title">Modelo utilitario pequeño</string>
-    <string name="settings_agent_subagent_model_title">Modelo utilitario grande</string>
-    <string name="settings_agent_select_subagent_model">Seleccionar modelo utilitario grande</string>
-    <string name="settings_agent_clear_subagent_model">Borrar (reutilizar el modelo utilitario pequeño)</string>
+    <string name="settings_agent_tool_model_title">Modelo auxiliar pequeño</string>
+    <string name="settings_agent_subagent_model_title">Modelo auxiliar grande</string>
+    <string name="settings_agent_select_subagent_model">Seleccionar modelo auxiliar grande</string>
+    <string name="settings_agent_clear_subagent_model">Borrar (usar el modelo auxiliar pequeño)</string>
     <string name="settings_agent_multi_agent_section">Colaboración entre múltiples agentes</string>
     <string name="settings_agent_collab_team">Equipos de colaboración</string>
     <string name="settings_agent_multi_agent_enabled">Habilitado · %1$d equipos</string>
@@ -33,16 +33,16 @@
     <string name="settings_agent_group_daily">Envíos diarios</string>
     <!-- v1.0.4 (P3-5): Boot auto-launch toggle — when enabled Muse auto-launches after boot,
          ensuring proactive messages and scheduled tasks keep running after device restart. -->
-    <string name="settings_agent_boot_section">Inicio automático de arranque</string>
-    <string name="settings_agent_random_offset">Desplazamiento aleatorio</string>
+    <string name="settings_agent_boot_section">Iniciar automáticamente al encender el dispositivo</string>
+    <string name="settings_agent_random_offset">Variación aleatoria del horario</string>
     <string name="settings_agent_default_assistant_fallback">Asistente predeterminado</string>
     <string name="settings_agent_select_assistant_title">Seleccionar asistente de agente</string>
     <string name="settings_agent_no_assistants_hint">Aún no hay asistentes.</string>
-    <string name="settings_agent_offset_hint">Deje que el tiempo de envío fluya naturalmente durante el intervalo.</string>
-    <string name="settings_agent_offset_off_label">Apagado</string>
+    <string name="settings_agent_offset_hint">Varía aleatoriamente la hora de envío dentro del intervalo.</string>
+    <string name="settings_agent_offset_off_label">Desactivado</string>
     <string name="settings_agent_select_model">Seleccionar modelo de agente</string>
     <string name="settings_agent_no_models_hint">No hay modelos disponibles.</string>
-    <string name="settings_agent_select_tool_model">Seleccionar modelo utilitario pequeño</string>
+    <string name="settings_agent_select_tool_model">Seleccionar modelo auxiliar pequeño</string>
     <string name="settings_agent_clear_tool_model">Borrar (usar modelo principal)</string>
     <string name="settings_agent_unnamed_assistant">Asistente sin nombre</string>
     <string name="settings_agent_interval_minutes">Cada %1$d min</string>
@@ -50,24 +50,24 @@
     <string name="settings_agent_interval_daily">A diario</string>
     <string name="settings_agent_interval_hours">Cada %1$d h</string>
     <string name="settings_agent_interval_hours_minutes">Cada %1$d h %2$d min</string>
-    <string name="settings_agent_offset_disabled">Apagado (intervalo fijo)</string>
-    <string name="settings_agent_offset_minutes">± %1$d mín.</string>
-    <string name="settings_agent_offset_hours">± %1$dh</string>
-    <string name="settings_agent_offset_hours_minutes">± %1$d h %2$d mín.</string>
+    <string name="settings_agent_offset_disabled">Desactivada (intervalo fijo)</string>
+    <string name="settings_agent_offset_minutes">± %1$d min</string>
+    <string name="settings_agent_offset_hours">± %1$d h</string>
+    <string name="settings_agent_offset_hours_minutes">± %1$d h %2$d min</string>
 
     <!-- Appearance / Theme -->
     <string name="settings_theme_appearance">Apariencia</string>
     <string name="settings_theme_follow_system">Seguir el sistema</string>
-    <string name="settings_theme_light">Luz</string>
+    <string name="settings_theme_light">Claro</string>
     <string name="settings_theme_dark">Oscuro</string>
     <string name="settings_theme_current_mode">Modo actual</string>
     <string name="settings_theme_high_contrast">Tema de alto contraste</string>
     <string name="settings_theme_high_contrast_desc">Contraste mejorado entre texto y fondo para baja visión</string>
     <string name="settings_theme_font_size">Tamaño del texto</string>
-    <string name="settings_theme_font_small">S</string>
-    <string name="settings_theme_font_medium">METRO</string>
-    <string name="settings_theme_font_large">l</string>
-    <string name="settings_theme_font_xlarge">SG</string>
+    <string name="settings_theme_font_small">P</string>
+    <string name="settings_theme_font_medium">M</string>
+    <string name="settings_theme_font_large">G</string>
+    <string name="settings_theme_font_xlarge">XG</string>
     <string name="settings_theme_font_small_label">Pequeño (0,85x)</string>
     <string name="settings_theme_font_large_label">Grande (1,15x)</string>
     <string name="settings_theme_font_xlarge_label">Extra grande (1,3x)</string>
@@ -92,7 +92,7 @@
     <string name="settings_bubble_skin_delete_confirm">¿Eliminar este diseño?</string>
     <string name="settings_bubble_skin_delete_confirm_msg">Se volverá al diseño predeterminado de Muse.</string>
     <string name="settings_bubble_skin_preview">Vista previa del diseño</string>
-    <string name="settings_bubble_skin_preview_note">La vista previa usa el mismo BubbleSkinResolver que el chat. Si el diseño no es válido, se usa el predeterminado.</string>
+    <string name="settings_bubble_skin_preview_note">La vista previa muestra cómo se verán las burbujas en el chat. Si el diseño no es válido, se utiliza el predeterminado.</string>
     <string name="settings_bubble_skin_role_user">Burbuja de usuario</string>
     <string name="settings_bubble_skin_role_assistant">Burbuja del asistente</string>
     <string name="settings_bubble_skin_role_group_assistant">Burbuja del asistente de grupo</string>
@@ -115,28 +115,28 @@
     <string name="settings_task_routing_utility_small_desc">Tareas simples como títulos y clasificación ligera</string>
     <string name="settings_task_routing_utility_failed_title">Falló la llamada al modelo auxiliar</string>
     <string name="settings_task_routing_utility_failed_desc">La última llamada a %1$s devolvió: %2$s. Afecta a tareas en segundo plano como la extracción de memoria y los resúmenes; el chat no se ve afectado. Elige un modelo que funcione o déjalo vacío para usar el modelo principal.</string>
-    <string name="settings_agent_daily_guarantee">Garantía diaria</string>
-    <string name="settings_agent_daily_guarantee_hint">Si no se ha enviado ningún mensaje proactivo durante este tiempo, se fuerza uno. Las horas de silencio, el enfriamiento, tu actividad reciente y el presupuesto diario siguen aplicándose.</string>
+    <string name="settings_agent_daily_guarantee">Envío mínimo diario</string>
+    <string name="settings_agent_daily_guarantee_hint">Si no se ha enviado ningún mensaje proactivo durante este periodo, se intenta enviar uno. Se respetan las horas de silencio, el intervalo mínimo entre envíos, tu actividad reciente y el límite diario.</string>
     <string name="settings_agent_daily_guarantee_hours">%1$d h</string>
     <string name="settings_agent_daily_guarantee_off">Desactivado</string>
     <string name="settings_task_routing_utility_large_desc">Compresión, extracción de memoria, desglose de tareas</string>
     <string name="settings_crash_anr_title">Detección de ANR</string>
-    <string name="settings_crash_anr_subtitle">Detecta que la app no responde y lo registra en registros de fallos/auditoría</string>
+    <string name="settings_crash_anr_subtitle">Detecta cuándo la aplicación deja de responder y lo anota en los registros de fallos y auditoría</string>
     <string name="settings_chat_compress_model">Modelo de compresión</string>
     <string name="settings_chat_compress_model_default">Modelo predeterminado</string>
-    <string name="settings_chat_paste_as_file">Pegado largo a archivo</string>
+    <string name="settings_chat_paste_as_file">Adjuntar texto largo al pegar</string>
     <string name="settings_chat_paste_as_file_subtitle">Sugiere adjuntar texto pegado como archivo cuando supera el umbral</string>
     <string name="settings_chat_paste_as_file_threshold">Umbral de pegado a archivo</string>
     <string name="settings_chat_paste_as_file_threshold_subtitle">Sugerir convertir cuando supere %1$d caracteres</string>
-    <string name="settings_chat_custom_title_prompt">Indicación de título personalizada</string>
-    <string name="settings_chat_custom_title_prompt_default">Usar la indicación integrada predeterminada</string>
+    <string name="settings_chat_custom_title_prompt">Instrucciones para generar títulos</string>
+    <string name="settings_chat_custom_title_prompt_default">Usar las instrucciones predeterminadas</string>
     <string name="settings_chat_custom_title_prompt_hint">Instrucción personalizada para nombrar conversaciones (vacío para predeterminado)</string>
-    <string name="settings_memory_custom_compress_prompt">Indicación de compresión personalizada</string>
+    <string name="settings_memory_custom_compress_prompt">Instrucciones de compresión</string>
     <string name="settings_memory_custom_compress_prompt_default">Usar la instrucción de compresión integrada</string>
     <string name="settings_memory_custom_compress_prompt_hint">Instrucción personalizada de compresión de contexto (vacío para predeterminado)</string>
     <string name="settings_about_auto_update">Comprobar actualizaciones automáticamente</string>
     <string name="settings_about_auto_update_subtitle">Comprueba automáticamente nuevas versiones en GitHub tras el inicio</string>
-    <string name="prompt_template_manager_title">Plantillas de indicaciones</string>
+    <string name="prompt_template_manager_title">Plantillas de instrucciones</string>
     <string name="prompt_template_manager_list">Lista de plantillas</string>
     <string name="prompt_template_manager_empty">Aún no hay plantillas personalizadas</string>
     <string name="prompt_template_manager_built_in">Integrada</string>
@@ -151,25 +151,25 @@
     <string name="prompt_template_manager_category">Categoría</string>
     <string name="prompt_template_manager_content">Contenido</string>
     <string name="prompt_template_manage_entry">Administrar plantillas</string>
-    <string name="settings_sub_data_backup">Datos &amp; Copia de seguridad</string>
+    <string name="settings_sub_data_backup">Datos y copias de seguridad</string>
     <string name="settings_about_version_full">Versión %1$s (%2$d)</string>
     <string name="settings_about_app_info">Información de la aplicación</string>
-    <string name="settings_about_feedback_section">Comentario</string>
+    <string name="settings_about_feedback_section">Comentarios</string>
     <string name="settings_about_update_section">Actualizaciones</string>
     <string name="settings_about_legal_section">Legal</string>
     <string name="settings_about_repo_section">Código abierto</string>
-    <string name="settings_about_feedback">Enviar un problema</string>
+    <string name="settings_about_feedback">Informar de un problema</string>
     <string name="settings_about_update_check_failed">Error en la verificación de actualización: %1$s</string>
     <string name="settings_about_check_update">Buscar actualizaciones</string>
     <!-- v1.119: Open source repo entries (GitHub 5352124/Muse) -->
     <string name="settings_about_repo_home">Ver código</string>
-    <string name="settings_about_star">Destaca este proyecto</string>
-    <string name="settings_about_issues">Comentarios (problemas de GitHub)</string>
+    <string name="settings_about_star">Marcar el proyecto con una estrella</string>
+    <string name="settings_about_issues">Comentarios e incidencias en GitHub</string>
     <string name="settings_about_url_copied">No se encontró ningún navegador. El enlace se copió al portapapeles.</string>
     <string name="settings_about_new_version_title">Nueva versión disponible</string>
     <string name="settings_about_new_version_desc">Nueva versión %1$s encontrada.</string>
     <string name="settings_about_download">Descargar</string>
-    <string name="settings_about_up_to_date">Ya al ​​día</string>
+    <string name="settings_about_up_to_date">Aplicación actualizada</string>
     <string name="settings_about_got_it">Entiendo</string>
     <string name="settings_feedback_android_version">Versión de Android: %1$s (API %2$d)</string>
     <string name="settings_feedback_device_model">Modelo de dispositivo: %1$s %2$s</string>
@@ -177,31 +177,31 @@
     <string name="settings_feedback_subject">Comentarios sobre Muse</string>
     <string name="settings_feedback_chooser_title">Enviar comentarios</string>
     <string name="settings_feedback_recipient">Destinatario: 2119280571@qq.com</string>
-    <string name="settings_feedback_subject_label">Asunto: comentarios de musa</string>
+    <string name="settings_feedback_subject_label">Asunto: comentarios sobre Muse</string>
     <string name="settings_feedback_no_email_app">No se encontró ninguna aplicación de correo electrónico.</string>
 
     <!-- Memory & Notifications -->
     <string name="settings_memory_policy_never">Nunca</string>
-    <string name="settings_memory_policy_when_unfocused">cuando está desenfocado</string>
+    <string name="settings_memory_policy_when_unfocused">Cuando la aplicación está en segundo plano</string>
     <string name="settings_memory_policy_always">Siempre</string>
     <string name="settings_memory_page_title">Memoria</string>
     <string name="settings_memory_system_section">Sistema de memoria</string>
-    <string name="settings_memory_token_budget">Presupuesto simbólico</string>
-    <string name="settings_memory_token_budget_subtitle">La longitud objetivo de memoria.md afecta la cantidad de contexto inyectado.</string>
-    <string name="settings_memory_decay_rate">Tasa de decadencia</string>
-    <string name="settings_memory_decay_rate_title">Tasa de decadencia λ</string>
+    <string name="settings_memory_token_budget">Límite de tokens</string>
+    <string name="settings_memory_token_budget_subtitle">Longitud objetivo de memory.md. Determina cuánto contexto de memoria se incorpora a la conversación.</string>
+    <string name="settings_memory_decay_rate">Pérdida de relevancia</string>
+    <string name="settings_memory_decay_rate_title">Tasa de pérdida de relevancia λ</string>
     <string name="settings_memory_decay_rate_subtitle">Más alto significa olvido más rápido (0,01 lento / 0,02 predeterminado / 0,04 rápido)</string>
-    <string name="settings_memory_hit_bonus">Bonificación de golpe</string>
+    <string name="settings_memory_hit_bonus">Refuerzo por coincidencias</string>
     <string name="settings_memory_hit_bonus_subtitle">Los recuerdos que se mencionan con frecuencia pierden relevancia más lentamente. Las coincidencias se registran al agregar o combinar recuerdos.</string>
     <string name="settings_memory_compile_threshold">Umbral de compilación</string>
     <string name="settings_memory_compile_threshold_subtitle">Los recuerdos por debajo de esta puntuación no se agregan a Memory.md (debe estar por debajo de %1$s)</string>
-    <string name="settings_memory_forget_speed">Olvídate de la velocidad</string>
+    <string name="settings_memory_forget_speed">Velocidad de olvido</string>
     <string name="settings_memory_forget_speed_subtitle">1.0 normal / 2.0 olvida dos veces más rápido</string>
     <string name="settings_memory_restore_default">Restaurar valores predeterminados</string>
     <string name="settings_memory_restore_default_subtitle">Restablecer los parámetros de la memoria a los valores de fábrica.</string>
     <string name="settings_memory_experience_lib">Biblioteca de experiencias</string>
     <string name="settings_memory_experience_lib_subtitle">El asistente resume la experiencia laboral y hace referencia a ella en tareas posteriores (puede contaminar el contexto)</string>
-    <string name="settings_memory_keep_awake">Desvelar</string>
+    <string name="settings_memory_keep_awake">Mantener el dispositivo activo</string>
     <string name="settings_memory_keep_awake_subtitle">Mantener solo durante la generación activa; omitir con batería baja y sin carga</string>
     <string name="settings_memory_auto_launch">Inicio automático al arrancar</string>
     <string name="settings_memory_auto_launch_subtitle">Inicia Muse automáticamente cuando se inicia el dispositivo</string>
@@ -214,21 +214,21 @@
     <string name="settings_import_page_title">Importación de datos</string>
     <string name="settings_import_migrate_title">Migrar datos de otras aplicaciones</string>
     <string name="settings_import_migrate_desc">Puedes importar copias de seguridad de RikkaHub o Kelivo a Muse.</string>
-    <string name="settings_import_step1">Paso 1: aprenda cómo exportar una copia de seguridad</string>
+    <string name="settings_import_step1">Paso 1: exporta una copia de seguridad</string>
     <string name="settings_import_rikkahub_desc">Cliente de chat de IA de Android</string>
-    <string name="settings_import_rikkahub_step1">1. Abra Configuración en la aplicación RikkaHub.</string>
+    <string name="settings_import_rikkahub_step1">1. Abre los ajustes de RikkaHub.</string>
     <string name="settings_import_rikkahub_step2">2. Busca la sección de copias de seguridad y sincronización.</string>
     <string name="settings_import_rikkahub_step3">3. Toca «Crear copia de seguridad» para generar un archivo ZIP.</string>
     <string name="settings_import_step_remember">4. Recuerda dónde se guarda este archivo.</string>
-    <string name="settings_import_kelivo_desc">Cliente de chat AI multiplataforma (Flutter)</string>
-    <string name="settings_import_kelivo_step1">1. Abra Configuración en la aplicación Kelivo.</string>
+    <string name="settings_import_kelivo_desc">Cliente de chat de IA multiplataforma (Flutter)</string>
+    <string name="settings_import_kelivo_step1">1. Abre los ajustes de Kelivo.</string>
     <string name="settings_import_kelivo_step2">2. Busca la sección de copias de seguridad y restauración.</string>
     <string name="settings_import_kelivo_step3">3. Toca «Exportar copia de seguridad» para generar un archivo ZIP.</string>
     <string name="settings_import_step2_title">Paso 2: selecciona una copia de seguridad</string>
     <string name="settings_import_select_backup">Selecciona una copia de seguridad en formato ZIP</string>
     <string name="settings_importing">Importando…</string>
     <string name="settings_import_tips">Después de importar:\n• Comprueba que las claves API de los proveedores sean correctas.\n• Las conversaciones se agregan como nuevas y no sobrescriben las existentes.\n• Si la importación falla, comprueba que el archivo de la copia esté completo.</string>
-    <string name="settings_import_ready">Estoy listo, selecciona archivo</string>
+    <string name="settings_import_ready">Seleccionar archivo</string>
     <string name="settings_import_complete">Importación completa</string>
     <string name="settings_import_providers_count">Proveedores: %1$d</string>
     <string name="settings_import_assistants_count">Asistentes: %1$d</string>
@@ -239,9 +239,9 @@
     <!-- P3-1: CherryStudio / Chatbox JSON import (reuses ConfigImporter) -->
     <string name="settings_import_cherrystudio_title">CherryStudio / Chatbox</string>
     <string name="settings_import_cherrystudio_desc">Cliente de IA de escritorio (configuración JSON)</string>
-    <string name="settings_import_cherrystudio_step1">1. Abra Configuración en CherryStudio / Chatbox</string>
+    <string name="settings_import_cherrystudio_step1">1. Abre los ajustes de CherryStudio o Chatbox.</string>
     <string name="settings_import_cherrystudio_step2">2. Busca «Exportar datos» o «Exportar configuración».</string>
-    <string name="settings_import_cherrystudio_step3">3. Exportar la configuración del proveedor como un archivo JSON</string>
+    <string name="settings_import_cherrystudio_step3">3. Exporta la configuración de los proveedores como un archivo JSON.</string>
     <string name="settings_import_json_skipped_count">Omitido (campos en conflicto o faltantes): %1$d</string>
     <string name="settings_import_json_names">Proveedores: %1$s</string>
     <string name="settings_import_json_no_result">No se detectaron proveedores.</string>
@@ -263,8 +263,8 @@
     <string name="settings_speech_follow_reason_provider_missing">No se encontró el proveedor seleccionado</string>
     <string name="settings_speech_follow_reason_provider_disabled">El proveedor seleccionado está desactivado</string>
     <string name="settings_speech_follow_reason_model_missing">No se eligió ningún modelo</string>
-    <string name="settings_asr_hide">Esconder</string>
-    <string name="settings_asr_show">Espectáculo</string>
+    <string name="settings_asr_hide">Ocultar</string>
+    <string name="settings_asr_show">Mostrar</string>
     <string name="settings_asr_model">Modelo</string>
     <string name="settings_asr_sample_rate">Frecuencia de muestreo</string>
     <string name="settings_asr_sample_rate_subtitle">%1$d Hz (se recomienda 16000; el cambio requiere volver a grabar)</string>
@@ -275,19 +275,19 @@
     <string name="settings_asr_itn_desc">Números chinos → Números arábigos (por ejemplo, \"trescientos\" → \"300\")</string>
     <string name="settings_asr_audio_url">URL del archivo de audio (de acceso público, por ejemplo, OSS)</string>
     <string name="settings_asr_poll_interval">Intervalo de sondeo (ms, predeterminado 3000)</string>
-    <string name="settings_asr_poll_timeout">Tiempo de espera total de la encuesta (ms, predeterminado 300000 = 5 min)</string>
+    <string name="settings_asr_poll_timeout">Tiempo máximo de espera del sondeo (ms, predeterminado: 300000 = 5 min)</string>
     <!-- New: OpenAI-compatible / Realtime / Agnes providers -->
-    <string name="settings_asr_provider_openai_whisper">Susurro</string>
+    <string name="settings_asr_provider_openai_whisper">Whisper</string>
     <string name="settings_asr_provider_openai_realtime">En tiempo real</string>
-    <string name="settings_asr_provider_agnes">Inés</string>
+    <string name="settings_asr_provider_agnes">Agnes</string>
     <string name="settings_asr_base_url">URL personalizada de la API (vacía para usar la predeterminada)</string>
     <!-- New: hot words -->
-    <string name="settings_asr_hotwords">Palabras candentes (separadas por comas, aumentan el reconocimiento de los nombres propios)</string>
+    <string name="settings_asr_hotwords">Palabras clave (separadas por comas; mejoran el reconocimiento de nombres propios)</string>
     <!-- New: VAD silence detection -->
     <string name="settings_asr_vad">Detección de silencio VAD local</string>
     <string name="settings_asr_vad_desc">Detener automáticamente la grabación después de que el silencio supere el umbral (OPENAI_REALTIME utiliza VAD del lado del servidor)</string>
     <string name="settings_asr_vad_threshold">Umbral VAD (0-1, predeterminado 0,05 ≈ -46 dB)</string>
-    <string name="settings_asr_vad_silence">Duración de la parada automática del silencio (ms, predeterminado 1500)</string>
+    <string name="settings_asr_vad_silence">Silencio antes de detener la grabación (ms, predeterminado: 1500)</string>
     <string name="settings_asr_vad_realtime_note">El motor Realtime realiza la detección de actividad de voz (VAD) en el servidor; no se necesita configuración local.</string>
     <string name="settings_asr_saved_vad">Configuración VAD guardada</string>
     <string name="settings_asr_save_vad">Guardar configuración de VAD</string>
@@ -299,8 +299,8 @@
     <string name="settings_rag_injection_section">Contexto de la base de conocimientos</string>
     <string name="settings_rag_attachment_section">Búsqueda en adjuntos</string>
     <string name="settings_rag_auto_inject">Agregar automáticamente información de la base de conocimientos</string>
-    <string name="settings_rag_auto_inject_subtitle">Recupera automáticamente conocimientos relevantes e inyéctalos en el contexto durante el chat.</string>
-    <string name="settings_rag_embedding_source_section">Fuente de incrustación</string>
+    <string name="settings_rag_auto_inject_subtitle">Busca información relevante en la base de conocimientos y la incorpora automáticamente al contexto de la conversación.</string>
+    <string name="settings_rag_embedding_source_section">Origen de los embeddings</string>
     <string name="settings_rag_cloud_api">API de la nube</string>
     <string name="settings_rag_cloud_api_subtitle">La calidad es lo primero, requiere red y clave API</string>
     <string name="settings_rag_local_keyword">Palabras clave locales (sin conexión)</string>
@@ -312,9 +312,9 @@
     <string name="settings_rag_no_provider_hint">Ningún proveedor configurado todavía.</string>
     <string name="settings_rag_baseurl_not_set">URL base no establecida</string>
     <string name="settings_rag_deselect_hint">Toca el proveedor seleccionado para quitar la selección y volver al proveedor activo.</string>
-    <string name="settings_rag_embedding_model_section">Modelo de incrustación</string>
+    <string name="settings_rag_embedding_model_section">Modelo de embeddings</string>
     <string name="settings_rag_model_name_hint">Nombre del modelo (déjelo en blanco para usar el valor predeterminado del proveedor)</string>
-    <string name="settings_rag_common_models">Modelos comunes: incrustación de texto-3-pequeño (1536d) / incrustación de texto-3-grande (3072d) / incrustación-2 (1024d)</string>
+    <string name="settings_rag_common_models">Modelos habituales: text-embedding-3-small (1536 dimensiones), text-embedding-3-large (3072) y embedding-2 (1024)</string>
     <string name="settings_rag_search_params_section">Parámetros de búsqueda</string>
     <string name="settings_rag_top_k">Máximo de resultados (top-K)</string>
     <string name="settings_rag_similarity_threshold">Umbral de similitud</string>
@@ -336,19 +336,19 @@
     <string name="settings_rag_hybrid_vector_weight_subtitle">Peso de contribución de similitud vectorial en RRF</string>
     <string name="settings_rag_rerank">Reclasificar</string>
     <string name="settings_rag_rerank_subtitle">Reclasificación del codificador cruzado en los mejores candidatos K×5</string>
-    <string name="settings_rag_token_budget">Presupuesto simbólico</string>
+    <string name="settings_rag_token_budget">Límite de tokens</string>
     <string name="settings_rag_token_budget_subtitle">0: sin límite. Un valor mayor limita los fragmentos por presupuesto de tokens, en orden de mayor a menor similitud.</string>
-    <string name="settings_rag_markdown_aware">Fragmentación consciente de las rebajas</string>
-    <string name="settings_rag_markdown_aware_subtitle">Preservar bloques/encabezados/tablas de código, evitar dividir</string>
+    <string name="settings_rag_markdown_aware">Fragmentación que respeta Markdown</string>
+    <string name="settings_rag_markdown_aware_subtitle">Conserva los bloques de código, los encabezados y las tablas para evitar dividirlos</string>
     <string name="settings_rag_chunk_by_token">Fragmentación basada en tokens</string>
     <string name="settings_rag_chunk_by_token_subtitle">Cuando está habilitado, recuento de fragmentos por token (más preciso para CJK mixto + latín)</string>
     <!-- v1.0.47 P7-1: Document parser config -->
     <string name="settings_rag_parser_section">Analizador de documentos</string>
     <string name="settings_rag_parser_local">Analizador local</string>
     <string name="settings_rag_parser_local_subtitle">Análisis local, compatible con txt/pdf/docx/pptx/xlsx/epub</string>
-    <string name="settings_rag_parser_cloud">Analizador de nubes</string>
+    <string name="settings_rag_parser_cloud">Analizador en la nube</string>
     <string name="settings_rag_parser_cloud_subtitle">API en la nube, para diseños complejos/documentos escaneados (requiere punto final)</string>
-    <string name="settings_rag_parser_mineru">MineroU</string>
+    <string name="settings_rag_parser_mineru">MinerU</string>
     <string name="settings_rag_parser_mineru_subtitle">API de MinerU, sobresale en PDF/fórmulas/tablas académicas (requiere punto final)</string>
     <string name="settings_rag_cloud_parser_endpoint">Punto final del analizador de la nube</string>
     <string name="settings_rag_mineru_endpoint">Punto final de MinerU</string>
@@ -356,11 +356,11 @@
     <string name="settings_rag_notes_section">Notas</string>
     <string name="settings_rag_note1">• Después de cambiar los parámetros del fragmento, los documentos recién importados utilizarán los nuevos parámetros</string>
     <string name="settings_rag_note2">• Si cambias los parámetros de fragmentación, toca «Reconstruir índice» en la base de conocimientos. No necesitas eliminar ni volver a importar los documentos.</string>
-    <string name="settings_rag_note3">• La herramienta Knowledge_Search siempre está disponible, independientemente de la opción de inyección automática.</string>
+    <string name="settings_rag_note3">• La herramienta knowledge_search está siempre disponible, independientemente de la incorporación automática de contexto.</string>
 
     <!-- v1.133: Multi-KB management -->
-    <string name="settings_rag_manage_kbs">Administrar bases de conocimiento</string>
-    <string name="settings_rag_manage_kbs_subtitle">Crear, cambiar el nombre y eliminar bases de conocimiento.</string>
+    <string name="settings_rag_manage_kbs">Gestionar bases de conocimientos</string>
+    <string name="settings_rag_manage_kbs_subtitle">Crear, cambiar el nombre y eliminar bases de conocimientos</string>
     <string name="kb_manage_create">Nueva base de conocimientos</string>
     <string name="kb_manage_name_label">Nombre</string>
     <string name="kb_manage_desc_label">Descripción (opcional)</string>
@@ -388,14 +388,14 @@
     <string name="settings_security_include_timestamp">Incluir marca de tiempo</string>
     <string name="settings_security_include_timestamp_subtitle">Adjuntar hora del mensaje al compartir una conversación</string>
     <string name="settings_security_include_model">Incluir nombre del modelo</string>
-    <string name="settings_security_include_model_subtitle">Adjunte el nombre del modelo generador al compartir</string>
+    <string name="settings_security_include_model_subtitle">Añade el nombre del modelo al compartir una conversación</string>
     <string name="settings_security_include_tokens">Incluir recuento de tokens</string>
-    <string name="settings_security_include_tokens_subtitle">Adjunte tokens por mensaje al compartir</string>
+    <string name="settings_security_include_tokens_subtitle">Añade el consumo de tokens de cada mensaje al compartir</string>
     <string name="settings_security_include_mood">Incluir bloque de estado de ánimo</string>
-    <string name="settings_security_include_mood_subtitle">Adjunte el borrador interno de la IA al compartir</string>
+    <string name="settings_security_include_mood_subtitle">Añade el borrador interno del asistente al compartir</string>
     <string name="settings_security_include_reasoning">Incluir razonamiento</string>
-    <string name="settings_security_include_reasoning_subtitle">Adjunte el proceso de razonamiento de la IA al compartir</string>
-    <string name="settings_security_share_format">Formato de compartir</string>
+    <string name="settings_security_include_reasoning_subtitle">Añade el razonamiento del asistente al compartir</string>
+    <string name="settings_security_share_format">Formato para compartir</string>
     <string name="settings_security_format_plain_text">Texto sin formato</string>
 
     <!-- Image Generation -->
@@ -425,7 +425,7 @@
     <string name="settings_media_tts_section">Reproducción de voz</string>
     <string name="settings_media_speech_rate">Velocidad del habla</string>
     <string name="settings_media_speech_rate_subtitle">0,5x lento/1,0x normal/2,0x rápido</string>
-    <string name="settings_media_pitch">Paso</string>
+    <string name="settings_media_pitch">Tono de voz</string>
     <string name="settings_media_pitch_subtitle">0,5 bajo / 1,0 normal / 2,0 alto</string>
 
     <!-- Cloud TTS engine configuration -->
@@ -444,7 +444,7 @@
     <string name="settings_media_tts_engine_step">Step TTS</string>
     <string name="settings_media_tts_engine_xai">xAI TTS</string>
     <string name="settings_media_tts_api_key">Clave API</string>
-    <string name="settings_media_tts_voice">Voz/Identificación de voz</string>
+    <string name="settings_media_tts_voice">Voz o ID de voz</string>
     <string name="settings_media_tts_voice_selector">Voz TTS</string>
     <string name="settings_media_tts_voice_empty">No hay voces disponibles</string>
     <string name="settings_media_tts_voice_default">Por defecto</string>
@@ -458,8 +458,8 @@
     <string name="settings_media_tts_save_model">Guardar modelo</string>
     <string name="settings_media_tts_save_endpoint">Guardar punto final</string>
     <string name="settings_media_tts_save_connection">Guardar conexión</string>
-    <string name="settings_media_tts_show">Espectáculo</string>
-    <string name="settings_media_tts_hide">Esconder</string>
+    <string name="settings_media_tts_show">Mostrar</string>
+    <string name="settings_media_tts_hide">Ocultar</string>
     <string name="settings_media_tts_saved">Guardado</string>
     <!-- v1.99: Cloud voice dynamic fetching -->
     <string name="settings_media_tts_voice_fetch_failed">No se pudo obtener la lista de voces.</string>
@@ -471,14 +471,14 @@
     <string name="settings_media_tts_emotion">Emoción (MiniMax)</string>
     <string name="settings_media_tts_emotion_placeholder">feliz / triste / enojado / neutral</string>
     <string name="settings_media_tts_cloud_speed">Velocidad de síntesis</string>
-    <string name="settings_media_tts_response_format">formato de audio</string>
+    <string name="settings_media_tts_response_format">Formato de audio</string>
     <string name="settings_media_tts_save_advanced">Guardar parámetros</string>
     <!-- TTS en la nube: usar la configuración del proveedor -->
     <string name="settings_media_tts_follow_provider">Usar configuración del proveedor</string>
     <string name="settings_media_tts_follow_provider_subtitle">La URL y la clave de API vienen del proveedor; el modelo se elige manualmente</string>
     <string name="settings_media_tts_follow_provider_picker">Proveedor</string>
     <string name="settings_media_tts_follow_model_picker">Modelo</string>
-    <string name="settings_media_tts_follow_voice_hint">Seguir solo toma la URL y la clave de API; comprueba que la voz funcione con el proveedor elegido</string>
+    <string name="settings_media_tts_follow_voice_hint">Esta opción reutiliza solo la URL y la clave de API del proveedor. Comprueba que la voz sea compatible.</string>
     <!-- ===== Custom theme ===== -->
     <string name="settings_theme_custom_section">Tema personalizado</string>
     <string name="settings_theme_custom_add">Agregar tema</string>
@@ -487,7 +487,7 @@
     <string name="settings_theme_custom_name">Nombre del tema</string>
     <string name="settings_theme_custom_name_placeholder">Dale un nombre a tu tema</string>
     <string name="settings_theme_custom_presets">Paletas de colores (toca una para aplicarla)</string>
-    <string name="settings_theme_custom_primary_color">color primario</string>
+    <string name="settings_theme_custom_primary_color">Color primario</string>
     <string name="settings_theme_custom_secondary_color">Color secundario (opcional)</string>
     <string name="settings_theme_custom_tertiary_color">Color terciario (opcional)</string>
     <string name="settings_theme_custom_preview">Vista previa de color</string>
@@ -500,14 +500,14 @@
     <string name="settings_theme_custom_import">Importar tema</string>
     <string name="settings_theme_custom_import_success">Tema importado</string>
     <string name="settings_theme_custom_import_failed">Error de importación: formato no válido</string>
-    <string name="settings_theme_custom_unnamed">Intitulado</string>
+    <string name="settings_theme_custom_unnamed">Sin título</string>
     <string name="settings_theme_custom_color_h">Matiz</string>
     <string name="settings_theme_custom_color_s">Saturación</string>
-    <string name="settings_theme_custom_color_l">Ligereza</string>
+    <string name="settings_theme_custom_color_l">Luminosidad</string>
     <!-- 前端修复 (i18n-3.x): 主动消息配置区 i18n(临时复制中文,后续补译) -->
-    <string name="settings_agent_dm_subtitle">Ver mensajes directos entre Agent</string>
-    <string name="settings_agent_agent_only">Solo chats de Agent</string>
-    <string name="settings_agent_agent_only_subtitle">Al activarlo, solo los asistentes Agent envían mensajes proactivos; las sesiones de tarea no</string>
+    <string name="settings_agent_dm_subtitle">Ver mensajes directos entre agentes</string>
+    <string name="settings_agent_agent_only">Solo conversaciones de agentes</string>
+    <string name="settings_agent_agent_only_subtitle">Solo los asistentes de agentes enviarán mensajes proactivos; las conversaciones de tareas quedan excluidas</string>
     <string name="settings_agent_temperature">Temperatura de generación</string>
     <string name="settings_agent_temperature_hint">La fase de decisión usa temperature×0.5 (más determinista); la generación usa este valor. Cuanto mayor, más creativo; menor, más estable</string>
     <string name="settings_agent_temperature_stable">0.0 Estable</string>
@@ -518,11 +518,11 @@
     <string name="settings_agent_test_failed">Error de prueba: %1$s</string>
     <string name="settings_agent_test_already_running">Todavía se está generando un mensaje proactivo; inténtalo de nuevo más tarde</string>
     <string name="settings_agent_daily_summary_subtitle">Genera un resumen del chat a diario a las 09:00, 12:00, 21:00 y 00:00; el interruptor solo controla las notificaciones</string>
-    <string name="settings_agent_current_model_hint">Predeterminado global (compartido por el chat principal / Agent)</string>
+    <string name="settings_agent_current_model_hint">Valor global predeterminado (compartido por el chat principal y los agentes)</string>
     <string name="settings_agent_keep_alive_title">Mantener en segundo plano</string>
     <string name="settings_agent_keep_alive_subtitle">Evita perder mensajes proactivos si el sistema cierra el proceso</string>
     <string name="keep_alive_dialog_title">%1$s · Mantener en segundo plano</string>
-    <string name="keep_alive_manual_hint">No se pudo abrir los ajustes automáticamente. Sigue los pasos anteriores para activarlo manualmente.</string>
+    <string name="keep_alive_manual_hint">No se pudieron abrir los ajustes automáticamente. Sigue los pasos anteriores para activarlo manualmente.</string>
     <string name="keep_alive_dialog_desc">Los mensajes proactivos dependen de un proceso en segundo plano. Los sistemas chinos cierran las apps en segundo plano por defecto; tras permitirla según los pasos siguientes, seguirás recibiendo mensajes aunque deslices la app:</string>
     <string name="keep_alive_dialog_dismiss">Entendido</string>
     <string name="keep_alive_dialog_open">Ir a ajustes</string>
@@ -573,7 +573,7 @@
     <string name="miniphone_app_weather">Clima</string>
     <string name="miniphone_app_diary">Diario</string>
     <string name="miniphone_app_settings">Ajustes</string>
-    <string name="chat_switch_assistant_applied_hint">Cambiado a %1$s — se usarán el modelo y la memoria de TA</string>
+    <string name="chat_switch_assistant_applied_hint">Se cambió a %1$s. Se utilizarán su modelo y sus recuerdos.</string>
     <string name="kb_manage_add_doc">Añadir un documento a esta base de conocimientos</string>
     <string name="settings_agent_daily_summary_slots_empty_hint">Selecciona al menos un periodo</string>
     <string name="settings_agent_daily_summary_slots_group_early">Madrugada (0-5 h)</string>
@@ -594,10 +594,10 @@
     <string name="settings_relationship_level_title">Frecuencia de contacto</string>
     <string name="settings_relationship_level_low">Rara vez</string>
     <string name="settings_relationship_level_normal">Normal</string>
-    <string name="settings_relationship_level_high">Muy apegado</string>
-    <string name="settings_relationship_affinity_new">Recién conocido</string>
+    <string name="settings_relationship_level_high">Muy frecuente</string>
+    <string name="settings_relationship_affinity_new">Acabamos de conocernos</string>
     <string name="settings_relationship_affinity_known">Conocido</string>
-    <string name="settings_relationship_affinity_familiar">Familiar</string>
+    <string name="settings_relationship_affinity_familiar">De confianza</string>
     <string name="settings_relationship_affinity_close">Muy cercano</string>
     <string name="settings_moment_content_mode_title">Modo de contenido de Momentos</string>
     <string name="settings_moment_content_mode_hint">Define la perspectiva que usa la IA para publicar Momentos, comentar y escribir el diario. Ambos modos se basan en recuerdos reales; la diferencia es si el personaje puede compartir sus propias vivencias.</string>
@@ -628,7 +628,7 @@
     <string name="settings_agent_content_moment">Momentos</string>
     <string name="settings_agent_content_none">Todo desactivado</string>
     <string name="settings_agent_group_advanced">Avanzado</string>
-    <string name="settings_agent_advanced_subtitle">Temperatura, desfase aleatorio, solo Agent, envío de prueba</string>
+    <string name="settings_agent_advanced_subtitle">Temperatura, variación aleatoria del horario, solo agentes y envío de prueba</string>
     <string name="settings_agent_advanced_hint">Ajustes de uso poco frecuente; normalmente no hace falta cambiarlos.</string>
     <string name="settings_agent_group_background">Segundo plano y fiabilidad</string>
     <string name="settings_agent_schedule_work_title">Control general de tareas en segundo plano</string>
@@ -650,7 +650,7 @@
     <string name="settings_asr_desc_dashscope">Reconocimiento en tiempo real de Alibaba Cloud, ideal para chino</string>
     <string name="settings_asr_desc_step">Reconocimiento de voz en tiempo real de StepFun</string>
     <string name="settings_asr_desc_file">Transcripción asíncrona desde una URL, ideal para grabaciones largas</string>
-    <string name="settings_asr_desc_whisper">OpenAI Whisper, compatible con servicios propios y relay</string>
+    <string name="settings_asr_desc_whisper">OpenAI Whisper, compatible con servidores propios e intermediarios</string>
     <string name="settings_asr_desc_realtime">OpenAI Realtime, texto mientras hablas</string>
     <string name="settings_asr_desc_agnes">Reconocimiento de voz en la nube de Agnes</string>
     <string name="settings_asr_save_connection">Guardar conexión</string>
@@ -672,7 +672,7 @@
     <string name="settings_preview_model_name">Muse · Modelo de ejemplo</string>
     <string name="settings_theme_liquid_glass">Efecto de cristal líquido</string>
     <string name="settings_theme_liquid_glass_desc">Aspecto de cristal para la barra superior, de entrada y las burbujas.</string>
-    <string name="settings_glass_off">Apagado</string>
+    <string name="settings_glass_off">Desactivado</string>
     <string name="settings_glass_water">Cristal de agua</string>
     <string name="settings_glass_frost">Cristal esmerilado</string>
     <string name="settings_glass_level">Intensidad</string>
@@ -733,7 +733,7 @@
     <string name="miniphone_contact_start_chat">Enviar mensaje</string>
     <string name="miniphone_contact_edit_relationship">Editar relación</string>
     <string name="search_custom_engines_section">Motores de búsqueda propios</string>
-    <string name="search_custom_engines_hint">Conecta tu propio servicio: indica el endpoint, la plantilla de petición y la ruta de resultados.</string>
+    <string name="search_custom_engines_hint">Conecta tu propio servicio: indica la URL de la API, la plantilla de solicitud y la ruta de los resultados.</string>
     <string name="search_custom_engine_add">Añadir motor</string>
     <string name="search_custom_engine_empty">Aún no hay motores propios</string>
     <string name="search_custom_engine_name">Nombre</string>
@@ -751,10 +751,10 @@
     <string name="connection_skills_subtitle">%1$d habilidades personalizadas, %2$d de paquetes SKILL.md</string>
     <string name="settings_user_profile_auto_section">Perfil aprendido de los chats</string>
     <string name="settings_user_profile_auto_switch">Actualizar el perfil automáticamente</string>
-    <string name="settings_user_profile_auto_desc">Se destila de las conversaciones de forma periódica y se inyecta como referencia; los campos que rellenes siempre tienen prioridad.</string>
+    <string name="settings_user_profile_auto_desc">El perfil se obtiene periódicamente de tus conversaciones y se incorpora como referencia. Los campos que completes manualmente siempre tienen prioridad.</string>
     <string name="settings_user_profile_auto_empty">Aún no se ha aprendido nada; aparecerá tras más conversaciones.</string>
-    <string name="settings_user_profile_auto_override">Anular este grupo</string>
-    <string name="settings_user_profile_auto_revert">Restaurar automático</string>
+    <string name="settings_user_profile_auto_override">Personalizar este grupo</string>
+    <string name="settings_user_profile_auto_revert">Restaurar el valor automático</string>
     <string name="profile_section_identity">Identidad y tratamiento</string>
     <string name="profile_section_relationship">Relación</string>
     <string name="profile_section_stable">Hechos estables</string>
@@ -765,7 +765,7 @@
     <string name="settings_agent_timing_scoring_subtitle">Antes de hablar valora las reacciones recientes: sin respuesta previa, mensajes sin leer o madrugada bajan la probabilidad; un asunto pendiente la recupera. Intervalos, cupo y silencio no cambian.</string>
     <string name="settings_screen_diagnostics">Diagnóstico</string>
     <string name="settings_screen_diagnostics_desc">Almacenamiento, hilo principal, latencia del Host Web y tareas en segundo plano, con exportación JSON sin datos sensibles</string>
-    <string name="settings_diagnostics_loading">Recogiendo…</string>
+    <string name="settings_diagnostics_loading">Recopilando…</string>
     <string name="settings_diagnostics_actions">Exportar</string>
     <string name="settings_diagnostics_export_hint">La exportación solo incluye tamaños, conteos y estados: sin mensajes, rutas ni credenciales</string>
     <string name="settings_diagnostics_copy_json">Copiar JSON de diagnóstico</string>
@@ -773,28 +773,28 @@
     <string name="settings_diagnostics_export_file">Guardar en caché</string>
     <string name="settings_diagnostics_exported">Escrito en diagnostics.json de la caché</string>
     <string name="settings_diagnostics_export_failed">Exportación fallida</string>
-    <string name="settings_diagnostics_refresh">Recoger de nuevo</string>
+    <string name="settings_diagnostics_refresh">Recopilar de nuevo</string>
     <string name="settings_diagnostics_app">Aplicación y bases de datos</string>
     <string name="settings_diagnostics_version">Versión</string>
     <string name="settings_diagnostics_db_versions">Versiones de esquema</string>
-    <string name="settings_diagnostics_collected_at">Recogido el</string>
+    <string name="settings_diagnostics_collected_at">Fecha de recopilación</string>
     <string name="settings_diagnostics_storage">Almacenamiento</string>
     <string name="settings_diagnostics_total_bytes">Tamaño total de BD</string>
     <string name="settings_diagnostics_log_bytes">Archivo de registro</string>
     <string name="settings_diagnostics_unknown_db">BD sin registrar</string>
     <string name="settings_diagnostics_main_thread">Hilo principal (reciente)</string>
     <string name="settings_diagnostics_window">Ventana</string>
-    <string name="settings_diagnostics_jank_counts">jank / lento / bloqueado</string>
+    <string name="settings_diagnostics_jank_counts">Fotogramas irregulares / lentos / bloqueados</string>
     <string name="settings_diagnostics_worst">El más lento</string>
     <string name="settings_diagnostics_thresholds">Umbrales</string>
     <string name="settings_diagnostics_webhost">Solicitudes del Host Web</string>
     <string name="settings_diagnostics_samples">Muestras</string>
     <string name="settings_diagnostics_no_requests">Sin solicitudes</string>
-    <string name="settings_diagnostics_few_samples">pocas muestras</string>
+    <string name="settings_diagnostics_few_samples">Pocas muestras</string>
     <string name="settings_diagnostics_p95">p95 de latencia</string>
     <string name="settings_diagnostics_background">Tareas en segundo plano</string>
-    <string name="settings_diagnostics_bg_error">Fallo al recoger</string>
-    <string name="settings_diagnostics_bg_none">Sin tareas registradas (puede que la programación en segundo plano nunca se activó)</string>
+    <string name="settings_diagnostics_bg_error">No se pudieron recopilar los datos</string>
+    <string name="settings_diagnostics_bg_none">No hay tareas registradas. Es posible que todavía no se haya activado la programación en segundo plano.</string>
     <string name="settings_screen_session_terms">Términos del asistente</string>
     <string name="settings_screen_session_terms_desc">Palabras nuevas y jerga de tus chats; solo las confirmadas pasan a usarse como dadas</string>
     <string name="settings_session_terms_loading">Cargando términos…</string>
@@ -805,12 +805,12 @@
     <string name="settings_session_terms_occurrences">Apareció %1$d veces</string>
     <string name="settings_session_terms_manage">Gestionar</string>
     <string name="settings_session_terms_action_title">Gestionar «%1$s»</string>
-    <string name="settings_session_terms_action_body">Este término apareció %1$d veces en este asistente. Lectura actual: %2$s. Se usará como establecido solo tras confirmarlo.</string>
+    <string name="settings_session_terms_action_body">Este término apareció %1$d veces con este asistente. Interpretación actual: %2$s. Solo se considerará confirmado cuando lo apruebes.</string>
     <string name="settings_session_terms_confirm">Confirmar</string>
-    <string name="settings_session_terms_promote">Promover al asistente</string>
+    <string name="settings_session_terms_promote">Usar en todo el asistente</string>
     <string name="settings_session_terms_toast_confirmed">«%1$s» confirmado</string>
-    <string name="settings_session_terms_toast_promoted">«%1$s» promovido al asistente</string>
-    <string name="settings_session_terms_scope_assistant">Nivel asistente</string>
+    <string name="settings_session_terms_toast_promoted">«%1$s» se aplicará en todo el asistente</string>
+    <string name="settings_session_terms_scope_assistant">Ámbito del asistente</string>
     <string name="settings_session_terms_scope_confirmed">Confirmado</string>
     <string name="settings_session_terms_scope_candidate">Por confirmar</string>
     <string name="kb_jobs_summary_running">Procesando %1$d/%2$d</string>
@@ -833,10 +833,10 @@
     <string name="kb_jobs_summary_partial">Éxito parcial: %1$d correctos, %2$d fallidos</string>
     <string name="kb_jobs_cancel">Cancelar procesamiento</string>
     <string name="kb_search_results">%1$d coincidencias</string>
-    <string name="kb_settings_ingest">Ingesta</string>
+    <string name="kb_settings_ingest">Importación de documentos</string>
     <string name="kb_settings_embedding">Codificación</string>
     <string name="kb_settings_retrieval">Recuperación</string>
-    <string name="kb_settings_title">Ajustes de conocimiento</string>
+    <string name="kb_settings_title">Ajustes de la base de conocimientos</string>
 
     <string name="settings_chat_quick_actions">Acciones rápidas de los mensajes</string>
     <string name="settings_chat_quick_actions_desc">Elige qué acciones rápidas aparecen debajo de los mensajes</string>
