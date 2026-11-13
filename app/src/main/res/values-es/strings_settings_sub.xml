@@ -103,7 +103,7 @@
     <string name="settings_theme_language">Idioma</string>
     <string name="settings_theme_current_language">Idioma actual</string>
     <string name="settings_default_home_page_title">Página de inicio predeterminada</string>
-    <string name="settings_default_home_page_desc">Elija la página que se muestra al iniciar la aplicación</string>
+    <string name="settings_default_home_page_desc">Elige la pantalla que se mostrará al iniciar la aplicación.</string>
 
     <!-- Settings Sub-pages / About -->
     <string name="settings_task_routing_title">Modelos auxiliares</string>
@@ -224,8 +224,8 @@
     <string name="settings_import_kelivo_step1">1. Abra Configuración en la aplicación Kelivo.</string>
     <string name="settings_import_kelivo_step2">2. Busque la opción \"Copia de seguridad &amp; Restaurar\"</string>
     <string name="settings_import_kelivo_step3">3. Toca «Exportar copia de seguridad» para generar un archivo ZIP.</string>
-    <string name="settings_import_step2_title">Paso 2: seleccione un archivo de respaldo</string>
-    <string name="settings_import_select_backup">Seleccione el archivo de copia de seguridad (formato ZIP)</string>
+    <string name="settings_import_step2_title">Paso 2: selecciona una copia de seguridad</string>
+    <string name="settings_import_select_backup">Selecciona una copia de seguridad en formato ZIP</string>
     <string name="settings_importing">Importando…</string>
     <string name="settings_import_tips">Consejos:\n• Para configuraciones de proveedores importadas, es posible que deba verificar manualmente que las claves API sean correctas\n• Las conversaciones importadas se crean como sesiones nuevas y no sobrescribirán los datos existentes\n• Si la importación falla, verifique que el archivo de respaldo esté completo</string>
     <string name="settings_import_ready">Estoy listo, selecciona archivo</string>
@@ -400,7 +400,7 @@
 
     <!-- Image Generation -->
     <string name="settings_image_gen_section">Generación de imágenes</string>
-    <string name="settings_image_gen_select_provider">Seleccione un proveedor de imágenes</string>
+    <string name="settings_image_gen_select_provider">Selecciona un proveedor de imágenes</string>
     <string name="settings_image_gen_select_model">Seleccionar modelo de imagen</string>
     <string name="settings_image_gen_select_default">Selecciona el proveedor de imágenes predeterminado</string>
     <string name="settings_image_gen_no_provider">No hay proveedores de imágenes disponibles</string>
@@ -411,7 +411,7 @@
 
     <!-- Video Generation -->
     <string name="settings_video_gen_section">Generación de vídeo</string>
-    <string name="settings_video_gen_select_provider">Seleccione un proveedor de vídeo</string>
+    <string name="settings_video_gen_select_provider">Selecciona un proveedor de vídeo</string>
     <string name="settings_video_gen_select_model">Seleccionar modelo de vídeo</string>
     <string name="settings_video_gen_select_default">Selecciona el proveedor de vídeo predeterminado</string>
     <string name="settings_video_gen_no_provider">No hay proveedores de vídeo disponibles</string>

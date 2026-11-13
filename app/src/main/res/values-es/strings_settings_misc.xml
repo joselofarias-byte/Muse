@@ -39,7 +39,7 @@
     <string name="settings_experiments_warning">Las siguientes funciones son experimentales y pueden ser inestables o afectar su experiencia</string>
     <string name="settings_experiments_features">Funciones experimentales</string>
     <string name="settings_experiments_force_mood">Forzar salida de MOOD</string>
-    <string name="settings_experiments_force_mood_subtitle">Intente requerir la salida del bloque MOOD incluso si el modelo no lo admite</string>
+    <string name="settings_experiments_force_mood_subtitle">Solicita un bloque MOOD incluso si el modelo no lo admite.</string>
     <string name="settings_experiments_debug_mode">Modo de depuración</string>
     <string name="settings_experiments_debug_mode_subtitle">Mostrar más estados internos (MOOD/llamadas de herramientas/tokens)</string>
     <string name="settings_experiments_self_reflection">Autorreflexión</string>
@@ -91,7 +91,7 @@
 
     <!-- PresetProviderPickerDialog.kt -->
     <string name="settings_preset_select_provider">Seleccionar Proveedor</string>
-    <string name="settings_preset_subtitle">Cubre proveedores de retransmisión, oficiales nacionales y extranjeros: simplemente ingrese su clave API después de seleccionar</string>
+    <string name="settings_preset_subtitle">Elige un proveedor oficial o un intermediario y agrega tu clave API.</string>
     <string name="settings_preset_group_overseas">Oficial en el extranjero</string>
     <string name="settings_preset_group_domestic">Funcionario Nacional</string>
     <string name="settings_preset_group_relay">Relé</string>
@@ -101,7 +101,7 @@
     <string name="settings_preset_need_baseurl">URL base requerida</string>
     <string name="settings_preset_model_count">%1$d modelos</string>
     <string name="settings_preset_custom">Proveedor personalizado</string>
-    <string name="settings_preset_custom_desc">Ingrese manualmente baseUrl, clave API y lista de modelos</string>
+    <string name="settings_preset_custom_desc">Introduce la URL base, la clave API y los modelos del proveedor.</string>
 
     <!-- ProviderModelRow.kt -->
     <string name="settings_model_action_settings">Ajustes</string>
@@ -136,7 +136,7 @@
     <string name="settings_assistant_prompt_injection">Inyección de instrucciones</string>
     <string name="settings_assistant_prompt_injection_subtitle">Añade automáticamente las instrucciones específicas al cambiar de modo (creación, programación, juegos de rol, etc.).</string>
     <string name="settings_assistant_skills">Gerente de Habilidades</string>
-    <string name="settings_assistant_skills_subtitle">Ver/habilitar/deshabilitar herramientas que el LLM puede llamar (E/S de archivos, HTTP, etc.)</string>
+    <string name="settings_assistant_skills_subtitle">Consulta, activa o desactiva las herramientas del modelo, como acceso a archivos y solicitudes HTTP.</string>
     <string name="settings_assistant_memory_enable">Habilitar sistema de memoria</string>
     <string name="settings_assistant_memory_enable_subtitle">Cuando están desactivadas, las conversaciones ya no inyectan memoria a largo plazo y se detiene el resumen en segundo plano.</string>
 

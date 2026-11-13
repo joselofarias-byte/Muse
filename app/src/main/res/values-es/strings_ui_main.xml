@@ -75,7 +75,7 @@
     <string name="assistant_detail_time_reminder_desc">Inyectar la hora actual en la conversación</string>
     <string name="assistant_detail_manual_memory">Memoria Manual</string>
     <string name="assistant_detail_add_memory">Agregar memoria</string>
-    <string name="assistant_detail_add_memory_desc">Ingrese manualmente hechos/conocimientos para referencia de IA</string>
+    <string name="assistant_detail_add_memory_desc">Agrega información que quieras que el asistente recuerde.</string>
     <string name="assistant_detail_saved_memory_count">Memorias guardadas (%1$d)</string>
     <string name="assistant_detail_global_pinned_count">Memorias globales fijadas (%1$d)</string>
     <string name="assistant_detail_global_pinned_enabled">La memoria global está activada; estas entradas se incluyen para este asistente.</string>
@@ -87,7 +87,7 @@
     <string name="assistant_detail_add_memory_dialog_title">Agregar memoria</string>
     <string name="assistant_detail_memory_edit_missing">Esta memoria ya no existe o el contenido no es válido</string>
     <string name="assistant_detail_edit_memory_dialog_title">Editar memoria</string>
-    <string name="assistant_detail_input_fact">Introduzca hecho/conocimiento</string>
+    <string name="assistant_detail_input_fact">Escribe la información que quieres guardar</string>
     <string name="assistant_detail_save">Ahorrar</string>
     <string name="assistant_detail_cancel">Cancelar</string>
     <string name="assistant_detail_custom_headers_label">Encabezados personalizados JSON (por ejemplo, {\"X-Custom\":\"value\"})</string>
@@ -394,7 +394,7 @@
     <string name="search_back_cd">Atrás</string>
     <string name="search_cancel">Cancelar</string>
     <string name="search_placeholder">Buscar sesiones/mensajes/configuraciones...</string>
-    <string name="search_empty_hint">Ingrese palabras clave para buscar sesiones, mensajes o configuraciones</string>
+    <string name="search_empty_hint">Busca conversaciones, mensajes o ajustes</string>
     <string name="search_tab_sessions">Sesiones</string>
     <string name="search_tab_message_content">Contenido del mensaje</string>
     <string name="search_section_message_content">Contenido del mensaje</string>
@@ -417,7 +417,7 @@
     <string name="skill_no_skill_subtitle">Dile a la IA "crea una habilidad XX para mí", o toca + en la parte inferior derecha para importar un archivo</string>
     <string name="skill_importing">Importador</string>
     <string name="skill_importing_detail">Leyendo y analizando documento...</string>
-    <string name="skill_open_picker_failed">No se puede abrir el selector de archivos: %1$s</string>
+    <string name="skill_open_picker_failed">No se pudo abrir el selector de archivos: %1$s</string>
     <string name="skill_imported">Importado: %1$s</string>
     <string name="skill_recipe_export_cd">Exportar paquete</string>
     <string name="skill_recipe_imported">Paquete importado: %1$d habilidades</string>
@@ -481,7 +481,7 @@
     <string name="qr_share_include_key">Incluir la clave de API en el código QR</string>
     <string name="qr_share_btn">Compartir código QR</string>
     <string name="qr_scan_title">Escanear código QR</string>
-    <string name="qr_scan_pick_image">Elija una imagen de código QR de la galería</string>
+    <string name="qr_scan_pick_image">Selecciona una imagen con un código QR</string>
     <string name="qr_scan_pick_button">Escoger imagen</string>
     <string name="qr_scan_scanning">Reconociendo…</string>
     <string name="qr_scan_failed">No se pudo reconocer el código QR.</string>
@@ -514,14 +514,14 @@
 
     <!-- ===== P1-6: OAuth login (ProviderEditPage) ===== -->
     <string name="oauth_login">Iniciar sesión OAuth</string>
-    <string name="oauth_login_success">Inicio de sesión de OAuth exitoso</string>
+    <string name="oauth_login_success">Autorización OAuth completada</string>
     <string name="oauth_login_failed">Error al iniciar sesión en OAuth: %1$s</string>
     <string name="oauth_reason_no_browser">No se puede abrir el navegador</string>
     <string name="oauth_reason_no_activity">No se obtiene el contexto de la pantalla; inténtalo de nuevo</string>
     <string name="oauth_reason_not_configured">OAuth no está configurado</string>
     <string name="provider_test_no_api_key">Falta la clave de API</string>
     <string name="oauth_activity_context_unavailable">No se pudo obtener el contexto de Activity</string>
-    <string name="oauth_device_code_prompt">Visite %1$s e ingrese el código: %2$s</string>
+    <string name="oauth_device_code_prompt">Abre %1$s e introduce el código %2$s</string>
     <string name="oauth_polling">Esperando autorización...</string>
     <string name="oauth_open_verification_uri">Abrir enlace</string>
 
@@ -641,7 +641,7 @@
     <string name="workspace_rename">Rebautizar</string>
     <string name="workspace_path_copied">Ruta copiada</string>
 
-    <string name="browser_address_bar">Ingrese la URL o busque</string>
+    <string name="browser_address_bar">Escribe una dirección o una búsqueda</string>
     <string name="browser_back">Atrás</string>
     <string name="browser_forward">Adelante</string>
     <string name="browser_refresh">Refrescar</string>
@@ -659,7 +659,7 @@
     <string name="voice_cloning_delete_confirm">¿Confirmar eliminar esta voz clonada?</string>
     <string name="voice_cloning_success">Voz clonada</string>
     <string name="voice_cloning_failed">Error de clonación: %1$s</string>
-    <string name="voice_cloning_audio_required">Seleccione primero el audio de muestra</string>
+    <string name="voice_cloning_audio_required">Selecciona primero un audio de muestra</string>
 
     <!-- ===== P2-13: Desktop adaptation (ChromeOS / Android Desktop) ===== -->
     <!-- Shortcut descriptions (shown in settings/help pages) -->

@@ -32,13 +32,13 @@
     </string-array>
     <!-- ===== Clima (MiniWeatherScreen) ===== -->
     <string name="weather_title">Clima</string>
-    <string name="weather_search_hint">Ingrese nombre de ciudad (p. ej. Chengdu)</string>
+    <string name="weather_search_hint">Escribe el nombre de una ciudad</string>
     <string name="weather_search_action">Buscar</string>
     <string name="weather_service_unavailable">El servicio meteorológico no está disponible temporalmente</string>
     <string name="weather_city_not_found">Ciudad "%1$s" no encontrada, pruebe con otro nombre</string>
-    <string name="weather_location_failed">No se pudo obtener la ubicación, ingrese un nombre de ciudad para buscar</string>
-    <string name="weather_permission_denied">Permiso de ubicación no concedido, ingrese un nombre de ciudad para buscar</string>
-    <string name="weather_permission_guide">Configure el permiso de ubicación o ingrese un nombre de ciudad para buscar</string>
+    <string name="weather_location_failed">No se pudo obtener tu ubicación. Busca una ciudad por su nombre.</string>
+    <string name="weather_permission_denied">Sin permiso de ubicación. Puedes buscar una ciudad por su nombre.</string>
+    <string name="weather_permission_guide">Concede el permiso de ubicación o busca una ciudad por su nombre.</string>
     <string name="weather_feels_like_wind">Sensación %1$d° · Viento %2$s km/h</string>
     <string name="weather_current_location">Ubicación actual</string>
     <string name="weather_condition_clear">Despejado</string>
@@ -283,7 +283,7 @@
     <string name="chat_tool_draw_mode">Modo de dibujo</string>
     <string name="chat_tool_draw_mode_subtitle_on">Activado · Describir una imagen para generar</string>
     <string name="chat_tool_draw_mode_subtitle">Describir una imagen para generar</string>
-    <string name="chat_tool_delegate_subtitle">Elija un subasistente para manejar este mensaje</string>
+    <string name="chat_tool_delegate_subtitle">Elige un asistente para encargarse de este mensaje.</string>
     <string name="chat_tool_restart_context">Reiniciar contexto</string>
     <string name="chat_tool_restart_context_subtitle">Reinicia el contexto para que el asistente comience de nuevo.</string>
 
@@ -383,7 +383,7 @@
     <string name="chat_list_new_folder">Nueva carpeta</string>
 
     <!-- Task home -->
-    <string name="chat_list_input_hint">Introduzca cualquier idea...</string>
+    <string name="chat_list_input_hint">Escribe una idea…</string>
     <string name="chat_list_send">Enviar</string>
     <string name="chat_list_no_recent_title">Aún no hay chats</string>
     <string name="chat_list_no_recent_subtitle">Toca + para iniciar una conversación.</string>

@@ -452,13 +452,13 @@
     <string name="groupchat_whisper_hint">Escribe un mensaje privado…</string>
     <string name="groupchat_whisper_to">Susurrar a %1$s</string>
     <string name="groupchat_vote">Iniciar votación</string>
-    <string name="groupchat_vote_topic_hint">Ingrese el tema de votación...</string>
+    <string name="groupchat_vote_topic_hint">Escribe el tema de la votación…</string>
     <string name="groupchat_vote_title">Iniciar una votación</string>
     <string name="groupchat_summary_title">Resumen</string>
     <string name="groupchat_message_whisper">[Susurro] Sólo tú puedes ver esto.</string>
     <string name="groupchat_reply_quote">Citando %1$s: %2$s</string>
     <string name="groupchat_reply_hint">Escribe tu respuesta…</string>
-    <string name="groupchat_summary_desc">Seleccione una IA para resumir los consensos y desacuerdos.</string>
+    <string name="groupchat_summary_desc">Elige un asistente para resumir los acuerdos y desacuerdos.</string>
     <string name="groupchat_summary_auto">Selección automática (primer miembro)</string>
     <!-- v2.x: Group chat context management -->
     <string name="groupchat_context_shared_docs">Documentos compartidos</string>
@@ -466,13 +466,13 @@
     <string name="groupchat_context_add_doc">Agregar documento</string>
     <string name="groupchat_context_doc_title">Título</string>
     <string name="groupchat_context_doc_content">Contenido</string>
-    <string name="groupchat_context_doc_title_hint">Introduzca el título del documento</string>
-    <string name="groupchat_context_doc_content_hint">Introduzca el contenido del documento (texto sin formato)</string>
+    <string name="groupchat_context_doc_title_hint">Título del documento</string>
+    <string name="groupchat_context_doc_content_hint">Contenido del documento en texto sin formato</string>
     <string name="groupchat_context_no_docs">Sin documentos compartidos</string>
     <string name="groupchat_context_doc_chars">%1$d caracteres</string>
     <string name="groupchat_context_private_context">Contexto privado de IA</string>
     <string name="groupchat_context_private_context_desc">Solo visible para la IA correspondiente</string>
-    <string name="groupchat_context_private_context_hint">Ingrese el contexto privado para esta IA (configuración de roles, restricciones privadas, etc.)</string>
+    <string name="groupchat_context_private_context_hint">Instrucciones privadas para este asistente, como su rol o sus restricciones</string>
     <string name="groupchat_context_private_context_set">Colocar</string>
     <string name="groupchat_context_private_context_empty">No establecido</string>
     <string name="groupchat_context_save">Ahorrar</string>
@@ -513,7 +513,7 @@
     <string name="delegation_confirm_target">Objetivo</string>
     <string name="delegation_confirm_reason">Razón</string>
     <string name="delegation_confirm_intermediate">Resultado intermedio</string>
-    <string name="delegation_confirm_modify_hint">Introduzca la instrucción modificada</string>
+    <string name="delegation_confirm_modify_hint">Edita las instrucciones de la tarea</string>
     <string name="delegation_option_approve">Aprobar</string>
     <string name="delegation_option_cancel">Cancelar delegación</string>
 
@@ -635,7 +635,7 @@
     <string name="shizuku_status_authorized">Muse autorizado para usar Shizuku</string>
     <string name="skill_agent_phone_not_configured">agent_phone no configurado: GroupChatScheduler no inyectado</string>
     <string name="skill_agent_phone_target_not_found">El agente de destino no existe</string>
-    <string name="skill_message_blank">el mensaje no puede estar vacío</string>
+    <string name="skill_message_blank">El mensaje no puede estar vacío</string>
     <string name="skill_missing_param_message">Falta el parámetro: message (cuerpo del mensaje)</string>
     <string name="skill_missing_param_target_assistant_id">Falta el parámetro: targetAssistantId (id del agente de destino)</string>
     <string name="skill_progress_whispering">Iniciando susurro...</string>

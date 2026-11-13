@@ -83,7 +83,7 @@
     <string name="settings_provider_base_url">Punto final (déjela vacía por defecto)</string>
     <string name="settings_provider_manual_add_hint">Si el proveedor no permite obtener los modelos automáticamente, toca «Agregar nuevo modelo» para añadirlos manualmente.</string>
     <string name="settings_provider_vertex_ai">Vertex AI (empresarial)</string>
-    <string name="settings_provider_enable_vertex">Habilitar el punto final de Vertex AI</string>
+    <string name="settings_provider_enable_vertex">Usar la API de Vertex AI</string>
     <string name="settings_provider_location">Ubicación (por ejemplo, us-central1)</string>
     <string name="settings_provider_project_id">ID del proyecto</string>
     <string name="settings_provider_use_service_account">Autenticar con cuenta de servicio (recurre a la clave API)</string>
@@ -383,7 +383,7 @@
     <string name="settings_chat_tool_approval_per_tool_subtitle">Establecer permitir/denegar/preguntar individualmente para cada herramienta</string>
     <string name="cloud_backup_auto_enable">Copia de seguridad automática programada</string>
     <string name="cloud_backup_auto_subtitle">Subida automática a la nube a intervalos configurados</string>
-    <string name="cloud_backup_backup_failed">Error al subir, compruebe la configuración</string>
+    <string name="cloud_backup_backup_failed">No se pudo subir la copia de seguridad. Revisa la configuración.</string>
     <string name="cloud_backup_backup_now">Hacer copia ahora</string>
     <string name="cloud_backup_backup_success">Subido a la nube</string>
     <string name="cloud_backup_config_saved">Configuración guardada</string>

@@ -2,7 +2,7 @@
 <resources>
     <!-- v1.97 gap8: Standalone translate page (TranslateScreen) strings -->
     <string name="translate_page_title">Traducir</string>
-    <string name="translate_page_input_placeholder">Ingrese el texto para traducir...</string>
+    <string name="translate_page_input_placeholder">Escribe el texto que quieres traducir…</string>
     <string name="translate_page_translate">Traducir</string>
     <string name="translate_page_copy">Copiar resultado</string>
     <string name="translate_page_paste">Pegar</string>
