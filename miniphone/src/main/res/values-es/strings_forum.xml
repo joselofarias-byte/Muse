@@ -7,9 +7,9 @@
     <string name="mp_forum_back">Volver</string>
     <string name="mp_forum_hint">Cuenta algo…</string>
     <string name="mp_forum_publish">Publicar</string>
-    <string name="mp_forum_compose_cd">Que un personaje publique</string>
+    <string name="mp_forum_compose_cd">Pedir una publicación a un personaje</string>
     <string name="mp_forum_all">Todas las publicaciones</string>
-    <string name="mp_forum_message_author">Mensaje</string>
+    <string name="mp_forum_message_author">Enviar mensaje al autor</string>
     <string name="mp_forum_empty">Aún no hay publicaciones</string>
     <string name="mp_forum_author_empty">Este autor aún no ha publicado</string>
     <string name="mp_forum_self_name">Yo</string>

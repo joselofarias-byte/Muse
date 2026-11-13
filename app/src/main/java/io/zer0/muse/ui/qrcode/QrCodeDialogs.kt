@@ -89,6 +89,9 @@ fun QrCodeShareDialog(content: String, onDismiss: () -> Unit, includesSecret: Bo
                 ) {
                     Text(
                         text = stringResource(R.string.qr_share_include_key),
+                        modifier = Modifier.weight(1f),
+                        maxLines = 3,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurface,
                     )

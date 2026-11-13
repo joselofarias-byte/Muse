@@ -174,7 +174,7 @@
     <string name="settings_feedback_android_version">Versión de Android: %1$s (API %2$d)</string>
     <string name="settings_feedback_device_model">Modelo de dispositivo: %1$s %2$s</string>
     <string name="settings_feedback_app_version">Versión de la aplicación: %1$s</string>
-    <string name="settings_feedback_subject">retroalimentación musa</string>
+    <string name="settings_feedback_subject">Comentarios sobre Muse</string>
     <string name="settings_feedback_chooser_title">Enviar comentarios</string>
     <string name="settings_feedback_recipient">Destinatario: 2119280571@qq.com</string>
     <string name="settings_feedback_subject_label">Asunto: comentarios de musa</string>
@@ -218,12 +218,12 @@
     <string name="settings_import_rikkahub_desc">Cliente de chat de IA de Android</string>
     <string name="settings_import_rikkahub_step1">1. Abra Configuración en la aplicación RikkaHub.</string>
     <string name="settings_import_rikkahub_step2">2. Busque la opción \"Copia de seguridad &amp; Sincronización\"</string>
-    <string name="settings_import_rikkahub_step3">3. Toque \"Crear copia de seguridad\" para generar un archivo ZIP.</string>
+    <string name="settings_import_rikkahub_step3">3. Toca «Crear copia de seguridad» para generar un archivo ZIP.</string>
     <string name="settings_import_step_remember">4. Recuerda dónde se guarda este archivo.</string>
     <string name="settings_import_kelivo_desc">Cliente de chat AI multiplataforma (Flutter)</string>
     <string name="settings_import_kelivo_step1">1. Abra Configuración en la aplicación Kelivo.</string>
     <string name="settings_import_kelivo_step2">2. Busque la opción \"Copia de seguridad &amp; Restaurar\"</string>
-    <string name="settings_import_kelivo_step3">3. Toque \"Exportar copia de seguridad\" para generar un archivo ZIP.</string>
+    <string name="settings_import_kelivo_step3">3. Toca «Exportar copia de seguridad» para generar un archivo ZIP.</string>
     <string name="settings_import_step2_title">Paso 2: seleccione un archivo de respaldo</string>
     <string name="settings_import_select_backup">Seleccione el archivo de copia de seguridad (formato ZIP)</string>
     <string name="settings_importing">Importando, por favor espere...</string>
@@ -311,7 +311,7 @@
     <string name="settings_rag_cloud_provider_section">Proveedor de nube</string>
     <string name="settings_rag_no_provider_hint">Ningún proveedor configurado todavía.</string>
     <string name="settings_rag_baseurl_not_set">URL base no establecida</string>
-    <string name="settings_rag_deselect_hint">Toque el proveedor seleccionado para anular la selección (vuelve al proveedor activo)</string>
+    <string name="settings_rag_deselect_hint">Toca el proveedor seleccionado para quitar la selección y volver al proveedor activo.</string>
     <string name="settings_rag_embedding_model_section">Modelo de incrustación</string>
     <string name="settings_rag_model_name_hint">Nombre del modelo (déjelo en blanco para usar el valor predeterminado del proveedor)</string>
     <string name="settings_rag_common_models">Modelos comunes: incrustación de texto-3-pequeño (1536d) / incrustación de texto-3-grande (3072d) / incrustación-2 (1024d)</string>
@@ -402,7 +402,7 @@
     <string name="settings_image_gen_section">Generación de imágenes</string>
     <string name="settings_image_gen_select_provider">Seleccione un proveedor de imágenes</string>
     <string name="settings_image_gen_select_model">Seleccionar modelo de imagen</string>
-    <string name="settings_image_gen_select_default">Toque para seleccionar el proveedor de imágenes predeterminado</string>
+    <string name="settings_image_gen_select_default">Selecciona el proveedor de imágenes predeterminado</string>
     <string name="settings_image_gen_no_provider">No hay proveedores de imágenes disponibles</string>
     <string name="settings_image_gen_provider">Proveedor</string>
     <string name="settings_image_gen_model_label">Modelo</string>
@@ -413,7 +413,7 @@
     <string name="settings_video_gen_section">Generación de vídeo</string>
     <string name="settings_video_gen_select_provider">Seleccione un proveedor de vídeo</string>
     <string name="settings_video_gen_select_model">Seleccionar modelo de vídeo</string>
-    <string name="settings_video_gen_select_default">Toque para seleccionar el proveedor de video predeterminado</string>
+    <string name="settings_video_gen_select_default">Selecciona el proveedor de vídeo predeterminado</string>
     <string name="settings_video_gen_no_provider">No hay proveedores de vídeo disponibles</string>
     <string name="settings_video_gen_provider">Proveedor</string>
     <string name="settings_video_gen_model_label">Modelo</string>
@@ -486,7 +486,7 @@
     <string name="settings_theme_custom_create">Crear tema</string>
     <string name="settings_theme_custom_name">Nombre del tema</string>
     <string name="settings_theme_custom_name_placeholder">Dale un nombre a tu tema</string>
-    <string name="settings_theme_custom_presets">Paletas seleccionadas (toque para completar)</string>
+    <string name="settings_theme_custom_presets">Paletas de colores (toca una para aplicarla)</string>
     <string name="settings_theme_custom_primary_color">color primario</string>
     <string name="settings_theme_custom_secondary_color">Color secundario (opcional)</string>
     <string name="settings_theme_custom_tertiary_color">Color terciario (opcional)</string>
@@ -534,10 +534,10 @@
     <string name="settings_provider_media_gen_section">Modelos de generación de medios</string>
     <string name="settings_asr_entry_title">Motor de reconocimiento de voz</string>
     <string name="settings_asr_entry_subtitle">Selecciona un motor de voz a texto (p. ej. Paraformer / Whisper)</string>
-    <string name="settings_miniphone_title">Mini Phone</string>
-    <string name="settings_miniphone_enable_title">Activar Mini Phone</string>
-    <string name="settings_miniphone_enable_subtitle">Al activarlo, aparece una entrada de Mini Phone en la esquina superior derecha de la pantalla de inicio</string>
-    <string name="settings_miniphone_desc_title">Qué es Mini Phone</string>
+    <string name="settings_miniphone_title">Mini teléfono</string>
+    <string name="settings_miniphone_enable_title">Activar Mini teléfono</string>
+    <string name="settings_miniphone_enable_subtitle">Al activarlo, aparece un acceso a Mini teléfono en la esquina superior derecha de la pantalla de inicio</string>
+    <string name="settings_miniphone_desc_title">Qué es Mini teléfono</string>
     <string name="settings_miniphone_desc_body">Un escritorio inmersivo en miniatura: Momentos, álbum de IA, notas, clima y diario del modelo. Al desactivarlo, la pantalla de inicio vuelve al diseño original.</string>
     <string name="settings_font_section_title">Fuentes</string>
     <string name="settings_font_body_label">Fuente del texto</string>
@@ -560,7 +560,7 @@
     <string name="miniphone_time_days_ago">Hace %1$d días</string>
     <string name="miniphone_tab_contacts">Contactos</string>
     <string name="miniphone_tab_discover">Descubrir</string>
-    <string name="miniphone_tab_me">Yo</string>
+    <string name="miniphone_tab_me">Mi perfil</string>
     <string name="miniphone_search_hint">Buscar</string>
     <string name="miniphone_contacts_empty">Aún no hay contactos</string>
     <string name="miniphone_me_wallpaper">Cambiar fondo</string>
@@ -700,7 +700,7 @@
     <string name="settings_group_keep_alive">Siempre activo</string>
     <string name="settings_group_keep_alive_desc">Persistencia, optimización de batería y autoinicio</string>
     <string name="settings_group_miniphone">Mini teléfono</string>
-    <string name="settings_group_miniphone_desc">Teléfono integrado y su casita 2D</string>
+    <string name="settings_group_miniphone_desc">Teléfono integrado con una casa virtual en 2D</string>
     <string name="settings_keep_alive_subtitle">Mantiene el proceso en primer plano con una notificación permanente</string>
     <string name="settings_keep_alive_hint">Muse mostrará una notificación permanente. Android lo exige para servicios en primer plano y no se puede ocultar. En algunas ROM chinas también hay que permitir el inicio automático.</string>
     <string name="settings_keep_alive_wakelock_title">Mantener conexión con la pantalla apagada</string>

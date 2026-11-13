@@ -9,7 +9,7 @@
     <string name="settings_common_show">Espectáculo</string>
     <string name="settings_common_hide">Esconder</string>
     <string name="settings_common_expand">Expandir</string>
-    <string name="settings_common_collapse">Colapsar</string>
+    <string name="settings_common_collapse">Contraer</string>
     <string name="settings_common_advanced">Avanzado</string>
     <string name="settings_state_enabled">Activado</string>
     <string name="settings_state_disabled">Desactivado</string>
@@ -331,7 +331,7 @@
     <string name="settings_chat_tone_humorous">Humorístico</string>
     <string name="settings_chat_default_expand">Expansión predeterminada</string>
     <string name="settings_chat_mood_expand">MOOD ampliado de forma predeterminada</string>
-    <string name="settings_chat_mood_expand_subtitle">Contraído de forma predeterminada cuando está desactivado, toque para expandir</string>
+    <string name="settings_chat_mood_expand_subtitle">Los detalles se muestran contraídos de forma predeterminada. Toca para expandirlos.</string>
     <string name="settings_chat_reasoning_expand">Razonamiento ampliado por defecto</string>
     <string name="settings_chat_reasoning_expand_subtitle">Contraído de forma predeterminada cuando está apagado</string>
     <string name="settings_chat_reflection_expand">Reflexión expandida por defecto</string>
@@ -346,8 +346,8 @@
     <string name="settings_chat_volume_scroll_subtitle">Utilice las teclas de volumen para desplazarse por la lista de chat</string>
     <string name="settings_chat_enter_send">Enviar con Intro</string>
     <string name="settings_chat_enter_send_subtitle">Enter inserta una nueva línea cuando está desactivado</string>
-    <string name="settings_chat_haptic">Retroalimentación háptica</string>
-    <string name="settings_chat_haptic_subtitle">Retroalimentación de vibración al tocar/presionar prolongadamente</string>
+    <string name="settings_chat_haptic">Respuesta háptica</string>
+    <string name="settings_chat_haptic_subtitle">Vibración al tocar o mantener pulsado un elemento.</string>
     <string name="settings_chat_predictive_back">Atrás predictivo</string>
     <string name="settings_chat_predictive_back_subtitle">Usar la animación del sistema; desactivar para volver inmediatamente</string>
     <string name="settings_chat_show_tool_calls">Mostrar proceso de llamada de herramienta</string>

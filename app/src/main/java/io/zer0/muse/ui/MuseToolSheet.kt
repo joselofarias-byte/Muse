@@ -26,6 +26,9 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.FlowRowScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -35,8 +38,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
@@ -58,9 +59,11 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
@@ -110,6 +113,7 @@ internal fun List<ToolEntry>.findToolEntry(titleRes: Int): ToolEntry? = firstOrN
  * 相机权限:预览需要 CAMERA 权限;未授权时第一格显示相机图标,点击请求权限。
  * 拍照:点击预览格 → TakePicture contract 调系统相机,拍完图片加入待发送。
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun MuseToolSheet(
     context: Context,
@@ -119,6 +123,8 @@ internal fun MuseToolSheet(
     entries: List<ToolEntry>,
     onDismiss: () -> Unit,
 ) {
+    val fontScale = LocalDensity.current.fontScale.coerceAtLeast(1f)
+    val mediaCardHeight = TelegramMediaHeight * fontScale
     MuseBottomSheet(
         onDismissRequest = onDismiss,
         maxHeightFraction = 0.78f,
@@ -128,7 +134,7 @@ internal fun MuseToolSheet(
         Text(
             text = stringResource(R.string.chat_tools_pick_content),
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.outline,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
 
         Spacer(Modifier.height(MusePaddings.contentGap))
@@ -185,17 +191,11 @@ internal fun MuseToolSheet(
             pendingCameraUri = null
         }
 
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(TelegramMediaHeight)
-                .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(MusePaddings.contentGap),
-        ) {
+        AttachmentActionGrid {
             if (cameraGranted) {
                 Box(
                     modifier = Modifier
-                        .size(TelegramMediaHeight)
+                        .weight(1f).height(mediaCardHeight)
                         .clip(MuseShapes.extraLarge),
                 ) {
                     CameraLivePreviewBox(
@@ -217,12 +217,38 @@ internal fun MuseToolSheet(
                 ToolMediaCard(
                     icon = MuseIcons.camera,
                     label = stringResource(R.string.chat_tool_camera),
-                    modifier = Modifier.size(TelegramMediaHeight),
+                    modifier = Modifier.weight(1f).heightIn(min = mediaCardHeight),
                     onClick = { cameraPermissionLauncher.launch(cameraPermission) },
                 )
             }
 
-            if (galleryGranted && recentImages.isNotEmpty()) {
+            if (!galleryGranted) {
+                ToolMediaCard(
+                    icon = MuseIcons.image,
+                    label = stringResource(R.string.chat_authorize_gallery),
+                    modifier = Modifier.weight(1f).heightIn(min = mediaCardHeight),
+                    onClick = { galleryPermissionLauncher.launch(galleryPermission) },
+                )
+            }
+
+            // 保留完整系统相册入口,没有最近图片时也能直接选择媒体。
+            ToolMediaCard(
+                icon = MuseIcons.image,
+                label = stringResource(R.string.chat_tool_photo),
+                modifier = Modifier.weight(1f).heightIn(min = mediaCardHeight),
+                onClick = {
+                    MuseHaptics.light(hapticFeedback)
+                    onPickImage(false)
+                },
+            )
+        }
+
+        if (galleryGranted && recentImages.isNotEmpty()) {
+            Spacer(Modifier.height(MusePaddings.contentGap))
+            Row(
+                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(MusePaddings.contentGap),
+            ) {
                 recentImages.forEach { uri ->
                     GalleryThumbnail(
                         uri = uri,
@@ -238,25 +264,7 @@ internal fun MuseToolSheet(
                         },
                     )
                 }
-            } else if (!galleryGranted) {
-                ToolMediaCard(
-                    icon = MuseIcons.image,
-                    label = stringResource(R.string.chat_authorize_gallery),
-                    modifier = Modifier.size(TelegramMediaHeight),
-                    onClick = { galleryPermissionLauncher.launch(galleryPermission) },
-                )
             }
-
-            // 保留完整系统相册入口,没有最近图片时也能直接选择媒体。
-            ToolMediaCard(
-                icon = MuseIcons.image,
-                label = stringResource(R.string.chat_tool_photo),
-                modifier = Modifier.size(TelegramMediaHeight),
-                onClick = {
-                    MuseHaptics.light(hapticFeedback)
-                    onPickImage(false)
-                },
-            )
         }
 
         if (selectedGalleryImages.isNotEmpty()) {
@@ -292,10 +300,7 @@ internal fun MuseToolSheet(
         // ── 第二行:联网搜索 + 深度思考 ──
         val webSearchEntry = entries.findToolEntry(R.string.chat_web_search_cd)
         val deepThinkingEntry = entries.findToolEntry(R.string.chat_deep_thinking_cd)
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(MusePaddings.contentGap),
-        ) {
+        AttachmentActionGrid {
             webSearchEntry?.let { entry ->
                 QuickAttachTab(
                     icon = entry.icon,
@@ -359,12 +364,7 @@ internal fun MuseToolSheet(
                     )
                 }
         }
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(MusePaddings.contentGap),
-        ) {
+        AttachmentActionGrid {
             miscEntries.forEach { entry ->
                 QuickAttachTab(
                     icon = entry.icon,
@@ -373,13 +373,26 @@ internal fun MuseToolSheet(
                     onClick = entry.onClick,
                     onLongClick = entry.onLongClick,
                     compact = true,
-                    modifier = Modifier
-                        .wrapContentWidth()
-                        .widthIn(min = 82.dp),
+                    dense = true,
+                    modifier = Modifier.weight(1f),
                 )
             }
         }
     }
+}
+
+/** Wrapping action grid shared by media actions, tools and attachment shortcuts. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+internal fun AttachmentActionGrid(content: @Composable FlowRowScope.() -> Unit) {
+    val columns = if (LocalDensity.current.fontScale > 1.3f) 1 else 2
+    FlowRow(
+        modifier = Modifier.fillMaxWidth(),
+        maxItemsInEachRow = columns,
+        horizontalArrangement = Arrangement.spacedBy(MusePaddings.contentGap),
+        verticalArrangement = Arrangement.spacedBy(MusePaddings.contentGap),
+        content = content,
+    )
 }
 
 /** v1.0.72: 功能 tab 行条目(带可选激活态 + 长按)。 */
@@ -394,7 +407,7 @@ private data class QuickAttachEntry(
 /** v1.0.72: 功能 tab(圆形图标 + 下方独立文字,不截断)。 */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun QuickAttachTab(
+internal fun QuickAttachTab(
     icon: ImageVector,
     label: String,
     isActive: Boolean = false,
@@ -647,14 +660,14 @@ private fun CameraLivePreviewBox(modifier: Modifier, onTap: () -> Unit) {
 
 /** B7-07: 工具菜单中的媒体快捷卡片。 */
 @Composable
-private fun ToolMediaCard(icon: ImageVector, label: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
+internal fun ToolMediaCard(icon: ImageVector, label: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Surface(
         shape = MuseShapes.extraLarge,
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.78f),
         modifier = modifier.clickable(onClick = onClick),
     ) {
         Column(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxWidth().padding(MusePaddings.contentGap),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
@@ -669,6 +682,10 @@ private fun ToolMediaCard(icon: ImageVector, label: String, modifier: Modifier =
                 text = label,
                 style = MaterialTheme.typography.bodyMediumStrong,
                 color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.Center,
+                maxLines = 4,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                modifier = Modifier.fillMaxWidth(),
             )
         }
     }

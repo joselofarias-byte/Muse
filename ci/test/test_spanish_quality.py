@@ -5,7 +5,7 @@ import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'script'))
-from check_spanish_quality import check_resources
+from check_spanish_quality import INTERFACE_MODULES, check_all_modules, check_resources
 
 
 def fixture(source, translated):
@@ -70,6 +70,20 @@ def test_plural_forms_and_resource_types_are_checked():
     tmp, root = fixture(source, '<plurals name="count"><item quantity="one">%1$d elemento</item><item quantity="other">%1$d elementos</item></plurals>')
     with tmp:
         assert check_resources(root) == []
+
+
+def test_all_interface_modules_are_checked():
+    with tempfile.TemporaryDirectory() as temporary:
+        root = Path(temporary)
+        for module in INTERFACE_MODULES:
+            for locale, text in [("values", "标题"), ("values-es", "Título")]:
+                folder = root / module / "src/main/res" / locale
+                folder.mkdir(parents=True)
+                (folder / "strings.xml").write_text(f'<resources><string name="title">{text}</string></resources>')
+        assert check_all_modules(root) == []
+        (root / "miniphone/src/main/res/values-es/strings.xml").write_text('<resources/>')
+        errors = check_all_modules(root)
+        assert any(error.startswith("miniphone:") and "missing Spanish" in error for error in errors)
 
 
 if __name__ == '__main__':

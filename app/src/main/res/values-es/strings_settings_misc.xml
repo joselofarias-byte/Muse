@@ -132,7 +132,7 @@
     <string name="settings_assistant_lorebook">libro de historia</string>
     <string name="settings_assistant_lorebook_subtitle">Inyección de contexto activada por palabras clave (juego de roles/construcción mundial)</string>
     <string name="settings_assistant_quick_messages">Mensajes rápidos</string>
-    <string name="settings_assistant_quick_messages_subtitle">Plantillas de mensajes preestablecidos con sustitución de variables, insértelas con un toque</string>
+    <string name="settings_assistant_quick_messages_subtitle">Plantillas de mensajes con variables que puedes insertar con un toque.</string>
     <string name="settings_assistant_prompt_injection">Inyección de instrucciones</string>
     <string name="settings_assistant_prompt_injection_subtitle">Añade automáticamente las instrucciones específicas al cambiar de modo (creación, programación, juegos de rol, etc.).</string>
     <string name="settings_assistant_skills">Gerente de Habilidades</string>
@@ -228,9 +228,9 @@
     <string name="settings_tutorial_ch4_s5_title">Entrada de voz</string>
     <string name="settings_tutorial_ch4_s5_content">Usa el micrófono del campo de entrada para convertir tu voz en texto. Configura primero el servicio de reconocimiento de voz (ASR) en Ajustes.\n\nLa precisión depende del servicio seleccionado. Revisa y corrige el texto reconocido antes de enviarlo.</string>
     <string name="settings_tutorial_ch4_s6_title">Biblioteca de plantillas de mensajes</string>
-    <string name="settings_tutorial_ch4_s6_content">Toque el ícono más a la izquierda del cuadro de entrada y seleccione \"Plantilla de solicitud\" para ver una lista de plantillas preestablecidas (por ejemplo, escribir correo electrónico, traducir, resumir, reescribir).</string>
+    <string name="settings_tutorial_ch4_s6_content">Abre el menú de adjuntos y selecciona una plantilla de instrucciones. Puedes usarla para redactar correos, traducir, resumir o reformular textos. Revisa y adapta la plantilla antes de enviarla.</string>
     <string name="settings_tutorial_ch4_s7_title">Base de conocimientos RAG (deja que la IA aprenda tus documentos)</string>
-    <string name="settings_tutorial_ch4_s7_content">RAG (Generación de recuperación aumentada) permite que la IA responda basándose en los documentos que usted proporciona, como darle a la IA un \"libro de referencia personal\".\n\n• Uso: busque \"Base de conocimientos\" o \"RAG\" en Configuración, cargue sus documentos (PDF, Word, TXT, Markdown).</string>
+    <string name="settings_tutorial_ch4_s7_content">La generación aumentada por recuperación (RAG) permite responder a partir de tus documentos.\n\nAgrega documentos a la base de conocimientos y espera a que termine la indexación. Después, selecciona esa base en la conversación. El asistente buscará fragmentos relevantes antes de responder. La calidad depende de los documentos y de la configuración de búsqueda.</string>
     <string name="settings_tutorial_ch4_s8_title">Chat grupal con múltiples agentes (varios roles de IA conversan juntos)</string>
     <string name="settings_tutorial_ch4_s8_content">La colaboración entre agentes permite repartir una tarea entre varios asistentes.\n\n• Crea un equipo desde Ajustes y selecciona sus miembros.\n• Activa el equipo en la conversación para que el asistente principal pueda delegar trabajo.\n• Puedes combinar funciones como planificación, redacción y revisión.\n\nMás miembros pueden aumentar el consumo de tokens. Empieza con un equipo pequeño.</string>
     <string name="settings_tutorial_ch4_s9_title">Generación de vídeo &amp; tareas programadas</string>
@@ -247,7 +247,7 @@
     <string name="settings_tutorial_ch5_s2_title">Ajustar el tamaño de fuente</string>
     <string name="settings_tutorial_ch5_s2_content">Ve a Ajustes → Apariencia → Tamaño del texto y elige el tamaño que te resulte más cómodo. El tamaño mediano es el predeterminado.\n\nEste ajuste modifica el texto de la aplicación. Prueba un tamaño grande si necesitas mejorar la legibilidad.</string>
     <string name="settings_tutorial_ch5_s3_title">Cambiar idioma de interfaz</string>
-    <string name="settings_tutorial_ch5_s3_content">Configuración → Apariencia → Idioma, elija \"Seguir sistema\", \"Chino\" o \"Inglés\".</string>
+    <string name="settings_tutorial_ch5_s3_content">Ve a Ajustes → Apariencia → Idioma y elige el idioma de la interfaz o la opción de seguir al sistema. El cambio se aplica a los menús y botones.\n\nPara elegir el idioma de las respuestas, indícalo en la conversación o configura tu preferencia en el perfil del usuario.</string>
     <string name="settings_tutorial_ch5_s4_title">Personalización del asistente: arquitectura de tres capas de persona/relación/estilo</string>
     <string name="settings_tutorial_ch5_s4_content">Puedes personalizar al asistente en tres aspectos:\n\n• Personalidad: nombre, identidad, historia y rasgos del personaje.\n• Relación: cómo se relaciona contigo y cómo te llama.\n• Estilo: tono, extensión de las respuestas, nivel de detalle y uso de emojis.\n\nCompleta estos apartados en la edición del asistente. Puedes empezar por la personalidad y ajustar los demás después.</string>
     <string name="settings_tutorial_ch5_s5_title">Perfil de usuario &amp; preferencias</string>

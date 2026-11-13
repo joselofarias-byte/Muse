@@ -60,7 +60,7 @@
     <string name="action_copy">Copiar</string>
     <string name="action_share">Compartir</string>
     <string name="action_expand">Expandir</string>
-    <string name="action_collapse">Colapsar</string>
+    <string name="action_collapse">Contraer</string>
 
     <!-- Quote reply -->
     <string name="message_action_quote">Cita</string>

@@ -109,7 +109,7 @@
     <string name="memory_screen_no_match">No se encontraron recuerdos coincidentes</string>
     <string name="memory_screen_search_results">Resultados de la búsqueda (%1$d)</string>
     <string name="memory_screen_no_fact">Aún no hay metahechos</string>
-    <string name="memory_screen_collapse">Colapsar</string>
+    <string name="memory_screen_collapse">Contraer</string>
     <string name="memory_screen_expand">Expandir</string>
     <string name="memory_screen_edit_cd">Editar</string>
     <string name="memory_pin_cd">Fijar</string>
@@ -443,7 +443,7 @@
     <string name="skill_label_implementation">Implementación</string>
     <string name="skill_label_source">Fuente</string>
     <string name="skill_close">Cerrar</string>
-    <string name="skill_row_cd">%1$s, %2$s, toque para ver detalles</string>
+    <string name="skill_row_cd">%1$s, %2$s. Toca para ver los detalles.</string>
     <string name="skill_use_case_read_file">Cuando necesite leer notas, configuraciones o archivos en caché en la aplicación, el LLM lo llamará automáticamente.</string>
     <string name="skill_use_case_write_file">Cuando necesite guardar notas, generar documentos o conservar datos, el LLM lo llamará automáticamente.</string>
     <string name="skill_use_case_http_get">Cuando necesite solicitar API externas (por ejemplo, clima, tipos de cambio), el LLM lo llamará automáticamente.</string>

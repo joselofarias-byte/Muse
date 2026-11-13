@@ -11,7 +11,7 @@
     <string name="common_got_it">Entiendo</string>
     <string name="common_close">Cerrar</string>
     <string name="common_retry">Reintentar</string>
-    <string name="common_collapse">Colapsar</string>
+    <string name="common_collapse">Contraer</string>
     <string name="common_expand">Expandir</string>
     <string name="common_avatar_cd">Avatar de %1$s</string>
     <string name="common_slider_cd">Control deslizante, valor actual %1$s</string>
@@ -130,7 +130,7 @@ Toca actualizar para obtener la lista</string>
     <!-- ===== ui/FavoritesScreen favorites ===== -->
     <string name="favorites_title">Favoritos (%1$d)</string>
     <string name="favorites_empty_title">Aún no hay favoritos</string>
-    <string name="favorites_empty_subtitle">Toque la estrella en un mensaje en el chat para marcarlo como favorito.</string>
+    <string name="favorites_empty_subtitle">Toca la estrella de un mensaje para agregarlo a favoritos.</string>
     <string name="favorites_role_user">Yo</string>
     <string name="favorites_role_system">Sistema</string>
     <string name="favorites_role_tool">Herramienta</string>

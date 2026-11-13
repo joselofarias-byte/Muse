@@ -39,6 +39,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -87,6 +88,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.pluralStringResource
@@ -1235,6 +1237,8 @@ internal fun GroupChatToolSheet(
         }
     }
 
+    val actionColumns = if (LocalDensity.current.fontScale > 1.3f) 1 else 2
+    val mediaHeight = 128.dp * LocalDensity.current.fontScale.coerceAtLeast(1f)
     MuseBottomSheet(
         onDismissRequest = onDismiss,
         // UI-FIX(贴边): 原来左右不留白，说明文字与媒体区直接顶到屏幕边。
@@ -1243,7 +1247,7 @@ internal fun GroupChatToolSheet(
         Text(
             text = stringResource(R.string.groupchat_pick_content),
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.outline,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(Modifier.height(12.dp))
         // v1.0.72: 媒体区 — 相机实时预览 + 相册缩略图(与单聊加号菜单统一)
@@ -1268,7 +1272,7 @@ internal fun GroupChatToolSheet(
                 GroupMediaCard(
                     icon = MuseIcons.camera,
                     label = stringResource(R.string.chat_tool_camera),
-                    modifier = Modifier.size(128.dp),
+                    modifier = Modifier.width(mediaHeight).heightIn(min = mediaHeight),
                 ) { cameraPermissionLauncher.launch(cameraPermission) }
             }
             // 相册最近图片缩略图
@@ -1288,33 +1292,31 @@ internal fun GroupChatToolSheet(
                 GroupMediaCard(
                     icon = MuseIcons.image,
                     label = stringResource(R.string.chat_authorize_gallery),
-                    modifier = Modifier.size(128.dp),
+                    modifier = Modifier.width(mediaHeight).heightIn(min = mediaHeight),
                 ) { onRequestGalleryPermission() }
             }
         }
         Spacer(Modifier.height(16.dp))
         // 横滚 tab(圆形图标 + 下方文字,与单聊加号菜单统一)
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState())
-                .padding(horizontal = MusePaddings.tightGap)
-                .padding(bottom = 32.dp),
-            horizontalArrangement = Arrangement.spacedBy(MusePaddings.screen),
+        FlowRow(
+            modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp),
+            maxItemsInEachRow = actionColumns,
+            horizontalArrangement = Arrangement.spacedBy(MusePaddings.contentGap),
+            verticalArrangement = Arrangement.spacedBy(MusePaddings.contentGap),
         ) {
-            GroupToolTab(MuseIcons.image, stringResource(R.string.groupchat_image)) {
+            GroupToolTab(MuseIcons.image, stringResource(R.string.groupchat_image), modifier = Modifier.weight(1f)) {
                 onPickImage()
                 onDismiss()
             }
-            GroupToolTab(MuseIcons.paperclip, stringResource(R.string.chat_tool_attachment)) {
+            GroupToolTab(MuseIcons.paperclip, stringResource(R.string.chat_tool_attachment), modifier = Modifier.weight(1f)) {
                 onPickDocument()
                 onDismiss()
             }
-            GroupToolTab(MuseIcons.book, stringResource(R.string.chat_tool_knowledge)) {
+            GroupToolTab(MuseIcons.book, stringResource(R.string.chat_tool_knowledge), modifier = Modifier.weight(1f)) {
                 onInsertKnowledge()
                 onDismiss()
             }
-            GroupToolTab(MuseIcons.template, stringResource(R.string.chat_prompt_templates_title)) {
+            GroupToolTab(MuseIcons.template, stringResource(R.string.chat_prompt_templates_title), modifier = Modifier.weight(1f)) {
                 onPickPromptTemplate()
                 onDismiss()
             }
@@ -1387,9 +1389,14 @@ internal fun GroupChatMeetingSheet(
 
 /** v1.0.72: 群聊加号菜单横滚 tab(圆形图标 + 下方独立文字)。 */
 @Composable
-private fun GroupToolTab(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, onClick: () -> Unit) {
+private fun GroupToolTab(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
     Column(
-        modifier = Modifier
+        modifier = modifier
             .widthIn(min = 60.dp)
             .clip(MuseShapes.extraLarge)
             .clickable(onClick = onClick)
@@ -1415,7 +1422,7 @@ private fun GroupToolTab(icon: androidx.compose.ui.graphics.vector.ImageVector, 
             text = label,
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 2,
+            maxLines = 4,
             // ST-10 (A11Y-03): 补 overflow,超过 2 行时省略而非被父容器裁切
             overflow = TextOverflow.Ellipsis,
             textAlign = TextAlign.Center,
@@ -1970,7 +1977,7 @@ private fun GroupMediaCard(
         modifier = modifier.clickable(onClick = onClick),
     ) {
         Column(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxWidth().padding(12.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
@@ -1985,7 +1992,10 @@ private fun GroupMediaCard(
                 text = label,
                 style = MaterialTheme.typography.bodyMediumStrong,
                 color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
+                maxLines = 4,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth(),
             )
         }
     }

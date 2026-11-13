@@ -12,12 +12,12 @@
     <string name="groupchat_delete_message_title">Eliminar mensaje</string>
     <string name="groupchat_delete_message_confirm">¿Estás seguro de que deseas eliminar este mensaje?</string>
     <string name="groupchat_reasoning">Razonamiento</string>
-    <string name="groupchat_collapse">Colapsar</string>
+    <string name="groupchat_collapse">Contraer</string>
     <string name="groupchat_expand">Expandir</string>
     <string name="groupchat_image">Imagen</string>
     <string name="groupchat_tools">Herramientas</string>
     <string name="groupchat_send">Enviar</string>
-    <string name="groupchat_pick_content">Elige contenido para enviar</string>
+    <string name="groupchat_pick_content">Elige qué quieres enviar al grupo</string>
     <string name="groupchat_pending_image">Imagen pendiente</string>
     <string name="groupchat_members_title">Miembros (%1$d)</string>
     <string name="groupchat_no_members">Aún no hay miembros</string>
@@ -233,7 +233,7 @@
     <string name="knowledge_no_match_title">No se encontraron documentos coincidentes</string>
     <string name="knowledge_empty_title">La base de conocimientos está vacía.</string>
     <string name="knowledge_no_match_subtitle">Pruebe con una palabra clave diferente</string>
-    <string name="knowledge_empty_subtitle">Toque + abajo a la derecha para importar un documento o archivo comprimido (ZIP/7Z/RAR)</string>
+    <string name="knowledge_empty_subtitle">Toca + para importar un documento o un archivo comprimido (ZIP, 7Z o RAR).</string>
     <string name="knowledge_deleted">Eliminado</string>
     <string name="knowledge_delete_doc">Eliminar documento</string>
     <string name="knowledge_delete">Borrar</string>
@@ -321,7 +321,7 @@
     <string name="stats_empty_title">Las estadísticas aparecerán aquí después de que comiences a chatear.</string>
     <string name="stats_empty_action">iniciar una conversación</string>
     <string name="stats_view_all">Ver todo</string>
-    <string name="stats_collapse">Colapsar</string>
+    <string name="stats_collapse">Contraer</string>
     <string name="stats_trend_title">Tendencia de actividad</string>
     <string name="stats_trend_window_7d">7d</string>
     <string name="stats_trend_window_30d">30d</string>
@@ -353,7 +353,7 @@
     <string name="stats_summary_assistant_line">  - %1$s: %2$d mensajes</string>
 
     <!-- ===== ui/taskcard ===== -->
-    <string name="taskcard_collapse">Colapsar</string>
+    <string name="taskcard_collapse">Contraer</string>
     <string name="taskcard_expand">Expandir</string>
     <string name="milestone_title">Hitos</string>
     <string name="milestone_empty_title">Aún no hay hitos</string>
@@ -524,7 +524,7 @@
     <string name="quick_notes_attachment_count">%1$d archivos adjuntos</string>
     <string name="quick_notes_encrypt_off">Descifrar</string>
     <string name="quick_notes_encrypt_on">Cifrar</string>
-    <string name="quick_notes_encrypt_placeholder">Esta nota está cifrada, toque para desbloquear</string>
+    <string name="quick_notes_encrypt_placeholder">Nota cifrada. Toca para desbloquearla.</string>
     <string name="quick_notes_export">Exportar</string>
     <string name="quick_notes_export_empty">No hay registros para exportar</string>
     <string name="quick_notes_export_json">Exportar como JSON</string>

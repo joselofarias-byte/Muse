@@ -2,7 +2,7 @@
 <resources>
     <!-- ===== ChatScreen ===== -->
     <!-- Top bar -->
-    <string name="chat_session_cd">Chat actual: %1$s, toque para cambiar</string>
+    <string name="chat_session_cd">Conversación actual: %1$s. Toca para cambiar.</string>
     <string name="chat_video_play_cd">Reproducir video</string>
     <string name="chat_generated_video_cd">Vídeo generado</string>
     <string name="chat_msg_selected">Seleccionado</string>
@@ -82,9 +82,9 @@
     <string name="moment_avatar_cd">Avatar</string>
     <string name="moment_cover_cd">Portada de momentos</string>
     <string name="moment_messages_cd">Mensajes</string>
-    <string name="moment_publish_cd">Publicar (toque para imagen, mantenga pulsado para texto)</string>
+    <string name="moment_publish_cd">Publicar: toca para agregar una imagen o mantén pulsado para escribir texto.</string>
     <string name="moment_empty_feed">Aún no hay publicaciones</string>
-    <string name="moment_empty_hint">Toque + en la esquina superior derecha para crear tu primera publicación\nMuse y los asistentes también compartirán su vida</string>
+    <string name="moment_empty_hint">Toca + para crear tu primera publicación.\nLas publicaciones de Muse y de los asistentes también aparecerán aquí.</string>
     <string name="moment_messages_empty">Aún no hay me gusta ni comentarios</string>
     <string name="moment_notification_liked">%1$s le gustó tu publicación</string>
     <string name="moment_notification_commented">%1$s comentó tu publicación</string>
@@ -244,7 +244,7 @@
     <!-- ===== InputBar ===== -->
     <!-- Top toggles -->
     <string name="chat_web_search_cd">Búsqueda web</string>
-    <string name="chat_deep_thinking_cd">Pensamiento profundo</string>
+    <string name="chat_deep_thinking_cd">Razonamiento</string>
     <!-- v1.94: Tool call dynamic capsule -->
     <string name="chat_tool_calls_title">Historial de llamadas de herramientas</string>
     <string name="chat_tool_calls_empty">Sin llamadas de herramientas</string>
@@ -267,14 +267,14 @@
 
     <!-- Tool menu -->
     <string name="chat_tools_cd">Herramientas</string>
-    <string name="chat_tools_pick_content">Elige contenido para enviar</string>
+    <string name="chat_tools_pick_content">Elige qué quieres enviar o hacer</string>
     <string name="chat_tool_camera">Cámara</string>
-    <string name="chat_tool_photo">Fotos</string>
+    <string name="chat_tool_photo">Elegir fotos</string>
     <!-- Video input: tool menu card label -->
     <string name="chat_gallery_image_cd">Imagen de la galería</string>
     <string name="chat_gallery_cd">Galería</string>
-    <string name="chat_authorize_gallery">Permitir acceso a la galería</string>
-    <string name="chat_tool_attachment">Adjunto</string>
+    <string name="chat_authorize_gallery">Habilitar galería</string>
+    <string name="chat_tool_attachment">Archivo</string>
     <string name="chat_tool_knowledge">Base de conocimientos de referencia</string>
     <string name="chat_tool_knowledge_subtitle">@mencionar documentos</string>
     <string name="chat_tool_prompt_template_subtitle">Elija un mensaje de escena de las plantillas</string>
@@ -386,10 +386,10 @@
     <string name="chat_list_input_hint">Introduzca cualquier idea...</string>
     <string name="chat_list_send">Enviar</string>
     <string name="chat_list_no_recent_title">Aún no hay chats</string>
-    <string name="chat_list_no_recent_subtitle">Toque el botón + a continuación para iniciar un nuevo chat</string>
+    <string name="chat_list_no_recent_subtitle">Toca + para iniciar una conversación.</string>
     <string name="chat_list_knowledge_title">Base de conocimientos</string>
     <string name="chat_list_knowledge_count">%1$d documentos</string>
-    <string name="chat_list_knowledge_empty">Toque para agregar documentos</string>
+    <string name="chat_list_knowledge_empty">Toca para agregar documentos</string>
 
     <!-- Bottom button and dialogs -->
     <string name="chat_list_new_task">Nueva tarea</string>
@@ -529,7 +529,7 @@
     <string name="chat_pending_remove_cd">Eliminar este elemento</string>
     <string name="chat_pending_clear">Vaciar cola</string>
     <string name="chat_pending_image_only">[Imagen]</string>
-    <string name="chat_region_error">Error al cargar esta sección. Toque para reintentar</string>
+    <string name="chat_region_error">No se pudo cargar esta sección. Toca para reintentar.</string>
     <string name="settings_chat_gradient_title">Fondo degradado</string>
     <string name="settings_chat_gradient_subtitle">Degradado lineal de dos colores, se aplica cuando no hay imagen de fondo</string>
     <string name="chat_reaction_title">Reaccionar</string>

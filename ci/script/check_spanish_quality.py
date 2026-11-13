@@ -97,13 +97,39 @@ def check_known_terms(res_dir: Path) -> list[str]:
     return errors
 
 
+INTERFACE_MODULES = ("app", "miniphone", "accessibility", "accessibility-provider")
+
+
+def check_all_modules(project_root: Path) -> list[str]:
+    errors = []
+    for module in INTERFACE_MODULES:
+        res_dir = project_root / module / "src/main/res"
+        errors.extend(f"{module}: {error}" for error in check_resources(res_dir))
+    return errors
+
+
+def check_miniphone_terms(project_root: Path) -> list[str]:
+    entries, _ = catalog(project_root / "miniphone/src/main/res/values-es")
+    expected = {
+        "mp_discover_roam": "Paseos",
+        "mp_room_entry": "Casa virtual",
+        "mp_discover_redpacket": "Regalos virtuales",
+        "mp_tab_me": "Mi perfil",
+    }
+    return [
+        f"miniphone/{name}: expected natural Spanish label {term}"
+        for name, term in expected.items()
+        if name not in entries or "".join(entries[name].itertext()) != term
+    ]
+
+
 def main() -> int:
     res_dir = ROOT / 'app/src/main/res'
-    errors = check_resources(res_dir) + check_known_terms(res_dir)
+    errors = check_all_modules(ROOT) + check_known_terms(res_dir) + check_miniphone_terms(ROOT)
     if errors:
         print('\n'.join(errors), file=sys.stderr)
         return 1
-    print('Spanish quality: coverage, types, placeholders, lists and terminology passed')
+    print('Spanish quality: all 4 interface modules passed coverage, types, placeholders, lists and terminology')
     return 0
 
 

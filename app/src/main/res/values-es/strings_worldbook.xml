@@ -20,7 +20,7 @@
     <string name="worldbook_delete_cd">Borrar</string>
     <string name="worldbook_delete_title">Eliminar libro mundial</string>
     <string name="worldbook_empty_title">No hay entradas en el libro mundial</string>
-    <string name="worldbook_empty_subtitle">Toque el botón a continuación para crear su primera entrada</string>
+    <string name="worldbook_empty_subtitle">Toca el botón de abajo para crear tu primera entrada.</string>
     <string name="worldbook_keywords_label">Palabras clave: %1$s</string>
     <string name="worldbook_badge_always_active">Constante</string>
     <string name="worldbook_export">Exportar</string>

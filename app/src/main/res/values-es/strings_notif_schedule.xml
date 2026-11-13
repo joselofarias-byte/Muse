@@ -20,7 +20,7 @@
     <string name="notif_web_server_text">Puerto %1$d · Los dispositivos LAN pueden acceder</string>
     <!-- v1.133: App update notification (reuses CHANNEL_CHAT_COMPLETED) -->
     <string name="update_notif_title">Nueva versión disponible</string>
-    <string name="update_notif_text">%1$s ha sido lanzado, toque para ver detalles</string>
+    <string name="update_notif_text">Nueva versión disponible: %1$s. Toca para ver los detalles.</string>
     <!-- v1.133: In-app update banner -->
     <string name="update_banner_published">%1$s liberado</string>
     <string name="update_banner_view_detail">Ver detalles</string>
@@ -70,7 +70,7 @@
     <string name="notif_listener_privacy_desc">• El contenido de las notificaciones se almacena solo localmente (máximo 50 entradas, las más antiguas se eliminan cuando están llenas)\n• La interfaz de usuario del sistema y las notificaciones propias de Muse se filtran\n• No se cargan datos de notificaciones en ningún servidor\n• Puede \"Borrar registros\" aquí o revocar el acceso en la configuración del sistema en cualquier momento</string>
     <string name="notif_listener_recent_header">Notificaciones recientes (%1$d/50)</string>
     <string name="notif_listener_empty_connected">Aún no hay registros de notificaciones\nLas nuevas notificaciones aparecerán aquí automáticamente una vez autorizadas</string>
-    <string name="notif_listener_empty_disconnected">Aún no autorizado\nPrimero toque \"Conceder acceso\" arriba</string>
+    <string name="notif_listener_empty_disconnected">Acceso pendiente.\nToca «Conceder acceso» para activarlo.</string>
     <string name="notif_listener_authorized">Autorizado</string>
     <string name="notif_listener_unauthorized">No autorizado</string>
     <string name="notif_listener_recent_count_disconnected">Notificaciones recientes: %1$d · Primero conceda acceso en la configuración del sistema</string>

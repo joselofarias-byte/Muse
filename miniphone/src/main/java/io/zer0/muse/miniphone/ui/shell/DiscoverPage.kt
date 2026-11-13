@@ -19,6 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -36,9 +37,10 @@ import io.zer0.muse.miniphone.ui.theme.MiniPhoneTheme
 @Composable
 internal fun DiscoverPage(modifier: Modifier = Modifier, onOpenFeature: (MiniPhoneFeature) -> Unit = {}) {
     val dimens = MiniPhoneTheme.dimens
+    val fontScale = LocalDensity.current.fontScale.coerceAtLeast(1f)
     LazyVerticalGrid(
-        columns = GridCells.Fixed(MiniPhoneApps.COLUMNS),
-        modifier = modifier.fillMaxSize(),
+        columns = GridCells.Adaptive(minSize = 128.dp * fontScale),
+        modifier = modifier.fillMaxSize().testTag("mp-discover-grid"),
         contentPadding = PaddingValues(horizontal = dimens.pageMargin, vertical = 12.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -67,9 +69,7 @@ private fun DiscoverEntry(icon: androidx.compose.ui.graphics.vector.ImageVector,
             .background(colors.surface)
             .clickable(onClick = onClick)
             .testTag(tag)
-            // 4 列网格里单个长单词（如 Relationships）会被按字符断成两行，
-            // 收紧左右内边距把可用文字宽度还给标签。
-            .padding(horizontal = 4.dp, vertical = 14.dp),
+            .padding(horizontal = 8.dp, vertical = 14.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Icon(
@@ -80,10 +80,9 @@ private fun DiscoverEntry(icon: androidx.compose.ui.graphics.vector.ImageVector,
         )
         Text(
             text = label,
-            // 小一档的既有字号，让长标签在窄格里整体放下而不是逐字符断行。
-            style = typography.timestamp.copy(color = colors.textPrimary),
+            style = typography.body.copy(color = colors.textPrimary),
             textAlign = TextAlign.Center,
-            maxLines = 2,
+            maxLines = 3,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier
                 .fillMaxWidth()
