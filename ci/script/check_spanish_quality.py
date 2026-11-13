@@ -88,6 +88,9 @@ def check_known_terms(res_dir: Path) -> list[str]:
         'settings_provider_max_output_tokens': 'tokens',
         'settings_assistant_manage': 'asistentes',
         'permission_refresh_status': 'Actualizar estado',
+        'settings_assistant_lorebook': 'Libro de trasfondo',
+        'settings_bubble_skin_section': 'Diseño',
+        'proxy_host': 'Servidor',
     }
     errors = []
     for name, term in expected.items():

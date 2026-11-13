@@ -45,7 +45,7 @@
     <string name="proxy_type">Tipo</string>
     <string name="proxy_type_http">HTTP</string>
     <string name="proxy_type_socks5">CALCETINES5</string>
-    <string name="proxy_host">Anfitrión</string>
+    <string name="proxy_host">Servidor</string>
     <string name="proxy_port">Puerto</string>
     <string name="proxy_username">Nombre de usuario</string>
     <string name="proxy_password">Contraseña</string>

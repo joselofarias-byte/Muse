@@ -175,12 +175,12 @@
     <string name="chat_delegate_empty">No hay asistentes ni equipos disponibles.</string>
     <string name="chat_delegate_assistants">Asistentes disponibles</string>
     <string name="chat_delegate_unnamed_assistant">Asistente sin nombre</string>
-    <string name="chat_delegate_assistant_prompt_input">Por favor delega a %1$s: %2$s</string>
+    <string name="chat_delegate_assistant_prompt_input">Delega esta tarea a %1$s: %2$s</string>
     <string name="chat_delegate_assistant_prompt_message">Delega el contenido anterior a %1$s:</string>
     <string name="chat_delegate_no_text">Este mensaje no tiene contenido de texto para delegar.</string>
     <string name="chat_delegate_teams">Equipos colaborativos</string>
     <string name="chat_delegate_unnamed_team">Equipo sin nombre</string>
-    <string name="chat_delegate_team_prompt_input">Por favor maneje como %1$s equipo: %2$s</string>
+    <string name="chat_delegate_team_prompt_input">Encarga esta tarea al equipo %1$s: %2$s</string>
     <string name="chat_delegate_team_prompt_message">Maneje el contenido anterior como equipo %1$s:</string>
 
     <!-- Empty state guide -->
@@ -193,7 +193,7 @@
 
     <!-- ===== MessageBubble ===== -->
     <!-- MOOD / Reasoning / Reflection collapsible blocks -->
-    <string name="chat_mood_collapse_cd">Colapso ESTADO DE ÁNIMO</string>
+    <string name="chat_mood_collapse_cd">Contraer estado de ánimo</string>
     <string name="chat_mood_expand_cd">Expandir ESTADO DE ÁNIMO</string>
     <string name="chat_mood_label">Ánimo</string>
     <string name="chat_reasoning_title">Razonamiento</string>
@@ -206,7 +206,7 @@
     <string name="chat_reasoning_collapse_cd">Contraer razonamiento</string>
     <string name="chat_reasoning_expand_cd">Expandir razonamiento</string>
     <string name="chat_reflection_title">Reflexión</string>
-    <string name="chat_reflection_collapse_cd">Colapso de reflexión</string>
+    <string name="chat_reflection_collapse_cd">Contraer reflexión</string>
     <string name="chat_reflection_expand_cd">Expandir reflexión</string>
 
     <!-- Images -->
@@ -277,7 +277,7 @@
     <string name="chat_tool_attachment">Archivo</string>
     <string name="chat_tool_knowledge">Base de conocimientos de referencia</string>
     <string name="chat_tool_knowledge_subtitle">@mencionar documentos</string>
-    <string name="chat_tool_prompt_template_subtitle">Elija un mensaje de escena de las plantillas</string>
+    <string name="chat_tool_prompt_template_subtitle">Elige una plantilla de instrucciones para la tarea.</string>
     <string name="chat_tool_skills">Habilidades</string>
     <string name="chat_tool_skills_subtitle">Administrar y llamar habilidades habilitadas</string>
     <string name="chat_tool_draw_mode">Modo de dibujo</string>
@@ -285,7 +285,7 @@
     <string name="chat_tool_draw_mode_subtitle">Describir una imagen para generar</string>
     <string name="chat_tool_delegate_subtitle">Elija un subasistente para manejar este mensaje</string>
     <string name="chat_tool_restart_context">Reiniciar contexto</string>
-    <string name="chat_tool_restart_context_subtitle">Borra el chat actual y deja que el Agente comience de nuevo</string>
+    <string name="chat_tool_restart_context_subtitle">Reinicia el contexto para que el asistente comience de nuevo.</string>
 
     <!-- Input field and buttons -->
     <string name="chat_placeholder_draw">Describe una imagen para generar...</string>
@@ -306,7 +306,7 @@
     <string name="chat_paste_as_file_attach">Adjuntar como archivo</string>
     <string name="chat_paste_as_file_paste">Pegar directamente</string>
     <!-- Long-press input bar action menu -->
-    <string name="chat_input_action_fullscreen">Modo de entrada de pantalla completa</string>
+    <string name="chat_input_action_fullscreen">Editar mensaje a pantalla completa</string>
     <string name="chat_stop_generation_cd">dejar de generar</string>
     <string name="chat_interject_cd">Intervenir: interrumpir la generación actual y enviar</string>
     <string name="command_palette_placeholder">Buscar conversaciones y mensajes, o escribe / para comandos</string>
@@ -612,7 +612,7 @@
     <string name="diary_export_action">Exportar</string>
     <string name="moment_visibility_title">Visible para</string>
     <string name="moment_visibility_public">Todos</string>
-    <string name="diary_perspective_character">Vista del personaje: este diario lo escribe él/ella</string>
+    <string name="diary_perspective_character">Desde la perspectiva del personaje: el personaje escribe este diario.</string>
     <!-- v2.6.7: 工具执行被全局暂停时的可见提示（否则用户只看到"已暂停"却不知为何） -->
     <string name="chat_tool_paused_banner">La ejecución de herramientas está en pausa, así que no se ejecutarán.</string>
     <string name="chat_tool_paused_banner_action">Ajustes</string>

@@ -39,17 +39,17 @@
     <string name="groupchat_minutes_ago">%1$d hace minutos</string>
     <string name="groupchat_create_title">Nuevo chat grupal</string>
     <string name="groupchat_name_label">Nombre del chat grupal</string>
-    <string name="groupchat_name_required">Por favor ingresa un nombre de chat grupal</string>
+    <string name="groupchat_name_required">Introduce un nombre para el grupo</string>
     <string name="groupchat_select_members">Seleccionar miembros</string>
     <string name="groupchat_no_assistants">Aún no hay asistentes.</string>
-    <string name="groupchat_member_required">Por favor seleccione al menos un miembro</string>
+    <string name="groupchat_member_required">Selecciona al menos un miembro</string>
     <string name="groupchat_team_optional">Equipo de enlace (opcional)</string>
     <string name="groupchat_no_team">No vinculado</string>
     <string name="groupchat_create_btn">Crear</string>
 
     <!-- ===== ui/account ===== -->
     <string name="account_default_user">Usuario de musa</string>
-    <string name="account_loading">Espere por favor…</string>
+    <string name="account_loading">Cargando…</string>
     <!-- v2.x: Edit profile page (no login/register UI, local avatar + name only) -->
     <string name="account_edit_profile">Editar perfil</string>
     <string name="account_avatar">Avatar</string>
@@ -103,7 +103,7 @@
     <string name="schedule_create_btn">Crear</string>
     <string name="schedule_cancel">Cancelar</string>
     <string name="schedule_msg_cancel">Cancelar mensaje programado</string>
-    <string name="schedule_err_name_required">Por favor ingresa un nombre de tarea</string>
+    <string name="schedule_err_name_required">Introduce un nombre para la tarea</string>
     <string name="schedule_time_daily">Hora diaria</string>
     <string name="schedule_time_weekly">Hora semanal</string>
     <string name="schedule_time_once">Ejecutar a las</string>
@@ -111,14 +111,14 @@
     <string name="schedule_err_once_time_required">Elige cuándo debe ejecutarse esta tarea única</string>
     <string name="schedule_status_running">En ejecución</string>
     <string name="schedule_status_completed">Completada</string>
-    <string name="schedule_err_content_required">Por favor ingrese el contenido de ejecución</string>
+    <string name="schedule_err_content_required">Escribe las instrucciones de la tarea</string>
     <string name="schedule_err_cron_invalid">Expresión cron no válida.</string>
     <string name="schedule_assistant">Asistente</string>
     <string name="schedule_select_assistant">Seleccionar asistente</string>
     <string name="schedule_no_assistants">Sin asistentes</string>
     <string name="schedule_default_assistant">Asistente predeterminado</string>
     <string name="schedule_err_ai_timeout">Se agotó el tiempo de espera de la llamada de IA (%1$ds)</string>
-    <string name="schedule_err_no_assistant">No hay asistente disponible, por favor crea uno primero</string>
+    <string name="schedule_err_no_assistant">No hay asistentes disponibles. Crea uno primero.</string>
 
     <!-- v1.137: Advanced automation config -->
     <string name="schedule_show_advanced">Mostrar automatización avanzada</string>
@@ -169,7 +169,7 @@
     <string name="schedule_action_tool_params_placeholder">p.ej.</string>
     <string name="schedule_action_notify_title">Título de la notificación</string>
     <string name="schedule_action_notify_message">Mensaje de notificación</string>
-    <string name="schedule_chain_title">Tareas en cadena (activación después del éxito)</string>
+    <string name="schedule_chain_title">Tareas encadenadas (se activan al completarse la anterior)</string>
     <string name="schedule_chain_empty">No hay otras tareas disponibles para encadenar</string>
 
     <!-- ===== ui/quicknotes ===== -->
@@ -440,10 +440,10 @@
     <string name="groupchat_mode_auto_desc">Los agentes de IA conversan automáticamente hasta el límite o nadie tiene más que decir</string>
     <string name="groupchat_mode_debate">Debate</string>
     <string name="groupchat_mode_debate_desc">Cadena fija: proponer → desafiar → mejorar, cada uno debe responder al anterior</string>
-    <string name="groupchat_mode_host">Enrutador anfitrión</string>
+    <string name="groupchat_mode_host">Asistente coordinador</string>
     <string name="groupchat_mode_host_desc">Host AI analiza la pregunta y la envía a otros miembros.</string>
     <string name="groupchat_mode_auto_rounds">Rondas máximas</string>
-    <string name="groupchat_mode_select_host">Seleccionar anfitrión</string>
+    <string name="groupchat_mode_select_host">Seleccionar coordinador</string>
     <string name="groupchat_mode_no_host">Ninguno (respaldo al round robin)</string>
     <!-- v2.x: Group chat message operations & collaboration -->
     <string name="groupchat_regenerate">Regenerado</string>
@@ -477,7 +477,7 @@
     <string name="groupchat_context_private_context_empty">No establecido</string>
     <string name="groupchat_context_save">Ahorrar</string>
     <string name="groupchat_context_clear">Claro</string>
-    <string name="groupchat_edit_member_required">Por favor mantenga al menos un miembro</string>
+    <string name="groupchat_edit_member_required">El grupo debe conservar al menos un miembro</string>
     <!-- ActivityHub: agent activity status chip labels (idle/thinking/working/waiting/done) -->
     <string name="groupchat_activity_viewing">visita</string>
     <string name="groupchat_activity_replying">respondiendo</string>
@@ -835,7 +835,7 @@
     <string name="plugin_cap_app_messages">Escribir mensajes en un chat (pareceran del asistente)</string>
     <string name="plugin_cap_app_theme">Cambiar entre apariencia clara y oscura</string>
     <string name="plugin_slot_provided_by">Proporcionado por el plugin "%1$s"</string>
-    <string name="plugin_cap_ui_slot">Mostrar interfaz del plugin arriba del chat</string>
+    <string name="plugin_cap_ui_slot">Mostrar la interfaz del complemento sobre la conversación</string>
     <string name="plugin_cap_runtime_long">Tareas largas (hasta 10 minutos por llamada)</string>
     <string name="plugin_cap_schedule_background">Ejecutar tareas programadas en segundo plano (aun sin la app abierta)</string>
     <string name="plugin_service_channel_name">Servicios de plugins</string>

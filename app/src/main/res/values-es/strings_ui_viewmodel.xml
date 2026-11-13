@@ -38,13 +38,13 @@
     <string name="quick_msg_section_behavior">Comportamiento</string>
     <string name="quick_msg_field_sort_index">Índice de orden (menor = antes)</string>
     <string name="quick_msg_field_enabled">Activado</string>
-    <string name="quick_msg_field_enabled_desc">Cuando está desactivado, esta entrada no aparecerá en la fila del chip de la barra de entrada.</string>
+    <string name="quick_msg_field_enabled_desc">Si lo desactivas, este mensaje rápido no aparecerá entre los accesos del campo de entrada.</string>
 
     <!-- ===== LorebookScreen ===== -->
     <!-- Top bar -->
     <string name="lorebook_screen_title">Libro de trasfondo</string>
     <string name="lorebook_new_cd">Nuevo libro de trasfondo</string>
-    <string name="lorebook_intro">Inyección de contexto activada por palabras clave.</string>
+    <string name="lorebook_intro">Agrega información al contexto cuando aparecen determinadas palabras clave.</string>
     <string name="lorebook_empty_title">Aún no hay libros de trasfondo</string>
     <string name="lorebook_empty_subtitle">Toca + en la parte inferior derecha para crear</string>
     <string name="lorebook_delete_title">Eliminar libro de trasfondo</string>
@@ -60,25 +60,25 @@
     <!-- Edit page -->
     <string name="lorebook_unsaved_title">Cambios no guardados</string>
     <string name="lorebook_unsaved_content">Al salir se descartarán las ediciones actuales.</string>
-    <string name="lorebook_discard">Desechar</string>
+    <string name="lorebook_discard">Descartar</string>
     <string name="lorebook_new_title">Nuevo libro de trasfondo</string>
     <string name="lorebook_edit_title">Editar libro de trasfondo</string>
     <string name="lorebook_save">Guardar</string>
-    <string name="lorebook_section_basic">Básico</string>
+    <string name="lorebook_section_basic">Información básica</string>
     <string name="lorebook_field_name">Nombre</string>
     <string name="lorebook_field_keywords">Palabras clave de activación (separadas por comas)</string>
     <string name="lorebook_field_keywords_placeholder">p. ej., magia, hechizo, conjuro</string>
-    <string name="lorebook_section_content">Contenido de inyección</string>
-    <string name="lorebook_field_content">Contenido (inyectado como contexto del SISTEMA cuando las palabras clave coinciden)</string>
+    <string name="lorebook_section_content">Información de contexto</string>
+    <string name="lorebook_field_content">Información que se agrega al contexto del sistema al detectar las palabras clave</string>
     <string name="lorebook_section_behavior">Comportamiento</string>
-    <string name="lorebook_field_priority">Prioridad (número mayor = inyectado primero)</string>
+    <string name="lorebook_field_priority">Prioridad (los valores mayores se insertan primero)</string>
     <string name="lorebook_field_insertion_position">Posición de inserción</string>
     <!-- ST-04: 注入位置选项用户可读文案 -->
-    <string name="lorebook_insertion_before_system">Antes del prompt del sistema</string>
-    <string name="lorebook_insertion_after_system">Después del prompt del sistema</string>
+    <string name="lorebook_insertion_before_system">Antes de las instrucciones del sistema</string>
+    <string name="lorebook_insertion_after_system">Después de las instrucciones del sistema</string>
     <string name="lorebook_insertion_before_last">Antes del último mensaje</string>
     <string name="lorebook_field_case_sensitive">Distingue mayúsculas y minúsculas</string>
-    <string name="lorebook_field_case_sensitive_desc">Cuando está activado, la concordancia de palabras clave distingue entre mayúsculas y minúsculas.</string>
+    <string name="lorebook_field_case_sensitive_desc">Las palabras clave deben coincidir también en el uso de mayúsculas y minúsculas.</string>
     <string name="lorebook_field_whole_word">Palabra completa</string>
     <string name="lorebook_field_whole_word_desc">La palabra clave debe coincidir como palabra completa (para inglés; las palabras clave en chino pasan automáticamente a la coincidencia normal)</string>
     <string name="lorebook_field_enabled">Activado</string>
@@ -163,7 +163,7 @@
     <string name="assistant_import_sillytavern">Importar tarjeta de personaje de SillyTavern</string>
     <!-- Assistant detail: character card sharing section -->
     <string name="assistant_detail_share_section">Compartir tarjeta de personaje</string>
-    <string name="assistant_summary_empty">Sin descripción; el personaje está en el apartado Prompts</string>
+    <string name="assistant_summary_empty">Sin descripción. Puedes definir la personalidad en las instrucciones del asistente.</string>
     <string name="assistant_detail_export_section">Exportar archivos de tarjeta</string>
     <string name="assistant_detail_export_png">Exportar como tarjeta de personaje PNG</string>
     <string name="assistant_detail_export_png_desc">Formato SillyTavern (con metadatos)</string>

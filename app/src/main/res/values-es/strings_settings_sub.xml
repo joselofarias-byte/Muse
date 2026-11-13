@@ -28,7 +28,7 @@
     <string name="settings_agent_proactive_title">Mensajes proactivos</string>
     <!-- v2.x: Agent page title -->
     <string name="settings_agent_page_title">Agente</string>
-    <string name="settings_agent_proactive_subtitle">El agente te envía un mensaje proactivo que te gusta una persona real</string>
+    <string name="settings_agent_proactive_subtitle">Permite que el agente te escriba por iniciativa propia.</string>
     <string name="settings_agent_group_pace">Ritmo de envío</string>
     <string name="settings_agent_group_daily">Envíos diarios</string>
     <!-- v1.0.4 (P3-5): Boot auto-launch toggle — when enabled Muse auto-launches after boot,
@@ -80,23 +80,23 @@
     <string name="settings_theme_font_preview_body">Esta es una muestra de texto del cuerpo.</string>
     <string name="settings_theme_font_preview_note">Pequeña nota · Para sugerencias auxiliares</string>
     <!-- Phase 4: selección y vista previa de la piel de burbujas -->
-    <string name="settings_bubble_skin_section">Piel de burbujas</string>
+    <string name="settings_bubble_skin_section">Diseño de las burbujas</string>
     <string name="settings_bubble_skin_builtin">Burbuja predeterminada de Muse</string>
-    <string name="settings_bubble_skin_builtin_desc">Piel integrada, igual al aspecto predeterminado</string>
-    <string name="settings_bubble_skin_custom_desc">Piel de burbuja personalizada</string>
-    <string name="settings_bubble_skin_import">Importar piel</string>
-    <string name="settings_bubble_skin_import_success">Piel importada y aplicada</string>
-    <string name="settings_bubble_skin_import_failed">No se pudo importar la piel: JSON, esquema o contraste no válidos</string>
-    <string name="settings_bubble_skin_export">Exportar piel</string>
-    <string name="settings_bubble_skin_delete">Eliminar piel</string>
-    <string name="settings_bubble_skin_delete_confirm">¿Eliminar esta piel?</string>
-    <string name="settings_bubble_skin_delete_confirm_msg">Al eliminarla se volverá a la piel predeterminada integrada.</string>
-    <string name="settings_bubble_skin_preview">Vista previa de la piel</string>
-    <string name="settings_bubble_skin_preview_note">La vista previa usa el mismo BubbleSkinResolver que el chat; si no es válida, se usa la integrada</string>
+    <string name="settings_bubble_skin_builtin_desc">Diseño integrado de Muse</string>
+    <string name="settings_bubble_skin_custom_desc">Diseño personalizado para las burbujas del chat</string>
+    <string name="settings_bubble_skin_import">Importar diseño</string>
+    <string name="settings_bubble_skin_import_success">Diseño importado y aplicado</string>
+    <string name="settings_bubble_skin_import_failed">No se pudo importar el diseño: el JSON, el esquema o el contraste no son válidos.</string>
+    <string name="settings_bubble_skin_export">Exportar diseño</string>
+    <string name="settings_bubble_skin_delete">Eliminar diseño</string>
+    <string name="settings_bubble_skin_delete_confirm">¿Eliminar este diseño?</string>
+    <string name="settings_bubble_skin_delete_confirm_msg">Se volverá al diseño predeterminado de Muse.</string>
+    <string name="settings_bubble_skin_preview">Vista previa del diseño</string>
+    <string name="settings_bubble_skin_preview_note">La vista previa usa el mismo BubbleSkinResolver que el chat. Si el diseño no es válido, se usa el predeterminado.</string>
     <string name="settings_bubble_skin_role_user">Burbuja de usuario</string>
     <string name="settings_bubble_skin_role_assistant">Burbuja del asistente</string>
     <string name="settings_bubble_skin_role_group_assistant">Burbuja del asistente de grupo</string>
-    <string name="settings_bubble_skin_invalid_fallback">Esta piel no es válida; se usa la integrada</string>
+    <string name="settings_bubble_skin_invalid_fallback">El diseño no es válido. Se usa el predeterminado de Muse.</string>
     <string name="settings_theme_selected">Seleccionado</string>
     <string name="settings_theme_preview_hello">Hola</string>
     <string name="settings_theme_preview_reply">¡Hola!</string>
@@ -226,7 +226,7 @@
     <string name="settings_import_kelivo_step3">3. Toca «Exportar copia de seguridad» para generar un archivo ZIP.</string>
     <string name="settings_import_step2_title">Paso 2: seleccione un archivo de respaldo</string>
     <string name="settings_import_select_backup">Seleccione el archivo de copia de seguridad (formato ZIP)</string>
-    <string name="settings_importing">Importando, por favor espere...</string>
+    <string name="settings_importing">Importando…</string>
     <string name="settings_import_tips">Consejos:\n• Para configuraciones de proveedores importadas, es posible que deba verificar manualmente que las claves API sean correctas\n• Las conversaciones importadas se crean como sesiones nuevas y no sobrescribirán los datos existentes\n• Si la importación falla, verifique que el archivo de respaldo esté completo</string>
     <string name="settings_import_ready">Estoy listo, selecciona archivo</string>
     <string name="settings_import_complete">Importación completa</string>
@@ -296,9 +296,9 @@
     <string name="settings_rag_page_title">Recuperación de la base de conocimientos</string>
     <string name="rag_saved_success">Guardado</string>
     <string name="rag_save_failed">Error al guardar</string>
-    <string name="settings_rag_injection_section">Inyección de recuperación</string>
+    <string name="settings_rag_injection_section">Contexto de la base de conocimientos</string>
     <string name="settings_rag_attachment_section">Búsqueda en adjuntos</string>
-    <string name="settings_rag_auto_inject">Base de conocimientos sobre inyección automática</string>
+    <string name="settings_rag_auto_inject">Agregar automáticamente información de la base de conocimientos</string>
     <string name="settings_rag_auto_inject_subtitle">Recupera automáticamente conocimientos relevantes e inyéctalos en el contexto durante el chat.</string>
     <string name="settings_rag_embedding_source_section">Fuente de incrustación</string>
     <string name="settings_rag_cloud_api">API de la nube</string>

@@ -142,7 +142,7 @@
     <!-- Provider prefix strings (for startsWith/contains checks) -->
     <string name="settings_provider_prefix_connection_success">Conexión exitosa</string>
     <string name="settings_provider_prefix_query_failed">Consulta fallida</string>
-    <string name="settings_provider_prefix_configure">Por favor configure</string>
+    <string name="settings_provider_prefix_configure">Configura primero</string>
     <string name="settings_provider_prefix_path_not_found">Ruta no encontrada</string>
     <string name="settings_provider_prefix_unable_to_resolve">No se puede resolver</string>
     <string name="settings_provider_prefix_query_timeout">Se agotó el tiempo de espera de la consulta</string>
@@ -339,7 +339,7 @@
     <string name="settings_chat_interaction">Interacción</string>
     <string name="settings_chat_context_section">Gestión de contexto</string>
     <string name="settings_chat_streaming">Respuesta en streaming</string>
-    <string name="settings_chat_streaming_subtitle">Salida toda a la vez cuando está apagado (espera más larga)</string>
+    <string name="settings_chat_streaming_subtitle">Si lo desactivas, la respuesta se mostrará completa cuando termine de generarse.</string>
     <string name="settings_chat_auto_scroll">Desplazamiento automático hacia abajo</string>
     <string name="settings_chat_auto_scroll_subtitle">Desplazamiento automático en mensajes nuevos</string>
     <string name="settings_chat_volume_scroll">Desplazamiento de la tecla de volumen</string>

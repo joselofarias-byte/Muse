@@ -115,7 +115,7 @@
     <string name="settings_model_ability_chat">Charlar</string>
     <!-- v1.0.8 (7.7): Context window label (e.g. "128K context") -->
     <string name="settings_model_context_label">%1$s contexto</string>
-    <string name="settings_model_output_label">%1$s salida</string>
+    <string name="settings_model_output_label">Salida: %1$s</string>
     <!-- v1.0.8 (7.6): Model health check button + status text -->
     <string name="settings_model_test_in_progress">Probando…</string>
     <string name="settings_model_test_success">Conexión correcta</string>
@@ -129,8 +129,8 @@
     <string name="settings_assistant_manage_subtitle">Administrar asistentes y sus libros del mundo</string>
     <string name="settings_assistant_favorites">Favoritos</string>
     <string name="settings_assistant_favorites_subtitle">Ver mensajes favoritos en todas las sesiones</string>
-    <string name="settings_assistant_lorebook">libro de historia</string>
-    <string name="settings_assistant_lorebook_subtitle">Inyección de contexto activada por palabras clave (juego de roles/construcción mundial)</string>
+    <string name="settings_assistant_lorebook">Libro de trasfondo</string>
+    <string name="settings_assistant_lorebook_subtitle">Agrega contexto al detectar palabras clave en la conversación.</string>
     <string name="settings_assistant_quick_messages">Mensajes rápidos</string>
     <string name="settings_assistant_quick_messages_subtitle">Plantillas de mensajes con variables que puedes insertar con un toque.</string>
     <string name="settings_assistant_prompt_injection">Inyección de instrucciones</string>
@@ -207,7 +207,7 @@
     <string name="settings_tutorial_ch3_s3_title">Cómo eliminar una conversación</string>
     <string name="settings_tutorial_ch3_s3_content">En la lista del historial de conversaciones, mantenga presionada la conversación que desea eliminar.</string>
     <string name="settings_tutorial_ch3_s4_title">Cómo buscar el historial de mensajes</string>
-    <string name="settings_tutorial_ch3_s4_content">En la página de chat o en la lista de conversaciones, busque el ícono de búsqueda (lupa), ingrese una palabra clave y se mostrarán todos los mensajes históricos que contengan esa palabra.\n\nEl contenido que se puede buscar incluye tanto sus mensajes como sus respuestas de IA.</string>
+    <string name="settings_tutorial_ch3_s4_content">Abre la búsqueda desde la conversación o desde la lista de chats e introduce una palabra o una frase. Aparecerán los mensajes del historial que coincidan, tanto los tuyos como los del asistente. Selecciona un resultado para abrir su conversación.</string>
     <string name="settings_tutorial_ch3_s5_title">¿Qué es una respuesta en tiempo real?</string>
     <string name="settings_tutorial_ch3_s5_content">El texto aparece de forma progresiva mientras el modelo genera la respuesta. Así puedes empezar a leer antes de que termine.\n\nUna conexión inestable puede interrumpir la respuesta. Si la generación queda detenida durante mucho tiempo, toca Detener y vuelve a intentarlo. El texto recibido se guarda a medida que llega.</string>
     <string name="settings_tutorial_ch3_s6_title">Enviar imágenes, archivos &amp; asistencia visual</string>

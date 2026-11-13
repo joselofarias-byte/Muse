@@ -52,6 +52,14 @@ class MistranslationGuardTest {
     }
 
     @Test
+    fun `Spanish contextual terminology avoids literal machine translations`() {
+        assertEquals("Libro de trasfondo", text("es", R.string.settings_assistant_lorebook))
+        assertEquals("Diseño de las burbujas", text("es", R.string.settings_bubble_skin_section))
+        assertEquals("Servidor", text("es", R.string.proxy_host))
+        assertEquals("Contraer reflexión", text("es", R.string.chat_reflection_collapse_cd))
+    }
+
+    @Test
     fun `Spanish setup guide retains complete numbered instructions`() {
         val guide = text("es", R.string.settings_tutorial_ch1_s2_content)
         listOf("1.", "2.", "3.").forEach { step -> assertTrue("Missing $step in $guide", guide.contains(step)) }

@@ -26,7 +26,7 @@
     <string name="update_banner_view_detail">Ver detalles</string>
     <string name="update_banner_download_apk">Descargar APK</string>
     <string name="update_banner_close_cd">Descartar banner de nueva versión</string>
-    <string name="update_found_new">Se encontró una nueva versión, vea el banner en la parte superior</string>
+    <string name="update_found_new">Hay una nueva versión disponible. Consulta sus detalles.</string>
     <string name="update_already_latest">Ya al ​​día</string>
 
     <!-- ===== schedule ===== -->

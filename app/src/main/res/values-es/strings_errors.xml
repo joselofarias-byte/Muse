@@ -19,7 +19,7 @@
     <string name="error_api_rate_limit_nodelay">Demasiadas solicitudes. Vuelva a intentarlo más tarde.</string>
     <string name="error_api_server_error">El servicio no está disponible temporalmente, vuelva a intentarlo más tarde</string>
     <string name="error_api_model_not_found">El modelo solicitado no está disponible, cambie en la configuración</string>
-    <string name="error_api_context_length">La entrada excede el límite de longitud del contexto del modelo; acorte y vuelva a intentarlo</string>
+    <string name="error_api_context_length">El mensaje supera el límite de contexto del modelo. Acórtalo y vuelve a intentarlo.</string>
 
     <!-- ── StorageError ── -->
     <string name="error_storage_db_full">La base de datos está llena, borre los datos y vuelva a intentarlo.</string>

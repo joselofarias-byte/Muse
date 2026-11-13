@@ -132,7 +132,7 @@
     <string name="memory_screen_collapse_steps">Contraer detalles del paso</string>
     <string name="memory_screen_view_steps">Ver detalles del paso</string>
     <string name="memory_screen_failed_times">Falló %1$d veces</string>
-    <string name="memory_screen_last_success">Último éxito: %1$s</string>
+    <string name="memory_screen_last_success">Última ejecución correcta: %1$s</string>
     <string name="memory_screen_error">Error: %1$s</string>
     <!-- Cadenas específicas de MemorySectionViews.kt -->
     <string name="memory_screen_empty_content">Aún no hay contenido</string>
@@ -209,7 +209,7 @@
     <string name="settings_group_chat">Chat</string>
     <string name="settings_group_chat_desc">Visualización, stickers, notas rápidas y compartir</string>
     <string name="settings_group_models">Modelos y proveedores</string>
-    <string name="settings_group_models_desc">Proveedores, enrutado de tareas y complementos de aplicaciones</string>
+    <string name="settings_group_models_desc">Proveedores, distribución de tareas y complementos</string>
     <string name="settings_group_tools">Herramientas y permisos</string>
     <string name="settings_group_tools_desc">Herramientas, asistente de permisos y búsqueda web</string>
     <string name="settings_group_voice">Voz</string>
@@ -597,7 +597,7 @@
     <string name="video_gen_submit">Generar vídeo</string>
     <string name="video_gen_pending">Pendiente</string>
     <string name="video_gen_processing">Generando...</string>
-    <string name="video_gen_success">Éxito</string>
+    <string name="video_gen_success">Vídeo generado</string>
     <string name="video_gen_failed">Error: %1$s</string>
     <string name="video_gen_open_video">Abrir vídeo</string>
     <string name="video_gen_no_app">No hay ninguna aplicación disponible para reproducir vídeo.</string>
@@ -657,7 +657,7 @@
     <string name="voice_cloning_list_empty">Sin voces clonadas</string>
     <string name="voice_cloning_list_title">Voces clonadas</string>
     <string name="voice_cloning_delete_confirm">¿Confirmar eliminar esta voz clonada?</string>
-    <string name="voice_cloning_success">Éxito de la clonación</string>
+    <string name="voice_cloning_success">Voz clonada</string>
     <string name="voice_cloning_failed">Error de clonación: %1$s</string>
     <string name="voice_cloning_audio_required">Seleccione primero el audio de muestra</string>
 
@@ -837,7 +837,7 @@
     <string name="muse_plugins_open_panel">Abrir panel</string>
     <string name="muse_plugins_view_broken">La interfaz no pudo renderizarse (toca para ver el motivo)</string>
     <string name="muse_plugins_view_image_missing">(imagen faltante)</string>
-    <string name="plugin_ui_busy">El envio anterior sigue en curso; espera por favor</string>
+    <string name="plugin_ui_busy">El envío anterior sigue en curso. Espera a que termine.</string>
     <string name="plugin_ui_render_failed">No se pudo interpretar la interfaz devuelta por el complemento</string>
     <string name="plugin_ui_needs_interactive">Esta vista puede enviar un formulario, pero necesita el permiso de interfaz interactiva (modifica datos del complemento)</string>
     <string name="muse_plugins_trust_catalog_title">Raíz de confianza del catálogo</string>
@@ -851,10 +851,10 @@
     <string name="muse_plugins_trust_title">Gestión de confianza</string>
     <string name="muse_plugins_unknown_author">Desconocido</string>
     <string name="muse_plugins_unsigned_draft_only">Sin firmar: solo puede guardarse como borrador deshabilitado</string>
-    <string name="settings_bubble_skin_plugin_disabled">Plugin deshabilitado; este skin no está disponible por ahora</string>
-    <string name="settings_bubble_skin_plugin_section">Skins de plugin</string>
-    <string name="settings_bubble_skin_plugin_source">Del plugin %1$s · v%2$s</string>
-    <string name="settings_bubble_skin_plugin_unavailable_fallback">El skin de plugin seleccionado no está disponible (plugin deshabilitado o desinstalado); se ha vuelto al skin predeterminado integrado</string>
+    <string name="settings_bubble_skin_plugin_disabled">El complemento está desactivado y su diseño no está disponible.</string>
+    <string name="settings_bubble_skin_plugin_section">Diseños de complementos</string>
+    <string name="settings_bubble_skin_plugin_source">Complemento %1$s · v%2$s</string>
+    <string name="settings_bubble_skin_plugin_unavailable_fallback">El diseño seleccionado ya no está disponible porque su complemento está desactivado o desinstalado. Se usa el diseño predeterminado de Muse.</string>
     <string name="connector_error_activity_unavailable">Activity no disponible</string>
     <string name="channel_conversation_role_assistant">Asistente</string>
     <string name="channel_conversation_role_user">Contacto</string>
