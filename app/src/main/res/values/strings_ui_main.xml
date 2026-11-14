@@ -135,7 +135,7 @@
     <string name="qr_scan_btn">Escanea el código QR para importar</string>
 
     <!-- ===== pagina de memoria MemoryScreen ===== -->
-    <string name="memory_screen_title">Memoria</string>
+    <string name="memory_screen_title">Recuerdos</string>
     <string name="memory_screen_search_fact_hint">Buscar recuerdos…</string>
     <string name="memory_screen_search_cd">Buscar</string>
     <string name="memory_screen_add_fact_cd">Agregar recuerdo</string>
@@ -237,7 +237,7 @@
     <string name="settings_screen_group_tools">Herramientas y búsqueda</string>
     <string name="settings_screen_group_voice">Voz</string>
     <string name="settings_screen_group_media">Imágenes y traducción</string>
-    <string name="settings_screen_group_memory">Memoria y conocimiento</string>
+    <string name="settings_screen_group_memory">Recuerdos y conocimiento</string>
     <string name="settings_screen_group_data_privacy">Datos y copias de seguridad</string>
     <string name="settings_screen_group_connection">Conexión</string>
     <string name="settings_screen_group_automation">Automatización</string>
@@ -250,7 +250,7 @@
     <!-- ===== Establezca la categoría de primer nivel (12 líneas en la página de inicio; el orden es consistente con el catálogo de configuración) ===== -->
     <string name="settings_group_assistants">Asistentes y roles</string>
     <string name="settings_group_assistants_desc">Perfil, asistentes, recursos y agentes</string>
-    <string name="settings_group_chat">Chat</string>
+    <string name="settings_group_chat">Conversación</string>
     <string name="settings_group_chat_desc">Visualización, stickers, notas rápidas y compartir</string>
     <string name="settings_group_models">Modelos y proveedores</string>
     <string name="settings_group_models_desc">Proveedores, enrutamiento de tareas y complementos de proveedor</string>
@@ -260,8 +260,8 @@
     <string name="settings_group_voice_desc">Reproducción, reconocimiento y clonación de voz</string>
     <string name="settings_group_image">Imagen y visión</string>
     <string name="settings_group_image_desc">Generación de imagen y vídeo, visión y traducción</string>
-    <string name="settings_group_memory">Memoria y conocimiento</string>
-    <string name="settings_group_memory_desc">Centro de memoria y búsqueda de conocimiento</string>
+    <string name="settings_group_memory">Recuerdos y conocimiento</string>
+    <string name="settings_group_memory_desc">Recuerdos y búsqueda de conocimiento</string>
     <string name="settings_group_connection">Conexiones</string>
     <string name="settings_group_connection_desc">Centro de conexiones, canales, acceso web y MCP</string>
     <string name="settings_group_automation">Automatización</string>
@@ -288,7 +288,7 @@
     <string name="settings_screen_chat_desc">Visualización de mensajes / Interacción / Avanzado</string>
     <string name="settings_screen_media">Reproducción de voz</string>
     <string name="settings_screen_media_desc">Voz / TTS / Salida de audio</string>
-    <string name="settings_screen_memory_notification">Centro de memoria</string>
+    <string name="settings_screen_memory_notification">Recuerdos</string>
     <string name="settings_screen_memory_notification_desc">Hoy / Corto plazo / Largo plazo · Hechos · Parámetros</string>
     <string name="settings_screen_data_backup">Copia completa</string>
     <string name="settings_screen_data_backup_desc">Copia de seguridad en la nube/servidor web</string>
@@ -713,7 +713,7 @@
 
     <!-- ===== v1.133: 5 entradas de página secundaria independientes separadas de SettingsModelPage ===== -->
     <string name="settings_screen_web_search">Búsqueda web</string>
-    <string name="settings_screen_web_search_desc">Motor de búsqueda/clave API/punto final</string>
+    <string name="settings_screen_web_search_desc">Motor de búsqueda, clave API y dirección</string>
     <string name="settings_screen_asr">Reconocimiento de voz</string>
     <string name="settings_screen_asr_desc">Voz a texto (Sistema / DashScope / Step)</string>
     <string name="settings_screen_mcp">Servidores conectados</string>

@@ -54,7 +54,7 @@
     <!-- Paso 5: página completa -->
     <string name="onboarding_complete_title">Todo listo.</string>
     <string name="onboarding_complete_subtitle">Algunas cosas para probar</string>
-    <string name="onboarding_tutorial_chat_title">Chat diario</string>
+    <string name="onboarding_tutorial_chat_title">Conversación diaria</string>
     <string name="onboarding_tutorial_chat_desc">Envía texto, fotos o archivos; respuestas naturales</string>
     <string name="onboarding_tutorial_assistant_title">Asistentes y memoria</string>
     <string name="onboarding_tutorial_assistant_desc">Personaliza un asistente que recuerde tus conversaciones.</string>

@@ -838,6 +838,7 @@ private fun MemoryCapsuleTabs(selected: Int, onSelect: (Int) -> Unit) {
         selectedIndex = selected,
         onSelect = onSelect,
         modifier = Modifier.fillMaxWidth().padding(horizontal = MusePaddings.screen, vertical = 12.dp),
+        scrollable = true,
     )
 }
 

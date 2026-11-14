@@ -204,7 +204,7 @@
     <string name="settings_tutorial_ch2_s6_content">Puedes configurar varias claves API en un proveedor, una por línea. Si una falla o alcanza un límite, Muse puede probar la siguiente.\n\nAlgunos proveedores permiten consultar el saldo desde sus ajustes. Si la consulta no está disponible, revisa tu cuenta en el sitio del proveedor.\n\nTambién puedes configurar varios proveedores y cambiar de modelo cuando uno no esté disponible.</string>
 
     <!-- Capítulo 3 -->
-    <string name="settings_tutorial_ch3_title">Capítulo 3: Chat diario</string>
+    <string name="settings_tutorial_ch3_title">Capítulo 3: Conversación diaria</string>
     <string name="settings_tutorial_ch3_s1_title">Cómo iniciar una nueva conversación</string>
     <string name="settings_tutorial_ch3_s1_content">Abre la lista de conversaciones y toca «Nueva conversación». El nuevo chat comienza sin el historial de los anteriores.\n\nCrea una conversación cuando cambies de tema o de tarea, o cuando no quieras que el contexto anterior influya en las respuestas.</string>
     <string name="settings_tutorial_ch3_s2_title">Cómo volver a una conversación anterior</string>

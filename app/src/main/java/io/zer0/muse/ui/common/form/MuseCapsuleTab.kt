@@ -2,7 +2,9 @@ package io.zer0.muse.ui.common.form
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -68,6 +70,7 @@ fun MuseCapsuleTab(
     modifier: Modifier = Modifier,
     pageOffset: Float? = null,
     isDragging: Boolean = false,
+    scrollable: Boolean = false,
 ) {
     val useContinuous = pageOffset != null && isDragging
     val fractionalIndex = pageOffset?.let { selectedIndex + it } ?: selectedIndex.toFloat()
@@ -84,13 +87,13 @@ fun MuseCapsuleTab(
         color = MuseActionColors.neutralContainer,
         modifier = modifier
             .widthIn(min = (tabs.size * 60).dp)
-            // UI-FIX: 48dp La altura visual aparece demasiado alta en la barra superior del celular(Comentarios de los usuarios"Botones demasiado altos");
-            // Reciba una altura visual de 40 dp,El área de toque dentro de la fila todavía está cubierta por el área de golpe más grande de la fila exterior.
+            // UI-FIX: altura visual de 40 dp; el tope evita que la pastilla ocupe toda la pantalla.
             .heightIn(min = 40.dp, max = 44.dp),
     ) {
         Row(
             modifier = Modifier
                 .fillMaxSize()
+                .then(if (scrollable) Modifier.horizontalScroll(rememberScrollState()) else Modifier)
                 .padding(MusePaddings.tinyGap),
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically,
@@ -118,7 +121,7 @@ fun MuseCapsuleTab(
                     color = bgColor,
                     shadowElevation = if (isSelected) MuseElevation.low else MuseElevation.none,
                     modifier = Modifier
-                        .weight(1f)
+                        .then(if (scrollable) Modifier.widthIn(min = 72.dp) else Modifier.weight(1f))
                         .fillMaxHeight()
                         // v1.0.74 fix (Auditoría inicial 3.7): Utilice semántica seleccionada en lugar de ortografía contentDescription,
                         // TalkBack puede leer"seleccionado"relaciones en lugar de concatenación de cadenas.
@@ -148,8 +151,9 @@ fun MuseCapsuleTab(
                             color = textColor,
                             // CHAT-17: etiqueta larga(Rusia/portugués)línea única omitida,No más saltos de línea/Truncar la altura de la cápsula destruida.
                             maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
+                            overflow = if (scrollable) TextOverflow.Visible else TextOverflow.Ellipsis,
                             softWrap = false,
+                            modifier = if (scrollable) Modifier.padding(horizontal = 10.dp) else Modifier,
                         )
                     }
                 }

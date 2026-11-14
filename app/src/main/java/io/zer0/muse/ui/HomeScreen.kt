@@ -30,6 +30,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -553,47 +554,55 @@ private fun UpdateAvailableBanner(
         color = MaterialTheme.colorScheme.primaryContainer,
         tonalElevation = 2.dp,
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 12.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = publishedText,
-                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                )
-                if (release.name.isNotBlank()) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = release.name,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f),
-                        maxLines = 1,
+                        text = publishedText,
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
+                    if (release.name.isNotBlank()) {
+                        Text(
+                            text = release.name,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f),
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                 }
+                MuseTactileButton(
+                    icon = MuseIcons.x,
+                    onClick = onClose,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.semantics { contentDescription = closeCd },
+                )
             }
-            MuseCapsuleButton(
-                text = viewDetailText,
-                onClick = onViewRelease,
-                variant = IosCapsuleButtonVariant.Text,
-                fillWidth = false,
-            )
-            MuseCapsuleButton(
-                text = downloadApkText,
-                onClick = onDownloadApk,
-                variant = IosCapsuleButtonVariant.Text,
-                fillWidth = false,
-            )
-            MuseTactileButton(
-                icon = MuseIcons.x,
-                onClick = onClose,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                modifier = Modifier.semantics { contentDescription = closeCd },
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                MuseCapsuleButton(
+                    text = viewDetailText,
+                    onClick = onViewRelease,
+                    variant = IosCapsuleButtonVariant.Text,
+                    fillWidth = false,
+                )
+                MuseCapsuleButton(
+                    text = downloadApkText,
+                    onClick = onDownloadApk,
+                    variant = IosCapsuleButtonVariant.Text,
+                    fillWidth = false,
+                )
+            }
         }
     }
 }
@@ -707,10 +716,13 @@ private fun HomeCapsuleButton(
                 onClick = onClick,
                 onLongClick = onLongClick,
             )
-            .padding(horizontal = 10.dp, vertical = 8.dp),
+            .padding(horizontal = 6.dp, vertical = 8.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(
+            modifier = Modifier.widthIn(max = 84.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
             Icon(
                 imageVector = icon,
                 contentDescription = contentDescription,
@@ -722,7 +734,9 @@ private fun HomeCapsuleButton(
                 text = contentDescription,
                 style = MaterialTheme.typography.labelSmall,
                 color = contentColor,
-                maxLines = 1,
+                textAlign = TextAlign.Center,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
             )
         }
     }
