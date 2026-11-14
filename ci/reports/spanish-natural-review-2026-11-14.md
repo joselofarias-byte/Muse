@@ -12,7 +12,7 @@ Esta rama sale de `main` e incorpora el trabajo de `e8eb6c89` (13 de noviembre, 
 | Cliente web (`messages.ts`, español) | 275 | Reescritura a español neutro; se actualizaron las aserciones que fijaban la traducción automática |
 | Página de compatibilidad del host | 33 | Marcadores localizados; el protocolo (`chat.send`, PIN, rutas) no cambia |
 | Prompt `default_persona_es.prompt` | 1 | Reescrito desde el inglés, sin el calco «TA» |
-| README y manual | lectura | El arranque de `README.md` ya está en español natural. No se reescribió el manual largo |
+| `manual-de-usuario.md`, `guia-biblioteca-ui.md`, `guia-api-de-busqueda.md` | reescritura | Español de tú, mismo glosario que la app. El README ya estaba natural; se afinaron la lista de pendientes y el registro de resultados |
 | Otros idiomas (`en`, `pt`, `ja`, `ko`, `ru`) | — | Intactos, salvo el inglés de las 73 cadenas nuevas y el pin de paquetes del runtime |
 
 ## Glosario
@@ -38,5 +38,5 @@ Tratamiento de la interfaz: **tú** e imperativo (`Toca`, `Introduce`, `Prueba`,
 
 - Varias cadenas de `strings_review_literals.xml` (pantalla virtual, hilo de subtarea, widget) no tienen pantalla en este `main`: el panel `VirtualDisplayHandoffPanel` existe en `e8eb6c89` y no en esta rama. Quedan como recursos. `UnusedResources` es advertencia, no error.
 - `ja` / `ko` / `pt` / `ru` siguen sin unas 250 claves que ya faltaban, más las 73 nuevas. `check_localizations.py` solo falla si falta inglés.
-- El manual de usuario y los README largos no se reescribieron frase por frase.
+- El manual y las dos guías ya están reescritos. `ja`, `ko`, `pt` y `ru` siguen con las claves que les faltan: queda fuera de este trabajo.
 - El empaquetado de Node/ICU/zlib de Termux estaba roto (404 de `nodejs` 26.13.0, `libicu` 78.3, `zlib` 1.3.2 y `npm` 12.2.1). Se fijó a las versiones actuales del índice (Node 26.13.1, ICU 79.1, zlib 1.4, npm 12.2.2). Eso no es una traducción; sin ese cambio el APK de CI no arranca.

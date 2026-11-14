@@ -45,7 +45,7 @@ Hace cuatro cosas:
 | | Significado | Cómo lo hace Muse |
 |---|---|---|
 | **Continuo** | Cambia de sesión, de canal o de modelo y sigue siendo el mismo | Memoria en cuatro capas + una sola persona en los cinco canales de chat |
-| **Proactivo** | Avanza lo que hay que avanzar sin que lo llames | Libro de lo que te quiere decir, tareas programadas, escribirte cuando lleva tiempo en silencio |
+| **Proactivo** | Avanza lo que hay que avanzar sin que lo llames | Una lista de lo que quiere preguntarte, tareas programadas y un mensaje si llevas tiempo en silencio |
 | **Capaz** | Hace más que hablar | Capas Accesibilidad / Shizuku / Root, más de 200 herramientas, terminal y pantalla virtual |
 | **Persistente** | Lo cierras y lo abres, y sigue ahí | Servicio en primer plano, base de datos local, runtimes sin conexión |
 
@@ -132,8 +132,8 @@ corto plazo      datos clave              compresión              dedup/fusión
 
 No espera a que le hables.
 
-- **Libro de lo que te quiere decir**: el asistente apunta lo que quiere preguntarte y elige una entrada cuando llega el momento, en lugar de inventar charla
-- **Libro de resultados**: abierto, respondido o descartado, todo queda registrado; de ahí aprende la intimidad para decidir cuántas veces puede hablar hoy
+- **Lista de pendientes**: el asistente anota lo que quiere preguntarte y elige una nota cuando llega el momento, en lugar de inventar charla
+- **Registro de resultados**: si lo abriste, respondiste o lo descartaste, queda anotado. Con eso mide la cercanía y decide cuántas veces puede escribir hoy
 - **Horas de silencio**: calla cuando deberías estar durmiendo
 - **Tareas programadas**: se ejecutan a su hora y el resultado vuelve a la conversación
 
@@ -203,7 +203,7 @@ No espera a que le hables.
 - **Biblioteca de experiencias**: convierte "este tipo de problema se resuelve así" en experiencia reutilizable que las tareas futuras consultan automáticamente (se puede activar o desactivar).
 - **Base de conocimiento (RAG)**: los documentos importados se analizan, se fragmentan y se indexan; la recuperación combina búsqueda semántica y coincidencia de palabras clave; con @ se limita la búsqueda a documentos concretos; los archivos muy grandes se indexan en streaming; en entornos sin conexión se degrada a búsqueda local; las citas remiten a los fragmentos originales.
 - **Resumen diario y saludos**: a la hora configurada se genera un repaso del día (visible en el inicio, con notificación opcional); el saludo de la mañana lo genera el modelo a partir de los asuntos recientes en la memoria, no es una plantilla fija.
-- **Mensajes proactivos**: no hay sondeos a intervalos fijos. Funciona con un "libro de lo que te quiere decir": el asistente anota ahí lo que te quiere preguntar y elige una entrada cuando llega el momento. Que lo abras, respondas o lo descartes queda en un libro de resultados, y de ahí aprende la intimidad para decidir cuántas veces puede hablar hoy. Cinco niveles (Silencioso / Reservado / Estándar / Activo / Pegajoso), con la opción de volver al nivel por defecto y poner a cero la cuota del día; se respetan las horas de silencio; si no tiene nada que aportar, prefiere no escribir; y hay una red de seguridad (si llevan mucho tiempo sin hablar, saluda por iniciativa propia). De madrugada sigue ordenando recuerdos sin molestarte; el contenido de las notificaciones diarias es configurable (resumen diario).
+- **Mensajes proactivos**: no hay sondeos a intervalos fijos. El asistente anota lo que quiere preguntarte y elige una nota cuando llega el momento. Si lo abres, respondes o lo descartas, queda en un registro, y con eso mide la cercanía para decidir cuántas veces puede escribir hoy. Cinco niveles (Silencioso / Reservado / Estándar / Activo / Pegajoso), con la opción de volver al nivel por defecto y poner a cero la cuota del día; se respetan las horas de silencio; si no tiene nada que aportar, prefiere no escribir; y hay una red de seguridad (si llevan mucho tiempo sin hablar, saluda por iniciativa propia). De madrugada sigue ordenando recuerdos sin molestarte; el contenido de las notificaciones diarias es configurable (resumen diario).
 - **Hitos**: el primer mensaje, los días 7 / 30 / 100 juntos, los mensajes 100 / 1000 y otros momentos se registran automáticamente y se pueden revisar en la página de hitos.
 - **Estadísticas y panel de actividad**: la página de estadísticas incluye el total de conversaciones y mensajes, la media diaria, la racha de días y un mapa de calor diario; el panel de actividad muestra el historial de ejecución de tareas programadas, heartbeats y compilación de memoria.
 
@@ -250,7 +250,7 @@ No espera a que le hables.
 - **Burbujas y apariencia**: radio de las esquinas de las burbujas ajustable; sistema de skins de burbujas, con skins extendidas que aportan los plugins (por ejemplo alto contraste o brillo suave).
 - **Iconos dibujados a mano**: 176 iconos propios (rejilla de 24dp, trazo redondeado de 1.7dp, adaptación a claro y oscuro), con código abierto en [muse-icons](https://github.com/Zer0Qing/muse-icons) (MIT).
 - **Tipografía e idiomas**: fuente / tamaño / espaciado entre letras, botón atrás predictivo, adaptación de accesibilidad; la interfaz está en español de forma predeterminada, y también en inglés, japonés, coreano, portugués y ruso.
-- **Copia de seguridad y restauración**: exportación local con un toque (JSON / NDJSON por bloques, con cifrado opcional); copia automática diaria (paquete con instantáneas de muse.db / memory.db / facts.db); sincronización en la nube con S3 / WebDAV; el libro de lo que te quiere decir de los mensajes proactivos, el libro de resultados y la intimidad de la relación se incluyen en la copia; antes de restaurar se guarda una copia de protección y, si falla, se revierte automáticamente.
+- **Copia de seguridad y restauración**: exportación local con un toque (JSON / NDJSON por bloques, con cifrado opcional); copia automática diaria (paquete con instantáneas de muse.db / memory.db / facts.db); sincronización en la nube con S3 / WebDAV; la lista de lo que quiere preguntarte, el registro de resultados y la cercanía de la relación entran en la copia; antes de restaurar se guarda una copia de protección y, si falla, se revierte automáticamente.
 - **Importación de datos**: migración con un toque desde CherryStudio / Chatbox / ChatGPT / RikkaHub / Kelivo; importación de historiales de conversación en varios formatos.
 - **Biblioteca de stickers**: importación de archivos zip con estructura de carpetas y categorización automática; tres niveles de frecuencia de envío (ocasional / normal / frecuente); borrado por lotes y vaciado.
 - **Widget de pantalla de inicio**: crear una conversación con un toque; menú rápido al mantener pulsado el icono de la app.

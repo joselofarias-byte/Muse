@@ -45,7 +45,7 @@
     <!-- U-13: CALL_TOOL Verificación de acciones y plantillas de llenado rápido con herramientas comunes -->
     <string name="schedule_tool_templates_title">Relleno rápido de herramientas comunes (toca para autocompletar)</string>
     <string name="schedule_tool_advanced_hint">Consejo: las funciones avanzadas suelen ser más fáciles de describir con IA</string>
-    <string name="schedule_err_tool_id_required">El ID de herramienta no puede estar vacío</string>
+    <string name="schedule_err_tool_id_required">El ID de la herramienta no puede estar vacío</string>
     <string name="schedule_err_tool_params_invalid">Los parámetros de la herramienta no son JSON válido: %1$s</string>
 
     <!-- U-25: Comentarios inmediatos sobre el resultado de la ejecución(éxito/Fallo + vista previa de salida) -->
@@ -130,7 +130,6 @@
         <item>Algo que decirte</item>
         <item>Te lo digo en voz baja</item>
     </string-array>
-    <string name="schedule_err_tool_id_required">El ID de la herramienta no puede estar vacío</string>
     <string name="safe_mode_data_recovery_desc_short">Consulta qué datos se conservarán y cómo restaurar una copia de seguridad</string>
     <string name="safe_mode_data_recovery">Guía de recuperación de datos</string>
     <string name="safe_mode_data_recovery_title">Guía de recuperación de datos</string>

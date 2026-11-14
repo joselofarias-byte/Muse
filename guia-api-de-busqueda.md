@@ -1,190 +1,215 @@
-# API de búsqueda integrada Obtener tutorial
+# Cómo conseguir una API de búsqueda
 
-Muse Incorporado **13 casa**Buscar/Los servicios de rastreo se dividen en dos categorías:**sin llave**(disponible listo para usar) con**Se requiere clave**(Rellénelo después de aplicarlo usted mismo). Este artículo explica uno a uno dónde postularse, cómo llenarlo y las características y cupo libre de cada empresa.
+Muse trae **13** servicios de búsqueda y rastreo. Se parten en dos: **sin clave**, listos para usar, y **con clave**, que pedís en el sitio del proveedor. Acá está, uno por uno, dónde pedirla, cómo cargarla, qué hace bien y qué cuota gratis ofrece.
 
-> Entrada: Configuración → Buscar(Web búsqueda). Después de seleccionar el proveedor, complete el campo "API Key"; Algunos proveedores también pueden cambiar la "dirección de interfaz" (endpoint), déjelo en blanco para usar la dirección predeterminada.
-> Quiere guardar problemas:**Bing HTTP / Baidu / SearXNG / Jina** Puedes usarlo sin abrir ninguna cuenta.
+> Entrada: **Ajustes → Búsqueda web**. Elige el proveedor y completa «API Key». Algunos también dejan cambiar la dirección de la interfaz (endpoint). Si la dejas vacía, se usa la dirección por defecto.
+>
+> Si no quieres dar de alta nada: **Bing HTTP, Baidu, SearXNG y Jina** funcionan sin cuenta.
 
 ---
 
-## 1. Sin clave (no es necesario solicitarla, solo elija y use)
+## 1. Sin clave
 
 ### 1. Bing HTTP
-- **Tipo**: raspado web
-- **Aplicar**: No requerido
-- **como usar**:Seleccione la ruta predeterminada en la configuración como `Bing HTTP` Eso es todo
-- **Características**: Los resultados en chino son buenos, la estabilidad depende de la estructura de la página de Bing, cambios ocasionales
-- **Nota**: Este es un rastreo de páginas en lugar de una API oficial. Las solicitudes excesivas pueden ser limitadas.
+
+- **Tipo**: rastreo de la página de resultados.
+- **Alta**: no hace falta.
+- **Cómo usarlo**: en Ajustes, deja la ruta por defecto en `Bing HTTP`.
+- **Qué hace bien**: los resultados en chino suelen ser buenos. La estabilidad depende de cómo esté armada la página de Bing, y a veces cambia.
+- **Ojo**: no es la API oficial. Si pides demasiado, te pueden limitar.
 
 ### 2. Baidu
-- **Tipo**: raspado web
-- **Aplicar**: No requerido
-- **como usar**: seleccionado `Baidu` Eso es todo
-- **Características**: El chino tiene la cobertura más completa y es adecuado para contenido nacional.
-- **Nota**: Ambos son rastreadores de páginas y el análisis de resultados depende de la estructura de la página de Baidu.
+
+- **Tipo**: rastreo de la página de resultados.
+- **Alta**: no hace falta.
+- **Cómo usarlo**: elige `Baidu`.
+- **Qué hace bien**: es la cobertura más amplia en chino, sobre todo para contenido de China.
+- **Ojo**: también es un rastreador. El análisis depende de la estructura de la página de Baidu.
 
 ### 3. SearXNG
-- **Tipo**:Metasearch (agregando múltiples motores de búsqueda)
-- **Aplicar**: No es necesario (use una instancia pública); también puedes construirlo tú mismo
-- **Dirección predeterminada**:`https://searx.be`
-- **como usar**: seleccionado `SearXNG`;Cuando tenga una instancia creada usted mismo, complete su propio nombre de dominio en la "Dirección de interfaz"
-- **Características**: Respetuoso con la privacidad, amplia gama de fuentes de resultados
-- **Nota**: Las instancias públicas tienen límites de tarifas y ocasionalmente no están disponibles;**Las instancias autoconstruidas brindan la mejor experiencia**
+
+- **Tipo**: metabúsqueda. Junta varios motores.
+- **Alta**: no hace falta si usas una instancia pública. También puedes levantar la tuya.
+- **Dirección por defecto**: `https://searx.be`
+- **Cómo usarlo**: elige `SearXNG`. Si tienes una instancia propia, pon su dominio en «Dirección de la interfaz».
+- **Qué hace bien**: cuida la privacidad y trae resultados de muchas fuentes.
+- **Ojo**: las instancias públicas tienen límite de uso y a veces se caen. Una instancia propia se siente mejor.
 
 ### 4. Jina Reader Search
-- **Tipo**:AI Búsqueda + rastreo de texto
-- **Aplicar**: No es necesario (nivel gratuito); Si desea un límite más alto, puede registrarse en https://jina.ai para obtenerlo. Key
-- **Dirección predeterminada**:`https://s.jina.ai/`(También hay espejos domésticos `https://s.jinaai.cn/`,App Probaré ambos)
-- **como usar**: seleccionado `Jina`; Si no hay ninguna clave, déjela en blanco; si hay una clave, complete "API Key"
-- **Características**: Capture directamente el texto de la página web, adecuado para escenarios que requieren contenido en lugar de enlaces.
-- **Nota**:**este es el único"No Key también es compatible oficialmente"servicios empresariales**, el nivel gratuito tiene límites de tarifas
+
+- **Tipo**: búsqueda con IA y extracción del texto de la página.
+- **Alta**: no hace falta para el plan gratis. Si quieres un límite más alto, regístrate en https://jina.ai y pide una clave.
+- **Dirección por defecto**: `https://s.jina.ai/`. También existe el espejo `https://s.jinaai.cn/`. La app prueba los dos.
+- **Cómo usarlo**: elige `Jina`. Sin clave, deja el campo vacío. Con clave, complétala en «API Key».
+- **Qué hace bien**: se queda con el texto de la página, no solo con el enlace.
+- **Ojo**: es el único servicio de esta lista que, sin clave, igual está respaldado de forma oficial. El plan gratis tiene límite de uso.
 
 ---
 
-## 2. Se requiere una clave (vaya al sitio web oficial para presentar la solicitud)
+## 2. Con clave
+
+Pide la clave en el sitio del proveedor.
 
 ### 5. Tavily
-- **Tipo**:AI API de búsqueda (diseñada específicamente para LLM)
-- **Sitio web oficial**:https://tavily.com
-- **Pasos de la solicitud**:
-  1. Abra tavily.com y utilice su dirección de correo electrónico/Google Registro de cuenta
-  2. entrar Dashboard → API Keys, copia el formulario `tvly-xxxx` de Key
-  3. Pegar en Muse "API Key"
-- **Dirección predeterminada**:`https://api.tavily.com`
-- **Cuota libre**: Regístrese para obtener una cuota de llamadas mensual gratuita (aproximadamente 1000 veces/mes, sujeto al sitio web oficial)
-- **Características**: Devuelve un resumen estructurado,AI La escena más libre de preocupaciones.
+
+- **Tipo**: API de búsqueda hecha para modelos.
+- **Sitio**: https://tavily.com
+- **Cómo pedirla**:
+  1. Entra a tavily.com y crea la cuenta con el correo o con Google.
+  2. Abre Dashboard → API Keys y copia la clave. Empieza por `tvly-xxxx`.
+  3. Pégala en Muse, en «API Key».
+- **Dirección por defecto**: `https://api.tavily.com`
+- **Cuota gratis**: al registrarte hay una cuota mensual (cerca de 1000 llamadas al mes; confirma el número en el sitio).
+- **Qué hace bien**: devuelve un resumen ya estructurado. Es la opción más simple cuando el modelo tiene que leer y resumir.
 
 ### 6. Brave Search
-- **Tipo**:Motor de búsqueda indexado independientemente API
-- **Sitio web oficial**:https://brave.com/search/api/
-- **Pasos de la solicitud**:
-  1. Abrir el sitio web oficial → Get Started / Sign up
-  2. elegir **Free** Plan (requiere verificación de tarjeta, sin deducciones para el nivel gratuito)
-  3. Copie la clave API en el panel (en forma de `BSA...`)
-- **Dirección predeterminada**:`https://api.search.brave.com/res/v1`
-- **Cuota libre**: Nivel gratuito unas 2000 veces/mes,1 veces/segundos (sujeto al sitio web oficial)
-- **Características**: Índice de creación propia (no depende de Google/Bing), resultados en inglés de alta calidad
+
+- **Tipo**: API de un índice propio.
+- **Sitio**: https://brave.com/search/api/
+- **Cómo pedirla**:
+  1. Entra al sitio y elige Get Started o Sign up.
+  2. Elige el plan **Free**. Pide verificar una tarjeta, pero el plan gratis no cobra.
+  3. Copia la clave del panel. Empieza por `BSA...`.
+- **Dirección por defecto**: `https://api.search.brave.com/res/v1`
+- **Cuota gratis**: cerca de 2000 llamadas al mes y 1 por segundo. Confírmalo en el sitio.
+- **Qué hace bien**: el índice es propio, no depende de Google ni de Bing. Los resultados en inglés son sólidos.
 
 ### 7. Serper
-- **Tipo**:Google API de resultados de búsqueda (terceros)
-- **Sitio web oficial**:https://serper.dev
-- **Pasos de la solicitud**:
-  1. Registrar una cuenta (correo electrónico/Google)
-  2. Dashboard mostrar directamente API Key
-  3. Las cuentas nuevas suelen recibir 2.500 créditos gratis
-- **Dirección predeterminada**:`https://google.serper.dev`
-- **Características**: La forma más económica de obtener resultados de Google, rápidamente
-- **Nota**: Se requiere recarga después de que se agote la cuota gratuita
 
-### 8. Bocha(Bocha)
-- **Tipo**: API de búsqueda de IA china (nacional)
-- **Sitio web oficial**:https://bochaai.com
-- **Pasos de la solicitud**:
-  1. Registre una cuenta y complete su nombre real (generalmente requerido para servicios domésticos)
-  2. Creación de consola API Key
-- **Dirección predeterminada**:`https://api.bochaai.com/v1`
-- **Características**:**Buena cobertura del contenido chino.**, adecuado para información nacional./consulta de enciclopedia
-- **Nota**: Principalmente para uso doméstico, acceso rápido
+- **Tipo**: resultados de Google a través de un tercero.
+- **Sitio**: https://serper.dev
+- **Cómo pedirla**:
+  1. Crea la cuenta con el correo o con Google.
+  2. El Dashboard muestra la API Key.
+  3. Las cuentas nuevas suelen recibir 2500 créditos gratis.
+- **Dirección por defecto**: `https://google.serper.dev`
+- **Qué hace bien**: es la forma más barata de obtener resultados de Google, y responde rápido.
+- **Ojo**: cuando se acaban los créditos gratis, hay que recargar.
 
-### 9. Metaso(Búsqueda de la torre secreta)
-- **Tipo**: Búsqueda de IA china API
-- **Sitio web oficial**:https://metaso.cn
-- **Pasos de la solicitud**:
-  1. Abra metaso.cn, regístrese e inicie sesión
-  2. Ingresa a la plataforma abierta/API Aplicación de página Key
-- **Dirección predeterminada**:`https://metaso.cn/api/v1`
-- **Características**: Fuerte comprensión semántica china y alta calidad de resumen.
+### 8. Bocha
 
-### 10. Zhipu(Búsqueda web Zhipu)
-- **Tipo**: Capacidades de búsqueda en Internet de Zhipu AI
-- **Sitio web oficial**:https://open.bigmodel.cn
-- **Pasos de la solicitud**:
-  1. Regístrese en la plataforma abierta Zhipu
-  2. En "API KeysCreado en Key
-  3. **Nota**: Se utiliza la clave API de Zhipu (la misma que se usa para llamar al modelo GLM), pero esta clave requiere el permiso de búsqueda web.
-- **Dirección predeterminada**:`https://open.bigmodel.cn/api/paas/v4`
-- **Características**: Si ya está utilizando el modelo de espectro inteligente, una clave es común
+- **Tipo**: API china de búsqueda con IA.
+- **Sitio**: https://bochaai.com
+- **Cómo pedirla**:
+  1. Crea la cuenta y completa la verificación de identidad, si el servicio la pide.
+  2. En la consola, crea una API Key.
+- **Dirección por defecto**: `https://api.bochaai.com/v1`
+- **Qué hace bien**: cubre bien el contenido en chino, tanto noticias como enciclopedias.
+- **Ojo**: está pensado sobre todo para usuarios de China. Desde ahí responde rápido.
+
+### 9. Metaso
+
+- **Tipo**: API china de búsqueda con IA.
+- **Sitio**: https://metaso.cn
+- **Cómo pedirla**:
+  1. Entra a metaso.cn, regístrate e inicia sesión.
+  2. Pide la clave en la plataforma abierta o en la página de API.
+- **Dirección por defecto**: `https://metaso.cn/api/v1`
+- **Qué hace bien**: entiende bien el chino y los resúmenes salen cuidados.
+
+### 10. Zhipu
+
+- **Tipo**: búsqueda web de Zhipu AI.
+- **Sitio**: https://open.bigmodel.cn
+- **Cómo pedirla**:
+  1. Regístrate en la plataforma abierta de Zhipu.
+  2. Crea la clave en «API Keys».
+  3. Es la misma API Key que usas para el modelo GLM, pero tiene que tener permiso de búsqueda web.
+- **Dirección por defecto**: `https://open.bigmodel.cn/api/paas/v4`
+- **Qué hace bien**: si ya usas un modelo de Zhipu, una sola clave alcanza para las dos cosas.
 
 ### 11. Exa
-- **Tipo**: Búsqueda semántica de IA API
-- **Sitio web oficial**:https://exa.ai
-- **Pasos de la solicitud**:
-  1. Registrarse exa.ai
-  2. Dashboard → API Keys Copiar (forma como `exa-...`)
-- **Dirección predeterminada**:`https://api.exa.ai`
-- **Cuota libre**: Regístrese para obtener cuota gratuita (sujeto al sitio web oficial)
-- **Características**: Búsqueda semántica (búsqueda por significado, no por palabras clave), adecuada para consultas de investigación
+
+- **Tipo**: API de búsqueda semántica.
+- **Sitio**: https://exa.ai
+- **Cómo pedirla**:
+  1. Regístrate en exa.ai.
+  2. En Dashboard → API Keys, copia la clave. Empieza por `exa-...`.
+- **Dirección por defecto**: `https://api.exa.ai`
+- **Cuota gratis**: al registrarte hay una cuota. Confírmala en el sitio.
+- **Qué hace bien**: busca por significado, no solo por palabras. Sirve para investigar un tema.
 
 ### 12. Firecrawl
-- **Tipo**: Rastreo web + extracción estructurada
-- **Sitio web oficial**:https://firecrawl.dev
-- **Pasos de la solicitud**:
-  1. Registrarse firecrawl.dev
-  2. Dashboard Copie la clave API (forma como `fc-...`)
-- **Dirección predeterminada**:`https://api.firecrawl.dev/v1`
-- **Cuota libre**: Regístrese para obtener cuota gratuita (sujeto al sitio web oficial)
-- **Características**:**Fuerte en agarrar**——Limpie todo el contenido de la página en texto limpio, adecuado para"Dame el contenido de esta pagina"
+
+- **Tipo**: rastreo y extracción estructurada.
+- **Sitio**: https://firecrawl.dev
+- **Cómo pedirla**:
+  1. Regístrate en firecrawl.dev.
+  2. En el Dashboard, copia la clave. Empieza por `fc-...`.
+- **Dirección por defecto**: `https://api.firecrawl.dev/v1`
+- **Cuota gratis**: al registrarte hay una cuota. Confírmala en el sitio.
+- **Qué hace bien**: convierte la página en texto limpio. Sirve cuando pides «tráeme el contenido de esta página».
 
 ### 13. Perplexity
-- **Tipo**:AI Búsqueda de preguntas y respuestas API
-- **Sitio web oficial**:https://www.perplexity.ai(La entrada para desarrolladores está en docs.perplexity.ai)
-- **Pasos de la solicitud**:
-  1. Regístrese para obtener una cuenta de Perplejidad
-  2. Ingrese a la plataforma API (debe abrirse por separado y vincularse al método de pago)
-  3. Cree una clave API (forma como `pplx-...`)
-- **Dirección predeterminada**:`https://api.perplexity.ai`
-- **Características**: Devuelve directamente la respuesta a la que se hace referencia, no una lista vinculada
-- **Nota**:**Sin nivel gratuito**, necesita recargarse; facturado por llamada
+
+- **Tipo**: API de preguntas y respuestas.
+- **Sitio**: https://www.perplexity.ai. La documentación para desarrolladores está en docs.perplexity.ai.
+- **Cómo pedirla**:
+  1. Crea una cuenta de Perplexity.
+  2. Entra a la plataforma de API. Hay que activarla aparte y asociar un medio de pago.
+  3. Crea la clave. Empieza por `pplx-...`.
+- **Dirección por defecto**: `https://api.perplexity.ai`
+- **Qué hace bien**: responde directo, con fuentes, en lugar de devolver una lista de enlaces.
+- **Ojo**: no tiene plan gratis. Se cobra por llamada.
 
 ---
 
-## 3. Cómo elegir (según escena)
+## 3. Cuál elegir
 
-| tus necesidades | Recomendado |
+| Lo que necesitas | Opción |
 |---|---|
-| No quiero molestar en absoluto | **Bing HTTP** o **Jina**(sin llave) |
-| Contenido principalmente chino | **Baidu**(gratis),**Bocha**(requiere clave, mejor calidad) |
-| AI Guarda la escena y resúmela. | **Tavily** |
-| Obtener resultados de Google | **Serper** |
-| Recuperación semántica/Investigación | **Exa** |
-| Para capturar el contenido de la página web. | **Firecrawl** o **Jina** |
-| Modelo de espectro de sabiduría existente Key | **Zhipu**(Una clave es universal) |
-| Quiere resultados de preguntas y respuestas | **Perplexity** |
+| No quiero dar de alta nada | **Bing HTTP** o **Jina** |
+| Casi todo el contenido está en chino | **Baidu** (sin clave) o **Bocha** (con clave, mejor calidad) |
+| Que el modelo reciba un resumen | **Tavily** |
+| Resultados de Google | **Serper** |
+| Buscar por significado, o investigar | **Exa** |
+| Quedarme con el texto de una página | **Firecrawl** o **Jina** |
+| Ya tengo una clave de Zhipu | **Zhipu** |
+| Quiero una respuesta, no una lista de enlaces | **Perplexity** |
 
-**Sugerencias**: Equipado con 1 llave sin llave al mismo tiempo (garantizada)+ 1 pagado (calidad),Muse Elegirá lo mejor según la estrategia.
+Conviene tener a la vez uno sin clave, para que siempre haya una salida, y uno de pago, por la calidad. En modo automático, Muse prueba el siguiente si uno falla.
 
 ---
 
 ## 4. Preguntas frecuentes
 
-**Q: ¿Completó la clave pero aún no puede encontrarla?**
-A: Verificar en orden:① Key Ya sea para copiar completamente (sin espacios adicionales);② Si se ha activado el servicio correspondiente para esta Clave (Zhipu Preste especial atención a);③ Si la "Dirección de interfaz" se ha cambiado por error (déjelo en blanco como valor predeterminado);④ ¿La cuenta tiene saldo?/Cuota.
+**Pegué la clave y sigue sin buscar.**
 
-**Q: ¿Puedo tener varios clientes al mismo tiempo?**
-A:capaz. Las claves de cada empresa en el área de configuración se almacenan por separado, y sus respectivas claves se traen automáticamente al cambiar de proveedor.
+Revisa en este orden:
 
-**Q:endpoint ¿Cuándo se debe cambiar?**
-A: Tres situaciones: utilice SearXNG de construcción propia; usar transferencia/Dirección del agente; el funcionario cambió el nombre del dominio. Si no está seguro, déjelo en blanco.
+1. Que la clave esté completa, sin espacios de más.
+2. Que esa clave tenga activado el servicio. En Zhipu, el permiso de búsqueda web es aparte.
+3. Que no hayas cambiado «Dirección de la interfaz» sin querer. Vacío significa la dirección por defecto.
+4. Que la cuenta todavía tenga saldo o cuota.
 
-**Q: ¿Dónde existen estas claves? ¿Es seguro?**
-A: Almacene los datos de la aplicación local y realice la copia de seguridad. No comparta archivos de respaldo que contengan claves.
+**¿Puedo tener varios a la vez?**
+
+Sí. Cada proveedor guarda su clave por separado. Al cambiar de proveedor, Muse usa la que le corresponde.
+
+**¿Cuándo cambio el endpoint?**
+
+En tres casos: tienes un SearXNG propio, usas un proxy o una pasarela, o el proveedor cambió de dominio. Si no estás seguro, déjalo vacío.
+
+**¿Dónde quedan las claves? ¿Es seguro?**
+
+Quedan en los datos locales de la app y entran en la copia de seguridad. No compartas una copia que tenga claves adentro.
 
 ---
 
-## 5. Hoja de referencia de una frase
+## 5. Tabla rápida
 
-| proveedor | necesitar Key | Punto final predeterminado | Principales ventajas |
+| Proveedor | ¿Clave? | Dirección por defecto | Para qué sirve |
 |---|---|---|---|
-| Bing HTTP | No | raspado de página | No requiere configuración, buen idioma chino. |
-| Baidu | No | raspado de página | Cobertura completa en chino |
-| SearXNG | No | `https://searx.be` | metabuscador, privacidad |
-| Jina | No (opcional) | `https://s.jina.ai/` | Rastreo de texto |
-| Tavily | si | `https://api.tavily.com` | AI Resumen de búsqueda |
-| Brave | si | `https://api.search.brave.com/res/v1` | Índice autoconstruido |
-| Serper | si | `https://google.serper.dev` | Google resultado |
-| Bocha | si | `https://api.bochaai.com/v1` | Búsqueda de IA china |
-| Metaso | si | `https://metaso.cn/api/v1` | semántica china |
-| Zhipu | si | `https://open.bigmodel.cn/api/paas/v4` | Espectro de sabiduría ecológico universal. |
-| Exa | si | `https://api.exa.ai` | Recuperación semántica |
-| Firecrawl | si | `https://api.firecrawl.dev/v1` | Rastreo y extracción web |
-| Perplexity | si | `https://api.perplexity.ai` | Búsqueda de preguntas y respuestas |
+| Bing HTTP | No | Rastreo de la página | Sin configuración. Buenos resultados en chino |
+| Baidu | No | Rastreo de la página | Cobertura amplia en chino |
+| SearXNG | No | `https://searx.be` | Metabúsqueda y privacidad |
+| Jina | No (opcional) | `https://s.jina.ai/` | Texto de la página |
+| Tavily | Sí | `https://api.tavily.com` | Resumen para el modelo |
+| Brave | Sí | `https://api.search.brave.com/res/v1` | Índice propio |
+| Serper | Sí | `https://google.serper.dev` | Resultados de Google |
+| Bocha | Sí | `https://api.bochaai.com/v1` | Búsqueda en chino |
+| Metaso | Sí | `https://metaso.cn/api/v1` | Semántica en chino |
+| Zhipu | Sí | `https://open.bigmodel.cn/api/paas/v4` | La misma clave que el modelo GLM |
+| Exa | Sí | `https://api.exa.ai` | Búsqueda por significado |
+| Firecrawl | Sí | `https://api.firecrawl.dev/v1` | Rastreo y extracción |
+| Perplexity | Sí | `https://api.perplexity.ai` | Respuesta con fuentes |
