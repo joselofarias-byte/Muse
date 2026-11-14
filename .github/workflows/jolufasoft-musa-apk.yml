@@ -1,5 +1,6 @@
 name: JolufaSoft Musa APK release (es)
 # Builds the current commit, not a pinned historical branch.
+# The Spanish default lives in values/; this workflow publishes debug and release APKs for that locale.
 on:
   workflow_dispatch:
   push:

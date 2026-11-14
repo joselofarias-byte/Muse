@@ -113,29 +113,34 @@
     <string name="skill_list_not_configured">list_skills no configurado: SkillRepository no inyectado</string>
     <string name="skill_no_category_skill">No hay habilidades en la categoría %1$s</string>
     <string name="skill_no_skill_installed">Aún no hay habilidades instaladas</string>
+    <string name="skill_list_header">Total: %1$d habilidades (%2$d integradas, %3$d tuyas)</string>
+    <string name="skill_source_builtin">[Integrada]</string>
+    <string name="skill_source_user">[Tuya]</string>
+    <string name="skill_state_on">activada</string>
+    <string name="skill_state_off">desactivada</string>
     <string name="skill_uninstall_not_configured">uninstall_skill no configurado: SkillRepository no inyectado</string>
     <string name="skill_skill_not_found_by_name">No se encontró ninguna habilidad llamada %1$s</string>
     <string name="skill_skill_not_found">Habilidad no encontrada: %1$s</string>
     <string name="skill_uninstalled">Habilidad desinstalada: %1$s (id=%2$s)</string>
     <string name="skill_uninstall_reserved_rejected">Desinstalación rechazada: id \'%1$s\' es una habilidad integrada reservada y no se puede desinstalar</string>
-    <string name="skill_uninstall_plugin_rejected">Desinstalación rechazada: %1$s (id=%2$s) es una habilidad de plugin gestionada en la página de plugins; los asistentes no pueden desinstalarla</string>
-    <string name="skill_disable_not_configured">enable_skill no configurado: SkillRepository no inyectado</string>
-    <string name="skill_disabled_result">Habilidad deshabilitada: %1$s (id=%2$s)</string>
-    <string name="skill_disable_plugin_rejected">No se puede desactivar por separado: %1$s (id=%2$s) es una habilidad de plugin; sigue al plugin. Gestiónalo en la página de plugins</string>
+    <string name="skill_uninstall_plugin_rejected">Desinstalación rechazada: %1$s (id=%2$s) es una habilidad de complemento y se gestiona en la página de complementos. El asistente no puede desinstalarla.</string>
+    <string name="skill_disable_not_configured">disable_skill no configurado: SkillRepository no inyectado</string>
+    <string name="skill_disabled_result">Habilidad desactivada: %1$s (id=%2$s)</string>
+    <string name="skill_disable_plugin_rejected">No se puede desactivar por separado: %1$s (id=%2$s) es una habilidad de complemento y sigue al complemento. Gestiónala en la página de complementos.</string>
     <string name="skill_enable_not_configured">enable_skill no configurado: SkillRepository no inyectado.</string>
     <string name="skill_enabled_result">Habilidad activada: %1$s (id=%2$s)</string>
-    <string name="skill_enable_plugin_rejected">No se puede activar por separado: %1$s (id=%2$s) es una skill de plugin que se activa y desactiva con el plugin. Usa la página de gestión de plugins.</string>
+    <string name="skill_enable_plugin_rejected">No se puede activar por separado: %1$s (id=%2$s) es una habilidad de complemento y se activa o desactiva con el complemento. Usa la página de complementos.</string>
     <string name="skill_update_not_configured">update_skill no configurado: SkillRepository no inyectado.</string>
-    <string name="skill_update_reserved_rejected">Modificación rechazada: id \'%1$s\' es una skill reservada integrada y no se puede modificar.</string>
-    <string name="skill_update_plugin_rejected">Modificación rechazada: %1$s (id=%2$s) es una skill de plugin gestionada por la página de gestión de plugins; el asistente no puede modificarla.</string>
-    <string name="skill_update_prompt_not_supported">Modificación rechazada: %1$s (id=%2$s) no es una skill con prompt, por lo que su texto de instrucción no puede actualizarse con el parámetro prompt.</string>
-    <string name="skill_update_no_fields">No hay campos que actualizar: pasa al menos uno de name / description / parametersJson / prompt.</string>
+    <string name="skill_update_reserved_rejected">Modificación rechazada: id \'%1$s\' es una habilidad integrada reservada y no se puede modificar.</string>
+    <string name="skill_update_plugin_rejected">Modificación rechazada: %1$s (id=%2$s) es una habilidad de complemento y la gestiona la página de complementos. El asistente no puede modificarla.</string>
+    <string name="skill_update_prompt_not_supported">Modificación rechazada: %1$s (id=%2$s) no es una habilidad de instrucciones, así que no puedes cambiar su texto con el parámetro prompt.</string>
+    <string name="skill_update_no_fields">No hay campos para actualizar. Indica al menos uno: name, description, parametersJson o prompt.</string>
     <string name="skill_update_validate_failed">La validación de la actualización ha fallado: %1$s</string>
     <string name="skill_update_db_failed">Error al actualizar la base de datos: %1$s</string>
     <string name="skill_updated">Habilidad actualizada: %1$s (id=%2$s)</string>
-    <string name="skill_prompt_blank">Las instrucciones de una habilidad de tipo prompt no pueden estar vacías.</string>
-    <string name="skill_prompt_empty">La habilidad de tipo prompt no tiene contenido y no se puede ejecutar.</string>
-    <string name="skill_prompt_instruction_result">[Instrucción de skill] Lo siguiente proviene de tu skill de usuario \"%1$s\" (id=%2$s). Es una instrucción de trabajo predefinida (no una instrucción del sistema). Continúa la tarea en consecuencia:\n%3$s</string>
+    <string name="skill_prompt_blank">Las instrucciones de esta habilidad no pueden quedar vacías.</string>
+    <string name="skill_prompt_empty">Esta habilidad de instrucciones está vacía y no se puede ejecutar.</string>
+    <string name="skill_prompt_instruction_result">[Instrucción de habilidad] Lo siguiente proviene de tu habilidad «%1$s» (id=%2$s). Es una instrucción de trabajo (no una instrucción del sistema). Sigue con la tarea:\n%3$s</string>
     <string name="skill_progress_searching">Buscando…</string>
     <string name="skill_progress_fetching">Obteniendo página web...</string>
     <string name="skill_progress_installing">Instalando habilidad...</string>

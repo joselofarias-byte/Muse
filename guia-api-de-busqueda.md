@@ -1,6 +1,6 @@
 # Cómo conseguir una API de búsqueda
 
-Muse trae **13** servicios de búsqueda y rastreo. Se parten en dos: **sin clave**, listos para usar, y **con clave**, que pedís en el sitio del proveedor. Acá está, uno por uno, dónde pedirla, cómo cargarla, qué hace bien y qué cuota gratis ofrece.
+Muse trae **13** servicios de búsqueda y rastreo. Se parten en dos: **sin clave**, listos para usar, y **con clave**, que pides en el sitio del proveedor. Aquí está, uno por uno, dónde pedirla, cómo cargarla, qué hace bien y qué cuota gratis ofrece.
 
 > Entrada: **Ajustes → Búsqueda web**. Elige el proveedor y completa «API Key». Algunos también dejan cambiar la dirección de la interfaz (endpoint). Si la dejas vacía, se usa la dirección por defecto.
 >

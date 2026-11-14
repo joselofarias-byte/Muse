@@ -68,11 +68,14 @@ class SkillManagementToolsImpl(
         if (filtered.isEmpty()) {
             return context.getString(R.string.skill_no_category_skill, category)
         }
-        val header = "total ${all.size} un skill(Incorporado $builtInCount un,Instalación de usuario $userCount un)"
+        val header = context.getString(R.string.skill_list_header, all.size, builtInCount, userCount)
         val body =
             filtered.joinToString("\n") { s ->
-                val source = if (s.id in builtInIds) "[Incorporado]" else "[Usuario]"
-                "${s.id} | ${s.name} | ${s.category} | ${if (s.enabled) "enabled" else "disabled"} $source"
+                val source = context.getString(
+                    if (s.id in builtInIds) R.string.skill_source_builtin else R.string.skill_source_user,
+                )
+                val state = context.getString(if (s.enabled) R.string.skill_state_on else R.string.skill_state_off)
+                "${s.id} | ${s.name} | ${s.category} | $state $source"
             }
         return "$header\n$body"
     }
