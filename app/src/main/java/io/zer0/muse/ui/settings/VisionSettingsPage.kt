@@ -222,7 +222,7 @@ fun VisionSettingsPage(onBack: () -> Unit) {
                                             visionBridge.prepare(
                                                 text = "prueba de sonda",
                                                 images = listOf(VISION_PROBE_IMAGE_PNG_BASE64),
-                                                userRequest = "prueba de sonda:¿De qué color es esta imagen??",
+                                                userRequest = context.getString(R.string.review_vision_probe_request),
                                                 sessionId = null, // No utilizar la dimensión de la clave de caché session
                                             )
                                         }

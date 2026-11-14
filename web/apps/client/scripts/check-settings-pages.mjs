@@ -208,8 +208,8 @@ try {
   assert(countRows(appearance) === 2, `Apariencia página 2 líneas (modo tema + tamaño de fuente)`);
   assert(appearance.includes("PROTO-oscuro"), "El lado derecho de la columna de enumeración muestra la etiqueta emitida por el Host (valor actual)");
   assert(!appearance.includes(">dark<"), "La enumeración no trata el valor original como nombre para mostrar");
-  assert(/aria-label="[^"]*reducir"/.test(appearance), "La recta numérica tiene − botón (nombre accesible)");
-  assert(/aria-label="[^"]*aumentar"/.test(appearance), "La fila de números tiene un botón + (nombre accesible)");
+  assert(/aria-label="Reducir [^"]*"/.test(appearance), "La recta numérica tiene − botón (nombre accesible)");
+  assert(/aria-label="Aumentar [^"]*"/.test(appearance), "La fila de números tiene un botón + (nombre accesible)");
   assert(appearance.includes(">1<"), "La fila numérica muestra el valor actual");
 
   const chat = renderPage("chat");
@@ -343,21 +343,21 @@ try {
 
   // ── 7. Bit de capacidad/estado cargado/estado vacío ───────────────────────────────────
   const unsupported = renderPage("appearance", { capabilities: CAPS_OFF });
-  assert(unsupported.includes("La versión actual no admite ajustes en la página web."), "Dar un mensaje claro cuando falte el bit de capacidad settings_values");
+  assert(unsupported.includes("Esta versión no permite cambiar estos ajustes desde la web."), "Dar un mensaje claro cuando falte el bit de capacidad settings_values");
   assert(countRows(unsupported) === 1 && countSwitches(unsupported) === 0, "No se representan filas ajustables cuando falta el bit de capacidad.");
 
   const oldHost = renderPage("appearance", { snapshot: { ...SNAPSHOT, values: undefined } });
-  assert(oldHost.includes("La versión actual no admite ajustes en la página web."), "Host Se dará el mismo mensaje cuando no se emitan valores (en lugar de una lista vacía)");
+  assert(oldHost.includes("Esta versión no permite cambiar estos ajustes desde la web."), "Host Se dará el mismo mensaje cuando no se emitan valores (en lugar de una lista vacía)");
 
   const loading = renderPage("appearance", { snapshot: undefined, loading: true });
   // Retraso del esqueleto 300 ms (useDelayedFlag): Cuando ingresa por primera vez a la subpágina, solo ocupa espacio para Anhui.
   assert(loading.includes('role="status"') && !loading.includes("muse-skeleton"), "values Dale un lugar a Quiet antes de que llegue (retraso del esqueleto 300 ms)");
 
   const failed = renderPage("appearance", { snapshot: undefined, loading: false, error: "PROTO-Error de lectura" });
-  assert(failed.includes("PROTO-Error de lectura") && failed.includes(">Inténtalo de nuevo<"), "Se muestra una barra de error reintentable si falla la lectura.");
+  assert(failed.includes("PROTO-Error de lectura") && failed.includes(">Reintentar<"), "Se muestra una barra de error reintentable si falla la lectura.");
 
   const emptyPage = renderPage("memory", { snapshot: { ...SNAPSHOT, values: [] } });
-  assert(emptyPage.includes("Actualmente no hay ajustes en esta página."), "Si no hay ningún valor coincidente en esta página, indique el motivo y no deje espacios en blanco.");
+  assert(emptyPage.includes("No hay nada para ajustar en esta página."), "Si no hay ningún valor coincidente en esta página, indique el motivo y no deje espacios en blanco.");
 
   // ── 8. Estilo: el nuevo nombre de clase solo acepta tokens ────────────────────────────────────
   const css = readFileSync(join(ROOT, "src", "styles.css"), "utf8");

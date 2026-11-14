@@ -53,8 +53,8 @@ object ToolFailureClassifier {
         val hint: String,
     )
 
-    private val TIMEOUT_MARKERS = listOf("[tiempo de espera]", "tiempo de espera", "timed out", "timeout")
-    private val CANCELLED_MARKERS = listOf("[interrumpir]", "[Cancelar]", "Cancelado", "cancelled", "canceled", "aborted")
+    private val TIMEOUT_MARKERS = listOf("[tiempo de espera]", "[Tiempo agotado]", "tiempo de espera", "Tiempo agotado", "timed out", "timeout")
+    private val CANCELLED_MARKERS = listOf("[interrumpir]", "[Cancelar]", "[Cancelado]", "Cancelado", "cancelled", "canceled", "aborted")
     private val PERMISSION_MARKERS = listOf(
         "Permisos", "No autorizado", "permission denied", "unauthorized", "forbidden", "403",
         "shizuku", "root", "Accesibilidad", "Aviso de derechos de uso", "acceso de uso",
@@ -72,6 +72,7 @@ object ToolFailureClassifier {
         "rate limit", "too many requests", "temporalmente", "Vuelve a intentarlo más tarde",
     )
     private val BLOCKED_MARKERS = listOf(
+        "Requiere intervención",
         "Aprobación",
         "bloque",
         "rechazar",

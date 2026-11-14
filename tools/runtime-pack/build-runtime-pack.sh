@@ -37,14 +37,14 @@ WORK="${MUSE_RUNTIME_WORK:-/tmp/muse-runtime-pack}"
 TERMUX_BASE="https://packages.termux.dev/apt/termux-main/pool/main"
 
 # ─── versión bloqueada ───────────────────────────────────────────────────────────────
-NODE_VER="26.13.0"
+NODE_VER="26.13.1"
 LIBCXX_VER="30"
 OPENSSL_VER="1%3A3.6.5"   # URL en ':' Necesito escapar como %3A
 CARES_VER="1.34.9"
-ICU_VER="78.3"
+ICU_VER="79.1"
 SQLITE_VER="3.54.1-1"
-ZLIB_VER="1.3.2"
-NPM_VER="12.2.1"
+ZLIB_VER="1.4"
+NPM_VER="12.2.2"
 LIBFFI_VER="3.8.0"
 
 # ─── Mapeo de archivos: nombre del archivo de la entidad de origen -> nombre de salida (jniLibs solo aceptar lib*.so nombrar) ────────
@@ -53,26 +53,26 @@ declare -A FILEMAP=(
   ["libssl.so.3"]="libssl.so"
   ["libcrypto.so.3"]="libcrypto.so"
   ["libcares.so"]="libcares.so"
-  ["libicui18n.so.78.3"]="libicui18n.so"
-  ["libicuuc.so.78.3"]="libicuuc.so"
-  ["libicudata.so.78.3"]="libicudata.so"
+  ["libicui18n.so.79.1"]="libicui18n.so"
+  ["libicuuc.so.79.1"]="libicuuc.so"
+  ["libicudata.so.79.1"]="libicudata.so"
   ["libffi.so"]="libffi.so"
   ["libsqlite3.54.1.so"]="libsqlite3.so"
-  ["libz.so.1.3.2"]="libz.so"
+  ["libz.so.1.4"]="libz.so"
 )
 
 # ─── DT_NEEDED Mapeo: cadena original -> Nuevo nombre (incluido el nombre del enlace y el nombre de la entidad) ───────────
 declare -A NEEDMAP=(
   ["libz.so.1"]="libz.so"
-  ["libz.so.1.3.2"]="libz.so"
+  ["libz.so.1.4"]="libz.so"
   ["libcrypto.so.3"]="libcrypto.so"
   ["libssl.so.3"]="libssl.so"
-  ["libicui18n.so.78"]="libicui18n.so"
-  ["libicui18n.so.78.3"]="libicui18n.so"
-  ["libicuuc.so.78"]="libicuuc.so"
-  ["libicuuc.so.78.3"]="libicuuc.so"
-  ["libicudata.so.78"]="libicudata.so"
-  ["libicudata.so.78.3"]="libicudata.so"
+  ["libicui18n.so.79"]="libicui18n.so"
+  ["libicui18n.so.79.1"]="libicui18n.so"
+  ["libicuuc.so.79"]="libicuuc.so"
+  ["libicuuc.so.79.1"]="libicuuc.so"
+  ["libicudata.so.79"]="libicudata.so"
+  ["libicudata.so.79.1"]="libicudata.so"
   ["libsqlite3.so.3.53.4"]="libsqlite3.so"
 )
 

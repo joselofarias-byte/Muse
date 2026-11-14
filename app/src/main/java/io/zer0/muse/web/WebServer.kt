@@ -671,7 +671,7 @@ class WebServer(
                 // L1: Agregar encabezado de política de referencia,Evite que el parámetro de consulta JWT se filtre a terceros a través del encabezado Referer
                 call.response.headers.append("Referrer-Policy", "no-referrer")
                 if (!servePackagedAsset(call, "muse-web/index.html")) {
-                    call.respondText(WebServerUi.INDEX_HTML, ContentType.Text.Html)
+                    call.respondText(WebServerUi.indexHtml(context), ContentType.Text.Html)
                 }
             }
 
