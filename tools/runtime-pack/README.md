@@ -64,14 +64,14 @@ TLS red → npm Descomprimir → npm ejecutar → symlink exec(P1 Conceptos bás
 
 | componentes | versión | Fuente |
 |---|---|---|
-| Node.js | 24.18.0 LTS | Termux nodejs-lts 24.18.0-1 |
-| npm | 11.20.0 | Termux npm(all) |
+| Node.js | 26.13.1 | Termux nodejs |
+| npm | 12.2.2 | Termux npm (all) |
 | libc++ | 30 | Termux libc++ |
-| OpenSSL | 3.6.3 | Termux openssl |
-| c-ares | 1.34.8 | Termux c-ares |
-| ICU | 78.3 | Termux libicu |
-| SQLite | 3.53.4 | Termux libsqlite |
-| zlib | 1.3.2 | Termux zlib |
+| OpenSSL | 3.6.5 | Termux openssl |
+| c-ares | 1.34.9 | Termux c-ares |
+| ICU | 79.1 | Termux libicu |
+| SQLite | 3.54.1 | Termux libsqlite |
+| zlib | 1.4 | Termux zlib |
 
 > El binario en tiempo de ejecución es parte del proyecto GPLv3 y la fuente es el paquete precompilado oficial de Termux (cada componente conserva su original).
 > Licencia de código abierto), el script de compilación y el flujo de procesamiento se pueden encontrar en este directorio.

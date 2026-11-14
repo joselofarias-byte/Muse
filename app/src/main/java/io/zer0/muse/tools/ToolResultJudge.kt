@@ -25,11 +25,17 @@ internal object ToolResultJudge {
 
     private val BRACKET_FAILURE_MARKERS = listOf(
         "[tiempo de espera]",
+        "[Tiempo agotado]",
+        "[Timed out]",
         "[interrumpir]",
         "[La salida de la herramienta está truncada",
         "[error]",
         "[falló]",
         "[Cancelar]",
+        "[Cancelado]",
+        "[Cancelled]",
+        "[Requiere intervención]",
+        "[Action required]",
     )
     private val STRUCTURED_ERROR_PATTERN = Regex("\"error\"\\s*:\\s*\"[^\"]")
 

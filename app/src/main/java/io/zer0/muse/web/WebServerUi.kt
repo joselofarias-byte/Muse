@@ -1,5 +1,8 @@
 package io.zer0.muse.web
 
+import android.content.Context
+import io.zer0.muse.R
+
 /**
  * WebServer UI de ruta raíz (aplicación de una sola página:PIN Iniciar sesión → Lista de conversación → Los mensajes son de sólo lectura).
  * HTML/CSS/JS puramente integrado, sin dependencias externas, terminal celular/Disponible en navegadores de escritorio.
@@ -9,6 +12,51 @@ package io.zer0.muse.web
  * (Color claro: texto negro sobre fondo blanco; color oscuro: texto blanco sobre fondo negro sólido, tarjeta n.° 1C1C1E).
  */
 object WebServerUi {
+    /** Localize the static template. Protocol fields and received messages stay intact. */
+    fun indexHtml(context: Context): String {
+        val labels = listOf(
+            "__L01__" to R.string.review_legacy_1,
+            "__L02__" to R.string.review_legacy_2,
+            "__L03__" to R.string.review_legacy_3,
+            "__L04__" to R.string.review_legacy_4,
+            "__L05__" to R.string.review_legacy_5,
+            "__L06__" to R.string.review_legacy_6,
+            "__L07__" to R.string.review_legacy_7,
+            "__L08__" to R.string.review_legacy_8,
+            "__L09__" to R.string.review_legacy_9,
+            "__L10__" to R.string.review_legacy_10,
+            "__L11__" to R.string.review_legacy_11,
+            "__L12__" to R.string.review_legacy_12,
+            "__L13__" to R.string.review_legacy_13,
+            "__L14__" to R.string.review_legacy_14,
+            "__L15__" to R.string.review_legacy_15,
+            "__L16__" to R.string.review_legacy_16,
+            "__L17__" to R.string.review_legacy_17,
+            "__L18__" to R.string.review_legacy_18,
+            "__L19__" to R.string.review_legacy_19,
+            "__L20__" to R.string.review_legacy_20,
+            "__L21__" to R.string.review_legacy_21,
+            "__L22__" to R.string.review_legacy_22,
+            "__L23__" to R.string.review_legacy_23,
+            "__L24__" to R.string.review_legacy_24,
+            "__L25__" to R.string.review_legacy_25,
+            "__L26__" to R.string.review_legacy_26,
+            "__L27__" to R.string.review_legacy_27,
+            "__L28__" to R.string.review_legacy_28,
+            "__L29__" to R.string.review_legacy_29,
+            "__L30__" to R.string.review_legacy_30,
+            "__L31__" to R.string.review_legacy_31,
+            "__L32__" to R.string.review_legacy_32,
+            "__L33__" to R.string.review_legacy_33,
+        )
+        var html = INDEX_HTML
+        for ((source, resource) in labels) {
+            html = html.replace(source, context.getString(resource))
+        }
+        val language = context.resources.configuration.locales[0].toLanguageTag()
+        return html.replace("lang=\"es\"", "lang=\"$language\"")
+    }
+
 
     const val INDEX_HTML: String = """<!DOCTYPE html>
 <html lang="es">
@@ -103,16 +151,16 @@ a{color:var(--ink)}
 <div class="wrap">
 
   <!-- F-43: Las páginas en línea antiguas solo se muestran cuando faltan recursos de React,Recuerde rápidamente a los usuarios que actualicen Muse App -->
-  <div class="legacy-notice">La consola web ha sido actualizada. Actualice la aplicación Muse a la última versión para utilizar la nueva interfaz. Actualmente una página de compatibilidad heredada.</div>
+  <div class="legacy-notice">__L01__</div>
 
   <!-- Página de inicio de sesión -->
   <div id="view-login" class="login">
     <div class="brand">Muse</div>
-    <div class="sub">Ingrese los 6 dígitos generados en la página de configuración del celular PIN</div>
+    <div class="sub">__L02__</div>
     <input id="pin" type="password" inputmode="numeric" maxlength="6" placeholder="······" autocomplete="off">
-    <button id="login-btn" class="btn">conectar</button>
+    <button id="login-btn" class="btn">__L31__</button>
     <div id="login-err" class="err"></div>
-    <div class="tip">Acceso solo a esta máquina y a dispositivos LAN autorizados</div>
+    <div class="tip">__L03__</div>
   </div>
 
   <!-- Interfaz principal -->
@@ -120,16 +168,16 @@ a{color:var(--ink)}
     <div class="top">
       <span class="logo">Muse</span>
       <span class="sp"></span>
-      <button id="btn-new">nueva conversación</button>
-      <button id="btn-refresh">Actualizar</button>
-      <button id="btn-settings">ajustes</button>
-      <button id="btn-logout">Salir</button>
+      <button id="btn-new">__L20__</button>
+      <button id="btn-refresh">__L23__</button>
+      <button id="btn-settings">__L24__</button>
+      <button id="btn-logout">__L25__</button>
     </div>
     <div id="page-sessions"></div>
     <div id="page-messages" class="hide"></div>
     <div id="composer" class="hide">
-      <textarea id="message-input" rows="2" placeholder="escribe algo…"></textarea>
-      <button id="send-btn">enviar</button>
+      <textarea id="message-input" rows="2" placeholder="__L11__"></textarea>
+      <button id="send-btn">__L27__</button>
     </div>
     <div id="page-settings" class="hide"></div>
   </div>
@@ -169,7 +217,7 @@ function inlineMd(s){
 }
 function api(path){
   return fetch(path,{credentials:"same-origin"}).then(function(r){
-    if(r.status===401){show("login");throw new Error("unauthorized")}
+    if(r.status===401){show("login");throw new Error("__L04__")}
     if(!r.ok){return r.json().then(function(j){throw new Error(j.message||j.error||("HTTP "+r.status))})}
     return r.json();
   });
@@ -179,33 +227,33 @@ function api(path){
 var hostSocket=null;
 var hostState={sessions:[],sessionId:null,messages:[],isStreaming:false};
 function hostSend(command){
-  if(!hostSocket||hostSocket.readyState!==WebSocket.OPEN){throw new Error("Host Aún no conectado")}
+  if(!hostSocket||hostSocket.readyState!==WebSocket.OPEN){throw new Error("__L07__")}
   hostSocket.send(JSON.stringify(command));
 }
 function renderHostMessages(){
-  var h="<button class='back' onclick='window.__backList()'>← Regresar</button>";
-  if(!hostState.messages.length) h+='<div class="empty">Aún no hay noticias</div>';
+  var h="<button class='back' onclick='window.__backList()'>← __L28__</button>";
+  if(!hostState.messages.length) h+='<div class="empty">__L14__</div>';
   hostState.messages.forEach(function(m){
     var isUser=m.role==="USER"||m.role==="user";
     h+="<div class='msg "+(isUser?"user":"ai")+"'>"+
-      "<div class='av'>"+(isUser?"yo":m.role==="tool"?"T":"M")+"</div><div class='body'>";
+      "<div class='av'>"+(isUser?"__L32__":m.role==="tool"?"T":"M")+"</div><div class='body'>";
     if(m.reasoning) h+="<div class='rs'>"+esc(m.reasoning)+"</div>";
     h+="<div class='b'>"+inlineMd(m.content||"")+"</div>";
     h+="<div class='meta'>"+(m.modelId?esc(m.modelId)+" · ":"")+fmtTime(m.createdAt)+"</div></div></div>";
   });
   $("page-messages").innerHTML=h;
   $("composer").classList.remove("hide");
-  $("send-btn").textContent=hostState.isStreaming?"detenerse":"enviar";
+  $("send-btn").textContent=hostState.isStreaming?"__L26__":"__L27__";
   $("send-btn").classList.toggle("stop",hostState.isStreaming);
   $("send-btn").disabled=!hostState.isStreaming&&!$("message-input").value.trim();
 }
 function renderHostSessions(){
   var list=hostState.sessions;
-  if(!list.length){$("page-sessions").innerHTML='<div class="empty">Aún no hay sesión</div>';return}
+  if(!list.length){$("page-sessions").innerHTML='<div class="empty">__L13__</div>';return}
   var h="<div class='list'>";
   list.forEach(function(s){
     h+="<button class='item' onclick='window.__hostOpenSession(\""+esc(s.id)+"\")'>"+
-      "<div class='t'>"+esc(s.title||"Sin nombre")+(s.pinned?"<span class='pin'>fijar hacia arriba</span>":"")+"</div>"+
+      "<div class='t'>"+esc(s.title||"__L21__")+(s.pinned?"<span class='pin'>__L22__</span>":"")+"</div>"+
       "<div class='m'>"+fmtTime(s.updatedAt)+"</div></button>";
   });
   h+="</div>";
@@ -234,15 +282,15 @@ window.__backList=function(){show("sessions");renderHostSessions()};
 /* ── Iniciar sesión ── */
 function doLogin(){
   var pin=$("pin").value.trim();
-  if(pin.length!==6){$("login-err").textContent="Por favor ingrese 6 dígitos PIN";return}
+  if(pin.length!==6){$("login-err").textContent="__L05__";return}
   $("login-btn").disabled=true;$("login-err").textContent="";
   fetch("/api/auth/pin-login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({pin:pin})})
     .then(function(r){
-      if(!r.ok){return r.json().then(function(j){throw new Error(j.message||"PIN error")})}
+      if(!r.ok){return r.json().then(function(j){throw new Error(j.message||"__L08__")})}
       return r.json();
     })
     .then(function(){ $("pin").value=""; loadHost(); })
-    .catch(function(e){ $("login-err").textContent=e.message||"La conexión falló"; })
+    .catch(function(e){ $("login-err").textContent=e.message||"__L15__"; })
     .finally(function(){ $("login-btn").disabled=false; });
 }
 $("login-btn").onclick=doLogin;
@@ -251,54 +299,54 @@ $("pin").addEventListener("keydown",function(e){if(e.key==="Enter")doLogin()});
 /* ── Lista de conversación ── */
 function loadSessions(){
   show("sessions");
-  $("page-sessions").innerHTML='<div class="loading">Cargando…</div>';
+  $("page-sessions").innerHTML='<div class="loading">__L16__</div>';
   api("/api/sessions").then(function(list){
-    if(!list||!list.length){$("page-sessions").innerHTML='<div class="empty">Aún no hay sesión</div>';return}
+    if(!list||!list.length){$("page-sessions").innerHTML='<div class="empty">__L13__</div>';return}
     var h="<div class='list'>";
     list.forEach(function(s){
       h+="<div class='item' onclick='window.__openSession(\""+s.id+"\")'>"
-        +"<div class='t'>"+esc(s.title||"Sin nombre")+(s.pinned?"<span class='pin'>fijar hacia arriba</span>":"")+"</div>"
+        +"<div class='t'>"+esc(s.title||"__L21__")+(s.pinned?"<span class='pin'>__L22__</span>":"")+"</div>"
         +"<div class='p'>"+esc(s.lastMessagePreview||"")+"</div>"
         +"<div class='m'>"+fmtTime(s.updatedAt||s.createdAt)+"</div></div>";
     });
     h+="</div>";
     $("page-sessions").innerHTML=h;
-  }).catch(function(e){$("page-sessions").innerHTML='<div class="empty">Error al cargar:'+esc(e.message)+'</div>'});
+  }).catch(function(e){$("page-sessions").innerHTML='<div class="empty">__L10__'+esc(e.message)+'</div>'});
 }
 window.__openSession=function(id){
   state.session=id;
   show("messages");
-  $("page-messages").innerHTML='<button class="back" onclick="window.__backList()">← Regresar</button><div class="loading">Cargando…</div>';
+  $("page-messages").innerHTML='<button class="back" onclick="window.__backList()">← __L28__</button><div class="loading">__L16__</div>';
   api("/api/sessions/"+encodeURIComponent(id)+"/messages").then(function(msgs){
-    if(!msgs||!msgs.length){$("page-messages").innerHTML='<button class="back" onclick="window.__backList()">← Regresar</button><div class="empty">Aún no hay noticias</div>';return}
-    var h="<button class='back' onclick='window.__backList()'>← Regresar</button>";
+    if(!msgs||!msgs.length){$("page-messages").innerHTML='<button class="back" onclick="window.__backList()">← __L28__</button><div class="empty">__L14__</div>';return}
+    var h="<button class='back' onclick='window.__backList()'>← __L28__</button>";
     msgs.forEach(function(m){
       var isUser=m.role==="USER"||m.role==="user";
       h+="<div class='msg "+(isUser?"user":"ai")+"'>"
-        +"<div class='av'>"+(isUser?"yo":"M")+"</div><div class='body'>";
+        +"<div class='av'>"+(isUser?"__L32__":"M")+"</div><div class='body'>";
       if(m.reasoning)h+="<div class='rs'>"+esc(m.reasoning)+"</div>";
       h+="<div class='b'>"+inlineMd(m.content||"")+"</div>";
       h+="<div class='meta'>"+(m.modelId?esc(m.modelId)+" · ":"")+fmtTime(m.createdAt)+"</div></div></div>";
     });
     $("page-messages").innerHTML=h;
-  }).catch(function(e){$("page-messages").innerHTML='<button class="back" onclick="window.__backList()">← Regresar</button><div class="empty">Error al cargar:'+esc(e.message)+'</div>'});
+  }).catch(function(e){$("page-messages").innerHTML='<button class="back" onclick="window.__backList()">← __L28__</button><div class="empty">__L10__'+esc(e.message)+'</div>'});
 };
 window.__backList=function(){show("sessions");renderHostSessions()};
 
 /* ── ajustes ── */
 function loadSettings(){
   show("settings");
-  $("page-settings").innerHTML='<div class="loading">Cargando…</div>';
+  $("page-settings").innerHTML='<div class="loading">__L16__</div>';
   api("/api/settings").then(function(s){
-    var h="<h2>modelo actual</h2>"
-      +"<div class='row'><div><div class='n'>"+esc(s.selectedModelId||"No seleccionado")+"</div><div class='d'>Provider: "+esc(s.activeProviderId||"Ninguno")+"</div></div></div>"
-      +"<h2>proveedor modelo</h2>";
-    if(!s.providers||!s.providers.length)h+='<div class="empty">Aún no hay proveedor</div>';
+    var h="<h2>__L17__</h2>"
+      +"<div class='row'><div><div class='n'>"+esc(s.selectedModelId||"__L19__")+"</div><div class='d'>__L06__"+esc(s.activeProviderId||"__L33__")+"</div></div></div>"
+      +"<h2>__L12__</h2>";
+    if(!s.providers||!s.providers.length)h+='<div class="empty">__L09__</div>';
     s.providers.forEach(function(p){
-      h+="<div class='row'><div><div class='n'>"+esc(p.name)+"</div><div class='d'>"+esc(p.type)+" · "+p.modelCount+" modelos</div></div><span class='badge "+(p.enabled?"on":"")+"'>"+(p.enabled?"habilitar":"desactivar")+"</span></div>";
+      h+="<div class='row'><div><div class='n'>"+esc(p.name)+"</div><div class='d'>"+esc(p.type)+" · "+p.modelCount+"__L18__</div></div><span class='badge "+(p.enabled?"on":"")+"'>"+(p.enabled?"__L29__":"__L30__")+"</span></div>";
     });
     $("page-settings").innerHTML=h;
-  }).catch(function(e){$("page-settings").innerHTML='<div class="empty">Error al cargar:'+esc(e.message)+'</div>'});
+  }).catch(function(e){$("page-settings").innerHTML='<div class="empty">__L10__'+esc(e.message)+'</div>'});
 }
 
 /* ── Botón de la barra superior ── */

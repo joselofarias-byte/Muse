@@ -49,6 +49,8 @@ switch ($Lane) {
             'ci/test/test_check_detekt_debt.py',
             'ci/test/test_baseline_fail_closed.py',
             'ci/test/test_check_localizations.py',
+            'ci/test/test_ui_display_literals.py',
+            'ci/test/test_legacy_web_localization.py',
             'ci/test/test_repo_hygiene.py',
             'ci/test/test_migration_coverage.py',
             # CMP-11 / I18N-02 / A11Y-03 Prueba única de script de barandilla
@@ -95,6 +97,7 @@ switch ($Lane) {
             Invoke-Checked $python @("ci/script/$_")
         }
         Invoke-LaneScript 'check_localizations.py' @('localization')
+        Invoke-LaneScript 'check_ui_display_literals.py' @('localization', 'android_resources', 'script')
         Invoke-LaneScript 'check_migration_coverage.py' @('android_jvm', 'android_full', 'script')
         Invoke-LaneScript 'check_design_tokens.py' @('android_jvm', 'android_resources', 'android_full')
         Invoke-LaneScript 'check_hardcoded_font_size.py' @('android_jvm', 'android_resources', 'android_full')
@@ -133,6 +136,7 @@ switch ($Lane) {
         Invoke-Checked $python @('ci/script/check_component_convergence.py')
         # I18N-02: El paquete de idioma distinto del chino, CJK, solo permanece degradado pero no actualizado(Línea de base completa 0,Por encima de la línea de base significa fracaso)
         Invoke-Checked $python @('ci/script/check_translation_residue.py')
+        Invoke-Checked $python @('ci/script/check_ui_display_literals.py')
         # A11Y-03: Barandilla de corte de fuente grande — Altura fija para contener texto.(>=32dp)Solo cayendo pero no subiendo(Línea de base completa 0)
         Invoke-Checked $python @('ci/script/check_font_scale_clipping.py')
     }

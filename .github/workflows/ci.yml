@@ -141,6 +141,8 @@ jobs:
         run: python3 ci/script/check_component_convergence.py
       - name: Translation residue guard (I18N-02)
         run: python3 ci/script/check_translation_residue.py
+      - name: UI display literal guard
+        run: python3 ci/script/check_ui_display_literals.py
       - name: Font scale clipping guard (A11Y-03)
         run: python3 ci/script/check_font_scale_clipping.py
       - name: Horizontal inset guard (UI-LAYOUT)
