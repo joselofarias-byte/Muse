@@ -2065,7 +2065,7 @@
         <error line="109" column="50" source="standard:function-signature" />
     </file>
     <file name="src/main/java/io/zer0/muse/tools/ToolFailureClassifier.kt">
-        <error line="157" column="48" source="standard:function-signature" />
+        <error line="158" column="48" source="standard:function-signature" />
     </file>
     <file name="src/main/java/io/zer0/muse/tools/ToolOrchestrator.kt">
         <error line="219" column="73" source="standard:function-signature" />
@@ -4324,19 +4324,17 @@
     </file>
     <file name="src/main/java/io/zer0/muse/ui/markdown/card/CardRuntime.kt">
         <error line="3" column="1" source="standard:import-ordering" />
-        <error line="43" column="5" source="standard:function-signature" />
-        <error line="44" column="5" source="standard:function-signature" />
-        <error line="45" column="5" source="standard:function-signature" />
-        <error line="45" column="35" source="standard:function-signature" />
-        <error line="126" column="5" source="standard:function-signature" />
-        <error line="127" column="5" source="standard:function-signature" />
-        <error line="127" column="21" source="standard:function-signature" />
-        <error line="161" column="5" source="standard:function-signature" />
-        <error line="162" column="5" source="standard:function-signature" />
-        <error line="163" column="5" source="standard:function-signature" />
-        <error line="164" column="5" source="standard:function-signature" />
-        <error line="165" column="5" source="standard:function-signature" />
-        <error line="165" column="26" source="standard:function-signature" />
+        <error line="46" column="5" source="standard:function-signature" />
+        <error line="47" column="5" source="standard:function-signature" />
+        <error line="47" column="35" source="standard:function-signature" />
+        <error line="130" column="5" source="standard:function-signature" />
+        <error line="131" column="5" source="standard:function-signature" />
+        <error line="131" column="21" source="standard:function-signature" />
+        <error line="166" column="5" source="standard:function-signature" />
+        <error line="167" column="5" source="standard:function-signature" />
+        <error line="168" column="5" source="standard:function-signature" />
+        <error line="169" column="5" source="standard:function-signature" />
+        <error line="169" column="26" source="standard:function-signature" />
     </file>
     <file name="src/main/java/io/zer0/muse/ui/markdown/card/CardScript.kt">
         <error line="267" column="1" source="standard:indent" />

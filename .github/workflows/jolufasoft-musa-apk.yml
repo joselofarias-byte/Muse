@@ -1,4 +1,5 @@
 name: JolufaSoft Musa APK release (es)
+# Builds the current commit, not a pinned historical branch.
 on:
   workflow_dispatch:
   push:

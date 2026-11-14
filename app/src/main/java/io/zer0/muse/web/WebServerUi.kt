@@ -57,7 +57,6 @@ object WebServerUi {
         return html.replace("lang=\"es\"", "lang=\"$language\"")
     }
 
-
     const val INDEX_HTML: String = """<!DOCTYPE html>
 <html lang="es">
 <head>
