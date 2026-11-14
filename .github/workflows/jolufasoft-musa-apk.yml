@@ -40,34 +40,51 @@ jobs:
             (cd web && npm ci && npm run build)
           fi
       - name: Restore permanent release signing key
+        id: sign
         shell: bash
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        run: python3 ci/script/validate_release_signing.py --keystore-out ./keystore.jks --properties-out ./keystore.properties
-      - name: Assemble Spanish debug and release APKs
+        run: |
+          set -euo pipefail
+          if [ -z "${KEYSTORE_BASE64}" ] || [ -z "${KEYSTORE_PASSWORD}" ] || [ -z "${KEY_ALIAS}" ] || [ -z "${KEY_PASSWORD}" ]; then
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "Permanent keystore secrets are empty. Debug will build. A new release key will not be generated."
+            exit 0
+          fi
+          python3 ci/script/validate_release_signing.py --keystore-out ./keystore.jks --properties-out ./keystore.properties
+          echo "available=true" >> "$GITHUB_OUTPUT"
+      - name: Assemble Spanish debug APK
         shell: bash
         run: |
           set -euo pipefail
           chmod +x gradlew
-          # 1000006 upgrades the installed muse-es.5 (versionCode 1000005). Do not mint a key.
-          ./gradlew :app:assembleDebug :app:assembleRelease --stacktrace --no-daemon -PversionCode=1000006 -PversionName=2.6.25-muse-es.6
-          find app/build/outputs/apk -name '*.apk' -type f -size +1M -print
+          ./gradlew :app:assembleDebug --stacktrace --no-daemon -PversionCode=1000006 -PversionName=2.6.25-muse-es.6
+      - name: Assemble Spanish release APK
+        if: steps.sign.outputs.available == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          # 1000006 upgrades the installed muse-es.5 (versionCode 1000005).
+          ./gradlew :app:assembleRelease --stacktrace --no-daemon -PversionCode=1000006 -PversionName=2.6.25-muse-es.6
       - name: Upload debug APK
+        if: always()
         uses: actions/upload-artifact@v7
         with:
           name: musa-es-debug-apk
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
       - name: Upload release APK
+        if: steps.sign.outputs.available == 'true'
         uses: actions/upload-artifact@v7
         with:
           name: musa-es-release-apk
           path: app/build/outputs/apk/release/*.apk
           if-no-files-found: error
       - name: Publish prerelease
+        if: steps.sign.outputs.available == 'true'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -89,3 +106,9 @@ jobs:
             --prerelease
           echo "### APK Musa" >> "$GITHUB_STEP_SUMMARY"
           echo "https://github.com/$GITHUB_REPOSITORY/releases/tag/$tag" >> "$GITHUB_STEP_SUMMARY"
+      - name: Release signing unavailable
+        if: steps.sign.outputs.available != 'true'
+        shell: bash
+        run: |
+          echo "Release APK was not built. KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_ALIAS and KEY_PASSWORD are empty in this repository. No replacement key was generated."
+          exit 1

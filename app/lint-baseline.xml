@@ -5970,7 +5970,7 @@
         errorLine2="                                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/java/io/zer0/muse/ui/settings/VisionSettingsPage.kt"
-            line="209"
+            line="210"
             column="45"/>
     </issue>
 
@@ -5981,7 +5981,7 @@
         errorLine2="                                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/java/io/zer0/muse/ui/settings/VisionSettingsPage.kt"
-            line="215"
+            line="216"
             column="45"/>
     </issue>
 
