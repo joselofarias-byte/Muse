@@ -56,6 +56,7 @@ switch ($Lane) {
             # CMP-11 / I18N-02 / A11Y-03 Prueba única de script de barandilla
             'ci/test/test_component_convergence.py',
             'ci/test/test_translation_residue.py',
+            'ci/test/test_spanish_quality.py',
             'ci/test/test_font_scale_clipping.py',
             # LAYOUT-01 Prueba única de script de barandilla
             'ci/test/test_row_text_width.py'
@@ -136,6 +137,7 @@ switch ($Lane) {
         Invoke-Checked $python @('ci/script/check_component_convergence.py')
         # I18N-02: El paquete de idioma distinto del chino, CJK, solo permanece degradado pero no actualizado(Línea de base completa 0,Por encima de la línea de base significa fracaso)
         Invoke-Checked $python @('ci/script/check_translation_residue.py')
+        Invoke-Checked $python @('ci/script/check_spanish_quality.py')
         Invoke-Checked $python @('ci/script/check_ui_display_literals.py')
         # A11Y-03: Barandilla de corte de fuente grande — Altura fija para contener texto.(>=32dp)Solo cayendo pero no subiendo(Línea de base completa 0)
         Invoke-Checked $python @('ci/script/check_font_scale_clipping.py')

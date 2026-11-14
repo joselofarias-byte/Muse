@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation">
     <string name="review_virtual_display_title">Pantalla virtual #%1$d</string>
     <string name="review_virtual_display_package">Pantalla virtual #%1$d · %2$s</string>
     <string name="review_virtual_display_unavailable">No se puede obtener la imagen. Es posible que el servicio de pantalla virtual se haya desconectado. Cierra la pantalla y pide al asistente que lo intente de nuevo.</string>

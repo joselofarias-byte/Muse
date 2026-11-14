@@ -649,7 +649,7 @@ private fun ChartCard(json: String) {
         baseUrl = "file:///android_asset/",
         javaScriptEnabled = true,
         webViewClient = RichContentWebViewClient(),
-        onWebViewCreated = { webView ->
+        onWebViewCreated = @android.annotation.SuppressLint("JavascriptInterface") { webView ->
             webView.addJavascriptInterface(heightSink, CardHeightSink.NAME)
         },
         // Siga estrictamente el contenido y los gráficos se podrán ver de un vistazo sin tener que desplazarse por la tarjeta.

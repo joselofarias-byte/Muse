@@ -39,23 +39,21 @@ jobs:
           if [ -f web/package-lock.json ]; then
             (cd web && npm ci && npm run build)
           fi
-      - name: Create isolated release signing key
+      - name: Restore permanent release signing key
         shell: bash
-        run: |
-          set -euo pipefail
-          keytool -genkeypair -noprompt -keystore "$RUNNER_TEMP/musa-release.jks" -storetype PKCS12 -alias musa -keyalg RSA -keysize 3072 -validity 3650 -storepass "MusaCI2026Temporary" -keypass "MusaCI2026Temporary" -dname "CN=Musa CI, OU=JolufaSoft, O=JolufaSoft, C=UY"
-          {
-            echo "storeFile=$RUNNER_TEMP/musa-release.jks"
-            echo "storePassword=MusaCI2026Temporary"
-            echo "keyAlias=musa"
-            echo "keyPassword=MusaCI2026Temporary"
-          } > keystore.properties
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: python3 ci/script/validate_release_signing.py --keystore-out ./keystore.jks --properties-out ./keystore.properties
       - name: Assemble Spanish debug and release APKs
         shell: bash
         run: |
           set -euo pipefail
           chmod +x gradlew
-          ./gradlew :app:assembleDebug :app:assembleRelease --stacktrace --no-daemon -PversionCode=266 -PversionName=2.6.6-musa-es
+          # 1000006 upgrades the installed muse-es.5 (versionCode 1000005). Do not mint a key.
+          ./gradlew :app:assembleDebug :app:assembleRelease --stacktrace --no-daemon -PversionCode=1000006 -PversionName=2.6.25-muse-es.6
           find app/build/outputs/apk -name '*.apk' -type f -size +1M -print
       - name: Upload debug APK
         uses: actions/upload-artifact@v7
@@ -87,7 +85,7 @@ jobs:
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
             --title "Musa español - build ${GITHUB_RUN_ID}" \
-            --notes "APK de depuración y APK release de prueba en español. La firma de release es temporal de CI: hay que desinstalar antes de actualizar y no sirve como firma de producción." \
+            --notes "APK debug y release en español. versionCode 1000006 para actualizar muse-es.5 (1000005). La release usa la firma permanente del repositorio (KEYSTORE_BASE64); no se genera otra clave." \
             --prerelease
           echo "### APK Musa" >> "$GITHUB_STEP_SUMMARY"
           echo "https://github.com/$GITHUB_REPOSITORY/releases/tag/$tag" >> "$GITHUB_STEP_SUMMARY"

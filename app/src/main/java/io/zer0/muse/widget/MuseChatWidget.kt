@@ -27,6 +27,7 @@ import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.height
 import androidx.glance.layout.padding
 import androidx.glance.text.FontWeight
+import androidx.glance.LocalContext
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import io.zer0.common.Logger
@@ -129,8 +130,9 @@ private fun MuseChatWidgetContent(data: ChatWidgetData, params: ActionParameters
                 .clickable(actionStartActivity<MainActivity>(params)),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
+                val label = LocalContext.current.getString(R.string.review_widget_chat_label)
                 Text(
-                    text = "muse",
+                    text = "Muse",
                     style = TextStyle(
                         fontWeight = FontWeight.Bold,
                         color = ColorProvider(Color(0xFF8B5CF6), Color(0xFFA78BFA)),
@@ -138,7 +140,7 @@ private fun MuseChatWidgetContent(data: ChatWidgetData, params: ActionParameters
                     ),
                 )
                 Text(
-                    text = " dialogo",
+                    text = " · $label",
                     style = TextStyle(
                         color = ColorProvider(Color(0xFF333333), Color(0xFFE5E5E5)),
                         fontSize = 16.sp,
